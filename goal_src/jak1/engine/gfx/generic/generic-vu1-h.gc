@@ -5,47 +5,39 @@
 ;; name in dgo: generic-vu1-h
 ;; dgos: GAME, ENGINE
 
+;; DECOMP BEGINS
+
 ;; "pris" refers to foreground drawing, with normals.
 (deftype pris-mtx (structure)
-  ((data   float 32      :offset 0)
-   (vector vector 8 :inline       :offset 0)
-   (t-mtx  matrix  :inline :offset 0)        ;; transformation matrix (including perspective)
-   (n-mtx  matrix3 :inline :offset 64)       ;; rotation matrix for the normals
-   (scale  vector  :inline :offset 112)      ;; not sure this is used... merc doesn't do it this way.
+  ((data    float    32        :offset   0)
+   (vector  vector   8 :inline :overlay-at (-> data 0))
+   (t-mtx   matrix   :inline   :overlay-at (-> data 0))
+   (n-mtx   matrix3  :inline   :overlay-at (-> data 16))
+   (scale   vector   :inline   :overlay-at (-> vector 7))
    )
-  :method-count-assert 9
-  :size-assert         #x80
-  :flag-assert         #x900000080
   )
 
 ;; ??
 (deftype generic-pris-mtx-save (structure)
-  ((loc-mtx pris-mtx :inline :offset-assert 0)
-   (par-mtx pris-mtx :inline :offset-assert 128)
-   (dif-mtx pris-mtx :inline :offset-assert 256)
+  ((loc-mtx  pris-mtx  :inline)
+   (par-mtx  pris-mtx  :inline)
+   (dif-mtx  pris-mtx  :inline)
    )
-  :method-count-assert 9
-  :size-assert         #x180
-  :flag-assert         #x900000180
   )
 
 ;; VU1 constants for the generic renderer.
 (deftype generic-constants (structure)
-  ((fog         vector :inline :offset-assert 0)
-   (adgif       gs-gif-tag  :inline :offset-assert 16) ;; was qword
-   (giftag      gs-gif-tag  :inline :offset-assert 32) ;; was qword
-   (hvdf-offset vector :inline :offset-assert 48)
-   (hmge-scale  vector :inline :offset-assert 64)
-   (invh-scale  vector :inline :offset-assert 80)
-   (guard       vector :inline :offset-assert 96)
-   (adnop       qword  :inline :offset-assert 112)
-   (flush       qword  :inline :offset-assert 128)
-   (stores      qword  :inline :offset-assert 144)
+  ((fog          vector      :inline)
+   (adgif        gs-gif-tag  :inline)
+   (giftag       gs-gif-tag  :inline)
+   (hvdf-offset  vector      :inline)
+   (hmge-scale   vector      :inline)
+   (invh-scale   vector      :inline)
+   (guard        vector      :inline)
+   (adnop        qword       :inline)
+   (flush        qword       :inline)
+   (stores       qword       :inline)
    )
-  :method-count-assert 9
-  :size-assert         #xa0
-  :flag-assert         #x9000000a0
   )
 
 (defun-extern generic-init-buf dma-buffer int gs-zbuf none)
-

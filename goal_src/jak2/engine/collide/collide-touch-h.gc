@@ -12,56 +12,47 @@
 ;; DECOMP BEGINS
 
 (deftype touching-prim (structure)
-  ((cprim    collide-shape-prim         :offset-assert   0)
-   (has-tri? symbol                     :offset-assert   4)
-   (tri      collide-tri-result :inline :offset-assert  16)
+  ((cprim     collide-shape-prim)
+   (has-tri?  symbol)
+   (tri       collide-tri-result  :inline)
    )
-  :method-count-assert 9
-  :size-assert         #x68
-  :flag-assert         #x900000068
   )
 
 
 (deftype touching-prims-entry (structure)
-  ((next       touching-prims-entry         :offset-assert   0)
-   (prev       touching-prims-entry         :offset-assert   4)
-   (allocated? symbol                       :offset-assert   8)
-   (u          float                        :offset-assert  12)
-   (prim1      touching-prim        :inline :offset-assert  16)
-   (prim2      touching-prim        :inline :offset-assert 128)
+  ((next        touching-prims-entry)
+   (prev        touching-prims-entry)
+   (allocated?  symbol)
+   (u           float)
+   (prim1       touching-prim  :inline)
+   (prim2       touching-prim  :inline)
    )
-  :method-count-assert 12
-  :size-assert         #xe8
-  :flag-assert         #xc000000e8
   (:methods
-    (get-middle-of-bsphere-overlap (_type_ vector) vector 9)
-    (get-touched-prim (_type_  collide-shape touching-shapes-entry) collide-shape-prim 10)
-    (get-touched-tri (_type_ collide-shape touching-shapes-entry) collide-tri-result 11)
+    (get-middle-of-bsphere-overlap (_type_ vector) vector)
+    (get-touched-prim (_type_ collide-shape touching-shapes-entry) collide-shape-prim)
+    (get-touched-tri (_type_ collide-shape touching-shapes-entry) collide-tri-result)
     )
   )
 
 
 (deftype touching-prims-entry-pool (structure)
-  ((head  touching-prims-entry            :offset-assert   0)
-   (nodes touching-prims-entry 64 :inline :offset-assert  16)
+  ((head   touching-prims-entry)
+   (nodes  touching-prims-entry  64 :inline)
    )
-  :method-count-assert 13
-  :size-assert         #x3c10
-  :flag-assert         #xd00003c10
   (:methods
-    (new (symbol type) _type_ 0)
-    (alloc-node (_type_) touching-prims-entry 9)
-    (get-free-node-count (_type_) int 10)
-    (init-list! (_type_) none 11)
-    (free-node (_type_ touching-prims-entry) touching-prims-entry 12)
+    (new (symbol type) _type_)
+    (alloc-node (_type_) touching-prims-entry)
+    (get-free-node-count (_type_) int)
+    (init-list! (_type_) none)
+    (free-node (_type_ touching-prims-entry) touching-prims-entry)
     )
   )
 
 
-(defmethod init-list! touching-prims-entry-pool ((obj touching-prims-entry-pool))
+(defmethod init-list! ((this touching-prims-entry-pool))
   (let ((v1-0 (the-as touching-prims-entry #f)))
-    (let ((a1-0 (the-as touching-prims-entry (-> obj nodes))))
-      (set! (-> obj head) a1-0)
+    (let ((a1-0 (the-as touching-prims-entry (-> this nodes))))
+      (set! (-> this head) a1-0)
       (countdown (a0-1 64)
         (set! (-> a1-0 prev) v1-0)
         (let ((a2-0 (&+ a1-0 240)))
@@ -92,43 +83,37 @@
   )
 
 (deftype touching-shapes-entry (structure)
-  ((cshape1   collide-shape         :offset-assert   0)
-   (cshape2   collide-shape         :offset-assert   4)
-   (resolve-u int8                  :offset-assert   8)
-   (head      touching-prims-entry  :offset-assert  12)
-   (handle1   handle                :offset-assert  16)
-   (handle2   handle                :offset-assert  24)
+  ((cshape1    collide-shape)
+   (cshape2    collide-shape)
+   (resolve-u  int8)
+   (head       touching-prims-entry)
+   (handle1    handle)
+   (handle2    handle)
    )
   :pack-me
-  :method-count-assert 15
-  :size-assert         #x20
-  :flag-assert         #xf00000020
   (:methods
-    (get-head (_type_) touching-prims-entry 9)
-    (get-next (_type_ touching-shapes-entry) touching-prims-entry 10)
-    (get-touched-shape (_type_ collide-shape) collide-shape 11)
-    (prims-touching? (_type_ collide-shape uint) touching-prims-entry 12)
-    (prims-touching-action? (_type_ collide-shape collide-action collide-action) basic 13)
-    (free-touching-prims-list (_type_) none 14)
+    (get-head (_type_) touching-prims-entry)
+    (get-next (_type_ touching-shapes-entry) touching-prims-entry)
+    (get-touched-shape (_type_ collide-shape) collide-shape)
+    (prims-touching? (_type_ collide-shape uint) touching-prims-entry)
+    (prims-touching-action? (_type_ collide-shape collide-action collide-action) basic)
+    (free-touching-prims-list (_type_) none)
     )
   )
 
 
 (deftype touching-list (structure)
-  ((num-touching-shapes int32                            :offset-assert   0)
-   (resolve-u           int8                             :offset-assert   4)
-   (touching-shapes     touching-shapes-entry 32 :inline :offset-assert   8)
+  ((num-touching-shapes  int32)
+   (resolve-u            int8)
+   (touching-shapes      touching-shapes-entry  32 :inline)
    )
-  :method-count-assert 14
-  :size-assert         #x408
-  :flag-assert         #xe00000408
   (:methods
-    (new (symbol type) _type_ 0)
-    (add-touching-prims (_type_ collide-shape-prim collide-shape-prim float collide-tri-result collide-tri-result) none 9)
-    (free-nodes (_type_) none 10)
-    (update-from-step-size (_type_ float) none 11)
-    (send-events-for-touching-shapes (_type_) none 12)
-    (get-shapes-entry (_type_ collide-shape collide-shape) touching-shapes-entry 13)
+    (new (symbol type) _type_)
+    (add-touching-prims (_type_ collide-shape-prim collide-shape-prim float collide-tri-result collide-tri-result) none)
+    (free-nodes (_type_) none)
+    (update-from-step-size (_type_ float) none)
+    (send-events-for-touching-shapes (_type_) none)
+    (get-shapes-entry (_type_ collide-shape collide-shape) touching-shapes-entry)
     )
   )
 
@@ -147,12 +132,12 @@
     )
   )
 
-(defmethod get-head touching-shapes-entry ((obj touching-shapes-entry))
-  (-> obj head)
+(defmethod get-head ((this touching-shapes-entry))
+  (-> this head)
   )
 
 ;; WARN: Return type mismatch collide-shape vs touching-prims-entry.
-(defmethod get-next touching-shapes-entry ((obj touching-shapes-entry) (arg0 touching-shapes-entry))
+(defmethod get-next ((this touching-shapes-entry) (arg0 touching-shapes-entry))
   (the-as touching-prims-entry (-> arg0 cshape1))
   )
 

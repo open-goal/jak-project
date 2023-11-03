@@ -2621,6 +2621,18 @@ void SetVarElement::push_to_stack(const Env& env, FormPool& pool, FormStack& sta
   }
 }
 
+FormElement* SetFormFormElement::make_set_time(const Env& /*env*/,
+                                               FormPool& pool,
+                                               FormStack& /*stack*/) {
+  auto matcher = match(
+      Matcher::op(GenericOpMatcher::func(Matcher::constant_token("current-time")), {}), m_src);
+  if (matcher.matched) {
+    return pool.alloc_element<GenericElement>(
+        GenericOperator::make_function(pool.form<ConstantTokenElement>("set-time!")), m_dst);
+  }
+  return nullptr;
+}
+
 void SetFormFormElement::push_to_stack(const Env& env, FormPool& pool, FormStack& stack) {
   ASSERT(m_popped);
   ASSERT(m_real_push_count == 0);
@@ -2688,6 +2700,12 @@ void SetFormFormElement::push_to_stack(const Env& env, FormPool& pool, FormStack
   } InplaceCallInfo;
 
   const static InplaceCallInfo in_place_calls[] = {{"seek", "seek!", 0}, {"seekl", "seekl!", 0}};
+
+  auto as_set_time = make_set_time(env, pool, stack);
+  if (as_set_time) {
+    stack.push_form_element(as_set_time, true);
+    return;
+  }
 
   auto src_as_generic = m_src->try_as_element<GenericElement>();
   if (src_as_generic) {
@@ -3519,7 +3537,7 @@ void FunctionCallElement::update_from_stack(const Env& env,
             Form* so_group_f = nullptr;
             if (!elt_group->elts().at(0)->to_form(env).is_symbol("sfx")) {
               so_group_f = pool.form<ConstantTokenElement>(
-                  elt_group->elts().at(0)->to_form(env).as_symbol()->name);
+                  elt_group->elts().at(0)->to_form(env).as_symbol().name_ptr);
             }
             auto so_positional_f = arg_forms.at(6);
             if (so_positional_f->to_form(env).is_symbol("#t")) {
@@ -3846,6 +3864,85 @@ void FunctionCallElement::update_from_stack(const Env& env,
     }
   }
 
+  // detect launch-particles macro
+  {
+    if (unstacked.at(0)->to_form(env).is_symbol("sp-launch-particles-var")) {
+      auto system = arg_forms.at(0);
+      auto part = arg_forms.at(1);
+      auto origin = arg_forms.at(2);
+      auto launch_state = arg_forms.at(3);
+      auto launch_control = arg_forms.at(4);
+      auto rate = arg_forms.at(5);
+      std::vector<Form*> macro;
+
+      if (system->to_string(env) != "*sp-particle-system-2d*") {
+        macro.push_back(pool.form<ConstantTokenElement>(":system"));
+        macro.push_back(system);
+      }
+      macro.push_back(part);
+      macro.push_back(origin);
+
+      auto mr_launch_state =
+          match(Matcher::cast("sparticle-launch-state", Matcher::symbol("#f")), launch_state);
+      auto mr_launch_control =
+          match(Matcher::cast("sparticle-launch-control", Matcher::symbol("#f")), launch_control);
+      if (!mr_launch_state.matched) {
+        macro.push_back(pool.form<ConstantTokenElement>(":launch-state"));
+        macro.push_back(launch_state);
+      }
+      if (!mr_launch_control.matched) {
+        macro.push_back(pool.form<ConstantTokenElement>(":launch-control"));
+        macro.push_back(launch_control);
+      }
+      if (rate->to_string(env) != "1.0") {
+        macro.push_back(pool.form<ConstantTokenElement>(":rate"));
+        macro.push_back(rate);
+      }
+
+      if (env.version != GameVersion::Jak1) {
+        macro.push_back(pool.form<ConstantTokenElement>(":origin-is-matrix"));
+        macro.push_back(pool.form<ConstantTokenElement>("#t"));
+      }
+
+      new_form = pool.alloc_element<GenericElement>(
+          GenericOperator::make_function(pool.form<ConstantTokenElement>("launch-particles")),
+          macro);
+    }
+  }
+
+  // detect call-parent-method
+  {
+    const auto& guessed_name = env.func->guessed_name;
+    if (guessed_name.kind == FunctionName::FunctionKind::METHOD) {
+      // detect stuff like: ((find-parent-method...) arg...)
+      auto mr_find_parent =
+          match(Matcher::func(Matcher::symbol("find-parent-method"),
+                              {Matcher::symbol(env.func->method_of_type),
+                               Matcher::integer(env.func->guessed_name.method_id)}),
+                unstacked.at(0)
+
+          );
+      if (mr_find_parent.matched) {
+        new_form = pool.alloc_element<GenericElement>(
+            GenericOperator::make_function(pool.form<ConstantTokenElement>("call-parent-method")),
+            arg_forms);
+      }
+    } else if (guessed_name.kind == FunctionName::FunctionKind::V_STATE && arg_forms.size() == 2) {
+      // here, simply detect (find-parent-method...)
+      //
+      auto mr_find_parent = match(Matcher::symbol("find-parent-method"), unstacked.at(0));
+      if (mr_find_parent.matched) {
+        auto state_info =
+            env.dts->ts.lookup_method(guessed_name.type_name, guessed_name.state_name);
+        if (arg_forms.at(0)->to_string(env) == guessed_name.type_name &&
+            arg_forms.at(1)->to_string(env) == std::to_string(state_info.id)) {
+          new_form = pool.alloc_element<GenericElement>(
+              GenericOperator::make_function(pool.form<ConstantTokenElement>("find-parent-state")));
+        }
+      }
+    }
+  }
+
   result->push_back(new_form);
 }
 
@@ -3872,26 +3969,82 @@ ConstantTokenElement* DerefElement::try_as_art_const(const Env& env, FormPool& p
     if (elt_name) {
       return pool.alloc_element<ConstantTokenElement>(*elt_name);
     } else {
-      if (env.version != GameVersion::Jak2) {
-        lg::error("function {}: did not find art element {} in {}", env.func->name(),
-                  mr.maps.ints.at(0), env.art_group());
-      }
+      lg::error("function `{}`: did not find art element {} in {}", env.func->name(),
+                mr.maps.ints.at(0), env.art_group());
     }
   }
 
   return nullptr;
 }
 
-GenericElement* DerefElement::try_as_curtime(FormPool& pool) {
-  auto mr = match(Matcher::deref(Matcher::s6(), false,
-                                 {DerefTokenMatcher::string("clock"),
-                                  DerefTokenMatcher::string("frame-counter")}),
-                  this);
+GenericElement* DerefElement::try_as_joint_node_index(const Env& env, FormPool& pool) {
+  auto mr =
+      match(Matcher::deref(Matcher::s6(), false,
+                           {DerefTokenMatcher::string("node-list"),
+                            DerefTokenMatcher::string("data"), DerefTokenMatcher::any_integer(0)}),
+            this);
+
   if (mr.matched) {
-    return pool.alloc_element<GenericElement>(
-        GenericOperator::make_function(pool.form<ConstantTokenElement>("current-time")));
+    // lg::print("func {} joint-geo: {}\n", env.func->name(), env.joint_geo());
+    auto info = env.dts->jg_info;
+    std::vector<Form*> args;
+    auto joint_name = env.get_joint_node_name(mr.maps.ints.at(0));
+    args.push_back(pool.form<ConstantTokenElement>(env.joint_geo()));
+    if (joint_name) {
+      args.push_back(pool.form<ConstantTokenElement>(joint_name.value()));
+      return pool.alloc_element<GenericElement>(
+          GenericOperator::make_function(pool.form<ConstantTokenElement>("joint-node")), args);
+    } else {
+      lg::error("function `{}`: did not find joint node {} in {}", env.func->name(),
+                mr.maps.ints.at(0), env.joint_geo());
+    }
   }
 
+  return nullptr;
+}
+
+GenericElement* DerefElement::try_as_curtime(const Env& env, FormPool& pool) {
+  if (env.version == GameVersion::Jak1) {
+    auto mr = match(Matcher::deref(Matcher::symbol("*display*"), false,
+                                   {DerefTokenMatcher::string("base-frame-counter")}),
+                    this);
+    if (mr.matched) {
+      return pool.alloc_element<GenericElement>(
+          GenericOperator::make_function(pool.form<ConstantTokenElement>("current-time")));
+    }
+  } else {
+    auto mr = match(Matcher::deref(Matcher::s6(), false,
+                                   {DerefTokenMatcher::string("clock"),
+                                    DerefTokenMatcher::string("frame-counter")}),
+                    this);
+    if (mr.matched) {
+      return pool.alloc_element<GenericElement>(
+          GenericOperator::make_function(pool.form<ConstantTokenElement>("current-time")));
+    }
+  }
+
+  return nullptr;
+}
+
+GenericElement* DerefElement::try_as_seconds_per_frame(const Env& env, FormPool& pool) {
+  if (env.version == GameVersion::Jak1) {
+    auto mr = match(Matcher::deref(Matcher::symbol("*display*"), false,
+                                   {DerefTokenMatcher::string("seconds-per-frame")}),
+                    this);
+    if (mr.matched) {
+      return pool.alloc_element<GenericElement>(
+          GenericOperator::make_function(pool.form<ConstantTokenElement>("seconds-per-frame")));
+    }
+  } else {
+    auto mr = match(Matcher::deref(Matcher::s6(), false,
+                                   {DerefTokenMatcher::string("clock"),
+                                    DerefTokenMatcher::string("seconds-per-frame")}),
+                    this);
+    if (mr.matched) {
+      return pool.alloc_element<GenericElement>(
+          GenericOperator::make_function(pool.form<ConstantTokenElement>("seconds-per-frame")));
+    }
+  }
   return nullptr;
 }
 
@@ -3921,6 +4074,12 @@ void DerefElement::update_from_stack(const Env& env,
     return;
   }
 
+  auto as_jnode = try_as_joint_node_index(env, pool);
+  if (as_jnode) {
+    result->push_back(as_jnode);
+    return;
+  }
+
   auto as_simple_expr = m_base->try_as_element<SimpleExpressionElement>();
   if (env.version == GameVersion::Jak2 && as_simple_expr && as_simple_expr->expr().is_identity() &&
       as_simple_expr->expr().get_arg(0).is_sym_val() &&
@@ -3931,9 +4090,16 @@ void DerefElement::update_from_stack(const Env& env,
   }
 
   // current-time macro
-  auto as_curtime = try_as_curtime(pool);
+  auto as_curtime = try_as_curtime(env, pool);
   if (as_curtime) {
     result->push_back(as_curtime);
+    return;
+  }
+
+  // seconds-per-frame macro
+  auto as_seconds_per_frame = try_as_seconds_per_frame(env, pool);
+  if (as_seconds_per_frame) {
+    result->push_back(as_seconds_per_frame);
     return;
   }
 
@@ -4776,7 +4942,6 @@ FormElement* try_make_logtest_mouse_macro(Form* in, FormPool& pool) {
       t = REL;
     }
 
-    printf("t is %d\n", t);
     if (t != NIL) {
       auto logtest_elt = dynamic_cast<GenericElement*>(in->at(0));
       if (logtest_elt) {
@@ -5161,6 +5326,48 @@ FormElement* ConditionElement::make_geq_zero_unsigned_check_generic(
   return pool.alloc_element<GenericElement>(GenericOperator::make_fixed(FixedOperatorKind::GEQ),
                                             casted);
 }
+
+FormElement* ConditionElement::make_time_elapsed(const Env& env,
+                                                 FormPool& pool,
+                                                 const std::vector<Form*>& source_forms,
+                                                 const std::vector<TypeSpec>& types) {
+  // geq case:
+  // (>= (- (current-time) (-> self state-time)) (seconds 5))
+  // to
+  // (time-elapsed? (-> self state-time) (seconds 5))
+
+  // lt case:
+  // (< (- (current-time) (-> self state-time)) (seconds 5))
+  // to
+  // (not (time-elapsed? (-> self state-time) (seconds 5)))
+  auto matcher = match(
+      Matcher::op(GenericOpMatcher::fixed(FixedOperatorKind::SUBTRACTION),
+                  {Matcher::op(GenericOpMatcher::func(Matcher::constant_token("current-time")), {}),
+                   Matcher::any(0)}),
+      source_forms.at(0));
+  if (matcher.matched) {
+    auto time_elapsed = matcher.maps.forms.at(0);
+    auto time = source_forms.at(1);
+    std::vector<Form*> args;
+    args.push_back(time_elapsed);
+    args.push_back(time);
+    // TODO - how to handle unsigned case?
+    if (m_kind == IR2_Condition::Kind::LESS_THAN_SIGNED) {
+      return pool.alloc_element<GenericElement>(
+          GenericOperator::make_compare(IR2_Condition::Kind::FALSE),
+          pool.form<GenericElement>(
+              GenericOperator::make_function(pool.form<ConstantTokenElement>("time-elapsed?")),
+              make_casts_if_needed(args, types, TypeSpec("time-frame"), pool, env)));
+    } else if (m_kind == IR2_Condition::Kind::GEQ_SIGNED) {
+      return pool.alloc_element<GenericElement>(
+          GenericOperator::make_function(pool.form<ConstantTokenElement>("time-elapsed?")),
+          make_casts_if_needed(args, types, TypeSpec("time-frame"), pool, env));
+    }
+  }
+
+  return nullptr;
+}
+
 FormElement* ConditionElement::make_generic(const Env& env,
                                             FormPool& pool,
                                             const std::vector<Form*>& source_forms,
@@ -5186,23 +5393,43 @@ FormElement* ConditionElement::make_generic(const Env& env,
     case IR2_Condition::Kind::NOT_EQUAL:
       return make_not_equal_check_generic(env, pool, source_forms, types);
 
-    case IR2_Condition::Kind::LESS_THAN_SIGNED:
+    case IR2_Condition::Kind::LESS_THAN_SIGNED: {
+      auto time_elapsed = make_time_elapsed(env, pool, source_forms, types);
+      if (time_elapsed) {
+        return time_elapsed;
+      }
       return pool.alloc_element<GenericElement>(
           GenericOperator::make_fixed(FixedOperatorKind::LT),
           make_casts_if_needed(source_forms, types, TypeSpec("int"), pool, env));
-    case IR2_Condition::Kind::LESS_THAN_UNSIGNED:
+    }
+    case IR2_Condition::Kind::LESS_THAN_UNSIGNED: {
+      auto time_elapsed = make_time_elapsed(env, pool, source_forms, types);
+      if (time_elapsed) {
+        return time_elapsed;
+      }
       return pool.alloc_element<GenericElement>(
           GenericOperator::make_fixed(FixedOperatorKind::LT),
           make_casts_if_needed(source_forms, types, TypeSpec("uint"), pool, env));
+    }
 
-    case IR2_Condition::Kind::GEQ_SIGNED:
+    case IR2_Condition::Kind::GEQ_SIGNED: {
+      auto time_elapsed = make_time_elapsed(env, pool, source_forms, types);
+      if (time_elapsed) {
+        return time_elapsed;
+      }
       return pool.alloc_element<GenericElement>(
           GenericOperator::make_fixed(FixedOperatorKind::GEQ),
           make_casts_if_needed(source_forms, types, TypeSpec("int"), pool, env));
-    case IR2_Condition::Kind::GEQ_UNSIGNED:
+    }
+    case IR2_Condition::Kind::GEQ_UNSIGNED: {
+      auto time_elapsed = make_time_elapsed(env, pool, source_forms, types);
+      if (time_elapsed) {
+        return time_elapsed;
+      }
       return pool.alloc_element<GenericElement>(
           GenericOperator::make_fixed(FixedOperatorKind::GEQ),
           make_casts_if_needed(source_forms, types, TypeSpec("uint"), pool, env));
+    }
 
     case IR2_Condition::Kind::LESS_THAN_ZERO_SIGNED: {
       return make_less_than_zero_signed_check_generic(env, pool, source_forms, types);

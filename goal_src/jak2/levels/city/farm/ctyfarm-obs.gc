@@ -879,38 +879,35 @@
   )
 
 (deftype shaker (structure)
-  ((axis         vector     :inline :offset-assert   0)
-   (start-time   time-frame         :offset-assert  16)
-   (decay-time   float              :offset-assert  24)
-   (amplitude    float              :offset-assert  28)
-   (freq         float              :offset-assert  32)
-   (y-decay-time float              :offset-assert  36)
-   (y-amplitude  float              :offset-assert  40)
-   (y-freq       float              :offset-assert  44)
-   (shake        float              :offset-assert  48)
-   (y-shake      float              :offset-assert  52)
+  ((axis          vector  :inline)
+   (start-time    time-frame)
+   (decay-time    float)
+   (amplitude     float)
+   (freq          float)
+   (y-decay-time  float)
+   (y-amplitude   float)
+   (y-freq        float)
+   (shake         float)
+   (y-shake       float)
    )
-  :method-count-assert 10
-  :size-assert         #x38
-  :flag-assert         #xa00000038
   (:methods
-    (shaker-method-9 (_type_) none 9)
+    (shaker-method-9 (_type_) none)
     )
   )
 
 
 ;; WARN: Return type mismatch float vs none.
-(defmethod shaker-method-9 shaker ((obj shaker))
-  (let ((s5-0 (- (current-time) (-> obj start-time))))
-    (set! (-> obj shake) (* (-> obj amplitude)
-                            (lerp-scale 1.0 0.0 (the float s5-0) 0.0 (-> obj decay-time))
-                            (cos (* 65536.0 (/ (the float s5-0) (-> obj freq))))
-                            )
+(defmethod shaker-method-9 ((this shaker))
+  (let ((s5-0 (- (current-time) (-> this start-time))))
+    (set! (-> this shake) (* (-> this amplitude)
+                             (lerp-scale 1.0 0.0 (the float s5-0) 0.0 (-> this decay-time))
+                             (cos (* 65536.0 (/ (the float s5-0) (-> this freq))))
+                             )
           )
-    (set! (-> obj y-shake) (* (-> obj y-amplitude)
-                              (lerp-scale 1.0 0.0 (the float s5-0) 0.0 (-> obj y-decay-time))
-                              (cos (* 65536.0 (/ (the float s5-0) (-> obj y-freq))))
-                              )
+    (set! (-> this y-shake) (* (-> this y-amplitude)
+                               (lerp-scale 1.0 0.0 (the float s5-0) 0.0 (-> this y-decay-time))
+                               (cos (* 65536.0 (/ (the float s5-0) (-> this y-freq))))
+                               )
           )
     )
   (none)
@@ -976,18 +973,16 @@
   )
 
 (deftype farm-marrow (process-focusable)
-  ((shakers            shaker 5 :inline :offset-assert 208)
-   (incoming-attack-id uint32           :offset-assert 528)
+  ((shakers             shaker  5 :inline)
+   (incoming-attack-id  uint32)
    )
-  :heap-base #x1a0
-  :method-count-assert 31
-  :size-assert         #x214
-  :flag-assert         #x1f01a00214
+  (:state-methods
+    idle
+    die
+    )
   (:methods
-    (idle () _type_ :state 27)
-    (die () _type_ :state 28)
-    (farm-marrow-method-29 (_type_) none 29)
-    (farm-marrow-method-30 (_type_) none 30)
+    (farm-marrow-method-29 (_type_) none)
+    (farm-marrow-method-30 (_type_) none)
     )
   )
 
@@ -1014,9 +1009,9 @@
 
 (defstate die (farm-marrow)
   :virtual #t
-  :enter (the-as (function none :behavior farm-marrow) #f)
-  :exit (the-as (function none :behavior farm-marrow) #f)
-  :trans (the-as (function none :behavior farm-marrow) #f)
+  :enter #f
+  :exit #f
+  :trans #f
   :code (behavior ()
     (let ((v1-1 (-> self root root-prim)))
       (set! (-> v1-1 prim-core collide-as) (collide-spec))
@@ -1028,17 +1023,16 @@
       (suspend)
       )
     (cleanup-for-death self)
-    (none)
     )
-  :post (the-as (function none :behavior farm-marrow) #f)
+  :post #f
   )
 
 (defstate idle (farm-marrow)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('attack)
-       (let ((a1-1 (the-as object (-> event param 1)))
+       (let ((a1-1 (the-as object (-> block param 1)))
              (a0-2 proc)
              )
          (when (!= (-> (the-as attack-info a1-1) id) (-> self incoming-attack-id))
@@ -1046,7 +1040,7 @@
            (when a0-2
              (let ((s5-0 (find-offending-process-focusable a0-2 (the-as attack-info a1-1))))
                (when s5-0
-                 (let ((a0-4 (get-penetrate-using-from-attack-event (the-as process-drawable proc) event)))
+                 (let ((a0-4 (get-penetrate-using-from-attack-event (the-as process-drawable proc) block)))
                    (cond
                      ((and (not (logtest? (penetrate dark-skin) a0-4)) (zero? (pu->knocked-type a0-4)))
                       (sound-play "hit-veggies")
@@ -1062,13 +1056,13 @@
                           )
                         (let ((v1-10 (-> self shakers)))
                           (set! (-> v1-10 0 axis quad) (-> gp-4 quad))
-                          (set! (-> v1-10 0 start-time) (current-time))
+                          (set-time! (-> v1-10 0 start-time))
                           (set! (-> v1-10 0 decay-time) 300.0)
                           (set! (-> v1-10 0 freq) 150.0)
                           (set! (-> v1-10 0 amplitude) 1820.4445)
                           (set! (-> v1-10 0 y-amplitude) 0.0)
                           )
-                        (let ((a0-17 (-> self node-list data 6)))
+                        (let ((a0-17 (joint-node farm-marrow-lod0-jg marrow_a)))
                           (set! (-> a0-17 param0) farm-marrow-callback)
                           (set! (-> a0-17 param1) self)
                           (set! (-> a0-17 param2) (the-as basic 0))
@@ -1081,7 +1075,7 @@
                           (set! (-> v1-13 amplitude) 1820.4445)
                           (set! (-> v1-13 y-amplitude) 0.0)
                           )
-                        (let ((v1-15 (-> self node-list data 7)))
+                        (let ((v1-15 (joint-node farm-marrow-lod0-jg marrow_b)))
                           (set! (-> v1-15 param0) farm-marrow-callback)
                           (set! (-> v1-15 param1) self)
                           (set! (-> v1-15 param2) (the-as basic 1))
@@ -1094,7 +1088,7 @@
                           (set! (-> v1-16 amplitude) 1820.4445)
                           (set! (-> v1-16 y-amplitude) 0.0)
                           )
-                        (let ((v1-18 (-> self node-list data 8)))
+                        (let ((v1-18 (joint-node farm-marrow-lod0-jg marrow_c)))
                           (set! (-> v1-18 param0) farm-marrow-callback)
                           (set! (-> v1-18 param1) self)
                           (set! (-> v1-18 param2) (the-as basic 2))
@@ -1109,7 +1103,7 @@
                           (set! (-> v1-19 y-freq) 150.0)
                           (set! (-> v1-19 y-amplitude) -1820.4445)
                           )
-                        (let ((v1-21 (-> self node-list data 4)))
+                        (let ((v1-21 (joint-node farm-marrow-lod0-jg leaves_a)))
                           (set! (-> v1-21 param0) farm-marrow-callback)
                           (set! (-> v1-21 param1) self)
                           (set! (-> v1-21 param2) (the-as basic 3))
@@ -1123,7 +1117,7 @@
                           (set! (-> v1-22 y-amplitude) 0.0)
                           )
                         )
-                      (let ((v0-0 (the-as object (-> self node-list data 5))))
+                      (let ((v0-0 (the-as object (joint-node farm-marrow-lod0-jg leaves_b))))
                         (set! (-> (the-as cspace v0-0) param0) farm-marrow-callback)
                         (set! (-> (the-as cspace v0-0) param1) self)
                         (set! (-> (the-as cspace v0-0) param2) (the-as basic 4))
@@ -1170,20 +1164,18 @@
     )
   :exit (behavior ()
     '()
-    (none)
     )
-  :code (the-as (function none :behavior farm-marrow) sleep-code)
+  :code sleep-code
   :post (behavior ()
     (dotimes (gp-0 5)
       (shaker-method-9 (-> self shakers gp-0))
       )
     (transform-post)
-    (none)
     )
   )
 
-(defmethod farm-marrow-method-29 farm-marrow ((obj farm-marrow))
-  (let ((s5-0 (new 'process 'collide-shape-moving obj (collide-list-enum usually-hit-by-player))))
+(defmethod farm-marrow-method-29 ((this farm-marrow))
+  (let ((s5-0 (new 'process 'collide-shape-moving this (collide-list-enum usually-hit-by-player))))
     (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s5-0 reaction) cshape-reaction-default)
     (set! (-> s5-0 no-reaction)
@@ -1203,40 +1195,40 @@
       (set! (-> s5-0 backup-collide-as) (-> v1-9 prim-core collide-as))
       (set! (-> s5-0 backup-collide-with) (-> v1-9 prim-core collide-with))
       )
-    (set! (-> obj root) s5-0)
+    (set! (-> this root) s5-0)
     )
   0
   (none)
   )
 
-(defmethod farm-marrow-method-30 farm-marrow ((obj farm-marrow))
-  (logior! (-> obj mask) (process-mask crate))
+(defmethod farm-marrow-method-30 ((this farm-marrow))
+  (logior! (-> this mask) (process-mask crate))
   0
   (none)
   )
 
 ;; WARN: Return type mismatch object vs none.
-(defmethod init-from-entity! farm-marrow ((obj farm-marrow) (arg0 entity-actor))
+(defmethod init-from-entity! ((this farm-marrow) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
 - stack size
 - collision information
 - loading the skeleton group / bones
 - sounds"
-  (farm-marrow-method-29 obj)
-  (process-drawable-from-entity! obj arg0)
+  (farm-marrow-method-29 this)
+  (process-drawable-from-entity! this arg0)
   (initialize-skeleton
-    obj
+    this
     (the-as skeleton-group (art-group-get-by-name *level* "skel-farm-marrow" (the-as (pointer uint32) #f)))
     (the-as pair 0)
     )
-  (farm-marrow-method-30 obj)
-  (quaternion-vector-angle! (-> obj root quat) *up-vector* (* 182.04445 (rand-vu-float-range 0.0 360.0)))
+  (farm-marrow-method-30 this)
+  (quaternion-vector-angle! (-> this root quat) *up-vector* (* 182.04445 (rand-vu-float-range 0.0 360.0)))
   (let ((f0-2 (rand-vu-float-range 0.9 1.1)))
-    (set-vector! (-> obj root scale) f0-2 f0-2 f0-2 1.0)
+    (set-vector! (-> this root scale) f0-2 f0-2 f0-2 1.0)
     )
   (transform-post)
-  (go (method-of-object obj idle))
+  (go (method-of-object this idle))
   (none)
   )
 
@@ -1269,18 +1261,16 @@ This commonly includes things such as:
   )
 
 (deftype farm-beetree (process-focusable)
-  ((shakers            shaker 2 :inline :offset-assert 208)
-   (incoming-attack-id uint32           :offset-assert 336)
+  ((shakers             shaker  2 :inline)
+   (incoming-attack-id  uint32)
    )
-  :heap-base #xe0
-  :method-count-assert 31
-  :size-assert         #x154
-  :flag-assert         #x1f00e00154
+  (:state-methods
+    idle
+    die
+    )
   (:methods
-    (idle () _type_ :state 27)
-    (die () _type_ :state 28)
-    (farm-beetree-method-29 (_type_) none 29)
-    (farm-beetree-method-30 (_type_) none 30)
+    (farm-beetree-method-29 (_type_) none)
+    (farm-beetree-method-30 (_type_) none)
     )
   )
 
@@ -1307,9 +1297,9 @@ This commonly includes things such as:
 
 (defstate die (farm-beetree)
   :virtual #t
-  :enter (the-as (function none :behavior farm-beetree) #f)
-  :exit (the-as (function none :behavior farm-beetree) #f)
-  :trans (the-as (function none :behavior farm-beetree) #f)
+  :enter #f
+  :exit #f
+  :trans #f
   :code (behavior ()
     (let ((v1-1 (-> self root root-prim)))
       (set! (-> v1-1 prim-core collide-as) (collide-spec))
@@ -1321,17 +1311,16 @@ This commonly includes things such as:
       (suspend)
       )
     (cleanup-for-death self)
-    (none)
     )
-  :post (the-as (function none :behavior farm-beetree) #f)
+  :post #f
   )
 
 (defstate idle (farm-beetree)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('attack)
-       (let ((a1-1 (the-as object (-> event param 1)))
+       (let ((a1-1 (the-as object (-> block param 1)))
              (a0-2 proc)
              )
          (when (!= (-> (the-as attack-info a1-1) id) (-> self incoming-attack-id))
@@ -1339,7 +1328,7 @@ This commonly includes things such as:
            (when a0-2
              (let ((s5-0 (find-offending-process-focusable a0-2 (the-as attack-info a1-1))))
                (when s5-0
-                 (let ((a0-4 (get-penetrate-using-from-attack-event (the-as process-drawable proc) event)))
+                 (let ((a0-4 (get-penetrate-using-from-attack-event (the-as process-drawable proc) block)))
                    (cond
                      ((and (not (logtest? (penetrate dark-skin) a0-4)) (zero? (pu->knocked-type a0-4)))
                       (sound-play "hit-veggies")
@@ -1355,13 +1344,13 @@ This commonly includes things such as:
                           )
                         (let ((v1-10 (-> self shakers)))
                           (set! (-> v1-10 0 axis quad) (-> gp-4 quad))
-                          (set! (-> v1-10 0 start-time) (current-time))
+                          (set-time! (-> v1-10 0 start-time))
                           (set! (-> v1-10 0 decay-time) 300.0)
                           (set! (-> v1-10 0 freq) 150.0)
                           (set! (-> v1-10 0 amplitude) 1820.4445)
                           (set! (-> v1-10 0 y-amplitude) 0.0)
                           )
-                        (let ((a0-17 (-> self node-list data 4)))
+                        (let ((a0-17 (joint-node farm-beetree-lod0-jg bulb)))
                           (set! (-> a0-17 param0) farm-beetree-callback)
                           (set! (-> a0-17 param1) self)
                           (set! (-> a0-17 param2) (the-as basic 0))
@@ -1377,7 +1366,7 @@ This commonly includes things such as:
                           (set! (-> v1-13 y-amplitude) 3640.889)
                           )
                         )
-                      (let ((v0-0 (the-as object (-> self node-list data 5))))
+                      (let ((v0-0 (the-as object (joint-node farm-beetree-lod0-jg leaves))))
                         (set! (-> (the-as cspace v0-0) param0) farm-beetree-callback)
                         (set! (-> (the-as cspace v0-0) param1) self)
                         (set! (-> (the-as cspace v0-0) param2) (the-as basic 1))
@@ -1422,19 +1411,18 @@ This commonly includes things such as:
        )
       )
     )
-  :exit (the-as (function none :behavior farm-beetree) #f)
-  :code (the-as (function none :behavior farm-beetree) sleep-code)
+  :exit #f
+  :code sleep-code
   :post (behavior ()
     (dotimes (gp-0 2)
       (shaker-method-9 (-> self shakers gp-0))
       )
     (transform-post)
-    (none)
     )
   )
 
-(defmethod farm-beetree-method-29 farm-beetree ((obj farm-beetree))
-  (let ((s5-0 (new 'process 'collide-shape-moving obj (collide-list-enum usually-hit-by-player))))
+(defmethod farm-beetree-method-29 ((this farm-beetree))
+  (let ((s5-0 (new 'process 'collide-shape-moving this (collide-list-enum usually-hit-by-player))))
     (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s5-0 reaction) cshape-reaction-default)
     (set! (-> s5-0 no-reaction)
@@ -1454,40 +1442,40 @@ This commonly includes things such as:
       (set! (-> s5-0 backup-collide-as) (-> v1-9 prim-core collide-as))
       (set! (-> s5-0 backup-collide-with) (-> v1-9 prim-core collide-with))
       )
-    (set! (-> obj root) s5-0)
+    (set! (-> this root) s5-0)
     )
   0
   (none)
   )
 
-(defmethod farm-beetree-method-30 farm-beetree ((obj farm-beetree))
-  (logior! (-> obj mask) (process-mask crate))
+(defmethod farm-beetree-method-30 ((this farm-beetree))
+  (logior! (-> this mask) (process-mask crate))
   0
   (none)
   )
 
 ;; WARN: Return type mismatch object vs none.
-(defmethod init-from-entity! farm-beetree ((obj farm-beetree) (arg0 entity-actor))
+(defmethod init-from-entity! ((this farm-beetree) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
 - stack size
 - collision information
 - loading the skeleton group / bones
 - sounds"
-  (farm-beetree-method-29 obj)
-  (process-drawable-from-entity! obj arg0)
+  (farm-beetree-method-29 this)
+  (process-drawable-from-entity! this arg0)
   (initialize-skeleton
-    obj
+    this
     (the-as skeleton-group (art-group-get-by-name *level* "skel-farm-beetree" (the-as (pointer uint32) #f)))
     (the-as pair 0)
     )
-  (farm-beetree-method-30 obj)
-  (quaternion-vector-angle! (-> obj root quat) *up-vector* (* 182.04445 (rand-vu-float-range 0.0 360.0)))
+  (farm-beetree-method-30 this)
+  (quaternion-vector-angle! (-> this root quat) *up-vector* (* 182.04445 (rand-vu-float-range 0.0 360.0)))
   (let ((f0-2 (rand-vu-float-range 0.9 1.1)))
-    (set-vector! (-> obj root scale) f0-2 f0-2 f0-2 1.0)
+    (set-vector! (-> this root scale) f0-2 f0-2 f0-2 1.0)
     )
   (transform-post)
-  (go (method-of-object obj idle))
+  (go (method-of-object this idle))
   (none)
   )
 
@@ -1516,18 +1504,16 @@ This commonly includes things such as:
   )
 
 (deftype farm-cabbage (process-focusable)
-  ((shakers            shaker 2 :inline :offset-assert 208)
-   (incoming-attack-id uint32           :offset-assert 336)
+  ((shakers             shaker  2 :inline)
+   (incoming-attack-id  uint32)
    )
-  :heap-base #xe0
-  :method-count-assert 31
-  :size-assert         #x154
-  :flag-assert         #x1f00e00154
+  (:state-methods
+    idle
+    die
+    )
   (:methods
-    (idle () _type_ :state 27)
-    (die () _type_ :state 28)
-    (farm-cabbage-method-29 (_type_) none 29)
-    (farm-cabbage-method-30 (_type_) none 30)
+    (farm-cabbage-method-29 (_type_) none)
+    (farm-cabbage-method-30 (_type_) none)
     )
   )
 
@@ -1554,9 +1540,9 @@ This commonly includes things such as:
 
 (defstate die (farm-cabbage)
   :virtual #t
-  :enter (the-as (function none :behavior farm-cabbage) #f)
-  :exit (the-as (function none :behavior farm-cabbage) #f)
-  :trans (the-as (function none :behavior farm-cabbage) #f)
+  :enter #f
+  :exit #f
+  :trans #f
   :code (behavior ()
     (let ((v1-1 (-> self root root-prim)))
       (set! (-> v1-1 prim-core collide-as) (collide-spec))
@@ -1568,17 +1554,16 @@ This commonly includes things such as:
       (suspend)
       )
     (cleanup-for-death self)
-    (none)
     )
-  :post (the-as (function none :behavior farm-cabbage) #f)
+  :post #f
   )
 
 (defstate idle (farm-cabbage)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('attack)
-       (let ((a1-1 (the-as object (-> event param 1)))
+       (let ((a1-1 (the-as object (-> block param 1)))
              (a0-2 proc)
              )
          (when (!= (-> (the-as attack-info a1-1) id) (-> self incoming-attack-id))
@@ -1586,7 +1571,7 @@ This commonly includes things such as:
            (when a0-2
              (let ((s5-0 (find-offending-process-focusable a0-2 (the-as attack-info a1-1))))
                (when s5-0
-                 (let ((a0-4 (get-penetrate-using-from-attack-event (the-as process-drawable proc) event)))
+                 (let ((a0-4 (get-penetrate-using-from-attack-event (the-as process-drawable proc) block)))
                    (cond
                      ((and (not (logtest? (penetrate dark-skin) a0-4)) (zero? (pu->knocked-type a0-4)))
                       (sound-play "hit-veggies")
@@ -1602,13 +1587,13 @@ This commonly includes things such as:
                           )
                         (let ((v1-10 (-> self shakers)))
                           (set! (-> v1-10 0 axis quad) (-> gp-4 quad))
-                          (set! (-> v1-10 0 start-time) (current-time))
+                          (set-time! (-> v1-10 0 start-time))
                           (set! (-> v1-10 0 decay-time) 300.0)
                           (set! (-> v1-10 0 freq) 150.0)
                           (set! (-> v1-10 0 amplitude) 1820.4445)
                           (set! (-> v1-10 0 y-amplitude) 0.0)
                           )
-                        (let ((a0-17 (-> self node-list data 4)))
+                        (let ((a0-17 (joint-node farm-cabbage-lod0-jg cabbage)))
                           (set! (-> a0-17 param0) farm-cabbage-callback)
                           (set! (-> a0-17 param1) self)
                           (set! (-> a0-17 param2) (the-as basic 0))
@@ -1624,7 +1609,7 @@ This commonly includes things such as:
                           (set! (-> v1-13 y-amplitude) 910.2222)
                           )
                         )
-                      (let ((v0-0 (the-as object (-> self node-list data 5))))
+                      (let ((v0-0 (the-as object (joint-node farm-cabbage-lod0-jg leaves))))
                         (set! (-> (the-as cspace v0-0) param0) farm-cabbage-callback)
                         (set! (-> (the-as cspace v0-0) param1) self)
                         (set! (-> (the-as cspace v0-0) param2) (the-as basic 1))
@@ -1669,19 +1654,18 @@ This commonly includes things such as:
        )
       )
     )
-  :exit (the-as (function none :behavior farm-cabbage) #f)
-  :code (the-as (function none :behavior farm-cabbage) sleep-code)
+  :exit #f
+  :code sleep-code
   :post (behavior ()
     (dotimes (gp-0 2)
       (shaker-method-9 (-> self shakers gp-0))
       )
     (transform-post)
-    (none)
     )
   )
 
-(defmethod farm-cabbage-method-29 farm-cabbage ((obj farm-cabbage))
-  (let ((s5-0 (new 'process 'collide-shape-moving obj (collide-list-enum usually-hit-by-player))))
+(defmethod farm-cabbage-method-29 ((this farm-cabbage))
+  (let ((s5-0 (new 'process 'collide-shape-moving this (collide-list-enum usually-hit-by-player))))
     (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s5-0 reaction) cshape-reaction-default)
     (set! (-> s5-0 no-reaction)
@@ -1701,40 +1685,40 @@ This commonly includes things such as:
       (set! (-> s5-0 backup-collide-as) (-> v1-9 prim-core collide-as))
       (set! (-> s5-0 backup-collide-with) (-> v1-9 prim-core collide-with))
       )
-    (set! (-> obj root) s5-0)
+    (set! (-> this root) s5-0)
     )
   0
   (none)
   )
 
-(defmethod farm-cabbage-method-30 farm-cabbage ((obj farm-cabbage))
-  (logior! (-> obj mask) (process-mask crate))
+(defmethod farm-cabbage-method-30 ((this farm-cabbage))
+  (logior! (-> this mask) (process-mask crate))
   0
   (none)
   )
 
 ;; WARN: Return type mismatch object vs none.
-(defmethod init-from-entity! farm-cabbage ((obj farm-cabbage) (arg0 entity-actor))
+(defmethod init-from-entity! ((this farm-cabbage) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
 - stack size
 - collision information
 - loading the skeleton group / bones
 - sounds"
-  (farm-cabbage-method-29 obj)
-  (process-drawable-from-entity! obj arg0)
+  (farm-cabbage-method-29 this)
+  (process-drawable-from-entity! this arg0)
   (initialize-skeleton
-    obj
+    this
     (the-as skeleton-group (art-group-get-by-name *level* "skel-farm-cabbage" (the-as (pointer uint32) #f)))
     (the-as pair 0)
     )
-  (farm-cabbage-method-30 obj)
-  (quaternion-vector-angle! (-> obj root quat) *up-vector* (* 182.04445 (rand-vu-float-range 0.0 360.0)))
+  (farm-cabbage-method-30 this)
+  (quaternion-vector-angle! (-> this root quat) *up-vector* (* 182.04445 (rand-vu-float-range 0.0 360.0)))
   (let ((f0-2 (rand-vu-float-range 0.9 1.1)))
-    (set-vector! (-> obj root scale) f0-2 f0-2 f0-2 1.0)
+    (set-vector! (-> this root scale) f0-2 f0-2 f0-2 1.0)
     )
   (transform-post)
-  (go (method-of-object obj idle))
+  (go (method-of-object this idle))
   (none)
   )
 
@@ -1765,18 +1749,16 @@ This commonly includes things such as:
   )
 
 (deftype farm-small-cabbage (process-focusable)
-  ((shakers            shaker 1 :inline :offset-assert 208)
-   (incoming-attack-id uint32           :offset-assert 272)
+  ((shakers             shaker  1 :inline)
+   (incoming-attack-id  uint32)
    )
-  :heap-base #xa0
-  :method-count-assert 31
-  :size-assert         #x114
-  :flag-assert         #x1f00a00114
+  (:state-methods
+    idle
+    die
+    )
   (:methods
-    (idle () _type_ :state 27)
-    (die () _type_ :state 28)
-    (farm-small-cabbage-method-29 (_type_) none 29)
-    (farm-small-cabbage-method-30 (_type_) none 30)
+    (farm-small-cabbage-method-29 (_type_) none)
+    (farm-small-cabbage-method-30 (_type_) none)
     )
   )
 
@@ -1803,9 +1785,9 @@ This commonly includes things such as:
 
 (defstate die (farm-small-cabbage)
   :virtual #t
-  :enter (the-as (function none :behavior farm-small-cabbage) #f)
-  :exit (the-as (function none :behavior farm-small-cabbage) #f)
-  :trans (the-as (function none :behavior farm-small-cabbage) #f)
+  :enter #f
+  :exit #f
+  :trans #f
   :code (behavior ()
     (let ((v1-1 (-> self root root-prim)))
       (set! (-> v1-1 prim-core collide-as) (collide-spec))
@@ -1817,17 +1799,16 @@ This commonly includes things such as:
       (suspend)
       )
     (cleanup-for-death self)
-    (none)
     )
-  :post (the-as (function none :behavior farm-small-cabbage) #f)
+  :post #f
   )
 
 (defstate idle (farm-small-cabbage)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('attack)
-       (let ((a1-1 (the-as object (-> event param 1)))
+       (let ((a1-1 (the-as object (-> block param 1)))
              (a0-2 proc)
              )
          (when (!= (-> (the-as attack-info a1-1) id) (-> self incoming-attack-id))
@@ -1835,7 +1816,7 @@ This commonly includes things such as:
            (when a0-2
              (let ((s5-0 (find-offending-process-focusable a0-2 (the-as attack-info a1-1))))
                (when s5-0
-                 (let ((a0-4 (get-penetrate-using-from-attack-event (the-as process-drawable proc) event)))
+                 (let ((a0-4 (get-penetrate-using-from-attack-event (the-as process-drawable proc) block)))
                    (cond
                      ((and (not (logtest? (penetrate dark-skin) a0-4)) (zero? (pu->knocked-type a0-4)))
                       (sound-play "hit-veggies")
@@ -1851,14 +1832,14 @@ This commonly includes things such as:
                           )
                         (let ((v1-10 (-> self shakers)))
                           (set! (-> v1-10 0 axis quad) (-> gp-4 quad))
-                          (set! (-> v1-10 0 start-time) (current-time))
+                          (set-time! (-> v1-10 0 start-time))
                           (set! (-> v1-10 0 decay-time) 300.0)
                           (set! (-> v1-10 0 freq) 150.0)
                           (set! (-> v1-10 0 amplitude) 910.2222)
                           (set! (-> v1-10 0 y-amplitude) 0.0)
                           )
                         )
-                      (let ((v0-0 (the-as object (-> self node-list data 4))))
+                      (let ((v0-0 (the-as object (joint-node farm-small-cabbage-lod0-jg cabbage))))
                         (set! (-> (the-as cspace v0-0) param0) farm-small-cabbage-callback)
                         (set! (-> (the-as cspace v0-0) param1) self)
                         (set! (-> (the-as cspace v0-0) param2) (the-as basic 0))
@@ -1903,19 +1884,18 @@ This commonly includes things such as:
        )
       )
     )
-  :exit (the-as (function none :behavior farm-small-cabbage) #f)
-  :code (the-as (function none :behavior farm-small-cabbage) sleep-code)
+  :exit #f
+  :code sleep-code
   :post (behavior ()
     (dotimes (gp-0 1)
       (shaker-method-9 (-> self shakers gp-0))
       )
     (transform-post)
-    (none)
     )
   )
 
-(defmethod farm-small-cabbage-method-29 farm-small-cabbage ((obj farm-small-cabbage))
-  (let ((s5-0 (new 'process 'collide-shape-moving obj (collide-list-enum usually-hit-by-player))))
+(defmethod farm-small-cabbage-method-29 ((this farm-small-cabbage))
+  (let ((s5-0 (new 'process 'collide-shape-moving this (collide-list-enum usually-hit-by-player))))
     (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s5-0 reaction) cshape-reaction-default)
     (set! (-> s5-0 no-reaction)
@@ -1935,40 +1915,40 @@ This commonly includes things such as:
       (set! (-> s5-0 backup-collide-as) (-> v1-9 prim-core collide-as))
       (set! (-> s5-0 backup-collide-with) (-> v1-9 prim-core collide-with))
       )
-    (set! (-> obj root) s5-0)
+    (set! (-> this root) s5-0)
     )
   0
   (none)
   )
 
-(defmethod farm-small-cabbage-method-30 farm-small-cabbage ((obj farm-small-cabbage))
-  (logior! (-> obj mask) (process-mask crate))
+(defmethod farm-small-cabbage-method-30 ((this farm-small-cabbage))
+  (logior! (-> this mask) (process-mask crate))
   0
   (none)
   )
 
 ;; WARN: Return type mismatch object vs none.
-(defmethod init-from-entity! farm-small-cabbage ((obj farm-small-cabbage) (arg0 entity-actor))
+(defmethod init-from-entity! ((this farm-small-cabbage) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
 - stack size
 - collision information
 - loading the skeleton group / bones
 - sounds"
-  (farm-small-cabbage-method-29 obj)
-  (process-drawable-from-entity! obj arg0)
+  (farm-small-cabbage-method-29 this)
+  (process-drawable-from-entity! this arg0)
   (initialize-skeleton
-    obj
+    this
     (the-as skeleton-group (art-group-get-by-name *level* "skel-farm-small-cabbage" (the-as (pointer uint32) #f)))
     (the-as pair 0)
     )
-  (farm-small-cabbage-method-30 obj)
-  (quaternion-vector-angle! (-> obj root quat) *up-vector* (* 182.04445 (rand-vu-float-range 0.0 360.0)))
+  (farm-small-cabbage-method-30 this)
+  (quaternion-vector-angle! (-> this root quat) *up-vector* (* 182.04445 (rand-vu-float-range 0.0 360.0)))
   (let ((f0-2 (rand-vu-float-range 0.9 1.1)))
-    (set-vector! (-> obj root scale) f0-2 f0-2 f0-2 1.0)
+    (set-vector! (-> this root scale) f0-2 f0-2 f0-2 1.0)
     )
   (transform-post)
-  (go (method-of-object obj idle))
+  (go (method-of-object this idle))
   (none)
   )
 
@@ -1999,18 +1979,16 @@ This commonly includes things such as:
   )
 
 (deftype farm-chilirots (process-focusable)
-  ((shakers            shaker 4 :inline :offset-assert 208)
-   (incoming-attack-id uint32           :offset-assert 464)
+  ((shakers             shaker  4 :inline)
+   (incoming-attack-id  uint32)
    )
-  :heap-base #x160
-  :method-count-assert 31
-  :size-assert         #x1d4
-  :flag-assert         #x1f016001d4
+  (:state-methods
+    idle
+    die
+    )
   (:methods
-    (idle () _type_ :state 27)
-    (die () _type_ :state 28)
-    (farm-chilirots-method-29 (_type_) none 29)
-    (farm-chilirots-method-30 (_type_) none 30)
+    (farm-chilirots-method-29 (_type_) none)
+    (farm-chilirots-method-30 (_type_) none)
     )
   )
 
@@ -2037,9 +2015,9 @@ This commonly includes things such as:
 
 (defstate die (farm-chilirots)
   :virtual #t
-  :enter (the-as (function none :behavior farm-chilirots) #f)
-  :exit (the-as (function none :behavior farm-chilirots) #f)
-  :trans (the-as (function none :behavior farm-chilirots) #f)
+  :enter #f
+  :exit #f
+  :trans #f
   :code (behavior ()
     (let ((v1-1 (-> self root root-prim)))
       (set! (-> v1-1 prim-core collide-as) (collide-spec))
@@ -2051,17 +2029,16 @@ This commonly includes things such as:
       (suspend)
       )
     (cleanup-for-death self)
-    (none)
     )
-  :post (the-as (function none :behavior farm-chilirots) #f)
+  :post #f
   )
 
 (defstate idle (farm-chilirots)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('attack)
-       (let ((a1-1 (the-as object (-> event param 1)))
+       (let ((a1-1 (the-as object (-> block param 1)))
              (a0-2 proc)
              )
          (when (!= (-> (the-as attack-info a1-1) id) (-> self incoming-attack-id))
@@ -2069,7 +2046,7 @@ This commonly includes things such as:
            (when a0-2
              (let ((s5-0 (find-offending-process-focusable a0-2 (the-as attack-info a1-1))))
                (when s5-0
-                 (let ((a0-4 (get-penetrate-using-from-attack-event (the-as process-drawable proc) event)))
+                 (let ((a0-4 (get-penetrate-using-from-attack-event (the-as process-drawable proc) block)))
                    (cond
                      ((and (not (logtest? (penetrate dark-skin) a0-4)) (zero? (pu->knocked-type a0-4)))
                       (sound-play "hit-veggies")
@@ -2085,13 +2062,13 @@ This commonly includes things such as:
                           )
                         (let ((v1-10 (-> self shakers)))
                           (set! (-> v1-10 0 axis quad) (-> gp-4 quad))
-                          (set! (-> v1-10 0 start-time) (current-time))
+                          (set-time! (-> v1-10 0 start-time))
                           (set! (-> v1-10 0 decay-time) 300.0)
                           (set! (-> v1-10 0 freq) 150.0)
                           (set! (-> v1-10 0 amplitude) 1820.4445)
                           (set! (-> v1-10 0 y-amplitude) 0.0)
                           )
-                        (let ((a0-17 (-> self node-list data 4)))
+                        (let ((a0-17 (joint-node farm-chilirots-lod0-jg chili_a)))
                           (set! (-> a0-17 param0) farm-chilirots-callback)
                           (set! (-> a0-17 param1) self)
                           (set! (-> a0-17 param2) (the-as basic 0))
@@ -2106,7 +2083,7 @@ This commonly includes things such as:
                           (set! (-> v1-13 y-freq) 150.0)
                           (set! (-> v1-13 y-amplitude) 1820.4445)
                           )
-                        (let ((v1-15 (-> self node-list data 5)))
+                        (let ((v1-15 (joint-node farm-chilirots-lod0-jg chili_b)))
                           (set! (-> v1-15 param0) farm-chilirots-callback)
                           (set! (-> v1-15 param1) self)
                           (set! (-> v1-15 param2) (the-as basic 1))
@@ -2121,7 +2098,7 @@ This commonly includes things such as:
                           (set! (-> v1-16 y-freq) 150.0)
                           (set! (-> v1-16 y-amplitude) 1820.4445)
                           )
-                        (let ((v1-18 (-> self node-list data 6)))
+                        (let ((v1-18 (joint-node farm-chilirots-lod0-jg chili_c)))
                           (set! (-> v1-18 param0) farm-chilirots-callback)
                           (set! (-> v1-18 param1) self)
                           (set! (-> v1-18 param2) (the-as basic 2))
@@ -2137,7 +2114,7 @@ This commonly includes things such as:
                           (set! (-> v1-19 y-amplitude) 1820.4445)
                           )
                         )
-                      (let ((v0-0 (the-as object (-> self node-list data 7))))
+                      (let ((v0-0 (the-as object (joint-node farm-chilirots-lod0-jg chili_d))))
                         (set! (-> (the-as cspace v0-0) param0) farm-chilirots-callback)
                         (set! (-> (the-as cspace v0-0) param1) self)
                         (set! (-> (the-as cspace v0-0) param2) (the-as basic 3))
@@ -2182,18 +2159,17 @@ This commonly includes things such as:
        )
       )
     )
-  :code (the-as (function none :behavior farm-chilirots) sleep-code)
+  :code sleep-code
   :post (behavior ()
     (dotimes (gp-0 4)
       (shaker-method-9 (-> self shakers gp-0))
       )
     (transform-post)
-    (none)
     )
   )
 
-(defmethod farm-chilirots-method-29 farm-chilirots ((obj farm-chilirots))
-  (let ((s5-0 (new 'process 'collide-shape-moving obj (collide-list-enum usually-hit-by-player))))
+(defmethod farm-chilirots-method-29 ((this farm-chilirots))
+  (let ((s5-0 (new 'process 'collide-shape-moving this (collide-list-enum usually-hit-by-player))))
     (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s5-0 reaction) cshape-reaction-default)
     (set! (-> s5-0 no-reaction)
@@ -2213,40 +2189,40 @@ This commonly includes things such as:
       (set! (-> s5-0 backup-collide-as) (-> v1-9 prim-core collide-as))
       (set! (-> s5-0 backup-collide-with) (-> v1-9 prim-core collide-with))
       )
-    (set! (-> obj root) s5-0)
+    (set! (-> this root) s5-0)
     )
   0
   (none)
   )
 
-(defmethod farm-chilirots-method-30 farm-chilirots ((obj farm-chilirots))
-  (logior! (-> obj mask) (process-mask crate))
+(defmethod farm-chilirots-method-30 ((this farm-chilirots))
+  (logior! (-> this mask) (process-mask crate))
   0
   (none)
   )
 
 ;; WARN: Return type mismatch object vs none.
-(defmethod init-from-entity! farm-chilirots ((obj farm-chilirots) (arg0 entity-actor))
+(defmethod init-from-entity! ((this farm-chilirots) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
 - stack size
 - collision information
 - loading the skeleton group / bones
 - sounds"
-  (farm-chilirots-method-29 obj)
-  (process-drawable-from-entity! obj arg0)
+  (farm-chilirots-method-29 this)
+  (process-drawable-from-entity! this arg0)
   (initialize-skeleton
-    obj
+    this
     (the-as skeleton-group (art-group-get-by-name *level* "skel-farm-chilirots" (the-as (pointer uint32) #f)))
     (the-as pair 0)
     )
-  (farm-chilirots-method-30 obj)
-  (quaternion-vector-angle! (-> obj root quat) *up-vector* (* 182.04445 (rand-vu-float-range 0.0 360.0)))
+  (farm-chilirots-method-30 this)
+  (quaternion-vector-angle! (-> this root quat) *up-vector* (* 182.04445 (rand-vu-float-range 0.0 360.0)))
   (let ((f0-2 (rand-vu-float-range 0.9 1.1)))
-    (set-vector! (-> obj root scale) f0-2 f0-2 f0-2 1.0)
+    (set-vector! (-> this root scale) f0-2 f0-2 f0-2 1.0)
     )
   (transform-post)
-  (go (method-of-object obj idle))
+  (go (method-of-object this idle))
   (none)
   )
 
@@ -2257,14 +2233,12 @@ This commonly includes things such as:
 
 (deftype farm-sprinkler-barrels (process-focusable)
   ()
-  :heap-base #x50
-  :method-count-assert 30
-  :size-assert         #xcc
-  :flag-assert         #x1e005000cc
+  (:state-methods
+    idle
+    )
   (:methods
-    (idle () _type_ :state 27)
-    (farm-sprinkler-barrels-method-28 (_type_) none 28)
-    (farm-sprinkler-barrels-method-29 (_type_) none 29)
+    (farm-sprinkler-barrels-method-28 (_type_) none)
+    (farm-sprinkler-barrels-method-29 (_type_) none)
     )
   )
 
@@ -2273,26 +2247,21 @@ This commonly includes things such as:
   :virtual #t
   :code (behavior ()
     (until #f
-      (ja-no-eval :group! (-> self draw art-group data 2)
-                  :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 2)) frames num-frames) -1)))
-                  :frame-num 0.0
-                  )
+      (ja-no-eval :group! farm-sprinkler-barrels-idle-ja :num! (seek!) :frame-num 0.0)
       (until (ja-done? 0)
         (suspend)
         (ja :num! (seek!))
         )
       )
     #f
-    (none)
     )
   :post (behavior ()
     (transform-post)
-    (none)
     )
   )
 
-(defmethod farm-sprinkler-barrels-method-28 farm-sprinkler-barrels ((obj farm-sprinkler-barrels))
-  (let ((s5-0 (new 'process 'collide-shape-moving obj (collide-list-enum usually-hit-by-player))))
+(defmethod farm-sprinkler-barrels-method-28 ((this farm-sprinkler-barrels))
+  (let ((s5-0 (new 'process 'collide-shape-moving this (collide-list-enum usually-hit-by-player))))
     (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s5-0 reaction) cshape-reaction-default)
     (set! (-> s5-0 no-reaction)
@@ -2325,40 +2294,40 @@ This commonly includes things such as:
       (set! (-> s5-0 backup-collide-as) (-> v1-17 prim-core collide-as))
       (set! (-> s5-0 backup-collide-with) (-> v1-17 prim-core collide-with))
       )
-    (set! (-> obj root) s5-0)
+    (set! (-> this root) s5-0)
     )
   0
   (none)
   )
 
-(defmethod farm-sprinkler-barrels-method-29 farm-sprinkler-barrels ((obj farm-sprinkler-barrels))
-  (logior! (-> obj mask) (process-mask crate))
+(defmethod farm-sprinkler-barrels-method-29 ((this farm-sprinkler-barrels))
+  (logior! (-> this mask) (process-mask crate))
   0
   (none)
   )
 
 ;; WARN: Return type mismatch object vs none.
-(defmethod init-from-entity! farm-sprinkler-barrels ((obj farm-sprinkler-barrels) (arg0 entity-actor))
+(defmethod init-from-entity! ((this farm-sprinkler-barrels) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
 - stack size
 - collision information
 - loading the skeleton group / bones
 - sounds"
-  (farm-sprinkler-barrels-method-28 obj)
-  (process-drawable-from-entity! obj arg0)
-  (logclear! (-> obj mask) (process-mask actor-pause))
+  (farm-sprinkler-barrels-method-28 this)
+  (process-drawable-from-entity! this arg0)
+  (logclear! (-> this mask) (process-mask actor-pause))
   (initialize-skeleton
-    obj
+    this
     (the-as
       skeleton-group
       (art-group-get-by-name *level* "skel-farm-sprinkler-barrels" (the-as (pointer uint32) #f))
       )
     (the-as pair 0)
     )
-  (farm-sprinkler-barrels-method-29 obj)
+  (farm-sprinkler-barrels-method-29 this)
   (transform-post)
-  (go (method-of-object obj idle))
+  (go (method-of-object this idle))
   (none)
   )
 

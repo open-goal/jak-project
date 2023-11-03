@@ -3,29 +3,25 @@
 
 ;; definition of type sew-elevator
 (deftype sew-elevator (elevator)
-  ((sound-id sound-id  :offset-assert 368)
+  ((sound-id  sound-id)
    )
-  :heap-base #x100
-  :method-count-assert 50
-  :size-assert         #x174
-  :flag-assert         #x3201000174
   (:methods
-    (configure-collision (_type_ symbol) none 49)
+    (configure-collision (_type_ symbol) none)
     )
   )
 
 ;; definition for method 3 of type sew-elevator
-(defmethod inspect sew-elevator ((obj sew-elevator))
-  (when (not obj)
-    (set! obj obj)
+(defmethod inspect ((this sew-elevator))
+  (when (not this)
+    (set! this this)
     (goto cfg-4)
     )
   (let ((t9-0 (method-of-type elevator inspect)))
-    (t9-0 obj)
+    (t9-0 this)
     )
-  (format #t "~2Tsound-id: ~D~%" (-> obj sound-id))
+  (format #t "~2Tsound-id: ~D~%" (-> this sound-id))
   (label cfg-4)
-  obj
+  this
   )
 
 ;; failed to figure out what this is:
@@ -35,25 +31,25 @@
               )
 
 ;; definition for method 30 of type sew-elevator
-(defmethod get-art-group sew-elevator ((obj sew-elevator))
+(defmethod get-art-group ((this sew-elevator))
   "@returns The associated [[art-group]]"
   (art-group-get-by-name *level* "skel-sew-elevator" (the-as (pointer uint32) #f))
   )
 
 ;; definition for method 43 of type sew-elevator
-(defmethod move-between-points sew-elevator ((obj sew-elevator) (arg1 vector) (point-a float) (point-b float))
+(defmethod move-between-points ((this sew-elevator) (arg1 vector) (point-a float) (point-b float))
   "Move between two points on the elevator's path
 @param vec TODO not sure
 @param point-a The first point fetched from the elevator's path
 @param point-b The second point fetched from the path
 @see [[path-control]] and [[elevator]]"
-  (let ((path-point-a (get-point-in-path! (-> obj path) (new 'stack-no-clear 'vector) point-a 'interp))
-        (path-point-b (get-point-in-path! (-> obj path) (new 'stack-no-clear 'vector) point-b 'interp))
-        (elevator-pos (-> obj root trans))
+  (let ((path-point-a (get-point-in-path! (-> this path) (new 'stack-no-clear 'vector) point-a 'interp))
+        (path-point-b (get-point-in-path! (-> this path) (new 'stack-no-clear 'vector) point-b 'interp))
+        (elevator-pos (-> this root trans))
         )
     (when (and (< (-> path-point-b y) (-> path-point-a y)) (< (-> arg1 y) (+ -8192.0 (-> elevator-pos y))))
       (let ((s4-2 (vector-! (new 'stack-no-clear 'vector) arg1 elevator-pos)))
-        (vector-inv-orient-by-quat! s4-2 s4-2 (-> obj root quat))
+        (vector-inv-orient-by-quat! s4-2 s4-2 (-> this root quat))
         (and (< (fabs (-> s4-2 x)) 24576.0) (< 0.0 (-> s4-2 z)) (< (-> s4-2 z) 49152.0))
         )
       )
@@ -61,7 +57,7 @@
   )
 
 ;; definition for method 45 of type sew-elevator
-(defmethod commited-to-ride? sew-elevator ((obj sew-elevator))
+(defmethod commited-to-ride? ((this sew-elevator))
   "@returns if the target is considered within the elevator area enough to begin descending/ascending"
   (let* ((target *target*)
          (target-proc (if (type? target process-focusable)
@@ -71,9 +67,9 @@
          )
     (when target-proc
       (let* ((target-pos (get-trans target-proc 0))
-             (dist-from-center (vector-! (new 'stack-no-clear 'vector) target-pos (-> obj root trans)))
+             (dist-from-center (vector-! (new 'stack-no-clear 'vector) target-pos (-> this root trans)))
              )
-        (vector-inv-orient-by-quat! dist-from-center dist-from-center (-> obj root quat))
+        (vector-inv-orient-by-quat! dist-from-center dist-from-center (-> this root quat))
         (and (< (fabs (-> dist-from-center x)) 20480.0)
              (< 0.0 (-> dist-from-center z))
              (< (-> dist-from-center z) 40960.0)
@@ -85,10 +81,10 @@
 
 ;; definition for method 49 of type sew-elevator
 ;; WARN: Return type mismatch int vs none.
-(defmethod configure-collision sew-elevator ((obj sew-elevator) (collide-with-jak? symbol))
+(defmethod configure-collision ((this sew-elevator) (collide-with-jak? symbol))
   "Appropriately sets the collision on the elevator
 @param collide-with-jak? If set, the elevator will collide with Jak"
-  (let ((prim-group (-> (the-as collide-shape-prim-group (-> obj root root-prim)) child 1)))
+  (let ((prim-group (-> (the-as collide-shape-prim-group (-> this root root-prim)) child 1)))
     (cond
       (collide-with-jak?
         (set! (-> prim-group prim-core collide-as) (collide-spec obstacle pusher))
@@ -119,7 +115,6 @@
       (configure-collision self #t)
       (set-setting! 'jump #f 0.0 0)
       )
-    (none)
     )
   :post (behavior ()
     (let ((func (-> (method-of-type elevator running) post)))
@@ -128,7 +123,6 @@
           )
       )
     (sound-play "sew-elevator-lp" :id (-> self sound-id) :position (-> self root trans))
-    (none)
     )
   )
 
@@ -149,30 +143,29 @@
       (configure-collision self #f)
       (remove-setting! 'jump)
       )
-    (none)
     )
   )
 
 ;; definition for method 10 of type sew-elevator
-(defmethod deactivate sew-elevator ((obj sew-elevator))
-  (sound-stop (-> obj sound-id))
-  ((the-as (function elevator none) (find-parent-method sew-elevator 10)) obj)
+(defmethod deactivate ((this sew-elevator))
+  (sound-stop (-> this sound-id))
+  (call-parent-method this)
   (none)
   )
 
 ;; definition for method 33 of type sew-elevator
 ;; WARN: Return type mismatch int vs none.
-(defmethod init-plat! sew-elevator ((obj sew-elevator))
+(defmethod init-plat! ((this sew-elevator))
   "Does any necessary initial platform setup.
 For example for an elevator pre-compute the distance between the first and last points (both ways) and clear the sound."
-  (set! (-> obj sound-id) (new-sound-id))
+  (set! (-> this sound-id) (new-sound-id))
   0
   (none)
   )
 
 ;; definition for method 41 of type sew-elevator
 ;; WARN: Return type mismatch int vs none.
-(defmethod init-defaults! sew-elevator ((obj sew-elevator))
+(defmethod init-defaults! ((this sew-elevator))
   "Initializes default settings related to the [[elevator]]:
 - `elevator-xz-threshold`
 - `elevator-y-threshold`
@@ -180,28 +173,28 @@ For example for an elevator pre-compute the distance between the first and last 
 - `elevator-move-rate`
 - `elevator-flags`"
   (let ((func (method-of-type elevator init-defaults!)))
-    (func obj)
+    (func this)
     )
-  (if (name= (-> obj name) "sew-elevator-15")
-      (set! (-> obj params xz-threshold) 348160.0)
-      (set! (-> obj params xz-threshold) 184320.0)
+  (if (name= (-> this name) "sew-elevator-15")
+      (set! (-> this params xz-threshold) 348160.0)
+      (set! (-> this params xz-threshold) 184320.0)
       )
-  (when (and (logtest? (elevator-flags elevator-flags-17) (-> obj params flags))
+  (when (and (logtest? (elevator-flags elevator-flags-17) (-> this params flags))
              (and (task-node-closed? (game-task-node sewer-escort-introduction))
                   (not (task-node-closed? (game-task-node sewer-escort-resolution)))
                   )
              )
-    (set! (-> obj params start-pos) 0.0)
-    (logior! (-> obj params flags) (elevator-flags elevator-flags-3))
+    (set! (-> this params start-pos) 0.0)
+    (logior! (-> this params flags) (elevator-flags elevator-flags-3))
     )
   0
   (none)
   )
 
 ;; definition for method 31 of type sew-elevator
-(defmethod init-plat-collision! sew-elevator ((obj sew-elevator))
+(defmethod init-plat-collision! ((this sew-elevator))
   "TODO - collision stuff for setting up the platform"
-  (let ((cshape (new 'process 'collide-shape-moving obj (collide-list-enum usually-hit-by-player))))
+  (let ((cshape (new 'process 'collide-shape-moving this (collide-list-enum usually-hit-by-player))))
     (set! (-> cshape dynam) (copy *standard-dynamics* 'process))
     (set! (-> cshape reaction) cshape-reaction-default)
     (set! (-> cshape no-reaction)
@@ -234,51 +227,47 @@ For example for an elevator pre-compute the distance between the first and last 
       (set! (-> cshape backup-collide-as) (-> root-prim prim-core collide-as))
       (set! (-> cshape backup-collide-with) (-> root-prim prim-core collide-with))
       )
-    (set! (-> obj root) cshape)
+    (set! (-> this root) cshape)
     )
-  (configure-collision obj #f)
+  (configure-collision this #f)
   (none)
   )
 
 ;; definition of type sew-valve
 (deftype sew-valve (process-drawable)
-  ((joint             joint-mod-rotate-local  :offset-assert 200)
-   (actor-group       (pointer actor-group)   :offset-assert 204)
-   (actor-group-count int32                   :offset-assert 208)
-   (water-height      float                   :offset-assert 212)
-   (spin              float                   :offset-assert 216)
-   (spin-rate         float                   :offset-assert 220)
+  ((joint              joint-mod-rotate-local)
+   (actor-group        (pointer actor-group))
+   (actor-group-count  int32)
+   (water-height       float)
+   (spin               float)
+   (spin-rate          float)
    )
-  :heap-base #x60
-  :method-count-assert 22
-  :size-assert         #xe0
-  :flag-assert         #x16006000e0
-  (:methods
-    (idle () _type_ :state 20)
-    (turn () _type_ :state 21)
+  (:state-methods
+    idle
+    turn
     )
   )
 
 ;; definition for method 3 of type sew-valve
-(defmethod inspect sew-valve ((obj sew-valve))
-  (when (not obj)
-    (set! obj obj)
+(defmethod inspect ((this sew-valve))
+  (when (not this)
+    (set! this this)
     (goto cfg-7)
     )
   (let ((t9-0 (method-of-type process-drawable inspect)))
-    (t9-0 obj)
+    (t9-0 this)
     )
-  (format #t "~2Tjoint: ~A~%" (-> obj joint))
-  (format #t "~2Tactor-group: #x~X~%" (-> obj actor-group))
-  (dotimes (s5-0 (-> obj actor-group-count))
-    (format #t "~T  [~D]~2Tactor-group: ~`actor-group`P~%" s5-0 (-> obj actor-group s5-0))
+  (format #t "~2Tjoint: ~A~%" (-> this joint))
+  (format #t "~2Tactor-group: #x~X~%" (-> this actor-group))
+  (dotimes (s5-0 (-> this actor-group-count))
+    (format #t "~T  [~D]~2Tactor-group: ~`actor-group`P~%" s5-0 (-> this actor-group s5-0))
     )
-  (format #t "~2Tactor-group-count: ~D~%" (-> obj actor-group-count))
-  (format #t "~2Twater-height: ~f~%" (-> obj water-height))
-  (format #t "~2Tspin: ~f~%" (-> obj spin))
-  (format #t "~2Tspin-rate: ~f~%" (-> obj spin-rate))
+  (format #t "~2Tactor-group-count: ~D~%" (-> this actor-group-count))
+  (format #t "~2Twater-height: ~f~%" (-> this water-height))
+  (format #t "~2Tspin: ~f~%" (-> this spin))
+  (format #t "~2Tspin-rate: ~f~%" (-> this spin-rate))
   (label cfg-7)
-  obj
+  this
   )
 
 ;; failed to figure out what this is:
@@ -290,10 +279,10 @@ For example for an elevator pre-compute the distance between the first and last 
 ;; failed to figure out what this is:
 (defstate idle (sew-valve)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('attack)
-       (case (-> (the-as attack-info (-> event param 1)) mode)
+       (case (-> (the-as attack-info (-> block param 1)) mode)
          (('spin 'punch 'flop 'uppercut)
           (if (!= (-> self water-height) (get-base-height *ocean-map-sewer*))
               (go-virtual turn)
@@ -303,7 +292,7 @@ For example for an elevator pre-compute the distance between the first and last 
        )
       )
     )
-  :code (the-as (function none :behavior sew-valve) transform-and-sleep)
+  :code transform-and-sleep
   )
 
 ;; failed to figure out what this is:
@@ -328,30 +317,27 @@ For example for an elevator pre-compute the distance between the first and last 
           (script-eval (the-as pair data))
           )
       )
-    (none)
     )
   :exit (behavior ()
     (set! (-> self joint enable) #f)
     (logior! (-> self mask) (process-mask actor-pause))
-    (none)
     )
   :trans (behavior ()
     (if (= (-> self water-height) (get-base-height *ocean-map-sewer*))
         (go-virtual idle)
         )
-    (none)
     )
-  :code (the-as (function none :behavior sew-valve) sleep-code)
+  :code sleep-code
   :post (behavior ()
-    (seek! (-> self spin-rate) 0.0 (* 81920.0 (-> self clock seconds-per-frame)))
-    (+! (-> self spin) (* (-> self spin-rate) (-> self clock seconds-per-frame)))
+    (seek! (-> self spin-rate) 0.0 (* 81920.0 (seconds-per-frame)))
+    (+! (-> self spin) (* (-> self spin-rate) (seconds-per-frame)))
     (quaternion-axis-angle! (-> self joint rotation) 0.0 0.0 1.0 (-> self spin))
     (let* ((f0-8 (- (get-base-height *ocean-map-sewer*) (-> self water-height)))
            (f30-0 f0-8)
            (f28-0 (seek-ease
                     f0-8
                     0.0
-                    (* (lerp 21299.2 8192.0 (* 0.000005086263 (-> self spin-rate))) (-> self clock seconds-per-frame))
+                    (* (lerp 21299.2 8192.0 (* 0.000005086263 (-> self spin-rate))) (seconds-per-frame))
                     12288.0
                     2.0
                     )
@@ -363,26 +349,21 @@ For example for an elevator pre-compute the distance between the first and last 
           )
       )
     (ja-post)
-    (none)
     )
   )
 
 ;; definition for method 7 of type sew-valve
-;; WARN: Return type mismatch process-drawable vs sew-valve.
-(defmethod relocate sew-valve ((obj sew-valve) (arg0 int))
-  (if (nonzero? (-> obj joint))
-      (&+! (-> obj joint) arg0)
+(defmethod relocate ((this sew-valve) (arg0 int))
+  (if (nonzero? (-> this joint))
+      (&+! (-> this joint) arg0)
       )
-  (the-as
-    sew-valve
-    ((the-as (function process-drawable int process-drawable) (find-parent-method sew-valve 7)) obj arg0)
-    )
+  (call-parent-method this arg0)
   )
 
 ;; definition for method 11 of type sew-valve
 ;; INFO: Used lq/sq
 ;; WARN: Return type mismatch object vs none.
-(defmethod init-from-entity! sew-valve ((obj sew-valve) (entity entity-actor))
+(defmethod init-from-entity! ((this sew-valve) (entity entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
 - stack size
@@ -390,7 +371,7 @@ This commonly includes things such as:
 - loading the skeleton group / bones
 - sounds"
   (local-vars (tag-1 res-tag) (tag-2 res-tag))
-  (let ((cshape (new 'process 'collide-shape-moving obj (collide-list-enum usually-hit-by-player))))
+  (let ((cshape (new 'process 'collide-shape-moving this (collide-list-enum usually-hit-by-player))))
     (set! (-> cshape dynam) (copy *standard-dynamics* 'process))
     (set! (-> cshape reaction) cshape-reaction-default)
     (set! (-> cshape no-reaction)
@@ -410,117 +391,105 @@ This commonly includes things such as:
       (set! (-> cshape backup-collide-as) (-> root-prim prim-core collide-as))
       (set! (-> cshape backup-collide-with) (-> root-prim prim-core collide-with))
       )
-    (set! (-> obj root) cshape)
+    (set! (-> this root) cshape)
     )
-  (process-drawable-from-entity! obj entity)
+  (process-drawable-from-entity! this entity)
   (initialize-skeleton
-    obj
+    this
     (the-as skeleton-group (art-group-get-by-name *level* "skel-sew-valve" (the-as (pointer uint32) #f)))
     (the-as pair 0)
     )
-  (set! (-> obj spin) 0.0)
-  (set! (-> obj spin-rate) 0.0)
-  (set! (-> obj joint) (new 'process 'joint-mod-rotate-local obj 4 #f))
+  (set! (-> this spin) 0.0)
+  (set! (-> this spin-rate) 0.0)
+  (set! (-> this joint) (new 'process 'joint-mod-rotate-local this 4 #f))
   (set! tag-1 (new 'static 'res-tag))
-  (set! (-> obj actor-group)
-        (res-lump-data (-> obj entity) 'actor-groups (pointer actor-group) :tag-ptr (& tag-1))
+  (set! (-> this actor-group)
+        (res-lump-data (-> this entity) 'actor-groups (pointer actor-group) :tag-ptr (& tag-1))
         )
-  (set! (-> obj actor-group-count) (the-as int (-> tag-1 elt-count)))
+  (set! (-> this actor-group-count) (the-as int (-> tag-1 elt-count)))
   (set! tag-2 (new 'static 'res-tag))
-  (let ((data (res-lump-data (-> obj entity) 'extra-float-param pointer :tag-ptr (& tag-2))))
+  (let ((data (res-lump-data (-> this entity) 'extra-float-param pointer :tag-ptr (& tag-2))))
     (if (and data (nonzero? (-> tag-2 elt-count)))
-        (set! (-> obj water-height) (-> (the-as (pointer float) data)))
-        (set! (-> obj water-height) 0.0)
+        (set! (-> this water-height) (-> (the-as (pointer float) data)))
+        (set! (-> this water-height) 0.0)
         )
     )
-  (format #t "~S water-height: ~m~%" (-> obj name) (-> obj water-height))
-  (+! (-> obj water-height) -216498.17)
-  (go (method-of-object obj idle))
+  (format #t "~S water-height: ~m~%" (-> this name) (-> this water-height))
+  (+! (-> this water-height) -216498.17)
+  (go (method-of-object this idle))
   (none)
   )
 
 ;; definition of type sew-mar-statue-debris
 (deftype sew-mar-statue-debris (process-drawable)
   ()
-  :heap-base #x50
-  :method-count-assert 21
-  :size-assert         #xc8
-  :flag-assert         #x15005000c8
-  (:methods
-    (idle () _type_ :state 20)
+  (:state-methods
+    idle
     )
   )
 
 ;; definition for method 3 of type sew-mar-statue-debris
-(defmethod inspect sew-mar-statue-debris ((obj sew-mar-statue-debris))
-  (when (not obj)
-    (set! obj obj)
+(defmethod inspect ((this sew-mar-statue-debris))
+  (when (not this)
+    (set! this this)
     (goto cfg-4)
     )
   (let ((t9-0 (method-of-type process-drawable inspect)))
-    (t9-0 obj)
+    (t9-0 this)
     )
   (label cfg-4)
-  obj
+  this
   )
 
 ;; definition of type sew-mar-statue-debris-b
 (deftype sew-mar-statue-debris-b (process-drawable)
   ()
-  :heap-base #x50
-  :method-count-assert 21
-  :size-assert         #xc8
-  :flag-assert         #x15005000c8
-  (:methods
-    (idle () _type_ :state 20)
+  (:state-methods
+    idle
     )
   )
 
 ;; definition for method 3 of type sew-mar-statue-debris-b
-(defmethod inspect sew-mar-statue-debris-b ((obj sew-mar-statue-debris-b))
-  (when (not obj)
-    (set! obj obj)
+(defmethod inspect ((this sew-mar-statue-debris-b))
+  (when (not this)
+    (set! this this)
     (goto cfg-4)
     )
   (let ((t9-0 (method-of-type process-drawable inspect)))
-    (t9-0 obj)
+    (t9-0 this)
     )
   (label cfg-4)
-  obj
+  this
   )
 
 ;; definition of type sew-mar-statue
 (deftype sew-mar-statue (process-drawable)
-  ((root            collide-shape  :override)
-   (spawned-debris? symbol         :offset-assert 200)
+  ((root             collide-shape :override)
+   (spawned-debris?  symbol)
    )
-  :heap-base #x50
-  :method-count-assert 22
-  :size-assert         #xcc
-  :flag-assert         #x16005000cc
-  (:methods
-    (idle () _type_ :state 20)
-    (hidden () _type_ :state 21)
+  (:state-methods
+    idle
+    hidden
     )
   )
 
 ;; definition for method 3 of type sew-mar-statue
-(defmethod inspect sew-mar-statue ((obj sew-mar-statue))
-  (when (not obj)
-    (set! obj obj)
+(defmethod inspect ((this sew-mar-statue))
+  (when (not this)
+    (set! this this)
     (goto cfg-4)
     )
   (let ((t9-0 (method-of-type process-drawable inspect)))
-    (t9-0 obj)
+    (t9-0 this)
     )
-  (format #t "~2Tspawned-debris?: ~A~%" (-> obj spawned-debris?))
+  (format #t "~2Tspawned-debris?: ~A~%" (-> this spawned-debris?))
   (label cfg-4)
-  obj
+  this
   )
 
 ;; failed to figure out what this is:
-(defskelgroup skel-sew-mar-statue sew-mar-statue 0 2
-              ((1 (meters 999999)))
+(defskelgroup skel-sew-mar-statue sew-mar-statue sew-mar-statue-lod0-jg sew-mar-statue-idle-ja
+              ((sew-mar-statue-lod0-mg (meters 999999)))
               :bounds (static-spherem 0 7.5 0 14.4)
               )
 
@@ -541,7 +510,7 @@ This commonly includes things such as:
 ;; failed to figure out what this is:
 (defstate idle (sew-mar-statue-debris)
   :virtual #t
-  :code (the-as (function none :behavior sew-mar-statue-debris) sleep-code)
+  :code sleep-code
   )
 
 ;; definition for function sew-mar-statue-debris-init-by-other
@@ -609,7 +578,7 @@ This commonly includes things such as:
 ;; failed to figure out what this is:
 (defstate idle (sew-mar-statue-debris-b)
   :virtual #t
-  :code (the-as (function none :behavior sew-mar-statue-debris-b) sleep-code)
+  :code sleep-code
   )
 
 ;; definition for function sew-mar-statue-debris-b-init-by-other
@@ -657,7 +626,7 @@ This commonly includes things such as:
   )
 
 ;; definition for method 12 of type sew-mar-statue
-(defmethod run-logic? sew-mar-statue ((obj sew-mar-statue))
+(defmethod run-logic? ((this sew-mar-statue))
   #t
   )
 
@@ -670,9 +639,8 @@ This commonly includes things such as:
         (setup-masks (-> self draw) 4 2)
         (setup-masks (-> self draw) 2 4)
         )
-    (none)
     )
-  :code (the-as (function none :behavior sew-mar-statue) sleep-code)
+  :code sleep-code
   )
 
 ;; failed to figure out what this is:
@@ -686,22 +654,21 @@ This commonly includes things such as:
       )
     0
     (logior! (-> self draw status) (draw-control-status no-draw))
-    (none)
     )
-  :code (the-as (function none :behavior sew-mar-statue) sleep-code)
+  :code sleep-code
   )
 
 ;; definition for method 11 of type sew-mar-statue
 ;; WARN: Return type mismatch object vs none.
-(defmethod init-from-entity! sew-mar-statue ((obj sew-mar-statue) (entity entity-actor))
+(defmethod init-from-entity! ((this sew-mar-statue) (entity entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
 - stack size
 - collision information
 - loading the skeleton group / bones
 - sounds"
-  (set! (-> obj spawned-debris?) #f)
-  (let ((cshape (new 'process 'collide-shape obj (collide-list-enum hit-by-player))))
+  (set! (-> this spawned-debris?) #f)
+  (let ((cshape (new 'process 'collide-shape this (collide-list-enum hit-by-player))))
     (let ((prim-mesh (new 'process 'collide-shape-prim-mesh cshape (the-as uint 0) (the-as uint 0))))
       (set! (-> prim-mesh prim-core collide-as) (collide-spec obstacle))
       (set! (-> prim-mesh prim-core collide-with) (collide-spec jak player-list))
@@ -716,25 +683,25 @@ This commonly includes things such as:
       (set! (-> cshape backup-collide-as) (-> root-prim prim-core collide-as))
       (set! (-> cshape backup-collide-with) (-> root-prim prim-core collide-with))
       )
-    (set! (-> obj root) cshape)
+    (set! (-> this root) cshape)
     )
-  (process-drawable-from-entity! obj entity)
+  (process-drawable-from-entity! this entity)
   (initialize-skeleton
-    obj
+    this
     (the-as skeleton-group (art-group-get-by-name *level* "skel-sew-mar-statue" (the-as (pointer uint32) #f)))
     (the-as pair 0)
     )
   (transform-post)
-  (set! (-> obj event-hook) sew-mar-statue-event-handler)
+  (set! (-> this event-hook) sew-mar-statue-event-handler)
   (cond
     ((task-node-closed? (game-task-node sewer-escort-resolution))
-     (process-spawn sew-mar-statue-debris :to obj)
-     (process-spawn sew-mar-statue-debris-b :to obj)
-     (set! (-> obj spawned-debris?) #t)
-     (go (method-of-object obj hidden))
+     (process-spawn sew-mar-statue-debris :to this)
+     (process-spawn sew-mar-statue-debris-b :to this)
+     (set! (-> this spawned-debris?) #t)
+     (go (method-of-object this hidden))
      )
     (else
-      (go (method-of-object obj idle))
+      (go (method-of-object this idle))
       )
     )
   (none)
@@ -743,23 +710,19 @@ This commonly includes things such as:
 ;; definition of type sew-catwalk
 (deftype sew-catwalk (drop-plat)
   ()
-  :heap-base #xc0
-  :method-count-assert 36
-  :size-assert         #x140
-  :flag-assert         #x2400c00140
   )
 
 ;; definition for method 3 of type sew-catwalk
-(defmethod inspect sew-catwalk ((obj sew-catwalk))
-  (when (not obj)
-    (set! obj obj)
+(defmethod inspect ((this sew-catwalk))
+  (when (not this)
+    (set! this this)
     (goto cfg-4)
     )
   (let ((t9-0 (method-of-type drop-plat inspect)))
-    (t9-0 obj)
+    (t9-0 this)
     )
   (label cfg-4)
-  obj
+  this
   )
 
 ;; failed to figure out what this is:
@@ -771,12 +734,12 @@ This commonly includes things such as:
 
 ;; definition for method 29 of type sew-catwalk
 ;; WARN: Return type mismatch int vs none.
-(defmethod start-bouncing! sew-catwalk ((obj sew-catwalk))
+(defmethod start-bouncing! ((this sew-catwalk))
   "Sets `bouncing` to [[#t]] and sets up the clock to periodically bounce
 and translate the platform via the `smush`
 @see [[smush-control]]"
-  (logclear! (-> obj mask) (process-mask sleep))
-  (logclear! (-> obj mask) (process-mask sleep-code))
+  (logclear! (-> this mask) (process-mask sleep))
+  (logclear! (-> this mask) (process-mask sleep-code))
   0
   (none)
   )
@@ -784,7 +747,7 @@ and translate the platform via the `smush`
 ;; failed to figure out what this is:
 (defstate fall (sew-catwalk)
   :virtual #t
-  :trans (the-as (function none :behavior sew-catwalk) rider-trans)
+  :trans rider-trans
   :code (behavior ((arg0 symbol))
     (process-entity-status! self (entity-perm-status subtask-complete) #t)
     (set! (-> self draw bounds y) -102400.0)
@@ -812,14 +775,13 @@ and translate the platform via the `smush`
     (logior! (-> self mask) (process-mask sleep))
     (suspend)
     0
-    (none)
     )
   )
 
 ;; definition for method 11 of type sew-catwalk
 ;; INFO: Used lq/sq
 ;; WARN: Return type mismatch object vs none.
-(defmethod init-from-entity! sew-catwalk ((obj sew-catwalk) (entity entity-actor))
+(defmethod init-from-entity! ((this sew-catwalk) (entity entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
 - stack size
@@ -827,8 +789,8 @@ This commonly includes things such as:
 - loading the skeleton group / bones
 - sounds"
   (local-vars (sv-16 collide-shape-prim-mesh) (sv-32 symbol) (sv-48 type) (sv-64 collide-shape-moving))
-  (stack-size-set! (-> obj main-thread) 512)
-  (let ((cshape (new 'process 'collide-shape-moving obj (collide-list-enum usually-hit-by-player))))
+  (stack-size-set! (-> this main-thread) 512)
+  (let ((cshape (new 'process 'collide-shape-moving this (collide-list-enum usually-hit-by-player))))
     (set! (-> cshape dynam) (copy *standard-dynamics* 'process))
     (set! (-> cshape reaction) cshape-reaction-default)
     (set! (-> cshape no-reaction)
@@ -890,61 +852,59 @@ This commonly includes things such as:
       (set! (-> cshape backup-collide-as) (-> root-prim prim-core collide-as))
       (set! (-> cshape backup-collide-with) (-> root-prim prim-core collide-with))
       )
-    (set! (-> obj root) cshape)
+    (set! (-> this root) cshape)
     )
-  (process-drawable-from-entity! obj entity)
+  (process-drawable-from-entity! this entity)
   (initialize-skeleton
-    obj
+    this
     (the-as skeleton-group (art-group-get-by-name *level* "skel-sew-catwalk-1" (the-as (pointer uint32) #f)))
     (the-as pair 0)
     )
-  (set! (-> obj art-name) "sew-catwalk-1")
-  (set! (-> obj anim)
+  (set! (-> this art-name) "sew-catwalk-1")
+  (set! (-> this anim)
         (new 'static 'spool-anim :name "sew-catwalk-1" :anim-name "1-break" :parts 3 :command-list '())
         )
-  (set! (-> obj basetrans quad) (-> obj root trans quad))
-  (if (and (-> obj entity) (logtest? (-> obj entity extra perm status) (entity-perm-status subtask-complete)))
-      (go (method-of-object obj fall) #t)
-      (go (method-of-object obj idle))
+  (set! (-> this basetrans quad) (-> this root trans quad))
+  (if (and (-> this entity) (logtest? (-> this entity extra perm status) (entity-perm-status subtask-complete)))
+      (go (method-of-object this fall) #t)
+      (go (method-of-object this idle))
       )
   (none)
   )
 
 ;; definition of type sew-mine
 (deftype sew-mine (process-drawable)
-  ((root      collide-shape-moving  :override)
-   (last-time time-frame            :offset-assert 200)
+  ((root       collide-shape-moving :override)
+   (last-time  time-frame)
    )
-  :heap-base #x50
-  :method-count-assert 23
-  :size-assert         #xd0
-  :flag-assert         #x17005000d0
+  (:state-methods
+    idle
+    die
+    )
   (:methods
-    (idle () _type_ :state 20)
-    (die () _type_ :state 21)
-    (init-mine! (_type_) none 22)
+    (init-mine! (_type_) none)
     )
   )
 
 ;; definition for method 3 of type sew-mine
-(defmethod inspect sew-mine ((obj sew-mine))
-  (when (not obj)
-    (set! obj obj)
+(defmethod inspect ((this sew-mine))
+  (when (not this)
+    (set! this this)
     (goto cfg-4)
     )
   (let ((t9-0 (method-of-type process-drawable inspect)))
-    (t9-0 obj)
+    (t9-0 this)
     )
-  (format #t "~2Tlast-time: ~D~%" (-> obj last-time))
+  (format #t "~2Tlast-time: ~D~%" (-> this last-time))
   (label cfg-4)
-  obj
+  this
   )
 
 ;; failed to figure out what this is:
 (defstate idle (sew-mine)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('touch 'attack)
        (let* ((_proc proc)
               (focus-proc (if (type? _proc process-focusable)
@@ -953,35 +913,29 @@ This commonly includes things such as:
                           )
               )
          (when focus-proc
-           (let ((a0-4 (vector-normalize!
-                         (vector-! (new 'stack-no-clear 'vector) (-> focus-proc root trans) (-> self root trans))
-                         1.0
-                         )
-                       )
-                 (evt (new 'stack-no-clear 'event-message-block))
-                 )
-             (set! (-> evt from) (process->ppointer self))
-             (set! (-> evt num-params) 2)
-             (set! (-> evt message) 'attack-or-shove)
-             (set! (-> evt param 0) (-> event param 0))
-             (let ((attack-info (new 'static 'attack-info :mask (attack-info-mask vector shove-back shove-up control id))))
-               (let* ((game-info *game-info*)
-                      (id (+ (-> game-info attack-id) 1))
-                      )
-                 (set! (-> game-info attack-id) id)
-                 (set! (-> attack-info id) id)
-                 )
-               (set! (-> attack-info vector quad) (-> a0-4 quad))
-               (set! (-> attack-info shove-back) 20480.0)
-               (set! (-> attack-info shove-up) 12288.0)
-               (set! (-> attack-info control) (if (focus-test? focus-proc board)
-                                                  1.0
-                                                  0.0
-                                                  )
+           (let ((a0-4
+                   (vector-normalize!
+                     (vector-! (new 'stack-no-clear 'vector) (-> focus-proc root trans) (-> self root trans))
+                     1.0
                      )
-               (set! (-> evt param 1) (the-as uint attack-info))
+                   )
+                 )
+             (send-event
+               focus-proc
+               'attack-or-shove
+               (-> block param 0)
+               (static-attack-info ((id (new-attack-id))
+                                    (vector a0-4)
+                                    (shove-back (meters 5))
+                                    (shove-up (meters 3))
+                                    (control (if (focus-test? focus-proc board)
+                                                 1.0
+                                                 0.0
+                                                 )
+                                             )
+                                    )
+                                   )
                )
-             (send-event-function focus-proc evt)
              )
            )
          )
@@ -989,7 +943,7 @@ This commonly includes things such as:
        )
       )
     )
-  :code (the-as (function none :behavior sew-mine) transform-and-sleep-code)
+  :code transform-and-sleep-code
   :post (behavior ()
     (spawn (-> self part) (-> self root trans))
     (let ((gp-0 (mod (-> *display* part-clock frame-counter) 100)))
@@ -998,7 +952,6 @@ This commonly includes things such as:
           )
       (set! (-> self last-time) (the-as time-frame gp-0))
       )
-    (none)
     )
   )
 
@@ -1046,20 +999,19 @@ This commonly includes things such as:
       )
     (cleanup-for-death self)
     (let ((frame-counter (current-time)))
-      (until (>= (- (current-time) frame-counter) (seconds 2))
+      (until (time-elapsed? frame-counter (seconds 2))
         (suspend)
         )
       )
-    (none)
     )
   )
 
 ;; definition for method 22 of type sew-mine
 ;; WARN: Return type mismatch int vs none.
-(defmethod init-mine! sew-mine ((obj sew-mine))
+(defmethod init-mine! ((this sew-mine))
   "Initializes the mine's particles and sets `last-time` to `0`"
-  (set! (-> obj part) (create-launch-control (-> *part-group-id-table* 345) obj))
-  (set! (-> obj last-time) 0)
+  (set! (-> this part) (create-launch-control (-> *part-group-id-table* 345) this))
+  (set! (-> this last-time) 0)
   0
   (none)
   )
@@ -1067,38 +1019,37 @@ This commonly includes things such as:
 ;; definition of type sew-mine-a
 (deftype sew-mine-a (sew-mine)
   ()
-  :heap-base #x50
-  :method-count-assert 23
-  :size-assert         #xd0
-  :flag-assert         #x17005000d0
   )
 
 ;; definition for method 3 of type sew-mine-a
-(defmethod inspect sew-mine-a ((obj sew-mine-a))
-  (when (not obj)
-    (set! obj obj)
+(defmethod inspect ((this sew-mine-a))
+  (when (not this)
+    (set! this this)
     (goto cfg-4)
     )
   (let ((t9-0 (method-of-type sew-mine inspect)))
-    (t9-0 obj)
+    (t9-0 this)
     )
   (label cfg-4)
-  obj
+  this
   )
 
 ;; failed to figure out what this is:
-(defskelgroup skel-sew-mine-a sew-mine-a 0 2 ((1 (meters 999999))) :bounds (static-spherem 0 0 0 3))
+(defskelgroup skel-sew-mine-a sew-mine-a sew-mine-a-lod0-jg sew-mine-a-idle-ja
+              ((sew-mine-a-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 3)
+              )
 
 ;; definition for method 11 of type sew-mine-a
 ;; WARN: Return type mismatch object vs none.
-(defmethod init-from-entity! sew-mine-a ((obj sew-mine-a) (entity entity-actor))
+(defmethod init-from-entity! ((this sew-mine-a) (entity entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
 - stack size
 - collision information
 - loading the skeleton group / bones
 - sounds"
-  (let ((cshape (new 'process 'collide-shape obj (collide-list-enum hit-by-player))))
+  (let ((cshape (new 'process 'collide-shape this (collide-list-enum hit-by-player))))
     (let ((prim-mesh (new 'process 'collide-shape-prim-mesh cshape (the-as uint 0) (the-as uint 0))))
       (set! (-> prim-mesh prim-core collide-as) (collide-spec pusher))
       (set! (-> prim-mesh prim-core collide-with) (collide-spec jak player-list))
@@ -1114,51 +1065,50 @@ This commonly includes things such as:
       (set! (-> cshape backup-collide-as) (-> root-prim prim-core collide-as))
       (set! (-> cshape backup-collide-with) (-> root-prim prim-core collide-with))
       )
-    (set! (-> obj root) (the-as collide-shape-moving cshape))
+    (set! (-> this root) (the-as collide-shape-moving cshape))
     )
-  (process-drawable-from-entity! obj entity)
+  (process-drawable-from-entity! this entity)
   (initialize-skeleton
-    obj
+    this
     (the-as skeleton-group (art-group-get-by-name *level* "skel-sew-mine-a" (the-as (pointer uint32) #f)))
     (the-as pair 0)
     )
-  (init-mine! obj)
-  (go (method-of-object obj idle))
+  (init-mine! this)
+  (go (method-of-object this idle))
   (none)
   )
 
 ;; definition of type sew-mine-b
 (deftype sew-mine-b (sew-mine)
-  ((base-height float          :offset-assert 208)
-   (center      vector :inline :offset-assert 224)
-   (time-skew   uint64         :offset-assert 240)
-   (period      float          :offset-assert 248)
+  ((base-height  float)
+   (center       vector  :inline)
+   (time-skew    uint64)
+   (period       float)
    )
-  :heap-base #x80
-  :method-count-assert 23
-  :size-assert         #xfc
-  :flag-assert         #x17008000fc
   )
 
 ;; definition for method 3 of type sew-mine-b
-(defmethod inspect sew-mine-b ((obj sew-mine-b))
-  (when (not obj)
-    (set! obj obj)
+(defmethod inspect ((this sew-mine-b))
+  (when (not this)
+    (set! this this)
     (goto cfg-4)
     )
   (let ((t9-0 (method-of-type sew-mine inspect)))
-    (t9-0 obj)
+    (t9-0 this)
     )
-  (format #t "~2Tbase-height: ~f~%" (-> obj base-height))
-  (format #t "~2Tcenter: #<vector @ #x~X>~%" (-> obj center))
-  (format #t "~2Ttime-skew: ~D~%" (-> obj time-skew))
-  (format #t "~2Tperiod: ~f~%" (-> obj period))
+  (format #t "~2Tbase-height: ~f~%" (-> this base-height))
+  (format #t "~2Tcenter: #<vector @ #x~X>~%" (-> this center))
+  (format #t "~2Ttime-skew: ~D~%" (-> this time-skew))
+  (format #t "~2Tperiod: ~f~%" (-> this period))
   (label cfg-4)
-  obj
+  this
   )
 
 ;; failed to figure out what this is:
-(defskelgroup skel-sew-mine-b sew-mine-b 0 2 ((1 (meters 999999))) :bounds (static-spherem 0 0 0 2.5))
+(defskelgroup skel-sew-mine-b sew-mine-b sew-mine-b-lod0-jg sew-mine-b-idle-ja
+              ((sew-mine-b-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 2.5)
+              )
 
 ;; failed to figure out what this is:
 (defstate idle (sew-mine-b)
@@ -1187,21 +1137,20 @@ This commonly includes things such as:
       (set! (-> self root trans y) (+ (-> self center y) (* 819.2 f28-0)))
       )
     (transform-post)
-    (none)
     )
   )
 
 ;; definition for method 11 of type sew-mine-b
 ;; INFO: Used lq/sq
 ;; WARN: Return type mismatch object vs none.
-(defmethod init-from-entity! sew-mine-b ((obj sew-mine-b) (entity entity-actor))
+(defmethod init-from-entity! ((this sew-mine-b) (entity entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
 - stack size
 - collision information
 - loading the skeleton group / bones
 - sounds"
-  (let ((cshape (new 'process 'collide-shape obj (collide-list-enum hit-by-player))))
+  (let ((cshape (new 'process 'collide-shape this (collide-list-enum hit-by-player))))
     (let ((prim-mesh (new 'process 'collide-shape-prim-mesh cshape (the-as uint 0) (the-as uint 0))))
       (set! (-> prim-mesh prim-core collide-as) (collide-spec pusher))
       (set! (-> prim-mesh prim-core collide-with) (collide-spec jak player-list))
@@ -1217,73 +1166,71 @@ This commonly includes things such as:
       (set! (-> cshape backup-collide-as) (-> root-prim prim-core collide-as))
       (set! (-> cshape backup-collide-with) (-> root-prim prim-core collide-with))
       )
-    (set! (-> obj root) (the-as collide-shape-moving cshape))
+    (set! (-> this root) (the-as collide-shape-moving cshape))
     )
-  (process-drawable-from-entity! obj entity)
+  (process-drawable-from-entity! this entity)
   (initialize-skeleton
-    obj
+    this
     (the-as skeleton-group (art-group-get-by-name *level* "skel-sew-mine-b" (the-as (pointer uint32) #f)))
     (the-as pair 0)
     )
-  (init-mine! obj)
-  (let ((_entity (-> obj entity)))
-    (set! (-> obj base-height) ((method-of-object _entity get-property-value-float)
-                                _entity
-                                'base-height
-                                'interp
-                                -1000000000.0
-                                -16384000.0
-                                (the-as (pointer res-tag) #f)
-                                *res-static-buf*
-                                )
+  (init-mine! this)
+  (let ((_entity (-> this entity)))
+    (set! (-> this base-height) ((method-of-object _entity get-property-value-float)
+                                 _entity
+                                 'base-height
+                                 'interp
+                                 -1000000000.0
+                                 -16384000.0
+                                 (the-as (pointer res-tag) #f)
+                                 *res-static-buf*
+                                 )
           )
     )
-  (set! (-> obj time-skew) (the-as uint (the int (* 300.0 (rand-vu-float-range 0.1 1.4)))))
-  (set! (-> obj period) (* 300.0 (rand-vu-float-range 1.2 1.8)))
-  (set! (-> obj center quad) (-> obj root trans quad))
-  (+! (-> obj base-height) -216498.17)
-  (set! (-> obj root pause-adjust-distance) 532480.0)
-  (go (method-of-object obj idle))
+  (set! (-> this time-skew) (the-as uint (the int (* 300.0 (rand-vu-float-range 0.1 1.4)))))
+  (set! (-> this period) (* 300.0 (rand-vu-float-range 1.2 1.8)))
+  (set! (-> this center quad) (-> this root trans quad))
+  (+! (-> this base-height) -216498.17)
+  (set! (-> this root pause-adjust-distance) 532480.0)
+  (go (method-of-object this idle))
   (none)
   )
 
 ;; definition of type sew-wall
 (deftype sew-wall (process-focusable)
-  ((deadly-radius      float       :offset-assert 204)
-   (prev-deadly-radius float       :offset-assert 208)
-   (attack-id          uint32      :offset-assert 212)
-   (first-wall?        symbol      :offset-assert 216)
-   (anim               spool-anim  :offset-assert 220)
-   (art-name           string      :offset-assert 224)
+  ((deadly-radius       float)
+   (prev-deadly-radius  float)
+   (attack-id           uint32)
+   (first-wall?         symbol)
+   (anim                spool-anim)
+   (art-name            string)
    )
-  :heap-base #x70
-  :method-count-assert 30
-  :size-assert         #xe4
-  :flag-assert         #x1e007000e4
+  (:state-methods
+    idle
+    (hit symbol)
+    )
   (:methods
-    (idle () _type_ :state 27)
-    (hit (symbol) _type_ :state 28)
-    (attack-target! (_type_) none 29)
+    (attack-target! (_type_) none)
     )
   )
 
 ;; definition for method 3 of type sew-wall
-(defmethod inspect sew-wall ((obj sew-wall))
-  (when (not obj)
-    (set! obj obj)
+(defmethod inspect ((this sew-wall))
+  (when (not this)
+    (set! this this)
     (goto cfg-4)
     )
   (let ((t9-0 (method-of-type process-focusable inspect)))
-    (t9-0 obj)
+    (t9-0 this)
     )
-  (format #t "~2Tdeadly-radius: ~f~%" (-> obj deadly-radius))
-  (format #t "~2Tprev-deadly-radius: ~f~%" (-> obj prev-deadly-radius))
-  (format #t "~2Tattack-id: ~D~%" (-> obj attack-id))
-  (format #t "~2Tfirst-wall?: ~A~%" (-> obj first-wall?))
-  (format #t "~2Tanim: ~A~%" (-> obj anim))
-  (format #t "~2Tart-name: ~A~%" (-> obj art-name))
+  (format #t "~2Tdeadly-radius: ~f~%" (-> this deadly-radius))
+  (format #t "~2Tprev-deadly-radius: ~f~%" (-> this prev-deadly-radius))
+  (format #t "~2Tattack-id: ~D~%" (-> this attack-id))
+  (format #t "~2Tfirst-wall?: ~A~%" (-> this first-wall?))
+  (format #t "~2Tanim: ~A~%" (-> this anim))
+  (format #t "~2Tart-name: ~A~%" (-> this art-name))
   (label cfg-4)
-  obj
+  this
   )
 
 ;; failed to figure out what this is:
@@ -1296,59 +1243,50 @@ This commonly includes things such as:
 ;; definition for method 29 of type sew-wall
 ;; INFO: Used lq/sq
 ;; WARN: Return type mismatch float vs none.
-(defmethod attack-target! sew-wall ((obj sew-wall))
+(defmethod attack-target! ((this sew-wall))
   "If the target is close enough to the wall, hit it!"
-  (with-pp
-    (let ((target *target*))
-      (when target
-        (let ((dist-from-wall (vector-vector-xz-distance (get-trans target 0) (-> obj root trans)))
-              (deadly-radius (-> obj deadly-radius))
-              (prev-deadly-radius (-> obj prev-deadly-radius))
+  (let ((target *target*))
+    (when target
+      (let ((dist-from-wall (vector-vector-xz-distance (get-trans target 0) (-> this root trans)))
+            (deadly-radius (-> this deadly-radius))
+            (prev-deadly-radius (-> this prev-deadly-radius))
+            )
+        (set! (-> this prev-deadly-radius) deadly-radius)
+        (when (and (>= deadly-radius dist-from-wall) (>= dist-from-wall (+ -4096.0 prev-deadly-radius)))
+          (let ((cquery (new 'stack-no-clear 'collide-query)))
+            (set! (-> cquery start-pos quad) (-> this root trans quad))
+            (+! (-> cquery start-pos y) 12288.0)
+            (vector-! (-> cquery move-dist) (get-trans target 3) (-> cquery start-pos))
+            (let ((v1-9 cquery))
+              (set! (-> v1-9 radius) 819.2)
+              (set! (-> v1-9 collide-with) (collide-spec backgnd))
+              (set! (-> v1-9 ignore-process0) this)
+              (set! (-> v1-9 ignore-process1) #f)
+              (set! (-> v1-9 ignore-pat) (new 'static 'pat-surface :noentity #x1 :nojak #x1 :probe #x1 :noendlessfall #x1))
+              (set! (-> v1-9 action-mask) (collide-action solid))
               )
-          (set! (-> obj prev-deadly-radius) deadly-radius)
-          (when (and (>= deadly-radius dist-from-wall) (>= dist-from-wall (+ -4096.0 prev-deadly-radius)))
-            (let ((cquery (new 'stack-no-clear 'collide-query)))
-              (set! (-> cquery start-pos quad) (-> obj root trans quad))
-              (+! (-> cquery start-pos y) 12288.0)
-              (vector-! (-> cquery move-dist) (get-trans target 3) (-> cquery start-pos))
-              (let ((v1-9 cquery))
-                (set! (-> v1-9 radius) 819.2)
-                (set! (-> v1-9 collide-with) (collide-spec backgnd))
-                (set! (-> v1-9 ignore-process0) obj)
-                (set! (-> v1-9 ignore-process1) #f)
-                (set! (-> v1-9 ignore-pat) (new 'static 'pat-surface :noentity #x1 :nojak #x1 :probe #x1 :noendlessfall #x1))
-                (set! (-> v1-9 action-mask) (collide-action solid))
+            (when (< (fill-and-probe-using-line-sphere *collide-cache* cquery) 0.0)
+              (send-event
+                *target*
+                'attack
+                #f
+                (static-attack-info ((id (-> this attack-id)) (mode 'explode) (attacker-velocity (-> cquery move-dist))))
                 )
-              (when (< (fill-and-probe-using-line-sphere *collide-cache* cquery) 0.0)
-                (let ((evt (new 'stack-no-clear 'event-message-block)))
-                  (set! (-> evt from) (process->ppointer pp))
-                  (set! (-> evt num-params) 2)
-                  (set! (-> evt message) 'attack)
-                  (set! (-> evt param 0) (the-as uint #f))
-                  (let ((attack-info (new 'static 'attack-info :mask (attack-info-mask mode id attacker-velocity))))
-                    (set! (-> attack-info id) (-> obj attack-id))
-                    (set! (-> attack-info mode) 'explode)
-                    (set! (-> attack-info attacker-velocity quad) (-> cquery move-dist quad))
-                    (set! (-> evt param 1) (the-as uint attack-info))
-                    )
-                  (send-event-function *target* evt)
-                  )
-                (set! (-> obj deadly-radius) -1.0)
-                )
+              (set! (-> this deadly-radius) -1.0)
               )
             )
           )
         )
       )
-    (none)
     )
+  (none)
   )
 
 ;; failed to figure out what this is:
 (defstate idle (sew-wall)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('trigger)
        (logclear! (-> self mask) (process-mask actor-pause))
        (if (-> self first-wall?)
@@ -1370,7 +1308,6 @@ This commonly includes things such as:
       (suspend)
       )
     #f
-    (none)
     )
   )
 
@@ -1380,20 +1317,17 @@ This commonly includes things such as:
   :enter (behavior ((arg0 symbol))
     (set! (-> self deadly-radius) -1.0)
     (logclear! (-> self draw status) (draw-control-status no-draw))
-    (none)
     )
   :exit (behavior ()
     (ja-abort-spooled-anim (-> self anim) (the-as art-joint-anim #f) -1)
-    (none)
     )
   :trans (behavior ()
     (let ((f0-0 (-> self deadly-radius)))
       (when (>= f0-0 0.0)
-        (set! (-> self deadly-radius) (seek f0-0 409600.0 (* 368640.0 (-> self clock seconds-per-frame))))
+        (set! (-> self deadly-radius) (seek f0-0 409600.0 (* 368640.0 (seconds-per-frame))))
         (attack-target! self)
         )
       )
-    (none)
     )
   :code (behavior ((arg0 symbol))
     (if (not (-> self first-wall?))
@@ -1452,24 +1386,23 @@ This commonly includes things such as:
     (logior! (-> self mask) (process-mask sleep))
     (suspend)
     0
-    (none)
     )
-  :post (the-as (function none :behavior sew-wall) ja-post)
+  :post ja-post
   )
 
 ;; definition for method 11 of type sew-wall
 ;; WARN: Return type mismatch object vs none.
-(defmethod init-from-entity! sew-wall ((obj sew-wall) (entity entity-actor))
+(defmethod init-from-entity! ((this sew-wall) (entity entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
 - stack size
 - collision information
 - loading the skeleton group / bones
 - sounds"
-  (stack-size-set! (-> obj main-thread) 512)
-  (logior! (-> obj mask) (process-mask collectable))
+  (stack-size-set! (-> this main-thread) 512)
+  (logior! (-> this mask) (process-mask collectable))
   (let ((data ((method-of-type res-lump get-property-struct)
-               (-> obj entity)
+               (-> this entity)
                'art-name
                'interp
                -1000000000.0
@@ -1480,8 +1413,8 @@ This commonly includes things such as:
               )
         (art-group (art-group-get-by-name *level* "skel-sew-wall" (the-as (pointer uint32) #f)))
         )
-    (set! (-> obj art-name) (the-as string data))
-    (let ((cshape (new 'process 'collide-shape-moving obj (collide-list-enum usually-hit-by-player))))
+    (set! (-> this art-name) (the-as string data))
+    (let ((cshape (new 'process 'collide-shape-moving this (collide-list-enum usually-hit-by-player))))
       (set! (-> cshape dynam) (copy *standard-dynamics* 'process))
       (set! (-> cshape reaction) cshape-reaction-default)
       (set! (-> cshape no-reaction)
@@ -1528,48 +1461,48 @@ This commonly includes things such as:
         (set! (-> cshape backup-collide-as) (-> root-prim prim-core collide-as))
         (set! (-> cshape backup-collide-with) (-> root-prim prim-core collide-with))
         )
-      (set! (-> obj root) cshape)
+      (set! (-> this root) cshape)
       )
-    (process-drawable-from-entity! obj entity)
-    (logclear! (-> obj mask) (process-mask actor-pause))
+    (process-drawable-from-entity! this entity)
+    (logclear! (-> this mask) (process-mask actor-pause))
     (cond
-      ((string= (-> obj art-name) "sew-wall-1")
-       (set! (-> obj anim)
+      ((string= (-> this art-name) "sew-wall-1")
+       (set! (-> this anim)
              (new 'static 'spool-anim :name "sew-wall-1" :anim-name "1-break" :parts 1 :command-list '())
              )
-       (set! (-> obj first-wall?) #t)
+       (set! (-> this first-wall?) #t)
        )
-      ((string= (-> obj art-name) "sew-wall-2")
-       (set! (-> obj anim)
+      ((string= (-> this art-name) "sew-wall-2")
+       (set! (-> this anim)
              (new 'static 'spool-anim :name "sew-wall-2" :anim-name "2-break" :parts 1 :command-list '())
              )
-       (+! (-> obj root trans z) 26624.0)
-       (set! (-> obj first-wall?) #f)
+       (+! (-> this root trans z) 26624.0)
+       (set! (-> this first-wall?) #f)
        )
       (else
         (go process-drawable-art-error (the-as string data))
         )
       )
-    (initialize-skeleton obj (the-as skeleton-group art-group) (the-as pair 0))
+    (initialize-skeleton this (the-as skeleton-group art-group) (the-as pair 0))
     )
-  (set! (-> obj draw force-lod) 0)
+  (set! (-> this draw force-lod) 0)
   (ja-channel-set! 1)
-  (let* ((channel (-> obj skel root-channel 0))
-         (_art-group (-> obj draw art-group))
+  (let* ((channel (-> this skel root-channel 0))
+         (_art-group (-> this draw art-group))
          (s3-1 (method-of-object _art-group get-art-by-name-method))
          )
-    (format (clear *temp-string*) "~S-idle" (-> obj art-name))
+    (format (clear *temp-string*) "~S-idle" (-> this art-name))
     (set! (-> channel frame-group) (the-as art-joint-anim (s3-1 _art-group *temp-string* (the-as type #f))))
     )
   (let* ((game-info *game-info*)
          (id (+ (-> game-info attack-id) 1))
          )
     (set! (-> game-info attack-id) id)
-    (set! (-> obj attack-id) id)
+    (set! (-> this attack-id) id)
     )
-  (if (script-eval (res-lump-struct (-> obj entity) 'on-activate pair))
-      (go (method-of-object obj hit) #t)
-      (go (method-of-object obj idle))
+  (if (script-eval (res-lump-struct (-> this entity) 'on-activate pair))
+      (go (method-of-object this hit) #t)
+      (go (method-of-object this idle))
       )
   (none)
   )
@@ -1577,103 +1510,94 @@ This commonly includes things such as:
 ;; definition of type sew-grill
 (deftype sew-grill (process-drawable)
   ()
-  :heap-base #x50
-  :method-count-assert 21
-  :size-assert         #xc8
-  :flag-assert         #x15005000c8
-  (:methods
-    (idle () _type_ :state 20)
+  (:state-methods
+    idle
     )
   )
 
 ;; definition for method 3 of type sew-grill
-(defmethod inspect sew-grill ((obj sew-grill))
-  (when (not obj)
-    (set! obj obj)
+(defmethod inspect ((this sew-grill))
+  (when (not this)
+    (set! this this)
     (goto cfg-4)
     )
   (let ((t9-0 (method-of-type process-drawable inspect)))
-    (t9-0 obj)
+    (t9-0 this)
     )
   (label cfg-4)
-  obj
+  this
   )
 
 ;; failed to figure out what this is:
-(defskelgroup skel-sew-grill sew-grill 0 3 ((1 (meters 999999))) :bounds (static-spherem 0 3 0 7.5))
+(defskelgroup skel-sew-grill sew-grill sew-grill-lod0-jg sew-grill-idle-ja
+              ((sew-grill-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 3 0 7.5)
+              )
 
 ;; failed to figure out what this is:
 (defstate idle (sew-grill)
   :virtual #t
   :code (behavior ()
     (until #f
-      (ja-no-eval :group! (ja-group)
-                  :num! (seek! (the float (+ (-> (ja-group) frames num-frames) -1)))
-                  :frame-num 0.0
-                  )
+      (ja-no-eval :group! (ja-group) :num! (seek!) :frame-num 0.0)
       (until (ja-done? 0)
         (suspend)
         (ja :num! (seek!))
         )
       )
     #f
-    (none)
     )
-  :post (the-as (function none :behavior sew-grill) ja-post)
+  :post ja-post
   )
 
 ;; definition for method 11 of type sew-grill
 ;; WARN: Return type mismatch object vs none.
-(defmethod init-from-entity! sew-grill ((obj sew-grill) (entity entity-actor))
+(defmethod init-from-entity! ((this sew-grill) (entity entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
 - stack size
 - collision information
 - loading the skeleton group / bones
 - sounds"
-  (set! (-> obj root) (new 'process 'trsqv))
-  (process-drawable-from-entity! obj entity)
+  (set! (-> this root) (new 'process 'trsqv))
+  (process-drawable-from-entity! this entity)
   (initialize-skeleton
-    obj
+    this
     (the-as skeleton-group (art-group-get-by-name *level* "skel-sew-grill" (the-as (pointer uint32) #f)))
     (the-as pair 0)
     )
-  (go (method-of-object obj idle))
+  (go (method-of-object this idle))
   (none)
   )
 
 ;; definition of type sew-scare-grunt
 (deftype sew-scare-grunt (grunt)
-  ((anim             spool-anim        :offset-assert 692)
-   (manipy           (pointer manipy)  :offset-assert 696)
-   (spooled-sound-id sound-id          :offset-assert 700)
-   (grill-actor      entity-actor      :offset-assert 704)
+  ((anim              spool-anim)
+   (manipy            (pointer manipy))
+   (spooled-sound-id  sound-id)
+   (grill-actor       entity-actor)
    )
-  :heap-base #x250
-  :method-count-assert 188
-  :size-assert         #x2c4
-  :flag-assert         #xbc025002c4
-  (:methods
-    (waiting () _type_ :state 186)
-    (scare () _type_ :state 187)
+  (:state-methods
+    waiting
+    scare
     )
   )
 
 ;; definition for method 3 of type sew-scare-grunt
-(defmethod inspect sew-scare-grunt ((obj sew-scare-grunt))
-  (when (not obj)
-    (set! obj obj)
+(defmethod inspect ((this sew-scare-grunt))
+  (when (not this)
+    (set! this this)
     (goto cfg-4)
     )
   (let ((t9-0 (method-of-type grunt inspect)))
-    (t9-0 obj)
+    (t9-0 this)
     )
-  (format #t "~2Tanim: ~A~%" (-> obj anim))
-  (format #t "~2Tmanipy: #x~X~%" (-> obj manipy))
-  (format #t "~2Tspooled-sound-id: ~D~%" (-> obj spooled-sound-id))
-  (format #t "~2Tgrill-actor: ~A~%" (-> obj grill-actor))
+  (format #t "~2Tanim: ~A~%" (-> this anim))
+  (format #t "~2Tmanipy: #x~X~%" (-> this manipy))
+  (format #t "~2Tspooled-sound-id: ~D~%" (-> this spooled-sound-id))
+  (format #t "~2Tgrill-actor: ~A~%" (-> this grill-actor))
   (label cfg-4)
-  obj
+  this
   )
 
 ;; failed to figure out what this is:
@@ -1799,14 +1723,10 @@ This commonly includes things such as:
 ;; failed to figure out what this is:
 (defstate waiting (sew-scare-grunt)
   :virtual #t
-  :event (the-as
-    (function process int symbol event-message-block object :behavior sew-scare-grunt)
-    enemy-event-handler
-    )
+  :event enemy-event-handler
   :enter (behavior ()
-    (set! (-> self state-time) (current-time))
+    (set-time! (-> self state-time))
     (logior! (-> self draw status) (draw-control-status no-draw))
-    (none)
     )
   :trans (behavior ()
     (let* ((target *target*)
@@ -1835,32 +1755,24 @@ This commonly includes things such as:
           )
         )
       )
-    (none)
     )
   :code (behavior ()
     (until #f
-      (ja-no-eval :group! (-> self draw art-group data 5)
-                  :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 5)) frames num-frames) -1)))
-                  :frame-num 0.0
-                  )
+      (ja-no-eval :group! grunt-idle-ja :num! (seek!) :frame-num 0.0)
       (until (ja-done? 0)
         (suspend)
         (ja :num! (seek!))
         )
       )
     #f
-    (none)
     )
-  :post (the-as (function none :behavior sew-scare-grunt) ja-post)
+  :post ja-post
   )
 
 ;; failed to figure out what this is:
 (defstate scare (sew-scare-grunt)
   :virtual #t
-  :event (the-as
-    (function process int symbol event-message-block object :behavior sew-scare-grunt)
-    enemy-event-handler
-    )
+  :event enemy-event-handler
   :enter (behavior ()
     (logclear! (-> self draw status) (draw-control-status no-draw))
     (let* ((actor (-> self grill-actor))
@@ -1890,7 +1802,6 @@ This commonly includes things such as:
     (set! (-> self spooled-sound-id)
           (lookup-gui-connection-id *gui-control* (-> self anim name) (gui-channel art-load) (gui-action none))
           )
-    (none)
     )
   :exit (behavior ()
     (let* ((actor (-> self grill-actor))
@@ -1903,11 +1814,10 @@ This commonly includes things such as:
           (logclear! (-> (the-as sew-grill actor-proc) draw status) (draw-control-status no-draw))
           )
       )
-    (none)
     )
   :code (behavior ()
     (ja-channel-push! 1 (seconds 0.2))
-    (let ((anim (-> self draw art-group data 57)))
+    (let ((anim grunt-sew-scare-grunt-end-ja))
       (ja-play-spooled-anim
         (-> self anim)
         (ja-group)
@@ -1924,10 +1834,9 @@ This commonly includes things such as:
     (logior! (-> self mask) (process-mask sleep))
     (suspend)
     0
-    (none)
     )
   :post (behavior ()
-    (let* ((a1-1 (vector<-cspace! (new 'stack-no-clear 'vector) (-> self node-list data 3)))
+    (let* ((a1-1 (vector<-cspace! (new 'stack-no-clear 'vector) (joint-node grunt-lod0-jg main)))
            (f1-0 (vector-vector-xz-distance (-> self root trans) a1-1))
            )
       (vector-lerp!
@@ -1960,23 +1869,22 @@ This commonly includes things such as:
         )
       )
     (transform-post)
-    (none)
     )
   )
 
 ;; definition for method 116 of type sew-scare-grunt
 ;; WARN: Return type mismatch object vs none.
-(defmethod go-idle sew-scare-grunt ((obj sew-scare-grunt))
-  (go (method-of-object obj waiting))
+(defmethod go-idle ((this sew-scare-grunt))
+  (go (method-of-object this waiting))
   (none)
   )
 
 ;; definition for method 114 of type sew-scare-grunt
 ;; WARN: Return type mismatch int vs none.
-(defmethod init-enemy-collision! sew-scare-grunt ((obj sew-scare-grunt))
+(defmethod init-enemy-collision! ((this sew-scare-grunt))
   "Initializes the [[collide-shape-moving]] and any ancillary tasks to make the enemy collide properly"
-  (stack-size-set! (-> obj main-thread) 512)
-  (let ((cshape (new 'process 'collide-shape-moving obj (collide-list-enum usually-hit-by-player))))
+  (stack-size-set! (-> this main-thread) 512)
+  (let ((cshape (new 'process 'collide-shape-moving this (collide-list-enum usually-hit-by-player))))
     (set! (-> cshape dynam) (copy *standard-dynamics* 'process))
     (set! (-> cshape reaction) cshape-reaction-default)
     (set! (-> cshape no-reaction)
@@ -2055,29 +1963,29 @@ This commonly includes things such as:
       (set! (-> cshape backup-collide-with) (-> root-prim prim-core collide-with))
       )
     (set! (-> cshape max-iteration-count) (the-as uint 3))
-    (set! (-> obj root) cshape)
+    (set! (-> this root) cshape)
     )
   0
   (none)
   )
 
 ;; definition for method 185 of type sew-scare-grunt
-(defmethod get-enemy-info sew-scare-grunt ((obj sew-scare-grunt))
+(defmethod get-enemy-info ((this sew-scare-grunt))
   "@returns the [[nav-enemy-info]] associated with this type of grunt"
   *sew-scare-grunt-nav-enemy-info*
   )
 
 ;; definition for method 115 of type sew-scare-grunt
 ;; WARN: Return type mismatch float vs none.
-(defmethod init-enemy! sew-scare-grunt ((obj sew-scare-grunt))
+(defmethod init-enemy! ((this sew-scare-grunt))
   "Common method called to initialize the enemy, typically sets up default field values and calls ancillary helper methods"
-  (set! (-> obj anim)
+  (set! (-> this anim)
         (new 'static 'spool-anim :name "sew-scare-grunt" :anim-name "sew-scare-grunt" :parts 2 :command-list '())
         )
-  (set! (-> obj grill-actor) (entity-actor-lookup (-> obj entity) 'alt-actor 0))
+  (set! (-> this grill-actor) (entity-actor-lookup (-> this entity) 'alt-actor 0))
   (let ((func (method-of-type grunt init-enemy!)))
-    (func obj)
+    (func this)
     )
-  (+! (-> obj root trans y) -3276.8)
+  (+! (-> this root trans y) -3276.8)
   (none)
   )

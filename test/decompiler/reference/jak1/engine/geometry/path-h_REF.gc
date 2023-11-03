@@ -1,0 +1,163 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; definition of type path-control
+(deftype path-control (basic)
+  ((flags       path-control-flag)
+   (name        symbol)
+   (process     process-drawable)
+   (curve       curve                  :inline)
+   (num-cverts  int32                  :overlay-at (-> curve num-cverts))
+   (cverts      (inline-array vector)  :overlay-at (-> curve cverts))
+   )
+  (:methods
+    (new (symbol type process symbol float) _type_)
+    (debug-draw (_type_) none)
+    (eval-path-curve-div! (_type_ vector float symbol) vector)
+    (get-random-point (_type_ vector) vector)
+    (path-control-method-12 (_type_ vector float) vector)
+    (eval-path-curve! (_type_ vector float symbol) vector)
+    (path-control-method-14 (_type_ vector float) vector)
+    (length-as-float (_type_) float)
+    (path-distance (_type_) float)
+    (get-num-verts (_type_) int)
+    (should-display? (_type_) symbol)
+    (path-control-method-19 (_type_) float)
+    (path-control-method-20 (_type_) float)
+    )
+  )
+
+;; definition for method 3 of type path-control
+(defmethod inspect ((this path-control))
+  (format #t "[~8x] ~A~%" this (-> this type))
+  (format #t "~Tflags: #x~X~%" (-> this flags))
+  (format #t "~Tname: ~A~%" (-> this name))
+  (format #t "~Tprocess: ~A~%" (-> this process))
+  (format #t "~Tcurve: #<curve @ #x~X>~%" (&-> this cverts))
+  (format #t "~Tnum-cverts: ~D~%" (-> this curve num-cverts))
+  (format #t "~Tcverts: #x~X~%" (-> this cverts))
+  this
+  )
+
+;; definition of type curve-control
+(deftype curve-control (path-control)
+  ()
+  (:methods
+    (new (symbol type process symbol float) _type_)
+    )
+  )
+
+;; definition for method 3 of type curve-control
+(defmethod inspect ((this curve-control))
+  (format #t "[~8x] ~A~%" this (-> this type))
+  (format #t "~Tflags: #x~X~%" (-> this flags))
+  (format #t "~Tname: ~A~%" (-> this name))
+  (format #t "~Tprocess: ~A~%" (-> this process))
+  (format #t "~Tcurve: #<curve @ #x~X>~%" (&-> this cverts))
+  (format #t "~Tnum-cverts: ~D~%" (-> this curve num-cverts))
+  (format #t "~Tcverts: #x~X~%" (-> this cverts))
+  this
+  )
+
+;; definition for method 0 of type path-control
+;; INFO: Used lq/sq
+;; INFO: Return type mismatch object vs path-control.
+(defmethod new path-control ((allocation symbol) (type-to-make type) (proc process) (name symbol) (time float))
+  (local-vars (tag res-tag))
+  (let ((this (object-new allocation type-to-make (the-as int (-> type-to-make size)))))
+    (when (zero? this)
+      (go process-drawable-art-error "memory")
+      (set! this (the-as path-control 0))
+      (goto cfg-9)
+      )
+    (set! (-> this process) (the-as process-drawable proc))
+    (set! (-> this name) name)
+    (let ((ent (-> proc entity)))
+      (when (= name 'path)
+        (let ((lookup-entity (entity-actor-lookup ent 'path-actor 0)))
+          (if lookup-entity
+              (set! ent lookup-entity)
+              )
+          )
+        )
+      (set! tag (new 'static 'res-tag))
+      (let ((data (res-lump-data ent name pointer :tag-ptr (& tag) :time time)))
+        (cond
+          (data
+            (set! (-> this cverts) (the-as (inline-array vector) data))
+            (set! (-> this curve num-cverts) (the-as int (-> tag elt-count)))
+            )
+          (else
+            (logior! (-> this flags) (path-control-flag not-found))
+            (set! (-> this cverts) (the-as (inline-array vector) #f))
+            (set! (-> this curve num-cverts) 0)
+            0
+            )
+          )
+        )
+      )
+    (label cfg-9)
+    (the-as path-control this)
+    )
+  )
+
+;; definition for method 18 of type path-control
+(defmethod should-display? ((this path-control))
+  (and *display-path-marks* (logtest? (-> this flags) (path-control-flag display)))
+  )
+
+;; definition for method 15 of type path-control
+(defmethod length-as-float ((this path-control))
+  (the float (+ (-> this curve num-cverts) -1))
+  )
+
+;; definition for method 17 of type path-control
+(defmethod get-num-verts ((this path-control))
+  (-> this curve num-cverts)
+  )
+
+;; definition for method 0 of type curve-control
+(defmethod new curve-control ((allocation symbol) (type-to-make type) (proc process) (name symbol) (time float))
+  (let ((this (object-new allocation type-to-make (the-as int (-> type-to-make size)))))
+    (set! (-> this process) (the-as process-drawable proc))
+    (set! (-> this name) name)
+    (let* ((ent (-> proc entity))
+           (v1-2 name)
+           (s2-0 (cond
+                   ((= v1-2 'path)
+                    'path-k
+                    )
+                   (else
+                     (let ((s2-1 string->symbol))
+                       (format (clear *temp-string*) "~A-k" name)
+                       (s2-1 *temp-string*)
+                       )
+                     )
+                   )
+                 )
+           )
+      (let ((lookup-entity (entity-actor-lookup ent 'path-actor 0)))
+        (if lookup-entity
+            (set! ent lookup-entity)
+            )
+        )
+      (when (not (get-curve-data! ent (the-as curve (&-> this cverts)) name s2-0 time))
+        (cond
+          ((> (-> this curve num-cverts) 0)
+           (set! (-> this type) path-control)
+           )
+          (else
+            (logior! (-> this flags) (path-control-flag not-found))
+            (set! (-> this cverts) (the-as (inline-array vector) #f))
+            (set! (-> this curve num-cverts) 0)
+            0
+            )
+          )
+        )
+      )
+    this
+    )
+  )
+
+;; failed to figure out what this is:
+0

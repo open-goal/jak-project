@@ -9,59 +9,57 @@
 
 ;; definition of type krew-package
 (deftype krew-package (process-drawable)
-  ((attach-object handle  :offset-assert 200)
-   (scale         float   :offset-assert 208)
+  ((attach-object  handle)
+   (scale          float)
    )
-  :heap-base #x60
-  :method-count-assert 24
-  :size-assert         #xd4
-  :flag-assert         #x18006000d4
+  (:state-methods
+    idle
+    die
+    )
   (:methods
-    (idle () _type_ :state 20)
-    (die () _type_ :state 21)
-    (krew-package-method-22 (_type_) none 22)
-    (krew-package-method-23 (_type_) none 23)
+    (krew-package-method-22 (_type_) none)
+    (krew-package-method-23 (_type_) none)
     )
   )
 
 ;; definition for method 3 of type krew-package
-(defmethod inspect krew-package ((obj krew-package))
-  (when (not obj)
-    (set! obj obj)
+(defmethod inspect ((this krew-package))
+  (when (not this)
+    (set! this this)
     (goto cfg-4)
     )
   (let ((t9-0 (method-of-type process-drawable inspect)))
-    (t9-0 obj)
+    (t9-0 this)
     )
-  (format #t "~2Tattach-object: ~D~%" (-> obj attach-object))
-  (format #t "~2Tscale: ~f~%" (-> obj scale))
+  (format #t "~2Tattach-object: ~D~%" (-> this attach-object))
+  (format #t "~2Tscale: ~f~%" (-> this scale))
   (label cfg-4)
-  obj
+  this
   )
 
 ;; definition for method 22 of type krew-package
 ;; WARN: Return type mismatch int vs none.
-(defmethod krew-package-method-22 krew-package ((obj krew-package))
-  (set! (-> obj root) (new 'process 'trsqv))
+(defmethod krew-package-method-22 ((this krew-package))
+  (set! (-> this root) (new 'process 'trsqv))
   0
   (none)
   )
 
 ;; definition for method 23 of type krew-package
 ;; WARN: Return type mismatch int vs none.
-(defmethod krew-package-method-23 krew-package ((obj krew-package))
+(defmethod krew-package-method-23 ((this krew-package))
   (with-pp
     (set! (-> pp level) (level-get *level* 'lpackage))
     (initialize-skeleton
-      obj
+      this
       (the-as skeleton-group (art-group-get-by-name *level* "skel-krew-package" (the-as (pointer uint32) #f)))
       (the-as pair 0)
       )
-    (set! (-> obj scale) 1.0)
-    (set! (-> obj draw lod-set lod 0 dist) 81920.0)
-    (set! (-> obj draw lod-set lod 1 dist) 204800.0)
-    (set! (-> obj draw lod-set lod 1 dist) 327680.0)
-    (logior! (-> obj skel status) (joint-control-status sync-math))
+    (set! (-> this scale) 1.0)
+    (set! (-> this draw lod-set lod 0 dist) 81920.0)
+    (set! (-> this draw lod-set lod 1 dist) 204800.0)
+    (set! (-> this draw lod-set lod 1 dist) 327680.0)
+    (logior! (-> this skel status) (joint-control-status sync-math))
     0
     (none)
     )
@@ -70,13 +68,13 @@
 ;; failed to figure out what this is:
 (defstate idle (krew-package)
   :virtual #t
-  :code (the-as (function none :behavior krew-package) sleep-code)
+  :code sleep-code
   :post (behavior ()
     (let ((gp-0 (handle->process (-> self attach-object))))
       (cond
         (gp-0
           (when (focus-test? (the-as process-focusable gp-0) dead)
-            (seek! (-> self scale) 0.0 (* 0.5 (-> self clock seconds-per-frame)))
+            (seek! (-> self scale) 0.0 (* 0.5 (seconds-per-frame)))
             (if (= (-> self scale) 0.0)
                 (go-virtual die)
                 )
@@ -93,7 +91,6 @@
       (set-vector! (-> self root scale) f0-5 f0-5 f0-5 1.0)
       )
     (ja-post)
-    (none)
     )
   )
 
@@ -102,20 +99,19 @@
   :virtual #t
   :code (behavior ()
     (cleanup-for-death self)
-    (none)
     )
   )
 
 ;; definition for method 11 of type krew-package
 ;; WARN: Return type mismatch entity-perm-status vs none.
-(defmethod init-from-entity! krew-package ((obj krew-package) (arg0 entity-actor))
+(defmethod init-from-entity! ((this krew-package) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
 - stack size
 - collision information
 - loading the skeleton group / bones
 - sounds"
-  (process-entity-status! obj (entity-perm-status dead) #t)
+  (process-entity-status! this (entity-perm-status dead) #t)
   (none)
   )
 
@@ -184,7 +180,7 @@ This commonly includes things such as:
           (set! (-> s4-0 flags) (task-arrow-flags task-arrow-flag-03))
           (set! (-> s4-0 map-icon) (the-as uint 15))
           (label cfg-21)
-          (let ((a0-30 (task-arrow-spawn s4-0 (the-as task-arrow self))))
+          (let ((a0-30 (task-arrow-spawn s4-0 self)))
             (when (not a0-30)
               (format #t "waiting for task-arrow~%")
               (suspend)
@@ -548,8 +544,8 @@ This commonly includes things such as:
         (send-event *target* 'change-mode 'normal)
         )
     (set-setting! 'pilot #f 0.0 0)
-    (set! (-> self state-time) (current-time))
-    (while (< (- (current-time) (-> self state-time)) (seconds 2))
+    (set-time! (-> self state-time))
+    (while (not (time-elapsed? (-> self state-time) (seconds 2)))
       (suspend)
       )
     (none)

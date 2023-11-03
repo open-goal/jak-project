@@ -36,24 +36,24 @@ The "bsp-tree" is a bsp used to associate camera positions with lists of visibib
   (none)
   )
 
-(defmethod mem-usage bsp-header ((obj bsp-header) (arg0 memory-usage-block) (arg1 int))
+(defmethod mem-usage ((this bsp-header) (arg0 memory-usage-block) (arg1 int))
   "Compute the memory usage of everything in a bsp-header.
    This includes all the drawables."
-  (set! (-> arg0 work-bsp) obj)
-  (when (nonzero? (-> obj info))
+  (set! (-> arg0 work-bsp) this)
+  (when (nonzero? (-> this info))
     (set! (-> arg0 length) (max 85 (-> arg0 length)))
     (set! (-> arg0 data 84 name) "array")
     (+! (-> arg0 data 84 count) 1)
-    (let ((v1-8 (asize-of (-> obj info))))
+    (let ((v1-8 (asize-of (-> this info))))
       (+! (-> arg0 data 84 used) v1-8)
       (+! (-> arg0 data 84 total) (logand -16 (+ v1-8 15)))
       )
     )
-  (if (nonzero? (-> obj drawable-trees))
-      (mem-usage (-> obj drawable-trees) arg0 arg1)
+  (if (nonzero? (-> this drawable-trees))
+      (mem-usage (-> this drawable-trees) arg0 arg1)
       )
-  (if (nonzero? (-> obj collide-hash))
-      (mem-usage (-> obj collide-hash) arg0 arg1)
+  (if (nonzero? (-> this collide-hash))
+      (mem-usage (-> this collide-hash) arg0 arg1)
       )
   (set! (-> arg0 length) (max 65 (-> arg0 length)))
   (set! (-> arg0 data 43 name) "entity")
@@ -70,81 +70,81 @@ The "bsp-tree" is a bsp used to associate camera positions with lists of visibib
   (set! (-> arg0 length) (max 62 (-> arg0 length)))
   (set! (-> arg0 data 61 name) "bsp-leaf-vis-self")
   (+! (-> arg0 data 61 count) 1)
-  (let ((v1-40 (-> obj visible-list-length)))
+  (let ((v1-40 (-> this visible-list-length)))
     (+! (-> arg0 data 61 used) v1-40)
     (+! (-> arg0 data 61 total) (logand -16 (+ v1-40 15)))
     )
   (set! (-> arg0 length) (max 60 (-> arg0 length)))
   (set! (-> arg0 data 59 name) "bsp-misc")
   (+! (-> arg0 data 59 count) 1)
-  (let ((v1-50 (* (-> obj texture-remap-table-len) 8)))
+  (let ((v1-50 (* (-> this texture-remap-table-len) 8)))
     (+! (-> arg0 data 59 used) v1-50)
     (+! (-> arg0 data 59 total) (logand -16 (+ v1-50 15)))
     )
   (set! (-> arg0 length) (max 60 (-> arg0 length)))
   (set! (-> arg0 data 59 name) "bsp-misc")
   (+! (-> arg0 data 59 count) 1)
-  (let ((v1-60 (* (-> obj texture-page-count) 4)))
+  (let ((v1-60 (* (-> this texture-page-count) 4)))
     (+! (-> arg0 data 59 used) v1-60)
     (+! (-> arg0 data 59 total) (logand -16 (+ v1-60 15)))
     )
-  (when (nonzero? (-> obj unknown-basic))
+  (when (nonzero? (-> this unknown-basic))
     (set! (-> arg0 length) (max 60 (-> arg0 length)))
     (set! (-> arg0 data 59 name) "bsp-misc")
     (+! (-> arg0 data 59 count) 1)
-    (let ((v1-72 (asize-of (-> obj unknown-basic))))
+    (let ((v1-72 (asize-of (-> this unknown-basic))))
       (+! (-> arg0 data 59 used) v1-72)
       (+! (-> arg0 data 59 total) (logand -16 (+ v1-72 15)))
       )
     )
-  (when (nonzero? (-> obj actor-birth-order))
+  (when (nonzero? (-> this actor-birth-order))
     (set! (-> arg0 length) (max 60 (-> arg0 length)))
     (set! (-> arg0 data 59 name) "bsp-misc")
     (+! (-> arg0 data 59 count) 1)
-    (let ((v1-85 (* (-> obj actors length) 4)))
+    (let ((v1-85 (* (-> this actors length) 4)))
       (+! (-> arg0 data 59 used) v1-85)
       (+! (-> arg0 data 59 total) (logand -16 (+ v1-85 15)))
       )
     )
-  (+! (-> arg0 data 64 count) (-> obj pat-length))
-  (let ((v1-92 (* (-> obj pat-length) 4)))
+  (+! (-> arg0 data 64 count) (-> this pat-length))
+  (let ((v1-92 (* (-> this pat-length) 4)))
     (+! (-> arg0 data 64 used) v1-92)
     (+! (-> arg0 data 64 total) (logand -16 (+ v1-92 15)))
     )
-  (when (nonzero? (-> obj region-trees))
-    (let* ((s3-0 (-> obj region-trees length))
+  (when (nonzero? (-> this region-trees))
+    (let* ((s3-0 (-> this region-trees length))
            (s2-0 0)
-           (a0-39 (-> obj region-trees s2-0))
+           (a0-39 (-> this region-trees s2-0))
            )
       (while (< s2-0 s3-0)
         (mem-usage a0-39 arg0 (logior arg1 128))
         (+! s2-0 1)
-        (set! a0-39 (-> obj region-trees s2-0))
+        (set! a0-39 (-> this region-trees s2-0))
         )
       )
     )
-  (let ((s3-1 (-> obj cameras)))
+  (let ((s3-1 (-> this cameras)))
     (when (nonzero? s3-1)
       (dotimes (s2-1 (-> s3-1 length))
         (mem-usage (-> s3-1 s2-1) arg0 (logior arg1 256))
         )
       )
     )
-  (if (nonzero? (-> obj nodes))
-      (mem-usage-bsp-tree obj (-> obj nodes 0) arg0 arg1)
+  (if (nonzero? (-> this nodes))
+      (mem-usage-bsp-tree this (-> this nodes 0) arg0 arg1)
       )
-  obj
+  this
   )
 
-(defmethod login bsp-header ((obj bsp-header))
+(defmethod login ((this bsp-header))
   "Log in a bsp-header.
    Note that this version isn't typically used - instead level.gc does a special login that runs
    over multiple frames."
-  (if (nonzero? (-> obj drawable-trees))
-      (login (-> obj drawable-trees))
+  (if (nonzero? (-> this drawable-trees))
+      (login (-> this drawable-trees))
       )
-  (set! (-> obj level tfrag-gs-test)
-        (if (logtest? (-> obj texture-flags 0) (texture-page-flag alpha-enable))
+  (set! (-> this level tfrag-gs-test)
+        (if (logtest? (-> this texture-flags 0) (texture-page-flag alpha-enable))
             (new 'static 'gs-test :ate #x1 :atst (gs-atest always) :zte #x1 :ztst (gs-ztest greater-equal))
             (new 'static 'gs-test
               :ate #x1
@@ -155,17 +155,17 @@ The "bsp-tree" is a bsp used to associate camera positions with lists of visibib
               )
             )
         )
-  obj
+  this
   )
 
 (define *test-shrub* 0)
 
-(defmethod draw bsp-header ((obj bsp-header) (arg0 bsp-header) (arg1 display-frame))
+(defmethod draw ((this bsp-header) (arg0 bsp-header) (arg1 display-frame))
   "Draw a bsp-header. Note that this mostly just adds drawable trees to a list which is later
   used by the background system. So this is probably a bit of a leftover from when drawing was done
   by iterating through all drawable-trees recursively."
   (local-vars (a3-4 uint128) (a3-5 uint128))
-  (let ((s4-0 (-> obj level)))
+  (let ((s4-0 (-> this level)))
     (when (-> s4-0 render?)
 
       ;; setup for level drawing:
@@ -179,7 +179,7 @@ The "bsp-tree" is a bsp used to associate camera positions with lists of visibib
           )
 
       ;; upload visibility data to spr
-      (let ((a2-3 (/ (+ (-> obj visible-list-length) 15) 16)))
+      (let ((a2-3 (/ (+ (-> this visible-list-length) 15) 16)))
         (__mem-move (-> (scratchpad-object terrain-context) work background vis-list) (-> s4-0 vis-bits) (the uint (* a2-3 16)))
         ; (dma-send-to-spr-no-flush
         ;   (the-as uint (-> (the-as terrain-context #x70000000) work background vis-list))
@@ -191,9 +191,9 @@ The "bsp-tree" is a bsp used to associate camera positions with lists of visibib
 
       ;; debug option to flip visibility bits
       (when *artist-flip-visible*
-        (let ((v1-15 (/ (+ (-> obj visible-list-length) 15) 16))
+        (let ((v1-15 (/ (+ (-> this visible-list-length) 15) 16))
               (a0-7 (-> (scratchpad-object terrain-context) work background vis-list))
-              (a1-5 (-> obj all-visible-list))
+              (a1-5 (-> this all-visible-list))
               )
           (dotimes (a2-4 v1-15)
             (let ((a3-3 (-> (the-as (pointer uint128) (+ (the-as uint a0-7) (* a2-4 16))))))
@@ -231,9 +231,9 @@ The "bsp-tree" is a bsp used to associate camera positions with lists of visibib
         )
 
       ;; execute the draw!
-      (when (nonzero? (-> obj drawable-trees))
+      (when (nonzero? (-> this drawable-trees))
         (with-profiler 'bsp *profile-bsp-color*
-          (let ((a1-8 (-> obj drawable-trees)))
+          (let ((a1-8 (-> this drawable-trees)))
             (draw a1-8 a1-8 arg1)
             )
           )
@@ -246,7 +246,7 @@ The "bsp-tree" is a bsp used to associate camera positions with lists of visibib
 
   )
 
-(defmethod debug-draw bsp-header ((obj bsp-header) (arg0 drawable) (arg1 display-frame))
+(defmethod debug-draw ((this bsp-header) (arg0 drawable) (arg1 display-frame))
   "Set up and call debug-draw on a bsp-header and all its drawables.
    The actual use of debug-draw is up to the drawables, but this is a useful place to do random
    debug drawing."
@@ -267,10 +267,10 @@ The "bsp-tree" is a bsp used to associate camera positions with lists of visibib
          (vf30 :class vf)
          (vf31 :class vf)
          )
-    (let ((v1-0 (-> obj level)))
+    (let ((v1-0 (-> this level)))
       (set! *draw-index* (-> v1-0 draw-index))
       (set! (-> *prototype-tie-work* mood) (-> v1-0 mood-context))
-      (let ((a2-1 (/ (+ (-> obj visible-list-length) 15) 16)))
+      (let ((a2-1 (/ (+ (-> this visible-list-length) 15) 16)))
           (__mem-move (-> (scratchpad-object terrain-context) work background vis-list) (-> v1-0 vis-bits) (the uint (* a2-1 16)))
         ; (dma-send-to-spr-no-flush
         ;   (the-as uint (+ #x38a0 #x70000000))
@@ -301,8 +301,8 @@ The "bsp-tree" is a bsp used to associate camera positions with lists of visibib
                (.lvf vf31 (&-> at-0 camera-temp trans quad))
                )
       )
-    (when (nonzero? (-> obj drawable-trees))
-      (let ((a1-4 (-> obj drawable-trees)))
+    (when (nonzero? (-> this drawable-trees))
+      (let ((a1-4 (-> this drawable-trees)))
         (debug-draw a1-4 a1-4 arg1)
         )
       )
@@ -311,7 +311,7 @@ The "bsp-tree" is a bsp used to associate camera positions with lists of visibib
     )
   )
 
-(defmethod collect-stats bsp-header ((obj bsp-header))
+(defmethod collect-stats ((this bsp-header))
   "Set up and call collect-stats on a bsp-header.
    This will run (moderately) expensive checks to count triangles, visibility, etc."
   (rlet ((vf16 :class vf)
@@ -331,8 +331,8 @@ The "bsp-tree" is a bsp used to associate camera positions with lists of visibib
          (vf30 :class vf)
          (vf31 :class vf)
          )
-    (let ((v1-0 (-> obj level))
-          (a2-0 (/ (+ (-> obj visible-list-length) 15) 16))
+    (let ((v1-0 (-> this level))
+          (a2-0 (/ (+ (-> this visible-list-length) 15) 16))
           )
       (__mem-move (-> (scratchpad-object terrain-context) work background vis-list) (-> v1-0 vis-bits) (the uint (* a2-0 16)))
       ; (dma-send-to-spr-no-flush
@@ -363,8 +363,8 @@ The "bsp-tree" is a bsp used to associate camera positions with lists of visibib
                (.lvf vf31 (&-> at-0 camera-temp trans quad))
                )
       )
-    (if (nonzero? (-> obj drawable-trees))
-        (collect-stats (-> obj drawable-trees))
+    (if (nonzero? (-> this drawable-trees))
+        (collect-stats (-> this drawable-trees))
         )
     0
     (none)
@@ -483,9 +483,9 @@ The "bsp-tree" is a bsp used to associate camera positions with lists of visibib
     )
   )
 
-(defmethod collect-regions bsp-header ((obj bsp-header) (arg0 sphere) (arg1 int) (arg2 region-prim-list))
+(defmethod collect-regions ((this bsp-header) (arg0 sphere) (arg1 int) (arg2 region-prim-list))
   "Recursively find all regions containing the sphere, add to region-prim-list"
-  (let ((s3-0 (-> obj region-trees)))
+  (let ((s3-0 (-> this region-trees)))
     (dotimes (s2-0 (-> s3-0 length))
       (collect-regions (-> s3-0 s2-0) arg0 arg1 arg2)
       )

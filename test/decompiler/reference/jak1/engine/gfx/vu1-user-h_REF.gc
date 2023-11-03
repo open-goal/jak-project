@@ -29,85 +29,73 @@
 
 ;; definition of type dma-foreground-sink
 (deftype dma-foreground-sink (basic)
-  ((bucket                   bucket-id  :offset-assert   4)
-   (foreground-texture-page  int8       :offset-assert   8)
-   (foreground-texture-level int8       :offset-assert   9)
-   (foreground-output-bucket int8       :offset-assert  10)
+  ((bucket                    bucket-id)
+   (foreground-texture-page   int8)
+   (foreground-texture-level  int8)
+   (foreground-output-bucket  int8)
    )
-  :method-count-assert 9
-  :size-assert         #xb
-  :flag-assert         #x90000000b
   )
 
 ;; definition for method 3 of type dma-foreground-sink
-(defmethod inspect dma-foreground-sink ((obj dma-foreground-sink))
-  (format #t "[~8x] ~A~%" obj (-> obj type))
-  (format #t "~Tbucket: ~D~%" (-> obj bucket))
-  (format #t "~Tforeground-texture-page: ~D~%" (-> obj foreground-texture-page))
-  (format #t "~Tforeground-texture-level: ~D~%" (-> obj foreground-texture-level))
-  (format #t "~Tforeground-output-bucket: ~D~%" (-> obj foreground-output-bucket))
-  obj
+(defmethod inspect ((this dma-foreground-sink))
+  (format #t "[~8x] ~A~%" this (-> this type))
+  (format #t "~Tbucket: ~D~%" (-> this bucket))
+  (format #t "~Tforeground-texture-page: ~D~%" (-> this foreground-texture-page))
+  (format #t "~Tforeground-texture-level: ~D~%" (-> this foreground-texture-level))
+  (format #t "~Tforeground-output-bucket: ~D~%" (-> this foreground-output-bucket))
+  this
   )
 
 ;; definition of type generic-bucket-state
 (deftype generic-bucket-state (structure)
-  ((gifbuf-adr uint32  :offset-assert   0)
-   (inbuf-adr  uint32  :offset-assert   4)
+  ((gifbuf-adr  uint32)
+   (inbuf-adr   uint32)
    )
   :pack-me
-  :method-count-assert 9
-  :size-assert         #x8
-  :flag-assert         #x900000008
   )
 
 ;; definition for method 3 of type generic-bucket-state
-(defmethod inspect generic-bucket-state ((obj generic-bucket-state))
-  (format #t "[~8x] ~A~%" obj 'generic-bucket-state)
-  (format #t "~Tgifbuf-adr: ~D~%" (-> obj gifbuf-adr))
-  (format #t "~Tinbuf-adr: ~D~%" (-> obj inbuf-adr))
-  obj
+(defmethod inspect ((this generic-bucket-state))
+  (format #t "[~8x] ~A~%" this 'generic-bucket-state)
+  (format #t "~Tgifbuf-adr: ~D~%" (-> this gifbuf-adr))
+  (format #t "~Tinbuf-adr: ~D~%" (-> this inbuf-adr))
+  this
   )
 
 ;; definition of type generic-dma-foreground-sink
 (deftype generic-dma-foreground-sink (dma-foreground-sink)
-  ((state generic-bucket-state :inline :offset-assert  12)
+  ((state  generic-bucket-state  :inline)
    )
-  :method-count-assert 9
-  :size-assert         #x14
-  :flag-assert         #x900000014
   )
 
 ;; definition for method 3 of type generic-dma-foreground-sink
-(defmethod inspect generic-dma-foreground-sink ((obj generic-dma-foreground-sink))
-  (format #t "[~8x] ~A~%" obj (-> obj type))
-  (format #t "~Tbucket: ~D~%" (-> obj bucket))
-  (format #t "~Tforeground-texture-page: ~D~%" (-> obj foreground-texture-page))
-  (format #t "~Tforeground-texture-level: ~D~%" (-> obj foreground-texture-level))
-  (format #t "~Tforeground-output-bucket: ~D~%" (-> obj foreground-output-bucket))
-  (format #t "~Tstate: #<generic-bucket-state @ #x~X>~%" (-> obj state))
-  obj
+(defmethod inspect ((this generic-dma-foreground-sink))
+  (format #t "[~8x] ~A~%" this (-> this type))
+  (format #t "~Tbucket: ~D~%" (-> this bucket))
+  (format #t "~Tforeground-texture-page: ~D~%" (-> this foreground-texture-page))
+  (format #t "~Tforeground-texture-level: ~D~%" (-> this foreground-texture-level))
+  (format #t "~Tforeground-output-bucket: ~D~%" (-> this foreground-output-bucket))
+  (format #t "~Tstate: #<generic-bucket-state @ #x~X>~%" (-> this state))
+  this
   )
 
 ;; definition of type dma-foreground-sink-group
 (deftype dma-foreground-sink-group (basic)
-  ((sink         dma-foreground-sink         3 :offset-assert   4)
-   (merc-sink    dma-foreground-sink           :offset          4)
-   (generic-sink generic-dma-foreground-sink   :offset          8)
-   (level        level                         :offset-assert  16)
+  ((sink          dma-foreground-sink          3)
+   (merc-sink     dma-foreground-sink          :overlay-at (-> sink 0))
+   (generic-sink  generic-dma-foreground-sink  :overlay-at (-> sink 1))
+   (level         level)
    )
-  :method-count-assert 9
-  :size-assert         #x14
-  :flag-assert         #x900000014
   )
 
 ;; definition for method 3 of type dma-foreground-sink-group
-(defmethod inspect dma-foreground-sink-group ((obj dma-foreground-sink-group))
-  (format #t "[~8x] ~A~%" obj (-> obj type))
-  (format #t "~Tsink[3] @ #x~X~%" (-> obj sink))
-  (format #t "~Tmerc-sink: ~A~%" (-> obj merc-sink))
-  (format #t "~Tgeneric-sink: ~A~%" (-> obj generic-sink))
-  (format #t "~Tlevel: ~A~%" (-> obj level))
-  obj
+(defmethod inspect ((this dma-foreground-sink-group))
+  (format #t "[~8x] ~A~%" this (-> this type))
+  (format #t "~Tsink[3] @ #x~X~%" (-> this sink))
+  (format #t "~Tmerc-sink: ~A~%" (-> this merc-sink))
+  (format #t "~Tgeneric-sink: ~A~%" (-> this generic-sink))
+  (format #t "~Tlevel: ~A~%" (-> this level))
+  this
   )
 
 ;; failed to figure out what this is:

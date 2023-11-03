@@ -27,8 +27,10 @@
    (font          font-context)
    (y-ofs         float)
    )
+  (:state-methods
+    active
+    )
   (:methods
-    (active () _type_ :state 14)
     (initialize-font (_type_) font-context))
   )
 
@@ -52,8 +54,7 @@
     ;; now center (we could do this earlier but it's fine)
     (-! (-> self font origin x) (/ (-> self font width) 2))
     ;; now move it up
-    (-! (-> self font origin y) (-> self y-ofs))
-    (none))
+    (-! (-> self font origin y) (-> self y-ofs)))
   
   :code (behavior ()
     (let ((state-time (current-time)))
@@ -76,14 +77,14 @@
     )
   )
 
-(defmethod relocate damage-number ((obj damage-number) (diff int))
-  (if (nonzero? (-> obj font))
-      (&+! (-> obj font) diff)
+(defmethod relocate ((this damage-number) (diff int))
+  (if (nonzero? (-> this font))
+      (&+! (-> this font) diff)
       )
-  (the-as damage-number ((the-as (function process int process) (find-parent-method damage-number 7)) obj diff))
+  (call-parent-method this diff)
   )
 
-(defmethod initialize-font damage-number ((self damage-number))
+(defmethod initialize-font ((self damage-number))
   "create the font that will be used used."
 
   (if (zero? (-> self font))
@@ -242,15 +243,16 @@
    (prev-bar  (pointer health-bar))
    (next-bar  (pointer health-bar))
    )
-  (:methods
-    (idle () _type_ :state 14))
+  (:state-methods
+    idle
+    )
   )
 
-(defmethod relocate health-bar ((obj health-bar) (diff int))
-  (if (nonzero? (-> obj font))
-      (&+! (-> obj font) diff)
+(defmethod relocate health-bar ((this health-bar) (diff int))
+  (if (nonzero? (-> this font))
+      (&+! (-> this font) diff)
       )
-  (the-as health-bar ((the-as (function process int process) (find-parent-method health-bar 7)) obj diff))
+  (call-parent-method this diff)
   )
 
 
@@ -270,37 +272,37 @@
 
 (defmethod new health-bar-manager ((allocation symbol) (type-to-make type))
   
-  (let ((obj (object-new allocation type-to-make (the-as int (-> type-to-make size)))))
-    (set! (-> obj head) #f)
-    (set! (-> obj tail) #f)
-    obj)
+  (let ((this (object-new allocation type-to-make (the-as int (-> type-to-make size)))))
+    (set! (-> this head) #f)
+    (set! (-> this tail) #f)
+    this)
   )
 
 
-(defmethod append-to-list health-bar-manager ((obj health-bar-manager) (bar-ptr (pointer health-bar)))
+(defmethod append-to-list ((this health-bar-manager) (bar-ptr (pointer health-bar)))
   "add a health bar to the end of the linked list"
-  (set! (-> bar-ptr 0 prev-bar) (-> obj tail))
+  (set! (-> bar-ptr 0 prev-bar) (-> this tail))
   (cond
-    ((-> obj tail)
+    ((-> this tail)
       ;; list has stuff
-      (set! (-> obj tail 0 next-bar) bar-ptr)
+      (set! (-> this tail 0 next-bar) bar-ptr)
       )
     (else
       ;; no tail means list is empty. fill head.
-      (set! (-> obj head) bar-ptr)
+      (set! (-> this head) bar-ptr)
       )
     )
-  (set! (-> obj tail) bar-ptr)
+  (set! (-> this tail) bar-ptr)
   
   bar-ptr)
 
-(defmethod remove-from-list health-bar-manager ((obj health-bar-manager) (bar-ptr (pointer health-bar)))
+(defmethod remove-from-list ((this health-bar-manager) (bar-ptr (pointer health-bar)))
   "remove a health bar from the linked list. call this when deactivating it"
 
-  (if (= (-> obj head) bar-ptr)
-      (set! (-> obj head) (-> bar-ptr 0 next-bar)))
-  (if (= (-> obj tail) bar-ptr)
-      (set! (-> obj tail) (-> bar-ptr 0 prev-bar)))
+  (if (= (-> this head) bar-ptr)
+      (set! (-> this head) (-> bar-ptr 0 next-bar)))
+  (if (= (-> this tail) bar-ptr)
+      (set! (-> this tail) (-> bar-ptr 0 prev-bar)))
   (if (-> bar-ptr 0 next-bar)
       (set! (-> bar-ptr 0 next-bar 0 prev-bar) (-> bar-ptr 0 prev-bar)))
   (if (-> bar-ptr 0 prev-bar)
@@ -309,10 +311,10 @@
   bar-ptr)
 
 
-(defmethod get-bar-for-process health-bar-manager ((obj health-bar-manager) (proc process-drawable))
+(defmethod get-bar-for-process ((this health-bar-manager) (proc process-drawable))
   "return the health bar associated with that process. #f = not found"
 
-  (let ((cur-bar (-> obj head)))
+  (let ((cur-bar (-> this head)))
     (while cur-bar
       (if (= (handle->process (-> cur-bar 0 owner)) proc)
           (return cur-bar))
@@ -354,9 +356,7 @@
                                 (+ (/ (-> self trans-2d y) 16) -1855 (the int (-> self height))))
     (set-depth! (-> self font) (/ (-> self trans-2d z) 16))
     ;; now center (we could do this earlier but it's fine)
-    (-! (-> self font origin x) (/ (-> self width) 2))
-
-    (none))
+    (-! (-> self font origin x) (/ (-> self width) 2)))
   
   :code (behavior ()
     (while (and (handle->process (-> self owner)) (not (case (-> (handle->process (-> self owner)) next-state name) (('inactive 'hidden) #t))))
@@ -377,7 +377,7 @@
   )
 
 
-(defmethod deactivate health-bar ((self health-bar))
+(defmethod deactivate ((self health-bar))
 
   (remove-from-list *health-bar-manager* (process->ppointer self))
 
@@ -404,7 +404,7 @@
   ;; init font
   (set! (-> self font) (new 'process 'font-context *font-default-matrix* 0 0 0.0 (font-color default) (font-flags shadow kerning)))
   (set-scale! (-> self font) 0.35)
-  (set-flags! (-> self font) (font-flags shadow kerning large middle left))
+  (set-flags! (-> self font) (font-flags shadow kerning large middle middle-vert))
   (set-width! (-> self font) 34)
   (set-height! (-> self font) 10)
 
@@ -419,9 +419,9 @@
 
 
 
-(defmethod send-damage-to-bar health-bar-manager ((obj health-bar-manager) (from process-drawable) (damage int) (hit-points-old int))
+(defmethod send-damage-to-bar ((this health-bar-manager) (from process-drawable) (damage int) (hit-points-old int))
   "send damage and hit point information of an enemy to its health bar. creates one if needed."
-  (let ((the-bar (get-bar-for-process obj from)))
+  (let ((the-bar (get-bar-for-process this from)))
       (cond
         (the-bar
           (send-event (ppointer->process the-bar) 'damage damage)
@@ -433,10 +433,10 @@
       the-bar)
   )
 
-(defmethod set-proc-bar-hit-points health-bar-manager ((obj health-bar-manager) (proc process-drawable) (hit-points int))
+(defmethod set-proc-bar-hit-points ((this health-bar-manager) (proc process-drawable) (hit-points int))
   "simply set the hit points (not max hit points) of a process's health bar"
   
-  (let ((the-bar (get-bar-for-process obj proc)))
+  (let ((the-bar (get-bar-for-process this proc)))
     (send-event (ppointer->process the-bar) 'set-hit-points hit-points)
     the-bar)
   )

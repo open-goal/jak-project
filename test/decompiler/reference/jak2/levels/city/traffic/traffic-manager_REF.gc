@@ -9,42 +9,40 @@
 
 ;; definition of type traffic-manager
 (deftype traffic-manager (process)
-  ((traffic-engine   traffic-engine                      :offset-assert 128)
-   (fast-spawn       symbol                              :offset-assert 132)
-   (dark-guard-ratio int32                               :offset-assert 136)
-   (spawn-params     traffic-object-spawn-params :inline :offset-assert 144)
+  ((traffic-engine    traffic-engine)
+   (fast-spawn        symbol)
+   (dark-guard-ratio  int32)
+   (spawn-params      traffic-object-spawn-params  :inline)
    )
-  :heap-base #x80
-  :method-count-assert 22
-  :size-assert         #xf8
-  :flag-assert         #x16008000f8
+  (:state-methods
+    idle
+    active
+    )
   (:methods
-    (idle () _type_ :state 14)
-    (active () _type_ :state 15)
-    (update (_type_) none 16)
-    (spawn-all (_type_) none 17)
-    (kill-excess-once (_type_) none 18)
-    (kill-all-inactive (_type_) none 19)
-    (reset-and-init (_type_) none 20)
-    (init-params (_type_) none 21)
+    (update (_type_) none)
+    (spawn-all (_type_) none)
+    (kill-excess-once (_type_) none)
+    (kill-all-inactive (_type_) none)
+    (reset-and-init (_type_) none)
+    (init-params (_type_) none)
     )
   )
 
 ;; definition for method 3 of type traffic-manager
-(defmethod inspect traffic-manager ((obj traffic-manager))
-  (when (not obj)
-    (set! obj obj)
+(defmethod inspect ((this traffic-manager))
+  (when (not this)
+    (set! this this)
     (goto cfg-4)
     )
   (let ((t9-0 (method-of-type process inspect)))
-    (t9-0 obj)
+    (t9-0 this)
     )
-  (format #t "~2Ttraffic-engine: ~A~%" (-> obj traffic-engine))
-  (format #t "~2Tfast-spawn: ~A~%" (-> obj fast-spawn))
-  (format #t "~2Tdark-guard-ratio: ~D~%" (-> obj dark-guard-ratio))
-  (format #t "~2Tspawn-params: #<traffic-object-spawn-params @ #x~X>~%" (-> obj spawn-params))
+  (format #t "~2Ttraffic-engine: ~A~%" (-> this traffic-engine))
+  (format #t "~2Tfast-spawn: ~A~%" (-> this fast-spawn))
+  (format #t "~2Tdark-guard-ratio: ~D~%" (-> this dark-guard-ratio))
+  (format #t "~2Tspawn-params: #<traffic-object-spawn-params @ #x~X>~%" (-> this spawn-params))
   (label cfg-4)
-  obj
+  this
   )
 
 ;; definition for function draw-city-info
@@ -71,12 +69,12 @@
 
 ;; definition for method 16 of type traffic-manager
 ;; WARN: Return type mismatch int vs none.
-(defmethod update traffic-manager ((obj traffic-manager))
-  (update-traffic (-> obj traffic-engine))
-  (kill-excess-once obj)
-  (spawn-all obj)
+(defmethod update ((this traffic-manager))
+  (update-traffic (-> this traffic-engine))
+  (kill-excess-once this)
+  (spawn-all this)
   (if *debug-segment*
-      (debug-unused (-> obj traffic-engine))
+      (debug-unused (-> this traffic-engine))
       )
   (if *display-traffic-height-map*
       (debug-draw *traffic-height-map* (target-pos 0))
@@ -94,15 +92,15 @@
 
 ;; definition for method 18 of type traffic-manager
 ;; WARN: Return type mismatch int vs none.
-(defmethod kill-excess-once traffic-manager ((obj traffic-manager))
+(defmethod kill-excess-once ((this traffic-manager))
   (let ((type-i 0))
     (while (< (the-as uint type-i) (the-as uint 21))
-      (let ((traffic (-> obj traffic-engine object-type-info-array type-i)))
+      (let ((traffic (-> this traffic-engine object-type-info-array type-i)))
         (when (logtest? (-> traffic flags) (traffic-type-flags trtflags-1))
           (let ((total-count (+ (-> traffic active-count) (-> traffic inactive-count))))
             (when (< (-> traffic want-count) total-count)
               (let ((a0-10 (handle->process (get-from-inactive-by-type
-                                              (-> obj traffic-engine tracker-array (-> traffic tracker-index))
+                                              (-> this traffic-engine tracker-array (-> traffic tracker-index))
                                               (the-as traffic-type type-i)
                                               )
                                             )
@@ -125,13 +123,13 @@
 
 ;; definition for method 19 of type traffic-manager
 ;; WARN: Return type mismatch int vs none.
-(defmethod kill-all-inactive traffic-manager ((obj traffic-manager))
+(defmethod kill-all-inactive ((this traffic-manager))
   (let ((s5-0 0))
     (while (< (the-as uint s5-0) (the-as uint 21))
-      (let ((s4-0 (-> obj traffic-engine object-type-info-array s5-0)))
+      (let ((s4-0 (-> this traffic-engine object-type-info-array s5-0)))
         (countdown (s3-0 (-> s4-0 inactive-count))
           (let ((a0-6 (handle->process (get-from-inactive-by-type
-                                         (-> obj traffic-engine tracker-array (-> s4-0 tracker-index))
+                                         (-> this traffic-engine tracker-array (-> s4-0 tracker-index))
                                          (the-as traffic-type s5-0)
                                          )
                                        )
@@ -152,11 +150,11 @@
 
 ;; definition for method 17 of type traffic-manager
 ;; WARN: Return type mismatch int vs none.
-(defmethod spawn-all traffic-manager ((obj traffic-manager))
+(defmethod spawn-all ((this traffic-manager))
   (let ((s5-0 0))
     (b! #t cfg-4 :delay (nop!))
     (label cfg-1)
-    (let ((s4-0 (-> obj traffic-engine object-type-info-array s5-0)))
+    (let ((s4-0 (-> this traffic-engine object-type-info-array s5-0)))
       (logclear! (-> s4-0 flags) (traffic-type-flags trtflags-3))
       (if (= (level-status *level* (-> s4-0 level)) 'active)
           (logior! (-> s4-0 flags) (traffic-type-flags trtflags-3))
@@ -170,16 +168,16 @@
         (s4-1 0)
         (s3-1 #x1fffff)
         )
-    (if (-> obj fast-spawn)
+    (if (-> this fast-spawn)
         (set! s5-1 120)
         )
     (b! #t cfg-36 :delay (nop!))
     (label cfg-8)
-    (let* ((s2-0 (-> obj spawn-params))
+    (let* ((s2-0 (-> this spawn-params))
            (s1-0 (-> s2-0 object-type))
            )
       (when (logtest? s3-1 (ash 1 s1-0))
-        (let ((s0-0 (-> obj traffic-engine object-type-info-array s1-0)))
+        (let ((s0-0 (-> this traffic-engine object-type-info-array s1-0)))
           (let ((v1-21 (+ (-> s0-0 active-count) (-> s0-0 inactive-count))))
             (b!
               (not (and (logtest? (-> s0-0 flags) (traffic-type-flags trtflags-1))
@@ -193,8 +191,8 @@
             (logclear! (-> s2-0 flags) (traffic-spawn-flags dark-guard))
             (b!
               (not (and (= (-> s2-0 object-type) (traffic-type crimson-guard-1))
-                        (> (-> obj dark-guard-ratio) 0)
-                        (zero? (mod v1-21 (-> obj dark-guard-ratio)))
+                        (> (-> this dark-guard-ratio) 0)
+                        (zero? (mod v1-21 (-> this dark-guard-ratio)))
                         )
                    )
               cfg-25
@@ -203,9 +201,9 @@
             )
           (logior! (-> s2-0 flags) (traffic-spawn-flags dark-guard))
           (label cfg-25)
-          (let ((a2-0 (traffic-object-spawn obj s2-0)))
+          (let ((a2-0 (traffic-object-spawn this s2-0)))
             (b! (not a2-0) cfg-27 :delay (nop!))
-            (add-object (-> obj traffic-engine) s1-0 a2-0)
+            (add-object (-> this traffic-engine) s1-0 a2-0)
             )
           (+! (-> s0-0 reserve-count) -1)
           )
@@ -232,7 +230,7 @@
     (b! (and (< s4-1 s5-1) (nonzero? s3-1)) cfg-8 :delay (nop!))
     )
   (label cfg-41)
-  (set! (-> obj fast-spawn) #f)
+  (set! (-> this fast-spawn) #f)
   0
   0
   (none)
@@ -389,9 +387,9 @@
 
 ;; definition for method 20 of type traffic-manager
 ;; WARN: Return type mismatch int vs none.
-(defmethod reset-and-init traffic-manager ((obj traffic-manager))
-  (set! (-> obj traffic-engine) *traffic-engine*)
-  (reset-and-init-from-manager (-> obj traffic-engine) obj)
+(defmethod reset-and-init ((this traffic-manager))
+  (set! (-> this traffic-engine) *traffic-engine*)
+  (reset-and-init-from-manager (-> this traffic-engine) this)
   (restore-city-speeches)
   0
   (none)
@@ -399,28 +397,28 @@
 
 ;; definition for method 7 of type traffic-manager
 ;; WARN: Return type mismatch process vs traffic-manager.
-(defmethod relocate traffic-manager ((obj traffic-manager) (arg0 int))
-  (set! *traffic-manager* obj)
+(defmethod relocate ((this traffic-manager) (arg0 int))
+  (set! *traffic-manager* this)
   (if *traffic-manager*
       (set! *traffic-manager* (&+ *traffic-manager* arg0))
       )
-  (the-as traffic-manager ((method-of-type process relocate) obj arg0))
+  (the-as traffic-manager ((method-of-type process relocate) this arg0))
   )
 
 ;; definition for method 10 of type traffic-manager
-(defmethod deactivate traffic-manager ((obj traffic-manager))
-  (stop-alarm-sound (-> obj traffic-engine))
+(defmethod deactivate ((this traffic-manager))
+  (stop-alarm-sound (-> this traffic-engine))
   (set! *traffic-manager* #f)
-  (remove-setting *setting-control* obj 'task-mask)
+  (remove-setting *setting-control* this 'task-mask)
   (apply-settings *setting-control*)
   (speech-control-method-9 *speech-control*)
-  ((method-of-type process deactivate) obj)
+  ((method-of-type process deactivate) this)
   (none)
   )
 
 ;; definition for method 21 of type traffic-manager
 ;; WARN: Return type mismatch int vs none.
-(defmethod init-params traffic-manager ((obj traffic-manager))
+(defmethod init-params ((this traffic-manager))
   (let ((traffic-want-counts (new 'stack-no-clear 'array 'int8 21)))
     (set! (-> traffic-want-counts 11) 8)
     (set! (-> traffic-want-counts 12) 8)
@@ -441,15 +439,15 @@
     (set! (-> traffic-want-counts 8) 14)
     (set! (-> traffic-want-counts 9) 14)
     (set! (-> traffic-want-counts 10) 14)
-    (set! (-> obj fast-spawn) *traffic-fast-spawn*)
-    (reset-and-init obj)
-    (let ((v1-20 (-> obj traffic-engine)))
+    (set! (-> this fast-spawn) *traffic-fast-spawn*)
+    (reset-and-init this)
+    (let ((v1-20 (-> this traffic-engine)))
       (dotimes (a0-2 21)
         (set! (-> v1-20 object-type-info-array a0-2 want-count) (-> traffic-want-counts a0-2))
         )
       )
     )
-  (let ((params (-> obj spawn-params)))
+  (let ((params (-> this spawn-params)))
     (set! (-> params object-type) (traffic-type crimson-guard-1))
     (set! (-> params behavior) (the-as uint 1))
     (set! (-> params id) (the-as uint 0))
@@ -469,13 +467,13 @@
       )
     (set! (-> params id) (the-as uint 1))
     )
-  (set! (-> obj dark-guard-ratio) (if (task-node-closed? (game-task-node tomb-boss-resolution))
-                                      5
-                                      0
-                                      )
+  (set! (-> this dark-guard-ratio) (if (task-node-closed? (game-task-node tomb-boss-resolution))
+                                       5
+                                       0
+                                       )
         )
-  (restore-default-settings (-> obj traffic-engine))
-  (set! *traffic-manager* obj)
+  (restore-default-settings (-> this traffic-engine))
+  (set! *traffic-manager* this)
   0
   (none)
   )
@@ -741,13 +739,11 @@
   :event traffic-manager-event-handler
   :enter (behavior ()
     (spawn-all self)
-    (none)
     )
   :code (behavior ()
     (suspend)
     (suspend)
     (go-virtual active)
-    (none)
     )
   )
 
@@ -755,10 +751,9 @@
 (defstate active (traffic-manager)
   :virtual #t
   :event traffic-manager-event-handler
-  :code (the-as (function none :behavior traffic-manager) sleep-code)
+  :code sleep-code
   :post (behavior ()
     (update self)
-    (none)
     )
   )
 

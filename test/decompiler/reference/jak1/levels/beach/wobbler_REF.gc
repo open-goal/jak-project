@@ -3,83 +3,80 @@
 
 ;; definition of type wobbler
 (deftype wobbler (basic)
-  ((posx    float  :offset-assert   4)
-   (posy    float  :offset-assert   8)
-   (velx    float  :offset-assert  12)
-   (vely    float  :offset-assert  16)
-   (spring  float  :offset-assert  20)
-   (damping float  :offset-assert  24)
-   (height  float  :offset-assert  28)
+  ((posx     float)
+   (posy     float)
+   (velx     float)
+   (vely     float)
+   (spring   float)
+   (damping  float)
+   (height   float)
    )
-  :method-count-assert 13
-  :size-assert         #x20
-  :flag-assert         #xd00000020
   (:methods
-    (reset! (_type_ float float float) none 9)
-    (inc-xy-vel! (_type_ float float) none 10)
-    (move! (_type_) none 11)
-    (wobbler-method-12 (_type_ quaternion) none 12)
+    (reset! (_type_ float float float) none)
+    (inc-xy-vel! (_type_ float float) none)
+    (move! (_type_) none)
+    (wobbler-method-12 (_type_ quaternion) none)
     )
   )
 
 ;; definition for method 3 of type wobbler
-(defmethod inspect wobbler ((obj wobbler))
-  (format #t "[~8x] ~A~%" obj (-> obj type))
-  (format #t "~Tposx: ~f~%" (-> obj posx))
-  (format #t "~Tposy: ~f~%" (-> obj posy))
-  (format #t "~Tvelx: ~f~%" (-> obj velx))
-  (format #t "~Tvely: ~f~%" (-> obj vely))
-  (format #t "~Tspring: ~f~%" (-> obj spring))
-  (format #t "~Tdamping: ~f~%" (-> obj damping))
-  (format #t "~Theight: ~f~%" (-> obj height))
-  obj
+(defmethod inspect ((this wobbler))
+  (format #t "[~8x] ~A~%" this (-> this type))
+  (format #t "~Tposx: ~f~%" (-> this posx))
+  (format #t "~Tposy: ~f~%" (-> this posy))
+  (format #t "~Tvelx: ~f~%" (-> this velx))
+  (format #t "~Tvely: ~f~%" (-> this vely))
+  (format #t "~Tspring: ~f~%" (-> this spring))
+  (format #t "~Tdamping: ~f~%" (-> this damping))
+  (format #t "~Theight: ~f~%" (-> this height))
+  this
   )
 
 ;; definition for method 9 of type wobbler
 ;; INFO: Return type mismatch int vs none.
-(defmethod reset! wobbler ((obj wobbler) (arg0 float) (arg1 float) (arg2 float))
-  (set! (-> obj posx) 0.0)
-  (set! (-> obj posy) 0.0)
-  (set! (-> obj velx) 0.0)
-  (set! (-> obj vely) 0.0)
-  (set! (-> obj spring) arg0)
-  (set! (-> obj damping) arg1)
-  (set! (-> obj height) arg2)
+(defmethod reset! ((this wobbler) (arg0 float) (arg1 float) (arg2 float))
+  (set! (-> this posx) 0.0)
+  (set! (-> this posy) 0.0)
+  (set! (-> this velx) 0.0)
+  (set! (-> this vely) 0.0)
+  (set! (-> this spring) arg0)
+  (set! (-> this damping) arg1)
+  (set! (-> this height) arg2)
   0
   (none)
   )
 
 ;; definition for method 10 of type wobbler
 ;; INFO: Return type mismatch int vs none.
-(defmethod inc-xy-vel! wobbler ((obj wobbler) (arg0 float) (arg1 float))
-  (+! (-> obj velx) arg0)
-  (+! (-> obj vely) arg1)
+(defmethod inc-xy-vel! ((this wobbler) (arg0 float) (arg1 float))
+  (+! (-> this velx) arg0)
+  (+! (-> this vely) arg1)
   0
   (none)
   )
 
 ;; definition for method 11 of type wobbler
 ;; INFO: Return type mismatch int vs none.
-(defmethod move! wobbler ((obj wobbler))
-  (+! (-> obj posx) (* (-> obj velx) (-> *display* seconds-per-frame)))
-  (+! (-> obj posy) (* (-> obj vely) (-> *display* seconds-per-frame)))
-  (set! (-> obj velx) (* (-> obj velx) (-> obj damping)))
-  (set! (-> obj vely) (* (-> obj vely) (-> obj damping)))
-  (+! (-> obj velx) (* -1.0 (-> obj posx) (-> obj spring)))
-  (+! (-> obj vely) (* -1.0 (-> obj posy) (-> obj spring)))
+(defmethod move! ((this wobbler))
+  (+! (-> this posx) (* (-> this velx) (seconds-per-frame)))
+  (+! (-> this posy) (* (-> this vely) (seconds-per-frame)))
+  (set! (-> this velx) (* (-> this velx) (-> this damping)))
+  (set! (-> this vely) (* (-> this vely) (-> this damping)))
+  (+! (-> this velx) (* -1.0 (-> this posx) (-> this spring)))
+  (+! (-> this vely) (* -1.0 (-> this posy) (-> this spring)))
   0
   (none)
   )
 
 ;; definition for method 12 of type wobbler
 ;; INFO: Return type mismatch int vs none.
-(defmethod wobbler-method-12 wobbler ((obj wobbler) (arg0 quaternion))
+(defmethod wobbler-method-12 ((this wobbler) (arg0 quaternion))
   (let ((s5-0 (new 'stack-no-clear 'vector)))
-    (set! (-> s5-0 x) (-> obj posy))
+    (set! (-> s5-0 x) (-> this posy))
     (set! (-> s5-0 y) 0.0)
-    (set! (-> s5-0 z) (- (-> obj posx)))
+    (set! (-> s5-0 z) (- (-> this posx)))
     (vector-normalize! s5-0 1.0)
-    (let* ((f0-8 (/ (sqrtf (+ (* (-> obj posx) (-> obj posx)) (* (-> obj posy) (-> obj posy)))) (-> obj height)))
+    (let* ((f0-8 (/ (sqrtf (+ (* (-> this posx) (-> this posx)) (* (-> this posy) (-> this posy)))) (-> this height)))
            (f0-9 (atan f0-8 1.0))
            )
       (quaternion-vector-angle! arg0 s5-0 f0-9)

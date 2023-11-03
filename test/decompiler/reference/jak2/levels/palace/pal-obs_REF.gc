@@ -3,29 +3,25 @@
 
 ;; definition of type pal-falling-plat
 (deftype pal-falling-plat (process-drawable)
-  ((root collide-shape-moving  :override)
+  ((root  collide-shape-moving :override)
    )
-  :heap-base #x50
-  :method-count-assert 22
-  :size-assert         #xc8
-  :flag-assert         #x16005000c8
-  (:methods
-    (idle () _type_ :state 20)
-    (fall () _type_ :state 21)
+  (:state-methods
+    idle
+    fall
     )
   )
 
 ;; definition for method 3 of type pal-falling-plat
-(defmethod inspect pal-falling-plat ((obj pal-falling-plat))
-  (when (not obj)
-    (set! obj obj)
+(defmethod inspect ((this pal-falling-plat))
+  (when (not this)
+    (set! this this)
     (goto cfg-4)
     )
   (let ((t9-0 (method-of-type process-drawable inspect)))
-    (t9-0 obj)
+    (t9-0 this)
     )
   (label cfg-4)
-  obj
+  this
   )
 
 ;; failed to figure out what this is:
@@ -37,8 +33,8 @@
 ;; failed to figure out what this is:
 (defstate idle (pal-falling-plat)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('ridden)
        (go-virtual fall)
        )
@@ -46,79 +42,68 @@
     )
   :enter (behavior ()
     (logior! (-> self root root-prim prim-core action) (collide-action rideable))
-    (none)
     )
-  :trans (the-as (function none :behavior pal-falling-plat) rider-trans)
+  :trans rider-trans
   :code (behavior ()
-    (ja-no-eval :group! (-> self draw art-group data 2) :num! zero)
+    (ja-no-eval :group! pal-falling-plat-idle-ja :num! zero)
     (transform-post)
     (sleep-code)
-    (none)
     )
-  :post (the-as (function none :behavior pal-falling-plat) rider-post)
+  :post rider-post
   )
 
 ;; failed to figure out what this is:
 (defstate fall (pal-falling-plat)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (the-as object (case event-type
-                     (('touch)
-                      (when ((method-of-type touching-shapes-entry prims-touching?)
-                             (the-as touching-shapes-entry (-> event param 0))
-                             (-> self root)
-                             (the-as uint 8)
-                             )
-                        (when (< 18.0 (ja-frame-num 0))
-                          (let ((v1-6 (-> self skel root-channel 0)))
-                            (set! (-> v1-6 num-func) num-func-identity)
-                            (set! (-> v1-6 frame-num) 18.0)
-                            )
-                          )
-                        )
-                      )
-                     )
-            )
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
+      (('touch)
+       (when ((method-of-type touching-shapes-entry prims-touching?)
+              (the-as touching-shapes-entry (-> block param 0))
+              (-> self root)
+              (the-as uint 8)
+              )
+         (when (< 18.0 (ja-frame-num 0))
+           (let ((v1-6 (-> self skel root-channel 0)))
+             (set! (-> v1-6 num-func) num-func-identity)
+             (set! (-> v1-6 frame-num) 18.0)
+             )
+           )
+         )
+       )
+      )
     )
   :enter (behavior ()
     (sound-play "pal-fall-plat")
-    (none)
     )
-  :trans (the-as (function none :behavior pal-falling-plat) rider-trans)
+  :trans rider-trans
   :code (behavior ()
-    (ja-no-eval :group! (-> self draw art-group data 3)
-                :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 3)) frames num-frames) -1)))
-                :frame-num 0.0
-                )
+    (ja-no-eval :group! pal-falling-plat-shake-ja :num! (seek!) :frame-num 0.0)
     (until (ja-done? 0)
       (suspend)
       (ja :num! (seek!))
       )
     (logclear! (-> self root root-prim prim-core action) (collide-action rideable))
-    (ja-no-eval :group! (-> self draw art-group data 2)
-                :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 2)) frames num-frames) -1)))
-                :frame-num 0.0
-                )
+    (ja-no-eval :group! pal-falling-plat-idle-ja :num! (seek!) :frame-num 0.0)
     (until (ja-done? 0)
       (suspend)
       (ja :num! (seek!))
       )
     (go-virtual idle)
-    (none)
     )
-  :post (the-as (function none :behavior pal-falling-plat) rider-post)
+  :post rider-post
   )
 
 ;; definition for method 11 of type pal-falling-plat
 ;; WARN: Return type mismatch object vs none.
-(defmethod init-from-entity! pal-falling-plat ((obj pal-falling-plat) (arg0 entity-actor))
+(defmethod init-from-entity! ((this pal-falling-plat) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
 - stack size
 - collision information
 - loading the skeleton group / bones
 - sounds"
-  (let ((s4-0 (new 'process 'collide-shape-moving obj (collide-list-enum usually-hit-by-player))))
+  (let ((s4-0 (new 'process 'collide-shape-moving this (collide-list-enum usually-hit-by-player))))
     (set! (-> s4-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s4-0 reaction) cshape-reaction-default)
     (set! (-> s4-0 no-reaction)
@@ -166,15 +151,15 @@ This commonly includes things such as:
       (set! (-> s4-0 backup-collide-as) (-> v1-24 prim-core collide-as))
       (set! (-> s4-0 backup-collide-with) (-> v1-24 prim-core collide-with))
       )
-    (set! (-> obj root) s4-0)
+    (set! (-> this root) s4-0)
     )
-  (process-drawable-from-entity! obj arg0)
+  (process-drawable-from-entity! this arg0)
   (initialize-skeleton
-    obj
+    this
     (the-as skeleton-group (art-group-get-by-name *level* "skel-pal-falling-plat" (the-as (pointer uint32) #f)))
     (the-as pair 0)
     )
-  (go (method-of-object obj idle))
+  (go (method-of-object this idle))
   (none)
   )
 
@@ -188,35 +173,31 @@ This commonly includes things such as:
 ;; definition of type pal-ent-door
 (deftype pal-ent-door (com-airlock)
   ()
-  :heap-base #x100
-  :method-count-assert 28
-  :size-assert         #x174
-  :flag-assert         #x1c01000174
   )
 
 ;; definition for method 3 of type pal-ent-door
-(defmethod inspect pal-ent-door ((obj pal-ent-door))
-  (when (not obj)
-    (set! obj obj)
+(defmethod inspect ((this pal-ent-door))
+  (when (not this)
+    (set! this this)
     (goto cfg-4)
     )
   (let ((t9-0 (method-of-type com-airlock inspect)))
-    (t9-0 obj)
+    (t9-0 this)
     )
   (label cfg-4)
-  obj
+  this
   )
 
 ;; definition for method 11 of type pal-ent-door
 ;; WARN: Return type mismatch object vs none.
-(defmethod init-from-entity! pal-ent-door ((obj pal-ent-door) (arg0 entity-actor))
+(defmethod init-from-entity! ((this pal-ent-door) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
 - stack size
 - collision information
 - loading the skeleton group / bones
 - sounds"
-  (let ((s5-0 (new 'process 'collide-shape obj (collide-list-enum usually-hit-by-player))))
+  (let ((s5-0 (new 'process 'collide-shape this (collide-list-enum usually-hit-by-player))))
     (set! (-> s5-0 penetrated-by) (penetrate))
     (let ((v1-2 (new 'process 'collide-shape-prim-mesh s5-0 (the-as uint 0) (the-as uint 0))))
       (set! (-> v1-2 prim-core collide-as) (collide-spec obstacle))
@@ -232,52 +213,50 @@ This commonly includes things such as:
       (set! (-> s5-0 backup-collide-as) (-> v1-5 prim-core collide-as))
       (set! (-> s5-0 backup-collide-with) (-> v1-5 prim-core collide-with))
       )
-    (set! (-> obj root) s5-0)
+    (set! (-> this root) s5-0)
     )
   (initialize-skeleton
-    obj
+    this
     (the-as skeleton-group (art-group-get-by-name *level* "skel-pal-ent-door" (the-as (pointer uint32) #f)))
     (the-as pair 0)
     )
-  (init-airlock! obj)
-  (set! (-> obj open-frame) 20.0)
-  (set! (-> obj sound-open-loop) (static-sound-spec "door-slide-open"))
-  (set! (-> obj sound-open-stop) (static-sound-spec "door-open-hit"))
-  (set! (-> obj sound-close-loop) (static-sound-spec "door-slide-cls"))
-  (set! (-> obj sound-close-stop) (static-sound-spec "door-close-hit"))
-  (go (method-of-object obj close) #t)
+  (init-airlock! this)
+  (set! (-> this open-frame) 20.0)
+  (set! (-> this sound-open-loop) (static-sound-spec "door-slide-open"))
+  (set! (-> this sound-open-stop) (static-sound-spec "door-open-hit"))
+  (set! (-> this sound-close-loop) (static-sound-spec "door-slide-cls"))
+  (set! (-> this sound-close-stop) (static-sound-spec "door-close-hit"))
+  (go (method-of-object this close) #t)
   (none)
   )
 
 ;; definition of type pal-grind-ring-center
 (deftype pal-grind-ring-center (process-focusable)
-  ((speed-y           float  :offset-assert 204)
-   (hit-sound-played? basic  :offset-assert 208)
+  ((speed-y            float)
+   (hit-sound-played?  basic)
    )
-  :heap-base #x60
-  :method-count-assert 30
-  :size-assert         #xd4
-  :flag-assert         #x1e006000d4
+  (:state-methods
+    idle
+    die
+    )
   (:methods
-    (idle () _type_ :state 27)
-    (die () _type_ :state 28)
-    (pal-grind-ring-center-method-29 (_type_) none 29)
+    (pal-grind-ring-center-method-29 (_type_) none)
     )
   )
 
 ;; definition for method 3 of type pal-grind-ring-center
-(defmethod inspect pal-grind-ring-center ((obj pal-grind-ring-center))
-  (when (not obj)
-    (set! obj obj)
+(defmethod inspect ((this pal-grind-ring-center))
+  (when (not this)
+    (set! this this)
     (goto cfg-4)
     )
   (let ((t9-0 (method-of-type process-focusable inspect)))
-    (t9-0 obj)
+    (t9-0 this)
     )
-  (format #t "~2Tspeed-y: ~f~%" (-> obj speed-y))
-  (format #t "~2Thit-sound-played?: ~A~%" (-> obj hit-sound-played?))
+  (format #t "~2Tspeed-y: ~f~%" (-> this speed-y))
+  (format #t "~2Thit-sound-played?: ~A~%" (-> this hit-sound-played?))
   (label cfg-4)
-  obj
+  this
   )
 
 ;; failed to figure out what this is:
@@ -315,8 +294,8 @@ This commonly includes things such as:
 ;; failed to figure out what this is:
 (defstate idle (pal-grind-ring-center)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('track)
        #t
        )
@@ -327,21 +306,16 @@ This commonly includes things such as:
     )
   :code (behavior ()
     (until #f
-      (ja-no-eval :group! (ja-group)
-                  :num! (seek! (the float (+ (-> (ja-group) frames num-frames) -1)))
-                  :frame-num 0.0
-                  )
+      (ja-no-eval :group! (ja-group) :num! (seek!) :frame-num 0.0)
       (until (ja-done? 0)
         (suspend)
         (ja :num! (seek!))
         )
       )
     #f
-    (none)
     )
   :post (behavior ()
     (ja-post)
-    (none)
     )
   )
 
@@ -372,25 +346,23 @@ This commonly includes things such as:
       )
     0
     (logior! (-> self draw status) (draw-control-status no-draw))
-    (none)
     )
-  :exit (the-as (function none :behavior pal-grind-ring-center) #f)
-  :trans (the-as (function none :behavior pal-grind-ring-center) #f)
+  :exit #f
+  :trans #f
   :code (behavior ()
     (send-event (ppointer->process (-> self parent)) 'fall)
     (while (-> self child)
       (suspend)
       )
     (cleanup-for-death self)
-    (none)
     )
-  :post (the-as (function none :behavior pal-grind-ring-center) #f)
+  :post #f
   )
 
 ;; definition for method 29 of type pal-grind-ring-center
 ;; WARN: Return type mismatch int vs none.
-(defmethod pal-grind-ring-center-method-29 pal-grind-ring-center ((obj pal-grind-ring-center))
-  (let ((s5-0 (new 'process 'collide-shape-moving obj (collide-list-enum usually-hit-by-player))))
+(defmethod pal-grind-ring-center-method-29 ((this pal-grind-ring-center))
+  (let ((s5-0 (new 'process 'collide-shape-moving this (collide-list-enum usually-hit-by-player))))
     (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s5-0 reaction) cshape-reaction-default)
     (set! (-> s5-0 no-reaction)
@@ -409,7 +381,7 @@ This commonly includes things such as:
       (set! (-> s5-0 backup-collide-as) (-> v1-9 prim-core collide-as))
       (set! (-> s5-0 backup-collide-with) (-> v1-9 prim-core collide-with))
       )
-    (set! (-> obj root) s5-0)
+    (set! (-> this root) s5-0)
     )
   0
   (none)
@@ -418,52 +390,52 @@ This commonly includes things such as:
 ;; definition for method 11 of type pal-grind-ring-center
 ;; INFO: this function exists in multiple non-identical object files
 ;; WARN: Return type mismatch object vs none.
-(defmethod init-from-entity! pal-grind-ring-center ((obj pal-grind-ring-center) (arg0 entity-actor))
+(defmethod init-from-entity! ((this pal-grind-ring-center) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
 - stack size
 - collision information
 - loading the skeleton group / bones
 - sounds"
-  (pal-grind-ring-center-method-29 obj)
-  (process-drawable-from-entity! obj arg0)
+  (pal-grind-ring-center-method-29 this)
+  (process-drawable-from-entity! this arg0)
   (initialize-skeleton
-    obj
+    this
     (the-as
       skeleton-group
       (art-group-get-by-name *level* "skel-pal-grind-ring-center" (the-as (pointer uint32) #f))
       )
     (the-as pair 0)
     )
-  (logior! (-> obj mask) (process-mask enemy))
-  (logior! (-> obj mask) (process-mask collectable))
-  (go (method-of-object obj idle))
+  (logior! (-> this mask) (process-mask enemy))
+  (logior! (-> this mask) (process-mask collectable))
+  (go (method-of-object this idle))
   (none)
   )
 
 ;; definition for method 11 of type pal-grind-ring-center
 ;; INFO: this function exists in multiple non-identical object files
 ;; WARN: Return type mismatch object vs none.
-(defmethod init-from-entity! pal-grind-ring-center ((obj pal-grind-ring-center) (arg0 entity-actor))
+(defmethod init-from-entity! ((this pal-grind-ring-center) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
 - stack size
 - collision information
 - loading the skeleton group / bones
 - sounds"
-  (pal-grind-ring-center-method-29 obj)
-  (process-drawable-from-entity! obj arg0)
+  (pal-grind-ring-center-method-29 this)
+  (process-drawable-from-entity! this arg0)
   (initialize-skeleton
-    obj
+    this
     (the-as
       skeleton-group
       (art-group-get-by-name *level* "skel-pal-grind-ring-center" (the-as (pointer uint32) #f))
       )
     (the-as pair 0)
     )
-  (logior! (-> obj mask) (process-mask enemy))
-  (logior! (-> obj mask) (process-mask collectable))
-  (go (method-of-object obj idle))
+  (logior! (-> this mask) (process-mask enemy))
+  (logior! (-> this mask) (process-mask collectable))
+  (go (method-of-object this idle))
   (none)
   )
 
@@ -475,33 +447,31 @@ This commonly includes things such as:
 
 ;; definition of type pal-grind-ring
 (deftype pal-grind-ring (process-focusable)
-  ((speed-y           float  :offset-assert 204)
-   (hit-sound-played? basic  :offset-assert 208)
+  ((speed-y            float)
+   (hit-sound-played?  basic)
    )
-  :heap-base #x60
-  :method-count-assert 30
-  :size-assert         #xd4
-  :flag-assert         #x1e006000d4
+  (:state-methods
+    idle
+    fall
+    )
   (:methods
-    (idle () _type_ :state 27)
-    (fall () _type_ :state 28)
-    (pal-grind-ring-method-29 (_type_) none 29)
+    (pal-grind-ring-method-29 (_type_) none)
     )
   )
 
 ;; definition for method 3 of type pal-grind-ring
-(defmethod inspect pal-grind-ring ((obj pal-grind-ring))
-  (when (not obj)
-    (set! obj obj)
+(defmethod inspect ((this pal-grind-ring))
+  (when (not this)
+    (set! this this)
     (goto cfg-4)
     )
   (let ((t9-0 (method-of-type process-focusable inspect)))
-    (t9-0 obj)
+    (t9-0 this)
     )
-  (format #t "~2Tspeed-y: ~f~%" (-> obj speed-y))
-  (format #t "~2Thit-sound-played?: ~A~%" (-> obj hit-sound-played?))
+  (format #t "~2Tspeed-y: ~f~%" (-> this speed-y))
+  (format #t "~2Thit-sound-played?: ~A~%" (-> this hit-sound-played?))
   (label cfg-4)
-  obj
+  this
   )
 
 ;; failed to figure out what this is:
@@ -513,8 +483,8 @@ This commonly includes things such as:
 ;; failed to figure out what this is:
 (defstate idle (pal-grind-ring)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('track)
        #t
        )
@@ -525,22 +495,17 @@ This commonly includes things such as:
     )
   :code (behavior ()
     (until #f
-      (ja-no-eval :group! (ja-group)
-                  :num! (seek! (the float (+ (-> (ja-group) frames num-frames) -1)))
-                  :frame-num 0.0
-                  )
+      (ja-no-eval :group! (ja-group) :num! (seek!) :frame-num 0.0)
       (until (ja-done? 0)
         (suspend)
         (ja :num! (seek!))
         )
       )
     #f
-    (none)
     )
   :post (behavior ()
     (spawn (-> self part) (-> self root trans))
     (ja-post)
-    (none)
     )
   )
 
@@ -586,11 +551,10 @@ This commonly includes things such as:
         (-> gp-1 ppointer)
         )
       )
-    (none)
     )
   :trans (behavior ()
-    (+! (-> self speed-y) (* -163840.0 (-> self clock seconds-per-frame)))
-    (+! (-> self root trans y) (* (-> self speed-y) (-> self clock seconds-per-frame)))
+    (+! (-> self speed-y) (* -163840.0 (seconds-per-frame)))
+    (+! (-> self root trans y) (* (-> self speed-y) (seconds-per-frame)))
     (when (< (-> self root trans y) 1441792.0)
       (when (not (-> self hit-sound-played?))
         (sound-play "grind-ring-hit")
@@ -599,29 +563,24 @@ This commonly includes things such as:
       (set! (-> self root trans y) 1441792.0)
       (set! (-> self speed-y) (* -0.3 (-> self speed-y)))
       )
-    (none)
     )
   :code (behavior ()
     (until #f
-      (ja-no-eval :group! (ja-group)
-                  :num! (seek! (the float (+ (-> (ja-group) frames num-frames) -1)))
-                  :frame-num 0.0
-                  )
+      (ja-no-eval :group! (ja-group) :num! (seek!) :frame-num 0.0)
       (until (ja-done? 0)
         (suspend)
         (ja :num! (seek!))
         )
       )
     #f
-    (none)
     )
-  :post (the-as (function none :behavior pal-grind-ring) transform-post)
+  :post transform-post
   )
 
 ;; definition for method 29 of type pal-grind-ring
 ;; WARN: Return type mismatch int vs none.
-(defmethod pal-grind-ring-method-29 pal-grind-ring ((obj pal-grind-ring))
-  (let ((s5-0 (new 'process 'collide-shape-moving obj (collide-list-enum usually-hit-by-player))))
+(defmethod pal-grind-ring-method-29 ((this pal-grind-ring))
+  (let ((s5-0 (new 'process 'collide-shape-moving this (collide-list-enum usually-hit-by-player))))
     (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s5-0 reaction) cshape-reaction-default)
     (set! (-> s5-0 no-reaction)
@@ -641,7 +600,7 @@ This commonly includes things such as:
       (set! (-> s5-0 backup-collide-as) (-> v1-9 prim-core collide-as))
       (set! (-> s5-0 backup-collide-with) (-> v1-9 prim-core collide-with))
       )
-    (set! (-> obj root) s5-0)
+    (set! (-> this root) s5-0)
     )
   0
   (none)
@@ -649,25 +608,25 @@ This commonly includes things such as:
 
 ;; definition for method 11 of type pal-grind-ring
 ;; WARN: Return type mismatch object vs none.
-(defmethod init-from-entity! pal-grind-ring ((obj pal-grind-ring) (arg0 entity-actor))
+(defmethod init-from-entity! ((this pal-grind-ring) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
 - stack size
 - collision information
 - loading the skeleton group / bones
 - sounds"
-  (pal-grind-ring-method-29 obj)
-  (process-drawable-from-entity! obj arg0)
+  (pal-grind-ring-method-29 this)
+  (process-drawable-from-entity! this arg0)
   (initialize-skeleton
-    obj
+    this
     (the-as skeleton-group (art-group-get-by-name *level* "skel-pal-grind-ring" (the-as (pointer uint32) #f)))
     (the-as pair 0)
     )
-  (logior! (-> obj mask) (process-mask enemy))
-  (logior! (-> obj mask) (process-mask collectable))
-  (set! (-> obj part) (create-launch-control (-> *part-group-id-table* 1131) obj))
-  (process-spawn pal-grind-ring-center arg0 :to obj)
-  (go (method-of-object obj idle))
+  (logior! (-> this mask) (process-mask enemy))
+  (logior! (-> this mask) (process-mask collectable))
+  (set! (-> this part) (create-launch-control (-> *part-group-id-table* 1131) this))
+  (process-spawn pal-grind-ring-center arg0 :to this)
+  (go (method-of-object this idle))
   (none)
   )
 
@@ -715,37 +674,35 @@ This commonly includes things such as:
 ;; definition of type pal-ent-glass
 (deftype pal-ent-glass (process-focusable)
   ()
-  :heap-base #x50
-  :method-count-assert 31
-  :size-assert         #xcc
-  :flag-assert         #x1f005000cc
+  (:state-methods
+    idle
+    die
+    )
   (:methods
-    (idle () _type_ :state 27)
-    (die () _type_ :state 28)
-    (pal-ent-glass-method-29 (_type_) none 29)
-    (pal-ent-glass-method-30 (_type_) none 30)
+    (pal-ent-glass-method-29 (_type_) none)
+    (pal-ent-glass-method-30 (_type_) none)
     )
   )
 
 ;; definition for method 3 of type pal-ent-glass
-(defmethod inspect pal-ent-glass ((obj pal-ent-glass))
-  (when (not obj)
-    (set! obj obj)
+(defmethod inspect ((this pal-ent-glass))
+  (when (not this)
+    (set! this this)
     (goto cfg-4)
     )
   (let ((t9-0 (method-of-type process-focusable inspect)))
-    (t9-0 obj)
+    (t9-0 this)
     )
   (label cfg-4)
-  obj
+  this
   )
 
 ;; failed to figure out what this is:
 (defstate die (pal-ent-glass)
   :virtual #t
-  :enter (the-as (function none :behavior pal-ent-glass) #f)
-  :exit (the-as (function none :behavior pal-ent-glass) #f)
-  :trans (the-as (function none :behavior pal-ent-glass) #f)
+  :enter #f
+  :exit #f
+  :trans #f
   :code (behavior ()
     (sound-play "glass-crash")
     (let ((v1-2 (-> self root root-prim)))
@@ -758,16 +715,15 @@ This commonly includes things such as:
       (suspend)
       )
     (cleanup-for-death self)
-    (none)
     )
-  :post (the-as (function none :behavior pal-ent-glass) #f)
+  :post #f
   )
 
 ;; failed to figure out what this is:
 (defstate idle (pal-ent-glass)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('attack)
        (when (not (and (-> self next-state) (= (-> self next-state name) 'die)))
          (let ((gp-0 (new 'stack 'joint-exploder-tuning (the-as uint 0))))
@@ -792,19 +748,17 @@ This commonly includes things such as:
     )
   :exit (behavior ()
     '()
-    (none)
     )
-  :code (the-as (function none :behavior pal-ent-glass) sleep-code)
+  :code sleep-code
   :post (behavior ()
     '()
-    (none)
     )
   )
 
 ;; definition for method 29 of type pal-ent-glass
 ;; WARN: Return type mismatch int vs none.
-(defmethod pal-ent-glass-method-29 pal-ent-glass ((obj pal-ent-glass))
-  (let ((s5-0 (new 'process 'collide-shape-moving obj (collide-list-enum usually-hit-by-player))))
+(defmethod pal-ent-glass-method-29 ((this pal-ent-glass))
+  (let ((s5-0 (new 'process 'collide-shape-moving this (collide-list-enum usually-hit-by-player))))
     (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s5-0 reaction) cshape-reaction-default)
     (set! (-> s5-0 no-reaction)
@@ -824,7 +778,7 @@ This commonly includes things such as:
       (set! (-> s5-0 backup-collide-as) (-> v1-9 prim-core collide-as))
       (set! (-> s5-0 backup-collide-with) (-> v1-9 prim-core collide-with))
       )
-    (set! (-> obj root) s5-0)
+    (set! (-> this root) s5-0)
     )
   0
   (none)
@@ -832,59 +786,55 @@ This commonly includes things such as:
 
 ;; definition for method 30 of type pal-ent-glass
 ;; WARN: Return type mismatch int vs none.
-(defmethod pal-ent-glass-method-30 pal-ent-glass ((obj pal-ent-glass))
-  (logior! (-> obj mask) (process-mask crate))
+(defmethod pal-ent-glass-method-30 ((this pal-ent-glass))
+  (logior! (-> this mask) (process-mask crate))
   0
   (none)
   )
 
 ;; definition for method 11 of type pal-ent-glass
 ;; WARN: Return type mismatch object vs none.
-(defmethod init-from-entity! pal-ent-glass ((obj pal-ent-glass) (arg0 entity-actor))
+(defmethod init-from-entity! ((this pal-ent-glass) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
 - stack size
 - collision information
 - loading the skeleton group / bones
 - sounds"
-  (pal-ent-glass-method-29 obj)
-  (process-drawable-from-entity! obj arg0)
+  (pal-ent-glass-method-29 this)
+  (process-drawable-from-entity! this arg0)
   (initialize-skeleton
-    obj
+    this
     (the-as skeleton-group (art-group-get-by-name *level* "skel-pal-ent-glass" (the-as (pointer uint32) #f)))
     (the-as pair 0)
     )
-  (pal-ent-glass-method-30 obj)
+  (pal-ent-glass-method-30 this)
   (transform-post)
-  (go (method-of-object obj idle))
+  (go (method-of-object this idle))
   (none)
   )
 
 ;; definition of type palent-turret-shot
 (deftype palent-turret-shot (guard-shot)
   ()
-  :heap-base #x170
-  :method-count-assert 40
-  :size-assert         #x1f0
-  :flag-assert         #x28017001f0
   )
 
 ;; definition for method 3 of type palent-turret-shot
-(defmethod inspect palent-turret-shot ((obj palent-turret-shot))
-  (when (not obj)
-    (set! obj obj)
+(defmethod inspect ((this palent-turret-shot))
+  (when (not this)
+    (set! this this)
     (goto cfg-4)
     )
   (let ((t9-0 (method-of-type guard-shot inspect)))
-    (t9-0 obj)
+    (t9-0 this)
     )
   (label cfg-4)
-  obj
+  this
   )
 
 ;; definition for method 28 of type palent-turret-shot
 ;; WARN: Return type mismatch int vs none.
-(defmethod play-impact-sound palent-turret-shot ((obj palent-turret-shot) (arg0 projectile-options))
+(defmethod play-impact-sound ((this palent-turret-shot) (arg0 projectile-options))
   (let ((v1-0 arg0))
     (cond
       ((zero? v1-0)
@@ -907,30 +857,28 @@ This commonly includes things such as:
 
 ;; definition of type palent-turret
 (deftype palent-turret (process-focusable)
-  ((next-shoot uint64  :offset-assert 208)
+  ((next-shoot  uint64)
    )
-  :heap-base #x60
-  :method-count-assert 29
-  :size-assert         #xd8
-  :flag-assert         #x1d006000d8
+  (:state-methods
+    idle
+    )
   (:methods
-    (idle () _type_ :state 27)
-    (palent-turret-method-28 (_type_) none 28)
+    (palent-turret-method-28 (_type_) none)
     )
   )
 
 ;; definition for method 3 of type palent-turret
-(defmethod inspect palent-turret ((obj palent-turret))
-  (when (not obj)
-    (set! obj obj)
+(defmethod inspect ((this palent-turret))
+  (when (not this)
+    (set! this this)
     (goto cfg-4)
     )
   (let ((t9-0 (method-of-type process-focusable inspect)))
-    (t9-0 obj)
+    (t9-0 this)
     )
-  (format #t "~2Tnext-shoot: ~D~%" (-> obj next-shoot))
+  (format #t "~2Tnext-shoot: ~D~%" (-> this next-shoot))
   (label cfg-4)
-  obj
+  this
   )
 
 ;; definition for function palent-turret-callback
@@ -947,17 +895,15 @@ This commonly includes things such as:
 (defstate idle (palent-turret)
   :virtual #t
   :enter (behavior ()
-    (set! (-> self state-time) (current-time))
-    (none)
+    (set-time! (-> self state-time))
     )
   :exit (behavior ()
     '()
-    (none)
     )
   :trans (behavior ()
     (cond
       ((not (task-node-closed? (game-task-node palace-sneak-in-meeting)))
-       (set! (-> self state-time) (current-time))
+       (set-time! (-> self state-time))
        )
       (else
         (let* ((f0-0 65536.0)
@@ -998,19 +944,17 @@ This commonly includes things such as:
           )
         )
       )
-    (none)
     )
-  :code (the-as (function none :behavior palent-turret) sleep-code)
+  :code sleep-code
   :post (behavior ()
     (transform-post)
-    (none)
     )
   )
 
 ;; definition for method 28 of type palent-turret
 ;; WARN: Return type mismatch int vs none.
-(defmethod palent-turret-method-28 palent-turret ((obj palent-turret))
-  (let ((s5-0 (new 'process 'collide-shape-moving obj (collide-list-enum usually-hit-by-player))))
+(defmethod palent-turret-method-28 ((this palent-turret))
+  (let ((s5-0 (new 'process 'collide-shape-moving this (collide-list-enum usually-hit-by-player))))
     (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s5-0 reaction) cshape-reaction-default)
     (set! (-> s5-0 no-reaction)
@@ -1050,7 +994,7 @@ This commonly includes things such as:
       (set! (-> s5-0 backup-collide-as) (-> v1-19 prim-core collide-as))
       (set! (-> s5-0 backup-collide-with) (-> v1-19 prim-core collide-with))
       )
-    (set! (-> obj root) s5-0)
+    (set! (-> this root) s5-0)
     )
   0
   (none)
@@ -1058,26 +1002,26 @@ This commonly includes things such as:
 
 ;; definition for method 11 of type palent-turret
 ;; WARN: Return type mismatch object vs none.
-(defmethod init-from-entity! palent-turret ((obj palent-turret) (arg0 entity-actor))
+(defmethod init-from-entity! ((this palent-turret) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
 - stack size
 - collision information
 - loading the skeleton group / bones
 - sounds"
-  (palent-turret-method-28 obj)
-  (process-drawable-from-entity! obj arg0)
+  (palent-turret-method-28 this)
+  (process-drawable-from-entity! this arg0)
   (initialize-skeleton
-    obj
+    this
     (the-as skeleton-group (art-group-get-by-name *level* "skel-palent-turret" (the-as (pointer uint32) #f)))
     (the-as pair 0)
     )
-  (let ((a0-5 (-> obj node-list data 4)))
+  (let ((a0-5 (-> this node-list data 4)))
     (set! (-> a0-5 param0) palent-turret-callback)
-    (set! (-> a0-5 param1) obj)
+    (set! (-> a0-5 param1) this)
     )
   (transform-post)
-  (go (method-of-object obj idle))
+  (go (method-of-object this idle))
   (none)
   )
 
@@ -1136,37 +1080,35 @@ This commonly includes things such as:
 ;; definition of type pal-breakable-window
 (deftype pal-breakable-window (process-focusable)
   ()
-  :heap-base #x50
-  :method-count-assert 31
-  :size-assert         #xcc
-  :flag-assert         #x1f005000cc
+  (:state-methods
+    idle
+    die
+    )
   (:methods
-    (idle () _type_ :state 27)
-    (die () _type_ :state 28)
-    (pal-breakable-window-method-29 (_type_) none 29)
-    (pal-breakable-window-method-30 (_type_) none 30)
+    (pal-breakable-window-method-29 (_type_) none)
+    (pal-breakable-window-method-30 (_type_) none)
     )
   )
 
 ;; definition for method 3 of type pal-breakable-window
-(defmethod inspect pal-breakable-window ((obj pal-breakable-window))
-  (when (not obj)
-    (set! obj obj)
+(defmethod inspect ((this pal-breakable-window))
+  (when (not this)
+    (set! this this)
     (goto cfg-4)
     )
   (let ((t9-0 (method-of-type process-focusable inspect)))
-    (t9-0 obj)
+    (t9-0 this)
     )
   (label cfg-4)
-  obj
+  this
   )
 
 ;; failed to figure out what this is:
 (defstate die (pal-breakable-window)
   :virtual #t
-  :enter (the-as (function none :behavior pal-breakable-window) #f)
-  :exit (the-as (function none :behavior pal-breakable-window) #f)
-  :trans (the-as (function none :behavior pal-breakable-window) #f)
+  :enter #f
+  :exit #f
+  :trans #f
   :code (behavior ()
     (let ((v1-1 (-> self root root-prim)))
       (set! (-> v1-1 prim-core collide-as) (collide-spec))
@@ -1178,16 +1120,15 @@ This commonly includes things such as:
       (suspend)
       )
     (cleanup-for-death self)
-    (none)
     )
-  :post (the-as (function none :behavior pal-breakable-window) #f)
+  :post #f
   )
 
 ;; failed to figure out what this is:
 (defstate idle (pal-breakable-window)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('attack)
        (sound-play "glass-crash-big")
        (let ((gp-1 (new 'stack 'joint-exploder-tuning (the-as uint 0))))
@@ -1211,19 +1152,17 @@ This commonly includes things such as:
     )
   :exit (behavior ()
     '()
-    (none)
     )
-  :code (the-as (function none :behavior pal-breakable-window) sleep-code)
+  :code sleep-code
   :post (behavior ()
     '()
-    (none)
     )
   )
 
 ;; definition for method 29 of type pal-breakable-window
 ;; WARN: Return type mismatch int vs none.
-(defmethod pal-breakable-window-method-29 pal-breakable-window ((obj pal-breakable-window))
-  (let ((s5-0 (new 'process 'collide-shape-moving obj (collide-list-enum usually-hit-by-player))))
+(defmethod pal-breakable-window-method-29 ((this pal-breakable-window))
+  (let ((s5-0 (new 'process 'collide-shape-moving this (collide-list-enum usually-hit-by-player))))
     (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s5-0 reaction) cshape-reaction-default)
     (set! (-> s5-0 no-reaction)
@@ -1243,7 +1182,7 @@ This commonly includes things such as:
       (set! (-> s5-0 backup-collide-as) (-> v1-9 prim-core collide-as))
       (set! (-> s5-0 backup-collide-with) (-> v1-9 prim-core collide-with))
       )
-    (set! (-> obj root) s5-0)
+    (set! (-> this root) s5-0)
     )
   0
   (none)
@@ -1251,33 +1190,33 @@ This commonly includes things such as:
 
 ;; definition for method 30 of type pal-breakable-window
 ;; WARN: Return type mismatch int vs none.
-(defmethod pal-breakable-window-method-30 pal-breakable-window ((obj pal-breakable-window))
-  (logior! (-> obj mask) (process-mask crate))
+(defmethod pal-breakable-window-method-30 ((this pal-breakable-window))
+  (logior! (-> this mask) (process-mask crate))
   0
   (none)
   )
 
 ;; definition for method 11 of type pal-breakable-window
 ;; WARN: Return type mismatch object vs none.
-(defmethod init-from-entity! pal-breakable-window ((obj pal-breakable-window) (arg0 entity-actor))
+(defmethod init-from-entity! ((this pal-breakable-window) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
 - stack size
 - collision information
 - loading the skeleton group / bones
 - sounds"
-  (pal-breakable-window-method-29 obj)
-  (process-drawable-from-entity! obj arg0)
+  (pal-breakable-window-method-29 this)
+  (process-drawable-from-entity! this arg0)
   (initialize-skeleton
-    obj
+    this
     (the-as
       skeleton-group
       (art-group-get-by-name *level* "skel-pal-breakable-window" (the-as (pointer uint32) #f))
       )
     (the-as pair 0)
     )
-  (pal-breakable-window-method-30 obj)
+  (pal-breakable-window-method-30 this)
   (transform-post)
-  (go (method-of-object obj idle))
+  (go (method-of-object this idle))
   (none)
   )

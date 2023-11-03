@@ -310,28 +310,24 @@
 ;; definition of type wasp-shot
 (deftype wasp-shot (metalhead-shot)
   ()
-  :heap-base #x170
-  :method-count-assert 40
-  :size-assert         #x1f0
-  :flag-assert         #x28017001f0
   )
 
 ;; definition for method 3 of type wasp-shot
-(defmethod inspect wasp-shot ((obj wasp-shot))
-  (when (not obj)
-    (set! obj obj)
+(defmethod inspect ((this wasp-shot))
+  (when (not this)
+    (set! this this)
     (goto cfg-4)
     )
   (let ((t9-0 (method-of-type metalhead-shot inspect)))
-    (t9-0 obj)
+    (t9-0 this)
     )
   (label cfg-4)
-  obj
+  this
   )
 
 ;; definition for method 28 of type wasp-shot
 ;; WARN: Return type mismatch int vs none.
-(defmethod play-impact-sound wasp-shot ((obj wasp-shot) (arg0 projectile-options))
+(defmethod play-impact-sound ((this wasp-shot) (arg0 projectile-options))
   (let ((v1-0 arg0))
     (cond
       ((zero? v1-0)
@@ -349,13 +345,13 @@
 ;; definition for method 31 of type wasp-shot
 ;; INFO: Used lq/sq
 ;; WARN: Return type mismatch int vs none.
-(defmethod init-proj-settings! wasp-shot ((obj wasp-shot))
+(defmethod init-proj-settings! ((this wasp-shot))
   "Init relevant settings for the [[projectile]] such as gravity, speed, timeout, etc"
-  (set! (-> obj tail-pos quad) (-> obj root trans quad))
-  (set! (-> obj attack-mode) 'wasp-shot)
-  (set! (-> obj max-speed) 491520.0)
-  (set! (-> obj move) metalhead-shot-move)
-  (set! (-> obj timeout) (seconds 1.375))
+  (set! (-> this tail-pos quad) (-> this root trans quad))
+  (set! (-> this attack-mode) 'wasp-shot)
+  (set! (-> this max-speed) 491520.0)
+  (set! (-> this move) metalhead-shot-move)
+  (set! (-> this timeout) (seconds 1.375))
   0
   (none)
   )
@@ -476,59 +472,60 @@
 (set! (-> *wasp-enemy-info* fact-defaults) *fact-info-enemy-defaults*)
 
 ;; definition for method 74 of type wasp
-(defmethod general-event-handler wasp ((obj wasp) (arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+(defmethod general-event-handler ((this wasp) (arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
   "Handles various events for the enemy
 @TODO - unsure if there is a pattern for the events and this should have a more specific name"
   (case arg2
     (('hit 'hit-knocked)
-     (logclear! (-> obj mask) (process-mask actor-pause))
-     (logclear! (-> obj focus-status) (focus-status dangerous))
-     (logclear! (-> obj enemy-flags) (enemy-flag enable-on-notice))
-     (logior! (-> obj enemy-flags) (enemy-flag chase-startup))
-     (logior! (-> obj focus-status) (focus-status hit))
-     (if (zero? (-> obj hit-points))
-         (logior! (-> obj focus-status) (focus-status dead))
+     (logclear! (-> this mask) (process-mask actor-pause))
+     (logclear! (-> this focus-status) (focus-status dangerous))
+     (logclear! (-> this enemy-flags) (enemy-flag enable-on-notice))
+     (logior! (-> this enemy-flags) (enemy-flag chase-startup))
+     (logior! (-> this focus-status) (focus-status hit))
+     (if (zero? (-> this hit-points))
+         (logior! (-> this focus-status) (focus-status dead))
          )
-     (logclear! (-> obj enemy-flags) (enemy-flag actor-pause-backup))
-     (enemy-method-62 obj)
-     (logior! (-> obj enemy-flags) (enemy-flag actor-pause-backup))
+     (logclear! (-> this enemy-flags) (enemy-flag actor-pause-backup))
+     (enemy-method-62 this)
+     (logior! (-> this enemy-flags) (enemy-flag actor-pause-backup))
      (process-contact-action arg0)
      (send-event arg0 'get-attack-count 1)
-     (if (zero? (-> obj hit-points))
-         (go (method-of-object obj die-explode))
-         (go (method-of-object obj knocked))
+     (if (zero? (-> this hit-points))
+         (go (method-of-object this die-explode))
+         (go (method-of-object this knocked))
          )
      )
     (else
-      ((method-of-type hover-enemy general-event-handler) obj arg0 arg1 arg2 arg3)
+      ((method-of-type hover-enemy general-event-handler) this arg0 arg1 arg2 arg3)
       )
     )
   )
 
 ;; definition for method 52 of type wasp
-(defmethod enemy-method-52 wasp ((obj wasp) (arg0 vector))
-  (let ((s4-0 (-> obj root)))
-    (case (-> obj incoming knocked-type)
+;; WARN: Return type mismatch object vs none.
+(defmethod enemy-method-52 ((this wasp) (arg0 vector))
+  (let ((s4-0 (-> this root)))
+    (case (-> this incoming knocked-type)
       (((knocked-type knocked-type-2))
-       (let ((gp-1 (-> obj root transv)))
-         (let ((a1-1 (handle->process (-> obj incoming attacker-handle))))
+       (let ((gp-1 (-> this root transv)))
+         (let ((a1-1 (handle->process (-> this incoming attacker-handle))))
            (if a1-1
-               (vector-! gp-1 (-> (the-as process-focusable a1-1) root trans) (-> obj root trans))
-               (vector-! gp-1 (-> obj incoming attacker-pos) (-> obj root trans))
+               (vector-! gp-1 (-> (the-as process-focusable a1-1) root trans) (-> this root trans))
+               (vector-! gp-1 (-> this incoming attacker-pos) (-> this root trans))
                )
            )
          (set! (-> gp-1 y) 0.0)
          (vector-normalize! gp-1 1.0)
          (vector-rotate90-around-y! gp-1 gp-1)
          (if (< 0.0 (vector-dot
-                      (vector-! (new 'stack-no-clear 'vector) (-> obj incoming attacker-pos) (-> s4-0 trans))
+                      (vector-! (new 'stack-no-clear 'vector) (-> this incoming attacker-pos) (-> s4-0 trans))
                       (vector-x-quaternion! (new 'stack-no-clear 'vector) (-> s4-0 quat))
                       )
                 )
              (vector-negate! gp-1 gp-1)
              )
-         (let ((f30-1 (get-rand-float-range obj 0.0 1.0))
-               (s5-1 (-> obj enemy-info))
+         (let ((f30-1 (get-rand-float-range this 0.0 1.0))
+               (s5-1 (-> this enemy-info))
                )
            (vector-float*! gp-1 gp-1 (lerp (-> s5-1 knocked-hard-vxz-lo) (-> s5-1 knocked-hard-vxz-hi) f30-1))
            (set! (-> gp-1 y) (lerp (-> s5-1 knocked-hard-vy-lo) (-> s5-1 knocked-hard-vy-hi) f30-1))
@@ -536,7 +533,7 @@
          )
        )
       (else
-        ((the-as (function enemy vector none) (find-parent-method wasp 52)) obj arg0)
+        (call-parent-method this arg0)
         )
       )
     )
@@ -545,56 +542,52 @@
 
 ;; definition for method 116 of type wasp
 ;; WARN: Return type mismatch object vs none.
-(defmethod go-idle wasp ((obj wasp))
+(defmethod go-idle ((this wasp))
   (cond
-    ((logtest? (-> obj fact enemy-options) (enemy-option user0))
-     (go (method-of-object obj shoot-bridge-wait))
+    ((logtest? (-> this fact enemy-options) (enemy-option user0))
+     (go (method-of-object this shoot-bridge-wait))
      )
-    ((logtest? (enemy-option ambush) (-> obj fact enemy-options))
-     (go (method-of-object obj ambush))
+    ((logtest? (enemy-option ambush) (-> this fact enemy-options))
+     (go (method-of-object this ambush))
      )
     (else
-      (go (method-of-object obj notice))
+      (go (method-of-object this notice))
       )
     )
   (none)
   )
 
 ;; definition for method 70 of type wasp
-;; WARN: Return type mismatch object vs none.
-(defmethod go-hostile wasp ((obj wasp))
-  (go (method-of-object obj hostile))
-  (none)
+(defmethod go-hostile ((this wasp))
+  (go (method-of-object this hostile))
   )
 
 ;; definition for method 72 of type wasp
-(defmethod react-to-focus wasp ((obj wasp))
+(defmethod react-to-focus ((this wasp))
   "@TODO - flesh out docs"
-  (go-hostile obj)
-  (none)
+  (go-hostile this)
   )
 
 ;; definition for method 129 of type wasp
 ;; INFO: Used lq/sq
-(defmethod enemy-method-129 wasp ((obj wasp))
-  (if (logtest? (-> obj fact enemy-options) (enemy-option user0))
-      (set! (-> obj focus-pos quad) (-> obj plat-pos quad))
-      ((method-of-type hover-enemy enemy-method-129) obj)
+;; WARN: Return type mismatch object vs none.
+(defmethod enemy-method-129 ((this wasp))
+  (if (logtest? (-> this fact enemy-options) (enemy-option user0))
+      (set! (-> this focus-pos quad) (-> this plat-pos quad))
+      ((method-of-type hover-enemy enemy-method-129) this)
       )
   (none)
   )
 
 ;; definition for method 55 of type wasp
-(defmethod track-target! wasp ((obj wasp))
+(defmethod track-target! ((this wasp))
   "Does a lot of various things relating to interacting with the target
 - tracks when the enemy was last drawn
 - looks at the target and handles attacking
 @TODO Not extremely well understood yet"
-  (with-pp
-    (seek! (-> obj gun-x-angle) (-> obj gun-x-angle-final) (* 21845.334 (-> pp clock seconds-per-frame)))
-    ((method-of-type hover-enemy track-target!) obj)
-    (none)
-    )
+  (seek! (-> this gun-x-angle) (-> this gun-x-angle-final) (* 21845.334 (seconds-per-frame)))
+  ((method-of-type hover-enemy track-target!) this)
+  (none)
   )
 
 ;; definition for function shoot-bridge-post
@@ -612,7 +605,6 @@
     (if (logtest? (-> self fact enemy-options) (enemy-option user0))
         (go-virtual shoot-bridge-wait)
         )
-    (none)
     )
   )
 
@@ -626,7 +618,6 @@
           )
       )
     (set! (-> self last-fire-time) (+ (current-time) (seconds -1.5)))
-    (none)
     )
   )
 
@@ -640,15 +631,14 @@
           )
       )
     (set! (-> self last-fire-time) (+ (current-time) (seconds -1.5)))
-    (none)
     )
   )
 
 ;; failed to figure out what this is:
 (defstate shoot-bridge-wait (wasp)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('trigger)
        (go-virtual shoot-bridge-intro)
        )
@@ -672,12 +662,11 @@
       )
     (hover-enemy-method-146 self)
     (hover-nav-control-method-18 (-> self hover) (-> self path) -1 6)
-    (set! (-> self last-fire-time) (current-time))
+    (set-time! (-> self last-fire-time))
     (set! (-> self bridge-index) 0)
     (logclear! (-> self enemy-flags) (enemy-flag enable-on-active checking-water))
     (logclear! (-> self mask) (process-mask collectable))
     (logclear! (-> self enemy-flags) (enemy-flag look-at-move-dest))
-    (none)
     )
   :exit (behavior ()
     (let ((gp-0 (get-point-in-path! (-> self path) (new 'stack-no-clear 'vector) 0.0 'interp))
@@ -690,16 +679,15 @@
         (the-as vector #t)
         )
       )
-    (none)
     )
-  :code (the-as (function none :behavior wasp) sleep-code)
+  :code sleep-code
   )
 
 ;; failed to figure out what this is:
 (defstate shoot-bridge-intro (wasp)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('shoot)
        (go-virtual shoot-bridge-hostile)
        )
@@ -707,7 +695,6 @@
     )
   :enter (behavior ()
     (set! (-> self plat-pos quad) (-> self entity-group data 0 actor extra trans quad))
-    (none)
     )
   :trans (behavior ()
     (if (< (vector-vector-distance
@@ -718,31 +705,28 @@
            )
         (go-virtual shoot-bridge-hold)
         )
-    (none)
     )
-  :code (the-as (function none :behavior wasp) hover-enemy-fly-code)
+  :code hover-enemy-fly-code
   :post (behavior ()
     (hover-nav-control-method-11 (-> self hover) (the-as vector #f))
     (hover-enemy-dest-post)
-    (none)
     )
   )
 
 ;; failed to figure out what this is:
 (defstate shoot-bridge-hold (wasp)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('shoot)
        (go-virtual shoot-bridge-hostile)
        )
       )
     )
-  :code (the-as (function none :behavior wasp) hover-enemy-fly-code)
+  :code hover-enemy-fly-code
   :post (behavior ()
     (hover-nav-control-method-11 (-> self hover) (the-as vector #f))
     (hover-enemy-dest-post)
-    (none)
     )
   )
 
@@ -773,9 +757,8 @@
           )
         )
       )
-    (none)
     )
-  :code (the-as (function none :behavior wasp) hover-enemy-fly-code)
+  :code hover-enemy-fly-code
   :post (behavior ()
     (let ((a1-0 (new 'stack-no-clear 'vector)))
       (set! (-> a1-0 quad) (-> self focus-pos quad))
@@ -784,15 +767,14 @@
       (hover-nav-control-method-11 (-> self hover) a1-0)
       )
     (hover-enemy-dest-post)
-    (none)
     )
   )
 
 ;; failed to figure out what this is:
 (defstate shoot-bridge-attack (wasp)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('event-attack)
        (let ((gp-0 (new 'stack-no-clear 'projectile-init-by-other-params)))
          (set! (-> gp-0 ent) (-> self entity))
@@ -814,36 +796,28 @@
        (sound-play "wasp-fire" :position (-> self root trans))
        )
       (else
-        (enemy-event-handler proc arg1 event-type event)
+        (enemy-event-handler proc argc message block)
         )
       )
     )
   :enter (behavior ()
-    (set! (-> self state-time) (current-time))
+    (set-time! (-> self state-time))
     (set! (-> self attack-miss-dist-curr) (-> self attack-miss-dist-min))
-    (none)
     )
   :code (behavior ()
     (ja-channel-push! 1 (seconds 0.2))
     (sound-play "wasp-warn" :position (-> self root trans))
     (ja-no-eval :group! (-> self draw art-group data (-> self hover-info shoot-anim))
-                :num! (seek!
-                  (the float
-                       (+ (-> (the-as art-joint-anim (-> self draw art-group data (-> self hover-info shoot-anim))) frames num-frames)
-                          -1
-                          )
-                       )
-                  )
+                :num! (seek!)
                 :frame-num 0.0
                 )
     (until (ja-done? 0)
       (suspend)
       (ja :num! (seek!))
       )
-    (set! (-> self last-fire-time) (current-time))
+    (set-time! (-> self last-fire-time))
     (set! (-> self restart-fly-anims) #t)
     (go-virtual shoot-bridge-hostile)
-    (none)
     )
   :post (behavior ()
     (let* ((a1-0 (-> self node-list data (-> self hover-info gun-base)))
@@ -862,7 +836,7 @@
     (seek!
       (-> self attack-miss-dist-curr)
       (-> self attack-miss-dist-max)
-      (* 0.5 (-> self clock seconds-per-frame) (- (-> self attack-miss-dist-max) (-> self attack-miss-dist-min)))
+      (* 0.5 (seconds-per-frame) (- (-> self attack-miss-dist-max) (-> self attack-miss-dist-min)))
       )
     (let ((a1-8 (new 'stack-no-clear 'vector)))
       (set! (-> a1-8 quad) (-> self focus-pos quad))
@@ -871,7 +845,6 @@
       (hover-nav-control-method-11 (-> self hover) a1-8)
       )
     (hover-enemy-dest-post)
-    (none)
     )
   )
 
@@ -896,8 +869,7 @@
         (the-as vector #t)
         )
       )
-    (set! (-> self state-time) (current-time))
-    (none)
+    (set-time! (-> self state-time))
     )
   :trans (behavior ()
     (when (< (vector-vector-distance
@@ -909,9 +881,8 @@
       (cleanup-for-death self)
       (go empty-state)
       )
-    (none)
     )
-  :code (the-as (function none :behavior wasp) hover-enemy-fly-code)
+  :code hover-enemy-fly-code
   :post (behavior ()
     (if (not (hover-nav-control-method-23 (-> self hover)))
         (hover-nav-control-method-11 (-> self hover) (the-as vector #f))
@@ -921,7 +892,6 @@
           )
         )
     (hover-enemy-dest-post)
-    (none)
     )
   )
 
@@ -939,24 +909,24 @@
                           )
                      )
                  )
-        (if (and (>= (- (current-time) (-> self last-fire-time))
-                     (the int (* 300.0 (rand-vu-float-range (-> self attack-wait-min) (-> self attack-wait-max))))
-                     )
+        (if (and (time-elapsed?
+                   (-> self last-fire-time)
+                   (the int (* 300.0 (rand-vu-float-range (-> self attack-wait-min) (-> self attack-wait-max))))
+                   )
                  (get-enemy-target self)
                  )
             (go-virtual attack)
             )
         )
       )
-    (none)
     )
   )
 
 ;; failed to figure out what this is:
 (defstate attack (wasp)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('event-attack)
        (let ((gp-0 (new 'stack-no-clear 'projectile-init-by-other-params)))
          (set! (-> gp-0 ent) (-> self entity))
@@ -978,36 +948,28 @@
        (sound-play "wasp-fire" :position (-> self root trans))
        )
       (else
-        (enemy-event-handler proc arg1 event-type event)
+        (enemy-event-handler proc argc message block)
         )
       )
     )
   :enter (behavior ()
-    (set! (-> self state-time) (current-time))
+    (set-time! (-> self state-time))
     (set! (-> self attack-miss-dist-curr) (-> self attack-miss-dist-min))
-    (none)
     )
   :code (behavior ()
     (ja-channel-push! 1 (seconds 0.2))
     (sound-play "wasp-warn" :position (-> self root trans))
     (ja-no-eval :group! (-> self draw art-group data (-> self hover-info shoot-anim))
-                :num! (seek!
-                  (the float
-                       (+ (-> (the-as art-joint-anim (-> self draw art-group data (-> self hover-info shoot-anim))) frames num-frames)
-                          -1
-                          )
-                       )
-                  )
+                :num! (seek!)
                 :frame-num 0.0
                 )
     (until (ja-done? 0)
       (suspend)
       (ja :num! (seek!))
       )
-    (set! (-> self last-fire-time) (current-time))
+    (set-time! (-> self last-fire-time))
     (set! (-> self restart-fly-anims) #t)
     (go-hostile self)
-    (none)
     )
   :post (behavior ()
     (let* ((a1-0 (-> self node-list data (-> self hover-info gun-base)))
@@ -1026,30 +988,20 @@
     (seek!
       (-> self attack-miss-dist-curr)
       (-> self attack-miss-dist-max)
-      (* 0.5 (-> self clock seconds-per-frame) (- (-> self attack-miss-dist-max) (-> self attack-miss-dist-min)))
+      (* 0.5 (seconds-per-frame) (- (-> self attack-miss-dist-max) (-> self attack-miss-dist-min)))
       )
     (hover-enemy-hostile-post)
-    (none)
     )
   )
 
 ;; failed to figure out what this is:
 (defstate knocked-recover (wasp)
   :virtual #t
-  :event (the-as (function process int symbol event-message-block object :behavior wasp) enemy-event-handler)
+  :event enemy-event-handler
   :code (behavior ()
     (local-vars (v1-35 enemy-flag) (v1-43 enemy-flag))
     (ja-channel-push! 1 (seconds 0.5))
-    (ja-no-eval :group! (-> self draw art-group data (-> self knocked-recover-anim))
-                :num! (seek!
-                  (the float
-                       (+ (-> (the-as art-joint-anim (-> self draw art-group data (-> self knocked-recover-anim))) frames num-frames)
-                          -1
-                          )
-                       )
-                  )
-                :frame-num 0.0
-                )
+    (ja-no-eval :group! (-> self draw art-group data (-> self knocked-recover-anim)) :num! (seek!) :frame-num 0.0)
     (until (ja-done? 0)
       (suspend)
       (ja :num! (seek!))
@@ -1081,14 +1033,13 @@
     (logclear! (-> self focus-status) (focus-status hit))
     (hover-nav-control-method-21 (-> self hover))
     (go-hostile self)
-    (none)
     )
   )
 
 ;; failed to figure out what this is:
 (defstate die-explode (wasp)
   :virtual #t
-  :event (the-as (function process int symbol event-message-block object :behavior wasp) enemy-event-handler)
+  :event enemy-event-handler
   :code (behavior ()
     (dispose! self)
     (set! (-> self hit-points) 0)
@@ -1144,14 +1095,13 @@
       (suspend)
       )
     (cleanup-for-death self)
-    (none)
     )
   )
 
 ;; failed to figure out what this is:
 (defstate die-now (wasp)
   :virtual #t
-  :event (the-as (function process int symbol event-message-block object :behavior wasp) enemy-event-handler)
+  :event enemy-event-handler
   :code (behavior ()
     (dispose! self)
     (let ((v1-3 (-> self root root-prim)))
@@ -1162,28 +1112,27 @@
     (set! (-> self hit-points) 0)
     (do-effect (-> self skel effect) 'death-default 0.0 -1)
     (let ((gp-0 (current-time)))
-      (until (>= (- (current-time) gp-0) (seconds 1))
+      (until (time-elapsed? gp-0 (seconds 1))
         (suspend)
         )
       )
     (send-event self 'death-end)
     (cleanup-for-death self)
-    (none)
     )
-  :post (the-as (function none :behavior wasp) transform-post)
+  :post transform-post
   )
 
 ;; definition for method 107 of type wasp
 ;; WARN: Return type mismatch process vs process-focusable.
-(defmethod get-enemy-target wasp ((obj wasp))
+(defmethod get-enemy-target ((this wasp))
   "@returns the [[process-focusable]] that the enemy is currently focusing on, or [[#f]] otherwise"
-  (let ((s5-0 (handle->process (-> obj focus handle))))
+  (let ((s5-0 (handle->process (-> this focus handle))))
     (the-as
       process-focusable
       (when s5-0
-        (let* ((a0-4 (-> obj root))
+        (let* ((a0-4 (-> this root))
                (s4-1 (vector+! (new 'stack-no-clear 'vector) (-> a0-4 trans) (-> a0-4 transv)))
-               (s3-1 (vector-! (new 'stack-no-clear 'vector) s4-1 (-> obj focus-pos)))
+               (s3-1 (vector-! (new 'stack-no-clear 'vector) s4-1 (-> this focus-pos)))
                (s2-1 (vector-z-quaternion! (new 'stack-no-clear 'vector) (get-quat (the-as process-focusable s5-0) 0)))
                (s3-2 (vector-normalize-copy! (new 'stack-no-clear 'vector) s3-1 1.0))
                )
@@ -1191,8 +1140,8 @@
                         (not (logtest? (-> (the-as process-focusable s5-0) focus-status) (focus-status disable dead ignore grabbed)))
                         )
                    (< 0.0 (vector-dot s2-1 s3-2))
-                   (< (vector-vector-distance s4-1 (-> obj focus-pos)) 225280.0)
-                   (and (< (fabs (vector-x-angle s3-2)) 3640.889) (enemy-method-95 obj (-> obj focus-pos) 5461.3335))
+                   (< (vector-vector-distance s4-1 (-> this focus-pos)) 225280.0)
+                   (and (< (fabs (vector-x-angle s3-2)) 3640.889) (enemy-method-95 this (-> this focus-pos) 5461.3335))
                    )
               s5-0
               )
@@ -1203,20 +1152,20 @@
   )
 
 ;; definition for method 77 of type wasp
-(defmethod enemy-method-77 wasp ((obj wasp) (arg0 (pointer float)))
+(defmethod enemy-method-77 ((this wasp) (arg0 (pointer float)))
   (cond
-    ((rng-hit? obj 0.5)
-     (set! (-> obj knocked-anim) 10)
-     (set! (-> obj knocked-recover-anim) 11)
+    ((rng-hit? this 0.5)
+     (set! (-> this knocked-anim) 10)
+     (set! (-> this knocked-recover-anim) 11)
      )
     (else
-      (set! (-> obj knocked-anim) 12)
-      (set! (-> obj knocked-recover-anim) 13)
+      (set! (-> this knocked-anim) 12)
+      (set! (-> this knocked-recover-anim) 13)
       )
     )
   (ja-channel-push! 1 0)
-  (let ((a1-3 (-> obj draw art-group data (-> obj knocked-anim)))
-        (a0-5 (-> obj skel root-channel 0))
+  (let ((a1-3 (-> this draw art-group data (-> this knocked-anim)))
+        (a0-5 (-> this skel root-channel 0))
         )
     (set! (-> a0-5 frame-group) (the-as art-joint-anim a1-3))
     (set! (-> a0-5 param 0) (the float (+ (-> (the-as art-joint-anim a1-3) frames num-frames) -1)))
@@ -1228,9 +1177,9 @@
   )
 
 ;; definition for method 78 of type wasp
-(defmethod enemy-method-78 wasp ((obj wasp) (arg0 (pointer float)))
-  (let ((v1-4 (-> obj draw art-group data (-> obj enemy-info knocked-land-anim)))
-        (a0-3 (-> obj skel root-channel 0))
+(defmethod enemy-method-78 ((this wasp) (arg0 (pointer float)))
+  (let ((v1-4 (-> this draw art-group data (-> this enemy-info knocked-land-anim)))
+        (a0-3 (-> this skel root-channel 0))
         )
     (set! (-> a0-3 frame-group) (the-as art-joint-anim v1-4))
     (set! (-> a0-3 param 0) (the float (+ (-> (the-as art-joint-anim v1-4) frames num-frames) -1)))
@@ -1242,41 +1191,41 @@
   )
 
 ;; definition for method 80 of type wasp
-(defmethod enemy-method-80 wasp ((obj wasp) (arg0 enemy-knocked-info))
-  (-> obj root)
+(defmethod enemy-method-80 ((this wasp) (arg0 enemy-knocked-info))
+  (-> this root)
   (>= (-> arg0 on-surface-count) 1)
   )
 
 ;; definition for method 81 of type wasp
-(defmethod enemy-method-81 wasp ((obj wasp))
+(defmethod enemy-method-81 ((this wasp))
   #f
   )
 
 ;; definition for method 73 of type wasp
-(defmethod kill-prefer-falling wasp ((obj wasp))
+(defmethod kill-prefer-falling ((this wasp))
   "If available in `enemy-info`, [[go]] to the [[die-falling]] state, if not, [[die]]"
   (cond
-    ((and (-> obj next-state) (= (-> obj next-state name) 'knocked))
-     (go (method-of-object obj die-now))
+    ((and (-> this next-state) (= (-> this next-state name) 'knocked))
+     (go (method-of-object this die-now))
      )
-    ((-> obj enemy-info use-die-falling)
-     (go (method-of-object obj die-falling))
+    ((-> this enemy-info use-die-falling)
+     (go (method-of-object this die-falling))
      )
     (else
-      (go (method-of-object obj die))
+      (go (method-of-object this die))
       )
     )
   )
 
 ;; definition for method 165 of type wasp
 ;; WARN: Return type mismatch int vs none.
-(defmethod spawn-wasp-shot wasp ((obj wasp) (arg0 projectile-init-by-other-params) (arg1 int) (arg2 float) (arg3 float))
-  (vector<-cspace! (-> arg0 pos) (-> obj node-list data arg1))
+(defmethod spawn-wasp-shot ((this wasp) (arg0 projectile-init-by-other-params) (arg1 int) (arg2 float) (arg3 float))
+  (vector<-cspace! (-> arg0 pos) (-> this node-list data arg1))
   (let ((s3-1 (quaternion-vector-angle!
                 (new 'stack-no-clear 'quaternion)
                 (vector-normalize-copy!
                   (new 'stack-no-clear 'vector)
-                  (-> obj node-list data arg1 bone transform vector 1)
+                  (-> this node-list data arg1 bone transform vector 1)
                   1.0
                   )
                 (* 273.06668 arg3)
@@ -1284,7 +1233,7 @@
               )
         (a1-8 (vector-normalize-copy!
                 (new 'stack-no-clear 'vector)
-                (-> obj node-list data arg1 bone transform vector 2)
+                (-> this node-list data arg1 bone transform vector 2)
                 1.0
                 )
               )
@@ -1292,115 +1241,113 @@
     (vector-orient-by-quat! (-> arg0 vel) a1-8 s3-1)
     )
   (vector-normalize! (-> arg0 vel) 491520.0)
-  (spawn-projectile wasp-shot arg0 obj *default-dead-pool*)
+  (spawn-projectile wasp-shot arg0 this *default-dead-pool*)
   0
   (none)
   )
 
 ;; definition for method 142 of type wasp
 ;; WARN: Return type mismatch int vs none.
-(defmethod hover-enemy-method-142 wasp ((obj wasp))
-  (let ((s5-0 (-> obj main-joint-acc))
-        (s4-0 (-> obj main-joint-vel))
+(defmethod hover-enemy-method-142 ((this wasp))
+  (let ((s5-0 (-> this main-joint-acc))
+        (s4-0 (-> this main-joint-vel))
         (gp-0
           (lambda ((arg0 wasp) (arg1 cspace) (arg2 float) (arg3 float) (arg4 vector) (arg5 vector) (arg6 int))
             (local-vars (sv-192 float) (sv-208 quaternion) (sv-224 vector))
-            (with-pp
-              (set! sv-192 arg2)
-              (let ((s0-0 arg3))
-                (set! sv-224 arg4)
-                (let ((s1-0 arg5)
-                      (s3-0 arg6)
-                      (s4-0 (vector<-cspace! (new 'stack-no-clear 'vector) arg1))
-                      (s5-0 (new 'stack-no-clear 'matrix))
-                      (a1-3 (matrix-with-scale->quaternion (new 'stack-no-clear 'quaternion) (-> arg1 bone transform)))
-                      )
-                  (set! sv-208 (new 'stack-no-clear 'quaternion))
-                  (let ((s2-1 (new 'stack-no-clear 'vector)))
-                    (-> arg0 scale)
-                    (quaternion-rotate-local-z! sv-208 a1-3 sv-192)
-                    (quaternion->matrix s5-0 sv-208)
-                    (set! (-> s2-1 quad) (-> arg0 root scale quad))
-                    (scale-matrix! s5-0 s2-1 s5-0)
-                    (let* ((s1-1 (vector-inv-orient-by-quat! (new 'stack-no-clear 'vector) s1-0 (-> arg0 root quat)))
-                           (t9-6 vector-inv-orient-by-quat!)
-                           (a0-10 (new 'stack-no-clear 'vector))
-                           (a2-4 (-> arg0 root quat))
-                           (v0-6 (t9-6 a0-10 sv-224 a2-4))
-                           (f30-0 (* 2457600.0 (-> pp clock seconds-per-frame)))
-                           (f28-0
-                             (seek
-                               (-> arg0 thrust s3-0)
-                               (+ (* 0.4 (fmax 0.0 (* (-> v0-6 x) s0-0)))
-                                  (fmax 0.0 (-> v0-6 y))
-                                  (fabs (* 0.2 (-> v0-6 z)))
-                                  (fmax 0.0 (-> s1-1 y))
-                                  )
-                               (* 0.2 f30-0)
-                               )
+            (set! sv-192 arg2)
+            (let ((s0-0 arg3))
+              (set! sv-224 arg4)
+              (let ((s1-0 arg5)
+                    (s3-0 arg6)
+                    (s4-0 (vector<-cspace! (new 'stack-no-clear 'vector) arg1))
+                    (s5-0 (new 'stack-no-clear 'matrix))
+                    (a1-3 (matrix-with-scale->quaternion (new 'stack-no-clear 'quaternion) (-> arg1 bone transform)))
+                    )
+                (set! sv-208 (new 'stack-no-clear 'quaternion))
+                (let ((s2-1 (new 'stack-no-clear 'vector)))
+                  (-> arg0 scale)
+                  (quaternion-rotate-local-z! sv-208 a1-3 sv-192)
+                  (quaternion->matrix s5-0 sv-208)
+                  (set! (-> s2-1 quad) (-> arg0 root scale quad))
+                  (scale-matrix! s5-0 s2-1 s5-0)
+                  (let* ((s1-1 (vector-inv-orient-by-quat! (new 'stack-no-clear 'vector) s1-0 (-> arg0 root quat)))
+                         (t9-6 vector-inv-orient-by-quat!)
+                         (a0-10 (new 'stack-no-clear 'vector))
+                         (a2-4 (-> arg0 root quat))
+                         (v0-6 (t9-6 a0-10 sv-224 a2-4))
+                         (f30-0 (* 2457600.0 (seconds-per-frame)))
+                         (f28-0
+                           (seek
+                             (-> arg0 thrust s3-0)
+                             (+ (* 0.4 (fmax 0.0 (* (-> v0-6 x) s0-0)))
+                                (fmax 0.0 (-> v0-6 y))
+                                (fabs (* 0.2 (-> v0-6 z)))
+                                (fmax 0.0 (-> s1-1 y))
+                                )
+                             (* 0.2 f30-0)
                              )
                            )
-                      (let ((f20-0 (lerp-scale 819.2 4096.0 f28-0 1638.4 f30-0))
-                            (f26-0 (lerp-scale 4915.2 11468.8 f28-0 1638.4 f30-0))
+                         )
+                    (let ((f20-0 (lerp-scale 819.2 4096.0 f28-0 1638.4 f30-0))
+                          (f26-0 (lerp-scale 4915.2 11468.8 f28-0 1638.4 f30-0))
+                          )
+                      (lerp-scale 0.0 -4915.2 f28-0 1638.4 f30-0)
+                      (let ((f22-0 (lerp-scale 0.5 1.5 f28-0 1638.4 f30-0))
+                            (f24-0 (lerp-scale 0.1 1.0 f28-0 1638.4 f30-0))
                             )
-                        (lerp-scale 0.0 -4915.2 f28-0 1638.4 f30-0)
-                        (let ((f22-0 (lerp-scale 0.5 1.5 f28-0 1638.4 f30-0))
-                              (f24-0 (lerp-scale 0.1 1.0 f28-0 1638.4 f30-0))
+                        (lerp-scale 0.1 1.0 f28-0 1638.4 f30-0)
+                        (let ((f1-10 (lerp-scale 0.02 0.6 f28-0 1638.4 f30-0))
+                              (f2-6 (fmin 1.0 (-> s2-1 x)))
+                              (f0-15 (fmin 1.0 (-> s2-1 y)))
                               )
-                          (lerp-scale 0.1 1.0 f28-0 1638.4 f30-0)
-                          (let ((f1-10 (lerp-scale 0.02 0.6 f28-0 1638.4 f30-0))
-                                (f2-6 (fmin 1.0 (-> s2-1 x)))
-                                (f0-15 (fmin 1.0 (-> s2-1 y)))
-                                )
-                            (set! (-> *part-id-table* 718 init-specs 4 initial-valuef) (* f20-0 f2-6))
-                            (set! (-> *part-id-table* 718 init-specs 5 initial-valuef) (* f26-0 f0-15))
-                            (set! (-> *part-id-table* 722 init-specs 3 initial-valuef) (* f22-0 f2-6))
-                            (set! (-> *part-id-table* 719 init-specs 1 initial-valuef) (* f24-0 f0-15))
-                            (set! (-> *part-id-table* 720 init-specs 1 initial-valuef) (* f1-10 f0-15))
-                            (set! (-> *part-id-table* 721 init-specs 0 initial-valuef) (* f24-0 f0-15))
-                            (set! (-> arg0 thrust s3-0) f28-0)
-                            (let ((f0-16 (* f26-0 f0-15)))
-                              (vector-normalize-copy! (new 'stack-no-clear 'vector) (-> s5-0 vector 1) (* -0.5 f0-16))
-                              )
+                          (set! (-> *part-id-table* 718 init-specs 4 initial-valuef) (* f20-0 f2-6))
+                          (set! (-> *part-id-table* 718 init-specs 5 initial-valuef) (* f26-0 f0-15))
+                          (set! (-> *part-id-table* 722 init-specs 3 initial-valuef) (* f22-0 f2-6))
+                          (set! (-> *part-id-table* 719 init-specs 1 initial-valuef) (* f24-0 f0-15))
+                          (set! (-> *part-id-table* 720 init-specs 1 initial-valuef) (* f1-10 f0-15))
+                          (set! (-> *part-id-table* 721 init-specs 0 initial-valuef) (* f24-0 f0-15))
+                          (set! (-> arg0 thrust s3-0) f28-0)
+                          (let ((f0-16 (* f26-0 f0-15)))
+                            (vector-normalize-copy! (new 'stack-no-clear 'vector) (-> s5-0 vector 1) (* -0.5 f0-16))
                             )
                           )
                         )
-                      (set! (-> s5-0 trans quad) (-> s4-0 quad))
-                      (spawn-with-matrix (-> arg0 engine-part) s5-0)
-                      (let ((f0-18 (lerp-scale 0.75 1.0 f28-0 1638.4 f30-0)))
-                        (sound-play-by-name
-                          (static-sound-name "wasp-jets")
-                          (-> arg0 sound-id)
-                          (the int (* 1024.0 f0-18))
-                          0
-                          0
-                          (sound-group sfx)
-                          (-> arg0 root trans)
-                          )
+                      )
+                    (set! (-> s5-0 trans quad) (-> s4-0 quad))
+                    (spawn-with-matrix (-> arg0 engine-part) s5-0)
+                    (let ((f0-18 (lerp-scale 0.75 1.0 f28-0 1638.4 f30-0)))
+                      (sound-play-by-name
+                        (static-sound-name "wasp-jets")
+                        (-> arg0 sound-id)
+                        (the int (* 1024.0 f0-18))
+                        0
+                        0
+                        (sound-group sfx)
+                        (-> arg0 root trans)
                         )
                       )
                     )
                   )
                 )
-              0
-              (none)
               )
+            0
+            (none)
             )
           )
         )
     (gp-0
-      obj
-      (-> obj node-list data (-> obj hover-info engine-left))
-      (-> obj hover-info thrust-rotate-left)
+      this
+      (-> this node-list data (-> this hover-info engine-left))
+      (-> this hover-info thrust-rotate-left)
       -1.0
       s5-0
       s4-0
       0
       )
     (gp-0
-      obj
-      (-> obj node-list data (-> obj hover-info engine-right))
-      (-> obj hover-info thrust-rotate-right)
+      this
+      (-> this node-list data (-> this hover-info engine-right))
+      (-> this hover-info thrust-rotate-right)
       1.0
       s5-0
       s4-0
@@ -1413,9 +1360,9 @@
 
 ;; definition for method 114 of type wasp
 ;; WARN: Return type mismatch int vs none.
-(defmethod init-enemy-collision! wasp ((obj wasp))
+(defmethod init-enemy-collision! ((this wasp))
   "Initializes the [[collide-shape-moving]] and any ancillary tasks to make the enemy collide properly"
-  (let ((s5-0 (new 'process 'collide-shape-moving obj (collide-list-enum usually-hit-by-player))))
+  (let ((s5-0 (new 'process 'collide-shape-moving this (collide-list-enum usually-hit-by-player))))
     (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s5-0 reaction) cshape-reaction-default)
     (set! (-> s5-0 no-reaction)
@@ -1517,45 +1464,45 @@
       (set! (-> s5-0 backup-collide-with) (-> v1-35 prim-core collide-with))
       )
     (set! (-> s5-0 max-iteration-count) (the-as uint 3))
-    (set! (-> obj root) s5-0)
+    (set! (-> this root) s5-0)
     )
   0
   (none)
   )
 
 ;; definition for method 10 of type wasp
-(defmethod deactivate wasp ((obj wasp))
-  (if (nonzero? (-> obj smoke-part))
-      (kill-and-free-particles (-> obj smoke-part))
+(defmethod deactivate ((this wasp))
+  (if (nonzero? (-> this smoke-part))
+      (kill-and-free-particles (-> this smoke-part))
       )
-  (if (nonzero? (-> obj engine-part))
-      (kill-and-free-particles (-> obj engine-part))
+  (if (nonzero? (-> this engine-part))
+      (kill-and-free-particles (-> this engine-part))
       )
-  (sound-stop (-> obj sound-id))
-  ((method-of-type hover-enemy deactivate) obj)
+  (sound-stop (-> this sound-id))
+  ((method-of-type hover-enemy deactivate) this)
   (none)
   )
 
 ;; definition for method 7 of type wasp
 ;; WARN: Return type mismatch hover-enemy vs wasp.
-(defmethod relocate wasp ((obj wasp) (arg0 int))
-  (if (nonzero? (-> obj gun-jmod))
-      (&+! (-> obj gun-jmod) arg0)
+(defmethod relocate ((this wasp) (arg0 int))
+  (if (nonzero? (-> this gun-jmod))
+      (&+! (-> this gun-jmod) arg0)
       )
-  (if (nonzero? (-> obj smoke-part))
-      (&+! (-> obj smoke-part) arg0)
+  (if (nonzero? (-> this smoke-part))
+      (&+! (-> this smoke-part) arg0)
       )
-  (if (nonzero? (-> obj engine-part))
-      (&+! (-> obj engine-part) arg0)
+  (if (nonzero? (-> this engine-part))
+      (&+! (-> this engine-part) arg0)
       )
-  (the-as wasp ((method-of-type hover-enemy relocate) obj arg0))
+  (the-as wasp ((method-of-type hover-enemy relocate) this arg0))
   )
 
 ;; definition for method 149 of type wasp
 ;; WARN: Return type mismatch int vs none.
-(defmethod hover-enemy-method-149 wasp ((obj wasp))
+(defmethod hover-enemy-method-149 ((this wasp))
   (initialize-skeleton
-    obj
+    this
     (the-as skeleton-group (art-group-get-by-name *level* "skel-wasp" (the-as (pointer uint32) #f)))
     (the-as pair 0)
     )
@@ -1564,12 +1511,12 @@
   )
 
 ;; definition for method 150 of type wasp
-(defmethod hover-enemy-method-150 wasp ((obj wasp))
+(defmethod hover-enemy-method-150 ((this wasp))
   *wasp-enemy-info*
   )
 
 ;; definition for method 151 of type wasp
-(defmethod hover-enemy-method-151 wasp ((obj wasp))
+(defmethod hover-enemy-method-151 ((this wasp))
   (new 'static 'hover-enemy-info
     :fly-forward-anim 7
     :fly-backward-anim 8
@@ -1586,98 +1533,98 @@
   )
 
 ;; definition for method 152 of type wasp
-(defmethod hover-enemy-method-152 wasp ((obj wasp))
+(defmethod hover-enemy-method-152 ((this wasp))
   (new 'static 'hover-nav-params :max-speed 73728.0 :max-acceleration 122880.0 :friction 0.05)
   )
 
 ;; definition for method 115 of type wasp
 ;; INFO: Used lq/sq
 ;; WARN: Return type mismatch int vs none.
-(defmethod init-enemy! wasp ((obj wasp))
+(defmethod init-enemy! ((this wasp))
   "Common method called to initialize the enemy, typically sets up default field values and calls ancillary helper methods"
   (local-vars (sv-16 res-tag) (sv-32 res-tag) (sv-48 res-tag) (sv-64 res-tag))
-  (hover-enemy-method-149 obj)
-  (init-enemy-behaviour-and-stats! obj (hover-enemy-method-150 obj))
-  (hover-enemy-method-155 obj)
-  (set! (-> obj neck up) (the-as uint 1))
-  (set! (-> obj neck nose) (the-as uint 2))
-  (set! (-> obj neck ear) (the-as uint 0))
-  (set! (-> obj scale) (get-rand-float-range obj 0.9 1.3))
-  (set! (-> obj sound-id) (new-sound-id))
-  (set! (-> obj root dynam gravity y) 327680.0)
-  (set! (-> obj root dynam gravity-length) 327680.0)
-  (set! (-> obj root dynam gravity-max) 327680.0)
-  (set! (-> obj gun-jmod)
-        (the-as joint-mod (new 'process 'joint-mod-rotate-local obj (-> obj hover-info gun-base) #t))
+  (hover-enemy-method-149 this)
+  (init-enemy-behaviour-and-stats! this (hover-enemy-method-150 this))
+  (hover-enemy-method-155 this)
+  (set! (-> this neck up) (the-as uint 1))
+  (set! (-> this neck nose) (the-as uint 2))
+  (set! (-> this neck ear) (the-as uint 0))
+  (set! (-> this scale) (get-rand-float-range this 0.9 1.3))
+  (set! (-> this sound-id) (new-sound-id))
+  (set! (-> this root dynam gravity y) 327680.0)
+  (set! (-> this root dynam gravity-length) 327680.0)
+  (set! (-> this root dynam gravity-max) 327680.0)
+  (set! (-> this gun-jmod)
+        (the-as joint-mod (new 'process 'joint-mod-rotate-local this (-> this hover-info gun-base) #t))
         )
-  (set! (-> obj gun-x-angle) 0.0)
-  (set! (-> obj gun-x-angle-final) 0.0)
-  (logclear! (-> obj mask) (process-mask actor-pause))
-  (logclear! (-> obj enemy-flags) (enemy-flag notice))
+  (set! (-> this gun-x-angle) 0.0)
+  (set! (-> this gun-x-angle-final) 0.0)
+  (logclear! (-> this mask) (process-mask actor-pause))
+  (logclear! (-> this enemy-flags) (enemy-flag notice))
   (set! sv-16 (new 'static 'res-tag))
-  (let ((v1-28 (res-lump-data (-> obj entity) 'actor-groups (pointer actor-group) :tag-ptr (& sv-16))))
+  (let ((v1-28 (res-lump-data (-> this entity) 'actor-groups (pointer actor-group) :tag-ptr (& sv-16))))
     (if (and v1-28 (= (-> sv-16 elt-count) 1))
-        (set! (-> obj entity-group) (-> v1-28 0))
-        (set! (-> obj entity-group) #f)
+        (set! (-> this entity-group) (-> v1-28 0))
+        (set! (-> this entity-group) #f)
         )
     )
   (set! sv-32 (new 'static 'res-tag))
-  (let ((v1-32 (res-lump-data (-> obj entity) 'timeout (pointer float) :tag-ptr (& sv-32))))
+  (let ((v1-32 (res-lump-data (-> this entity) 'timeout (pointer float) :tag-ptr (& sv-32))))
     (cond
       ((and v1-32 (= (-> sv-32 elt-count) 2))
-       (set! (-> obj attack-wait-min) (-> v1-32 0))
-       (set! (-> obj attack-wait-max) (-> v1-32 1))
+       (set! (-> this attack-wait-min) (-> v1-32 0))
+       (set! (-> this attack-wait-max) (-> v1-32 1))
        )
       (else
-        (set! (-> obj attack-wait-min) 1.0)
-        (set! (-> obj attack-wait-max) 3.0)
+        (set! (-> this attack-wait-min) 1.0)
+        (set! (-> this attack-wait-max) 3.0)
         )
       )
     )
   (let ((f30-0 4096.0))
     (set! sv-48 (new 'static 'res-tag))
-    (let ((v1-39 (res-lump-data (-> obj entity) 'min-max (pointer float) :tag-ptr (& sv-48))))
-      (set! (-> obj attack-miss-dist-min) (* f30-0 (if (and v1-39 (> (the-as int (-> sv-48 elt-count)) 0))
-                                                       (-> v1-39 0)
-                                                       -1.0
-                                                       )
-                                             )
+    (let ((v1-39 (res-lump-data (-> this entity) 'min-max (pointer float) :tag-ptr (& sv-48))))
+      (set! (-> this attack-miss-dist-min) (* f30-0 (if (and v1-39 (> (the-as int (-> sv-48 elt-count)) 0))
+                                                        (-> v1-39 0)
+                                                        -1.0
+                                                        )
+                                              )
             )
       )
     )
   (let ((f30-1 4096.0))
     (set! sv-64 (new 'static 'res-tag))
-    (let ((v1-43 (res-lump-data (-> obj entity) 'min-max (pointer float) :tag-ptr (& sv-64))))
-      (set! (-> obj attack-miss-dist-max) (* f30-1 (if (and v1-43 (< 1 (the-as int (-> sv-64 elt-count))))
-                                                       (-> v1-43 1)
-                                                       1.0
-                                                       )
-                                             )
+    (let ((v1-43 (res-lump-data (-> this entity) 'min-max (pointer float) :tag-ptr (& sv-64))))
+      (set! (-> this attack-miss-dist-max) (* f30-1 (if (and v1-43 (< 1 (the-as int (-> sv-64 elt-count))))
+                                                        (-> v1-43 1)
+                                                        1.0
+                                                        )
+                                              )
             )
       )
     )
-  (set! (-> obj path) (new 'process 'path-control obj 'intro 0.0 (-> obj entity) #f))
-  (set! (-> obj path-u) 0.0)
-  (logior! (-> obj path flags) (path-control-flag display draw-line draw-point draw-text))
-  (set! (-> obj smoke-part) (create-launch-control (-> *part-group-id-table* 154) obj))
-  (set! (-> obj engine-part) (create-launch-control (-> *part-group-id-table* 156) obj))
+  (set! (-> this path) (new 'process 'path-control this 'intro 0.0 (-> this entity) #f))
+  (set! (-> this path-u) 0.0)
+  (logior! (-> this path flags) (path-control-flag display draw-line draw-point draw-text))
+  (set! (-> this smoke-part) (create-launch-control (-> *part-group-id-table* 154) this))
+  (set! (-> this engine-part) (create-launch-control (-> *part-group-id-table* 156) this))
   (add-connection
     *part-engine*
-    obj
+    this
     7
-    obj
+    this
     318
     (new 'static 'vector :x 1187.84 :y -3112.96 :z 1392.64 :w 163840.0)
     )
   (add-connection
     *part-engine*
-    obj
+    this
     7
-    obj
+    this
     318
     (new 'static 'vector :x -1187.84 :y -3112.96 :z 1392.64 :w 163840.0)
     )
-  (add-connection *part-engine* obj 7 obj 743 (new 'static 'vector :y 1433.6 :z 1228.8 :w 163840.0))
+  (add-connection *part-engine* this 7 this 743 (new 'static 'vector :y 1433.6 :z 1228.8 :w 163840.0))
   0
   (none)
   )

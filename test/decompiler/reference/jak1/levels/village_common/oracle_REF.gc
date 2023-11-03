@@ -3,27 +3,23 @@
 
 ;; definition of type oracle
 (deftype oracle (process-taskable)
-  ((first-task     uint8   :offset-assert 380)
-   (second-task    uint8   :offset-assert 381)
-   (left-eye-cell  handle  :offset-assert 384)
-   (right-eye-cell handle  :offset-assert 392)
+  ((first-task      uint8)
+   (second-task     uint8)
+   (left-eye-cell   handle)
+   (right-eye-cell  handle)
    )
-  :heap-base #x120
-  :method-count-assert 53
-  :size-assert         #x190
-  :flag-assert         #x3501200190
   )
 
 ;; definition for method 3 of type oracle
-(defmethod inspect oracle ((obj oracle))
+(defmethod inspect ((this oracle))
   (let ((t9-0 (method-of-type process-taskable inspect)))
-    (t9-0 obj)
+    (t9-0 this)
     )
-  (format #t "~T~Tfirst-task: ~D~%" (-> obj first-task))
-  (format #t "~T~Tsecond-task: ~D~%" (-> obj second-task))
-  (format #t "~T~Tleft-eye-cell: ~D~%" (-> obj left-eye-cell))
-  (format #t "~T~Tright-eye-cell: ~D~%" (-> obj right-eye-cell))
-  obj
+  (format #t "~T~Tfirst-task: ~D~%" (-> this first-task))
+  (format #t "~T~Tsecond-task: ~D~%" (-> this second-task))
+  (format #t "~T~Tleft-eye-cell: ~D~%" (-> this left-eye-cell))
+  (format #t "~T~Tright-eye-cell: ~D~%" (-> this right-eye-cell))
+  this
   )
 
 ;; failed to figure out what this is:
@@ -33,13 +29,13 @@
               )
 
 ;; definition for method 32 of type oracle
-(defmethod play-anim! oracle ((obj oracle) (arg0 symbol))
-  (set! (-> obj talk-message) (text-id press-to-talk))
-  (case (current-status (-> obj tasks))
+(defmethod play-anim! ((this oracle) (arg0 symbol))
+  (set! (-> this talk-message) (text-id press-to-talk))
+  (case (current-status (-> this tasks))
     (((task-status need-hint) (task-status need-introduction))
      (when arg0
-       (close-specific-task! (the-as game-task (-> obj first-task)) (task-status need-introduction))
-       (close-specific-task! (the-as game-task (-> obj second-task)) (task-status need-introduction))
+       (close-specific-task! (the-as game-task (-> this first-task)) (task-status need-introduction))
+       (close-specific-task! (the-as game-task (-> this second-task)) (task-status need-introduction))
        )
      (case (-> (level-get-target-inside *level*) name)
        (('village1)
@@ -141,7 +137,7 @@
        )
      )
     (((task-status need-reminder))
-     (set! (-> obj skippable) #t)
+     (set! (-> this skippable) #t)
      (case (-> (level-get-target-inside *level*) name)
        (('village1)
         (new 'static 'spool-anim :name "oracle-reminder-1" :index 10 :parts 4 :command-list '())
@@ -157,19 +153,19 @@
     (((task-status need-reward-speech))
      (cond
        (arg0
-         (set! (-> obj cell-for-task) (current-task (-> obj tasks)))
-         (close-current! (-> obj tasks))
+         (set! (-> this cell-for-task) (current-task (-> this tasks)))
+         (close-current! (-> this tasks))
          (send-event *target* 'get-pickup 5 (- (-> *GAME-bank* money-oracle-inc)))
          (cond
-           ((= (current-task (-> obj tasks)) (-> obj first-task))
-            (let ((a0-25 (handle->process (-> obj right-eye-cell))))
+           ((= (current-task (-> this tasks)) (-> this first-task))
+            (let ((a0-25 (handle->process (-> this right-eye-cell))))
               (if a0-25
                   (deactivate a0-25)
                   )
               )
             )
            (else
-             (let ((a0-29 (handle->process (-> obj left-eye-cell))))
+             (let ((a0-29 (handle->process (-> this left-eye-cell))))
                (if a0-29
                    (deactivate a0-29)
                    )
@@ -178,12 +174,12 @@
            )
          )
        (else
-         (set! (-> obj will-talk) #t)
-         (set! (-> obj talk-message) (text-id press-to-trade-money-oracle))
+         (set! (-> this will-talk) #t)
+         (set! (-> this talk-message) (text-id press-to-trade-money-oracle))
          )
        )
      (cond
-       ((= (current-task (-> obj tasks)) (-> obj first-task))
+       ((= (current-task (-> this tasks)) (-> this first-task))
         (case (-> (level-get-target-inside *level*) name)
           (('village1)
            (new 'static 'spool-anim :name "oracle-right-eye-1" :index 3 :parts 2 :command-list '())
@@ -216,18 +212,18 @@
           (format
             0
             "ERROR: <GMJ>: ~S playing anim for task status ~S~%"
-            (-> obj name)
-            (task-status->string (current-status (-> obj tasks)))
+            (-> this name)
+            (task-status->string (current-status (-> this tasks)))
             )
           )
-      (-> obj draw art-group data 2)
+      (-> this draw art-group data 2)
       )
     )
   )
 
 ;; definition for method 31 of type oracle
-(defmethod get-art-elem oracle ((obj oracle))
-  (-> obj draw art-group data 2)
+(defmethod get-art-elem ((this oracle))
+  (-> this draw art-group data 2)
   )
 
 ;; failed to figure out what this is:
@@ -236,38 +232,36 @@
   :exit (behavior ()
     (stop! (-> self sound))
     ((-> (method-of-type process-taskable idle) exit))
-    (none)
     )
   :trans (behavior ()
     (update! (-> self sound))
     ((-> (method-of-type process-taskable idle) trans))
-    (none)
     )
   )
 
 ;; definition for method 11 of type oracle
-(defmethod init-from-entity! oracle ((obj oracle) (arg0 entity-actor))
-  (process-taskable-method-40 obj arg0 *oracle-sg* 3 4 (new 'static 'vector :y -4096.0 :w 4096.0) -1)
-  (set! (-> obj sound)
-        (new 'process 'ambient-sound (static-sound-spec "oracle-sleep" :fo-max 50) (-> obj root-override trans))
+(defmethod init-from-entity! ((this oracle) (arg0 entity-actor))
+  (process-taskable-method-40 this arg0 *oracle-sg* 3 4 (new 'static 'vector :y -4096.0 :w 4096.0) -1)
+  (set! (-> this sound)
+        (new 'process 'ambient-sound (static-sound-spec "oracle-sleep" :fo-max 50) (-> this root trans))
         )
-  (set! (-> obj first-task) (the-as uint (-> arg0 extra perm task)))
-  (set! (-> obj second-task) (res-lump-value arg0 'alt-task uint))
-  (set! (-> obj tasks) (get-task-control (the-as game-task (-> obj first-task))))
-  (set! (-> obj right-eye-cell) (the-as handle #f))
-  (set! (-> obj left-eye-cell) (the-as handle #f))
-  (logior! (-> obj draw status) (draw-status skip-bones))
+  (set! (-> this first-task) (the-as uint (-> arg0 extra perm task)))
+  (set! (-> this second-task) (res-lump-value arg0 'alt-task uint))
+  (set! (-> this tasks) (get-task-control (the-as game-task (-> this first-task))))
+  (set! (-> this right-eye-cell) (the-as handle #f))
+  (set! (-> this left-eye-cell) (the-as handle #f))
+  (logior! (-> this draw status) (draw-status skip-bones))
   (let ((s4-0 (new 'stack-no-clear 'vector))
         (s5-1 (lambda :behavior oracle
                 ()
-                (let* ((gp-0 (-> self root-override))
+                (let* ((gp-0 (-> self root))
                        (v1-1 (if (and (nonzero? gp-0) (type-type? (-> gp-0 type) collide-shape))
                                  gp-0
                                  )
                              )
                        (a1-1 (if v1-1
                                  (-> v1-1 root-prim prim-core)
-                                 (-> self root-override trans)
+                                 (-> self root trans)
                                  )
                              )
                        )
@@ -279,13 +273,15 @@
               )
         )
     (ja-post)
-    (when (not (task-closed? (the-as game-task (-> obj first-task)) (task-status need-resolution)))
-      (vector<-cspace! s4-0 (-> obj node-list data 5))
-      (set! (-> obj right-eye-cell)
-            (ppointer->handle (manipy-spawn s4-0 (-> obj entity) *fuel-cell-sg* (new 'static 'vector :w 4915.2) :to obj))
+    (when (not (task-closed? (the-as game-task (-> this first-task)) (task-status need-resolution)))
+      (vector<-cspace! s4-0 (-> this node-list data 5))
+      (set! (-> this right-eye-cell)
+            (ppointer->handle
+              (manipy-spawn s4-0 (-> this entity) *fuel-cell-sg* (new 'static 'vector :w 4915.2) :to this)
+              )
             )
       (send-event
-        (handle->process (-> obj right-eye-cell))
+        (handle->process (-> this right-eye-cell))
         'eval
         (lambda :behavior oracle () (let ((v0-0 (create-launch-control (-> *part-group-id-table* 63) self)))
                                       (set! (-> self part) v0-0)
@@ -293,15 +289,17 @@
                                       )
                                  )
         )
-      (send-event (handle->process (-> obj right-eye-cell)) 'trans-hook s5-1)
+      (send-event (handle->process (-> this right-eye-cell)) 'trans-hook s5-1)
       )
-    (when (not (task-closed? (the-as game-task (-> obj second-task)) (task-status need-resolution)))
-      (vector<-cspace! s4-0 (-> obj node-list data 6))
-      (set! (-> obj left-eye-cell)
-            (ppointer->handle (manipy-spawn s4-0 (-> obj entity) *fuel-cell-sg* (new 'static 'vector :w 4915.2) :to obj))
+    (when (not (task-closed? (the-as game-task (-> this second-task)) (task-status need-resolution)))
+      (vector<-cspace! s4-0 (-> this node-list data 6))
+      (set! (-> this left-eye-cell)
+            (ppointer->handle
+              (manipy-spawn s4-0 (-> this entity) *fuel-cell-sg* (new 'static 'vector :w 4915.2) :to this)
+              )
             )
       (send-event
-        (handle->process (-> obj left-eye-cell))
+        (handle->process (-> this left-eye-cell))
         'eval
         (lambda :behavior oracle () (let ((v0-0 (create-launch-control (-> *part-group-id-table* 63) self)))
                                       (set! (-> self part) v0-0)
@@ -309,9 +307,9 @@
                                       )
                                  )
         )
-      (send-event (handle->process (-> obj left-eye-cell)) 'trans-hook s5-1)
+      (send-event (handle->process (-> this left-eye-cell)) 'trans-hook s5-1)
       )
     )
-  (process-taskable-method-42 obj)
+  (process-taskable-method-42 this)
   (none)
   )

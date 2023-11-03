@@ -4,34 +4,27 @@
 ;; definition of type flying-spider-shot
 (deftype flying-spider-shot (metalhead-shot)
   ()
-  :heap-base #x170
-  :method-count-assert 40
-  :size-assert         #x1f0
-  :flag-assert         #x28017001f0
   )
 
 ;; definition for method 3 of type flying-spider-shot
-(defmethod inspect flying-spider-shot ((obj flying-spider-shot))
-  (when (not obj)
-    (set! obj obj)
+(defmethod inspect ((this flying-spider-shot))
+  (when (not this)
+    (set! this this)
     (goto cfg-4)
     )
   (let ((t9-0 (method-of-type metalhead-shot inspect)))
-    (t9-0 obj)
+    (t9-0 this)
     )
   (label cfg-4)
-  obj
+  this
   )
 
 ;; definition for method 28 of type flying-spider-shot
-;; WARN: Return type mismatch sound-id vs none.
-(defmethod play-impact-sound flying-spider-shot ((obj flying-spider-shot) (arg0 projectile-options))
+;; WARN: Return type mismatch object vs none.
+(defmethod play-impact-sound ((this flying-spider-shot) (arg0 projectile-options))
   (if (zero? arg0)
       (sound-play "fly-spider-shot")
-      ((the-as (function projectile projectile-options sound-id) (find-parent-method flying-spider-shot 28))
-       obj
-       arg0
-       )
+      (call-parent-method this arg0)
       )
   (none)
   )
@@ -63,43 +56,41 @@
 
 ;; definition of type flying-spider
 (deftype flying-spider (nav-enemy)
-  ((my-up-vector vector     :inline :offset-assert 608)
-   (gspot-normal vector     :inline :offset-assert 624)
-   (gspot-timer  time-frame         :offset-assert 640)
-   (focus-dir    uint16             :offset-assert 648)
-   (path-u       float              :offset-assert 652)
-   (path-du      float              :offset-assert 656)
+  ((my-up-vector  vector  :inline)
+   (gspot-normal  vector  :inline)
+   (gspot-timer   time-frame)
+   (focus-dir     uint16)
+   (path-u        float)
+   (path-du       float)
    )
-  :heap-base #x220
-  :method-count-assert 183
-  :size-assert         #x294
-  :flag-assert         #xb702200294
+  (:state-methods
+    ambush-falling
+    attack
+    attack-fire
+    turn-to-focus
+    )
   (:methods
-    (ambush-falling () _type_ :state 178)
-    (attack () _type_ :state 179)
-    (attack-fire () _type_ :state 180)
-    (turn-to-focus () _type_ :state 181)
-    (flying-spider-method-182 (_type_ vector) none 182)
+    (flying-spider-method-182 (_type_ vector) none)
     )
   )
 
 ;; definition for method 3 of type flying-spider
-(defmethod inspect flying-spider ((obj flying-spider))
-  (when (not obj)
-    (set! obj obj)
+(defmethod inspect ((this flying-spider))
+  (when (not this)
+    (set! this this)
     (goto cfg-4)
     )
   (let ((t9-0 (method-of-type nav-enemy inspect)))
-    (t9-0 obj)
+    (t9-0 this)
     )
-  (format #t "~2Tmy-up-vector: #<vector @ #x~X>~%" (-> obj my-up-vector))
-  (format #t "~2Tgspot-normal: #<vector @ #x~X>~%" (-> obj gspot-normal))
-  (format #t "~2Tgspot-timer: ~D~%" (-> obj gspot-timer))
-  (format #t "~2Tfocus-dir: ~D~%" (-> obj focus-dir))
-  (format #t "~2Tpath-u: ~f~%" (-> obj path-u))
-  (format #t "~2Tpath-du: ~f~%" (-> obj path-du))
+  (format #t "~2Tmy-up-vector: #<vector @ #x~X>~%" (-> this my-up-vector))
+  (format #t "~2Tgspot-normal: #<vector @ #x~X>~%" (-> this gspot-normal))
+  (format #t "~2Tgspot-timer: ~D~%" (-> this gspot-timer))
+  (format #t "~2Tfocus-dir: ~D~%" (-> this focus-dir))
+  (format #t "~2Tpath-u: ~f~%" (-> this path-u))
+  (format #t "~2Tpath-du: ~f~%" (-> this path-du))
   (label cfg-4)
-  obj
+  this
   )
 
 ;; failed to figure out what this is:
@@ -200,19 +191,15 @@
   :virtual #t
   :code (behavior ()
     (until #f
-      (ja-no-eval :group! flying-spider-idle0-ja
-                  :num! (seek! (the float (+ (-> (the-as art-joint-anim flying-spider-idle0-ja) frames num-frames) -1)))
-                  :frame-num 0.0
-                  )
+      (ja-no-eval :group! flying-spider-idle0-ja :num! (seek!) :frame-num 0.0)
       (until (ja-done? 0)
         (suspend)
         (ja :num! (seek!))
         )
       )
     #f
-    (none)
     )
-  :post (the-as (function none :behavior flying-spider) nav-enemy-simple-post)
+  :post nav-enemy-simple-post
   )
 
 ;; failed to figure out what this is:
@@ -230,38 +217,27 @@
     (logclear! (-> self enemy-flags) (enemy-flag lock-focus death-start))
     (set! (-> self path-du) (get-rand-float-range self 0.2 0.5))
     (set-vector! (-> self root scale) 0.0 0.0 0.0 0.0)
-    (none)
     )
   :trans (behavior ()
     (if (= (-> self path-u) 1.0)
         (go-virtual ambush-falling)
         )
-    (none)
     )
   :code (behavior ()
     (ja-channel-push! 1 0)
     (until #f
-      (ja-no-eval :group! flying-spider-idle-flying-ja
-                  :num! (seek! (the float (+ (-> (the-as art-joint-anim flying-spider-idle-flying-ja) frames num-frames) -1)))
-                  :frame-num 0.0
-                  )
+      (ja-no-eval :group! flying-spider-idle-flying-ja :num! (seek!) :frame-num 0.0)
       (until (ja-done? 0)
         (suspend)
         (ja :num! (seek!))
         )
       )
     #f
-    (none)
     )
   :post (behavior ()
     (get-point-at-percent-along-path! (-> self path) (-> self root trans) (-> self path-u) 'interp)
-    (set! (-> self path-u) (seek-ease
-                             (-> self path-u)
-                             1.0
-                             (* (-> self path-du) (-> self clock seconds-per-frame))
-                             0.2
-                             (* 0.04 (-> self clock seconds-per-frame))
-                             )
+    (set! (-> self path-u)
+          (seek-ease (-> self path-u) 1.0 (* (-> self path-du) (seconds-per-frame)) 0.2 (* 0.04 (seconds-per-frame)))
           )
     (let ((f0-7 (-> self path-u)))
       (set-vector! (-> self root scale) f0-7 f0-7 f0-7 0.0)
@@ -276,19 +252,15 @@
       (forward-up-nopitch->quaternion (-> self root quat) a1-3 *y-vector*)
       )
     (nav-enemy-simple-post)
-    (none)
     )
   )
 
 ;; failed to figure out what this is:
 (defstate ambush-falling (flying-spider)
   :virtual #t
-  :event (the-as (function process int symbol event-message-block object :behavior flying-spider) enemy-event-handler)
+  :event enemy-event-handler
   :code (behavior ()
-    (ja-no-eval :group! flying-spider-drop-down-ja
-                :num! (seek! (the float (+ (-> (the-as art-joint-anim flying-spider-drop-down-ja) frames num-frames) -1)))
-                :frame-num 0.0
-                )
+    (ja-no-eval :group! flying-spider-drop-down-ja :num! (seek!) :frame-num 0.0)
     (until (ja-done? 0)
       (suspend)
       (ja :num! (seek!))
@@ -302,19 +274,15 @@
       (set! (-> s5-0 y) 0.0)
       (vector-xz-normalize! s5-0 1.0)
       (forward-up-nopitch->quaternion gp-0 s5-0 *y-vector*)
-      (ja-no-eval :group! flying-spider-drop-down-land-ja
-                  :num! (seek! (the float (+ (-> (the-as art-joint-anim flying-spider-drop-down-land-ja) frames num-frames) -1)))
-                  :frame-num 0.0
-                  )
+      (ja-no-eval :group! flying-spider-drop-down-land-ja :num! (seek!) :frame-num 0.0)
       (until (ja-done? 0)
-        (quaternion-slerp! (-> self root quat) (-> self root quat) gp-0 (* 2.0 (-> self clock seconds-per-frame)))
+        (quaternion-slerp! (-> self root quat) (-> self root quat) gp-0 (* 2.0 (seconds-per-frame)))
         (suspend)
         (ja :num! (seek!))
         )
       )
     (enemy-method-127 self 40960.0 40960.0 #t (collide-spec backgnd))
     (go-hostile self)
-    (none)
     )
   :post (behavior ()
     (let ((a1-0 (new 'stack-no-clear 'collide-query)))
@@ -322,14 +290,13 @@
       )
     (flying-spider-method-182 self (vector-z-quaternion! (new 'stack-no-clear 'vector) (-> self root quat)))
     (nav-enemy-falling-post)
-    (none)
     )
   )
 
 ;; failed to figure out what this is:
 (defstate hostile (flying-spider)
   :virtual #t
-  :event (the-as (function process int symbol event-message-block object :behavior flying-spider) enemy-event-handler)
+  :event enemy-event-handler
   :trans (behavior ()
     (let ((t9-0 (-> (method-of-type nav-enemy hostile) trans)))
       (if t9-0
@@ -346,14 +313,13 @@
             )
         )
       )
-    (none)
     )
   )
 
 ;; failed to figure out what this is:
 (defstate turn-to-focus (flying-spider)
   :virtual #t
-  :event (the-as (function process int symbol event-message-block object :behavior flying-spider) enemy-event-handler)
+  :event enemy-event-handler
   :enter (behavior ()
     (let ((v1-0 self))
       (set! (-> v1-0 enemy-flags) (the-as enemy-flag (logior (enemy-flag enemy-flag37) (-> v1-0 enemy-flags))))
@@ -364,7 +330,6 @@
       (set! (-> v1-2 nav callback-info) *nav-enemy-null-callback-info*)
       )
     0
-    (none)
     )
   :trans (behavior ()
     (if (>= 2 (the-as int (-> self focus aware)))
@@ -404,7 +369,6 @@
           )
         )
       )
-    (none)
     )
   :code (behavior ()
     (until #f
@@ -437,12 +401,10 @@
           )
       )
     #f
-    (none)
     )
   :post (behavior ()
     (flying-spider-method-182 self (vector-z-quaternion! (new 'stack-no-clear 'vector) (-> self root quat)))
     (nav-enemy-face-focus-post)
-    (none)
     )
   )
 
@@ -459,20 +421,18 @@
       (set! (-> v1-4 enemy-flags) (the-as enemy-flag (logclear (-> v1-4 enemy-flags) (enemy-flag enemy-flag37))))
       )
     0
-    (none)
     )
   )
 
 ;; failed to figure out what this is:
 (defstate attack (flying-spider)
   :virtual #t
-  :event (the-as (function process int symbol event-message-block object :behavior flying-spider) enemy-event-handler)
+  :event enemy-event-handler
   :enter (behavior ()
     (let ((v1-0 self))
       (set! (-> v1-0 enemy-flags) (the-as enemy-flag (logclear (-> v1-0 enemy-flags) (enemy-flag enemy-flag37))))
       )
     0
-    (none)
     )
   :trans (behavior ()
     (let ((a0-1 (get-enemy-target self)))
@@ -488,15 +448,11 @@
          )
         )
       )
-    (none)
     )
   :code (behavior ()
     (until #f
       (ja-channel-push! 1 (seconds 0.15))
-      (ja-no-eval :group! flying-spider-idle0-ja
-                  :num! (seek! (the float (+ (-> (the-as art-joint-anim flying-spider-idle0-ja) frames num-frames) -1)))
-                  :frame-num 0.0
-                  )
+      (ja-no-eval :group! flying-spider-idle0-ja :num! (seek!) :frame-num 0.0)
       (until (ja-done? 0)
         (suspend)
         (ja :num! (seek!))
@@ -506,21 +462,19 @@
           )
       )
     #f
-    (none)
     )
   :post (behavior ()
     (nav-enemy-simple-post)
-    (none)
     )
   )
 
 ;; failed to figure out what this is:
 (defstate attack-fire (flying-spider)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('event-attack-l)
-       (let* ((s5-0 (-> self node-list data 30))
+       (let* ((s5-0 (joint-node flying-spider-lod0-jg LgunTip))
               (gp-0 (vector<-cspace! (new 'stack-no-clear 'vector) s5-0))
               (a0-3 (vector-normalize-copy! (new 'stack-no-clear 'vector) (-> s5-0 bone transform vector 2) 163840.0))
               (a2-3 (vector+! (new 'stack-no-clear 'vector) gp-0 a0-3))
@@ -529,7 +483,7 @@
          )
        )
       (('event-attack-r)
-       (let* ((s5-1 (-> self node-list data 35))
+       (let* ((s5-1 (joint-node flying-spider-lod0-jg RgunTip))
               (gp-1 (vector<-cspace! (new 'stack-no-clear 'vector) s5-1))
               (a0-7 (vector-normalize-copy! (new 'stack-no-clear 'vector) (-> s5-1 bone transform vector 2) -163840.0))
               (a2-6 (vector+! (new 'stack-no-clear 'vector) gp-1 a0-7))
@@ -538,7 +492,7 @@
          )
        )
       (else
-        (enemy-event-handler proc arg1 event-type event)
+        (enemy-event-handler proc argc message block)
         )
       )
     )
@@ -547,74 +501,51 @@
       (set! (-> v1-0 enemy-flags) (the-as enemy-flag (logclear (-> v1-0 enemy-flags) (enemy-flag enemy-flag37))))
       )
     0
-    (none)
     )
   :code (behavior ()
     (ja-channel-push! 1 (seconds 0.1))
-    (ja-no-eval :group! flying-spider-shoot-start-ja
-                :num! (seek! (the float (+ (-> (the-as art-joint-anim flying-spider-shoot-start-ja) frames num-frames) -1)) 2.0)
-                :frame-num 0.0
-                )
+    (ja-no-eval :group! flying-spider-shoot-start-ja :num! (seek! max 2.0) :frame-num 0.0)
     (until (ja-done? 0)
       (suspend)
       (ja :num! (seek! max 2.0))
       )
-    (ja-no-eval :group! flying-spider-shoot-right-ja
-                :num! (seek! (the float (+ (-> (the-as art-joint-anim flying-spider-shoot-right-ja) frames num-frames) -1)) 2.0)
-                :frame-num 0.0
-                )
+    (ja-no-eval :group! flying-spider-shoot-right-ja :num! (seek! max 2.0) :frame-num 0.0)
     (until (ja-done? 0)
       (suspend)
       (ja :num! (seek! max 2.0))
       )
-    (ja-no-eval :group! flying-spider-shoot-left-ja
-                :num! (seek! (the float (+ (-> (the-as art-joint-anim flying-spider-shoot-left-ja) frames num-frames) -1)) 2.0)
-                :frame-num 0.0
-                )
+    (ja-no-eval :group! flying-spider-shoot-left-ja :num! (seek! max 2.0) :frame-num 0.0)
     (until (ja-done? 0)
       (suspend)
       (ja :num! (seek! max 2.0))
       )
-    (ja-no-eval :group! flying-spider-shoot-stop-ja
-                :num! (seek! (the float (+ (-> (the-as art-joint-anim flying-spider-shoot-stop-ja) frames num-frames) -1)) 2.0)
-                :frame-num 0.0
-                )
+    (ja-no-eval :group! flying-spider-shoot-stop-ja :num! (seek! max 2.0) :frame-num 0.0)
     (until (ja-done? 0)
       (suspend)
       (ja :num! (seek! max 2.0))
       )
     (go-virtual attack)
-    (none)
     )
   :post (behavior ()
     (nav-enemy-simple-post)
-    (none)
     )
   )
 
 ;; failed to figure out what this is:
 (defstate die (flying-spider)
   :virtual #t
-  :event (the-as (function process int symbol event-message-block object :behavior flying-spider) enemy-event-handler)
+  :event enemy-event-handler
   :enter (behavior ()
     (dispose! self)
-    (set! (-> self state-time) (current-time))
+    (set-time! (-> self state-time))
     (set! (-> self hit-points) 0)
     (enemy-method-103 self)
-    (none)
     )
   :code (behavior ()
     (ja-channel-push! 1 (seconds 0.075))
     (let ((f30-0 (get-rand-float-range self 0.8 1.2)))
       (ja-no-eval :group! (-> self draw art-group data (-> self enemy-info die-anim))
-                  :num! (seek!
-                    (the float
-                         (+ (-> (the-as art-joint-anim (-> self draw art-group data (-> self enemy-info die-anim))) frames num-frames)
-                            -1
-                            )
-                         )
-                    f30-0
-                    )
+                  :num! (seek! max f30-0)
                   :frame-num 0.0
                   )
       (until (ja-done? 0)
@@ -632,108 +563,107 @@
       (suspend)
       )
     (cleanup-for-death self)
-    (none)
     )
-  :post (the-as (function none :behavior flying-spider) enemy-simple-post)
+  :post enemy-simple-post
   )
 
 ;; definition for method 74 of type flying-spider
-(defmethod general-event-handler flying-spider ((obj flying-spider) (arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+(defmethod general-event-handler ((this flying-spider) (arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
   "Handles various events for the enemy
 @TODO - unsure if there is a pattern for the events and this should have a more specific name"
   (case arg2
     (('hit 'hit-knocked)
-     (logclear! (-> obj mask) (process-mask actor-pause))
-     (logclear! (-> obj focus-status) (focus-status dangerous))
-     (logclear! (-> obj enemy-flags) (enemy-flag enable-on-notice))
-     (logior! (-> obj enemy-flags) (enemy-flag chase-startup))
-     (logior! (-> obj focus-status) (focus-status hit))
-     (if (zero? (-> obj hit-points))
-         (logior! (-> obj focus-status) (focus-status dead))
+     (logclear! (-> this mask) (process-mask actor-pause))
+     (logclear! (-> this focus-status) (focus-status dangerous))
+     (logclear! (-> this enemy-flags) (enemy-flag enable-on-notice))
+     (logior! (-> this enemy-flags) (enemy-flag chase-startup))
+     (logior! (-> this focus-status) (focus-status hit))
+     (if (zero? (-> this hit-points))
+         (logior! (-> this focus-status) (focus-status dead))
          )
-     (logclear! (-> obj enemy-flags) (enemy-flag actor-pause-backup))
-     (enemy-method-62 obj)
-     (logior! (-> obj enemy-flags) (enemy-flag actor-pause-backup))
+     (logclear! (-> this enemy-flags) (enemy-flag actor-pause-backup))
+     (enemy-method-62 this)
+     (logior! (-> this enemy-flags) (enemy-flag actor-pause-backup))
      (process-contact-action arg0)
      (send-event arg0 'get-attack-count 1)
      (cond
-       ((zero? (-> obj hit-points))
-        (let ((s5-1 (-> obj incoming knocked-type)))
+       ((zero? (-> this hit-points))
+        (let ((s5-1 (-> this incoming knocked-type)))
           (cond
             ((and (= s5-1 (knocked-type knocked-type-4))
-                  (not (and (-> obj next-state) (let ((v1-32 (-> obj next-state name)))
-                                                  (or (= v1-32 'knocked) (= v1-32 'jump) (= v1-32 'jump-land))
-                                                  )
+                  (not (and (-> this next-state) (let ((v1-32 (-> this next-state name)))
+                                                   (or (= v1-32 'knocked) (= v1-32 'jump) (= v1-32 'jump-land))
+                                                   )
                             )
                        )
-                  (zero? (get-rand-int obj 3))
-                  (let ((f0-0 (vector-vector-distance-squared (-> obj root trans) (target-pos 0)))
+                  (zero? (get-rand-int this 3))
+                  (let ((f0-0 (vector-vector-distance-squared (-> this root trans) (target-pos 0)))
                         (f1-0 32768.0)
                         )
                     (>= f0-0 (* f1-0 f1-0))
                     )
                   )
-             (kill-prefer-falling obj)
+             (kill-prefer-falling this)
              )
             ((or (= s5-1 (knocked-type knocked-type-4)) (= s5-1 (knocked-type knocked-type-6)))
-             (set! (-> obj incoming knocked-type) (knocked-type knocked-type-0))
-             (go (method-of-object obj knocked))
+             (set! (-> this incoming knocked-type) (knocked-type knocked-type-0))
+             (go (method-of-object this knocked))
              )
             (else
-              (go (method-of-object obj knocked))
+              (go (method-of-object this knocked))
               )
             )
           )
         )
        (else
-         (go (method-of-object obj knocked))
+         (go (method-of-object this knocked))
          )
        )
      #t
      )
     (('death-start)
-     (let ((v1-52 (-> obj root root-prim)))
+     (let ((v1-52 (-> this root root-prim)))
        (set! (-> v1-52 prim-core collide-as) (collide-spec))
        (set! (-> v1-52 prim-core collide-with) (collide-spec))
        )
      0
-     ((method-of-type nav-enemy general-event-handler) obj arg0 arg1 arg2 arg3)
+     ((method-of-type nav-enemy general-event-handler) this arg0 arg1 arg2 arg3)
      )
     (else
-      ((method-of-type nav-enemy general-event-handler) obj arg0 arg1 arg2 arg3)
+      ((method-of-type nav-enemy general-event-handler) this arg0 arg1 arg2 arg3)
       )
     )
   )
 
 ;; definition for method 55 of type flying-spider
-(defmethod track-target! flying-spider ((obj flying-spider))
+(defmethod track-target! ((this flying-spider))
   "Does a lot of various things relating to interacting with the target
 - tracks when the enemy was last drawn
 - looks at the target and handles attacking
 @TODO Not extremely well understood yet"
-  ((method-of-type nav-enemy track-target!) obj)
+  ((method-of-type nav-enemy track-target!) this)
   (none)
   )
 
 ;; definition for method 125 of type flying-spider
 ;; INFO: Used lq/sq
 ;; WARN: Return type mismatch symbol vs pat-surface.
-(defmethod enemy-method-125 flying-spider ((obj flying-spider) (arg0 collide-query) (arg1 collide-spec) (arg2 float) (arg3 float) (arg4 float))
+(defmethod enemy-method-125 ((this flying-spider) (arg0 collide-query) (arg1 collide-spec) (arg2 float) (arg3 float) (arg4 float))
   (the-as
     pat-surface
-    (when (find-ground (-> obj root) arg0 arg1 arg2 arg3 arg4)
-      (set! (-> obj root ground-pat) (-> arg0 best-other-tri pat))
-      (when (>= (- (current-time) (-> obj gspot-timer)) (seconds 0.2))
+    (when (find-ground (-> this root) arg0 arg1 arg2 arg3 arg4)
+      (set! (-> this root ground-pat) (-> arg0 best-other-tri pat))
+      (when (time-elapsed? (-> this gspot-timer) (seconds 0.2))
         (let ((a1-2 (new 'stack-no-clear 'collide-query)))
-          (set! (-> a1-2 start-pos quad) (-> obj root gspot-pos quad))
+          (set! (-> a1-2 start-pos quad) (-> this root gspot-pos quad))
           (+! (-> a1-2 start-pos y) 2048.0)
           (set-vector! (-> a1-2 move-dist) 0.0 -6144.0 0.0 0.0)
           (let ((v1-10 a1-2))
             (set! (-> v1-10 radius) 4915.2)
             (set! (-> v1-10 collide-with) arg1)
-            (set! (-> v1-10 ignore-process0) obj)
+            (set! (-> v1-10 ignore-process0) this)
             (set! (-> v1-10 ignore-process1) #f)
-            (set! (-> v1-10 ignore-pat) (-> obj root pat-ignore-mask))
+            (set! (-> v1-10 ignore-pat) (-> this root pat-ignore-mask))
             (set! (-> v1-10 action-mask) (collide-action solid))
             )
           (fill-using-line-sphere *collide-cache* a1-2)
@@ -754,9 +684,9 @@
                   )
               )
             )
-          (vector-normalize-copy! (-> obj gspot-normal) s5-1 1.0)
+          (vector-normalize-copy! (-> this gspot-normal) s5-1 1.0)
           )
-        (set! (-> obj gspot-timer) (current-time))
+        (set-time! (-> this gspot-timer))
         )
       #t
       )
@@ -766,48 +696,46 @@
 ;; definition for method 182 of type flying-spider
 ;; INFO: Used lq/sq
 ;; WARN: Return type mismatch int vs none.
-(defmethod flying-spider-method-182 flying-spider ((obj flying-spider) (arg0 vector))
-  (with-pp
-    (cond
-      ((= (-> obj root gspot-pos y) -40959590.0)
-       (set! (-> arg0 y) 0.0)
-       (vector-normalize! arg0 1.0)
-       (quaternion-set! (-> obj root quat) 0.0 (-> arg0 x) 0.0 (+ 1.0 (-> arg0 z)))
-       (quaternion-normalize! (-> obj root quat))
-       )
-      (else
-        (let ((s4-0 (new 'stack-no-clear 'vector)))
-          (set! (-> s4-0 quad) (-> *up-vector* quad))
-          (let ((s3-0 (new 'stack-no-clear 'quaternion)))
-            (quaternion-from-two-vectors-max-angle! s3-0 s4-0 (-> obj gspot-normal) 4551.1113)
-            (vector-orient-by-quat! s4-0 s4-0 s3-0)
-            )
-          (let ((s3-1 (-> obj my-up-vector)))
-            (new 'stack-no-clear 'vector)
-            (vector-deg-seek s3-1 s3-1 s4-0 (* 910.2222 (-> pp clock seconds-per-frame)))
-            (vector-normalize! s3-1 1.0)
-            (set! (-> arg0 y) 0.0)
-            (vector-normalize! arg0 1.0)
-            (forward-up->quaternion (-> obj root quat) arg0 s3-1)
-            )
+(defmethod flying-spider-method-182 ((this flying-spider) (arg0 vector))
+  (cond
+    ((= (-> this root gspot-pos y) -40959590.0)
+     (set! (-> arg0 y) 0.0)
+     (vector-normalize! arg0 1.0)
+     (quaternion-set! (-> this root quat) 0.0 (-> arg0 x) 0.0 (+ 1.0 (-> arg0 z)))
+     (quaternion-normalize! (-> this root quat))
+     )
+    (else
+      (let ((s4-0 (new 'stack-no-clear 'vector)))
+        (set! (-> s4-0 quad) (-> *up-vector* quad))
+        (let ((s3-0 (new 'stack-no-clear 'quaternion)))
+          (quaternion-from-two-vectors-max-angle! s3-0 s4-0 (-> this gspot-normal) 4551.1113)
+          (vector-orient-by-quat! s4-0 s4-0 s3-0)
+          )
+        (let ((s3-1 (-> this my-up-vector)))
+          (new 'stack-no-clear 'vector)
+          (vector-deg-seek s3-1 s3-1 s4-0 (* 910.2222 (seconds-per-frame)))
+          (vector-normalize! s3-1 1.0)
+          (set! (-> arg0 y) 0.0)
+          (vector-normalize! arg0 1.0)
+          (forward-up->quaternion (-> this root quat) arg0 s3-1)
           )
         )
       )
-    0
-    (none)
     )
+  0
+  (none)
   )
 
 ;; definition for method 142 of type flying-spider
 ;; INFO: Used lq/sq
 ;; WARN: Return type mismatch int vs none.
-(defmethod nav-enemy-method-142 flying-spider ((obj flying-spider) (arg0 nav-control))
-  (let ((t9-0 (method-of-object obj flying-spider-method-182))
+(defmethod nav-enemy-method-142 ((this flying-spider) (arg0 nav-control))
+  (let ((t9-0 (method-of-object this flying-spider-method-182))
         (a2-0 (-> arg0 state))
         (a1-1 (new 'stack-no-clear 'vector))
         )
     (set! (-> a1-1 quad) (-> a2-0 heading quad))
-    (t9-0 obj a1-1)
+    (t9-0 this a1-1)
     )
   0
   (none)
@@ -815,7 +743,7 @@
 
 ;; definition for method 109 of type flying-spider
 ;; WARN: Return type mismatch int vs none.
-(defmethod look-at-target! flying-spider ((obj flying-spider) (arg0 enemy-flag))
+(defmethod look-at-target! ((this flying-spider) (arg0 enemy-flag))
   "Logic for looking at the target that is locked on, sets some flags and adjusts the neck to look at the target if available
 @param flag Reacts to [[enemy-flag::death-start]] and [[enemy-flag::enable-on-active]], see implementation for details"
   0
@@ -824,28 +752,28 @@
 
 ;; definition for method 59 of type flying-spider
 ;; WARN: Return type mismatch int vs penetrate.
-(defmethod get-penetrate-info flying-spider ((obj flying-spider))
+(defmethod get-penetrate-info ((this flying-spider))
   "@returns the allowed way(s) this enemy can take damage
 @see [[penetrate]] and [[penetrated-by-all&hit-points->penetrated-by]]"
   (the-as penetrate 0)
   )
 
 ;; definition for method 51 of type flying-spider
-(defmethod enemy-method-51 flying-spider ((obj flying-spider))
-  (quaternion-y-angle (-> obj root quat))
+(defmethod enemy-method-51 ((this flying-spider))
+  (quaternion-y-angle (-> this root quat))
   )
 
 ;; definition for method 60 of type flying-spider
-(defmethod coin-flip? flying-spider ((obj flying-spider))
+(defmethod coin-flip? ((this flying-spider))
   "@returns The result of a 50/50 RNG roll"
   #f
   )
 
 ;; definition for method 114 of type flying-spider
 ;; WARN: Return type mismatch collide-shape-moving vs none.
-(defmethod init-enemy-collision! flying-spider ((obj flying-spider))
+(defmethod init-enemy-collision! ((this flying-spider))
   "Initializes the [[collide-shape-moving]] and any ancillary tasks to make the enemy collide properly"
-  (let ((s5-0 (new 'process 'collide-shape-moving obj (collide-list-enum usually-hit-by-player))))
+  (let ((s5-0 (new 'process 'collide-shape-moving this (collide-list-enum usually-hit-by-player))))
     (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s5-0 reaction) cshape-reaction-default)
     (set! (-> s5-0 no-reaction)
@@ -901,7 +829,7 @@
       (set! (-> s5-0 backup-collide-as) (-> v1-25 prim-core collide-as))
       (set! (-> s5-0 backup-collide-with) (-> v1-25 prim-core collide-with))
       )
-    (set! (-> obj root) s5-0)
+    (set! (-> this root) s5-0)
     )
   (none)
   )
@@ -909,39 +837,46 @@
 ;; definition for method 115 of type flying-spider
 ;; INFO: Used lq/sq
 ;; WARN: Return type mismatch int vs none.
-(defmethod init-enemy! flying-spider ((obj flying-spider))
+(defmethod init-enemy! ((this flying-spider))
   "Common method called to initialize the enemy, typically sets up default field values and calls ancillary helper methods"
   (initialize-skeleton
-    obj
+    this
     (the-as skeleton-group (art-group-get-by-name *level* "skel-flying-spider" (the-as (pointer uint32) #f)))
     (the-as pair 0)
     )
-  (init-enemy-behaviour-and-stats! obj *flying-spider-nav-enemy-info*)
-  (let ((v1-5 (-> obj neck)))
+  (init-enemy-behaviour-and-stats! this *flying-spider-nav-enemy-info*)
+  (let ((v1-5 (-> this neck)))
     (set! (-> v1-5 up) (the-as uint 1))
     (set! (-> v1-5 nose) (the-as uint 2))
     (set! (-> v1-5 ear) (the-as uint 0))
     (set-vector! (-> v1-5 twist-max) 11832.889 11832.889 0.0 1.0)
     (set! (-> v1-5 ignore-angle) 30947.555)
     )
-  (set! (-> obj root dynam gravity y) 327680.0)
-  (set! (-> obj root dynam gravity-length) 327680.0)
-  (set! (-> obj root dynam gravity-max) 327680.0)
-  (set! (-> obj path) (new 'process 'curve-control obj 'path -1000000000.0))
-  (set! (-> obj path-u) 0.0)
-  (logior! (-> obj path flags) (path-control-flag display draw-line draw-point draw-text))
-  (add-connection *part-engine* obj 27 obj 318 (new 'static 'vector :x 1392.64 :y 204.8 :z 2621.44 :w 163840.0))
+  (set! (-> this root dynam gravity y) 327680.0)
+  (set! (-> this root dynam gravity-length) 327680.0)
+  (set! (-> this root dynam gravity-max) 327680.0)
+  (set! (-> this path) (new 'process 'curve-control this 'path -1000000000.0))
+  (set! (-> this path-u) 0.0)
+  (logior! (-> this path flags) (path-control-flag display draw-line draw-point draw-text))
   (add-connection
     *part-engine*
-    obj
+    this
     27
-    obj
+    this
+    318
+    (new 'static 'vector :x 1392.64 :y 204.8 :z 2621.44 :w 163840.0)
+    )
+  (add-connection
+    *part-engine*
+    this
+    27
+    this
     318
     (new 'static 'vector :x -1392.64 :y 204.8 :z 2621.44 :w 163840.0)
     )
-  (set! (-> obj my-up-vector quad) (-> *y-vector* quad))
-  (set! (-> obj gspot-normal quad) (-> *y-vector* quad))
-  (set! (-> obj gspot-timer) 0)
+  (set! (-> this my-up-vector quad) (-> *y-vector* quad))
+  (set! (-> this gspot-normal quad) (-> *y-vector* quad))
+  (set! (-> this gspot-timer) 0)
   0
   (none)
   )

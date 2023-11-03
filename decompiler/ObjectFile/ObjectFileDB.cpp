@@ -624,7 +624,9 @@ void ObjectFileDB::write_disassembly(const fs::path& output_dir,
   std::string asm_functions;
 
   for_each_obj([&](ObjectFileData& obj) {
-    if ((obj.obj_version == 3 && disassemble_code) || (obj.obj_version != 3 && disassemble_data)) {
+    if (((obj.obj_version == 3 || (obj.obj_version == 5 && obj.linked_data.has_any_functions())) &&
+         disassemble_code) ||
+        (obj.obj_version != 3 && disassemble_data)) {
       auto file_text = obj.linked_data.print_disassembly(print_hex);
       asm_functions += obj.linked_data.print_asm_function_disassembly(obj.to_unique_name());
       auto file_name = output_dir / (obj.to_unique_name() + ".asm");
@@ -729,6 +731,9 @@ std::string ObjectFileDB::process_tpages(TextureDB& tex_db,
       break;
     case GameVersion::Jak2:
       animated_slots = jak2_animated_texture_slots();
+      break;
+    case GameVersion::Jak3:
+      animated_slots = jak3_animated_texture_slots();
       break;
     default:
       ASSERT_NOT_REACHED();
@@ -873,16 +878,40 @@ std::string ObjectFileDB::process_game_count_file() {
 }
 
 namespace {
+struct JointGeo {
+  u32 offset{};
+  std::string name;
+  u32 length{};
+};
+
+void get_joint_info(ObjectFileDB& db, ObjectFileData& obj, JointGeo jg) {
+  const auto& words = obj.linked_data.words_by_seg.at(MAIN_SEGMENT);
+  for (size_t i = 0; i < jg.length; ++i) {
+    u32 label = 0x0;
+    if (db.version() == GameVersion::Jak3) {
+      label = words.at((jg.offset / 4) + 11 + i).label_id();
+    } else {
+      label = words.at((jg.offset / 4) + 7 + i).label_id();
+    }
+    const auto& joint = obj.linked_data.labels.at(label);
+    const auto& name =
+        obj.linked_data.get_goal_string_by_label(words.at(joint.offset / 4).label_id());
+    // lg::print("{} joint idx {}/{}: {}\n", jg.name, i + 1, jg.length, name);
+    db.dts.add_joint_node(jg.name, name, i + 1);
+  }
+}
+
 void get_art_info(ObjectFileDB& db, ObjectFileData& obj) {
-  if (obj.obj_version == 4) {
+  if (obj.obj_version == 4 || (obj.obj_version == 5 && obj.linked_data.segments == 1)) {
     const auto& words = obj.linked_data.words_by_seg.at(MAIN_SEGMENT);
     if (words.at(0).kind() == LinkedWord::Kind::TYPE_PTR &&
         words.at(0).symbol_name() == "art-group") {
+      auto obj_unique_name = obj.to_unique_name();
+
       // lg::print("art-group {}:\n", obj.to_unique_name());
       auto name = obj.linked_data.get_goal_string_by_label(words.at(2).label_id());
       int length = words.at(3).data;
       // lg::print("  length: {}\n", length);
-      std::unordered_map<int, std::string> art_group_elts;
       for (int i = 0; i < length; ++i) {
         const auto& word = words.at(8 + i);
         if (word.kind() == LinkedWord::Kind::SYM_PTR && word.symbol_name() == "#f") {
@@ -891,11 +920,27 @@ void get_art_info(ObjectFileDB& db, ObjectFileData& obj) {
         const auto& label = obj.linked_data.labels.at(word.label_id());
         auto elt_name =
             obj.linked_data.get_goal_string_by_label(words.at(label.offset / 4 + 1).label_id());
+        auto unique_name = elt_name;
+
+        auto ag_name = obj_unique_name;
+        int elt_index = i;
+        auto& word_master_ag = words.at(label.offset / 4 + 7);
+        auto& word_master_idx = words.at(label.offset / 4 + 8);
+        if (word_master_ag.kind() == LinkedWord::Kind::PTR &&
+            word_master_idx.kind() == LinkedWord::Kind::PLAIN_DATA) {
+          ag_name = obj.linked_data.get_goal_string_by_label(word_master_ag.label_id()) + "-ag";
+          elt_index = word_master_idx.data;
+        }
+
         std::string elt_type = words.at(label.offset / 4 - 1).symbol_name();
-        std::string unique_name = elt_name;
         if (elt_type == "art-joint-geo") {
           // the skeleton!
           unique_name += "-jg";
+          JointGeo jg;
+          jg.offset = label.offset;
+          jg.name = unique_name;
+          jg.length = words.at(label.offset / 4 + 2).data;
+          get_joint_info(db, obj, jg);
         } else if (elt_type == "merc-ctrl" || elt_type == "shadow-geo") {
           // (maybe mesh-geo as well but that doesnt exist)
           // the skin!
@@ -903,15 +948,17 @@ void get_art_info(ObjectFileDB& db, ObjectFileData& obj) {
         } else if (elt_type == "art-joint-anim") {
           // the animations!
           unique_name += "-ja";
+        } else if (elt_type == "art-cloth-geo") {
+          // cloth geometry (jak 3)
+          unique_name += "-cg";
         } else {
           // the something idk!
           throw std::runtime_error(
               fmt::format("unknown art elt type {} in {}", elt_type, obj.to_unique_name()));
         }
-        art_group_elts[i] = unique_name;
-        // lg::print("  {}: {} ({}) -> {}\n", i, elt_name, elt_type, unique_name);
+        // lg::print("  {}: {} ({}) -> {} @ {}\n", i, elt_name, elt_type, unique_name, elt_index);
+        db.dts.add_art_group_elt(ag_name, unique_name, elt_index);
       }
-      db.dts.art_group_info[obj.to_unique_name()] = art_group_elts;
     }
   }
 }
@@ -942,22 +989,39 @@ void ObjectFileDB::dump_art_info(const fs::path& output_dir) {
   lg::info("Writing art group info...");
   Timer timer;
 
-  if (!dts.art_group_info.empty()) {
+  if (!dts.art_group_info.empty() || !dts.jg_info.empty()) {
     file_util::create_dir_if_needed(output_dir / "import");
   }
+
+  auto ag_fpath = output_dir / "import" / "art-elts.gc";
+  std::string ag_result;
+
   for (const auto& [ag_name, info] : dts.art_group_info) {
-    auto ag_fname = ag_name + ".gc";
-    auto filename = output_dir / "import" / ag_fname;
-    std::string result = ";;-*-Lisp-*-\n";
-    result += "(in-package goal)\n\n";
-    result += fmt::format(";; {} - art group OpenGOAL import file\n", ag_fname);
-    result += ";; THIS FILE IS AUTOMATICALLY GENERATED!\n\n";
+    // auto ag_fname = ag_name + ".gc";
+    // auto filename = output_dir / "import" / ag_fname;
+    // std::string result = ";;-*-Lisp-*-\n";
+    // result += "(in-package goal)\n\n";
+    // result += fmt::format(";; {} - art group OpenGOAL import file\n", ag_fname);
+    // result += ";; THIS FILE IS AUTOMATICALLY GENERATED!\n\n";
     for (const auto& [idx, elt_name] : info) {
-      result += print_art_elt_for_dump(ag_name, elt_name, idx);
+      ag_result += print_art_elt_for_dump(ag_name, elt_name, idx);
     }
-    result += "\n";
-    file_util::write_text_file(filename, result);
+    ag_result += "\n";
   }
+
+  file_util::write_text_file(ag_fpath, ag_result);
+
+  auto jg_fpath = output_dir / "import" / "joint-nodes.gc";
+  std::string jg_result;
+
+  for (const auto& [jg_name, info] : dts.jg_info) {
+    for (const auto& [idx, joint] : info) {
+      jg_result += print_jg_for_dump(jg_name, joint, idx);
+    }
+    jg_result += "\n";
+  }
+
+  file_util::write_text_file(jg_fpath, jg_result);
 
   lg::info("Written art group info: in {:.2f} ms", timer.getMs());
 }
@@ -976,5 +1040,8 @@ std::string print_art_elt_for_dump(const std::string& group_name,
                                    const std::string& name,
                                    int idx) {
   return fmt::format("(def-art-elt {} {} {})\n", group_name, name, idx);
+}
+std::string print_jg_for_dump(const std::string& jg_name, const std::string& joint_name, int idx) {
+  return fmt::format("(def-joint-node {} \"{}\" {})\n", jg_name, joint_name, idx);
 }
 }  // namespace decompiler

@@ -74,7 +74,7 @@
     )
   )
 
-;; PAL patch here
+;; og:preserve-this PAL patch here
 (defpartgroup group-sequenceAV-2d-intro-mist
   :id 688
   :flags (screen-space)
@@ -196,17 +196,13 @@
   )
 
 (deftype sequenceA-village1 (process-taskable)
-  ((boat handle  :offset-assert 384)
-   (side handle  :offset-assert 392)
+  ((boat  handle)
+   (side  handle)
    )
-  :heap-base #x120
-  :method-count-assert 53
-  :size-assert         #x190
-  :flag-assert         #x3501200190
   )
 
 
-(defmethod play-anim! sequenceA-village1 ((obj sequenceA-village1) (arg0 symbol))
+(defmethod play-anim! ((this sequenceA-village1) (arg0 symbol))
   (when arg0
     (set! (-> *time-of-day-proc* 0 time-ratio) 0.0)
     (set! (-> *time-of-day-proc* 0 hour) 23)
@@ -215,13 +211,13 @@
     (send-event *camera* 'force-blend 0)
     (send-event *camera* 'change-state cam-fixed 0)
     (send-event *target* 'sidekick #f)
-    (set! (-> obj boat)
-          (ppointer->handle (manipy-spawn (-> obj root-override trans) (-> obj entity) *fishermans-boat-sg* #f :to obj))
+    (set! (-> this boat)
+          (ppointer->handle (manipy-spawn (-> this root trans) (-> this entity) *fishermans-boat-sg* #f :to this))
           )
-    (send-event (handle->process (-> obj boat)) 'anim-mode 'clone-anim)
-    (send-event (handle->process (-> obj boat)) 'origin-joint-index 3)
+    (send-event (handle->process (-> this boat)) 'anim-mode 'clone-anim)
+    (send-event (handle->process (-> this boat)) 'origin-joint-index 3)
     )
-  ;; PAL patch here
+  ;; og:preserve-this PAL patch here
   (the-as basic (new 'static 'spool-anim
                   :name "sage-intro-sequence-a"
                   :index 17
@@ -252,14 +248,14 @@
           )
   )
 
-(defmethod get-art-elem sequenceA-village1 ((obj sequenceA-village1))
-  (-> obj draw art-group data 3)
+(defmethod get-art-elem ((this sequenceA-village1))
+  (-> this draw art-group data 3)
   )
 
 (defstate play-anim (sequenceA-village1)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('sidekick-human)
        (format 0 "got sidekick-human~%")
        (when (= (level-status *level* 'misty) 'active)
@@ -267,7 +263,7 @@
            (when gp-1
              (format 0 "found entity for sidekick-human~%")
              (set! (-> self side)
-                   (ppointer->handle (manipy-spawn (-> self root-override trans) gp-1 *sidekick-human-sg* #f :to self))
+                   (ppointer->handle (manipy-spawn (-> self root trans) gp-1 *sidekick-human-sg* #f :to self))
                    )
              (send-event (handle->process (-> self side)) 'anim-mode 'clone-anim)
              (send-event (handle->process (-> self side)) 'center-joint 3)
@@ -276,7 +272,7 @@
            )
          )
        )
-      ;; PAL patch here
+      ;; og:preserve-this PAL patch here
       (('pause)
        (let ((v0-2 (the-as object (logior (-> self mask) (process-mask pause)))))
          (set! (-> self mask) (the-as process-mask v0-2))
@@ -299,7 +295,7 @@
       )
     ((-> (method-of-type process-taskable play-anim) exit))
     (#when PC_PORT
-      ;; extra stuff when skipping cutscene
+      ;; og:preserve-this extra stuff when skipping cutscene
       (when (and (= (get-response (-> self query)) 'no) (or (not (= *cheat-mode* 'debug)) (not (cpad-hold? 0 r1))))
           (close-specific-task! (game-task intro) (task-status need-resolution))
           (start 'play (get-continue-by-name *game-info* "game-start"))
@@ -323,20 +319,19 @@
         'play-anim
         )
       )
-    (none)
     )
   :trans (behavior ()
+    ;; og:preserve-this
     ;; yeah they messed up a little bit here
     (spool-push *art-control* "sage-intro-sequence-b" 0 self -1.0)
     ;; they should have put this:
     ;; (spool-push *art-control* "sidekick-human-intro-sequence-b" 0 self -1.0)
     ;; but it somehow causes a crash (maybe linux only?)
     ((-> (method-of-type process-taskable play-anim) trans))
-    (none)
     )
   )
 
-(defmethod should-display? sequenceA-village1 ((obj sequenceA-village1))
+(defmethod should-display? ((this sequenceA-village1))
   #f
   )
 

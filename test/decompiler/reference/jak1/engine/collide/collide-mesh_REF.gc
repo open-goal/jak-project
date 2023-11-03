@@ -3,24 +3,24 @@
 
 ;; definition for method 5 of type collide-mesh
 ;; INFO: Return type mismatch uint vs int.
-(defmethod asize-of collide-mesh ((obj collide-mesh))
-  (the-as int (+ (-> collide-mesh size) (* (+ (-> obj num-tris) -1) 8)))
+(defmethod asize-of ((this collide-mesh))
+  (the-as int (+ (-> collide-mesh size) (* (+ (-> this num-tris) -1) 8)))
   )
 
 ;; definition for method 8 of type collide-mesh
 ;; INFO: Return type mismatch int vs collide-mesh.
-(defmethod mem-usage collide-mesh ((obj collide-mesh) (arg0 memory-usage-block) (arg1 int))
+(defmethod mem-usage ((this collide-mesh) (arg0 memory-usage-block) (arg1 int))
   (set! (-> arg0 length) (max 79 (-> arg0 length)))
   (set! (-> arg0 data 78 name) "collide-mesh")
   (+! (-> arg0 data 78 count) 1)
-  (let ((v1-6 (asize-of obj)))
+  (let ((v1-6 (asize-of this)))
     (+! (-> arg0 data 78 used) v1-6)
     (+! (-> arg0 data 78 total) (logand -16 (+ v1-6 15)))
     )
   (set! (-> arg0 length) (max 79 (-> arg0 length)))
   (set! (-> arg0 data 78 name) "collide-mesh")
   (+! (-> arg0 data 78 count) 1)
-  (let ((v1-16 (* (-> obj num-verts) 16)))
+  (let ((v1-16 (* (-> this num-verts) 16)))
     (+! (-> arg0 data 78 used) v1-16)
     (+! (-> arg0 data 78 total) (logand -16 (+ v1-16 15)))
     )
@@ -29,7 +29,7 @@
 
 ;; definition for method 9 of type collide-mesh
 ;; INFO: Return type mismatch int vs none.
-(defmethod debug-draw-tris collide-mesh ((obj collide-mesh) (arg0 process-drawable) (arg1 int))
+(defmethod debug-draw-tris ((this collide-mesh) (arg0 process-drawable) (arg1 int))
   (rlet ((acc :class vf)
          (vf0 :class vf)
          (vf1 :class vf)
@@ -41,10 +41,10 @@
          (vf7 :class vf)
          )
     (init-vf0-vector)
-    (let ((s5-0 (the-as object (-> obj tris)))
+    (let ((s5-0 (the-as object (-> this tris)))
           (s4-0 (-> arg0 node-list data arg1 bone transform))
           )
-      (countdown (s3-0 (-> obj num-tris))
+      (countdown (s3-0 (-> this num-tris))
         (let ((a2-1 (new 'stack-no-clear 'vector))
               (a3-0 (new 'stack-no-clear 'vector))
               (t0-0 (new 'stack-no-clear 'vector))
@@ -53,9 +53,9 @@
           (.lvf vf5 (&-> s4-0 vector 1 quad))
           (.lvf vf6 (&-> s4-0 vector 2 quad))
           (.lvf vf7 (&-> s4-0 vector 3 quad))
-          (.lvf vf1 (&-> (-> obj vertex-data (-> (the-as collide-mesh-tri s5-0) vertex-index 0)) quad))
-          (.lvf vf2 (&-> (-> obj vertex-data (-> (the-as collide-mesh-tri s5-0) vertex-index 1)) quad))
-          (.lvf vf3 (&-> (-> obj vertex-data (-> (the-as collide-mesh-tri s5-0) vertex-index 2)) quad))
+          (.lvf vf1 (&-> (-> this vertex-data (-> (the-as collide-mesh-tri s5-0) vertex-index 0)) quad))
+          (.lvf vf2 (&-> (-> this vertex-data (-> (the-as collide-mesh-tri s5-0) vertex-index 1)) quad))
+          (.lvf vf3 (&-> (-> this vertex-data (-> (the-as collide-mesh-tri s5-0) vertex-index 2)) quad))
           (let ((t1-0 (copy-and-set-field (-> *pat-mode-info* (-> (the-as collide-mesh-tri s5-0) pat mode) color) a 16)))
             (.mul.w.vf acc vf7 vf0)
             (.add.mul.x.vf acc vf4 vf1 acc)
@@ -85,20 +85,17 @@
 
 ;; definition of type sopt-work
 (deftype sopt-work (structure)
-  ((intersect     vector         :inline :offset-assert   0)
-   (sphere-bbox4w bounding-box4w :inline :offset-assert  16)
+  ((intersect      vector          :inline)
+   (sphere-bbox4w  bounding-box4w  :inline)
    )
-  :method-count-assert 9
-  :size-assert         #x30
-  :flag-assert         #x900000030
   )
 
 ;; definition for method 3 of type sopt-work
-(defmethod inspect sopt-work ((obj sopt-work))
-  (format #t "[~8x] ~A~%" obj 'sopt-work)
-  (format #t "~Tintersect: #<vector @ #x~X>~%" (-> obj intersect))
-  (format #t "~Tsphere-bbox4w: #<bounding-box4w @ #x~X>~%" (-> obj sphere-bbox4w))
-  obj
+(defmethod inspect ((this sopt-work))
+  (format #t "[~8x] ~A~%" this 'sopt-work)
+  (format #t "~Tintersect: #<vector @ #x~X>~%" (-> this intersect))
+  (format #t "~Tsphere-bbox4w: #<bounding-box4w @ #x~X>~%" (-> this sphere-bbox4w))
+  this
   )
 
 ;; definition for method 12 of type collide-mesh
@@ -107,20 +104,17 @@
 
 ;; definition of type spat-work
 (deftype spat-work (structure)
-  ((intersect     vector         :inline :offset-assert   0)
-   (sphere-bbox4w bounding-box4w :inline :offset-assert  16)
+  ((intersect      vector          :inline)
+   (sphere-bbox4w  bounding-box4w  :inline)
    )
-  :method-count-assert 9
-  :size-assert         #x30
-  :flag-assert         #x900000030
   )
 
 ;; definition for method 3 of type spat-work
-(defmethod inspect spat-work ((obj spat-work))
-  (format #t "[~8x] ~A~%" obj 'spat-work)
-  (format #t "~Tintersect: #<vector @ #x~X>~%" (-> obj intersect))
-  (format #t "~Tsphere-bbox4w: #<bounding-box4w @ #x~X>~%" (-> obj sphere-bbox4w))
-  obj
+(defmethod inspect ((this spat-work))
+  (format #t "[~8x] ~A~%" this 'spat-work)
+  (format #t "~Tintersect: #<vector @ #x~X>~%" (-> this intersect))
+  (format #t "~Tsphere-bbox4w: #<bounding-box4w @ #x~X>~%" (-> this sphere-bbox4w))
+  this
   )
 
 ;; definition for method 11 of type collide-mesh
@@ -137,18 +131,18 @@
 
 ;; definition for method 9 of type collide-mesh-cache
 ;; INFO: Return type mismatch (pointer uint8) vs int.
-(defmethod allocate! collide-mesh-cache ((obj collide-mesh-cache) (arg0 int))
+(defmethod allocate! ((this collide-mesh-cache) (arg0 int))
   (local-vars (a1-2 int) (a2-2 int))
   (let* ((v1-0 (+ arg0 15))
-         (a1-1 (-> obj used-size))
+         (a1-1 (-> this used-size))
          (v1-1 (/ v1-0 16))
-         (a3-0 (-> obj data))
-         (a2-0 (-> obj max-size))
+         (a3-0 (-> this data))
+         (a2-0 (-> this max-size))
          (v1-2 (* v1-1 16))
          (a3-1 (&+ a3-0 a1-1))
          )
     (let ((t1-0 (- a2-0 (the-as uint v1-2)))
-          (t0-0 (-> obj id))
+          (t0-0 (-> this id))
           )
       (b! (< (the-as int t1-0) 0) cfg-6 :delay (set! a1-2 (the-as int (+ a1-1 v1-2))))
       (b! (>= (the-as int (- a2-0 (the-as uint a1-2))) 0) cfg-5 :delay (set! a2-2 (the-as int (+ t0-0 1))))
@@ -156,10 +150,10 @@
     (b! (zero? (the-as uint a2-2)) cfg-4 :likely-delay (set! a2-2 1))
     (label cfg-4)
     (set! a1-2 v1-2)
-    (set! a3-1 (-> obj data))
-    (set! (-> obj id) (the-as uint a2-2))
+    (set! a3-1 (-> this data))
+    (set! (-> this id) (the-as uint a2-2))
     (label cfg-5)
-    (set! (-> obj used-size) (the-as uint a1-2))
+    (set! (-> this used-size) (the-as uint a1-2))
     (let ((v0-0 a3-1))
       (b! #t cfg-7 :delay (nop!))
       (label cfg-6)
@@ -173,10 +167,8 @@
 
 ;; definition for method 13 of type collide-mesh
 ;; INFO: Return type mismatch int vs none.
-;; WARN: Failed load: (set! vf1 (l.vf t0-4)) at op 77
-;; WARN: Failed load: (set! vf2 (l.vf t1-1)) at op 79
-;; WARN: Failed load: (set! vf3 (l.vf t2-2)) at op 81
-(defmethod populate-cache! collide-mesh ((obj collide-mesh) (arg0 collide-mesh-cache-tri) (arg1 matrix))
+;; ERROR: Failed load: (set! vf1 (l.vf t0-4)) at op 77
+(defmethod populate-cache! ((this collide-mesh) (arg0 collide-mesh-cache-tri) (arg1 matrix))
   (local-vars (t0-2 uint))
   (rlet ((acc :class vf)
          (Q :class vf)
@@ -197,10 +189,10 @@
     (init-vf0-vector)
     (nop!)
     (let ((t0-0 #x70000000)
-          (v1-0 (-> obj num-verts))
+          (v1-0 (-> this num-verts))
           )
       (nop!)
-      (let ((a3-0 (-> obj vertex-data)))
+      (let ((a3-0 (-> this vertex-data)))
         (b! (zero? v1-0) cfg-3 :delay (.lvf vf1 (&-> arg1 vector 0 quad)))
         (nop!)
         (.lvf vf2 (&-> arg1 vector 1 quad))
@@ -262,10 +254,10 @@
         )
       )
     (label cfg-3)
-    (let ((v1-1 (the-as collide-mesh-tri (-> obj tris))))
+    (let ((v1-1 (the-as collide-mesh-tri (-> this tris))))
       (nop!)
       (let ((a2-1 #x70000000)
-            (a0-1 (-> obj num-tris))
+            (a0-1 (-> this num-tris))
             )
         (b! (zero? a0-1) cfg-6 :delay (set! t0-2 (-> v1-1 vertex-index 0)))
         (let* ((a1-1 (+ (the-as uint arg0) -96))
@@ -346,25 +338,22 @@
 
 ;; definition of type oot-work
 (deftype oot-work (structure)
-  ((intersect     vector         :inline :offset-assert   0)
-   (sphere-bbox4w bounding-box4w :inline :offset-assert  16)
+  ((intersect      vector          :inline)
+   (sphere-bbox4w  bounding-box4w  :inline)
    )
-  :method-count-assert 9
-  :size-assert         #x30
-  :flag-assert         #x900000030
   )
 
 ;; definition for method 3 of type oot-work
-(defmethod inspect oot-work ((obj oot-work))
-  (format #t "[~8x] ~A~%" obj 'oot-work)
-  (format #t "~Tintersect: #<vector @ #x~X>~%" (-> obj intersect))
-  (format #t "~Tsphere-bbox4w: #<bounding-box4w @ #x~X>~%" (-> obj sphere-bbox4w))
-  obj
+(defmethod inspect ((this oot-work))
+  (format #t "[~8x] ~A~%" this 'oot-work)
+  (format #t "~Tintersect: #<vector @ #x~X>~%" (-> this intersect))
+  (format #t "~Tsphere-bbox4w: #<bounding-box4w @ #x~X>~%" (-> this sphere-bbox4w))
+  this
   )
 
 ;; definition for method 10 of type collide-mesh
 ;; INFO: Used lq/sq
-(defmethod overlap-test collide-mesh ((obj collide-mesh) (arg0 collide-mesh-cache-tri) (arg1 vector))
+(defmethod overlap-test ((this collide-mesh) (arg0 collide-mesh-cache-tri) (arg1 vector))
   (local-vars
     (v1-0 uint128)
     (a0-1 uint128)
@@ -389,7 +378,7 @@
           (s4-0 arg0)
           )
       (.lvf vf2 (&-> arg1 quad))
-      (let ((s3-0 (-> obj num-tris)))
+      (let ((s3-0 (-> this num-tris)))
         (.sub.w.vf vf5 vf2 vf2)
         (.add.w.vf vf6 vf2 vf2)
         (.ftoi.vf vf5 vf5)

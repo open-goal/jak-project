@@ -22,6 +22,37 @@
 (define-extern particle-adgif (function adgif-shader texture-id none)) ;; TODO - particle-adgif atomic ops, MIPS2C
 (define-extern sp-launch-particles-var (function sparticle-system sparticle-launcher matrix sparticle-launch-state sparticle-launch-control float none)) ;; TODO - mips2c
 
+;; og:preserve-this added macro
+;; TODO changing rate causes crashes at higher frame rates with certain particles, disabled for now
+;; for future testing: at 165 fps, the blue gun particles should cause a crash
+(defmacro launch-particles (&key (system *sp-particle-system-2d*)
+                                 particle
+                                 origin
+                                 &key (launch-state (the-as sparticle-launch-state #f))
+                                 &key (launch-control (the-as sparticle-launch-control #f))
+                                 &key (rate 1.0)
+                                 &key (origin-is-matrix #f))
+  (if origin-is-matrix
+      `(sp-launch-particles-var
+         ,system
+         ,particle
+         (the matrix ,origin)
+         ,launch-state
+         ,launch-control
+         ,rate #|(if (= (get-video-mode) 'custom) (/ (-> *display* time-factor) 5.0) ,rate)|#)
+      `(begin
+         (vector-copy! (-> *launch-matrix* trans) (the vector ,origin))
+         (sp-launch-particles-var
+           ,system
+           ,particle
+           *launch-matrix*
+           ,launch-state
+           ,launch-control
+           ,rate #|(if (= (get-video-mode) 'custom) (/ (-> *display* time-factor) 5.0) ,rate)|#)
+         )
+      )
+  )
+
 ;; DECOMP BEGINS
 
 ;; WARN: Return type mismatch int vs sparticle-launcher.
@@ -95,7 +126,7 @@
   0
   )
 
-;; this was rewritten from assembly
+;; og:preserve-this this was rewritten from assembly
 (defun sp-init-fields! ((arg0 (pointer float)) (arg1 (inline-array sp-field-init-spec)) (arg2 sp-field-id) (arg3 sp-field-id) (write-missing-fields symbol))
   (1+! arg2)
   (let ((cur-spec arg1))
@@ -160,23 +191,17 @@
   )
 
 (deftype sp-queued-launch-particles (structure)
-  ((sp-system   sparticle-system           :offset-assert   0)
-   (sp-launcher sparticle-launcher         :offset-assert   4)
-   (pos         vector             :inline :offset-assert  16)
+  ((sp-system    sparticle-system)
+   (sp-launcher  sparticle-launcher)
+   (pos          vector  :inline)
    )
-  :method-count-assert 9
-  :size-assert         #x20
-  :flag-assert         #x900000020
   )
 
 
 (deftype sp-launch-queue (basic)
-  ((in-use int32                                  :offset-assert   4)
-   (queue  sp-queued-launch-particles 256 :inline :offset-assert  16)
+  ((in-use  int32)
+   (queue   sp-queued-launch-particles  256 :inline)
    )
-  :method-count-assert 9
-  :size-assert         #x2010
-  :flag-assert         #x900002010
   )
 
 
@@ -217,15 +242,12 @@
   )
 
 (deftype particle-adgif-cache (basic)
-  ((used    int32                   :offset-assert   4)
-   (last    uint16                  :offset-assert   8)
-   (lastgif adgif-shader            :offset-assert  12)
-   (tidhash uint16       80         :offset-assert  16)
-   (spadgif adgif-shader 80 :inline :offset-assert 176)
+  ((used     int32)
+   (last     uint16)
+   (lastgif  adgif-shader)
+   (tidhash  uint16        80)
+   (spadgif  adgif-shader  80 :inline)
    )
-  :method-count-assert 9
-  :size-assert         #x19b0
-  :flag-assert         #x9000019b0
   )
 
 
@@ -269,6 +291,7 @@
       (let ((s4-0 (-> arg0 alpha))
             (s3-0 (-> arg0 clamp))
             )
+        ;; og:preserve-this
         ; (.svf (&-> s5-0 0 quad) vf16)
         ; (.svf (&-> s5-0 1 quad) vf17)
         ; (.svf (&-> s5-0 2 quad) vf18)
@@ -278,6 +301,7 @@
         (set! (-> arg0 alpha) s4-0)
         (set! (-> arg0 clamp) s3-0)
         )
+      ;; og:preserve-this
       ; (.lvf vf16 (&-> s5-0 0 quad))
       ; (.lvf vf17 (&-> s5-0 1 quad))
       ; (.lvf vf18 (&-> s5-0 2 quad))
@@ -378,14 +402,14 @@
       (cond
         ((< (-> s5-0 w) 0.0)
          (.lvf vf1 (&-> arg0 conerot quad))
-         (.lvf vf2 (&-> s5-0 vec quad))
+         (.lvf vf2 (&-> s5-0 quad))
          (.sub.vf vf1 vf0 vf2 :mask #b111)
          (.svf (&-> arg0 conerot quad) vf1)
          (.mov v1-1 vf1)
          )
         (else
           (.lvf vf1 (&-> arg0 conerot quad))
-          (.lvf vf2 (&-> s5-0 vec quad))
+          (.lvf vf2 (&-> s5-0 quad))
           (.add.vf vf1 vf0 vf2 :mask #b111)
           (.svf (&-> arg0 conerot quad) vf1)
           (.mov v1-2 vf1)
@@ -437,26 +461,23 @@
   )
 
 (deftype sp-launch-stack (structure)
-  ((ra         basic                       :offset-assert   0)
-   (dummy0     basic                       :offset-assert   4)
-   (dummy1     basic                       :offset-assert   8)
-   (b-spfic    basic                       :offset-assert  12)
-   (r16        uint128                     :offset-assert  16)
-   (r17        uint128                     :offset-assert  32)
-   (r18        uint128                     :offset-assert  48)
-   (pos        uint128                     :offset-assert  64)
-   (matrix     matrix              :inline :offset-assert  80)
-   (l-spfic    basic                       :offset-assert 144)
-   (birth-info sparticle-birthinfo :inline :offset-assert 160)
-   (sprite     sprite-vec-data-2d  :inline :offset-assert 192)
-   (r19        uint128                     :offset-assert 240)
-   (r20        uint128                     :offset-assert 256)
-   (r21        uint128                     :offset-assert 272)
-   (r22        uint128                     :offset-assert 288)
+  ((ra          basic)
+   (dummy0      basic)
+   (dummy1      basic)
+   (b-spfic     basic)
+   (r16         uint128)
+   (r17         uint128)
+   (r18         uint128)
+   (pos         uint128)
+   (matrix      matrix               :inline)
+   (l-spfic     basic)
+   (birth-info  sparticle-birthinfo  :inline)
+   (sprite      sprite-vec-data-2d   :inline)
+   (r19         uint128)
+   (r20         uint128)
+   (r21         uint128)
+   (r22         uint128)
    )
-  :method-count-assert 9
-  :size-assert         #x130
-  :flag-assert         #x900000130
   )
 
 
@@ -502,12 +523,12 @@
         )
       (set! (-> s5-0 vector 1 y) 0.0)
       (set! (-> s5-0 vector 1 z) (the float (sar (shl (the int (-> s5-0 vector 1 z)) 48) 48)))
-      (.lvf vf4 (&-> s5-0 vector 2 quad))
-      (.lvf vf5 (&-> s5-0 vector 0 quad))
+      (.lvf vf4 (&-> s5-0 quad 2))
+      (.lvf vf5 (&-> s5-0 quad 0))
       (.min.x.vf vf4 vf4 vf31 :mask #b111)
       (.add.vf vf5 vf5 vf30 :mask #b111)
-      (.svf (&-> s5-0 vector 2 quad) vf4)
-      (.svf (&-> s5-0 vector 0 quad) vf5)
+      (.svf (&-> s5-0 quad 2) vf4)
+      (.svf (&-> s5-0 quad 0) vf5)
       (when (not *death-adgif*)
         (set! *death-adgif* (new 'static 'adgif-shader))
         (particle-adgif *death-adgif* (new 'static 'texture-id :index #xc9 :page #xc))
@@ -530,19 +551,19 @@
         )
       (set! (-> gp-0 clock-index) (the-as uint 8))
       (.lvf vf4 (&-> (-> *time-of-day-context* current-prt-color) quad))
-      (.lvf vf5 (&-> s5-0 vector 2 quad))
+      (.lvf vf5 (&-> s5-0 quad 2))
       (.lvf vf6 (&-> gp-0 fade quad))
       (.mul.vf vf5 vf5 vf4 :mask #b111)
       (.mul.vf vf6 vf6 vf4 :mask #b111)
-      (.svf (&-> s5-0 vector 2 quad) vf5)
+      (.svf (&-> s5-0 quad 2) vf5)
       (.svf (&-> gp-0 fade quad) vf6)
       (.mov v1-26 vf6)
       (set! (-> gp-0 key) (the-as sparticle-launch-control 0))
       (set! (-> gp-0 binding) #f)
       (let ((v1-27 (-> gp-0 sprite)))
-        (.lvf vf1 (&-> s5-0 vector 0 quad))
-        (.lvf vf2 (&-> s5-0 vector 1 quad))
-        (.lvf vf3 (&-> s5-0 vector 2 quad))
+        (.lvf vf1 (&-> s5-0 quad 0))
+        (.lvf vf2 (&-> s5-0 quad 1))
+        (.lvf vf3 (&-> s5-0 quad 2))
         (.svf (&-> v1-27 x-y-z-sx quad) vf1)
         (.svf (&-> v1-27 flag-rot-sy quad) vf2)
         (.sub.w.vf vf3 vf0 vf0 :mask #b1000)
@@ -565,14 +586,7 @@
       (dotimes (s4-0 (-> gp-0 in-use))
         (let ((v1-4 (-> gp-0 queue s4-0)))
           (set! (-> s5-0 trans quad) (-> v1-4 pos quad))
-          (sp-launch-particles-var
-            (-> v1-4 sp-system)
-            (-> v1-4 sp-launcher)
-            s5-0
-            (the-as sparticle-launch-state #f)
-            (the-as sparticle-launch-control #f)
-            1.0
-            )
+          (launch-particles :system (-> v1-4 sp-system) (-> v1-4 sp-launcher) s5-0 :origin-is-matrix #t)
           )
         )
       (set! (-> gp-0 in-use) 0)
@@ -758,18 +772,18 @@
     )
   )
 
-(defmethod initialize sparticle-launch-control ((obj sparticle-launch-control) (arg0 sparticle-launch-group) (arg1 process))
+(defmethod initialize ((this sparticle-launch-control) (arg0 sparticle-launch-group) (arg1 process))
   (let ((s5-0 0))
-    (set! (-> obj group) arg0)
-    (set! (-> obj proc) (the-as process-drawable arg1))
-    (set! (-> obj local-clock) 0)
-    (set! (-> obj fade) 1.0)
-    (set! (-> obj matrix) 0)
-    (set! (-> obj last-spawn-frame) (the-as int (+ (-> *display* real-frame-clock integral-frame-counter) -2)))
-    (set! (-> obj last-spawn-time) 0)
-    (if (logtest? (-> obj group flags) (sp-group-flag unk-4))
-        (quaternion->matrix (-> obj origin) (-> (the-as process-drawable arg1) root quat))
-        (matrix-identity! (-> obj origin))
+    (set! (-> this group) arg0)
+    (set! (-> this proc) (the-as process-drawable arg1))
+    (set! (-> this local-clock) 0)
+    (set! (-> this fade) 1.0)
+    (set! (-> this matrix) 0)
+    (set! (-> this last-spawn-frame) (the-as int (+ (-> *display* real-frame-clock integral-frame-counter) -2)))
+    (set! (-> this last-spawn-time) 0)
+    (if (logtest? (-> this group flags) (sp-group-flag unk-4))
+        (quaternion->matrix (-> this origin) (-> (the-as process-drawable arg1) root quat))
+        (matrix-identity! (-> this origin))
         )
     (when (logtest? (-> arg0 flags) (sp-group-flag unk-6))
       (let ((f0-1 (-> arg0 rotate-x))
@@ -784,7 +798,7 @@
         (set! (-> a1-2 z) f2-0)
         (set! (-> a1-2 w) 1.0)
         (let ((a1-3 (t9-2 a0-3 a1-2)))
-          (matrix*! (-> obj origin) a1-3 (-> obj origin))
+          (matrix*! (-> this origin) a1-3 (-> this origin))
           )
         )
       )
@@ -795,13 +809,13 @@
         (set! (-> a1-4 z) (-> arg0 scale-z))
         (set! (-> a1-4 w) 1.0)
         (set! (-> a1-4 w) 1.0)
-        (scale-matrix! (-> obj origin) a1-4 (-> obj origin))
+        (scale-matrix! (-> this origin) a1-4 (-> this origin))
         )
       )
     (dotimes (s3-0 (-> arg0 length))
       (let* ((a0-7 (-> arg0 launcher s3-0))
              (a1-6 (-> *part-id-table* (-> a0-7 launcher)))
-             (v1-29 (-> obj data s5-0))
+             (v1-29 (-> this data s5-0))
              )
         (when (nonzero? a1-6)
           (set! (-> v1-29 group-item) a0-7)
@@ -820,7 +834,7 @@
                 )
                (else
                  (logior! (-> v1-29 flags) (sp-launch-state-flags launcher-active))
-                 (set! (-> v1-29 center) (-> obj origin trans))
+                 (set! (-> v1-29 center) (-> this origin trans))
                  (set! (-> v1-29 sprite3d) #f)
                  (set! (-> v1-29 sprite) #f)
                  )
@@ -834,63 +848,66 @@
           )
         )
       )
-    (set! (-> obj length) s5-0)
+    (set! (-> this length) s5-0)
     )
   0
   (none)
   )
 
 ;; WARN: Return type mismatch object vs sparticle-launch-control.
-(defmethod create-launch-control sparticle-launch-group ((obj sparticle-launch-group) (arg0 process))
-  (let ((gp-0 (the-as object (new 'process 'sparticle-launch-control (-> obj length)))))
+(defmethod create-launch-control ((this sparticle-launch-group) (arg0 process))
+  (let ((gp-0 (the-as object (new 'process 'sparticle-launch-control (-> this length)))))
     (when (zero? (the-as sparticle-launch-control gp-0))
       (go process-drawable-art-error "memory")
       (set! gp-0 0)
       (goto cfg-4)
       )
-    (initialize (the-as sparticle-launch-control gp-0) obj arg0)
+    (initialize (the-as sparticle-launch-control gp-0) this arg0)
     (label cfg-4)
     (the-as sparticle-launch-control gp-0)
     )
   )
 
-(defmethod kill-and-free-particles sparticle-launch-control ((obj sparticle-launch-control))
-  (countdown (v1-0 (-> obj length))
-    (let ((a0-4 (-> obj data v1-0)))
+(defmethod kill-and-free-particles ((this sparticle-launch-control))
+  (countdown (v1-0 (-> this length))
+    (let ((a0-4 (-> this data v1-0)))
       (logclear! (-> a0-4 flags) (sp-launch-state-flags particles-active))
       )
     )
-  (set! (-> obj local-clock) 0)
-  (set! (-> obj fade) 1.0)
-  (kill-all-particles-with-key obj)
-  (if (> (-> obj matrix) 0)
-      (sprite-release-user-hvdf (-> obj matrix))
+  (set! (-> this local-clock) 0)
+  (set! (-> this fade) 1.0)
+  (kill-all-particles-with-key this)
+  (if (> (-> this matrix) 0)
+      (sprite-release-user-hvdf (-> this matrix))
       )
   0
   (none)
   )
 
-(defmethod kill-particles sparticle-launch-control ((obj sparticle-launch-control))
-  (kill-all-particles-with-key obj)
+(defmethod kill-particles ((this sparticle-launch-control))
+  (kill-all-particles-with-key this)
   0
   (none)
   )
 
-(defmethod is-visible? sparticle-launch-control ((obj sparticle-launch-control) (arg0 vector))
-  (let* ((v1-0 (-> obj group))
+(defmethod is-visible? ((this sparticle-launch-control) (arg0 vector))
+  (let* ((v1-0 (-> this group))
          (f0-0 (-> v1-0 bounds r))
          )
     (cond
       ((= f0-0 0.0)
        #t
        )
-      ((nonzero? (-> obj matrix))
+      ((nonzero? (-> this matrix))
        #t
        )
       (else
         (let ((s5-1 (vector+! (new 'stack-no-clear 'vector) arg0 (the-as vector (-> v1-0 bounds)))))
           (set! (-> s5-1 w) f0-0)
-          (when (or *display-sprite-marks* *display-sprite-spheres* (and *display-actor-vis* (= (-> obj proc) *debug-actor*)))
+          (when (or *display-sprite-marks*
+                    *display-sprite-spheres*
+                    (and *display-actor-vis* (= (-> this proc) *debug-actor*))
+                    )
             (add-debug-sphere
               *display-sprite-spheres*
               (bucket-id debug2)
@@ -898,13 +915,14 @@
               (-> s5-1 w)
               (new 'static 'rgba :g #xff :a #x80)
               )
-            (add-debug-matrix *display-sprite-marks* (bucket-id debug2) (-> obj origin) (meters 2))
+            (add-debug-matrix *display-sprite-marks* (bucket-id debug2) (-> this origin) (meters 2))
             )
+          ;; og:preserve-this
           ;; can we see it?
           (#if (not PC_PORT)
               (sphere-in-view-frustum? (the-as sphere s5-1))
               (if (-> *pc-settings* ps2-parts?)
-                  ;; pc port : launchers have larger bsphere if you have ps2 parts off
+                  ;; og:preserve-this launchers have larger bsphere if you have ps2 parts off
                   (sphere-in-view-frustum? (the-as sphere s5-1))
                   (sphere-in-view-frustum? (the-as sphere (begin (*! (-> s5-1 w) 4.0) s5-1)))
                   )
@@ -915,20 +933,20 @@
     )
   )
 
-(defmethod spawn-with-matrix sparticle-launch-control ((obj sparticle-launch-control) (arg0 matrix))
-  (let* ((a2-0 (-> obj origin))
+(defmethod spawn-with-matrix ((this sparticle-launch-control) (arg0 matrix))
+  (let* ((a2-0 (-> this origin))
          (a3-0 arg0)
-         (v1-0 (-> a3-0 vector 0 quad))
-         (a0-1 (-> a3-0 vector 1 quad))
-         (a1-1 (-> a3-0 vector 2 quad))
+         (v1-0 (-> a3-0 quad 0))
+         (a0-1 (-> a3-0 quad 1))
+         (a1-1 (-> a3-0 quad 2))
          (a3-1 (-> a3-0 trans quad))
          )
-    (set! (-> a2-0 vector 0 quad) v1-0)
-    (set! (-> a2-0 vector 1 quad) a0-1)
-    (set! (-> a2-0 vector 2 quad) a1-1)
+    (set! (-> a2-0 quad 0) v1-0)
+    (set! (-> a2-0 quad 1) a0-1)
+    (set! (-> a2-0 quad 2) a1-1)
     (set! (-> a2-0 trans quad) a3-1)
     )
-  (let ((s4-0 (-> obj group)))
+  (let ((s4-0 (-> this group)))
     (when (logtest? (-> s4-0 flags) (sp-group-flag unk-6))
       (let ((f0-0 (-> s4-0 rotate-x))
             (f1-0 (-> s4-0 rotate-y))
@@ -942,7 +960,7 @@
         (set! (-> a1-2 z) f2-0)
         (set! (-> a1-2 w) 1.0)
         (let ((a1-3 (t9-0 a0-2 a1-2)))
-          (matrix*! (-> obj origin) a1-3 (-> obj origin))
+          (matrix*! (-> this origin) a1-3 (-> this origin))
           )
         )
       )
@@ -953,28 +971,28 @@
         (set! (-> a1-4 z) (-> s4-0 scale-z))
         (set! (-> a1-4 w) 1.0)
         (set! (-> a1-4 w) 1.0)
-        (scale-matrix! (-> obj origin) a1-4 (-> obj origin))
+        (scale-matrix! (-> this origin) a1-4 (-> this origin))
         )
       )
     )
-  (spawn obj (-> arg0 trans))
+  (spawn this (-> arg0 trans))
   (none)
   )
 
-(defmethod spawn-with-cspace sparticle-launch-control ((obj sparticle-launch-control) (arg0 cspace))
-  (let* ((v1-0 (-> obj origin))
+(defmethod spawn-with-cspace ((this sparticle-launch-control) (arg0 cspace))
+  (let* ((v1-0 (-> this origin))
          (a3-0 (-> arg0 bone transform))
-         (a0-2 (-> a3-0 vector 0 quad))
-         (a1-1 (-> a3-0 vector 1 quad))
-         (a2-0 (-> a3-0 vector 2 quad))
+         (a0-2 (-> a3-0 quad 0))
+         (a1-1 (-> a3-0 quad 1))
+         (a2-0 (-> a3-0 quad 2))
          (a3-1 (-> a3-0 trans quad))
          )
-    (set! (-> v1-0 vector 0 quad) a0-2)
-    (set! (-> v1-0 vector 1 quad) a1-1)
-    (set! (-> v1-0 vector 2 quad) a2-0)
+    (set! (-> v1-0 quad 0) a0-2)
+    (set! (-> v1-0 quad 1) a1-1)
+    (set! (-> v1-0 quad 2) a2-0)
     (set! (-> v1-0 trans quad) a3-1)
     )
-  (let ((s4-0 (-> obj group)))
+  (let ((s4-0 (-> this group)))
     (when (logtest? (-> s4-0 flags) (sp-group-flag unk-6))
       (let ((f0-0 (-> s4-0 rotate-x))
             (f1-0 (-> s4-0 rotate-y))
@@ -988,7 +1006,7 @@
         (set! (-> a1-2 z) f2-0)
         (set! (-> a1-2 w) 1.0)
         (let ((a1-3 (t9-0 a0-3 a1-2)))
-          (matrix*! (-> obj origin) a1-3 (-> obj origin))
+          (matrix*! (-> this origin) a1-3 (-> this origin))
           )
         )
       )
@@ -999,35 +1017,35 @@
         (set! (-> a1-4 z) (-> s4-0 scale-z))
         (set! (-> a1-4 w) 1.0)
         (set! (-> a1-4 w) 1.0)
-        (scale-matrix! (-> obj origin) a1-4 (-> obj origin))
+        (scale-matrix! (-> this origin) a1-4 (-> this origin))
         )
       )
     )
-  (spawn obj (vector<-cspace! (-> obj origin trans) arg0))
+  (spawn this (vector<-cspace! (-> this origin trans) arg0))
   (none)
   )
 
 ;; WARN: Function (method 11 sparticle-launch-control) has a return type of none, but the expression builder found a return statement.
-(defmethod spawn sparticle-launch-control ((obj sparticle-launch-control) (arg0 vector))
+(defmethod spawn ((this sparticle-launch-control) (arg0 vector))
   (with-pp
-    (set! (-> obj origin trans quad) (-> arg0 quad))
-    (if (not (or (is-visible? obj arg0) (logtest? (-> obj group flags) (sp-group-flag always-draw screen-space))))
+    (set! (-> this origin trans quad) (-> arg0 quad))
+    (if (not (or (is-visible? this arg0) (logtest? (-> this group flags) (sp-group-flag always-draw screen-space))))
         (return 0)
         )
     (let ((s4-0 (the-as int (current-time)))
-          (s5-0 (-> obj last-spawn-time))
+          (s5-0 (-> this last-spawn-time))
           )
       (let ((v1-10 (-> *display* real-frame-clock integral-frame-counter)))
-        (if (!= v1-10 (+ (-> obj last-spawn-frame) 1))
+        (if (!= v1-10 (+ (-> this last-spawn-frame) 1))
             (set! s5-0 (the-as int (- (the-as time-frame s4-0) (logand (the-as int (-> pp clock sparticle-data x)) 255))))
             )
         )
-      (set! (-> obj last-spawn-frame) (the-as int (-> *display* real-frame-clock integral-frame-counter)))
-      (set! (-> obj last-spawn-time) s4-0)
-      (when (logtest? (-> obj group flags) (sp-group-flag use-local-clock))
-        (set! s5-0 (-> obj local-clock))
-        (+! (-> obj local-clock) (logand (the-as int (-> pp clock sparticle-data x)) 255))
-        (set! s4-0 (-> obj local-clock))
+      (set! (-> this last-spawn-frame) (the-as int (-> *display* real-frame-clock integral-frame-counter)))
+      (set! (-> this last-spawn-time) s4-0)
+      (when (logtest? (-> this group flags) (sp-group-flag use-local-clock))
+        (set! s5-0 (-> this local-clock))
+        (+! (-> this local-clock) (logand (the-as int (-> pp clock sparticle-data x)) 255))
+        (set! s4-0 (-> this local-clock))
         )
       (let* ((f30-0 (vector-vector-distance arg0 (math-camera-pos)))
              (v1-26 1)
@@ -1039,20 +1057,20 @@
                         )
                    )
              )
-        (if (nonzero? (-> obj matrix))
+        (if (nonzero? (-> this matrix))
             (set! f30-0 0.0)
             )
 
-        ;; if we have ps2 particles off, say we're at the camera
+        ;; og:preserve-this if we have ps2 particles off, say we're at the camera
         (with-pc
           (if (not (-> *pc-settings* ps2-parts?))
               (set! f30-0 0.0)))
 
-        (let ((s2-1 (-> obj length)))
+        (let ((s2-1 (-> this length)))
           (b! #t cfg-95 :delay (nop!))
           (label cfg-19)
           (+! s2-1 -1)
-          (let* ((a3-0 (-> obj data s2-1))
+          (let* ((a3-0 (-> this data s2-1))
                  (v1-33 (-> a3-0 group-item))
                  (a1-4 (-> *part-id-table* (-> v1-33 launcher)))
                  )
@@ -1084,7 +1102,7 @@
                       (label cfg-35)
                       (set! a0-36 *sp-particle-system-2d*)
                       (label cfg-36)
-                      (t9-3 a0-36 a1-4 (-> obj origin) a3-0 obj f0-5)
+                      (t9-3 a0-36 a1-4 (-> this origin) a3-0 this f0-5)
                       )
                     )
                   (b! #t cfg-41 :delay (nop!))
@@ -1098,7 +1116,7 @@
                         (a2-4 *launch-matrix*)
                         )
                     (set! (-> a2-4 trans quad) (-> a3-0 center quad))
-                    (t9-4 a0-38 a1-4 a2-4 a3-0 obj f0-5)
+                    (t9-4 a0-38 a1-4 a2-4 a3-0 this f0-5)
                     )
                   )
                 )
@@ -1121,8 +1139,8 @@
               0
               (let* ((a2-5 (-> v1-33 length))
                      (a0-57 (-> v1-33 period))
-                     (t0-10 (mod (+ (- s5-0 (the-as int (-> obj data s2-1 offset))) a0-57) (the-as int a0-57)))
-                     (a0-58 (mod (the-as uint (+ (- s4-0 (the-as int (-> obj data s2-1 offset))) a0-57)) a0-57))
+                     (t0-10 (mod (+ (- s5-0 (the-as int (-> this data s2-1 offset))) a0-57) (the-as int a0-57)))
+                     (a0-58 (mod (the-as uint (+ (- s4-0 (the-as int (-> this data s2-1 offset))) a0-57)) a0-57))
                      )
                 (set! f0-5 (cond
                              ((and (< t0-10 (the-as int a2-5)) (< (the-as int a0-58) (the-as int a2-5)))
@@ -1139,11 +1157,11 @@
                                  0
                                  (goto cfg-93)
                                  )
-                               (when (< (the-as uint (- s4-0 (the-as int (-> obj data s2-1 spawn-time)))) (-> v1-33 period))
+                               (when (< (the-as uint (- s4-0 (the-as int (-> this data s2-1 spawn-time)))) (-> v1-33 period))
                                  0
                                  (goto cfg-93)
                                  )
-                               (set! (-> obj data s2-1 offset) (- (-> v1-33 period) a0-58))
+                               (set! (-> this data s2-1 offset) (- (-> v1-33 period) a0-58))
                                (* 0.2 (the float (- s4-0 s5-0)) f0-5)
                                )
                              )
@@ -1158,16 +1176,17 @@
                     )
                 (cond
                   ((logtest? (-> v1-33 flags) (sp-group-item-flag bit7))
-                   (sp-launch-particles-var
-                     (if (logtest? (-> v1-33 flags) (sp-group-item-flag is-3d))
+                   (launch-particles
+                     :system (if (logtest? (-> v1-33 flags) (sp-group-item-flag is-3d))
                          *sp-particle-system-3d*
                          *sp-particle-system-2d*
                          )
                      a1-4
-                     (-> obj origin)
-                     a3-0
-                     obj
-                     f0-5
+                     (-> this origin)
+                     :launch-state a3-0
+                     :launch-control this
+                     :rate f0-5
+                     :origin-is-matrix #t
                      )
                    )
                   (else
@@ -1180,7 +1199,7 @@
                           (a2-22 *launch-matrix*)
                           )
                       (set! (-> a2-22 trans quad) (-> a3-0 center quad))
-                      (t9-6 a0-83 a1-4 a2-22 a3-0 obj f0-5)
+                      (t9-6 a0-83 a1-4 a2-22 a3-0 this f0-5)
                       )
                     )
                   )
@@ -1241,14 +1260,7 @@
               (set! (-> s2-0 quad) (-> (the-as vector s0-0) quad))
               (set! (-> s2-0 w) 1.0)
               (vector-matrix*! (-> s3-0 trans) s2-0 s3-0)
-              (sp-launch-particles-var
-                gp-0
-                sv-96
-                s3-0
-                (the-as sparticle-launch-state #f)
-                (the-as sparticle-launch-control #f)
-                1.0
-                )
+              (launch-particles :system gp-0 sv-96 s3-0 :origin-is-matrix #t)
               )
             )
           )
@@ -1351,14 +1363,14 @@
       (cond
         ((< (-> gp-0 w) 0.0)
          (.lvf vf1 (&-> arg2 qx-qy-qz-sy quad))
-         (.lvf vf2 (&-> gp-0 vec quad))
+         (.lvf vf2 (&-> gp-0 quad))
          (.sub.vf vf1 vf0 vf2 :mask #b111)
          (.svf (&-> arg2 qx-qy-qz-sy quad) vf1)
          (.mov v1-1 vf1)
          )
         (else
           (.lvf vf1 (&-> arg2 qx-qy-qz-sy quad))
-          (.lvf vf2 (&-> gp-0 vec quad))
+          (.lvf vf2 (&-> gp-0 quad))
           (.add.vf vf1 vf0 vf2 :mask #b111)
           (.svf (&-> arg2 qx-qy-qz-sy quad) vf1)
           (.mov v1-2 vf1)
@@ -1399,14 +1411,14 @@
           (cond
             ((< (-> s4-0 w) 0.0)
              (.lvf vf1 (&-> v1-4 qx-qy-qz-sy quad))
-             (.lvf vf2 (&-> s4-0 vec quad))
+             (.lvf vf2 (&-> s4-0 quad))
              (.sub.vf vf1 vf0 vf2 :mask #b111)
              (.svf (&-> v1-4 qx-qy-qz-sy quad) vf1)
              (.mov v1-5 vf1)
              )
             (else
               (.lvf vf1 (&-> v1-4 qx-qy-qz-sy quad))
-              (.lvf vf2 (&-> s4-0 vec quad))
+              (.lvf vf2 (&-> s4-0 quad))
               (.add.vf vf1 vf0 vf2 :mask #b111)
               (.svf (&-> v1-4 qx-qy-qz-sy quad) vf1)
               (.mov v1-6 vf1)
@@ -1462,14 +1474,14 @@
           (cond
             ((< (-> s4-0 w) 0.0)
              (.lvf vf1 (&-> v1-17 qx-qy-qz-sy quad))
-             (.lvf vf2 (&-> s4-0 vec quad))
+             (.lvf vf2 (&-> s4-0 quad))
              (.sub.vf vf1 vf0 vf2 :mask #b111)
              (.svf (&-> v1-17 qx-qy-qz-sy quad) vf1)
              (.mov v1-18 vf1)
              )
             (else
               (.lvf vf1 (&-> v1-17 qx-qy-qz-sy quad))
-              (.lvf vf2 (&-> s4-0 vec quad))
+              (.lvf vf2 (&-> s4-0 quad))
               (.add.vf vf1 vf0 vf2 :mask #b111)
               (.svf (&-> v1-17 qx-qy-qz-sy quad) vf1)
               (.mov v1-19 vf1)
@@ -1876,14 +1888,14 @@
       (cond
         ((< (-> s5-1 w) 0.0)
          (.lvf vf1 (&-> arg2 conerot quad))
-         (.lvf vf2 (&-> s5-1 vec quad))
+         (.lvf vf2 (&-> s5-1 quad))
          (.sub.vf vf1 vf0 vf2 :mask #b111)
          (.svf (&-> arg2 conerot quad) vf1)
          (.mov v1-0 vf1)
          )
         (else
           (.lvf vf1 (&-> arg2 conerot quad))
-          (.lvf vf2 (&-> s5-1 vec quad))
+          (.lvf vf2 (&-> s5-1 quad))
           (.add.vf vf1 vf0 vf2 :mask #b111)
           (.svf (&-> arg2 conerot quad) vf1)
           (.mov v1-1 vf1)
@@ -1910,14 +1922,14 @@
       (cond
         ((< (-> v1-0 w) 0.0)
          (.lvf vf1 (&-> a0-1 conerot quad))
-         (.lvf vf2 (&-> v1-0 vec quad))
+         (.lvf vf2 (&-> v1-0 quad))
          (.sub.vf vf1 vf0 vf2 :mask #b111)
          (.svf (&-> a0-1 conerot quad) vf1)
          (.mov a0-2 vf1)
          )
         (else
           (.lvf vf1 (&-> a0-1 conerot quad))
-          (.lvf vf2 (&-> v1-0 vec quad))
+          (.lvf vf2 (&-> v1-0 quad))
           (.add.vf vf1 vf0 vf2 :mask #b111)
           (.svf (&-> a0-1 conerot quad) vf1)
           (.mov a0-3 vf1)
@@ -1958,14 +1970,14 @@
   )
 
 ;; WARN: new jak 2 until loop case, check carefully
-(defmethod get-field-spec-by-id sparticle-launcher ((obj sparticle-launcher) (arg0 sp-field-id))
+(defmethod get-field-spec-by-id ((this sparticle-launcher) (arg0 sp-field-id))
   "Returns the [[sp-field-init-spec]] that has the matching [[sp-field-id]]"
   (let ((v1-0 0))
     (until #f
-      (let ((a2-2 (-> obj init-specs v1-0 field)))
+      (let ((a2-2 (-> this init-specs v1-0 field)))
         (cond
           ((= a2-2 arg0)
-           (return (-> obj init-specs v1-0))
+           (return (-> this init-specs v1-0))
            )
           ((or (< (the-as uint arg0) (the-as uint a2-2)) (= a2-2 (sp-field-id spt-end)))
            (return (the-as sp-field-init-spec #f))
@@ -1980,15 +1992,15 @@
   (the-as sp-field-init-spec #f)
   )
 
-(defmethod setup-user-array sparticle-launcher ((obj sparticle-launcher) (arg0 string))
-  (let ((s5-0 (get-field-spec-by-id obj (sp-field-id spt-texture)))
+(defmethod setup-user-array ((this sparticle-launcher) (arg0 string))
+  (let ((s5-0 (get-field-spec-by-id this (sp-field-id spt-texture)))
         (v1-1 (lookup-texture-id-by-name arg0 (the-as string #f)))
         )
     (if s5-0
         (set! (-> s5-0 initial-valuef) (the-as float v1-1))
         )
     )
-  (let ((v1-3 (get-field-spec-by-id obj (sp-field-id spt-userdata))))
+  (let ((v1-3 (get-field-spec-by-id this (sp-field-id spt-userdata))))
     (when (and v1-3 (= (-> v1-3 flags) (sp-flag object)))
       (let ((gp-1 (the-as object (-> v1-3 initial-valuef))))
         (when (and (= (logand (the-as int gp-1) 7) 4)

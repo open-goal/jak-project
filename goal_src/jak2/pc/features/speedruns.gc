@@ -1,86 +1,173 @@
 ;;-*-Lisp-*-
 (in-package goal)
 
-(define *speedrun-info* (new 'static 'speedrun-info-jak2 :should-display? #t :needs-post-blackout-setup? #f))
+(define *speedrun-info* (new 'static 'speedrun-info))
 
-(defun is-speedrun-category? ((category symbol))
-  (and (-> *pc-settings* speedrunner-mode?)
-        (name= category (enum->string speedrun-category (-> *speedrun-info* category)))
-        )
-  )
+(defmethod set-category! ((this speedrun-info) (category speedrun-category))
+  (set! (-> this category) category)
+  (none))
 
-(defun start-speedrun ((category speedrun-category))
+(defmethod start-run! ((this speedrun-info))
   ;; randomize game id so the autosplitter knows to restart
-  (update-autosplit-jak2-new-game)
-  ;; turn on speedrun verification display and flip flag for setting up speedrun after initialize!
-  (set! (-> *speedrun-info* should-display?) #t)
-  ;; start new game with specified checkpoint, if any (otherwise we're resetting current category)
-  (when category
-    (set! (-> *speedrun-info* category) category))
-  ;; TODO - ensure any required settings are enabled
-  (none)
-  )
+  (reset! *autosplit-info-jak2*)
+  ;; turn on speedrun verification display
+  (set! (-> this display-run-info?) #t)
+  ;; ensure any required settings are enabled
+  (set! (-> *setting-control* user-default dialog-volume) 0.0) ;; disable dialog volume
+  (enforce-settings! this)
+  ;; finalize any category specific setup code
+  (case (-> this category)
+    (((speedrun-category newgame-normal))
+      (initialize! *game-info* 'game (the-as game-save #f) "game-start"))
+    (((speedrun-category newgame-heromode))
+      (initialize! *game-info* 'game (the-as game-save #f) "game-start-hero")))
+  (none))
 
-;; TODO - fix me
-(define post-blackout? #f)
+(defmethod enforce-settings! ((this speedrun-info))
+  (set! (-> *pc-settings* ps2-actor-vis?) #t) ;; force PS2 actor visibility
+  (set-frame-rate! *pc-settings* 60 #t) ;; force FPS to `60`
+  (set! (-> *pc-settings* cheats) (the-as pc-cheats #x0)) ;; disable any active cheats
+  (none))
 
-(defun setup-speedrun-post-blackout ()
-  (when post-blackout?
-    (set! (-> *speedrun-info* needs-post-blackout-setup?) #f)
-    (case (-> *speedrun-info* category)
-      (((speedrun-category full-game))
-        ;; setup a full-game run here
-        (none)
-        )
-      (else
-        ;;speedrun-category was not recognized, print an error to the screen and maybe play a sound.
-        )
-      )
-      ;; reset speedrun display (gets hidden on first collectable pickup)
-      (set! (-> *speedrun-info* should-display?) #t)
-      ;; reset actors to ensure any above changes take effect
-      (reset-actors 'life)
-      ;; autosave any changes back to file
-      (auto-save-command 'auto-save 0 0 *default-pool* #f)
-    )
-  (none)
-  )
+(defmethod hide-run-info! ((this speedrun-info))
+  (set! (-> this display-run-info?) #f)
+  (none))
 
-(defun hide-speedrun-display ()
-  (set! (-> *speedrun-info* should-display?) #f)
-  (none)
-  )
-
-(defun speedrun-mode-update ()
+(defmethod update! ((this speedrun-info))
   "A per frame update for speedrunning related stuff"
+  ;; Ensure the speedrunner menu process is enabled or destroyed
+  (when (and (-> *pc-settings* speedrunner-mode?)
+             (not *speedrun-menu*))
+    (process-spawn speedrun-menu :init speedrun-menu-init #f :to *entity-pool*))
+  (when (and (not (-> *pc-settings* speedrunner-mode?))
+             *speedrun-menu*)
+    (deactivate (-> *speedrun-menu* 0)))
+  ;; do speedrunner mode things
   (when (-> *pc-settings* speedrunner-mode?)
-    ;; Update auto-splitter
-    (update-autosplit-info-jak2)
-    ;; Draw info to the screen
-    (speedrun-draw-settings)
-    ;;Disable any active cheats
-    ;; (set! (-> *pc-settings* cheats) (the-as pc-cheats #x0))
-    ;; Run after-blackout speedrun setup (if needed)
-    (setup-speedrun-post-blackout)
-    )
+    ;; Update auto-splitter struct
+    (update! *autosplit-info-jak2*)
+    ;; see if we should stop drawing the run info (when you escape the fortress!)
+    (when (task-complete? *game-info* (game-task fortress-escape))
+      (set! (-> this display-run-info?) #f))
+    (when (-> this display-run-info?)
+       ;; Draw info to the screen
+       (draw-run-info! this))
+    ;; enforce settings even if they've changed them
+    (enforce-settings! this))
   (none))
 
-(defun speedrun-start-full-game-run ()
-  ;; start a full game speedrun, save file is already selected so don't default to first slot
-  (start-speedrun (speedrun-category full-game))
-  (none))
-
-(defun speedrun-draw-settings ()
+(defmethod draw-run-info! ((this speedrun-info))
   "Draw speedrun related settings in the bottom left corner"
   (when (and (-> *pc-settings* speedrunner-mode?)
-             (not (paused?))
-             (-> *speedrun-info* should-display?))
-    (with-dma-buffer-add-bucket ((buf (-> (current-frame) global-buf))
-                                      (bucket-id debug-no-zbuf1))
-      (draw-string-xy (string-format "OpenGOAL Version: ~S ~%Speedrun mode: ~A ~%Category: ~S ~%Is fortress escaped: ~D"
-                                     *pc-settings-built-sha*
-                                     (-> *pc-settings* speedrunner-mode?)
-                                     (enum->string speedrun-category (-> *speedrun-info* category))
-                                     (-> *autosplit-info-jak2* res-fortress-escape))
-                      buf 0 (- 220 (* 8 4)) (font-color progress-old-yellow) (font-flags shadow kerning))))
+             (-> this display-run-info?))
+    (clear *temp-string*)
+    (clear *pc-encoded-temp-string*)
+    (format *temp-string* "<COLOR_WHITE>PC Cheats: <COLOR_GREEN>~D~%<COLOR_WHITE>Frame Rate: <COLOR_GREEN>~D~%<COLOR_WHITE>PS2 Actor Vis?: <COLOR_GREEN>~S~%<COLOR_WHITE>Version: <COLOR_GREEN>~S~%"
+            (the-as int (-> *pc-settings* cheats))
+            (-> *pc-settings* target-fps)
+            (if (-> *pc-settings* ps2-actor-vis?) "true" "false")
+            *pc-settings-built-sha*)
+    (pc-encode-utf8-string *temp-string* *pc-encoded-temp-string*)
+    (with-dma-buffer-add-bucket ((buf (-> (current-frame) global-buf)) (bucket-id debug-no-zbuf1))
+      ;; reset bucket settings prior to drawing - font won't do this for us, and
+      ;; draw-raw-image can sometimes mess them up. (intro sequence)
+      (dma-buffer-add-gs-set-flusha buf (alpha-1 (new 'static 'gs-alpha :b #x1 :d #x1)) (tex1-1 (new 'static 'gs-tex1 :mmag #x1 :mmin #x1)))
+      (let ((font-ctx (new 'stack 'font-context *font-default-matrix* 510 375 0.0 (font-color default) (font-flags right shadow kerning large))))
+        (set! (-> font-ctx scale) 0.325)
+        (draw-string-adv *pc-encoded-temp-string* buf font-ctx))))
+  (none))
+
+;; Speedrun Menu
+
+(define *speedrun-popup-menu*
+  (new 'static 'popup-menu
+    :entries (new 'static 'boxed-array :type popup-menu-entry
+      (new 'static 'popup-menu-button :label "Reset" :on-press (lambda () (send-event (ppointer->process *speedrun-menu*) 'invoke (speedrun-menu-command reset))))
+      (new 'static 'popup-menu-button :label "Exit" :on-press (lambda () (send-event (ppointer->process *speedrun-menu*) 'invoke (speedrun-menu-command exit))))
+      )
+    )
+  )
+
+(define *speedrun-menu* (the-as (pointer speedrun-menu) #f))
+
+(defbehavior speedrun-menu-init speedrun-menu ()
+  (set! *speedrun-menu* (the-as (pointer speedrun-menu) (process->ppointer self)))
+  (set! (-> *speedrun-menu* 0 popup-menu) *speedrun-popup-menu*)
+  (set! (-> *speedrun-menu* 0 draw-menu?) #f)
+  (set! (-> *speedrun-menu* 0 ignore-menu-toggle?) #f)
+  (set! (-> *speedrun-menu* 0 opened-with-start?) #f)
+  (go idle)
+  (none))
+
+(defmethod deactivate ((this speedrun-menu))
+  (set! *speedrun-menu* (the-as (pointer speedrun-menu) #f))
+  ((method-of-type process-drawable deactivate) this)
+  (none))
+
+(defstate idle (speedrun-menu)
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (case event-type
+      (('invoke)
+       (case (-> event param 0)
+        (((speedrun-menu-command reset))
+         (start-run! *speedrun-info*))
+        (((speedrun-menu-command exit))
+         (set-master-mode 'game)
+         (set! (-> self draw-menu?) #f))
+        (else
+          (format 0 "nyi: invoke ~D~%" (-> event param 0))))))
+    (the-as object 0))
+  :trans (behavior ()
+    (none))
+  :code (behavior ()
+    (until #f (suspend) )
+    (none))
+  :post (behavior ()
+    (none)))
+
+(defmethod draw! ((this speedrun-menu))
+  ;; handle opening and closing the menu
+  ;; allow the menu to be toggled again once one of the current buttons are released
+  (when (and (-> this ignore-menu-toggle?)
+             (or (not (cpad-hold? 0 l1)) (not (cpad-hold? 0 r1)))
+             (or (and (-> this opened-with-start?) (not (cpad-hold? 0 start)))
+                 (and (not (-> this opened-with-start?)) (not (cpad-hold? 0 select)))))
+    (set! (-> this ignore-menu-toggle?) #f))
+  (when (and (cpad-hold? 0 l1) (cpad-hold? 0 r1) (or (cpad-hold? 0 select) (cpad-hold? 0 start))
+             (not (-> this ignore-menu-toggle?)))
+    (cond
+      ((= *master-mode* 'game)
+       (set-master-mode 'menu)
+       (set! (-> this draw-menu?) #t))
+      ((= *master-mode* 'menu)
+       (set-master-mode 'game)
+       (set! (-> this draw-menu?) #f)))
+    (logclear! (-> *cpad-list* cpads 0 button0-abs 0) (pad-buttons l1))
+    (logclear! (-> *cpad-list* cpads 0 button0-rel 0) (pad-buttons l1))
+    (logclear! (-> *cpad-list* cpads 0 button0-abs 0) (pad-buttons r1))
+    (logclear! (-> *cpad-list* cpads 0 button0-rel 0) (pad-buttons r1))
+    ;; Track whether or not the menu was opened with start or select...
+    (cond
+      ((cpad-hold? 0 select)
+       (logclear! (-> *cpad-list* cpads 0 button0-abs 0) (pad-buttons select))
+       (logclear! (-> *cpad-list* cpads 0 button0-rel 0) (pad-buttons select))
+       (set! (-> this opened-with-start?) #f))
+      ((cpad-hold? 0 start)
+       (logclear! (-> *cpad-list* cpads 0 button0-abs 0) (pad-buttons start))
+       (logclear! (-> *cpad-list* cpads 0 button0-rel 0) (pad-buttons start))
+       (set! (-> this opened-with-start?) #t)))
+    (set! (-> this ignore-menu-toggle?) #t))
+  (when (-> this draw-menu?)
+    ;; handle any inputs for within the menu
+    (cond
+      ((cpad-pressed? 0 triangle select)
+       (set! (-> this draw-menu?) #f))
+      ((cpad-pressed? 0 up)
+       (move-up! (-> this popup-menu)))
+      ((cpad-pressed? 0 down)
+       (move-down! (-> this popup-menu)))
+      ((cpad-pressed? 0 x)
+       (press! (-> this popup-menu))))
+    ;; draw it
+    (draw! (-> this popup-menu)))
   (none))

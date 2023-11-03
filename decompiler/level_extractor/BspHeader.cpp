@@ -1,6 +1,7 @@
 #include "BspHeader.h"
 
 #include "common/dma/dma.h"
+#include "common/goos/PrettyPrinter.h"
 #include "common/log/log.h"
 
 #include "decompiler/ObjectFile/LinkedObjectFile.h"
@@ -464,7 +465,8 @@ void TieFragment::read_from_file(TypedRef ref,
       num_tris = read_plain_data_field<u16>(ref, "num-tris", dts);
       num_dverts = read_plain_data_field<u16>(ref, "num-dverts", dts);
       break;
-    case GameVersion::Jak2: {
+    case GameVersion::Jak2:
+    case GameVersion::Jak3: {
       auto debug_data_ref = TypedRef(deref_label(get_field_ref(ref, "debug", dts)),
                                      dts.ts.lookup_type("tie-fragment-debug"));
       num_tris = read_plain_data_field<u16>(debug_data_ref, "num-tris", dts);
@@ -526,14 +528,6 @@ std::string TieFragment::print(const PrintSettings& /*settings*/, int indent) co
   result += fmt::format("{}num-tris: {}\n", is, num_tris);
   result += fmt::format("{}num-dverts: {}\n", is, num_dverts);
   return result;
-}
-
-void DrawableActor::read_from_file(TypedRef ref,
-                                   const decompiler::DecompilerTypeSystem& dts,
-                                   DrawStats* stats,
-                                   GameVersion /*version*/) {
-  bsphere.read_from_file(get_field_ref(ref, "bsphere", dts));
-  stats->total_actors++;
 }
 
 std::string DrawableActor::print(const PrintSettings& /*settings*/, int indent) const {
@@ -957,6 +951,7 @@ void PrototypeBucketTie::read_from_file(TypedRef ref,
       ASSERT(flags == 0 || flags == 2);
       break;
     case GameVersion::Jak2:
+    case GameVersion::Jak3:
       flags = read_plain_data_field<u16>(ref, "flags", dts);
       break;
     default:
@@ -976,6 +971,19 @@ void PrototypeBucketTie::read_from_file(TypedRef ref,
         auto p = deref_label(fr);
         p.byte_offset -= 4;
         collide_frag.read_from_file(typed_ref_from_basic(p, dts), dts, stats, version);
+      }
+    }
+  } else {
+    if (get_word_kind_for_field(ref, "collide-hash-fragment-array", dts) ==
+        decompiler::LinkedWord::PTR) {
+      auto fr = deref_label(get_field_ref(ref, "collide-hash-fragment-array", dts));
+      fr.byte_offset -= 4;
+      auto collide_array = typed_ref_from_basic(fr, dts);
+      int length = read_plain_data_field<int32_t>(collide_array, "length", dts);
+      auto r = get_field_ref(collide_array, "fragments", dts);
+      for (int i = 0; i < length; i++) {
+        collide_hash_frags.push_back(deref_label(r));
+        r.byte_offset += 4;
       }
     }
   }
@@ -1623,6 +1631,7 @@ void PrototypeBucketShrub::read_from_file(TypedRef ref,
       ASSERT(flags == 0 || flags == 2);
       break;
     case GameVersion::Jak2:
+    case GameVersion::Jak3:
       flags = read_plain_data_field<u16>(ref, "flags", dts);
       break;
     default:
@@ -1899,10 +1908,135 @@ std::string DrawableTreeArray::print(const PrintSettings& settings, int indent) 
   return result;
 }
 
+template <typename T>
+void fill_res_with_value_types(Res& res_tag, const Ref& data) {
+  ASSERT(res_tag.inlined);
+  res_tag.inlined_storage = bytes_from_plain_data(data, sizeof(T) * res_tag.count);
+}
+
+void EntityActor::read_from_file(TypedRef ref,
+                                 const decompiler::DecompilerTypeSystem& dts,
+                                 level_tools::DrawStats* /*stats*/,
+                                 GameVersion /*version*/) {
+  trans.read_from_file(get_field_ref(ref, "trans", dts));
+  aid = read_plain_data_field<u32>(ref, "aid", dts);
+  etype = read_type_field(ref, "etype", dts, false);
+  task = read_plain_data_field<u8>(ref, "task", dts);
+  vis_id = read_plain_data_field<u16>(ref, "vis-id", dts);
+  quat.read_from_file(get_field_ref(ref, "quat", dts));
+
+  int res_length = read_plain_data_field<int32_t>(ref, "length", dts);
+  // int res_allocated_length = read_plain_data_field<int32_t>(ref, "allocated-length", dts);
+
+  auto tags = deref_label(get_field_ref(ref, "tag", dts));
+  auto data_base = deref_label(get_field_ref(ref, "data-base", dts));
+
+  for (int i = 0; i < res_length; i++) {
+    auto& res = res_list.emplace_back();
+    res.name = read_symbol(tags);
+    tags.byte_offset += 4;
+    res.key_frame = deref_float(tags, 0);
+    tags.byte_offset += 4;
+    res.elt_type = read_type(tags);
+    tags.byte_offset += 4;
+    const u32 vals = deref_u32(tags, 0);
+    const u32 offset = vals & 0xffff;   // 16 bits
+    res.count = (vals >> 16) & 0x7fff;  // 15 bits
+    res.inlined = vals & 0x8000'0000;
+
+    Ref data = data_base;
+    data.byte_offset += offset;
+
+    if (res.elt_type == "string") {
+      ASSERT(!res.inlined);
+      for (int j = 0; j < res.count; j++) {
+        res.strings.push_back(read_string_ref(data));
+        data.byte_offset += 4;
+      }
+    } else if (res.elt_type == "symbol") {
+      ASSERT(!res.inlined);
+      for (int j = 0; j < res.count; j++) {
+        res.strings.push_back(read_symbol(data));
+        data.byte_offset += 4;
+      }
+    } else if (res.elt_type == "type") {
+      ASSERT(!res.inlined);
+      for (int j = 0; j < res.count; j++) {
+        res.strings.push_back(read_type(data));
+        data.byte_offset += 4;
+      }
+    } else if (res.elt_type == "vector") {
+      ASSERT(res.inlined);
+      res.inlined_storage = bytes_from_plain_data(data, 16 * res.count);
+    } else if (res.elt_type == "float") {
+      fill_res_with_value_types<float>(res, data);
+    } else if (res.elt_type == "int32") {
+      fill_res_with_value_types<int32_t>(res, data);
+    } else if (res.elt_type == "int16") {
+      fill_res_with_value_types<int16_t>(res, data);
+    } else if (res.elt_type == "int8") {
+      fill_res_with_value_types<int8_t>(res, data);
+    } else if (res.elt_type == "uint32") {
+      fill_res_with_value_types<uint32_t>(res, data);
+    } else if (res.elt_type == "uint8") {
+      fill_res_with_value_types<uint8_t>(res, data);
+    } else if (res.elt_type == "actor-group") {
+      // TODO: unsupported.
+    } else if (res.elt_type == "pair") {
+      ASSERT(res.count == 1);
+      ASSERT(!res.inlined);
+      data = deref_label(data);
+      res.script = data.data->to_form_script(data.seg, (data.byte_offset) / 4, nullptr);
+    } else {
+      fmt::print("unhandled elt_type: {}\n", res.elt_type);
+      ASSERT_NOT_REACHED();
+    }
+
+    tags.byte_offset += 4;
+  }
+}
+
+void DrawableActor::read_from_file(TypedRef ref,
+                                   const decompiler::DecompilerTypeSystem& dts,
+                                   DrawStats* stats,
+                                   GameVersion version) {
+  bsphere.read_from_file(get_field_ref(ref, "bsphere", dts));
+  actor.read_from_file(get_and_check_ref_to_basic(ref, "actor", "entity-actor", dts), dts, stats,
+                       version);
+  stats->total_actors++;
+}
+
+void DrawableInlineArrayActor::read_from_file(TypedRef ref,
+                                              const decompiler::DecompilerTypeSystem& dts,
+                                              DrawStats* stats,
+                                              GameVersion version) {
+  int num_actors = read_plain_data_field<int16_t>(ref, "length", dts);
+  auto data_ref = get_field_ref(ref, "data", dts);
+  for (int i = 0; i < num_actors; i++) {
+    Ref obj_ref = data_ref;
+    obj_ref.byte_offset += 32 * i;  // todo not a constant here
+    auto type = get_type_of_basic(obj_ref);
+    if (type != "drawable-actor") {
+      throw Error("bad drawable-actor type: {}", type);
+    }
+    drawable_actors.emplace_back();
+    drawable_actors.back().read_from_file(typed_ref_from_basic(obj_ref, dts), dts, stats, version);
+  }
+}
+
+void CollideHash::read_from_file(TypedRef ref,
+                                 const decompiler::DecompilerTypeSystem& dts,
+                                 level_tools::DrawStats* /*stats*/,
+                                 GameVersion /*version*/) {
+  num_items = read_plain_data_field<uint32_t>(ref, "num-items", dts);
+  item_array = deref_label(get_field_ref(ref, "item-array", dts));
+}
+
 void BspHeader::read_from_file(const decompiler::LinkedObjectFile& file,
                                const decompiler::DecompilerTypeSystem& dts,
                                DrawStats* stats,
-                               GameVersion version) {
+                               GameVersion version,
+                               bool only_read_texture_remap) {
   TypedRef ref;
   ref.ref.byte_offset = 0;
   ref.ref.seg = 0;
@@ -1912,25 +2046,8 @@ void BspHeader::read_from_file(const decompiler::LinkedObjectFile& file,
   file_info.read_from_file(get_and_check_ref_to_basic(ref, "info", "file-info", dts), dts);
   bsphere.read_from_file(get_field_ref(ref, "bsphere", dts));
 
-  switch (version) {
-    case GameVersion::Jak1:
-      visible_list_length = read_plain_data_field<s32>(ref, "visible-list-length", dts);
-      break;
-    case GameVersion::Jak2:
-      visible_list_length = read_plain_data_field<s16>(ref, "visible-list-length", dts);
-      break;
-    default:
-      ASSERT(false);
-  }
-
-  drawable_tree_array.read_from_file(
-      get_and_check_ref_to_basic(ref, "drawable-trees", "drawable-tree-array", dts), dts, stats,
-      version);
-
   texture_remap_table.clear();
-
   s32 tex_remap_len = read_plain_data_field<s32>(ref, "texture-remap-table-len", dts);
-
   if (tex_remap_len > 0) {
     auto tex_remap_data = deref_label(get_field_ref(ref, "texture-remap-table", dts));
     for (int entry = 0; entry < tex_remap_len; entry++) {
@@ -1943,9 +2060,41 @@ void BspHeader::read_from_file(const decompiler::LinkedObjectFile& file,
     }
   }
 
+  if (only_read_texture_remap) {
+    return;
+  }
+
+  switch (version) {
+    case GameVersion::Jak1:
+      visible_list_length = read_plain_data_field<s32>(ref, "visible-list-length", dts);
+      break;
+    case GameVersion::Jak2:
+    case GameVersion::Jak3:
+      visible_list_length = read_plain_data_field<s16>(ref, "visible-list-length", dts);
+      break;
+    default:
+      ASSERT(false);
+  }
+
+  drawable_tree_array.read_from_file(
+      get_and_check_ref_to_basic(ref, "drawable-trees", "drawable-tree-array", dts), dts, stats,
+      version);
+
   if (version > GameVersion::Jak1) {
     auto ff = get_field_ref(ref, "texture-flags", dts);
     memcpy_plain_data((u8*)texture_flags, ff, sizeof(u16) * kNumTextureFlags);
+  }
+
+  if (get_word_kind_for_field(ref, "actors", dts) == decompiler::LinkedWord::PTR) {
+    actors.read_from_file(
+        get_and_check_ref_to_basic(ref, "actors", "drawable-inline-array-actor", dts), dts, stats,
+        version);
+  }
+
+  if (version > GameVersion::Jak1 &&
+      get_word_kind_for_field(ref, "collide-hash", dts) == decompiler::LinkedWord::PTR) {
+    collide_hash.read_from_file(
+        get_and_check_ref_to_basic(ref, "collide-hash", "collide-hash", dts), dts, stats, version);
   }
 }
 

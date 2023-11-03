@@ -11,8 +11,8 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 
-                                            ;; version: 0.1.4.2
-(defconstant PC_KERNEL_VERSION (static-pckernel-version 0 1 4 2))
+                                            ;; version: 0.1.5.2
+(defconstant PC_KERNEL_VERSION (static-pckernel-version 0 1 5 2))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;; types and enums
@@ -90,6 +90,9 @@
    ;; gfx
    (smooth-minimap?   symbol)
    (hires-clouds?     symbol)
+
+   ;; other
+   (controller-led-status?    symbol)
    
    (text-language pc-language) ;; language for game text
 
@@ -127,20 +130,20 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 
-(defmethod reset-misc pc-settings-jak2 ((obj pc-settings-jak2) (call-handlers symbol))
+(defmethod reset-misc ((obj pc-settings-jak2) (call-handlers symbol))
   "Set the default misc settings"
 
   ((method-of-type pc-settings reset-misc) obj call-handlers)
-  (set! (-> obj jetboard-trick-text?) #t)
+  (true! (-> obj jetboard-trick-text?))
 
-  (set! (-> obj fast-airlock?) #t)
-  (set! (-> obj fast-elevator?) #t)
-  (set! (-> obj fast-progress?) #f)
-  (set! (-> obj smooth-minimap?) #t)
-  (set! (-> obj hires-clouds?) #t)
+  (true! (-> obj fast-airlock?))
+  (true! (-> obj fast-elevator?))
+  (false! (-> obj fast-progress?))
+  (true! (-> obj smooth-minimap?))
+  (true! (-> obj hires-clouds?))
   0)
 
-(defmethod reset-extra pc-settings-jak2 ((obj pc-settings-jak2) (call-handlers symbol))
+(defmethod reset-extra ((obj pc-settings-jak2) (call-handlers symbol))
   "Set the default goodies settings"
 
   ((method-of-type pc-settings reset-extra) obj call-handlers)
@@ -154,6 +157,16 @@
     (set! (-> obj flava-unlocked i) #f))
   0)
 
+(defmethod reset-input ((obj pc-settings-jak2) (device symbol) (call-handlers symbol))
+  "Set the default input settings"
+
+  ((method-of-type pc-settings reset-input) obj device call-handlers)
+
+  (when (or (= device 'all) (= device 'controller))
+    (set! (-> obj controller-led-status?) #t)
+    )
+  0)
+
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;; other
@@ -161,6 +174,30 @@
 
 
 (define *hires-sky* #t)
+(define *debug-region-color-alt* #t)
+(define *debug-region-show-bsphere* #f)
+(define *debug-region-hide-water* #t)
+(define *debug-region-hide-empty* #t)
+
+
+;; for debugging
+(defenum pc-pat-skip-hack
+  :bitfield #t
+  (noentity 0)
+  (nocamera 1)
+  (noedge   2)
+  (nogrind  3)
+  (nojak    4)
+  (noboard  5)
+  (nopilot  6)
+  (nolineofsight 16)
+  (unknowncamera 17)
+  (probe    24)
+  (nomech   25)
+  (noproj   26)
+  (noendlessfall  27)
+  (noprobe  28)
+  )
 
 
 (defun get-video-params () *video-params*)

@@ -11,10 +11,6 @@
 
 (deftype water-anim-mincan (water-anim)
   ()
-  :heap-base #x80
-  :method-count-assert 29
-  :size-assert         #x100
-  :flag-assert         #x1d00800100
   )
 
 
@@ -31,14 +27,14 @@
                                        )
         )
 
-(defmethod init-water! water-anim-mincan ((obj water-anim-mincan))
+(defmethod init-water! ((this water-anim-mincan))
   "Initialize a [[water-anim]]'s default settings, this may include applying a [[riple-control]]"
   (let ((func (method-of-type water-anim init-water!)))
-    (func obj)
+    (func this)
     )
   (let ((ripple-control (new 'process 'ripple-control)))
-    (set! (-> obj draw ripple) ripple-control)
-    (set-vector! (-> obj draw color-mult) 0.01 0.45 0.5 0.75)
+    (set! (-> this draw ripple) ripple-control)
+    (set-vector! (-> this draw color-mult) 0.01 0.45 0.5 0.75)
     (set! (-> ripple-control global-scale) 3072.0)
     (set! (-> ripple-control close-fade-dist) 163840.0)
     (set! (-> ripple-control far-fade-dist) 245760.0)
@@ -50,13 +46,9 @@
 
 (deftype mincan-lighthouse-lens (process-drawable)
   ()
-  :heap-base #x50
-  :method-count-assert 22
-  :size-assert         #xc8
-  :flag-assert         #x16005000c8
-  (:methods
-    (idle () _type_ :state 20)
-    (erect () _type_ :state 21)
+  (:state-methods
+    idle
+    erect
     )
   )
 
@@ -73,23 +65,18 @@
     (if (task-node-closed? (game-task-node canyon-insert-items-resolution))
         (go-virtual erect)
         )
-    (none)
     )
   :code (behavior ()
     (until #f
-      (ja-no-eval :group! (-> self draw art-group data 7)
-                  :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 7)) frames num-frames) -1)))
-                  :frame-num 0.0
-                  )
+      (ja-no-eval :group! mincan-lighthouse-lens-idle-ja :num! (seek!) :frame-num 0.0)
       (until (ja-done? 0)
         (suspend)
         (ja :num! (seek!))
         )
       )
     #f
-    (none)
     )
-  :post (the-as (function none :behavior mincan-lighthouse-lens) ja-post)
+  :post ja-post
   )
 
 (defstate erect (mincan-lighthouse-lens)
@@ -97,40 +84,36 @@
   :code (behavior ()
     (ja-channel-push! 1 0)
     (until #f
-      (ja-no-eval :group! (-> self draw art-group data 8)
-                  :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 8)) frames num-frames) -1)))
-                  :frame-num 0.0
-                  )
+      (ja-no-eval :group! mincan-lighthouse-lens-idle-erect-ja :num! (seek!) :frame-num 0.0)
       (until (ja-done? 0)
         (suspend)
         (ja :num! (seek!))
         )
       )
     #f
-    (none)
     )
-  :post (the-as (function none :behavior mincan-lighthouse-lens) ja-post)
+  :post ja-post
   )
 
 ;; WARN: Return type mismatch object vs none.
-(defmethod init-from-entity! mincan-lighthouse-lens ((obj mincan-lighthouse-lens) (arg0 entity-actor))
+(defmethod init-from-entity! ((this mincan-lighthouse-lens) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
 - stack size
 - collision information
 - loading the skeleton group / bones
 - sounds"
-  (set! (-> obj root) (new 'process 'trsqv))
-  (process-drawable-from-entity! obj arg0)
+  (set! (-> this root) (new 'process 'trsqv))
+  (process-drawable-from-entity! this arg0)
   (initialize-skeleton
-    obj
+    this
     (the-as
       skeleton-group
       (art-group-get-by-name *level* "skel-mincan-lighthouse-lens" (the-as (pointer uint32) #f))
       )
     (the-as pair 0)
     )
-  (go (method-of-object obj idle))
+  (go (method-of-object this idle))
   (none)
   )
 
@@ -153,13 +136,9 @@ This commonly includes things such as:
 
 (deftype mincan-lighthouse (process-drawable)
   ()
-  :heap-base #x50
-  :method-count-assert 22
-  :size-assert         #xc8
-  :flag-assert         #x16005000c8
-  (:methods
-    (idle () _type_ :state 20)
-    (erect () _type_ :state 21)
+  (:state-methods
+    idle
+    erect
     )
   )
 
@@ -176,24 +155,19 @@ This commonly includes things such as:
     (if (task-node-closed? (game-task-node canyon-insert-items-resolution))
         (go-virtual erect)
         )
-    (none)
     )
   :code (behavior ()
     (ja-channel-push! 1 0)
     (until #f
-      (ja-no-eval :group! (-> self draw art-group data 2)
-                  :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 2)) frames num-frames) -1)))
-                  :frame-num 0.0
-                  )
+      (ja-no-eval :group! mincan-lighthouse-idle-ja :num! (seek!) :frame-num 0.0)
       (until (ja-done? 0)
         (suspend)
         (ja :num! (seek!))
         )
       )
     #f
-    (none)
     )
-  :post (the-as (function none :behavior mincan-lighthouse) ja-post)
+  :post ja-post
   )
 
 (defstate erect (mincan-lighthouse)
@@ -201,50 +175,42 @@ This commonly includes things such as:
   :code (behavior ()
     (ja-channel-push! 1 0)
     (until #f
-      (ja-no-eval :group! (-> self draw art-group data 3)
-                  :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 3)) frames num-frames) -1)))
-                  :frame-num 0.0
-                  )
+      (ja-no-eval :group! mincan-lighthouse-idle-erect-ja :num! (seek!) :frame-num 0.0)
       (until (ja-done? 0)
         (suspend)
         (ja :num! (seek!))
         )
       )
     #f
-    (none)
     )
-  :post (the-as (function none :behavior mincan-lighthouse) ja-post)
+  :post ja-post
   )
 
 ;; WARN: Return type mismatch object vs none.
-(defmethod init-from-entity! mincan-lighthouse ((obj mincan-lighthouse) (arg0 entity-actor))
+(defmethod init-from-entity! ((this mincan-lighthouse) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
 - stack size
 - collision information
 - loading the skeleton group / bones
 - sounds"
-  (set! (-> obj root) (new 'process 'trsqv))
-  (process-drawable-from-entity! obj arg0)
+  (set! (-> this root) (new 'process 'trsqv))
+  (process-drawable-from-entity! this arg0)
   (initialize-skeleton
-    obj
+    this
     (the-as skeleton-group (art-group-get-by-name *level* "skel-mincan-lighthouse" (the-as (pointer uint32) #f)))
     (the-as pair 0)
     )
-  (process-spawn mincan-lighthouse-lens obj arg0 :to obj)
-  (go (method-of-object obj idle))
+  (process-spawn mincan-lighthouse-lens this arg0 :to this)
+  (go (method-of-object this idle))
   (none)
   )
 
 (deftype mincan-lens (process-drawable)
   ()
-  :heap-base #x50
-  :method-count-assert 22
-  :size-assert         #xc8
-  :flag-assert         #x16005000c8
-  (:methods
-    (closed () _type_ :state 20)
-    (open () _type_ :state 21)
+  (:state-methods
+    closed
+    open
     )
   )
 
@@ -261,24 +227,19 @@ This commonly includes things such as:
     (if (task-node-closed? (game-task-node canyon-insert-items-resolution))
         (go-virtual open)
         )
-    (none)
     )
   :code (behavior ()
     (ja-channel-push! 1 0)
     (until #f
-      (ja-no-eval :group! (-> self draw art-group data 3)
-                  :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 3)) frames num-frames) -1)))
-                  :frame-num 0.0
-                  )
+      (ja-no-eval :group! mincan-lens-idle-closed-ja :num! (seek!) :frame-num 0.0)
       (until (ja-done? 0)
         (suspend)
         (ja :num! (seek!))
         )
       )
     #f
-    (none)
     )
-  :post (the-as (function none :behavior mincan-lens) transform-post)
+  :post transform-post
   )
 
 (defstate open (mincan-lens)
@@ -286,30 +247,26 @@ This commonly includes things such as:
   :code (behavior ()
     (ja-channel-push! 1 0)
     (until #f
-      (ja-no-eval :group! (-> self draw art-group data 2)
-                  :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 2)) frames num-frames) -1)))
-                  :frame-num 0.0
-                  )
+      (ja-no-eval :group! mincan-lens-idle-ja :num! (seek!) :frame-num 0.0)
       (until (ja-done? 0)
         (suspend)
         (ja :num! (seek!))
         )
       )
     #f
-    (none)
     )
-  :post (the-as (function none :behavior mincan-lens) transform-post)
+  :post transform-post
   )
 
 ;; WARN: Return type mismatch object vs none.
-(defmethod init-from-entity! mincan-lens ((obj mincan-lens) (arg0 entity-actor))
+(defmethod init-from-entity! ((this mincan-lens) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
 - stack size
 - collision information
 - loading the skeleton group / bones
 - sounds"
-  (let ((cshape (new 'process 'collide-shape obj (collide-list-enum hit-by-player))))
+  (let ((cshape (new 'process 'collide-shape this (collide-list-enum hit-by-player))))
     (let ((prim-group (new 'process 'collide-shape-prim-group cshape (the-as uint 7) 0)))
       (set! (-> cshape total-prims) (the-as uint 8))
       (set! (-> prim-group prim-core collide-as) (collide-spec obstacle))
@@ -372,26 +329,22 @@ This commonly includes things such as:
       (set! (-> cshape backup-collide-as) (-> root-prim prim-core collide-as))
       (set! (-> cshape backup-collide-with) (-> root-prim prim-core collide-with))
       )
-    (set! (-> obj root) cshape)
+    (set! (-> this root) cshape)
     )
-  (process-drawable-from-entity! obj arg0)
+  (process-drawable-from-entity! this arg0)
   (initialize-skeleton
-    obj
+    this
     (the-as skeleton-group (art-group-get-by-name *level* "skel-mincan-lens" (the-as (pointer uint32) #f)))
     (the-as pair 0)
     )
-  (go (method-of-object obj closed))
+  (go (method-of-object this closed))
   (none)
   )
 
 (deftype mincan-cogs (process-drawable)
   ()
-  :heap-base #x50
-  :method-count-assert 21
-  :size-assert         #xc8
-  :flag-assert         #x15005000c8
-  (:methods
-    (idle () _type_ :state 20)
+  (:state-methods
+    idle
     )
   )
 
@@ -406,36 +359,32 @@ This commonly includes things such as:
   :virtual #t
   :code (behavior ()
     (until #f
-      (ja-no-eval :group! (ja-group)
-                  :num! (seek! (the float (+ (-> (ja-group) frames num-frames) -1)))
-                  :frame-num 0.0
-                  )
+      (ja-no-eval :group! (ja-group) :num! (seek!) :frame-num 0.0)
       (until (ja-done? 0)
         (suspend)
         (ja :num! (seek!))
         )
       )
     #f
-    (none)
     )
-  :post (the-as (function none :behavior mincan-cogs) ja-post)
+  :post ja-post
   )
 
 ;; WARN: Return type mismatch object vs none.
-(defmethod init-from-entity! mincan-cogs ((obj mincan-cogs) (arg0 entity-actor))
+(defmethod init-from-entity! ((this mincan-cogs) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
 - stack size
 - collision information
 - loading the skeleton group / bones
 - sounds"
-  (set! (-> obj root) (new 'process 'trsqv))
-  (process-drawable-from-entity! obj arg0)
+  (set! (-> this root) (new 'process 'trsqv))
+  (process-drawable-from-entity! this arg0)
   (initialize-skeleton
-    obj
+    this
     (the-as skeleton-group (art-group-get-by-name *level* "skel-mincan-cogs" (the-as (pointer uint32) #f)))
     (the-as pair 0)
     )
-  (go (method-of-object obj idle))
+  (go (method-of-object this idle))
   (none)
   )

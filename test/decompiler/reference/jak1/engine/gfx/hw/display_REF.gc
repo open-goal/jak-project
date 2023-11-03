@@ -3,7 +3,7 @@
 
 ;; definition for function get-current-time
 (defun get-current-time ()
-  (-> *display* base-frame-counter)
+  (current-time)
   )
 
 ;; definition for function get-integral-current-time
@@ -12,25 +12,25 @@
   )
 
 ;; definition for method 9 of type display
-(defmethod set-time-ratios display ((obj display) (slowdown float))
+(defmethod set-time-ratios ((this display) (slowdown float))
   (let ((ratio (fmin 4.0 slowdown)))
-    (set! (-> obj time-ratio) ratio)
+    (set! (-> this time-ratio) ratio)
     (case (get-video-mode)
       (('pal)
-       (set! (-> obj time-adjust-ratio) (* 1.2 ratio))
-       (set! (-> obj seconds-per-frame) (* 0.02 ratio))
-       (set! (-> obj frames-per-second) (* 50.0 (/ 1.0 ratio)))
-       (set! (-> obj time-factor) 6.0)
+       (set! (-> this time-adjust-ratio) (* 1.2 ratio))
+       (set! (-> this seconds-per-frame) (* 0.02 ratio))
+       (set! (-> this frames-per-second) (* 50.0 (/ 1.0 ratio)))
+       (set! (-> this time-factor) 6.0)
        )
       (else
-        (set! (-> obj time-adjust-ratio) ratio)
-        (set! (-> obj seconds-per-frame) (* 0.016666668 ratio))
-        (set! (-> obj frames-per-second) (* 60.0 (/ 1.0 ratio)))
-        (set! (-> obj time-factor) 5.0)
+        (set! (-> this time-adjust-ratio) ratio)
+        (set! (-> this seconds-per-frame) (* 0.016666668 ratio))
+        (set! (-> this frames-per-second) (* 60.0 (/ 1.0 ratio)))
+        (set! (-> this time-factor) 5.0)
         )
       )
     )
-  (-> obj time-ratio)
+  (-> this time-ratio)
   )
 
 ;; definition for function set-display-env
@@ -205,10 +205,10 @@
   )
 
 ;; definition for method 11 of type profile-bar
-(defmethod add-frame profile-bar ((obj profile-bar) (name symbol) (color rgba))
+(defmethod add-frame ((this profile-bar) (name symbol) (color rgba))
   (when *debug-segment*
-    (let ((new-frame (-> obj data (-> obj profile-frame-count))))
-      (+! (-> obj profile-frame-count) 1)
+    (let ((new-frame (-> this data (-> this profile-frame-count))))
+      (+! (-> this profile-frame-count) 1)
       (set! (-> new-frame name) name)
       (set! (-> new-frame time-stamp) (timer-count (the-as timer-bank #x10000800)))
       (set! (-> new-frame color) color)
@@ -218,16 +218,16 @@
   )
 
 ;; definition for method 10 of type profile-bar
-(defmethod reset profile-bar ((obj profile-bar))
-  (set! (-> obj profile-frame-count) 0)
-  (add-frame obj 'start (new 'static 'rgba :r #x40 :b #x40 :a #x80))
-  obj
+(defmethod reset ((this profile-bar))
+  (set! (-> this profile-frame-count) 0)
+  (add-frame this 'start (new 'static 'rgba :r #x40 :b #x40 :a #x80))
+  this
   )
 
 ;; definition for method 12 of type profile-bar
-(defmethod add-end-frame profile-bar ((obj profile-bar) (name symbol) (color rgba))
-  (let ((new-frame (-> obj data (-> obj profile-frame-count))))
-    (+! (-> obj profile-frame-count) 1)
+(defmethod add-end-frame ((this profile-bar) (name symbol) (color rgba))
+  (let ((new-frame (-> this data (-> this profile-frame-count))))
+    (+! (-> this profile-frame-count) 1)
     (set! (-> new-frame name) name)
     (set! (-> new-frame time-stamp) (the-as uint *ticks-per-frame*))
     (set! (-> new-frame color) color)
@@ -251,13 +251,13 @@
 (define *profile-ticks* #f)
 
 ;; definition for method 13 of type profile-bar
-(defmethod draw profile-bar ((obj profile-bar) (buf dma-buffer) (bar-pos int))
+(defmethod draw ((this profile-bar) (buf dma-buffer) (bar-pos int))
   (let ((height (the int (* 8.0 (-> *video-parms* relative-y-scale)))))
     (set! *profile-y* (+ (-> *video-parms* screen-miny) height))
     (set! *profile-h* height)
     )
   (let ((block-idx 1)
-        (block-count (-> obj profile-frame-count))
+        (block-count (-> this profile-frame-count))
         (left (* *profile-x* 16))
         (end-time 0)
         (worst-time-cache (new 'static 'array uint32 2 #x0 #x0))
@@ -285,7 +285,7 @@
         (set! (-> t1-1 base) (&+ (the-as pointer start-gif-tag) 16))
         )
       (while (< block-idx block-count)
-        (let ((block (-> obj data block-idx)))
+        (let ((block (-> this data block-idx)))
           (let* ((t2-4 buf)
                  (t3-8 (-> t2-4 base))
                  )
@@ -314,11 +314,11 @@
         (+! block-idx 1)
         )
       )
-    (when (or (< (seconds 0.25) (- (-> *display* real-frame-counter) (-> obj cache-time)))
+    (when (or (< (seconds 0.25) (- (-> *display* real-frame-counter) (-> this cache-time)))
               (>= end-time (the-as int (-> worst-time-cache (/ bar-pos 10))))
               )
       (set! (-> worst-time-cache (/ bar-pos 10)) (the-as uint end-time))
-      (set! (-> obj cache-time) (-> *display* real-frame-counter))
+      (set! (-> this cache-time) (-> *display* real-frame-counter))
       )
     (cond
       (*profile-ticks*

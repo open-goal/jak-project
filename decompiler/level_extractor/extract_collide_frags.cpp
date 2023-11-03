@@ -281,4 +281,198 @@ void extract_collide_frags(const level_tools::DrawableTreeCollideFragment* tree,
   }
 }
 
+////////////////////////
+// Jak 2 Format
+////////////////////////
+
+void handle_collide_fragment(const TypedRef& collide_fragment,
+                             const decompiler::DecompilerTypeSystem& dts,
+                             const std::optional<std::array<math::Vector4f, 4>>& matrix,
+                             std::vector<tfrag3::CollisionMesh::Vertex>* out) {
+  struct Poly {
+    u8 vert_index[3];
+    u8 pat;
+  };
+
+  level_tools::Vector bbox_min;
+  bbox_min.read_from_file(get_field_ref(collide_fragment, "bbox", dts));
+
+  // There's a lot of indirection:
+  // grid -> buckets -> index -> poly -> vertex.
+
+  // First step: 3D coordinates are converted to a cell in a 3D grid.
+  // The dimensions of this grid are stored as u8's in the dimension array.
+  u32 dim_array = deref_u32(get_field_ref(collide_fragment, "dimension-array", dts), 0);
+  u8 counts[4];
+  memcpy(counts, &dim_array, 4);
+  ASSERT(counts[3] == 0);  // unused
+
+  // Each grid cell maps to a bucket (they go in order, no fancy hash function)
+  u32 num_buckets = read_plain_data_field<uint16_t>(collide_fragment, "num-buckets", dts);
+  // this should match the grid dims
+  ASSERT(counts[0] * counts[1] * counts[2] == num_buckets);
+
+  // read the buckets
+  struct BucketEntry {
+    s16 index, count;
+  };
+  std::vector<BucketEntry> buckets(num_buckets);
+  memcpy_from_plain_data((u8*)buckets.data(),
+                         deref_label(get_field_ref(collide_fragment, "bucket-array", dts)),
+                         sizeof(BucketEntry) * num_buckets);
+
+  // Each bucket references a series of entries in the index list. Check all buckets to see the
+  // length of the index list.
+  int max_from_buckets = 0;
+  for (const auto& bucket : buckets) {
+    int end = bucket.count + bucket.index;
+    if (end > max_from_buckets) {
+      max_from_buckets = end;
+    }
+  }
+  // confirm the index list length matches
+  u32 num_indices = read_plain_data_field<uint16_t>(collide_fragment, "num-indices", dts);
+  ASSERT(max_from_buckets == (int)num_indices);
+
+  // read the index list
+  std::vector<u8> index_list(num_indices);
+  memcpy_from_plain_data((u8*)index_list.data(),
+                         deref_label(get_field_ref(collide_fragment, "index-array", dts)),
+                         num_indices);
+  u8 max_in_index_list = 0;
+  for (auto x : index_list) {
+    max_in_index_list = std::max(x, max_in_index_list);
+  }
+
+  u8 poly_count = read_plain_data_field<uint8_t>(collide_fragment, "poly-count", dts);
+  u8 num_polys = read_plain_data_field<uint8_t>(collide_fragment, "num-polys", dts);
+  ASSERT(poly_count == num_polys);
+  if (poly_count == 0) {
+    ASSERT(max_in_index_list == 255);
+  } else {
+    ASSERT(num_polys == max_in_index_list + 1);
+  }
+
+  // this value seems to be bogus
+  // u16 vert_count = read_plain_data_field<uint16_t>(collide_fragment, "num-verts", dts);
+  std::vector<Poly> polys(max_in_index_list + 1);
+  memcpy_from_plain_data((u8*)polys.data(),
+                         deref_label(get_field_ref(collide_fragment, "poly-array", dts)),
+                         4 * (max_in_index_list + 1));
+  int max_vi = 0;
+  int max_pat = 0;
+  for (const auto& p : polys) {
+    for (int i = 0; i < 3; i++) {
+      max_vi = std::max(max_vi, (int)p.vert_index[i]);
+    }
+    max_pat = std::max(max_pat, (int)p.pat);
+  }
+  std::vector<u16> verts((max_vi + 1) * 3);
+  memcpy_from_plain_data((u8*)verts.data(),
+                         deref_label(get_field_ref(collide_fragment, "vert-array", dts)),
+                         6 * (max_vi + 1));
+
+  std::vector<u32> pats(max_pat + 1);
+  memcpy_from_plain_data((u8*)pats.data(),
+                         deref_label(get_field_ref(collide_fragment, "pat-array", dts)),
+                         4 * (max_pat + 1));
+
+  for (const auto& p : polys) {
+    math::Vector4f verts_in[3];
+    for (int vi = 0; vi < 3; vi++) {
+      int v = p.vert_index[vi];
+      verts_in[vi] = {u32(verts.at(v * 3)) * 16 + bbox_min.data[0],
+                      u32(verts.at(v * 3 + 1)) * 16 + bbox_min.data[1],
+                      u32(verts.at(v * 3 + 2)) * 16 + bbox_min.data[2], 1.f};
+      if (matrix) {
+        verts_in[vi] = transform_tie(*matrix, verts_in[vi]);
+      }
+    }
+
+    math::Vector3f v10 = verts_in[1].xyz() - verts_in[0].xyz();
+    math::Vector3f v20 = verts_in[2].xyz() - verts_in[0].xyz();
+    auto normal = (v10.cross(v20).normalized() * INT16_MAX).cast<s16>();
+    for (int i = 0; i < 3; i++) {
+      auto& vert_out = out->emplace_back();
+      vert_out.x = verts_in[i].x();
+      vert_out.y = verts_in[i].y();
+      vert_out.z = verts_in[i].z();
+      vert_out.nx = normal.x();
+      vert_out.ny = normal.y();
+      vert_out.nz = normal.z();
+      vert_out.flags = 0;  // todo
+      vert_out.pad = 0;
+      vert_out.pad2 = 0;
+      vert_out.pat = pats.at(p.pat);
+    }
+  }
+}
+
+void extract_collide_frags(const level_tools::CollideHash& chash,
+                           const std::vector<const level_tools::DrawableTreeInstanceTie*>& ties,
+                           const decompiler::DecompilerTypeSystem& dts,
+                           tfrag3::Level& out) {
+  // We need to find all collide-hash-fragments, but we can't just scan through the entire file.
+  // for collide-hash-fragments, we need to figure out which TIEs they belong to, to apply the
+  // instance transformation matrix.
+
+  // Each level has a bsp-header, which has a collide-hash, storing the collision data in a
+  // hash-table based structure. Note that this system is separate from the "spatial-hash" system,
+  // though they are both versions of spatial hashing.
+
+  // A point in the level belongs to a cell in a uniform grid. (this grid is not stored anywhere)
+  // Each cell's coordinates can be hashed to get a "bucket" index.
+  // Each "bucket" points to a number of consecutive collide-hash-items stored in the item-array
+  // of the collide-hash.
+
+  // For just extracting the collision mesh, we can skip the bucket stuff and just iterate through
+  // the item array directly. Note that items may appear multiple times if they belong to multiple
+  // buckets. (this happens because some collision geometry is larger than a grid cell)
+
+  std::unordered_set<u32> processed_offsets;
+  auto data_ref = chash.item_array;
+  for (int i = 0; i < chash.num_items; i++) {
+    // skip over the ID field, which we don't care about.
+    data_ref.byte_offset += 4;
+
+    // get the object in the item array element
+    auto obj = deref_label(data_ref);
+    ASSERT(obj.seg == data_ref.seg);
+    obj.byte_offset -= 4;  // basic offset
+
+    if (processed_offsets.count(obj.byte_offset) == 0) {
+      processed_offsets.insert(obj.byte_offset);
+
+      auto type = get_type_of_basic(obj);
+      if (type == "collide-hash-fragment") {
+        // not instanced.
+        handle_collide_fragment(typed_ref_from_basic(obj, dts), dts, {}, &out.collision.vertices);
+      } else if (type == "instance-tie") {
+      } else {
+        ASSERT_NOT_REACHED();
+      }
+    }
+    data_ref.byte_offset += 4;
+  }
+
+  // first, all ties. Store collide-hash-fragments that are associated by ties.
+  for (auto tt : ties) {
+    auto last_array = tt->arrays.back().get();
+    auto as_instance_array = dynamic_cast<level_tools::DrawableInlineArrayInstanceTie*>(last_array);
+    ASSERT(as_instance_array);
+    for (auto& inst : as_instance_array->instances) {
+      std::array<math::Vector4f, 4> mat;
+      mat = extract_tie_matrix(inst.origin.data);
+      mat[3][0] += inst.bsphere.data[0];
+      mat[3][1] += inst.bsphere.data[1];
+      mat[3][2] += inst.bsphere.data[2];
+      auto& frags =
+          tt->prototypes.prototype_array_tie.data.at(inst.bucket_index).collide_hash_frags;
+      for (auto frag : frags) {
+        frag.byte_offset -= 4;
+        handle_collide_fragment(typed_ref_from_basic(frag, dts), dts, mat, &out.collision.vertices);
+      }
+    }
+  }
+}
 }  // namespace decompiler

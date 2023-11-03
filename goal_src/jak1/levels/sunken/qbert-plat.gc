@@ -10,13 +10,8 @@
 
 ;; DECOMP BEGINS
 
-
 (deftype qbert-plat-on (process-drawable)
   ()
-  :heap-base #x40
-  :method-count-assert 20
-  :size-assert         #xb0
-  :flag-assert         #x14004000b0
   )
 
 
@@ -26,16 +21,12 @@
               )
 
 (deftype qbert-plat (rigid-body-platform)
-  ((anchor-point      vector       :inline :offset-assert 736)
-   (plat-id           int32                :offset-assert 752)
-   (on?               symbol               :offset-assert 756)
-   (player-is-riding? symbol               :offset-assert 760)
-   (master            entity-actor         :offset-assert 764)
+  ((anchor-point       vector  :inline)
+   (plat-id            int32)
+   (on?                symbol)
+   (player-is-riding?  symbol)
+   (master             entity-actor)
    )
-  :heap-base #x290
-  :method-count-assert 35
-  :size-assert         #x300
-  :flag-assert         #x2302900300
   (:states
     qbert-plat-on-die
     qbert-plat-on-mimic
@@ -76,24 +67,20 @@
         )
 
 (deftype qbert-plat-master (process-drawable)
-  ((last-plat-triggered             int32                :offset-assert 176)
-   (plat-states                     uint32               :offset-assert 180)
-   (plat-states-needed-to-open-door uint32               :offset-assert 184)
-   (player-in-bounds?               symbol               :offset-assert 188)
-   (player-in-water?                symbol               :offset-assert 192)
-   (play-door-cam?                  symbol               :offset-assert 196)
-   (puzzle-beaten?                  symbol               :offset-assert 200)
-   (door                            entity-actor         :offset-assert 204)
-   (door-plat                       entity-actor         :offset-assert 208)
-   (bounds-start                    vector       :inline :offset-assert 224)
-   (bounds-end                      vector       :inline :offset-assert 240)
+  ((last-plat-triggered              int32)
+   (plat-states                      uint32)
+   (plat-states-needed-to-open-door  uint32)
+   (player-in-bounds?                symbol)
+   (player-in-water?                 symbol)
+   (play-door-cam?                   symbol)
+   (puzzle-beaten?                   symbol)
+   (door                             entity-actor)
+   (door-plat                        entity-actor)
+   (bounds-start                     vector  :inline)
+   (bounds-end                       vector  :inline)
    )
-  :heap-base #x90
-  :method-count-assert 21
-  :size-assert         #x100
-  :flag-assert         #x1500900100
   (:methods
-    (plat-state-set? (_type_ uint) symbol 20)
+    (plat-state-set? (_type_ uint) symbol)
     )
   (:states
     (qbert-plat-master-do-door symbol)
@@ -104,8 +91,8 @@
 
 
 (defstate qbert-plat-on-mimic (qbert-plat)
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('die)
        (go qbert-plat-on-die)
        )
@@ -128,15 +115,13 @@
         )
       (suspend)
       )
-    (none)
     )
-  :post (the-as (function none :behavior qbert-plat) ja-post)
+  :post ja-post
   )
 
 (defstate qbert-plat-on-die (qbert-plat)
   :code (behavior ()
     '()
-    (none)
     )
   )
 
@@ -166,37 +151,37 @@
     )
   )
 
-(defmethod rigid-body-platform-method-33 qbert-plat ((obj qbert-plat))
-  (let* ((a1-0 (-> obj master))
+(defmethod rigid-body-platform-method-33 ((this qbert-plat))
+  (let* ((a1-0 (-> this master))
          (v1-0 (if a1-0
                    (-> a1-0 extra process)
                    )
                )
          )
     (if v1-0
-        (send-event v1-0 'trigger (-> obj plat-id))
+        (send-event v1-0 'trigger (-> this plat-id))
         )
     )
   )
 
-(defmethod rigid-body-platform-method-32 qbert-plat ((obj qbert-plat))
-  (let* ((v1-0 (-> obj master))
+(defmethod rigid-body-platform-method-32 ((this qbert-plat))
+  (let* ((v1-0 (-> this master))
          (a0-1 (if v1-0
                    (-> v1-0 extra process)
                    )
                )
          )
     (when (the-as qbert-plat-master a0-1)
-      (let ((v1-3 (plat-state-set? (the-as qbert-plat-master a0-1) (the-as uint (-> obj plat-id)))))
-        (when (!= v1-3 (-> obj on?))
-          (set! (-> obj on?) v1-3)
+      (let ((v1-3 (plat-state-set? (the-as qbert-plat-master a0-1) (the-as uint (-> this plat-id)))))
+        (when (!= v1-3 (-> this on?))
+          (set! (-> this on?) v1-3)
           (cond
             (v1-3
-              (process-spawn qbert-plat-on (-> obj entity) obj :to obj)
+              (process-spawn qbert-plat-on (-> this entity) this :to this)
               (sound-play "plat-light-on")
               )
             (else
-              (let ((gp-2 (-> obj child)))
+              (let ((gp-2 (-> this child)))
                 (while gp-2
                   (send-event (ppointer->process gp-2) 'die)
                   (set! gp-2 (-> gp-2 0 brother))
@@ -226,9 +211,8 @@
       (suspend)
       0
       )
-    (none)
     )
-  :post (the-as (function none :behavior qbert-plat) ja-post)
+  :post ja-post
   )
 
 (defstate rigid-body-platform-idle (qbert-plat)
@@ -238,9 +222,8 @@
     (loop
       (suspend)
       )
-    (none)
     )
-  :post (the-as (function none :behavior qbert-plat) ja-post)
+  :post ja-post
   )
 
 (defstate rigid-body-platform-float (qbert-plat)
@@ -250,7 +233,6 @@
     (if (-> self on?)
         (logior! (-> self draw status) (draw-status hidden))
         )
-    (none)
     )
   :trans (behavior ()
     (logclear! (-> self draw status) (draw-status hidden))
@@ -265,7 +247,6 @@
         )
       (set! (-> self player-is-riding?) gp-1)
       )
-    (none)
     )
   :post (behavior ()
     ((the-as
@@ -276,26 +257,25 @@
     (if (-> self on?)
         (logior! (-> self draw status) (draw-status hidden))
         )
-    (none)
     )
   )
 
-(defmethod rigid-body-platform-method-22 qbert-plat ((obj qbert-plat) (arg0 vector) (arg1 float))
-  (+ (-> obj anchor-point y)
-     (-> obj float-height-offset)
+(defmethod rigid-body-platform-method-22 ((this qbert-plat) (arg0 vector) (arg1 float))
+  (+ (-> this anchor-point y)
+     (-> this float-height-offset)
      (* 512.0 (cos (* 546.13336 (+ (* 60.0 arg1) (* 0.03 (-> arg0 x)) (* 0.03 (-> arg0 z))))))
      )
   )
 
-(defmethod rigid-body-platform-method-23 qbert-plat ((obj qbert-plat) (arg0 float))
-  ((the-as (function rigid-body-platform float none) (find-parent-method qbert-plat 23)) obj arg0)
-  (rigid-body-platform-method-27 obj (-> obj anchor-point))
+(defmethod rigid-body-platform-method-23 ((this qbert-plat) (arg0 float))
+  (call-parent-method this arg0)
+  (rigid-body-platform-method-27 this (-> this anchor-point))
   0
   (none)
   )
 
-(defmethod rigid-body-platform-method-30 qbert-plat ((obj qbert-plat))
-  (let ((s5-0 (new 'process 'collide-shape-moving obj (collide-list-enum hit-by-others))))
+(defmethod rigid-body-platform-method-30 ((this qbert-plat))
+  (let ((s5-0 (new 'process 'collide-shape-moving this (collide-list-enum hit-by-others))))
     (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s5-0 reaction) default-collision-reaction)
     (set! (-> s5-0 no-reaction)
@@ -313,73 +293,73 @@
       )
     (set! (-> s5-0 nav-radius) (* 0.75 (-> s5-0 root-prim local-sphere w)))
     (backup-collide-with-as s5-0)
-    (set! (-> obj root-overlay) s5-0)
+    (set! (-> this root-overlay) s5-0)
     )
   0
   (none)
   )
 
-(defmethod rigid-body-platform-method-31 qbert-plat ((obj qbert-plat))
-  (initialize-skeleton obj *qbert-plat-sg* '())
-  (set! (-> obj anchor-point quad) (-> obj root-overlay trans quad))
-  (logior! (-> obj skel status) (janim-status inited))
-  (update-transforms! (-> obj root-overlay))
-  (rigid-body-platform-method-29 obj *qbert-plat-constants*)
-  (set! (-> obj float-height-offset) 6144.0)
-  (let ((v1-11 (-> obj control-point-array data)))
+(defmethod rigid-body-platform-method-31 ((this qbert-plat))
+  (initialize-skeleton this *qbert-plat-sg* '())
+  (set! (-> this anchor-point quad) (-> this root-overlay trans quad))
+  (logior! (-> this skel status) (janim-status inited))
+  (update-transforms! (-> this root-overlay))
+  (rigid-body-platform-method-29 this *qbert-plat-constants*)
+  (set! (-> this float-height-offset) 6144.0)
+  (let ((v1-11 (-> this control-point-array data)))
     (set! (-> v1-11 0 local-pos x) -14336.0)
     (set! (-> v1-11 0 local-pos y) 0.0)
     (set! (-> v1-11 0 local-pos z) -14336.0)
     (set! (-> v1-11 0 local-pos w) 1.0)
     )
-  (let ((v1-13 (-> obj control-point-array data 1)))
+  (let ((v1-13 (-> this control-point-array data 1)))
     (set! (-> v1-13 local-pos x) -14336.0)
     (set! (-> v1-13 local-pos y) 0.0)
     (set! (-> v1-13 local-pos z) 14336.0)
     (set! (-> v1-13 local-pos w) 1.0)
     )
-  (let ((v1-15 (-> obj control-point-array data 2)))
+  (let ((v1-15 (-> this control-point-array data 2)))
     (set! (-> v1-15 local-pos x) 14336.0)
     (set! (-> v1-15 local-pos y) 0.0)
     (set! (-> v1-15 local-pos z) 14336.0)
     (set! (-> v1-15 local-pos w) 1.0)
     )
-  (let ((v1-17 (-> obj control-point-array data 3)))
+  (let ((v1-17 (-> this control-point-array data 3)))
     (set! (-> v1-17 local-pos x) 14336.0)
     (set! (-> v1-17 local-pos y) 0.0)
     (set! (-> v1-17 local-pos z) -14336.0)
     (set! (-> v1-17 local-pos w) 1.0)
     )
-  (set! (-> obj on?) #f)
-  (set! (-> obj player-is-riding?) #f)
-  (set! (-> obj master) (entity-actor-lookup (-> obj entity) 'alt-actor 0))
-  (set! (-> obj link) (new 'process 'actor-link-info obj))
-  (set! (-> obj plat-id) (actor-count-before (-> obj link)))
+  (set! (-> this on?) #f)
+  (set! (-> this player-is-riding?) #f)
+  (set! (-> this master) (entity-actor-lookup (-> this entity) 'alt-actor 0))
+  (set! (-> this link) (new 'process 'actor-link-info this))
+  (set! (-> this plat-id) (actor-count-before (-> this link)))
   0
   (none)
   )
 
-(defmethod init-from-entity! qbert-plat ((obj qbert-plat) (arg0 entity-actor))
-  (logior! (-> obj mask) (process-mask platform))
-  (rigid-body-platform-method-30 obj)
-  (process-drawable-from-entity! obj arg0)
-  (rigid-body-platform-method-31 obj)
+(defmethod init-from-entity! ((this qbert-plat) (arg0 entity-actor))
+  (logior! (-> this mask) (process-mask platform))
+  (rigid-body-platform-method-30 this)
+  (process-drawable-from-entity! this arg0)
+  (rigid-body-platform-method-31 this)
   (go qbert-plat-wait-for-master)
   (none)
   )
 
-(defmethod plat-state-set? qbert-plat-master ((obj qbert-plat-master) (arg0 uint))
-  (logtest? (-> obj plat-states) (ash 1 arg0))
+(defmethod plat-state-set? ((this qbert-plat-master) (arg0 uint))
+  (logtest? (-> this plat-states) (ash 1 arg0))
   )
 
 (defstate qbert-plat-master-idle (qbert-plat-master)
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('trigger)
        (start-hint-timer (text-id sunken-qbert-plat-hint))
        (close-specific-task! (game-task sunken-platforms) (task-status need-hint))
        (when (not (-> self puzzle-beaten?))
-         (let ((v1-2 (-> event param 0)))
+         (let ((v1-2 (-> block param 0)))
            (when (!= v1-2 (-> self last-plat-triggered))
              (set! (-> self last-plat-triggered) (the-as int v1-2))
              (let ((s5-1 (= (-> self plat-states-needed-to-open-door) (-> self plat-states))))
@@ -529,7 +509,6 @@
         )
       (suspend)
       )
-    (none)
     )
   )
 
@@ -604,19 +583,19 @@
         )
       (go qbert-plat-master-idle)
       )
-    (set! (-> self state-time) (-> *display* base-frame-counter))
+    (set-time! (-> self state-time))
     (cond
       (arg0
         (ambient-hint-spawn "gamcam08" (the-as vector #f) *entity-pool* 'camera)
         (process-spawn pov-camera (-> self root trans) *sunkencam-sg* "qbert-show-door-open" 0 #f '() :to self)
-        (until (>= (- (-> *display* base-frame-counter) (-> self state-time)) (seconds 1.4))
+        (until (time-elapsed? (-> self state-time) (seconds 1.4))
           (suspend)
           )
         )
       (else
         (ambient-hint-spawn "gamcam07" (the-as vector #f) *entity-pool* 'camera)
         (process-spawn pov-camera (-> self root trans) *sunkencam-sg* "qbert-show-door-close" 0 #f '() :to self)
-        (until (>= (- (-> *display* base-frame-counter) (-> self state-time)) (seconds 1))
+        (until (time-elapsed? (-> self state-time) (seconds 1))
           (suspend)
           )
         )
@@ -689,7 +668,6 @@
         )
       )
     (go qbert-plat-master-idle)
-    (none)
     )
   )
 
@@ -719,34 +697,33 @@
         )
       (suspend)
       )
-    (none)
     )
   )
 
-(defmethod init-from-entity! qbert-plat-master ((obj qbert-plat-master) (arg0 entity-actor))
-  (set! (-> obj last-plat-triggered) -1)
-  (set! (-> obj player-in-water?) #f)
-  (set! (-> obj player-in-bounds?) #f)
-  (set! (-> obj play-door-cam?) #t)
-  (set! (-> obj puzzle-beaten?) #f)
-  (set! (-> obj plat-states) (the-as uint 0))
-  (set! (-> obj root) (new 'process 'trsqv))
-  (process-drawable-from-entity! obj arg0)
-  (set! (-> obj link) (new 'process 'actor-link-info obj))
-  (set! (-> obj plat-states-needed-to-open-door)
-        (the-as uint (get-matching-actor-type-mask (-> obj link) qbert-plat))
+(defmethod init-from-entity! ((this qbert-plat-master) (arg0 entity-actor))
+  (set! (-> this last-plat-triggered) -1)
+  (set! (-> this player-in-water?) #f)
+  (set! (-> this player-in-bounds?) #f)
+  (set! (-> this play-door-cam?) #t)
+  (set! (-> this puzzle-beaten?) #f)
+  (set! (-> this plat-states) (the-as uint 0))
+  (set! (-> this root) (new 'process 'trsqv))
+  (process-drawable-from-entity! this arg0)
+  (set! (-> this link) (new 'process 'actor-link-info this))
+  (set! (-> this plat-states-needed-to-open-door)
+        (the-as uint (get-matching-actor-type-mask (-> this link) qbert-plat))
         )
-  (set! (-> obj door) (entity-actor-lookup arg0 'alt-actor 0))
-  (set! (-> obj door-plat) (entity-actor-lookup arg0 'alt-actor 1))
-  (set-vector! (-> obj bounds-start) -39034.88 0.0 27729.92 1.0)
-  (vector+! (-> obj bounds-start) (-> obj bounds-start) (-> obj root trans))
-  (set-vector! (-> obj bounds-end) 128573.44 0.0 -38420.48 1.0)
-  (vector+! (-> obj bounds-end) (-> obj bounds-end) (-> obj root trans))
+  (set! (-> this door) (entity-actor-lookup arg0 'alt-actor 0))
+  (set! (-> this door-plat) (entity-actor-lookup arg0 'alt-actor 1))
+  (set-vector! (-> this bounds-start) -39034.88 0.0 27729.92 1.0)
+  (vector+! (-> this bounds-start) (-> this bounds-start) (-> this root trans))
+  (set-vector! (-> this bounds-end) 128573.44 0.0 -38420.48 1.0)
+  (vector+! (-> this bounds-end) (-> this bounds-end) (-> this root trans))
   (let ((v1-11 (task-complete? *game-info* (game-task sunken-platforms))))
-    (set! (-> obj puzzle-beaten?) v1-11)
+    (set! (-> this puzzle-beaten?) v1-11)
     (when v1-11
-      (set! (-> obj plat-states) (-> obj plat-states-needed-to-open-door))
-      (set! (-> obj play-door-cam?) #f)
+      (set! (-> this plat-states) (-> this plat-states-needed-to-open-door))
+      (set! (-> this play-door-cam?) #f)
       )
     )
   (go qbert-plat-master-wait-for-door)

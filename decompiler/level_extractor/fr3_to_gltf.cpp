@@ -4,12 +4,24 @@
 
 #include "common/custom_data/Tfrag3Data.h"
 #include "common/math/Vector.h"
+#include "common/math/geometry.h"
 
 #include "decompiler/level_extractor/tfrag_tie_fixup.h"
 
 #include "third-party/tiny_gltf/tiny_gltf.h"
 
 namespace {
+
+/*!
+ * Remove 4096 meter scaling from a transformation matrix.
+ */
+math::Matrix4f unscale_translation(const math::Matrix4f& in) {
+  auto out = in;
+  for (int i = 0; i < 3; i++) {
+    out(i, 3) /= 4096.;
+  }
+  return out;
+}
 
 /*!
  * Convert fr3 format indices (strip format, with UINT32_MAX as restart) to unstripped tris.
@@ -47,6 +59,36 @@ void unstrip_shrub_draws(const std::vector<u32>& stripped_indices,
       unstripped.push_back(c);
     }
     draw_to_count.push_back(unstripped.size() - draw_to_start.back());
+  }
+}
+
+void unstrip_tie_wind(std::vector<u32>& unstripped,
+                      std::vector<std::vector<u32>>& draw_to_starts,
+                      std::vector<std::vector<u32>>& draw_to_counts,
+                      const std::vector<tfrag3::InstancedStripDraw>& draws) {
+  for (auto& draw : draws) {
+    auto& starts = draw_to_starts.emplace_back();
+    auto& counts = draw_to_counts.emplace_back();
+
+    int grp_offset = 0;
+
+    for (const auto& grp : draw.instance_groups) {
+      starts.push_back(unstripped.size());
+
+      for (size_t i = grp_offset + 2; i < grp_offset + grp.num; i++) {
+        u32 a = draw.vertex_index_stream.at(i);
+        u32 b = draw.vertex_index_stream.at(i - 1);
+        u32 c = draw.vertex_index_stream.at(i - 2);
+        if (a == UINT32_MAX || b == UINT32_MAX || c == UINT32_MAX) {
+          continue;
+        }
+        unstripped.push_back(a);
+        unstripped.push_back(b);
+        unstripped.push_back(c);
+      }
+      counts.push_back(unstripped.size() - starts.back());
+      grp_offset += grp.num;
+    }
   }
 }
 
@@ -384,6 +426,32 @@ int make_tfrag_tie_index_buffer_view(const std::vector<u32>& indices,
   return buffer_view_idx;
 }
 
+int make_tie_wind_index_buffer_view(const std::vector<tfrag3::InstancedStripDraw>& draws,
+                                    tinygltf::Model& model,
+                                    std::vector<std::vector<u32>>& draw_to_starts,
+                                    std::vector<std::vector<u32>>& draw_to_counts) {
+  std::vector<u32> unstripped;
+  unstrip_tie_wind(unstripped, draw_to_starts, draw_to_counts, draws);
+
+  // first create a buffer:
+  int buffer_idx = (int)model.buffers.size();
+  auto& buffer = model.buffers.emplace_back();
+  buffer.data.resize(sizeof(u32) * unstripped.size());
+
+  // and fill it
+  memcpy(buffer.data.data(), unstripped.data(), buffer.data.size());
+
+  // create a view of this buffer
+  int buffer_view_idx = (int)model.bufferViews.size();
+  auto& buffer_view = model.bufferViews.emplace_back();
+  buffer_view.buffer = buffer_idx;
+  buffer_view.byteOffset = 0;
+  buffer_view.byteLength = buffer.data.size();
+  buffer_view.byteStride = 0;  // tightly packed
+  buffer_view.target = TINYGLTF_TARGET_ELEMENT_ARRAY_BUFFER;
+  return buffer_view_idx;
+}
+
 /*!
  * Create a tinygltf buffer and buffer view for indices, and convert to gltf format.
  * The map can be used to go from slots in the old index buffer to new.
@@ -501,6 +569,10 @@ int add_material_for_tex(const tfrag3::Level& level,
                          int tex_idx,
                          std::unordered_map<int, int>& tex_image_map,
                          const DrawMode& draw_mode) {
+  if (tex_idx < 0) {
+    // anim textures, just use default material
+    return 0;
+  }
   int mat_idx = (int)model.materials.size();
   auto& mat = model.materials.emplace_back();
   auto& tex = level.textures.at(tex_idx);
@@ -616,6 +688,47 @@ void add_tie(const tfrag3::Level& level,
     }
     prim.mode = TINYGLTF_MODE_TRIANGLES;
   }
+
+  if (!tie.instanced_wind_draws.empty()) {
+    std::vector<std::vector<u32>> draw_to_starts, draw_to_counts;
+    int wind_index_buffer_view = make_tie_wind_index_buffer_view(tie.instanced_wind_draws, model,
+                                                                 draw_to_starts, draw_to_counts);
+
+    for (size_t draw_idx = 0; draw_idx < tie.instanced_wind_draws.size(); draw_idx++) {
+      const auto& wind_draw = tie.instanced_wind_draws[draw_idx];
+      int mat =
+          add_material_for_tex(level, model, wind_draw.tree_tex_id, tex_image_map, wind_draw.mode);
+      for (size_t grp_idx = 0; grp_idx < wind_draw.instance_groups.size(); grp_idx++) {
+        const auto& grp = wind_draw.instance_groups[grp_idx];
+        int c_node_idx = (int)model.nodes.size();
+        auto& c_node = model.nodes.emplace_back();
+        model.nodes[node_idx].children.push_back(c_node_idx);
+        int c_mesh_idx = (int)model.meshes.size();
+        auto& c_mesh = model.meshes.emplace_back();
+        c_node.mesh = c_mesh_idx;
+        auto& prim = c_mesh.primitives.emplace_back();
+
+        const auto& info = tie.wind_instance_info.at(grp.instance_idx);
+        for (int i = 0; i < 4; i++) {
+          float scale = i == 3 ? (1.f / 4096.f) : 1.f;
+          for (int j = 0; j < 4; j++) {
+            c_node.matrix.push_back(scale * info.matrix[i][j]);
+          }
+        }
+
+        prim.material = mat;
+        prim.indices = make_index_buffer_accessor(model, draw_to_starts.at(draw_idx).at(grp_idx),
+                                                  draw_to_counts.at(draw_idx).at(grp_idx),
+                                                  wind_index_buffer_view);
+        prim.attributes["POSITION"] = position_buffer_accessor;
+        prim.attributes["TEXCOORD_0"] = texture_buffer_accessor;
+        for (int i = 0; i < kMaxColor; i++) {
+          prim.attributes[fmt::format("COLOR_{}", i)] = colors[i];
+        }
+        prim.mode = TINYGLTF_MODE_TRIANGLES;
+      }
+    }
+  }
 }
 
 void add_shrub(const tfrag3::Level& level,
@@ -662,7 +775,114 @@ void add_shrub(const tfrag3::Level& level,
   }
 }
 
+int make_weights_accessor(const std::vector<tfrag3::MercVertex>& vertices, tinygltf::Model& model) {
+  // first create a buffer:
+  int buffer_idx = (int)model.buffers.size();
+  auto& buffer = model.buffers.emplace_back();
+  buffer.data.resize(sizeof(float) * 4 * vertices.size());
+
+  // and fill it
+  u8* buffer_ptr = buffer.data.data();
+  for (const auto& vtx : vertices) {
+    float weights[4] = {vtx.weights[0], vtx.weights[1], vtx.weights[2], 0};
+    memcpy(buffer_ptr, weights, 4 * sizeof(float));
+    buffer_ptr += 4 * sizeof(float);
+  }
+
+  // create a view of this buffer
+  int buffer_view_idx = (int)model.bufferViews.size();
+  auto& buffer_view = model.bufferViews.emplace_back();
+  buffer_view.buffer = buffer_idx;
+  buffer_view.byteOffset = 0;
+  buffer_view.byteLength = buffer.data.size();
+  buffer_view.byteStride = 0;  // tightly packed
+  buffer_view.target = TINYGLTF_TARGET_ARRAY_BUFFER;
+
+  int accessor_idx = (int)model.accessors.size();
+  auto& accessor = model.accessors.emplace_back();
+  accessor.bufferView = buffer_view_idx;
+  accessor.byteOffset = 0;
+  accessor.componentType = TINYGLTF_COMPONENT_TYPE_FLOAT;
+  accessor.count = vertices.size();
+  accessor.type = TINYGLTF_TYPE_VEC4;
+  return accessor_idx;
+}
+
+int make_bones_accessor(const std::vector<tfrag3::MercVertex>& vertices, tinygltf::Model& model) {
+  // first create a buffer:
+  int buffer_idx = (int)model.buffers.size();
+  auto& buffer = model.buffers.emplace_back();
+  buffer.data.resize(sizeof(float) * 4 * vertices.size());
+
+  // and fill it
+  u8* buffer_ptr = buffer.data.data();
+  for (const auto& vtx : vertices) {
+    s32 indices[4];
+    for (int i = 0; i < 3; i++) {
+      indices[i] = vtx.mats[i] ? vtx.mats[i] - 1 : 0;
+    }
+    indices[3] = 0;
+    memcpy(buffer_ptr, indices, 4 * sizeof(s32));
+    buffer_ptr += 4 * sizeof(s32);
+  }
+
+  // create a view of this buffer
+  int buffer_view_idx = (int)model.bufferViews.size();
+  auto& buffer_view = model.bufferViews.emplace_back();
+  buffer_view.buffer = buffer_idx;
+  buffer_view.byteOffset = 0;
+  buffer_view.byteLength = buffer.data.size();
+  buffer_view.byteStride = 0;  // tightly packed
+  buffer_view.target = TINYGLTF_TARGET_ARRAY_BUFFER;
+
+  int accessor_idx = (int)model.accessors.size();
+  auto& accessor = model.accessors.emplace_back();
+  accessor.bufferView = buffer_view_idx;
+  accessor.byteOffset = 0;
+  accessor.componentType = TINYGLTF_COMPONENT_TYPE_UNSIGNED_INT;  // blender doesn't support INT...
+  accessor.count = vertices.size();
+  accessor.type = TINYGLTF_TYPE_VEC4;
+  return accessor_idx;
+}
+
+int make_inv_matrix_bind_poses(const std::vector<level_tools::Joint>& joints,
+                               tinygltf::Model& model) {
+  // first create a buffer:
+  int buffer_idx = (int)model.buffers.size();
+  auto& buffer = model.buffers.emplace_back();
+  buffer.data.resize(sizeof(float) * 16 * joints.size());
+
+  // and fill it
+  for (int m = 0; m < (int)joints.size(); m++) {
+    auto matrix = unscale_translation(joints[m].bind_pose_T_w);
+    for (int i = 0; i < 4; i++) {
+      for (int j = 0; j < 4; j++) {
+        memcpy(buffer.data.data() + sizeof(float) * (i * 4 + j + m * 16), &matrix(j, i), 4);
+      }
+    }
+  }
+
+  // create a view of this buffer
+  int buffer_view_idx = (int)model.bufferViews.size();
+  auto& buffer_view = model.bufferViews.emplace_back();
+  buffer_view.buffer = buffer_idx;
+  buffer_view.byteOffset = 0;
+  buffer_view.byteLength = buffer.data.size();
+  buffer_view.byteStride = 0;  // tightly packed
+  buffer_view.target = TINYGLTF_TARGET_ARRAY_BUFFER;
+
+  int accessor_idx = (int)model.accessors.size();
+  auto& accessor = model.accessors.emplace_back();
+  accessor.bufferView = buffer_view_idx;
+  accessor.byteOffset = 0;
+  accessor.componentType = TINYGLTF_COMPONENT_TYPE_FLOAT;
+  accessor.count = joints.size();
+  accessor.type = TINYGLTF_TYPE_MAT4;
+  return accessor_idx;
+}
+
 void add_merc(const tfrag3::Level& level,
+              const std::map<std::string, level_tools::ArtData>& art_data,
               tinygltf::Model& model,
               std::unordered_map<int, int>& tex_image_map) {
   const auto& mverts = level.merc_data.vertices;
@@ -676,9 +896,12 @@ void add_merc(const tfrag3::Level& level,
       level.merc_data.indices, level.merc_data.models, model, draw_to_start, draw_to_count);
   int colors = make_color_buffer_accessor(mverts, model);
 
+  auto joints_accessor = make_bones_accessor(mverts, model);
+  auto weights_accessor = make_weights_accessor(mverts, model);
+
   for (size_t model_idx = 0; model_idx < level.merc_data.models.size(); model_idx++) {
     const auto& mmodel = level.merc_data.models[model_idx];
-
+    const auto& art = art_data.find(mmodel.name);
     int node_idx = (int)model.nodes.size();
     auto& node = model.nodes.emplace_back();
     model.scenes.at(0).nodes.push_back(node_idx);
@@ -687,6 +910,54 @@ void add_merc(const tfrag3::Level& level,
     auto& mesh = model.meshes.emplace_back();
     mesh.name = node.name;
     node.mesh = mesh_idx;
+
+    if (art != art_data.end() && !art->second.joint_group.empty()) {
+      node.skin = model.skins.size();
+      auto& skin = model.skins.emplace_back();
+      const auto& game_bones = art->second.joint_group;
+      int n_bones = game_bones.size();
+      std::vector<std::vector<int>> children(n_bones);
+      for (size_t i = 0; i < game_bones.size(); i++) {
+        if (game_bones[i].parent_idx >= 0) {
+          children.at(game_bones[i].parent_idx).push_back(i);
+        }
+      }
+      skin.skeleton = model.nodes.size();
+      for (int i = 0; i < n_bones; i++) {
+        const auto& gbone = game_bones[i];
+        skin.joints.push_back(skin.skeleton + i);
+        auto& snode = model.nodes.emplace_back();
+        snode.name = gbone.name;
+
+        // bind pose is bind_T_w
+        // for glb we want bind_parent_T_bind_child
+        // so bindp_T_w * inverse(bindc_T_w)
+        math::Matrix4f matrix;
+        if (gbone.parent_idx >= 0) {
+          matrix = unscale_translation(game_bones.at(gbone.parent_idx).bind_pose_T_w) *
+                   inverse(unscale_translation(gbone.bind_pose_T_w));
+
+        } else {
+          // I think this value is ignored anyway.
+          for (int r = 0; r < 4; r++) {
+            for (int c = 0; c < 4; c++) {
+              matrix(r, c) = (r == c) ? 1 : 0;
+            }
+          }
+        }
+
+        for (int r = 0; r < 4; r++) {
+          for (int c = 0; c < 4; c++) {
+            snode.matrix.push_back(matrix(c, r));
+          }
+        }
+        for (auto child : children.at(i)) {
+          snode.children.push_back(skin.skeleton + child);
+        }
+      }
+      ASSERT(skin.skeleton + n_bones == (int)model.nodes.size());
+      skin.inverseBindMatrices = make_inv_matrix_bind_poses(game_bones, model);
+    }
 
     for (size_t effect_idx = 0; effect_idx < mmodel.effects.size(); effect_idx++) {
       const auto& effect = mmodel.effects[effect_idx];
@@ -701,6 +972,8 @@ void add_merc(const tfrag3::Level& level,
         prim.attributes["POSITION"] = position_buffer_accessor;
         prim.attributes["TEXCOORD_0"] = texture_buffer_accessor;
         prim.attributes["COLOR_0"] = colors;
+        prim.attributes["JOINTS_0"] = joints_accessor;
+        prim.attributes["WEIGHTS_0"] = weights_accessor;
         prim.mode = TINYGLTF_MODE_TRIANGLES;
       }
     }
@@ -750,7 +1023,9 @@ void save_level_background_as_gltf(const tfrag3::Level& level, const fs::path& g
                             true);  // write binary
 }
 
-void save_level_foreground_as_gltf(const tfrag3::Level& level, const fs::path& glb_file) {
+void save_level_foreground_as_gltf(const tfrag3::Level& level,
+                                   const std::map<std::string, level_tools::ArtData>& art_data,
+                                   const fs::path& glb_file) {
   // the top level container for everything is the model.
   tinygltf::Model model;
 
@@ -767,7 +1042,7 @@ void save_level_foreground_as_gltf(const tfrag3::Level& level, const fs::path& g
 
   std::unordered_map<int, int> tex_image_map;
 
-  add_merc(level, model, tex_image_map);
+  add_merc(level, art_data, model, tex_image_map);
 
   model.asset.generator = "opengoal";
   tinygltf::TinyGLTF gltf;

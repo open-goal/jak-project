@@ -3,39 +3,35 @@
 
 ;; definition of type tomb-boss-debris
 (deftype tomb-boss-debris (process-drawable)
-  ((root        collide-shape-moving         :override)
-   (y-velocity  float                        :offset-assert 200)
-   (floor       float                        :offset-assert 204)
-   (sound-floor float                        :offset-assert 208)
-   (rot         quaternion           :inline :offset-assert 224)
-   (look        int32                        :offset-assert 240)
+  ((root         collide-shape-moving :override)
+   (y-velocity   float)
+   (floor        float)
+   (sound-floor  float)
+   (rot          quaternion            :inline)
+   (look         int32)
    )
-  :heap-base #x80
-  :method-count-assert 22
-  :size-assert         #xf4
-  :flag-assert         #x16008000f4
-  (:methods
-    (die () _type_ :state 20)
-    (idle () _type_ :state 21)
+  (:state-methods
+    die
+    idle
     )
   )
 
 ;; definition for method 3 of type tomb-boss-debris
-(defmethod inspect tomb-boss-debris ((obj tomb-boss-debris))
-  (when (not obj)
-    (set! obj obj)
+(defmethod inspect ((this tomb-boss-debris))
+  (when (not this)
+    (set! this this)
     (goto cfg-4)
     )
   (let ((t9-0 (method-of-type process-drawable inspect)))
-    (t9-0 obj)
+    (t9-0 this)
     )
-  (format #t "~2Ty-velocity: ~f~%" (-> obj y-velocity))
-  (format #t "~2Tfloor: ~f~%" (-> obj floor))
-  (format #t "~2Tsound-floor: ~f~%" (-> obj sound-floor))
-  (format #t "~2Trot: #<quaternion @ #x~X>~%" (-> obj rot))
-  (format #t "~2Tlook: ~D~%" (-> obj look))
+  (format #t "~2Ty-velocity: ~f~%" (-> this y-velocity))
+  (format #t "~2Tfloor: ~f~%" (-> this floor))
+  (format #t "~2Tsound-floor: ~f~%" (-> this sound-floor))
+  (format #t "~2Trot: #<quaternion @ #x~X>~%" (-> this rot))
+  (format #t "~2Tlook: ~D~%" (-> this look))
   (label cfg-4)
-  obj
+  this
   )
 
 ;; failed to figure out what this is:
@@ -102,21 +98,19 @@
       )
     0
     (logior! (-> self draw status) (draw-control-status no-draw))
-    (none)
     )
   :code (behavior ()
     (suspend)
     (suspend)
     0
-    (none)
     )
   )
 
 ;; failed to figure out what this is:
 (defstate idle (tomb-boss-debris)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('touched 'touch 'attack)
        (let ((v1-2 (-> self look)))
          (cond
@@ -242,7 +236,6 @@
     )
   :enter (behavior ()
     (set! (-> self sound-floor) 81920.0)
-    (none)
     )
   :trans (behavior ()
     (local-vars (sv-16 float))
@@ -299,9 +292,8 @@
         )
       (set-vector! (-> self draw color-mult) f30-1 f30-1 f30-1 1.0)
       )
-    (none)
     )
-  :code (the-as (function none :behavior tomb-boss-debris) sleep-code)
+  :code sleep-code
   :post (behavior ()
     (transform-post)
     (let ((a1-0 (new 'stack-no-clear 'overlaps-others-params)))
@@ -310,7 +302,6 @@
       (set! (-> a1-0 tlist) *touching-list*)
       (find-overlapping-shapes (-> self root) a1-0)
       )
-    (none)
     )
   )
 
@@ -449,30 +440,26 @@
 
 ;; definition of type cave-in-master
 (deftype cave-in-master (process-drawable)
-  ((prev-points int32 100 :offset-assert 200)
+  ((prev-points  int32  100)
    )
-  :heap-base #x1e0
-  :method-count-assert 22
-  :size-assert         #x258
-  :flag-assert         #x1601e00258
-  (:methods
-    (idle () _type_ :state 20)
-    (wait () _type_ :state 21)
+  (:state-methods
+    idle
+    wait
     )
   )
 
 ;; definition for method 3 of type cave-in-master
-(defmethod inspect cave-in-master ((obj cave-in-master))
-  (when (not obj)
-    (set! obj obj)
+(defmethod inspect ((this cave-in-master))
+  (when (not this)
+    (set! this this)
     (goto cfg-4)
     )
   (let ((t9-0 (method-of-type process-drawable inspect)))
-    (t9-0 obj)
+    (t9-0 this)
     )
-  (format #t "~2Tprev-points[100] @ #x~X~%" (-> obj prev-points))
+  (format #t "~2Tprev-points[100] @ #x~X~%" (-> this prev-points))
   (label cfg-4)
-  obj
+  this
   )
 
 ;; definition for function cavein-get-random-point
@@ -500,8 +487,7 @@
 (defstate idle (cave-in-master)
   :virtual #t
   :enter (behavior ()
-    (set! (-> self state-time) (current-time))
-    (none)
+    (set-time! (-> self state-time))
     )
   :trans (behavior ()
     (spawn (-> self part) (-> self root trans))
@@ -513,45 +499,44 @@
         )
       (set! (-> self state-time) (+ (current-time) (the int (* 300.0 (rand-vu-float-range 0.1 0.5)))))
       )
-    (none)
     )
-  :code (the-as (function none :behavior cave-in-master) sleep-code)
+  :code sleep-code
   )
 
 ;; failed to figure out what this is:
 (defstate wait (cave-in-master)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('start)
        (go-virtual idle)
        )
       )
     )
-  :code (the-as (function none :behavior cave-in-master) sleep-code)
+  :code sleep-code
   )
 
 ;; definition for method 11 of type cave-in-master
 ;; WARN: Return type mismatch object vs none.
-(defmethod init-from-entity! cave-in-master ((obj cave-in-master) (arg0 entity-actor))
+(defmethod init-from-entity! ((this cave-in-master) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
 - stack size
 - collision information
 - loading the skeleton group / bones
 - sounds"
-  (set! (-> obj root) (new 'process 'trsqv))
-  (process-drawable-from-entity! obj arg0)
-  (set! (-> obj path) (new 'process 'path-control obj 'path 0.0 (the-as entity #f) #f))
-  (if (-> obj path)
-      (logior! (-> obj path flags) (path-control-flag display draw-line draw-point draw-text))
+  (set! (-> this root) (new 'process 'trsqv))
+  (process-drawable-from-entity! this arg0)
+  (set! (-> this path) (new 'process 'path-control this 'path 0.0 (the-as entity #f) #f))
+  (if (-> this path)
+      (logior! (-> this path flags) (path-control-flag display draw-line draw-point draw-text))
       )
-  (+! (-> obj root trans y) 327680.0)
-  (logclear! (-> obj mask) (process-mask actor-pause))
+  (+! (-> this root trans y) 327680.0)
+  (logclear! (-> this mask) (process-mask actor-pause))
   (dotimes (v1-12 100)
-    (set! (-> obj prev-points v1-12) 0)
+    (set! (-> this prev-points v1-12) 0)
     )
-  (set! (-> obj part) (create-launch-control (-> *part-group-id-table* 737) obj))
-  (go (method-of-object obj wait))
+  (set! (-> this part) (create-launch-control (-> *part-group-id-table* 737) this))
+  (go (method-of-object this wait))
   (none)
   )

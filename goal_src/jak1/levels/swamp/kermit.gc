@@ -10,7 +10,6 @@
 
 ;; DECOMP BEGINS
 
-
 (defpartgroup group-kermit-charging-up
   :id 298
   :bounds (static-bspherem 0 5 0 5)
@@ -384,28 +383,25 @@
   )
 
 (deftype joint-mod-tracker (basic)
-  ((target-pos               vector                   :inline :offset-assert  16)
-   (target-pos-func          (function vector vector)         :offset-assert  32)
-   (inv-forward-scale-factor float                            :offset-assert  36)
-   (forward-scale-control    float                            :offset-assert  40)
-   (forward-scale-max        float                            :offset-assert  44)
-   (process                  kermit                           :offset-assert  48)
-   (enable                   symbol                           :offset-assert  52)
-   (up-axis                  int8                             :offset-assert  56)
-   (forward-axis             int8                             :offset-assert  57)
+  ((target-pos                vector  :inline)
+   (target-pos-func           (function vector vector))
+   (inv-forward-scale-factor  float)
+   (forward-scale-control     float)
+   (forward-scale-max         float)
+   (process                   kermit)
+   (enable                    symbol)
+   (up-axis                   int8)
+   (forward-axis              int8)
    )
-  :method-count-assert 9
-  :size-assert         #x3a
-  :flag-assert         #x90000003a
   (:methods
-    (new (symbol type kermit int function int int) _type_ 0)
+    (new (symbol type kermit int function int int) _type_)
     )
   )
 
 
-(defmethod relocate joint-mod-tracker ((obj joint-mod-tracker) (arg0 int))
-  (&+! (-> obj process) arg0)
-  obj
+(defmethod relocate ((this joint-mod-tracker) (arg0 int))
+  (&+! (-> this process) arg0)
+  this
   )
 
 (defun build-matrix-from-up-and-forward-axes! ((arg0 matrix) (arg1 vector) (arg2 int) (arg3 vector) (arg4 int))
@@ -498,15 +494,11 @@
   )
 
 (deftype kermit-pulse (process-drawable)
-  ((parent-override (pointer kermit)      :offset         12)
-   (self-override   kermit-pulse          :offset         28)
-   (root-override   collide-shape-moving  :offset        112)
-   (sound-id        sound-id              :offset-assert 176)
+  ((root             collide-shape-moving :override)
+   (parent-override  (pointer kermit)      :overlay-at parent)
+   (self-override    kermit-pulse          :overlay-at self)
+   (sound-id         sound-id)
    )
-  :heap-base #x50
-  :method-count-assert 20
-  :size-assert         #xb4
-  :flag-assert         #x14005000b4
   (:states
     kermit-pulse-idle
     kermit-pulse-impact
@@ -515,28 +507,26 @@
 
 
 (defstate kermit-pulse-idle (kermit-pulse)
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('touch 'attack)
-       (send-event proc 'attack (-> event param 0) (new 'static 'attack-info))
+       (send-event proc 'attack (-> block param 0) (new 'static 'attack-info))
        (go kermit-pulse-impact)
        )
       )
     )
   :enter (behavior ()
-    (set! (-> self state-time) (-> *display* base-frame-counter))
-    (none)
+    (set-time! (-> self state-time))
     )
   :exit (behavior ()
     (sound-stop (-> self sound-id))
-    (none)
     )
   :code (behavior ()
-    (while (< (- (-> *display* base-frame-counter) (-> self state-time)) (seconds 4))
-      (sound-play "kermit-loop" :id (-> self sound-id) :position (the-as symbol (-> self root-override trans)))
-      (spawn (-> self part) (-> self root-override trans))
+    (while (not (time-elapsed? (-> self state-time) (seconds 4)))
+      (sound-play "kermit-loop" :id (-> self sound-id) :position (the-as symbol (-> self root trans)))
+      (spawn (-> self part) (-> self root trans))
       (find-ground-and-draw-shadow
-        (-> self root-override trans)
+        (-> self root trans)
         (the-as vector #f)
         8192.0
         (collide-kind background)
@@ -547,11 +537,9 @@
       (suspend)
       )
     (cleanup-for-death self)
-    (none)
     )
   :post (behavior ()
-    (update-transforms! (-> self root-override))
-    (none)
+    (update-transforms! (-> self root))
     )
   )
 
@@ -566,11 +554,10 @@
       #f
       #f
       #f
-      (-> self root-override trans)
+      (-> self root trans)
       :to *entity-pool*
       )
     (cleanup-for-death self)
-    (none)
     )
   )
 
@@ -594,12 +581,12 @@
       )
     (set! (-> s5-0 nav-radius) (* 0.75 (-> s5-0 root-prim local-sphere w)))
     (backup-collide-with-as s5-0)
-    (set! (-> self root-override) s5-0)
+    (set! (-> self root) s5-0)
     )
-  (set! (-> self root-override trans quad) (-> arg0 quad))
-  (set! (-> self root-override quat vec quad) (-> self parent-override 0 collide-info quat vec quad))
-  (vector-identity! (-> self root-override scale))
-  (vector-reset! (-> self root-override transv))
+  (set! (-> self root trans quad) (-> arg0 quad))
+  (set! (-> self root quat vec quad) (-> self parent-override 0 collide-info quat vec quad))
+  (vector-identity! (-> self root scale))
+  (vector-reset! (-> self root transv))
   (set! (-> self sound-id) (new-sound-id))
   (set! (-> self part) (create-launch-control (-> *part-group-id-table* 300) self))
   (go kermit-pulse-idle)
@@ -613,20 +600,16 @@
   )
 
 (deftype kermit (nav-enemy)
-  ((child-override   (pointer kermit-pulse)           :offset         20)
-   (rotate-dir       vector                   :inline :offset-assert 400)
-   (charging-part    sparticle-launch-control         :offset-assert 416)
-   (airborne         symbol                           :offset-assert 420)
-   (tongue-control   joint-mod-tracker                :offset-assert 424)
-   (tongue-pulse-pos float                            :offset-assert 428)
-   (miss-count       int8                             :offset-assert 432)
-   (charged-up       symbol                           :offset-assert 436)
-   (sound-id         sound-id                         :offset-assert 440)
+  ((child-override    (pointer kermit-pulse)  :overlay-at child)
+   (rotate-dir        vector                  :inline)
+   (charging-part     sparticle-launch-control)
+   (airborne          symbol)
+   (tongue-control    joint-mod-tracker)
+   (tongue-pulse-pos  float)
+   (miss-count        int8)
+   (charged-up        symbol)
+   (sound-id          sound-id)
    )
-  :heap-base #x150
-  :method-count-assert 76
-  :size-assert         #x1bc
-  :flag-assert         #x4c015001bc
   (:states
     kermit-attack
     kermit-chase
@@ -641,21 +624,21 @@
   )
 
 
-(defmethod relocate kermit ((obj kermit) (arg0 int))
-  (if (nonzero? (-> obj tongue-control))
-      (&+! (-> obj tongue-control) arg0)
+(defmethod relocate ((this kermit) (arg0 int))
+  (if (nonzero? (-> this tongue-control))
+      (&+! (-> this tongue-control) arg0)
       )
-  (if (nonzero? (-> obj charging-part))
-      (&+! (-> obj charging-part) arg0)
+  (if (nonzero? (-> this charging-part))
+      (&+! (-> this charging-part) arg0)
       )
-  (the-as kermit ((method-of-type nav-enemy relocate) obj arg0))
+  (the-as kermit ((method-of-type nav-enemy relocate) this arg0))
   )
 
-(defmethod deactivate kermit ((obj kermit))
-  (if (nonzero? (-> obj charging-part))
-      (kill-and-free-particles (-> obj charging-part))
+(defmethod deactivate ((this kermit))
+  (if (nonzero? (-> this charging-part))
+      (kill-and-free-particles (-> this charging-part))
       )
-  ((method-of-type nav-enemy deactivate) obj)
+  ((method-of-type nav-enemy deactivate) this)
   (none)
   )
 
@@ -834,9 +817,9 @@
 
 nav-enemy-default-event-handler
 
-(defmethod common-post kermit ((obj kermit))
-  ((the-as (function nav-enemy none) (find-parent-method kermit 39)) obj)
-  (when (-> obj charged-up)
+(defmethod common-post ((this kermit))
+  (call-parent-method this)
+  (when (-> this charged-up)
     )
   0
   (none)
@@ -896,14 +879,10 @@ nav-enemy-default-event-handler
   )
 
 (defstate kermit-idle (kermit)
-  :event (the-as
-    (function process int symbol event-message-block object :behavior kermit)
-    nav-enemy-default-event-handler
-    )
+  :event nav-enemy-default-event-handler
   :enter (behavior ()
     (set! (-> self notice-time) 0)
     0
-    (none)
     )
   :trans (behavior ()
     (if (and *target* (>= (-> self enemy-info idle-distance)
@@ -912,7 +891,6 @@ nav-enemy-default-event-handler
              )
         (go kermit-patrol)
         )
-    (none)
     )
   :code (behavior ()
     (kermit-disable-tongue)
@@ -921,29 +899,24 @@ nav-enemy-default-event-handler
       (ja :num! (loop!))
       (suspend)
       )
-    (none)
     )
-  :post (the-as (function none :behavior kermit) ja-post)
+  :post ja-post
   )
 
 (defstate kermit-patrol (kermit)
-  :event (the-as
-    (function process int symbol event-message-block object :behavior kermit)
-    nav-enemy-default-event-handler
-    )
+  :event nav-enemy-default-event-handler
   :enter (behavior ()
-    (set! (-> self state-time) (-> *display* base-frame-counter))
+    (set-time! (-> self state-time))
     (set-mode! (-> self neck) (joint-mod-handler-mode flex-blend))
     (kermit-get-new-patrol-point)
     (nav-control-method-11 (-> self nav) (-> self nav target-pos))
-    (none)
     )
   :trans (behavior ()
     (if (and (or (not *target*) (< (-> self enemy-info idle-distance)
                                    (vector-vector-distance (-> self collide-info trans) (-> *target* control trans))
                                    )
                  )
-             (>= (- (-> *display* base-frame-counter) (-> self state-time)) (seconds 1))
+             (time-elapsed? (-> self state-time) (seconds 1))
              )
         (go kermit-idle)
         )
@@ -954,7 +927,6 @@ nav-enemy-default-event-handler
     (if (logtest? (nav-control-flags navcf19) (-> self nav flags))
         (kermit-get-new-patrol-point)
         )
-    (none)
     )
   :code (behavior ()
     (loop
@@ -965,57 +937,42 @@ nav-enemy-default-event-handler
         )
       (kermit-hop 20480.0)
       )
-    (none)
     )
   :post kermit-post
   )
 
 (defstate kermit-notice (kermit)
-  :event (the-as
-    (function process int symbol event-message-block object :behavior kermit)
-    nav-enemy-default-event-handler
-    )
+  :event nav-enemy-default-event-handler
   :enter (behavior ()
     (set-mode! (-> self neck) (joint-mod-handler-mode look-at))
-    (none)
     )
   :trans (behavior ()
     (kermit-set-rotate-dir-to-player)
-    (none)
     )
   :code (behavior ()
     (ja-channel-push! 1 (seconds 0.1))
     (set-mode! (-> self neck) (joint-mod-handler-mode look-at))
     (kermit-hop 0.0)
     (go kermit-chase)
-    (none)
     )
   :post kermit-post
   )
 
 (defstate kermit-give-up (kermit)
-  :event (the-as
-    (function process int symbol event-message-block object :behavior kermit)
-    nav-enemy-default-event-handler
-    )
+  :event nav-enemy-default-event-handler
   :enter (behavior ()
     (set-mode! (-> self neck) (joint-mod-handler-mode flex-blend))
-    (none)
     )
   :code (behavior ()
     (go kermit-patrol)
-    (none)
     )
   :post kermit-simple-post
   )
 
 (defstate kermit-chase-new-position (kermit)
-  :event (the-as
-    (function process int symbol event-message-block object :behavior kermit)
-    nav-enemy-default-event-handler
-    )
+  :event nav-enemy-default-event-handler
   :enter (behavior ()
-    (set! (-> self state-time) (-> *display* base-frame-counter))
+    (set-time! (-> self state-time))
     (set! (-> self miss-count) 0)
     (let* ((a1-1 (kermit-get-head-dir-xz self (new 'stack-no-clear 'vector)))
            (gp-0 (vector-rotate-around-y! (new 'stack-no-clear 'vector) a1-1 16384.0))
@@ -1037,19 +994,17 @@ nav-enemy-default-event-handler
           )
       )
     (nav-control-method-11 (-> self nav) (-> self nav target-pos))
-    (none)
     )
   :trans (behavior ()
     (when (not (-> self airborne))
-      (if (or (>= (- (-> *display* base-frame-counter) (-> self state-time)) (seconds 3))
+      (if (or (time-elapsed? (-> self state-time) (seconds 3))
               (and (logtest? (nav-control-flags navcf19) (-> self nav flags))
-                   (>= (- (-> *display* base-frame-counter) (-> self state-time)) (seconds 0.5))
+                   (time-elapsed? (-> self state-time) (seconds 0.5))
                    )
               )
           (go kermit-chase)
           )
       )
-    (none)
     )
   :code (behavior ()
     (ja-channel-push! 1 (seconds 0.17))
@@ -1064,28 +1019,23 @@ nav-enemy-default-event-handler
       (kermit-hop 81920.0)
       (nop!)
       )
-    (none)
     )
   :post kermit-post
   )
 
 (defstate kermit-chase (kermit)
-  :event (the-as
-    (function process int symbol event-message-block object :behavior kermit)
-    nav-enemy-default-event-handler
-    )
+  :event nav-enemy-default-event-handler
   :enter (behavior ()
-    (set! (-> self state-time) (-> *display* base-frame-counter))
+    (set-time! (-> self state-time))
     (set-mode! (-> self neck) (joint-mod-handler-mode look-at))
     (kermit-set-nav-mesh-target (-> self collide-info trans))
     (nav-control-method-11 (-> self nav) (-> self nav target-pos))
-    (none)
     )
   :trans (behavior ()
     (kermit-set-nav-mesh-target (-> self collide-info trans))
     (kermit-set-rotate-dir-to-player)
     (if (nav-enemy-test-point-in-nav-mesh? (target-pos 0))
-        (set! (-> self state-time) (-> *display* base-frame-counter))
+        (set-time! (-> self state-time))
         )
     (kermit-tongue-pos self)
     (let ((v1-5 (kermit-player-target-pos)))
@@ -1108,11 +1058,10 @@ nav-enemy-default-event-handler
               )
           )
         )
-      (if (>= (- (-> *display* base-frame-counter) (-> self state-time)) (seconds 3))
+      (if (time-elapsed? (-> self state-time) (seconds 3))
           (go kermit-give-up)
           )
       )
-    (none)
     )
   :code (behavior ()
     (ja-channel-push! 1 (seconds 0.17))
@@ -1126,16 +1075,12 @@ nav-enemy-default-event-handler
           (kermit-hop 81920.0)
           )
       )
-    (none)
     )
   :post kermit-post
   )
 
 (defstate kermit-attack (kermit)
-  :event (the-as
-    (function process int symbol event-message-block object :behavior kermit)
-    nav-enemy-default-event-handler
-    )
+  :event nav-enemy-default-event-handler
   :code (behavior ()
     (ja-channel-push! 1 (seconds 0.17))
     (set! (-> self tongue-control forward-scale-control) 0.0)
@@ -1181,23 +1126,18 @@ nav-enemy-default-event-handler
           )
         )
       )
-    (none)
     )
   :post kermit-simple-post
   )
 
 (defstate kermit-tongue-stuck (kermit)
-  :event (the-as
-    (function process int symbol event-message-block object :behavior kermit)
-    nav-enemy-default-event-handler
-    )
+  :event nav-enemy-default-event-handler
   :enter (behavior ()
     (set! (-> self miss-count) 0)
     (set! (-> self tongue-control forward-scale-control) 1.0)
     (kermit-enable-tongue)
     (set! (-> self tongue-pulse-pos) 0.0)
     (spawn-kermit-pulse self (kermit-tongue-pos self) (-> self entity))
-    (none)
     )
   :exit (behavior ()
     (sound-stop (-> self sound-id))
@@ -1206,7 +1146,6 @@ nav-enemy-default-event-handler
           (deactivate (-> v1-0 0))
           )
       )
-    (none)
     )
   :trans (behavior ()
     (let ((s5-0 (kermit-player-target-pos))
@@ -1217,7 +1156,7 @@ nav-enemy-default-event-handler
               )
           (go kermit-retract-tongue)
           )
-      (seek! (-> self tongue-pulse-pos) 1.0 (* 0.3 (-> *display* seconds-per-frame)))
+      (seek! (-> self tongue-pulse-pos) 1.0 (* 0.3 (seconds-per-frame)))
       (when (and (-> self child-override) (let ((v1-9 (-> self child-override)))
                                             (= (-> (if v1-9
                                                        (-> v1-9 0 self-override)
@@ -1235,12 +1174,11 @@ nav-enemy-default-event-handler
                      )
                (v1-15 (vector-lerp! (new 'stack-no-clear 'vector) gp-0 s5-0 (-> self tongue-pulse-pos)))
                )
-          (set! (-> s4-0 root-override trans quad) (-> v1-15 quad))
+          (set! (-> s4-0 root trans quad) (-> v1-15 quad))
           )
         )
       (send-event *target* 'tongue gp-0)
       )
-    (none)
     )
   :code (behavior ()
     (ja-channel-push! 1 (seconds 0.1))
@@ -1252,42 +1190,34 @@ nav-enemy-default-event-handler
         (ja :num! (seek!))
         )
       )
-    (none)
     )
   :post (behavior ()
     (seek-to-point-toward-point! (-> self collide-info) (target-pos 0) (-> self rotate-speed) (seconds 0.05))
     (kermit-simple-post)
-    (none)
     )
   )
 
 (defstate kermit-retract-tongue (kermit)
-  :event (the-as
-    (function process int symbol event-message-block object :behavior kermit)
-    nav-enemy-default-event-handler
-    )
+  :event nav-enemy-default-event-handler
   :enter (behavior ()
-    (set! (-> self state-time) (-> *display* base-frame-counter))
+    (set-time! (-> self state-time))
     (set! (-> self charged-up) #f)
     (+! (-> self miss-count) 1)
-    (none)
     )
   :exit (behavior ()
     (set! (-> self tongue-control forward-scale-control) 0.0)
     (kermit-disable-tongue)
-    (none)
     )
   :trans (behavior ()
     (kermit-set-nav-mesh-target (-> self collide-info trans))
     (kermit-set-rotate-dir-to-player)
     (when (not (-> self airborne))
-      (when (>= (- (-> *display* base-frame-counter) (-> self state-time)) (seconds 2.5))
+      (when (time-elapsed? (-> self state-time) (seconds 2.5))
         (kill-and-free-particles (-> self charging-part))
         (set! (-> self charged-up) #t)
         (go kermit-chase)
         )
       )
-    (none)
     )
   :code (behavior ()
     (ja-channel-push! 1 (seconds 0.1))
@@ -1310,7 +1240,6 @@ nav-enemy-default-event-handler
         )
       (kermit-hop 0.0)
       )
-    (none)
     )
   :post kermit-post
   )
@@ -1368,9 +1297,9 @@ nav-enemy-default-event-handler
                                   )
         )
 
-(defmethod init-from-entity! kermit ((obj kermit) (arg0 entity-actor))
-  (logior! (-> obj mask) (process-mask enemy))
-  (let ((s4-0 (new 'process 'collide-shape-moving obj (collide-list-enum usually-hit-by-player))))
+(defmethod init-from-entity! ((this kermit) (arg0 entity-actor))
+  (logior! (-> this mask) (process-mask enemy))
+  (let ((s4-0 (new 'process 'collide-shape-moving this (collide-list-enum usually-hit-by-player))))
     (set! (-> s4-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s4-0 reaction) default-collision-reaction)
     (set! (-> s4-0 no-reaction)
@@ -1394,31 +1323,33 @@ nav-enemy-default-event-handler
       )
     (set! (-> s4-0 nav-radius) (* 0.75 (-> s4-0 root-prim local-sphere w)))
     (backup-collide-with-as s4-0)
-    (set! (-> obj collide-info) s4-0)
+    (set! (-> this collide-info) s4-0)
     )
-  (process-drawable-from-entity! obj arg0)
-  (initialize-skeleton obj *kermit-sg* '())
-  (set! (-> obj draw origin-joint-index) (the-as uint 3))
-  (set! (-> obj airborne) #f)
-  (init-defaults! obj *kermit-nav-enemy-info*)
-  (set-vector! (-> obj neck twist-max) 3640.889 3640.889 0.0 1.0)
-  (set! (-> obj neck up) (the-as uint 1))
-  (set! (-> obj neck nose) (the-as uint 2))
-  (set! (-> obj neck ear) (the-as uint 0))
-  (set! (-> obj neck max-dist) 102400.0)
-  (set! (-> obj neck ignore-angle) 16384.0)
-  (set! (-> obj miss-count) 0)
-  (set! (-> obj tongue-control) (new 'process 'joint-mod-tracker obj 24 kermit-get-tongue-target-callback 1 2))
+  (process-drawable-from-entity! this arg0)
+  (initialize-skeleton this *kermit-sg* '())
+  (set! (-> this draw origin-joint-index) (the-as uint 3))
+  (set! (-> this airborne) #f)
+  (init-defaults! this *kermit-nav-enemy-info*)
+  (set-vector! (-> this neck twist-max) 3640.889 3640.889 0.0 1.0)
+  (set! (-> this neck up) (the-as uint 1))
+  (set! (-> this neck nose) (the-as uint 2))
+  (set! (-> this neck ear) (the-as uint 0))
+  (set! (-> this neck max-dist) 102400.0)
+  (set! (-> this neck ignore-angle) 16384.0)
+  (set! (-> this miss-count) 0)
+  (set! (-> this tongue-control)
+        (new 'process 'joint-mod-tracker this 24 kermit-get-tongue-target-callback 1 2)
+        )
   (let ((f0-16 49152.0))
-    (set! (-> obj tongue-control inv-forward-scale-factor) (/ 1.0 f0-16))
+    (set! (-> this tongue-control inv-forward-scale-factor) (/ 1.0 f0-16))
     )
-  (set! (-> obj tongue-control forward-scale-control) 0.0)
-  (set! (-> obj tongue-control forward-scale-max) 2.0)
-  (set! (-> obj tongue-control enable) #f)
-  (set! (-> obj charged-up) #t)
-  (set! (-> obj part) (create-launch-control (-> *part-group-id-table* 299) obj))
-  (set! (-> obj charging-part) (create-launch-control (-> *part-group-id-table* 298) obj))
-  (set! (-> obj sound-id) (new-sound-id))
+  (set! (-> this tongue-control forward-scale-control) 0.0)
+  (set! (-> this tongue-control forward-scale-max) 2.0)
+  (set! (-> this tongue-control enable) #f)
+  (set! (-> this charged-up) #t)
+  (set! (-> this part) (create-launch-control (-> *part-group-id-table* 299) this))
+  (set! (-> this charging-part) (create-launch-control (-> *part-group-id-table* 298) this))
+  (set! (-> this sound-id) (new-sound-id))
   (go kermit-idle)
   (none)
   )

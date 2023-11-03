@@ -24,38 +24,32 @@
 
 ;; settings computed by the user, consumed by the shadow renderer
 (deftype shadow-settings (structure)
-  ((center        vector :inline :offset-assert 0)  ;; unused?
-   (flags         shadow-flags   :offset 12)        ;; used to disable, most other flags do nothing?
-   (shadow-dir    vector :inline :offset-assert 16)
-   (dist-to-locus float          :offset 28)
-   (bot-plane     plane  :inline :offset-assert 32) ;; volume clip plane
-   (top-plane     plane  :inline :offset-assert 48)
-   (fade-dist     float          :offset-assert 64) ;; if past this, stop drawing shadow
-   (fade-start    float          :offset-assert 68) ;; distance where fadeout starts
-   (dummy-2       int32          :offset-assert 72)
-   (dummy-3       int32          :offset-assert 76)
-   (fade-vec      vector :inline :offset 64) ;; added
+  ((center        vector  :inline)  ;; unused?
+   (flags         shadow-flags  :overlay-at (-> center w))        ;; used to disable, most other flags do nothing?
+   (shadow-dir    vector  :inline)
+   (dist-to-locus float   :overlay-at (-> shadow-dir w))
+   (bot-plane     plane   :inline) ;; volume clip plane
+   (top-plane     plane   :inline)
+   (fade-dist     float) ;; if past this, stop drawing shadow
+   (fade-start    float) ;; distance where fadeout starts
+   (dummy-2       int32)
+   (dummy-3       int32)
+   (fade-vec      vector  :inline :overlay-at fade-dist) ;; added
    )
-  :method-count-assert 9
-  :size-assert         #x50
-  :flag-assert         #x900000050
   )
 
 (deftype shadow-control (basic)
-  ((settings shadow-settings :inline :offset-assert 16)
+  ((settings shadow-settings :inline)
    )
-  :method-count-assert 16
-  :size-assert         #x60
-  :flag-assert         #x1000000060
   (:methods
-    (new (symbol type float float float float float) _type_ 0)
-    (clear-offset-bit (shadow-control) int 9)
-    (set-offset-bit (shadow-control) int 10)
-    (set-top-plane-offset (shadow-control float) int 11)
-    (set-bottom-plane-offset (shadow-control float) int 12)
-    (unused-13 (_type_) none 13)
-    (update-direction-from-time-of-day (_type_) none 14)
-    (collide-to-find-planes (_type_ vector float float float) none 15)
+    (new (symbol type float float float float float) _type_)
+    (clear-offset-bit (shadow-control) int)
+    (set-offset-bit (shadow-control) int)
+    (set-top-plane-offset (shadow-control float) int)
+    (set-bottom-plane-offset (shadow-control float) int)
+    (unused-13 (_type_) none)
+    (update-direction-from-time-of-day (_type_) none)
+    (collide-to-find-planes (_type_ vector float float float) none)
     )
   )
 
@@ -89,50 +83,38 @@
   )
 
 (deftype shadow-data (structure)
-  ((texoffset           vector     :inline :offset-assert 0)
-   (texscale            vector     :inline :offset-assert 16)
-   (clrs                vector 2   :inline :offset-assert 32)
-   (dma-unpack-template dma-packet :inline :offset-assert 64)
-   (dma-cnt             dma-tag            :offset-assert 80)
-   (vif-nop             vif-tag            :offset-assert 88)
-   (vif-unpack-v4-8     vif-tag            :offset-assert 92)
-   (pdc                 basic              :offset-assert 96)
-   (dist                float              :offset-assert 100)
-   (oddeven             uint8              :offset-assert 104)
-   (waits               uint32             :offset-assert 108)
+  ((texoffset           vector     :inline)
+   (texscale            vector     :inline)
+   (clrs                vector 2   :inline)
+   (dma-unpack-template dma-packet :inline)
+   (dma-cnt             dma-tag)
+   (vif-nop             vif-tag)
+   (vif-unpack-v4-8     vif-tag)
+   (pdc                 basic)
+   (dist                float)
+   (oddeven             uint8)
+   (waits               uint32)
    )
-  :method-count-assert 9
-  :size-assert         #x70
-  :flag-assert         #x900000070
   )
 
 (deftype shadow-work (structure)
-  ((shadow-data shadow-data :inline :offset-assert 0)
-   (inbuf       uint128     600     :offset-assert 112)
+  ((shadow-data shadow-data  :inline)
+   (inbuf       uint128  600)
    )
-  :method-count-assert 9
-  :size-assert         #x25f0
-  :flag-assert         #x9000025f0
   )
 
 (deftype shadow-run (structure)
-  ((first dma-packet            :offset-assert 0)
-   (next  (pointer dma-packet)  :offset-assert 4)
+  ((first dma-packet)
+   (next  (pointer dma-packet))
    )
   :allow-misaligned
-  :method-count-assert 9
-  :size-assert         #x8
-  :flag-assert         #x900000008
   )
 
 (deftype shadow-queue (structure)
-  ((num-runs uint32     :offset-assert 0)
-   (cur-run  uint32     :offset-assert 4)
-   (run      shadow-run 15 :inline :offset-assert 8)
+  ((num-runs uint32)
+   (cur-run  uint32)
+   (run      shadow-run 15 :inline)
    )
-  :method-count-assert 9
-  :size-assert         #xf8
-  :flag-assert         #x9000000f8
   )
 
 (defun shadow-queue-append ((arg0 shadow-queue))
@@ -148,25 +130,20 @@
 (define *shadow-queue* (new 'global 'shadow-queue))
 
 (deftype shadow-vertex (structure)
-  ((x      float  :offset-assert 0)
-   (y      float  :offset-assert 4)
-   (z      float  :offset-assert 8)
-   (weight float  :offset-assert 12)
+  ((x      float)
+   (y      float)
+   (z      float)
+   (weight float)
    )
-  :method-count-assert 9
-  :size-assert         #x10
-  :flag-assert         #x900000010
   )
 
 (deftype shadow-matrix-ref (structure)
-  ((joint-0 uint8  :offset-assert 0)
-   (joint-1 uint8  :offset-assert 1)
+  ((joint-0 uint8)
+   (joint-1 uint8)
    )
-  :method-count-assert 9
-  :size-assert         #x2
-  :flag-assert         #x900000002
   )
 
+;; og:preserve-this
 ;; BUG:
 ;; the shadow-edge type is multiply defined.
 ;; it seems like the first definition is not used.
@@ -186,56 +163,44 @@
 |#
 
 (deftype shadow-tri (structure)
-  ((ind-0 uint8  :offset-assert 0)
-   (ind-1 uint8  :offset-assert 1)
-   (ind-2 uint8  :offset-assert 2)
-   (faces uint8  :offset-assert 3)
+  ((ind-0 uint8)
+   (ind-1 uint8)
+   (ind-2 uint8)
+   (faces uint8)
    )
-  :method-count-assert 9
-  :size-assert         #x4
-  :flag-assert         #x900000004
   )
 
 (deftype shadow-edge (structure)
-  ((ind-0 uint8  :offset-assert 0)
-   (ind-1 uint8  :offset-assert 1)
-   (tri-0 uint8  :offset-assert 2)
-   (tri-1 uint8  :offset-assert 3)
+  ((ind-0 uint8)
+   (ind-1 uint8)
+   (tri-0 uint8)
+   (tri-1 uint8)
    )
-  :method-count-assert 9
-  :size-assert         #x4
-  :flag-assert         #x900000004
   )
 
 (deftype shadow-header (structure)
-  ((qwc-data         uint32  :offset-assert 0)
-   (num-joints       uint32  :offset-assert 4)
-   (num-verts        uint16  :offset-assert 8)
-   (num-twos         uint16  :offset-assert 10)
-   (num-single-tris  uint16  :offset-assert 12)
-   (num-single-edges uint16  :offset-assert 14)
-   (num-double-tris  uint16  :offset-assert 16)
-   (num-double-edges uint16  :offset-assert 18)
-   (ofs-verts        uint32  :offset-assert 20)
-   (ofs-refs         uint32  :offset-assert 24)
-   (ofs-single-tris  uint32  :offset-assert 28)
-   (ofs-single-edges uint32  :offset-assert 32)
-   (ofs-double-tris  uint32  :offset-assert 36)
-   (ofs-double-edges uint32  :offset-assert 40)
+  ((qwc-data         uint32)
+   (num-joints       uint32)
+   (num-verts        uint16)
+   (num-twos         uint16)
+   (num-single-tris  uint16)
+   (num-single-edges uint16)
+   (num-double-tris  uint16)
+   (num-double-edges uint16)
+   (ofs-verts        uint32)
+   (ofs-refs         uint32)
+   (ofs-single-tris  uint32)
+   (ofs-single-edges uint32)
+   (ofs-double-tris  uint32)
+   (ofs-double-edges uint32)
    )
-  :method-count-assert 9
-  :size-assert         #x2c
-  :flag-assert         #x90000002c
   )
 
 (deftype shadow-geo (art-element)
-  ((total-size uint32                 :offset-assert 32)
-   (header     shadow-header :inline  :offset 32)
-   (rest       uint64       :dynamic :offset-assert 80)
+  ((total-size uint32)
+   (header     shadow-header  :inline  :overlay-at total-size)
+   (rest       uint64  :dynamic)
    )
-  :method-count-assert 13
-  :size-assert         #x50
-  :flag-assert         #xd00000050
   )
 
 (defmethod new shadow-control ((allocation symbol) (type-to-make type) (bottom-offset float) (top-offset float) (dir float) (center float) (fade float))

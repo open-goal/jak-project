@@ -35,60 +35,60 @@
   )
 
 ;; definition for method 9 of type task-cstage
-(defmethod get-task task-cstage ((obj task-cstage))
-  (-> obj game-task)
+(defmethod get-task ((this task-cstage))
+  (-> this game-task)
   )
 
 ;; definition for method 10 of type task-cstage
-(defmethod get-status task-cstage ((obj task-cstage))
-  (-> obj status)
+(defmethod get-status ((this task-cstage))
+  (-> this status)
   )
 
 ;; definition for method 12 of type task-cstage
-(defmethod closed? task-cstage ((obj task-cstage))
-  (logtest? (-> obj flags) (task-flags closed))
+(defmethod closed? ((this task-cstage))
+  (logtest? (-> this flags) (task-flags closed))
   )
 
 ;; definition for method 13 of type task-cstage
-(defmethod closed-by-default? task-cstage ((obj task-cstage))
-  (logtest? (-> obj flags) (task-flags closed-by-default))
+(defmethod closed-by-default? ((this task-cstage))
+  (logtest? (-> this flags) (task-flags closed-by-default))
   )
 
 ;; definition for method 11 of type task-cstage
-(defmethod task-available? task-cstage ((obj task-cstage) (arg0 task-control))
-  (let ((a0-1 obj))
+(defmethod task-available? ((this task-cstage) (arg0 task-control))
+  (let ((a0-1 this))
     (cond
       ((logtest? (-> a0-1 flags) (task-flags closed))
        #f
        )
-      ((>= (the-as int (-> (get-entity-task-perm *game-info* (-> obj game-task)) user-uint8 0))
-           (the-as int (-> obj status))
+      ((>= (the-as int (-> (get-entity-task-perm *game-info* (-> this game-task)) user-uint8 0))
+           (the-as int (-> this status))
            )
-       (logior! (-> obj flags) (task-flags closed))
+       (logior! (-> this flags) (task-flags closed))
        #f
        )
-      ((task-complete? *game-info* (-> obj game-task))
-       (logior! (-> obj flags) (task-flags closed))
+      ((task-complete? *game-info* (-> this game-task))
+       (logior! (-> this flags) (task-flags closed))
        #f
        )
       (else
-        ((-> obj condition) arg0)
+        ((-> this condition) arg0)
         )
       )
     )
   )
 
 ;; definition for method 14 of type task-cstage
-(defmethod close-task! task-cstage ((obj task-cstage))
-  (if (= (-> obj game-task) (game-task none))
+(defmethod close-task! ((this task-cstage))
+  (if (= (-> this game-task) (game-task none))
       (return (the-as int #f))
       )
-  (logior! (-> obj flags) (task-flags closed))
-  (when (logtest? (-> obj flags) (task-flags has-entity))
-    (let ((v1-9 (get-entity-task-perm *game-info* (-> obj game-task))))
+  (logior! (-> this flags) (task-flags closed))
+  (when (logtest? (-> this flags) (task-flags has-entity))
+    (let ((v1-9 (get-entity-task-perm *game-info* (-> this game-task))))
       (logior! (-> v1-9 status) (entity-perm-status user-set-from-cstage))
-      (if (< (-> v1-9 user-uint8 0) (the-as uint (-> obj status)))
-          (set! (-> v1-9 user-int8 0) (the-as int (-> obj status)))
+      (if (< (-> v1-9 user-uint8 0) (the-as uint (-> this status)))
+          (set! (-> v1-9 user-int8 0) (the-as int (-> this status)))
           )
       )
     )
@@ -96,8 +96,8 @@
   )
 
 ;; definition for method 15 of type task-cstage
-(defmethod open-task! task-cstage ((obj task-cstage))
-  (logclear! (-> obj flags) (task-flags closed))
+(defmethod open-task! ((this task-cstage))
+  (logclear! (-> this flags) (task-flags closed))
   0
   )
 
@@ -108,17 +108,17 @@
 
 ;; definition for method 9 of type task-control
 ;; INFO: Return type mismatch int vs game-task.
-(defmethod current-task task-control ((obj task-control))
+(defmethod current-task ((this task-control))
   (the-as game-task (cond
-                      ((= obj *null-task-control*)
+                      ((= this *null-task-control*)
                        (format 0 "ERROR<GMJ>: current-task received *null-task-control*~%")
                        0
                        )
-                      ((= (-> obj current-stage) -1)
+                      ((= (-> this current-stage) -1)
                        0
                        )
                       (else
-                        (the-as int (-> obj stage (-> obj current-stage) game-task))
+                        (the-as int (-> this stage (-> this current-stage) game-task))
                         )
                       )
           )
@@ -126,45 +126,45 @@
 
 ;; definition for method 10 of type task-control
 ;; INFO: Return type mismatch int vs task-status.
-(defmethod current-status task-control ((obj task-control))
+(defmethod current-status ((this task-control))
   (the-as task-status (cond
-                        ((= obj *null-task-control*)
+                        ((= this *null-task-control*)
                          (format 0 "ERROR<GMJ>: current-status received self of *null-task-control*~%~%")
                          0
                          )
-                        ((= (-> obj current-stage) -1)
+                        ((= (-> this current-stage) -1)
                          0
                          )
                         (else
-                          (the-as int (-> obj stage (-> obj current-stage) status))
+                          (the-as int (-> this stage (-> this current-stage) status))
                           )
                         )
           )
   )
 
 ;; definition for method 11 of type task-control
-(defmethod close-current! task-control ((obj task-control))
+(defmethod close-current! ((this task-control))
   (cond
-    ((= obj *null-task-control*)
+    ((= this *null-task-control*)
      (format 0 "ERROR<GMJ>: close-current! received self of *null-task-control*~%~%")
      )
-    ((= (-> obj current-stage) -1)
+    ((= (-> this current-stage) -1)
      )
     (else
-      (close-task! (-> obj stage (-> obj current-stage)))
+      (close-task! (-> this stage (-> this current-stage)))
       )
     )
-  (first-any obj #t)
+  (first-any this #t)
   )
 
 ;; definition for method 12 of type task-control
 ;; INFO: Return type mismatch int vs game-task.
-(defmethod close-status! task-control ((obj task-control) (arg0 task-status))
-  (let ((a0-2 (current-task obj)))
-    (dotimes (v1-1 (-> obj stage length))
-      (when (and (= a0-2 (-> obj stage v1-1 game-task)) (= arg0 (-> obj stage v1-1 status)))
-        (close-task! (-> obj stage v1-1))
-        (return (the-as game-task (first-any obj #t)))
+(defmethod close-status! ((this task-control) (arg0 task-status))
+  (let ((a0-2 (current-task this)))
+    (dotimes (v1-1 (-> this stage length))
+      (when (and (= a0-2 (-> this stage v1-1 game-task)) (= arg0 (-> this stage v1-1 status)))
+        (close-task! (-> this stage v1-1))
+        (return (the-as game-task (first-any this #t)))
         )
       )
     (format
@@ -179,41 +179,41 @@
 
 ;; definition for method 13 of type task-control
 ;; INFO: Return type mismatch int vs game-task.
-(defmethod first-any task-control ((obj task-control) (arg0 symbol))
-  (when (= obj *null-task-control*)
+(defmethod first-any ((this task-control) (arg0 symbol))
+  (when (= this *null-task-control*)
     (if arg0
         (format 0 "ERROR<GMJ>: first-any received self of *null-task-control*~%~%")
         )
     (return (game-task none))
     )
-  (dotimes (s5-0 (-> obj stage length))
-    (when (task-available? (-> obj stage s5-0) obj)
-      (set! (-> obj current-stage) s5-0)
-      (return (the-as game-task (-> obj stage s5-0 game-task)))
+  (dotimes (s5-0 (-> this stage length))
+    (when (task-available? (-> this stage s5-0) this)
+      (set! (-> this current-stage) s5-0)
+      (return (the-as game-task (-> this stage s5-0 game-task)))
       )
     )
-  (set! (-> obj current-stage) -1)
+  (set! (-> this current-stage) -1)
   (the-as game-task 0)
   )
 
 ;; definition for method 14 of type task-control
-(defmethod reset! task-control ((obj task-control) (arg0 symbol) (arg1 symbol))
-  (when (= obj *null-task-control*)
+(defmethod reset! ((this task-control) (arg0 symbol) (arg1 symbol))
+  (when (= this *null-task-control*)
     (if arg1
         (format 0 "ERROR<GMJ>: reset! received self of *null-task-control*~%~%")
         )
     (return 0)
     )
-  (dotimes (s4-0 (-> obj stage length))
-    (if (or (= arg0 'game) (let ((a0-4 (-> obj stage s4-0)))
+  (dotimes (s4-0 (-> this stage length))
+    (if (or (= arg0 'game) (let ((a0-4 (-> this stage s4-0)))
                              (not (logtest? (-> a0-4 flags) (task-flags closed-by-default)))
                              )
             )
-        (open-task! (-> obj stage s4-0))
+        (open-task! (-> this stage s4-0))
         )
-    (let ((a0-10 (-> obj stage s4-0)))
+    (let ((a0-10 (-> this stage s4-0)))
       (if (logtest? (-> a0-10 flags) (task-flags closed))
-          (close-task! (-> obj stage s4-0))
+          (close-task! (-> this stage s4-0))
           )
       )
     )
@@ -221,14 +221,14 @@
   )
 
 ;; definition for method 15 of type task-control
-(defmethod closed? task-control ((obj task-control) (arg0 game-task) (arg1 task-status))
-  (when (= obj *null-task-control*)
+(defmethod closed? ((this task-control) (arg0 game-task) (arg1 task-status))
+  (when (= this *null-task-control*)
     (format 0 "ERROR<GMJ>: closed? received self of *null-task-control*~%~%")
     (return #f)
     )
-  (dotimes (v1-3 (-> obj stage length))
-    (when (and (= arg0 (-> obj stage v1-3 game-task)) (= arg1 (-> obj stage v1-3 status)))
-      (let ((a0-3 (-> obj stage v1-3)))
+  (dotimes (v1-3 (-> this stage length))
+    (when (and (= arg0 (-> this stage v1-3 game-task)) (= arg1 (-> this stage v1-3 status)))
+      (let ((a0-3 (-> this stage v1-3)))
         (return (logtest? (-> a0-3 flags) (task-flags closed)))
         )
       )
@@ -243,13 +243,13 @@
   )
 
 ;; definition for method 18 of type task-control
-(defmethod exists? task-control ((obj task-control) (arg0 game-task) (arg1 task-status))
-  (when (= obj *null-task-control*)
+(defmethod exists? ((this task-control) (arg0 game-task) (arg1 task-status))
+  (when (= this *null-task-control*)
     (format 0 "ERROR<GMJ>: exists? received self of *null-task-control*~%~%")
     (return #f)
     )
-  (dotimes (v1-3 (-> obj stage length))
-    (if (and (= arg0 (-> obj stage v1-3 game-task)) (= arg1 (-> obj stage v1-3 status)))
+  (dotimes (v1-3 (-> this stage length))
+    (if (and (= arg0 (-> this stage v1-3 game-task)) (= arg1 (-> this stage v1-3 status)))
         (return #t)
         )
     )
@@ -257,23 +257,23 @@
   )
 
 ;; definition for method 16 of type task-control
-(defmethod get-reminder task-control ((obj task-control) (arg0 int))
-  (when (= obj *null-task-control*)
+(defmethod get-reminder ((this task-control) (arg0 int))
+  (when (= this *null-task-control*)
     (format 0 "ERROR<GMJ>: get-reminder received self of *null-task-control*~%~%")
     (return 0)
     )
-  (let ((v1-4 (get-entity-task-perm *game-info* (-> obj stage 0 game-task))))
+  (let ((v1-4 (get-entity-task-perm *game-info* (-> this stage 0 game-task))))
     (the-as int (-> v1-4 user-uint8 (+ arg0 1)))
     )
   )
 
 ;; definition for method 17 of type task-control
-(defmethod save-reminder task-control ((obj task-control) (arg0 int) (arg1 int))
-  (when (= obj *null-task-control*)
+(defmethod save-reminder ((this task-control) (arg0 int) (arg1 int))
+  (when (= this *null-task-control*)
     (format 0 "ERROR<GMJ>: save-reminder received self of *null-task-control*~%~%")
     (return 0)
     )
-  (let ((v1-4 (get-entity-task-perm *game-info* (-> obj stage 0 game-task))))
+  (let ((v1-4 (get-entity-task-perm *game-info* (-> this stage 0 game-task))))
     (logior! (-> v1-4 status) (entity-perm-status user-set-from-cstage))
     (set! (-> v1-4 user-int8 (+ arg1 1)) arg0)
     )

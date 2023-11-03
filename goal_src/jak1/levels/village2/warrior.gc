@@ -7,13 +7,8 @@
 
 ;; DECOMP BEGINS
 
-
 (deftype warrior (process-taskable)
   ()
-  :heap-base #x110
-  :method-count-assert 53
-  :size-assert         #x17c
-  :flag-assert         #x350110017c
   )
 
 
@@ -23,10 +18,10 @@
               :shadow warrior-shadow-mg
               )
 
-(defmethod process-taskable-method-52 warrior ((obj warrior))
-  (let ((v1-1 (-> obj draw shadow-ctrl)))
+(defmethod process-taskable-method-52 ((this warrior))
+  (let ((v1-1 (-> this draw shadow-ctrl)))
     (when v1-1
-      (let ((f0-0 (-> obj root-override trans y)))
+      (let ((f0-0 (-> this root trans y)))
         (let ((a0-2 v1-1))
           (set! (-> a0-2 settings bot-plane w) (- (+ -4096.0 f0-0)))
           )
@@ -39,21 +34,21 @@
   (none)
   )
 
-(defmethod draw-npc-shadow warrior ((obj warrior))
-  (-> obj draw shadow-ctrl)
+(defmethod draw-npc-shadow ((this warrior))
+  (-> this draw shadow-ctrl)
   (cond
-    ((and (-> obj draw shadow)
-          (zero? (-> obj draw cur-lod))
-          (logtest? (-> obj draw status) (draw-status was-drawn))
+    ((and (-> this draw shadow)
+          (zero? (-> this draw cur-lod))
+          (logtest? (-> this draw status) (draw-status was-drawn))
           )
-     (let ((v1-9 (-> obj draw shadow-ctrl)))
+     (let ((v1-9 (-> this draw shadow-ctrl)))
        (logclear! (-> v1-9 settings flags) (shadow-flags disable-draw))
        )
      0
-     (update-direction-from-time-of-day (-> obj draw shadow-ctrl))
+     (update-direction-from-time-of-day (-> this draw shadow-ctrl))
      )
     (else
-      (let ((v1-14 (-> obj draw shadow-ctrl)))
+      (let ((v1-14 (-> this draw shadow-ctrl)))
         (logior! (-> v1-14 settings flags) (shadow-flags disable-draw))
         )
       0
@@ -62,13 +57,13 @@
   (none)
   )
 
-(defmethod play-anim! warrior ((obj warrior) (arg0 symbol))
+(defmethod play-anim! ((this warrior) (arg0 symbol))
   (with-pp
-    (set! (-> obj talk-message) (text-id press-to-talk))
-    (case (current-status (-> obj tasks))
+    (set! (-> this talk-message) (text-id press-to-talk))
+    (case (current-status (-> this tasks))
       (((task-status need-hint) (task-status need-introduction))
        (if arg0
-           (close-status! (-> obj tasks) (task-status need-introduction))
+           (close-status! (-> this tasks) (task-status need-introduction))
            )
        (new 'static 'spool-anim
          :name "warrior-introduction"
@@ -89,24 +84,24 @@
          )
        )
       (((task-status need-reminder))
-       (set! (-> obj skippable) #t)
+       (set! (-> this skippable) #t)
        (new 'static 'spool-anim :name "warrior-reminder-1" :index 7 :parts 3 :command-list '())
        )
       (((task-status need-reward-speech))
        (cond
          (arg0
-           (set! (-> obj cell-for-task) (current-task (-> obj tasks)))
-           (close-current! (-> obj tasks))
+           (set! (-> this cell-for-task) (current-task (-> this tasks)))
+           (close-current! (-> this tasks))
            (send-event *target* 'get-pickup 5 (- (-> *GAME-bank* money-task-inc)))
-           (send-event (-> (entity-by-type allpontoons) extra process) 'clone (process->handle obj))
-           (dotimes (s5-2 (entity-actor-count (-> obj entity) 'alt-actor))
-             (entity-birth-no-kill (entity-actor-lookup (-> obj entity) 'alt-actor s5-2))
+           (send-event (-> (entity-by-type allpontoons) extra process) 'clone (process->handle this))
+           (dotimes (s5-2 (entity-actor-count (-> this entity) 'alt-actor))
+             (entity-birth-no-kill (entity-actor-lookup (-> this entity) 'alt-actor s5-2))
              (let ((s4-2 (new 'stack-no-clear 'event-message-block)))
                (set! (-> s4-2 from) pp)
                (set! (-> s4-2 num-params) 0)
                (set! (-> s4-2 message) 'die)
                (let ((s3-0 send-event-function)
-                     (v1-25 (entity-actor-lookup (-> obj entity) 'alt-actor s5-2))
+                     (v1-25 (entity-actor-lookup (-> this entity) 'alt-actor s5-2))
                      )
                  (s3-0
                    (if v1-25
@@ -119,8 +114,8 @@
              )
            )
          (else
-           (set! (-> obj will-talk) #t)
-           (set! (-> obj talk-message) (text-id press-to-trade-money))
+           (set! (-> this will-talk) #t)
+           (set! (-> this talk-message) (text-id press-to-trade-money))
            )
          )
        (new 'static 'spool-anim
@@ -135,18 +130,18 @@
             (format
               0
               "ERROR: <GMJ>: ~S playing anim for task status ~S~%"
-              (-> obj name)
-              (task-status->string (current-status (-> obj tasks)))
+              (-> this name)
+              (task-status->string (current-status (-> this tasks)))
               )
             )
-        (-> obj draw art-group data 5)
+        (-> this draw art-group data 5)
         )
       )
     )
   )
 
-(defmethod get-art-elem warrior ((obj warrior))
-  (-> obj draw art-group data 5)
+(defmethod get-art-elem ((this warrior))
+  (-> this draw art-group data 5)
   )
 
 (defstate play-anim (warrior)
@@ -154,30 +149,29 @@
   :exit (behavior ()
     (send-event (-> (entity-by-type allpontoons) extra process) 'end-mode)
     ((-> (method-of-type process-taskable play-anim) exit))
-    (none)
     )
   )
 
-(defmethod process-taskable-method-43 warrior ((obj warrior))
-  (when (ambient-control-method-10 (-> obj ambient) (new 'stack-no-clear 'vector) (seconds 2) 61440.0 obj)
+(defmethod process-taskable-method-43 ((this warrior))
+  (when (ambient-control-method-10 (-> this ambient) (new 'stack-no-clear 'vector) (seconds 2) 61440.0 this)
     (let ((f0-2 (rand-float-gen)))
       (cond
         ((< 0.66 f0-2)
-         (play-ambient (-> obj ambient) "WAR-LO1A" #f (-> obj root-override trans))
+         (play-ambient (-> this ambient) "WAR-LO1A" #f (-> this root trans))
          )
         ((< 0.33 f0-2)
-         (play-ambient (-> obj ambient) "WAR-LO1B" #f (-> obj root-override trans))
+         (play-ambient (-> this ambient) "WAR-LO1B" #f (-> this root trans))
          )
         (else
-          (play-ambient (-> obj ambient) "WAR-LO1C" #f (-> obj root-override trans))
+          (play-ambient (-> this ambient) "WAR-LO1C" #f (-> this root trans))
           )
         )
       )
     )
   )
 
-(defmethod initialize-collision warrior ((obj warrior) (arg0 int) (arg1 vector))
-  (let ((s5-0 (new 'process 'collide-shape obj (collide-list-enum hit-by-player))))
+(defmethod initialize-collision ((this warrior) (arg0 int) (arg1 vector))
+  (let ((s5-0 (new 'process 'collide-shape this (collide-list-enum hit-by-player))))
     (let ((s4-0 (new 'process 'collide-shape-prim-group s5-0 (the-as uint 2) 0)))
       (set! (-> s4-0 prim-core collide-as) (collide-kind enemy))
       (set! (-> s4-0 collide-with) (collide-kind target))
@@ -204,17 +198,17 @@
       )
     (set! (-> s5-0 nav-radius) (* 0.75 (-> s5-0 root-prim local-sphere w)))
     (backup-collide-with-as s5-0)
-    (set! (-> obj root-override) s5-0)
+    (set! (-> this root) s5-0)
     )
   0
   (none)
   )
 
-(defmethod init-from-entity! warrior ((obj warrior) (arg0 entity-actor))
-  (process-taskable-method-40 obj arg0 *warrior-sg* 3 33 (new 'static 'vector :y -4096.0 :w 10240.0) 5)
-  (set! (-> obj tasks) (get-task-control (game-task village2-warrior-money)))
-  (set! (-> obj sound-flava) (music-flava warrior))
-  (set! (-> obj draw light-index) (the-as uint 3))
-  (process-taskable-method-42 obj)
+(defmethod init-from-entity! ((this warrior) (arg0 entity-actor))
+  (process-taskable-method-40 this arg0 *warrior-sg* 3 33 (new 'static 'vector :y -4096.0 :w 10240.0) 5)
+  (set! (-> this tasks) (get-task-control (game-task village2-warrior-money)))
+  (set! (-> this sound-flava) (music-flava warrior))
+  (set! (-> this draw light-index) (the-as uint 3))
+  (process-taskable-method-42 this)
   (none)
   )

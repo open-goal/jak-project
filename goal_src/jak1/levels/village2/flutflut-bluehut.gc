@@ -7,13 +7,8 @@
 
 ;; DECOMP BEGINS
 
-
 (deftype flutflut-bluehut (process-taskable)
   ()
-  :heap-base #x110
-  :method-count-assert 53
-  :size-assert         #x17c
-  :flag-assert         #x350110017c
   )
 
 
@@ -22,25 +17,25 @@
               :bounds (static-spherem 0 0 0 3.25)
               )
 
-(defmethod play-anim! flutflut-bluehut ((obj flutflut-bluehut) (arg0 symbol))
-  (current-status (-> obj tasks))
+(defmethod play-anim! ((this flutflut-bluehut) (arg0 symbol))
+  (current-status (-> this tasks))
   (if arg0
       (format
         0
         "ERROR: <GMJ>: ~S playing anim for task status ~S~%"
-        (-> obj name)
-        (task-status->string (current-status (-> obj tasks)))
+        (-> this name)
+        (task-status->string (current-status (-> this tasks)))
         )
       )
-  (the-as basic (get-art-elem obj))
+  (the-as basic (get-art-elem this))
   )
 
-(defmethod get-art-elem flutflut-bluehut ((obj flutflut-bluehut))
-  (-> obj draw art-group data 2)
+(defmethod get-art-elem ((this flutflut-bluehut))
+  (-> this draw art-group data 2)
   )
 
-(defmethod should-display? flutflut-bluehut ((obj flutflut-bluehut))
-  (and (closed? (-> obj tasks) (game-task village2-levitator) (task-status need-introduction))
+(defmethod should-display? ((this flutflut-bluehut))
+  (and (closed? (-> this tasks) (game-task village2-levitator) (task-status need-introduction))
        (task-closed? (game-task beach-flutflut) (task-status need-resolution))
        )
   )
@@ -50,7 +45,6 @@
   :trans (behavior ()
     (set! (-> self will-talk) #f)
     ((-> (method-of-type process-taskable idle) trans))
-    (none)
     )
   :code (behavior ()
     (if (!= (ja-group) (get-art-elem self))
@@ -68,8 +62,8 @@
             (suspend)
             (ja :num! (seek!))
             )
-          (let ((s5-0 (-> *display* base-frame-counter)))
-            (while (< (+ (-> *display* base-frame-counter) (seconds -0.5)) s5-0)
+          (let ((s5-0 (current-time)))
+            (while (< (+ (current-time) (seconds -0.5)) s5-0)
               (suspend)
               )
             )
@@ -78,8 +72,8 @@
             (suspend)
             (ja :num! (seek! 0.0))
             )
-          (let ((s5-1 (-> *display* base-frame-counter)))
-            (while (< (+ (-> *display* base-frame-counter) (seconds -0.5)) s5-1)
+          (let ((s5-1 (current-time)))
+            (while (< (+ (current-time) (seconds -0.5)) s5-1)
               (suspend)
               )
             )
@@ -109,14 +103,13 @@
         (ja :num! (seek! 0.0))
         )
       )
-    (none)
     )
   )
 
-(defmethod init-from-entity! flutflut-bluehut ((obj flutflut-bluehut) (arg0 entity-actor))
-  (process-taskable-method-40 obj arg0 *flutflut-bluehut-sg* 3 0 (new 'static 'vector :w 4096.0) 27)
-  (set! (-> obj tasks) (get-task-control (game-task village2-levitator)))
-  (set! (-> obj draw light-index) (the-as uint 1))
-  (process-taskable-method-42 obj)
+(defmethod init-from-entity! ((this flutflut-bluehut) (arg0 entity-actor))
+  (process-taskable-method-40 this arg0 *flutflut-bluehut-sg* 3 0 (new 'static 'vector :w 4096.0) 27)
+  (set! (-> this tasks) (get-task-control (game-task village2-levitator)))
+  (set! (-> this draw light-index) (the-as uint 1))
+  (process-taskable-method-42 this)
   (none)
   )

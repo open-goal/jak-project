@@ -3,36 +3,32 @@
 
 ;; definition of type vin-turbine
 (deftype vin-turbine (process-drawable)
-  ((dont-draw-outside? symbol         :offset-assert 200)
-   (lightning-timer    uint64         :offset-assert 208)
-   (outside-plane      plane  :inline :offset-assert 224)
-   (lightning-plane    plane  :inline :offset-assert 240)
+  ((dont-draw-outside?  symbol)
+   (lightning-timer     uint64)
+   (outside-plane       plane  :inline)
+   (lightning-plane     plane  :inline)
    )
-  :heap-base #x80
-  :method-count-assert 22
-  :size-assert         #x100
-  :flag-assert         #x1600800100
-  (:methods
-    (idle () _type_ :state 20)
-    (dormant () _type_ :state 21)
+  (:state-methods
+    idle
+    dormant
     )
   )
 
 ;; definition for method 3 of type vin-turbine
-(defmethod inspect vin-turbine ((obj vin-turbine))
-  (when (not obj)
-    (set! obj obj)
+(defmethod inspect ((this vin-turbine))
+  (when (not this)
+    (set! this this)
     (goto cfg-4)
     )
   (let ((t9-0 (method-of-type process-drawable inspect)))
-    (t9-0 obj)
+    (t9-0 this)
     )
-  (format #t "~2Tdont-draw-outside?: ~A~%" (-> obj dont-draw-outside?))
-  (format #t "~2Tlightning-timer: ~D~%" (-> obj lightning-timer))
-  (format #t "~2Toutside-plane: #<plane @ #x~X>~%" (-> obj outside-plane))
-  (format #t "~2Tlightning-plane: #<plane @ #x~X>~%" (-> obj lightning-plane))
+  (format #t "~2Tdont-draw-outside?: ~A~%" (-> this dont-draw-outside?))
+  (format #t "~2Tlightning-timer: ~D~%" (-> this lightning-timer))
+  (format #t "~2Toutside-plane: #<plane @ #x~X>~%" (-> this outside-plane))
+  (format #t "~2Tlightning-plane: #<plane @ #x~X>~%" (-> this lightning-plane))
   (label cfg-4)
-  obj
+  this
   )
 
 ;; failed to figure out what this is:
@@ -101,19 +97,16 @@
   :virtual #t
   :enter (behavior ()
     (logior! (-> self draw status) (draw-control-status no-draw))
-    (none)
     )
   :exit (behavior ()
     (logclear! (-> self draw status) (draw-control-status no-draw))
-    (none)
     )
   :trans (behavior ()
     (if (>= (vector4-dot (the-as vector (-> self outside-plane)) (math-camera-pos)) 0.0)
         (go-virtual idle)
         )
-    (none)
     )
-  :code (the-as (function none :behavior vin-turbine) sleep-code)
+  :code sleep-code
   )
 
 ;; failed to figure out what this is:
@@ -125,21 +118,16 @@
              )
         (go-virtual dormant)
         )
-    (none)
     )
   :code (behavior ()
     (until #f
-      (ja-no-eval :group! (ja-group)
-                  :num! (seek! (the float (+ (-> (ja-group) frames num-frames) -1)))
-                  :frame-num 0.0
-                  )
+      (ja-no-eval :group! (ja-group) :num! (seek!) :frame-num 0.0)
       (until (ja-done? 0)
         (suspend)
         (ja :num! (seek!))
         )
       )
     #f
-    (none)
     )
   :post (behavior ()
     (when (and (or (not (-> self dont-draw-outside?))
@@ -206,53 +194,45 @@
                     (set! (-> v1-36 initial-valuef) (the-as float (-> (the-as lightning-tracker (-> s3-2 0)) duration)))
                     )
                 )
-              (let ((t9-20 sp-launch-particles-var)
-                    (a0-33 *sp-particle-system-2d*)
-                    (a1-21 (-> *part-id-table* 1245))
-                    (a2-10 *launch-matrix*)
-                    )
-                (set! (-> a2-10 trans quad) (-> s4-3 quad))
-                (t9-20 a0-33 a1-21 a2-10 (the-as sparticle-launch-state #f) (the-as sparticle-launch-control #f) 1.0)
-                )
+              (launch-particles (-> *part-id-table* 1245) s4-3)
               )
             )
           )
         )
       )
     (ja-post)
-    (none)
     )
   )
 
 ;; definition for method 11 of type vin-turbine
 ;; INFO: Used lq/sq
 ;; WARN: Return type mismatch object vs none.
-(defmethod init-from-entity! vin-turbine ((obj vin-turbine) (arg0 entity-actor))
+(defmethod init-from-entity! ((this vin-turbine) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
 - stack size
 - collision information
 - loading the skeleton group / bones
 - sounds"
-  (set! (-> obj root) (new 'process 'trsqv))
-  (process-drawable-from-entity! obj arg0)
+  (set! (-> this root) (new 'process 'trsqv))
+  (process-drawable-from-entity! this arg0)
   (initialize-skeleton
-    obj
+    this
     (the-as skeleton-group (art-group-get-by-name *level* "skel-vin-turbine" (the-as (pointer uint32) #f)))
     (the-as pair 0)
     )
-  (set-vector! (-> obj outside-plane) 0.707 0.0 0.707 -6377922.5)
-  (set! (-> obj lightning-plane quad) (-> obj outside-plane quad))
-  (set! (-> obj lightning-plane w) -6419865.5)
-  (set! (-> obj dont-draw-outside?)
-        (nonzero? (res-lump-value (-> obj entity) 'extra-id uint128 :time -1000000000.0))
+  (set-vector! (-> this outside-plane) 0.707 0.0 0.707 -6377922.5)
+  (set! (-> this lightning-plane quad) (-> this outside-plane quad))
+  (set! (-> this lightning-plane w) -6419865.5)
+  (set! (-> this dont-draw-outside?)
+        (nonzero? (res-lump-value (-> this entity) 'extra-id uint128 :time -1000000000.0))
         )
-  (set! (-> obj lightning-timer) (the-as uint 0))
-  (if (and (-> obj dont-draw-outside?)
-           (< (vector4-dot (the-as vector (-> obj outside-plane)) (math-camera-pos)) 0.0)
+  (set! (-> this lightning-timer) (the-as uint 0))
+  (if (and (-> this dont-draw-outside?)
+           (< (vector4-dot (the-as vector (-> this outside-plane)) (math-camera-pos)) 0.0)
            )
-      (go (method-of-object obj dormant))
-      (go (method-of-object obj idle))
+      (go (method-of-object this dormant))
+      (go (method-of-object this idle))
       )
   (none)
   )
@@ -266,35 +246,31 @@ This commonly includes things such as:
 ;; definition of type vin-door
 (deftype vin-door (com-airlock)
   ()
-  :heap-base #x100
-  :method-count-assert 28
-  :size-assert         #x174
-  :flag-assert         #x1c01000174
   )
 
 ;; definition for method 3 of type vin-door
-(defmethod inspect vin-door ((obj vin-door))
-  (when (not obj)
-    (set! obj obj)
+(defmethod inspect ((this vin-door))
+  (when (not this)
+    (set! this this)
     (goto cfg-4)
     )
   (let ((t9-0 (method-of-type com-airlock inspect)))
-    (t9-0 obj)
+    (t9-0 this)
     )
   (label cfg-4)
-  obj
+  this
   )
 
 ;; definition for method 11 of type vin-door
 ;; WARN: Return type mismatch object vs none.
-(defmethod init-from-entity! vin-door ((obj vin-door) (arg0 entity-actor))
+(defmethod init-from-entity! ((this vin-door) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
 - stack size
 - collision information
 - loading the skeleton group / bones
 - sounds"
-  (let ((s5-0 (new 'process 'collide-shape obj (collide-list-enum usually-hit-by-player))))
+  (let ((s5-0 (new 'process 'collide-shape this (collide-list-enum usually-hit-by-player))))
     (set! (-> s5-0 penetrated-by) (penetrate))
     (let ((s4-0 (new 'process 'collide-shape-prim-group s5-0 (the-as uint 2) 0)))
       (set! (-> s5-0 total-prims) (the-as uint 3))
@@ -323,19 +299,19 @@ This commonly includes things such as:
       (set! (-> s5-0 backup-collide-as) (-> v1-13 prim-core collide-as))
       (set! (-> s5-0 backup-collide-with) (-> v1-13 prim-core collide-with))
       )
-    (set! (-> obj root) s5-0)
+    (set! (-> this root) s5-0)
     )
   (initialize-skeleton
-    obj
+    this
     (the-as skeleton-group (art-group-get-by-name *level* "skel-vin-door" (the-as (pointer uint32) #f)))
     (the-as pair 0)
     )
-  (init-airlock! obj)
-  (set! (-> obj sound-open-loop) (static-sound-spec "wood-door-open"))
-  (set! (-> obj sound-open-stop) (static-sound-spec "wood-open-hit"))
-  (set! (-> obj sound-close-loop) (static-sound-spec "wood-door-close"))
-  (set! (-> obj sound-close-stop) (static-sound-spec "wood-close-hit"))
-  (set! (-> obj door-radius) 12288.0)
-  (go (method-of-object obj close) #t)
+  (init-airlock! this)
+  (set! (-> this sound-open-loop) (static-sound-spec "wood-door-open"))
+  (set! (-> this sound-open-stop) (static-sound-spec "wood-open-hit"))
+  (set! (-> this sound-close-loop) (static-sound-spec "wood-door-close"))
+  (set! (-> this sound-close-stop) (static-sound-spec "wood-close-hit"))
+  (set! (-> this door-radius) 12288.0)
+  (go (method-of-object this close) #t)
   (none)
   )

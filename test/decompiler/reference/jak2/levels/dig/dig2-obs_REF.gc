@@ -3,33 +3,29 @@
 
 ;; definition of type dig-breakable-door
 (deftype dig-breakable-door (process-focusable)
-  ((anim         basic  :offset-assert 204)
-   (art-name     basic  :offset-assert 208)
-   (collide-mesh int32  :offset-assert 212)
+  ((anim          basic)
+   (art-name      basic)
+   (collide-mesh  int32)
    )
-  :heap-base #x60
-  :method-count-assert 28
-  :size-assert         #xd8
-  :flag-assert         #x1c006000d8
-  (:methods
-    (idle () _type_ :state 27)
+  (:state-methods
+    idle
     )
   )
 
 ;; definition for method 3 of type dig-breakable-door
-(defmethod inspect dig-breakable-door ((obj dig-breakable-door))
-  (when (not obj)
-    (set! obj obj)
+(defmethod inspect ((this dig-breakable-door))
+  (when (not this)
+    (set! this this)
     (goto cfg-4)
     )
   (let ((t9-0 (method-of-type process-focusable inspect)))
-    (t9-0 obj)
+    (t9-0 this)
     )
-  (format #t "~2Tanim: ~A~%" (-> obj anim))
-  (format #t "~2Tart-name: ~A~%" (-> obj art-name))
-  (format #t "~2Tcollide-mesh: ~D~%" (-> obj collide-mesh))
+  (format #t "~2Tanim: ~A~%" (-> this anim))
+  (format #t "~2Tart-name: ~A~%" (-> this art-name))
+  (format #t "~2Tcollide-mesh: ~D~%" (-> this collide-mesh))
   (label cfg-4)
-  obj
+  this
   )
 
 ;; failed to figure out what this is:
@@ -49,23 +45,22 @@
       (suspend)
       )
     #f
-    (none)
     )
   )
 
 ;; definition for method 11 of type dig-breakable-door
 ;; WARN: Return type mismatch object vs none.
-(defmethod init-from-entity! dig-breakable-door ((obj dig-breakable-door) (arg0 entity-actor))
+(defmethod init-from-entity! ((this dig-breakable-door) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
 - stack size
 - collision information
 - loading the skeleton group / bones
 - sounds"
-  (stack-size-set! (-> obj main-thread) 512)
-  (logior! (-> obj mask) (process-mask collectable))
+  (stack-size-set! (-> this main-thread) 512)
+  (logior! (-> this mask) (process-mask collectable))
   (let ((s4-0 (art-group-get-by-name *level* "skel-dig-breakable-door" (the-as (pointer uint32) #f))))
-    (let ((s3-0 (new 'process 'collide-shape obj (collide-list-enum usually-hit-by-player))))
+    (let ((s3-0 (new 'process 'collide-shape this (collide-list-enum usually-hit-by-player))))
       (let ((v1-7 (new 'process 'collide-shape-prim-mesh s3-0 (the-as uint 0) (the-as uint 0))))
         (set! (-> v1-7 prim-core collide-as) (collide-spec obstacle))
         (set! (-> v1-7 prim-core collide-with) (collide-spec jak player-list))
@@ -80,11 +75,11 @@ This commonly includes things such as:
         (set! (-> s3-0 backup-collide-as) (-> v1-10 prim-core collide-as))
         (set! (-> s3-0 backup-collide-with) (-> v1-10 prim-core collide-with))
         )
-      (set! (-> obj root) s3-0)
+      (set! (-> this root) s3-0)
       )
-    (process-drawable-from-entity! obj arg0)
-    (initialize-skeleton obj (the-as skeleton-group s4-0) (the-as pair 0))
+    (process-drawable-from-entity! this arg0)
+    (initialize-skeleton this (the-as skeleton-group s4-0) (the-as pair 0))
     )
-  (go (method-of-object obj idle))
+  (go (method-of-object this idle))
   (none)
   )

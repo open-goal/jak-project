@@ -3,262 +3,238 @@
 
 ;; definition of type kernel-context
 (deftype kernel-context (basic)
-  ((prevent-from-run   process-mask  :offset-assert   4)
-   (require-for-run    process-mask  :offset-assert   8)
-   (allow-to-run       process-mask  :offset-assert  12)
-   (next-pid           int32         :offset-assert  16)
-   (fast-stack-top     pointer       :offset-assert  20)
-   (current-process    process       :offset-assert  24)
-   (relocating-process basic         :offset-assert  28)
-   (relocating-min     int32         :offset-assert  32)
-   (relocating-max     int32         :offset-assert  36)
-   (relocating-offset  int32         :offset-assert  40)
-   (low-memory-message symbol        :offset-assert  44)
+  ((prevent-from-run    process-mask)
+   (require-for-run     process-mask)
+   (allow-to-run        process-mask)
+   (next-pid            int32)
+   (fast-stack-top      pointer)
+   (current-process     process)
+   (relocating-process  basic)
+   (relocating-min      int32)
+   (relocating-max      int32)
+   (relocating-offset   int32)
+   (low-memory-message  symbol)
    )
-  :method-count-assert 9
-  :size-assert         #x30
-  :flag-assert         #x900000030
   )
 
 ;; definition for method 3 of type kernel-context
-(defmethod inspect kernel-context ((obj kernel-context))
-  (format #t "[~8x] ~A~%" obj (-> obj type))
-  (format #t "~Tprevent-from-run: ~D~%" (-> obj prevent-from-run))
-  (format #t "~Trequire-for-run: ~D~%" (-> obj require-for-run))
-  (format #t "~Tallow-to-run: ~D~%" (-> obj allow-to-run))
-  (format #t "~Tnext-pid: ~D~%" (-> obj next-pid))
-  (format #t "~Tfast-stack-top: #x~X~%" (-> obj fast-stack-top))
-  (format #t "~Tcurrent-process: ~A~%" (-> obj current-process))
-  (format #t "~Trelocating-process: ~A~%" (-> obj relocating-process))
-  (format #t "~Trelocating-min: #x~X~%" (-> obj relocating-min))
-  (format #t "~Trelocating-max: #x~X~%" (-> obj relocating-max))
-  (format #t "~Trelocating-offset: ~D~%" (-> obj relocating-offset))
-  (format #t "~Tlow-memory-message: ~A~%" (-> obj low-memory-message))
-  obj
+(defmethod inspect ((this kernel-context))
+  (format #t "[~8x] ~A~%" this (-> this type))
+  (format #t "~Tprevent-from-run: ~D~%" (-> this prevent-from-run))
+  (format #t "~Trequire-for-run: ~D~%" (-> this require-for-run))
+  (format #t "~Tallow-to-run: ~D~%" (-> this allow-to-run))
+  (format #t "~Tnext-pid: ~D~%" (-> this next-pid))
+  (format #t "~Tfast-stack-top: #x~X~%" (-> this fast-stack-top))
+  (format #t "~Tcurrent-process: ~A~%" (-> this current-process))
+  (format #t "~Trelocating-process: ~A~%" (-> this relocating-process))
+  (format #t "~Trelocating-min: #x~X~%" (-> this relocating-min))
+  (format #t "~Trelocating-max: #x~X~%" (-> this relocating-max))
+  (format #t "~Trelocating-offset: ~D~%" (-> this relocating-offset))
+  (format #t "~Tlow-memory-message: ~A~%" (-> this low-memory-message))
+  this
   )
 
 ;; definition of type thread
 (deftype thread (basic)
-  ((name         basic                       :offset-assert   4)
-   (process      process                     :offset-assert   8)
-   (previous     thread                      :offset-assert  12)
-   (suspend-hook (function cpu-thread none)  :offset-assert  16)
-   (resume-hook  (function cpu-thread none)  :offset-assert  20)
-   (pc           pointer                     :offset-assert  24)
-   (sp           pointer                     :offset-assert  28)
-   (stack-top    pointer                     :offset-assert  32)
-   (stack-size   int32                       :offset-assert  36)
+  ((name          basic)
+   (process       process)
+   (previous      thread)
+   (suspend-hook  (function cpu-thread none))
+   (resume-hook   (function cpu-thread none))
+   (pc            pointer)
+   (sp            pointer)
+   (stack-top     pointer)
+   (stack-size    int32)
    )
-  :method-count-assert 12
-  :size-assert         #x28
-  :flag-assert         #xc00000028
   (:methods
-    (stack-size-set! (_type_ int) none 9)
-    (thread-suspend (_type_) none 10)
-    (thread-resume (_type_) none 11)
+    (stack-size-set! (_type_ int) none)
+    (thread-suspend (_type_) none)
+    (thread-resume (_type_) none)
     )
   )
 
 ;; definition for method 3 of type thread
-(defmethod inspect thread ((obj thread))
-  (format #t "[~8x] ~A~%" obj (-> obj type))
-  (format #t "~Tname: ~A~%" (-> obj name))
-  (format #t "~Tprocess: ~A~%" (-> obj process))
-  (format #t "~Tprevious: ~A~%" (-> obj previous))
-  (format #t "~Tsuspend-hook: ~A~%" (-> obj suspend-hook))
-  (format #t "~Tresume-hook: ~A~%" (-> obj resume-hook))
-  (format #t "~Tpc: #x~X~%" (-> obj pc))
-  (format #t "~Tsp: #x~X~%" (-> obj sp))
-  (format #t "~Tstack-top: #x~X~%" (-> obj stack-top))
-  (format #t "~Tstack-size: ~D~%" (-> obj stack-size))
-  obj
+(defmethod inspect ((this thread))
+  (format #t "[~8x] ~A~%" this (-> this type))
+  (format #t "~Tname: ~A~%" (-> this name))
+  (format #t "~Tprocess: ~A~%" (-> this process))
+  (format #t "~Tprevious: ~A~%" (-> this previous))
+  (format #t "~Tsuspend-hook: ~A~%" (-> this suspend-hook))
+  (format #t "~Tresume-hook: ~A~%" (-> this resume-hook))
+  (format #t "~Tpc: #x~X~%" (-> this pc))
+  (format #t "~Tsp: #x~X~%" (-> this sp))
+  (format #t "~Tstack-top: #x~X~%" (-> this stack-top))
+  (format #t "~Tstack-size: ~D~%" (-> this stack-size))
+  this
   )
 
 ;; definition of type cpu-thread
 (deftype cpu-thread (thread)
-  ((rreg  uint64 7        :offset-assert  40)
-   (freg  float  8        :offset-assert  96)
-   (stack uint8  :dynamic :offset-assert 128)
+  ((rreg   uint64  7)
+   (freg   float   8)
+   (stack  uint8   :dynamic)
    )
-  :method-count-assert 12
-  :size-assert         #x80
-  :flag-assert         #xc00000080
   (:methods
-    (new (symbol type process symbol int pointer) _type_ 0)
+    (new (symbol type process symbol int pointer) _type_)
     )
   )
 
 ;; definition for method 3 of type cpu-thread
-(defmethod inspect cpu-thread ((obj cpu-thread))
-  (format #t "[~8x] ~A~%" obj (-> obj type))
-  (format #t "~Tname: ~A~%" (-> obj name))
-  (format #t "~Tprocess: ~A~%" (-> obj process))
-  (format #t "~Tprevious: ~A~%" (-> obj previous))
-  (format #t "~Tsuspend-hook: ~A~%" (-> obj suspend-hook))
-  (format #t "~Tresume-hook: ~A~%" (-> obj resume-hook))
-  (format #t "~Tpc: #x~X~%" (-> obj pc))
-  (format #t "~Tsp: #x~X~%" (-> obj sp))
-  (format #t "~Tstack-top: #x~X~%" (-> obj stack-top))
-  (format #t "~Tstack-size: ~D~%" (-> obj stack-size))
-  (format #t "~Trreg[8] @ #x~X~%" (-> obj rreg))
-  (format #t "~Tfreg[6] @ #x~X~%" (&-> obj freg 2))
-  (format #t "~Tstack[0] @ #x~X~%" (-> obj stack))
-  obj
+(defmethod inspect ((this cpu-thread))
+  (format #t "[~8x] ~A~%" this (-> this type))
+  (format #t "~Tname: ~A~%" (-> this name))
+  (format #t "~Tprocess: ~A~%" (-> this process))
+  (format #t "~Tprevious: ~A~%" (-> this previous))
+  (format #t "~Tsuspend-hook: ~A~%" (-> this suspend-hook))
+  (format #t "~Tresume-hook: ~A~%" (-> this resume-hook))
+  (format #t "~Tpc: #x~X~%" (-> this pc))
+  (format #t "~Tsp: #x~X~%" (-> this sp))
+  (format #t "~Tstack-top: #x~X~%" (-> this stack-top))
+  (format #t "~Tstack-size: ~D~%" (-> this stack-size))
+  (format #t "~Trreg[8] @ #x~X~%" (-> this rreg))
+  (format #t "~Tfreg[6] @ #x~X~%" (&-> this freg 2))
+  (format #t "~Tstack[0] @ #x~X~%" (-> this stack))
+  this
   )
 
 ;; definition of type dead-pool
 (deftype dead-pool (process-tree)
   ()
-  :method-count-assert 16
-  :size-assert         #x20
-  :flag-assert         #x1000000020
   (:methods
-    (new (symbol type int int basic) _type_ 0)
-    (get-process (_type_ type int) process 14)
-    (return-process (_type_ process) none 15)
+    (new (symbol type int int basic) _type_)
+    (get-process (_type_ type int) process)
+    (return-process (_type_ process) none)
     )
   )
 
 ;; definition for method 3 of type dead-pool
-(defmethod inspect dead-pool ((obj dead-pool))
-  (format #t "[~8x] ~A~%" obj (-> obj type))
-  (format #t "~Tname: ~A~%" (-> obj name))
-  (format #t "~Tmask: ~D~%" (-> obj mask))
-  (format #t "~Tparent: #x~X~%" (-> obj parent))
-  (format #t "~Tbrother: #x~X~%" (-> obj brother))
-  (format #t "~Tchild: #x~X~%" (-> obj child))
-  (format #t "~Tppointer: #x~X~%" (-> obj ppointer))
-  (format #t "~Tself: ~A~%" (-> obj self))
-  obj
+(defmethod inspect ((this dead-pool))
+  (format #t "[~8x] ~A~%" this (-> this type))
+  (format #t "~Tname: ~A~%" (-> this name))
+  (format #t "~Tmask: ~D~%" (-> this mask))
+  (format #t "~Tparent: #x~X~%" (-> this parent))
+  (format #t "~Tbrother: #x~X~%" (-> this brother))
+  (format #t "~Tchild: #x~X~%" (-> this child))
+  (format #t "~Tppointer: #x~X~%" (-> this ppointer))
+  (format #t "~Tself: ~A~%" (-> this self))
+  this
   )
 
 ;; definition of type dead-pool-heap-rec
 (deftype dead-pool-heap-rec (structure)
-  ((process process             :offset-assert   0)
-   (prev    dead-pool-heap-rec  :offset-assert   4)
-   (next    dead-pool-heap-rec  :offset-assert   8)
+  ((process  process)
+   (prev     dead-pool-heap-rec)
+   (next     dead-pool-heap-rec)
    )
   :pack-me
-  :method-count-assert 9
-  :size-assert         #xc
-  :flag-assert         #x90000000c
   )
 
 ;; definition for method 3 of type dead-pool-heap-rec
-(defmethod inspect dead-pool-heap-rec ((obj dead-pool-heap-rec))
-  (format #t "[~8x] ~A~%" obj 'dead-pool-heap-rec)
-  (format #t "~Tprocess: ~A~%" (-> obj process))
-  (format #t "~Tprev: #<dead-pool-heap-rec @ #x~X>~%" (-> obj prev))
-  (format #t "~Tnext: #<dead-pool-heap-rec @ #x~X>~%" (-> obj next))
-  obj
+(defmethod inspect ((this dead-pool-heap-rec))
+  (format #t "[~8x] ~A~%" this 'dead-pool-heap-rec)
+  (format #t "~Tprocess: ~A~%" (-> this process))
+  (format #t "~Tprev: #<dead-pool-heap-rec @ #x~X>~%" (-> this prev))
+  (format #t "~Tnext: #<dead-pool-heap-rec @ #x~X>~%" (-> this next))
+  this
   )
 
 ;; definition of type dead-pool-heap
 (deftype dead-pool-heap (dead-pool)
-  ((allocated-length   int32                               :offset-assert  32)
-   (compact-time       uint32                              :offset-assert  36)
-   (compact-count-targ uint32                              :offset-assert  40)
-   (compact-count      uint32                              :offset-assert  44)
-   (fill-percent       float                               :offset-assert  48)
-   (first-gap          dead-pool-heap-rec                  :offset-assert  52)
-   (first-shrink       dead-pool-heap-rec                  :offset-assert  56)
-   (heap               kheap              :inline          :offset-assert  64)
-   (alive-list         dead-pool-heap-rec :inline          :offset-assert  80)
-   (last               dead-pool-heap-rec                  :offset         84)
-   (dead-list          dead-pool-heap-rec :inline          :offset-assert  92)
-   (process-list       dead-pool-heap-rec :inline :dynamic :offset-assert 104)
+  ((allocated-length    int32)
+   (compact-time        uint32)
+   (compact-count-targ  uint32)
+   (compact-count       uint32)
+   (fill-percent        float)
+   (first-gap           dead-pool-heap-rec)
+   (first-shrink        dead-pool-heap-rec)
+   (heap                kheap               :inline)
+   (alive-list          dead-pool-heap-rec  :inline)
+   (last                dead-pool-heap-rec  :overlay-at (-> alive-list prev))
+   (dead-list           dead-pool-heap-rec  :inline)
+   (process-list        dead-pool-heap-rec  :inline :dynamic)
    )
-  :method-count-assert 27
-  :size-assert         #x68
-  :flag-assert         #x1b00000068
   (:methods
-    (new (symbol type basic int int) _type_ 0)
-    (compact (dead-pool-heap int) none 16)
-    (shrink-heap (dead-pool-heap process) dead-pool-heap 17)
-    (churn (dead-pool-heap int) none 18)
-    (memory-used (dead-pool-heap) int 19)
-    (memory-total (dead-pool-heap) int 20)
-    (gap-size (dead-pool-heap dead-pool-heap-rec) int 21)
-    (gap-location (dead-pool-heap dead-pool-heap-rec) pointer 22)
-    (find-gap (dead-pool-heap dead-pool-heap-rec) dead-pool-heap-rec 23)
-    (find-gap-by-size (dead-pool-heap int) dead-pool-heap-rec 24)
-    (memory-free (dead-pool-heap) int 25)
-    (compact-time (dead-pool-heap) uint 26)
+    (new (symbol type basic int int) _type_)
+    (compact (dead-pool-heap int) none)
+    (shrink-heap (dead-pool-heap process) dead-pool-heap)
+    (churn (dead-pool-heap int) none)
+    (memory-used (dead-pool-heap) int)
+    (memory-total (dead-pool-heap) int)
+    (gap-size (dead-pool-heap dead-pool-heap-rec) int)
+    (gap-location (dead-pool-heap dead-pool-heap-rec) pointer)
+    (find-gap (dead-pool-heap dead-pool-heap-rec) dead-pool-heap-rec)
+    (find-gap-by-size (dead-pool-heap int) dead-pool-heap-rec)
+    (memory-free (dead-pool-heap) int)
+    (compact-time (dead-pool-heap) uint)
     )
   )
 
 ;; definition for method 3 of type dead-pool-heap
 ;; INFO: this function exists in multiple non-identical object files
-(defmethod inspect dead-pool-heap ((obj dead-pool-heap))
-  (format #t "[~8x] ~A~%" obj (-> obj type))
-  (format #t "~Tname: ~A~%" (-> obj name))
-  (format #t "~Tmask: ~D~%" (-> obj mask))
-  (format #t "~Tparent: #x~X~%" (-> obj parent))
-  (format #t "~Tbrother: #x~X~%" (-> obj brother))
-  (format #t "~Tchild: #x~X~%" (-> obj child))
-  (format #t "~Tppointer: #x~X~%" (-> obj ppointer))
-  (format #t "~Tself: ~A~%" (-> obj self))
-  (format #t "~Tallocated-length: ~D~%" (-> obj allocated-length))
-  (format #t "~Tcompact-time: ~D~%" (-> obj compact-time))
-  (format #t "~Tcompact-count-targ: ~D~%" (-> obj compact-count-targ))
-  (format #t "~Tcompact-count: ~D~%" (-> obj compact-count))
-  (format #t "~Tfill-percent: ~f~%" (-> obj fill-percent))
-  (format #t "~Tfirst-gap: #<dead-pool-heap-rec @ #x~X>~%" (-> obj first-gap))
-  (format #t "~Tfirst-shrink: #<dead-pool-heap-rec @ #x~X>~%" (-> obj first-shrink))
-  (format #t "~Theap: #<kheap @ #x~X>~%" (-> obj heap))
-  (format #t "~Talive-list: #<dead-pool-heap-rec @ #x~X>~%" (-> obj alive-list))
-  (format #t "~Tlast: #<dead-pool-heap-rec @ #x~X>~%" (-> obj alive-list prev))
-  (format #t "~Tdead-list: #<dead-pool-heap-rec @ #x~X>~%" (-> obj dead-list))
-  (format #t "~Tprocess-list[0] @ #x~X~%" (-> obj process-list))
-  obj
+(defmethod inspect ((this dead-pool-heap))
+  (format #t "[~8x] ~A~%" this (-> this type))
+  (format #t "~Tname: ~A~%" (-> this name))
+  (format #t "~Tmask: ~D~%" (-> this mask))
+  (format #t "~Tparent: #x~X~%" (-> this parent))
+  (format #t "~Tbrother: #x~X~%" (-> this brother))
+  (format #t "~Tchild: #x~X~%" (-> this child))
+  (format #t "~Tppointer: #x~X~%" (-> this ppointer))
+  (format #t "~Tself: ~A~%" (-> this self))
+  (format #t "~Tallocated-length: ~D~%" (-> this allocated-length))
+  (format #t "~Tcompact-time: ~D~%" (-> this compact-time))
+  (format #t "~Tcompact-count-targ: ~D~%" (-> this compact-count-targ))
+  (format #t "~Tcompact-count: ~D~%" (-> this compact-count))
+  (format #t "~Tfill-percent: ~f~%" (-> this fill-percent))
+  (format #t "~Tfirst-gap: #<dead-pool-heap-rec @ #x~X>~%" (-> this first-gap))
+  (format #t "~Tfirst-shrink: #<dead-pool-heap-rec @ #x~X>~%" (-> this first-shrink))
+  (format #t "~Theap: #<kheap @ #x~X>~%" (-> this heap))
+  (format #t "~Talive-list: #<dead-pool-heap-rec @ #x~X>~%" (-> this alive-list))
+  (format #t "~Tlast: #<dead-pool-heap-rec @ #x~X>~%" (-> this alive-list prev))
+  (format #t "~Tdead-list: #<dead-pool-heap-rec @ #x~X>~%" (-> this dead-list))
+  (format #t "~Tprocess-list[0] @ #x~X~%" (-> this process-list))
+  this
   )
 
 ;; definition of type catch-frame
 (deftype catch-frame (stack-frame)
-  ((sp   int32      :offset-assert  12)
-   (ra   int32      :offset-assert  16)
-   (freg float   10 :offset-assert  20)
-   (rreg uint128 7  :offset-assert  64)
+  ((sp    int32)
+   (ra    int32)
+   (freg  float    10)
+   (rreg  uint128  7)
    )
-  :method-count-assert 9
-  :size-assert         #xb0
-  :flag-assert         #x9000000b0
   (:methods
-    (new (symbol type symbol function (pointer uint64)) object 0)
+    (new (symbol type symbol function (pointer uint64)) object)
     )
   )
 
 ;; definition for method 3 of type catch-frame
-(defmethod inspect catch-frame ((obj catch-frame))
-  (format #t "[~8x] ~A~%" obj (-> obj type))
-  (format #t "~Tname: ~A~%" (-> obj name))
-  (format #t "~Tnext: ~A~%" (-> obj next))
-  (format #t "~Tsp: #x~X~%" (-> obj sp))
-  (format #t "~Tra: #x~X~%" (-> obj ra))
-  (format #t "~Tfreg[6] @ #x~X~%" (-> obj freg))
-  (format #t "~Trreg[8] @ #x~X~%" (&-> obj freg 7))
-  obj
+(defmethod inspect ((this catch-frame))
+  (format #t "[~8x] ~A~%" this (-> this type))
+  (format #t "~Tname: ~A~%" (-> this name))
+  (format #t "~Tnext: ~A~%" (-> this next))
+  (format #t "~Tsp: #x~X~%" (-> this sp))
+  (format #t "~Tra: #x~X~%" (-> this ra))
+  (format #t "~Tfreg[6] @ #x~X~%" (-> this freg))
+  (format #t "~Trreg[8] @ #x~X~%" (&-> this freg 7))
+  this
   )
 
 ;; definition of type protect-frame
 (deftype protect-frame (stack-frame)
-  ((exit (function none)  :offset-assert  12)
+  ((exit  (function object))
    )
-  :method-count-assert 9
-  :size-assert         #x10
-  :flag-assert         #x900000010
   (:methods
-    (new (symbol type (function none)) protect-frame 0)
+    (new (symbol type (function object)) protect-frame)
     )
   )
 
 ;; definition for method 3 of type protect-frame
-(defmethod inspect protect-frame ((obj protect-frame))
-  (format #t "[~8x] ~A~%" obj (-> obj type))
-  (format #t "~Tname: ~A~%" (-> obj name))
-  (format #t "~Tnext: ~A~%" (-> obj next))
-  (format #t "~Texit: ~A~%" (-> obj exit))
-  obj
+(defmethod inspect ((this protect-frame))
+  (format #t "[~8x] ~A~%" this (-> this type))
+  (format #t "~Tname: ~A~%" (-> this name))
+  (format #t "~Tnext: ~A~%" (-> this next))
+  (format #t "~Texit: ~A~%" (-> this exit))
+  this
   )
 
 ;; definition of type handle
@@ -267,81 +243,72 @@
    (pid     int32             :offset  32 :size  32)
    (u64     uint64            :offset   0 :size  64)
    )
-  :method-count-assert 9
-  :size-assert         #x8
-  :flag-assert         #x900000008
   )
 
 ;; definition for method 3 of type handle
-(defmethod inspect handle ((obj handle))
-  (format #t "[~8x] ~A~%" obj 'handle)
-  (format #t "~Tprocess: #x~X~%" (-> obj process))
-  (format #t "~Tpid: ~D~%" (-> obj pid))
-  obj
+(defmethod inspect ((this handle))
+  (format #t "[~8x] ~A~%" this 'handle)
+  (format #t "~Tprocess: #x~X~%" (-> this process))
+  (format #t "~Tpid: ~D~%" (-> this pid))
+  this
   )
 
 ;; definition for method 2 of type handle
-(defmethod print handle ((obj handle))
-  (if (nonzero? obj)
-      (format #t "#<handle :process ~A :pid ~D>" (handle->process obj) (-> obj pid))
+(defmethod print ((this handle))
+  (if (nonzero? this)
+      (format #t "#<handle :process ~A :pid ~D>" (handle->process this) (-> this pid))
       (format #t "#<handle :process 0 :pid 0>")
       )
-  obj
+  this
   )
 
 ;; definition of type state
 (deftype state (protect-frame)
-  ((code  function                                                  :offset-assert  16)
-   (trans (function none)                                           :offset-assert  20)
-   (post  function                                                  :offset-assert  24)
-   (enter function                                                  :offset-assert  28)
-   (event (function process int symbol event-message-block object)  :offset-assert  32)
+  ((code   function)
+   (trans  (function object))
+   (post   function)
+   (enter  function)
+   (event  (function process int symbol event-message-block object))
    )
-  :method-count-assert 9
-  :size-assert         #x24
-  :flag-assert         #x900000024
   (:methods
-    (new (symbol type symbol function (function none) function (function none) (function process int symbol event-message-block object)) _type_ 0)
+    (new (symbol type symbol function (function object) function (function object) (function process int symbol event-message-block object)) _type_)
     )
   )
 
 ;; definition for method 3 of type state
-(defmethod inspect state ((obj state))
-  (format #t "[~8x] ~A~%" obj (-> obj type))
-  (format #t "~Tname: ~A~%" (-> obj name))
-  (format #t "~Tnext: ~A~%" (-> obj next))
-  (format #t "~Texit: ~A~%" (-> obj exit))
-  (format #t "~Tcode: ~A~%" (-> obj code))
-  (format #t "~Ttrans: ~A~%" (-> obj trans))
-  (format #t "~Tpost: ~A~%" (-> obj post))
-  (format #t "~Tenter: ~A~%" (-> obj enter))
-  (format #t "~Tevent: ~A~%" (-> obj event))
-  obj
+(defmethod inspect ((this state))
+  (format #t "[~8x] ~A~%" this (-> this type))
+  (format #t "~Tname: ~A~%" (-> this name))
+  (format #t "~Tnext: ~A~%" (-> this next))
+  (format #t "~Texit: ~A~%" (-> this exit))
+  (format #t "~Tcode: ~A~%" (-> this code))
+  (format #t "~Ttrans: ~A~%" (-> this trans))
+  (format #t "~Tpost: ~A~%" (-> this post))
+  (format #t "~Tenter: ~A~%" (-> this enter))
+  (format #t "~Tevent: ~A~%" (-> this event))
+  this
   )
 
 ;; definition of type event-message-block
 (deftype event-message-block (structure)
-  ((to         process   :offset-assert   0)
-   (from       process   :offset-assert   4)
-   (num-params int32     :offset-assert   8)
-   (message    symbol    :offset-assert  12)
-   (param      uint64  7 :offset-assert  16)
+  ((to          process)
+   (from        process)
+   (num-params  int32)
+   (message     symbol)
+   (param       uint64  7)
    )
   :always-stack-singleton
-  :method-count-assert 9
-  :size-assert         #x48
-  :flag-assert         #x900000048
   )
 
 ;; definition for method 3 of type event-message-block
-(defmethod inspect event-message-block ((obj event-message-block))
-  (format #t "[~8x] ~A~%" obj 'event-message-block)
-  (format #t "~Tto: ~A~%" (-> obj to))
-  (format #t "~Tfrom: ~A~%" (-> obj from))
-  (format #t "~Tnum-params: ~D~%" (-> obj num-params))
-  (format #t "~Tmessage: ~A~%" (-> obj message))
-  (format #t "~Tparam[7] @ #x~X~%" (-> obj param))
-  obj
+(defmethod inspect ((this event-message-block))
+  (format #t "[~8x] ~A~%" this 'event-message-block)
+  (format #t "~Tto: ~A~%" (-> this to))
+  (format #t "~Tfrom: ~A~%" (-> this from))
+  (format #t "~Tnum-params: ~D~%" (-> this num-params))
+  (format #t "~Tmessage: ~A~%" (-> this message))
+  (format #t "~Tparam[7] @ #x~X~%" (-> this param))
+  this
   )
 
 ;; failed to figure out what this is:

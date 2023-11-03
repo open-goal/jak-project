@@ -3,23 +3,20 @@
 
 ;; definition of type kor-anim-info
 (deftype kor-anim-info (structure)
-  ((anim-index int32  :offset-assert   0)
+  ((anim-index  int32)
    )
-  :method-count-assert 9
-  :size-assert         #x4
-  :flag-assert         #x900000004
   )
 
 ;; definition for method 3 of type kor-anim-info
-(defmethod inspect kor-anim-info ((obj kor-anim-info))
-  (when (not obj)
-    (set! obj obj)
+(defmethod inspect ((this kor-anim-info))
+  (when (not this)
+    (set! this this)
     (goto cfg-4)
     )
-  (format #t "[~8x] ~A~%" obj 'kor-anim-info)
-  (format #t "~1Tanim-index: ~D~%" (-> obj anim-index))
+  (format #t "[~8x] ~A~%" this 'kor-anim-info)
+  (format #t "~1Tanim-index: ~D~%" (-> this anim-index))
   (label cfg-4)
-  obj
+  this
   )
 
 ;; definition for symbol *kor-nav-enemy-info*, type nav-enemy-info
@@ -198,60 +195,57 @@
 (set! (-> *kor-nav-enemy-info* fact-defaults) *fact-info-enemy-defaults*)
 
 ;; definition for method 74 of type kor
-(defmethod general-event-handler kor ((obj kor) (arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+(defmethod general-event-handler ((this kor) (arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
   "Handles various events for the enemy
 @TODO - unsure if there is a pattern for the events and this should have a more specific name"
   (case arg2
     (('arrest)
-     (let* ((s4-0 (handle->process (-> obj arrestor-handle)))
+     (let* ((s4-0 (handle->process (-> this arrestor-handle)))
             (v1-4 (if (type? s4-0 process-focusable)
                       s4-0
                       )
                   )
             )
-       (when (or (not v1-4)
-                 (= v1-4 arg0)
-                 (and (!= v1-4 arg0) (>= (- (current-time) (-> obj arrest-attempt-time)) (seconds 0.1)))
-                 )
-         (set! (-> obj arrestor-handle) (process->handle arg0))
-         (set! (-> obj arrest-attempt-time) (current-time))
+       (when (or (not v1-4) (= v1-4 arg0) (and (!= v1-4 arg0) (time-elapsed? (-> this arrest-attempt-time) (seconds 0.1))))
+         (set! (-> this arrestor-handle) (process->handle arg0))
+         (set-time! (-> this arrest-attempt-time))
          0
          )
        )
      #t
      )
     (('instant-arrest)
-     (logior! (-> obj bot-flags) (bot-flags bf20))
+     (logior! (-> this bot-flags) (bot-flags bf20))
      (let ((v1-18 (the-as object (-> arg3 param 0))))
-       (set! (-> obj arrestor-handle) (process->handle (the-as process v1-18)))
-       (set! (-> obj arrest-attempt-time) (current-time))
+       (set! (-> this arrestor-handle) (process->handle (the-as process v1-18)))
+       (set-time! (-> this arrest-attempt-time))
        (let ((a1-8 (new 'stack-no-clear 'vector)))
-         (vector-! a1-8 (-> (the-as process-drawable v1-18) root trans) (-> obj root trans))
+         (vector-! a1-8 (-> (the-as process-drawable v1-18) root trans) (-> this root trans))
          (set! (-> a1-8 y) 0.0)
-         (forward-up->quaternion (-> obj root quat) a1-8 *up-vector*)
+         (forward-up->quaternion (-> this root quat) a1-8 *up-vector*)
          )
        )
-     (logclear! (-> obj enemy-flags) (enemy-flag enable-on-active checking-water))
-     (logclear! (-> obj mask) (process-mask collectable))
-     (logclear! (-> obj enemy-flags) (enemy-flag look-at-move-dest))
-     (logclear! (-> obj mask) (process-mask actor-pause))
-     (logclear! (-> obj enemy-flags) (enemy-flag notice))
-     (go (method-of-object obj arrested))
+     (logclear! (-> this enemy-flags) (enemy-flag enable-on-active checking-water))
+     (logclear! (-> this mask) (process-mask collectable))
+     (logclear! (-> this enemy-flags) (enemy-flag look-at-move-dest))
+     (logclear! (-> this mask) (process-mask actor-pause))
+     (logclear! (-> this enemy-flags) (enemy-flag notice))
+     (go (method-of-object this arrested))
      )
     (else
-      ((method-of-type bot general-event-handler) obj arg0 arg1 arg2 arg3)
+      ((method-of-type bot general-event-handler) this arg0 arg1 arg2 arg3)
       )
     )
   )
 
 ;; definition for method 97 of type kor
-(defmethod enemy-method-97 kor ((obj kor))
-  (let* ((s4-0 (handle->process (-> obj attacker-handle)))
+(defmethod enemy-method-97 ((this kor))
+  (let* ((s4-0 (handle->process (-> this attacker-handle)))
          (s5-0 (if (type? s4-0 process-focusable)
                    s4-0
                    )
                )
-         (s3-0 (handle->process (-> obj arrestor-handle)))
+         (s3-0 (handle->process (-> this arrestor-handle)))
          (s4-1 (if (type? s3-0 process-focusable)
                    s3-0
                    )
@@ -260,33 +254,33 @@
     (when s5-0
       (cond
         ((= (-> s5-0 type) target)
-         (when (or (not (logtest? (-> obj bot-flags) (bot-flags attacked)))
-                   (>= (- (current-time) (-> obj attacker-time)) (seconds 1.5))
+         (when (or (not (logtest? (-> this bot-flags) (bot-flags attacked)))
+                   (time-elapsed? (-> this attacker-time) (seconds 1.5))
                    )
-           (if (logtest? (-> obj bot-flags) (bot-flags attacked))
-               (reset-attacker! obj)
+           (if (logtest? (-> this bot-flags) (bot-flags attacked))
+               (reset-attacker! this)
                )
            (set! s5-0 (the-as process #f))
-           (set! (-> obj attacker-handle) (the-as handle #f))
+           (set! (-> this attacker-handle) (the-as handle #f))
            )
          )
         (else
-          (when (>= (- (current-time) (-> obj attacker-time)) (seconds 6))
+          (when (time-elapsed? (-> this attacker-time) (seconds 6))
             (set! s5-0 (the-as process #f))
-            (set! (-> obj attacker-handle) (the-as handle #f))
+            (set! (-> this attacker-handle) (the-as handle #f))
             )
           )
         )
       )
     (when s4-1
-      (when (or (>= (- (current-time) (-> obj arrest-attempt-time)) (seconds 0.5))
+      (when (or (time-elapsed? (-> this arrest-attempt-time) (seconds 0.5))
                 (focus-test? (the-as process-focusable s4-1) dead hit)
                 )
         (set! s4-1 (the-as process #f))
-        (set! (-> obj arrestor-handle) (the-as handle #f))
+        (set! (-> this arrestor-handle) (the-as handle #f))
         )
       )
-    (let ((v1-34 (-> obj focus-mode))
+    (let ((v1-34 (-> this focus-mode))
           (s3-1 (the-as process #f))
           )
       (cond
@@ -298,11 +292,11 @@
            (s5-0
              (set! s3-1 s5-0)
              )
-           ((begin (set! s3-1 (select-focus! obj)) s3-1)
+           ((begin (set! s3-1 (select-focus! this)) s3-1)
             (empty)
             )
            (else
-             (let ((s5-1 (handle->process (-> obj poi-handle))))
+             (let ((s5-1 (handle->process (-> this poi-handle))))
                (set! s3-1 (if (type? s5-1 process-focusable)
                               s5-1
                               )
@@ -324,7 +318,7 @@
              (set! s3-1 s5-0)
              )
            (else
-             (let ((s5-2 (handle->process (-> obj poi-handle))))
+             (let ((s5-2 (handle->process (-> this poi-handle))))
                (set! s3-1 (if (type? s5-2 process-focusable)
                               s5-2
                               )
@@ -334,7 +328,7 @@
                (s3-1
                  (empty)
                  )
-               ((begin (set! s3-1 (select-focus! obj)) s3-1)
+               ((begin (set! s3-1 (select-focus! this)) s3-1)
                 (empty)
                 )
                (else
@@ -347,14 +341,14 @@
         )
       (cond
         (s3-1
-          (try-update-focus (-> obj focus) (the-as process-focusable s3-1) obj)
-          (if (and (logtest? (-> obj bot-flags) (bot-flags attacked)) (!= (-> s3-1 type) target))
-              (logclear! (-> obj bot-flags) (bot-flags attacked))
+          (try-update-focus (-> this focus) (the-as process-focusable s3-1) this)
+          (if (and (logtest? (-> this bot-flags) (bot-flags attacked)) (!= (-> s3-1 type) target))
+              (logclear! (-> this bot-flags) (bot-flags attacked))
               )
           )
         (else
-          (clear-focused (-> obj focus))
-          (logclear! (-> obj bot-flags) (bot-flags attacked))
+          (clear-focused (-> this focus))
+          (logclear! (-> this bot-flags) (bot-flags attacked))
           )
         )
       s3-1
@@ -363,24 +357,24 @@
   )
 
 ;; definition for method 183 of type kor
-(defmethod alive? kor ((obj kor))
+(defmethod alive? ((this kor))
   (let ((t9-0 (method-of-type bot alive?)))
-    (and (t9-0 obj)
-         (not (and (-> obj next-state) (let ((v1-4 (-> obj next-state name)))
-                                         (or (= v1-4 'arrested) (= v1-4 'die) (= v1-4 'die-falling))
-                                         )
+    (and (t9-0 this)
+         (not (and (-> this next-state) (let ((v1-4 (-> this next-state name)))
+                                          (or (= v1-4 'arrested) (= v1-4 'die) (= v1-4 'die-falling))
+                                          )
                    )
               )
-         (not (logtest? (bot-flags bf20) (-> obj bot-flags)))
+         (not (logtest? (bot-flags bf20) (-> this bot-flags)))
          )
     )
   )
 
 ;; definition for method 114 of type kor
 ;; WARN: Return type mismatch int vs none.
-(defmethod init-enemy-collision! kor ((obj kor))
+(defmethod init-enemy-collision! ((this kor))
   "Initializes the [[collide-shape-moving]] and any ancillary tasks to make the enemy collide properly"
-  (let ((s5-0 (new 'process 'collide-shape-moving obj (collide-list-enum hit-by-others))))
+  (let ((s5-0 (new 'process 'collide-shape-moving this (collide-list-enum hit-by-others))))
     (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s5-0 reaction) cshape-reaction-default)
     (set! (-> s5-0 no-reaction)
@@ -445,7 +439,7 @@
       )
     (set! (-> s5-0 max-iteration-count) (the-as uint 3))
     (set! (-> s5-0 event-priority) (the-as uint 2))
-    (set! (-> obj root) s5-0)
+    (set! (-> this root) s5-0)
     )
   0
   (none)
@@ -453,36 +447,36 @@
 
 ;; definition for method 210 of type kor
 ;; WARN: Return type mismatch int vs none.
-(defmethod init! kor ((obj kor))
+(defmethod init! ((this kor))
   "Set defaults for various fields."
   (let ((t9-0 (method-of-type bot init!)))
-    (t9-0 obj)
+    (t9-0 this)
     )
-  (set! (-> obj min-speed) 6144.0)
-  (set! (-> obj max-speed) 20889.6)
-  (set! (-> obj channel) (the-as uint 27))
-  (set! (-> obj notice-enemy-dist) 122880.0)
-  (set! (-> obj travel-anim-interp) 0.0)
-  (set! (-> obj focus-info max-los-dist) 0.0)
-  (set-vector! (-> obj root scale) 1.2 1.2 1.2 1.0)
-  (set! (-> obj spot-color) (the-as uint #x508f2f00))
-  (set! (-> obj arrestor-handle) (the-as handle #f))
+  (set! (-> this min-speed) 6144.0)
+  (set! (-> this max-speed) 20889.6)
+  (set! (-> this channel) (the-as uint 27))
+  (set! (-> this notice-enemy-dist) 122880.0)
+  (set! (-> this travel-anim-interp) 0.0)
+  (set! (-> this focus-info max-los-dist) 0.0)
+  (set-vector! (-> this root scale) 1.2 1.2 1.2 1.0)
+  (set! (-> this spot-color) (the-as uint #x508f2f00))
+  (set! (-> this arrestor-handle) (the-as handle #f))
   0
   (none)
   )
 
 ;; definition for method 115 of type kor
 ;; WARN: Return type mismatch int vs none.
-(defmethod init-enemy! kor ((obj kor))
+(defmethod init-enemy! ((this kor))
   "Common method called to initialize the enemy, typically sets up default field values and calls ancillary helper methods"
-  (init! obj)
+  (init! this)
   (initialize-skeleton
-    obj
+    this
     (the-as skeleton-group (art-group-get-by-name *level* "skel-kor" (the-as (pointer uint32) #f)))
     (the-as pair 0)
     )
-  (init-enemy-behaviour-and-stats! obj *kor-nav-enemy-info*)
-  (let ((v1-7 (-> obj neck)))
+  (init-enemy-behaviour-and-stats! this *kor-nav-enemy-info*)
+  (let ((v1-7 (-> this neck)))
     (set! (-> v1-7 up) (the-as uint 1))
     (set! (-> v1-7 nose) (the-as uint 2))
     (set! (-> v1-7 ear) (the-as uint 0))
@@ -490,53 +484,53 @@
     (set! (-> v1-7 ignore-angle) 30947.555)
     )
   (let ((t9-4 (method-of-type bot init-enemy!)))
-    (t9-4 obj)
+    (t9-4 this)
     )
-  (set! (-> obj my-simple-focus) (process-spawn simple-focus :to obj))
+  (set! (-> this my-simple-focus) (process-spawn simple-focus :to this))
   0
   (none)
   )
 
 ;; definition for method 214 of type kor
-(defmethod bot-method-214 kor ((obj kor))
+(defmethod bot-method-214 ((this kor))
   #f
   )
 
 ;; definition for method 70 of type kor
-(defmethod go-hostile kor ((obj kor))
-  (kor-method-232 obj)
-  (none)
+;; WARN: Return type mismatch none vs object.
+(defmethod go-hostile ((this kor))
+  (kor-method-232 this)
   )
 
 ;; definition for method 72 of type kor
-(defmethod react-to-focus kor ((obj kor))
+;; WARN: Return type mismatch none vs object.
+(defmethod react-to-focus ((this kor))
   "@TODO - flesh out docs"
-  (kor-method-232 obj)
-  (none)
+  (kor-method-232 this)
   )
 
 ;; definition for method 233 of type kor
 ;; WARN: Return type mismatch object vs none.
-(defmethod kor-method-233 kor ((obj kor))
-  (go (method-of-object obj waiting-turn))
+(defmethod kor-method-233 ((this kor))
+  (go (method-of-object this waiting-turn))
   (none)
   )
 
 ;; definition for method 232 of type kor
 ;; WARN: Return type mismatch object vs none.
-(defmethod kor-method-232 kor ((obj kor))
-  (let ((s5-0 (handle->process (-> obj arrestor-handle))))
+(defmethod kor-method-232 ((this kor))
+  (let ((s5-0 (handle->process (-> this arrestor-handle))))
     (cond
       ((if (type? s5-0 process-focusable)
            s5-0
            )
-       (go (method-of-object obj arrested))
+       (go (method-of-object this arrested))
        )
-      ((logtest? (bot-flags bf19) (-> obj bot-flags))
-       (go (method-of-object obj scared-idle))
+      ((logtest? (bot-flags bf19) (-> this bot-flags))
+       (go (method-of-object this scared-idle))
        )
       (else
-        (go (method-of-object obj waiting-idle))
+        (go (method-of-object this waiting-idle))
         )
       )
     )
@@ -545,54 +539,54 @@
 
 ;; definition for method 234 of type kor
 ;; WARN: Return type mismatch int vs none.
-(defmethod kor-method-234 kor ((obj kor))
+(defmethod kor-method-234 ((this kor))
   (with-pp
-    (let ((f30-0 (-> obj nav state speed)))
+    (let ((f30-0 (-> this nav state speed)))
       (let ((f0-1 (lerp-scale 0.0 1.0 f30-0 6144.0 20889.6)))
-        (seek! (-> obj travel-anim-interp) f0-1 (* 4.0 (-> pp clock seconds-per-frame)))
+        (seek! (-> this travel-anim-interp) f0-1 (* 4.0 (seconds-per-frame)))
         )
-      (let ((f28-0 (-> obj travel-anim-interp))
-            (v1-7 (if (> (-> obj skel active-channels) 0)
-                      (-> obj skel root-channel 0 frame-group)
+      (let ((f28-0 (-> this travel-anim-interp))
+            (v1-7 (if (> (-> this skel active-channels) 0)
+                      (-> this skel root-channel 0 frame-group)
                       )
                   )
             )
         (cond
-          ((and v1-7 (= v1-7 (-> obj draw art-group data 5)))
-           (let ((v1-12 (-> obj skel root-channel 1)))
+          ((and v1-7 (= v1-7 (-> this draw art-group data 5)))
+           (let ((v1-12 (-> this skel root-channel 1)))
              (set! (-> v1-12 frame-interp 1) f28-0)
              (set! (-> v1-12 frame-interp 0) f28-0)
              )
-           (let* ((f28-1 (current-cycle-distance (-> obj skel)))
-                  (f0-5 (quaternion-y-angle (-> obj root quat)))
-                  (f0-7 (deg- f0-5 (-> obj travel-prev-ry)))
+           (let* ((f28-1 (current-cycle-distance (-> this skel)))
+                  (f0-5 (quaternion-y-angle (-> this root quat)))
+                  (f0-7 (deg- f0-5 (-> this travel-prev-ry)))
                   (f0-10 (fmin 20889.6 (* 0.35342914 (-> pp clock frames-per-second) (fabs f0-7))))
                   (f0-13 (/ (* 24.0 (fmax f30-0 f0-10)) (* 15.0 f28-1)))
-                  (a0-10 (-> obj skel root-channel 0))
+                  (a0-10 (-> this skel root-channel 0))
                   )
              (set! (-> a0-10 param 0) f0-13)
              (joint-control-channel-group-eval! a0-10 (the-as art-joint-anim #f) num-func-loop!)
              )
-           (let ((a0-11 (-> obj skel root-channel 1)))
+           (let ((a0-11 (-> this skel root-channel 1)))
              (set! (-> a0-11 param 0) 0.0)
              (joint-control-channel-group-eval! a0-11 (the-as art-joint-anim #f) num-func-chan)
              )
            )
           (else
             (ja-channel-push! 2 (seconds 0.3))
-            (let ((a0-13 (-> obj skel root-channel 0)))
+            (let ((a0-13 (-> this skel root-channel 0)))
               (set! (-> a0-13 dist) 9830.4)
-              (set! (-> a0-13 frame-group) (the-as art-joint-anim (-> obj draw art-group data 5)))
+              (set! (-> a0-13 frame-group) (the-as art-joint-anim (-> this draw art-group data 5)))
               (set! (-> a0-13 param 0) 1.0)
-              (joint-control-channel-group! a0-13 (the-as art-joint-anim (-> obj draw art-group data 5)) num-func-loop!)
+              (joint-control-channel-group! a0-13 (the-as art-joint-anim (-> this draw art-group data 5)) num-func-loop!)
               )
-            (let ((a0-14 (-> obj skel root-channel 1)))
+            (let ((a0-14 (-> this skel root-channel 1)))
               (set! (-> a0-14 frame-interp 1) f28-0)
               (set! (-> a0-14 frame-interp 0) f28-0)
               (set! (-> a0-14 dist) 19660.8)
-              (set! (-> a0-14 frame-group) (the-as art-joint-anim (-> obj draw art-group data 6)))
+              (set! (-> a0-14 frame-group) (the-as art-joint-anim (-> this draw art-group data 6)))
               (set! (-> a0-14 param 0) 0.0)
-              (joint-control-channel-group! a0-14 (the-as art-joint-anim (-> obj draw art-group data 6)) num-func-chan)
+              (joint-control-channel-group! a0-14 (the-as art-joint-anim (-> this draw art-group data 6)) num-func-chan)
               )
             )
           )
@@ -603,21 +597,21 @@
   )
 
 ;; definition for method 56 of type kor
-(defmethod damage-amount-from-attack kor ((obj kor) (arg0 process) (arg1 event-message-block))
+(defmethod damage-amount-from-attack ((this kor) (arg0 process) (arg1 event-message-block))
   "@returns the amount of damage taken from an attack.  This can come straight off the [[attack-info]] or via [[penetrate-using->damage]]"
   0
   )
 
 ;; definition for method 190 of type kor
-(defmethod bot-method-190 kor ((obj kor))
+(defmethod bot-method-190 ((this kor))
   #t
   )
 
 ;; definition for method 78 of type kor
-(defmethod enemy-method-78 kor ((obj kor) (arg0 (pointer float)))
+(defmethod enemy-method-78 ((this kor) (arg0 (pointer float)))
   (ja-channel-push! 1 (seconds 0.1))
-  (let ((a1-2 (-> obj draw art-group data (-> obj enemy-info knocked-land-anim)))
-        (a0-4 (-> obj skel root-channel 0))
+  (let ((a1-2 (-> this draw art-group data (-> this enemy-info knocked-land-anim)))
+        (a0-4 (-> this skel root-channel 0))
         )
     (set! (-> a0-4 frame-group) (the-as art-joint-anim a1-2))
     (set! (-> a0-4 param 0) (the float (+ (-> (the-as art-joint-anim a1-2) frames num-frames) -1)))
@@ -630,49 +624,49 @@
 
 ;; definition for method 198 of type kor
 ;; WARN: Return type mismatch float vs meters.
-(defmethod set-cam-height! kor ((obj kor) (arg0 vector))
+(defmethod set-cam-height! ((this kor) (arg0 vector))
   (the-as
     meters
     (cond
-      ((and (-> obj next-state) (= (-> obj next-state name) 'arrested))
+      ((and (-> this next-state) (= (-> this next-state name) 'arrested))
        (set-vector! arg0 49152.0 12288.0 49152.0 1.0)
-       (vector<-cspace+vector! arg0 (-> obj node-list data 2) arg0)
-       (if (focus-test? obj under-water)
-           (set! (-> arg0 y) (+ (get-water-height obj) (-> *setting-control* cam-current target-height)))
+       (vector<-cspace+vector! arg0 (-> this node-list data 2) arg0)
+       (if (focus-test? this under-water)
+           (set! (-> arg0 y) (+ (get-water-height this) (-> *setting-control* cam-current target-height)))
            )
        )
       (else
-        ((method-of-type bot set-cam-height!) obj arg0)
+        ((method-of-type bot set-cam-height!) this arg0)
         )
       )
     )
   )
 
 ;; definition for method 102 of type kor
-(defmethod enemy-method-102 kor ((obj kor))
-  (if (logtest? (bot-flags bf20) (-> obj bot-flags))
+(defmethod enemy-method-102 ((this kor))
+  (if (logtest? (bot-flags bf20) (-> this bot-flags))
       #f
-      ((method-of-type bot enemy-method-102) obj)
+      ((method-of-type bot enemy-method-102) this)
       )
   )
 
 ;; definition for method 116 of type kor
 ;; WARN: Return type mismatch object vs none.
-(defmethod go-idle kor ((obj kor))
+(defmethod go-idle ((this kor))
   (cond
-    ((= (-> obj course course-id) 8)
+    ((= (-> this course course-id) 8)
      (cond
        ((task-node-closed? (game-task-node city-help-kid-resolution))
-        (cleanup-for-death obj)
-        (go (method-of-object obj die-fast))
+        (cleanup-for-death this)
+        (go (method-of-object this die-fast))
         )
        (else
-         (go (method-of-object obj waiting-with-kid))
+         (go (method-of-object this waiting-with-kid))
          )
        )
      )
     (else
-      (go (method-of-object obj waiting-idle))
+      (go (method-of-object this waiting-idle))
       )
     )
   (none)

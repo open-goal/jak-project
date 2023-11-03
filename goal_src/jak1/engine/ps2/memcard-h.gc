@@ -5,66 +5,60 @@
 ;; name in dgo: memcard-h
 ;; dgos: GAME, ENGINE
 
+;; DECOMP BEGINS
+
 (deftype mc-handle (int32)
   ()
-  :flag-assert #x900000004
   )
 
 ;; Information sent from the C kernel about a file on a memory card
 (deftype mc-file-info (structure)
-  ((present               int32      :offset-assert 0)
-   (blind-data            float 16 :offset-assert 4)
-   (blind-data-int8       int8 64 :offset 4)
-   (level-index           int32      :offset 4)
-   (fuel-cell-count       float      :offset 8)
-   (money-count           float      :offset 12)
-   (buzzer-count          float      :offset 16)
-   (completion-percentage float      :offset 20)
-   (minute                uint8      :offset 24)
-   (hour                  uint8      :offset 25)
-   (week                  uint8      :offset 26)
-   (day                   uint8      :offset 27)
-   (month                 uint8      :offset 28)
-   (year                  uint8      :offset 29)
+  ((present                int32)
+   (blind-data             float  16)
+   (blind-data-int8        int8   64 :overlay-at (-> blind-data 0))
+   (level-index            int32     :overlay-at (-> blind-data 0))
+   (fuel-cell-count        float     :overlay-at (-> blind-data 1))
+   (money-count            float     :overlay-at (-> blind-data 2))
+   (buzzer-count           float     :overlay-at (-> blind-data 3))
+   (completion-percentage  float     :overlay-at (-> blind-data 4))
+   (minute                 uint8     :overlay-at (-> blind-data 5))
+   (hour                   uint8     :overlay-at (-> blind-data-int8 21))
+   (week                   uint8     :overlay-at (-> blind-data-int8 22))
+   (day                    uint8     :overlay-at (-> blind-data-int8 23))
+   (month                  uint8     :overlay-at (-> blind-data 6))
+   (year                   uint8     :overlay-at (-> blind-data-int8 25))
    )
   :pack-me
-  :method-count-assert 9
-  :size-assert         #x44
-  :flag-assert         #x900000044
   )
 
 ;; Information sent from the C kernel about all the files on a memory card.
 ;; Note that the C kernel takes care of cleaning up all this, so in GOAL
 ;; we should assume that all this data is valid.
 (deftype mc-slot-info (structure)
-  ((handle       int32     :offset-assert 0)
-   (known        int32     :offset-assert 4)
-   (formatted    int32     :offset-assert 8)
-   (inited       int32     :offset-assert 12)
-   (last-file    int32     :offset-assert 16)
-   (mem-required int32     :offset-assert 20)
-   (mem-actual   int32     :offset-assert 24)
-   (file         mc-file-info 4 :inline :offset-assert 28)
+  ((handle        int32)
+   (known         int32)
+   (formatted     int32)
+   (inited        int32)
+   (last-file     int32)
+   (mem-required  int32)
+   (mem-actual    int32)
+   (file          mc-file-info  4 :inline)
    )
   :pack-me
-  :method-count-assert 9
-  :size-assert         #x12c
-  :flag-assert         #x90000012c
   )
+
 
 (defun mc-sync ()
   "Block here, waiting for the memory card to finish being read/written.
    Note - this will freeze the entire game, so this should not be used
    outside of debugging."
   (let ((v0-0 0))
-   (while (zero? v0-0)
-    ;; run the memory card state machine (in C Kernel)
-    (mc-run)
-    ;; see if we got a good response
-    (set! v0-0 (mc-check-result))
+    (while (zero? v0-0)
+      (mc-run)
+      (set! v0-0 (mc-check-result))
+      )
+    v0-0
     )
-   v0-0
-   )
   )
 
 (defun show-mc-info ((dma-buf dma-buffer))
@@ -75,30 +69,44 @@
       (cond
         ((zero? (-> info known))
          (format (clear *temp-string*) "SLOT ~D: EXAMINING SLOT~%" slot-idx)
+         *temp-string*
          )
         ((zero? (-> info handle))
          (format (clear *temp-string*) "SLOT ~D: NO CARD~%" slot-idx)
+         *temp-string*
          )
         ((zero? (-> info formatted))
          (format (clear *temp-string*) "SLOT ~D: CARD [~D] : NOT FORMATTED~%" slot-idx (-> info handle))
+         *temp-string*
          )
         ((zero? (-> info inited))
-         (format (clear *temp-string*) "SLOT ~D: CARD [~D] : NO FILE [~D/~D]~%"
-                 slot-idx (-> info handle) (-> info mem-required) (-> info mem-actual))
+         (format
+           (clear *temp-string*)
+           "SLOT ~D: CARD [~D] : NO FILE [~D/~D]~%"
+           slot-idx
+           (-> info handle)
+           (-> info mem-required)
+           (-> info mem-actual)
+           )
+         *temp-string*
          )
         (else
-         (format (clear *temp-string*) "SLOT ~D: CARD [~D] : " slot-idx (-> info handle))
-         (format *temp-string* "SAVES ~D ~D ~D ~D : LAST ~D~%"
-          (-> info file 0 present)
-          (-> info file 1 present)
-          (-> info file 2 present)
-          (-> info file 3 present)
-          (-> info last-file)
+          (format (clear *temp-string*) "SLOT ~D: CARD [~D] : " slot-idx (-> info handle))
+          *temp-string*
+          (format
+            *temp-string*
+            "SAVES ~D ~D ~D ~D : LAST ~D~%"
+            (-> info file 0 present)
+            (-> info file 1 present)
+            (-> info file 2 present)
+            (-> info file 3 present)
+            (-> info last-file)
+            )
           )
-         )
         )
       (draw-string-xy *temp-string* dma-buf 32 (+ (* 12 slot-idx) 8) (font-color red) (font-flags shadow))
       )
     )
+  0
   (none)
   )

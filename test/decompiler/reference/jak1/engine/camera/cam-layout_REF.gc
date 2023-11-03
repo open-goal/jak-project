@@ -9,28 +9,25 @@
 
 ;; definition of type cam-layout-bank
 (deftype cam-layout-bank (basic)
-  ((spline-t    float  :offset-assert   4)
-   (spline-step float  :offset-assert   8)
-   (intro-t     float  :offset-assert  12)
-   (intro-step  float  :offset-assert  16)
-   (debug-t     float  :offset-assert  20)
-   (debug-step  float  :offset-assert  24)
+  ((spline-t     float)
+   (spline-step  float)
+   (intro-t      float)
+   (intro-step   float)
+   (debug-t      float)
+   (debug-step   float)
    )
-  :method-count-assert 9
-  :size-assert         #x1c
-  :flag-assert         #x90000001c
   )
 
 ;; definition for method 3 of type cam-layout-bank
-(defmethod inspect cam-layout-bank ((obj cam-layout-bank))
-  (format #t "[~8x] ~A~%" obj (-> obj type))
-  (format #t "~Tspline-t: ~f~%" (-> obj spline-t))
-  (format #t "~Tspline-step: ~f~%" (-> obj spline-step))
-  (format #t "~Tintro-t: ~f~%" (-> obj intro-t))
-  (format #t "~Tintro-step: ~f~%" (-> obj intro-step))
-  (format #t "~Tdebug-t: ~f~%" (-> obj debug-t))
-  (format #t "~Tdebug-step: ~f~%" (-> obj debug-step))
-  obj
+(defmethod inspect ((this cam-layout-bank))
+  (format #t "[~8x] ~A~%" this (-> this type))
+  (format #t "~Tspline-t: ~f~%" (-> this spline-t))
+  (format #t "~Tspline-step: ~f~%" (-> this spline-step))
+  (format #t "~Tintro-t: ~f~%" (-> this intro-t))
+  (format #t "~Tintro-step: ~f~%" (-> this intro-step))
+  (format #t "~Tdebug-t: ~f~%" (-> this debug-t))
+  (format #t "~Tdebug-step: ~f~%" (-> this debug-step))
+  this
   )
 
 ;; definition for symbol *CAM_LAYOUT-bank*, type cam-layout-bank
@@ -50,127 +47,109 @@
 ;; definition of type clm-basic
 (deftype clm-basic (basic)
   ()
-  :method-count-assert 9
-  :size-assert         #x4
-  :flag-assert         #x900000004
   )
 
 ;; definition for method 3 of type clm-basic
-(defmethod inspect clm-basic ((obj clm-basic))
-  (format #t "[~8x] ~A~%" obj (-> obj type))
-  obj
+(defmethod inspect ((this clm-basic))
+  (format #t "[~8x] ~A~%" this (-> this type))
+  this
   )
 
 ;; definition of type clm-item-action
 (deftype clm-item-action (structure)
-  ((button      uint64  :offset-assert   0)
-   (options     uint64  :offset-assert   8)
-   (func        symbol  :offset-assert  16)
-   (parm0       int32   :offset         20)
-   (parm0-basic basic   :offset         20)
-   (parm1-basic basic   :offset         24)
-   (parm1       symbol  :offset         24)
+  ((button       uint64)
+   (options      uint64)
+   (func         symbol)
+   (parm0        int32   :offset  20)
+   (parm0-basic  basic   :overlay-at parm0)
+   (parm1-basic  basic   :offset  24)
+   (parm1        symbol  :overlay-at parm1-basic)
    )
-  :method-count-assert 9
-  :size-assert         #x1c
-  :flag-assert         #x90000001c
   )
 
 ;; definition for method 3 of type clm-item-action
-(defmethod inspect clm-item-action ((obj clm-item-action))
-  (format #t "[~8x] ~A~%" obj 'clm-item-action)
-  (format #t "~Tbutton: ~D~%" (-> obj button))
-  (format #t "~Toptions: ~D~%" (-> obj options))
-  (format #t "~Tfunc: ~A~%" (-> obj func))
-  (format #t "~Tparm0: ~A~%" (-> obj parm0))
-  (format #t "~Tparm1: ~A~%" (-> obj parm1-basic))
-  obj
+(defmethod inspect ((this clm-item-action))
+  (format #t "[~8x] ~A~%" this 'clm-item-action)
+  (format #t "~Tbutton: ~D~%" (-> this button))
+  (format #t "~Toptions: ~D~%" (-> this options))
+  (format #t "~Tfunc: ~A~%" (-> this func))
+  (format #t "~Tparm0: ~A~%" (-> this parm0))
+  (format #t "~Tparm1: ~A~%" (-> this parm1-basic))
+  this
   )
 
 ;; definition of type clm-item
 (deftype clm-item (clm-basic)
-  ((description   string                  :offset-assert   4)
-   (button-symbol symbol                  :offset-assert   8)
-   (action        clm-item-action :inline :offset-assert  16)
+  ((description    string)
+   (button-symbol  symbol)
+   (action         clm-item-action  :inline)
    )
-  :method-count-assert 9
-  :size-assert         #x2c
-  :flag-assert         #x90000002c
   )
 
 ;; definition for method 3 of type clm-item
-(defmethod inspect clm-item ((obj clm-item))
-  (format #t "[~8x] ~A~%" obj (-> obj type))
-  (format #t "~Tdescription: ~A~%" (-> obj description))
-  (format #t "~Tbutton-symbol: ~A~%" (-> obj button-symbol))
-  (format #t "~Taction: #<clm-item-action @ #x~X>~%" (-> obj action))
-  obj
+(defmethod inspect ((this clm-item))
+  (format #t "[~8x] ~A~%" this (-> this type))
+  (format #t "~Tdescription: ~A~%" (-> this description))
+  (format #t "~Tbutton-symbol: ~A~%" (-> this button-symbol))
+  (format #t "~Taction: #<clm-item-action @ #x~X>~%" (-> this action))
+  this
   )
 
 ;; definition of type clm-list-item
 (deftype clm-list-item (basic)
-  ((description     string                   :offset-assert   4)
-   (track-val       symbol                   :offset-assert   8)
-   (val-func        symbol                   :offset-assert  12)
-   (val-parm0       int32                    :offset         16)
-   (val-parm0-basic basic                    :offset         16)
-   (val-parm1-basic basic                    :offset         20)
-   (val-parm1       symbol                   :offset         20)
-   (actions         (array clm-item-action)  :offset-assert  24)
+  ((description      string)
+   (track-val        symbol)
+   (val-func         symbol)
+   (val-parm0        int32   :offset  16)
+   (val-parm0-basic  basic   :overlay-at val-parm0)
+   (val-parm1-basic  basic   :offset  20)
+   (val-parm1        symbol  :overlay-at val-parm1-basic)
+   (actions          (array clm-item-action))
    )
-  :method-count-assert 9
-  :size-assert         #x1c
-  :flag-assert         #x90000001c
   )
 
 ;; definition for method 3 of type clm-list-item
-(defmethod inspect clm-list-item ((obj clm-list-item))
-  (format #t "[~8x] ~A~%" obj (-> obj type))
-  (format #t "~Tdescription: ~A~%" (-> obj description))
-  (format #t "~Ttrack-val: ~A~%" (-> obj track-val))
-  (format #t "~Tval-func: ~A~%" (-> obj val-func))
-  (format #t "~Tval-parm0: ~A~%" (-> obj val-parm0))
-  (format #t "~Tval-parm1: ~A~%" (-> obj val-parm1-basic))
-  (format #t "~Tactions: ~A~%" (-> obj actions))
-  obj
+(defmethod inspect ((this clm-list-item))
+  (format #t "[~8x] ~A~%" this (-> this type))
+  (format #t "~Tdescription: ~A~%" (-> this description))
+  (format #t "~Ttrack-val: ~A~%" (-> this track-val))
+  (format #t "~Tval-func: ~A~%" (-> this val-func))
+  (format #t "~Tval-parm0: ~A~%" (-> this val-parm0))
+  (format #t "~Tval-parm1: ~A~%" (-> this val-parm1-basic))
+  (format #t "~Tactions: ~A~%" (-> this actions))
+  this
   )
 
 ;; definition of type clm-list
 (deftype clm-list (clm-basic)
-  ((tracker       symbol                 :offset-assert   4)
-   (cur-list-item int32                  :offset-assert   8)
-   (items         (array clm-list-item)  :offset-assert  12)
+  ((tracker        symbol)
+   (cur-list-item  int32)
+   (items          (array clm-list-item))
    )
-  :method-count-assert 9
-  :size-assert         #x10
-  :flag-assert         #x900000010
   )
 
 ;; definition for method 3 of type clm-list
-(defmethod inspect clm-list ((obj clm-list))
-  (format #t "[~8x] ~A~%" obj (-> obj type))
-  (format #t "~Ttracker: ~A~%" (-> obj tracker))
-  (format #t "~Tcur-list-item: ~D~%" (-> obj cur-list-item))
-  (format #t "~Titems: ~A~%" (-> obj items))
-  obj
+(defmethod inspect ((this clm-list))
+  (format #t "[~8x] ~A~%" this (-> this type))
+  (format #t "~Ttracker: ~A~%" (-> this tracker))
+  (format #t "~Tcur-list-item: ~D~%" (-> this cur-list-item))
+  (format #t "~Titems: ~A~%" (-> this items))
+  this
   )
 
 ;; definition of type clm
 (deftype clm (basic)
-  ((title string             :offset-assert   4)
-   (items (array clm-basic)  :offset-assert   8)
+  ((title  string)
+   (items  (array clm-basic))
    )
-  :method-count-assert 9
-  :size-assert         #xc
-  :flag-assert         #x90000000c
   )
 
 ;; definition for method 3 of type clm
-(defmethod inspect clm ((obj clm))
-  (format #t "[~8x] ~A~%" obj (-> obj type))
-  (format #t "~Ttitle: ~A~%" (-> obj title))
-  (format #t "~Titems: ~A~%" (-> obj items))
-  obj
+(defmethod inspect ((this clm))
+  (format #t "[~8x] ~A~%" this (-> this type))
+  (format #t "~Ttitle: ~A~%" (-> this title))
+  (format #t "~Titems: ~A~%" (-> this items))
+  this
   )
 
 ;; definition for symbol *volume-point-current*, type int
@@ -187,20 +166,17 @@
 
 ;; definition of type volume-descriptor-array
 (deftype volume-descriptor-array (inline-array-class)
-  ((data plane-volume :inline :dynamic :offset  16)
+  ((data  plane-volume  :inline :dynamic :offset  16)
    )
-  :method-count-assert 9
-  :size-assert         #x10
-  :flag-assert         #x900000010
   )
 
 ;; definition for method 3 of type volume-descriptor-array
-(defmethod inspect volume-descriptor-array ((obj volume-descriptor-array))
-  (format #t "[~8x] ~A~%" obj (-> obj type))
-  (format #t "~Tlength: ~D~%" (-> obj length))
-  (format #t "~Tallocated-length: ~D~%" (-> obj allocated-length))
-  (format #t "~Tdata[0] @ #x~X~%" (-> obj data))
-  obj
+(defmethod inspect ((this volume-descriptor-array))
+  (format #t "[~8x] ~A~%" this (-> this type))
+  (format #t "~Tlength: ~D~%" (-> this length))
+  (format #t "~Tallocated-length: ~D~%" (-> this allocated-length))
+  (format #t "~Tdata[0] @ #x~X~%" (-> this data))
+  this
   )
 
 ;; failed to figure out what this is:
@@ -214,38 +190,35 @@
 
 ;; definition of type cam-layout
 (deftype cam-layout (process)
-  ((cam-entity      entity-camera  :offset-assert 112)
-   (num-entities    int32          :offset-assert 116)
-   (cur-entity      int32          :offset-assert 120)
-   (num-volumes     int32          :offset-assert 124)
-   (cur-volume      int32          :offset-assert 128)
-   (first-pvol      int32          :offset-assert 132)
-   (first-cutoutvol int32          :offset-assert 136)
-   (res-key         float          :offset-assert 140)
+  ((cam-entity       entity-camera)
+   (num-entities     int32)
+   (cur-entity       int32)
+   (num-volumes      int32)
+   (cur-volume       int32)
+   (first-pvol       int32)
+   (first-cutoutvol  int32)
+   (res-key          float)
    )
   :heap-base #x200
-  :method-count-assert 14
-  :size-assert         #x90
-  :flag-assert         #xe02000090
   (:states
     cam-layout-active
     )
   )
 
 ;; definition for method 3 of type cam-layout
-(defmethod inspect cam-layout ((obj cam-layout))
+(defmethod inspect ((this cam-layout))
   (let ((t9-0 (method-of-type process inspect)))
-    (t9-0 obj)
+    (t9-0 this)
     )
-  (format #t "~T~Tcam-entity: ~A~%" (-> obj cam-entity))
-  (format #t "~T~Tnum-entities: ~D~%" (-> obj num-entities))
-  (format #t "~T~Tcur-entity: ~D~%" (-> obj cur-entity))
-  (format #t "~T~Tnum-volumes: ~D~%" (-> obj num-volumes))
-  (format #t "~T~Tcur-volume: ~D~%" (-> obj cur-volume))
-  (format #t "~T~Tfirst-pvol: ~D~%" (-> obj first-pvol))
-  (format #t "~T~Tfirst-cutoutvol: ~D~%" (-> obj first-cutoutvol))
-  (format #t "~T~Tres-key: ~f~%" (-> obj res-key))
-  obj
+  (format #t "~T~Tcam-entity: ~A~%" (-> this cam-entity))
+  (format #t "~T~Tnum-entities: ~D~%" (-> this num-entities))
+  (format #t "~T~Tcur-entity: ~D~%" (-> this cur-entity))
+  (format #t "~T~Tnum-volumes: ~D~%" (-> this num-volumes))
+  (format #t "~T~Tcur-volume: ~D~%" (-> this cur-volume))
+  (format #t "~T~Tfirst-pvol: ~D~%" (-> this first-pvol))
+  (format #t "~T~Tfirst-cutoutvol: ~D~%" (-> this first-cutoutvol))
+  (format #t "~T~Tres-key: ~f~%" (-> this res-key))
+  this
   )
 
 ;; definition for function cam-layout-print
@@ -553,28 +526,25 @@
 
 ;; definition of type interp-test-info
 (deftype interp-test-info (structure)
-  ((from   vector   :inline :offset-assert   0)
-   (to     vector   :inline :offset-assert  16)
-   (origin vector   :inline :offset-assert  32)
-   (color  vector4w         :offset-assert  48)
-   (axis   vector           :offset-assert  52)
-   (disp   string           :offset-assert  56)
+  ((from    vector  :inline)
+   (to      vector  :inline)
+   (origin  vector  :inline)
+   (color   vector4w)
+   (axis    vector)
+   (disp    string)
    )
-  :method-count-assert 9
-  :size-assert         #x3c
-  :flag-assert         #x90000003c
   )
 
 ;; definition for method 3 of type interp-test-info
-(defmethod inspect interp-test-info ((obj interp-test-info))
-  (format #t "[~8x] ~A~%" obj 'interp-test-info)
-  (format #t "~Tfrom: #<vector @ #x~X>~%" (-> obj from))
-  (format #t "~Tto: #<vector @ #x~X>~%" (-> obj to))
-  (format #t "~Torigin: #<vector @ #x~X>~%" (-> obj origin))
-  (format #t "~Tcolor: #<vector4w @ #x~X>~%" (-> obj color))
-  (format #t "~Taxis: #<vector @ #x~X>~%" (-> obj axis))
-  (format #t "~Tdisp: ~A~%" (-> obj disp))
-  obj
+(defmethod inspect ((this interp-test-info))
+  (format #t "[~8x] ~A~%" this 'interp-test-info)
+  (format #t "~Tfrom: #<vector @ #x~X>~%" (-> this from))
+  (format #t "~Tto: #<vector @ #x~X>~%" (-> this to))
+  (format #t "~Torigin: #<vector @ #x~X>~%" (-> this origin))
+  (format #t "~Tcolor: #<vector4w @ #x~X>~%" (-> this color))
+  (format #t "~Taxis: #<vector @ #x~X>~%" (-> this axis))
+  (format #t "~Tdisp: ~A~%" (-> this disp))
+  this
   )
 
 ;; definition for function interp-test
@@ -2416,22 +2386,19 @@
 
 ;; definition of type clmf-cam-flag-toggle-info
 (deftype clmf-cam-flag-toggle-info (structure)
-  ((key       float  :offset-assert   0)
-   (force-on  int32  :offset-assert   4)
-   (force-off int32  :offset-assert   8)
+  ((key        float)
+   (force-on   int32)
+   (force-off  int32)
    )
-  :method-count-assert 9
-  :size-assert         #xc
-  :flag-assert         #x90000000c
   )
 
 ;; definition for method 3 of type clmf-cam-flag-toggle-info
-(defmethod inspect clmf-cam-flag-toggle-info ((obj clmf-cam-flag-toggle-info))
-  (format #t "[~8x] ~A~%" obj 'clmf-cam-flag-toggle-info)
-  (format #t "~Tkey: ~f~%" (-> obj key))
-  (format #t "~Tforce-on: ~D~%" (-> obj force-on))
-  (format #t "~Tforce-off: ~D~%" (-> obj force-off))
-  obj
+(defmethod inspect ((this clmf-cam-flag-toggle-info))
+  (format #t "[~8x] ~A~%" this 'clmf-cam-flag-toggle-info)
+  (format #t "~Tkey: ~f~%" (-> this key))
+  (format #t "~Tforce-on: ~D~%" (-> this force-on))
+  (format #t "~Tforce-off: ~D~%" (-> this force-off))
+  this
   )
 
 ;; definition for function clmf-cam-flag-toggle
@@ -3752,7 +3719,6 @@
       (cam-layout-do-menu *clm*)
       (suspend)
       )
-    (none)
     )
   )
 

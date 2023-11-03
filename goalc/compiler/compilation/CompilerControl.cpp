@@ -161,6 +161,8 @@ Val* Compiler::compile_asm_file(const goos::Object& form, const goos::Object& re
       } else if (setting == ":disassemble") {
         options.disassemble = true;
         last_was_disasm = true;
+      } else if (setting == ":disasm-code-only") {
+        options.disasm_code_only = true;
       } else {
         throw_compiler_error(form, "The option {} was not recognized for asm-file.", setting);
       }
@@ -360,7 +362,7 @@ std::string Compiler::make_symbol_info_description(const SymbolInfo& info) {
   switch (info.kind()) {
     case SymbolInfo::Kind::GLOBAL_VAR:
       return fmt::format("[Global Variable] Type: {} Defined: {}",
-                         m_symbol_types.at(info.name()).print(),
+                         m_symbol_types.at(m_goos.intern_ptr(info.name())).print(),
                          m_goos.reader.db.get_info_for(info.src_form()));
     case SymbolInfo::Kind::LANGUAGE_BUILTIN:
       return fmt::format("[Built-in Form] {}\n", info.name());
@@ -377,7 +379,7 @@ std::string Compiler::make_symbol_info_description(const SymbolInfo& info) {
     case SymbolInfo::Kind::CONSTANT:
       return fmt::format(
           "[Constant] Name: {} Value: {} Defined: {}", info.name(),
-          m_global_constants.at(m_goos.reader.symbolTable.intern_ptr(info.name())).print(),
+          m_global_constants.at(m_goos.reader.symbolTable.intern(info.name().c_str())).print(),
           m_goos.reader.db.get_info_for(info.src_form()));
     case SymbolInfo::Kind::FUNCTION:
       return fmt::format("[Function] Name: {} Defined: {}", info.name(),
@@ -396,7 +398,7 @@ Val* Compiler::compile_get_info(const goos::Object& form, const goos::Object& re
   auto args = get_va(form, rest);
   va_check(form, args, {goos::ObjectType::SYMBOL}, {});
 
-  auto result = m_symbol_info.lookup_exact_name(args.unnamed.at(0).as_symbol()->name);
+  auto result = m_symbol_info.lookup_exact_name(args.unnamed.at(0).as_symbol().name_ptr);
   if (!result) {
     lg::print("No results found.\n");
   } else {
@@ -548,7 +550,7 @@ Val* Compiler::compile_autocomplete(const goos::Object& form, const goos::Object
   va_check(form, args, {goos::ObjectType::SYMBOL}, {});
 
   Timer timer;
-  auto result = m_symbol_info.lookup_symbols_starting_with(args.unnamed.at(0).as_symbol()->name);
+  auto result = m_symbol_info.lookup_symbols_starting_with(args.unnamed.at(0).as_symbol().name_ptr);
   auto time = timer.getMs();
 
   for (auto& x : result) {
@@ -575,7 +577,7 @@ Val* Compiler::compile_update_macro_metadata(const goos::Object& form,
     throw_compiler_error(form, "Invalid arguments provided to `update-macro-metadata");
   }
 
-  auto& name = args.unnamed.at(0).as_symbol()->name;
+  auto& name = args.unnamed.at(0).as_symbol().name_ptr;
 
   auto arg_spec = m_goos.parse_arg_spec(form, args.unnamed.at(2));
   m_macro_specs[name] = arg_spec;
@@ -601,9 +603,10 @@ std::vector<SymbolInfo>* Compiler::lookup_exact_name_info(const std::string& nam
   }
 }
 
-std::optional<TypeSpec> Compiler::lookup_typespec(const std::string& symbol_name) const {
-  if (m_symbol_types.find(symbol_name) != m_symbol_types.end()) {
-    return m_symbol_types.at(symbol_name);
+std::optional<TypeSpec> Compiler::lookup_typespec(const std::string& symbol_name) {
+  const auto& it = m_symbol_types.find(m_goos.intern_ptr(symbol_name));
+  if (it != m_symbol_types.end()) {
+    return it->second;
   }
   return {};
 }
@@ -716,7 +719,7 @@ Val* Compiler::compile_gen_docs(const goos::Object& form, const goos::Object& re
       if (sym_info.kind() == SymbolInfo::Kind::CONSTANT) {
         var.type = "unknown";  // Unfortunately, constants are not properly typed
       } else {
-        var.type = m_symbol_types.at(var.name).base_type();
+        var.type = m_symbol_types.at(m_goos.intern_ptr(var.name)).base_type();
       }
       var.def_location = def_loc;
       if (sym_info.kind() == SymbolInfo::Kind::GLOBAL_VAR) {
@@ -731,7 +734,7 @@ Val* Compiler::compile_gen_docs(const goos::Object& form, const goos::Object& re
       func.def_location = def_loc;
       func.args = Docs::get_args_from_docstring(sym_info.args(), func.description);
       // The last arg in the typespec is the return type
-      const auto& func_type = m_symbol_types.at(func.name);
+      const auto& func_type = m_symbol_types.at(m_goos.intern_ptr(func.name));
       func.return_type = func_type.last_arg().base_type();
       file_doc.functions.push_back(func);
     } else if (sym_info.kind() == SymbolInfo::Kind::TYPE) {

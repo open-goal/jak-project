@@ -3,29 +3,25 @@
 
 ;; definition of type cpad-elevator
 (deftype cpad-elevator (elevator)
-  ((sound-id sound-id  :offset-assert 368)
+  ((sound-id  sound-id)
    )
-  :heap-base #x100
-  :method-count-assert 50
-  :size-assert         #x174
-  :flag-assert         #x3201000174
   (:methods
-    (configure-collision (_type_ symbol) none 49)
+    (configure-collision (_type_ symbol) none)
     )
   )
 
 ;; definition for method 3 of type cpad-elevator
-(defmethod inspect cpad-elevator ((obj cpad-elevator))
-  (when (not obj)
-    (set! obj obj)
+(defmethod inspect ((this cpad-elevator))
+  (when (not this)
+    (set! this this)
     (goto cfg-4)
     )
   (let ((t9-0 (method-of-type elevator inspect)))
-    (t9-0 obj)
+    (t9-0 this)
     )
-  (format #t "~2Tsound-id: ~D~%" (-> obj sound-id))
+  (format #t "~2Tsound-id: ~D~%" (-> this sound-id))
   (label cfg-4)
-  obj
+  this
   )
 
 ;; failed to figure out what this is:
@@ -35,25 +31,25 @@
               )
 
 ;; definition for method 30 of type cpad-elevator
-(defmethod get-art-group cpad-elevator ((obj cpad-elevator))
+(defmethod get-art-group ((this cpad-elevator))
   "@returns The associated [[art-group]]"
   (art-group-get-by-name *level* "skel-cpad-elevator" (the-as (pointer uint32) #f))
   )
 
 ;; definition for method 43 of type cpad-elevator
-(defmethod move-between-points cpad-elevator ((obj cpad-elevator) (vec vector) (point-a float) (point-b float))
+(defmethod move-between-points ((this cpad-elevator) (vec vector) (point-a float) (point-b float))
   "Move between two points on the elevator's path
 @param vec TODO not sure
 @param point-a The first point fetched from the elevator's path
 @param point-b The second point fetched from the path
 @see [[path-control]] and [[elevator]]"
-  (let ((path-point-a (get-point-in-path! (-> obj path) (new 'stack-no-clear 'vector) point-a 'interp))
-        (path-point-b (get-point-in-path! (-> obj path) (new 'stack-no-clear 'vector) point-b 'interp))
-        (elevator-trans (-> obj root trans))
+  (let ((path-point-a (get-point-in-path! (-> this path) (new 'stack-no-clear 'vector) point-a 'interp))
+        (path-point-b (get-point-in-path! (-> this path) (new 'stack-no-clear 'vector) point-b 'interp))
+        (elevator-trans (-> this root trans))
         )
     (when (and (< (-> path-point-b y) (-> path-point-a y)) (< (-> vec y) (+ -8192.0 (-> elevator-trans y))))
       (let ((s4-2 (vector-! (new 'stack-no-clear 'vector) vec elevator-trans)))
-        (vector-inv-orient-by-quat! s4-2 s4-2 (-> obj root quat))
+        (vector-inv-orient-by-quat! s4-2 s4-2 (-> this root quat))
         (and (< (fabs (-> s4-2 x)) 49152.0) (< (fabs (-> s4-2 z)) 49152.0))
         )
       )
@@ -61,7 +57,7 @@
   )
 
 ;; definition for method 45 of type cpad-elevator
-(defmethod commited-to-ride? cpad-elevator ((obj cpad-elevator))
+(defmethod commited-to-ride? ((this cpad-elevator))
   "@returns if the target is considered within the elevator area enough to begin descending/ascending"
   (let* ((target *target*)
          (target-proc (if (type? target process-focusable)
@@ -71,9 +67,9 @@
          )
     (when target-proc
       (let* ((target-pos (get-trans target-proc 0))
-             (dist-from-center (vector-! (new 'stack-no-clear 'vector) target-pos (-> obj root trans)))
+             (dist-from-center (vector-! (new 'stack-no-clear 'vector) target-pos (-> this root trans)))
              )
-        (vector-inv-orient-by-quat! dist-from-center dist-from-center (-> obj root quat))
+        (vector-inv-orient-by-quat! dist-from-center dist-from-center (-> this root quat))
         (and (< (fabs (-> dist-from-center x)) 40960.0) (< (fabs (-> dist-from-center z)) 40960.0))
         )
       )
@@ -82,10 +78,10 @@
 
 ;; definition for method 49 of type cpad-elevator
 ;; WARN: Return type mismatch int vs none.
-(defmethod configure-collision cpad-elevator ((obj cpad-elevator) (collide-with-jak? symbol))
+(defmethod configure-collision ((this cpad-elevator) (collide-with-jak? symbol))
   "Appropriately sets the collision on the elevator
 @param collide-with-jak? If set, the elevator will collide with Jak"
-  (let ((prim (-> (the-as collide-shape-prim-group (-> obj root root-prim)) child 1)))
+  (let ((prim (-> (the-as collide-shape-prim-group (-> this root root-prim)) child 1)))
     (cond
       (collide-with-jak?
         (set! (-> prim prim-core collide-as) (collide-spec obstacle pusher))
@@ -114,7 +110,6 @@
       (configure-collision self #t)
       (set-setting! 'jump #f 0.0 0)
       )
-    (none)
     )
   :exit (behavior ()
     (sound-stop (-> self sound-id))
@@ -124,11 +119,10 @@
           (func)
           )
       )
-    (none)
     )
   :code (behavior ()
     (let ((frame-counter (current-time)))
-      (until (>= (- (current-time) frame-counter) (seconds 1))
+      (until (time-elapsed? frame-counter (seconds 1))
         (suspend)
         )
       )
@@ -141,7 +135,6 @@
           )
       )
     #f
-    (none)
     )
   )
 
@@ -158,54 +151,53 @@
       (configure-collision self #f)
       (remove-setting! 'jump)
       )
-    (none)
     )
   )
 
 ;; definition for method 40 of type cpad-elevator
-(defmethod activate-elevator cpad-elevator ((obj cpad-elevator))
+(defmethod activate-elevator ((this cpad-elevator))
   "Puts the elevator initially into the correct state. This is typically based upon game completion"
   (if (task-node-closed? (game-task-node dig-knock-down-introduction))
-      (go (method-of-object obj arrived))
-      (go (method-of-object obj dormant))
+      (go (method-of-object this arrived))
+      (go (method-of-object this dormant))
       )
   )
 
 ;; definition for method 10 of type cpad-elevator
-(defmethod deactivate cpad-elevator ((obj cpad-elevator))
-  (sound-stop (-> obj sound-id))
-  ((the-as (function elevator none) (find-parent-method cpad-elevator 10)) obj)
+(defmethod deactivate ((this cpad-elevator))
+  (sound-stop (-> this sound-id))
+  (call-parent-method this)
   (none)
   )
 
 ;; definition for method 42 of type cpad-elevator
 ;; WARN: Return type mismatch ambient-sound vs none.
-(defmethod set-ambient-sound! cpad-elevator ((obj cpad-elevator))
+(defmethod set-ambient-sound! ((this cpad-elevator))
   "Sets the elevator's [[ambient-sound]] up"
-  (set! (-> obj sound)
-        (new 'process 'ambient-sound (static-sound-spec "cpad-elevator-l" :fo-max 70) (-> obj root trans))
+  (set! (-> this sound)
+        (new 'process 'ambient-sound (static-sound-spec "cpad-elevator-l" :fo-max 70) (-> this root trans))
         )
   (none)
   )
 
 ;; definition for method 33 of type cpad-elevator
 ;; WARN: Return type mismatch sound-id vs none.
-(defmethod init-plat! cpad-elevator ((obj cpad-elevator))
+(defmethod init-plat! ((this cpad-elevator))
   "Does any necessary initial platform setup.
 For example for an elevator pre-compute the distance between the first and last points (both ways) and clear the sound."
-  (let ((last-path-index (+ (-> obj path curve num-cverts) -1)))
-    (calc-dist-between-points! obj 0 last-path-index)
-    (calc-dist-between-points! obj last-path-index 0)
+  (let ((last-path-index (+ (-> this path curve num-cverts) -1)))
+    (calc-dist-between-points! this 0 last-path-index)
+    (calc-dist-between-points! this last-path-index 0)
     )
-  (set! (-> obj sound-id) (new-sound-id))
+  (set! (-> this sound-id) (new-sound-id))
   (none)
   )
 
 ;; definition for method 31 of type cpad-elevator
 ;; WARN: Return type mismatch collide-shape-moving vs none.
-(defmethod init-plat-collision! cpad-elevator ((obj cpad-elevator))
+(defmethod init-plat-collision! ((this cpad-elevator))
   "TODO - collision stuff for setting up the platform"
-  (let ((cshape-moving (new 'process 'collide-shape-moving obj (collide-list-enum usually-hit-by-player))))
+  (let ((cshape-moving (new 'process 'collide-shape-moving this (collide-list-enum usually-hit-by-player))))
     (set! (-> cshape-moving dynam) (copy *standard-dynamics* 'process))
     (set! (-> cshape-moving reaction) cshape-reaction-default)
     (set! (-> cshape-moving no-reaction)
@@ -238,7 +230,7 @@ For example for an elevator pre-compute the distance between the first and last 
       (set! (-> cshape-moving backup-collide-as) (-> root-prim prim-core collide-as))
       (set! (-> cshape-moving backup-collide-with) (-> root-prim prim-core collide-with))
       )
-    (set! (-> obj root) cshape-moving)
+    (set! (-> this root) cshape-moving)
     )
   (none)
   )

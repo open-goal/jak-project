@@ -3,36 +3,34 @@
 
 ;; definition of type quaternion
 (deftype quaternion (structure)
-  ((data float   4       :offset-assert   0)
-   (x    float           :offset          0)
-   (y    float           :offset          4)
-   (z    float           :offset          8)
-   (w    float           :offset         12)
-   (vec  vector  :inline :offset          0)
-   (quad uint128         :offset          0)
+  ((data  float    4)
+   (x     float            :overlay-at (-> data 0))
+   (y     float            :overlay-at (-> data 1))
+   (z     float            :overlay-at (-> data 2))
+   (w     float            :overlay-at (-> data 3))
+   (vec   vector   :inline :overlay-at (-> data 0))
+   (quad  uint128          :overlay-at (-> data 0))
    )
-  :method-count-assert 9
-  :size-assert         #x10
-  :flag-assert         #x900000010
   )
 
 ;; definition for method 3 of type quaternion
+;; INFO: this function exists in multiple non-identical object files
 ;; INFO: Used lq/sq
-(defmethod inspect quaternion ((obj quaternion))
-  (when (not obj)
-    (set! obj obj)
+(defmethod inspect ((this quaternion))
+  (when (not this)
+    (set! this this)
     (goto cfg-4)
     )
-  (format #t "[~8x] ~A~%" obj 'quaternion)
-  (format #t "~1Tdata[4] @ #x~X~%" (&-> obj x))
-  (format #t "~1Tx: ~f~%" (-> obj x))
-  (format #t "~1Ty: ~f~%" (-> obj y))
-  (format #t "~1Tz: ~f~%" (-> obj z))
-  (format #t "~1Tw: ~f~%" (-> obj w))
-  (format #t "~1Tvec: #<vector @ #x~X>~%" (&-> obj x))
-  (format #t "~1Tquad: ~D~%" (-> obj quad))
+  (format #t "[~8x] ~A~%" this 'quaternion)
+  (format #t "~1Tdata[4] @ #x~X~%" (&-> this x))
+  (format #t "~1Tx: ~f~%" (-> this x))
+  (format #t "~1Ty: ~f~%" (-> this y))
+  (format #t "~1Tz: ~f~%" (-> this z))
+  (format #t "~1Tw: ~f~%" (-> this w))
+  (format #t "~1Tvec: #<vector @ #x~X>~%" (&-> this x))
+  (format #t "~1Tquad: ~D~%" (-> this quad))
   (label cfg-4)
-  obj
+  this
   )
 
 ;; definition for symbol *unity-quaternion*, type quaternion

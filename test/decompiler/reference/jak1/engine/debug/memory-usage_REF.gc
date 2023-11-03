@@ -6,15 +6,15 @@
 
 ;; definition for method 3 of type memory-usage-block
 ;; INFO: this function exists in multiple non-identical object files
-(defmethod inspect memory-usage-block ((obj memory-usage-block))
+(defmethod inspect ((this memory-usage-block))
   (format #t "-------------------------------------------------------------~%")
   (format #t " #                 name    count    bytes used   aligned bytes~%")
   (format #t "-------------------------------------------------------------~%")
   (let ((s5-0 0)
         (s4-0 0)
         )
-    (dotimes (s3-0 (-> obj length))
-      (let ((v1-2 (-> obj data s3-0)))
+    (dotimes (s3-0 (-> this length))
+      (let ((v1-2 (-> this data s3-0)))
         (+! s5-0 (-> v1-2 used))
         (+! s4-0 (-> v1-2 total))
         (format
@@ -31,36 +31,36 @@
     (format #t "total:                               ~8D       ~8D~%" s5-0 s4-0)
     )
   (format #t "-------------------------------------------------------------~%")
-  obj
+  this
   )
 
 ;; definition for method 8 of type object
-(defmethod mem-usage object ((obj object) (arg0 memory-usage-block) (arg1 int))
-  (if obj
-      (format #t "WARNING: mem-usage called on object, probably not what was wanted for ~A~%" obj)
+(defmethod mem-usage ((this object) (arg0 memory-usage-block) (arg1 int))
+  (if this
+      (format #t "WARNING: mem-usage called on object, probably not what was wanted for ~A~%" this)
       )
-  obj
+  this
   )
 
 ;; definition for method 10 of type memory-usage-block
-(defmethod calculate-total memory-usage-block ((obj memory-usage-block))
+(defmethod calculate-total ((this memory-usage-block))
   (let ((v0-0 0))
-    (dotimes (v1-0 (-> obj length))
-      (+! v0-0 (-> obj data v1-0 total))
+    (dotimes (v1-0 (-> this length))
+      (+! v0-0 (-> this data v1-0 total))
       )
     v0-0
     )
   )
 
 ;; definition for method 9 of type memory-usage-block
-(defmethod reset! memory-usage-block ((obj memory-usage-block))
-  (set! (-> obj length) 0)
+(defmethod reset! ((this memory-usage-block))
+  (set! (-> this length) 0)
   (dotimes (v1-0 109)
-    (set! (-> obj data v1-0 used) 0)
-    (set! (-> obj data v1-0 total) 0)
-    (set! (-> obj data v1-0 count) 0)
+    (set! (-> this data v1-0 used) 0)
+    (set! (-> this data v1-0 total) 0)
+    (set! (-> this data v1-0 count) 0)
     )
-  obj
+  this
   )
 
 ;; definition for function mem-size
@@ -75,20 +75,20 @@
   )
 
 ;; definition for method 14 of type level
-(defmethod compute-memory-usage level ((obj level) (arg0 object))
-  (if (zero? (-> obj mem-usage-block))
-      (set! (-> obj mem-usage-block) (new 'debug 'memory-usage-block))
+(defmethod compute-memory-usage ((this level) (arg0 object))
+  (if (zero? (-> this mem-usage-block))
+      (set! (-> this mem-usage-block) (new 'debug 'memory-usage-block))
       )
-  (set! arg0 (or (zero? (-> obj mem-usage-block length)) arg0))
+  (set! arg0 (or (zero? (-> this mem-usage-block length)) arg0))
   (when arg0
-    (mem-usage obj (reset! (-> obj mem-usage-block)) 0)
-    (set! (-> obj mem-usage) (calculate-total (-> obj mem-usage-block)))
+    (mem-usage this (reset! (-> this mem-usage-block)) 0)
+    (set! (-> this mem-usage) (calculate-total (-> this mem-usage-block)))
     )
-  (-> obj mem-usage-block)
+  (-> this mem-usage-block)
   )
 
 ;; definition for method 8 of type process-tree
-(defmethod mem-usage process-tree ((obj process-tree) (arg0 memory-usage-block) (arg1 int))
+(defmethod mem-usage ((this process-tree) (arg0 memory-usage-block) (arg1 int))
   (let ((v1-0 87))
     (let* ((a0-1 *dead-pool-list*)
            (a3-0 (car a0-1))
@@ -133,7 +133,7 @@
       )
     )
   (iterate-process-tree
-    obj
+    this
     (lambda ((arg0 process))
       (let ((gp-0 *temp-mem-usage*))
         (let ((s4-0 (cond
@@ -296,7 +296,7 @@
       )
     *null-kernel-context*
     )
-  obj
+  this
   )
 
 ;; definition for symbol *max-dma*, type int
@@ -305,10 +305,10 @@
 ;; definition for method 11 of type memory-usage-block
 ;; INFO: Used lq/sq
 ;; INFO: Return type mismatch memory-usage-block vs none.
-(defmethod print-mem-usage memory-usage-block ((obj memory-usage-block) (arg0 level) (arg1 object))
+(defmethod print-mem-usage ((this memory-usage-block) (arg0 level) (arg1 object))
   (local-vars (sv-16 object) (sv-32 string) (sv-48 symbol) (sv-64 int) (sv-80 int))
   (let ((s3-0 (&- (-> arg0 heap current) (the-as uint (-> arg0 heap base)))))
-    (let ((v1-2 (+ (-> obj data 59 total) (-> obj data 60 total))))
+    (let ((v1-2 (+ (-> this data 59 total) (-> this data 60 total))))
       (< #x10000 v1-2)
       )
     (let ((s2-0 #xa1a333)
@@ -360,7 +360,7 @@
     (format
       arg1
       "  bsp ~192H~5DK ~280Hdebug~456H~5DK~%"
-      (sar (+ (-> obj data 56 total) (-> obj data 57 total) (-> obj data 58 total)) 10)
+      (sar (+ (-> this data 56 total) (-> this data 57 total) (-> this data 58 total)) 10)
       (sar (-> *dma-mem-usage* data 84 total) 10)
       )
     (format
@@ -374,20 +374,20 @@
         10
         )
       )
-    (format arg1 "  bsp-leaf-vis-adj ~192H~5DK~%" (sar (+ (-> obj data 59 total) (-> obj data 60 total)) 10))
-    (format arg1 "  level-code ~192H~5DK~%" (sar (-> obj data 63 total) 10))
+    (format arg1 "  bsp-leaf-vis-adj ~192H~5DK~%" (sar (+ (-> this data 59 total) (-> this data 60 total)) 10))
+    (format arg1 "  level-code ~192H~5DK~%" (sar (-> this data 63 total) 10))
     (format
       arg1
       "  tfrag ~192H~5DK ~280Htfragment~456H~5DK~%"
       (sar
-        (+ (-> obj data 1 total)
-           (-> obj data 2 total)
-           (-> obj data 3 total)
-           (-> obj data 4 total)
-           (-> obj data 5 total)
-           (-> obj data 6 total)
-           (-> obj data 7 total)
-           (-> obj data 8 total)
+        (+ (-> this data 1 total)
+           (-> this data 2 total)
+           (-> this data 3 total)
+           (-> this data 4 total)
+           (-> this data 5 total)
+           (-> this data 6 total)
+           (-> this data 7 total)
+           (-> this data 8 total)
            )
         10
         )
@@ -397,14 +397,14 @@
       arg1
       "  tie-proto ~192H~5DK ~280Hsky~456H~5DK~%"
       (sar
-        (+ (-> obj data 9 total)
-           (-> obj data 10 total)
-           (-> obj data 11 total)
-           (-> obj data 12 total)
-           (-> obj data 13 total)
-           (-> obj data 14 total)
-           (-> obj data 16 total)
-           (-> obj data 17 total)
+        (+ (-> this data 9 total)
+           (-> this data 10 total)
+           (-> this data 11 total)
+           (-> this data 12 total)
+           (-> this data 13 total)
+           (-> this data 14 total)
+           (-> this data 16 total)
+           (-> this data 17 total)
            )
         10
         )
@@ -413,22 +413,22 @@
     (format
       arg1
       "  tie-instance ~192H~5DK ~280Htie-fragment~456H~5DK~%"
-      (sar (+ (-> obj data 18 total) (-> obj data 20 total) (-> obj data 21 total) (-> obj data 22 total)) 10)
+      (sar (+ (-> this data 18 total) (-> this data 20 total) (-> this data 21 total) (-> this data 22 total)) 10)
       (sar (-> *dma-mem-usage* data 9 total) 10)
       )
     (format
       arg1
       "  shrub-proto ~192H~5DK ~280Htie-near~456H~5DK~%"
       (sar
-        (+ (-> obj data 25 total)
-           (-> obj data 26 total)
-           (-> obj data 27 total)
-           (-> obj data 28 total)
-           (-> obj data 29 total)
-           (-> obj data 30 total)
-           (-> obj data 31 total)
-           (-> obj data 32 total)
-           (-> obj data 33 total)
+        (+ (-> this data 25 total)
+           (-> this data 26 total)
+           (-> this data 27 total)
+           (-> this data 28 total)
+           (-> this data 29 total)
+           (-> this data 30 total)
+           (-> this data 31 total)
+           (-> this data 32 total)
+           (-> this data 33 total)
            )
         10
         )
@@ -437,19 +437,19 @@
     (format
       arg1
       "  shrub-instance ~192H~5DK ~280Hshrubbery~456H~5DK~%"
-      (sar (-> obj data 34 total) 10)
+      (sar (-> this data 34 total) 10)
       (sar (-> *dma-mem-usage* data 27 total) 10)
       )
     (format
       arg1
       "  collision ~192H~5DK ~280Htie-generic~456H~5DK~%"
       (sar
-        (+ (-> obj data 50 total)
-           (-> obj data 51 total)
-           (-> obj data 52 total)
-           (-> obj data 53 total)
-           (-> obj data 54 total)
-           (-> obj data 55 total)
+        (+ (-> this data 50 total)
+           (-> this data 51 total)
+           (-> this data 52 total)
+           (-> this data 53 total)
+           (-> this data 54 total)
+           (-> this data 55 total)
            )
         10
         )
@@ -459,22 +459,22 @@
       arg1
       "  pris-geo ~192H~5DK ~280Hpris-fragment~456H~5DK~%"
       (sar
-        (+ (-> obj data 35 total)
-           (-> obj data 36 total)
-           (-> obj data 37 total)
-           (-> obj data 38 total)
-           (-> obj data 39 total)
-           (-> obj data 40 total)
-           (-> obj data 41 total)
-           (-> obj data 42 total)
-           (-> obj data 70 total)
-           (-> obj data 71 total)
-           (-> obj data 72 total)
-           (-> obj data 73 total)
-           (-> obj data 75 total)
-           (-> obj data 78 total)
-           (-> obj data 77 total)
-           (-> obj data 108 total)
+        (+ (-> this data 35 total)
+           (-> this data 36 total)
+           (-> this data 37 total)
+           (-> this data 38 total)
+           (-> this data 39 total)
+           (-> this data 40 total)
+           (-> this data 41 total)
+           (-> this data 42 total)
+           (-> this data 70 total)
+           (-> this data 71 total)
+           (-> this data 72 total)
+           (-> this data 73 total)
+           (-> this data 75 total)
+           (-> this data 78 total)
+           (-> this data 77 total)
+           (-> this data 108 total)
            )
         10
         )
@@ -484,13 +484,13 @@
       arg1
       "  pris-anim ~192H~5DK ~280Hpris-generic~456H~5DK~%"
       (sar
-        (+ (-> obj data 65 total)
-           (-> obj data 66 total)
-           (-> obj data 67 total)
-           (-> obj data 68 total)
-           (-> obj data 69 total)
-           (-> obj data 74 total)
-           (-> obj data 76 total)
+        (+ (-> this data 65 total)
+           (-> this data 66 total)
+           (-> this data 67 total)
+           (-> this data 68 total)
+           (-> this data 69 total)
+           (-> this data 74 total)
+           (-> this data 76 total)
            )
         10
         )
@@ -499,18 +499,18 @@
     (format
       arg1
       "  textures ~192H~5DK ~280Htextures~456H~5DK~%"
-      (sar (-> obj data 79 total) 10)
+      (sar (-> this data 79 total) 10)
       (sar (-> *dma-mem-usage* data 79 total) 10)
       )
     (format arg1 "  entity ~192H~5DK~%" (sar
-                                          (+ (-> obj data 64 total)
-                                             (-> obj data 43 total)
-                                             (-> obj data 44 total)
-                                             (-> obj data 45 total)
-                                             (-> obj data 49 total)
-                                             (-> obj data 48 total)
-                                             (-> obj data 46 total)
-                                             (-> obj data 47 total)
+                                          (+ (-> this data 64 total)
+                                             (-> this data 43 total)
+                                             (-> this data 44 total)
+                                             (-> this data 45 total)
+                                             (-> this data 49 total)
+                                             (-> this data 48 total)
+                                             (-> this data 46 total)
+                                             (-> this data 47 total)
                                              )
                                           10
                                           )
@@ -519,11 +519,11 @@
       arg1
       "  misc ~192H~5DK ~280Hsprite~456H~5DK~%"
       (sar
-        (+ (-> obj data 0 total)
-           (-> obj data 61 total)
-           (-> obj data 62 total)
-           (-> obj data 80 total)
-           (-> obj data 81 total)
+        (+ (-> this data 0 total)
+           (-> this data 61 total)
+           (-> this data 62 total)
+           (-> this data 80 total)
+           (-> this data 81 total)
            )
         10
         )

@@ -1,0 +1,61 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+(defmethod draw! ((this popup-menu-entry) (font-ctx font-context) (dma-buf dma-buffer))
+  (none))
+
+(defmethod draw! ((this popup-menu-button) (font-ctx font-context) (dma-buf dma-buffer))
+  (let ((old-x (-> font-ctx origin x))
+        (old-y (-> font-ctx origin y)))
+    (pc-encode-utf8-string (-> this label) *pc-encoded-temp-string*)
+    (draw-string-adv *pc-encoded-temp-string* dma-buf font-ctx)
+    (set! (-> font-ctx origin x) old-x)
+    (set! (-> font-ctx origin y) old-y))
+  (none))
+
+(defmethod draw! ((this popup-menu))
+  (let ((font-ctx (new 'debug 'font-context *font-default-matrix* 0 0 0.0 (font-color default) (font-flags shadow kerning large))))
+    (set! (-> font-ctx scale) 0.35)
+    (set! (-> font-ctx origin x) 15.0)
+    (set! (-> font-ctx origin y) 75.0)
+    (with-dma-buffer-add-bucket ((buf (-> (current-frame) global-buf)) (bucket-id debug-no-zbuf1))
+      ;; background border
+      (draw-sprite2d-xy buf 6 64
+        (+ 17 (the int (get-widest-label this font-ctx))) ;; width
+        (+ 17 (* 15 (-> this entries length))) ;; height
+        (new 'static 'rgba :r 255 :g 255 :b 255 :a 75))
+      ;; background
+      (draw-sprite2d-xy buf 7 65
+        (+ 15 (the int (get-widest-label this font-ctx))) ;; width
+        (+ 15 (* 15 (-> this entries length))) ;; height
+        (new 'static 'rgba :r 0 :g 0 :b 0 :a 255))
+      ;; menu contents
+      (dotimes (i (-> this entries length))
+        (if (= i (-> this curr-entry-index))
+          (set! (-> font-ctx color) (font-color cyan))
+          (set! (-> font-ctx color) (font-color default)))
+        (draw! (-> this entries i) font-ctx buf)
+        (set! (-> font-ctx origin y) (+ 15.0 (-> font-ctx origin y)))))
+    )
+  (none))
+
+(defmethod move-up! ((this popup-menu))
+  (set! (-> this curr-entry-index) (max 0 (dec (-> this curr-entry-index))))
+  (none))
+
+(defmethod move-down! ((this popup-menu))
+  (set! (-> this curr-entry-index) (min (dec (-> this entries length)) (inc (-> this curr-entry-index))))
+  (none))
+
+(defmethod press! ((this popup-menu))
+  (let ((entry (-> this entries (-> this curr-entry-index))))
+    ((-> entry on-press)))
+  (none))
+
+(defmethod get-widest-label ((this popup-menu) (font-ctx font-context))
+  (let ((max-len 0.0))
+    (dotimes (i (-> this entries length))
+      (let ((label-len (-> (get-string-length (-> this entries i label) font-ctx) length)))
+        (when (> label-len max-len)
+          (set! max-len label-len))))
+    max-len))

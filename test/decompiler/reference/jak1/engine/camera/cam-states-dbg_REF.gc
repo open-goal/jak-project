@@ -3,20 +3,17 @@
 
 ;; definition of type cam-point-watch-bank
 (deftype cam-point-watch-bank (basic)
-  ((speed     float    :offset-assert   4)
-   (rot-speed degrees  :offset-assert   8)
+  ((speed      float)
+   (rot-speed  degrees)
    )
-  :method-count-assert 9
-  :size-assert         #xc
-  :flag-assert         #x90000000c
   )
 
 ;; definition for method 3 of type cam-point-watch-bank
-(defmethod inspect cam-point-watch-bank ((obj cam-point-watch-bank))
-  (format #t "[~8x] ~A~%" obj (-> obj type))
-  (format #t "~Tspeed: ~f~%" (-> obj speed))
-  (format #t "~Trot-speed: (deg ~r)~%" (-> obj rot-speed))
-  obj
+(defmethod inspect ((this cam-point-watch-bank))
+  (format #t "[~8x] ~A~%" this (-> this type))
+  (format #t "~Tspeed: ~f~%" (-> this speed))
+  (format #t "~Trot-speed: (deg ~r)~%" (-> this rot-speed))
+  this
   )
 
 ;; definition for symbol *CAM_POINT_WATCH-bank*, type cam-point-watch-bank
@@ -24,13 +21,13 @@
 
 ;; failed to figure out what this is:
 (defstate cam-point-watch (camera-slave)
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('teleport)
        #f
        )
       (else
-        (cam-standard-event-handler proc arg1 event-type event)
+        (cam-standard-event-handler proc argc message block)
         )
       )
     )
@@ -40,7 +37,6 @@
       (set! (-> self blend-from-type) (the-as uint 1))
       (set! (-> self blend-to-type) (the-as uint 1))
       )
-    (none)
     )
   :code (behavior ()
     (loop
@@ -88,26 +84,22 @@
       (suspend)
       0
       )
-    (none)
     )
   )
 
 ;; definition of type cam-free-bank
 (deftype cam-free-bank (basic)
-  ((speed     float    :offset-assert   4)
-   (rot-speed degrees  :offset-assert   8)
+  ((speed      float)
+   (rot-speed  degrees)
    )
-  :method-count-assert 9
-  :size-assert         #xc
-  :flag-assert         #x90000000c
   )
 
 ;; definition for method 3 of type cam-free-bank
-(defmethod inspect cam-free-bank ((obj cam-free-bank))
-  (format #t "[~8x] ~A~%" obj (-> obj type))
-  (format #t "~Tspeed: ~f~%" (-> obj speed))
-  (format #t "~Trot-speed: (deg ~r)~%" (-> obj rot-speed))
-  obj
+(defmethod inspect ((this cam-free-bank))
+  (format #t "[~8x] ~A~%" this (-> this type))
+  (format #t "~Tspeed: ~f~%" (-> this speed))
+  (format #t "~Trot-speed: (deg ~r)~%" (-> this rot-speed))
+  this
   )
 
 ;; definition for symbol *CAM_FREE-bank*, type cam-free-bank
@@ -356,24 +348,21 @@
 
 ;; definition of type camera-free-floating-move-info
 (deftype camera-free-floating-move-info (structure)
-  ((rv vector :inline :offset-assert   0)
-   (tv vector :inline :offset-assert  16)
-   (up vector :inline :offset-assert  32)
-   (tm matrix :inline :offset-assert  48)
+  ((rv  vector  :inline)
+   (tv  vector  :inline)
+   (up  vector  :inline)
+   (tm  matrix  :inline)
    )
-  :method-count-assert 9
-  :size-assert         #x70
-  :flag-assert         #x900000070
   )
 
 ;; definition for method 3 of type camera-free-floating-move-info
-(defmethod inspect camera-free-floating-move-info ((obj camera-free-floating-move-info))
-  (format #t "[~8x] ~A~%" obj 'camera-free-floating-move-info)
-  (format #t "~Trv: #<vector @ #x~X>~%" (-> obj rv))
-  (format #t "~Ttv: #<vector @ #x~X>~%" (-> obj tv))
-  (format #t "~Tup: #<vector @ #x~X>~%" (-> obj up))
-  (format #t "~Ttm: #<matrix @ #x~X>~%" (-> obj tm))
-  obj
+(defmethod inspect ((this camera-free-floating-move-info))
+  (format #t "[~8x] ~A~%" this 'camera-free-floating-move-info)
+  (format #t "~Trv: #<vector @ #x~X>~%" (-> this rv))
+  (format #t "~Ttv: #<vector @ #x~X>~%" (-> this tv))
+  (format #t "~Tup: #<vector @ #x~X>~%" (-> this up))
+  (format #t "~Ttm: #<matrix @ #x~X>~%" (-> this tm))
+  this
   )
 
 ;; definition for function cam-free-floating-move
@@ -416,13 +405,13 @@
 
 ;; failed to figure out what this is:
 (defstate cam-free-floating (camera-slave)
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('teleport)
        #f
        )
       (else
-        (cam-standard-event-handler proc arg1 event-type event)
+        (cam-standard-event-handler proc argc message block)
         )
       )
     )
@@ -432,7 +421,6 @@
       (set! (-> self blend-to-type) (the-as uint 1))
       (send-event *camera-combiner* 'stop-tracking)
       )
-    (none)
     )
   :code (behavior ()
     (loop
@@ -449,54 +437,47 @@
         )
       (suspend)
       )
-    (none)
     )
   )
 
 ;; definition of type camera-orbit-info
 (deftype camera-orbit-info (structure)
-  ((radius      float          :offset-assert   0)
-   (rot         float          :offset-assert   4)
-   (target-off  vector :inline :offset-assert  16)
-   (orbit-off   vector :inline :offset-assert  32)
-   (radius-lerp float          :offset-assert  48)
+  ((radius       float)
+   (rot          float)
+   (target-off   vector  :inline)
+   (orbit-off    vector  :inline)
+   (radius-lerp  float)
    )
-  :method-count-assert 9
-  :size-assert         #x34
-  :flag-assert         #x900000034
   )
 
 ;; definition for method 3 of type camera-orbit-info
-(defmethod inspect camera-orbit-info ((obj camera-orbit-info))
-  (format #t "[~8x] ~A~%" obj 'camera-orbit-info)
-  (format #t "~Tradius: ~f~%" (-> obj radius))
-  (format #t "~Trot: ~f~%" (-> obj rot))
-  (format #t "~Ttarget-off: #<vector @ #x~X>~%" (-> obj target-off))
-  (format #t "~Torbit-off: #<vector @ #x~X>~%" (-> obj orbit-off))
-  (format #t "~Tradius-lerp: ~f~%" (-> obj radius-lerp))
-  obj
+(defmethod inspect ((this camera-orbit-info))
+  (format #t "[~8x] ~A~%" this 'camera-orbit-info)
+  (format #t "~Tradius: ~f~%" (-> this radius))
+  (format #t "~Trot: ~f~%" (-> this rot))
+  (format #t "~Ttarget-off: #<vector @ #x~X>~%" (-> this target-off))
+  (format #t "~Torbit-off: #<vector @ #x~X>~%" (-> this orbit-off))
+  (format #t "~Tradius-lerp: ~f~%" (-> this radius-lerp))
+  this
   )
 
 ;; definition of type CAM_ORBIT-bank
 (deftype CAM_ORBIT-bank (basic)
-  ((RADIUS_MAX        float  :offset-assert   4)
-   (RADIUS_MIN        float  :offset-assert   8)
-   (TARGET_OFF_ADJUST float  :offset-assert  12)
-   (ORBIT_OFF_ADJUST  float  :offset-assert  16)
+  ((RADIUS_MAX         float)
+   (RADIUS_MIN         float)
+   (TARGET_OFF_ADJUST  float)
+   (ORBIT_OFF_ADJUST   float)
    )
-  :method-count-assert 9
-  :size-assert         #x14
-  :flag-assert         #x900000014
   )
 
 ;; definition for method 3 of type CAM_ORBIT-bank
-(defmethod inspect CAM_ORBIT-bank ((obj CAM_ORBIT-bank))
-  (format #t "[~8x] ~A~%" obj (-> obj type))
-  (format #t "~TRADIUS_MAX: ~f~%" (-> obj RADIUS_MAX))
-  (format #t "~TRADIUS_MIN: ~f~%" (-> obj RADIUS_MIN))
-  (format #t "~TTARGET_OFF_ADJUST: ~f~%" (-> obj TARGET_OFF_ADJUST))
-  (format #t "~TORBIT_OFF_ADJUST: ~f~%" (-> obj ORBIT_OFF_ADJUST))
-  obj
+(defmethod inspect ((this CAM_ORBIT-bank))
+  (format #t "[~8x] ~A~%" this (-> this type))
+  (format #t "~TRADIUS_MAX: ~f~%" (-> this RADIUS_MAX))
+  (format #t "~TRADIUS_MIN: ~f~%" (-> this RADIUS_MIN))
+  (format #t "~TTARGET_OFF_ADJUST: ~f~%" (-> this TARGET_OFF_ADJUST))
+  (format #t "~TORBIT_OFF_ADJUST: ~f~%" (-> this ORBIT_OFF_ADJUST))
+  this
   )
 
 ;; definition for symbol *CAM_ORBIT-bank*, type CAM_ORBIT-bank
@@ -522,13 +503,13 @@
 
 ;; failed to figure out what this is:
 (defstate cam-orbit (camera-slave)
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('teleport)
        #f
        )
       (else
-        (cam-standard-event-handler proc arg1 event-type event)
+        (cam-standard-event-handler proc argc message block)
         )
       )
     )
@@ -544,11 +525,9 @@
       (set! (-> self blend-from-type) (the-as uint 1))
       (set! (-> self blend-to-type) (the-as uint 1))
       )
-    (none)
     )
   :exit (behavior ()
     '()
-    (none)
     )
   :code (behavior ()
     (loop
@@ -597,13 +576,7 @@
         )
       (when *camera-read-analog*
         (let ((f0-20
-                (analog-input
-                  (the-as int (-> *cpad-list* cpads 0 rightx))
-                  128.0
-                  32.0
-                  110.0
-                  (* 21845.334 (-> *display* seconds-per-frame))
-                  )
+                (analog-input (the-as int (-> *cpad-list* cpads 0 rightx)) 128.0 32.0 110.0 (* 21845.334 (seconds-per-frame)))
                 )
               )
           (set! (-> *camera-orbit-info* rot)
@@ -639,6 +612,5 @@
         )
       (suspend)
       )
-    (none)
     )
   )

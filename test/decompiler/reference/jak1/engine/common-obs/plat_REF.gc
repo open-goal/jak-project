@@ -53,33 +53,29 @@
 
 ;; definition of type plat
 (deftype plat (baseplat)
-  ((path-pos float                   :offset-assert 228)
-   (sync     sync-info-eased :inline :offset-assert 232)
-   (sound-id sound-id                :offset-assert 260)
+  ((path-pos  float)
+   (sync      sync-info-eased  :inline)
+   (sound-id  sound-id)
    )
-  :heap-base #xa0
-  :method-count-assert 33
-  :size-assert         #x108
-  :flag-assert         #x2100a00108
   (:methods
-    (get-lit-skel (_type_) skeleton-group 27)
-    (plat-method-28 () none 28)
-    (wad () _type_ :state 29)
-    (plat-startup (plat) _type_ :state 30)
-    (plat-idle () _type_ :state 31)
-    (plat-path-active (plat) _type_ :state 32)
+    (get-lit-skel (_type_) skeleton-group)
+    (plat-method-28 () none)
+    (wad () _type_ :state)
+    (plat-startup (plat) _type_ :state)
+    (plat-idle () _type_ :state)
+    (plat-path-active (plat) _type_ :state)
     )
   )
 
 ;; definition for method 3 of type plat
-(defmethod inspect plat ((obj plat))
+(defmethod inspect ((this plat))
   (let ((t9-0 (method-of-type baseplat inspect)))
-    (t9-0 obj)
+    (t9-0 this)
     )
-  (format #t "~T~Tpath-pos: ~f~%" (-> obj path-pos))
-  (format #t "~T~Tsync: #<sync-info-eased @ #x~X>~%" (-> obj sync))
-  (format #t "~T~Tsound-id: ~D~%" (-> obj sound-id))
-  obj
+  (format #t "~T~Tpath-pos: ~f~%" (-> this path-pos))
+  (format #t "~T~Tsync: #<sync-info-eased @ #x~X>~%" (-> this sync))
+  (format #t "~T~Tsound-id: ~D~%" (-> this sound-id))
+  this
   )
 
 ;; failed to figure out what this is:
@@ -101,10 +97,10 @@
               )
 
 ;; definition for method 23 of type plat
-(defmethod get-unlit-skel plat ((obj plat))
+(defmethod get-unlit-skel ((this plat))
   (cond
-    ((= (-> (if (-> obj entity)
-                (-> obj entity extra level)
+    ((= (-> (if (-> this entity)
+                (-> this entity extra level)
                 (-> *level* level-default)
                 )
             name
@@ -113,16 +109,16 @@
         )
      *plat-jungleb-sg*
      )
-    ((or (= (-> (if (-> obj entity)
-                    (-> obj entity extra level)
+    ((or (= (-> (if (-> this entity)
+                    (-> this entity extra level)
                     (-> *level* level-default)
                     )
                 name
                 )
             'sunken
             )
-         (= (-> (if (-> obj entity)
-                    (-> obj entity extra level)
+         (= (-> (if (-> this entity)
+                    (-> this entity extra level)
                     (-> *level* level-default)
                     )
                 name
@@ -140,8 +136,8 @@
 
 ;; definition for method 24 of type plat
 ;; INFO: Return type mismatch int vs none.
-(defmethod baseplat-method-24 plat ((obj plat))
-  (let ((s5-0 (new 'process 'collide-shape-moving obj (collide-list-enum hit-by-player))))
+(defmethod baseplat-method-24 ((this plat))
+  (let ((s5-0 (new 'process 'collide-shape-moving this (collide-list-enum hit-by-player))))
     (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s5-0 reaction) default-collision-reaction)
     (set! (-> s5-0 no-reaction)
@@ -159,7 +155,7 @@
       )
     (set! (-> s5-0 nav-radius) (* 0.75 (-> s5-0 root-prim local-sphere w)))
     (backup-collide-with-as s5-0)
-    (set! (-> obj root-override) s5-0)
+    (set! (-> this root) s5-0)
     )
   0
   (none)
@@ -167,24 +163,24 @@
 
 ;; definition for method 26 of type plat
 ;; INFO: Return type mismatch int vs none.
-(defmethod baseplat-method-26 plat ((obj plat))
+(defmethod baseplat-method-26 ((this plat))
   0
   (none)
   )
 
 ;; definition for method 25 of type plat
 ;; INFO: Return type mismatch sparticle-launch-control vs sparticle-launch-group.
-(defmethod baseplat-method-25 plat ((obj plat))
-  (the-as sparticle-launch-group (when (!= (-> (if (-> obj entity)
-                                                   (-> obj entity extra level)
+(defmethod baseplat-method-25 ((this plat))
+  (the-as sparticle-launch-group (when (!= (-> (if (-> this entity)
+                                                   (-> this entity extra level)
                                                    (-> *level* level-default)
                                                    )
                                                name
                                                )
                                            'maincave
                                            )
-                                   (let ((v0-0 (create-launch-control (-> *part-group-id-table* 107) obj)))
-                                     (set! (-> obj part) v0-0)
+                                   (let ((v0-0 (create-launch-control (-> *part-group-id-table* 107) this)))
+                                     (set! (-> this part) v0-0)
                                      v0-0
                                      )
                                    )
@@ -206,17 +202,15 @@
         (go-virtual plat-idle)
         )
       )
-    (none)
     )
   )
 
 ;; failed to figure out what this is:
 (defstate plat-idle (plat)
   :virtual #t
-  :event (the-as (function process int symbol event-message-block object :behavior plat) plat-event)
+  :event plat-event
   :trans (behavior ()
     (baseplat-method-20 self)
-    (none)
     )
   :code (behavior ()
     (plat-trans)
@@ -236,17 +230,15 @@
         (suspend)
         )
       )
-    (none)
     )
   )
 
 ;; failed to figure out what this is:
 (defstate plat-path-active (plat)
   :virtual #t
-  :event (the-as (function process int symbol event-message-block object :behavior plat) plat-event)
+  :event plat-event
   :exit (behavior ()
     (sound-stop (-> self sound-id))
-    (none)
     )
   :trans (behavior ()
     (set! (-> self path-pos) (if (logtest? (-> self fact options) (fact-options wrap-phase))
@@ -255,60 +247,59 @@
                                  )
           )
     (eval-path-curve! (-> self path) (-> self basetrans) (-> self path-pos) 'interp)
-    (if (< (vector-vector-distance (-> self root-override trans) (ear-trans)) 81920.0)
-        (sound-play "eco-plat-hover" :id (-> self sound-id) :position (the-as symbol (-> self root-override trans)))
+    (if (< (vector-vector-distance (-> self root trans) (ear-trans)) 81920.0)
+        (sound-play "eco-plat-hover" :id (-> self sound-id) :position (the-as symbol (-> self root trans)))
         )
     (plat-trans)
-    (none)
     )
-  :code (the-as (function plat none :behavior plat) anim-loop)
-  :post (the-as (function none :behavior plat) plat-post)
+  :code (the-as (function plat object) anim-loop)
+  :post plat-post
   )
 
 ;; definition for method 11 of type plat
 ;; INFO: Return type mismatch object vs none.
-(defmethod init-from-entity! plat ((obj plat) (arg0 entity-actor))
-  (logior! (-> obj mask) (process-mask platform))
-  (baseplat-method-24 obj)
-  (process-drawable-from-entity! obj arg0)
-  (initialize-skeleton obj (get-unlit-skel obj) '())
-  (logior! (-> obj skel status) (janim-status inited))
-  (update-transforms! (-> obj root-override))
-  (baseplat-method-21 obj)
-  (baseplat-method-25 obj)
-  (load-params! (-> obj sync) obj (the-as uint 0) 0.0 0.15 0.15)
-  (set! (-> obj fact)
-        (new 'process 'fact-info obj (pickup-type eco-pill-random) (-> *FACT-bank* default-pill-inc))
+(defmethod init-from-entity! ((this plat) (arg0 entity-actor))
+  (logior! (-> this mask) (process-mask platform))
+  (baseplat-method-24 this)
+  (process-drawable-from-entity! this arg0)
+  (initialize-skeleton this (get-unlit-skel this) '())
+  (logior! (-> this skel status) (janim-status inited))
+  (update-transforms! (-> this root))
+  (baseplat-method-21 this)
+  (baseplat-method-25 this)
+  (load-params! (-> this sync) this (the-as uint 0) 0.0 0.15 0.15)
+  (set! (-> this fact)
+        (new 'process 'fact-info this (pickup-type eco-pill-random) (-> *FACT-bank* default-pill-inc))
         )
-  (set! (-> obj path) (new 'process 'curve-control obj 'path -1000000000.0))
-  (logior! (-> obj path flags) (path-control-flag display draw-line draw-point draw-text))
-  (set! (-> obj sound-id) (new-sound-id))
+  (set! (-> this path) (new 'process 'curve-control this 'path -1000000000.0))
+  (logior! (-> this path flags) (path-control-flag display draw-line draw-point draw-text))
+  (set! (-> this sound-id) (new-sound-id))
   (cond
-    ((logtest? (-> obj path flags) (path-control-flag not-found))
-     (set! (-> obj path-pos) 0.0)
-     (let ((a0-14 obj))
+    ((logtest? (-> this path flags) (path-control-flag not-found))
+     (set! (-> this path-pos) 0.0)
+     (let ((a0-14 this))
        (baseplat-method-26 a0-14)
-       (go (method-of-object obj plat-startup) a0-14)
+       (go (method-of-object this plat-startup) a0-14)
        )
      )
-    ((> (-> obj sync period) 0)
-     (set! (-> obj path-pos) (if (logtest? (-> obj fact options) (fact-options wrap-phase))
-                                 (get-current-phase (-> obj sync))
-                                 (get-current-phase-with-mirror (-> obj sync))
-                                 )
+    ((> (-> this sync period) 0)
+     (set! (-> this path-pos) (if (logtest? (-> this fact options) (fact-options wrap-phase))
+                                  (get-current-phase (-> this sync))
+                                  (get-current-phase-with-mirror (-> this sync))
+                                  )
            )
-     (eval-path-curve! (-> obj path) (-> obj root-override trans) (-> obj path-pos) 'interp)
-     (let ((a0-18 obj))
+     (eval-path-curve! (-> this path) (-> this root trans) (-> this path-pos) 'interp)
+     (let ((a0-18 this))
        (baseplat-method-26 a0-18)
-       (go (method-of-object obj plat-startup) a0-18)
+       (go (method-of-object this plat-startup) a0-18)
        )
      )
     (else
-      (set! (-> obj path-pos) 0.0)
-      (eval-path-curve! (-> obj path) (-> obj root-override trans) (-> obj path-pos) 'interp)
-      (let ((a0-20 obj))
+      (set! (-> this path-pos) 0.0)
+      (eval-path-curve! (-> this path) (-> this root trans) (-> this path-pos) 'interp)
+      (let ((a0-20 this))
         (baseplat-method-26 a0-20)
-        (go (method-of-object obj plat-startup) a0-20)
+        (go (method-of-object this plat-startup) a0-20)
         )
       )
     )

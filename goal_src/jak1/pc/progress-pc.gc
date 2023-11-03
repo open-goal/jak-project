@@ -379,7 +379,7 @@
 (define *secrets* (new 'static 'boxed-array :type game-option
     (new 'static 'game-option :option-type (game-option-type menu) :name (text-id cheats) :scale #t :param3 (game-option-menu cheats))
     (new 'static 'game-option :option-type (game-option-type menu) :name (text-id checkpoint-select) :scale #t :param3 (game-option-menu checkpoint-select)
-      :option-disabled-func (lambda () (not (task-closed? (game-task finalboss-movies) (task-status need-reminder)))))
+      :option-disabled-func (lambda () (not (>= (calculate-completion (the progress #f)) 100.0))))
     (new 'static 'game-option :option-type (game-option-type button) :name (text-id back) :scale #t)
     )
   )
@@ -507,11 +507,11 @@
   )
 
 (def-language-remap-info *language-remap-info-pc*
-        (english uk-english french german spanish italian japanese portuguese br-portuguese swedish finnish danish norwegian dutch hungarian catalan icelandic))
+        (english uk-english french german spanish italian japanese portuguese br-portuguese swedish finnish danish norwegian dutch hungarian catalan icelandic polish))
 (define *text-languages* (static-text-list-array
-        english uk-english french german spanish italian japanese portuguese br-portuguese swedish finnish danish norwegian dutch hungarian))
+        english uk-english french german spanish italian japanese portuguese br-portuguese swedish finnish danish norwegian dutch hungarian polish))
 (define *subtitle-languages* (static-text-list-array
-        english uk-english french german spanish italian br-portuguese swedish finnish danish dutch))
+        english uk-english french german spanish italian br-portuguese swedish finnish danish dutch polish))
 
 
 
@@ -523,10 +523,11 @@
 
 ;; this is to avoid changing the value of *temp-options* or reallocating the options when reloading file
 (unless *temp-options-alloced*
-(define *temp-options* (new 'static 'boxed-array :type game-option :length 200 :allocated-length 200))
-(dotimes (i (-> *temp-options* length))
-  (set! (-> *temp-options* i) (new 'global 'game-option)))
-(true! *temp-options-alloced*))
+  (define *temp-options* (new 'static 'boxed-array :type game-option :length 200 :allocated-length 200))
+  (dotimes (i (-> *temp-options* length))
+    (set! (-> *temp-options* i) (new 'global 'game-option))
+    (set! (-> *temp-options* i name-override) (new 'global 'string 128 (the-as string #f))))
+  (true! *temp-options-alloced*))
 
 (defmacro add-flava-player-option (text-id flava)
   "add a music player w/ flava button to *temp-options* with specified size"
@@ -618,11 +619,11 @@
 (defmacro add-monitor-option (text-id display-id)
   "add a display button to *temp-options* with specified size"
   `(let ((option (-> *temp-options* (length *temp-options*)))
-         (name (pc-get-display-name ,display-id)))
+         (name (pc-get-display-name ,display-id *pc-cpp-temp-string*)))
       (set! (-> option option-type) (game-option-type monitor))
       ;; Use the name of the display if it's available
       (if name
-        (set! (-> option name-override) name)
+        (copy-string<-string (-> option name-override) *pc-cpp-temp-string*)
         (set! (-> option name) ,text-id))
       (set! (-> option param1) (the float ,display-id))
       (set! (-> option scale) #t)
@@ -641,18 +642,15 @@
 (defmacro add-controller-option (text-id controller-id)
   "add a controller option to *temp-options* with specified size"
   `(let ((option (-> *temp-options* (length *temp-options*)))
-         (name (pc-get-controller-name ,controller-id)))
+         (name (pc-get-controller-name ,controller-id *pc-cpp-temp-string*)))
       (set! (-> option option-type) (game-option-type controller))
       ;; Use the name of the controller if it's available
       (if name
-        (set! (-> option name-override) name)
+        (copy-string<-string (-> option name-override) *pc-cpp-temp-string*)
         (set! (-> option name) ,text-id))
       (set! (-> option param1) (the float ,controller-id))
       (set! (-> option scale) #t)
-
-      (1+! (-> *temp-options* length))
-      )
-  )
+      (1+! (-> *temp-options* length))))
 
 (defun build-controller-options ()
   "Dynamically creates menu options for selecting your controller.
@@ -995,9 +993,9 @@
   (set! (-> *controller-options* 1 value-to-modify) (&-> *setting-control* default vibration))
   (set! (-> *controller-options* 2 value-to-modify) (&-> *pc-settings* stick-deadzone))
   (set! (-> *controller-options* 3 value-to-modify) (&-> *pc-settings* ignore-controller-win-unfocused?))
-  (set! (-> *controller-options* 4 value-to-modify) (&-> *pc-settings* controller-hp-led?))
-  (set! (-> *controller-options* 5 value-to-modify) (&-> *pc-settings* controller-eco-led?))
-  (set! (-> *controller-options* 6 value-to-modify) (&-> *pc-settings* controller-heat-led?))
+  (set! (-> *controller-options* 4 value-to-modify) (&-> *pc-settings* controller-led-hp?))
+  (set! (-> *controller-options* 5 value-to-modify) (&-> *pc-settings* controller-led-eco?))
+  (set! (-> *controller-options* 6 value-to-modify) (&-> *pc-settings* controller-led-heat?))
 
   (set! (-> *mouse-options* 0 value-to-modify) (&-> *pc-settings* mouse-camera?))
   (set! (-> *mouse-options* 1 value-to-modify) (&-> *pc-settings* mouse-xsens))
@@ -1389,7 +1387,7 @@
          (when (and (nonzero? (-> options (-> obj option-index) option-disabled-func))
                     (!= (-> options (-> obj option-index) option-disabled-func) #f)
                     ((-> options (-> obj option-index) option-disabled-func)))
-               (sound-play "menu-stats")
+               (sound-play "cursor-options")
                (return #f))
          (cond
            ((not (-> obj selected-option))
@@ -2153,7 +2151,7 @@
         ;; set the common params for the text drawing
         (set-width! font 370)
         (set-height! font 25)
-        (set! (-> font flags) (font-flags shadow kerning middle left large))
+        (set! (-> font flags) (font-flags shadow kerning middle middle-vert large))
         ;; set scroll arrow sprite vertical position right now
         (set! (-> obj particles 32 init-pos y) (the float (* 2 (- y-off 20))))
         ;; when scrolling we draw an extra line
@@ -2344,14 +2342,14 @@
                         )
                     )
                   (((game-option-type binding-assignment))
-                    (let ((bind (pc-get-current-bind (-> options index bind-info))))
+                    (let ((bind (pc-get-current-bind (-> options index bind-info) *pc-cpp-temp-string*)))
                       (cond
                        ((= bind #f)
                         (set! option-str (string-format "~S" (lookup-text! *common-text* (text-id input-opts-binds-unset) #f))))
-                       ((string= bind "unknown")
+                       ((string= *pc-cpp-temp-string* "unknown")
                         (set! option-str (string-format "~S" (lookup-text! *common-text* (text-id input-opts-binds-unknown) #f))))
                        (else
-                        (set! option-str (string-format "~S" bind))))))
+                        (set! option-str (string-format "~S" *pc-cpp-temp-string*))))))
                   (((game-option-type display-mode)
                     (game-option-type msaa)
                     (game-option-type lod-bg)
@@ -2466,20 +2464,20 @@
                     )
                     (((game-option-type binding-assignment))
                      ;; binding assignment options show their input + the current binding
-                     (let ((bind (pc-get-current-bind (-> options index bind-info))))
+                     (let ((bind (pc-get-current-bind (-> options index bind-info) *pc-cpp-temp-string*)))
                       (cond
                        ((= bind #f)
                         (set! option-str (string-format "~S: ~10L~S~0L"
                                                         (-> options index name-override)
                                                         (lookup-text! *common-text* (text-id input-opts-binds-unset) #f))))
-                       ((string= bind "unknown")
+                       ((string= *pc-cpp-temp-string* "unknown")
                         (set! option-str (string-format "~S: ~10L~S~0L"
                                                         (-> options index name-override)
                                                         (lookup-text! *common-text* (text-id input-opts-binds-unknown) #f))))
                        (else
                         (set! option-str (string-format "~S: ~10L~S~0L"
                                          (-> options index name-override)
-                                         bind))))))
+                                         *pc-cpp-temp-string*))))))
                     (((game-option-type cheat-toggle))
                       (cond
                         ((not (logtest? (-> *pc-settings* cheats-known) (ash 1 (the int (-> options index param1)))))
@@ -2596,7 +2594,7 @@
 
 (defun draw-memcard-speedrun-options ((obj progress) (arg0 font-context))
   (set-scale! arg0 0.85)
-  (set-flags! arg0 (font-flags shadow kerning middle left large))
+  (set-flags! arg0 (font-flags shadow kerning middle middle-vert large))
   (set-origin! arg0 (- 20 (-> obj left-x-offset)) 30)
   (set-width! arg0 360)
   (set-color! arg0 (font-color progress-blue))
@@ -2604,7 +2602,7 @@
   (print-game-text-scaled (lookup-text! *common-text* (text-id speedrun-options-heading) #f)
                           (-> obj transition-percentage-invert) arg0 128)
   (set-scale! arg0 0.6)
-  (set-flags! arg0 (font-flags shadow kerning middle left large))
+  (set-flags! arg0 (font-flags shadow kerning middle middle-vert large))
   (set-origin! arg0 (- 20 (-> obj left-x-offset)) 60)
   (set-width! arg0 360)
   (set-height! arg0 20)
@@ -2615,7 +2613,7 @@
 
 (defun draw-memcard-auto-save-disabled ((obj progress) (arg0 font-context))
   (set-scale! arg0 0.6)
-  (set-flags! arg0 (font-flags shadow kerning middle left large))
+  (set-flags! arg0 (font-flags shadow kerning middle middle-vert large))
   (set-origin! arg0 (- 20 (-> obj left-x-offset)) 38)
   (set-width! arg0 360)
   (set-height! arg0 20)
@@ -2639,7 +2637,7 @@
   (set-scale! arg0 0.6)
   (set-width! arg0 300)
   (set-height! arg0 40)
-  (set-flags! arg0 (font-flags shadow kerning middle left large))
+  (set-flags! arg0 (font-flags shadow kerning middle middle-vert large))
   (print-game-text-scaled (lookup-text! *common-text* (text-id disable-auto-save-query) #f)
                           (-> obj transition-percentage-invert) arg0 128)
 
@@ -2899,7 +2897,7 @@
                )
           (set-width! s5-1 328)
           (set-height! s5-1 45)
-          (set! (-> s5-1 flags) (font-flags shadow kerning middle left large))
+          (set! (-> s5-1 flags) (font-flags shadow kerning middle middle-vert large))
           (print-game-text-scaled (lookup-text! *common-text* (-> gp-0 level-name-id) #f) f30-0 s5-1 (the int (* 128.0 f30-0)))
           )
         )

@@ -1176,6 +1176,8 @@ Mips2C_Line handle_normal_instr(Mips2C_Output& output,
       return handle_generic_op2(i0, instr_str, "cvtsw");
     case InstructionKind::PEXEW:
       return handle_generic_op2(i0, instr_str, "pexew");
+    case InstructionKind::PEXCW:
+      return handle_generic_op2(i0, instr_str, "pexcw");
     case InstructionKind::SQRTS:
       return handle_generic_op2(i0, instr_str, "sqrts");
     case InstructionKind::PLZCW:

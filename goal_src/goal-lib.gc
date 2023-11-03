@@ -17,6 +17,14 @@
       )
   )
 
+(defmacro mda (file &rest path)
+  "Make Debug Asm Only: make + print disassembly (asm-only mode) for a file"
+  (if (null? path)
+      `(asm-file ,file :color :write :disassemble :disasm-code-only)
+      `(asm-file ,file :color :write :disassemble ,(first path) :disasm-code-only)
+      )
+  )
+
 (defmacro ml (file)
   "Make Load: make and load the file through the listener"
   `(asm-file ,file :color :load :write)
@@ -284,6 +292,22 @@
        )
   )
 
+(defmacro defun-debug-recursive (name return-type bindings &rest body)
+  `(begin
+    (define-extern ,name
+        (function ,@(apply (lambda (x)
+                             (if (pair? x)
+                                 (second x)
+                                 'object)
+                             )
+                           bindings)
+                  ,return-type))
+    (if *debug-segment*
+        (defun-debug ,name ,bindings ,@body)
+        (define :no-typecheck #t ,name nothing))
+    )
+  )
+
 (defmacro define-once (name value)
   "define once. Does not set the symbol if it already has a value. It must have been at least forward-declared first!"
   `(begin
@@ -519,6 +543,15 @@
     )
   )
 
+(defmacro eq-any? (val &rest pred)
+  "is val equal to any of the values in pred? evaluated using or, so it short circuits."
+  (with-gensyms (val-var)
+  `(let ((,val-var ,val))
+    (or ,@(apply (lambda (x) `(= ,val-var ,x)) pred)))
+    )
+  )
+
+
 
 ;;;;;;;;;;;;;;;;;;;
 ;; Math Macros
@@ -540,6 +573,10 @@
   `(+! ,place 1)
   )
 
+(defmacro inc! (place)
+  `(+! ,place 1)
+  )
+
 (defmacro 1- (var)
   `(+ ,var -1)
   )
@@ -553,6 +590,10 @@
   )
 
 (defmacro 1-! (place)
+  `(-! ,place 1)
+  )
+
+(defmacro dec! (place)
   `(-! ,place 1)
   )
 
@@ -1003,10 +1044,6 @@
 ;;;; user stuf
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defmacro get-user ()
-  `(quote ,*user*)
-  )
-
 (defmacro user? (&rest users)
   (cond
     ((null? users)            #f)
@@ -1051,6 +1088,38 @@
     )
   ;; define a constant for it!
   `(defconstant ,name (-> self draw art-group data ,idx))
+  )
+
+(defmacro def-joint-node (jg name idx)
+  "define a new joint node for a joint geo. adds it to a global map stored in goos."
+  ;; grab data about the joint geo
+  (let* ((jg-string (symbol->string jg))
+         (name-string name)
+         (jg-info-lookup (hash-table-try-ref *jg-info* jg-string))
+         (jg-info-exists (car jg-info-lookup))
+         (jg-info (cdr jg-info-lookup))
+         )
+    ;; no joint geo was found, make a new one and add it.
+    (when (not jg-info-exists)
+      (set! jg-info (make-string-hash-table))
+      (hash-table-set! *jg-info* jg-string jg-info)
+      )
+    ;; lookup name in our joint geo
+    (let* ((joint-name-lookup (hash-table-try-ref jg-info name-string))
+           (joint-name-exists (car joint-name-lookup))
+           (joint-new (list name idx))) ;; this is the format of the individual entries
+      ;; found, check if valid
+      (if (and joint-name-exists (not (eq? (cdr joint-name-lookup) joint-new)))
+          (fmt #t "error redefining joint. data mismatch: {}\n" joint-new)
+          #f)
+      ;; not found. add to the joint geo.
+      (when (not joint-name-exists)
+        (hash-table-set! jg-info name-string joint-new)
+        )
+      )
+    )
+  ;; `(defconstant ,name (-> self node-list data ,idx))
+  `(empty)
   )
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;

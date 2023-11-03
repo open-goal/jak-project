@@ -11,25 +11,25 @@
 ;; Note that string is a bit of a special type, and the compiler assumes there is no
 ;; child type of string ever created.
 
-
+;; DECOMP BEGINS
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; String methods
 ;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defmethod length string ((obj string))
+(defmethod length ((this string))
   "Get the length of a string. Like strlen"
-  (let ((str-ptr (-> obj data)))
+  (let ((str-ptr (-> this data)))
     (while (!= 0 (-> str-ptr 0))
       (set! str-ptr (the (pointer uint8) (&+ str-ptr 1)))
       )
-    (- (the int str-ptr) (the int (-> obj data)))
+    (- (the int str-ptr) (the int (-> this data)))
     )
   )
 
-(defmethod asize-of string ((obj string))
+(defmethod asize-of ((this string))
   "get the size in bytes of a string."
-  (+ (-> obj allocated-length) 1 (-> string size))
+  (+ (-> this allocated-length) 1 (-> string size))
   )
 
 (defun copy-string<-string ((dst string) (src string))
@@ -800,6 +800,9 @@
 ;; shared temporary strings.
 (define *temp-string* (new 'global 'string 256 (the string #f)))
 (define *temp-string2* (new 'global 'string 256 (the string #f)))
+(define *pc-cpp-temp-string*
+  "A convenient place to retrieve a string from C++"
+  (new 'global 'string 256 (the-as string #f)))
 
 (defmacro string-format (&rest args)
   "Formats into *temp-string* and returns it, for in-place string formating.

@@ -8,6 +8,7 @@
 #include "common/goal_constants.h"
 #include "common/log/log.h"
 #include "common/symbols.h"
+#include "common/util/string_util.h"
 
 #include "game/kernel/common/kdsnetm.h"
 #include "game/kernel/common/klink.h"
@@ -143,7 +144,8 @@ int sql_query_sync(Ptr<String> string_in) {
       SendAck();
     */
 
-    const std::string query_str = string_in->data();
+    std::string query_str = string_in->data();
+    str_util::replace(query_str, "LAST_INSERT_ID()", "last_insert_rowid()");
     lg::debug("[SQL] Query '{}'", query_str);
 
     // ensure the DB is initialized
@@ -159,22 +161,27 @@ int sql_query_sync(Ptr<String> string_in) {
 
     auto sym = find_symbol_from_c("sql-result");
     if (sym.offset) {
-      Ptr<Type> type = Ptr<Type>(sym->value());
-      auto new_result_ptr = call_method_of_type_arg2(intern_from_c("debug").offset, type,
-                                                     GOAL_NEW_METHOD, type.offset, 1);
-
       // TODO - can their sql-result type not return multiple rows and the data is just the columns?
       // or do they make assumptions and iterate the data like a 2d flattened array
-      SQLResult* new_result = Ptr<SQLResult>(new_result_ptr).c();
-
-      int num_values = 0;
+      //
+      // Collect string results
+      std::vector<std::string> results;
       for (const auto& row : result.rows) {
-        num_values += row.size();
         for (const auto& val : row) {
-          new_result->data[0] = Ptr<String>(make_debug_string_from_c(val.data()));
+          lg::debug("[SQL] Result \"{}\"", val.data());
+          results.push_back(val.data());
         }
       }
-      new_result->len = num_values;
+
+      // Make the GOAL type to hold them
+      Ptr<Type> type = Ptr<Type>(sym->value());
+      auto new_result_ptr = call_method_of_type_arg2(intern_from_c("debug").offset, type,
+                                                     GOAL_NEW_METHOD, type.offset, results.size());
+      SQLResult* new_result = Ptr<SQLResult>(new_result_ptr).c();
+      for (int i = 0; i < (int)results.size(); i++) {
+        new_result->data[i] = Ptr<String>(make_debug_string_from_c(results.at(i).data()));
+      }
+      new_result->len = results.size();
 
       // TODO - possible values here (when to set them?)
       // 'error = the default, fairly obvious

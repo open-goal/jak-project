@@ -9,13 +9,9 @@
 
 (deftype tomb-baby-spider (nav-enemy)
   ()
-  :heap-base #x1e0
-  :method-count-assert 180
-  :size-assert         #x25c
-  :flag-assert         #xb401e0025c
-  (:methods
-    (attack () _type_ :state 178)
-    (attack-stop () _type_ :state 179)
+  (:state-methods
+    attack
+    attack-stop
     )
   )
 
@@ -172,14 +168,7 @@
     (let ((f30-0 (get-rand-float-range self 0.9 1.1)))
       (until #f
         (ja-no-eval :group! (-> self draw art-group data (-> self enemy-info walk-anim))
-                    :num! (seek!
-                      (the float
-                           (+ (-> (the-as art-joint-anim (-> self draw art-group data (-> self enemy-info walk-anim))) frames num-frames)
-                              -1
-                              )
-                           )
-                      f30-0
-                      )
+                    :num! (seek! max f30-0)
                     :frame-num 0.0
                     )
         (until (ja-done? 0)
@@ -196,14 +185,7 @@
           0
           (nav-enemy-method-167 self)
           (ja-no-eval :group! (-> self draw art-group data (-> self enemy-info idle-anim))
-                      :num! (seek!
-                        (the float
-                             (+ (-> (the-as art-joint-anim (-> self draw art-group data (-> self enemy-info idle-anim))) frames num-frames)
-                                -1
-                                )
-                             )
-                        f30-0
-                        )
+                      :num! (seek! max f30-0)
                       :frame-num 0.0
                       )
           (until (ja-done? 0)
@@ -213,14 +195,7 @@
             )
           (until (not (enemy-method-123 self 0.2))
             (ja-no-eval :group! (-> self draw art-group data (-> self enemy-info idle-anim))
-                        :num! (seek!
-                          (the float
-                               (+ (-> (the-as art-joint-anim (-> self draw art-group data (-> self enemy-info idle-anim))) frames num-frames)
-                                  -1
-                                  )
-                               )
-                          f30-0
-                          )
+                        :num! (seek! max f30-0)
                         :frame-num 0.0
                         )
             (until (ja-done? 0)
@@ -240,14 +215,7 @@
           (ja-no-eval :num! (loop!))
           (ja-channel-push! 1 (seconds 0.05))
           (ja-no-eval :group! (-> self draw art-group data (-> self enemy-info walk-anim))
-                      :num! (seek!
-                        (the float
-                             (+ (-> (the-as art-joint-anim (-> self draw art-group data (-> self enemy-info walk-anim))) frames num-frames)
-                                -1
-                                )
-                             )
-                        f30-0
-                        )
+                      :num! (seek! max f30-0)
                       :frame-num 0.0
                       )
           (until (ja-done? 0)
@@ -259,7 +227,6 @@
         )
       )
     #f
-    (none)
     )
   )
 
@@ -281,42 +248,26 @@
               )
             )
           )
-        (ja-no-eval :group! tomb-baby-spider-notice-spin-ja
-                    :num! (seek!
-                      (the float (+ (-> (the-as art-joint-anim tomb-baby-spider-notice-spin-ja) frames num-frames) -1))
-                      f30-0
-                      )
-                    :frame-num 0.0
-                    )
+        (ja-no-eval :group! tomb-baby-spider-notice-spin-ja :num! (seek! max f30-0) :frame-num 0.0)
         (until (ja-done? 0)
           (seek-to-point-toward-point! (-> self root) gp-0 (* 1.8 (-> self nav max-rotation-rate)) (seconds 0.02))
           (suspend)
           (ja :num! (seek! max f30-0))
           )
         )
-      (ja-no-eval :group! tomb-baby-spider-notice-land-ja
-                  :num! (seek!
-                    (the float (+ (-> (the-as art-joint-anim tomb-baby-spider-notice-land-ja) frames num-frames) -1))
-                    f30-0
-                    )
-                  :frame-num 0.0
-                  )
+      (ja-no-eval :group! tomb-baby-spider-notice-land-ja :num! (seek! max f30-0) :frame-num 0.0)
       (until (ja-done? 0)
         (suspend)
         (ja :num! (seek! max f30-0))
         )
       )
     (react-to-focus self)
-    (none)
     )
   )
 
 (defstate attack (tomb-baby-spider)
   :virtual #t
-  :event (the-as
-    (function process int symbol event-message-block object :behavior tomb-baby-spider)
-    enemy-event-handler
-    )
+  :event enemy-event-handler
   :enter (behavior ()
     (nav-enemy-method-166 self)
     (logior! (-> self enemy-flags) (enemy-flag actor-pause-backup))
@@ -332,7 +283,6 @@
       (set! (-> v1-14 attack-id) v0-2)
       (set! (-> self attack-id) v0-2)
       )
-    (none)
     )
   :exit (behavior ()
     (let ((v1-3 (-> (the-as collide-shape-prim-group (-> self root root-prim)) child 1)))
@@ -344,14 +294,12 @@
         (logclear! (-> self focus-status) (focus-status dangerous))
         )
     (nav-enemy-method-165 self)
-    (none)
     )
   :trans (behavior ()
     (enemy-method-49 self)
     (if (logtest? (-> self enemy-flags) (enemy-flag look-at-focus))
         (logclear! (-> self enemy-flags) (enemy-flag look-at-focus))
         )
-    (none)
     )
   :code (behavior ()
     (let ((v1-0 (-> self nav)))
@@ -363,29 +311,19 @@
       )
     0
     (ja-channel-push! 1 (seconds 0.1))
-    (ja-no-eval :group! tomb-baby-spider-attack0-start-ja
-                :num! (seek!
-                  (the float (+ (-> (the-as art-joint-anim tomb-baby-spider-attack0-start-ja) frames num-frames) -1))
-                  0.8
-                  )
-                :frame-num 0.0
-                )
+    (ja-no-eval :group! tomb-baby-spider-attack0-start-ja :num! (seek! max 0.8) :frame-num 0.0)
     (until (ja-done? 0)
       (suspend)
       (ja :num! (seek! max 0.8))
       )
     (go-virtual attack-stop)
-    (none)
     )
-  :post (the-as (function none :behavior tomb-baby-spider) nav-enemy-chase-post)
+  :post nav-enemy-chase-post
   )
 
 (defstate attack-stop (tomb-baby-spider)
   :virtual #t
-  :event (the-as
-    (function process int symbol event-message-block object :behavior tomb-baby-spider)
-    enemy-event-handler
-    )
+  :event enemy-event-handler
   :enter (behavior ()
     (let ((v1-0 (-> self nav)))
       (set! (-> v1-0 target-speed) 0.0)
@@ -395,20 +333,15 @@
       (set! (-> v1-2 enemy-flags) (the-as enemy-flag (logclear (-> v1-2 enemy-flags) (enemy-flag enemy-flag37))))
       )
     0
-    (none)
     )
   :exit (behavior ()
     (let ((v1-0 self))
       (set! (-> v1-0 enemy-flags) (the-as enemy-flag (logior (enemy-flag enemy-flag37) (-> v1-0 enemy-flags))))
       )
     0
-    (none)
     )
   :code (behavior ()
-    (ja-no-eval :group! tomb-baby-spider-attack0-stop-ja
-                :num! (seek! (the float (+ (-> (the-as art-joint-anim tomb-baby-spider-attack0-stop-ja) frames num-frames) -1)))
-                :frame-num 0.0
-                )
+    (ja-no-eval :group! tomb-baby-spider-attack0-stop-ja :num! (seek!) :frame-num 0.0)
     (until (ja-done? 0)
       (suspend)
       (ja :num! (seek!))
@@ -459,7 +392,7 @@
                   :num! (loop! f30-2)
                   :frame-num 0.0
                   )
-      (until (>= (- (current-time) gp-3) s5-1)
+      (until (time-elapsed? gp-3 s5-1)
         (suspend)
         (ja :num! (loop! f30-2))
         )
@@ -470,9 +403,8 @@
           )
       )
     (go-virtual hostile)
-    (none)
     )
-  :post (the-as (function none :behavior tomb-baby-spider) nav-enemy-face-focus-post)
+  :post nav-enemy-face-focus-post
   )
 
 (defstate hostile (tomb-baby-spider)
@@ -492,12 +424,11 @@
           )
         )
       )
-    (none)
     )
   )
 
-(defmethod enemy-method-77 tomb-baby-spider ((obj tomb-baby-spider) (arg0 (pointer float)))
-  (let* ((a2-0 (the-as collide-shape-prim-group (-> obj root root-prim)))
+(defmethod enemy-method-77 ((this tomb-baby-spider) (arg0 (pointer float)))
+  (let* ((a2-0 (the-as collide-shape-prim-group (-> this root root-prim)))
          (v1-2 (-> a2-0 child 3))
          )
     (dotimes (a3-0 3)
@@ -509,119 +440,119 @@
           (collide-spec backgnd jak bot crate obstacle player-list blocking-plane pusher)
           )
     )
-  (case (-> obj incoming knocked-type)
+  (case (-> this incoming knocked-type)
     (((knocked-type knocked-type-6))
-     (let ((v1-6 (-> obj skel root-channel 0)))
-       (set! (-> v1-6 frame-group) (the-as art-joint-anim (-> obj draw art-group data 20)))
+     (let ((v1-6 (-> this skel root-channel 0)))
+       (set! (-> v1-6 frame-group) (the-as art-joint-anim (-> this draw art-group data 20)))
        (set! (-> v1-6 param 0)
-             (the float (+ (-> (the-as art-joint-anim (-> obj draw art-group data 20)) frames num-frames) -1))
+             (the float (+ (-> (the-as art-joint-anim (-> this draw art-group data 20)) frames num-frames) -1))
              )
        (set! (-> v1-6 param 1) (-> arg0 0))
        (set! (-> v1-6 frame-num) 0.0)
-       (joint-control-channel-group! v1-6 (the-as art-joint-anim (-> obj draw art-group data 20)) num-func-seek!)
+       (joint-control-channel-group! v1-6 (the-as art-joint-anim (-> this draw art-group data 20)) num-func-seek!)
        )
      #t
      )
     (((knocked-type knocked-type-2) (knocked-type knocked-type-5))
-     (let ((v1-11 (-> obj skel root-channel 0)))
-       (set! (-> v1-11 frame-group) (the-as art-joint-anim (-> obj draw art-group data 17)))
+     (let ((v1-11 (-> this skel root-channel 0)))
+       (set! (-> v1-11 frame-group) (the-as art-joint-anim (-> this draw art-group data 17)))
        (set! (-> v1-11 param 0)
-             (the float (+ (-> (the-as art-joint-anim (-> obj draw art-group data 17)) frames num-frames) -1))
+             (the float (+ (-> (the-as art-joint-anim (-> this draw art-group data 17)) frames num-frames) -1))
              )
        (set! (-> v1-11 param 1) (-> arg0 0))
        (set! (-> v1-11 frame-num) 0.0)
-       (joint-control-channel-group! v1-11 (the-as art-joint-anim (-> obj draw art-group data 17)) num-func-seek!)
+       (joint-control-channel-group! v1-11 (the-as art-joint-anim (-> this draw art-group data 17)) num-func-seek!)
        )
      #t
      )
     (else
-      ((method-of-type nav-enemy enemy-method-77) obj arg0)
+      ((method-of-type nav-enemy enemy-method-77) this arg0)
       )
     )
   )
 
-(defmethod enemy-method-78 tomb-baby-spider ((obj tomb-baby-spider) (arg0 (pointer float)))
-  (case (-> obj incoming knocked-type)
+(defmethod enemy-method-78 ((this tomb-baby-spider) (arg0 (pointer float)))
+  (case (-> this incoming knocked-type)
     (((knocked-type knocked-type-6))
-     (let ((v1-3 (-> obj skel root-channel 0)))
-       (set! (-> v1-3 frame-group) (the-as art-joint-anim (-> obj draw art-group data 22)))
+     (let ((v1-3 (-> this skel root-channel 0)))
+       (set! (-> v1-3 frame-group) (the-as art-joint-anim (-> this draw art-group data 22)))
        (set! (-> v1-3 param 0)
-             (the float (+ (-> (the-as art-joint-anim (-> obj draw art-group data 22)) frames num-frames) -1))
+             (the float (+ (-> (the-as art-joint-anim (-> this draw art-group data 22)) frames num-frames) -1))
              )
        (set! (-> v1-3 param 1) (-> arg0 0))
        (set! (-> v1-3 frame-num) 0.0)
-       (joint-control-channel-group! v1-3 (the-as art-joint-anim (-> obj draw art-group data 22)) num-func-seek!)
+       (joint-control-channel-group! v1-3 (the-as art-joint-anim (-> this draw art-group data 22)) num-func-seek!)
        )
      #t
      )
     (((knocked-type knocked-type-2) (knocked-type knocked-type-5))
-     (let ((v1-8 (-> obj skel root-channel 0)))
-       (set! (-> v1-8 frame-group) (the-as art-joint-anim (-> obj draw art-group data 18)))
+     (let ((v1-8 (-> this skel root-channel 0)))
+       (set! (-> v1-8 frame-group) (the-as art-joint-anim (-> this draw art-group data 18)))
        (set! (-> v1-8 param 0)
-             (the float (+ (-> (the-as art-joint-anim (-> obj draw art-group data 18)) frames num-frames) -1))
+             (the float (+ (-> (the-as art-joint-anim (-> this draw art-group data 18)) frames num-frames) -1))
              )
        (set! (-> v1-8 param 1) (-> arg0 0))
        (set! (-> v1-8 frame-num) 0.0)
-       (joint-control-channel-group! v1-8 (the-as art-joint-anim (-> obj draw art-group data 18)) num-func-seek!)
+       (joint-control-channel-group! v1-8 (the-as art-joint-anim (-> this draw art-group data 18)) num-func-seek!)
        )
      #t
      )
     (else
-      ((method-of-type nav-enemy enemy-method-78) obj arg0)
+      ((method-of-type nav-enemy enemy-method-78) this arg0)
       )
     )
   )
 
-(defmethod enemy-method-79 tomb-baby-spider ((obj tomb-baby-spider) (arg0 int) (arg1 enemy-knocked-info))
+(defmethod enemy-method-79 ((this tomb-baby-spider) (arg0 int) (arg1 enemy-knocked-info))
   (case arg0
     ((3)
      (let ((s4-0 (ja-done? 0)))
-       (let ((a0-3 (-> obj skel root-channel 0)))
+       (let ((a0-3 (-> this skel root-channel 0)))
          (set! (-> a0-3 param 0) (the float (+ (-> a0-3 frame-group frames num-frames) -1)))
          (set! (-> a0-3 param 1) (-> arg1 anim-speed))
          (joint-control-channel-group-eval! a0-3 (the-as art-joint-anim #f) num-func-seek!)
          )
        (when s4-0
-         (case (-> obj incoming knocked-type)
+         (case (-> this incoming knocked-type)
            (((knocked-type knocked-type-6))
             )
            (((knocked-type knocked-type-2) (knocked-type knocked-type-5))
-            (let ((a0-7 (-> obj skel root-channel 0)))
-              (set! (-> a0-7 frame-group) (the-as art-joint-anim (-> obj draw art-group data 19)))
+            (let ((a0-7 (-> this skel root-channel 0)))
+              (set! (-> a0-7 frame-group) (the-as art-joint-anim (-> this draw art-group data 19)))
               (set! (-> a0-7 param 0)
-                    (the float (+ (-> (the-as art-joint-anim (-> obj draw art-group data 19)) frames num-frames) -1))
+                    (the float (+ (-> (the-as art-joint-anim (-> this draw art-group data 19)) frames num-frames) -1))
                     )
               (set! (-> a0-7 param 1) (-> arg1 anim-speed))
               (set! (-> a0-7 frame-num) 0.0)
-              (joint-control-channel-group! a0-7 (the-as art-joint-anim (-> obj draw art-group data 19)) num-func-seek!)
+              (joint-control-channel-group! a0-7 (the-as art-joint-anim (-> this draw art-group data 19)) num-func-seek!)
               )
             )
            (else
-             (let ((a0-8 (-> obj skel root-channel 0)))
-               (set! (-> a0-8 frame-group) (the-as art-joint-anim (-> obj draw art-group data 16)))
+             (let ((a0-8 (-> this skel root-channel 0)))
+               (set! (-> a0-8 frame-group) (the-as art-joint-anim (-> this draw art-group data 16)))
                (set! (-> a0-8 param 0)
-                     (the float (+ (-> (the-as art-joint-anim (-> obj draw art-group data 16)) frames num-frames) -1))
+                     (the float (+ (-> (the-as art-joint-anim (-> this draw art-group data 16)) frames num-frames) -1))
                      )
                (set! (-> a0-8 param 1) (-> arg1 anim-speed))
                (set! (-> a0-8 frame-num) 0.0)
-               (joint-control-channel-group! a0-8 (the-as art-joint-anim (-> obj draw art-group data 16)) num-func-seek!)
+               (joint-control-channel-group! a0-8 (the-as art-joint-anim (-> this draw art-group data 16)) num-func-seek!)
                )
              )
            )
-         (vector-reset! (-> obj root transv))
+         (vector-reset! (-> this root transv))
          #t
          )
        )
      )
     ((4)
      (let ((s4-1 (ja-done? 0)))
-       (let ((a0-11 (-> obj skel root-channel 0)))
+       (let ((a0-11 (-> this skel root-channel 0)))
          (set! (-> a0-11 param 0) (the float (+ (-> a0-11 frame-group frames num-frames) -1)))
          (set! (-> a0-11 param 1) (-> arg1 anim-speed))
          (joint-control-channel-group-eval! a0-11 (the-as art-joint-anim #f) num-func-seek!)
          )
        (when s4-1
-         (let ((v1-50 (-> obj root root-prim)))
+         (let ((v1-50 (-> this root root-prim)))
            (set! (-> (the-as collide-shape-prim-group v1-50) child 0 local-sphere w) 1638.4)
            (set! (-> (the-as collide-shape-prim-group v1-50) child 1 local-sphere w) 1638.4)
            (set! (-> (the-as collide-shape-prim-group v1-50) child 2 local-sphere w) 3276.8)
@@ -634,12 +565,12 @@
        )
      )
     (else
-      ((method-of-type nav-enemy enemy-method-79) obj arg0 arg1)
+      ((method-of-type nav-enemy enemy-method-79) this arg0 arg1)
       )
     )
   )
 
-(defmethod enemy-method-104 tomb-baby-spider ((obj tomb-baby-spider) (arg0 process) (arg1 touching-shapes-entry) (arg2 uint))
+(defmethod enemy-method-104 ((this tomb-baby-spider) (arg0 process) (arg1 touching-shapes-entry) (arg2 uint))
   (let* ((s1-0 arg0)
          (s2-0 (if (type? s1-0 process-focusable)
                    s1-0
@@ -655,31 +586,28 @@
     (if (and (= s2-0 v1-0) (focus-test? v1-0 indax))
         (set! f0-0 0.6)
         )
-    (let ((a1-5 (new 'stack-no-clear 'event-message-block)))
-      (set! (-> a1-5 from) (process->ppointer self))
-      (set! (-> a1-5 num-params) 2)
-      (set! (-> a1-5 message) 'attack)
-      (set! (-> a1-5 param 0) (the-as uint arg1))
-      (let ((v1-9 (new 'static 'attack-info :mask (attack-info-mask mode shove-back shove-up id damage knock))))
-        (set! (-> v1-9 id) arg2)
-        (set! (-> v1-9 shove-back) (* f0-0 (-> obj enemy-info attack-shove-back)))
-        (set! (-> v1-9 shove-up) (* f0-0 (-> obj enemy-info attack-shove-up)))
-        (set! (-> v1-9 mode) (-> obj enemy-info attack-mode))
-        (set! (-> v1-9 damage) (the float (-> obj enemy-info attack-damage)))
-        (set! (-> v1-9 knock) (the-as uint 8))
-        (set! (-> a1-5 param 1) (the-as uint v1-9))
-        )
-      (when (send-event-function arg0 a1-5)
-        (enemy-method-105 obj arg0)
-        #t
-        )
+    (when (send-event
+            arg0
+            'attack
+            arg1
+            (static-attack-info ((id arg2)
+                                 (shove-back (* f0-0 (-> this enemy-info attack-shove-back)))
+                                 (shove-up (* f0-0 (-> this enemy-info attack-shove-up)))
+                                 (mode (-> this enemy-info attack-mode))
+                                 (damage (the float (-> this enemy-info attack-damage)))
+                                 (knock (the-as uint 8))
+                                 )
+                                )
+            )
+      (enemy-method-105 this arg0)
+      #t
       )
     )
   )
 
-(defmethod init-enemy-collision! tomb-baby-spider ((obj tomb-baby-spider))
+(defmethod init-enemy-collision! ((this tomb-baby-spider))
   "Initializes the [[collide-shape-moving]] and any ancillary tasks to make the enemy collide properly"
-  (let ((s5-0 (new 'process 'collide-shape-moving obj (collide-list-enum usually-hit-by-player))))
+  (let ((s5-0 (new 'process 'collide-shape-moving this (collide-list-enum usually-hit-by-player))))
     (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s5-0 reaction) cshape-reaction-default)
     (set! (-> s5-0 no-reaction)
@@ -745,27 +673,23 @@
       (set! (-> s5-0 backup-collide-with) (-> v1-23 prim-core collide-with))
       )
     (set! (-> s5-0 max-iteration-count) (the-as uint 3))
-    (set! (-> obj root) s5-0)
+    (set! (-> this root) s5-0)
     )
   0
   (none)
   )
 
-(defmethod init-enemy! tomb-baby-spider ((obj tomb-baby-spider))
+(defmethod init-enemy! ((this tomb-baby-spider))
   "Common method called to initialize the enemy, typically sets up default field values and calls ancillary helper methods"
   (initialize-skeleton
-    obj
+    this
     (the-as skeleton-group (art-group-get-by-name *level* "skel-tomb-baby-spider" (the-as (pointer uint32) #f)))
     (the-as pair 0)
     )
-  (init-enemy-behaviour-and-stats! obj *tomb-baby-spider-nav-enemy-info*)
+  (init-enemy-behaviour-and-stats! this *tomb-baby-spider-nav-enemy-info*)
   (none)
   )
 
 (deftype dig-spider (tomb-baby-spider)
   ()
-  :heap-base #x1e0
-  :method-count-assert 180
-  :size-assert         #x25c
-  :flag-assert         #xb401e0025c
   )

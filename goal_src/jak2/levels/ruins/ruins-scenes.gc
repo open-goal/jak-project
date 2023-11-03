@@ -116,21 +116,7 @@
   "Generates simple sparks (2D particles) at the location specified. This is used in the cutscene.
 @param position The position to render the sparks at
 TODO - first arg type?"
-  (let ((launch-func sp-launch-particles-var)
-        (2d-sys *sp-particle-system-2d*)
-        (sp-launcher (-> *part-id-table* 1247))
-        (matrix *launch-matrix*)
-        )
-    (set! (-> matrix trans quad) (-> position quad))
-    (launch-func
-      2d-sys
-      sp-launcher
-      matrix
-      (the-as sparticle-launch-state #f)
-      (the-as sparticle-launch-control #f)
-      1.0
-      )
-    )
+  (launch-particles (-> *part-id-table* 1247) position)
   0
   (none)
   )
@@ -1325,19 +1311,15 @@ TODO - first arg type?"
   "The flag in the ruins mission.
 The scale will be linearly-interpolated based on the distance from the camera"
   ()
-  :heap-base #x50
-  :method-count-assert 21
-  :size-assert         #xc8
-  :flag-assert         #x15005000c8
-  (:methods
-    (idle () _type_ :state 20)
+  (:state-methods
+    idle
     )
   )
 
 
 (defstate idle (flag)
   :virtual #t
-  :code (the-as (function none :behavior flag) sleep-code)
+  :code sleep-code
   :post (behavior ()
     (ja :num! (loop!))
     (let ((flag-scale (lerp-scale 1.0 2.5 (vector-vector-distance (camera-pos) (-> self root trans)) 81920.0 901120.0))
@@ -1353,43 +1335,38 @@ The scale will be linearly-interpolated based on the distance from the camera"
       (deactivate self)
       )
     (ja-post)
-    (none)
     )
   )
 
 ;; WARN: Return type mismatch object vs none.
-(defmethod init-from-entity! flag ((obj flag) (arg0 entity-actor))
+(defmethod init-from-entity! ((this flag) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
 - stack size
 - collision information
 - loading the skeleton group / bones
 - sounds"
-  (set! (-> obj root) (new 'process 'trsqv))
-  (process-drawable-from-entity! obj arg0)
-  (logclear! (-> obj mask) (process-mask actor-pause))
+  (set! (-> this root) (new 'process 'trsqv))
+  (process-drawable-from-entity! this arg0)
+  (logclear! (-> this mask) (process-mask actor-pause))
   (initialize-skeleton
-    obj
+    this
     (the-as skeleton-group (art-group-get-by-name *level* "skel-flag" (the-as (pointer uint32) #f)))
     (the-as pair 0)
     )
-  (set! (-> obj part) (create-launch-control (-> *part-group-id-table* 78) obj))
-  (add-icon! *minimap* obj (the-as uint 16) (the-as int #f) (the-as vector #t) 0)
-  (go (method-of-object obj idle))
+  (set! (-> this part) (create-launch-control (-> *part-group-id-table* 78) this))
+  (add-icon! *minimap* this (the-as uint 16) (the-as int #f) (the-as vector #t) 0)
+  (go (method-of-object this idle))
   (none)
   )
 
 (deftype ruins-precipice (process-drawable)
   "The edge of the ruins tower that the flag stands on
 Touching it flips the `play?` field which will trigger the cutscene"
-  ((play? symbol  :offset-assert 200)
+  ((play?  symbol)
    )
-  :heap-base #x50
-  :method-count-assert 21
-  :size-assert         #xcc
-  :flag-assert         #x15005000cc
-  (:methods
-    (idle () _type_ :state 20)
+  (:state-methods
+    idle
     )
   )
 
@@ -1402,23 +1379,20 @@ Touching it flips the `play?` field which will trigger the cutscene"
 
 (defstate idle (ruins-precipice)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (the-as
-      object
-      (case event-type
-        (('trigger)
-         (when (not (-> self play?))
-           (set! (-> self play?) #t)
-           (process-spawn scene-player :init scene-player-init "ruins-tower-victory" #t #f)
-           )
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
+      (('trigger)
+       (when (not (-> self play?))
+         (set! (-> self play?) #t)
+         (process-spawn scene-player :init scene-player-init "ruins-tower-victory" #t #f)
          )
-        (('touch 'attack)
-         (when (and (not (-> self play?)) *target* (not (logtest? (focus-status dark) (-> *target* focus-status))))
-           (set! (-> self play?) #t)
-           (process-spawn scene-player :init scene-player-init "ruins-tower-victory" #t #f)
-           )
+       )
+      (('touch 'attack)
+       (when (and (not (-> self play?)) *target* (not (logtest? (focus-status dark) (-> *target* focus-status))))
+         (set! (-> self play?) #t)
+         (process-spawn scene-player :init scene-player-init "ruins-tower-victory" #t #f)
          )
-        )
+       )
       )
     )
   :code (behavior ()
@@ -1449,19 +1423,18 @@ Touching it flips the `play?` field which will trigger the cutscene"
       (suspend)
       )
     #f
-    (none)
     )
   )
 
 ;; WARN: Return type mismatch object vs none.
-(defmethod init-from-entity! ruins-precipice ((obj ruins-precipice) (arg0 entity-actor))
+(defmethod init-from-entity! ((this ruins-precipice) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
 - stack size
 - collision information
 - loading the skeleton group / bones
 - sounds"
-  (let ((cshape (new 'process 'collide-shape obj (collide-list-enum hit-by-player))))
+  (let ((cshape (new 'process 'collide-shape this (collide-list-enum hit-by-player))))
     (let ((cshape-mesh (new 'process 'collide-shape-prim-mesh cshape (the-as uint 0) (the-as uint 0))))
       (set! (-> cshape-mesh prim-core collide-as) (collide-spec obstacle))
       (set! (-> cshape-mesh prim-core collide-with) (collide-spec jak player-list))
@@ -1476,18 +1449,18 @@ This commonly includes things such as:
       (set! (-> cshape backup-collide-as) (-> v1-5 prim-core collide-as))
       (set! (-> cshape backup-collide-with) (-> v1-5 prim-core collide-with))
       )
-    (set! (-> obj root) cshape)
+    (set! (-> this root) cshape)
     )
-  (process-drawable-from-entity! obj arg0)
-  (vector+! (-> obj root trans) (-> obj root trans) (new 'static 'vector :z 28672.0 :w 1.0))
-  (quaternion-rotate-y! (-> obj root quat) (-> obj root quat) -7198.0376)
+  (process-drawable-from-entity! this arg0)
+  (vector+! (-> this root trans) (-> this root trans) (new 'static 'vector :z 28672.0 :w 1.0))
+  (quaternion-rotate-y! (-> this root quat) (-> this root quat) -7198.0376)
   (initialize-skeleton
-    obj
+    this
     (the-as skeleton-group (art-group-get-by-name *level* "skel-ruins-precipice" (the-as (pointer uint32) #f)))
     (the-as pair 0)
     )
-  (set! (-> obj play?) #f)
-  (go (method-of-object obj idle))
+  (set! (-> this play?) #f)
+  (go (method-of-object this idle))
   (none)
   )
 

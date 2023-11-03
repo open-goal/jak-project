@@ -37,42 +37,35 @@
 ;; DECOMP BEGINS
 
 (deftype align-control (basic)
-  ((flags       align-flags                :offset-assert   4)
-   (process     process-drawable           :offset-assert   8)
-   (frame-group art-joint-anim             :offset-assert  12)
-   (frame-num   float                      :offset-assert  16)
-   (matrix      matrix           2 :inline :offset-assert  32)
-   (transform   transform        2 :inline :offset-assert 160)
-   (delta       transformq       :inline   :offset-assert 256)
-   (last-speed  meters                     :offset-assert 304)
-   (align       transformq       :inline   :offset        160)
+  ((flags        align-flags)
+   (process      process-drawable)
+   (frame-group  art-joint-anim)
+   (frame-num    float)
+   (matrix       matrix      2 :inline)
+   (transform    transform   2 :inline)
+   (delta        transformq  :inline)
+   (last-speed   meters)
+   (align        transformq  :inline :overlay-at (-> transform 0 trans data 0))
    )
-  :method-count-assert 14
-  :size-assert         #x134
-  :flag-assert         #xe00000134
   (:methods
-    (new (symbol type process) _type_ 0)
-    (compute-alignment! (_type_) transformq 9)
-    (align! (_type_ align-opts float float float) trsqv 10)
-    (align-vel-and-quat-only! (_type_ align-opts vector int float float) trsqv :behavior process 11)
-    (first-transform (_type_) transform 12)
-    (second-transform (_type_) transform 13)
+    (new (symbol type process) _type_)
+    (compute-alignment! (_type_) transformq)
+    (align! (_type_ align-opts float float float) trsqv)
+    (align-vel-and-quat-only! (_type_ align-opts vector int float float) trsqv :behavior process)
+    (first-transform (_type_) transform)
+    (second-transform (_type_) transform)
     )
   )
 
 
 ;; WARN: Return type mismatch object vs align-control.
 (defmethod new align-control ((allocation symbol) (type-to-make type) (arg0 process))
-  (let ((obj (object-new allocation type-to-make (the-as int (-> type-to-make size)))))
-    (when (zero? obj)
+  (let ((this (object-new allocation type-to-make (the-as int (-> type-to-make size)))))
+    (when (zero? this)
       (go process-drawable-art-error "memory")
       (return (the-as align-control 0))
       )
-    (set! (-> obj process) (the-as process-drawable arg0))
-    (the-as align-control obj)
+    (set! (-> this process) (the-as process-drawable arg0))
+    (the-as align-control this)
     )
   )
-
-
-
-

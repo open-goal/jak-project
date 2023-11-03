@@ -3,55 +3,51 @@
 
 ;; definition of type baseplat
 (deftype baseplat (process-drawable)
-  ((root-override collide-shape-moving         :offset        112)
-   (smush         smush-control        :inline :offset-assert 176)
-   (basetrans     vector               :inline :offset-assert 208)
-   (bouncing      symbol                       :offset-assert 224)
+  ((root       collide-shape-moving :override)
+   (smush      smush-control         :inline)
+   (basetrans  vector                :inline)
+   (bouncing   symbol)
    )
-  :heap-base #x80
-  :method-count-assert 27
-  :size-assert         #xe4
-  :flag-assert         #x1b008000e4
   (:methods
-    (baseplat-method-20 (_type_) none 20)
-    (baseplat-method-21 (_type_) none 21)
-    (baseplat-method-22 (_type_) none 22)
-    (get-unlit-skel (_type_) skeleton-group 23)
-    (baseplat-method-24 (_type_) none 24)
-    (baseplat-method-25 (_type_) sparticle-launch-group 25)
-    (baseplat-method-26 (_type_) none 26)
+    (baseplat-method-20 (_type_) none)
+    (baseplat-method-21 (_type_) none)
+    (baseplat-method-22 (_type_) none)
+    (get-unlit-skel (_type_) skeleton-group)
+    (baseplat-method-24 (_type_) none)
+    (baseplat-method-25 (_type_) sparticle-launch-group)
+    (baseplat-method-26 (_type_) none)
     )
   )
 
 ;; definition for method 3 of type baseplat
-(defmethod inspect baseplat ((obj baseplat))
+(defmethod inspect ((this baseplat))
   (let ((t9-0 (method-of-type process-drawable inspect)))
-    (t9-0 obj)
+    (t9-0 this)
     )
-  (format #t "~T~Tsmush: #<smush-control @ #x~X>~%" (-> obj smush))
-  (format #t "~T~Tbasetrans: #<vector @ #x~X>~%" (-> obj basetrans))
-  (format #t "~T~Tbouncing: ~A~%" (-> obj bouncing))
-  obj
+  (format #t "~T~Tsmush: #<smush-control @ #x~X>~%" (-> this smush))
+  (format #t "~T~Tbasetrans: #<vector @ #x~X>~%" (-> this basetrans))
+  (format #t "~T~Tbouncing: ~A~%" (-> this bouncing))
+  this
   )
 
 ;; definition for method 21 of type baseplat
 ;; INFO: Used lq/sq
 ;; INFO: Return type mismatch int vs none.
-(defmethod baseplat-method-21 baseplat ((obj baseplat))
-  (logior! (-> obj skel status) (janim-status inited))
-  (set! (-> obj basetrans quad) (-> obj root-override trans quad))
-  (set! (-> obj bouncing) #f)
+(defmethod baseplat-method-21 ((this baseplat))
+  (logior! (-> this skel status) (janim-status inited))
+  (set! (-> this basetrans quad) (-> this root trans quad))
+  (set! (-> this bouncing) #f)
   0
   (none)
   )
 
 ;; definition for method 22 of type baseplat
 ;; INFO: Return type mismatch int vs none.
-(defmethod baseplat-method-22 baseplat ((obj baseplat))
-  (activate! (-> obj smush) -1.0 60 150 1.0 1.0)
-  (set! (-> obj bouncing) #t)
-  (logclear! (-> obj mask) (process-mask sleep))
-  (logclear! (-> obj mask) (process-mask sleep-code))
+(defmethod baseplat-method-22 ((this baseplat))
+  (activate! (-> this smush) -1.0 60 150 1.0 1.0)
+  (set! (-> this bouncing) #t)
+  (logclear! (-> this mask) (process-mask sleep))
+  (logclear! (-> this mask) (process-mask sleep-code))
   0
   (none)
   )
@@ -84,14 +80,14 @@
      (let ((gp-0 (new 'stack-no-clear 'vector)))
        (set! (-> gp-0 quad) (-> self basetrans quad))
        (+! (-> gp-0 y) (* 819.2 (update! (-> self smush))))
-       (move-to-point! (-> self root-override) gp-0)
+       (move-to-point! (-> self root) gp-0)
        )
      (if (not (!= (-> self smush amp) 0.0))
          (set! (-> self bouncing) #f)
          )
      )
     (else
-      (move-to-point! (-> self root-override) (-> self basetrans))
+      (move-to-point! (-> self root) (-> self basetrans))
       )
     )
   (none)
@@ -107,15 +103,15 @@
 
 ;; definition for method 25 of type baseplat
 ;; INFO: Return type mismatch int vs sparticle-launch-group.
-(defmethod baseplat-method-25 baseplat ((obj baseplat))
+(defmethod baseplat-method-25 ((this baseplat))
   (the-as sparticle-launch-group 0)
   )
 
 ;; definition for method 20 of type baseplat
 ;; INFO: Return type mismatch object vs none.
-(defmethod baseplat-method-20 baseplat ((obj baseplat))
-  (if (nonzero? (-> obj part))
-      (spawn (-> obj part) (-> obj root-override trans))
+(defmethod baseplat-method-20 ((this baseplat))
+  (if (nonzero? (-> this part))
+      (spawn (-> this part) (-> this root trans))
       )
   (none)
   )
@@ -123,84 +119,80 @@
 ;; definition for function plat-event
 ;; INFO: Return type mismatch none vs object.
 (defbehavior plat-event baseplat ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-  (the-as object (case arg2
-                   (('bonk)
-                    (baseplat-method-22 self)
-                    )
-                   )
-          )
+  (case arg2
+    (('bonk)
+     (baseplat-method-22 self)
+     )
+    )
   )
 
 ;; definition of type eco-door
 (deftype eco-door (process-drawable)
-  ((root-override  collide-shape          :offset        112)
-   (speed          float                  :offset-assert 176)
-   (open-distance  float                  :offset-assert 180)
-   (close-distance float                  :offset-assert 184)
-   (out-dir        vector         :inline :offset-assert 192)
-   (open-sound     sound-name             :offset-assert 208)
-   (close-sound    sound-name             :offset-assert 224)
-   (state-actor    entity-actor           :offset-assert 240)
-   (flags          eco-door-flags         :offset-assert 244)
-   (locked         symbol                 :offset-assert 248)
-   (auto-close     symbol                 :offset-assert 252)
-   (one-way        symbol                 :offset-assert 256)
+  ((root            collide-shape :override)
+   (speed           float)
+   (open-distance   float)
+   (close-distance  float)
+   (out-dir         vector         :inline)
+   (open-sound      sound-name)
+   (close-sound     sound-name)
+   (state-actor     entity-actor)
+   (flags           eco-door-flags)
+   (locked          symbol)
+   (auto-close      symbol)
+   (one-way         symbol)
    )
-  :heap-base #xa0
-  :method-count-assert 27
-  :size-assert         #x104
-  :flag-assert         #x1b00a00104
+  (:state-methods
+    door-closed
+    door-opening
+    door-open
+    door-closing
+    )
   (:methods
-    (door-closed () _type_ :state 20)
-    (door-opening () _type_ :state 21)
-    (door-open () _type_ :state 22)
-    (door-closing () _type_ :state 23)
-    (eco-door-method-24 (_type_) none 24)
-    (eco-door-method-25 (_type_) none 25)
-    (eco-door-method-26 (_type_) none 26)
+    (eco-door-method-24 (_type_) none)
+    (eco-door-method-25 (_type_) none)
+    (eco-door-method-26 (_type_) none)
     )
   )
 
 ;; definition for method 3 of type eco-door
 ;; INFO: Used lq/sq
-(defmethod inspect eco-door ((obj eco-door))
+(defmethod inspect ((this eco-door))
   (let ((t9-0 (method-of-type process-drawable inspect)))
-    (t9-0 obj)
+    (t9-0 this)
     )
-  (format #t "~T~Tspeed: ~f~%" (-> obj speed))
-  (format #t "~T~Topen-distance: ~f~%" (-> obj open-distance))
-  (format #t "~T~Tclose-distance: ~f~%" (-> obj close-distance))
-  (format #t "~T~Tout-dir: #<vector @ #x~X>~%" (-> obj out-dir))
-  (format #t "~T~Topen-sound: ~D~%" (-> obj open-sound))
-  (format #t "~T~Tclose-sound: ~D~%" (-> obj close-sound))
-  (format #t "~T~Tstate-actor: ~A~%" (-> obj state-actor))
-  (format #t "~T~Tflags: ~D~%" (-> obj flags))
-  (format #t "~T~Tlocked: ~A~%" (-> obj locked))
-  (format #t "~T~Tauto-close: ~A~%" (-> obj auto-close))
-  (format #t "~T~Tone-way: ~A~%" (-> obj one-way))
-  obj
+  (format #t "~T~Tspeed: ~f~%" (-> this speed))
+  (format #t "~T~Topen-distance: ~f~%" (-> this open-distance))
+  (format #t "~T~Tclose-distance: ~f~%" (-> this close-distance))
+  (format #t "~T~Tout-dir: #<vector @ #x~X>~%" (-> this out-dir))
+  (format #t "~T~Topen-sound: ~D~%" (-> this open-sound))
+  (format #t "~T~Tclose-sound: ~D~%" (-> this close-sound))
+  (format #t "~T~Tstate-actor: ~A~%" (-> this state-actor))
+  (format #t "~T~Tflags: ~D~%" (-> this flags))
+  (format #t "~T~Tlocked: ~A~%" (-> this locked))
+  (format #t "~T~Tauto-close: ~A~%" (-> this auto-close))
+  (format #t "~T~Tone-way: ~A~%" (-> this one-way))
+  this
   )
 
 ;; definition for function eco-door-event-handler
 ;; INFO: Return type mismatch symbol vs object.
 (defbehavior eco-door-event-handler eco-door ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-  (the-as object (case arg2
-                   (('trigger)
-                    (set! (-> self locked) (not (-> self locked)))
-                    (cond
-                      ((-> self locked)
-                       (if (= (-> self next-state name) 'door-closed)
-                           (sound-play "door-lock")
-                           )
-                       )
-                      (else
-                        (sound-play "door-unlock")
-                        )
-                      )
-                    #t
-                    )
-                   )
-          )
+  (case arg2
+    (('trigger)
+     (set! (-> self locked) (not (-> self locked)))
+     (cond
+       ((-> self locked)
+        (if (= (-> self next-state name) 'door-closed)
+            (sound-play "door-lock")
+            )
+        )
+       (else
+         (sound-play "door-unlock")
+         )
+       )
+     #t
+     )
+    )
   )
 
 ;; failed to figure out what this is:
@@ -213,12 +205,11 @@ eco-door-event-handler
   :code (behavior ()
     (ja :num-func num-func-identity :frame-num 0.0)
     (suspend)
-    (update-transforms! (-> self root-override))
+    (update-transforms! (-> self root))
     (ja-post)
     (loop
-      (when (and *target* (>= (-> self open-distance)
-                              (vector-vector-distance (-> self root-override trans) (-> *target* control trans))
-                              )
+      (when (and *target*
+                 (>= (-> self open-distance) (vector-vector-distance (-> self root trans) (-> *target* control trans)))
                  )
         (eco-door-method-26 self)
         (if (and (not (-> self locked))
@@ -233,7 +224,6 @@ eco-door-event-handler
         )
       (suspend)
       )
-    (none)
     )
   )
 
@@ -249,10 +239,10 @@ eco-door-event-handler
             )
           )
       (if gp-0
-          (sound-play "blue-eco-on" :position (the-as symbol (-> self root-override trans)))
+          (sound-play "blue-eco-on" :position (the-as symbol (-> self root trans)))
           )
       (sound-play-by-name (-> self open-sound) (new-sound-id) 1024 0 0 (sound-group sfx) #t)
-      (clear-collide-with-as (-> self root-override))
+      (clear-collide-with-as (-> self root))
       (until (ja-done? 0)
         (ja :num! (seek! max (-> self speed)))
         (if (and gp-0 (rand-vu-percent? 0.5))
@@ -262,9 +252,8 @@ eco-door-event-handler
         )
       )
     (go-virtual door-open)
-    (none)
     )
-  :post (the-as (function none :behavior eco-door) transform-post)
+  :post transform-post
   )
 
 ;; failed to figure out what this is:
@@ -272,22 +261,21 @@ eco-door-event-handler
   :virtual #t
   :event eco-door-event-handler
   :code (behavior ()
-    (set! (-> self state-time) (-> *display* base-frame-counter))
+    (set-time! (-> self state-time))
     (process-entity-status! self (entity-perm-status complete) #t)
-    (clear-collide-with-as (-> self root-override))
+    (clear-collide-with-as (-> self root))
     (ja :num-func num-func-identity :frame-num max)
     (logior! (-> self draw status) (draw-status hidden))
     (suspend)
-    (update-transforms! (-> self root-override))
+    (update-transforms! (-> self root))
     (ja-post)
     (loop
       (let ((f30-0 (vector4-dot (-> self out-dir) (target-pos 0)))
             (f28-0 (vector4-dot (-> self out-dir) (camera-pos)))
             )
         (when (and (-> self auto-close)
-                   (or (not *target*) (< (-> self close-distance)
-                                         (vector-vector-distance (-> self root-override trans) (-> *target* control trans))
-                                         )
+                   (or (not *target*)
+                       (< (-> self close-distance) (vector-vector-distance (-> self root trans) (-> *target* control trans)))
                        )
                    )
           (if (and (>= (* f30-0 f28-0) 0.0) (< 16384.0 (fabs f28-0)))
@@ -297,7 +285,6 @@ eco-door-event-handler
         )
       (suspend)
       )
-    (none)
     )
   )
 
@@ -306,12 +293,12 @@ eco-door-event-handler
   :virtual #t
   :event eco-door-event-handler
   :code (behavior ()
-    (restore-collide-with-as (-> self root-override))
+    (restore-collide-with-as (-> self root))
     (logclear! (-> self draw status) (draw-status hidden))
     (let ((gp-0 (new 'stack 'overlaps-others-params)))
       (set! (-> gp-0 options) (the-as uint 1))
       (set! (-> gp-0 tlist) #f)
-      (while (find-overlapping-shapes (-> self root-override) gp-0)
+      (while (find-overlapping-shapes (-> self root) gp-0)
         (suspend)
         )
       )
@@ -324,18 +311,17 @@ eco-door-event-handler
         (sound-play "door-lock")
         )
     (go-virtual door-closed)
-    (none)
     )
-  :post (the-as (function none :behavior eco-door) transform-post)
+  :post transform-post
   )
 
 ;; definition for method 26 of type eco-door
 ;; INFO: Return type mismatch int vs none.
-(defmethod eco-door-method-26 eco-door ((obj eco-door))
-  (when (-> obj state-actor)
-    (if (logtest? (-> obj state-actor extra perm status) (entity-perm-status complete))
-        (set! (-> obj locked) (logtest? (-> obj flags) (eco-door-flags ecdf01)))
-        (set! (-> obj locked) (logtest? (-> obj flags) (eco-door-flags ecdf00)))
+(defmethod eco-door-method-26 ((this eco-door))
+  (when (-> this state-actor)
+    (if (logtest? (-> this state-actor extra perm status) (entity-perm-status complete))
+        (set! (-> this locked) (logtest? (-> this flags) (eco-door-flags ecdf01)))
+        (set! (-> this locked) (logtest? (-> this flags) (eco-door-flags ecdf00)))
         )
     )
   0
@@ -344,8 +330,8 @@ eco-door-event-handler
 
 ;; definition for method 24 of type eco-door
 ;; INFO: Return type mismatch int vs none.
-(defmethod eco-door-method-24 eco-door ((obj eco-door))
-  (let ((s5-0 (new 'process 'collide-shape obj (collide-list-enum hit-by-player))))
+(defmethod eco-door-method-24 ((this eco-door))
+  (let ((s5-0 (new 'process 'collide-shape this (collide-list-enum hit-by-player))))
     (let ((s4-0 (new 'process 'collide-shape-prim-mesh s5-0 (the-as uint 0) (the-as uint 0))))
       (set! (-> s4-0 prim-core collide-as) (collide-kind wall-object))
       (set! (-> s4-0 collide-with) (collide-kind target))
@@ -357,7 +343,7 @@ eco-door-event-handler
       )
     (set! (-> s5-0 nav-radius) (* 0.75 (-> s5-0 root-prim local-sphere w)))
     (backup-collide-with-as s5-0)
-    (set! (-> obj root-override) s5-0)
+    (set! (-> this root) s5-0)
     )
   0
   (none)
@@ -365,43 +351,43 @@ eco-door-event-handler
 
 ;; definition for method 25 of type eco-door
 ;; INFO: Return type mismatch int vs none.
-(defmethod eco-door-method-25 eco-door ((obj eco-door))
+(defmethod eco-door-method-25 ((this eco-door))
   0
   (none)
   )
 
 ;; definition for method 11 of type eco-door
 ;; INFO: Return type mismatch object vs none.
-(defmethod init-from-entity! eco-door ((obj eco-door) (arg0 entity-actor))
-  (eco-door-method-24 obj)
-  (process-drawable-from-entity! obj arg0)
-  (let ((f0-0 (res-lump-float (-> obj entity) 'scale :default 1.0)))
-    (set-vector! (-> obj root-override scale) f0-0 f0-0 f0-0 1.0)
+(defmethod init-from-entity! ((this eco-door) (arg0 entity-actor))
+  (eco-door-method-24 this)
+  (process-drawable-from-entity! this arg0)
+  (let ((f0-0 (res-lump-float (-> this entity) 'scale :default 1.0)))
+    (set-vector! (-> this root scale) f0-0 f0-0 f0-0 1.0)
     )
-  (set! (-> obj open-distance) 32768.0)
-  (set! (-> obj close-distance) 49152.0)
-  (set! (-> obj speed) 1.0)
-  (set! (-> obj state-actor) #f)
+  (set! (-> this open-distance) 32768.0)
+  (set! (-> this close-distance) 49152.0)
+  (set! (-> this speed) 1.0)
+  (set! (-> this state-actor) #f)
   (let ((v1-5 (entity-actor-lookup arg0 'state-actor 0)))
     (if v1-5
-        (set! (-> obj state-actor) v1-5)
+        (set! (-> this state-actor) v1-5)
         )
     )
-  (set! (-> obj locked) #f)
-  (set! (-> obj flags) (res-lump-value arg0 'flags eco-door-flags))
-  (eco-door-method-26 obj)
-  (set! (-> obj auto-close) (logtest? (-> obj flags) (eco-door-flags auto-close)))
-  (set! (-> obj one-way) (logtest? (-> obj flags) (eco-door-flags one-way)))
-  (vector-z-quaternion! (-> obj out-dir) (-> obj root-override quat))
-  (set! (-> obj out-dir w) (- (vector-dot (-> obj out-dir) (-> obj root-override trans))))
-  (update-transforms! (-> obj root-override))
-  (eco-door-method-25 obj)
-  (if (and (not (-> obj auto-close))
-           (-> obj entity)
-           (logtest? (-> obj entity extra perm status) (entity-perm-status complete))
+  (set! (-> this locked) #f)
+  (set! (-> this flags) (res-lump-value arg0 'flags eco-door-flags))
+  (eco-door-method-26 this)
+  (set! (-> this auto-close) (logtest? (-> this flags) (eco-door-flags auto-close)))
+  (set! (-> this one-way) (logtest? (-> this flags) (eco-door-flags one-way)))
+  (vector-z-quaternion! (-> this out-dir) (-> this root quat))
+  (set! (-> this out-dir w) (- (vector-dot (-> this out-dir) (-> this root trans))))
+  (update-transforms! (-> this root))
+  (eco-door-method-25 this)
+  (if (and (not (-> this auto-close))
+           (-> this entity)
+           (logtest? (-> this entity extra perm status) (entity-perm-status complete))
            )
-      (go (method-of-object obj door-open))
-      (go (method-of-object obj door-closed))
+      (go (method-of-object this door-open))
+      (go (method-of-object this door-closed))
       )
   (none)
   )

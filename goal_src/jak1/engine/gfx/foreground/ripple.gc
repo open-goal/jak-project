@@ -8,24 +8,22 @@
 (define-extern ripple-create-wave-table (function ripple-wave-set int))
 (define-extern ripple-apply-wave-table (function merc-effect symbol))
 
+;; DECOMP BEGINS
+
 (deftype ripple-request (structure)
-  ((waveform ripple-wave  :offset-assert   0)
-   (effect   merc-effect  :offset-assert   4)
+  ((waveform  ripple-wave)
+   (effect    merc-effect)
    )
   :pack-me
-  :method-count-assert 9
-  :size-assert         #x8
-  :flag-assert         #x900000008
   )
 
+
 (deftype ripple-globals (structure)
-  ((count    int32                     :offset-assert   0)
-   (requests ripple-request 16 :inline :offset-assert   4)
+  ((count     int32)
+   (requests  ripple-request  16 :inline)
    )
-  :method-count-assert 9
-  :size-assert         #x84
-  :flag-assert         #x900000084
   )
+
 
 (define *ripple-globals* (new 'global 'ripple-globals))
 
@@ -43,35 +41,34 @@
       (when (zero? a3-0)
         (set! (-> a2-1 v1-1 effect) arg1)
         (set! (-> a2-1 v1-1 waveform) arg0)
-        (set! (-> *ripple-globals* count) (+ (-> *ripple-globals* count) 1))
+        (+! (-> *ripple-globals* count) 1)
         )
       )
     )
+  0
   (none)
   )
 
 (defun ripple-update-waveform-offs ((arg0 ripple-wave-set))
-  (let ((f0-1 (the float (- (-> *display* integral-frame-counter) (the int (-> arg0 frame-save))))))
+  (let ((f0-1 (the float (- (-> *display* integral-frame-counter) (the-as int (-> arg0 frame-save))))))
     (when (!= f0-1 0.0)
       (dotimes (v1-4 (-> arg0 count))
         (let ((a1-4 (-> arg0 wave v1-4)))
-          (set! (-> a1-4 offs) (+ (-> a1-4 offs) (* f0-1 (-> a1-4 delta))))
+          (+! (-> a1-4 offs) (* f0-1 (-> a1-4 delta)))
           (set! (-> a1-4 offs) (the float (logand (the int (-> a1-4 offs)) #xffff)))
           )
         )
-      (set! (-> arg0 frame-save) (the uint (-> *display* integral-frame-counter)))
+      (set! (-> arg0 frame-save) (the-as uint (-> *display* integral-frame-counter)))
       )
     )
+  0
   (none)
   )
 
-;; definition for function ripple-execute-init
 (def-mips2c ripple-execute-init (function none))
 
-;; definition for function ripple-create-wave-table
 (def-mips2c ripple-create-wave-table (function ripple-wave-set int))
 
-;; definition for function ripple-apply-wave-table
 (def-mips2c ripple-apply-wave-table (function merc-effect symbol))
 
 (defun ripple-execute ()
@@ -100,12 +97,12 @@
         )
       )
     (set! (-> *ripple-globals* count) 0)
+    0
     )
   (none)
   )
 
-;; definition for function ripple-matrix-scale
-;; ERROR: function was not converted to expressions. Cannot decompile.
+(def-mips2c ripple-matrix-scale function)
 
 (defun-debug ripple-add-debug-sphere ((arg0 process-drawable) (arg1 vector) (arg2 float) (arg3 float))
   (let ((f30-0 (- (quaternion-y-angle (-> arg0 root quat))))
@@ -120,13 +117,7 @@
       )
     (set! (-> s5-0 w) 0.0)
     (vector+! s5-0 s5-0 (-> arg0 root trans))
-    (add-debug-sphere
-     #t
-     (bucket-id debug)
-     s5-0
-     2048.0
-     (new 'static 'rgba :r #xff :g #xff :a #x80)
-     )
+    (add-debug-sphere #t (bucket-id debug) s5-0 2048.0 (new 'static 'rgba :r #xff :g #xff :a #x80))
     )
   (none)
   )
@@ -135,10 +126,7 @@
   (let ((f30-0 0.0))
     (dotimes (s3-0 (-> arg0 count))
       (let* ((v1-3 (-> arg0 wave s3-0))
-             (f0-2 (+ (+ (-> v1-3 offs) (* arg1 (-> v1-3 xmul)))
-                      (* arg2 (-> v1-3 zmul))
-                      )
-               )
+             (f0-2 (+ (-> v1-3 offs) (* arg1 (-> v1-3 xmul)) (* arg2 (-> v1-3 zmul))))
              )
         (+! f30-0 (* (-> v1-3 scale) (cos f0-2)))
         )
@@ -147,64 +135,57 @@
     )
   )
 
-;; definition for function ripple-find-height
 (defun ripple-find-height ((arg0 process-drawable) (arg1 int) (arg2 vector))
   (local-vars (sv-16 float) (sv-32 float))
   (let* ((f30-0 (-> arg0 root trans y))
          (v1-1 (-> arg0 draw))
          (a1-5 (-> v1-1 lod-set lod (-> v1-1 cur-lod) geo effect))
          )
-   (if (or (zero? (logand (-> a1-5 0 effect-bits) 4)) (not (-> v1-1 ripple)))
-    (return f30-0)
-    )
-   (let* ((a1-6 (-> a1-5 0 extra-info))
-          (s4-0
-           (the-as
-            mei-ripple
-            (+ (the-as uint a1-6) (the-as uint (* (-> a1-6 ripple-offset) 16)))
-            )
+    (if (or (not (logtest? (-> a1-5 0 effect-bits) 4)) (not (-> v1-1 ripple)))
+        (return f30-0)
+        )
+    (let* ((a1-6 (-> a1-5 0 extra-info))
+           (s4-0 (the-as mei-ripple (+ (the-as uint a1-6) (* (-> a1-6 ripple-offset) 16))))
+           (gp-0 (-> v1-1 ripple))
+           (s5-0 (-> gp-0 waveform))
            )
-          (gp-0 (-> v1-1 ripple))
-          (s5-0 (-> gp-0 waveform))
+      (if (not (-> gp-0 waveform))
+          (return f30-0)
           )
-    (if (not (-> gp-0 waveform))
-     (return f30-0)
-     )
-    (if (not (-> s5-0 converted))
-     (return f30-0)
-     )
-    (let* ((f28-0 (- (-> arg2 x) (-> arg0 root trans x)))
-           (f26-0 (- (-> arg2 z) (-> arg0 root trans z)))
-           (f22-0 (+ (quaternion-y-angle (-> arg0 root quat)) (-> s4-0 angle)))
-           (f24-0 (cos f22-0))
-           (f1-3 (sin f22-0))
-           (f0-4 (- (* f28-0 f24-0) (* f26-0 f1-3)))
-           (f1-5 (+ (* f26-0 f24-0) (* f28-0 f1-3)))
-           (f2-3 (/ 1.0 (-> s4-0 grid-size)))
-           (f28-1 (* f2-3 (- f0-4 (-> s4-0 x-base))))
-           (f26-1 (* f2-3 (- f1-5 (-> s4-0 z-base))))
-           )
-     (ripple-update-waveform-offs s5-0)
-     (let* ((f22-1 (the float (the int f28-1)))
-            (f24-1 (the float (the int f26-1)))
-            (f20-0 (ripple-slow-add-sine-waves s5-0 f22-1 f24-1))
+      (if (not (-> s5-0 converted))
+          (return f30-0)
+          )
+      (let* ((f28-0 (- (-> arg2 x) (-> arg0 root trans x)))
+             (f26-0 (- (-> arg2 z) (-> arg0 root trans z)))
+             (f22-0 (+ (quaternion-y-angle (-> arg0 root quat)) (-> s4-0 angle)))
+             (f24-0 (cos f22-0))
+             (f1-3 (sin f22-0))
+             (f0-4 (- (* f28-0 f24-0) (* f26-0 f1-3)))
+             (f1-5 (+ (* f26-0 f24-0) (* f28-0 f1-3)))
+             (f2-3 (/ 1.0 (-> s4-0 grid-size)))
+             (f28-1 (* f2-3 (- f0-4 (-> s4-0 x-base))))
+             (f26-1 (* f2-3 (- f1-5 (-> s4-0 z-base))))
+             )
+        (ripple-update-waveform-offs s5-0)
+        (let* ((f22-1 (the float (the int f28-1)))
+               (f24-1 (the float (the int f26-1)))
+               (f20-0 (ripple-slow-add-sine-waves s5-0 f22-1 f24-1))
+               )
+          (set! sv-16 (ripple-slow-add-sine-waves s5-0 (+ 1.0 f22-1) f24-1))
+          (set! sv-32 (ripple-slow-add-sine-waves s5-0 f22-1 (+ 1.0 f24-1)))
+          (let* ((f1-6 (ripple-slow-add-sine-waves s5-0 (+ 1.0 f22-1) (+ 1.0 f24-1)))
+                 (f0-22 (+ f20-0 (* (- f28-1 f22-1) (- sv-16 f20-0))))
+                 (f1-9 (+ sv-32 (* (- f28-1 f22-1) (- f1-6 sv-32))))
+                 (f1-12 (+ f0-22 (* (- f26-1 f24-1) (- f1-9 f0-22))))
+                 (f0-23 (-> gp-0 faded-scale))
+                 )
+            (if (< f0-23 0.0)
+                (set! f0-23 (-> gp-0 global-scale))
+                )
+            (+ f30-0 (* 0.0078125 f1-12 f0-23))
             )
-      (set! sv-16 (ripple-slow-add-sine-waves s5-0 (+ 1.0 f22-1) f24-1))
-      (set! sv-32 (ripple-slow-add-sine-waves s5-0 f22-1 (+ 1.0 f24-1)))
-      (let*
-       ((f1-6 (ripple-slow-add-sine-waves s5-0 (+ 1.0 f22-1) (+ 1.0 f24-1)))
-        (f0-22 (+ f20-0 (* (- f28-1 f22-1) (- sv-16 f20-0))))
-        (f1-9 (+ sv-32 (* (- f28-1 f22-1) (- f1-6 sv-32))))
-        (f1-12 (+ f0-22 (* (- f26-1 f24-1) (- f1-9 f0-22))))
-        (f0-23 (-> gp-0 faded-scale))
+          )
         )
-       (if (< f0-23 0.0)
-        (set! f0-23 (-> gp-0 global-scale))
-        )
-       (+ f30-0 (* (* 0.0078125 f1-12) f0-23))
-       )
       )
-     )
     )
-   )
   )

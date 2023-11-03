@@ -7,7 +7,6 @@
 
 ;; DECOMP BEGINS
 
-
 (defskelgroup *med-res-ogre-sg* medres-ogre medres-ogre-lod0-jg medres-ogre-idle-ja
               ((medres-ogre-lod0-mg (meters 999999)))
               :bounds (static-spherem -200 0 -450 350)
@@ -34,10 +33,6 @@
 
 (deftype villagec-lava (water-anim)
   ()
-  :heap-base #x70
-  :method-count-assert 30
-  :size-assert         #xdc
-  :flag-assert         #x1e007000dc
   )
 
 
@@ -53,34 +48,30 @@
                                    )
         )
 
-(defmethod water-vol-method-22 villagec-lava ((obj villagec-lava))
+(defmethod water-vol-method-22 ((this villagec-lava))
   (let ((t9-0 (method-of-type water-anim water-vol-method-22)))
-    (t9-0 obj)
+    (t9-0 this)
     )
   (let ((v1-2 (new 'process 'ripple-control)))
-    (set! (-> obj draw ripple) v1-2)
+    (set! (-> this draw ripple) v1-2)
     (set! (-> v1-2 global-scale) 3072.0)
     (set! (-> v1-2 waveform) ripple-for-villagec-lava)
     )
-  (logclear! (-> obj flags) (water-flags wt23))
-  (logior! (-> obj flags) (water-flags wt25))
-  (set! (-> obj attack-event) 'lava)
+  (logclear! (-> this flags) (water-flags wt23))
+  (logior! (-> this flags) (water-flags wt25))
+  (set! (-> this attack-event) 'lava)
   (none)
   )
 
 (deftype gondola (process-drawable)
-  ((root-override  collide-shape-moving         :offset        112)
-   (anim           spool-anim                   :offset-assert 176)
-   (old-target-pos transformq           :inline :offset-assert 192)
+  ((root            collide-shape-moving :override)
+   (anim            spool-anim)
+   (old-target-pos  transformq            :inline)
    )
-  :heap-base #x80
-  :method-count-assert 23
-  :size-assert         #xf0
-  :flag-assert         #x17008000f0
-  (:methods
-    (idle (symbol) _type_ :state 20)
-    (ride-up () _type_ :state 21)
-    (ride-down () _type_ :state 22)
+  (:state-methods
+    (idle symbol)
+    ride-up
+    ride-down
     )
   )
 
@@ -94,7 +85,7 @@
 (defstate idle (gondola)
   :virtual #t
   :code (behavior ((arg0 symbol))
-    (set! (-> self state-time) (-> *display* base-frame-counter))
+    (set-time! (-> self state-time))
     (ja-channel-set! 1)
     (cond
       (arg0
@@ -114,7 +105,7 @@
                                  )
                                )
               )
-        (ja :group! (-> self draw art-group data 4))
+        (ja :group! gondola-idle-up-ja)
         )
       (else
         (set! (-> self anim) (new 'static 'spool-anim
@@ -131,34 +122,35 @@
                                  )
                                )
               )
-        (ja :group! (-> self draw art-group data 3))
+        (ja :group! gondola-idle-down-ja)
         )
       )
     (transform-post)
     (loop
-      (when (and *target* (and (< (vector-vector-distance
-                                    (vector<-cspace! (new 'stack-no-clear 'vector) (-> self node-list data 3))
-                                    (target-pos 0)
-                                    )
-                                  81920.0
-                                  )
-                               (not (movie?))
-                               (not (level-hint-displayed?))
-                               (>= (- (-> *display* base-frame-counter) (-> self state-time)) (seconds 3))
-                               ;; pc port note : fix gondola spool not loading because it's "too far away" (technically)
-                               (#if (not PC_PORT)
-                                    (file-status *art-control* (-> self anim name) 0)
-                                    (begin
-                                      (spool-push *art-control* (-> self anim name) 0 self (vector-vector-distance
-                                                                                                  (vector<-cspace! (new 'stack-no-clear 'vector) (-> self node-list data 3))
-                                                                                                  (target-pos 0)))
-                                      (file-status *art-control* (-> self anim name) 0))
-                                    )
-                               )
+      (when (and *target*
+                 (and (< (vector-vector-distance
+                           (vector<-cspace! (new 'stack-no-clear 'vector) (joint-node gondola-lod0-jg main))
+                           (target-pos 0)
+                           )
+                         81920.0
+                         )
+                      (not (movie?))
+                      (not (level-hint-displayed?))
+                      (time-elapsed? (-> self state-time) (seconds 3))
+                      ;; og:preserve-this fix gondola spool not loading because it's "too far away" (technically)
+                      (#if (not PC_PORT)
+                          (file-status *art-control* (-> self anim name) 0)
+                          (begin
+                            (spool-push *art-control* (-> self anim name) 0 self (vector-vector-distance
+                                                                                        (vector<-cspace! (new 'stack-no-clear 'vector) (-> self node-list data 3))
+                                                                                        (target-pos 0)))
+                            (file-status *art-control* (-> self anim name) 0))
+                          )
+                      )
                  )
         (let ((s3-0 (get-reminder (get-task-control (game-task village3-button)) 2))
               (s4-1 (and *cheat-mode* (cpad-hold? 0 l3)))
-              (s5-1 (vector<-cspace! (new 'stack-no-clear 'vector) (-> self node-list data 3)))
+              (s5-1 (vector<-cspace! (new 'stack-no-clear 'vector) (joint-node gondola-lod0-jg main)))
               )
           (cond
             ((not (or s4-1 (task-closed? (game-task village3-button) (task-status need-hint))))
@@ -241,7 +233,6 @@
       (spool-push *art-control* (-> self anim name) 0 self -99.0)
       (suspend)
       )
-    (none)
     )
   )
 
@@ -257,8 +248,8 @@
       (process-spawn othercam self 4 #f #t :to self)
       (ja-play-spooled-anim
         (-> self anim)
-        (the-as art-joint-anim (-> self draw art-group data 3))
-        (the-as art-joint-anim (-> self draw art-group data 4))
+        (the-as art-joint-anim gondola-idle-down-ja)
+        (the-as art-joint-anim gondola-idle-up-ja)
         (the-as (function process-drawable symbol) false-func)
         )
       (remove-setting! 'sound-flava)
@@ -267,7 +258,7 @@
         (vector<-cspace! (the-as vector (-> self old-target-pos)) (-> *target* node-list data 3))
         (send-event *target* 'trans 'restore (-> self old-target-pos))
         (send-event *target* 'end-mode)
-        (update-transforms! (-> self root-override))
+        (update-transforms! (-> self root))
         (move-to-ground (-> *target* control) 4096.0 40960.0 #t (-> *target* control root-prim collide-with))
         (logior! (-> *target* control status) (cshape-moving-flags onsurf onground tsurf))
         (suspend)
@@ -278,12 +269,10 @@
       )
     (process-entity-status! self (entity-perm-status bit-3) #f)
     (go-virtual idle #t)
-    (none)
     )
   :post (behavior ()
     (ja-post)
     (update-direction-from-time-of-day (-> self draw shadow-ctrl))
-    (none)
     )
   )
 
@@ -300,8 +289,8 @@
       (process-spawn othercam self 4 #f #t :to self)
       (ja-play-spooled-anim
         (-> self anim)
-        (the-as art-joint-anim (-> self draw art-group data 4))
-        (the-as art-joint-anim (-> self draw art-group data 3))
+        (the-as art-joint-anim gondola-idle-up-ja)
+        (the-as art-joint-anim gondola-idle-down-ja)
         (the-as (function process-drawable symbol) false-func)
         )
       (remove-setting! 'sound-flava)
@@ -310,7 +299,7 @@
         (vector<-cspace! (the-as vector (-> self old-target-pos)) (-> *target* node-list data 3))
         (send-event *target* 'trans 'restore (-> self old-target-pos))
         (send-event *target* 'end-mode)
-        (update-transforms! (-> self root-override))
+        (update-transforms! (-> self root))
         (move-to-ground (-> *target* control) 4096.0 40960.0 #t (-> *target* control root-prim collide-with))
         (logior! (-> *target* control status) (cshape-moving-flags onsurf onground tsurf))
         (suspend)
@@ -321,14 +310,13 @@
       )
     (process-entity-status! self (entity-perm-status bit-3) #f)
     (go-virtual idle #f)
-    (none)
     )
   :post (-> (method-of-type gondola ride-up) post)
   )
 
-(defmethod init-from-entity! gondola ((obj gondola) (arg0 entity-actor))
-  (stack-size-set! (-> obj main-thread) 512)
-  (let ((s4-0 (new 'process 'collide-shape-moving obj (collide-list-enum hit-by-player))))
+(defmethod init-from-entity! ((this gondola) (arg0 entity-actor))
+  (stack-size-set! (-> this main-thread) 512)
+  (let ((s4-0 (new 'process 'collide-shape-moving this (collide-list-enum hit-by-player))))
     (set! (-> s4-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s4-0 reaction) default-collision-reaction)
     (set! (-> s4-0 no-reaction)
@@ -346,16 +334,16 @@
       )
     (set! (-> s4-0 nav-radius) (* 0.75 (-> s4-0 root-prim local-sphere w)))
     (backup-collide-with-as s4-0)
-    (set! (-> obj root-override) s4-0)
+    (set! (-> this root) s4-0)
     )
-  (process-drawable-from-entity! obj arg0)
-  (quaternion-identity! (-> obj root-override quat))
-  (initialize-skeleton obj *gondola-sg* '())
-  (set! (-> obj draw origin-joint-index) (the-as uint 3))
-  (logclear! (-> obj mask) (process-mask actor-pause))
-  (set! (-> obj draw shadow-joint-index) (the-as uint 3))
-  (set! (-> obj draw shadow-ctrl) (copy *target-shadow-control* 'process))
-  (let ((a0-16 (-> obj draw shadow-ctrl)))
+  (process-drawable-from-entity! this arg0)
+  (quaternion-identity! (-> this root quat))
+  (initialize-skeleton this *gondola-sg* '())
+  (set! (-> this draw origin-joint-index) (the-as uint 3))
+  (logclear! (-> this mask) (process-mask actor-pause))
+  (set! (-> this draw shadow-joint-index) (the-as uint 3))
+  (set! (-> this draw shadow-ctrl) (copy *target-shadow-control* 'process))
+  (let ((a0-16 (-> this draw shadow-ctrl)))
     (when a0-16
       (let ((v1-32 a0-16))
         (set! (-> v1-32 settings bot-plane w) (- -122880.0))
@@ -369,12 +357,12 @@
       )
     )
   (cond
-    ((< (-> (target-pos 0) y) (+ 204800.0 (-> obj root-override trans y)))
-     (go (method-of-object obj idle) #f)
+    ((< (-> (target-pos 0) y) (+ 204800.0 (-> this root trans y)))
+     (go (method-of-object this idle) #f)
      )
     (else
-      (set! (-> obj anim) (new 'static 'spool-anim :name "gondola-ride-down" :index 6 :parts 3 :command-list '()))
-      (go (method-of-object obj idle) #t)
+      (set! (-> this anim) (new 'static 'spool-anim :name "gondola-ride-down" :index 6 :parts 3 :command-list '()))
+      (go (method-of-object this idle) #t)
       )
     )
   (none)
@@ -382,13 +370,9 @@
 
 (deftype pistons (process-drawable)
   ()
-  :heap-base #x40
-  :method-count-assert 22
-  :size-assert         #xb0
-  :flag-assert         #x16004000b0
-  (:methods
-    (idle () _type_ :state 20)
-    (active (handle symbol) _type_ :state 21)
+  (:state-methods
+    idle
+    (active handle symbol)
     )
   )
 
@@ -400,8 +384,8 @@
 
 (defstate idle (pistons)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('update)
        (go-virtual active (process->handle proc) #f)
        )
@@ -412,7 +396,6 @@
     (logior! (-> self mask) (process-mask sleep))
     (suspend)
     0
-    (none)
     )
   )
 
@@ -430,40 +413,36 @@
                  )
           )
       (loop
-        (set! f30-0 (seek f30-0 1.0 (* 0.2 (-> *display* seconds-per-frame))))
+        (set! f30-0 (seek f30-0 1.0 (* 0.2 (seconds-per-frame))))
         (ja :num! (loop! f30-0))
         (ja-post)
         (update! (-> self sound))
         (suspend)
         )
       )
-    ;; decompiler never gets here and fails hard
+    ;; og:preserve-this decompiler never gets here and fails hard
     (go-virtual idle)
     )
   )
 
-(defmethod init-from-entity! pistons ((obj pistons) (arg0 entity-actor))
-  (set! (-> obj root) (new 'process 'trsqv))
-  (process-drawable-from-entity! obj arg0)
-  (initialize-skeleton obj *pistons-sg* '())
-  (set! (-> obj sound)
-        (new 'process 'ambient-sound (static-sound-spec "gdl-gen-loop" :fo-max 100) (-> obj root trans))
+(defmethod init-from-entity! ((this pistons) (arg0 entity-actor))
+  (set! (-> this root) (new 'process 'trsqv))
+  (process-drawable-from-entity! this arg0)
+  (initialize-skeleton this *pistons-sg* '())
+  (set! (-> this sound)
+        (new 'process 'ambient-sound (static-sound-spec "gdl-gen-loop" :fo-max 100) (-> this root trans))
         )
-  (if (and (-> obj entity) (logtest? (-> obj entity extra perm status) (entity-perm-status complete)))
-      (go (method-of-object obj active) (the-as handle #f) #t)
-      (go (method-of-object obj idle))
+  (if (and (-> this entity) (logtest? (-> this entity extra perm status) (entity-perm-status complete)))
+      (go (method-of-object this active) (the-as handle #f) #t)
+      (go (method-of-object this idle))
       )
   (none)
   )
 
 (deftype gondolacables (process-drawable)
   ()
-  :heap-base #x40
-  :method-count-assert 21
-  :size-assert         #xb0
-  :flag-assert         #x15004000b0
-  (:methods
-    (idle () _type_ :state 20)
+  (:state-methods
+    idle
     )
   )
 
@@ -475,17 +454,16 @@
 
 (defstate idle (gondolacables)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (the-as object (case event-type
-                     (('update)
-                      (process-entity-status! self (entity-perm-status complete) #t)
-                      (let ((v0-0 1))
-                        (set! (-> self draw mgeo effect 0 effect-bits) (the-as uint v0-0))
-                        v0-0
-                        )
-                      )
-                     )
-            )
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
+      (('update)
+       (process-entity-status! self (entity-perm-status complete) #t)
+       (let ((v0-0 1))
+         (set! (-> self draw mgeo effect 0 effect-bits) (the-as uint v0-0))
+         v0-0
+         )
+       )
+      )
     )
   :code (behavior ()
     (loop
@@ -495,24 +473,23 @@
         (ja :num! (seek!))
         )
       )
-    (none)
     )
-  :post (the-as (function none :behavior gondolacables) ja-post)
+  :post ja-post
   )
 
-(defmethod init-from-entity! gondolacables ((obj gondolacables) (arg0 entity-actor))
-  (set! (-> obj root) (new 'process 'trsqv))
-  (process-drawable-from-entity! obj arg0)
-  (initialize-skeleton obj *gondolacables-sg* '())
-  (set! (-> obj draw mgeo effect 0 effect-bits)
+(defmethod init-from-entity! ((this gondolacables) (arg0 entity-actor))
+  (set! (-> this root) (new 'process 'trsqv))
+  (process-drawable-from-entity! this arg0)
+  (initialize-skeleton this *gondolacables-sg* '())
+  (set! (-> this draw mgeo effect 0 effect-bits)
         (the-as
           uint
-          (if (and (-> obj entity) (logtest? (-> obj entity extra perm status) (entity-perm-status complete)))
+          (if (and (-> this entity) (logtest? (-> this entity extra perm status) (entity-perm-status complete)))
               1
               0
               )
           )
         )
-  (go (method-of-object obj idle))
+  (go (method-of-object this idle))
   (none)
   )

@@ -13,15 +13,14 @@
 ;; at most, 48 sprites may be rendered per chunk.
 (defconstant SPRITE_CHUNK_COUNT 48)
 
+;; DECOMP BEGINS
+
 ;; This is the first quadword of the data sent to VU1.
 ;; It contains the number of sprites that should be drawn.
 (deftype sprite-header (structure)
-  ((header      qword 1 :inline :offset-assert   0)
-   (num-sprites int32           :offset          0)
+  ((header       qword  1 :inline)
+   (num-sprites  int32  :overlay-at (-> header 0 data 0))
    )
-  :method-count-assert 9
-  :size-assert         #x10
-  :flag-assert         #x900000010
   )
 
 (defun sprite-setup-header ((hdr sprite-header) (num-sprites int))
@@ -37,21 +36,15 @@
 ;; the meaning of this is unknown.
 ;; the first one in the list is special and the remaining 75 can be allocated/freed.
 (deftype sprite-hvdf-data (structure)
-  ((data qword 76 :inline :offset-assert   0)
+  ((data  qword  76 :inline)
    )
-  :method-count-assert 9
-  :size-assert         #x4c0
-  :flag-assert         #x9000004c0
   )
 
 ;; Each byte indicates if the corresponding entry in
 ;; sprite-hvdf-data is allocated or not.
 (deftype sprite-hvdf-control (structure)
-  ((alloc int8 76 :offset-assert   0)
+  ((alloc  int8  76)
    )
-  :method-count-assert 9
-  :size-assert         #x4c
-  :flag-assert         #x90000004c
   )
 
 (define *sprite-hvdf-data* (new 'global 'sprite-hvdf-data))
@@ -73,15 +66,12 @@
 ;; pushes stuff onto it.
 
 (deftype sprite-aux-list (basic)
-  ((num-entries int32   :offset-assert   4) ;; capacity
-   (entry       int32   :offset-assert   8) ;; current entry
-   (data        sprite-vec-data-2d 1 :offset-assert  12) ;; "dynamic" array.
+  ((num-entries  int32) ;; capacity
+   (entry        int32) ;; current entry
+   (data         sprite-vec-data-2d  1) ;; "dynamic" array.
    )
-  :method-count-assert 9
-  :size-assert         #x10
-  :flag-assert         #x900000010
   (:methods
-    (new (symbol type int) _type_ 0)
+    (new (symbol type int) _type_)
     )
   )
 
@@ -102,12 +92,12 @@
     )
   )
 
-(defmethod inspect sprite-aux-list ((obj sprite-aux-list))
-  (format #t "[~X] sprite-aux-list:~%" obj)
-  (format #t "~Tnum-entries: ~D~%" (-> obj num-entries))
-  (format #t "~Tentry: ~D~%" (-> obj entry))
-  (dotimes (s5-0 (-> obj entry))
-   (format #t "~T~D : ~X~%" s5-0 (-> obj data s5-0))
+(defmethod inspect ((this sprite-aux-list))
+  (format #t "[~X] sprite-aux-list:~%" this)
+  (format #t "~Tnum-entries: ~D~%" (-> this num-entries))
+  (format #t "~Tentry: ~D~%" (-> this entry))
+  (dotimes (s5-0 (-> this entry))
+   (format #t "~T~D : ~X~%" s5-0 (-> this data s5-0))
    )
   (the-as sprite-aux-list #f)
   )
@@ -134,39 +124,36 @@
 
 ;; The sprite-frame-data is data transferred to VU1 and remains there for all chunks of sprites.
 (deftype sprite-frame-data (structure)
-  ((cdata              vector       16 :inline :offset-assert   0)
-   (hmge-scale         vector       :inline    :offset        256) ;; math camera value
-   (consts             vector       :inline    :offset-assert 272)
-   (pfog0              float                   :offset        272) ;; math camera value
-   (deg-to-rad         float                   :offset        276) ;; 2*pi / 65,536
-   (min-scale          float                   :offset        280)
-   (inv-area           float                   :offset        284)
-   (adgif-giftag       gs-gif-tag   :inline    :offset-assert 288) ;; sets adgif shader values
-   (sprite-2d-giftag   gs-gif-tag   :inline    :offset-assert 304) ;; draws 2d sprites
-   (sprite-2d-giftag-2 gs-gif-tag   :inline    :offset-assert 320) ;; 2d with different settings
-   (sincos-01          vector       :inline    :offset-assert 336)
-   (sincos-23          vector       :inline    :offset-assert 352)
-   (sincos-45          vector       :inline    :offset-assert 368)
-   (sincos-67          vector       :inline    :offset-assert 384)
-   (sincos-89          vector       :inline    :offset-assert 400)
-   (basis-x            vector       :inline    :offset-assert 416)
-   (basis-y            vector       :inline    :offset-assert 432)
-   (sprite-3d-giftag   gs-gif-tag   :inline    :offset-assert 448) ;; draws 3d sprites
-   (screen-shader      adgif-shader :inline    :offset-assert 464)
-   (clipped-giftag     gs-gif-tag   :inline    :offset-assert 544)
-   (inv-hmge-scale     vector       :inline    :offset-assert 560) ;; math camera value
-   (stq-offset         vector       :inline    :offset-assert 576)
-   (stq-scale          vector       :inline    :offset-assert 592)
-   (rgba-plain         qword        :inline    :offset-assert 608)
-   (warp-giftag        gs-gif-tag   :inline    :offset-assert 624)
-   (fog-clamp          vector       :inline    :offset-assert 640)
-   (fog-min            float                   :offset        640)
-   (fog-max            float                   :offset        644)
-   (max-scale          float                   :offset        648)
+  ((cdata               vector        16 :inline)
+   (hmge-scale          vector        :inline)
+   (consts              vector        :inline)
+   (pfog0               float         :overlay-at (-> consts x))
+   (deg-to-rad          float         :overlay-at (-> consts y))
+   (min-scale           float         :overlay-at (-> consts z))
+   (inv-area            float         :overlay-at (-> consts w))
+   (adgif-giftag        gs-gif-tag    :inline)
+   (sprite-2d-giftag    gs-gif-tag    :inline)
+   (sprite-2d-giftag-2  gs-gif-tag    :inline)
+   (sincos-01           vector        :inline)
+   (sincos-23           vector        :inline)
+   (sincos-45           vector        :inline)
+   (sincos-67           vector        :inline)
+   (sincos-89           vector        :inline)
+   (basis-x             vector        :inline)
+   (basis-y             vector        :inline)
+   (sprite-3d-giftag    gs-gif-tag    :inline)
+   (screen-shader       adgif-shader  :inline)
+   (clipped-giftag      gs-gif-tag    :inline)
+   (inv-hmge-scale      vector        :inline)
+   (stq-offset          vector        :inline)
+   (stq-scale           vector        :inline)
+   (rgba-plain          qword         :inline)
+   (warp-giftag         gs-gif-tag    :inline)
+   (fog-clamp           vector        :inline)
+   (fog-min             float         :overlay-at (-> fog-clamp x))
+   (fog-max             float         :overlay-at (-> fog-clamp y))
+   (max-scale           float         :overlay-at (-> fog-clamp z))
    )
-  :method-count-assert 9
-  :size-assert         #x290
-  :flag-assert         #x900000290
   )
 
 (defun sprite-setup-frame-data ((data sprite-frame-data) (tbp-offset int))
@@ -1000,5 +987,3 @@
   "Get an HVDF entry by index"
   (the-as vector (-> *sprite-hvdf-data* data arg0))
   )
-
-

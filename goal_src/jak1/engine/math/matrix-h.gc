@@ -5,20 +5,19 @@
 ;; name in dgo: matrix-h
 ;; dgos: GAME, ENGINE
 
+;; DECOMP BEGINS
+
 ;; A 4x4 matrix, stored in row-major order
 ;; some, but not all, functions assume that a matrix is an affine transform.
 ;; others assume that the rotation has no scale or shear (and that its inverse is its transpose)
 (deftype matrix (structure)
-  ((vector vector 4 :inline :offset-assert 0)
-   (quad   uint128 4  :offset 0)
-   (data   float 16 :offset 0) ;; moved so the decompiler looks at vector first.
+  ((vector  vector   4 :inline :offset   0)
+   (quad    uint128  4         :overlay-at vector)
+   (data    float    16        :overlay-at vector)
    )
-  :method-count-assert 10
-  :size-assert         #x40
-  :flag-assert         #xa00000040
   (:methods
-   (transform-vectors! (_type_ (inline-array vector) (inline-array vector) int) none 9)
-   )
+    (transform-vectors! (_type_ (inline-array vector) (inline-array vector) int) none)
+    )
   )
 
 ;; A 3x3 matrix, stored in row-major order.
@@ -26,13 +25,10 @@
 ;;  so this is really a 3x4 matrix.
 ;; this type is rarely used
 (deftype matrix3 (structure)
-  ((data   float 12 :offset-assert 0)
-   (vector vector 3  :inline :offset 0)
-   (quad   uint128 3  :offset 0)
+  ((data    float    12)
+   (vector  vector   3 :inline :overlay-at (-> data 0))
+   (quad    uint128  3         :overlay-at (-> data 0))
    )
-  :method-count-assert 9
-  :size-assert         #x30
-  :flag-assert         #x900000030
   )
 
 ;; a matrix stored using 16-bit integers.
@@ -41,14 +37,12 @@
 ;; so you generally should not unpack these to floats without knowing where they came from
 ;; and how they were originally packed (for example, in tie/shrub)
 (deftype matrix4h (structure)
-  ((data     int16 16 :offset-assert 0)
-   (vector4h vector4h 4 :inline :offset 0)
-   (long     int64 4  :offset 0)
+  ((data      int16     16)
+   (vector4h  vector4h  4 :inline :overlay-at (-> data 0))
+   (long      int64     4         :overlay-at (-> data 0))
    )
-  :method-count-assert 9
-  :size-assert         #x20
-  :flag-assert         #x900000020
   )
+
 
 (defun matrix-copy! ((dst matrix) (src matrix))
   "Copy src to dst"

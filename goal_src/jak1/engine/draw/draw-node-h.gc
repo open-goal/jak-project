@@ -5,6 +5,8 @@
 ;; name in dgo: draw-node-h
 ;; dgos: GAME, ENGINE
 
+;; DECOMP BEGINS
+
 ;; A "draw-node" is a way to group together a bunch of drawables (possibly other draw-nodes) in a BVH
 ;; This BVH is used for sphere-in-view culling and the broad phase collision detection.
 ;; _most_ uses of draw-node are in a special tree with these properties:
@@ -17,39 +19,25 @@
 ;; may occur at any depth, and nothing has visibility ids.
 
 (deftype draw-node (drawable)
-  ((child-count uint8          :offset 6)   ;; if our child requires a count
-   (flags       uint8          :offset 7)   ;; is our children leaf or draw-node?
-   (child       drawable       :offset 8)   ;; can be draw-node or any other drawable
-   (distance    float          :offset 12)  ;; used in shrub...
+  ((child-count  uint8     :offset   6)
+   (flags        uint8     :offset   7)
+   (child        drawable  :offset   8)
+   (distance     float     :offset  12)
    )
-  :method-count-assert 18
-  :size-assert         #x20
-  :flag-assert         #x1200000020
-  ;; field distance is a float printed as hex?
   )
 
 
 ;; for non-shrub uses of draw-node, this is used to store all the draw-nodes at a given depth.
 (deftype drawable-inline-array-node (drawable-inline-array)
-  ((data draw-node 1 :inline)
-   (pad uint32)
+  ((data  draw-node  1 :inline)
+   (pad   uint32)
    )
-  :method-count-assert 18
-  :size-assert         #x44
-  :flag-assert         #x1200000044
-  ;;  too many basic blocks
-  (:methods
-
-    )
   )
 
 ;; the types of these fields are a guess for now.
 ;; used for draw-node-cull function
 (deftype draw-node-dma (structure)
-  ((banka draw-node 32 :inline :offset-assert 0)
-   (bankb draw-node 32 :inline :offset-assert 1024)
+  ((banka  draw-node  32 :inline)
+   (bankb  draw-node  32 :inline)
    )
-  :method-count-assert 9
-  :size-assert         #x800
-  :flag-assert         #x900000800
   )

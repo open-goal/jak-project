@@ -9,18 +9,17 @@
 ;; All foreground objects are stored in merc format.
 ;; See bones.gc for where it's actually used and the pc port changes.
 
+;; DECOMP BEGINS
+
 ;; The "ripple" system can apply a ripple effect (for waves or similar) to merc data.
 ;; This defines which vertices should be rippled.
 (deftype ripple-merc-query (inline-array-class)
-  ((start-vertex int32          :offset-assert 16)
-   (vertex-skip  int32          :offset-assert 20)
-   (vertex-count int32          :offset-assert 24)
-   (current-loc  int32          :offset-assert 28)
-   (data         vector :inline :dynamic :offset-assert 32)
+  ((start-vertex  int32)
+   (vertex-skip   int32)
+   (vertex-count  int32)
+   (current-loc   int32)
+   (data          vector  :inline :dynamic)
    )
-  :method-count-assert 9
-  :size-assert         #x20
-  :flag-assert         #x900000020
   )
 (set! (-> ripple-merc-query heap-base) 16)
 
@@ -31,38 +30,30 @@
 ;; fragment in the same merc "effect".
 (deftype merc-byte-header (structure)
   ;; these offsets are after unpacking/upload to VU.
-  ((srcdest-off        uint8    :offset-assert 0) ;; location of srcdst table for vertex copying
-   (rgba-off           uint8    :offset-assert 1) ;; location of rgba data
-   (lump-off           uint8    :offset-assert 2) ;; location of "lump" packed vertex data
-   (fp-off             uint8    :offset-assert 3) ;; location of "fp" data (adgif shader, some floats)
-
-   (mat1-cnt           uint8    :offset-assert 4) ;; number of vertices influenced by one bone
-   (mat2-cnt           uint8    :offset-assert 5) ;; two bone
-   (mat3-cnt           uint8    :offset-assert 6) ;; three bone
-
-   (samecopy-cnt       uint8    :offset-assert 7) ;; number of vertices to copy from this fragment
-   (crosscopy-cnt      uint8    :offset-assert 8) ;; copy vertices from previous fragment count
-   (strip-len          uint8    :offset-assert 9) ;; how long is the initial strip before a shader (may be 0, if starts with shader)
-   (mm-quadword-fp-off uint8    :offset-assert 10) ;; main memory offset of fp data
-   (mm-quadword-size   uint8    :offset-assert 11) ;; main memory size of whole fragment
-   (perc-off           uint8    :offset-assert 12) ;; bone weight table offset
-   (mat-slot           uint8 10 :offset-assert 13) ;; which matrices to upload where for this fragment
+  ((srcdest-off         uint8) ;; location of srcdst table for vertex copying
+   (rgba-off            uint8) ;; location of rgba data
+   (lump-off            uint8) ;; location of "lump" packed vertex data
+   (fp-off              uint8) ;; location of "fp" data (adgif shader, some floats)
+   (mat1-cnt            uint8) ;; number of vertices influenced by one bone
+   (mat2-cnt            uint8) ;; two bone
+   (mat3-cnt            uint8) ;; three bone
+   (samecopy-cnt        uint8) ;; number of vertices to copy from this fragment
+   (crosscopy-cnt       uint8) ;; copy vertices from previous fragment count
+   (strip-len           uint8) ;; how long is the initial strip before a shader (may be 0, if starts with shader)
+   (mm-quadword-fp-off  uint8) ;; main memory offset of fp data
+   (mm-quadword-size    uint8) ;; main memory size of whole fragment
+   (perc-off            uint8) ;; bone weight table offset
+   (mat-slot            uint8  10) ;; which matrices to upload where for this fragment
    )
-  :method-count-assert 9
-  :size-assert         #x17
-  :flag-assert         #x900000017
   )
 
 ;; merc VU fragment: contains the header and data.
 (deftype merc-fragment (structure)
-  ((header merc-byte-header :inline :offset-assert 0)
-   (rest   uint8            1       :offset-assert 23)
+  ((header  merc-byte-header  :inline)
+   (rest    uint8             1)
    )
-  :method-count-assert 10
-  :size-assert         #x18
-  :flag-assert         #xa00000018
   (:methods
-    (login-adgifs (_type_) none 9)
+    (login-adgifs (_type_) none)
     )
   )
 
@@ -70,39 +61,34 @@
 ;; the meaning of flags is situation dependent in the renderer, see extract_merc.cpp
 ;; for the details.
 (deftype merc-vtx (structure)
-  ((mat-0 uint8  :offset-assert 0)  ;; matrix number for first bone (and flags)
-   (mat-1 uint8  :offset-assert 1)  ;; matrix number for second bone (and flags)
-   (nrm-x uint8  :offset-assert 2)  ;; x component of normal
-   (pos-x uint8  :offset-assert 3)  ;; x component of position
-   (dst-0 uint8  :offset-assert 4)  ;; location to place vertex (and flags)
-   (dst-1 uint8  :offset-assert 5)  ;; location to place vertex 2 (and flags)
-   (nrm-y uint8  :offset-assert 6)  ;; normal
-   (pos-y uint8  :offset-assert 7)  ;; pos
-   (tex-s uint8  :offset-assert 8)  ;; texture coordinate
-   (tex-t uint8  :offset-assert 9)
-   (nrm-z uint8  :offset-assert 10)
-   (pos-z uint8  :offset-assert 11)
+  ((mat-0  uint8) ;; matrix number for first bone (and flags)
+   (mat-1  uint8) ;; matrix number for second bone (and flags)
+   (nrm-x  uint8) ;; x component of normal
+   (pos-x  uint8) ;; x component of position
+   (dst-0  uint8) ;; location to place vertex (and flags)
+   (dst-1  uint8) ;; location to place vertex 2 (and flags)
+   (nrm-y  uint8) ;; normal
+   (pos-y  uint8) ;; pos
+   (tex-s  uint8) ;; texture coordinate
+   (tex-t  uint8)
+   (nrm-z  uint8)
+   (pos-z  uint8)
    )
-  :method-count-assert 9
-  :size-assert         #xc
-  :flag-assert         #x90000000c
   )
 
 ;; header for fp data within a fragment. Is included in fp data.
 ;; adgifs come right after the header
 (deftype merc-fp-header (structure)
-  ((x-add            float  :offset-assert 0)
-   (y-add            float  :offset-assert 4)
-   (z-add            float  :offset-assert 8)
-   (shader-cnt       uint8  :offset-assert 12) ;; number of adgifs
-   (kick-info-offset uint8  :offset-assert 13)
-   (kick-info-step   uint8  :offset-assert 14)
-   (hword-cnt        uint8  :offset-assert 15)
+  ((x-add             float)
+   (y-add             float)
+   (z-add             float)
+   (shader-cnt        uint8)
+   (kick-info-offset  uint8)
+   (kick-info-step    uint8)
+   (hword-cnt         uint8)
    )
-  :method-count-assert 9
-  :size-assert         #x10
-  :flag-assert         #x900000010
   )
+
 
 (defun merc-fragment-fp-data ((arg0 merc-fragment))
   "Get the floating-point data of a merc-fragment"
@@ -111,124 +97,98 @@
 
 ;; a description of a matrix upload to merc
 (deftype merc-mat-dest (structure)
-  ((matrix-number uint8  :offset-assert 0) ;; the matrix in the skeleton
-   (matrix-dest   uint8  :offset-assert 1) ;; the slot in the shader (only a small number available)
+  ((matrix-number  uint8) ;; the matrix in the skeleton
+   (matrix-dest    uint8) ;; the slot in the shader (only a small number available)
    )
   :pack-me
-  :method-count-assert 9
-  :size-assert         #x2
-  :flag-assert         #x900000002
   )
 
 ;; some info about a merc fragment that will stay on the EE.
 ;; the merc-effect contains a ref to one of these
 ;; this is all the information needed to generate merc upload dma (counts/sizes)
 (deftype merc-fragment-control (structure)
-  ((unsigned-four-count uint8          :offset-assert 0)
-   (lump-four-count     uint8          :offset-assert 1)
-   (fp-qwc              uint8          :offset-assert 2)
-   (mat-xfer-count      uint8          :offset-assert 3)
-   (mat-dest-data       merc-mat-dest :inline :dynamic :offset-assert 4)
+  ((unsigned-four-count  uint8)
+   (lump-four-count      uint8)
+   (fp-qwc               uint8)
+   (mat-xfer-count       uint8)
+   (mat-dest-data        merc-mat-dest  :inline :dynamic)
    )
-  :method-count-assert 9
-  :size-assert         #x4
-  :flag-assert         #x900000004
   )
 
 ;; packed blend shape data
-(deftype merc-blend-data (structure) ;; was unknown!
-  ((int8-data int8 :dynamic :offset-assert 0)
+(deftype merc-blend-data (structure)
+  ((int8-data  int8  :dynamic)
    )
   )
 
 ;; info needed to set up blend shapes
 (deftype merc-blend-ctrl (structure)
-  ((blend-vtx-count     uint8          :offset-assert 0)
-   (nonzero-index-count uint8          :offset-assert 1)
-   (bt-index            uint8 :dynamic :offset-assert 2)
+  ((blend-vtx-count      uint8)
+   (nonzero-index-count  uint8)
+   (bt-index             uint8  :dynamic)
    )
-  :method-count-assert 9
-  :size-assert         #x2
-  :flag-assert         #x900000002
   )
 
 ;; info for environment map "extra"
 (deftype mei-envmap-tint (structure)
-  ((fade0 float   :offset-assert 0) ;; start fade
-   (fade1 float   :offset-assert 4) ;; end fade
-   (tint  uint32  :offset-assert 8) ;; envmap color
-   (dummy int32   :offset-assert 12)
+  ((fade0  float)
+   (fade1  float)
+   (tint   uint32)
+   (dummy  int32)
    )
-  :method-count-assert 9
-  :size-assert         #x10
-  :flag-assert         #x900000010
   )
 
 ;; info for texture scrolling "extra"
 (deftype mei-texture-scroll (structure)
-  ((max-dist     float   :offset-assert 0)
-   (st-int-scale uint8   :offset-assert 4)
-   (time-factor  uint8   :offset-assert 5)
-   (scroll-dir   uint8   :offset-assert 6)
-   (cached-time  uint8   :offset-assert 7)
-   (time-delta   uint8   :offset-assert 8)
-   (dummy        uint8 7 :offset-assert 9)
+  ((max-dist      float)
+   (st-int-scale  uint8)
+   (time-factor   uint8)
+   (scroll-dir    uint8)
+   (cached-time   uint8)
+   (time-delta    uint8)
+   (dummy         uint8  7)
    )
-  :method-count-assert 9
-  :size-assert         #x10
-  :flag-assert         #x900000010
   )
 
 ;; info for ripple effect "extra"
 (deftype mei-ripple (structure)
-  ((x-base    float  :offset-assert 0)
-   (z-base    float  :offset-assert 4)
-   (grid-size float  :offset-assert 8)
-   (angle     float  :offset-assert 12)
+  ((x-base     float)
+   (z-base     float)
+   (grid-size  float)
+   (angle      float)
    )
-  :method-count-assert 9
-  :size-assert         #x10
-  :flag-assert         #x900000010
   )
 
 ;; locations of the "extra"s.
 (deftype merc-extra-info (structure)
-  ((envmap-tint-offset    uint8    :offset-assert 0)
-   (shader-offset         uint8    :offset-assert 1)
-   (texture-scroll-offset uint8    :offset-assert 2)
-   (ripple-offset         uint8    :offset-assert 3)
-   (dummy                 uint8 12 :offset-assert 4)
+  ((envmap-tint-offset     uint8)
+   (shader-offset          uint8)
+   (texture-scroll-offset  uint8)
+   (ripple-offset          uint8)
+   (dummy                  uint8  12)
    )
-  :method-count-assert 9
-  :size-assert         #x10
-  :flag-assert         #x900000010
   )
 
 ;; a collection of fragments that must be sent all together.
 ;; and their extra effects.
 (deftype merc-effect (structure)
-  ((frag-geo         merc-fragment          :offset-assert 0)
-   (frag-ctrl        merc-fragment-control  :offset-assert 4)
-   (blend-data       merc-blend-data        :offset-assert 8)
-   (blend-ctrl       merc-blend-ctrl        :offset-assert 12)
-   (dummy0           uint8                  :offset-assert 16)
-   (effect-bits      uint8                  :offset-assert 17)
-   (frag-count       uint16                 :offset-assert 18)
-   (blend-frag-count uint16                 :offset-assert 20)
-   (tri-count        uint16                 :offset-assert 22)
-   (dvert-count      uint16                 :offset-assert 24)
-   (dummy1           uint8                  :offset-assert 26)
-   (envmap-usage     uint8                  :offset-assert 27)
-   (extra-info       merc-extra-info        :offset-assert 28)
-
-   ;; added
-   (data uint64 4 :offset 0)
+  ((frag-geo          merc-fragment)
+   (frag-ctrl         merc-fragment-control)
+   (blend-data        merc-blend-data)
+   (blend-ctrl        merc-blend-ctrl)
+   (dummy0            uint8)
+   (effect-bits       uint8)
+   (frag-count        uint16)
+   (blend-frag-count  uint16)
+   (tri-count         uint16)
+   (dvert-count       uint16)
+   (dummy1            uint8)
+   (envmap-usage      uint8)
+   (extra-info        merc-extra-info)
+   (data              uint64  4 :overlay-at frag-geo)
    )
-  :method-count-assert 10
-  :size-assert         #x20
-  :flag-assert         #xa00000020
   (:methods
-    (login-adgifs (_type_) none 9)
+    (login-adgifs (_type_) none)
     )
   )
 
@@ -237,179 +197,154 @@
 ;; The pupil/iris can be scaled (independtenly)
 ;; the eyelid goes up and down
 (deftype merc-eye-ctrl (structure)
-  ((eye-slot      int8                 :offset-assert 0) ;; slot in anim data
-   (shader-offset int8                 :offset-assert 1) ;; offset in merc data
-   (shader-count  int8                 :offset-assert 2)
-   ;; copies of the shader.
-   (iris-shader   adgif-shader :inline :offset-assert 16)
-   (pupil-shader  adgif-shader :inline :offset-assert 96)
-   (lid-shader    adgif-shader :inline :offset-assert 176)
-   (shader        adgif-shader 3 :inline :offset  16) ;; moved
+  ((eye-slot       int8)
+   (shader-offset  int8)
+   (shader-count   int8)
+   (shader         adgif-shader  3 :inline)
+   (iris-shader    adgif-shader  :inline :overlay-at (-> shader 0))
+   (pupil-shader   adgif-shader  :inline :overlay-at (-> shader 1))
+   (lid-shader     adgif-shader  :inline :overlay-at (-> shader 2))
    )
-  :method-count-assert 9
-  :size-assert         #x100
-  :flag-assert         #x900000100
   )
 
 ;; single frame for eye animation
 (deftype merc-eye-anim-frame (structure)
-  ((pupil-trans-x int8   :offset-assert 0)
-   (pupil-trans-y int8   :offset-assert 1)
-   (blink         int8   :offset-assert 2)
-   (iris-scale    int8   :offset 4)
-   (pupil-scale   int8   :offset-assert 5)
-   (lid-scale     int8   :offset-assert 6)
-   (dword         uint64 :offset 0)
+  ((pupil-trans-x  int8)
+   (pupil-trans-y  int8)
+   (blink          int8)
+   (iris-scale     int8    :offset   4)
+   (pupil-scale    int8)
+   (lid-scale      int8)
+   (dword          uint64  :overlay-at pupil-trans-x)
    )
   :pack-me
-  :method-count-assert 9
-  :size-assert         #x8
-  :flag-assert         #x900000008
   )
 
 ;; just an array of eye anim frames.
 (deftype merc-eye-anim-block (structure)
-  ((max-frame int16          :offset-assert 0)
-   (data      merc-eye-anim-frame :inline :dynamic :offset 8)
+  ((max-frame  int16)
+   (data       merc-eye-anim-frame  :inline :dynamic :offset   8)
    )
-  :method-count-assert 9
-  :size-assert         #x8
-  :flag-assert         #x900000008
   )
 
 
 ;; metadata for merc art for a single model
 ;; mostly just stats and parameters used in dma/rendering.
 (deftype merc-ctrl-header (structure)
-  ((xyz-scale              float            :offset-assert 0)
-   (st-magic               uint32           :offset-assert 4)
-   (st-out-a               uint32           :offset-assert 8)
-   (st-out-b               uint32           :offset-assert 12)
-   (st-vif-add             uint32           :offset-assert 16)
-   (st-int-off             uint16           :offset-assert 20)
-   (st-int-scale           uint16           :offset-assert 22)
-   (effect-count           uint32           :offset-assert 24)
-   (blend-target-count     uint32           :offset-assert 28)
-   (fragment-count         uint16           :offset-assert 32)
-   (tri-count              uint16           :offset-assert 34)
-   (matrix-count           uint8            :offset-assert 36)
-   (shader-count           uint8            :offset-assert 37)
-   (transform-vertex-count uint16           :offset-assert 38)
-   (dvert-count            uint16           :offset-assert 40)
-   (one-mat-count          uint16           :offset-assert 42)
-   (two-mat-count          uint16           :offset-assert 44)
-   (two-mat-reuse-count    uint16           :offset-assert 46)
-   (three-mat-count        uint16           :offset-assert 48)
-   (three-mat-reuse-count  uint16           :offset-assert 50)
-   (shader-upload-count    uint8            :offset-assert 52)
-   (matrix-upload-count    uint8            :offset-assert 53)
-   (same-copy-count        uint16           :offset-assert 54)
-   (cross-copy-count       uint16           :offset-assert 56)
-   (num-verts              uint16           :offset-assert 58)
-   (longest-edge           float            :offset-assert 60)
-   (eye-ctrl               merc-eye-ctrl    :offset-assert 64)
-   (masks                  uint32       3   :offset-assert 68)
-   (dummy-bytes            uint8       48   :offset 32)
-   (envmap-tint            uint32           :offset 32)
-   (query                  basic            :offset 36)
-   (needs-clip             uint8            :offset 40)
-   (use-isometric          uint8            :offset 41)
-   (use-attached-shader    uint8            :offset 42)
-   (display-triangles      uint8            :offset 43)
-   (death-vertex-skip      uint16           :offset 44)
-   (death-start-vertex     uint16           :offset 46)
-   (death-effect           uint32           :offset 48)
-   (use-translucent        uint8            :offset 52)
-   (display-this-fragment  uint8            :offset 53)
+  ((xyz-scale               float)
+   (st-magic                uint32)
+   (st-out-a                uint32)
+   (st-out-b                uint32)
+   (st-vif-add              uint32)
+   (st-int-off              uint16)
+   (st-int-scale            uint16)
+   (effect-count            uint32)
+   (blend-target-count      uint32)
+   (fragment-count          uint16)
+   (tri-count               uint16)
+   (matrix-count            uint8)
+   (shader-count            uint8)
+   (transform-vertex-count  uint16)
+   (dvert-count             uint16)
+   (one-mat-count           uint16)
+   (two-mat-count           uint16)
+   (two-mat-reuse-count     uint16)
+   (three-mat-count         uint16)
+   (three-mat-reuse-count   uint16)
+   (shader-upload-count     uint8)
+   (matrix-upload-count     uint8)
+   (same-copy-count         uint16)
+   (cross-copy-count        uint16)
+   (num-verts               uint16)
+   (longest-edge            float)
+   (eye-ctrl                merc-eye-ctrl)
+   (masks                   uint32  3)
+   (dummy-bytes             uint8   48 :overlay-at fragment-count)
+   (envmap-tint             uint32     :overlay-at fragment-count)
+   (query                   basic      :overlay-at matrix-count)
+   (needs-clip              uint8      :overlay-at dvert-count)
+   (use-isometric           uint8      :overlay-at (-> dummy-bytes 9))
+   (use-attached-shader     uint8      :overlay-at one-mat-count)
+   (display-triangles       uint8      :overlay-at (-> dummy-bytes 11))
+   (death-vertex-skip       uint16     :overlay-at two-mat-count)
+   (death-start-vertex      uint16     :overlay-at two-mat-reuse-count)
+   (death-effect            uint32     :overlay-at three-mat-count)
+   (use-translucent         uint8      :overlay-at shader-upload-count)
+   (display-this-fragment   uint8      :overlay-at matrix-upload-count)
    )
-  :method-count-assert 9
-  :size-assert         #x50
-  :flag-assert         #x900000050
-  ;; field xyz-scale is a float printed as hex?
   )
 
 ;; the actual merc art object: a header and list of effects
 (deftype merc-ctrl (art-element)
-  ((num-joints int32                     :offset 20)
-   (header     merc-ctrl-header :inline  :offset-assert 32)
-   (effect     merc-effect         :inline :dynamic :offset-assert 112)
+  ((num-joints  int32             :overlay-at (-> pad 0))
+   (header      merc-ctrl-header  :inline)
+   (effect      merc-effect       :inline :dynamic)
    )
-  :method-count-assert 13
-  :size-assert         #x70
-  :flag-assert         #xd00000070
   )
 
 ;; low memory upload to vu1 for merc (which merc later writes over)
 (deftype merc-vu1-low-mem (structure)
-  ((tri-strip-gif gs-gif-tag   :inline :offset-assert 0) ;; was qword
-   (ad-gif        gs-gif-tag   :inline :offset-assert 16) ;; was qword
-   (hvdf-offset   vector  :inline :offset-assert 32)
-   (perspective   uint128 4       :offset-assert 48)
-   (fog           vector  :inline :offset-assert 112)
+  ((tri-strip-gif  gs-gif-tag  :inline)
+   (ad-gif         gs-gif-tag  :inline)
+   (hvdf-offset    vector      :inline)
+   (perspective    uint128     4)
+   (fog            vector      :inline)
    )
-  :method-count-assert 9
-  :size-assert         #x80
-  :flag-assert         #x900000080
   )
+
 
 (deftype ripple-wave (structure)
-  ((scale float  :offset-assert 0)
-   (offs  float  :offset-assert 4)
-   (xdiv  int16  :offset-assert 8)
-   (zdiv  int16  :offset-assert 10)
-   (speed float  :offset-assert 12)
-   (xmul  float  :offset-assert 16)
-   (zmul  float  :offset-assert 20)
-   (delta float  :offset-assert 24)
+  ((scale  float)
+   (offs   float)
+   (xdiv   int16)
+   (zdiv   int16)
+   (speed  float)
+   (xmul   float)
+   (zmul   float)
+   (delta  float)
    )
   :pack-me
-  :method-count-assert 9
-  :size-assert         #x1c
-  :flag-assert         #x90000001c
   )
+
 
 (deftype ripple-wave-set (basic)
-  ((count        int32     :offset-assert 4)
-   (converted    basic     :offset-assert 8)
-   (frame-save   uint32    :offset-assert 12)
-   (normal-scale float     :offset-assert 16)
-   (wave         ripple-wave 4 :inline :offset-assert 20)
+  ((count         int32)
+   (converted     basic)
+   (frame-save    uint32)
+   (normal-scale  float)
+   (wave          ripple-wave  4 :inline)
    )
-  :method-count-assert 9
-  :size-assert         #x84
-  :flag-assert         #x900000084
   )
+
 
 (deftype ripple-control (basic)
-  ((global-scale            float  :offset-assert 4)
-   (last-frame-scale        float  :offset-assert 8)
-   (close-fade-dist         float  :offset-assert 12)
-   (far-fade-dist           float  :offset-assert 16)
-   (faded-scale             float  :offset-assert 20)
-   (individual-normal-scale float  :offset-assert 24)
-   (waveform                ripple-wave-set  :offset-assert 28)
-   (send-query              symbol  :offset-assert 32) ;; bool
-   (query                   ripple-merc-query  :offset-assert 36)
+  ((global-scale             float)
+   (last-frame-scale         float)
+   (close-fade-dist          float)
+   (far-fade-dist            float)
+   (faded-scale              float)
+   (individual-normal-scale  float)
+   (waveform                 ripple-wave-set)
+   (send-query               symbol)
+   (query                    ripple-merc-query)
    )
   (:methods
-    (new (symbol type) _type_ 0)
+    (new (symbol type) _type_)
     )
-  :method-count-assert 9
-  :size-assert         #x28
-  :flag-assert         #x900000028
   )
 
+
 (defmethod new ripple-control ((allocation symbol) (type-to-make type))
-  (let ((obj (object-new allocation type-to-make (the-as int (-> type-to-make size)))))
-    (set! (-> obj global-scale) 0.0)
-    (set! (-> obj last-frame-scale) -0.001)
-    (set! (-> obj close-fade-dist) (meters 1000000))
-    (set! (-> obj far-fade-dist) (meters 2000000))
-    (set! (-> obj faded-scale) -0.001)
-    (set! (-> obj waveform) #f)
-    (set! (-> obj individual-normal-scale) 1.0)
-    (set! (-> obj send-query) #f)
-    (set! (-> obj query) #f)
-    obj
+  (let ((this (object-new allocation type-to-make (the-as int (-> type-to-make size)))))
+    (set! (-> this global-scale) 0.0)
+    (set! (-> this last-frame-scale) -0.001)
+    (set! (-> this close-fade-dist) (meters 1000000))
+    (set! (-> this far-fade-dist) (meters 2000000))
+    (set! (-> this faded-scale) -0.001)
+    (set! (-> this waveform) #f)
+    (set! (-> this individual-normal-scale) 1.0)
+    (set! (-> this send-query) #f)
+    (set! (-> this query) #f)
+    this
     )
   )

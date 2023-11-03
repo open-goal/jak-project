@@ -9,100 +9,79 @@
 ;; each level has 8 "moods" corresponding to the 8 times of day.
 ;; the mood system blends together moods to create smooth transitions between levels and times of day.
 
+;; DECOMP BEGINS
+
 ;; set of fog parameters
 (deftype mood-fog (structure)
-  ((fog-color   vector :inline :offset-assert   0)
-   (fog-dists   vector :inline :offset-assert  16)
-   (fog-start   meters         :offset         16)
-   (fog-end     meters         :offset         20)
-   (fog-max     float          :offset         24)
-   (fog-min     float          :offset         28)
-   (erase-color vector :inline :offset-assert  32)
+  ((fog-color    vector  :inline)
+   (fog-dists    vector  :inline)
+   (fog-start    meters  :overlay-at (-> fog-dists x))
+   (fog-end      meters  :overlay-at (-> fog-dists y))
+   (fog-max      float   :overlay-at (-> fog-dists z))
+   (fog-min      float   :overlay-at (-> fog-dists w))
+   (erase-color  vector  :inline)
    )
-  :method-count-assert 9
-  :size-assert         #x30
-  :flag-assert         #x900000030
   )
 
 ;; a fog pattern for each of the 8 moods
 (deftype mood-fog-table (structure)
-  ((data mood-fog 8 :inline :offset-assert 0)
+  ((data  mood-fog  8 :inline)
    )
-  :method-count-assert 9
-  :size-assert         #x180
-  :flag-assert         #x900000180
   )
 
 ;; a set of light parameters
 (deftype mood-lights (structure)
-  ((direction vector :inline :offset-assert 0)
-   (lgt-color vector :inline :offset-assert 16)
-   (prt-color vector :inline :offset-assert 32)
-   (amb-color vector :inline :offset-assert 48)
-   (shadow    vector :inline :offset-assert 64)
+  ((direction  vector  :inline)
+   (lgt-color  vector  :inline)
+   (prt-color  vector  :inline)
+   (amb-color  vector  :inline)
+   (shadow     vector  :inline)
    )
-  :method-count-assert 9
-  :size-assert         #x50
-  :flag-assert         #x900000050
   )
 
 ;; a light parameter for each of the 8 moods
 (deftype mood-lights-table (structure)
-  ((data mood-lights 8 :inline :offset-assert 0)
+  ((data  mood-lights  8 :inline)
    )
-  :method-count-assert 9
-  :size-assert         #x280
-  :flag-assert         #x900000280
   )
 
 ;; settings for the sun
 (deftype mood-sun (structure)
-  ((sun-color vector :inline :offset-assert 0)
-   (env-color vector :inline :offset-assert 16)
+  ((sun-color  vector  :inline)
+   (env-color  vector  :inline)
    )
-  :method-count-assert 9
-  :size-assert         #x20
-  :flag-assert         #x900000020
   )
 
 ;; sun settings for each of the 8 moods
 (deftype mood-sun-table (structure)
-  ((data mood-sun 8 :inline :offset-assert 0)
+  ((data  mood-sun  8 :inline)
    )
-  :method-count-assert 9
-  :size-assert         #x100
-  :flag-assert         #x900000100
   )
 
 ;; all the current mood settings
 (deftype mood-context (basic)
-  ((mood-fog-table       mood-fog-table            :offset-assert 4)
-   (mood-lights-table    mood-lights-table         :offset-assert 8)
-   (mood-sun-table       mood-sun-table            :offset-assert 12)
-   (fog-interp           sky-color-day             :offset-assert 16)
-   (palette-interp       sky-color-day             :offset-assert 20)
-   (sky-texture-interp   sky-color-day             :offset-assert 24)
-   (current-fog          mood-fog          :inline :offset-assert 32)
-   (current-sun          mood-sun          :inline :offset-assert 80)
-   (current-prt-color    vector            :inline :offset-assert 112)
-   (current-shadow       vector            :inline :offset-assert 128)
-   (current-shadow-color vector            :inline :offset-assert 144)
-   (light-group          light-group     8 :inline :offset-assert 160)
-   ;; these "times" are the time-of-day weights. the w is the weight, the rest is just 1.
-   (times                vector  8 :inline         :offset-assert 1696)
-   (sky-times            float           8         :offset-assert 1824)
-   ;; times as integers. For use in rendering code.
-   (itimes               vector4w        4 :inline :offset-assert 1856)
-   (state                uint8             16      :offset-assert 1920)
-   (num-stars            float                     :offset-assert 1936)
-   (some-byte            uint8                     :offset 1939)
+  ((mood-fog-table        mood-fog-table)
+   (mood-lights-table     mood-lights-table)
+   (mood-sun-table        mood-sun-table)
+   (fog-interp            sky-color-day)
+   (palette-interp        sky-color-day)
+   (sky-texture-interp    sky-color-day)
+   (current-fog           mood-fog     :inline)
+   (current-sun           mood-sun     :inline)
+   (current-prt-color     vector       :inline)
+   (current-shadow        vector       :inline)
+   (current-shadow-color  vector       :inline)
+   (light-group           light-group  8 :inline)
+   (times                 vector       8 :inline)
+   (sky-times             float        8)
+   (itimes                vector4w     4 :inline)
+   (state                 uint8        16)
+   (num-stars             float)
+   (some-byte             uint8        :offset 1939)
    )
   (:methods
-    (new (symbol type) _type_ 0)
+    (new (symbol type) _type_)
     )
-  :method-count-assert 9
-  :size-assert         #x794
-  :flag-assert         #x900000794
   )
 
 

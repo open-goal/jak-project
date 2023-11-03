@@ -8,88 +8,67 @@
 ;; DECOMP BEGINS
 
 (deftype pris-mtx (structure)
-  ((data   float   32      :offset-assert   0)
-   (vector vector  8       :offset          0)
-   (t-mtx  matrix  :inline :offset          0)
-   (n-mtx  matrix3 :inline :offset         64)
-   (scale  vector  :inline :offset        112)
+  ((data    float    32)
+   (vector  vector   8       :overlay-at (-> data 0))
+   (t-mtx   matrix   :inline :overlay-at (-> data 0))
+   (n-mtx   matrix3  :inline :overlay-at (-> data 16))
+   (scale   vector   :inline :overlay-at (-> data 28))
    )
-  :method-count-assert 9
-  :size-assert         #x80
-  :flag-assert         #x900000080
   )
 
 
 (deftype generic-pris-mtx-save (structure)
-  ((loc-mtx pris-mtx :inline :offset-assert   0)
-   (par-mtx pris-mtx :inline :offset-assert 128)
-   (dif-mtx pris-mtx :inline :offset-assert 256)
+  ((loc-mtx  pris-mtx  :inline)
+   (par-mtx  pris-mtx  :inline)
+   (dif-mtx  pris-mtx  :inline)
    )
-  :method-count-assert 9
-  :size-assert         #x180
-  :flag-assert         #x900000180
   )
 
 
 (deftype generic-constants (structure)
-  ((fog         vector     :inline :offset-assert   0)
-   (adgif       gs-gif-tag :inline :offset-assert  16)
-   (hvdf-offset vector     :inline :offset-assert  32)
-   (hmge-scale  vector     :inline :offset-assert  48)
-   (invh-scale  vector     :inline :offset-assert  64)
-   (guard       vector     :inline :offset-assert  80)
-   (flush       qword      :inline :offset-assert  96)
-   (stores      qword      :inline :offset-assert 112)
+  ((fog          vector      :inline)
+   (adgif        gs-gif-tag  :inline)
+   (hvdf-offset  vector      :inline)
+   (hmge-scale   vector      :inline)
+   (invh-scale   vector      :inline)
+   (guard        vector      :inline)
+   (flush        qword       :inline)
+   (stores       qword       :inline)
    )
-  :method-count-assert 9
-  :size-assert         #x80
-  :flag-assert         #x900000080
   )
 
 
 (deftype generic-shrub-constants (structure)
-  ((shrub-giftag generic-gif-tag :inline :offset-assert   0)
-   (shrub-adnop  qword           :inline :offset-assert  16)
+  ((shrub-giftag  generic-gif-tag  :inline)
+   (shrub-adnop   qword            :inline)
    )
-  :method-count-assert 9
-  :size-assert         #x20
-  :flag-assert         #x900000020
   )
 
 
 (deftype gcf-shader (structure)
-  ((adgif  uint128      5       :offset-assert   0)
-   (shader adgif-shader :inline :offset          0)
-   (pos    uint32               :offset         12)
-   (num    uint32               :offset         28)
+  ((adgif   uint128       5)
+   (shader  adgif-shader  :inline :overlay-at (-> adgif 0))
+   (pos     uint32                :offset  12)
+   (num     uint32                :offset  28)
    )
-  :method-count-assert 9
-  :size-assert         #x50
-  :flag-assert         #x900000050
   )
 
 
 (deftype gcf-control (structure)
-  ((matrix      matrix          :inline          :offset-assert   0)
-   (giftag      generic-gif-tag :inline          :offset-assert  64)
-   (adnops      gs-adcmd        2 :inline        :offset-assert  80)
-   (num-strips  uint32                           :offset         76)
-   (num-dps     uint32                           :offset         92)
-   (kick-offset uint32                           :offset        108)
-   (shader      gcf-shader      :inline :dynamic :offset-assert 112)
+  ((matrix       matrix           :inline)
+   (giftag       generic-gif-tag  :inline)
+   (adnops       gs-adcmd         2 :inline)
+   (num-strips   uint32           :overlay-at (-> giftag data 3))
+   (num-dps      uint32           :overlay-at (-> adnops 0 word 3))
+   (kick-offset  uint32           :offset 108)
+   (shader       gcf-shader       :inline :dynamic)
    )
-  :method-count-assert 9
-  :size-assert         #x70
-  :flag-assert         #x900000070
   )
 
 
 (deftype gcf-vertex (structure)
-  ((tex vector4w       :inline :offset-assert   0)
-   (clr gs-packed-rgba :inline :offset-assert  16)
-   (pos gs-packed-xyzw :inline :offset-assert  32)
+  ((tex  vector4w        :inline)
+   (clr  gs-packed-rgba  :inline)
+   (pos  gs-packed-xyzw  :inline)
    )
-  :method-count-assert 9
-  :size-assert         #x30
-  :flag-assert         #x900000030
   )

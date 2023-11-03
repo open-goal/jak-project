@@ -106,96 +106,86 @@
    (z float :offset  64 :size  32)
    (w float :offset  96 :size  32)
    )
-  :method-count-assert 9
-  :size-assert         #x10
-  :flag-assert         #x900000010
   )
 
 ;; definition for method 3 of type vec4s
-(defmethod inspect vec4s ((obj vec4s))
-  (when (not obj)
-    (set! obj obj)
+(defmethod inspect ((this vec4s))
+  (when (not this)
+    (set! this this)
     (goto cfg-4)
     )
-  (format #t "[~8x] ~A~%" obj 'vec4s)
-  (format #t "~1Tx: ~f~%" (-> obj x))
-  (format #t "~1Ty: ~f~%" (-> obj y))
-  (format #t "~1Tz: ~f~%" (-> obj z))
-  (format #t "~1Tw: ~f~%" (-> obj w))
+  (format #t "[~8x] ~A~%" this 'vec4s)
+  (format #t "~1Tx: ~f~%" (-> this x))
+  (format #t "~1Ty: ~f~%" (-> this y))
+  (format #t "~1Tz: ~f~%" (-> this z))
+  (format #t "~1Tw: ~f~%" (-> this w))
   (label cfg-4)
-  obj
+  this
   )
 
 ;; definition for method 2 of type vec4s
-(defmethod print vec4s ((obj vec4s))
-  (format #t "#<vector ~F ~F ~F ~F @ #x~X>" (-> obj x) (-> obj y) (-> obj z) (-> obj w) obj)
-  obj
+(defmethod print ((this vec4s))
+  (format #t "#<vector ~F ~F ~F ~F @ #x~X>" (-> this x) (-> this y) (-> this z) (-> this w) this)
+  this
   )
 
 ;; definition of type vector
 (deftype vector (structure)
-  ((data float   4 :offset-assert   0)
-   (x    float     :offset          0)
-   (y    float     :offset          4)
-   (z    float     :offset          8)
-   (w    float     :offset         12)
-   (quad uint128   :offset          0)
+  ((data  float    4)
+   (x     float    :overlay-at (-> data 0))
+   (y     float    :overlay-at (-> data 1))
+   (z     float    :overlay-at (-> data 2))
+   (w     float    :overlay-at (-> data 3))
+   (quad  uint128  :overlay-at (-> data 0))
    )
-  :method-count-assert 9
-  :size-assert         #x10
-  :flag-assert         #x900000010
   )
 
 ;; definition for method 3 of type vector
-;; INFO: this function exists in multiple non-identical object files
 ;; INFO: Used lq/sq
-(defmethod inspect vector ((obj vector))
-  (when (not obj)
-    (set! obj obj)
+(defmethod inspect ((this vector))
+  (when (not this)
+    (set! this this)
     (goto cfg-4)
     )
-  (format #t "[~8x] ~A~%" obj 'vector)
-  (format #t "~1Tdata[4] @ #x~X~%" (&-> obj x))
-  (format #t "~1Tx: ~f~%" (-> obj x))
-  (format #t "~1Ty: ~f~%" (-> obj y))
-  (format #t "~1Tz: ~f~%" (-> obj z))
-  (format #t "~1Tw: ~f~%" (-> obj w))
-  (format #t "~1Tquad: ~D~%" (-> obj quad))
+  (format #t "[~8x] ~A~%" this 'vector)
+  (format #t "~1Tdata[4] @ #x~X~%" (&-> this x))
+  (format #t "~1Tx: ~f~%" (-> this x))
+  (format #t "~1Ty: ~f~%" (-> this y))
+  (format #t "~1Tz: ~f~%" (-> this z))
+  (format #t "~1Tw: ~f~%" (-> this w))
+  (format #t "~1Tquad: ~D~%" (-> this quad))
   (label cfg-4)
-  obj
+  this
   )
 
 ;; definition of type bfloat
 (deftype bfloat (basic)
-  ((data float  :offset-assert   4)
+  ((data  float)
    )
-  :method-count-assert 9
-  :size-assert         #x8
-  :flag-assert         #x900000008
   )
 
 ;; definition for method 3 of type bfloat
-(defmethod inspect bfloat ((obj bfloat))
-  (when (not obj)
-    (set! obj obj)
+(defmethod inspect ((this bfloat))
+  (when (not this)
+    (set! this this)
     (goto cfg-4)
     )
-  (format #t "[~8x] ~A~%" obj (-> obj type))
-  (format #t "~1Tdata: ~f~%" (-> obj data))
+  (format #t "[~8x] ~A~%" this (-> this type))
+  (format #t "~1Tdata: ~f~%" (-> this data))
   (label cfg-4)
-  obj
+  this
   )
 
 ;; definition for method 2 of type bfloat
-(defmethod print bfloat ((obj bfloat))
-  (format #t "~f" (-> obj data))
-  obj
+(defmethod print ((this bfloat))
+  (format #t "~f" (-> this data))
+  this
   )
 
 ;; definition for method 5 of type type
 ;; WARN: Return type mismatch uint vs int.
-(defmethod asize-of type ((obj type))
-  (the-as int (logand (the-as uint #xfffffff0) (+ (* (-> obj allocated-length) 4) 43)))
+(defmethod asize-of ((this type))
+  (the-as int (logand (the-as uint #xfffffff0) (+ (* (-> this allocated-length) 4) 43)))
   )
 
 ;; definition for function basic-type?
@@ -277,14 +267,14 @@
   )
 
 ;; definition for method 4 of type pair
-(defmethod length pair ((obj pair))
+(defmethod length ((this pair))
   (local-vars (v0-0 int))
   (cond
-    ((null? obj)
+    ((null? this)
      (set! v0-0 0)
      )
     (else
-      (let ((v1-1 (cdr obj)))
+      (let ((v1-1 (cdr this)))
         (set! v0-0 1)
         (while (and (not (null? v1-1)) (pair? v1-1))
           (+! v0-0 1)
@@ -298,7 +288,7 @@
 
 ;; definition for method 5 of type pair
 ;; WARN: Return type mismatch uint vs int.
-(defmethod asize-of pair ((obj pair))
+(defmethod asize-of ((this pair))
   (the-as int (-> pair size))
   )
 
@@ -498,29 +488,26 @@
 
 ;; definition of type inline-array-class
 (deftype inline-array-class (basic)
-  ((length           int32          :offset-assert   4)
-   (allocated-length int32          :offset-assert   8)
-   (_data            uint8 :dynamic :offset         16)
+  ((length            int32)
+   (allocated-length  int32)
+   (_data             uint8  :dynamic :offset  16)
    )
-  :method-count-assert 9
-  :size-assert         #x10
-  :flag-assert         #x900000010
   (:methods
-    (new (symbol type int) _type_ 0)
+    (new (symbol type int) _type_)
     )
   )
 
 ;; definition for method 3 of type inline-array-class
-(defmethod inspect inline-array-class ((obj inline-array-class))
-  (when (not obj)
-    (set! obj obj)
+(defmethod inspect ((this inline-array-class))
+  (when (not this)
+    (set! this this)
     (goto cfg-4)
     )
-  (format #t "[~8x] ~A~%" obj (-> obj type))
-  (format #t "~1Tlength: ~D~%" (-> obj length))
-  (format #t "~1Tallocated-length: ~D~%" (-> obj allocated-length))
+  (format #t "[~8x] ~A~%" this (-> this type))
+  (format #t "~1Tlength: ~D~%" (-> this length))
+  (format #t "~1Tallocated-length: ~D~%" (-> this allocated-length))
   (label cfg-4)
-  obj
+  this
   )
 
 ;; definition for method 0 of type inline-array-class
@@ -541,14 +528,14 @@
   )
 
 ;; definition for method 4 of type inline-array-class
-(defmethod length inline-array-class ((obj inline-array-class))
-  (-> obj length)
+(defmethod length ((this inline-array-class))
+  (-> this length)
   )
 
 ;; definition for method 5 of type inline-array-class
 ;; WARN: Return type mismatch uint vs int.
-(defmethod asize-of inline-array-class ((obj inline-array-class))
-  (the-as int (+ (-> obj type size) (* (-> obj allocated-length) (the-as int (-> obj type heap-base)))))
+(defmethod asize-of ((this inline-array-class))
+  (the-as int (+ (-> this type size) (* (-> this allocated-length) (the-as int (-> this type heap-base)))))
   )
 
 ;; definition for method 0 of type array
@@ -575,246 +562,246 @@
 
 ;; definition for method 2 of type array
 ;; INFO: Used lq/sq
-(defmethod print array ((obj array))
+(defmethod print ((this array))
   (format #t "#(")
   (cond
-    ((type-type? (-> obj content-type) integer)
-     (case (-> obj content-type symbol)
+    ((type-type? (-> this content-type) integer)
+     (case (-> this content-type symbol)
        (('int32)
-        (dotimes (s5-0 (-> obj length))
+        (dotimes (s5-0 (-> this length))
           (format
             #t
             (if (zero? s5-0)
                 "~D"
                 " ~D"
                 )
-            (-> (the-as (array int32) obj) s5-0)
+            (-> (the-as (array int32) this) s5-0)
             )
           )
         )
        (('uint32)
-        (dotimes (s5-1 (-> obj length))
+        (dotimes (s5-1 (-> this length))
           (format
             #t
             (if (zero? s5-1)
                 "~D"
                 " ~D"
                 )
-            (-> (the-as (array uint32) obj) s5-1)
+            (-> (the-as (array uint32) this) s5-1)
             )
           )
         )
        (('int64)
-        (dotimes (s5-2 (-> obj length))
+        (dotimes (s5-2 (-> this length))
           (format
             #t
             (if (zero? s5-2)
                 "~D"
                 " ~D"
                 )
-            (-> (the-as (array int64) obj) s5-2)
+            (-> (the-as (array int64) this) s5-2)
             )
           )
         )
        (('uint64)
-        (dotimes (s5-3 (-> obj length))
+        (dotimes (s5-3 (-> this length))
           (format
             #t
             (if (zero? s5-3)
                 "#x~X"
                 " #x~X"
                 )
-            (-> (the-as (array uint64) obj) s5-3)
+            (-> (the-as (array uint64) this) s5-3)
             )
           )
         )
        (('int8)
-        (dotimes (s5-4 (-> obj length))
+        (dotimes (s5-4 (-> this length))
           (format
             #t
             (if (zero? s5-4)
                 "~D"
                 " ~D"
                 )
-            (-> (the-as (array int8) obj) s5-4)
+            (-> (the-as (array int8) this) s5-4)
             )
           )
         )
        (('uint8)
-        (dotimes (s5-5 (-> obj length))
+        (dotimes (s5-5 (-> this length))
           (format
             #t
             (if (zero? s5-5)
                 "~D"
                 " ~D"
                 )
-            (-> (the-as (array uint8) obj) s5-5)
+            (-> (the-as (array uint8) this) s5-5)
             )
           )
         )
        (('int16)
-        (dotimes (s5-6 (-> obj length))
+        (dotimes (s5-6 (-> this length))
           (format
             #t
             (if (zero? s5-6)
                 "~D"
                 " ~D"
                 )
-            (-> (the-as (array int16) obj) s5-6)
+            (-> (the-as (array int16) this) s5-6)
             )
           )
         )
        (('uint16)
-        (dotimes (s5-7 (-> obj length))
+        (dotimes (s5-7 (-> this length))
           (format
             #t
             (if (zero? s5-7)
                 "~D"
                 " ~D"
                 )
-            (-> (the-as (array uint16) obj) s5-7)
+            (-> (the-as (array uint16) this) s5-7)
             )
           )
         )
        (('uint128 'int128)
-        (dotimes (s5-8 (-> obj length))
+        (dotimes (s5-8 (-> this length))
           (format
             #t
             (if (zero? s5-8)
                 "#x~X"
                 " #x~X"
                 )
-            (-> (the-as (array uint128) obj) s5-8)
+            (-> (the-as (array uint128) this) s5-8)
             )
           )
         )
        (else
-         (dotimes (s5-9 (-> obj length))
+         (dotimes (s5-9 (-> this length))
            (format
              #t
              (if (zero? s5-9)
                  "~D"
                  " ~D"
                  )
-             (-> (the-as (array int32) obj) s5-9)
+             (-> (the-as (array int32) this) s5-9)
              )
            )
          )
        )
      )
-    ((= (-> obj content-type) float)
-     (dotimes (s5-10 (-> obj length))
+    ((= (-> this content-type) float)
+     (dotimes (s5-10 (-> this length))
        (if (zero? s5-10)
-           (format #t "~f" (-> (the-as (array float) obj) s5-10))
-           (format #t " ~f" (-> (the-as (array float) obj) s5-10))
+           (format #t "~f" (-> (the-as (array float) this) s5-10))
+           (format #t " ~f" (-> (the-as (array float) this) s5-10))
            )
        )
      )
     (else
-      (dotimes (s5-11 (-> obj length))
+      (dotimes (s5-11 (-> this length))
         (if (zero? s5-11)
-            (format #t "~A" (-> (the-as (array basic) obj) s5-11))
-            (format #t " ~A" (-> (the-as (array basic) obj) s5-11))
+            (format #t "~A" (-> (the-as (array basic) this) s5-11))
+            (format #t " ~A" (-> (the-as (array basic) this) s5-11))
             )
         )
       )
     )
   (format #t ")")
-  obj
+  this
   )
 
 ;; definition for method 3 of type array
 ;; INFO: Used lq/sq
-(defmethod inspect array ((obj array))
-  (format #t "[~8x] ~A~%" obj (-> obj type))
-  (format #t "~Tallocated-length: ~D~%" (-> obj allocated-length))
-  (format #t "~Tlength: ~D~%" (-> obj length))
-  (format #t "~Tcontent-type: ~A~%" (-> obj content-type))
-  (format #t "~Tdata[~D]: @ #x~X~%" (-> obj allocated-length) (-> obj data))
+(defmethod inspect ((this array))
+  (format #t "[~8x] ~A~%" this (-> this type))
+  (format #t "~Tallocated-length: ~D~%" (-> this allocated-length))
+  (format #t "~Tlength: ~D~%" (-> this length))
+  (format #t "~Tcontent-type: ~A~%" (-> this content-type))
+  (format #t "~Tdata[~D]: @ #x~X~%" (-> this allocated-length) (-> this data))
   (cond
-    ((and (= (logand (the-as int (-> obj content-type)) 7) 4) (type-type? (-> obj content-type) integer))
-     (case (-> obj content-type symbol)
+    ((and (= (logand (the-as int (-> this content-type)) 7) 4) (type-type? (-> this content-type) integer))
+     (case (-> this content-type symbol)
        (('int32)
-        (dotimes (s5-0 (-> obj length))
-          (format #t "~T  [~D] ~D~%" s5-0 (-> (the-as (array int32) obj) s5-0))
+        (dotimes (s5-0 (-> this length))
+          (format #t "~T  [~D] ~D~%" s5-0 (-> (the-as (array int32) this) s5-0))
           )
         )
        (('uint32)
-        (dotimes (s5-1 (-> obj length))
-          (format #t "~T  [~D] ~D~%" s5-1 (-> (the-as (array uint32) obj) s5-1))
+        (dotimes (s5-1 (-> this length))
+          (format #t "~T  [~D] ~D~%" s5-1 (-> (the-as (array uint32) this) s5-1))
           )
         )
        (('int64)
-        (dotimes (s5-2 (-> obj length))
-          (format #t "~T  [~D] ~D~%" s5-2 (-> (the-as (array int64) obj) s5-2))
+        (dotimes (s5-2 (-> this length))
+          (format #t "~T  [~D] ~D~%" s5-2 (-> (the-as (array int64) this) s5-2))
           )
         )
        (('uint64)
-        (dotimes (s5-3 (-> obj length))
-          (format #t "~T  [~D] #x~X~%" s5-3 (-> (the-as (array uint64) obj) s5-3))
+        (dotimes (s5-3 (-> this length))
+          (format #t "~T  [~D] #x~X~%" s5-3 (-> (the-as (array uint64) this) s5-3))
           )
         )
        (('int8)
-        (dotimes (s5-4 (-> obj length))
-          (format #t "~T  [~D] ~D~%" s5-4 (-> (the-as (array int8) obj) s5-4))
+        (dotimes (s5-4 (-> this length))
+          (format #t "~T  [~D] ~D~%" s5-4 (-> (the-as (array int8) this) s5-4))
           )
         )
        (('uint8)
-        (dotimes (s5-5 (-> obj length))
-          (format #t "~T  [~D] ~D~%" s5-5 (-> (the-as (array int8) obj) s5-5))
+        (dotimes (s5-5 (-> this length))
+          (format #t "~T  [~D] ~D~%" s5-5 (-> (the-as (array int8) this) s5-5))
           )
         )
        (('int16)
-        (dotimes (s5-6 (-> obj length))
-          (format #t "~T  [~D] ~D~%" s5-6 (-> (the-as (array int16) obj) s5-6))
+        (dotimes (s5-6 (-> this length))
+          (format #t "~T  [~D] ~D~%" s5-6 (-> (the-as (array int16) this) s5-6))
           )
         )
        (('uint16)
-        (dotimes (s5-7 (-> obj length))
-          (format #t "~T  [~D] ~D~%" s5-7 (-> (the-as (array uint16) obj) s5-7))
+        (dotimes (s5-7 (-> this length))
+          (format #t "~T  [~D] ~D~%" s5-7 (-> (the-as (array uint16) this) s5-7))
           )
         )
        (('int128 'uint128)
-        (dotimes (s5-8 (-> obj length))
-          (format #t "~T  [~D] #x~X~%" s5-8 (-> (the-as (array uint128) obj) s5-8))
+        (dotimes (s5-8 (-> this length))
+          (format #t "~T  [~D] #x~X~%" s5-8 (-> (the-as (array uint128) this) s5-8))
           )
         )
        (else
-         (dotimes (s5-9 (-> obj length))
-           (format #t "~T  [~D] ~D~%" s5-9 (-> (the-as (array int32) obj) s5-9))
+         (dotimes (s5-9 (-> this length))
+           (format #t "~T  [~D] ~D~%" s5-9 (-> (the-as (array int32) this) s5-9))
            )
          )
        )
      )
-    ((= (-> obj content-type) float)
-     (dotimes (s5-10 (-> obj length))
-       (format #t "~T  [~D] ~f~%" s5-10 (-> (the-as (array float) obj) s5-10))
+    ((= (-> this content-type) float)
+     (dotimes (s5-10 (-> this length))
+       (format #t "~T  [~D] ~f~%" s5-10 (-> (the-as (array float) this) s5-10))
        )
      )
     (else
-      (dotimes (s5-11 (-> obj length))
-        (format #t "~T  [~D] ~A~%" s5-11 (-> (the-as (array basic) obj) s5-11))
+      (dotimes (s5-11 (-> this length))
+        (format #t "~T  [~D] ~A~%" s5-11 (-> (the-as (array basic) this) s5-11))
         )
       )
     )
-  obj
+  this
   )
 
 ;; definition for method 4 of type array
-(defmethod length array ((obj array))
-  (-> obj length)
+(defmethod length ((this array))
+  (-> this length)
   )
 
 ;; definition for method 5 of type array
 ;; WARN: Return type mismatch uint vs int.
-(defmethod asize-of array ((obj array))
+(defmethod asize-of ((this array))
   (the-as
     int
-    (+ (-> obj type size) (* (-> obj allocated-length) (if (type-type? (-> obj content-type) number)
-                                                           (the-as int (-> obj content-type size))
-                                                           4
-                                                           )
-                             )
+    (+ (-> this type size) (* (-> this allocated-length) (if (type-type? (-> this content-type) number)
+                                                             (the-as int (-> this content-type size))
+                                                             4
+                                                             )
+                              )
        )
     )
   )

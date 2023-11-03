@@ -10,13 +10,9 @@
 ;; DECOMP BEGINS
 
 (deftype babak-with-cannon (babak)
-  ((cannon-ent entity  :offset-assert 400)
-   (distance   float   :offset-assert 404)
+  ((cannon-ent  entity)
+   (distance    float)
    )
-  :heap-base #x130
-  :method-count-assert 76
-  :size-assert         #x198
-  :flag-assert         #x4c01300198
   (:states
     babak-with-cannon-jump-off-cannon
     babak-with-cannon-jump-onto-cannon
@@ -29,20 +25,16 @@ nav-enemy-default-event-handler
 
 (defstate nav-enemy-idle (babak-with-cannon)
   :virtual #t
-  :event (the-as
-    (function process int symbol event-message-block object :behavior babak-with-cannon)
-    nav-enemy-default-event-handler
-    )
+  :event nav-enemy-default-event-handler
   :trans (behavior ()
     (if (and (and *target* (>= (-> self enemy-info idle-distance)
                                (vector-vector-distance (-> self collide-info trans) (-> *target* control trans))
                                )
                   )
-             (>= (- (-> *display* base-frame-counter) (-> self state-time)) (-> self state-timeout))
+             (time-elapsed? (-> self state-time) (-> self state-timeout))
              )
         (go-virtual nav-enemy-patrol)
         )
-    (none)
     )
   :code (behavior ()
     (ja-channel-push! 1 (seconds 0.075))
@@ -53,21 +45,17 @@ nav-enemy-default-event-handler
       (ja :num! (seek!))
       )
     (anim-loop)
-    (none)
     )
-  :post (the-as (function none :behavior babak-with-cannon) #f)
+  :post #f
   )
 
 (defstate nav-enemy-patrol (babak-with-cannon)
   :virtual #t
-  :event (the-as
-    (function process int symbol event-message-block object :behavior babak-with-cannon)
-    nav-enemy-default-event-handler
-    )
+  :event nav-enemy-default-event-handler
   :trans (behavior ()
-    (when (>= (- (-> *display* base-frame-counter) (-> self state-time)) (seconds 0.1))
+    (when (time-elapsed? (-> self state-time) (seconds 0.1))
       (let ((f30-0 (- (-> (target-pos 0) y) (-> self collide-info trans y))))
-        (if (and (>= (- (-> *display* base-frame-counter) (-> self state-time)) (seconds 3))
+        (if (and (time-elapsed? (-> self state-time) (seconds 3))
                  (or (or (not *target*)
                          (< (-> self distance) (vector-vector-distance (-> self collide-info trans) (-> *target* control trans)))
                          )
@@ -77,7 +65,7 @@ nav-enemy-default-event-handler
             (go babak-run-to-cannon)
             )
         )
-      (when (>= (- (-> *display* base-frame-counter) (-> self state-time)) (-> self state-timeout))
+      (when (time-elapsed? (-> self state-time) (-> self state-timeout))
         (if (or (not *target*) (< (-> self enemy-info idle-distance)
                                   (vector-vector-distance (-> self collide-info trans) (-> *target* control trans))
                                   )
@@ -89,21 +77,16 @@ nav-enemy-default-event-handler
           (go-virtual nav-enemy-notice)
           )
       )
-    (none)
     )
   :code (-> (method-of-type babak nav-enemy-patrol) code)
   )
 
 (defstate babak-run-to-cannon (babak)
-  :event (the-as
-    (function process int symbol event-message-block object :behavior babak)
-    nav-enemy-default-event-handler
-    )
+  :event nav-enemy-default-event-handler
   :enter (behavior ()
-    (set! (-> self state-time) (-> *display* base-frame-counter))
+    (set-time! (-> self state-time))
     (set! (-> self nav destination-pos quad) (-> self entity extra trans quad))
     (set! (-> self nav target-pos quad) (-> self entity extra trans quad))
-    (none)
     )
   :trans (behavior ()
     (if (nav-enemy-notice-player?)
@@ -112,22 +95,19 @@ nav-enemy-default-event-handler
     (if (logtest? (nav-control-flags navcf19) (-> self nav flags))
         (go babak-with-cannon-jump-onto-cannon)
         )
-    (none)
     )
   :code (behavior ()
     (ja-channel-push! 1 (seconds 0.075))
     (loop
-      (ja-no-eval :group! (-> self draw art-group data 8) :num! (seek!) :frame-num 0.0)
+      (ja-no-eval :group! babak-charge-ja :num! (seek!) :frame-num 0.0)
       (until (ja-done? 0)
         (suspend)
         (ja :num! (seek!))
         )
       )
-    (none)
     )
   :post (behavior ()
     (nav-enemy-travel-post)
-    (none)
     )
   )
 
@@ -146,7 +126,7 @@ nav-enemy-default-event-handler
   )
 
 (defun babak-with-cannon-compute-ride-point ((arg0 mistycannon) (arg1 vector))
-  (set! (-> arg1 quad) (-> arg0 root-override trans quad))
+  (set! (-> arg1 quad) (-> arg0 root trans quad))
   (let ((a1-4 (new 'static 'vector :y 18149.377 :z -17289.217 :w 1.0))
         (a2-0 (-> arg0 node-list data 3 bone transform))
         )
@@ -179,16 +159,12 @@ nav-enemy-default-event-handler
   )
 
 (defstate babak-with-cannon-jump-onto-cannon (babak-with-cannon)
-  :event (the-as
-    (function process int symbol event-message-block object :behavior babak-with-cannon)
-    nav-enemy-jump-event-handler
-    )
+  :event nav-enemy-jump-event-handler
   :exit (behavior ()
     (logior! (-> self nav-enemy-flags) (nav-enemy-flags enable-rotate enable-travel))
-    (none)
     )
   :code (behavior ()
-    (set! (-> self state-time) (-> *display* base-frame-counter))
+    (set-time! (-> self state-time))
     (set! (-> self rotate-speed) (-> self nav-info run-rotate-speed))
     (set! (-> self turn-time) (-> self nav-info run-turn-time))
     (logclear! (-> self nav-enemy-flags) (nav-enemy-flags enable-rotate enable-travel))
@@ -241,32 +217,27 @@ nav-enemy-default-event-handler
         )
       )
     (ja-channel-push! 1 (seconds 0.1))
-    (ja-no-eval :group! (-> self draw art-group data 17) :num! (seek!) :frame-num 0.0)
+    (ja-no-eval :group! babak-look-ja :num! (seek!) :frame-num 0.0)
     (until (ja-done? 0)
       (suspend)
       (ja :num! (seek!))
       )
     (go babak-with-cannon-shooting)
-    (none)
     )
-  :post (the-as (function none :behavior babak-with-cannon) nav-enemy-jump-post)
+  :post nav-enemy-jump-post
   )
 
 (defstate babak-with-cannon-jump-off-cannon (babak-with-cannon)
-  :event (the-as
-    (function process int symbol event-message-block object :behavior babak-with-cannon)
-    nav-enemy-jump-event-handler
-    )
+  :event nav-enemy-jump-event-handler
   :exit (behavior ()
     (logior! (-> self nav-enemy-flags) (nav-enemy-flags enable-rotate enable-travel))
-    (none)
     )
   :code (behavior ()
-    (set! (-> self state-time) (-> *display* base-frame-counter))
+    (set-time! (-> self state-time))
     (nav-enemy-initialize-jump (-> self entity extra trans))
     (nav-enemy-neck-control-look-at)
     (logclear! (-> self nav-enemy-flags) (nav-enemy-flags enable-rotate enable-travel))
-    (ja-no-eval :group! (-> self draw art-group data 17) :num! (seek! 0.0 2.0) :frame-num max)
+    (ja-no-eval :group! babak-look-ja :num! (seek! 0.0 2.0) :frame-num max)
     (until (ja-done? 0)
       (suspend)
       (ja :num! (seek! 0.0 2.0))
@@ -281,24 +252,19 @@ nav-enemy-default-event-handler
       (set-current-poly! (-> self nav) a1-6)
       )
     (go-virtual nav-enemy-jump-land)
-    (none)
     )
-  :post (the-as (function none :behavior babak-with-cannon) nav-enemy-jump-post)
+  :post nav-enemy-jump-post
   )
 
 (defstate babak-with-cannon-shooting (babak-with-cannon)
-  :event (the-as
-    (function process int symbol event-message-block object :behavior babak-with-cannon)
-    nav-enemy-default-event-handler
-    )
+  :event nav-enemy-default-event-handler
   :enter (behavior ()
-    (set! (-> self state-time) (-> *display* base-frame-counter))
+    (set-time! (-> self state-time))
     (let ((v1-2 (entity-actor-lookup (-> self entity) 'alt-actor 0)))
       (if v1-2
           (logior! (-> v1-2 extra perm status) (entity-perm-status complete))
           )
       )
-    (none)
     )
   :exit (behavior ()
     (let ((v1-0 (entity-actor-lookup (-> self entity) 'alt-actor 0)))
@@ -306,7 +272,6 @@ nav-enemy-default-event-handler
           (logclear! (-> v1-0 extra perm status) (entity-perm-status complete))
           )
       )
-    (none)
     )
   :trans (behavior ()
     (let ((f0-1 (- (-> (target-pos 0) y) (-> self collide-info trans y))))
@@ -314,29 +279,24 @@ nav-enemy-default-event-handler
                (and (and *target*
                          (>= (-> self distance) (vector-vector-distance (-> self collide-info trans) (-> *target* control trans)))
                          )
-                    (>= (- (-> *display* base-frame-counter) (-> self state-time)) (seconds 3))
+                    (time-elapsed? (-> self state-time) (seconds 3))
                     )
                )
           (go babak-with-cannon-jump-off-cannon)
           )
       )
-    (none)
     )
   :code (behavior ()
     (loop
       (suspend)
       )
-    (none)
     )
   :post babak-with-cannon-ride-cannon-post
   )
 
 (defstate nav-enemy-die (babak-with-cannon)
   :virtual #t
-  :event (the-as
-    (function process int symbol event-message-block object :behavior babak-with-cannon)
-    nav-enemy-default-event-handler
-    )
+  :event nav-enemy-default-event-handler
   :trans (behavior ()
     (if (and *target* (= (-> *target* current-level name) 'beach))
         (spool-push *art-control* "beachcam-cannon" 0 self -1.0)
@@ -344,21 +304,17 @@ nav-enemy-default-event-handler
     (if (and *target* (= (-> *target* current-level name) 'misty))
         (spool-push *art-control* "mistycam-cannon" 0 self -1.0)
         )
-    (let ((t9-3 (-> (the-as (state nav-enemy) (find-parent-method babak-with-cannon 23)) trans)))
+    (let ((t9-3 (-> (find-parent-state) trans)))
       (if t9-3
           (t9-3)
           )
       )
-    (none)
     )
   )
 
 (defstate nav-enemy-fuel-cell (babak-with-cannon)
   :virtual #t
-  :event (the-as
-    (function process int symbol event-message-block object :behavior babak-with-cannon)
-    process-drawable-fuel-cell-handler
-    )
+  :event process-drawable-fuel-cell-handler
   :code (behavior ()
     (ja-channel-set! 0)
     (clear-collide-with-as (-> self collide-info))
@@ -388,35 +344,34 @@ nav-enemy-default-event-handler
         )
       )
     (cleanup-for-death self)
-    (none)
     )
   )
 
-(defmethod common-post babak-with-cannon ((obj babak-with-cannon))
+(defmethod common-post ((this babak-with-cannon))
   (cond
     ((= (level-status *level* 'beach) 'active)
-     (spool-push *art-control* "beachcam-cannon" 0 obj -99.0)
+     (spool-push *art-control* "beachcam-cannon" 0 this -99.0)
      )
     ((= (level-status *level* 'misty) 'active)
-     (spool-push *art-control* "mistycam-cannon" 0 obj -99.0)
+     (spool-push *art-control* "mistycam-cannon" 0 this -99.0)
      )
     )
-  ((method-of-type nav-enemy common-post) obj)
+  ((method-of-type nav-enemy common-post) this)
   (none)
   )
 
-(defmethod init-from-entity! babak-with-cannon ((obj babak-with-cannon) (arg0 entity-actor))
-  (initialize-collision obj)
-  (process-drawable-from-entity! obj arg0)
-  (nav-enemy-method-48 obj)
-  (set! (-> obj distance) (res-lump-float arg0 'distance :default 163840.0))
-  (set! (-> obj cannon-ent) (entity-actor-lookup (-> obj entity) 'alt-actor 0))
-  (logclear! (-> obj mask) (process-mask actor-pause))
-  (if (or (not (and (-> obj entity) (logtest? (-> obj entity extra perm status) (entity-perm-status complete))))
-          (not (logtest? (-> obj enemy-info options) (fact-options has-power-cell)))
+(defmethod init-from-entity! ((this babak-with-cannon) (arg0 entity-actor))
+  (initialize-collision this)
+  (process-drawable-from-entity! this arg0)
+  (nav-enemy-method-48 this)
+  (set! (-> this distance) (res-lump-float arg0 'distance :default 163840.0))
+  (set! (-> this cannon-ent) (entity-actor-lookup (-> this entity) 'alt-actor 0))
+  (logclear! (-> this mask) (process-mask actor-pause))
+  (if (or (not (and (-> this entity) (logtest? (-> this entity extra perm status) (entity-perm-status complete))))
+          (not (logtest? (-> this enemy-info options) (fact-options has-power-cell)))
           )
-      (go (method-of-object obj nav-enemy-idle))
+      (go (method-of-object this nav-enemy-idle))
       )
-  (go (method-of-object obj nav-enemy-fuel-cell))
+  (go (method-of-object this nav-enemy-fuel-cell))
   (none)
   )

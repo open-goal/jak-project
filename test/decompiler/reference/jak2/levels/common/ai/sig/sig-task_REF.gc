@@ -3,43 +3,43 @@
 
 ;; definition for method 9 of type sigt-wait-spot
 ;; WARN: Return type mismatch int vs none.
-(defmethod reset-task! sigt-wait-spot ((obj sigt-wait-spot))
-  (set! (-> obj check-done) #f)
-  (set! (-> obj which-spot) -1)
-  (set! (-> obj num-spots) (the-as uint 0))
+(defmethod reset-task! ((this sigt-wait-spot))
+  (set! (-> this check-done) #f)
+  (set! (-> this which-spot) -1)
+  (set! (-> this num-spots) (the-as uint 0))
   0
   (none)
   )
 
 ;; definition for method 11 of type sigt-wait-spot
-(defmethod ai-task-method-11 sigt-wait-spot ((obj sigt-wait-spot) (arg0 bot))
-  (let ((s4-0 (-> obj which-spot)))
+(defmethod ai-task-method-11 ((this sigt-wait-spot) (arg0 bot))
+  (let ((s4-0 (-> this which-spot)))
     (when (>= s4-0 0)
-      (let ((s3-0 (-> arg0 course spots (-> obj spot-indexes s4-0))))
+      (let ((s3-0 (-> arg0 course spots (-> this spot-indexes s4-0))))
         (if (and (not (outside-spot-radius? arg0 s3-0 (the-as vector #f) #f)) (player-blocking-spot? arg0 s3-0))
             (set! s4-0 -1)
             )
         )
       )
     (when (< s4-0 0)
-      (set! s4-0 (choose-spot arg0 (the-as int (-> obj num-spots)) (the-as (pointer uint) (-> obj spot-indexes))))
-      (set! (-> obj which-spot) s4-0)
+      (set! s4-0 (choose-spot arg0 (the-as int (-> this num-spots)) (the-as (pointer uint) (-> this spot-indexes))))
+      (set! (-> this which-spot) s4-0)
       (mem-copy!
         (the-as pointer (-> arg0 spot))
-        (the-as pointer (-> arg0 course spots (-> obj spot-indexes s4-0)))
+        (the-as pointer (-> arg0 course spots (-> this spot-indexes s4-0)))
         20
         )
       )
     (if (logtest? *display-bot-marks* (bot-marks-controls bmc16))
         (bot-debug-draw-spot-sphere
           arg0
-          (the-as int (-> obj num-spots))
-          (the-as (pointer uint) (-> obj spot-indexes))
-          (the-as int (-> obj spot-indexes s4-0))
+          (the-as int (-> this num-spots))
+          (the-as (pointer uint) (-> this spot-indexes))
+          (the-as int (-> this spot-indexes s4-0))
           )
         )
     )
-  (when (not ((-> obj check-done) obj (the-as sig arg0)))
+  (when (not ((-> this check-done) this (the-as sig arg0)))
     (let ((a1-10 (handle->process (-> arg0 focus handle))))
       (cond
         ((and a1-10
@@ -60,14 +60,15 @@
   )
 
 ;; definition for method 11 of type sigt-fight-focus
-(defmethod ai-task-method-11 sigt-fight-focus ((obj sigt-fight-focus) (arg0 bot))
+;; WARN: Return type mismatch object vs none.
+(defmethod ai-task-method-11 ((this sigt-fight-focus) (arg0 bot))
   (let ((a1-1 (handle->process (-> arg0 focus handle))))
     (if (and a1-1
              (attacked-by-player? arg0 (the-as process-focusable a1-1))
              (not (logtest? (-> arg0 focus-status) (focus-status grabbed)))
              )
         (logior! (-> arg0 bot-flags) (bot-flags bf00))
-        (ai-task-control-method-14 (-> arg0 ai-ctrl) obj arg0)
+        (ai-task-control-method-14 (-> arg0 ai-ctrl) this arg0)
         )
     )
   (none)
@@ -75,16 +76,16 @@
 
 ;; definition for method 10 of type sigt-fight-focus
 ;; WARN: Return type mismatch bot-flags vs none.
-(defmethod ai-task-method-10 sigt-fight-focus ((obj sigt-fight-focus) (arg0 bot))
+(defmethod ai-task-method-10 ((this sigt-fight-focus) (arg0 bot))
   (logclear! (-> arg0 bot-flags) (bot-flags bf00))
   (none)
   )
 
 ;; definition for method 11 of type sigt-repair-gun
-(defmethod ai-task-method-11 sigt-repair-gun ((obj sigt-repair-gun) (arg0 bot))
+(defmethod ai-task-method-11 ((this sigt-repair-gun) (arg0 bot))
   (cond
     ((not (logtest? (bot-flags bf19) (-> arg0 bot-flags)))
-     (ai-task-control-method-14 (-> arg0 ai-ctrl) obj arg0)
+     (ai-task-control-method-14 (-> arg0 ai-ctrl) this arg0)
      )
     (else
       (let ((a1-4 (handle->process (-> arg0 focus handle))))
@@ -102,9 +103,9 @@
   )
 
 ;; definition for method 14 of type sigt-choose-piston
-(defmethod sigt-choose-piston-method-14 sigt-choose-piston ((obj sigt-choose-piston) (arg0 sig) (arg1 int))
-  (let* ((v1-2 (-> arg0 course spots (-> obj spot-indexes arg1)))
-         (a0-6 (-> arg0 actor-group 0 data (-> obj actor-indexes arg1) actor))
+(defmethod sigt-choose-piston-method-14 ((this sigt-choose-piston) (arg0 sig) (arg1 int))
+  (let* ((v1-2 (-> arg0 course spots (-> this spot-indexes arg1)))
+         (a0-6 (-> arg0 actor-group 0 data (-> this actor-indexes arg1) actor))
          (gp-0 (if a0-6
                    (-> a0-6 extra process)
                    )
@@ -120,29 +121,29 @@
 
 ;; definition for method 13 of type sigt-choose-piston
 ;; WARN: Return type mismatch int vs none.
-(defmethod sigt-choose-piston-method-13 sigt-choose-piston ((obj sigt-choose-piston) (arg0 sig))
+(defmethod sigt-choose-piston-method-13 ((this sigt-choose-piston) (arg0 sig))
   (let ((s4-0 0))
     (let ((f30-0 -1.0)
           (s3-0 (-> arg0 root trans))
           )
-      (countdown (s2-0 (-> obj num-spots))
-        (let* ((v1-3 (-> obj spot-indexes s2-0))
+      (countdown (s2-0 (-> this num-spots))
+        (let* ((v1-3 (-> this spot-indexes s2-0))
                (f28-0 (vector-vector-xz-distance s3-0 (the-as vector (-> arg0 course spots v1-3))))
                )
-          (when (and (or (< f30-0 0.0) (< f28-0 f30-0)) (not (sigt-choose-piston-method-14 obj arg0 (the-as int s2-0))))
+          (when (and (or (< f30-0 0.0) (< f28-0 f30-0)) (not (sigt-choose-piston-method-14 this arg0 (the-as int s2-0))))
             (set! f30-0 f28-0)
             (set! s4-0 (the-as int s2-0))
             )
           )
         )
       )
-    (set! (-> obj which-spot) s4-0)
+    (set! (-> this which-spot) s4-0)
     (mem-copy!
       (the-as pointer (-> arg0 spot))
-      (the-as pointer (-> arg0 course spots (-> obj spot-indexes s4-0)))
+      (the-as pointer (-> arg0 course spots (-> this spot-indexes s4-0)))
       20
       )
-    (let* ((v1-22 (-> arg0 actor-group 0 data (-> obj actor-indexes s4-0) actor))
+    (let* ((v1-22 (-> arg0 actor-group 0 data (-> this actor-indexes s4-0) actor))
            (a0-6 (if v1-22
                      (-> v1-22 extra process)
                      )
@@ -158,12 +159,12 @@
 
 ;; definition for method 12 of type sigt-choose-piston
 ;; INFO: Used lq/sq
-(defmethod sigt-choose-piston-method-12 sigt-choose-piston ((obj sigt-choose-piston) (arg0 sig))
+(defmethod sigt-choose-piston-method-12 ((this sigt-choose-piston) (arg0 sig))
   (with-pp
     (when (and (outside-spot-radius? arg0 (the-as bot-spot #f) (the-as vector #f) #f)
-               (not (sigt-choose-piston-method-14 obj arg0 (-> obj which-spot)))
+               (not (sigt-choose-piston-method-14 this arg0 (-> this which-spot)))
                )
-      (let* ((v1-12 (-> arg0 actor-group 0 data (-> obj actor-indexes (-> obj which-spot)) actor))
+      (let* ((v1-12 (-> arg0 actor-group 0 data (-> this actor-indexes (-> this which-spot)) actor))
              (s5-1 (if v1-12
                        (-> v1-12 extra process)
                        )
@@ -211,35 +212,35 @@
 
 ;; definition for method 9 of type sigt-choose-piston
 ;; WARN: Return type mismatch int vs none.
-(defmethod reset-task! sigt-choose-piston ((obj sigt-choose-piston))
-  (set! (-> obj check-done) #f)
-  (set! (-> obj which-spot) -1)
-  (set! (-> obj num-spots) (the-as uint 0))
+(defmethod reset-task! ((this sigt-choose-piston))
+  (set! (-> this check-done) #f)
+  (set! (-> this which-spot) -1)
+  (set! (-> this num-spots) (the-as uint 0))
   0
   (none)
   )
 
 ;; definition for method 11 of type sigt-choose-piston
-(defmethod ai-task-method-11 sigt-choose-piston ((obj sigt-choose-piston) (arg0 bot))
-  (let ((s4-0 (-> obj which-spot)))
+(defmethod ai-task-method-11 ((this sigt-choose-piston) (arg0 bot))
+  (let ((s4-0 (-> this which-spot)))
     (cond
       ((< s4-0 0)
-       (sigt-choose-piston-method-13 obj (the-as sig arg0))
+       (sigt-choose-piston-method-13 this (the-as sig arg0))
        )
-      ((sigt-choose-piston-method-14 obj (the-as sig arg0) s4-0)
-       (sigt-choose-piston-method-13 obj (the-as sig arg0))
+      ((sigt-choose-piston-method-14 this (the-as sig arg0) s4-0)
+       (sigt-choose-piston-method-13 this (the-as sig arg0))
        )
       )
     (if (logtest? *display-bot-marks* (bot-marks-controls bmc16))
         (bot-debug-draw-spot-sphere
           arg0
-          (the-as int (-> obj num-spots))
-          (the-as (pointer uint) (-> obj spot-indexes))
-          (the-as int (-> obj spot-indexes s4-0))
+          (the-as int (-> this num-spots))
+          (the-as (pointer uint) (-> this spot-indexes))
+          (the-as int (-> this spot-indexes s4-0))
           )
         )
     )
-  (when (not ((-> obj check-done) obj (the-as sig arg0)))
+  (when (not ((-> this check-done) this (the-as sig arg0)))
     (let ((a1-6 (handle->process (-> arg0 focus handle))))
       (when (and a1-6
                  (attacked-by-player? arg0 (the-as process-focusable a1-6))
@@ -254,15 +255,15 @@
   )
 
 ;; definition for method 10 of type sigt-choose-piston
-(defmethod ai-task-method-10 sigt-choose-piston ((obj sigt-choose-piston) (arg0 bot))
+(defmethod ai-task-method-10 ((this sigt-choose-piston) (arg0 bot))
   (clear-poi-and-focus! arg0)
   (none)
   )
 
 ;; definition for method 12 of type sigt-riding-piston
-(defmethod sigt-riding-piston-method-12 sigt-riding-piston ((obj sigt-riding-piston) (arg0 sig))
+(defmethod sigt-riding-piston-method-12 ((this sigt-riding-piston) (arg0 sig))
   (with-pp
-    (when (not (player-blocking-spot? arg0 (-> arg0 course spots (-> obj spot-indexes (-> obj which-spot)))))
+    (when (not (player-blocking-spot? arg0 (-> arg0 course spots (-> this spot-indexes (-> this which-spot)))))
       (let* ((v1-9 (-> arg0 actor-group 0 data (-> arg0 platform-index) actor))
              (a0-4 (if v1-9
                        (-> v1-9 extra process)
@@ -285,7 +286,7 @@
                   (set! (-> v1-19 target-speed) 0.0)
                   )
                 0
-                (let ((s5-1 (-> arg0 course spots (-> obj spot-indexes (-> obj which-spot)))))
+                (let ((s5-1 (-> arg0 course spots (-> this spot-indexes (-> this which-spot)))))
                   (set! (-> arg0 enemy-flags) (the-as enemy-flag (logclear (-> arg0 enemy-flags) (enemy-flag vulnerable))))
                   (when (send-event arg0 'jump 0 (-> s5-1 center))
                     (mem-copy! (the-as pointer (-> arg0 spot)) (the-as pointer s5-1) 20)
@@ -304,62 +305,62 @@
 
 ;; definition for method 9 of type sigt-riding-piston
 ;; WARN: Return type mismatch int vs none.
-(defmethod reset-task! sigt-riding-piston ((obj sigt-riding-piston))
-  (set! (-> obj check-done) #f)
-  (set! (-> obj which-spot) -1)
-  (set! (-> obj num-spots) (the-as uint 0))
+(defmethod reset-task! ((this sigt-riding-piston))
+  (set! (-> this check-done) #f)
+  (set! (-> this which-spot) -1)
+  (set! (-> this num-spots) (the-as uint 0))
   0
   (none)
   )
 
 ;; definition for method 11 of type sigt-riding-piston
 ;; WARN: Return type mismatch symbol vs none.
-(defmethod ai-task-method-11 sigt-riding-piston ((obj sigt-riding-piston) (arg0 bot))
-  (let ((s4-0 (-> obj which-spot)))
-    (when (or (< s4-0 0) (player-blocking-spot? arg0 (-> arg0 course spots (-> obj spot-indexes s4-0))))
-      (set! s4-0 (choose-spot arg0 (the-as int (-> obj num-spots)) (the-as (pointer uint) (-> obj spot-indexes))))
-      (set! (-> obj which-spot) s4-0)
+(defmethod ai-task-method-11 ((this sigt-riding-piston) (arg0 bot))
+  (let ((s4-0 (-> this which-spot)))
+    (when (or (< s4-0 0) (player-blocking-spot? arg0 (-> arg0 course spots (-> this spot-indexes s4-0))))
+      (set! s4-0 (choose-spot arg0 (the-as int (-> this num-spots)) (the-as (pointer uint) (-> this spot-indexes))))
+      (set! (-> this which-spot) s4-0)
       (send-event
         (ppointer->process (-> arg0 my-simple-focus))
         'move-trans
-        (-> arg0 course spots (-> obj spot-indexes s4-0))
+        (-> arg0 course spots (-> this spot-indexes s4-0))
         )
       (set! (-> arg0 poi-handle) (ppointer->handle (-> arg0 my-simple-focus)))
       )
     (if (logtest? *display-bot-marks* (bot-marks-controls bmc16))
         (bot-debug-draw-spot-sphere
           arg0
-          (the-as int (-> obj num-spots))
-          (the-as (pointer uint) (-> obj spot-indexes))
-          (the-as int (-> obj spot-indexes s4-0))
+          (the-as int (-> this num-spots))
+          (the-as (pointer uint) (-> this spot-indexes))
+          (the-as int (-> this spot-indexes s4-0))
           )
         )
     )
-  ((-> obj check-done) obj (the-as sig arg0))
+  ((-> this check-done) this (the-as sig arg0))
   (none)
   )
 
 ;; definition for method 10 of type sigt-riding-piston
-(defmethod ai-task-method-10 sigt-riding-piston ((obj sigt-riding-piston) (arg0 bot))
+(defmethod ai-task-method-10 ((this sigt-riding-piston) (arg0 bot))
   (clear-poi-and-focus! arg0)
   (none)
   )
 
 ;; definition for method 9 of type sigt-charge-plasma
 ;; WARN: Return type mismatch int vs none.
-(defmethod reset-task! sigt-charge-plasma ((obj sigt-charge-plasma))
-  (set! (-> obj check-done) #f)
-  (set! (-> obj which-spot) -1)
-  (set! (-> obj num-spots) (the-as uint 0))
+(defmethod reset-task! ((this sigt-charge-plasma))
+  (set! (-> this check-done) #f)
+  (set! (-> this which-spot) -1)
+  (set! (-> this num-spots) (the-as uint 0))
   0
   (none)
   )
 
 ;; definition for method 11 of type sigt-charge-plasma
-(defmethod ai-task-method-11 sigt-charge-plasma ((obj sigt-charge-plasma) (arg0 bot))
-  (let ((s4-0 (-> obj which-spot)))
+(defmethod ai-task-method-11 ((this sigt-charge-plasma) (arg0 bot))
+  (let ((s4-0 (-> this which-spot)))
     (when (>= s4-0 0)
-      (let ((s3-0 (-> (the-as sig arg0) course spots (-> obj spot-indexes s4-0))))
+      (let ((s3-0 (-> (the-as sig arg0) course spots (-> this spot-indexes s4-0))))
         (if (and (not (outside-spot-radius? (the-as sig arg0) s3-0 (the-as vector #f) #f))
                  (player-blocking-spot? (the-as sig arg0) s3-0)
                  )
@@ -369,24 +370,28 @@
       )
     (when (< s4-0 0)
       (set! s4-0
-            (choose-spot (the-as sig arg0) (the-as int (-> obj num-spots)) (the-as (pointer uint) (-> obj spot-indexes)))
+            (choose-spot
+              (the-as sig arg0)
+              (the-as int (-> this num-spots))
+              (the-as (pointer uint) (-> this spot-indexes))
+              )
             )
-      (set! (-> obj which-spot) s4-0)
+      (set! (-> this which-spot) s4-0)
       (mem-copy!
         (the-as pointer (-> (the-as sig arg0) spot))
-        (the-as pointer (-> (the-as sig arg0) course spots (-> obj spot-indexes s4-0)))
+        (the-as pointer (-> (the-as sig arg0) course spots (-> this spot-indexes s4-0)))
         20
         )
       )
     (if (logtest? *display-bot-marks* (bot-marks-controls bmc16))
         (bot-debug-draw-spot-sphere
           (the-as sig arg0)
-          (the-as int (-> obj num-spots))
-          (the-as (pointer uint) (-> obj spot-indexes))
-          (the-as int (-> obj spot-indexes s4-0))
+          (the-as int (-> this num-spots))
+          (the-as (pointer uint) (-> this spot-indexes))
+          (the-as int (-> this spot-indexes s4-0))
           )
         )
-    (let* ((v1-24 (-> (the-as sig arg0) actor-group 0 data (-> obj actor-index) actor))
+    (let* ((v1-24 (-> (the-as sig arg0) actor-group 0 data (-> this actor-index) actor))
            (s3-1 (when v1-24
                    (let ((s2-0 (-> v1-24 extra process)))
                      (if (type? s2-0 process-focusable)
@@ -400,7 +405,7 @@
         (s3-1
           (set! (-> (the-as sig arg0) poi-handle) (process->handle s3-1))
           (set! (-> (the-as sig arg0) focus-mode) 1)
-          (let ((a1-10 (-> (the-as sig arg0) course spots (-> obj spot-indexes s4-0))))
+          (let ((a1-10 (-> (the-as sig arg0) course spots (-> this spot-indexes s4-0))))
             (if (and (outside-spot-radius? (the-as sig arg0) a1-10 (the-as vector #f) #f)
                      (enemy-method-95 (the-as sig arg0) (get-trans (the-as process-focusable s3-1) 3) 10012.445)
                      )
@@ -418,7 +423,7 @@
         )
       )
     )
-  (when (not ((-> obj check-done) obj (the-as sig arg0)))
+  (when (not ((-> this check-done) this (the-as sig arg0)))
     (let ((a1-14 (handle->process (-> (the-as sig arg0) focus handle))))
       (when (and a1-14
                  (attacked-by-player? (the-as sig arg0) (the-as process-focusable a1-14))
@@ -434,7 +439,7 @@
 
 ;; definition for method 10 of type sigt-charge-plasma
 ;; WARN: Return type mismatch int vs none.
-(defmethod ai-task-method-10 sigt-charge-plasma ((obj sigt-charge-plasma) (arg0 bot))
+(defmethod ai-task-method-10 ((this sigt-charge-plasma) (arg0 bot))
   (clear-poi-and-focus! (the-as sig arg0))
   (logclear! (-> (the-as sig arg0) plasma flags) (plasma-flags pf00))
   (set! (-> (the-as sig arg0) focus-mode) 0)

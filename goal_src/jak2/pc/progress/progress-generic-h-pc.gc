@@ -1,0 +1,224 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+
+(deftype generic-progress-state-entry (structure)
+  "All info that is pushed onto a 'stack' when navigating to a sub-menu with
+   the new generic menu options"
+  (;; what needs to be drawn now, the normal progress code figures this out with a hard-coded switch statement, this avoids that
+   (ref menu-option-list)
+   ;; generic function to potentially run some setup code when the entry is loaded
+   (on-load (function none))
+   ;; so we can restore back to the same menu position
+   (hover-index int32)
+   ;; symbol used normally for progress stuff
+   (progress-id symbol))
+  (:methods
+    (call-on-load (_type_) none)))
+
+(deftype progress-pc-generic-store (structure)
+  "Isolated type for keeping track of some global state, as re-using the normal [[*progress*]] object
+   can lead to unexpected behaviour -- they change some values all over the place"
+  ((current-menu-hover-index int32)
+   (clear-screen? symbol)
+   (keybind-select-time time-frame)
+   (history-stack generic-progress-state-entry 10 :inline)
+   (history-stack-index int32)
+   (current-highscore-page-index int32)
+   (custom-highscore-score float) ;; TODO - just needed a way to pass a `(pointer float)` to C++, didn't seem like you could do such a thing with a `let` binding?
+   )
+  (:methods
+    (init! (_type_) none)
+    (navigate! (_type_ progress menu-option-list (function none)) none)
+    (back! (_type_ progress) none)
+    (has-history? (_type_) symbol)
+    (clear-history-if-empty! (_type_) none)
+    (clear-history! (_type_) none)))
+
+(define *progress-pc-generic-store* (new 'static 'progress-pc-generic-store))
+
+(deftype menu-generic-option (menu-option)
+  ((mounted? symbol)
+   (should-disable? (function symbol)))
+  (:methods
+    (on-mount! "Called when the menu item is first drawn as a means to initialize defaults, etc" (_type_) none)
+    (should-disable? (_type_) symbol)))
+
+(deftype menu-generic-scrolling-page (menu-generic-option)
+  "A menu option that holds menu options"
+  (;; props
+   (menu-options          (array menu-option))
+   ;; state
+   (selected-option-index int32)
+   (last-move             time-frame)))
+
+(deftype menu-generic-link-option (menu-generic-option)
+  "A very simple link option that allows you to link to any other [[menu-option-list]]"
+  (;; props
+   (target menu-option-list)
+   ;; generic function to potentially run some setup code when the entry is loaded
+   ;; this is not called from the link option, but rather stored in the history entry
+   (on-load (function none))))
+
+(deftype menu-generic-boolean-option (menu-generic-option)
+  "Generic two option menu entry (ie. yes/no)"
+  (;; props
+   (truthy-text text-id)
+   (falsey-text text-id)
+   ;; state
+   (value symbol)
+   ;; lambdas
+   (get-value-fn (function symbol))
+   (on-confirm (function symbol none)))
+  (:methods
+    (call-get-value-fn (_type_) symbol)
+    (call-on-confirm (_type_ symbol) none)))
+
+(deftype menu-generic-carousel-option (menu-generic-option)
+  "Generic left-right menu entry (ie. language selection)"
+  (;; props
+   ;; - either you can provide a list of hard-coded items (takes precedence)
+   (items (array text-id))
+   ;; - or you can provide functions that return the max-size and the string labels at those indicies
+   (get-max-size-fn (function int))
+   (get-item-label-fn (function int string))
+   (no-items-label text-id) ;; TODO - implement if `progress-multiselect-no-items-found` isn't ever sufficient
+   ;; state
+   (item-index int32)
+   ;; lambdas
+   (get-item-index-fn (function int))
+   (on-confirm (function int none)))
+  (:methods
+    (num-items (_type_) int)
+    (get-item-label (_type_ int) string)
+    (call-get-item-index-fn (_type_) int)
+    (call-on-confirm (_type_ int) none)))
+
+(deftype menu-generic-confirm-option (menu-generic-option)
+  "A button option that confirms before triggering it's action"
+  (;; props
+   (on-confirm (function none))
+   ;; state
+   (confirmed? symbol))
+  (:methods
+    (call-on-confirm (_type_) none)))
+
+(deftype menu-generic-slider-option (menu-generic-option)
+  "A generic slider, can go into the negative as well."
+  (;; props
+   (min-value float)
+   (max-value float)
+   (step float)
+   (show-decimal? symbol)
+   ;; state
+   (value float)
+   (bar-sprite hud-sprite :inline)
+   (bar-cursor-sprite hud-sprite :inline)
+   (last-sound-played time-frame)
+   ;; lambdas
+   (get-value-fn (function float))
+   (on-confirm (function float none)))
+  (:methods
+    (call-get-value-fn (_type_) float)
+    (call-on-confirm (_type_ float) none)))
+
+(deftype menu-generic-details-entry (menu-generic-option)
+  "A generic details list entry"
+  ())
+
+(defenum controller-keybind
+  :type int8
+  (select 0)
+  (l3 1)
+  (r3 2)
+  (start 3)
+  (dpad-up 4)
+  (dpad-right 5)
+  (dpad-down 6)
+  (dpad-left 7)
+  (l2 8)
+  (r2 9)
+  (l1 10)
+  (r1 11)
+  (triangle 12)
+  (circle 13)
+  (cross 14)
+  (square 15)
+  (l-analog-up 16)
+  (l-analog-down 17)
+  (l-analog-left 18)
+  (l-analog-right 19)
+  (r-analog-up 20)
+  (r-analog-down 21)
+  (r-analog-left 22)
+  (r-analog-right 23))
+
+(defenum input-device-type
+  :type int8
+  (controller 0)
+  (keyboard 1)
+  (mouse 2))
+
+(deftype menu-generic-details-keybind-entry (menu-generic-details-entry)
+  ((keybind controller-keybind)
+   (device-type input-device-type)
+   ;; state
+   (bind-info bind-assignment-info :inline))
+  (:methods
+    (get-keybind-string (_type_) string)))
+
+(deftype menu-generic-details-confirm-entry (menu-generic-details-entry)
+  (;; props
+   (on-confirm (function none))
+   ;; state
+   (confirmed? symbol))
+  (:methods
+    (call-on-confirm (_type_) none)))
+
+(deftype menu-generic-details-page (menu-generic-option)
+  "A generic details list page, compact rows that can be selected.
+   This is very similar to the [[menu-generic-scrolling-page]] component but instead of holding
+   [[menu-option]]s, it holds [[menu-generic-details-entry]]'s"
+  ((entries (array menu-generic-details-entry))
+   ;; state
+   (selected-entry-index  int32)
+   (last-move             time-frame)))
+
+(defmacro progress-new-generic-option (option)
+  `(new 'static 'menu-option-list :options (new 'static 'boxed-array :type menu-option ,option)))
+
+(defmacro progress-new-generic-scrolling-page (title &rest options)
+  `(new 'static 'menu-option-list
+    :options (new 'static 'boxed-array :type menu-option
+    (new 'static 'menu-generic-scrolling-page
+     :name ,title
+     :menu-options (new 'static 'boxed-array :type menu-option
+     ,@options)))))
+
+(defmacro progress-new-generic-link (text target &key (should-disable? #f))
+  `(new 'static 'menu-generic-link-option
+    :name ,text
+    :should-disable? ,should-disable?
+    :target ,target))
+
+(defmacro progress-new-generic-link-to-scrolling-page (title &key (should-disable? #f) &rest options)
+  `(new 'static 'menu-generic-link-option
+    :name ,title
+    :should-disable? ,should-disable?
+    :target (new 'static 'menu-option-list
+      :options (new 'static 'boxed-array :type menu-option
+      (new 'static 'menu-generic-scrolling-page
+       :name ,title
+       :menu-options (new 'static 'boxed-array :type menu-option
+       ,@options))))))
+
+(defmacro progress-new-generic-link-to-details-page (title &key (should-disable? #f) &rest entries)
+  `(new 'static 'menu-generic-link-option
+    :name ,title
+    :should-disable? ,should-disable?
+    :target (new 'static 'menu-option-list
+      :options (new 'static 'boxed-array :type menu-option
+      (new 'static 'menu-generic-details-page
+       :name ,title
+       :entries (new 'static 'boxed-array :type menu-generic-details-entry
+       ,@entries))))))

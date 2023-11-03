@@ -3,42 +3,36 @@
 
 ;; definition of type pipe-grunt
 (deftype pipe-grunt (grunt)
-  ((pipe-front vector :inline :offset-assert 704)
-   (pipe-dir   vector :inline :offset-assert 720)
+  ((pipe-front  vector  :inline)
+   (pipe-dir    vector  :inline)
    )
-  :heap-base #x260
-  :method-count-assert 187
-  :size-assert         #x2e0
-  :flag-assert         #xbb026002e0
   (:methods
-    (pipe-grunt-method-186 (_type_) vector 186)
+    (pipe-grunt-method-186 (_type_) vector)
     )
   )
 
 ;; definition for method 3 of type pipe-grunt
-(defmethod inspect pipe-grunt ((obj pipe-grunt))
-  (when (not obj)
-    (set! obj obj)
+(defmethod inspect ((this pipe-grunt))
+  (when (not this)
+    (set! this this)
     (goto cfg-4)
     )
   (let ((t9-0 (method-of-type grunt inspect)))
-    (t9-0 obj)
+    (t9-0 this)
     )
-  (format #t "~2Tpipe-front: #<vector @ #x~X>~%" (-> obj pipe-front))
-  (format #t "~2Tpipe-dir: #<vector @ #x~X>~%" (-> obj pipe-dir))
+  (format #t "~2Tpipe-front: #<vector @ #x~X>~%" (-> this pipe-front))
+  (format #t "~2Tpipe-dir: #<vector @ #x~X>~%" (-> this pipe-dir))
   (label cfg-4)
-  obj
+  this
   )
 
 ;; definition for method 66 of type pipe-grunt
-;; WARN: Return type mismatch object vs none.
-(defmethod go-ambush pipe-grunt ((obj pipe-grunt))
-  (go (method-of-object obj ambush))
-  (none)
+(defmethod go-ambush ((this pipe-grunt))
+  (go (method-of-object this ambush))
   )
 
 ;; definition for method 186 of type pipe-grunt
-(defmethod pipe-grunt-method-186 pipe-grunt ((obj pipe-grunt))
+(defmethod pipe-grunt-method-186 ((this pipe-grunt))
   (let ((gp-0 (new 'static 'vector :x -1187061.8 :y -278487.03 :z 8090870.0 :w 1.0)))
     (let ((v1-0 (new 'static 'vector :x -1148026.9 :y -278487.03 :z 8112414.5 :w 1.0))
           (s3-0 (new 'stack-no-clear 'vector))
@@ -48,21 +42,21 @@
       (let ((f30-0 (vector-length s3-0)))
         (vector-normalize! s3-0 1.0)
         (vector-rotate90-around-y! s4-0 s3-0)
-        (vector-normalize-copy! (-> obj event-param-point) s3-0 (get-rand-float-range obj 0.0 f30-0))
+        (vector-normalize-copy! (-> this event-param-point) s3-0 (get-rand-float-range this 0.0 f30-0))
         )
-      (vector-normalize! s4-0 (get-rand-float-range obj -16384.0 16384.0))
-      (vector+! (-> obj event-param-point) (-> obj event-param-point) s4-0)
+      (vector-normalize! s4-0 (get-rand-float-range this -16384.0 16384.0))
+      (vector+! (-> this event-param-point) (-> this event-param-point) s4-0)
       )
-    (vector+! (-> obj event-param-point) (-> obj event-param-point) gp-0)
+    (vector+! (-> this event-param-point) (-> this event-param-point) gp-0)
     )
   )
 
 ;; failed to figure out what this is:
 (defstate ambush (pipe-grunt)
   :virtual #t
-  :event (the-as (function process int symbol event-message-block object :behavior pipe-grunt) enemy-event-handler)
+  :event enemy-event-handler
   :enter (behavior ()
-    (set! (-> self state-time) (current-time))
+    (set-time! (-> self state-time))
     (logior! (-> self enemy-flags) (enemy-flag chase-startup))
     (logclear! (-> self enemy-flags) (enemy-flag enable-on-notice alert victory))
     (let ((v1-7 (-> self root root-prim)))
@@ -86,7 +80,6 @@
       (vector-normalize! gp-0 (get-rand-float-range self -4096.0 4096.0))
       (move-by-vector! (-> self root) gp-0)
       )
-    (none)
     )
   :trans (behavior ()
     (let ((gp-0 (new 'stack-no-clear 'vector)))
@@ -102,17 +95,13 @@
           )
         )
       )
-    (none)
     )
   :code (behavior ()
     (let ((f30-0 (get-rand-float-range self 0.9 1.1)))
       (ja-channel-push! 1 0)
       (until #f
         (let ((a1-2 (-> self draw art-group data (-> self charge-anim anim-index))))
-          (ja-no-eval :group! a1-2
-                      :num! (seek! (the float (+ (-> (the-as art-joint-anim a1-2) frames num-frames) -1)) f30-0)
-                      :frame-num 0.0
-                      )
+          (ja-no-eval :group! a1-2 :num! (seek! max f30-0) :frame-num 0.0)
           )
         (until (ja-done? 0)
           (suspend)
@@ -121,7 +110,6 @@
         )
       )
     #f
-    (none)
     )
-  :post (the-as (function none :behavior pipe-grunt) nav-enemy-simple-post)
+  :post nav-enemy-simple-post
   )

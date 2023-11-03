@@ -63,14 +63,10 @@
   )
 
 (deftype canyon-lightning-thingy (process-drawable)
-  ((lightning lightning-control 5 :offset-assert 200)
+  ((lightning  lightning-control  5)
    )
-  :heap-base #x60
-  :method-count-assert 21
-  :size-assert         #xdc
-  :flag-assert         #x15006000dc
-  (:methods
-    (zap () _type_ :state 20)
+  (:state-methods
+    zap
     )
   )
 
@@ -78,8 +74,7 @@
 (defstate zap (canyon-lightning-thingy)
   :virtual #t
   :enter (behavior ()
-    (set! (-> self state-time) (current-time))
-    (none)
+    (set-time! (-> self state-time))
     )
   :exit (behavior ()
     (dotimes (v1-0 5)
@@ -102,11 +97,10 @@
         (set! (-> control state mode) (the-as lightning-mode mode))
         )
       )
-    (none)
     )
   :trans (behavior ()
     (cond
-      ((>= (- (current-time) (-> self state-time)) (seconds 0.125))
+      ((time-elapsed? (-> self state-time) (seconds 0.125))
        (let ((gp-0 (new 'stack-no-clear 'vector)))
          (set! (-> gp-0 quad) (-> self root trans quad))
          (let ((v1-7 (quaternion->matrix (new 'stack-no-clear 'matrix) (-> self root quat)))
@@ -166,19 +160,18 @@
         (spawn (-> self part) (-> self root trans))
         )
       )
-    (none)
     )
-  :code (the-as (function none :behavior canyon-lightning-thingy) sleep-code)
+  :code sleep-code
   )
 
 ;; WARN: Return type mismatch process-drawable vs canyon-lightning-thingy.
-(defmethod relocate canyon-lightning-thingy ((obj canyon-lightning-thingy) (arg0 int))
+(defmethod relocate ((this canyon-lightning-thingy) (arg0 int))
   (dotimes (index 5)
-    (if (nonzero? (-> obj lightning index))
-        (&+! (-> obj lightning index) arg0)
+    (if (nonzero? (-> this lightning index))
+        (&+! (-> this lightning index) arg0)
         )
     )
-  (the-as canyon-lightning-thingy ((method-of-type process-drawable relocate) obj arg0))
+  (the-as canyon-lightning-thingy ((method-of-type process-drawable relocate) this arg0))
   )
 
 ;; WARN: Return type mismatch object vs none.
@@ -824,7 +817,7 @@
                          *screen-filter*
                          (new 'static 'vector :x 255.0 :y 255.0 :z 255.0)
                          (new 'static 'vector :x 255.0 :y 255.0 :z 255.0 :w 128.0)
-                         (* 128.0 (-> self clock seconds-per-frame))
+                         (* 128.0 (seconds-per-frame))
                          (bucket-id screen-filter)
                          )
                        )
@@ -910,7 +903,7 @@
                            *screen-filter*
                            (new 'static 'vector :x 255.0 :y 255.0 :z 255.0 :w 128.0)
                            (new 'static 'vector :x 255.0 :y 128.0)
-                           (-> self clock seconds-per-frame)
+                           (seconds-per-frame)
                            (bucket-id screen-filter)
                            )
                          )

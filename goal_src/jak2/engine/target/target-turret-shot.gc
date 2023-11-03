@@ -185,19 +185,15 @@
   )
 
 (deftype turret-shot (guard-shot)
-  ((hit-pos vector :inline :offset-assert 496)
+  ((hit-pos  vector  :inline)
    )
-  :heap-base #x180
-  :method-count-assert 40
-  :size-assert         #x200
-  :flag-assert         #x2801800200
   )
 
 
 (defstate impact (turret-shot)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('touched)
        (let* ((toucher-proc proc)
               (toucher (if (type? toucher-proc process-drawable)
@@ -207,24 +203,17 @@
               )
          (when toucher
            (-> toucher root)
-           (let ((evt (new 'stack-no-clear 'event-message-block)))
-             (set! (-> evt from) (process->ppointer self))
-             (set! (-> evt num-params) 2)
-             (set! (-> evt message) 'attack)
-             (set! (-> evt param 0) (-> event param 0))
-             (let ((attack-info (new 'static 'attack-info :mask (attack-info-mask mode id damage))))
-               (set! (-> attack-info id) (-> self attack-id))
-               (set! (-> attack-info mode) 'explode)
-               (set! (-> attack-info damage) (-> self damage))
-               (set! (-> evt param 1) (the-as uint attack-info))
-               )
-             (send-event-function proc evt)
+           (send-event
+             proc
+             'attack
+             (-> block param 0)
+             (static-attack-info ((id (-> self attack-id)) (mode 'explode) (damage (-> self damage))))
              )
            )
          )
        )
       (else
-        (projectile-event-handler proc arg1 event-type event)
+        (projectile-event-handler proc argc message block)
         )
       )
     )
@@ -240,11 +229,10 @@
       )
     (suspend)
     (go-virtual die)
-    (none)
     )
   )
 
-(defmethod spawn-impact-particles turret-shot ((obj turret-shot))
+(defmethod spawn-impact-particles ((this turret-shot))
   "Spawns associated particles with the projectile if applicable"
   (rlet ((acc :class vf)
          (vf0 :class vf)
@@ -254,8 +242,8 @@
          (vf7 :class vf)
          )
     (init-vf0-vector)
-    (let* ((gp-0 (-> obj root trans))
-           (a1-0 (-> obj tail-pos))
+    (let* ((gp-0 (-> this root trans))
+           (a1-0 (-> this tail-pos))
            (s5-1 (vector-! (new 'stack-no-clear 'vector) gp-0 a1-0))
            (f30-0 (vector-length s5-1))
            )
@@ -279,22 +267,8 @@
           (set! (-> *part-id-table* 915 init-specs 4 initial-valuef) f28-0)
           )
         (vector-normalize! s5-1 1.0)
-        (let ((t9-2 sp-launch-particles-var)
-              (a0-5 *sp-particle-system-2d*)
-              (a1-2 (-> *part-id-table* 607))
-              (a2-3 *launch-matrix*)
-              )
-          (set! (-> a2-3 trans quad) (-> s4-0 quad))
-          (t9-2 a0-5 a1-2 a2-3 (the-as sparticle-launch-state #f) (the-as sparticle-launch-control #f) 1.0)
-          )
-        (let ((t9-3 sp-launch-particles-var)
-              (a0-6 *sp-particle-system-2d*)
-              (a1-3 (-> *part-id-table* 608))
-              (a2-4 *launch-matrix*)
-              )
-          (set! (-> a2-4 trans quad) (-> s4-0 quad))
-          (t9-3 a0-6 a1-3 a2-4 (the-as sparticle-launch-state #f) (the-as sparticle-launch-control #f) 1.0)
-          )
+        (launch-particles (-> *part-id-table* 607) s4-0)
+        (launch-particles (-> *part-id-table* 608) s4-0)
         )
       (let ((s4-1 (new 'stack-no-clear 'matrix))
             (f26-0 (* 0.000027126736 f30-0))
@@ -305,14 +279,7 @@
         (set! (-> s4-1 trans quad) (-> gp-0 quad))
         (set! (-> *part-id-table* 923 init-specs 3 initial-valuef) (* f26-0 f30-1))
         (set! (-> *part-id-table* 923 init-specs 4 initial-valuef) (* f26-0 f28-1))
-        (sp-launch-particles-var
-          *sp-particle-system-2d*
-          (-> *part-id-table* 923)
-          s4-1
-          (the-as sparticle-launch-state #f)
-          (the-as sparticle-launch-control #f)
-          1.0
-          )
+        (launch-particles (-> *part-id-table* 923) s4-1 :origin-is-matrix #t)
         (set! (-> *part-id-table* 923 init-specs 3 initial-valuef) f30-1)
         (set! (-> *part-id-table* 923 init-specs 4 initial-valuef) f28-1)
         )
@@ -322,10 +289,10 @@
     )
   )
 
-(defmethod spawn-shell-particles turret-shot ((obj turret-shot))
+(defmethod spawn-shell-particles ((this turret-shot))
   "TODO - confirm"
-  (let* ((root (-> obj root))
-         (v1-2 (vector-normalize! (vector-! (new 'stack-no-clear 'vector) (-> obj tail-pos) (-> root trans)) 2048.0))
+  (let* ((root (-> this root))
+         (v1-2 (vector-normalize! (vector-! (new 'stack-no-clear 'vector) (-> this tail-pos) (-> root trans)) 2048.0))
          (gp-0 (new 'stack-no-clear 'vector))
          )
     (set! (-> gp-0 quad) (-> root trans quad))
@@ -370,7 +337,7 @@
   (none)
   )
 
-(defmethod play-impact-sound turret-shot ((obj turret-shot) (proj-options projectile-options))
+(defmethod play-impact-sound ((this turret-shot) (proj-options projectile-options))
   (let ((options proj-options))
     (cond
       ((zero? options)
@@ -386,21 +353,21 @@
   )
 
 ;; WARN: Return type mismatch projectile-options vs none.
-(defmethod init-proj-settings! turret-shot ((obj turret-shot))
+(defmethod init-proj-settings! ((this turret-shot))
   "Init relevant settings for the [[projectile]] such as gravity, speed, timeout, etc"
-  (set! (-> obj tail-pos quad) (-> obj root trans quad))
+  (set! (-> this tail-pos quad) (-> this root trans quad))
   (cpad-set-buzz! (-> *cpad-list* cpads 0) 1 204 (seconds 0.1))
-  (set! (-> obj attack-mode) 'turret)
-  (set! (-> obj max-speed) 1228800.0)
-  (set! (-> obj move) guard-shot-move)
-  (set! (-> obj damage) 1.0)
-  (logior! (-> obj options) (projectile-options deal-damage))
+  (set! (-> this attack-mode) 'turret)
+  (set! (-> this max-speed) 1228800.0)
+  (set! (-> this move) guard-shot-move)
+  (set! (-> this damage) 1.0)
+  (logior! (-> this options) (projectile-options deal-damage))
   (none)
   )
 
-(defmethod init-proj-collision! turret-shot ((obj turret-shot))
+(defmethod init-proj-collision! ((this turret-shot))
   "Init the [[projectile]]'s [[collide-shape]]"
-  (let ((cshape (new 'process 'collide-shape-moving obj (collide-list-enum hit-by-player))))
+  (let ((cshape (new 'process 'collide-shape-moving this (collide-list-enum hit-by-player))))
     (set! (-> cshape dynam) (copy *standard-dynamics* 'process))
     (set! (-> cshape reaction)
           (the-as (function control-info collide-query vector vector collide-status) cshape-reaction-just-move)
@@ -466,9 +433,9 @@
       )
     (set! (-> cshape max-iteration-count) (the-as uint 1))
     (set! (-> cshape event-self) 'touched)
-    (set! (-> obj root) cshape)
+    (set! (-> this root) cshape)
     )
-  (set! (-> obj root pat-ignore-mask)
+  (set! (-> this root pat-ignore-mask)
         (new 'static 'pat-surface :noentity #x1 :nojak #x1 :probe #x1 :noproj #x1 :noendlessfall #x1)
         )
   0

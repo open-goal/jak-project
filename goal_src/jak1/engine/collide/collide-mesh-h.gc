@@ -5,6 +5,8 @@
 ;; name in dgo: collide-mesh-h
 ;; dgos: GAME, ENGINE
 
+;; DECOMP BEGINS
+
 ;; The collide-mesh system is used for _moving_ meshes, like a platform.
 ;; It's not used for the full level (that's collide-frag-mesh)
 
@@ -15,14 +17,11 @@
 ;; The triangle involved in collision
 ;; Note: this is reused for the background collision system.
 (deftype collide-tri-result (structure)
-  ((vertex    vector 3 :inline :offset-assert 0)
-   (intersect vector  :inline  :offset-assert 48)
-   (normal    vector  :inline  :offset-assert 64)
-   (pat       pat-surface      :offset-assert  80)
+  ((vertex     vector  3 :inline)
+   (intersect  vector  :inline)
+   (normal     vector  :inline)
+   (pat        pat-surface)
    )
-  :method-count-assert 9
-  :size-assert         #x54
-  :flag-assert         #x900000054
   )
 
 ;;;;;;;;;;;;;;;;;;;;
@@ -33,37 +32,32 @@
 ;; The vertex indices index into the collide-mesh vertex-data array.
 ;; Due to using uint8's you only get 256 vertices.
 (deftype collide-mesh-tri (structure)
-  ((vertex-index uint8   3   :offset-assert 0)
-   (unused       uint8       :offset-assert 3)
-   (pat          pat-surface :offset-assert 4)
+  ((vertex-index  uint8  3)
+   (unused        uint8)
+   (pat           pat-surface)
    )
   :pack-me
-  :method-count-assert 9
-  :size-assert         #x8
-  :flag-assert         #x900000008
   )
 
+;; og:preserve-this
 (declare-type collide-mesh-cache-tri structure)
 
 ;; A collision mesh. Note that's it's bound to a specific joint.
 (deftype collide-mesh (basic)
-  ((joint-id    int32     :offset-assert 4)
-   (num-tris    uint32    :offset-assert 8)
-   (num-verts   uint32    :offset-assert 12)
-   (vertex-data (inline-array vector) :offset-assert 16)
-   (tris        collide-mesh-tri 1 :inline :offset 32)
+  ((joint-id     int32)
+   (num-tris     uint32)
+   (num-verts    uint32)
+   (vertex-data  (inline-array vector))
+   (tris         collide-mesh-tri  1 :inline :offset  32)
    )
-  :method-count-assert 16
-  :size-assert         #x28
-  :flag-assert         #x1000000028
   (:methods
-    (debug-draw-tris (_type_ process-drawable int) none 9)
-    (overlap-test (_type_ collide-mesh-cache-tri vector) symbol 10)
-    (should-push-away-test (_type_ collide-mesh-cache-tri collide-tri-result vector float) float 11) ;; spat
-    (sphere-on-platform-test (_type_ collide-mesh-cache-tri collide-tri-result vector float) float 12) ;; sopt
-    (populate-cache! (_type_ collide-mesh-cache-tri matrix) none 13)
-    (collide-mesh-math-1 (_type_ object object) none 14)
-    (collide-mesh-math-2 (_type_ object object object) none 15)
+    (debug-draw-tris (_type_ process-drawable int) none)
+    (overlap-test (_type_ collide-mesh-cache-tri vector) symbol)
+    (should-push-away-test (_type_ collide-mesh-cache-tri collide-tri-result vector float) float)
+    (sphere-on-platform-test (_type_ collide-mesh-cache-tri collide-tri-result vector float) float)
+    (populate-cache! (_type_ collide-mesh-cache-tri matrix) none)
+    (collide-mesh-math-1 (_type_ object object) none)
+    (collide-mesh-math-2 (_type_ object object object) none)
     )
   )
 
@@ -77,21 +71,19 @@
 ;; If you do multiple collision queries against the same object, it will only have to transform the
 ;; collision mesh once.
 
+;; og:preserve-this
 (defconstant COLLIDE_MESH_CACHE_SIZE #xa000)
 
 (deftype collide-mesh-cache (basic)
-  ((used-size uint32        :offset-assert 4)
-   (max-size  uint32        :offset-assert 8)
-   (id        uint64        :offset-assert 16)
-   (data      uint8 #xa000  :offset 32)
+  ((used-size  uint32)
+   (max-size   uint32)
+   (id         uint64)
+   (data       uint8  40960 :offset  32)
    )
-  :method-count-assert 12
-  :size-assert         #xa020
-  :flag-assert         #xc0000a020
   (:methods
-    (allocate! (_type_ int) int 9)
-    (is-id? (_type_ int) symbol 10)
-    (next-id! (_type_) uint 11)
+    (allocate! (_type_ int) int)
+    (is-id? (_type_ int) symbol)
+    (next-id! (_type_) uint)
     )
   )
 
@@ -117,26 +109,24 @@
     )
   )
 
-(defmethod is-id? collide-mesh-cache ((obj collide-mesh-cache) (arg0 int))
+(defmethod is-id? ((this collide-mesh-cache) (arg0 int))
   "Is this our id?"
-  (= (-> obj id) arg0)
+  (= (-> this id) arg0)
   )
 
 ;; possibly this is stored in the data of the collide-mesh-cache
 (deftype collide-mesh-cache-tri (structure)
-  ((vertex vector   3     :inline :offset-assert 0)
-   (normal vector         :inline :offset-assert 48)
-   (bbox4w bounding-box4w :inline :offset-assert 64)
-   (pat    pat-surface            :offset 60)
+  ((vertex  vector          3 :inline)
+   (normal  vector          :inline)
+   (bbox4w  bounding-box4w  :inline)
+   (pat     pat-surface     :overlay-at (-> normal w))
    )
-  :method-count-assert 9
-  :size-assert         #x60
-  :flag-assert         #x900000060
   )
 
 ;; only allocate if we don't have an existing one.
 (define-perm *collide-mesh-cache* collide-mesh-cache (new 'global 'collide-mesh-cache))
 
+;; og:preserve-this
 ;; in all cases, re-init.
 (set! (-> *collide-mesh-cache* id) 1)
 (set! (-> *collide-mesh-cache* used-size) 0)

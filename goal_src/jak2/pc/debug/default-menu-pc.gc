@@ -328,7 +328,7 @@
 
 (defmacro dm-lambda-float-var (val)
   "helper macro for making float buttons"
-  `(lambda (arg (msg debug-menu-msg) (newval float))
+  `,(lambda (arg (msg debug-menu-msg) (newval float))
     (cond
       ((= msg (debug-menu-msg press))
        (set! ,val newval)
@@ -357,11 +357,11 @@
     (cond
       ((-> arg value)
        (false! (-> arg value))
-       (logior! (-> *display* vu1-enable-user-menu) (vu1-renderer-mask tfrag tfrag-trans tie tie-envmap))
+       (logior! (-> *display* vu1-enable-user-menu) (vu1-renderer-mask shrubbery tfrag tfrag-trans tfrag-water tie tie-envmap))
        )
       (else
        (true! (-> arg value))
-       (logclear! (-> *display* vu1-enable-user-menu) (vu1-renderer-mask tfrag tfrag-trans tie tie-envmap))
+       (logclear! (-> *display* vu1-enable-user-menu) (vu1-renderer-mask shrubbery tfrag tfrag-trans tfrag-water tie tie-envmap))
        )
       )
     )
@@ -403,6 +403,13 @@
   (pc-get-collision-mask (pc-collision-mode skip) arg)
   )
 
+(defun dm-collision-filter-skiphide-pick-func ((arg int) (msg debug-menu-msg))
+  (when (= msg (debug-menu-msg press))
+    (pc-set-collision-mask (pc-collision-mode skiphide) arg (not (pc-get-collision-mask (pc-collision-mode skiphide) arg)))
+    )
+  (pc-get-collision-mask (pc-collision-mode skiphide) arg)
+  )
+
 (defun debug-menu-make-collision-renderer-menu ((ctx debug-menu-context))
   (let ((menu (new 'debug 'debug-menu ctx "OpenGOAL collision renderer menu")))
       ;; master toggle
@@ -410,9 +417,10 @@
       (debug-menu-append-item menu (new-dm-bool "Wireframe" *collision-wireframe* dm-boolean-toggle-pick-func))
       (debug-menu-append-item menu (new-dm-submenu "Mode"
           (let ((mode-menu (new 'debug 'debug-menu ctx "OpenGOAL collision renderer mode menu")))
-              (doenum (name val pc-collision-mode)
-                  (debug-menu-append-item mode-menu (new-dm-flag name val dm-collision-mode-pick-func))
-                  )
+              (debug-menu-append-item mode-menu (new-dm-flag "none" (pc-collision-mode none) dm-collision-mode-pick-func))
+              (debug-menu-append-item mode-menu (new-dm-flag "mode" (pc-collision-mode mode) dm-collision-mode-pick-func))
+              (debug-menu-append-item mode-menu (new-dm-flag "event" (pc-collision-mode event) dm-collision-mode-pick-func))
+              (debug-menu-append-item mode-menu (new-dm-flag "material" (pc-collision-mode material) dm-collision-mode-pick-func))
               mode-menu)))
       (debug-menu-append-item menu (new-dm-submenu "Filter mode"
           (let ((filter-menu (new 'debug 'debug-menu ctx "OpenGOAL collision renderer filter mode menu")))
@@ -434,8 +442,15 @@
               filter-menu)))
       (debug-menu-append-item menu (new-dm-submenu "Filter skip"
           (let ((filter-menu (new 'debug 'debug-menu ctx "OpenGOAL collision renderer filter skip menu")))
+              (debug-menu-append-item filter-menu (new-dm-flag "(no skip)" -1 dm-collision-filter-skip-pick-func))
               (doenum (name val pc-pat-skip-hack)
                   (debug-menu-append-item filter-menu (new-dm-flag name val dm-collision-filter-skip-pick-func))
+                  )
+              filter-menu)))
+      (debug-menu-append-item menu (new-dm-submenu "Hide skip"
+          (let ((filter-menu (new 'debug 'debug-menu ctx "OpenGOAL collision renderer hide skip menu")))
+              (doenum (name val pc-pat-skip-hack)
+                  (debug-menu-append-item filter-menu (new-dm-flag name val dm-collision-filter-skiphide-pick-func))
                   )
               filter-menu)))
 
@@ -533,13 +548,25 @@
     )
   0)
 
+(defun dm-anim-tester-x-speed-var-func (arg (msg debug-menu-msg) (newval float))
+  (if (= msg (debug-menu-msg press))
+      (set! (-> *ATX-settings* speed) newval)
+      (-> *ATX-settings* speed))
+  )
+
+(defun dm-anim-tester-x-frame-num-var-func (arg (msg debug-menu-msg) (newval float))
+  (if (= msg (debug-menu-msg press))
+      (set! (-> *ATX-settings* frame-num) newval)
+      (-> *ATX-settings* frame-num))
+  )
+
 (defun debug-menu-make-anim-tester-x-menu ((ctx debug-menu-context))
   (let ((menu (new 'debug 'debug-menu ctx "Anim Tester X menu")))
       ;; master toggle
       (debug-menu-append-item menu (new-dm-func "Start" #f atx-start))
       (debug-menu-append-item menu (new-dm-func "Stop"  #f atx-stop))
-      (debug-menu-append-item menu (new-dm-var-float "Speed" (the int #f) (dm-lambda-float-var (-> *ATX-settings* speed)) 0.01 -10.0 10.0))
-      (debug-menu-append-item menu (new-dm-var-float "Frame Num" (the int #f) (dm-lambda-float-var (-> *ATX-settings* frame-num)) 0.1 0.0 99999.0))
+      (debug-menu-append-item menu (new-dm-var-float "Speed" (the int #f) dm-anim-tester-x-speed-var-func 0.01 -10.0 10.0))
+      (debug-menu-append-item menu (new-dm-var-float "Frame Num" (the int #f) dm-anim-tester-x-frame-num-var-func 0.1 0.0 99999.0))
       (debug-menu-append-item menu (new-dm-func "Refresh" #f dm-anim-tester-x-refresh))
       (debug-menu-append-item menu (new-dm-func "Pick Art Group" 'pick-art-group dm-anim-tester-x-func))
       (debug-menu-append-item menu (new-dm-func "Pick Anim" 'at-pick-joint-anim dm-anim-tester-x-func))
@@ -698,6 +725,9 @@
       (debug-menu-append-item regions-menu (new-dm-func "Print on-inside" 'on-inside dm-print-region-pick-func))
       (debug-menu-append-item regions-menu (new-dm-func "Print on-exit" 'on-exit dm-print-region-pick-func))
       (debug-menu-append-item regions-menu (new-dm-bool "Display region inside" *display-region-inside* dm-boolean-toggle-pick-func))
+      (debug-menu-append-item regions-menu (new-dm-bool "Show non-sphere bsphere" *debug-region-show-bsphere* dm-boolean-toggle-pick-func))
+      (debug-menu-append-item regions-menu (new-dm-bool "Hide water regions" *debug-region-hide-water* dm-boolean-toggle-pick-func))
+      (debug-menu-append-item regions-menu (new-dm-bool "Hide empty regions" *debug-region-hide-empty* dm-boolean-toggle-pick-func))
       (debug-menu-append-item regions-menu (new-dm-bool "Region Marks" *display-region-marks* dm-boolean-toggle-pick-func))
       (debug-menu-append-item regions-menu (new-dm-bool "region-mode" #f
                                                 (lambda (arg (msg debug-menu-msg))
@@ -881,11 +911,17 @@
                                                     (set! (-> *pc-settings* lod-force-actor) 3)
                                                     ))
             )
-        ;;  (menu "Framerate"
-        ;;     (flag "60" 60 dm-frame-rate-pick-func)
-        ;;     (flag "100" 100 dm-frame-rate-pick-func)
-        ;;     (flag "150" 150 dm-frame-rate-pick-func)
-        ;;     )
+        (menu "Framerate"
+           (flag "30" 30 dm-frame-rate-pick-func)
+           (flag "50" 50 dm-frame-rate-pick-func)
+           (flag "60" 60 dm-frame-rate-pick-func)
+           (flag "75" 75 dm-frame-rate-pick-func)
+           (flag "120" 120 dm-frame-rate-pick-func)
+           (flag "144" 144 dm-frame-rate-pick-func)
+           (flag "165" 165 dm-frame-rate-pick-func)
+           (flag "240" 240 dm-frame-rate-pick-func)
+           (flag "disclaimer" #f ,(dm-lambda-boolean-flag (-> *progress-state-pc* frame-rate-disclaimer-seen?)))
+           )
          (menu "MSAA"
             (flag "Off" 1 dm-msaa-pick-func)
             (flag "x2" 2 dm-msaa-pick-func)
@@ -894,9 +930,8 @@
             (flag "x16" 16 dm-msaa-pick-func)
             )
          (menu "LED"
-            (flag "hp" #f ,(dm-lambda-boolean-flag (-> *pc-settings* controller-hp-led?)))
-            (flag "eco" #f ,(dm-lambda-boolean-flag (-> *pc-settings* controller-eco-led?)))
-            (flag "heat" #f ,(dm-lambda-boolean-flag (-> *pc-settings* controller-heat-led?)))
+            (flag "hp" #f ,(dm-lambda-boolean-flag (-> *pc-settings* controller-led-hp?)))
+            (flag "status" #f ,(dm-lambda-boolean-flag (-> *pc-settings* controller-led-status?)))
             )
          (menu "Territory"
             (flag "GAME_TERRITORY_SCEA" (the binteger GAME_TERRITORY_SCEA) dm-territory-pick-func)
@@ -937,6 +972,8 @@
           (flag "Joint names" *display-joint-names* dm-boolean-toggle-pick-func)
           (flag "Bone lines" *display-bones* dm-boolean-toggle-pick-func)
           (flag "Entity Lights" *display-lights* dm-boolean-toggle-pick-func)
+          (flag "Debug Font Auto-Scale" #f ,(dm-lambda-boolean-flag (-> *pc-settings* debug-font-scale-auto?)))
+          (float-var "Debug Font Scale" #f ,(dm-lambda-float-var (-> *pc-settings* debug-font-scale)) 2 (new 'static 'bfloat :data 0.01) #t (new 'static 'bfloat :data 0.1) 2 0)
           )
       )
     )

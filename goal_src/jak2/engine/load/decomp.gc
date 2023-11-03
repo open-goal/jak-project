@@ -54,12 +54,9 @@ It's not super clear to me why they ditched this system. Maybe the visibility da
   )
 
 (deftype huf-dictionary-node (structure)
-  ((zero uint16  :offset-assert   0)
-   (one  uint16  :offset-assert   2)
+  ((zero  uint16)
+   (one   uint16)
    )
-  :method-count-assert 9
-  :size-assert         #x4
-  :flag-assert         #x900000004
   )
 
 
@@ -255,9 +252,7 @@ It's not super clear to me why they ditched this system. Maybe the visibility da
   (none)
   )
 
-;; WARN: rewrite_to_get_var got a none typed variable. Is there unreachable code? [OP: 138]
-;; WARN: rewrite_to_get_var got a none typed variable. Is there unreachable code? [OP: 145]
-(defmethod update-vis! level ((obj level) (vis-info level-vis-info) (unused uint) (in-bsp-vis-string (pointer uint8)))
+(defmethod update-vis! ((this level) (vis-info level-vis-info) (unused uint) (in-bsp-vis-string (pointer uint8)))
   (local-vars (t0-3 uint128) (extra-vis-length int) (extra-vis-dest (pointer int8)))
   (let* ((cam-leaf-idx (-> vis-info from-bsp current-leaf-idx))
          (curr-vis-string-offset (-> vis-info current-vis-string))
@@ -272,7 +267,7 @@ It's not super clear to me why they ditched this system. Maybe the visibility da
         (return #f)
         )
     (logclear! (-> vis-info flags) (vis-info-flag loading))
-    (let ((vis-buf (the-as (pointer integer) (-> obj vis-buffer))))
+    (let ((vis-buf (the-as (pointer integer) (-> this vis-buffer))))
       (b! #t cfg-16 :delay (nop!))
       (label cfg-6)
       (return #t)
@@ -288,7 +283,7 @@ It's not super clear to me why they ditched this system. Maybe the visibility da
       (set! vis-buf (&+ in-bsp-vis-string desired-vis-string-offset))
       (b! #t cfg-16 :delay (nop!))
       (label cfg-15)
-      (format 0 "ERROR: ramdisk vis for level ~A, this is not supported~%" (-> obj name))
+      (format 0 "ERROR: ramdisk vis for level ~A, this is not supported~%" (-> this name))
       (let ((v0-1 #f))
         (b! #t cfg-49 :delay (nop!))
         (label cfg-16)
@@ -329,7 +324,7 @@ It's not super clear to me why they ditched this system. Maybe the visibility da
                                )
               (spad-start (&-> (the-as (pointer int8) *fake-scratchpad-data*) 0))
               (spad-end (the-as (pointer int8) (&+ *fake-scratchpad-data* 2048)))
-              (list-len (-> obj bsp visible-list-length))
+              (list-len (-> this bsp visible-list-length))
               )
           (when (zero? (the-as vis-info-flag lower-flag-bits))
             (let ((qwc (/ (+ list-len 15) 16)))
@@ -348,9 +343,9 @@ It's not super clear to me why they ditched this system. Maybe the visibility da
                      (set! (-> (the-as (pointer int128) (&+ spad-start (* a0-23 16)))) (the int128 0))
                      )
                    )
-                 (set! extra-vis-length (-> obj bsp extra-vis-list-length))
+                 (set! extra-vis-length (-> this bsp extra-vis-list-length))
                  (set! extra-vis-dest (&+ spad-start (- list-len extra-vis-length)))
-                 (let ((extra-vis-in (unpack-vis (-> obj bsp drawable-trees) spad-start (the-as (pointer int8) vis-buf))))
+                 (let ((extra-vis-in (unpack-vis (-> this bsp drawable-trees) spad-start (the-as (pointer int8) vis-buf))))
                    (dotimes (extra-vis-idx extra-vis-length)
                      (let ((vis-byte (-> extra-vis-in 0)))
                        (set! extra-vis-in (&-> extra-vis-in 1))
@@ -383,7 +378,7 @@ It's not super clear to me why they ditched this system. Maybe the visibility da
             (shift-arith-right-32 lower-flag-bits lower-flag-bits 3)
             )
           (let ((vis-ptr (the-as (pointer uint8) vis-buf))
-                (all-vis-ptr (the-as (pointer uinteger) (-> obj bsp all-visible-list)))
+                (all-vis-ptr (the-as (pointer uinteger) (-> this bsp all-visible-list)))
                 (vis-error #f)
                 )
             (dotimes (s0-1 list-len)
@@ -415,7 +410,7 @@ It's not super clear to me why they ditched this system. Maybe the visibility da
             )
           (let ((unpacked-vis-ptr vis-buf)
                 (final-vis-ptr (the-as object (-> vis-info vis-bits)))
-                (all-vis (the-as (pointer uinteger) (-> obj bsp all-visible-list)))
+                (all-vis (the-as (pointer uinteger) (-> this bsp all-visible-list)))
                 (vis-qwc (/ (+ list-len 15) 16))
                 )
             (dotimes (a3-6 vis-qwc)

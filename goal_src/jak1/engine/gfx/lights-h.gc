@@ -8,119 +8,84 @@
 ;; It seems like some of these are unused.
 ;; The commonly used lights are vu-lights and light-group.
 
+;; DECOMP BEGINS
+
 ;; this type represents the lights that can be sent to the VU for merc (and maybe generic?) rendering.
 ;; it contains 3 directional lights and an ambient light.
 ;; Note that the data is transposed to be faster for use in the VU code.
 ;; the w components are unused for lighting information - you can put whatever you want in them...
 (deftype vu-lights (structure)
-  ((direction vector 3 :inline :offset-assert 0)
-   (color     vector 3 :inline :offset-assert 48)
-   (ambient   vector :inline   :offset-assert 96)
+  ((direction  vector  3 :inline)
+   (color      vector  3 :inline)
+   (ambient    vector  :inline)
    )
-  :method-count-assert 9
-  :size-assert         #x70
-  :flag-assert         #x900000070
   )
 
 ;; a single directional light.
 (deftype light (structure)
-  ((direction  vector :inline :offset-assert 0)
-   (color      rgbaf  :inline :offset-assert 16)
-   (levels     vector :inline :offset-assert 32)
-   (level      float          :offset 32)
-   (sort-level float          :offset 36)
+  ((direction   vector  :inline)
+   (color       rgbaf   :inline)
+   (levels      vector  :inline)
+   (level       float   :overlay-at (-> levels x))
+   (sort-level  float   :overlay-at (-> levels y))
    )
-  :method-count-assert 9
-  :size-assert         #x30
-  :flag-assert         #x900000030
   )
 
 ;; unused?
 (deftype light-ellipse (structure)
-  ((matrix              matrix :inline :offset-assert 0)
-   (color               rgbaf  :inline :offset-assert 64)
-   (name                basic          :offset 12)
-   (decay-start         float          :offset 28)
-   (ambient-point-ratio float          :offset 44)
-   (level               float          :offset 60)
-   (func-symbol         basic          :offset 76)
-   (func                basic          :offset 76)
+  ((matrix               matrix  :inline)
+   (color                rgbaf   :inline)
+   (name                 basic   :overlay-at (-> matrix data 3))
+   (decay-start          float   :overlay-at (-> matrix data 7))
+   (ambient-point-ratio  float   :overlay-at (-> matrix data 11))
+   (level                float   :overlay-at (-> matrix data 15))
+   (func-symbol          basic   :overlay-at (-> color a))
+   (func                 basic   :overlay-at (-> color a))
    )
-  :method-count-assert 9
-  :size-assert         #x50
-  :flag-assert         #x900000050
   )
 
 ;; This likely doesn't work correctly in both GOAL and OpenGOAL
 ;; unused?
 (deftype light-array (array)
   ()
-  :method-count-assert 9
-  :size-assert         #x10
-  :flag-assert         #x900000010
   )
 
 ;; unused?
 (deftype light-volume (basic)
-  ((light-array light-array  :offset-assert 4)
+  ((light-array  light-array)
    )
-  :method-count-assert 9
-  :size-assert         #x8
-  :flag-assert         #x900000008
   )
 
 ;; unused?
 (deftype light-volume-sphere (light-volume)
-  ((bsphere     sphere :inline :offset-assert 16)
+  ((bsphere  sphere  :inline)
    )
-  :method-count-assert 9
-  :size-assert         #x20
-  :flag-assert         #x900000020
   )
 
 ;; unused?
 (deftype light-volume-planes (light-volume)
-  ((planes      vertical-planes  :offset-assert 8)
+  ((planes  vertical-planes)
    )
-  :method-count-assert 9
-  :size-assert         #xc
-  :flag-assert         #x90000000c
   )
 
 ;; unused?
 (deftype light-volume-array (array)
   ()
-  :method-count-assert 9
-  :size-assert         #x10
-  :flag-assert         #x900000010
   )
 
-(defmethod print light ((obj light))
-  "Print a directional light."
-  (format #t "#<light [~F] ~F ~F ~F  "
-          (-> obj levels data 0)
-          (-> obj direction data 0)
-          (-> obj direction data 1)
-          (-> obj direction data 2)
-          )
-  (format #t "~F ~F ~F @ #x~X>"
-          (-> obj color data 0)
-          (-> obj color data 1)
-          (-> obj color data 2)
-          obj
-          )
-  obj
+
+(defmethod print ((this light))
+  (format #t "#<light [~F] ~F ~F ~F  " (-> this levels x) (-> this direction x) (-> this direction y) (-> this direction z))
+                         (format #t "~F ~F ~F @ #x~X>" (-> this color x) (-> this color y) (-> this color z) this)
+  this
   )
 
 ;; the primary light type, used before conversion to vu-lights.
 (deftype light-group (structure)
-  ((dir0 light :inline :offset-assert 0)
-   (dir1 light :inline :offset-assert 48)
-   (dir2 light :inline :offset-assert 96)
-   (ambi light :inline :offset-assert 144)
-   (lights light 4 :inline :offset 0)
+  ((dir0    light  :inline)
+   (dir1    light  :inline)
+   (dir2    light  :inline)
+   (ambi    light  :inline)
+   (lights  light  4 :inline :overlay-at dir0)
    )
-  :method-count-assert 9
-  :size-assert         #xc0
-  :flag-assert         #x9000000c0
   )

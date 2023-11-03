@@ -6,14 +6,14 @@
 
 ;; definition for method 5 of type merc-fragment
 ;; INFO: Return type mismatch uint vs int.
-(defmethod asize-of merc-fragment ((obj merc-fragment))
-  (the-as int (* (-> obj header mm-quadword-size) 16))
+(defmethod asize-of ((this merc-fragment))
+  (the-as int (* (-> this header mm-quadword-size) 16))
   )
 
 ;; definition for method 9 of type merc-fragment
 ;; INFO: Return type mismatch merc-fragment vs none.
-(defmethod login-adgifs merc-fragment ((obj merc-fragment))
-  (let* ((fp-data (merc-fragment-fp-data obj))
+(defmethod login-adgifs ((this merc-fragment))
+  (let* ((fp-data (merc-fragment-fp-data this))
          (eye-ctrl (if (nonzero? (-> *merc-ctrl-header* eye-ctrl))
                        (-> *merc-ctrl-header* eye-ctrl)
                        (the-as merc-eye-ctrl #f)
@@ -71,30 +71,30 @@
 
 ;; definition for method 5 of type merc-fragment-control
 ;; INFO: Return type mismatch uint vs int.
-(defmethod asize-of merc-fragment-control ((obj merc-fragment-control))
-  (the-as int (+ (* (-> obj mat-xfer-count) 2) 4))
+(defmethod asize-of ((this merc-fragment-control))
+  (the-as int (+ (* (-> this mat-xfer-count) 2) 4))
   )
 
 ;; definition for method 3 of type merc-fragment-control
 ;; INFO: this function exists in multiple non-identical object files
-(defmethod inspect merc-fragment-control ((obj merc-fragment-control))
-  (format #t "[~8x] ~A~%" obj 'merc-fragment-control)
-  (format #t "~Tunsigned-four-count: ~D~%" (-> obj unsigned-four-count))
-  (format #t "~Tlump-four-count: ~D~%" (-> obj lump-four-count))
-  (format #t "~Tfp-qwc: ~D~%" (-> obj fp-qwc))
-  (format #t "~Tmat-xfer-count: ~D~%" (-> obj mat-xfer-count))
-  (dotimes (s5-0 (the-as int (-> obj mat-xfer-count)))
+(defmethod inspect ((this merc-fragment-control))
+  (format #t "[~8x] ~A~%" this 'merc-fragment-control)
+  (format #t "~Tunsigned-four-count: ~D~%" (-> this unsigned-four-count))
+  (format #t "~Tlump-four-count: ~D~%" (-> this lump-four-count))
+  (format #t "~Tfp-qwc: ~D~%" (-> this fp-qwc))
+  (format #t "~Tmat-xfer-count: ~D~%" (-> this mat-xfer-count))
+  (dotimes (s5-0 (the-as int (-> this mat-xfer-count)))
     (format #t "~Tmat-dest-data[~d]:~%" s5-0)
-    (format #t "~T~Tmatrix-number: ~D~%" (-> obj mat-dest-data s5-0 matrix-number))
-    (format #t "~T~Tmatrix-dest: ~D~%" (-> obj mat-dest-data s5-0 matrix-dest))
+    (format #t "~T~Tmatrix-number: ~D~%" (-> this mat-dest-data s5-0 matrix-number))
+    (format #t "~T~Tmatrix-dest: ~D~%" (-> this mat-dest-data s5-0 matrix-dest))
     )
-  obj
+  this
   )
 
 ;; definition for method 9 of type merc-effect
 ;; INFO: Return type mismatch merc-effect vs none.
-(defmethod login-adgifs merc-effect ((obj merc-effect))
-  (let ((data (-> obj extra-info)))
+(defmethod login-adgifs ((this merc-effect))
+  (let ((data (-> this extra-info)))
     (when (nonzero? data)
       (when (nonzero? (-> data shader-offset))
         (let ((tex (adgif-shader-login (the-as adgif-shader (+ (the-as uint data) (* (-> data shader-offset) 16))))))
@@ -107,10 +107,10 @@
         )
       )
     )
-  (let ((ctrl (-> obj frag-ctrl))
-        (geo (-> obj frag-geo))
+  (let ((ctrl (-> this frag-ctrl))
+        (geo (-> this frag-geo))
         )
-    (dotimes (frag-idx (the-as int (-> obj frag-count)))
+    (dotimes (frag-idx (the-as int (-> this frag-count)))
       (let ((ctrl-size (asize-of ctrl)))
         (let ((geo-size (asize-of geo)))
           (login-adgifs geo)
@@ -125,28 +125,28 @@
 
 ;; definition for method 3 of type merc-ctrl
 ;; INFO: this function exists in multiple non-identical object files
-(defmethod inspect merc-ctrl ((obj merc-ctrl))
-  (format #t "[~8x] ~A~%" obj (-> obj type))
-  (format #t "~Tname: ~A~%" (-> obj name))
-  (format #t "~Tlength: ~D~%" (-> obj length))
-  (format #t "~Tnum-joints: ~D~%" (-> obj num-joints))
-  (format #t "~Textra: ~A~%" (-> obj extra))
-  (inspect (-> obj header))
-  (dotimes (s5-0 (the-as int (-> obj header effect-count)))
-    (inspect (-> obj effect s5-0))
+(defmethod inspect ((this merc-ctrl))
+  (format #t "[~8x] ~A~%" this (-> this type))
+  (format #t "~Tname: ~A~%" (-> this name))
+  (format #t "~Tlength: ~D~%" (-> this length))
+  (format #t "~Tnum-joints: ~D~%" (-> this num-joints))
+  (format #t "~Textra: ~A~%" (-> this extra))
+  (inspect (-> this header))
+  (dotimes (s5-0 (the-as int (-> this header effect-count)))
+    (inspect (-> this effect s5-0))
     )
-  obj
+  this
   )
 
 ;; definition for method 8 of type merc-ctrl
-(defmethod mem-usage merc-ctrl ((obj merc-ctrl) (arg0 memory-usage-block) (arg1 int))
-  (if (-> obj extra)
-      (mem-usage (-> obj extra) arg0 arg1)
+(defmethod mem-usage ((this merc-ctrl) (arg0 memory-usage-block) (arg1 int))
+  (if (-> this extra)
+      (mem-usage (-> this extra) arg0 arg1)
       )
-  (let ((ctrl-mem (+ 32 80 (* (-> obj header effect-count) 32))))
-    (dotimes (effect-idx (the-as int (-> obj header effect-count)))
-      (let ((fctrl (-> obj effect effect-idx frag-ctrl)))
-        (dotimes (frag-idx (the-as int (-> obj effect effect-idx frag-count)))
+  (let ((ctrl-mem (+ 32 80 (* (-> this header effect-count) 32))))
+    (dotimes (effect-idx (the-as int (-> this header effect-count)))
+      (let ((fctrl (-> this effect effect-idx frag-ctrl)))
+        (dotimes (frag-idx (the-as int (-> this effect effect-idx frag-count)))
           (set! ctrl-mem (+ ctrl-mem
                             (* (shr (+ (-> fctrl unsigned-four-count) 3) 2) 16)
                             (* (shr (+ (-> fctrl lump-four-count) 3) 2) 16)
@@ -165,19 +165,19 @@
     (+! (-> arg0 data 75 total) (logand -16 (+ ctrl-mem 15)))
     )
   (let ((effect-mem 0))
-    (dotimes (effect-idx2 (the-as int (-> obj header effect-count)))
-      (when (nonzero? (-> obj effect effect-idx2 blend-frag-count))
-        (let ((bctrl (-> obj effect effect-idx2 blend-ctrl)))
-          (dotimes (blend-frag-idx (the-as int (-> obj effect effect-idx2 blend-frag-count)))
+    (dotimes (effect-idx2 (the-as int (-> this header effect-count)))
+      (when (nonzero? (-> this effect effect-idx2 blend-frag-count))
+        (let ((bctrl (-> this effect effect-idx2 blend-ctrl)))
+          (dotimes (blend-frag-idx (the-as int (-> this effect effect-idx2 blend-frag-count)))
             (let ((v1-36 (+ effect-mem (* (+ (-> bctrl nonzero-index-count) 1)
                                           (the-as uint (logand (+ (* (the-as uint 6) (-> bctrl blend-vtx-count)) 15) #xfff0))
                                           )
                             )
                          )
                   )
-              (set! effect-mem (the-as int (+ (-> obj header blend-target-count) 2 v1-36)))
+              (set! effect-mem (the-as int (+ (-> this header blend-target-count) 2 v1-36)))
               )
-            (set! bctrl (the-as merc-blend-ctrl (&+ (the-as pointer bctrl) (+ (-> obj header blend-target-count) 2))))
+            (set! bctrl (the-as merc-blend-ctrl (&+ (the-as pointer bctrl) (+ (-> this header blend-target-count) 2))))
             )
           )
         )
@@ -190,8 +190,8 @@
       (+! (-> arg0 data 77 total) (logand -16 (+ effect-mem 15)))
       )
     )
-  (when (nonzero? (-> obj header eye-ctrl))
-    (let ((a0-28 (-> obj header eye-ctrl)))
+  (when (nonzero? (-> this header eye-ctrl))
+    (let ((a0-28 (-> this header eye-ctrl)))
       (set! (-> arg0 length) (max 109 (-> arg0 length)))
       (set! (-> arg0 data 108 name) "eye-anim")
       (+! (-> arg0 data 108 count) 1)
@@ -201,30 +201,30 @@
         )
       )
     )
-  obj
+  this
   )
 
 ;; definition for method 9 of type merc-ctrl
-(defmethod login merc-ctrl ((obj merc-ctrl))
-  (set! *merc-ctrl-header* (-> obj header))
+(defmethod login ((this merc-ctrl))
+  (set! *merc-ctrl-header* (-> this header))
   (dotimes (v1-1 3)
     (set! (-> *merc-ctrl-header* masks v1-1) (the-as uint 0))
     )
-  (dotimes (effect-idx (the-as int (-> obj header effect-count)))
-    (login-adgifs (-> obj effect effect-idx))
+  (dotimes (effect-idx (the-as int (-> this header effect-count)))
+    (login-adgifs (-> this effect effect-idx))
     )
   (let ((idx-with-bit1 -1)
-        (a1-1 (-> obj header effect-count))
+        (a1-1 (-> this header effect-count))
         )
     (dotimes (v1-11 (the-as int a1-1))
-      (if (logtest? (-> obj effect v1-11 effect-bits) 2)
+      (if (logtest? (-> this effect v1-11 effect-bits) 2)
           (set! idx-with-bit1 v1-11)
           )
       )
     (when (!= idx-with-bit1 -1)
       (let ((v1-16 4)
-            (this-effect (-> obj effect idx-with-bit1))
-            (last-effect (-> obj effect (+ a1-1 -1)))
+            (this-effect (-> this effect idx-with-bit1))
+            (last-effect (-> this effect (+ a1-1 -1)))
             )
         (dotimes (copy-idx v1-16)
           (let ((a3-2 (-> this-effect data copy-idx)))
@@ -236,12 +236,12 @@
       )
     )
   (cond
-    ((not (logtest? -65536 (the-as int (-> obj header eye-ctrl))))
-     (set! (-> obj header eye-ctrl) (the-as merc-eye-ctrl 0))
+    ((not (logtest? -65536 (the-as int (-> this header eye-ctrl))))
+     (set! (-> this header eye-ctrl) (the-as merc-eye-ctrl 0))
      0
      )
     (else
-      (let ((s5-1 (-> obj header eye-ctrl)))
+      (let ((s5-1 (-> this header eye-ctrl)))
         (dotimes (s4-0 3)
           (let ((v1-25 (adgif-shader-login (-> s5-1 shader s4-0))))
             (when v1-25
@@ -254,7 +254,7 @@
         )
       )
     )
-  obj
+  this
   )
 
 ;; definition (debug) for function merc-stats-display

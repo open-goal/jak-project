@@ -3,29 +3,27 @@
 
 ;; definition of type blocking-plane
 (deftype blocking-plane (process-drawable)
-  ((root collide-shape  :override)
+  ((root  collide-shape :override)
    )
-  :heap-base #x50
-  :method-count-assert 22
-  :size-assert         #xc8
-  :flag-assert         #x16005000c8
+  (:state-methods
+    idle
+    )
   (:methods
-    (idle () _type_ :state 20)
-    (init! (_type_ (inline-array vector) float) none 21)
+    (init! (_type_ (inline-array vector) float) none)
     )
   )
 
 ;; definition for method 3 of type blocking-plane
-(defmethod inspect blocking-plane ((obj blocking-plane))
-  (when (not obj)
-    (set! obj obj)
+(defmethod inspect ((this blocking-plane))
+  (when (not this)
+    (set! this this)
     (goto cfg-4)
     )
   (let ((t9-0 (method-of-type process-drawable inspect)))
-    (t9-0 obj)
+    (t9-0 this)
     )
   (label cfg-4)
-  obj
+  this
   )
 
 ;; failed to figure out what this is:
@@ -38,75 +36,74 @@
 ;; failed to figure out what this is:
 (defstate idle (blocking-plane)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (the-as object (case event-type
-                     (('on)
-                      (cond
-                        ((nonzero? (-> self root))
-                         (let ((prim (-> self root root-prim)))
-                           (set! (-> prim prim-core collide-as) (-> self root backup-collide-as))
-                           (let ((v0-0 (the-as int (-> self root backup-collide-with))))
-                             (set! (-> prim prim-core collide-with) (the-as collide-spec v0-0))
-                             v0-0
-                             )
-                           )
-                         )
-                        (else
-                          (let ((proc-child-ptr-0 (-> self child)))
-                            (while proc-child-ptr-0
-                              (let ((proc-child-0 (ppointer->process proc-child-ptr-0)))
-                                (set! proc-child-ptr-0 (-> proc-child-ptr-0 0 brother))
-                                (if (type? proc-child-0 blocking-plane)
-                                    (send-event proc-child-0 'on)
-                                    )
-                                )
-                              )
-                            )
-                          (the-as int #f)
-                          )
-                        )
-                      )
-                     (('off)
-                      (cond
-                        ((nonzero? (-> self root))
-                         (let ((v1-13 (-> self root root-prim)))
-                           (set! (-> v1-13 prim-core collide-as) (collide-spec))
-                           (set! (-> v1-13 prim-core collide-with) (collide-spec))
-                           )
-                         0
-                         )
-                        (else
-                          (let ((proc-child-ptr-1 (-> self child)))
-                            (while proc-child-ptr-1
-                              (let ((proc-child-1 (ppointer->process proc-child-ptr-1)))
-                                (set! proc-child-ptr-1 (-> proc-child-ptr-1 0 brother))
-                                (if (type? proc-child-1 blocking-plane)
-                                    (send-event proc-child-1 'off)
-                                    )
-                                )
-                              )
-                            )
-                          (the-as int #f)
-                          )
-                        )
-                      )
-                     )
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
+      (('on)
+       (cond
+         ((nonzero? (-> self root))
+          (let ((prim (-> self root root-prim)))
+            (set! (-> prim prim-core collide-as) (-> self root backup-collide-as))
+            (let ((v0-0 (the-as int (-> self root backup-collide-with))))
+              (set! (-> prim prim-core collide-with) (the-as collide-spec v0-0))
+              v0-0
+              )
             )
+          )
+         (else
+           (let ((proc-child-ptr-0 (-> self child)))
+             (while proc-child-ptr-0
+               (let ((proc-child-0 (ppointer->process proc-child-ptr-0)))
+                 (set! proc-child-ptr-0 (-> proc-child-ptr-0 0 brother))
+                 (if (type? proc-child-0 blocking-plane)
+                     (send-event proc-child-0 'on)
+                     )
+                 )
+               )
+             )
+           (the-as int #f)
+           )
+         )
+       )
+      (('off)
+       (cond
+         ((nonzero? (-> self root))
+          (let ((v1-13 (-> self root root-prim)))
+            (set! (-> v1-13 prim-core collide-as) (collide-spec))
+            (set! (-> v1-13 prim-core collide-with) (collide-spec))
+            )
+          0
+          )
+         (else
+           (let ((proc-child-ptr-1 (-> self child)))
+             (while proc-child-ptr-1
+               (let ((proc-child-1 (ppointer->process proc-child-ptr-1)))
+                 (set! proc-child-ptr-1 (-> proc-child-ptr-1 0 brother))
+                 (if (type? proc-child-1 blocking-plane)
+                     (send-event proc-child-1 'off)
+                     )
+                 )
+               )
+             )
+           (the-as int #f)
+           )
+         )
+       )
+      )
     )
-  :code (the-as (function none :behavior blocking-plane) sleep-code)
+  :code sleep-code
   )
 
 ;; definition for method 21 of type blocking-plane
 ;; INFO: Used lq/sq
 ;; WARN: Return type mismatch int vs none.
-(defmethod init! blocking-plane ((obj blocking-plane) (vec-pair (inline-array vector)) (height float))
+(defmethod init! ((this blocking-plane) (vec-pair (inline-array vector)) (height float))
   "TODO - but sets up the plane given 2 vectors and a height"
   (let ((s3-0 (-> vec-pair 0))
         (s4-0 (-> vec-pair 1))
         )
     0.0
     (* 0.5 (vector-vector-distance s3-0 s4-0))
-    (let ((s2-0 (new 'process 'collide-shape obj (collide-list-enum usually-hit-by-player))))
+    (let ((s2-0 (new 'process 'collide-shape this (collide-list-enum usually-hit-by-player))))
       (let ((v1-3 (new 'process 'collide-shape-prim-mesh s2-0 (the-as uint 0) (the-as uint 0))))
         (set! (-> v1-3 prim-core collide-as) (collide-spec blocking-plane))
         (set! (-> v1-3 prim-core collide-with) (collide-spec jak player-list))
@@ -120,10 +117,10 @@
         (set! (-> s2-0 backup-collide-as) (-> v1-6 prim-core collide-as))
         (set! (-> s2-0 backup-collide-with) (-> v1-6 prim-core collide-with))
         )
-      (set! (-> obj root) s2-0)
+      (set! (-> this root) s2-0)
       )
     (let ((s1-0 (new 'stack-no-clear 'matrix))
-          (s2-1 (-> obj root))
+          (s2-1 (-> this root))
           )
       (vector+! (-> s2-1 trans) s3-0 s4-0)
       (vector-float*! (-> s2-1 trans) (-> s2-1 trans) 0.5)
@@ -137,7 +134,7 @@
         (vector-cross! (-> s1-0 vector 2) (the-as vector (-> s1-0 vector)) (-> s1-0 vector 1))
         (vector-normalize! (-> s1-0 vector 2) 1.0)
         (matrix->quaternion (-> s2-1 quat) s1-0)
-        (let ((v1-20 (-> obj root root-prim local-sphere)))
+        (let ((v1-20 (-> this root root-prim local-sphere)))
           (set! (-> v1-20 x) 0.0)
           (set! (-> v1-20 y) (* 0.00024414062 (* 0.5 height)))
           (set! (-> v1-20 z) 0.0)
@@ -152,11 +149,11 @@
       )
     )
   (initialize-skeleton
-    obj
+    this
     (the-as skeleton-group (art-group-get-by-name *level* "skel-blocking-plane" (the-as (pointer uint32) #f)))
     (the-as pair 0)
     )
-  (logior! (-> obj draw status) (draw-control-status no-draw-bounds))
+  (logior! (-> this draw status) (draw-control-status no-draw-bounds))
   (transform-post)
   (none)
   )
@@ -176,17 +173,17 @@
 ;; definition for method 11 of type blocking-plane
 ;; INFO: Used lq/sq
 ;; WARN: Return type mismatch object vs none.
-(defmethod init-from-entity! blocking-plane ((obj blocking-plane) (arg0 entity-actor))
+(defmethod init-from-entity! ((this blocking-plane) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
 - stack size
 - collision information
 - loading the skeleton group / bones
 - sounds"
-  (let ((s5-0 (new 'process 'path-control obj 'path 0.0 (the-as entity #f) #f))
-        (f30-0 (res-lump-float (-> obj entity) 'height :default 122880.0))
+  (let ((s5-0 (new 'process 'path-control this 'path 0.0 (the-as entity #f) #f))
+        (f30-0 (res-lump-float (-> this entity) 'height :default 122880.0))
         )
-    (set! (-> obj path) s5-0)
+    (set! (-> this path) s5-0)
     (if (or (not s5-0) (< (-> s5-0 curve num-cverts) 2))
         (go process-drawable-art-error "bad path")
         )
@@ -200,11 +197,11 @@ This commonly includes things such as:
       (dotimes (s2-0 s4-0)
         (get-point-in-path! s5-0 (-> s3-0 0) (the float s2-0) 'interp)
         (get-point-in-path! s5-0 (-> s3-0 1) (the float (+ s2-0 1)) 'interp)
-        (process-spawn blocking-plane s3-0 f30-0 :to obj)
+        (process-spawn blocking-plane s3-0 f30-0 :to this)
         )
       )
     )
-  (go (method-of-object obj idle))
+  (go (method-of-object this idle))
   (none)
   )
 

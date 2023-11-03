@@ -8,7 +8,6 @@
 
 ;; DECOMP BEGINS
 
-
 (defskelgroup *med-res-snow-sg* medres-snow medres-snow-lod0-jg medres-snow-idle-ja
               ((medres-snow-lod0-mg (meters 999999)))
               :bounds (static-spherem -390 150 70 410)
@@ -294,15 +293,11 @@
               )
 
 (deftype tntbarrel (process-drawable)
-  ((root-override collide-shape  :offset 112)
+  ((root  collide-shape :override)
    )
-  :heap-base #x40
-  :method-count-assert 22
-  :size-assert         #xb0
-  :flag-assert         #x16004000b0
-  (:methods
-    (idle () _type_ :state 20)
-    (die (symbol) _type_ :state 21)
+  (:state-methods
+    idle
+    (die symbol)
     )
   )
 
@@ -311,7 +306,7 @@
   :virtual #t
   :code (behavior ((arg0 symbol))
     (ja-channel-set! 0)
-    (clear-collide-with-as (-> self root-override))
+    (clear-collide-with-as (-> self root))
     (ja-post)
     (sound-play "dcrate-break")
     (if arg0
@@ -323,7 +318,7 @@
           #f
           #f
           #f
-          (-> self root-override trans)
+          (-> self root trans)
           :to *entity-pool*
           )
         (process-spawn
@@ -334,21 +329,20 @@
           #f
           #f
           #f
-          (-> self root-override trans)
+          (-> self root trans)
           :to *entity-pool*
           )
         )
     (suspend)
     (cleanup-for-death self)
     (deactivate self)
-    (none)
     )
   )
 
 (defstate idle (tntbarrel)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('die-big)
        (go-virtual die #t)
        )
@@ -356,7 +350,7 @@
        (go-virtual die #f)
        )
       (('attack 'touch)
-       (send-event proc 'attack-invinc (-> event param 0) (static-attack-info ((mode 'death))))
+       (send-event proc 'attack-invinc (-> block param 0) (static-attack-info ((mode 'death))))
        (go-virtual die #f)
        )
       )
@@ -366,12 +360,11 @@
     (logior! (-> self mask) (process-mask sleep))
     (suspend)
     0
-    (none)
     )
   )
 
-(defmethod init-from-entity! tntbarrel ((obj tntbarrel) (arg0 entity-actor))
-  (let ((s4-0 (new 'process 'collide-shape obj (collide-list-enum usually-hit-by-player))))
+(defmethod init-from-entity! ((this tntbarrel) (arg0 entity-actor))
+  (let ((s4-0 (new 'process 'collide-shape this (collide-list-enum usually-hit-by-player))))
     (let ((s3-0 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 0) (the-as uint 0))))
       (set! (-> s3-0 prim-core collide-as) (collide-kind crate))
       (set! (-> s3-0 collide-with) (collide-kind target))
@@ -383,12 +376,12 @@
       )
     (set! (-> s4-0 nav-radius) (* 0.75 (-> s4-0 root-prim local-sphere w)))
     (backup-collide-with-as s4-0)
-    (set! (-> obj root-override) s4-0)
+    (set! (-> this root) s4-0)
     )
-  (process-drawable-from-entity! obj arg0)
-  (initialize-skeleton obj *tntbarrel-sg* '())
-  (set-vector! (-> obj draw color-mult) 1.3 1.3 1.3 1.0)
-  (go (method-of-object obj idle))
+  (process-drawable-from-entity! this arg0)
+  (initialize-skeleton this *tntbarrel-sg* '())
+  (set-vector! (-> this draw color-mult) 1.3 1.3 1.3 1.0)
+  (go (method-of-object this idle))
   (none)
   )
 
@@ -428,41 +421,36 @@
               )
 
 (deftype ogre-plat (rigid-body-platform)
-  ((anchor-point   vector       :inline :offset-assert 736)
-   (idle-y-offset  float                :offset-assert 752)
-   (float-y-offset float                :offset-assert 756)
-   (delay          time-frame           :offset-assert 760)
-   (active         symbol               :offset-assert 768)
-   (triggered      entity-actor         :offset-assert 772)
+  ((anchor-point    vector  :inline)
+   (idle-y-offset   float)
+   (float-y-offset  float)
+   (delay           time-frame)
+   (active          symbol)
+   (triggered       entity-actor)
    )
-  :heap-base #x2a0
-  :method-count-assert 35
-  :size-assert         #x308
-  :flag-assert         #x2302a00308
   )
 
 
-(defmethod rigid-body-platform-method-23 ogre-plat ((obj ogre-plat) (arg0 float))
-  ((the-as (function rigid-body-platform basic none) (find-parent-method ogre-plat 23)) obj (the-as basic arg0))
-  (rigid-body-platform-method-27 obj (-> obj anchor-point))
+(defmethod rigid-body-platform-method-23 ((this ogre-plat) (arg0 float))
+  (call-parent-method this arg0)
+  (rigid-body-platform-method-27 this (-> this anchor-point))
   0
   (none)
   )
 
 (defstate rigid-body-platform-idle (ogre-plat)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (the-as object (case event-type
-                     (('trigger)
-                      (set! (-> self triggered) (the-as entity-actor #t))
-                      (set! (-> self delay) (the-as time-frame (-> event param 0)))
-                      (let ((v0-0 (-> *display* base-frame-counter)))
-                        (set! (-> self state-time) v0-0)
-                        v0-0
-                        )
-                      )
-                     )
-            )
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
+      (('trigger)
+       (set! (-> self triggered) (the-as entity-actor #t))
+       (set! (-> self delay) (the-as time-frame (-> block param 0)))
+       (let ((v0-0 (current-time)))
+         (set! (-> self state-time) v0-0)
+         v0-0
+         )
+       )
+      )
     )
   :trans (behavior ()
     (cond
@@ -478,29 +466,24 @@
          )
        )
       (else
-        (if (and (-> self triggered) (>= (- (-> *display* base-frame-counter) (-> self state-time)) (-> self delay)))
+        (if (and (-> self triggered) (time-elapsed? (-> self state-time) (-> self delay)))
             (set! (-> self active) #t)
             )
         )
       )
-    (none)
     )
   :code (behavior ()
     (logior! (-> self draw status) (draw-status hidden))
     (loop
       (suspend)
       )
-    (none)
     )
-  :post (the-as (function none :behavior ogre-plat) ja-post)
+  :post ja-post
   )
 
 (defstate rigid-body-platform-float (ogre-plat)
   :virtual #t
-  :event (the-as
-    (function process int symbol event-message-block object :behavior ogre-plat)
-    rigid-body-platform-event-handler
-    )
+  :event rigid-body-platform-event-handler
   :trans (behavior ()
     (cond
       ((or (not *target*) (< (-> self info idle-distance)
@@ -508,30 +491,28 @@
                              )
            )
        (let ((f30-1 (-> self idle-y-offset)))
-         (seek! (-> self float-height-offset) f30-1 (* 2048.0 (-> *display* seconds-per-frame)))
+         (seek! (-> self float-height-offset) f30-1 (* 2048.0 (seconds-per-frame)))
          (if (= (-> self float-height-offset) f30-1)
              (go-virtual rigid-body-platform-idle)
              )
          )
        )
       (else
-        (seek! (-> self float-height-offset) (-> self float-y-offset) (* 32768.0 (-> *display* seconds-per-frame)))
+        (seek! (-> self float-height-offset) (-> self float-y-offset) (* 32768.0 (seconds-per-frame)))
         )
       )
-    (none)
     )
   :code (behavior ()
     (logclear! (-> self draw status) (draw-status hidden))
     (loop
       (suspend)
       )
-    (none)
     )
-  :post (the-as (function none :behavior ogre-plat) rigid-body-platform-post)
+  :post rigid-body-platform-post
   )
 
-(defmethod rigid-body-platform-method-30 ogre-plat ((obj ogre-plat))
-  (let ((s5-0 (new 'process 'collide-shape-moving obj (collide-list-enum usually-hit-by-player))))
+(defmethod rigid-body-platform-method-30 ((this ogre-plat))
+  (let ((s5-0 (new 'process 'collide-shape-moving this (collide-list-enum usually-hit-by-player))))
     (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s5-0 reaction) default-collision-reaction)
     (set! (-> s5-0 no-reaction)
@@ -549,19 +530,19 @@
       )
     (set! (-> s5-0 nav-radius) (* 0.75 (-> s5-0 root-prim local-sphere w)))
     (backup-collide-with-as s5-0)
-    (set! (-> obj root-overlay) s5-0)
+    (set! (-> this root-overlay) s5-0)
     )
   0
   (none)
   )
 
-(defmethod rigid-body-platform-method-31 ogre-plat ((obj ogre-plat))
-  (set! (-> obj float-height-offset) (-> obj idle-y-offset))
-  (let ((s5-0 (-> obj info control-point-count)))
+(defmethod rigid-body-platform-method-31 ((this ogre-plat))
+  (set! (-> this float-height-offset) (-> this idle-y-offset))
+  (let ((s5-0 (-> this info control-point-count)))
     (dotimes (s4-0 s5-0)
-      (let ((s3-0 (-> obj control-point-array data s4-0)))
+      (let ((s3-0 (-> this control-point-array data s4-0)))
         (let ((f30-0 (* 65536.0 (/ (the float s4-0) (the float s5-0))))
-              (f28-0 (-> obj root-overlay root-prim local-sphere w))
+              (f28-0 (-> this root-overlay root-prim local-sphere w))
               )
           (set! (-> s3-0 local-pos x) (* f28-0 (sin f30-0)))
           (set! (-> s3-0 local-pos y) 0.0)
@@ -571,9 +552,9 @@
         )
       )
     )
-  (set! (-> obj anchor-point quad) (-> obj root-overlay trans quad))
-  (set! (-> obj active) #f)
-  (set! (-> obj triggered) #f)
+  (set! (-> this anchor-point quad) (-> this root-overlay trans quad))
+  (set! (-> this active) #f)
+  (set! (-> this triggered) #f)
   0
   (none)
   )
@@ -606,32 +587,28 @@
 
 (deftype ogre-step (ogre-plat)
   ()
-  :heap-base #x2a0
-  :method-count-assert 35
-  :size-assert         #x308
-  :flag-assert         #x2302a00308
   )
 
 
-(defmethod rigid-body-platform-method-31 ogre-step ((obj ogre-step))
-  (set! (-> obj idle-y-offset) -28672.0)
-  (set! (-> obj float-y-offset) 0.0)
-  (+! (-> obj root-overlay trans y) (-> obj idle-y-offset))
-  (rigid-body-platform-method-29 obj *ogre-step-constants*)
-  ((the-as (function ogre-plat none) (find-parent-method ogre-step 31)) obj)
-  (let ((a0-5 (entity-actor-lookup (-> obj entity) 'alt-actor 0)))
+(defmethod rigid-body-platform-method-31 ((this ogre-step))
+  (set! (-> this idle-y-offset) -28672.0)
+  (set! (-> this float-y-offset) 0.0)
+  (+! (-> this root-overlay trans y) (-> this idle-y-offset))
+  (rigid-body-platform-method-29 this *ogre-step-constants*)
+  (call-parent-method this)
+  (let ((a0-5 (entity-actor-lookup (-> this entity) 'alt-actor 0)))
     (if (and a0-5 (logtest? (-> a0-5 extra perm status) (entity-perm-status complete)))
-        (set! (-> obj active) #t)
+        (set! (-> this active) #t)
         )
     )
   0
   (none)
   )
 
-(defmethod rigid-body-platform-method-34 ogre-step ((obj ogre-step))
-  (if (-> obj active)
-      (go (method-of-object obj rigid-body-platform-float))
-      (go (method-of-object obj rigid-body-platform-idle))
+(defmethod rigid-body-platform-method-34 ((this ogre-step))
+  (if (-> this active)
+      (go (method-of-object this rigid-body-platform-float))
+      (go (method-of-object this rigid-body-platform-idle))
       )
   0
   (none)
@@ -639,68 +616,52 @@
 
 (deftype ogre-step-a (ogre-step)
   ()
-  :heap-base #x2a0
-  :method-count-assert 35
-  :size-assert         #x308
-  :flag-assert         #x2302a00308
   )
 
 
 (deftype ogre-step-b (ogre-step)
   ()
-  :heap-base #x2a0
-  :method-count-assert 35
-  :size-assert         #x308
-  :flag-assert         #x2302a00308
   )
 
 
 (deftype ogre-step-c (ogre-step)
   ()
-  :heap-base #x2a0
-  :method-count-assert 35
-  :size-assert         #x308
-  :flag-assert         #x2302a00308
   )
 
 
 (deftype ogre-step-d (ogre-step)
   ()
-  :heap-base #x2a0
-  :method-count-assert 35
-  :size-assert         #x308
-  :flag-assert         #x2302a00308
   )
 
 
-(defmethod rigid-body-platform-method-31 ogre-step-a ((obj ogre-step-a))
-  (set-vector! (-> obj root-overlay root-prim local-sphere) 0.0 12288.0 0.0 20480.0)
-  (initialize-skeleton obj *ogre-step-a-sg* '())
-  ((the-as (function ogre-step none) (find-parent-method ogre-step-a 31)) obj)
+(defmethod rigid-body-platform-method-31 ((this ogre-step-a))
+  (set-vector! (-> this root-overlay root-prim local-sphere) 0.0 12288.0 0.0 20480.0)
+  (initialize-skeleton this *ogre-step-a-sg* '())
+  (call-parent-method this)
   0
   (none)
   )
 
-(defmethod rigid-body-platform-method-31 ogre-step-b ((obj ogre-step-b))
-  (set-vector! (-> obj root-overlay root-prim local-sphere) 0.0 12288.0 0.0 20480.0)
-  (initialize-skeleton obj *ogre-step-b-sg* '())
-  ((the-as (function ogre-step none) (find-parent-method ogre-step-b 31)) obj)
+(defmethod rigid-body-platform-method-31 ((this ogre-step-b))
+  (set-vector! (-> this root-overlay root-prim local-sphere) 0.0 12288.0 0.0 20480.0)
+  (initialize-skeleton this *ogre-step-b-sg* '())
+  (call-parent-method this)
   0
   (none)
   )
 
-(defmethod rigid-body-platform-method-31 ogre-step-c ((obj ogre-step-c))
-  (set-vector! (-> obj root-overlay root-prim local-sphere) 0.0 12288.0 0.0 26624.0)
-  (initialize-skeleton obj *ogre-step-c-sg* '())
-  ((the-as (function ogre-step none) (find-parent-method ogre-step-c 31)) obj)
+(defmethod rigid-body-platform-method-31 ((this ogre-step-c))
+  (set-vector! (-> this root-overlay root-prim local-sphere) 0.0 12288.0 0.0 26624.0)
+  (initialize-skeleton this *ogre-step-c-sg* '())
+  (call-parent-method this)
   0
   (none)
   )
 
-(defmethod rigid-body-platform-method-31 ogre-step-d ((obj ogre-step-d))
-  (set-vector! (-> obj root-overlay root-prim local-sphere) 0.0 12288.0 0.0 20480.0)
-  (initialize-skeleton obj *ogre-step-b-sg* '())
-  ((the-as (function ogre-step none) (find-parent-method ogre-step-d 31)) obj)
+(defmethod rigid-body-platform-method-31 ((this ogre-step-d))
+  (set-vector! (-> this root-overlay root-prim local-sphere) 0.0 12288.0 0.0 20480.0)
+  (initialize-skeleton this *ogre-step-b-sg* '())
+  (call-parent-method this)
   0
   (none)
   )
@@ -734,74 +695,58 @@
 
 (deftype ogre-isle (ogre-plat)
   ()
-  :heap-base #x2a0
-  :method-count-assert 35
-  :size-assert         #x308
-  :flag-assert         #x2302a00308
   )
 
 
-(defmethod rigid-body-platform-method-31 ogre-isle ((obj ogre-isle))
-  (set! (-> obj idle-y-offset) -6144.0)
-  (set! (-> obj float-y-offset) 4096.0)
-  (rigid-body-platform-method-29 obj *ogre-isle-constants*)
-  ((the-as (function ogre-plat none) (find-parent-method ogre-isle 31)) obj)
-  (set! (-> obj active) #t)
+(defmethod rigid-body-platform-method-31 ((this ogre-isle))
+  (set! (-> this idle-y-offset) -6144.0)
+  (set! (-> this float-y-offset) 4096.0)
+  (rigid-body-platform-method-29 this *ogre-isle-constants*)
+  (call-parent-method this)
+  (set! (-> this active) #t)
   0
   (none)
   )
 
 (deftype ogre-isle-b (ogre-isle)
   ()
-  :heap-base #x2a0
-  :method-count-assert 35
-  :size-assert         #x308
-  :flag-assert         #x2302a00308
   )
 
 
 (deftype ogre-isle-c (ogre-isle)
   ()
-  :heap-base #x2a0
-  :method-count-assert 35
-  :size-assert         #x308
-  :flag-assert         #x2302a00308
   )
 
 
 (deftype ogre-isle-d (ogre-isle)
   ()
-  :heap-base #x2a0
-  :method-count-assert 35
-  :size-assert         #x308
-  :flag-assert         #x2302a00308
   )
 
 
-(defmethod rigid-body-platform-method-31 ogre-isle-b ((obj ogre-isle-b))
-  (+! (-> obj root-overlay trans x) -8192.0)
-  (set-vector! (-> obj root-overlay root-prim local-sphere) 0.0 8192.0 0.0 24576.0)
-  (initialize-skeleton obj *ogre-isle-b-sg* '())
-  ((the-as (function ogre-isle none) (find-parent-method ogre-isle-b 31)) obj)
+(defmethod rigid-body-platform-method-31 ((this ogre-isle-b))
+  (+! (-> this root-overlay trans x) -8192.0)
+  (set-vector! (-> this root-overlay root-prim local-sphere) 0.0 8192.0 0.0 24576.0)
+  (initialize-skeleton this *ogre-isle-b-sg* '())
+  (call-parent-method this)
   0
   (none)
   )
 
-(defmethod rigid-body-platform-method-31 ogre-isle-c ((obj ogre-isle-c))
-  (+! (-> obj root-overlay trans x) -8192.0)
-  (set-vector! (-> obj root-overlay root-prim local-sphere) 0.0 8192.0 0.0 24576.0)
-  (initialize-skeleton obj *ogre-isle-b-sg* '())
-  ((the-as (function ogre-isle none) (find-parent-method ogre-isle-c 31)) obj)
+(defmethod rigid-body-platform-method-31 ((this ogre-isle-c))
+  (+! (-> this root-overlay trans x) -8192.0)
+  (set-vector! (-> this root-overlay root-prim local-sphere) 0.0 8192.0 0.0 24576.0)
+  (initialize-skeleton this *ogre-isle-b-sg* '())
+  (call-parent-method this)
   0
   (none)
   )
 
-(defmethod rigid-body-platform-method-31 ogre-isle-d ((obj ogre-isle-d))
-  (+! (-> obj root-overlay trans x) -8192.0)
-  (+! (-> obj root-overlay trans z) -8192.0)
-  (set-vector! (-> obj root-overlay root-prim local-sphere) 0.0 8192.0 0.0 22528.0)
-  (initialize-skeleton obj *ogre-isle-d-sg* '())
-  ((the-as (function ogre-isle none) (find-parent-method ogre-isle-d 31)) obj)
+(defmethod rigid-body-platform-method-31 ((this ogre-isle-d))
+  (+! (-> this root-overlay trans x) -8192.0)
+  (+! (-> this root-overlay trans z) -8192.0)
+  (set-vector! (-> this root-overlay root-prim local-sphere) 0.0 8192.0 0.0 22528.0)
+  (initialize-skeleton this *ogre-isle-d-sg* '())
+  (call-parent-method this)
   0
   (none)
   )
@@ -813,14 +758,10 @@
               )
 
 (deftype ogre-bridge (process-drawable)
-  ((root-override    collide-shape-moving   :offset        112)
-   (joint-mod-array  joint-mod            8 :offset-assert 176)
-   (dead-joint-count int8                   :offset-assert 208)
+  ((root              collide-shape-moving :override)
+   (joint-mod-array   joint-mod             8)
+   (dead-joint-count  int8)
    )
-  :heap-base #x70
-  :method-count-assert 20
-  :size-assert         #xd1
-  :flag-assert         #x14007000d1
   (:states
     ogre-bridge-activate
     ogre-bridge-activated
@@ -830,16 +771,13 @@
   )
 
 
-(defmethod relocate ogre-bridge ((obj ogre-bridge) (arg0 int))
+(defmethod relocate ((this ogre-bridge) (arg0 int))
   (dotimes (v1-0 8)
-    (if (nonzero? (-> obj joint-mod-array v1-0))
-        (&+! (-> obj joint-mod-array v1-0) arg0)
+    (if (nonzero? (-> this joint-mod-array v1-0))
+        (&+! (-> this joint-mod-array v1-0) arg0)
         )
     )
-  (the-as
-    ogre-bridge
-    ((the-as (function process-drawable int process-drawable) (find-parent-method ogre-bridge 7)) obj arg0)
-    )
+  (call-parent-method this arg0)
   )
 
 (defbehavior ogre-bridge-update-joints ogre-bridge ()
@@ -859,25 +797,20 @@
 (defstate ogre-bridge-idle (ogre-bridge)
   :exit (behavior ()
     (ogre-bridge-update-joints)
-    (none)
     )
   :trans (behavior ()
-    (if (and (and *target*
-                  (>= 286720.0 (vector-vector-distance (-> self root-override trans) (-> *target* control trans)))
-                  )
+    (if (and (and *target* (>= 286720.0 (vector-vector-distance (-> self root trans) (-> *target* control trans))))
              (send-event *target* 'query 'powerup (pickup-type eco-blue))
              )
         (go ogre-bridge-activate)
         )
     0
-    (none)
     )
   :code (behavior ()
     (ja-post)
     (loop
       (suspend)
       )
-    (none)
     )
   )
 
@@ -897,7 +830,7 @@
         0
         )
       )
-    (ja-no-eval :group! (-> self draw art-group data 3) :num! (seek!) :frame-num 0.0)
+    (ja-no-eval :group! ogre-bridge-assemble-ja :num! (seek!) :frame-num 0.0)
     (until (ja-done? 0)
       (if (rand-vu-percent? 0.2)
           (spawn-projectile-blue *target*)
@@ -906,14 +839,13 @@
       (ja :num! (seek!))
       )
     (go ogre-bridge-activated)
-    (none)
     )
-  :post (the-as (function none :behavior ogre-bridge) rider-post)
+  :post rider-post
   )
 
 (defstate ogre-bridge-activated (ogre-bridge)
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('break)
        (+! (-> self dead-joint-count) 4)
        (go ogre-bridge-break)
@@ -928,61 +860,58 @@
       )
     )
   :code (behavior ()
-    (ja :group! (-> self draw art-group data 3) :num! max)
+    (ja :group! ogre-bridge-assemble-ja :num! max)
     (transform-post)
     (loop
       (suspend)
       )
-    (none)
     )
-  :post (the-as (function none :behavior ogre-bridge) ja-post)
+  :post ja-post
   )
 
 (defstate ogre-bridge-break (ogre-bridge)
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (the-as object (case event-type
-                     (('effect)
-                      (when (= (-> event param 0) 'splash)
-                        (let ((gp-0 (new 'stack-no-clear 'vector)))
-                          (let ((a1-1 (-> event param 2)))
-                            (set! (-> gp-0 quad) (-> self node-list data a1-1 bone transform vector 3 quad))
-                            )
-                          (set! (-> gp-0 y) 118784.0)
-                          (process-spawn
-                            part-tracker
-                            :init part-tracker-init
-                            (-> *part-group-id-table* 466)
-                            -1
-                            #f
-                            #f
-                            #f
-                            gp-0
-                            :to *entity-pool*
-                            )
-                          )
-                        )
-                      )
-                     )
-            )
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
+      (('effect)
+       (when (= (-> block param 0) 'splash)
+         (let ((gp-0 (new 'stack-no-clear 'vector)))
+           (let ((a1-1 (-> block param 2)))
+             (set! (-> gp-0 quad) (-> self node-list data a1-1 bone transform vector 3 quad))
+             )
+           (set! (-> gp-0 y) 118784.0)
+           (process-spawn
+             part-tracker
+             :init part-tracker-init
+             (-> *part-group-id-table* 466)
+             -1
+             #f
+             #f
+             #f
+             gp-0
+             :to *entity-pool*
+             )
+           )
+         )
+       )
+      )
     )
   :code (behavior ()
-    (ja-no-eval :group! (-> self draw art-group data 4) :num! (seek!) :frame-num 0.0)
+    (ja-no-eval :group! ogre-bridge-break-ja :num! (seek!) :frame-num 0.0)
     (until (ja-done? 0)
       (suspend)
       (ja :num! (seek!))
       )
     (go ogre-bridge-idle)
-    (none)
     )
-  :post (the-as (function none :behavior ogre-bridge) rider-post)
+  :post rider-post
   )
 
 (define *ogre-bridge-joint-array* (new 'static 'boxed-array :type uint8 #x4 #x9 #xc #x11 #x7 #xa #xf #x12))
 
-(defmethod init-from-entity! ogre-bridge ((obj ogre-bridge) (arg0 entity-actor))
-  (stack-size-set! (-> obj main-thread) 512)
-  (logior! (-> obj mask) (process-mask platform))
-  (let ((s4-0 (new 'process 'collide-shape-moving obj (collide-list-enum usually-hit-by-player))))
+(defmethod init-from-entity! ((this ogre-bridge) (arg0 entity-actor))
+  (stack-size-set! (-> this main-thread) 512)
+  (logior! (-> this mask) (process-mask platform))
+  (let ((s4-0 (new 'process 'collide-shape-moving this (collide-list-enum usually-hit-by-player))))
     (set! (-> s4-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s4-0 reaction) default-collision-reaction)
     (set! (-> s4-0 no-reaction)
@@ -1152,21 +1081,21 @@
       )
     (set! (-> s4-0 nav-radius) (* 0.75 (-> s4-0 root-prim local-sphere w)))
     (backup-collide-with-as s4-0)
-    (set! (-> obj root-override) s4-0)
+    (set! (-> this root) s4-0)
     )
-  (process-drawable-from-entity! obj arg0)
-  (logclear! (-> obj mask) (process-mask actor-pause))
-  (initialize-skeleton obj *ogre-bridge-sg* '())
-  (logior! (-> obj skel effect flags) 1)
+  (process-drawable-from-entity! this arg0)
+  (logclear! (-> this mask) (process-mask actor-pause))
+  (initialize-skeleton this *ogre-bridge-sg* '())
+  (logior! (-> this skel effect flags) 1)
   (dotimes (s5-1 8)
-    (let ((v1-185 (new 'process 'joint-mod-set-local obj (the-as int (-> *ogre-bridge-joint-array* s5-1)) #f #f #f)))
-      (set! (-> obj joint-mod-array s5-1) (the-as joint-mod v1-185))
+    (let ((v1-185 (new 'process 'joint-mod-set-local this (the-as int (-> *ogre-bridge-joint-array* s5-1)) #f #f #f)))
+      (set! (-> this joint-mod-array s5-1) (the-as joint-mod v1-185))
       (vector-reset! (-> v1-185 transform scale))
       )
     )
   (cond
-    ((and (-> obj entity) (logtest? (-> obj entity extra perm status) (entity-perm-status complete)))
-     (set! (-> obj dead-joint-count) 8)
+    ((and (-> this entity) (logtest? (-> this entity extra perm status) (entity-perm-status complete)))
+     (set! (-> this dead-joint-count) 8)
      (ogre-bridge-update-joints)
      (go ogre-bridge-activated)
      )
@@ -1183,12 +1112,8 @@
               )
 
 (deftype ogre-bridgeend (process-drawable)
-  ((root-override collide-shape  :offset 112)
+  ((root  collide-shape :override)
    )
-  :heap-base #x40
-  :method-count-assert 20
-  :size-assert         #xb0
-  :flag-assert         #x14004000b0
   (:states
     ogre-bridgeend-idle
     )
@@ -1199,12 +1124,11 @@
   :code (behavior ()
     (transform-post)
     (anim-loop)
-    (none)
     )
   )
 
-(defmethod init-from-entity! ogre-bridgeend ((obj ogre-bridgeend) (arg0 entity-actor))
-  (let ((s4-0 (new 'process 'collide-shape obj (collide-list-enum usually-hit-by-player))))
+(defmethod init-from-entity! ((this ogre-bridgeend) (arg0 entity-actor))
+  (let ((s4-0 (new 'process 'collide-shape this (collide-list-enum usually-hit-by-player))))
     (let ((s3-0 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 0) (the-as uint 0))))
       (set! (-> s3-0 prim-core collide-as) (collide-kind ground-object))
       (set! (-> s3-0 collide-with) (collide-kind target))
@@ -1216,29 +1140,25 @@
       )
     (set! (-> s4-0 nav-radius) (* 0.75 (-> s4-0 root-prim local-sphere w)))
     (backup-collide-with-as s4-0)
-    (set! (-> obj root-override) s4-0)
+    (set! (-> this root) s4-0)
     )
-  (process-drawable-from-entity! obj arg0)
-  (initialize-skeleton obj *ogre-bridgeend-sg* '())
+  (process-drawable-from-entity! this arg0)
+  (initialize-skeleton this *ogre-bridgeend-sg* '())
   (go ogre-bridgeend-idle)
   (none)
   )
 
 (deftype ogre-lava (water-anim)
-  ((idle-anim int32  :offset-assert 220)
-   (anim      int32  :offset-assert 224)
+  ((idle-anim  int32)
+   (anim       int32)
    )
-  :heap-base #x80
-  :method-count-assert 30
-  :size-assert         #xe4
-  :flag-assert         #x1e008000e4
   )
 
 
 (defstate water-vol-idle (ogre-lava)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('submerge1)
        (set! (-> self anim) 3)
        (go-virtual water-vol-idle)
@@ -1260,7 +1180,7 @@
        (go-virtual water-vol-idle)
        )
       (else
-        ((-> (method-of-type water-anim water-vol-idle) event) proc arg1 event-type event)
+        ((-> (method-of-type water-anim water-vol-idle) event) proc argc message block)
         )
       )
     )
@@ -1279,9 +1199,8 @@
     (loop
       (suspend)
       )
-    (none)
     )
-  :post (the-as (function none :behavior ogre-lava) #f)
+  :post #f
   )
 
 (defstate water-vol-startup (ogre-lava)
@@ -1290,7 +1209,6 @@
     (set! (-> self idle-anim) 2)
     (set! (-> self anim) (-> self idle-anim))
     (go-virtual water-vol-idle)
-    (none)
     )
   )
 
@@ -1306,29 +1224,25 @@
                                )
         )
 
-(defmethod water-vol-method-22 ogre-lava ((obj ogre-lava))
+(defmethod water-vol-method-22 ((this ogre-lava))
   (let ((t9-0 (method-of-type water-anim water-vol-method-22)))
-    (t9-0 obj)
+    (t9-0 this)
     )
   (let ((v1-2 (new 'process 'ripple-control)))
-    (set! (-> obj draw ripple) v1-2)
+    (set! (-> this draw ripple) v1-2)
     (set! (-> v1-2 global-scale) 2048.0)
     (set! (-> v1-2 waveform) ripple-for-ogre-lava)
     )
-  (logclear! (-> obj flags) (water-flags wt23))
-  (logior! (-> obj flags) (water-flags wt25))
-  (set! (-> obj attack-event) 'lava)
+  (logclear! (-> this flags) (water-flags wt23))
+  (logior! (-> this flags) (water-flags wt25))
+  (set! (-> this attack-event) 'lava)
   (none)
   )
 
 (deftype shortcut-boulder (process-drawable)
-  ((root-override collide-shape         :offset        112)
-   (broken-look   lod-set       :inline :offset-assert 176)
+  ((root         collide-shape :override)
+   (broken-look  lod-set        :inline)
    )
-  :heap-base #x70
-  :method-count-assert 20
-  :size-assert         #xd1
-  :flag-assert         #x14007000d1
   (:states
     shortcut-boulder-break
     shortcut-boulder-idle
@@ -1435,7 +1349,7 @@
       #f
       #f
       #f
-      (-> self root-override trans)
+      (-> self root trans)
       :to *entity-pool*
       )
     (ja-no-eval :group! (ja-group) :num! (seek!) :frame-num 0.0)
@@ -1445,16 +1359,15 @@
       )
     (cleanup-for-death self)
     (deactivate self)
-    (none)
     )
-  :post (the-as (function none :behavior shortcut-boulder) ja-post)
+  :post ja-post
   )
 
 (defstate shortcut-boulder-idle (shortcut-boulder)
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('attack)
-       (if (and (>= arg1 2) (= (-> event param 1) 'eco-yellow))
+       (if (and (>= argc 2) (= (-> block param 1) 'eco-yellow))
            (go shortcut-boulder-break)
            )
        )
@@ -1466,12 +1379,11 @@
       (logior! (-> self mask) (process-mask sleep))
       (suspend)
       )
-    (none)
     )
   )
 
-(defmethod init-from-entity! shortcut-boulder ((obj shortcut-boulder) (arg0 entity-actor))
-  (let ((s4-0 (new 'process 'collide-shape obj (collide-list-enum hit-by-others))))
+(defmethod init-from-entity! ((this shortcut-boulder) (arg0 entity-actor))
+  (let ((s4-0 (new 'process 'collide-shape this (collide-list-enum hit-by-others))))
     (let ((s3-0 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 0) (the-as uint 0))))
       (set! (-> s3-0 prim-core collide-as) (collide-kind wall-object))
       (set! (-> s3-0 collide-with) (collide-kind target))
@@ -1483,12 +1395,12 @@
       )
     (set! (-> s4-0 nav-radius) (* 0.75 (-> s4-0 root-prim local-sphere w)))
     (backup-collide-with-as s4-0)
-    (set! (-> obj root-override) s4-0)
+    (set! (-> this root) s4-0)
     )
-  (process-drawable-from-entity! obj arg0)
-  (initialize-skeleton obj *shortcut-boulder-whole-sg* '())
-  (setup-lods! (-> obj broken-look) *shortcut-boulder-broken-sg* (-> obj draw art-group) (-> obj entity))
-  (set-vector! (-> obj draw color-emissive) 0.125 0.0625 0.0 0.0)
+  (process-drawable-from-entity! this arg0)
+  (initialize-skeleton this *shortcut-boulder-whole-sg* '())
+  (setup-lods! (-> this broken-look) *shortcut-boulder-broken-sg* (-> this draw art-group) (-> this entity))
+  (set-vector! (-> this draw color-emissive) 0.125 0.0625 0.0 0.0)
   (go shortcut-boulder-idle)
   (none)
   )

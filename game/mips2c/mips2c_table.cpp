@@ -123,7 +123,6 @@ namespace moving_sphere_triangle_intersect { extern void link(); }
 namespace calc_animation_from_spr { extern void link(); }
 namespace cspace_parented_transformq_joint { extern void link(); }
 namespace draw_string_asm { extern void link(); }
-namespace draw_string { extern void link(); }
 namespace get_string_length { extern void link(); }
 namespace adgif_shader_texture_with_update { extern void link(); }
 namespace debug_line_clip { extern void link(); }
@@ -333,8 +332,7 @@ PerGameVersion<std::unordered_map<std::string, std::vector<void (*)()>>> gMips2C
     {{"collide-func",
       {jak2::collide_do_primitives::link, jak2::moving_sphere_triangle_intersect::link}},
      {"joint", {jak2::calc_animation_from_spr::link, jak2::cspace_parented_transformq_joint::link}},
-     {"font",
-      {jak2::draw_string::link, jak2::get_string_length::link, jak2::draw_string_asm::link}},
+     {"font", {jak2::get_string_length::link, jak2::draw_string_asm::link}},
      {"texture", {jak2::adgif_shader_texture_with_update::link}},
      {"debug",
       {jak2::debug_line_clip::link, jak2::init_boundary_regs::link,
@@ -425,7 +423,9 @@ PerGameVersion<std::unordered_map<std::string, std::vector<void (*)()>>> gMips2C
        jak2::shadow_find_facing_double_tris::link, jak2::shadow_find_single_edges::link,
        jak2::shadow_find_facing_single_tris::link, jak2::shadow_init_vars::link,
        jak2::shadow_scissor_top::link, jak2::shadow_scissor_edges::link,
-       jak2::shadow_calc_dual_verts::link, jak2::shadow_xform_verts::link}}}};
+       jak2::shadow_calc_dual_verts::link, jak2::shadow_xform_verts::link}}},
+    /////////// JAK 3
+    {}};
 
 void LinkedFunctionTable::reg(const std::string& name, u64 (*exec)(void*), u32 stack_size) {
   const auto& it = m_executes.insert({name, {exec, Ptr<u8>()}});

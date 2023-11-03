@@ -3,63 +3,57 @@
 
 ;; definition of type twist-joint
 (deftype twist-joint (structure)
-  ((ry      float  :offset-assert   0)
-   (max-dry float  :offset-assert   4)
+  ((ry       float)
+   (max-dry  float)
    )
   :allow-misaligned
-  :method-count-assert 9
-  :size-assert         #x8
-  :flag-assert         #x900000008
   )
 
 ;; definition for method 3 of type twist-joint
-(defmethod inspect twist-joint ((obj twist-joint))
-  (format #t "[~8x] ~A~%" obj 'twist-joint)
-  (format #t "~Try: ~f~%" (-> obj ry))
-  (format #t "~Tmax-dry: ~f~%" (-> obj max-dry))
-  obj
+(defmethod inspect ((this twist-joint))
+  (format #t "[~8x] ~A~%" this 'twist-joint)
+  (format #t "~Try: ~f~%" (-> this ry))
+  (format #t "~Tmax-dry: ~f~%" (-> this max-dry))
+  this
   )
 
 ;; definition of type twister
 (deftype twister (basic)
-  ((num-joints   int32                        :offset-assert   4)
-   (first-joint  int32                        :offset-assert   8)
-   (last-joint   int32                        :offset-assert  12)
-   (something    uint16                       :offset         12)
-   (max-speed    float                        :offset-assert  16)
-   (smoothing    float                        :offset-assert  20)
-   (min-dist     float                        :offset-assert  24)
-   (target       float                        :offset-assert  28)
-   (ry           float                        :offset-assert  32)
-   (max-speed-ry float                        :offset-assert  36)
-   (data         twist-joint :inline :dynamic :offset-assert  40)
+  ((num-joints    int32)
+   (first-joint   int32)
+   (last-joint    int32)
+   (something     uint16       :overlay-at last-joint)
+   (max-speed     float)
+   (smoothing     float)
+   (min-dist      float)
+   (target        float)
+   (ry            float)
+   (max-speed-ry  float)
+   (data          twist-joint  :inline :dynamic)
    )
-  :method-count-assert 13
-  :size-assert         #x28
-  :flag-assert         #xd00000028
   (:methods
-    (new (symbol type int int float float float float) _type_ 0)
-    (twister-method-9 (_type_ int int float) none 9)
-    (set-target! (_type_ float) none 10)
-    (twister-method-11 (_type_) none 11)
-    (twister-method-12 (_type_ process-drawable) none 12)
+    (new (symbol type int int float float float float) _type_)
+    (twister-method-9 (_type_ int int float) none)
+    (set-target! (_type_ float) none)
+    (twister-method-11 (_type_) none)
+    (twister-method-12 (_type_ process-drawable) none)
     )
   )
 
 ;; definition for method 3 of type twister
-(defmethod inspect twister ((obj twister))
-  (format #t "[~8x] ~A~%" obj (-> obj type))
-  (format #t "~Tnum-joints: ~D~%" (-> obj num-joints))
-  (format #t "~Tfirst-joint: ~D~%" (-> obj first-joint))
-  (format #t "~Tlast-joint: ~D~%" (-> obj last-joint))
-  (format #t "~Tmax-speed: ~f~%" (-> obj max-speed))
-  (format #t "~Tsmoothing: ~f~%" (-> obj smoothing))
-  (format #t "~Tmin-dist: ~f~%" (-> obj min-dist))
-  (format #t "~Ttarget: ~f~%" (-> obj target))
-  (format #t "~Try: ~f~%" (-> obj ry))
-  (format #t "~Tmax-speed-ry: ~f~%" (-> obj max-speed-ry))
-  (format #t "~Tdata[0] @ #x~X~%" (-> obj data))
-  obj
+(defmethod inspect ((this twister))
+  (format #t "[~8x] ~A~%" this (-> this type))
+  (format #t "~Tnum-joints: ~D~%" (-> this num-joints))
+  (format #t "~Tfirst-joint: ~D~%" (-> this first-joint))
+  (format #t "~Tlast-joint: ~D~%" (-> this last-joint))
+  (format #t "~Tmax-speed: ~f~%" (-> this max-speed))
+  (format #t "~Tsmoothing: ~f~%" (-> this smoothing))
+  (format #t "~Tmin-dist: ~f~%" (-> this min-dist))
+  (format #t "~Ttarget: ~f~%" (-> this target))
+  (format #t "~Try: ~f~%" (-> this ry))
+  (format #t "~Tmax-speed-ry: ~f~%" (-> this max-speed-ry))
+  (format #t "~Tdata[0] @ #x~X~%" (-> this data))
+  this
   )
 
 ;; definition for method 0 of type twister
@@ -93,18 +87,18 @@
   )
 
 ;; definition for method 5 of type twister
-(defmethod asize-of twister ((obj twister))
-  (+ (* (-> obj num-joints) 16) 40)
+(defmethod asize-of ((this twister))
+  (+ (* (-> this num-joints) 16) 40)
   )
 
 ;; definition for method 9 of type twister
 ;; INFO: Return type mismatch int vs none.
-(defmethod twister-method-9 twister ((obj twister) (arg0 int) (arg1 int) (arg2 float))
-  (let ((v1-1 (- arg0 (-> obj first-joint)))
-        (a1-2 (- arg1 (-> obj first-joint)))
+(defmethod twister-method-9 ((this twister) (arg0 int) (arg1 int) (arg2 float))
+  (let ((v1-1 (- arg0 (-> this first-joint)))
+        (a1-2 (- arg1 (-> this first-joint)))
         )
     (while (>= a1-2 v1-1)
-      (set! (-> obj data v1-1 max-dry) arg2)
+      (set! (-> this data v1-1 max-dry) arg2)
       (+! v1-1 1)
       )
     )
@@ -114,25 +108,25 @@
 
 ;; definition for method 10 of type twister
 ;; INFO: Return type mismatch int vs none.
-(defmethod set-target! twister ((obj twister) (arg0 float))
-  (set! (-> obj target) arg0)
+(defmethod set-target! ((this twister) (arg0 float))
+  (set! (-> this target) arg0)
   0
   (none)
   )
 
 ;; definition for method 11 of type twister
 ;; INFO: Return type mismatch int vs none.
-(defmethod twister-method-11 twister ((obj twister))
-  (let* ((s5-0 (+ (-> obj num-joints) -1))
-         (s4-0 (-> obj data s5-0))
+(defmethod twister-method-11 ((this twister))
+  (let* ((s5-0 (+ (-> this num-joints) -1))
+         (s4-0 (-> this data s5-0))
          )
-    (let ((f0-2 (deg-diff (-> s4-0 ry) (-> obj target))))
-      (+! (-> s4-0 ry) (seek-with-smooth 0.0 f0-2 (-> obj max-speed) (-> obj smoothing) (-> obj min-dist)))
+    (let ((f0-2 (deg-diff (-> s4-0 ry) (-> this target))))
+      (+! (-> s4-0 ry) (seek-with-smooth 0.0 f0-2 (-> this max-speed) (-> this smoothing) (-> this min-dist)))
       )
     (let ((f30-1 (-> s4-0 ry)))
       (while (> s5-0 0)
         (+! s5-0 -1)
-        (let ((s4-1 (-> obj data s5-0)))
+        (let ((s4-1 (-> this data s5-0)))
           (let ((f0-9 (deg-diff f30-1 (-> s4-1 ry))))
             (cond
               ((= (-> s4-1 max-dry) 0.0)
@@ -142,11 +136,13 @@
                )
               ((< f0-9 0.0)
                (set! f0-9
-                     (seek-with-smooth f0-9 (- (-> s4-1 max-dry)) (-> obj max-speed) (-> obj smoothing) (-> obj min-dist))
+                     (seek-with-smooth f0-9 (- (-> s4-1 max-dry)) (-> this max-speed) (-> this smoothing) (-> this min-dist))
                      )
                )
               (else
-                (set! f0-9 (seek-with-smooth f0-9 (-> s4-1 max-dry) (-> obj max-speed) (-> obj smoothing) (-> obj min-dist)))
+                (set! f0-9
+                      (seek-with-smooth f0-9 (-> s4-1 max-dry) (-> this max-speed) (-> this smoothing) (-> this min-dist))
+                      )
                 )
               )
             (+! f30-1 f0-9)
@@ -162,11 +158,11 @@
 
 ;; definition for method 12 of type twister
 ;; INFO: Return type mismatch int vs none.
-(defmethod twister-method-12 twister ((obj twister) (arg0 process-drawable))
+(defmethod twister-method-12 ((this twister) (arg0 process-drawable))
   (let ((s4-0 (new 'stack-no-clear 'matrix)))
-    (dotimes (s3-0 (-> obj num-joints))
-      (let ((s2-0 (-> arg0 node-list data (+ (-> obj first-joint) s3-0) bone transform)))
-        (matrix-rotate-y! s4-0 (-> obj data s3-0 ry))
+    (dotimes (s3-0 (-> this num-joints))
+      (let ((s2-0 (-> arg0 node-list data (+ (-> this first-joint) s3-0) bone transform)))
+        (matrix-rotate-y! s4-0 (-> this data s3-0 ry))
         (vector-! (-> s2-0 vector 3) (-> s2-0 vector 3) (-> arg0 root trans))
         (matrix*! s2-0 s2-0 s4-0)
         (vector+! (-> s2-0 vector 3) (-> s2-0 vector 3) (-> arg0 root trans))

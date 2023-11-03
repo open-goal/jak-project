@@ -89,7 +89,7 @@
 
 ;; definition for function racer-on-ground?
 (defbehavior racer-on-ground? racer ()
-  (logtest? (-> self root-override status) (cshape-moving-flags onsurf))
+  (logtest? (-> self root status) (cshape-moving-flags onsurf))
   )
 
 ;; definition for function racer-calc-gravity
@@ -104,7 +104,7 @@
                 ((or (-> self racer hop?) (= (-> self next-state name) 'target-racing-bounce))
                  (lerp-scale 81920.0 163840.0 (-> self control unknown-float01) 0.0 (-> self racer transv-max))
                  )
-                ((>= (- (-> *display* base-frame-counter) (-> self control unknown-dword11)) (seconds 0.6))
+                ((time-elapsed? (-> self control unknown-dword11) (seconds 0.6))
                  (lerp-scale 81920.0 122880.0 (-> self control unknown-float01) 0.0 (-> self racer transv-max))
                  )
                 (else
@@ -151,7 +151,7 @@
        )
       )
     )
-  (seek! (-> self racer slide-amp) 0.0 (* 0.3 (-> *display* seconds-per-frame)))
+  (seek! (-> self racer slide-amp) 0.0 (* 0.3 (seconds-per-frame)))
   (if (= (-> self racer slide-amp) 0.0)
       (set! (-> self racer slide-mode) -1)
       )
@@ -164,7 +164,7 @@
 ;; INFO: Return type mismatch int vs none.
 (defbehavior racer-xz target ((arg0 float) (arg1 float))
   (set! (-> self racer slide-shift-x) arg1)
-  (seek! (-> self racer slide-interp) 0.0 (-> *display* seconds-per-frame))
+  (seek! (-> self racer slide-interp) 0.0 (seconds-per-frame))
   (let ((f30-1
           (if (or (< (* arg1 arg0) 0.0) (not (racer-on-ground?)))
               1.0
@@ -178,7 +178,7 @@
           (lerp-scale 91022.22 236657.78 (-> self control unknown-float01) 0.0 (* 0.125 (-> self racer transv-max)))
           )
         )
-    (seek! (-> self racer rotv y) (* arg0 f30-1 (- f28-1)) (* f0-18 (-> *display* seconds-per-frame)))
+    (seek! (-> self racer rotv y) (* arg0 f30-1 (- f28-1)) (* f0-18 (seconds-per-frame)))
     )
   (set! (-> self racer rotv y)
         (* (-> self racer rotv y)
@@ -193,7 +193,7 @@
        (set! (-> self racer slide-grip-mult) 1.0)
        )
       (s5-1
-        (seek! (-> self racer slide-grip-mult) 1.0 (-> *display* seconds-per-frame))
+        (seek! (-> self racer slide-grip-mult) 1.0 (seconds-per-frame))
         )
       )
     (let ((f30-4 (* (deg-diff f30-3 0.0) (-> self racer slide-grip-mult))))
@@ -212,10 +212,7 @@
           (vector-rotate-y!
             (-> self control unknown-vector00)
             (-> self control unknown-vector00)
-            (fmax
-              (fmin f30-4 (* 10922.667 (-> *display* seconds-per-frame)))
-              (* -10922.667 (-> *display* seconds-per-frame))
-              )
+            (fmax (fmin f30-4 (* 10922.667 (seconds-per-frame))) (* -10922.667 (seconds-per-frame)))
             )
           )
       )
@@ -277,24 +274,18 @@
                  )
               )
             )
-        (+! (-> self control unknown-vector00 z) (* f1-4 (-> *display* seconds-per-frame)))
+        (+! (-> self control unknown-vector00 z) (* f1-4 (seconds-per-frame)))
         )
       )
     (seek!
       (-> self racer front-rotv)
       (+ 65536.0 (* 364088.88 (+ f0-0 (* 0.1 arg1))))
-      (* 364088.88 (-> *display* seconds-per-frame))
+      (* 364088.88 (seconds-per-frame))
       )
     )
   (set! (-> self racer front-rot)
         (the float
-             (sar
-               (shl
-                 (the int (+ (-> self racer front-rot) (* (-> self racer front-rotv) (-> *display* seconds-per-frame))))
-                 48
-                 )
-               48
-               )
+             (sar (shl (the int (+ (-> self racer front-rot) (* (-> self racer front-rotv) (seconds-per-frame)))) 48) 48)
              )
         )
   (let* ((f1-12 (-> self control unknown-surface01 fric))
@@ -302,10 +293,7 @@
          )
     (set! f0-13
           (cond
-            ((and (not (and (= (-> self fact-info-target eco-type) (pickup-type eco-yellow))
-                            (>= (-> self fact-info-target eco-level) 1.0)
-                            )
-                       )
+            ((and (not (and (= (-> self fact eco-type) (pickup-type eco-yellow)) (>= (-> self fact eco-level) 1.0)))
                   (cpad-hold? (-> self control unknown-cpad-info00 number) square)
                   )
              (if (and (cpad-hold? (-> self control unknown-cpad-info00 number) x)
@@ -340,7 +328,7 @@
         )
     )
   (+! (-> self racer bottom-rot)
-      (* (+ 364088.88 (* 0.32 (fabs (-> self control unknown-vector00 y)))) (-> *display* seconds-per-frame))
+      (* (+ 364088.88 (* 0.32 (fabs (-> self control unknown-vector00 y)))) (seconds-per-frame))
       )
   0
   (none)
@@ -352,11 +340,7 @@
 (defbehavior racer-cushion target ((arg0 float))
   (let ((f30-0 (-> self racer bob-period)))
     (let ((f28-0 1.0))
-      (seek!
-        (-> self racer bob-meta-timer)
-        (-> self racer bob-meta-meta-timer)
-        (* 4.0 (-> *display* seconds-per-frame))
-        )
+      (seek! (-> self racer bob-meta-timer) (-> self racer bob-meta-meta-timer) (* 4.0 (seconds-per-frame)))
       (let* ((f0-8 (sin (/ (* 65536.0 (-> self racer bob-timer)) f30-0)))
              (f0-9 (* 1228.8 (-> self racer bob-mult-trans) f28-0 f0-8))
              )
@@ -399,7 +383,7 @@
         (set! (-> self racer hill-offset) (lerp (-> self racer hill-offset) 0.0 0.05))
         )
     )
-  (seek! (-> self racer hill-boost) 0.0 (* 81920.0 (-> *display* seconds-per-frame)))
+  (seek! (-> self racer hill-boost) 0.0 (* 81920.0 (seconds-per-frame)))
   (set! (-> self racer hill-offset) 0.0)
   0
   (none)
@@ -419,20 +403,20 @@
         )
       (+! (-> self racer shock-offsetv) (* (- (-> gp-0 y) (-> self control transv y)) f30-0))
       (+! (-> self racer shock-offsetv)
-          (+ (* -20.0 (-> *display* seconds-per-frame) (-> self racer shock-offset))
+          (+ (* -20.0 (seconds-per-frame) (-> self racer shock-offset))
              (if (racer-on-ground?)
-                 (* (-> self control dynam gravity-length) (-> *display* seconds-per-frame) f30-0)
+                 (* (-> self control dynam gravity-length) (seconds-per-frame) f30-0)
                  0.0
                  )
              )
           )
       )
-    (if (and (or (< (- (-> *display* base-frame-counter) (-> self control unknown-dword11)) (seconds 0.2))
+    (if (and (or (not (time-elapsed? (-> self control unknown-dword11) (seconds 0.2)))
                  (< (-> self racer shock-offset) 0.0)
                  )
              (!= (-> self control unknown-surface00 mode) 'air)
              )
-        (+! (-> self racer shock-offset) (* (-> self racer shock-offsetv) (-> *display* seconds-per-frame)))
+        (+! (-> self racer shock-offset) (* (-> self racer shock-offsetv) (seconds-per-frame)))
         )
     (set! (-> self racer shock-offset)
           (* (-> self racer shock-offset) (lerp-scale 0.99 0.98 (-> self control unknown-float01) 0.0 28672.0))
@@ -555,11 +539,7 @@
               )
           )
         )
-    (seek!
-      (-> self control unknown-float80)
-      f0-2
-      (* (-> self control unknown-float82) (-> *display* seconds-per-frame))
-      )
+    (seek! (-> self control unknown-float80) f0-2 (* (-> self control unknown-float82) (seconds-per-frame)))
     )
   (vector-deg-slerp
     (-> self control dynam gravity-normal)
@@ -600,7 +580,7 @@
       (if (< 2.5 f0-6)
           (set! f0-6 2.5)
           )
-      (seek! (-> self racer engine-sound-pitch) f0-6 (* 4.0 (-> *display* seconds-per-frame)))
+      (seek! (-> self racer engine-sound-pitch) f0-6 (* 4.0 (seconds-per-frame)))
       )
     )
   (let ((f0-11 (lerp-scale 100.0 60.0 (-> self racer engine-sound-pitch) 0.8 2.0)))
@@ -619,18 +599,18 @@
     ((or (logtest? (-> self control status) (cshape-moving-flags onground))
          (< 12288.0 (vector-length (-> self control transv)))
          )
-     (let ((v0-5 (the-as object (-> *display* base-frame-counter))))
+     (let ((v0-5 (the-as object (current-time))))
        (set! (-> self racer unstuck-time) (the-as time-frame v0-5))
        v0-5
        )
      )
-    ((>= (- (-> *display* base-frame-counter) (-> self racer unstuck-time)) (seconds 5))
+    ((time-elapsed? (-> self racer unstuck-time) (seconds 5))
      (send-event self 'attack #f (static-attack-info ((mode 'heat))))
      )
-    ((and (>= (- (-> *display* base-frame-counter) (-> self racer unstuck-time)) (seconds 3))
-          (>= (- (-> *display* base-frame-counter) (-> self racer heat-sound-time)) (seconds 1))
+    ((and (time-elapsed? (-> self racer unstuck-time) (seconds 3))
+          (time-elapsed? (-> self racer heat-sound-time) (seconds 1))
           )
-     (set! (-> self racer heat-sound-time) (-> *display* base-frame-counter))
+     (set-time! (-> self racer heat-sound-time))
      (sound-play "warning")
      )
     )
@@ -671,13 +651,10 @@
     (when (< 0.0 (-> *part-id-table* 2212 init-specs 11 initial-valuef))
       (set! (-> *part-id-table* 2212 init-specs 14 initial-valuef) (the-as float gp-0))
       (set! (-> *part-id-table* 2212 init-specs 3 initial-valuef) 15155.2)
-      (sp-launch-particles-var
-        *sp-particle-system-3d*
+      (launch-particles
+        :system *sp-particle-system-3d*
         (-> *part-id-table* 2212)
         (vector<-cspace! (new 'stack-no-clear 'vector) (-> self manipy 0 node-list data 4))
-        (the-as sparticle-launch-state #f)
-        (the-as sparticle-launch-control #f)
-        1.0
         )
       )
     )
@@ -691,13 +668,10 @@
     (when (< 0.0 (-> *part-id-table* 2212 init-specs 11 initial-valuef))
       (set! (-> *part-id-table* 2212 init-specs 14 initial-valuef) (the-as float gp-2))
       (set! (-> *part-id-table* 2212 init-specs 3 initial-valuef) 10240.0)
-      (sp-launch-particles-var
-        *sp-particle-system-3d*
+      (launch-particles
+        :system *sp-particle-system-3d*
         (-> *part-id-table* 2212)
         (vector<-cspace! (new 'stack-no-clear 'vector) (-> self manipy 0 node-list data 10))
-        (the-as sparticle-launch-state #f)
-        (the-as sparticle-launch-control #f)
-        1.0
         )
       )
     )
@@ -717,22 +691,8 @@
                          (set! (-> *part-id-table* 2275 init-specs 19 initial-valuef) (+ 49152.0 f1-3))
                          (set! (-> *part-id-table* 2275 init-specs 1 initial-valuef) (* 0.0000036621095 f0-17))
                          (set! (-> *part-id-table* 2275 init-specs 2 initial-valuef) (* 0.1 f0-17))
-                         (sp-launch-particles-var
-                           *sp-particle-system-3d*
-                           (-> *part-id-table* 2275)
-                           s4-2
-                           (the-as sparticle-launch-state #f)
-                           (the-as sparticle-launch-control #f)
-                           1.0
-                           )
-                         (sp-launch-particles-var
-                           *sp-particle-system-3d*
-                           (-> *part-id-table* 2276)
-                           s4-2
-                           (the-as sparticle-launch-state #f)
-                           (the-as sparticle-launch-control #f)
-                           1.0
-                           )
+                         (launch-particles :system *sp-particle-system-3d* (-> *part-id-table* 2275) s4-2)
+                         (launch-particles :system *sp-particle-system-3d* (-> *part-id-table* 2276) s4-2)
                          )
                        )
                      (-> *part-id-table* 2208)
@@ -774,16 +734,13 @@
            )
       (set! (-> s5-2 y) (-> self control shadow-pos y))
       (if (nonzero? a1-13)
-          (sp-launch-particles-var
-            (if gp-4
+          (launch-particles
+            :system (if gp-4
                 *sp-particle-system-3d*
                 *sp-particle-system-2d*
                 )
             a1-13
             s5-2
-            (the-as sparticle-launch-state #f)
-            (the-as sparticle-launch-control #f)
-            1.0
             )
           )
       )
@@ -811,25 +768,20 @@
            )
       (set! (-> a2-7 y) (-> self control shadow-pos y))
       (if (nonzero? s5-3)
-          (sp-launch-particles-var
-            (if gp-5
+          (launch-particles
+            :system (if gp-5
                 *sp-particle-system-3d*
                 *sp-particle-system-2d*
                 )
             (the-as sparticle-launcher s5-3)
             a2-7
-            (the-as sparticle-launch-state #f)
-            (the-as sparticle-launch-control #f)
-            1.0
             )
           )
       )
     )
-  (when (and (and (= (-> self fact-info-target eco-type) (pickup-type eco-yellow))
-                  (>= (-> self fact-info-target eco-level) 1.0)
-                  )
+  (when (and (and (= (-> self fact eco-type) (pickup-type eco-yellow)) (>= (-> self fact eco-level) 1.0))
              (cpad-pressed? (-> self control unknown-cpad-info00 number) circle square)
-             (>= (- (-> *display* base-frame-counter) (-> self control unknown-dword82)) (seconds 0.25))
+             (time-elapsed? (-> self control unknown-dword82) (seconds 0.25))
              (not (logtest? (-> self state-flags) (state-flags being-attacked dying)))
              )
     (let ((gp-6 (vector-z-quaternion! (new 'stack-no-clear 'vector) (-> self control quat)))
@@ -844,7 +796,7 @@
         (-> self entity)
         s5-4
         gp-6
-        (if (>= (-> self fact-info-target eco-level) (-> *FACT-bank* eco-level-max))
+        (if (>= (-> self fact eco-level) (-> *FACT-bank* eco-level-max))
             152
             136
             )
@@ -852,7 +804,7 @@
         :to self
         )
       )
-    (set! (-> self control unknown-dword82) (-> *display* base-frame-counter))
+    (set-time! (-> self control unknown-dword82))
     )
   (let ((f22-0 (-> *RACER-bank* hotcoals-heat-inc))
         (f24-0 (-> *RACER-bank* lava-heat-inc))
@@ -875,24 +827,24 @@
            )
       (case (-> self control poly-pat material)
         (((pat-material hotcoals))
-         (seek! (-> self racer heat) (-> *RACER-bank* heat-max) (* f22-1 (-> *display* seconds-per-frame)))
+         (seek! (-> self racer heat) (-> *RACER-bank* heat-max) (* f22-1 (seconds-per-frame)))
          )
         (((pat-material lava))
          (if (racer-on-ground?)
-             (seek! (-> self racer heat) (-> *RACER-bank* heat-max) (* f24-1 (-> *display* seconds-per-frame)))
-             (seek! (-> self racer heat) (-> *RACER-bank* heat-max) (* f28-2 (-> *display* seconds-per-frame)))
+             (seek! (-> self racer heat) (-> *RACER-bank* heat-max) (* f24-1 (seconds-per-frame)))
+             (seek! (-> self racer heat) (-> *RACER-bank* heat-max) (* f28-2 (seconds-per-frame)))
              )
          )
         (else
           (if (not (racer-on-ground?))
-              (seek! (-> self racer heat) 0.0 (* f26-0 (-> *display* seconds-per-frame)))
+              (seek! (-> self racer heat) 0.0 (* f26-0 (seconds-per-frame)))
               )
           )
         )
       )
-    (let ((v1-189 (- (-> *display* base-frame-counter) (-> self control unknown-dword11))))
+    (let ((v1-189 (- (current-time) (-> self control unknown-dword11))))
       (if (and (>= v1-189 (seconds 0.9)) (>= (seconds 3) v1-189))
-          (seek! (-> self racer heat) 0.0 (* f30-2 (-> *display* seconds-per-frame)))
+          (seek! (-> self racer heat) 0.0 (* f30-2 (seconds-per-frame)))
           )
       )
     )
@@ -902,7 +854,7 @@
   (if (and *cheat-mode* *debug-segment* (cpad-pressed? 0 l2))
       (send-event self 'boost 1.0)
       )
-  (let ((v1-218 (- (-> *display* base-frame-counter) (-> self racer boost-time))))
+  (let ((v1-218 (- (current-time) (-> self racer boost-time))))
     (if (< v1-218 (-> self racer boost-duration))
         (set! (-> self racer boost-curve)
               (* (-> *RACER-bank* boost-curve-max)
@@ -932,17 +884,13 @@
     (set! (-> self racer boost-level) 0.0)
     )
   (set! (-> self racer boost-target) (+ (-> self racer boost-curve) (-> self racer boost-level)))
-  (seek! (-> self racer boost-output) (-> self racer boost-target) (* 40960.0 (-> *display* seconds-per-frame)))
+  (seek! (-> self racer boost-output) (-> self racer boost-target) (* 40960.0 (seconds-per-frame)))
   (when (!= (-> self racer boost-output) 0.0)
     (dotimes (gp-7 8)
       (let ((v1-258 (rand-vu-int-range 3 (+ (-> self node-list length) -1))))
-        (sp-launch-particles-var
-          *sp-particle-system-2d*
+        (launch-particles
           (-> *part-id-table* 2229)
           (vector<-cspace! (new 'stack-no-clear 'vector) (-> self node-list data v1-258))
-          (the-as sparticle-launch-state #f)
-          (the-as sparticle-launch-control #f)
-          1.0
           )
         )
       )
@@ -968,14 +916,7 @@
                )
              )
            )
-      (sp-launch-particles-var
-        *sp-particle-system-2d*
-        a1-54
-        gp-8
-        (the-as sparticle-launch-state #f)
-        (the-as sparticle-launch-control #f)
-        1.0
-        )
+      (launch-particles a1-54 gp-8)
       )
     (cpad-set-buzz! (-> *cpad-list* cpads 0) 0 51 (seconds 0.05))
     (sound-play-by-name
@@ -990,30 +931,23 @@
     )
   (when (and (< (-> self racer heat) (-> *RACER-bank* heat-max))
              (and (< (* 0.8 (-> *RACER-bank* heat-max)) (-> self racer heat))
-                  (>= (- (-> *display* base-frame-counter) (-> self racer heat-sound-time))
-                      (the int (* 3000.0 (- 1.0 (/ (-> self racer heat) (-> *RACER-bank* heat-max)))))
-                      )
+                  (time-elapsed?
+                    (-> self racer heat-sound-time)
+                    (the int (* 3000.0 (- 1.0 (/ (-> self racer heat) (-> *RACER-bank* heat-max)))))
+                    )
                   )
              )
-    (set! (-> self racer heat-sound-time) (-> *display* base-frame-counter))
+    (set-time! (-> self racer heat-sound-time))
     (sound-play "warning")
     )
   (when (rand-vu-percent? (/ (-> self racer heat) (-> *RACER-bank* heat-max)))
-    (let ((a2-28
-            (process-drawable-random-point!
-              (the-as process-drawable (ppointer->process (-> self manipy)))
-              (new 'stack-no-clear 'vector)
-              )
-            )
+    (let ((a2-28 (process-drawable-random-point!
+                   (the-as process-drawable (ppointer->process (-> self manipy)))
+                   (new 'stack-no-clear 'vector)
+                   )
+                 )
           )
-      (sp-launch-particles-var
-        *sp-particle-system-2d*
-        (-> *part-id-table* 2227)
-        a2-28
-        (the-as sparticle-launch-state #f)
-        (the-as sparticle-launch-control #f)
-        1.0
-        )
+      (launch-particles (-> *part-id-table* 2227) a2-28)
       )
     )
   0
@@ -1053,7 +987,7 @@
                0.0
                (* 0.3 (-> self racer transv-max))
                )
-             (-> *display* seconds-per-frame)
+             (seconds-per-frame)
              )
           )
       (set! (-> self racer turn-anim-vel)
@@ -1067,7 +1001,7 @@
                 )
               )
             )
-      (+! (-> self racer turn-anim-frame) (* (-> self racer turn-anim-vel) (-> *display* seconds-per-frame)))
+      (+! (-> self racer turn-anim-frame) (* (-> self racer turn-anim-vel) (seconds-per-frame)))
       (set! (-> self racer turn-anim-frame) (fmax -20.0 (fmin 20.0 (-> self racer turn-anim-frame))))
       (cond
         ((and (>= (-> self racer turn-anim-frame) 20.0) (>= (-> self racer turn-anim-vel) 0.0))
@@ -1079,14 +1013,14 @@
         )
       (+! (-> self racer tail-anim-vel)
           (* -50.0
-             (-> *display* seconds-per-frame)
+             (seconds-per-frame)
              (- (-> self racer tail-anim-frame)
                 (* -0.0091552725 (- (-> self racer change-roty) (-> self racer change-roty-old)))
                 )
              )
           )
       (set! (-> self racer tail-anim-vel) (fmax -100.0 (fmin 100.0 (* 0.8 (-> self racer tail-anim-vel)))))
-      (+! (-> self racer tail-anim-frame) (* (-> self racer tail-anim-vel) (-> *display* seconds-per-frame)))
+      (+! (-> self racer tail-anim-frame) (* (-> self racer tail-anim-vel) (seconds-per-frame)))
       (set! (-> self racer tail-anim-frame) (fmax -20.0 (fmin 20.0 (-> self racer tail-anim-frame))))
       (cond
         ((and (>= (-> self racer tail-anim-frame) 20.0) (>= (-> self racer tail-anim-vel) 0.0))
@@ -1097,10 +1031,10 @@
          )
         )
       (+! (-> self racer rudd-anim-vel)
-          (* 40.0 (-> *display* seconds-per-frame) (- (-> self racer tail-anim-frame) (-> self racer rudd-anim-frame)))
+          (* 40.0 (seconds-per-frame) (- (-> self racer tail-anim-frame) (-> self racer rudd-anim-frame)))
           )
       (set! (-> self racer rudd-anim-vel) (fmax -100.0 (fmin 100.0 (* 0.96 (-> self racer rudd-anim-vel)))))
-      (+! (-> self racer rudd-anim-frame) (* (-> self racer rudd-anim-vel) (-> *display* seconds-per-frame)))
+      (+! (-> self racer rudd-anim-frame) (* (-> self racer rudd-anim-vel) (seconds-per-frame)))
       (set! (-> self racer rudd-anim-frame) (fmax -20.0 (fmin 20.0 (-> self racer rudd-anim-frame))))
       (cond
         ((and (>= (-> self racer rudd-anim-frame) 20.0) (>= (-> self racer rudd-anim-vel) 0.0))
@@ -1173,7 +1107,7 @@
               (ja-channel-push! 1 arg1)
               (ja-channel-push! 1 (seconds 0.125))
               )
-          (ja-no-eval :group! (-> self draw art-group data 130) :num! (seek!) :frame-num f30-0)
+          (ja-no-eval :group! eichar-racer-jump-small-ja :num! (seek!) :frame-num f30-0)
           (set! s4-0 s5-0)
           )
         )
@@ -1189,13 +1123,13 @@
       )
     )
   (ja-channel-set! 2)
-  (ja :group! (-> self draw art-group data 131) :num! min)
-  (ja :chan 1 :group! (-> self draw art-group data 132) :num! (identity (ja-aframe 44.0 0)))
+  (ja :group! eichar-racer-jump-small-loop-ja :num! min)
+  (ja :chan 1 :group! eichar-racer-jump-small-land-ja :num! (identity (ja-aframe 44.0 0)))
   (let ((f30-1 0.0))
     (loop
       (suspend)
       (let ((gp-3 (-> self skel root-channel 1)))
-        (set! f30-1 (seek f30-1 1.0 (-> *display* seconds-per-frame)))
+        (set! f30-1 (seek f30-1 1.0 (seconds-per-frame)))
         (set! (-> gp-3 frame-interp) f30-1)
         )
       )
@@ -1213,7 +1147,7 @@
   (ja-channel-push! 1 (seconds 0.07))
   (cond
     ((= arg0 'high-jump)
-     (ja-no-eval :group! (-> self draw art-group data 135) :num! (seek!) :frame-num 0.0)
+     (ja-no-eval :group! eichar-racer-jump-high-land-ja :num! (seek!) :frame-num 0.0)
      (until (ja-done? 0)
        (if (>= (-> self racer slide-mode) 0)
            (goto cfg-23)
@@ -1223,7 +1157,7 @@
        )
      )
     ((= arg0 'jump)
-     (ja-no-eval :group! (-> self draw art-group data 129) :num! (seek!) :frame-num (ja-aframe 44.0 0))
+     (ja-no-eval :group! eichar-racer-jump-land-ja :num! (seek!) :frame-num (ja-aframe 44.0 0))
      (until (ja-done? 0)
        (if (>= (-> self racer slide-mode) 0)
            (goto cfg-23)
@@ -1233,7 +1167,7 @@
        )
      )
     (else
-      (ja-no-eval :group! (-> self draw art-group data 132) :num! (seek!) :frame-num (ja-aframe 44.0 0))
+      (ja-no-eval :group! eichar-racer-jump-small-land-ja :num! (seek!) :frame-num (ja-aframe 44.0 0))
       (until (ja-done? 0)
         (if (>= (-> self racer slide-mode) 0)
             (goto cfg-23)
@@ -1370,8 +1304,8 @@
             )
         (cond
           ((racer-on-ground?)
-           (seek! (-> self control unknown-float81) 1.0 (* 8.0 (-> *display* seconds-per-frame)))
-           (seek! (-> self racer mult-rotx) 0.0 (* 2.0 (-> *display* seconds-per-frame)))
+           (seek! (-> self control unknown-float81) 1.0 (* 8.0 (seconds-per-frame)))
+           (seek! (-> self racer mult-rotx) 0.0 (* 2.0 (seconds-per-frame)))
            (set! (-> self racer targ-rotx) 0.0)
            (set! (-> self racer hill-rotx) 0.0)
            (set! (-> self racer speed-rotx) 0.25)
@@ -1388,14 +1322,14 @@
                (if (< 1.5 (-> self racer bob-meta-meta-timer))
                    (seek! (-> self racer bob-meta-meta-timer) 1.0 0.5)
                    )
-               (when (>= (- (-> *display* base-frame-counter) (-> self racer bob-meta-time)) (seconds 2.2))
-                 (set! (-> self racer bob-meta-time) (-> *display* base-frame-counter))
+               (when (time-elapsed? (-> self racer bob-meta-time) (seconds 2.2))
+                 (set-time! (-> self racer bob-meta-time))
                  (set! (-> self racer bob-meta-meta-timer) (rand-vu-float-range 0.8 1.2))
                  )
                )
              )
            (let ((f0-63 (lerp-scale -1.0 -0.33 (-> self control unknown-float01) 0.0 (-> self racer transv-max))))
-             (seek! (-> self racer bob-mult-rot) f0-63 (* 8.0 (-> *display* seconds-per-frame)))
+             (seek! (-> self racer bob-mult-rot) f0-63 (* 8.0 (seconds-per-frame)))
              )
            (if (< 0.0 f30-1)
                (set! f30-1 0.0)
@@ -1403,8 +1337,8 @@
            (set! (-> self racer stick-lock) #f)
            )
           (else
-            (seek! (-> self control unknown-float81) 0.0 (* 2.0 (-> *display* seconds-per-frame)))
-            (seek! (-> self racer mult-rotx) 1.0 (* 16.0 (-> *display* seconds-per-frame)))
+            (seek! (-> self control unknown-float81) 0.0 (* 2.0 (seconds-per-frame)))
+            (seek! (-> self racer mult-rotx) 1.0 (* 16.0 (seconds-per-frame)))
             (let ((f0-77 (vector-dot (-> self control dynam gravity-normal) (-> self control transv))))
               (vector-! (new 'stack-no-clear 'vector) (-> self control trans) (the-as vector (-> self control trans-old)))
               (let* ((v1-128 (-> self racer bounce))
@@ -1438,8 +1372,8 @@
                         (and (= (-> self next-state name) 'target-racing-bounce) (= (-> self racer bounce) 1))
                         )
                     (set! (-> self racer speed-rotx) 0.5)
-                    (when (>= (- (-> *display* base-frame-counter) (-> self control unknown-dword11)) (seconds 0.1))
-                      (seek! (-> self racer hill-rotx) 0.0 (* 65536.0 (-> *display* seconds-per-frame)))
+                    (when (time-elapsed? (-> self control unknown-dword11) (seconds 0.1))
+                      (seek! (-> self racer hill-rotx) 0.0 (* 65536.0 (seconds-per-frame)))
                       (set! (-> self racer speed-rotx) 0.6)
                       )
                     )
@@ -1447,7 +1381,7 @@
                      (set! (-> self racer speed-rotx) 0.25)
                      )
                    )
-                 (seek! (-> self racer mult-rotx) 1.0 (* 64.0 (-> *display* seconds-per-frame)))
+                 (seek! (-> self racer mult-rotx) 1.0 (* 64.0 (seconds-per-frame)))
                  )
                 (else
                   (set! (-> self racer speed-rotx) 0.025)
@@ -1459,20 +1393,14 @@
                   )
               (set! (-> self racer bob-timer) (- f0-91 (* (the float (the int (/ f0-91 f1-44))) f1-44)))
               )
-            (seek! (-> self racer bob-mult-rot) 0.0 (* 16.0 (-> *display* seconds-per-frame)))
-            (seek! (-> self racer bob-mult-trans) 0.0 (* 16.0 (-> *display* seconds-per-frame)))
+            (seek! (-> self racer bob-mult-rot) 0.0 (* 16.0 (seconds-per-frame)))
+            (seek! (-> self racer bob-mult-trans) 0.0 (* 16.0 (seconds-per-frame)))
             (set! f30-1
-                  (lerp-scale
-                    f30-1
-                    1820.4445
-                    (the float (- (-> *display* base-frame-counter) (-> self control unknown-dword11)))
-                    0.0
-                    900.0
-                    )
+                  (lerp-scale f30-1 1820.4445 (the float (- (current-time) (-> self control unknown-dword11))) 0.0 900.0)
                   )
             (cond
               ((and (logtest? (-> self control status) (cshape-moving-flags twall))
-                    (and (>= (- (-> *display* base-frame-counter) (-> self control unknown-dword11)) (seconds 0.1))
+                    (and (time-elapsed? (-> self control unknown-dword11) (seconds 0.1))
                          (or (-> self racer stick-lock) (< (target-move-dist (-> *TARGET-bank* stuck-time)) 4096.0))
                          (not (and (= *cheat-mode* 'debug) (cpad-hold? (-> self control unknown-cpad-info00 number) r2)))
                          )
@@ -1507,10 +1435,7 @@
       (set! (-> self racer change-roty-old) (-> self racer change-roty))
       (set! (-> self racer rot y)
             (the float
-                 (sar
-                   (shl (the int (+ (-> self racer rot y) (* (-> self racer rotv y) (-> *display* seconds-per-frame)))) 48)
-                   48
-                   )
+                 (sar (shl (the int (+ (-> self racer rot y) (* (-> self racer rotv y) (seconds-per-frame)))) 48) 48)
                  )
             )
       (set! (-> self racer change-roty)

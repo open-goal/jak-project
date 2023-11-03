@@ -8,36 +8,34 @@
 ;; DECOMP BEGINS
 
 (kmemopen global "actor-hash")
+
 (define *actor-hash* (new 'global 'spatial-hash 4096 256))
+
 (kmemclose)
 
 (deftype actor-cshape-ptr (structure)
-  ((cshape collide-shape  :offset-assert   0)
+  ((cshape  collide-shape)
    )
-  :method-count-assert 9
-  :size-assert         #x4
-  :flag-assert         #x900000004
   )
 
+
 (deftype actor-hash-bucket (structure)
-  ((length     int16                            :offset-assert   0)
-   (max-length int16                            :offset-assert   2)
-   (data       (inline-array actor-cshape-ptr)  :offset-assert   4)
+  ((length      int16)
+   (max-length  int16)
+   (data        (inline-array actor-cshape-ptr))
    )
   :allow-misaligned
-  :method-count-assert 10
-  :size-assert         #x8
-  :flag-assert         #xa00000008
   (:methods
-    (add-actor-cshape (_type_ collide-shape) none 9)
+    (add-actor-cshape (_type_ collide-shape) none)
     )
   )
 
-(defmethod add-actor-cshape actor-hash-bucket ((obj actor-hash-bucket) (arg0 collide-shape))
-  (let ((v1-0 (-> obj length)))
-    (when (< v1-0 (-> obj max-length))
-      (set! (-> obj data v1-0 cshape) arg0)
-      (set! (-> obj length) (+ v1-0 1))
+
+(defmethod add-actor-cshape ((this actor-hash-bucket) (arg0 collide-shape))
+  (let ((v1-0 (-> this length)))
+    (when (< v1-0 (-> this max-length))
+      (set! (-> this data v1-0 cshape) arg0)
+      (set! (-> this length) (+ v1-0 1))
       )
     )
   0
@@ -45,32 +43,30 @@
   )
 
 (deftype actor-hash-buckets (structure)
-  ((hash spatial-hash                :offset-assert   0)
-   (list engine                      :offset-assert   4)
-   (data actor-hash-bucket 4 :inline :offset-assert   8)
-   (tpos vector            :inline   :offset-assert  80)
+  ((hash  spatial-hash)
+   (list  engine)
+   (data  actor-hash-bucket  4 :inline)
+   (tpos  vector             :inline)
    )
-  :method-count-assert 10
-  :size-assert         #x60
-  :flag-assert         #xa00000060
   (:methods
-    (hash-actors (_type_) none 9)
+    (hash-actors (_type_) none)
     )
   )
 
-(defmethod hash-actors actor-hash-buckets ((obj actor-hash-buckets))
+
+(defmethod hash-actors ((this actor-hash-buckets))
   (local-vars (sv-16 hash-object-info) (sv-32 collide-prim-core) (sv-48 collide-shape) (sv-64 hash-object-info))
-  (set! (-> obj hash) *actor-hash*)
-  (set! (-> obj list) *collide-hit-by-others-list*)
-  (clear-objects! (-> obj hash))
+  (set! (-> this hash) *actor-hash*)
+  (set! (-> this list) *collide-hit-by-others-list*)
+  (clear-objects! (-> this hash))
   (cond
-    ((>= 256 (-> obj list length))
-     (let ((v1-5 (-> obj list alive-list next0)))
-       (-> obj list)
+    ((>= 256 (-> this list length))
+     (let ((v1-5 (-> this list alive-list next0)))
+       (-> this list)
        (let ((s5-0 (-> v1-5 next0)))
-         (while (!= v1-5 (-> obj list alive-list-end))
+         (while (!= v1-5 (-> this list alive-list-end))
            (let* ((s4-0 (the-as collide-shape (-> (the-as connection v1-5) param1)))
-                  (s3-0 (-> obj hash))
+                  (s3-0 (-> this hash))
                   (s1-0 (-> s4-0 root-prim prim-core))
                   (s0-0 s4-0)
                   (s2-0 (-> s3-0 object-count))
@@ -102,55 +98,55 @@
              (set! (-> s4-0 actor-hash-index) s2-0)
              )
            (set! v1-5 s5-0)
-           (-> obj list)
+           (-> this list)
            (set! s5-0 (-> s5-0 next0))
            )
          )
        )
      )
     (else
-      (set! (-> obj tpos quad) (-> (target-pos 0) quad))
+      (set! (-> this tpos quad) (-> (target-pos 0) quad))
       (dotimes (v1-21 4)
-        (set! (-> obj data v1-21 length) 0)
+        (set! (-> this data v1-21 length) 0)
         )
-      (let ((v1-25 (-> obj list alive-list next0)))
-        (-> obj list)
+      (let ((v1-25 (-> this list alive-list next0)))
+        (-> this list)
         (let ((s5-2 (-> v1-25 next0)))
-          (while (!= v1-25 (-> obj list alive-list-end))
+          (while (!= v1-25 (-> this list alive-list-end))
             (let* ((s4-1 (the-as collide-shape (-> (the-as connection v1-25) param1)))
-                   (f0-4 (vector-vector-distance-squared (-> obj tpos) (-> s4-1 trans)))
+                   (f0-4 (vector-vector-distance-squared (-> this tpos) (-> s4-1 trans)))
                    (f1-4 102400.0)
                    )
               (cond
                 ((< f0-4 (* f1-4 f1-4))
-                 ((method-of-type actor-hash-bucket add-actor-cshape) (the-as actor-hash-bucket (-> obj data)) s4-1)
+                 ((method-of-type actor-hash-bucket add-actor-cshape) (the-as actor-hash-bucket (-> this data)) s4-1)
                  )
                 ((let ((f1-7 204800.0))
                    (< f0-4 (* f1-7 f1-7))
                    )
-                 (add-actor-cshape (-> obj data 1) s4-1)
+                 (add-actor-cshape (-> this data 1) s4-1)
                  )
                 ((let ((f1-10 307200.0))
                    (< f0-4 (* f1-10 f1-10))
                    )
-                 (add-actor-cshape (-> obj data 2) s4-1)
+                 (add-actor-cshape (-> this data 2) s4-1)
                  )
                 (else
-                  (add-actor-cshape (-> obj data 3) s4-1)
+                  (add-actor-cshape (-> this data 3) s4-1)
                   )
                 )
               )
             (set! v1-25 s5-2)
-            (-> obj list)
+            (-> this list)
             (set! s5-2 (-> s5-2 next0))
             )
           )
         )
       (dotimes (s5-3 4)
-        (let ((s4-2 (-> obj data s5-3)))
+        (let ((s4-2 (-> this data s5-3)))
           (countdown (s3-1 (-> s4-2 length))
             (let ((s2-1 (-> s4-2 data s3-1 cshape))
-                  (s1-1 (-> obj hash))
+                  (s1-1 (-> this hash))
                   )
               (set! sv-32 (-> s2-1 root-prim prim-core))
               (set! sv-48 s2-1)
@@ -187,7 +183,7 @@
         )
       )
     )
-  (update-from-spheres (-> obj hash))
+  (update-from-spheres (-> this hash))
   0
   (none)
   )
@@ -209,7 +205,3 @@
   (read! (-> *perf-stats* data (perf-stat-bucket actor-hash)))
   (none)
   )
-
-
-
-

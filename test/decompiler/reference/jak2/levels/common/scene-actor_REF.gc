@@ -274,8 +274,8 @@
               )
 
 ;; failed to figure out what this is:
-(defskelgroup skel-sew-gold-key sew-gold-key 0 2
-              ((1 (meters 200)))
+(defskelgroup skel-sew-gold-key sew-gold-key sew-gold-key-lod0-jg sew-gold-key-idle-ja
+              ((sew-gold-key-lod0-mg (meters 200)))
               :bounds (static-spherem 0 0 0 1)
               :origin-joint-index 3
               )
@@ -304,49 +304,45 @@
 ;; definition of type kor-npc
 (deftype kor-npc (process-taskable)
   ()
-  :heap-base #xa0
-  :method-count-assert 38
-  :size-assert         #x120
-  :flag-assert         #x2600a00120
   )
 
 ;; definition for method 3 of type kor-npc
-(defmethod inspect kor-npc ((obj kor-npc))
-  (when (not obj)
-    (set! obj obj)
+(defmethod inspect ((this kor-npc))
+  (when (not this)
+    (set! this this)
     (goto cfg-4)
     )
   (let ((t9-0 (method-of-type process-taskable inspect)))
-    (t9-0 obj)
+    (t9-0 this)
     )
   (label cfg-4)
-  obj
+  this
   )
 
 ;; definition for method 35 of type kor-npc
-(defmethod get-art-elem kor-npc ((obj kor-npc))
+(defmethod get-art-elem ((this kor-npc))
   "Checks various things such the current actor, task status, etc to determine the right art-group data to use
 @returns the appropriate [[art-element]] for the given NPC"
-  (case (-> obj task actor)
+  (case (-> this task actor)
     (((game-task-actor kor-hideout))
-     (-> obj draw art-group data 5)
+     (-> this draw art-group data 5)
      )
     (else
-      (-> obj draw art-group data 4)
+      (-> this draw art-group data 4)
       )
     )
   )
 
 ;; definition for method 33 of type kor-npc
 ;; WARN: Return type mismatch int vs none.
-(defmethod init-art! kor-npc ((obj kor-npc))
+(defmethod init-art! ((this kor-npc))
   "@see [[initialize-skeleton]]"
   (initialize-skeleton
-    obj
+    this
     (the-as skeleton-group (art-group-get-by-name *level* "skel-kor-highres" (the-as (pointer uint32) #f)))
     (the-as pair 0)
     )
-  (set! (-> obj draw light-index) (the-as uint 30))
+  (set! (-> this draw light-index) (the-as uint 30))
   0
   (none)
   )
@@ -354,26 +350,22 @@
 ;; definition of type metalkor-highres
 (deftype metalkor-highres (process-drawable)
   ()
-  :heap-base #x50
-  :method-count-assert 21
-  :size-assert         #xc8
-  :flag-assert         #x15005000c8
-  (:methods
-    (idle () _type_ :state 20)
+  (:state-methods
+    idle
     )
   )
 
 ;; definition for method 3 of type metalkor-highres
-(defmethod inspect metalkor-highres ((obj metalkor-highres))
-  (when (not obj)
-    (set! obj obj)
+(defmethod inspect ((this metalkor-highres))
+  (when (not this)
+    (set! this this)
     (goto cfg-4)
     )
   (let ((t9-0 (method-of-type process-drawable inspect)))
-    (t9-0 obj)
+    (t9-0 this)
     )
   (label cfg-4)
-  obj
+  this
   )
 
 ;; failed to figure out what this is:
@@ -381,47 +373,43 @@
   :virtual #t
   :code (behavior ()
     (until #f
-      (ja-no-eval :group! (ja-group)
-                  :num! (seek! (the float (+ (-> (ja-group) frames num-frames) -1)))
-                  :frame-num 0.0
-                  )
+      (ja-no-eval :group! (ja-group) :num! (seek!) :frame-num 0.0)
       (until (ja-done? 0)
         (suspend)
         (ja :num! (seek!))
         )
       )
     #f
-    (none)
     )
-  :post (the-as (function none :behavior metalkor-highres) ja-post)
+  :post ja-post
   )
 
 ;; definition for method 11 of type metalkor-highres
 ;; WARN: Return type mismatch object vs none.
-(defmethod init-from-entity! metalkor-highres ((obj metalkor-highres) (arg0 entity-actor))
+(defmethod init-from-entity! ((this metalkor-highres) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
 - stack size
 - collision information
 - loading the skeleton group / bones
 - sounds"
-  (set! (-> obj root) (new 'process 'trsqv))
-  (process-drawable-from-entity! obj arg0)
+  (set! (-> this root) (new 'process 'trsqv))
+  (process-drawable-from-entity! this arg0)
   (initialize-skeleton
-    obj
+    this
     (the-as skeleton-group (art-group-get-by-name *level* "skel-metalkor-highres" (the-as (pointer uint32) #f)))
     (the-as pair 0)
     )
-  (set! (-> obj draw light-index) (the-as uint 10))
+  (set! (-> this draw light-index) (the-as uint 10))
   (let ((s4-1 (process-spawn
                 manipy
                 :init manipy-init
-                (-> obj root trans)
-                (-> obj entity)
+                (-> this root trans)
+                (-> this entity)
                 (art-group-get-by-name *level* "skel-metalkor-highres-lowtorso" (the-as (pointer uint32) #f))
                 #f
                 0
-                :to obj
+                :to this
                 )
               )
         )
@@ -431,12 +419,12 @@ This commonly includes things such as:
   (let ((s4-3 (process-spawn
                 manipy
                 :init manipy-init
-                (-> obj root trans)
-                (-> obj entity)
+                (-> this root trans)
+                (-> this entity)
                 (art-group-get-by-name *level* "skel-metalkor-highres-legs" (the-as (pointer uint32) #f))
                 #f
                 0
-                :to obj
+                :to this
                 )
               )
         )
@@ -446,53 +434,49 @@ This commonly includes things such as:
   (let ((s4-5 (process-spawn
                 manipy
                 :init manipy-init
-                (-> obj root trans)
-                (-> obj entity)
+                (-> this root trans)
+                (-> this entity)
                 (art-group-get-by-name *level* "skel-metalkor-highres-wings" (the-as (pointer uint32) #f))
                 #f
                 0
-                :to obj
+                :to this
                 )
               )
         )
     (send-event (ppointer->process s4-5) 'anim-mode 'clone-anim)
     (send-event (ppointer->process s4-5) 'prefix "wings-")
     )
-  (go (method-of-object obj idle))
+  (go (method-of-object this idle))
   (none)
   )
 
 ;; definition of type tess-npc
 (deftype tess-npc (process-taskable)
   ()
-  :heap-base #xa0
-  :method-count-assert 38
-  :size-assert         #x120
-  :flag-assert         #x2600a00120
   )
 
 ;; definition for method 3 of type tess-npc
-(defmethod inspect tess-npc ((obj tess-npc))
-  (when (not obj)
-    (set! obj obj)
+(defmethod inspect ((this tess-npc))
+  (when (not this)
+    (set! this this)
     (goto cfg-4)
     )
   (let ((t9-0 (method-of-type process-taskable inspect)))
-    (t9-0 obj)
+    (t9-0 this)
     )
   (label cfg-4)
-  obj
+  this
   )
 
 ;; definition for method 35 of type tess-npc
-(defmethod get-art-elem tess-npc ((obj tess-npc))
+(defmethod get-art-elem ((this tess-npc))
   "Checks various things such the current actor, task status, etc to determine the right art-group data to use
 @returns the appropriate [[art-element]] for the given NPC"
-  (case (-> obj task actor)
+  (case (-> this task actor)
     (((game-task-actor tess-alley))
      (if (task-node-closed? (game-task-node ruins-tower-resolution))
-         (-> obj draw art-group data 3)
-         (-> obj draw art-group data 4)
+         (-> this draw art-group data 3)
+         (-> this draw art-group data 4)
          )
      )
     (((game-task-actor tess-hiphog))
@@ -504,34 +488,34 @@ This commonly includes things such as:
             (task-node-open? (game-task-node city-errol-challenge-introduction))
             (task-node-open? (game-task-node city-errol-challenge-race))
             )
-        (-> obj draw art-group data 6)
+        (-> this draw art-group data 6)
         )
        ((and (task-node-closed? (game-task-node city-whack-pre-intro))
              (not (task-node-closed? (game-task-node under-mech-resolution)))
              )
-        (-> obj draw art-group data 5)
+        (-> this draw art-group data 5)
         )
        (else
-         (-> obj draw art-group data 3)
+         (-> this draw art-group data 3)
          )
        )
      )
     (else
-      (-> obj draw art-group data 3)
+      (-> this draw art-group data 3)
       )
     )
   )
 
 ;; definition for method 33 of type tess-npc
 ;; WARN: Return type mismatch int vs none.
-(defmethod init-art! tess-npc ((obj tess-npc))
+(defmethod init-art! ((this tess-npc))
   "@see [[initialize-skeleton]]"
   (initialize-skeleton
-    obj
+    this
     (the-as skeleton-group (art-group-get-by-name *level* "skel-tess-highres" (the-as (pointer uint32) #f)))
     (the-as pair 0)
     )
-  (set! (-> obj draw light-index) (the-as uint 30))
+  (set! (-> this draw light-index) (the-as uint 30))
   0
   (none)
   )
@@ -539,52 +523,45 @@ This commonly includes things such as:
 ;; definition of type keira-npc
 (deftype keira-npc (process-taskable)
   ()
-  :heap-base #xa0
-  :method-count-assert 38
-  :size-assert         #x120
-  :flag-assert         #x2600a00120
   )
 
 ;; definition for method 3 of type keira-npc
-;; INFO: this function exists in multiple non-identical object files
-(defmethod inspect keira-npc ((obj keira-npc))
-  (when (not obj)
-    (set! obj obj)
+(defmethod inspect ((this keira-npc))
+  (when (not this)
+    (set! this this)
     (goto cfg-4)
     )
   (let ((t9-0 (method-of-type process-taskable inspect)))
-    (t9-0 obj)
+    (t9-0 this)
     )
   (label cfg-4)
-  obj
+  this
   )
 
 ;; definition for method 35 of type keira-npc
-;; INFO: this function exists in multiple non-identical object files
-(defmethod get-art-elem keira-npc ((obj keira-npc))
+(defmethod get-art-elem ((this keira-npc))
   "Checks various things such the current actor, task status, etc to determine the right art-group data to use
 @returns the appropriate [[art-element]] for the given NPC"
-  (case (-> obj task actor)
+  (case (-> this task actor)
     (((game-task-actor keira-stadium))
-     (-> obj draw art-group data 3)
+     (-> this draw art-group data 3)
      )
     (else
-      (-> obj draw art-group data 3)
+      (-> this draw art-group data 3)
       )
     )
   )
 
 ;; definition for method 33 of type keira-npc
-;; INFO: this function exists in multiple non-identical object files
 ;; WARN: Return type mismatch int vs none.
-(defmethod init-art! keira-npc ((obj keira-npc))
+(defmethod init-art! ((this keira-npc))
   "@see [[initialize-skeleton]]"
   (initialize-skeleton
-    obj
+    this
     (the-as skeleton-group (art-group-get-by-name *level* "skel-keira-highres" (the-as (pointer uint32) #f)))
     (the-as pair 0)
     )
-  (set! (-> obj draw light-index) (the-as uint 30))
+  (set! (-> this draw light-index) (the-as uint 30))
   0
   (none)
   )
@@ -592,42 +569,38 @@ This commonly includes things such as:
 ;; definition of type krew-npc
 (deftype krew-npc (process-taskable)
   ()
-  :heap-base #xa0
-  :method-count-assert 38
-  :size-assert         #x120
-  :flag-assert         #x2600a00120
   )
 
 ;; definition for method 3 of type krew-npc
-(defmethod inspect krew-npc ((obj krew-npc))
-  (when (not obj)
-    (set! obj obj)
+(defmethod inspect ((this krew-npc))
+  (when (not this)
+    (set! this this)
     (goto cfg-4)
     )
   (let ((t9-0 (method-of-type process-taskable inspect)))
-    (t9-0 obj)
+    (t9-0 this)
     )
   (label cfg-4)
-  obj
+  this
   )
 
 ;; definition for method 35 of type krew-npc
-(defmethod get-art-elem krew-npc ((obj krew-npc))
+(defmethod get-art-elem ((this krew-npc))
   "Checks various things such the current actor, task status, etc to determine the right art-group data to use
 @returns the appropriate [[art-element]] for the given NPC"
-  (-> obj draw art-group data 4)
+  (-> this draw art-group data 4)
   )
 
 ;; definition for method 33 of type krew-npc
 ;; WARN: Return type mismatch int vs none.
-(defmethod init-art! krew-npc ((obj krew-npc))
+(defmethod init-art! ((this krew-npc))
   "@see [[initialize-skeleton]]"
   (initialize-skeleton
-    obj
+    this
     (the-as skeleton-group (art-group-get-by-name *level* "skel-krew-highres" (the-as (pointer uint32) #f)))
     (the-as pair 0)
     )
-  (set! (-> obj draw light-index) (the-as uint 10))
+  (set! (-> this draw light-index) (the-as uint 10))
   0
   (none)
   )
@@ -635,55 +608,51 @@ This commonly includes things such as:
 ;; definition of type kid-npc
 (deftype kid-npc (process-taskable)
   ()
-  :heap-base #xa0
-  :method-count-assert 38
-  :size-assert         #x120
-  :flag-assert         #x2600a00120
   )
 
 ;; definition for method 3 of type kid-npc
-(defmethod inspect kid-npc ((obj kid-npc))
-  (when (not obj)
-    (set! obj obj)
+(defmethod inspect ((this kid-npc))
+  (when (not this)
+    (set! this this)
     (goto cfg-4)
     )
   (let ((t9-0 (method-of-type process-taskable inspect)))
-    (t9-0 obj)
+    (t9-0 this)
     )
   (label cfg-4)
-  obj
+  this
   )
 
 ;; definition for method 33 of type kid-npc
 ;; WARN: Return type mismatch int vs none.
-(defmethod init-art! kid-npc ((obj kid-npc))
+(defmethod init-art! ((this kid-npc))
   "@see [[initialize-skeleton]]"
   (initialize-skeleton
-    obj
+    this
     (the-as skeleton-group (art-group-get-by-name *level* "skel-kid-highres" (the-as (pointer uint32) #f)))
     (the-as pair 0)
     )
-  (set! (-> obj draw light-index) (the-as uint 30))
+  (set! (-> this draw light-index) (the-as uint 30))
   0
   (none)
   )
 
 ;; definition for method 35 of type kid-npc
-(defmethod get-art-elem kid-npc ((obj kid-npc))
+(defmethod get-art-elem ((this kid-npc))
   "Checks various things such the current actor, task status, etc to determine the right art-group data to use
 @returns the appropriate [[art-element]] for the given NPC"
-  (case (-> obj task actor)
+  (case (-> this task actor)
     (((game-task-actor kid-alley))
-     (-> obj draw art-group data 5)
+     (-> this draw art-group data 5)
      )
     (((game-task-actor kid-tomb) (game-task-actor kid-vinroom))
-     (-> obj draw art-group data 4)
+     (-> this draw art-group data 4)
      )
     (((game-task-actor kid-hideout))
-     (-> obj draw art-group data 6)
+     (-> this draw art-group data 6)
      )
     (else
-      (-> obj draw art-group data 3)
+      (-> this draw art-group data 3)
       )
     )
   )
@@ -691,52 +660,48 @@ This commonly includes things such as:
 ;; definition of type crocadog-npc
 (deftype crocadog-npc (process-taskable)
   ()
-  :heap-base #xa0
-  :method-count-assert 38
-  :size-assert         #x120
-  :flag-assert         #x2600a00120
   )
 
 ;; definition for method 3 of type crocadog-npc
-(defmethod inspect crocadog-npc ((obj crocadog-npc))
-  (when (not obj)
-    (set! obj obj)
+(defmethod inspect ((this crocadog-npc))
+  (when (not this)
+    (set! this this)
     (goto cfg-4)
     )
   (let ((t9-0 (method-of-type process-taskable inspect)))
-    (t9-0 obj)
+    (t9-0 this)
     )
   (label cfg-4)
-  obj
+  this
   )
 
 ;; definition for method 35 of type crocadog-npc
-(defmethod get-art-elem crocadog-npc ((obj crocadog-npc))
+(defmethod get-art-elem ((this crocadog-npc))
   "Checks various things such the current actor, task status, etc to determine the right art-group data to use
 @returns the appropriate [[art-element]] for the given NPC"
-  (case (-> obj task actor)
+  (case (-> this task actor)
     (((game-task-actor crocadog-vinroom))
-     (-> obj draw art-group data 5)
+     (-> this draw art-group data 5)
      )
     (((game-task-actor crocadog-alley))
-     (-> obj draw art-group data 4)
+     (-> this draw art-group data 4)
      )
     (else
-      (-> obj draw art-group data 4)
+      (-> this draw art-group data 4)
       )
     )
   )
 
 ;; definition for method 33 of type crocadog-npc
 ;; WARN: Return type mismatch int vs none.
-(defmethod init-art! crocadog-npc ((obj crocadog-npc))
+(defmethod init-art! ((this crocadog-npc))
   "@see [[initialize-skeleton]]"
   (initialize-skeleton
-    obj
+    this
     (the-as skeleton-group (art-group-get-by-name *level* "skel-crocadog-highres" (the-as (pointer uint32) #f)))
     (the-as pair 0)
     )
-  (set! (-> obj draw light-index) (the-as uint 30))
+  (set! (-> this draw light-index) (the-as uint 30))
   0
   (none)
   )
@@ -744,62 +709,58 @@ This commonly includes things such as:
 ;; definition of type torn-npc
 (deftype torn-npc (process-taskable)
   ()
-  :heap-base #xa0
-  :method-count-assert 38
-  :size-assert         #x120
-  :flag-assert         #x2600a00120
   )
 
 ;; definition for method 3 of type torn-npc
-(defmethod inspect torn-npc ((obj torn-npc))
-  (when (not obj)
-    (set! obj obj)
+(defmethod inspect ((this torn-npc))
+  (when (not this)
+    (set! this this)
     (goto cfg-4)
     )
   (let ((t9-0 (method-of-type process-taskable inspect)))
-    (t9-0 obj)
+    (t9-0 this)
     )
   (label cfg-4)
-  obj
+  this
   )
 
 ;; definition for method 33 of type torn-npc
 ;; WARN: Return type mismatch int vs none.
-(defmethod init-art! torn-npc ((obj torn-npc))
+(defmethod init-art! ((this torn-npc))
   "@see [[initialize-skeleton]]"
   (initialize-skeleton
-    obj
+    this
     (the-as skeleton-group (art-group-get-by-name *level* "skel-torn-highres" (the-as (pointer uint32) #f)))
     (the-as pair 0)
     )
-  (set! (-> obj draw light-index) (the-as uint 30))
+  (set! (-> this draw light-index) (the-as uint 30))
   0
   (none)
   )
 
 ;; definition for method 35 of type torn-npc
-(defmethod get-art-elem torn-npc ((obj torn-npc))
+(defmethod get-art-elem ((this torn-npc))
   "Checks various things such the current actor, task status, etc to determine the right art-group data to use
 @returns the appropriate [[art-element]] for the given NPC"
   (cond
     ((task-node-open? (game-task-node ruins-tower-introduction))
-     (-> obj draw art-group data 5)
+     (-> this draw art-group data 5)
      )
     ((task-node-open? (game-task-node ruins-tower-resolution))
-     (-> obj draw art-group data 5)
+     (-> this draw art-group data 5)
      )
     (else
-      (-> obj draw art-group data 4)
+      (-> this draw art-group data 4)
       )
     )
   )
 
 ;; definition for method 20 of type torn-npc
-(defmethod get-trans torn-npc ((obj torn-npc) (arg0 int))
+(defmethod get-trans ((this torn-npc) (arg0 int))
   "@returns the `trans` [[vector]] from the process's `root` (typically either a [[trsqv]] or a [[collide-shape]])"
-  (let ((v1-0 (-> obj root)))
+  (let ((v1-0 (-> this root)))
     (if (= arg0 2)
-        (vector<-cspace! (new 'static 'vector) (-> obj node-list data 6))
+        (vector<-cspace! (new 'static 'vector) (-> this node-list data 6))
         (-> v1-0 trans)
         )
     )
@@ -808,36 +769,32 @@ This commonly includes things such as:
 ;; definition of type youngsamos-npc
 (deftype youngsamos-npc (process-taskable)
   ()
-  :heap-base #xa0
-  :method-count-assert 38
-  :size-assert         #x120
-  :flag-assert         #x2600a00120
   )
 
 ;; definition for method 3 of type youngsamos-npc
-(defmethod inspect youngsamos-npc ((obj youngsamos-npc))
-  (when (not obj)
-    (set! obj obj)
+(defmethod inspect ((this youngsamos-npc))
+  (when (not this)
+    (set! this this)
     (goto cfg-4)
     )
   (let ((t9-0 (method-of-type process-taskable inspect)))
-    (t9-0 obj)
+    (t9-0 this)
     )
   (label cfg-4)
-  obj
+  this
   )
 
 ;; definition for method 33 of type youngsamos-npc
 ;; WARN: Return type mismatch int vs none.
-(defmethod init-art! youngsamos-npc ((obj youngsamos-npc))
+(defmethod init-art! ((this youngsamos-npc))
   "@see [[initialize-skeleton]]"
   (initialize-skeleton
-    obj
+    this
     (the-as skeleton-group (art-group-get-by-name *level* "skel-youngsamos-highres" (the-as (pointer uint32) #f)))
     (the-as pair 0)
     )
-  (if (zero? (-> obj draw light-index))
-      (set! (-> obj draw light-index) (the-as uint 30))
+  (if (zero? (-> this draw light-index))
+      (set! (-> this draw light-index) (the-as uint 30))
       )
   0
   (none)
@@ -845,58 +802,58 @@ This commonly includes things such as:
 
 ;; definition for method 32 of type youngsamos-npc
 ;; INFO: Used lq/sq
-(defmethod process-taskable-method-32 youngsamos-npc ((obj youngsamos-npc))
-  (case (-> obj task actor)
+(defmethod process-taskable-method-32 ((this youngsamos-npc))
+  (case (-> this task actor)
     (((game-task-actor youngsamos-forest))
      (when (not (task-node-closed? (game-task-node forest-protect-resolution)))
-       (let ((a0-3 (-> obj skel root-channel 0)))
-         (set! (-> a0-3 frame-group) (the-as art-joint-anim (-> obj draw art-group data 4)))
+       (let ((a0-3 (-> this skel root-channel 0)))
+         (set! (-> a0-3 frame-group) (the-as art-joint-anim (-> this draw art-group data 4)))
          (set! (-> a0-3 frame-num) 0.0)
-         (joint-control-channel-group! a0-3 (the-as art-joint-anim (-> obj draw art-group data 4)) num-func-identity)
+         (joint-control-channel-group! a0-3 (the-as art-joint-anim (-> this draw art-group data 4)) num-func-identity)
          )
        (ja-post)
        (let ((s5-0 (new 'stack-no-clear 'task-arrow-params)))
-         (set! (-> s5-0 pos quad) (-> (vector<-cspace! (new 'stack-no-clear 'vector) (-> obj node-list data 3)) quad))
+         (set! (-> s5-0 pos quad) (-> (vector<-cspace! (new 'stack-no-clear 'vector) (-> this node-list data 3)) quad))
          (quaternion-copy!
            (-> s5-0 quat)
            (eul->quat (new 'stack-no-clear 'quaternion) (new 'static 'euler-angles :x -16384.0 :y 16384.0))
            )
          (set! (-> s5-0 flags) (task-arrow-flags))
          (set! (-> s5-0 map-icon) (the-as uint 15))
-         (task-arrow-spawn s5-0 (the-as task-arrow obj))
+         (task-arrow-spawn s5-0 this)
          )
        )
      )
     )
-  ((the-as (function process-taskable none) (find-parent-method youngsamos-npc 32)) obj)
+  (call-parent-method this)
   (none)
   )
 
 ;; definition for method 35 of type youngsamos-npc
-(defmethod get-art-elem youngsamos-npc ((obj youngsamos-npc))
+(defmethod get-art-elem ((this youngsamos-npc))
   "Checks various things such the current actor, task status, etc to determine the right art-group data to use
 @returns the appropriate [[art-element]] for the given NPC"
-  (case (-> obj task actor)
+  (case (-> this task actor)
     (((game-task-actor youngsamos-forest))
-     (-> obj draw art-group data 4)
+     (-> this draw art-group data 4)
      )
     (((game-task-actor youngsamos-alley))
-     (-> obj draw art-group data 7)
+     (-> this draw art-group data 7)
      )
     (((game-task-actor youngsamos-hideout))
-     (if (= (-> obj level name) 'lysamsam)
-         (-> obj draw art-group data 5)
-         (-> obj draw art-group data 6)
+     (if (= (-> this level name) 'lysamsam)
+         (-> this draw art-group data 5)
+         (-> this draw art-group data 6)
          )
      )
     (((game-task-actor youngsamos-tomb))
-     (-> obj draw art-group data 8)
+     (-> this draw art-group data 8)
      )
     (((game-task-actor youngsamos-onintent))
-     (-> obj draw art-group data 9)
+     (-> this draw art-group data 9)
      )
     (else
-      (-> obj draw art-group data 3)
+      (-> this draw art-group data 3)
       )
     )
   )
@@ -904,52 +861,48 @@ This commonly includes things such as:
 ;; definition of type samos-npc
 (deftype samos-npc (process-taskable)
   ()
-  :heap-base #xa0
-  :method-count-assert 38
-  :size-assert         #x120
-  :flag-assert         #x2600a00120
   )
 
 ;; definition for method 3 of type samos-npc
-(defmethod inspect samos-npc ((obj samos-npc))
-  (when (not obj)
-    (set! obj obj)
+(defmethod inspect ((this samos-npc))
+  (when (not this)
+    (set! this this)
     (goto cfg-4)
     )
   (let ((t9-0 (method-of-type process-taskable inspect)))
-    (t9-0 obj)
+    (t9-0 this)
     )
   (label cfg-4)
-  obj
+  this
   )
 
 ;; definition for method 33 of type samos-npc
 ;; WARN: Return type mismatch int vs none.
-(defmethod init-art! samos-npc ((obj samos-npc))
+(defmethod init-art! ((this samos-npc))
   "@see [[initialize-skeleton]]"
   (initialize-skeleton
-    obj
+    this
     (the-as skeleton-group (art-group-get-by-name *level* "skel-samos-highres" (the-as (pointer uint32) #f)))
     (the-as pair 0)
     )
-  (set! (-> obj draw light-index) (the-as uint 30))
+  (set! (-> this draw light-index) (the-as uint 30))
   0
   (none)
   )
 
 ;; definition for method 35 of type samos-npc
-(defmethod get-art-elem samos-npc ((obj samos-npc))
+(defmethod get-art-elem ((this samos-npc))
   "Checks various things such the current actor, task status, etc to determine the right art-group data to use
 @returns the appropriate [[art-element]] for the given NPC"
-  (case (-> obj task actor)
+  (case (-> this task actor)
     (((game-task-actor samos-hideout))
-     (-> obj draw art-group data 4)
+     (-> this draw art-group data 4)
      )
     (((game-task-actor samos-garage))
-     (-> obj draw art-group data 5)
+     (-> this draw art-group data 5)
      )
     (else
-      (-> obj draw art-group data 3)
+      (-> this draw art-group data 3)
       )
     )
   )
@@ -957,50 +910,46 @@ This commonly includes things such as:
 ;; definition of type onin-npc
 (deftype onin-npc (process-taskable)
   ()
-  :heap-base #xa0
-  :method-count-assert 38
-  :size-assert         #x120
-  :flag-assert         #x2600a00120
   )
 
 ;; definition for method 3 of type onin-npc
-(defmethod inspect onin-npc ((obj onin-npc))
-  (when (not obj)
-    (set! obj obj)
+(defmethod inspect ((this onin-npc))
+  (when (not this)
+    (set! this this)
     (goto cfg-4)
     )
   (let ((t9-0 (method-of-type process-taskable inspect)))
-    (t9-0 obj)
+    (t9-0 this)
     )
   (label cfg-4)
-  obj
+  this
   )
 
 ;; definition for method 33 of type onin-npc
 ;; WARN: Return type mismatch int vs none.
-(defmethod init-art! onin-npc ((obj onin-npc))
+(defmethod init-art! ((this onin-npc))
   "@see [[initialize-skeleton]]"
   (initialize-skeleton
-    obj
+    this
     (the-as skeleton-group (art-group-get-by-name *level* "skel-onin-highres" (the-as (pointer uint32) #f)))
     (the-as pair 0)
     )
-  (set! (-> obj draw light-index) (the-as uint 10))
+  (set! (-> this draw light-index) (the-as uint 10))
   0
   (none)
   )
 
 ;; definition for method 35 of type onin-npc
-(defmethod get-art-elem onin-npc ((obj onin-npc))
+(defmethod get-art-elem ((this onin-npc))
   "Checks various things such the current actor, task status, etc to determine the right art-group data to use
 @returns the appropriate [[art-element]] for the given NPC"
-  (let ((v1-1 (get-current-task-event (-> obj task))))
+  (let ((v1-1 (get-current-task-event (-> this task))))
     (case (-> v1-1 action)
       (((game-task-action play))
-       (set! (-> obj talk-message) (text-id press-triangle-to-play))
+       (set! (-> this talk-message) (text-id press-triangle-to-play))
        )
       (else
-        (set! (-> obj talk-message) (text-id press-triangle-to-talk))
+        (set! (-> this talk-message) (text-id press-triangle-to-talk))
         )
       )
     (if (and (= (-> v1-1 action) (game-task-action play))
@@ -1014,8 +963,8 @@ This commonly includes things such as:
                    )
                  )
              )
-        (-> obj draw art-group data 6)
-        (-> obj draw art-group data 4)
+        (-> this draw art-group data 6)
+        (-> this draw art-group data 4)
         )
     )
   )
@@ -1038,89 +987,84 @@ This commonly includes things such as:
       )
     (process-taskable-anim-loop (lambda ((arg0 process-taskable)) (handle->process (-> arg0 slave))))
     (go-virtual idle)
-    (none)
     )
   )
 
 ;; definition of type pecker-npc
 (deftype pecker-npc (process-taskable)
   ()
-  :heap-base #xa0
-  :method-count-assert 38
-  :size-assert         #x120
-  :flag-assert         #x2600a00120
   )
 
 ;; definition for method 3 of type pecker-npc
-(defmethod inspect pecker-npc ((obj pecker-npc))
-  (when (not obj)
-    (set! obj obj)
+(defmethod inspect ((this pecker-npc))
+  (when (not this)
+    (set! this this)
     (goto cfg-4)
     )
   (let ((t9-0 (method-of-type process-taskable inspect)))
-    (t9-0 obj)
+    (t9-0 this)
     )
   (label cfg-4)
-  obj
+  this
   )
 
 ;; definition for method 33 of type pecker-npc
 ;; WARN: Return type mismatch int vs none.
-(defmethod init-art! pecker-npc ((obj pecker-npc))
+(defmethod init-art! ((this pecker-npc))
   "@see [[initialize-skeleton]]"
   (initialize-skeleton
-    obj
+    this
     (the-as skeleton-group (art-group-get-by-name *level* "skel-pecker-highres" (the-as (pointer uint32) #f)))
     (the-as pair 0)
     )
-  (set! (-> obj draw light-index) (the-as uint 10))
+  (set! (-> this draw light-index) (the-as uint 10))
   0
   (none)
   )
 
 ;; definition for method 35 of type pecker-npc
-(defmethod get-art-elem pecker-npc ((obj pecker-npc))
+(defmethod get-art-elem ((this pecker-npc))
   "Checks various things such the current actor, task status, etc to determine the right art-group data to use
 @returns the appropriate [[art-element]] for the given NPC"
   (local-vars (s5-0 art-joint-anim) (f30-0 float))
   (cond
-    ((logtest? (-> (get-current-task-event (-> obj task)) flags) (game-task-flags gatflag-02))
-     (-> obj draw art-group data 6)
+    ((logtest? (-> (get-current-task-event (-> this task)) flags) (game-task-flags gatflag-02))
+     (-> this draw art-group data 6)
      )
     ((begin
-       (set! s5-0 (if (> (-> obj skel active-channels) 0)
-                      (-> obj skel root-channel 0 frame-group)
+       (set! s5-0 (if (> (-> this skel active-channels) 0)
+                      (-> this skel root-channel 0 frame-group)
                       )
              )
        (set! f30-0 (ja-aframe-num 0))
-       (and (= s5-0 (-> obj draw art-group data 4)) (>= f30-0 0.0) (>= 118.999 f30-0))
+       (and (= s5-0 (-> this draw art-group data 4)) (>= f30-0 0.0) (>= 118.999 f30-0))
        )
-     (-> obj draw art-group data 4)
+     (-> this draw art-group data 4)
      )
-    ((and (= s5-0 (-> obj draw art-group data 4))
+    ((and (= s5-0 (-> this draw art-group data 4))
           (>= f30-0 119.0)
-          (>= (the float (+ (-> (the-as art-joint-anim (-> obj draw art-group data 4)) frames num-frames) -1))
+          (>= (the float (+ (-> (the-as art-joint-anim (-> this draw art-group data 4)) frames num-frames) -1))
               (ja-frame-num 0)
               )
           )
      (if (rand-vu-percent? 0.9)
-         (-> obj draw art-group data 4)
-         (-> obj draw art-group data 5)
+         (-> this draw art-group data 4)
+         (-> this draw art-group data 5)
          )
      )
-    ((and (= s5-0 (-> obj draw art-group data 5)) (>= f30-0 0.0) (>= 258.999 f30-0))
-     (-> obj draw art-group data 5)
+    ((and (= s5-0 (-> this draw art-group data 5)) (>= f30-0 0.0) (>= 258.999 f30-0))
+     (-> this draw art-group data 5)
      )
-    ((and (= s5-0 (-> obj draw art-group data 5))
+    ((and (= s5-0 (-> this draw art-group data 5))
           (>= f30-0 259.0)
-          (>= (the float (+ (-> (the-as art-joint-anim (-> obj draw art-group data 5)) frames num-frames) -1))
+          (>= (the float (+ (-> (the-as art-joint-anim (-> this draw art-group data 5)) frames num-frames) -1))
               (ja-frame-num 0)
               )
           )
-     (-> obj draw art-group data 4)
+     (-> this draw art-group data 4)
      )
     (else
-      (-> obj draw art-group data 4)
+      (-> this draw art-group data 4)
       )
     )
   )
@@ -1128,35 +1072,31 @@ This commonly includes things such as:
 ;; definition of type brutter-npc
 (deftype brutter-npc (process-taskable)
   ()
-  :heap-base #xa0
-  :method-count-assert 38
-  :size-assert         #x120
-  :flag-assert         #x2600a00120
   )
 
 ;; definition for method 3 of type brutter-npc
-(defmethod inspect brutter-npc ((obj brutter-npc))
-  (when (not obj)
-    (set! obj obj)
+(defmethod inspect ((this brutter-npc))
+  (when (not this)
+    (set! this this)
     (goto cfg-4)
     )
   (let ((t9-0 (method-of-type process-taskable inspect)))
-    (t9-0 obj)
+    (t9-0 this)
     )
   (label cfg-4)
-  obj
+  this
   )
 
 ;; definition for method 33 of type brutter-npc
 ;; WARN: Return type mismatch int vs none.
-(defmethod init-art! brutter-npc ((obj brutter-npc))
+(defmethod init-art! ((this brutter-npc))
   "@see [[initialize-skeleton]]"
   (initialize-skeleton
-    obj
+    this
     (the-as skeleton-group (art-group-get-by-name *level* "skel-brutter-highres" (the-as (pointer uint32) #f)))
     (the-as pair 0)
     )
-  (set! (-> obj draw light-index) (the-as uint 10))
+  (set! (-> this draw light-index) (the-as uint 10))
   0
   (none)
   )
@@ -1164,97 +1104,89 @@ This commonly includes things such as:
 ;; definition of type ashelin-npc
 (deftype ashelin-npc (process-taskable)
   ()
-  :heap-base #xa0
-  :method-count-assert 38
-  :size-assert         #x120
-  :flag-assert         #x2600a00120
   )
 
 ;; definition for method 3 of type ashelin-npc
-(defmethod inspect ashelin-npc ((obj ashelin-npc))
-  (when (not obj)
-    (set! obj obj)
+(defmethod inspect ((this ashelin-npc))
+  (when (not this)
+    (set! this this)
     (goto cfg-4)
     )
   (let ((t9-0 (method-of-type process-taskable inspect)))
-    (t9-0 obj)
+    (t9-0 this)
     )
   (label cfg-4)
-  obj
+  this
   )
 
 ;; definition for method 33 of type ashelin-npc
 ;; WARN: Return type mismatch int vs none.
-(defmethod init-art! ashelin-npc ((obj ashelin-npc))
+(defmethod init-art! ((this ashelin-npc))
   "@see [[initialize-skeleton]]"
   (initialize-skeleton
-    obj
+    this
     (the-as skeleton-group (art-group-get-by-name *level* "skel-ashelin-highres" (the-as (pointer uint32) #f)))
     (the-as pair 0)
     )
-  (set! (-> obj draw light-index) (the-as uint 30))
+  (set! (-> this draw light-index) (the-as uint 30))
   0
   (none)
   )
 
 ;; definition for method 35 of type ashelin-npc
-(defmethod get-art-elem ashelin-npc ((obj ashelin-npc))
+(defmethod get-art-elem ((this ashelin-npc))
   "Checks various things such the current actor, task status, etc to determine the right art-group data to use
 @returns the appropriate [[art-element]] for the given NPC"
-  (case (-> obj task actor)
+  (case (-> this task actor)
     (((game-task-actor ashelin-throne))
-     (logior! (-> obj draw status) (draw-control-status no-draw-bounds))
-     (let ((v1-7 (-> obj root root-prim)))
+     (logior! (-> this draw status) (draw-control-status no-draw-bounds))
+     (let ((v1-7 (-> this root root-prim)))
        (set! (-> v1-7 prim-core collide-as) (collide-spec))
        (set! (-> v1-7 prim-core collide-with) (collide-spec))
        )
      0
      )
     )
-  (-> obj draw art-group data 3)
+  (-> this draw art-group data 3)
   )
 
 ;; definition of type daxter-npc
 (deftype daxter-npc (process-taskable)
   ()
-  :heap-base #xa0
-  :method-count-assert 38
-  :size-assert         #x120
-  :flag-assert         #x2600a00120
   )
 
 ;; definition for method 3 of type daxter-npc
-(defmethod inspect daxter-npc ((obj daxter-npc))
-  (when (not obj)
-    (set! obj obj)
+(defmethod inspect ((this daxter-npc))
+  (when (not this)
+    (set! this this)
     (goto cfg-4)
     )
   (let ((t9-0 (method-of-type process-taskable inspect)))
-    (t9-0 obj)
+    (t9-0 this)
     )
   (label cfg-4)
-  obj
+  this
   )
 
 ;; definition for method 33 of type daxter-npc
 ;; WARN: Return type mismatch int vs none.
-(defmethod init-art! daxter-npc ((obj daxter-npc))
+(defmethod init-art! ((this daxter-npc))
   "@see [[initialize-skeleton]]"
   (initialize-skeleton
-    obj
+    this
     (the-as skeleton-group (art-group-get-by-name *level* "skel-sidekick-highres" (the-as (pointer uint32) #f)))
     (the-as pair 0)
     )
-  (set! (-> obj draw light-index) (the-as uint 30))
+  (set! (-> this draw light-index) (the-as uint 30))
   0
   (none)
   )
 
 ;; definition for method 35 of type daxter-npc
-(defmethod get-art-elem daxter-npc ((obj daxter-npc))
+(defmethod get-art-elem ((this daxter-npc))
   "Checks various things such the current actor, task status, etc to determine the right art-group data to use
 @returns the appropriate [[art-element]] for the given NPC"
-  (-> obj draw art-group data 3)
+  (-> this draw art-group data 3)
   )
 
 ;; failed to figure out what this is:
@@ -1314,8 +1246,8 @@ This commonly includes things such as:
               )
 
 ;; failed to figure out what this is:
-(defskelgroup skel-mtn-shard mtn-shard 0 2
-              ((1 (meters 999999)))
+(defskelgroup skel-mtn-shard mtn-shard mtn-shard-lod0-jg mtn-shard-idle-ja
+              ((mtn-shard-lod0-mg (meters 999999)))
               :bounds (static-spherem 0 0 0 0.5)
               :origin-joint-index 3
               )
@@ -1328,8 +1260,8 @@ This commonly includes things such as:
               )
 
 ;; failed to figure out what this is:
-(defskelgroup skel-mtn-gear-device-gear mtn-gear-device-gear 0 2
-              ((1 (meters 999999)))
+(defskelgroup skel-mtn-gear-device-gear mtn-gear-device-gear mtn-gear-device-gear-lod0-jg mtn-gear-device-gear-idle-ja
+              ((mtn-gear-device-gear-lod0-mg (meters 999999)))
               :bounds (static-spherem 0 0 0 0.5)
               :origin-joint-index 3
               )

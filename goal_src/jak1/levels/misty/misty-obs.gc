@@ -7,7 +7,6 @@
 
 ;; DECOMP BEGINS
 
-
 (defpartgroup group-windturbine-particles
   :id 191
   :bounds (static-bspherem 0 0 0 12)
@@ -1004,10 +1003,6 @@
 
 (deftype boatpaddle (process-drawable)
   ()
-  :heap-base #x40
-  :method-count-assert 20
-  :size-assert         #xb0
-  :flag-assert         #x14004000b0
   (:states
     boatpaddle-idle
     )
@@ -1023,17 +1018,14 @@
   :code (behavior ()
     (local-vars (s4-0 int))
     (loop
-      (quaternion-rotate-local-x!
-        (-> self root quat)
-        (-> self root quat)
-        (* -5461.3335 (-> *display* seconds-per-frame))
-        )
+      (quaternion-rotate-local-x! (-> self root quat) (-> self root quat) (* -5461.3335 (seconds-per-frame)))
       (let ((gp-0 (-> self part))
             (s5-0 (-> self root trans))
             )
         (let ((f30-0 1274.3112)
               (f28-0 (the float s4-0))
               )
+          ;; og:preserve-this
           (set! s4-0 (/-0-guard (the int (* 65536.0 (ja-frame-num 0))) (+ (-> (ja-group) data 0 length) -1)))
           (set! (-> *part-id-table* 943 init-specs 17 initial-valuef)
                 (+ f30-0 (- f28-0 (* (the float (the int (/ (the float s4-0) 8192.0))) 8192.0)))
@@ -1043,30 +1035,25 @@
         )
       (suspend)
       )
-    (none)
     )
-  :post (the-as (function none :behavior boatpaddle) ja-post)
+  :post ja-post
   )
 
-(defmethod init-from-entity! boatpaddle ((obj boatpaddle) (arg0 entity-actor))
-  (logior! (-> obj mask) (process-mask ambient))
-  (set! (-> obj root) (new 'process 'trsqv))
-  (process-drawable-from-entity! obj arg0)
-  (initialize-skeleton obj *boatpaddle-sg* '())
-  (logclear! (-> obj mask) (process-mask actor-pause))
-  (set! (-> obj part) (create-launch-control (-> *part-group-id-table* 196) obj))
+(defmethod init-from-entity! ((this boatpaddle) (arg0 entity-actor))
+  (logior! (-> this mask) (process-mask ambient))
+  (set! (-> this root) (new 'process 'trsqv))
+  (process-drawable-from-entity! this arg0)
+  (initialize-skeleton this *boatpaddle-sg* '())
+  (logclear! (-> this mask) (process-mask actor-pause))
+  (set! (-> this part) (create-launch-control (-> *part-group-id-table* 196) this))
   (go boatpaddle-idle)
   (none)
   )
 
 (deftype windturbine (process-drawable)
-  ((spawn-particle-enable symbol  :offset-assert 176)
-   (angle-speed           float   :offset-assert 180)
+  ((spawn-particle-enable  symbol)
+   (angle-speed            float)
    )
-  :heap-base #x50
-  :method-count-assert 20
-  :size-assert         #xb8
-  :flag-assert         #x14005000b8
   (:states
     windturbine-idle
     )
@@ -1095,43 +1082,38 @@
       (quaternion-rotate-local-y!
         (-> self root quat)
         (-> self root quat)
-        (* -1.0 (-> *display* seconds-per-frame) (-> self angle-speed))
+        (* -1.0 (seconds-per-frame) (-> self angle-speed))
         )
       (if (-> self spawn-particle-enable)
           (spawn (-> self part) (-> self root trans))
           )
       (suspend)
       )
-    (none)
     )
-  :post (the-as (function none :behavior windturbine) ja-post)
+  :post ja-post
   )
 
-(defmethod init-from-entity! windturbine ((obj windturbine) (arg0 entity-actor))
-  (logior! (-> obj mask) (process-mask ambient))
-  (set! (-> obj root) (new 'process 'trsqv))
-  (process-drawable-from-entity! obj arg0)
-  (logclear! (-> obj mask) (process-mask actor-pause))
-  (set! (-> obj spawn-particle-enable) (= (res-lump-value arg0 'particle-select uint128) 1))
-  (if (-> obj spawn-particle-enable)
-      (set! (-> obj part) (create-launch-control (-> *part-group-id-table* 191) obj))
+(defmethod init-from-entity! ((this windturbine) (arg0 entity-actor))
+  (logior! (-> this mask) (process-mask ambient))
+  (set! (-> this root) (new 'process 'trsqv))
+  (process-drawable-from-entity! this arg0)
+  (logclear! (-> this mask) (process-mask actor-pause))
+  (set! (-> this spawn-particle-enable) (= (res-lump-value arg0 'particle-select uint128) 1))
+  (if (-> this spawn-particle-enable)
+      (set! (-> this part) (create-launch-control (-> *part-group-id-table* 191) this))
       )
-  (initialize-skeleton obj *windturbine-sg* '())
+  (initialize-skeleton this *windturbine-sg* '())
   (go windturbine-idle)
   (none)
   )
 
 (deftype mis-bone-bridge (process-drawable)
-  ((root-override    collide-shape-moving    :offset        112)
-   (particle-group   sparticle-launch-group  :offset-assert 176)
-   (player-attack-id int32                   :offset-assert 180)
-   (fall-anim-index  int32                   :offset-assert 184)
-   (hit-points       int8                    :offset-assert 188)
+  ((root              collide-shape-moving :override)
+   (particle-group    sparticle-launch-group)
+   (player-attack-id  int32)
+   (fall-anim-index   int32)
+   (hit-points        int8)
    )
-  :heap-base #x50
-  :method-count-assert 20
-  :size-assert         #xbd
-  :flag-assert         #x14005000bd
   (:states
     mis-bone-bridge-bump
     (mis-bone-bridge-fall symbol)
@@ -1150,9 +1132,9 @@
   (case arg2
     (('attack)
      (let ((s5-0 (-> arg3 param 2))
-           (gp-0 (vector-x-quaternion! (new-stack-vector0) (-> self root-override quat)))
-           (a0-4 (vector-z-quaternion! (new-stack-vector0) (-> self root-override quat)))
-           (v1-4 (vector-! (new-stack-vector0) (-> *target* control trans) (-> self root-override trans)))
+           (gp-0 (vector-x-quaternion! (new-stack-vector0) (-> self root quat)))
+           (a0-4 (vector-z-quaternion! (new-stack-vector0) (-> self root quat)))
+           (v1-4 (vector-! (new-stack-vector0) (-> *target* control trans) (-> self root trans)))
            )
        0.0
        0.0
@@ -1185,7 +1167,7 @@
   :code (behavior ()
     (ja :num-func num-func-identity :frame-num 0.0)
     (loop
-      (if (and *target* (>= 32768.0 (vector-vector-distance (-> self root-override trans) (-> *target* control trans))))
+      (if (and *target* (>= 32768.0 (vector-vector-distance (-> self root trans) (-> *target* control trans))))
           (level-hint-spawn
             (text-id misty-bone-bridge-hint)
             "sksp0435"
@@ -1196,47 +1178,44 @@
           )
       (suspend)
       )
-    (none)
     )
-  :post (the-as (function none :behavior mis-bone-bridge) transform-post)
+  :post transform-post
   )
 
 (defstate mis-bone-bridge-bump (mis-bone-bridge)
   :event mis-bone-bridge-event-handler
-  :trans (the-as (function none :behavior mis-bone-bridge) rider-trans)
+  :trans rider-trans
   :code (behavior ()
-    (ja-no-eval :group! (-> self draw art-group data 6) :num! (seek!) :frame-num 0.0)
+    (ja-no-eval :group! mis-bone-bridge-bumped-ja :num! (seek!) :frame-num 0.0)
     (until (ja-done? 0)
       (suspend)
       (ja :num! (seek!))
       )
     (go mis-bone-bridge-idle)
-    (none)
     )
-  :post (the-as (function none :behavior mis-bone-bridge) rider-post)
+  :post rider-post
   )
 
 (defstate mis-bone-bridge-hit (mis-bone-bridge)
   :event mis-bone-bridge-event-handler
-  :trans (the-as (function none :behavior mis-bone-bridge) rider-trans)
+  :trans rider-trans
   :code (behavior ()
     (+! (-> self hit-points) -1)
     (if (zero? (-> self hit-points))
         (go mis-bone-bridge-fall #f)
         )
-    (ja-no-eval :group! (-> self draw art-group data 5) :num! (seek!) :frame-num 0.0)
+    (ja-no-eval :group! mis-bone-bridge-kicked-ja :num! (seek!) :frame-num 0.0)
     (until (ja-done? 0)
       (suspend)
       (ja :num! (seek!))
       )
     (go mis-bone-bridge-idle)
-    (none)
     )
-  :post (the-as (function none :behavior mis-bone-bridge) rider-post)
+  :post rider-post
   )
 
 (defstate mis-bone-bridge-fall (mis-bone-bridge)
-  :trans (the-as (function none :behavior mis-bone-bridge) rider-trans)
+  :trans rider-trans
   :code (behavior ((arg0 symbol))
     (process-entity-status! self (entity-perm-status complete) #t)
     (when (not arg0)
@@ -1248,7 +1227,7 @@
         #f
         #f
         #f
-        (-> self root-override trans)
+        (-> self root trans)
         :to *entity-pool*
         )
       (ja-no-eval :group! (-> self draw art-group data (-> self fall-anim-index)) :num! (seek!) :frame-num 0.0)
@@ -1263,14 +1242,13 @@
     (loop
       (suspend)
       )
-    (none)
     )
-  :post (the-as (function none :behavior mis-bone-bridge) rider-post)
+  :post rider-post
   )
 
-(defmethod init-from-entity! mis-bone-bridge ((obj mis-bone-bridge) (arg0 entity-actor))
-  (logior! (-> obj mask) (process-mask platform))
-  (let ((s4-0 (new 'process 'collide-shape-moving obj (collide-list-enum hit-by-others))))
+(defmethod init-from-entity! ((this mis-bone-bridge) (arg0 entity-actor))
+  (logior! (-> this mask) (process-mask platform))
+  (let ((s4-0 (new 'process 'collide-shape-moving this (collide-list-enum hit-by-others))))
     (set! (-> s4-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s4-0 reaction) default-collision-reaction)
     (set! (-> s4-0 no-reaction)
@@ -1306,36 +1284,36 @@
       )
     (set! (-> s4-0 nav-radius) (* 0.75 (-> s4-0 root-prim local-sphere w)))
     (backup-collide-with-as s4-0)
-    (set! (-> obj root-override) s4-0)
+    (set! (-> this root) s4-0)
     )
-  (process-drawable-from-entity! obj arg0)
-  (initialize-skeleton obj *mis-bone-bridge-sg* '())
+  (process-drawable-from-entity! this arg0)
+  (initialize-skeleton this *mis-bone-bridge-sg* '())
   (let ((v1-40 (res-lump-value arg0 'animation-select uint128)))
     (cond
       ((= (the-as uint v1-40) 1)
-       (set! (-> obj fall-anim-index) 2)
-       (set! (-> obj particle-group) (-> *part-group-id-table* 192))
+       (set! (-> this fall-anim-index) 2)
+       (set! (-> this particle-group) (-> *part-group-id-table* 192))
        )
       ((= (the-as uint v1-40) 2)
-       (set! (-> obj fall-anim-index) 3)
-       (set! (-> obj particle-group) (-> *part-group-id-table* 194))
+       (set! (-> this fall-anim-index) 3)
+       (set! (-> this particle-group) (-> *part-group-id-table* 194))
        )
       ((= (the-as uint v1-40) 3)
-       (set! (-> obj fall-anim-index) 2)
-       (set! (-> obj particle-group) (-> *part-group-id-table* 193))
+       (set! (-> this fall-anim-index) 2)
+       (set! (-> this particle-group) (-> *part-group-id-table* 193))
        )
       ((= (the-as uint v1-40) 7)
-       (set! (-> obj fall-anim-index) 4)
-       (set! (-> obj particle-group) (-> *part-group-id-table* 195))
+       (set! (-> this fall-anim-index) 4)
+       (set! (-> this particle-group) (-> *part-group-id-table* 195))
        )
       (else
-        (set! (-> obj fall-anim-index) 2)
-        (set! (-> obj particle-group) (-> *part-group-id-table* 192))
+        (set! (-> this fall-anim-index) 2)
+        (set! (-> this particle-group) (-> *part-group-id-table* 192))
         )
       )
     )
-  (set! (-> obj hit-points) 3)
-  (if (and (-> obj entity) (logtest? (-> obj entity extra perm status) (entity-perm-status complete)))
+  (set! (-> this hit-points) 3)
+  (if (and (-> this entity) (logtest? (-> this entity extra perm status) (entity-perm-status complete)))
       (go mis-bone-bridge-fall #t)
       (go mis-bone-bridge-idle)
       )
@@ -1343,15 +1321,11 @@
   )
 
 (deftype breakaway (process-drawable)
-  ((root-override collide-shape-moving  :offset 112)
+  ((root  collide-shape-moving :override)
    )
-  :heap-base #x40
-  :method-count-assert 22
-  :size-assert         #xb0
-  :flag-assert         #x16004000b0
   (:methods
-    (init! (_type_ res-lump int) none 20)
-    (go-idle (_type_) none 21)
+    (init! (_type_ res-lump int) none)
+    (go-idle (_type_) none)
     )
   (:states
     breakaway-about-to-fall
@@ -1362,21 +1336,21 @@
 
 
 (defstate breakaway-idle (breakaway)
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('touch)
        (send-event proc 'no-look-around (seconds 1.5))
        (go breakaway-about-to-fall)
        )
       )
     )
-  :code (the-as (function none :behavior breakaway) anim-loop)
-  :post (the-as (function none :behavior breakaway) transform-post)
+  :code anim-loop
+  :post transform-post
   )
 
 (defun actor-wait-for-period ((arg0 time-frame))
-  (let ((s5-0 (-> *display* base-frame-counter)))
-    (while (< (- (-> *display* base-frame-counter) s5-0) arg0)
+  (let ((s5-0 (current-time)))
+    (while (not (time-elapsed? s5-0 arg0))
       (suspend)
       )
     )
@@ -1386,18 +1360,18 @@
 (defstate breakaway-about-to-fall (breakaway)
   :code (behavior ()
     (sound-play "falling-bones")
-    (launch-particles (-> *part-id-table* 281) (-> self root-override trans))              
+    (launch-particles (-> *part-id-table* 281) (-> self root trans))
     (let ((gp-1 #f)
-          (s5-1 (-> *display* base-frame-counter))
+          (s5-1 (current-time))
           )
       (loop
         (ja-no-eval :group! (ja-group) :num! (seek! (ja-aframe 15.0 0)) :frame-num (ja-aframe 1.0 0))
         (until (ja-done? 0)
-          (when (and (not gp-1) (>= (- (-> *display* base-frame-counter) s5-1) (seconds 0.15)))
+          (when (and (not gp-1) (time-elapsed? s5-1 (seconds 0.15)))
             (set! gp-1 #t)
             (send-to-next-and-prev (-> self link) 'touch)
             )
-          (if (>= (- (-> *display* base-frame-counter) s5-1) (seconds 0.25))
+          (if (time-elapsed? s5-1 (seconds 0.25))
               (go breakaway-fall)
               )
           (suspend)
@@ -1405,9 +1379,8 @@
           )
         )
       )
-    (none)
     )
-  :post (the-as (function none :behavior breakaway) rider-post)
+  :post rider-post
   )
 
 (defstate breakaway-fall (breakaway)
@@ -1418,22 +1391,21 @@
           )
       (ja-no-eval :group! (ja-group) :num! (seek! (ja-aframe 32.0 0) 0.4) :frame-num (ja-aframe 16.0 0))
       (until (ja-done? 0)
-        (+! f30-0 (* f28-0 (-> *display* seconds-per-frame)))
-        (+! f28-0 (* f26-0 (-> *display* seconds-per-frame)))
-        (+! (-> self root-override trans y) f30-0)
+        (+! f30-0 (* f28-0 (seconds-per-frame)))
+        (+! f28-0 (* f26-0 (seconds-per-frame)))
+        (+! (-> self root trans y) f30-0)
         (suspend)
         (ja :num! (seek! (ja-aframe 32.0 0) 0.4))
         )
       )
     (cleanup-for-death self)
-    (none)
     )
-  :post (the-as (function none :behavior breakaway) rider-post)
+  :post rider-post
   )
 
-(defmethod init! breakaway ((obj breakaway) (arg0 res-lump) (arg1 int))
-  (logior! (-> obj mask) (process-mask platform))
-  (let ((s4-0 (new 'process 'collide-shape-moving obj (collide-list-enum hit-by-player))))
+(defmethod init! ((this breakaway) (arg0 res-lump) (arg1 int))
+  (logior! (-> this mask) (process-mask platform))
+  (let ((s4-0 (new 'process 'collide-shape-moving this (collide-list-enum hit-by-player))))
     (set! (-> s4-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s4-0 reaction) default-collision-reaction)
     (set! (-> s4-0 no-reaction)
@@ -1451,42 +1423,30 @@
       )
     (set! (-> s4-0 nav-radius) (* 0.75 (-> s4-0 root-prim local-sphere w)))
     (backup-collide-with-as s4-0)
-    (set! (-> obj root-override) s4-0)
+    (set! (-> this root) s4-0)
     )
-  (set! (-> obj link) (new 'process 'actor-link-info obj))
-  (process-drawable-from-entity! obj (the-as entity-actor arg0))
+  (set! (-> this link) (new 'process 'actor-link-info this))
+  (process-drawable-from-entity! this (the-as entity-actor arg0))
   (none)
   )
 
-(defmethod go-idle breakaway ((obj breakaway))
+(defmethod go-idle ((this breakaway))
   (go breakaway-idle)
   (none)
   )
 
 (deftype breakaway-right (breakaway)
   ()
-  :heap-base #x40
-  :method-count-assert 22
-  :size-assert         #xb0
-  :flag-assert         #x16004000b0
   )
 
 
 (deftype breakaway-mid (breakaway)
   ()
-  :heap-base #x40
-  :method-count-assert 22
-  :size-assert         #xb0
-  :flag-assert         #x16004000b0
   )
 
 
 (deftype breakaway-left (breakaway)
   ()
-  :heap-base #x40
-  :method-count-assert 22
-  :size-assert         #xb0
-  :flag-assert         #x16004000b0
   )
 
 
@@ -1505,24 +1465,24 @@
               :bounds (static-spherem 0 0 0 7)
               )
 
-(defmethod init-from-entity! breakaway-right ((obj breakaway-right) (arg0 entity-actor))
-  (init! obj arg0 3)
-  (initialize-skeleton obj *breakaway-right-sg* '())
-  (go-idle obj)
+(defmethod init-from-entity! ((this breakaway-right) (arg0 entity-actor))
+  (init! this arg0 3)
+  (initialize-skeleton this *breakaway-right-sg* '())
+  (go-idle this)
   (none)
   )
 
-(defmethod init-from-entity! breakaway-mid ((obj breakaway-mid) (arg0 entity-actor))
-  (init! obj arg0 3)
-  (initialize-skeleton obj *breakaway-mid-sg* '())
-  (go-idle obj)
+(defmethod init-from-entity! ((this breakaway-mid) (arg0 entity-actor))
+  (init! this arg0 3)
+  (initialize-skeleton this *breakaway-mid-sg* '())
+  (go-idle this)
   (none)
   )
 
-(defmethod init-from-entity! breakaway-left ((obj breakaway-left) (arg0 entity-actor))
-  (init! obj arg0 3)
-  (initialize-skeleton obj *breakaway-left-sg* '())
-  (go-idle obj)
+(defmethod init-from-entity! ((this breakaway-left) (arg0 entity-actor))
+  (init! this arg0 3)
+  (initialize-skeleton this *breakaway-left-sg* '())
+  (go-idle this)
   (none)
   )
 
@@ -1554,12 +1514,8 @@
         )
 
 (deftype bone-platform (rigid-body-platform)
-  ((anchor-point vector :inline :offset-assert 736)
+  ((anchor-point  vector  :inline)
    )
-  :heap-base #x280
-  :method-count-assert 35
-  :size-assert         #x2f0
-  :flag-assert         #x23028002f0
   )
 
 
@@ -1568,16 +1524,16 @@
               :bounds (static-spherem 0 0 0 4)
               )
 
-(defmethod rigid-body-platform-method-27 bone-platform ((obj bone-platform) (arg0 vector))
+(defmethod rigid-body-platform-method-27 ((this bone-platform) (arg0 vector))
   (let ((gp-0 (new 'stack-no-clear 'vector)))
-    (vector-! gp-0 arg0 (-> obj rbody position))
+    (vector-! gp-0 arg0 (-> this rbody position))
     (set! (-> gp-0 y) 0.0)
     (let* ((f0-1 (vector-length gp-0))
            (f1-1 (* 20.0 (fmax 0.0 (fmin 4096.0 (+ -819.2 f0-1)))))
            )
       (when (< 0.0 f1-1)
         (vector-float*! gp-0 gp-0 (/ f1-1 f0-1))
-        (rigid-body-method-15 (-> obj rbody) gp-0)
+        (rigid-body-method-15 (-> this rbody) gp-0)
         )
       )
     )
@@ -1585,12 +1541,9 @@
   (none)
   )
 
-(defmethod rigid-body-platform-method-23 bone-platform ((obj bone-platform) (arg0 float))
-  ((the-as (function rigid-body-platform basic none) (find-parent-method bone-platform 23))
-   obj
-   (the-as basic arg0)
-   )
-  (rigid-body-platform-method-27 obj (-> obj anchor-point))
+(defmethod rigid-body-platform-method-23 ((this bone-platform) (arg0 float))
+  (call-parent-method this arg0)
+  (rigid-body-platform-method-27 this (-> this anchor-point))
   0
   (none)
   )
@@ -1599,23 +1552,18 @@
   :virtual #t
   :enter (behavior ()
     (ja-channel-set! 0)
-    (none)
     )
   :code (behavior ()
     (loop
       (suspend)
       )
-    (none)
     )
-  :post (the-as (function none :behavior bone-platform) ja-post)
+  :post ja-post
   )
 
 (defstate rigid-body-platform-float (bone-platform)
   :virtual #t
-  :event (the-as
-    (function process int symbol event-message-block object :behavior bone-platform)
-    rigid-body-platform-event-handler
-    )
+  :event rigid-body-platform-event-handler
   :trans (behavior ()
     (-> self entity extra trans y)
     (cond
@@ -1624,32 +1572,30 @@
                              )
            )
        (let ((f30-1 -4096.0))
-         (seek! (-> self float-height-offset) f30-1 (* 2048.0 (-> *display* seconds-per-frame)))
+         (seek! (-> self float-height-offset) f30-1 (* 2048.0 (seconds-per-frame)))
          (if (= (-> self float-height-offset) f30-1)
              (go-virtual rigid-body-platform-idle)
              )
          )
        )
       (else
-        (seek! (-> self float-height-offset) 4096.0 (* 2048.0 (-> *display* seconds-per-frame)))
+        (seek! (-> self float-height-offset) 4096.0 (* 2048.0 (seconds-per-frame)))
         )
       )
-    (none)
     )
   :code (behavior ()
     (ja-channel-push! 1 (seconds 0.1))
-    (ja :group! (-> self draw art-group data 2))
+    (ja :group! mis-bone-platform-idle-ja)
     (ja :num-func num-func-identity :frame-num 0.0)
     (loop
       (suspend)
       )
-    (none)
     )
-  :post (the-as (function none :behavior bone-platform) rigid-body-platform-post)
+  :post rigid-body-platform-post
   )
 
-(defmethod rigid-body-platform-method-30 bone-platform ((obj bone-platform))
-  (let ((s5-0 (new 'process 'collide-shape-moving obj (collide-list-enum hit-by-player))))
+(defmethod rigid-body-platform-method-30 ((this bone-platform))
+  (let ((s5-0 (new 'process 'collide-shape-moving this (collide-list-enum hit-by-player))))
     (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s5-0 reaction) default-collision-reaction)
     (set! (-> s5-0 no-reaction)
@@ -1667,22 +1613,22 @@
       )
     (set! (-> s5-0 nav-radius) (* 0.75 (-> s5-0 root-prim local-sphere w)))
     (backup-collide-with-as s5-0)
-    (set! (-> obj root-overlay) s5-0)
+    (set! (-> this root-overlay) s5-0)
     )
   0
   (none)
   )
 
-(defmethod rigid-body-platform-method-31 bone-platform ((obj bone-platform))
-  (initialize-skeleton obj *mis-bone-platform-sg* '())
-  (rigid-body-platform-method-29 obj *bone-platform-constants*)
-  (set! (-> obj float-height-offset) -4096.0)
-  (if (name= (-> obj name) "bone-platform-5")
-      (set-vector! (-> obj root-overlay scale) 0.8 1.0 0.8 1.0)
+(defmethod rigid-body-platform-method-31 ((this bone-platform))
+  (initialize-skeleton this *mis-bone-platform-sg* '())
+  (rigid-body-platform-method-29 this *bone-platform-constants*)
+  (set! (-> this float-height-offset) -4096.0)
+  (if (name= (-> this name) "bone-platform-5")
+      (set-vector! (-> this root-overlay scale) 0.8 1.0 0.8 1.0)
       )
-  (let ((s5-0 (-> obj info control-point-count)))
+  (let ((s5-0 (-> this info control-point-count)))
     (dotimes (s4-0 s5-0)
-      (let ((s3-0 (-> obj control-point-array data s4-0)))
+      (let ((s3-0 (-> this control-point-array data s4-0)))
         (let ((f30-0 (* 65536.0 (/ (the float s4-0) (the float s5-0)))))
           (set! (-> s3-0 local-pos x) (* 12288.0 (sin f30-0)))
           (set! (-> s3-0 local-pos y) -12288.0)
@@ -1692,16 +1638,13 @@
         )
       )
     )
-  (set! (-> obj anchor-point quad) (-> obj root-overlay trans quad))
+  (set! (-> this anchor-point quad) (-> this root-overlay trans quad))
   0
   (none)
   )
 
 (deftype mistycam (process-hidden)
   ()
-  :method-count-assert 15
-  :size-assert         #x70
-  :flag-assert         #xf00000070
   )
 
 
@@ -1751,10 +1694,6 @@
 
 (deftype misty-battlecontroller (battlecontroller)
   ()
-  :heap-base #x210
-  :method-count-assert 29
-  :size-assert         #x27c
-  :flag-assert         #x1d0210027c
   )
 
 
@@ -1771,13 +1710,12 @@
         )
       )
     (go-virtual battlecontroller-active)
-    (none)
     )
   )
 
-(defmethod battlecontroller-method-27 misty-battlecontroller ((obj misty-battlecontroller))
-  ((the-as (function battlecontroller none) (find-parent-method misty-battlecontroller 27)) obj)
-  (set! (-> obj misty-ambush-collision-hack) #t)
+(defmethod battlecontroller-method-27 ((this misty-battlecontroller))
+  (call-parent-method this)
+  (set! (-> this misty-ambush-collision-hack) #t)
   0
   (none)
   )
@@ -1824,12 +1762,8 @@
   )
 
 (deftype boat-fuelcell (process-drawable)
-  ((play-cutscene? symbol  :offset-assert 176)
+  ((play-cutscene?  symbol)
    )
-  :heap-base #x50
-  :method-count-assert 20
-  :size-assert         #xb4
-  :flag-assert         #x14005000b4
   (:states
     boat-fuelcell-die
     boat-fuelcell-idle
@@ -1839,8 +1773,8 @@
 
 
 (defstate boat-fuelcell-idle (boat-fuelcell)
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('task-complete)
        (set! (-> self play-cutscene?) #t)
        (process-entity-status! self (entity-perm-status complete) #t)
@@ -1848,14 +1782,11 @@
        )
       )
     )
-  :code (the-as (function none :behavior boat-fuelcell) anim-loop)
+  :code anim-loop
   )
 
 (defstate boat-fuelcell-spawn (boat-fuelcell)
-  :event (the-as
-    (function process int symbol event-message-block object :behavior boat-fuelcell)
-    process-drawable-fuel-cell-handler
-    )
+  :event process-drawable-fuel-cell-handler
   :code (behavior ()
     (process-drawable-birth-fuel-cell (the-as entity #f) (the-as vector #f) #f)
     (when (and *target* (-> self play-cutscene?))
@@ -1875,23 +1806,21 @@
       (suspend)
       )
     (go boat-fuelcell-die)
-    (none)
     )
   )
 
 (defstate boat-fuelcell-die (boat-fuelcell)
   :code (behavior ()
     (cleanup-for-death self)
-    (none)
     )
   )
 
-(defmethod init-from-entity! boat-fuelcell ((obj boat-fuelcell) (arg0 entity-actor))
-  (set! (-> obj root) (new 'process 'trsqv))
-  (process-drawable-from-entity! obj arg0)
-  (logclear! (-> obj mask) (process-mask actor-pause))
-  (set! (-> obj play-cutscene?) #f)
-  (if (and (-> obj entity) (logtest? (-> obj entity extra perm status) (entity-perm-status complete)))
+(defmethod init-from-entity! ((this boat-fuelcell) (arg0 entity-actor))
+  (set! (-> this root) (new 'process 'trsqv))
+  (process-drawable-from-entity! this arg0)
+  (logclear! (-> this mask) (process-mask actor-pause))
+  (set! (-> this play-cutscene?) #f)
+  (if (and (-> this entity) (logtest? (-> this entity extra perm status) (entity-perm-status complete)))
       (go boat-fuelcell-spawn)
       (go boat-fuelcell-idle)
       )

@@ -182,34 +182,28 @@
    (z float :offset  64 :size  32)
    (w float :offset  96 :size  32)
    )
-  :method-count-assert 9
-  :size-assert         #x10
-  :flag-assert         #x900000010
   )
 
-(defmethod print vec4s ((obj vec4s))
+(defmethod print ((this vec4s))
   "Custom print for vec4s that prints the 4 values."
   (format #t "#<vector ~F ~F ~F ~F @ #x~X>"
-          (-> obj x)
-          (-> obj y)
-          (-> obj z)
-          (-> obj w)
-          obj)
-  obj
+          (-> this x)
+          (-> this y)
+          (-> this z)
+          (-> this w)
+          this)
+  this
   )
 
 ;; vector: main 4-element floating point vector.
 (deftype vector (structure)
-  ((data float   4 :offset-assert   0)
-   (x    float     :offset          0)
-   (y    float     :offset          4)
-   (z    float     :offset          8)
-   (w    float     :offset         12)
-   (quad uint128   :offset          0)
+  ((data  float    4)
+   (x     float    :overlay-at (-> data 0))
+   (y     float    :overlay-at (-> data 1))
+   (z     float    :overlay-at (-> data 2))
+   (w     float    :overlay-at (-> data 3))
+   (quad  uint128  :overlay-at (-> data 0))
    )
-  :method-count-assert 9
-  :size-assert         #x10
-  :flag-assert         #x900000010
   )
 
 (defmacro print128 (value &key (stream #t))
@@ -235,25 +229,25 @@
 ;; bfloat: boxed float type. A floating point number with type information.
 ;; It's a heap allocated basic.
 (deftype bfloat (basic)
-  ((data float  :offset-assert   4)
+  ((data float)
    )
   :method-count-assert 9
   :size-assert         #x8
   :flag-assert         #x900000008
   )
 
-(defmethod print bfloat ((obj bfloat))
-  (format #t "~f" (-> obj data))
-  obj
+(defmethod print ((this bfloat))
+  (format #t "~f" (-> this data))
+  this
   )
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Type System
 ;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defmethod asize-of type ((obj type))
+(defmethod asize-of ((this type))
   "Get the size in memory of a type. The value calculated here is wrong."
-  (the-as int (logand (the-as uint #xfffffff0) (+ (* (-> obj allocated-length) 4) 43)))
+  (the-as int (logand (the-as uint #xfffffff0) (+ (* (-> this allocated-length) 4) 43)))
   )
 
 (defun basic-type? ((arg0 basic) (arg1 type))
@@ -323,6 +317,12 @@
   v0-0
   )
 
+(defmacro call-parent-method (&rest args)
+  "Find the first different implementation of the current method in a parent type and call it with these arguments."
+  `((the (current-method-function-type) (find-parent-method (current-method-type) (current-method-id)))
+    ,@args)
+  )
+
 (defun ref ((arg0 object) (arg1 int))
   "Get the n-th item in a linked list. No range checking."
   (dotimes (v1-0 arg1)
@@ -333,15 +333,15 @@
   (car arg0)
   )
 
-(defmethod length pair ((obj pair))
+(defmethod length ((this pair))
   "Get the length of a linked list."
   (local-vars (v0-0 int))
   (cond
-    ((null? obj)
+    ((null? this)
      (set! v0-0 0)
      )
     (else
-      (let ((v1-1 (cdr obj)))
+      (let ((v1-1 (cdr this)))
         (set! v0-0 1)
         (while (and (not (null? v1-1)) (pair? v1-1))
           (+! v0-0 1)
@@ -353,7 +353,7 @@
   v0-0
   )
 
-(defmethod asize-of pair ((obj pair))
+(defmethod asize-of ((this pair))
   "Get the size in memory of a pair."
   (the-as int (-> pair size))
   )
@@ -371,7 +371,7 @@
   )
 
 (defun member ((arg0 object) (arg1 object))
-  "Is obj in the list lst? Returns pair with obj as its car, or #f if not found."
+  "Is this in the list lst? Returns pair with this as its car, or #f if not found."
   (let ((v1-0 arg1))
     (while (not (or (null? v1-0) (= (car v1-0) arg0)))
       (set! v1-0 (cdr v1-0))
@@ -386,7 +386,7 @@
 (define-extern name= (function object object symbol))
 
 (defun nmember ((arg0 basic) (arg1 object))
-  "Is obj in the list lst? Check with the name= function."
+  "Is this in the list lst? Check with the name= function."
   (while (not (or (null? arg1) (name= (car arg1) arg0)))
     (set! arg1 (cdr arg1))
     )
@@ -580,15 +580,12 @@
 ;; however, as far as we've seen, nothing actually reads the stride.
 
 (deftype inline-array-class (basic)
-  ((length           int32          :offset-assert   4)
-   (allocated-length int32          :offset-assert   8)
-   (_data            uint8 :dynamic :offset         16)
+  ((length           int32)
+   (allocated-length int32)
+   (_data            uint8 :dynamic :offset 16)
    )
-  :method-count-assert 9
-  :size-assert         #x10
-  :flag-assert         #x900000010
   (:methods
-    (new (symbol type int) _type_ 0)
+    (new (symbol type int) _type_)
     )
   )
 
@@ -610,15 +607,15 @@
     )
   )
 
-(defmethod length inline-array-class ((obj inline-array-class))
+(defmethod length ((this inline-array-class))
   "Get the length of the inline-array-class. This is the length field,
    not how much storage there is"
-  (-> obj length)
+  (-> this length)
   )
 
-(defmethod asize-of inline-array-class ((obj inline-array-class))
+(defmethod asize-of ((this inline-array-class))
   "Get the size in memory of an inline-array-class."
-  (the-as int (+ (-> obj type size) (* (-> obj allocated-length) (the-as int (-> obj type heap-base)))))
+  (the-as int (+ (-> this type size) (* (-> this allocated-length) (the-as int (-> this type heap-base)))))
   )
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -657,241 +654,241 @@
     )
   )
 
-(defmethod print array ((obj array))
+(defmethod print ((this array))
   (format #t "#(")
   (cond
-    ((type-type? (-> obj content-type) integer)
-     (case (-> obj content-type symbol)
+    ((type-type? (-> this content-type) integer)
+     (case (-> this content-type symbol)
        (('int32)
-        (dotimes (s5-0 (-> obj length))
+        (dotimes (s5-0 (-> this length))
           (format
             #t
             (if (zero? s5-0)
                 "~D"
                 " ~D"
                 )
-            (-> (the-as (array int32) obj) s5-0)
+            (-> (the-as (array int32) this) s5-0)
             )
           )
         )
        (('uint32)
-        (dotimes (s5-1 (-> obj length))
+        (dotimes (s5-1 (-> this length))
           (format
             #t
             (if (zero? s5-1)
                 "~D"
                 " ~D"
                 )
-            (-> (the-as (array uint32) obj) s5-1)
+            (-> (the-as (array uint32) this) s5-1)
             )
           )
         )
        (('int64)
-        (dotimes (s5-2 (-> obj length))
+        (dotimes (s5-2 (-> this length))
           (format
             #t
             (if (zero? s5-2)
                 "~D"
                 " ~D"
                 )
-            (-> (the-as (array int64) obj) s5-2)
+            (-> (the-as (array int64) this) s5-2)
             )
           )
         )
        (('uint64)
-        (dotimes (s5-3 (-> obj length))
+        (dotimes (s5-3 (-> this length))
           (format
             #t
             (if (zero? s5-3)
                 "#x~X"
                 " #x~X"
                 )
-            (-> (the-as (array uint64) obj) s5-3)
+            (-> (the-as (array uint64) this) s5-3)
             )
           )
         )
        (('int8)
-        (dotimes (s5-4 (-> obj length))
+        (dotimes (s5-4 (-> this length))
           (format
             #t
             (if (zero? s5-4)
                 "~D"
                 " ~D"
                 )
-            (-> (the-as (array int8) obj) s5-4)
+            (-> (the-as (array int8) this) s5-4)
             )
           )
         )
        (('uint8)
-        (dotimes (s5-5 (-> obj length))
+        (dotimes (s5-5 (-> this length))
           (format
             #t
             (if (zero? s5-5)
                 "~D"
                 " ~D"
                 )
-            (-> (the-as (array uint8) obj) s5-5)
+            (-> (the-as (array uint8) this) s5-5)
             )
           )
         )
        (('int16)
-        (dotimes (s5-6 (-> obj length))
+        (dotimes (s5-6 (-> this length))
           (format
             #t
             (if (zero? s5-6)
                 "~D"
                 " ~D"
                 )
-            (-> (the-as (array int16) obj) s5-6)
+            (-> (the-as (array int16) this) s5-6)
             )
           )
         )
        (('uint16)
-        (dotimes (s5-7 (-> obj length))
+        (dotimes (s5-7 (-> this length))
           (format
             #t
             (if (zero? s5-7)
                 "~D"
                 " ~D"
                 )
-            (-> (the-as (array uint16) obj) s5-7)
+            (-> (the-as (array uint16) this) s5-7)
             )
           )
         )
        (('uint128 'int128)
-        (dotimes (s5-8 (-> obj length))
+        (dotimes (s5-8 (-> this length))
           (format
             #t
             (if (zero? s5-8)
                 "#x~X"
                 " #x~X"
                 )
-            (-> (the-as (array uint128) obj) s5-8)
+            (-> (the-as (array uint128) this) s5-8)
             )
           )
         )
        (else
-         (dotimes (s5-9 (-> obj length))
+         (dotimes (s5-9 (-> this length))
            (format
              #t
              (if (zero? s5-9)
                  "~D"
                  " ~D"
                  )
-             (-> (the-as (array int32) obj) s5-9)
+             (-> (the-as (array int32) this) s5-9)
              )
            )
          )
        )
      )
-    ((= (-> obj content-type) float)
-     (dotimes (s5-10 (-> obj length))
+    ((= (-> this content-type) float)
+     (dotimes (s5-10 (-> this length))
        (if (zero? s5-10)
-           (format #t "~f" (-> (the-as (array float) obj) s5-10))
-           (format #t " ~f" (-> (the-as (array float) obj) s5-10))
+           (format #t "~f" (-> (the-as (array float) this) s5-10))
+           (format #t " ~f" (-> (the-as (array float) this) s5-10))
            )
        )
      )
     (else
-      (dotimes (s5-11 (-> obj length))
+      (dotimes (s5-11 (-> this length))
         (if (zero? s5-11)
-            (format #t "~A" (-> (the-as (array basic) obj) s5-11))
-            (format #t " ~A" (-> (the-as (array basic) obj) s5-11))
+            (format #t "~A" (-> (the-as (array basic) this) s5-11))
+            (format #t " ~A" (-> (the-as (array basic) this) s5-11))
             )
         )
       )
     )
   (format #t ")")
-  obj
+  this
   )
 
-(defmethod inspect array ((obj array))
+(defmethod inspect ((this array))
   "Inspect an array"
-  (format #t "[~8x] ~A~%" obj (-> obj type))
-  (format #t "~Tallocated-length: ~D~%" (-> obj allocated-length))
-  (format #t "~Tlength: ~D~%" (-> obj length))
-  (format #t "~Tcontent-type: ~A~%" (-> obj content-type))
-  (format #t "~Tdata[~D]: @ #x~X~%" (-> obj allocated-length) (-> obj data))
+  (format #t "[~8x] ~A~%" this (-> this type))
+  (format #t "~Tallocated-length: ~D~%" (-> this allocated-length))
+  (format #t "~Tlength: ~D~%" (-> this length))
+  (format #t "~Tcontent-type: ~A~%" (-> this content-type))
+  (format #t "~Tdata[~D]: @ #x~X~%" (-> this allocated-length) (-> this data))
   (cond
-    ((and (= (logand (the-as int (-> obj content-type)) 7) 4) (type-type? (-> obj content-type) integer))
-     (case (-> obj content-type symbol)
+    ((and (= (logand (the-as int (-> this content-type)) 7) 4) (type-type? (-> this content-type) integer))
+     (case (-> this content-type symbol)
        (('int32)
-        (dotimes (s5-0 (-> obj length))
-          (format #t "~T  [~D] ~D~%" s5-0 (-> (the-as (array int32) obj) s5-0))
+        (dotimes (s5-0 (-> this length))
+          (format #t "~T  [~D] ~D~%" s5-0 (-> (the-as (array int32) this) s5-0))
           )
         )
        (('uint32)
-        (dotimes (s5-1 (-> obj length))
-          (format #t "~T  [~D] ~D~%" s5-1 (-> (the-as (array uint32) obj) s5-1))
+        (dotimes (s5-1 (-> this length))
+          (format #t "~T  [~D] ~D~%" s5-1 (-> (the-as (array uint32) this) s5-1))
           )
         )
        (('int64)
-        (dotimes (s5-2 (-> obj length))
-          (format #t "~T  [~D] ~D~%" s5-2 (-> (the-as (array int64) obj) s5-2))
+        (dotimes (s5-2 (-> this length))
+          (format #t "~T  [~D] ~D~%" s5-2 (-> (the-as (array int64) this) s5-2))
           )
         )
        (('uint64)
-        (dotimes (s5-3 (-> obj length))
-          (format #t "~T  [~D] #x~X~%" s5-3 (-> (the-as (array uint64) obj) s5-3))
+        (dotimes (s5-3 (-> this length))
+          (format #t "~T  [~D] #x~X~%" s5-3 (-> (the-as (array uint64) this) s5-3))
           )
         )
        (('int8)
-        (dotimes (s5-4 (-> obj length))
-          (format #t "~T  [~D] ~D~%" s5-4 (-> (the-as (array int8) obj) s5-4))
+        (dotimes (s5-4 (-> this length))
+          (format #t "~T  [~D] ~D~%" s5-4 (-> (the-as (array int8) this) s5-4))
           )
         )
        (('uint8)
-        (dotimes (s5-5 (-> obj length))
-          (format #t "~T  [~D] ~D~%" s5-5 (-> (the-as (array int8) obj) s5-5))
+        (dotimes (s5-5 (-> this length))
+          (format #t "~T  [~D] ~D~%" s5-5 (-> (the-as (array int8) this) s5-5))
           )
         )
        (('int16)
-        (dotimes (s5-6 (-> obj length))
-          (format #t "~T  [~D] ~D~%" s5-6 (-> (the-as (array int16) obj) s5-6))
+        (dotimes (s5-6 (-> this length))
+          (format #t "~T  [~D] ~D~%" s5-6 (-> (the-as (array int16) this) s5-6))
           )
         )
        (('uint16)
-        (dotimes (s5-7 (-> obj length))
-          (format #t "~T  [~D] ~D~%" s5-7 (-> (the-as (array uint16) obj) s5-7))
+        (dotimes (s5-7 (-> this length))
+          (format #t "~T  [~D] ~D~%" s5-7 (-> (the-as (array uint16) this) s5-7))
           )
         )
        (('int128 'uint128)
-        (dotimes (s5-8 (-> obj length))
-          (format #t "~T  [~D] #x~X~%" s5-8 (-> (the-as (array uint128) obj) s5-8))
+        (dotimes (s5-8 (-> this length))
+          (format #t "~T  [~D] #x~X~%" s5-8 (-> (the-as (array uint128) this) s5-8))
           )
         )
        (else
-         (dotimes (s5-9 (-> obj length))
-           (format #t "~T  [~D] ~D~%" s5-9 (-> (the-as (array int32) obj) s5-9))
+         (dotimes (s5-9 (-> this length))
+           (format #t "~T  [~D] ~D~%" s5-9 (-> (the-as (array int32) this) s5-9))
            )
          )
        )
      )
-    ((= (-> obj content-type) float)
-     (dotimes (s5-10 (-> obj length))
-       (format #t "~T  [~D] ~f~%" s5-10 (-> (the-as (array float) obj) s5-10))
+    ((= (-> this content-type) float)
+     (dotimes (s5-10 (-> this length))
+       (format #t "~T  [~D] ~f~%" s5-10 (-> (the-as (array float) this) s5-10))
        )
      )
     (else
-      (dotimes (s5-11 (-> obj length))
-        (format #t "~T  [~D] ~A~%" s5-11 (-> (the-as (array basic) obj) s5-11))
+      (dotimes (s5-11 (-> this length))
+        (format #t "~T  [~D] ~A~%" s5-11 (-> (the-as (array basic) this) s5-11))
         )
       )
     )
-  obj
+  this
   )
 
-(defmethod length array ((obj array))
+(defmethod length ((this array))
   "Get the length of an array"
-  (-> obj length)
+  (-> this length)
   )
 
-(defmethod asize-of array ((obj array))
+(defmethod asize-of ((this array))
   "Get the size in memory of an array"
   (the-as
     int
-    (+ (-> obj type size) (* (-> obj allocated-length) (if (type-type? (-> obj content-type) number)
-                                                           (the-as int (-> obj content-type size))
+    (+ (-> this type size) (* (-> this allocated-length) (if (type-type? (-> this content-type) number)
+                                                           (the-as int (-> this content-type size))
                                                            4
                                                            )
                              )
@@ -1008,15 +1005,15 @@
   ((method-of-type (rtype-of arg0) print) arg0)
   )
 
-(defmacro printl (obj)
+(defmacro printl (this)
   "Print out a boxed object and a newline.
    Note: we define both a macro and a function on purpose.
    The compiler will use the macro over the function, which will
    allow it to pick the correct print method for non-boxed objects"
   `(begin
-     (print ,obj)
+     (print ,this)
      (format #t "~%")
-     ,obj
+     ,this
      )
   )
 
@@ -1091,7 +1088,7 @@
 (define-extern boolean type) ;; not really... but they use it here as if it was one.
 (define-extern valid? (function object type string symbol object symbol))
 
-(defun valid? ((obj object) (expected-type type) (name string) (allow-false symbol) (print-dest object))
+(defun valid? ((this object) (expected-type type) (name string) (allow-false symbol) (print-dest object))
   "Check if the given object is valid. This will work for structures, pairs, basics, bintegers, symbols, and types.
    If you set expected-type to #f, it just checks for a 4-byte aligned address that's in GOAL memory.
    If you're checking a structure, set expected-type to structure. This requires 16-byte alignment
@@ -1105,21 +1102,21 @@
    Use a name of #f to suppress error prints.
    "
   (let ((v1-1
-          (and (>= (the-as uint obj) (start-of-symbol-table)) (< (the-as uint obj) END_OF_MEMORY))
+          (and (>= (the-as uint this) (start-of-symbol-table)) (< (the-as uint this) END_OF_MEMORY))
           )
         )
     (cond
       ((not expected-type)
        (cond
-         ((logtest? (the-as int obj) 3)
+         ((logtest? (the-as int this) 3)
           (if name
-              (format print-dest "ERROR: object #x~X ~S is not a valid object (misaligned)~%" obj name)
+              (format print-dest "ERROR: object #x~X ~S is not a valid object (misaligned)~%" this name)
               )
           #f
           )
          ((not v1-1)
           (if name
-              (format print-dest "ERROR: object #x~X ~S is not a valid object (bad address)~%" obj name)
+              (format print-dest "ERROR: object #x~X ~S is not a valid object (bad address)~%" this name)
               )
           #f
           )
@@ -1128,20 +1125,20 @@
            )
          )
        )
-      ((and allow-false (not obj))
+      ((and allow-false (not this))
        #t
        )
       ((= expected-type structure)
        (cond
-         ((logtest? (the-as int obj) 15)
+         ((logtest? (the-as int this) 15)
           (if name
-              (format print-dest "ERROR: object #x~X ~S is not a valid object of type '~A' (misaligned)~%" obj name expected-type)
+              (format print-dest "ERROR: object #x~X ~S is not a valid object of type '~A' (misaligned)~%" this name expected-type)
               )
           #f
           )
-         ((or (not v1-1) (< (the-as uint obj) (end-of-symbol-table)))
+         ((or (not v1-1) (< (the-as uint this) (end-of-symbol-table)))
           (if name
-              (format print-dest "ERROR: object #x~X ~S is not a valid object of type '~A' (bad address)~%" obj name expected-type)
+              (format print-dest "ERROR: object #x~X ~S is not a valid object of type '~A' (bad address)~%" this name expected-type)
               )
           #f
           )
@@ -1152,15 +1149,15 @@
        )
       ((= expected-type pair)
        (cond
-         ((not (pair? obj))
+         ((not (pair? this))
           (if name
-              (format print-dest "ERROR: object #x~X ~S is not a valid object of type '~A' (misaligned)~%" obj name expected-type)
+              (format print-dest "ERROR: object #x~X ~S is not a valid object of type '~A' (misaligned)~%" this name expected-type)
               )
           #f
           )
          ((not v1-1)
           (if name
-              (format print-dest "ERROR: object #x~X ~S is not a valid object of type '~A' (bad address)~%" obj name expected-type)
+              (format print-dest "ERROR: object #x~X ~S is not a valid object of type '~A' (bad address)~%" this name expected-type)
               )
           #f
           )
@@ -1171,12 +1168,12 @@
        )
       ((= expected-type binteger)
        (cond
-         ((zero? (logand (the-as int obj) 7))
+         ((zero? (logand (the-as int this) 7))
           #t
           )
          (else
            (if name
-               (format print-dest "ERROR: object #x~X ~S is not a valid object of type '~A' (misaligned)~%" obj name expected-type)
+               (format print-dest "ERROR: object #x~X ~S is not a valid object of type '~A' (misaligned)~%" this name expected-type)
                )
            #f
            )
@@ -1184,15 +1181,15 @@
        )
       ((or (= expected-type symbol) (= expected-type boolean))
        (cond
-         ((zero? (logand (the-as int obj) 1))
+         ((zero? (logand (the-as int this) 1))
           (if name
-              (format print-dest "ERROR: object #x~X ~S is not a valid object of type '~A' (misaligned)~%" obj name expected-type)
+              (format print-dest "ERROR: object #x~X ~S is not a valid object of type '~A' (misaligned)~%" this name expected-type)
               )
           #f
           )
-         ((or (not v1-1) (< (the-as int obj) (start-of-symbol-table))(>= (the-as int obj) (end-of-symbol-table)))
+         ((or (not v1-1) (< (the-as int this) (start-of-symbol-table))(>= (the-as int this) (end-of-symbol-table)))
           (if name
-              (format print-dest "ERROR: object #x~X ~S is not a valid object of type '~A' (bad address)~%" obj name expected-type)
+              (format print-dest "ERROR: object #x~X ~S is not a valid object of type '~A' (bad address)~%" this name expected-type)
               )
           #f
           )
@@ -1201,65 +1198,65 @@
            )
          )
        )
-      ((!= (logand (the-as int obj) 7) 4)
+      ((!= (logand (the-as int this) 7) 4)
        (if name
-           (format print-dest "ERROR: object #x~X ~S is not a valid object of type '~A' (misaligned)~%" obj name expected-type)
+           (format print-dest "ERROR: object #x~X ~S is not a valid object of type '~A' (misaligned)~%" this name expected-type)
            )
        #f
        )
       ((not v1-1)
        (if name
-           (format print-dest "ERROR: object #x~X ~S is not a valid object of type '~A' (bad address)~%" obj name expected-type)
+           (format print-dest "ERROR: object #x~X ~S is not a valid object of type '~A' (bad address)~%" this name expected-type)
            )
        #f
        )
-      ((and (= expected-type type) (!= (rtype-of obj) type))
+      ((and (= expected-type type) (!= (rtype-of this) type))
        (if name
            (format
              print-dest
              "ERROR: object #x~X ~S is not a valid object of type '~A' (invalid type #x~X)~%"
-             obj
+             this
              name
              expected-type
-             (rtype-of obj)
+             (rtype-of this)
              )
            )
        #f
        )
-      ((and (!= expected-type type) (not (valid? (rtype-of obj) type (the-as string #f) #t 0)))
+      ((and (!= expected-type type) (not (valid? (rtype-of this) type (the-as string #f) #t 0)))
        (if name
            (format
              print-dest
              "ERROR: object #x~X ~S is not a valid object of type '~A' (invalid type #x~X)~%"
-             obj
+             this
              name
              expected-type
-             (rtype-of obj)
+             (rtype-of this)
              )
            )
        #f
        )
-      ((not (type? obj expected-type))
+      ((not (type? this expected-type))
        (if name
            (format
              print-dest
              "ERROR: object #x~X ~S is not a valid object of type '~A' (is type '~A' instead)~%"
-             obj
+             this
              name
              expected-type
-             (rtype-of obj)
+             (rtype-of this)
              )
            )
        #f
        )
       ((= expected-type symbol)
        (cond
-         ((>= (the-as uint obj) (end-of-symbol-table))
+         ((>= (the-as uint this) (end-of-symbol-table))
           (if name
               (format
                 print-dest
                 "ERROR: object #x~X ~S is not a valid object of type '~A' (not in symbol table)~%"
-                obj
+                this
                 name
                 expected-type
                 )
@@ -1271,12 +1268,12 @@
            )
          )
        )
-      ((< (the-as uint obj) (end-of-symbol-table))
+      ((< (the-as uint this) (end-of-symbol-table))
        (if name
            (format
              print-dest
              "ERROR: object #x~X ~S is not a valid object of type '~A' (inside symbol table)~%"
-             obj
+             this
              name
              expected-type
              )

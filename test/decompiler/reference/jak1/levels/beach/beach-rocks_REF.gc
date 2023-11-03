@@ -234,67 +234,62 @@
 
 ;; definition of type beach-rock
 (deftype beach-rock (process-drawable)
-  ((root-override collide-shape-moving      :offset        112)
-   (trigger       basic                     :offset-assert 176)
-   (movie-start   time-frame                :offset-assert 184)
-   (part-falling  sparticle-launch-control  :offset-assert 192)
-   (part-landing  sparticle-launch-control  :offset-assert 196)
-   (prev-frame    float                     :offset-assert 200)
+  ((root          collide-shape-moving :override)
+   (trigger       basic)
+   (movie-start   time-frame)
+   (part-falling  sparticle-launch-control)
+   (part-landing  sparticle-launch-control)
+   (prev-frame    float)
    )
-  :heap-base #x60
-  :method-count-assert 24
-  :size-assert         #xcc
-  :flag-assert         #x18006000cc
-  (:methods
-    (idle () _type_ :state 20)
-    (loading () _type_ :state 21)
-    (falling () _type_ :state 22)
-    (fallen () _type_ :state 23)
+  (:state-methods
+    idle
+    loading
+    falling
+    fallen
     )
   )
 
 ;; definition for method 3 of type beach-rock
-(defmethod inspect beach-rock ((obj beach-rock))
+(defmethod inspect ((this beach-rock))
   (let ((t9-0 (method-of-type process-drawable inspect)))
-    (t9-0 obj)
+    (t9-0 this)
     )
-  (format #t "~T~Ttrigger: ~A~%" (-> obj trigger))
-  (format #t "~T~Tmovie-start: ~D~%" (-> obj movie-start))
-  (format #t "~T~Tpart-falling: ~A~%" (-> obj part-falling))
-  (format #t "~T~Tpart-landing: ~A~%" (-> obj part-landing))
-  (format #t "~T~Tprev-frame: ~f~%" (-> obj prev-frame))
-  obj
+  (format #t "~T~Ttrigger: ~A~%" (-> this trigger))
+  (format #t "~T~Tmovie-start: ~D~%" (-> this movie-start))
+  (format #t "~T~Tpart-falling: ~A~%" (-> this part-falling))
+  (format #t "~T~Tpart-landing: ~A~%" (-> this part-landing))
+  (format #t "~T~Tprev-frame: ~f~%" (-> this prev-frame))
+  this
   )
 
 ;; definition for method 7 of type beach-rock
-;; INFO: Return type mismatch none vs beach-rock.
-(defmethod relocate beach-rock ((obj beach-rock) (arg0 int))
-  (if (nonzero? (-> obj part-falling))
-      (set! (-> obj part-falling) (the-as sparticle-launch-control (+ (the-as int (-> obj part-falling)) arg0)))
+(defmethod relocate ((this beach-rock) (arg0 int))
+  (if (nonzero? (-> this part-falling))
+      (set! (-> this part-falling) (the-as sparticle-launch-control (+ (the-as int (-> this part-falling)) arg0)))
       )
-  (if (nonzero? (-> obj part-landing))
-      (set! (-> obj part-landing) (the-as sparticle-launch-control (+ (the-as int (-> obj part-landing)) arg0)))
+  (if (nonzero? (-> this part-landing))
+      (set! (-> this part-landing) (the-as sparticle-launch-control (+ (the-as int (-> this part-landing)) arg0)))
       )
-  (the-as beach-rock ((the-as (function process-drawable int none) (find-parent-method beach-rock 7)) obj arg0))
+  (call-parent-method this arg0)
   )
 
 ;; definition for method 10 of type beach-rock
-(defmethod deactivate beach-rock ((obj beach-rock))
-  (if (nonzero? (-> obj part-falling))
-      (kill-and-free-particles (-> obj part-falling))
+(defmethod deactivate ((this beach-rock))
+  (if (nonzero? (-> this part-falling))
+      (kill-and-free-particles (-> this part-falling))
       )
-  (if (nonzero? (-> obj part-landing))
-      (kill-and-free-particles (-> obj part-landing))
+  (if (nonzero? (-> this part-landing))
+      (kill-and-free-particles (-> this part-landing))
       )
-  ((the-as (function process-drawable none) (find-parent-method beach-rock 10)) obj)
+  (call-parent-method this)
   (none)
   )
 
 ;; failed to figure out what this is:
 (defstate idle (beach-rock)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('trigger)
        (set! (-> self trigger) #t)
        (go-virtual falling)
@@ -314,7 +309,6 @@
       (logior! (-> self mask) (process-mask sleep))
       (suspend)
       )
-    (none)
     )
   )
 
@@ -327,7 +321,6 @@
       (spool-push *art-control* "lrocklrg-falling" 0 self -1.0)
       (suspend)
       )
-    (none)
     )
   )
 
@@ -339,7 +332,7 @@
     (let ((f30-0 (ja-aframe-num 0)))
       (when (and (< -50.0 f30-0) (< f30-0 158.0))
         (let ((gp-0 (new 'stack-no-clear 'vector)))
-          (set! (-> gp-0 quad) (-> self root-override trans quad))
+          (set! (-> gp-0 quad) (-> self root trans quad))
           (spawn (-> self part) gp-0)
           (+! (-> gp-0 x) 122880.0)
           (+! (-> gp-0 z) 102400.0)
@@ -347,23 +340,37 @@
           )
         )
       (if (and (< 200.0 f30-0) (< f30-0 275.0))
-          (spawn (-> self part-falling) (vector<-cspace! (new 'stack-no-clear 'vector) (-> self node-list data 3)))
+          (spawn
+            (-> self part-falling)
+            (vector<-cspace! (new 'stack-no-clear 'vector) (joint-node lrocklrg-lod0-jg Lrocklrg))
+            )
           )
       (if (and (< 270.0 f30-0) (< f30-0 333.0))
-          (spawn (-> self part-falling) (vector<-cspace! (new 'stack-no-clear 'vector) (-> self node-list data 4)))
+          (spawn
+            (-> self part-falling)
+            (vector<-cspace! (new 'stack-no-clear 'vector) (joint-node lrocklrg-lod0-jg platformrock))
+            )
           )
       (if (and (< (-> self prev-frame) 333.0) (>= f30-0 333.0))
-          (spawn (-> self part-landing) (vector<-cspace! (new 'stack-no-clear 'vector) (-> self node-list data 4)))
+          (spawn
+            (-> self part-landing)
+            (vector<-cspace! (new 'stack-no-clear 'vector) (joint-node lrocklrg-lod0-jg platformrock))
+            )
           )
       (if (and (< 169.0 f30-0) (< f30-0 202.0))
-          (spawn (-> self part-falling) (vector<-cspace! (new 'stack-no-clear 'vector) (-> self node-list data 5)))
+          (spawn
+            (-> self part-falling)
+            (vector<-cspace! (new 'stack-no-clear 'vector) (joint-node lrocklrg-lod0-jg Rrocklrg))
+            )
           )
       (if (and (< 240.0 f30-0) (< f30-0 270.0))
-          (spawn (-> self part-falling) (vector<-cspace! (new 'stack-no-clear 'vector) (-> self node-list data 6)))
+          (spawn
+            (-> self part-falling)
+            (vector<-cspace! (new 'stack-no-clear 'vector) (joint-node lrocklrg-lod0-jg smlrock))
+            )
           )
       (set! (-> self prev-frame) f30-0)
       )
-    (none)
     )
   :code (behavior ()
     (local-vars (v1-3 symbol) (v1-49 symbol))
@@ -374,7 +381,7 @@
       )
     (logclear! (-> self draw status) (draw-status hidden))
     (ja-channel-set! 1)
-    (ja :group! (-> self draw art-group data 2) :num! min)
+    (ja :group! lrocklrg-idle-ja :num! min)
     (let ((gp-2 (ppointer->handle (process-spawn othercam self 7 #f #t :to self)))
           (s5-1 (ppointer->handle (process-spawn
                                     fuel-cell
@@ -387,7 +394,7 @@
                 )
           )
       (close-specific-task! (-> self entity extra perm task) (task-status need-reminder))
-      (set! (-> self movie-start) (-> *display* base-frame-counter))
+      (set-time! (-> self movie-start))
       (spool-push *art-control* "lrocklrg-falling" 0 self -1.0)
       (ja-play-spooled-anim
         (new 'static 'spool-anim
@@ -396,8 +403,8 @@
           :parts 4
           :command-list '((-150 blackout 100) (-116 blackout 0))
           )
-        (the-as art-joint-anim (-> self draw art-group data 2))
-        (the-as art-joint-anim (-> self draw art-group data 3))
+        (the-as art-joint-anim lrocklrg-idle-ja)
+        (the-as art-joint-anim lrocklrg-fallen-ja)
         (the-as (function process-drawable symbol) false-func)
         )
       (process-entity-status! self (entity-perm-status complete) #t)
@@ -420,9 +427,8 @@
       )
     (set! (-> self draw bounds w) 20480.0)
     (go-virtual fallen)
-    (none)
     )
-  :post (the-as (function none :behavior beach-rock) transform-post)
+  :post transform-post
   )
 
 ;; failed to figure out what this is:
@@ -436,55 +442,54 @@
       *entity-pool*
       (game-task none)
       )
-    (ja :group! (-> self draw art-group data 3))
+    (ja :group! lrocklrg-fallen-ja)
     (compute-alignment! (-> self align))
     (let ((v1-6 (first-transform (-> self align))))
-      (set! (-> self root-override trans quad) (-> self entity extra trans quad))
-      (+! (-> self root-override trans y) (-> v1-6 trans y))
+      (set! (-> self root trans quad) (-> self entity extra trans quad))
+      (+! (-> self root trans y) (-> v1-6 trans y))
       )
     (suspend)
-    (update-transforms! (-> self root-override))
+    (update-transforms! (-> self root))
     (logior! (-> self mask) (process-mask sleep))
     (suspend)
     0
-    (none)
     )
-  :post (the-as (function none :behavior beach-rock) ja-post)
+  :post ja-post
   )
 
 ;; definition for method 11 of type beach-rock
 ;; INFO: Return type mismatch object vs none.
-(defmethod init-from-entity! beach-rock ((obj beach-rock) (arg0 entity-actor))
-  (set! (-> obj link) (new 'process 'actor-link-info obj))
-  (set! (-> obj align) (new 'process 'align-control obj))
-  (set! (-> obj trigger) #f)
-  (logclear! (-> obj mask) (process-mask actor-pause))
-  (set! (-> obj part) (create-launch-control (-> *part-group-id-table* 553) obj))
-  (set! (-> obj part-falling) (create-launch-control (-> *part-group-id-table* 554) obj))
-  (set! (-> obj part-landing) (create-launch-control (-> *part-group-id-table* 555) obj))
-  (set! (-> obj prev-frame) -1000.0)
-  (set! (-> obj draw origin-joint-index) (the-as uint 4))
-  (case (get-task-status (-> obj entity extra perm task))
+(defmethod init-from-entity! ((this beach-rock) (arg0 entity-actor))
+  (set! (-> this link) (new 'process 'actor-link-info this))
+  (set! (-> this align) (new 'process 'align-control this))
+  (set! (-> this trigger) #f)
+  (logclear! (-> this mask) (process-mask actor-pause))
+  (set! (-> this part) (create-launch-control (-> *part-group-id-table* 553) this))
+  (set! (-> this part-falling) (create-launch-control (-> *part-group-id-table* 554) this))
+  (set! (-> this part-landing) (create-launch-control (-> *part-group-id-table* 555) this))
+  (set! (-> this prev-frame) -1000.0)
+  (set! (-> this draw origin-joint-index) (the-as uint 4))
+  (case (get-task-status (-> this entity extra perm task))
     (((task-status invalid))
-     (go (method-of-object obj fallen))
+     (go (method-of-object this fallen))
      )
     (((task-status need-resolution))
      (let ((s5-0 (new 'stack-no-clear 'vector)))
        (ja-post)
-       (vector<-cspace! s5-0 (-> obj node-list data 8))
+       (vector<-cspace! s5-0 (-> this node-list data 8))
        (birth-pickup-at-point
          s5-0
          (pickup-type fuel-cell)
-         (the float (the-as int (-> obj entity extra perm task)))
+         (the float (the-as int (-> this entity extra perm task)))
          #f
-         obj
+         this
          (the-as fact-info #f)
          )
        )
-     (go (method-of-object obj fallen))
+     (go (method-of-object this fallen))
      )
     (else
-      (go (method-of-object obj idle))
+      (go (method-of-object this idle))
       )
     )
   (none)
@@ -493,24 +498,20 @@
 ;; definition of type lrocklrg
 (deftype lrocklrg (beach-rock)
   ()
-  :heap-base #x60
-  :method-count-assert 24
-  :size-assert         #xcc
-  :flag-assert         #x18006000cc
   )
 
 ;; definition for method 3 of type lrocklrg
-(defmethod inspect lrocklrg ((obj lrocklrg))
+(defmethod inspect ((this lrocklrg))
   (let ((t9-0 (method-of-type beach-rock inspect)))
-    (t9-0 obj)
+    (t9-0 this)
     )
-  obj
+  this
   )
 
 ;; definition for method 11 of type lrocklrg
-(defmethod init-from-entity! lrocklrg ((obj lrocklrg) (arg0 entity-actor))
-  (stack-size-set! (-> obj main-thread) 512)
-  (let ((s4-0 (new 'process 'collide-shape-moving obj (collide-list-enum hit-by-player))))
+(defmethod init-from-entity! ((this lrocklrg) (arg0 entity-actor))
+  (stack-size-set! (-> this main-thread) 512)
+  (let ((s4-0 (new 'process 'collide-shape-moving this (collide-list-enum hit-by-player))))
     (set! (-> s4-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s4-0 reaction) default-collision-reaction)
     (set! (-> s4-0 no-reaction)
@@ -527,10 +528,10 @@
       )
     (set! (-> s4-0 nav-radius) (* 0.75 (-> s4-0 root-prim local-sphere w)))
     (backup-collide-with-as s4-0)
-    (set! (-> obj root-override) s4-0)
+    (set! (-> this root) s4-0)
     )
-  (process-drawable-from-entity! obj arg0)
-  (initialize-skeleton obj *lrocklrg-sg* '())
-  ((method-of-type beach-rock init-from-entity!) obj arg0)
+  (process-drawable-from-entity! this arg0)
+  (initialize-skeleton this *lrocklrg-sg* '())
+  ((method-of-type beach-rock init-from-entity!) this arg0)
   (none)
   )

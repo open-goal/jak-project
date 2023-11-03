@@ -11,7 +11,7 @@
 
 (defstate target-pilot-start (target)
   :event target-pilot-handler
-  :exit (the-as (function none :behavior target) target-pilot-exit)
+  :exit target-pilot-exit
   :code (behavior ((arg0 handle) (arg1 symbol) (arg2 symbol))
     (target-pilot-init arg0 arg2)
     (suspend)
@@ -20,7 +20,6 @@
         (go target-pilot-stance)
         (go target-pilot-get-on)
         )
-    (none)
     )
   :post target-post
   )
@@ -29,9 +28,9 @@
 ;; WARN: new jak 2 until loop case, check carefully
 (defbehavior target-pilot-bike-anim-loop target ()
   (ja-channel-push! 3 (seconds 0.1))
-  (ja :group! (-> self draw art-group data 210))
-  (ja :chan 1 :group! (-> self draw art-group data 209))
-  (ja :chan 2 :group! (-> self draw art-group data 214))
+  (ja :group! jakb-pilot-bike-turn-back-ja)
+  (ja :chan 1 :group! jakb-pilot-bike-turn-front-ja)
+  (ja :chan 2 :group! jakb-pilot-bike-up-down-ja)
   (until #f
     (let ((gp-0 (-> self pilot)))
       (let ((f30-0 (* 5.0 (- 1.0 (-> gp-0 left-right-interp)))))
@@ -67,9 +66,9 @@
 ;; WARN: new jak 2 until loop case, check carefully
 (defbehavior target-pilot-car-anim-loop target ()
   (ja-channel-push! 3 (seconds 0.1))
-  (ja :group! (-> self draw art-group data 203))
-  (ja :chan 1 :group! (-> self draw art-group data 202))
-  (ja :chan 2 :group! (-> self draw art-group data 213))
+  (ja :group! jakb-pilot-car-turn-back-ja)
+  (ja :chan 1 :group! jakb-pilot-car-turn-front-ja)
+  (ja :chan 2 :group! jakb-pilot-car-up-down-ja)
   (until #f
     (let ((gp-0 (-> self pilot)))
       (let ((f30-0 (* 5.0 (+ 1.0 (-> gp-0 left-right-interp)))))
@@ -181,10 +180,7 @@
             (set! (-> gp-0 left-right-interp)
                   (fmax
                     -1.0
-                    (fmin
-                      1.0
-                      (+ (-> gp-0 left-right-interp) (* 8.0 (- f3-0 (-> gp-0 left-right-interp)) (-> self clock seconds-per-frame)))
-                      )
+                    (fmin 1.0 (+ (-> gp-0 left-right-interp) (* 8.0 (- f3-0 (-> gp-0 left-right-interp)) (seconds-per-frame))))
                     )
                   )
             )
@@ -195,10 +191,7 @@
             (set! (-> gp-0 front-back-interp)
                   (fmax
                     -1.0
-                    (fmin
-                      1.0
-                      (+ (-> gp-0 front-back-interp) (* 8.0 (- f3-4 (-> gp-0 front-back-interp)) (-> self clock seconds-per-frame)))
-                      )
+                    (fmin 1.0 (+ (-> gp-0 front-back-interp) (* 8.0 (- f3-4 (-> gp-0 front-back-interp)) (seconds-per-frame))))
                     )
                   )
             )
@@ -206,10 +199,7 @@
             (set! (-> gp-0 up-down-interp)
                   (fmax
                     -1.0
-                    (fmin
-                      1.0
-                      (+ (-> gp-0 up-down-interp) (* 8.0 (- f3-8 (-> gp-0 up-down-interp)) (-> self clock seconds-per-frame)))
-                      )
+                    (fmin 1.0 (+ (-> gp-0 up-down-interp) (* 8.0 (- f3-8 (-> gp-0 up-down-interp)) (seconds-per-frame))))
                     )
                   )
             )
@@ -248,10 +238,9 @@
 
 (defstate target-pilot-stance (target)
   :event target-pilot-handler
-  :exit (the-as (function none :behavior target) target-pilot-exit)
+  :exit target-pilot-exit
   :trans (behavior ()
     (target-pilot-trans)
-    (none)
     )
   :code (behavior ()
     (target-pilot-signal-ready)
@@ -269,20 +258,17 @@
         (target-pilot-car-anim-loop)
         )
       )
-    (none)
     )
   :post (behavior ()
     (target-pilot-post)
-    (none)
     )
   )
 
 (defstate target-pilot-impact (target)
   :event target-pilot-handler
-  :exit (the-as (function none :behavior target) target-pilot-exit)
+  :exit target-pilot-exit
   :trans (behavior ()
     (target-pilot-trans)
-    (none)
     )
   :code (behavior ()
     (local-vars (v1-1 float) (v1-252 int))
@@ -336,50 +322,35 @@
                (ja-channel-push! 1 (seconds 0.05))
                (cond
                  ((= s5-0 4)
-                  (ja-no-eval :group! (-> self draw art-group data 457)
-                              :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 457)) frames num-frames) -1)))
-                              :frame-num 0.0
-                              )
+                  (ja-no-eval :group! (-> self draw art-group data 457) :num! (seek!) :frame-num 0.0)
                   (until (ja-done? 0)
                     (suspend)
                     (ja :num! (seek!))
                     )
                   )
                  ((= s5-0 5)
-                  (ja-no-eval :group! (-> self draw art-group data 458)
-                              :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 458)) frames num-frames) -1)))
-                              :frame-num 0.0
-                              )
+                  (ja-no-eval :group! (-> self draw art-group data 458) :num! (seek!) :frame-num 0.0)
                   (until (ja-done? 0)
                     (suspend)
                     (ja :num! (seek!))
                     )
                   )
                  ((zero? s5-0)
-                  (ja-no-eval :group! (-> self draw art-group data 455)
-                              :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 455)) frames num-frames) -1)))
-                              :frame-num 0.0
-                              )
+                  (ja-no-eval :group! (-> self draw art-group data 455) :num! (seek!) :frame-num 0.0)
                   (until (ja-done? 0)
                     (suspend)
                     (ja :num! (seek!))
                     )
                   )
                  ((= s5-0 1)
-                  (ja-no-eval :group! (-> self draw art-group data 456)
-                              :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 456)) frames num-frames) -1)))
-                              :frame-num 0.0
-                              )
+                  (ja-no-eval :group! (-> self draw art-group data 456) :num! (seek!) :frame-num 0.0)
                   (until (ja-done? 0)
                     (suspend)
                     (ja :num! (seek!))
                     )
                   )
                  (else
-                   (ja-no-eval :group! (-> self draw art-group data 455)
-                               :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 455)) frames num-frames) -1)))
-                               :frame-num 0.0
-                               )
+                   (ja-no-eval :group! (-> self draw art-group data 455) :num! (seek!) :frame-num 0.0)
                    (until (ja-done? 0)
                      (suspend)
                      (ja :num! (seek!))
@@ -392,50 +363,35 @@
                (let ((v1-131 s5-0))
                  (cond
                    ((= v1-131 4)
-                    (ja-no-eval :group! (-> self draw art-group data 232)
-                                :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 232)) frames num-frames) -1)))
-                                :frame-num 0.0
-                                )
+                    (ja-no-eval :group! jakb-pilot-bike-smack-left-ja :num! (seek!) :frame-num 0.0)
                     (until (ja-done? 0)
                       (suspend)
                       (ja :num! (seek!))
                       )
                     )
                    ((= v1-131 5)
-                    (ja-no-eval :group! (-> self draw art-group data 233)
-                                :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 233)) frames num-frames) -1)))
-                                :frame-num 0.0
-                                )
+                    (ja-no-eval :group! jakb-pilot-bike-smack-right-ja :num! (seek!) :frame-num 0.0)
                     (until (ja-done? 0)
                       (suspend)
                       (ja :num! (seek!))
                       )
                     )
                    ((zero? v1-131)
-                    (ja-no-eval :group! (-> self draw art-group data 211)
-                                :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 211)) frames num-frames) -1)))
-                                :frame-num (ja-aframe 0.0 0)
-                                )
+                    (ja-no-eval :group! jakb-pilot-bike-smack-front-ja :num! (seek!) :frame-num (ja-aframe 0.0 0))
                     (until (ja-done? 0)
                       (suspend)
                       (ja :num! (seek!))
                       )
                     )
                    ((= v1-131 1)
-                    (ja-no-eval :group! (-> self draw art-group data 212)
-                                :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 212)) frames num-frames) -1)))
-                                :frame-num (ja-aframe 0.0 0)
-                                )
+                    (ja-no-eval :group! jakb-pilot-bike-smack-back-ja :num! (seek!) :frame-num (ja-aframe 0.0 0))
                     (until (ja-done? 0)
                       (suspend)
                       (ja :num! (seek!))
                       )
                     )
                    (else
-                     (ja-no-eval :group! (-> self draw art-group data 215)
-                                 :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 215)) frames num-frames) -1)))
-                                 :frame-num (ja-aframe 0.0 0)
-                                 )
+                     (ja-no-eval :group! jakb-pilot-bike-smack-shock-ja :num! (seek!) :frame-num (ja-aframe 0.0 0))
                      (until (ja-done? 0)
                        (suspend)
                        (ja :num! (seek!))
@@ -445,53 +401,35 @@
                  )
                )
               ((begin (ja-channel-push! 1 (seconds 0.05)) (set! v1-252 s5-0) (= v1-252 4))
-               (ja-no-eval :group! (-> self draw art-group data 234)
-                           :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 234)) frames num-frames) -1)))
-                           :frame-num 0.0
-                           )
+               (ja-no-eval :group! jakb-pilot-car-smack-left-ja :num! (seek!) :frame-num 0.0)
                (until (ja-done? 0)
                  (suspend)
                  (ja :num! (seek!))
                  )
                )
               ((= v1-252 5)
-               (ja-no-eval :group! (-> self draw art-group data 235)
-                           :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 235)) frames num-frames) -1)))
-                           :frame-num 0.0
-                           )
+               (ja-no-eval :group! jakb-pilot-car-smack-right-ja :num! (seek!) :frame-num 0.0)
                (until (ja-done? 0)
                  (suspend)
                  (ja :num! (seek!))
                  )
                )
               ((zero? v1-252)
-               (ja-no-eval :group! (-> self draw art-group data 204)
-                           :num! (seek!
-                             (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 204)) frames num-frames) -1))
-                             1.3
-                             )
-                           :frame-num (ja-aframe 4.0 0)
-                           )
+               (ja-no-eval :group! jakb-pilot-car-smack-front-ja :num! (seek! max 1.3) :frame-num (ja-aframe 4.0 0))
                (until (ja-done? 0)
                  (suspend)
                  (ja :num! (seek! max 1.3))
                  )
                )
               ((= v1-252 1)
-               (ja-no-eval :group! (-> self draw art-group data 205)
-                           :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 205)) frames num-frames) -1)))
-                           :frame-num (ja-aframe 2.0 0)
-                           )
+               (ja-no-eval :group! jakb-pilot-car-smack-back-ja :num! (seek!) :frame-num (ja-aframe 2.0 0))
                (until (ja-done? 0)
                  (suspend)
                  (ja :num! (seek!))
                  )
                )
               (else
-                (ja-no-eval :group! (-> self draw art-group data 208)
-                            :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 208)) frames num-frames) -1)))
-                            :frame-num (ja-aframe 0.0 0)
-                            )
+                (ja-no-eval :group! jakb-pilot-car-smack-shock-ja :num! (seek!) :frame-num (ja-aframe 0.0 0))
                 (until (ja-done? 0)
                   (suspend)
                   (ja :num! (seek!))
@@ -500,16 +438,15 @@
               )
             )
           )
+        ;; og:preserve-this
         (init-vf0-vector)
         (.svf (&-> (-> gp-0 accel-array) 0 quad) vf0)
         )
       (go target-pilot-stance)
-      (none)
       )
     )
   :post (behavior ()
     (target-pilot-post)
-    (none)
     )
   )
 
@@ -519,8 +456,8 @@
   )
 
 (defstate target-pilot-get-on (target)
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('end-mode)
        (cond
          ((focus-test? self pilot-riding)
@@ -533,11 +470,11 @@
          )
        )
       (else
-        (target-standard-event-handler proc arg1 event-type event)
+        (target-standard-event-handler proc argc message block)
         )
       )
     )
-  :exit (the-as (function none :behavior target) target-pilot-exit)
+  :exit target-pilot-exit
   :trans (behavior ()
     (let* ((s5-0 (handle->process (-> self pilot vehicle)))
            (gp-0 (if (type? s5-0 vehicle)
@@ -559,15 +496,14 @@
           )
         )
       )
-    (none)
     )
   :code (behavior ()
     (logior! (-> self focus-status) (focus-status pilot))
     (logior! (-> self state-flags) (state-flags sf6))
     (set! (-> self alt-cam-pos quad) (-> self control camera-pos quad))
     (let ((gp-0 (if (zero? (-> self pilot stance))
-                    (-> self draw art-group data 201)
-                    (-> self draw art-group data 200)
+                    jakb-pilot-bike-get-on-ja
+                    jakb-pilot-car-get-on-ja
                     )
                 )
           )
@@ -577,10 +513,7 @@
       (set! (-> self neck flex-blend) 0.0)
       (set! (-> self control unknown-vector37 quad) (-> self control trans quad))
       (set! (-> self control unknown-vector39 quad) (-> self control quat quad))
-      (ja :group! gp-0
-          :num! (seek! (the float (+ (-> (the-as art-joint-anim gp-0) frames num-frames) -1)))
-          :frame-num 0.0
-          )
+      (ja :group! gp-0 :num! (seek!) :frame-num 0.0)
       )
     (until (ja-done? 0)
       (let ((f30-0 (sin (lerp-scale 0.0 16384.0 (ja-aframe-num 0) 0.0 10.0))))
@@ -615,7 +548,6 @@
       (ja :num! (seek!))
       )
     (go target-pilot-stance)
-    (none)
     )
   :post target-no-move-post
   )
@@ -645,7 +577,7 @@
 
 (defstate target-pilot-get-off (target)
   :event target-standard-event-handler
-  :exit (the-as (function none :behavior target) target-pilot-exit)
+  :exit target-pilot-exit
   :trans (behavior ()
     (let ((gp-0 (handle->process (-> self pilot vehicle))))
       (when (not (if (type? gp-0 vehicle)
@@ -656,7 +588,6 @@
         (go target-falling #f)
         )
       )
-    (none)
     )
   :code (behavior ()
     (local-vars (f30-0 float))
@@ -673,11 +604,11 @@
     (let ((gp-0 (cond
                   ((zero? (-> self pilot stance))
                    (set! f30-0 7.2)
-                   (-> self draw art-group data 216)
+                   jakb-pilot-bike-get-off-ja
                    )
                   (else
                     (set! f30-0 15.2)
-                    (-> self draw art-group data 199)
+                    jakb-pilot-car-get-off-ja
                     )
                   )
                 )
@@ -712,30 +643,29 @@
       (vector+! (-> self control transv) (-> self control transv) (-> gp-2 2))
       )
     (go target-jump 10240.0 10240.0 *pilot-get-off-mods*)
-    (none)
     )
   :post target-pilot-post
   )
 
 (defstate target-pilot-grab (target)
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
     (cond
-      ((and (= event-type 'query) (= (-> event param 0) 'mode))
+      ((and (= message 'query) (= (-> block param 0) 'mode))
        (-> self state name)
        )
       (else
-        (case event-type
+        (case message
           (('end-mode)
            (go target-pilot-stance)
            )
           (('clone-anim)
-           (go target-pilot-clone-anim (process->handle (the-as process (-> event param 0))))
+           (go target-pilot-clone-anim (process->handle (the-as process (-> block param 0))))
            )
           (('vehicle-crash)
            (go target-grab 'stance)
            )
           (else
-            (target-generic-event-handler proc arg1 event-type event)
+            (target-generic-event-handler proc argc message block)
             )
           )
         )
@@ -746,14 +676,12 @@
     (set! (-> self neck flex-blend) 0.0)
     (logior! (-> self state-flags) (state-flags sf2))
     (logior! (-> self focus-status) (focus-status grabbed))
-    (none)
     )
   :exit (behavior ()
     (logclear! (-> self state-flags) (state-flags sf2))
     (logclear! (-> self focus-status) (focus-status grabbed))
     (logclear! (-> self water flags) (water-flags jump-out))
     ((-> target-pilot-start exit))
-    (none)
     )
   :code (behavior ()
     (until #f
@@ -761,17 +689,16 @@
       (suspend)
       )
     #f
-    (none)
     )
   :post target-pilot-post
   )
 
 (defstate target-pilot-clone-anim (target)
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (if (and (= event-type 'trans) (= (-> event param 0) 'restore))
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (if (and (= message 'trans) (= (-> block param 0) 'restore))
         (set! (-> self control unknown-word04) (the-as uint #f))
         )
-    ((-> target-pilot-grab event) proc arg1 event-type event)
+    ((-> target-pilot-grab event) proc argc message block)
     )
   :enter (-> target-clone-anim enter)
   :exit (behavior ()
@@ -781,7 +708,6 @@
     ((-> target-clone-anim exit))
     ((-> target-pilot-start exit))
     (vector-reset! (-> self control transv))
-    (none)
     )
   :code (behavior ((arg0 handle))
     (set! (-> self control unknown-word04) (the-as uint (-> self control draw-offset y)))
@@ -789,14 +715,12 @@
     (send-event (ppointer->process (-> self sidekick)) 'matrix 'play-anim)
     (clone-anim arg0 #t "")
     (go target-pilot-stance)
-    (none)
     )
   :post (behavior ()
     (vector+! (-> self pilot pilot-trans) (-> self control trans) (-> self control cspace-offset))
     (quaternion-copy! (the-as quaternion (-> self pilot pilot-quat)) (-> self control quat))
     (set! (-> self pilot pilot-scale quad) (-> self control scale quad))
     (target-no-ja-move-post)
-    (none)
     )
   )
 
@@ -826,7 +750,6 @@
               )
         )
       )
-    (none)
     )
   :exit (-> target-edge-grab exit)
   :trans (-> target-edge-grab trans)
@@ -841,11 +764,10 @@
         (logclear! (-> self focus-status) (focus-status dead hit))
         )
     ((-> target-pilot-start exit))
-    (none)
     )
   :code (behavior ((arg0 symbol) (arg1 attack-info))
     (local-vars (sv-16 attack-info))
-    (set! (-> self state-time) (current-time))
+    (set-time! (-> self state-time))
     (set! (-> self neck flex-blend) 0.0)
     (set! sv-16 (-> self attack-info))
     (let ((v1-4 sv-16))
@@ -862,7 +784,6 @@
     (combine! sv-16 arg1 self)
     (pickup-collectable! (-> self fact) (pickup-type health) -1000.0 (the-as handle #f))
     (go target-pilot-death (-> sv-16 mode))
-    (none)
     )
   :post target-no-stick-post
   )
@@ -872,7 +793,6 @@
   :exit (behavior ()
     ((-> target-pilot-start exit))
     ((-> target-death exit))
-    (none)
     )
   :code (behavior ((arg0 symbol))
     (set! (-> self control unknown-word04) (the-as uint #f))
@@ -904,7 +824,7 @@
     (case arg0
       (('melt 'grenade 'explode)
        (let ((s5-0 (current-time)))
-         (until (>= (- (current-time) s5-0) (seconds 0.2))
+         (until (time-elapsed? s5-0 (seconds 0.2))
            (suspend)
            )
          )
@@ -1031,7 +951,7 @@
        0
        (ja-channel-set! 0)
        (let ((s5-7 (current-time)))
-         (until (>= (- (current-time) s5-7) (seconds 1.8))
+         (until (time-elapsed? s5-7 (seconds 1.8))
            (suspend)
            )
          )
@@ -1064,7 +984,7 @@
            )
          )
        (let ((s5-9 (current-time)))
-         (until (>= (- (current-time) s5-9) (seconds 0.5))
+         (until (time-elapsed? s5-9 (seconds 0.5))
            (suspend)
            )
          )
@@ -1080,7 +1000,6 @@
         )
       )
     (target-death-reset arg0 #f)
-    (none)
     )
   :post target-pilot-post
   )

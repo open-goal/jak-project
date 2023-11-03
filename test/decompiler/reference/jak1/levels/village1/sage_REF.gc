@@ -3,23 +3,19 @@
 
 ;; definition of type sage
 (deftype sage (process-taskable)
-  ((reminder-played basic   :offset-assert 380)
-   (assistant       handle  :offset-assert 384)
+  ((reminder-played  basic)
+   (assistant        handle)
    )
-  :heap-base #x120
-  :method-count-assert 53
-  :size-assert         #x188
-  :flag-assert         #x3501200188
   )
 
 ;; definition for method 3 of type sage
-(defmethod inspect sage ((obj sage))
+(defmethod inspect ((this sage))
   (let ((t9-0 (method-of-type process-taskable inspect)))
-    (t9-0 obj)
+    (t9-0 this)
     )
-  (format #t "~T~Treminder-played: ~A~%" (-> obj reminder-played))
-  (format #t "~T~Tassistant: ~D~%" (-> obj assistant))
-  obj
+  (format #t "~T~Treminder-played: ~A~%" (-> this reminder-played))
+  (format #t "~T~Tassistant: ~D~%" (-> this assistant))
+  this
   )
 
 ;; failed to figure out what this is:
@@ -30,7 +26,7 @@
               )
 
 ;; definition for method 32 of type sage
-(defmethod play-anim! sage ((obj sage) (arg0 symbol))
+(defmethod play-anim! ((this sage) (arg0 symbol))
   (when (!= *kernel-boot-message* 'play)
     (close-specific-task! (game-task intro) (task-status need-resolution))
     (return (new 'static 'spool-anim
@@ -51,12 +47,12 @@
               )
             )
     )
-  (case (current-status (-> obj tasks))
+  (case (current-status (-> this tasks))
     (((task-status need-hint) (task-status need-introduction))
-     (case (current-task (-> obj tasks))
+     (case (current-task (-> this tasks))
        (((game-task intro))
         (when arg0
-          (close-status! (-> obj tasks) (task-status need-introduction))
+          (close-status! (-> this tasks) (task-status need-introduction))
           (set-setting! 'music-volume-movie 'abs 0.0 0)
           (apply-settings *setting-control*)
           )
@@ -117,12 +113,12 @@
         )
        (((game-task beach-ecorocks))
         (when arg0
-          (let* ((s5-1 (-> obj tasks))
+          (let* ((s5-1 (-> this tasks))
                  (s4-0 (method-of-object s5-1 save-reminder))
                  )
             (s4-0 s5-1 (the int (the-as float (send-event *target* 'query 'pickup (pickup-type fuel-cell)))) 1)
             )
-          (close-status! (-> obj tasks) (task-status need-introduction))
+          (close-status! (-> this tasks) (task-status need-introduction))
           )
         (new 'static 'spool-anim
           :name "sage-intro-sequence-e"
@@ -166,7 +162,7 @@
         )
        (else
          (if arg0
-             (close-status! (-> obj tasks) (task-status need-introduction))
+             (close-status! (-> this tasks) (task-status need-introduction))
              )
          (new 'static 'spool-anim
            :name "sage-introduction-misty-cannon"
@@ -185,11 +181,11 @@
        )
      )
     (((task-status need-reminder))
-     (set! (-> obj skippable) #t)
+     (set! (-> this skippable) #t)
      (if arg0
-         (set! (-> obj reminder-played) #t)
+         (set! (-> this reminder-played) #t)
          )
-     (case (get-reminder (-> obj tasks) 0)
+     (case (get-reminder (-> this tasks) 0)
        ((3)
         (new 'static 'spool-anim :name "sage-reminder-2-generic" :index 13 :parts 4 :command-list '())
         )
@@ -235,19 +231,19 @@
      (when arg0
        (set-setting! 'music-volume-movie 'abs 0.0 0)
        (apply-settings *setting-control*)
-       (close-status! (-> obj tasks) (task-status need-reward-speech))
-       (set! (-> obj assistant)
-             (ppointer->handle (manipy-spawn (-> obj root-override trans) (-> obj entity) *assistant-sg* #f :to obj))
+       (close-status! (-> this tasks) (task-status need-reward-speech))
+       (set! (-> this assistant)
+             (ppointer->handle (manipy-spawn (-> this root trans) (-> this entity) *assistant-sg* #f :to this))
              )
-       (send-event (handle->process (-> obj assistant)) 'anim-mode 'clone-anim)
-       (send-event (handle->process (-> obj assistant)) 'blend-shape #t)
-       (send-event (handle->process (-> obj assistant)) 'center-joint 3)
-       (let ((v1-68 (handle->process (-> obj assistant))))
+       (send-event (handle->process (-> this assistant)) 'anim-mode 'clone-anim)
+       (send-event (handle->process (-> this assistant)) 'blend-shape #t)
+       (send-event (handle->process (-> this assistant)) 'center-joint 3)
+       (let ((v1-68 (handle->process (-> this assistant))))
          (if v1-68
              (set! (-> (the-as assistant v1-68) draw light-index) (the-as uint 1))
              )
          )
-       (set! (-> obj draw bounds w) 40960.0)
+       (set! (-> this draw bounds w) 40960.0)
        )
      (new 'static 'spool-anim
        :name "sage-intro-sequence-d2"
@@ -330,29 +326,29 @@
           (format
             0
             "ERROR: <GMJ>: ~S playing anim for task status ~S~%"
-            (-> obj name)
-            (task-status->string (current-status (-> obj tasks)))
+            (-> this name)
+            (task-status->string (current-status (-> this tasks)))
             )
           )
-      (get-art-elem obj)
+      (get-art-elem this)
       )
     )
   )
 
 ;; definition for method 45 of type sage
-(defmethod process-taskable-method-45 sage ((obj sage))
+(defmethod process-taskable-method-45 ((this sage))
   (cond
-    ((and (closed? (-> obj tasks) (game-task beach-ecorocks) (task-status need-reminder))
-          (= (get-reminder (-> obj tasks) 0) 0)
+    ((and (closed? (-> this tasks) (game-task beach-ecorocks) (task-status need-reminder))
+          (= (get-reminder (-> this tasks) 0) 0)
           )
      #t
      )
-    ((and (closed? (-> obj tasks) (game-task misty-cannon) (task-status need-reminder))
-          (= (get-reminder (-> obj tasks) 0) 1)
+    ((and (closed? (-> this tasks) (game-task misty-cannon) (task-status need-reminder))
+          (= (get-reminder (-> this tasks) 0) 1)
           )
      #t
      )
-    ((and (-> obj reminder-played) (< 81920.0 (vector-vector-distance (-> obj root-override trans) (camera-pos))))
+    ((and (-> this reminder-played) (< 81920.0 (vector-vector-distance (-> this root trans) (camera-pos))))
      #t
      )
     (else
@@ -362,71 +358,72 @@
   )
 
 ;; definition for method 31 of type sage
-(defmethod get-art-elem sage ((obj sage))
+(defmethod get-art-elem ((this sage))
   (cond
-    ((and (= (current-task (-> obj tasks)) (game-task beach-ecorocks))
-          (or (= (current-status (-> obj tasks)) (task-status need-hint))
-              (= (current-status (-> obj tasks)) (task-status need-introduction))
+    ((and (= (current-task (-> this tasks)) (game-task beach-ecorocks))
+          (or (= (current-status (-> this tasks)) (task-status need-hint))
+              (= (current-status (-> this tasks)) (task-status need-introduction))
               )
           )
-     (save-reminder (-> obj tasks) 0 0)
+     (save-reminder (-> this tasks) 0 0)
      )
-    ((and (= (current-task (-> obj tasks)) (game-task misty-cannon))
-          (or (= (current-status (-> obj tasks)) (task-status need-hint))
-              (= (current-status (-> obj tasks)) (task-status need-introduction))
+    ((and (= (current-task (-> this tasks)) (game-task misty-cannon))
+          (or (= (current-status (-> this tasks)) (task-status need-hint))
+              (= (current-status (-> this tasks)) (task-status need-introduction))
               )
           )
-     (save-reminder (-> obj tasks) 1 0)
+     (save-reminder (-> this tasks) 1 0)
      )
-    ((process-taskable-method-45 obj)
-     (set! (-> obj reminder-played) #f)
+    ((process-taskable-method-45 this)
+     (set! (-> this reminder-played) #f)
      (cond
-       ((= (current-task (-> obj tasks)) (game-task none))
-        (case (get-reminder (-> obj tasks) 0)
+       ((= (current-task (-> this tasks)) (game-task none))
+        (case (get-reminder (-> this tasks) 0)
           ((2)
-           (save-reminder (-> obj tasks) 3 0)
+           (save-reminder (-> this tasks) 3 0)
            )
           (else
-            (save-reminder (-> obj tasks) 2 0)
+            (save-reminder (-> this tasks) 2 0)
             )
           )
         )
-       ((closed? (-> obj tasks) (game-task beach-ecorocks) (task-status need-reminder))
-        (save-reminder (-> obj tasks) 1 0)
+       ((closed? (-> this tasks) (game-task beach-ecorocks) (task-status need-reminder))
+        (save-reminder (-> this tasks) 1 0)
         )
-       ((or (closed? (-> obj tasks) (game-task misty-cannon) (task-status need-reminder))
-            (not (closed? (-> obj tasks) (game-task misty-cannon) (task-status need-introduction)))
+       ((or (closed? (-> this tasks) (game-task misty-cannon) (task-status need-reminder))
+            (not (closed? (-> this tasks) (game-task misty-cannon) (task-status need-introduction)))
             )
-        (save-reminder (-> obj tasks) 0 0)
+        (save-reminder (-> this tasks) 0 0)
         )
-       ((zero? (get-reminder (-> obj tasks) 0))
-        (save-reminder (-> obj tasks) 1 0)
+       ((zero? (get-reminder (-> this tasks) 0))
+        (save-reminder (-> this tasks) 1 0)
         )
        (else
-         (save-reminder (-> obj tasks) 0 0)
+         (save-reminder (-> this tasks) 0 0)
          )
        )
      )
     )
-  (case (get-reminder (-> obj tasks) 0)
+  (case (get-reminder (-> this tasks) 0)
     ((3)
-     (-> obj draw art-group data 7)
+     (-> this draw art-group data 7)
      )
     ((2)
-     (-> obj draw art-group data 6)
+     (-> this draw art-group data 6)
      )
     ((1)
-     (-> obj draw art-group data 3)
+     (-> this draw art-group data 3)
      )
     (else
-      (-> obj draw art-group data 4)
+      (-> this draw art-group data 4)
       )
     )
   )
 
 ;; definition for method 43 of type sage
-(defmethod process-taskable-method-43 sage ((obj sage))
-  (let ((s5-0 (ambient-control-method-10 (-> obj ambient) (new 'stack-no-clear 'vector) (seconds 30) 122880.0 obj)))
+(defmethod process-taskable-method-43 ((this sage))
+  (let ((s5-0 (ambient-control-method-10 (-> this ambient) (new 'stack-no-clear 'vector) (seconds 30) 122880.0 this))
+        )
     (when s5-0
       (let ((f0-2 (rand-float-gen)))
         (cond
@@ -434,19 +431,19 @@
            #f
            )
           ((< 0.8 f0-2)
-           (play-ambient (-> obj ambient) "SAGELP03" #f (-> obj root-override trans))
+           (play-ambient (-> this ambient) "SAGELP03" #f (-> this root trans))
            )
           ((< 0.6 f0-2)
-           (play-ambient (-> obj ambient) "SAGELP04" #f (-> obj root-override trans))
+           (play-ambient (-> this ambient) "SAGELP04" #f (-> this root trans))
            )
           ((< 0.4 f0-2)
-           (play-ambient (-> obj ambient) "SAGELP05" #f (-> obj root-override trans))
+           (play-ambient (-> this ambient) "SAGELP05" #f (-> this root trans))
            )
           ((< 0.2 f0-2)
-           (play-ambient (-> obj ambient) "SAGELP06" #f (-> obj root-override trans))
+           (play-ambient (-> this ambient) "SAGELP06" #f (-> this root trans))
            )
           (else
-            (play-ambient (-> obj ambient) "SAGELP11" #f (-> obj root-override trans))
+            (play-ambient (-> this ambient) "SAGELP11" #f (-> this root trans))
             )
           )
         )
@@ -466,7 +463,6 @@
        )
       )
     ((-> (method-of-type process-taskable idle) trans))
-    (none)
     )
   :code (behavior ()
     (if (!= (ja-group) (get-art-elem self))
@@ -482,9 +478,7 @@
           (process-taskable-method-43 self)
           (ja-no-eval :group! (ja-group) :num! (seek!) :frame-num 0.0)
           (until (ja-done? 0)
-            (if (and (-> self reminder-played)
-                     (< 81920.0 (vector-vector-distance (-> self root-override trans) (camera-pos)))
-                     )
+            (if (and (-> self reminder-played) (< 81920.0 (vector-vector-distance (-> self root trans) (camera-pos))))
                 (go-virtual idle)
                 )
             (suspend)
@@ -500,7 +494,6 @@
           )
         )
       )
-    (none)
     )
   )
 
@@ -522,7 +515,6 @@
        (start 'play (get-continue-by-name *game-info* "game-start"))
        )
       )
-    (none)
     )
   :trans (behavior ()
     (case (get-task-status (game-task intro))
@@ -531,19 +523,18 @@
        )
       )
     ((-> (method-of-type process-taskable play-anim) trans))
-    (none)
     )
   )
 
 ;; definition for method 39 of type sage
-(defmethod should-display? sage ((obj sage))
+(defmethod should-display? ((this sage))
   (not (sages-kidnapped?))
   )
 
 ;; definition for method 41 of type sage
 ;; INFO: Return type mismatch int vs none.
-(defmethod initialize-collision sage ((obj sage) (arg0 int) (arg1 vector))
-  (let ((s5-0 (new 'process 'collide-shape obj (collide-list-enum hit-by-player))))
+(defmethod initialize-collision ((this sage) (arg0 int) (arg1 vector))
+  (let ((s5-0 (new 'process 'collide-shape this (collide-list-enum hit-by-player))))
     (let ((s4-0 (new 'process 'collide-shape-prim-group s5-0 (the-as uint 2) 0)))
       (set! (-> s4-0 prim-core collide-as) (collide-kind enemy))
       (set! (-> s4-0 collide-with) (collide-kind target))
@@ -573,20 +564,20 @@
       )
     (set! (-> s5-0 nav-radius) (* 0.75 (-> s5-0 root-prim local-sphere w)))
     (backup-collide-with-as s5-0)
-    (set! (-> obj root-override) s5-0)
+    (set! (-> this root) s5-0)
     )
   0
   (none)
   )
 
 ;; definition for method 11 of type sage
-(defmethod init-from-entity! sage ((obj sage) (arg0 entity-actor))
-  (process-taskable-method-40 obj arg0 *sage-sg* 3 40 (new 'static 'vector :w 4096.0) 5)
-  (set! (-> obj tasks) (get-task-control (game-task misty-cannon)))
-  (set! (-> obj reminder-played) #f)
-  (set! (-> obj sound-flava) (music-flava sage))
-  (set! (-> obj assistant) (the-as handle #f))
-  (set! (-> obj draw light-index) (the-as uint 1))
-  (process-taskable-method-42 obj)
+(defmethod init-from-entity! ((this sage) (arg0 entity-actor))
+  (process-taskable-method-40 this arg0 *sage-sg* 3 40 (new 'static 'vector :w 4096.0) 5)
+  (set! (-> this tasks) (get-task-control (game-task misty-cannon)))
+  (set! (-> this reminder-played) #f)
+  (set! (-> this sound-flava) (music-flava sage))
+  (set! (-> this assistant) (the-as handle #f))
+  (set! (-> this draw light-index) (the-as uint 1))
+  (process-taskable-method-42 this)
   (none)
   )

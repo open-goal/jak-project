@@ -8,44 +8,36 @@
 ;; DECOMP BEGINS
 
 (deftype spike-row-info (structure)
-  ((sync      sync-linear           :inline :offset-assert   0)
-   (table-ptr (inline-array vector)         :offset-assert  16)
-   (on-ratio  float                         :offset-assert  20)
-   (state     int32                         :offset-assert  24)
+  ((sync       sync-linear  :inline)
+   (table-ptr  (inline-array vector))
+   (on-ratio   float)
+   (state      int32)
    )
-  :method-count-assert 9
-  :size-assert         #x1c
-  :flag-assert         #x90000001c
   )
 
 
 (deftype spike-row-info-array (inline-array-class)
-  ((data spike-row-info :inline :dynamic :offset-assert  16)
+  ((data  spike-row-info  :inline :dynamic)
    )
-  :method-count-assert 9
-  :size-assert         #x10
-  :flag-assert         #x900000010
   )
 
 
 (set! (-> spike-row-info-array heap-base) (the-as uint 32))
 
 (deftype fort-floor-spike (process-drawable)
-  ((pos-table        (inline-array vector)   :offset-assert 200)
-   (spike-row        spike-row-info-array    :offset-assert 204)
-   (spike-dim        int32                 2 :offset-assert 208)
-   (attack-id        int32                   :offset-assert 216)
-   (no-overlap-timer uint64                  :offset-assert 224)
+  ((pos-table         (inline-array vector))
+   (spike-row         spike-row-info-array)
+   (spike-dim         int32  2)
+   (attack-id         int32)
+   (no-overlap-timer  uint64)
    )
-  :heap-base #x70
-  :method-count-assert 24
-  :size-assert         #xe8
-  :flag-assert         #x18007000e8
+  (:state-methods
+    idle
+    )
   (:methods
-    (idle () _type_ :state 20)
-    (init-spike-joints! (_type_) none 21)
-    (init-spike-collision! (_type_) collide-shape-moving 22)
-    (init-periodic-animation! (_type_) symbol 23)
+    (init-spike-joints! (_type_) none)
+    (init-spike-collision! (_type_) collide-shape-moving)
+    (init-periodic-animation! (_type_) symbol)
     )
   )
 
@@ -65,82 +57,71 @@
   (none)
   )
 
-(defmethod init-spike-joints! fort-floor-spike ((obj fort-floor-spike))
+(defmethod init-spike-joints! ((this fort-floor-spike))
   "Initializes the skeleton and joints for the spike"
   0
   (none)
   )
 
 ;; WARN: Return type mismatch int vs collide-shape-moving.
-(defmethod init-spike-collision! fort-floor-spike ((obj fort-floor-spike))
+(defmethod init-spike-collision! ((this fort-floor-spike))
   "Initializes the collision for the particular spike"
   (the-as collide-shape-moving 0)
   )
 
 ;; WARN: Return type mismatch int vs symbol.
-(defmethod init-periodic-animation! fort-floor-spike ((obj fort-floor-spike))
+(defmethod init-periodic-animation! ((this fort-floor-spike))
   "Initialzes the periodic animation of the spikes (exit and re-entry)"
   (the-as symbol 0)
   )
 
 (defstate idle (fort-floor-spike)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (the-as
-      object
-      (case event-type
-        (('touched)
-         (when (+ (current-time) (seconds -2))
-           (let* ((s3-0 proc)
-                  (proc-draw (if (type? s3-0 process-drawable)
-                                 (the-as process-drawable s3-0)
-                                 )
-                             )
-                  )
-             (when proc-draw
-               (let ((spike-quat (vector-x-quaternion! (new 'stack-no-clear 'vector) (-> self root quat)))
-                     (touched-from-dir (vector-normalize!
-                                         (vector-! (new 'stack-no-clear 'vector) (-> proc-draw root trans) (-> self root trans))
-                                         1.0
-                                         )
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
+      (('touched)
+       (when (+ (current-time) (seconds -2))
+         (let* ((s3-0 proc)
+                (proc-draw (if (type? s3-0 process-drawable)
+                               (the-as process-drawable s3-0)
+                               )
+                           )
+                )
+           (when proc-draw
+             (let ((spike-quat (vector-x-quaternion! (new 'stack-no-clear 'vector) (-> self root quat)))
+                   (touched-from-dir (vector-normalize!
+                                       (vector-! (new 'stack-no-clear 'vector) (-> proc-draw root trans) (-> self root trans))
+                                       1.0
                                        )
-                     )
-                 (vector-flatten! touched-from-dir touched-from-dir spike-quat)
-                 (set! (-> touched-from-dir y) 0.0)
-                 (vector-normalize! touched-from-dir 1.0)
-                 (let ((evt (new 'stack-no-clear 'event-message-block)))
-                   (set! (-> evt from) (process->ppointer self))
-                   (set! (-> evt num-params) 2)
-                   (set! (-> evt message) 'attack)
-                   (set! (-> evt param 0) (-> event param 0))
-                   (let ((attack-info (new 'static 'attack-info :mask (attack-info-mask vector mode shove-back shove-up id))))
-                     (set! (-> attack-info id) (the-as uint (-> self attack-id)))
-                     (set! (-> attack-info mode) 'deadly)
-                     (set! (-> attack-info shove-up) 24576.0)
-                     (set! (-> attack-info shove-back) 16384.0)
-                     (set! (-> attack-info vector quad) (-> touched-from-dir quad))
-                     (set! (-> evt param 1) (the-as uint attack-info))
-                     )
-                   (send-event-function proc evt)
+                                     )
                    )
-                 )
-               (let ((frame-count (current-time)))
-                 (set! (-> self no-overlap-timer) (the-as uint frame-count))
-                 frame-count
-                 )
+               (vector-flatten! touched-from-dir touched-from-dir spike-quat)
+               (set! (-> touched-from-dir y) 0.0)
+               (vector-normalize! touched-from-dir 1.0)
+               (send-event proc 'attack (-> block param 0) (static-attack-info ((id (the-as uint (-> self attack-id)))
+                                                                                (mode 'deadly)
+                                                                                (shove-up (meters 6))
+                                                                                (shove-back (meters 4))
+                                                                                (vector touched-from-dir)
+                                                                                )
+                                                                               )
+                           )
+               )
+             (let ((frame-count (current-time)))
+               (set! (-> self no-overlap-timer) (the-as uint frame-count))
+               frame-count
                )
              )
            )
          )
-        )
+       )
       )
     )
   :enter (behavior ()
     (set! (-> self no-overlap-timer) (the-as uint 0))
     0
-    (none)
     )
-  :code (the-as (function none :behavior fort-floor-spike) sleep-code)
+  :code sleep-code
   :post (behavior ()
     (dotimes (gp-0 (-> self spike-dim 0))
       (let ((s5-0 (-> self spike-row data gp-0)))
@@ -158,17 +139,13 @@
         (dotimes (s4-0 (-> self spike-dim 1))
           (cond
             ((zero? (-> s5-0 state))
-             (seek!
-               (-> s5-0 table-ptr s4-0 y)
-               (* 4096.0 (- -4.0 (the float s4-0)))
-               (* 131072.0 (-> self clock seconds-per-frame))
-               )
+             (seek! (-> s5-0 table-ptr s4-0 y) (* 4096.0 (- -4.0 (the float s4-0))) (* 131072.0 (seconds-per-frame)))
              )
             (else
               (let ((f30-0 (-> s5-0 table-ptr s4-0 y))
                     (f28-0 (* 4096.0 (+ -1.0 (the float s4-0))))
                     )
-                (seek! (-> s5-0 table-ptr s4-0 y) f28-0 (* 131072.0 (-> self clock seconds-per-frame)))
+                (seek! (-> s5-0 table-ptr s4-0 y) f28-0 (* 131072.0 (seconds-per-frame)))
                 (if (and (< f30-0 f28-0) (= (-> s5-0 table-ptr gp-0 y) f28-0))
                     (sound-play "floor-spike" :position (-> s5-0 table-ptr gp-0))
                     )
@@ -179,37 +156,36 @@
         )
       )
     (transform-post)
-    (none)
     )
   )
 
 ;; WARN: Return type mismatch process-drawable vs fort-floor-spike.
-(defmethod relocate fort-floor-spike ((obj fort-floor-spike) (arg0 int))
-  (if (nonzero? (-> obj spike-row))
-      (&+! (-> obj spike-row) arg0)
+(defmethod relocate ((this fort-floor-spike) (arg0 int))
+  (if (nonzero? (-> this spike-row))
+      (&+! (-> this spike-row) arg0)
       )
-  (the-as fort-floor-spike ((method-of-type process-drawable relocate) obj arg0))
+  (the-as fort-floor-spike ((method-of-type process-drawable relocate) this arg0))
   )
 
 ;; WARN: Return type mismatch object vs none.
-(defmethod init-from-entity! fort-floor-spike ((obj fort-floor-spike) (arg0 entity-actor))
+(defmethod init-from-entity! ((this fort-floor-spike) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
 - stack size
 - collision information
 - loading the skeleton group / bones
 - sounds"
-  (init-spike-collision! obj)
-  (process-drawable-from-entity! obj arg0)
-  (init-spike-joints! obj)
-  (init-periodic-animation! obj)
+  (init-spike-collision! this)
+  (process-drawable-from-entity! this arg0)
+  (init-spike-joints! this)
+  (init-periodic-animation! this)
   (let* ((v1-6 *game-info*)
          (a0-6 (+ (-> v1-6 attack-id) 1))
          )
     (set! (-> v1-6 attack-id) a0-6)
-    (set! (-> obj attack-id) (the-as int a0-6))
+    (set! (-> this attack-id) (the-as int a0-6))
     )
-  (go (method-of-object obj idle))
+  (go (method-of-object this idle))
   (none)
   )
 
@@ -236,26 +212,22 @@ This commonly includes things such as:
 
 (deftype fort-floor-spike-a (fort-floor-spike)
   ()
-  :heap-base #x70
-  :method-count-assert 24
-  :size-assert         #xe8
-  :flag-assert         #x18007000e8
   )
 
 
-(defmethod init-spike-joints! fort-floor-spike-a ((obj fort-floor-spike-a))
+(defmethod init-spike-joints! ((this fort-floor-spike-a))
   "Initializes the skeleton and joints for the spike"
   (initialize-skeleton
-    obj
+    this
     (the-as skeleton-group (art-group-get-by-name *level* "skel-fort-floor-spike-a" (the-as (pointer uint32) #f)))
     (the-as pair 0)
     )
-  (let ((a0-3 (-> obj skel root-channel 0)))
-    (set! (-> a0-3 frame-group) (the-as art-joint-anim (-> obj draw art-group data 4)))
+  (let ((a0-3 (-> this skel root-channel 0)))
+    (set! (-> a0-3 frame-group) (the-as art-joint-anim (-> this draw art-group data 4)))
     (set! (-> a0-3 frame-num) 0.0)
     (joint-control-channel-group-eval!
       a0-3
-      (the-as art-joint-anim (-> obj draw art-group data 4))
+      (the-as art-joint-anim (-> this draw art-group data 4))
       num-func-identity
       )
     )
@@ -263,10 +235,10 @@ This commonly includes things such as:
   (none)
   )
 
-(defmethod init-spike-collision! fort-floor-spike-a ((obj fort-floor-spike-a))
+(defmethod init-spike-collision! ((this fort-floor-spike-a))
   "Initializes the collision for the particular spike"
   (local-vars (sv-16 collide-shape-prim-mesh) (sv-32 type) (sv-48 collide-shape-moving))
-  (let ((s5-0 (new 'process 'collide-shape-moving obj (collide-list-enum usually-hit-by-player))))
+  (let ((s5-0 (new 'process 'collide-shape-moving this (collide-list-enum usually-hit-by-player))))
     (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s5-0 reaction) cshape-reaction-default)
     (set! (-> s5-0 no-reaction)
@@ -312,37 +284,37 @@ This commonly includes things such as:
       (set! (-> s5-0 backup-collide-with) (-> v1-24 prim-core collide-with))
       )
     (set! (-> s5-0 event-self) 'touched)
-    (set! (-> obj root) s5-0)
+    (set! (-> this root) s5-0)
     s5-0
     )
   )
 
-(defmethod init-periodic-animation! fort-floor-spike-a ((obj fort-floor-spike-a))
+(defmethod init-periodic-animation! ((this fort-floor-spike-a))
   "Initialzes the periodic animation of the spikes (exit and re-entry)"
   (local-vars (sv-64 cspace))
   (let ((s5-0 2)
         (s4-0 4)
         )
-    (set! (-> obj spike-dim 0) s5-0)
-    (set! (-> obj spike-dim 1) s4-0)
-    (set! (-> obj spike-row) (new 'process 'spike-row-info-array s5-0))
-    (set! (-> obj pos-table) (new 'static 'inline-array vector 8
-                               (new 'static 'vector)
-                               (new 'static 'vector)
-                               (new 'static 'vector)
-                               (new 'static 'vector)
-                               (new 'static 'vector)
-                               (new 'static 'vector)
-                               (new 'static 'vector)
-                               (new 'static 'vector)
-                               )
+    (set! (-> this spike-dim 0) s5-0)
+    (set! (-> this spike-dim 1) s4-0)
+    (set! (-> this spike-row) (new 'process 'spike-row-info-array s5-0))
+    (set! (-> this pos-table) (new 'static 'inline-array vector 8
+                                (new 'static 'vector)
+                                (new 'static 'vector)
+                                (new 'static 'vector)
+                                (new 'static 'vector)
+                                (new 'static 'vector)
+                                (new 'static 'vector)
+                                (new 'static 'vector)
+                                (new 'static 'vector)
+                                )
           )
-    (let ((s3-0 (-> obj pos-table))
+    (let ((s3-0 (-> this pos-table))
           (s2-0 4)
           (s1-0 11)
           )
       (dotimes (s0-0 (+ (- 1 s2-0) s1-0))
-        (set! sv-64 (-> obj node-list data (+ s2-0 s0-0)))
+        (set! sv-64 (-> this node-list data (+ s2-0 s0-0)))
         (vector<-cspace! (-> s3-0 s0-0) sv-64)
         (set! (-> s3-0 s0-0 y) 0.0)
         (set! (-> sv-64 param0) joint-mod-set-y-callback)
@@ -351,7 +323,7 @@ This commonly includes things such as:
         )
       )
     (dotimes (s3-1 s5-0)
-      (let ((s2-1 (-> obj spike-row data s3-1)))
+      (let ((s2-1 (-> this spike-row data s3-1)))
         (let ((a1-2 (new 'stack-no-clear 'sync-info-params)))
           (let ((v1-19 0))
             (if #t
@@ -369,7 +341,7 @@ This commonly includes things such as:
           )
         (set! (-> s2-1 on-ratio) 0.375)
         (set! (-> s2-1 state) 0)
-        (set! (-> s2-1 table-ptr) (the-as (inline-array vector) (-> obj pos-table (* s3-1 s4-0))))
+        (set! (-> s2-1 table-ptr) (the-as (inline-array vector) (-> this pos-table (* s3-1 s4-0))))
         )
       )
     )
@@ -378,26 +350,22 @@ This commonly includes things such as:
 
 (deftype fort-floor-spike-b (fort-floor-spike)
   ()
-  :heap-base #x70
-  :method-count-assert 24
-  :size-assert         #xe8
-  :flag-assert         #x18007000e8
   )
 
 
-(defmethod init-spike-joints! fort-floor-spike-b ((obj fort-floor-spike-b))
+(defmethod init-spike-joints! ((this fort-floor-spike-b))
   "Initializes the skeleton and joints for the spike"
   (initialize-skeleton
-    obj
+    this
     (the-as skeleton-group (art-group-get-by-name *level* "skel-fort-floor-spike-b" (the-as (pointer uint32) #f)))
     (the-as pair 0)
     )
-  (let ((a0-3 (-> obj skel root-channel 0)))
-    (set! (-> a0-3 frame-group) (the-as art-joint-anim (-> obj draw art-group data 4)))
+  (let ((a0-3 (-> this skel root-channel 0)))
+    (set! (-> a0-3 frame-group) (the-as art-joint-anim (-> this draw art-group data 4)))
     (set! (-> a0-3 frame-num) 0.0)
     (joint-control-channel-group-eval!
       a0-3
-      (the-as art-joint-anim (-> obj draw art-group data 4))
+      (the-as art-joint-anim (-> this draw art-group data 4))
       num-func-identity
       )
     )
@@ -405,10 +373,10 @@ This commonly includes things such as:
   (none)
   )
 
-(defmethod init-spike-collision! fort-floor-spike-b ((obj fort-floor-spike-b))
+(defmethod init-spike-collision! ((this fort-floor-spike-b))
   "Initializes the collision for the particular spike"
   (local-vars (sv-16 collide-shape-prim-mesh) (sv-32 type) (sv-48 collide-shape-moving))
-  (let ((s5-0 (new 'process 'collide-shape-moving obj (collide-list-enum usually-hit-by-player))))
+  (let ((s5-0 (new 'process 'collide-shape-moving this (collide-list-enum usually-hit-by-player))))
     (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s5-0 reaction) cshape-reaction-default)
     (set! (-> s5-0 no-reaction)
@@ -465,39 +433,39 @@ This commonly includes things such as:
       (set! (-> s5-0 backup-collide-with) (-> v1-24 prim-core collide-with))
       )
     (set! (-> s5-0 event-self) 'touched)
-    (set! (-> obj root) s5-0)
+    (set! (-> this root) s5-0)
     s5-0
     )
   )
 
-(defmethod init-periodic-animation! fort-floor-spike-b ((obj fort-floor-spike-b))
+(defmethod init-periodic-animation! ((this fort-floor-spike-b))
   "Initialzes the periodic animation of the spikes (exit and re-entry)"
   (local-vars (sv-64 cspace))
   (let ((s5-0 2)
         (s4-0 5)
         )
-    (set! (-> obj spike-dim 0) s5-0)
-    (set! (-> obj spike-dim 1) s4-0)
-    (set! (-> obj spike-row) (new 'process 'spike-row-info-array s5-0))
-    (set! (-> obj pos-table) (new 'static 'inline-array vector 10
-                               (new 'static 'vector)
-                               (new 'static 'vector)
-                               (new 'static 'vector)
-                               (new 'static 'vector)
-                               (new 'static 'vector)
-                               (new 'static 'vector)
-                               (new 'static 'vector)
-                               (new 'static 'vector)
-                               (new 'static 'vector)
-                               (new 'static 'vector)
-                               )
+    (set! (-> this spike-dim 0) s5-0)
+    (set! (-> this spike-dim 1) s4-0)
+    (set! (-> this spike-row) (new 'process 'spike-row-info-array s5-0))
+    (set! (-> this pos-table) (new 'static 'inline-array vector 10
+                                (new 'static 'vector)
+                                (new 'static 'vector)
+                                (new 'static 'vector)
+                                (new 'static 'vector)
+                                (new 'static 'vector)
+                                (new 'static 'vector)
+                                (new 'static 'vector)
+                                (new 'static 'vector)
+                                (new 'static 'vector)
+                                (new 'static 'vector)
+                                )
           )
-    (let ((s3-0 (-> obj pos-table))
+    (let ((s3-0 (-> this pos-table))
           (s2-0 4)
           (s1-0 13)
           )
       (dotimes (s0-0 (+ (- 1 s2-0) s1-0))
-        (set! sv-64 (-> obj node-list data (+ s2-0 s0-0)))
+        (set! sv-64 (-> this node-list data (+ s2-0 s0-0)))
         (vector<-cspace! (-> s3-0 s0-0) sv-64)
         (set! (-> s3-0 s0-0 y) 0.0)
         (set! (-> sv-64 param0) joint-mod-set-y-callback)
@@ -506,7 +474,7 @@ This commonly includes things such as:
         )
       )
     (dotimes (s3-1 s5-0)
-      (let ((s2-1 (-> obj spike-row data s3-1)))
+      (let ((s2-1 (-> this spike-row data s3-1)))
         (let ((a1-2 (new 'stack-no-clear 'sync-info-params)))
           (let ((v1-19 0))
             (if #t
@@ -524,7 +492,7 @@ This commonly includes things such as:
           )
         (set! (-> s2-1 on-ratio) 0.375)
         (set! (-> s2-1 state) 0)
-        (set! (-> s2-1 table-ptr) (the-as (inline-array vector) (-> obj pos-table (* s3-1 s4-0))))
+        (set! (-> s2-1 table-ptr) (the-as (inline-array vector) (-> this pos-table (* s3-1 s4-0))))
         )
       )
     )
@@ -533,26 +501,22 @@ This commonly includes things such as:
 
 (deftype fort-floor-spike-c (fort-floor-spike)
   ()
-  :heap-base #x70
-  :method-count-assert 24
-  :size-assert         #xe8
-  :flag-assert         #x18007000e8
   )
 
 
-(defmethod init-spike-joints! fort-floor-spike-c ((obj fort-floor-spike-c))
+(defmethod init-spike-joints! ((this fort-floor-spike-c))
   "Initializes the skeleton and joints for the spike"
   (initialize-skeleton
-    obj
+    this
     (the-as skeleton-group (art-group-get-by-name *level* "skel-fort-floor-spike-c" (the-as (pointer uint32) #f)))
     (the-as pair 0)
     )
-  (let ((channel (-> obj skel root-channel 0)))
-    (set! (-> channel frame-group) (the-as art-joint-anim (-> obj draw art-group data 4)))
+  (let ((channel (-> this skel root-channel 0)))
+    (set! (-> channel frame-group) (the-as art-joint-anim (-> this draw art-group data 4)))
     (set! (-> channel frame-num) 0.0)
     (joint-control-channel-group-eval!
       channel
-      (the-as art-joint-anim (-> obj draw art-group data 4))
+      (the-as art-joint-anim (-> this draw art-group data 4))
       num-func-identity
       )
     )
@@ -560,10 +524,10 @@ This commonly includes things such as:
   (none)
   )
 
-(defmethod init-spike-collision! fort-floor-spike-c ((obj fort-floor-spike-c))
+(defmethod init-spike-collision! ((this fort-floor-spike-c))
   "Initializes the collision for the particular spike"
   (local-vars (prim-mesh collide-shape-prim-mesh) (sv-32 type) (sv-48 collide-shape-moving))
-  (let ((cshape-moving (new 'process 'collide-shape-moving obj (collide-list-enum usually-hit-by-player))))
+  (let ((cshape-moving (new 'process 'collide-shape-moving this (collide-list-enum usually-hit-by-player))))
     (set! (-> cshape-moving dynam) (copy *standard-dynamics* 'process))
     (set! (-> cshape-moving reaction) cshape-reaction-default)
     (set! (-> cshape-moving no-reaction)
@@ -625,44 +589,44 @@ This commonly includes things such as:
       (set! (-> cshape-moving backup-collide-with) (-> root-prim prim-core collide-with))
       )
     (set! (-> cshape-moving event-self) 'touched)
-    (set! (-> obj root) cshape-moving)
+    (set! (-> this root) cshape-moving)
     cshape-moving
     )
   )
 
-(defmethod init-periodic-animation! fort-floor-spike-c ((obj fort-floor-spike-c))
+(defmethod init-periodic-animation! ((this fort-floor-spike-c))
   "Initialzes the periodic animation of the spikes (exit and re-entry)"
   (local-vars (sv-64 cspace))
   (let ((s5-0 3)
         (s4-0 5)
         )
-    (set! (-> obj spike-dim 0) s5-0)
-    (set! (-> obj spike-dim 1) s4-0)
-    (set! (-> obj spike-row) (new 'process 'spike-row-info-array s5-0))
-    (set! (-> obj pos-table) (new 'static 'inline-array vector 15
-                               (new 'static 'vector)
-                               (new 'static 'vector)
-                               (new 'static 'vector)
-                               (new 'static 'vector)
-                               (new 'static 'vector)
-                               (new 'static 'vector)
-                               (new 'static 'vector)
-                               (new 'static 'vector)
-                               (new 'static 'vector)
-                               (new 'static 'vector)
-                               (new 'static 'vector)
-                               (new 'static 'vector)
-                               (new 'static 'vector)
-                               (new 'static 'vector)
-                               (new 'static 'vector)
-                               )
+    (set! (-> this spike-dim 0) s5-0)
+    (set! (-> this spike-dim 1) s4-0)
+    (set! (-> this spike-row) (new 'process 'spike-row-info-array s5-0))
+    (set! (-> this pos-table) (new 'static 'inline-array vector 15
+                                (new 'static 'vector)
+                                (new 'static 'vector)
+                                (new 'static 'vector)
+                                (new 'static 'vector)
+                                (new 'static 'vector)
+                                (new 'static 'vector)
+                                (new 'static 'vector)
+                                (new 'static 'vector)
+                                (new 'static 'vector)
+                                (new 'static 'vector)
+                                (new 'static 'vector)
+                                (new 'static 'vector)
+                                (new 'static 'vector)
+                                (new 'static 'vector)
+                                (new 'static 'vector)
+                                )
           )
-    (let ((s3-0 (-> obj pos-table))
+    (let ((s3-0 (-> this pos-table))
           (s2-0 4)
           (s1-0 18)
           )
       (dotimes (s0-0 (+ (- 1 s2-0) s1-0))
-        (set! sv-64 (-> obj node-list data (+ s2-0 s0-0)))
+        (set! sv-64 (-> this node-list data (+ s2-0 s0-0)))
         (vector<-cspace! (-> s3-0 s0-0) sv-64)
         (set! (-> s3-0 s0-0 y) 0.0)
         (set! (-> sv-64 param0) joint-mod-set-y-callback)
@@ -671,7 +635,7 @@ This commonly includes things such as:
         )
       )
     (dotimes (s3-1 s5-0)
-      (let ((s2-1 (-> obj spike-row data s3-1)))
+      (let ((s2-1 (-> this spike-row data s3-1)))
         (let ((a1-2 (new 'stack-no-clear 'sync-info-params)))
           (let ((v1-19 0))
             (if #t
@@ -689,7 +653,7 @@ This commonly includes things such as:
           )
         (set! (-> s2-1 on-ratio) 0.375)
         (set! (-> s2-1 state) 0)
-        (set! (-> s2-1 table-ptr) (the-as (inline-array vector) (-> obj pos-table (* s3-1 s4-0))))
+        (set! (-> s2-1 table-ptr) (the-as (inline-array vector) (-> this pos-table (* s3-1 s4-0))))
         )
       )
     )

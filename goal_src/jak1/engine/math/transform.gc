@@ -7,37 +7,24 @@
 
 ;; note: transformq and trsq is mostly used instead of transform.
 
-(defmethod print transform ((obj transform))
-  (format #t "#<transform @ #x~X~%" obj)
-  (format #t "~T~Ttrans:~F ~F ~F ~F ~%"
-   (-> obj trans data 0)
-   (-> obj trans data 1)
-   (-> obj trans data 2)
-   (-> obj trans data 3)
-   )
-  (format #t "~T~Trot:  ~F ~F ~F ~F ~%"
-   (-> obj rot data 0)
-   (-> obj rot data 1)
-   (-> obj rot data 2)
-   (-> obj rot data 3)
-   )
-  (format #t "~T~Tscale:~F ~F ~F ~F>"
-   (-> obj scale data 0)
-   (-> obj scale data 1)
-   (-> obj scale data 2)
-   (-> obj scale data 3)
-   )
-  obj
+;; DECOMP BEGINS
+
+(defmethod print ((this transform))
+  (format #t "#<transform @ #x~X~%" this)
+  (format #t "~T~Ttrans:~F ~F ~F ~F ~%" (-> this trans x) (-> this trans y) (-> this trans z) (-> this trans w))
+  (format #t "~T~Trot:  ~F ~F ~F ~F ~%" (-> this rot x) (-> this rot y) (-> this rot z) (-> this rot w))
+  (format #t "~T~Tscale:~F ~F ~F ~F>" (-> this scale x) (-> this scale y) (-> this scale z) (-> this scale w))
+  this
   )
 
 (defmethod new trs ((allocation symbol) (type-to-make type))
   "Create a new trs and set it equal to identity."
-  (let ((obj (object-new allocation type-to-make (the-as int (-> type-to-make size)))))
-   (set! (-> obj trans data 3) 1.0)
-   (set! (-> obj rot data 3) 1.0)
-   (vector-identity! (-> obj scale))
-   obj
-   )
+  (let ((this (object-new allocation type-to-make (the-as int (-> type-to-make size)))))
+    (set! (-> this trans w) 1.0)
+    (set! (-> this rot w) 1.0)
+    (vector-identity! (-> this scale))
+    this
+    )
   )
 
 (defun transform-matrix-calc! ((tf transform) (dst-mat matrix))
@@ -50,17 +37,18 @@
     ;; set translation (which also sets identity...)
     (matrix-translate! dst-mat (-> tf trans))
     ;; rotate y axis (this is first, so yaw is "world aligned"
-    (matrix-rotate-y! s4-0 (-> tf rot data 1))
+    (matrix-rotate-y! s4-0 (-> tf rot y))
     (matrix*! s3-0 s4-0 dst-mat)
     ;; rotate x axis
-    (matrix-rotate-x! s4-0 (-> tf rot data 0))
+    (matrix-rotate-x! s4-0 (-> tf rot x))
     (matrix*! dst-mat s4-0 s3-0)
     ;; rotate z axis
-    (matrix-rotate-z! s4-0 (-> tf rot data 2))
+    (matrix-rotate-z! s4-0 (-> tf rot z))
     (matrix*! s3-0 s4-0 dst-mat)
     ;; apply scale
     (matrix-scale! s4-0 (-> tf scale))
-   )
+    (matrix*! dst-mat s4-0 s3-0)
+    )
   )
 
 (defun transform-matrix-parent-calc! ((tf transform) (dst-mat matrix) (inv-scale vector))
@@ -72,11 +60,11 @@
     (matrix-translate! s3-0 (-> tf trans))
     (matrix-inv-scale! s4-0 inv-scale)
     (matrix*! dst-mat s4-0 s3-0)
-    (matrix-rotate-y! s4-0 (-> tf rot data 1))
+    (matrix-rotate-y! s4-0 (-> tf rot y))
     (matrix*! s3-0 s4-0 dst-mat)
-    (matrix-rotate-x! s4-0 (-> tf rot data 0))
+    (matrix-rotate-x! s4-0 (-> tf rot x))
     (matrix*! dst-mat s4-0 s3-0)
-    (matrix-rotate-z! s4-0 (-> tf rot data 2))
+    (matrix-rotate-z! s4-0 (-> tf rot z))
     (matrix*! s3-0 s4-0 dst-mat)
     (matrix-scale! s4-0 (-> tf scale))
     (matrix*! dst-mat s4-0 s3-0)

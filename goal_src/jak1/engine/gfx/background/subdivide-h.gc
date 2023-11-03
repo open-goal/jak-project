@@ -5,189 +5,161 @@
 ;; name in dgo: subdivide-h
 ;; dgos: GAME, ENGINE
 
+;; DECOMP BEGINS
+
 (deftype subdivide-settings (basic)
-  ((dist   float 5 :offset-assert 4)
-   (meters float 5 :offset-assert 24)
-   (close  float 4 :offset-assert 44)
-   (far    float 4 :offset-assert 60)
+  ((dist    float  5)
+   (meters  float  5)
+   (close   float  4)
+   (far     float  4)
    )
-  :method-count-assert 9
-  :size-assert         #x4c
-  :flag-assert         #x90000004c
   (:methods
-    (new (symbol type meters meters) _type_ 0)
+    (new (symbol type meters meters) _type_)
     )
   )
+
 
 (defmethod new subdivide-settings ((allocation symbol) (type-to-make type) (arg0 meters) (arg1 meters))
   (let ((v0-0 (object-new allocation type-to-make (the-as int (-> type-to-make size)))))
-   (dotimes (v1-2 3)
-    (set! (-> v0-0 close v1-2) arg0)
-    (set! (-> v0-0 far v1-2) arg1)
+    (dotimes (v1-2 3)
+      (set! (-> v0-0 close v1-2) arg0)
+      (set! (-> v0-0 far v1-2) arg1)
+      )
+    v0-0
     )
-   v0-0
-   )
   )
 
 (deftype subdivide-dists (structure)
-  ((data   uint32  32 :offset   0)
-   (vector vector  8 :inline :offset   0)
-   (k0s    uint128 4 :offset   0)
-   (k1s    uint128 4 :offset  64)
+  ((data    uint32   32        :offset   0)
+   (vector  vector   8 :inline :overlay-at (-> data 0))
+   (k0s     uint128  4         :overlay-at vector)
+   (k1s     uint128  4         :overlay-at (-> data 16))
    )
-  :method-count-assert 9
-  :size-assert         #x80
-  :flag-assert         #x900000080
   )
+
 
 (deftype gs-packed-rgba (structure)
-  ((data  int32 4           :offset-assert 0)
-   (red   int32 :offset   0)
-   (green int32 :offset   4)
-   (blue  int32 :offset   8)
-   (alpha int32 :offset  12)
+  ((data   int32  4)
+   (red    int32  :overlay-at (-> data 0))
+   (green  int32  :overlay-at (-> data 1))
+   (blue   int32  :overlay-at (-> data 2))
+   (alpha  int32  :overlay-at (-> data 3))
    )
-  :method-count-assert 9
-  :size-assert         #x10
-  :flag-assert         #x900000010
   )
+
 
 (deftype gs-packed-xyzw (structure)
-  ((data int32   4           :offset-assert 0)
-   (x    int32   :offset   0)
-   (y    int32   :offset   4)
-   (z    int32   :offset   8)
-   (w    int32   :offset  12)
-   (quad uint128 :offset   0)
+  ((data  int32    4)
+   (x     int32    :overlay-at (-> data 0))
+   (y     int32    :overlay-at (-> data 1))
+   (z     int32    :overlay-at (-> data 2))
+   (w     int32    :overlay-at (-> data 3))
+   (quad  uint128  :overlay-at (-> data 0))
    )
-  :method-count-assert 9
-  :size-assert         #x10
-  :flag-assert         #x900000010
   )
+
 
 (deftype gs-packed-stq (structure)
-  ((data  float   4           :offset-assert 0)
-   (tex-s float   :offset   0)
-   (tex-t float   :offset   4)
-   (tex-q float   :offset   8)
-   (quad  uint128 :offset   0)
+  ((data   float    4)
+   (tex-s  float    :overlay-at (-> data 0))
+   (tex-t  float    :overlay-at (-> data 1))
+   (tex-q  float    :overlay-at (-> data 2))
+   (quad   uint128  :overlay-at (-> data 0))
    )
-  :method-count-assert 9
-  :size-assert         #x10
-  :flag-assert         #x900000010
   )
+
 
 (deftype gs-packed-gt (structure)
-  ((stq  gs-packed-stq  :inline :offset-assert 0)
-   (rgba gs-packed-rgba :inline :offset-assert 16)
-   (xyzw gs-packed-xyzw :inline :offset-assert 32)
+  ((stq   gs-packed-stq   :inline)
+   (rgba  gs-packed-rgba  :inline)
+   (xyzw  gs-packed-xyzw  :inline)
    )
-  :method-count-assert 9
-  :size-assert         #x30
-  :flag-assert         #x900000030
   )
+
 
 (deftype gs-packed-gt4 (structure)
-  ((data gs-packed-gt 4 :inline :offset-assert 0)
+  ((data  gs-packed-gt  4 :inline)
    )
-  :method-count-assert 9
-  :size-assert         #xc0
-  :flag-assert         #x9000000c0
   )
+
 
 (deftype terrain-bsp (structure)
-  ((lev-index int32  :offset-assert 0)
-   (mood      basic  :offset-assert 4)
+  ((lev-index  int32)
+   (mood       basic)
    )
-  :method-count-assert 9
-  :size-assert         #x8
-  :flag-assert         #x900000008
   )
+
 
 (deftype terrain-stats (structure)
-  ((pris             tr-stat :inline :offset-assert 0)
-   (tie-generic      tr-stat :inline :offset-assert 16)
-   (tie              tr-stat :inline :offset-assert 32)
-   (tie-near         tr-stat :inline :offset-assert 48)
-   (shrub-near       tr-stat :inline :offset-assert 64)
-   (shrub            tr-stat :inline :offset-assert 80)
-   (tfrag-near       tr-stat :inline :offset-assert 96)
-   (tfrag            tr-stat :inline :offset-assert 112)
-   (billboard        tr-stat :inline :offset-assert 128)
-   (trans-tfrag      tr-stat :inline :offset-assert 144)
-   (trans-tfrag-near tr-stat :inline :offset-assert 160)
-   (trans-pris       tr-stat :inline :offset-assert 176)
-   (trans-shrub      tr-stat :inline :offset-assert 192)
-   (ocean-mid        tr-stat :inline :offset-assert 208)
-   (ocean-near       tr-stat :inline :offset-assert 224)
-   (total            tr-stat :inline :offset-assert 240)
+  ((pris              tr-stat  :inline)
+   (tie-generic       tr-stat  :inline)
+   (tie               tr-stat  :inline)
+   (tie-near          tr-stat  :inline)
+   (shrub-near        tr-stat  :inline)
+   (shrub             tr-stat  :inline)
+   (tfrag-near        tr-stat  :inline)
+   (tfrag             tr-stat  :inline)
+   (billboard         tr-stat  :inline)
+   (trans-tfrag       tr-stat  :inline)
+   (trans-tfrag-near  tr-stat  :inline)
+   (trans-pris        tr-stat  :inline)
+   (trans-shrub       tr-stat  :inline)
+   (ocean-mid         tr-stat  :inline)
+   (ocean-near        tr-stat  :inline)
+   (total             tr-stat  :inline)
    )
-  :method-count-assert 9
-  :size-assert         #x100
-  :flag-assert         #x900000100
   )
+
 
 (deftype dma-area (structure)
-  ((draw-node-dma      draw-node-dma      :inline :offset   0)
-   (tfrag-dma          tfrag-dma          :inline :offset   0)
-   (instance-shrub-dma instance-shrub-dma :inline :offset   0)
-   (instance-tie-dma   instance-tie-dma   :inline :offset   0)
-   (prototype-tie-dma  prototype-tie-dma  :inline :offset   0)
-   (time-of-day-dma    time-of-day-dma    :inline :offset   0)
-   (decomp-work        decomp-work        :inline :offset   0)
-   (ocean-vertex       ocean-vertex       4 :inline :offset   0)
+  ((draw-node-dma       draw-node-dma       :inline   :offset   0)
+   (tfrag-dma           tfrag-dma           :inline   :offset   0)
+   (instance-shrub-dma  instance-shrub-dma  :inline   :offset   0)
+   (instance-tie-dma    instance-tie-dma    :inline   :offset   0)
+   (prototype-tie-dma   prototype-tie-dma   :inline   :offset   0)
+   (time-of-day-dma     time-of-day-dma     :inline   :offset   0)
+   (decomp-work         decomp-work         :inline   :offset   0)
+   (ocean-vertex        ocean-vertex        4 :inline :offset   0)
    )
-  :method-count-assert 9
-  :size-assert         #x38a0
-  :flag-assert         #x9000038a0
   )
+
 
 (deftype background-area (structure)
-  ((dma-area dma-area :inline :offset-assert 0)
-   (vis-list uint8    2048    :offset-assert 14496)
+  ((dma-area  dma-area  :inline)
+   (vis-list  uint8     2048)
    )
-  :method-count-assert 9
-  :size-assert         #x40a0
-  :flag-assert         #x9000040a0
   )
+
 
 (deftype foreground-area (structure)
-  ((joint-work   joint-work   :inline             :offset-assert 0)
-   (generic-work generic-work :inline :offset   0)
-   (bone-mem     bone-memory  :inline :offset   0)
-   (shadow-work  shadow-work  :inline :offset   0)
+  ((joint-work    joint-work    :inline)
+   (generic-work  generic-work  :inline :overlay-at (-> joint-work temp-mtx data 0))
+   (bone-mem      bone-memory   :inline :overlay-at (-> joint-work temp-mtx data 0))
+   (shadow-work   shadow-work   :inline :overlay-at (-> joint-work temp-mtx data 0))
    )
-  :method-count-assert 9
-  :size-assert         #x3fd0
-  :flag-assert         #x900003fd0
   )
+
 
 (deftype ambient-area (structure)
-  ((ambient-list ambient-list :inline :offset-assert 0)
+  ((ambient-list  ambient-list  :inline)
    )
-  :method-count-assert 9
-  :size-assert         #x2004
-  :flag-assert         #x900002004
   )
+
 
 (deftype work-area (structure)
-  ((background background-area :inline             :offset-assert 0)
-   (foreground foreground-area :inline :offset   0)
-   (ambient    ambient-area    :inline :offset   0)
+  ((background  background-area  :inline)
+   (foreground  foreground-area  :inline :offset   0)
+   (ambient     ambient-area     :inline :offset   0)
    )
-  :method-count-assert 9
-  :size-assert         #x40a0
-  :flag-assert         #x9000040a0
   )
 
+
 (deftype terrain-context (structure)
-  ((bsp  terrain-bsp :inline :offset-assert 0)
-   (work work-area   :inline :offset-assert 16)
+  ((bsp   terrain-bsp  :inline)
+   (work  work-area    :inline)
    )
-  :method-count-assert 9
-  :size-assert         #x40b0
-  :flag-assert         #x9000040b0
   )
+
 
 (define *terrain-stats* (new 'global 'terrain-stats))
 

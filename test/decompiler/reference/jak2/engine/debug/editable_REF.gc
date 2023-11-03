@@ -16,7 +16,7 @@
                                     )
             )
       )
-    (set! (-> gp-0 tree) (the-as string 'camera))
+    (set! (-> gp-0 tree) 'camera)
     (set! (-> gp-0 on-enter) #f)
     (set! (-> gp-0 on-exit) #f)
     (set! (-> gp-0 on-inside) #f)
@@ -26,29 +26,29 @@
   )
 
 ;; definition for method 2 of type editable-region
-(defmethod print editable-region ((obj editable-region))
-  (format #t "#<~A region-~D ~A ~A @ #x~X>" (-> obj type) (-> obj id) (-> obj level) (-> obj tree) obj)
-  obj
+(defmethod print ((this editable-region))
+  (format #t "#<~A region-~D ~A ~A @ #x~X>" (-> this type) (-> this id) (-> this level) (-> this tree) this)
+  this
   )
 
 ;; definition for method 10 of type editable-region
 ;; INFO: Used lq/sq
-(defmethod editable-region-method-10 editable-region ((obj editable-region) (arg0 int))
+(defmethod editable-region-method-10 ((this editable-region) (arg0 int))
   (local-vars (sv-16 string) (sv-32 string))
-  (when (nonzero? (-> obj id))
+  (when (nonzero? (-> this id))
     (let ((s5-0 (clear *temp-string*)))
-      (format s5-0 "delete from region_sphere where region_id=~D" (-> obj id))
+      (format s5-0 "delete from region_sphere where region_id=~D" (-> this id))
       (let ((a2-1 (sql-query s5-0)))
         (when (!= (-> a2-1 error) 'modify)
-          (format 0 "ERROR: sql: modify error ~A for ~A~%" a2-1 obj)
+          (format 0 "ERROR: sql: modify error ~A for ~A~%" a2-1 this)
           (return #t)
           )
         )
       (clear s5-0)
-      (format s5-0 "select region_face_id from region_face where region_id=~D" (-> obj id))
+      (format s5-0 "select region_face_id from region_face where region_id=~D" (-> this id))
       (let ((s3-0 (sql-query s5-0)))
         (when (!= (-> s3-0 error) 'select)
-          (format 0 "ERROR: sql: face select error ~A for ~A~%" s3-0 obj)
+          (format 0 "ERROR: sql: face select error ~A for ~A~%" s3-0 this)
           (return #t)
           )
         (when (> (-> s3-0 len) 0)
@@ -81,26 +81,26 @@
           (format s5-0 ")")
           (let ((a2-6 (sql-query s5-0)))
             (when (!= (-> a2-6 error) 'modify)
-              (format 0 "ERROR: sql: modify error ~A for ~A~%" a2-6 obj)
+              (format 0 "ERROR: sql: modify error ~A for ~A~%" a2-6 this)
               (return #t)
               )
             )
           )
         )
       (clear s5-0)
-      (format s5-0 "delete from region_face where region_id=~D" (-> obj id))
+      (format s5-0 "delete from region_face where region_id=~D" (-> this id))
       (let ((a2-8 (sql-query s5-0)))
         (when (!= (-> a2-8 error) 'modify)
-          (format 0 "ERROR: sql: modify error ~A for ~A~%" a2-8 obj)
+          (format 0 "ERROR: sql: modify error ~A for ~A~%" a2-8 this)
           (return #t)
           )
         )
       (when (zero? arg0)
         (clear s5-0)
-        (format s5-0 "delete from region where region_id=~D" (-> obj id))
+        (format s5-0 "delete from region where region_id=~D" (-> this id))
         (let ((a2-10 (sql-query s5-0)))
           (when (!= (-> a2-10 error) 'modify)
-            (format 0 "ERROR: sql: modify error ~A for ~A~%" a2-10 obj)
+            (format 0 "ERROR: sql: modify error ~A for ~A~%" a2-10 this)
             (return #t)
             )
           )
@@ -111,14 +111,14 @@
   )
 
 ;; definition for method 9 of type editable-region
-(defmethod editable-region-method-9 editable-region ((obj editable-region) (arg0 editable-array) (arg1 int) (arg2 int))
+(defmethod editable-region-method-9 ((this editable-region) (arg0 editable-array) (arg1 int) (arg2 int))
   (local-vars (v0-0 symbol) (v1-5 object) (v1-28 object))
   (set! v0-0
-        (when (-> obj changed)
-          (format 0 "NOTICE: saving ~A~%" obj)
+        (when (-> this changed)
+          (format 0 "NOTICE: saving ~A~%" this)
           (let ((s5-0 *collapse-quote*))
             (set! *collapse-quote* #f)
-            (let ((v1-1 (-> obj tree)))
+            (let ((v1-1 (-> this tree)))
               (b! (!= v1-1 'entity) cfg-3 :delay (nop!))
               (b! #t cfg-78 :delay (nop!))
               (label cfg-3)
@@ -130,7 +130,7 @@
                   (b! #t cfg-15 :delay (nop!))
                   (label cfg-5)
                   (b! (not s1-0) cfg-10 :likely-delay (set! v1-5 s1-0))
-                  (set! v1-5 (and (= (-> s1-0 region) obj) (not (logtest? (-> s1-0 flags) (editable-flag no-save)))))
+                  (set! v1-5 (and (= (-> s1-0 region) this) (not (logtest? (-> s1-0 flags) (editable-flag no-save)))))
                   (label cfg-10)
                   (b! (not v1-5) cfg-14 :delay (empty-form))
                   (b! (editable-method-22 s1-0 arg0 1 0) cfg-14 :delay (empty-form))
@@ -153,7 +153,7 @@
                 (let ((v1-18 'modify))
                   (b! (= (-> a2-5 error) v1-18) cfg-21 :delay (empty-form))
                   )
-                (format 0 "ERROR: sql: modify error ~A for ~A~%" a2-5 obj)
+                (format 0 "ERROR: sql: modify error ~A for ~A~%" a2-5 this)
                 )
               (return #t)
               (label cfg-21)
@@ -166,7 +166,7 @@
                 (let ((v1-22 'modify))
                   (b! (= (-> a2-7 error) v1-22) cfg-24 :delay (empty-form))
                   )
-                (format 0 "ERROR: sql: modify error ~A for ~A~%" a2-7 obj)
+                (format 0 "ERROR: sql: modify error ~A for ~A~%" a2-7 this)
                 )
               )
             (return #t)
@@ -178,7 +178,7 @@
                 (b! #t cfg-35 :delay (nop!))
                 (label cfg-25)
                 (b! (not s1-1) cfg-30 :likely-delay (set! v1-28 s1-1))
-                (set! v1-28 (and (= (-> s1-1 region) obj) (not (logtest? (-> s1-1 flags) (editable-flag no-save)))))
+                (set! v1-28 (and (= (-> s1-1 region) this) (not (logtest? (-> s1-1 flags) (editable-flag no-save)))))
                 (label cfg-30)
                 (b! (not v1-28) cfg-34 :delay (empty-form))
                 (b! (editable-method-22 s1-1 arg0 1 0) cfg-34 :delay (empty-form))
@@ -193,10 +193,10 @@
               )
             (b! #t cfg-78 :delay (nop!))
             (label cfg-37)
-            (b! (nonzero? (-> obj id)) cfg-53 :delay (nop!))
+            (b! (nonzero? (-> this id)) cfg-53 :delay (nop!))
             (let ((s3-3 (clear *temp-string*)))
-              (format s3-3 "insert into region set level_name='~S',tree='~S'" (-> obj level) (-> obj tree))
-              (let ((a2-11 (-> obj on-enter)))
+              (format s3-3 "insert into region set level_name='~S',tree='~S'" (-> this level) (-> this tree))
+              (let ((a2-11 (-> this on-enter)))
                 (b! (not a2-11) cfg-40 :delay (nop!))
                 (format s3-3 ",on_enter='~S'" a2-11)
                 )
@@ -204,7 +204,7 @@
               (label cfg-40)
               (format s3-3 ",on_enter=''")
               (label cfg-41)
-              (let ((a2-12 (-> obj on-exit)))
+              (let ((a2-12 (-> this on-exit)))
                 (b! (not a2-12) cfg-43 :delay (nop!))
                 (format s3-3 ",on_exit='~S'" a2-12)
                 )
@@ -212,7 +212,7 @@
               (label cfg-43)
               (format s3-3 ",on_exit=''")
               (label cfg-44)
-              (let ((a2-13 (-> obj on-inside)))
+              (let ((a2-13 (-> this on-inside)))
                 (b! (not a2-13) cfg-46 :delay (nop!))
                 (format s3-3 ",on_inside='~S'" a2-13)
                 )
@@ -228,12 +228,12 @@
                   (let ((a0-36 'select))
                     (b! (!= (-> v1-50 error) a0-36) cfg-51 :delay (empty-form))
                     )
-                  (set! (-> obj id) (the-as uint (string->int (-> v1-50 data 0))))
+                  (set! (-> this id) (the-as uint (string->int (-> v1-50 data 0))))
                   )
                 (b! #t cfg-65 :delay (nop!))
                 (the-as none 0)
                 (label cfg-51)
-                (format 0 "ERROR: sql: insert error ~A for ~A~%" s3-4 obj)
+                (format 0 "ERROR: sql: insert error ~A for ~A~%" s3-4 this)
                 )
               )
             (set! v0-0 #f)
@@ -242,8 +242,8 @@
             (b! #t cfg-65 :delay (nop!))
             (label cfg-53)
             (let ((s3-5 (clear *temp-string*)))
-              (format s3-5 "update region set level_name='~S',tree='~S'" (-> obj level) (-> obj tree))
-              (let ((a2-16 (-> obj on-enter)))
+              (format s3-5 "update region set level_name='~S',tree='~S'" (-> this level) (-> this tree))
+              (let ((a2-16 (-> this on-enter)))
                 (b! (not a2-16) cfg-55 :delay (nop!))
                 (format s3-5 ",on_enter='~S'" a2-16)
                 )
@@ -251,34 +251,34 @@
               (label cfg-55)
               (format s3-5 ",on_enter=NULL")
               (label cfg-56)
-              (let ((a2-17 (-> obj on-exit)))
+              (let ((a2-17 (-> this on-exit)))
                 (if a2-17
                     (format s3-5 ",on_exit='~S'" a2-17)
                     (format s3-5 ",on_exit=NULL")
                     )
                 )
-              (let ((a2-18 (-> obj on-inside)))
+              (let ((a2-18 (-> this on-inside)))
                 (if a2-18
                     (format s3-5 ",on_inside='~S'" a2-18)
                     (format s3-5 ",on_inside=NULL")
                     )
                 )
-              (format s3-5 " where region_id=~D" (-> obj id))
+              (format s3-5 " where region_id=~D" (-> this id))
               (let ((a2-20 (sql-query s3-5)))
                 (when (!= (-> a2-20 error) 'modify)
-                  (format 0 "ERROR: sql: update error ~A for ~A~%" a2-20 obj)
+                  (format 0 "ERROR: sql: update error ~A for ~A~%" a2-20 this)
                   (return #f)
                   )
                 )
               )
             (label cfg-65)
-            (editable-region-method-10 obj 1)
+            (editable-region-method-10 this 1)
             (let* ((s3-6 (-> arg0 length))
                    (s2-3 0)
                    (s1-2 (-> arg0 data s2-3))
                    )
               (while (< s2-3 s3-6)
-                (when (and s1-2 (= (-> s1-2 region) obj) (not (logtest? (-> s1-2 flags) (editable-flag no-save))))
+                (when (and s1-2 (= (-> s1-2 region) this) (not (logtest? (-> s1-2 flags) (editable-flag no-save))))
                   (when (not (editable-method-22 s1-2 arg0 1 0))
                     (format 0 "ERROR: sql: insert error for ~A~%" s1-2)
                     (return #f)
@@ -289,7 +289,7 @@
                 )
               )
             (label cfg-78)
-            (set! (-> obj changed) #f)
+            (set! (-> this changed) #f)
             (set! v0-0 #t)
             (set! *collapse-quote* s5-0)
             )
@@ -302,7 +302,7 @@
 
 ;; definition for method 11 of type editable-region
 ;; WARN: Return type mismatch int vs none.
-(defmethod editable-region-method-11 editable-region ((obj editable-region) (arg0 vector) (arg1 int))
+(defmethod editable-region-method-11 ((this editable-region) (arg0 vector) (arg1 int))
   (local-vars (sv-32 vector2h))
   (set! sv-32 (new 'stack 'vector2h))
   (add-debug-x #t (bucket-id debug-no-zbuf1) arg0 (new 'static 'rgba :r #xff :g #xff :a #x80))
@@ -310,12 +310,12 @@
         (s2-0 #t)
         (s1-0 318)
         )
-    (format (clear *temp-string*) "region-~D~%" (-> obj id))
+    (format (clear *temp-string*) "region-~D~%" (-> this id))
     (s3-0 s2-0 (the-as bucket-id s1-0) *temp-string* arg0 (font-color white) sv-32)
     )
   (+! (-> sv-32 y) 8)
   (when (>= arg1 1)
-    (let ((s4-1 (-> obj on-enter)))
+    (let ((s4-1 (-> this on-enter)))
       (when s4-1
         (let ((s3-1 add-debug-text-3d)
               (s2-1 #t)
@@ -327,7 +327,7 @@
         (+! (-> sv-32 y) 8)
         )
       )
-    (let ((s4-2 (-> obj on-inside)))
+    (let ((s4-2 (-> this on-inside)))
       (when s4-2
         (let ((s3-2 add-debug-text-3d)
               (s2-2 #t)
@@ -339,7 +339,7 @@
         (+! (-> sv-32 y) 8)
         )
       )
-    (let ((s5-1 (-> obj on-exit)))
+    (let ((s5-1 (-> this on-exit)))
       (when s5-1
         (let ((s4-3 add-debug-text-3d)
               (s3-3 #t)
@@ -358,7 +358,7 @@
 
 ;; definition for method 12 of type editable-region
 ;; WARN: Return type mismatch int vs editable-filter.
-(defmethod editable-region-method-12 editable-region ((obj editable-region))
+(defmethod editable-region-method-12 ((this editable-region))
   (let* ((s5-0 0)
          (s4-0 (lambda ((arg0 string)) (let ((gp-0 0))
                                          (when (not (type? arg0 string))
@@ -385,16 +385,16 @@
                        )
                )
          (v0-3
-           (logior (logior (logior s5-0 (s4-0 (-> obj on-inside))) (s4-0 (-> obj on-enter))) (s4-0 (-> obj on-exit)))
+           (logior (logior (logior s5-0 (s4-0 (-> this on-inside))) (s4-0 (-> this on-enter))) (s4-0 (-> this on-exit)))
            )
          )
     (when (zero? v0-3)
-      (if (and (not (-> obj on-inside)) (not (-> obj on-enter)) (not (-> obj on-exit)))
+      (if (and (not (-> this on-inside)) (not (-> this on-enter)) (not (-> this on-exit)))
           (set! v0-3 1)
           (set! v0-3 2)
           )
       )
-    (case (-> obj tree)
+    (case (-> this tree)
       (('target)
        (set! v0-3 (logior v0-3 512))
        )
@@ -425,14 +425,14 @@
   )
 
 ;; definition for method 23 of type editable
-(defmethod editable-method-23 editable ((obj editable))
+(defmethod editable-method-23 ((this editable))
   #t
   )
 
 ;; definition for method 28 of type editable
 ;; WARN: Return type mismatch int vs none.
-(defmethod editable-method-28 editable ((obj editable) (arg0 editable-filter))
-  (let* ((s5-0 (-> obj owner))
+(defmethod editable-method-28 ((this editable) (arg0 editable-filter))
+  (let* ((s5-0 (-> this owner))
          (a0-1 (car s5-0))
          )
     (while (not (null? s5-0))
@@ -447,8 +447,8 @@
 
 ;; definition for method 29 of type editable
 ;; WARN: Return type mismatch int vs symbol.
-(defmethod editable-method-29 editable ((obj editable) (arg0 editable-filter))
-  (let* ((s5-0 (-> obj owner))
+(defmethod editable-method-29 ((this editable) (arg0 editable-filter))
+  (let* ((s5-0 (-> this owner))
          (a0-1 (car s5-0))
          )
     (while (not (null? s5-0))
@@ -462,16 +462,16 @@
 
 ;; definition for method 21 of type editable
 ;; WARN: Return type mismatch int vs none.
-(defmethod editable-method-21 editable ((obj editable) (arg0 editable-region))
-  (when (not (and (-> obj region) (-> obj region locked)))
+(defmethod editable-method-21 ((this editable) (arg0 editable-region))
+  (when (not (and (-> this region) (-> this region locked)))
     (if arg0
         (set! (-> arg0 changed) #t)
         )
-    (if (-> obj region)
-        (set! (-> obj region changed) #t)
+    (if (-> this region)
+        (set! (-> this region changed) #t)
         )
-    (logior! (-> obj flags) (editable-flag changed))
-    (set! (-> obj region) arg0)
+    (logior! (-> this flags) (editable-flag changed))
+    (set! (-> this region) arg0)
     )
   0
   (none)
@@ -479,27 +479,27 @@
 
 ;; definition for method 9 of type editable
 ;; WARN: Return type mismatch int vs rgba.
-(defmethod get-color editable ((obj editable) (arg0 int))
+(defmethod get-color ((this editable) (arg0 int))
   "Returns the [[rgba]] that corresponds to the type of [[editable]] TODO - document the colors"
   (the-as rgba (cond
-                 ((and (logtest? (-> obj flags) (editable-flag selected))
+                 ((and (logtest? (-> this flags) (editable-flag selected))
                        (< (mod (-> *display* real-clock frame-counter) 60) 30)
                        )
                   (the-as int (the-as uint #x80ffffff))
                   )
-                 ((logtest? (-> obj flags) (editable-flag no-save))
+                 ((logtest? (-> this flags) (editable-flag no-save))
                   (shl #x80ff 16)
                   )
-                 ((= (-> obj type) editable-point)
+                 ((= (-> this type) editable-point)
                   (the-as int (the-as uint #x800080ff))
                   )
-                 ((= (-> obj type) editable-sample)
+                 ((= (-> this type) editable-sample)
                   (the-as int (the-as uint #x80ff8000))
                   )
-                 ((= (-> obj type) editable-light)
+                 ((= (-> this type) editable-light)
                   (the-as int (the-as uint #x80ff0080))
                   )
-                 ((= (-> obj type) editable-entity)
+                 ((= (-> this type) editable-entity)
                   (the-as int (the-as uint #x80ff00ff))
                   )
                  (else
@@ -511,15 +511,15 @@
 
 ;; definition for method 10 of type editable
 ;; WARN: Return type mismatch int vs none.
-(defmethod editable-method-10 editable ((obj editable))
-  (when (logtest? (-> obj flags) (editable-flag selected))
+(defmethod editable-method-10 ((this editable))
+  (when (logtest? (-> this flags) (editable-flag selected))
     (let ((s5-0 (new 'stack-no-clear 'vector)))
-      (when (editable-method-11 obj s5-0)
+      (when (editable-method-11 this s5-0)
         (set! (-> s5-0 y) (-> s5-0 y))
         (add-debug-x #t (bucket-id debug-no-zbuf1) s5-0 (new 'static 'rgba :r #xff :g #xff :b #xff :a #x80))
         )
       )
-    (add-debug-x #t (bucket-id debug-no-zbuf1) (edit-get-trans obj) (new 'static 'rgba :r #xff :g #xff :a #x80))
+    (add-debug-x #t (bucket-id debug-no-zbuf1) (edit-get-trans this) (new 'static 'rgba :r #xff :g #xff :a #x80))
     )
   0
   (none)
@@ -527,16 +527,16 @@
 
 ;; definition for method 12 of type editable
 ;; WARN: Return type mismatch int vs none.
-(defmethod select-editable! editable ((obj editable) (arg0 symbol))
+(defmethod select-editable! ((this editable) (arg0 symbol))
   (case arg0
     (('toggle)
-     (logxor! (-> obj flags) (editable-flag selected))
+     (logxor! (-> this flags) (editable-flag selected))
      )
     ((#f)
-     (logclear! (-> obj flags) (editable-flag selected))
+     (logclear! (-> this flags) (editable-flag selected))
      )
     (else
-      (logior! (-> obj flags) (editable-flag selected))
+      (logior! (-> this flags) (editable-flag selected))
       )
     )
   0
@@ -544,18 +544,18 @@
   )
 
 ;; definition for method 13 of type editable
-(defmethod edit-get-distance editable ((obj editable) (arg0 vector))
+(defmethod edit-get-distance ((this editable) (arg0 vector))
   "Returns the distance from the camera to the [[editable]], or -1.0"
   -1.0
   )
 
 ;; definition for method 20 of type editable
 ;; WARN: Return type mismatch int vs none.
-(defmethod editable-method-20 editable ((obj editable) (arg0 vector) (arg1 vector) (arg2 vector) (arg3 vector))
+(defmethod editable-method-20 ((this editable) (arg0 vector) (arg1 vector) (arg2 vector) (arg3 vector))
   (local-vars (sv-48 vector) (sv-52 vector))
   (set! sv-48 (new 'stack-no-clear 'vector))
   (set! sv-52 (new 'stack-no-clear 'vector))
-  (let ((s4-0 (edit-get-trans obj)))
+  (let ((s4-0 (edit-get-trans this)))
     (reverse-transform-point! sv-48 s4-0 arg2 arg0)
     (reverse-transform-point! sv-52 s4-0 arg2 arg1)
     (vector-! arg3 sv-52 sv-48)
@@ -564,17 +564,17 @@
   (if (< 20480.0 (vector-length arg3))
       (vector-normalize! arg3 20480.0)
       )
-  (editable-method-15 obj arg3 56)
+  (editable-method-15 this arg3 56)
   0
   (none)
   )
 
 ;; definition for method 11 of type editable
 ;; INFO: Used lq/sq
-(defmethod editable-method-11 editable ((obj editable) (arg0 vector))
+(defmethod editable-method-11 ((this editable) (arg0 vector))
   (with-pp
     (let ((s5-0 (new 'stack 'collide-query)))
-      (set! (-> s5-0 start-pos quad) (-> (edit-get-trans obj) quad))
+      (set! (-> s5-0 start-pos quad) (-> (edit-get-trans this) quad))
       (set-vector! (-> s5-0 move-dist) 0.0 -204800.0 0.0 1.0)
       (let ((v1-5 s5-0))
         (set! (-> v1-5 radius) 40.96)
@@ -596,78 +596,78 @@
 
 ;; definition for method 24 of type editable
 ;; WARN: Return type mismatch int vs none.
-(defmethod editable-method-24 editable ((obj editable))
+(defmethod editable-method-24 ((this editable))
   0
   (none)
   )
 
 ;; definition for method 17 of type editable
 ;; WARN: Return type mismatch int vs none.
-(defmethod editable-method-17 editable ((obj editable) (arg0 vector))
+(defmethod editable-method-17 ((this editable) (arg0 vector))
   0
   (none)
   )
 
 ;; definition for method 22 of type editable
-(defmethod editable-method-22 editable ((obj editable) (arg0 editable-array) (arg1 int) (arg2 int))
+(defmethod editable-method-22 ((this editable) (arg0 editable-array) (arg1 int) (arg2 int))
   #t
   )
 
 ;; definition for method 15 of type editable
 ;; WARN: Return type mismatch int vs none.
-(defmethod editable-method-15 editable ((obj editable) (arg0 vector) (arg1 int))
+(defmethod editable-method-15 ((this editable) (arg0 vector) (arg1 int))
   0
   (none)
   )
 
 ;; definition for method 16 of type editable
 ;; WARN: Return type mismatch int vs none.
-(defmethod edit-coord! editable ((obj editable) (arg0 vector) (arg1 editable-flag))
+(defmethod edit-coord! ((this editable) (arg0 vector) (arg1 editable-flag))
   0
   (none)
   )
 
 ;; definition for method 18 of type editable
 ;; WARN: Return type mismatch int vs none.
-(defmethod editable-method-18 editable ((obj editable) (arg0 vector) (arg1 matrix))
+(defmethod editable-method-18 ((this editable) (arg0 vector) (arg1 matrix))
   0
   (none)
   )
 
 ;; definition for method 14 of type editable
-(defmethod edit-get-trans editable ((obj editable))
+(defmethod edit-get-trans ((this editable))
   "Returns the `trans` [[vector]] or [[*null-vector*]]"
   *null-vector*
   )
 
 ;; definition for method 19 of type editable
 ;; WARN: Return type mismatch int vs none.
-(defmethod editable-method-19 editable ((obj editable) (arg0 vector))
+(defmethod editable-method-19 ((this editable) (arg0 vector))
   0
   (none)
   )
 
 ;; definition for method 26 of type editable
 ;; WARN: Return type mismatch int vs none.
-(defmethod editable-method-26 editable ((obj editable) (arg0 editable) (arg1 editable-array))
+(defmethod editable-method-26 ((this editable) (arg0 editable) (arg1 editable-array))
   0
   (none)
   )
 
 ;; definition for method 25 of type editable
 ;; WARN: Return type mismatch int vs none.
-(defmethod editable-method-25 editable ((obj editable) (arg0 editable-array))
-  (let ((v1-0 (-> obj region)))
+(defmethod editable-method-25 ((this editable) (arg0 editable-array))
+  (let ((v1-0 (-> this region)))
     (if v1-0
         (set! (-> v1-0 changed) #t)
         )
     )
-  (logior! (-> obj flags) (editable-flag changed))
-  (let* ((s4-0 (-> obj owner))
+  (logior! (-> this flags) (editable-flag changed))
+  (let* ((s4-0 (-> this owner))
          (a0-3 (car s4-0))
          )
     (while (not (null? s4-0))
-      (editable-method-26 (the-as editable a0-3) obj arg0)
+      (editable-method-26 (the-as editable a0-3) this arg0)
       (set! s4-0 (cdr s4-0))
       (set! a0-3 (car s4-0))
       )
@@ -677,11 +677,11 @@
   )
 
 ;; definition for method 27 of type editable
-(defmethod editable-method-27 editable ((obj editable) (arg0 editable-array))
+(defmethod editable-method-27 ((this editable) (arg0 editable-array))
   (local-vars (s4-0 editable))
   (let ((v1-0 0))
     (while (< v1-0 (-> arg0 selection length))
-      (when (= obj (-> arg0 selection v1-0))
+      (when (= this (-> arg0 selection v1-0))
         (set! s4-0 (-> arg0 selection (+ v1-0 1)))
         (goto cfg-10)
         )
@@ -690,14 +690,14 @@
     )
   (let ((s3-0 (editable-array-method-11 arg0)))
     (set! s4-0 (when (>= s3-0 0)
-                 (set! s4-0 (copy obj 'debug))
+                 (set! s4-0 (copy this 'debug))
                  (let ((v1-9 (-> arg0 region)))
                    (if v1-9
                        (set! (-> s4-0 region) v1-9)
                        )
                    )
                  (set! (-> s4-0 region changed) #t)
-                 (logior! (-> obj flags) (editable-flag changed))
+                 (logior! (-> this flags) (editable-flag changed))
                  (set! (-> s4-0 id) (the-as uint 0))
                  (set! (-> s4-0 owner) '())
                  (select-editable! s4-0 #f)
@@ -707,7 +707,7 @@
                    )
                  (set! *editable-temp-id* (+ *editable-temp-id* 1))
                  (set! (-> arg0 data s3-0) s4-0)
-                 (set! (-> arg0 selection (-> arg0 selection length)) obj)
+                 (set! (-> arg0 selection (-> arg0 selection length)) this)
                  (set! (-> arg0 selection (+ (-> arg0 selection length) 1)) s4-0)
                  (+! (-> arg0 selection length) 2)
                  s4-0
@@ -719,55 +719,55 @@
   )
 
 ;; definition for method 2 of type editable-point
-(defmethod print editable-point ((obj editable-point))
+(defmethod print ((this editable-point))
   (format
     #t
     "#<~A~S~m ~m ~m :r ~m"
-    (-> obj type)
-    (if (logtest? (-> obj flags) (editable-flag changed))
+    (-> this type)
+    (if (logtest? (-> this flags) (editable-flag changed))
         " (m)"
         ""
         )
-    (-> obj trans x)
-    (-> obj trans y)
-    (-> obj trans z)
-    (-> obj radius)
+    (-> this trans x)
+    (-> this trans y)
+    (-> this trans z)
+    (-> this radius)
     )
-  (format #t " @ #x~X>" obj)
-  obj
+  (format #t " @ #x~X>" this)
+  this
   )
 
 ;; definition for method 28 of type editable-point
 ;; WARN: Return type mismatch int vs none.
 ;; WARN: Function (method 28 editable-point) has a return type of none, but the expression builder found a return statement.
-(defmethod editable-method-28 editable-point ((obj editable-point) (arg0 editable-filter))
+(defmethod editable-method-28 ((this editable-point) (arg0 editable-filter))
   (if (logtest? arg0 (editable-filter water-command))
       (return #f)
       )
   (let ((s4-0 (-> *editable* 0 current)))
     (cond
-      ((logtest? (-> obj flags) (editable-flag top-set))
+      ((logtest? (-> this flags) (editable-flag top-set))
        (let* ((s3-0 (-> s4-0 length))
               (s2-0 0)
               (a0-1 (-> s4-0 data s2-0))
               )
          (while (< s2-0 s3-0)
-           (if (and a0-1 (= (-> a0-1 region) (-> obj region)) (logtest? (-> a0-1 flags) (editable-flag top-set)))
-               (edit-coord! a0-1 (-> obj trans) (editable-flag y no-update))
+           (if (and a0-1 (= (-> a0-1 region) (-> this region)) (logtest? (-> a0-1 flags) (editable-flag top-set)))
+               (edit-coord! a0-1 (-> this trans) (editable-flag y no-update))
                )
            (+! s2-0 1)
            (set! a0-1 (-> s4-0 data s2-0))
            )
          )
        )
-      ((logtest? (-> obj flags) (editable-flag bot-set))
+      ((logtest? (-> this flags) (editable-flag bot-set))
        (let* ((s3-1 (-> s4-0 length))
               (s2-1 0)
               (a0-2 (-> s4-0 data s2-1))
               )
          (while (< s2-1 s3-1)
-           (if (and a0-2 (= (-> a0-2 region) (-> obj region)) (logtest? (-> a0-2 flags) (editable-flag bot-set)))
-               (edit-coord! a0-2 (-> obj trans) (editable-flag y no-update))
+           (if (and a0-2 (= (-> a0-2 region) (-> this region)) (logtest? (-> a0-2 flags) (editable-flag bot-set)))
+               (edit-coord! a0-2 (-> this trans) (editable-flag y no-update))
                )
            (+! s2-1 1)
            (set! a0-2 (-> s4-0 data s2-1))
@@ -776,83 +776,80 @@
        )
       )
     )
-  ((the-as (function editable-point editable-command none) (find-parent-method editable-point 28))
-   obj
-   (the-as editable-command arg0)
-   )
+  (call-parent-method this arg0)
   0
   (none)
   )
 
 ;; definition for method 15 of type editable-point
 ;; WARN: Return type mismatch int vs none.
-(defmethod editable-method-15 editable-point ((obj editable-point) (arg0 vector) (arg1 int))
-  (let ((v1-0 (-> obj region)))
+(defmethod editable-method-15 ((this editable-point) (arg0 vector) (arg1 int))
+  (let ((v1-0 (-> this region)))
     (if v1-0
         (set! (-> v1-0 changed) #t)
         )
     )
-  (logior! (-> obj flags) (editable-flag changed))
-  (vector+! (-> obj trans) (-> obj trans) arg0)
-  (editable-method-28 obj (the-as editable-filter arg1))
+  (logior! (-> this flags) (editable-flag changed))
+  (vector+! (-> this trans) (-> this trans) arg0)
+  (editable-method-28 this (the-as editable-filter arg1))
   0
   (none)
   )
 
 ;; definition for method 16 of type editable-point
 ;; WARN: Return type mismatch int vs none.
-(defmethod edit-coord! editable-point ((obj editable-point) (arg0 vector) (arg1 editable-flag))
-  (let ((v1-0 (-> obj region)))
+(defmethod edit-coord! ((this editable-point) (arg0 vector) (arg1 editable-flag))
+  (let ((v1-0 (-> this region)))
     (if v1-0
         (set! (-> v1-0 changed) #t)
         )
     )
-  (logior! (-> obj flags) (editable-flag changed))
+  (logior! (-> this flags) (editable-flag changed))
   (if (logtest? arg1 (editable-flag x))
-      (set! (-> obj trans x) (-> arg0 x))
+      (set! (-> this trans x) (-> arg0 x))
       )
   (if (logtest? arg1 (editable-flag y))
-      (set! (-> obj trans y) (-> arg0 y))
+      (set! (-> this trans y) (-> arg0 y))
       )
   (if (logtest? arg1 (editable-flag z))
-      (set! (-> obj trans z) (-> arg0 z))
+      (set! (-> this trans z) (-> arg0 z))
       )
-  (editable-method-28 obj (the-as editable-filter arg1))
+  (editable-method-28 this (the-as editable-filter arg1))
   0
   (none)
   )
 
 ;; definition for method 14 of type editable-point
-(defmethod edit-get-trans editable-point ((obj editable-point))
+(defmethod edit-get-trans ((this editable-point))
   "Returns the `trans` [[vector]] or [[*null-vector*]]"
-  (-> obj trans)
+  (-> this trans)
   )
 
 ;; definition for method 18 of type editable-point
 ;; WARN: Return type mismatch int vs none.
-(defmethod editable-method-18 editable-point ((obj editable-point) (arg0 vector) (arg1 matrix))
-  (let ((v1-0 (-> obj region)))
+(defmethod editable-method-18 ((this editable-point) (arg0 vector) (arg1 matrix))
+  (let ((v1-0 (-> this region)))
     (if v1-0
         (set! (-> v1-0 changed) #t)
         )
     )
-  (logior! (-> obj flags) (editable-flag changed))
-  (let ((s4-1 (vector-! (new 'stack-no-clear 'vector) (-> obj trans) arg0)))
+  (logior! (-> this flags) (editable-flag changed))
+  (let ((s4-1 (vector-! (new 'stack-no-clear 'vector) (-> this trans) arg0)))
     (vector-matrix*! s4-1 s4-1 arg1)
-    (vector+! (-> obj trans) s4-1 arg0)
+    (vector+! (-> this trans) s4-1 arg0)
     )
   0
   (none)
   )
 
 ;; definition for method 10 of type editable-point
-(defmethod editable-method-10 editable-point ((obj editable-point))
+(defmethod editable-method-10 ((this editable-point))
   (let* ((s5-0 vector-vector-distance)
          (a0-1 (math-camera-pos))
-         (a1-0 (-> obj trans))
-         (f0-1 (- (s5-0 a0-1 a1-0) (-> obj radius)))
+         (a1-0 (-> this trans))
+         (f0-1 (- (s5-0 a0-1 a1-0) (-> this radius)))
          (s2-0 (cond
-                 ((logtest? (-> obj flags) (editable-flag selected))
+                 ((logtest? (-> this flags) (editable-flag selected))
                   6
                   )
                  ((>= f0-1 983040.0)
@@ -872,29 +869,29 @@
          )
     (add-debug-sphere-from-table
       (bucket-id debug2)
-      (-> obj trans)
-      (-> obj radius)
-      (get-color obj (the-as int a1-0))
+      (-> this trans)
+      (-> this radius)
+      (get-color this (the-as int a1-0))
       s2-0
       )
     )
-  ((method-of-type editable editable-method-10) obj)
+  ((method-of-type editable editable-method-10) this)
   (none)
   )
 
 ;; definition for method 13 of type editable-point
 ;; INFO: Used lq/sq
-(defmethod edit-get-distance editable-point ((obj editable-point) (arg0 vector))
+(defmethod edit-get-distance ((this editable-point) (arg0 vector))
   "Returns the distance from the camera to the [[editable]], or -1.0"
   (let ((a0-1 (new 'stack-no-clear 'sphere))
         (s5-0 (new 'stack-no-clear 'vector))
         )
-    (set! (-> a0-1 quad) (-> obj trans quad))
-    (set! (-> a0-1 r) (-> obj radius))
+    (set! (-> a0-1 quad) (-> this trans quad))
+    (set! (-> a0-1 r) (-> this radius))
     (when (sphere-in-view-frustum? a0-1)
-      (reverse-transform-point! s5-0 (-> obj trans) (-> *math-camera* inv-camera-rot vector 2) arg0)
-      (let ((f0-1 (vector-vector-distance (edit-get-trans obj) s5-0)))
-        (if (>= (-> obj radius) f0-1)
+      (reverse-transform-point! s5-0 (-> this trans) (-> *math-camera* inv-camera-rot vector 2) arg0)
+      (let ((f0-1 (vector-vector-distance (edit-get-trans this) s5-0)))
+        (if (>= (-> this radius) f0-1)
             (return f0-1)
             )
         )
@@ -905,23 +902,23 @@
 
 ;; definition for method 19 of type editable-point
 ;; WARN: Return type mismatch int vs none.
-(defmethod editable-method-19 editable-point ((obj editable-point) (arg0 vector))
-  (let ((v1-0 (-> obj region)))
+(defmethod editable-method-19 ((this editable-point) (arg0 vector))
+  (let ((v1-0 (-> this region)))
     (if v1-0
         (set! (-> v1-0 changed) #t)
         )
     )
-  (let ((s4-1 (vector-! (new 'stack-no-clear 'vector) arg0 (-> obj trans))))
-    (vector-normalize! s4-1 (-> obj radius))
-    (vector-! (-> obj trans) arg0 s4-1)
+  (let ((s4-1 (vector-! (new 'stack-no-clear 'vector) arg0 (-> this trans))))
+    (vector-normalize! s4-1 (-> this radius))
+    (vector-! (-> this trans) arg0 s4-1)
     )
-  (editable-method-28 obj (editable-filter load))
+  (editable-method-28 this (editable-filter load))
   0
   (none)
   )
 
 ;; definition for method 22 of type editable-point
-(defmethod editable-method-22 editable-point ((obj editable-point) (arg0 editable-array) (arg1 int) (arg2 int))
+(defmethod editable-method-22 ((this editable-point) (arg0 editable-array) (arg1 int) (arg2 int))
   (case arg1
     ((2)
      (let ((s3-0 (clear *temp-string*)))
@@ -929,13 +926,13 @@
          s3-0
          "insert into region_point set region_face_id=LAST_INSERT_ID(),idx=~D,x=~f,y=~f,z=~f"
          arg2
-         (- (-> obj trans x) (-> arg0 level-offset x))
-         (- (-> obj trans y) (-> arg0 level-offset y))
-         (- (-> obj trans z) (-> arg0 level-offset z))
+         (- (-> this trans x) (-> arg0 level-offset x))
+         (- (-> this trans y) (-> arg0 level-offset y))
+         (- (-> this trans z) (-> arg0 level-offset z))
          )
        (let ((a0-5 (sql-query s3-0)))
          (when (= (-> a0-5 error) 'modify)
-           (logclear! (-> obj flags) (editable-flag changed))
+           (logclear! (-> this flags) (editable-flag changed))
            #t
            )
          )
@@ -949,55 +946,55 @@
 
 ;; definition for method 17 of type editable-sphere
 ;; WARN: Return type mismatch int vs none.
-(defmethod editable-method-17 editable-sphere ((obj editable-sphere) (arg0 vector))
-  (let ((v1-0 (-> obj region)))
+(defmethod editable-method-17 ((this editable-sphere) (arg0 vector))
+  (let ((v1-0 (-> this region)))
     (if v1-0
         (set! (-> v1-0 changed) #t)
         )
     )
-  (logior! (-> obj flags) (editable-flag changed))
+  (logior! (-> this flags) (editable-flag changed))
   (if (= (-> arg0 y) 0.0)
-      (+! (-> obj radius) (-> arg0 x))
-      (set! (-> obj radius) (-> arg0 y))
+      (+! (-> this radius) (-> arg0 x))
+      (set! (-> this radius) (-> arg0 y))
       )
-  (if (< (-> obj radius) 0.0)
-      (set! (-> obj radius) 0.0)
+  (if (< (-> this radius) 0.0)
+      (set! (-> this radius) 0.0)
       )
-  (editable-method-28 obj (editable-filter load))
+  (editable-method-28 this (editable-filter load))
   0
   (none)
   )
 
 ;; definition for method 22 of type editable-sphere
-(defmethod editable-method-22 editable-sphere ((obj editable-sphere) (arg0 editable-array) (arg1 int) (arg2 int))
+(defmethod editable-method-22 ((this editable-sphere) (arg0 editable-array) (arg1 int) (arg2 int))
   (let ((gp-0 (clear *temp-string*)))
     (format
       gp-0
       "insert into region_sphere set region_id=~D,x=~f,y=~f,z=~f,r=~f"
-      (-> obj region id)
-      (- (-> obj trans x) (-> arg0 level-offset x))
-      (- (-> obj trans y) (-> arg0 level-offset y))
-      (- (-> obj trans z) (-> arg0 level-offset z))
-      (-> obj radius)
+      (-> this region id)
+      (- (-> this trans x) (-> arg0 level-offset x))
+      (- (-> this trans y) (-> arg0 level-offset y))
+      (- (-> this trans z) (-> arg0 level-offset z))
+      (-> this radius)
       )
     (= (-> (sql-query gp-0) error) 'modify)
     )
   )
 
 ;; definition for method 22 of type editable-sample
-(defmethod editable-method-22 editable-sample ((obj editable-sample) (arg0 editable-array) (arg1 int) (arg2 int))
+(defmethod editable-method-22 ((this editable-sample) (arg0 editable-array) (arg1 int) (arg2 int))
   (let ((s5-0 (clear *temp-string*)))
     (format
       s5-0
       "insert into sample_point set level_info_id=~D,x=~f,y=~f,z=~f,source='manual'"
       (-> arg0 level-info-id)
-      (* 0.00024414062 (- (-> obj trans x) (-> arg0 level-offset x)))
-      (* 0.00024414062 (- (-> obj trans y) (-> arg0 level-offset y)))
-      (* 0.00024414062 (- (-> obj trans z) (-> arg0 level-offset z)))
+      (* 0.00024414062 (- (-> this trans x) (-> arg0 level-offset x)))
+      (* 0.00024414062 (- (-> this trans y) (-> arg0 level-offset y)))
+      (* 0.00024414062 (- (-> this trans z) (-> arg0 level-offset z)))
       )
     (let ((a0-4 (sql-query s5-0)))
       (when (= (-> a0-4 error) 'modify)
-        (logclear! (-> obj flags) (editable-flag changed))
+        (logclear! (-> this flags) (editable-flag changed))
         #t
         )
       )
@@ -1005,40 +1002,40 @@
   )
 
 ;; definition for method 2 of type editable-light
-(defmethod print editable-light ((obj editable-light))
+(defmethod print ((this editable-light))
   (format
     #t
     "#<~A~S ~S ~m ~m ~m"
-    (-> obj type)
-    (if (logtest? (-> obj flags) (editable-flag changed))
+    (-> this type)
+    (if (logtest? (-> this flags) (editable-flag changed))
         " (m)"
         ""
         )
-    (-> obj name)
-    (-> obj trans x)
-    (-> obj trans y)
-    (-> obj trans z)
+    (-> this name)
+    (-> this trans x)
+    (-> this trans y)
+    (-> this trans z)
     )
-  (format #t " :r ~m @ #x~X>" (-> obj radius) obj)
-  obj
+  (format #t " :r ~m @ #x~X>" (-> this radius) this)
+  this
   )
 
 ;; definition for method 23 of type editable-light
 ;; INFO: Used lq/sq
-(defmethod editable-method-23 editable-light ((obj editable-light))
+(defmethod editable-method-23 ((this editable-light))
   (let ((v1-0 *light-hash*))
     (let* ((a2-0 (-> v1-0 num-lights))
            (a1-1 (-> v1-0 light-sphere-array a2-0))
            )
-      (set! (-> a1-1 name) (-> obj name))
-      (set! (-> a1-1 decay-start) (-> obj decay-start))
-      (set! (-> a1-1 ambient-point-ratio) (-> obj ambient-point-ratio))
-      (set! (-> a1-1 brightness) (-> obj brightness))
-      (set! (-> a1-1 bsphere quad) (-> obj trans quad))
-      (set! (-> a1-1 bsphere w) (-> obj radius))
-      (set! (-> a1-1 direction quad) (-> obj direction quad))
-      (set! (-> a1-1 color quad) (-> obj color quad))
-      (set! (-> a1-1 palette-index) (the int (-> obj color w)))
+      (set! (-> a1-1 name) (-> this name))
+      (set! (-> a1-1 decay-start) (-> this decay-start))
+      (set! (-> a1-1 ambient-point-ratio) (-> this ambient-point-ratio))
+      (set! (-> a1-1 brightness) (-> this brightness))
+      (set! (-> a1-1 bsphere quad) (-> this trans quad))
+      (set! (-> a1-1 bsphere w) (-> this radius))
+      (set! (-> a1-1 direction quad) (-> this direction quad))
+      (set! (-> a1-1 color quad) (-> this color quad))
+      (set! (-> a1-1 palette-index) (the int (-> this color w)))
       )
     (+! (-> v1-0 num-lights) 1)
     )
@@ -1067,38 +1064,38 @@
 
 ;; definition for method 17 of type editable-light
 ;; WARN: Return type mismatch int vs none.
-(defmethod editable-method-17 editable-light ((obj editable-light) (arg0 vector))
-  (let ((v1-0 (-> obj region)))
+(defmethod editable-method-17 ((this editable-light) (arg0 vector))
+  (let ((v1-0 (-> this region)))
     (if v1-0
         (set! (-> v1-0 changed) #t)
         )
     )
-  (logior! (-> obj flags) (editable-flag changed))
+  (logior! (-> this flags) (editable-flag changed))
   (if (= (-> arg0 y) 0.0)
-      (+! (-> obj radius) (-> arg0 x))
-      (set! (-> obj radius) (-> arg0 y))
+      (+! (-> this radius) (-> arg0 x))
+      (set! (-> this radius) (-> arg0 y))
       )
-  (if (< (-> obj radius) 0.0)
-      (set! (-> obj radius) 0.0)
+  (if (< (-> this radius) 0.0)
+      (set! (-> this radius) 0.0)
       )
-  (update-light-sphere-from-editable-light obj)
-  (editable-method-28 obj (editable-filter load))
+  (update-light-sphere-from-editable-light this)
+  (editable-method-28 this (editable-filter load))
   0
   (none)
   )
 
 ;; definition for method 15 of type editable-light
 ;; WARN: Return type mismatch int vs none.
-(defmethod editable-method-15 editable-light ((obj editable-light) (arg0 vector) (arg1 int))
-  (let ((v1-0 (-> obj region)))
+(defmethod editable-method-15 ((this editable-light) (arg0 vector) (arg1 int))
+  (let ((v1-0 (-> this region)))
     (if v1-0
         (set! (-> v1-0 changed) #t)
         )
     )
-  (logior! (-> obj flags) (editable-flag changed))
-  (vector+! (-> obj trans) (-> obj trans) arg0)
-  (update-light-sphere-from-editable-light obj)
-  (editable-method-28 obj (the-as editable-filter arg1))
+  (logior! (-> this flags) (editable-flag changed))
+  (vector+! (-> this trans) (-> this trans) arg0)
+  (update-light-sphere-from-editable-light this)
+  (editable-method-28 this (the-as editable-filter arg1))
   0
   (none)
   )
@@ -1106,14 +1103,14 @@
 ;; definition for method 25 of type editable-light
 ;; WARN: Return type mismatch int vs none.
 ;; WARN: Function (method 25 editable-light) has a return type of none, but the expression builder found a return statement.
-(defmethod editable-method-25 editable-light ((obj editable-light) (arg0 editable-array))
-  ((the-as (function editable-light editable-array none) (find-parent-method editable-light 25)) obj arg0)
-  (when (nonzero? (-> obj id))
+(defmethod editable-method-25 ((this editable-light) (arg0 editable-array))
+  (call-parent-method this arg0)
+  (when (nonzero? (-> this id))
     (let ((s5-1 (clear *temp-string*)))
-      (format s5-1 "delete from light where light_id=~D" (-> obj id))
+      (format s5-1 "delete from light where light_id=~D" (-> this id))
       (let ((a2-1 (sql-query s5-1)))
         (when (!= (-> a2-1 error) 'modify)
-          (format 0 "ERROR: sql: modify error ~A for ~A~%" a2-1 obj)
+          (format 0 "ERROR: sql: modify error ~A for ~A~%" a2-1 this)
           (return 0)
           )
         )
@@ -1124,62 +1121,68 @@
   )
 
 ;; definition for method 22 of type editable-light
-(defmethod editable-method-22 editable-light ((obj editable-light) (arg0 editable-array) (arg1 int) (arg2 int))
+(defmethod editable-method-22 ((this editable-light) (arg0 editable-array) (arg1 int) (arg2 int))
   (cond
-    ((logtest? (-> obj flags) (editable-flag changed))
+    ((logtest? (-> this flags) (editable-flag changed))
      (let ((s5-0 (clear *temp-string*)))
-       (when (zero? (-> obj id))
-         (format s5-0 "insert into light set level_name='~S'" (-> obj region level))
+       (when (zero? (-> this id))
+         (format s5-0 "insert into light set level_name='~S'" (-> this region level))
          (let ((s3-0 (sql-query s5-0)))
            (when (= (-> s3-0 error) 'modify)
              (let ((v1-7 (sql-query "select LAST_INSERT_ID()")))
                (when (= (-> v1-7 error) 'select)
-                 (set! (-> obj id) (the-as uint (string->int (-> v1-7 data 0))))
+                 (set! (-> this id) (the-as uint (string->int (-> v1-7 data 0))))
                  (goto cfg-8)
                  )
                )
              )
-           (format 0 "ERROR: sql: id insert error ~A for ~A~%" s3-0 obj)
+           (format 0 "ERROR: sql: id insert error ~A for ~A~%" s3-0 this)
            )
          (return #f)
          (label cfg-8)
          (let ((s3-1 (new 'debug 'string 32 (the-as string #f))))
-           (format s3-1 "light-~d" (-> obj id))
-           (set! (-> obj name) s3-1)
+           (format s3-1 "light-~d" (-> this id))
+           (set! (-> this name) s3-1)
            )
          )
-       (format (clear s5-0) "update light set level_name='~S', name='~S'" (-> obj region level) (-> obj name))
+       (format (clear s5-0) "update light set level_name='~S', name='~S'" (-> this region level) (-> this name))
        (format
          s5-0
          ", pos_x=~f, pos_y=~f, pos_z=~f, r=~f"
-         (* 0.00024414062 (- (-> obj trans x) (-> arg0 level-offset x)))
-         (* 0.00024414062 (- (-> obj trans y) (-> arg0 level-offset y)))
-         (* 0.00024414062 (- (-> obj trans z) (-> arg0 level-offset z)))
-         (* 0.00024414062 (-> obj radius))
+         (* 0.00024414062 (- (-> this trans x) (-> arg0 level-offset x)))
+         (* 0.00024414062 (- (-> this trans y) (-> arg0 level-offset y)))
+         (* 0.00024414062 (- (-> this trans z) (-> arg0 level-offset z)))
+         (* 0.00024414062 (-> this radius))
          )
-       (if (= (-> obj direction w) 0.0)
+       (if (= (-> this direction w) 0.0)
            (format s5-0 ", dir_x=0.0, dir_y=0.0, dir_z=0.0")
-           (format s5-0 ", dir_x=~f, dir_y=~f, dir_z=~f" (-> obj direction x) (-> obj direction y) (-> obj direction z))
+           (format
+             s5-0
+             ", dir_x=~f, dir_y=~f, dir_z=~f"
+             (-> this direction x)
+             (-> this direction y)
+             (-> this direction z)
+             )
            )
        (format
          s5-0
          ", color0_r=~f, color0_g=~f, color0_b=~f, color0_a=~f"
-         (-> obj color x)
-         (-> obj color y)
-         (-> obj color z)
-         (-> obj color w)
+         (-> this color x)
+         (-> this color y)
+         (-> this color z)
+         (-> this color w)
          )
        (format
          s5-0
          ", decay_start=~f, ambient_point_ratio=~f, brightness=~f"
-         (-> obj decay-start)
-         (-> obj ambient-point-ratio)
-         (-> obj brightness)
+         (-> this decay-start)
+         (-> this ambient-point-ratio)
+         (-> this brightness)
          )
-       (format s5-0 " where light_id=~D" (-> obj id))
+       (format s5-0 " where light_id=~D" (-> this id))
        (let ((a0-21 (sql-query s5-0)))
          (when (= (-> a0-21 error) 'modify)
-           (logclear! (-> obj flags) (editable-flag changed))
+           (logclear! (-> this flags) (editable-flag changed))
            #t
            )
          )
@@ -1192,14 +1195,14 @@
   )
 
 ;; definition for method 10 of type editable-light
-(defmethod editable-method-10 editable-light ((obj editable-light))
-  (if (!= (-> obj direction w) 0.0)
+(defmethod editable-method-10 ((this editable-light))
+  (if (!= (-> this direction w) 0.0)
       (add-debug-vector
         #t
         (bucket-id debug-no-zbuf1)
-        (edit-get-trans obj)
-        (-> obj direction)
-        (* -1.2 (-> obj radius))
+        (edit-get-trans this)
+        (-> this direction)
+        (* -1.2 (-> this radius))
         (new 'static 'rgba :r #xff :b #xff :a #x80)
         )
       )
@@ -1208,34 +1211,34 @@
           (s4-1 #t)
           (s3-1 318)
           )
-      (format (clear *temp-string*) "~S~%" (-> obj name))
-      (s5-1 s4-1 (the-as bucket-id s3-1) *temp-string* (-> obj trans) (font-color white) (the-as vector2h #f))
+      (format (clear *temp-string*) "~S~%" (-> this name))
+      (s5-1 s4-1 (the-as bucket-id s3-1) *temp-string* (-> this trans) (font-color white) (the-as vector2h #f))
       )
     )
-  ((method-of-type editable-sphere editable-method-10) obj)
+  ((method-of-type editable-sphere editable-method-10) this)
   (none)
   )
 
 ;; definition for method 14 of type editable-face
 ;; INFO: Used lq/sq
-(defmethod edit-get-trans editable-face ((obj editable-face))
+(defmethod edit-get-trans ((this editable-face))
   "Returns the `trans` [[vector]] or [[*null-vector*]]"
   "The center of the obj."
   (cond
-    ((>= (-> obj length) 3)
+    ((>= (-> this length) 3)
      (let ((s5-0 (new 'static 'vector)))
        (set! (-> s5-0 quad) (the-as uint128 0))
-       (vector+! s5-0 s5-0 (edit-get-trans (-> obj vertex 0)))
-       (vector+! s5-0 s5-0 (edit-get-trans (-> obj vertex 1)))
-       (vector+! s5-0 s5-0 (edit-get-trans (-> obj vertex 2)))
+       (vector+! s5-0 s5-0 (edit-get-trans (-> this vertex 0)))
+       (vector+! s5-0 s5-0 (edit-get-trans (-> this vertex 1)))
+       (vector+! s5-0 s5-0 (edit-get-trans (-> this vertex 2)))
        (vector-float*! s5-0 s5-0 0.33333334)
        )
      )
-    ((>= (-> obj length) 2)
+    ((>= (-> this length) 2)
      (let ((s5-1 (new 'static 'vector)))
        (set! (-> s5-1 quad) (the-as uint128 0))
-       (vector+! s5-1 s5-1 (edit-get-trans (-> obj vertex 0)))
-       (vector+! s5-1 s5-1 (edit-get-trans (-> obj vertex 1)))
+       (vector+! s5-1 s5-1 (edit-get-trans (-> this vertex 0)))
+       (vector+! s5-1 s5-1 (edit-get-trans (-> this vertex 1)))
        (vector-float*! s5-1 s5-1 0.5)
        )
      )
@@ -1246,10 +1249,10 @@
   )
 
 ;; definition for method 22 of type editable-face
-(defmethod editable-method-22 editable-face ((obj editable-face) (arg0 editable-array) (arg1 int) (arg2 int))
+(defmethod editable-method-22 ((this editable-face) (arg0 editable-array) (arg1 int) (arg2 int))
   (let ((s4-0 (clear *temp-string*)))
-    (format s4-0 "insert into region_face set kind='face',region_id=~D" (-> obj region id))
-    (if (logtest? (-> obj flags) (editable-flag orient))
+    (format s4-0 "insert into region_face set kind='face',region_id=~D" (-> this region id))
+    (if (logtest? (-> this flags) (editable-flag orient))
         (format s4-0 ",flags='orient'")
         )
     (let ((a0-5 (sql-query s4-0)))
@@ -1258,57 +1261,51 @@
           )
       )
     )
-  (dotimes (s4-1 (-> obj length))
-    (editable-method-22 (-> obj vertex s4-1) arg0 2 s4-1)
+  (dotimes (s4-1 (-> this length))
+    (editable-method-22 (-> this vertex s4-1) arg0 2 s4-1)
     )
-  (logclear! (-> obj flags) (editable-flag changed))
+  (logclear! (-> this flags) (editable-flag changed))
   #t
   )
 
 ;; definition for method 25 of type editable-face
-(defmethod editable-method-25 editable-face ((obj editable-face) (arg0 editable-array))
-  (dotimes (s4-0 (-> obj length))
-    (let ((s3-0 (-> obj vertex s4-0)))
-      (set! (-> s3-0 owner) (delete! obj (-> s3-0 owner)))
+(defmethod editable-method-25 ((this editable-face) (arg0 editable-array))
+  (dotimes (s4-0 (-> this length))
+    (let ((s3-0 (-> this vertex s4-0)))
+      (set! (-> s3-0 owner) (delete! this (-> s3-0 owner)))
       )
     )
-  ((the-as (function editable-face editable-array none) (find-parent-method editable-face 25)) obj arg0)
+  (call-parent-method this arg0)
   (none)
   )
 
 ;; definition for method 26 of type editable-face
-(defmethod editable-method-26 editable-face ((obj editable-face) (arg0 editable) (arg1 editable-array))
-  (-> obj length)
-  (countdown (v1-1 (-> obj length))
-    (when (= (-> obj vertex v1-1) arg0)
+(defmethod editable-method-26 ((this editable-face) (arg0 editable) (arg1 editable-array))
+  (-> this length)
+  (countdown (v1-1 (-> this length))
+    (when (= (-> this vertex v1-1) arg0)
       (let ((a0-5 v1-1)
-            (a1-2 (+ (-> obj length) -2))
+            (a1-2 (+ (-> this length) -2))
             )
         (while (>= a1-2 a0-5)
-          (set! (-> obj vertex a0-5) (-> obj vertex (+ a0-5 1)))
+          (set! (-> this vertex a0-5) (-> this vertex (+ a0-5 1)))
           (+! a0-5 1)
           )
         )
-      (+! (-> obj length) -1)
+      (+! (-> this length) -1)
       )
     )
-  (if (< (-> obj length) 3)
-      (editable-array-method-15 arg1 obj)
+  (if (< (-> this length) 3)
+      (editable-array-method-15 arg1 this)
       )
-  ((method-of-type editable editable-method-26) obj arg0 arg1)
+  ((method-of-type editable editable-method-26) this arg0 arg1)
   (none)
   )
 
 ;; definition for method 27 of type editable-face
 ;; WARN: Return type mismatch editable-face vs editable.
-(defmethod editable-method-27 editable-face ((obj editable-face) (arg0 editable-array))
-  (let ((gp-1
-          (the-as
-            editable-face
-            ((the-as (function editable-face editable-array editable) (find-parent-method editable-face 27)) obj arg0)
-            )
-          )
-        )
+(defmethod editable-method-27 ((this editable-face) (arg0 editable-array))
+  (let ((gp-1 (the-as editable-face (call-parent-method this arg0))))
     (dotimes (s4-0 (-> gp-1 length))
       (set! (-> gp-1 vertex s4-0) (the-as editable-point (editable-method-27 (-> gp-1 vertex s4-0) arg0)))
       (set! (-> gp-1 vertex s4-0 owner) (cons gp-1 (-> gp-1 vertex s4-0 owner)))
@@ -1319,26 +1316,26 @@
 
 ;; definition for method 24 of type editable-face
 ;; WARN: Return type mismatch int vs none.
-(defmethod editable-method-24 editable-face ((obj editable-face))
-  (logxor! (-> obj flags) (editable-flag orient))
-  (editable-face-method-31 obj (-> obj normal))
-  (logior! (-> obj flags) (editable-flag changed))
-  (set! (-> obj region changed) #t)
+(defmethod editable-method-24 ((this editable-face))
+  (logxor! (-> this flags) (editable-flag orient))
+  (editable-face-method-31 this (-> this normal))
+  (logior! (-> this flags) (editable-flag changed))
+  (set! (-> this region changed) #t)
   0
   (none)
   )
 
 ;; definition for method 30 of type editable-face
 ;; INFO: Used lq/sq
-(defmethod editable-face-method-30 editable-face ((obj editable-face) (arg0 (inline-array vector)))
-  (let ((v1-0 (-> obj length)))
+(defmethod editable-face-method-30 ((this editable-face) (arg0 (inline-array vector)))
+  (let ((v1-0 (-> this length)))
     (cond
       ((or (zero? v1-0) (= v1-0 1))
        0
        )
       ((= v1-0 2)
-       (let ((s4-0 (edit-get-trans (-> obj vertex 0)))
-             (v1-3 (edit-get-trans (-> obj vertex 1)))
+       (let ((s4-0 (edit-get-trans (-> this vertex 0)))
+             (v1-3 (edit-get-trans (-> this vertex 1)))
              )
          (set! (-> arg0 0 quad) (-> s4-0 quad))
          (set! (-> arg0 1 quad) (-> s4-0 quad))
@@ -1350,10 +1347,10 @@
        4
        )
       (else
-        (dotimes (s4-1 (-> obj length))
-          (set! (-> arg0 s4-1 quad) (-> (edit-get-trans (-> obj vertex s4-1)) quad))
+        (dotimes (s4-1 (-> this length))
+          (set! (-> arg0 s4-1 quad) (-> (edit-get-trans (-> this vertex s4-1)) quad))
           )
-        (-> obj length)
+        (-> this length)
         )
       )
     )
@@ -1361,16 +1358,16 @@
 
 ;; definition for method 31 of type editable-face
 ;; INFO: Used lq/sq
-(defmethod editable-face-method-31 editable-face ((obj editable-face) (arg0 vector))
+(defmethod editable-face-method-31 ((this editable-face) (arg0 vector))
   (let ((s4-0 (new 'stack-no-clear 'matrix)))
     (dotimes (v1-0 6)
       (set! (-> s4-0 quad v1-0) (the-as uint128 0))
       )
-    (if (>= (editable-face-method-30 obj (the-as (inline-array vector) s4-0)) 3)
+    (if (>= (editable-face-method-30 this (the-as (inline-array vector) s4-0)) 3)
         (normal-of-plane arg0 (the-as vector (-> s4-0 vector)) (-> s4-0 vector 1) (-> s4-0 vector 2))
         )
     )
-  (if (logtest? (-> obj flags) (editable-flag orient))
+  (if (logtest? (-> this flags) (editable-flag orient))
       (vector-negate! arg0 arg0)
       )
   arg0
@@ -1378,44 +1375,32 @@
 
 ;; definition for method 13 of type editable-face
 ;; INFO: Used lq/sq
-(defmethod edit-get-distance editable-face ((obj editable-face) (arg0 vector))
+(defmethod edit-get-distance ((this editable-face) (arg0 vector))
   "Returns the distance from the camera to the [[editable]], or -1.0"
   (let ((gp-0 (new 'stack-no-clear 'vector))
-        (s5-0 (editable-face-method-31 obj (new 'stack-no-clear 'vector)))
+        (s5-0 (editable-face-method-31 this (new 'stack-no-clear 'vector)))
         (s2-0 (new 'stack-no-clear 'vector))
         )
-    (set! (-> s2-0 quad) (-> (edit-get-trans (-> obj vertex 0)) quad))
+    (set! (-> s2-0 quad) (-> (edit-get-trans (-> this vertex 0)) quad))
     (transform-point-vector! gp-0 s2-0)
     (when (< 0.0 (-> gp-0 z))
       (reverse-transform-point! gp-0 s2-0 s5-0 arg0)
-      (let ((s3-1 (the-as object (new 'stack-no-clear 'inline-array 'vector 6))))
+      (let ((points (new 'stack-no-clear 'inline-array 'vector 6)))
         (dotimes (v1-5 6)
-          (set! (-> (the-as (inline-array vector) s3-1) v1-5 quad) (the-as uint128 0))
+          (set! (-> points v1-5 quad) (the-as uint128 0))
           )
-        (let ((s4-1 (editable-face-method-30 obj (the-as (inline-array vector) s3-1)))
+        (let ((s4-1 (editable-face-method-30 this points))
               (s2-1 0)
               (s1-1 (vector-negate! (new 'stack-no-clear 'vector) s5-0))
               )
           (while (< (+ s2-1 2) s4-1)
-            (if (or (point-in-triangle-cross
-                      gp-0
-                      s5-0
-                      (-> (the-as (inline-array vector) s3-1) 0)
-                      (-> (the-as (inline-array vector) s3-1) 1)
-                      (-> (the-as (inline-array vector) s3-1) 2)
-                      )
-                    (point-in-triangle-cross
-                      gp-0
-                      s1-1
-                      (-> (the-as (inline-array vector) s3-1) 0)
-                      (-> (the-as (inline-array vector) s3-1) 1)
-                      (-> (the-as (inline-array vector) s3-1) 2)
-                      )
+            (if (or (point-in-triangle-cross gp-0 s5-0 (-> points 0) (-> points 1) (-> points 2))
+                    (point-in-triangle-cross gp-0 s1-1 (-> points 0) (-> points 1) (-> points 2))
                     )
                 (return (vector-vector-distance (camera-pos) gp-0))
                 )
             (+! s2-1 1)
-            (set! s3-1 (-> (the-as (inline-array vector) s3-1) 1))
+            (set! points (the-as (inline-array vector) (-> points 1)))
             )
           )
         )
@@ -1483,11 +1468,11 @@
 ;; WARN: Stack slot offset 400 signed mismatch
 ;; WARN: Stack slot offset 292 signed mismatch
 ;; WARN: Return type mismatch int vs symbol.
-(defmethod editable-method-29 editable-face ((obj editable-face) (arg0 editable-filter))
+(defmethod editable-method-29 ((this editable-face) (arg0 editable-filter))
   (local-vars
     (sv-208 (inline-array vector))
     (sv-216 int)
-    (sv-288 (array editable-point))
+    (sv-288 array)
     (sv-292 int)
     (sv-296 int)
     (sv-368 matrix)
@@ -1496,19 +1481,19 @@
     (sv-380 symbol)
     (sv-400 float)
     )
-  (if (or (logtest? arg0 (editable-filter water-command)) (logtest? (-> obj flags) (editable-flag mark)))
+  (if (or (logtest? arg0 (editable-filter water-command)) (logtest? (-> this flags) (editable-flag mark)))
       (return (the-as symbol #f))
       )
-  (logior! (-> obj flags) (editable-flag mark))
+  (logior! (-> this flags) (editable-flag mark))
   (let ((s5-0 (new 'stack-no-clear 'inline-array 'vector 6)))
     (dotimes (v1-7 6)
       (set! (-> s5-0 v1-7 quad) (the-as uint128 0))
       )
-    (let ((s4-0 (editable-face-method-30 obj s5-0)))
-      (when (and (>= s4-0 4) (>= (-> obj length) 3))
+    (let ((s4-0 (editable-face-method-30 this s5-0)))
+      (when (and (>= s4-0 4) (>= (-> this length) 3))
         (let ((v1-14 0))
           (dotimes (a0-7 s4-0)
-            (if (logtest? (-> obj vertex a0-7 flags) (editable-flag selected))
+            (if (logtest? (-> this vertex a0-7 flags) (editable-flag selected))
                 (+! v1-14 1)
                 )
             )
@@ -1525,38 +1510,38 @@
                )
              (set! sv-216 0)
              (dotimes (s2-2 s4-0)
-               (when (not (logtest? (-> obj vertex s2-2 flags) (editable-flag selected)))
-                 (set! (-> sv-208 sv-216 quad) (-> (edit-get-trans (-> obj vertex s2-2)) quad))
+               (when (not (logtest? (-> this vertex s2-2 flags) (editable-flag selected)))
+                 (set! (-> sv-208 sv-216 quad) (-> (edit-get-trans (-> this vertex s2-2)) quad))
                  (set! sv-216 (+ sv-216 1))
                  )
                )
              (dotimes (s2-3 s4-0)
-               (when (logtest? (-> obj vertex s2-3 flags) (editable-flag selected))
-                 (set! (-> sv-208 sv-216 quad) (-> (edit-get-trans (-> obj vertex s2-3)) quad))
+               (when (logtest? (-> this vertex s2-3 flags) (editable-flag selected))
+                 (set! (-> sv-208 sv-216 quad) (-> (edit-get-trans (-> this vertex s2-3)) quad))
                  (set! sv-216 (+ sv-216 1))
                  )
                )
-             (normal-of-plane (-> obj normal) (-> sv-208 0) (-> sv-208 1) (-> sv-208 2))
-             (set! (-> obj center quad) (-> (edit-get-trans obj) quad))
+             (normal-of-plane (-> this normal) (-> sv-208 0) (-> sv-208 1) (-> sv-208 2))
+             (set! (-> this center quad) (-> (edit-get-trans this) quad))
              )
             )
           )
         (when (not (logtest? arg0 (editable-filter load)))
-          (when (= (-> obj normal w) 0.0)
-            (editable-face-method-31 obj (-> obj normal))
-            (set! (-> obj center quad) (-> (edit-get-trans obj) quad))
+          (when (= (-> this normal w) 0.0)
+            (editable-face-method-31 this (-> this normal))
+            (set! (-> this center quad) (-> (edit-get-trans this) quad))
             )
           (let ((s3-2 0)
-                (s2-5 (-> obj normal))
-                (s1-2 (-> obj center))
+                (s2-5 (-> this normal))
+                (s1-2 (-> this center))
                 )
             (while (< s3-2 s4-0)
-              (when (logtest? (-> obj vertex s3-2 flags) (editable-flag selected))
+              (when (logtest? (-> this vertex s3-2 flags) (editable-flag selected))
                 (let* ((a1-14 (vector-! (new 'stack-no-clear 'vector) (-> s5-0 s3-2) s1-2))
                        (f0-2 (vector-dot a1-14 s2-5))
                        )
                   (edit-coord!
-                    (-> obj vertex s3-2)
+                    (-> this vertex s3-2)
                     (vector+float*! a1-14 (-> s5-0 s3-2) s2-5 (- f0-2))
                     (editable-flag x y z no-plane-snap)
                     )
@@ -1567,43 +1552,40 @@
             )
           )
         (set! sv-288
-              (the-as
-                (array editable-point)
-                ((method-of-type array new)
-                 (the-as symbol (new 'stack-no-clear 'array 'editable-point 6))
-                 array
-                 editable-point
-                 6
-                 )
-                )
+              ((method-of-type array new)
+               (the-as symbol (new 'stack-no-clear 'array 'editable-point 6))
+               array
+               editable-point
+               6
+               )
               )
-        (set! sv-292 (+ (-> obj length) -1))
+        (set! sv-292 (+ (-> this length) -1))
         (set! sv-296 1)
-        (editable-face-method-31 obj (-> obj normal))
+        (editable-face-method-31 this (-> this normal))
         (dotimes (v1-85 sv-292)
-          (set! (-> sv-288 v1-85) (-> obj vertex (+ v1-85 1)))
+          (set! (-> (the-as (array editable-point) sv-288) v1-85) (-> this vertex (+ v1-85 1)))
           )
         (set! sv-368 (new-stack-matrix0))
         (set! sv-372 (the-as editable-point #f))
         (set! sv-376 (the-as float 0.0))
         (set! sv-380 #t)
         (vector-normalize!
-          (vector-! (-> sv-368 vector 2) (edit-get-trans obj) (edit-get-trans (-> obj vertex 0)))
+          (vector-! (-> sv-368 vector 2) (edit-get-trans this) (edit-get-trans (-> this vertex 0)))
           1.0
           )
-        (vector-normalize! (editable-face-method-31 obj (-> sv-368 vector 1)) 1.0)
+        (vector-normalize! (editable-face-method-31 this (-> sv-368 vector 1)) 1.0)
         (vector-normalize!
           (vector-cross! (the-as vector (-> sv-368 vector)) (-> sv-368 vector 2) (-> sv-368 vector 1))
           1.0
           )
-        (set! (-> sv-368 trans quad) (-> (edit-get-trans (-> obj vertex 0)) quad))
+        (set! (-> sv-368 trans quad) (-> (edit-get-trans (-> this vertex 0)) quad))
         (set! (-> sv-368 trans w) 1.0)
         (matrix-4x4-inverse! sv-368 sv-368)
-        (while (< sv-296 (-> obj length))
+        (while (< sv-296 (-> this length))
           (set! sv-372 (the-as editable-point #f))
           (dotimes (s5-4 sv-292)
-            (when (-> sv-288 s5-4)
-              (let* ((a1-27 (edit-get-trans (-> sv-288 s5-4)))
+            (when (-> (the-as (array editable-point) sv-288) s5-4)
+              (let* ((a1-27 (edit-get-trans (-> (the-as (array editable-point) sv-288) s5-4)))
                      (a0-48 (vector-matrix*! (new 'stack-no-clear 'vector) a1-27 sv-368))
                      )
                 (set! sv-400 (vector-y-angle a0-48))
@@ -1611,61 +1593,61 @@
               (cond
                 (sv-380
                   (when (or (not sv-372) (< sv-376 sv-400))
-                    (set! sv-372 (-> sv-288 s5-4))
+                    (set! sv-372 (-> (the-as (array editable-point) sv-288) s5-4))
                     (set! sv-376 sv-400)
                     )
                   )
                 (else
                   (when (or (not sv-372) (< sv-400 sv-376))
-                    (set! sv-372 (-> sv-288 s5-4))
+                    (set! sv-372 (-> (the-as (array editable-point) sv-288) s5-4))
                     (set! sv-376 sv-400)
                     )
                   )
                 )
               )
             )
-          (set! (-> obj vertex sv-296) sv-372)
+          (set! (-> this vertex sv-296) sv-372)
           (dotimes (v1-137 sv-292)
-            (if (= sv-372 (-> sv-288 v1-137))
-                (set! (-> sv-288 v1-137) #f)
+            (if (= sv-372 (-> (the-as (array editable-point) sv-288) v1-137))
+                (set! (-> (the-as (array editable-point) sv-288) v1-137) #f)
                 )
             )
           (set! sv-296 (+ sv-296 1))
           (set! sv-380 (not sv-380))
           )
-        (if (< (vector-dot (-> obj normal) (editable-face-method-31 obj (new 'stack-no-clear 'vector))) 0.0)
-            (logxor! (-> obj flags) (editable-flag orient))
+        (if (< (vector-dot (-> this normal) (editable-face-method-31 this (new 'stack-no-clear 'vector))) 0.0)
+            (logxor! (-> this flags) (editable-flag orient))
             )
         )
       )
     )
-  (editable-face-method-31 obj (-> obj normal))
-  (set! (-> obj center quad) (-> (edit-get-trans obj) quad))
+  (editable-face-method-31 this (-> this normal))
+  (set! (-> this center quad) (-> (edit-get-trans this) quad))
   (the-as symbol 0)
   )
 
 ;; definition for method 10 of type editable-face
 ;; INFO: Used lq/sq
 ;; WARN: Return type mismatch int vs none.
-(defmethod editable-method-10 editable-face ((obj editable-face))
+(defmethod editable-method-10 ((this editable-face))
   (local-vars (sv-112 int))
   (let ((gp-0 (new 'stack-no-clear 'inline-array 'vector 6)))
     (dotimes (v1-0 6)
       (set! (-> gp-0 v1-0 quad) (the-as uint128 0))
       )
-    (set! sv-112 (editable-face-method-30 obj gp-0))
+    (set! sv-112 (editable-face-method-30 this gp-0))
     (when (>= sv-112 3)
-      (let ((s1-0 (editable-face-method-31 obj (new 'stack-no-clear 'vector))))
+      (let ((s1-0 (editable-face-method-31 this (new 'stack-no-clear 'vector))))
         (add-debug-vector
           #t
           (bucket-id debug-no-zbuf1)
-          (edit-get-trans obj)
+          (edit-get-trans this)
           s1-0
           (meters 2)
           (new 'static 'rgba :r #xff :g #xff :a #x80)
           )
         )
-      (when (logtest? (-> obj flags) (editable-flag selected))
+      (when (logtest? (-> this flags) (editable-flag selected))
         (dotimes (s4-1 sv-112)
           (let ((s3-1 add-debug-text-3d)
                 (s2-1 #t)
@@ -1677,7 +1659,7 @@
               (the-as bucket-id s1-1)
               *temp-string*
               (-> gp-0 s4-1)
-              (if (logtest? (-> obj flags) (editable-flag orient))
+              (if (logtest? (-> this flags) (editable-flag orient))
                   (font-color yellow)
                   (font-color white)
                   )
@@ -1690,15 +1672,15 @@
         (bucket-id debug2)
         gp-0
         sv-112
-        (if (logtest? (-> obj flags) (editable-flag orient))
+        (if (logtest? (-> this flags) (editable-flag orient))
             (new 'static 'rgba :r #xff :a #x80)
             (new 'static 'rgba :r #xff :g #xff :a #x80)
             )
-        (if (not (logtest? (-> obj flags) (editable-flag orient)))
+        (if (not (logtest? (-> this flags) (editable-flag orient)))
             (new 'static 'rgba :r #xff :a #x80)
             (new 'static 'rgba :r #xff :g #xff :a #x80)
             )
-        (if (logtest? (-> obj flags) (editable-flag selected))
+        (if (logtest? (-> this flags) (editable-flag selected))
             1
             0
             )
@@ -1710,22 +1692,22 @@
   )
 
 ;; definition for method 14 of type editable-plane
-(defmethod edit-get-trans editable-plane ((obj editable-plane))
+(defmethod edit-get-trans ((this editable-plane))
   "Returns the `trans` [[vector]] or [[*null-vector*]]"
-  (if (>= (-> obj length) 1)
-      (edit-get-trans (-> obj vertex 0))
+  (if (>= (-> this length) 1)
+      (edit-get-trans (-> this vertex 0))
       *null-vector*
       )
   )
 
 ;; definition for method 22 of type editable-plane
-(defmethod editable-method-22 editable-plane ((obj editable-plane) (arg0 editable-array) (arg1 int) (arg2 int))
+(defmethod editable-method-22 ((this editable-plane) (arg0 editable-array) (arg1 int) (arg2 int))
   (let ((s4-0 (clear *temp-string*)))
     (format
       s4-0
       "insert into region_face set kind='plane',region_id=~D,radius=~f"
-      (-> obj region id)
-      (-> obj radius)
+      (-> this region id)
+      (-> this radius)
       )
     (let ((a0-4 (sql-query s4-0)))
       (if (!= (-> a0-4 error) 'modify)
@@ -1733,41 +1715,35 @@
           )
       )
     )
-  (dotimes (s4-1 (-> obj length))
-    (editable-method-22 (-> obj vertex s4-1) arg0 2 s4-1)
+  (dotimes (s4-1 (-> this length))
+    (editable-method-22 (-> this vertex s4-1) arg0 2 s4-1)
     )
-  (logclear! (-> obj flags) (editable-flag changed))
+  (logclear! (-> this flags) (editable-flag changed))
   #t
   )
 
 ;; definition for method 25 of type editable-plane
-(defmethod editable-method-25 editable-plane ((obj editable-plane) (arg0 editable-array))
-  (dotimes (s4-0 (-> obj length))
-    (let ((s3-0 (-> obj vertex s4-0)))
-      (set! (-> s3-0 owner) (delete! obj (-> s3-0 owner)))
+(defmethod editable-method-25 ((this editable-plane) (arg0 editable-array))
+  (dotimes (s4-0 (-> this length))
+    (let ((s3-0 (-> this vertex s4-0)))
+      (set! (-> s3-0 owner) (delete! this (-> s3-0 owner)))
       )
     )
-  ((the-as (function editable-plane editable-array none) (find-parent-method editable-plane 25)) obj arg0)
+  (call-parent-method this arg0)
   (none)
   )
 
 ;; definition for method 26 of type editable-plane
-(defmethod editable-method-26 editable-plane ((obj editable-plane) (arg0 editable) (arg1 editable-array))
-  (editable-array-method-15 arg1 obj)
-  ((method-of-type editable editable-method-26) obj arg0 arg1)
+(defmethod editable-method-26 ((this editable-plane) (arg0 editable) (arg1 editable-array))
+  (editable-array-method-15 arg1 this)
+  ((method-of-type editable editable-method-26) this arg0 arg1)
   (none)
   )
 
 ;; definition for method 27 of type editable-plane
 ;; WARN: Return type mismatch editable-plane vs editable.
-(defmethod editable-method-27 editable-plane ((obj editable-plane) (arg0 editable-array))
-  (let ((gp-1
-          (the-as
-            editable-plane
-            ((the-as (function editable-plane editable-array editable) (find-parent-method editable-plane 27)) obj arg0)
-            )
-          )
-        )
+(defmethod editable-method-27 ((this editable-plane) (arg0 editable-array))
+  (let ((gp-1 (the-as editable-plane (call-parent-method this arg0))))
     (dotimes (s4-0 (-> gp-1 length))
       (set! (-> gp-1 vertex s4-0) (the-as editable-point (editable-method-27 (-> gp-1 vertex s4-0) arg0)))
       (set! (-> gp-1 vertex s4-0 owner) (cons gp-1 (-> gp-1 vertex s4-0 owner)))
@@ -1778,24 +1754,32 @@
 
 ;; definition for method 24 of type editable-plane
 ;; WARN: Return type mismatch int vs none.
-(defmethod editable-method-24 editable-plane ((obj editable-plane))
+(defmethod editable-method-24 ((this editable-plane))
   (let ((s5-1
-          (vector-! (new 'stack-no-clear 'vector) (edit-get-trans (-> obj vertex 1)) (edit-get-trans (-> obj vertex 0)))
+          (vector-!
+            (new 'stack-no-clear 'vector)
+            (edit-get-trans (-> this vertex 1))
+            (edit-get-trans (-> this vertex 0))
+            )
           )
         )
-    (edit-coord! (-> obj vertex 1) (vector-! s5-1 (edit-get-trans (-> obj vertex 0)) s5-1) (editable-flag x y z))
+    (edit-coord!
+      (-> this vertex 1)
+      (vector-! s5-1 (edit-get-trans (-> this vertex 0)) s5-1)
+      (editable-flag x y z)
+      )
     )
-  (set! (-> obj region changed) #t)
-  (logior! (-> obj flags) (editable-flag changed))
+  (set! (-> this region changed) #t)
+  (logior! (-> this flags) (editable-flag changed))
   0
   (none)
   )
 
 ;; definition for method 30 of type editable-plane
-(defmethod editable-plane-method-30 editable-plane ((obj editable-plane) (arg0 matrix))
-  (case (-> obj length)
+(defmethod editable-plane-method-30 ((this editable-plane) (arg0 (inline-array vector)))
+  (case (-> this length)
     ((2)
-     (let* ((v1-2 (editable-plane-method-31 obj (new 'stack-no-clear 'vector)))
+     (let* ((v1-2 (editable-plane-method-31 this (new 'stack-no-clear 'vector)))
             (s5-1 (vector-cross!
                     (new 'stack-no-clear 'vector)
                     v1-2
@@ -1806,18 +1790,18 @@
                     )
                   )
             (s4-1 (vector-cross! (new 'stack-no-clear 'vector) s5-1 v1-2))
-            (f30-0 (-> obj radius))
+            (f30-0 (-> this radius))
             )
-       (let ((v1-4 (edit-get-trans (-> obj vertex 0))))
-         (vector+float*! (the-as vector (-> arg0 vector)) v1-4 s5-1 f30-0)
-         (vector+float*! (the-as vector (-> arg0 vector)) (the-as vector (-> arg0 vector)) s4-1 (- f30-0))
-         (vector+float*! (-> arg0 vector 1) v1-4 s5-1 (- f30-0))
-         (vector+float*! (-> arg0 vector 1) (-> arg0 vector 1) s4-1 (- f30-0))
-         (vector+float*! (-> arg0 vector 2) v1-4 s5-1 f30-0)
-         (vector+float*! (-> arg0 vector 2) (-> arg0 vector 2) s4-1 f30-0)
-         (vector+float*! (-> arg0 trans) v1-4 s5-1 (- f30-0))
+       (let ((v1-4 (edit-get-trans (-> this vertex 0))))
+         (vector+float*! (-> arg0 0) v1-4 s5-1 f30-0)
+         (vector+float*! (-> arg0 0) (-> arg0 0) s4-1 (- f30-0))
+         (vector+float*! (-> arg0 1) v1-4 s5-1 (- f30-0))
+         (vector+float*! (-> arg0 1) (-> arg0 1) s4-1 (- f30-0))
+         (vector+float*! (-> arg0 2) v1-4 s5-1 f30-0)
+         (vector+float*! (-> arg0 2) (-> arg0 2) s4-1 f30-0)
+         (vector+float*! (-> arg0 3) v1-4 s5-1 (- f30-0))
          )
-       (vector+float*! (-> arg0 trans) (-> arg0 trans) s4-1 f30-0)
+       (vector+float*! (-> arg0 3) (-> arg0 3) s4-1 f30-0)
        )
      4
      )
@@ -1828,11 +1812,11 @@
   )
 
 ;; definition for method 31 of type editable-plane
-(defmethod editable-plane-method-31 editable-plane ((obj editable-plane) (arg0 vector))
-  (case (-> obj length)
+(defmethod editable-plane-method-31 ((this editable-plane) (arg0 vector))
+  (case (-> this length)
     ((2)
-     (let ((s3-0 (-> obj vertex 0))
-           (a0-1 (-> obj vertex 1))
+     (let ((s3-0 (-> this vertex 0))
+           (a0-1 (-> this vertex 1))
            )
        (vector-! arg0 (edit-get-trans a0-1) (edit-get-trans s3-0))
        )
@@ -1844,45 +1828,33 @@
 
 ;; definition for method 13 of type editable-plane
 ;; INFO: Used lq/sq
-(defmethod edit-get-distance editable-plane ((obj editable-plane) (arg0 vector))
+(defmethod edit-get-distance ((this editable-plane) (arg0 vector))
   "Returns the distance from the camera to the [[editable]], or -1.0"
   (let ((gp-0 (new 'stack-no-clear 'vector))
-        (s5-0 (editable-plane-method-31 obj (new 'stack-no-clear 'vector)))
+        (s5-0 (editable-plane-method-31 this (new 'stack-no-clear 'vector)))
         )
     (let ((s1-0 (new 'stack-no-clear 'vector)))
-      (set! (-> s1-0 quad) (-> (edit-get-trans (-> obj vertex 0)) quad))
+      (set! (-> s1-0 quad) (-> (edit-get-trans (-> this vertex 0)) quad))
       (transform-point-vector! gp-0 s1-0)
       )
     (when (< 0.0 (-> gp-0 z))
-      (reverse-transform-point! gp-0 (edit-get-trans (-> obj vertex 0)) s5-0 arg0)
-      (let ((s3-1 (the-as object (new 'stack-no-clear 'matrix))))
+      (reverse-transform-point! gp-0 (edit-get-trans (-> this vertex 0)) s5-0 arg0)
+      (let ((points (new 'stack-no-clear 'inline-array 'vector 4)))
         (dotimes (v1-6 4)
-          (set! (-> (the-as (inline-array vector) s3-1) v1-6 quad) (the-as uint128 0))
+          (set! (-> points v1-6 quad) (the-as uint128 0))
           )
-        (let ((s4-1 (editable-plane-method-30 obj (the-as matrix s3-1)))
+        (let ((s4-1 (editable-plane-method-30 this points))
               (s2-2 0)
               (s1-2 (vector-negate! (new 'stack-no-clear 'vector) s5-0))
               )
           (while (< (+ s2-2 2) s4-1)
-            (if (or (point-in-triangle-cross
-                      gp-0
-                      s5-0
-                      (-> (the-as (inline-array vector) s3-1) 0)
-                      (-> (the-as (inline-array vector) s3-1) 1)
-                      (-> (the-as (inline-array vector) s3-1) 2)
-                      )
-                    (point-in-triangle-cross
-                      gp-0
-                      s1-2
-                      (-> (the-as (inline-array vector) s3-1) 0)
-                      (-> (the-as (inline-array vector) s3-1) 1)
-                      (-> (the-as (inline-array vector) s3-1) 2)
-                      )
+            (if (or (point-in-triangle-cross gp-0 s5-0 (-> points 0) (-> points 1) (-> points 2))
+                    (point-in-triangle-cross gp-0 s1-2 (-> points 0) (-> points 1) (-> points 2))
                     )
                 (return (vector-vector-distance (camera-pos) gp-0))
                 )
             (+! s2-2 1)
-            (set! s3-1 (-> (the-as (inline-array vector) s3-1) 1))
+            (set! points (the-as (inline-array vector) (-> points 1)))
             )
           )
         )
@@ -1894,35 +1866,35 @@
 ;; definition for method 10 of type editable-plane
 ;; INFO: Used lq/sq
 ;; WARN: Return type mismatch int vs none.
-(defmethod editable-method-10 editable-plane ((obj editable-plane))
-  (let ((gp-0 (new 'stack-no-clear 'matrix)))
+(defmethod editable-method-10 ((this editable-plane))
+  (let ((gp-0 (new 'stack-no-clear 'inline-array 'vector 4)))
     (dotimes (v1-0 4)
-      (set! (-> gp-0 quad v1-0) (the-as uint128 0))
+      (set! (-> gp-0 v1-0 quad) (the-as uint128 0))
       )
-    (let ((s4-0 (editable-plane-method-30 obj gp-0)))
+    (let ((s4-0 (editable-plane-method-30 this gp-0)))
       (when (>= s4-0 3)
         (add-debug-line
           #t
           (bucket-id debug-no-zbuf1)
-          (edit-get-trans (-> obj vertex 0))
-          (edit-get-trans (-> obj vertex 1))
+          (edit-get-trans (-> this vertex 0))
+          (edit-get-trans (-> this vertex 1))
           (new 'static 'rgba :r #xff :g #xff :a #x80)
           #f
           (the-as rgba -1)
           )
         (add-debug-bound
           (bucket-id debug2)
-          (the-as (inline-array vector) gp-0)
+          gp-0
           s4-0
-          (if (logtest? (-> obj flags) (editable-flag orient))
+          (if (logtest? (-> this flags) (editable-flag orient))
               (new 'static 'rgba :r #xff :a #x80)
               (new 'static 'rgba :r #xff :g #xff :a #x80)
               )
-          (if (not (logtest? (-> obj flags) (editable-flag orient)))
+          (if (not (logtest? (-> this flags) (editable-flag orient)))
               (new 'static 'rgba :r #xff :a #x80)
               (new 'static 'rgba :r #xff :g #xff :a #x80)
               )
-          (if (logtest? (-> obj flags) (editable-flag selected))
+          (if (logtest? (-> this flags) (editable-flag selected))
               1
               0
               )
@@ -1936,31 +1908,31 @@
 
 ;; definition for method 17 of type editable-plane
 ;; WARN: Return type mismatch int vs none.
-(defmethod editable-method-17 editable-plane ((obj editable-plane) (arg0 vector))
-  (let ((v1-0 (-> obj region)))
+(defmethod editable-method-17 ((this editable-plane) (arg0 vector))
+  (let ((v1-0 (-> this region)))
     (if v1-0
         (set! (-> v1-0 changed) #t)
         )
     )
-  (logior! (-> obj flags) (editable-flag changed))
+  (logior! (-> this flags) (editable-flag changed))
   (if (= (-> arg0 y) 0.0)
-      (+! (-> obj radius) (-> arg0 x))
-      (set! (-> obj radius) (-> arg0 y))
+      (+! (-> this radius) (-> arg0 x))
+      (set! (-> this radius) (-> arg0 y))
       )
-  (if (< (-> obj radius) 0.0)
-      (set! (-> obj radius) 0.0)
+  (if (< (-> this radius) 0.0)
+      (set! (-> this radius) 0.0)
       )
-  (editable-method-28 obj (editable-filter load))
+  (editable-method-28 this (editable-filter load))
   0
   (none)
   )
 
 ;; definition for method 7 of type editable-array
 ;; WARN: Return type mismatch (array editable) vs editable-array.
-(defmethod relocate editable-array ((obj editable-array) (arg0 int))
-  (the-as editable-array (when (nonzero? (-> obj selection))
-                           (let ((v0-0 (&+ (-> obj selection) arg0)))
-                             (set! (-> obj selection) v0-0)
+(defmethod relocate ((this editable-array) (arg0 int))
+  (the-as editable-array (when (nonzero? (-> this selection))
+                           (let ((v0-0 (&+ (-> this selection) arg0)))
+                             (set! (-> this selection) v0-0)
                              v0-0
                              )
                            )
@@ -1968,32 +1940,32 @@
   )
 
 ;; definition for method 4 of type editable-array
-(defmethod length editable-array ((obj editable-array))
-  (-> obj length)
+(defmethod length ((this editable-array))
+  (-> this length)
   )
 
 ;; definition for method 5 of type editable-array
 ;; WARN: Return type mismatch uint vs int.
-(defmethod asize-of editable-array ((obj editable-array))
-  (the-as int (+ (-> obj type size) (* (-> obj allocated-length) 4)))
+(defmethod asize-of ((this editable-array))
+  (the-as int (+ (-> this type size) (* (-> this allocated-length) 4)))
   )
 
 ;; definition for method 11 of type editable-array
-(defmethod editable-array-method-11 editable-array ((obj editable-array))
-  (dotimes (v1-0 (-> obj length))
-    (if (not (-> obj data v1-0))
+(defmethod editable-array-method-11 ((this editable-array))
+  (dotimes (v1-0 (-> this length))
+    (if (not (-> this data v1-0))
         (return v1-0)
         )
     )
-  (when (< (-> obj length) (-> obj allocated-length))
-    (+! (-> obj length) 1)
-    (return (+ (-> obj length) -1))
+  (when (< (-> this length) (-> this allocated-length))
+    (+! (-> this length) 1)
+    (return (+ (-> this length) -1))
     )
   -1
   )
 
 ;; definition for method 10 of type editable-array
-(defmethod editable-array-method-10 editable-array ((obj editable-array) (arg0 vector) (arg1 int))
+(defmethod editable-array-method-10 ((this editable-array) (arg0 vector) (arg1 int))
   (when (or (!= (-> arg0 x) (-> *editable-work* last-x)) (!= (-> arg0 y) (-> *editable-work* last-y)))
     (set! (-> *editable-work* last-found) 0)
     (set! (-> *editable-work* last-x) (-> arg0 x))
@@ -2002,13 +1974,13 @@
   4095996000.0
   (let ((s5-0 (the-as editable #f)))
     (set! (-> *editable-work* num-found) 0)
-    (let* ((s2-0 (-> obj length))
+    (let* ((s2-0 (-> this length))
            (s1-0 0)
-           (s0-0 (-> obj data s1-0))
+           (s0-0 (-> this data s1-0))
            )
       (while (< s1-0 s2-0)
-        (when (and s0-0 (or (and (logtest? (-> s0-0 region filter) (-> obj filter 0))
-                                 (logtest? (-> s0-0 region filter) (-> obj filter 1))
+        (when (and s0-0 (or (and (logtest? (-> s0-0 region filter) (-> this filter 0))
+                                 (logtest? (-> s0-0 region filter) (-> this filter 1))
                                  )
                             (logtest? (-> s0-0 flags) (editable-flag selected))
                             )
@@ -2024,7 +1996,7 @@
             )
           )
         (+! s1-0 1)
-        (set! s0-0 (-> obj data s1-0))
+        (set! s0-0 (-> this data s1-0))
         )
       )
     (countdown (v1-43 (-> *editable-work* num-found))
@@ -2065,57 +2037,56 @@
   )
 
 ;; definition for method 14 of type editable-array
-;; WARN: Return type mismatch (array editable) vs none.
-(defmethod editable-array-method-14 editable-array ((obj editable-array) (arg0 (function symbol)) (arg1 symbol))
-  (let ((gp-0 (-> obj selection)))
+(defmethod editable-array-method-14 ((this editable-array) (arg0 (function editable editable-region symbol)) (arg1 editable-region))
+  (let ((gp-0 (-> this selection)))
     (set! (-> gp-0 length) 0)
-    (let* ((s2-0 (-> obj length))
+    (let* ((s2-0 (-> this length))
            (s1-0 0)
-           (s0-0 (-> obj data s1-0))
+           (s0-0 (-> this data s1-0))
            )
       (while (< s1-0 s2-0)
         (when (and s0-0 (logtest? (-> s0-0 flags) (editable-flag selected)))
-          (when (arg0)
+          (when (arg0 s0-0 arg1)
             (set! (-> gp-0 (-> gp-0 length)) s0-0)
             (+! (-> gp-0 length) 1)
             )
           )
         (+! s1-0 1)
-        (set! s0-0 (-> obj data s1-0))
+        (set! s0-0 (-> this data s1-0))
         )
       )
+    gp-0
     )
-  (none)
   )
 
 ;; definition for method 15 of type editable-array
 ;; WARN: Return type mismatch int vs none.
-(defmethod editable-array-method-15 editable-array ((obj editable-array) (arg0 editable))
+(defmethod editable-array-method-15 ((this editable-array) (arg0 editable))
   (let ((gp-0 (-> arg0 region)))
     (when gp-0
-      (editable-method-25 arg0 obj)
-      (let* ((v1-3 (-> obj length))
+      (editable-method-25 arg0 this)
+      (let* ((v1-3 (-> this length))
              (a0-2 0)
-             (a1-4 (-> obj data a0-2))
+             (a1-4 (-> this data a0-2))
              )
         (while (< a0-2 v1-3)
           (if (and a1-4 (= arg0 a1-4))
-              (set! (-> obj data a0-2) #f)
+              (set! (-> this data a0-2) #f)
               )
           (+! a0-2 1)
-          (set! a1-4 (-> obj data a0-2))
+          (set! a1-4 (-> this data a0-2))
           )
         )
-      (let* ((v1-6 (-> obj length))
+      (let* ((v1-6 (-> this length))
              (a0-3 0)
-             (a1-14 (-> obj data a0-3))
+             (a1-14 (-> this data a0-3))
              )
         (while (< a0-3 v1-6)
           (if (and a1-14 (= (-> a1-14 region) gp-0) (!= a1-14 arg0))
               (goto cfg-21)
               )
           (+! a0-3 1)
-          (set! a1-14 (-> obj data a0-3))
+          (set! a1-14 (-> this data a0-3))
           )
         )
       (editable-region-method-10 gp-0 0)
@@ -2153,7 +2124,7 @@
 ;; WARN: Stack slot offset 44 signed mismatch
 ;; WARN: Return type mismatch symbol vs none.
 ;; WARN: Function (method 12 editable-array) has a return type of none, but the expression builder found a return statement.
-(defmethod editable-array-method-12 editable-array ((obj editable-array) (arg0 editable-array))
+(defmethod editable-array-method-12 ((this editable-array) (arg0 editable-array))
   (local-vars
     (sv-16 sql-result)
     (sv-20 sql-result)
@@ -2187,9 +2158,9 @@
   (set! (-> *editable-sample-region* level) (the-as string arg0))
   (set! (-> *editable-light-region* level) (the-as string arg0))
   (set! (-> *editable-entity-region* level) (the-as string arg0))
-  (vector-reset! (-> obj level-offset))
-  (set! (-> obj level-info-id) (the-as uint -1))
-  (set! (-> obj level) (the-as uint arg0))
+  (vector-reset! (-> this level-offset))
+  (set! (-> this level-info-id) (the-as uint -1))
+  (set! (-> this level) (the-as uint arg0))
   (let ((s4-0 sql-query))
     (format
       (clear *temp-string*)
@@ -2200,13 +2171,13 @@
     )
   (when (and (= (-> sv-16 error) 'select) (>= (-> sv-16 len) 3))
     (set-vector!
-      (-> obj level-offset)
+      (-> this level-offset)
       (* 4096.0 (string->float (-> sv-16 data 0)))
       (* 4096.0 (string->float (-> sv-16 data 1)))
       (* 4096.0 (string->float (-> sv-16 data 2)))
       1.0
       )
-    (set! (-> obj level-info-id) (the-as uint (string->int (-> sv-16 data 3))))
+    (set! (-> this level-info-id) (the-as uint (string->int (-> sv-16 data 3))))
     )
   (let ((s4-2 sql-query))
     (format
@@ -2263,7 +2234,7 @@
       (set! sv-44 (the-as float -4095996000.0))
       (set! (-> sv-36 id) (the-as uint (string->int (-> sv-20 data s5-1))))
       (set! (-> sv-36 level) (the-as string (string->symbol (-> sv-20 data (+ s5-1 1)))))
-      (set! (-> sv-36 tree) (the-as string (string->symbol (-> sv-20 data (+ s5-1 2)))))
+      (set! (-> sv-36 tree) (string->symbol (-> sv-20 data (+ s5-1 2))))
       (set! (-> sv-36 on-enter) (if (string= (-> sv-20 data (+ s5-1 3)) "")
                                     (the-as string #f)
                                     (-> sv-20 data (+ s5-1 3))
@@ -2279,32 +2250,32 @@
                                      (-> sv-20 data (+ s5-1 5))
                                      )
             )
-      (let* ((v1-75 (-> obj length))
+      (let* ((v1-75 (-> this length))
              (a0-54 0)
-             (a1-17 (-> obj data a0-54))
+             (a1-17 (-> this data a0-54))
              )
         (while (< a0-54 v1-75)
           (if (and a1-17 (-> a1-17 region) (= (-> a1-17 region id) (-> sv-36 id)))
-              (set! (-> obj data a0-54) #f)
+              (set! (-> this data a0-54) #f)
               )
           (+! a0-54 1)
-          (set! a1-17 (-> obj data a0-54))
+          (set! a1-17 (-> this data a0-54))
           )
         )
       (let ((s4-6 0))
         (while (< s4-6 (-> sv-32 len))
           (when (= (-> sv-36 id) (string->int (-> sv-32 data s4-6)))
-            (let ((s3-5 (editable-array-method-11 obj)))
+            (let ((s3-5 (editable-array-method-11 this)))
               (when (>= s3-5 0)
                 (let ((s2-1 (new 'stack-no-clear 'vector)))
                   (set! (-> s2-1 x) (string->float (-> sv-32 data (+ s4-6 1))))
                   (set! (-> s2-1 y) (string->float (-> sv-32 data (+ s4-6 2))))
                   (set! (-> s2-1 z) (string->float (-> sv-32 data (+ s4-6 3))))
                   (set! (-> s2-1 w) 1.0)
-                  (vector+! s2-1 s2-1 (-> obj level-offset))
+                  (vector+! s2-1 s2-1 (-> this level-offset))
                   (let ((s2-2 (new 'debug 'editable-sphere s2-1 2048.0 sv-36)))
                     (set! (-> s2-2 radius) (string->float (-> sv-32 data (+ s4-6 4))))
-                    (set! (-> obj data s3-5) s2-2)
+                    (set! (-> this data s3-5) s2-2)
                     )
                   )
                 )
@@ -2318,11 +2289,11 @@
         (when (= (-> sv-36 id) (string->int (-> sv-24 data sv-64)))
           (cond
             ((string= (-> sv-24 data (+ sv-64 2)) "plane")
-             (set! sv-72 (editable-array-method-11 obj))
+             (set! sv-72 (editable-array-method-11 this))
              (set! sv-80 (new 'debug 'editable-plane sv-36))
              (set! sv-84 (-> sv-24 data (+ sv-64 1)))
              (when (>= sv-72 0)
-               (set! (-> obj data sv-72) sv-80)
+               (set! (-> this data sv-72) sv-80)
                (set! (-> sv-80 radius) (string->float (-> sv-24 data (+ sv-64 4))))
                (countdown (s4-7 (/ (-> sv-28 len) 5))
                  (when (string= (-> (the-as sql-result (+ (* 20 s4-7) (the-as int sv-28))) data 0) sv-84)
@@ -2333,12 +2304,12 @@
                      (set! (-> s3-6 w) 1.0)
                      (set! sv-112 s3-6)
                      )
-                   (vector+! sv-112 sv-112 (-> obj level-offset))
-                   (set! sv-120 (editable-array-method-11 obj))
+                   (vector+! sv-112 sv-112 (-> this level-offset))
+                   (set! sv-120 (editable-array-method-11 this))
                    (when (>= sv-120 0)
                      (set! sv-128 (new 'debug 'editable-point sv-112 sv-36))
                      (set! sv-136 (string->int (-> sv-28 data (+ (* 5 s4-7) 1))))
-                     (set! (-> obj data sv-120) sv-128)
+                     (set! (-> this data sv-120) sv-128)
                      (set! (-> sv-80 vertex sv-136) sv-128)
                      (set! (-> sv-80 length) (max (-> sv-80 length) (+ sv-136 1)))
                      (set! (-> sv-128 owner) (cons sv-80 (-> sv-128 owner)))
@@ -2350,11 +2321,11 @@
                )
              )
             ((string= (-> sv-24 data (+ sv-64 2)) "face")
-             (set! sv-144 (editable-array-method-11 obj))
+             (set! sv-144 (editable-array-method-11 this))
              (set! sv-152 (new 'debug 'editable-face sv-36))
              (set! sv-156 (-> sv-24 data (+ sv-64 1)))
              (when (>= sv-144 0)
-               (set! (-> obj data sv-144) sv-152)
+               (set! (-> this data sv-144) sv-152)
                (if (string= (-> sv-24 data (+ sv-64 3)) "orient")
                    (logior! (-> sv-152 flags) (editable-flag orient))
                    )
@@ -2369,10 +2340,10 @@
                        (set! (-> s3-7 w) 1.0)
                        (set! sv-176 s3-7)
                        )
-                     (vector+! sv-176 sv-176 (-> obj level-offset))
-                     (let* ((s3-8 (-> obj length))
+                     (vector+! sv-176 sv-176 (-> this level-offset))
+                     (let* ((s3-8 (-> this length))
                             (s2-3 0)
-                            (s1-0 (-> obj data s2-3))
+                            (s1-0 (-> this data s2-3))
                             )
                        (while (< s2-3 s3-8)
                          (when (and s1-0 (= (-> s1-0 region) sv-36) (type? s1-0 editable-point))
@@ -2386,7 +2357,7 @@
                              )
                            )
                          (+! s2-3 1)
-                         (set! s1-0 (-> obj data s2-3))
+                         (set! s1-0 (-> this data s2-3))
                          )
                        )
                      (if (< (-> sv-176 y) sv-40)
@@ -2395,11 +2366,11 @@
                      (if (< sv-44 (-> sv-176 y))
                          (set! sv-44 (the-as float (-> sv-176 y)))
                          )
-                     (set! sv-192 (editable-array-method-11 obj))
+                     (set! sv-192 (editable-array-method-11 this))
                      (when (>= sv-192 0)
                        (set! sv-200 (new 'debug 'editable-point sv-176 sv-36))
                        (set! sv-208 (string->int (-> sv-28 data (+ (* 5 s4-8) 1))))
-                       (set! (-> obj data sv-192) sv-200)
+                       (set! (-> this data sv-192) sv-200)
                        (set! (-> sv-152 vertex sv-208) sv-200)
                        (set! (-> sv-152 length) (max (-> sv-152 length) (+ sv-208 1)))
                        (set! (-> sv-200 owner) (cons sv-152 (-> sv-200 owner)))
@@ -2415,9 +2386,9 @@
           )
         (set! sv-64 (+ sv-64 5))
         )
-      (let* ((v1-293 (-> obj length))
+      (let* ((v1-293 (-> this length))
              (a0-158 0)
-             (a1-57 (-> obj data a0-158))
+             (a1-57 (-> this data a0-158))
              )
         (while (< a0-158 v1-293)
           (when (and a1-57 (= (-> a1-57 region) sv-36) (= (-> a1-57 type) editable-point))
@@ -2431,7 +2402,7 @@
               )
             )
           (+! a0-158 1)
-          (set! a1-57 (-> obj data a0-158))
+          (set! a1-57 (-> this data a0-158))
           )
         )
       (set! (-> sv-36 changed) #f)
@@ -2442,7 +2413,7 @@
     (format
       (clear *temp-string*)
       "select x,y,z from sample_point where level_info_id='~D' and source='manual'"
-      (-> obj level-info-id)
+      (-> this level-info-id)
       )
     (set! sv-216 (s5-2 *temp-string*))
     )
@@ -2451,15 +2422,15 @@
       )
   (let ((s5-3 0))
     (while (< s5-3 (-> sv-216 len))
-      (let ((s4-10 (editable-array-method-11 obj)))
+      (let ((s4-10 (editable-array-method-11 this)))
         (when (>= s4-10 0)
           (let ((s3-9 (new 'stack-no-clear 'vector)))
             (set! (-> s3-9 x) (* 4096.0 (string->float (-> sv-216 data s5-3))))
             (set! (-> s3-9 y) (* 4096.0 (string->float (-> sv-216 data (+ s5-3 1)))))
             (set! (-> s3-9 z) (* 4096.0 (string->float (-> sv-216 data (+ s5-3 2)))))
             (set! (-> s3-9 w) 1.0)
-            (vector+! s3-9 s3-9 (-> obj level-offset))
-            (set! (-> obj data s4-10) (new 'debug 'editable-sample s3-9 *editable-sample-region*))
+            (vector+! s3-9 s3-9 (-> this level-offset))
+            (set! (-> this data s4-10) (new 'debug 'editable-sample s3-9 *editable-sample-region*))
             )
           )
         )
@@ -2471,7 +2442,7 @@
     (format
       (clear *temp-string*)
       "select light_id,name,pos_x,pos_y,pos_z,r,dir_x,dir_y,dir_z,color0_r,color0_g,color0_b,color0_a,decay_start,ambient_point_ratio,brightness from light where level_name='~S'"
-      (-> obj level)
+      (-> this level)
       )
     (set! sv-240 (s5-4 *temp-string*))
     )
@@ -2481,16 +2452,16 @@
       )
   (let ((s5-5 0))
     (while (< s5-5 (-> sv-240 len))
-      (let ((s3-10 (editable-array-method-11 obj)))
+      (let ((s3-10 (editable-array-method-11 this)))
         (when (>= s3-10 0)
           (let ((s4-12 (new 'stack-no-clear 'vector)))
             (set! (-> s4-12 x) (* 4096.0 (string->float (-> sv-240 data (+ s5-5 2)))))
             (set! (-> s4-12 y) (* 4096.0 (string->float (-> sv-240 data (+ s5-5 3)))))
             (set! (-> s4-12 z) (* 4096.0 (string->float (-> sv-240 data (+ s5-5 4)))))
             (set! (-> s4-12 w) 1.0)
-            (vector+! s4-12 s4-12 (-> obj level-offset))
+            (vector+! s4-12 s4-12 (-> this level-offset))
             (let ((s4-13 (new 'debug 'editable-light s4-12 2048.0 *editable-light-region*)))
-              (set! (-> obj data s3-10) s4-13)
+              (set! (-> this data s3-10) s4-13)
               (set! (-> s4-13 id) (the-as uint (string->int (-> sv-240 data s5-5))))
               (set! (-> s4-13 name) (-> sv-240 data (+ s5-5 1)))
               (set! (-> s4-13 radius) (* 4096.0 (string->float (-> sv-240 data (+ s5-5 5)))))
@@ -2522,18 +2493,18 @@
       )
     )
   (set! (-> *editable-light-region* changed) #f)
-  (editable-array-method-9 obj (editable-command refresh-filter) (the-as editable-array #f))
+  (editable-array-method-9 this (editable-command refresh-filter) (the-as mouse-info #f))
   #t
   (none)
   )
 
 ;; definition for method 13 of type editable-array
 ;; WARN: Return type mismatch int vs none.
-(defmethod editable-array-method-13 editable-array ((obj editable-array) (arg0 uint) (arg1 basic) (arg2 string))
-  (set! (-> obj target) #f)
-  (set! (-> obj target-mode) arg0)
-  (set! (-> obj target-command) arg1)
-  (set! (-> obj target-message) arg2)
+(defmethod editable-array-method-13 ((this editable-array) (arg0 editable-command) (arg1 editable-command) (arg2 string))
+  (set! (-> this target) #f)
+  (set! (-> this target-mode) arg0)
+  (set! (-> this target-command) arg1)
+  (set! (-> this target-message) arg2)
   0
   (none)
   )
@@ -2541,15 +2512,15 @@
 ;; definition for method 16 of type editable-array
 ;; INFO: Used lq/sq
 ;; WARN: Return type mismatch int vs none.
-(defmethod editable-array-method-16 editable-array ((obj editable-array))
+(defmethod editable-array-method-16 ((this editable-array))
   (cond
-    ((-> obj edit-plane)
-     (editable-plane-method-31 (-> obj edit-plane) (-> obj edit-plane-normal))
-     (set! (-> obj edit-plane-center quad) (-> (edit-get-trans (-> obj edit-plane vertex 0)) quad))
+    ((-> this edit-plane)
+     (editable-plane-method-31 (-> this edit-plane) (-> this edit-plane-normal))
+     (set! (-> this edit-plane-center quad) (-> (edit-get-trans (-> this edit-plane vertex 0)) quad))
      )
     (else
-      (vector-negate! (-> obj edit-plane-normal) (-> *math-camera* inv-camera-rot vector 2))
-      (let ((v1-9 (vector-float*! (-> obj edit-plane-center) (-> *math-camera* inv-camera-rot vector 2) 24576.0)))
+      (vector-negate! (-> this edit-plane-normal) (-> *math-camera* inv-camera-rot vector 2))
+      (let ((v1-9 (vector-float*! (-> this edit-plane-center) (-> *math-camera* inv-camera-rot vector 2) 24576.0)))
         (vector+! v1-9 v1-9 (-> *math-camera* trans))
         )
       )
@@ -2560,7 +2531,7 @@
 
 ;; definition for method 17 of type editable-array
 ;; INFO: Used lq/sq
-(defmethod editable-array-method-17 editable-array ((obj editable-array) (arg0 vector) (arg1 vector))
+(defmethod editable-array-method-17 ((this editable-array) (arg0 vector) (arg1 vector))
   (cond
     ((and (cpad-hold? 0 up) *target*)
      (set! (-> arg0 quad) (-> (get-trans *target* 0) quad))
@@ -2569,8 +2540,8 @@
      (set! (-> arg0 quad) (-> (math-camera-pos) quad))
      )
     (else
-      (editable-array-method-16 obj)
-      (reverse-transform-point! arg0 (-> obj edit-plane-center) (-> obj edit-plane-normal) arg1)
+      (editable-array-method-16 this)
+      (reverse-transform-point! arg0 (-> this edit-plane-center) (-> this edit-plane-normal) arg1)
       )
     )
   arg0
@@ -2581,21 +2552,21 @@
   (let ((v1-4 (new 'debug 'editable-region)))
     (set! (-> v1-4 locked) #t)
     (set! (-> v1-4 changed) #f)
-    (set! (-> v1-4 tree) (the-as string 'sample))
+    (set! (-> v1-4 tree) 'sample)
     (set! (-> v1-4 filter) (editable-filter sample))
     (set! *editable-sample-region* v1-4)
     )
   (let ((v1-6 (new 'debug 'editable-region)))
     (set! (-> v1-6 locked) #t)
     (set! (-> v1-6 changed) #f)
-    (set! (-> v1-6 tree) (the-as string 'light))
+    (set! (-> v1-6 tree) 'light)
     (set! (-> v1-6 filter) (editable-filter light))
     (set! *editable-light-region* v1-6)
     )
   (let ((v0-84 (new 'debug 'editable-region)))
     (set! (-> v0-84 locked) #t)
     (set! (-> v0-84 changed) #f)
-    (set! (-> v0-84 tree) (the-as string 'entity))
+    (set! (-> v0-84 tree) 'entity)
     (set! (-> v0-84 filter) (editable-filter entity))
     (set! *editable-entity-region* v0-84)
     )

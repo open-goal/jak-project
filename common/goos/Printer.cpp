@@ -49,7 +49,7 @@ goos::Reader& get_pretty_printer_reader() {
 
 goos::Object to_symbol(const std::string& str) {
   std::lock_guard<std::mutex> guard(pretty_printer_reader_mutex);
-  return goos::SymbolObject::make_new(get_pretty_printer_reader().symbolTable, str);
+  return goos::Object::make_symbol(&get_pretty_printer_reader().symbolTable, str.c_str());
 }
 
 goos::Object new_string(const std::string& str) {

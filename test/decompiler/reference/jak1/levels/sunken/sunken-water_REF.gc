@@ -3,40 +3,36 @@
 
 ;; definition of type sunken-water
 (deftype sunken-water (water-anim)
-  ((use-sync?             symbol            :offset-assert 220)
-   (playing-deadly-sound? symbol            :offset-assert 224)
-   (deadly-time           float             :offset-assert 228)
-   (deadly-fade           float             :offset-assert 232)
-   (sync                  sync-info :inline :offset-assert 236)
-   (safe-color-mult       vector    :inline :offset-assert 256)
-   (safe-color-emissive   vector    :inline :offset-assert 272)
-   (deadly-color-mult     vector    :inline :offset-assert 288)
-   (deadly-color-emissive vector    :inline :offset-assert 304)
+  ((use-sync?              symbol)
+   (playing-deadly-sound?  symbol)
+   (deadly-time            float)
+   (deadly-fade            float)
+   (sync                   sync-info  :inline)
+   (safe-color-mult        vector     :inline)
+   (safe-color-emissive    vector     :inline)
+   (deadly-color-mult      vector     :inline)
+   (deadly-color-emissive  vector     :inline)
    )
-  :heap-base #xd0
-  :method-count-assert 31
-  :size-assert         #x140
-  :flag-assert         #x1f00d00140
   (:methods
-    (draw-ripple (_type_) symbol 30)
+    (draw-ripple (_type_) symbol)
     )
   )
 
 ;; definition for method 3 of type sunken-water
-(defmethod inspect sunken-water ((obj sunken-water))
+(defmethod inspect ((this sunken-water))
   (let ((t9-0 (method-of-type water-anim inspect)))
-    (t9-0 obj)
+    (t9-0 this)
     )
-  (format #t "~T~Tuse-sync?: ~A~%" (-> obj use-sync?))
-  (format #t "~T~Tplaying-deadly-sound?: ~A~%" (-> obj playing-deadly-sound?))
-  (format #t "~T~Tdeadly-time: ~f~%" (-> obj deadly-time))
-  (format #t "~T~Tdeadly-fade: ~f~%" (-> obj deadly-fade))
-  (format #t "~T~Tsync: #<sync-info @ #x~X>~%" (-> obj sync))
-  (format #t "~T~Tsafe-color-mult: #<vector @ #x~X>~%" (-> obj safe-color-mult))
-  (format #t "~T~Tsafe-color-emissive: #<vector @ #x~X>~%" (-> obj safe-color-emissive))
-  (format #t "~T~Tdeadly-color-mult: #<vector @ #x~X>~%" (-> obj deadly-color-mult))
-  (format #t "~T~Tdeadly-color-emissive: #<vector @ #x~X>~%" (-> obj deadly-color-emissive))
-  obj
+  (format #t "~T~Tuse-sync?: ~A~%" (-> this use-sync?))
+  (format #t "~T~Tplaying-deadly-sound?: ~A~%" (-> this playing-deadly-sound?))
+  (format #t "~T~Tdeadly-time: ~f~%" (-> this deadly-time))
+  (format #t "~T~Tdeadly-fade: ~f~%" (-> this deadly-fade))
+  (format #t "~T~Tsync: #<sync-info @ #x~X>~%" (-> this sync))
+  (format #t "~T~Tsafe-color-mult: #<vector @ #x~X>~%" (-> this safe-color-mult))
+  (format #t "~T~Tsafe-color-emissive: #<vector @ #x~X>~%" (-> this safe-color-emissive))
+  (format #t "~T~Tdeadly-color-mult: #<vector @ #x~X>~%" (-> this deadly-color-mult))
+  (format #t "~T~Tdeadly-color-emissive: #<vector @ #x~X>~%" (-> this deadly-color-emissive))
+  this
   )
 
 ;; definition for symbol ripple-for-sunken-water, type ripple-wave-set
@@ -88,22 +84,15 @@
   )
 
 ;; definition for method 30 of type sunken-water
-(defmethod draw-ripple sunken-water ((obj sunken-water))
-  (set! (-> obj draw ripple send-query) #t)
-  (let ((gp-0 (-> obj draw ripple query)))
-    (let ((a0-1 (-> *display* base-frame-counter)))
+(defmethod draw-ripple ((this sunken-water))
+  (set! (-> this draw ripple send-query) #t)
+  (let ((gp-0 (-> this draw ripple query)))
+    (let ((a0-1 (current-time)))
       (set! (-> gp-0 start-vertex) (logand (* 13 (logand a0-1 127)) 127))
       )
     (set! (-> gp-0 vertex-skip) 128)
     (dotimes (s5-0 (-> gp-0 vertex-count))
-      (sp-launch-particles-var
-        *sp-particle-system-2d*
-        (-> *part-id-table* 1736)
-        (-> gp-0 data s5-0)
-        (the-as sparticle-launch-state #f)
-        (the-as sparticle-launch-control #f)
-        1.0
-        )
+      (launch-particles (-> *part-id-table* 1736) (-> gp-0 data s5-0))
       )
     )
   #f
@@ -112,15 +101,15 @@
 ;; failed to figure out what this is:
 (defstate water-vol-idle (sunken-water)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('notify)
-       (if (= (-> event param 0) 'attack)
+       (if (= (-> block param 0) 'attack)
            (sound-play "get-shocked")
            )
        )
       (else
-        ((-> (method-of-type water-anim water-vol-idle) event) proc arg1 event-type event)
+        ((-> (method-of-type water-anim water-vol-idle) event) proc argc message block)
         )
       )
     )
@@ -135,7 +124,7 @@
        (cond
          ((< (get-current-phase (-> self sync)) (-> self deadly-time))
           (when (!= (-> self deadly-fade) 1.0)
-            (seek! (-> self deadly-fade) 1.0 (* 8.0 (-> *display* seconds-per-frame)))
+            (seek! (-> self deadly-fade) 1.0 (* 8.0 (seconds-per-frame)))
             (let ((f30-0 (-> self deadly-fade)))
               (vector-lerp! (-> self draw color-mult) (-> self safe-color-mult) (-> self deadly-color-mult) f30-0)
               (vector-lerp!
@@ -160,7 +149,7 @@
          (else
            (logclear! (-> self flags) (water-flags wt19))
            (when (!= (-> self deadly-fade) 0.0)
-             (seek! (-> self deadly-fade) 0.0 (* 8.0 (-> *display* seconds-per-frame)))
+             (seek! (-> self deadly-fade) 0.0 (* 8.0 (seconds-per-frame)))
              (let ((f30-1 (-> self deadly-fade)))
                (vector-lerp! (-> self draw color-mult) (-> self safe-color-mult) (-> self deadly-color-mult) f30-1)
                (vector-lerp!
@@ -198,30 +187,29 @@
           )
         )
       )
-    (none)
     )
-  :post (the-as (function none :behavior sunken-water) ja-post)
+  :post ja-post
   )
 
 ;; definition for method 25 of type sunken-water
 ;; INFO: Return type mismatch uint vs none.
-(defmethod water-vol-method-25 sunken-water ((obj sunken-water))
+(defmethod water-vol-method-25 ((this sunken-water))
   (let ((t9-0 (method-of-type water-anim water-vol-method-25)))
-    (t9-0 obj)
+    (t9-0 this)
     )
-  (set! (-> obj playing-deadly-sound?) #f)
-  (set-vector! (-> obj safe-color-mult) 0.125 0.225 0.22 0.5)
-  (set-vector! (-> obj safe-color-emissive) 0.0 0.0 0.0 1.0)
-  (set-vector! (-> obj deadly-color-mult) 0.125 0.225 0.22 0.5)
-  (set-vector! (-> obj deadly-color-emissive) 0.33 0.6 0.0 1.0)
-  (let ((s5-0 (load-params! (-> obj sync) obj (the-as uint 1500) 0.0 0.15 0.15)))
-    (let ((f0-16 (res-lump-float (-> obj entity) 'percent :default -1.0)))
+  (set! (-> this playing-deadly-sound?) #f)
+  (set-vector! (-> this safe-color-mult) 0.125 0.225 0.22 0.5)
+  (set-vector! (-> this safe-color-emissive) 0.0 0.0 0.0 1.0)
+  (set-vector! (-> this deadly-color-mult) 0.125 0.225 0.22 0.5)
+  (set-vector! (-> this deadly-color-emissive) 0.33 0.6 0.0 1.0)
+  (let ((s5-0 (load-params! (-> this sync) this (the-as uint 1500) 0.0 0.15 0.15)))
+    (let ((f0-16 (res-lump-float (-> this entity) 'percent :default -1.0)))
       (if (or (< f0-16 0.0) (< 1.0 f0-16))
           (set! f0-16 (cond
                         (s5-0
                           0.5
                           )
-                        ((logtest? (water-flags wt19) (-> obj flags))
+                        ((logtest? (water-flags wt19) (-> this flags))
                          1.0
                          )
                         (else
@@ -233,17 +221,17 @@
       (when (and s5-0 (or (= f0-16 0.0) (= f0-16 1.0)))
         (set! s5-0 #f)
         (if (= f0-16 0.0)
-            (logior! (-> obj flags) (water-flags wt19))
-            (logclear! (-> obj flags) (water-flags wt19))
+            (logior! (-> this flags) (water-flags wt19))
+            (logclear! (-> this flags) (water-flags wt19))
             )
         )
-      (set! (-> obj use-sync?) s5-0)
-      (set! (-> obj deadly-time) f0-16)
+      (set! (-> this use-sync?) s5-0)
+      (set! (-> this deadly-time) f0-16)
       )
     (when s5-0
-      (if (< (get-current-phase (-> obj sync)) (-> obj deadly-time))
-          (set! (-> obj flags) (the-as water-flags (logior (water-flags wt19) (-> obj flags))))
-          (set! (-> obj flags) (the-as water-flags (logclear (-> obj flags) (water-flags wt19))))
+      (if (< (get-current-phase (-> this sync)) (-> this deadly-time))
+          (set! (-> this flags) (the-as water-flags (logior (water-flags wt19) (-> this flags))))
+          (set! (-> this flags) (the-as water-flags (logclear (-> this flags) (water-flags wt19))))
           )
       )
     )
@@ -253,25 +241,25 @@
 ;; definition for method 22 of type sunken-water
 ;; INFO: Used lq/sq
 ;; INFO: Return type mismatch ripple-merc-query vs none.
-(defmethod water-vol-method-22 sunken-water ((obj sunken-water))
+(defmethod water-vol-method-22 ((this sunken-water))
   (let ((t9-0 (method-of-type water-anim water-vol-method-22)))
-    (t9-0 obj)
+    (t9-0 this)
     )
-  (set! (-> obj play-ambient-sound?) #f)
+  (set! (-> this play-ambient-sound?) #f)
   (cond
-    ((logtest? (water-flags wt19) (-> obj flags))
-     (set! (-> obj draw color-mult quad) (-> obj deadly-color-mult quad))
-     (set! (-> obj draw color-emissive quad) (-> obj deadly-color-emissive quad))
-     (set! (-> obj deadly-fade) 1.0)
+    ((logtest? (water-flags wt19) (-> this flags))
+     (set! (-> this draw color-mult quad) (-> this deadly-color-mult quad))
+     (set! (-> this draw color-emissive quad) (-> this deadly-color-emissive quad))
+     (set! (-> this deadly-fade) 1.0)
      )
     (else
-      (set! (-> obj draw color-mult quad) (-> obj safe-color-mult quad))
-      (set! (-> obj draw color-emissive quad) (-> obj safe-color-emissive quad))
-      (set! (-> obj deadly-fade) 0.0)
+      (set! (-> this draw color-mult quad) (-> this safe-color-mult quad))
+      (set! (-> this draw color-emissive quad) (-> this safe-color-emissive quad))
+      (set! (-> this deadly-fade) 0.0)
       )
     )
   (let ((s5-0 (new 'process 'ripple-control)))
-    (set! (-> obj draw ripple) s5-0)
+    (set! (-> this draw ripple) s5-0)
     (set! (-> s5-0 global-scale) 3072.0)
     (set! (-> s5-0 close-fade-dist) 163840.0)
     (set! (-> s5-0 far-fade-dist) 245760.0)

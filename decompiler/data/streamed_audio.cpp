@@ -5,6 +5,7 @@
 #include "common/log/log.h"
 #include "common/util/BinaryReader.h"
 #include "common/util/FileUtil.h"
+#include "common/util/string_util.h"
 
 #include "third-party/fmt/core.h"
 #include "third-party/json.hpp"
@@ -68,11 +69,20 @@ struct VagFileHeader {
   u32 z[3];
   char name[16];
 
-  VagFileHeader swapped_endian() const {
+  VagFileHeader swapped_endian_jak1() const {
     VagFileHeader result(*this);
     result.version = swap32(result.version);
     result.channel_size = swap32(result.channel_size);
     result.sample_rate = swap32(result.sample_rate);
+    return result;
+  }
+
+  VagFileHeader swapped_endian_jak2() const {
+    VagFileHeader result(*this);
+    result.version = swap32(result.version);
+    result.channel_size = swap32(result.channel_size);
+    // for some reason, the sample rate is big endian for jak2
+    // result.sample_rate = swap32(result.sample_rate);
     return result;
   }
 
@@ -89,46 +99,79 @@ struct VagFileHeader {
 /*!
  * Read the DIR file into an AudioDir
  */
-AudioDir read_audio_dir(const fs::path& path) {
-  // matches the format in file.
-  struct DirEntry {
-    char name[8];
-    u32 value;
-  };
+AudioDir read_audio_dir(const decompiler::Config& config, const fs::path& path) {
   auto data = file_util::read_binary_file(path);
   lg::info("Got {} bytes of audio dir.", data.size());
   auto reader = BinaryReader(data);
-
   u32 count = reader.read<u32>();
-  u32 data_end = sizeof(u32) + sizeof(DirEntry) * count;
-  ASSERT(data_end <= data.size());
-  std::vector<DirEntry> entries;
-  for (u32 i = 0; i < count; i++) {
-    entries.push_back(reader.read<DirEntry>());
-  }
-
-  while (reader.bytes_left()) {
-    ASSERT(reader.read<u8>() == 0);
-  }
-
   AudioDir result;
+  if (config.game_version == GameVersion::Jak1) {
+    // matches the format in file.
+    struct DirEntryJak1 {
+      char name[8];
+      u32 value;
+    };
+    u32 data_end = sizeof(u32) + sizeof(DirEntryJak1) * count;
+    ASSERT(data_end <= data.size());
+    std::vector<DirEntryJak1> entries;
+    for (u32 i = 0; i < count; i++) {
+      entries.push_back(reader.read<DirEntryJak1>());
+    }
 
-  ASSERT(!entries.empty());
-  for (size_t i = 0; i < entries.size(); i++) {
-    AudioDir::Entry e;
-    for (auto c : entries[i].name) {
-      // padded with spaces, no null terminator.
-      e.name.push_back(c);
+    while (reader.bytes_left()) {
+      ASSERT(reader.read<u8>() == 0);
     }
-    e.start_byte = AUDIO_PAGE_SIZE * entries[i].value;
-    if (i + 1 < (entries.size())) {
-      e.end_byte = AUDIO_PAGE_SIZE * entries[i + 1].value;
-    } else {
-      e.end_byte = -1;
+    ASSERT(!entries.empty());
+    for (size_t i = 0; i < entries.size(); i++) {
+      AudioDir::Entry e;
+      for (auto c : entries[i].name) {
+        // padded with spaces, no null terminator.
+        e.name.push_back(c);
+      }
+      e.start_byte = AUDIO_PAGE_SIZE * entries[i].value;
+      if (i + 1 < (entries.size())) {
+        e.end_byte = AUDIO_PAGE_SIZE * entries[i + 1].value;
+      } else {
+        e.end_byte = -1;
+      }
+      result.entries.push_back(e);
     }
-    result.entries.push_back(e);
+  } else if (config.game_version == GameVersion::Jak2) {
+    // matches the format in file.
+    struct DirEntryJak2 {
+      char name[8];
+      u32 value;
+      // TODO - no idea what this is
+      u32 boolean;
+    };
+    u32 data_end = sizeof(u32) + sizeof(DirEntryJak2) * count;
+    ASSERT(data_end <= data.size());
+    std::vector<DirEntryJak2> entries;
+    for (u32 i = 0; i < count; i++) {
+      entries.push_back(reader.read<DirEntryJak2>());
+    }
+
+    while (reader.bytes_left()) {
+      ASSERT(reader.read<u8>() == 0);
+    }
+    ASSERT(!entries.empty());
+    for (size_t i = 0; i < entries.size(); i++) {
+      AudioDir::Entry e;
+      for (auto c : entries[i].name) {
+        // padded with spaces, no null terminator.
+        e.name.push_back(c);
+      }
+      e.start_byte = AUDIO_PAGE_SIZE * entries[i].value;
+      if (i + 1 < (entries.size())) {
+        e.end_byte = AUDIO_PAGE_SIZE * entries[i + 1].value;
+      } else {
+        e.end_byte = -1;
+      }
+      result.entries.push_back(e);
+    }
+  } else {
+    ASSERT_MSG(false, "Unsupported game version for extracting streaming audio");
   }
-
   return result;
 }
 
@@ -153,7 +196,9 @@ AudioFileInfo process_audio_file(const fs::path& output_folder,
 
   auto header = reader.read<VagFileHeader>();
   if (header.magic[0] == 'V') {
-    header = header.swapped_endian();
+    header = header.swapped_endian_jak1();
+  } else if (header.magic[0] == 'p') {
+    header = header.swapped_endian_jak2();
   } else {
     ASSERT(false);
   }
@@ -163,7 +208,8 @@ AudioFileInfo process_audio_file(const fs::path& output_folder,
     ASSERT(reader.read<u8>() == 0);
   }
 
-  std::vector<s16> decoded_samples = decode_adpcm(reader);
+  const auto [left_samples, right_samples] =
+      decode_adpcm(reader, !str_util::starts_with(std::string(header.name), "Stereo"));
 
   while (reader.bytes_left()) {
     ASSERT(reader.read<u8>() == 0);
@@ -171,7 +217,8 @@ AudioFileInfo process_audio_file(const fs::path& output_folder,
 
   file_util::create_dir_if_needed(output_folder / suffix);
   auto file_name = fmt::format("{}.wav", remove_trailing_spaces(name));
-  write_wave_file_mono(decoded_samples, header.sample_rate, output_folder / suffix / file_name);
+  write_wave_file(left_samples, right_samples, header.sample_rate,
+                  output_folder / suffix / file_name);
 
   std::string vag_filename;
   for (int i = 0; i < 16; i++) {
@@ -179,13 +226,15 @@ AudioFileInfo process_audio_file(const fs::path& output_folder,
       vag_filename.push_back(header.name[i]);
     }
   }
-  return {vag_filename, (double)decoded_samples.size() / header.sample_rate};
+  return {vag_filename,
+          ((double)left_samples.size() + (double)right_samples.size()) / header.sample_rate};
 }
 
-void process_streamed_audio(const fs::path& output_path,
+void process_streamed_audio(const decompiler::Config& config,
+                            const fs::path& output_path,
                             const fs::path& input_dir,
                             const std::vector<std::string>& audio_files) {
-  auto dir_data = read_audio_dir(input_dir / "VAG" / "VAGDIR.AYB");
+  auto dir_data = read_audio_dir(config, input_dir / "VAG" / "VAGDIR.AYB");
   double audio_len = 0.f;
 
   std::vector<std::string> langs;

@@ -3,27 +3,24 @@
 
 ;; definition of type profile-work
 (deftype profile-work (structure)
-  ((sprite-tmpl dma-gif-packet :inline :offset-assert   0)
-   (line-tmpl   dma-gif-packet :inline :offset-assert  32)
-   (last-index  int32                  :offset-assert  64)
+  ((sprite-tmpl  dma-gif-packet  :inline)
+   (line-tmpl    dma-gif-packet  :inline)
+   (last-index   int32)
    )
-  :method-count-assert 9
-  :size-assert         #x44
-  :flag-assert         #x900000044
   )
 
 ;; definition for method 3 of type profile-work
-(defmethod inspect profile-work ((obj profile-work))
-  (when (not obj)
-    (set! obj obj)
+(defmethod inspect ((this profile-work))
+  (when (not this)
+    (set! this this)
     (goto cfg-4)
     )
-  (format #t "[~8x] ~A~%" obj 'profile-work)
-  (format #t "~1Tsprite-tmpl: #<dma-gif-packet @ #x~X>~%" (-> obj sprite-tmpl))
-  (format #t "~1Tline-tmpl: #<dma-gif-packet @ #x~X>~%" (-> obj line-tmpl))
-  (format #t "~1Tlast-index: ~D~%" (-> obj last-index))
+  (format #t "[~8x] ~A~%" this 'profile-work)
+  (format #t "~1Tsprite-tmpl: #<dma-gif-packet @ #x~X>~%" (-> this sprite-tmpl))
+  (format #t "~1Tline-tmpl: #<dma-gif-packet @ #x~X>~%" (-> this line-tmpl))
+  (format #t "~1Tlast-index: ~D~%" (-> this last-index))
   (label cfg-4)
-  obj
+  this
   )
 
 ;; definition for symbol *profile-work*, type profile-work
@@ -77,32 +74,32 @@
 
 ;; definition for method 10 of type profile-segment-array
 ;; WARN: Return type mismatch int vs none.
-(defmethod start-frame! profile-segment-array ((obj profile-segment-array))
-  (set! (-> obj count) 0)
-  (set! (-> obj depth) 0)
-  (set! (-> obj max-depth) 0)
-  (set! (-> obj base-time) (the-as int (timer-count (the-as timer-bank #x10000800))))
-  (start-segment! obj 'all *profile-all-color*)
+(defmethod start-frame! ((this profile-segment-array))
+  (set! (-> this count) 0)
+  (set! (-> this depth) 0)
+  (set! (-> this max-depth) 0)
+  (set! (-> this base-time) (the-as int (timer-count (the-as timer-bank #x10000800))))
+  (start-segment! this 'all *profile-all-color*)
   0
   (none)
   )
 
 ;; definition for method 11 of type profile-segment-array
 ;; WARN: Return type mismatch int vs none.
-(defmethod start-segment! profile-segment-array ((obj profile-segment-array) (arg0 symbol) (arg1 rgba))
+(defmethod start-segment! ((this profile-segment-array) (arg0 symbol) (arg1 rgba))
   (when (and *dproc* *debug-segment*)
-    (let ((s4-0 (-> obj data (-> obj count))))
-      (let ((s3-0 (-> obj base-time)))
+    (let ((s4-0 (-> this data (-> this count))))
+      (let ((s3-0 (-> this base-time)))
         (set! (-> s4-0 name) arg0)
         (set! (-> s4-0 start-time) (the-as int (- (timer-count (the-as timer-bank #x10000800)) (the-as uint s3-0))))
         )
-      (set! (-> s4-0 depth) (the-as uint (-> obj depth)))
+      (set! (-> s4-0 depth) (the-as uint (-> this depth)))
       (set! (-> s4-0 color) arg1)
-      (set! (-> obj segment (-> obj depth)) s4-0)
+      (set! (-> this segment (-> this depth)) s4-0)
       )
-    (+! (-> obj count) 1)
-    (+! (-> obj depth) 1)
-    (set! (-> obj max-depth) (max (-> obj max-depth) (-> obj depth)))
+    (+! (-> this count) 1)
+    (+! (-> this depth) 1)
+    (set! (-> this max-depth) (max (-> this max-depth) (-> this depth)))
     )
   0
   (none)
@@ -110,15 +107,15 @@
 
 ;; definition for method 12 of type profile-segment-array
 ;; WARN: Return type mismatch int vs none.
-(defmethod end-segment! profile-segment-array ((obj profile-segment-array))
+(defmethod end-segment! ((this profile-segment-array))
   (when (and *dproc* *debug-segment*)
-    (let* ((v1-4 (+ (-> obj depth) -1))
-           (s5-0 (-> obj segment v1-4))
-           (s4-0 (-> obj base-time))
+    (let* ((v1-4 (+ (-> this depth) -1))
+           (s5-0 (-> this segment v1-4))
+           (s4-0 (-> this base-time))
            )
       (when (>= v1-4 0)
         (set! (-> s5-0 end-time) (the-as int (- (timer-count (the-as timer-bank #x10000800)) (the-as uint s4-0))))
-        (+! (-> obj depth) -1)
+        (+! (-> this depth) -1)
         )
       )
     )
@@ -402,12 +399,12 @@
 
 ;; definition for method 9 of type profile-array
 ;; WARN: Return type mismatch int vs none.
-(defmethod setup-categories! profile-array ((obj profile-array))
+(defmethod setup-categories! ((this profile-array))
   (dotimes (s5-0 2)
     (let ((s3-0 (-> *profile-array* data s5-0))
           (s4-0 *profile-collapse*)
           )
-      (mem-copy! (&-> s3-0 type) (&-> (-> obj data s5-0) type) 8240)
+      (mem-copy! (&-> s3-0 type) (&-> (-> this data s5-0) type) 8240)
       (cond
         ((zero? s5-0)
          ((lambda ((arg0 profile-segment-array) (arg1 profile-collapse))
@@ -561,8 +558,7 @@
 ;; definition for method 10 of type profile-array
 ;; INFO: Used lq/sq
 ;; WARN: Return type mismatch int vs none.
-;; ERROR: Failed store: (s.w! (+ a0-1 8) 0) at op 7
-(defmethod draw-bars! profile-array ((obj profile-array) (arg0 dma-buffer) (arg1 int))
+(defmethod draw-bars! ((this profile-array) (arg0 dma-buffer) (arg1 int))
   (local-vars (sv-16 (function _varargs_ object)) (sv-32 (function _varargs_ object)))
   (dma-buffer-add-gs-set arg0
                          (alpha-1 (new 'static 'gs-alpha :b #x1 :d #x1))
@@ -586,7 +582,7 @@
     )
   (&+! (-> arg0 base) 80)
   (dotimes (s3-0 2)
-    (let* ((v1-12 (-> obj data s3-0))
+    (let* ((v1-12 (-> this data s3-0))
            (a0-11 (-> v1-12 max-depth))
            (s2-1 (max 14 (* a0-11 2)))
            )
@@ -740,7 +736,7 @@
 
 ;; definition for method 11 of type profile-array
 ;; WARN: Return type mismatch int vs none.
-(defmethod draw-text! profile-array ((obj profile-array))
+(defmethod draw-text! ((this profile-array))
   (let ((gp-0 *profile-collapse*))
     (dotimes (s5-0 (-> gp-0 count))
       (when (or (nonzero? (-> gp-0 data s5-0 count)) (nonzero? (-> gp-0 data s5-0 vu-count)))

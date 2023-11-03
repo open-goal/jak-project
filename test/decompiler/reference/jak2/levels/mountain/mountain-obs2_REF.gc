@@ -3,34 +3,30 @@
 
 ;; definition of type mtn-iris-door
 (deftype mtn-iris-door (process-drawable)
-  ((root collide-shape  :override)
+  ((root  collide-shape :override)
    )
-  :heap-base #x50
-  :method-count-assert 22
-  :size-assert         #xc8
-  :flag-assert         #x16005000c8
-  (:methods
-    (open () _type_ :state 20)
-    (close () _type_ :state 21)
+  (:state-methods
+    open
+    close
     )
   )
 
 ;; definition for method 3 of type mtn-iris-door
-(defmethod inspect mtn-iris-door ((obj mtn-iris-door))
-  (when (not obj)
-    (set! obj obj)
+(defmethod inspect ((this mtn-iris-door))
+  (when (not this)
+    (set! this this)
     (goto cfg-4)
     )
   (let ((t9-0 (method-of-type process-drawable inspect)))
-    (t9-0 obj)
+    (t9-0 this)
     )
   (label cfg-4)
-  obj
+  this
   )
 
 ;; failed to figure out what this is:
-(defskelgroup skel-mtn-iris-door mtn-iris-door 0 2
-              ((1 (meters 999999)))
+(defskelgroup skel-mtn-iris-door mtn-iris-door mtn-iris-door-lod0-jg mtn-iris-door-idle-ja
+              ((mtn-iris-door-lod0-mg (meters 999999)))
               :bounds (static-spherem 0 0 0 13.5)
               :origin-joint-index 3
               )
@@ -42,7 +38,6 @@
     (if (task-node-closed? (game-task-node canyon-insert-items-door))
         (go-virtual open)
         )
-    (none)
     )
   :code (behavior ()
     (let ((root-prim (-> self root root-prim)))
@@ -52,7 +47,6 @@
     (ja :num-func num-func-identity :frame-num 0.0)
     (ja-post)
     (sleep-code)
-    (none)
     )
   )
 
@@ -63,7 +57,6 @@
     (if (not (task-node-closed? (game-task-node canyon-insert-items-door)))
         (go-virtual close)
         )
-    (none)
     )
   :code (behavior ()
     (let ((root-prim (-> self root root-prim)))
@@ -74,20 +67,19 @@
     (ja :num-func num-func-identity :frame-num max)
     (ja-post)
     (sleep-code)
-    (none)
     )
   )
 
 ;; definition for method 11 of type mtn-iris-door
 ;; WARN: Return type mismatch object vs none.
-(defmethod init-from-entity! mtn-iris-door ((obj mtn-iris-door) (entity entity-actor))
+(defmethod init-from-entity! ((this mtn-iris-door) (entity entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
 - stack size
 - collision information
 - loading the skeleton group / bones
 - sounds"
-  (let ((cshape (new 'process 'collide-shape obj (collide-list-enum hit-by-player))))
+  (let ((cshape (new 'process 'collide-shape this (collide-list-enum hit-by-player))))
     (let ((prim-mesh (new 'process 'collide-shape-prim-mesh cshape (the-as uint 0) (the-as uint 0))))
       (set! (-> prim-mesh prim-core collide-as) (collide-spec obstacle))
       (set! (-> prim-mesh prim-core collide-with) (collide-spec jak player-list))
@@ -102,60 +94,56 @@ This commonly includes things such as:
       (set! (-> cshape backup-collide-as) (-> root-prim prim-core collide-as))
       (set! (-> cshape backup-collide-with) (-> root-prim prim-core collide-with))
       )
-    (set! (-> obj root) cshape)
+    (set! (-> this root) cshape)
     )
-  (process-drawable-from-entity! obj entity)
+  (process-drawable-from-entity! this entity)
   (initialize-skeleton
-    obj
+    this
     (the-as skeleton-group (art-group-get-by-name *level* "skel-mtn-iris-door" (the-as (pointer uint32) #f)))
     (the-as pair 0)
     )
-  (go (method-of-object obj close))
+  (go (method-of-object this close))
   (none)
   )
 
 ;; definition of type mtn-plat-shoot
 (deftype mtn-plat-shoot (plat)
-  ((incoming-attack-id  uint32             :offset-assert 324)
-   (angle-flip          float              :offset-assert 328)
-   (angle-flip-vel      float              :offset-assert 332)
-   (axe-flip            vector     :inline :offset-assert 336)
-   (state-flip          uint32             :offset-assert 352)
-   (hit-time            time-frame         :offset-assert 360)
-   (time-flip           float              :offset-assert 368)
-   (disable-track-under basic              :offset-assert 372)
-   (dest-angle          float              :offset-assert 376)
-   (on-shake            symbol             :offset-assert 380)
-   (hint-count          float              :offset-assert 384)
+  ((incoming-attack-id   uint32)
+   (angle-flip           float)
+   (angle-flip-vel       float)
+   (axe-flip             vector  :inline)
+   (state-flip           uint32)
+   (hit-time             time-frame)
+   (time-flip            float)
+   (disable-track-under  basic)
+   (dest-angle           float)
+   (on-shake             symbol)
+   (hint-count           float)
    )
-  :heap-base #x110
-  :method-count-assert 37
-  :size-assert         #x184
-  :flag-assert         #x2501100184
   )
 
 ;; definition for method 3 of type mtn-plat-shoot
-(defmethod inspect mtn-plat-shoot ((obj mtn-plat-shoot))
-  (when (not obj)
-    (set! obj obj)
+(defmethod inspect ((this mtn-plat-shoot))
+  (when (not this)
+    (set! this this)
     (goto cfg-4)
     )
   (let ((t9-0 (method-of-type plat inspect)))
-    (t9-0 obj)
+    (t9-0 this)
     )
-  (format #t "~2Tincoming-attack-id: ~D~%" (-> obj incoming-attack-id))
-  (format #t "~2Tangle-flip: ~f~%" (-> obj angle-flip))
-  (format #t "~2Tangle-flip-vel: ~f~%" (-> obj angle-flip-vel))
-  (format #t "~2Taxe-flip: #<vector @ #x~X>~%" (-> obj axe-flip))
-  (format #t "~2Tstate-flip: ~D~%" (-> obj state-flip))
-  (format #t "~2Thit-time: ~D~%" (-> obj hit-time))
-  (format #t "~2Ttime-flip: ~f~%" (-> obj time-flip))
-  (format #t "~2Tdisable-track-under: ~A~%" (-> obj disable-track-under))
-  (format #t "~2Tdest-angle: ~f~%" (-> obj dest-angle))
-  (format #t "~2Ton-shake: ~A~%" (-> obj on-shake))
-  (format #t "~2Thint-count: ~f~%" (-> obj hint-count))
+  (format #t "~2Tincoming-attack-id: ~D~%" (-> this incoming-attack-id))
+  (format #t "~2Tangle-flip: ~f~%" (-> this angle-flip))
+  (format #t "~2Tangle-flip-vel: ~f~%" (-> this angle-flip-vel))
+  (format #t "~2Taxe-flip: #<vector @ #x~X>~%" (-> this axe-flip))
+  (format #t "~2Tstate-flip: ~D~%" (-> this state-flip))
+  (format #t "~2Thit-time: ~D~%" (-> this hit-time))
+  (format #t "~2Ttime-flip: ~f~%" (-> this time-flip))
+  (format #t "~2Tdisable-track-under: ~A~%" (-> this disable-track-under))
+  (format #t "~2Tdest-angle: ~f~%" (-> this dest-angle))
+  (format #t "~2Ton-shake: ~A~%" (-> this on-shake))
+  (format #t "~2Thint-count: ~f~%" (-> this hint-count))
   (label cfg-4)
-  obj
+  this
   )
 
 ;; failed to figure out what this is:
@@ -165,16 +153,16 @@ This commonly includes things such as:
               )
 
 ;; definition for method 30 of type mtn-plat-shoot
-(defmethod get-art-group mtn-plat-shoot ((obj mtn-plat-shoot))
+(defmethod get-art-group ((this mtn-plat-shoot))
   "@returns The associated [[art-group]]"
   (art-group-get-by-name *level* "skel-mtn-plat-shoot" (the-as (pointer uint32) #f))
   )
 
 ;; definition for method 31 of type mtn-plat-shoot
 ;; WARN: Return type mismatch int vs none.
-(defmethod init-plat-collision! mtn-plat-shoot ((obj mtn-plat-shoot))
+(defmethod init-plat-collision! ((this mtn-plat-shoot))
   "TODO - collision stuff for setting up the platform"
-  (let ((cshape (new 'process 'collide-shape obj (collide-list-enum usually-hit-by-player))))
+  (let ((cshape (new 'process 'collide-shape this (collide-list-enum usually-hit-by-player))))
     (let ((prim-mesh (new 'process 'collide-shape-prim-mesh cshape (the-as uint 0) (the-as uint 0))))
       (set! (-> prim-mesh prim-core collide-as) (collide-spec pusher))
       (set! (-> prim-mesh prim-core collide-with) (collide-spec jak player-list))
@@ -190,7 +178,7 @@ This commonly includes things such as:
       (set! (-> cshape backup-collide-as) (-> root-prim prim-core collide-as))
       (set! (-> cshape backup-collide-with) (-> root-prim prim-core collide-with))
       )
-    (set! (-> obj root) (the-as collide-shape-moving cshape))
+    (set! (-> this root) (the-as collide-shape-moving cshape))
     )
   0
   (none)
@@ -198,31 +186,33 @@ This commonly includes things such as:
 
 ;; definition for method 32 of type mtn-plat-shoot
 ;; WARN: Return type mismatch int vs none.
-(defmethod base-plat-method-32 mtn-plat-shoot ((obj mtn-plat-shoot))
+(defmethod base-plat-method-32 ((this mtn-plat-shoot))
   0
   (none)
   )
 
 ;; definition for method 33 of type mtn-plat-shoot
 ;; WARN: Return type mismatch int vs none.
-(defmethod init-plat! mtn-plat-shoot ((obj mtn-plat-shoot))
+(defmethod init-plat! ((this mtn-plat-shoot))
   "Does any necessary initial platform setup.
 For example for an elevator pre-compute the distance between the first and last points (both ways) and clear the sound."
-  (logclear! (-> obj mask) (process-mask actor-pause))
-  (logior! (-> obj mask) (process-mask enemy))
-  (set-vector! (-> obj axe-flip) 1.0 0.0 0.0 1.0)
-  (set! (-> obj angle-flip) 180.0)
-  (set! (-> obj time-flip) (the float (the int (* 300.0 (res-lump-float (-> obj entity) 'delay :default 4.0)))))
-  (set! (-> obj disable-track-under) #f)
-  (if (>= (res-lump-value (-> obj entity) 'extra-id int :default (the-as uint128 -1) :time -1000000000.0) 0)
-      (set! (-> obj disable-track-under) (the-as basic #t))
+  (logclear! (-> this mask) (process-mask actor-pause))
+  (logior! (-> this mask) (process-mask enemy))
+  (set-vector! (-> this axe-flip) 1.0 0.0 0.0 1.0)
+  (set! (-> this angle-flip) 180.0)
+  (set! (-> this time-flip)
+        (the float (the int (* 300.0 (res-lump-float (-> this entity) 'delay :default 4.0))))
+        )
+  (set! (-> this disable-track-under) #f)
+  (if (>= (res-lump-value (-> this entity) 'extra-id int :default (the-as uint128 -1) :time -1000000000.0) 0)
+      (set! (-> this disable-track-under) (the-as basic #t))
       )
-  (set! (-> obj hint-count) 0.0)
+  (set! (-> this hint-count) 0.0)
   (if (> (you-suck-stage *game-info* #f) 0)
-      (set! (-> obj hint-count) 5.0)
+      (set! (-> this hint-count) 5.0)
       )
-  (set! (-> obj sound)
-        (new 'process 'ambient-sound (static-sound-spec "shoot-plat-lp" :fo-max 70) (-> obj root trans))
+  (set! (-> this sound)
+        (new 'process 'ambient-sound (static-sound-spec "shoot-plat-lp" :fo-max 70) (-> this root trans))
         )
   0
   (none)
@@ -231,83 +221,80 @@ For example for an elevator pre-compute the distance between the first and last 
 ;; failed to figure out what this is:
 (defstate plat-path-active (mtn-plat-shoot)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (the-as
-      object
-      (case event-type
-        (('bonk)
-         (the-as object (start-bouncing! self))
-         )
-        (('attack)
-         (when (zero? (-> self state-flip))
-           (let ((attack-info (the-as object (-> event param 1))))
-             (when (!= (-> (the-as attack-info attack-info) id) (-> self incoming-attack-id))
-               (set! (-> self incoming-attack-id) (-> (the-as attack-info attack-info) id))
-               (let* ((attacking-proc proc)
-                      (attacker (if (type? attacking-proc process-drawable)
-                                    (the-as process-drawable attacking-proc)
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
+      (('bonk)
+       (start-bouncing! self)
+       )
+      (('attack)
+       (when (zero? (-> self state-flip))
+         (let ((attack-info (the-as object (-> block param 1))))
+           (when (!= (-> (the-as attack-info attack-info) id) (-> self incoming-attack-id))
+             (set! (-> self incoming-attack-id) (-> (the-as attack-info attack-info) id))
+             (let* ((attacking-proc proc)
+                    (attacker (if (type? attacking-proc process-drawable)
+                                  (the-as process-drawable attacking-proc)
+                                  )
+                              )
+                    )
+               (when attacker
+                 (let* ((attacker-root (-> attacker root))
+                        (cshape (if (type? attacker-root collide-shape)
+                                    (the-as collide-shape attacker-root)
                                     )
                                 )
-                      )
-                 (when attacker
-                   (let* ((attacker-root (-> attacker root))
-                          (cshape (if (type? attacker-root collide-shape)
-                                      (the-as collide-shape attacker-root)
-                                      )
-                                  )
-                          )
-                     (when cshape
-                       (when (logtest? (-> cshape root-prim prim-core collide-as) (collide-spec projectile))
-                         (when (zero? (-> self state-flip))
-                           (sound-play "mtn-plat-flip1")
-                           (set! (-> self state-flip) (the-as uint 1))
-                           )
-                         (set! (-> self hint-count) -1.0)
-                         (vector-! (-> self axe-flip) (-> cshape trans) (-> self root trans))
-                         (set! (-> self axe-flip y) 0.0)
-                         (vector-normalize! (-> self axe-flip) 1.0)
-                         (vector-rotate90-around-y! (-> self axe-flip) (-> self axe-flip))
-                         (set! (-> self angle-flip-vel) -10.0)
-                         (set! (-> self state-time) (current-time))
+                        )
+                   (when cshape
+                     (when (logtest? (-> cshape root-prim prim-core collide-as) (collide-spec projectile))
+                       (when (zero? (-> self state-flip))
+                         (sound-play "mtn-plat-flip1")
+                         (set! (-> self state-flip) (the-as uint 1))
                          )
+                       (set! (-> self hint-count) -1.0)
+                       (vector-! (-> self axe-flip) (-> cshape trans) (-> self root trans))
+                       (set! (-> self axe-flip y) 0.0)
+                       (vector-normalize! (-> self axe-flip) 1.0)
+                       (vector-rotate90-around-y! (-> self axe-flip) (-> self axe-flip))
+                       (set! (-> self angle-flip-vel) -10.0)
+                       (set-time! (-> self state-time))
                        )
                      )
                    )
                  )
-               #f
                )
+             #f
              )
            )
          )
-        (('hint)
-         (when (>= (-> self hint-count) 0.0)
-           (+! (-> self hint-count) (-> self clock seconds-per-frame))
-           (when (< (rand-vu-float-range 6.0 10.0) (-> self hint-count))
-             (talker-spawn-func (-> *talker-speech* 56) *entity-pool* (target-pos 0) (the-as region #f))
-             (set! (-> self hint-count) 0.0)
-             )
+       )
+      (('hint)
+       (when (>= (-> self hint-count) 0.0)
+         (+! (-> self hint-count) (seconds-per-frame))
+         (when (< (rand-vu-float-range 6.0 10.0) (-> self hint-count))
+           (talker-spawn-func (-> *talker-speech* 56) *entity-pool* (target-pos 0) (the-as region #f))
+           (set! (-> self hint-count) 0.0)
            )
          )
-        (('track)
-         (cond
-           ((-> event param 0)
-            (if (zero? (-> self state-flip))
-                #t
-                'abort
-                )
-            )
-           ((and *target*
-                 (-> self disable-track-under)
-                 (< (-> *target* control trans y) (+ -20480.0 (-> self root trans y)))
-                 )
-            #f
-            )
-           (else
-             (zero? (-> self state-flip))
-             )
+       )
+      (('track)
+       (cond
+         ((-> block param 0)
+          (if (zero? (-> self state-flip))
+              #t
+              'abort
+              )
+          )
+         ((and *target*
+               (-> self disable-track-under)
+               (< (-> *target* control trans y) (+ -20480.0 (-> self root trans y)))
+               )
+          #f
+          )
+         (else
+           (zero? (-> self state-flip))
            )
          )
-        )
+       )
       )
     )
   :enter (behavior ()
@@ -318,11 +305,10 @@ For example for an elevator pre-compute the distance between the first and last 
       )
     (set! (-> self dest-angle) 180.0)
     (set! (-> self on-shake) #f)
-    (set! (-> self state-time) (current-time))
-    (none)
+    (set-time! (-> self state-time))
     )
   :trans (behavior ()
-    (when (>= (- (current-time) (-> self state-time)) (the int (-> self time-flip)))
+    (when (time-elapsed? (-> self state-time) (the int (-> self time-flip)))
       (set! (-> self state-flip) (the-as uint 0))
       0
       )
@@ -340,15 +326,11 @@ For example for an elevator pre-compute the distance between the first and last 
             )
         )
       )
-    (+! (-> self angle-flip-vel)
-        (* -0.5 (-> self clock seconds-per-frame) (- (-> self angle-flip) (-> self dest-angle)))
-        )
-    (+! (-> self angle-flip-vel) (* -6.0 (-> self clock seconds-per-frame) (-> self angle-flip-vel)))
+    (+! (-> self angle-flip-vel) (* -0.5 (seconds-per-frame) (- (-> self angle-flip) (-> self dest-angle))))
+    (+! (-> self angle-flip-vel) (* -6.0 (seconds-per-frame) (-> self angle-flip-vel)))
     (+! (-> self angle-flip) (-> self angle-flip-vel))
     (quaternion-vector-angle! (-> self root quat) (-> self axe-flip) (* 182.04445 (-> self angle-flip)))
-    (when (and (>= (- (current-time) (-> self state-time)) (the int (+ -300.0 (-> self time-flip))))
-               (= 1 (-> self state-flip))
-               )
+    (when (and (time-elapsed? (-> self state-time) (the int (+ -300.0 (-> self time-flip)))) (= 1 (-> self state-flip)))
       (when (not (-> self on-shake))
         (sound-play "mtn-plat-shake")
         (set! (-> self on-shake) #t)
@@ -365,7 +347,7 @@ For example for an elevator pre-compute the distance between the first and last 
           )
         (vector-normalize! s5-2 1.0)
         (quaternion-vector-angle! gp-2 s5-2 1820.4445)
-        (quaternion-pseudo-seek (-> self root quat) (-> self root quat) gp-2 (-> self clock seconds-per-frame))
+        (quaternion-pseudo-seek (-> self root quat) (-> self root quat) gp-2 (seconds-per-frame))
         )
       )
     (quaternion-normalize! (-> self root quat))
@@ -374,7 +356,6 @@ For example for an elevator pre-compute the distance between the first and last 
           (func)
           )
       )
-    (none)
     )
   :post (behavior ()
     (let ((func (-> (method-of-type plat plat-path-active) post)))
@@ -382,7 +363,6 @@ For example for an elevator pre-compute the distance between the first and last 
           ((the-as (function none) func))
           )
       )
-    (none)
     )
   )
 
@@ -398,7 +378,7 @@ For example for an elevator pre-compute the distance between the first and last 
       (quaternion-identity! (-> arrow-params quat))
       (set! (-> arrow-params flags) (task-arrow-flags))
       (set! (-> arrow-params map-icon) (the-as uint 15))
-      (set! (-> self arrow) (process->handle (task-arrow-spawn arrow-params (the-as task-arrow self))))
+      (set! (-> self arrow) (process->handle (task-arrow-spawn arrow-params self)))
       )
     (until #f
       (let ((dist-from-target (vector-vector-distance (target-pos 0) (-> self info end-sphere))))

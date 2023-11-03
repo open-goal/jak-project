@@ -362,7 +362,8 @@ void InitIOP() {
   }
   printf("InitIOP OK\n");
 }
-AutoSplitterBlock gAutoSplitterBlock;
+
+AutoSplitterBlock g_auto_splitter_block_jak2;
 
 int InitMachine() {
   // heap_start = malloc(0x10);
@@ -661,8 +662,24 @@ void pc_set_levels(u32 lev_list) {
   Gfx::GetCurrentRenderer()->set_levels(levels);
 }
 
+void pc_set_active_levels(u32 lev_list) {
+  if (!Gfx::GetCurrentRenderer()) {
+    return;
+  }
+  std::vector<std::string> levels;
+  for (int i = 0; i < LEVEL_MAX; i++) {
+    u32 lev = *Ptr<u32>(lev_list + i * 4);
+    std::string ls = Ptr<String>(lev).c()->data();
+    if (ls != "none" && ls != "#f" && ls != "") {
+      levels.push_back(ls);
+    }
+  }
+
+  Gfx::GetCurrentRenderer()->set_active_levels(levels);
+}
+
 void init_autosplit_struct() {
-  gAutoSplitterBlock.pointer_to_symbol =
+  g_auto_splitter_block_jak2.pointer_to_symbol =
       (u64)g_ee_main_mem + (u64)intern_from_c("*autosplit-info-jak2*")->value();
 }
 
@@ -688,6 +705,355 @@ u32 alloc_vagdir_names(u32 heap_sym) {
   return s7.offset;
 }
 
+inline u64 bool_to_symbol(const bool val) {
+  return val ? static_cast<u64>(s7.offset) + true_symbol_offset(g_game_version) : s7.offset;
+}
+
+// TODO - move to common
+void encode_utf8_string(u32 src_str_ptr, u32 str_dest_ptr) {
+  auto str = std::string(Ptr<String>(src_str_ptr).c()->data());
+  std::string converted = get_font_bank(GameTextVersion::JAK2)->convert_utf8_to_game(str);
+  strcpy(Ptr<String>(str_dest_ptr).c()->data(), converted.c_str());
+}
+
+// TODO - currently using a single mutex for all background task synchronization
+std::mutex background_task_lock;
+
+std::string last_rpc_error = "";
+
+// TODO - add a TTL to this
+std::unordered_map<std::string, std::vector<std::pair<std::string, float>>>
+    external_speedrun_time_cache = {};
+std::unordered_map<std::string, std::vector<std::pair<std::string, float>>>
+    external_race_time_cache = {};
+std::unordered_map<std::string, std::vector<std::pair<std::string, float>>>
+    external_highscores_cache = {};
+
+// clang-format off
+const std::unordered_map<std::string, std::string> external_speedrun_lookup_urls = {
+    {"any", "https://www.speedrun.com/api/v1/leaderboards/ok6qlo1g/category/wdmze42q?embed=players&max=200"},
+    {"anyhoverless", "https://www.speedrun.com/api/v1/leaderboards/ok6qlo1g/category/xd1rxxrk?embed=players&max=200"},
+    {"allmissions", "https://www.speedrun.com/api/v1/leaderboards/ok6qlo1g/category/mkeon9d6?embed=players&max=200"},
+    {"100", "https://www.speedrun.com/api/v1/leaderboards/ok6qlo1g/category/7dg8q424?embed=players&max=200"},
+    {"anyorbs", "https://www.speedrun.com/api/v1/leaderboards/ok6qlo1g/category/wkpj7vkr?embed=players&max=200"},
+    {"anyhero", "https://www.speedrun.com/api/v1/leaderboards/ok6qlo1g/category/vdo0jodp?embed=players&max=200"}};
+const std::unordered_map<std::string, std::string> external_race_lookup_urls = {
+    {"class3", "https://www.speedrun.com/api/v1/leaderboards/ok6qlo1g/level/rw6vp697/xd1738d8?embed=players&max=200"},
+    {"class2", "https://www.speedrun.com/api/v1/leaderboards/ok6qlo1g/level/n9305r90/xd1738d8?embed=players&max=200"},
+    {"class1", "https://www.speedrun.com/api/v1/leaderboards/ok6qlo1g/level/z98jv1wl/xd1738d8?embed=players&max=200"},
+    {"class3rev", "https://www.speedrun.com/api/v1/leaderboards/ok6qlo1g/level/rdn5j6dm/xd1738d8?embed=players&max=200"},
+    {"class2rev", "https://www.speedrun.com/api/v1/leaderboards/ok6qlo1g/level/ldye77w3/xd1738d8?embed=players&max=200"},
+    {"class1rev", "https://www.speedrun.com/api/v1/leaderboards/ok6qlo1g/level/gdrqkk9z/xd1738d8?embed=players&max=200"},
+    {"erol", "https://www.speedrun.com/api/v1/leaderboards/ok6qlo1g/level/nwl7kg9v/xd1738d8?embed=players&max=200"},
+    {"port", "https://www.speedrun.com/api/v1/leaderboards/ok6qlo1g/level/ywe8z4wl/xd1738d8?embed=players&max=200"}};
+const std::unordered_map<std::string, std::string> external_highscores_lookup_urls = {
+    {"scatter", "https://api.jakspeedruns.workers.dev/v1/highscores/2"},
+    {"blaster", "https://api.jakspeedruns.workers.dev/v1/highscores/3"},
+    {"vulcan", "https://api.jakspeedruns.workers.dev/v1/highscores/4"},
+    {"peacemaker", "https://api.jakspeedruns.workers.dev/v1/highscores/5"},
+    {"jetboard", "https://api.jakspeedruns.workers.dev/v1/highscores/6"},
+    {"onin", "https://api.jakspeedruns.workers.dev/v1/highscores/7"},
+    {"mash", "https://api.jakspeedruns.workers.dev/v1/highscores/8"}};
+// clang-format on
+
+void callback_fetch_external_speedrun_times(bool success,
+                                            const std::string& cache_id,
+                                            std::optional<std::string> result) {
+  std::scoped_lock lock{background_task_lock};
+
+  if (!success) {
+    intern_from_c("*pc-rpc-error?*")->value() = bool_to_symbol(true);
+    if (result) {
+      last_rpc_error = result.value();
+    } else {
+      last_rpc_error = "Unexpected Error Occurred";
+    }
+    intern_from_c("*pc-waiting-on-rpc?*")->value() = bool_to_symbol(false);
+    return;
+  }
+
+  // TODO - might be nice to have an error if we get an unexpected payload
+  if (!result) {
+    intern_from_c("*pc-waiting-on-rpc?*")->value() = bool_to_symbol(false);
+    return;
+  }
+
+  // Parse the response
+  const auto data = safe_parse_json(result.value());
+  if (!data || !data->contains("data") || !data->at("data").contains("players") ||
+      !data->at("data").at("players").contains("data") || !data->at("data").contains("runs")) {
+    intern_from_c("*pc-waiting-on-rpc?*")->value() = bool_to_symbol(false);
+    return;
+  }
+
+  auto& players = data->at("data").at("players").at("data");
+  auto& runs = data->at("data").at("runs");
+  std::vector<std::pair<std::string, float>> times = {};
+  for (const auto& run_info : runs) {
+    std::pair<std::string, float> time_info;
+    if (players.size() > times.size() && players.at(times.size()).contains("names") &&
+        players.at(times.size()).at("names").contains("international")) {
+      time_info.first = players.at(times.size()).at("names").at("international");
+    } else if (players.size() > times.size() && players.at(times.size()).contains("name")) {
+      time_info.first = players.at(times.size()).at("name");
+    } else {
+      time_info.first = "Unknown";
+    }
+    if (run_info.contains("run") && run_info.at("run").contains("times") &&
+        run_info.at("run").at("times").contains("primary_t")) {
+      time_info.second = run_info.at("run").at("times").at("primary_t");
+      times.push_back(time_info);
+    }
+  }
+  external_speedrun_time_cache[cache_id] = times;
+  intern_from_c("*pc-waiting-on-rpc?*")->value() = bool_to_symbol(false);
+}
+
+// TODO - duplicate code, put it in a function
+void callback_fetch_external_race_times(bool success,
+                                        const std::string& cache_id,
+                                        std::optional<std::string> result) {
+  std::scoped_lock lock{background_task_lock};
+
+  if (!success) {
+    intern_from_c("*pc-rpc-error?*")->value() = bool_to_symbol(true);
+    if (result) {
+      last_rpc_error = result.value();
+    } else {
+      last_rpc_error = "Unexpected Error Occurred";
+    }
+    intern_from_c("*pc-waiting-on-rpc?*")->value() = bool_to_symbol(false);
+    return;
+  }
+
+  // TODO - might be nice to have an error if we get an unexpected payload
+  if (!result) {
+    intern_from_c("*pc-waiting-on-rpc?*")->value() = bool_to_symbol(false);
+    return;
+  }
+
+  // Parse the response
+  const auto data = safe_parse_json(result.value());
+  if (!data || !data->contains("data") || !data->at("data").contains("players") ||
+      !data->at("data").at("players").contains("data") || !data->at("data").contains("runs")) {
+    intern_from_c("*pc-waiting-on-rpc?*")->value() = bool_to_symbol(false);
+    return;
+  }
+
+  auto& players = data->at("data").at("players").at("data");
+  auto& runs = data->at("data").at("runs");
+  std::vector<std::pair<std::string, float>> times = {};
+  for (const auto& run_info : runs) {
+    std::pair<std::string, float> time_info;
+    if (players.size() > times.size() && players.at(times.size()).contains("names") &&
+        players.at(times.size()).at("names").contains("international")) {
+      time_info.first = players.at(times.size()).at("names").at("international");
+    } else if (players.size() > times.size() && players.at(times.size()).contains("name")) {
+      time_info.first = players.at(times.size()).at("name");
+    } else {
+      time_info.first = "Unknown";
+    }
+    if (run_info.contains("run") && run_info.at("run").contains("times") &&
+        run_info.at("run").at("times").contains("primary_t")) {
+      time_info.second = run_info.at("run").at("times").at("primary_t");
+      times.push_back(time_info);
+    }
+  }
+  external_race_time_cache[cache_id] = times;
+  intern_from_c("*pc-waiting-on-rpc?*")->value() = bool_to_symbol(false);
+}
+
+// TODO - duplicate code, put it in a function
+void callback_fetch_external_highscores(bool success,
+                                        const std::string& cache_id,
+                                        std::optional<std::string> result) {
+  std::scoped_lock lock{background_task_lock};
+
+  if (!success) {
+    intern_from_c("*pc-rpc-error?*")->value() = bool_to_symbol(true);
+    if (result) {
+      last_rpc_error = result.value();
+    } else {
+      last_rpc_error = "Unexpected Error Occurred";
+    }
+    intern_from_c("*pc-waiting-on-rpc?*")->value() = bool_to_symbol(false);
+    return;
+  }
+
+  // TODO - might be nice to have an error if we get an unexpected payload
+  if (!result) {
+    intern_from_c("*pc-waiting-on-rpc?*")->value() = bool_to_symbol(false);
+    return;
+  }
+
+  // Parse the response
+  const auto data = safe_parse_json(result.value());
+  std::vector<std::pair<std::string, float>> times = {};
+  for (const auto& highscore_info : data.value()) {
+    if (highscore_info.contains("playerName") && highscore_info.contains("score")) {
+      std::pair<std::string, float> time_info;
+      time_info.first = highscore_info.at("playerName");
+      time_info.second = highscore_info.at("score");
+      times.push_back(time_info);
+    }
+  }
+  external_highscores_cache[cache_id] = times;
+  intern_from_c("*pc-waiting-on-rpc?*")->value() = bool_to_symbol(false);
+}
+
+void pc_fetch_external_speedrun_times(u32 speedrun_id_ptr) {
+  std::scoped_lock lock{background_task_lock};
+  auto speedrun_id = std::string(Ptr<String>(speedrun_id_ptr).c()->data());
+  if (external_speedrun_lookup_urls.find(speedrun_id) == external_speedrun_lookup_urls.end()) {
+    lg::error("No URL for speedrun_id: '{}'", speedrun_id);
+    return;
+  }
+
+  // First check to see if we've already retrieved this info
+  if (external_speedrun_time_cache.find(speedrun_id) == external_speedrun_time_cache.end()) {
+    intern_from_c("*pc-waiting-on-rpc?*")->value() = bool_to_symbol(true);
+    intern_from_c("*pc-rpc-error?*")->value() = bool_to_symbol(false);
+    // otherwise, hit the URL
+    WebRequestJobPayload req;
+    req.callback = callback_fetch_external_speedrun_times;
+    req.url = external_speedrun_lookup_urls.at(speedrun_id);
+    req.cache_id = speedrun_id;
+    g_background_worker.enqueue_webrequest(req);
+  }
+}
+
+void pc_fetch_external_race_times(u32 race_id_ptr) {
+  std::scoped_lock lock{background_task_lock};
+  auto race_id = std::string(Ptr<String>(race_id_ptr).c()->data());
+  if (external_race_lookup_urls.find(race_id) == external_race_lookup_urls.end()) {
+    lg::error("No URL for race_id: '{}'", race_id);
+    return;
+  }
+
+  // First check to see if we've already retrieved this info
+  if (external_race_time_cache.find(race_id) == external_race_time_cache.end()) {
+    intern_from_c("*pc-waiting-on-rpc?*")->value() = bool_to_symbol(true);
+    intern_from_c("*pc-rpc-error?*")->value() = bool_to_symbol(false);
+    // otherwise, hit the URL
+    WebRequestJobPayload req;
+    req.callback = callback_fetch_external_race_times;
+    req.url = external_race_lookup_urls.at(race_id);
+    req.cache_id = race_id;
+    g_background_worker.enqueue_webrequest(req);
+  }
+}
+
+void pc_fetch_external_highscores(u32 highscore_id_ptr) {
+  std::scoped_lock lock{background_task_lock};
+  auto highscore_id = std::string(Ptr<String>(highscore_id_ptr).c()->data());
+  if (external_highscores_lookup_urls.find(highscore_id) == external_highscores_lookup_urls.end()) {
+    lg::error("No URL for highscore_id: '{}'", highscore_id);
+    return;
+  }
+
+  // First check to see if we've already retrieved this info
+  if (external_highscores_cache.find(highscore_id) == external_highscores_cache.end()) {
+    intern_from_c("*pc-waiting-on-rpc?*")->value() = bool_to_symbol(true);
+    intern_from_c("*pc-rpc-error?*")->value() = bool_to_symbol(false);
+    // otherwise, hit the URL
+    WebRequestJobPayload req;
+    req.callback = callback_fetch_external_highscores;
+    req.url = external_highscores_lookup_urls.at(highscore_id);
+    req.cache_id = highscore_id;
+    g_background_worker.enqueue_webrequest(req);
+  }
+}
+
+void pc_get_external_speedrun_time(u32 speedrun_id_ptr,
+                                   s32 index,
+                                   u32 name_dest_ptr,
+                                   u32 time_dest_ptr) {
+  std::scoped_lock lock{background_task_lock};
+  auto speedrun_id = std::string(Ptr<String>(speedrun_id_ptr).c()->data());
+  if (external_speedrun_time_cache.find(speedrun_id) != external_speedrun_time_cache.end()) {
+    const auto& runs = external_speedrun_time_cache.at(speedrun_id);
+    if (index < runs.size()) {
+      const auto& run_info = external_speedrun_time_cache.at(speedrun_id).at(index);
+      std::string converted =
+          get_font_bank(GameTextVersion::JAK2)->convert_utf8_to_game(run_info.first);
+      strcpy(Ptr<String>(name_dest_ptr).c()->data(), converted.c_str());
+      *(Ptr<float>(time_dest_ptr).c()) = run_info.second;
+    } else {
+      std::string converted = get_font_bank(GameTextVersion::JAK2)->convert_utf8_to_game("");
+      strcpy(Ptr<String>(name_dest_ptr).c()->data(), converted.c_str());
+      *(Ptr<float>(time_dest_ptr).c()) = -1.0;
+    }
+  }
+}
+
+void pc_get_external_race_time(u32 race_id_ptr, s32 index, u32 name_dest_ptr, u32 time_dest_ptr) {
+  std::scoped_lock lock{background_task_lock};
+  auto race_id = std::string(Ptr<String>(race_id_ptr).c()->data());
+  if (external_race_time_cache.find(race_id) != external_race_time_cache.end()) {
+    const auto& runs = external_race_time_cache.at(race_id);
+    if (index < runs.size()) {
+      const auto& run_info = external_race_time_cache.at(race_id).at(index);
+      std::string converted =
+          get_font_bank(GameTextVersion::JAK2)->convert_utf8_to_game(run_info.first);
+      strcpy(Ptr<String>(name_dest_ptr).c()->data(), converted.c_str());
+      *(Ptr<float>(time_dest_ptr).c()) = run_info.second;
+    } else {
+      std::string converted = get_font_bank(GameTextVersion::JAK2)->convert_utf8_to_game("");
+      strcpy(Ptr<String>(name_dest_ptr).c()->data(), converted.c_str());
+      *(Ptr<float>(time_dest_ptr).c()) = -1.0;
+    }
+  }
+}
+
+void pc_get_external_highscore(u32 highscore_id_ptr,
+                               s32 index,
+                               u32 name_dest_ptr,
+                               u32 time_dest_ptr) {
+  std::scoped_lock lock{background_task_lock};
+  auto highscore_id = std::string(Ptr<String>(highscore_id_ptr).c()->data());
+  if (external_highscores_cache.find(highscore_id) != external_highscores_cache.end()) {
+    const auto& runs = external_highscores_cache.at(highscore_id);
+    if (index < runs.size()) {
+      const auto& run_info = external_highscores_cache.at(highscore_id).at(index);
+      std::string converted =
+          get_font_bank(GameTextVersion::JAK2)->convert_utf8_to_game(run_info.first);
+      strcpy(Ptr<String>(name_dest_ptr).c()->data(), converted.c_str());
+      *(Ptr<float>(time_dest_ptr).c()) = run_info.second;
+    } else {
+      std::string converted = get_font_bank(GameTextVersion::JAK2)->convert_utf8_to_game("");
+      strcpy(Ptr<String>(name_dest_ptr).c()->data(), converted.c_str());
+      *(Ptr<float>(time_dest_ptr).c()) = -1.0;
+    }
+  }
+}
+
+s32 pc_get_num_external_speedrun_times(u32 speedrun_id_ptr) {
+  std::scoped_lock lock{background_task_lock};
+  auto speedrun_id = std::string(Ptr<String>(speedrun_id_ptr).c()->data());
+  if (external_speedrun_time_cache.find(speedrun_id) != external_speedrun_time_cache.end()) {
+    return external_speedrun_time_cache.at(speedrun_id).size();
+  }
+  return 0;
+}
+
+s32 pc_get_num_external_race_times(u32 race_id_ptr) {
+  std::scoped_lock lock{background_task_lock};
+  auto race_id = std::string(Ptr<String>(race_id_ptr).c()->data());
+  if (external_race_time_cache.find(race_id) != external_race_time_cache.end()) {
+    return external_race_time_cache.at(race_id).size();
+  }
+  return 0;
+}
+
+s32 pc_get_num_external_highscores(u32 highscore_id_ptr) {
+  std::scoped_lock lock{background_task_lock};
+  auto highscore_id = std::string(Ptr<String>(highscore_id_ptr).c()->data());
+  if (external_highscores_cache.find(highscore_id) != external_highscores_cache.end()) {
+    return external_highscores_cache.at(highscore_id).size();
+  }
+  return 0;
+}
+
 void InitMachine_PCPort() {
   // PC Port added functions
   init_common_pc_port_functions(
@@ -701,14 +1067,32 @@ void InitMachine_PCPort() {
       make_string_from_c);
 
   make_function_symbol_from_c("__pc-set-levels", (void*)pc_set_levels);
+  make_function_symbol_from_c("__pc-set-active-levels", (void*)pc_set_active_levels);
   make_function_symbol_from_c("__pc-get-tex-remap", (void*)lookup_jak2_texture_dest_offset);
   make_function_symbol_from_c("pc-init-autosplitter-struct", (void*)init_autosplit_struct);
+  make_function_symbol_from_c("pc-encode-utf8-string", (void*)encode_utf8_string);
 
   // discord rich presence
   make_function_symbol_from_c("pc-discord-rpc-update", (void*)update_discord_rpc);
 
   // debugging tools
   make_function_symbol_from_c("alloc-vagdir-names", (void*)alloc_vagdir_names);
+
+  // external RPCs
+  make_function_symbol_from_c("pc-fetch-external-speedrun-times",
+                              (void*)pc_fetch_external_speedrun_times);
+  make_function_symbol_from_c("pc-fetch-external-race-times", (void*)pc_fetch_external_race_times);
+  make_function_symbol_from_c("pc-fetch-external-highscores", (void*)pc_fetch_external_highscores);
+  make_function_symbol_from_c("pc-get-external-speedrun-time",
+                              (void*)pc_get_external_speedrun_time);
+  make_function_symbol_from_c("pc-get-external-race-time", (void*)pc_get_external_race_time);
+  make_function_symbol_from_c("pc-get-external-highscore", (void*)pc_get_external_highscore);
+  make_function_symbol_from_c("pc-get-num-external-speedrun-times",
+                              (void*)pc_get_num_external_speedrun_times);
+  make_function_symbol_from_c("pc-get-num-external-race-times",
+                              (void*)pc_get_num_external_race_times);
+  make_function_symbol_from_c("pc-get-num-external-highscores",
+                              (void*)pc_get_num_external_highscores);
 
   // setup string constants
   auto user_dir_path = file_util::get_user_config_dir();
@@ -838,6 +1222,8 @@ void initialize_sql_db() {
   fs::path db_path = file_util::get_user_misc_dir(g_game_version) / "jak2-editor.db";
   file_util::create_dir_if_needed_for_file(db_path);
 
+  const bool did_db_exist = file_util::file_exists(db_path.string());
+
   // Attempt to open the database
   const auto opened = sql_db.open_db(db_path.string());
   (void)opened;
@@ -851,6 +1237,29 @@ void initialize_sql_db() {
 
   const auto success = sql_db.run_query(file_util::read_text_file(schema_file));
   // TODO - error check
+
+  // If the database did not originally exist, let's seed it with original game data
+  if (!did_db_exist) {
+    lg::warn("[SQL]: Seeding database, this may take a bit");
+    fs::path level_info_fixture = file_util::get_jak_project_dir() / "goal_src" / "jak2" / "tools" /
+                                  "db-fixtures" / "fixture-level_info.sql";
+    if (file_util::file_exists(level_info_fixture.string())) {
+      const auto success = sql_db.run_query(file_util::read_text_file(level_info_fixture));
+      // TODO - error check
+    }
+    fs::path light_fixture = file_util::get_jak_project_dir() / "goal_src" / "jak2" / "tools" /
+                             "db-fixtures" / "fixture-light.sql";
+    if (file_util::file_exists(light_fixture.string())) {
+      const auto success = sql_db.run_query(file_util::read_text_file(light_fixture));
+      // TODO - error check
+    }
+    fs::path region_fixture = file_util::get_jak_project_dir() / "goal_src" / "jak2" / "tools" /
+                              "db-fixtures" / "fixture-region.sql";
+    if (file_util::file_exists(region_fixture.string())) {
+      const auto success = sql_db.run_query(file_util::read_text_file(region_fixture));
+      // TODO - error check
+    }
+  }
 }
 
 sqlite::GenericResponse run_sql_query(const std::string& query) {

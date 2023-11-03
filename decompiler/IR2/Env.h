@@ -82,6 +82,7 @@ class Env {
   goos::Object get_variable_name_with_cast(Register reg, int atomic_idx, AccessMode mode) const;
   goos::Object get_variable_name_with_cast(const RegisterAccess& access) const;
   std::string get_variable_name(const RegisterAccess& access) const;
+  std::string get_variable_name_name_only(const RegisterAccess& access) const;
   VariableWithCast get_variable_and_cast(const RegisterAccess& access) const;
   std::optional<TypeSpec> get_user_cast_for_access(const RegisterAccess& access) const;
   TypeSpec get_variable_type(const RegisterAccess& access, bool using_user_var_types) const;
@@ -156,6 +157,15 @@ class Env {
   void set_art_group(const std::string& art_group) { m_art_group = art_group; }
   const std::string& art_group() const { return m_art_group; }
   std::optional<std::string> get_art_elt_name(int idx) const;
+  void set_jg(const std::string& art_group) {
+    if (art_group.substr(art_group.size() - 3) == "-ag") {
+      m_joint_geo = art_group.substr(0, art_group.size() - 3) + "-lod0-jg";
+    } else {
+      m_joint_geo = art_group + "-lod0-jg";
+    }
+  }
+  const std::string& joint_geo() const { return m_joint_geo; }
+  std::optional<std::string> get_joint_node_name(int idx) const;
 
   void set_remap_for_function(const Function& func);
   void set_remap_for_method(const TypeSpec& ts);
@@ -243,5 +253,6 @@ class Env {
   StackSpillMap m_stack_spill_map;
 
   std::string m_art_group;
+  std::string m_joint_geo;
 };
 }  // namespace decompiler

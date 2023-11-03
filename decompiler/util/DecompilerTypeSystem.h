@@ -37,6 +37,7 @@ class DecompilerTypeSystem {
   std::unordered_map<std::string, std::vector<std::vector<int>>>
       format_ops_with_dynamic_string_by_func_name;
   std::unordered_map<std::string, std::unordered_map<int, std::string>> art_group_info;
+  std::unordered_map<std::string, std::unordered_map<int, std::string>> jg_info;
 
   void add_symbol(const std::string& name) {
     if (symbols.find(name) == symbols.end()) {
@@ -68,6 +69,24 @@ class DecompilerTypeSystem {
   int get_dynamic_format_arg_count(const std::string& func_name, int op_idx) const;
   TypeSpec lookup_symbol_type(const std::string& name) const;
   bool should_attempt_cast_simplify(const TypeSpec& expected, const TypeSpec& actual) const;
+
+  void add_art_group_elt(const std::string& ag_name, const std::string& elt_name, int elt_index) {
+    if (art_group_info.count(ag_name) == 0) {
+      art_group_info[ag_name] = {};
+    }
+    if (art_group_info.at(ag_name).count(elt_index) == 0) {
+      art_group_info.at(ag_name)[elt_index] = elt_name;
+    }
+  }
+
+  void add_joint_node(const std::string& jg_name, const std::string& joint_name, int joint_idx) {
+    if (jg_info.count(jg_name) == 0) {
+      jg_info[jg_name] = {};
+    }
+    if (jg_info.at(jg_name).count(joint_idx) == 0) {
+      jg_info.at(jg_name)[joint_idx] = joint_name;
+    }
+  }
 
   // todo - totally eliminate this.
   struct {

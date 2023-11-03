@@ -8,26 +8,23 @@
 ;; the "sky" system draws the sky and determines colors for lights.
 ;; each level has 8 skies that are interpolated between.
 
+;; DECOMP BEGINS
+
 ;; represents the skies that are used during a single hour.
 ;; there can be 1 or 2 skies used.
 (deftype sky-color-hour (structure)
-  ((snapshot1   int32  :offset-assert 0)  ;; the sky index at the start
-   (snapshot2   int32  :offset-assert 4)  ;; the sky index at the end
-   (morph-start float  :offset-assert 8)  ;; blend between the two at the start of the hour
-   (morph-end   float  :offset-assert 12) ;; blend between the two at the end of the hour
+  ((snapshot1    int32)
+   (snapshot2    int32)
+   (morph-start  float)
+   (morph-end    float)
    )
-  :method-count-assert 9
-  :size-assert         #x10
-  :flag-assert         #x900000010
   )
+
 
 ;; a sky-color-hour for each hour of the day.
 (deftype sky-color-day (structure)
-  ((hour sky-color-hour 24 :inline :offset-assert 0)
+  ((hour  sky-color-hour  24 :inline)
    )
-  :method-count-assert 9
-  :size-assert         #x180
-  :flag-assert         #x900000180
   )
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -40,90 +37,77 @@
 
 ;; these stores points on a squashed circle (xy only)
 (deftype sky-circle-data (structure)
-  ((data vector 17 :inline :offset-assert 0)
+  ((data  vector  17 :inline)
    )
-  :method-count-assert 9
-  :size-assert         #x110
-  :flag-assert         #x900000110
   )
+
 
 ;; sun particle tracks this
 (deftype sky-sun-data (structure)
-  ((data           uint128 4       :offset-assert 0)
-   (pos            vector  :inline :offset 0)
-   (r-sun          float           :offset 16)
-   (r-halo         float           :offset 20)
-   (r-aurora       float           :offset 24)
-   (c-sun-start    rgba            :offset 32)
-   (c-sun-end      rgba            :offset 48)
-   (c-halo-start   rgba            :offset 36)
-   (c-halo-end     rgba            :offset 52)
-   (c-aurora-start rgba            :offset 40)
-   (c-aurora-end   rgba            :offset 56)
+  ((data            uint128  4)
+   (pos             vector   :inline :overlay-at (-> data 0))
+   (r-sun           float            :overlay-at (-> data 1))
+   (r-halo          float            :offset  20)
+   (r-aurora        float            :offset  24)
+   (c-sun-start     rgba             :overlay-at (-> data 2))
+   (c-sun-end       rgba             :overlay-at (-> data 3))
+   (c-halo-start    rgba             :offset  36)
+   (c-halo-end      rgba             :offset  52)
+   (c-aurora-start  rgba             :offset  40)
+   (c-aurora-end    rgba             :offset  56)
    )
-  :method-count-assert 9
-  :size-assert         #x40
-  :flag-assert         #x900000040
   )
+
 
 ;; moon particle tracks this
 (deftype sky-moon-data (structure)
-  ((data  uint128 2       :offset-assert 0)
-   (pos   vector  :inline :offset 0)
-   (scale vector  :inline :offset 16)
+  ((data   uint128  2)
+   (pos    vector   :inline :overlay-at (-> data 0))
+   (scale  vector   :inline :overlay-at (-> data 1))
    )
-  :method-count-assert 9
-  :size-assert         #x20
-  :flag-assert         #x900000020
   )
+
 
 ;; parameters for the sun/moon motion.
 (deftype sky-orbit (structure)
-  ((high-noon float  :offset-assert 0)
-   (tilt      float  :offset-assert 4)
-   (rise      float  :offset-assert 8)
-   (dist      float  :offset-assert 12)
-   (min-halo  float  :offset-assert 16)
-   (max-halo  float  :offset-assert 20)
+  ((high-noon  float)
+   (tilt       float)
+   (rise       float)
+   (dist       float)
+   (min-halo   float)
+   (max-halo   float)
    )
   :allow-misaligned
-  :method-count-assert 9
-  :size-assert         #x18
-  :flag-assert         #x900000018
   )
+
 
 ;; sky data to send to old sky renderer.
 (deftype sky-upload-data (basic)
-  ((circle sky-circle-data :inline :offset-assert 16)
-   (sun    sky-sun-data 2 :inline       :offset-assert 288)
-   (moon   sky-moon-data   :inline :offset-assert 416)
-   (data   uint128         27      :offset 16)
+  ((circle  sky-circle-data  :inline)
+   (sun     sky-sun-data     2 :inline)
+   (moon    sky-moon-data    :inline)
+   (data    uint128          27 :overlay-at (-> circle data))
    )
-  :method-count-assert 9
-  :size-assert         #x1c0
-  :flag-assert         #x9000001c0
   )
+
 
 ;; all sky data. This has a copy of sky-upload-data that's used by the new sky renderer.
 (deftype sky-parms (basic)
-  ((orbit             sky-orbit 3     :inline :offset-assert 4)
-   (upload-data       sky-upload-data :inline :offset-assert 112)
-   (sun-lights        light-group     :inline :offset-assert 560)
-   (moon-lights       light-group     :inline :offset-assert 752)
-   (default-lights    light-group     :inline :offset-assert 944)
-   (default-vu-lights vu-lights       :inline :offset-assert 1136)
+  ((orbit              sky-orbit        3 :inline)
+   (upload-data        sky-upload-data  :inline)
+   (sun-lights         light-group      :inline)
+   (moon-lights        light-group      :inline)
+   (default-lights     light-group      :inline)
+   (default-vu-lights  vu-lights        :inline)
    )
   (:methods
-    (new (symbol type) _type_ 0)
+    (new (symbol type) _type_)
     )
-  :method-count-assert 9
-  :size-assert         #x4e0
-  :flag-assert         #x9000004e0
   )
+
 
 (defmethod new sky-parms ((allocation symbol) (type-to-make type))
   "allocate a new sky-parms"
-
   (let ((v0-0 (object-new allocation type-to-make (the-as int (-> type-to-make size)))))
     (set! (-> v0-0 upload-data type) sky-upload-data)
     v0-0
@@ -138,9 +122,9 @@
 ;; generate some points on a circle for the sky renderer.
 (dotimes (gp-0 17)
   (let ((f30-0 (+ MINUS_PI (* 0.39269906 (the float (logand gp-0 15))))))
-   (set! (-> *sky-upload-data* circle data gp-0 x) (* 2.2 (sin-rad f30-0)))
-   (set! (-> *sky-upload-data* circle data gp-0 y) (cos-rad f30-0))
-   )
+    (set! (-> *sky-upload-data* circle data gp-0 x) (* 2.2 (sin-rad f30-0)))
+    (set! (-> *sky-upload-data* circle data gp-0 y) (cos-rad f30-0))
+    )
   (set! (-> *sky-upload-data* circle data gp-0 z) 0.0)
   (set! (-> *sky-upload-data* circle data gp-0 w) 0.0)
   )
@@ -150,42 +134,35 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (deftype sky-tng-data (basic)
-  ((giftag-base  gs-gif-tag :inline  :offset-assert 16);; changed
-   (giftag-roof  gs-gif-tag   :inline :offset-assert 32)
-   (giftag-ocean gs-gif-tag   :inline :offset-assert 48)
-   (fog          vector  :inline :offset-assert 64)
-   (sky          uint32 8       :offset-assert 80)
-   (time         float           :offset-assert 112)
-   (off-s-0      uint16          :offset-assert 116)
-   (off-t-0      uint16          :offset-assert 118)
-   (off-s-1      uint16          :offset-assert 120)
-   (off-t-1      uint16          :offset-assert 122)
+  ((giftag-base   gs-gif-tag  :inline)
+   (giftag-roof   gs-gif-tag  :inline)
+   (giftag-ocean  gs-gif-tag  :inline)
+   (fog           vector      :inline)
+   (sky           uint32      8)
+   (time          float)
+   (off-s-0       uint16)
+   (off-t-0       uint16)
+   (off-s-1       uint16)
+   (off-t-1       uint16)
    )
-  :method-count-assert 9
-  :size-assert         #x7c
-  :flag-assert         #x90000007c
   )
+
 
 (deftype sky-work (structure)
-  ((adgif-tmpl dma-gif-packet :inline :offset-assert 0)
-   (draw-tmpl  dma-gif-packet :inline :offset-assert 32)
-   (blend-tmpl dma-gif-packet :inline :offset-assert 64)
-   (sky-data   qword 5 :inline               :offset-assert 96)
-   (cloud-data qword 5 :inline               :offset-assert 176)
+  ((adgif-tmpl  dma-gif-packet  :inline)
+   (draw-tmpl   dma-gif-packet  :inline)
+   (blend-tmpl  dma-gif-packet  :inline)
+   (sky-data    qword           5 :inline)
+   (cloud-data  qword           5 :inline)
    )
-  :method-count-assert 9
-  :size-assert         #x100
-  :flag-assert         #x900000100
   )
 
+
 (deftype sky-vertex (structure)
-  ((pos vector :inline :offset-assert 0)
-   (stq vector :inline :offset-assert 16)
-   (col vector :inline :offset-assert 32)
+  ((pos  vector  :inline)
+   (stq  vector  :inline)
+   (col  vector  :inline)
    )
-  :method-count-assert 9
-  :size-assert         #x30
-  :flag-assert         #x900000030
   )
 
 
@@ -193,8 +170,6 @@
 ;; it has done this, and if the sky/cloud textures should be used.
 (define *sky-drawn* #f)
 (define *cloud-drawn* #f)
-
-
 (declare-type time-of-day-context basic)
 (define-extern update-sky-tng-data (function float none))
 (define-extern make-sky-textures (function time-of-day-context int none))

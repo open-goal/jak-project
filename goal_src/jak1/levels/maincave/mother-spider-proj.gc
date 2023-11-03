@@ -8,13 +8,9 @@
 ;; DECOMP BEGINS
 
 (deftype mother-spider-proj (projectile)
-  ((parent-process (pointer projectile)         :offset         12)
-   (facing-dir     vector               :inline :offset-assert 416)
+  ((parent-process  (pointer projectile)  :overlay-at parent)
+   (facing-dir      vector                :inline)
    )
-  :heap-base #x140
-  :method-count-assert 29
-  :size-assert         #x1b0
-  :flag-assert         #x1d014001b0
   )
 
 
@@ -225,13 +221,13 @@
   :parts ((sp-item 722))
   )
 
-(defmethod projectile-method-24 mother-spider-proj ((obj mother-spider-proj))
+(defmethod projectile-method-24 ((this mother-spider-proj))
   (with-pp
-    (spawn (-> obj part) (the-as vector (-> obj root-override root-prim prim-core)))
+    (spawn (-> this part) (the-as vector (-> this root root-prim prim-core)))
     (let ((s5-0 (the-as sound-rpc-set-param (get-sound-buffer-entry))))
       (set! (-> s5-0 command) (sound-command set-param))
-      (set! (-> s5-0 id) (-> obj sound-id))
-      (let ((a1-1 (-> obj root-override trans)))
+      (set! (-> s5-0 id) (-> this sound-id))
+      (let ((a1-1 (-> this root trans)))
         (let ((s4-0 pp))
           (when (= a1-1 #t)
             (if (and s4-0 (type-type? (-> s4-0 type) process-drawable) (nonzero? (-> (the-as process-drawable s4-0) root)))
@@ -245,9 +241,9 @@
       (set! (-> s5-0 parms mask) (sound-mask trans))
       (-> s5-0 id)
       )
-    (let ((f0-5 (* 5120.0 (+ 0.9 (* 0.1 (cos (* 873.81335 (the float (mod (-> *display* base-frame-counter) 75)))))))))
+    (let ((f0-5 (* 5120.0 (+ 0.9 (* 0.1 (cos (* 873.81335 (the float (mod (current-time) 75)))))))))
       (find-ground-and-draw-shadow
-        (-> obj root-override trans)
+        (-> this root trans)
         (the-as vector #f)
         f0-5
         (collide-kind background)
@@ -261,15 +257,15 @@
   )
 
 (defun mother-spider-proj-update-velocity ((arg0 mother-spider-proj))
-  (when (>= (vector-vector-xz-distance (-> arg0 parent-process 0 root-override trans) (-> arg0 target))
-            (vector-vector-xz-distance (-> arg0 parent-process 0 root-override trans) (-> arg0 root-override trans))
+  (when (>= (vector-vector-xz-distance (-> arg0 parent-process 0 root trans) (-> arg0 target))
+            (vector-vector-xz-distance (-> arg0 parent-process 0 root trans) (-> arg0 root trans))
             )
-    (let ((s3-1 (vector-! (new 'stack-no-clear 'vector) (-> arg0 target) (-> arg0 root-override trans)))
+    (let ((s3-1 (vector-! (new 'stack-no-clear 'vector) (-> arg0 target) (-> arg0 root trans)))
           (s4-0 (new 'stack-no-clear 'vector))
-          (s5-0 (vector-normalize-copy! (new 'stack-no-clear 'vector) (-> arg0 root-override transv) 1.0))
+          (s5-0 (vector-normalize-copy! (new 'stack-no-clear 'vector) (-> arg0 root transv) 1.0))
           )
-      (if (logtest? (-> arg0 root-override status) (cshape-moving-flags tsurf))
-          (vector-flatten! s3-1 s3-1 (-> arg0 root-override local-normal))
+      (if (logtest? (-> arg0 root status) (cshape-moving-flags tsurf))
+          (vector-flatten! s3-1 s3-1 (-> arg0 root local-normal))
           )
       (vector-normalize-copy! s4-0 s3-1 1.0)
       (let ((s3-2 (new 'stack-no-clear 'matrix)))
@@ -277,21 +273,21 @@
           s3-2
           s5-0
           s4-0
-          (* (-> arg0 max-turn) (-> *display* seconds-per-frame))
+          (* (-> arg0 max-turn) (seconds-per-frame))
           (-> arg0 tween)
           )
         (vector-matrix*! s5-0 s5-0 s3-2)
         )
       (vector-normalize! s5-0 1.0)
-      (vector-float*! (-> arg0 root-override transv) s5-0 (-> arg0 max-speed))
+      (vector-float*! (-> arg0 root transv) s5-0 (-> arg0 max-speed))
       )
     )
   0
   (none)
   )
 
-(defmethod projectile-method-26 mother-spider-proj ((obj mother-spider-proj))
-  (let ((s5-0 (new 'process 'collide-shape-moving obj (collide-list-enum hit-by-player))))
+(defmethod projectile-method-26 ((this mother-spider-proj))
+  (let ((s5-0 (new 'process 'collide-shape-moving this (collide-list-enum hit-by-player))))
     (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s5-0 reaction) projectile-collision-reaction)
     (set! (-> s5-0 no-reaction)
@@ -311,43 +307,43 @@
     (backup-collide-with-as s5-0)
     (set! (-> s5-0 max-iteration-count) (the-as uint 2))
     (set! (-> s5-0 event-self) 'touched)
-    (set! (-> obj root-override) s5-0)
+    (set! (-> this root) s5-0)
     )
-  (logclear! (-> obj mask) (process-mask enemy))
-  (logclear! (-> obj mask) (process-mask crate))
-  (logclear! (-> obj mask) (process-mask attackable))
-  (logior! (-> obj mask) (process-mask projectile))
+  (logclear! (-> this mask) (process-mask enemy))
+  (logclear! (-> this mask) (process-mask crate))
+  (logclear! (-> this mask) (process-mask attackable))
+  (logior! (-> this mask) (process-mask projectile))
   0
   (none)
   )
 
-(defmethod projectile-method-27 mother-spider-proj ((obj mother-spider-proj))
-  (set! (-> obj part) (create-launch-control (-> *part-group-id-table* 326) obj))
-  (set! (-> obj max-speed) 32768.0)
-  (set! (-> obj update-velocity) mother-spider-proj-update-velocity)
-  (set! (-> obj max-turn) 5916.4443)
-  (set! (-> obj tween) 0.02)
-  (set! (-> obj attack-mode) 'mother-spider-proj)
-  (set! (-> obj timeout) (seconds 4))
-  (set! (-> obj target quad) (-> (target-pos 0) quad))
-  (+! (-> obj target y) 4915.2)
-  (set! (-> obj target-base quad) (-> obj target quad))
-  (set! (-> obj sound-id) (sound-play "mother-track"))
+(defmethod projectile-method-27 ((this mother-spider-proj))
+  (set! (-> this part) (create-launch-control (-> *part-group-id-table* 326) this))
+  (set! (-> this max-speed) 32768.0)
+  (set! (-> this update-velocity) mother-spider-proj-update-velocity)
+  (set! (-> this max-turn) 5916.4443)
+  (set! (-> this tween) 0.02)
+  (set! (-> this attack-mode) 'mother-spider-proj)
+  (set! (-> this timeout) (seconds 4))
+  (set! (-> this target quad) (-> (target-pos 0) quad))
+  (+! (-> this target y) 4915.2)
+  (set! (-> this target-base quad) (-> this target quad))
+  (set! (-> this sound-id) (sound-play "mother-track"))
   (sound-play "mother-fire")
   (none)
   )
 
-(defmethod projectile-method-28 mother-spider-proj ((obj mother-spider-proj))
+(defmethod projectile-method-28 ((this mother-spider-proj))
   (when (and *target*
              (not (logtest? (-> *target* state-flags)
                             (state-flags being-attacked invulnerable timed-invulnerable invuln-powerup do-not-notice dying)
                             )
                   )
              )
-    (let ((gp-0 (-> obj target)))
+    (let ((gp-0 (-> this target)))
       (set! (-> gp-0 quad) (-> (target-pos 0) quad))
       (+! (-> gp-0 y) 4915.2)
-      (let ((f0-2 (vector-vector-distance gp-0 (-> obj root-override trans)))
+      (let ((f0-2 (vector-vector-distance gp-0 (-> this root trans)))
             (a2-0 (new 'stack-no-clear 'vector))
             )
         (if (>= 0.0 f0-2)
@@ -355,8 +351,8 @@
             )
         (set! (-> a2-0 quad) (-> *target* control transv quad))
         (set! (-> a2-0 y) 0.0)
-        (let ((f0-3 (/ f0-2 (* 32768.0 (-> *display* seconds-per-frame)))))
-          (vector+float*! gp-0 gp-0 a2-0 (* f0-3 (-> *display* seconds-per-frame)))
+        (let ((f0-3 (/ f0-2 (* 32768.0 (seconds-per-frame)))))
+          (vector+float*! gp-0 gp-0 a2-0 (* f0-3 (seconds-per-frame)))
           )
         )
       )
@@ -375,7 +371,7 @@
       #f
       #f
       #f
-      (-> self root-override trans)
+      (-> self root trans)
       :to *entity-pool*
       )
     (if (nonzero? (-> self sound-id))
@@ -384,7 +380,6 @@
     (sound-play "mother-hit")
     (suspend)
     (go-virtual projectile-die)
-    (none)
     )
   )
 
@@ -399,7 +394,7 @@
       #f
       #f
       #f
-      (-> self root-override trans)
+      (-> self root trans)
       :to *entity-pool*
       )
     (if (nonzero? (-> self sound-id))
@@ -407,6 +402,5 @@
         )
     (suspend)
     (go-virtual projectile-die)
-    (none)
     )
   )

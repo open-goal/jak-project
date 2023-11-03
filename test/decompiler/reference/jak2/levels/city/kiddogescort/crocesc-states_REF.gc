@@ -4,12 +4,9 @@
 ;; failed to figure out what this is:
 (defstate waiting-idle (crocadog-escort)
   :virtual #t
-  :event (the-as
-    (function process int symbol event-message-block object :behavior crocadog-escort)
-    enemy-event-handler
-    )
+  :event enemy-event-handler
   :enter (behavior ()
-    (set! (-> self state-time) (current-time))
+    (set-time! (-> self state-time))
     (let ((v1-2 self))
       (set! (-> v1-2 enemy-flags) (the-as enemy-flag (logclear (-> v1-2 enemy-flags) (enemy-flag enemy-flag36))))
       (set! (-> v1-2 nav callback-info) *nav-enemy-null-callback-info*)
@@ -23,7 +20,6 @@
     (vector-reset! (-> self root transv))
     (look-at-target! self (enemy-flag lock-focus))
     (set! (-> self travel-anim-interp) 0.0)
-    (none)
     )
   :trans (behavior ()
     (bot-method-223 self #f)
@@ -40,7 +36,6 @@
          )
         )
       )
-    (none)
     )
   :code (behavior ()
     (let ((gp-0 (get-rand-int self 4)))
@@ -56,7 +51,7 @@
             ((zero? v1-7)
              (let ((v1-10 (ja-group)))
                (cond
-                 ((and v1-10 (= v1-10 (-> self draw art-group data 3)))
+                 ((and v1-10 (= v1-10 crocadog-escort-idle-pant-ja))
                   (ja-no-eval :num! (seek! max 0.5))
                   (while (not (ja-done? 0))
                     (suspend)
@@ -70,10 +65,7 @@
                )
              (let ((s5-0 (get-rand-int-range self 3 7)))
                (dotimes (s4-0 s5-0)
-                 (ja-no-eval :group! (-> self draw art-group data 3)
-                             :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 3)) frames num-frames) -1)) 0.5)
-                             :frame-num 0.0
-                             )
+                 (ja-no-eval :group! crocadog-escort-idle-pant-ja :num! (seek! max 0.5) :frame-num 0.0)
                  (until (ja-done? 0)
                    (suspend)
                    (ja :num! (seek! max 0.5))
@@ -83,15 +75,12 @@
              )
             ((= v1-7 1)
              (ja-channel-push! 1 (seconds 0.1))
-             (ja-no-eval :group! (-> self draw art-group data 6) :num! (seek! (ja-aframe 3.0 0) 0.5) :frame-num 0.0)
+             (ja-no-eval :group! crocadog-escort-idle-bark-ja :num! (seek! (ja-aframe 3.0 0) 0.5) :frame-num 0.0)
              (until (ja-done? 0)
                (suspend)
                (ja :num! (seek! (ja-aframe 3.0 0) 0.5))
                )
-             (ja-no-eval :group! (-> self draw art-group data 6)
-                         :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 6)) frames num-frames) -1)) 0.33)
-                         :frame-num (ja-aframe 3.0 0)
-                         )
+             (ja-no-eval :group! crocadog-escort-idle-bark-ja :num! (seek! max 0.33) :frame-num (ja-aframe 3.0 0))
              (until (ja-done? 0)
                (suspend)
                (ja :num! (seek! max 0.33))
@@ -100,7 +89,7 @@
             ((= v1-7 2)
              (let ((v1-90 (ja-group)))
                (cond
-                 ((and v1-90 (= v1-90 (-> self draw art-group data 5)))
+                 ((and v1-90 (= v1-90 crocadog-escort-idle-scratch-ja))
                   (ja-no-eval :num! (seek! max 0.5))
                   (while (not (ja-done? 0))
                     (suspend)
@@ -114,10 +103,7 @@
                )
              (let ((s5-4 (get-rand-int-range self 5 7)))
                (dotimes (s4-1 s5-4)
-                 (ja-no-eval :group! (-> self draw art-group data 5)
-                             :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 5)) frames num-frames) -1)) 0.5)
-                             :frame-num (ja-aframe 2.0 0)
-                             )
+                 (ja-no-eval :group! crocadog-escort-idle-scratch-ja :num! (seek! max 0.5) :frame-num (ja-aframe 2.0 0))
                  (until (ja-done? 0)
                    (suspend)
                    (ja :num! (seek! max 0.5))
@@ -128,7 +114,7 @@
             (else
               (let ((v1-132 (ja-group)))
                 (cond
-                  ((and v1-132 (= v1-132 (-> self draw art-group data 4)))
+                  ((and v1-132 (= v1-132 crocadog-escort-idle-wag-ja))
                    (ja-no-eval :num! (seek!))
                    (while (not (ja-done? 0))
                      (suspend)
@@ -142,10 +128,7 @@
                 )
               (let ((s5-5 (get-rand-int-range self 3 7)))
                 (dotimes (s4-2 s5-5)
-                  (ja-no-eval :group! (-> self draw art-group data 4)
-                              :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 4)) frames num-frames) -1)))
-                              :frame-num 0.0
-                              )
+                  (ja-no-eval :group! crocadog-escort-idle-wag-ja :num! (seek!) :frame-num 0.0)
                   (until (ja-done? 0)
                     (suspend)
                     (ja :num! (seek!))
@@ -158,20 +141,16 @@
         )
       )
     #f
-    (none)
     )
-  :post (the-as (function none :behavior crocadog-escort) nav-enemy-simple-post)
+  :post nav-enemy-simple-post
   )
 
 ;; failed to figure out what this is:
 (defstate waiting-turn (crocadog-escort)
   :virtual #t
-  :event (the-as
-    (function process int symbol event-message-block object :behavior crocadog-escort)
-    enemy-event-handler
-    )
+  :event enemy-event-handler
   :enter (behavior ()
-    (set! (-> self state-time) (current-time))
+    (set-time! (-> self state-time))
     (let ((v1-2 self))
       (set! (-> v1-2 enemy-flags) (the-as enemy-flag (logclear (-> v1-2 enemy-flags) (enemy-flag enemy-flag36))))
       (set! (-> v1-2 nav callback-info) *nav-enemy-null-callback-info*)
@@ -184,7 +163,6 @@
     0
     (look-at-target! self (enemy-flag lock-focus))
     (set! (-> self travel-anim-interp) 0.0)
-    (none)
     )
   :trans (behavior ()
     (bot-method-223 self #f)
@@ -195,37 +173,28 @@
           (go-virtual traveling)
           )
       )
-    (none)
     )
   :code (behavior ()
     (ja-channel-push! 1 (seconds 0.1))
-    (ja-no-eval :group! (-> self draw art-group data 9)
-                :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 9)) frames num-frames) -1)))
-                :frame-num 0.0
-                )
+    (ja-no-eval :group! crocadog-escort-turn0-ja :num! (seek!) :frame-num 0.0)
     (until (ja-done? 0)
       (suspend)
       (ja :num! (seek!))
       )
     (go-idle-or-move self)
-    (none)
     )
   :post (behavior ()
     (seek-toward-heading-vec! (-> self root) (-> self focus-info bullseye-xz-dir) 49152.0 (seconds 0.05))
     (nav-enemy-simple-post)
-    (none)
     )
   )
 
 ;; failed to figure out what this is:
 (defstate traveling (crocadog-escort)
   :virtual #t
-  :event (the-as
-    (function process int symbol event-message-block object :behavior crocadog-escort)
-    enemy-event-handler
-    )
+  :event enemy-event-handler
   :enter (behavior ()
-    (set! (-> self state-time) (current-time))
+    (set-time! (-> self state-time))
     (let ((v1-2 self))
       (if (not (logtest? (enemy-flag enemy-flag36) (-> v1-2 enemy-flags)))
           (set! (-> v1-2 enemy-flags) (the-as enemy-flag (logior (enemy-flag enemy-flag38) (-> v1-2 enemy-flags))))
@@ -241,7 +210,6 @@
     (stop-looking-at-target! self)
     (nav-enemy-method-166 self)
     (set! (-> self player-blocking) 0.0)
-    (none)
     )
   :trans (behavior ()
     (bot-method-223 self #f)
@@ -252,15 +220,14 @@
       ((outside-spot-radius? self (the-as bot-spot #f) (the-as vector #f) #t)
        (go-idle-or-move self)
        )
-      ((and (>= (- (current-time) (-> self state-time)) (seconds 0.5)) (bot-method-208 self))
+      ((and (time-elapsed? (-> self state-time) (seconds 0.5)) (bot-method-208 self))
        (go-virtual traveling-blocked)
        )
-      ((and (nav-enemy-method-163 self) (>= (- (current-time) (-> self state-time)) (-> self reaction-time)))
+      ((and (nav-enemy-method-163 self) (time-elapsed? (-> self state-time) (-> self reaction-time)))
        (go-stare2 self)
        )
       )
     0
-    (none)
     )
   :code (behavior ()
     (until #f
@@ -268,7 +235,6 @@
       (suspend)
       )
     #f
-    (none)
     )
   :post (behavior ()
     (let ((a0-0 (-> self nav state))
@@ -280,19 +246,15 @@
       )
     0
     (nav-enemy-travel-post)
-    (none)
     )
   )
 
 ;; failed to figure out what this is:
 (defstate move-to-vehicle (crocadog-escort)
   :virtual #t
-  :event (the-as
-    (function process int symbol event-message-block object :behavior crocadog-escort)
-    enemy-event-handler
-    )
+  :event enemy-event-handler
   :enter (behavior ()
-    (set! (-> self state-time) (current-time))
+    (set-time! (-> self state-time))
     (let ((v1-2 self))
       (if (not (logtest? (enemy-flag enemy-flag36) (-> v1-2 enemy-flags)))
           (set! (-> v1-2 enemy-flags) (the-as enemy-flag (logior (enemy-flag enemy-flag38) (-> v1-2 enemy-flags))))
@@ -308,7 +270,6 @@
     (stop-looking-at-target! self)
     (nav-enemy-method-166 self)
     (set! (-> self player-blocking) 0.0)
-    (none)
     )
   :trans (behavior ()
     (bot-method-223 self #f)
@@ -322,10 +283,10 @@
          (logclear! (-> self bot-flags) (bot-flags bf15))
          (go-idle-or-move self)
          )
-        ((and (>= (- (current-time) (-> self state-time)) (seconds 0.5)) (bot-method-208 self))
+        ((and (time-elapsed? (-> self state-time) (seconds 0.5)) (bot-method-208 self))
          (go-virtual traveling-blocked)
          )
-        ((and (nav-enemy-method-163 self) (>= (- (current-time) (-> self state-time)) (-> self reaction-time)))
+        ((and (nav-enemy-method-163 self) (time-elapsed? (-> self state-time) (-> self reaction-time)))
          (go-stare2 self)
          )
         )
@@ -363,7 +324,6 @@
             )
         )
       )
-    (none)
     )
   :code (behavior ()
     (until #f
@@ -371,20 +331,16 @@
       (suspend)
       )
     #f
-    (none)
     )
-  :post (the-as (function none :behavior crocadog-escort) nav-enemy-travel-post)
+  :post nav-enemy-travel-post
   )
 
 ;; failed to figure out what this is:
 (defstate board-vehicle (crocadog-escort)
   :virtual #t
-  :event (the-as
-    (function process int symbol event-message-block object :behavior crocadog-escort)
-    enemy-event-handler
-    )
+  :event enemy-event-handler
   :enter (behavior ()
-    (set! (-> self state-time) (current-time))
+    (set-time! (-> self state-time))
     (let ((v1-2 self))
       (set! (-> v1-2 enemy-flags) (the-as enemy-flag (logclear (-> v1-2 enemy-flags) (enemy-flag enemy-flag36))))
       (set! (-> v1-2 nav callback-info) *nav-enemy-null-callback-info*)
@@ -415,7 +371,6 @@
     (logior! (-> self focus-status) (focus-status disable))
     (logclear! (-> self focus-status) (focus-status arrestable))
     (logclear! (-> self bot-flags) (bot-flags bf15))
-    (none)
     )
   :exit (behavior ()
     (local-vars (v1-6 enemy-flag))
@@ -429,17 +384,15 @@
       )
     (set! (-> self enemy-flags) v1-6)
     (logclear! (-> self bot-flags) (bot-flags bf15))
-    (none)
     )
   :trans (behavior ()
     (check-vehicle-exit self)
-    (none)
     )
   :code (behavior ()
     (local-vars (sv-128 float))
     (ja-channel-push! 1 (seconds 0.1))
     (let ((gp-0 (new 'stack-no-clear 'matrix)))
-      (ja-no-eval :group! (-> self draw art-group data 10)
+      (ja-no-eval :group! crocadog-escort-jump-in-vehicle-ja
                   :num! (seek! (ja-aframe 1.0 0) 0.5)
                   :frame-num (ja-aframe 0.0 0)
                   )
@@ -450,7 +403,7 @@
       (let ((s5-2 (new 'stack-no-clear 'vector)))
         (set! (-> s5-2 quad) (-> self root trans quad))
         (let ((s4-0 (quaternion-copy! (new 'stack-no-clear 'quaternion) (-> self root quat))))
-          (ja-no-eval :group! (-> self draw art-group data 10)
+          (ja-no-eval :group! crocadog-escort-jump-in-vehicle-ja
                       :num! (seek! (ja-aframe 5.0 0) 0.5)
                       :frame-num (ja-aframe 1.0 0)
                       )
@@ -489,7 +442,7 @@
         )
       (let ((s5-3 (new 'stack-no-clear 'vector)))
         (set! (-> s5-3 quad) (-> self root trans quad))
-        (ja-no-eval :group! (-> self draw art-group data 10)
+        (ja-no-eval :group! crocadog-escort-jump-in-vehicle-ja
                     :num! (seek! (ja-aframe 7.0 0) 0.5)
                     :frame-num (ja-aframe 5.0 0)
                     )
@@ -516,7 +469,7 @@
           )
         )
       (quaternion-copy! (new 'stack-no-clear 'quaternion) (-> self root quat))
-      (ja-no-eval :group! (-> self draw art-group data 10)
+      (ja-no-eval :group! crocadog-escort-jump-in-vehicle-ja
                   :num! (seek! (ja-aframe 12.0 0) 0.5)
                   :frame-num (ja-aframe 7.0 0)
                   )
@@ -546,20 +499,16 @@
       )
     (logior! (-> self focus-status) (focus-status pilot-riding pilot))
     (go-virtual ride-vehicle)
-    (none)
     )
-  :post (the-as (function none :behavior crocadog-escort) nav-enemy-simple-post)
+  :post nav-enemy-simple-post
   )
 
 ;; failed to figure out what this is:
 (defstate ride-vehicle (crocadog-escort)
   :virtual #t
-  :event (the-as
-    (function process int symbol event-message-block object :behavior crocadog-escort)
-    enemy-event-handler
-    )
+  :event enemy-event-handler
   :enter (behavior ()
-    (set! (-> self state-time) (current-time))
+    (set-time! (-> self state-time))
     (let ((v1-2 self))
       (set! (-> v1-2 enemy-flags) (the-as enemy-flag (logclear (-> v1-2 enemy-flags) (enemy-flag enemy-flag36))))
       (set! (-> v1-2 nav callback-info) *nav-enemy-null-callback-info*)
@@ -577,7 +526,6 @@
     0
     (logior! (-> self focus-status) (focus-status disable pilot-riding pilot))
     (set! (-> self anim-speed) 0.0)
-    (none)
     )
   :exit (behavior ()
     (local-vars (v1-4 enemy-flag))
@@ -590,7 +538,6 @@
       )
     (set! (-> self enemy-flags) v1-4)
     (logclear! (-> self bot-flags) (bot-flags bf15))
-    (none)
     )
   :trans (behavior ()
     (check-vehicle-exit self)
@@ -609,44 +556,33 @@
         (let* ((f0-2 (* (vector-vector-distance (-> self root trans) gp-0) (-> self clock frames-per-second)))
                (f0-3 (lerp-scale 0.3 1.2 f0-2 0.0 81920.0))
                )
-          (seek! (-> self anim-speed) f0-3 (* 2.0 (-> self clock seconds-per-frame)))
+          (seek! (-> self anim-speed) f0-3 (* 2.0 (seconds-per-frame)))
           )
         )
       )
     (if (and (logtest? (bot-flags bf16) (-> self bot-flags)) (want-exit-vehicle? self (-> self exit-vehicle-dest)))
         (go-virtual exit-vehicle)
         )
-    (none)
     )
   :code (behavior ()
     (until #f
-      (ja-no-eval :group! (-> self draw art-group data 11)
-                  :num! (seek!
-                    (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 11)) frames num-frames) -1))
-                    (-> self anim-speed)
-                    )
-                  :frame-num 0.0
-                  )
+      (ja-no-eval :group! crocadog-escort-idle-car0-ja :num! (seek! max (-> self anim-speed)) :frame-num 0.0)
       (until (ja-done? 0)
         (suspend)
         (ja :num! (seek! max (-> self anim-speed)))
         )
       )
     #f
-    (none)
     )
-  :post (the-as (function none :behavior crocadog-escort) nav-enemy-simple-post)
+  :post nav-enemy-simple-post
   )
 
 ;; failed to figure out what this is:
 (defstate exit-vehicle (crocadog-escort)
   :virtual #t
-  :event (the-as
-    (function process int symbol event-message-block object :behavior crocadog-escort)
-    enemy-event-handler
-    )
+  :event enemy-event-handler
   :enter (behavior ()
-    (set! (-> self state-time) (current-time))
+    (set-time! (-> self state-time))
     (let ((v1-2 self))
       (set! (-> v1-2 enemy-flags) (the-as enemy-flag (logclear (-> v1-2 enemy-flags) (enemy-flag enemy-flag36))))
       (set! (-> v1-2 nav callback-info) *nav-enemy-null-callback-info*)
@@ -659,7 +595,6 @@
     (logclear! (-> self enemy-flags) (enemy-flag enable-on-active))
     (logior! (-> self root nav-flags) (nav-flags has-root-sphere))
     (logior! (-> self focus-status) (focus-status disable))
-    (none)
     )
   :exit (behavior ()
     (local-vars (v1-11 enemy-flag))
@@ -680,7 +615,6 @@
       )
     (set! (-> self enemy-flags) v1-11)
     (logclear! (-> self bot-flags) (bot-flags bf15))
-    (none)
     )
   :trans (behavior ()
     (check-vehicle-exit self)
@@ -694,12 +628,11 @@
           )
         )
       )
-    (none)
     )
   :code (behavior ()
     (ja-channel-push! 1 (seconds 0.1))
     (let ((gp-0 (new 'stack-no-clear 'inline-array 'matrix 2)))
-      (ja-no-eval :group! (-> self draw art-group data 10)
+      (ja-no-eval :group! crocadog-escort-jump-in-vehicle-ja
                   :num! (seek! (ja-aframe 7.0 0) 0.25)
                   :frame-num (ja-aframe 12.0 0)
                   )
@@ -727,7 +660,7 @@
         (ja :num! (seek! (ja-aframe 7.0 0) 0.25))
         )
       (set! (-> gp-0 0 vector 1 quad) (-> self root trans quad))
-      (ja-no-eval :group! (-> self draw art-group data 10)
+      (ja-no-eval :group! crocadog-escort-jump-in-vehicle-ja
                   :num! (seek! (ja-aframe 5.0 0) 0.5)
                   :frame-num (ja-aframe 7.0 0)
                   )
@@ -750,7 +683,7 @@
         )
       (logclear! (-> self focus-status) (focus-status pilot-riding))
       (set! (-> gp-0 0 quad 0) (-> self root trans quad))
-      (ja-no-eval :group! (-> self draw art-group data 10)
+      (ja-no-eval :group! crocadog-escort-jump-in-vehicle-ja
                   :num! (seek! (ja-aframe 0.0 0))
                   :frame-num (ja-aframe 5.0 0)
                   )
@@ -801,20 +734,16 @@
         )
       )
     (react-to-focus self)
-    (none)
     )
-  :post (the-as (function none :behavior crocadog-escort) nav-enemy-simple-post)
+  :post nav-enemy-simple-post
   )
 
 ;; failed to figure out what this is:
 (defstate traveling-blocked (crocadog-escort)
   :virtual #t
-  :event (the-as
-    (function process int symbol event-message-block object :behavior crocadog-escort)
-    enemy-event-handler
-    )
+  :event enemy-event-handler
   :enter (behavior ()
-    (set! (-> self state-time) (current-time))
+    (set-time! (-> self state-time))
     (let ((v1-2 self))
       (set! (-> v1-2 enemy-flags) (the-as enemy-flag (logclear (-> v1-2 enemy-flags) (enemy-flag enemy-flag36))))
       (set! (-> v1-2 nav callback-info) *nav-enemy-null-callback-info*)
@@ -828,17 +757,15 @@
     (vector-reset! (-> self root transv))
     (look-at-target! self (enemy-flag lock-focus))
     (set! (-> self travel-anim-interp) 0.0)
-    (none)
     )
   :trans (behavior ()
     (bot-method-223 self #f)
-    (if (and (>= (- (current-time) (-> self state-time)) (seconds 1)) (not (bot-method-208 self)))
+    (if (and (time-elapsed? (-> self state-time) (seconds 1)) (not (bot-method-208 self)))
         (go-virtual traveling)
         )
-    (none)
     )
   :code (-> (method-of-type crocadog-escort waiting-idle) code)
-  :post (the-as (function none :behavior crocadog-escort) nav-enemy-simple-post)
+  :post nav-enemy-simple-post
   )
 
 ;; failed to figure out what this is:
@@ -855,16 +782,14 @@
       )
     0
     (set! (-> self travel-anim-interp) 0.0)
-    (none)
     )
   :trans (behavior ()
     (bot-method-223 self #f)
-    (when (>= (- (current-time) (-> self state-time)) (seconds 0.1))
+    (when (time-elapsed? (-> self state-time) (seconds 0.1))
       (if (not (nav-enemy-method-163 self))
           (go-virtual traveling)
           )
       )
-    (none)
     )
   :code (-> (method-of-type crocadog-escort waiting-idle) code)
   )
@@ -879,7 +804,6 @@
           )
       )
     (set! (-> self travel-anim-interp) 0.0)
-    (none)
     )
   :code (behavior ()
     (local-vars (v1-7 enemy-flag) (v1-15 enemy-flag))
@@ -908,7 +832,6 @@
     (logclear! (-> self enemy-flags) (enemy-flag actor-pause-backup))
     (logclear! (-> self focus-status) (focus-status hit))
     (react-to-focus self)
-    (none)
     )
   )
 
@@ -922,7 +845,6 @@
           )
       )
     (set! (-> self travel-anim-interp) 0.0)
-    (none)
     )
   )
 
@@ -936,13 +858,12 @@
           )
       )
     (set! (-> self travel-anim-interp) 0.0)
-    (none)
     )
   :code (behavior ()
     0.0
     (until #f
       (if (and (logtest? (-> self bot-flags) (bot-flags failed))
-               (>= (- (current-time) (-> self state-time)) (seconds 3))
+               (time-elapsed? (-> self state-time) (seconds 3))
                (reset? *fail-mission-control*)
                )
           (reset! *fail-mission-control*)
@@ -950,15 +871,12 @@
       (cond
         ((zero? (get-rand-int self 3))
          (ja-channel-push! 1 (seconds 0.1))
-         (ja-no-eval :group! (-> self draw art-group data 6) :num! (seek! (ja-aframe 3.0 0) 0.5) :frame-num 0.0)
+         (ja-no-eval :group! crocadog-escort-idle-bark-ja :num! (seek! (ja-aframe 3.0 0) 0.5) :frame-num 0.0)
          (until (ja-done? 0)
            (suspend)
            (ja :num! (seek! (ja-aframe 3.0 0) 0.5))
            )
-         (ja-no-eval :group! (-> self draw art-group data 6)
-                     :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 6)) frames num-frames) -1)) 0.33)
-                     :frame-num (ja-aframe 3.0 0)
-                     )
+         (ja-no-eval :group! crocadog-escort-idle-bark-ja :num! (seek! max 0.33) :frame-num (ja-aframe 3.0 0))
          (until (ja-done? 0)
            (suspend)
            (ja :num! (seek! max 0.33))
@@ -967,13 +885,7 @@
         (else
           (ja-channel-push! 1 (seconds 0.1))
           (let ((f30-0 (get-rand-float-range self 0.4 0.6)))
-            (ja-no-eval :group! (-> self draw art-group data 14)
-                        :num! (seek!
-                          (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 14)) frames num-frames) -1))
-                          f30-0
-                          )
-                        :frame-num 0.0
-                        )
+            (ja-no-eval :group! crocadog-escort-angry-bark-ja :num! (seek! max f30-0) :frame-num 0.0)
             (until (ja-done? 0)
               (suspend)
               (ja :num! (seek! max f30-0))
@@ -983,7 +895,6 @@
         )
       )
     #f
-    (none)
     )
   )
 
@@ -991,7 +902,7 @@
 (defstate failed (crocadog-escort)
   :virtual #t
   :enter (behavior ()
-    (set! (-> self state-time) (current-time))
+    (set-time! (-> self state-time))
     (let ((v1-2 self))
       (set! (-> v1-2 enemy-flags) (the-as enemy-flag (logclear (-> v1-2 enemy-flags) (enemy-flag enemy-flag36))))
       (set! (-> v1-2 nav callback-info) *nav-enemy-null-callback-info*)
@@ -1007,17 +918,15 @@
     (set! (-> self travel-anim-interp) 0.0)
     (logior! (-> self bot-flags) (bot-flags bf09))
     (logclear! (-> self bot-flags) (bot-flags bf19))
-    (none)
     )
   :trans (behavior ()
-    (when (>= (- (current-time) (-> self state-time)) (seconds 0.1))
+    (when (time-elapsed? (-> self state-time) (seconds 0.1))
       (when (not (logtest? (bot-flags bf19) (-> self bot-flags)))
         (logior! (-> self bot-flags) (bot-flags bf19))
         (fail-mission! self)
         )
       (fail-falling self)
       )
-    (none)
     )
   :code (-> (method-of-type crocadog-escort die-falling) code)
   )
@@ -1025,12 +934,9 @@
 ;; failed to figure out what this is:
 (defstate knocked-off-vehicle (crocadog-escort)
   :virtual #t
-  :event (the-as
-    (function process int symbol event-message-block object :behavior crocadog-escort)
-    enemy-event-handler
-    )
+  :event enemy-event-handler
   :enter (behavior ()
-    (set! (-> self state-time) (current-time))
+    (set-time! (-> self state-time))
     (let ((v1-2 self))
       (set! (-> v1-2 enemy-flags) (the-as enemy-flag (logclear (-> v1-2 enemy-flags) (enemy-flag enemy-flag36))))
       (set! (-> v1-2 nav callback-info) *nav-enemy-null-callback-info*)
@@ -1053,8 +959,7 @@
     (logclear! (-> self enemy-flags) (enemy-flag notice))
     (logclear! (-> self focus-status) (focus-status disable))
     (set! (-> self travel-anim-interp) 0.0)
-    (none)
     )
   :code (-> (method-of-type crocadog-escort waiting-idle) code)
-  :post (the-as (function none :behavior crocadog-escort) nav-enemy-simple-post)
+  :post nav-enemy-simple-post
   )

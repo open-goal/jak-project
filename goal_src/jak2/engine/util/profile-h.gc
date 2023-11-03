@@ -23,50 +23,41 @@ The "count" can be used for whatever you want (ex: fragments, VU calls, etc)
 ;; to summarize all events in a category (both EE and VU), so there's
 ;; some overlap
 (deftype profile-segment (structure)
-  ((name       symbol  :offset-assert   0) ;; used for categorization.
-   (start-time int16   :offset-assert   4) ;; timestamp of start
-   (end-time   int16   :offset-assert   6) ;; timestamp of end
-   (count      uint8   :offset-assert   8) ;; how many on EE
-   (vu-count   uint8   :offset-assert   9) ;; how many on VU
-   (depth      uint16  :offset-assert  10) ;; depth in the profile stack
-   (color      rgba    :offset-assert  12) ;; color for bar/text
-   (code-time  uint16  :offset          4) ;; total time, EE
-   (vu-time    uint16  :offset          6) ;; total time, VU
+  ((name       symbol) ;; used for categorization.
+   (start-time int16) ;; timestamp of start
+   (end-time   int16) ;; timestamp of end
+   (count      uint8) ;; how many on EE
+   (vu-count   uint8) ;; how many on VU
+   (depth      uint16) ;; depth in the profile stack
+   (color      rgba) ;; color for bar/text
+   (code-time   uint16  :overlay-at start-time) ;; total time, EE
+   (vu-time     uint16  :overlay-at end-time) ;; total time, VU
    )
   :allow-misaligned
-  :method-count-assert 9
-  :size-assert         #x10
-  :flag-assert         #x900000010
   )
 
 ;; segments with the same name are combined together. Each "collapse" entry
 ;; has a summary of all the events with the same name.
 (deftype profile-collapse (structure)
-  ((count int32                      :offset-assert   0)
-   (data  profile-segment 48 :inline :offset-assert   4)
+  ((count  int32)
+   (data   profile-segment  48 :inline)
    )
-  :method-count-assert 9
-  :size-assert         #x304
-  :flag-assert         #x900000304
   )
 
 ;; Profiling data. For either EE or VU (each has one)
 (deftype profile-segment-array (basic)
-  ((count     int16                       :offset-assert   4) ;; number of used segments
-   (depth     int8                        :offset-assert   6) ;; current stack depth
-   (max-depth int8                        :offset-assert   7) ;; max depth ever seen
-   (base-time int16                       :offset-assert   8) ;; time at profile start
-   (segment   profile-segment 9           :offset-assert  12) ;; stack of open segments
-   (data      profile-segment 512 :inline :offset-assert  48) ;; segment buffer
+  ((count      int16)
+   (depth      int8)
+   (max-depth  int8)
+   (base-time  int16)
+   (segment    profile-segment  9)
+   (data       profile-segment  512 :inline)
    )
-  :method-count-assert 13
-  :size-assert         #x2030
-  :flag-assert         #xd00002030
   (:methods
-    (get-total-time (_type_) int 9)
-    (start-frame! (_type_) none 10)
-    (start-segment! (_type_ symbol rgba) none 11)
-    (end-segment! (_type_) none 12)
+    (get-total-time (_type_) int)
+    (start-frame! (_type_) none)
+    (start-segment! (_type_ symbol rgba) none)
+    (end-segment! (_type_) none)
     )
   )
 
@@ -74,23 +65,19 @@ The "count" can be used for whatever you want (ex: fragments, VU calls, etc)
 
 ;; Pair of profilers (EE, VU)
 (deftype profile-array (structure)
-  ((data profile-segment-array 2 :offset-assert   0)
+  ((data  profile-segment-array  2)
    )
-  :method-count-assert 12
-  :size-assert         #x8
-  :flag-assert         #xc00000008
   (:methods
-    (setup-categories! (_type_) none 9)
-    (draw-bars! (_type_ dma-buffer int) none 10)
-    (draw-text! (_type_) none 11)
+    (setup-categories! (_type_) none)
+    (draw-bars! (_type_ dma-buffer int) none)
+    (draw-text! (_type_) none)
     )
   )
 
 
-(defmethod get-total-time profile-segment-array ((obj profile-segment-array))
-  "Get the total time spent."
+(defmethod get-total-time ((this profile-segment-array))
   ;; assuming 0 is "all" here.
-  (- (-> obj data 0 end-time) (-> obj data 0 start-time))
+  (- (-> this data 0 end-time) (-> this data 0 start-time))
   )
 
 (define *profile-gap-color* (new 'static 'rgba :r #x30 :g #x30 :b #x30 :a #x80))

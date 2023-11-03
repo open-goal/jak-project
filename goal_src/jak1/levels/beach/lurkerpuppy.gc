@@ -7,13 +7,8 @@
 
 ;; DECOMP BEGINS
 
-
 (deftype lurkerpuppy (nav-enemy)
   ()
-  :heap-base #x120
-  :method-count-assert 76
-  :size-assert         #x190
-  :flag-assert         #x4c01200190
   )
 
 
@@ -27,10 +22,7 @@ nav-enemy-default-event-handler
 
 (defstate nav-enemy-notice (lurkerpuppy)
   :virtual #t
-  :event (the-as
-    (function process int symbol event-message-block object :behavior lurkerpuppy)
-    nav-enemy-default-event-handler
-    )
+  :event nav-enemy-default-event-handler
   :code (behavior ()
     (ja-no-eval :num! (loop!))
     (ja-channel-push! 1 (seconds 0.17))
@@ -41,16 +33,12 @@ nav-enemy-default-event-handler
       (ja :num! (seek!))
       )
     (go-virtual nav-enemy-chase)
-    (none)
     )
   )
 
 (defstate nav-enemy-chase (lurkerpuppy)
   :virtual #t
-  :event (the-as
-    (function process int symbol event-message-block object :behavior lurkerpuppy)
-    nav-enemy-default-event-handler
-    )
+  :event nav-enemy-default-event-handler
   :code (behavior ()
     (cond
       ((ja-group? lurkerpuppy-jump-land-ja)
@@ -80,16 +68,12 @@ nav-enemy-default-event-handler
           )
         )
       )
-    (none)
     )
   )
 
 (defstate nav-enemy-stare (lurkerpuppy)
   :virtual #t
-  :event (the-as
-    (function process int symbol event-message-block object :behavior lurkerpuppy)
-    nav-enemy-default-event-handler
-    )
+  :event nav-enemy-default-event-handler
   :code (behavior ()
     (set! (-> self rotate-speed) 1456355.5)
     (set! (-> self turn-time) (seconds 0.1))
@@ -115,9 +99,9 @@ nav-enemy-default-event-handler
         (ja :group! lurkerpuppy-idle-ja)
         (ja :num-func num-func-identity :frame-num 0.0)
         (let ((gp-2 (rand-vu-int-range 750 900))
-              (s5-0 (-> *display* base-frame-counter))
+              (s5-0 (current-time))
               )
-          (until (>= (- (-> *display* base-frame-counter) s5-0) gp-2)
+          (until (time-elapsed? s5-0 gp-2)
             (ja :num! (loop!))
             (ja-blend-eval)
             (suspend)
@@ -125,16 +109,12 @@ nav-enemy-default-event-handler
           )
         )
       )
-    (none)
     )
   )
 
 (defstate nav-enemy-give-up (lurkerpuppy)
   :virtual #t
-  :event (the-as
-    (function process int symbol event-message-block object :behavior lurkerpuppy)
-    nav-enemy-default-event-handler
-    )
+  :event nav-enemy-default-event-handler
   :code (behavior ()
     (set! (-> self rotate-speed) 218453.33)
     (set! (-> self turn-time) (seconds 0.5))
@@ -158,32 +138,23 @@ nav-enemy-default-event-handler
       (ja :num! (seek! max 1.4))
       )
     (go-virtual nav-enemy-patrol)
-    (none)
     )
   )
 
 (defstate nav-enemy-attack (lurkerpuppy)
   :virtual #t
-  :event (the-as
-    (function process int symbol event-message-block object :behavior lurkerpuppy)
-    nav-enemy-default-event-handler
-    )
+  :event nav-enemy-default-event-handler
   :code (behavior ()
     (sound-play "head-butt")
     (go-virtual nav-enemy-victory)
-    (none)
     )
   )
 
 (defstate nav-enemy-victory (lurkerpuppy)
   :virtual #t
-  :event (the-as
-    (function process int symbol event-message-block object :behavior lurkerpuppy)
-    nav-enemy-default-event-handler
-    )
+  :event nav-enemy-default-event-handler
   :exit (behavior ()
     (logior! (-> self nav-enemy-flags) (nav-enemy-flags enable-travel))
-    (none)
     )
   :code (behavior ()
     (logclear! (-> self nav-enemy-flags) (nav-enemy-flags enable-travel))
@@ -202,9 +173,8 @@ nav-enemy-default-event-handler
         )
       )
     (go-virtual nav-enemy-chase)
-    (none)
     )
-  :post (the-as (function none :behavior lurkerpuppy) nav-enemy-face-player-post)
+  :post nav-enemy-face-player-post
   )
 
 (define *lurkerpuppy-nav-enemy-info* (new 'static 'nav-enemy-info
@@ -261,8 +231,8 @@ nav-enemy-default-event-handler
                                        )
         )
 
-(defmethod initialize-collision lurkerpuppy ((obj lurkerpuppy))
-  (let ((s5-0 (new 'process 'collide-shape-moving obj (collide-list-enum usually-hit-by-player))))
+(defmethod initialize-collision ((this lurkerpuppy))
+  (let ((s5-0 (new 'process 'collide-shape-moving this (collide-list-enum usually-hit-by-player))))
     (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s5-0 reaction) default-collision-reaction)
     (set! (-> s5-0 no-reaction)
@@ -278,19 +248,19 @@ nav-enemy-default-event-handler
       )
     (set! (-> s5-0 nav-radius) 2048.0)
     (backup-collide-with-as s5-0)
-    (set! (-> obj collide-info) s5-0)
+    (set! (-> this collide-info) s5-0)
     )
   0
   (none)
   )
 
-(defmethod nav-enemy-method-48 lurkerpuppy ((obj lurkerpuppy))
-  (initialize-skeleton obj *lurkerpuppy-sg* '())
-  (init-defaults! obj *lurkerpuppy-nav-enemy-info*)
-  (when (nonzero? (-> obj neck))
-    (set! (-> obj neck up) (the-as uint 0))
-    (set! (-> obj neck nose) (the-as uint 1))
-    (set! (-> obj neck ear) (the-as uint 2))
+(defmethod nav-enemy-method-48 ((this lurkerpuppy))
+  (initialize-skeleton this *lurkerpuppy-sg* '())
+  (init-defaults! this *lurkerpuppy-nav-enemy-info*)
+  (when (nonzero? (-> this neck))
+    (set! (-> this neck up) (the-as uint 0))
+    (set! (-> this neck nose) (the-as uint 1))
+    (set! (-> this neck ear) (the-as uint 2))
     )
   0
   (none)

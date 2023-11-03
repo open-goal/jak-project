@@ -17,7 +17,7 @@ const goos::Object& get_lambda_body(const goos::Object& def) {
   auto* iter = &def;
   while (true) {
     auto car = iter->as_pair()->car;
-    if (car.is_symbol() && car.as_symbol()->name.at(0) == ':') {
+    if (car.is_symbol() && car.as_symbol().name_ptr[0] == ':') {
       iter = &iter->as_pair()->cdr;
       iter = &iter->as_pair()->cdr;
     } else {
@@ -56,9 +56,10 @@ Val* Compiler::compile_local_vars(const goos::Object& form, const goos::Object& 
   for_each_in_list(rest, [&](const goos::Object& o) {
     if (o.is_symbol()) {
       // if it has no type, assume object.
-      auto name = symbol_string(o);
+      auto name = o.as_symbol();
       if (fe->params.find(name) != fe->params.end()) {
-        throw_compiler_error(form, "Cannot declare a local named {}, this already exists.", name);
+        throw_compiler_error(form, "Cannot declare a local named {}, this already exists.",
+                             name.name_ptr);
       }
       auto ireg = fe->make_ireg(m_ts.make_typespec("object"), RegClass::GPR_64);
       ireg->mark_as_settable();
@@ -66,11 +67,12 @@ Val* Compiler::compile_local_vars(const goos::Object& form, const goos::Object& 
     } else {
       auto param_args = get_va(o, o);
       va_check(o, param_args, {goos::ObjectType::SYMBOL, {}}, {});
-      auto name = symbol_string(param_args.unnamed.at(0));
+      auto name = param_args.unnamed.at(0).as_symbol();
       auto type = parse_typespec(param_args.unnamed.at(1), env);
 
       if (fe->params.find(name) != fe->params.end()) {
-        throw_compiler_error(form, "Cannot declare a local named {}, this already exists.", name);
+        throw_compiler_error(form, "Cannot declare a local named {}, this already exists.",
+                             name.name_ptr);
       }
 
       if (m_ts.tc(TypeSpec("float"), type)) {
@@ -207,10 +209,10 @@ Val* Compiler::compile_lambda(const goos::Object& form, const goos::Object& rest
       self_var->set_rlet_constraint(constr.desired_register);
       new_func_env->constrain(constr);
 
-      if (new_func_env->params.find("self") != new_func_env->params.end()) {
+      if (new_func_env->params.find(m_goos.intern_ptr("self")) != new_func_env->params.end()) {
         throw_compiler_error(form, "Cannot have an argument named self in a behavior");
       }
-      new_func_env->params["self"] = self_var;
+      new_func_env->params[m_goos.intern_ptr("self")] = self_var;
       reset_args_for_coloring.push_back(self_var);
       lambda_ts.add_new_tag("behavior", behavior_type);
     }
@@ -228,7 +230,8 @@ Val* Compiler::compile_lambda(const goos::Object& form, const goos::Object& rest
       auto ireg = new_func_env->make_ireg(
           lambda.params.at(i).type, arg_regs.at(i).is_gpr() ? RegClass::GPR_64 : RegClass::INT_128);
       ireg->mark_as_settable();
-      if (!new_func_env->params.insert({lambda.params.at(i).name, ireg}).second) {
+      if (!new_func_env->params.insert({m_goos.intern_ptr(lambda.params.at(i).name), ireg})
+               .second) {
         throw_compiler_error(form, "lambda has multiple arguments named {}",
                              lambda.params.at(i).name);
       }
@@ -255,13 +258,12 @@ Val* Compiler::compile_lambda(const goos::Object& form, const goos::Object& rest
     if (new_func_env->is_asm_func) {
       // don't add return automatically!
       lambda_ts.add_arg(new_func_env->asm_func_return_type);
-    } else if (result && !dynamic_cast<None*>(result)) {
+    } else if (result && !dynamic_cast<None*>(result) && result->type() != TypeSpec("none")) {
       // got a result, so to_gpr it and return it.
 
       RegVal* final_result;
       emitter::Register ret_hw_reg = emitter::gRegInfo.get_gpr_ret_reg();
-      if (result->type() != TypeSpec("none") &&
-          m_ts.lookup_type(result->type())->get_load_size() == 16) {
+      if (m_ts.lookup_type(result->type())->get_load_size() == 16) {
         ret_hw_reg = emitter::gRegInfo.get_xmm_ret_reg();
         final_result = result->to_xmm128(form, new_func_env.get());
         return_reg->change_class(RegClass::INT_128);
@@ -341,11 +343,11 @@ Val* Compiler::compile_function_or_method_call(const goos::Object& form, Env* en
   if (!auto_inline) {
     // if auto-inlining failed, we must get the thing to call in a different way.
     if (uneval_head.is_symbol()) {
-      if (uneval_head.as_symbol()->name == "inspect" || uneval_head.as_symbol()->name == "print") {
+      if (uneval_head.as_symbol() == "inspect" || uneval_head.as_symbol() == "print") {
         is_method_call = true;
       } else {
         if (is_local_symbol(uneval_head, env) ||
-            m_symbol_types.find(symbol_string(uneval_head)) != m_symbol_types.end()) {
+            m_symbol_types.find(uneval_head.as_symbol()) != m_symbol_types.end()) {
           // the local environment (mlets, lexicals, constants, globals) defines this symbol.
           // this will "win" over a method name lookup, so we should compile as normal
           head = compile_error_guard(args.unnamed.front(), env);
@@ -458,7 +460,7 @@ Val* Compiler::compile_function_or_method_call(const goos::Object& form, Env* en
           env->make_ireg(type, m_ts.lookup_type_allow_partial_def(type)->get_preferred_reg_class());
       env->emit_ir<IR_RegSet>(form, copy, eval_args.at(i));
       copy->mark_as_settable();
-      lexical_env->vars[head_as_lambda->lambda.params.at(i).name] = copy;
+      lexical_env->vars[m_goos.intern_ptr(head_as_lambda->lambda.params.at(i).name)] = copy;
     }
 
     // setup env
@@ -669,21 +671,21 @@ Val* Compiler::compile_declare(const goos::Object& form, const goos::Object& res
           first.print());
     }
 
-    if (first.as_symbol()->name == "inline") {
+    if (first.as_symbol() == "inline") {
       if (!rrest->is_empty_list()) {
         throw_compiler_error(first, "Invalid inline declare, no options were expected.");
       }
       settings.allow_inline = true;
       settings.inline_by_default = true;
       settings.save_code = true;
-    } else if (first.as_symbol()->name == "allow-inline") {
+    } else if (first.as_symbol() == "allow-inline") {
       if (!rrest->is_empty_list()) {
         throw_compiler_error(first, "Invalid allow-inline declare");
       }
       settings.allow_inline = true;
       settings.inline_by_default = false;
       settings.save_code = true;
-    } else if (first.as_symbol()->name == "asm-func") {
+    } else if (first.as_symbol() == "asm-func") {
       auto fe = env->function_env();
       fe->is_asm_func = true;
       if (!rrest->is_pair()) {
@@ -694,13 +696,13 @@ Val* Compiler::compile_declare(const goos::Object& form, const goos::Object& res
       if (!rrest->as_pair()->cdr.is_empty_list()) {
         throw_compiler_error(first, "Invalid asm-func declare");
       }
-    } else if (first.as_symbol()->name == "print-asm") {
+    } else if (first.as_symbol() == "print-asm") {
       if (!rrest->is_empty_list()) {
         throw_compiler_error(first, "Invalid print-asm declare");
       }
       settings.print_asm = true;
 
-    } else if (first.as_symbol()->name == "allow-saved-regs") {
+    } else if (first.as_symbol() == "allow-saved-regs") {
       if (!rrest->is_empty_list()) {
         throw_compiler_error(first, "Invalid allow-saved-regs declare");
       }
@@ -731,7 +733,7 @@ Val* Compiler::compile_declare_file(const goos::Object& /*form*/,
           first.print());
     }
 
-    if (first.as_symbol()->name == "debug") {
+    if (first.as_symbol() == "debug") {
       if (!rrest->is_empty_list()) {
         throw_compiler_error(first, "Invalid debug declare");
       }

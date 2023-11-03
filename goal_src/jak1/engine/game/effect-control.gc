@@ -12,72 +12,7 @@
 (define *debug-effect-control* #f)
 
 (defun sound-name-with-material ((arg0 symbol) (arg1 pat-surface) (arg2 string))
-  (let ((gp-0 format)
-        (a0-2 (clear *temp-string*))
-        (a1-1 "~S-~S~S")
-        (v1-1 (-> arg1 material))
-        )
-    (gp-0
-      a0-2
-      a1-1
-      arg0
-      (cond
-        ((= v1-1 (pat-material sand))
-         "sand"
-         )
-        ((= v1-1 (pat-material wood))
-         "wood"
-         )
-        ((= v1-1 (pat-material crwood))
-         "crwood"
-         )
-        ((or (= v1-1 (pat-material tube)) (= v1-1 (pat-material pcmetal)))
-         "pcmetal"
-         )
-        ((or (= v1-1 (pat-material metal)) (= v1-1 (pat-material rotate)))
-         "metal"
-         )
-        ((= v1-1 (pat-material snow))
-         "snow"
-         )
-        ((= v1-1 (pat-material deepsnow))
-         "dpsnow"
-         )
-        ((= v1-1 (pat-material gravel))
-         "gravel"
-         )
-        ((= v1-1 (pat-material dirt))
-         "dirt"
-         )
-        ((= v1-1 (pat-material stone))
-         "stone"
-         )
-        ((= v1-1 (pat-material waterbottom))
-         "water"
-         )
-        ((= v1-1 (pat-material tar))
-         "tar"
-         )
-        ((= v1-1 (pat-material straw))
-         "straw"
-         )
-        ((= v1-1 (pat-material ice))
-         "ice"
-         )
-        ((= v1-1 (pat-material swamp))
-         "swamp"
-         )
-        ((= v1-1 (pat-material neutral))
-         "neutral"
-         )
-        (else
-          "grass"
-          )
-        )
-      arg2
-      )
-    )
-  (string->sound-name *temp-string*)
+  (string->sound-name (string-format "~S-~S~S" arg0 (enum->string pat-material (-> arg1 material)) arg2))
   )
 
 (defun effect-param->sound-spec ((arg0 sound-spec) (arg1 (pointer float)) (arg2 int))
@@ -129,10 +64,10 @@
   arg0
   )
 
-(defmethod effect-control-method-9 effect-control ((obj effect-control))
-  (let* ((a0-1 (-> obj process skel))
-         (v1-3 (if (< (-> obj channel-offset) (-> a0-1 active-channels))
-                   (-> a0-1 root-channel (-> obj channel-offset))
+(defmethod effect-control-method-9 ((this effect-control))
+  (let* ((a0-1 (-> this process skel))
+         (v1-3 (if (< (-> this channel-offset) (-> a0-1 active-channels))
+                   (-> a0-1 root-channel (-> this channel-offset))
                    (the-as joint-control-channel #f)
                    )
                )
@@ -144,24 +79,24 @@
               )
          (let ((a0-3 (-> a0-1 root-channel 0 num-func)))
            (cond
-             ((!= s5-0 (-> obj last-frame-group))
-              (set! (-> obj res) (-> s5-0 extra))
+             ((!= s5-0 (-> this last-frame-group))
+              (set! (-> this res) (-> s5-0 extra))
               (let ((v1-6 (-> (lookup-tag-idx (-> s5-0 extra) 'effect-name 'base -1000000000.0) lo)))
-                (set! (-> obj name) (if (>= (the-as int v1-6) 0)
-                                        (&-> (-> s5-0 extra tag) v1-6)
-                                        (the-as (pointer res-tag) #f)
-                                        )
+                (set! (-> this name) (if (>= (the-as int v1-6) 0)
+                                         (&-> (-> s5-0 extra tag) v1-6)
+                                         (the-as (pointer res-tag) #f)
+                                         )
                       )
                 )
-              (if (and (-> obj name) (= (-> obj name 0 key-frame) -1000000000.0))
-                  (set! (-> obj name) (&-> (-> obj name) 1))
+              (if (and (-> this name) (= (-> this name 0 key-frame) -1000000000.0))
+                  (set! (-> this name) (&-> (-> this name) 1))
                   )
-              (effect-control-method-14 obj f30-0 f30-0 f30-0)
+              (effect-control-method-14 this f30-0 f30-0 f30-0)
               )
-             ((or (not (-> obj name)) (= f30-0 (-> obj last-frame-num)))
+             ((or (not (-> this name)) (= f30-0 (-> this last-frame-num)))
               )
              (else
-               (let ((f28-0 (-> obj last-frame-num))
+               (let ((f28-0 (-> this last-frame-num))
                      (f26-0 f30-0)
                      )
                  (cond
@@ -170,12 +105,12 @@
                       (cond
                         ((< f26-0 f28-0)
                          (if (>= f28-0 f0-6)
-                             (effect-control-method-14 obj f26-0 f28-0 f30-0)
+                             (effect-control-method-14 this f26-0 f28-0 f30-0)
                              )
                          )
                         (else
                           (if (>= f0-6 f28-0)
-                              (effect-control-method-14 obj f28-0 f26-0 f30-0)
+                              (effect-control-method-14 this f28-0 f26-0 f30-0)
                               )
                           )
                         )
@@ -186,43 +121,43 @@
                       ((>= (-> v1-3 param 0) 0.0)
                        (cond
                          ((< f26-0 f28-0)
-                          (effect-control-method-14 obj f28-0 9999999.0 f30-0)
-                          (effect-control-method-14 obj -100000000.0 f26-0 9999999.0)
+                          (effect-control-method-14 this f28-0 9999999.0 f30-0)
+                          (effect-control-method-14 this -100000000.0 f26-0 9999999.0)
                           )
                          (else
-                           (effect-control-method-14 obj f28-0 f26-0 f30-0)
+                           (effect-control-method-14 this f28-0 f26-0 f30-0)
                            )
                          )
                        )
                       ((< f28-0 f26-0)
-                       (effect-control-method-14 obj f26-0 9999999.0 f30-0)
-                       (effect-control-method-14 obj -100000000.0 f28-0 9999999.0)
+                       (effect-control-method-14 this f26-0 9999999.0 f30-0)
+                       (effect-control-method-14 this -100000000.0 f28-0 9999999.0)
                        )
                       (else
-                        (effect-control-method-14 obj f26-0 f28-0 f30-0)
+                        (effect-control-method-14 this f26-0 f28-0 f30-0)
                         )
                       )
                     )
                    ((= a0-3 num-func-+!)
                     (if (>= (-> v1-3 param 0) 0.0)
-                        (effect-control-method-14 obj f28-0 f26-0 f30-0)
-                        (effect-control-method-14 obj f26-0 f28-0 f30-0)
+                        (effect-control-method-14 this f28-0 f26-0 f30-0)
+                        (effect-control-method-14 this f26-0 f28-0 f30-0)
                         )
                     )
                    ((= a0-3 num-func-identity)
-                    (effect-control-method-14 obj f30-0 f30-0 f30-0)
+                    (effect-control-method-14 this f30-0 f30-0 f30-0)
                     )
                    )
                  )
                )
              )
            )
-         (set! (-> obj last-frame-group) s5-0)
-         (set! (-> obj last-frame-num) f30-0)
+         (set! (-> this last-frame-group) s5-0)
+         (set! (-> this last-frame-num) f30-0)
          )
        )
       (else
-        (set! (-> obj last-frame-group) #f)
+        (set! (-> this last-frame-group) #f)
         )
       )
     )
@@ -230,20 +165,20 @@
   (none)
   )
 
-(defmethod effect-control-method-14 effect-control ((obj effect-control) (arg0 float) (arg1 float) (arg2 float))
+(defmethod effect-control-method-14 ((this effect-control) (arg0 float) (arg1 float) (arg2 float))
   ;; note: this check was added. I believe in the original game name could be false, and then the
   ;; effect-name check below would fail. This did not cause a crash on original hardware because
   ;; misaligned 16-byte loads silently align. This causes a crash in opengoal, so we skip it manually.
-  (when (-> obj name)
-    (let ((s2-0 (-> obj name)))
+  (when (-> this name)
+    (let ((s2-0 (-> this name)))
       (while (= (-> s2-0 0 name) 'effect-name)
         (let ((f0-0 (-> s2-0 0 key-frame)))
           (when (or (and (< f0-0 arg1) (< arg0 f0-0)) (= f0-0 arg2))
-            (let* ((a0-1 obj)
-                   (t9-0 (method-of-object a0-1 effect-control-method-10))
-                   (v1-7 (-> obj res))
-                   (a1-1 (-> s2-0 0))
-                   )
+            (let* ((a0-1 this)
+                  (t9-0 (method-of-object a0-1 effect-control-method-10))
+                  (v1-7 (-> this res))
+                  (a1-1 (-> s2-0 0))
+                  )
               (t9-0
                 a0-1
                 (the-as symbol (-> (the-as (pointer uint32) (&+ (-> v1-7 data-base) (-> a1-1 data-offset)))))
@@ -261,14 +196,7 @@
   (none)
   )
 
-;; WARN: rewrite_to_get_var got a none typed variable. Is there unreachable code? [OP: 205]
-;; WARN: rewrite_to_get_var got a none typed variable. Is there unreachable code? [OP: 217]
-;; WARN: rewrite_to_get_var got a none typed variable. Is there unreachable code? [OP: 237]
-;; WARN: rewrite_to_get_var got a none typed variable. Is there unreachable code? [OP: 343]
-;; WARN: rewrite_to_get_var got a none typed variable. Is there unreachable code? [OP: 364]
-;; WARN: rewrite_to_get_var got a none typed variable. Is there unreachable code? [OP: 450]
-;; WARN: rewrite_to_get_var got a none typed variable. Is there unreachable code? [OP: 469]
-(defmethod effect-control-method-10 effect-control ((obj effect-control) (arg0 symbol) (arg1 float) (arg2 int))
+(defmethod effect-control-method-10 ((this effect-control) (arg0 symbol) (arg1 float) (arg2 int))
   (local-vars
     (sv-160 int)
     (sv-176 symbol)
@@ -284,7 +212,7 @@
         (s5-0 (cond
                 ((< arg2 0)
                  (let ((v0-0 (get-property-value
-                               (-> obj res)
+                               (-> this res)
                                'effect-joint
                                'exact
                                arg1
@@ -307,8 +235,8 @@
                 )
               )
         )
-    (when (logtest? (-> obj flags) 1)
-      (if (send-event (-> obj process) 'effect arg0 arg1 s5-0)
+    (when (logtest? (-> this flags) 1)
+      (if (send-event (-> this process) 'effect arg0 arg1 s5-0)
           (return (the-as object 0))
           )
       )
@@ -322,7 +250,7 @@
               (= (-> v1-10 data 5) 116)
               (= (-> v1-10 data 6) 45)
               )
-         (let* ((s3-1 (-> obj process root))
+         (let* ((s3-1 (-> this process root))
                 (v1-14 (if (and (nonzero? s3-1) (type-type? (-> s3-1 type) collide-shape-moving))
                            s3-1
                            )
@@ -333,7 +261,7 @@
                           )
                       )
                 )
-           (effect-control-method-11 obj arg0 arg1 s5-0 (-> obj res) (the-as pat-surface t1-1))
+           (effect-control-method-11 this arg0 arg1 s5-0 (-> this res) (the-as pat-surface t1-1))
            )
          )
         ((let ((v1-18 (symbol->string arg0)))
@@ -365,8 +293,8 @@
                (format
                  #t
                  "(~5D) effect group ~A ~A frame ~F joint ~D~%"
-                 (-> *display* base-frame-counter)
-                 (-> obj process name)
+                 (current-time)
+                 (-> this process name)
                  arg0
                  arg1
                  s5-0
@@ -375,7 +303,7 @@
            (let ((s4-1 (get-process *default-dead-pool* part-tracker #x4000)))
              (when s4-1
                (let ((t9-7 (method-of-type part-tracker activate)))
-                 (t9-7 (the-as part-tracker s4-1) (-> obj process) 'part-tracker (the-as pointer #x70004000))
+                 (t9-7 (the-as part-tracker s4-1) (-> this process) 'part-tracker (the-as pointer #x70004000))
                  )
                (let ((s2-1 run-function-in-process)
                      (s1-0 s4-1)
@@ -385,7 +313,7 @@
                  (set! sv-176 (the-as symbol #f))
                  (set! sv-192 (the-as symbol #f))
                  (set! sv-208 (the-as symbol #f))
-                 (let ((t3-0 (vector<-cspace! (new 'stack-no-clear 'vector) (-> obj process node-list data s5-0))))
+                 (let ((t3-0 (vector<-cspace! (new 'stack-no-clear 'vector) (-> this process node-list data s5-0))))
                    ((the-as (function object object object object object object object object none) s2-1)
                     s1-0
                     s0-0
@@ -407,15 +335,15 @@
          (activate! *camera-smush-control* 819.2 37 600 1.0 0.995)
          )
         ((zero? s3-0)
-         (effect-control-method-12 obj arg0 arg1 s5-0 (-> obj res) (string->sound-name (symbol->string arg0)))
+         (effect-control-method-12 this arg0 arg1 s5-0 (-> this res) (string->sound-name (symbol->string arg0)))
          )
         ((= (-> (the-as basic s3-0) type) sparticle-launcher)
          (if *debug-effect-control*
              (format
                #t
                "(~5D) effect part  ~A ~A frame ~F joint ~D~%"
-               (-> *display* base-frame-counter)
-               (-> obj process name)
+               (current-time)
+               (-> this process name)
                arg0
                arg1
                s5-0
@@ -424,24 +352,24 @@
          (format
            #t
            "-----> (~5D) effect part  ~A ~A frame ~F joint ~D~%"
-           (-> *display* base-frame-counter)
-           (-> obj process name)
+           (current-time)
+           (-> this process name)
            arg0
            arg1
            s5-0
            )
-         (launch-particles :rate 1.0
-          (the-as sparticle-launcher s3-0)
-          (vector<-cspace! (new 'stack-no-clear 'vector) (-> obj process node-list data s5-0))
-          )
+         (launch-particles
+           (the-as sparticle-launcher s3-0)
+           (vector<-cspace! (new 'stack-no-clear 'vector) (-> this process node-list data s5-0))
+           )
          )
         ((= (-> (the-as basic s3-0) type) sparticle-launch-group)
          (if *debug-effect-control*
              (format
                #t
                "(~5D) effect group ~A ~A frame ~F joint ~D~%"
-               (-> *display* base-frame-counter)
-               (-> obj process name)
+               (current-time)
+               (-> this process name)
                arg0
                arg1
                s5-0
@@ -450,7 +378,7 @@
          (let ((s4-3 (get-process *default-dead-pool* part-tracker #x4000)))
            (when s4-3
              (let ((t9-19 (method-of-type part-tracker activate)))
-               (t9-19 (the-as part-tracker s4-3) (-> obj process) 'part-tracker (the-as pointer #x70004000))
+               (t9-19 (the-as part-tracker s4-3) (-> this process) 'part-tracker (the-as pointer #x70004000))
                )
              (let ((s2-3 run-function-in-process)
                    (s1-2 s4-3)
@@ -460,7 +388,7 @@
                (set! sv-240 (the-as symbol #f))
                (set! sv-256 (the-as symbol #f))
                (set! sv-272 (the-as symbol #f))
-               (let ((t3-1 (vector<-cspace! (new 'stack-no-clear 'vector) (-> obj process node-list data s5-0))))
+               (let ((t3-1 (vector<-cspace! (new 'stack-no-clear 'vector) (-> this process node-list data s5-0))))
                  ((the-as (function object object object object object object object object none) s2-3)
                   s1-2
                   s0-2
@@ -481,11 +409,11 @@
          (sound-play-by-spec
            (the-as sound-spec s3-0)
            (new-sound-id)
-           (vector<-cspace! (new 'stack-no-clear 'vector) (-> obj process node-list data s5-0))
+           (vector<-cspace! (new 'stack-no-clear 'vector) (-> this process node-list data s5-0))
            )
          )
         ((= (-> (the-as basic s3-0) type) death-info)
-         (let ((v1-67 (-> obj process draw)))
+         (let ((v1-67 (-> this process draw)))
            (let ((a1-42 (-> (the-as death-info s3-0) vertex-skip))
                  (a0-55
                    (max
@@ -517,20 +445,20 @@
            (set! (-> v1-67 death-draw-overlap) (-> (the-as death-info s3-0) overlap))
            )
          (when (-> (the-as death-info s3-0) sound)
-           (let* ((s2-5 obj)
+           (let* ((s2-5 this)
                   (s1-3 (method-of-object s2-5 effect-control-method-12))
                   (s0-3 (-> (the-as death-info s3-0) sound))
                   )
-             (set! sv-288 (-> obj res))
+             (set! sv-288 (-> this res))
              (let ((t1-11 (string->sound-name (symbol->string (-> (the-as death-info s3-0) sound)))))
                (s1-3 s2-5 s0-3 arg1 s5-0 sv-288 t1-11)
                )
              )
            )
-         (send-event (-> obj process) 'death-start (the-as death-info s3-0))
+         (send-event (-> this process) 'death-start (the-as death-info s3-0))
          )
         (else
-          (effect-control-method-12 obj arg0 arg1 s5-0 (-> obj res) (string->sound-name (symbol->string arg0)))
+          (effect-control-method-12 this arg0 arg1 s5-0 (-> this res) (string->sound-name (symbol->string arg0)))
           )
         )
       )
@@ -538,7 +466,7 @@
   0
   )
 
-(defmethod effect-control-method-11 effect-control ((obj effect-control) (arg0 symbol) (arg1 float) (arg2 int) (arg3 basic) (arg4 pat-surface))
+(defmethod effect-control-method-11 ((this effect-control) (arg0 symbol) (arg1 float) (arg2 int) (arg3 basic) (arg4 pat-surface))
   (local-vars
     (sv-48
       (function sparticle-system sparticle-launcher vector sparticle-launch-state sparticle-launch-control float none)
@@ -578,7 +506,7 @@
          )
         (('effect-land-poof)
          (when (< a0-4 9000)
-           (let* ((a0-13 obj)
+           (let* ((a0-13 this)
                   (t9-8 (method-of-object a0-13 effect-control-method-10))
                   (v1-15 (-> arg4 material))
                   )
@@ -645,7 +573,7 @@
          )
         (('effect-run-poof)
          (when (< a0-4 9000)
-           (let* ((a0-14 obj)
+           (let* ((a0-14 this)
                   (t9-9 (method-of-object a0-14 effect-control-method-10))
                   (v1-20 (-> arg4 material))
                   )
@@ -711,7 +639,7 @@
            )
          )
         (('effect-just-footprint)
-         (let* ((a0-15 obj)
+         (let* ((a0-15 this)
                 (t9-10 (method-of-object a0-15 effect-control-method-10))
                 (v1-24 (-> arg4 material))
                 )
@@ -777,7 +705,7 @@
          )
         (('effect-just-poof)
          (when (< a0-4 9000)
-           (let* ((a0-16 obj)
+           (let* ((a0-16 this)
                   (t9-11 (method-of-object a0-16 effect-control-method-10))
                   (v1-29 (-> arg4 material))
                   )
@@ -843,7 +771,7 @@
            )
          )
         (('effect-slide-poof)
-         (let* ((a0-19 obj)
+         (let* ((a0-19 this)
                 (t9-12 (method-of-object a0-19 effect-control-method-10))
                 (v1-33 (-> arg4 material))
                 )
@@ -967,7 +895,7 @@
            (when (nonzero? s0-0)
              (set! sv-48 sp-launch-particles-var)
              (set! sv-64 *sp-particle-system-2d*)
-             (let ((a2-36 (vector<-cspace! (new 'stack-no-clear 'vector) (-> obj process node-list data arg2)))
+             (let ((a2-36 (vector<-cspace! (new 'stack-no-clear 'vector) (-> this process node-list data arg2)))
                    (a3-6 #f)
                    (t0-1 #f)
                    (t1-1 1.0)
@@ -1037,7 +965,7 @@
            (when (nonzero? s0-1)
              (set! sv-80 sp-launch-particles-var)
              (set! sv-96 *sp-particle-system-2d*)
-             (let ((a2-37 (vector<-cspace! (new 'stack-no-clear 'vector) (-> obj process node-list data arg2)))
+             (let ((a2-37 (vector<-cspace! (new 'stack-no-clear 'vector) (-> this process node-list data arg2)))
                    (a3-7 #f)
                    (t0-2 #f)
                    (t1-2 1.0)
@@ -1050,21 +978,21 @@
         )
       )
     (if s1-0
-        (effect-control-method-12 obj arg0 arg1 arg2 arg3 s1-0)
+        (effect-control-method-12 this arg0 arg1 arg2 arg3 s1-0)
         )
     )
   0
   (none)
   )
 
-(defmethod effect-control-method-12 effect-control ((obj effect-control) (arg0 symbol) (arg1 float) (arg2 int) (arg3 basic) (arg4 sound-name))
+(defmethod effect-control-method-12 ((this effect-control) (arg0 symbol) (arg1 float) (arg2 int) (arg3 basic) (arg4 sound-name))
   (local-vars (sv-112 res-tag) (sv-128 sound-name) (sv-144 basic) (sv-160 (function vector vector float)))
   (set! sv-144 arg3)
   (let ((s0-0 arg4)
         (gp-0 (new 'stack 'sound-spec))
         (s5-0 (if (< arg2 0)
                   (the-as vector #f)
-                  (vector<-cspace! (new 'stack-no-clear 'vector) (-> obj process node-list data arg2))
+                  (vector<-cspace! (new 'stack-no-clear 'vector) (-> this process node-list data arg2))
                   )
               )
         )
@@ -1104,8 +1032,8 @@
       (format
         #t
         "(~5D) effect sound ~A ~A (~S) frame ~F joint ~D "
-        (-> *display* base-frame-counter)
-        (-> obj process name)
+        (current-time)
+        (-> this process name)
         arg0
         *temp-string*
         arg1

@@ -18,7 +18,6 @@
     (stop-speech self (the-as uint 0) #t)
     (bot-method-191 self)
     (logclear! (-> self bot-flags) (bot-flags bf11))
-    (none)
     )
   :exit (behavior ()
     (let ((t9-0 (-> (method-of-type nav-enemy hit) exit)))
@@ -27,21 +26,13 @@
           )
       )
     (logior! (-> self bot-flags) (bot-flags bf11))
-    (none)
     )
   :code (behavior ()
     (local-vars (v1-37 enemy-flag) (v1-45 enemy-flag))
     (ja-channel-push! 1 (seconds 0.2))
     (let ((f30-0 (get-rand-float-range self 0.9 1.1)))
       (ja-no-eval :group! (-> self draw art-group data (-> self enemy-info hit-anim))
-                  :num! (seek!
-                    (the float
-                         (+ (-> (the-as art-joint-anim (-> self draw art-group data (-> self enemy-info hit-anim))) frames num-frames)
-                            -1
-                            )
-                         )
-                    f30-0
-                    )
+                  :num! (seek! max f30-0)
                   :frame-num 0.0
                   )
       (until (ja-done? 0)
@@ -74,7 +65,6 @@
     (logclear! (-> self enemy-flags) (enemy-flag actor-pause-backup))
     (logclear! (-> self focus-status) (focus-status hit))
     (react-to-focus self)
-    (none)
     )
   )
 
@@ -92,7 +82,7 @@
     (bot-method-191 self)
     (when (zero? (-> self hit-points))
       (set! (-> self hit-points) 1)
-      (set! (-> self fated-time) (current-time))
+      (set-time! (-> self fated-time))
       )
     (logclear! (-> self bot-flags) (bot-flags bf11))
     (let ((t9-2 (-> (method-of-type nav-enemy knocked) enter)))
@@ -100,7 +90,6 @@
           (t9-2)
           )
       )
-    (none)
     )
   :exit (behavior ()
     (let ((gp-0 (-> self incoming attack-id)))
@@ -113,7 +102,6 @@
       )
     (logior! (-> self bot-flags) (bot-flags bf11))
     (logclear! (-> self bot-flags) (bot-flags bf12))
-    (none)
     )
   :trans (behavior ()
     (let ((t9-0 (-> (method-of-type nav-enemy knocked) trans)))
@@ -125,7 +113,6 @@
       (logclear! (-> self bot-flags) (bot-flags bf12))
       (play-attacked-speech self)
       )
-    (none)
     )
   )
 
@@ -143,7 +130,6 @@
     (set! (-> self delay-too-far-check) -1)
     (logior! (-> self root nav-flags) (nav-flags has-root-sphere))
     (fail-mission! self)
-    (none)
     )
   :exit (behavior ()
     (logior! (-> self bot-flags) (bot-flags bf11))
@@ -153,11 +139,9 @@
           (t9-0)
           )
       )
-    (none)
     )
   :trans (behavior ()
     (fail-falling self)
-    (none)
     )
   :code (behavior ()
     (ja-channel-push! 1 (seconds 0.1))
@@ -169,10 +153,7 @@
                 )
           (f30-0 (get-rand-float-range self 0.8 1.2))
           )
-      (ja-no-eval :group! gp-0
-                  :num! (seek! (the float (+ (-> (the-as art-joint-anim gp-0) frames num-frames) -1)) f30-0)
-                  :frame-num 0.0
-                  )
+      (ja-no-eval :group! gp-0 :num! (seek! max f30-0) :frame-num 0.0)
       (until (ja-done? 0)
         (suspend)
         (ja :num! (seek! max f30-0))
@@ -188,13 +169,12 @@
       (suspend)
       )
     #f
-    (none)
     )
   )
 
 (defstate failed (bot)
   :virtual #t
-  :event (the-as (function process int symbol event-message-block object :behavior bot) enemy-event-handler)
+  :event enemy-event-handler
   :enter (behavior ()
     ((-> (method-of-type bot die-falling) enter))
     (logclear! (-> self bot-flags) (bot-flags bf11))
@@ -209,18 +189,15 @@
           )
         )
       )
-    (none)
     )
   :exit (behavior ()
     (logior! (-> self bot-flags) (bot-flags bf11))
-    (none)
     )
   :trans (behavior ()
     ((-> (method-of-type bot die-falling) trans))
     (if (channel-active? self (the-as uint 0))
-        (set! (-> self state-time) (current-time))
+        (set-time! (-> self state-time))
         )
-    (none)
     )
   :code (behavior ()
     (ja-channel-push! 1 (seconds 0.1))
@@ -228,13 +205,10 @@
           (gp-0 (-> self draw art-group data (-> self enemy-info idle-anim)))
           )
       (until #f
-        (ja-no-eval :group! gp-0
-                    :num! (seek! (the float (+ (-> (the-as art-joint-anim gp-0) frames num-frames) -1)) f30-0)
-                    :frame-num 0.0
-                    )
+        (ja-no-eval :group! gp-0 :num! (seek! max f30-0) :frame-num 0.0)
         (until (ja-done? 0)
           (when (and (logtest? (-> self bot-flags) (bot-flags failed))
-                     (>= (- (current-time) (-> self state-time)) (seconds 0.5))
+                     (time-elapsed? (-> self state-time) (seconds 0.5))
                      (reset? *fail-mission-control*)
                      )
             (cleanup-for-death self)
@@ -247,14 +221,13 @@
         )
       )
     #f
-    (none)
     )
-  :post (the-as (function none :behavior bot) nav-enemy-die-falling-post)
+  :post nav-enemy-die-falling-post
   )
 
 (defstate hidden (bot)
   :virtual #t
-  :event (the-as (function process int symbol event-message-block object :behavior bot) enemy-event-handler)
+  :event enemy-event-handler
   :enter (behavior ()
     (logior! (-> self focus-status) (focus-status disable))
     (let ((v1-3 (-> self root root-prim)))
@@ -265,7 +238,6 @@
     (logior! (-> self draw status) (draw-control-status no-draw))
     (set! (-> self notice-enemy-dist) 0.0)
     (logclear! (-> self enemy-flags) (enemy-flag trackable-backup))
-    (none)
     )
   :exit (behavior ()
     (local-vars (v0-0 enemy-flag))
@@ -282,8 +254,7 @@
           )
       )
     (set! (-> self enemy-flags) v0-0)
-    (none)
     )
-  :code (the-as (function none :behavior bot) sleep-code)
-  :post (the-as (function none :behavior bot) nav-enemy-simple-post)
+  :code sleep-code
+  :post nav-enemy-simple-post
   )

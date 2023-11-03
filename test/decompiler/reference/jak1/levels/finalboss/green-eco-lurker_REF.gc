@@ -3,17 +3,13 @@
 
 ;; definition of type green-eco-lurker
 (deftype green-eco-lurker (nav-enemy)
-  ((played-sound? symbol             :offset-assert 400)
-   (sound-delay   int32              :offset-assert 404)
-   (appear-dest   vector     :inline :offset-assert 416)
-   (traj          trajectory :inline :offset-assert 432)
+  ((played-sound?  symbol)
+   (sound-delay    int32)
+   (appear-dest    vector      :inline)
+   (traj           trajectory  :inline)
    )
-  :heap-base #x170
-  :method-count-assert 76
-  :size-assert         #x1d8
-  :flag-assert         #x4c017001d8
   (:methods
-    (green-eco-lurker-method-51 (_type_ vector) symbol :replace 51)
+    (nav-enemy-method-51 (_type_ vector) symbol :replace)
     )
   (:states
     green-eco-lurker-appear
@@ -24,41 +20,37 @@
   )
 
 ;; definition for method 3 of type green-eco-lurker
-(defmethod inspect green-eco-lurker ((obj green-eco-lurker))
+(defmethod inspect ((this green-eco-lurker))
   (let ((t9-0 (method-of-type nav-enemy inspect)))
-    (t9-0 obj)
+    (t9-0 this)
     )
-  (format #t "~T~Tplayed-sound?: ~A~%" (-> obj played-sound?))
-  (format #t "~T~Tsound-delay: ~D~%" (-> obj sound-delay))
-  (format #t "~T~Tappear-dest: #<vector @ #x~X>~%" (-> obj appear-dest))
-  (format #t "~T~Ttraj: #<trajectory @ #x~X>~%" (-> obj traj))
-  obj
+  (format #t "~T~Tplayed-sound?: ~A~%" (-> this played-sound?))
+  (format #t "~T~Tsound-delay: ~D~%" (-> this sound-delay))
+  (format #t "~T~Tappear-dest: #<vector @ #x~X>~%" (-> this appear-dest))
+  (format #t "~T~Ttraj: #<trajectory @ #x~X>~%" (-> this traj))
+  this
   )
 
 ;; definition of type green-eco-lurker-gen
 (deftype green-eco-lurker-gen (process-drawable)
-  ((num-to-spawn int32  :offset-assert 176)
-   (num-spawned  int32  :offset-assert 180)
-   (num-alive    int32  :offset-assert 184)
+  ((num-to-spawn  int32)
+   (num-spawned   int32)
+   (num-alive     int32)
    )
-  :heap-base #x50
-  :method-count-assert 20
-  :size-assert         #xbc
-  :flag-assert         #x14005000bc
   (:states
     spawn-minions
     )
   )
 
 ;; definition for method 3 of type green-eco-lurker-gen
-(defmethod inspect green-eco-lurker-gen ((obj green-eco-lurker-gen))
+(defmethod inspect ((this green-eco-lurker-gen))
   (let ((t9-0 (method-of-type process-drawable inspect)))
-    (t9-0 obj)
+    (t9-0 this)
     )
-  (format #t "~T~Tnum-to-spawn: ~D~%" (-> obj num-to-spawn))
-  (format #t "~T~Tnum-spawned: ~D~%" (-> obj num-spawned))
-  (format #t "~T~Tnum-alive: ~D~%" (-> obj num-alive))
-  obj
+  (format #t "~T~Tnum-to-spawn: ~D~%" (-> this num-to-spawn))
+  (format #t "~T~Tnum-spawned: ~D~%" (-> this num-spawned))
+  (format #t "~T~Tnum-alive: ~D~%" (-> this num-alive))
+  this
   )
 
 ;; failed to figure out what this is:
@@ -323,75 +315,75 @@
   )
 
 ;; definition for method 43 of type green-eco-lurker
-(defmethod attack-handler green-eco-lurker ((obj green-eco-lurker) (arg0 process) (arg1 event-message-block))
+(defmethod attack-handler ((this green-eco-lurker) (arg0 process) (arg1 event-message-block))
   (cond
     ((= (-> arg0 type) target)
      (if (nav-enemy-send-attack arg0 (the-as touching-shapes-entry (-> arg1 param 0)) 'generic)
-         (send-event (ppointer->process (-> obj parent)) 'blob-hit-jak)
+         (send-event (ppointer->process (-> this parent)) 'blob-hit-jak)
          )
      #f
      )
     (else
       (nav-enemy-set-hit-from-direction arg0)
-      ((method-of-type nav-enemy attack-handler) obj arg0 arg1)
+      ((method-of-type nav-enemy attack-handler) this arg0 arg1)
       )
     )
   )
 
 ;; definition for method 73 of type green-eco-lurker
-(defmethod nav-enemy-attack-handler green-eco-lurker ((obj green-eco-lurker) (arg0 process) (arg1 event-message-block))
+(defmethod nav-enemy-attack-handler ((this green-eco-lurker) (arg0 process) (arg1 event-message-block))
   (cond
     ((= (-> arg0 type) target)
      (if (nav-enemy-send-attack arg0 (the-as touching-shapes-entry (-> arg1 param 0)) 'generic)
-         (send-event (ppointer->process (-> obj parent)) 'blob-hit-jak)
+         (send-event (ppointer->process (-> this parent)) 'blob-hit-jak)
          )
      #f
      )
     (else
-      ((method-of-type nav-enemy nav-enemy-attack-handler) obj arg0 arg1)
+      ((method-of-type nav-enemy nav-enemy-attack-handler) this arg0 arg1)
       )
     )
   )
 
 ;; definition for method 44 of type green-eco-lurker
-(defmethod touch-handler green-eco-lurker ((obj green-eco-lurker) (arg0 process) (arg1 event-message-block))
-  (when (and (logtest? (-> obj nav-enemy-flags) (nav-enemy-flags navenmf6))
+(defmethod touch-handler ((this green-eco-lurker) (arg0 process) (arg1 event-message-block))
+  (when (and (logtest? (-> this nav-enemy-flags) (nav-enemy-flags navenmf6))
              ((method-of-type touching-shapes-entry prims-touching?)
               (the-as touching-shapes-entry (-> arg1 param 0))
-              (-> obj collide-info)
+              (-> this collide-info)
               (the-as uint 1)
               )
              )
     (if (nav-enemy-send-attack arg0 (the-as touching-shapes-entry (-> arg1 param 0)) 'generic)
-        (send-event (ppointer->process (-> obj parent)) 'blob-hit-jak)
+        (send-event (ppointer->process (-> this parent)) 'blob-hit-jak)
         )
     )
   )
 
 ;; definition for method 72 of type green-eco-lurker
-(defmethod nav-enemy-touch-handler green-eco-lurker ((obj green-eco-lurker) (arg0 process) (arg1 event-message-block))
-  (when (and (logtest? (-> obj nav-enemy-flags) (nav-enemy-flags navenmf6))
+(defmethod nav-enemy-touch-handler ((this green-eco-lurker) (arg0 process) (arg1 event-message-block))
+  (when (and (logtest? (-> this nav-enemy-flags) (nav-enemy-flags navenmf6))
              ((method-of-type touching-shapes-entry prims-touching?)
               (the-as touching-shapes-entry (-> arg1 param 0))
-              (-> obj collide-info)
+              (-> this collide-info)
               (the-as uint 1)
               )
              )
     (if (nav-enemy-send-attack arg0 (the-as touching-shapes-entry (-> arg1 param 0)) 'generic)
-        (send-event (ppointer->process (-> obj parent)) 'blob-hit-jak)
+        (send-event (ppointer->process (-> this parent)) 'blob-hit-jak)
         )
     )
   )
 
 ;; definition for method 51 of type green-eco-lurker
 ;; INFO: Used lq/sq
-(defmethod green-eco-lurker-method-51 green-eco-lurker ((obj green-eco-lurker) (arg0 vector))
+(defmethod nav-enemy-method-51 ((this green-eco-lurker) (arg0 vector))
   (when (or (not *target*) (>= (vector-vector-xz-distance arg0 (target-pos 0)) 36864.0))
     (let ((v1-3 (new 'stack-no-clear 'vector)))
       (set! (-> v1-3 quad) (-> arg0 quad))
-      (set! (-> v1-3 w) (-> obj collide-info root-prim local-sphere w))
+      (set! (-> v1-3 w) (-> this collide-info root-prim local-sphere w))
       )
-    (if (not (nav-enemy-method-50 obj arg0))
+    (if (not (nav-enemy-method-50 this arg0))
         (return #t)
         )
     )
@@ -399,15 +391,15 @@
   )
 
 ;; definition for method 52 of type green-eco-lurker
-(defmethod nav-enemy-method-52 green-eco-lurker ((obj green-eco-lurker) (arg0 vector))
-  (let ((s4-0 (-> obj path curve num-cverts)))
+(defmethod nav-enemy-method-52 ((this green-eco-lurker) (arg0 vector))
+  (let ((s4-0 (-> this path curve num-cverts)))
     (when (> s4-0 0)
       (let ((s2-0 (nav-enemy-rnd-int-count s4-0))
             (s3-0 s4-0)
             )
         (while (> s3-0 0)
-          (eval-path-curve-div! (-> obj path) arg0 (the float s2-0) 'interp)
-          (if (green-eco-lurker-method-51 obj arg0)
+          (eval-path-curve-div! (-> this path) arg0 (the float s2-0) 'interp)
+          (if (nav-enemy-method-51 this arg0)
               (return #t)
               )
           (set! s2-0 (mod (+ s2-0 1) s4-0))
@@ -423,13 +415,11 @@
 (defstate green-eco-lurker-tune-spheres (green-eco-lurker)
   :trans (behavior ()
     0
-    (none)
     )
   :code (behavior ()
     0
-    (none)
     )
-  :post (the-as (function none :behavior green-eco-lurker) transform-post)
+  :post transform-post
   )
 
 ;; failed to figure out what this is:
@@ -437,38 +427,34 @@
   :enter (behavior ()
     (logior! (-> self draw status) (draw-status hidden))
     (clear-collide-with-as (-> self collide-info))
-    (none)
     )
   :exit (behavior ()
     (logclear! (-> self draw status) (draw-status hidden))
     (restore-collide-with-as (-> self collide-info))
-    (none)
     )
   :trans (behavior ()
     (if (nav-enemy-method-52 self (-> self appear-dest))
         (go green-eco-lurker-appear)
         )
-    (none)
     )
   :code (behavior ()
     (loop
       (logior! (-> self mask) (process-mask sleep-code))
       (suspend)
       )
-    (none)
     )
   )
 
 ;; definition for method 53 of type green-eco-lurker
 ;; INFO: Return type mismatch int vs symbol.
-(defmethod nav-enemy-method-53 green-eco-lurker ((obj green-eco-lurker))
+(defmethod nav-enemy-method-53 ((this green-eco-lurker))
   (the-as symbol (cond
-                   ((and (-> obj draw shadow)
-                         (zero? (-> obj draw cur-lod))
-                         (logtest? (-> obj draw status) (draw-status was-drawn))
+                   ((and (-> this draw shadow)
+                         (zero? (-> this draw cur-lod))
+                         (logtest? (-> this draw status) (draw-status was-drawn))
                          )
-                    (let ((f0-0 (-> obj appear-dest y))
-                          (v1-7 (-> obj draw shadow-ctrl))
+                    (let ((f0-0 (-> this appear-dest y))
+                          (v1-7 (-> this draw shadow-ctrl))
                           )
                       (let ((a0-1 v1-7))
                         (logclear! (-> a0-1 settings flags) (shadow-flags disable-draw))
@@ -483,7 +469,7 @@
                     0
                     )
                    (else
-                     (let ((v1-9 (-> obj draw shadow-ctrl)))
+                     (let ((v1-9 (-> this draw shadow-ctrl)))
                        (logior! (-> v1-9 settings flags) (shadow-flags disable-draw))
                        )
                      0
@@ -495,7 +481,7 @@
 ;; failed to figure out what this is:
 (defstate green-eco-lurker-appear (green-eco-lurker)
   :enter (behavior ()
-    (set! (-> self state-time) (-> *display* base-frame-counter))
+    (set-time! (-> self state-time))
     (set! (-> self played-sound?) #f)
     (set! (-> self sound-delay) (nav-enemy-rnd-int-range 30 150))
     (let ((f0-1 (- (-> self appear-dest x) (-> (the-as green-eco-lurker-gen (-> self parent 0)) root trans x))))
@@ -528,10 +514,9 @@
       (vector-normalize! gp-1 1.0)
       (forward-up->quaternion (-> self collide-info quat) gp-1 *up-vector*)
       )
-    (none)
     )
   :trans (behavior ()
-    (let ((f30-0 (fmin (the float (- (-> *display* base-frame-counter) (-> self state-time))) (-> self traj time))))
+    (let ((f30-0 (fmin (the float (- (current-time) (-> self state-time))) (-> self traj time))))
       (eval-position! (-> self traj) f30-0 (-> self collide-info trans))
       (when (= f30-0 (-> self traj time))
         (logior! (-> self collide-info nav-flags) (nav-flags navf0))
@@ -539,15 +524,12 @@
         (go green-eco-lurker-appear-land)
         )
       )
-    (when (and (not (-> self played-sound?))
-               (>= (- (-> *display* base-frame-counter) (-> self state-time)) (-> self sound-delay))
-               )
+    (when (and (not (-> self played-sound?)) (time-elapsed? (-> self state-time) (-> self sound-delay)))
       (set! (-> self played-sound?) #t)
       (sound-play "blob-jump" :pitch (nav-enemy-rnd-float-range -0.5 0.5))
       )
     (nav-enemy-method-53 self)
     0
-    (none)
     )
   :code (behavior ()
     (ja-channel-push! 1 (seconds 0.2))
@@ -572,17 +554,13 @@
       (logior! (-> self mask) (process-mask sleep-code))
       (suspend)
       )
-    (none)
     )
-  :post (the-as (function none :behavior green-eco-lurker) transform-post)
+  :post transform-post
   )
 
 ;; failed to figure out what this is:
 (defstate green-eco-lurker-appear-land (green-eco-lurker)
-  :event (the-as
-    (function process int symbol event-message-block object :behavior green-eco-lurker)
-    nav-enemy-default-event-handler
-    )
+  :event nav-enemy-default-event-handler
   :code (behavior ()
     (activate! *camera-smush-control* 409.6 37 150 1.0 0.99)
     (sound-play "blob-land" :pitch (nav-enemy-rnd-float-range -1.0 1.0))
@@ -608,9 +586,8 @@
       )
     (logior! (-> self nav-enemy-flags) (nav-enemy-flags navenmf1))
     (go-virtual nav-enemy-chase)
-    (none)
     )
-  :post (the-as (function none :behavior green-eco-lurker) transform-post)
+  :post transform-post
   )
 
 ;; failed to figure out what this is:
@@ -623,7 +600,6 @@
           ((the-as (function none) t9-1))
           )
       )
-    (none)
     )
   )
 
@@ -657,7 +633,6 @@
         (ja :num! (loop! f30-0))
         )
       )
-    (none)
     )
   )
 
@@ -677,7 +652,6 @@
       (ja :num! (seek! (ja-aframe 32.0 0) 0.5))
       )
     (go-virtual nav-enemy-chase)
-    (none)
     )
   )
 
@@ -708,14 +682,13 @@
           (t9-7)
           )
       )
-    (none)
     )
   )
 
 ;; definition for method 47 of type green-eco-lurker
 ;; INFO: Return type mismatch int vs none.
-(defmethod initialize-collision green-eco-lurker ((obj green-eco-lurker))
-  (let ((s5-0 (new 'process 'collide-shape-moving obj (collide-list-enum usually-hit-by-player))))
+(defmethod initialize-collision ((this green-eco-lurker))
+  (let ((s5-0 (new 'process 'collide-shape-moving this (collide-list-enum usually-hit-by-player))))
     (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s5-0 reaction) default-collision-reaction)
     (set! (-> s5-0 no-reaction)
@@ -788,7 +761,7 @@
     (set! (-> s5-0 nav-radius) 8192.0)
     (backup-collide-with-as s5-0)
     (set! (-> s5-0 max-iteration-count) (the-as uint 2))
-    (set! (-> obj collide-info) s5-0)
+    (set! (-> this collide-info) s5-0)
     )
   0
   (none)
@@ -796,15 +769,15 @@
 
 ;; definition for method 48 of type green-eco-lurker
 ;; INFO: Return type mismatch int vs none.
-(defmethod nav-enemy-method-48 green-eco-lurker ((obj green-eco-lurker))
-  (initialize-skeleton obj *green-eco-lurker-sg* '())
-  (set! (-> obj draw origin-joint-index) (the-as uint 3))
-  (logclear! (-> obj collide-info nav-flags) (nav-flags navf0))
-  (init-defaults! obj *green-eco-lurker-nav-enemy-info*)
-  (logior! (-> obj draw shadow-ctrl settings flags) (shadow-flags shdf02))
-  (set! (-> obj neck up) (the-as uint 0))
-  (set! (-> obj neck nose) (the-as uint 1))
-  (set! (-> obj neck ear) (the-as uint 2))
+(defmethod nav-enemy-method-48 ((this green-eco-lurker))
+  (initialize-skeleton this *green-eco-lurker-sg* '())
+  (set! (-> this draw origin-joint-index) (the-as uint 3))
+  (logclear! (-> this collide-info nav-flags) (nav-flags navf0))
+  (init-defaults! this *green-eco-lurker-nav-enemy-info*)
+  (logior! (-> this draw shadow-ctrl settings flags) (shadow-flags shdf02))
+  (set! (-> this neck up) (the-as uint 0))
+  (set! (-> this neck nose) (the-as uint 1))
+  (set! (-> this neck ear) (the-as uint 2))
   0
   (none)
   )
@@ -826,8 +799,8 @@
 
 ;; failed to figure out what this is:
 (defstate spawn-minions (green-eco-lurker-gen)
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('blob-died)
        (set! (-> self num-alive) (max 0 (+ (-> self num-alive) -1)))
        (send-event (ppointer->process (-> self parent)) 'blob-died)
@@ -841,8 +814,8 @@
     (while (< (-> self num-spawned) (-> self num-to-spawn))
       (when (< (-> self num-alive) 3)
         (when (nonzero? (-> self num-spawned))
-          (set! (-> self state-time) (-> *display* base-frame-counter))
-          (until (>= (- (-> *display* base-frame-counter) (-> self state-time)) (seconds 1))
+          (set-time! (-> self state-time))
+          (until (time-elapsed? (-> self state-time) (seconds 1))
             (suspend)
             )
           )
@@ -865,7 +838,6 @@
       )
     (suspend)
     0
-    (none)
     )
   )
 

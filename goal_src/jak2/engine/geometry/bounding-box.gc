@@ -12,23 +12,23 @@ These boxes are used as a primitive in the foreground collision system.
 
 ;; DECOMP BEGINS
 
-(defmethod inside-xyz? bounding-box ((obj bounding-box) (arg0 vector))
+(defmethod inside-xyz? ((this bounding-box) (arg0 vector))
   "Is the point in the box?"
-  (and (< (-> obj min x) (-> arg0 x))
-       (< (-> obj min y) (-> arg0 y))
-       (< (-> obj min z) (-> arg0 z))
-       (< (-> arg0 x) (-> obj max x))
-       (< (-> arg0 y) (-> obj max y))
-       (< (-> arg0 z) (-> obj max z))
+  (and (< (-> this min x) (-> arg0 x))
+       (< (-> this min y) (-> arg0 y))
+       (< (-> this min z) (-> arg0 z))
+       (< (-> arg0 x) (-> this max x))
+       (< (-> arg0 y) (-> this max y))
+       (< (-> arg0 z) (-> this max z))
        )
   )
 
-(defmethod inside-xz? bounding-box ((obj bounding-box) (arg0 vector))
+(defmethod inside-xz? ((this bounding-box) (arg0 vector))
   "Is the point in the box? Check xz only."
-  (and (< (-> obj min x) (-> arg0 x))
-       (< (-> obj min z) (-> arg0 z))
-       (< (-> arg0 x) (-> obj max x))
-       (< (-> arg0 z) (-> obj max z))
+  (and (< (-> this min x) (-> arg0 x))
+       (< (-> this min z) (-> arg0 z))
+       (< (-> arg0 x) (-> this max x))
+       (< (-> arg0 z) (-> this max z))
        )
   )
 
@@ -54,7 +54,7 @@ These boxes are used as a primitive in the foreground collision system.
        )
   )
 
-(defmethod set-from-point-offset! bounding-box ((obj bounding-box) (arg0 vector) (arg1 vector))
+(defmethod set-from-point-offset! ((this bounding-box) (arg0 vector) (arg1 vector))
   "Set to the smallest box containing arg0, (arg0 + arg1)"
   (rlet ((vf0 :class vf)
          (vf1 :class vf)
@@ -71,59 +71,59 @@ These boxes are used as a primitive in the foreground collision system.
     (.max.vf vf2 vf4 vf5)
     (.mov.vf vf1 vf0 :mask #b1000)
     (.mov.vf vf2 vf0 :mask #b1000)
-    (.svf (&-> obj min quad) vf1)
-    (.svf (&-> obj max quad) vf2)
+    (.svf (&-> this min quad) vf1)
+    (.svf (&-> this max quad) vf2)
     0
     (none)
     )
   )
 
-(defmethod add-point! bounding-box ((obj bounding-box) (arg0 vector))
+(defmethod add-point! ((this bounding-box) (arg0 vector))
   "Expand the box as needed to contain the given point."
   (rlet ((vf1 :class vf)
          (vf2 :class vf)
          (vf3 :class vf)
          )
-    (.lvf vf1 (&-> obj min quad))
-    (.lvf vf2 (&-> obj max quad))
+    (.lvf vf1 (&-> this min quad))
+    (.lvf vf2 (&-> this max quad))
     (.lvf vf3 (&-> arg0 quad))
     (.min.vf vf1 vf1 vf3)
     (.max.vf vf2 vf2 vf3)
-    (.svf (&-> obj min quad) vf1)
-    (.svf (&-> obj max quad) vf2)
+    (.svf (&-> this min quad) vf1)
+    (.svf (&-> this max quad) vf2)
     0
     (none)
     )
   )
 
-(defmethod add-box! bounding-box ((obj bounding-box) (arg0 bounding-box))
+(defmethod add-box! ((this bounding-box) (arg0 bounding-box))
   "Expand the box as needed to contain the given box."
   (rlet ((vf1 :class vf)
          (vf2 :class vf)
          (vf3 :class vf)
          (vf4 :class vf)
          )
-    (.lvf vf1 (&-> obj min quad))
-    (.lvf vf2 (&-> obj max quad))
+    (.lvf vf1 (&-> this min quad))
+    (.lvf vf2 (&-> this max quad))
     (.lvf vf3 (&-> arg0 min quad))
     (.lvf vf4 (&-> arg0 max quad))
     (.min.vf vf1 vf1 vf3)
     (.max.vf vf2 vf2 vf4)
-    (.svf (&-> obj min quad) vf1)
-    (.svf (&-> obj max quad) vf2)
+    (.svf (&-> this min quad) vf1)
+    (.svf (&-> this max quad) vf2)
     0
     )
   )
 
-(defmethod set-to-point! bounding-box ((obj bounding-box) (arg0 vector))
+(defmethod set-to-point! ((this bounding-box) (arg0 vector))
   "Set the box to be a single point."
-  (set! (-> obj min quad) (-> arg0 quad))
-  (set! (-> obj max quad) (-> arg0 quad))
+  (set! (-> this min quad) (-> arg0 quad))
+  (set! (-> this max quad) (-> arg0 quad))
   0
   (none)
   )
 
-(defmethod set-from-point-offset-pad! bounding-box ((obj bounding-box) (arg0 vector) (arg1 vector) (arg2 float))
+(defmethod set-from-point-offset-pad! ((this bounding-box) (arg0 vector) (arg1 vector) (arg2 float))
   "Set the box to contain arg0, arg0 + offset, with some padding."
   (rlet ((vf0 :class vf)
          (vf1 :class vf)
@@ -144,13 +144,13 @@ These boxes are used as a primitive in the foreground collision system.
     (.sub.x.vf vf2 vf2 vf1 :mask #b111)
     (.mov.vf vf2 vf0 :mask #b1000)
     (.mov.vf vf3 vf0 :mask #b1000)
-    (.svf (&-> obj min quad) vf2)
-    (.svf (&-> obj max quad) vf3)
+    (.svf (&-> this min quad) vf2)
+    (.svf (&-> this max quad) vf3)
     0
     )
   )
 
-(defmethod set-from-sphere! bounding-box ((obj bounding-box) (arg0 sphere))
+(defmethod set-from-sphere! ((this bounding-box) (arg0 sphere))
   "Set the box to contain a single sphere."
   (rlet ((vf0 :class vf)
          (vf1 :class vf)
@@ -163,8 +163,8 @@ These boxes are used as a primitive in the foreground collision system.
     (.add.w.vf vf3 vf1 vf1 :mask #b111)
     (.mov.vf vf2 vf0 :mask #b1000)
     (.mov.vf vf3 vf0 :mask #b1000)
-    (.svf (&-> obj min quad) vf2)
-    (.svf (&-> obj max quad) vf3)
+    (.svf (&-> this min quad) vf2)
+    (.svf (&-> this max quad) vf3)
     0
     (none)
     )
@@ -176,7 +176,7 @@ These boxes are used as a primitive in the foreground collision system.
 
 ;; these are used in the collision system to build bounding boxes around collision geometries, so they are quite optimized.
 
-(defmethod add-spheres! bounding-box ((obj bounding-box) (spheres (inline-array sphere)) (count int))
+(defmethod add-spheres! ((this bounding-box) (spheres (inline-array sphere)) (count int))
   "Add count spheres."
   ;; the PS2 implementation is very optimized
   ;; It is unrolled and 'software pipelined' to do 4 at a time.
@@ -189,8 +189,8 @@ These boxes are used as a primitive in the foreground collision system.
 
     (when (nonzero? count)
       ;; load these outside the loop
-      (.lvf current-min (-> obj min))
-      (.lvf current-max (-> obj max))
+      (.lvf current-min (-> this min))
+      (.lvf current-max (-> this max))
 
       (dotimes (i count)
         (.lvf sph (-> spheres i))
@@ -200,14 +200,14 @@ These boxes are used as a primitive in the foreground collision system.
         (.max.vf current-max current-max sph-max :mask #b111)
         )
 
-      (.svf (-> obj min) current-min)
-      (.svf (-> obj max) current-max)
+      (.svf (-> this min) current-min)
+      (.svf (-> this max) current-max)
       )
     )
   0
   )
 
-(defmethod set-from-spheres! bounding-box ((obj bounding-box) (spheres (inline-array sphere)) (count int))
+(defmethod set-from-spheres! ((this bounding-box) (spheres (inline-array sphere)) (count int))
   "Reset box to hold the given spheres. Note: this implementation could be optimized."
   ;; This is also unrolled, but does 7 at a time.
   (rlet ((vf0 :class vf)
@@ -238,19 +238,19 @@ These boxes are used as a primitive in the foreground collision system.
         )
       )
 
-    (.svf (-> obj min) current-min)
-    (.svf (-> obj max) current-max)
+    (.svf (-> this min) current-min)
+    (.svf (-> this max) current-max)
     )
   0
   )
 
 
-(defmethod get-bounding-sphere bounding-box ((obj bounding-box) (arg0 vector))
+(defmethod get-bounding-sphere ((this bounding-box) (arg0 vector))
   "Get a bounding sphere for a bounding box."
-  (let* ((a1-2 (vector-! (new 'stack-no-clear 'vector) (-> obj max) (-> obj min)))
+  (let* ((a1-2 (vector-! (new 'stack-no-clear 'vector) (-> this max) (-> this min)))
          (a0-3 (vector-float*! (new 'stack-no-clear 'vector) a1-2 0.5))
          )
-    (vector+! arg0 (-> obj min) a0-3)
+    (vector+! arg0 (-> this min) a0-3)
     (set! (-> arg0 w) (vector-length a0-3))
     )
   arg0
@@ -304,7 +304,7 @@ These boxes are used as a primitive in the foreground collision system.
   #t
   )
 
-(defmethod intersects-line-segment? bounding-box ((obj bounding-box) (arg0 vector) (arg1 vector))
+(defmethod intersects-line-segment? ((this bounding-box) (arg0 vector) (arg1 vector))
   "Check intersection in xz plane, using liang-barsky. Not sure if this actually
    a useful check or not..."
   (let ((f28-0 (- (-> arg1 x) (-> arg0 x)))
@@ -315,17 +315,17 @@ These boxes are used as a primitive in the foreground collision system.
        (let ((f1-2 (-> arg0 x))
              (f0-4 (-> arg0 z))
              )
-         (and (>= f1-2 (-> obj min x)) (>= (-> obj max x) f1-2) (>= f0-4 (-> obj min z)) (>= (-> obj max z) f0-4))
+         (and (>= f1-2 (-> this min x)) (>= (-> this max x) f1-2) (>= f0-4 (-> this min z)) (>= (-> this max z) f0-4))
          )
        )
       (else
         (let ((s4-0 (new 'stack-no-clear 'liang-barsky-line-clip-params)))
           (set! (-> s4-0 te) 0.0)
           (set! (-> s4-0 tl) 1.0)
-          (and (liang-barsky-line-clipt s4-0 f28-0 (- (-> obj min x) (-> arg0 x)))
-               (liang-barsky-line-clipt s4-0 (- f28-0) (- (-> arg0 x) (-> obj max x)))
-               (liang-barsky-line-clipt s4-0 f30-0 (- (-> obj min z) (-> arg0 z)))
-               (liang-barsky-line-clipt s4-0 (- f30-0) (- (-> arg0 z) (-> obj max z)))
+          (and (liang-barsky-line-clipt s4-0 f28-0 (- (-> this min x) (-> arg0 x)))
+               (liang-barsky-line-clipt s4-0 (- f28-0) (- (-> arg0 x) (-> this max x)))
+               (liang-barsky-line-clipt s4-0 f30-0 (- (-> this min z) (-> arg0 z)))
+               (liang-barsky-line-clipt s4-0 (- f30-0) (- (-> arg0 z) (-> this max z)))
                )
           )
         )

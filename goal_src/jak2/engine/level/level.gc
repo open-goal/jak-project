@@ -104,7 +104,7 @@ into 7 sections, which might explain the weird sizes in the center.
   default-level
   )
 
-(defmethod alt-load-command-get-index level-group ((obj level-group) (arg0 symbol) (arg1 int))
+(defmethod alt-load-command-get-index ((this level-group) (arg0 symbol) (arg1 int))
   "Get the n-th alt-load-command for the given level.
    This is likely unused in jak 2 because no levels have alt-load-commands."
   (let ((v1-1 (-> (lookup-level-info arg0) alt-load-commands)))
@@ -119,20 +119,20 @@ into 7 sections, which might explain the weird sizes in the center.
     )
   )
 
-(defmethod load-in-progress? level-group ((obj level-group))
+(defmethod load-in-progress? ((this level-group))
   "Is a level being loaded right now?"
   (!= (-> *level* loading-level) (-> *level* default-level))
   )
 
-(defmethod get-level-by-heap-ptr-and-status level-group ((obj level-group) (arg0 pointer) (arg1 symbol))
+(defmethod get-level-by-heap-ptr-and-status ((this level-group) (arg0 pointer) (arg1 symbol))
   "Get a level by a heap pointer and status.
    If no matching level is found, return #f.
    The purpose of the status check is possibly to prevent bugs with getting stuff
    from a level that's just been replaced with another."
   (case arg1
     (('active)
-     (dotimes (v1-1 (-> obj length))
-       (let ((a2-6 (-> obj level v1-1)))
+     (dotimes (v1-1 (-> this length))
+       (let ((a2-6 (-> this level v1-1)))
          (when (= (-> a2-6 status) 'active)
            (if (and (>= (the-as int arg0) (the-as int (-> a2-6 heap base)))
                     (< (the-as int arg0) (the-as int (-> a2-6 heap top-base)))
@@ -144,8 +144,8 @@ into 7 sections, which might explain the weird sizes in the center.
        )
      )
     (('loading)
-     (dotimes (v1-5 (-> obj length))
-       (let ((a2-12 (-> obj level v1-5)))
+     (dotimes (v1-5 (-> this length))
+       (let ((a2-12 (-> this level v1-5)))
          (when (!= (-> a2-12 status) 'inactive)
            (if (and (>= (the-as int arg0) (the-as int (-> a2-12 heap base)))
                     (< (the-as int arg0) (the-as int (-> a2-12 heap top-base)))
@@ -168,22 +168,22 @@ into 7 sections, which might explain the weird sizes in the center.
       )
   )
 
-(defmethod get-art-group-by-name level ((obj level) (arg0 string))
+(defmethod get-art-group-by-name ((this level) (arg0 string))
   "As the name implies, look through the art-groups of this level and get the one
    with the given name. Return #f if not found."
-  (countdown (s4-0 (-> obj art-group art-group-array length))
-    (if (name= (-> obj art-group art-group-array s4-0 name) arg0)
-        (return (-> obj art-group art-group-array s4-0))
+  (countdown (s4-0 (-> this art-group art-group-array length))
+    (if (name= (-> this art-group art-group-array s4-0 name) arg0)
+        (return (-> this art-group art-group-array s4-0))
         )
     )
   (the-as art-group #f)
   )
 
-(defmethod bsp-name level ((obj level))
+(defmethod bsp-name ((this level))
   "Get the name of the bsp. If this can't be done, get the name of the level."
-  (if (and (!= (-> obj status) 'inactive) (-> obj bsp) (nonzero? (-> obj bsp name)))
-      (-> obj bsp name)
-      (-> obj name)
+  (if (and (!= (-> this status) 'inactive) (-> this bsp) (nonzero? (-> this bsp name)))
+      (-> this bsp name)
+      (-> this name)
       )
   )
 
@@ -199,40 +199,40 @@ into 7 sections, which might explain the weird sizes in the center.
   (none)
   )
 
-(defmethod print level ((obj level))
-  (format #t "#<~A ~A ~S @ #x~X>" (-> obj type) (-> obj status) (-> obj name) obj)
-  obj
+(defmethod print ((this level))
+  (format #t "#<~A ~A ~S @ #x~X>" (-> this type) (-> this status) (-> this name) this)
+  this
   )
 
-(defmethod relocate bsp-header ((obj bsp-header) (arg0 int))
+(defmethod relocate ((this bsp-header) (arg0 int))
   "Handle the load of a new bsp-header. The linker calls this function
    when the bsp-header is linked.
    Do some sanity checks and link the bsp-header and level to each other."
   (let ((s5-0 (-> *level* loading-level)))
     (when s5-0
       (cond
-        (obj
+        (this
           (cond
-            ((not (type? obj bsp-header))
+            ((not (type? this bsp-header))
              (format 0 "ERROR: level ~A is not a bsp-header.~%" (-> s5-0 name))
              (the-as bsp-header #f)
              )
-            ((not (file-info-correct-version? (-> obj info) (file-kind level-bt) 0))
+            ((not (file-info-correct-version? (-> this info) (file-kind level-bt) 0))
              (the-as bsp-header #f)
              )
-            ((< 2048 (-> obj visible-list-length))
+            ((< 2048 (-> this visible-list-length))
              (format
                0
                "ERROR: level ~A visible-list-length ~d is greater than 2048 (16384 drawables).~%"
                (-> s5-0 name)
-               (-> obj visible-list-length)
+               (-> this visible-list-length)
                )
              (the-as bsp-header #f)
              )
             (else
-              (set! (-> s5-0 bsp) obj)
-              (set! (-> obj level) s5-0)
-              obj
+              (set! (-> s5-0 bsp) this)
+              (set! (-> this level) s5-0)
+              this
               )
             )
           )
@@ -245,58 +245,58 @@ into 7 sections, which might explain the weird sizes in the center.
     )
   )
 
-(defmethod load-required-packages level ((obj level))
+(defmethod load-required-packages ((this level))
   "Load packages for a level.
    This just loads common, and this feature is not really useful.
    Packages were only used during development, and seem only partially used in Jak 2
    (the only package is common)."
-  (when (not (or (not (-> obj bsp)) (= *kernel-boot-mode* 'debug-boot)))
-    (if (not (null? (-> obj info packages)))
+  (when (not (or (not (-> this bsp)) (= *kernel-boot-mode* 'debug-boot)))
+    (if (not (null? (-> this info packages)))
         (load-package "common" global)
         )
     )
-  obj
+  this
   )
 
-(defmethod vis-clear level ((obj level))
+(defmethod vis-clear ((this level))
   "Completely invalide all visibility data, vis-info, and set all-visible? to loading."
   (countdown (v1-0 8)
     (nop!)
-    (set! (-> obj vis-info v1-0) #f)
+    (set! (-> this vis-info v1-0) #f)
     )
   (dotimes (v1-3 128)
-    (set! (-> (the-as (pointer int128) (&+ (-> obj vis-bits) (* v1-3 16)))) (the int128 0))
+    (set! (-> (the-as (pointer int128) (&+ (-> this vis-bits) (* v1-3 16)))) (the int128 0))
     )
-  (set! (-> obj all-visible?) 'loading)
+  (set! (-> this all-visible?) 'loading)
   0
   (none)
   )
 
-(defmethod init-vis-from-bsp level ((obj level))
+(defmethod init-vis-from-bsp ((this level))
   "Set up a level's vis-infos from a bsp."
-  (when (not (or (= (-> obj status) 'inactive) (not (-> obj bsp))))
+  (when (not (or (= (-> this status) 'inactive) (not (-> this bsp))))
     ;; mark our visibility as 'loading.
-    (set! (-> obj all-visible?) 'loading)
+    (set! (-> this all-visible?) 'loading)
     ;; check vis-info's from the loaded bsp:
     (dotimes (s5-0 8)
-      (let ((s4-0 (-> obj bsp vis-info s5-0)))
+      (let ((s4-0 (-> this bsp vis-info s5-0)))
         (cond
           ((and s4-0 (nonzero? s4-0) (valid? s4-0 level-vis-info (the-as string #f) #f 0))
            ;; looks good
 
            ;; level -> vis info
-           (set! (-> obj vis-info s5-0) s4-0)
+           (set! (-> this vis-info s5-0) s4-0)
 
            (set! (-> s4-0 current-vis-string) (the-as uint -1))
 
            ;; vis info -> bsp
-           (if (= (-> s4-0 from-level) (-> obj load-name))
-               (set! (-> s4-0 from-bsp) (-> obj bsp))
+           (if (= (-> s4-0 from-level) (-> this load-name))
+               (set! (-> s4-0 from-bsp) (-> this bsp))
                (set! (-> s4-0 from-bsp) #f)
                )
 
            ;; vis info -> level's vis-bits
-           (set! (-> s4-0 vis-bits) (the-as uint (-> obj vis-bits)))
+           (set! (-> s4-0 vis-bits) (the-as uint (-> this vis-bits)))
 
            (set! (-> s4-0 flags)
                  (the-as vis-info-flag (logclear (-> s4-0 flags) (vis-info-flag in-iop loading vis-valid)))
@@ -304,7 +304,7 @@ into 7 sections, which might explain the weird sizes in the center.
            (set! *vis-boot* #t)
            )
           (else
-            (set! (-> obj vis-info s5-0) #f)
+            (set! (-> this vis-info s5-0) #f)
             )
           )
         )
@@ -314,7 +314,7 @@ into 7 sections, which might explain the weird sizes in the center.
   (none)
   )
 
-(defmethod level-get-for-use level-group ((obj level-group) (arg0 symbol) (arg1 symbol))
+(defmethod level-get-for-use ((this level-group) (arg0 symbol) (arg1 symbol))
   "Request a level by name in the given state.
    Will return quickly (non-blocking) and might not be able to get a level in the desired state,
    though it will ofborrow do some small amount of work to make progress on loading.
@@ -327,7 +327,7 @@ into 7 sections, which might explain the weird sizes in the center.
 
   (start-debug "level-get-for-use: ~A ~A~%" arg0 arg1)
   ;; make sure we have level heaps
-  (alloc-levels-if-needed obj #f)
+  (alloc-levels-if-needed this #f)
 
   ;; look up the requested level
   (let* ((s2-0 (lookup-level-info arg0))
@@ -337,7 +337,7 @@ into 7 sections, which might explain the weird sizes in the center.
     (start-debug "level info: ~A, remapped name: ~A~%" s2-0 s1-0)
 
     ;; if we already have it, try updating status, then return it
-    (let ((s5-0 (level-get obj s1-0)))
+    (let ((s5-0 (level-get this s1-0)))
       (when s5-0
         (level-status-update! s5-0 arg1)
         (set! s5-1 s5-0)
@@ -348,7 +348,7 @@ into 7 sections, which might explain the weird sizes in the center.
     (start-debug "level isn't loaded already, need to find a level~%")
 
     ;; find slot to load into
-    (let ((a0-7 (level-get-most-disposable obj)))
+    (let ((a0-7 (level-get-most-disposable this)))
       (start-debug "found slot: ~A~%" a0-7)
       ;; mark it as inactive, we're kicking it out.
       (set! s5-1 (if a0-7
@@ -366,8 +366,8 @@ into 7 sections, which might explain the weird sizes in the center.
       )
 
     ;; remember where we were loaded
-    (let ((v1-13 (+ (-> obj load-order) 1)))
-      (set! (-> obj load-order) v1-13)
+    (let ((v1-13 (+ (-> this load-order) 1)))
+      (set! (-> this load-order) v1-13)
       (set! (-> s5-1 load-order) (the-as int v1-13))
       )
 
@@ -398,7 +398,7 @@ into 7 sections, which might explain the weird sizes in the center.
   s5-1
   )
 
-(defmethod level-status level-group ((obj level-group) (arg0 symbol))
+(defmethod level-status ((this level-group) (arg0 symbol))
   "Get the status of a level by name, return #f if no level is found."
   (let ((v1-1 (level-get *level* arg0)))
     (if v1-1
@@ -407,7 +407,7 @@ into 7 sections, which might explain the weird sizes in the center.
     )
   )
 
-(defmethod level-status-update! level ((obj level) (arg0 symbol))
+(defmethod level-status-update! ((this level) (arg0 symbol))
   "Try to update the level to the given status, calling whatever is needed
    to make it happen.
    This can do both loading, linking, login, and activation.
@@ -415,47 +415,47 @@ into 7 sections, which might explain the weird sizes in the center.
    the level object.
    This function is the way to transition from loaded to alive/active."
 
-  (start-debug "level-status-update trying to do ~A to ~A for ~A~%" (-> obj status) arg0 (-> obj name))
+  (start-debug "level-status-update trying to do ~A to ~A for ~A~%" (-> this status) arg0 (-> this name))
   (case arg0
     (('inactive)
      ;; any request to go inactive should unload.
-     (-> obj status)
-     (unload! obj)
+     (-> this status)
+     (unload! this)
      )
     (('loading)
-     (case (-> obj status)
+     (case (-> this status)
        (('inactive)
         ;; inactive -> loading transition, start the loader
-        (load-begin obj)
+        (load-begin this)
         )
        )
      )
     (('loading-bt)
-     (case (-> obj status)
+     (case (-> this status)
        (('loading)
         ;; loading -> loading-bt, transition immediately and do one load-continue
-        (set! (-> obj status) arg0)
-        (load-continue obj)
+        (set! (-> this status) arg0)
+        (load-continue this)
         )
        )
      )
     (('loading-done)
-     (case (-> obj status)
+     (case (-> this status)
        (('loading-bt)
         ;; loading-bt -> loading-done, the only allowed transition to loading-done
-        (set! (-> obj status) arg0)
+        (set! (-> this status) arg0)
         )
        )
      )
     (('loaded)
-     (case (-> obj status)
+     (case (-> this status)
        (('loading-done)
         ;; loading-done->loaded, need to log in first
-        (login-begin obj)
+        (login-begin this)
         )
        (('alive 'active)
         ;; deactivating
-        (deactivate obj)
+        (deactivate this)
         )
        )
      )
@@ -464,29 +464,29 @@ into 7 sections, which might explain the weird sizes in the center.
        ;; we do this twice, once to alive, then once to active.
        ;; alive means that entities are alive, active means alive and
        ;; added to draw engine.
-       (case (-> obj status)
+       (case (-> this status)
          (('loaded)
           ;; loaded (so logged in too), do birth (will set to alive), then try again
-          (birth obj)
-          (level-status-update! obj arg0)
+          (birth this)
+          (level-status-update! this arg0)
           )
          (('alive)
           ;; on the second run, gets here:
           (when (and *dproc* (= arg0 'active))
             ;; remember when
-            (when (zero? (-> obj display-start-time))
-              (set! (-> obj display-start-time) (-> *display* real-clock frame-counter))
+            (when (zero? (-> this display-start-time))
+              (set! (-> this display-start-time) (-> *display* real-clock frame-counter))
               0
               )
             ;; add us to the background draw engine! this will cause us to be drawn.
-            (remove-by-param1 *background-draw-engine* (the-as int (-> obj bsp)))
-            (add-connection *background-draw-engine* *dproc* add-bsp-drawable (-> obj bsp) obj #f)
+            (remove-by-param1 *background-draw-engine* (the-as int (-> this bsp)))
+            (add-connection *background-draw-engine* *dproc* add-bsp-drawable (-> this bsp) this #f)
             ;; not sure why this becomes 0...
             (dotimes (v1-46 18)
-              (set! (-> obj closest-object-array v1-46) 0.0)
-              (set! (-> obj texture-mask v1-46 mask quad) (the-as uint128 0))
+              (set! (-> this closest-object-array v1-46) 0.0)
+              (set! (-> this texture-mask v1-46 mask quad) (the-as uint128 0))
               )
-            (set! (-> obj status) 'active)
+            (set! (-> this status) 'active)
             ;; set up for drawing.
             (assign-draw-indices *level*)
             )
@@ -495,7 +495,7 @@ into 7 sections, which might explain the weird sizes in the center.
        )
      )
     )
-  obj
+  this
   )
 
 (define *login-state* (new 'global 'login-state))
@@ -561,39 +561,39 @@ into 7 sections, which might explain the weird sizes in the center.
 ;; a case in the DGO loader here. If the objects come in totally corrupted, we're likely missing
 ;; some additional syncronization.
 
-(defmethod load-continue level ((obj level))
+(defmethod load-continue ((this level))
   "Run the loading/login state machine.
    This will only make progress on loading, linking, and login for loads that have already started.
    No 'scary' state transitions (like birth, alive, deactivate) are made here."
   (local-vars (sv-16 symbol))
 
   ;; if any linking is in progress, do that first.
-  (when (-> obj linking)
+  (when (-> this linking)
     (when (nonzero? (link-resume)) ;; run linker
       ;; linker return is nonzero, we're done!
       (start-debug "link done!~%")
-      (set! (-> obj linking) #f)
-      (case (-> obj status)
+      (set! (-> this linking) #f)
+      (case (-> this status)
         (('loading) ;; we're loading to b0/b1, not the top buffer
          ;; if we are doing a texture relocate later, don't do anything now, come back later.
          (when (not (-> *texture-relocate-later* memcpy))
            (cond
-             ((= (-> obj load-buffer-mode) (load-buffer-mode borrow))
+             ((= (-> this load-buffer-mode) (load-buffer-mode borrow))
               ;; in this "borrow" mode, load directly to the heap.
               (start-debug "kick load borrow case~%")
-              (let ((a2-0 (logand -64 (&+ (-> obj heap current) 63))))
+              (let ((a2-0 (logand -64 (&+ (-> this heap current) 63))))
                 (dgo-load-continue a2-0 a2-0 a2-0)
                 )
               )
              (else
                ;; otherwise, continue with double buffered load to b0/b1 like normal
                ;; update load buffers, and make the dgo loader continue.
-               (load-buffer-resize obj (the-as dgo-header (-> obj load-buffer-last)))
+               (load-buffer-resize this (the-as dgo-header (-> this load-buffer-last)))
                (start-debug "kicking next load~%")
                (dgo-load-continue
-                 (the-as pointer (-> obj load-buffer 0))
-                 (the-as pointer (-> obj load-buffer 1))
-                 (logand -64 (&+ (-> obj heap current) 63))
+                 (the-as pointer (-> this load-buffer 0))
+                 (the-as pointer (-> this load-buffer 1))
+                 (logand -64 (&+ (-> this heap current) 63))
                  )
                )
              )
@@ -601,12 +601,12 @@ into 7 sections, which might explain the weird sizes in the center.
          )
         (('loading-bt)
          ;; finished linking the final object! begin login.
-         (level-status-update! obj 'loading-done)
-         (level-status-update! obj 'loaded)
+         (level-status-update! this 'loading-done)
+         (level-status-update! this 'loaded)
          )
         )
       )
-    (set! obj obj)
+    (set! this this)
     (goto cfg-39)
     )
 
@@ -615,26 +615,26 @@ into 7 sections, which might explain the weird sizes in the center.
   ;; (note that this doens't handle mode "borrow")
   (when (-> *texture-relocate-later* memcpy)
     (relocate-later)
-    (load-buffer-resize obj (the-as dgo-header (-> obj load-buffer-last)))
+    (load-buffer-resize this (the-as dgo-header (-> this load-buffer-last)))
     (dgo-load-continue
-      (the-as pointer (-> obj load-buffer 0))
-      (the-as pointer (-> obj load-buffer 1))
-      (logand -64 (&+ (-> obj heap current) 63))
+      (the-as pointer (-> this load-buffer 0))
+      (the-as pointer (-> this load-buffer 1))
+      (logand -64 (&+ (-> this heap current) 63))
       )
-    (set! obj obj)
+    (set! this this)
     (goto cfg-39)
     )
 
   ;; not waiting on the linker, check other cases
 
-  (case (-> obj status)
+  (case (-> this status)
     (('loading)
      ;; if loading, we are waiting on the DGO loader. Check it again:
      (set! sv-16 (the-as symbol #f))
      (let ((s5-0 (dgo-load-get-next (& sv-16))))
        (when s5-0
          ;; we got something! remember where and update stats
-         (set! (-> obj load-buffer-last) (the-as uint s5-0))
+         (set! (-> this load-buffer-last) (the-as uint s5-0))
          (+! (-> *level* load-size) (-> (the-as (pointer uint32) s5-0)))
          (set! (-> *level* load-time)
                (* 0.016666668 (the float (- (-> *display* real-clock integral-frame-counter) (the-as uint *dgo-time*))))
@@ -647,48 +647,48 @@ into 7 sections, which might explain the weird sizes in the center.
 
             ;; not the last object
             (cond
-              ((= (-> obj load-buffer-mode) (load-buffer-mode borrow))
+              ((= (-> this load-buffer-mode) (load-buffer-mode borrow))
 
                ;; start the linker. in "borrow" mode, load directly to the heap again.
                (cond
-                 ((dgo-load-link (the-as dgo-header s5-0) (-> obj heap) (the-as uint (-> obj heap top-base)) *print-login* #f)
+                 ((dgo-load-link (the-as dgo-header s5-0) (-> this heap) (the-as uint (-> this heap top-base)) *print-login* #f)
                   ;; linker finished immediately, kick off next load
                   (when (not (-> *texture-relocate-later* memcpy))
-                    (let ((a2-8 (logand -64 (&+ (-> obj heap current) 63))))
+                    (let ((a2-8 (logand -64 (&+ (-> this heap current) 63))))
                       (dgo-load-continue a2-8 a2-8 a2-8)
                       )
                     )
                   )
                  (else
                    ;; linker still going, remember and come back later.
-                   (set! (-> obj linking) #t)
+                   (set! (-> this linking) #t)
                    )
                  )
                )
 
               ;; not borrow mode, start linker
-              ((dgo-load-link (the-as dgo-header s5-0) (-> obj heap) (-> obj load-buffer 1) *print-login* #f)
+              ((dgo-load-link (the-as dgo-header s5-0) (-> this heap) (-> this load-buffer 1) *print-login* #f)
                ;; finished immediately, kick off next loa
                (when (not (-> *texture-relocate-later* memcpy))
-                 (load-buffer-resize obj (the-as dgo-header s5-0))
+                 (load-buffer-resize this (the-as dgo-header s5-0))
                  (dgo-load-continue
-                   (the-as pointer (-> obj load-buffer 0))
-                   (the-as pointer (-> obj load-buffer 1))
-                   (logand -64 (&+ (-> obj heap current) 63))
+                   (the-as pointer (-> this load-buffer 0))
+                   (the-as pointer (-> this load-buffer 1))
+                   (logand -64 (&+ (-> this heap current) 63))
                    )
                  )
                )
               (else
                 ;; otherwise remember we're loading.
-                (set! (-> obj linking) #t)
+                (set! (-> this linking) #t)
                 )
               )
             )
 
            (else
              ;; we are the last object. update heap top and go to bt load.
-             (set! (-> obj heap top) (-> obj heap top-base))
-             (level-status-update! obj 'loading-bt)
+             (set! (-> this heap top) (-> this heap top-base))
+             (level-status-update! this 'loading-bt)
              )
            )
          )
@@ -696,28 +696,28 @@ into 7 sections, which might explain the weird sizes in the center.
      )
     (('login)
      ;; logging in, load already finished. run the login state machine
-     (level-update-after-load obj *login-state*)
+     (level-update-after-load this *login-state*)
      )
     (('loading-bt)
      ;; last object was loaded, start linking it.
-     (let ((a0-36 (logand -64 (&+ (-> obj heap current) 63))))
+     (let ((a0-36 (logand -64 (&+ (-> this heap current) 63))))
        (cond
-         ((dgo-load-link (the-as dgo-header a0-36) (-> obj heap) (the-as uint (-> obj heap top-base)) *print-login* #t)
-          (level-status-update! obj 'loading-done)
-          (level-status-update! obj 'loaded)
+         ((dgo-load-link (the-as dgo-header a0-36) (-> this heap) (the-as uint (-> this heap top-base)) *print-login* #t)
+          (level-status-update! this 'loading-done)
+          (level-status-update! this 'loaded)
           )
          (else
-           (set! (-> obj linking) #t)
+           (set! (-> this linking) #t)
            )
          )
        )
      )
     )
   (label cfg-39)
-  obj
+  this
   )
 
-(defmethod load-begin level ((obj level))
+(defmethod load-begin ((this level))
   "Begin loading a level.
    This assigns memory to a level and is somewhat confusing."
   (local-vars (bits-to-use int) (borrow-from-lev level) (found-borrow symbol))
@@ -729,13 +729,13 @@ into 7 sections, which might explain the weird sizes in the center.
 
   ;; a "borrow" level will borrow the heap of an existing level
   (dotimes (v1-0 2)
-    (set! (-> obj borrow-level v1-0) #f) ;; levels that borrow our heap
+    (set! (-> this borrow-level v1-0) #f) ;; levels that borrow our heap
     )
-  (set! (-> obj borrow-from-level) #f)   ;; level that we borrow our heap for.
+  (set! (-> this borrow-from-level) #f)   ;; level that we borrow our heap for.
 
-  (set! (-> obj memory-mask) (the-as uint 0)) ;; bits representing which sections of the big level heap we use.
+  (set! (-> this memory-mask) (the-as uint 0)) ;; bits representing which sections of the big level heap we use.
 
-  (let ((mem-mode (-> obj info memory-mode)))
+  (let ((mem-mode (-> this info memory-mode)))
     (case mem-mode
       (((load-buffer-mode borrow))
        ;; we need to find a level to borrow from.
@@ -748,7 +748,7 @@ into 7 sections, which might explain the weird sizes in the center.
              (when (and (or (= (-> maybe-borrow-from-lev status) 'active) (= (-> maybe-borrow-from-lev status) 'loaded))
                         (begin
                           (dotimes (check-slot-idx 2) ;; check both borrow slots in the host
-                            (when (and (= (-> maybe-borrow-from-lev info borrow-level check-slot-idx) (-> obj name)) ;; match name!
+                            (when (and (= (-> maybe-borrow-from-lev info borrow-level check-slot-idx) (-> this name)) ;; match name!
                                        (nonzero? (-> maybe-borrow-from-lev info borrow-size check-slot-idx))         ;; has room!
                                        )
                               (set! slot-in-borrow-from-lev check-slot-idx)
@@ -774,22 +774,22 @@ into 7 sections, which might explain the weird sizes in the center.
          (cond
            (borrow-from-lev
              ;; link to borrow level
-             (set! (-> obj borrow-from-level) borrow-from-lev)
-             (set! (-> borrow-from-lev borrow-level slot-in-borrow-from-lev) obj)
+             (set! (-> this borrow-from-level) borrow-from-lev)
+             (set! (-> borrow-from-lev borrow-level slot-in-borrow-from-lev) this)
              ;; and copy the heap. seems kind of weird to copy the actual kheap object, but the host actually prepared
              ;; for this, so it should be fine.
              (mem-copy!
-               (the-as pointer (-> obj heap))
+               (the-as pointer (-> this heap))
                (the-as pointer (-> borrow-from-lev borrow-heap slot-in-borrow-from-lev))
                16
                )
              (start-debug "borrowing from ~A. heap:~%" borrow-from-lev)
-             (inspect (-> obj heap))
+             (inspect (-> this heap))
              )
            (else
              ;; couldn't find it, die.
              (format 0 "ERROR: level ~A could not find free ~S bank in the level-group heap~%"
-               (-> obj name)
+               (-> this name)
                (enum->string load-buffer-mode mem-mode)
                )
              (break!)
@@ -914,7 +914,7 @@ into 7 sections, which might explain the weird sizes in the center.
           (cond
             ((zero? bits-to-use)
              ;; darn, couldn't find a spot.
-             (format 0 "ERROR: level ~A could not find free ~S bank in the level-group heap~%" (-> obj name) (enum->string load-buffer-mode mem-mode))
+             (format 0 "ERROR: level ~A could not find free ~S bank in the level-group heap~%" (-> this name) (enum->string load-buffer-mode mem-mode))
              (dotimes (s5-1 LEVEL_TOTAL)
                (if (!= (-> *level* level s5-1 status) 'inactive)
                    (format
@@ -933,22 +933,22 @@ into 7 sections, which might explain the weird sizes in the center.
               (start-debug "successfully found load: size #x~X, bits #x~X, offset ~D~%"
                            heap-size bits-to-use offset-in-level-heap)
               ;; found a spot, set mask.
-              (set! (-> obj memory-mask) (the-as uint bits-to-use))
+              (set! (-> this memory-mask) (the-as uint bits-to-use))
               (cond
                 ;; are we using debug sized large level?
                 ((= (&- (-> *level* heap top) (the-as uint (-> *level* heap base))) DEBUG_LEVEL_HEAP_SIZE)
                  ;; if so, everything is bigger!
-                 (let ((v1-44 (-> obj heap)))
+                 (let ((v1-44 (-> this heap)))
                    (set! (-> v1-44 base) (&+ (-> *level* heap base) (* DEBUG_LEVEL_PAGE_SIZE offset-in-level-heap)))
                    (set! (-> v1-44 current) (-> v1-44 base))
                    ;(set! (-> v1-44 top-base) (&+ (-> v1-44 base) (+ heap-size (/ heap-size 2))))
-                   ;; pc port note : modified the math here so we can just use a float to change the size
+                   ;; og:preserve-this modified the math here so we can just use a float to change the size
                    (set! (-> v1-44 top-base) (&+ (-> v1-44 base) (* DEBUG_LEVEL_PAGE_SIZE (/ heap-size LEVEL_PAGE_SIZE))))
                    (set! (-> v1-44 top) (-> v1-44 top-base))
                    )
                  )
                 (else
-                  (let ((v1-45 (-> obj heap)))
+                  (let ((v1-45 (-> this heap)))
                     ;; no debug size heaps. set up our heap.
                     ;; offset-in-level-heap is in 146ths (1 level heap page) of the total size.
                     (set! (-> v1-45 base) (&+ (-> *level* heap base) (* LEVEL_PAGE_SIZE offset-in-level-heap)))
@@ -968,56 +968,56 @@ into 7 sections, which might explain the weird sizes in the center.
   ;; our heap is now set up, prepare for loading.
 
   ;; the global loading-level heap is used by many relocate/top-level code to allocate on the level heap
-  (set! loading-level (-> obj heap))
-  (set! (-> *level* loading-level) obj)
+  (set! loading-level (-> this heap))
+  (set! (-> *level* loading-level) this)
 
   ;; start linked list of types associated with this level
-  (set! (-> obj level-type) #f)
-  (set! *level-type-list* (the-as type (&-> obj level-type)))
+  (set! (-> this level-type) #f)
+  (set! *level-type-list* (the-as type (&-> this level-type)))
 
   ;; clear stuff out
   (set! (-> *level* log-in-level-bsp) #f)
-  (set! (-> obj nickname) #f)
-  (set! (-> obj bsp) #f)
-  (set! (-> obj entity) #f)
-  (set! (-> obj linking) #f)
-  (set! (-> obj task-mask) (-> *setting-control* user-current task-mask))
-  (vis-clear obj)
-  (set! (-> obj load-start-time) (-> *display* real-clock frame-counter))
-  (set! (-> obj load-stop-time) 0)
-  (set! (-> obj display-start-time) 0)
-  (set! (-> obj part-engine) #f)
+  (set! (-> this nickname) #f)
+  (set! (-> this bsp) #f)
+  (set! (-> this entity) #f)
+  (set! (-> this linking) #f)
+  (set! (-> this task-mask) (-> *setting-control* user-current task-mask))
+  (vis-clear this)
+  (set! (-> this load-start-time) (-> *display* real-clock frame-counter))
+  (set! (-> this load-stop-time) 0)
+  (set! (-> this display-start-time) 0)
+  (set! (-> this part-engine) #f)
   (dotimes (v1-57 4)
-    (set! (-> obj user-object v1-57) #f)
+    (set! (-> this user-object v1-57) #f)
     )
 
   ;; go straight to loading
-  (set! (-> obj status) 'loading)
+  (set! (-> this status) 'loading)
 
   ;; non-permanent allocator
   (set! (-> *texture-pool* allocate-func) texture-page-level-allocate)
-  (if (= (-> obj load-name) (-> obj info visname))
-      (format (clear *temp-string*) "~S" (-> obj info nickname))
-      (format (clear *temp-string*) "~S" (-> obj name))
+  (if (= (-> this load-name) (-> this info visname))
+      (format (clear *temp-string*) "~S" (-> this info nickname))
+      (format (clear *temp-string*) "~S" (-> this name))
       )
   (set! (-> *temp-string* data 8) (the-as uint 0))
   (format *temp-string* ".DGO")
-  (set! (-> obj heap top) (-> obj heap top-base))
-  (set! (-> *level* load-level) (-> obj load-name))
+  (set! (-> this heap top) (-> this heap top-base))
+  (set! (-> *level* load-level) (-> this load-name))
   (set! (-> *level* load-size) (the-as uint 0))
   (set! (-> *level* load-time) 0.0)
   (set! (-> *level* load-login-time) 0.0)
 
   ;; code comes first
-  (set! (-> obj code-memory-start) (-> obj heap current))
+  (set! (-> this code-memory-start) (-> this heap current))
   (cond
-    ((= (-> obj info memory-mode) (load-buffer-mode borrow))
+    ((= (-> this info memory-mode) (load-buffer-mode borrow))
      ;; if we're borrowing, we should load directly to heap current.
      ;; this is somewhat strange, and has two drawbacks:
      ;; - we can't discard link data easily, like we would normally with the double buffer setup
      ;; - we can't allocate during login. Or if we allocate more than our link data, then bad things happen.
-     (set! (-> obj load-buffer-mode) (load-buffer-mode borrow))
-     (let ((a3-19 (logand -64 (&+ (-> obj heap current) 63))))
+     (set! (-> this load-buffer-mode) (load-buffer-mode borrow))
+     (let ((a3-19 (logand -64 (&+ (-> this heap current) 63))))
        (start-debug "DGO-LOAD-BEGIN FOR BORROW: #x~x~%" a3-19)
        ;; start dgo loader!
        (dgo-load-begin *temp-string* a3-19 a3-19 a3-19)
@@ -1027,33 +1027,33 @@ into 7 sections, which might explain the weird sizes in the center.
       ;; normal loading into a new heap.
       ;; allocate the two dgo level load buffers on top, like normal
       (let* ((s3-1 #x1b5800)
-             (s4-1 (kmalloc (-> obj heap) s3-1 (kmalloc-flags align-64 top) "dgo-level-buf-2"))
-             (s5-4 (kmalloc (-> obj heap) s3-1 (kmalloc-flags align-64 top) "dgo-level-buf-2"))
+             (s4-1 (kmalloc (-> this heap) s3-1 (kmalloc-flags align-64 top) "dgo-level-buf-2"))
+             (s5-4 (kmalloc (-> this heap) s3-1 (kmalloc-flags align-64 top) "dgo-level-buf-2"))
              )
-        (format 0 "-----------> begin load ~A [~S]~%" (-> obj load-name) *temp-string*)
-        (set! (-> obj load-buffer 0) (the-as uint s5-4))
-        (set! (-> obj load-buffer 1) (the-as uint s4-1))
-        (set! (-> obj load-buffer-size) (the-as uint s3-1))
+        (format 0 "-----------> begin load ~A [~S]~%" (-> this load-name) *temp-string*)
+        (set! (-> this load-buffer 0) (the-as uint s5-4))
+        (set! (-> this load-buffer 1) (the-as uint s4-1))
+        (set! (-> this load-buffer-size) (the-as uint s3-1))
         ;; unclear why they do this, I guess it avoids the weird "medium" case in load-buffer-resize.
-        (set! (-> obj load-buffer-mode) (load-buffer-mode small-edge))
+        (set! (-> this load-buffer-mode) (load-buffer-mode small-edge))
 
-        (start-debug "DGO-LOAD-BEGIN: #x~X #x~X #x~X~%" s5-4 s4-1 (logand -64 (&+ (-> obj heap current) 63)))
-        (dgo-load-begin *temp-string* s5-4 s4-1 (logand -64 (&+ (-> obj heap current) 63)))
+        (start-debug "DGO-LOAD-BEGIN: #x~X #x~X #x~X~%" s5-4 s4-1 (logand -64 (&+ (-> this heap current) 63)))
+        (dgo-load-begin *temp-string* s5-4 s4-1 (logand -64 (&+ (-> this heap current) 63)))
         )
       )
     )
-  obj
+  this
   )
 
-(defmethod login-begin level ((obj level))
+(defmethod login-begin ((this level))
   "Begin login of a level after linking.
    The login is spread over multiple frames."
 
   ;; link done, revert allocate-func back to "normal".
   (set! (-> *texture-pool* allocate-func) texture-page-default-allocate)
   (cond
-    ((-> obj bsp)
-     (let ((s5-0 (-> obj bsp)))
+    ((-> this bsp)
+     (let ((s5-0 (-> this bsp)))
        (set! (-> s5-0 level tfrag-gs-test)
              (if (logtest? (-> s5-0 texture-flags 0) (texture-page-flag alpha-enable))
                  (new 'static 'gs-test :ate #x1 :atst (gs-atest always) :zte #x1 :ztst (gs-ztest greater-equal))
@@ -1066,15 +1066,15 @@ into 7 sections, which might explain the weird sizes in the center.
                    )
                  )
              )
-       (set! (-> *level* log-in-level-bsp) (-> obj bsp))
-       (login-level-textures *texture-pool* obj (-> obj bsp texture-page-count) (-> obj bsp texture-ids))
+       (set! (-> *level* log-in-level-bsp) (-> this bsp))
+       (login-level-textures *texture-pool* this (-> this bsp texture-page-count) (-> this bsp texture-ids))
        (dotimes (v1-10 6)
-         (set! (-> obj sky-mask mask data v1-10) 0)
+         (set! (-> this sky-mask mask data v1-10) 0)
          )
        (dotimes (s4-0 10)
-         (let ((a0-8 (-> obj info texture-anim s4-0)))
+         (let ((a0-8 (-> this info texture-anim s4-0)))
            (when a0-8
-             (set! (-> obj texture-anim-array s4-0)
+             (set! (-> this texture-anim-array s4-0)
                    (init! (the-as texture-anim-array (-> a0-8 value)))
                    )
                )
@@ -1085,17 +1085,17 @@ into 7 sections, which might explain the weird sizes in the center.
      (set! (-> *login-state* state) -1)
      (set! (-> *login-state* pos) (the-as uint 0))
      (set! (-> *login-state* elts) (the-as uint 0))
-     (set! (-> obj status) 'login)
+     (set! (-> this status) 'login)
      )
     (else
-      (level-status-update! obj 'inactive)
+      (level-status-update! this 'inactive)
       (set! loading-level global)
       (set! (-> *level* loading-level) (-> *level* default-level))
       (set! *level-type-list* (the-as type 0))
       0
       )
     )
-  obj
+  this
   )
 
 (defun level-update-after-load ((lev level) (lstate login-state))
@@ -1423,50 +1423,50 @@ into 7 sections, which might explain the weird sizes in the center.
   lev
   )
 
-(defmethod birth level ((obj level))
+(defmethod birth ((this level))
   "Start running code for a level that has been loaded."
   (local-vars (sv-96 int))
-  (case (-> obj status)
+  (case (-> this status)
     (('loaded)
      (let ((s5-0 loading-level)
            (s4-0 (-> *level* loading-level))
            (s3-0 (-> *level* log-in-level-bsp))
            (s2-1 *level-type-list*)
            )
-       (let ((s1-0 (not (-> obj entity))))
-         (set! loading-level (-> obj heap))
-         (set! (-> *level* log-in-level-bsp) (-> obj bsp))
-         (set! (-> *level* loading-level) obj)
-         (set! *level-type-list* (the-as type (&-> obj level-type)))
+       (let ((s1-0 (not (-> this entity))))
+         (set! loading-level (-> this heap))
+         (set! (-> *level* log-in-level-bsp) (-> this bsp))
+         (set! (-> *level* loading-level) this)
+         (set! *level-type-list* (the-as type (&-> this level-type)))
          (cond
-           ((valid? (-> obj bsp light-hash) light-hash (the-as string #f) #t 0)
-            (set! (-> obj light-hash) (-> obj bsp light-hash))
+           ((valid? (-> this bsp light-hash) light-hash (the-as string #f) #t 0)
+            (set! (-> this light-hash) (-> this bsp light-hash))
             )
            (else
-             (set! (-> obj light-hash) (the-as light-hash 0))
+             (set! (-> this light-hash) (the-as light-hash 0))
              0
              )
            )
-         (birth (-> obj bsp))
-         (set! (-> obj status) 'alive)
-         (set! (-> obj render?) #t)
+         (birth (-> this bsp))
+         (set! (-> this status) 'alive)
+         (set! (-> this render?) #t)
 
-         (copy-perms-to-level! *game-info* obj)
-         (send-event *camera* 'level-activate (-> obj name))
-         (send-event *target* 'level-activate (-> obj name))
-         (when (and (-> obj info login-func) s1-0)
-           (let ((s1-1 (-> obj info login-func value)))
+         (copy-perms-to-level! *game-info* this)
+         (send-event *camera* 'level-activate (-> this name))
+         (send-event *target* 'level-activate (-> this name))
+         (when (and (-> this info login-func) s1-0)
+           (let ((s1-1 (-> this info login-func value)))
              (if (and s1-1 (nonzero? s1-1) (type? s1-1 function))
-                 ((the (function level none) s1-1) obj)
+                 ((the (function level none) s1-1) this)
                  )
              )
            )
          )
-       (let ((s1-2 (-> obj status)))
-         (set! (-> obj status) 'active)
+       (let ((s1-2 (-> this status)))
+         (set! (-> this status) 'active)
          (update-task-masks 'level)
          (assign-draw-indices *level*)
-         (let ((s0-0 (-> obj bsp nav-meshes)))
+         (let ((s0-0 (-> this bsp nav-meshes)))
            (when (nonzero? s0-0)
              (set! sv-96 0)
              (while (< sv-96 (-> s0-0 length))
@@ -1475,17 +1475,17 @@ into 7 sections, which might explain the weird sizes in the center.
                )
              )
            )
-         (if (and (!= (-> obj bsp city-level-info) 0) *traffic-manager*)
-             (send-event *traffic-manager* 'level-loaded obj)
+         (if (and (!= (-> this bsp city-level-info) 0) *traffic-manager*)
+             (send-event *traffic-manager* 'level-loaded this)
              )
-         (when (-> obj info activate-func)
-           (let ((s0-1 (-> obj info activate-func value)))
+         (when (-> this info activate-func)
+           (let ((s0-1 (-> this info activate-func value)))
              (if (and s0-1 (nonzero? s0-1) (type? s0-1 function))
-                 ((the (function level symbol none) s0-1) obj 'display)
+                 ((the (function level symbol none) s0-1) this 'display)
                  )
              )
            )
-         (set! (-> obj status) s1-2)
+         (set! (-> this status) s1-2)
          )
        (set! loading-level s5-0)
        (set! (-> *level* loading-level) s4-0)
@@ -1494,57 +1494,57 @@ into 7 sections, which might explain the weird sizes in the center.
        )
      )
     )
-  obj
+  this
   )
 
-(defmethod deactivate level ((obj level))
+(defmethod deactivate ((this level))
   "Take a level out of active/alive"
-  (case (-> obj status)
+  (case (-> this status)
     (('active 'alive)
-     (format 0 "----------- kill ~A (status ~A)~%" obj (-> obj status))
+     (format 0 "----------- kill ~A (status ~A)~%" this (-> this status))
 
      ;; send event to traffic manager.
-     (if (and (!= (-> obj bsp city-level-info) 0) *traffic-manager*)
-         (send-event *traffic-manager* 'level-killed obj)
+     (if (and (!= (-> this bsp city-level-info) 0) *traffic-manager*)
+         (send-event *traffic-manager* 'level-killed this)
          )
 
      ;; run kill callbacks
-     (when (-> obj info kill-func)
-       (let ((s5-0 (-> obj info kill-func value)))
+     (when (-> this info kill-func)
+       (let ((s5-0 (-> this info kill-func value)))
          (if (and s5-0 (nonzero? s5-0) (type? s5-0 function))
-             ((the (function level none) s5-0) obj)
+             ((the (function level none) s5-0) this)
              )
          )
        )
 
      ;; copy data from entities to permanent storage
-     (copy-perms-from-level! *game-info* obj)
+     (copy-perms-from-level! *game-info* this)
 
      ;; tell target
-     (send-event *target* 'level-deactivate (-> obj name))
+     (send-event *target* 'level-deactivate (-> this name))
 
      ;; remove from background draw system
-     (remove-by-param1 *background-draw-engine* (the-as int (-> obj bsp)))
+     (remove-by-param1 *background-draw-engine* (the-as int (-> this bsp)))
 
      ;; kill entities, particles, anims
-     (deactivate-entities (-> obj bsp))
-     (kill-all-particles-in-level obj)
-     (unload-from-level *anim-manager* obj)
+     (deactivate-entities (-> this bsp))
+     (kill-all-particles-in-level this)
+     (unload-from-level *anim-manager* this)
 
      ;; reset status
-     (set! (-> obj inside-boxes) #f)
-     (set! (-> obj meta-inside?) #f)
-     (set! (-> obj force-inside?) #f)
-     (set! (-> obj status) 'loaded)
-     (set! (-> obj light-hash) (the-as light-hash 0))
-     (set! (-> obj all-visible?) 'loading)
+     (set! (-> this inside-boxes) #f)
+     (set! (-> this meta-inside?) #f)
+     (set! (-> this force-inside?) #f)
+     (set! (-> this status) 'loaded)
+     (set! (-> this light-hash) (the-as light-hash 0))
+     (set! (-> this all-visible?) 'loading)
 
      ;; clear vis.
      (dotimes (v1-34 128)
-       (set! (-> (the-as (pointer int128) (&+ (-> obj vis-bits) (* v1-34 16)))) (the int128 0))
+       (set! (-> (the-as (pointer int128) (&+ (-> this vis-bits) (* v1-34 16)))) (the int128 0))
        )
      (countdown (v1-37 8)
-       (let ((a0-20 (-> obj vis-info v1-37)))
+       (let ((a0-20 (-> this vis-info v1-37)))
          (if a0-20
              (set! (-> a0-20 current-vis-string) (the-as uint -1))
              )
@@ -1552,37 +1552,37 @@ into 7 sections, which might explain the weird sizes in the center.
        )
      )
     )
-  (if (= (-> *level* log-in-level-bsp) (-> obj bsp))
+  (if (= (-> *level* log-in-level-bsp) (-> this bsp))
       (set! (-> *level* log-in-level-bsp) #f)
       )
-  obj
+  this
   )
 
-(defmethod unload! level ((obj level))
+(defmethod unload! ((this level))
   "Unload a level."
 
   ;; make sure it's not alive/active
-  (deactivate obj)
+  (deactivate this)
 
-  (when (!= (-> obj status) 'inactive)
+  (when (!= (-> this status) 'inactive)
     ;; first, unload anybody who borrows from us.
     (dotimes (s5-0 2)
-      (when (-> obj borrow-level s5-0)
-        (unload! (-> obj borrow-level s5-0))
-        (set! (-> obj borrow-level s5-0) #f)
+      (when (-> this borrow-level s5-0)
+        (unload! (-> this borrow-level s5-0))
+        (set! (-> this borrow-level s5-0) #f)
         )
       )
     ;; if we borrow from somebody, remove ourselves from them
-    (when (-> obj borrow-from-level)
+    (when (-> this borrow-from-level)
       (dotimes (v1-19 2)
-        (if (= obj (-> obj borrow-from-level borrow-level v1-19))
-            (set! (-> obj borrow-from-level borrow-level v1-19) #f)
+        (if (= this (-> this borrow-from-level borrow-level v1-19))
+            (set! (-> this borrow-from-level borrow-level v1-19) #f)
             )
         )
-      (set! (-> obj borrow-from-level) #f)
+      (set! (-> this borrow-from-level) #f)
       )
 
-    (case (-> obj status)
+    (case (-> this status)
       (('loading 'loading-bt)
        ;; kill the linker if we're mid link.
        (if (nonzero? link-reset)
@@ -1591,10 +1591,10 @@ into 7 sections, which might explain the weird sizes in the center.
        )
       (('alive 'active 'loaded)
        ;; run deactivate func.
-       (when (-> obj info deactivate-func)
-         (let ((s5-1 (-> obj info deactivate-func value)))
+       (when (-> this info deactivate-func)
+         (let ((s5-1 (-> this info deactivate-func value)))
            (if (and s5-1 (nonzero? s5-1) (type? s5-1 function))
-               ((the (function level none) s5-1) obj)
+               ((the (function level none) s5-1) this)
                )
            )
          )
@@ -1602,39 +1602,39 @@ into 7 sections, which might explain the weird sizes in the center.
       )
 
     ;; unlink art groups.
-    (when (or (= (-> obj status) 'loaded)
-              (= (-> obj status) 'alive)
-              (= (-> obj status) 'active)
-              (= (-> obj status) 'login)
+    (when (or (= (-> this status) 'loaded)
+              (= (-> this status) 'alive)
+              (= (-> this status) 'active)
+              (= (-> this status) 'login)
               )
-      (dotimes (s5-2 (-> obj art-group art-group-array length))
-        (let ((s4-0 (-> obj art-group art-group-array s5-2)))
+      (dotimes (s5-2 (-> this art-group art-group-array length))
+        (let ((s4-0 (-> this art-group art-group-array s5-2)))
           (if (needs-link? s4-0)
               (unlink-art! s4-0)
               )
           )
         )
       )
-    (set! (-> obj bsp) #f)
-    (set! (-> obj entity) #f)
-    (set! (-> obj status) 'inactive)
-    (set! (-> obj linking) #f)
-    (set! (-> obj art-group string-array length) 0)
-    (set! (-> obj art-group art-group-array length) 0)
-    (set! (-> obj mem-usage-block) (the-as memory-usage-block 0))
-    (set! (-> obj mem-usage) 0)
-    (set! (-> obj part-engine) #f)
+    (set! (-> this bsp) #f)
+    (set! (-> this entity) #f)
+    (set! (-> this status) 'inactive)
+    (set! (-> this linking) #f)
+    (set! (-> this art-group string-array length) 0)
+    (set! (-> this art-group art-group-array length) 0)
+    (set! (-> this mem-usage-block) (the-as memory-usage-block 0))
+    (set! (-> this mem-usage) 0)
+    (set! (-> this part-engine) #f)
     (dotimes (v1-60 4)
-      (set! (-> obj user-object v1-60) #f)
+      (set! (-> this user-object v1-60) #f)
       )
 
     ;; kill texture anims
-    (let ((v1-63 (-> obj status)))
+    (let ((v1-63 (-> this status)))
       (when (or (= v1-63 'alive) (or (= v1-63 'active) (= v1-63 'loaded)))
         (dotimes (s5-3 10)
-          (let ((a0-37 (-> obj info texture-anim s5-3)))
+          (let ((a0-37 (-> this info texture-anim s5-3)))
             (if a0-37
-                (set! (-> obj texture-anim-array s5-3)
+                (set! (-> this texture-anim-array s5-3)
                       (clear! (the-as texture-anim-array (-> a0-37 value)))
                       )
                 )
@@ -1643,27 +1643,27 @@ into 7 sections, which might explain the weird sizes in the center.
         )
       )
     (dotimes (v1-73 10)
-      (set! (-> obj texture-anim-array v1-73) #f)
+      (set! (-> this texture-anim-array v1-73) #f)
       )
-    (countdown (s5-4 (-> obj loaded-texture-page-count))
+    (countdown (s5-4 (-> this loaded-texture-page-count))
       (dotimes (v1-76 32)
-        (when (= (-> obj loaded-texture-page s5-4) (-> *texture-pool* common-page v1-76))
+        (when (= (-> this loaded-texture-page s5-4) (-> *texture-pool* common-page v1-76))
           (set! (-> *texture-pool* common-page v1-76) (the-as texture-page 0))
           0
           )
         )
-      (unload-page *texture-pool* (-> obj loaded-texture-page s5-4))
+      (unload-page *texture-pool* (-> this loaded-texture-page s5-4))
       )
-    (set! (-> obj loaded-texture-page-count) 0)
-    (unlink-shaders-in-heap *texture-page-dir* (-> obj heap))
-    (unlink-part-group-by-heap (-> obj heap))
-    (unlink-lightning-spec-by-heap (-> obj heap))
+    (set! (-> this loaded-texture-page-count) 0)
+    (unlink-shaders-in-heap *texture-page-dir* (-> this heap))
+    (unlink-part-group-by-heap (-> this heap))
+    (unlink-lightning-spec-by-heap (-> this heap))
     (particle-adgif-cache-flush)
-    (set! (-> obj loaded-text-info-count) 0)
+    (set! (-> this loaded-text-info-count) 0)
     (dotimes (s5-5 2)
       (let ((v1-90 (-> *art-control* buffer s5-5 pending-load-file)))
-        (if (and (>= (the-as int v1-90) (the-as int (-> obj heap base)))
-                 (< (the-as int v1-90) (the-as int (-> obj heap top-base)))
+        (if (and (>= (the-as int v1-90) (the-as int (-> this heap base)))
+                 (< (the-as int v1-90) (the-as int (-> this heap top-base)))
                  )
             (set-pending-file (-> *art-control* buffer s5-5) (the-as string #f) -1 (the-as handle #f) 100000000.0)
             )
@@ -1673,7 +1673,7 @@ into 7 sections, which might explain the weird sizes in the center.
       (dotimes (a0-59 (-> v1-100 length))
         (when (nonzero? a0-59)
           (let ((a1-20 (-> v1-100 a0-59)))
-            (when (and (-> a1-20 info) (= (-> a1-20 info level) (-> obj name)))
+            (when (and (-> a1-20 info) (= (-> a1-20 info level) (-> this name)))
               (countdown (a2-6 7)
                 (set! (-> a1-20 info hooks a2-6) #f)
                 )
@@ -1684,18 +1684,18 @@ into 7 sections, which might explain the weird sizes in the center.
       )
     (let ((v1-103 0)
           (a0-60 0)
-          (a1-23 (-> obj level-type))
+          (a1-23 (-> this level-type))
           )
       (while a1-23
         (+! a0-60 1)
         (+! v1-103 (-> a1-23 psize))
-        ;; PC port note : added this call to kill entities using level types that are being unloaded because of bad entity placement
+        ;; og:preserve-this added this call to kill entities using level types that are being unloaded because of bad entity placement
         (kill-by-type a1-23 *active-pool*)
         (set! (-> a1-23 symbol value) (the-as object 0))
         (set! a1-23 (the-as type (-> a1-23 method-table 8)))
         )
       )
-    (let* ((s5-6 (-> obj info packages))
+    (let* ((s5-6 (-> this info packages))
            (a0-61 (car s5-6))
            )
       (while (not (null? s5-6))
@@ -1711,15 +1711,15 @@ into 7 sections, which might explain the weird sizes in the center.
         (set! a0-61 (car s5-6))
         )
       )
-    (vis-clear obj)
-    (let ((v1-120 (-> obj heap)))
+    (vis-clear this)
+    (let ((v1-120 (-> this heap)))
       (set! (-> v1-120 current) (-> v1-120 base))
       )
-    (set! (-> obj memory-mask) (the-as uint 0))
-    (set! (-> obj code-memory-start) (the-as pointer 0))
-    (set! (-> obj code-memory-end) (the-as pointer 0))
-    (set! (-> obj level-type) #f)
-    (when (= (-> *level* loading-level) obj)
+    (set! (-> this memory-mask) (the-as uint 0))
+    (set! (-> this code-memory-start) (the-as pointer 0))
+    (set! (-> this code-memory-end) (the-as pointer 0))
+    (set! (-> this level-type) #f)
+    (when (= (-> *level* loading-level) this)
       (set! loading-level global)
       (set! (-> *level* loading-level) (-> *level* default-level))
       (set! (-> *level* log-in-level-bsp) #f)
@@ -1728,15 +1728,15 @@ into 7 sections, which might explain the weird sizes in the center.
       )
     (assign-draw-indices *level*)
     )
-  obj
+  this
   )
 
-(defmethod is-object-visible? level ((obj level) (arg0 int))
+(defmethod is-object-visible? ((this level) (arg0 int))
   "Is drawable arg0 visible? Note that this will return #f if the visibility data is not loaded."
 
   ;; check the vis bits!
   (let* (;; lwu v1, 388(a0)
-            (vis-data (-> obj vis-bits))
+            (vis-data (-> this vis-bits))
             ;; sra a0, a1, 3
             (byte-idx (sar arg0 3))
             ;; daddu v1, a0, v1
@@ -1757,7 +1757,7 @@ into 7 sections, which might explain the weird sizes in the center.
     )
   )
 
-(defmethod inside-boxes-check level ((obj level) (arg0 vector))
+(defmethod inside-boxes-check ((this level) (arg0 vector))
   "NOTE: this function used to check if we were in boxes - here it just checks
    a flag. However, it is still used to set the inside-boxes field, so it keeps
    the name we gave it in Jak 1.
@@ -1766,57 +1766,57 @@ into 7 sections, which might explain the weird sizes in the center.
    except for if the require-force-inside flag is set in the bsp-header, in which case
    it requires the level to be marked as force-inside?"
   (cond
-    ((not (-> obj bsp))
+    ((not (-> this bsp))
      #f
      )
-    ((-> obj force-inside?)
+    ((-> this force-inside?)
      #t
      )
     (else
-      (zero? (-> obj bsp cam-outside-bsp))
+      (zero? (-> this bsp cam-outside-bsp))
       )
     )
   )
 
-(defmethod debug-print-region-splitbox level ((obj level) (arg0 vector) (arg1 object))
+(defmethod debug-print-region-splitbox ((this level) (arg0 vector) (arg1 object))
   "Display debug info about the regions of a level."
   (cond
-    ((or (not (-> obj bsp)) (zero? (-> obj bsp region-tree)))
+    ((or (not (-> this bsp)) (zero? (-> this bsp region-tree)))
      )
-    ((nonzero? (-> obj bsp region-tree))
-     (debug-print (-> obj bsp region-tree) arg0 arg1)
+    ((nonzero? (-> this bsp region-tree))
+     (debug-print (-> this bsp region-tree) arg0 arg1)
      )
     )
   0
   (none)
   )
 
-(defmethod mem-usage level ((obj level) (arg0 memory-usage-block) (arg1 int))
+(defmethod mem-usage ((this level) (arg0 memory-usage-block) (arg1 int))
   "Compute the memory usage of a level."
-  (when (= (-> obj status) 'active)
+  (when (= (-> this status) 'active)
     (set! (-> arg0 length) (max 67 (-> arg0 length)))
     (set! (-> arg0 data 66 name) "entity-links")
-    (+! (-> arg0 data 66 count) (-> obj entity length))
-    (let ((v1-8 (asize-of (-> obj entity))))
+    (+! (-> arg0 data 66 count) (-> this entity length))
+    (let ((v1-8 (asize-of (-> this entity))))
       (+! (-> arg0 data 66 used) v1-8)
       (+! (-> arg0 data 66 total) (logand -16 (+ v1-8 15)))
       )
-    (mem-usage (-> obj art-group) arg0 arg1)
+    (mem-usage (-> this art-group) arg0 arg1)
     (set! (-> arg0 length) (max 66 (-> arg0 length)))
     (set! (-> arg0 data 65 name) "level-code")
     (+! (-> arg0 data 65 count) 1)
-    (let ((v1-20 (&- (-> obj code-memory-end) (the-as uint (-> obj code-memory-start)))))
+    (let ((v1-20 (&- (-> this code-memory-end) (the-as uint (-> this code-memory-start)))))
       (+! (-> arg0 data 65 used) v1-20)
       (+! (-> arg0 data 65 total) (logand -16 (+ v1-20 15)))
       )
-    (countdown (s3-0 (-> obj loaded-texture-page-count))
-      (mem-usage (-> obj loaded-texture-page s3-0) arg0 arg1)
+    (countdown (s3-0 (-> this loaded-texture-page-count))
+      (mem-usage (-> this loaded-texture-page s3-0) arg0 arg1)
       )
-    (countdown (s3-1 (-> obj loaded-text-info-count))
-      (mem-usage (-> obj loaded-text-info s3-1) arg0 arg1)
+    (countdown (s3-1 (-> this loaded-text-info-count))
+      (mem-usage (-> this loaded-text-info s3-1) arg0 arg1)
       )
     (countdown (s3-2 8)
-      (let ((s2-0 (-> obj vis-info s3-2)))
+      (let ((s2-0 (-> this vis-info s3-2)))
         (when s2-0
           (cond
             ((zero? s3-2)
@@ -1842,13 +1842,13 @@ into 7 sections, which might explain the weird sizes in the center.
         )
       )
     ;; most of this is in the bsp:
-    (mem-usage (-> obj bsp) arg0 arg1)
+    (mem-usage (-> this bsp) arg0 arg1)
     )
-  obj
+  this
   )
 
 
-(defmethod alloc-levels-if-needed level-group ((obj level-group) (arg0 symbol))
+(defmethod alloc-levels-if-needed ((this level-group) (arg0 symbol))
   "Setup for playing levels by loading the required base packages (art, common)
    and allocating the level heap."
   (when (zero? (-> *level* heap base))
@@ -1868,7 +1868,7 @@ into 7 sections, which might explain the weird sizes in the center.
                     DEBUG_LEVEL_HEAP_SIZE
                     )
                 )
-          (gp-1 (-> obj heap))
+          (gp-1 (-> this heap))
           )
       (start-debug "about to allocate level heap with size #x~X (~f MB)~%" s5-1 (/ (the float s5-1) 1024.))
       (set! (-> gp-1 base) (kmalloc global s5-1 (kmalloc-flags) "heap"))
@@ -1882,47 +1882,47 @@ into 7 sections, which might explain the weird sizes in the center.
   (none)
   )
 
-(defmethod level-get-with-status level-group ((obj level-group) (arg0 symbol))
+(defmethod level-get-with-status ((this level-group) (arg0 symbol))
   "Get a level with the given status."
-  (dotimes (v1-0 (-> obj length))
-    (if (= (-> obj level v1-0 status) arg0)
-        (return (-> obj level v1-0))
+  (dotimes (v1-0 (-> this length))
+    (if (= (-> this level v1-0 status) arg0)
+        (return (-> this level v1-0))
         )
     )
   (the-as level #f)
   )
 
-(defmethod level-get-most-disposable level-group ((obj level-group))
+(defmethod level-get-most-disposable ((this level-group))
   "Get the level that's least useful."
-  (dotimes (v1-0 (-> obj length))
-    (case (-> obj level v1-0 status)
+  (dotimes (v1-0 (-> this length))
+    (case (-> this level v1-0 status)
       (('inactive)
-       (return (-> obj level v1-0))
+       (return (-> this level v1-0))
        )
       )
     )
-  (dotimes (v1-6 (-> obj length))
-    (case (-> obj level v1-6 status)
+  (dotimes (v1-6 (-> this length))
+    (case (-> this level v1-6 status)
       (('loading 'loading-bt)
-       (return (-> obj level v1-6))
+       (return (-> this level v1-6))
        )
       )
     )
-  (dotimes (v1-12 (-> obj length))
-    (case (-> obj level v1-12 status)
+  (dotimes (v1-12 (-> this length))
+    (case (-> this level v1-12 status)
       (('loaded)
-       (return (-> obj level v1-12))
+       (return (-> this level v1-12))
        )
       )
     )
   (let ((v0-0 (the-as level #f)))
-    (dotimes (v1-18 (-> obj length))
-      (case (-> obj level v1-18 status)
+    (dotimes (v1-18 (-> this length))
+      (case (-> this level v1-18 status)
         (('active)
-         (if (and (not (-> obj level v1-18 inside-boxes))
-                  (or (not v0-0) (< (-> obj level v1-18 info priority) (-> v0-0 info priority)))
+         (if (and (not (-> this level v1-18 inside-boxes))
+                  (or (not v0-0) (< (-> this level v1-18 info priority) (-> v0-0 info priority)))
                   )
-             (set! v0-0 (-> obj level v1-18))
+             (set! v0-0 (-> this level v1-18))
              )
          )
         )
@@ -1931,19 +1931,19 @@ into 7 sections, which might explain the weird sizes in the center.
     )
   )
 
-(defmethod level-get level-group ((obj level-group) (arg0 symbol))
+(defmethod level-get ((this level-group) (arg0 symbol))
   "Get a level by name or load-name"
-  (dotimes (v1-0 (-> obj length))
-    (if (and (!= (-> obj level v1-0 status) 'inactive)
-             (or (= (-> obj level v1-0 name) arg0) (= (-> obj level v1-0 load-name) arg0))
+  (dotimes (v1-0 (-> this length))
+    (if (and (!= (-> this level v1-0 status) 'inactive)
+             (or (= (-> this level v1-0 name) arg0) (= (-> this level v1-0 load-name) arg0))
              )
-        (return (-> obj level v1-0))
+        (return (-> this level v1-0))
         )
     )
   (the-as level #f)
   )
 
-(defmethod art-group-get-by-name level-group ((obj level-group) (arg0 string) (arg1 (pointer uint32)))
+(defmethod art-group-get-by-name ((this level-group) (arg0 string) (arg1 (pointer uint32)))
   "Search all levels for an art-group. Return the art group, or #f. Optionally return the level index."
   (countdown (s4-0 LEVEL_TOTAL)
     (let ((s3-0 (-> *level* level s4-0)))
@@ -1962,15 +1962,15 @@ into 7 sections, which might explain the weird sizes in the center.
   (the-as art-group #f)
   )
 
-(defmethod activate-levels! level-group ((obj level-group))
+(defmethod activate-levels! ((this level-group))
   "Set all levels to active."
-  (dotimes (s5-0 (-> obj length))
-    (level-status-update! (-> obj level s5-0) 'active)
+  (dotimes (s5-0 (-> this length))
+    (level-status-update! (-> this level s5-0) 'active)
     )
   0
   )
 
-(defmethod level-get-target-inside level-group ((obj level-group))
+(defmethod level-get-target-inside ((this level-group))
   "Get the level that target is 'in'. With a bunch of tricks for what 'in' really means."
 
   (let ((s5-0 (target-pos 0)))
@@ -1979,8 +1979,8 @@ into 7 sections, which might explain the weird sizes in the center.
     ;; this is the most 'in' level.
     (let ((v1-1 (-> *load-state* vis-nick)))
       (when v1-1
-        (dotimes (a0-3 (-> obj length))
-          (let ((a1-3 (-> obj level a0-3)))
+        (dotimes (a0-3 (-> this length))
+          (let ((a1-3 (-> this level a0-3)))
             (when (= (-> a1-3 status) 'active)
               (if (= (-> a1-3 name) v1-1)
                   (return a1-3)
@@ -1993,8 +1993,8 @@ into 7 sections, which might explain the weird sizes in the center.
 
     ;; next, try the level for the continue point.
     (let ((v1-5 (-> *game-info* current-continue level)))
-      (dotimes (a0-5 (-> obj length))
-        (let ((a1-8 (-> obj level a0-5)))
+      (dotimes (a0-5 (-> this length))
+        (let ((a1-8 (-> this level a0-5)))
           (when (= (-> a1-8 status) 'active)
             (if (= (-> a1-8 name) v1-5)
                 (return a1-8)
@@ -2008,8 +2008,8 @@ into 7 sections, which might explain the weird sizes in the center.
     ;; (note that this is slightly broken, f30-0 is never updated)
     (let ((s4-0 (the-as level #f)))
       (let ((f30-0 0.0))
-        (dotimes (s3-0 (-> obj length))
-          (let ((s2-0 (-> obj level s3-0)))
+        (dotimes (s3-0 (-> this length))
+          (let ((s2-0 (-> this level s3-0)))
             (when (= (-> s2-0 status) 'active)
               (let ((f0-0 (vector-vector-distance (-> s2-0 bsp bsphere) s5-0)))
                 (if (and (-> s2-0 inside-boxes) (or (not s4-0) (< f0-0 f30-0)))
@@ -2027,8 +2027,8 @@ into 7 sections, which might explain the weird sizes in the center.
     )
 
   ;; if all that failed, try any with the meta-inside? flag.
-  (dotimes (v1-23 (-> obj length))
-    (let ((a0-11 (-> obj level v1-23)))
+  (dotimes (v1-23 (-> this length))
+    (let ((a0-11 (-> this level v1-23)))
       (when (= (-> a0-11 status) 'active)
         (if (-> a0-11 meta-inside?)
             (return a0-11)
@@ -2040,8 +2040,8 @@ into 7 sections, which might explain the weird sizes in the center.
   ;; if that still didn't work, return any active level.
   (let ((v0-1 (the-as level #f)))
     0.0
-    (dotimes (v1-26 (-> obj length))
-      (let ((a0-16 (-> obj level v1-26)))
+    (dotimes (v1-26 (-> this length))
+      (let ((a0-16 (-> this level v1-26)))
         (when (= (-> a0-16 status) 'active)
           (if (not v0-1)
               (set! v0-1 a0-16)
@@ -2054,18 +2054,18 @@ into 7 sections, which might explain the weird sizes in the center.
   )
 
 
-(defmethod load-commands-set! level-group ((obj level-group) (arg0 pair))
+(defmethod load-commands-set! ((this level-group) (arg0 pair))
   "Set the load-commands of a level."
-  (set! (-> obj load-commands) arg0)
+  (set! (-> this load-commands) arg0)
   (none)
   )
 
-(defmethod mem-usage level-group ((obj level-group) (arg0 memory-usage-block) (arg1 int))
+(defmethod mem-usage ((this level-group) (arg0 memory-usage-block) (arg1 int))
   "Compute mem-usage for an entire level-group."
-  (dotimes (s3-0 (-> obj length))
-    (mem-usage (-> obj level s3-0) arg0 arg1)
+  (dotimes (s3-0 (-> this length))
+    (mem-usage (-> this level s3-0) arg0 arg1)
     )
-  obj
+  this
   )
 
 (defun bg ((arg0 symbol))
@@ -2389,7 +2389,7 @@ into 7 sections, which might explain the weird sizes in the center.
   0
   )
 
-(defmethod update! load-state ((obj load-state))
+(defmethod update! ((this load-state))
   "Update level stuff based on load state.
    This does scary transitions."
 
@@ -2413,7 +2413,7 @@ into 7 sections, which might explain the weird sizes in the center.
                 ;; check if still wanted
                 (let ((still-wanted #f))
                   (dotimes (t0-2 LEVEL_MAX)
-                    (if (= (-> unload-candidate-lev name) (-> obj want t0-2 name))
+                    (if (= (-> unload-candidate-lev name) (-> this want t0-2 name))
                         (set! still-wanted #t)
                         )
                     )
@@ -2427,6 +2427,7 @@ into 7 sections, which might explain the weird sizes in the center.
               )
             )
 
+          ;; og:preserve-this
           ;; did we find one to unload?
           ;; PC NOTE : added an extra check for DGO time and name. If you start a load and discard it on the next frame,
           ;; you may attempt to start a new load right away before the ISO thread can properly stop the previous load
@@ -2472,12 +2473,12 @@ into 7 sections, which might explain the weird sizes in the center.
           (set! (-> desired-levels a0-14) #f)
           )
         (dotimes (want-lev-idx LEVEL_MAX) ;; loop over wants
-          (when (-> obj want want-lev-idx name)
-            (set! (-> desired-levels want-lev-idx) (-> obj want want-lev-idx name))
+          (when (-> this want want-lev-idx name)
+            (set! (-> desired-levels want-lev-idx) (-> this want want-lev-idx name))
             ;; check if this wanted level is already present, in any state.
             (dotimes (a1-17 LEVEL_MAX)
               (let ((a2-13 (-> *level* level a1-17)))
-                (if (and (!= (-> a2-13 status) 'inactive) (= (-> a2-13 name) (-> obj want want-lev-idx name)))
+                (if (and (!= (-> a2-13 status) 'inactive) (= (-> a2-13 name) (-> this want want-lev-idx name)))
                     (set! (-> desired-levels want-lev-idx) #f) ;; it's already there, not candidate for load start
                     )
                 )
@@ -2499,13 +2500,13 @@ into 7 sections, which might explain the weird sizes in the center.
             ;; loading only starts if we're not busy - there's a strange exception that if we have no levels at all,
             ;; and dgo is busy, we at least start the load.
             (when (and (or no-levels-at-all (not (check-busy *load-dgo-rpc*))) (not (load-in-progress? *level*)))
-              (format 0 "Adding level ~A~%" (-> obj want want-lev-idx-to-load name))
+              (format 0 "Adding level ~A~%" (-> this want want-lev-idx-to-load name))
 
               ;; do the actual level assignment
-              (let ((new-lev (level-get-for-use *level* (-> obj want want-lev-idx-to-load name) 'loaded)))
+              (let ((new-lev (level-get-for-use *level* (-> this want want-lev-idx-to-load name) 'loaded)))
 
                 ;; if we have no levels at all, there's nothing we can show until this one is loading, so block here and load.
-                (when (and no-levels-at-all (-> obj want want-lev-idx-to-load display?))
+                (when (and no-levels-at-all (-> this want want-lev-idx-to-load display?))
                   (format 0 "Waiting for level to load~%")
                   (while (or (= (-> new-lev status) 'loading) (= (-> new-lev status) 'loading-bt) (= (-> new-lev status) 'login))
                     (load-continue new-lev)
@@ -2522,36 +2523,36 @@ into 7 sections, which might explain the weird sizes in the center.
   ;; process other changes in want.
   ;; loop over all wanted levels
   (dotimes (want-lev-i LEVEL_MAX)
-    (when (-> obj want want-lev-i name)
+    (when (-> this want want-lev-i name)
       ;; and find the associated level
       (dotimes (lev-i LEVEL_TOTAL)
         (let ((lev (-> *level* level lev-i)))
           (when (!= (-> lev status) 'inactive)
-            (when (= (-> lev name) (-> obj want want-lev-i name))
+            (when (= (-> lev name) (-> this want want-lev-i name))
 
               ;; change in display:
-              (when (!= (-> lev display?) (-> obj want want-lev-i display?))
+              (when (!= (-> lev display?) (-> this want want-lev-i display?))
                 (cond
                   ((not (-> lev display?)) ;; off to on:
                    (cond
                      ((or (= (-> lev status) 'loaded) (= (-> lev status) 'active))
-                      (format 0 "Displaying level ~A [~A]~%" (-> obj want want-lev-i name) (-> obj want want-lev-i display?))
+                      (format 0 "Displaying level ~A [~A]~%" (-> this want want-lev-i name) (-> this want want-lev-i display?))
                       ;; will activate/birth, starting entities and background drawing.
                       (level-get-for-use *level* (-> lev info name) 'active)
-                      (set! (-> lev display?) (-> obj want want-lev-i display?))
+                      (set! (-> lev display?) (-> this want want-lev-i display?))
                       )
                      (else
                        ;; but the level isn't ready! trip jak (unless we have display-no-wait.)
-                       (if (and (-> lev info wait-for-load) (!= (-> obj want want-lev-i display?) 'display-no-wait))
+                       (if (and (-> lev info wait-for-load) (!= (-> this want want-lev-i display?) 'display-no-wait))
                            (send-event *target* 'loading)
                            )
                        (if (= *cheat-mode* 'debug)
-                           (format *stdcon* "display on for ~A but level is loading~%" (-> obj want want-lev-i name))
+                           (format *stdcon* "display on for ~A but level is loading~%" (-> this want want-lev-i name))
                            )
                        )
                      )
                    )
-                  ((not (-> obj want want-lev-i display?)) ;; on -> off.
+                  ((not (-> this want want-lev-i display?)) ;; on -> off.
                    (set! (-> lev display?) #f)
                    (format 0 "Turning level ~A off~%" (-> lev name))
                    (deactivate lev)
@@ -2559,31 +2560,31 @@ into 7 sections, which might explain the weird sizes in the center.
                   (else
                     ;; other change (special, etc)
                     (format 0 "Setting level ~A display command to ~A~%"
-                      (-> obj want want-lev-i name)
-                      (-> obj want want-lev-i display?)
+                      (-> this want want-lev-i name)
+                      (-> this want want-lev-i display?)
                       )
-                    (set! (-> lev display?) (-> obj want want-lev-i display?))
+                    (set! (-> lev display?) (-> this want want-lev-i display?))
                     )
                   )
                 )
 
               ;; update force-all-visible
-              (when (!= (-> lev force-all-visible?) (-> obj want want-lev-i force-vis?))
-                (set! (-> lev force-all-visible?) (-> obj want want-lev-i force-vis?))
+              (when (!= (-> lev force-all-visible?) (-> this want want-lev-i force-vis?))
+                (set! (-> lev force-all-visible?) (-> this want want-lev-i force-vis?))
                 (format 0 "Setting force-all-visible?[~A] to ~A~%"
-                  (-> obj want want-lev-i name)
-                  (-> obj want want-lev-i force-vis?)
+                  (-> this want want-lev-i name)
+                  (-> this want want-lev-i force-vis?)
                   )
                 )
 
               ;; update force-inside
-              (when (!= (-> lev force-inside?) (-> obj want want-lev-i force-inside?))
+              (when (!= (-> lev force-inside?) (-> this want want-lev-i force-inside?))
                 (format 0 "Setting force-inside?[~A] ~A->~A~%"
-                  (-> obj want want-lev-i name)
+                  (-> this want want-lev-i name)
                   (-> lev force-inside?)
-                  (-> obj want want-lev-i force-inside?)
+                  (-> this want want-lev-i force-inside?)
                   )
-                (set! (-> lev force-inside?) (-> obj want want-lev-i force-inside?))
+                (set! (-> lev force-inside?) (-> this want want-lev-i force-inside?))
                 )
               )
             )
@@ -2601,7 +2602,7 @@ into 7 sections, which might explain the weird sizes in the center.
         (when (= (-> a2-32 status) 'active)
           ;; take any level that we're inside of, and has continue points
           (when (and (-> a2-32 inside-boxes) (not (null? (-> a2-32 info continues))))
-            (if (= (-> a2-32 name) (-> obj vis-nick))
+            (if (= (-> a2-32 name) (-> this vis-nick))
                 (goto cfg-125)
                 )
             (set! lev-for-vis a2-32)
@@ -2610,8 +2611,8 @@ into 7 sections, which might explain the weird sizes in the center.
           )
         )
       )
-    (if (and (>= num-vis-levs 1) (!= (-> lev-for-vis name) (-> obj vis-nick)))
-        (want-vis-level obj (-> lev-for-vis name))
+    (if (and (>= num-vis-levs 1) (!= (-> lev-for-vis name) (-> this vis-nick)))
+        (want-vis-level this (-> lev-for-vis name))
         )
     )
   (label cfg-125)
@@ -2624,20 +2625,20 @@ into 7 sections, which might explain the weird sizes in the center.
 ;; the draw-level array of level-group stores levels in the order they should be drawn.
 ;; eg: level3 of the DMA bucket array is actually (-> *level* draw-level 3), not (-> *level* level 3).
 
-(defmethod assign-draw-indices level-group ((obj level-group))
+(defmethod assign-draw-indices ((this level-group))
   "Sort the levels by draw priority."
   (local-vars (t0-3 symbol))
-  (set! (-> obj draw-level-count) 0)
+  (set! (-> this draw-level-count) 0)
   (dotimes (v1-0 LEVEL_TOTAL)
     (let ((f0-0 100000.0)
           (a1-1 (the-as level #f))
           )
-      (dotimes (a2-0 (-> obj length))
-        (let ((a3-3 (-> obj level a2-0)))
+      (dotimes (a2-0 (-> this length))
+        (let ((a3-3 (-> this level a2-0)))
           (when (= (-> a3-3 status) 'active)
             (set! t0-3 (and (< (-> a3-3 draw-priority) f0-0) (begin
-                                                               (dotimes (t0-4 (-> obj draw-level-count))
-                                                                 (when (= a3-3 (-> obj draw-level t0-4))
+                                                               (dotimes (t0-4 (-> this draw-level-count))
+                                                                 (when (= a3-3 (-> this draw-level t0-4))
                                                                    (set! t0-3 #f)
                                                                    (goto cfg-14)
                                                                    )
@@ -2655,22 +2656,22 @@ into 7 sections, which might explain the weird sizes in the center.
           )
         )
       (when a1-1
-        (set! (-> obj draw-level (-> obj draw-level-count)) a1-1)
-        (set! (-> a1-1 draw-index) (-> obj draw-level-count))
-        (+! (-> obj draw-level-count) 1)
+        (set! (-> this draw-level (-> this draw-level-count)) a1-1)
+        (set! (-> a1-1 draw-index) (-> this draw-level-count))
+        (+! (-> this draw-level-count) 1)
         )
       )
     )
-  (while (< (-> obj draw-level-count) LEVEL_TOTAL)
-    (set! (-> obj draw-level (-> obj draw-level-count)) #f)
-    (+! (-> obj draw-level-count) 1)
+  (while (< (-> this draw-level-count) LEVEL_TOTAL)
+    (set! (-> this draw-level (-> this draw-level-count)) #f)
+    (+! (-> this draw-level-count) 1)
     )
-  (set! (-> obj draw-level LEVEL_MAX) (-> obj default-level))
-  (set! (-> (&-> obj default-level draw-index) 0) LEVEL_MAX)
+  (set! (-> this draw-level LEVEL_MAX) (-> this default-level))
+  (set! (-> (&-> this default-level draw-index) 0) LEVEL_MAX)
   (dotimes (v1-12 LEVEL_TOTAL)
-    (let ((a2-9 (-> obj level v1-12)))
+    (let ((a2-9 (-> this level v1-12)))
       (if a2-9
-          (set! (-> obj draw-index-map v1-12) (the-as uint (-> a2-9 draw-index)))
+          (set! (-> this draw-index-map v1-12) (the-as uint (-> a2-9 draw-index)))
           )
       )
     )
@@ -2678,7 +2679,7 @@ into 7 sections, which might explain the weird sizes in the center.
   (none)
   )
 
-(defmethod level-update level-group ((obj level-group))
+(defmethod level-update ((this level-group))
 
   (local-vars (v1-101 symbol))
   (camera-pos)
@@ -2688,10 +2689,10 @@ into 7 sections, which might explain the weird sizes in the center.
   (update *art-control* #t)
   (clear-rec *art-control*)
   (dotimes (s5-0 LEVEL_MAX)
-    (load-continue (-> obj level s5-0))
+    (load-continue (-> this level s5-0))
     )
-  (dotimes (s5-1 (-> obj length))
-    (let ((s4-0 (-> obj level s5-1)))
+  (dotimes (s5-1 (-> this length))
+    (let ((s4-0 (-> this level s5-1)))
       (when (= (-> s4-0 status) 'active)
         (set! (-> s4-0 inside-boxes) (inside-boxes-check s4-0 (-> *math-camera* trans)))
         (if (-> s4-0 inside-boxes)
@@ -2702,12 +2703,12 @@ into 7 sections, which might explain the weird sizes in the center.
     )
   (update! *load-state*)
 
-  (dotimes (s5-2 (-> obj length))
-    (let ((s4-1 (-> obj level s5-2)))
+  (dotimes (s5-2 (-> this length))
+    (let ((s4-1 (-> this level s5-2)))
       (when (= (-> s4-1 status) 'active)
         (when (-> s4-1 inside-boxes)
-          (dotimes (v1-40 (-> obj length))
-            (let ((a0-13 (-> obj level v1-40)))
+          (dotimes (v1-40 (-> this length))
+            (let ((a0-13 (-> this level v1-40)))
               (when (= (-> a0-13 status) 'active)
                 (if (and (!= s4-1 a0-13) (not (-> a0-13 inside-boxes)))
                     (set! (-> a0-13 meta-inside?) #f)
@@ -2716,7 +2717,7 @@ into 7 sections, which might explain the weird sizes in the center.
               )
             )
           )
-        (when (and (null? (-> obj load-commands))
+        (when (and (null? (-> this load-commands))
                    (= (-> s4-1 name) (-> *load-state* vis-nick))
                    (begin
                      (set! (-> *setting-control* user-default music) (-> s4-1 info music-bank))
@@ -2763,8 +2764,8 @@ into 7 sections, which might explain the weird sizes in the center.
         )
       )
     )
-  (dotimes (v1-88 (-> obj length))
-    (let ((a0-48 (-> obj level v1-88)))
+  (dotimes (v1-88 (-> this length))
+    (let ((a0-48 (-> this level v1-88)))
       (when (= (-> a0-48 status) 'active)
         (set! (-> a0-48 vis-self-index) 0)
         0
@@ -2772,8 +2773,8 @@ into 7 sections, which might explain the weird sizes in the center.
       )
     )
   (when (= *cheat-mode* 'debug)
-    (dotimes (s5-3 (-> obj length))
-      (let ((v1-96 (-> obj level s5-3)))
+    (dotimes (s5-3 (-> this length))
+      (let ((v1-96 (-> this level s5-3)))
         (when (= (-> v1-96 status) 'active)
           (if (and (= (-> v1-96 status) 'active)
                    (!= (-> v1-96 display?) 'special)
@@ -2786,7 +2787,7 @@ into 7 sections, which might explain the weird sizes in the center.
       )
     )
   (countdown (v1-100 LEVEL_MAX)
-    (when (-> obj level v1-100 inside-boxes)
+    (when (-> this level v1-100 inside-boxes)
       (set! v1-101 #f)
       (goto cfg-90)
       )
@@ -2798,8 +2799,8 @@ into 7 sections, which might explain the weird sizes in the center.
       0
       )
     (else
-      (dotimes (s5-4 (-> obj length))
-        (let ((s4-3 (-> obj level s5-4)))
+      (dotimes (s5-4 (-> this length))
+        (let ((s4-3 (-> this level s5-4)))
           (when (= (-> s4-3 status) 'active)
             (dotimes (s3-1 8)
               (let ((s2-1 (-> s4-3 vis-info s3-1)))
@@ -2810,7 +2811,7 @@ into 7 sections, which might explain the weird sizes in the center.
                      (set! (-> s2-1 from-bsp) (-> s4-3 bsp))
                      )
                     (else
-                      (let ((v1-114 (level-get obj (-> s2-1 from-level))))
+                      (let ((v1-114 (level-get this (-> s2-1 from-level))))
                         (set! (-> s2-1 from-bsp) (if v1-114
                                                      (-> v1-114 bsp)
                                                      )
@@ -2844,7 +2845,7 @@ into 7 sections, which might explain the weird sizes in the center.
         )
       )
     )
-  (assign-draw-indices obj)
+  (assign-draw-indices this)
   (when (or *display-level-border* *display-texture-distances* *display-texture-download* *display-split-box-info*)
     (when *display-level-border*
       (format
@@ -2875,7 +2876,7 @@ into 7 sections, which might explain the weird sizes in the center.
         )
       )
     (dotimes (s5-5 LEVEL_TOTAL)
-      (let ((s4-4 (-> obj level s5-5)))
+      (let ((s4-4 (-> this level s5-5)))
         (when (or (= (-> s4-4 status) 'active) (= (-> s4-4 status) 'reserved))
           (let ((t9-19 format)
                 (a0-90 *stdcon*)
@@ -2925,12 +2926,12 @@ into 7 sections, which might explain the weird sizes in the center.
         )
       )
     )
-  (when (and (-> obj disk-load-timing?) (-> obj load-level))
+  (when (and (-> this disk-load-timing?) (-> this load-level))
     (let ((s5-6 format)
           (s4-5 *stdcon*)
           (s3-2 "~0Kload ~16S ~5S ~5DK  ~5,,2fs  ~5,,2fs~1K ~5,,0f k/s~%")
-          (s2-2 (-> obj load-level))
-          (v1-180 (lookup-level-info (-> obj load-level)))
+          (s2-2 (-> this load-level))
+          (v1-180 (lookup-level-info (-> this load-level)))
           )
       (s5-6
         s4-5
@@ -2940,36 +2941,41 @@ into 7 sections, which might explain the weird sizes in the center.
             (-> v1-180 nickname)
             ""
             )
-        (shr (-> obj load-size) 10)
-        (-> obj load-time)
-        (-> obj load-login-time)
-        (if (= (-> obj load-time) 0.0)
+        (shr (-> this load-size) 10)
+        (-> this load-time)
+        (-> this load-login-time)
+        (if (= (-> this load-time) 0.0)
             0
-            (* 0.0009765625 (/ (the float (-> obj load-size)) (-> obj load-time)))
+            (* 0.0009765625 (/ (the float (-> this load-size)) (-> this load-time)))
             )
         )
       )
     )
-  ;; pc port note : this was hardcoded to the top of EE memory (#x2000000)
+  ;; og:preserve-this this was hardcoded to the top of EE memory (#x2000000)
   (let ((v1-186 (&- (-> global top-base) (-> global current))))
     (if (and (not *debug-segment*) (< v1-186 (* 64 1024)))
         (format *stdcon* "~3Lglobal heap fatally low at ~DK free~%~0L" (/ v1-186 (* 1024 1024)))
         )
     )
 
-  ;; pc port added
-  (let ((lev-names (new 'stack-no-clear 'array 'string LEVEL_MAX)))
+  ;; og:preserve-this added
+  (let ((lev-names (new 'stack-no-clear 'array 'string LEVEL_MAX))
+        (active-lev-names (new 'stack-no-clear 'array 'string LEVEL_MAX)))
     (dotimes (i LEVEL_MAX)
+      (set! (-> active-lev-names i) "none")
+      (set! (-> lev-names i) "none")
       (cond
-        ((= (-> obj level i status) 'inactive)
-         (set! (-> lev-names i) "none")
-         )
-        (else
-          (set! (-> lev-names i) (symbol->string (-> obj level i nickname)))
+        ((or (= (-> this level i status) 'active)
+             (= (-> this level i status) 'alive)
+             (= (-> this level i status) 'loaded))
+          (set! (-> lev-names i) (symbol->string (-> this level i nickname)))
+          (if (-> this level i display?)
+              (set! (-> active-lev-names i) (symbol->string (-> this level i nickname))))
           )
         )
       )
     (__pc-set-levels lev-names)
+    (__pc-set-active-levels active-lev-names)
     )
   0
   (none)

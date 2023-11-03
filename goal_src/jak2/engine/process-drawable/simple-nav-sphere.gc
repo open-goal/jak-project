@@ -8,22 +8,17 @@
 ;; DECOMP BEGINS
 
 (deftype simple-nav-sphere (process-drawable)
-  ((root        collide-shape  :override)
-   (first-time? symbol         :offset-assert 200)
-   (track-joint int32          :offset-assert 204)
+  ((root         collide-shape :override)
+   (first-time?  symbol)
+   (track-joint  int32)
    )
-  :heap-base #x50
-  :method-count-assert 22
-  :size-assert         #xd0
-  :flag-assert         #x16005000d0
-  (:methods
-    (idle () _type_ :state 20)
-    (active () _type_ :state 21)
+  (:state-methods
+    idle
+    active
     )
   )
 
 
-;; WARN: Return type mismatch object vs none.
 (defbehavior simple-nav-sphere-event-handler simple-nav-sphere ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
   (case event-type
     (('die-fast)
@@ -44,19 +39,18 @@
      #t
      )
     )
-  (none)
   )
 
-(defmethod run-logic? simple-nav-sphere ((obj simple-nav-sphere))
+(defmethod run-logic? ((this simple-nav-sphere))
   (cond
     (*display-nav-marks*
       #t
       )
-    ((>= (-> obj track-joint) 0)
+    ((>= (-> this track-joint) 0)
      #t
      )
-    ((-> obj first-time?)
-     (set! (-> obj first-time?) #f)
+    ((-> this first-time?)
+     (set! (-> this first-time?) #f)
      #t
      )
     )
@@ -64,10 +58,7 @@
 
 (defstate idle (simple-nav-sphere)
   :virtual #t
-  :event (the-as
-    (function process int symbol event-message-block object :behavior simple-nav-sphere)
-    simple-nav-sphere-event-handler
-    )
+  :event simple-nav-sphere-event-handler
   :trans (behavior ()
     (if *display-nav-marks*
         (add-debug-sphere
@@ -78,17 +69,13 @@
           (new 'static 'rgba :r #x80 :g #x40 :a #x80)
           )
         )
-    (none)
     )
-  :code (the-as (function none :behavior simple-nav-sphere) sleep-code)
+  :code sleep-code
   )
 
 (defstate active (simple-nav-sphere)
   :virtual #t
-  :event (the-as
-    (function process int symbol event-message-block object :behavior simple-nav-sphere)
-    simple-nav-sphere-event-handler
-    )
+  :event simple-nav-sphere-event-handler
   :trans (behavior ()
     (let ((v1-0 (ppointer->process (-> self parent)))
           (gp-0 (new 'stack-no-clear 'vector))
@@ -96,9 +83,8 @@
       (vector<-cspace! gp-0 (-> (the-as process-drawable v1-0) node-list data (-> self track-joint)))
       (move-to-point! (-> self root) gp-0)
       )
-    (none)
     )
-  :code (the-as (function none :behavior simple-nav-sphere) sleep-code)
+  :code sleep-code
   )
 
 ;; WARN: Return type mismatch object vs none.
@@ -133,9 +119,7 @@
     (set! (-> self root) s5-0)
     )
   (logclear! (-> self mask) (process-mask actor-pause enemy))
-  (set! (-> self event-hook)
-        (the-as (function process int symbol event-message-block object) simple-nav-sphere-event-handler)
-        )
+  (set! (-> self event-hook) simple-nav-sphere-event-handler)
   (if arg2
       (add-process-drawable-to-navmesh arg2 self #f)
       (nav-mesh-connect-from-ent self)

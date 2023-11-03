@@ -24,11 +24,12 @@
   )
 
 (defun part-progress-hud-orb-func ((arg0 sparticle-system) (arg1 sparticle-cpuinfo) (arg2 matrix))
+  ;; og:preserve-this
   (#cond
    (PC_PORT
     (unless (and *pc-settings* (not (-> *pc-settings* use-vis?)))
-      (set! (-> arg2 vector 0 w) (/ 5324.8 (-> *progress-process* 0 sides-x-scale)))
-      (set! (-> arg2 vector 1 w) (/ 5324.8 (-> *progress-process* 0 sides-x-scale)))
+  (set! (-> arg2 vector 0 w) (/ 5324.8 (-> *progress-process* 0 sides-x-scale)))
+  (set! (-> arg2 vector 1 w) (/ 5324.8 (-> *progress-process* 0 sides-x-scale)))
       )
     )
    (#t
@@ -40,11 +41,12 @@
   )
 
 (defun part-progress-hud-buzzer-func ((arg0 sparticle-system) (arg1 sparticle-cpuinfo) (arg2 matrix))
+  ;; og:preserve-this
   (#cond
    (PC_PORT
     (unless (and *pc-settings* (not (-> *pc-settings* use-vis?)))
-      (set! (-> arg2 vector 0 w) (/ 6144.0 (-> *progress-process* 0 sides-x-scale)))
-      (set! (-> arg2 vector 1 w) (/ 6144.0 (-> *progress-process* 0 sides-x-scale)))
+  (set! (-> arg2 vector 0 w) (/ 6144.0 (-> *progress-process* 0 sides-x-scale)))
+  (set! (-> arg2 vector 1 w) (/ 6144.0 (-> *progress-process* 0 sides-x-scale)))
       )
     )
    (#t
@@ -56,6 +58,7 @@
   )
 
 (defun part-progress-hud-button-func ((arg0 sparticle-system) (arg1 sparticle-cpuinfo) (arg2 matrix))
+  ;; og:preserve-this
   (#cond
    (PC_PORT
     (unless (and *pc-settings* (not (-> *pc-settings* use-vis?)))
@@ -64,8 +67,8 @@
       )
     )
    (#t
-    (set! (-> arg2 vector 0 w) (/ 6553.6 (-> *progress-process* 0 sides-x-scale)))
-    (set! (-> arg2 vector 1 w) (/ 6553.6 (-> *progress-process* 0 sides-x-scale)))
+  (set! (-> arg2 vector 0 w) (/ 6553.6 (-> *progress-process* 0 sides-x-scale)))
+  (set! (-> arg2 vector 1 w) (/ 6553.6 (-> *progress-process* 0 sides-x-scale)))
     )
    )
   (none)
@@ -73,11 +76,13 @@
 
 (defun part-progress-hud-tint-func ((arg0 sparticle-system) (arg1 sparticle-cpuinfo) (arg2 matrix))
   (set! (-> arg2 vector 2 w) (the float (- 64 (sar (* 63 (-> *progress-process* 0 in-out-position)) 12))))
+  ;; og:preserve-this
   (#when PC_PORT
     (if (and *pc-settings* (not (-> *pc-settings* use-vis?)))
         (set! (-> arg2 vector 0 w) (* (meters 15) (-> *pc-settings* aspect-ratio-scale)))
         )
     )
+  0
   (none)
   )
 
@@ -183,6 +188,7 @@
               (vector<-cspace! s3-0 (-> s5-0 icons (logand s4-0 3) icon 0 node-list data v1-0))
               (vector<-cspace! s2-0 (-> s5-0 icons (logand s4-0 3) icon 0 node-list data 3))
               (vector-! s3-0 s3-0 s2-0)
+              ;; og:preserve-this
               (#when PC_PORT
                 (when (not (-> *pc-settings* use-vis?))
                   (*! (-> s3-0 x) (-> *video-parms* relative-x-scale))
@@ -919,20 +925,20 @@
   )
 
 (defmacro progress-new-particle (&key part &key x &key y &key z)
-  `(when (< (-> obj nb-of-particles) (-> obj max-nb-of-particles))
-    (let ((part-nb (-> obj nb-of-particles)))
-      (set! (-> obj particles part-nb) (new 'static 'hud-particle))
-      (set! (-> obj particles part-nb part) (create-launch-control (-> *part-group-id-table* ,part) obj))
-      (set! (-> obj particles part-nb init-pos x) ,x)
-      (set! (-> obj particles part-nb init-pos y) ,y)
-      (set! (-> obj particles part-nb init-pos z) ,z)
-      (set! (-> obj particles part-nb part matrix) -1)
+  `(when (< (-> this nb-of-particles) (-> this max-nb-of-particles))
+    (let ((part-nb (-> this nb-of-particles)))
+      (set! (-> this particles part-nb) (new 'static 'hud-particle))
+      (set! (-> this particles part-nb part) (create-launch-control (-> *part-group-id-table* ,part) this))
+      (set! (-> this particles part-nb init-pos x) ,x)
+      (set! (-> this particles part-nb init-pos y) ,y)
+      (set! (-> this particles part-nb init-pos z) ,z)
+      (set! (-> this particles part-nb part matrix) -1)
       )
-    (+! (-> obj nb-of-particles) 1)
+    (+! (-> this nb-of-particles) 1)
     )
   )
 
-(defmethod initialize-particles progress ((obj progress))
+(defmethod initialize-particles ((this progress))
   (progress-new-particle :part 90 :x 256.0 :y 224.0 :z 16.0) ;; tint
   (progress-new-particle :part 88 :x -42.0 :y (#if PC_PORT 256.0 254.0) :z 5.0) ;; left
   (progress-new-particle :part 89 :x 610.0 :y (#if PC_PORT 256.0 254.0) :z 5.0) ;; right

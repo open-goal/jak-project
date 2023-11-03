@@ -94,8 +94,8 @@ std::vector<DefstateElement::Entry> get_defstate_entries(
           temp.to_string(env));
     }
 
-    auto var = mr.maps.regs.at(0);
-    auto name = mr.maps.strings.at(1);
+    auto& var = mr.maps.regs.at(0);
+    auto& name = mr.maps.strings.at(1);
     auto val = mr.maps.forms.at(2);
 
     auto handler_kind = handler_name_to_kind(name);
@@ -146,12 +146,38 @@ std::vector<DefstateElement::Entry> get_defstate_entries(
 
       // scary part - modify the function type!
       handler_func->type = get_state_handler_type(handler_kind, state_type);
-    } else if (handler_atom && handler_atom->is_sym_val()) {
+      // hack - lets pretend every handler (except event) returns none but remove the (none) at the
+      // end since the 'real' return type is object and thus anything is valid in the final form
+      handler_func->ir2.skip_final_none = true;
+    } else if (handler_atom && handler_atom->is_sym_val() && !handler_atom->is_sym_val("#f")) {
+      // value of a symbol.
+      // NOTE : we
       auto sym_type = env.dts->lookup_symbol_type(handler_atom->get_str());
-      auto expected_type = get_state_handler_type(handler_kind, state_type);
-      if (!env.dts->ts.tc(expected_type, sym_type)) {
+      auto handler_type = get_state_handler_type(handler_kind, state_type);
+      // NOTE : we set the return value of the handlers to "none" for a sneaky hack (see right
+      // above) however we only need that when decompiling lambdas. so we revert that hack here.
+      if (handler_type.last_arg() == TypeSpec("none")) {
+        handler_type.last_arg() = TypeSpec("object");
+      }
+      // hack : delete the behavior tags and typecheck them separately.
+      auto sym_behavior = sym_type.try_get_tag("behavior");
+      handler_type.delete_tag("behavior");
+      sym_type.delete_tag("behavior");
+
+      // finally do typecheck. does argument typecheck, then we do process typecheck separately.
+      // this is because the logic has to be kind of backwards:
+      // - the process type in the symbol's behavior tag can be more generic; but
+      // - the arguments can be more specific.
+      // for example, a process of type `enemy` can run a behavior for `process-drawable` just fine
+      // but a behavior for `process-drawable` that requires a more specific argument than `enemy`
+      // would be bad.
+      // in practice this just allows us to use more specific types for functions in the decompiler
+      // without trigger extraneous casts.
+      if (!env.dts->ts.tc(handler_type, sym_type) ||
+          (sym_behavior.has_value() &&
+           !env.dts->ts.tc(*sym_behavior, state_type.last_arg().base_type()))) {
         this_entry.val =
-            pool.alloc_single_element_form<CastElement>(nullptr, expected_type, this_entry.val);
+            pool.alloc_single_element_form<CastElement>(nullptr, handler_type, this_entry.val);
       }
     }
     // name = code/event/etc

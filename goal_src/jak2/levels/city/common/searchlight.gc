@@ -8,14 +8,10 @@
 ;; DECOMP BEGINS
 
 (deftype searchlight (process-drawable)
-  ((sync sync-eased :inline :offset-assert 200)
+  ((sync  sync-eased  :inline)
    )
-  :heap-base #x80
-  :method-count-assert 21
-  :size-assert         #xf4
-  :flag-assert         #x15008000f4
-  (:methods
-    (idle () _type_ :state 20)
+  (:state-methods
+    idle
     )
   )
 
@@ -66,30 +62,29 @@
       (suspend)
       )
     #f
-    (none)
     )
-  :post (the-as (function none :behavior searchlight) ja-post)
+  :post ja-post
   )
 
 ;; WARN: Return type mismatch object vs none.
-(defmethod init-from-entity! searchlight ((obj searchlight) (arg0 entity-actor))
+(defmethod init-from-entity! ((this searchlight) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
 - stack size
 - collision information
 - loading the skeleton group / bones
 - sounds"
-  (set! (-> obj root) (new 'process 'trsqv))
-  (process-drawable-from-entity! obj arg0)
-  (logclear! (-> obj mask) (process-mask actor-pause))
+  (set! (-> this root) (new 'process 'trsqv))
+  (process-drawable-from-entity! this arg0)
+  (logclear! (-> this mask) (process-mask actor-pause))
   (initialize-skeleton
-    obj
+    this
     (the-as skeleton-group (art-group-get-by-name *level* "skel-searchlight" (the-as (pointer uint32) #f)))
     (the-as pair 0)
     )
-  (logior! (-> obj draw status) (draw-control-status disable-fog))
-  (set! (-> obj root scale y) (rand-vu-float-range 1.8 2.0))
-  (set-vector! (-> obj draw color-mult) 0.0 0.0 0.0 0.0)
+  (logior! (-> this draw status) (draw-control-status disable-fog))
+  (set! (-> this root scale y) (rand-vu-float-range 1.8 2.0))
+  (set-vector! (-> this draw color-mult) 0.0 0.0 0.0 0.0)
   (let ((s4-1 (new 'stack-no-clear 'sync-info-params)))
     (let ((v1-12 0))
       (if #t
@@ -105,8 +100,8 @@ This commonly includes things such as:
     (set! (-> s4-1 ease-out) 0.15)
     (set! (-> s4-1 pause-in) 0.0)
     (set! (-> s4-1 pause-out) 0.0)
-    (initialize! (-> obj sync) s4-1)
+    (initialize! (-> this sync) s4-1)
     )
-  (go (method-of-object obj idle))
+  (go (method-of-object this idle))
   (none)
   )

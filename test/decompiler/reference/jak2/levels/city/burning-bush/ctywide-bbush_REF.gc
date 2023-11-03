@@ -259,40 +259,38 @@
 
 ;; definition of type race-ring
 (deftype race-ring (process-drawable)
-  ((last-target-pos       vector        :inline :offset-assert 208)
-   (keep-part-track-alive symbol                :offset-assert 224)
-   (part-track            handle                :offset-assert 232)
-   (rot-y                 float                 :offset-assert 240)
-   (cyl                   cylinder-flat :inline :offset-assert 256)
+  ((last-target-pos        vector         :inline)
+   (keep-part-track-alive  symbol)
+   (part-track             handle)
+   (rot-y                  float)
+   (cyl                    cylinder-flat  :inline)
    )
-  :heap-base #xb0
-  :method-count-assert 24
-  :size-assert         #x128
-  :flag-assert         #x1800b00128
+  (:state-methods
+    idle
+    die
+    )
   (:methods
-    (idle () _type_ :state 20)
-    (die () _type_ :state 21)
-    (race-ring-method-22 (_type_) none 22)
-    (race-ring-method-23 (_type_) none 23)
+    (race-ring-method-22 (_type_) none)
+    (race-ring-method-23 (_type_) none)
     )
   )
 
 ;; definition for method 3 of type race-ring
-(defmethod inspect race-ring ((obj race-ring))
-  (when (not obj)
-    (set! obj obj)
+(defmethod inspect ((this race-ring))
+  (when (not this)
+    (set! this this)
     (goto cfg-4)
     )
   (let ((t9-0 (method-of-type process-drawable inspect)))
-    (t9-0 obj)
+    (t9-0 this)
     )
-  (format #t "~2Tlast-target-pos: #<vector @ #x~X>~%" (-> obj last-target-pos))
-  (format #t "~2Tkeep-part-track-alive: ~A~%" (-> obj keep-part-track-alive))
-  (format #t "~2Tpart-track: ~D~%" (-> obj part-track))
-  (format #t "~2Trot-y: ~f~%" (-> obj rot-y))
-  (format #t "~2Tcyl: #<cylinder-flat @ #x~X>~%" (-> obj cyl))
+  (format #t "~2Tlast-target-pos: #<vector @ #x~X>~%" (-> this last-target-pos))
+  (format #t "~2Tkeep-part-track-alive: ~A~%" (-> this keep-part-track-alive))
+  (format #t "~2Tpart-track: ~D~%" (-> this part-track))
+  (format #t "~2Trot-y: ~f~%" (-> this rot-y))
+  (format #t "~2Tcyl: #<cylinder-flat @ #x~X>~%" (-> this cyl))
   (label cfg-4)
-  obj
+  this
   )
 
 ;; definition for function race-ring-set-particle-rotation-callback
@@ -351,7 +349,6 @@
               )
             )
       )
-    (none)
     )
   :exit (behavior ()
     (let ((a0-1 (handle->process (-> self part-track))))
@@ -393,13 +390,12 @@
               )
             )
       )
-    (none)
     )
   :trans (behavior ()
     (cond
       ((handle->process (-> self part-track))
        (if (-> self keep-part-track-alive)
-           (set! (-> (the-as part-tracker (-> self part-track process 0)) start-time) (current-time))
+           (set-time! (-> (the-as part-tracker (-> self part-track process 0)) start-time))
            )
        )
       (else
@@ -465,16 +461,14 @@
         (set! (-> self last-target-pos quad) (-> gp-1 quad))
         )
       )
-    (none)
     )
   :code (behavior ()
     (until #f
       (suspend)
       )
     #f
-    (none)
     )
-  :post (the-as (function none :behavior race-ring) ja-post)
+  :post ja-post
   )
 
 ;; failed to figure out what this is:
@@ -485,14 +479,13 @@
       (suspend)
       )
     (cleanup-for-death self)
-    (none)
     )
   )
 
 ;; definition for method 22 of type race-ring
 ;; WARN: Return type mismatch int vs none.
-(defmethod race-ring-method-22 race-ring ((obj race-ring))
-  (set! (-> obj root) (new 'process 'trsqv))
+(defmethod race-ring-method-22 ((this race-ring))
+  (set! (-> this root) (new 'process 'trsqv))
   0
   (none)
   )
@@ -500,16 +493,16 @@
 ;; definition for method 23 of type race-ring
 ;; INFO: Used lq/sq
 ;; WARN: Return type mismatch int vs none.
-(defmethod race-ring-method-23 race-ring ((obj race-ring))
-  (add-icon! *minimap* obj (the-as uint 15) (the-as int #f) (the-as vector #t) 0)
-  (set! (-> obj keep-part-track-alive) #f)
-  (set! (-> obj part-track) (the-as handle #f))
-  (set! (-> obj rot-y) (+ 16384.0 (quaternion-y-angle (-> obj root quat))))
-  (set! (-> obj last-target-pos quad) (-> (target-pos 0) quad))
-  (set-vector! (-> obj cyl axis) (cos (-> obj rot-y)) 0.0 (- (sin (-> obj rot-y))) 1.0)
-  (vector+float*! (the-as vector (-> obj cyl)) (-> obj root trans) (-> obj cyl axis) -2048.0)
-  (set! (-> obj cyl radius) 24576.0)
-  (set! (-> obj cyl length) 4096.0)
+(defmethod race-ring-method-23 ((this race-ring))
+  (add-icon! *minimap* this (the-as uint 15) (the-as int #f) (the-as vector #t) 0)
+  (set! (-> this keep-part-track-alive) #f)
+  (set! (-> this part-track) (the-as handle #f))
+  (set! (-> this rot-y) (+ 16384.0 (quaternion-y-angle (-> this root quat))))
+  (set! (-> this last-target-pos quad) (-> (target-pos 0) quad))
+  (set-vector! (-> this cyl axis) (cos (-> this rot-y)) 0.0 (- (sin (-> this rot-y))) 1.0)
+  (vector+float*! (the-as vector (-> this cyl)) (-> this root trans) (-> this cyl axis) -2048.0)
+  (set! (-> this cyl radius) 24576.0)
+  (set! (-> this cyl length) 4096.0)
   0
   (none)
   )
@@ -542,29 +535,26 @@
 
 ;; definition of type bb-ring-info
 (deftype bb-ring-info (structure)
-  ((time      time-frame                          :offset-assert   0)
-   (start-pos vector                      :inline :offset-assert  16)
-   (rotation  float                               :offset-assert  32)
-   (rings     (array city-race-ring-info)         :offset-assert  36)
+  ((time       time-frame)
+   (start-pos  vector  :inline)
+   (rotation   float)
+   (rings      (array city-race-ring-info))
    )
-  :method-count-assert 9
-  :size-assert         #x28
-  :flag-assert         #x900000028
   )
 
 ;; definition for method 3 of type bb-ring-info
-(defmethod inspect bb-ring-info ((obj bb-ring-info))
-  (when (not obj)
-    (set! obj obj)
+(defmethod inspect ((this bb-ring-info))
+  (when (not this)
+    (set! this this)
     (goto cfg-4)
     )
-  (format #t "[~8x] ~A~%" obj 'bb-ring-info)
-  (format #t "~1Ttime: ~D~%" (-> obj time))
-  (format #t "~1Tstart-pos: #<vector @ #x~X>~%" (-> obj start-pos))
-  (format #t "~1Trotation: ~f~%" (-> obj rotation))
-  (format #t "~1Trings: ~A~%" (-> obj rings))
+  (format #t "[~8x] ~A~%" this 'bb-ring-info)
+  (format #t "~1Ttime: ~D~%" (-> this time))
+  (format #t "~1Tstart-pos: #<vector @ #x~X>~%" (-> this start-pos))
+  (format #t "~1Trotation: ~f~%" (-> this rotation))
+  (format #t "~1Trings: ~A~%" (-> this rings))
   (label cfg-4)
-  obj
+  this
   )
 
 ;; definition for symbol *bb-ring-info*, type (array bb-ring-info)
@@ -1547,7 +1537,7 @@
                                                                    )
                                                     )
                        )
-                 (set! (-> self start-time) (current-time))
+                 (set-time! (-> self start-time))
                  (+! (-> self sub-state) 1)
                  )
                )
@@ -1570,7 +1560,7 @@
   TASK_MANAGER_CODE_HOOK
   (lambda :behavior task-manager
     ()
-    (while (< (- (current-time) (-> self state-time)) (seconds 5))
+    (while (not (time-elapsed? (-> self state-time) (seconds 5)))
       (suspend)
       )
     (none)
@@ -1703,42 +1693,40 @@
 
 ;; definition of type bush-collect
 (deftype bush-collect (process-drawable)
-  ((minimap   connection-minimap  :offset-assert 200)
-   (trans-y   float               :offset-assert 204)
-   (beep-time float               :offset-assert 208)
+  ((minimap    connection-minimap)
+   (trans-y    float)
+   (beep-time  float)
    )
-  :heap-base #x60
-  :method-count-assert 24
-  :size-assert         #xd4
-  :flag-assert         #x18006000d4
+  (:state-methods
+    idle
+    die
+    )
   (:methods
-    (idle () _type_ :state 20)
-    (die () _type_ :state 21)
-    (bush-collect-method-22 (_type_) none 22)
-    (bush-collect-method-23 (_type_) none 23)
+    (bush-collect-method-22 (_type_) none)
+    (bush-collect-method-23 (_type_) none)
     )
   )
 
 ;; definition for method 3 of type bush-collect
-(defmethod inspect bush-collect ((obj bush-collect))
-  (when (not obj)
-    (set! obj obj)
+(defmethod inspect ((this bush-collect))
+  (when (not this)
+    (set! this this)
     (goto cfg-4)
     )
   (let ((t9-0 (method-of-type process-drawable inspect)))
-    (t9-0 obj)
+    (t9-0 this)
     )
-  (format #t "~2Tminimap: #<connection-minimap @ #x~X>~%" (-> obj minimap))
-  (format #t "~2Ttrans-y: ~f~%" (-> obj trans-y))
-  (format #t "~2Tbeep-time: ~f~%" (-> obj beep-time))
+  (format #t "~2Tminimap: #<connection-minimap @ #x~X>~%" (-> this minimap))
+  (format #t "~2Ttrans-y: ~f~%" (-> this trans-y))
+  (format #t "~2Tbeep-time: ~f~%" (-> this beep-time))
   (label cfg-4)
-  obj
+  this
   )
 
 ;; definition for method 22 of type bush-collect
 ;; WARN: Return type mismatch int vs none.
-(defmethod bush-collect-method-22 bush-collect ((obj bush-collect))
-  (let ((s5-0 (new 'process 'collide-shape-moving obj (collide-list-enum usually-hit-by-player))))
+(defmethod bush-collect-method-22 ((this bush-collect))
+  (let ((s5-0 (new 'process 'collide-shape-moving this (collide-list-enum usually-hit-by-player))))
     (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s5-0 reaction) cshape-reaction-default)
     (set! (-> s5-0 no-reaction)
@@ -1758,7 +1746,7 @@
       (set! (-> s5-0 backup-collide-as) (-> v1-10 prim-core collide-as))
       (set! (-> s5-0 backup-collide-with) (-> v1-10 prim-core collide-with))
       )
-    (set! (-> obj root) s5-0)
+    (set! (-> this root) s5-0)
     )
   0
   (none)
@@ -1766,7 +1754,7 @@
 
 ;; definition for method 23 of type bush-collect
 ;; WARN: Return type mismatch int vs none.
-(defmethod bush-collect-method-23 bush-collect ((obj bush-collect))
+(defmethod bush-collect-method-23 ((this bush-collect))
   0
   (none)
   )
@@ -1774,8 +1762,8 @@
 ;; failed to figure out what this is:
 (defstate idle (bush-collect)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('touch 'attack)
        (sound-play "homeing-pickup")
        (go-virtual die)
@@ -1784,11 +1772,9 @@
     )
   :enter (behavior ()
     '()
-    (none)
     )
   :exit (behavior ()
     '()
-    (none)
     )
   :trans (behavior ()
     (let ((f30-0 (+ (* 0.0033333334 (the float (current-time))) (* 0.1 (the float (-> self pid))))))
@@ -1818,32 +1804,16 @@
                         )
                       )
                 )
-            (let ((t9-8 sp-launch-particles-var)
-                  (a0-8 *sp-particle-system-2d*)
-                  (a1-6 (-> *part-id-table* 4593))
-                  (a2-5 *launch-matrix*)
-                  )
-              (set! (-> a2-5 trans quad) (-> gp-2 quad))
-              (t9-8 a0-8 a1-6 a2-5 (the-as sparticle-launch-state #f) (the-as sparticle-launch-control #f) 1.0)
-              )
-            (let ((t9-9 sp-launch-particles-var)
-                  (a0-9 *sp-particle-system-2d*)
-                  (a1-7 (-> *part-id-table* 4594))
-                  (a2-6 *launch-matrix*)
-                  )
-              (set! (-> a2-6 trans quad) (-> gp-2 quad))
-              (t9-9 a0-9 a1-7 a2-6 (the-as sparticle-launch-state #f) (the-as sparticle-launch-control #f) 1.0)
-              )
+            (launch-particles (-> *part-id-table* 4593) gp-2)
+            (launch-particles (-> *part-id-table* 4594) gp-2)
             )
           )
         )
       )
-    (none)
     )
-  :code (the-as (function none :behavior bush-collect) sleep-code)
+  :code sleep-code
   :post (behavior ()
     (ja-post)
-    (none)
     )
   )
 
@@ -1852,20 +1822,19 @@
   :virtual #t
   :code (behavior ()
     (cleanup-for-death self)
-    (none)
     )
   )
 
 ;; definition for method 11 of type bush-collect
 ;; WARN: Return type mismatch entity-perm-status vs none.
-(defmethod init-from-entity! bush-collect ((obj bush-collect) (arg0 entity-actor))
+(defmethod init-from-entity! ((this bush-collect) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
 - stack size
 - collision information
 - loading the skeleton group / bones
 - sounds"
-  (process-entity-status! obj (entity-perm-status dead) #t)
+  (process-entity-status! this (entity-perm-status dead) #t)
   (none)
   )
 
@@ -1942,64 +1911,58 @@ This commonly includes things such as:
 
 ;; definition of type burning-bush-collection-info
 (deftype burning-bush-collection-info (structure)
-  ((pos     vector             :inline :offset-assert   0)
-   (handle  handle                     :offset-assert  16)
-   (minimap connection-minimap         :offset-assert  24)
+  ((pos      vector  :inline)
+   (handle   handle)
+   (minimap  connection-minimap)
    )
-  :method-count-assert 10
-  :size-assert         #x1c
-  :flag-assert         #xa0000001c
   (:methods
-    (burning-bush-collection-info-method-9 (_type_ object) none 9)
+    (burning-bush-collection-info-method-9 (_type_ object) none)
     )
   )
 
 ;; definition for method 3 of type burning-bush-collection-info
-(defmethod inspect burning-bush-collection-info ((obj burning-bush-collection-info))
-  (when (not obj)
-    (set! obj obj)
+(defmethod inspect ((this burning-bush-collection-info))
+  (when (not this)
+    (set! this this)
     (goto cfg-4)
     )
-  (format #t "[~8x] ~A~%" obj 'burning-bush-collection-info)
-  (format #t "~1Tpos: #<vector @ #x~X>~%" (-> obj pos))
-  (format #t "~1Thandle: ~D~%" (-> obj handle))
-  (format #t "~1Tminimap: #<connection-minimap @ #x~X>~%" (-> obj minimap))
+  (format #t "[~8x] ~A~%" this 'burning-bush-collection-info)
+  (format #t "~1Tpos: #<vector @ #x~X>~%" (-> this pos))
+  (format #t "~1Thandle: ~D~%" (-> this handle))
+  (format #t "~1Tminimap: #<connection-minimap @ #x~X>~%" (-> this minimap))
   (label cfg-4)
-  obj
+  this
   )
 
 ;; definition for method 9 of type burning-bush-collection-info
 ;; WARN: Return type mismatch int vs none.
-(defmethod burning-bush-collection-info-method-9 burning-bush-collection-info ((obj burning-bush-collection-info) (arg0 object))
+(defmethod burning-bush-collection-info-method-9 ((this burning-bush-collection-info) (arg0 object))
   (format arg0 "(static-burning-bush-collection-info~%")
-  (format arg0 "     :pos (~4,,2M ~4,,2M ~4,,2M)~%)~%" (-> obj pos x) (-> obj pos y) (-> obj pos z))
+  (format arg0 "     :pos (~4,,2M ~4,,2M ~4,,2M)~%)~%" (-> this pos x) (-> this pos y) (-> this pos z))
   0
   (none)
   )
 
 ;; definition of type bb-collection-info
 (deftype bb-collection-info (structure)
-  ((user-data uint32                                :offset-assert   0)
-   (time      time-frame                            :offset-assert   8)
-   (colls     (array burning-bush-collection-info)  :offset-assert  16)
+  ((user-data  uint32)
+   (time       time-frame)
+   (colls      (array burning-bush-collection-info))
    )
-  :method-count-assert 9
-  :size-assert         #x14
-  :flag-assert         #x900000014
   )
 
 ;; definition for method 3 of type bb-collection-info
-(defmethod inspect bb-collection-info ((obj bb-collection-info))
-  (when (not obj)
-    (set! obj obj)
+(defmethod inspect ((this bb-collection-info))
+  (when (not this)
+    (set! this this)
     (goto cfg-4)
     )
-  (format #t "[~8x] ~A~%" obj 'bb-collection-info)
-  (format #t "~1Tuser-data: ~D~%" (-> obj user-data))
-  (format #t "~1Ttime: ~D~%" (-> obj time))
-  (format #t "~1Tcolls: ~A~%" (-> obj colls))
+  (format #t "[~8x] ~A~%" this 'bb-collection-info)
+  (format #t "~1Tuser-data: ~D~%" (-> this user-data))
+  (format #t "~1Ttime: ~D~%" (-> this time))
+  (format #t "~1Tcolls: ~A~%" (-> this colls))
   (label cfg-4)
-  obj
+  this
   )
 
 ;; definition for symbol *bb-collection-info*, type (array bb-collection-info)
@@ -2772,7 +2735,7 @@ This commonly includes things such as:
             )
           )
         )
-      (set! (-> self start-time) (current-time))
+      (set-time! (-> self start-time))
       (set! (-> self time-limit) (-> gp-0 time))
       )
     (none)
@@ -2817,7 +2780,7 @@ This commonly includes things such as:
   *game-info*
   (game-task-node city-burning-bush-collection-1-resolution)
   TASK_MANAGER_CODE_HOOK
-  (lambda :behavior task-manager () (set! (-> self state-time) (current-time)) (none))
+  (lambda :behavior task-manager () (set-time! (-> self state-time)) (none))
   )
 
 ;; failed to figure out what this is:
@@ -2834,31 +2797,28 @@ This commonly includes things such as:
 
 ;; definition of type burning-bush-get-on-info
 (deftype burning-bush-get-on-info (structure)
-  ((trans        vector     :inline :offset-assert   0)
-   (quat         quaternion :inline :offset-assert  16)
-   (camera-trans vector     :inline :offset-assert  32)
-   (camera-rot   float      9       :offset-assert  48)
-   (time         float              :offset-assert  84)
+  ((trans         vector      :inline)
+   (quat          quaternion  :inline)
+   (camera-trans  vector      :inline)
+   (camera-rot    float       9)
+   (time          float)
    )
-  :method-count-assert 9
-  :size-assert         #x58
-  :flag-assert         #x900000058
   )
 
 ;; definition for method 3 of type burning-bush-get-on-info
-(defmethod inspect burning-bush-get-on-info ((obj burning-bush-get-on-info))
-  (when (not obj)
-    (set! obj obj)
+(defmethod inspect ((this burning-bush-get-on-info))
+  (when (not this)
+    (set! this this)
     (goto cfg-4)
     )
-  (format #t "[~8x] ~A~%" obj 'burning-bush-get-on-info)
-  (format #t "~1Ttrans: #<vector @ #x~X>~%" (-> obj trans))
-  (format #t "~1Tquat: #<quaternion @ #x~X>~%" (-> obj quat))
-  (format #t "~1Tcamera-trans: #<vector @ #x~X>~%" (-> obj camera-trans))
-  (format #t "~1Tcamera-rot[9] @ #x~X~%" (-> obj camera-rot))
-  (format #t "~1Ttime: ~f~%" (-> obj time))
+  (format #t "[~8x] ~A~%" this 'burning-bush-get-on-info)
+  (format #t "~1Ttrans: #<vector @ #x~X>~%" (-> this trans))
+  (format #t "~1Tquat: #<quaternion @ #x~X>~%" (-> this quat))
+  (format #t "~1Tcamera-trans: #<vector @ #x~X>~%" (-> this camera-trans))
+  (format #t "~1Tcamera-rot[9] @ #x~X~%" (-> this camera-rot))
+  (format #t "~1Ttime: ~f~%" (-> this time))
   (label cfg-4)
-  obj
+  this
   )
 
 ;; definition for symbol *burning-bush-get-on-info*, type (array burning-bush-get-on-info)
@@ -3057,7 +3017,7 @@ This commonly includes things such as:
               )
             )
       )
-    (set! (-> self start-time) (current-time))
+    (set-time! (-> self start-time))
     (set! (-> self time-limit)
           (the-as time-frame (the int (+ 300.0 (-> *burning-bush-get-on-info* (-> self info index) time))))
           )
@@ -3094,7 +3054,7 @@ This commonly includes things such as:
       (send-event *camera* 'teleport-to-transformq gp-0)
       )
     (let ((gp-1 (current-time)))
-      (until (>= (- (current-time) gp-1) (seconds 3))
+      (until (time-elapsed? gp-1 (seconds 3))
         (suspend)
         )
       )
@@ -3223,127 +3183,127 @@ This commonly includes things such as:
 
 ;; definition for method 15 of type hud-homing-beacon
 ;; WARN: Return type mismatch int vs none.
-(defmethod draw hud-homing-beacon ((obj hud-homing-beacon))
+(defmethod draw ((this hud-homing-beacon))
   (set-hud-piece-position!
-    (the-as hud-sprite (-> obj sprites))
-    (the int (+ 457.0 (* 130.0 (-> obj offset))))
+    (the-as hud-sprite (-> this sprites))
+    (the int (+ 457.0 (* 130.0 (-> this offset))))
     160
     )
-  (set! (-> obj sprites 0 scale-x) 1.0)
-  (set! (-> obj sprites 0 scale-y) 1.0)
-  (set! (-> obj sprites 0 flags) (the-as uint 4))
-  (set! (-> obj strings 0 scale) 0.5)
-  (set! (-> obj strings 0 flags) (font-flags kerning middle large))
-  (format (clear (-> obj strings 0 text)) "~D" (-> obj values 0 current))
-  (set-as-offset-from! (the-as hud-sprite (-> obj strings 0 pos)) (the-as vector4w (-> obj sprites)) -16 60)
-  ((method-of-type hud draw) obj)
+  (set! (-> this sprites 0 scale-x) 1.0)
+  (set! (-> this sprites 0 scale-y) 1.0)
+  (set! (-> this sprites 0 flags) (the-as uint 4))
+  (set! (-> this strings 0 scale) 0.5)
+  (set! (-> this strings 0 flags) (font-flags kerning middle large))
+  (format (clear (-> this strings 0 text)) "~D" (-> this values 0 current))
+  (set-as-offset-from! (the-as hud-sprite (-> this strings 0 pos)) (the-as vector4w (-> this sprites)) -16 60)
+  ((method-of-type hud draw) this)
   0
   (none)
   )
 
 ;; definition for method 16 of type hud-homing-beacon
 ;; WARN: Return type mismatch int vs none.
-(defmethod update-values hud-homing-beacon ((obj hud-homing-beacon))
-  (set! (-> obj values 0 target) (the int (-> *game-info* counter)))
-  ((method-of-type hud update-values) obj)
+(defmethod update-values ((this hud-homing-beacon))
+  (set! (-> this values 0 target) (the int (-> *game-info* counter)))
+  ((method-of-type hud update-values) this)
   0
   (none)
   )
 
 ;; definition for method 17 of type hud-homing-beacon
 ;; WARN: Return type mismatch int vs none.
-(defmethod init-callback hud-homing-beacon ((obj hud-homing-beacon))
-  (set! (-> obj level) (level-get *level* 'lbbush))
-  (set! (-> obj gui-id)
-        (add-process *gui-control* obj (gui-channel hud-middle-right) (gui-action hidden) (-> obj name) 81920.0 0)
+(defmethod init-callback ((this hud-homing-beacon))
+  (set! (-> this level) (level-get *level* 'lbbush))
+  (set! (-> this gui-id)
+        (add-process *gui-control* this (gui-channel hud-middle-right) (gui-action hidden) (-> this name) 81920.0 0)
         )
-  (logior! (-> obj flags) (hud-flags show))
-  (set! (-> obj sprites 0 tex) (lookup-texture-by-id (new 'static 'texture-id :page #xd89)))
-  (alloc-string-if-needed obj 0)
+  (logior! (-> this flags) (hud-flags show))
+  (set! (-> this sprites 0 tex) (lookup-texture-by-id (new 'static 'texture-id :page #xd89)))
+  (alloc-string-if-needed this 0)
   0
   (none)
   )
 
 ;; definition for method 15 of type hud-dark-eco-pickup
 ;; WARN: Return type mismatch int vs none.
-(defmethod draw hud-dark-eco-pickup ((obj hud-dark-eco-pickup))
+(defmethod draw ((this hud-dark-eco-pickup))
   (set-hud-piece-position!
-    (the-as hud-sprite (-> obj sprites))
-    (the int (+ 457.0 (* 130.0 (-> obj offset))))
+    (the-as hud-sprite (-> this sprites))
+    (the int (+ 457.0 (* 130.0 (-> this offset))))
     180
     )
-  (set! (-> obj sprites 0 scale-x) 1.0)
-  (set! (-> obj sprites 0 scale-y) 1.0)
-  (set! (-> obj sprites 0 flags) (the-as uint 4))
-  (set! (-> obj strings 0 flags) (font-flags kerning middle large))
-  (set! (-> obj strings 0 scale) 0.5)
-  (format (clear (-> obj strings 0 text)) "~D" (-> obj values 0 current))
-  (set-as-offset-from! (the-as hud-sprite (-> obj strings 0 pos)) (the-as vector4w (-> obj sprites)) -16 26)
-  ((method-of-type hud draw) obj)
+  (set! (-> this sprites 0 scale-x) 1.0)
+  (set! (-> this sprites 0 scale-y) 1.0)
+  (set! (-> this sprites 0 flags) (the-as uint 4))
+  (set! (-> this strings 0 flags) (font-flags kerning middle large))
+  (set! (-> this strings 0 scale) 0.5)
+  (format (clear (-> this strings 0 text)) "~D" (-> this values 0 current))
+  (set-as-offset-from! (the-as hud-sprite (-> this strings 0 pos)) (the-as vector4w (-> this sprites)) -16 26)
+  ((method-of-type hud draw) this)
   0
   (none)
   )
 
 ;; definition for method 16 of type hud-dark-eco-pickup
 ;; WARN: Return type mismatch int vs none.
-(defmethod update-values hud-dark-eco-pickup ((obj hud-dark-eco-pickup))
-  (set! (-> obj values 0 target) (the int (-> *game-info* counter)))
-  ((method-of-type hud update-values) obj)
+(defmethod update-values ((this hud-dark-eco-pickup))
+  (set! (-> this values 0 target) (the int (-> *game-info* counter)))
+  ((method-of-type hud update-values) this)
   0
   (none)
   )
 
 ;; definition for method 17 of type hud-dark-eco-pickup
 ;; WARN: Return type mismatch int vs none.
-(defmethod init-callback hud-dark-eco-pickup ((obj hud-dark-eco-pickup))
-  (set! (-> obj gui-id)
-        (add-process *gui-control* obj (gui-channel hud-middle-right) (gui-action hidden) (-> obj name) 81920.0 0)
+(defmethod init-callback ((this hud-dark-eco-pickup))
+  (set! (-> this gui-id)
+        (add-process *gui-control* this (gui-channel hud-middle-right) (gui-action hidden) (-> this name) 81920.0 0)
         )
-  (logior! (-> obj flags) (hud-flags show))
-  (set! (-> obj sprites 0 tex) (lookup-texture-by-id (new 'static 'texture-id :index #x46 :page #x67a)))
-  (alloc-string-if-needed obj 0)
+  (logior! (-> this flags) (hud-flags show))
+  (set! (-> this sprites 0 tex) (lookup-texture-by-id (new 'static 'texture-id :index #x46 :page #x67a)))
+  (alloc-string-if-needed this 0)
   0
   (none)
   )
 
 ;; definition for method 15 of type hud-green-eco-pickup
 ;; WARN: Return type mismatch int vs none.
-(defmethod draw hud-green-eco-pickup ((obj hud-green-eco-pickup))
+(defmethod draw ((this hud-green-eco-pickup))
   (set-hud-piece-position!
-    (the-as hud-sprite (-> obj sprites))
-    (the int (+ 457.0 (* 130.0 (-> obj offset))))
+    (the-as hud-sprite (-> this sprites))
+    (the int (+ 457.0 (* 130.0 (-> this offset))))
     180
     )
-  (set! (-> obj sprites 0 scale-x) 1.0)
-  (set! (-> obj sprites 0 scale-y) 1.0)
-  (set! (-> obj sprites 0 flags) (the-as uint 4))
-  (set! (-> obj strings 0 flags) (font-flags kerning middle large))
-  (set! (-> obj strings 0 scale) 0.5)
-  (format (clear (-> obj strings 0 text)) "~D" (-> obj values 0 current))
-  (set-as-offset-from! (the-as hud-sprite (-> obj strings 0 pos)) (the-as vector4w (-> obj sprites)) -16 26)
-  ((method-of-type hud draw) obj)
+  (set! (-> this sprites 0 scale-x) 1.0)
+  (set! (-> this sprites 0 scale-y) 1.0)
+  (set! (-> this sprites 0 flags) (the-as uint 4))
+  (set! (-> this strings 0 flags) (font-flags kerning middle large))
+  (set! (-> this strings 0 scale) 0.5)
+  (format (clear (-> this strings 0 text)) "~D" (-> this values 0 current))
+  (set-as-offset-from! (the-as hud-sprite (-> this strings 0 pos)) (the-as vector4w (-> this sprites)) -16 26)
+  ((method-of-type hud draw) this)
   0
   (none)
   )
 
 ;; definition for method 16 of type hud-green-eco-pickup
 ;; WARN: Return type mismatch int vs none.
-(defmethod update-values hud-green-eco-pickup ((obj hud-green-eco-pickup))
-  (set! (-> obj values 0 target) (the int (-> *game-info* counter)))
-  ((method-of-type hud update-values) obj)
+(defmethod update-values ((this hud-green-eco-pickup))
+  (set! (-> this values 0 target) (the int (-> *game-info* counter)))
+  ((method-of-type hud update-values) this)
   0
   (none)
   )
 
 ;; definition for method 17 of type hud-green-eco-pickup
 ;; WARN: Return type mismatch int vs none.
-(defmethod init-callback hud-green-eco-pickup ((obj hud-green-eco-pickup))
-  (set! (-> obj gui-id)
-        (add-process *gui-control* obj (gui-channel hud-middle-right) (gui-action hidden) (-> obj name) 81920.0 0)
+(defmethod init-callback ((this hud-green-eco-pickup))
+  (set! (-> this gui-id)
+        (add-process *gui-control* this (gui-channel hud-middle-right) (gui-action hidden) (-> this name) 81920.0 0)
         )
-  (logior! (-> obj flags) (hud-flags show))
-  (set! (-> obj sprites 0 tex) (lookup-texture-by-id (new 'static 'texture-id :index #x47 :page #x67a)))
-  (alloc-string-if-needed obj 0)
+  (logior! (-> this flags) (hud-flags show))
+  (set! (-> this sprites 0 tex) (lookup-texture-by-id (new 'static 'texture-id :index #x47 :page #x67a)))
+  (alloc-string-if-needed this 0)
   0
   (none)
   )

@@ -31,16 +31,16 @@
 ;; tells the GS how "foggy" the color should be. This should be proportional to how far away the vertex
 ;; is. There is a scaling factor applied so the fog intensity isn't affected by the field of view angle.
 
+;; DECOMP BEGINS
+
 ;; The fog-corrector stores a fog-end fog-start value that is corrected for the field of view.
 ;; the actual correction factor is computed in cam-update.gc
 (deftype fog-corrector (structure)
-  ((fog-end   float  :offset-assert 0)
-   (fog-start float  :offset-assert 4)
+  ((fog-end    float)
+   (fog-start  float)
    )
-  :method-count-assert 9
-  :size-assert         #x8
-  :flag-assert         #x900000008
   )
+
 
 (defun fog-corrector-setup ((corrector fog-corrector) (math-cam math-camera))
   "Set the fog corrector based on the supplied math-camera"
@@ -93,11 +93,13 @@
         (y-rat (-> math-cam y-ratio))
         (cull-info (-> math-cam cull-info))
         )
-    (let ((unused-x-thing (/ (+ 1.0 (* 4.0 x-rat x-rat)) (+ 1.0 (* x-rat x-rat))))))
-    (let ((y-thing (/ (+ 1.0 (* (* 4.0 y-rat) y-rat)) (+ 1.0 (* y-rat y-rat)))))
+    (let ((x-thing (/ (+ 1.0 (* 4.0 x-rat x-rat)) (+ 1.0 (* x-rat x-rat))))
+          (y-thing (/ (+ 1.0 (* 4.0 y-rat y-rat)) (+ 1.0 (* y-rat y-rat)))))
       (set! (-> cull-info x-fact) (/ (+ 1.0 (* 4.0 x-rat x-rat)) (* x-rat (sqrtf (+ 1.0 (* 16.0 x-rat x-rat))))))
       (set! (-> cull-info y-fact) (/ (+ 1.0 (* 4.0 y-rat y-rat)) (* y-rat (sqrtf (+ 1.0 (* 16.0 y-rat y-rat))))))
-      (set! (-> cull-info z-fact) (sqrtf (+ (* (+ -4.0 y-thing) (+ -4.0 y-thing) y-rat y-rat) (* (+ -1.0 y-thing) (+ -1.0 y-thing)))))
+      (set! (-> cull-info z-fact)
+            (sqrtf (+ (* (+ -4.0 y-thing) (+ -4.0 y-thing) y-rat y-rat) (* (+ -1.0 y-thing) (+ -1.0 y-thing))))
+            )
       )
 
     ;; radius of sphere containing camera origin and intersection of near plane and frustum
@@ -123,10 +125,7 @@
         (set! (-> cull-info xz-dir-bx) (* dx-rat-times-4 inverse-x-len-2))
         (set! (-> cull-info xz-dir-bz) (* d-temp-3 inverse-x-len-2))
         )
-      (set!
-       (-> cull-info xz-cross-ab)
-       (- (* dx-rat-2 d-temp-3) (* d-temp-2 dx-rat-times-4))
-       )
+      (set! (-> cull-info xz-cross-ab) (- (* dx-rat-2 d-temp-3) (* d-temp-2 dx-rat-times-4)))
       )
 
     (let* ((dy-rat (* (-> math-cam d) (-> math-cam y-ratio)))
@@ -142,10 +141,7 @@
         (set! (-> cull-info yz-dir-by) (* dy-rat-times-4 inverse-y-len-2))
         (set! (-> cull-info yz-dir-bz) (* d-temp-5 inverse-y-len-2))
         )
-      (set!
-       (-> cull-info yz-cross-ab)
-       (- (* dy-rat d-temp-5) (* d-temp-4 dy-rat-times-4))
-       )
+      (set! (-> cull-info yz-cross-ab) (- (* dy-rat d-temp-5) (* d-temp-4 dy-rat-times-4)))
       )
     )
 
@@ -195,17 +191,12 @@
       ;; hvdf = horizontal, vertical, depth, fog offsets to be applied after transform.
       (let ((hvdf-x 2048.0)
             (hvdf-y 2048.0)
-            (hvdf-w
-             (/ (- (* (-> *math-camera-fog-correction* fog-end) (-> math-cam fog-max))
-                   (* (-> *math-camera-fog-correction* fog-start)
-                      (-> math-cam fog-min)
-                      )
-                   )
-                (- (-> *math-camera-fog-correction* fog-end)
-                   (-> *math-camera-fog-correction* fog-start)
-                   )
-                )
-              )
+            (hvdf-w (/ (- (* (-> *math-camera-fog-correction* fog-end) (-> math-cam fog-max))
+                          (* (-> *math-camera-fog-correction* fog-start) (-> math-cam fog-min))
+                          )
+                       (- (-> *math-camera-fog-correction* fog-end) (-> *math-camera-fog-correction* fog-start))
+                       )
+                    )
             )
         (let ((hvdf-z (* 0.5 (+ max-depth min-depth))))
           (set! (-> math-cam hmge-scale x) (/ 1.0 (-> math-cam x-clip)))
@@ -225,7 +216,7 @@
           (set! (-> math-cam guard z) 1.0)
           (set! (-> math-cam guard w) 1.0)
           (set! (-> math-cam isometric vector 3 z) (- 16777215.0 hvdf-z))
-          ;; PC HACK!
+          ;; og:preserve-this PC HACK!
           ;; for whatever reason, the font renderer ends up computing a depth #x1000000 instead of
           ;; #xffffffff, which overflows the 24-bit z buffer.
           ;; cheating this by 1 bit seems to fix it.
@@ -273,40 +264,37 @@
 
   ;; sets up some giftags, but they are totally wrong.
   ;; they use 32-bit variables to store 64-bit parts of the tag.
-  (let ((v1-17 0)))
-  (let ((v1-20 (make-u128 0 (shl #x301ec000 32)))))
-  (let ((v1-23 (make-u128 0 (shl #x303ec000 32)))))
+  0
+  (make-u128 0 (shl #x301ec000 32))
+  (make-u128 0 (shl #x303ec000 32))
   (let ((pfog (-> math-cam pfog0)))
-   (let ((vis-gif-0 (-> math-cam vis-gifs)))
-    (set! (-> vis-gif-0 0 fog0) (the-as uint pfog))
-    (set! (-> vis-gif-0 0 strip) (the-as uint #x301e4000))
-    (set! (-> vis-gif-0 0 regs) (the-as uint 1042))
-    (set! (-> vis-gif-0 0 fan) (the-as uint #x301ec000))
+    (let ((vis-gif-0 (-> math-cam vis-gifs)))
+      (set! (-> vis-gif-0 0 fog0) (the-as uint pfog))
+      (set! (-> vis-gif-0 0 strip) (the-as uint #x301e4000))
+      (set! (-> vis-gif-0 0 regs) (the-as uint 1042))
+      (set! (-> vis-gif-0 0 fan) (the-as uint #x301ec000))
+      )
+    (let ((vis-gif-1 (&-> math-cam gifgr)))
+      (set! (-> vis-gif-1 0) (the-as vis-gif-tag pfog))
+      (set! (-> vis-gif-1 1) (the-as vis-gif-tag (make-u128 0 (shl #x20164000 32))))
+      (set! (-> vis-gif-1 2) (the-as vis-gif-tag 65))
+      (set! (-> vis-gif-1 3) (the-as vis-gif-tag #x301ec000))
+      )
+    (let ((vis-gif-1-again (-> math-cam vis-gifs)))
+      (set! (-> vis-gif-1-again 0 fog0) (the-as uint pfog))
+      (set! (-> vis-gif-1-again 0 strip) (the-as uint #x303e4000))
+      (set! (-> vis-gif-1-again 0 regs) (the-as uint 1042))
+      (set! (-> vis-gif-1-again 0 fan) (the-as uint #x303ec000))
+      )
+    (let ((vis-gif-1-again-again (-> math-cam vis-gifs)))
+      (set! (-> vis-gif-1-again-again 0 fog0) (the-as uint pfog))
+      (set! (-> vis-gif-1-again-again 0 strip) (the-as uint #x303e4000))
+      (set! (-> vis-gif-1-again-again 0 regs) (the-as uint 1042))
+      (set! (-> vis-gif-1-again-again 0 fan) (the-as uint #x303ec000))
+      )
     )
-   (let ((vis-gif-1 (&-> math-cam gifgr)))
-    (set! (-> vis-gif-1 0) (the-as vis-gif-tag pfog))
-    (set!
-     (-> vis-gif-1 1)
-     (the-as vis-gif-tag (make-u128 0 (shl #x20164000 32)))
-     )
-    (set! (-> vis-gif-1 2) (the-as vis-gif-tag 65))
-    (set! (-> vis-gif-1 3) (the-as vis-gif-tag #x301ec000))
-    )
-   (let ((vis-gif-1-again (-> math-cam vis-gifs)))
-    (set! (-> vis-gif-1-again 0 fog0) (the-as uint pfog))
-    (set! (-> vis-gif-1-again 0 strip) (the-as uint #x303e4000))
-    (set! (-> vis-gif-1-again 0 regs) (the-as uint 1042))
-    (set! (-> vis-gif-1-again 0 fan) (the-as uint #x303ec000))
-    )
-   (let ((vis-gif-1-again-again (-> math-cam vis-gifs)))
-    (set! (-> vis-gif-1-again-again 0 fog0) (the-as uint pfog))
-    (set! (-> vis-gif-1-again-again 0 strip) (the-as uint #x303e4000))
-    (set! (-> vis-gif-1-again-again 0 regs) (the-as uint 1042))
-    (set! (-> vis-gif-1-again-again 0 fan) (the-as uint #x303ec000))
-    )
-   )
 
-  ;; update sprite stuff.
+  ;; update sprite distort vectors
   (if (nonzero? sprite-distorter-generate-tables)
       (sprite-distorter-generate-tables)
       )
@@ -359,36 +347,34 @@
   ;; local-trans is the translation in the camera frame.
   (let ((local-trans (new-stack-vector0)))
     ;; circle/square move camera relative x (left and right)
-    (set! (-> local-trans x)
-          (cond
-            ((logtest? (-> *cpad-list* cpads pad-idx button0-abs 0) (pad-buttons circle))
-             -80.0
-             )
-            ((logtest? (-> *cpad-list* cpads pad-idx button0-abs 0) (pad-buttons square))
-             80.0
-             )
-            (else
-             0.0
-             )
-            )
+    (set! (-> local-trans x) (cond
+                               ((cpad-hold? pad-idx circle)
+                                -80.0
+                                )
+                               ((cpad-hold? pad-idx square)
+                                80.0
+                                )
+                               (else
+                                 0.0
+                                 )
+                               )
           )
 
     ;; no way to move camera relative y (up/down)
     (set! (-> local-trans y) 0.0)
 
     ;; in and out movement
-    (set! (-> local-trans z)
-          (cond
-            ((logtest? (-> *cpad-list* cpads pad-idx button0-abs 0) (pad-buttons down))
-             -80.0
-             )
-            ((logtest? (-> *cpad-list* cpads pad-idx button0-abs 0) (pad-buttons up))
-             80.0
-             )
-            (else
-             0.0
-             )
-            )
+    (set! (-> local-trans z) (cond
+                               ((cpad-hold? pad-idx down)
+                                -80.0
+                                )
+                               ((cpad-hold? pad-idx up)
+                                80.0
+                                )
+                               (else
+                                 0.0
+                                 )
+                               )
           )
     (set! (-> local-trans w) 1.0)
 
@@ -411,25 +397,25 @@
   (set! (-> trans trans w) 1.0)
 
   ;; global translation
-  (if (logtest? (-> *cpad-list* cpads pad-idx button0-abs 0) (pad-buttons r1))
-      (set! (-> trans trans y) (+ 80.0 (-> trans trans y)))
+  (if (cpad-hold? pad-idx r1)
+      (+! (-> trans trans y) 80.0)
       )
-  (if (logtest? (-> *cpad-list* cpads pad-idx button0-abs 0) (pad-buttons r2))
-      (set! (-> trans trans y) (+ -80.0 (-> trans trans y)))
+  (if (cpad-hold? pad-idx r2)
+      (+! (-> trans trans y) -80.0)
       )
 
   ;; rotation (don't allow camera roll)
-  (if (logtest? (-> *cpad-list* cpads pad-idx button0-abs 0) (pad-buttons x))
-      (set! (-> trans rot x) (+ 546.13336 (-> trans rot x)))
+  (if (cpad-hold? pad-idx x)
+      (+! (-> trans rot x) 546.13336)
       )
-  (if (logtest? (-> *cpad-list* cpads pad-idx button0-abs 0) (pad-buttons triangle))
-      (set! (-> trans rot x) (+ -546.13336 (-> trans rot x)))
+  (if (cpad-hold? pad-idx triangle)
+      (+! (-> trans rot x) -546.13336)
       )
-  (if (logtest? (-> *cpad-list* cpads pad-idx button0-abs 0) (pad-buttons left))
-      (set! (-> trans rot y) (+ 546.13336 (-> trans rot y)))
+  (if (cpad-hold? pad-idx left)
+      (+! (-> trans rot y) 546.13336)
       )
-  (if (logtest? (-> *cpad-list* cpads pad-idx button0-abs 0) (pad-buttons right))
-      (set! (-> trans rot y) (+ -546.13336 (-> trans rot y)))
+  (if (cpad-hold? pad-idx right)
+      (+! (-> trans rot y) -546.13336)
       )
   trans
   )
@@ -452,8 +438,7 @@
          (vf31 :class vf)
          )
     (init-vf0-vector)
-    (let ((v1-0 0))
-      )
+    0
     (.lvf vf24 (&-> *math-camera* camera-temp vector 0 quad))
     (.lvf vf25 (&-> *math-camera* camera-temp vector 1 quad))
     (.lvf vf26 (&-> *math-camera* camera-temp vector 2 quad))

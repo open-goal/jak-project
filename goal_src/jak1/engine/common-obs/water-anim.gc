@@ -7,16 +7,11 @@
 
 ;; DECOMP BEGINS
 
-
 (deftype water-anim (water-vol)
-  ((ppointer-water-anim (pointer water-anim)  :offset         24)
-   (look                int32                 :offset-assert 212)
-   (play-ambient-sound? symbol                :offset-assert 216)
+  ((ppointer-water-anim  (pointer water-anim)  :overlay-at ppointer)
+   (look                 int32)
+   (play-ambient-sound?  symbol)
    )
-  :heap-base #x70
-  :method-count-assert 30
-  :size-assert         #xdc
-  :flag-assert         #x1e007000dc
   )
 
 
@@ -261,13 +256,10 @@
               )
 
 (deftype water-anim-look (structure)
-  ((skel-group         symbol      :offset-assert   0)
-   (anim               int32       :offset-assert   4)
-   (ambient-sound-spec sound-spec  :offset-assert   8)
+  ((skel-group          symbol)
+   (anim                int32)
+   (ambient-sound-spec  sound-spec)
    )
-  :method-count-assert 9
-  :size-assert         #xc
-  :flag-assert         #x90000000c
   )
 
 
@@ -474,21 +466,20 @@
 
 (defstate water-vol-idle (water-anim)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (the-as object (case event-type
-                     (('move-to)
-                      (set! (-> self root trans quad) (-> (the-as vector (-> event param 0)) quad))
-                      (set! (-> self water-height) (-> self root trans y))
-                      (if (nonzero? (-> self sound))
-                          (update-trans! (-> self sound) (-> self root trans))
-                          )
-                      (let ((v0-0 (logclear (-> self mask) (process-mask sleep-code))))
-                        (set! (-> self mask) v0-0)
-                        v0-0
-                        )
-                      )
-                     )
-            )
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
+      (('move-to)
+       (set! (-> self root trans quad) (-> (the-as vector (-> block param 0)) quad))
+       (set! (-> self water-height) (-> self root trans y))
+       (if (nonzero? (-> self sound))
+           (update-trans! (-> self sound) (-> self root trans))
+           )
+       (let ((v0-0 (logclear (-> self mask) (process-mask sleep-code))))
+         (set! (-> self mask) v0-0)
+         v0-0
+         )
+       )
+      )
     )
   :trans (behavior ()
     (let ((t9-0 (-> (method-of-type water-vol water-vol-idle) trans)))
@@ -503,7 +494,6 @@
     (if (and (-> self play-ambient-sound?) (nonzero? (-> self sound)))
         (update! (-> self sound))
         )
-    (none)
     )
   :code (behavior ()
     (loop
@@ -511,40 +501,39 @@
       (logior! (-> self mask) (process-mask sleep-code))
       (suspend)
       )
-    (none)
     )
   )
 
-(defmethod get-ripple-height water-anim ((obj water-anim) (arg0 vector))
-  (ripple-find-height obj 0 arg0)
+(defmethod get-ripple-height ((this water-anim) (arg0 vector))
+  (ripple-find-height this 0 arg0)
   )
 
-(defmethod set-stack-size! water-anim ((obj water-anim))
+(defmethod set-stack-size! ((this water-anim))
   (none)
   )
 
-(defmethod water-vol-method-25 water-anim ((obj water-anim))
+(defmethod water-vol-method-25 ((this water-anim))
   (local-vars (sv-16 res-tag))
-  (set! (-> obj play-ambient-sound?) #t)
-  (set! (-> obj look) (res-lump-value (-> obj entity) 'look int :default (the-as uint128 -1)))
+  (set! (-> this play-ambient-sound?) #t)
+  (set! (-> this look) (res-lump-value (-> this entity) 'look int :default (the-as uint128 -1)))
   (set! sv-16 (new 'static 'res-tag))
-  (let ((v1-3 (res-lump-data (-> obj entity) 'trans-offset (pointer float) :tag-ptr (& sv-16))))
+  (let ((v1-3 (res-lump-data (-> this entity) 'trans-offset (pointer float) :tag-ptr (& sv-16))))
     (when v1-3
-      (+! (-> obj root trans x) (-> v1-3 0))
-      (+! (-> obj root trans y) (-> v1-3 1))
-      (+! (-> obj root trans z) (-> v1-3 2))
+      (+! (-> this root trans x) (-> v1-3 0))
+      (+! (-> this root trans y) (-> v1-3 1))
+      (+! (-> this root trans z) (-> v1-3 2))
       )
     )
-  (let ((f0-6 (res-lump-float (-> obj entity) 'rotoffset)))
+  (let ((f0-6 (res-lump-float (-> this entity) 'rotoffset)))
     (if (!= f0-6 0.0)
-        (quaternion-rotate-y! (-> obj root quat) (-> obj root quat) f0-6)
+        (quaternion-rotate-y! (-> this root quat) (-> this root quat) f0-6)
         )
     )
   (none)
   )
 
-(defmethod water-vol-method-22 water-anim ((obj water-anim))
-  (let ((s5-0 (-> obj look)))
+(defmethod water-vol-method-22 ((this water-anim))
+  (let ((s5-0 (-> this look)))
     (if (or (< s5-0 0) (>= s5-0 (-> *water-anim-look* length)))
         (go process-drawable-art-error "skel group")
         )
@@ -558,13 +547,13 @@
               (go process-drawable-art-error "skel group")
               )
           )
-        (initialize-skeleton obj (the-as skeleton-group s4-0) '())
+        (initialize-skeleton this (the-as skeleton-group s4-0) '())
         )
       (ja-channel-set! 1)
-      (let ((s4-1 (-> obj skel root-channel 0)))
+      (let ((s4-1 (-> this skel root-channel 0)))
         (joint-control-channel-group-eval!
           s4-1
-          (the-as art-joint-anim (-> obj draw art-group data (-> s5-1 anim)))
+          (the-as art-joint-anim (-> this draw art-group data (-> s5-1 anim)))
           num-func-identity
           )
         (set! (-> s4-1 frame-num) 0.0)
@@ -572,8 +561,8 @@
       (let ((a2-2 (-> s5-1 ambient-sound-spec)))
         (when a2-2
           (let ((a3-0 (new 'stack-no-clear 'vector)))
-            (vector+! a3-0 (-> obj root trans) (-> obj draw bounds))
-            (set! (-> obj sound) (new 'process 'ambient-sound a2-2 a3-0))
+            (vector+! a3-0 (-> this root trans) (-> this draw bounds))
+            (set! (-> this sound) (new 'process 'ambient-sound a2-2 a3-0))
             )
           )
         )

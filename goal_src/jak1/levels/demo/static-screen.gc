@@ -8,43 +8,39 @@
 ;; DECOMP BEGINS
 
 (deftype static-screen (process)
-  ((part       sparticle-launch-control 1 :offset-assert 112)
-   (state-time time-frame                 :offset-assert 120)
+  ((part        sparticle-launch-control  1)
+   (state-time  time-frame)
    )
-  :heap-base #x10
-  :method-count-assert 15
-  :size-assert         #x80
-  :flag-assert         #xf00100080
-  (:methods
-    (idle (int time-frame symbol) _type_ :state 14)
+  (:state-methods
+    (idle int time-frame symbol)
     )
   )
 
 
-(defmethod relocate static-screen ((obj static-screen) (arg0 int))
+(defmethod relocate ((this static-screen) (arg0 int))
   (let ((v1-0 *kernel-context*))
-    (set! (-> v1-0 relocating-process) obj)
-    (set! (-> v1-0 relocating-min) (the-as int (&-> obj type)))
+    (set! (-> v1-0 relocating-process) this)
+    (set! (-> v1-0 relocating-min) (the-as int (&-> this type)))
     (set! (-> v1-0 relocating-max)
-          (the-as int (+ (+ (-> obj allocated-length) -4 (-> process size)) (the-as int obj)))
+          (the-as int (+ (+ (-> this allocated-length) -4 (-> process size)) (the-as int this)))
           )
     (set! (-> v1-0 relocating-offset) arg0)
     )
   (dotimes (v1-2 1)
-    (if (nonzero? (-> obj part v1-2))
-        (&+! (-> obj part v1-2) arg0)
+    (if (nonzero? (-> this part v1-2))
+        (&+! (-> this part v1-2) arg0)
         )
     )
-  (the-as static-screen ((method-of-type process relocate) obj arg0))
+  (the-as static-screen ((method-of-type process relocate) this arg0))
   )
 
-(defmethod deactivate static-screen ((obj static-screen))
+(defmethod deactivate ((this static-screen))
   (dotimes (s5-0 1)
-    (if (nonzero? (-> obj part s5-0))
-        (kill-and-free-particles (-> obj part s5-0))
+    (if (nonzero? (-> this part s5-0))
+        (kill-and-free-particles (-> this part s5-0))
         )
     )
-  ((method-of-type process deactivate) obj)
+  ((method-of-type process deactivate) this)
   (none)
   )
 
@@ -106,22 +102,20 @@
     (set! (-> *setting-control* current bg-a) 1.0)
     (set! (-> *setting-control* default bg-a) 0.0)
     (add-setting! 'common-page 'set 0.0 (ash 1 (+ arg0 1)))
-    (none)
     )
   :trans (behavior ()
     (hide-hud-quick)
     (spawn (-> self part 0) *zero-vector*)
     0
-    (none)
     )
   :code (behavior ((arg0 int) (arg1 time-frame) (arg2 symbol))
     (local-vars (v1-6 symbol))
-    (set! (-> self state-time) (-> *display* base-frame-counter))
+    (set-time! (-> self state-time))
     (until v1-6
       (suspend)
-      (set! v1-6 (or (and (> arg1 0) (>= (- (-> *display* base-frame-counter) (-> self state-time)) arg1))
+      (set! v1-6 (or (and (> arg1 0) (time-elapsed? (-> self state-time) arg1))
                      (and arg2
-                          (>= (- (-> *display* base-frame-counter) (-> self state-time)) (seconds 1))
+                          (time-elapsed? (-> self state-time) (seconds 1))
                           (cpad-pressed? 0 select start triangle circle x square)
                           )
                      )
@@ -134,7 +128,6 @@
     (remove-setting! 'common-page)
     (suspend)
     0
-    (none)
     )
   )
 

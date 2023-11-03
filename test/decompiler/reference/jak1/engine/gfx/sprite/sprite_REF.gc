@@ -3,20 +3,17 @@
 
 ;; definition of type sprite-header
 (deftype sprite-header (structure)
-  ((header      qword 1 :inline :offset-assert   0)
-   (num-sprites int32           :offset          0)
+  ((header       qword  1 :inline)
+   (num-sprites  int32  :overlay-at (-> header 0 data 0))
    )
-  :method-count-assert 9
-  :size-assert         #x10
-  :flag-assert         #x900000010
   )
 
 ;; definition for method 3 of type sprite-header
-(defmethod inspect sprite-header ((obj sprite-header))
-  (format #t "[~8x] ~A~%" obj 'sprite-header)
-  (format #t "~Theader[1] @ #x~X~%" (-> obj header))
-  (format #t "~Tnum-sprites: ~D~%" (-> obj num-sprites))
-  obj
+(defmethod inspect ((this sprite-header))
+  (format #t "[~8x] ~A~%" this 'sprite-header)
+  (format #t "~Theader[1] @ #x~X~%" (-> this header))
+  (format #t "~Tnum-sprites: ~D~%" (-> this num-sprites))
+  this
   )
 
 ;; definition for function sprite-setup-header
@@ -28,34 +25,28 @@
 
 ;; definition of type sprite-hvdf-data
 (deftype sprite-hvdf-data (structure)
-  ((data qword 76 :inline :offset-assert   0)
+  ((data  qword  76 :inline)
    )
-  :method-count-assert 9
-  :size-assert         #x4c0
-  :flag-assert         #x9000004c0
   )
 
 ;; definition for method 3 of type sprite-hvdf-data
-(defmethod inspect sprite-hvdf-data ((obj sprite-hvdf-data))
-  (format #t "[~8x] ~A~%" obj 'sprite-hvdf-data)
-  (format #t "~Tdata[76] @ #x~X~%" (-> obj data))
-  obj
+(defmethod inspect ((this sprite-hvdf-data))
+  (format #t "[~8x] ~A~%" this 'sprite-hvdf-data)
+  (format #t "~Tdata[76] @ #x~X~%" (-> this data))
+  this
   )
 
 ;; definition of type sprite-hvdf-control
 (deftype sprite-hvdf-control (structure)
-  ((alloc int8 76 :offset-assert   0)
+  ((alloc  int8  76)
    )
-  :method-count-assert 9
-  :size-assert         #x4c
-  :flag-assert         #x90000004c
   )
 
 ;; definition for method 3 of type sprite-hvdf-control
-(defmethod inspect sprite-hvdf-control ((obj sprite-hvdf-control))
-  (format #t "[~8x] ~A~%" obj 'sprite-hvdf-control)
-  (format #t "~Talloc[76] @ #x~X~%" (-> obj alloc))
-  obj
+(defmethod inspect ((this sprite-hvdf-control))
+  (format #t "[~8x] ~A~%" this 'sprite-hvdf-control)
+  (format #t "~Talloc[76] @ #x~X~%" (-> this alloc))
+  this
   )
 
 ;; definition for symbol *sprite-hvdf-data*, type sprite-hvdf-data
@@ -74,26 +65,23 @@
 
 ;; definition of type sprite-aux-list
 (deftype sprite-aux-list (basic)
-  ((num-entries int32                :offset-assert   4)
-   (entry       int32                :offset-assert   8)
-   (data        sprite-vec-data-2d 1 :offset-assert  12)
+  ((num-entries  int32)
+   (entry        int32)
+   (data         sprite-vec-data-2d  1)
    )
-  :method-count-assert 9
-  :size-assert         #x10
-  :flag-assert         #x900000010
   (:methods
-    (new (symbol type int) _type_ 0)
+    (new (symbol type int) _type_)
     )
   )
 
 ;; definition for method 3 of type sprite-aux-list
 ;; INFO: this function exists in multiple non-identical object files
-(defmethod inspect sprite-aux-list ((obj sprite-aux-list))
-  (format #t "[~8x] ~A~%" obj (-> obj type))
-  (format #t "~Tnum-entries: ~D~%" (-> obj num-entries))
-  (format #t "~Tentry: ~D~%" (-> obj entry))
-  (format #t "~Tdata[1] @ #x~X~%" (-> obj data))
-  obj
+(defmethod inspect ((this sprite-aux-list))
+  (format #t "[~8x] ~A~%" this (-> this type))
+  (format #t "~Tnum-entries: ~D~%" (-> this num-entries))
+  (format #t "~Tentry: ~D~%" (-> this entry))
+  (format #t "~Tdata[1] @ #x~X~%" (-> this data))
+  this
   )
 
 ;; definition for method 0 of type sprite-aux-list
@@ -108,12 +96,12 @@
 ;; definition for method 3 of type sprite-aux-list
 ;; INFO: this function exists in multiple non-identical object files
 ;; INFO: Return type mismatch symbol vs sprite-aux-list.
-(defmethod inspect sprite-aux-list ((obj sprite-aux-list))
-  (format #t "[~X] sprite-aux-list:~%" obj)
-  (format #t "~Tnum-entries: ~D~%" (-> obj num-entries))
-  (format #t "~Tentry: ~D~%" (-> obj entry))
-  (dotimes (s5-0 (-> obj entry))
-    (format #t "~T~D : ~X~%" s5-0 (-> obj data s5-0))
+(defmethod inspect ((this sprite-aux-list))
+  (format #t "[~X] sprite-aux-list:~%" this)
+  (format #t "~Tnum-entries: ~D~%" (-> this num-entries))
+  (format #t "~Tentry: ~D~%" (-> this entry))
+  (dotimes (s5-0 (-> this entry))
+    (format #t "~T~D : ~X~%" s5-0 (-> this data s5-0))
     )
   (the-as sprite-aux-list #f)
   )
@@ -145,79 +133,76 @@
 
 ;; definition of type sprite-frame-data
 (deftype sprite-frame-data (structure)
-  ((cdata              vector       16 :inline :offset-assert   0)
-   (hmge-scale         vector       :inline    :offset        256)
-   (consts             vector       :inline    :offset-assert 272)
-   (pfog0              float                   :offset        272)
-   (deg-to-rad         float                   :offset        276)
-   (min-scale          float                   :offset        280)
-   (inv-area           float                   :offset        284)
-   (adgif-giftag       gs-gif-tag   :inline    :offset-assert 288)
-   (sprite-2d-giftag   gs-gif-tag   :inline    :offset-assert 304)
-   (sprite-2d-giftag-2 gs-gif-tag   :inline    :offset-assert 320)
-   (sincos-01          vector       :inline    :offset-assert 336)
-   (sincos-23          vector       :inline    :offset-assert 352)
-   (sincos-45          vector       :inline    :offset-assert 368)
-   (sincos-67          vector       :inline    :offset-assert 384)
-   (sincos-89          vector       :inline    :offset-assert 400)
-   (basis-x            vector       :inline    :offset-assert 416)
-   (basis-y            vector       :inline    :offset-assert 432)
-   (sprite-3d-giftag   gs-gif-tag   :inline    :offset-assert 448)
-   (screen-shader      adgif-shader :inline    :offset-assert 464)
-   (clipped-giftag     gs-gif-tag   :inline    :offset-assert 544)
-   (inv-hmge-scale     vector       :inline    :offset-assert 560)
-   (stq-offset         vector       :inline    :offset-assert 576)
-   (stq-scale          vector       :inline    :offset-assert 592)
-   (rgba-plain         qword        :inline    :offset-assert 608)
-   (warp-giftag        gs-gif-tag   :inline    :offset-assert 624)
-   (fog-clamp          vector       :inline    :offset-assert 640)
-   (fog-min            float                   :offset        640)
-   (fog-max            float                   :offset        644)
-   (max-scale          float                   :offset        648)
+  ((cdata               vector        16 :inline)
+   (hmge-scale          vector        :inline)
+   (consts              vector        :inline)
+   (pfog0               float         :overlay-at (-> consts x))
+   (deg-to-rad          float         :overlay-at (-> consts y))
+   (min-scale           float         :overlay-at (-> consts z))
+   (inv-area            float         :overlay-at (-> consts w))
+   (adgif-giftag        gs-gif-tag    :inline)
+   (sprite-2d-giftag    gs-gif-tag    :inline)
+   (sprite-2d-giftag-2  gs-gif-tag    :inline)
+   (sincos-01           vector        :inline)
+   (sincos-23           vector        :inline)
+   (sincos-45           vector        :inline)
+   (sincos-67           vector        :inline)
+   (sincos-89           vector        :inline)
+   (basis-x             vector        :inline)
+   (basis-y             vector        :inline)
+   (sprite-3d-giftag    gs-gif-tag    :inline)
+   (screen-shader       adgif-shader  :inline)
+   (clipped-giftag      gs-gif-tag    :inline)
+   (inv-hmge-scale      vector        :inline)
+   (stq-offset          vector        :inline)
+   (stq-scale           vector        :inline)
+   (rgba-plain          qword         :inline)
+   (warp-giftag         gs-gif-tag    :inline)
+   (fog-clamp           vector        :inline)
+   (fog-min             float         :overlay-at (-> fog-clamp x))
+   (fog-max             float         :overlay-at (-> fog-clamp y))
+   (max-scale           float         :overlay-at (-> fog-clamp z))
    )
-  :method-count-assert 9
-  :size-assert         #x290
-  :flag-assert         #x900000290
   )
 
 ;; definition for method 3 of type sprite-frame-data
-(defmethod inspect sprite-frame-data ((obj sprite-frame-data))
-  (format #t "[~8x] ~A~%" obj 'sprite-frame-data)
-  (format #t "~Tdata[41] @ #x~X~%" (-> obj cdata))
-  (format #t "~Tcdata[16] @ #x~X~%" (-> obj cdata))
-  (format #t "~Tfdata[25] @ #x~X~%" (-> obj hmge-scale))
-  (format #t "~Txy-array[8] @ #x~X~%" (-> obj cdata))
-  (format #t "~Tst-array[4] @ #x~X~%" (-> obj cdata 8))
-  (format #t "~Txyz-array[4] @ #x~X~%" (-> obj cdata 12))
-  (format #t "~Thmge-scale: #<vector @ #x~X>~%" (-> obj hmge-scale))
-  (format #t "~Tconsts: #<vector @ #x~X>~%" (&-> obj pfog0))
-  (format #t "~Tpfog0: ~f~%" (-> obj pfog0))
-  (format #t "~Tdeg-to-rad: ~f~%" (-> obj deg-to-rad))
-  (format #t "~Tmin-scale: ~f~%" (-> obj min-scale))
-  (format #t "~Tinv-area: ~f~%" (-> obj inv-area))
-  (format #t "~Tadgif-giftag: #<qword @ #x~X>~%" (-> obj adgif-giftag))
-  (format #t "~Tsprite-2d-giftag: #<qword @ #x~X>~%" (-> obj sprite-2d-giftag))
-  (format #t "~Tsprite-2d-giftag-2: #<qword @ #x~X>~%" (-> obj sprite-2d-giftag-2))
-  (format #t "~Tsincos-01: #<vector @ #x~X>~%" (-> obj sincos-01))
-  (format #t "~Tsincos-23: #<vector @ #x~X>~%" (-> obj sincos-23))
-  (format #t "~Tsincos-45: #<vector @ #x~X>~%" (-> obj sincos-45))
-  (format #t "~Tsincos-67: #<vector @ #x~X>~%" (-> obj sincos-67))
-  (format #t "~Tsincos-89: #<vector @ #x~X>~%" (-> obj sincos-89))
-  (format #t "~Tbasis-x: #<vector @ #x~X>~%" (-> obj basis-x))
-  (format #t "~Tbasis-y: #<vector @ #x~X>~%" (-> obj basis-y))
-  (format #t "~Tsprite-3d-giftag: #<qword @ #x~X>~%" (-> obj sprite-3d-giftag))
-  (format #t "~Tscreen-shader: #<adgif-shader @ #x~X>~%" (-> obj screen-shader))
-  (format #t "~Tclipped-giftag: #<qword @ #x~X>~%" (-> obj clipped-giftag))
-  (format #t "~Tinv-hmge-scale: #<vector @ #x~X>~%" (-> obj inv-hmge-scale))
-  (format #t "~Tstq-offset: #<vector @ #x~X>~%" (-> obj stq-offset))
-  (format #t "~Tstq-scale: #<vector @ #x~X>~%" (-> obj stq-scale))
-  (format #t "~Trgba-plain: #<qword @ #x~X>~%" (-> obj rgba-plain))
-  (format #t "~Twarp-giftag: #<qword @ #x~X>~%" (-> obj warp-giftag))
-  (format #t "~Tfog-clamp: #<vector @ #x~X>~%" (-> obj fog-clamp))
-  (format #t "~Tfog-min: ~f~%" (-> obj fog-clamp x))
-  (format #t "~Tfog-max: ~f~%" (-> obj fog-clamp y))
-  (format #t "~Tmax-scale: ~f~%" (-> obj fog-clamp z))
-  obj
+(defmethod inspect ((this sprite-frame-data))
+  (format #t "[~8x] ~A~%" this 'sprite-frame-data)
+  (format #t "~Tdata[41] @ #x~X~%" (-> this cdata))
+  (format #t "~Tcdata[16] @ #x~X~%" (-> this cdata))
+  (format #t "~Tfdata[25] @ #x~X~%" (-> this hmge-scale))
+  (format #t "~Txy-array[8] @ #x~X~%" (-> this cdata))
+  (format #t "~Tst-array[4] @ #x~X~%" (-> this cdata 8))
+  (format #t "~Txyz-array[4] @ #x~X~%" (-> this cdata 12))
+  (format #t "~Thmge-scale: #<vector @ #x~X>~%" (-> this hmge-scale))
+  (format #t "~Tconsts: #<vector @ #x~X>~%" (&-> this pfog0))
+  (format #t "~Tpfog0: ~f~%" (-> this pfog0))
+  (format #t "~Tdeg-to-rad: ~f~%" (-> this deg-to-rad))
+  (format #t "~Tmin-scale: ~f~%" (-> this min-scale))
+  (format #t "~Tinv-area: ~f~%" (-> this inv-area))
+  (format #t "~Tadgif-giftag: #<qword @ #x~X>~%" (-> this adgif-giftag))
+  (format #t "~Tsprite-2d-giftag: #<qword @ #x~X>~%" (-> this sprite-2d-giftag))
+  (format #t "~Tsprite-2d-giftag-2: #<qword @ #x~X>~%" (-> this sprite-2d-giftag-2))
+  (format #t "~Tsincos-01: #<vector @ #x~X>~%" (-> this sincos-01))
+  (format #t "~Tsincos-23: #<vector @ #x~X>~%" (-> this sincos-23))
+  (format #t "~Tsincos-45: #<vector @ #x~X>~%" (-> this sincos-45))
+  (format #t "~Tsincos-67: #<vector @ #x~X>~%" (-> this sincos-67))
+  (format #t "~Tsincos-89: #<vector @ #x~X>~%" (-> this sincos-89))
+  (format #t "~Tbasis-x: #<vector @ #x~X>~%" (-> this basis-x))
+  (format #t "~Tbasis-y: #<vector @ #x~X>~%" (-> this basis-y))
+  (format #t "~Tsprite-3d-giftag: #<qword @ #x~X>~%" (-> this sprite-3d-giftag))
+  (format #t "~Tscreen-shader: #<adgif-shader @ #x~X>~%" (-> this screen-shader))
+  (format #t "~Tclipped-giftag: #<qword @ #x~X>~%" (-> this clipped-giftag))
+  (format #t "~Tinv-hmge-scale: #<vector @ #x~X>~%" (-> this inv-hmge-scale))
+  (format #t "~Tstq-offset: #<vector @ #x~X>~%" (-> this stq-offset))
+  (format #t "~Tstq-scale: #<vector @ #x~X>~%" (-> this stq-scale))
+  (format #t "~Trgba-plain: #<qword @ #x~X>~%" (-> this rgba-plain))
+  (format #t "~Twarp-giftag: #<qword @ #x~X>~%" (-> this warp-giftag))
+  (format #t "~Tfog-clamp: #<vector @ #x~X>~%" (-> this fog-clamp))
+  (format #t "~Tfog-min: ~f~%" (-> this fog-clamp x))
+  (format #t "~Tfog-max: ~f~%" (-> this fog-clamp y))
+  (format #t "~Tmax-scale: ~f~%" (-> this fog-clamp z))
+  this
   )
 
 ;; definition for function sprite-setup-frame-data

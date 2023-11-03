@@ -3,21 +3,17 @@
 
 ;; definition of type evilbro
 (deftype evilbro (process-taskable)
-  ((evilsis entity-actor  :offset-assert 380)
+  ((evilsis  entity-actor)
    )
-  :heap-base #x110
-  :method-count-assert 53
-  :size-assert         #x180
-  :flag-assert         #x3501100180
   )
 
 ;; definition for method 3 of type evilbro
-(defmethod inspect evilbro ((obj evilbro))
+(defmethod inspect ((this evilbro))
   (let ((t9-0 (method-of-type process-taskable inspect)))
-    (t9-0 obj)
+    (t9-0 this)
     )
-  (format #t "~T~Tevilsis: ~A~%" (-> obj evilsis))
-  obj
+  (format #t "~T~Tevilsis: ~A~%" (-> this evilsis))
+  this
   )
 
 ;; failed to figure out what this is:
@@ -29,22 +25,22 @@
 
 ;; definition for method 32 of type evilbro
 ;; INFO: Return type mismatch spool-anim vs basic.
-(defmethod play-anim! evilbro ((obj evilbro) (arg0 symbol))
+(defmethod play-anim! ((this evilbro) (arg0 symbol))
   (cond
     (arg0
       (close-specific-task! (game-task leaving-misty) (task-status need-introduction))
-      (send-event (-> obj evilsis extra process) 'clone (process->handle obj))
+      (send-event (-> this evilsis extra process) 'clone (process->handle this))
       )
     (else
-      (set! (-> obj will-talk) #t)
+      (set! (-> this will-talk) #t)
       )
     )
   (the-as basic (new 'static 'spool-anim :name "evilbro-misty-end" :index 5 :parts 9 :command-list '()))
   )
 
 ;; definition for method 31 of type evilbro
-(defmethod get-art-elem evilbro ((obj evilbro))
-  (-> obj draw art-group data 3)
+(defmethod get-art-elem ((this evilbro))
+  (-> this draw art-group data 3)
   )
 
 ;; failed to figure out what this is:
@@ -53,7 +49,6 @@
   :exit (behavior ()
     (send-event (-> self evilsis extra process) 'end-mode)
     ((-> (method-of-type process-taskable play-anim) exit))
-    (none)
     )
   )
 
@@ -70,8 +65,8 @@
         (suspend)
         (ja :num! (seek!))
         )
-      (let ((gp-0 (-> *display* base-frame-counter)))
-        (while (let ((s5-0 (-> *display* base-frame-counter))
+      (let ((gp-0 (current-time)))
+        (while (let ((s5-0 (current-time))
                      (f30-0 300.0)
                      (f28-0 0.16)
                      (f26-0 0.17000002)
@@ -86,8 +81,8 @@
         (suspend)
         (ja :num! (seek! (ja-aframe 0.0 0)))
         )
-      (let ((gp-3 (-> *display* base-frame-counter)))
-        (while (let ((s5-1 (-> *display* base-frame-counter))
+      (let ((gp-3 (current-time)))
+        (while (let ((s5-1 (current-time))
                      (f30-1 300.0)
                      (f28-1 0.16)
                      (f26-1 0.17000002)
@@ -98,34 +93,29 @@
           )
         )
       )
-    (none)
     )
   )
 
 ;; definition for method 11 of type evilbro
-(defmethod init-from-entity! evilbro ((obj evilbro) (arg0 entity-actor))
-  (process-taskable-method-40 obj arg0 *evilbro-intro-sg* 3 40 (new 'static 'vector :w 4096.0) 5)
-  (set! (-> obj tasks) (get-task-control (game-task leaving-misty)))
-  (set! (-> obj evilsis) (entity-actor-lookup arg0 'alt-actor 0))
-  (process-taskable-method-42 obj)
+(defmethod init-from-entity! ((this evilbro) (arg0 entity-actor))
+  (process-taskable-method-40 this arg0 *evilbro-intro-sg* 3 40 (new 'static 'vector :w 4096.0) 5)
+  (set! (-> this tasks) (get-task-control (game-task leaving-misty)))
+  (set! (-> this evilsis) (entity-actor-lookup arg0 'alt-actor 0))
+  (process-taskable-method-42 this)
   (none)
   )
 
 ;; definition of type evilsis
 (deftype evilsis (process-taskable)
   ()
-  :heap-base #x110
-  :method-count-assert 53
-  :size-assert         #x17c
-  :flag-assert         #x350110017c
   )
 
 ;; definition for method 3 of type evilsis
-(defmethod inspect evilsis ((obj evilsis))
+(defmethod inspect ((this evilsis))
   (let ((t9-0 (method-of-type process-taskable inspect)))
-    (t9-0 obj)
+    (t9-0 this)
     )
-  obj
+  this
   )
 
 ;; failed to figure out what this is:
@@ -137,21 +127,21 @@
 
 ;; definition for method 32 of type evilsis
 ;; INFO: Return type mismatch art-element vs basic.
-(defmethod play-anim! evilsis ((obj evilsis) (arg0 symbol))
+(defmethod play-anim! ((this evilsis) (arg0 symbol))
   (if arg0
       (format
         0
         "ERROR: <GMJ>: ~S playing anim for task status ~S~%"
-        (-> obj name)
-        (task-status->string (current-status (-> obj tasks)))
+        (-> this name)
+        (task-status->string (current-status (-> this tasks)))
         )
       )
-  (the-as basic (get-art-elem obj))
+  (the-as basic (get-art-elem this))
   )
 
 ;; definition for method 31 of type evilsis
-(defmethod get-art-elem evilsis ((obj evilsis))
-  (-> obj draw art-group data 3)
+(defmethod get-art-elem ((this evilsis))
+  (-> this draw art-group data 3)
   )
 
 ;; failed to figure out what this is:
@@ -160,14 +150,13 @@
   :trans (behavior ()
     (set! (-> self will-talk) #f)
     ((-> (method-of-type process-taskable idle) trans))
-    (none)
     )
   )
 
 ;; definition for method 11 of type evilsis
-(defmethod init-from-entity! evilsis ((obj evilsis) (arg0 entity-actor))
-  (process-taskable-method-40 obj arg0 *evilsis-intro-sg* 3 0 (new 'static 'vector :w 4096.0) 5)
-  (set! (-> obj tasks) (get-task-control (game-task leaving-misty)))
-  (process-taskable-method-42 obj)
+(defmethod init-from-entity! ((this evilsis) (arg0 entity-actor))
+  (process-taskable-method-40 this arg0 *evilsis-intro-sg* 3 0 (new 'static 'vector :w 4096.0) 5)
+  (set! (-> this tasks) (get-task-control (game-task leaving-misty)))
+  (process-taskable-method-42 this)
   (none)
   )

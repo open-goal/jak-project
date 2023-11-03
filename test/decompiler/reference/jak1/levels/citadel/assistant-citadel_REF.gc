@@ -4,18 +4,14 @@
 ;; definition of type assistant-lavatube-end
 (deftype assistant-lavatube-end (process-taskable)
   ()
-  :heap-base #x110
-  :method-count-assert 53
-  :size-assert         #x17c
-  :flag-assert         #x350110017c
   )
 
 ;; definition for method 3 of type assistant-lavatube-end
-(defmethod inspect assistant-lavatube-end ((obj assistant-lavatube-end))
+(defmethod inspect ((this assistant-lavatube-end))
   (let ((t9-0 (method-of-type process-taskable inspect)))
-    (t9-0 obj)
+    (t9-0 this)
     )
-  obj
+  this
   )
 
 ;; failed to figure out what this is:
@@ -26,14 +22,14 @@
               )
 
 ;; definition for method 32 of type assistant-lavatube-end
-(defmethod play-anim! assistant-lavatube-end ((obj assistant-lavatube-end) (arg0 symbol))
-  (case (current-status (-> obj tasks))
+(defmethod play-anim! ((this assistant-lavatube-end) (arg0 symbol))
+  (case (current-status (-> this tasks))
     (((task-status unknown) (task-status need-hint))
      (new 'static 'spool-anim :name "assistant-lavatube-end-resolution" :index 4 :parts 11 :command-list '())
      )
     (((task-status need-reward-speech))
      (if arg0
-         (close-current! (-> obj tasks))
+         (close-current! (-> this tasks))
          )
      (new 'static 'spool-anim
        :name "assistant-lavatube-end-resolution"
@@ -60,18 +56,18 @@
           (format
             0
             "ERROR: <GMJ>: ~S playing anim for task status ~S~%"
-            (-> obj name)
-            (task-status->string (current-status (-> obj tasks)))
+            (-> this name)
+            (task-status->string (current-status (-> this tasks)))
             )
           )
-      (get-art-elem obj)
+      (get-art-elem this)
       )
     )
   )
 
 ;; definition for method 31 of type assistant-lavatube-end
-(defmethod get-art-elem assistant-lavatube-end ((obj assistant-lavatube-end))
-  (-> obj draw art-group data 3)
+(defmethod get-art-elem ((this assistant-lavatube-end))
+  (-> this draw art-group data 3)
   )
 
 ;; failed to figure out what this is:
@@ -80,11 +76,10 @@
   :trans (behavior ()
     (process-taskable-method-33 self)
     ((-> (method-of-type process-taskable hidden) trans))
-    (when (and (and *target* (>= 61440.0 (vector-vector-distance (-> self root-override trans) (-> *target* control trans))))
+    (when (and (and *target* (>= 61440.0 (vector-vector-distance (-> self root trans) (-> *target* control trans))))
                (not (closed? (-> self tasks) (game-task village4-button) (task-status need-reward-speech)))
                )
       )
-    (none)
     )
   )
 
@@ -98,13 +93,12 @@
        (send-event self 'play-anim)
        )
       )
-    (none)
     )
   :code (behavior ()
     (loop
       (when (!= (ja-group) (get-art-elem self))
         (ja-channel-push! 1 (seconds 0.05))
-        (ja :group! (-> self draw art-group data 3))
+        (ja :group! assistant-lavatube-end-idle-ja)
         )
       (ja-no-eval :group! (ja-group) :num! (seek!) :frame-num 0.0)
       (until (ja-done? 0)
@@ -112,14 +106,13 @@
         (ja :num! (seek!))
         )
       )
-    (none)
     )
   )
 
 ;; definition for method 39 of type assistant-lavatube-end
-(defmethod should-display? assistant-lavatube-end ((obj assistant-lavatube-end))
-  (first-any (-> obj tasks) #t)
-  (let ((v1-3 (current-status (-> obj tasks))))
+(defmethod should-display? ((this assistant-lavatube-end))
+  (first-any (-> this tasks) #t)
+  (let ((v1-3 (current-status (-> this tasks))))
     (and (or (= v1-3 (task-status need-reward-speech)) (= v1-3 (task-status invalid)))
          (not (task-closed? (game-task citadel-sage-green) (task-status need-hint)))
          )
@@ -127,10 +120,10 @@
   )
 
 ;; definition for method 11 of type assistant-lavatube-end
-(defmethod init-from-entity! assistant-lavatube-end ((obj assistant-lavatube-end) (arg0 entity-actor))
-  (process-taskable-method-40 obj arg0 *assistant-lavatube-end-sg* 3 29 (new 'static 'vector :w 4096.0) 5)
-  (set! (-> obj tasks) (get-task-control (game-task village4-button)))
-  (first-any (-> obj tasks) #t)
-  (process-taskable-method-42 obj)
+(defmethod init-from-entity! ((this assistant-lavatube-end) (arg0 entity-actor))
+  (process-taskable-method-40 this arg0 *assistant-lavatube-end-sg* 3 29 (new 'static 'vector :w 4096.0) 5)
+  (set! (-> this tasks) (get-task-control (game-task village4-button)))
+  (first-any (-> this tasks) #t)
+  (process-taskable-method-42 this)
   (none)
   )

@@ -8,44 +8,38 @@
 ;; DECOMP BEGINS
 
 (deftype plane-volume (structure)
-  ((volume-type  symbol                :offset-assert   0)
-   (point-count  int16                 :offset-assert   4)
-   (normal-count int16                 :offset-assert   6)
-   (first-point  (pointer vector)      :offset-assert   8)
-   (first-normal (pointer vector)      :offset-assert  12)
-   (num-planes   int32                 :offset-assert  16)
-   (plane        (inline-array plane)  :offset-assert  20)
+  ((volume-type   symbol)
+   (point-count   int16)
+   (normal-count  int16)
+   (first-point   (pointer vector))
+   (first-normal  (pointer vector))
+   (num-planes    int32)
+   (plane         (inline-array plane))
    )
   :pack-me
-  :method-count-assert 12
-  :size-assert         #x18
-  :flag-assert         #xc00000018
   (:methods
-    (init-vol! (_type_ symbol vector-array vector-array) symbol 9)
-    (debug-draw (_type_) none 10)
-    (point-in-vol? (_type_ vector float) symbol 11)
+    (init-vol! (_type_ symbol vector-array vector-array) symbol)
+    (debug-draw (_type_) none)
+    (point-in-vol? (_type_ vector float) symbol)
     )
   )
 
 
 (deftype vol-control (basic)
-  ((flags         uint32                      :offset-assert   4)
-   (process       process-drawable            :offset-assert   8)
-   (pos-vol-count int32                       :offset-assert  12)
-   (pos-vol       plane-volume     32 :inline :offset-assert  16)
-   (neg-vol-count int32                       :offset-assert 784)
-   (neg-vol       plane-volume     32 :inline :offset-assert 788)
-   (debug-point   vector-array                :offset-assert 1556)
-   (debug-normal  vector-array                :offset-assert 1560)
+  ((flags          uint32)
+   (process        process-drawable)
+   (pos-vol-count  int32)
+   (pos-vol        plane-volume  32 :inline)
+   (neg-vol-count  int32)
+   (neg-vol        plane-volume  32 :inline)
+   (debug-point    vector-array)
+   (debug-normal   vector-array)
    )
-  :method-count-assert 12
-  :size-assert         #x61c
-  :flag-assert         #xc0000061c
   (:methods
-    (new (symbol type process-drawable) _type_ 0)
-    (init! (_type_) symbol 9)
-    (point-in-vol? (_type_ vector) symbol 10)
-    (vol-control-method-11 (_type_) symbol 11)
+    (new (symbol type process-drawable) _type_)
+    (init! (_type_) symbol)
+    (point-in-vol? (_type_ vector) symbol)
+    (vol-control-method-11 (_type_) symbol)
     )
   )
 
@@ -107,6 +101,6 @@
     )
   )
 
-(defmethod vol-control-method-11 vol-control ((obj vol-control))
-  (and *display-vol-marks* (logtest? (-> obj flags) 1))
+(defmethod vol-control-method-11 ((this vol-control))
+  (and *display-vol-marks* (logtest? (-> this flags) 1))
   )

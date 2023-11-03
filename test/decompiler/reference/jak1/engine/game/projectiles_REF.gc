@@ -3,38 +3,35 @@
 
 ;; definition of type search-info
 (deftype search-info (structure)
-  ((point        vector     :inline :offset-assert   0)
-   (best-point   vector     :inline :offset-assert  16)
-   (match-handle handle             :offset-assert  32)
-   (match        projectile         :offset-assert  40)
-   (best         float              :offset-assert  44)
-   (radius       float              :offset-assert  48)
-   (rating       uint32             :offset-assert  52)
-   (require      uint32             :offset-assert  56)
-   (mask         uint32             :offset-assert  60)
-   (rot-base     vector     :inline :offset-assert  64)
-   (rot-range    float              :offset-assert  80)
+  ((point         vector  :inline)
+   (best-point    vector  :inline)
+   (match-handle  handle)
+   (match         projectile)
+   (best          float)
+   (radius        float)
+   (rating        uint32)
+   (require       uint32)
+   (mask          uint32)
+   (rot-base      vector  :inline)
+   (rot-range     float)
    )
-  :method-count-assert 9
-  :size-assert         #x54
-  :flag-assert         #x900000054
   )
 
 ;; definition for method 3 of type search-info
-(defmethod inspect search-info ((obj search-info))
-  (format #t "[~8x] ~A~%" obj 'search-info)
-  (format #t "~Tpoint: ~`vector`P~%" (-> obj point))
-  (format #t "~Tbest-point: ~`vector`P~%" (-> obj best-point))
-  (format #t "~Tmatch-handle: ~D~%" (-> obj match-handle))
-  (format #t "~Tmatch: ~A~%" (-> obj match))
-  (format #t "~Tbest: ~f~%" (-> obj best))
-  (format #t "~Tradius: ~f~%" (-> obj radius))
-  (format #t "~Trating: ~D~%" (-> obj rating))
-  (format #t "~Trequire: ~D~%" (-> obj require))
-  (format #t "~Tmask: ~D~%" (-> obj mask))
-  (format #t "~Trot-base: ~`vector`P~%" (-> obj rot-base))
-  (format #t "~Trot-range: ~f~%" (-> obj rot-range))
-  obj
+(defmethod inspect ((this search-info))
+  (format #t "[~8x] ~A~%" this 'search-info)
+  (format #t "~Tpoint: ~`vector`P~%" (-> this point))
+  (format #t "~Tbest-point: ~`vector`P~%" (-> this best-point))
+  (format #t "~Tmatch-handle: ~D~%" (-> this match-handle))
+  (format #t "~Tmatch: ~A~%" (-> this match))
+  (format #t "~Tbest: ~f~%" (-> this best))
+  (format #t "~Tradius: ~f~%" (-> this radius))
+  (format #t "~Trating: ~D~%" (-> this rating))
+  (format #t "~Trequire: ~D~%" (-> this require))
+  (format #t "~Tmask: ~D~%" (-> this mask))
+  (format #t "~Trot-base: ~`vector`P~%" (-> this rot-base))
+  (format #t "~Trot-range: ~f~%" (-> this rot-range))
+  this
   )
 
 ;; definition for symbol *search-info*, type search-info
@@ -69,7 +66,7 @@
                        )
                  )
             (when s5-0
-              (let* ((s3-0 (-> s5-0 root-override))
+              (let* ((s3-0 (-> s5-0 root))
                      (s4-1 (if (and (nonzero? s3-0) (type-type? (-> s3-0 type) collide-shape))
                                s3-0
                                )
@@ -627,15 +624,15 @@
 
 ;; definition for method 24 of type projectile
 ;; INFO: Return type mismatch int vs none.
-(defmethod projectile-method-24 projectile ((obj projectile))
-  (spawn (-> obj part) (the-as vector (-> obj root-override root-prim prim-core)))
+(defmethod projectile-method-24 ((this projectile))
+  (spawn (-> this part) (the-as vector (-> this root root-prim prim-core)))
   0
   (none)
   )
 
 ;; definition for method 28 of type projectile
 ;; INFO: Return type mismatch int vs none.
-(defmethod projectile-method-28 projectile ((obj projectile))
+(defmethod projectile-method-28 ((this projectile))
   0
   (none)
   )
@@ -643,20 +640,20 @@
 ;; failed to figure out what this is:
 (defstate projectile-moving (projectile)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('touched)
        (when (-> self attack-mode)
          (when (cond
                  ((= (-> proc type) target)
-                  (send-event proc 'attack (-> event param 0) (static-attack-info ((mode (-> self attack-mode)))))
+                  (send-event proc 'attack (-> block param 0) (static-attack-info ((mode (-> self attack-mode)))))
                   )
                  (else
                    (let ((a1-2 (new 'stack-no-clear 'event-message-block)))
                      (set! (-> a1-2 from) self)
                      (set! (-> a1-2 num-params) 4)
                      (set! (-> a1-2 message) 'attack)
-                     (set! (-> a1-2 param 0) (-> event param 0))
+                     (set! (-> a1-2 param 0) (-> block param 0))
                      (set! (-> a1-2 param 1) (the-as uint (-> self attack-mode)))
                      (let ((v1-13 (+ *global-attack-id* 1)))
                        (set! *global-attack-id* v1-13)
@@ -685,12 +682,11 @@
       )
     )
   :enter (behavior ()
-    (set! (-> self state-time) (-> *display* base-frame-counter))
-    (none)
+    (set-time! (-> self state-time))
     )
   :code (behavior ()
     (let ((gp-0 #f))
-      (while (< (- (-> *display* base-frame-counter) (-> self state-time)) (-> self timeout))
+      (while (not (time-elapsed? (-> self state-time) (-> self timeout)))
         (let ((s5-0 (the int (-> *display* time-ratio))))
           (set-time-ratios *display* 1.0)
           (countdown (s4-0 s5-0)
@@ -700,27 +696,23 @@
             (projectile-method-28 self)
             ((-> self update-velocity) self)
             (when (logtest? (-> self options) 2)
-              (seek! (-> self tween) 1.0 (* 0.5 (-> *display* seconds-per-frame)))
-              (let ((f0-6 (vector-vector-distance (-> self root-override trans) (-> self target))))
+              (seek! (-> self tween) 1.0 (* 0.5 (seconds-per-frame)))
+              (let ((f0-6 (vector-vector-distance (-> self root trans) (-> self target))))
                 (cond
                   ((< f0-6 20480.0)
-                   (seek! (-> self tween) 1.0 (* 3.0 (-> *display* seconds-per-frame)))
+                   (seek! (-> self tween) 1.0 (* 3.0 (seconds-per-frame)))
                    )
                   ((< f0-6 40960.0)
-                   (seek! (-> self tween) 1.0 (-> *display* seconds-per-frame))
+                   (seek! (-> self tween) 1.0 (seconds-per-frame))
                    )
                   )
                 )
               )
             (let ((s3-0 (new 'stack-no-clear 'vector)))
-              (set! (-> s3-0 quad) (-> self root-override trans quad))
-              (fill-cache-integrate-and-collide!
-                (-> self root-override)
-                (-> self root-override transv)
-                (-> self root-override root-prim collide-with)
-                )
+              (set! (-> s3-0 quad) (-> self root trans quad))
+              (fill-cache-integrate-and-collide! (-> self root) (-> self root transv) (-> self root root-prim collide-with))
               (set! (-> self old-dist (-> self old-dist-count))
-                    (* 0.0625 (vector-vector-distance s3-0 (-> self root-override trans)))
+                    (* 0.0625 (vector-vector-distance s3-0 (-> self root trans)))
                     )
               )
             (set! (-> self old-dist-count) (logand (+ (-> self old-dist-count) 1) 15))
@@ -728,9 +720,7 @@
               (countdown (v1-35 16)
                 (+! f0-16 (-> self old-dist v1-35))
                 )
-              (if (or (and (logtest? (-> self root-override status) (cshape-moving-flags twall)) (< f0-16 2048.0))
-                      (< f0-16 204.8)
-                      )
+              (if (or (and (logtest? (-> self root status) (cshape-moving-flags twall)) (< f0-16 2048.0)) (< f0-16 204.8))
                   (set! gp-0 #t)
                   )
               )
@@ -742,7 +732,6 @@
         )
       )
     (go-virtual projectile-dissipate)
-    (none)
     )
   )
 
@@ -750,13 +739,13 @@
 ;; INFO: Used lq/sq
 ;; INFO: Return type mismatch int vs none.
 (defun projectile-update-velocity-space-wars ((arg0 projectile))
-  (let ((s5-1 (vector-! (new 'stack-no-clear 'vector) (-> arg0 target) (-> arg0 root-override trans))))
+  (let ((s5-1 (vector-! (new 'stack-no-clear 'vector) (-> arg0 target) (-> arg0 root trans))))
     (let ((s4-0 (new 'stack-no-clear 'vector))
-          (s3-0 (vector-normalize-copy! (new 'stack-no-clear 'vector) (-> arg0 root-override transv) 1.0))
-          (f30-0 (vector-length (-> arg0 root-override transv)))
+          (s3-0 (vector-normalize-copy! (new 'stack-no-clear 'vector) (-> arg0 root transv) 1.0))
+          (f30-0 (vector-length (-> arg0 root transv)))
           )
-      (if (logtest? (-> arg0 root-override status) (cshape-moving-flags tsurf))
-          (vector-flatten! s5-1 s5-1 (-> arg0 root-override local-normal))
+      (if (logtest? (-> arg0 root status) (cshape-moving-flags tsurf))
+          (vector-flatten! s5-1 s5-1 (-> arg0 root local-normal))
           )
       (vector-normalize-copy! s4-0 s5-1 1.0)
       (if (and (or (not (handle->process (-> arg0 last-target)))
@@ -766,20 +755,17 @@
                )
           (go (method-of-object arg0 projectile-dissipate))
           )
-      (vector-deg-slerp (-> arg0 root-override transv) s3-0 s4-0 (-> arg0 tween))
-      (vector-normalize! (-> arg0 root-override transv) f30-0)
+      (vector-deg-slerp (-> arg0 root transv) s3-0 s4-0 (-> arg0 tween))
+      (vector-normalize! (-> arg0 root transv) f30-0)
       )
-    (vector+! (-> arg0 root-override transv) (-> arg0 root-override transv) s5-1)
+    (vector+! (-> arg0 root transv) (-> arg0 root transv) s5-1)
     )
-  (vector-v++!
-    (-> arg0 root-override transv)
-    (compute-acc-due-to-gravity (-> arg0 root-override) (new-stack-vector0) 0.0)
-    )
-  (if (< (-> arg0 max-speed) (vector-length (-> arg0 root-override transv)))
-      (vector-normalize! (-> arg0 root-override transv) (-> arg0 max-speed))
+  (vector-v++! (-> arg0 root transv) (compute-acc-due-to-gravity (-> arg0 root) (new-stack-vector0) 0.0))
+  (if (< (-> arg0 max-speed) (vector-length (-> arg0 root transv)))
+      (vector-normalize! (-> arg0 root transv) (-> arg0 max-speed))
       )
   (if (logtest? (-> arg0 options) 1)
-      (set! (-> arg0 root-override transv y) -40960.0)
+      (set! (-> arg0 root transv y) -40960.0)
       )
   0
   (none)
@@ -797,7 +783,7 @@
       #f
       #f
       #f
-      (-> self root-override root-prim prim-core)
+      (-> self root root-prim prim-core)
       :to *entity-pool*
       )
     (if (nonzero? (-> self sound-id))
@@ -806,7 +792,6 @@
     (sound-play "yellow-explode")
     (suspend)
     (go-virtual projectile-die)
-    (none)
     )
   )
 
@@ -822,7 +807,7 @@
       #f
       #f
       #f
-      (-> self root-override root-prim prim-core)
+      (-> self root root-prim prim-core)
       :to *entity-pool*
       )
     (if (nonzero? (-> self sound-id))
@@ -831,21 +816,20 @@
     (sound-play "yellow-fizzle")
     (suspend)
     (go-virtual projectile-die)
-    (none)
     )
   )
 
 ;; definition for method 27 of type projectile
 ;; INFO: Return type mismatch int vs none.
-(defmethod projectile-method-27 projectile ((obj projectile))
+(defmethod projectile-method-27 ((this projectile))
   0
   (none)
   )
 
 ;; definition for method 26 of type projectile
 ;; INFO: Return type mismatch int vs none.
-(defmethod projectile-method-26 projectile ((obj projectile))
-  (let ((s5-0 (new 'process 'collide-shape-moving obj (collide-list-enum hit-by-player))))
+(defmethod projectile-method-26 ((this projectile))
+  (let ((s5-0 (new 'process 'collide-shape-moving this (collide-list-enum hit-by-player))))
     (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s5-0 reaction) projectile-collision-reaction)
     (set! (-> s5-0 no-reaction)
@@ -863,7 +847,7 @@
     (backup-collide-with-as s5-0)
     (set! (-> s5-0 max-iteration-count) (the-as uint 2))
     (set! (-> s5-0 event-self) 'touched)
-    (set! (-> obj root-override) s5-0)
+    (set! (-> this root) s5-0)
     )
   0
   (none)
@@ -871,8 +855,8 @@
 
 ;; definition for method 25 of type projectile
 ;; INFO: Return type mismatch int vs none.
-(defmethod projectile-method-25 projectile ((obj projectile))
-  (go (method-of-object obj projectile-moving))
+(defmethod projectile-method-25 ((this projectile))
+  (go (method-of-object this projectile-moving))
   0
   (none)
   )
@@ -887,16 +871,15 @@
           )
       )
     (cleanup-for-death self)
-    (none)
     )
   )
 
 ;; definition for method 10 of type projectile
-(defmethod deactivate projectile ((obj projectile))
-  (if (nonzero? (-> obj sound-id))
-      (sound-stop (-> obj sound-id))
+(defmethod deactivate ((this projectile))
+  (if (nonzero? (-> this sound-id))
+      (sound-stop (-> this sound-id))
       )
-  ((method-of-type process-drawable deactivate) obj)
+  ((method-of-type process-drawable deactivate) this)
   (none)
   )
 
@@ -918,21 +901,21 @@
     (set! (-> self old-dist v1-4) 4095996000.0)
     )
   (projectile-method-26 self)
-  (set! (-> self root-override dynam gravity y) 1228800.0)
-  (set! (-> self root-override dynam gravity-length) 1228800.0)
-  (set! (-> self root-override dynam gravity-max) 1228800.0)
-  (set! (-> self root-override trans quad) (-> arg1 quad))
+  (set! (-> self root dynam gravity y) 1228800.0)
+  (set! (-> self root dynam gravity-length) 1228800.0)
+  (set! (-> self root dynam gravity-max) 1228800.0)
+  (set! (-> self root trans quad) (-> arg1 quad))
   (set! (-> self base-trans quad) (-> arg1 quad))
   (set! (-> self parent-base quad) (-> arg1 quad))
-  (quaternion-copy! (-> self root-override quat) (-> (the-as process-drawable (-> self parent 0)) root quat))
+  (quaternion-copy! (-> self root quat) (-> (the-as process-drawable (-> self parent 0)) root quat))
   (quaternion-copy!
     (the-as quaternion (-> self parent-quat))
     (-> (the-as process-drawable (-> self parent 0)) root quat)
     )
-  (vector-identity! (-> self root-override scale))
-  (set! (-> self root-override transv quad) (-> arg2 quad))
+  (vector-identity! (-> self root scale))
+  (set! (-> self root transv quad) (-> arg2 quad))
   (vector-normalize-copy! (-> self base-vector) arg2 1.0)
-  (vector+float*! (-> self target) (-> self root-override trans) (-> self root-override transv) 2.0)
+  (vector+float*! (-> self target) (-> self root trans) (-> self root transv) 2.0)
   (set! (-> self target-base quad) (-> self target quad))
   (projectile-method-27 self)
   (projectile-method-24 self)
@@ -940,7 +923,7 @@
     (let ((a1-8 (new 'stack-no-clear 'collide-edge-hold-list)))
       (set! (-> a1-8 num-allocs) (the-as uint 1))
       (set! (-> a1-8 num-attempts) (the-as uint *touching-list*))
-      (find-overlapping-shapes (-> self root-override) (the-as overlaps-others-params a1-8))
+      (find-overlapping-shapes (-> self root) (the-as overlaps-others-params a1-8))
       )
     )
   (set! (-> self event-hook) (-> (method-of-object self projectile-moving) event))
@@ -951,24 +934,24 @@
 ;; definition for method 27 of type projectile-yellow
 ;; INFO: Used lq/sq
 ;; INFO: Return type mismatch int vs none.
-(defmethod projectile-method-27 projectile-yellow ((obj projectile-yellow))
+(defmethod projectile-method-27 ((this projectile-yellow))
   (cpad-set-buzz! (-> *cpad-list* cpads 0) 1 204 (seconds 0.1))
-  (set! (-> obj attack-mode) 'eco-yellow)
-  (set! (-> obj mode) 1)
-  (set! (-> obj max-speed) (vector-length (-> obj root-override transv)))
-  (set! (-> obj update-velocity) projectile-update-velocity-space-wars)
-  (set! (-> obj angle) (vector-y-angle (-> obj root-override transv)))
-  (set! (-> obj tween) 0.05)
-  (logior! (-> obj options) 2)
+  (set! (-> this attack-mode) 'eco-yellow)
+  (set! (-> this mode) 1)
+  (set! (-> this max-speed) (vector-length (-> this root transv)))
+  (set! (-> this update-velocity) projectile-update-velocity-space-wars)
+  (set! (-> this angle) (vector-y-angle (-> this root transv)))
+  (set! (-> this tween) 0.05)
+  (logior! (-> this options) 2)
   (let ((s5-0 (new 'stack-no-clear 'vector)))
-    (set! (-> s5-0 quad) (-> obj root-override trans quad))
-    (+! (-> obj root-override trans y) -5324.8)
-    (vector+float*! (-> obj target) (-> obj root-override trans) (-> obj root-override transv) 2.0)
-    (set! (-> obj target-base quad) (-> obj target quad))
-    (let ((f30-0 (the float (sar (shl (the int (y-angle (-> obj root-override))) 48) 48))))
-      (set! (-> obj mask) (the-as process-mask (logior (process-mask projectile) (-> obj mask))))
-      (if (logtest? (-> obj options) 16)
-          (set! (-> obj max-hits) 1)
+    (set! (-> s5-0 quad) (-> this root trans quad))
+    (+! (-> this root trans y) -5324.8)
+    (vector+float*! (-> this target) (-> this root trans) (-> this root transv) 2.0)
+    (set! (-> this target-base quad) (-> this target quad))
+    (let ((f30-0 (the float (sar (shl (the int (y-angle (-> this root))) 48) 48))))
+      (set! (-> this mask) (the-as process-mask (logior (process-mask projectile) (-> this mask))))
+      (if (logtest? (-> this options) 16)
+          (set! (-> this max-hits) 1)
           )
       (set! (-> *part-id-table* 356 init-specs 18 initial-valuef)
             (the float (sar (shl (the int (+ -16384.0 f30-0)) 48) 48))
@@ -977,40 +960,40 @@
             (the float (sar (shl (the int (+ -16384.0 f30-0)) 48) 48))
             )
       (sound-play "yellow-fire")
-      (set! (-> obj sound-id) (sound-play "yellow-buzz"))
-      (if (not (logtest? (-> obj options) 416))
-          (process-spawn part-tracker :init part-tracker-init (-> *part-group-id-table* 103) -1 #f #f #f s5-0 :to obj)
+      (set! (-> this sound-id) (sound-play "yellow-buzz"))
+      (if (not (logtest? (-> this options) 416))
+          (process-spawn part-tracker :init part-tracker-init (-> *part-group-id-table* 103) -1 #f #f #f s5-0 :to this)
           )
       (set! (-> *part-id-table* 350 init-specs 2 initial-valuef) f30-0)
       )
     )
-  (set! (-> obj part) (create-launch-control (-> *part-group-id-table* 102) obj))
+  (set! (-> this part) (create-launch-control (-> *part-group-id-table* 102) this))
   (when *target*
     (case (-> *target* current-level name)
       (('swamp)
-       (set! (-> obj water) (new 'process 'water-control obj 0 0.0 8192.0 2048.0))
-       (set! (-> obj water flags) (water-flags wt01 wt04 wt07))
-       (set! (-> obj water height) (if (logtest? (-> obj options) 64)
-                                       8192.0
-                                       10240.0
-                                       )
+       (set! (-> this water) (new 'process 'water-control this 0 0.0 8192.0 2048.0))
+       (set! (-> this water flags) (water-flags wt01 wt04 wt07))
+       (set! (-> this water height) (if (logtest? (-> this options) 64)
+                                        8192.0
+                                        10240.0
+                                        )
              )
-       (logior! (-> obj root-override root-prim collide-with) (collide-kind water))
+       (logior! (-> this root root-prim collide-with) (collide-kind water))
        )
       (('ogre)
-       (when (not (logtest? (-> obj options) 128))
-         (set! (-> obj water) (new 'process 'water-control obj 0 0.0 8192.0 2048.0))
-         (set! (-> obj water flags) (water-flags wt01 wt04 wt07))
-         (set! (-> obj water height) 129024.0)
-         (logior! (-> obj root-override root-prim collide-with) (collide-kind water))
+       (when (not (logtest? (-> this options) 128))
+         (set! (-> this water) (new 'process 'water-control this 0 0.0 8192.0 2048.0))
+         (set! (-> this water flags) (water-flags wt01 wt04 wt07))
+         (set! (-> this water height) 129024.0)
+         (logior! (-> this root root-prim collide-with) (collide-kind water))
          )
        )
       (('finalboss)
-       (+! (-> obj root-override trans y) 4096.0)
-       (set! (-> obj water) (new 'process 'water-control obj 0 0.0 8192.0 2048.0))
-       (set! (-> obj water flags) (water-flags wt01 wt04 wt07))
-       (set! (-> obj water height) 1977958.4)
-       (logior! (-> obj root-override root-prim collide-with) (collide-kind water))
+       (+! (-> this root trans y) 4096.0)
+       (set! (-> this water) (new 'process 'water-control this 0 0.0 8192.0 2048.0))
+       (set! (-> this water flags) (water-flags wt01 wt04 wt07))
+       (set! (-> this water height) 1977958.4)
+       (logior! (-> this root root-prim collide-with) (collide-kind water))
        )
       )
     )
@@ -1020,52 +1003,52 @@
 
 ;; definition for method 26 of type projectile-yellow
 ;; INFO: Return type mismatch collide-kind vs none.
-(defmethod projectile-method-26 projectile-yellow ((obj projectile-yellow))
+(defmethod projectile-method-26 ((this projectile-yellow))
   (let ((t9-0 (method-of-type projectile projectile-method-26)))
-    (t9-0 obj)
+    (t9-0 this)
     )
-  (logior! (-> obj root-override root-prim collide-with) (collide-kind mother-spider))
+  (logior! (-> this root root-prim collide-with) (collide-kind mother-spider))
   (none)
   )
 
 ;; definition for method 24 of type projectile-yellow
 ;; INFO: Return type mismatch int vs none.
-(defmethod projectile-method-24 projectile-yellow ((obj projectile-yellow))
+(defmethod projectile-method-24 ((this projectile-yellow))
   (with-pp
     (find-ground-and-draw-shadow
-      (-> obj root-override trans)
-      (-> obj root-override shadow-pos)
+      (-> this root trans)
+      (-> this root shadow-pos)
       8192.0
       (collide-kind background)
       (the-as process-drawable #f)
       12288.0
       81920.0
       )
-    (if (< (-> obj root-override trans y) (-> obj root-override shadow-pos y))
-        (set! (-> obj root-override trans y) (+ 1228.8 (-> obj root-override shadow-pos y)))
+    (if (< (-> this root trans y) (-> this root shadow-pos y))
+        (set! (-> this root trans y) (+ 1228.8 (-> this root shadow-pos y)))
         )
-    (update-transforms! (-> obj root-override))
+    (update-transforms! (-> this root))
     (set! (-> *part-id-table* 353 init-specs 16 initial-valuef) (the-as float 30))
     (set! (-> *part-id-table* 353 init-specs 16 random-rangef) (the-as float 300))
     (cond
-      ((logtest? (-> obj options) 32)
-       (when (>= (- (-> *display* base-frame-counter) (-> obj state-time)) (seconds 0.05))
-         (when (< (- (-> *display* base-frame-counter) (-> obj state-time)) (seconds 0.5))
+      ((logtest? (-> this options) 32)
+       (when (time-elapsed? (-> this state-time) (seconds 0.05))
+         (when (not (time-elapsed? (-> this state-time) (seconds 0.5)))
            (set! (-> *part-id-table* 353 init-specs 16 initial-valuef) (the-as float 0))
            (set! (-> *part-id-table* 353 init-specs 16 random-rangef) (the-as float 0))
            0
            )
-         (spawn (-> obj part) (the-as vector (-> obj root-override root-prim prim-core)))
+         (spawn (-> this part) (the-as vector (-> this root root-prim prim-core)))
          )
        )
       (else
-        (spawn (-> obj part) (the-as vector (-> obj root-override root-prim prim-core)))
+        (spawn (-> this part) (the-as vector (-> this root root-prim prim-core)))
         )
       )
     (let ((s5-0 (the-as sound-rpc-set-param (get-sound-buffer-entry))))
       (set! (-> s5-0 command) (sound-command set-param))
-      (set! (-> s5-0 id) (-> obj sound-id))
-      (let ((a1-3 (-> obj root-override trans)))
+      (set! (-> s5-0 id) (-> this sound-id))
+      (let ((a1-3 (-> this root trans)))
         (let ((gp-1 pp))
           (when (= a1-3 #t)
             (if (and gp-1 (type-type? (-> gp-1 type) process-drawable) (nonzero? (-> (the-as process-drawable gp-1) root)))
@@ -1087,20 +1070,20 @@
 ;; definition for method 28 of type projectile-yellow
 ;; INFO: Used lq/sq
 ;; INFO: Return type mismatch int vs none.
-(defmethod projectile-method-28 projectile-yellow ((obj projectile-yellow))
+(defmethod projectile-method-28 ((this projectile-yellow))
   (cond
-    ((or (not (handle->process (-> obj last-target)))
-         (zero? (-> (the-as target (handle->process (-> obj last-target))) control root-prim prim-core collide-as))
+    ((or (not (handle->process (-> this last-target)))
+         (zero? (-> (the-as target (handle->process (-> this last-target))) control root-prim prim-core collide-as))
          )
      (cond
-       ((zero? (-> obj target-count))
+       ((zero? (-> this target-count))
         (let ((s5-0 (find-nearest-attackable
-                      (-> obj parent-base)
+                      (-> this parent-base)
                       409600.0
                       (the-as uint 0)
                       (the-as uint 0)
-                      (-> obj base-vector)
-                      (if (logtest? (-> obj options) 160)
+                      (-> this base-vector)
+                      (if (logtest? (-> this options) 160)
                           546.13336
                           8192.0
                           )
@@ -1108,23 +1091,23 @@
                     )
               )
           (let ((s4-0 (find-nearest-attackable
-                        (-> obj parent-base)
+                        (-> this parent-base)
                         163840.0
                         (the-as uint 1)
                         (the-as uint 0)
-                        (-> obj base-vector)
-                        (if (logtest? (-> obj options) 160)
+                        (-> this base-vector)
+                        (if (logtest? (-> this options) 160)
                             910.2222
                             8192.0
                             )
                         )
                       )
                 (v1-10 (find-nearest-attackable
-                         (-> obj parent-base)
+                         (-> this parent-base)
                          28672.0
                          (the-as uint 1)
                          (the-as uint 0)
-                         (-> obj base-vector)
+                         (-> this base-vector)
                          16384.0
                          )
                        )
@@ -1136,32 +1119,32 @@
                 (set! s5-0 v1-10)
                 )
             )
-          (set! (-> obj last-target) (process->handle s5-0))
+          (set! (-> this last-target) (process->handle s5-0))
           (when s5-0
-            (set! (-> obj target quad) (-> s5-0 root-override root-prim prim-core world-sphere quad))
+            (set! (-> this target quad) (-> s5-0 root root-prim prim-core world-sphere quad))
             (if (= (-> s5-0 type symbol) 'mother-spider)
-                (logand! (-> obj options) -2)
+                (logand! (-> this options) -2)
                 )
             )
           )
         )
        (else
-         (set! (-> obj target quad) (-> obj target-base quad))
+         (set! (-> this target quad) (-> this target-base quad))
          )
        )
      )
     (else
-      (let ((a1-8 (handle->process (-> obj last-target))))
-        (set! (-> obj target quad) (-> (the-as target a1-8) control root-prim prim-core world-sphere quad))
+      (let ((a1-8 (handle->process (-> this last-target))))
+        (set! (-> this target quad) (-> (the-as target a1-8) control root-prim prim-core world-sphere quad))
         )
-      (if (and (< (vector-vector-xz-distance (-> obj root-override trans) (-> obj target)) 20480.0)
-               (< 24576.0 (fabs (- (-> obj target y) (-> obj root-override trans y))))
+      (if (and (< (vector-vector-xz-distance (-> this root trans) (-> this target)) 20480.0)
+               (< 24576.0 (fabs (- (-> this target y) (-> this root trans y))))
                )
-          (set! (-> obj last-target) (the-as handle #f))
+          (set! (-> this last-target) (the-as handle #f))
           )
       )
     )
-  (+! (-> obj target-count) 1)
+  (+! (-> this target-count) 1)
   0
   (none)
   )
@@ -1169,26 +1152,26 @@
 ;; definition for method 27 of type projectile-blue
 ;; INFO: Used lq/sq
 ;; INFO: Return type mismatch int vs none.
-(defmethod projectile-method-27 projectile-blue ((obj projectile-blue))
+(defmethod projectile-method-27 ((this projectile-blue))
   (cpad-set-buzz! (-> *cpad-list* cpads 0) 1 204 (seconds 0.1))
   (sound-play "blue-eco-on")
-  (set! (-> obj mode) 2)
-  (set! (-> obj max-speed) (-> *TARGET-bank* yellow-projectile-speed))
-  (set! (-> obj update-velocity) projectile-update-velocity-space-wars)
-  (+! (-> obj root-override trans y) -5324.8)
-  (vector+float*! (-> obj target) (-> obj root-override trans) (-> obj root-override transv) 2.0)
-  (set! (-> obj target-base quad) (-> obj target quad))
-  (set! (-> obj mask) (the-as process-mask (logior (process-mask ambient) (-> obj mask))))
-  (set! (-> obj part) (create-launch-control (-> *part-group-id-table* 42) obj))
-  (set! (-> obj root-override root-prim collide-with) (collide-kind background))
-  (let* ((s5-1 (handle->process (-> obj last-target)))
+  (set! (-> this mode) 2)
+  (set! (-> this max-speed) (-> *TARGET-bank* yellow-projectile-speed))
+  (set! (-> this update-velocity) projectile-update-velocity-space-wars)
+  (+! (-> this root trans y) -5324.8)
+  (vector+float*! (-> this target) (-> this root trans) (-> this root transv) 2.0)
+  (set! (-> this target-base quad) (-> this target quad))
+  (set! (-> this mask) (the-as process-mask (logior (process-mask ambient) (-> this mask))))
+  (set! (-> this part) (create-launch-control (-> *part-group-id-table* 42) this))
+  (set! (-> this root root-prim collide-with) (collide-kind background))
+  (let* ((s5-1 (handle->process (-> this last-target)))
          (v1-20 (if (and (nonzero? s5-1) (type-type? (-> s5-1 type) process-drawable))
                     s5-1
                     )
                 )
          )
     (if v1-20
-        (set! (-> obj joint-num) (rand-vu-int-range 3 (+ (-> (the-as process-drawable v1-20) node-list length) -1)))
+        (set! (-> this joint-num) (rand-vu-int-range 3 (+ (-> (the-as process-drawable v1-20) node-list length) -1)))
         )
     )
   0
@@ -1197,8 +1180,8 @@
 
 ;; definition for method 26 of type projectile-blue
 ;; INFO: Return type mismatch int vs none.
-(defmethod projectile-method-26 projectile-blue ((obj projectile-blue))
-  (let ((s5-0 (new 'process 'collide-shape-moving obj (collide-list-enum hit-by-player))))
+(defmethod projectile-method-26 ((this projectile-blue))
+  (let ((s5-0 (new 'process 'collide-shape-moving this (collide-list-enum hit-by-player))))
     (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s5-0 reaction) projectile-collision-reaction)
     (set! (-> s5-0 no-reaction)
@@ -1216,7 +1199,7 @@
     (backup-collide-with-as s5-0)
     (set! (-> s5-0 max-iteration-count) (the-as uint 2))
     (set! (-> s5-0 event-self) 'touched)
-    (set! (-> obj root-override) s5-0)
+    (set! (-> this root) s5-0)
     )
   0
   (none)
@@ -1276,19 +1259,19 @@
 
 ;; definition for method 28 of type projectile-blue
 ;; INFO: Return type mismatch int vs none.
-(defmethod projectile-method-28 projectile-blue ((obj projectile-blue))
-  (let* ((s5-0 (handle->process (-> obj last-target)))
+(defmethod projectile-method-28 ((this projectile-blue))
+  (let* ((s5-0 (handle->process (-> this last-target)))
          (v1-4 (if (and (nonzero? s5-0) (type-type? (-> s5-0 type) process-drawable))
                    s5-0
                    )
                )
          )
     (if v1-4
-        (vector<-cspace! (-> obj target) (-> (the-as process-drawable v1-4) node-list data (-> obj joint-num)))
+        (vector<-cspace! (-> this target) (-> (the-as process-drawable v1-4) node-list data (-> this joint-num)))
         )
     )
-  (if (< (vector-vector-distance (-> obj target) (-> obj root-override trans)) 4096.0)
-      (go (method-of-object obj projectile-impact))
+  (if (< (vector-vector-distance (-> this target) (-> this root trans)) 4096.0)
+      (go (method-of-object this projectile-impact))
       )
   0
   (none)
@@ -1296,9 +1279,9 @@
 
 ;; definition for method 24 of type projectile-blue
 ;; INFO: Return type mismatch int vs none.
-(defmethod projectile-method-24 projectile-blue ((obj projectile-blue))
+(defmethod projectile-method-24 ((this projectile-blue))
   (if (rand-vu-percent? 0.75)
-      (eco-blue-glow (the-as vector (-> obj root-override root-prim prim-core)))
+      (eco-blue-glow (the-as vector (-> this root root-prim prim-core)))
       )
   0
   (none)
@@ -1309,7 +1292,6 @@
   :virtual #t
   :code (behavior ()
     (cleanup-for-death self)
-    (none)
     )
   )
 
@@ -1318,6 +1300,5 @@
   :virtual #t
   :code (behavior ()
     (go-virtual projectile-die)
-    (none)
     )
   )

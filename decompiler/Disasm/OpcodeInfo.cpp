@@ -317,6 +317,10 @@ void init_opcode_info() {
   drd_srs_srt(def(IK::PXOR, "pxor").gpr128());      // Parallel Exclusive Or
 
   def(IK::PEXEW, "pexew").gpr128().dst_gpr(FT::RD).src_gpr(FT::RT);  // Parallel Exchange Even Word
+  def(IK::PEXCW, "pexcw")
+      .gpr128()
+      .dst_gpr(FT::RD)
+      .src_gpr(FT::RT);  // Parallel Exchange Center Word
 
   drd_srt_ssa(def(IK::PSLLW, "psllw").gpr128());  // Parallel Shift Left Logical Word
   drd_srt_ssa(def(IK::PSLLH, "psllh").gpr128());  // Parallel Shift Left Logical Halfword

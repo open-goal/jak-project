@@ -3,21 +3,17 @@
 
 ;; definition of type village2cam
 (deftype village2cam (pov-camera)
-  ((seq uint64  :offset-assert 224)
+  ((seq  uint64)
    )
-  :heap-base #x80
-  :method-count-assert 30
-  :size-assert         #xe8
-  :flag-assert         #x1e008000e8
   )
 
 ;; definition for method 3 of type village2cam
-(defmethod inspect village2cam ((obj village2cam))
+(defmethod inspect ((this village2cam))
   (let ((t9-0 (method-of-type pov-camera inspect)))
-    (t9-0 obj)
+    (t9-0 this)
     )
-  (format #t "~T~Tseq: ~D~%" (-> obj seq))
-  obj
+  (format #t "~T~Tseq: ~D~%" (-> this seq))
+  this
   )
 
 ;; failed to figure out what this is:
@@ -27,8 +23,8 @@
               )
 
 ;; definition for method 29 of type village2cam
-(defmethod set-stack-size! village2cam ((obj village2cam))
-  (stack-size-set! (-> obj main-thread) 512)
+(defmethod set-stack-size! ((this village2cam))
+  (stack-size-set! (-> this main-thread) 512)
   (none)
   )
 
@@ -39,14 +35,14 @@
     (let ((v1-0 (-> self seq)))
       (cond
         ((zero? v1-0)
-         (ja-no-eval :group! (-> self draw art-group data 2) :num! (seek!) :frame-num 0.0)
+         (ja-no-eval :group! village2cam-elevator-at-top-going-down-ja :num! (seek!) :frame-num 0.0)
          (until (ja-done? 0)
            (suspend)
            (ja :num! (seek!))
            )
          )
         ((= v1-0 1)
-         (ja-no-eval :group! (-> self draw art-group data 3) :num! (seek!) :frame-num 0.0)
+         (ja-no-eval :group! village2cam-elevator-at-bottom-going-up-ja :num! (seek!) :frame-num 0.0)
          (until (ja-done? 0)
            (suspend)
            (ja :num! (seek!))
@@ -54,7 +50,7 @@
          )
         ((= v1-0 2)
          (pov-camera-play-and-reposition
-           (the-as art-joint-anim (-> self draw art-group data 4))
+           (the-as art-joint-anim village2cam-elevator-at-top-going-up-ja)
            (new 'static 'vector :x 2199552.0 :y 40960.0 :z -6676480.0)
            1.0
            )
@@ -66,7 +62,6 @@
         )
       )
     (go-virtual pov-camera-done-playing)
-    (none)
     )
   )
 
@@ -93,14 +88,10 @@
 
 ;; definition of type pontoon
 (deftype pontoon (rigid-body-platform)
-  ((anchor-point vector :inline :offset-assert 736)
-   (task         uint8          :offset-assert 752)
-   (alt-task     uint8          :offset-assert 753)
+  ((anchor-point  vector  :inline)
+   (task          uint8)
+   (alt-task      uint8)
    )
-  :heap-base #x290
-  :method-count-assert 35
-  :size-assert         #x2f2
-  :flag-assert         #x23029002f2
   (:states
     pontoon-die
     pontoon-hidden
@@ -108,14 +99,14 @@
   )
 
 ;; definition for method 3 of type pontoon
-(defmethod inspect pontoon ((obj pontoon))
+(defmethod inspect ((this pontoon))
   (let ((t9-0 (method-of-type rigid-body-platform inspect)))
-    (t9-0 obj)
+    (t9-0 this)
     )
-  (format #t "~T~Tanchor-point: #<vector @ #x~X>~%" (-> obj anchor-point))
-  (format #t "~T~Ttask: ~D~%" (-> obj task))
-  (format #t "~T~Talt-task: ~D~%" (-> obj alt-task))
-  obj
+  (format #t "~T~Tanchor-point: #<vector @ #x~X>~%" (-> this anchor-point))
+  (format #t "~T~Ttask: ~D~%" (-> this task))
+  (format #t "~T~Talt-task: ~D~%" (-> this alt-task))
+  this
   )
 
 ;; failed to figure out what this is:
@@ -123,24 +114,20 @@
   :enter (behavior ()
     (logior! (-> self draw status) (draw-status hidden))
     (clear-collide-with-as (-> self root-overlay))
-    (none)
     )
   :exit (behavior ()
     (logclear! (-> self draw status) (draw-status hidden))
     (restore-collide-with-as (-> self root-overlay))
-    (none)
     )
   :trans (behavior ()
     (if (task-closed? (the-as game-task (-> self task)) (task-status need-resolution))
         (go-virtual rigid-body-platform-idle)
         )
-    (none)
     )
   :code (behavior ()
     (loop
       (suspend)
       )
-    (none)
     )
   )
 
@@ -149,25 +136,21 @@
   :code (behavior ()
     (cleanup-for-death self)
     (deactivate self)
-    (none)
     )
   )
 
 ;; failed to figure out what this is:
 (defstate rigid-body-platform-float (pontoon)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (let ((v1-0 event-type))
-      (the-as object (cond
-                       ((= v1-0 'die)
-                        (cleanup-for-death self)
-                        (the-as vector (deactivate self))
-                        )
-                       (else
-                         (rigid-body-platform-event-handler proc arg1 event-type event)
-                         )
-                       )
-              )
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
+      (('die)
+       (cleanup-for-death self)
+       (deactivate self)
+       )
+      (else
+        (rigid-body-platform-event-handler proc argc message block)
+        )
       )
     )
   )
@@ -175,39 +158,38 @@
 ;; failed to figure out what this is:
 (defstate rigid-body-platform-idle (pontoon)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (the-as object (case event-type
-                     (('die)
-                      (cleanup-for-death self)
-                      (the-as symbol (deactivate self))
-                      )
-                     )
-            )
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
+      (('die)
+       (cleanup-for-death self)
+       (deactivate self)
+       )
+      )
     )
   )
 
 ;; definition for method 11 of type pontoon
 ;; INFO: Return type mismatch int vs none.
-(defmethod init-from-entity! pontoon ((obj pontoon) (arg0 entity-actor))
-  (logior! (-> obj mask) (process-mask platform))
-  (rigid-body-platform-method-30 obj)
-  (process-drawable-from-entity! obj arg0)
-  (rigid-body-platform-method-31 obj)
-  (set! (-> obj water-anim) #f)
-  (set! (-> obj root-overlay pause-adjust-distance) -122880.0)
-  (set! (-> obj task) (the-as uint (-> arg0 extra perm task)))
-  (set! (-> obj alt-task) (res-lump-value arg0 'alt-task uint))
+(defmethod init-from-entity! ((this pontoon) (arg0 entity-actor))
+  (logior! (-> this mask) (process-mask platform))
+  (rigid-body-platform-method-30 this)
+  (process-drawable-from-entity! this arg0)
+  (rigid-body-platform-method-31 this)
+  (set! (-> this water-anim) #f)
+  (set! (-> this root-overlay pause-adjust-distance) -122880.0)
+  (set! (-> this task) (the-as uint (-> arg0 extra perm task)))
+  (set! (-> this alt-task) (res-lump-value arg0 'alt-task uint))
   (cond
-    ((and (nonzero? (-> obj alt-task))
-          (task-closed? (the-as game-task (-> obj alt-task)) (task-status need-resolution))
+    ((and (nonzero? (-> this alt-task))
+          (task-closed? (the-as game-task (-> this alt-task)) (task-status need-resolution))
           )
      (go pontoon-die)
      )
-    ((zero? (-> obj task))
-     (go (method-of-object obj rigid-body-platform-idle))
+    ((zero? (-> this task))
+     (go (method-of-object this rigid-body-platform-idle))
      )
-    ((task-closed? (the-as game-task (-> obj task)) (task-status need-resolution))
-     (go (method-of-object obj rigid-body-platform-idle))
+    ((task-closed? (the-as game-task (-> this task)) (task-status need-resolution))
+     (go (method-of-object this rigid-body-platform-idle))
      )
     (else
       (go pontoon-hidden)
@@ -219,9 +201,9 @@
 
 ;; definition for method 23 of type pontoon
 ;; INFO: Return type mismatch int vs none.
-(defmethod rigid-body-platform-method-23 pontoon ((obj pontoon) (arg0 float))
-  ((the-as (function rigid-body-platform basic none) (find-parent-method pontoon 23)) obj (the-as basic arg0))
-  (rigid-body-platform-method-27 obj (-> obj anchor-point))
+(defmethod rigid-body-platform-method-23 ((this pontoon) (arg0 float))
+  (call-parent-method this arg0)
+  (rigid-body-platform-method-27 this (-> this anchor-point))
   0
   (none)
   )
@@ -283,35 +265,27 @@
 ;; definition of type pontoonfive
 (deftype pontoonfive (pontoon)
   ()
-  :heap-base #x290
-  :method-count-assert 35
-  :size-assert         #x2f2
-  :flag-assert         #x23029002f2
   )
 
 ;; definition for method 3 of type pontoonfive
-(defmethod inspect pontoonfive ((obj pontoonfive))
+(defmethod inspect ((this pontoonfive))
   (let ((t9-0 (method-of-type pontoon inspect)))
-    (t9-0 obj)
+    (t9-0 this)
     )
-  obj
+  this
   )
 
 ;; definition of type pontoonten
 (deftype pontoonten (pontoon)
   ()
-  :heap-base #x290
-  :method-count-assert 35
-  :size-assert         #x2f2
-  :flag-assert         #x23029002f2
   )
 
 ;; definition for method 3 of type pontoonten
-(defmethod inspect pontoonten ((obj pontoonten))
+(defmethod inspect ((this pontoonten))
   (let ((t9-0 (method-of-type pontoon inspect)))
-    (t9-0 obj)
+    (t9-0 this)
     )
-  obj
+  this
   )
 
 ;; failed to figure out what this is:
@@ -330,8 +304,8 @@
 
 ;; definition for method 30 of type pontoonfive
 ;; INFO: Return type mismatch int vs none.
-(defmethod rigid-body-platform-method-30 pontoonfive ((obj pontoonfive))
-  (let ((s5-0 (new 'process 'collide-shape-moving obj (collide-list-enum hit-by-player))))
+(defmethod rigid-body-platform-method-30 ((this pontoonfive))
+  (let ((s5-0 (new 'process 'collide-shape-moving this (collide-list-enum hit-by-player))))
     (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s5-0 reaction) default-collision-reaction)
     (set! (-> s5-0 no-reaction)
@@ -349,7 +323,7 @@
       )
     (set! (-> s5-0 nav-radius) (* 0.75 (-> s5-0 root-prim local-sphere w)))
     (backup-collide-with-as s5-0)
-    (set! (-> obj root-overlay) s5-0)
+    (set! (-> this root-overlay) s5-0)
     )
   0
   (none)
@@ -358,45 +332,45 @@
 ;; definition for method 31 of type pontoonfive
 ;; INFO: Used lq/sq
 ;; INFO: Return type mismatch int vs none.
-(defmethod rigid-body-platform-method-31 pontoonfive ((obj pontoonfive))
-  (initialize-skeleton obj *pontoonfive-sg* '())
-  (rigid-body-platform-method-29 obj *pontoonfive-constants*)
-  (set! (-> obj float-height-offset) 6144.0)
-  (set! (-> obj root-overlay nav-radius) 12288.0)
-  (let ((v1-6 (-> obj control-point-array data)))
+(defmethod rigid-body-platform-method-31 ((this pontoonfive))
+  (initialize-skeleton this *pontoonfive-sg* '())
+  (rigid-body-platform-method-29 this *pontoonfive-constants*)
+  (set! (-> this float-height-offset) 6144.0)
+  (set! (-> this root-overlay nav-radius) 12288.0)
+  (let ((v1-6 (-> this control-point-array data)))
     (set! (-> v1-6 0 local-pos x) 9216.0)
     (set! (-> v1-6 0 local-pos y) 0.0)
     (set! (-> v1-6 0 local-pos z) 12083.2)
     (set! (-> v1-6 0 local-pos w) 1.0)
     )
-  (let ((v1-8 (-> obj control-point-array data 1)))
+  (let ((v1-8 (-> this control-point-array data 1)))
     (set! (-> v1-8 local-pos x) 9216.0)
     (set! (-> v1-8 local-pos y) 0.0)
     (set! (-> v1-8 local-pos z) -12083.2)
     (set! (-> v1-8 local-pos w) 1.0)
     )
-  (let ((v1-10 (-> obj control-point-array data 2)))
+  (let ((v1-10 (-> this control-point-array data 2)))
     (set! (-> v1-10 local-pos x) -9216.0)
     (set! (-> v1-10 local-pos y) 0.0)
     (set! (-> v1-10 local-pos z) -12083.2)
     (set! (-> v1-10 local-pos w) 1.0)
     )
-  (let ((v1-12 (-> obj control-point-array data 3)))
+  (let ((v1-12 (-> this control-point-array data 3)))
     (set! (-> v1-12 local-pos x) -9216.0)
     (set! (-> v1-12 local-pos y) 0.0)
     (set! (-> v1-12 local-pos z) 12083.2)
     (set! (-> v1-12 local-pos w) 1.0)
     )
-  (set! (-> obj anchor-point quad) (-> obj root-overlay trans quad))
-  (nav-mesh-connect obj (-> obj root-overlay) (the-as nav-control #f))
+  (set! (-> this anchor-point quad) (-> this root-overlay trans quad))
+  (nav-mesh-connect this (-> this root-overlay) (the-as nav-control #f))
   0
   (none)
   )
 
 ;; definition for method 30 of type pontoonten
 ;; INFO: Return type mismatch int vs none.
-(defmethod rigid-body-platform-method-30 pontoonten ((obj pontoonten))
-  (let ((s5-0 (new 'process 'collide-shape-moving obj (collide-list-enum hit-by-player))))
+(defmethod rigid-body-platform-method-30 ((this pontoonten))
+  (let ((s5-0 (new 'process 'collide-shape-moving this (collide-list-enum hit-by-player))))
     (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s5-0 reaction) default-collision-reaction)
     (set! (-> s5-0 no-reaction)
@@ -414,7 +388,7 @@
       )
     (set! (-> s5-0 nav-radius) (* 0.75 (-> s5-0 root-prim local-sphere w)))
     (backup-collide-with-as s5-0)
-    (set! (-> obj root-overlay) s5-0)
+    (set! (-> this root-overlay) s5-0)
     )
   0
   (none)
@@ -423,37 +397,37 @@
 ;; definition for method 31 of type pontoonten
 ;; INFO: Used lq/sq
 ;; INFO: Return type mismatch int vs none.
-(defmethod rigid-body-platform-method-31 pontoonten ((obj pontoonten))
-  (initialize-skeleton obj *pontoonten-sg* '())
-  (rigid-body-platform-method-29 obj *pontoonten-constants*)
-  (set! (-> obj float-height-offset) 6144.0)
-  (set! (-> obj root-overlay nav-radius) 20480.0)
-  (let ((v1-6 (-> obj control-point-array data)))
+(defmethod rigid-body-platform-method-31 ((this pontoonten))
+  (initialize-skeleton this *pontoonten-sg* '())
+  (rigid-body-platform-method-29 this *pontoonten-constants*)
+  (set! (-> this float-height-offset) 6144.0)
+  (set! (-> this root-overlay nav-radius) 20480.0)
+  (let ((v1-6 (-> this control-point-array data)))
     (set! (-> v1-6 0 local-pos x) 17408.0)
     (set! (-> v1-6 0 local-pos y) 0.0)
     (set! (-> v1-6 0 local-pos z) 10035.2)
     (set! (-> v1-6 0 local-pos w) 1.0)
     )
-  (let ((v1-8 (-> obj control-point-array data 1)))
+  (let ((v1-8 (-> this control-point-array data 1)))
     (set! (-> v1-8 local-pos x) 17408.0)
     (set! (-> v1-8 local-pos y) 0.0)
     (set! (-> v1-8 local-pos z) -10035.2)
     (set! (-> v1-8 local-pos w) 1.0)
     )
-  (let ((v1-10 (-> obj control-point-array data 2)))
+  (let ((v1-10 (-> this control-point-array data 2)))
     (set! (-> v1-10 local-pos x) -17408.0)
     (set! (-> v1-10 local-pos y) 0.0)
     (set! (-> v1-10 local-pos z) -10035.2)
     (set! (-> v1-10 local-pos w) 1.0)
     )
-  (let ((v1-12 (-> obj control-point-array data 3)))
+  (let ((v1-12 (-> this control-point-array data 3)))
     (set! (-> v1-12 local-pos x) -17408.0)
     (set! (-> v1-12 local-pos y) 0.0)
     (set! (-> v1-12 local-pos z) 10035.2)
     (set! (-> v1-12 local-pos w) 1.0)
     )
-  (set! (-> obj anchor-point quad) (-> obj root-overlay trans quad))
-  (nav-mesh-connect obj (-> obj root-overlay) (the-as nav-control #f))
+  (set! (-> this anchor-point quad) (-> this root-overlay trans quad))
+  (nav-mesh-connect this (-> this root-overlay) (the-as nav-control #f))
   0
   (none)
   )
@@ -527,12 +501,8 @@
 
 ;; definition of type allpontoons
 (deftype allpontoons (process-drawable)
-  ((task uint8  :offset-assert 176)
+  ((task  uint8)
    )
-  :heap-base #x50
-  :method-count-assert 20
-  :size-assert         #xb1
-  :flag-assert         #x14005000b1
   (:states
     (allpontoons-be-clone handle)
     allpontoons-idle
@@ -540,12 +510,12 @@
   )
 
 ;; definition for method 3 of type allpontoons
-(defmethod inspect allpontoons ((obj allpontoons))
+(defmethod inspect ((this allpontoons))
   (let ((t9-0 (method-of-type process-drawable inspect)))
-    (t9-0 obj)
+    (t9-0 this)
     )
-  (format #t "~T~Ttask: ~D~%" (-> obj task))
-  obj
+  (format #t "~T~Ttask: ~D~%" (-> this task))
+  this
   )
 
 ;; failed to figure out what this is:
@@ -556,55 +526,49 @@
 
 ;; failed to figure out what this is:
 (defstate allpontoons-be-clone (allpontoons)
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (the-as object (case event-type
-                     (('end-mode)
-                      (cleanup-for-death self)
-                      (the-as symbol (deactivate self))
-                      )
-                     )
-            )
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
+      (('end-mode)
+       (cleanup-for-death self)
+       (deactivate self)
+       )
+      )
     )
   :enter (behavior ((arg0 handle))
     (logclear! (-> self draw status) (draw-status hidden))
     (logclear! (-> self mask) (process-mask actor-pause))
-    (none)
     )
   :exit (behavior ()
     (logior! (-> self mask) (process-mask actor-pause))
-    (none)
     )
   :trans (behavior ()
     (when (>= (ja-aframe-num 0) 500.0)
-      (spawn (-> self part) (vector<-cspace! (new 'stack-no-clear 'vector) (-> self node-list data 3)))
-      (spawn (-> self part) (vector<-cspace! (new 'stack-no-clear 'vector) (-> self node-list data 4)))
-      (spawn (-> self part) (vector<-cspace! (new 'stack-no-clear 'vector) (-> self node-list data 5)))
-      (spawn (-> self part) (vector<-cspace! (new 'stack-no-clear 'vector) (-> self node-list data 6)))
-      (spawn (-> self part) (vector<-cspace! (new 'stack-no-clear 'vector) (-> self node-list data 7)))
-      (spawn (-> self part) (vector<-cspace! (new 'stack-no-clear 'vector) (-> self node-list data 9)))
+      (spawn (-> self part) (vector<-cspace! (new 'stack-no-clear 'vector) (joint-node allpontoons-lod0-jg 1)))
+      (spawn (-> self part) (vector<-cspace! (new 'stack-no-clear 'vector) (joint-node allpontoons-lod0-jg 2)))
+      (spawn (-> self part) (vector<-cspace! (new 'stack-no-clear 'vector) (joint-node allpontoons-lod0-jg 3)))
+      (spawn (-> self part) (vector<-cspace! (new 'stack-no-clear 'vector) (joint-node allpontoons-lod0-jg 4)))
+      (spawn (-> self part) (vector<-cspace! (new 'stack-no-clear 'vector) (joint-node allpontoons-lod0-jg 5)))
+      (spawn (-> self part) (vector<-cspace! (new 'stack-no-clear 'vector) (joint-node allpontoons-lod0-jg 6)))
       )
-    (none)
     )
   :code (behavior ((arg0 handle))
     (clone-anim arg0 3 #t "")
     (cleanup-for-death self)
     (deactivate self)
-    (none)
     )
   )
 
 ;; failed to figure out what this is:
 (defstate allpontoons-idle (allpontoons)
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('clone)
-       (go allpontoons-be-clone (the-as handle (-> event param 0)))
+       (go allpontoons-be-clone (the-as handle (-> block param 0)))
        )
       )
     )
   :enter (behavior ()
     (logior! (-> self draw status) (draw-status hidden))
-    (none)
     )
   :code (behavior ()
     (loop
@@ -615,32 +579,27 @@
       (logior! (-> self mask) (process-mask sleep))
       (suspend)
       )
-    (none)
     )
   )
 
 ;; definition for method 11 of type allpontoons
 ;; INFO: Return type mismatch object vs none.
-(defmethod init-from-entity! allpontoons ((obj allpontoons) (arg0 entity-actor))
-  (set! (-> obj root) (new 'process 'trsqv))
-  (process-drawable-from-entity! obj arg0)
-  (initialize-skeleton obj *allpontoons-sg* '())
-  (set! (-> obj task) (the-as uint (-> arg0 extra perm task)))
-  (set! (-> obj part) (create-launch-control (-> *part-group-id-table* 563) obj))
+(defmethod init-from-entity! ((this allpontoons) (arg0 entity-actor))
+  (set! (-> this root) (new 'process 'trsqv))
+  (process-drawable-from-entity! this arg0)
+  (initialize-skeleton this *allpontoons-sg* '())
+  (set! (-> this task) (the-as uint (-> arg0 extra perm task)))
+  (set! (-> this part) (create-launch-control (-> *part-group-id-table* 563) this))
   (go allpontoons-idle)
   (none)
   )
 
 ;; definition of type fireboulder
 (deftype fireboulder (process-drawable)
-  ((root-override collide-shape  :offset        112)
-   (tracker       handle         :offset-assert 176)
-   (task          uint8          :offset-assert 184)
+  ((root     collide-shape :override)
+   (tracker  handle)
+   (task     uint8)
    )
-  :heap-base #x50
-  :method-count-assert 20
-  :size-assert         #xb9
-  :flag-assert         #x14005000b9
   (:states
     (fireboulder-be-clone handle)
     fireboulder-hover
@@ -649,13 +608,13 @@
   )
 
 ;; definition for method 3 of type fireboulder
-(defmethod inspect fireboulder ((obj fireboulder))
+(defmethod inspect ((this fireboulder))
   (let ((t9-0 (method-of-type process-drawable inspect)))
-    (t9-0 obj)
+    (t9-0 this)
     )
-  (format #t "~T~Ttracker: ~D~%" (-> obj tracker))
-  (format #t "~T~Ttask: ~D~%" (-> obj task))
-  obj
+  (format #t "~T~Ttracker: ~D~%" (-> this tracker))
+  (format #t "~T~Ttask: ~D~%" (-> this task))
+  this
   )
 
 ;; failed to figure out what this is:
@@ -668,7 +627,7 @@
 ;; definition for function fireboulder-disable-blocking-collision
 ;; INFO: Return type mismatch int vs none.
 (defbehavior fireboulder-disable-blocking-collision fireboulder ()
-  (let ((v1-1 (-> self root-override root-prim)))
+  (let ((v1-1 (-> self root root-prim)))
     (dotimes (a0-0 (-> (the-as collide-shape-prim-group v1-1) num-prims))
       (let ((a1-2 (-> (the-as collide-shape-prim-group v1-1) prims a0-0)))
         (when (= (-> a1-2 prim-id) 256)
@@ -690,35 +649,27 @@
 (defbehavior fireboulder-hover-stuff fireboulder ()
   (local-vars (v0-1 object))
   (let ((gp-0 (new 'stack-no-clear 'vector)))
-    (vector<-cspace! gp-0 (-> self node-list data 4))
+    (vector<-cspace! gp-0 (joint-node fireboulder-lod0-jg bouldercenter))
     (cond
       ((handle->process (-> self tracker))
        (let ((v1-6 (-> (the-as (pointer part-tracker) (-> self tracker process)) 0)))
-         (set! (-> v1-6 start-time) (-> *display* base-frame-counter))
+         (set-time! (-> v1-6 start-time))
          (set! v0-1 (-> v1-6 root trans))
          )
        (set! (-> (the-as vector v0-1) quad) (-> gp-0 quad))
        )
       (else
         (let ((gp-1 (get-process *default-dead-pool* part-tracker #x4000)))
-          (set! v0-1 (ppointer->handle
-                       (when gp-1
-                         (let ((t9-2 (method-of-type part-tracker activate)))
-                           (t9-2 (the-as part-tracker gp-1) *entity-pool* 'part-tracker (the-as pointer #x70004000))
-                           )
-                         (run-now-in-process
-                           gp-1
-                           part-tracker-init
-                           (-> *part-group-id-table* 678)
-                           -1
-                           #f
-                           #f
-                           #f
-                           (-> self root-override trans)
-                           )
-                         (-> gp-1 ppointer)
-                         )
-                       )
+          (set! v0-1
+                (ppointer->handle
+                  (when gp-1
+                    (let ((t9-2 (method-of-type part-tracker activate)))
+                      (t9-2 (the-as part-tracker gp-1) *entity-pool* 'part-tracker (the-as pointer #x70004000))
+                      )
+                    (run-now-in-process gp-1 part-tracker-init (-> *part-group-id-table* 678) -1 #f #f #f (-> self root trans))
+                    (-> gp-1 ppointer)
+                    )
+                  )
                 )
           )
         (set! (-> self tracker) (the-as handle v0-1))
@@ -733,51 +684,43 @@
   :enter (behavior ()
     (fireboulder-disable-blocking-collision)
     (ja-channel-set! 1)
-    (ja :group! (-> self draw art-group data 3))
+    (ja :group! fireboulder-hover-ja)
     (logclear! (-> self draw status) (draw-status hidden))
-    (set! (-> self root-override trans quad) (-> self entity extra trans quad))
+    (set! (-> self root trans quad) (-> self entity extra trans quad))
     (vector-reset! (-> self draw origin))
     (logior! (-> self skel status) (janim-status inited))
     (ja-post)
     (logclear! (-> self skel status) (janim-status inited))
     (let ((gp-0 (new 'stack-no-clear 'vector)))
-      (vector<-cspace! gp-0 (-> self node-list data 4))
-      (vector-! (-> self draw bounds) gp-0 (-> self root-override trans))
+      (vector<-cspace! gp-0 (joint-node fireboulder-lod0-jg bouldercenter))
+      (vector-! (-> self draw bounds) gp-0 (-> self root trans))
       )
     (set! (-> self draw bounds w) 24576.0)
-    (none)
     )
   :exit (behavior ()
     (stop! (-> self sound))
-    (none)
     )
   :trans (behavior ()
     (fireboulder-hover-stuff)
     (update! (-> self sound))
-    (none)
     )
   :code (behavior ()
     (loop
       (ja-no-eval :group! (ja-group) :num! (seek!) :frame-num 0.0)
       (until (ja-done? 0)
-        (quaternion-rotate-y!
-          (-> self root-override quat)
-          (-> self root-override quat)
-          (* 455.1111 (-> *display* time-adjust-ratio))
-          )
+        (quaternion-rotate-y! (-> self root quat) (-> self root quat) (* 455.1111 (-> *display* time-adjust-ratio)))
         (suspend)
         (ja :num! (seek!))
         )
       )
-    (none)
     )
-  :post (the-as (function none :behavior fireboulder) transform-post)
+  :post transform-post
   )
 
 ;; failed to figure out what this is:
 (defstate fireboulder-be-clone (fireboulder)
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('stop-cloning)
        (go fireboulder-hover)
        )
@@ -785,29 +728,26 @@
     )
   :enter (behavior ((arg0 handle))
     (logclear! (-> self mask) (process-mask actor-pause))
-    (none)
     )
   :exit (behavior ()
     (logior! (-> self mask) (process-mask actor-pause))
     (logclear! (-> self skel status) (janim-status spool))
-    (none)
     )
-  :trans (the-as (function none :behavior fireboulder) fireboulder-hover-stuff)
+  :trans fireboulder-hover-stuff
   :code (behavior ((arg0 handle))
     (clone-anim arg0 3 #t "")
     (format 0 "ERROR<GMJ>: fireboulder-be-clone ended~%")
     (cleanup-for-death self)
     (deactivate self)
-    (none)
     )
   )
 
 ;; failed to figure out what this is:
 (defstate fireboulder-idle (fireboulder)
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('clone)
-       (go fireboulder-be-clone (the-as handle (-> event param 0)))
+       (go fireboulder-be-clone (the-as handle (-> block param 0)))
        )
       )
     )
@@ -817,7 +757,6 @@
           (deactivate a0-1)
           )
       )
-    (none)
     )
   :code (behavior ()
     (transform-post)
@@ -828,9 +767,7 @@
           ((zero? (-> self task))
            )
           ((handle->process (-> self tracker))
-           (set! (-> (the-as (pointer part-tracker) (-> self tracker process)) 0 start-time)
-                 (-> *display* base-frame-counter)
-                 )
+           (set-time! (-> (the-as (pointer part-tracker) (-> self tracker process)) 0 start-time))
            )
           (else
             (set! (-> self tracker) (ppointer->handle (process-spawn
@@ -841,7 +778,7 @@
                                                         #f
                                                         #f
                                                         #f
-                                                        (-> self root-override trans)
+                                                        (-> self root trans)
                                                         :to *entity-pool*
                                                         )
                                                       )
@@ -852,15 +789,14 @@
         (ja :num! (seek!))
         )
       )
-    (none)
     )
-  :post (the-as (function none :behavior fireboulder) ja-post)
+  :post ja-post
   )
 
 ;; definition for method 11 of type fireboulder
 ;; INFO: Return type mismatch object vs none.
-(defmethod init-from-entity! fireboulder ((obj fireboulder) (arg0 entity-actor))
-  (let ((s4-0 (new 'process 'collide-shape obj (collide-list-enum hit-by-others))))
+(defmethod init-from-entity! ((this fireboulder) (arg0 entity-actor))
+  (let ((s4-0 (new 'process 'collide-shape this (collide-list-enum hit-by-others))))
     (let ((s3-0 (new 'process 'collide-shape-prim-group s4-0 (the-as uint 2) 0)))
       (set! (-> s3-0 prim-core collide-as) (collide-kind wall-object))
       (set! (-> s3-0 collide-with) (collide-kind target))
@@ -889,26 +825,26 @@
       )
     (set! (-> s4-0 nav-radius) (* 0.75 (-> s4-0 root-prim local-sphere w)))
     (backup-collide-with-as s4-0)
-    (set! (-> obj root-override) s4-0)
+    (set! (-> this root) s4-0)
     )
-  (process-drawable-from-entity! obj arg0)
+  (process-drawable-from-entity! this arg0)
   (cond
-    ((name= (-> obj name) "fireboulder-6")
-     (quaternion-axis-angle! (-> obj root-override quat) 0.0 1.0 0.0 16384.0)
-     (set! (-> obj sound)
-           (new 'process 'ambient-sound (static-sound-spec "rock-hover" :fo-max 30) (-> obj root-override trans))
+    ((name= (-> this name) "fireboulder-6")
+     (quaternion-axis-angle! (-> this root quat) 0.0 1.0 0.0 16384.0)
+     (set! (-> this sound)
+           (new 'process 'ambient-sound (static-sound-spec "rock-hover" :fo-max 30) (-> this root trans))
            )
      )
     (else
       (fireboulder-disable-blocking-collision)
       )
     )
-  (initialize-skeleton obj *fireboulder-sg* '())
-  (set! (-> obj tracker) (the-as handle #f))
-  (set-vector! (-> obj draw color-emissive) 0.125 0.0625 0.0 0.0)
-  (set! (-> obj task) (the-as uint (-> arg0 extra perm task)))
+  (initialize-skeleton this *fireboulder-sg* '())
+  (set! (-> this tracker) (the-as handle #f))
+  (set-vector! (-> this draw color-emissive) 0.125 0.0625 0.0 0.0)
+  (set! (-> this task) (the-as uint (-> arg0 extra perm task)))
   (cond
-    ((zero? (-> obj task))
+    ((zero? (-> this task))
      (go fireboulder-idle)
      )
     ((= (get-task-status (-> arg0 extra perm task)) (task-status invalid))
@@ -924,21 +860,17 @@
 ;; definition of type ceilingflag
 (deftype ceilingflag (process-drawable)
   ()
-  :heap-base #x40
-  :method-count-assert 20
-  :size-assert         #xb0
-  :flag-assert         #x14004000b0
   (:states
     ceilingflag-idle
     )
   )
 
 ;; definition for method 3 of type ceilingflag
-(defmethod inspect ceilingflag ((obj ceilingflag))
+(defmethod inspect ((this ceilingflag))
   (let ((t9-0 (method-of-type process-drawable inspect)))
-    (t9-0 obj)
+    (t9-0 this)
     )
-  obj
+  this
   )
 
 ;; failed to figure out what this is:
@@ -957,32 +889,27 @@
         (ja :num! (seek!))
         )
       )
-    (none)
     )
-  :post (the-as (function none :behavior ceilingflag) ja-post)
+  :post ja-post
   )
 
 ;; definition for method 11 of type ceilingflag
 ;; INFO: Return type mismatch object vs none.
-(defmethod init-from-entity! ceilingflag ((obj ceilingflag) (arg0 entity-actor))
-  (set! (-> obj root) (new 'process 'trsqv))
-  (process-drawable-from-entity! obj arg0)
-  (initialize-skeleton obj *ceilingflag-sg* '())
+(defmethod init-from-entity! ((this ceilingflag) (arg0 entity-actor))
+  (set! (-> this root) (new 'process 'trsqv))
+  (process-drawable-from-entity! this arg0)
+  (initialize-skeleton this *ceilingflag-sg* '())
   (go ceilingflag-idle)
   (none)
   )
 
 ;; definition of type exit-chamber-dummy
 (deftype exit-chamber-dummy (process-drawable)
-  ((orig-trans   vector :inline :offset-assert 176)
-   (fcell-handle handle         :offset-assert 192)
+  ((orig-trans    vector  :inline)
+   (fcell-handle  handle)
    )
-  :heap-base #x60
-  :method-count-assert 21
-  :size-assert         #xc8
-  :flag-assert         #x15006000c8
   (:methods
-    (skip-reminder? (_type_) symbol 20)
+    (skip-reminder? (_type_) symbol)
     )
   (:states
     exit-chamber-dummy-idle
@@ -991,13 +918,13 @@
   )
 
 ;; definition for method 3 of type exit-chamber-dummy
-(defmethod inspect exit-chamber-dummy ((obj exit-chamber-dummy))
+(defmethod inspect ((this exit-chamber-dummy))
   (let ((t9-0 (method-of-type process-drawable inspect)))
-    (t9-0 obj)
+    (t9-0 this)
     )
-  (format #t "~T~Torig-trans: #<vector @ #x~X>~%" (-> obj orig-trans))
-  (format #t "~T~Tfcell-handle: ~D~%" (-> obj fcell-handle))
-  obj
+  (format #t "~T~Torig-trans: #<vector @ #x~X>~%" (-> this orig-trans))
+  (format #t "~T~Tfcell-handle: ~D~%" (-> this fcell-handle))
+  this
   )
 
 ;; failed to figure out what this is:
@@ -1007,7 +934,7 @@
               )
 
 ;; definition for method 20 of type exit-chamber-dummy
-(defmethod skip-reminder? exit-chamber-dummy ((obj exit-chamber-dummy))
+(defmethod skip-reminder? ((this exit-chamber-dummy))
   (case (get-reminder (get-task-control (game-task sunken-room)) 0)
     ((2)
      (let ((v1-4 (level-get *level* 'sunken)))
@@ -1038,7 +965,6 @@
         )
       )
     (go exit-chamber-dummy-idle)
-    (none)
     )
   )
 
@@ -1053,9 +979,7 @@
             (+! gp-0 1)
             )
         (set! (-> self root trans y)
-              (+ (-> self orig-trans y)
-                 (* 2252.8 (cos (* 36.40889 (the float (mod (-> *display* base-frame-counter) 1800)))))
-                 )
+              (+ (-> self orig-trans y) (* 2252.8 (cos (* 36.40889 (the float (mod (current-time) 1800))))))
               )
         (let ((a0-7 (handle->process (-> self fcell-handle))))
           (when a0-7
@@ -1075,44 +999,39 @@
           )
       )
     (go exit-chamber-dummy-wait-to-appear)
-    (none)
     )
-  :post (the-as (function none :behavior exit-chamber-dummy) ja-post)
+  :post ja-post
   )
 
 ;; definition for method 11 of type exit-chamber-dummy
 ;; INFO: Used lq/sq
 ;; INFO: Return type mismatch object vs none.
-(defmethod init-from-entity! exit-chamber-dummy ((obj exit-chamber-dummy) (arg0 entity-actor))
-  (set! (-> obj fcell-handle) (the-as handle #f))
-  (set! (-> obj root) (new 'process 'trsqv))
-  (process-drawable-from-entity! obj arg0)
-  (logclear! (-> obj mask) (process-mask actor-pause))
-  (+! (-> obj root trans y) 24576.0)
-  (set! (-> obj orig-trans quad) (-> obj root trans quad))
-  (initialize-skeleton obj *exit-chamber-dummy-sg* '())
+(defmethod init-from-entity! ((this exit-chamber-dummy) (arg0 entity-actor))
+  (set! (-> this fcell-handle) (the-as handle #f))
+  (set! (-> this root) (new 'process 'trsqv))
+  (process-drawable-from-entity! this arg0)
+  (logclear! (-> this mask) (process-mask actor-pause))
+  (+! (-> this root trans y) 24576.0)
+  (set! (-> this orig-trans quad) (-> this root trans quad))
+  (initialize-skeleton this *exit-chamber-dummy-sg* '())
   (ja-channel-set! 1)
-  (let ((s5-1 (-> obj skel root-channel 0)))
+  (let ((s5-1 (-> this skel root-channel 0)))
     (joint-control-channel-group-eval!
       s5-1
-      (the-as art-joint-anim (-> obj draw art-group data 2))
+      (the-as art-joint-anim (-> this draw art-group data 2))
       num-func-identity
       )
     (set! (-> s5-1 frame-num) 0.0)
     )
-  (logior! (-> obj draw status) (draw-status hidden))
+  (logior! (-> this draw status) (draw-status hidden))
   (go exit-chamber-dummy-wait-to-appear)
   (none)
   )
 
 ;; definition of type ogreboss-village2
 (deftype ogreboss-village2 (process-drawable)
-  ((boulder handle  :offset-assert 176)
+  ((boulder  handle)
    )
-  :heap-base #x50
-  :method-count-assert 20
-  :size-assert         #xb8
-  :flag-assert         #x14005000b8
   (:states
     ogreboss-village2-idle
     ogreboss-village2-throw
@@ -1120,12 +1039,12 @@
   )
 
 ;; definition for method 3 of type ogreboss-village2
-(defmethod inspect ogreboss-village2 ((obj ogreboss-village2))
+(defmethod inspect ((this ogreboss-village2))
   (let ((t9-0 (method-of-type process-drawable inspect)))
-    (t9-0 obj)
+    (t9-0 this)
     )
-  (format #t "~T~Tboulder: ~D~%" (-> obj boulder))
-  obj
+  (format #t "~T~Tboulder: ~D~%" (-> this boulder))
+  this
   )
 
 ;; failed to figure out what this is:
@@ -1578,7 +1497,7 @@
         )
       )
     (ja-channel-push! 1 (seconds 0.2))
-    (ja-no-eval :group! (-> self draw art-group data 7) :num! (seek!) :frame-num 0.0)
+    (ja-no-eval :group! ogreboss-village2-pre-throw-ja :num! (seek!) :frame-num 0.0)
     (until (ja-done? 0)
       (suspend)
       (ja :num! (seek!))
@@ -1604,15 +1523,14 @@
         )
       )
     (ja-channel-push! 1 (seconds 0.2))
-    (ja-no-eval :group! (-> self draw art-group data 5) :num! (seek!) :frame-num 0.0)
+    (ja-no-eval :group! ogreboss-village2-throw-ja :num! (seek!) :frame-num 0.0)
     (until (ja-done? 0)
       (suspend)
       (ja :num! (seek!))
       )
     (go ogreboss-village2-idle)
-    (none)
     )
-  :post (the-as (function none :behavior ogreboss-village2) ja-post)
+  :post ja-post
   )
 
 ;; failed to figure out what this is:
@@ -1624,17 +1542,17 @@
       (let ((v1-0 (rand-vu-int-range 0 2)))
         (cond
           ((zero? v1-0)
-           (ja-no-eval :group! (-> self draw art-group data 2) :num! (seek! (ja-aframe 140.0 0)) :frame-num 0.0)
+           (ja-no-eval :group! ogreboss-village2-idle-ja :num! (seek! (ja-aframe 140.0 0)) :frame-num 0.0)
            (until (ja-done? 0)
              (suspend)
              (ja :num! (seek! (ja-aframe 140.0 0)))
              )
-           (let ((gp-2 (-> *display* base-frame-counter)))
-             (until (>= (- (-> *display* base-frame-counter) gp-2) (seconds 0.167))
+           (let ((gp-2 (current-time)))
+             (until (time-elapsed? gp-2 (seconds 0.167))
                (suspend)
                )
              )
-           (ja-no-eval :group! (-> self draw art-group data 2)
+           (ja-no-eval :group! ogreboss-village2-idle-ja
                        :num! (seek! (ja-aframe 168.0 0))
                        :frame-num (ja-aframe 140.0 0)
                        )
@@ -1642,19 +1560,19 @@
              (suspend)
              (ja :num! (seek! (ja-aframe 168.0 0)))
              )
-           (let ((gp-5 (-> *display* base-frame-counter)))
-             (until (>= (- (-> *display* base-frame-counter) gp-5) (seconds 0.167))
+           (let ((gp-5 (current-time)))
+             (until (time-elapsed? gp-5 (seconds 0.167))
                (suspend)
                )
              )
-           (ja-no-eval :group! (-> self draw art-group data 2) :num! (seek!) :frame-num (ja-aframe 168.0 0))
+           (ja-no-eval :group! ogreboss-village2-idle-ja :num! (seek!) :frame-num (ja-aframe 168.0 0))
            (until (ja-done? 0)
              (suspend)
              (ja :num! (seek!))
              )
            )
           ((= v1-0 1)
-           (ja-no-eval :group! (-> self draw art-group data 4) :num! (seek!) :frame-num 0.0)
+           (ja-no-eval :group! ogreboss-village2-idle-alt-ja :num! (seek!) :frame-num 0.0)
            (until (ja-done? 0)
              (suspend)
              (ja :num! (seek!))
@@ -1662,7 +1580,7 @@
            )
           (else
             (dotimes (gp-7 4)
-              (ja-no-eval :group! (-> self draw art-group data 3) :num! (seek!) :frame-num 0.0)
+              (ja-no-eval :group! ogreboss-village2-idle-bored-ja :num! (seek!) :frame-num 0.0)
               (until (ja-done? 0)
                 (suspend)
                 (ja :num! (seek!))
@@ -1675,7 +1593,7 @@
         (cond
           ((< 0.6666667 f0-33)
            (ja-channel-push! 1 (seconds 0.2))
-           (ja-no-eval :group! (-> self draw art-group data 6) :num! (seek!) :frame-num 0.0)
+           (ja-no-eval :group! ogreboss-village2-victory-ja :num! (seek!) :frame-num 0.0)
            (until (ja-done? 0)
              (suspend)
              (ja :num! (seek!))
@@ -1687,15 +1605,14 @@
           )
         )
       )
-    (none)
     )
-  :post (the-as (function none :behavior ogreboss-village2) ja-post)
+  :post ja-post
   )
 
 ;; definition for method 11 of type ogreboss-village2
 ;; INFO: Return type mismatch object vs none.
-(defmethod init-from-entity! ogreboss-village2 ((obj ogreboss-village2) (arg0 entity-actor))
-  (let ((s4-0 (new 'process 'collide-shape obj (collide-list-enum hit-by-player))))
+(defmethod init-from-entity! ((this ogreboss-village2) (arg0 entity-actor))
+  (let ((s4-0 (new 'process 'collide-shape this (collide-list-enum hit-by-player))))
     (let ((s3-0 (new 'process 'collide-shape-prim-group s4-0 (the-as uint 1) 0)))
       (set! (-> s3-0 prim-core collide-as) (collide-kind enemy))
       (set! (-> s3-0 collide-with) (collide-kind target))
@@ -1713,15 +1630,15 @@
       )
     (set! (-> s4-0 nav-radius) (* 0.75 (-> s4-0 root-prim local-sphere w)))
     (backup-collide-with-as s4-0)
-    (set! (-> obj root) s4-0)
+    (set! (-> this root) s4-0)
     )
-  (process-drawable-from-entity! obj arg0)
-  (initialize-skeleton obj *ogreboss-village2-sg* '())
-  (set-vector! (-> obj root scale) 0.65 0.65 0.65 1.0)
+  (process-drawable-from-entity! this arg0)
+  (initialize-skeleton this *ogreboss-village2-sg* '())
+  (set-vector! (-> this root scale) 0.65 0.65 0.65 1.0)
   (transform-post)
-  (set! (-> obj root pause-adjust-distance) 122880.0)
-  (logclear! (-> obj mask) (process-mask actor-pause))
-  (set! (-> obj boulder) (the-as handle #f))
+  (set! (-> this root pause-adjust-distance) 122880.0)
+  (logclear! (-> this mask) (process-mask actor-pause))
+  (set! (-> this boulder) (the-as handle #f))
   (go ogreboss-village2-idle)
   (none)
   )
@@ -1729,35 +1646,27 @@
 ;; definition of type villageb-ogreboss
 (deftype villageb-ogreboss (ogreboss-village2)
   ()
-  :heap-base #x50
-  :method-count-assert 20
-  :size-assert         #xb8
-  :flag-assert         #x14005000b8
   )
 
 ;; definition for method 3 of type villageb-ogreboss
-(defmethod inspect villageb-ogreboss ((obj villageb-ogreboss))
+(defmethod inspect ((this villageb-ogreboss))
   (let ((t9-0 (method-of-type ogreboss-village2 inspect)))
-    (t9-0 obj)
+    (t9-0 this)
     )
-  obj
+  this
   )
 
 ;; definition of type villageb-water
 (deftype villageb-water (water-anim)
   ()
-  :heap-base #x70
-  :method-count-assert 30
-  :size-assert         #xdc
-  :flag-assert         #x1e007000dc
   )
 
 ;; definition for method 3 of type villageb-water
-(defmethod inspect villageb-water ((obj villageb-water))
+(defmethod inspect ((this villageb-water))
   (let ((t9-0 (method-of-type water-anim inspect)))
-    (t9-0 obj)
+    (t9-0 this)
     )
-  obj
+  this
   )
 
 ;; definition for symbol ripple-for-villageb-water, type ripple-wave-set
@@ -1776,13 +1685,13 @@
 
 ;; definition for method 22 of type villageb-water
 ;; INFO: Return type mismatch ripple-wave-set vs none.
-(defmethod water-vol-method-22 villageb-water ((obj villageb-water))
+(defmethod water-vol-method-22 ((this villageb-water))
   (let ((t9-0 (method-of-type water-anim water-vol-method-22)))
-    (t9-0 obj)
+    (t9-0 this)
     )
   (let ((v1-2 (new 'process 'ripple-control)))
-    (set! (-> obj draw ripple) v1-2)
-    (set-vector! (-> obj draw color-mult) 0.01 0.45 0.5 0.75)
+    (set! (-> this draw ripple) v1-2)
+    (set-vector! (-> this draw color-mult) 0.01 0.45 0.5 0.75)
     (set! (-> v1-2 global-scale) 3072.0)
     (set! (-> v1-2 close-fade-dist) 163840.0)
     (set! (-> v1-2 far-fade-dist) 245760.0)

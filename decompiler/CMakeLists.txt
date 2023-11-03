@@ -35,6 +35,8 @@ add_library(
         Disasm/OpcodeInfo.cpp
         Disasm/Register.cpp
 
+        extractor/extractor_util.cpp
+
         Function/BasicBlocks.cpp
         Function/CfgVtx.cpp
         Function/Function.cpp
@@ -53,8 +55,10 @@ add_library(
         IR2/OpenGoalMapping.cpp
 
         level_extractor/BspHeader.cpp
+        level_extractor/extract_actors.cpp
         level_extractor/extract_collide_frags.cpp
         level_extractor/extract_common.cpp
+        level_extractor/extract_joint_group.cpp
         level_extractor/extract_level.cpp
         level_extractor/extract_merc.cpp
         level_extractor/extract_tfrag.cpp
@@ -108,7 +112,7 @@ target_link_libraries(decompiler
 
 
 add_executable(extractor
-        extractor/main.cpp extractor/extractor_util.hpp )
+        extractor/main.cpp)
 
 target_link_libraries(extractor
         decomp

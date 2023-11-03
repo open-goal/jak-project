@@ -42,28 +42,27 @@
 (define-perm *camera-old-stat-string-total* string (new 'global 'string 128 (the-as string #f)))
 
 (deftype cam-dbg-scratch (structure)
-  ((linevec4w      vector4w 2 :inline :offset-assert   0)
-   (color          vector4w :inline   :offset-assert  32)
-   (plotvec        vector4w 2 :inline :offset-assert  48)
-   (linevec        vector4w 2 :inline :offset-assert  80)
-   (rel-vec        vector   :inline   :offset-assert 112)
-   (sphere-v-start vector   :inline   :offset-assert 128)
-   (sphere-v-end   vector   :inline   :offset-assert 144)
-   (sphere-v-down  vector   :inline   :offset-assert 160)
-   (sphere-vec     vector   :inline   :offset-assert 176)
-   (crossvec       vector   3 :inline :offset-assert 192)
-   (bboxvec        vector   6 :inline :offset-assert 240)
-   (fov-vv         vector   4 :inline :offset-assert 336)
-   (fov-src        vector   :inline   :offset-assert 400)
-   (fov-dest       vector   :inline   :offset-assert 416)
-   (fov-vert       vector   :inline   :offset-assert 432)
-   (fov-horz       vector   :inline   :offset-assert 448)
+  ((linevec4w       vector4w  2 :inline)
+   (color           vector4w  :inline)
+   (plotvec         vector4w  2 :inline)
+   (linevec         vector4w  2 :inline)
+   (rel-vec         vector    :inline)
+   (sphere-v-start  vector    :inline)
+   (sphere-v-end    vector    :inline)
+   (sphere-v-down   vector    :inline)
+   (sphere-vec      vector    :inline)
+   (crossvec        vector    3 :inline)
+   (bboxvec         vector    6 :inline)
+   (fov-vv          vector    4 :inline)
+   (fov-src         vector    :inline)
+   (fov-dest        vector    :inline)
+   (fov-vert        vector    :inline)
+   (fov-horz        vector    :inline)
    )
-  :method-count-assert 9
-  :size-assert         #x1d0
-  :flag-assert         #x9000001d0
   )
 
+
+;; WARN: Return type mismatch object vs string.
 (defun cam-slave-options->string ((arg0 cam-slave-options) (arg1 object))
   (if (= (logand arg0 (cam-slave-options SAME_SIDE)) (cam-slave-options SAME_SIDE))
       (format arg1 "SAME_SIDE ")
@@ -142,6 +141,7 @@
   (the-as string arg1)
   )
 
+;; WARN: Return type mismatch object vs string.
 (defun cam-index-options->string ((arg0 cam-index-options) (arg1 object))
   (if (= (logand arg0 (cam-index-options SPHERICAL)) (cam-index-options SPHERICAL))
       (format arg1 "RADIAL ")
@@ -172,8 +172,6 @@
     )
   )
 
-;; WARN: Failed store: (s.w! (+ a0-2 8) 0) at op 78
-;; WARN: Failed store: (s.w! (+ a0-2 12) 0) at op 79
 (defun cam-line-dma ()
   (with-dma-buffer-add-bucket ((v1-5 (-> *display* frames (-> *display* on-screen) debug-buf))
                                (bucket-id debug-no-zbuf1)
@@ -362,6 +360,7 @@
   (none)
   )
 
+;; WARN: Function camera-line-draw has a return type of none, but the expression builder found a return statement.
 (defun camera-line-draw ((arg0 vector) (arg1 vector))
   (set! (-> (scratchpad-object cam-dbg-scratch) linevec 0 quad) (-> arg0 quad))
   (set! (-> (scratchpad-object cam-dbg-scratch) linevec 1 quad) (-> arg1 quad))
@@ -572,14 +571,12 @@
   )
 
 (deftype cam-debug-tri (structure)
-  ((vertex    vector   3 :inline :offset-assert   0)
-   (intersect vector   :inline   :offset-assert  48)
-   (color     vector4w           :offset-assert  64)
+  ((vertex     vector  3 :inline)
+   (intersect  vector  :inline)
+   (color      vector4w)
    )
-  :method-count-assert 9
-  :size-assert         #x44
-  :flag-assert         #x900000044
   )
+
 
 (define *cam-debug-los-tri-current* 0)
 
@@ -717,6 +714,7 @@
   (none)
   )
 
+;; WARN: Return type mismatch none vs symbol.
 (defun camera-fov-frame ((arg0 matrix) (arg1 vector) (arg2 float) (arg3 float) (arg4 float) (arg5 vector4w))
   (vector-float*! (-> (scratchpad-object cam-dbg-scratch) fov-vert) (-> arg0 vector 1) (* arg3 (tan arg2)))
   (vector-float*!
@@ -818,16 +816,16 @@
           )
   )
 
-(defmethod debug-point-info tracking-spline ((obj tracking-spline) (arg0 int))
-  (if (= arg0 (-> obj used-point))
+(defmethod debug-point-info ((this tracking-spline) (arg0 int))
+  (if (= arg0 (-> this used-point))
       (format 0 "u")
       (format 0 " ")
       )
-  (if (= arg0 (-> obj next-to-last-point))
+  (if (= arg0 (-> this next-to-last-point))
       (format 0 "n")
       (format 0 " ")
       )
-  (if (= arg0 (-> obj end-point))
+  (if (= arg0 (-> this end-point))
       (format 0 "e")
       (format 0 " ")
       )
@@ -837,33 +835,33 @@
         0
         " ~D ~M ~M ~M~%"
         arg0
-        (-> obj point arg0 position x)
-        (-> obj point arg0 position y)
-        (-> obj point arg0 position z)
+        (-> this point arg0 position x)
+        (-> this point arg0 position y)
+        (-> this point arg0 position z)
         )
       )
   0
   (none)
   )
 
-(defmethod debug-all-points tracking-spline ((obj tracking-spline))
-  (let ((s5-0 (-> obj used-point)))
+(defmethod debug-all-points ((this tracking-spline))
+  (let ((s5-0 (-> this used-point)))
     (while (!= s5-0 -134250495)
-      (debug-point-info obj s5-0)
-      (set! s5-0 (-> obj point s5-0 next))
+      (debug-point-info this s5-0)
+      (set! s5-0 (-> this point s5-0 next))
       )
-    (debug-point-info obj s5-0)
+    (debug-point-info this s5-0)
     )
   0
   (none)
   )
 
-(defmethod debug-draw-spline tracking-spline ((obj tracking-spline))
-  (let ((s5-0 (-> obj used-point)))
-    (let ((s4-0 (-> obj point (-> obj used-point) next)))
+(defmethod debug-draw-spline ((this tracking-spline))
+  (let ((s5-0 (-> this used-point)))
+    (let ((s4-0 (-> this point (-> this used-point) next)))
       (let ((s3-0 (new 'stack-no-clear 'vector)))
         (when (!= s4-0 -134250495)
-          (tracking-spline-method-19 obj 0.0 s3-0 (the-as tracking-spline-sampler #f))
+          (tracking-spline-method-19 this 0.0 s3-0 (the-as tracking-spline-sampler #f))
           (camera-cross
             (new 'static 'vector :y 1024.0)
             (new 'static 'vector :z 1024.0)
@@ -871,7 +869,7 @@
             (new 'static 'vector4w :x #xff :w #x80)
             (meters 0.25)
             )
-          (tracking-spline-method-19 obj (-> obj sample-len) s3-0 (the-as tracking-spline-sampler #f))
+          (tracking-spline-method-19 this (-> this sample-len) s3-0 (the-as tracking-spline-sampler #f))
           (camera-cross
             (new 'static 'vector :y 1024.0)
             (new 'static 'vector :z 1024.0)
@@ -883,19 +881,19 @@
         )
       (while (!= s4-0 -134250495)
         (camera-line
-          (the-as vector (-> obj point s5-0))
-          (the-as vector (-> obj point s4-0))
+          (the-as vector (-> this point s5-0))
+          (the-as vector (-> this point s4-0))
           (new 'static 'vector4w :x #x80 :y #x80 :z #x80 :w #x80)
           )
         (set! s5-0 s4-0)
-        (set! s4-0 (-> obj point s4-0 next))
+        (set! s4-0 (-> this point s4-0 next))
         )
       )
     (if (!= s5-0 -134250495)
         (camera-cross
           (new 'static 'vector :y 1024.0)
           (new 'static 'vector :z 1024.0)
-          (the-as vector (-> obj point s5-0))
+          (the-as vector (-> this point s5-0))
           (new 'static 'vector4w :x #xff :w #x80)
           (meters 0.25)
           )
@@ -903,13 +901,13 @@
     )
   (let ((s5-1 (new 'stack-no-clear 'vector)))
     (camera-line
-      (-> obj debug-out-position)
-      (-> obj debug-old-position)
+      (-> this debug-out-position)
+      (-> this debug-old-position)
       (new 'static 'vector4w :x #xff :y #xff :w #x80)
       )
-    (vector-! s5-1 (-> obj debug-out-position) (-> obj debug-old-position))
-    (tracking-spline-method-20 obj s5-1 (-> obj debug-last-point))
-    (camera-line-rel (-> obj debug-old-position) s5-1 (new 'static 'vector4w :x #xff :z #xff :w #x80))
+    (vector-! s5-1 (-> this debug-out-position) (-> this debug-old-position))
+    (tracking-spline-method-20 this s5-1 (-> this debug-last-point))
+    (camera-line-rel (-> this debug-old-position) s5-1 (new 'static 'vector4w :x #xff :z #xff :w #x80))
     )
   0
   (none)
@@ -1101,9 +1099,9 @@
           ((= (-> arg0 blend-to-type) (camera-blend-to-type unknown-2))
            (vector+float*! s5-1 s4-1 (the-as vector (-> *camera-combiner* tracking)) 2048.0)
            (camera-line s4-1 s5-1 (new 'static 'vector4w :x #xff :w #x80))
-           (vector+float*! s5-1 s4-1 (the-as vector (&-> *camera-combiner* stack 176)) 2048.0)
+           (vector+float*! s5-1 s4-1 (-> *camera-combiner* tracking inv-mat vector 1) 2048.0)
            (camera-line s4-1 s5-1 (new 'static 'vector4w :y #xff :w #x80))
-           (vector+float*! s5-1 s4-1 (the-as vector (&-> *camera-combiner* stack 192)) 2048.0)
+           (vector+float*! s5-1 s4-1 (-> *camera-combiner* tracking inv-mat vector 2) 2048.0)
            (camera-line s4-1 s5-1 (new 'static 'vector4w :z #xff :w #x80))
            )
           (else
@@ -1290,33 +1288,28 @@
   )
 
 (deftype cam-collision-record (structure)
-  ((pos            vector :inline :offset-assert   0)
-   (vel            vector :inline :offset-assert  16)
-   (desired-pos    vector :inline :offset-assert  32)
-   (cam-tpos-cur   vector :inline :offset-assert  48)
-   (cam-tpos-old   vector :inline :offset-assert  64)
-   (view-flat      vector :inline :offset-assert  80)
-   (string-min-val vector :inline :offset-assert  96)
-   (string-max-val vector :inline :offset-assert 112)
-   (view-off       vector :inline :offset-assert 128)
-   (min-z-override float          :offset-assert 144)
-   (string-push-z  float          :offset-assert 148)
-   (view-off-param float          :offset-assert 152)
-   (frame          int32          :offset-assert 156)
-   (iteration      int32          :offset-assert 160)
-   (move-type      symbol         :offset-assert 164)
+  ((pos             vector  :inline)
+   (vel             vector  :inline)
+   (desired-pos     vector  :inline)
+   (cam-tpos-cur    vector  :inline)
+   (cam-tpos-old    vector  :inline)
+   (view-flat       vector  :inline)
+   (string-min-val  vector  :inline)
+   (string-max-val  vector  :inline)
+   (view-off        vector  :inline)
+   (min-z-override  float)
+   (string-push-z   float)
+   (view-off-param  float)
+   (frame           int32)
+   (iteration       int32)
+   (move-type       symbol)
    )
-  :method-count-assert 9
-  :size-assert         #xa8
-  :flag-assert         #x9000000a8
   )
 
+
 (deftype cam-collision-record-array (inline-array-class)
-  ((data cam-collision-record :dynamic :offset-assert  16)
+  ((data  cam-collision-record  :dynamic)
    )
-  :method-count-assert 9
-  :size-assert         #x10
-  :flag-assert         #x900000010
   )
 
 

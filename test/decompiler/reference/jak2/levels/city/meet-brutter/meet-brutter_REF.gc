@@ -3,43 +3,43 @@
 
 ;; definition for method 15 of type hud-lurker
 ;; WARN: Return type mismatch int vs none.
-(defmethod draw hud-lurker ((obj hud-lurker))
+(defmethod draw ((this hud-lurker))
   (set-hud-piece-position!
-    (the-as hud-sprite (-> obj sprites))
-    (the int (+ 457.0 (* 130.0 (-> obj offset))))
+    (the-as hud-sprite (-> this sprites))
+    (the int (+ 457.0 (* 130.0 (-> this offset))))
     205
     )
-  (format (clear (-> obj strings 0 text)) "~D" (-> obj values 0 current))
-  (set-as-offset-from! (the-as hud-sprite (-> obj strings 0 pos)) (the-as vector4w (-> obj sprites)) -19 27)
-  ((method-of-type hud draw) obj)
+  (format (clear (-> this strings 0 text)) "~D" (-> this values 0 current))
+  (set-as-offset-from! (the-as hud-sprite (-> this strings 0 pos)) (the-as vector4w (-> this sprites)) -19 27)
+  ((method-of-type hud draw) this)
   0
   (none)
   )
 
 ;; definition for method 16 of type hud-lurker
 ;; WARN: Return type mismatch int vs none.
-(defmethod update-values hud-lurker ((obj hud-lurker))
-  (set! (-> obj values 0 target) (the int (-> *game-info* counter)))
-  ((method-of-type hud update-values) obj)
+(defmethod update-values ((this hud-lurker))
+  (set! (-> this values 0 target) (the int (-> *game-info* counter)))
+  ((method-of-type hud update-values) this)
   0
   (none)
   )
 
 ;; definition for method 17 of type hud-lurker
 ;; WARN: Return type mismatch int vs none.
-(defmethod init-callback hud-lurker ((obj hud-lurker))
-  (set! (-> obj level) (level-get *level* 'ctywide))
-  (set! (-> obj gui-id)
-        (add-process *gui-control* obj (gui-channel hud-middle-right) (gui-action hidden) (-> obj name) 81920.0 0)
+(defmethod init-callback ((this hud-lurker))
+  (set! (-> this level) (level-get *level* 'ctywide))
+  (set! (-> this gui-id)
+        (add-process *gui-control* this (gui-channel hud-middle-right) (gui-action hidden) (-> this name) 81920.0 0)
         )
-  (logior! (-> obj flags) (hud-flags show))
-  (set! (-> obj sprites 0 tex) (lookup-texture-by-id (new 'static 'texture-id :index #x6 :page #x679)))
-  (set! (-> obj sprites 0 scale-x) 1.2)
-  (set! (-> obj sprites 0 scale-y) 1.2)
-  (set! (-> obj sprites 0 flags) (the-as uint 4))
-  (alloc-string-if-needed obj 0)
-  (set! (-> obj strings 0 scale) 0.6)
-  (set! (-> obj strings 0 flags) (font-flags kerning middle large))
+  (logior! (-> this flags) (hud-flags show))
+  (set! (-> this sprites 0 tex) (lookup-texture-by-id (new 'static 'texture-id :index #x6 :page #x679)))
+  (set! (-> this sprites 0 scale-x) 1.2)
+  (set! (-> this sprites 0 scale-y) 1.2)
+  (set! (-> this sprites 0 flags) (the-as uint 4))
+  (alloc-string-if-needed this 0)
+  (set! (-> this strings 0 scale) 0.6)
+  (set! (-> this strings 0 flags) (font-flags kerning middle large))
   0
   (none)
   )
@@ -240,32 +240,28 @@
 
 ;; definition of type paddywagon
 (deftype paddywagon (vehicle-guard)
-  ((current-level symbol  :offset-assert 1076)
+  ((current-level  symbol)
    )
-  :heap-base #x3c0
-  :method-count-assert 159
-  :size-assert         #x438
-  :flag-assert         #x9f03c00438
   )
 
 ;; definition for method 3 of type paddywagon
-(defmethod inspect paddywagon ((obj paddywagon))
-  (when (not obj)
-    (set! obj obj)
+(defmethod inspect ((this paddywagon))
+  (when (not this)
+    (set! this this)
     (goto cfg-4)
     )
   (let ((t9-0 (method-of-type vehicle-guard inspect)))
-    (t9-0 obj)
+    (t9-0 this)
     )
-  (format #t "~2Tcurrent-level: ~A~%" (-> obj current-level))
+  (format #t "~2Tcurrent-level: ~A~%" (-> this current-level))
   (label cfg-4)
-  obj
+  this
   )
 
 ;; definition for method 32 of type paddywagon
 ;; WARN: Return type mismatch int vs none.
-(defmethod allocate-and-init-cshape paddywagon ((obj paddywagon))
-  (let ((s5-0 (new 'process 'collide-shape-moving obj (collide-list-enum usually-hit-by-player))))
+(defmethod allocate-and-init-cshape ((this paddywagon))
+  (let ((s5-0 (new 'process 'collide-shape-moving this (collide-list-enum usually-hit-by-player))))
     (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s5-0 reaction) cshape-reaction-default)
     (set! (-> s5-0 no-reaction)
@@ -313,7 +309,7 @@
       (set! (-> s5-0 backup-collide-as) (-> v1-23 prim-core collide-as))
       (set! (-> s5-0 backup-collide-with) (-> v1-23 prim-core collide-with))
       )
-    (set! (-> obj root) s5-0)
+    (set! (-> this root) s5-0)
     )
   0
   (none)
@@ -321,31 +317,28 @@
 
 ;; definition of type pw-iter-seg
 (deftype pw-iter-seg (structure)
-  ((self        paddywagon          :offset-assert   0)
-   (desired-dir vector      :inline :offset-assert  16)
-   (score       float               :offset-assert  32)
-   (seg         nav-segment         :offset-assert  36)
-   (level       symbol              :offset-assert  40)
+  ((self         paddywagon)
+   (desired-dir  vector  :inline)
+   (score        float)
+   (seg          nav-segment)
+   (level        symbol)
    )
-  :method-count-assert 9
-  :size-assert         #x2c
-  :flag-assert         #x90000002c
   )
 
 ;; definition for method 3 of type pw-iter-seg
-(defmethod inspect pw-iter-seg ((obj pw-iter-seg))
-  (when (not obj)
-    (set! obj obj)
+(defmethod inspect ((this pw-iter-seg))
+  (when (not this)
+    (set! this this)
     (goto cfg-4)
     )
-  (format #t "[~8x] ~A~%" obj 'pw-iter-seg)
-  (format #t "~1Tself: ~A~%" (-> obj self))
-  (format #t "~1Tdesired-dir: #<vector @ #x~X>~%" (-> obj desired-dir))
-  (format #t "~1Tscore: ~f~%" (-> obj score))
-  (format #t "~1Tseg: #<nav-segment @ #x~X>~%" (-> obj seg))
-  (format #t "~1Tlevel: ~A~%" (-> obj level))
+  (format #t "[~8x] ~A~%" this 'pw-iter-seg)
+  (format #t "~1Tself: ~A~%" (-> this self))
+  (format #t "~1Tdesired-dir: #<vector @ #x~X>~%" (-> this desired-dir))
+  (format #t "~1Tscore: ~f~%" (-> this score))
+  (format #t "~1Tseg: #<nav-segment @ #x~X>~%" (-> this seg))
+  (format #t "~1Tlevel: ~A~%" (-> this level))
   (label cfg-4)
-  obj
+  this
   )
 
 ;; definition for function pw-iter-seg-new-dir-level
@@ -471,20 +464,20 @@
 
 ;; definition for method 33 of type paddywagon
 ;; WARN: Return type mismatch int vs none.
-(defmethod init-skel-and-rigid-body paddywagon ((obj paddywagon))
+(defmethod init-skel-and-rigid-body ((this paddywagon))
   (with-pp
     (set! (-> pp level) (level-get *level* 'lmeetbrt))
     (initialize-skeleton
-      obj
+      this
       (the-as skeleton-group (art-group-get-by-name *level* "skel-paddywagon" (the-as (pointer uint32) #f)))
       (the-as pair 0)
       )
-    (alloc-and-init-rigid-body-control obj *paddywagon-constants*)
-    (set! (-> obj draw lod-set lod 0 dist) 819200.0)
-    (set! (-> obj flags)
-          (the-as rigid-body-object-flag (logior (rigid-body-object-flag no-hijack) (-> obj flags)))
+    (alloc-and-init-rigid-body-control this *paddywagon-constants*)
+    (set! (-> this draw lod-set lod 0 dist) 819200.0)
+    (set! (-> this flags)
+          (the-as rigid-body-object-flag (logior (rigid-body-object-flag no-hijack) (-> this flags)))
           )
-    (set! (-> obj controller choose-branch-callback) choose-next-branch-no-exit-level)
+    (set! (-> this controller choose-branch-callback) choose-next-branch-no-exit-level)
     0
     (none)
     )
@@ -492,70 +485,70 @@
 
 ;; definition for method 120 of type paddywagon
 ;; WARN: Return type mismatch int vs none.
-(defmethod vehicle-method-120 paddywagon ((obj paddywagon))
+(defmethod vehicle-method-120 ((this paddywagon))
   (let ((t9-0 (method-of-type vehicle-guard vehicle-method-120)))
-    (t9-0 obj)
+    (t9-0 this)
     )
-  (if (logtest? (-> obj controller flags) (vehicle-controller-flag attached))
-      (set! (-> obj current-level) (-> obj controller branch dest-node level))
-      (set! (-> obj current-level) #f)
+  (if (logtest? (-> this controller flags) (vehicle-controller-flag attached))
+      (set! (-> this current-level) (-> this controller branch dest-node level))
+      (set! (-> this current-level) #f)
       )
-  (vehicle-method-119 obj)
+  (vehicle-method-119 this)
   0
   (none)
   )
 
 ;; definition for method 128 of type paddywagon
 ;; WARN: Return type mismatch int vs none.
-(defmethod vehicle-method-128 paddywagon ((obj paddywagon))
+(defmethod vehicle-method-128 ((this paddywagon))
   (let ((t9-0 (method-of-type vehicle vehicle-method-128)))
-    (t9-0 obj)
+    (t9-0 this)
     )
-  (logior! (-> obj flags) (rigid-body-object-flag persistent))
+  (logior! (-> this flags) (rigid-body-object-flag persistent))
   0
   (none)
   )
 
 ;; definition for method 127 of type paddywagon
 ;; WARN: Return type mismatch int vs none.
-(defmethod vehicle-method-127 paddywagon ((obj paddywagon))
-  ((method-of-type vehicle vehicle-method-127) obj)
+(defmethod vehicle-method-127 ((this paddywagon))
+  ((method-of-type vehicle vehicle-method-127) this)
   0
   (none)
   )
 
 ;; definition for method 129 of type paddywagon
 ;; WARN: Return type mismatch int vs none.
-(defmethod vehicle-method-129 paddywagon ((obj paddywagon))
-  ((method-of-type vehicle vehicle-method-129) obj)
+(defmethod vehicle-method-129 ((this paddywagon))
+  ((method-of-type vehicle vehicle-method-129) this)
   0
   (none)
   )
 
 ;; definition for method 134 of type paddywagon
 ;; WARN: Return type mismatch int vs none.
-(defmethod vehicle-method-134 paddywagon ((obj paddywagon) (arg0 process))
+(defmethod vehicle-method-134 ((this paddywagon) (arg0 process))
   "Stubbed"
-  (logior! (-> obj controller flags) (vehicle-controller-flag ignore-others))
-  (set! (-> obj controller target-speed-offset) 81920.0)
-  (set! (-> obj pursuit-target) (process->handle arg0))
-  (logior! (-> obj flags) (rigid-body-object-flag alert))
+  (logior! (-> this controller flags) (vehicle-controller-flag ignore-others))
+  (set! (-> this controller target-speed-offset) 81920.0)
+  (set! (-> this pursuit-target) (process->handle arg0))
+  (logior! (-> this flags) (rigid-body-object-flag alert))
   (if (task-node-open? (game-task-node city-save-lurkers-save-lurkers))
-      (vehicle-method-111 obj 1 (the-as target arg0))
-      (vehicle-method-111 obj 2 (the-as target arg0))
+      (vehicle-method-111 this 1 (the-as target arg0))
+      (vehicle-method-111 this 2 (the-as target arg0))
       )
-  (go (method-of-object obj hostile))
+  (go (method-of-object this hostile))
   0
   (none)
   )
 
 ;; definition for method 108 of type paddywagon
 ;; WARN: Return type mismatch int vs none.
-(defmethod vehicle-method-108 paddywagon ((obj paddywagon))
-  (set! (-> obj flags)
-        (the-as rigid-body-object-flag (logior (rigid-body-object-flag persistent in-pursuit) (-> obj flags)))
+(defmethod vehicle-method-108 ((this paddywagon))
+  (set! (-> this flags)
+        (the-as rigid-body-object-flag (logior (rigid-body-object-flag persistent in-pursuit) (-> this flags)))
         )
-  (logior! (-> obj controller flags) (vehicle-controller-flag ignore-others))
+  (logior! (-> this controller flags) (vehicle-controller-flag ignore-others))
   0
   (none)
   )
@@ -570,7 +563,6 @@
           (t9-1)
           )
       )
-    (none)
     )
   )
 
@@ -579,13 +571,11 @@
   :virtual #t
   :enter (behavior ()
     '()
-    (none)
     )
-  :trans (the-as (function none :behavior paddywagon) #f)
-  :code (the-as (function none :behavior paddywagon) sleep-code)
+  :trans #f
+  :code sleep-code
   :post (behavior ()
     (vehicle-guard-method-158 self)
-    (none)
     )
   )
 
@@ -594,7 +584,6 @@
   :virtual #t
   :code (behavior ()
     (cleanup-for-death self)
-    (none)
     )
   )
 
@@ -804,51 +793,47 @@
 
 ;; definition of type city-lurker
 (deftype city-lurker (civilian)
-  ((nav-mesh-aid      uint32                 :offset-assert 1060)
-   (index             uint32                 :offset-assert 1064)
-   (left-right-interp float                  :offset-assert 1068)
-   (front-back-interp float                  :offset-assert 1072)
-   (v-speed           vector         :inline :offset-assert 1088)
-   (end-pos           vector         :inline :offset-assert 1104)
-   (task-done?        symbol                 :offset-assert 1120)
-   (task-node         game-task-node         :offset-assert 1124)
-   (jump-in-pipe?     symbol                 :offset-assert 1128)
-   (pipe-name         string                 :offset-assert 1132)
-   (coming-from-pw    symbol                 :offset-assert 1136)
+  ((nav-mesh-aid       uint32)
+   (index              uint32)
+   (left-right-interp  float)
+   (front-back-interp  float)
+   (v-speed            vector  :inline)
+   (end-pos            vector  :inline)
+   (task-done?         symbol)
+   (task-node          game-task-node)
+   (jump-in-pipe?      symbol)
+   (pipe-name          string)
+   (coming-from-pw     symbol)
    )
-  :heap-base #x400
-  :method-count-assert 221
-  :size-assert         #x474
-  :flag-assert         #xdd04000474
-  (:methods
-    (go-at-end () _type_ :state 218)
-    (go-at-pipe () _type_ :state 219)
-    (wait-at-end () _type_ :state 220)
+  (:state-methods
+    go-at-end
+    go-at-pipe
+    wait-at-end
     )
   )
 
 ;; definition for method 3 of type city-lurker
-(defmethod inspect city-lurker ((obj city-lurker))
-  (when (not obj)
-    (set! obj obj)
+(defmethod inspect ((this city-lurker))
+  (when (not this)
+    (set! this this)
     (goto cfg-4)
     )
   (let ((t9-0 (method-of-type civilian inspect)))
-    (t9-0 obj)
+    (t9-0 this)
     )
-  (format #t "~2Tnav-mesh-aid: ~D~%" (-> obj nav-mesh-aid))
-  (format #t "~2Tindex: ~D~%" (-> obj index))
-  (format #t "~2Tleft-right-interp: ~f~%" (-> obj left-right-interp))
-  (format #t "~2Tfront-back-interp: ~f~%" (-> obj front-back-interp))
-  (format #t "~2Tv-speed: #<vector @ #x~X>~%" (-> obj v-speed))
-  (format #t "~2Tend-pos: #<vector @ #x~X>~%" (-> obj end-pos))
-  (format #t "~2Ttask-done?: ~A~%" (-> obj task-done?))
-  (format #t "~2Ttask-node: ~D~%" (-> obj task-node))
-  (format #t "~2Tjump-in-pipe?: ~A~%" (-> obj jump-in-pipe?))
-  (format #t "~2Tpipe-name: ~A~%" (-> obj pipe-name))
-  (format #t "~2Tcoming-from-pw: ~A~%" (-> obj coming-from-pw))
+  (format #t "~2Tnav-mesh-aid: ~D~%" (-> this nav-mesh-aid))
+  (format #t "~2Tindex: ~D~%" (-> this index))
+  (format #t "~2Tleft-right-interp: ~f~%" (-> this left-right-interp))
+  (format #t "~2Tfront-back-interp: ~f~%" (-> this front-back-interp))
+  (format #t "~2Tv-speed: #<vector @ #x~X>~%" (-> this v-speed))
+  (format #t "~2Tend-pos: #<vector @ #x~X>~%" (-> this end-pos))
+  (format #t "~2Ttask-done?: ~A~%" (-> this task-done?))
+  (format #t "~2Ttask-node: ~D~%" (-> this task-node))
+  (format #t "~2Tjump-in-pipe?: ~A~%" (-> this jump-in-pipe?))
+  (format #t "~2Tpipe-name: ~A~%" (-> this pipe-name))
+  (format #t "~2Tcoming-from-pw: ~A~%" (-> this coming-from-pw))
   (label cfg-4)
-  obj
+  this
   )
 
 ;; failed to figure out what this is:
@@ -947,7 +932,6 @@
         (quaternion-from-two-vectors! gp-1 s5-2 *up-vector*)
         (quaternion*! (-> self root quat) gp-1 (-> self root quat))
         )
-      (none)
       )
     )
   )
@@ -966,7 +950,6 @@
         )
       )
     #f
-    (none)
     )
   )
 
@@ -992,7 +975,7 @@
               :frame-num (lerp-scale 0.0 2.0 (+ (* -2.0 f30-0 f30-0 f30-0) (* 3.0 f30-0 f30-0)) 0.0 1.0)
               )
           (suspend)
-          (+! f30-0 (* 4.0 (-> self clock seconds-per-frame)))
+          (+! f30-0 (* 4.0 (seconds-per-frame)))
           )
         )
       (let ((s5-2 (new 'stack-no-clear 'vector)))
@@ -1056,12 +1039,11 @@
       )
     (put-rider-in-seat (the-as vehicle (handle->process (-> self vehicle))) (-> self seat) self)
     (go-virtual ride)
-    (none)
     )
   )
 
 ;; definition for method 26 of type city-lurker
-(defmethod get-inv-mass city-lurker ((obj city-lurker))
+(defmethod get-inv-mass ((this city-lurker))
   0.25
   )
 
@@ -1091,7 +1073,6 @@
           )
         )
       )
-    (none)
     )
   )
 
@@ -1115,7 +1096,6 @@
           (joint-channel-float-delete! a0-2)
           )
       )
-    (none)
     )
   :trans (behavior ()
     (let ((a1-0 (new 'stack-no-clear 'vector)))
@@ -1128,23 +1108,22 @@
       )
     (when (handle->process (-> self vehicle))
       )
-    (none)
     )
   :code (behavior ()
     (ja-channel-push! 3 (seconds 0.2))
     (case (-> (the-as vehicle (handle->process (-> self vehicle))) info object-type)
       ((11 12 13)
-       (ja :group! (-> self draw art-group data 12))
-       (ja :chan 1 :group! (-> self draw art-group data 13))
-       (ja :chan 2 :group! (-> self draw art-group data 14))
+       (ja :group! babak-idle-bike-back-sides-ja)
+       (ja :chan 1 :group! babak-idle-bike-sides-ja)
+       (ja :chan 2 :group! babak-idle-bike-forward-sides-ja)
        )
       ((14 15 16)
-       (ja :group! (-> self draw art-group data 9))
-       (ja :chan 1 :group! (-> self draw art-group data 10))
-       (ja :chan 2 :group! (-> self draw art-group data 11))
+       (ja :group! babak-idle-car-back-sides-ja)
+       (ja :chan 1 :group! babak-idle-car-sides-ja)
+       (ja :chan 2 :group! babak-idle-car-forward-sides-ja)
        )
       )
-    (let ((v1-26 (ja-channel-float! (the-as art-joint-anim (-> self draw art-group data 15)) 0.0 0.0 0.0)))
+    (let ((v1-26 (ja-channel-float! (the-as art-joint-anim babak-idle-hair-ja) 0.0 0.0 0.0)))
       (when v1-26
         (set! (-> self skel interp-select 0) (the-as int (the-as uint #x8100002000)))
         (set! (-> self skel interp-select 1) 0)
@@ -1161,18 +1140,15 @@
                  (gp-0 (rigid-body-method-22 (-> v1-30 state) a1-10 a2-1))
                  )
             (vector-inv-orient-by-quat! gp-0 gp-0 (-> self root quat))
-            (seek! (-> self v-speed x) (-> gp-0 x) (* 81920.0 (-> self clock seconds-per-frame)))
-            (seek! (-> self v-speed z) (-> gp-0 z) (* 49152.0 (-> self clock seconds-per-frame)))
+            (seek! (-> self v-speed x) (-> gp-0 x) (* 81920.0 (seconds-per-frame)))
+            (seek! (-> self v-speed z) (-> gp-0 z) (* 49152.0 (seconds-per-frame)))
             (set! (-> self left-right-interp)
                   (fmax
                     0.0
                     (fmin
                       2.0
                       (+ (-> self left-right-interp)
-                         (* 8.0
-                            (- (lerp-scale 0.0 2.0 (-> gp-0 x) -20480.0 20480.0) (-> self left-right-interp))
-                            (-> self clock seconds-per-frame)
-                            )
+                         (* 8.0 (- (lerp-scale 0.0 2.0 (-> gp-0 x) -20480.0 20480.0) (-> self left-right-interp)) (seconds-per-frame))
                          )
                       )
                     )
@@ -1185,7 +1161,7 @@
                       (+ (-> self front-back-interp)
                          (* 8.0
                             (- (lerp-scale 0.0 2.0 (- (-> self v-speed z) (-> gp-0 z)) -16384.0 16384.0) (-> self front-back-interp))
-                            (-> self clock seconds-per-frame)
+                            (seconds-per-frame)
                             )
                          )
                       )
@@ -1241,20 +1217,19 @@
       (suspend)
       )
     #f
-    (none)
     )
   )
 
 ;; failed to figure out what this is:
 (defstate exit-vehicle (city-lurker)
   :virtual #t
-  :event (the-as (function process int symbol event-message-block object :behavior city-lurker) enemy-event-handler)
-  :enter (behavior ((arg0 object) (arg1 object) (arg2 int) (arg3 symbol) (arg4 event-message-block))
-    (let ((a0-2 (find-nearest-nav-mesh (-> self root trans) (the-as float #x7f800000))))
-      (if a0-2
-          (set! (-> self nav-mesh-aid) (-> a0-2 entity aid))
+  :event enemy-event-handler
+  :enter (behavior ()
+    (let ((a0-1 (find-nearest-nav-mesh (-> self root trans) (the-as float #x7f800000))))
+      (if a0-1
+          (set! (-> self nav-mesh-aid) (-> a0-1 entity aid))
           )
-      (change-to a0-2 self)
+      (change-to a0-1 self)
       )
     (when (not (-> self nav))
       (format #t "nav mesh not found~%")
@@ -1268,19 +1243,19 @@
       self
       (vector-negate-in-place! (vector-z-quaternion! (new 'stack-no-clear 'vector) (-> self root quat)))
       )
-    (let ((a0-9 (-> self nav state))
+    (let ((a0-8 (-> self nav state))
           (v1-17 (-> self controller turn-exit-point))
           )
-      (logclear! (-> a0-9 flags) (nav-state-flag directional-mode))
-      (logior! (-> a0-9 flags) (nav-state-flag target-poly-dirty))
-      (set! (-> a0-9 target-post quad) (-> v1-17 quad))
+      (logclear! (-> a0-8 flags) (nav-state-flag directional-mode))
+      (logior! (-> a0-8 flags) (nav-state-flag target-poly-dirty))
+      (set! (-> a0-8 target-post quad) (-> v1-17 quad))
       )
     0
     (citizen-nav-init! self)
     (set! (-> self gnd-height) (-> self root gspot-pos y))
     (logior! (-> self flags) (citizen-flag persistent))
     (logior! (-> self focus-status) (focus-status pilot-riding pilot))
-    (set! (-> self state-time) (current-time))
+    (set-time! (-> self state-time))
     (let ((v1-31 (-> self root root-prim)))
       (set! (-> v1-31 prim-core collide-as) (collide-spec))
       (set! (-> v1-31 prim-core collide-with) (collide-spec))
@@ -1295,7 +1270,6 @@
       (set! (-> v1-36 enemy-flags) (the-as enemy-flag (logclear (-> v1-36 enemy-flags) (enemy-flag enemy-flag37))))
       )
     0
-    (none)
     )
   :exit (behavior ()
     (logclear! (-> self focus-status) (focus-status pilot-riding pilot))
@@ -1304,9 +1278,8 @@
           (t9-0)
           )
       )
-    (none)
     )
-  :code (behavior ((arg0 object) (arg1 object) (arg2 int) (arg3 symbol) (arg4 event-message-block))
+  :code (behavior ()
     (local-vars (sv-128 float))
     (let ((gp-0 0))
       (case (-> (the-as vehicle (handle->process (-> self vehicle))) info object-type)
@@ -1333,14 +1306,14 @@
         )
       (let ((s5-3 (new 'stack-no-clear 'vector)))
         (let ((s4-0 (new 'stack-no-clear 'quaternion)))
-          (set! (-> self state-time) (current-time))
+          (set-time! (-> self state-time))
           (while (not (civilian-method-217 self s5-3))
             (let ((s3-0 (handle->process (-> self vehicle))))
               (new 'stack-no-clear 'vector)
               (quaternion-copy! (-> self root quat) (-> (the-as vehicle s3-0) root quat))
               (compute-seat-position (the-as vehicle s3-0) (-> self root trans) (-> self seat))
               )
-            (if (>= (- (current-time) (-> self state-time)) (seconds 2))
+            (if (time-elapsed? (-> self state-time) (seconds 2))
                 (go-virtual ride)
                 )
             (suspend)
@@ -1368,8 +1341,8 @@
                   (s0-0 (ja-aframe-num 0))
                   )
               (set! sv-128 (ja-aframe 8.0 0))
-              (let* ((t0-1 (ja-aframe 2.0 0))
-                     (f0-9 (s3-2 s2-1 s1-0 s0-0 sv-128 t0-1))
+              (let* ((t0-0 (ja-aframe 2.0 0))
+                     (f0-9 (s3-2 s2-1 s1-0 s0-0 sv-128 t0-0))
                      (f30-0 (- 1.0 f0-9))
                      )
                 (quaternion-copy! (-> self root quat) s4-2)
@@ -1387,7 +1360,6 @@
       (set! (-> v1-83 prim-core collide-with) (-> self root backup-collide-with))
       )
     (go-virtual wait-for-ride)
-    (none)
     )
   )
 
@@ -1402,7 +1374,7 @@
           )
       )
     (logior! (-> self flags) (citizen-flag persistent))
-    (set! (-> self state-time) (current-time))
+    (set-time! (-> self state-time))
     (nav-enemy-method-166 self)
     (let ((v1-15 (-> self nav)))
       (set! (-> v1-15 target-speed) (* (-> self speed-scale) (-> self speed-run)))
@@ -1421,11 +1393,9 @@
       )
     0
     (set! (-> self vehicle) (the-as handle #f))
-    (none)
     )
   :exit (behavior ()
     (logclear! (-> self flags) (citizen-flag persistent))
-    (none)
     )
   :trans (behavior ()
     (let ((t9-0 (-> (method-of-type civilian wait-for-ride) trans)))
@@ -1439,21 +1409,13 @@
           (go-virtual go-at-end)
           )
       )
-    (none)
     )
   :code (behavior ()
     (until #f
       (ja-channel-push! 1 (seconds 0.2))
       (until #f
         (ja-no-eval :group! (-> self draw art-group data (-> self enemy-info run-anim))
-                    :num! (seek!
-                      (the float
-                           (+ (-> (the-as art-joint-anim (-> self draw art-group data (-> self enemy-info run-anim))) frames num-frames)
-                              -1
-                              )
-                           )
-                      0.5
-                      )
+                    :num! (seek! max 0.5)
                     :frame-num 0.0
                     )
         (until (ja-done? 0)
@@ -1485,14 +1447,7 @@
       (ja-channel-push! 1 (seconds 0.2))
       (until #f
         (ja-no-eval :group! (-> self draw art-group data (-> self enemy-info idle-anim))
-                    :num! (seek!
-                      (the float
-                           (+ (-> (the-as art-joint-anim (-> self draw art-group data (-> self enemy-info idle-anim))) frames num-frames)
-                              -1
-                              )
-                           )
-                      0.1
-                      )
+                    :num! (seek! max 0.1)
                     :frame-num 0.0
                     )
         (until (ja-done? 0)
@@ -1527,7 +1482,6 @@
       (label cfg-28)
       )
     #f
-    (none)
     )
   :post (behavior ()
     (let ((gp-0 (-> self nav state))
@@ -1539,17 +1493,16 @@
       )
     0
     (nav-enemy-method-176 self)
-    (none)
     )
   )
 
 ;; failed to figure out what this is:
 (defstate go-at-end (city-lurker)
   :virtual #t
-  :event (the-as (function process int symbol event-message-block object :behavior city-lurker) enemy-event-handler)
+  :event enemy-event-handler
   :enter (behavior ()
     (logior! (-> self flags) (citizen-flag persistent))
-    (set! (-> self state-time) (current-time))
+    (set-time! (-> self state-time))
     (nav-enemy-method-166 self)
     (let ((v1-6 (-> self nav)))
       (set! (-> v1-6 target-speed) (* (-> self speed-scale) (-> self speed-run)))
@@ -1568,11 +1521,9 @@
       )
     0
     (set! (-> self vehicle) (the-as handle #f))
-    (none)
     )
   :exit (behavior ()
     (logclear! (-> self flags) (citizen-flag persistent))
-    (none)
     )
   :trans (behavior ()
     (when (and (-> self jump-in-pipe?) (< (vector-vector-xz-distance (-> self root trans) (-> self end-pos)) 24576.0))
@@ -1605,12 +1556,11 @@
       (set! (-> self enemy-flags) (the-as enemy-flag (logclear (-> self enemy-flags) (enemy-flag vulnerable))))
       (send-event self 'jump 0 (-> self end-pos))
       )
-    (if (and (>= (- (current-time) (-> self state-time)) (seconds 1))
+    (if (and (time-elapsed? (-> self state-time) (seconds 1))
              (logtest? (-> self nav state flags) (nav-state-flag at-target))
              )
         (go-virtual wait-at-end)
         )
-    (none)
     )
   :code (behavior ()
     (ja-channel-push! 1 (seconds 0.2))
@@ -1623,7 +1573,6 @@
         )
       )
     #f
-    (none)
     )
   :post (behavior ()
     (let ((a0-0 (-> self nav state))
@@ -1635,17 +1584,16 @@
       )
     0
     (nav-enemy-method-176 self)
-    (none)
     )
   )
 
 ;; failed to figure out what this is:
 (defstate go-at-pipe (city-lurker)
   :virtual #t
-  :event (the-as (function process int symbol event-message-block object :behavior city-lurker) enemy-event-handler)
+  :event enemy-event-handler
   :enter (behavior ()
     (logior! (-> self flags) (citizen-flag persistent))
-    (set! (-> self state-time) (current-time))
+    (set-time! (-> self state-time))
     (nav-enemy-method-166 self)
     (let ((v1-6 (-> self nav)))
       (set! (-> v1-6 target-speed) (* (-> self speed-scale) (-> self speed-run)))
@@ -1665,11 +1613,9 @@
     0
     (set! (-> self vehicle) (the-as handle #f))
     (logior! (-> self nav flags) (nav-control-flag output-sphere-hash))
-    (none)
     )
   :exit (behavior ()
     (logclear! (-> self flags) (citizen-flag persistent))
-    (none)
     )
   :trans (behavior ()
     (let ((gp-0 (new 'stack 'sphere)))
@@ -1709,7 +1655,6 @@
         (send-event self 'jump 0 (-> self end-pos))
         )
       )
-    (none)
     )
   :code (behavior ()
     (ja-channel-push! 1 (seconds 0.2))
@@ -1722,7 +1667,6 @@
         )
       )
     #f
-    (none)
     )
   :post (behavior ()
     (let ((a0-0 (-> self nav state))
@@ -1734,64 +1678,63 @@
       )
     0
     (nav-enemy-method-176 self)
-    (none)
     )
   )
 
 ;; definition for method 86 of type city-lurker
-(defmethod enemy-method-86 city-lurker ((obj city-lurker))
-  (let ((gp-0 (-> obj root)))
+(defmethod enemy-method-86 ((this city-lurker))
+  (let ((gp-0 (-> this root)))
     (when (< (-> gp-0 transv y) 0.0)
-      (when (and (< (-> gp-0 trans y) (+ 8192.0 (-> obj end-pos y))) (-> obj jump-in-pipe?))
-        (send-event (process-by-name (-> obj pipe-name) *active-pool*) 'spin)
-        (set! (-> obj jump-in-pipe?) #f)
+      (when (and (< (-> gp-0 trans y) (+ 8192.0 (-> this end-pos y))) (-> this jump-in-pipe?))
+        (send-event (process-by-name (-> this pipe-name) *active-pool*) 'spin)
+        (set! (-> this jump-in-pipe?) #f)
         )
-      (>= (-> obj end-pos y) (-> gp-0 trans y))
+      (>= (-> this end-pos y) (-> gp-0 trans y))
       )
     )
   )
 
 ;; definition for method 93 of type city-lurker
 ;; WARN: Return type mismatch object vs none.
-(defmethod enemy-method-93 city-lurker ((obj city-lurker))
-  (go (method-of-object obj inactive))
+(defmethod enemy-method-93 ((this city-lurker))
+  (go (method-of-object this inactive))
   (none)
   )
 
 ;; definition for method 89 of type city-lurker
-(defmethod enemy-method-89 city-lurker ((obj city-lurker) (arg0 enemy-jump-info))
+(defmethod enemy-method-89 ((this city-lurker) (arg0 enemy-jump-info))
   #f
   )
 
 ;; definition for method 87 of type city-lurker
-(defmethod enemy-method-87 city-lurker ((obj city-lurker) (arg0 enemy-jump-info))
-  (let ((a0-1 (-> obj skel root-channel 0)))
+(defmethod enemy-method-87 ((this city-lurker) (arg0 enemy-jump-info))
+  (let ((a0-1 (-> this skel root-channel 0)))
     (set! (-> a0-1 param 0) 1.0)
     (joint-control-channel-group! a0-1 (the-as art-joint-anim #f) num-func-loop!)
     )
   (ja-channel-push! 1 (seconds 0.1))
-  (let ((s5-0 (-> obj skel root-channel 0)))
-    (set! (-> s5-0 frame-group) (the-as art-joint-anim (-> obj draw art-group data 21)))
+  (let ((s5-0 (-> this skel root-channel 0)))
+    (set! (-> s5-0 frame-group) (the-as art-joint-anim (-> this draw art-group data 21)))
     (set! (-> s5-0 param 0) (ja-aframe 6.0 0))
     (set! (-> s5-0 param 1) 0.5)
     (set! (-> s5-0 frame-num) (ja-aframe 0.0 0))
-    (joint-control-channel-group! s5-0 (the-as art-joint-anim (-> obj draw art-group data 21)) num-func-seek!)
+    (joint-control-channel-group! s5-0 (the-as art-joint-anim (-> this draw art-group data 21)) num-func-seek!)
     )
   #t
   )
 
 ;; definition for method 88 of type city-lurker
-(defmethod enemy-method-88 city-lurker ((obj city-lurker) (arg0 enemy-jump-info))
+(defmethod enemy-method-88 ((this city-lurker) (arg0 enemy-jump-info))
   #f
   )
 
 ;; failed to figure out what this is:
 (defstate wait-at-end (city-lurker)
   :virtual #t
-  :event (the-as (function process int symbol event-message-block object :behavior city-lurker) enemy-event-handler)
+  :event enemy-event-handler
   :enter (behavior ()
     (logclear! (-> self flags) (citizen-flag persistent))
-    (set! (-> self state-time) (current-time))
+    (set-time! (-> self state-time))
     (let ((v1-4 self))
       (set! (-> v1-4 enemy-flags) (the-as enemy-flag (logclear (-> v1-4 enemy-flags) (enemy-flag enemy-flag36))))
       (set! (-> v1-4 nav callback-info) *nav-enemy-null-callback-info*)
@@ -1821,24 +1764,15 @@
           )
         )
       )
-    (none)
     )
   :trans (behavior ()
     '()
-    (none)
     )
   :code (behavior ()
     (ja-channel-push! 1 (seconds 0.2))
     (until #f
       (ja-no-eval :group! (-> self draw art-group data (-> self enemy-info idle-anim))
-                  :num! (seek!
-                    (the float
-                         (+ (-> (the-as art-joint-anim (-> self draw art-group data (-> self enemy-info idle-anim))) frames num-frames)
-                            -1
-                            )
-                         )
-                    0.1
-                    )
+                  :num! (seek! max 0.1)
                   :frame-num 0.0
                   )
       (until (ja-done? 0)
@@ -1847,22 +1781,20 @@
         )
       )
     #f
-    (none)
     )
   :post (behavior ()
     (nav-enemy-simple-post)
-    (none)
     )
   )
 
 ;; definition for method 60 of type city-lurker
-(defmethod coin-flip? city-lurker ((obj city-lurker))
+(defmethod coin-flip? ((this city-lurker))
   "@returns The result of a 50/50 RNG roll"
   #f
   )
 
 ;; definition for method 56 of type city-lurker
-(defmethod damage-amount-from-attack city-lurker ((obj city-lurker) (arg0 process) (arg1 event-message-block))
+(defmethod damage-amount-from-attack ((this city-lurker) (arg0 process) (arg1 event-message-block))
   "@returns the amount of damage taken from an attack.  This can come straight off the [[attack-info]] or via [[penetrate-using->damage]]"
   0
   )
@@ -1877,7 +1809,6 @@
           (t9-1)
           )
       )
-    (none)
     )
   )
 
@@ -1891,11 +1822,9 @@
           )
       )
     (format #t "city-lurker active~%")
-    (none)
     )
   :code (behavior ()
     (go-virtual wait-for-ride)
-    (none)
     )
   )
 
@@ -1904,7 +1833,6 @@
   :virtual #t
   :code (behavior ()
     (go-virtual wait-for-ride)
-    (none)
     )
   )
 
@@ -1913,20 +1841,19 @@
   :virtual #t
   :code (behavior ()
     (go-virtual wait-for-ride)
-    (none)
     )
   )
 
 ;; failed to figure out what this is:
 (defstate idle (city-lurker)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('attack)
-       (enemy-event-handler proc arg1 event-type event)
+       (enemy-event-handler proc argc message block)
        )
       (else
-        (enemy-event-handler proc arg1 event-type event)
+        (enemy-event-handler proc argc message block)
         )
       )
     )
@@ -1934,7 +1861,7 @@
     (citizen-init! self)
     (set! (-> self hit-points) 100)
     (logior! (-> self flags) (citizen-flag persistent))
-    (set! (-> self state-time) (current-time))
+    (set-time! (-> self state-time))
     (let ((v1-8 (-> self root root-prim)))
       (set! (-> v1-8 prim-core collide-as) (collide-spec))
       (set! (-> v1-8 prim-core collide-with) (collide-spec))
@@ -1951,7 +1878,6 @@
     0
     (logior! (-> self focus-status) (focus-status pilot-riding pilot))
     (set! (-> self coming-from-pw) #t)
-    (none)
     )
   :exit (behavior ()
     (logclear! (-> self flags) (citizen-flag persistent))
@@ -1965,7 +1891,6 @@
       (set! (-> v1-7 enemy-flags) (the-as enemy-flag (logclear (-> v1-7 enemy-flags) (enemy-flag enemy-flag37))))
       )
     0
-    (none)
     )
   :trans (behavior ()
     (let ((a0-1 (handle->process (-> self vehicle))))
@@ -1981,34 +1906,16 @@
         (let ((gp-0 (vector-z-quaternion! (new 'stack-no-clear 'vector) (-> self root quat))))
           (set! (-> gp-0 y) 1.0)
           (vector-normalize! gp-0 40960.0)
-          (let ((a1-6 (new 'stack-no-clear 'event-message-block)))
-            (set! (-> a1-6 from) (process->ppointer self))
-            (set! (-> a1-6 num-params) 2)
-            (set! (-> a1-6 message) 'attack)
-            (set! (-> a1-6 param 0) (the-as uint #f))
-            (let ((v1-15 (new 'static 'attack-info :mask (attack-info-mask vector id knock))))
-              (let* ((a0-11 *game-info*)
-                     (a2-1 (+ (-> a0-11 attack-id) 1))
-                     )
-                (set! (-> a0-11 attack-id) a2-1)
-                (set! (-> v1-15 id) a2-1)
-                )
-              (set! (-> v1-15 vector quad) (-> gp-0 quad))
-              (set! (-> v1-15 knock) (the-as uint 7))
-              (set! (-> a1-6 param 1) (the-as uint v1-15))
-              )
-            (send-event-function self a1-6)
-            )
+          (send-event self 'attack #f (static-attack-info ((id (new-attack-id)) (vector gp-0) (knock (the-as uint 7)))))
           )
         )
       )
-    (none)
     )
   :code (behavior ()
     (ja-channel-push! 1 (seconds 0.2))
     (until #f
       (countdown (gp-0 (+ (rand-vu-int-count 4) 1))
-        (ja-no-eval :group! (-> self draw art-group data 18)
+        (ja-no-eval :group! babak-idle-patty-wagon-ja
                     :num! (seek! (ja-aframe 4.0 0) 0.25)
                     :frame-num (ja-aframe 0.0 0)
                     )
@@ -2017,7 +1924,7 @@
           (ja :num! (seek! (ja-aframe 4.0 0) 0.25))
           )
         )
-      (ja-no-eval :group! (-> self draw art-group data 18)
+      (ja-no-eval :group! babak-idle-patty-wagon-ja
                   :num! (seek! (ja-aframe 8.0 0) 0.5)
                   :frame-num (ja-aframe 4.0 0)
                   )
@@ -2028,7 +1935,7 @@
       (cond
         ((zero? (rand-vu-int-count 2))
          (countdown (gp-3 (+ (rand-vu-int-count 4) 1))
-           (ja-no-eval :group! (-> self draw art-group data 18)
+           (ja-no-eval :group! babak-idle-patty-wagon-ja
                        :num! (seek! (ja-aframe 12.0 0) 0.25)
                        :frame-num (ja-aframe 8.0 0)
                        )
@@ -2040,7 +1947,7 @@
          )
         (else
           (countdown (gp-4 (+ (rand-vu-int-count 4) 1))
-            (ja-no-eval :group! (-> self draw art-group data 18)
+            (ja-no-eval :group! babak-idle-patty-wagon-ja
                         :num! (seek! (ja-aframe 16.0 0) 0.4)
                         :frame-num (ja-aframe 12.0 0)
                         )
@@ -2051,7 +1958,7 @@
             )
           )
         )
-      (ja-no-eval :group! (-> self draw art-group data 18)
+      (ja-no-eval :group! babak-idle-patty-wagon-ja
                   :num! (seek! (ja-aframe 4.0 0) 0.5)
                   :frame-num (ja-aframe 8.0 0)
                   )
@@ -2061,39 +1968,37 @@
         )
       )
     #f
-    (none)
     )
   :post (behavior ()
     (transform-post)
-    (none)
     )
   )
 
 ;; definition for method 199 of type city-lurker
 ;; WARN: Return type mismatch int vs none.
-(defmethod set-behavior! city-lurker ((obj city-lurker) (arg0 traffic-object-spawn-params))
+(defmethod set-behavior! ((this city-lurker) (arg0 traffic-object-spawn-params))
   (format #t "go-traffic-startup ~D~%" (-> arg0 behavior))
   (let ((v1-0 (-> arg0 behavior)))
     (cond
       ((zero? v1-0)
-       (go (method-of-object obj idle))
+       (go (method-of-object this idle))
        )
       ((= v1-0 2)
-       (go (method-of-object obj active))
+       (go (method-of-object this active))
        )
       ((= v1-0 3)
-       (go (method-of-object obj hostile))
+       (go (method-of-object this hostile))
        )
       ((= v1-0 6)
-       (logior! (-> obj flags) (citizen-flag persistent))
-       (go (method-of-object obj idle))
+       (logior! (-> this flags) (citizen-flag persistent))
+       (go (method-of-object this idle))
        )
       ((= v1-0 7)
-       (logior! (-> obj flags) (citizen-flag persistent))
-       (go (method-of-object obj wait-for-ride))
+       (logior! (-> this flags) (citizen-flag persistent))
+       (go (method-of-object this wait-for-ride))
        )
       (else
-        (go-inactive obj)
+        (go-inactive this)
         )
       )
     )
@@ -2103,12 +2008,12 @@
 
 ;; definition for method 181 of type city-lurker
 ;; WARN: Return type mismatch int vs none.
-(defmethod citizen-init! city-lurker ((obj city-lurker))
+(defmethod citizen-init! ((this city-lurker))
   "Initialize [[citizen]] defaults."
   (let ((t9-0 (method-of-type civilian citizen-init!)))
-    (t9-0 obj)
+    (t9-0 this)
     )
-  (let ((v1-1 (-> obj nav)))
+  (let ((v1-1 (-> this nav)))
     (set! (-> v1-1 sphere-mask) (the-as uint #x800fe))
     )
   0
@@ -2117,9 +2022,9 @@
 
 ;; definition for method 114 of type city-lurker
 ;; WARN: Return type mismatch int vs none.
-(defmethod init-enemy-collision! city-lurker ((obj city-lurker))
+(defmethod init-enemy-collision! ((this city-lurker))
   "Initializes the [[collide-shape-moving]] and any ancillary tasks to make the enemy collide properly"
-  (let ((s5-0 (new 'process 'collide-shape-moving obj (collide-list-enum usually-hit-by-player))))
+  (let ((s5-0 (new 'process 'collide-shape-moving this (collide-list-enum usually-hit-by-player))))
     (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s5-0 reaction) cshape-reaction-default)
     (set! (-> s5-0 no-reaction)
@@ -2175,7 +2080,7 @@
       (set! (-> s5-0 backup-collide-with) (-> v1-17 prim-core collide-with))
       )
     (set! (-> s5-0 max-iteration-count) (the-as uint 3))
-    (set! (-> obj root) s5-0)
+    (set! (-> this root) s5-0)
     )
   0
   (none)
@@ -2183,135 +2088,120 @@
 
 ;; definition for method 115 of type city-lurker
 ;; WARN: Return type mismatch int vs none.
-(defmethod init-enemy! city-lurker ((obj city-lurker))
+(defmethod init-enemy! ((this city-lurker))
   "Common method called to initialize the enemy, typically sets up default field values and calls ancillary helper methods"
   (initialize-skeleton
-    obj
+    this
     (the-as skeleton-group (art-group-get-by-name *level* "skel-city-lurker" (the-as (pointer uint32) #f)))
     (the-as pair 0)
     )
-  (init-enemy-behaviour-and-stats! obj *city-lurker-nav-enemy-info*)
-  (set! (-> obj info) *city-lurker-global-info*)
-  (let ((v1-6 (-> obj nav)))
+  (init-enemy-behaviour-and-stats! this *city-lurker-nav-enemy-info*)
+  (set! (-> this info) *city-lurker-global-info*)
+  (let ((v1-6 (-> this nav)))
     (set! (-> v1-6 speed-scale) 1.0)
     )
   0
-  (set! (-> obj draw lod-set lod 0 dist) 409600.0)
-  (set! (-> obj draw lod-set lod 1 dist) 491520.0)
-  (set! (-> obj speed-run) 20480.0)
-  (set! (-> obj skel generate-frame-function) create-interpolated2-joint-animation-frame)
-  (set! (-> obj water-anim) 20)
-  (set! (-> obj jump-in-pipe?) #f)
-  (set! (-> obj task-done?) #f)
-  (set! (-> obj coming-from-pw) #f)
+  (set! (-> this draw lod-set lod 0 dist) 409600.0)
+  (set! (-> this draw lod-set lod 1 dist) 491520.0)
+  (set! (-> this speed-run) 20480.0)
+  (set! (-> this skel generate-frame-function) create-interpolated2-joint-animation-frame)
+  (set! (-> this water-anim) 20)
+  (set! (-> this jump-in-pipe?) #f)
+  (set! (-> this task-done?) #f)
+  (set! (-> this coming-from-pw) #f)
   0
   (none)
   )
 
 ;; definition for method 74 of type city-lurker
 ;; INFO: Used lq/sq
-;; WARN: Return type mismatch none vs object.
-;; WARN: rewrite_to_get_var got a none typed variable. Is there unreachable code? [OP: 134]
-;; WARN: rewrite_to_get_var got a none typed variable. Is there unreachable code? [OP: 139]
-;; WARN: rewrite_to_get_var got a none typed variable. Is there unreachable code? [OP: 110]
-;; WARN: rewrite_to_get_var got a none typed variable. Is there unreachable code? [OP: 114]
-;; WARN: rewrite_to_get_var got a none typed variable. Is there unreachable code? [OP: 118]
-;; WARN: rewrite_to_get_var got a none typed variable. Is there unreachable code? [OP: 15]
-(defmethod general-event-handler city-lurker ((obj city-lurker) (arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+(defmethod general-event-handler ((this city-lurker) (arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
   "Handles various events for the enemy
 @TODO - unsure if there is a pattern for the events and this should have a more specific name"
-  (let ((v1-0 arg2))
-    (the-as
-      object
-      (cond
-        ((= v1-0 'nav-mesh-kill)
-         (format 0 "nav-mesh-kill event recieved by ~s ~d~%" (-> obj name) arg2)
-         (change-to *default-nav-mesh* obj)
-         #t
-         )
-        ((= v1-0 'traffic-activate)
-         (set! (-> obj controller traffic) (the-as traffic-engine (-> arg3 param 1)))
-         (let ((s5-0 (the-as object (-> arg3 param 0))))
-           (set! (-> obj root trans quad) (-> (the-as traffic-object-spawn-params s5-0) position quad))
-           (quaternion-copy! (-> obj root quat) (-> (the-as traffic-object-spawn-params s5-0) rotation))
-           (set! (-> obj root transv quad) (-> (the-as traffic-object-spawn-params s5-0) velocity quad))
-           (let ((a0-10 (-> (the-as traffic-object-spawn-params s5-0) nav-mesh)))
-             (when a0-10
-               (change-to a0-10 obj)
-               (if (not (-> obj nav))
-                   (go-inactive obj)
-                   )
-               (let ((v1-17 (-> obj nav state)))
-                 (set! (-> v1-17 current-poly) (the-as nav-poly #f))
+  (case arg2
+    (('nav-mesh-kill)
+     (format 0 "nav-mesh-kill event recieved by ~s ~d~%" (-> this name) arg2)
+     (change-to *default-nav-mesh* this)
+     #t
+     )
+    (('traffic-activate)
+     (set! (-> this controller traffic) (the-as traffic-engine (-> arg3 param 1)))
+     (let ((s5-0 (the-as object (-> arg3 param 0))))
+       (set! (-> this root trans quad) (-> (the-as traffic-object-spawn-params s5-0) position quad))
+       (quaternion-copy! (-> this root quat) (-> (the-as traffic-object-spawn-params s5-0) rotation))
+       (set! (-> this root transv quad) (-> (the-as traffic-object-spawn-params s5-0) velocity quad))
+       (let ((a0-10 (-> (the-as traffic-object-spawn-params s5-0) nav-mesh)))
+         (when a0-10
+           (change-to a0-10 this)
+           (if (not (-> this nav))
+               (go-inactive this)
+               )
+           (let ((v1-17 (-> this nav state)))
+             (set! (-> v1-17 current-poly) (the-as nav-poly #f))
+             )
+           0
+           (let ((a1-5 (-> (the-as traffic-object-spawn-params s5-0) nav-branch)))
+             (when a1-5
+               (vehicle-controller-method-13 (-> this controller) a1-5 (-> this root trans))
+               (let ((a0-14 (-> this nav state))
+                     (v1-24 (-> this controller turn-exit-point))
+                     )
+                 (logclear! (-> a0-14 flags) (nav-state-flag directional-mode))
+                 (logior! (-> a0-14 flags) (nav-state-flag target-poly-dirty))
+                 (set! (-> a0-14 target-post quad) (-> v1-24 quad))
                  )
                0
-               (let ((a1-5 (-> (the-as traffic-object-spawn-params s5-0) nav-branch)))
-                 (when a1-5
-                   (vehicle-controller-method-13 (-> obj controller) a1-5 (-> obj root trans))
-                   (let ((a0-14 (-> obj nav state))
-                         (v1-24 (-> obj controller turn-exit-point))
-                         )
-                     (logclear! (-> a0-14 flags) (nav-state-flag directional-mode))
-                     (logior! (-> a0-14 flags) (nav-state-flag target-poly-dirty))
-                     (set! (-> a0-14 target-post quad) (-> v1-24 quad))
-                     )
-                   0
-                   )
-                 )
-               (citizen-nav-init! obj)
-               (citizen-init! obj)
-               (enemy-method-127 obj 40960.0 40960.0 #t (the-as collide-spec (-> obj gnd-collide)))
-               (set! (-> obj gnd-height) (-> obj root gspot-pos y))
                )
              )
-           (set-behavior! obj (the-as traffic-object-spawn-params s5-0))
+           (citizen-nav-init! this)
+           (citizen-init! this)
+           (enemy-method-127 this 40960.0 40960.0 #t (the-as collide-spec (-> this gnd-collide)))
+           (set! (-> this gnd-height) (-> this root gspot-pos y))
            )
          )
-        ((= v1-0 'traffic-off)
-         #f
-         )
-        ((= v1-0 'traffic-off-force)
-         #f
-         )
-        ((= v1-0 'traffic-on)
-         #f
-         )
-        ((or (= v1-0 'hit) (= v1-0 'hit-flinch) (= v1-0 'hit-knocked))
-         ((method-of-type citizen general-event-handler) obj arg0 arg1 arg2 arg3)
-         )
-        (else
-          ((method-of-type civilian general-event-handler) obj arg0 arg1 arg2 arg3)
-          )
-        )
+       (set-behavior! this (the-as traffic-object-spawn-params s5-0))
+       )
+     )
+    (('traffic-off)
+     #f
+     )
+    (('traffic-off-force)
+     #f
+     )
+    (('traffic-on)
+     #f
+     )
+    (('hit 'hit-flinch 'hit-knocked)
+     ((method-of-type citizen general-event-handler) this arg0 arg1 arg2 arg3)
+     )
+    (else
+      ((method-of-type civilian general-event-handler) this arg0 arg1 arg2 arg3)
       )
     )
   )
 
 ;; definition of type city-meet-brutter-info
 (deftype city-meet-brutter-info (structure)
-  ((pos         vector :inline :offset-assert   0)
-   (level       symbol         :offset-assert  16)
-   (nav-mesh-id uint32         :offset-assert  20)
-   (end-pos     vector :inline :offset-assert  32)
+  ((pos          vector  :inline)
+   (level        symbol)
+   (nav-mesh-id  uint32)
+   (end-pos      vector  :inline)
    )
-  :method-count-assert 9
-  :size-assert         #x30
-  :flag-assert         #x900000030
   )
 
 ;; definition for method 3 of type city-meet-brutter-info
-(defmethod inspect city-meet-brutter-info ((obj city-meet-brutter-info))
-  (when (not obj)
-    (set! obj obj)
+(defmethod inspect ((this city-meet-brutter-info))
+  (when (not this)
+    (set! this this)
     (goto cfg-4)
     )
-  (format #t "[~8x] ~A~%" obj 'city-meet-brutter-info)
-  (format #t "~1Tpos: #<vector @ #x~X>~%" (-> obj pos))
-  (format #t "~1Tlevel: ~A~%" (-> obj level))
-  (format #t "~1Tnav-mesh-id: ~D~%" (-> obj nav-mesh-id))
-  (format #t "~1Tend-pos: #<vector @ #x~X>~%" (-> obj end-pos))
+  (format #t "[~8x] ~A~%" this 'city-meet-brutter-info)
+  (format #t "~1Tpos: #<vector @ #x~X>~%" (-> this pos))
+  (format #t "~1Tlevel: ~A~%" (-> this level))
+  (format #t "~1Tnav-mesh-id: ~D~%" (-> this nav-mesh-id))
+  (format #t "~1Tend-pos: #<vector @ #x~X>~%" (-> this end-pos))
   (label cfg-4)
-  obj
+  this
   )
 
 ;; definition for symbol *city-meet-brutter-vehicle-info*, type (inline-array city-meet-brutter-info)
@@ -2814,8 +2704,8 @@
     (set! (-> self hud-counter) (ppointer->handle (process-spawn hud-lurker :init hud-init-by-other :to self)))
     (suspend)
     (send-event *traffic-manager* 'set-target-level 0.75)
-    (set! (-> self state-time) (current-time))
-    (while (< (- (current-time) (-> self state-time)) (seconds 5))
+    (set-time! (-> self state-time))
+    (while (not (time-elapsed? (-> self state-time) (seconds 5)))
       (suspend)
       )
     (none)
@@ -2840,8 +2730,8 @@
     (send-event *traffic-manager* 'decrease-alert-level 0)
     (send-event *traffic-manager* 'set-alert-duration (seconds 30))
     (send-event *target* 'end-mode)
-    (set! (-> self state-time) (current-time))
-    (while (< (- (current-time) (-> self state-time)) (seconds 2))
+    (set-time! (-> self state-time))
+    (while (not (time-elapsed? (-> self state-time) (seconds 2)))
       (suspend)
       )
     (task-node-close! (game-task-node city-meet-brutter-meet-brutter))
@@ -2851,31 +2741,28 @@
 
 ;; definition of type city-save-lurkers-info
 (deftype city-save-lurkers-info (structure)
-  ((pos         vector :inline :offset-assert   0)
-   (level       symbol         :offset-assert  16)
-   (nav-mesh-id uint32         :offset-assert  20)
-   (end-pos     vector :inline :offset-assert  32)
-   (pipe-name   string         :offset-assert  48)
+  ((pos          vector  :inline)
+   (level        symbol)
+   (nav-mesh-id  uint32)
+   (end-pos      vector  :inline)
+   (pipe-name    string)
    )
-  :method-count-assert 9
-  :size-assert         #x34
-  :flag-assert         #x900000034
   )
 
 ;; definition for method 3 of type city-save-lurkers-info
-(defmethod inspect city-save-lurkers-info ((obj city-save-lurkers-info))
-  (when (not obj)
-    (set! obj obj)
+(defmethod inspect ((this city-save-lurkers-info))
+  (when (not this)
+    (set! this this)
     (goto cfg-4)
     )
-  (format #t "[~8x] ~A~%" obj 'city-save-lurkers-info)
-  (format #t "~1Tpos: #<vector @ #x~X>~%" (-> obj pos))
-  (format #t "~1Tlevel: ~A~%" (-> obj level))
-  (format #t "~1Tnav-mesh-id: ~D~%" (-> obj nav-mesh-id))
-  (format #t "~1Tend-pos: #<vector @ #x~X>~%" (-> obj end-pos))
-  (format #t "~1Tpipe-name: ~A~%" (-> obj pipe-name))
+  (format #t "[~8x] ~A~%" this 'city-save-lurkers-info)
+  (format #t "~1Tpos: #<vector @ #x~X>~%" (-> this pos))
+  (format #t "~1Tlevel: ~A~%" (-> this level))
+  (format #t "~1Tnav-mesh-id: ~D~%" (-> this nav-mesh-id))
+  (format #t "~1Tend-pos: #<vector @ #x~X>~%" (-> this end-pos))
+  (format #t "~1Tpipe-name: ~A~%" (-> this pipe-name))
   (label cfg-4)
-  obj
+  this
   )
 
 ;; definition for symbol *city-save-lurkers-pipe-info*, type (array city-save-lurkers-info)
@@ -3161,7 +3048,7 @@
                   (quaternion-identity! (-> s5-1 quat))
                   (set! (-> s5-1 flags) (task-arrow-flags))
                   (set! (-> s5-1 map-icon) (the-as uint 15))
-                  (set! (-> self arrow) (process->handle (task-arrow-spawn s5-1 (the-as task-arrow self))))
+                  (set! (-> self arrow) (process->handle (task-arrow-spawn s5-1 self)))
                   )
                 )
               )
@@ -3406,8 +3293,8 @@
     (set! (-> self hud-counter) (ppointer->handle (process-spawn hud-lurker :init hud-init-by-other :to self)))
     (suspend)
     (send-event *traffic-manager* 'set-target-level 0.75)
-    (set! (-> self state-time) (current-time))
-    (while (< (- (current-time) (-> self state-time)) (seconds 5))
+    (set-time! (-> self state-time))
+    (while (not (time-elapsed? (-> self state-time) (seconds 5)))
       (suspend)
       )
     (none)
@@ -3429,7 +3316,7 @@
   TASK_MANAGER_COMPLETE_HOOK
   (lambda :behavior task-manager
     ()
-    (set! (-> self state-time) (current-time))
+    (set-time! (-> self state-time))
     (until #f
       (let ((v1-2 0))
         (dotimes (a0-0 6)

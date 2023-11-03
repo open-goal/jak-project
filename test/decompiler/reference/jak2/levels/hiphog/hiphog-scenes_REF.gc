@@ -10,35 +10,31 @@
 ;; definition of type hip-door-b
 (deftype hip-door-b (com-airlock)
   ()
-  :heap-base #x100
-  :method-count-assert 28
-  :size-assert         #x174
-  :flag-assert         #x1c01000174
   )
 
 ;; definition for method 3 of type hip-door-b
-(defmethod inspect hip-door-b ((obj hip-door-b))
-  (when (not obj)
-    (set! obj obj)
+(defmethod inspect ((this hip-door-b))
+  (when (not this)
+    (set! this this)
     (goto cfg-4)
     )
   (let ((t9-0 (method-of-type com-airlock inspect)))
-    (t9-0 obj)
+    (t9-0 this)
     )
   (label cfg-4)
-  obj
+  this
   )
 
 ;; definition for method 11 of type hip-door-b
 ;; WARN: Return type mismatch object vs none.
-(defmethod init-from-entity! hip-door-b ((obj hip-door-b) (entiy entity-actor))
+(defmethod init-from-entity! ((this hip-door-b) (entiy entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
 - stack size
 - collision information
 - loading the skeleton group / bones
 - sounds"
-  (let ((cshape (new 'process 'collide-shape obj (collide-list-enum usually-hit-by-player))))
+  (let ((cshape (new 'process 'collide-shape this (collide-list-enum usually-hit-by-player))))
     (set! (-> cshape penetrated-by) (penetrate))
     (let ((cshape-group (new 'process 'collide-shape-prim-group cshape (the-as uint 2) 0)))
       (set! (-> cshape total-prims) (the-as uint 3))
@@ -67,20 +63,20 @@ This commonly includes things such as:
       (set! (-> cshape backup-collide-as) (-> root prim-core collide-as))
       (set! (-> cshape backup-collide-with) (-> root prim-core collide-with))
       )
-    (set! (-> obj root) cshape)
+    (set! (-> this root) cshape)
     )
   (initialize-skeleton
-    obj
+    this
     (the-as skeleton-group (art-group-get-by-name *level* "skel-hip-door-b" (the-as (pointer uint32) #f)))
     (the-as pair 0)
     )
-  (init-airlock! obj)
-  (set! (-> obj sound-open-loop) (static-sound-spec "wood-door-open"))
-  (set! (-> obj sound-open-stop) (static-sound-spec "wood-open-hit"))
-  (set! (-> obj sound-close-loop) (static-sound-spec "wood-door-close"))
-  (set! (-> obj sound-close-stop) (static-sound-spec "wood-close-hit"))
-  (set! (-> obj door-radius) 8192.0)
-  (go (method-of-object obj close) #t)
+  (init-airlock! this)
+  (set! (-> this sound-open-loop) (static-sound-spec "wood-door-open"))
+  (set! (-> this sound-open-stop) (static-sound-spec "wood-open-hit"))
+  (set! (-> this sound-close-loop) (static-sound-spec "wood-door-close"))
+  (set! (-> this sound-close-stop) (static-sound-spec "wood-close-hit"))
+  (set! (-> this door-radius) 8192.0)
+  (go (method-of-object this close) #t)
   (none)
   )
 
@@ -94,43 +90,38 @@ This commonly includes things such as:
 ;; definition of type hip-whack-a-metal
 (deftype hip-whack-a-metal (process-taskable)
   ()
-  :heap-base #xa0
-  :method-count-assert 38
-  :size-assert         #x120
-  :flag-assert         #x2600a00120
   )
 
 ;; definition for method 3 of type hip-whack-a-metal
-(defmethod inspect hip-whack-a-metal ((obj hip-whack-a-metal))
-  (when (not obj)
-    (set! obj obj)
+(defmethod inspect ((this hip-whack-a-metal))
+  (when (not this)
+    (set! this this)
     (goto cfg-4)
     )
   (let ((t9-0 (method-of-type process-taskable inspect)))
-    (t9-0 obj)
+    (t9-0 this)
     )
   (label cfg-4)
-  obj
+  this
   )
 
 ;; failed to figure out what this is:
 (defstate hide (hip-whack-a-metal)
   :virtual #t
-  :enter (the-as (function none :behavior hip-whack-a-metal) #f)
-  :exit (the-as (function none :behavior hip-whack-a-metal) #f)
+  :enter #f
+  :exit #f
   :code (behavior ()
     (ja-post)
     (sleep-code)
-    (none)
     )
   )
 
 ;; definition for method 33 of type hip-whack-a-metal
 ;; WARN: Return type mismatch draw-control vs none.
-(defmethod init-art! hip-whack-a-metal ((obj hip-whack-a-metal))
+(defmethod init-art! ((this hip-whack-a-metal))
   "@see [[initialize-skeleton]]"
   (initialize-skeleton
-    obj
+    this
     (the-as skeleton-group (art-group-get-by-name *level* "skel-hip-whack-a-metal" (the-as (pointer uint32) #f)))
     (the-as pair 0)
     )
@@ -138,18 +129,18 @@ This commonly includes things such as:
   )
 
 ;; definition for method 35 of type hip-whack-a-metal
-(defmethod get-art-elem hip-whack-a-metal ((obj hip-whack-a-metal))
+(defmethod get-art-elem ((this hip-whack-a-metal))
   "Checks various things such the current actor, task status, etc to determine the right art-group data to use
 @returns the appropriate [[art-element]] for the given NPC"
-  (case (-> (get-current-task-event (-> obj task)) action)
+  (case (-> (get-current-task-event (-> this task)) action)
     (((game-task-action play))
-     (set! (-> obj talk-message) (text-id press-triangle-to-play))
+     (set! (-> this talk-message) (text-id press-triangle-to-play))
      )
     (else
-      (set! (-> obj talk-message) (text-id press-triangle-to-talk))
+      (set! (-> this talk-message) (text-id press-triangle-to-talk))
       )
     )
-  (-> obj draw art-group data 2)
+  (-> this draw art-group data 2)
   )
 
 ;; failed to figure out what this is:
@@ -175,33 +166,28 @@ This commonly includes things such as:
     (process-taskable-anim-loop (lambda ((arg0 process-taskable)) (handle->process (-> arg0 slave))))
     (remove-setting! 'borrow)
     (go-virtual idle)
-    (none)
     )
   )
 
 ;; definition of type hip-mirror
 (deftype hip-mirror (process-drawable)
   ()
-  :heap-base #x50
-  :method-count-assert 21
-  :size-assert         #xc8
-  :flag-assert         #x15005000c8
-  (:methods
-    (idle () _type_ :state 20)
+  (:state-methods
+    idle
     )
   )
 
 ;; definition for method 3 of type hip-mirror
-(defmethod inspect hip-mirror ((obj hip-mirror))
-  (when (not obj)
-    (set! obj obj)
+(defmethod inspect ((this hip-mirror))
+  (when (not this)
+    (set! this this)
     (goto cfg-4)
     )
   (let ((t9-0 (method-of-type process-drawable inspect)))
-    (t9-0 obj)
+    (t9-0 this)
     )
   (label cfg-4)
-  obj
+  this
   )
 
 ;; failed to figure out what this is:
@@ -213,7 +199,7 @@ This commonly includes things such as:
 ;; failed to figure out what this is:
 (defstate idle (hip-mirror)
   :virtual #t
-  :code (the-as (function none :behavior hip-mirror) sleep-code)
+  :code sleep-code
   :post (behavior ()
     (let* ((f0-0 (vector-vector-distance (math-camera-pos) (-> self root trans)))
            (f0-1 (lerp-scale 1.0 0.0 f0-0 40960.0 122880.0))
@@ -221,28 +207,27 @@ This commonly includes things such as:
       (ja :num-func num-func-identity :frame-num (ja-aframe f0-1 0))
       )
     (ja-post)
-    (none)
     )
   )
 
 ;; definition for method 11 of type hip-mirror
 ;; WARN: Return type mismatch object vs none.
-(defmethod init-from-entity! hip-mirror ((obj hip-mirror) (entity entity-actor))
+(defmethod init-from-entity! ((this hip-mirror) (entity entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
 - stack size
 - collision information
 - loading the skeleton group / bones
 - sounds"
-  (set! (-> obj root) (new 'process 'trsqv))
-  (process-drawable-from-entity! obj entity)
+  (set! (-> this root) (new 'process 'trsqv))
+  (process-drawable-from-entity! this entity)
   (initialize-skeleton
-    obj
+    this
     (the-as skeleton-group (art-group-get-by-name *level* "skel-hip-mirror" (the-as (pointer uint32) #f)))
     (the-as pair 0)
     )
-  (logior! (-> obj skel status) (joint-control-status blend-shape))
-  (go (method-of-object obj idle))
+  (logior! (-> this skel status) (joint-control-status blend-shape))
+  (go (method-of-object this idle))
   (none)
   )
 
@@ -416,45 +401,41 @@ This commonly includes things such as:
 ;; definition of type sig-npc
 (deftype sig-npc (process-taskable)
   ()
-  :heap-base #xa0
-  :method-count-assert 38
-  :size-assert         #x120
-  :flag-assert         #x2600a00120
   )
 
 ;; definition for method 3 of type sig-npc
-(defmethod inspect sig-npc ((obj sig-npc))
-  (when (not obj)
-    (set! obj obj)
+(defmethod inspect ((this sig-npc))
+  (when (not this)
+    (set! this this)
     (goto cfg-4)
     )
   (let ((t9-0 (method-of-type process-taskable inspect)))
-    (t9-0 obj)
+    (t9-0 this)
     )
   (label cfg-4)
-  obj
+  this
   )
 
 ;; definition for method 35 of type sig-npc
-(defmethod get-art-elem sig-npc ((obj sig-npc))
+(defmethod get-art-elem ((this sig-npc))
   "Checks various things such the current actor, task status, etc to determine the right art-group data to use
 @returns the appropriate [[art-element]] for the given NPC"
   (if (task-node-open? (game-task-node forest-hunt-introduction))
-      (-> obj draw art-group data 4)
-      (-> obj draw art-group data 4)
+      (-> this draw art-group data 4)
+      (-> this draw art-group data 4)
       )
   )
 
 ;; definition for method 33 of type sig-npc
 ;; WARN: Return type mismatch int vs none.
-(defmethod init-art! sig-npc ((obj sig-npc))
+(defmethod init-art! ((this sig-npc))
   "@see [[initialize-skeleton]]"
   (initialize-skeleton
-    obj
+    this
     (the-as skeleton-group (art-group-get-by-name *level* "skel-sig-highres" (the-as (pointer uint32) #f)))
     (the-as pair 0)
     )
-  (set! (-> obj draw light-index) (the-as uint 10))
+  (set! (-> this draw light-index) (the-as uint 10))
   (none)
   )
 

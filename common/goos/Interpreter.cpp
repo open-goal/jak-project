@@ -12,6 +12,7 @@
 #include "common/goos/Printer.h"
 #include "common/log/log.h"
 #include "common/util/FileUtil.h"
+#include "common/util/crc32.h"
 #include "common/util/string_util.h"
 #include "common/util/unicode_util.h"
 
@@ -19,6 +20,10 @@
 
 namespace goos {
 Interpreter::Interpreter(const std::string& username) {
+  m_true_object = intern("#t");
+  m_false_object = intern("#f");
+  m_true_sym = m_true_object.as_symbol().name_ptr;
+  m_false_sym = m_false_object.as_symbol().name_ptr;
   // Interpreter startup:
   // create the GOOS global environment
   global_environment = EnvironmentObject::make_new("global");
@@ -33,15 +38,16 @@ Interpreter::Interpreter(const std::string& username) {
   define_var_in_env(goal_env, global_environment, "*global-env*");
 
   // set user profile name
-  auto user = SymbolObject::make_new(reader.symbolTable, username);
+  auto user = Object::make_symbol(&reader.symbolTable, username.c_str());
   define_var_in_env(global_environment, user, "*user*");
-  define_var_in_env(goal_env, user, "*user*");
 
   // setup maps
-  special_forms = {
+  init_special_forms({
       {"define", &Interpreter::eval_define},
       {"quote", &Interpreter::eval_quote},
       {"set!", &Interpreter::eval_set},
+      {"let", &Interpreter::eval_let},
+      {"let*", &Interpreter::eval_let_star},
       {"lambda", &Interpreter::eval_lambda},
       {"cond", &Interpreter::eval_cond},
       {"or", &Interpreter::eval_or},
@@ -49,53 +55,54 @@ Interpreter::Interpreter(const std::string& username) {
       {"macro", &Interpreter::eval_macro},
       {"quasiquote", &Interpreter::eval_quasiquote},
       {"while", &Interpreter::eval_while},
-  };
+  });
 
-  builtin_forms = {{"top-level", &Interpreter::eval_begin},
-                   {"begin", &Interpreter::eval_begin},
-                   {"exit", &Interpreter::eval_exit},
-                   {"read", &Interpreter::eval_read},
-                   {"read-data-file", &Interpreter::eval_read_data_file},
-                   {"read-file", &Interpreter::eval_read_file},
-                   {"print", &Interpreter::eval_print},
-                   {"inspect", &Interpreter::eval_inspect},
-                   {"load-file", &Interpreter::eval_load_file},
-                   {"try-load-file", &Interpreter::eval_try_load_file},
-                   {"eq?", &Interpreter::eval_equals},
-                   {"gensym", &Interpreter::eval_gensym},
-                   {"eval", &Interpreter::eval_eval},
-                   {"cons", &Interpreter::eval_cons},
-                   {"car", &Interpreter::eval_car},
-                   {"cdr", &Interpreter::eval_cdr},
-                   {"set-car!", &Interpreter::eval_set_car},
-                   {"set-cdr!", &Interpreter::eval_set_cdr},
-                   {"+", &Interpreter::eval_plus},
-                   {"-", &Interpreter::eval_minus},
-                   {"*", &Interpreter::eval_times},
-                   {"/", &Interpreter::eval_divide},
-                   {"=", &Interpreter::eval_numequals},
-                   {"<", &Interpreter::eval_lt},
-                   {">", &Interpreter::eval_gt},
-                   {"<=", &Interpreter::eval_leq},
-                   {">=", &Interpreter::eval_geq},
-                   {"null?", &Interpreter::eval_null},
-                   {"type?", &Interpreter::eval_type},
-                   {"fmt", &Interpreter::eval_format},
-                   {"error", &Interpreter::eval_error},
-                   {"string-ref", &Interpreter::eval_string_ref},
-                   {"string-length", &Interpreter::eval_string_length},
-                   {"string-append", &Interpreter::eval_string_append},
-                   {"string-starts-with?", &Interpreter::eval_string_starts_with},
-                   {"string-ends-with?", &Interpreter::eval_string_ends_with},
-                   {"string-split", &Interpreter::eval_string_split},
-                   {"string-substr", &Interpreter::eval_string_substr},
-                   {"ash", &Interpreter::eval_ash},
-                   {"symbol->string", &Interpreter::eval_symbol_to_string},
-                   {"string->symbol", &Interpreter::eval_string_to_symbol},
-                   {"get-environment-variable", &Interpreter::eval_get_env},
-                   {"make-string-hash-table", &Interpreter::eval_make_string_hash_table},
-                   {"hash-table-set!", &Interpreter::eval_hash_table_set},
-                   {"hash-table-try-ref", &Interpreter::eval_hash_table_try_ref}};
+  init_builtin_forms({{"top-level", &Interpreter::eval_begin},
+                      {"begin", &Interpreter::eval_begin},
+                      {"exit", &Interpreter::eval_exit},
+                      {"read", &Interpreter::eval_read},
+                      {"read-data-file", &Interpreter::eval_read_data_file},
+                      {"read-file", &Interpreter::eval_read_file},
+                      {"print", &Interpreter::eval_print},
+                      {"inspect", &Interpreter::eval_inspect},
+                      {"load-file", &Interpreter::eval_load_file},
+                      {"try-load-file", &Interpreter::eval_try_load_file},
+                      {"eq?", &Interpreter::eval_equals},
+                      {"gensym", &Interpreter::eval_gensym},
+                      {"eval", &Interpreter::eval_eval},
+                      {"cons", &Interpreter::eval_cons},
+                      {"car", &Interpreter::eval_car},
+                      {"cdr", &Interpreter::eval_cdr},
+                      {"set-car!", &Interpreter::eval_set_car},
+                      {"set-cdr!", &Interpreter::eval_set_cdr},
+                      {"+", &Interpreter::eval_plus},
+                      {"-", &Interpreter::eval_minus},
+                      {"*", &Interpreter::eval_times},
+                      {"/", &Interpreter::eval_divide},
+                      {"=", &Interpreter::eval_numequals},
+                      {"<", &Interpreter::eval_lt},
+                      {">", &Interpreter::eval_gt},
+                      {"<=", &Interpreter::eval_leq},
+                      {">=", &Interpreter::eval_geq},
+                      {"null?", &Interpreter::eval_null},
+                      {"type?", &Interpreter::eval_type},
+                      {"fmt", &Interpreter::eval_format},
+                      {"error", &Interpreter::eval_error},
+                      {"string-ref", &Interpreter::eval_string_ref},
+                      {"string-length", &Interpreter::eval_string_length},
+                      {"int->string", &Interpreter::eval_int_to_string},
+                      {"string-append", &Interpreter::eval_string_append},
+                      {"string-starts-with?", &Interpreter::eval_string_starts_with},
+                      {"string-ends-with?", &Interpreter::eval_string_ends_with},
+                      {"string-split", &Interpreter::eval_string_split},
+                      {"string-substr", &Interpreter::eval_string_substr},
+                      {"ash", &Interpreter::eval_ash},
+                      {"symbol->string", &Interpreter::eval_symbol_to_string},
+                      {"string->symbol", &Interpreter::eval_string_to_symbol},
+                      {"get-environment-variable", &Interpreter::eval_get_env},
+                      {"make-string-hash-table", &Interpreter::eval_make_string_hash_table},
+                      {"hash-table-set!", &Interpreter::eval_hash_table_set},
+                      {"hash-table-try-ref", &Interpreter::eval_hash_table_try_ref}});
 
   string_to_type = {{"empty-list", ObjectType::EMPTY_LIST},
                     {"integer", ObjectType::INTEGER},
@@ -113,6 +120,28 @@ Interpreter::Interpreter(const std::string& username) {
   load_goos_library();
 }
 
+void Interpreter::init_builtin_forms(
+    const std::unordered_map<std::string,
+                             Object (Interpreter::*)(const Object&,
+                                                     Arguments&,
+                                                     const std::shared_ptr<EnvironmentObject>&)>&
+        forms) {
+  for (const auto& [name, fn] : forms) {
+    builtin_forms[(void*)intern_ptr(name).name_ptr] = fn;
+  }
+}
+
+void Interpreter::init_special_forms(
+    const std::unordered_map<std::string,
+                             Object (Interpreter::*)(const Object&,
+                                                     const Object&,
+                                                     const std::shared_ptr<EnvironmentObject>&)>&
+        forms) {
+  for (const auto& [name, fn] : forms) {
+    special_forms.push_back(std::make_pair((void*)intern_ptr(name).name_ptr, fn));
+  }
+}
+
 /*!
  * Add a user defined special form. The given function will be called with unevaluated arguments.
  * Lookup from these forms occurs after special/builtin, but before any env lookups.
@@ -121,7 +150,7 @@ void Interpreter::register_form(
     const std::string& name,
     const std::function<
         Object(const Object&, Arguments&, const std::shared_ptr<EnvironmentObject>&)>& form) {
-  m_custom_forms[name] = form;
+  m_custom_forms.push_back(std::make_pair((void*)intern_ptr(name).name_ptr, form));
 }
 
 Interpreter::~Interpreter() {
@@ -149,19 +178,19 @@ void Interpreter::load_goos_library() {
 /*!
  * In env, set the variable named "name" to the value var.
  */
-void Interpreter::define_var_in_env(Object& env, Object& var, const std::string& name) {
-  env.as_env()->vars[intern_ptr(name)] = var;
+void Interpreter::define_var_in_env(Object& env, const Object& var, const std::string& name) {
+  env.as_env()->vars.set(InternedSymbolPtr{intern_ptr(name)}, var);
 }
 
 /*!
  * Get a symbol with the given name, creating one if none exist.
  */
 Object Interpreter::intern(const std::string& name) {
-  return SymbolObject::make_new(reader.symbolTable, name);
+  return Object::make_symbol(&reader.symbolTable, name.c_str());
 }
 
-HeapObject* Interpreter::intern_ptr(const std::string& name) {
-  return reader.symbolTable.intern_ptr(name);
+InternedSymbolPtr Interpreter::intern_ptr(const std::string& name) {
+  return reader.symbolTable.intern(name.c_str());
 }
 
 /*!
@@ -218,10 +247,9 @@ Object Interpreter::eval_with_rewind(const Object& obj,
  * Returns if the variable was found.
  */
 bool Interpreter::get_global_variable_by_name(const std::string& name, Object* dest) {
-  auto kv = global_environment.as_env()->vars.find(
-      SymbolObject::make_new(reader.symbolTable, name).as_symbol());
-  if (kv != global_environment.as_env()->vars.end()) {
-    *dest = kv->second;
+  auto* obj = global_environment.as_env()->find(name.c_str(), &reader.symbolTable);
+  if (obj) {
+    *dest = *obj;
     return true;
   }
   return false;
@@ -231,12 +259,11 @@ bool Interpreter::get_global_variable_by_name(const std::string& name, Object* d
  * Sets the variable to the value. Overwrites an existing value, or creates a new global.
  */
 void Interpreter::set_global_variable_by_name(const std::string& name, const Object& value) {
-  auto sym = SymbolObject::make_new(reader.symbolTable, name).as_symbol();
-  global_environment.as_env()->vars[sym] = value;
+  define_var_in_env(global_environment, value, name);
 }
 
 void Interpreter::set_global_variable_to_symbol(const std::string& name, const std::string& value) {
-  auto sym = SymbolObject::make_new(reader.symbolTable, value);
+  auto sym = Object::make_symbol(&reader.symbolTable, value.c_str());
   set_global_variable_by_name(name, sym);
 }
 
@@ -269,18 +296,18 @@ Arguments Interpreter::get_args(const Object& form, const Object& rest, const Ar
     const auto& arg = current->as_pair()->car;
 
     // did we get a ":keyword"
-    if (arg.is_symbol() && arg.as_symbol()->name.at(0) == ':') {
-      auto key_name = arg.as_symbol()->name.substr(1);
+    if (arg.is_symbol() && arg.as_symbol().name_ptr[0] == ':') {
+      auto key_name = arg.as_symbol().name_ptr + 1;
       const auto& kv = spec.named.find(key_name);
 
       // check for unknown key name
       if (!spec.varargs && kv == spec.named.end()) {
-        throw_eval_error(form, "Key argument " + key_name + " wasn't expected");
+        throw_eval_error(form, fmt::format("Key argument {} wasn't expected", key_name));
       }
 
       // check for multiple definition of key
       if (args.named.find(key_name) != args.named.end()) {
-        throw_eval_error(form, "Key argument " + key_name + " multiply defined");
+        throw_eval_error(form, fmt::format("Key argument {} multiply defined", key_name));
       }
 
       // check for well-formed :key value expression
@@ -409,7 +436,7 @@ ArgumentSpec Interpreter::parse_arg_spec(const Object& form, Object& rest) {
       throw_eval_error(form, "args must be symbols");
     }
 
-    if (arg.as_symbol()->name == "&rest") {
+    if (arg.as_symbol() == "&rest") {
       // special case for &rest
       current = current.as_pair()->cdr;
       if (!current.is_pair()) {
@@ -420,20 +447,20 @@ ArgumentSpec Interpreter::parse_arg_spec(const Object& form, Object& rest) {
         throw_eval_error(form, "rest name must be a symbol");
       }
 
-      spec.rest = rest_name.as_symbol()->name;
+      spec.rest = rest_name.as_symbol().name_ptr;
 
       if (!current.as_pair()->cdr.is_empty_list()) {
         throw_eval_error(form, "rest must be the last argument");
       }
-    } else if (arg.as_symbol()->name == "&key") {
+    } else if (arg.as_symbol() == "&key") {
       // special case for &key
       current = current.as_pair()->cdr;
       auto key_arg = current.as_pair()->car;
       if (key_arg.is_symbol()) {
         // form is &key name
-        auto key_arg_name = key_arg.as_symbol()->name;
+        auto key_arg_name = key_arg.as_symbol().name_ptr;
         if (spec.named.find(key_arg_name) != spec.named.end()) {
-          throw_eval_error(form, "key argument " + key_arg_name + " multiply defined");
+          throw_eval_error(form, fmt::format("key argument {} multiply defined", key_arg_name));
         }
         spec.named[key_arg_name] = NamedArg();
       } else if (key_arg.is_pair()) {
@@ -444,9 +471,9 @@ ArgumentSpec Interpreter::parse_arg_spec(const Object& form, Object& rest) {
         if (!kn.is_symbol()) {
           throw_eval_error(form, "key argument must have a symbol as a name");
         }
-        auto key_arg_name = kn.as_symbol()->name;
+        auto key_arg_name = kn.as_symbol().name_ptr;
         if (spec.named.find(key_arg_name) != spec.named.end()) {
-          throw_eval_error(form, "key argument " + key_arg_name + " multiply defined");
+          throw_eval_error(form, fmt::format("key argument {} multiply defined", key_arg_name));
         }
         NamedArg na;
 
@@ -466,7 +493,7 @@ ArgumentSpec Interpreter::parse_arg_spec(const Object& form, Object& rest) {
         throw_eval_error(form, "invalid key argument");
       }
     } else {
-      spec.unnamed.push_back(arg.as_symbol()->name);
+      spec.unnamed.push_back(arg.as_symbol().name_ptr);
     }
 
     current = current.as_pair()->cdr;
@@ -494,20 +521,22 @@ void Interpreter::vararg_check(
 /*!
  * Evaluate a list and return the result of the last evaluation.
  */
-Object Interpreter::eval_list_return_last(const Object& form,
+Object Interpreter::eval_list_return_last(const Object& /*form*/,
                                           Object rest,
                                           const std::shared_ptr<EnvironmentObject>& env) {
-  Object o = std::move(rest);
-  Object rv = Object::make_empty_list();
-  for (;;) {
-    if (o.is_pair()) {
-      auto op = o.as_pair();
-      rv = eval_with_rewind(op->car, env);
-      o = op->cdr;
-    } else if (o.is_empty_list()) {
-      return rv;
+  if (rest.is_empty_list()) {
+    return rest;
+  }
+
+  const Object* iter = &rest;
+  while (true) {
+    const Object* next = &iter->as_pair()->cdr;
+    const Object* item = &iter->as_pair()->car;
+    if (next->is_empty_list()) {
+      return eval_with_rewind(*item, env);
     } else {
-      throw_eval_error(form, "malformed body to evaluate");
+      eval(*item, env);
+      iter = next;
     }
   }
 }
@@ -542,6 +571,104 @@ Object Interpreter::eval(Object obj, const std::shared_ptr<EnvironmentObject>& e
   }
 }
 
+EnvironmentMap::EnvironmentMap() {
+  clear();
+}
+
+void EnvironmentMap::clear() {
+  m_entries.clear();
+  m_power_of_two_size = 3;  // 2 ^ 3 = 8
+  m_entries.resize(8);
+  m_used_entries = 0;
+  m_next_resize = (m_entries.size() * kMaxUsed);
+  m_mask = 0b111;
+}
+
+Object* EnvironmentMap::lookup(InternedSymbolPtr str) {
+  if (m_entries.size() < 10) {
+    for (auto& e : m_entries) {
+      if (e.key == str.name_ptr) {
+        return &e.value;
+      }
+    }
+    return nullptr;
+  }
+  u32 hash = crc32((const u8*)&str.name_ptr, sizeof(const char*));
+
+  // probe
+  for (u32 i = 0; i < m_entries.size(); i++) {
+    u32 slot_addr = (hash + i) & m_mask;
+    auto& slot = m_entries[slot_addr];
+    if (!slot.key) {
+      return nullptr;
+    } else {
+      if (slot.key != str.name_ptr) {
+        continue;  // bad hash
+      }
+      return &slot.value;
+    }
+  }
+
+  // should be impossible to reach.
+  ASSERT_NOT_REACHED();
+}
+
+void EnvironmentMap::set(InternedSymbolPtr ptr, const Object& obj) {
+  u32 hash = crc32((const u8*)&ptr.name_ptr, sizeof(const char*));
+
+  // probe
+  for (u32 i = 0; i < m_entries.size(); i++) {
+    u32 slot_addr = (hash + i) & m_mask;
+    auto& slot = m_entries[slot_addr];
+    if (!slot.key) {
+      // not found, insert!
+      slot.key = ptr.name_ptr;
+      slot.value = obj;
+      m_used_entries++;
+
+      if (m_used_entries >= m_next_resize) {
+        resize();
+      }
+      return;
+    } else {
+      if (slot.key == ptr.name_ptr) {
+        slot.value = obj;
+        return;
+      }
+    }
+  }
+
+  // should be impossible to reach.
+  ASSERT_NOT_REACHED();
+}
+
+void EnvironmentMap::resize() {
+  m_power_of_two_size++;
+  m_mask = (1U << m_power_of_two_size) - 1;
+
+  std::vector<Entry> new_entries(m_entries.size() * 2);
+  for (const auto& old_entry : m_entries) {
+    if (old_entry.key) {
+      bool done = false;
+      u32 hash = crc32((const u8*)&old_entry.key, sizeof(const char*));
+      for (u32 i = 0; i < new_entries.size(); i++) {
+        u32 slot_addr = (hash + i) & m_mask;
+        auto& slot = new_entries[slot_addr];
+        if (!slot.key) {
+          slot.key = old_entry.key;
+          slot.value = std::move(old_entry.value);
+          done = true;
+          break;
+        }
+      }
+      ASSERT(done);
+    }
+  }
+
+  m_entries = std::move(new_entries);
+  m_next_resize = kMaxUsed * m_entries.size();
+}
+
 namespace {
 
 /*!
@@ -552,7 +679,7 @@ bool try_symbol_lookup(const Object& sym,
                        const std::shared_ptr<EnvironmentObject>& env,
                        Object* dest) {
   // booleans are hard-coded here
-  if (sym.as_symbol()->name == "#t" || sym.as_symbol()->name == "#f") {
+  if (sym.as_symbol() == "#t" || sym.as_symbol() == "#f") {
     *dest = sym;
     return true;
   }
@@ -560,9 +687,9 @@ bool try_symbol_lookup(const Object& sym,
   // loop up envs until we find it.
   EnvironmentObject* search_env = env.get();
   for (;;) {
-    const auto& kv = search_env->vars.find(sym.as_symbol());
-    if (kv != search_env->vars.end()) {
-      *dest = kv->second;
+    auto* obj = search_env->vars.lookup(sym.as_symbol());
+    if (obj) {
+      *dest = *obj;
       return true;
     }
 
@@ -593,6 +720,59 @@ bool Interpreter::eval_symbol(const Object& sym,
   return try_symbol_lookup(sym, env, result);
 }
 
+Object Interpreter::eval_let_star(const goos::Object& form,
+                                  const goos::Object& rest,
+                                  const std::shared_ptr<EnvironmentObject>& env) {
+  return eval_let_common(form, rest, env, true);
+}
+
+Object Interpreter::eval_let(const goos::Object& form,
+                             const goos::Object& rest,
+                             const std::shared_ptr<EnvironmentObject>& env) {
+  return eval_let_common(form, rest, env, false);
+}
+
+Object Interpreter::eval_let_common(const goos::Object& form,
+                                    const goos::Object& rest,
+                                    const std::shared_ptr<EnvironmentObject>& env,
+                                    bool is_star) {
+  if (!rest.is_pair()) {
+    throw_eval_error(form, "first argument to let must be bindings");
+  }
+
+  const auto* bindings_iter = &rest.as_pair()->car;
+  const auto* body_iter = &rest.as_pair()->cdr;
+
+  if (!bindings_iter->is_pair()) {
+    throw_eval_error(form, "let cannot have empty bindings");
+  }
+
+  std::shared_ptr<EnvironmentObject> new_env = std::make_shared<EnvironmentObject>();
+  new_env->parent_env = env;
+
+  while (!bindings_iter->is_empty_list()) {
+    const auto* binding = &bindings_iter->as_pair()->car;
+    if (!binding->is_pair()) {
+      throw_eval_error(form, "let binding invalid");
+    }
+    const auto& name = binding->as_pair()->car;
+    if (!name.is_symbol()) {
+      throw_eval_error(form, "let binding invalid");
+    }
+
+    binding = &binding->as_pair()->cdr;
+    if (!binding->is_pair() || !binding->as_pair()->cdr.is_empty_list()) {
+      throw_eval_error(form, "let binding invalid");
+    }
+
+    new_env->vars.set(name.as_symbol(), eval(binding->as_pair()->car, is_star ? new_env : env));
+
+    bindings_iter = &bindings_iter->as_pair()->cdr;
+  }
+
+  return eval_list_return_last(*body_iter, *body_iter, new_env);
+}
+
 /*!
  * Evaluate a pair, either as special form, builtin form, macro application, or lambda application.
  */
@@ -606,13 +786,14 @@ Object Interpreter::eval_pair(const Object& obj, const std::shared_ptr<Environme
     const auto& head_sym = head.as_symbol();
 
     // try a special form first
-    const auto& kv_sf = special_forms.find(head_sym->name);
-    if (kv_sf != special_forms.end()) {
-      return ((*this).*(kv_sf->second))(obj, rest, env);
+    for (const auto& sf : special_forms) {
+      if (sf.first == head_sym.name_ptr) {
+        return ((*this).*(sf.second))(obj, rest, env);
+      }
     }
 
     // try builtins next
-    const auto& kv_b = builtin_forms.find(head_sym->name);
+    const auto& kv_b = builtin_forms.find((void*)head_sym.name_ptr);
     if (kv_b != builtin_forms.end()) {
       Arguments args = get_args(obj, rest, make_varargs());
       // all "built-in" forms expect arguments to be evaluated (that's why they aren't special)
@@ -621,10 +802,11 @@ Object Interpreter::eval_pair(const Object& obj, const std::shared_ptr<Environme
     }
 
     // try custom forms next
-    const auto& kv_u = m_custom_forms.find(head_sym->name);
-    if (kv_u != m_custom_forms.end()) {
-      Arguments args = get_args(obj, rest, make_varargs());
-      return (kv_u->second)(obj, args, env);
+    for (const auto& cf : m_custom_forms) {
+      if (cf.first == head_sym.name_ptr) {
+        Arguments args = get_args(obj, rest, make_varargs());
+        return (cf.second)(obj, args, env);
+      }
     }
 
     // try macros next
@@ -678,18 +860,18 @@ void Interpreter::set_args_in_env(const Object& form,
 
   // unnamed args
   for (size_t i = 0; i < arg_spec.unnamed.size(); i++) {
-    env->vars[intern(arg_spec.unnamed.at(i)).as_symbol()] = args.unnamed.at(i);
+    env->vars.set(intern_ptr(arg_spec.unnamed.at(i).c_str()), args.unnamed.at(i));
   }
 
   // named args
   for (const auto& kv : arg_spec.named) {
-    env->vars[intern(kv.first).as_symbol()] = args.named.at(kv.first);
+    env->vars.set(intern_ptr(kv.first), args.named.at(kv.first));
   }
 
   // rest args
   if (!arg_spec.rest.empty()) {
     // will correctly handle the '() case
-    env->vars[intern(arg_spec.rest).as_symbol()] = build_list(args.rest);
+    env->vars.set(intern_ptr(arg_spec.rest), build_list(args.rest));
   } else {
     if (!args.rest.empty()) {
       throw_eval_error(form, "got too many arguments");
@@ -714,7 +896,7 @@ Object Interpreter::eval_define(const Object& form,
   }
 
   Object value = eval_with_rewind(args.unnamed[1], env);
-  define_env->vars[args.unnamed[0].as_symbol()] = value;
+  define_env->vars.set(args.unnamed[0].as_symbol(), value);
   return value;
 }
 
@@ -732,10 +914,10 @@ Object Interpreter::eval_set(const Object& form,
 
   std::shared_ptr<EnvironmentObject> search_env = env;
   for (;;) {
-    auto kv = search_env->vars.find(to_define.as_symbol());
-    if (kv != search_env->vars.end()) {
-      kv->second = to_set;
-      return kv->second;
+    auto kv = search_env->vars.lookup(to_define.as_symbol());
+    if (kv) {
+      search_env->vars.set(to_define.as_symbol(), to_set);
+      return to_set;
     }
 
     auto pe = search_env->parent_env;
@@ -819,6 +1001,32 @@ Object Interpreter::eval_quote(const Object& form,
   return args.unnamed.front();
 }
 
+Object build_list_with_spliced_tail(std::vector<Object>&& objects, const Object& tail) {
+  if (objects.empty()) {
+    return tail;
+  }
+
+  std::shared_ptr<PairObject> head = std::make_shared<PairObject>(objects.back(), tail);
+
+  s64 idx = ((s64)objects.size()) - 2;
+  while (idx >= 0) {
+    Object next;
+    next.type = ObjectType::PAIR;
+    next.heap_obj = std::move(head);
+
+    head = std::make_shared<PairObject>();
+    head->car = std::move(objects[idx]);
+    head->cdr = std::move(next);
+
+    idx--;
+  }
+
+  Object result;
+  result.type = ObjectType::PAIR;
+  result.heap_obj = std::move(head);
+  return result;
+}
+
 /*!
  * Recursive quasi-quote evaluation
  */
@@ -831,7 +1039,7 @@ Object Interpreter::quasiquote_helper(const Object& form,
       const Object& item = lst_iter->as_pair()->car;
       if (item.type == ObjectType::PAIR) {
         if (item.as_pair()->car.type == ObjectType::SYMBOL &&
-            item.as_pair()->car.as_symbol()->name == "unquote") {
+            item.as_pair()->car.as_symbol() == "unquote") {
           const Object& unquote_arg = item.as_pair()->cdr;
           if (unquote_arg.type != ObjectType::PAIR ||
               unquote_arg.as_pair()->cdr.type != ObjectType::EMPTY_LIST) {
@@ -841,7 +1049,7 @@ Object Interpreter::quasiquote_helper(const Object& form,
           lst_iter = &lst_iter->as_pair()->cdr;
           continue;
         } else if (item.as_pair()->car.type == ObjectType::SYMBOL &&
-                   item.as_pair()->car.as_symbol()->name == "unquote-splicing") {
+                   item.as_pair()->car.as_symbol() == "unquote-splicing") {
           const Object& unquote_arg = item.as_pair()->cdr;
           if (unquote_arg.type != ObjectType::PAIR ||
               unquote_arg.as_pair()->cdr.type != ObjectType::EMPTY_LIST) {
@@ -851,6 +1059,11 @@ Object Interpreter::quasiquote_helper(const Object& form,
           // bypass normal addition:
           lst_iter = &lst_iter->as_pair()->cdr;
           Object splice_result = eval_with_rewind(unquote_arg.as_pair()->car, env);
+          if (lst_iter->type == ObjectType::EMPTY_LIST) {
+            // optimization!
+            return build_list_with_spliced_tail(std::move(result), splice_result);
+          }
+
           const Object* to_add = &splice_result;
           for (;;) {
             if (to_add->type == ObjectType::PAIR) {
@@ -864,8 +1077,13 @@ Object Interpreter::quasiquote_helper(const Object& form,
           }
           continue;
         } else {
-          result.push_back(quasiquote_helper(item, env));
           lst_iter = &lst_iter->as_pair()->cdr;
+
+          if (item.is_pair()) {
+            result.push_back(quasiquote_helper(item, env));
+          } else {
+            result.push_back(item);
+          }
           continue;
         }
       }
@@ -891,7 +1109,7 @@ Object Interpreter::eval_quasiquote(const Object& form,
 }
 
 bool Interpreter::truthy(const Object& o) {
-  return !(o.is_symbol() && o.as_symbol()->name == "#f");
+  return !(o.is_symbol() && o.as_symbol().name_ptr == m_false_sym);
 }
 
 /*!
@@ -924,7 +1142,7 @@ Object Interpreter::eval_cond(const Object& form,
         lst = lst.as_pair()->cdr;
       }
     } else if (lst.type == ObjectType::EMPTY_LIST) {
-      return SymbolObject::make_new(reader.symbolTable, "#f");
+      return m_false_object;
     } else {
       throw_eval_error(form, "malformed cond");
     }
@@ -950,7 +1168,7 @@ Object Interpreter::eval_or(const Object& form,
       }
       lst = lst.as_pair()->cdr;
     } else if (lst.type == ObjectType::EMPTY_LIST) {
-      return SymbolObject::make_new(reader.symbolTable, "#f");
+      return m_false_object;
     } else {
       throw_eval_error(form, "invalid or form");
     }
@@ -973,7 +1191,7 @@ Object Interpreter::eval_and(const Object& form,
     if (lst.type == ObjectType::PAIR) {
       current = eval_with_rewind(lst.as_pair()->car, env);
       if (!truthy(current)) {
-        return SymbolObject::make_new(reader.symbolTable, "#f");
+        return m_false_object;
       }
       lst = lst.as_pair()->cdr;
     } else if (lst.type == ObjectType::EMPTY_LIST) {
@@ -1000,7 +1218,7 @@ Object Interpreter::eval_while(const Object& form,
     throw_eval_error(form, "while must have condition and body");
   }
 
-  Object rv = SymbolObject::make_new(reader.symbolTable, "#f");
+  Object rv = m_false_object;
   while (truthy(eval_with_rewind(condition, env))) {
     rv = eval_list_return_last(form, body, env);
   }
@@ -1126,7 +1344,7 @@ Object Interpreter::eval_try_load_file(const Object& form,
 
   auto path = {args.unnamed.at(0).as_string()->data};
   if (!fs::exists(file_util::get_file_path(path))) {
-    return SymbolObject::make_new(reader.symbolTable, "#f");
+    return m_false_object;
   }
 
   Object o;
@@ -1141,7 +1359,7 @@ Object Interpreter::eval_try_load_file(const Object& form,
   } catch (std::runtime_error& e) {
     throw_eval_error(form, std::string("eval error inside of try-load-file:\n") + e.what());
   }
-  return SymbolObject::make_new(reader.symbolTable, "#t");
+  return m_true_object;
 }
 
 /*!
@@ -1177,6 +1395,14 @@ Object Interpreter::eval_inspect(const Object& form,
   return Object::make_empty_list();
 }
 
+const Object& Interpreter::true_or_false(bool val) {
+  if (val) {
+    return m_true_object;
+  } else {
+    return m_false_object;
+  }
+}
+
 /*!
  * Fancy equality check (using Object::operator==)
  */
@@ -1185,8 +1411,7 @@ Object Interpreter::eval_equals(const Object& form,
                                 const std::shared_ptr<EnvironmentObject>& env) {
   (void)env;
   vararg_check(form, args, {{}, {}}, {});
-  return SymbolObject::make_new(reader.symbolTable,
-                                args.unnamed[0] == args.unnamed[1] ? "#t" : "#f");
+  return true_or_false(args.unnamed[0] == args.unnamed[1]);
 }
 
 /*!
@@ -1430,7 +1655,7 @@ Object Interpreter::eval_numequals(const Object& form,
       return Object::make_empty_list();
   }
 
-  return SymbolObject::make_new(reader.symbolTable, result ? "#t" : "#f");
+  return true_or_false(result);
 }
 
 template <typename T>
@@ -1441,7 +1666,7 @@ Object Interpreter::num_lt(const Object& form,
   (void)env;
   T a = number<T>(args.unnamed[0]);
   T b = number<T>(args.unnamed[1]);
-  return SymbolObject::make_new(reader.symbolTable, (a < b) ? "#t" : "#f");
+  return true_or_false(a < b);
 }
 
 Object Interpreter::eval_lt(const Object& form,
@@ -1469,7 +1694,7 @@ Object Interpreter::num_gt(const Object& form,
   (void)env;
   T a = number<T>(args.unnamed[0]);
   T b = number<T>(args.unnamed[1]);
-  return SymbolObject::make_new(reader.symbolTable, (a > b) ? "#t" : "#f");
+  return true_or_false(a > b);
 }
 
 Object Interpreter::eval_gt(const Object& form,
@@ -1497,7 +1722,7 @@ Object Interpreter::num_leq(const Object& form,
   (void)env;
   T a = number<T>(args.unnamed[0]);
   T b = number<T>(args.unnamed[1]);
-  return SymbolObject::make_new(reader.symbolTable, (a <= b) ? "#t" : "#f");
+  return true_or_false(a <= b);
 }
 
 Object Interpreter::eval_leq(const Object& form,
@@ -1525,7 +1750,7 @@ Object Interpreter::num_geq(const Object& form,
   (void)env;
   T a = number<T>(args.unnamed[0]);
   T b = number<T>(args.unnamed[1]);
-  return SymbolObject::make_new(reader.symbolTable, (a >= b) ? "#t" : "#f");
+  return true_or_false(a >= b);
 }
 
 Object Interpreter::eval_geq(const Object& form,
@@ -1591,7 +1816,7 @@ Object Interpreter::eval_gensym(const Object& form,
                                 const std::shared_ptr<EnvironmentObject>& env) {
   (void)env;
   vararg_check(form, args, {}, {});
-  return SymbolObject::make_new(reader.symbolTable, "gensym" + std::to_string(gensym_id++));
+  return Object::make_symbol(&reader.symbolTable, ("gensym" + std::to_string(gensym_id++)).c_str());
 }
 
 Object Interpreter::eval_cons(const Object& form,
@@ -1607,7 +1832,7 @@ Object Interpreter::eval_null(const Object& form,
                               const std::shared_ptr<EnvironmentObject>& env) {
   (void)env;
   vararg_check(form, args, {{}}, {});
-  return SymbolObject::make_new(reader.symbolTable, args.unnamed[0].is_empty_list() ? "#t" : "#f");
+  return true_or_false(args.unnamed[0].is_empty_list());
 }
 
 Object Interpreter::eval_type(const Object& form,
@@ -1616,15 +1841,15 @@ Object Interpreter::eval_type(const Object& form,
   (void)env;
   vararg_check(form, args, {{ObjectType::SYMBOL}, {}}, {});
 
-  auto kv = string_to_type.find(args.unnamed[0].as_symbol()->name);
+  auto kv = string_to_type.find(args.unnamed[0].as_symbol().name_ptr);
   if (kv == string_to_type.end()) {
     throw_eval_error(form, "invalid type given to type?");
   }
 
   if (args.unnamed[1].type == kv->second) {
-    return SymbolObject::make_new(reader.symbolTable, "#t");
+    return m_true_object;
   } else {
-    return SymbolObject::make_new(reader.symbolTable, "#f");
+    return m_false_object;
   }
 }
 
@@ -1729,9 +1954,9 @@ Object Interpreter::eval_string_starts_with(const Object& form,
   auto& suffix = args.unnamed.at(1).as_string()->data;
 
   if (str_util::starts_with(str, suffix)) {
-    return SymbolObject::make_new(reader.symbolTable, "#t");
+    return m_true_object;
   }
-  return SymbolObject::make_new(reader.symbolTable, "#f");
+  return m_false_object;
 }
 
 Object Interpreter::eval_string_ends_with(const Object& form,
@@ -1743,9 +1968,9 @@ Object Interpreter::eval_string_ends_with(const Object& form,
   auto& suffix = args.unnamed.at(1).as_string()->data;
 
   if (str_util::ends_with(str, suffix)) {
-    return SymbolObject::make_new(reader.symbolTable, "#t");
+    return m_true_object;
   }
-  return SymbolObject::make_new(reader.symbolTable, "#f");
+  return m_false_object;
 }
 
 Object Interpreter::eval_string_split(const Object& form,
@@ -1792,14 +2017,21 @@ Object Interpreter::eval_symbol_to_string(const Object& form,
                                           Arguments& args,
                                           const std::shared_ptr<EnvironmentObject>&) {
   vararg_check(form, args, {ObjectType::SYMBOL}, {});
-  return StringObject::make_new(args.unnamed.at(0).as_symbol()->name);
+  return StringObject::make_new(args.unnamed.at(0).as_symbol().name_ptr);
 }
 
 Object Interpreter::eval_string_to_symbol(const Object& form,
                                           Arguments& args,
                                           const std::shared_ptr<EnvironmentObject>&) {
   vararg_check(form, args, {ObjectType::STRING}, {});
-  return SymbolObject::make_new(reader.symbolTable, args.unnamed.at(0).as_string()->data);
+  return Object::make_symbol(&reader.symbolTable, args.unnamed.at(0).as_string()->data.c_str());
+}
+
+Object Interpreter::eval_int_to_string(const Object& form,
+                                       Arguments& args,
+                                       const std::shared_ptr<EnvironmentObject>&) {
+  vararg_check(form, args, {ObjectType::INTEGER}, {});
+  return StringObject::make_new(std::to_string(args.unnamed.at(0).as_int()));
 }
 
 Object Interpreter::eval_get_env(const Object& form,
@@ -1839,7 +2071,7 @@ Object Interpreter::eval_hash_table_set(const Object& form,
   vararg_check(form, args, {ObjectType::STRING_HASH_TABLE, {}, {}}, {});
   const char* str = nullptr;
   if (args.unnamed.at(1).is_symbol()) {
-    str = args.unnamed.at(1).as_symbol()->name.c_str();
+    str = args.unnamed.at(1).as_symbol().name_ptr;
   } else if (args.unnamed.at(1).is_string()) {
     str = args.unnamed.at(1).as_string()->data.c_str();
   } else {
@@ -1861,7 +2093,7 @@ Object Interpreter::eval_hash_table_try_ref(const Object& form,
 
   const char* str = nullptr;
   if (args.unnamed.at(1).is_symbol()) {
-    str = args.unnamed.at(1).as_symbol()->name.c_str();
+    str = args.unnamed.at(1).as_symbol().name_ptr;
   } else if (args.unnamed.at(1).is_string()) {
     str = args.unnamed.at(1).as_string()->data.c_str();
   } else {
@@ -1870,10 +2102,9 @@ Object Interpreter::eval_hash_table_try_ref(const Object& form,
   const auto& it = table->data.find(str);
   if (it == table->data.end()) {
     // not in table
-    return PairObject::make_new(SymbolObject::make_new(reader.symbolTable, "#f"),
-                                Object::make_empty_list());
+    return PairObject::make_new(m_false_object, Object::make_empty_list());
   } else {
-    return PairObject::make_new(SymbolObject::make_new(reader.symbolTable, "#t"), it->second);
+    return PairObject::make_new(m_true_object, it->second);
   }
 }
 }  // namespace goos

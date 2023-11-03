@@ -3,237 +3,213 @@
 
 ;; definition of type sync-info
 (deftype sync-info (structure)
-  ((offset float   :offset-assert   0)
-   (period uint32  :offset-assert   4)
+  ((offset  float)
+   (period  uint32)
    )
   :pack-me
-  :method-count-assert 18
-  :size-assert         #x8
-  :flag-assert         #x1200000008
   (:methods
-    (get-current-value (_type_ float) float 9)
-    (get-current-phase-no-mod (_type_) float 10)
-    (get-current-phase (_type_) float 11)
-    (get-current-value-with-mirror (_type_ float) float 12)
-    (get-current-phase-with-mirror (_type_) float 13)
-    (setup-params! (_type_ uint float float float) none 14)
-    (load-params! (_type_ process uint float float float) symbol 15)
-    (sync-now! (_type_ float) float 16)
-    (get-phase-offset (_type_) float 17)
+    (get-current-value (_type_ float) float)
+    (get-current-phase-no-mod (_type_) float)
+    (get-current-phase (_type_) float)
+    (get-current-value-with-mirror (_type_ float) float)
+    (get-current-phase-with-mirror (_type_) float)
+    (setup-params! (_type_ uint float float float) none)
+    (load-params! (_type_ process uint float float float) symbol)
+    (sync-now! (_type_ float) float)
+    (get-phase-offset (_type_) float)
     )
   )
 
 ;; definition for method 3 of type sync-info
-(defmethod inspect sync-info ((obj sync-info))
-  (format #t "[~8x] ~A~%" obj 'sync-info)
-  (format #t "~Toffset: ~f~%" (-> obj offset))
-  (format #t "~Tperiod: ~D~%" (-> obj period))
-  obj
+(defmethod inspect ((this sync-info))
+  (format #t "[~8x] ~A~%" this 'sync-info)
+  (format #t "~Toffset: ~f~%" (-> this offset))
+  (format #t "~Tperiod: ~D~%" (-> this period))
+  this
   )
 
 ;; definition of type sync-info-eased
 (deftype sync-info-eased (sync-info)
-  ((tlo  float  :offset-assert   8)
-   (thi  float  :offset-assert  12)
-   (ylo  float  :offset-assert  16)
-   (m2   float  :offset-assert  20)
-   (yend float  :offset-assert  24)
+  ((tlo   float)
+   (thi   float)
+   (ylo   float)
+   (m2    float)
+   (yend  float)
    )
   :allow-misaligned
-  :method-count-assert 18
-  :size-assert         #x1c
-  :flag-assert         #x120000001c
   )
 
 ;; definition for method 3 of type sync-info-eased
-(defmethod inspect sync-info-eased ((obj sync-info-eased))
-  (format #t "[~8x] ~A~%" obj 'sync-info-eased)
-  (format #t "~Toffset: ~f~%" (-> obj offset))
-  (format #t "~Tperiod: ~D~%" (-> obj period))
-  (format #t "~Ttlo: ~f~%" (-> obj tlo))
-  (format #t "~Tthi: ~f~%" (-> obj thi))
-  (format #t "~Tylo: ~f~%" (-> obj ylo))
-  (format #t "~Tm2: ~f~%" (-> obj m2))
-  (format #t "~Tyend: ~f~%" (-> obj yend))
-  obj
+(defmethod inspect ((this sync-info-eased))
+  (format #t "[~8x] ~A~%" this 'sync-info-eased)
+  (format #t "~Toffset: ~f~%" (-> this offset))
+  (format #t "~Tperiod: ~D~%" (-> this period))
+  (format #t "~Ttlo: ~f~%" (-> this tlo))
+  (format #t "~Tthi: ~f~%" (-> this thi))
+  (format #t "~Tylo: ~f~%" (-> this ylo))
+  (format #t "~Tm2: ~f~%" (-> this m2))
+  (format #t "~Tyend: ~f~%" (-> this yend))
+  this
   )
 
 ;; definition of type sync-info-paused
 (deftype sync-info-paused (sync-info)
-  ((pause-after-out float  :offset-assert   8)
-   (pause-after-in  float  :offset-assert  12)
+  ((pause-after-out  float)
+   (pause-after-in   float)
    )
   :pack-me
-  :method-count-assert 18
-  :size-assert         #x10
-  :flag-assert         #x1200000010
   )
 
 ;; definition for method 3 of type sync-info-paused
-(defmethod inspect sync-info-paused ((obj sync-info-paused))
-  (format #t "[~8x] ~A~%" obj 'sync-info-paused)
-  (format #t "~Toffset: ~f~%" (-> obj offset))
-  (format #t "~Tperiod: ~D~%" (-> obj period))
-  (format #t "~Tpause-after-out: ~f~%" (-> obj pause-after-out))
-  (format #t "~Tpause-after-in: ~f~%" (-> obj pause-after-in))
-  obj
+(defmethod inspect ((this sync-info-paused))
+  (format #t "[~8x] ~A~%" this 'sync-info-paused)
+  (format #t "~Toffset: ~f~%" (-> this offset))
+  (format #t "~Tperiod: ~D~%" (-> this period))
+  (format #t "~Tpause-after-out: ~f~%" (-> this pause-after-out))
+  (format #t "~Tpause-after-in: ~f~%" (-> this pause-after-in))
+  this
   )
 
 ;; definition of type delayed-rand-float
 (deftype delayed-rand-float (structure)
-  ((min-time   int32       :offset-assert   0)
-   (max-time   int32       :offset-assert   4)
-   (max-val    float       :offset-assert   8)
-   (timer      int32       :offset-assert  12)
-   (start-time time-frame  :offset-assert  16)
-   (value      float       :offset-assert  24)
+  ((min-time    int32)
+   (max-time    int32)
+   (max-val     float)
+   (timer       int32)
+   (start-time  time-frame)
+   (value       float)
    )
   :pack-me
-  :method-count-assert 11
-  :size-assert         #x1c
-  :flag-assert         #xb0000001c
   (:methods
-    (set-params! (_type_ int int float) float 9)
-    (update! (_type_) float 10)
+    (set-params! (_type_ int int float) float)
+    (update! (_type_) float)
     )
   )
 
 ;; definition for method 3 of type delayed-rand-float
-(defmethod inspect delayed-rand-float ((obj delayed-rand-float))
-  (format #t "[~8x] ~A~%" obj 'delayed-rand-float)
-  (format #t "~Tmin-time: ~D~%" (-> obj min-time))
-  (format #t "~Tmax-time: ~D~%" (-> obj max-time))
-  (format #t "~Tmax-val: ~f~%" (-> obj max-val))
-  (format #t "~Ttimer: ~D~%" (-> obj timer))
-  (format #t "~Tstart-time: ~D~%" (-> obj start-time))
-  (format #t "~Tvalue: ~f~%" (-> obj value))
-  obj
+(defmethod inspect ((this delayed-rand-float))
+  (format #t "[~8x] ~A~%" this 'delayed-rand-float)
+  (format #t "~Tmin-time: ~D~%" (-> this min-time))
+  (format #t "~Tmax-time: ~D~%" (-> this max-time))
+  (format #t "~Tmax-val: ~f~%" (-> this max-val))
+  (format #t "~Ttimer: ~D~%" (-> this timer))
+  (format #t "~Tstart-time: ~D~%" (-> this start-time))
+  (format #t "~Tvalue: ~f~%" (-> this value))
+  this
   )
 
 ;; definition of type oscillating-float
 (deftype oscillating-float (structure)
-  ((value   float  :offset-assert   0)
-   (target  float  :offset-assert   4)
-   (vel     float  :offset-assert   8)
-   (max-vel float  :offset-assert  12)
-   (damping float  :offset-assert  16)
-   (accel   float  :offset-assert  20)
+  ((value    float)
+   (target   float)
+   (vel      float)
+   (max-vel  float)
+   (damping  float)
+   (accel    float)
    )
   :pack-me
-  :method-count-assert 11
-  :size-assert         #x18
-  :flag-assert         #xb00000018
   (:methods
-    (set-params! (_type_ float float float float) float 9)
-    (update! (_type_ float) float 10)
+    (set-params! (_type_ float float float float) float)
+    (update! (_type_ float) float)
     )
   )
 
 ;; definition for method 3 of type oscillating-float
-(defmethod inspect oscillating-float ((obj oscillating-float))
-  (format #t "[~8x] ~A~%" obj 'oscillating-float)
-  (format #t "~Tvalue: ~f~%" (-> obj value))
-  (format #t "~Ttarget: ~f~%" (-> obj target))
-  (format #t "~Tvel: ~f~%" (-> obj vel))
-  (format #t "~Tmax-vel: ~f~%" (-> obj max-vel))
-  (format #t "~Tdamping: ~f~%" (-> obj damping))
-  (format #t "~Taccel: ~f~%" (-> obj accel))
-  obj
+(defmethod inspect ((this oscillating-float))
+  (format #t "[~8x] ~A~%" this 'oscillating-float)
+  (format #t "~Tvalue: ~f~%" (-> this value))
+  (format #t "~Ttarget: ~f~%" (-> this target))
+  (format #t "~Tvel: ~f~%" (-> this vel))
+  (format #t "~Tmax-vel: ~f~%" (-> this max-vel))
+  (format #t "~Tdamping: ~f~%" (-> this damping))
+  (format #t "~Taccel: ~f~%" (-> this accel))
+  this
   )
 
 ;; definition of type bouncing-float
 (deftype bouncing-float (structure)
-  ((osc        oscillating-float :inline :offset-assert   0)
-   (max-value  float                     :offset-assert  24)
-   (min-value  float                     :offset-assert  28)
-   (elasticity float                     :offset-assert  32)
-   (state      int32                     :offset-assert  36)
+  ((osc         oscillating-float  :inline)
+   (max-value   float)
+   (min-value   float)
+   (elasticity  float)
+   (state       int32)
    )
   :pack-me
-  :method-count-assert 13
-  :size-assert         #x28
-  :flag-assert         #xd00000028
   (:methods
-    (set-params! (_type_ float float float float float float float) float 9)
-    (update! (_type_ float) float 10)
-    (at-min? (_type_) symbol 11)
-    (at-max? (_type_) symbol 12)
+    (set-params! (_type_ float float float float float float float) float)
+    (update! (_type_ float) float)
+    (at-min? (_type_) symbol)
+    (at-max? (_type_) symbol)
     )
   )
 
 ;; definition for method 3 of type bouncing-float
-(defmethod inspect bouncing-float ((obj bouncing-float))
-  (format #t "[~8x] ~A~%" obj 'bouncing-float)
-  (format #t "~Tosc: #<oscillating-float @ #x~X>~%" (-> obj osc))
-  (format #t "~Tmax-value: ~f~%" (-> obj max-value))
-  (format #t "~Tmin-value: ~f~%" (-> obj min-value))
-  (format #t "~Telasticity: ~f~%" (-> obj elasticity))
-  (format #t "~Tstate: ~D~%" (-> obj state))
-  obj
+(defmethod inspect ((this bouncing-float))
+  (format #t "[~8x] ~A~%" this 'bouncing-float)
+  (format #t "~Tosc: #<oscillating-float @ #x~X>~%" (-> this osc))
+  (format #t "~Tmax-value: ~f~%" (-> this max-value))
+  (format #t "~Tmin-value: ~f~%" (-> this min-value))
+  (format #t "~Telasticity: ~f~%" (-> this elasticity))
+  (format #t "~Tstate: ~D~%" (-> this state))
+  this
   )
 
 ;; definition of type delayed-rand-vector
 (deftype delayed-rand-vector (structure)
-  ((min-time   int32              :offset-assert   0)
-   (max-time   int32              :offset-assert   4)
-   (xz-max     float              :offset-assert   8)
-   (y-max      float              :offset-assert  12)
-   (timer      int32              :offset-assert  16)
-   (start-time time-frame         :offset-assert  24)
-   (value      vector     :inline :offset-assert  32)
+  ((min-time    int32)
+   (max-time    int32)
+   (xz-max      float)
+   (y-max       float)
+   (timer       int32)
+   (start-time  time-frame)
+   (value       vector  :inline)
    )
-  :method-count-assert 13
-  :size-assert         #x30
-  :flag-assert         #xd00000030
   (:methods
-    (set-params! (_type_ int int float float) vector 9)
-    (update-now! (_type_) vector 10)
-    (update-with-delay! (_type_) vector 11)
-    (update-with-delay-or-reset! (_type_) vector 12)
+    (set-params! (_type_ int int float float) vector)
+    (update-now! (_type_) vector)
+    (update-with-delay! (_type_) vector)
+    (update-with-delay-or-reset! (_type_) vector)
     )
   )
 
 ;; definition for method 3 of type delayed-rand-vector
-(defmethod inspect delayed-rand-vector ((obj delayed-rand-vector))
-  (format #t "[~8x] ~A~%" obj 'delayed-rand-vector)
-  (format #t "~Tmin-time: ~D~%" (-> obj min-time))
-  (format #t "~Tmax-time: ~D~%" (-> obj max-time))
-  (format #t "~Txz-max: ~f~%" (-> obj xz-max))
-  (format #t "~Ty-max: ~f~%" (-> obj y-max))
-  (format #t "~Ttimer: ~D~%" (-> obj timer))
-  (format #t "~Tstart-time: ~D~%" (-> obj start-time))
-  (format #t "~Tvalue: #<vector @ #x~X>~%" (-> obj value))
-  obj
+(defmethod inspect ((this delayed-rand-vector))
+  (format #t "[~8x] ~A~%" this 'delayed-rand-vector)
+  (format #t "~Tmin-time: ~D~%" (-> this min-time))
+  (format #t "~Tmax-time: ~D~%" (-> this max-time))
+  (format #t "~Txz-max: ~f~%" (-> this xz-max))
+  (format #t "~Ty-max: ~f~%" (-> this y-max))
+  (format #t "~Ttimer: ~D~%" (-> this timer))
+  (format #t "~Tstart-time: ~D~%" (-> this start-time))
+  (format #t "~Tvalue: #<vector @ #x~X>~%" (-> this value))
+  this
   )
 
 ;; definition of type oscillating-vector
 (deftype oscillating-vector (structure)
-  ((value   vector :inline :offset-assert   0)
-   (target  vector :inline :offset-assert  16)
-   (vel     vector :inline :offset-assert  32)
-   (max-vel float          :offset-assert  48)
-   (damping float          :offset-assert  52)
-   (accel   float          :offset-assert  56)
+  ((value    vector  :inline)
+   (target   vector  :inline)
+   (vel      vector  :inline)
+   (max-vel  float)
+   (damping  float)
+   (accel    float)
    )
-  :method-count-assert 11
-  :size-assert         #x3c
-  :flag-assert         #xb0000003c
   (:methods
-    (set-params! (_type_ vector float float float) vector 9)
-    (update! (_type_ vector) vector 10)
+    (set-params! (_type_ vector float float float) vector)
+    (update! (_type_ vector) vector)
     )
   )
 
 ;; definition for method 3 of type oscillating-vector
-(defmethod inspect oscillating-vector ((obj oscillating-vector))
-  (format #t "[~8x] ~A~%" obj 'oscillating-vector)
-  (format #t "~Tvalue: #<vector @ #x~X>~%" (-> obj value))
-  (format #t "~Ttarget: #<vector @ #x~X>~%" (-> obj target))
-  (format #t "~Tvel: #<vector @ #x~X>~%" (-> obj vel))
-  (format #t "~Tmax-vel: ~f~%" (-> obj max-vel))
-  (format #t "~Tdamping: ~f~%" (-> obj damping))
-  (format #t "~Taccel: ~f~%" (-> obj accel))
-  obj
+(defmethod inspect ((this oscillating-vector))
+  (format #t "[~8x] ~A~%" this 'oscillating-vector)
+  (format #t "~Tvalue: #<vector @ #x~X>~%" (-> this value))
+  (format #t "~Ttarget: #<vector @ #x~X>~%" (-> this target))
+  (format #t "~Tvel: #<vector @ #x~X>~%" (-> this vel))
+  (format #t "~Tmax-vel: ~f~%" (-> this max-vel))
+  (format #t "~Tdamping: ~f~%" (-> this damping))
+  (format #t "~Taccel: ~f~%" (-> this accel))
+  this
   )
 
 ;; failed to figure out what this is:

@@ -9,35 +9,31 @@
 ;; Very very weird linked list system.
 ;; TODO add examples because this is extremely confusing.
 
+;; DECOMP BEGINS
+
+;; this file is debug only
 (declare-file (debug))
 
 (deftype glst-node (structure)
-  ((next glst-node  :offset-assert 0)
-   (prev glst-node  :offset-assert 4)
+  ((next  glst-node)
+   (prev  glst-node)
    )
-  :method-count-assert 9
-  :size-assert         #x8
-  :flag-assert         #x900000008
   )
+
 
 (deftype glst-named-node (glst-node)
-  ((privname string     :offset-assert 8)
+  ((privname  string)
    )
-  :method-count-assert 9
-  :size-assert         #xc
-  :flag-assert         #x90000000c
   )
 
+
 (deftype glst-list (structure)
-  ((head     glst-node  :offset-assert 0)
-   (tail     glst-node  :offset-assert 4)
-   (tailpred glst-node  :offset-assert 8)
-   (numelem  int32      :offset-assert 12)
+  ((head      glst-node)
+   (tail      glst-node)
+   (tailpred  glst-node)
+   (numelem   int32)
    )
   :allow-misaligned
-  :method-count-assert 9
-  :size-assert         #x10
-  :flag-assert         #x900000010
   )
 
 
@@ -46,65 +42,64 @@
 ;; BEFORE the docstring, they end up being considered part of the body and the compiled output!
 ;; This amusing mistake is reproduced here.
 
-(defun-debug glst-next ((node glst-node))
+(defun glst-next ((arg0 glst-node))
   (declare (inline))
   "return the next node in the list"
 
-  (-> node next)
+  (-> arg0 next)
   )
 
-(defun-debug glst-prev ((node glst-node))
+(defun glst-prev ((arg0 glst-node))
   (declare (inline))
   "return the previous node in the list"
 
-  (-> node prev)
+  (-> arg0 prev)
   )
 
-(defun-debug glst-head ((list glst-list))
+(defun glst-head ((arg0 glst-list))
   (declare (inline))
   "return the start of the list"
 
-  (-> list head)
+  (-> arg0 head)
   )
 
-(defun-debug glst-tail ((list glst-list))
+(defun glst-tail ((arg0 glst-list))
   (declare (inline))
   "return the tail of the list"
 
-  (-> list tailpred)
+  (-> arg0 tailpred)
   )
 
-(defun-debug glst-end-of-list? ((node glst-node))
+(defun glst-end-of-list? ((arg0 glst-node))
   (declare (inline))
   "is this node the end of the list. #t = end"
 
-  (not (-> node next))
+  (not (-> arg0 next))
   )
 
-(defun-debug glst-start-of-list? ((node glst-node))
+(defun glst-start-of-list? ((arg0 glst-node))
   (declare (inline))
   "is this node the start of the list. #t = start"
 
-  (not (-> node prev))
+  (not (-> arg0 prev))
   )
 
-(defun-debug glst-empty? ((list glst-list))
+(defun glst-empty? ((arg0 glst-list))
   (declare (inline))
   "is the list empty, #t = empty"
 
-  (= (-> list tailpred) (&-> list head))
+  (= (-> arg0 tailpred) arg0)
   )
 
-(defun-debug glst-node-name ((node glst-named-node))
+(defun glst-node-name ((arg0 glst-named-node))
   "Return the name of the node"
 
-  (-> node privname)
+  (-> arg0 privname)
   )
 
-(defun-debug glst-set-name! ((node glst-named-node) (name string))
+(defun glst-set-name! ((arg0 glst-named-node) (arg1 string))
   "Set the name of the node"
   (declare (inline))
 
-  (set! (-> node privname) name)
+  (set! (-> arg0 privname) arg1)
   )
-

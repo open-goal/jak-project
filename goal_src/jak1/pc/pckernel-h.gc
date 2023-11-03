@@ -139,12 +139,14 @@
    (os symbol) ;; windows, linux, macos
    (user symbol) ;; username. not system username, just debug thing.
    (debug? symbol) ;; more debug stuff just in case.
+   (debug-font-scale        float)  ;; debug font scaling factor.
+   (debug-font-scale-auto?  symbol) ;; auto-scale debug font by screen height.
 
    ;; device settings
    (ignore-controller-win-unfocused? symbol)
-   (controller-hp-led?    symbol)
-   (controller-eco-led?   symbol)
-   (controller-heat-led?  symbol)
+   (controller-led-hp?    symbol)
+   (controller-led-eco?   symbol)
+   (controller-led-heat?  symbol)
    (controller-led-brightness     float)
    (controller-led-min-brightness float)
    (controller-led-max-brightness float)
@@ -257,6 +259,7 @@
     (set-ignore-controller-in-bg! (_type_ symbol) none)
     (set-enable-keyboard! (_type_ symbol) none)
     (update-mouse-controls! (_type_) none)
+    (debug-font-scale-factor (_type_) float)
     )
   )
 
@@ -272,10 +275,17 @@
 
 (define *display-actor-bank* #f)
 (define *display-pad-debug* #f)
+(define *display-led* #f)
+(define *display-led-rgba* (new 'static 'rgba))
 (define *display-heap-status* #f)
 (define *display-actor-counts* #f)
 (define *display-text-box* #f)
 (define *display-sha* *debug-segment*)
+
+;; collision renderer things. debug only.
+(define *collision-renderer* #f)
+(define *collision-wireframe* #f)
+(define *collision-mode* (pc-collision-mode mode))
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -303,6 +313,8 @@
   (set! (-> obj aspect-custom-y) 3)
   (set! (-> obj discord-rpc?) #t)
   (set! (-> obj speedrunner-mode?) #f)
+  (set! (-> obj debug-font-scale) 1.0)
+  (set! (-> obj debug-font-scale-auto?) #t)
 
   (reset-gfx obj call-handlers)
   (reset-audio obj call-handlers)
@@ -354,9 +366,9 @@
 
   (when (or (= device 'all) (= device 'controller))
     (set! (-> obj ignore-controller-win-unfocused?) #f)
-    (set! (-> obj controller-hp-led?) #t)
-    (set! (-> obj controller-eco-led?) #t)
-    (set! (-> obj controller-heat-led?) #t)
+    (set! (-> obj controller-led-hp?) #t)
+    (set! (-> obj controller-led-eco?) #t)
+    (set! (-> obj controller-led-heat?) #t)
     (set! (-> obj stick-deadzone) 0.3)
     (set! (-> obj controller-led-brightness) 1.0)
     (set! (-> obj controller-led-min-brightness) 0.25)
@@ -427,6 +439,17 @@
       ,@body
       ))
   )
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;; quick helpers
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+
+(defmacro get-debug-font-scale-factor ()
+  "return the debug font scale factor to be used."
+  `(debug-font-scale-factor *pc-settings*))
+
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;

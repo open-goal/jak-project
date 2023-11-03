@@ -155,14 +155,16 @@ class TypeSystem {
   Type* lookup_type(const TypeSpec& ts) const;
   Type* lookup_type(const std::string& name) const;
 
+  Type* lookup_type_no_throw(const TypeSpec& ts) const;
+  Type* lookup_type_no_throw(const std::string& name) const;
+
   Type* lookup_type_allow_partial_def(const TypeSpec& ts) const;
   Type* lookup_type_allow_partial_def(const std::string& name) const;
 
   int get_load_size_allow_partial_def(const TypeSpec& ts) const;
 
   MethodInfo override_method(Type* type,
-                             const std::string& type_name,
-                             const int method_id,
+                             const std::string& method_name,
                              const std::optional<std::string>& docstring);
   MethodInfo declare_method(const std::string& type_name,
                             const std::string& method_name,
@@ -175,8 +177,12 @@ class TypeSystem {
                             const std::optional<std::string>& docstring,
                             bool no_virtual,
                             const TypeSpec& ts,
-                            bool override_type,
-                            int id = -1);
+                            bool override_type);
+  MethodInfo overlay_method(Type* type,
+                            const std::string& method_name,
+                            const std::string& method_overlay_name,
+                            const std::optional<std::string>& docstring,
+                            const TypeSpec& ts);
   MethodInfo define_method(const std::string& type_name,
                            const std::string& method_name,
                            const TypeSpec& ts,
@@ -228,7 +234,7 @@ class TypeSystem {
                            bool print_on_error = true,
                            bool throw_on_error = true,
                            bool allow_type_alias = false) const;
-  bool tc(const TypeSpec& expected, const TypeSpec& actual) const;
+  bool tc(const TypeSpec& less_specific, const TypeSpec& more_specific) const;
   std::vector<std::string> get_path_up_tree(const std::string& type) const;
   int get_next_method_id(const Type* type) const;
 

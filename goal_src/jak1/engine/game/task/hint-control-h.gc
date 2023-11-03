@@ -9,6 +9,10 @@
 ;; Hints can belong to either a level or a task.  The hint-control types have
 ;; parameters about how often the hints should come, and what they are tied to.
 
+(define-extern reset-all-hint-controls (function none))
+(define-extern kill-current-level-hint (function pair pair symbol none))
+(define-extern level-hint-spawn (function text-id string entity process-tree game-task none))
+
 (defenum hint-command
   (if-unknown 0)
   (if-known 1)
@@ -26,41 +30,30 @@
   (if-at-most-need-reminder-a 13)
   )
 
+;; DECOMP BEGINS
+
 ;; information about an in-level hint. These aren't tied to a specific object or task.
 (deftype level-hint-control (structure)
-  ((delay-before-playing        time-frame    :offset-assert 0)
-   (id                          text-id  :offset-assert 8)
-   (num-attempts-before-playing int8          :offset-assert 12)
-   (num-success-before-killing  int8          :offset-assert 13)
-   (num-attempts                int8          :offset-assert 14)
-   (num-success                 int8          :offset-assert 15)
-   (start-time                  time-frame    :offset-assert 16)
-   (last-time-called            time-frame    :offset-assert 24)
+  ((delay-before-playing         time-frame)
+   (id                           text-id)
+   (num-attempts-before-playing  int8)
+   (num-success-before-killing   int8)
+   (num-attempts                 int8)
+   (num-success                  int8)
+   (start-time                   time-frame)
+   (last-time-called             time-frame)
    )
-  :method-count-assert 9
-  :size-assert         #x20
-  :flag-assert         #x900000020
   )
 
 ;; a "task hint" is explicitly tied to an in-game task.
 (deftype task-hint-control (structure)
-  ((task  game-task   :offset-assert 0)
-   (delay time-frame  :offset-assert 8)
+  ((task   game-task)
+   (delay  time-frame)
    )
-  :method-count-assert 9
-  :size-assert         #x10
-  :flag-assert         #x900000010
   )
+
 
 (deftype task-hint-control-group (structure)
-  ((tasks (array task-hint-control)  :offset-assert 0)
+  ((tasks  (array task-hint-control))
    )
-  :method-count-assert 9
-  :size-assert         #x4
-  :flag-assert         #x900000004
   )
-
-(define-extern reset-all-hint-controls (function none))
-(define-extern kill-current-level-hint (function pair pair symbol none))
-(define-extern level-hint-spawn (function text-id string entity process-tree game-task none))
-

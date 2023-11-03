@@ -10,150 +10,127 @@
 
 ;; There are also some non-syncronized movement helpers in here.
 
+;; DECOMP BEGINS
+
 ;; Simplest synchronization. Simply counts up, then resets once it reaches period.
 ;; For example, this is used to synchronize the "pies" in citadel.
 (deftype sync-info (structure)
-  ((offset float   :offset-assert   0) ;; offset, stored as a time, not a phase.
-   (period uint32  :offset-assert   4) ;; period, stored in seconds units
+  ((offset  float) ;; offset, stored as a time, not a phase.
+   (period  uint32);; period, stored in seconds units
    )
   :pack-me
-  :method-count-assert 18
-  :size-assert         #x8
-  :flag-assert         #x1200000008
   (:methods
-   (get-current-value (_type_ float) float 9)
-   (get-current-phase-no-mod (_type_) float 10)
-   (get-current-phase (_type_) float 11)
-   (get-current-value-with-mirror (_type_ float) float 12)
-   (get-current-phase-with-mirror (_type_) float 13)
-   (setup-params! (_type_ uint float float float) none 14)
-   (load-params! (_type_ process uint float float float) symbol 15)
-   (sync-now! (_type_ float) float 16)
-   (get-phase-offset (_type_) float 17)
-   )
+    (get-current-value (_type_ float) float)
+    (get-current-phase-no-mod (_type_) float)
+    (get-current-phase (_type_) float)
+    (get-current-value-with-mirror (_type_ float) float)
+    (get-current-phase-with-mirror (_type_) float)
+    (setup-params! (_type_ uint float float float) none)
+    (load-params! (_type_ process uint float float float) symbol)
+    (sync-now! (_type_ float) float)
+    (get-phase-offset (_type_) float)
+    )
   )
 
 ;; Syncronized, but also includes some smoothing at the beginning.
 ;; This is used for motion of platforms.
 (deftype sync-info-eased (sync-info)
-  ((tlo    float   :offset-assert 8)
-   (thi    float   :offset-assert 12)
-   (ylo    float   :offset-assert 16)
-   (m2     float   :offset-assert 20)
-   (yend   float   :offset-assert 24)
+  ((tlo   float)
+   (thi   float)
+   (ylo   float)
+   (m2    float)
+   (yend  float)
    )
   :allow-misaligned
-  :method-count-assert 18
-  :size-assert         #x1c
-  :flag-assert         #x120000001c
   )
 
 ;; Syncronized, but includes a pause.
 ;; This is used for whirlpools in lpc and the pushers in the yellow-eco room in snowy
 (deftype sync-info-paused (sync-info)
-  ((pause-after-out float   :offset-assert 8)
-   (pause-after-in  float   :offset-assert 12)
+  ((pause-after-out  float)
+   (pause-after-in   float)
    )
   :pack-me
-  :method-count-assert 18
-  :size-assert         #x10
-  :flag-assert         #x1200000010
   )
 
 ;; This is a strange one. After a random amount of time, it changes to a random value.
 (deftype delayed-rand-float (structure)
-  ((min-time   int32   :offset-assert 0)
-   (max-time   int32   :offset-assert 4)
-   (max-val    float   :offset-assert 8)
-   (timer      int32   :offset-assert 12)
-   (start-time time-frame   :offset-assert 16)
-   (value      float   :offset-assert 24)
+  ((min-time    int32)
+   (max-time    int32)
+   (max-val     float)
+   (timer       int32)
+   (start-time  time-frame)
+   (value       float)
    )
   :pack-me
-  :method-count-assert 11
-  :size-assert         #x1c
-  :flag-assert         #xb0000001c
   (:methods
-    (set-params! (_type_ int int float) float 9)
-    (update! (_type_ ) float 10)
+    (set-params! (_type_ int int float) float)
+    (update! (_type_) float)
     )
   )
 
 ;; second order oscillating float.
 (deftype oscillating-float (structure)
-  ((value   float  :offset-assert   0)
-   (target  float  :offset-assert   4)
-   (vel     float  :offset-assert   8)
-   (max-vel float  :offset-assert  12)
-   (damping float  :offset-assert  16)
-   (accel   float  :offset-assert  20)
+  ((value    float)
+   (target   float)
+   (vel      float)
+   (max-vel  float)
+   (damping  float)
+   (accel    float)
    )
   :pack-me
-  :method-count-assert 11
-  :size-assert         #x18
-  :flag-assert         #xb00000018
   (:methods
-   (set-params! (_type_ float float float float) float 9)
-   (update! (_type_ float) float 10)
-   )
+    (set-params! (_type_ float float float float) float)
+    (update! (_type_ float) float)
+    )
   )
 
 ;; float that "bounces".
 (deftype bouncing-float (structure)
-  ((osc        oscillating-float :inline :offset-assert   0)
-   (max-value  float                     :offset-assert  24)
-   (min-value  float                     :offset-assert  28)
-   (elasticity float                     :offset-assert  32)
-   (state      int32                     :offset-assert  36)
+  ((osc         oscillating-float  :inline)
+   (max-value   float)
+   (min-value   float)
+   (elasticity  float)
+   (state       int32)
    )
   :pack-me
-  :method-count-assert 13
-  :size-assert         #x28
-  :flag-assert         #xd00000028
   (:methods
-   (set-params! (_type_ float float float float float float float) float 9)
-   (update! (_type_ float) float 10)
-   (at-min? (_type_) symbol 11)
-   (at-max? (_type_) symbol 12)
-   )
+    (set-params! (_type_ float float float float float float float) float)
+    (update! (_type_ float) float)
+    (at-min? (_type_) symbol)
+    (at-max? (_type_) symbol)
+    )
   )
 
 ;; like delayed-rand-float, but does 4 at a time.
 (deftype delayed-rand-vector (structure)
-  ((min-time   int32          :offset-assert   0)
-   (max-time   int32          :offset-assert   4)
-   (xz-max     float          :offset-assert   8)
-   (y-max      float          :offset-assert  12)
-   (timer      int32          :offset-assert  16)
-   (start-time time-frame          :offset-assert  24)
-   (value      vector :inline :offset-assert  32)
+  ((min-time    int32)
+   (max-time    int32)
+   (xz-max      float)
+   (y-max       float)
+   (timer       int32)
+   (start-time  time-frame)
+   (value       vector  :inline)
    )
-  :method-count-assert 13
-  :size-assert         #x30
-  :flag-assert         #xd00000030
   (:methods
-   (set-params! (_type_ int int float float) vector 9)
-   (update-now! (_type_) vector 10)
-   (update-with-delay! (_type_) vector 11)
-   (update-with-delay-or-reset! (_type_) vector 12)
-   )
+    (set-params! (_type_ int int float float) vector)
+    (update-now! (_type_) vector)
+    (update-with-delay! (_type_) vector)
+    (update-with-delay-or-reset! (_type_) vector)
+    )
   )
 
 ;; like oscillating-float, but does 4 at a time.
 (deftype oscillating-vector (structure)
-  ((value   vector :inline :offset-assert   0)
-   (target  vector :inline :offset-assert  16)
-   (vel     vector :inline :offset-assert  32)
-   (max-vel float          :offset-assert  48)
-   (damping float          :offset-assert  52)
-   (accel   float          :offset-assert  56)
+  ((value    vector  :inline)
+   (target   vector  :inline)
+   (vel      vector  :inline)
+   (max-vel  float)
+   (damping  float)
+   (accel    float)
    )
-  :method-count-assert 11
-  :size-assert         #x3c
-  :flag-assert         #xb0000003c
   (:methods
-   (set-params! (_type_ vector float float float) vector 9)
-   (update! (_type_ vector) vector 10)
-   )
+    (set-params! (_type_ vector float float float) vector)
+    (update! (_type_ vector) vector)
+    )
   )
-

@@ -7,9 +7,9 @@
 
 ;; DECOMP BEGINS
 
-(defmethod get-free-node-count touching-prims-entry-pool ((obj touching-prims-entry-pool))
+(defmethod get-free-node-count ((this touching-prims-entry-pool))
   (let ((v0-0 0))
-    (let ((v1-0 (-> obj head)))
+    (let ((v1-0 (-> this head)))
       (while v1-0
         (+! v0-0 1)
         (set! v1-0 (-> v1-0 next))
@@ -22,12 +22,12 @@
     )
   )
 
-(defmethod alloc-node touching-prims-entry-pool ((obj touching-prims-entry-pool))
-  (let ((gp-0 (-> obj head)))
+(defmethod alloc-node ((this touching-prims-entry-pool))
+  (let ((gp-0 (-> this head)))
     (cond
       (gp-0
         (let ((v1-0 (-> gp-0 next)))
-          (set! (-> obj head) v1-0)
+          (set! (-> this head) v1-0)
           (if v1-0
               (set! (-> v1-0 prev) #f)
               )
@@ -44,13 +44,13 @@
     )
   )
 
-(defmethod free-node touching-prims-entry-pool ((obj touching-prims-entry-pool) (arg0 touching-prims-entry))
+(defmethod free-node ((this touching-prims-entry-pool) (arg0 touching-prims-entry))
   (when (-> arg0 allocated?)
     (set! (-> arg0 allocated?) #f)
-    (let ((v1-1 (-> obj head)))
+    (let ((v1-1 (-> this head)))
       (set! (-> arg0 next) v1-1)
       (set! (-> arg0 prev) #f)
-      (set! (-> obj head) arg0)
+      (set! (-> this head) arg0)
       (when v1-1
         (set! (-> v1-1 prev) arg0)
         arg0
@@ -59,12 +59,12 @@
     )
   )
 
-(defmethod free-touching-prims-list touching-shapes-entry ((obj touching-shapes-entry))
-  (when (-> obj cshape1)
-    (set! (-> obj cshape1) #f)
-    (let ((gp-0 (-> obj head)))
+(defmethod free-touching-prims-list ((this touching-shapes-entry))
+  (when (-> this cshape1)
+    (set! (-> this cshape1) #f)
+    (let ((gp-0 (-> this head)))
       (when gp-0
-        (set! (-> obj head) #f)
+        (set! (-> this head) #f)
         (let ((s5-0 *touching-prims-entry-pool*))
           (while gp-0
             (let ((a1-0 gp-0))
@@ -80,24 +80,24 @@
   (none)
   )
 
-(defmethod free-nodes touching-list ((obj touching-list))
-  (let ((s5-0 (the-as touching-shapes-entry (-> obj touching-shapes))))
-    (countdown (s4-0 (-> obj num-touching-shapes))
+(defmethod free-nodes ((this touching-list))
+  (let ((s5-0 (the-as touching-shapes-entry (-> this touching-shapes))))
+    (countdown (s4-0 (-> this num-touching-shapes))
       (free-touching-prims-list s5-0)
       (&+! s5-0 32)
       )
     )
-  (set! (-> obj num-touching-shapes) 0)
-  (set! (-> obj resolve-u) 0)
+  (set! (-> this num-touching-shapes) 0)
+  (set! (-> this resolve-u) 0)
   0
   (none)
   )
 
 ;; WARN: Return type mismatch object vs touching-shapes-entry.
-(defmethod get-shapes-entry touching-list ((obj touching-list) (shape1 collide-shape) (shape2 collide-shape))
-  (let ((entry (the-as touching-shapes-entry (-> obj touching-shapes))))
+(defmethod get-shapes-entry ((this touching-list) (shape1 collide-shape) (shape2 collide-shape))
+  (let ((entry (the-as touching-shapes-entry (-> this touching-shapes))))
     (let ((v1-0 (the-as touching-shapes-entry #f)))
-      (countdown (a3-0 (-> obj num-touching-shapes))
+      (countdown (a3-0 (-> this num-touching-shapes))
         (let ((t0-0 (-> entry cshape1)))
           (set! v1-0
                 (cond
@@ -120,11 +120,11 @@
           (set! entry v1-0)
           )
         (else
-          (when (>= (-> obj num-touching-shapes) 32)
+          (when (>= (-> this num-touching-shapes) 32)
             (format 0 "ERROR: touching-list::get-shapes-entry() failed!~%")
             (return (the-as touching-shapes-entry #f))
             )
-          (+! (-> obj num-touching-shapes) 1)
+          (+! (-> this num-touching-shapes) 1)
           )
         )
       )
@@ -132,7 +132,7 @@
     (set! (-> entry cshape2) shape2)
     (set! (-> entry head) #f)
     (set! (-> entry resolve-u) 1)
-    (set! (-> obj resolve-u) 1)
+    (set! (-> this resolve-u) 1)
     (set! (-> entry handle1) (process->handle (-> shape1 process)))
     (set! (-> entry handle2) (process->handle (-> shape2 process)))
     (the-as touching-shapes-entry entry)
@@ -140,27 +140,24 @@
   )
 
 (deftype add-prims-touching-work (structure)
-  ((tri1 collide-tri-result  :offset-assert   0)
-   (tri2 collide-tri-result  :offset-assert   4)
+  ((tri1  collide-tri-result)
+   (tri2  collide-tri-result)
    )
-  :method-count-assert 9
-  :size-assert         #x8
-  :flag-assert         #x900000008
   )
 
 
 ;; WARN: Function (method 9 touching-list) has a return type of none, but the expression builder found a return statement.
-(defmethod add-touching-prims touching-list ((obj touching-list)
-                                           (arg0 collide-shape-prim)
-                                           (arg1 collide-shape-prim)
-                                           (arg2 float)
-                                           (arg3 collide-tri-result)
-                                           (arg4 collide-tri-result)
-                                           )
+(defmethod add-touching-prims ((this touching-list)
+                              (arg0 collide-shape-prim)
+                              (arg1 collide-shape-prim)
+                              (arg2 float)
+                              (arg3 collide-tri-result)
+                              (arg4 collide-tri-result)
+                              )
   (let ((gp-0 (new 'stack-no-clear 'add-prims-touching-work)))
     (set! (-> gp-0 tri1) arg3)
     (set! (-> gp-0 tri2) arg4)
-    (let ((s2-0 (get-shapes-entry obj (-> arg0 cshape) (-> arg1 cshape))))
+    (let ((s2-0 (get-shapes-entry this (-> arg0 cshape) (-> arg1 cshape))))
       (when s2-0
         (when (= (-> s2-0 cshape1) (-> arg1 cshape))
           (let ((v1-4 arg0))
@@ -218,7 +215,7 @@
             (set! (-> s0-1 u) arg2)
             (when (>= arg2 0.0)
               (set! (-> s2-0 resolve-u) 1)
-              (set! (-> obj resolve-u) 1)
+              (set! (-> this resolve-u) 1)
               )
             (let ((v1-26 (-> s0-1 prim1))
                   (a1-4 (-> gp-0 tri1))
@@ -257,11 +254,11 @@
   (none)
   )
 
-(defmethod update-from-step-size touching-list ((obj touching-list) (arg0 float))
-  (when (nonzero? (-> obj resolve-u))
-    (set! (-> obj resolve-u) 0)
-    (let ((s5-0 (the-as touching-shapes-entry (-> obj touching-shapes))))
-      (countdown (s4-0 (-> obj num-touching-shapes))
+(defmethod update-from-step-size ((this touching-list) (arg0 float))
+  (when (nonzero? (-> this resolve-u))
+    (set! (-> this resolve-u) 0)
+    (let ((s5-0 (the-as touching-shapes-entry (-> this touching-shapes))))
+      (countdown (s4-0 (-> this num-touching-shapes))
         (when (nonzero? (-> s5-0 resolve-u))
           (set! (-> s5-0 resolve-u) 0)
           (when (-> s5-0 cshape1)
@@ -316,9 +313,9 @@
   (none)
   )
 
-(defmethod send-events-for-touching-shapes touching-list ((obj touching-list))
-  (let ((gp-0 (the-as touching-shapes-entry (-> obj touching-shapes))))
-    (countdown (s5-0 (-> obj num-touching-shapes))
+(defmethod send-events-for-touching-shapes ((this touching-list))
+  (let ((gp-0 (the-as touching-shapes-entry (-> this touching-shapes))))
+    (countdown (s5-0 (-> this num-touching-shapes))
       (let ((s3-0 (-> gp-0 cshape1)))
         (when s3-0
           (let ((s4-0 (handle->process (-> gp-0 handle1)))
@@ -368,10 +365,10 @@
   (none)
   )
 
-(defmethod prims-touching? touching-shapes-entry ((obj touching-shapes-entry) (arg0 collide-shape) (arg1 uint))
+(defmethod prims-touching? ((this touching-shapes-entry) (arg0 collide-shape) (arg1 uint))
   (cond
-    ((= (-> obj cshape1) arg0)
-     (let ((v1-1 (-> obj head)))
+    ((= (-> this cshape1) arg0)
+     (let ((v1-1 (-> this head)))
        (while v1-1
          (if (logtest? (-> v1-1 prim1 cprim prim-id) arg1)
              (return v1-1)
@@ -380,8 +377,8 @@
          )
        )
      )
-    ((= (-> obj cshape2) arg0)
-     (let ((v1-4 (-> obj head)))
+    ((= (-> this cshape2) arg0)
+     (let ((v1-4 (-> this head)))
        (while v1-4
          (if (logtest? (-> v1-4 prim2 cprim prim-id) arg1)
              (return v1-4)
@@ -398,10 +395,10 @@
   )
 
 ;; WARN: Return type mismatch touching-prims-entry vs basic.
-(defmethod prims-touching-action? touching-shapes-entry ((obj touching-shapes-entry) (arg0 collide-shape) (arg1 collide-action) (arg2 collide-action))
+(defmethod prims-touching-action? ((this touching-shapes-entry) (arg0 collide-shape) (arg1 collide-action) (arg2 collide-action))
   (cond
-    ((= (-> obj cshape1) arg0)
-     (let ((v1-1 (-> obj head)))
+    ((= (-> this cshape1) arg0)
+     (let ((v1-1 (-> this head)))
        (while v1-1
          (let ((a0-1 (-> v1-1 prim1 cprim)))
            (if (and (logtest? arg1 (-> a0-1 prim-core action)) (not (logtest? arg2 (-> a0-1 prim-core action))))
@@ -412,8 +409,8 @@
          )
        )
      )
-    ((= (-> obj cshape2) arg0)
-     (let ((v1-4 (-> obj head)))
+    ((= (-> this cshape2) arg0)
+     (let ((v1-4 (-> this head)))
        (while v1-4
          (let ((a0-5 (-> v1-4 prim2 cprim)))
            (if (and (logtest? arg1 (-> a0-5 prim-core action)) (not (logtest? arg2 (-> a0-5 prim-core action))))
@@ -431,44 +428,44 @@
   (the-as basic #f)
   )
 
-(defmethod get-touched-shape touching-shapes-entry ((obj touching-shapes-entry) (arg0 collide-shape))
+(defmethod get-touched-shape ((this touching-shapes-entry) (arg0 collide-shape))
   (cond
-    ((= (-> obj cshape1) arg0)
-     (return (-> obj cshape2))
+    ((= (-> this cshape1) arg0)
+     (return (-> this cshape2))
      )
-    ((= (-> obj cshape2) arg0)
-     (return (-> obj cshape1))
+    ((= (-> this cshape2) arg0)
+     (return (-> this cshape1))
      )
     )
   (the-as collide-shape #f)
   )
 
-(defmethod get-touched-prim touching-prims-entry ((obj touching-prims-entry) (arg0 collide-shape) (arg1 touching-shapes-entry))
+(defmethod get-touched-prim ((this touching-prims-entry) (arg0 collide-shape) (arg1 touching-shapes-entry))
   (cond
     ((= (-> arg1 cshape1) arg0)
-     (return (-> obj prim1 cprim))
+     (return (-> this prim1 cprim))
      )
     ((= (-> arg1 cshape2) arg0)
-     (return (-> obj prim2 cprim))
+     (return (-> this prim2 cprim))
      )
     )
   (the-as collide-shape-prim #f)
   )
 
-(defmethod get-touched-tri touching-prims-entry ((obj touching-prims-entry) (arg0 collide-shape) (arg1 touching-shapes-entry))
+(defmethod get-touched-tri ((this touching-prims-entry) (arg0 collide-shape) (arg1 touching-shapes-entry))
   (let ((v0-0 (the-as collide-tri-result #f)))
     (cond
-      ((not obj)
+      ((not this)
        )
       ((= (-> arg1 cshape1) arg0)
-       (let ((v1-4 (-> obj prim1)))
+       (let ((v1-4 (-> this prim1)))
          (if (-> v1-4 has-tri?)
              (set! v0-0 (-> v1-4 tri))
              )
          )
        )
       ((= (-> arg1 cshape2) arg0)
-       (let ((v1-7 (-> obj prim2)))
+       (let ((v1-7 (-> this prim2)))
          (if (-> v1-7 has-tri?)
              (set! v0-0 (-> v1-7 tri))
              )
@@ -479,9 +476,9 @@
     )
   )
 
-(defmethod get-middle-of-bsphere-overlap touching-prims-entry ((obj touching-prims-entry) (arg0 vector))
-  (let* ((s4-0 (-> obj prim1 cprim))
-         (v1-0 (-> obj prim2 cprim))
+(defmethod get-middle-of-bsphere-overlap ((this touching-prims-entry) (arg0 vector))
+  (let* ((s4-0 (-> this prim1 cprim))
+         (v1-0 (-> this prim2 cprim))
          (gp-1 (vector-!
                  (new 'stack-no-clear 'vector)
                  (the-as vector (-> v1-0 prim-core))

@@ -8,58 +8,54 @@
 
 ;; definition of type racer
 (deftype racer (process-drawable)
-  ((parent-override (pointer target)             :offset         12)
-   (root-override   collide-shape-moving         :offset        112)
-   (extra-trans     vector               :inline :offset-assert 176)
-   (condition       int32                        :offset-assert 192)
-   (cell            handle                       :offset-assert 200)
-   (path-data       path-control         2       :offset-assert 208)
-   (path-target     curve-control                :offset        208)
-   (path-racer      path-control                 :offset        212)
-   (auto-get-off    symbol                       :offset-assert 216)
-   (shadow-backup   shadow-geo                   :offset-assert 220)
+  ((root             collide-shape-moving :override)
+   (parent-override  (pointer target)      :overlay-at parent)
+   (extra-trans      vector                :inline)
+   (condition        int32)
+   (cell             handle)
+   (path-data        path-control          2)
+   (path-target      curve-control         :overlay-at (-> path-data 0))
+   (path-racer       path-control          :overlay-at (-> path-data 1))
+   (auto-get-off     symbol)
+   (shadow-backup    shadow-geo)
    )
-  :heap-base #x70
-  :method-count-assert 24
-  :size-assert         #xe0
-  :flag-assert         #x18007000e0
-  (:methods
-    (wait-for-start () _type_ :state 20)
-    (idle () _type_ :state 21)
-    (pickup ((state collectable)) _type_ :state 22)
-    (wait-for-return () _type_ :state 23)
+  (:state-methods
+    wait-for-start
+    idle
+    (pickup (state collectable))
+    wait-for-return
     )
   )
 
 ;; definition for method 3 of type racer
-(defmethod inspect racer ((obj racer))
+(defmethod inspect ((this racer))
   (let ((t9-0 (method-of-type process-drawable inspect)))
-    (t9-0 obj)
+    (t9-0 this)
     )
-  (format #t "~T~Textra-trans: ~`vector`P~%" (-> obj extra-trans))
-  (format #t "~T~Tcondition: ~D~%" (-> obj condition))
-  (format #t "~T~Tcell: ~D~%" (-> obj cell))
-  (format #t "~T~Tpath-data[2] @ #x~X~%" (-> obj path-data))
-  (format #t "~T~Tpath-target: ~A~%" (-> obj path-target))
-  (format #t "~T~Tpath-racer: ~A~%" (-> obj path-racer))
-  (format #t "~T~Tauto-get-off: ~A~%" (-> obj auto-get-off))
-  (format #t "~T~Tshadow-backup: ~A~%" (-> obj shadow-backup))
-  obj
+  (format #t "~T~Textra-trans: ~`vector`P~%" (-> this extra-trans))
+  (format #t "~T~Tcondition: ~D~%" (-> this condition))
+  (format #t "~T~Tcell: ~D~%" (-> this cell))
+  (format #t "~T~Tpath-data[2] @ #x~X~%" (-> this path-data))
+  (format #t "~T~Tpath-target: ~A~%" (-> this path-target))
+  (format #t "~T~Tpath-racer: ~A~%" (-> this path-racer))
+  (format #t "~T~Tauto-get-off: ~A~%" (-> this auto-get-off))
+  (format #t "~T~Tshadow-backup: ~A~%" (-> this shadow-backup))
+  this
   )
 
 ;; definition for method 7 of type racer
 ;; INFO: Return type mismatch process-drawable vs racer.
-(defmethod relocate racer ((obj racer) (arg0 int))
+(defmethod relocate ((this racer) (arg0 int))
   (countdown (v1-0 2)
-    (if (-> obj path-data v1-0)
-        (&+! (-> obj path-data v1-0) arg0)
+    (if (-> this path-data v1-0)
+        (&+! (-> this path-data v1-0) arg0)
         )
     )
-  (the-as racer ((method-of-type process-drawable relocate) obj arg0))
+  (the-as racer ((method-of-type process-drawable relocate) this arg0))
   )
 
 ;; failed to figure out what this is:
-(defskelgroup *racer-sg* racer racer-geo-jg 3
+(defskelgroup *racer-sg* racer racer-geo-jg racer-racer-idle-ja
               ((racer-geo-mg (meters 999999)))
               :bounds (static-spherem 0 0 0 3.5)
               :shadow racer-shadow-mg
@@ -87,7 +83,7 @@
 ;; INFO: Return type mismatch int vs none.
 (defbehavior racer-effect racer ()
   (when (!= (-> self condition) 4)
-    (spawn (-> self part) (-> self root-override trans))
+    (spawn (-> self part) (-> self root trans))
     (update! (-> self sound))
     )
   0
@@ -97,40 +93,36 @@
 ;; failed to figure out what this is:
 (defstate wait-for-start (racer)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
     (local-vars (v0-1 structure))
-    (the-as
-      object
-      (case event-type
-        (('trans)
-         (vector+! (the-as vector (-> event param 0)) (-> self root-override trans) (-> self extra-trans))
-         )
-        (('notify)
-         (set! v0-1 #t)
-         (set! (-> self auto-get-off) (the-as symbol v0-1))
-         v0-1
-         )
-        (('shadow)
-         (cond
-           ((-> event param 0)
-            (set! v0-1 (-> self shadow-backup))
-            (set! (-> self draw shadow) (the-as shadow-geo v0-1))
-            v0-1
-            )
-           (else
-             (set! (-> self draw shadow) #f)
-             #f
-             )
+    (case message
+      (('trans)
+       (vector+! (the-as vector (-> block param 0)) (-> self root trans) (-> self extra-trans))
+       )
+      (('notify)
+       (set! v0-1 #t)
+       (set! (-> self auto-get-off) (the-as symbol v0-1))
+       v0-1
+       )
+      (('shadow)
+       (cond
+         ((-> block param 0)
+          (set! v0-1 (-> self shadow-backup))
+          (set! (-> self draw shadow) (the-as shadow-geo v0-1))
+          v0-1
+          )
+         (else
+           (set! (-> self draw shadow) #f)
+           #f
            )
          )
-        )
+       )
       )
     )
   :exit (behavior ()
-    (set! (-> self root-override root-prim prim-core action) (collide-action))
-    (set! (-> self root-override root-prim prim-core offense) (collide-offense no-offense))
+    (set! (-> self root root-prim prim-core action) (collide-action))
+    (set! (-> self root root-prim prim-core offense) (collide-offense no-offense))
     0
-    (none)
     )
   :code (behavior ()
     (label cfg-0)
@@ -144,9 +136,9 @@
          (case (current-status gp-0)
            (((task-status need-reward-speech))
             (ja-channel-set! 1)
-            (ja :group! (-> self draw art-group data 3))
-            (set! (-> self root-override root-prim prim-core action) (collide-action solid attackable-unused))
-            (set! (-> self root-override root-prim prim-core offense) (collide-offense indestructible))
+            (ja :group! racer-racer-idle-ja)
+            (set! (-> self root root-prim prim-core action) (collide-action solid attackable-unused))
+            (set! (-> self root root-prim prim-core offense) (collide-offense indestructible))
             (ja-post)
             )
            (((task-status invalid))
@@ -187,7 +179,7 @@
           (set! (-> self cell)
                 (ppointer->handle
                   (birth-pickup-at-point
-                    (vector+! (new 'stack-no-clear 'vector) (-> self root-override trans) (new 'static 'vector :y 8192.0 :w 1.0))
+                    (vector+! (new 'stack-no-clear 'vector) (-> self root trans) (new 'static 'vector :y 8192.0 :w 1.0))
                     (pickup-type fuel-cell)
                     (the float (-> self entity extra perm task))
                     #f
@@ -216,7 +208,6 @@
         (go-virtual wait-for-return)
         (go-virtual idle)
         )
-    (none)
     )
   )
 
@@ -227,14 +218,13 @@
   :enter (behavior ()
     (blocking-plane-destroy)
     (blocking-plane-spawn (-> self path-target))
-    (none)
     )
   :exit (-> (method-of-type racer wait-for-start) exit)
   :code (behavior ()
     (ja-channel-set! 1)
-    (ja :group! (-> self draw art-group data 3))
-    (set! (-> self root-override root-prim prim-core action) (collide-action solid attackable-unused))
-    (set! (-> self root-override root-prim prim-core offense) (collide-offense indestructible))
+    (ja :group! racer-racer-idle-ja)
+    (set! (-> self root root-prim prim-core action) (collide-action solid attackable-unused))
+    (set! (-> self root root-prim prim-core offense) (collide-offense indestructible))
     0.0
     (let ((f30-0 (if (= (-> self condition) 4)
                      61440.0
@@ -246,7 +236,7 @@
         (if (and *target* (logtest? (-> *target* control root-prim prim-core action) (collide-action racer)))
             (go-virtual wait-for-return)
             )
-        (when (and (and *target* (>= f30-0 (vector-vector-distance (-> self root-override trans) (-> *target* control trans))))
+        (when (and (and *target* (>= f30-0 (vector-vector-distance (-> self root trans) (-> *target* control trans))))
                    (and (not (movie?)) (not (level-hint-displayed?)))
                    )
           (hide-hud)
@@ -275,32 +265,31 @@
         (suspend)
         )
       )
-    (none)
     )
-  :post (the-as (function none :behavior racer) ja-post)
+  :post ja-post
   )
 
 ;; failed to figure out what this is:
 (defstate pickup (racer)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('draw)
        (ja-channel-set! 1)
-       (ja :group! (-> self draw art-group data 3))
-       (set! (-> self root-override root-prim prim-core action) (collide-action solid attackable-unused))
-       (set! (-> self root-override root-prim prim-core offense) (collide-offense indestructible))
+       (ja :group! racer-racer-idle-ja)
+       (set! (-> self root root-prim prim-core action) (collide-action solid attackable-unused))
+       (set! (-> self root root-prim prim-core offense) (collide-offense indestructible))
        (transform-post)
        )
       (('trans)
-       (vector+! (the-as vector (-> event param 0)) (-> self root-override trans) (-> self extra-trans))
+       (vector+! (the-as vector (-> block param 0)) (-> self root trans) (-> self extra-trans))
        )
       (('touch 'attack)
        #f
        )
       (('shadow)
        (cond
-         ((-> event param 0)
+         ((-> block param 0)
           (let ((v0-1 (the-as object (-> self shadow-backup))))
             (set! (-> self draw shadow) (the-as shadow-geo v0-1))
             v0-1
@@ -316,15 +305,12 @@
     )
   :enter (behavior ((arg0 (state collectable)))
     ((the-as (function none :behavior racer) (-> arg0 enter)))
-    (none)
     )
   :code (behavior ((arg0 (state collectable)))
     (ja-channel-set! 0)
     (ja-post)
     (while (zero? (ja-group-size))
-      (when (or (not *target*)
-                (< 24576.0 (vector-vector-distance (-> self root-override trans) (-> *target* control trans)))
-                )
+      (when (or (not *target*) (< 24576.0 (vector-vector-distance (-> self root trans) (-> *target* control trans))))
         (when (and *target* (logtest? (-> *target* control root-prim prim-core action) (collide-action racer)))
           (case (-> (level-get-target-inside *level*) name)
             (('misty)
@@ -342,53 +328,48 @@
       (racer-effect)
       (suspend)
       )
-    (let ((s5-0 (-> *display* base-frame-counter)))
-      (until (>= (- (-> *display* base-frame-counter) s5-0) (seconds 1))
+    (let ((s5-0 (current-time)))
+      (until (time-elapsed? s5-0 (seconds 1))
         (racer-effect)
         (suspend)
         )
       )
     (go arg0)
-    (none)
     )
   )
 
 ;; failed to figure out what this is:
 (defstate wait-for-return (racer)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (if (and (or (= event-type 'touch) (= event-type 'attack))
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (if (and (or (= message 'touch) (= message 'attack))
              (and (!= (-> self condition) 4) (send-event *target* 'end-mode))
              )
         (go-virtual pickup (the-as (state collectable) (method-of-object self idle)))
         )
-    (the-as
-      object
-      (cond
-        ((= event-type 'trans)
-         (vector+! (the-as vector (-> event param 0)) (-> self root-override trans) (-> self extra-trans))
-         )
-        ((= event-type 'shadow)
-         (cond
-           ((-> event param 0)
-            (let ((v0-3 (the-as structure (-> self shadow-backup))))
-              (set! (-> self draw shadow) (the-as shadow-geo v0-3))
-              v0-3
-              )
+    (cond
+      ((= message 'trans)
+       (vector+! (the-as vector (-> block param 0)) (-> self root trans) (-> self extra-trans))
+       )
+      ((= message 'shadow)
+       (cond
+         ((-> block param 0)
+          (let ((v0-3 (the-as structure (-> self shadow-backup))))
+            (set! (-> self draw shadow) (the-as shadow-geo v0-3))
+            v0-3
             )
-           (else
-             (set! (-> self draw shadow) #f)
-             #f
-             )
+          )
+         (else
+           (set! (-> self draw shadow) #f)
+           #f
            )
          )
-        )
+       )
       )
     )
   :enter (behavior ()
     (blocking-plane-destroy)
     (blocking-plane-spawn (the-as curve-control (-> self path-racer)))
-    (none)
     )
   :code (behavior ()
     (ja-channel-set! 0)
@@ -400,14 +381,13 @@
       (racer-effect)
       (suspend)
       )
-    (none)
     )
   )
 
 ;; definition for method 11 of type racer
 ;; INFO: Return type mismatch object vs none.
-(defmethod init-from-entity! racer ((obj racer) (arg0 entity-actor))
-  (let ((s4-0 (new 'process 'collide-shape-moving obj (collide-list-enum hit-by-player))))
+(defmethod init-from-entity! ((this racer) (arg0 entity-actor))
+  (let ((s4-0 (new 'process 'collide-shape-moving this (collide-list-enum hit-by-player))))
     (set! (-> s4-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s4-0 reaction) default-collision-reaction)
     (set! (-> s4-0 no-reaction)
@@ -421,50 +401,50 @@
       )
     (set! (-> s4-0 nav-radius) (* 0.75 (-> s4-0 root-prim local-sphere w)))
     (backup-collide-with-as s4-0)
-    (set! (-> obj root-override) s4-0)
+    (set! (-> this root) s4-0)
     )
-  (process-drawable-from-entity! obj arg0)
-  (set-yaw-angle-clear-roll-pitch! (-> obj root-override) (res-lump-float arg0 'rotoffset))
-  (initialize-skeleton obj *racer-sg* '())
-  (set! (-> obj shadow-backup) (-> obj draw shadow))
-  (set! (-> obj draw shadow-ctrl) *racer-shadow-control*)
-  (let ((v1-23 (-> obj node-list data)))
+  (process-drawable-from-entity! this arg0)
+  (set-yaw-angle-clear-roll-pitch! (-> this root) (res-lump-float arg0 'rotoffset))
+  (initialize-skeleton this *racer-sg* '())
+  (set! (-> this shadow-backup) (-> this draw shadow))
+  (set! (-> this draw shadow-ctrl) *racer-shadow-control*)
+  (let ((v1-23 (-> this node-list data)))
     (set! (-> v1-23 0 param0) cspace<-transformq+trans!)
-    (set! (-> v1-23 0 param1) (the-as basic (-> obj root-override trans)))
-    (set! (-> v1-23 0 param2) (the-as basic (-> obj extra-trans)))
+    (set! (-> v1-23 0 param1) (the-as basic (-> this root trans)))
+    (set! (-> v1-23 0 param2) (the-as basic (-> this extra-trans)))
     )
-  (set! (-> obj condition) (res-lump-value arg0 'index int))
-  (set! (-> obj fact)
-        (new 'process 'fact-info obj (pickup-type eco-pill-random) (-> *FACT-bank* default-pill-inc))
+  (set! (-> this condition) (res-lump-value arg0 'index int))
+  (set! (-> this fact)
+        (new 'process 'fact-info this (pickup-type eco-pill-random) (-> *FACT-bank* default-pill-inc))
         )
-  (set! (-> obj part) (create-launch-control (-> *part-group-id-table* 115) obj))
+  (set! (-> this part) (create-launch-control (-> *part-group-id-table* 115) this))
   (dotimes (s5-1 2)
-    (let ((v1-32 (new 'process 'curve-control obj 'path (the float (+ s5-1 1)))))
-      (set! (-> obj path-data s5-1) v1-32)
+    (let ((v1-32 (new 'process 'curve-control this 'path (the float (+ s5-1 1)))))
+      (set! (-> this path-data s5-1) v1-32)
       (if v1-32
           (logior! (-> v1-32 flags) (path-control-flag display draw-line draw-point draw-text))
           )
       )
     )
-  (set! (-> obj path) (-> obj path-target))
-  (set-vector! (-> obj extra-trans) 0.0 6144.0 0.0 1.0)
-  (set! (-> obj auto-get-off) #f)
-  (move-to-ground (-> obj root-override) 40960.0 40960.0 #t (collide-kind background))
-  (set! (-> obj cell) (the-as handle #f))
+  (set! (-> this path) (-> this path-target))
+  (set-vector! (-> this extra-trans) 0.0 6144.0 0.0 1.0)
+  (set! (-> this auto-get-off) #f)
+  (move-to-ground (-> this root) 40960.0 40960.0 #t (collide-kind background))
+  (set! (-> this cell) (the-as handle #f))
   (blocking-plane-spawn
     (the-as
       curve-control
       (if (or (and *target* (logtest? (-> *target* control root-prim prim-core action) (collide-action racer)))
-              (= (-> obj condition) 3)
+              (= (-> this condition) 3)
               )
-          (-> obj path-racer)
-          (-> obj path-target)
+          (-> this path-racer)
+          (-> this path-target)
           )
       )
     )
-  (set! (-> obj sound)
-        (new 'process 'ambient-sound (static-sound-spec "zoom-teleport" :fo-max 30) (-> obj root-override trans))
+  (set! (-> this sound)
+        (new 'process 'ambient-sound (static-sound-spec "zoom-teleport" :fo-max 30) (-> this root trans))
         )
-  (go (method-of-object obj wait-for-start))
+  (go (method-of-object this wait-for-start))
   (none)
   )

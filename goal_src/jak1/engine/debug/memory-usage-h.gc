@@ -5,6 +5,11 @@
 ;; name in dgo: memory-usage-h
 ;; dgos: GAME, ENGINE
 
+;; DECOMP BEGINS
+
+;; this file is debug only
+(declare-file (debug))
+
 ;; The memory-usage system is used to track how much memory is used by tracking statistics for categories.
 ;; It can be used in different ways for different objects.
 ;; - DMA memory usage per renderer
@@ -15,29 +20,23 @@
 
 ;; Information for a single category.
 (deftype memory-usage-info (structure)
-  ((name  string :offset-assert 0)
-   (count int32  :offset-assert 4)  ;; meaning depends on category. For textures, it's the number of textures, for example.
-   (used  int32  :offset-assert 8)  ;; how much memory is in use (not counting padding)
-   (total int32  :offset-assert 12) ;; actual total memory used, including padding to 16-bytes, etc.
+  ((name   string)
+   (count  int32)
+   (used   int32)
+   (total  int32)
    )
-  :method-count-assert 9
-  :size-assert         #x10
-  :flag-assert         #x900000010
   )
 
 ;; Memory info for all categories
 (deftype memory-usage-block (basic)
-  ((work-bsp basic       :offset-assert 4)
-   (length   int32       :offset-assert 8)
-   (data     memory-usage-info 109 :inline :offset-assert 16)
+  ((work-bsp  basic)
+   (length    int32)
+   (data      memory-usage-info  109 :inline)
    )
-  :method-count-assert 12
-  :size-assert         #x6e0
-  :flag-assert         #xc000006e0
   (:methods
-    (reset! (_type_) _type_ 9)
-    (calculate-total (_type_) int 10)
-    (print-mem-usage (_type_ level object) none 11)
+    (reset! (_type_) _type_)
+    (calculate-total (_type_) int)
+    (print-mem-usage (_type_ level object) none)
     )
   )
 

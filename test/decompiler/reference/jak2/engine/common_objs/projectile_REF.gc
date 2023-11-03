@@ -16,27 +16,27 @@
 
 ;; definition for method 39 of type projectile
 ;; WARN: Return type mismatch int vs none.
-(defmethod play-impact-sound! projectile ((obj projectile))
+(defmethod play-impact-sound! ((this projectile))
   "Plays impact sound"
   0
   (none)
   )
 
 ;; definition for method 35 of type projectile
-(defmethod event-handler! projectile ((obj projectile) (arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+(defmethod event-handler! ((this projectile) (arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
   "Multiplex the projectile's event processing, called by [[projectile-event-handler]]"
   (case arg2
     (('track)
      (let ((v0-0 (the-as object (process->handle (the-as process (-> arg3 param 0))))))
-       (set! (-> obj last-target) (the-as handle v0-0))
+       (set! (-> this last-target) (the-as handle v0-0))
        v0-0
        )
      )
     (('touched 'touch)
-     (handle-proj-hit! obj arg0 arg3)
+     (handle-proj-hit! this arg0 arg3)
      )
     (('die)
-     (kill-projectile! obj)
+     (kill-projectile! this)
      )
     )
   )
@@ -50,33 +50,33 @@
 ;; definition for method 37 of type projectile
 ;; INFO: Used lq/sq
 ;; WARN: Return type mismatch object vs symbol.
-(defmethod deal-damage! projectile ((obj projectile) (arg0 process) (arg1 event-message-block))
+(defmethod deal-damage! ((this projectile) (arg0 process) (arg1 event-message-block))
   "Constructs an [[attack-info]] according to the projectile's `options`"
   (let ((v1-1 (new 'stack 'attack-info)))
     (let ((a0-2 v1-1))
-      (set! (-> a0-2 mode) (-> obj attack-mode))
-      (set! (-> a0-2 id) (-> obj attack-id))
-      (set! (-> a0-2 mask) (attack-info-mask mode id))
+      (set! (-> a0-2 mode) (-> this attack-mode))
+      (set! (-> a0-2 id) (-> this attack-id))
+      (set! (-> a0-2 mask) (attack-mask mode id))
       )
-    (when (!= (-> obj owner-handle) #f)
-      (set! (-> v1-1 attacker) (-> obj owner-handle))
-      (logior! (-> v1-1 mask) (attack-info-mask attacker))
+    (when (!= (-> this owner-handle) #f)
+      (set! (-> v1-1 attacker) (-> this owner-handle))
+      (logior! (-> v1-1 mask) (attack-mask attacker))
       )
-    (when (logtest? (-> obj options) (projectile-options account-for-target-velocity))
-      (set! (-> v1-1 attacker-velocity quad) (-> obj pre-move-transv quad))
-      (logior! (-> v1-1 mask) (attack-info-mask attacker-velocity))
+    (when (logtest? (-> this options) (projectile-options account-for-target-velocity))
+      (set! (-> v1-1 attacker-velocity quad) (-> this pre-move-transv quad))
+      (logior! (-> v1-1 mask) (attack-mask attacker-velocity))
       )
-    (when (logtest? (-> obj options) (projectile-options deal-damage))
-      (set! (-> v1-1 damage) (-> obj damage))
-      (logior! (-> v1-1 mask) (attack-info-mask damage))
+    (when (logtest? (-> this options) (projectile-options deal-damage))
+      (set! (-> v1-1 damage) (-> this damage))
+      (logior! (-> v1-1 mask) (attack-mask damage))
       )
-    (when (logtest? (projectile-options respect-invinc-time) (-> obj options))
-      (set! (-> v1-1 invinc-time) (-> obj invinc-time))
-      (logior! (-> v1-1 mask) (attack-info-mask invinc-time))
+    (when (logtest? (projectile-options respect-invinc-time) (-> this options))
+      (set! (-> v1-1 invinc-time) (-> this invinc-time))
+      (logior! (-> v1-1 mask) (attack-mask invinc-time))
       )
     (the-as symbol (send-event
                      arg0
-                     (if (logtest? (projectile-options ignore-impact) (-> obj options))
+                     (if (logtest? (projectile-options ignore-impact) (-> this options))
                          'attack-invinc
                          'attack
                          )
@@ -88,22 +88,22 @@
   )
 
 ;; definition for method 36 of type projectile
-(defmethod handle-proj-hit! projectile ((obj projectile) (arg0 process) (arg1 event-message-block))
+(defmethod handle-proj-hit! ((this projectile) (arg0 process) (arg1 event-message-block))
   "When a projectile hits something, first deal damage via [[projectile::37]]
 and increment the projectiles hit count.
 
 If we've met or exceeded the projectiles maximum allowed hits, switch to the [[projectile::impact]] state"
-  (when (-> obj attack-mode)
+  (when (-> this attack-mode)
     (let ((a2-1 (-> arg1 param 0)))
-      (when (deal-damage! obj arg0 (the-as event-message-block a2-1))
-        (let ((v1-3 (-> obj notify-handle)))
+      (when (deal-damage! this arg0 (the-as event-message-block a2-1))
+        (let ((v1-3 (-> this notify-handle)))
           (send-event (handle->process v1-3) 'notify 'attack arg0)
           )
-        (+! (-> obj hits) 1)
-        (if (and (>= (-> obj hits) (-> obj max-hits))
-                 (not (and (-> obj next-state) (= (-> obj next-state name) 'impact)))
+        (+! (-> this hits) 1)
+        (if (and (>= (-> this hits) (-> this max-hits))
+                 (not (and (-> this next-state) (= (-> this next-state name) 'impact)))
                  )
-            (go (method-of-object obj impact))
+            (go (method-of-object this impact))
             )
         )
       )
@@ -111,17 +111,17 @@ If we've met or exceeded the projectiles maximum allowed hits, switch to the [[p
   )
 
 ;; definition for method 34 of type projectile
-(defmethod kill-projectile! projectile ((obj projectile))
+(defmethod kill-projectile! ((this projectile))
   "Transition to the [[projectile::impact]] state, always return [[#t]]"
-  (if (not (and (-> obj next-state) (= (-> obj next-state name) 'impact)))
-      (go (method-of-object obj impact))
+  (if (not (and (-> this next-state) (= (-> this next-state name) 'impact)))
+      (go (method-of-object this impact))
       )
   #t
   )
 
 ;; definition for method 24 of type projectile
 ;; WARN: Return type mismatch int vs none.
-(defmethod draw-laser-sight projectile ((obj projectile))
+(defmethod draw-laser-sight ((this projectile))
   "TODO - confirm If applicable, draw the laser sight particles"
   0
   (none)
@@ -129,10 +129,10 @@ If we've met or exceeded the projectiles maximum allowed hits, switch to the [[p
 
 ;; definition for method 25 of type projectile
 ;; WARN: Return type mismatch int vs none.
-(defmethod spawn-impact-particles projectile ((obj projectile))
+(defmethod spawn-impact-particles ((this projectile))
   "Spawns associated particles with the projectile if applicable"
-  (if (nonzero? (-> obj part))
-      (spawn (-> obj part) (-> obj root trans))
+  (if (nonzero? (-> this part))
+      (spawn (-> this part) (-> this root trans))
       )
   0
   (none)
@@ -140,7 +140,7 @@ If we've met or exceeded the projectiles maximum allowed hits, switch to the [[p
 
 ;; definition for method 26 of type projectile
 ;; WARN: Return type mismatch int vs none.
-(defmethod spawn-shell-particles projectile ((obj projectile))
+(defmethod spawn-shell-particles ((this projectile))
   "TODO - confirm"
   0
   (none)
@@ -148,7 +148,7 @@ If we've met or exceeded the projectiles maximum allowed hits, switch to the [[p
 
 ;; definition for method 27 of type projectile
 ;; WARN: Return type mismatch int vs none.
-(defmethod unknown-particles projectile ((obj projectile))
+(defmethod unknown-particles ((this projectile))
   "TODO - confirm"
   0
   (none)
@@ -156,18 +156,18 @@ If we've met or exceeded the projectiles maximum allowed hits, switch to the [[p
 
 ;; definition for method 28 of type projectile
 ;; WARN: Return type mismatch int vs none.
-(defmethod play-impact-sound projectile ((obj projectile) (arg0 projectile-options))
+(defmethod play-impact-sound ((this projectile) (arg0 projectile-options))
   0
   (none)
   )
 
 ;; definition for method 29 of type projectile
 ;; WARN: Return type mismatch int vs none.
-(defmethod stop-sound! projectile ((obj projectile))
+(defmethod stop-sound! ((this projectile))
   "Stops the current `sound-id` if set, re-init the `sound-id` after being stopped"
-  (when (nonzero? (-> obj sound-id))
-    (sound-stop (-> obj sound-id))
-    (set! (-> obj sound-id) (new 'static 'sound-id))
+  (when (nonzero? (-> this sound-id))
+    (sound-stop (-> this sound-id))
+    (set! (-> this sound-id) (new 'static 'sound-id))
     0
     )
   0
@@ -175,16 +175,16 @@ If we've met or exceeded the projectiles maximum allowed hits, switch to the [[p
   )
 
 ;; definition for method 38 of type projectile
-(defmethod made-impact? projectile ((obj projectile))
+(defmethod made-impact? ((this projectile))
   "TODO - queries the collision cache, return true/false"
-  (let ((v1-0 (-> obj root))
+  (let ((v1-0 (-> this root))
         (t1-0 (new 'stack-no-clear 'collide-query))
         )
     (let ((a1-0 t1-0))
       (set! (-> a1-0 radius) (-> v1-0 root-prim prim-core world-sphere w))
       (set! (-> a1-0 collide-with) (-> v1-0 root-prim prim-core collide-with))
-      (set! (-> a1-0 ignore-process0) obj)
-      (set! (-> a1-0 ignore-process1) (handle->process (-> obj ignore-handle)))
+      (set! (-> a1-0 ignore-process0) this)
+      (set! (-> a1-0 ignore-process1) (handle->process (-> this ignore-handle)))
       (set! (-> a1-0 ignore-pat) (-> v1-0 pat-ignore-mask))
       (set! (-> a1-0 action-mask) (collide-action solid))
       )
@@ -214,42 +214,40 @@ If we've met or exceeded the projectiles maximum allowed hits, switch to the [[p
 ;; WARN: Return type mismatch int vs none.
 (defun projectile-move-fill-line-sphere ((arg0 projectile))
   (local-vars (at-0 int))
-  (with-pp
-    (rlet ((vf0 :class vf)
-           (vf1 :class vf)
-           (vf2 :class vf)
-           )
-      (init-vf0-vector)
-      (let ((gp-0 (-> arg0 root)))
-        (let ((a1-0 (new 'stack-no-clear 'collide-query)))
-          (let ((a2-0 (-> gp-0 root-prim)))
-            (set! (-> a1-0 start-pos quad) (-> gp-0 trans quad))
-            (let ((v1-1 (-> a1-0 move-dist)))
-              (.lvf vf1 (&-> (-> gp-0 transv) quad))
-              (let ((f0-0 (-> pp clock seconds-per-frame)))
-                (.mov at-0 f0-0)
-                )
-              (.mov vf2 at-0)
-              (.mov.vf vf1 vf0 :mask #b1000)
-              (.mul.x.vf vf1 vf1 vf2 :mask #b111)
-              (.svf (&-> v1-1 quad) vf1)
+  (rlet ((vf0 :class vf)
+         (vf1 :class vf)
+         (vf2 :class vf)
+         )
+    (init-vf0-vector)
+    (let ((gp-0 (-> arg0 root)))
+      (let ((a1-0 (new 'stack-no-clear 'collide-query)))
+        (let ((a2-0 (-> gp-0 root-prim)))
+          (set! (-> a1-0 start-pos quad) (-> gp-0 trans quad))
+          (let ((v1-1 (-> a1-0 move-dist)))
+            (.lvf vf1 (&-> (-> gp-0 transv) quad))
+            (let ((f0-0 (seconds-per-frame)))
+              (.mov at-0 f0-0)
               )
-            (let ((v1-2 a1-0))
-              (set! (-> v1-2 radius) (-> a2-0 prim-core world-sphere w))
-              (set! (-> v1-2 collide-with) (-> a2-0 prim-core collide-with))
-              (set! (-> v1-2 ignore-process0) arg0)
-              (set! (-> v1-2 ignore-process1) (handle->process (-> arg0 ignore-handle)))
-              (set! (-> v1-2 ignore-pat) (-> gp-0 pat-ignore-mask))
-              (set! (-> v1-2 action-mask) (collide-action solid))
-              )
+            (.mov vf2 at-0)
+            (.mov.vf vf1 vf0 :mask #b1000)
+            (.mul.x.vf vf1 vf1 vf2 :mask #b111)
+            (.svf (&-> v1-1 quad) vf1)
             )
-          (fill-using-line-sphere *collide-cache* a1-0)
+          (let ((v1-2 a1-0))
+            (set! (-> v1-2 radius) (-> a2-0 prim-core world-sphere w))
+            (set! (-> v1-2 collide-with) (-> a2-0 prim-core collide-with))
+            (set! (-> v1-2 ignore-process0) arg0)
+            (set! (-> v1-2 ignore-process1) (handle->process (-> arg0 ignore-handle)))
+            (set! (-> v1-2 ignore-pat) (-> gp-0 pat-ignore-mask))
+            (set! (-> v1-2 action-mask) (collide-action solid))
+            )
           )
-        (integrate-and-collide! gp-0 (-> gp-0 transv))
+        (fill-using-line-sphere *collide-cache* a1-0)
         )
-      0
-      (none)
+      (integrate-and-collide! gp-0 (-> gp-0 transv))
       )
+    0
+    (none)
     )
   )
 
@@ -309,10 +307,9 @@ If we've met or exceeded the projectiles maximum allowed hits, switch to the [[p
   :event projectile-event-handler
   :exit (behavior ()
     (stop-sound! self)
-    (none)
     )
   :trans (behavior ()
-    (if (>= (- (current-time) (-> self spawn-time)) (-> self timeout))
+    (if (time-elapsed? (-> self spawn-time) (-> self timeout))
         (go-virtual dissipate)
         )
     (let ((t9-1 (-> self pick-target)))
@@ -326,14 +323,14 @@ If we've met or exceeded the projectiles maximum allowed hits, switch to the [[p
           )
       )
     (when (logtest? (-> self options) (projectile-options proj-options-2))
-      (seek! (-> self tween) 1.0 (* 0.5 (-> self clock seconds-per-frame)))
+      (seek! (-> self tween) 1.0 (* 0.5 (seconds-per-frame)))
       (let ((f0-4 (vector-vector-distance (-> self root trans) (-> self target-pos))))
         (cond
           ((< f0-4 20480.0)
-           (seek! (-> self tween) 1.0 (* 3.0 (-> self clock seconds-per-frame)))
+           (seek! (-> self tween) 1.0 (* 3.0 (seconds-per-frame)))
            )
           ((< f0-4 40960.0)
-           (seek! (-> self tween) 1.0 (-> self clock seconds-per-frame))
+           (seek! (-> self tween) 1.0 (seconds-per-frame))
            )
           )
         )
@@ -360,7 +357,6 @@ If we've met or exceeded the projectiles maximum allowed hits, switch to the [[p
           (go-sitting! self)
           )
       )
-    (none)
     )
   :code (behavior ()
     (until #f
@@ -369,7 +365,6 @@ If we've met or exceeded the projectiles maximum allowed hits, switch to the [[p
       (suspend)
       )
     #f
-    (none)
     )
   )
 
@@ -380,12 +375,10 @@ If we've met or exceeded the projectiles maximum allowed hits, switch to the [[p
   :enter (behavior ()
     (spawn-shell-particles self)
     (play-impact-sound self (projectile-options lose-altitude))
-    (none)
     )
   :code (behavior ()
     (suspend)
     (go-virtual die)
-    (none)
     )
   )
 
@@ -396,12 +389,10 @@ If we've met or exceeded the projectiles maximum allowed hits, switch to the [[p
   :enter (behavior ()
     (unknown-particles self)
     (play-impact-sound self (projectile-options proj-options-2))
-    (none)
     )
   :code (behavior ()
     (suspend)
     (go-virtual die)
-    (none)
     )
   )
 
@@ -413,13 +404,12 @@ If we've met or exceeded the projectiles maximum allowed hits, switch to the [[p
       (send-event (handle->process v1-0) 'notify 'die)
       )
     (cleanup-for-death self)
-    (none)
     )
   )
 
 ;; definition for method 31 of type projectile
 ;; WARN: Return type mismatch int vs none.
-(defmethod init-proj-settings! projectile ((obj projectile))
+(defmethod init-proj-settings! ((this projectile))
   "Init relevant settings for the [[projectile]] such as gravity, speed, timeout, etc"
   0
   (none)
@@ -427,9 +417,9 @@ If we've met or exceeded the projectiles maximum allowed hits, switch to the [[p
 
 ;; definition for method 30 of type projectile
 ;; WARN: Return type mismatch int vs none.
-(defmethod init-proj-collision! projectile ((obj projectile))
+(defmethod init-proj-collision! ((this projectile))
   "Init the [[projectile]]'s [[collide-shape]]"
-  (let ((s5-0 (new 'process 'collide-shape-moving obj (collide-list-enum hit-by-player))))
+  (let ((s5-0 (new 'process 'collide-shape-moving this (collide-list-enum hit-by-player))))
     (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s5-0 reaction) cshape-reaction-projectile)
     (set! (-> s5-0 no-reaction)
@@ -452,9 +442,9 @@ If we've met or exceeded the projectiles maximum allowed hits, switch to the [[p
       )
     (set! (-> s5-0 max-iteration-count) (the-as uint 2))
     (set! (-> s5-0 event-self) 'touched)
-    (set! (-> obj root) s5-0)
+    (set! (-> this root) s5-0)
     )
-  (set! (-> obj root pat-ignore-mask)
+  (set! (-> this root pat-ignore-mask)
         (new 'static 'pat-surface :noentity #x1 :nojak #x1 :probe #x1 :noproj #x1 :noendlessfall #x1)
         )
   0
@@ -463,25 +453,25 @@ If we've met or exceeded the projectiles maximum allowed hits, switch to the [[p
 
 ;; definition for method 32 of type projectile
 ;; WARN: Return type mismatch int vs none.
-(defmethod go-moving! projectile ((obj projectile))
-  (go (method-of-object obj moving))
+(defmethod go-moving! ((this projectile))
+  (go (method-of-object this moving))
   0
   (none)
   )
 
 ;; definition for method 33 of type projectile
 ;; WARN: Return type mismatch object vs none.
-(defmethod go-sitting! projectile ((obj projectile))
-  (if (not (and (-> obj next-state) (= (-> obj next-state name) 'impact)))
-      (go (method-of-object obj impact))
+(defmethod go-sitting! ((this projectile))
+  (if (not (and (-> this next-state) (= (-> this next-state name) 'impact)))
+      (go (method-of-object this impact))
       )
   (none)
   )
 
 ;; definition for method 10 of type projectile
-(defmethod deactivate projectile ((obj projectile))
-  (stop-sound! obj)
-  ((method-of-type process-drawable deactivate) obj)
+(defmethod deactivate ((this projectile))
+  (stop-sound! this)
+  ((method-of-type process-drawable deactivate) this)
   (none)
   )
 
@@ -504,7 +494,7 @@ If we've met or exceeded the projectiles maximum allowed hits, switch to the [[p
   (set! (-> self last-target) (the-as handle #f))
   (set! (-> self timeout) (-> arg0 timeout))
   (set! (-> self max-hits) 1)
-  (set! (-> self spawn-time) (current-time))
+  (set-time! (-> self spawn-time))
   (set! (-> self update-velocity) #f)
   (set! (-> self move) projectile-move-fill-line-sphere)
   (set! (-> self pick-target) #f)
@@ -550,7 +540,7 @@ If we've met or exceeded the projectiles maximum allowed hits, switch to the [[p
 ;; definition for function projectile-bounce-update-velocity
 ;; WARN: Return type mismatch int vs none.
 (defbehavior projectile-bounce-update-velocity projectile ((arg0 projectile-bounce))
-  (set! (-> arg0 root transv y) (- (-> arg0 root transv y) (* 184320.0 (-> self clock seconds-per-frame))))
+  (set! (-> arg0 root transv y) (- (-> arg0 root transv y) (* 184320.0 (seconds-per-frame))))
   0
   (none)
   )
@@ -558,7 +548,7 @@ If we've met or exceeded the projectiles maximum allowed hits, switch to the [[p
 ;; definition for function projectile-bounce-falling-post
 ;; INFO: Used lq/sq
 ;; WARN: Return type mismatch int vs none.
-(defbehavior projectile-bounce-falling-post projectile-bounce ((arg0 projectile-bounce))
+(defbehavior projectile-bounce-falling-post projectile-bounce ()
   (let ((gp-0 (-> self root))
         (s4-0 (new 'stack-no-clear 'collide-query))
         (s5-0 (new 'stack-no-clear 'vector))
@@ -584,24 +574,20 @@ If we've met or exceeded the projectiles maximum allowed hits, switch to the [[p
 ;; failed to figure out what this is:
 (defstate sitting (projectile-bounce)
   :virtual #t
-  :event (the-as
-    (function process int symbol event-message-block object :behavior projectile-bounce)
-    projectile-event-handler
-    )
+  :event projectile-event-handler
   :trans (behavior ()
     (noop self)
-    (if (>= (- (current-time) (-> self spawn-time)) (-> self timeout))
+    (if (time-elapsed? (-> self spawn-time) (-> self timeout))
         (go-virtual impact)
         )
-    (none)
     )
-  :code (the-as (function none :behavior projectile-bounce) sleep-code)
-  :post (the-as (function none :behavior projectile-bounce) projectile-bounce-falling-post)
+  :code sleep-code
+  :post projectile-bounce-falling-post
   )
 
 ;; definition for method 41 of type projectile-bounce
 ;; WARN: Return type mismatch int vs none.
-(defmethod noop projectile-bounce ((obj projectile-bounce))
+(defmethod noop ((this projectile-bounce))
   "Does nothing"
   0
   (none)
@@ -612,20 +598,19 @@ If we've met or exceeded the projectiles maximum allowed hits, switch to the [[p
   :virtual #t
   :enter (behavior ()
     (go-virtual impact)
-    (none)
     )
   )
 
 ;; definition for method 33 of type projectile-bounce
 ;; WARN: Return type mismatch object vs none.
-(defmethod go-sitting! projectile-bounce ((obj projectile-bounce))
-  (go (method-of-object obj sitting))
+(defmethod go-sitting! ((this projectile-bounce))
+  (go (method-of-object this sitting))
   (none)
   )
 
 ;; definition for method 25 of type projectile-bounce
 ;; WARN: Return type mismatch int vs none.
-(defmethod spawn-impact-particles projectile-bounce ((obj projectile-bounce))
+(defmethod spawn-impact-particles ((this projectile-bounce))
   "Spawns associated particles with the projectile if applicable"
   (ja-post)
   0
@@ -654,18 +639,18 @@ If we've met or exceeded the projectiles maximum allowed hits, switch to the [[p
 
 ;; definition for method 39 of type projectile-bounce
 ;; WARN: Return type mismatch sound-id vs none.
-(defmethod play-impact-sound! projectile-bounce ((obj projectile-bounce))
+(defmethod play-impact-sound! ((this projectile-bounce))
   "Plays impact sound"
-  (let* ((a2-0 (-> obj root))
+  (let* ((a2-0 (-> this root))
          (v1-0 (-> a2-0 status))
          )
     (if (logtest? v1-0 (collide-status touch-surface))
         (vector-float*! (-> a2-0 transv) (-> a2-0 transv) 0.6)
         )
     (when (and (logtest? v1-0 (collide-status impact-surface))
-               (>= (- (current-time) (-> obj played-bounce-time)) (seconds 0.3))
+               (time-elapsed? (-> this played-bounce-time) (seconds 0.3))
                )
-      (set! (-> obj played-bounce-time) (current-time))
+      (set-time! (-> this played-bounce-time))
       (sound-play "dark-shot-bounc")
       )
     )
@@ -674,9 +659,9 @@ If we've met or exceeded the projectiles maximum allowed hits, switch to the [[p
 
 ;; definition for method 30 of type projectile-bounce
 ;; WARN: Return type mismatch int vs none.
-(defmethod init-proj-collision! projectile-bounce ((obj projectile-bounce))
+(defmethod init-proj-collision! ((this projectile-bounce))
   "Init the [[projectile]]'s [[collide-shape]]"
-  (let ((s5-0 (new 'process 'collide-shape-moving obj (collide-list-enum hit-by-player))))
+  (let ((s5-0 (new 'process 'collide-shape-moving this (collide-list-enum hit-by-player))))
     (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s5-0 reaction) projectile-bounce-reaction)
     (set! (-> s5-0 no-reaction)
@@ -696,14 +681,14 @@ If we've met or exceeded the projectiles maximum allowed hits, switch to the [[p
       )
     (set! (-> s5-0 max-iteration-count) (the-as uint 2))
     (set! (-> s5-0 event-self) 'touched)
-    (set! (-> obj root) s5-0)
+    (set! (-> this root) s5-0)
     )
   (set-collide-with!
-    (-> obj root)
+    (-> this root)
     (collide-spec backgnd bot crate civilian enemy obstacle vehicle-sphere hit-by-others-list player-list pusher)
     )
-  (set-collide-as! (-> obj root) (collide-spec projectile))
-  (set! (-> obj root pat-ignore-mask)
+  (set-collide-as! (-> this root) (collide-spec projectile))
+  (set! (-> this root pat-ignore-mask)
         (new 'static 'pat-surface :noentity #x1 :nojak #x1 :probe #x1 :noproj #x1 :noendlessfall #x1)
         )
   (none)
@@ -711,17 +696,17 @@ If we've met or exceeded the projectiles maximum allowed hits, switch to the [[p
 
 ;; definition for method 31 of type projectile-bounce
 ;; WARN: Return type mismatch int vs none.
-(defmethod init-proj-settings! projectile-bounce ((obj projectile-bounce))
+(defmethod init-proj-settings! ((this projectile-bounce))
   "Init relevant settings for the [[projectile]] such as gravity, speed, timeout, etc"
-  (set! (-> obj max-speed) 450560.0)
-  (set! (-> obj timeout) (seconds 1.6))
-  (set! (-> obj update-velocity) projectile-bounce-update-velocity)
-  (set! (-> obj move) projectile-bounce-move)
-  (set! (-> obj root dynam gravity y) 184320.0)
-  (set! (-> obj root dynam gravity-length) 184320.0)
-  (set! (-> obj root dynam gravity-max) 184320.0)
+  (set! (-> this max-speed) 450560.0)
+  (set! (-> this timeout) (seconds 1.6))
+  (set! (-> this update-velocity) projectile-bounce-update-velocity)
+  (set! (-> this move) projectile-bounce-move)
+  (set! (-> this root dynam gravity y) 184320.0)
+  (set! (-> this root dynam gravity-length) 184320.0)
+  (set! (-> this root dynam gravity-max) 184320.0)
   (let ((f0-4 1092.2667))
-    (quaternion-axis-angle! (-> obj tumble-quat) 1.0 0.0 0.0 f0-4)
+    (quaternion-axis-angle! (-> this tumble-quat) 1.0 0.0 0.0 f0-4)
     )
   0
   (none)

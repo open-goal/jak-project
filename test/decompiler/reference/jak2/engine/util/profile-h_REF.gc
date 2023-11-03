@@ -3,131 +3,119 @@
 
 ;; definition of type profile-segment
 (deftype profile-segment (structure)
-  ((name       symbol  :offset-assert   0)
-   (start-time int16   :offset-assert   4)
-   (end-time   int16   :offset-assert   6)
-   (count      uint8   :offset-assert   8)
-   (vu-count   uint8   :offset-assert   9)
-   (depth      uint16  :offset-assert  10)
-   (color      rgba    :offset-assert  12)
-   (code-time  uint16  :offset          4)
-   (vu-time    uint16  :offset          6)
+  ((name        symbol)
+   (start-time  int16)
+   (end-time    int16)
+   (count       uint8)
+   (vu-count    uint8)
+   (depth       uint16)
+   (color       rgba)
+   (code-time   uint16  :overlay-at start-time)
+   (vu-time     uint16  :overlay-at end-time)
    )
   :allow-misaligned
-  :method-count-assert 9
-  :size-assert         #x10
-  :flag-assert         #x900000010
   )
 
 ;; definition for method 3 of type profile-segment
-(defmethod inspect profile-segment ((obj profile-segment))
-  (when (not obj)
-    (set! obj obj)
+(defmethod inspect ((this profile-segment))
+  (when (not this)
+    (set! this this)
     (goto cfg-4)
     )
-  (format #t "[~8x] ~A~%" obj 'profile-segment)
-  (format #t "~1Tname: ~A~%" (-> obj name))
-  (format #t "~1Tstart-time: ~D~%" (-> obj start-time))
-  (format #t "~1Tend-time: ~D~%" (-> obj end-time))
-  (format #t "~1Tcount: ~D~%" (-> obj count))
-  (format #t "~1Tvu-count: ~D~%" (-> obj vu-count))
-  (format #t "~1Tdepth: ~D~%" (-> obj depth))
-  (format #t "~1Tcolor: #x~X~%" (-> obj color))
-  (format #t "~1Tcode-time: ~D~%" (-> obj code-time))
-  (format #t "~1Tvu-time: ~D~%" (-> obj vu-time))
+  (format #t "[~8x] ~A~%" this 'profile-segment)
+  (format #t "~1Tname: ~A~%" (-> this name))
+  (format #t "~1Tstart-time: ~D~%" (-> this start-time))
+  (format #t "~1Tend-time: ~D~%" (-> this end-time))
+  (format #t "~1Tcount: ~D~%" (-> this count))
+  (format #t "~1Tvu-count: ~D~%" (-> this vu-count))
+  (format #t "~1Tdepth: ~D~%" (-> this depth))
+  (format #t "~1Tcolor: #x~X~%" (-> this color))
+  (format #t "~1Tcode-time: ~D~%" (-> this code-time))
+  (format #t "~1Tvu-time: ~D~%" (-> this vu-time))
   (label cfg-4)
-  obj
+  this
   )
 
 ;; definition of type profile-collapse
 (deftype profile-collapse (structure)
-  ((count int32                      :offset-assert   0)
-   (data  profile-segment 48 :inline :offset-assert   4)
+  ((count  int32)
+   (data   profile-segment  48 :inline)
    )
-  :method-count-assert 9
-  :size-assert         #x304
-  :flag-assert         #x900000304
   )
 
 ;; definition for method 3 of type profile-collapse
-(defmethod inspect profile-collapse ((obj profile-collapse))
-  (when (not obj)
-    (set! obj obj)
+(defmethod inspect ((this profile-collapse))
+  (when (not this)
+    (set! this this)
     (goto cfg-4)
     )
-  (format #t "[~8x] ~A~%" obj 'profile-collapse)
-  (format #t "~1Tcount: ~D~%" (-> obj count))
-  (format #t "~1Tdata[48] @ #x~X~%" (-> obj data))
+  (format #t "[~8x] ~A~%" this 'profile-collapse)
+  (format #t "~1Tcount: ~D~%" (-> this count))
+  (format #t "~1Tdata[48] @ #x~X~%" (-> this data))
   (label cfg-4)
-  obj
+  this
   )
 
 ;; definition of type profile-segment-array
 (deftype profile-segment-array (basic)
-  ((count     int16                       :offset-assert   4)
-   (depth     int8                        :offset-assert   6)
-   (max-depth int8                        :offset-assert   7)
-   (base-time int16                       :offset-assert   8)
-   (segment   profile-segment 9           :offset-assert  12)
-   (data      profile-segment 512 :inline :offset-assert  48)
+  ((count      int16)
+   (depth      int8)
+   (max-depth  int8)
+   (base-time  int16)
+   (segment    profile-segment  9)
+   (data       profile-segment  512 :inline)
    )
-  :method-count-assert 13
-  :size-assert         #x2030
-  :flag-assert         #xd00002030
   (:methods
-    (get-total-time (_type_) int 9)
-    (start-frame! (_type_) none 10)
-    (start-segment! (_type_ symbol rgba) none 11)
-    (end-segment! (_type_) none 12)
+    (get-total-time (_type_) int)
+    (start-frame! (_type_) none)
+    (start-segment! (_type_ symbol rgba) none)
+    (end-segment! (_type_) none)
     )
   )
 
 ;; definition for method 3 of type profile-segment-array
-(defmethod inspect profile-segment-array ((obj profile-segment-array))
-  (when (not obj)
-    (set! obj obj)
+(defmethod inspect ((this profile-segment-array))
+  (when (not this)
+    (set! this this)
     (goto cfg-4)
     )
-  (format #t "[~8x] ~A~%" obj (-> obj type))
-  (format #t "~1Tcount: ~D~%" (-> obj count))
-  (format #t "~1Tdepth: ~D~%" (-> obj depth))
-  (format #t "~1Tmax-depth: ~D~%" (-> obj max-depth))
-  (format #t "~1Tbase-time: ~D~%" (-> obj base-time))
-  (format #t "~1Tsegment[9] @ #x~X~%" (-> obj segment))
-  (format #t "~1Tdata[512] @ #x~X~%" (-> obj data))
+  (format #t "[~8x] ~A~%" this (-> this type))
+  (format #t "~1Tcount: ~D~%" (-> this count))
+  (format #t "~1Tdepth: ~D~%" (-> this depth))
+  (format #t "~1Tmax-depth: ~D~%" (-> this max-depth))
+  (format #t "~1Tbase-time: ~D~%" (-> this base-time))
+  (format #t "~1Tsegment[9] @ #x~X~%" (-> this segment))
+  (format #t "~1Tdata[512] @ #x~X~%" (-> this data))
   (label cfg-4)
-  obj
+  this
   )
 
 ;; definition of type profile-array
 (deftype profile-array (structure)
-  ((data profile-segment-array 2 :offset-assert   0)
+  ((data  profile-segment-array  2)
    )
-  :method-count-assert 12
-  :size-assert         #x8
-  :flag-assert         #xc00000008
   (:methods
-    (setup-categories! (_type_) none 9)
-    (draw-bars! (_type_ dma-buffer int) none 10)
-    (draw-text! (_type_) none 11)
+    (setup-categories! (_type_) none)
+    (draw-bars! (_type_ dma-buffer int) none)
+    (draw-text! (_type_) none)
     )
   )
 
 ;; definition for method 3 of type profile-array
-(defmethod inspect profile-array ((obj profile-array))
-  (when (not obj)
-    (set! obj obj)
+(defmethod inspect ((this profile-array))
+  (when (not this)
+    (set! this this)
     (goto cfg-4)
     )
-  (format #t "[~8x] ~A~%" obj 'profile-array)
-  (format #t "~1Tdata[2] @ #x~X~%" (-> obj data))
+  (format #t "[~8x] ~A~%" this 'profile-array)
+  (format #t "~1Tdata[2] @ #x~X~%" (-> this data))
   (label cfg-4)
-  obj
+  this
   )
 
 ;; definition for method 9 of type profile-segment-array
-(defmethod get-total-time profile-segment-array ((obj profile-segment-array))
-  (- (-> obj data 0 end-time) (-> obj data 0 start-time))
+(defmethod get-total-time ((this profile-segment-array))
+  (- (-> this data 0 end-time) (-> this data 0 start-time))
   )
 
 ;; definition for symbol *profile-gap-color*, type rgba
@@ -250,6 +238,3 @@
 (define *profile-interrupt-start* #f)
 
 )
-
-
-

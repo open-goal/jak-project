@@ -3,86 +3,74 @@
 
 ;; definition of type joint
 (deftype joint (basic)
-  ((name      string         :offset-assert   4)
-   (number    int32          :offset-assert   8)
-   (parent    joint          :offset-assert  12)
-   (bind-pose matrix :inline :offset-assert  16)
+  ((name       string)
+   (number     int32)
+   (parent     joint)
+   (bind-pose  matrix  :inline)
    )
-  :method-count-assert 9
-  :size-assert         #x50
-  :flag-assert         #x900000050
   )
 
 ;; definition for method 3 of type joint
-(defmethod inspect joint ((obj joint))
-  (format #t "[~8x] ~A~%" obj (-> obj type))
-  (format #t "~Tname: ~A~%" (-> obj name))
-  (format #t "~Tnumber: ~D~%" (-> obj number))
-  (format #t "~Tparent: ~A~%" (-> obj parent))
-  (format #t "~Tbind-pose: #<matrix @ #x~X>~%" (-> obj bind-pose))
-  obj
+(defmethod inspect ((this joint))
+  (format #t "[~8x] ~A~%" this (-> this type))
+  (format #t "~Tname: ~A~%" (-> this name))
+  (format #t "~Tnumber: ~D~%" (-> this number))
+  (format #t "~Tparent: ~A~%" (-> this parent))
+  (format #t "~Tbind-pose: #<matrix @ #x~X>~%" (-> this bind-pose))
+  this
   )
 
 ;; definition of type bone-cache
 (deftype bone-cache (structure)
-  ((bone-matrix   uint32  :offset-assert   0)
-   (parent-matrix uint32  :offset-assert   4)
-   (dummy         uint32  :offset-assert   8)
-   (frame         uint32  :offset-assert  12)
+  ((bone-matrix    uint32)
+   (parent-matrix  uint32)
+   (dummy          uint32)
+   (frame          uint32)
    )
-  :method-count-assert 9
-  :size-assert         #x10
-  :flag-assert         #x900000010
   )
 
 ;; definition for method 3 of type bone-cache
-(defmethod inspect bone-cache ((obj bone-cache))
-  (format #t "[~8x] ~A~%" obj 'bone-cache)
-  (format #t "~Tbone-matrix: ~D~%" (-> obj bone-matrix))
-  (format #t "~Tparent-matrix: ~D~%" (-> obj parent-matrix))
-  (format #t "~Tdummy: ~D~%" (-> obj dummy))
-  (format #t "~Tframe: ~D~%" (-> obj frame))
-  obj
+(defmethod inspect ((this bone-cache))
+  (format #t "[~8x] ~A~%" this 'bone-cache)
+  (format #t "~Tbone-matrix: ~D~%" (-> this bone-matrix))
+  (format #t "~Tparent-matrix: ~D~%" (-> this parent-matrix))
+  (format #t "~Tdummy: ~D~%" (-> this dummy))
+  (format #t "~Tframe: ~D~%" (-> this frame))
+  this
   )
 
 ;; definition of type bone
 (deftype bone (structure)
-  ((transform matrix     :inline :offset-assert   0)
-   (position  vector     :inline :offset         48)
-   (scale     vector     :inline :offset-assert  64)
-   (cache     bone-cache :inline :offset-assert  80)
+  ((transform  matrix      :inline)
+   (position   vector      :inline :overlay-at (-> transform vector 3))
+   (scale      vector      :inline)
+   (cache      bone-cache  :inline)
    )
-  :method-count-assert 9
-  :size-assert         #x60
-  :flag-assert         #x900000060
   )
 
 ;; definition for method 3 of type bone
-(defmethod inspect bone ((obj bone))
-  (format #t "[~8x] ~A~%" obj 'bone)
-  (format #t "~Ttransform: #<matrix @ #x~X>~%" (-> obj transform))
-  (format #t "~Tposition: #<vector @ #x~X>~%" (-> obj transform vector 3))
-  (format #t "~Tscale: #<vector @ #x~X>~%" (-> obj scale))
-  (format #t "~Tcache: #<bone-cache @ #x~X>~%" (-> obj cache))
-  obj
+(defmethod inspect ((this bone))
+  (format #t "[~8x] ~A~%" this 'bone)
+  (format #t "~Ttransform: #<matrix @ #x~X>~%" (-> this transform))
+  (format #t "~Tposition: #<vector @ #x~X>~%" (-> this transform vector 3))
+  (format #t "~Tscale: #<vector @ #x~X>~%" (-> this scale))
+  (format #t "~Tcache: #<bone-cache @ #x~X>~%" (-> this cache))
+  this
   )
 
 ;; definition of type skeleton
 (deftype skeleton (inline-array-class)
-  ((bones bone :inline :dynamic :offset-assert  16)
+  ((bones  bone  :inline :dynamic)
    )
-  :method-count-assert 9
-  :size-assert         #x10
-  :flag-assert         #x900000010
   )
 
 ;; definition for method 3 of type skeleton
-(defmethod inspect skeleton ((obj skeleton))
-  (format #t "[~8x] ~A~%" obj (-> obj type))
-  (format #t "~Tlength: ~D~%" (-> obj length))
-  (format #t "~Tallocated-length: ~D~%" (-> obj allocated-length))
-  (format #t "~Tdata[0] @ #x~X~%" (-> obj bones))
-  obj
+(defmethod inspect ((this skeleton))
+  (format #t "[~8x] ~A~%" this (-> this type))
+  (format #t "~Tlength: ~D~%" (-> this length))
+  (format #t "~Tallocated-length: ~D~%" (-> this allocated-length))
+  (format #t "~Tdata[0] @ #x~X~%" (-> this bones))
+  this
   )
 
 ;; failed to figure out what this is:
@@ -90,71 +78,65 @@
 
 ;; definition of type cspace
 (deftype cspace (structure)
-  ((parent    cspace    :offset-assert   0)
-   (joint     joint     :offset-assert   4)
-   (joint-num int16     :offset-assert   8)
-   (geo       basic     :offset-assert  12)
-   (bone      bone      :offset-assert  16)
-   (param0    function  :offset-assert  20)
-   (param1    basic     :offset-assert  24)
-   (param2    basic     :offset-assert  28)
+  ((parent     cspace)
+   (joint      joint)
+   (joint-num  int16)
+   (geo        basic)
+   (bone       bone)
+   (param0     function)
+   (param1     basic)
+   (param2     basic)
    )
-  :method-count-assert 10
-  :size-assert         #x20
-  :flag-assert         #xa00000020
   (:methods
-    (new (symbol type basic) _type_ 0)
-    (reset-and-assign-geo! (_type_ basic) _type_ 9)
+    (new (symbol type basic) _type_)
+    (reset-and-assign-geo! (_type_ basic) _type_)
     )
   )
 
 ;; definition for method 3 of type cspace
-(defmethod inspect cspace ((obj cspace))
-  (format #t "[~8x] ~A~%" obj 'cspace)
-  (format #t "~Tparent: #<cspace @ #x~X>~%" (-> obj parent))
-  (format #t "~Tjoint: ~A~%" (-> obj joint))
-  (format #t "~Tjoint-num: ~D~%" (-> obj joint-num))
-  (format #t "~Tgeo: ~A~%" (-> obj geo))
-  (format #t "~Tbone: #<bone @ #x~X>~%" (-> obj bone))
-  (format #t "~Tparam0: ~A~%" (-> obj param0))
-  (format #t "~Tparam1: ~A~%" (-> obj param1))
-  (format #t "~Tparam2: ~A~%" (-> obj param2))
-  obj
+(defmethod inspect ((this cspace))
+  (format #t "[~8x] ~A~%" this 'cspace)
+  (format #t "~Tparent: #<cspace @ #x~X>~%" (-> this parent))
+  (format #t "~Tjoint: ~A~%" (-> this joint))
+  (format #t "~Tjoint-num: ~D~%" (-> this joint-num))
+  (format #t "~Tgeo: ~A~%" (-> this geo))
+  (format #t "~Tbone: #<bone @ #x~X>~%" (-> this bone))
+  (format #t "~Tparam0: ~A~%" (-> this param0))
+  (format #t "~Tparam1: ~A~%" (-> this param1))
+  (format #t "~Tparam2: ~A~%" (-> this param2))
+  this
   )
 
 ;; definition of type cspace-array
 (deftype cspace-array (inline-array-class)
-  ((data cspace :inline :dynamic :offset-assert  16)
+  ((data  cspace  :inline :dynamic)
    )
-  :method-count-assert 9
-  :size-assert         #x10
-  :flag-assert         #x900000010
   )
 
 ;; definition for method 3 of type cspace-array
-(defmethod inspect cspace-array ((obj cspace-array))
-  (format #t "[~8x] ~A~%" obj (-> obj type))
-  (format #t "~Tlength: ~D~%" (-> obj length))
-  (format #t "~Tallocated-length: ~D~%" (-> obj allocated-length))
-  (format #t "~Tdata[0] @ #x~X~%" (-> obj data))
-  obj
+(defmethod inspect ((this cspace-array))
+  (format #t "[~8x] ~A~%" this (-> this type))
+  (format #t "~Tlength: ~D~%" (-> this length))
+  (format #t "~Tallocated-length: ~D~%" (-> this allocated-length))
+  (format #t "~Tdata[0] @ #x~X~%" (-> this data))
+  this
   )
 
 ;; failed to figure out what this is:
 (set! (-> cspace-array heap-base) (the-as uint 32))
 
 ;; definition for method 2 of type cspace
-(defmethod print cspace ((obj cspace))
+(defmethod print ((this cspace))
   (format
     #t
     "#<cspace ~S @ #x~X>"
-    (if (-> obj joint)
-        (-> obj joint name)
+    (if (-> this joint)
+        (-> this joint name)
         "nojoint"
         )
-    obj
+    this
     )
-  obj
+  this
   )
 
 ;; failed to figure out what this is:

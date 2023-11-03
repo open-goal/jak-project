@@ -3,159 +3,151 @@
 
 ;; definition of type fort-robotank-turret
 (deftype fort-robotank-turret (process-focusable)
-  ((los                 los-control           :inline   :offset-assert 208)
-   (reticle             handle                          :offset-assert 360)
-   (screen              handle                          :offset-assert 368)
-   (tank-quat           quaternion            :inline   :offset-assert 384)
-   (tank-quat-vibe-only quaternion            :inline   :offset-assert 400)
-   (rotate-quat         quaternion            :inline   :offset-assert 416)
-   (rotate-rate         float                           :offset-assert 432)
-   (rotate-mult         float                           :offset-assert 436)
-   (shot-range          float                           :offset-assert 440)
-   (fov-mult            float                           :offset-assert 444)
-   (offset              vector                :inline   :offset-assert 448)
-   (sight-pos           vector                :inline   :offset-assert 464)
-   (firing-sight-pos    vector                :inline   :offset-assert 480)
-   (aim-pos             vector                3 :inline :offset-assert 496)
-   (aim-pos-2           vector                :inline   :offset        512)
-   (aim-pos-1           vector                :inline   :offset        528)
-   (gun-timer           time-frame                      :offset-assert 544)
-   (gun-elev-jmod       joint-mod-set-local             :offset-assert 552)
-   (gun-elev            float                           :offset-assert 556)
-   (gun-elev-cam        float                           :offset-assert 560)
-   (gun-joint-l         int32                 2         :offset-assert 564)
-   (gun-joint-r         int32                 2         :offset-assert 572)
-   (gun-spread          float                           :offset-assert 580)
-   (gun-index           int32                           :offset-assert 584)
-   (flags               robotank-turret-flags           :offset-assert 588)
-   (turn-sound-id       sound-id                        :offset-assert 592)
+  ((los                  los-control  :inline)
+   (reticle              handle)
+   (screen               handle)
+   (tank-quat            quaternion   :inline)
+   (tank-quat-vibe-only  quaternion   :inline)
+   (rotate-quat          quaternion   :inline)
+   (rotate-rate          float)
+   (rotate-mult          float)
+   (shot-range           float)
+   (fov-mult             float)
+   (offset               vector       :inline)
+   (sight-pos            vector       :inline)
+   (firing-sight-pos     vector       :inline)
+   (aim-pos              vector       3 :inline)
+   (aim-pos-2            vector       :inline :overlay-at (-> aim-pos 1))
+   (aim-pos-1            vector       :inline :overlay-at (-> aim-pos 2))
+   (gun-timer            time-frame)
+   (gun-elev-jmod        joint-mod-set-local)
+   (gun-elev             float)
+   (gun-elev-cam         float)
+   (gun-joint-l          int32        2)
+   (gun-joint-r          int32        2)
+   (gun-spread           float)
+   (gun-index            int32)
+   (flags                robotank-turret-flags)
+   (turn-sound-id        sound-id)
    )
-  :heap-base #x1e0
-  :method-count-assert 35
-  :size-assert         #x254
-  :flag-assert         #x2301e00254
+  (:state-methods
+    idle
+    ready
+    fire
+    die
+    )
   (:methods
-    (idle () _type_ :state 27)
-    (ready () _type_ :state 28)
-    (fire () _type_ :state 29)
-    (die () _type_ :state 30)
-    (fort-robotank-turret-method-31 (_type_ vector vector) none 31)
-    (fort-robotank-turret-method-32 (_type_ (inline-array vector)) (pointer process) 32)
-    (fort-robotank-turret-method-33 (_type_) none 33)
-    (fort-robotank-turret-method-34 (_type_ vector float) symbol 34)
+    (fort-robotank-turret-method-31 (_type_ vector vector) none)
+    (fort-robotank-turret-method-32 (_type_ (inline-array vector)) (pointer process))
+    (fort-robotank-turret-method-33 (_type_) none)
+    (fort-robotank-turret-method-34 (_type_ vector float) symbol)
     )
   )
 
 ;; definition for method 3 of type fort-robotank-turret
-(defmethod inspect fort-robotank-turret ((obj fort-robotank-turret))
-  (when (not obj)
-    (set! obj obj)
+(defmethod inspect ((this fort-robotank-turret))
+  (when (not this)
+    (set! this this)
     (goto cfg-4)
     )
   (let ((t9-0 (method-of-type process-focusable inspect)))
-    (t9-0 obj)
+    (t9-0 this)
     )
-  (format #t "~2Tlos: #<los-control @ #x~X>~%" (-> obj los))
-  (format #t "~2Treticle: ~D~%" (-> obj reticle))
-  (format #t "~2Tscreen: ~D~%" (-> obj screen))
-  (format #t "~2Ttank-quat: #<quaternion @ #x~X>~%" (-> obj tank-quat))
-  (format #t "~2Ttank-quat-vibe-only: #<quaternion @ #x~X>~%" (-> obj tank-quat-vibe-only))
-  (format #t "~2Trotate-quat: #<quaternion @ #x~X>~%" (-> obj rotate-quat))
-  (format #t "~2Trotate-rate: ~f~%" (-> obj rotate-rate))
-  (format #t "~2Trotate-mult: ~f~%" (-> obj rotate-mult))
-  (format #t "~2Tshot-range: ~f~%" (-> obj shot-range))
-  (format #t "~2Tfov-mult: ~f~%" (-> obj fov-mult))
-  (format #t "~2Toffset: #<vector @ #x~X>~%" (-> obj offset))
-  (format #t "~2Tsight-pos: #<vector @ #x~X>~%" (-> obj sight-pos))
-  (format #t "~2Tfiring-sight-pos: #<vector @ #x~X>~%" (-> obj firing-sight-pos))
-  (format #t "~2Taim-pos[3] @ #x~X~%" (-> obj aim-pos))
-  (format #t "~2Tgun-timer: ~D~%" (-> obj gun-timer))
-  (format #t "~2Tgun-elev-jmod: ~A~%" (-> obj gun-elev-jmod))
-  (format #t "~2Tgun-elev: ~f~%" (-> obj gun-elev))
-  (format #t "~2Tgun-elev-cam: ~f~%" (-> obj gun-elev-cam))
-  (format #t "~2Tgun-joint-l[2] @ #x~X~%" (-> obj gun-joint-l))
-  (format #t "~2Tgun-joint-r[2] @ #x~X~%" (-> obj gun-joint-r))
-  (format #t "~2Tgun-spread: ~f~%" (-> obj gun-spread))
-  (format #t "~2Tgun-index: ~D~%" (-> obj gun-index))
-  (format #t "~2Tflags: ~D~%" (-> obj flags))
-  (format #t "~2Tturn-sound-id: ~D~%" (-> obj turn-sound-id))
+  (format #t "~2Tlos: #<los-control @ #x~X>~%" (-> this los))
+  (format #t "~2Treticle: ~D~%" (-> this reticle))
+  (format #t "~2Tscreen: ~D~%" (-> this screen))
+  (format #t "~2Ttank-quat: #<quaternion @ #x~X>~%" (-> this tank-quat))
+  (format #t "~2Ttank-quat-vibe-only: #<quaternion @ #x~X>~%" (-> this tank-quat-vibe-only))
+  (format #t "~2Trotate-quat: #<quaternion @ #x~X>~%" (-> this rotate-quat))
+  (format #t "~2Trotate-rate: ~f~%" (-> this rotate-rate))
+  (format #t "~2Trotate-mult: ~f~%" (-> this rotate-mult))
+  (format #t "~2Tshot-range: ~f~%" (-> this shot-range))
+  (format #t "~2Tfov-mult: ~f~%" (-> this fov-mult))
+  (format #t "~2Toffset: #<vector @ #x~X>~%" (-> this offset))
+  (format #t "~2Tsight-pos: #<vector @ #x~X>~%" (-> this sight-pos))
+  (format #t "~2Tfiring-sight-pos: #<vector @ #x~X>~%" (-> this firing-sight-pos))
+  (format #t "~2Taim-pos[3] @ #x~X~%" (-> this aim-pos))
+  (format #t "~2Tgun-timer: ~D~%" (-> this gun-timer))
+  (format #t "~2Tgun-elev-jmod: ~A~%" (-> this gun-elev-jmod))
+  (format #t "~2Tgun-elev: ~f~%" (-> this gun-elev))
+  (format #t "~2Tgun-elev-cam: ~f~%" (-> this gun-elev-cam))
+  (format #t "~2Tgun-joint-l[2] @ #x~X~%" (-> this gun-joint-l))
+  (format #t "~2Tgun-joint-r[2] @ #x~X~%" (-> this gun-joint-r))
+  (format #t "~2Tgun-spread: ~f~%" (-> this gun-spread))
+  (format #t "~2Tgun-index: ~D~%" (-> this gun-index))
+  (format #t "~2Tflags: ~D~%" (-> this flags))
+  (format #t "~2Tturn-sound-id: ~D~%" (-> this turn-sound-id))
   (label cfg-4)
-  obj
+  this
   )
 
 ;; definition of type fort-robotank-reticle
 (deftype fort-robotank-reticle (process-drawable)
-  ((shadow-jmod  joint-mod          :offset-assert 200)
-   (sight-jmod   joint-mod          :offset-assert 204)
-   (ring-jmod    joint-mod  3       :offset-assert 208)
-   (ring-timer   time-frame         :offset-assert 224)
-   (sight-scale  vector     :inline :offset-assert 240)
-   (collide-dist float              :offset-assert 256)
+  ((shadow-jmod   joint-mod)
+   (sight-jmod    joint-mod)
+   (ring-jmod     joint-mod  3)
+   (ring-timer    time-frame)
+   (sight-scale   vector     :inline)
+   (collide-dist  float)
    )
-  :heap-base #x90
-  :method-count-assert 22
-  :size-assert         #x104
-  :flag-assert         #x1600900104
-  (:methods
-    (idle () _type_ :state 20)
-    (lock () _type_ :state 21)
+  (:state-methods
+    idle
+    lock
     )
   )
 
 ;; definition for method 3 of type fort-robotank-reticle
-(defmethod inspect fort-robotank-reticle ((obj fort-robotank-reticle))
-  (when (not obj)
-    (set! obj obj)
+(defmethod inspect ((this fort-robotank-reticle))
+  (when (not this)
+    (set! this this)
     (goto cfg-4)
     )
   (let ((t9-0 (method-of-type process-drawable inspect)))
-    (t9-0 obj)
+    (t9-0 this)
     )
-  (format #t "~2Tshadow-jmod: ~A~%" (-> obj shadow-jmod))
-  (format #t "~2Tsight-jmod: ~A~%" (-> obj sight-jmod))
-  (format #t "~2Tring-jmod[3] @ #x~X~%" (-> obj ring-jmod))
-  (format #t "~2Tring-timer: ~D~%" (-> obj ring-timer))
-  (format #t "~2Tsight-scale: #<vector @ #x~X>~%" (-> obj sight-scale))
-  (format #t "~2Tcollide-dist: ~f~%" (-> obj collide-dist))
+  (format #t "~2Tshadow-jmod: ~A~%" (-> this shadow-jmod))
+  (format #t "~2Tsight-jmod: ~A~%" (-> this sight-jmod))
+  (format #t "~2Tring-jmod[3] @ #x~X~%" (-> this ring-jmod))
+  (format #t "~2Tring-timer: ~D~%" (-> this ring-timer))
+  (format #t "~2Tsight-scale: #<vector @ #x~X>~%" (-> this sight-scale))
+  (format #t "~2Tcollide-dist: ~f~%" (-> this collide-dist))
   (label cfg-4)
-  obj
+  this
   )
 
 ;; definition of type fort-roboscreen
 (deftype fort-roboscreen (process-drawable)
-  ((anim-frame float     :offset-assert 200)
-   (transition float     :offset-assert 204)
-   (gui-id-1   sound-id  :offset-assert 208)
-   (gui-id-2   sound-id  :offset-assert 212)
+  ((anim-frame  float)
+   (transition  float)
+   (gui-id-1    sound-id)
+   (gui-id-2    sound-id)
    )
-  :heap-base #x60
-  :method-count-assert 25
-  :size-assert         #xd8
-  :flag-assert         #x19006000d8
+  (:state-methods
+    idle
+    active
+    deactive
+    die
+    )
   (:methods
-    (idle () _type_ :state 20)
-    (active () _type_ :state 21)
-    (deactive () _type_ :state 22)
-    (die () _type_ :state 23)
-    (fort-roboscreen-method-24 (_type_) none 24)
+    (fort-roboscreen-method-24 (_type_) none)
     )
   )
 
 ;; definition for method 3 of type fort-roboscreen
-(defmethod inspect fort-roboscreen ((obj fort-roboscreen))
-  (when (not obj)
-    (set! obj obj)
+(defmethod inspect ((this fort-roboscreen))
+  (when (not this)
+    (set! this this)
     (goto cfg-4)
     )
   (let ((t9-0 (method-of-type process-drawable inspect)))
-    (t9-0 obj)
+    (t9-0 this)
     )
-  (format #t "~2Tanim-frame: ~f~%" (-> obj anim-frame))
-  (format #t "~2Ttransition: ~f~%" (-> obj transition))
-  (format #t "~2Tgui-id-1: ~D~%" (-> obj gui-id-1))
-  (format #t "~2Tgui-id-2: ~D~%" (-> obj gui-id-2))
+  (format #t "~2Tanim-frame: ~f~%" (-> this anim-frame))
+  (format #t "~2Ttransition: ~f~%" (-> this transition))
+  (format #t "~2Tgui-id-1: ~D~%" (-> this gui-id-1))
+  (format #t "~2Tgui-id-2: ~D~%" (-> this gui-id-2))
   (label cfg-4)
-  obj
+  this
   )
 
 ;; failed to figure out what this is:
@@ -167,10 +159,10 @@
 ;; failed to figure out what this is:
 (defstate idle (fort-roboscreen)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('trigger)
-       (set! (-> self state-time) (current-time))
+       (set-time! (-> self state-time))
        (go-virtual active)
        )
       (('die)
@@ -181,16 +173,15 @@
   :enter (behavior ()
     (logior! (-> self draw status) (draw-control-status no-draw))
     (set! (-> self transition) 0.0)
-    (none)
     )
-  :code (the-as (function none :behavior fort-roboscreen) sleep-code)
+  :code sleep-code
   )
 
 ;; failed to figure out what this is:
 (defstate active (fort-roboscreen)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('untrigger)
        (go-virtual deactive)
        )
@@ -221,7 +212,6 @@
       (the-as (function gui-connection symbol) #f)
       (the-as process #f)
       )
-    (none)
     )
   :exit (behavior ()
     (set-action!
@@ -244,11 +234,10 @@
       (the-as (function gui-connection symbol) #f)
       (the-as process #f)
       )
-    (none)
     )
   :code (behavior ()
     (until #f
-      (when (and (not (paused?)) (>= (- (current-time) (-> self state-time)) (seconds 1)))
+      (when (and (not (paused?)) (time-elapsed? (-> self state-time) (seconds 1)))
         (seek! (-> self anim-frame) 0.0 (* 0.2 (-> self clock time-adjust-ratio)))
         (seek! (-> self transition) 1.0 (* 0.01 (-> self clock time-adjust-ratio)))
         )
@@ -257,20 +246,18 @@
       (suspend)
       )
     #f
-    (none)
     )
   :post (behavior ()
     (fort-roboscreen-method-24 self)
     (ja-post)
-    (none)
     )
   )
 
 ;; failed to figure out what this is:
 (defstate deactive (fort-roboscreen)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('die)
        (go-virtual die)
        )
@@ -291,12 +278,10 @@
       (suspend)
       )
     #f
-    (none)
     )
   :post (behavior ()
     (fort-roboscreen-method-24 self)
     (ja-post)
-    (none)
     )
   )
 
@@ -305,20 +290,19 @@
   :virtual #t
   :code (behavior ()
     (let ((gp-0 (current-time)))
-      (until (>= (- (current-time) gp-0) (seconds 1))
-        (seek! (-> self transition) 0.0 (-> self clock seconds-per-frame))
+      (until (time-elapsed? gp-0 (seconds 1))
+        (seek! (-> self transition) 0.0 (seconds-per-frame))
         (set-roboscreen-alpha! (-> self transition))
         (suspend)
         )
       )
-    (none)
     )
   )
 
 ;; definition for method 24 of type fort-roboscreen
 ;; INFO: Used lq/sq
 ;; WARN: Return type mismatch int vs none.
-(defmethod fort-roboscreen-method-24 fort-roboscreen ((obj fort-roboscreen))
+(defmethod fort-roboscreen-method-24 ((this fort-roboscreen))
   (rlet ((acc :class vf)
          (vf0 :class vf)
          (vf4 :class vf)
@@ -333,12 +317,12 @@
           (f30-0 4096.0)
           )
       (let ((f0-4 (* 0.00013563369 (tan (* 0.5 (-> *math-camera* fov))) f30-0)))
-        (set-vector! (-> obj root scale) f0-4 f0-4 f0-4 1.0)
+        (set-vector! (-> this root scale) f0-4 f0-4 f0-4 1.0)
         )
       (set! (-> gp-0 quad) (-> (camera-pos) quad))
       (vector-normalize-copy! s5-0 (-> s3-0 vector 2) 1.0)
-      (matrix->quaternion (-> obj root quat) s3-0)
-      (let ((v1-10 (-> obj root trans)))
+      (matrix->quaternion (-> this root quat) s3-0)
+      (let ((v1-10 (-> this root trans)))
         (let ((a0-5 f30-0))
           (.mov vf7 a0-5)
           )
@@ -379,16 +363,16 @@
   (set-vector! (-> self draw color-emissive) 0.0 0.0 0.0 0.0)
   (set-vector! (-> self draw color-emissive) 0.0 0.0 0.0 0.0)
   (logior! (-> self skel status) (joint-control-status blend-shape))
-  (ja :group! (-> self draw art-group data 3))
+  (ja :group! fort-roboscreen-end-ja)
   (go-virtual idle)
   (none)
   )
 
 ;; definition for method 10 of type fort-roboscreen
-(defmethod deactivate fort-roboscreen ((obj fort-roboscreen))
+(defmethod deactivate ((this fort-roboscreen))
   (disable *screen-filter*)
   (set-roboscreen-alpha! 0.0)
-  ((the-as (function process-drawable none) (find-parent-method fort-roboscreen 10)) obj)
+  (call-parent-method this)
   (none)
   )
 
@@ -480,7 +464,7 @@
       )
     )
   0
-  (vector-seek! (-> self sight-jmod twist-max) (-> self sight-scale) (* 6.0 (-> self clock seconds-per-frame)))
+  (vector-seek! (-> self sight-jmod twist-max) (-> self sight-scale) (* 6.0 (seconds-per-frame)))
   (ja-post)
   (none)
   )
@@ -575,12 +559,10 @@
     (dotimes (v1-0 3)
       (set! (-> self ring-jmod v1-0 twist z) (the-as float #t))
       )
-    (none)
     )
   :code (behavior ()
-    (ja-no-eval :group! (-> self draw art-group data 3) :num! zero)
+    (ja-no-eval :group! fort-robotank-sight-idle-ja :num! zero)
     (sleep-code)
-    (none)
     )
   :post (behavior ()
     (when (< (-> self ring-timer) (current-time))
@@ -594,7 +576,6 @@
       (set! (-> self ring-timer) (+ (current-time) (the int (* 300.0 (rand-vu-float-range 0.6 1.8)))))
       )
     (fort-robotank-reticle-post)
-    (none)
     )
   )
 
@@ -606,39 +587,34 @@
     (dotimes (v1-0 3)
       (set! (-> self ring-jmod v1-0 twist z) (the-as float #f))
       )
-    (none)
     )
   :code (behavior ()
     (ja-channel-push! 1 (seconds 0.04))
-    (ja-no-eval :group! (-> self draw art-group data 4)
-                :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 4)) frames num-frames) -1)))
-                :frame-num 0.0
-                )
+    (ja-no-eval :group! fort-robotank-sight-locked-ja :num! (seek!) :frame-num 0.0)
     (until (ja-done? 0)
       (suspend)
       (ja :num! (seek!))
       )
     (sleep-code)
-    (none)
     )
   :post fort-robotank-reticle-post
   )
 
 ;; definition for method 7 of type fort-robotank-reticle
 ;; WARN: Return type mismatch process-drawable vs fort-robotank-reticle.
-(defmethod relocate fort-robotank-reticle ((obj fort-robotank-reticle) (arg0 int))
-  (if (nonzero? (-> obj shadow-jmod))
-      (&+! (-> obj shadow-jmod) arg0)
+(defmethod relocate ((this fort-robotank-reticle) (arg0 int))
+  (if (nonzero? (-> this shadow-jmod))
+      (&+! (-> this shadow-jmod) arg0)
       )
-  (if (nonzero? (-> obj sight-jmod))
-      (&+! (-> obj sight-jmod) arg0)
+  (if (nonzero? (-> this sight-jmod))
+      (&+! (-> this sight-jmod) arg0)
       )
   (dotimes (v1-8 3)
-    (if (nonzero? (-> obj ring-jmod v1-8))
-        (&+! (-> obj ring-jmod v1-8) arg0)
+    (if (nonzero? (-> this ring-jmod v1-8))
+        (&+! (-> this ring-jmod v1-8) arg0)
         )
     )
-  (the-as fort-robotank-reticle ((method-of-type process-drawable relocate) obj arg0))
+  (the-as fort-robotank-reticle ((method-of-type process-drawable relocate) this arg0))
   )
 
 ;; definition for function fort-robotank-reticle-init-by-other
@@ -679,7 +655,7 @@
     (set! (-> v1-20 settings shadow-type) 1)
     (set! (-> self draw shadow-ctrl) v1-20)
     )
-  (ja-no-eval :group! (-> self draw art-group data 3) :num! zero)
+  (ja-no-eval :group! fort-robotank-sight-idle-ja :num! zero)
   (ja-post)
   (set-setting! 'spotlight-color #f 0.0 (the-as uint #x80a0a0ff))
   (go-virtual idle)
@@ -689,28 +665,24 @@
 ;; definition of type fort-robotank-shot
 (deftype fort-robotank-shot (guard-shot)
   ()
-  :heap-base #x170
-  :method-count-assert 40
-  :size-assert         #x1f0
-  :flag-assert         #x28017001f0
   )
 
 ;; definition for method 3 of type fort-robotank-shot
-(defmethod inspect fort-robotank-shot ((obj fort-robotank-shot))
-  (when (not obj)
-    (set! obj obj)
+(defmethod inspect ((this fort-robotank-shot))
+  (when (not this)
+    (set! this this)
     (goto cfg-4)
     )
   (let ((t9-0 (method-of-type guard-shot inspect)))
-    (t9-0 obj)
+    (t9-0 this)
     )
   (label cfg-4)
-  obj
+  this
   )
 
 ;; definition for method 28 of type fort-robotank-shot
 ;; WARN: Return type mismatch int vs none.
-(defmethod play-impact-sound fort-robotank-shot ((obj fort-robotank-shot) (arg0 projectile-options))
+(defmethod play-impact-sound ((this fort-robotank-shot) (arg0 projectile-options))
   (let ((v1-0 arg0))
     (cond
       ((zero? v1-0)
@@ -727,9 +699,9 @@
 
 ;; definition for method 30 of type fort-robotank-shot
 ;; WARN: Return type mismatch int vs none.
-(defmethod init-proj-collision! fort-robotank-shot ((obj fort-robotank-shot))
+(defmethod init-proj-collision! ((this fort-robotank-shot))
   "Init the [[projectile]]'s [[collide-shape]]"
-  (let ((s5-0 (new 'process 'collide-shape-moving obj (collide-list-enum hit-by-player))))
+  (let ((s5-0 (new 'process 'collide-shape-moving this (collide-list-enum hit-by-player))))
     (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s5-0 reaction)
           (the-as (function control-info collide-query vector vector collide-status) cshape-reaction-just-move)
@@ -769,9 +741,9 @@
       )
     (set! (-> s5-0 max-iteration-count) (the-as uint 1))
     (set! (-> s5-0 event-self) 'touched)
-    (set! (-> obj root) s5-0)
+    (set! (-> this root) s5-0)
     )
-  (set! (-> obj root pat-ignore-mask)
+  (set! (-> this root pat-ignore-mask)
         (new 'static 'pat-surface :noentity #x1 :nojak #x1 :probe #x1 :noproj #x1 :noendlessfall #x1)
         )
   0
@@ -781,16 +753,16 @@
 ;; definition for method 31 of type fort-robotank-shot
 ;; INFO: Used lq/sq
 ;; WARN: Return type mismatch int vs none.
-(defmethod init-proj-settings! fort-robotank-shot ((obj fort-robotank-shot))
+(defmethod init-proj-settings! ((this fort-robotank-shot))
   "Init relevant settings for the [[projectile]] such as gravity, speed, timeout, etc"
-  (set! (-> obj tail-pos quad) (-> obj root trans quad))
-  (set! (-> obj attack-mode) 'fort-robotank-shot)
-  (set! (-> obj max-speed) 819200.0)
-  (set! (-> obj move) guard-shot-move)
-  (set! (-> obj update-velocity) projectile-update-velocity-space-wars)
-  (set! (-> obj timeout) (seconds 0.5))
-  (logior! (-> obj options) (projectile-options account-for-target-velocity))
-  (set-gravity-length (-> obj root dynam) 573440.0)
+  (set! (-> this tail-pos quad) (-> this root trans quad))
+  (set! (-> this attack-mode) 'fort-robotank-shot)
+  (set! (-> this max-speed) 819200.0)
+  (set! (-> this move) guard-shot-move)
+  (set! (-> this update-velocity) projectile-update-velocity-space-wars)
+  (set! (-> this timeout) (seconds 0.5))
+  (logior! (-> this options) (projectile-options account-for-target-velocity))
+  (set-gravity-length (-> this root dynam) 573440.0)
   0
   (none)
   )
@@ -989,18 +961,18 @@
 
 ;; definition for method 32 of type fort-robotank-turret
 ;; INFO: Used lq/sq
-(defmethod fort-robotank-turret-method-32 fort-robotank-turret ((obj fort-robotank-turret) (arg0 (inline-array vector)))
+(defmethod fort-robotank-turret-method-32 ((this fort-robotank-turret) (arg0 (inline-array vector)))
   (let ((gp-0 (new 'stack-no-clear 'projectile-init-by-other-params)))
     (let ((v1-0 (-> arg0 0))
           (a0-1 (-> arg0 1))
           )
-      (set! (-> gp-0 ent) (-> obj entity))
+      (set! (-> gp-0 ent) (-> this entity))
       (set! (-> gp-0 charge) 1.0)
       (set! (-> gp-0 options) (projectile-options))
       (set! (-> gp-0 pos quad) (-> v1-0 quad))
-      (set! (-> gp-0 notify-handle) (process->handle obj))
+      (set! (-> gp-0 notify-handle) (process->handle this))
       (set! (-> gp-0 owner-handle) (the-as handle #f))
-      (set! (-> gp-0 ignore-handle) (process->handle obj))
+      (set! (-> gp-0 ignore-handle) (process->handle this))
       (let* ((a1-10 *game-info*)
              (a2-11 (+ (-> a1-10 attack-id) 1))
              )
@@ -1011,30 +983,30 @@
       (vector-! (-> gp-0 vel) a0-1 v1-0)
       )
     (vector-normalize! (-> gp-0 vel) 512000.0)
-    (spawn-projectile fort-robotank-shot gp-0 obj *default-dead-pool*)
+    (spawn-projectile fort-robotank-shot gp-0 this *default-dead-pool*)
     )
   )
 
 ;; definition for method 33 of type fort-robotank-turret
 ;; INFO: Used lq/sq
 ;; WARN: Return type mismatch (pointer process) vs none.
-(defmethod fort-robotank-turret-method-33 fort-robotank-turret ((obj fort-robotank-turret))
+(defmethod fort-robotank-turret-method-33 ((this fort-robotank-turret))
   (local-vars (sv-144 vector) (sv-160 vector))
   (let ((s3-0 (new 'stack-no-clear 'inline-array 'vector 2))
         (s5-0 (new 'stack-no-clear 'inline-array 'vector 4))
         )
-    (-> obj node-list data 11)
+    (-> this node-list data 11)
     (let ((s4-0 (new 'stack-no-clear 'vector))
-          (s1-0 (-> obj sight-pos))
-          (s2-0 (-> obj gun-index))
+          (s1-0 (-> this sight-pos))
+          (s2-0 (-> this gun-index))
           )
       0.0
       0.0
-      (vector<-cspace! (-> s3-0 0) (-> obj node-list data (-> obj gun-joint-l s2-0)))
-      (vector<-cspace! (-> s3-0 1) (-> obj node-list data (-> obj gun-joint-r s2-0)))
+      (vector<-cspace! (-> s3-0 0) (-> this node-list data (-> this gun-joint-l s2-0)))
+      (vector<-cspace! (-> s3-0 1) (-> this node-list data (-> this gun-joint-r s2-0)))
       (let ((f30-0 (* 0.5 (vector-length (vector-! (new 'stack-no-clear 'vector) (-> s3-0 1) (-> s3-0 0))))))
         (let ((f28-0 (fmax 81920.0 (+ 12288.0 (vector-length (vector-! (new 'stack-no-clear 'vector) s1-0 (-> s3-0 0)))))))
-          (vector-normalize-copy! s4-0 (-> obj node-list data (-> obj gun-joint-l s2-0) bone transform vector 2) 1.0)
+          (vector-normalize-copy! s4-0 (-> this node-list data (-> this gun-joint-l s2-0) bone transform vector 2) 1.0)
           (let ((s0-0 vector-rotate-y!))
             (set! sv-144 s4-0)
             (set! sv-160 s4-0)
@@ -1044,19 +1016,19 @@
             )
           (set! (-> s5-0 0 quad) (-> s3-0 0 quad))
           (vector+float*! (-> s5-0 1) (-> s5-0 0) s4-0 512000.0)
-          (set! (-> obj shot-range) (fmin 204800.0 f28-0))
+          (set! (-> this shot-range) (fmin 204800.0 f28-0))
           )
-        (fort-robotank-turret-method-32 obj s5-0)
+        (fort-robotank-turret-method-32 this s5-0)
         (let ((f28-1 (fmax 81920.0 (+ 12288.0 (vector-length (vector-! (new 'stack-no-clear 'vector) s1-0 (-> s3-0 1)))))))
-          (vector-normalize-copy! s4-0 (-> obj node-list data (-> obj gun-joint-r s2-0) bone transform vector 2) 1.0)
+          (vector-normalize-copy! s4-0 (-> this node-list data (-> this gun-joint-r s2-0) bone transform vector 2) 1.0)
           (vector-rotate-y! s4-0 s4-0 (- (- 16384.0 (acos (/ f30-0 f28-1)))))
           (set! (-> s5-0 0 quad) (-> s3-0 1 quad))
           (vector+float*! (-> s5-0 1) (-> s5-0 0) s4-0 512000.0)
-          (set! (-> obj shot-range) (fmin 204800.0 f28-1))
+          (set! (-> this shot-range) (fmin 204800.0 f28-1))
           )
         )
       )
-    (fort-robotank-turret-method-32 obj s5-0)
+    (fort-robotank-turret-method-32 this s5-0)
     )
   (none)
   )
@@ -1064,7 +1036,7 @@
 ;; definition for method 31 of type fort-robotank-turret
 ;; INFO: Used lq/sq
 ;; WARN: Return type mismatch object vs none.
-(defmethod fort-robotank-turret-method-31 fort-robotank-turret ((obj fort-robotank-turret) (arg0 vector) (arg1 vector))
+(defmethod fort-robotank-turret-method-31 ((this fort-robotank-turret) (arg0 vector) (arg1 vector))
   (let ((s3-0 (new 'stack-no-clear 'collide-query))
         (f30-0 307200.0)
         )
@@ -1073,13 +1045,13 @@
     (let ((v1-4 s3-0))
       (set! (-> v1-4 radius) 4096.0)
       (set! (-> v1-4 collide-with) (collide-spec backgnd jak bot enemy obstacle hit-by-others-list player-list))
-      (set! (-> v1-4 ignore-process0) (ppointer->process (-> obj parent)))
-      (set! (-> v1-4 ignore-process1) obj)
+      (set! (-> v1-4 ignore-process0) (ppointer->process (-> this parent)))
+      (set! (-> v1-4 ignore-process1) this)
       (set! (-> v1-4 ignore-pat) (new 'static 'pat-surface :noentity #x1 :nojak #x1 :probe #x1 :noendlessfall #x1))
       (set! (-> v1-4 action-mask) (collide-action solid semi-solid))
       )
     (let ((f28-0 (fill-and-probe-using-line-sphere *collide-cache* s3-0))
-          (s4-0 (-> obj sight-pos))
+          (s4-0 (-> this sight-pos))
           )
       (cond
         ((>= f28-0 0.0)
@@ -1114,18 +1086,18 @@
           (vector+! s4-0 (-> s3-0 start-pos) (-> s3-0 move-dist))
           )
         )
-      (send-event (handle->process (-> obj reticle)) 'update arg0 s4-0)
+      (send-event (handle->process (-> this reticle)) 'update arg0 s4-0)
       )
-    (send-event (handle->process (-> obj reticle)) 'collide-dist f30-0)
+    (send-event (handle->process (-> this reticle)) 'collide-dist f30-0)
     )
   (none)
   )
 
 ;; definition for method 20 of type fort-robotank-turret
 ;; WARN: Return type mismatch collide-prim-core vs vector.
-(defmethod get-trans fort-robotank-turret ((obj fort-robotank-turret) (arg0 int))
+(defmethod get-trans ((this fort-robotank-turret) (arg0 int))
   "@returns the `trans` [[vector]] from the process's `root` (typically either a [[trsqv]] or a [[collide-shape]])"
-  (the-as vector (-> obj root root-prim prim-core))
+  (the-as vector (-> this root root-prim prim-core))
   )
 
 ;; definition for function turret-post
@@ -1174,7 +1146,7 @@
                  )
              (when (logtest? (-> self flags) (robotank-turret-flags rotflags-7))
                (let ((f0-6 (lerp-scale 1.0 0.2 f30-0 8192.0 327680.0)))
-                 (seek! (-> self fov-mult) f0-6 (* 2.0 (-> self clock seconds-per-frame)))
+                 (seek! (-> self fov-mult) f0-6 (* 2.0 (seconds-per-frame)))
                  )
                (set-setting! 'fov 'rel (-> self fov-mult) 0)
                (send-event (handle->process (-> self screen)) 'set-fov-mult (-> self fov-mult))
@@ -1198,7 +1170,7 @@
                                )
                            )
                     )
-               (seek! (-> self gun-elev-cam) f0-29 (* f1-12 (-> self clock seconds-per-frame)))
+               (seek! (-> self gun-elev-cam) f0-29 (* f1-12 (seconds-per-frame)))
                )
              (let* ((f28-2 (quaternion-y-angle (-> self rotate-quat)))
                     (f0-33 (quaternion-y-angle (-> self tank-quat)))
@@ -1213,7 +1185,7 @@
                                   )
                             )
                      )
-                 (seek! (-> self gun-elev) f0-41 (* 2730.6667 (-> self clock seconds-per-frame)))
+                 (seek! (-> self gun-elev) f0-41 (* 2730.6667 (seconds-per-frame)))
                  )
                )
              )
@@ -1275,7 +1247,7 @@
   (quaternion-rotate-y!
     (-> self rotate-quat)
     (-> self rotate-quat)
-    (* (-> self rotate-rate) (-> self clock seconds-per-frame))
+    (* (-> self rotate-rate) (seconds-per-frame))
     )
   (quaternion*! (-> self root quat) (-> self rotate-quat) (-> self tank-quat-vibe-only))
   (quaternion-normalize! (-> self root quat))
@@ -1379,9 +1351,9 @@
 
 ;; definition for method 34 of type fort-robotank-turret
 ;; INFO: Used lq/sq
-(defmethod fort-robotank-turret-method-34 fort-robotank-turret ((obj fort-robotank-turret) (arg0 vector) (arg1 float))
-  (let ((s4-1 (vector-! (new 'stack-no-clear 'vector) arg0 (-> obj root trans)))
-        (s3-0 (vector-z-quaternion! (new 'stack-no-clear 'vector) (-> obj root quat)))
+(defmethod fort-robotank-turret-method-34 ((this fort-robotank-turret) (arg0 vector) (arg1 float))
+  (let ((s4-1 (vector-! (new 'stack-no-clear 'vector) arg0 (-> this root trans)))
+        (s3-0 (vector-z-quaternion! (new 'stack-no-clear 'vector) (-> this root quat)))
         (s5-0 (new 'stack-no-clear 'vector))
         )
     (set! (-> s5-0 quad) (-> s4-1 quad))
@@ -1397,7 +1369,7 @@
 (defstate idle (fort-robotank-turret)
   :virtual #t
   :event robotank-turret-handler
-  :code (the-as (function none :behavior fort-robotank-turret) sleep-code)
+  :code sleep-code
   :post turret-post
   )
 
@@ -1406,38 +1378,32 @@
   :virtual #t
   :event robotank-turret-handler
   :enter (behavior ()
-    (set! (-> self gun-timer) (current-time))
-    (none)
+    (set-time! (-> self gun-timer))
     )
   :trans (behavior ()
     (if (logtest? (-> self flags) (robotank-turret-flags rotflags-4))
-        (set! (-> self gun-timer) (current-time))
+        (set-time! (-> self gun-timer))
         )
     (let ((gp-0 *target*))
       (if (and (if (type? gp-0 process-focusable)
                    gp-0
                    )
                (or (not (logtest? (-> self flags) (robotank-turret-flags rotflags-9))) (check-los? (-> self los) 0))
-               (>= (- (current-time) (-> self gun-timer)) (seconds 1))
+               (time-elapsed? (-> self gun-timer) (seconds 1))
                )
           (go-virtual fire)
           )
       )
-    (none)
     )
   :code (behavior ()
     (until #f
-      (ja-no-eval :group! (-> self draw art-group data 3)
-                  :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 3)) frames num-frames) -1)))
-                  :frame-num 0.0
-                  )
+      (ja-no-eval :group! fort-robotank-top-idle-ja :num! (seek!) :frame-num 0.0)
       (until (ja-done? 0)
         (suspend)
         (ja :num! (seek!))
         )
       )
     #f
-    (none)
     )
   :post turret-post
   )
@@ -1460,7 +1426,6 @@
         (set! (-> self aim-pos-1 quad) (-> self aim-pos 0 quad))
         )
       )
-    (none)
     )
   :trans (behavior ()
     (let ((gp-0 *target*))
@@ -1478,7 +1443,6 @@
         (go-virtual ready)
         )
       )
-    (none)
     )
   :code (behavior ()
     (until #f
@@ -1489,7 +1453,7 @@
       (set! (-> self firing-sight-pos quad) (-> self sight-pos quad))
       (send-event (handle->process (-> self reticle)) 'lock)
       (let ((gp-0 (current-time)))
-        (until (>= (- (current-time) gp-0) (seconds 0.5))
+        (until (time-elapsed? gp-0 (seconds 0.5))
           (suspend)
           )
         )
@@ -1498,19 +1462,13 @@
         (dotimes (s5-2 gp-2)
           (let ((s4-1 (max 2 (min 4 (rand-vu-int-range 1 8)))))
             (dotimes (s3-2 s4-1)
-              (ja-no-eval :group! (-> self draw art-group data 4)
-                          :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 4)) frames num-frames) -1)))
-                          :frame-num 0.0
-                          )
+              (ja-no-eval :group! fort-robotank-top-fire-start-ja :num! (seek!) :frame-num 0.0)
               (until (ja-done? 0)
                 (suspend)
                 (ja :num! (seek!))
                 )
               (fort-robotank-turret-method-33 self)
-              (ja-no-eval :group! (-> self draw art-group data 5)
-                          :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 5)) frames num-frames) -1)))
-                          :frame-num 0.0
-                          )
+              (ja-no-eval :group! fort-robotank-top-fire-end-ja :num! (seek!) :frame-num 0.0)
               (until (ja-done? 0)
                 (suspend)
                 (ja :num! (seek!))
@@ -1527,7 +1485,7 @@
           (let ((f30-0 (rand-vu-float-range 0.05 0.43))
                 (s4-2 (current-time))
                 )
-            (until (>= (- (current-time) s4-2) (the int (* 300.0 f30-0)))
+            (until (time-elapsed? s4-2 (the int (* 300.0 f30-0)))
               (suspend)
               )
             )
@@ -1549,13 +1507,12 @@
                    )
             (gp-3 (current-time))
             )
-        (until (>= (- (current-time) gp-3) (the int (* 300.0 f30-1)))
+        (until (time-elapsed? gp-3 (the int (* 300.0 f30-1)))
           (suspend)
           )
         )
       )
     #f
-    (none)
     )
   :post turret-post
   )
@@ -1567,37 +1524,36 @@
     (send-event (handle->process (-> self reticle)) 'die)
     (send-event (handle->process (-> self screen)) 'die)
     (let ((gp-0 (current-time)))
-      (until (>= (- (current-time) gp-0) (seconds 1))
+      (until (time-elapsed? gp-0 (seconds 1))
         (suspend)
         )
       )
     (while (-> self child)
       (suspend)
       )
-    (none)
     )
   )
 
 ;; definition for method 10 of type fort-robotank-turret
-(defmethod deactivate fort-robotank-turret ((obj fort-robotank-turret))
-  (logclear! (-> obj flags) (robotank-turret-flags rotflags-6))
-  (sound-stop (-> obj turn-sound-id))
-  (let ((a0-4 (handle->process (-> obj screen))))
+(defmethod deactivate ((this fort-robotank-turret))
+  (logclear! (-> this flags) (robotank-turret-flags rotflags-6))
+  (sound-stop (-> this turn-sound-id))
+  (let ((a0-4 (handle->process (-> this screen))))
     (if a0-4
         (deactivate a0-4)
         )
     )
-  ((method-of-type process-focusable deactivate) obj)
+  ((method-of-type process-focusable deactivate) this)
   (none)
   )
 
 ;; definition for method 7 of type fort-robotank-turret
 ;; WARN: Return type mismatch process-focusable vs fort-robotank-turret.
-(defmethod relocate fort-robotank-turret ((obj fort-robotank-turret) (arg0 int))
-  (if (nonzero? (-> obj gun-elev-jmod))
-      (&+! (-> obj gun-elev-jmod) arg0)
+(defmethod relocate ((this fort-robotank-turret) (arg0 int))
+  (if (nonzero? (-> this gun-elev-jmod))
+      (&+! (-> this gun-elev-jmod) arg0)
       )
-  (the-as fort-robotank-turret ((method-of-type process-focusable relocate) obj arg0))
+  (the-as fort-robotank-turret ((method-of-type process-focusable relocate) this arg0))
   )
 
 ;; definition for function fort-robotank-turret-init-by-other
@@ -1678,7 +1634,7 @@
   (set! (-> self aim-pos 0 quad) (-> self root trans quad))
   (set! (-> self aim-pos-2 quad) (-> self root trans quad))
   (set! (-> self aim-pos-1 quad) (-> self root trans quad))
-  (set! (-> self gun-timer) (current-time))
+  (set-time! (-> self gun-timer))
   (set! (-> self flags) (robotank-turret-flags))
   (set! (-> self fov-mult) 1.0)
   (set! (-> self shot-range) 204800.0)
@@ -1708,7 +1664,7 @@
             )
       )
     )
-  (ja-no-eval :group! (-> self draw art-group data 3) :num! zero)
+  (ja-no-eval :group! fort-robotank-top-idle-ja :num! zero)
   (transform-post)
   (set! (-> self turn-sound-id) (new-sound-id))
   (go-virtual idle)

@@ -8,16 +8,12 @@
 ;; DECOMP BEGINS
 
 (deftype com-elevator (elevator)
-  ((camera-startup      vector   2 :inline :offset-assert 368)
-   (use-camera-startup? symbol   2         :offset-assert 400)
-   (sound-id            sound-id           :offset-assert 408)
+  ((camera-startup       vector  2 :inline)
+   (use-camera-startup?  symbol  2)
+   (sound-id             sound-id)
    )
-  :heap-base #x120
-  :method-count-assert 50
-  :size-assert         #x19c
-  :flag-assert         #x320120019c
   (:methods
-    (com-elevator-method-49 (_type_ symbol) none 49)
+    (com-elevator-method-49 (_type_ symbol) none)
     )
   )
 
@@ -27,31 +23,31 @@
               :bounds (static-spherem 0 0 5.6 9.2)
               )
 
-(defmethod get-art-group com-elevator ((obj com-elevator))
+(defmethod get-art-group ((this com-elevator))
   "@returns The associated [[art-group]]"
   (art-group-get-by-name *level* "skel-com-elevator" (the-as (pointer uint32) #f))
   )
 
-(defmethod move-between-points com-elevator ((obj com-elevator) (arg0 vector) (arg1 float) (arg2 float))
+(defmethod move-between-points ((this com-elevator) (arg0 vector) (arg1 float) (arg2 float))
   "Move between two points on the elevator's path
 @param vec TODO not sure
 @param point-a The first point fetched from the elevator's path
 @param point-b The second point fetched from the path
 @see [[path-control]] and [[elevator]]"
-  (let ((s4-0 (get-point-in-path! (-> obj path) (new 'stack-no-clear 'vector) arg1 'interp))
-        (a0-3 (get-point-in-path! (-> obj path) (new 'stack-no-clear 'vector) arg2 'interp))
-        (v1-3 (-> obj root trans))
+  (let ((s4-0 (get-point-in-path! (-> this path) (new 'stack-no-clear 'vector) arg1 'interp))
+        (a0-3 (get-point-in-path! (-> this path) (new 'stack-no-clear 'vector) arg2 'interp))
+        (v1-3 (-> this root trans))
         )
     (when (and (< (-> a0-3 y) (-> s4-0 y)) (< (-> arg0 y) (+ -8192.0 (-> v1-3 y))))
       (let ((s4-2 (vector-! (new 'stack-no-clear 'vector) arg0 v1-3)))
-        (vector-inv-orient-by-quat! s4-2 s4-2 (-> obj root quat))
+        (vector-inv-orient-by-quat! s4-2 s4-2 (-> this root quat))
         (and (< (fabs (-> s4-2 x)) 24576.0) (< 0.0 (-> s4-2 z)) (< (-> s4-2 z) 49152.0))
         )
       )
     )
   )
 
-(defmethod commited-to-ride? com-elevator ((obj com-elevator))
+(defmethod commited-to-ride? ((this com-elevator))
   "@returns if the target is considered within the elevator area enough to begin descending/ascending"
   (let* ((s5-0 *target*)
          (a0-2 (if (type? s5-0 process-focusable)
@@ -61,13 +57,13 @@
          )
     (and (when a0-2
            (let* ((v1-2 (get-trans a0-2 0))
-                  (s5-2 (vector-! (new 'stack-no-clear 'vector) v1-2 (-> obj root trans)))
+                  (s5-2 (vector-! (new 'stack-no-clear 'vector) v1-2 (-> this root trans)))
                   )
-             (vector-inv-orient-by-quat! s5-2 s5-2 (-> obj root quat))
+             (vector-inv-orient-by-quat! s5-2 s5-2 (-> this root quat))
              (and (< (fabs (-> s5-2 x)) 20480.0) (< 0.0 (-> s5-2 z)) (< (-> s5-2 z) 40960.0))
              )
            )
-         (let ((gp-1 (res-lump-struct (-> obj entity) 'on-notice structure)))
+         (let ((gp-1 (res-lump-struct (-> this entity) 'on-notice structure)))
            (not (if gp-1
                     (script-eval (the-as pair gp-1))
                     )
@@ -77,8 +73,8 @@
     )
   )
 
-(defmethod com-elevator-method-49 com-elevator ((obj com-elevator) (arg0 symbol))
-  (let ((v1-3 (-> (the-as collide-shape-prim-group (-> obj root root-prim)) child 1)))
+(defmethod com-elevator-method-49 ((this com-elevator) (arg0 symbol))
+  (let ((v1-3 (-> (the-as collide-shape-prim-group (-> this root root-prim)) child 1)))
     (cond
       (arg0
         (set! (-> v1-3 prim-core collide-as) (collide-spec obstacle pusher))
@@ -97,13 +93,12 @@
 (defstate dormant (com-elevator)
   :virtual #t
   :enter (behavior ()
-    (let ((t9-1 (-> (the-as state (find-parent-method com-elevator 34)) enter)))
+    (let ((t9-1 (-> (find-parent-state) enter)))
       (if t9-1
-          ((the-as (function none) t9-1))
+          (t9-1)
           )
       )
     (process-entity-status! self (entity-perm-status subtask-complete) #t)
-    (none)
     )
   )
 
@@ -119,7 +114,6 @@
     (if (not (logtest? (-> self elevator-status) (elevator-status moving)))
         (set-setting! 'allow-look-around #f 0.0 0)
         )
-    (none)
     )
   :exit (behavior ()
     (sound-stop (-> self sound-id))
@@ -131,11 +125,10 @@
       )
     (com-elevator-method-49 self #f)
     (remove-setting! 'allow-look-around)
-    (none)
     )
   :code (behavior ()
     (let ((gp-0 (current-time)))
-      (until (>= (- (current-time) gp-0) (seconds 1))
+      (until (time-elapsed? gp-0 (seconds 1))
         (suspend)
         )
       )
@@ -162,55 +155,54 @@
         )
       )
     #f
-    (none)
     )
   )
 
-(defmethod activate-elevator com-elevator ((obj com-elevator))
+(defmethod activate-elevator ((this com-elevator))
   "Puts the elevator initially into the correct state. This is typically based upon game completion"
   (cond
-    ((logtest? (-> obj entity extra perm status) (entity-perm-status subtask-complete))
-     (go (method-of-object obj dormant))
+    ((logtest? (-> this entity extra perm status) (entity-perm-status subtask-complete))
+     (go (method-of-object this dormant))
      )
-    ((logtest? (-> obj params flags) (elevator-flags elevator-flags-6))
-     (go (method-of-object obj arrived))
+    ((logtest? (-> this params flags) (elevator-flags elevator-flags-6))
+     (go (method-of-object this arrived))
      )
     (else
-      (go (method-of-object obj waiting))
+      (go (method-of-object this waiting))
       )
     )
   )
 
-(defmethod deactivate com-elevator ((obj com-elevator))
-  (sound-stop (-> obj sound-id))
-  ((the-as (function elevator none) (find-parent-method com-elevator 10)) obj)
+(defmethod deactivate ((this com-elevator))
+  (sound-stop (-> this sound-id))
+  (call-parent-method this)
   (none)
   )
 
 ;; WARN: Return type mismatch sound-id vs none.
-(defmethod init-plat! com-elevator ((obj com-elevator))
+(defmethod init-plat! ((this com-elevator))
   "Does any necessary initial platform setup.
 For example for an elevator pre-compute the distance between the first and last points (both ways) and clear the sound."
-  (dotimes (s5-0 (-> obj path curve num-cverts))
-    (let ((a1-1 (res-lump-struct (-> obj entity) 'string-startup-vector structure :time (the float s5-0))))
+  (dotimes (s5-0 (-> this path curve num-cverts))
+    (let ((a1-1 (res-lump-struct (-> this entity) 'string-startup-vector structure :time (the float s5-0))))
       (cond
         (a1-1
-          (vector-normalize-copy! (-> obj camera-startup s5-0) (the-as vector a1-1) 1.0)
-          (set! (-> obj use-camera-startup? s5-0) #t)
+          (vector-normalize-copy! (-> this camera-startup s5-0) (the-as vector a1-1) 1.0)
+          (set! (-> this use-camera-startup? s5-0) #t)
           )
         (else
-          (set! (-> obj use-camera-startup? s5-0) #f)
+          (set! (-> this use-camera-startup? s5-0) #f)
           )
         )
       )
     )
-  (set! (-> obj sound-id) (new-sound-id))
+  (set! (-> this sound-id) (new-sound-id))
   (none)
   )
 
-(defmethod init-plat-collision! com-elevator ((obj com-elevator))
+(defmethod init-plat-collision! ((this com-elevator))
   "TODO - collision stuff for setting up the platform"
-  (let ((s5-0 (new 'process 'collide-shape-moving obj (collide-list-enum usually-hit-by-player))))
+  (let ((s5-0 (new 'process 'collide-shape-moving this (collide-list-enum usually-hit-by-player))))
     (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s5-0 reaction) cshape-reaction-default)
     (set! (-> s5-0 no-reaction)
@@ -243,19 +235,15 @@ For example for an elevator pre-compute the distance between the first and last 
       (set! (-> s5-0 backup-collide-as) (-> v1-20 prim-core collide-as))
       (set! (-> s5-0 backup-collide-with) (-> v1-20 prim-core collide-with))
       )
-    (set! (-> obj root) s5-0)
+    (set! (-> this root) s5-0)
     )
-  (com-elevator-method-49 obj #f)
+  (com-elevator-method-49 this #f)
   (none)
   )
 
 (deftype tomb-trans-elevator (com-elevator)
-  ((unknown-gijh1bn2i3hb1 int32  :offset-assert 412)
+  ((unknown-gijh1bn2i3hb1  int32)
    )
-  :heap-base #x120
-  :method-count-assert 50
-  :size-assert         #x1a0
-  :flag-assert         #x32012001a0
   )
 
 
@@ -270,7 +258,6 @@ For example for an elevator pre-compute the distance between the first and last 
     (if (logtest? (-> self elevator-status) (elevator-status waiting-to-descend))
         (set-setting! 'jump #f 0.0 0)
         )
-    (none)
     )
   :exit (behavior ()
     (let ((t9-0 (-> (method-of-type com-elevator running) exit)))
@@ -283,11 +270,10 @@ For example for an elevator pre-compute the distance between the first and last 
     (if (logtest? (-> self elevator-status) (elevator-status waiting-to-descend))
         (remove-setting! 'jump)
         )
-    (none)
     )
   :code (behavior ()
     (let ((gp-0 (current-time)))
-      (until (>= (- (current-time) gp-0) (seconds 1))
+      (until (time-elapsed? gp-0 (seconds 1))
         (suspend)
         )
       )
@@ -313,21 +299,20 @@ For example for an elevator pre-compute the distance between the first and last 
         )
       )
     #f
-    (none)
     )
   )
 
-(defmethod deactivate tomb-trans-elevator ((obj tomb-trans-elevator))
-  (sound-stop (-> obj sound-id))
-  ((the-as (function com-elevator none) (find-parent-method tomb-trans-elevator 10)) obj)
+(defmethod deactivate ((this tomb-trans-elevator))
+  (sound-stop (-> this sound-id))
+  (call-parent-method this)
   (none)
   )
 
 ;; WARN: Return type mismatch sound-id vs none.
-(defmethod init-plat! tomb-trans-elevator ((obj tomb-trans-elevator))
+(defmethod init-plat! ((this tomb-trans-elevator))
   "Does any necessary initial platform setup.
 For example for an elevator pre-compute the distance between the first and last points (both ways) and clear the sound."
-  ((the-as (function com-elevator none) (find-parent-method tomb-trans-elevator 33)) obj)
-  (set! (-> obj sound-id) (new-sound-id))
+  (call-parent-method this)
+  (set! (-> this sound-id) (new-sound-id))
   (none)
   )

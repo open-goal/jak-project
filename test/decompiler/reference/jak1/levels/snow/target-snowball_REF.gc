@@ -3,32 +3,26 @@
 
 ;; definition of type snowball-info
 (deftype snowball-info (basic)
-  ((entity basic  :offset-assert   4)
+  ((entity  basic)
    )
-  :method-count-assert 9
-  :size-assert         #x8
-  :flag-assert         #x900000008
   )
 
 ;; definition for method 3 of type snowball-info
-(defmethod inspect snowball-info ((obj snowball-info))
-  (format #t "[~8x] ~A~%" obj (-> obj type))
-  (format #t "~Tentity: ~A~%" (-> obj entity))
-  obj
+(defmethod inspect ((this snowball-info))
+  (format #t "[~8x] ~A~%" this (-> this type))
+  (format #t "~Tentity: ~A~%" (-> this entity))
+  this
   )
 
 ;; definition of type snowball-bank
 (deftype snowball-bank (basic)
   ()
-  :method-count-assert 9
-  :size-assert         #x4
-  :flag-assert         #x900000004
   )
 
 ;; definition for method 3 of type snowball-bank
-(defmethod inspect snowball-bank ((obj snowball-bank))
-  (format #t "[~8x] ~A~%" obj (-> obj type))
-  obj
+(defmethod inspect ((this snowball-bank))
+  (format #t "[~8x] ~A~%" this (-> this type))
+  this
   )
 
 ;; definition for symbol *SNOWBALL-bank*, type snowball-bank
@@ -59,12 +53,12 @@
 
 ;; failed to figure out what this is:
 (defstate target-snowball-start (target)
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
     (cond
-      ((and (= event-type 'query) (= (-> event param 0) 'mode))
+      ((and (= message 'query) (= (-> block param 0) 'mode))
        'snowball
        )
-      ((let ((v1-3 event-type))
+      ((let ((v1-3 message))
          (= v1-3 'end-mode)
          )
        (go
@@ -75,7 +69,7 @@
          )
        )
       (else
-        (target-generic-event-handler proc arg1 event-type event)
+        (target-generic-event-handler proc argc message block)
         )
       )
     )
@@ -95,7 +89,6 @@
       (set! (-> self control reaction) target-collision-reaction)
       (target-exit)
       )
-    (none)
     )
   :code (behavior ((arg0 handle))
     (target-exit)
@@ -116,10 +109,9 @@
     (move-by-vector! (-> self control) (new 'static 'vector :y 4096.0 :w 1.0))
     (logior! (-> self control root-prim prim-core action) (collide-action snowball))
     (ja-channel-set! 1)
-    (ja :group! (-> self draw art-group data 5) :num! min)
+    (ja :group! eichar-stance-loop-ja :num! min)
     (remove-exit)
     (go target-snowball)
-    (none)
     )
   :post target-post
   )
@@ -132,10 +124,8 @@
     (loop
       (suspend)
       )
-    (none)
     )
   :post (behavior ()
     (target-snowball-post)
-    (none)
     )
   )

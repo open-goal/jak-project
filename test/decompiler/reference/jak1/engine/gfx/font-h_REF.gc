@@ -3,38 +3,32 @@
 
 ;; definition of type char-verts
 (deftype char-verts (structure)
-  ((pos    vector 4 :inline :offset-assert   0)
-   (color  vector 4 :inline :offset-assert  64)
-   (tex-st vector 4 :inline :offset-assert 128)
+  ((pos     vector  4 :inline)
+   (color   vector  4 :inline)
+   (tex-st  vector  4 :inline)
    )
-  :method-count-assert 9
-  :size-assert         #xc0
-  :flag-assert         #x9000000c0
   )
 
 ;; definition for method 3 of type char-verts
-(defmethod inspect char-verts ((obj char-verts))
-  (format #t "[~8x] ~A~%" obj 'char-verts)
-  (format #t "~Tpos[4] @ #x~X~%" (-> obj pos))
-  (format #t "~Tcolor[4] @ #x~X~%" (-> obj color))
-  (format #t "~Ttex-st[4] @ #x~X~%" (-> obj tex-st))
-  obj
+(defmethod inspect ((this char-verts))
+  (format #t "[~8x] ~A~%" this 'char-verts)
+  (format #t "~Tpos[4] @ #x~X~%" (-> this pos))
+  (format #t "~Tcolor[4] @ #x~X~%" (-> this color))
+  (format #t "~Ttex-st[4] @ #x~X~%" (-> this tex-st))
+  this
   )
 
 ;; definition of type char-color
 (deftype char-color (structure)
-  ((color rgba 4 :offset-assert   0)
+  ((color  rgba  4)
    )
-  :method-count-assert 9
-  :size-assert         #x10
-  :flag-assert         #x900000010
   )
 
 ;; definition for method 3 of type char-color
-(defmethod inspect char-color ((obj char-color))
-  (format #t "[~8x] ~A~%" obj 'char-color)
-  (format #t "~Tcolor[4] @ #x~X~%" (-> obj color))
-  obj
+(defmethod inspect ((this char-color))
+  (format #t "[~8x] ~A~%" this 'char-color)
+  (format #t "~Tcolor[4] @ #x~X~%" (-> this color))
+  this
   )
 
 ;; definition for symbol *font-default-matrix*, type matrix
@@ -49,120 +43,117 @@
 
 ;; definition of type font-context
 (deftype font-context (basic)
-  ((origin       vector     :inline :offset-assert  16)
-   (strip-gif    vector     :inline :offset-assert  32)
-   (width        float              :offset-assert  48)
-   (height       float              :offset-assert  52)
-   (projection   float              :offset-assert  56)
-   (context-vec  vector     :inline :offset         48)
-   (color        font-color         :offset-assert  64)
-   (color-s32    int32              :offset         64)
-   (flags        font-flags         :offset-assert  72)
-   (flags-signed int32              :offset         72)
-   (mat          matrix             :offset-assert  76)
-   (start-line   uint32             :offset-assert  80)
-   (scale        float              :offset-assert  84)
+  ((origin        vector  :inline)
+   (strip-gif     vector  :inline)
+   (width         float)
+   (height        float)
+   (projection    float)
+   (context-vec   vector  :inline :overlay-at width)
+   (color         font-color)
+   (color-s32     int32           :overlay-at color)
+   (flags         font-flags)
+   (flags-signed  int32           :overlay-at flags)
+   (mat           matrix)
+   (start-line    uint32)
+   (scale         float)
    )
-  :method-count-assert 20
-  :size-assert         #x58
-  :flag-assert         #x1400000058
   (:methods
-    (new (symbol type matrix int int float font-color font-flags) _type_ 0)
-    (set-mat! (font-context matrix) font-context 9)
-    (set-origin! (font-context int int) font-context 10)
-    (set-depth! (font-context int) font-context 11)
-    (set-w! (font-context float) font-context 12)
-    (set-width! (font-context int) font-context 13)
-    (set-height! (font-context int) font-context 14)
-    (set-projection! (font-context float) font-context 15)
-    (set-color! (font-context font-color) font-context 16)
-    (set-flags! (font-context font-flags) font-context 17)
-    (set-start-line! (font-context uint) font-context 18)
-    (set-scale! (font-context float) font-context 19)
+    (new (symbol type matrix int int float font-color font-flags) _type_)
+    (set-mat! (font-context matrix) font-context)
+    (set-origin! (font-context int int) font-context)
+    (set-depth! (font-context int) font-context)
+    (set-w! (font-context float) font-context)
+    (set-width! (font-context int) font-context)
+    (set-height! (font-context int) font-context)
+    (set-projection! (font-context float) font-context)
+    (set-color! (font-context font-color) font-context)
+    (set-flags! (font-context font-flags) font-context)
+    (set-start-line! (font-context uint) font-context)
+    (set-scale! (font-context float) font-context)
     )
   )
 
 ;; definition for method 3 of type font-context
-(defmethod inspect font-context ((obj font-context))
-  (format #t "[~8x] ~A~%" obj (-> obj type))
-  (format #t "~Torigin: #<vector @ #x~X>~%" (-> obj origin))
-  (format #t "~Tstrip-gif: #<vector @ #x~X>~%" (-> obj strip-gif))
-  (format #t "~Twidth: ~f~%" (-> obj width))
-  (format #t "~Theight: ~f~%" (-> obj height))
-  (format #t "~Tprojection: ~f~%" (-> obj projection))
-  (format #t "~Tcolor: ~D~%" (-> obj color))
-  (format #t "~Tflags: ~D~%" (-> obj flags))
-  (format #t "~Tmat: #<matrix @ #x~X>~%" (-> obj mat))
-  (format #t "~Tstart-line: ~D~%" (-> obj start-line))
-  (format #t "~Tscale: ~f~%" (-> obj scale))
-  obj
+(defmethod inspect ((this font-context))
+  (format #t "[~8x] ~A~%" this (-> this type))
+  (format #t "~Torigin: #<vector @ #x~X>~%" (-> this origin))
+  (format #t "~Tstrip-gif: #<vector @ #x~X>~%" (-> this strip-gif))
+  (format #t "~Twidth: ~f~%" (-> this width))
+  (format #t "~Theight: ~f~%" (-> this height))
+  (format #t "~Tprojection: ~f~%" (-> this projection))
+  (format #t "~Tcolor: ~D~%" (-> this color))
+  (format #t "~Tflags: ~D~%" (-> this flags))
+  (format #t "~Tmat: #<matrix @ #x~X>~%" (-> this mat))
+  (format #t "~Tstart-line: ~D~%" (-> this start-line))
+  (format #t "~Tscale: ~f~%" (-> this scale))
+  this
   )
 
 ;; definition for method 9 of type font-context
-(defmethod set-mat! font-context ((obj font-context) (mat matrix))
-  (set! (-> obj mat) mat)
-  obj
+(defmethod set-mat! ((this font-context) (mat matrix))
+  (set! (-> this mat) mat)
+  this
   )
 
 ;; definition for method 10 of type font-context
-(defmethod set-origin! font-context ((obj font-context) (x int) (y int))
-  (set! (-> obj origin x) (the float x))
-  (set! (-> obj origin y) (the float y))
-  obj
+(defmethod set-origin! ((this font-context) (x int) (y int))
+  (set! (-> this origin x) (the float x))
+  (set! (-> this origin y) (the float y))
+  this
   )
 
 ;; definition for method 11 of type font-context
-(defmethod set-depth! font-context ((obj font-context) (z int))
-  (set! (-> obj origin z) (the float z))
-  obj
+(defmethod set-depth! ((this font-context) (z int))
+  (set! (-> this origin z) (the float z))
+  this
   )
 
 ;; definition for method 12 of type font-context
-(defmethod set-w! font-context ((obj font-context) (w float))
-  (set! (-> obj origin w) w)
-  obj
+(defmethod set-w! ((this font-context) (w float))
+  (set! (-> this origin w) w)
+  this
   )
 
 ;; definition for method 13 of type font-context
-(defmethod set-width! font-context ((obj font-context) (width int))
-  (set! (-> obj width) (the float width))
-  obj
+(defmethod set-width! ((this font-context) (width int))
+  (set! (-> this width) (the float width))
+  this
   )
 
 ;; definition for method 14 of type font-context
-(defmethod set-height! font-context ((obj font-context) (height int))
-  (set! (-> obj height) (the float height))
-  obj
+(defmethod set-height! ((this font-context) (height int))
+  (set! (-> this height) (the float height))
+  this
   )
 
 ;; definition for method 15 of type font-context
-(defmethod set-projection! font-context ((obj font-context) (proj float))
-  (set! (-> obj projection) proj)
-  obj
+(defmethod set-projection! ((this font-context) (proj float))
+  (set! (-> this projection) proj)
+  this
   )
 
 ;; definition for method 16 of type font-context
-(defmethod set-color! font-context ((obj font-context) (color font-color))
-  (set! (-> obj color) color)
-  obj
+(defmethod set-color! ((this font-context) (color font-color))
+  (set! (-> this color) color)
+  this
   )
 
 ;; definition for method 17 of type font-context
-(defmethod set-flags! font-context ((obj font-context) (flags font-flags))
-  (set! (-> obj flags) flags)
-  obj
+(defmethod set-flags! ((this font-context) (flags font-flags))
+  (set! (-> this flags) flags)
+  this
   )
 
 ;; definition for method 18 of type font-context
-(defmethod set-start-line! font-context ((obj font-context) (start-line uint))
-  (set! (-> obj start-line) start-line)
-  obj
+(defmethod set-start-line! ((this font-context) (start-line uint))
+  (set! (-> this start-line) start-line)
+  this
   )
 
 ;; definition for method 19 of type font-context
-(defmethod set-scale! font-context ((obj font-context) (scale float))
-  (set! (-> obj scale) scale)
-  obj
+(defmethod set-scale! ((this font-context) (scale float))
+  (set! (-> this scale) scale)
+  this
   )
 
 ;; definition for method 0 of type font-context
@@ -175,128 +166,125 @@
                            (color font-color)
                            (flags font-flags)
                            )
-  (let ((obj (object-new allocation type-to-make (the-as int (-> type-to-make size)))))
-    (set! (-> obj mat) mat)
-    (let ((v1-3 obj))
+  (let ((this (object-new allocation type-to-make (the-as int (-> type-to-make size)))))
+    (set! (-> this mat) mat)
+    (let ((v1-3 this))
       (set! (-> v1-3 origin x) (the float x))
       (set! (-> v1-3 origin y) (the float y))
       )
     (cond
       ((= z 0.0)
-       (let ((v1-4 obj))
+       (let ((v1-4 this))
          (set! (-> v1-4 origin z) (-> *math-camera* isometric vector 3 z))
          )
        )
       (else
-        (let ((v1-5 obj))
+        (let ((v1-5 this))
           (set! (-> v1-5 origin z) z)
           )
         )
       )
-    (let ((v1-6 obj))
+    (let ((v1-6 this))
       (set! (-> v1-6 origin w) 1.0)
       )
-    (let ((v1-7 obj))
+    (let ((v1-7 this))
       (set! (-> v1-7 width) (the float 512))
       )
-    (let ((v1-8 obj))
+    (let ((v1-8 this))
       (set! (-> v1-8 height) (the float 256))
       )
-    (let ((v1-9 obj))
+    (let ((v1-9 this))
       (set! (-> v1-9 projection) 1.0)
       )
-    (set! (-> obj color) color)
-    (set! (-> obj flags) flags)
-    (let ((a0-4 obj))
+    (set! (-> this color) color)
+    (set! (-> this flags) flags)
+    (let ((a0-4 this))
       (set! (-> a0-4 start-line) (the-as uint 0))
       )
-    (let ((v1-13 obj))
+    (let ((v1-13 this))
       (set! (-> v1-13 scale) 1.0)
       )
-    obj
+    this
     )
   )
 
 ;; definition of type font-work
 (deftype font-work (structure)
-  ((font-tmpl             dma-gif-packet  :inline    :offset-assert   0)
-   (char-tmpl             dma-gif-packet  :inline    :offset-assert  32)
-   (tex1-tmpl             uint64          2          :offset-assert  64)
-   (small-font-lo-tmpl    uint64          2          :offset-assert  80)
-   (small-font-lo-tmpl-qw uint128                    :offset         80)
-   (small-font-hi-tmpl    uint64          2          :offset-assert  96)
-   (small-font-hi-tmpl-qw uint128                    :offset         96)
-   (large-font-lo-tmpl    uint64          2          :offset-assert 112)
-   (large-font-lo-tmpl-qw uint128                    :offset        112)
-   (large-font-hi-tmpl    uint64          2          :offset-assert 128)
-   (large-font-hi-tmpl-qw uint128                    :offset        128)
-   (size1-small           vector          :inline    :offset-assert 144)
-   (size2-small           vector          :inline    :offset-assert 160)
-   (size3-small           vector          :inline    :offset-assert 176)
-   (size1-large           vector          :inline    :offset-assert 192)
-   (size2-large           vector          :inline    :offset-assert 208)
-   (size3-large           vector          :inline    :offset-assert 224)
-   (size-st1              vector          :inline    :offset-assert 240)
-   (size-st2              vector          :inline    :offset-assert 256)
-   (size-st3              vector          :inline    :offset-assert 272)
-   (save                  vector          :inline    :offset-assert 288)
-   (save-color            vector          4 :inline  :offset-assert 304)
-   (current-verts         char-verts      :inline    :offset-assert 368)
-   (src-verts             char-verts      :inline    :offset-assert 560)
-   (dest-verts            char-verts      :inline    :offset-assert 752)
-   (justify               vector          64 :inline :offset-assert 944)
-   (color-shadow          vector4w        :inline    :offset-assert 1968)
-   (color-table           char-color      64 :inline :offset-assert 1984)
-   (last-color            font-color                 :offset-assert 3008)
-   (last-color-32         int32                      :offset        3008)
-   (save-last-color       font-color                 :offset-assert 3016)
-   (save-last-color-32    int32                      :offset        3016)
-   (buf                   basic                      :offset-assert 3024)
-   (str-ptr               uint32                     :offset-assert 3028)
-   (str-ptr-signed        (pointer uint8)            :offset        3028)
-   (flags                 font-flags                 :offset-assert 3032)
-   (flags-signed          int32                      :offset        3032)
-   (reg-save              uint32          5          :offset-assert 3036)
+  ((font-tmpl              dma-gif-packet   :inline)
+   (char-tmpl              dma-gif-packet   :inline)
+   (tex1-tmpl              uint64           2)
+   (small-font-lo-tmpl     uint64           2)
+   (small-font-lo-tmpl-qw  uint128          :overlay-at (-> small-font-lo-tmpl 0))
+   (small-font-hi-tmpl     uint64           2)
+   (small-font-hi-tmpl-qw  uint128          :overlay-at (-> small-font-hi-tmpl 0))
+   (large-font-lo-tmpl     uint64           2)
+   (large-font-lo-tmpl-qw  uint128          :overlay-at (-> large-font-lo-tmpl 0))
+   (large-font-hi-tmpl     uint64           2)
+   (large-font-hi-tmpl-qw  uint128          :overlay-at (-> large-font-hi-tmpl 0))
+   (size1-small            vector           :inline)
+   (size2-small            vector           :inline)
+   (size3-small            vector           :inline)
+   (size1-large            vector           :inline)
+   (size2-large            vector           :inline)
+   (size3-large            vector           :inline)
+   (size-st1               vector           :inline)
+   (size-st2               vector           :inline)
+   (size-st3               vector           :inline)
+   (save                   vector           :inline)
+   (save-color             vector           4 :inline)
+   (current-verts          char-verts       :inline)
+   (src-verts              char-verts       :inline)
+   (dest-verts             char-verts       :inline)
+   (justify                vector           64 :inline)
+   (color-shadow           vector4w         :inline)
+   (color-table            char-color       64 :inline)
+   (last-color             font-color)
+   (last-color-32          int32            :overlay-at last-color)
+   (save-last-color        font-color)
+   (save-last-color-32     int32            :overlay-at save-last-color)
+   (buf                    basic)
+   (str-ptr                uint32)
+   (str-ptr-signed         (pointer uint8)  :overlay-at str-ptr)
+   (flags                  font-flags)
+   (flags-signed           int32            :overlay-at flags)
+   (reg-save               uint32           5)
    )
-  :method-count-assert 9
-  :size-assert         #xbf0
-  :flag-assert         #x900000bf0
   )
 
 ;; definition for method 3 of type font-work
-(defmethod inspect font-work ((obj font-work))
-  (format #t "[~8x] ~A~%" obj 'font-work)
-  (format #t "~Tfont-tmpl: #<dma-gif-packet @ #x~X>~%" (-> obj font-tmpl))
-  (format #t "~Tchar-tmpl: #<dma-gif-packet @ #x~X>~%" (-> obj char-tmpl))
-  (format #t "~Ttex1-tmpl[2] @ #x~X~%" (-> obj tex1-tmpl))
-  (format #t "~Tsmall-font-lo-tmpl[2] @ #x~X~%" (-> obj small-font-lo-tmpl))
-  (format #t "~Tsmall-font-hi-tmpl[2] @ #x~X~%" (-> obj small-font-hi-tmpl))
-  (format #t "~Tlarge-font-lo-tmpl[2] @ #x~X~%" (-> obj large-font-lo-tmpl))
-  (format #t "~Tlarge-font-hi-tmpl[2] @ #x~X~%" (-> obj large-font-hi-tmpl))
-  (format #t "~Tsize1-small: #<vector @ #x~X>~%" (-> obj size1-small))
-  (format #t "~Tsize2-small: #<vector @ #x~X>~%" (-> obj size2-small))
-  (format #t "~Tsize3-small: #<vector @ #x~X>~%" (-> obj size3-small))
-  (format #t "~Tsize1-large: #<vector @ #x~X>~%" (-> obj size1-large))
-  (format #t "~Tsize2-large: #<vector @ #x~X>~%" (-> obj size2-large))
-  (format #t "~Tsize3-large: #<vector @ #x~X>~%" (-> obj size3-large))
-  (format #t "~Tsize-st1: #<vector @ #x~X>~%" (-> obj size-st1))
-  (format #t "~Tsize-st2: #<vector @ #x~X>~%" (-> obj size-st2))
-  (format #t "~Tsize-st3: #<vector @ #x~X>~%" (-> obj size-st3))
-  (format #t "~Tsave: #<vector @ #x~X>~%" (-> obj save))
-  (format #t "~Tsave-color[4] @ #x~X~%" (-> obj save-color))
-  (format #t "~Tcurrent-verts: #<char-verts @ #x~X>~%" (-> obj current-verts))
-  (format #t "~Tsrc-verts: #<char-verts @ #x~X>~%" (-> obj src-verts))
-  (format #t "~Tdest-verts: #<char-verts @ #x~X>~%" (-> obj dest-verts))
-  (format #t "~Tjustify[64] @ #x~X~%" (-> obj justify))
-  (format #t "~Tcolor-shadow: #<vector4w @ #x~X>~%" (-> obj color-shadow))
-  (format #t "~Tcolor-table[64] @ #x~X~%" (-> obj color-table))
-  (format #t "~Tlast-color: ~D~%" (-> obj last-color))
-  (format #t "~Tsave-last-color: ~D~%" (-> obj save-last-color))
-  (format #t "~Tbuf: ~A~%" (-> obj buf))
-  (format #t "~Tstr-ptr: ~D~%" (-> obj str-ptr))
-  (format #t "~Tflags: ~D~%" (-> obj flags))
-  (format #t "~Treg-save[5] @ #x~X~%" (-> obj reg-save))
-  obj
+(defmethod inspect ((this font-work))
+  (format #t "[~8x] ~A~%" this 'font-work)
+  (format #t "~Tfont-tmpl: #<dma-gif-packet @ #x~X>~%" (-> this font-tmpl))
+  (format #t "~Tchar-tmpl: #<dma-gif-packet @ #x~X>~%" (-> this char-tmpl))
+  (format #t "~Ttex1-tmpl[2] @ #x~X~%" (-> this tex1-tmpl))
+  (format #t "~Tsmall-font-lo-tmpl[2] @ #x~X~%" (-> this small-font-lo-tmpl))
+  (format #t "~Tsmall-font-hi-tmpl[2] @ #x~X~%" (-> this small-font-hi-tmpl))
+  (format #t "~Tlarge-font-lo-tmpl[2] @ #x~X~%" (-> this large-font-lo-tmpl))
+  (format #t "~Tlarge-font-hi-tmpl[2] @ #x~X~%" (-> this large-font-hi-tmpl))
+  (format #t "~Tsize1-small: #<vector @ #x~X>~%" (-> this size1-small))
+  (format #t "~Tsize2-small: #<vector @ #x~X>~%" (-> this size2-small))
+  (format #t "~Tsize3-small: #<vector @ #x~X>~%" (-> this size3-small))
+  (format #t "~Tsize1-large: #<vector @ #x~X>~%" (-> this size1-large))
+  (format #t "~Tsize2-large: #<vector @ #x~X>~%" (-> this size2-large))
+  (format #t "~Tsize3-large: #<vector @ #x~X>~%" (-> this size3-large))
+  (format #t "~Tsize-st1: #<vector @ #x~X>~%" (-> this size-st1))
+  (format #t "~Tsize-st2: #<vector @ #x~X>~%" (-> this size-st2))
+  (format #t "~Tsize-st3: #<vector @ #x~X>~%" (-> this size-st3))
+  (format #t "~Tsave: #<vector @ #x~X>~%" (-> this save))
+  (format #t "~Tsave-color[4] @ #x~X~%" (-> this save-color))
+  (format #t "~Tcurrent-verts: #<char-verts @ #x~X>~%" (-> this current-verts))
+  (format #t "~Tsrc-verts: #<char-verts @ #x~X>~%" (-> this src-verts))
+  (format #t "~Tdest-verts: #<char-verts @ #x~X>~%" (-> this dest-verts))
+  (format #t "~Tjustify[64] @ #x~X~%" (-> this justify))
+  (format #t "~Tcolor-shadow: #<vector4w @ #x~X>~%" (-> this color-shadow))
+  (format #t "~Tcolor-table[64] @ #x~X~%" (-> this color-table))
+  (format #t "~Tlast-color: ~D~%" (-> this last-color))
+  (format #t "~Tsave-last-color: ~D~%" (-> this save-last-color))
+  (format #t "~Tbuf: ~A~%" (-> this buf))
+  (format #t "~Tstr-ptr: ~D~%" (-> this str-ptr))
+  (format #t "~Tflags: ~D~%" (-> this flags))
+  (format #t "~Treg-save[5] @ #x~X~%" (-> this reg-save))
+  this
   )
 
 ;; definition for symbol *font-work*, type font-work

@@ -6,9 +6,9 @@
 
 ;; definition for method 9 of type collide-cache
 ;; WARN: Return type mismatch int vs none.
-(defmethod debug-draw collide-cache ((obj collide-cache))
-  (let ((gp-0 (the-as object (-> obj tris))))
-    (countdown (s4-0 (-> obj num-tris))
+(defmethod debug-draw ((this collide-cache))
+  (let ((gp-0 (the-as object (-> this tris))))
+    (countdown (s4-0 (-> this num-tris))
       (let ((t1-0 (copy-and-set-field (-> *pat-mode-info* (-> (the-as collide-cache-tri gp-0) pat mode) color) a 64)))
         (add-debug-flat-triangle
           #t
@@ -22,8 +22,8 @@
       (set! gp-0 (&+ (the-as collide-cache-tri gp-0) 64))
       )
     )
-  (let ((gp-1 (the-as object (-> obj prims))))
-    (countdown (s5-1 (-> obj num-prims))
+  (let ((gp-1 (the-as object (-> this prims))))
+    (countdown (s5-1 (-> this num-prims))
       (when (= (-> (the-as collide-cache-prim gp-1) prim-core prim-type) (prim-type sphere))
         (let ((t0-1
                 (copy-and-set-field
@@ -55,27 +55,24 @@
 
 ;; definition of type col-rend-filter
 (deftype col-rend-filter (structure)
-  ((show-pat-set   pat-surface  :offset-assert   0)
-   (show-pat-clear pat-surface  :offset-assert   4)
-   (event-mask     uint32       :offset-assert   8)
+  ((show-pat-set    pat-surface)
+   (show-pat-clear  pat-surface)
+   (event-mask      uint32)
    )
-  :method-count-assert 9
-  :size-assert         #xc
-  :flag-assert         #x90000000c
   )
 
 ;; definition for method 3 of type col-rend-filter
-(defmethod inspect col-rend-filter ((obj col-rend-filter))
-  (when (not obj)
-    (set! obj obj)
+(defmethod inspect ((this col-rend-filter))
+  (when (not this)
+    (set! this this)
     (goto cfg-4)
     )
-  (format #t "[~8x] ~A~%" obj 'col-rend-filter)
-  (format #t "~1Tshow-pat-set: ~D~%" (-> obj show-pat-set))
-  (format #t "~1Tshow-pat-clear: ~D~%" (-> obj show-pat-clear))
-  (format #t "~1Tevent-mask: ~D~%" (-> obj event-mask))
+  (format #t "[~8x] ~A~%" this 'col-rend-filter)
+  (format #t "~1Tshow-pat-set: ~D~%" (-> this show-pat-set))
+  (format #t "~1Tshow-pat-clear: ~D~%" (-> this show-pat-clear))
+  (format #t "~1Tevent-mask: ~D~%" (-> this event-mask))
   (label cfg-4)
-  obj
+  this
   )
 
 ;; definition for function col-rend-draw
@@ -185,31 +182,35 @@
 
 ;; definition for method 9 of type col-rend
 ;; INFO: Used lq/sq
-(defmethod col-rend-method-9 col-rend ((obj col-rend))
+(defmethod col-rend-method-9 ((this col-rend))
   (let ((s5-0 (new 'stack-no-clear 'collide-query)))
-    (let ((f30-0 (-> obj bbox-radius)))
-      (let ((v1-0 (-> obj track)))
+    (let ((f30-0 (-> this bbox-radius)))
+      (let ((v1-0 (-> this track)))
         (cond
           ((zero? v1-0)
-           (set! (-> obj bbox-center quad) (-> (target-pos 0) quad))
-           (+! (-> obj bbox-center y) (* 0.7 f30-0))
+           (set! (-> this bbox-center quad) (-> (target-pos 0) quad))
+           (+! (-> this bbox-center y) (* 0.7 f30-0))
            )
           ((= v1-0 1)
-           (position-in-front-of-camera! (-> obj bbox-center) (+ (-> obj camera-to-bbox-dist) (-> obj bbox-radius)) 0.0)
+           (position-in-front-of-camera!
+             (-> this bbox-center)
+             (+ (-> this camera-to-bbox-dist) (-> this bbox-radius))
+             0.0
+             )
            )
           )
         )
-      (set! (-> s5-0 bbox min quad) (-> obj bbox-center quad))
+      (set! (-> s5-0 bbox min quad) (-> this bbox-center quad))
       (set! (-> s5-0 bbox min x) (- (-> s5-0 bbox min x) f30-0))
       (set! (-> s5-0 bbox min y) (- (-> s5-0 bbox min y) f30-0))
       (set! (-> s5-0 bbox min z) (- (-> s5-0 bbox min z) f30-0))
-      (set! (-> s5-0 bbox max quad) (-> obj bbox-center quad))
+      (set! (-> s5-0 bbox max quad) (-> this bbox-center quad))
       (+! (-> s5-0 bbox max x) f30-0)
       (+! (-> s5-0 bbox max y) f30-0)
       (+! (-> s5-0 bbox max z) f30-0)
       )
     (let ((v1-9 -1))
-      (let ((a0-9 (-> obj cspec)))
+      (let ((a0-9 (-> this cspec)))
         (if (not (logtest? a0-9 (collide-spec crate)))
             (set! v1-9 (logxor v1-9 1))
             )
@@ -243,7 +244,7 @@
       )
     (fill-using-bounding-box *collide-cache* s5-0)
     )
-  (let ((s5-1 (-> obj show-only))
+  (let ((s5-1 (-> this show-only))
         (a1-17 (new 'stack 'col-rend-filter))
         )
     (when (nonzero? s5-1)
@@ -301,7 +302,7 @@
           )
         )
       )
-    (col-rend-draw obj a1-17)
+    (col-rend-draw this a1-17)
     )
   (none)
   )

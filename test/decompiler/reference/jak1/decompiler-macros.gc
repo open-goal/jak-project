@@ -408,6 +408,11 @@
   (set! *defstate-type-stack* '())
   `(none)
   )
+
+;; set when inside a defstate.
+(seval (define *defstate-current-type* #f))
+(seval (define *defstate-current-state-name* #f))
+
 ;; *no-state* is just used for the compiler to know whether a handler was actually set or not
 (defmacro defstate (state-name parents
                                &key (virtual #f)
@@ -427,6 +432,10 @@
                  *defstate-type-stack*)
         )
       (set! *defstate-type-stack* '())
+      (when virtual
+        (set! *defstate-current-type* defstate-type)
+        (set! *defstate-current-state-name* state-name)
+        )
       ;; check for default handlers
       (let ((default-handlers (assoc defstate-type *default-state-handlers*)))
           (when default-handlers
@@ -497,6 +506,26 @@
     `(lambda :behavior ,behavior-type ,bindings ,@body)
     )
   )
+
+(defmacro find-parent-state ()
+  "Find the first different implementation of the current virtual state above this one."
+  (when (or (not *defstate-current-type*)
+            (not *defstate-current-state-name*))
+    (error "use of find-parent-state outside of a defstate.")
+    )
+  `(cast-to-method-type
+     ,*defstate-current-type*
+     ,*defstate-current-state-name*
+     (find-parent-method ,*defstate-current-type* (method-id-of-type ,*defstate-current-type* ,*defstate-current-state-name*))
+    )
+  )
+
+(defmacro call-parent-method (&rest args)
+  "Find the first different implementation of the current method in a parent type and call it with these arguments."
+  `((the (current-method-function-type) (find-parent-method (current-method-type) (current-method-id)))
+    ,@args)
+  )
+
 
 ;; set the default handler functions for a process's state handlers
 (seval (define *default-state-handlers* '()))
@@ -922,7 +951,7 @@
   )
 
 ;; art-h
-(desfun art-elt->index (ag-name elt-name)
+(desfun art-elt-index (ag-name elt-name)
   (if (number? elt-name)
       elt-name
       (let ((ag-info (hash-table-try-ref *art-info* (symbol->string ag-name))))
@@ -936,6 +965,23 @@
               )
           )
       )
+  )
+
+(defmacro joint-node-index (jg-name name)
+  (let ((jg-info (hash-table-try-ref *jg-info* (symbol->string jg-name))))
+      (if (not (car jg-info))
+          -1
+          (let ((joint-node (hash-table-try-ref (cdr jg-info) (if (integer? name) (int->string name) (symbol->string name)))))
+              (if (not (car joint-node))
+                  -1
+                  (cadr (cdr joint-node)))
+              )
+          )
+      )
+  )
+
+(defmacro joint-node (jg name)
+  `(-> self node-list data (joint-node-index ,jg ,name))
   )
 
 (defmacro defskelgroup (name art-name joint-geom joint-anim lods
@@ -955,18 +1001,18 @@
                         :longest-edge ,longest-edge
                         :version ,version
                         :max-lod ,(- (length lods) 1)
-                        :shadow ,(art-elt->index (string->symbol-format "{}-ag" art-name) shadow)
+                        :shadow ,(art-elt-index (string->symbol-format "{}-ag" art-name) shadow)
                         :texture-level ,texture-level
                         :sort ,sort
                         )))
         ;; set joint geometry and joint bones
-        (set! (-> skel jgeo) ,(art-elt->index (string->symbol-format "{}-ag" art-name) joint-geom))
-        (set! (-> skel janim) ,(art-elt->index (string->symbol-format "{}-ag" art-name) joint-anim))
+        (set! (-> skel jgeo) ,(art-elt-index (string->symbol-format "{}-ag" art-name) joint-geom))
+        (set! (-> skel janim) ,(art-elt-index (string->symbol-format "{}-ag" art-name) joint-anim))
 
         ;; set lods
         ,@(apply-i (lambda (x i)
                       `(begin
-                          (set! (-> skel mgeo ,i) ,(art-elt->index (string->symbol-format "{}-ag" art-name) (car x)))
+                          (set! (-> skel mgeo ,i) ,(art-elt-index (string->symbol-format "{}-ag" art-name) (car x)))
                           (set! (-> skel lod-dist ,i) ,(cadr x))
                           )
                       ) lods)
@@ -1239,23 +1285,18 @@
   )
 
 ;; game-h
-(defmacro static-attack-info (&key (mask ()) &rest args)
-  (when (!= (length args) 1)
-      (error "static-attack-info can only have 1 arg"))
-  (let ((mask-actual mask)
-        (arg (car args))
+(defmacro static-attack-info (&key (mask ()) args)
+  (let ((mask-actual mask))
+    (dolist (it args)
+      (when (not (member (caar it) mask-actual))
+        (cons! mask-actual (caar it))
         )
-    (when (not (null? (assoc 'shove-up arg))) (cons! mask-actual 'shove-up))
-    (when (not (null? (assoc 'shove-back arg))) (cons! mask-actual 'shove-back))
-    (when (not (null? (assoc 'mode arg))) (cons! mask-actual 'mode))
-    (when (not (null? (assoc 'vector arg))) (cons! mask-actual 'vector))
-    (when (not (null? (assoc 'angle arg))) (cons! mask-actual 'angle))
-    (when (not (null? (assoc 'control arg))) (cons! mask-actual 'control))
+      )
     `(let ((atk (new 'static 'attack-info :mask (attack-mask ,@mask-actual))))
         ,@(apply (lambda (x) (if (eq? (car x) 'vector)
                                  `(vector-copy! (-> atk ,(car x)) ,(cadr x))
                                  `(set! (-> atk ,(car x)) ,(cadr x))
-                                )) arg)
+                                )) args)
         atk)
     )
   )
@@ -1621,6 +1662,14 @@
   `(-> *display* frames (-> *display* on-screen))
   )
 
+(defmacro current-time ()
+  `(-> *display* base-frame-counter)
+  )
+
+(defmacro seconds-per-frame ()
+  `(-> *display* seconds-per-frame)
+  )
+
 (defmacro def-mips2c (name type)
   "Define a mips2c object (typically a function)."
   `(begin
@@ -1632,4 +1681,19 @@
 (defmacro defmethod-mips2c (name method-id method-type)
   "Define a mips2c method."
   `(method-set! ,method-type ,method-id (__pc-get-mips2c ,name))
+  )
+
+(defconstant DISPLAY_FPS_RATIO (/ (-> *display* time-factor) 5.0))
+
+(defmacro launch-particles (&key (system *sp-particle-system-2d*) particle origin &key (launch-state (the-as sparticle-launch-state #f)) &key (launch-control (the-as sparticle-launch-control #f))
+                            &key (rate DISPLAY_FPS_RATIO))
+  `(sp-launch-particles-var ,system ,particle ,origin ,launch-state ,launch-control ,rate)
+  )
+
+(defmacro set-time! (time)
+  `(set! ,time (current-time))
+  )
+
+(defmacro time-elapsed? (time duration)
+  `(>= (- (current-time) ,time) ,duration)
   )

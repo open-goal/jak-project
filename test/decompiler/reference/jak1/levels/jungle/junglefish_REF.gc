@@ -4,18 +4,14 @@
 ;; definition of type junglefish
 (deftype junglefish (nav-enemy)
   ()
-  :heap-base #x120
-  :method-count-assert 76
-  :size-assert         #x190
-  :flag-assert         #x4c01200190
   )
 
 ;; definition for method 3 of type junglefish
-(defmethod inspect junglefish ((obj junglefish))
+(defmethod inspect ((this junglefish))
   (let ((t9-0 (method-of-type nav-enemy inspect)))
-    (t9-0 obj)
+    (t9-0 this)
     )
-  obj
+  this
   )
 
 ;; failed to figure out what this is:
@@ -29,9 +25,9 @@ nav-enemy-default-event-handler
 
 ;; definition for method 39 of type junglefish
 ;; INFO: Return type mismatch int vs none.
-(defmethod common-post junglefish ((obj junglefish))
-  (water-control-method-10 (-> obj water))
-  ((the-as (function nav-enemy none) (find-parent-method junglefish 39)) obj)
+(defmethod common-post ((this junglefish))
+  (water-control-method-10 (-> this water))
+  (call-parent-method this)
   0
   (none)
   )
@@ -39,13 +35,9 @@ nav-enemy-default-event-handler
 ;; failed to figure out what this is:
 (defstate nav-enemy-patrol (junglefish)
   :virtual #t
-  :event (the-as
-    (function process int symbol event-message-block object :behavior junglefish)
-    nav-enemy-default-event-handler
-    )
+  :event nav-enemy-default-event-handler
   :exit (behavior ()
     (set! (-> self target-speed) (-> self nav-info walk-travel-speed))
-    (none)
     )
   :code (behavior ()
     (ja-channel-push! 1 (seconds 0.2))
@@ -97,85 +89,61 @@ nav-enemy-default-event-handler
           )
         )
       )
-    (none)
     )
   )
 
 ;; failed to figure out what this is:
 (defstate nav-enemy-notice (junglefish)
   :virtual #t
-  :event (the-as
-    (function process int symbol event-message-block object :behavior junglefish)
-    nav-enemy-default-event-handler
-    )
+  :event nav-enemy-default-event-handler
   :code (behavior ()
     (go-virtual nav-enemy-chase)
-    (none)
     )
   )
 
 ;; failed to figure out what this is:
 (defstate nav-enemy-chase (junglefish)
   :virtual #t
-  :event (the-as
-    (function process int symbol event-message-block object :behavior junglefish)
-    nav-enemy-default-event-handler
-    )
+  :event nav-enemy-default-event-handler
   :trans (behavior ()
     ((-> (method-of-type nav-enemy nav-enemy-chase) trans))
     (if (and *target* (>= 8192.0 (vector-vector-distance (-> self collide-info trans) (-> *target* control trans))))
         (go-virtual nav-enemy-attack)
         )
-    (none)
     )
   )
 
 ;; failed to figure out what this is:
 (defstate nav-enemy-stop-chase (junglefish)
   :virtual #t
-  :event (the-as
-    (function process int symbol event-message-block object :behavior junglefish)
-    nav-enemy-default-event-handler
-    )
+  :event nav-enemy-default-event-handler
   :code (behavior ()
     (go-virtual nav-enemy-patrol)
-    (none)
     )
   )
 
 ;; failed to figure out what this is:
 (defstate nav-enemy-stare (junglefish)
   :virtual #t
-  :event (the-as
-    (function process int symbol event-message-block object :behavior junglefish)
-    nav-enemy-default-event-handler
-    )
+  :event nav-enemy-default-event-handler
   :code (behavior ()
     (go-virtual nav-enemy-patrol)
-    (none)
     )
   )
 
 ;; failed to figure out what this is:
 (defstate nav-enemy-give-up (junglefish)
   :virtual #t
-  :event (the-as
-    (function process int symbol event-message-block object :behavior junglefish)
-    nav-enemy-default-event-handler
-    )
+  :event nav-enemy-default-event-handler
   :code (behavior ()
     (go-virtual nav-enemy-patrol)
-    (none)
     )
   )
 
 ;; failed to figure out what this is:
 (defstate nav-enemy-attack (junglefish)
   :virtual #t
-  :event (the-as
-    (function process int symbol event-message-block object :behavior junglefish)
-    nav-enemy-default-event-handler
-    )
+  :event nav-enemy-default-event-handler
   :code (behavior ()
     (ja-channel-push! 1 (seconds 0.1))
     (ja-no-eval :group! junglefish-chomp-ja :num! (seek!) :frame-num 0.0)
@@ -184,18 +152,14 @@ nav-enemy-default-event-handler
       (ja :num! (seek!))
       )
     (go-virtual nav-enemy-chase)
-    (none)
     )
-  :post (the-as (function none :behavior junglefish) nav-enemy-chase-post)
+  :post nav-enemy-chase-post
   )
 
 ;; failed to figure out what this is:
 (defstate nav-enemy-victory (junglefish)
   :virtual #t
-  :event (the-as
-    (function process int symbol event-message-block object :behavior junglefish)
-    nav-enemy-default-event-handler
-    )
+  :event nav-enemy-default-event-handler
   :code (behavior ()
     (ja-channel-push! 1 (seconds 0.075))
     (ja-no-eval :group! junglefish-swim-ja :num! (seek! max 2.0) :frame-num 0.0)
@@ -209,7 +173,6 @@ nav-enemy-default-event-handler
       (ja :num! (seek! max 2.0))
       )
     (go-virtual nav-enemy-patrol)
-    (none)
     )
   )
 
@@ -269,8 +232,8 @@ nav-enemy-default-event-handler
 
 ;; definition for method 11 of type junglefish
 ;; INFO: Return type mismatch object vs none.
-(defmethod init-from-entity! junglefish ((obj junglefish) (arg0 entity-actor))
-  (let ((s4-0 (new 'process 'collide-shape-moving obj (collide-list-enum hit-by-player))))
+(defmethod init-from-entity! ((this junglefish) (arg0 entity-actor))
+  (let ((s4-0 (new 'process 'collide-shape-moving this (collide-list-enum hit-by-player))))
     (set! (-> s4-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s4-0 reaction) default-collision-reaction)
     (set! (-> s4-0 no-reaction)
@@ -286,16 +249,16 @@ nav-enemy-default-event-handler
       )
     (set! (-> s4-0 nav-radius) (* 0.75 (-> s4-0 root-prim local-sphere w)))
     (backup-collide-with-as s4-0)
-    (set! (-> obj collide-info) s4-0)
+    (set! (-> this collide-info) s4-0)
     )
-  (process-drawable-from-entity! obj arg0)
-  (initialize-skeleton obj *junglefish-sg* '())
-  (init-defaults! obj *junglefish-nav-enemy-info*)
-  (set! (-> obj water) (new 'process 'water-control obj 7 0.0 8192.0 2048.0))
-  (set! (-> obj water flags) (water-flags wt01))
-  (set! (-> obj water height) (res-lump-float (-> obj entity) 'water-height))
-  (set! (-> obj water ripple-size) 5734.4)
-  (set! (-> obj collide-info trans y) (+ -4096.0 (-> obj water height)))
-  (go (method-of-object obj nav-enemy-idle))
+  (process-drawable-from-entity! this arg0)
+  (initialize-skeleton this *junglefish-sg* '())
+  (init-defaults! this *junglefish-nav-enemy-info*)
+  (set! (-> this water) (new 'process 'water-control this 7 0.0 8192.0 2048.0))
+  (set! (-> this water flags) (water-flags wt01))
+  (set! (-> this water height) (res-lump-float (-> this entity) 'water-height))
+  (set! (-> this water ripple-size) 5734.4)
+  (set! (-> this collide-info trans y) (+ -4096.0 (-> this water height)))
+  (go (method-of-object this nav-enemy-idle))
   (none)
   )

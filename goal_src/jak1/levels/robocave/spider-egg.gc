@@ -8,16 +8,11 @@
 
 ;; DECOMP BEGINS
 
-
 (deftype spider-egg (process-drawable)
-  ((root-override collide-shape-moving         :offset        112)
-   (notify-actor  entity-actor                 :offset-assert 176)
-   (broken-look   lod-set              :inline :offset-assert 180)
+  ((root          collide-shape-moving :override)
+   (notify-actor  entity-actor)
+   (broken-look   lod-set               :inline)
    )
-  :heap-base #x70
-  :method-count-assert 20
-  :size-assert         #xd5
-  :flag-assert         #x14007000d5
   (:states
     spider-egg-die
     spider-egg-hatch
@@ -43,36 +38,26 @@
               )
 
 (defstate spider-egg-idle (spider-egg)
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
     (local-vars (v0-0 object))
-    (the-as object (case event-type
-                     (('touch)
-                      (the-as object (send-shove-back
-                                       (-> self root-override)
-                                       proc
-                                       (the-as touching-shapes-entry (-> event param 0))
-                                       0.7
-                                       6144.0
-                                       16384.0
-                                       )
-                              )
-                      )
-                     (('can-spawn?)
-                      (return #t)
-                      v0-0
-                      )
-                     (('notify-spawned)
-                      (go spider-egg-hatch)
-                      )
-                     (('attack)
-                      (go spider-egg-die)
-                      )
-                     )
-            )
+    (case message
+      (('touch)
+       (send-shove-back (-> self root) proc (the-as touching-shapes-entry (-> block param 0)) 0.7 6144.0 16384.0)
+       )
+      (('can-spawn?)
+       (return #t)
+       v0-0
+       )
+      (('notify-spawned)
+       (go spider-egg-hatch)
+       )
+      (('attack)
+       (go spider-egg-die)
+       )
+      )
     )
   :enter (behavior ((arg0 symbol))
-    (set! (-> self state-time) (-> *display* base-frame-counter))
-    (none)
+    (set-time! (-> self state-time))
     )
   :code (behavior ((arg0 symbol))
     (let ((f30-0 (rand-vu-float-range 0.8 1.2)))
@@ -111,15 +96,14 @@
         (ja-channel-push! 1 (seconds 0.1))
         )
       )
-    (none)
     )
-  :post (the-as (function none :behavior spider-egg) ja-post)
+  :post ja-post
   )
 
 (defstate spider-egg-hatch (spider-egg)
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
     (local-vars (v0-0 symbol))
-    (case event-type
+    (case message
       (('can-spawn?)
        (return (the-as object #f))
        v0-0
@@ -129,7 +113,7 @@
   :code (behavior ()
     (cleanup-for-death self)
     (logclear! (-> self mask) (process-mask actor-pause))
-    (clear-collide-with-as (-> self root-override))
+    (clear-collide-with-as (-> self root))
     (process-spawn
       part-tracker
       :init part-tracker-init
@@ -138,7 +122,7 @@
       #f
       #f
       #f
-      (-> self root-override trans)
+      (-> self root trans)
       :to *entity-pool*
       )
     (lods-assign! (-> self draw) (-> self broken-look))
@@ -152,15 +136,14 @@
     (until (not (-> self child))
       (suspend)
       )
-    (none)
     )
-  :post (the-as (function none :behavior spider-egg) ja-post)
+  :post ja-post
   )
 
 (defstate spider-egg-die (spider-egg)
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
     (local-vars (v0-0 symbol))
-    (case event-type
+    (case message
       (('can-spawn?)
        (return (the-as object #f))
        v0-0
@@ -196,12 +179,12 @@
       #f
       #f
       #f
-      (-> self root-override trans)
+      (-> self root trans)
       :to *entity-pool*
       )
     (lods-assign! (-> self draw) (-> self broken-look))
     (ja-channel-push! 1 (seconds 0.1))
-    (clear-collide-with-as (-> self root-override))
+    (clear-collide-with-as (-> self root))
     (ja-no-eval :group! spider-egg-die-ja :num! (seek!) :frame-num 0.0)
     (until (ja-done? 0)
       (suspend)
@@ -211,15 +194,14 @@
     (until (not (-> self child))
       (suspend)
       )
-    (none)
     )
-  :post (the-as (function none :behavior spider-egg) ja-post)
+  :post ja-post
   )
 
-(defmethod init-from-entity! spider-egg ((obj spider-egg) (arg0 entity-actor))
-  (logior! (-> obj mask) (process-mask enemy))
-  (logior! (-> obj mask) (process-mask attackable))
-  (let ((s4-0 (new 'process 'collide-shape-moving obj (collide-list-enum usually-hit-by-player))))
+(defmethod init-from-entity! ((this spider-egg) (arg0 entity-actor))
+  (logior! (-> this mask) (process-mask enemy))
+  (logior! (-> this mask) (process-mask attackable))
+  (let ((s4-0 (new 'process 'collide-shape-moving this (collide-list-enum usually-hit-by-player))))
     (set! (-> s4-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s4-0 reaction) default-collision-reaction)
     (set! (-> s4-0 no-reaction)
@@ -235,34 +217,34 @@
       )
     (set! (-> s4-0 nav-radius) 4096.0)
     (backup-collide-with-as s4-0)
-    (set! (-> obj root-override) s4-0)
+    (set! (-> this root) s4-0)
     )
-  (process-drawable-from-entity! obj arg0)
-  (initialize-skeleton obj *spider-egg-unbroken-sg* '())
-  (setup-lods! (-> obj broken-look) *spider-egg-broken-sg* (-> obj draw art-group) (-> obj entity))
-  (set-vector! (-> obj root-override scale) 0.4 0.4 0.4 1.0)
-  (if (not (move-to-ground (-> obj root-override) 12288.0 40960.0 #t (collide-kind background)))
+  (process-drawable-from-entity! this arg0)
+  (initialize-skeleton this *spider-egg-unbroken-sg* '())
+  (setup-lods! (-> this broken-look) *spider-egg-broken-sg* (-> this draw art-group) (-> this entity))
+  (set-vector! (-> this root scale) 0.4 0.4 0.4 1.0)
+  (if (not (move-to-ground (-> this root) 12288.0 40960.0 #t (collide-kind background)))
       (go process-drawable-art-error "no ground")
       )
-  (+! (-> obj root-override trans y) -409.6)
+  (+! (-> this root trans y) -409.6)
   (let ((s4-1 (new 'stack-no-clear 'vector)))
-    (set! (-> s4-1 quad) (-> obj root-override surface-normal quad))
+    (set! (-> s4-1 quad) (-> this root surface-normal quad))
     (+! (-> s4-1 x) (rand-vu-float-range -0.2 0.2))
     (+! (-> s4-1 z) (rand-vu-float-range -0.2 0.2))
     (vector-normalize! s4-1 1.0)
     (quaternion-axis-angle!
-      (-> obj root-override quat)
+      (-> this root quat)
       (-> s4-1 x)
       (-> s4-1 y)
       (-> s4-1 z)
       (rand-vu-float-range 0.0 65536.0)
       )
     )
-  (update-transforms! (-> obj root-override))
-  (nav-mesh-connect obj (-> obj root-override) (the-as nav-control #f))
+  (update-transforms! (-> this root))
+  (nav-mesh-connect this (-> this root) (the-as nav-control #f))
   (if (> (entity-actor-count arg0 'alt-actor) 0)
-      (set! (-> obj notify-actor) (entity-actor-lookup arg0 'alt-actor 0))
-      (set! (-> obj notify-actor) #f)
+      (set! (-> this notify-actor) (entity-actor-lookup arg0 'alt-actor 0))
+      (set! (-> this notify-actor) #f)
       )
   (go spider-egg-idle #t)
   (none)

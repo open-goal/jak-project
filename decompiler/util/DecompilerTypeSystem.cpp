@@ -54,7 +54,7 @@ void DecompilerTypeSystem::parse_type_defs(const std::vector<std::string>& file_
 
   for_each_in_list(data, [&](goos::Object& o) {
     try {
-      if (car(o).as_symbol()->name == "define-extern") {
+      if (car(o).as_symbol() == "define-extern") {
         auto symbol_metadata = DefinitionMetadata();
         auto* rest = &cdr(o);
         auto sym_name = car(*rest);
@@ -69,8 +69,8 @@ void DecompilerTypeSystem::parse_type_defs(const std::vector<std::string>& file_
           throw std::runtime_error("malformed define-extern");
         }
         symbol_metadata.definition_info = m_reader.db.get_short_info_for(o);
-        add_symbol(sym_name.as_symbol()->name, parse_typespec(&ts, sym_type), symbol_metadata);
-      } else if (car(o).as_symbol()->name == "deftype") {
+        add_symbol(sym_name.as_symbol().name_ptr, parse_typespec(&ts, sym_type), symbol_metadata);
+      } else if (car(o).as_symbol() == "deftype") {
         auto dtr = parse_deftype(cdr(o), &ts);
         dtr.type_info->m_metadata.definition_info = m_reader.db.get_short_info_for(o);
         if (dtr.create_runtime_type) {
@@ -87,7 +87,7 @@ void DecompilerTypeSystem::parse_type_defs(const std::vector<std::string>& file_
         for (const auto& [state_name, meta] : dtr.type_info->m_state_definition_meta) {
           state_metadata.emplace(state_name, meta);
         }
-      } else if (car(o).as_symbol()->name == "declare-type") {
+      } else if (car(o).as_symbol() == "declare-type") {
         auto* rest = &cdr(o);
         auto type_name = car(*rest);
         rest = &cdr(*rest);
@@ -95,14 +95,14 @@ void DecompilerTypeSystem::parse_type_defs(const std::vector<std::string>& file_
         if (!cdr(*rest).is_empty_list()) {
           throw std::runtime_error("malformed declare-type");
         }
-        ts.forward_declare_type_as(type_name.as_symbol()->name, type_kind.as_symbol()->name);
-      } else if (car(o).as_symbol()->name == "defenum") {
+        ts.forward_declare_type_as(type_name.as_symbol().name_ptr, type_kind.as_symbol().name_ptr);
+      } else if (car(o).as_symbol() == "defenum") {
         auto symbol_metadata = DefinitionMetadata();
         parse_defenum(cdr(o), &ts, &symbol_metadata);
         symbol_metadata.definition_info = m_reader.db.get_short_info_for(o);
         auto* rest = &cdr(o);
-        const auto& enum_name = car(*rest).as_symbol()->name;
-        symbol_metadata_map[enum_name] = symbol_metadata;
+        const auto& enum_name = car(*rest).as_symbol();
+        symbol_metadata_map[enum_name.name_ptr] = symbol_metadata;
         // so far, enums are never runtime types so there's no symbol for them.
       } else {
         throw std::runtime_error("Decompiler cannot parse " + car(o).print());
@@ -110,7 +110,7 @@ void DecompilerTypeSystem::parse_type_defs(const std::vector<std::string>& file_
     } catch (std::exception& e) {
       auto info = m_reader.db.get_info_for(o);
       lg::error("{} when parsing decompiler type file:{}", e.what(), info);
-      throw e;
+      throw;
     }
   });
 }
@@ -160,6 +160,11 @@ void DecompilerTypeSystem::add_type_parent(const std::string& child, const std::
 }
 
 std::string DecompilerTypeSystem::lookup_parent_from_inspects(const std::string& child) const {
+  if (child == "process-tree")
+    return "basic";
+  if (child == "process")
+    return "process-tree";
+
   auto kv_tp = type_parents.find(child);
   if (kv_tp != type_parents.end()) {
     return kv_tp->second;
@@ -169,6 +174,15 @@ std::string DecompilerTypeSystem::lookup_parent_from_inspects(const std::string&
 }
 
 bool DecompilerTypeSystem::lookup_flags(const std::string& type, u64* dest) const {
+  if (type == "process-tree") {
+    *dest = ((u64)0xe << 32) + (0 << 16) + 0x24;
+    return true;
+  }
+  if (type == "process") {
+    *dest = ((u64)0xe << 32) + (0 << 16) + 0x80;
+    return true;
+  }
+
   auto kv = type_flags.find(type);
   if (kv != type_flags.end()) {
     *dest = kv->second;

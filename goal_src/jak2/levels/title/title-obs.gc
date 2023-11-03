@@ -11,51 +11,47 @@
 ;; DECOMP BEGINS
 
 (deftype title-control (process)
-  ((selected    int32                         :offset-assert 128)
-   (sprites     hud-sprite          2 :inline :offset-assert 144)
-   (sprite-pos  vector              :inline   :offset-assert 272)
-   (sprite-draw uint32                        :offset-assert 288)
-   (buffer      external-art-buffer 2         :offset-assert 292)
-   (want        int32               2         :offset-assert 300)
-   (want-name   string              2         :offset-assert 308)
-   (have        int32               2         :offset-assert 316)
-   (draw        int32                         :offset-assert 324)
-   (draw-name   string                        :offset-assert 328)
-   (active      symbol                        :offset-assert 332)
-   (spark-time  time-frame                    :offset-assert 336)
-   (gui-id      sound-id                      :offset-assert 344)
+  ((selected     int32)
+   (sprites      hud-sprite           2 :inline)
+   (sprite-pos   vector               :inline)
+   (sprite-draw  uint32)
+   (buffer       external-art-buffer  2)
+   (want         int32                2)
+   (want-name    string               2)
+   (have         int32                2)
+   (draw         int32)
+   (draw-name    string)
+   (active       symbol)
+   (spark-time   time-frame)
+   (gui-id       sound-id)
    )
-  :heap-base #xe0
-  :method-count-assert 18
-  :size-assert         #x15c
-  :flag-assert         #x1200e0015c
-  (:methods
-    (startup () _type_ :state 14)
-    (wait () _type_ :state 15)
-    (idle () _type_ :state 16)
-    (scrap-book (int) _type_ :state 17)
+  (:state-methods
+    startup
+    wait
+    idle
+    (scrap-book int)
     )
   )
 
 
 ;; WARN: Return type mismatch process vs title-control.
-(defmethod relocate title-control ((obj title-control) (arg0 int))
+(defmethod relocate ((this title-control) (arg0 int))
   (dotimes (v1-0 2)
-    (if (nonzero? (-> obj buffer v1-0))
-        (&+! (-> obj buffer v1-0) arg0)
+    (if (nonzero? (-> this buffer v1-0))
+        (&+! (-> this buffer v1-0) arg0)
         )
     )
-  (the-as title-control ((method-of-type process relocate) obj arg0))
+  (the-as title-control ((method-of-type process relocate) this arg0))
   )
 
-(defmethod deactivate title-control ((obj title-control))
+(defmethod deactivate ((this title-control))
   (dotimes (s5-0 2)
-    (set-pending-file (-> obj buffer s5-0) (the-as string #f) -1 (the-as handle #f) 100000000.0)
+    (set-pending-file (-> this buffer s5-0) (the-as string #f) -1 (the-as handle #f) 100000000.0)
     )
   (dotimes (s5-1 2)
-    (update (-> obj buffer s5-1))
+    (update (-> this buffer s5-1))
     )
-  ((method-of-type process deactivate) obj)
+  ((method-of-type process deactivate) this)
   (none)
   )
 
@@ -153,6 +149,7 @@
           ,(lambda ((arg0 process-drawable) (arg1 vector) (arg2 cspace))
              (logior! (-> arg0 draw global-effect) (draw-control-global-effect title-light))
              (case (scf-get-territory)
+               ;; og:preserve-this constant
                ((GAME_TERRITORY_SCEE)
                 (case (-> *setting-control* user-current language)
                   (((language-enum spanish))
@@ -480,7 +477,7 @@
   (let ((s3-0 (current-time))
         (s4-0 #f)
         )
-    (while (not (or (>= (- (current-time) s3-0) arg1) (and (>= (- (current-time) s3-0) arg0) s4-0)))
+    (while (not (or (time-elapsed? s3-0 arg1) (and (time-elapsed? s3-0 arg0) s4-0)))
       (if (cpad-pressed? 0 confirm)
           (set! s4-0 #t)
           )
@@ -531,7 +528,7 @@
           (let ((v1-36 sv-112))
             (set! (-> v1-36 height) (the float 50))
             )
-          (set! (-> sv-112 flags) (font-flags shadow kerning middle left large))
+          (set! (-> sv-112 flags) (font-flags shadow kerning middle middle-vert large))
           (set! (-> sv-112 scale) 0.7)
           (dotimes (s5-4 (-> gp-1 length))
             (if (= (-> self selected) s5-4)
@@ -559,7 +556,7 @@
 (defun title-fade-out ((arg0 float))
   (setup *screen-filter* (new 'static 'vector) (new 'static 'vector :w 128.0) arg0 (bucket-id screen-filter))
   (let ((gp-0 (current-time)))
-    (until (>= (- (current-time) gp-0) (seconds 0.4))
+    (until (time-elapsed? gp-0 (seconds 0.4))
       (suspend)
       )
     )
@@ -580,47 +577,44 @@
   )
 
 (defun title-progress ((arg0 symbol))
-  (with-pp
-    (setup
-      *screen-filter*
-      (new 'static 'vector :w 128.0)
-      (new 'static 'vector :w 128.0)
-      (-> pp clock seconds-per-frame)
-      (bucket-id screen-filter)
-      )
-    (set-setting! 'allow-progress #t 0.0 0)
-    (apply-settings *setting-control*)
-    (activate-progress *dproc* arg0)
-    (set-setting! 'allow-progress #f 0.0 0)
-    (dotimes (gp-1 5)
-      (suspend)
-      )
-    (disable *screen-filter*)
-    (remove-setting! 'allow-error)
-    (while (-> *blit-displays-work* menu-mode)
-      (suspend)
-      )
-    (set-setting! 'allow-error #f 0.0 0)
-    (apply-settings *setting-control*)
-    (set-blackout-frames (seconds 0.2))
-    0
-    (none)
+  (setup
+    *screen-filter*
+    (new 'static 'vector :w 128.0)
+    (new 'static 'vector :w 128.0)
+    (seconds-per-frame)
+    (bucket-id screen-filter)
     )
+  (set-setting! 'allow-progress #t 0.0 0)
+  (apply-settings *setting-control*)
+  (activate-progress *dproc* arg0)
+  (set-setting! 'allow-progress #f 0.0 0)
+  (dotimes (gp-1 5)
+    (suspend)
+    )
+  (disable *screen-filter*)
+  (remove-setting! 'allow-error)
+  (while (-> *blit-displays-work* menu-mode)
+    (suspend)
+    )
+  (set-setting! 'allow-error #f 0.0 0)
+  (apply-settings *setting-control*)
+  (set-blackout-frames (seconds 0.2))
+  0
+  (none)
   )
 
 (defstate startup (title-control)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (the-as object (case event-type
-                     (('pause)
-                      (set! (-> *game-info* demo-state) (the-as uint 2))
-                      (the-as object (remove-setting! 'bg-a))
-                      )
-                     (('scrap-book)
-                      (go-virtual scrap-book (the-as int (-> event param 0)))
-                      )
-                     )
-            )
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
+      (('pause)
+       (set! (-> *game-info* demo-state) (the-as uint 2))
+       (remove-setting! 'bg-a)
+       )
+      (('scrap-book)
+       (go-virtual scrap-book (the-as int (-> block param 0)))
+       )
+      )
     )
   :exit (behavior ()
     (when (not (and (-> self next-state) (let ((v1-3 (-> self next-state name)))
@@ -631,7 +625,6 @@
       (disable *screen-filter*)
       (send-event (ppointer->process (-> *setting-control* user-current movie)) 'abort)
       )
-    (none)
     )
   :code (behavior ()
     (let ((v1-1 (-> *game-info* demo-state)))
@@ -711,7 +704,6 @@
         )
       )
     (go-virtual wait)
-    (none)
     )
   :post (behavior ()
     (local-vars (v1-73 external-art-buffer))
@@ -790,7 +782,6 @@
         (set! (-> self active) #t)
         )
       )
-    (none)
     )
   )
 
@@ -806,7 +797,6 @@
         (go-virtual idle)
         )
     (sleep-code)
-    (none)
     )
   :post (-> (method-of-type title-control startup) post)
   )
@@ -817,10 +807,9 @@
   :enter (-> (method-of-type title-control startup) enter)
   :exit (-> (method-of-type title-control startup) exit)
   :code (behavior ()
-    (title-fade-out (* 3.0 (-> self clock seconds-per-frame)))
+    (title-fade-out (* 3.0 (seconds-per-frame)))
     (title-progress 'title)
     (sleep-code)
-    (none)
     )
   :post (-> (method-of-type title-control startup) post)
   )
@@ -891,7 +880,6 @@
     (set-blackout-frames (seconds 0.2))
     (set! (-> *game-info* demo-state) (the-as uint 1))
     (go-virtual idle)
-    (none)
     )
   :post (-> (method-of-type title-control startup) post)
   )
@@ -995,12 +983,12 @@
   )
 
 (defstate target-title (target)
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('change-mode)
-       (case (-> event param 0)
+       (case (-> block param 0)
          (('grab)
-          (if (not (-> event param 1))
+          (if (not (-> block param 1))
               #t
               (go target-grab 'stance)
               )
@@ -1008,7 +996,7 @@
          )
        )
       (else
-        (target-generic-event-handler proc arg1 event-type event)
+        (target-generic-event-handler proc argc message block)
         )
       )
     )
@@ -1041,9 +1029,8 @@
             (ppointer->handle (process-spawn title-control :init title-control-init :to *entity-pool*))
             )
       )
-    (none)
     )
-  :code (the-as (function symbol none :behavior target) sleep-code)
+  :code (the-as (function symbol object) sleep-code)
   :post target-no-move-post
   )
 
@@ -1319,6 +1306,7 @@
     )
   )
 
+;; og:preserve-this constant
 (when (= (scf-get-territory) GAME_TERRITORY_SCEE)
   (let ((v1-82 (get-field-spec-by-id (-> *part-id-table* 5469) (sp-field-id spt-userdata))))
     (if v1-82
@@ -1342,6 +1330,7 @@
     )
   )
 
+;; og:preserve-this constant
 (when (= (scf-get-territory) GAME_TERRITORY_SCEI)
   (let ((v1-89 (get-field-spec-by-id (-> *part-id-table* 5469) (sp-field-id spt-userdata))))
     (if v1-89
@@ -1365,6 +1354,7 @@
     )
   )
 
+;; og:preserve-this constant
 (when (= (scf-get-territory) GAME_TERRITORY_SCEK)
   (let ((v1-96 (get-field-spec-by-id (-> *part-id-table* 5469) (sp-field-id spt-userdata))))
     (if v1-96

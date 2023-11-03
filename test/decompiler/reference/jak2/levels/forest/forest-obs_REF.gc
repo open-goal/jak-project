@@ -14,45 +14,41 @@
 
 ;; definition of type forest-hover-manager
 (deftype forest-hover-manager (hover-enemy-manager)
-  ((transport-actor entity-actor 2 :offset-assert 168)
+  ((transport-actor  entity-actor  2)
    )
-  :heap-base #x30
-  :method-count-assert 19
-  :size-assert         #xb0
-  :flag-assert         #x13003000b0
   )
 
 ;; definition for method 3 of type forest-hover-manager
-(defmethod inspect forest-hover-manager ((obj forest-hover-manager))
-  (when (not obj)
-    (set! obj obj)
+(defmethod inspect ((this forest-hover-manager))
+  (when (not this)
+    (set! this this)
     (goto cfg-4)
     )
   (let ((t9-0 (method-of-type hover-enemy-manager inspect)))
-    (t9-0 obj)
+    (t9-0 this)
     )
-  (format #t "~2Ttransport-actor[2] @ #x~X~%" (-> obj transport-actor))
+  (format #t "~2Ttransport-actor[2] @ #x~X~%" (-> this transport-actor))
   (label cfg-4)
-  obj
+  this
   )
 
 ;; definition for method 11 of type forest-hover-manager
 ;; WARN: Return type mismatch object vs none.
-(defmethod init-from-entity! forest-hover-manager ((obj forest-hover-manager) (arg0 entity-actor))
+(defmethod init-from-entity! ((this forest-hover-manager) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
 - stack size
 - collision information
 - loading the skeleton group / bones
 - sounds"
-  (set! (-> obj entity) arg0)
-  (hover-enemy-manager-init! obj *forest-protect-battle*)
-  (set! (-> obj transport-actor 0) (entity-actor-lookup arg0 'alt-actor 0))
-  (set! (-> obj transport-actor 1) (entity-actor-lookup arg0 'alt-actor 1))
+  (set! (-> this entity) arg0)
+  (hover-enemy-manager-init! this *forest-protect-battle*)
+  (set! (-> this transport-actor 0) (entity-actor-lookup arg0 'alt-actor 0))
+  (set! (-> this transport-actor 1) (entity-actor-lookup arg0 'alt-actor 1))
   (let ((t9-3 (method-of-type hover-formation-control new))
         (a0-4 'process)
         (a1-4 hover-formation-control)
-        (a2-2 obj)
+        (a2-2 this)
         (t0-0 122880.0)
         (t1-0 (new 'stack-no-clear 'vector))
         )
@@ -60,64 +56,54 @@ This commonly includes things such as:
     (set! (-> t1-0 y) 24576.0)
     (set! (-> t1-0 z) 61440.0)
     (set! (-> t1-0 w) 1.0)
-    (let ((a3-0 arg0))
-      (set! (-> obj formation) (t9-3 a0-4 a1-4 a2-2 a3-0 t0-0 t1-0 5461.3335 (the-as handle #f)))
-      (let ((v1-8 (logior (-> obj formation flags) 4))
-            (a0-5 (-> obj formation))
-            )
-        (set! (-> a0-5 flags) v1-8)
-        (go (method-of-object obj spawning) a0-5 (the-as object a1-4) (the-as process a2-2) (the-as pointer a3-0))
-        )
-      )
+    (set! (-> this formation) (t9-3 a0-4 a1-4 a2-2 arg0 t0-0 t1-0 5461.3335 (the-as handle #f)))
     )
+  (logior! (-> this formation flags) 4)
+  (go (method-of-object this spawning))
   (none)
   )
 
 ;; definition of type forest-youngsamos
 (deftype forest-youngsamos (process-focusable)
-  ((root                collide-shape-moving         :override)
-   (init-quat           quaternion           :inline :offset-assert 208)
-   (desired-pos         vector               :inline :offset-assert 224)
-   (hit-dir             vector               :inline :offset-assert 240)
-   (hit-points          float                        :offset-assert 256)
-   (incoming-attack-id  uint32                       :offset-assert 260)
-   (falling?            basic                        :offset-assert 264)
-   (focus-disable-timer uint64                       :offset-assert 272)
-   (hud                 handle                       :offset-assert 280)
-   (sound-id            sound-id                     :offset-assert 288)
+  ((root                 collide-shape-moving :override)
+   (init-quat            quaternion            :inline)
+   (desired-pos          vector                :inline)
+   (hit-dir              vector                :inline)
+   (hit-points           float)
+   (incoming-attack-id   uint32)
+   (falling?             basic)
+   (focus-disable-timer  uint64)
+   (hud                  handle)
+   (sound-id             sound-id)
    )
-  :heap-base #xb0
-  :method-count-assert 31
-  :size-assert         #x124
-  :flag-assert         #x1f00b00124
-  (:methods
-    (idle () _type_ :state 27)
-    (hit () _type_ :state 28)
-    (die () _type_ :state 29)
-    (dormant () _type_ :state 30)
+  (:state-methods
+    idle
+    hit
+    die
+    dormant
     )
   )
 
 ;; definition for method 3 of type forest-youngsamos
-(defmethod inspect forest-youngsamos ((obj forest-youngsamos))
-  (when (not obj)
-    (set! obj obj)
+(defmethod inspect ((this forest-youngsamos))
+  (when (not this)
+    (set! this this)
     (goto cfg-4)
     )
   (let ((t9-0 (method-of-type process-focusable inspect)))
-    (t9-0 obj)
+    (t9-0 this)
     )
-  (format #t "~2Tinit-quat: #<quaternion @ #x~X>~%" (-> obj init-quat))
-  (format #t "~2Tdesired-pos: #<vector @ #x~X>~%" (-> obj desired-pos))
-  (format #t "~2Thit-dir: #<vector @ #x~X>~%" (-> obj hit-dir))
-  (format #t "~2Thit-points: ~f~%" (-> obj hit-points))
-  (format #t "~2Tincoming-attack-id: ~D~%" (-> obj incoming-attack-id))
-  (format #t "~2Tfalling?: ~A~%" (-> obj falling?))
-  (format #t "~2Tfocus-disable-timer: ~D~%" (-> obj focus-disable-timer))
-  (format #t "~2Thud: ~D~%" (-> obj hud))
-  (format #t "~2Tsound-id: ~D~%" (-> obj sound-id))
+  (format #t "~2Tinit-quat: #<quaternion @ #x~X>~%" (-> this init-quat))
+  (format #t "~2Tdesired-pos: #<vector @ #x~X>~%" (-> this desired-pos))
+  (format #t "~2Thit-dir: #<vector @ #x~X>~%" (-> this hit-dir))
+  (format #t "~2Thit-points: ~f~%" (-> this hit-points))
+  (format #t "~2Tincoming-attack-id: ~D~%" (-> this incoming-attack-id))
+  (format #t "~2Tfalling?: ~A~%" (-> this falling?))
+  (format #t "~2Tfocus-disable-timer: ~D~%" (-> this focus-disable-timer))
+  (format #t "~2Thud: ~D~%" (-> this hud))
+  (format #t "~2Tsound-id: ~D~%" (-> this sound-id))
   (label cfg-4)
-  obj
+  this
   )
 
 ;; failed to figure out what this is:
@@ -137,7 +123,7 @@ This commonly includes things such as:
   (let ((v1-3 (vector-! (new 'stack-no-clear 'vector) (-> self desired-pos) (-> self root trans))))
     (let ((a0-3 (-> self root transv)))
       (if (not (-> self falling?))
-          (vector+float*! a0-3 a0-3 v1-3 (* 3.0 (-> self clock seconds-per-frame)))
+          (vector+float*! a0-3 a0-3 v1-3 (* 3.0 (seconds-per-frame)))
           )
       )
     (vector-float*! (-> self root transv) (-> self root transv) 0.975)
@@ -152,7 +138,10 @@ This commonly includes things such as:
     )
   (if (-> self falling?)
       (vector-v++! (-> self root transv) (compute-acc-due-to-gravity (-> self root) (new-stack-vector0) 1.0))
-      (spawn (-> self part) (vector<-cspace! (new 'stack-no-clear 'vector) (-> self node-list data 3)))
+      (spawn
+        (-> self part)
+        (vector<-cspace! (new 'stack-no-clear 'vector) (joint-node youngsamos-highres-lod0-jg main))
+        )
       )
   (let ((gp-4 (-> self root)))
     (let ((a2-7 (new 'stack-no-clear 'collide-query)))
@@ -164,7 +153,7 @@ This commonly includes things such as:
       (fill-cache-integrate-and-collide gp-4 (-> gp-4 transv) a2-7 (meters 0))
       )
     (when (logtest? (-> gp-4 status) (collide-status touch-surface))
-      (let ((f0-9 (fmax 0.0 (+ 1.0 (* -11.999999 (-> self clock seconds-per-frame))))))
+      (let ((f0-9 (fmax 0.0 (+ 1.0 (* -11.999999 (seconds-per-frame))))))
         (vector-float*! (-> gp-4 transv) (-> gp-4 transv) f0-9)
         )
       )
@@ -206,10 +195,10 @@ This commonly includes things such as:
 ;; failed to figure out what this is:
 (defstate idle (forest-youngsamos)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('touched)
-       (send-event proc 'touch (-> event param 0))
+       (send-event proc 'touch (-> block param 0))
        )
       (('attack)
        (let ((s4-0 *target*)
@@ -220,7 +209,7 @@ This commonly includes things such as:
                        )
                    s4-0
                    )
-           (let ((s5-1 (the-as attack-info (-> event param 1))))
+           (let ((s5-1 (the-as attack-info (-> block param 1))))
              (case (-> s5-1 mode)
                (('eco-red 'eco-yellow 'eco-blue 'eco-dark)
                 #f
@@ -238,7 +227,7 @@ This commonly includes things such as:
                          (vector-! (-> self hit-dir) (-> self root trans) (-> v1-10 root trans))
                          (vector-normalize! (-> self hit-dir) 1.0)
                          )
-                       ((logtest? (attack-info-mask attacker-velocity) (-> s5-1 mask))
+                       ((logtest? (attack-mask attacker-velocity) (-> s5-1 mask))
                         (vector-normalize-copy! (-> self hit-dir) (-> s5-1 attacker-velocity) 1.0)
                         )
                        (else
@@ -267,35 +256,29 @@ This commonly includes things such as:
   :enter (behavior ()
     (set! (-> self falling?) #f)
     (send-event (handle->process (-> self hud)) 'force-show)
-    (none)
     )
   :code (behavior ()
     (ja-channel-push! 1 (seconds 0.2))
     (until #f
-      (ja-no-eval :group! (-> self draw art-group data 11)
-                  :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 11)) frames num-frames) -1)))
-                  :frame-num 0.0
-                  )
+      (ja-no-eval :group! youngsamos-highres-idle-deep-meditate0-ja :num! (seek!) :frame-num 0.0)
       (until (ja-done? 0)
         (suspend)
         (ja :num! (seek!))
         )
       )
     #f
-    (none)
     )
   :post (behavior ()
     (sound-play "samos-hover" :id (-> self sound-id))
     (forest-youngsamos-post)
-    (none)
     )
   )
 
 ;; failed to figure out what this is:
 (defstate hit (forest-youngsamos)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('die-fast)
        (cleanup-for-death self)
        (go empty-state)
@@ -307,7 +290,6 @@ This commonly includes things such as:
     (set! (-> self falling?) (the-as basic #t))
     (logior! (-> self focus-status) (focus-status disable))
     (set! (-> self focus-disable-timer) (the-as uint (+ (current-time) (seconds 3.5))))
-    (none)
     )
   :code (behavior ()
     (set! (-> self root transv quad) (-> self hit-dir quad))
@@ -321,30 +303,21 @@ This commonly includes things such as:
     (let ((v1-5 (vector-inv-orient-by-quat! (new 'stack-no-clear 'vector) (-> self hit-dir) (-> self root quat))))
       (cond
         ((< (-> v1-5 x) (-> v1-5 z))
-         (ja-no-eval :group! (-> self draw art-group data 12)
-                     :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 12)) frames num-frames) -1)))
-                     :frame-num 0.0
-                     )
+         (ja-no-eval :group! youngsamos-highres-hit-back0-ja :num! (seek!) :frame-num 0.0)
          (until (ja-done? 0)
            (suspend)
            (ja :num! (seek!))
            )
          )
         ((< (-> v1-5 x) 0.0)
-         (ja-no-eval :group! (-> self draw art-group data 13)
-                     :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 13)) frames num-frames) -1)))
-                     :frame-num 0.0
-                     )
+         (ja-no-eval :group! youngsamos-highres-hit-right0-ja :num! (seek!) :frame-num 0.0)
          (until (ja-done? 0)
            (suspend)
            (ja :num! (seek!))
            )
          )
         (else
-          (ja-no-eval :group! (-> self draw art-group data 14)
-                      :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 14)) frames num-frames) -1)))
-                      :frame-num 0.0
-                      )
+          (ja-no-eval :group! youngsamos-highres-hit-left0-ja :num! (seek!) :frame-num 0.0)
           (until (ja-done? 0)
             (suspend)
             (ja :num! (seek!))
@@ -353,7 +326,6 @@ This commonly includes things such as:
         )
       )
     (go-virtual idle)
-    (none)
     )
   :post forest-youngsamos-post
   )
@@ -361,8 +333,8 @@ This commonly includes things such as:
 ;; failed to figure out what this is:
 (defstate die (forest-youngsamos)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('die-fast)
        (cleanup-for-death self)
        (go empty-state)
@@ -371,7 +343,6 @@ This commonly includes things such as:
     )
   :enter (behavior ()
     (set! (-> self falling?) (the-as basic #t))
-    (none)
     )
   :code (behavior ()
     (speech-control-method-12 *speech-control* self (speech-type speech-type-10))
@@ -384,18 +355,12 @@ This commonly includes things such as:
       (set! (-> gp-0 y) (lerp 20480.0 40960.0 f30-0))
       )
     (ja-channel-push! 1 (seconds 0.2))
-    (ja-no-eval :group! (-> self draw art-group data 15)
-                :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 15)) frames num-frames) -1)))
-                :frame-num 0.0
-                )
+    (ja-no-eval :group! youngsamos-highres-death-fall-ja :num! (seek!) :frame-num 0.0)
     (until (ja-done? 0)
       (suspend)
       (ja :num! (seek!))
       )
-    (ja-no-eval :group! (-> self draw art-group data 16)
-                :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 16)) frames num-frames) -1)))
-                :frame-num 0.0
-                )
+    (ja-no-eval :group! youngsamos-highres-death-land-ja :num! (seek!) :frame-num 0.0)
     (until (ja-done? 0)
       (suspend)
       (ja :num! (seek!))
@@ -418,13 +383,12 @@ This commonly includes things such as:
         )
       )
     (let ((gp-1 (current-time)))
-      (until (>= (- (current-time) gp-1) (seconds 2))
+      (until (time-elapsed? gp-1 (seconds 2))
         (suspend)
         )
       )
     (send-event *camera* 'change-target #f)
     (cleanup-for-death self)
-    (none)
     )
   :post forest-youngsamos-post
   )
@@ -432,7 +396,7 @@ This commonly includes things such as:
 ;; failed to figure out what this is:
 (defstate dormant (forest-youngsamos)
   :virtual #t
-  :code (the-as (function none :behavior forest-youngsamos) sleep-code)
+  :code sleep-code
   )
 
 ;; definition for function forest-youngsamos-bounce-reaction
@@ -464,26 +428,26 @@ This commonly includes things such as:
   )
 
 ;; definition for method 10 of type forest-youngsamos
-(defmethod deactivate forest-youngsamos ((obj forest-youngsamos))
-  (if (valid? (-> obj hud) (the-as type #f) "" #t 0)
-      (send-event (handle->process (-> obj hud)) 'hide-and-die)
+(defmethod deactivate ((this forest-youngsamos))
+  (if (valid? (-> this hud) (the-as type #f) "" #t 0)
+      (send-event (handle->process (-> this hud)) 'hide-and-die)
       )
-  (sound-stop (-> obj sound-id))
-  ((the-as (function process-focusable none) (find-parent-method forest-youngsamos 10)) obj)
+  (sound-stop (-> this sound-id))
+  (call-parent-method this)
   (none)
   )
 
 ;; definition for method 11 of type forest-youngsamos
 ;; INFO: Used lq/sq
 ;; WARN: Return type mismatch object vs none.
-(defmethod init-from-entity! forest-youngsamos ((obj forest-youngsamos) (arg0 entity-actor))
+(defmethod init-from-entity! ((this forest-youngsamos) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
 - stack size
 - collision information
 - loading the skeleton group / bones
 - sounds"
-  (let ((s4-0 (new 'process 'collide-shape-moving obj (collide-list-enum hit-by-others))))
+  (let ((s4-0 (new 'process 'collide-shape-moving this (collide-list-enum hit-by-others))))
     (set! (-> s4-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s4-0 reaction) forest-youngsamos-bounce-reaction)
     (set! (-> s4-0 no-reaction)
@@ -522,29 +486,29 @@ This commonly includes things such as:
       (set! (-> s4-0 backup-collide-with) (-> v1-19 prim-core collide-with))
       )
     (set! (-> s4-0 event-self) 'touched)
-    (set! (-> obj root) s4-0)
+    (set! (-> this root) s4-0)
     )
-  (set! (-> obj entity) arg0)
-  (process-drawable-from-entity! obj (-> obj entity))
+  (set! (-> this entity) arg0)
+  (process-drawable-from-entity! this (-> this entity))
   (initialize-skeleton
-    obj
+    this
     (the-as skeleton-group (art-group-get-by-name *level* "skel-forest-youngsamos" (the-as (pointer uint32) #f)))
     (the-as pair 0)
     )
-  (logclear! (-> obj mask) (process-mask actor-pause))
-  (process-entity-status! obj (entity-perm-status no-kill) #t)
-  (set! (-> obj desired-pos quad) (-> obj root trans quad))
-  (quaternion-copy! (-> obj init-quat) (-> obj root quat))
-  (+! (-> obj desired-pos y) 8192.0)
-  (vector-reset! (-> obj hit-dir))
-  (set! (-> obj hit-points) 9.0)
-  (set! (-> obj incoming-attack-id) (the-as uint -1))
-  (vector-reset! (-> obj root transv))
-  (set! (-> obj focus-disable-timer) (the-as uint 0))
-  (set! (-> obj hud) (ppointer->handle (process-spawn hud-samos-young :init hud-init-by-other :to obj)))
-  (set! (-> obj sound-id) (new-sound-id))
-  (set! (-> obj part) (create-launch-control (-> *part-group-id-table* 494) obj))
-  (go (method-of-object obj idle))
+  (logclear! (-> this mask) (process-mask actor-pause))
+  (process-entity-status! this (entity-perm-status no-kill) #t)
+  (set! (-> this desired-pos quad) (-> this root trans quad))
+  (quaternion-copy! (-> this init-quat) (-> this root quat))
+  (+! (-> this desired-pos y) 8192.0)
+  (vector-reset! (-> this hit-dir))
+  (set! (-> this hit-points) 9.0)
+  (set! (-> this incoming-attack-id) (the-as uint -1))
+  (vector-reset! (-> this root transv))
+  (set! (-> this focus-disable-timer) (the-as uint 0))
+  (set! (-> this hud) (ppointer->handle (process-spawn hud-samos-young :init hud-init-by-other :to this)))
+  (set! (-> this sound-id) (new-sound-id))
+  (set! (-> this part) (create-launch-control (-> *part-group-id-table* 494) this))
+  (go (method-of-object this idle))
   (none)
   )
 
@@ -683,9 +647,9 @@ This commonly includes things such as:
   TASK_MANAGER_CODE_HOOK
   (lambda :behavior task-manager
     ()
-    (set! (-> self start-time) (current-time))
+    (set-time! (-> self start-time))
     (let ((gp-0 (current-time)))
-      (until (>= (- (current-time) gp-0) (seconds 0.5))
+      (until (time-elapsed? gp-0 (seconds 0.5))
         (suspend)
         )
       )
@@ -758,7 +722,7 @@ This commonly includes things such as:
             )
           )
         (let ((s3-0 (current-time)))
-          (until (>= (- (current-time) s3-0) (seconds 15))
+          (until (time-elapsed? s3-0 (seconds 15))
             (suspend)
             )
           )
@@ -796,7 +760,7 @@ This commonly includes things such as:
           )
         (dotimes (s3-1 3)
           (let ((s2-0 (current-time)))
-            (until (>= (- (current-time) s2-0) (seconds 10))
+            (until (time-elapsed? s2-0 (seconds 10))
               (suspend)
               )
             )
@@ -833,7 +797,7 @@ This commonly includes things such as:
               )
             )
           (let ((s2-1 (current-time)))
-            (until (>= (- (current-time) s2-1) (seconds 10))
+            (until (time-elapsed? s2-1 (seconds 10))
               (suspend)
               )
             )
@@ -871,7 +835,7 @@ This commonly includes things such as:
             )
           )
         (let ((s3-2 (current-time)))
-          (until (>= (- (current-time) s3-2) (seconds 10))
+          (until (time-elapsed? s3-2 (seconds 10))
             (suspend)
             )
           )
@@ -908,7 +872,7 @@ This commonly includes things such as:
             )
           )
         (let ((s3-3 (current-time)))
-          (until (>= (- (current-time) s3-3) (seconds 10))
+          (until (time-elapsed? s3-3 (seconds 10))
             (suspend)
             )
           )
@@ -922,7 +886,7 @@ This commonly includes things such as:
                 )
             )
           (let ((s2-2 (current-time)))
-            (until (>= (- (current-time) s2-2) (seconds 1))
+            (until (time-elapsed? s2-2 (seconds 1))
               (suspend)
               )
             )
@@ -1001,14 +965,14 @@ This commonly includes things such as:
                      )
                  )
           (let ((s3-5 (current-time)))
-            (until (>= (- (current-time) s3-5) (seconds 1))
+            (until (time-elapsed? s3-5 (seconds 1))
               (suspend)
               )
             )
           )
         )
       (let ((s4-1 (current-time)))
-        (until (>= (- (current-time) s4-1) (seconds 0.5))
+        (until (time-elapsed? s4-1 (seconds 0.5))
           (suspend)
           )
         )
@@ -1016,7 +980,7 @@ This commonly includes things such as:
       (set-setting! 'process-mask 'set 0.0 (process-mask movie enemy))
       (process-grab? *target* #f)
       (let ((s4-2 (current-time)))
-        (until (>= (- (current-time) s4-2) (seconds 0.5))
+        (until (time-elapsed? s4-2 (seconds 0.5))
           (suspend)
           )
         )
@@ -1027,7 +991,7 @@ This commonly includes things such as:
         'leave
         )
       (let ((s5-1 (current-time)))
-        (until (>= (- (current-time) s5-1) (seconds 0.2))
+        (until (time-elapsed? s5-1 (seconds 0.2))
           (suspend)
           )
         )
@@ -1039,7 +1003,7 @@ This commonly includes things such as:
         )
       )
     (let ((gp-2 (current-time)))
-      (until (>= (- (current-time) gp-2) (seconds 3))
+      (until (time-elapsed? gp-2 (seconds 3))
         (suspend)
         )
       )
@@ -1047,7 +1011,7 @@ This commonly includes things such as:
     (remove-setting! 'process-mask)
     (process-release? *target*)
     (let ((gp-3 (current-time)))
-      (until (>= (- (current-time) gp-3) (seconds 3))
+      (until (time-elapsed? gp-3 (seconds 3))
         (suspend)
         )
       )

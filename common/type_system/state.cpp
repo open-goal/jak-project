@@ -68,8 +68,6 @@ TypeSpec get_state_handler_type(StateHandler kind, const TypeSpec& state_type) {
   TypeSpec result;
   switch (kind) {
     case StateHandler::CODE:
-      result = state_to_go_function(state_type, TypeSpec("none"));
-      break;
     case StateHandler::ENTER:
       result = state_to_go_function(state_type, TypeSpec("none"));
       break;
@@ -102,7 +100,7 @@ std::vector<std::string> get_state_handler_arg_names(StateHandler kind) {
     case StateHandler::EXIT:
       return {};
     case StateHandler::EVENT:
-      return {"proc", "arg1", "event-type", "event"};
+      return {"proc", "argc", "message", "block"};
     default:
       ASSERT(false);
   }

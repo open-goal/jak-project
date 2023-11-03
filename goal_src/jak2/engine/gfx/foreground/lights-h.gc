@@ -23,112 +23,93 @@
 ;; Note that the data is transposed to be faster for use in the VU code.
 ;; the w components are unused for lighting information - you can put whatever you want in them...
 (deftype vu-lights (structure)
-  ((direction vector 3 :inline :offset-assert 0)
-   (color     vector 3 :inline :offset-assert 48)
-   (ambient   vector   :inline :offset-assert 96)
-   (fade-int uint32 :offset 44)
-   (fade-flags uint32 :offset 28)
+  ((direction   vector  3 :inline)
+   (color       vector  3 :inline)
+   (ambient     vector  :inline)
+   (fade-int    uint32  :offset  44)
+   (fade-flags  uint32  :offset  28)
    )
-  :method-count-assert 9
-  :size-assert         #x70
-  :flag-assert         #x900000070
   )
 
-;; a single directional light.
+
 (deftype light (structure)
-  ((direction     vector :inline :offset-assert   0)
-   (color         rgbaf  :inline :offset-assert  16)
-   (extra         vector :inline :offset-assert  32)
-   (level         float          :offset         32)
-   (luminance     float          :offset         40)
-   (priority      float          :offset         44)
-   (bytes         uint8  4       :offset         36)
-   (mask          uint16         :offset         36)
-   (palette-index int8           :offset         39)
+  ((direction      vector  :inline)
+   (color          rgbaf   :inline)
+   (extra          vector  :inline)
+   (level          float     :overlay-at (-> extra data 0))
+   (luminance      float     :overlay-at (-> extra data 2))
+   (priority       float     :overlay-at (-> extra data 3))
+   (bytes          uint8   4 :overlay-at (-> extra data 1))
+   (mask           uint16    :overlay-at (-> extra data 1))
+   (palette-index  int8      :overlay-at (-> bytes 3))
    )
-  :method-count-assert 9
-  :size-assert         #x30
-  :flag-assert         #x900000030
   )
 
 ;; new jak 2 light, is applied to stuff in the sphere.
 (deftype light-sphere (structure)
-  ((name                string         :offset-assert   0)
-   (bsphere             vector :inline :offset-assert  16)
-   (direction           vector :inline :offset-assert  32)
-   (color               vector :inline :offset-assert  48)
-   (decay-start         float          :offset          4)
-   (ambient-point-ratio float          :offset          8)
-   (brightness          float          :offset         12)
-   (bytes               uint8  4       :offset         60)
-   (mask                uint16         :offset         60)
-   (palette-index       int8           :offset         63)
+  ((name                 string)
+   (bsphere              vector  :inline)
+   (direction            vector  :inline)
+   (color                vector  :inline)
+   (decay-start          float     :offset   4)
+   (ambient-point-ratio  float     :offset   8)
+   (brightness           float     :offset  12)
+   (bytes                uint8   4 :overlay-at (-> color data 3))
+   (mask                 uint16    :overlay-at (-> color data 3))
+   (palette-index        int8      :overlay-at (-> bytes 3))
    )
-  :method-count-assert 9
-  :size-assert         #x40
-  :flag-assert         #x900000040
   )
 
 ;; hash bucket for fast "which light am I in?" checks.
 (deftype light-hash-bucket (structure)
-  ((index uint16  :offset-assert 0)
-   (count uint16  :offset-assert 2)
+  ((index  uint16)
+   (count  uint16)
    )
   :pack-me
-  :method-count-assert 9
-  :size-assert         #x4
-  :flag-assert         #x900000004
   )
+
 
 (deftype light-hash (basic)
-  ((num-lights         uint16                              :offset-assert   4)
-   (num-indices        uint16                              :offset-assert   6)
-   (num-buckets        uint16                              :offset-assert   8)
-   (bucket-step        uint8                       2       :offset-assert  10)
-   (base-trans         vector                      :inline :offset-assert  16)
-   (axis-scale         vector                      :inline :offset-assert  32)
-   (dimension-array    vector4w                    :inline :offset-assert  48)
-   (bucket-array       (inline-array light-hash-bucket)    :offset-assert  64)
-   (index-array        pointer                             :offset-assert  68)
-   (light-sphere-array (inline-array light-sphere)         :offset-assert  72)
+  ((num-lights          uint16)
+   (num-indices         uint16)
+   (num-buckets         uint16)
+   (bucket-step         uint8     2)
+   (base-trans          vector    :inline)
+   (axis-scale          vector    :inline)
+   (dimension-array     vector4w  :inline)
+   (bucket-array        (inline-array light-hash-bucket))
+   (index-array         pointer)
+   (light-sphere-array  (inline-array light-sphere))
    )
-  :method-count-assert 9
-  :size-assert         #x4c
-  :flag-assert         #x90000004c
   )
 
+
 (deftype light-hash-work (structure)
-  ((ones vector4w :inline :offset-assert   0)
+  ((ones  vector4w  :inline)
    )
-  :method-count-assert 9
-  :size-assert         #x10
-  :flag-assert         #x900000010
   )
+
 
 (define *light-hash* (the-as light-hash #f))
 
-(defmethod print light ((obj light))
+(defmethod print ((this light))
   (format
     #t
     "#<light [~F] ~F ~F ~F  "
-    (-> obj extra x)
-    (-> obj direction x)
-    (-> obj direction y)
-    (-> obj direction z)
+    (-> this extra x)
+    (-> this direction x)
+    (-> this direction y)
+    (-> this direction z)
     )
-  (format #t "~F ~F ~F @ #x~X>" (-> obj color x) (-> obj color y) (-> obj color z) obj)
-  obj
+  (format #t "~F ~F ~F @ #x~X>" (-> this color x) (-> this color y) (-> this color z) this)
+  this
   )
 
-;; jak1-style 3x directional + ambient lighting.
 (deftype light-group (structure)
-  ((dir0   light :inline   :offset-assert   0)
-   (dir1   light :inline   :offset-assert  48)
-   (dir2   light :inline   :offset-assert  96)
-   (ambi   light :inline   :offset-assert 144)
-   (lights light 4 :inline :offset          0)
+  ((dir0    light  :inline)
+   (dir1    light  :inline)
+   (dir2    light  :inline)
+   (ambi    light  :inline)
+   (lights  light  4 :inline :overlay-at dir0)
    )
-  :method-count-assert 9
-  :size-assert         #xc0
-  :flag-assert         #x9000000c0
   )

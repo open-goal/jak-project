@@ -464,6 +464,11 @@
   (set! *defstate-type-stack* '())
   `(none)
   )
+
+;; set when inside a defstate.
+(seval (define *defstate-current-type* #f))
+(seval (define *defstate-current-state-name* #f))
+
 ;; *no-state* is just used for the compiler to know whether a handler was actually set or not
 (defmacro defstate (state-name parents
                                &key (virtual #f)
@@ -483,6 +488,10 @@
                  *defstate-type-stack*)
         )
       (set! *defstate-type-stack* '())
+      (when virtual
+        (set! *defstate-current-type* defstate-type)
+        (set! *defstate-current-state-name* state-name)
+        )
       ;; check for default handlers
       (let ((default-handlers (assoc defstate-type *default-state-handlers*)))
           (when default-handlers
@@ -544,6 +553,27 @@
       )
     )
   )
+
+
+(defmacro find-parent-state ()
+  "Find the first different implementation of the current virtual state above this one."
+  (when (or (not *defstate-current-type*)
+            (not *defstate-current-state-name*))
+    (error "use of find-parent-state outside of a defstate.")
+    )
+  `(cast-to-method-type
+     ,*defstate-current-type*
+     ,*defstate-current-state-name*
+     (find-parent-method ,*defstate-current-type* (method-id-of-type ,*defstate-current-type* ,*defstate-current-state-name*))
+    )
+  )
+
+(defmacro call-parent-method (&rest args)
+  "Find the first different implementation of the current method in a parent type and call it with these arguments."
+  `((the (current-method-function-type) (find-parent-method (current-method-type) (current-method-id)))
+    ,@args)
+  )
+
 
 (defmacro behavior (bindings &rest body)
   "Define an anonymous behavior for a process state. This may only be used inside a defstate!"
@@ -1236,7 +1266,7 @@
   )
 
 ;; art-h
-(desfun art-elt->index (ag-name elt-name)
+(desfun art-elt-index (ag-name elt-name)
   (if (number? elt-name)
       elt-name
       (let ((ag-info (hash-table-try-ref *art-info* (symbol->string ag-name))))
@@ -1250,6 +1280,23 @@
               )
           )
       )
+  )
+
+(defmacro joint-node-index (jg-name name)
+  (let ((jg-info (hash-table-try-ref *jg-info* (symbol->string jg-name))))
+      (if (not (car jg-info))
+          -1
+          (let ((joint-node (hash-table-try-ref (cdr jg-info) (if (integer? name) (int->string name) (symbol->string name)))))
+              (if (not (car joint-node))
+                  -1
+                  (cadr (cdr joint-node)))
+              )
+          )
+      )
+  )
+
+(defmacro joint-node (jg name)
+  `(-> self node-list data (joint-node-index ,jg ,name))
   )
 
 (defmacro defskelgroup (name ag-name joint-geom joint-anim lods
@@ -1274,7 +1321,7 @@
                         :longest-edge ,longest-edge
                         :version ,version
                         :max-lod ,(- (length lods) 1)
-                        :shadow ,(art-elt->index (string->symbol-format "{}-ag" ag-name) shadow)
+                        :shadow ,(art-elt-index (string->symbol-format "{}-ag" ag-name) shadow)
                         :texture-level ,texture-level
                         :sort ,sort
                         :origin-joint-index ,origin-joint-index
@@ -1282,13 +1329,13 @@
                         :light-index ,light-index
                         )))
         ;; set joint geometry and joint bones
-        (set! (-> skel jgeo) ,(art-elt->index (string->symbol-format "{}-ag" ag-name) joint-geom))
-        (set! (-> skel janim) ,(art-elt->index (string->symbol-format "{}-ag" ag-name) joint-anim))
+        (set! (-> skel jgeo) ,(art-elt-index (string->symbol-format "{}-ag" ag-name) joint-geom))
+        (set! (-> skel janim) ,(art-elt-index (string->symbol-format "{}-ag" ag-name) joint-anim))
 
         ;; set lods
         ,@(apply-i (lambda (x i)
                       `(begin
-                          (set! (-> skel mgeo ,i) ,(art-elt->index (string->symbol-format "{}-ag" ag-name) (car x)))
+                          (set! (-> skel mgeo ,i) ,(art-elt-index (string->symbol-format "{}-ag" ag-name) (car x)))
                           (set! (-> skel lod-dist ,i) ,(cadr x))
                           )
                       ) lods)
@@ -1576,6 +1623,38 @@
   `(-> PP clock frame-counter)
   )
 
+(defmacro seconds-per-frame ()
+  `(-> PP clock seconds-per-frame)
+  )
+
+(defmacro launch-particles (&key (system *sp-particle-system-2d*)
+                                 particle
+                                 origin
+                                 &key (launch-state (the-as sparticle-launch-state #f))
+                                 &key (launch-control (the-as sparticle-launch-control #f))
+                                 &key (rate 1.0)
+                                 &key (origin-is-matrix #f))
+  (if origin-is-matrix
+      `(sp-launch-particles-var
+         ,system
+         ,particle
+         (the matrix ,origin)
+         ,launch-state
+         ,launch-control
+         ,rate #|(if (= (get-video-mode) 'custom) (/ (-> *display* time-factor) 5.0) ,rate)|#)
+      `(begin
+         (vector-copy! (-> *launch-matrix* trans) (the vector ,origin))
+         (sp-launch-particles-var
+            ,system
+            ,particle
+            *launch-matrix*
+            ,launch-state
+            ,launch-control
+            ,rate #|(if (= (get-video-mode) 'custom) (/ (-> *display* time-factor) 5.0) ,rate)|#)
+         )
+      )
+  )
+
 (defconstant TASK_MANAGER_INIT_HOOK 0)
 (defconstant TASK_MANAGER_CLEANUP_HOOK 1)
 (defconstant TASK_MANAGER_UPDATE_HOOK 2)
@@ -1584,3 +1663,35 @@
 (defconstant TASK_MANAGER_FAIL_HOOK 5)
 (defconstant TASK_MANAGER_EVENT_HOOK 6)
 
+
+
+(defmacro static-attack-info (&key (mask ()) args)
+  (let ((mask-actual mask))
+    (dolist (it args)
+      (when (not (member (caar it) mask-actual))
+        (cons! mask-actual (caar it))
+        )
+      )
+    `(let ((atk (new 'static 'attack-info :mask (attack-mask ,@mask-actual))))
+        ,@(apply (lambda (x) (if (or (eq? (car x) 'vector)
+                                     (eq? (car x) 'intersection)
+                                     (eq? (car x) 'attacker-velocity))
+                                 `(vector-copy! (-> atk ,(car x)) ,(cadr x))
+                                 `(set! (-> atk ,(car x)) ,(cadr x))
+                                )) args)
+        atk)
+    )
+  )
+
+(defmacro new-attack-id ()
+  "generate a new attack-id"
+  `(1+! (-> *game-info* attack-id))
+  )
+
+(defmacro set-time! (time)
+  `(set! ,time (current-time))
+  )
+
+(defmacro time-elapsed? (time duration)
+  `(>= (- (current-time) ,time) ,duration)
+  )

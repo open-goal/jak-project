@@ -25,34 +25,32 @@ a single mesh, so it's limited to tests like single foreground mesh vs. sphere.
 Another limitation is that triangles don't have per-tri pat info.
 |#
 
-;; og:update-with-merge
-
 ;; DECOMP BEGINS
 
 
-(defmethod asize-of collide-mesh ((obj collide-mesh))
-  (the-as int (+ (-> collide-mesh size) (* (+ (-> obj num-tris) -1) 8)))
+(defmethod asize-of ((this collide-mesh))
+  (the-as int (+ (-> collide-mesh size) (* (+ (-> this num-tris) -1) 8)))
   )
 
-(defmethod mem-usage collide-mesh ((obj collide-mesh) (arg0 memory-usage-block) (arg1 int))
+(defmethod mem-usage ((this collide-mesh) (arg0 memory-usage-block) (arg1 int))
   (set! (-> arg0 length) (max 82 (-> arg0 length)))
   (set! (-> arg0 data 81 name) "collide-mesh")
   (+! (-> arg0 data 81 count) 1)
-  (let ((v1-6 (asize-of obj)))
+  (let ((v1-6 (asize-of this)))
     (+! (-> arg0 data 81 used) v1-6)
     (+! (-> arg0 data 81 total) (logand -16 (+ v1-6 15)))
     )
   (set! (-> arg0 length) (max 82 (-> arg0 length)))
   (set! (-> arg0 data 81 name) "collide-mesh")
   (+! (-> arg0 data 81 count) 1)
-  (let ((v1-16 (* (-> obj num-verts) 16)))
+  (let ((v1-16 (* (-> this num-verts) 16)))
     (+! (-> arg0 data 81 used) v1-16)
     (+! (-> arg0 data 81 total) (logand -16 (+ v1-16 15)))
     )
   (the-as collide-mesh 0)
   )
 
-(defmethod debug-draw-tris collide-mesh ((obj collide-mesh) (arg0 process-drawable) (arg1 int))
+(defmethod debug-draw-tris ((this collide-mesh) (arg0 process-drawable) (arg1 int))
   (rlet ((acc :class vf)
          (vf0 :class vf)
          (vf1 :class vf)
@@ -64,21 +62,21 @@ Another limitation is that triangles don't have per-tri pat info.
          (vf7 :class vf)
          )
     (init-vf0-vector)
-    (let ((s5-0 (the-as object (-> obj tris)))
+    (let ((s5-0 (the-as object (-> this tris)))
           (s4-0 (-> arg0 node-list data arg1 bone transform))
           )
-      (countdown (s3-0 (-> obj num-tris))
+      (countdown (s3-0 (-> this num-tris))
         (let ((a2-1 (new 'stack-no-clear 'vector))
               (a3-0 (new 'stack-no-clear 'vector))
               (t0-0 (new 'stack-no-clear 'vector))
               )
-          (.lvf vf4 (&-> s4-0 vector 0 quad))
-          (.lvf vf5 (&-> s4-0 vector 1 quad))
-          (.lvf vf6 (&-> s4-0 vector 2 quad))
+          (.lvf vf4 (&-> s4-0 quad 0))
+          (.lvf vf5 (&-> s4-0 quad 1))
+          (.lvf vf6 (&-> s4-0 quad 2))
           (.lvf vf7 (&-> s4-0 trans quad))
-          (.lvf vf1 (&-> (-> obj vertex-data (-> (the-as collide-mesh-tri s5-0) vertex-index 0)) quad))
-          (.lvf vf2 (&-> (-> obj vertex-data (-> (the-as collide-mesh-tri s5-0) vertex-index 1)) quad))
-          (.lvf vf3 (&-> (-> obj vertex-data (-> (the-as collide-mesh-tri s5-0) vertex-index 2)) quad))
+          (.lvf vf1 (&-> (-> this vertex-data (-> (the-as collide-mesh-tri s5-0) vertex-index 0)) quad))
+          (.lvf vf2 (&-> (-> this vertex-data (-> (the-as collide-mesh-tri s5-0) vertex-index 1)) quad))
+          (.lvf vf3 (&-> (-> this vertex-data (-> (the-as collide-mesh-tri s5-0) vertex-index 2)) quad))
           (let ((t1-0 (copy-and-set-field (-> *pat-mode-info* (-> (the-as collide-mesh-tri s5-0) pat mode) color) a 16)))
             (.mul.w.vf acc vf7 vf0)
             (.add.mul.x.vf acc vf4 vf1 acc)
@@ -112,13 +110,11 @@ Another limitation is that triangles don't have per-tri pat info.
 ;;;;;;;;;;;;;;;;;;;;;;;
 
 (deftype sopt-work (structure)
-  ((intersect     vector         :inline :offset-assert   0)
-   (sphere-bbox4w bounding-box4w :inline :offset-assert  16)
+  ((intersect      vector          :inline)
+   (sphere-bbox4w  bounding-box4w  :inline)
    )
-  :method-count-assert 9
-  :size-assert         #x30
-  :flag-assert         #x900000030
   )
+
 
 (defmethod-mips2c "(method 12 collide-mesh)" 12 collide-mesh)
 
@@ -128,15 +124,12 @@ Another limitation is that triangles don't have per-tri pat info.
 ;;;;;;;;;;;;;;;;;;;;;
 
 (deftype spat-work (structure)
-  ((intersect     vector         :inline :offset-assert   0)
-   (sphere-bbox4w bounding-box4w :inline :offset-assert  16)
+  ((intersect      vector          :inline)
+   (sphere-bbox4w  bounding-box4w  :inline)
    )
-  :method-count-assert 9
-  :size-assert         #x30
-  :flag-assert         #x900000030
   )
 
-(defmethod should-push-away-test collide-mesh ((obj collide-mesh) (arg0 collide-mesh-cache-tri) (arg1 collide-tri-result) (arg2 vector) (arg3 float))
+(defmethod should-push-away-test ((this collide-mesh) (arg0 collide-mesh-cache-tri) (arg1 collide-tri-result) (arg2 vector) (arg3 float))
   (local-vars
     (v1-0 uint128)
     (a0-1 uint128)
@@ -146,7 +139,7 @@ Another limitation is that triangles don't have per-tri pat info.
     (a1-7 pat-surface)
     (a2-1 uint128)
     (a2-2 uint128)
-    (a2-4 int) ;; changed
+    (a2-4 int) ;; og:preserve-this changed
     (a2-5 float)
     (a2-7 float)
     (f0-0 float)
@@ -176,7 +169,7 @@ Another limitation is that triangles don't have per-tri pat info.
       (let ((s3-0 arg0))
         (.lvf vf3 (&-> arg2 quad))
         (nop!)
-        (let ((s2-0 (-> obj num-tris)))
+        (let ((s2-0 (-> this num-tris)))
           (.sub.w.vf vf12 vf3 vf3)
           (nop!)
           (.add.w.vf vf13 vf3 vf3)
@@ -271,13 +264,14 @@ Another limitation is that triangles don't have per-tri pat info.
 
 ;; these two are unknown.
 (defmethod-mips2c "(method 14 collide-mesh)" 14 collide-mesh)
+
 (defmethod-mips2c "(method 15 collide-mesh)" 15 collide-mesh)
 
 ;;;;;;;;;;;;;;;;;;;;;;
 ;; Collide Mesh Cache
 ;;;;;;;;;;;;;;;;;;;;;;
 
-(defmethod populate-for-prim-mesh collide-mesh-cache ((obj collide-mesh-cache) (arg0 collide-shape-prim-mesh))
+(defmethod populate-for-prim-mesh ((this collide-mesh-cache) (arg0 collide-shape-prim-mesh))
   "Populate the mesh cache for the given prim-mesh.
    Will reuse existing data only if the transform and object are the same."
   (local-vars
@@ -295,21 +289,21 @@ Another limitation is that triangles don't have per-tri pat info.
         (s4-0 (-> arg0 mesh-cache-entry))
         )
     (cond
-      ((= (-> arg0 mesh-cache-id) (-> obj id)) ;; check id first
+      ((= (-> arg0 mesh-cache-id) (-> this id)) ;; check id first
        ;; this weird pxor stuff is checking the transform for equality
-       (let ((v1-6 (-> s5-0 vector 0 quad))
-             (a0-4 (-> s4-0 mat vector 0 quad))
+       (let ((v1-6 (-> s5-0 quad 0))
+             (a0-4 (-> s4-0 mat quad 0))
              )
          (.pxor v1-7 v1-6 a0-4)
          )
-       (let ((a0-5 (-> s5-0 vector 1 quad))
-             (a1-1 (-> s4-0 mat vector 1 quad))
+       (let ((a0-5 (-> s5-0 quad 1))
+             (a1-1 (-> s4-0 mat quad 1))
              )
          (.pxor a0-6 a0-5 a1-1)
          )
        (.por v1-8 v1-7 a0-6)
-       (let ((a0-7 (-> s5-0 vector 2 quad))
-             (a1-2 (-> s4-0 mat vector 2 quad))
+       (let ((a0-7 (-> s5-0 quad 2))
+             (a1-2 (-> s4-0 mat quad 2))
              )
          (.pxor a0-8 a0-7 a1-2)
          )
@@ -326,9 +320,9 @@ Another limitation is that triangles don't have per-tri pat info.
          )
        (when (nonzero? v1-11)
          ;; the id is equal, but the transform isn't. update transform
-         (set! (-> s4-0 mat vector 0 quad) (-> s5-0 vector 0 quad))
-         (set! (-> s4-0 mat vector 1 quad) (-> s5-0 vector 1 quad))
-         (set! (-> s4-0 mat vector 2 quad) (-> s5-0 vector 2 quad))
+         (set! (-> s4-0 mat quad 0) (-> s5-0 quad 0))
+         (set! (-> s4-0 mat quad 1) (-> s5-0 quad 1))
+         (set! (-> s4-0 mat quad 2) (-> s5-0 quad 2))
          (set! (-> s4-0 mat trans quad) (-> s5-0 trans quad))
          ;; and unpack to cache again.
          (unpack-mesh-to-cache! (-> arg0 mesh) (-> s4-0 tris) s5-0)
@@ -340,15 +334,15 @@ Another limitation is that triangles don't have per-tri pat info.
         (let ((v1-19 (-> arg0 mesh)))
           (when v1-19
             ;; allocate new mesh.
-            (set! s4-0 (allocate! obj (+ (* 96 (-> v1-19 num-tris)) 64)))
+            (set! s4-0 (allocate! this (+ (* 96 (-> v1-19 num-tris)) 64)))
             (set! (-> arg0 mesh-cache-entry) s4-0)
             (cond
               (s4-0
                 ;; if allocation succeeds, set up:
-                (set! (-> arg0 mesh-cache-id) (-> obj id))
-                (set! (-> s4-0 mat vector 0 quad) (-> s5-0 vector 0 quad))
-                (set! (-> s4-0 mat vector 1 quad) (-> s5-0 vector 1 quad))
-                (set! (-> s4-0 mat vector 2 quad) (-> s5-0 vector 2 quad))
+                (set! (-> arg0 mesh-cache-id) (-> this id))
+                (set! (-> s4-0 mat quad 0) (-> s5-0 quad 0))
+                (set! (-> s4-0 mat quad 1) (-> s5-0 quad 1))
+                (set! (-> s4-0 mat quad 2) (-> s5-0 quad 2))
                 (set! (-> s4-0 mat trans quad) (-> s5-0 trans quad))
                 ;; and unpack.
                 (unpack-mesh-to-cache! (-> arg0 mesh) (-> s4-0 tris) s5-0)
@@ -366,19 +360,19 @@ Another limitation is that triangles don't have per-tri pat info.
     )
   )
 
-(defmethod allocate! collide-mesh-cache ((obj collide-mesh-cache) (arg0 int))
+(defmethod allocate! ((this collide-mesh-cache) (arg0 int))
   "Allocate room in the collide-mesh-cache for an unpacked mesh with arg0 tris."
   (local-vars (a1-2 int) (a2-2 int))
   (let* ((v1-0 (+ arg0 15))
-         (a1-1 (-> obj used-size))
+         (a1-1 (-> this used-size))
          (v1-1 (/ v1-0 16))
-         (a3-0 (-> obj data))
-         (a2-0 (-> obj max-size))
+         (a3-0 (-> this data))
+         (a2-0 (-> this max-size))
          (v1-2 (* v1-1 16))
          (a3-1 (&+ a3-0 a1-1))
          )
     (let ((t1-0 (- a2-0 (the-as uint v1-2)))
-          (t0-0 (-> obj id))
+          (t0-0 (-> this id))
           )
       (b! (< (the-as int t1-0) 0) cfg-6 :delay (set! a1-2 (the-as int (+ a1-1 v1-2))))
       (b! (>= (the-as int (- a2-0 (the-as uint a1-2))) 0) cfg-5 :delay (set! a2-2 (the-as int (+ t0-0 1))))
@@ -386,10 +380,10 @@ Another limitation is that triangles don't have per-tri pat info.
     (b! (zero? (the-as uint a2-2)) cfg-4 :likely-delay (set! a2-2 1))
     (label cfg-4)
     (set! a1-2 v1-2)
-    (set! a3-1 (-> obj data))
-    (set! (-> obj id) (the-as uint a2-2))
+    (set! a3-1 (-> this data))
+    (set! (-> this id) (the-as uint a2-2))
     (label cfg-5)
-    (set! (-> obj used-size) (the-as uint a1-2))
+    (set! (-> this used-size) (the-as uint a1-2))
     (let ((v0-0 a3-1))
       (b! #t cfg-7 :delay (nop!))
       (label cfg-6)
@@ -401,7 +395,7 @@ Another limitation is that triangles don't have per-tri pat info.
     )
   )
 
-(defmethod unpack-mesh-to-cache! collide-mesh ((obj collide-mesh) (arg0 (inline-array collide-mesh-cache-tri)) (arg1 matrix))
+(defmethod unpack-mesh-to-cache! ((this collide-mesh) (arg0 (inline-array collide-mesh-cache-tri)) (arg1 matrix))
   "Unpack mesh and store in cache.
    Transform triangles, computes normals and bbox."
   (local-vars (t0-2 uint))
@@ -424,16 +418,16 @@ Another limitation is that triangles don't have per-tri pat info.
     (init-vf0-vector)
     (nop!)
     (let ((t0-0 (scratchpad-object int))
-          (v1-0 (-> obj num-verts))
+          (v1-0 (-> this num-verts))
           )
       (nop!)
-      (let ((a3-0 (the-as object (-> obj vertex-data))))
-        (b! (zero? v1-0) cfg-3 :delay (.lvf vf1 (&-> arg1 vector 0 quad)))
+      (let ((a3-0 (the-as object (-> this vertex-data))))
+        (b! (zero? v1-0) cfg-3 :delay (.lvf vf1 (&-> arg1 quad 0)))
         (nop!)
-        (.lvf vf2 (&-> arg1 vector 1 quad))
+        (.lvf vf2 (&-> arg1 quad 1))
         ;; this first loop does the transformation.
         (let ((t0-1 (the-as object (+ t0-0 -64))))
-          (.lvf vf3 (&-> arg1 vector 2 quad))
+          (.lvf vf3 (&-> arg1 quad 2))
           (nop!)
           (.lvf vf4 (&-> arg1 trans quad))
           (nop!)
@@ -490,10 +484,10 @@ Another limitation is that triangles don't have per-tri pat info.
         )
       )
     (label cfg-3)
-    (let ((v1-1 (the-as object (-> obj tris))))
+    (let ((v1-1 (the-as object (-> this tris))))
       (nop!)
       (let ((a2-1 (scratchpad-object int))
-            (a0-1 (-> obj num-tris))
+            (a0-1 (-> this num-tris))
             )
         (b! (zero? a0-1) cfg-6 :delay (set! t0-2 (-> (the-as (inline-array collide-mesh-tri) v1-1) 0 vertex-index 0)))
         (let* ((a1-1 (-> arg0 -1))
@@ -580,15 +574,13 @@ Another limitation is that triangles don't have per-tri pat info.
 ;; this checks to see if a point is inside the mesh or not.
 
 (deftype oot-work (structure)
-  ((intersect     vector         :inline :offset-assert   0)
-   (sphere-bbox4w bounding-box4w :inline :offset-assert  16)
+  ((intersect      vector          :inline)
+   (sphere-bbox4w  bounding-box4w  :inline)
    )
-  :method-count-assert 9
-  :size-assert         #x30
-  :flag-assert         #x900000030
   )
 
-(defmethod overlap-test collide-mesh ((obj collide-mesh) (arg0 collide-mesh-cache-tri) (arg1 vector))
+
+(defmethod overlap-test ((this collide-mesh) (arg0 collide-mesh-cache-tri) (arg1 vector))
   (local-vars
     (v1-0 uint128)
     (a0-1 uint128)
@@ -613,7 +605,7 @@ Another limitation is that triangles don't have per-tri pat info.
           (s4-0 arg0)
           )
       (.lvf vf2 (&-> arg1 quad))
-      (let ((s3-0 (-> obj num-tris)))
+      (let ((s3-0 (-> this num-tris)))
         (.sub.w.vf vf5 vf2 vf2)
         (.add.w.vf vf6 vf2 vf2)
         (.ftoi.vf vf5 vf5)

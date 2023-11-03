@@ -3,80 +3,71 @@
 
 ;; definition of type pris-mtx
 (deftype pris-mtx (structure)
-  ((data   float   32        :offset   0)
-   (vector vector  8 :inline :offset   0)
-   (t-mtx  matrix  :inline   :offset   0)
-   (n-mtx  matrix3 :inline   :offset  64)
-   (scale  vector  :inline   :offset 112)
+  ((data    float    32        :offset   0)
+   (vector  vector   8 :inline :overlay-at (-> data 0))
+   (t-mtx   matrix   :inline   :overlay-at (-> data 0))
+   (n-mtx   matrix3  :inline   :overlay-at (-> data 16))
+   (scale   vector   :inline   :overlay-at (-> vector 7))
    )
-  :method-count-assert 9
-  :size-assert         #x80
-  :flag-assert         #x900000080
   )
 
 ;; definition for method 3 of type pris-mtx
-(defmethod inspect pris-mtx ((obj pris-mtx))
-  (format #t "[~8x] ~A~%" obj 'pris-mtx)
-  (format #t "~Tdata[32] @ #x~X~%" (-> obj t-mtx))
-  (format #t "~Tvector[8] @ #x~X~%" (-> obj t-mtx))
-  (format #t "~Tt-mtx: #<matrix @ #x~X>~%" (-> obj t-mtx))
-  (format #t "~Tn-mtx: #<matrix3 @ #x~X>~%" (-> obj n-mtx))
-  (format #t "~Tscale: #<vector @ #x~X>~%" (-> obj scale))
-  obj
+(defmethod inspect ((this pris-mtx))
+  (format #t "[~8x] ~A~%" this 'pris-mtx)
+  (format #t "~Tdata[32] @ #x~X~%" (-> this t-mtx))
+  (format #t "~Tvector[8] @ #x~X~%" (-> this t-mtx))
+  (format #t "~Tt-mtx: #<matrix @ #x~X>~%" (-> this t-mtx))
+  (format #t "~Tn-mtx: #<matrix3 @ #x~X>~%" (-> this n-mtx))
+  (format #t "~Tscale: #<vector @ #x~X>~%" (-> this scale))
+  this
   )
 
 ;; definition of type generic-pris-mtx-save
 (deftype generic-pris-mtx-save (structure)
-  ((loc-mtx pris-mtx :inline :offset-assert   0)
-   (par-mtx pris-mtx :inline :offset-assert 128)
-   (dif-mtx pris-mtx :inline :offset-assert 256)
+  ((loc-mtx  pris-mtx  :inline)
+   (par-mtx  pris-mtx  :inline)
+   (dif-mtx  pris-mtx  :inline)
    )
-  :method-count-assert 9
-  :size-assert         #x180
-  :flag-assert         #x900000180
   )
 
 ;; definition for method 3 of type generic-pris-mtx-save
-(defmethod inspect generic-pris-mtx-save ((obj generic-pris-mtx-save))
-  (format #t "[~8x] ~A~%" obj 'generic-pris-mtx-save)
-  (format #t "~Tloc-mtx: #<pris-mtx @ #x~X>~%" (-> obj loc-mtx))
-  (format #t "~Tpar-mtx: #<pris-mtx @ #x~X>~%" (-> obj par-mtx))
-  (format #t "~Tdif-mtx: #<pris-mtx @ #x~X>~%" (-> obj dif-mtx))
-  obj
+(defmethod inspect ((this generic-pris-mtx-save))
+  (format #t "[~8x] ~A~%" this 'generic-pris-mtx-save)
+  (format #t "~Tloc-mtx: #<pris-mtx @ #x~X>~%" (-> this loc-mtx))
+  (format #t "~Tpar-mtx: #<pris-mtx @ #x~X>~%" (-> this par-mtx))
+  (format #t "~Tdif-mtx: #<pris-mtx @ #x~X>~%" (-> this dif-mtx))
+  this
   )
 
 ;; definition of type generic-constants
 (deftype generic-constants (structure)
-  ((fog         vector     :inline :offset-assert   0)
-   (adgif       gs-gif-tag :inline :offset-assert  16)
-   (giftag      gs-gif-tag :inline :offset-assert  32)
-   (hvdf-offset vector     :inline :offset-assert  48)
-   (hmge-scale  vector     :inline :offset-assert  64)
-   (invh-scale  vector     :inline :offset-assert  80)
-   (guard       vector     :inline :offset-assert  96)
-   (adnop       qword      :inline :offset-assert 112)
-   (flush       qword      :inline :offset-assert 128)
-   (stores      qword      :inline :offset-assert 144)
+  ((fog          vector      :inline)
+   (adgif        gs-gif-tag  :inline)
+   (giftag       gs-gif-tag  :inline)
+   (hvdf-offset  vector      :inline)
+   (hmge-scale   vector      :inline)
+   (invh-scale   vector      :inline)
+   (guard        vector      :inline)
+   (adnop        qword       :inline)
+   (flush        qword       :inline)
+   (stores       qword       :inline)
    )
-  :method-count-assert 9
-  :size-assert         #xa0
-  :flag-assert         #x9000000a0
   )
 
 ;; definition for method 3 of type generic-constants
-(defmethod inspect generic-constants ((obj generic-constants))
-  (format #t "[~8x] ~A~%" obj 'generic-constants)
-  (format #t "~Tfog: #<vector @ #x~X>~%" (-> obj fog))
-  (format #t "~Tadgif: #<qword @ #x~X>~%" (-> obj adgif))
-  (format #t "~Tgiftag: #<qword @ #x~X>~%" (-> obj giftag))
-  (format #t "~Thvdf-offset: #<vector @ #x~X>~%" (-> obj hvdf-offset))
-  (format #t "~Thmge-scale: #<vector @ #x~X>~%" (-> obj hmge-scale))
-  (format #t "~Tinvh-scale: #<vector @ #x~X>~%" (-> obj invh-scale))
-  (format #t "~Tguard: #<vector @ #x~X>~%" (-> obj guard))
-  (format #t "~Tadnop: #<qword @ #x~X>~%" (-> obj adnop))
-  (format #t "~Tflush: #<qword @ #x~X>~%" (-> obj flush))
-  (format #t "~Tstores: #<qword @ #x~X>~%" (-> obj stores))
-  obj
+(defmethod inspect ((this generic-constants))
+  (format #t "[~8x] ~A~%" this 'generic-constants)
+  (format #t "~Tfog: #<vector @ #x~X>~%" (-> this fog))
+  (format #t "~Tadgif: #<qword @ #x~X>~%" (-> this adgif))
+  (format #t "~Tgiftag: #<qword @ #x~X>~%" (-> this giftag))
+  (format #t "~Thvdf-offset: #<vector @ #x~X>~%" (-> this hvdf-offset))
+  (format #t "~Thmge-scale: #<vector @ #x~X>~%" (-> this hmge-scale))
+  (format #t "~Tinvh-scale: #<vector @ #x~X>~%" (-> this invh-scale))
+  (format #t "~Tguard: #<vector @ #x~X>~%" (-> this guard))
+  (format #t "~Tadnop: #<qword @ #x~X>~%" (-> this adnop))
+  (format #t "~Tflush: #<qword @ #x~X>~%" (-> this flush))
+  (format #t "~Tstores: #<qword @ #x~X>~%" (-> this stores))
+  this
   )
 
 ;; failed to figure out what this is:

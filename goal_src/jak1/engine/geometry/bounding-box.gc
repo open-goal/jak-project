@@ -5,31 +5,31 @@
 ;; name in dgo: bounding-box
 ;; dgos: GAME, ENGINE
 
+;; DECOMP BEGINS
+
 (defun box-vector-enside? ((box bounding-box) (pt vector))
   "Is the point in the box? On the edge doesn't count"
-  (and
-   (< (-> box min data 0) (-> pt data 0))
-   (< (-> box min data 1) (-> pt data 1))
-   (< (-> box min data 2) (-> pt data 2))
-   (< (-> pt data 0) (-> box max data 0))
-   (< (-> pt data 1) (-> box max data 1))
-   (< (-> pt data 2) (-> box max data 2))
-   )
+  (and (< (-> box min x) (-> pt x))
+       (< (-> box min y) (-> pt y))
+       (< (-> box min z) (-> pt z))
+       (< (-> pt x) (-> box max x))
+       (< (-> pt y) (-> box max y))
+       (< (-> pt z) (-> box max z))
+       )
   )
 
 (defun box-vector-inside? ((box bounding-box) (pt vector))
   "Is the point in the box? On the edge counts."
-  (and
-   (>= (-> pt data 0) (-> box min data 0))
-   (>= (-> pt data 1) (-> box min data 1))
-   (>= (-> pt data 2) (-> box min data 2))
-   (>= (-> box max data 0) (-> pt data 0))
-   (>= (-> box max data 1) (-> pt data 1))
-   (>= (-> box max data 2) (-> pt data 2))
-   )
+  (and (>= (-> pt x) (-> box min x))
+       (>= (-> pt y) (-> box min y))
+       (>= (-> pt z) (-> box min z))
+       (>= (-> box max x) (-> pt x))
+       (>= (-> box max y) (-> pt y))
+       (>= (-> box max z) (-> pt z))
+       )
   )
 
-(defmethod set-from-point-offset! bounding-box ((obj bounding-box) (arg0 vector3s) (arg1 vector3s))
+(defmethod set-from-point-offset! ((this bounding-box) (arg0 vector3s) (arg1 vector3s))
   "Set box to smallest containing the points arg0, (arg0 + arg1)"
   (rlet ((vf0 :class vf)
          (vf1 :class vf)
@@ -38,57 +38,57 @@
          (vf4 :class vf)
          (vf5 :class vf)
          )
-   (init-vf0-vector)
-   (.lvf vf3 arg1)
-   (.lvf vf4 arg0)
-   (.add.vf vf5 vf4 vf3)
-   (.min.vf vf1 vf4 vf5)
-   (.max.vf vf2 vf4 vf5)
-   (.mov.vf vf1 vf0 :mask #b1000)
-   (.mov.vf vf2 vf0 :mask #b1000)
-   (.svf obj vf1)
-   (.svf obj vf2 :offset 16)
-   0
-   )
+    (init-vf0-vector)
+    (.lvf vf3 arg1)
+    (.lvf vf4 arg0)
+    (.add.vf vf5 vf4 vf3)
+    (.min.vf vf1 vf4 vf5)
+    (.max.vf vf2 vf4 vf5)
+    (.mov.vf vf1 vf0 :mask #b1000)
+    (.mov.vf vf2 vf0 :mask #b1000)
+    (.svf (&-> this min quad) vf1)
+    (.svf (&-> this max quad) vf2)
+    0
+    )
   )
 
-(defmethod add-point! bounding-box ((obj bounding-box) (arg0 vector3s))
+(defmethod add-point! ((this bounding-box) (arg0 vector3s))
   "Expand the box if needed to contain the given point"
   (rlet ((vf1 :class vf)
          (vf2 :class vf)
          (vf3 :class vf)
          )
-   (.lvf vf1 obj)
-   (.lvf vf2 obj :offset 16)
-   (.lvf vf3 arg0)
-   (.min.vf vf1 vf1 vf3)
-   (.max.vf vf2 vf2 vf3)
-   (.svf obj vf1)
-   (.svf obj vf2 :offset 16)
-   0
-   )
+    (.lvf vf1 (&-> this min quad))
+    (.lvf vf2 (&-> this max quad))
+    (.lvf vf3 arg0)
+    (.min.vf vf1 vf1 vf3)
+    (.max.vf vf2 vf2 vf3)
+    (.svf (&-> this min quad) vf1)
+    (.svf (&-> this max quad) vf2)
+    0
+    )
   )
 
-(defmethod add-box! bounding-box ((obj bounding-box) (arg0 bounding-box))
+(defmethod add-box! ((this bounding-box) (arg0 bounding-box))
   "Expand the box if needed to contain the given box"
   (rlet ((vf1 :class vf)
          (vf2 :class vf)
          (vf3 :class vf)
          (vf4 :class vf)
          )
-   (.lvf vf1 obj)
-   (.lvf vf2 obj :offset 16)
-   (.lvf vf3 arg0)
-   (.lvf vf4 arg0 :offset 16)
-   (.min.vf vf1 vf1 vf3)
-   (.max.vf vf2 vf2 vf4)
-   (.svf obj vf1)
-   (.svf obj vf2 :offset 16)
-   0
-   )
+    (.lvf vf1 (&-> this min quad))
+    (.lvf vf2 (&-> this max quad))
+    (.lvf vf3 (&-> arg0 min quad))
+    (.lvf vf4 (&-> arg0 max quad))
+    (.min.vf vf1 vf1 vf3)
+    (.max.vf vf2 vf2 vf4)
+    (.svf (&-> this min quad) vf1)
+    (.svf (&-> this max quad) vf2)
+    0
+    )
   )
 
-(defmethod set-from-point-offset-pad! bounding-box ((obj bounding-box) (arg0 vector3s) (arg1 vector3s) (arg2 float))
+(defmethod set-from-point-offset-pad! ((this bounding-box) (arg0 vector3s) (arg1 vector3s) (arg2 float))
   "Set the box size to contain pt, pt + offset, with some padding"
   (rlet ((vf0 :class vf)
          (vf1 :class vf)
@@ -98,24 +98,24 @@
          (vf5 :class vf)
          (vf6 :class vf)
          )
-   (init-vf0-vector)
-   (.lvf vf4 arg1)
-   (.lvf vf5 arg0)
-   (.mov vf1 arg2)
-   (.add.vf vf6 vf5 vf4)
-   (.min.vf vf2 vf5 vf6)
-   (.max.vf vf3 vf5 vf6)
-   (.add.x.vf vf3 vf3 vf1 :mask #b111)
-   (.sub.x.vf vf2 vf2 vf1 :mask #b111)
-   (.mov.vf vf2 vf0 :mask #b1000)
-   (.mov.vf vf3 vf0 :mask #b1000)
-   (.svf obj vf2)
-   (.svf obj vf3 :offset 16)
-   0
-   )
+    (init-vf0-vector)
+    (.lvf vf4 arg1)
+    (.lvf vf5 arg0)
+    (.mov vf1 arg2)
+    (.add.vf vf6 vf5 vf4)
+    (.min.vf vf2 vf5 vf6)
+    (.max.vf vf3 vf5 vf6)
+    (.add.x.vf vf3 vf3 vf1 :mask #b111)
+    (.sub.x.vf vf2 vf2 vf1 :mask #b111)
+    (.mov.vf vf2 vf0 :mask #b1000)
+    (.mov.vf vf3 vf0 :mask #b1000)
+    (.svf (&-> this min quad) vf2)
+    (.svf (&-> this max quad) vf3)
+    0
+    )
   )
 
-(defmethod set-from-sphere! bounding-box ((obj bounding-box) (arg0 sphere))
+(defmethod set-from-sphere! ((this bounding-box) (arg0 sphere))
   "Set the box size to contain the given sphere"
   (rlet ((vf0 :class vf)
          (vf1 :class vf)
@@ -128,8 +128,8 @@
    (.add.w.vf vf3 vf1 vf1 :mask #b111)
    (.mov.vf vf2 vf0 :mask #b1000)
    (.mov.vf vf3 vf0 :mask #b1000)
-   (.svf obj vf2)
-   (.svf obj vf3 :offset 16)
+   (.svf this vf2)
+   (.svf this vf3 :offset 16)
    0
    )
   )
@@ -140,7 +140,7 @@
 
 ;; these are used in the collision system to build bounding boxes around collision geometries, so they are quite optimized.
 
-(defmethod add-spheres! bounding-box ((obj bounding-box) (spheres (inline-array sphere)) (count int))
+(defmethod add-spheres! bounding-box ((this bounding-box) (spheres (inline-array sphere)) (count int))
   "Add count spheres."
   ;; the PS2 implementation is very optimized
   ;; It is unrolled and 'software pipelined' to do 4 at a time.
@@ -153,8 +153,8 @@
 
     (when (nonzero? count)
       ;; load these outside the loop
-      (.lvf current-min (-> obj min))
-      (.lvf current-max (-> obj max))
+      (.lvf current-min (-> this min))
+      (.lvf current-max (-> this max))
 
       (dotimes (i count)
         (.lvf sph (-> spheres i))
@@ -164,14 +164,14 @@
         (.max.vf current-max current-max sph-max :mask #b111)
         )
 
-      (.svf (-> obj min) current-min)
-      (.svf (-> obj max) current-max)
+      (.svf (-> this min) current-min)
+      (.svf (-> this max) current-max)
       )
     )
   0
   )
 
-(defmethod set-from-spheres! bounding-box ((obj bounding-box) (spheres (inline-array sphere)) (count int))
+(defmethod set-from-spheres! bounding-box ((this bounding-box) (spheres (inline-array sphere)) (count int))
   "Reset box to hold the given spheres. Note: this implementation could be optimized."
   ;; This is also unrolled, but does 7 at a time.
   (rlet ((vf0 :class vf)
@@ -202,8 +202,8 @@
         )
       )
 
-    (.svf (-> obj min) current-min)
-    (.svf (-> obj max) current-max)
+    (.svf (-> this min) current-min)
+    (.svf (-> this max) current-max)
     )
   0
   )

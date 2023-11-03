@@ -5,9 +5,6 @@
 ;; name in dgo: pat-h
 ;; dgos: GAME, ENGINE
 
-;; The "pat" system is used to store some data per triangle in collision meshes.
-;; It packs all data into a 32-bit pat-surface type.
-
 (defenum pat-material
   :type uint8
   (stone)
@@ -53,23 +50,23 @@
   (melt)
   )
 
+;; DECOMP BEGINS
+
+;; The "pat" system is used to store some data per triangle in collision meshes.
+;; It packs all data into a 32-bit pat-surface type.
+
 (deftype pat-surface (uint32)
-  ((skip          uint8        :offset   0 :size   3) ;; overlay the "no" fields later on
-   (mode          pat-mode     :offset   3 :size   3) ;; ground/wall/obstacle for collision system
-   (material      pat-material :offset   6 :size   6) ;; material for effects (sound, particles, surfaces...)
-   (camera        uint8        :offset  12 :size   2) ;; 2 bits for camera (used later)
-   (event         pat-event    :offset  14 :size   6) ;; what happens if we hit this?
-   (noentity      uint8        :offset   0 :size   1) ;; collisions for actors/jak/etc ignore this
-   (nocamera      uint8        :offset   1 :size   1) ;; collisions for camera ignore this
-   (noedge        uint8        :offset   2 :size   1) ;; seems unused? maybe no edge grab?
-   (nolineofsight uint8        :offset  12 :size   1) ;; camera don't worry about this object blocking line-of-sight to jak.
-   ;; 13 belongs to "camera", but seems unsed.
-   ;; 14 is unused?
-   (unknown-bit   uint8        :offset  15 :size   1) ;; maybe death plane?
+  ((skip          uint8        :offset   0 :size   3)
+   (mode          pat-mode     :offset   3 :size   3)
+   (material      pat-material :offset   6 :size   6)
+   (camera        uint8        :offset  12 :size   2)
+   (event         pat-event    :offset  14 :size   6)
+   (noentity      uint8        :offset   0 :size   1)
+   (nocamera      uint8        :offset   1 :size   1)
+   (noedge        uint8        :offset   2 :size   1)
+   (nolineofsight uint8        :offset  12 :size   1)
+   (unknown-bit   uint8        :offset  15 :size   1)
    )
-  :method-count-assert 9
-  :size-assert         #x4
-  :flag-assert         #x900000004
   )
 
 (defun-debug pat-material->string ((pat pat-surface))
@@ -86,40 +83,38 @@
 
 ;; for debug drawing pat's by mode.
 (deftype pat-mode-info (structure)
-  ((name         string  :offset-assert 0)
-   (wall-angle   float   :offset-assert 4)
-   (color        rgba    :offset-assert 8)
-   (hilite-color rgba    :offset-assert 12)
+  ((name          string)
+   (wall-angle    float)
+   (color         rgba)
+   (hilite-color  rgba)
    )
-  :method-count-assert 9
-  :size-assert         #x10
-  :flag-assert         #x900000010
   )
 
+
 (define *pat-mode-info* (new 'static 'inline-array pat-mode-info 4
-    (new 'static 'pat-mode-info
-        :name "ground"
-        :wall-angle 0.2
-        :color (new 'static 'rgba :r #x7f :a #x40)
-        :hilite-color (new 'static 'rgba :r #xff :a #x80)
+                          (new 'static 'pat-mode-info
+                            :name "ground"
+                            :wall-angle 0.2
+                            :color (new 'static 'rgba :r #x7f :a #x40)
+                            :hilite-color (new 'static 'rgba :r #xff :a #x80)
+                            )
+                          (new 'static 'pat-mode-info
+                            :name "wall"
+                            :wall-angle 2.0
+                            :color (new 'static 'rgba :b #x7f :a #x40)
+                            :hilite-color (new 'static 'rgba :b #xff :a #x80)
+                            )
+                          (new 'static 'pat-mode-info
+                            :name "obstacle"
+                            :wall-angle 0.82
+                            :color (new 'static 'rgba :r #x7f :b #x7f :a #x40)
+                            :hilite-color (new 'static 'rgba :r #xff :b #xff :a #x80)
+                            )
+                          (new 'static 'pat-mode-info
+                            :name "pole"
+                            :wall-angle 2.0
+                            :color (new 'static 'rgba :r #x7f :g #x7f :a #x40)
+                            :hilite-color (new 'static 'rgba :r #xff :g #xff :a #x80)
+                            )
+                          )
         )
-    (new 'static 'pat-mode-info
-        :name "wall"
-        :wall-angle 2.0
-        :color (new 'static 'rgba :b #x7f :a #x40)
-        :hilite-color (new 'static 'rgba :b #xff :a #x80)
-        )
-    (new 'static 'pat-mode-info
-        :name "obstacle"
-        :wall-angle 0.82
-        :color (new 'static 'rgba :r #x7f :b #x7f :a #x40)
-        :hilite-color (new 'static 'rgba :r #xff :b #xff :a #x80)
-        )
-    (new 'static 'pat-mode-info
-        :name "pole"
-        :wall-angle 2.0
-        :color (new 'static 'rgba :r #x7f :g #x7f :a #x40)
-        :hilite-color (new 'static 'rgba :r #xff :g #xff :a #x80)
-        )
-    )
-  )

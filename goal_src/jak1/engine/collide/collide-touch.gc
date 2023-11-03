@@ -24,10 +24,10 @@
 
 ;; there's a global shared pool of entries that you can alloc and free from.
 
-(defmethod get-free-node-count touching-prims-entry-pool ((obj touching-prims-entry-pool))
+(defmethod get-free-node-count ((this touching-prims-entry-pool))
   "Get the number of nodes that are not in use."
   (let ((v0-0 0))
-    (let ((v1-0 (-> obj head)))
+    (let ((v1-0 (-> this head)))
       (while v1-0
         (+! v0-0 1)
         (set! v1-0 (-> v1-0 next))
@@ -40,13 +40,13 @@
     )
   )
 
-(defmethod alloc-node touching-prims-entry-pool ((obj touching-prims-entry-pool))
+(defmethod alloc-node ((this touching-prims-entry-pool))
   "Allocate a node. Will return #f if there are none left."
-  (let ((gp-0 (-> obj head)))
+  (let ((gp-0 (-> this head)))
     (cond
       (gp-0
         (let ((v1-0 (-> gp-0 next)))
-          (set! (-> obj head) v1-0)
+          (set! (-> this head) v1-0)
           (if v1-0
               (set! (-> v1-0 prev) #f)
               )
@@ -63,14 +63,14 @@
     )
   )
 
-(defmethod free-node touching-prims-entry-pool ((obj touching-prims-entry-pool) (arg0 touching-prims-entry))
+(defmethod free-node ((this touching-prims-entry-pool) (arg0 touching-prims-entry))
   "Free a node allocated with alloc-node"
   (when (-> arg0 allocated?)
     (set! (-> arg0 allocated?) #f)
-    (let ((v1-1 (-> obj head)))
+    (let ((v1-1 (-> this head)))
       (set! (-> arg0 next) v1-1)
       (set! (-> arg0 prev) #f)
-      (set! (-> obj head) arg0)
+      (set! (-> this head) arg0)
       (if v1-1
         (set! (-> v1-1 prev) arg0)
         )
@@ -85,13 +85,13 @@
 ;; a single shape entry represents a pair of shapes that collide.
 ;; There can be multiple colliding primitives.
 
-(defmethod free-touching-prims-list touching-shapes-entry ((obj touching-shapes-entry))
+(defmethod free-touching-prims-list ((this touching-shapes-entry))
   "Return all nodes used by this touching-shapes-entry to the touching-prims-entry-pool"
-  (when (-> obj cshape1)
-    (set! (-> obj cshape1) #f)
-    (let ((gp-0 (-> obj head)))
+  (when (-> this cshape1)
+    (set! (-> this cshape1) #f)
+    (let ((gp-0 (-> this head)))
       (when gp-0
-        (set! (-> obj head) #f)
+        (set! (-> this head) #f)
         (let ((s5-0 *touching-prims-entry-pool*))
           (while gp-0
             (let ((a1-0 gp-0))
@@ -112,28 +112,28 @@
 
 ;; A touching list is a list up to TOUCHING_LIST_LENGTH pairs of colliding collide-shapes.
 
-(defmethod free-all-prim-nodes touching-list ((obj touching-list))
+(defmethod free-all-prim-nodes ((this touching-list))
   "Free all prim nodes used by all touching shapes in this touching-list."
-  (let ((s5-0 (the-as touching-shapes-entry (-> obj touching-shapes))))
-    (countdown (s4-0 (-> obj num-touching-shapes))
+  (let ((s5-0 (the-as touching-shapes-entry (-> this touching-shapes))))
+    (countdown (s4-0 (-> this num-touching-shapes))
       (free-touching-prims-list s5-0)
       (&+! s5-0 16)
       )
     )
-  (set! (-> obj num-touching-shapes) 0)
-  (set! (-> obj resolve-u) 0)
+  (set! (-> this num-touching-shapes) 0)
+  (set! (-> this resolve-u) 0)
   0
   (none)
   )
 
 
-(defmethod get-shapes-entry touching-list ((obj touching-list) (arg0 collide-shape) (arg1 collide-shape))
+(defmethod get-shapes-entry ((this touching-list) (arg0 collide-shape) (arg1 collide-shape))
   "Get a touching-shapes-entry for the two shapes. If one exists, it will be returned. Otherwise a new one will be made."
-  (let ((v0-0 (the-as touching-shapes-entry (-> obj touching-shapes)))) ;; the candidate
+  (let ((v0-0 (the-as touching-shapes-entry (-> this touching-shapes)))) ;; the candidate
     (let ((v1-0 (the-as touching-shapes-entry #f)))                     ;; a good one
       
       ;; loop over all touching shapes
-      (countdown (a3-0 (-> obj num-touching-shapes))
+      (countdown (a3-0 (-> this num-touching-shapes))
         (let ((t0-0 (-> v0-0 cshape1)))
           (set! v1-0
                 (cond
@@ -162,13 +162,13 @@
           )
         (else
           ;; need to add a new one
-          (when (>= (-> obj num-touching-shapes) TOUCHING_LIST_LENGTH)
+          (when (>= (-> this num-touching-shapes) TOUCHING_LIST_LENGTH)
             ;; but there's no room!
             (format 0 "ERROR: touching-list::get-shapes-entry() failed!~%")
             (return (the-as touching-shapes-entry #f))
             )
           ;; enough room, increase the size
-          (+! (-> obj num-touching-shapes) 1)
+          (+! (-> this num-touching-shapes) 1)
           )
         )
       )
@@ -178,18 +178,15 @@
     (set! (-> v0-0 cshape2) arg1)
     (set! (-> v0-0 head) #f)
     (set! (-> v0-0 resolve-u) 1)
-    (set! (-> obj resolve-u) 1)
+    (set! (-> this resolve-u) 1)
     (the-as touching-shapes-entry v0-0)
     )
   )
 
 (deftype add-prims-touching-work (structure)
-  ((tri1 collide-tri-result  :offset-assert   0)
-   (tri2 collide-tri-result  :offset-assert   4)
+  ((tri1  collide-tri-result)
+   (tri2  collide-tri-result)
    )
-  :method-count-assert 9
-  :size-assert         #x8
-  :flag-assert         #x900000008
   )
 
 
@@ -211,7 +208,7 @@
 
 
 
-(defmethod add-touching-prims touching-list ((obj touching-list)
+(defmethod add-touching-prims ((this touching-list)
                                              (arg0 collide-shape-prim)
                                              (arg1 collide-shape-prim)
                                              (arg2 float)
@@ -230,7 +227,7 @@
     (set! (-> gp-0 tri2) arg4)
     
     ;; first, grab the entry for the collide-shapes involved.
-    (let ((s2-0 (get-shapes-entry obj (-> arg0 cshape) (-> arg1 cshape))))
+    (let ((s2-0 (get-shapes-entry this (-> arg0 cshape) (-> arg1 cshape))))
       (when s2-0
         ;; if we ask for a,b, that function might give us b,a. Detect that, and swap our collide shape prims.
         (when (= (-> s2-0 cshape1) (-> arg1 cshape))
@@ -307,7 +304,7 @@
               ;; if we're <0, we started in collision (possible, if we didnt' converge on the last frame)
               ;; we should still add, but we don't need to bother with the "did we go far enough" checks.
               (set! (-> s2-0 resolve-u) 1)
-              (set! (-> obj resolve-u) 1)
+              (set! (-> this resolve-u) 1)
               )
             (let ((v1-26 (-> s0-1 prim1))
                   (a1-4 (-> gp-0 tri1))
@@ -346,16 +343,16 @@
   (none)
   )
 
-(defmethod update-from-step-size touching-list ((obj touching-list) (arg0 float))
+(defmethod update-from-step-size ((this touching-list) (arg0 float))
   "Given that we actually will take a step size of arg0, remove things we won't actually hit."
   ;; only if we have some un-updated potential collision
-  (when (nonzero? (-> obj resolve-u))
+  (when (nonzero? (-> this resolve-u))
     ;; remember we did it
-    (set! (-> obj resolve-u) 0)
+    (set! (-> this resolve-u) 0)
     
     ;; loop through touching-shape-entries
-    (let ((s5-0 (the-as touching-shapes-entry (-> obj touching-shapes))))
-      (countdown (s4-0 (-> obj num-touching-shapes))
+    (let ((s5-0 (the-as touching-shapes-entry (-> this touching-shapes))))
+      (countdown (s4-0 (-> this num-touching-shapes))
         ;; only when the entry isn't done yet
         (when (nonzero? (-> s5-0 resolve-u))
           ;; remember we did it
@@ -424,11 +421,11 @@
   (none)
   )
 
-(defmethod send-events-for-touching-shapes touching-list ((obj touching-list))
+(defmethod send-events-for-touching-shapes ((this touching-list))
   "Send all events for touching shapes.
    Note that the order of event sending is basically random.
    (this could explain lava walks's unreliable behavior)"
-            
+  ;; og:preserve-this
   ;; PC port note : there is a fatal bug here where the processes are NOT SAFE to use without a handle.
   ;; this can lead to crashes if for example target hits 2 things at once, and one of those things kills the other.
   ;; e.g.: target hits eco1 and eco2. eco1 gets processed first and kills eco2 as a result. eco2 is now dead, but
@@ -439,8 +436,8 @@
   ; (* 2 TOUCHING_LIST_LENGTH) -> 64
   (let ((handles (new 'stack-no-clear 'array 'handle 64)))
   
-  (let ((entry (the-as touching-shapes-entry (-> obj touching-shapes))))
-    (countdown (i (-> obj num-touching-shapes))
+  (let ((entry (the-as touching-shapes-entry (-> this touching-shapes))))
+    (countdown (i (-> this num-touching-shapes))
       (let ((c1 (-> entry cshape1)))
         (when c1
           (let ((c2 (-> entry cshape2)))
@@ -460,8 +457,8 @@
       )
     )
   
-  (let ((entry (the-as touching-shapes-entry (-> obj touching-shapes))))
-    (countdown (i (-> obj num-touching-shapes))
+  (let ((entry (the-as touching-shapes-entry (-> this touching-shapes))))
+    (countdown (i (-> this num-touching-shapes))
       (let ((c1 (-> entry cshape1)))
         (when c1
           (let ((c2 (-> entry cshape2)))
@@ -510,11 +507,11 @@
   (none)
   )
 
-(defmethod prims-touching? touching-shapes-entry ((obj touching-shapes-entry) (arg0 collide-shape-moving) (arg1 uint))
+(defmethod prims-touching? touching-shapes-entry ((this touching-shapes-entry) (arg0 collide-shape-moving) (arg1 uint))
   "In a pair of collide shapes, is a prim from the given collide shape with the given prim-id mask touching the other shape?"
   (cond
-    ((= (-> obj cshape1) arg0)
-     (let ((v1-1 (-> obj head)))
+    ((= (-> this cshape1) arg0)
+     (let ((v1-1 (-> this head)))
        (while v1-1
          (if (logtest? (-> v1-1 prim1 cprim prim-id) arg1)
              (return v1-1)
@@ -523,8 +520,8 @@
          )
        )
      )
-    ((= (-> obj cshape2) arg0)
-     (let ((v1-4 (-> obj head)))
+    ((= (-> this cshape2) arg0)
+     (let ((v1-4 (-> this head)))
        (while v1-4
          (if (logtest? (-> v1-4 prim2 cprim prim-id) arg1)
              (return v1-4)
@@ -540,12 +537,12 @@
   (the-as touching-prims-entry #f)
   )
 
-(defmethod prims-touching-action? touching-shapes-entry ((obj touching-shapes-entry) (arg0 collide-shape) (arg1 collide-action) (arg2 collide-action))
+(defmethod prims-touching-action? touching-shapes-entry ((this touching-shapes-entry) (arg0 collide-shape) (arg1 collide-action) (arg2 collide-action))
   "In a pair of collide shapes, find a pair of colliding prims where the prim from the given collide shape has at least one of the actions in arg1
    and none of the actions in arg2."
   (cond
-    ((= (-> obj cshape1) arg0)
-     (let ((v1-1 (-> obj head)))
+    ((= (-> this cshape1) arg0)
+     (let ((v1-1 (-> this head)))
        (while v1-1
          (let ((a0-1 (-> v1-1 prim1 cprim)))
            (if (and (logtest? arg1 (-> a0-1 prim-core action)) (not (logtest? arg2 (-> a0-1 prim-core action))))
@@ -556,8 +553,8 @@
          )
        )
      )
-    ((= (-> obj cshape2) arg0)
-     (let ((v1-4 (-> obj head)))
+    ((= (-> this cshape2) arg0)
+     (let ((v1-4 (-> this head)))
        (while v1-4
          (let ((a0-5 (-> v1-4 prim2 cprim)))
            (if (and (logtest? arg1 (-> a0-5 prim-core action)) (not (logtest? arg2 (-> a0-5 prim-core action))))
@@ -575,45 +572,45 @@
   (the-as touching-prims-entry #f)
   )
 
-(defmethod get-touched-shape touching-shapes-entry ((obj touching-shapes-entry) (arg0 collide-shape))
+(defmethod get-touched-shape ((this touching-shapes-entry) (arg0 collide-shape))
   "Get the other shape in a pair of shapes."
   (cond
-    ((= (-> obj cshape1) arg0)
-     (return (-> obj cshape2))
+    ((= (-> this cshape1) arg0)
+     (return (-> this cshape2))
      )
-    ((= (-> obj cshape2) arg0)
-     (return (-> obj cshape1))
+    ((= (-> this cshape2) arg0)
+     (return (-> this cshape1))
      )
     )
   (the-as collide-shape #f)
   )
 
-(defmethod get-touched-prim touching-prims-entry ((obj touching-prims-entry) (arg0 trsqv) (arg1 touching-shapes-entry))
+(defmethod get-touched-prim ((this touching-prims-entry) (arg0 trsqv) (arg1 touching-shapes-entry))
   "Get the primitive belonging to the collide shape that is touching."
   (cond
     ((= (-> arg1 cshape1) arg0)
-     (return (-> obj prim1 cprim))
+     (return (-> this prim1 cprim))
      )
     ((= (-> arg1 cshape2) arg0)
-     (return (-> obj prim2 cprim))
+     (return (-> this prim2 cprim))
      )
     )
   (the-as collide-shape-prim #f)
   )
 
-(defmethod get-touched-tri touching-prims-entry ((obj touching-prims-entry) (arg0 collide-shape) (arg1 touching-shapes-entry))
+(defmethod get-touched-tri ((this touching-prims-entry) (arg0 collide-shape) (arg1 touching-shapes-entry))
   "Get the triangle belonging to the the collide shape that is touching (if it has one, otherwise #f)"
   (let ((v0-0 (the-as collide-tri-result #f)))
     (cond
       ((= (-> arg1 cshape1) arg0)
-       (let ((v1-2 (-> obj prim1)))
+       (let ((v1-2 (-> this prim1)))
          (if (-> v1-2 has-tri?)
              (set! v0-0 (-> v1-2 tri))
              )
          )
        )
       ((= (-> arg1 cshape2) arg0)
-       (let ((v1-5 (-> obj prim2)))
+       (let ((v1-5 (-> this prim2)))
          (if (-> v1-5 has-tri?)
              (set! v0-0 (-> v1-5 tri))
              )
@@ -624,12 +621,12 @@
     )
   )
 
-(defmethod get-middle-of-bsphere-overlap touching-prims-entry ((obj touching-prims-entry) (arg0 vector))
+(defmethod get-middle-of-bsphere-overlap ((this touching-prims-entry) (arg0 vector))
   "This is a bit weird...
    But assuming the the bounding spheres overlap, draw a line between their centers, consider the line segment
    that is inside of both spheres, and get the midpoint of that."
-  (let* ((s4-0 (-> obj prim1 cprim))
-         (s3-0 (-> obj prim2 cprim))
+  (let* ((s4-0 (-> this prim1 cprim))
+         (s3-0 (-> this prim2 cprim))
          
          ;; compute the offset between the prim cores.
          (gp-1 (vector-!

@@ -16,26 +16,22 @@
 ;; definition of type race-signal-banner
 (deftype race-signal-banner (process-drawable)
   ()
-  :heap-base #x50
-  :method-count-assert 21
-  :size-assert         #xc8
-  :flag-assert         #x15005000c8
-  (:methods
-    (idle () _type_ :state 20)
+  (:state-methods
+    idle
     )
   )
 
 ;; definition for method 3 of type race-signal-banner
-(defmethod inspect race-signal-banner ((obj race-signal-banner))
-  (when (not obj)
-    (set! obj obj)
+(defmethod inspect ((this race-signal-banner))
+  (when (not this)
+    (set! this this)
     (goto cfg-4)
     )
   (let ((t9-0 (method-of-type process-drawable inspect)))
-    (t9-0 obj)
+    (t9-0 this)
     )
   (label cfg-4)
-  obj
+  this
   )
 
 ;; failed to figure out what this is:
@@ -43,19 +39,15 @@
   :virtual #t
   :code (behavior ()
     (until #f
-      (ja-no-eval :group! (ja-group)
-                  :num! (seek! (the float (+ (-> (ja-group) frames num-frames) -1)))
-                  :frame-num 0.0
-                  )
+      (ja-no-eval :group! (ja-group) :num! (seek!) :frame-num 0.0)
       (until (ja-done? 0)
         (suspend)
         (ja :num! (seek!))
         )
       )
     #f
-    (none)
     )
-  :post (the-as (function none :behavior race-signal-banner) ja-post)
+  :post ja-post
   )
 
 ;; definition for function race-signal-banner-init-by-other
@@ -93,74 +85,70 @@
 
 ;; definition of type race-signal
 (deftype race-signal (process-drawable)
-  ((pos           vector      :inline :offset-assert 208)
-   (y-offset      float               :offset-assert 224)
-   (dest-y-offset float               :offset-assert 228)
-   (bob-time      time-frame          :offset-assert 232)
-   (start-time    time-frame          :offset-assert 240)
-   (banner        handle              :offset-assert 248)
-   (curve         cubic-curve :inline :offset-assert 256)
+  ((pos            vector       :inline)
+   (y-offset       float)
+   (dest-y-offset  float)
+   (bob-time       time-frame)
+   (start-time     time-frame)
+   (banner         handle)
+   (curve          cubic-curve  :inline)
    )
-  :heap-base #xc0
-  :method-count-assert 30
-  :size-assert         #x140
-  :flag-assert         #x1e00c00140
+  (:state-methods
+    spawn-banner
+    idle
+    count-3
+    count-2
+    count-1
+    count-go
+    die
+    test
+    )
   (:methods
-    (spawn-banner () _type_ :state 20)
-    (idle () _type_ :state 21)
-    (count-3 () _type_ :state 22)
-    (count-2 () _type_ :state 23)
-    (count-1 () _type_ :state 24)
-    (count-go () _type_ :state 25)
-    (die () _type_ :state 26)
-    (test () _type_ :state 27)
-    (race-signal-method-28 (_type_) none 28)
-    (race-signal-method-29 (_type_) none 29)
+    (race-signal-method-28 (_type_) none)
+    (race-signal-method-29 (_type_) none)
     )
   )
 
 ;; definition for method 3 of type race-signal
-(defmethod inspect race-signal ((obj race-signal))
-  (when (not obj)
-    (set! obj obj)
+(defmethod inspect ((this race-signal))
+  (when (not this)
+    (set! this this)
     (goto cfg-4)
     )
   (let ((t9-0 (method-of-type process-drawable inspect)))
-    (t9-0 obj)
+    (t9-0 this)
     )
-  (format #t "~2Tpos: #<vector @ #x~X>~%" (-> obj pos))
-  (format #t "~2Ty-offset: ~f~%" (-> obj y-offset))
-  (format #t "~2Tdest-y-offset: ~f~%" (-> obj dest-y-offset))
-  (format #t "~2Tbob-time: ~D~%" (-> obj bob-time))
-  (format #t "~2Tstart-time: ~D~%" (-> obj start-time))
-  (format #t "~2Tbanner: ~D~%" (-> obj banner))
-  (format #t "~2Tcurve: #<cubic-curve @ #x~X>~%" (-> obj curve))
+  (format #t "~2Tpos: #<vector @ #x~X>~%" (-> this pos))
+  (format #t "~2Ty-offset: ~f~%" (-> this y-offset))
+  (format #t "~2Tdest-y-offset: ~f~%" (-> this dest-y-offset))
+  (format #t "~2Tbob-time: ~D~%" (-> this bob-time))
+  (format #t "~2Tstart-time: ~D~%" (-> this start-time))
+  (format #t "~2Tbanner: ~D~%" (-> this banner))
+  (format #t "~2Tcurve: #<cubic-curve @ #x~X>~%" (-> this curve))
   (label cfg-4)
-  obj
+  this
   )
 
 ;; definition for method 29 of type race-signal
 ;; INFO: Used lq/sq
 ;; WARN: Return type mismatch int vs none.
-(defmethod race-signal-method-29 race-signal ((obj race-signal))
-  (with-pp
-    (+! (-> obj y-offset)
-        (* (- (-> obj dest-y-offset) (-> obj y-offset)) (fmin 1.0 (* 2.0 (-> pp clock seconds-per-frame))))
-        )
-    (let ((f30-0 (* 0.0033333334 (the float (- (current-time) (-> obj bob-time))))))
-      (set! (-> obj root trans y) (+ (-> obj pos y) (-> obj y-offset) (* 1024.0 (sin (* 32768.0 f30-0)))))
-      (set! (-> obj root trans z) (+ (-> obj pos z) (* 2048.0 (cos (* 32768.0 f30-0)))))
+(defmethod race-signal-method-29 ((this race-signal))
+  (+! (-> this y-offset)
+      (* (- (-> this dest-y-offset) (-> this y-offset)) (fmin 1.0 (* 2.0 (seconds-per-frame))))
       )
-    (let ((v1-15 (handle->process (-> obj banner))))
-      (when v1-15
-        (set! (-> (the-as race-signal-banner v1-15) root trans quad) (-> obj root trans quad))
-        (quaternion-copy! (-> (the-as race-signal-banner v1-15) root quat) (-> obj root quat))
-        )
-      )
-    (ja-post)
-    0
-    (none)
+  (let ((f30-0 (* 0.0033333334 (the float (- (current-time) (-> this bob-time))))))
+    (set! (-> this root trans y) (+ (-> this pos y) (-> this y-offset) (* 1024.0 (sin (* 32768.0 f30-0)))))
+    (set! (-> this root trans z) (+ (-> this pos z) (* 2048.0 (cos (* 32768.0 f30-0)))))
     )
+  (let ((v1-15 (handle->process (-> this banner))))
+    (when v1-15
+      (set! (-> (the-as race-signal-banner v1-15) root trans quad) (-> this root trans quad))
+      (quaternion-copy! (-> (the-as race-signal-banner v1-15) root quat) (-> this root quat))
+      )
+    )
+  (ja-post)
+  0
+  (none)
   )
 
 ;; definition for function race-signal-event-handler
@@ -197,7 +185,6 @@
           )
     (ja :num-func num-func-identity :frame-num (ja-aframe 0.0 0))
     (go-virtual idle)
-    (none)
     )
   )
 
@@ -205,10 +192,9 @@
 (defstate idle (race-signal)
   :virtual #t
   :event race-signal-event-handler
-  :code (the-as (function none :behavior race-signal) sleep-code)
+  :code sleep-code
   :post (behavior ()
     (race-signal-method-29 self)
-    (none)
     )
   )
 
@@ -228,11 +214,9 @@
       (suspend)
       )
     #f
-    (none)
     )
   :post (behavior ()
     (race-signal-method-29 self)
-    (none)
     )
   )
 
@@ -252,11 +236,9 @@
       (suspend)
       )
     #f
-    (none)
     )
   :post (behavior ()
     (race-signal-method-29 self)
-    (none)
     )
   )
 
@@ -276,11 +258,9 @@
       (suspend)
       )
     #f
-    (none)
     )
   :post (behavior ()
     (race-signal-method-29 self)
-    (none)
     )
   )
 
@@ -316,12 +296,11 @@
         (-> v1-8 trans)
         )
       )
-    (set! (-> self start-time) (current-time))
+    (set-time! (-> self start-time))
     (until #f
       (suspend)
       )
     #f
-    (none)
     )
   :post (behavior ()
     (let ((f30-0 (* 0.0033333334 (the float (- (current-time) (-> self start-time))))))
@@ -331,7 +310,6 @@
           )
       )
     (race-signal-method-29 self)
-    (none)
     )
   )
 
@@ -340,7 +318,6 @@
   :virtual #t
   :code (behavior ()
     (cleanup-for-death self)
-    (none)
     )
   )
 
@@ -352,7 +329,7 @@
     (until #f
       (ja :num-func num-func-identity :frame-num (ja-aframe 0.0 0))
       (let ((gp-1 (current-time)))
-        (until (>= (- (current-time) gp-1) (seconds 0.5))
+        (until (time-elapsed? gp-1 (seconds 0.5))
           (suspend)
           )
         )
@@ -363,7 +340,7 @@
         )
       (process-spawn part-tracker :init part-tracker-init (-> *part-group-id-table* 196) 600 #f #f self 5 :to self)
       (let ((gp-5 (current-time)))
-        (until (>= (- (current-time) gp-5) (seconds 0.5))
+        (until (time-elapsed? gp-5 (seconds 0.5))
           (suspend)
           )
         )
@@ -374,7 +351,7 @@
         )
       (process-spawn part-tracker :init part-tracker-init (-> *part-group-id-table* 195) 300 #f #f self 7 :to self)
       (let ((gp-9 (current-time)))
-        (until (>= (- (current-time) gp-9) (seconds 0.5))
+        (until (time-elapsed? gp-9 (seconds 0.5))
           (suspend)
           )
         )
@@ -385,23 +362,21 @@
         )
       (process-spawn part-tracker :init part-tracker-init (-> *part-group-id-table* 194) 300 #f #f self 9 :to self)
       (let ((gp-13 (current-time)))
-        (until (>= (- (current-time) gp-13) (seconds 0.5))
+        (until (time-elapsed? gp-13 (seconds 0.5))
           (suspend)
           )
         )
       (process-spawn part-tracker :init part-tracker-init (-> *part-group-id-table* 197) 300 #f #f self 10 :to self)
       (let ((gp-15 (current-time)))
-        (until (>= (- (current-time) gp-15) (seconds 0.5))
+        (until (time-elapsed? gp-15 (seconds 0.5))
           (suspend)
           )
         )
       )
     #f
-    (none)
     )
   :post (behavior ()
     (race-signal-method-29 self)
-    (none)
     )
   )
 
@@ -422,7 +397,7 @@
     (the-as skeleton-group (art-group-get-by-name *level* "skel-race-signal" (the-as (pointer uint32) #f)))
     (the-as pair 0)
     )
-  (set! (-> self bob-time) (current-time))
+  (set-time! (-> self bob-time))
   (set! (-> self banner) (the-as handle #f))
   (set! (-> self draw shadow-mask) (the-as uint 30))
   (set! (-> self draw shadow-values) (the-as uint #x22220))
@@ -445,26 +420,22 @@
 
 ;; definition of type stadium-racer
 (deftype stadium-racer (vehicle-rider)
-  ((rider-type uint8  :offset-assert 221)
+  ((rider-type  uint8)
    )
-  :heap-base #x60
-  :method-count-assert 36
-  :size-assert         #xde
-  :flag-assert         #x24006000de
   )
 
 ;; definition for method 3 of type stadium-racer
-(defmethod inspect stadium-racer ((obj stadium-racer))
-  (when (not obj)
-    (set! obj obj)
+(defmethod inspect ((this stadium-racer))
+  (when (not this)
+    (set! this this)
     (goto cfg-4)
     )
   (let ((t9-0 (method-of-type vehicle-rider inspect)))
-    (t9-0 obj)
+    (t9-0 this)
     )
-  (format #t "~2Trider-type: ~D~%" (-> obj rider-type))
+  (format #t "~2Trider-type: ~D~%" (-> this rider-type))
   (label cfg-4)
-  obj
+  this
   )
 
 ;; failed to figure out what this is:
@@ -475,15 +446,15 @@
 
 ;; definition for method 33 of type stadium-racer
 ;; WARN: Return type mismatch int vs none.
-(defmethod vehicle-rider-method-33 stadium-racer ((obj stadium-racer))
+(defmethod vehicle-rider-method-33 ((this stadium-racer))
   (let ((t9-0 (method-of-type vehicle-rider vehicle-rider-method-33)))
-    (t9-0 obj)
+    (t9-0 this)
     )
-  (setup-masks (-> obj draw) 0 -1)
+  (setup-masks (-> this draw) 0 -1)
   (let ((s4-0 0)
         (s5-0 0)
         )
-    (case (-> obj rider-type)
+    (case (-> this rider-type)
       ((3)
        (set! s4-0 0)
        (set! s5-0 0)
@@ -524,78 +495,78 @@
     (let ((v1-14 s4-0))
       (cond
         ((zero? v1-14)
-         (setup-masks (-> obj draw) 32 0)
+         (setup-masks (-> this draw) 32 0)
          )
         ((= v1-14 1)
-         (setup-masks (-> obj draw) 4096 0)
+         (setup-masks (-> this draw) 4096 0)
          )
         ((= v1-14 2)
-         (setup-masks (-> obj draw) #x40000 0)
+         (setup-masks (-> this draw) #x40000 0)
          )
         )
       )
     (let ((v1-22 s4-0))
       (cond
         ((zero? v1-22)
-         (setup-masks (-> obj draw) 128 0)
+         (setup-masks (-> this draw) 128 0)
          )
         ((= v1-22 1)
-         (setup-masks (-> obj draw) #x4000 0)
+         (setup-masks (-> this draw) #x4000 0)
          )
         ((= v1-22 2)
-         (setup-masks (-> obj draw) #x80000 0)
+         (setup-masks (-> this draw) #x80000 0)
          )
         )
       )
     (let ((v1-30 s4-0))
       (cond
         ((zero? v1-30)
-         (setup-masks (-> obj draw) 512 0)
+         (setup-masks (-> this draw) 512 0)
          )
         ((= v1-30 1)
-         (setup-masks (-> obj draw) #x8000 0)
+         (setup-masks (-> this draw) #x8000 0)
          )
         ((= v1-30 2)
-         (setup-masks (-> obj draw) #x100000 0)
+         (setup-masks (-> this draw) #x100000 0)
          )
         )
       )
     (cond
       ((zero? s4-0)
-       (setup-masks (-> obj draw) 2048 0)
+       (setup-masks (-> this draw) 2048 0)
        )
       ((= s4-0 1)
-       (setup-masks (-> obj draw) #x20000 0)
+       (setup-masks (-> this draw) #x20000 0)
        )
       ((= s4-0 2)
-       (setup-masks (-> obj draw) #x400000 0)
+       (setup-masks (-> this draw) #x400000 0)
        )
       )
     (let ((v1-49 s5-0))
       (cond
         ((zero? v1-49)
-         (setup-masks (-> obj draw) 1024 0)
+         (setup-masks (-> this draw) 1024 0)
          )
         ((= v1-49 1)
-         (setup-masks (-> obj draw) #x10000 0)
+         (setup-masks (-> this draw) #x10000 0)
          )
         ((= v1-49 2)
-         (setup-masks (-> obj draw) #x200000 0)
+         (setup-masks (-> this draw) #x200000 0)
          )
         )
       )
     (let ((v1-58 (min 1 s5-0)))
       (cond
         ((zero? v1-58)
-         (setup-masks (-> obj draw) 64 0)
+         (setup-masks (-> this draw) 64 0)
          )
         ((= v1-58 1)
-         (setup-masks (-> obj draw) 8192 0)
+         (setup-masks (-> this draw) 8192 0)
          )
         )
       )
     (if (not (logtest? s5-0 1))
-        (setup-masks (-> obj draw) 256 0)
+        (setup-masks (-> this draw) 256 0)
         )
     )
   0
@@ -604,33 +575,33 @@
 
 ;; definition for method 31 of type stadium-racer
 ;; WARN: Return type mismatch int vs none.
-(defmethod initialize-collision stadium-racer ((obj stadium-racer))
-  (set! (-> obj level) (level-get *level* 'lracelit))
-  (stack-size-set! (-> obj main-thread) 256)
-  (when (not (-> obj level))
+(defmethod initialize-collision ((this stadium-racer))
+  (set! (-> this level) (level-get *level* 'lracelit))
+  (stack-size-set! (-> this main-thread) 256)
+  (when (not (-> this level))
     (format 0 "stadium-racer::initialize-collision: ERROR, no lracelit level~%")
     (go process-drawable-art-error "no lracelit level")
     )
-  (set! (-> obj root) (the-as collide-shape (new 'process 'trsqv)))
+  (set! (-> this root) (the-as collide-shape (new 'process 'trsqv)))
   0
   (none)
   )
 
 ;; definition for method 32 of type stadium-racer
 ;; WARN: Return type mismatch int vs none.
-(defmethod vehicle-rider-method-32 stadium-racer ((obj stadium-racer) (arg0 traffic-object-spawn-params))
+(defmethod vehicle-rider-method-32 ((this stadium-racer) (arg0 traffic-object-spawn-params))
   (initialize-skeleton
-    obj
+    this
     (the-as skeleton-group (art-group-get-by-name *level* "skel-stadium-racer" (the-as (pointer uint32) #f)))
     (the-as pair 0)
     )
-  (logior! (-> obj flags) 1)
-  (set! (-> obj draw lod-set lod 0 dist) 286720.0)
-  (set! (-> obj rider-type) (-> arg0 user-data))
-  (vehicle-rider-method-33 obj)
-  (if (logtest? (-> obj flags) 4)
-      (set! (-> obj riding-anim) 5)
-      (set! (-> obj riding-anim) 4)
+  (logior! (-> this flags) 1)
+  (set! (-> this draw lod-set lod 0 dist) 286720.0)
+  (set! (-> this rider-type) (-> arg0 user-data))
+  (vehicle-rider-method-33 this)
+  (if (logtest? (-> this flags) 4)
+      (set! (-> this riding-anim) 5)
+      (set! (-> this riding-anim) 4)
       )
   0
   (none)
@@ -639,28 +610,19 @@
 ;; failed to figure out what this is:
 (defstate taunt (stadium-racer)
   :virtual #t
-  :event (the-as
-    (function process int symbol event-message-block object :behavior stadium-racer)
-    vehicle-rider-event-handler
-    )
+  :event vehicle-rider-event-handler
   :code (behavior ()
     (ja-channel-push! 1 (seconds 0.05))
     (cond
       ((zero? (rand-vu-int-count 2))
-       (ja-no-eval :group! (-> self draw art-group data 6)
-                   :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 6)) frames num-frames) -1)))
-                   :frame-num 0.0
-                   )
+       (ja-no-eval :group! stadium-racer-car-taunt-left-ja :num! (seek!) :frame-num 0.0)
        (until (ja-done? 0)
          (suspend)
          (ja :num! (seek!))
          )
        )
       (else
-        (ja-no-eval :group! (-> self draw art-group data 7)
-                    :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 7)) frames num-frames) -1)))
-                    :frame-num 0.0
-                    )
+        (ja-no-eval :group! stadium-racer-car-taunt-right-ja :num! (seek!) :frame-num 0.0)
         (until (ja-done? 0)
           (suspend)
           (ja :num! (seek!))
@@ -668,34 +630,28 @@
         )
       )
     (go-virtual active)
-    (none)
     )
   :post (behavior ()
     (ja-post)
-    (none)
     )
   )
 
 ;; definition of type errol-rider
 (deftype errol-rider (stadium-racer)
   ()
-  :heap-base #x60
-  :method-count-assert 36
-  :size-assert         #xde
-  :flag-assert         #x24006000de
   )
 
 ;; definition for method 3 of type errol-rider
-(defmethod inspect errol-rider ((obj errol-rider))
-  (when (not obj)
-    (set! obj obj)
+(defmethod inspect ((this errol-rider))
+  (when (not this)
+    (set! this this)
     (goto cfg-4)
     )
   (let ((t9-0 (method-of-type stadium-racer inspect)))
-    (t9-0 obj)
+    (t9-0 this)
     )
   (label cfg-4)
-  obj
+  this
   )
 
 ;; failed to figure out what this is:
@@ -704,7 +660,6 @@
   :enter (behavior ()
     (format #t "errol-rider::taunt race-errol-pass~%")
     (speech-control-method-12 *speech-control* self (speech-type speech-type-53))
-    (none)
     )
   )
 
@@ -714,61 +669,58 @@
   :enter (behavior ()
     (format #t "errol-rider::got-passed~%")
     (speech-control-method-12 *speech-control* self (speech-type speech-type-54))
-    (none)
     )
   )
 
 ;; definition for method 33 of type errol-rider
 ;; WARN: Return type mismatch int vs none.
-(defmethod vehicle-rider-method-33 errol-rider ((obj errol-rider))
+(defmethod vehicle-rider-method-33 ((this errol-rider))
   (let ((t9-0 (method-of-type vehicle-rider vehicle-rider-method-33)))
-    (t9-0 obj)
+    (t9-0 this)
     )
-  (setup-masks (-> obj draw) 0 -1)
-  (setup-masks (-> obj draw) 2 0)
-  (setup-masks (-> obj draw) 4 0)
-  (setup-masks (-> obj draw) 8 0)
-  (setup-masks (-> obj draw) 16 0)
+  (setup-masks (-> this draw) 0 -1)
+  (setup-masks (-> this draw) 2 0)
+  (setup-masks (-> this draw) 4 0)
+  (setup-masks (-> this draw) 8 0)
+  (setup-masks (-> this draw) 16 0)
   0
   (none)
   )
 
 ;; definition of type turbo-pickup
 (deftype turbo-pickup (process-drawable)
-  ((root      collide-shape-moving  :override)
-   (available symbol                :offset-assert 200)
+  ((root       collide-shape-moving :override)
+   (available  symbol)
    )
-  :heap-base #x50
-  :method-count-assert 23
-  :size-assert         #xcc
-  :flag-assert         #x17005000cc
+  (:state-methods
+    idle
+    die
+    )
   (:methods
-    (idle () _type_ :state 20)
-    (die () _type_ :state 21)
-    (find-ground (_type_) symbol 22)
+    (find-ground (_type_) symbol)
     )
   )
 
 ;; definition for method 3 of type turbo-pickup
-(defmethod inspect turbo-pickup ((obj turbo-pickup))
-  (when (not obj)
-    (set! obj obj)
+(defmethod inspect ((this turbo-pickup))
+  (when (not this)
+    (set! this this)
     (goto cfg-4)
     )
   (let ((t9-0 (method-of-type process-drawable inspect)))
-    (t9-0 obj)
+    (t9-0 this)
     )
-  (format #t "~2Tavailable: ~A~%" (-> obj available))
+  (format #t "~2Tavailable: ~A~%" (-> this available))
   (label cfg-4)
-  obj
+  this
   )
 
 ;; definition for method 22 of type turbo-pickup
 ;; INFO: Used lq/sq
-(defmethod find-ground turbo-pickup ((obj turbo-pickup))
+(defmethod find-ground ((this turbo-pickup))
   (let ((s4-0 #f))
     (let ((gp-0 (new 'stack-no-clear 'do-push-aways-work)))
-      (set! (-> gp-0 push-vel quad) (-> obj root trans quad))
+      (set! (-> gp-0 push-vel quad) (-> this root trans quad))
       (set! (-> gp-0 cquery start-pos quad) (-> gp-0 push-vel quad))
       (vector-reset! (-> gp-0 vec33))
       (set! (-> gp-0 vec33 y) 1.0)
@@ -790,8 +742,8 @@
           (format #t "turbo-pickup::find-ground: ground y ~M~%" (-> gp-0 push-vel y))
           )
         )
-      (set! (-> obj root trans quad) (-> gp-0 push-vel quad))
-      (forward-up-nopitch->quaternion (-> obj root quat) (new 'static 'vector :z 1.0 :w 1.0) (-> gp-0 vec33))
+      (set! (-> this root trans quad) (-> gp-0 push-vel quad))
+      (forward-up-nopitch->quaternion (-> this root quat) (new 'static 'vector :z 1.0 :w 1.0) (-> gp-0 vec33))
       )
     s4-0
     )
@@ -800,8 +752,8 @@
 ;; failed to figure out what this is:
 (defstate idle (turbo-pickup)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('touched)
        (when (-> self available)
          (when (send-event proc 'turbo-pickup)
@@ -812,11 +764,10 @@
        )
       )
     )
-  :code (the-as (function none :behavior turbo-pickup) sleep-code)
+  :code sleep-code
   :post (behavior ()
     (spawn (-> self part) (-> self root trans))
     0
-    (none)
     )
   )
 
@@ -824,7 +775,7 @@
 (defstate die (turbo-pickup)
   :virtual #t
   :code (behavior ()
-    (set! (-> self state-time) (current-time))
+    (set-time! (-> self state-time))
     (let ((gp-0 (get-process *default-dead-pool* part-tracker #x4000)))
       (when gp-0
         (let ((t9-1 (method-of-type part-tracker activate)))
@@ -865,10 +816,9 @@
       (set! (-> v1-11 prim-core collide-with) (collide-spec))
       )
     0
-    (until (>= (- (current-time) (-> self state-time)) (seconds 2))
+    (until (time-elapsed? (-> self state-time) (seconds 2))
       (suspend)
       )
-    (none)
     )
   )
 

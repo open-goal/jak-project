@@ -3,12 +3,8 @@
 
 ;; definition of type balloon
 (deftype balloon (process-drawable)
-  ((root-override collide-shape  :offset 112)
+  ((root  collide-shape :override)
    )
-  :heap-base #x40
-  :method-count-assert 20
-  :size-assert         #xb0
-  :flag-assert         #x14004000b0
   (:states
     balloon-idle
     balloon-popping
@@ -16,11 +12,11 @@
   )
 
 ;; definition for method 3 of type balloon
-(defmethod inspect balloon ((obj balloon))
+(defmethod inspect ((this balloon))
   (let ((t9-0 (method-of-type process-drawable inspect)))
-    (t9-0 obj)
+    (t9-0 this)
     )
-  obj
+  this
   )
 
 ;; failed to figure out what this is:
@@ -98,7 +94,7 @@
 (defstate balloon-popping (balloon)
   :code (behavior ()
     (ja-channel-set! 0)
-    (clear-collide-with-as (-> self root-override))
+    (clear-collide-with-as (-> self root))
     (ja-post)
     (sound-play "cool-balloon")
     (process-spawn
@@ -109,20 +105,19 @@
       #f
       #f
       #f
-      (-> self root-override trans)
+      (-> self root trans)
       :to *entity-pool*
       )
     (suspend)
     (cleanup-for-death self)
     (deactivate self)
-    (none)
     )
   )
 
 ;; failed to figure out what this is:
 (defstate balloon-idle (balloon)
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('attack)
        (send-event proc 'heat -10.0)
        (go balloon-popping)
@@ -138,15 +133,14 @@
         (ja :num! (seek!))
         )
       )
-    (none)
     )
-  :post (the-as (function none :behavior balloon) ja-post)
+  :post ja-post
   )
 
 ;; definition for method 11 of type balloon
 ;; INFO: Return type mismatch object vs none.
-(defmethod init-from-entity! balloon ((obj balloon) (arg0 entity-actor))
-  (let ((s4-0 (new 'process 'collide-shape obj (collide-list-enum hit-by-player))))
+(defmethod init-from-entity! ((this balloon) (arg0 entity-actor))
+  (let ((s4-0 (new 'process 'collide-shape this (collide-list-enum hit-by-player))))
     (let ((s3-0 (new 'process 'collide-shape-prim-sphere s4-0 (the-as uint 0))))
       (set! (-> s3-0 prim-core collide-as) (collide-kind enemy))
       (set! (-> s3-0 collide-with) (collide-kind target))
@@ -156,24 +150,20 @@
       )
     (set! (-> s4-0 nav-radius) (* 0.75 (-> s4-0 root-prim local-sphere w)))
     (backup-collide-with-as s4-0)
-    (set! (-> obj root-override) s4-0)
+    (set! (-> this root) s4-0)
     )
-  (process-drawable-from-entity! obj arg0)
-  (initialize-skeleton obj *balloon-sg* '())
-  (set! (-> obj part) (create-launch-control (-> *part-group-id-table* 227) obj))
+  (process-drawable-from-entity! this arg0)
+  (initialize-skeleton this *balloon-sg* '())
+  (set! (-> this part) (create-launch-control (-> *part-group-id-table* 227) this))
   (go balloon-idle)
   (none)
   )
 
 ;; definition of type spike
 (deftype spike (process-drawable)
-  ((root-override collide-shape  :offset        112)
-   (num-alts      int32          :offset-assert 176)
+  ((root      collide-shape :override)
+   (num-alts  int32)
    )
-  :heap-base #x50
-  :method-count-assert 20
-  :size-assert         #xb4
-  :flag-assert         #x14005000b4
   (:states
     spike-down
     spike-idle
@@ -182,12 +172,12 @@
   )
 
 ;; definition for method 3 of type spike
-(defmethod inspect spike ((obj spike))
+(defmethod inspect ((this spike))
   (let ((t9-0 (method-of-type process-drawable inspect)))
-    (t9-0 obj)
+    (t9-0 this)
     )
-  (format #t "~T~Tnum-alts: ~D~%" (-> obj num-alts))
-  obj
+  (format #t "~T~Tnum-alts: ~D~%" (-> this num-alts))
+  this
   )
 
 ;; failed to figure out what this is:
@@ -199,13 +189,12 @@
 
 ;; failed to figure out what this is:
 (defstate spike-up (spike)
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (the-as object (case event-type
-                     (('go-spike-up)
-                      #t
-                      )
-                     )
-            )
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
+      (('go-spike-up)
+       #t
+       )
+      )
     )
   :trans (behavior ()
     (when (nonzero? (-> self num-alts))
@@ -233,7 +222,6 @@
           )
         )
       )
-    (none)
     )
   :code (behavior ()
     (ja-no-eval :group! (ja-group) :num! (seek!) :frame-num 0.0)
@@ -245,20 +233,18 @@
     (loop
       (suspend)
       )
-    (none)
     )
   )
 
 ;; failed to figure out what this is:
 (defstate spike-down (spike)
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (the-as object (case event-type
-                     (('go-spike-up)
-                      (go spike-up)
-                      #t
-                      )
-                     )
-            )
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
+      (('go-spike-up)
+       (go spike-up)
+       #t
+       )
+      )
     )
   :trans (behavior ()
     (when (nonzero? (-> self num-alts))
@@ -286,14 +272,12 @@
           )
         )
       )
-    (none)
     )
   :code (behavior ()
     (transform-post)
     (loop
       (suspend)
       )
-    (none)
     )
   )
 
@@ -302,7 +286,7 @@
   :trans (behavior ()
     (when (and *target*
                (= (send-event *target* 'query 'mode) 'racer)
-               (< (vector-vector-distance (-> self root-override trans) (target-pos 0)) 225280.0)
+               (< (vector-vector-distance (-> self root trans) (target-pos 0)) 225280.0)
                )
       (sound-play "magma-rock")
       (let ((v1-8 (entity-actor-count (-> self entity) 'alt-actor)))
@@ -320,21 +304,19 @@
           )
         )
       )
-    (none)
     )
   :code (behavior ()
     (transform-post)
     (loop
       (suspend)
       )
-    (none)
     )
   )
 
 ;; definition for method 11 of type spike
 ;; INFO: Return type mismatch object vs none.
-(defmethod init-from-entity! spike ((obj spike) (arg0 entity-actor))
-  (let ((s4-0 (new 'process 'collide-shape obj (collide-list-enum hit-by-player))))
+(defmethod init-from-entity! ((this spike) (arg0 entity-actor))
+  (let ((s4-0 (new 'process 'collide-shape this (collide-list-enum hit-by-player))))
     (let ((s3-0 (new 'process 'collide-shape-prim-group s4-0 (the-as uint 4) 0)))
       (set! (-> s3-0 prim-core collide-as) (collide-kind enemy))
       (set! (-> s3-0 collide-with) (collide-kind target))
@@ -382,13 +364,13 @@
       )
     (set! (-> s4-0 nav-radius) (* 0.75 (-> s4-0 root-prim local-sphere w)))
     (backup-collide-with-as s4-0)
-    (set! (-> obj root-override) s4-0)
+    (set! (-> this root) s4-0)
     )
-  (process-drawable-from-entity! obj arg0)
-  (initialize-skeleton obj *spike-sg* '())
-  (set! (-> obj draw origin-joint-index) (the-as uint 3))
-  (set! (-> obj num-alts) (entity-actor-count (-> obj entity) 'alt-actor))
-  (if (zero? (-> obj num-alts))
+  (process-drawable-from-entity! this arg0)
+  (initialize-skeleton this *spike-sg* '())
+  (set! (-> this draw origin-joint-index) (the-as uint 3))
+  (set! (-> this num-alts) (entity-actor-count (-> this entity) 'alt-actor))
+  (if (zero? (-> this num-alts))
       (go spike-down)
       (go spike-idle)
       )
@@ -403,24 +385,20 @@
 
 ;; definition of type crate-darkeco-cluster
 (deftype crate-darkeco-cluster (process-drawable)
-  ((root-override collide-shape  :offset 112)
+  ((root  collide-shape :override)
    )
-  :heap-base #x40
-  :method-count-assert 22
-  :size-assert         #xb0
-  :flag-assert         #x16004000b0
-  (:methods
-    (idle () _type_ :state 20)
-    (die () _type_ :state 21)
+  (:state-methods
+    idle
+    die
     )
   )
 
 ;; definition for method 3 of type crate-darkeco-cluster
-(defmethod inspect crate-darkeco-cluster ((obj crate-darkeco-cluster))
+(defmethod inspect ((this crate-darkeco-cluster))
   (let ((t9-0 (method-of-type process-drawable inspect)))
-    (t9-0 obj)
+    (t9-0 this)
     )
-  obj
+  this
   )
 
 ;; failed to figure out what this is:
@@ -620,7 +598,7 @@
   :virtual #t
   :code (behavior ()
     (ja-channel-set! 0)
-    (clear-collide-with-as (-> self root-override))
+    (clear-collide-with-as (-> self root))
     (ja-post)
     (sound-play "dcrate-break")
     (process-spawn
@@ -631,23 +609,22 @@
       #f
       #f
       #f
-      (-> self root-override trans)
+      (-> self root trans)
       :to *entity-pool*
       )
     (suspend)
     (cleanup-for-death self)
     (deactivate self)
-    (none)
     )
   )
 
 ;; failed to figure out what this is:
 (defstate idle (crate-darkeco-cluster)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('attack 'touch)
-       (send-event proc 'attack (-> event param 0) (static-attack-info ((mode 'darkeco))))
+       (send-event proc 'attack (-> block param 0) (static-attack-info ((mode 'darkeco))))
        (go-virtual die)
        )
       )
@@ -657,14 +634,13 @@
     (logior! (-> self mask) (process-mask sleep))
     (suspend)
     0
-    (none)
     )
   )
 
 ;; definition for method 11 of type crate-darkeco-cluster
 ;; INFO: Return type mismatch object vs none.
-(defmethod init-from-entity! crate-darkeco-cluster ((obj crate-darkeco-cluster) (arg0 entity-actor))
-  (let ((s4-0 (new 'process 'collide-shape obj (collide-list-enum usually-hit-by-player))))
+(defmethod init-from-entity! ((this crate-darkeco-cluster) (arg0 entity-actor))
+  (let ((s4-0 (new 'process 'collide-shape this (collide-list-enum usually-hit-by-player))))
     (let ((s3-0 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 0) (the-as uint 0))))
       (set! (-> s3-0 prim-core collide-as) (collide-kind crate))
       (set! (-> s3-0 collide-with) (collide-kind target))
@@ -676,10 +652,10 @@
       )
     (set! (-> s4-0 nav-radius) (* 0.75 (-> s4-0 root-prim local-sphere w)))
     (backup-collide-with-as s4-0)
-    (set! (-> obj root-override) s4-0)
+    (set! (-> this root) s4-0)
     )
-  (process-drawable-from-entity! obj arg0)
-  (initialize-skeleton obj *crate-darkeco-cluster-sg* '())
-  (go (method-of-object obj idle))
+  (process-drawable-from-entity! this arg0)
+  (initialize-skeleton this *crate-darkeco-cluster-sg* '())
+  (go (method-of-object this idle))
   (none)
   )

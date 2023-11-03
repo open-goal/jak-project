@@ -11,19 +11,14 @@
 ;; DECOMP BEGINS
 
 (deftype transformq (transform)
-  ((quat quaternion :inline :offset  16)
+  ((quat  quaternion  :inline :overlay-at (-> rot data 0))
    )
-  :method-count-assert 9
-  :size-assert         #x30
-  :flag-assert         #x900000030
   )
 
+
 (deftype trsq (trs)
-  ((quat quaternion :inline :offset  32)
+  ((quat  quaternion  :inline :overlay-at (-> rot data 0))
    )
-  :method-count-assert 9
-  :size-assert         #x40
-  :flag-assert         #x900000040
   )
 
 ;; a transform with:
@@ -36,55 +31,50 @@
 ;; collision objects (collide-shape, collide-shape-moving)
 ;; As a result, this type has a lot of weird methods and extra stuff hidden in it.
 (deftype trsqv (trsq)
-  (;; some extra info for game objects, hidden in the unused space.
-   (pause-adjust-distance meters             :offset          4)
-   (nav-radius            meters             :offset          8)
-
+   ;; some extra info for game objects, hidden in the unused space.
+  ((pause-adjust-distance  meters      :offset   4)
+   (nav-radius             meters      :offset   8)
    ;; velocities
-   (transv                vector     :inline :offset-assert  64)
-   (rotv                  vector     :inline :offset-assert  80)
-   (scalev                vector     :inline :offset-assert  96)
-
+   (transv                 vector      :inline)
+   (rotv                   vector      :inline)
+   (scalev                 vector      :inline)
    ;; trsqv also supports the ability to adjust its orientation
    ;; to face a target. This has some logic to prevent chattering
    ;; that requires some additional state here:
-   (dir-targ              quaternion :inline :offset-assert 112)
-   (angle-change-time     time-frame         :offset-assert 128)
-   (old-y-angle-diff      float              :offset-assert 136)
+   (dir-targ               quaternion  :inline)
+   (angle-change-time      time-frame)
+   (old-y-angle-diff       float)
    )
-  :method-count-assert 28
-  :size-assert         #x8c
-  :flag-assert         #x1c0000008c
   (:methods
-    (seek-toward-heading-vec! (_type_ vector float time-frame) quaternion 9)
-    (set-heading-vec! (_type_ vector) quaternion 10)
-    (seek-to-point-toward-point! (_type_ vector float time-frame) quaternion 11)
-    (point-toward-point! (_type_ vector) quaternion 12)
-    (seek-toward-yaw-angle! (_type_ float float time-frame) quaternion 13)
-    (set-yaw-angle-clear-roll-pitch! (_type_ float) quaternion 14)
-    (set-roll-to-grav! (_type_ float) quaternion 15)
-    (set-roll-to-grav-2! (_type_ float) quaternion 16)
-    (rotate-toward-orientation! (_type_ quaternion float float int int float) quaternion 17)
-    (set-quaternion! (_type_ quaternion) quaternion 18)
-    (set-heading-vec-clear-roll-pitch! (_type_ vector) quaternion 19)
-    (point-toward-point-clear-roll-pitch! (_type_ vector) quaternion 20)
-    (rot->dir-targ! (_type_) quaternion 21)
-    (y-angle (_type_) float 22)
-    (global-y-angle-to-point (_type_ vector) float 23)
-    (relative-y-angle-to-point (_type_ vector) float 24)
-    (roll-relative-to-gravity (_type_) float 25)
-    (set-and-limit-velocity (_type_ int vector float) trsqv :behavior process 26)
-    (get-quaternion (_type_) quaternion 27)
+    (seek-toward-heading-vec! (_type_ vector float time-frame) quaternion)
+    (set-heading-vec! (_type_ vector) quaternion)
+    (seek-to-point-toward-point! (_type_ vector float time-frame) quaternion)
+    (point-toward-point! (_type_ vector) quaternion)
+    (seek-toward-yaw-angle! (_type_ float float time-frame) quaternion)
+    (set-yaw-angle-clear-roll-pitch! (_type_ float) quaternion)
+    (set-roll-to-grav! (_type_ float) quaternion)
+    (set-roll-to-grav-2! (_type_ float) quaternion)
+    (rotate-toward-orientation! (_type_ quaternion float float int int float) quaternion)
+    (set-quaternion! (_type_ quaternion) quaternion)
+    (set-heading-vec-clear-roll-pitch! (_type_ vector) quaternion)
+    (point-toward-point-clear-roll-pitch! (_type_ vector) quaternion)
+    (rot->dir-targ! (_type_) quaternion)
+    (y-angle (_type_) float)
+    (global-y-angle-to-point (_type_ vector) float)
+    (relative-y-angle-to-point (_type_ vector) float)
+    (roll-relative-to-gravity (_type_) float)
+    (set-and-limit-velocity (_type_ int vector float) trsqv :behavior process)
+    (get-quaternion (_type_) quaternion)
     )
   )
 
-(defmethod global-y-angle-to-point trsqv ((obj trsqv) (arg0 vector))
+(defmethod global-y-angle-to-point ((this trsqv) (arg0 vector))
   "Get the angle in the xz plane from the position of this trsqv to the point arg0.
   (ignores our current yaw)"
-  (vector-y-angle (vector-! (new 'stack-no-clear 'vector) arg0 (-> obj trans)))
+  (vector-y-angle (vector-! (new 'stack-no-clear 'vector) arg0 (-> this trans)))
   )
 
-(defmethod relative-y-angle-to-point trsqv ((obj trsqv) (arg0 vector))
+(defmethod relative-y-angle-to-point ((this trsqv) (arg0 vector))
   "Get the y angle between the current orientation and arg0. (how much we'd have to yaw to point at arg0)"
-  (deg-diff (y-angle obj) (vector-y-angle (vector-! (new 'stack-no-clear 'vector) arg0 (-> obj trans))))
+  (deg-diff (y-angle this) (vector-y-angle (vector-! (new 'stack-no-clear 'vector) arg0 (-> this trans))))
   )

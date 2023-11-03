@@ -7,13 +7,8 @@
 
 ;; DECOMP BEGINS
 
-
 (deftype assistant-firecanyon (process-taskable)
   ()
-  :heap-base #x110
-  :method-count-assert 53
-  :size-assert         #x17c
-  :flag-assert         #x350110017c
   )
 
 
@@ -23,11 +18,11 @@
               :shadow assistant-firecanyon-shadow-mg
               )
 
-(defmethod play-anim! assistant-firecanyon ((obj assistant-firecanyon) (arg0 symbol))
-  (case (current-status (-> obj tasks))
+(defmethod play-anim! ((this assistant-firecanyon) (arg0 symbol))
+  (case (current-status (-> this tasks))
     (((task-status need-reward-speech))
      (if arg0
-         (close-current! (-> obj tasks))
+         (close-current! (-> this tasks))
          )
      (new 'static 'spool-anim
        :name "assistant-firecanyon-resolution"
@@ -54,19 +49,19 @@
           (format
             0
             "ERROR: <GMJ>: ~S playing anim for task status ~S~%"
-            (-> obj name)
-            (task-status->string (current-status (-> obj tasks)))
+            (-> this name)
+            (task-status->string (current-status (-> this tasks)))
             )
           )
-      (-> obj draw art-group data 3)
+      (-> this draw art-group data 3)
       )
     )
   )
 
-(defmethod get-art-elem assistant-firecanyon ((obj assistant-firecanyon))
-  (if (= (current-status (-> obj tasks)) (task-status invalid))
-      (-> obj draw art-group data 8)
-      (-> obj draw art-group data 3)
+(defmethod get-art-elem ((this assistant-firecanyon))
+  (if (= (current-status (-> this tasks)) (task-status invalid))
+      (-> this draw art-group data 8)
+      (-> this draw art-group data 3)
       )
   )
 
@@ -75,11 +70,11 @@
   :trans (behavior ()
     ((-> (method-of-type process-taskable hidden) trans))
     (when (and (cond
-                 ((and *target* (>= 61440.0 (vector-vector-distance (-> self root-override trans) (-> *target* control trans))))
+                 ((and *target* (>= 61440.0 (vector-vector-distance (-> self root trans) (-> *target* control trans))))
                   #t
                   )
                  (else
-                   (set! (-> self state-time) (-> *display* base-frame-counter))
+                   (set-time! (-> self state-time))
                    #f
                    )
                  )
@@ -87,7 +82,7 @@
                     (not (movie?))
                     (not (level-hint-displayed?))
                     (not (and *cheat-mode* (cpad-hold? 0 l3)))
-                    (< (- (-> *display* base-frame-counter) (-> self state-time)) (seconds 10))
+                    (not (time-elapsed? (-> self state-time) (seconds 10)))
                     )
                )
       (hide-hud)
@@ -122,7 +117,6 @@
         (game-task none)
         )
       )
-    (none)
     )
   )
 
@@ -247,19 +241,18 @@
           )
         )
       )
-    (none)
     )
   )
 
-(defmethod should-display? assistant-firecanyon ((obj assistant-firecanyon))
-  (first-any (-> obj tasks) #t)
-  (= (current-status (-> obj tasks)) (task-status need-reward-speech))
+(defmethod should-display? ((this assistant-firecanyon))
+  (first-any (-> this tasks) #t)
+  (= (current-status (-> this tasks)) (task-status need-reward-speech))
   )
 
-(defmethod init-from-entity! assistant-firecanyon ((obj assistant-firecanyon) (arg0 entity-actor))
-  (process-taskable-method-40 obj arg0 *assistant-firecanyon-sg* 3 29 (new 'static 'vector :w 4096.0) 5)
-  (set! (-> obj tasks) (get-task-control (game-task firecanyon-assistant)))
-  (first-any (-> obj tasks) #t)
-  (process-taskable-method-42 obj)
+(defmethod init-from-entity! ((this assistant-firecanyon) (arg0 entity-actor))
+  (process-taskable-method-40 this arg0 *assistant-firecanyon-sg* 3 29 (new 'static 'vector :w 4096.0) 5)
+  (set! (-> this tasks) (get-task-control (game-task firecanyon-assistant)))
+  (first-any (-> this tasks) #t)
+  (process-taskable-method-42 this)
   (none)
   )

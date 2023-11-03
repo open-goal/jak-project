@@ -27,25 +27,23 @@
         )
 
 (deftype vehicle-turret (process-focusable)
-  ((turret-jm joint-mod              :offset-assert 204)
-   (turret    turret-control :inline :offset-assert 208)
-   (target    handle                 :offset-assert 288)
+  ((turret-jm  joint-mod)
+   (turret     turret-control  :inline)
+   (target     handle)
    )
-  :heap-base #xb0
-  :method-count-assert 31
-  :size-assert         #x128
-  :flag-assert         #x1f00b00128
+  (:state-methods
+    idle
+    )
   (:methods
-    (idle () _type_ :state 27)
-    (vehicle-turret-method-28 (_type_) none 28)
-    (vehicle-turret-method-29 (_type_) none 29)
-    (vehicle-turret-method-30 (_type_) none 30)
+    (vehicle-turret-method-28 (_type_) none)
+    (vehicle-turret-method-29 (_type_) none)
+    (vehicle-turret-method-30 (_type_) none)
     )
   )
 
 
-(defmethod vehicle-turret-method-29 vehicle-turret ((obj vehicle-turret))
-  (let* ((s4-0 (ppointer->process (-> obj parent)))
+(defmethod vehicle-turret-method-29 ((this vehicle-turret))
+  (let* ((s4-0 (ppointer->process (-> this parent)))
          (s5-0 (if (type? s4-0 process-focusable)
                    s4-0
                    )
@@ -58,9 +56,9 @@
                     )
                   )
             )
-        (vector-matrix*! (-> obj root trans) (new 'static 'vector :y 8601.6 :z 12288.0 :w 1.0) a2-0)
+        (vector-matrix*! (-> this root trans) (new 'static 'vector :y 8601.6 :z 12288.0 :w 1.0) a2-0)
         )
-      (quaternion-copy! (-> obj root quat) (-> (the-as process-drawable s5-0) root quat))
+      (quaternion-copy! (-> this root quat) (-> (the-as process-drawable s5-0) root quat))
       )
     )
   0
@@ -84,14 +82,13 @@
         (turret-control-method-11 (-> self turret) self s5-1 (-> (the-as process-focusable gp-0) root transv))
         )
       )
-    (none)
     )
-  :code (the-as (function none :behavior vehicle-turret) sleep-code)
-  :post (the-as (function none :behavior vehicle-turret) transform-post)
+  :code sleep-code
+  :post transform-post
   )
 
-(defmethod vehicle-turret-method-28 vehicle-turret ((obj vehicle-turret))
-  (let ((s5-0 (new 'process 'collide-shape-moving obj (collide-list-enum usually-hit-by-player))))
+(defmethod vehicle-turret-method-28 ((this vehicle-turret))
+  (let ((s5-0 (new 'process 'collide-shape-moving this (collide-list-enum usually-hit-by-player))))
     (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s5-0 reaction) cshape-reaction-default)
     (set! (-> s5-0 no-reaction)
@@ -112,26 +109,22 @@
       (set! (-> s5-0 backup-collide-as) (-> v1-9 prim-core collide-as))
       (set! (-> s5-0 backup-collide-with) (-> v1-9 prim-core collide-with))
       )
-    (set! (-> obj root) s5-0)
+    (set! (-> this root) s5-0)
     )
   0
   (none)
   )
 
-;; WARN: Return type mismatch process-drawable vs vehicle-turret.
-(defmethod relocate vehicle-turret ((obj vehicle-turret) (arg0 int))
-  (if (nonzero? (-> obj turret-jm))
-      (&+! (-> obj turret-jm) arg0)
+(defmethod relocate ((this vehicle-turret) (arg0 int))
+  (if (nonzero? (-> this turret-jm))
+      (&+! (-> this turret-jm) arg0)
       )
-  (the-as
-    vehicle-turret
-    ((the-as (function process-drawable int process-drawable) (find-parent-method vehicle-turret 7)) obj arg0)
-    )
+  (call-parent-method this arg0)
   )
 
-(defmethod vehicle-turret-method-30 vehicle-turret ((obj vehicle-turret))
-  (set! (-> obj turret-jm)
-        (the-as joint-mod (new 'process 'joint-mod-rotate-local obj (-> obj turret info joint-index) #t))
+(defmethod vehicle-turret-method-30 ((this vehicle-turret))
+  (set! (-> this turret-jm)
+        (the-as joint-mod (new 'process 'joint-mod-rotate-local this (-> this turret info joint-index) #t))
         )
   0
   (none)
@@ -179,47 +172,42 @@
         )
 
 (deftype transport-params (structure)
-  ((spawn-pos vector     :inline :offset-assert   0)
-   (quat      quaternion :inline :offset-assert  16)
-   (nav-mesh  nav-mesh           :offset-assert  32)
-   (max-guard uint32             :offset-assert  36)
-   (max-time  float              :offset-assert  40)
-   (turret?   symbol             :offset-assert  44)
-   (speeches? symbol             :offset-assert  48)
+  ((spawn-pos  vector      :inline)
+   (quat       quaternion  :inline)
+   (nav-mesh   nav-mesh)
+   (max-guard  uint32)
+   (max-time   float)
+   (turret?    symbol)
+   (speeches?  symbol)
    )
-  :method-count-assert 9
-  :size-assert         #x34
-  :flag-assert         #x900000034
   )
 
 
 (deftype transport (process-focusable)
-  ((y-dest                float       :offset-assert 204)
-   (last-guard-spawn-time time-frame  :offset-assert 208)
-   (nav-mesh              nav-mesh    :offset-assert 216)
-   (spawn-side            uint32      :offset-assert 220)
-   (spawn?                symbol      :offset-assert 224)
-   (leave-time            time-frame  :offset-assert 232)
-   (max-guard             uint32      :offset-assert 240)
-   (count-guard           uint32      :offset-assert 244)
-   (max-time              float       :offset-assert 248)
-   (ambient-sound-id      sound-id    :offset-assert 252)
-   (turret                handle      :offset-assert 256)
+  ((y-dest                 float)
+   (last-guard-spawn-time  time-frame)
+   (nav-mesh               nav-mesh)
+   (spawn-side             uint32)
+   (spawn?                 symbol)
+   (leave-time             time-frame)
+   (max-guard              uint32)
+   (count-guard            uint32)
+   (max-time               float)
+   (ambient-sound-id       sound-id)
+   (turret                 handle)
    )
-  :heap-base #x90
-  :method-count-assert 36
-  :size-assert         #x108
-  :flag-assert         #x2400900108
+  (:state-methods
+    come-down
+    idle
+    leave
+    die-fast
+    )
   (:methods
-    (come-down () _type_ :state 27)
-    (idle () _type_ :state 28)
-    (leave () _type_ :state 29)
-    (die-fast () _type_ :state 30)
-    (transport-method-31 (_type_) none 31)
-    (transport-method-32 (_type_) none 32)
-    (transport-method-33 (_type_) none 33)
-    (transport-method-34 (_type_ process) none 34)
-    (transport-method-35 (_type_) none 35)
+    (transport-method-31 (_type_) none)
+    (transport-method-32 (_type_) none)
+    (transport-method-33 (_type_) none)
+    (transport-method-34 (_type_ process) none)
+    (transport-method-35 (_type_) none)
     )
   )
 
@@ -253,26 +241,26 @@
     )
   )
 
-(defmethod run-logic? transport ((obj transport))
+(defmethod run-logic? ((this transport))
   #t
   )
 
-(defmethod transport-method-35 transport ((obj transport))
-  (let ((f30-0 (lerp-scale 0.0 2.0 (fabs (-> obj root transv y)) 0.0 122880.0))
-        (f0-4 (lerp-scale 0.0 1.0 (- (-> obj root trans y) (-> obj y-dest)) 143360.0 20480.0))
+(defmethod transport-method-35 ((this transport))
+  (let ((f30-0 (lerp-scale 0.0 2.0 (fabs (-> this root transv y)) 0.0 122880.0))
+        (f0-4 (lerp-scale 0.0 1.0 (- (-> this root trans y) (-> this y-dest)) 143360.0 20480.0))
         (a0-3 (static-sound-spec "transport" :volume 0.0 :mask (pitch reg0)))
         )
     (set! (-> a0-3 volume) (the int (* 1024.0 f0-4)))
     (set! (-> a0-3 pitch-mod) (the int (* 1524.0 f30-0)))
-    (sound-play-by-spec a0-3 (-> obj ambient-sound-id) (-> obj root trans))
+    (sound-play-by-spec a0-3 (-> this ambient-sound-id) (-> this root trans))
     )
   0
   (none)
   )
 
-(defmethod deactivate transport ((obj transport))
-  (sound-stop (-> obj ambient-sound-id))
-  ((the-as (function process-drawable none) (find-parent-method transport 10)) obj)
+(defmethod deactivate ((this transport))
+  (sound-stop (-> this ambient-sound-id))
+  (call-parent-method this)
   (none)
   )
 
@@ -280,33 +268,27 @@
   :virtual #t
   :event transport-event-handler
   :enter (behavior ()
-    (set! (-> self state-time) (current-time))
-    (set! (-> self last-guard-spawn-time) (current-time))
-    (none)
+    (set-time! (-> self state-time))
+    (set-time! (-> self last-guard-spawn-time))
     )
   :code (behavior ()
     (ja-channel-push! 1 0)
-    (ja-no-eval :group! transport-idle-ja
-                :num! (seek! (the float (+ (-> (the-as art-joint-anim transport-idle-ja) frames num-frames) -1)))
-                :frame-num 0.0
-                )
+    (ja-no-eval :group! transport-idle-ja :num! (seek!) :frame-num 0.0)
     (until (ja-done? 0)
       (suspend)
       (ja :num! (seek!))
       )
     (sleep-code)
-    (none)
     )
   :post (behavior ()
     (set! (-> self root transv y) (* 2.0 (- (-> self y-dest) (-> self root trans y))))
     (set! (-> self root transv y) (fmax -122880.0 (fmin 122880.0 (-> self root transv y))))
-    (+! (-> self root trans y) (* (-> self root transv y) (-> self clock seconds-per-frame)))
+    (+! (-> self root trans y) (* (-> self root transv y) (seconds-per-frame)))
     (if (< (fabs (- (-> self root trans y) (-> self y-dest))) 409.6)
         (go-virtual idle)
         )
     (transport-method-35 self)
     (transform-post)
-    (none)
     )
   )
 
@@ -314,29 +296,23 @@
   :virtual #t
   :event transport-event-handler
   :enter (behavior ()
-    (set! (-> self state-time) (current-time))
+    (set-time! (-> self state-time))
     (set! (-> self root transv y) 0.0)
     (set! (-> self last-guard-spawn-time) 0)
     0
-    (none)
     )
   :exit (behavior ()
     (transport-method-34 self (the-as process #f))
-    (none)
     )
   :code (behavior ()
     (ja-channel-push! 1 0)
     (sound-play "tran-door-open")
-    (ja-no-eval :group! transport-hatch-open-ja
-                :num! (seek! (the float (+ (-> (the-as art-joint-anim transport-hatch-open-ja) frames num-frames) -1)) 0.5)
-                :frame-num 0.0
-                )
+    (ja-no-eval :group! transport-hatch-open-ja :num! (seek! max 0.5) :frame-num 0.0)
     (until (ja-done? 0)
       (suspend)
       (ja :num! (seek! max 0.5))
       )
     (sleep-code)
-    (none)
     )
   :post (behavior ()
     (local-vars (gp-0 symbol))
@@ -374,7 +350,6 @@
     (transport-method-34 self *target*)
     (transport-method-35 self)
     (transform-post)
-    (none)
     )
   )
 
@@ -383,7 +358,6 @@
   :code (behavior ()
     (sound-stop (-> self ambient-sound-id))
     (cleanup-for-death self)
-    (none)
     )
   )
 
@@ -391,70 +365,64 @@
   :virtual #t
   :event transport-event-handler
   :enter (behavior ()
-    (set! (-> self state-time) (current-time))
+    (set-time! (-> self state-time))
     (set! (-> self root transv y) 0.0)
-    (none)
     )
   :code (behavior ()
     (ja-channel-push! 1 0)
     (sound-play "tran-thrust")
     (sound-play "tran-door-close")
-    (ja-no-eval :group! transport-hatch-close-ja
-                :num! (seek! (the float (+ (-> (the-as art-joint-anim transport-hatch-close-ja) frames num-frames) -1)) 0.2)
-                :frame-num 0.0
-                )
+    (ja-no-eval :group! transport-hatch-close-ja :num! (seek! max 0.2) :frame-num 0.0)
     (until (ja-done? 0)
       (suspend)
       (ja :num! (seek! max 0.2))
       )
     (sleep-code)
-    (none)
     )
   :post (behavior ()
     (transport-method-35 self)
-    (+! (-> self root transv y) (* 40960.0 (-> self clock seconds-per-frame)))
+    (+! (-> self root transv y) (* 40960.0 (seconds-per-frame)))
     (set! (-> self root transv y) (fmax -122880.0 (fmin 122880.0 (-> self root transv y))))
-    (+! (-> self root trans y) (* (-> self root transv y) (-> self clock seconds-per-frame)))
+    (+! (-> self root trans y) (* (-> self root transv y) (seconds-per-frame)))
     (if (and (not (logtest? (-> self draw status) (draw-control-status on-screen)))
              (< 163840.0 (- (-> self root trans y) (-> self y-dest)))
              )
         (go-virtual die-fast)
         )
     (transform-post)
-    (none)
     )
   )
 
-(defmethod transport-method-33 transport ((obj transport))
-  (when (>= (- (current-time) (-> obj last-guard-spawn-time)) 0)
+(defmethod transport-method-33 ((this transport))
+  (when (>= (- (current-time) (-> this last-guard-spawn-time)) 0)
     (let ((s5-0 (new 'stack 'traffic-object-spawn-params)))
       (set! (-> s5-0 object-type) (traffic-type crimson-guard-1))
       (set! (-> s5-0 behavior) (the-as uint 6))
       (set! (-> s5-0 id) (the-as uint 0))
-      (set! (-> s5-0 nav-mesh) (-> obj nav-mesh))
+      (set! (-> s5-0 nav-mesh) (-> this nav-mesh))
       (set! (-> s5-0 nav-branch) #f)
       (set! (-> s5-0 proc) #f)
-      (set! (-> s5-0 handle) (process->handle obj))
-      (set! (-> s5-0 user-data) (-> obj spawn-side))
+      (set! (-> s5-0 handle) (process->handle this))
+      (set! (-> s5-0 user-data) (-> this spawn-side))
       (set! (-> s5-0 flags) (traffic-spawn-flags))
       (set! (-> s5-0 guard-type) (the-as uint 7))
       (vector-reset! (-> s5-0 velocity))
-      (set! (-> s5-0 position quad) (-> obj root trans quad))
+      (set! (-> s5-0 position quad) (-> this root trans quad))
       (+! (-> s5-0 position y) 8192.0)
-      (quaternion-rotate-local-y! (-> s5-0 rotation) (-> obj root quat) 32768.0)
+      (quaternion-rotate-local-y! (-> s5-0 rotation) (-> this root quat) 32768.0)
       (send-event *traffic-manager* 'activate-object s5-0)
       (when (-> s5-0 proc)
-        (set! (-> obj spawn-side) (- 1 (the-as int (-> obj spawn-side))))
-        (if (logtest? (-> obj draw status) (draw-control-status on-screen))
-            (set! (-> obj last-guard-spawn-time) (+ (current-time) (seconds 1)))
-            (set! (-> obj last-guard-spawn-time) (+ (current-time) (seconds 2)))
+        (set! (-> this spawn-side) (- 1 (the-as int (-> this spawn-side))))
+        (if (logtest? (-> this draw status) (draw-control-status on-screen))
+            (set! (-> this last-guard-spawn-time) (+ (current-time) (seconds 1)))
+            (set! (-> this last-guard-spawn-time) (+ (current-time) (seconds 2)))
             )
-        (+! (-> obj count-guard) 1)
+        (+! (-> this count-guard) 1)
         )
       (when (not (-> s5-0 proc))
-        (if (logtest? (-> obj draw status) (draw-control-status on-screen))
-            (set! (-> obj last-guard-spawn-time) (+ (current-time) (seconds 0.1)))
-            (set! (-> obj last-guard-spawn-time) (+ (current-time) (seconds 1)))
+        (if (logtest? (-> this draw status) (draw-control-status on-screen))
+            (set! (-> this last-guard-spawn-time) (+ (current-time) (seconds 0.1)))
+            (set! (-> this last-guard-spawn-time) (+ (current-time) (seconds 1)))
             )
         )
       )
@@ -462,8 +430,8 @@
   (none)
   )
 
-(defmethod transport-method-34 transport ((obj transport) (arg0 process))
-  (let ((v1-1 (handle->process (-> obj turret))))
+(defmethod transport-method-34 ((this transport) (arg0 process))
+  (let ((v1-1 (handle->process (-> this turret))))
     (if v1-1
         (set! (-> (the-as vehicle-turret v1-1) target) (process->handle arg0))
         )
@@ -472,8 +440,8 @@
   (none)
   )
 
-(defmethod transport-method-31 transport ((obj transport))
-  (let ((s5-0 (new 'process 'collide-shape-moving obj (collide-list-enum usually-hit-by-player))))
+(defmethod transport-method-31 ((this transport))
+  (let ((s5-0 (new 'process 'collide-shape-moving this (collide-list-enum usually-hit-by-player))))
     (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s5-0 reaction) cshape-reaction-default)
     (set! (-> s5-0 no-reaction)
@@ -507,14 +475,14 @@
       (set! (-> s5-0 backup-collide-as) (-> v1-17 prim-core collide-as))
       (set! (-> s5-0 backup-collide-with) (-> v1-17 prim-core collide-with))
       )
-    (set! (-> obj root) s5-0)
+    (set! (-> this root) s5-0)
     )
   0
   (none)
   )
 
-(defmethod transport-method-32 transport ((obj transport))
-  (set! (-> obj spawn-side) (the-as uint 0))
+(defmethod transport-method-32 ((this transport))
+  (set! (-> this spawn-side) (the-as uint 0))
   0
   (none)
   )
@@ -551,22 +519,22 @@
   )
 
 ;; WARN: Return type mismatch object vs none.
-(defmethod init-from-entity! transport ((obj transport) (arg0 entity-actor))
+(defmethod init-from-entity! ((this transport) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
 - stack size
 - collision information
 - loading the skeleton group / bones
 - sounds"
-  (transport-method-31 obj)
-  (process-drawable-from-entity! obj arg0)
+  (transport-method-31 this)
+  (process-drawable-from-entity! this arg0)
   (initialize-skeleton
-    obj
+    this
     (the-as skeleton-group (art-group-get-by-name *level* "skel-transport" (the-as (pointer uint32) #f)))
     (the-as pair 0)
     )
-  (transport-method-32 obj)
-  (set! (-> obj spawn?) #t)
-  (go (method-of-object obj come-down))
+  (transport-method-32 this)
+  (set! (-> this spawn?) #t)
+  (go (method-of-object this come-down))
   (none)
   )

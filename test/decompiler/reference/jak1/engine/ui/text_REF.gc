@@ -21,58 +21,58 @@
   )
 
 ;; definition for method 4 of type game-text-info
-(defmethod length game-text-info ((obj game-text-info))
-  (-> obj length)
+(defmethod length ((this game-text-info))
+  (-> this length)
   )
 
 ;; definition for method 5 of type game-text-info
 ;; INFO: Return type mismatch uint vs int.
-(defmethod asize-of game-text-info ((obj game-text-info))
-  (the-as int (+ (-> obj type size) (* (-> obj length) 8)))
+(defmethod asize-of ((this game-text-info))
+  (the-as int (+ (-> this type size) (* (-> this length) 8)))
   )
 
 ;; definition for method 3 of type game-text-info
 ;; INFO: this function exists in multiple non-identical object files
-(defmethod inspect game-text-info ((obj game-text-info))
-  (format #t "[~8x] ~A~%" obj (-> obj type))
-  (format #t "~Tlength: ~D~%" (-> obj length))
-  (format #t "~Tdata[~D]: @ #x~X~%" (-> obj length) (-> obj data))
-  (dotimes (s5-0 (-> obj length))
-    (format #t "~T  [~D] #x~X ~A~%" s5-0 (-> obj data s5-0 id) (-> obj data s5-0 text))
+(defmethod inspect ((this game-text-info))
+  (format #t "[~8x] ~A~%" this (-> this type))
+  (format #t "~Tlength: ~D~%" (-> this length))
+  (format #t "~Tdata[~D]: @ #x~X~%" (-> this length) (-> this data))
+  (dotimes (s5-0 (-> this length))
+    (format #t "~T  [~D] #x~X ~A~%" s5-0 (-> this data s5-0 id) (-> this data s5-0 text))
     )
-  obj
+  this
   )
 
 ;; definition for method 8 of type game-text-info
-(defmethod mem-usage game-text-info ((obj game-text-info) (arg0 memory-usage-block) (arg1 int))
+(defmethod mem-usage ((this game-text-info) (arg0 memory-usage-block) (arg1 int))
   (set! (-> arg0 length) (max 81 (-> arg0 length)))
   (set! (-> arg0 data 80 name) "string")
   (+! (-> arg0 data 80 count) 1)
-  (let ((v1-6 (asize-of obj)))
+  (let ((v1-6 (asize-of this)))
     (+! (-> arg0 data 80 used) v1-6)
     (+! (-> arg0 data 80 total) (logand -16 (+ v1-6 15)))
     )
-  (dotimes (s4-0 (-> obj length))
+  (dotimes (s4-0 (-> this length))
     (set! (-> arg0 length) (max 81 (-> arg0 length)))
     (set! (-> arg0 data 80 name) "string")
     (+! (-> arg0 data 80 count) 1)
-    (let ((v1-18 (asize-of (-> obj data s4-0 text))))
+    (let ((v1-18 (asize-of (-> this data s4-0 text))))
       (+! (-> arg0 data 80 used) v1-18)
       (+! (-> arg0 data 80 total) (logand -16 (+ v1-18 15)))
       )
     )
-  obj
+  this
   )
 
 ;; definition for method 9 of type game-text-info
-(defmethod lookup-text! game-text-info ((obj game-text-info) (arg0 text-id) (arg1 symbol))
+(defmethod lookup-text! ((this game-text-info) (arg0 text-id) (arg1 symbol))
   (let* ((a1-1 0)
-         (a3-0 (+ (-> obj length) 1))
+         (a3-0 (+ (-> this length) 1))
          (v1-2 (/ (+ a1-1 a3-0) 2))
          )
     (let ((t0-0 -1))
-      (while (and (!= (-> obj data v1-2 id) arg0) (!= v1-2 t0-0))
-        (if (< (the-as uint arg0) (the-as uint (-> obj data v1-2 id)))
+      (while (and (!= (-> this data v1-2 id) arg0) (!= v1-2 t0-0))
+        (if (< (the-as uint arg0) (the-as uint (-> this data v1-2 id)))
             (set! a3-0 v1-2)
             (set! a1-1 v1-2)
             )
@@ -81,7 +81,7 @@
         )
       )
     (cond
-      ((!= (-> obj data v1-2 id) arg0)
+      ((!= (-> this data v1-2 id) arg0)
        (cond
          (arg1
            (the-as string #f)
@@ -93,7 +93,7 @@
          )
        )
       (else
-        (-> obj data v1-2 text)
+        (-> this data v1-2 text)
         )
       )
     )
@@ -288,7 +288,7 @@
       (if (logtest? (-> font-ctxt flags) (font-flags middle))
           (+! (-> font-ctxt origin x) (* 0.5 (- f26-0 f0-1)))
           )
-      (if (logtest? (-> font-ctxt flags) (font-flags left))
+      (if (logtest? (-> font-ctxt flags) (font-flags middle-vert))
           (+! (-> font-ctxt origin y) (the-as float (gpr->fpr (/ (the int (- f30-0 f1-2)) 2))))
           )
       (let ((v1-10 font-ctxt))
@@ -400,8 +400,8 @@
       (set! (-> gp-0 flags) (-> font-ctxt flags))
       (set! (-> gp-0 color) (-> font-ctxt color))
       (set! (-> gp-0 scale) sv-136)
-      (when (logtest? (-> gp-0 flags) (font-flags left))
-        (logclear! (-> gp-0 flags) (font-flags left))
+      (when (logtest? (-> gp-0 flags) (font-flags middle-vert))
+        (logclear! (-> gp-0 flags) (font-flags middle-vert))
         (let ((f30-0 (-> gp-0 width))
               (f28-0 (-> gp-0 height))
               )

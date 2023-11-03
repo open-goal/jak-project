@@ -900,87 +900,83 @@
 
 ;; definition of type tanker-grunt
 (deftype tanker-grunt (grunt)
-  ((expensive-gnd-collide? symbol  :offset 692)
+  ((expensive-gnd-collide?  symbol  :offset 692)
    )
-  :heap-base #x240
-  :method-count-assert 186
-  :size-assert         #x2b8
-  :flag-assert         #xba024002b8
   )
 
 ;; definition for method 3 of type tanker-grunt
-(defmethod inspect tanker-grunt ((obj tanker-grunt))
-  (when (not obj)
-    (set! obj obj)
+(defmethod inspect ((this tanker-grunt))
+  (when (not this)
+    (set! this this)
     (goto cfg-4)
     )
   (let ((t9-0 (method-of-type grunt inspect)))
-    (t9-0 obj)
+    (t9-0 this)
     )
-  (format #t "~2Texpensive-gnd-collide?: ~A~%" (-> obj expensive-gnd-collide?))
+  (format #t "~2Texpensive-gnd-collide?: ~A~%" (-> this expensive-gnd-collide?))
   (label cfg-4)
-  obj
+  this
   )
 
 ;; definition for method 74 of type tanker-grunt
-(defmethod general-event-handler tanker-grunt ((obj tanker-grunt) (arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+(defmethod general-event-handler ((this tanker-grunt) (arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
   "Handles various events for the enemy
 @TODO - unsure if there is a pattern for the events and this should have a more specific name"
   (case arg2
     (('skip-intro)
-     (when (and (-> obj next-state)
-                (let ((v1-4 (-> obj next-state name)))
+     (when (and (-> this next-state)
+                (let ((v1-4 (-> this next-state name)))
                   (or (= v1-4 'ambush) (= v1-4 'jumping-ambush) (= v1-4 'dormant) (= v1-4 'jump) (= v1-4 'jump-blocked))
                   )
                 )
-       (let ((s5-0 (-> obj intro-path)))
+       (let ((s5-0 (-> this intro-path)))
          (when (nonzero? s5-0)
            (let ((f30-0 (get-num-segments s5-0))
                  (s4-0 (new 'stack-no-clear 'vector))
                  )
-             (get-point-at-percent-along-path! s5-0 (-> obj root trans) f30-0 'interp)
+             (get-point-at-percent-along-path! s5-0 (-> this root trans) f30-0 'interp)
              (displacement-between-points-at-percent-normalized! s5-0 s4-0 f30-0)
-             (forward-up->quaternion (-> obj root quat) s4-0 *up-vector*)
+             (forward-up->quaternion (-> this root quat) s4-0 *up-vector*)
              )
-           (logclear! (-> obj enemy-flags) (enemy-flag enable-on-notice alert victory called-dying))
-           (logior! (-> obj enemy-flags) (enemy-flag dangerous-backup))
-           (logclear! (-> obj mask) (process-mask actor-pause))
-           (logior! (-> obj enemy-flags) (enemy-flag chase-startup))
-           (set-vector! (-> obj root scale) 1.0 1.0 1.0 1.0)
-           (go-hostile obj)
+           (logclear! (-> this enemy-flags) (enemy-flag enable-on-notice alert victory called-dying))
+           (logior! (-> this enemy-flags) (enemy-flag dangerous-backup))
+           (logclear! (-> this mask) (process-mask actor-pause))
+           (logior! (-> this enemy-flags) (enemy-flag chase-startup))
+           (set-vector! (-> this root scale) 1.0 1.0 1.0 1.0)
+           (go-hostile this)
            #t
            )
          )
        )
      )
     (else
-      ((method-of-type grunt general-event-handler) obj arg0 arg1 arg2 arg3)
+      ((method-of-type grunt general-event-handler) this arg0 arg1 arg2 arg3)
       )
     )
   )
 
 ;; definition for method 115 of type tanker-grunt
 ;; WARN: Return type mismatch vector vs none.
-(defmethod init-enemy! tanker-grunt ((obj tanker-grunt))
+(defmethod init-enemy! ((this tanker-grunt))
   "Common method called to initialize the enemy, typically sets up default field values and calls ancillary helper methods"
-  (set! (-> obj expensive-gnd-collide?) #t)
+  (set! (-> this expensive-gnd-collide?) #t)
   (let ((t9-0 (method-of-type grunt init-enemy!)))
-    (t9-0 obj)
+    (t9-0 this)
     )
-  (set-vector! (-> obj root scale) 0.0 0.0 0.0 1.0)
+  (set-vector! (-> this root scale) 0.0 0.0 0.0 1.0)
   (none)
   )
 
 ;; definition for method 124 of type tanker-grunt
 ;; WARN: Return type mismatch uint vs collide-spec.
-(defmethod enemy-method-124 tanker-grunt ((obj tanker-grunt))
+(defmethod enemy-method-124 ((this tanker-grunt))
   "TODO"
   (let ((t9-0 (method-of-type grunt enemy-method-124)))
-    (t9-0 obj)
+    (t9-0 this)
     )
-  (the-as collide-spec (when (-> obj expensive-gnd-collide?)
-                         (let ((v0-1 (logior (-> obj gnd-collide) 577)))
-                           (set! (-> obj gnd-collide) v0-1)
+  (the-as collide-spec (when (-> this expensive-gnd-collide?)
+                         (let ((v0-1 (logior (-> this gnd-collide) 577)))
+                           (set! (-> this gnd-collide) v0-1)
                            v0-1
                            )
                          )
@@ -988,11 +984,10 @@
   )
 
 ;; definition for method 70 of type tanker-grunt
-(defmethod go-hostile tanker-grunt ((obj tanker-grunt))
-  (set! (-> obj expensive-gnd-collide?) #f)
-  (enemy-method-124 obj)
-  ((method-of-type grunt go-hostile) obj)
-  (none)
+(defmethod go-hostile ((this tanker-grunt))
+  (set! (-> this expensive-gnd-collide?) #f)
+  (enemy-method-124 this)
+  ((method-of-type grunt go-hostile) this)
   )
 
 ;; failed to figure out what this is:
@@ -1005,7 +1000,6 @@
           )
       )
     (set-vector! (-> self root scale) 1.0 1.0 1.0 1.0)
-    (none)
     )
   :trans (behavior ()
     (let ((t9-0 (-> (method-of-type grunt jump) trans)))
@@ -1014,97 +1008,92 @@
           )
       )
     (let* ((f0-0 (-> self root scale x))
-           (f0-3 (seek f0-0 1.0 (* 1.5 (-> self clock seconds-per-frame))))
+           (f0-3 (seek f0-0 1.0 (* 1.5 (seconds-per-frame))))
            )
       (set-vector! (-> self root scale) f0-3 f0-3 f0-3 1.0)
       )
     0
-    (none)
     )
   )
 
 ;; definition of type tanker-juicer
 (deftype tanker-juicer (juicer)
-  ((expensive-gnd-collide? symbol  :offset-assert 848)
+  ((expensive-gnd-collide?  symbol)
    )
-  :heap-base #x2e0
-  :method-count-assert 185
-  :size-assert         #x354
-  :flag-assert         #xb902e00354
   )
 
 ;; definition for method 3 of type tanker-juicer
-(defmethod inspect tanker-juicer ((obj tanker-juicer))
-  (when (not obj)
-    (set! obj obj)
+(defmethod inspect ((this tanker-juicer))
+  (when (not this)
+    (set! this this)
     (goto cfg-4)
     )
   (let ((t9-0 (method-of-type juicer inspect)))
-    (t9-0 obj)
+    (t9-0 this)
     )
-  (format #t "~2Texpensive-gnd-collide?: ~A~%" (-> obj expensive-gnd-collide?))
+  (format #t "~2Texpensive-gnd-collide?: ~A~%" (-> this expensive-gnd-collide?))
   (label cfg-4)
-  obj
+  this
   )
 
 ;; definition for method 74 of type tanker-juicer
-(defmethod general-event-handler tanker-juicer ((obj tanker-juicer) (arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+(defmethod general-event-handler ((this tanker-juicer) (arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
   "Handles various events for the enemy
 @TODO - unsure if there is a pattern for the events and this should have a more specific name"
   (case arg2
     (('skip-intro)
-     (when (and (-> obj next-state) (let ((v1-4 (-> obj next-state name)))
-                                      (or (= v1-4 'ambush) (= v1-4 'dormant) (= v1-4 'jump) (= v1-4 'jump-blocked))
-                                      )
+     (when (and (-> this next-state) (let ((v1-4 (-> this next-state name)))
+                                       (or (= v1-4 'ambush) (= v1-4 'dormant) (= v1-4 'jump) (= v1-4 'jump-blocked))
+                                       )
                 )
-       (let ((s5-0 (-> obj intro-path)))
+       (let ((s5-0 (-> this intro-path)))
          (when (nonzero? s5-0)
            (let ((f30-0 (get-num-segments s5-0))
                  (s4-0 (new 'stack-no-clear 'vector))
                  )
-             (get-point-at-percent-along-path! s5-0 (-> obj root trans) f30-0 'interp)
+             (get-point-at-percent-along-path! s5-0 (-> this root trans) f30-0 'interp)
              (displacement-between-points-at-percent-normalized! s5-0 s4-0 f30-0)
-             (forward-up->quaternion (-> obj root quat) s4-0 *up-vector*)
+             (forward-up->quaternion (-> this root quat) s4-0 *up-vector*)
              )
-           (logclear! (-> obj enemy-flags) (enemy-flag enable-on-notice alert victory called-dying))
-           (logior! (-> obj enemy-flags) (enemy-flag dangerous-backup))
-           (logclear! (-> obj mask) (process-mask actor-pause))
-           (logior! (-> obj enemy-flags) (enemy-flag chase-startup))
-           (set-vector! (-> obj root scale) 1.0 1.0 1.0 1.0)
-           (go-hostile obj)
+           (logclear! (-> this enemy-flags) (enemy-flag enable-on-notice alert victory called-dying))
+           (logior! (-> this enemy-flags) (enemy-flag dangerous-backup))
+           (logclear! (-> this mask) (process-mask actor-pause))
+           (logior! (-> this enemy-flags) (enemy-flag chase-startup))
+           (set-vector! (-> this root scale) 1.0 1.0 1.0 1.0)
+           (go-hostile this)
            #t
            )
          )
        )
      )
     (else
-      ((method-of-type juicer general-event-handler) obj arg0 arg1 arg2 arg3)
+      ((method-of-type juicer general-event-handler) this arg0 arg1 arg2 arg3)
       )
     )
   )
 
 ;; definition for method 115 of type tanker-juicer
 ;; WARN: Return type mismatch vector vs none.
-(defmethod init-enemy! tanker-juicer ((obj tanker-juicer))
+(defmethod init-enemy! ((this tanker-juicer))
   "Common method called to initialize the enemy, typically sets up default field values and calls ancillary helper methods"
-  (set! (-> obj expensive-gnd-collide?) #t)
+  (set! (-> this expensive-gnd-collide?) #t)
   (let ((t9-0 (method-of-type juicer init-enemy!)))
-    (t9-0 obj)
+    (t9-0 this)
     )
-  (set-vector! (-> obj root scale) 0.0 0.0 0.0 1.0)
+  (set-vector! (-> this root scale) 0.0 0.0 0.0 1.0)
   (none)
   )
 
 ;; definition for method 124 of type tanker-juicer
 ;; WARN: Return type mismatch uint vs collide-spec.
-(defmethod enemy-method-124 tanker-juicer ((obj tanker-juicer))
+(defmethod enemy-method-124 ((this tanker-juicer))
   "TODO"
   (let ((t9-0 (method-of-type juicer enemy-method-124)))
-    (t9-0 obj)
+    (t9-0 this)
     )
-  (the-as collide-spec (when (-> obj expensive-gnd-collide?)
-                         (let ((v0-1 (logior (-> obj gnd-collide) 577)))
-                           (set! (-> obj gnd-collide) v0-1)
+  (the-as collide-spec (when (-> this expensive-gnd-collide?)
+                         (let ((v0-1 (logior (-> this gnd-collide) 577)))
+                           (set! (-> this gnd-collide) v0-1)
                            v0-1
                            )
                          )
@@ -1112,11 +1101,10 @@
   )
 
 ;; definition for method 70 of type tanker-juicer
-(defmethod go-hostile tanker-juicer ((obj tanker-juicer))
-  (set! (-> obj expensive-gnd-collide?) #f)
-  (enemy-method-124 obj)
-  ((method-of-type juicer go-hostile) obj)
-  (none)
+(defmethod go-hostile ((this tanker-juicer))
+  (set! (-> this expensive-gnd-collide?) #f)
+  (enemy-method-124 this)
+  ((method-of-type juicer go-hostile) this)
   )
 
 ;; failed to figure out what this is:
@@ -1129,7 +1117,6 @@
           )
       )
     (set-vector! (-> self root scale) 1.0 1.0 1.0 1.0)
-    (none)
     )
   :trans (behavior ()
     (let ((t9-0 (-> (method-of-type juicer jump) trans)))
@@ -1138,53 +1125,50 @@
           )
       )
     (let* ((f0-0 (-> self root scale x))
-           (f0-3 (seek f0-0 1.0 (* 1.15 (-> self clock seconds-per-frame))))
+           (f0-3 (seek f0-0 1.0 (* 1.15 (seconds-per-frame))))
            )
       (set-vector! (-> self root scale) f0-3 f0-3 f0-3 1.0)
       )
     0
-    (none)
     )
   )
 
 ;; definition of type tanker-container
 (deftype tanker-container (process-drawable)
-  ((root collide-shape  :override)
+  ((root  collide-shape :override)
    )
-  :heap-base #x50
-  :method-count-assert 23
-  :size-assert         #xc8
-  :flag-assert         #x17005000c8
+  (:state-methods
+    dormant
+    idle
+    )
   (:methods
-    (dormant () _type_ :state 20)
-    (idle () _type_ :state 21)
-    (tanker-container-method-22 (_type_) none 22)
+    (tanker-container-method-22 (_type_) none)
     )
   )
 
 ;; definition for method 3 of type tanker-container
-(defmethod inspect tanker-container ((obj tanker-container))
-  (when (not obj)
-    (set! obj obj)
+(defmethod inspect ((this tanker-container))
+  (when (not this)
+    (set! this this)
     (goto cfg-4)
     )
   (let ((t9-0 (method-of-type process-drawable inspect)))
-    (t9-0 obj)
+    (t9-0 this)
     )
   (label cfg-4)
-  obj
+  this
   )
 
 ;; definition for method 22 of type tanker-container
 ;; WARN: Return type mismatch (pointer process) vs none.
-(defmethod tanker-container-method-22 tanker-container ((obj tanker-container))
+(defmethod tanker-container-method-22 ((this tanker-container))
   (process-spawn
     simple-nav-sphere
     #x46733333
     (new 'static 'vector :x 1719500.8 :y 35225.6 :z 1837465.6 :w 1.0)
     #f
     -1
-    :to obj
+    :to this
     )
   (process-spawn
     simple-nav-sphere
@@ -1192,7 +1176,7 @@
     (new 'static 'vector :x 1730560.0 :y 35225.6 :z 1855488.0 :w 1.0)
     #f
     -1
-    :to obj
+    :to this
     )
   (process-spawn
     simple-nav-sphere
@@ -1200,7 +1184,7 @@
     (new 'static 'vector :x 1738752.0 :y 35225.6 :z 1884160.0 :w 1.0)
     #f
     -1
-    :to obj
+    :to this
     )
   (process-spawn
     simple-nav-sphere
@@ -1208,7 +1192,7 @@
     (new 'static 'vector :x 1751040.0 :y 35225.6 :z 1910374.4 :w 1.0)
     #f
     -1
-    :to obj
+    :to this
     )
   (process-spawn
     simple-nav-sphere
@@ -1216,7 +1200,7 @@
     (new 'static 'vector :x 1763737.6 :y 35225.6 :z 1936588.8 :w 1.0)
     #f
     -1
-    :to obj
+    :to this
     )
   (process-spawn
     simple-nav-sphere
@@ -1224,7 +1208,7 @@
     (new 'static 'vector :x 1853849.6 :y 35225.6 :z 1918566.4 :w 1.0)
     #f
     -1
-    :to obj
+    :to this
     )
   (process-spawn
     simple-nav-sphere
@@ -1232,7 +1216,7 @@
     (new 'static 'vector :x 1867776.0 :y 35225.6 :z 1934131.2 :w 1.0)
     #f
     -1
-    :to obj
+    :to this
     )
   (process-spawn
     simple-nav-sphere
@@ -1240,7 +1224,7 @@
     (new 'static 'vector :x 1962803.2 :y 35225.6 :z 1739980.8 :w 1.0)
     #f
     -1
-    :to obj
+    :to this
     )
   (process-spawn
     simple-nav-sphere
@@ -1248,7 +1232,7 @@
     (new 'static 'vector :x 1916108.8 :y 35225.6 :z 1705164.8 :w 1.0)
     #f
     -1
-    :to obj
+    :to this
     )
   (process-spawn
     simple-nav-sphere
@@ -1256,7 +1240,7 @@
     (new 'static 'vector :x 1863270.4 :y 35225.6 :z 1699430.4 :w 1.0)
     #f
     -1
-    :to obj
+    :to this
     )
   (process-spawn
     simple-nav-sphere
@@ -1264,7 +1248,7 @@
     (new 'static 'vector :x 1862860.8 :y 35225.6 :z 1814118.4 :w 1.0)
     #f
     -1
-    :to obj
+    :to this
     )
   (process-spawn
     simple-nav-sphere
@@ -1272,7 +1256,7 @@
     (new 'static 'vector :x 1810841.6 :y 35225.6 :z 1800192.0 :w 1.0)
     #f
     -1
-    :to obj
+    :to this
     )
   (process-spawn
     simple-nav-sphere
@@ -1280,7 +1264,7 @@
     (new 'static 'vector :x 1781350.4 :y 35225.6 :z 1774387.2 :w 1.0)
     #f
     -1
-    :to obj
+    :to this
     )
   (process-spawn
     simple-nav-sphere
@@ -1288,7 +1272,7 @@
     (new 'static 'vector :x 1771110.4 :y 35225.6 :z 1799782.4 :w 1.0)
     #f
     -1
-    :to obj
+    :to this
     )
   (process-spawn
     simple-nav-sphere
@@ -1296,7 +1280,7 @@
     (new 'static 'vector :x 1784217.6 :y 35225.6 :z 1828864.0 :w 1.0)
     #f
     -1
-    :to obj
+    :to this
     )
   (none)
   )
@@ -1327,9 +1311,8 @@
   :enter (behavior ()
     (logior! (-> self mask) (process-mask actor-pause))
     (logior! (-> self draw status) (draw-control-status no-draw))
-    (none)
     )
-  :code (the-as (function none :behavior tanker-container) sleep-code)
+  :code sleep-code
   )
 
 ;; failed to figure out what this is:
@@ -1343,21 +1326,20 @@
       (set! (-> v1-3 prim-core collide-with) (-> self root backup-collide-with))
       )
     (tanker-container-method-22 self)
-    (none)
     )
-  :code (the-as (function none :behavior tanker-container) sleep-code)
+  :code sleep-code
   )
 
 ;; definition for method 11 of type tanker-container
 ;; WARN: Return type mismatch object vs none.
-(defmethod init-from-entity! tanker-container ((obj tanker-container) (arg0 entity-actor))
+(defmethod init-from-entity! ((this tanker-container) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
 - stack size
 - collision information
 - loading the skeleton group / bones
 - sounds"
-  (let ((s4-0 (new 'process 'collide-shape obj (collide-list-enum usually-hit-by-player))))
+  (let ((s4-0 (new 'process 'collide-shape this (collide-list-enum usually-hit-by-player))))
     (let ((s3-0 (new 'process 'collide-shape-prim-group s4-0 (the-as uint 3) 0)))
       (set! (-> s4-0 total-prims) (the-as uint 4))
       (set! (-> s3-0 prim-core collide-as) (collide-spec obstacle))
@@ -1389,33 +1371,33 @@ This commonly includes things such as:
       (set! (-> s4-0 backup-collide-as) (-> v1-15 prim-core collide-as))
       (set! (-> s4-0 backup-collide-with) (-> v1-15 prim-core collide-with))
       )
-    (set! (-> obj root) s4-0)
+    (set! (-> this root) s4-0)
     )
-  (process-drawable-from-entity! obj arg0)
+  (process-drawable-from-entity! this arg0)
   (initialize-skeleton
-    obj
+    this
     (the-as skeleton-group (art-group-get-by-name *level* "skel-tanker-container" (the-as (pointer uint32) #f)))
     (the-as pair 0)
     )
   (ja-channel-set! 1)
-  (let ((s5-2 (-> obj skel root-channel 0)))
+  (let ((s5-2 (-> this skel root-channel 0)))
     (joint-control-channel-group-eval!
       s5-2
-      (the-as art-joint-anim (-> obj draw art-group data 2))
+      (the-as art-joint-anim (-> this draw art-group data 2))
       num-func-identity
       )
     (set! (-> s5-2 frame-num) 0.0)
     )
   (transform-post)
-  (let ((v1-26 (-> obj root root-prim)))
+  (let ((v1-26 (-> this root root-prim)))
     (set! (-> v1-26 prim-core collide-as) (collide-spec))
     (set! (-> v1-26 prim-core collide-with) (collide-spec))
     )
   0
-  (logclear! (-> obj mask) (process-mask actor-pause))
+  (logclear! (-> this mask) (process-mask actor-pause))
   (if (task-node-closed? (game-task-node city-intercept-tanker-introduction))
-      (go (method-of-object obj idle))
-      (go (method-of-object obj dormant))
+      (go (method-of-object this idle))
+      (go (method-of-object this dormant))
       )
   (none)
   )
@@ -1429,36 +1411,32 @@ This commonly includes things such as:
 
 ;; definition of type tanker-crash
 (deftype tanker-crash (process-drawable)
-  ((root collide-shape  :override)
+  ((root  collide-shape :override)
    )
-  :heap-base #x50
-  :method-count-assert 22
-  :size-assert         #xc8
-  :flag-assert         #x16005000c8
-  (:methods
-    (dormant () _type_ :state 20)
-    (idle () _type_ :state 21)
+  (:state-methods
+    dormant
+    idle
     )
   )
 
 ;; definition for method 3 of type tanker-crash
-(defmethod inspect tanker-crash ((obj tanker-crash))
-  (when (not obj)
-    (set! obj obj)
+(defmethod inspect ((this tanker-crash))
+  (when (not this)
+    (set! this this)
     (goto cfg-4)
     )
   (let ((t9-0 (method-of-type process-drawable inspect)))
-    (t9-0 obj)
+    (t9-0 this)
     )
   (label cfg-4)
-  obj
+  this
   )
 
 ;; failed to figure out what this is:
 (defstate dormant (tanker-crash)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('trigger)
        (go-virtual idle)
        )
@@ -1467,9 +1445,8 @@ This commonly includes things such as:
   :enter (behavior ()
     (logior! (-> self mask) (process-mask actor-pause))
     (logior! (-> self draw status) (draw-control-status no-draw))
-    (none)
     )
-  :code (the-as (function none :behavior tanker-crash) sleep-code)
+  :code sleep-code
   )
 
 ;; failed to figure out what this is:
@@ -1482,22 +1459,21 @@ This commonly includes things such as:
       (set! (-> v1-3 prim-core collide-with) (-> self root backup-collide-with))
       )
     (logclear! (-> self draw status) (draw-control-status no-draw))
-    (none)
     )
-  :code (the-as (function none :behavior tanker-crash) sleep-code)
-  :post (the-as (function none :behavior tanker-crash) ja-post)
+  :code sleep-code
+  :post ja-post
   )
 
 ;; definition for method 11 of type tanker-crash
 ;; WARN: Return type mismatch object vs none.
-(defmethod init-from-entity! tanker-crash ((obj tanker-crash) (arg0 entity-actor))
+(defmethod init-from-entity! ((this tanker-crash) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
 - stack size
 - collision information
 - loading the skeleton group / bones
 - sounds"
-  (let ((s4-0 (new 'process 'collide-shape obj (collide-list-enum usually-hit-by-player))))
+  (let ((s4-0 (new 'process 'collide-shape this (collide-list-enum usually-hit-by-player))))
     (let ((s3-0 (new 'process 'collide-shape-prim-group s4-0 (the-as uint 3) 0)))
       (set! (-> s4-0 total-prims) (the-as uint 4))
       (set! (-> s3-0 prim-core collide-as) (collide-spec obstacle))
@@ -1529,107 +1505,96 @@ This commonly includes things such as:
       (set! (-> s4-0 backup-collide-as) (-> v1-15 prim-core collide-as))
       (set! (-> s4-0 backup-collide-with) (-> v1-15 prim-core collide-with))
       )
-    (set! (-> obj root) s4-0)
+    (set! (-> this root) s4-0)
     )
-  (process-drawable-from-entity! obj arg0)
+  (process-drawable-from-entity! this arg0)
   (initialize-skeleton
-    obj
+    this
     (the-as skeleton-group (art-group-get-by-name *level* "skel-tanker-crash" (the-as (pointer uint32) #f)))
     (the-as pair 0)
     )
   (ja-channel-set! 1)
-  (let ((s5-2 (-> obj skel root-channel 0)))
+  (let ((s5-2 (-> this skel root-channel 0)))
     (joint-control-channel-group-eval!
       s5-2
-      (the-as art-joint-anim (-> obj draw art-group data 2))
+      (the-as art-joint-anim (-> this draw art-group data 2))
       num-func-identity
       )
     (set! (-> s5-2 frame-num) 0.0)
     )
   (transform-post)
-  (let ((v1-26 (-> obj root root-prim)))
+  (let ((v1-26 (-> this root root-prim)))
     (set! (-> v1-26 prim-core collide-as) (collide-spec))
     (set! (-> v1-26 prim-core collide-with) (collide-spec))
     )
   0
-  (logclear! (-> obj mask) (process-mask actor-pause))
+  (logclear! (-> this mask) (process-mask actor-pause))
   (if (task-node-closed? (game-task-node city-intercept-tanker-introduction))
-      (go (method-of-object obj idle))
-      (go (method-of-object obj dormant))
+      (go (method-of-object this idle))
+      (go (method-of-object this dormant))
       )
   (none)
   )
 
 ;; definition of type tanker-deadly
 (deftype tanker-deadly (process-drawable)
-  ((root        collide-shape         :override)
-   (track-joint int32                 :offset-assert 200)
-   (attack-id   uint32                :offset-assert 204)
-   (die-time    time-frame            :offset-assert 208)
-   (prev-pos    vector        :inline :offset-assert 224)
+  ((root         collide-shape :override)
+   (track-joint  int32)
+   (attack-id    uint32)
+   (die-time     time-frame)
+   (prev-pos     vector         :inline)
    )
-  :heap-base #x70
-  :method-count-assert 22
-  :size-assert         #xf0
-  :flag-assert         #x16007000f0
-  (:methods
-    (active () _type_ :state 20)
-    (die-fast () _type_ :state 21)
+  (:state-methods
+    active
+    die-fast
     )
   )
 
 ;; definition for method 3 of type tanker-deadly
-(defmethod inspect tanker-deadly ((obj tanker-deadly))
-  (when (not obj)
-    (set! obj obj)
+(defmethod inspect ((this tanker-deadly))
+  (when (not this)
+    (set! this this)
     (goto cfg-4)
     )
   (let ((t9-0 (method-of-type process-drawable inspect)))
-    (t9-0 obj)
+    (t9-0 this)
     )
-  (format #t "~2Ttrack-joint: ~D~%" (-> obj track-joint))
-  (format #t "~2Tattack-id: ~D~%" (-> obj attack-id))
-  (format #t "~2Tdie-time: ~D~%" (-> obj die-time))
-  (format #t "~2Tprev-pos: #<vector @ #x~X>~%" (-> obj prev-pos))
+  (format #t "~2Ttrack-joint: ~D~%" (-> this track-joint))
+  (format #t "~2Tattack-id: ~D~%" (-> this attack-id))
+  (format #t "~2Tdie-time: ~D~%" (-> this die-time))
+  (format #t "~2Tprev-pos: #<vector @ #x~X>~%" (-> this prev-pos))
   (label cfg-4)
-  obj
+  this
   )
 
 ;; definition for method 12 of type tanker-deadly
-(defmethod run-logic? tanker-deadly ((obj tanker-deadly))
+(defmethod run-logic? ((this tanker-deadly))
   #t
   )
 
 ;; failed to figure out what this is:
 (defstate active (tanker-deadly)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('touched)
-       (let ((a2-1 (-> event param 0))
+       (let ((a2-1 (-> block param 0))
              (v1-1 (new 'stack-no-clear 'vector))
              )
          (vector-! v1-1 (-> self root trans) (-> self prev-pos))
-         (let ((a1-4 (new 'stack-no-clear 'event-message-block)))
-           (set! (-> a1-4 from) (process->ppointer self))
-           (set! (-> a1-4 num-params) 2)
-           (set! (-> a1-4 message) 'attack)
-           (set! (-> a1-4 param 0) a2-1)
-           (let ((a2-2 (new 'static 'attack-info :mask (attack-info-mask mode id attacker-velocity damage knock))))
-             (set! (-> a2-2 id) (-> self attack-id))
-             (set! (-> a2-2 mode) 'eco-red)
-             (set! (-> a2-2 attacker-velocity quad) (-> v1-1 quad))
-             (set! (-> a2-2 damage) 2.0)
-             (set! (-> a2-2 knock) (the-as uint 2))
-             (set! (-> a1-4 param 1) (the-as uint a2-2))
+         (send-event
+           proc
+           'attack
+           a2-1
+           (static-attack-info
+             ((id (-> self attack-id)) (mode 'eco-red) (attacker-velocity v1-1) (damage 2.0) (knock (the-as uint 2)))
              )
-           (send-event-function proc a1-4)
            )
          )
        )
       )
     )
-  :code (the-as (function none :behavior tanker-deadly) sleep-code)
+  :code sleep-code
   :post (behavior ()
     (set! (-> self prev-pos quad) (-> self root trans quad))
     (let ((v1-1 (ppointer->process (-> self parent)))
@@ -1647,7 +1612,6 @@ This commonly includes things such as:
     (if (>= (current-time) (-> self die-time))
         (go-virtual die-fast)
         )
-    (none)
     )
   )
 
@@ -1656,7 +1620,6 @@ This commonly includes things such as:
   :virtual #t
   :code (behavior ()
     (cleanup-for-death self)
-    (none)
     )
   )
 

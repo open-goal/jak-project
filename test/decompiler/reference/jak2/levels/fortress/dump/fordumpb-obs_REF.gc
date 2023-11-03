@@ -3,29 +3,25 @@
 
 ;; definition of type fort-plat-orbit
 (deftype fort-plat-orbit (process-drawable)
-  ((sync sync-linear :inline :offset-assert 200)
+  ((sync  sync-linear  :inline)
    )
-  :heap-base #x60
-  :method-count-assert 21
-  :size-assert         #xd8
-  :flag-assert         #x15006000d8
-  (:methods
-    (idle () _type_ :state 20)
+  (:state-methods
+    idle
     )
   )
 
 ;; definition for method 3 of type fort-plat-orbit
-(defmethod inspect fort-plat-orbit ((obj fort-plat-orbit))
-  (when (not obj)
-    (set! obj obj)
+(defmethod inspect ((this fort-plat-orbit))
+  (when (not this)
+    (set! this this)
     (goto cfg-4)
     )
   (let ((t9-0 (method-of-type process-drawable inspect)))
-    (t9-0 obj)
+    (t9-0 this)
     )
-  (format #t "~2Tsync: #<sync-linear @ #x~X>~%" (-> obj sync))
+  (format #t "~2Tsync: #<sync-linear @ #x~X>~%" (-> this sync))
   (label cfg-4)
-  obj
+  this
   )
 
 ;; failed to figure out what this is:
@@ -37,7 +33,7 @@
 ;; failed to figure out what this is:
 (defstate idle (fort-plat-orbit)
   :virtual #t
-  :trans (the-as (function none :behavior fort-plat-orbit) rider-trans)
+  :trans rider-trans
   :code (behavior ()
     (until #f
       (let ((f30-0 (the float (ja-num-frames 0))))
@@ -59,21 +55,20 @@
       (suspend)
       )
     #f
-    (none)
     )
-  :post (the-as (function none :behavior fort-plat-orbit) rider-post)
+  :post rider-post
   )
 
 ;; definition for method 11 of type fort-plat-orbit
 ;; WARN: Return type mismatch object vs none.
-(defmethod init-from-entity! fort-plat-orbit ((obj fort-plat-orbit) (arg0 entity-actor))
+(defmethod init-from-entity! ((this fort-plat-orbit) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
 - stack size
 - collision information
 - loading the skeleton group / bones
 - sounds"
-  (let ((s4-0 (new 'process 'collide-shape-moving obj (collide-list-enum usually-hit-by-player))))
+  (let ((s4-0 (new 'process 'collide-shape-moving this (collide-list-enum usually-hit-by-player))))
     (set! (-> s4-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s4-0 reaction) cshape-reaction-default)
     (set! (-> s4-0 no-reaction)
@@ -128,17 +123,17 @@ This commonly includes things such as:
       (set! (-> s4-0 backup-collide-as) (-> v1-25 prim-core collide-as))
       (set! (-> s4-0 backup-collide-with) (-> v1-25 prim-core collide-with))
       )
-    (set! (-> obj root) s4-0)
+    (set! (-> this root) s4-0)
     )
-  (process-drawable-from-entity! obj arg0)
+  (process-drawable-from-entity! this arg0)
   (initialize-skeleton
-    obj
+    this
     (the-as skeleton-group (art-group-get-by-name *level* "skel-fort-plat-orbit" (the-as (pointer uint32) #f)))
     (the-as pair 0)
     )
-  (logclear! (-> obj mask) (process-mask actor-pause))
-  (set! (-> obj fact)
-        (new 'process 'fact-info obj (pickup-type eco-pill-random) (-> *FACT-bank* default-eco-pill-green-inc))
+  (logclear! (-> this mask) (process-mask actor-pause))
+  (set! (-> this fact)
+        (new 'process 'fact-info this (pickup-type eco-pill-random) (-> *FACT-bank* default-eco-pill-green-inc))
         )
   (let ((a1-23 (new 'stack-no-clear 'sync-info-params)))
     (let ((v1-34 0))
@@ -148,51 +143,47 @@ This commonly includes things such as:
       (set! (-> a1-23 sync-type) 'sync-linear)
       (set! (-> a1-23 sync-flags) (the-as sync-flags v1-34))
       )
-    (set! (-> a1-23 entity) (-> obj entity))
+    (set! (-> a1-23 entity) (-> this entity))
     (set! (-> a1-23 period) (the-as uint 6000))
     (set! (-> a1-23 percent) 0.0)
-    (initialize! (-> obj sync) a1-23)
+    (initialize! (-> this sync) a1-23)
     )
-  (let ((a0-48 (-> obj skel root-channel 0)))
-    (set! (-> a0-48 frame-group) (the-as art-joint-anim (-> obj draw art-group data 2)))
+  (let ((a0-48 (-> this skel root-channel 0)))
+    (set! (-> a0-48 frame-group) (the-as art-joint-anim (-> this draw art-group data 2)))
     (set! (-> a0-48 frame-num) 0.0)
-    (joint-control-channel-group! a0-48 (the-as art-joint-anim (-> obj draw art-group data 2)) num-func-identity)
+    (joint-control-channel-group! a0-48 (the-as art-joint-anim (-> this draw art-group data 2)) num-func-identity)
     )
   (transform-post)
-  (set! (-> obj sound)
-        (new 'process 'ambient-sound (static-sound-spec "plat-orbit" :fo-max 70) (-> obj root trans))
+  (set! (-> this sound)
+        (new 'process 'ambient-sound (static-sound-spec "plat-orbit" :fo-max 70) (-> this root trans))
         )
-  (go (method-of-object obj idle))
+  (go (method-of-object this idle))
   (none)
   )
 
 ;; definition of type fort-plat-shuttle-plat
 (deftype fort-plat-shuttle-plat (process-drawable)
-  ((path-pos   float  :offset-assert 200)
-   (path-speed float  :offset-assert 204)
+  ((path-pos    float)
+   (path-speed  float)
    )
-  :heap-base #x50
-  :method-count-assert 21
-  :size-assert         #xd0
-  :flag-assert         #x15005000d0
-  (:methods
-    (idle () _type_ :state 20)
+  (:state-methods
+    idle
     )
   )
 
 ;; definition for method 3 of type fort-plat-shuttle-plat
-(defmethod inspect fort-plat-shuttle-plat ((obj fort-plat-shuttle-plat))
-  (when (not obj)
-    (set! obj obj)
+(defmethod inspect ((this fort-plat-shuttle-plat))
+  (when (not this)
+    (set! this this)
     (goto cfg-4)
     )
   (let ((t9-0 (method-of-type process-drawable inspect)))
-    (t9-0 obj)
+    (t9-0 this)
     )
-  (format #t "~2Tpath-pos: ~f~%" (-> obj path-pos))
-  (format #t "~2Tpath-speed: ~f~%" (-> obj path-speed))
+  (format #t "~2Tpath-pos: ~f~%" (-> this path-pos))
+  (format #t "~2Tpath-speed: ~f~%" (-> this path-speed))
   (label cfg-4)
-  obj
+  this
   )
 
 ;; failed to figure out what this is:
@@ -204,16 +195,15 @@ This commonly includes things such as:
 ;; failed to figure out what this is:
 (defstate idle (fort-plat-shuttle-plat)
   :virtual #t
-  :trans (the-as (function none :behavior fort-plat-shuttle-plat) rider-trans)
+  :trans rider-trans
   :code (behavior ()
     (until (< 1.0 (-> self path-pos))
       (suspend)
       )
     (cleanup-for-death self)
-    (none)
     )
   :post (behavior ()
-    (+! (-> self path-pos) (* (-> self path-speed) (-> self clock seconds-per-frame)))
+    (+! (-> self path-pos) (* (-> self path-speed) (seconds-per-frame)))
     (let* ((f0-2 (-> self path-pos))
            (f30-0 (if (< 0.5 f0-2)
                       (- 1.0 f0-2)
@@ -230,7 +220,6 @@ This commonly includes things such as:
     (update-trans! (-> self sound) (-> self root trans))
     (update! (-> self sound))
     (rider-post)
-    (none)
     )
   )
 
@@ -284,46 +273,44 @@ This commonly includes things such as:
 
 ;; definition of type fort-plat-shuttle
 (deftype fort-plat-shuttle (process-drawable)
-  ((next-spawn-time time-frame          :offset-assert 200)
-   (sync            sync-linear :inline :offset-assert 208)
+  ((next-spawn-time  time-frame)
+   (sync             sync-linear  :inline)
    )
-  :heap-base #x60
-  :method-count-assert 23
-  :size-assert         #xe0
-  :flag-assert         #x17006000e0
+  (:state-methods
+    dormant
+    idle
+    )
   (:methods
-    (dormant () _type_ :state 20)
-    (idle () _type_ :state 21)
-    (fort-plat-shuttle-method-22 (_type_) symbol 22)
+    (fort-plat-shuttle-method-22 (_type_) symbol)
     )
   )
 
 ;; definition for method 3 of type fort-plat-shuttle
-(defmethod inspect fort-plat-shuttle ((obj fort-plat-shuttle))
-  (when (not obj)
-    (set! obj obj)
+(defmethod inspect ((this fort-plat-shuttle))
+  (when (not this)
+    (set! this this)
     (goto cfg-4)
     )
   (let ((t9-0 (method-of-type process-drawable inspect)))
-    (t9-0 obj)
+    (t9-0 this)
     )
-  (format #t "~2Tnext-spawn-time: ~D~%" (-> obj next-spawn-time))
-  (format #t "~2Tsync: #<sync-linear @ #x~X>~%" (-> obj sync))
+  (format #t "~2Tnext-spawn-time: ~D~%" (-> this next-spawn-time))
+  (format #t "~2Tsync: #<sync-linear @ #x~X>~%" (-> this sync))
   (label cfg-4)
-  obj
+  this
   )
 
 ;; failed to figure out what this is:
 (defstate dormant (fort-plat-shuttle)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('trigger)
        (go-virtual idle)
        )
       )
     )
-  :code (the-as (function none :behavior fort-plat-shuttle) sleep-code)
+  :code sleep-code
   )
 
 ;; failed to figure out what this is:
@@ -332,22 +319,20 @@ This commonly includes things such as:
   :enter (behavior ()
     (fort-plat-shuttle-method-22 self)
     (set! (-> self next-spawn-time) (get-timeframe-offset! (-> self sync) 0))
-    (none)
     )
   :trans (behavior ()
     (when (>= (current-time) (-> self next-spawn-time))
       (process-spawn fort-plat-shuttle-plat 0 :to self)
       (set! (-> self next-spawn-time) (get-timeframe-offset! (-> self sync) 0))
       )
-    (none)
     )
-  :code (the-as (function none :behavior fort-plat-shuttle) sleep-code)
+  :code sleep-code
   )
 
 ;; definition for method 22 of type fort-plat-shuttle
-(defmethod fort-plat-shuttle-method-22 fort-plat-shuttle ((obj fort-plat-shuttle))
-  (let* ((f28-0 (total-distance (-> obj path)))
-         (s5-0 (-> obj sync))
+(defmethod fort-plat-shuttle-method-22 ((this fort-plat-shuttle))
+  (let* ((f28-0 (total-distance (-> this path)))
+         (s5-0 (-> this sync))
          (f26-0 81.92)
          (a0-3 (- (current-time) (get-timeframe-offset! s5-0 0)))
          (v1-6 (-> s5-0 period))
@@ -356,7 +341,7 @@ This commonly includes things such as:
          )
     (while (>= 1.0 f30-0)
       (if (>= f30-0 0.0)
-          (process-spawn fort-plat-shuttle-plat f30-0 :to obj)
+          (process-spawn fort-plat-shuttle-plat f30-0 :to this)
           )
       (+! f30-0 f28-1)
       )
@@ -367,7 +352,7 @@ This commonly includes things such as:
 ;; definition for method 11 of type fort-plat-shuttle
 ;; INFO: Used lq/sq
 ;; WARN: Return type mismatch object vs none.
-(defmethod init-from-entity! fort-plat-shuttle ((obj fort-plat-shuttle) (arg0 entity-actor))
+(defmethod init-from-entity! ((this fort-plat-shuttle) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
 - stack size
@@ -375,15 +360,15 @@ This commonly includes things such as:
 - loading the skeleton group / bones
 - sounds"
   (local-vars (sv-64 int))
-  (set! (-> obj root) (new 'process 'trsqv))
-  (process-drawable-from-entity! obj arg0)
+  (set! (-> this root) (new 'process 'trsqv))
+  (process-drawable-from-entity! this arg0)
   (initialize-skeleton
-    obj
+    this
     (the-as skeleton-group (art-group-get-by-name *level* "skel-fort-plat-shuttle" (the-as (pointer uint32) #f)))
     (the-as pair 0)
     )
-  (set! (-> obj fact)
-        (new 'process 'fact-info obj (pickup-type eco-pill-random) (-> *FACT-bank* default-eco-pill-green-inc))
+  (set! (-> this fact)
+        (new 'process 'fact-info this (pickup-type eco-pill-random) (-> *FACT-bank* default-eco-pill-green-inc))
         )
   (let ((s4-1 (new 'stack-no-clear 'sync-info-params)))
     (let ((s3-1 1200))
@@ -406,14 +391,14 @@ This commonly includes things such as:
       (set! (-> s4-1 period) (the-as uint s3-1))
       )
     (set! (-> s4-1 percent) 0.0)
-    (initialize! (-> obj sync) s4-1)
+    (initialize! (-> this sync) s4-1)
     )
-  (set! (-> obj path) (new 'process 'path-control obj 'path 0.0 (the-as entity #f) #f))
-  (logior! (-> obj path flags) (path-control-flag display draw-line draw-point draw-text))
-  (logclear! (-> obj mask) (process-mask actor-pause))
-  (if (logtest? (actor-option user17) (-> obj fact options))
-      (go (method-of-object obj dormant))
-      (go (method-of-object obj idle))
+  (set! (-> this path) (new 'process 'path-control this 'path 0.0 (the-as entity #f) #f))
+  (logior! (-> this path flags) (path-control-flag display draw-line draw-point draw-text))
+  (logclear! (-> this mask) (process-mask actor-pause))
+  (if (logtest? (actor-option user17) (-> this fact options))
+      (go (method-of-object this dormant))
+      (go (method-of-object this idle))
       )
   (none)
   )
@@ -421,23 +406,19 @@ This commonly includes things such as:
 ;; definition of type fort-conveyor
 (deftype fort-conveyor (conveyor)
   ()
-  :heap-base #x80
-  :method-count-assert 28
-  :size-assert         #x100
-  :flag-assert         #x1c00800100
   )
 
 ;; definition for method 3 of type fort-conveyor
-(defmethod inspect fort-conveyor ((obj fort-conveyor))
-  (when (not obj)
-    (set! obj obj)
+(defmethod inspect ((this fort-conveyor))
+  (when (not this)
+    (set! this this)
     (goto cfg-4)
     )
   (let ((t9-0 (method-of-type conveyor inspect)))
-    (t9-0 obj)
+    (t9-0 this)
     )
   (label cfg-4)
-  obj
+  this
   )
 
 ;; failed to figure out what this is:
@@ -447,16 +428,16 @@ This commonly includes things such as:
               )
 
 ;; definition for method 22 of type fort-conveyor
-(defmethod get-art-group fort-conveyor ((obj fort-conveyor))
+(defmethod get-art-group ((this fort-conveyor))
   "@returns The respective [[art-group]] for the [[conveyor]]"
   (art-group-get-by-name *level* "skel-fort-conveyor" (the-as (pointer uint32) #f))
   )
 
 ;; definition for method 23 of type fort-conveyor
 ;; WARN: Return type mismatch collide-shape-moving vs none.
-(defmethod reset-root! fort-conveyor ((obj fort-conveyor))
+(defmethod reset-root! ((this fort-conveyor))
   "Re-initializes the `root` [[trsqv]]"
-  (let ((s5-0 (new 'process 'collide-shape-moving obj (collide-list-enum hit-by-player))))
+  (let ((s5-0 (new 'process 'collide-shape-moving this (collide-list-enum hit-by-player))))
     (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s5-0 reaction) cshape-reaction-default)
     (set! (-> s5-0 no-reaction)
@@ -478,41 +459,41 @@ This commonly includes things such as:
       (set! (-> s5-0 backup-collide-with) (-> v1-15 prim-core collide-with))
       )
     (set! (-> s5-0 rider-max-momentum) 8192.0)
-    (set! (-> obj root) s5-0)
+    (set! (-> this root) s5-0)
     )
   (none)
   )
 
 ;; definition for method 24 of type fort-conveyor
 ;; WARN: Return type mismatch vector vs none.
-(defmethod init! fort-conveyor ((obj fort-conveyor))
+(defmethod init! ((this fort-conveyor))
   "Initializes defaults for things like the `speed` and `belt-radius`"
-  (set! (-> obj belt-radius) 24576.0)
-  (set! (-> obj pull-y-threshold) 16384.0)
+  (set! (-> this belt-radius) 24576.0)
+  (set! (-> this pull-y-threshold) 16384.0)
   (cond
-    ((name= (-> obj name) "fort-conveyor-2")
-     (set! (-> obj speed) -21299.2)
-     (set-vector! (-> obj root scale) 1.0 1.0 0.9 1.0)
+    ((name= (-> this name) "fort-conveyor-2")
+     (set! (-> this speed) -21299.2)
+     (set-vector! (-> this root scale) 1.0 1.0 0.9 1.0)
      )
-    ((name= (-> obj name) "fort-conveyor-3")
-     (set! (-> obj speed) -18432.0)
-     (set-vector! (-> obj root scale) 1.0 1.0 0.79 1.0)
+    ((name= (-> this name) "fort-conveyor-3")
+     (set! (-> this speed) -18432.0)
+     (set-vector! (-> this root scale) 1.0 1.0 0.79 1.0)
      )
     )
   (none)
   )
 
 ;; definition for method 25 of type fort-conveyor
-(defmethod set-and-get-ambient-sound! fort-conveyor ((obj fort-conveyor))
+(defmethod set-and-get-ambient-sound! ((this fort-conveyor))
   "So long as [[actor-option::16]] is not set, fetch the [[ambient-sound]] for the [[conveyor]]
 and return it as well.  Otherwise, set it to `0`"
-  (let* ((s5-0 (get-point-in-path! (-> obj path) (new 'stack-no-clear 'vector) 0.0 'interp))
-         (v1-2 (get-point-in-path! (-> obj path) (new 'stack-no-clear 'vector) 1.0 'interp))
+  (let* ((s5-0 (get-point-in-path! (-> this path) (new 'stack-no-clear 'vector) 0.0 'interp))
+         (v1-2 (get-point-in-path! (-> this path) (new 'stack-no-clear 'vector) 1.0 'interp))
          (a3-3 (vector+! (new 'stack-no-clear 'vector) s5-0 v1-2))
          )
     (vector-float*! a3-3 a3-3 0.5)
     (let ((v0-2 (new 'process 'ambient-sound (static-sound-spec "fort-conveyor" :fo-max 50) a3-3)))
-      (set! (-> obj sound) v0-2)
+      (set! (-> this sound) v0-2)
       v0-2
       )
     )

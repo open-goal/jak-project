@@ -5,57 +5,59 @@
 ;; name in dgo: collide-frag
 ;; dgos: GAME, ENGINE
 
-
 ;; This file contains the drawable-tree implementation for collide-fragment
 
-(defmethod login drawable-tree-collide-fragment ((obj drawable-tree-collide-fragment))
-  obj
+;; DECOMP BEGINS
+
+(defmethod login ((this drawable-tree-collide-fragment))
+  this
   )
 
-(defmethod draw drawable-tree-collide-fragment ((obj drawable-tree-collide-fragment) (arg0 drawable-tree-collide-fragment) (arg1 display-frame))
+(defmethod draw ((this drawable-tree-collide-fragment) (arg0 drawable-tree-collide-fragment) (arg1 display-frame))
   "Note: this doesn't do anything (sadly)"
   (when *display-render-collision*
-   (dotimes (s4-0 (-> obj length))
-    (draw (-> obj data s4-0) (-> obj data s4-0) arg1)
+    (dotimes (s4-0 (-> this length))
+      (draw (-> this data s4-0) (-> this data s4-0) arg1)
+      )
     )
-   )
+  0
   (none)
   )
 
-(defmethod unpack-vis drawable-tree-collide-fragment ((obj drawable-tree-collide-fragment) (arg0 (pointer int8)) (arg1 (pointer int8)))
-  "We don't use vis, so just return the input."
+(defmethod unpack-vis ((this drawable-tree-collide-fragment) (arg0 (pointer int8)) (arg1 (pointer int8)))
   arg1
   )
 
-(defmethod collide-with-box drawable-tree-collide-fragment ((obj drawable-tree-collide-fragment) (arg0 int) (arg1 collide-list))
+(defmethod collide-with-box ((this drawable-tree-collide-fragment) (arg0 int) (arg1 collide-list))
   "Collide everything in the tree with a box. Length arg doesn't matter here."
-  (collide-with-box (-> obj data 0) (-> obj length) arg1)
+  (collide-with-box (-> this data-override) (-> this length) arg1)
   0
   (none)
   )
 
-(defmethod collide-y-probe drawable-tree-collide-fragment ((obj drawable-tree-collide-fragment) (arg0 int) (arg1 collide-list))
-  (collide-y-probe (-> obj data 0) (-> obj length) arg1)
+(defmethod collide-y-probe ((this drawable-tree-collide-fragment) (arg0 int) (arg1 collide-list))
+  (collide-y-probe (-> this data-override) (-> this length) arg1)
   0
   (none)
   )
 
-(defmethod collide-ray drawable-tree-collide-fragment ((obj drawable-tree-collide-fragment) (arg0 int) (arg1 collide-list))
-  (collide-ray (-> obj data 0) (-> obj length) arg1)
+(defmethod collide-ray ((this drawable-tree-collide-fragment) (arg0 int) (arg1 collide-list))
+  (collide-ray (-> this data-override) (-> this length) arg1)
+  0
   (none)
   )
 
-(defmethod mem-usage collide-fragment ((obj collide-fragment) (arg0 memory-usage-block) (arg1 int))
+(defmethod mem-usage ((this collide-fragment) (arg0 memory-usage-block) (arg1 int))
   (let ((s5-0 (if (logtest? arg1 1)
                   53
                   50
                   )
               )
-        (s4-0 (-> obj mesh))
+        (s4-0 (-> this mesh))
         )
     (set! (-> arg0 data s5-0 name) (symbol->string 'collide-fragment))
     (+! (-> arg0 data s5-0 count) 1)
-    (let ((v1-11 (+ (asize-of obj) (asize-of s4-0))))
+    (let ((v1-11 (+ (asize-of this) (asize-of s4-0))))
       (+! (-> arg0 data s5-0 used) v1-11)
       (+! (-> arg0 data s5-0 total) (logand -16 (+ v1-11 15)))
       )
@@ -77,57 +79,63 @@
     )
   )
 
-(defmethod login drawable-inline-array-collide-fragment ((obj drawable-inline-array-collide-fragment))
-  obj
+(defmethod login ((this drawable-inline-array-collide-fragment))
+  this
   )
 
-(defmethod draw collide-fragment ((obj collide-fragment) (arg0 collide-fragment) (arg1 display-frame))
+(defmethod draw ((this collide-fragment) (arg0 collide-fragment) (arg1 display-frame))
   ;; if we wanted to draw collide-fragment's we'd do it here.
-  ; (when (< (-> obj bsphere w) (meters 22.))
-  ;   (format 0 "sp: ~m : ~D~%" (-> obj bsphere w) (-> obj mesh poly-count))
-  ;   (let ((mins (vector-copy! (new-stack-vector0) (-> obj bsphere)))
-  ;         (maxs (vector-copy! (new-stack-vector0) (-> obj bsphere))))
+  ; (when (< (-> this bsphere w) (meters 22.))
+  ;   (format 0 "sp: ~m : ~D~%" (-> this bsphere w) (-> this mesh poly-count))
+  ;   (let ((mins (vector-copy! (new-stack-vector0) (-> this bsphere)))
+  ;         (maxs (vector-copy! (new-stack-vector0) (-> this bsphere))))
   ;     (dotimes (i 3)
-  ;       (-! (-> mins data i) (-> obj bsphere w))
-  ;       (+! (-> maxs data i) (-> obj bsphere w))
+  ;       (-! (-> mins data i) (-> this bsphere w))
+  ;       (+! (-> maxs data i) (-> this bsphere w))
   ;       )
   ;     (add-debug-box #t (bucket-id debug) mins maxs (new 'static 'rgba :r #x80 :a #x80)
   ;     )
-  ;   ;(add-debug-sphere #t (bucket-id debug) (-> obj bsphere) (-> obj bsphere w) (new 'static 'rgba :r #x80 :a #x80))
+  ;   ;(add-debug-sphere #t (bucket-id debug) (-> this bsphere) (-> this bsphere w) (new 'static 'rgba :r #x80 :a #x80))
   ;   )
-  ;; (add-debug-point #t (bucket-id debug) (-> obj bsphere))
+  ;; (add-debug-point #t (bucket-id debug) (-> this bsphere))
+  0
   (none)
   )
 
-(defmethod draw drawable-inline-array-collide-fragment ((obj drawable-inline-array-collide-fragment) (arg0 drawable-inline-array-collide-fragment) (arg1 display-frame))
-  (dotimes (s4-0 (-> obj length))
-   (let ((s3-0 (-> obj data s4-0)))
-    (if (sphere-cull (-> s3-0 bsphere))
-     (draw s3-0 s3-0 arg1)
-     )
+(defmethod draw ((this drawable-inline-array-collide-fragment)
+                (arg0 drawable-inline-array-collide-fragment)
+                (arg1 display-frame)
+                )
+  (dotimes (s4-0 (-> this length))
+    (let ((s3-0 (-> this data s4-0)))
+      (if (sphere-cull (-> s3-0 bsphere))
+          (draw s3-0 s3-0 arg1)
+          )
+      )
     )
-   )
-  (none)
-  )
-
-(defmethod collide-with-box drawable-inline-array-collide-fragment ((obj drawable-inline-array-collide-fragment) (arg0 int) (arg1 collide-list))
-  (collide-with-box (the-as collide-fragment (-> obj data)) (-> obj length) arg1)
   0
   (none)
   )
 
-(defmethod collide-y-probe drawable-inline-array-collide-fragment ((obj drawable-inline-array-collide-fragment) (arg0 int) (arg1 collide-list))
-  (collide-y-probe (the-as collide-fragment (-> obj data)) (-> obj length) arg1)
+(defmethod collide-with-box ((this drawable-inline-array-collide-fragment) (arg0 int) (arg1 collide-list))
+  (collide-with-box (the-as collide-fragment (-> this data)) (-> this length) arg1)
   0
   (none)
   )
 
-(defmethod collide-ray drawable-inline-array-collide-fragment ((obj drawable-inline-array-collide-fragment) (arg0 int) (arg1 collide-list))
-  (collide-ray (the-as collide-fragment (-> obj data)) (-> obj length) arg1)
+(defmethod collide-y-probe ((this drawable-inline-array-collide-fragment) (arg0 int) (arg1 collide-list))
+  (collide-y-probe (the-as collide-fragment (-> this data)) (-> this length) arg1)
+  0
   (none)
   )
 
-(defmethod mem-usage drawable-inline-array-collide-fragment ((obj drawable-inline-array-collide-fragment) (arg0 memory-usage-block) (arg1 int))
+(defmethod collide-ray ((this drawable-inline-array-collide-fragment) (arg0 int) (arg1 collide-list))
+  (collide-ray (the-as collide-fragment (-> this data)) (-> this length) arg1)
+  0
+  (none)
+  )
+
+(defmethod mem-usage ((this drawable-inline-array-collide-fragment) (arg0 memory-usage-block) (arg1 int))
   (set! (-> arg0 length) (max 1 (-> arg0 length)))
   (set! (-> arg0 data 0 name) (symbol->string 'drawable-group))
   (+! (-> arg0 data 0 count) 1)
@@ -135,8 +143,8 @@
     (+! (-> arg0 data 0 used) v1-7)
     (+! (-> arg0 data 0 total) (logand -16 (+ v1-7 15)))
     )
-  (dotimes (s3-0 (-> obj length))
-    (mem-usage (-> obj data s3-0) arg0 arg1)
+  (dotimes (s3-0 (-> this length))
+    (mem-usage (-> this data s3-0) arg0 arg1)
     )
-  obj
+  this
   )

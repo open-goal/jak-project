@@ -254,35 +254,31 @@
 
 ;; definition of type sig-shot
 (deftype sig-shot (projectile)
-  ((tail-pos vector :inline :offset-assert 480)
-   (hit-pos  vector :inline :offset-assert 496)
+  ((tail-pos  vector  :inline)
+   (hit-pos   vector  :inline)
    )
-  :heap-base #x180
-  :method-count-assert 40
-  :size-assert         #x200
-  :flag-assert         #x2801800200
   )
 
 ;; definition for method 3 of type sig-shot
-(defmethod inspect sig-shot ((obj sig-shot))
-  (when (not obj)
-    (set! obj obj)
+(defmethod inspect ((this sig-shot))
+  (when (not this)
+    (set! this this)
     (goto cfg-4)
     )
   (let ((t9-0 (method-of-type projectile inspect)))
-    (t9-0 obj)
+    (t9-0 this)
     )
-  (format #t "~2Ttail-pos: #<vector @ #x~X>~%" (-> obj tail-pos))
-  (format #t "~2Thit-pos: #<vector @ #x~X>~%" (-> obj hit-pos))
+  (format #t "~2Ttail-pos: #<vector @ #x~X>~%" (-> this tail-pos))
+  (format #t "~2Thit-pos: #<vector @ #x~X>~%" (-> this hit-pos))
   (label cfg-4)
-  obj
+  this
   )
 
 ;; definition for method 24 of type sig-shot
 ;; WARN: Return type mismatch int vs none.
-(defmethod draw-laser-sight sig-shot ((obj sig-shot))
+(defmethod draw-laser-sight ((this sig-shot))
   "TODO - confirm If applicable, draw the laser sight particles"
-  (draw-beam (-> *part-id-table* 655) (-> obj tail-pos) (-> obj starting-dir) #f #t)
+  (draw-beam (-> *part-id-table* 655) (-> this tail-pos) (-> this starting-dir) #f #t)
   0
   (none)
   )
@@ -290,7 +286,7 @@
 ;; definition for method 25 of type sig-shot
 ;; INFO: Used lq/sq
 ;; WARN: Return type mismatch int vs none.
-(defmethod spawn-impact-particles sig-shot ((obj sig-shot))
+(defmethod spawn-impact-particles ((this sig-shot))
   "Spawns associated particles with the projectile if applicable"
   (rlet ((acc :class vf)
          (vf0 :class vf)
@@ -300,8 +296,8 @@
          (vf7 :class vf)
          )
     (init-vf0-vector)
-    (let* ((v1-1 (-> obj root trans))
-           (a1-0 (-> obj tail-pos))
+    (let* ((v1-1 (-> this root trans))
+           (a1-0 (-> this tail-pos))
            (s5-1 (vector-! (new 'stack-no-clear 'vector) v1-1 a1-0))
            (gp-0 (new 'stack-no-clear 'vector))
            )
@@ -324,14 +320,7 @@
         (set! (-> *part-id-table* 652 init-specs 4 initial-valuef) f30-0)
         )
       (vector-normalize! s5-1 1.0)
-      (let ((t9-2 sp-launch-particles-var)
-            (a0-5 *sp-particle-system-2d*)
-            (a1-2 (-> *part-id-table* 653))
-            (a2-3 *launch-matrix*)
-            )
-        (set! (-> a2-3 trans quad) (-> gp-0 quad))
-        (t9-2 a0-5 a1-2 a2-3 (the-as sparticle-launch-state #f) (the-as sparticle-launch-control #f) 1.0)
-        )
+      (launch-particles (-> *part-id-table* 653) gp-0)
       (let ((f0-4 (vector-dot s5-1 (-> (camera-matrix) vector 2))))
         (when (< 0.0 f0-4)
           (let ((f0-5 (* f0-4 f0-4))
@@ -340,14 +329,7 @@
                 )
             (set! (-> *part-id-table* 654 init-specs 8 initial-valuef) (* f30-1 f0-5))
             (set! (-> *part-id-table* 654 init-specs 8 random-rangef) (* f28-0 f0-5))
-            (let ((t9-4 sp-launch-particles-var)
-                  (a0-6 *sp-particle-system-2d*)
-                  (a1-3 (-> *part-id-table* 654))
-                  (a2-4 *launch-matrix*)
-                  )
-              (set! (-> a2-4 trans quad) (-> gp-0 quad))
-              (t9-4 a0-6 a1-3 a2-4 (the-as sparticle-launch-state #f) (the-as sparticle-launch-control #f) 1.0)
-              )
+            (launch-particles (-> *part-id-table* 654) gp-0)
             (set! (-> *part-id-table* 654 init-specs 8 initial-valuef) f30-1)
             (set! (-> *part-id-table* 654 init-specs 8 random-rangef) f28-0)
             )
@@ -362,7 +344,7 @@
 ;; definition for method 26 of type sig-shot
 ;; INFO: Used lq/sq
 ;; WARN: Return type mismatch int vs none.
-(defmethod spawn-shell-particles sig-shot ((obj sig-shot))
+(defmethod spawn-shell-particles ((this sig-shot))
   "TODO - confirm"
   (let ((gp-0 (get-process *default-dead-pool* part-tracker #x4000)))
     (when gp-0
@@ -384,7 +366,7 @@
             (t2-0 #f)
             (t3-0 *launch-matrix*)
             )
-        (set! (-> t3-0 trans quad) (-> obj root trans quad))
+        (set! (-> t3-0 trans quad) (-> this root trans quad))
         ((the-as (function object object object object object object object object none) t9-2)
          a0-3
          a1-2
@@ -405,7 +387,7 @@
 
 ;; definition for method 28 of type sig-shot
 ;; WARN: Return type mismatch int vs none.
-(defmethod play-impact-sound sig-shot ((obj sig-shot) (arg0 projectile-options))
+(defmethod play-impact-sound ((this sig-shot) (arg0 projectile-options))
   (let ((v1-0 arg0))
     (cond
       ((zero? v1-0)
@@ -421,16 +403,16 @@
   )
 
 ;; definition for method 38 of type sig-shot
-(defmethod made-impact? sig-shot ((obj sig-shot))
+(defmethod made-impact? ((this sig-shot))
   "TODO - queries the collision cache, return true/false"
-  (let ((v1-0 (-> obj root))
+  (let ((v1-0 (-> this root))
         (t1-0 (new 'stack-no-clear 'collide-query))
         )
     (let ((a1-0 t1-0))
       (set! (-> a1-0 radius) (-> v1-0 root-prim prim-core world-sphere w))
       (set! (-> a1-0 collide-with) (-> v1-0 root-prim prim-core collide-with))
-      (set! (-> a1-0 ignore-process0) obj)
-      (set! (-> a1-0 ignore-process1) (ppointer->process (-> obj parent)))
+      (set! (-> a1-0 ignore-process0) this)
+      (set! (-> a1-0 ignore-process1) (ppointer->process (-> this parent)))
       (set! (-> a1-0 ignore-pat) (new 'static 'pat-surface :noentity #x1 :nojak #x1 :probe #x1 :noendlessfall #x1))
       (set! (-> a1-0 action-mask) (collide-action solid))
       )
@@ -470,9 +452,9 @@
 
 ;; definition for method 30 of type sig-shot
 ;; WARN: Return type mismatch int vs none.
-(defmethod init-proj-collision! sig-shot ((obj sig-shot))
+(defmethod init-proj-collision! ((this sig-shot))
   "Init the [[projectile]]'s [[collide-shape]]"
-  (let ((s5-0 (new 'process 'collide-shape-moving obj (collide-list-enum hit-by-player))))
+  (let ((s5-0 (new 'process 'collide-shape-moving this (collide-list-enum hit-by-player))))
     (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s5-0 reaction)
           (the-as (function control-info collide-query vector vector collide-status) cshape-reaction-just-move)
@@ -513,9 +495,9 @@
       )
     (set! (-> s5-0 max-iteration-count) (the-as uint 1))
     (set! (-> s5-0 event-self) 'touched)
-    (set! (-> obj root) s5-0)
+    (set! (-> this root) s5-0)
     )
-  (let ((v1-22 (-> obj parent)))
+  (let ((v1-22 (-> this parent)))
     (when (not (logtest? (-> (the-as sig (if v1-22
                                              (the-as sig (-> v1-22 0 self))
                                              )
@@ -525,7 +507,7 @@
                          (bot-flags attacked)
                          )
                )
-      (let* ((a0-16 (-> obj root))
+      (let* ((a0-16 (-> this root))
              (v1-27 (-> a0-16 root-prim))
              )
         (countdown (a0-17 (-> a0-16 total-prims))
@@ -535,7 +517,7 @@
         )
       )
     )
-  (set! (-> obj root pat-ignore-mask)
+  (set! (-> this root pat-ignore-mask)
         (new 'static 'pat-surface :noentity #x1 :nojak #x1 :probe #x1 :noproj #x1 :noendlessfall #x1)
         )
   (none)
@@ -544,12 +526,12 @@
 ;; definition for method 31 of type sig-shot
 ;; INFO: Used lq/sq
 ;; WARN: Return type mismatch int vs none.
-(defmethod init-proj-settings! sig-shot ((obj sig-shot))
+(defmethod init-proj-settings! ((this sig-shot))
   "Init relevant settings for the [[projectile]] such as gravity, speed, timeout, etc"
-  (set! (-> obj tail-pos quad) (-> obj root trans quad))
-  (set! (-> obj attack-mode) 'eco-yellow)
-  (set! (-> obj max-speed) 307200.0)
-  (set! (-> obj move) sig-shot-move)
-  (set! (-> obj timeout) (seconds 1.335))
+  (set! (-> this tail-pos quad) (-> this root trans quad))
+  (set! (-> this attack-mode) 'eco-yellow)
+  (set! (-> this max-speed) 307200.0)
+  (set! (-> this move) sig-shot-move)
+  (set! (-> this timeout) (seconds 1.335))
   (none)
   )

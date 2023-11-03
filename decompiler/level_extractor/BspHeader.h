@@ -163,10 +163,38 @@ struct DrawableInlineArrayUnknown : public DrawableInlineArray {
 
 // there's a tree for actors - but we don't do anything with it yet.
 
-struct EntityActor {};
+constexpr float kDefaultKeyFrame = -1000000000.f;
+
+struct Res {
+  std::string name;
+  float key_frame = -2;
+  std::string elt_type;
+  u16 count;
+  bool inlined = false;
+
+  std::vector<u8> inlined_storage;
+  std::vector<std::string> strings;
+  goos::Object script;
+};
+
+struct EntityActor {
+  Vector trans;
+  u32 aid = 0;
+  // nav mesh
+  std::string etype;
+  int task = 0;
+  u16 vis_id = 0;
+  Vector quat;
+
+  std::vector<Res> res_list;
+
+  void read_from_file(TypedRef ref,
+                      const decompiler::DecompilerTypeSystem& dts,
+                      DrawStats* stats,
+                      GameVersion version);
+};
 
 struct DrawableActor : public Drawable {
-  s16 id;
   Vector bsphere;
 
   EntityActor actor;
@@ -489,6 +517,8 @@ struct PrototypeBucketTie {
   math::Vector<u8, 4> jak2_tint_color;  // jak 2 only
   // todo collide-frag
   DrawableInlineArrayCollideFragment collide_frag;
+
+  std::vector<Ref> collide_hash_frags;  // jak 2 only
   // todo tie-colors
   // todo data
 
@@ -770,6 +800,24 @@ struct DrawableTreeInstanceShrub : public level_tools::DrawableTree {
 
 }  // namespace shrub_types
 
+struct DrawableInlineArrayActor {
+  std::vector<DrawableActor> drawable_actors;
+  void read_from_file(TypedRef ref,
+                      const decompiler::DecompilerTypeSystem& dts,
+                      DrawStats* stats,
+                      GameVersion version);
+};
+
+struct CollideHash {
+  Ref item_array;
+  int num_items = 0;
+
+  void read_from_file(TypedRef ref,
+                      const decompiler::DecompilerTypeSystem& dts,
+                      DrawStats* stats,
+                      GameVersion version);
+};
+
 ////////////////////////////////
 // Main Level Type (bsp-header)
 ////////////////////////////////
@@ -840,6 +888,7 @@ struct BspHeader {
   //  (nickname symbol :offset-assert 76)
   //  (vis-info level-vis-info 8 :offset-assert 80)
   //  (actors drawable-inline-array-actor :offset-assert 112)
+  DrawableInlineArrayActor actors;
   //  (cameras (array entity-camera) :offset-assert 116)
   //  (nodes (inline-array bsp-node) :offset-assert 120)
   //
@@ -857,10 +906,14 @@ struct BspHeader {
   //  (split-box-indices (pointer uint16) :offset-assert 176)
   //  (unk-data-8 uint32 55 :offset-assert 180)
 
+  // jak 2 only
+  CollideHash collide_hash;
+
   void read_from_file(const decompiler::LinkedObjectFile& file,
                       const decompiler::DecompilerTypeSystem& dts,
                       DrawStats* stats,
-                      GameVersion version);
+                      GameVersion version,
+                      bool only_read_texture_remap = false);
 
   std::string print(const PrintSettings& settings) const;
 };

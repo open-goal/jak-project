@@ -21,21 +21,20 @@
   (invalid 666)  ;; invalid status indicating a communication error.
   )
 
+;; DECOMP BEGINS
+
 ;; load command sent to the IOP to load a DGO.
 ;; The OVERLORD responds with the same message.
 (deftype load-dgo-msg (structure)
-  ((rsvd       uint16              :offset-assert 0) ;; unused?
-   (result     load-msg-result     :offset-assert 2) ;; status from OVERLORD
-   (b1         pointer             :offset-assert 4) ;; EE -> OVERLORD, first temp load buffer
-   (b2         pointer             :offset-assert 8) ;; EE -> OVERLORD, second temp load buffer
-   (bt         pointer             :offset-assert 12) ;; EE -> OVERLORD, location of heap
-   (name       uint128             :offset-assert 16) ;; EE -> OVERLORD, name of file.
-   (name-chars uint8   16          :offset  16)       ;; name of file (as chars)
-   (address    uint32              :offset   4) ;; OVERLORD -> EE, location of loaded file.
+  ((rsvd        uint16)
+   (result      load-msg-result)
+   (b1          pointer)
+   (b2          pointer)
+   (bt          pointer)
+   (name        uint128)
+   (name-chars  uint8   16 :overlay-at name)
+   (address     uint32     :overlay-at b1)
    )
-  :method-count-assert 9
-  :size-assert         #x20
-  :flag-assert         #x900000020
   )
 
 #|
@@ -52,17 +51,14 @@ struct RPC_Dgo_Cmd {
 ;; load commmand/response for loading a chunk of a file.
 ;; It can either be an entire file, or a section of a STR file.
 (deftype load-chunk-msg (structure)
-  ((rsvd     uint16          :offset-assert 0)  ;; unused?
-   (result   load-msg-result :offset-assert 2)  ;; only done or error.
-   (address  pointer         :offset-assert 4) ;; where to load to
-   (section  uint32          :offset-assert 8) ;; chunk ID, or -1 for the whole file.
-   (maxlen   uint32          :offset-assert 12) ;; maximum length to load.
-   (id       uint32          :offset 4)         ;; ? same as chunk
-   (basename uint8 48        :offset-assert 16)   ;; name of file to load.
+  ((rsvd      uint16)
+   (result    load-msg-result)
+   (address   pointer)
+   (section   uint32)
+   (maxlen    uint32)
+   (id        uint32  :overlay-at address)
+   (basename  uint8   48)
    )
-  :method-count-assert 9
-  :size-assert         #x40
-  :flag-assert         #x900000040
   )
 
 #|
@@ -79,14 +75,10 @@ struct RPC_Str_Cmd {
 
 ;; The header of a DGO file
 (deftype dgo-header (structure)
-  ((length   uint32     :offset-assert 0) ;; number of object files contained.
-   (rootname uint8 60 :offset-assert 4)
-   ;; added data field
-   (data uint8 :dynamic :offset-assert 64)
+  ((length    uint32)
+   (rootname  uint8  60)
+   (data      uint8  :dynamic)
    )
-  :method-count-assert 9
-  :size-assert         #x40
-  :flag-assert         #x900000040
   )
 
 #|

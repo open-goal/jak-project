@@ -3,21 +3,17 @@
 
 ;; definition of type aphid
 (deftype aphid (nav-enemy)
-  ((try int32  :offset-assert 400)
+  ((try  int32)
    )
-  :heap-base #x130
-  :method-count-assert 76
-  :size-assert         #x194
-  :flag-assert         #x4c01300194
   )
 
 ;; definition for method 3 of type aphid
-(defmethod inspect aphid ((obj aphid))
+(defmethod inspect ((this aphid))
   (let ((t9-0 (method-of-type nav-enemy inspect)))
-    (t9-0 obj)
+    (t9-0 this)
     )
-  (format #t "~T~Ttry: ~D~%" (-> obj try))
-  obj
+  (format #t "~T~Ttry: ~D~%" (-> this try))
+  this
   )
 
 ;; failed to figure out what this is:
@@ -42,17 +38,17 @@
   )
 
 ;; definition for method 43 of type aphid
-(defmethod attack-handler aphid ((obj aphid) (arg0 process) (arg1 event-message-block))
+(defmethod attack-handler ((this aphid) (arg0 process) (arg1 event-message-block))
   (cond
-    ((or (logtest? (-> obj nav-enemy-flags) (nav-enemy-flags navenmf5))
-         (= arg0 (ppointer->process (-> obj parent)))
+    ((or (logtest? (-> this nav-enemy-flags) (nav-enemy-flags navenmf5))
+         (= arg0 (ppointer->process (-> this parent)))
          )
      (send-event arg0 'get-attack-count 1)
-     (logclear! (-> obj mask) (process-mask actor-pause attackable))
-     (go (method-of-object obj nav-enemy-die))
+     (logclear! (-> this mask) (process-mask actor-pause attackable))
+     (go (method-of-object this nav-enemy-die))
      )
     (else
-      (touch-handler obj arg0 arg1)
+      (touch-handler this arg0 arg1)
       )
     )
   )
@@ -81,20 +77,20 @@
       (loop
         (ja-channel-push! 1 (seconds 0.05))
         (sound-play "aphid-spike-out")
-        (ja-no-eval :group! (-> self draw art-group data 6) :num! (seek!) :frame-num 0.0)
+        (ja-no-eval :group! aphid-lurker-spike-out-ja :num! (seek!) :frame-num 0.0)
         (until (ja-done? 0)
           (suspend)
           (ja :num! (seek!))
           )
         (aphid-invulnerable)
         (ja-channel-push! 1 (seconds 0.1))
-        (ja :group! (-> self draw art-group data 5))
+        (ja :group! aphid-lurker-walk-deadly-ja)
         (ja :num-func num-func-identity :frame-num 0.0)
         (let ((f30-0 (nav-enemy-rnd-float-range 0.9 1.1))
-              (s5-1 (-> *display* base-frame-counter))
+              (s5-1 (current-time))
               (s4-1 (- (the int (nav-enemy-rnd-float-range 900.0 1440.0)) gp-0))
               )
-          (until (>= (- (-> *display* base-frame-counter) s5-1) s4-1)
+          (until (time-elapsed? s5-1 s4-1)
             (suspend)
             (ja :num! (loop! f30-0))
             )
@@ -102,7 +98,7 @@
         (aphid-vulnerable)
         (ja-channel-push! 1 (seconds 0.05))
         (sound-play "aphid-spike-in")
-        (ja-no-eval :group! (-> self draw art-group data 6) :num! (seek! 0.0) :frame-num max)
+        (ja-no-eval :group! aphid-lurker-spike-out-ja :num! (seek! 0.0) :frame-num max)
         (until (ja-done? 0)
           (suspend)
           (ja :num! (seek! 0.0))
@@ -111,17 +107,16 @@
         (ja :group! (-> self draw art-group data (-> self nav-info run-anim)))
         (ja :num-func num-func-identity :frame-num 0.0)
         (let ((f30-1 (nav-enemy-rnd-float-range 0.9 1.1))
-              (s5-3 (-> *display* base-frame-counter))
+              (s5-3 (current-time))
               (s4-3 (+ (the int (nav-enemy-rnd-float-range 660.0 900.0)) gp-0))
               )
-          (until (>= (- (-> *display* base-frame-counter) s5-3) s4-3)
+          (until (time-elapsed? s5-3 s4-3)
             (suspend)
             (ja :num! (loop! f30-1))
             )
           )
         )
       )
-    (none)
     )
   )
 
@@ -135,7 +130,7 @@
                 (and (nav-enemy-player-vulnerable?) (nav-enemy-rnd-percent? 0.5))
                 )
         (ja-channel-push! 1 (seconds 0.1))
-        (ja-no-eval :group! (-> self draw art-group data 10) :num! (seek! max f30-0) :frame-num 0.0)
+        (ja-no-eval :group! aphid-lurker-win-ja :num! (seek! max f30-0) :frame-num 0.0)
         (until (ja-done? 0)
           (suspend)
           (ja :num! (seek! max f30-0))
@@ -146,7 +141,7 @@
           (logior! (-> self nav-enemy-flags) (nav-enemy-flags enable-travel))
           (ja-no-eval :num! (loop!))
           (ja-channel-push! 1 (seconds 0.2))
-          (ja :group! (-> self draw art-group data 4))
+          (ja :group! aphid-lurker-walk-ja)
           (ja :num-func num-func-identity :frame-num 0.0)
           (until (nav-enemy-facing-player? 1820.4445)
             (ja-blend-eval)
@@ -156,10 +151,10 @@
           (logclear! (-> self nav-enemy-flags) (nav-enemy-flags enable-travel))
           )
         (when (nav-enemy-rnd-percent? 0.3)
-          (if (not (ja-group? (-> self draw art-group data 10)))
+          (if (not (ja-group? aphid-lurker-win-ja))
               (ja-channel-push! 1 (seconds 0.1))
               )
-          (ja-no-eval :group! (-> self draw art-group data 10) :num! (seek! max f30-0) :frame-num 0.0)
+          (ja-no-eval :group! aphid-lurker-win-ja :num! (seek! max f30-0) :frame-num 0.0)
           (until (ja-done? 0)
             (suspend)
             (ja :num! (seek! max f30-0))
@@ -167,7 +162,6 @@
           )
         )
       )
-    (none)
     )
   )
 
@@ -186,7 +180,7 @@
                  )
                12743.111
                )
-        (ja-no-eval :group! (-> self draw art-group data 7) :num! (seek!) :frame-num 0.0)
+        (ja-no-eval :group! aphid-lurker-give-up-ja :num! (seek!) :frame-num 0.0)
         (until (ja-done? 0)
           (suspend)
           (ja :num! (seek!))
@@ -195,7 +189,7 @@
       )
     (logclear! (-> self nav flags) (nav-control-flags navcf17 navcf19))
     (nav-enemy-get-new-patrol-point)
-    (ja-no-eval :group! (-> self draw art-group data 8) :num! (seek!) :frame-num 0.0)
+    (ja-no-eval :group! aphid-lurker-give-up-hop-ja :num! (seek!) :frame-num 0.0)
     (until (ja-done? 0)
       (seek-to-point-toward-point!
         (-> self collide-info)
@@ -207,7 +201,6 @@
       (ja :num! (seek!))
       )
     (go-virtual nav-enemy-patrol)
-    (none)
     )
   )
 
@@ -268,8 +261,8 @@
 
 ;; definition for method 47 of type aphid
 ;; INFO: Return type mismatch int vs none.
-(defmethod initialize-collision aphid ((obj aphid))
-  (let ((s5-0 (new 'process 'collide-shape-moving obj (collide-list-enum usually-hit-by-player))))
+(defmethod initialize-collision ((this aphid))
+  (let ((s5-0 (new 'process 'collide-shape-moving this (collide-list-enum usually-hit-by-player))))
     (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s5-0 reaction) default-collision-reaction)
     (set! (-> s5-0 no-reaction)
@@ -286,7 +279,7 @@
     (set! (-> s5-0 nav-radius) 6144.0)
     (backup-collide-with-as s5-0)
     (set! (-> s5-0 max-iteration-count) (the-as uint 2))
-    (set! (-> obj collide-info) s5-0)
+    (set! (-> this collide-info) s5-0)
     )
   0
   (none)
@@ -294,12 +287,12 @@
 
 ;; definition for method 48 of type aphid
 ;; INFO: Return type mismatch int vs none.
-(defmethod nav-enemy-method-48 aphid ((obj aphid))
-  (initialize-skeleton obj *aphid-sg* '())
-  (init-defaults! obj *aphid-nav-enemy-info*)
-  (set! (-> obj neck up) (the-as uint 0))
-  (set! (-> obj neck nose) (the-as uint 1))
-  (set! (-> obj neck ear) (the-as uint 2))
+(defmethod nav-enemy-method-48 ((this aphid))
+  (initialize-skeleton this *aphid-sg* '())
+  (init-defaults! this *aphid-nav-enemy-info*)
+  (set! (-> this neck up) (the-as uint 0))
+  (set! (-> this neck nose) (the-as uint 1))
+  (set! (-> this neck ear) (the-as uint 2))
   0
   (none)
   )

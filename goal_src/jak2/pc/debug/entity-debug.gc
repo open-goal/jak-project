@@ -23,7 +23,7 @@
 (defun entity-inspect-draw ((inspect-info entity-debug-inspect))
   "draw text about an entity on screen"
   
-  (mlet ((LINE_HEIGHT 15))
+  (let ((LINE_HEIGHT (the int (ceil (* (get-debug-font-scale-factor) 15)))))
   (update-pad inspect-info 0)
   (let* ((e (-> inspect-info entity)) (name (res-lump-struct e 'name string)))
   (set! *debug-actor* (the string (and (type-type? (-> e type) entity-actor) (-> inspect-info show-actor-info) name)))
@@ -48,7 +48,7 @@
                                (bucket-id debug-no-zbuf1))
       ;; basic info, actor id, etc
       (draw-string-xy
-          (string-format "~3L~A~0L ~A~%tags: ~D size: ~D aid: #x~x level: ~S~%R1/L1 to scroll~%--------------------" (-> e type) name (length e) (asize-of e) (-> e aid) (aif (-> e extra) (-> it level name)))
+          (string-format "~3L~A~0L ~A~%tags: ~D size: ~D aid: #x~x level: ~S~%R1/L1 to scroll UP toggle display-long-info~%--------------------" (-> e type) name (length e) (asize-of e) (-> e aid) (aif (-> e extra) (-> it level name)))
           debug-buf 352 cur-y (font-color default) (font-flags shadow kerning middle))
       (+! cur-y (* LINE_HEIGHT 4))
       (cond
@@ -134,13 +134,13 @@
         ;;   (format *debug-temp-string* ")")
         ;;   )
         ;; these can be displayed visually with other tools.
-        ((and (= (-> e tag i name) 'visvol) (= (-> e tag i elt-count) 2) (= (-> e tag i elt-type) vector))
+        ((and (= (-> e tag i name) 'visvol) (= (-> e tag i elt-count) 2) (= (-> e tag i elt-type) vector) (not (-> inspect-info show-long-info)))
           (format *debug-temp-string* "display actor-vis!")
           )
-        ((and (= (-> e tag i name) 'path) (= (-> e tag i elt-type) vector))
+        ((and (= (-> e tag i name) 'path) (= (-> e tag i elt-type) vector) (not (-> inspect-info show-long-info)))
           (format *debug-temp-string* "display path marks!")
           )
-        ((and (= (-> e tag i name) 'vol) (= (-> e tag i elt-type) vector))
+        ((and (= (-> e tag i name) 'vol) (= (-> e tag i elt-type) vector) (not (-> inspect-info show-long-info)))
           (format *debug-temp-string* "display vol marks!")
           )
         ((and (= (-> e tag i name) 'art-name) (= (-> e tag i elt-count) 1) (type-type? (-> e type) entity-actor) (type-type? (-> (the-as entity-actor e) etype) part-spawner))
@@ -330,7 +330,7 @@
 
         ))
       ;; set max scroll based on how large the whole text was, ignore first 20 lines.
-      (set! (-> inspect-info scroll-y-max) (max 0 (+ -20 (/ (- cur-y begin-y) LINE_HEIGHT))))
+      (set! (-> inspect-info scroll-y-max) (max 0 (+ (the int (/ (the float -20) (get-debug-font-scale-factor))) (/ (- cur-y begin-y) LINE_HEIGHT))))
       
       )
   ))))

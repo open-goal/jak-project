@@ -4,18 +4,14 @@
 ;; definition of type assistant-villagec
 (deftype assistant-villagec (process-taskable)
   ()
-  :heap-base #x110
-  :method-count-assert 53
-  :size-assert         #x17c
-  :flag-assert         #x350110017c
   )
 
 ;; definition for method 3 of type assistant-villagec
-(defmethod inspect assistant-villagec ((obj assistant-villagec))
+(defmethod inspect ((this assistant-villagec))
   (let ((t9-0 (method-of-type process-taskable inspect)))
-    (t9-0 obj)
+    (t9-0 this)
     )
-  obj
+  this
   )
 
 ;; failed to figure out what this is:
@@ -27,10 +23,10 @@
 
 ;; definition for method 52 of type assistant-villagec
 ;; INFO: Return type mismatch int vs none.
-(defmethod process-taskable-method-52 assistant-villagec ((obj assistant-villagec))
-  (let ((v1-1 (-> obj draw shadow-ctrl)))
+(defmethod process-taskable-method-52 ((this assistant-villagec))
+  (let ((v1-1 (-> this draw shadow-ctrl)))
     (when v1-1
-      (let ((f0-0 (-> obj root-override trans y)))
+      (let ((f0-0 (-> this root trans y)))
         (let ((a0-2 v1-1))
           (set! (-> a0-2 settings bot-plane w) (- (+ -2048.0 f0-0)))
           )
@@ -44,21 +40,22 @@
   )
 
 ;; definition for method 48 of type assistant-villagec
-(defmethod draw-npc-shadow assistant-villagec ((obj assistant-villagec))
-  (-> obj draw shadow-ctrl)
+;; INFO: Return type mismatch object vs none.
+(defmethod draw-npc-shadow ((this assistant-villagec))
+  (-> this draw shadow-ctrl)
   (cond
-    ((and (-> obj draw shadow)
-          (zero? (-> obj draw cur-lod))
-          (logtest? (-> obj draw status) (draw-status was-drawn))
+    ((and (-> this draw shadow)
+          (zero? (-> this draw cur-lod))
+          (logtest? (-> this draw status) (draw-status was-drawn))
           )
-     (let ((v1-9 (-> obj draw shadow-ctrl)))
+     (let ((v1-9 (-> this draw shadow-ctrl)))
        (logclear! (-> v1-9 settings flags) (shadow-flags disable-draw))
        )
      0
-     (update-direction-from-time-of-day (-> obj draw shadow-ctrl))
+     (update-direction-from-time-of-day (-> this draw shadow-ctrl))
      )
     (else
-      (let ((v1-14 (-> obj draw shadow-ctrl)))
+      (let ((v1-14 (-> this draw shadow-ctrl)))
         (logior! (-> v1-14 settings flags) (shadow-flags disable-draw))
         )
       0
@@ -68,19 +65,19 @@
   )
 
 ;; definition for method 32 of type assistant-villagec
-(defmethod play-anim! assistant-villagec ((obj assistant-villagec) (arg0 symbol))
-  (set! (-> obj talk-message) (text-id press-to-talk-to-assistant))
+(defmethod play-anim! ((this assistant-villagec) (arg0 symbol))
+  (set! (-> this talk-message) (text-id press-to-talk-to-assistant))
   (cond
     ((= (get-task-status (game-task finalboss-movies)) (task-status need-introduction))
      (if arg0
          (format
            0
            "ERROR: <GMJ>: ~S playing anim for task status ~S~%"
-           (-> obj name)
-           (task-status->string (current-status (-> obj tasks)))
+           (-> this name)
+           (task-status->string (current-status (-> this tasks)))
            )
          )
-     (get-art-elem obj)
+     (get-art-elem this)
      )
     (else
       (new 'static 'spool-anim :name "assistant-village3-reminder" :index 4 :parts 3 :command-list '())
@@ -89,58 +86,58 @@
   )
 
 ;; definition for method 31 of type assistant-villagec
-(defmethod get-art-elem assistant-villagec ((obj assistant-villagec))
-  (-> obj draw art-group data 3)
+(defmethod get-art-elem ((this assistant-villagec))
+  (-> this draw art-group data 3)
   )
 
 ;; definition for method 39 of type assistant-villagec
-(defmethod should-display? assistant-villagec ((obj assistant-villagec))
+(defmethod should-display? ((this assistant-villagec))
   (and (task-closed? (game-task village3-button) (task-status need-introduction)) (not (sages-kidnapped?)))
   )
 
 ;; definition for method 47 of type assistant-villagec
 ;; INFO: Return type mismatch basic vs symbol.
-(defmethod target-above-threshold? assistant-villagec ((obj assistant-villagec))
+(defmethod target-above-threshold? ((this assistant-villagec))
   (the-as symbol (and *target* (< (-> (target-pos 0) z) -14245888.0)))
   )
 
 ;; definition for method 43 of type assistant-villagec
-(defmethod process-taskable-method-43 assistant-villagec ((obj assistant-villagec))
-  (when (ambient-control-method-10 (-> obj ambient) (new 'stack-no-clear 'vector) (seconds 30) 122880.0 obj)
+(defmethod process-taskable-method-43 ((this assistant-villagec))
+  (when (ambient-control-method-10 (-> this ambient) (new 'stack-no-clear 'vector) (seconds 30) 122880.0 this)
     (let ((f0-2 (rand-float-gen)))
       (cond
         ((< 0.85714287 f0-2)
-         (play-ambient (-> obj ambient) "ASSTLP31" #f (-> obj root-override trans))
+         (play-ambient (-> this ambient) "ASSTLP31" #f (-> this root trans))
          )
         ((< 0.71428573 f0-2)
-         (play-ambient (-> obj ambient) "ASSTLP32" #f (-> obj root-override trans))
+         (play-ambient (-> this ambient) "ASSTLP32" #f (-> this root trans))
          )
         ((< 0.5714286 f0-2)
-         (play-ambient (-> obj ambient) "ASSTLP33" #f (-> obj root-override trans))
+         (play-ambient (-> this ambient) "ASSTLP33" #f (-> this root trans))
          )
         ((< 0.42857143 f0-2)
          (let ((v1-16 (get-task-status (game-task lavatube-end))))
            (if (not (or (= v1-16 (task-status need-reward-speech)) (= v1-16 (task-status invalid))))
-               (play-ambient (-> obj ambient) "ASSTLP34" #f (-> obj root-override trans))
+               (play-ambient (-> this ambient) "ASSTLP34" #f (-> this root trans))
                )
            )
          )
         ((< 0.2857143 f0-2)
          (let ((v1-21 (get-task-status (game-task lavatube-end))))
            (if (not (or (= v1-21 (task-status need-reward-speech)) (= v1-21 (task-status invalid))))
-               (play-ambient (-> obj ambient) "ASSTLP35" #f (-> obj root-override trans))
+               (play-ambient (-> this ambient) "ASSTLP35" #f (-> this root trans))
                )
            )
          )
         ((< 0.14285715 f0-2)
          (let ((v1-26 (get-task-status (game-task lavatube-end))))
            (if (not (or (= v1-26 (task-status need-reward-speech)) (= v1-26 (task-status invalid))))
-               (play-ambient (-> obj ambient) "ASSTLP36" #f (-> obj root-override trans))
+               (play-ambient (-> this ambient) "ASSTLP36" #f (-> this root trans))
                )
            )
          )
         ((nonzero? (get-task-status (game-task citadel-sage-green)))
-         (play-ambient (-> obj ambient) "ASSTLP37" #f (-> obj root-override trans))
+         (play-ambient (-> this ambient) "ASSTLP37" #f (-> this root trans))
          )
         )
       )
@@ -161,8 +158,8 @@
         (suspend)
         (ja :num! (seek!))
         )
-      (let ((gp-0 (-> *display* base-frame-counter)))
-        (while (let ((s5-0 (-> *display* base-frame-counter))
+      (let ((gp-0 (current-time)))
+        (while (let ((s5-0 (current-time))
                      (f30-0 300.0)
                      (f28-0 0.16)
                      (f26-0 0.17000002)
@@ -177,8 +174,8 @@
         (suspend)
         (ja :num! (seek! (ja-aframe 0.0 0)))
         )
-      (let ((gp-3 (-> *display* base-frame-counter)))
-        (while (let ((s5-1 (-> *display* base-frame-counter))
+      (let ((gp-3 (current-time)))
+        (while (let ((s5-1 (current-time))
                      (f30-1 300.0)
                      (f28-1 0.16)
                      (f26-1 0.17000002)
@@ -189,14 +186,13 @@
           )
         )
       )
-    (none)
     )
   )
 
 ;; definition for method 11 of type assistant-villagec
-(defmethod init-from-entity! assistant-villagec ((obj assistant-villagec) (arg0 entity-actor))
-  (process-taskable-method-40 obj arg0 *assistant-village3-sg* 3 31 (new 'static 'vector :w 4096.0) 5)
-  (set! (-> obj tasks) (get-task-control (game-task assistant-village3)))
-  (process-taskable-method-42 obj)
+(defmethod init-from-entity! ((this assistant-villagec) (arg0 entity-actor))
+  (process-taskable-method-40 this arg0 *assistant-village3-sg* 3 31 (new 'static 'vector :w 4096.0) 5)
+  (set! (-> this tasks) (get-task-control (game-task assistant-village3)))
+  (process-taskable-method-42 this)
   (none)
   )

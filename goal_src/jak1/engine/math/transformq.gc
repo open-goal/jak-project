@@ -5,80 +5,58 @@
 ;; name in dgo: transformq
 ;; dgos: GAME, ENGINE
 
-(defmethod print transformq ((obj transformq))
+;; DECOMP BEGINS
+
+(defmethod print ((this transformq))
   "Print a transformq"
-  (format #t "#<transformq @ #x~X~%" obj)
-  (format #t "~T~Ttrans:~F ~F ~F ~F ~%"
-          (-> obj trans x)
-          (-> obj trans y)
-          (-> obj trans z)
-          (-> obj trans w)
-          )
-  (format #t "~T~Tquat:  ~F ~F ~F ~F ~%"
-          (-> obj rot x)
-          (-> obj rot y)
-          (-> obj rot z)
-          (-> obj rot w)
-          )
-  (format #t "~T~Tscale:~F ~F ~F ~F>"
-          (-> obj scale x)
-          (-> obj scale y)
-          (-> obj scale z)
-          (-> obj scale w)
-          )
-  obj
+  (format #t "#<transformq @ #x~X~%" this)
+  (format #t "~T~Ttrans:~F ~F ~F ~F ~%" (-> this trans x) (-> this trans y) (-> this trans z) (-> this trans w))
+  (format #t "~T~Tquat:  ~F ~F ~F ~F ~%" (-> this quat x) (-> this quat y) (-> this quat z) (-> this quat w))
+  (format #t "~T~Tscale:~F ~F ~F ~F>" (-> this scale x) (-> this scale y) (-> this scale z) (-> this scale w))
+  this
   )
 
-(defmethod get-quaternion trsqv ((obj trsqv))
+(defmethod get-quaternion ((this trsqv))
   "Get the rotation as a quaternion."
-  (-> obj quat)
+  (-> this quat)
   )
 
-(defmethod set-quaternion! trsqv ((obj trsqv) (arg0 quaternion))
+(defmethod set-quaternion! ((this trsqv) (arg0 quaternion))
   "Set the rotation as a quaternion"
-  (quaternion-copy! (get-quaternion obj) arg0)
+  (quaternion-copy! (get-quaternion this) arg0)
   )
 
-(defmethod rot->dir-targ! trsqv ((obj trsqv))
+(defmethod rot->dir-targ! ((this trsqv))
   "Set the dir-targ to our current orientation"
-  (quaternion-copy! (-> obj dir-targ) (get-quaternion obj))
+  (quaternion-copy! (-> this dir-targ) (get-quaternion this))
   )
 
-(defmethod y-angle trsqv ((obj trsqv))
+(defmethod y-angle ((this trsqv))
   "Get our current y-angle (y is up, so yaw)"
-  (quaternion-y-angle (get-quaternion obj))
+  (quaternion-y-angle (get-quaternion this))
   )
 
-(defmethod seek-toward-heading-vec! trsqv ((obj trsqv) (dir vector) (vel float) (frame-count time-frame))
+(defmethod seek-toward-heading-vec! ((this trsqv) (dir vector) (vel float) (frame-count time-frame))
   "Adjust the orientation to point along dir, only changing our yaw.
   The vel is a maximum velocity limit.
   The frame count is the time constant (first order).
   There's some logic to avoid rapidly changing directions"
-  (let* ((yaw-error (deg-diff (quaternion-y-angle (-> obj quat)) (vector-y-angle dir)))
+  (let* ((yaw-error (deg-diff (quaternion-y-angle (-> this quat)) (vector-y-angle dir)))
          ;; limit both on a max velocity, and a proportional to error term.
-         (yaw-limit (fmin (* vel (-> *display* seconds-per-frame))
-                          (/ (* 5.0 (fabs yaw-error)) (the float frame-count))
-                          )
-                    )
+         (yaw-limit (fmin (* vel (seconds-per-frame)) (/ (* 5.0 (fabs yaw-error)) (the float frame-count))))
          ;; saturate the yaw error
          (saturated-yaw (fmax (fmin yaw-error yaw-limit) (- yaw-limit)))
          )
-    (let ((old-diff (-> obj old-y-angle-diff)))
+    (let ((old-diff (-> this old-y-angle-diff)))
       (set! saturated-yaw
             (cond
               ;; I have no idea what this crazy thing is.
               ;; But it prevents changes in direction from happening too often.
               ((or (= old-diff 0.0)
                    (and (< 0.0 saturated-yaw) (< 0.0 old-diff))
-                   (or (and (< saturated-yaw 0.0) (< old-diff 0.0))
-                       (>=  (- (-> *display* base-frame-counter)
-                               (-> obj angle-change-time)
-                               )
-                           60
-                           )
-                       )
+                   (or (and (< saturated-yaw 0.0) (< old-diff 0.0)) (time-elapsed? (-> this angle-change-time) (seconds 0.2)))
                    )
-               (set! (-> obj angle-change-time) (-> *display* base-frame-counter))
+               (set-time! (-> this angle-change-time))
                saturated-yaw
                )
               (else
@@ -88,73 +66,62 @@
               )
             )
       )
-    (set! (-> obj old-y-angle-diff) saturated-yaw)
-    (let ((quat (get-quaternion obj)))
+    (set! (-> this old-y-angle-diff) saturated-yaw)
+    (let ((quat (get-quaternion this)))
       (quaternion-rotate-y! quat quat saturated-yaw)
       )
     )
   )
 
-(defmethod set-heading-vec! trsqv ((obj trsqv) (arg0 vector))
+(defmethod set-heading-vec! ((this trsqv) (arg0 vector))
   "Makes us look in the arg0 direction immediately.  Pitch will be unchanged."
-  (let ((s3-0 (get-quaternion obj)))
-   (forward-up-nopitch->quaternion
-    s3-0
-    (vector-normalize-copy! (new 'stack-no-clear 'vector) arg0 1.0) ;; forward is the given dir.
-    (vector-y-quaternion! (new 'stack-no-clear 'vector) s3-0)       ;; use the old up
-    )
-   )
-  )
-
-(defmethod seek-to-point-toward-point! trsqv ((obj trsqv) (arg0 vector) (arg1 float) (arg2 time-frame))
-  "Seek toward pointing toward arg0 from our current location."
-  (seek-toward-heading-vec!
-   obj
-   (vector-! (new 'stack-no-clear 'vector) arg0 (-> obj trans))
-   arg1
-   arg2
-   )
-  )
-
-(defmethod point-toward-point! trsqv ((obj trsqv) (arg0 vector))
-  "Immediately point toward arg0"
-  (let ((s3-0 (get-quaternion obj)))
+  (let ((s3-0 (get-quaternion this)))
     (forward-up-nopitch->quaternion
-     s3-0
-     (vector-normalize! (vector-! (new 'stack-no-clear 'vector) arg0 (-> obj trans)) 1.0)
-     (vector-y-quaternion! (new 'stack-no-clear 'vector) s3-0)
-     )
+      s3-0
+      (vector-normalize-copy! (new 'stack-no-clear 'vector) arg0 1.0) ;; forward is the given dir.
+      (vector-y-quaternion! (new 'stack-no-clear 'vector) s3-0)       ;; use the old up
+      )
     )
   )
 
+(defmethod seek-to-point-toward-point! ((this trsqv) (arg0 vector) (arg1 float) (arg2 time-frame))
+  "Seek toward pointing toward arg0 from our current location."
+  (seek-toward-heading-vec! this (vector-! (new 'stack-no-clear 'vector) arg0 (-> this trans)) arg1 arg2)
+  )
 
-(defmethod seek-toward-yaw-angle! trsqv ((obj trsqv) (yaw float) (vel float) (frame-count time-frame))
+(defmethod point-toward-point! ((this trsqv) (arg0 vector))
+  "Immediately point toward arg0"
+  (let ((s3-0 (get-quaternion this)))
+    (forward-up-nopitch->quaternion
+      s3-0
+      (vector-normalize! (vector-! (new 'stack-no-clear 'vector) arg0 (-> this trans)) 1.0)
+      (vector-y-quaternion! (new 'stack-no-clear 'vector) s3-0)
+      )
+    )
+  )
+
+(defmethod seek-toward-yaw-angle! ((this trsqv) (yaw float) (vel float) (frame-count time-frame))
   "Seek toward the given yaw angle."
-  (seek-toward-heading-vec!
-   obj
-   ;; make a vector that points toward +z (forward) rotated by the yaw.
-   (set-vector! (new 'stack-no-clear 'vector) (sin yaw) 0.0 (cos yaw) 1.0)
-   vel
-   frame-count
-   )
+  (seek-toward-heading-vec! this
+                            ;; make a vector that points toward +z (forward) rotated by the yaw.
+                            (set-vector! (new 'stack-no-clear 'vector) (sin yaw) 0.0 (cos yaw) 1.0)
+                            vel
+                            frame-count)
   )
 
-(defmethod set-yaw-angle-clear-roll-pitch! trsqv ((obj trsqv) (yaw float))
+(defmethod set-yaw-angle-clear-roll-pitch! ((this trsqv) (yaw float))
   "Immediately clear our roll and pitch and set yaw to the given angle"
-  (set-heading-vec-clear-roll-pitch!
-   obj
-   (set-vector! (new 'stack-no-clear 'vector) (sin yaw) 0.0 (cos yaw) 1.0)
-   )
+  (set-heading-vec-clear-roll-pitch! this (set-vector! (new 'stack-no-clear 'vector) (sin yaw) 0.0 (cos yaw) 1.0))
   )
 
-(defmethod set-roll-to-grav! trsqv ((obj trsqv) (arg0 float))
+(defmethod set-roll-to-grav! ((this trsqv) (arg0 float))
   "Set our roll so that our local down aligns with standard gravity"
-  (set-roll-to-grav-2! obj arg0)
+  (set-roll-to-grav-2! this arg0)
   )
 
-(defmethod set-roll-to-grav-2! trsqv ((obj trsqv) (arg0 float))
+(defmethod set-roll-to-grav-2! ((this trsqv) (arg0 float))
   "Set our roll so that our local down aligns with standard gravity"
-  (let* ((quat (get-quaternion obj)) ;; our orientation
+  (let* ((quat (get-quaternion this)) ;; our orientation
          (grav (-> *standard-dynamics* gravity-normal)) ;; dir of gravity
          (rot-mat (quaternion->matrix (new 'stack-no-clear 'matrix) quat)) ;; our orientation
          )
@@ -163,11 +130,7 @@
       ;; then updates the rotation matrix so that this is our y axis (up)
       (vector-normalize! (vector-flatten! (-> rot-mat vector 1) grav dir-z) 1.0)
       ;; fix up the rotation matrix x vector to make the matrix orthonormal again.
-      (vector-cross!
-       (-> rot-mat vector 0)
-       (-> rot-mat vector 1)
-       dir-z
-       )
+      (vector-cross! (the-as vector (-> rot-mat vector)) (-> rot-mat vector 1) dir-z)
       )
 
     ;; add some additional roll offset
@@ -180,35 +143,27 @@
     )
   )
 
-(defmethod roll-relative-to-gravity trsqv ((obj trsqv))
+(defmethod roll-relative-to-gravity ((this trsqv))
   "Get our roll, relative to 'down' from gravity"
-  (let* ((quat (get-quaternion obj))
+  (let* ((quat (get-quaternion this))
          (dir-z (vector-z-quaternion! (new 'stack-no-clear 'vector) quat))
          (dir-y (vector-y-quaternion! (new 'stack-no-clear 'vector) quat))
          (dir-grav (-> *standard-dynamics* gravity-normal))
          ;; project gravity to our z plane (kills pitch)
-         (grav-z-plane
-          (vector-normalize!
-           (vector-flatten! (new 'stack-no-clear 'vector) dir-grav dir-z)
-           1.0
-           )
-           )
+         (grav-z-plane (vector-normalize! (vector-flatten! (new 'stack-no-clear 'vector) dir-grav dir-z) 1.0))
          (grav-dot (vector-dot grav-z-plane dir-y))
          )
     ;; normally we'd just do (acos (vector-dot grav-z-plane y))
     ;; but this won't give us the correct sign if we're rolled negatively.
     ;; this check below manually inverts the acos as needed.
-    (if (< (vector-dot (vector-cross! (new 'stack-no-clear 'vector) grav-z-plane dir-y) dir-z)
-           0.0
-           )
+    (if (< (vector-dot (vector-cross! (new 'stack-no-clear 'vector) grav-z-plane dir-y) dir-z) 0.0)
         (- (acos grav-dot))
         (acos grav-dot)
         )
     )
   )
 
-
-(defmethod rotate-toward-orientation! trsqv ((obj trsqv) (target quaternion) (y-rate float) (z-rate float))
+(defmethod rotate-toward-orientation! ((this trsqv) (target quaternion) (y-rate float) (z-rate float))
   "Adjust our orientation toward target, subject to some rate limits.
    I don't think this is a very robust function and probably doesn't work right in cases
    where an axis flips by 180 degrees."
@@ -216,9 +171,9 @@
   ;; the basic idea is that we apply two rotations:
   ;; the first moves our y axis toward the desired's y axis, and the second moves
   ;; out z axis. These are both rate limited.
-  
+
   (local-vars (sv-96 vector))
-  (let ((quat (get-quaternion obj)))
+  (let ((quat (get-quaternion this)))
     (let ((temp-quat (new 'stack-no-clear 'quaternion)))
       (when (< 0.0 z-rate)
         (let ((s1-0 quaternion-from-two-vectors-max-angle!)
@@ -226,7 +181,7 @@
               )
           (set! sv-96 (vector-y-quaternion! (new 'stack-no-clear 'vector) quat))
           (let ((a2-1 (vector-y-quaternion! (new 'stack-no-clear 'vector) target))
-                (a3-1 (* z-rate (-> *display* seconds-per-frame)))
+                (a3-1 (* z-rate (seconds-per-frame)))
                 )
             (s1-0 s0-0 sv-96 a2-1 a3-1)
             )
@@ -235,11 +190,11 @@
         )
       (when (< 0.0 y-rate)
         (quaternion-from-two-vectors-max-angle!
-         temp-quat
-         (vector-z-quaternion! (new 'stack-no-clear 'vector) quat)
-         (vector-z-quaternion! (new 'stack-no-clear 'vector) target)
-         (* y-rate (-> *display* seconds-per-frame))
-         )
+          temp-quat
+          (vector-z-quaternion! (new 'stack-no-clear 'vector) quat)
+          (vector-z-quaternion! (new 'stack-no-clear 'vector) target)
+          (* y-rate (seconds-per-frame))
+          )
         (quaternion-normalize! (quaternion*! quat temp-quat quat))
         )
       )
@@ -247,25 +202,22 @@
     )
   )
 
-(defmethod set-heading-vec-clear-roll-pitch! trsqv ((obj trsqv) (arg0 vector))
+(defmethod set-heading-vec-clear-roll-pitch! ((this trsqv) (arg0 vector))
   "Set our rotation to point along the given heading, with no roll or pitch."
   (forward-up->quaternion
-   (get-quaternion obj)
-   (vector-normalize-copy! (new 'stack-no-clear 'vector) arg0 1.0)
-   (new 'static 'vector :y 1.0 :w 1.0)
-   )
+    (get-quaternion this)
+    (vector-normalize-copy! (new 'stack-no-clear 'vector) arg0 1.0)
+    (new 'static 'vector :y 1.0 :w 1.0)
+    )
   )
 
-(defmethod point-toward-point-clear-roll-pitch! trsqv ((obj trsqv) (arg0 vector))
+(defmethod point-toward-point-clear-roll-pitch! ((this trsqv) (arg0 vector))
   "Set our orientation to point toward arg0, clearing roll and pitch"
   (forward-up->quaternion
-   (get-quaternion obj)
-   (vector-normalize!
-    (vector-! (new 'stack-no-clear 'vector) arg0 (-> obj trans))
-    1.0
+    (get-quaternion this)
+    (vector-normalize! (vector-! (new 'stack-no-clear 'vector) arg0 (-> this trans)) 1.0)
+    (new 'static 'vector :y 1.0 :w 1.0)
     )
-   (new 'static 'vector :y 1.0 :w 1.0)
-   )
   )
 
 (defun transformq-copy! ((arg0 transformq) (arg1 transformq))
@@ -286,32 +238,31 @@
          (vf4 :class vf)
          (vf5 :class vf)
          )
-   (.lvf vf0 (new 'static 'vector :x 0.0 :y 0.0 :z 0.0 :w 1.0))
-   (quaternion->matrix arg0 (the-as quaternion (-> arg1 rot)))
-   (cond
-    (#f
-     (set! (-> arg0 vector 3 quad) (-> arg1 trans quad))
-     )
-    (else
-     ;; apply scale and copy trans
-     (.lvf vf1 (&-> arg1 scale quad))
-     (.lvf vf2 (&-> arg1 trans quad))
-     (.lvf vf3 (&-> arg0 vector 0 quad))
-     (.lvf vf4 (&-> arg0 vector 1 quad))
-     (.lvf vf5 (&-> arg0 vector 2 quad))
-     (.mov.vf vf2 vf0 :mask #b1000) ;; don't forget the 1.
-     (.mul.x.vf vf3 vf3 vf1)
-     (.mul.y.vf vf4 vf4 vf1)
-     (.mul.z.vf vf5 vf5 vf1)
-     (.svf (&-> arg0 vector 3 quad) vf2)
-     (.svf (&-> arg0 vector 0 quad) vf3)
-     (.svf (&-> arg0 vector 1 quad) vf4)
-     (.svf (&-> arg0 vector 2 quad) vf5)
-     (.mov v1-1 vf5)
-     )
+    (init-vf0-vector)
+    (quaternion->matrix arg0 (-> arg1 quat))
+    (cond
+      (#f
+        (set! (-> arg0 vector 3 quad) (-> arg1 trans quad))
+        )
+      (else
+        (.lvf vf1 (&-> arg1 scale quad))
+        (.lvf vf2 (&-> arg1 trans quad))
+        (.lvf vf3 (&-> arg0 vector 0 quad))
+        (.lvf vf4 (&-> arg0 vector 1 quad))
+        (.lvf vf5 (&-> arg0 vector 2 quad))
+        (.mov.vf vf2 vf0 :mask #b1000)
+        (.mul.x.vf vf3 vf3 vf1)
+        (.mul.y.vf vf4 vf4 vf1)
+        (.mul.z.vf vf5 vf5 vf1)
+        (.svf (&-> arg0 vector 3 quad) vf2)
+        (.svf (&-> arg0 vector 0 quad) vf3)
+        (.svf (&-> arg0 vector 1 quad) vf4)
+        (.svf (&-> arg0 vector 2 quad) vf5)
+        (.mov v1-1 vf5)
+        )
+      )
+    arg0
     )
-   arg0
-   )
   )
 
 (defun matrix<-no-trans-transformq! ((arg0 matrix) (arg1 transformq))
@@ -323,22 +274,22 @@
          (vf4 :class vf)
          (vf5 :class vf)
          )
-   (.lvf vf0 (new 'static 'vector :x 0.0 :y 0.0 :z 0.0 :w 1.0))
-   (quaternion->matrix arg0 (the-as quaternion (-> arg1 rot)))
-   (.lvf vf1 (&-> arg1 scale quad))
-   (.lvf vf3 (&-> arg0 vector 0 quad))
-   (.lvf vf4 (&-> arg0 vector 1 quad))
-   (.lvf vf5 (&-> arg0 vector 2 quad))
-   (.mov.vf vf2 vf0) ;; trans = 0,0,0,1
-   (.mul.x.vf vf3 vf3 vf1)
-   (.mul.y.vf vf4 vf4 vf1)
-   (.mul.z.vf vf5 vf5 vf1)
-   (.svf (&-> arg0 vector 3 quad) vf2)
-   (.svf (&-> arg0 vector 0 quad) vf3)
-   (.svf (&-> arg0 vector 1 quad) vf4)
-   (.svf (&-> arg0 vector 2 quad) vf5)
-   arg0
-   )
+    (init-vf0-vector)
+    (quaternion->matrix arg0 (-> arg1 quat))
+    (.lvf vf1 (&-> arg1 scale quad))
+    (.lvf vf3 (&-> arg0 vector 0 quad))
+    (.lvf vf4 (&-> arg0 vector 1 quad))
+    (.lvf vf5 (&-> arg0 vector 2 quad))
+    (.mov.vf vf2 vf0)
+    (.mul.x.vf vf3 vf3 vf1)
+    (.mul.y.vf vf4 vf4 vf1)
+    (.mul.z.vf vf5 vf5 vf1)
+    (.svf (&-> arg0 vector 3 quad) vf2)
+    (.svf (&-> arg0 vector 0 quad) vf3)
+    (.svf (&-> arg0 vector 1 quad) vf4)
+    (.svf (&-> arg0 vector 2 quad) vf5)
+    arg0
+    )
   )
 
 (defun matrix<-transformq+trans! ((arg0 matrix) (arg1 transformq) (arg2 vector))
@@ -352,28 +303,28 @@
          (vf5 :class vf)
          (vf6 :class vf)
          )
-   (.lvf vf0 (new 'static 'vector :x 0.0 :y 0.0 :z 0.0 :w 1.0))
-   (quaternion->matrix arg0 (the-as quaternion (-> arg1 rot)))
-   (.lvf vf1 (&-> arg1 scale quad))
-   (.lvf vf2 (&-> arg1 trans quad))
-   (.lvf vf6 (&-> arg2 quad))
-   (.lvf vf3 (&-> arg0 vector 0 quad))
-   (.lvf vf4 (&-> arg0 vector 1 quad))
-   (.lvf vf5 (&-> arg0 vector 2 quad))
-   (.mov.vf vf2 vf0 :mask #b1000)
-   (.mul.x.vf vf3 vf3 vf1)
-   (.mul.y.vf vf4 vf4 vf1)
-   (.mul.z.vf vf5 vf5 vf1)
-   (.mul.x.vf acc vf3 vf6)
-   (.add.mul.y.vf acc vf4 vf6 acc)
-   (.add.mul.z.vf acc vf5 vf6 acc)
-   (.add.mul.w.vf vf2 vf2 vf0 acc :mask #b111)
-   (.svf (&-> arg0 vector 3 quad) vf2)
-   (.svf (&-> arg0 vector 0 quad) vf3)
-   (.svf (&-> arg0 vector 1 quad) vf4)
-   (.svf (&-> arg0 vector 2 quad) vf5)
-   arg0
-   )
+    (init-vf0-vector)
+    (quaternion->matrix arg0 (-> arg1 quat))
+    (.lvf vf1 (&-> arg1 scale quad))
+    (.lvf vf2 (&-> arg1 trans quad))
+    (.lvf vf6 (&-> arg2 quad))
+    (.lvf vf3 (&-> arg0 vector 0 quad))
+    (.lvf vf4 (&-> arg0 vector 1 quad))
+    (.lvf vf5 (&-> arg0 vector 2 quad))
+    (.mov.vf vf2 vf0 :mask #b1000)
+    (.mul.x.vf vf3 vf3 vf1)
+    (.mul.y.vf vf4 vf4 vf1)
+    (.mul.z.vf vf5 vf5 vf1)
+    (.mul.x.vf acc vf3 vf6)
+    (.add.mul.y.vf acc vf4 vf6 acc)
+    (.add.mul.z.vf acc vf5 vf6 acc)
+    (.add.mul.w.vf vf2 vf2 vf0 acc :mask #b111)
+    (.svf (&-> arg0 vector 3 quad) vf2)
+    (.svf (&-> arg0 vector 0 quad) vf3)
+    (.svf (&-> arg0 vector 1 quad) vf4)
+    (.svf (&-> arg0 vector 2 quad) vf5)
+    arg0
+    )
   )
 
 (defun matrix<-transformq+world-trans! ((arg0 matrix) (arg1 transformq) (arg2 vector))
@@ -386,25 +337,25 @@
          (vf5 :class vf)
          (vf6 :class vf)
          )
-   (.lvf vf0 (new 'static 'vector :x 0.0 :y 0.0 :z 0.0 :w 1.0))
-   (quaternion->matrix arg0 (the-as quaternion (-> arg1 rot)))
-   (.lvf vf1 (&-> arg1 scale quad))
-   (.lvf vf2 (&-> arg1 trans quad))
-   (.lvf vf6 (&-> arg2 quad))
-   (.lvf vf3 (&-> arg0 vector 0 quad))
-   (.lvf vf4 (&-> arg0 vector 1 quad))
-   (.lvf vf5 (&-> arg0 vector 2 quad))
-   (.mov.vf vf2 vf0 :mask #b1000)
-   (.mul.x.vf vf3 vf3 vf1)
-   (.mul.y.vf vf4 vf4 vf1)
-   (.mul.z.vf vf5 vf5 vf1)
-   (.add.vf vf2 vf2 vf6 :mask #b111)
-   (.svf (&-> arg0 vector 3 quad) vf2)
-   (.svf (&-> arg0 vector 0 quad) vf3)
-   (.svf (&-> arg0 vector 1 quad) vf4)
-   (.svf (&-> arg0 vector 2 quad) vf5)
-   arg0
-   )
+    (init-vf0-vector)
+    (quaternion->matrix arg0 (-> arg1 quat))
+    (.lvf vf1 (&-> arg1 scale quad))
+    (.lvf vf2 (&-> arg1 trans quad))
+    (.lvf vf6 (&-> arg2 quad))
+    (.lvf vf3 (&-> arg0 vector 0 quad))
+    (.lvf vf4 (&-> arg0 vector 1 quad))
+    (.lvf vf5 (&-> arg0 vector 2 quad))
+    (.mov.vf vf2 vf0 :mask #b1000)
+    (.mul.x.vf vf3 vf3 vf1)
+    (.mul.y.vf vf4 vf4 vf1)
+    (.mul.z.vf vf5 vf5 vf1)
+    (.add.vf vf2 vf2 vf6 :mask #b111)
+    (.svf (&-> arg0 vector 3 quad) vf2)
+    (.svf (&-> arg0 vector 0 quad) vf3)
+    (.svf (&-> arg0 vector 1 quad) vf4)
+    (.svf (&-> arg0 vector 2 quad) vf5)
+    arg0
+    )
   )
 
 (defun matrix<-parented-transformq! ((arg0 matrix) (arg1 transformq) (arg2 vector))

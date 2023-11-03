@@ -7,13 +7,8 @@
 
 ;; DECOMP BEGINS
 
-
 (deftype bird-lady (process-taskable)
   ()
-  :heap-base #x110
-  :method-count-assert 53
-  :size-assert         #x17c
-  :flag-assert         #x350110017c
   )
 
 
@@ -23,10 +18,10 @@
               :shadow bird-lady-shadow-mg
               )
 
-(defmethod process-taskable-method-52 bird-lady ((obj bird-lady))
-  (let ((v1-1 (-> obj draw shadow-ctrl)))
+(defmethod process-taskable-method-52 ((this bird-lady))
+  (let ((v1-1 (-> this draw shadow-ctrl)))
     (when v1-1
-      (let ((f0-0 (-> obj root-override trans y)))
+      (let ((f0-0 (-> this root trans y)))
         (let ((a0-2 v1-1))
           (set! (-> a0-2 settings bot-plane w) (- (+ -1024.0 f0-0)))
           )
@@ -42,21 +37,21 @@
   (none)
   )
 
-(defmethod draw-npc-shadow bird-lady ((obj bird-lady))
-  (-> obj draw shadow-ctrl)
+(defmethod draw-npc-shadow ((this bird-lady))
+  (-> this draw shadow-ctrl)
   (cond
-    ((and (-> obj draw shadow)
-          (zero? (-> obj draw cur-lod))
-          (logtest? (-> obj draw status) (draw-status was-drawn))
+    ((and (-> this draw shadow)
+          (zero? (-> this draw cur-lod))
+          (logtest? (-> this draw status) (draw-status was-drawn))
           )
-     (let ((v1-9 (-> obj draw shadow-ctrl)))
+     (let ((v1-9 (-> this draw shadow-ctrl)))
        (logclear! (-> v1-9 settings flags) (shadow-flags disable-draw))
        )
      0
-     (update-direction-from-time-of-day (-> obj draw shadow-ctrl))
+     (update-direction-from-time-of-day (-> this draw shadow-ctrl))
      )
     (else
-      (let ((v1-14 (-> obj draw shadow-ctrl)))
+      (let ((v1-14 (-> this draw shadow-ctrl)))
         (logior! (-> v1-14 settings flags) (shadow-flags disable-draw))
         )
       0
@@ -65,11 +60,11 @@
   (none)
   )
 
-(defmethod play-anim! bird-lady ((obj bird-lady) (arg0 symbol))
-  (case (current-status (-> obj tasks))
+(defmethod play-anim! ((this bird-lady) (arg0 symbol))
+  (case (current-status (-> this tasks))
     (((task-status need-hint) (task-status need-introduction))
      (if arg0
-         (close-status! (-> obj tasks) (task-status need-introduction))
+         (close-status! (-> this tasks) (task-status need-introduction))
          )
      (new 'static 'spool-anim
        :name "bird-lady-introduction"
@@ -99,17 +94,17 @@
        )
      )
     (((task-status need-reminder))
-     (set! (-> obj skippable) #t)
+     (set! (-> this skippable) #t)
      (cond
-       ((zero? (get-reminder (-> obj tasks) 0))
+       ((zero? (get-reminder (-> this tasks) 0))
         (if arg0
-            (save-reminder (-> obj tasks) 1 0)
+            (save-reminder (-> this tasks) 1 0)
             )
         (new 'static 'spool-anim :name "bird-lady-reminder-1" :index 5 :parts 4 :command-list '())
         )
        (else
          (if arg0
-             (save-reminder (-> obj tasks) 0 0)
+             (save-reminder (-> this tasks) 0 0)
              )
          (new 'static 'spool-anim :name "bird-lady-reminder-2" :index 6 :parts 5 :command-list '())
          )
@@ -120,49 +115,49 @@
           (format
             0
             "ERROR: <GMJ>: ~S playing anim for task status ~S~%"
-            (-> obj name)
-            (task-status->string (current-status (-> obj tasks)))
+            (-> this name)
+            (task-status->string (current-status (-> this tasks)))
             )
           )
-      (-> obj draw art-group data 3)
+      (-> this draw art-group data 3)
       )
     )
   )
 
-(defmethod get-art-elem bird-lady ((obj bird-lady))
-  (-> obj draw art-group data 3)
+(defmethod get-art-elem ((this bird-lady))
+  (-> this draw art-group data 3)
   )
 
-(defmethod process-taskable-method-43 bird-lady ((obj bird-lady))
-  (when (ambient-control-method-10 (-> obj ambient) (new 'stack-no-clear 'vector) (seconds 30) 122880.0 obj)
+(defmethod process-taskable-method-43 ((this bird-lady))
+  (when (ambient-control-method-10 (-> this ambient) (new 'stack-no-clear 'vector) (seconds 30) 122880.0 this)
     (let ((f0-2 (rand-float-gen)))
       (cond
         ((< 0.66 f0-2)
-         (play-ambient (-> obj ambient) "BIR-LO02" #f (-> obj root-override trans))
+         (play-ambient (-> this ambient) "BIR-LO02" #f (-> this root trans))
          )
         ((< 0.33 f0-2)
-         (play-ambient (-> obj ambient) "BIR-LO03" #f (-> obj root-override trans))
+         (play-ambient (-> this ambient) "BIR-LO03" #f (-> this root trans))
          )
         (else
-          (play-ambient (-> obj ambient) "BIR-am08" #f (-> obj root-override trans))
+          (play-ambient (-> this ambient) "BIR-am08" #f (-> this root trans))
           )
         )
       )
     )
   )
 
-(defmethod target-above-threshold? bird-lady ((obj bird-lady))
+(defmethod target-above-threshold? ((this bird-lady))
   (the-as symbol (and *target* (< (-> (target-pos 0) z) -81920.0)))
   )
 
-(defmethod init-from-entity! bird-lady ((obj bird-lady) (arg0 entity-actor))
-  (process-taskable-method-40 obj arg0 *bird-lady-sg* 3 51 (new 'static 'vector :y 4096.0 :w 4096.0) 5)
-  (set! (-> obj tasks) (get-task-control (game-task beach-flutflut)))
-  (set! (-> obj sound-flava) (music-flava birdlady))
-  (set! (-> obj draw light-index) (the-as uint 4))
-  (if (closed? (-> obj tasks) (game-task beach-flutflut) (task-status need-reminder))
-      (cleanup-for-death obj)
-      (go (method-of-object obj idle))
+(defmethod init-from-entity! ((this bird-lady) (arg0 entity-actor))
+  (process-taskable-method-40 this arg0 *bird-lady-sg* 3 51 (new 'static 'vector :y 4096.0 :w 4096.0) 5)
+  (set! (-> this tasks) (get-task-control (game-task beach-flutflut)))
+  (set! (-> this sound-flava) (music-flava birdlady))
+  (set! (-> this draw light-index) (the-as uint 4))
+  (if (closed? (-> this tasks) (game-task beach-flutflut) (task-status need-reminder))
+      (cleanup-for-death this)
+      (go (method-of-object this idle))
       )
   (none)
   )

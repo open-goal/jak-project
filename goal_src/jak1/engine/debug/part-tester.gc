@@ -17,24 +17,21 @@
 (defpartgroup group-part-tester :id 105 :bounds (static-bspherem 0 0 0 1) :parts ((sp-item 56) (sp-item 57)))
 
 (deftype part-tester (process)
-  ((root      trsqv                     :offset-assert 112)
-   (part      sparticle-launch-control  :offset-assert 116)
-   (old-group sparticle-launch-group    :offset-assert 120)
+  ((root       trsqv)
+   (part       sparticle-launch-control)
+   (old-group  sparticle-launch-group)
    )
   :heap-base #x100
-  :method-count-assert 14
-  :size-assert         #x7c
-  :flag-assert         #xe0100007c
   )
 
 (define-extern *part-tester* part-tester)
 (define *part-tester-name* (the-as string #f))
 
-(defmethod deactivate part-tester ((obj part-tester))
-  (if (nonzero? (-> obj part))
-      (kill-and-free-particles (-> obj part))
+(defmethod deactivate ((this part-tester))
+  (if (nonzero? (-> this part))
+      (kill-and-free-particles (-> this part))
       )
-  ((method-of-type process deactivate) obj)
+  ((method-of-type process deactivate) this)
   (none)
   )
 
@@ -58,6 +55,7 @@
         (the-as rgba (new 'static 'rgba :r #xff :g #xff :b #xff :a #x80))
         )
       
+      ;; og:preserve-this
       ;; change this line to change the particle group to test
       ;; notes:
       ;;  - particles that use aux list won't work (warp parts)
@@ -93,7 +91,6 @@
         )
       (suspend)
       )
-    (none)
     )
   )
 
@@ -119,6 +116,3 @@
     )
   (none)
   )
-
-
-

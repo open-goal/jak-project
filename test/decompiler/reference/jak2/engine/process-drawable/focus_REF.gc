@@ -3,44 +3,41 @@
 
 ;; definition of type focus
 (deftype focus (structure)
-  ((handle       handle        :offset-assert   0)
-   (collide-with collide-spec  :offset-assert   8)
+  ((handle        handle)
+   (collide-with  collide-spec)
    )
-  :method-count-assert 13
-  :size-assert         #xc
-  :flag-assert         #xd0000000c
   (:methods
-    (clear-focused (_type_) none 9)
-    (collide-check? (_type_ process-focusable) object 10)
-    (reset-to-collide-spec (_type_ collide-spec) none 11)
-    (try-update-focus (_type_ process-focusable) symbol 12)
+    (clear-focused (_type_) none)
+    (collide-check? (_type_ process-focusable) object)
+    (reset-to-collide-spec (_type_ collide-spec) none)
+    (try-update-focus (_type_ process-focusable) symbol)
     )
   )
 
 ;; definition for method 3 of type focus
-(defmethod inspect focus ((obj focus))
-  (when (not obj)
-    (set! obj obj)
+(defmethod inspect ((this focus))
+  (when (not this)
+    (set! this this)
     (goto cfg-4)
     )
-  (format #t "[~8x] ~A~%" obj 'focus)
-  (format #t "~1Thandle: ~D~%" (-> obj handle))
-  (format #t "~1Tcollide-with: ~D~%" (-> obj collide-with))
+  (format #t "[~8x] ~A~%" this 'focus)
+  (format #t "~1Thandle: ~D~%" (-> this handle))
+  (format #t "~1Tcollide-with: ~D~%" (-> this collide-with))
   (label cfg-4)
-  obj
+  this
   )
 
 ;; definition for method 11 of type focus
 ;; WARN: Return type mismatch int vs none.
-(defmethod reset-to-collide-spec focus ((obj focus) (arg0 collide-spec))
-  (set! (-> obj collide-with) arg0)
-  (set! (-> obj handle) (the-as handle #f))
+(defmethod reset-to-collide-spec ((this focus) (arg0 collide-spec))
+  (set! (-> this collide-with) arg0)
+  (set! (-> this handle) (the-as handle #f))
   0
   (none)
   )
 
 ;; definition for method 10 of type focus
-(defmethod collide-check? focus ((obj focus) (arg0 process-focusable))
+(defmethod collide-check? ((this focus) (arg0 process-focusable))
   (when (and arg0 (not (logtest? (-> arg0 focus-status) (focus-status disable dead))))
     (let* ((s5-0 (-> arg0 root))
            (v1-2 (if (type? s5-0 collide-shape)
@@ -48,23 +45,23 @@
                      )
                  )
            )
-      (and v1-2 (logtest? (-> obj collide-with) (-> v1-2 root-prim prim-core collide-as)))
+      (and v1-2 (logtest? (-> this collide-with) (-> v1-2 root-prim prim-core collide-as)))
       )
     )
   )
 
 ;; definition for method 12 of type focus
-(defmethod try-update-focus focus ((obj focus) (arg0 process-focusable))
-  (when (!= (handle->process (-> obj handle)) arg0)
-    (set! (-> obj handle) (process->handle arg0))
+(defmethod try-update-focus ((this focus) (arg0 process-focusable))
+  (when (!= (handle->process (-> this handle)) arg0)
+    (set! (-> this handle) (process->handle arg0))
     #t
     )
   )
 
 ;; definition for method 9 of type focus
 ;; WARN: Return type mismatch int vs none.
-(defmethod clear-focused focus ((obj focus))
-  (set! (-> obj handle) (the-as handle #f))
+(defmethod clear-focused ((this focus))
+  (set! (-> this handle) (the-as handle #f))
   0
   (none)
   )

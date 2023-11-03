@@ -3,20 +3,16 @@
 
 ;; definition of type race-ring
 (deftype race-ring (process-drawable)
-  ((rot-y                 float                 :offset-assert 176)
-   (face-vec              vector        :inline :offset-assert 192)
-   (part-track            handle                :offset-assert 208)
-   (keep-part-track-alive symbol                :offset-assert 216)
-   (timeout               time-frame            :offset-assert 224)
-   (alt-actor             entity-actor          :offset-assert 232)
-   (alt-task              uint8                 :offset-assert 236)
-   (cyl                   cylinder-flat :inline :offset-assert 240)
-   (old-hips              vector        :inline :offset-assert 288)
+  ((rot-y                  float)
+   (face-vec               vector         :inline)
+   (part-track             handle)
+   (keep-part-track-alive  symbol)
+   (timeout                time-frame)
+   (alt-actor              entity-actor)
+   (alt-task               uint8)
+   (cyl                    cylinder-flat  :inline)
+   (old-hips               vector         :inline)
    )
-  :heap-base #xc0
-  :method-count-assert 20
-  :size-assert         #x130
-  :flag-assert         #x1400c00130
   (:states
     race-ring-active
     race-ring-idle
@@ -25,20 +21,20 @@
   )
 
 ;; definition for method 3 of type race-ring
-(defmethod inspect race-ring ((obj race-ring))
+(defmethod inspect ((this race-ring))
   (let ((t9-0 (method-of-type process-drawable inspect)))
-    (t9-0 obj)
+    (t9-0 this)
     )
-  (format #t "~T~Trot-y: ~f~%" (-> obj rot-y))
-  (format #t "~T~Tface-vec: #<vector @ #x~X>~%" (-> obj face-vec))
-  (format #t "~T~Tpart-track: ~D~%" (-> obj part-track))
-  (format #t "~T~Tkeep-part-track-alive: ~A~%" (-> obj keep-part-track-alive))
-  (format #t "~T~Ttimeout: ~D~%" (-> obj timeout))
-  (format #t "~T~Talt-actor: ~A~%" (-> obj alt-actor))
-  (format #t "~T~Talt-task: ~D~%" (-> obj alt-task))
-  (format #t "~T~Tcyl: #<cylinder-flat @ #x~X>~%" (-> obj cyl))
-  (format #t "~T~Told-hips: #<vector @ #x~X>~%" (-> obj old-hips))
-  obj
+  (format #t "~T~Trot-y: ~f~%" (-> this rot-y))
+  (format #t "~T~Tface-vec: #<vector @ #x~X>~%" (-> this face-vec))
+  (format #t "~T~Tpart-track: ~D~%" (-> this part-track))
+  (format #t "~T~Tkeep-part-track-alive: ~A~%" (-> this keep-part-track-alive))
+  (format #t "~T~Ttimeout: ~D~%" (-> this timeout))
+  (format #t "~T~Talt-actor: ~A~%" (-> this alt-actor))
+  (format #t "~T~Talt-task: ~D~%" (-> this alt-task))
+  (format #t "~T~Tcyl: #<cylinder-flat @ #x~X>~%" (-> this cyl))
+  (format #t "~T~Told-hips: #<vector @ #x~X>~%" (-> this old-hips))
+  this
   )
 
 ;; failed to figure out what this is:
@@ -607,53 +603,50 @@
 
 ;; failed to figure out what this is:
 (defstate race-ring-active (race-ring)
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
     (local-vars (v0-0 symbol))
-    (the-as
-      object
-      (case event-type
-        (('notify)
-         (when (and (= (-> event param 0) 'die) (= proc (-> self part-track process 0)))
-           (cond
-             ((= (-> self entity extra perm task) (game-task rolling-ring-chase-2))
-              (set! (-> self part-track) (ppointer->handle (process-spawn
-                                                             part-tracker
-                                                             :init part-tracker-init
-                                                             (-> *part-group-id-table* 460)
-                                                             -1
-                                                             race-ring-blue-set-particle-rotation-callback
-                                                             (-> self ppointer)
-                                                             #f
-                                                             (-> self root trans)
-                                                             :to self
-                                                             )
+    (case message
+      (('notify)
+       (when (and (= (-> block param 0) 'die) (= proc (-> self part-track process 0)))
+         (cond
+           ((= (-> self entity extra perm task) (game-task rolling-ring-chase-2))
+            (set! (-> self part-track) (ppointer->handle (process-spawn
+                                                           part-tracker
+                                                           :init part-tracker-init
+                                                           (-> *part-group-id-table* 460)
+                                                           -1
+                                                           race-ring-blue-set-particle-rotation-callback
+                                                           (-> self ppointer)
+                                                           #f
+                                                           (-> self root trans)
+                                                           :to self
                                                            )
-                    )
-              (set! v0-0 #t)
-              (set! (-> self keep-part-track-alive) v0-0)
-              )
-             (else
-               (set! (-> self part-track) (ppointer->handle (process-spawn
-                                                              part-tracker
-                                                              :init part-tracker-init
-                                                              (-> *part-group-id-table* 457)
-                                                              -1
-                                                              race-ring-set-particle-rotation-callback
-                                                              (-> self ppointer)
-                                                              #f
-                                                              (-> self root trans)
-                                                              :to self
-                                                              )
+                                                         )
+                  )
+            (set! v0-0 #t)
+            (set! (-> self keep-part-track-alive) v0-0)
+            )
+           (else
+             (set! (-> self part-track) (ppointer->handle (process-spawn
+                                                            part-tracker
+                                                            :init part-tracker-init
+                                                            (-> *part-group-id-table* 457)
+                                                            -1
+                                                            race-ring-set-particle-rotation-callback
+                                                            (-> self ppointer)
+                                                            #f
+                                                            (-> self root trans)
+                                                            :to self
                                                             )
-                     )
-               (set! v0-0 #t)
-               (set! (-> self keep-part-track-alive) v0-0)
-               )
+                                                          )
+                   )
+             (set! v0-0 #t)
+             (set! (-> self keep-part-track-alive) v0-0)
              )
-           v0-0
            )
+         v0-0
          )
-        )
+       )
       )
     )
   :enter (behavior ()
@@ -699,7 +692,6 @@
     (set! (-> self old-hips quad) (-> (target-pos 26) quad))
     (+! (-> self old-hips x) 1.0)
     (set! (-> self state-time) (-> *display* game-frame-counter))
-    (none)
     )
   :exit (behavior ()
     (sound-play "close-racering")
@@ -746,7 +738,6 @@
         (process-entity-status! self (entity-perm-status bit-3) #f)
         )
       )
-    (none)
     )
   :trans (behavior ()
     (if (nonzero? (-> self sound))
@@ -755,7 +746,7 @@
     (cond
       ((handle->process (-> self part-track))
        (if (-> self keep-part-track-alive)
-           (set! (-> (the-as part-tracker (-> self part-track process 0)) start-time) (-> *display* base-frame-counter))
+           (set-time! (-> (the-as part-tracker (-> self part-track process 0)) start-time))
            )
        )
       ((= (-> self entity extra perm task) (game-task rolling-ring-chase-2))
@@ -801,7 +792,6 @@
         (spool-push *art-control* "race-ring-anim" 0 self -99.0)
         )
       )
-    (none)
     )
   :code (behavior ()
     (loop
@@ -953,9 +943,8 @@
           )
         )
       )
-    (none)
     )
-  :post (the-as (function none :behavior race-ring) ja-post)
+  :post ja-post
   )
 
 ;; failed to figure out what this is:
@@ -972,14 +961,13 @@
         (go race-ring-active)
         )
       )
-    (none)
     )
   )
 
 ;; failed to figure out what this is:
 (defstate race-ring-idle (race-ring)
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('activate)
        (logclear! (-> self mask) (process-mask actor-pause))
        (go race-ring-active)
@@ -993,100 +981,101 @@
     (loop
       (suspend)
       )
-    (none)
     )
   )
 
 ;; definition for method 11 of type race-ring
 ;; INFO: Return type mismatch object vs none.
-(defmethod init-from-entity! race-ring ((obj race-ring) (arg0 entity-actor))
+(defmethod init-from-entity! ((this race-ring) (arg0 entity-actor))
   (let ((a0-1 arg0))
     (if (not (entity-actor-lookup a0-1 'next-actor 0))
-        (stack-size-set! (-> obj main-thread) 512)
+        (stack-size-set! (-> this main-thread) 512)
         )
     )
-  (set! (-> obj root) (new 'process 'trsqv))
-  (process-drawable-from-entity! obj arg0)
-  (initialize-skeleton obj *race-ring-sg* '())
-  (set! (-> obj root pause-adjust-distance) 122880.0)
-  (set! (-> obj link) (new 'process 'actor-link-info obj))
-  (set! (-> obj part-track) (the-as handle #f))
-  (set! (-> obj alt-actor) (entity-actor-lookup arg0 'alt-actor 0))
-  (logior! (-> obj draw status) (draw-status hidden))
-  (set! (-> obj sound)
-        (new 'process 'ambient-sound (static-sound-spec "loop-racering" :fo-max 40) (-> obj root trans))
+  (set! (-> this root) (new 'process 'trsqv))
+  (process-drawable-from-entity! this arg0)
+  (initialize-skeleton this *race-ring-sg* '())
+  (set! (-> this root pause-adjust-distance) 122880.0)
+  (set! (-> this link) (new 'process 'actor-link-info this))
+  (set! (-> this part-track) (the-as handle #f))
+  (set! (-> this alt-actor) (entity-actor-lookup arg0 'alt-actor 0))
+  (logior! (-> this draw status) (draw-status hidden))
+  (set! (-> this sound)
+        (new 'process 'ambient-sound (static-sound-spec "loop-racering" :fo-max 40) (-> this root trans))
         )
   (let ((f0-1 (res-lump-float arg0 'timeout)))
-    (set! (-> obj timeout) (the-as time-frame (the int (* 300.0 f0-1))))
+    (set! (-> this timeout) (the-as time-frame (the int (* 300.0 f0-1))))
     )
   (let ((s4-0 (new 'stack-no-clear 'vector)))
     (cond
-      ((-> obj link next)
-       (vector-! (-> obj face-vec) (-> obj link next extra trans) (-> obj root trans))
+      ((-> this link next)
+       (vector-! (-> this face-vec) (-> this link next extra trans) (-> this root trans))
        )
-      ((-> obj link prev)
-       (vector-! (-> obj face-vec) (-> obj root trans) (-> obj link prev extra trans))
+      ((-> this link prev)
+       (vector-! (-> this face-vec) (-> this root trans) (-> this link prev extra trans))
        )
       )
-    (vector-flatten! (-> obj face-vec) (-> obj face-vec) (new 'static 'vector :y 1.0))
-    (vector-normalize! (-> obj face-vec) 1.0)
+    (vector-flatten! (-> this face-vec) (-> this face-vec) (new 'static 'vector :y 1.0))
+    (vector-normalize! (-> this face-vec) 1.0)
     (cond
-      ((and (-> obj link next) (-> obj link prev))
-       (vector-! s4-0 (-> obj link prev extra trans) (-> obj root trans))
+      ((and (-> this link next) (-> this link prev))
+       (vector-! s4-0 (-> this link prev extra trans) (-> this root trans))
        (vector-flatten! s4-0 s4-0 (new 'static 'vector :y 1.0))
        (vector-normalize! s4-0 1.0)
-       (vector+! s4-0 s4-0 (-> obj face-vec))
+       (vector+! s4-0 s4-0 (-> this face-vec))
        (vector-normalize! s4-0 1.0)
-       (set! (-> obj rot-y) (acos (vector-dot s4-0 (new 'static 'vector :z 1.0))))
+       (set! (-> this rot-y) (acos (vector-dot s4-0 (new 'static 'vector :z 1.0))))
        (if (< (vector-dot s4-0 (new 'static 'vector :x 1.0)) 0.0)
-           (set! (-> obj rot-y) (- (-> obj rot-y)))
+           (set! (-> this rot-y) (- (-> this rot-y)))
            )
        )
       (else
-        (set! (-> obj rot-y) (acos (vector-dot (-> obj face-vec) (new 'static 'vector :z 1.0))))
-        (if (< (vector-dot (-> obj face-vec) (new 'static 'vector :x 1.0)) 0.0)
-            (set! (-> obj rot-y) (- (-> obj rot-y)))
+        (set! (-> this rot-y) (acos (vector-dot (-> this face-vec) (new 'static 'vector :z 1.0))))
+        (if (< (vector-dot (-> this face-vec) (new 'static 'vector :x 1.0)) 0.0)
+            (set! (-> this rot-y) (- (-> this rot-y)))
             )
-        (+! (-> obj rot-y) 16384.0)
+        (+! (-> this rot-y) 16384.0)
         )
       )
     )
-  (+! (-> obj rot-y) (res-lump-float arg0 'rotoffset))
-  (set-vector! (-> obj cyl axis) (cos (-> obj rot-y)) 0.0 (- (sin (-> obj rot-y))) 1.0)
-  (vector+float*! (the-as vector (-> obj cyl)) (-> obj root trans) (-> obj cyl axis) -2048.0)
-  (set! (-> obj cyl radius) 24576.0)
-  (set! (-> obj cyl length) 4096.0)
+  (+! (-> this rot-y) (res-lump-float arg0 'rotoffset))
+  (set-vector! (-> this cyl axis) (cos (-> this rot-y)) 0.0 (- (sin (-> this rot-y))) 1.0)
+  (vector+float*! (the-as vector (-> this cyl)) (-> this root trans) (-> this cyl axis) -2048.0)
+  (set! (-> this cyl radius) 24576.0)
+  (set! (-> this cyl length) 4096.0)
   (cond
-    ((and (first-ring? obj)
-          (!= (get-task-status (-> obj entity extra perm task)) (task-status invalid))
-          (!= (get-task-status (-> obj entity extra perm task)) 7)
+    ((and (first-ring? this)
+          (!= (get-task-status (-> this entity extra perm task)) (task-status invalid))
+          (!= (get-task-status (-> this entity extra perm task)) 7)
           )
-     (set! (-> obj alt-task) (res-lump-value (-> obj entity) 'alt-task uint))
-     (if (or (= (-> obj alt-task) 0) (= (get-task-status (the-as game-task (-> obj alt-task))) (task-status invalid)))
+     (set! (-> this alt-task) (res-lump-value (-> this entity) 'alt-task uint))
+     (if (or (= (-> this alt-task) 0)
+             (= (get-task-status (the-as game-task (-> this alt-task))) (task-status invalid))
+             )
          (go race-ring-active)
          (go race-ring-wait)
          )
      )
-    ((and (last-ring? obj) (= (get-task-status (-> obj entity extra perm task)) (task-status need-resolution)))
+    ((and (last-ring? this) (= (get-task-status (-> this entity extra perm task)) (task-status need-resolution)))
      (let ((s5-2 (new 'stack-no-clear 'vector)))
-       (logclear! (-> obj draw status) (draw-status hidden))
+       (logclear! (-> this draw status) (draw-status hidden))
        (ja-post)
-       (vector<-cspace! s5-2 (-> obj node-list data 5))
-       (logior! (-> obj draw status) (draw-status hidden))
+       (vector<-cspace! s5-2 (-> this node-list data 5))
+       (logior! (-> this draw status) (draw-status hidden))
        (birth-pickup-at-point
          s5-2
          (pickup-type fuel-cell)
-         (the float (-> obj entity extra perm task))
+         (the float (-> this entity extra perm task))
          #f
-         obj
+         this
          (the-as fact-info #f)
          )
        )
      )
-    ((and (last-ring? obj) (!= (get-task-status (-> obj entity extra perm task)) (task-status invalid)))
+    ((and (last-ring? this) (!= (get-task-status (-> this entity extra perm task)) (task-status invalid)))
      )
     )
-  (set! (-> obj event-hook) (-> race-ring-idle event))
+  (set! (-> this event-hook) (-> race-ring-idle event))
   (go race-ring-idle)
   (none)
   )

@@ -48,127 +48,118 @@
 
 ;; definition of type history-elt
 (deftype history-elt (structure)
-  ((record-tag-bytes      uint8           4       :offset-assert   0)
-   (record-tag            uint32                  :offset          0)
-   (record-id             uint16                  :offset          0)
-   (owner                 uint8                   :offset          2)
-   (channel               history-channel         :offset-assert   4)
-   (timestamp             time-frame              :offset-assert   8)
-   (origin                vector          :inline :offset-assert  16)
-   (bytes                 uint8           16      :offset-assert  32)
-   (vector                vector          :inline :offset         32)
-   (float                 float                   :offset         32)
-   (collide-status        collide-status          :offset         32)
-   (collide-reaction-flag uint32                  :offset         40)
-   (pat                   pat-surface             :offset         32)
+  ((record-tag-bytes       uint8           4)
+   (record-tag             uint32                  :overlay-at (-> record-tag-bytes 0))
+   (record-id              uint16                  :overlay-at (-> record-tag-bytes 0))
+   (owner                  uint8                   :overlay-at (-> record-tag-bytes 2))
+   (channel                history-channel)
+   (timestamp              time-frame)
+   (origin                 vector          :inline)
+   (bytes                  uint8           16)
+   (vector                 vector          :inline :overlay-at (-> bytes 0))
+   (float                  float                   :overlay-at (-> bytes 0))
+   (collide-status         collide-status          :overlay-at (-> bytes 0))
+   (collide-reaction-flag  uint32                  :overlay-at (-> bytes 8))
+   (pat                    pat-surface             :overlay-at (-> bytes 0))
    )
-  :method-count-assert 9
-  :size-assert         #x30
-  :flag-assert         #x900000030
   )
 
 ;; definition for method 3 of type history-elt
-(defmethod inspect history-elt ((obj history-elt))
-  (when (not obj)
-    (set! obj obj)
+(defmethod inspect ((this history-elt))
+  (when (not this)
+    (set! this this)
     (goto cfg-4)
     )
-  (format #t "[~8x] ~A~%" obj 'history-elt)
-  (format #t "~1Trecord-tag-bytes[4] @ #x~X~%" (-> obj record-tag-bytes))
-  (format #t "~1Trecord-tag: ~D~%" (-> obj record-tag))
-  (format #t "~1Trecord-id: ~D~%" (-> obj record-id))
-  (format #t "~1Towner: ~D~%" (-> obj owner))
-  (format #t "~1Tchannel: ~D~%" (-> obj channel))
-  (format #t "~1Ttimestamp: ~D~%" (-> obj timestamp))
-  (format #t "~1Torigin: #<vector @ #x~X>~%" (-> obj origin))
-  (format #t "~1Tbytes[16] @ #x~X~%" (-> obj vector))
-  (format #t "~1Tvector: #<vector @ #x~X>~%" (-> obj vector))
-  (format #t "~1Tfloat: ~f~%" (-> obj vector x))
-  (format #t "~1Tcollide-status: ~D~%" (-> obj collide-status))
-  (format #t "~1Tcollide-reaction-flag: ~D~%" (-> obj vector z))
-  (format #t "~1Tpat: ~D~%" (-> obj vector x))
+  (format #t "[~8x] ~A~%" this 'history-elt)
+  (format #t "~1Trecord-tag-bytes[4] @ #x~X~%" (-> this record-tag-bytes))
+  (format #t "~1Trecord-tag: ~D~%" (-> this record-tag))
+  (format #t "~1Trecord-id: ~D~%" (-> this record-id))
+  (format #t "~1Towner: ~D~%" (-> this owner))
+  (format #t "~1Tchannel: ~D~%" (-> this channel))
+  (format #t "~1Ttimestamp: ~D~%" (-> this timestamp))
+  (format #t "~1Torigin: #<vector @ #x~X>~%" (-> this origin))
+  (format #t "~1Tbytes[16] @ #x~X~%" (-> this vector))
+  (format #t "~1Tvector: #<vector @ #x~X>~%" (-> this vector))
+  (format #t "~1Tfloat: ~f~%" (-> this vector x))
+  (format #t "~1Tcollide-status: ~D~%" (-> this collide-status))
+  (format #t "~1Tcollide-reaction-flag: ~D~%" (-> this vector z))
+  (format #t "~1Tpat: ~D~%" (-> this vector x))
   (label cfg-4)
-  obj
+  this
   )
 
 ;; definition of type history-iterator
 (deftype history-iterator (basic)
-  ((max-age      uint32   :offset-assert   4)
-   (owner        uint8    :offset-assert   8)
-   (proc         process  :offset-assert  12)
-   (out          object   :offset-assert  16)
-   (channel-mask uint64   :offset-assert  24)
-   (index        int32    :offset-assert  32)
-   (done?        symbol   :offset-assert  36)
+  ((max-age       uint32)
+   (owner         uint8)
+   (proc          process)
+   (out           object)
+   (channel-mask  uint64)
+   (index         int32)
+   (done?         symbol)
    )
-  :method-count-assert 12
-  :size-assert         #x28
-  :flag-assert         #xc00000028
   (:methods
-    (new (symbol type uint) _type_ 0)
-    (frame-counter-delta (_type_ history-elt) time-frame 9)
-    (update-entries! (_type_) history-elt 10)
-    (get-age (_type_ history-elt) float 11)
+    (new (symbol type uint) _type_)
+    (frame-counter-delta (_type_ history-elt) time-frame)
+    (update-entries! (_type_) history-elt)
+    (get-age (_type_ history-elt) float)
     )
   )
 
 ;; definition for method 3 of type history-iterator
-(defmethod inspect history-iterator ((obj history-iterator))
-  (when (not obj)
-    (set! obj obj)
+(defmethod inspect ((this history-iterator))
+  (when (not this)
+    (set! this this)
     (goto cfg-4)
     )
-  (format #t "[~8x] ~A~%" obj (-> obj type))
-  (format #t "~1Tmax-age: ~D~%" (-> obj max-age))
-  (format #t "~1Towner: ~D~%" (-> obj owner))
-  (format #t "~1Tproc: ~A~%" (-> obj proc))
-  (format #t "~1Tout: ~A~%" (-> obj out))
-  (format #t "~1Tchannel-mask: ~D~%" (-> obj channel-mask))
-  (format #t "~1Tindex: ~D~%" (-> obj index))
-  (format #t "~1Tdone?: ~A~%" (-> obj done?))
+  (format #t "[~8x] ~A~%" this (-> this type))
+  (format #t "~1Tmax-age: ~D~%" (-> this max-age))
+  (format #t "~1Towner: ~D~%" (-> this owner))
+  (format #t "~1Tproc: ~A~%" (-> this proc))
+  (format #t "~1Tout: ~A~%" (-> this out))
+  (format #t "~1Tchannel-mask: ~D~%" (-> this channel-mask))
+  (format #t "~1Tindex: ~D~%" (-> this index))
+  (format #t "~1Tdone?: ~A~%" (-> this done?))
   (label cfg-4)
-  obj
+  this
   )
 
 ;; definition of type history
 (deftype history (basic)
-  ((alloc-index      int32                        :offset-assert   4)
-   (allocated-length int32                        :offset-assert   8)
-   (elts             history-elt :inline :dynamic :offset         16)
+  ((alloc-index       int32)
+   (allocated-length  int32)
+   (elts              history-elt  :inline :dynamic :offset  16)
    )
-  :method-count-assert 11
-  :size-assert         #x10
-  :flag-assert         #xb00000010
   (:methods
-    (new (symbol type int) _type_ 0)
-    (clear-record-tags! (_type_ history-channel uint uint) history-elt 9)
-    (clear-history-entries! (_type_) none 10)
+    (new (symbol type int) _type_)
+    (clear-record-tags! (_type_ history-channel uint uint) history-elt)
+    (clear-history-entries! (_type_) none)
     )
   )
 
 ;; definition for method 3 of type history
-(defmethod inspect history ((obj history))
-  (when (not obj)
-    (set! obj obj)
+(defmethod inspect ((this history))
+  (when (not this)
+    (set! this this)
     (goto cfg-4)
     )
-  (format #t "[~8x] ~A~%" obj (-> obj type))
-  (format #t "~1Talloc-index: ~D~%" (-> obj alloc-index))
-  (format #t "~1Tallocated-length: ~D~%" (-> obj allocated-length))
-  (format #t "~1Telts[0] @ #x~X~%" (-> obj elts))
+  (format #t "[~8x] ~A~%" this (-> this type))
+  (format #t "~1Talloc-index: ~D~%" (-> this alloc-index))
+  (format #t "~1Tallocated-length: ~D~%" (-> this allocated-length))
+  (format #t "~1Telts[0] @ #x~X~%" (-> this elts))
   (label cfg-4)
-  obj
+  this
   )
 
 ;; definition for method 4 of type history
-(defmethod length history ((obj history))
-  (-> obj allocated-length)
+(defmethod length ((this history))
+  (-> this allocated-length)
   )
 
 ;; definition for method 5 of type history
 ;; WARN: Return type mismatch uint vs int.
-(defmethod asize-of history ((obj history))
-  (the-as int (+ (-> obj type size) (* 48 (-> obj allocated-length))))
+(defmethod asize-of ((this history))
+  (the-as int (+ (-> this type size) (* 48 (-> this allocated-length))))
   )
 
 ;; definition for method 0 of type history
@@ -181,14 +172,14 @@
 
 ;; definition for method 10 of type history
 ;; WARN: Return type mismatch int vs none.
-(defmethod clear-history-entries! history ((obj history))
+(defmethod clear-history-entries! ((this history))
   "Iterates through each [[history-elt]] in the `elt` dynamic array
 For each entry:
 - clear `timestamp`
 - clear `record-tag`"
-  (set! (-> obj alloc-index) 0)
-  (countdown (v1-0 (-> obj allocated-length))
-    (let ((a1-3 (-> obj elts v1-0)))
+  (set! (-> this alloc-index) 0)
+  (countdown (v1-0 (-> this allocated-length))
+    (let ((a1-3 (-> this elts v1-0)))
       (set! (-> a1-3 record-tag) (the-as uint 0))
       (set! (-> a1-3 timestamp) 0)
       )
@@ -206,14 +197,14 @@ For each entry:
 
 ;; definition for method 9 of type history
 ;; WARN: new jak 2 until loop case, check carefully
-(defmethod clear-record-tags! history ((obj history) (arg0 history-channel) (arg1 uint) (arg2 uint))
+(defmethod clear-record-tags! ((this history) (arg0 history-channel) (arg1 uint) (arg2 uint))
   "First grab the latest [[history-elt]] at `alloc-index`
 1. update it's `channel`, `record-id` and `owner` from the provided args
 2. - if it's `record-tag` is zero -- return it
 - otherwise, iterate through all `elts` until one is found that does not match it's `timestamp`
 - if not `0` out the `record-tag` for that elt and continue iteration"
-  (let* ((t1-0 (-> obj alloc-index))
-         (v1-0 (-> obj elts))
+  (let* ((t1-0 (-> this alloc-index))
+         (v1-0 (-> this elts))
          (v0-0 (-> v1-0 t1-0))
          )
     (let ((t2-0 (-> v0-0 record-tag))
@@ -223,10 +214,10 @@ For each entry:
       (set! (-> v0-0 record-id) arg1)
       (set! (-> v0-0 owner) arg2)
       (set! (-> v0-0 timestamp) (-> *display* base-clock frame-counter))
-      (let* ((a1-4 (-> obj allocated-length))
+      (let* ((a1-4 (-> this allocated-length))
              (a2-2 (mod (+ t1-0 1) a1-4))
              )
-        (set! (-> obj alloc-index) a2-2)
+        (set! (-> this alloc-index) a2-2)
         (when (nonzero? t2-0)
           (until #f
             (let ((a0-4 (-> v1-0 a2-2)))
@@ -260,7 +251,7 @@ For each entry:
   )
 
 ;; definition for method 10 of type history-iterator
-(defmethod update-entries! history-iterator ((obj history-iterator))
+(defmethod update-entries! ((this history-iterator))
   "Iterate through each [[history-elt]] in [[*history*]]
 - If we hit the end set `done?` to true
 - If the `timestamp` on the elt, minus the current framecounter exceeds `max-age`, we are also done, return #f
@@ -268,22 +259,22 @@ For each entry:
   (let ((v1-0 *history*)
         (a1-2 (-> *display* base-clock frame-counter))
         )
-    (while (not (-> obj done?))
-      (let ((a2-1 (+ (-> obj index) -1)))
+    (while (not (-> this done?))
+      (let ((a2-1 (+ (-> this index) -1)))
         (if (< a2-1 0)
             (set! a2-1 (+ (-> v1-0 allocated-length) -1))
             )
-        (set! (-> obj index) a2-1)
+        (set! (-> this index) a2-1)
         (if (= a2-1 (-> v1-0 alloc-index))
-            (set! (-> obj done?) #t)
+            (set! (-> this done?) #t)
             )
         (let ((a2-5 (-> v1-0 elts a2-1)))
           (when (nonzero? (-> a2-5 record-tag))
-            (when (< (the-as time-frame (-> obj max-age)) (- a1-2 (-> a2-5 timestamp)))
-              (set! (-> obj done?) #t)
+            (when (< (the-as time-frame (-> this max-age)) (- a1-2 (-> a2-5 timestamp)))
+              (set! (-> this done?) #t)
               (return (the-as history-elt #f))
               )
-            (if (= (-> a2-5 owner) (-> obj owner))
+            (if (= (-> a2-5 owner) (-> this owner))
                 (return a2-5)
                 )
             )
@@ -295,17 +286,17 @@ For each entry:
   )
 
 ;; definition for method 11 of type history-iterator
-(defmethod get-age history-iterator ((obj history-iterator) (arg0 history-elt))
+(defmethod get-age ((this history-iterator) (arg0 history-elt))
   "Get the age of a history element"
   (- 1.0 (fmin 1.0 (/ (the float (+ (- 1 (-> arg0 timestamp)) (-> *display* base-clock frame-counter)))
-                      (the float (+ (-> obj max-age) 1))
+                      (the float (+ (-> this max-age) 1))
                       )
                )
      )
   )
 
 ;; definition for method 9 of type history-iterator
-(defmethod frame-counter-delta history-iterator ((obj history-iterator) (arg0 history-elt))
+(defmethod frame-counter-delta ((this history-iterator) (arg0 history-elt))
   "Returns the difference between [[*display*]]'s `base-clock.frame-counter` and the elt's `timestamp`"
   (- (-> *display* base-clock frame-counter) (-> arg0 timestamp))
   )

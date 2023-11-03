@@ -51,6 +51,49 @@ void read_plain_data_field(const TypedRef& object,
   }
 }
 
+void memcpy_from_plain_data(u8* dest, const Ref& source, int size_bytes) {
+  const auto& words = source.data->words_by_seg.at(source.seg);
+  for (int byte = 0; byte < size_bytes; byte++) {
+    int byte_in_words = byte + source.byte_offset;
+
+    int word_idx = byte_in_words / 4;
+    int byte_in_word = byte_in_words % 4;
+
+    const auto& word = words.at(word_idx);
+    if (word.kind() != decompiler::LinkedWord::PLAIN_DATA) {
+      throw Error("Error reading byte {} of (in data, byte {}). Didn't get plain data.", byte,
+                  byte_in_words);
+    }
+
+    dest[byte] = word.get_byte(byte_in_word);
+  }
+}
+
+std::vector<u8> bytes_from_plain_data(const Ref& source, int size_bytes) {
+  std::vector<u8> ret(size_bytes);
+  memcpy_from_plain_data(ret.data(), source, size_bytes);
+  return ret;
+}
+
+decompiler::LinkedWord::Kind get_word_kind_for_field(const TypedRef& object,
+                                                     const std::string& field_name,
+                                                     const decompiler::DecompilerTypeSystem& dts) {
+  FieldLookupInfo field_info = dts.ts.lookup_field_info(object.type->get_name(), field_name);
+
+  if (field_info.field.is_dynamic() || field_info.field.is_array() ||
+      field_info.field.is_inline()) {
+    throw Error("Field {} is dynamic/array/inline and can't be used with get_word_kind_for_field",
+                field_name);
+  }
+
+  int byte_in_words = object.ref.byte_offset + field_info.field.offset();
+  if ((byte_in_words % 4) != 0) {
+    throw Error("Field {} was misaligned.", field_name);
+  }
+
+  return object.ref.data->words_by_seg.at(object.ref.seg).at(byte_in_words / 4).kind();
+}
+
 TypedRef get_and_check_ref_to_basic(const TypedRef& object,
                                     const std::string& field_name,
                                     const std::string& expected_type,
@@ -167,6 +210,31 @@ std::string read_type_field(const TypedRef& object,
   }
 
   return word.symbol_name();
+}
+
+std::string read_symbol(const Ref& object) {
+  const auto& word = object.data->words_by_seg.at(object.seg).at(object.byte_offset / 4);
+  if (word.kind() != decompiler::LinkedWord::SYM_PTR) {
+    throw Error("read_symbol did not get a symbol (offset {} words)", object.byte_offset / 4);
+  }
+  return word.symbol_name();
+}
+
+std::string read_type(const Ref& object) {
+  const auto& word = object.data->words_by_seg.at(object.seg).at(object.byte_offset / 4);
+  if (word.kind() != decompiler::LinkedWord::TYPE_PTR) {
+    throw Error("read_type did not get a type (offset {} words)", object.byte_offset / 4);
+  }
+  return word.symbol_name();
+}
+
+std::string read_string_ref(const Ref& object) {
+  const auto& word = object.data->words_by_seg.at(object.seg).at(object.byte_offset / 4);
+  if (word.kind() != decompiler::LinkedWord::PTR) {
+    throw Error("read_string_ref did not get a pointer (offset {} words)", object.byte_offset / 4);
+  }
+  const auto& label = object.data->labels.at(word.label_id());
+  return object.data->get_goal_string_by_label(label);
 }
 
 std::string read_string_field(const TypedRef& object,
@@ -292,6 +360,19 @@ u32 deref_u32(const Ref& ref, int word_offset) {
   return word.data;
 }
 
+float deref_float(const Ref& ref, int array_idx) {
+  if ((ref.byte_offset % 4) != 0) {
+    throw Error("deref_u32 bad alignment");
+  }
+  const auto& word = ref.data->words_by_seg.at(ref.seg).at(array_idx + (ref.byte_offset / 4));
+  if (word.kind() != decompiler::LinkedWord::PLAIN_DATA) {
+    throw Error("deref_u32 bad kind: {}", (int)word.kind());
+  }
+  float ret;
+  memcpy(&ret, &word.data, 4);
+  return ret;
+}
+
 u64 deref_u64(const Ref& ref, int dw_offset) {
   if ((ref.byte_offset % 8) != 0) {
     throw Error("deref_u64 bad alignment");
@@ -339,4 +420,16 @@ u8 deref_u8(const Ref& ref, int byte) {
   u8 vals[4];
   memcpy(vals, &word.data, 4);
   return vals[total_offset & 3];
+}
+
+std::vector<int> find_objects_with_type(const decompiler::LinkedObjectFile& file,
+                                        const std::string& name) {
+  std::vector<int> result;
+  for (size_t i = 0; i < file.words_by_seg.at(0).size(); i++) {
+    const auto& word = file.words_by_seg[0][i];
+    if (word.kind() == decompiler::LinkedWord::TYPE_PTR && word.symbol_name() == name) {
+      result.push_back(i);
+    }
+  }
+  return result;
 }

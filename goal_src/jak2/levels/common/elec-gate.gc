@@ -8,73 +8,62 @@
 ;; DECOMP BEGINS
 
 (deftype elec-gate-params (structure)
-  ((bolt-spec       lightning-spec  :offset-assert   0)
-   (ring-spec       lightning-spec  :offset-assert   4)
-   (ring-radius-min float           :offset-assert   8)
-   (ring-radius-max float           :offset-assert  12)
-   (speed-mult      float           :offset-assert  16)
+  ((bolt-spec        lightning-spec)
+   (ring-spec        lightning-spec)
+   (ring-radius-min  float)
+   (ring-radius-max  float)
+   (speed-mult       float)
    )
-  :method-count-assert 9
-  :size-assert         #x14
-  :flag-assert         #x900000014
   )
 
 
 (deftype elec-gate-bolt (structure)
-  ((ring        lightning-control 2 :offset-assert   0)
-   (bolt        lightning-control   :offset-assert   8)
-   (ring-radius float               :offset-assert  12)
-   (pos         float               :offset-assert  16)
+  ((ring         lightning-control  2)
+   (bolt         lightning-control)
+   (ring-radius  float)
+   (pos          float)
    )
-  :method-count-assert 9
-  :size-assert         #x14
-  :flag-assert         #x900000014
   )
 
 
 (deftype elec-wall (structure)
-  ((pos vector :inline :offset-assert   0)
-   (dir vector :inline :offset-assert  16)
+  ((pos  vector  :inline)
+   (dir  vector  :inline)
    )
-  :method-count-assert 9
-  :size-assert         #x20
-  :flag-assert         #x900000020
   )
 
 
 (deftype elec-gate (process-drawable)
-  ((params             elec-gate-params                   :offset-assert 200)
-   (path-l             path-control                       :offset        152)
-   (path-r             path-control                       :offset-assert 204)
-   (l-bolt             elec-gate-bolt           5 :inline :offset-assert 208)
-   (part-on            sparticle-launch-control           :offset        168)
-   (part-off           sparticle-launch-control           :offset-assert 368)
-   (part-spawner-left  part-spawner                       :offset-assert 372)
-   (part-spawner-right part-spawner                       :offset-assert 376)
-   (on-start           pair                               :offset-assert 380)
-   (on-stop            pair                               :offset-assert 384)
-   (dividing-wall      elec-wall                :inline   :offset-assert 400)
-   (plane              elec-wall                2 :inline :offset-assert 432)
-   (wall-y             float                              :offset-assert 496)
-   (wall-xz            float                              :offset-assert 500)
-   (lightning-quality  float                              :offset-assert 504)
-   (quality-enabled?   symbol                             :offset-assert 508)
+  ((params              elec-gate-params)
+   (path-l              path-control              :overlay-at path)
+   (path-r              path-control)
+   (l-bolt              elec-gate-bolt            5 :inline)
+   (part-on             sparticle-launch-control  :overlay-at part)
+   (part-off            sparticle-launch-control)
+   (part-spawner-left   part-spawner)
+   (part-spawner-right  part-spawner)
+   (on-start            pair)
+   (on-stop             pair)
+   (dividing-wall       elec-wall                 :inline)
+   (plane               elec-wall                 2 :inline)
+   (wall-y              float)
+   (wall-xz             float)
+   (lightning-quality   float)
+   (quality-enabled?    symbol)
    )
-  :heap-base #x180
-  :method-count-assert 30
-  :size-assert         #x200
-  :flag-assert         #x1e01800200
+  (:state-methods
+    idle
+    active
+    shutdown
+    )
   (:methods
-    (idle () _type_ :state 20)
-    (active () _type_ :state 21)
-    (shutdown () _type_ :state 22)
-    (get-params (_type_) elec-gate-params 23)
-    (elec-gate-method-24 (_type_) none 24)
-    (set-palette! (_type_) none 25)
-    (set-state! (_type_) none 26)
-    (spawn-particles (_type_ sparticle-launch-control) none 27)
-    (set-elec-scale-if-close! (_type_ float) none 28)
-    (set-elec-scale! (_type_ float) none 29)
+    (get-params (_type_) elec-gate-params)
+    (elec-gate-method-24 (_type_) none)
+    (set-palette! (_type_) none)
+    (set-state! (_type_) none)
+    (spawn-particles (_type_ sparticle-launch-control) none)
+    (set-elec-scale-if-close! (_type_ float) none)
+    (set-elec-scale! (_type_ float) none)
     )
   )
 
@@ -172,8 +161,8 @@
 
 (defstate idle (elec-gate)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('trigger)
        (go-virtual active)
        )
@@ -232,22 +221,20 @@
           )
         )
       )
-    (none)
     )
-  :code (the-as (function none :behavior elec-gate) sleep-code)
+  :code sleep-code
   :post (behavior ()
     (set-elec-scale-if-close! self 0.0)
     (if (nonzero? (-> self part-off))
         (spawn-particles self (-> self part-off))
         )
-    (none)
     )
   )
 
 (defstate active (elec-gate)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('shutdown)
        (go-virtual shutdown)
        )
@@ -337,7 +324,6 @@
         (blocking-plane-spawn (the-as curve-control #f) vec-pair f0-6)
         )
       )
-    (none)
     )
   :trans (behavior ()
     (local-vars
@@ -376,29 +362,22 @@
                          )
                        (< (fabs (-> s3-1 y)) (-> self wall-y))
                        )
-              (let ((evt (new 'stack-no-clear 'event-message-block)))
-                (set! (-> evt from) (process->ppointer self))
-                (set! (-> evt num-params) 2)
-                (set! (-> evt message) 'attack)
-                (set! (-> evt param 0) (the-as uint #f))
-                (let ((attack (new 'static 'attack-info :mask (attack-info-mask vector shove-back shove-up control id))))
-                  (let* ((game-info *game-info*)
-                         (attack-id (+ (-> game-info attack-id) 1))
-                         )
-                    (set! (-> game-info attack-id) attack-id)
-                    (set! (-> attack id) attack-id)
-                    )
-                  (set! (-> attack vector quad) (-> s4-0 dir quad))
-                  (set! (-> attack shove-back) 24576.0)
-                  (set! (-> attack shove-up) 12288.0)
-                  (set! (-> attack control) (if (focus-test? proc-focus board)
-                                                1.0
-                                                0.0
-                                                )
-                        )
-                  (set! (-> evt param 1) (the-as uint attack))
+              (send-event
+                proc-focus
+                'attack
+                #f
+                (static-attack-info
+                  ((id (new-attack-id))
+                   (vector (-> s4-0 dir))
+                   (shove-back (meters 6))
+                   (shove-up (meters 3))
+                   (control (if (focus-test? proc-focus board)
+                                1.0
+                                0.0
+                                )
+                            )
+                   )
                   )
-                (send-event-function proc-focus evt)
                 )
               (let* ((s4-1 (-> self l-bolt))
                      (s3-2 (get-point-at-percent-along-path! (-> self path) (new 'stack-no-clear 'vector) (-> s4-1 0 pos) 'interp))
@@ -480,7 +459,7 @@
           (set! (-> self lightning-quality)
                 (lerp-scale 0.0 1.0 (vector-vector-distance focus-trans (-> self root trans)) 491520.0 163840.0)
                 )
-          ;; changed for PC port so lightning can always render from farther than 2 inches away...
+          ;; og:preserve-this changed for PC port so lightning can always render from farther than 2 inches away...
           (#when PC_PORT
               (if (not (-> *pc-settings* ps2-lod-dist?)) (set! (-> self lightning-quality) 1.0)))
           )
@@ -496,7 +475,7 @@
                         )
                     )
               )
-          (seek! (-> s3-5 pos) 1.5 (* (-> s2-2 speed-mult) (+ 0.2 (-> s3-5 pos)) (-> self clock seconds-per-frame)))
+          (seek! (-> s3-5 pos) 1.5 (* (-> s2-2 speed-mult) (+ 0.2 (-> s3-5 pos)) (seconds-per-frame)))
           (cond
             ((>= (-> s3-5 pos) 1.5)
              (let ((v1-59 (-> self l-bolt bolt-idx bolt))
@@ -616,9 +595,8 @@
           )
         )
       )
-    (none)
     )
-  :code (the-as (function none :behavior elec-gate) sleep-code)
+  :code sleep-code
   :post (behavior ()
     (set-elec-scale-if-close! self 1.0)
     (if (nonzero? (-> self part))
@@ -626,7 +604,6 @@
         )
     (update! (-> self sound))
     (elec-gate-post)
-    (none)
     )
   )
 
@@ -640,13 +617,12 @@
     (if (-> self on-stop)
         (script-eval (-> self on-stop) :vector (-> self root trans))
         )
-    (none)
     )
   :trans (behavior ()
     (let ((go-idle? #t))
       (dotimes (bolt-idx 5)
         (let ((left-bolt-0 (-> self l-bolt bolt-idx)))
-          (seek! (-> left-bolt-0 pos) 0.0 (* (- 1.14 (-> left-bolt-0 pos)) (-> self clock seconds-per-frame)))
+          (seek! (-> left-bolt-0 pos) 0.0 (* (- 1.14 (-> left-bolt-0 pos)) (seconds-per-frame)))
           (set! go-idle?
                 (cond
                   ((or (< 1.0 (-> left-bolt-0 pos)) (>= 0.0 (-> left-bolt-0 pos)))
@@ -712,47 +688,45 @@
           (go-virtual idle)
           )
       )
-    (none)
     )
-  :code (the-as (function none :behavior elec-gate) sleep-code)
+  :code sleep-code
   :post (behavior ()
     (set-elec-scale-if-close! self 0.0)
     (if (nonzero? (-> self part-off))
         (spawn-particles self (-> self part-off))
         )
     (elec-gate-post)
-    (none)
     )
   )
 
-(defmethod set-elec-scale-if-close! elec-gate ((obj elec-gate) (arg0 float))
+(defmethod set-elec-scale-if-close! ((this elec-gate) (arg0 float))
   "If [[target]]'s position is within `80` [[meters]], set the scale to the value provided
 @see [[elec-gate::29]]"
-  ;; changed for PC port so we can render it at any distance
-  (if (#if PC_PORT (or (not (-> *pc-settings* ps2-lod-dist?)) (< (vector-vector-distance (-> obj root trans) (target-pos 0)) (meters 80)))
-                   (< (vector-vector-distance (-> obj root trans) (target-pos 0)) (meters 80)))
-      (set-elec-scale! obj arg0)
+  ;; og:preserve-this changed for PC port so we can render it at any distance
+  (if (#if PC_PORT (or (not (-> *pc-settings* ps2-lod-dist?)) (< (vector-vector-distance (-> this root trans) (target-pos 0)) (meters 80)))
+                   (< (vector-vector-distance (-> this root trans) (target-pos 0)) (meters 80)))
+      (set-elec-scale! this arg0)
       )
   0
   (none)
   )
 
-(defmethod spawn-particles elec-gate ((obj elec-gate) (sparticle-lc sparticle-launch-control))
+(defmethod spawn-particles ((this elec-gate) (sparticle-lc sparticle-launch-control))
   "TODO - Calls [[sparticle-launch-control::11]] on `part-spawner-left` and `part-spawner-right` if they are defined"
-  (if (-> obj part-spawner-left)
-      (spawn sparticle-lc (the-as vector (&-> (-> obj part-spawner-left child) 8)))
+  (if (-> this part-spawner-left)
+      (spawn sparticle-lc (the-as vector (&-> (-> this part-spawner-left child) 8)))
       )
-  (if (-> obj part-spawner-right)
-      (spawn sparticle-lc (the-as vector (&-> (-> obj part-spawner-right child) 8)))
+  (if (-> this part-spawner-right)
+      (spawn sparticle-lc (the-as vector (&-> (-> this part-spawner-right child) 8)))
       )
   0
   (none)
   )
 
 ;; WARN: Return type mismatch process-drawable vs elec-gate.
-(defmethod relocate elec-gate ((obj elec-gate) (new-addr int))
+(defmethod relocate ((this elec-gate) (new-addr int))
   (dotimes (bolt-idx 5)
-    (let ((left-bolt (-> obj l-bolt bolt-idx)))
+    (let ((left-bolt (-> this l-bolt bolt-idx)))
       (if (nonzero? (-> left-bolt bolt))
           (&+! (-> left-bolt bolt) new-addr)
           )
@@ -764,81 +738,81 @@
           )
       )
     )
-  (if (nonzero? (-> obj path-r))
-      (&+! (-> obj path-r) new-addr)
+  (if (nonzero? (-> this path-r))
+      (&+! (-> this path-r) new-addr)
       )
-  (when (nonzero? (-> obj part-off))
-    (if (nonzero? (-> obj part-off))
-        (&+! (-> obj part-off) new-addr)
+  (when (nonzero? (-> this part-off))
+    (if (nonzero? (-> this part-off))
+        (&+! (-> this part-off) new-addr)
         )
     )
-  (the-as elec-gate ((method-of-type process-drawable relocate) obj new-addr))
+  (the-as elec-gate ((method-of-type process-drawable relocate) this new-addr))
   )
 
-(defmethod deactivate elec-gate ((obj elec-gate))
-  (set-elec-scale-if-close! obj 0.0)
-  ((the-as (function process-drawable none) (find-parent-method elec-gate 10)) obj)
+(defmethod deactivate ((this elec-gate))
+  (set-elec-scale-if-close! this 0.0)
+  (call-parent-method this)
   (none)
   )
 
-(defmethod get-params elec-gate ((obj elec-gate))
+(defmethod get-params ((this elec-gate))
   "@returns [[*default-elec-gate-params*]] by default"
   *default-elec-gate-params*
   )
 
-(defmethod elec-gate-method-24 elec-gate ((obj elec-gate))
+(defmethod elec-gate-method-24 ((this elec-gate))
   0
   (none)
   )
 
-(defmethod set-palette! elec-gate ((obj elec-gate))
+(defmethod set-palette! ((this elec-gate))
   "Sets the [[elec-gate]]'s `palette-id` appropriately"
   0
   (none)
   )
 
-(defmethod set-state! elec-gate ((obj elec-gate))
+(defmethod set-state! ((this elec-gate))
   "If either [[actor-option::17]] is set on the [[elec-gate]] or the related subtask is completed
 make the gate `idle`.
 
 Otherwise, the gate will be `active`."
-  (if (or (logtest? (actor-option user17) (-> obj fact options))
-          (and (-> obj entity) (logtest? (-> obj entity extra perm status) (entity-perm-status subtask-complete)))
+  (if (or (logtest? (actor-option user17) (-> this fact options))
+          (and (-> this entity) (logtest? (-> this entity extra perm status) (entity-perm-status subtask-complete)))
           )
-      (go (method-of-object obj idle))
-      (go (method-of-object obj active))
+      (go (method-of-object this idle))
+      (go (method-of-object this active))
       )
   0
   (none)
   )
 
-(defmethod init-from-entity! elec-gate ((obj elec-gate) (arg0 entity-actor))
+(defmethod init-from-entity! ((this elec-gate) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
 - stack size
 - collision information
 - loading the skeleton group / bones
 - sounds"
-  (set! (-> obj root) (new 'process 'trsqv))
-  (process-drawable-from-entity! obj arg0)
-  (set! (-> obj entity) arg0)
-  (set! (-> obj fact)
-        (new 'process 'fact-info obj (pickup-type eco-pill-random) (-> *FACT-bank* default-eco-pill-green-inc))
+  (set! (-> this root) (new 'process 'trsqv))
+  (process-drawable-from-entity! this arg0)
+  (set! (-> this entity) arg0)
+  (set! (-> this fact)
+        (new 'process 'fact-info this (pickup-type eco-pill-random) (-> *FACT-bank* default-eco-pill-green-inc))
         )
-  (set! (-> obj params) (get-params obj))
-  (logclear! (-> obj mask) (process-mask actor-pause))
-  (set! (-> obj path) (new 'process 'path-control obj 'pathl 0.0 (the-as entity #f) #f))
-  (logior! (-> obj path flags) (path-control-flag display draw-line draw-point draw-text))
-  (set! (-> obj path-r) (new 'process 'path-control obj 'pathr 0.0 (the-as entity #f) #f))
-  (logior! (-> obj path-r flags) (path-control-flag display draw-line draw-point draw-text))
-  (set! (-> obj part-spawner-left) (the-as part-spawner (entity-actor-lookup arg0 'alt-actor 0)))
-  (set! (-> obj part-spawner-right) (the-as part-spawner (entity-actor-lookup arg0 'alt-actor 1)))
-  (let ((params (-> obj params)))
+  (set! (-> this params) (get-params this))
+  (logclear! (-> this mask) (process-mask actor-pause))
+  (set! (-> this path) (new 'process 'path-control this 'pathl 0.0 (the-as entity #f) #f))
+  (logior! (-> this path flags) (path-control-flag display draw-line draw-point draw-text))
+  (set! (-> this path-r) (new 'process 'path-control this 'pathr 0.0 (the-as entity #f) #f))
+  (logior! (-> this path-r flags) (path-control-flag display draw-line draw-point draw-text))
+  (set! (-> this part-spawner-left) (the-as part-spawner (entity-actor-lookup arg0 'alt-actor 0)))
+  (set! (-> this part-spawner-right) (the-as part-spawner (entity-actor-lookup arg0 'alt-actor 1)))
+  (let ((params (-> this params)))
     (dotimes (bolt-idx 5)
-      (let ((left-bolt (-> obj l-bolt bolt-idx)))
-        (set! (-> left-bolt bolt) (new 'process 'lightning-control (-> params bolt-spec) obj 0.0))
-        (set! (-> left-bolt ring 0) (new 'process 'lightning-control (-> params ring-spec) obj 0.0))
-        (set! (-> left-bolt ring 1) (new 'process 'lightning-control (-> params ring-spec) obj 0.0))
+      (let ((left-bolt (-> this l-bolt bolt-idx)))
+        (set! (-> left-bolt bolt) (new 'process 'lightning-control (-> params bolt-spec) this 0.0))
+        (set! (-> left-bolt ring 0) (new 'process 'lightning-control (-> params ring-spec) this 0.0))
+        (set! (-> left-bolt ring 1) (new 'process 'lightning-control (-> params ring-spec) this 0.0))
         (set! (-> left-bolt ring-radius)
               (rand-vu-float-range (-> params ring-radius-min) (-> params ring-radius-max))
               )
@@ -846,125 +820,109 @@ This commonly includes things such as:
         )
       )
     )
-  (let* ((s4-1 (get-point-in-path! (-> obj path) (new 'stack-no-clear 'vector) 0.0 'interp))
-         (v1-26 (get-point-in-path! (-> obj path-r) (new 'stack-no-clear 'vector) 0.0 'interp))
+  (let* ((s4-1 (get-point-in-path! (-> this path) (new 'stack-no-clear 'vector) 0.0 'interp))
+         (v1-26 (get-point-in-path! (-> this path-r) (new 'stack-no-clear 'vector) 0.0 'interp))
          (a1-15 (vector-! (new 'stack-no-clear 'vector) v1-26 s4-1))
          (s5-3 (vector+float*! (new 'stack-no-clear 'vector) s4-1 a1-15 0.5))
          (v1-28 (vector-normalize-copy! (new 'stack-no-clear 'vector) a1-15 1.0))
          )
     (vector-cross! v1-28 v1-28 *up-vector*)
-    (set! (-> obj dividing-wall pos quad) (-> s5-3 quad))
-    (set! (-> obj dividing-wall dir quad) (-> v1-28 quad))
-    (vector+float*! (the-as vector (-> obj plane)) s5-3 v1-28 12288.0)
-    (set! (-> (the-as vector (-> obj plane 0 dir)) quad) (-> v1-28 quad))
+    (set! (-> this dividing-wall pos quad) (-> s5-3 quad))
+    (set! (-> this dividing-wall dir quad) (-> v1-28 quad))
+    (vector+float*! (the-as vector (-> this plane)) s5-3 v1-28 12288.0)
+    (set! (-> (the-as vector (-> this plane 0 dir)) quad) (-> v1-28 quad))
     (vector-float*! v1-28 v1-28 -1.0)
-    (vector+float*! (the-as vector (-> obj plane 1)) s5-3 v1-28 12288.0)
-    (set! (-> (the-as vector (-> obj plane 1 dir)) quad) (-> v1-28 quad))
+    (vector+float*! (the-as vector (-> this plane 1)) s5-3 v1-28 12288.0)
+    (set! (-> (the-as vector (-> this plane 1 dir)) quad) (-> v1-28 quad))
     )
-  (set! (-> obj wall-xz)
+  (set! (-> this wall-xz)
         (vector-vector-distance
-          (get-point-in-path! (-> obj path) (new 'stack-no-clear 'vector) 0.0 'interp)
-          (get-point-in-path! (-> obj path-r) (new 'stack-no-clear 'vector) 0.0 'interp)
+          (get-point-in-path! (-> this path) (new 'stack-no-clear 'vector) 0.0 'interp)
+          (get-point-in-path! (-> this path-r) (new 'stack-no-clear 'vector) 0.0 'interp)
           )
         )
-  (set! (-> obj wall-xz) (* 0.5 (-> obj wall-xz)))
-  (+! (-> obj wall-xz) 4096.0)
-  (set! (-> obj wall-y)
+  (set! (-> this wall-xz) (* 0.5 (-> this wall-xz)))
+  (+! (-> this wall-xz) 4096.0)
+  (set! (-> this wall-y)
         (fabs
-          (- (-> (get-point-in-path! (-> obj path) (new 'stack-no-clear 'vector) (get-num-segments (-> obj path)) 'interp)
+          (- (-> (get-point-in-path! (-> this path) (new 'stack-no-clear 'vector) (get-num-segments (-> this path)) 'interp)
                  y
                  )
-             (-> (get-point-in-path! (-> obj path) (new 'stack-no-clear 'vector) 0.0 'interp) y)
+             (-> (get-point-in-path! (-> this path) (new 'stack-no-clear 'vector) 0.0 'interp) y)
              )
           )
         )
-  (+! (-> obj wall-y) 4096.0)
-  (set! (-> obj quality-enabled?) #t)
-  (set! (-> obj lightning-quality) 1.0)
-  (set! (-> obj sound)
-        (new 'process 'ambient-sound (static-sound-spec "electric-gate" :fo-max 70) (-> obj root trans))
+  (+! (-> this wall-y) 4096.0)
+  (set! (-> this quality-enabled?) #t)
+  (set! (-> this lightning-quality) 1.0)
+  (set! (-> this sound)
+        (new 'process 'ambient-sound (static-sound-spec "electric-gate" :fo-max 70) (-> this root trans))
         )
-  (set! (-> obj on-start) (res-lump-struct (-> obj entity) 'on-start pair))
-  (set! (-> obj on-stop) (res-lump-struct (-> obj entity) 'on-stop pair))
-  (elec-gate-method-24 obj)
-  (set-palette! obj)
-  (set-state! obj)
+  (set! (-> this on-start) (res-lump-struct (-> this entity) 'on-start pair))
+  (set! (-> this on-stop) (res-lump-struct (-> this entity) 'on-stop pair))
+  (elec-gate-method-24 this)
+  (set-palette! this)
+  (set-state! this)
   (none)
   )
 
 (deftype fort-elec-gate (elec-gate)
-  ((palette-id int32  :offset-assert 512)
+  ((palette-id  int32)
    )
-  :heap-base #x190
-  :method-count-assert 30
-  :size-assert         #x204
-  :flag-assert         #x1e01900204
   )
 
 
-(defmethod set-elec-scale! fort-elec-gate ((obj fort-elec-gate) (scale float))
+(defmethod set-elec-scale! ((this fort-elec-gate) (scale float))
   "Calls associated mood functions to set the scale with the value provided
 @see mood-funcs
 @see mood-funcs2"
   (set-fordumpa-electricity-scale! scale)
-  (set-forresca-electricity-scale! scale (-> obj palette-id))
-  (set-forrescb-electricity-scale! scale (-> obj palette-id))
+  (set-forresca-electricity-scale! scale (-> this palette-id))
+  (set-forrescb-electricity-scale! scale (-> this palette-id))
   0
   (none)
   )
 
-(defmethod set-palette! fort-elec-gate ((obj fort-elec-gate))
+(defmethod set-palette! ((this fort-elec-gate))
   "Sets the [[elec-gate]]'s `palette-id` appropriately"
-  (set! (-> obj palette-id) (res-lump-value (-> obj entity) 'extra-id int :time -1000000000.0))
+  (set! (-> this palette-id) (res-lump-value (-> this entity) 'extra-id int :time -1000000000.0))
   0
   (none)
   )
 
 (deftype drill-elec-gate (elec-gate)
-  ((palette-id int32  :offset-assert 512)
+  ((palette-id  int32)
    )
-  :heap-base #x190
-  :method-count-assert 30
-  :size-assert         #x204
-  :flag-assert         #x1e01900204
   )
 
 
-(defmethod set-elec-scale! drill-elec-gate ((obj drill-elec-gate) (arg0 float))
+(defmethod set-elec-scale! ((this drill-elec-gate) (arg0 float))
   "Calls associated mood functions to set the scale with the value provided
 @see mood-funcs
 @see mood-funcs2"
-  (set-drill-electricity-scale! arg0 (-> obj palette-id))
+  (set-drill-electricity-scale! arg0 (-> this palette-id))
   0
   (none)
   )
 
-(defmethod set-palette! drill-elec-gate ((obj drill-elec-gate))
+(defmethod set-palette! ((this drill-elec-gate))
   "Sets the [[elec-gate]]'s `palette-id` appropriately"
-  (set! (-> obj palette-id) (res-lump-value (-> obj entity) 'extra-id int :time -1000000000.0))
+  (set! (-> this palette-id) (res-lump-value (-> this entity) 'extra-id int :time -1000000000.0))
   0
   (none)
   )
 
 (deftype caspad-elec-gate (elec-gate)
   ()
-  :heap-base #x180
-  :method-count-assert 30
-  :size-assert         #x200
-  :flag-assert         #x1e01800200
   )
 
 
 (deftype castle-elec-gate (elec-gate)
   ()
-  :heap-base #x180
-  :method-count-assert 30
-  :size-assert         #x200
-  :flag-assert         #x1e01800200
   )
 
 
-(defmethod set-elec-scale! castle-elec-gate ((obj castle-elec-gate) (arg0 float))
+(defmethod set-elec-scale! ((this castle-elec-gate) (arg0 float))
   "Calls associated mood functions to set the scale with the value provided
 @see mood-funcs
 @see mood-funcs2"
@@ -973,8 +931,8 @@ This commonly includes things such as:
   (none)
   )
 
-
-(defmethod set-elec-scale! caspad-elec-gate ((obj caspad-elec-gate) (arg0 float))
+;; og:preserve-this
+(defmethod set-elec-scale! ((this caspad-elec-gate) (arg0 float))
   "Added, original game did not define this and would crash on call."
   0
   (none)
@@ -1024,33 +982,29 @@ This commonly includes things such as:
                                     )
         )
 
-(defmethod get-params caspad-elec-gate ((obj caspad-elec-gate))
+(defmethod get-params ((this caspad-elec-gate))
   "@returns [[*default-elec-gate-params*]] by default"
   *caspad-elec-gate-params*
   )
 
 (deftype palroof-elec-gate (elec-gate)
-  ((palette-id int32  :offset-assert 512)
+  ((palette-id  int32)
    )
-  :heap-base #x190
-  :method-count-assert 30
-  :size-assert         #x204
-  :flag-assert         #x1e01900204
   )
 
 
-(defmethod set-elec-scale! palroof-elec-gate ((obj palroof-elec-gate) (arg0 float))
+(defmethod set-elec-scale! ((this palroof-elec-gate) (arg0 float))
   "Calls associated mood functions to set the scale with the value provided
 @see mood-funcs
 @see mood-funcs2"
-  (set-palroof-electricity-scale! arg0 (-> obj palette-id))
+  (set-palroof-electricity-scale! arg0 (-> this palette-id))
   0
   (none)
   )
 
-(defmethod set-palette! palroof-elec-gate ((obj palroof-elec-gate))
+(defmethod set-palette! ((this palroof-elec-gate))
   "Sets the [[elec-gate]]'s `palette-id` appropriately"
-  (set! (-> obj palette-id) (res-lump-value (-> obj entity) 'extra-id int :time -1000000000.0))
+  (set! (-> this palette-id) (res-lump-value (-> this entity) 'extra-id int :time -1000000000.0))
   0
   (none)
   )

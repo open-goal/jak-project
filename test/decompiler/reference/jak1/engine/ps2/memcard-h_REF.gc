@@ -4,83 +4,74 @@
 ;; definition of type mc-handle
 (deftype mc-handle (int32)
   ()
-  :method-count-assert 9
-  :size-assert         #x4
-  :flag-assert         #x900000004
   )
 
 ;; definition of type mc-file-info
 (deftype mc-file-info (structure)
-  ((present               int32    :offset-assert   0)
-   (blind-data            float 16 :offset-assert   4)
-   (blind-data-int8       int8  64 :offset          4)
-   (level-index           int32    :offset          4)
-   (fuel-cell-count       float    :offset          8)
-   (money-count           float    :offset         12)
-   (buzzer-count          float    :offset         16)
-   (completion-percentage float    :offset         20)
-   (minute                uint8    :offset         24)
-   (hour                  uint8    :offset         25)
-   (week                  uint8    :offset         26)
-   (day                   uint8    :offset         27)
-   (month                 uint8    :offset         28)
-   (year                  uint8    :offset         29)
+  ((present                int32)
+   (blind-data             float  16)
+   (blind-data-int8        int8   64 :overlay-at (-> blind-data 0))
+   (level-index            int32     :overlay-at (-> blind-data 0))
+   (fuel-cell-count        float     :overlay-at (-> blind-data 1))
+   (money-count            float     :overlay-at (-> blind-data 2))
+   (buzzer-count           float     :overlay-at (-> blind-data 3))
+   (completion-percentage  float     :overlay-at (-> blind-data 4))
+   (minute                 uint8     :overlay-at (-> blind-data 5))
+   (hour                   uint8     :overlay-at (-> blind-data-int8 21))
+   (week                   uint8     :overlay-at (-> blind-data-int8 22))
+   (day                    uint8     :overlay-at (-> blind-data-int8 23))
+   (month                  uint8     :overlay-at (-> blind-data 6))
+   (year                   uint8     :overlay-at (-> blind-data-int8 25))
    )
   :pack-me
-  :method-count-assert 9
-  :size-assert         #x44
-  :flag-assert         #x900000044
   )
 
 ;; definition for method 3 of type mc-file-info
-(defmethod inspect mc-file-info ((obj mc-file-info))
-  (format #t "[~8x] ~A~%" obj 'mc-file-info)
-  (format #t "~Tpresent: ~D~%" (-> obj present))
-  (format #t "~Tblind-data[16] @ #x~X~%" (-> obj blind-data))
-  (format #t "~Tblind-data-int8[64] @ #x~X~%" (-> obj blind-data))
-  (format #t "~Tlevel-index: ~D~%" (-> obj level-index))
-  (format #t "~Tfuel-cell-count: ~f~%" (-> obj fuel-cell-count))
-  (format #t "~Tmoney-count: ~f~%" (-> obj money-count))
-  (format #t "~Tbuzzer-count: ~f~%" (-> obj buzzer-count))
-  (format #t "~Tcompletion-percentage: ~f~%" (-> obj completion-percentage))
-  (format #t "~Tminute: #x~X~%" (-> obj minute))
-  (format #t "~Thour: #x~X~%" (-> obj hour))
-  (format #t "~Tweek: #x~X~%" (-> obj week))
-  (format #t "~Tday: #x~X~%" (-> obj day))
-  (format #t "~Tmonth: #x~X~%" (-> obj month))
-  (format #t "~Tyear: #x~X~%" (-> obj year))
-  obj
+(defmethod inspect ((this mc-file-info))
+  (format #t "[~8x] ~A~%" this 'mc-file-info)
+  (format #t "~Tpresent: ~D~%" (-> this present))
+  (format #t "~Tblind-data[16] @ #x~X~%" (-> this blind-data))
+  (format #t "~Tblind-data-int8[64] @ #x~X~%" (-> this blind-data))
+  (format #t "~Tlevel-index: ~D~%" (-> this level-index))
+  (format #t "~Tfuel-cell-count: ~f~%" (-> this fuel-cell-count))
+  (format #t "~Tmoney-count: ~f~%" (-> this money-count))
+  (format #t "~Tbuzzer-count: ~f~%" (-> this buzzer-count))
+  (format #t "~Tcompletion-percentage: ~f~%" (-> this completion-percentage))
+  (format #t "~Tminute: #x~X~%" (-> this minute))
+  (format #t "~Thour: #x~X~%" (-> this hour))
+  (format #t "~Tweek: #x~X~%" (-> this week))
+  (format #t "~Tday: #x~X~%" (-> this day))
+  (format #t "~Tmonth: #x~X~%" (-> this month))
+  (format #t "~Tyear: #x~X~%" (-> this year))
+  this
   )
 
 ;; definition of type mc-slot-info
 (deftype mc-slot-info (structure)
-  ((handle       int32                  :offset-assert   0)
-   (known        int32                  :offset-assert   4)
-   (formatted    int32                  :offset-assert   8)
-   (inited       int32                  :offset-assert  12)
-   (last-file    int32                  :offset-assert  16)
-   (mem-required int32                  :offset-assert  20)
-   (mem-actual   int32                  :offset-assert  24)
-   (file         mc-file-info 4 :inline :offset-assert  28)
+  ((handle        int32)
+   (known         int32)
+   (formatted     int32)
+   (inited        int32)
+   (last-file     int32)
+   (mem-required  int32)
+   (mem-actual    int32)
+   (file          mc-file-info  4 :inline)
    )
   :pack-me
-  :method-count-assert 9
-  :size-assert         #x12c
-  :flag-assert         #x90000012c
   )
 
 ;; definition for method 3 of type mc-slot-info
-(defmethod inspect mc-slot-info ((obj mc-slot-info))
-  (format #t "[~8x] ~A~%" obj 'mc-slot-info)
-  (format #t "~Thandle: ~D~%" (-> obj handle))
-  (format #t "~Tknown: ~D~%" (-> obj known))
-  (format #t "~Tformatted: ~D~%" (-> obj formatted))
-  (format #t "~Tinited: ~D~%" (-> obj inited))
-  (format #t "~Tlast-file: ~D~%" (-> obj last-file))
-  (format #t "~Tmem-required: ~D~%" (-> obj mem-required))
-  (format #t "~Tmem-actual: ~D~%" (-> obj mem-actual))
-  (format #t "~Tfile[4] @ #x~X~%" (-> obj file))
-  obj
+(defmethod inspect ((this mc-slot-info))
+  (format #t "[~8x] ~A~%" this 'mc-slot-info)
+  (format #t "~Thandle: ~D~%" (-> this handle))
+  (format #t "~Tknown: ~D~%" (-> this known))
+  (format #t "~Tformatted: ~D~%" (-> this formatted))
+  (format #t "~Tinited: ~D~%" (-> this inited))
+  (format #t "~Tlast-file: ~D~%" (-> this last-file))
+  (format #t "~Tmem-required: ~D~%" (-> this mem-required))
+  (format #t "~Tmem-actual: ~D~%" (-> this mem-actual))
+  (format #t "~Tfile[4] @ #x~X~%" (-> this file))
+  this
   )
 
 ;; definition for function mc-sync

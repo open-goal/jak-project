@@ -3,21 +3,17 @@
 
 ;; definition of type assistant
 (deftype assistant (process-taskable)
-  ((sound-id sound-id  :offset-assert 380)
+  ((sound-id  sound-id)
    )
-  :heap-base #x110
-  :method-count-assert 53
-  :size-assert         #x180
-  :flag-assert         #x3501100180
   )
 
 ;; definition for method 3 of type assistant
-(defmethod inspect assistant ((obj assistant))
+(defmethod inspect ((this assistant))
   (let ((t9-0 (method-of-type process-taskable inspect)))
-    (t9-0 obj)
+    (t9-0 this)
     )
-  (format #t "~T~Tsound-id: ~D~%" (-> obj sound-id))
-  obj
+  (format #t "~T~Tsound-id: ~D~%" (-> this sound-id))
+  this
   )
 
 ;; failed to figure out what this is:
@@ -29,10 +25,10 @@
 
 ;; definition for method 52 of type assistant
 ;; INFO: Return type mismatch shadow-flags vs none.
-(defmethod process-taskable-method-52 assistant ((obj assistant))
-  (let ((v1-1 (-> obj draw shadow-ctrl)))
+(defmethod process-taskable-method-52 ((this assistant))
+  (let ((v1-1 (-> this draw shadow-ctrl)))
     (when v1-1
-      (let ((f0-0 (-> obj root-override trans y)))
+      (let ((f0-0 (-> this root trans y)))
         (let ((a0-2 v1-1))
           (set! (-> a0-2 settings bot-plane w) (- (+ -4096.0 f0-0)))
           )
@@ -49,21 +45,22 @@
   )
 
 ;; definition for method 48 of type assistant
-(defmethod draw-npc-shadow assistant ((obj assistant))
-  (-> obj draw shadow-ctrl)
+;; INFO: Return type mismatch object vs none.
+(defmethod draw-npc-shadow ((this assistant))
+  (-> this draw shadow-ctrl)
   (cond
-    ((and (-> obj draw shadow)
-          (zero? (-> obj draw cur-lod))
-          (logtest? (-> obj draw status) (draw-status was-drawn))
+    ((and (-> this draw shadow)
+          (zero? (-> this draw cur-lod))
+          (logtest? (-> this draw status) (draw-status was-drawn))
           )
-     (let ((v1-9 (-> obj draw shadow-ctrl)))
+     (let ((v1-9 (-> this draw shadow-ctrl)))
        (logclear! (-> v1-9 settings flags) (shadow-flags disable-draw))
        )
      0
-     (update-direction-from-time-of-day (-> obj draw shadow-ctrl))
+     (update-direction-from-time-of-day (-> this draw shadow-ctrl))
      )
     (else
-      (let ((v1-14 (-> obj draw shadow-ctrl)))
+      (let ((v1-14 (-> this draw shadow-ctrl)))
         (logior! (-> v1-14 settings flags) (shadow-flags disable-draw))
         )
       0
@@ -73,18 +70,18 @@
   )
 
 ;; definition for method 32 of type assistant
-(defmethod play-anim! assistant ((obj assistant) (arg0 symbol))
-  (case (current-status (-> obj tasks))
+(defmethod play-anim! ((this assistant) (arg0 symbol))
+  (case (current-status (-> this tasks))
     (((task-status need-hint) (task-status need-introduction))
-     (case (current-task (-> obj tasks))
+     (case (current-task (-> this tasks))
        (((game-task jungle-eggtop))
         (when arg0
-          (let* ((s5-1 (-> obj tasks))
+          (let* ((s5-1 (-> this tasks))
                  (s4-0 (method-of-object s5-1 save-reminder))
                  )
             (s4-0 s5-1 (the int (the-as float (send-event *target* 'query 'pickup (pickup-type fuel-cell)))) 1)
             )
-          (close-status! (-> obj tasks) (task-status need-introduction))
+          (close-status! (-> this tasks) (task-status need-introduction))
           )
         (new 'static 'spool-anim
           :name "assistant-introduction-blue-eco-switch"
@@ -121,7 +118,7 @@
         )
        (else
          (if arg0
-             (close-status! (-> obj tasks) (task-status need-introduction))
+             (close-status! (-> this tasks) (task-status need-introduction))
              )
          (new 'static 'spool-anim
            :name "assistant-introduction-race-bike"
@@ -133,28 +130,28 @@
        )
      )
     (((task-status need-reminder) (task-status need-reminder-a))
-     (set! (-> obj skippable) #t)
+     (set! (-> this skippable) #t)
      (cond
-       ((= (current-task (-> obj tasks)) (game-task none))
+       ((= (current-task (-> this tasks)) (game-task none))
         (new 'static 'spool-anim :name "assistant-reminder-1-generic" :index 14 :parts 2 :command-list '())
         )
-       ((closed? (-> obj tasks) (game-task jungle-eggtop) (task-status need-resolution))
+       ((closed? (-> this tasks) (game-task jungle-eggtop) (task-status need-resolution))
         (new 'static 'spool-anim :name "assistant-reminder-1-race-bike" :index 13 :parts 3 :command-list '())
         )
-       ((or (closed? (-> obj tasks) (game-task misty-bike) (task-status need-resolution))
-            (not (closed? (-> obj tasks) (game-task misty-bike) (task-status need-introduction)))
+       ((or (closed? (-> this tasks) (game-task misty-bike) (task-status need-resolution))
+            (not (closed? (-> this tasks) (game-task misty-bike) (task-status need-introduction)))
             )
         (new 'static 'spool-anim :name "assistant-reminder-1-blue-eco-switch" :index 11 :parts 3 :command-list '())
         )
-       ((zero? (get-reminder (-> obj tasks) 2))
+       ((zero? (get-reminder (-> this tasks) 2))
         (if arg0
-            (save-reminder (-> obj tasks) 1 2)
+            (save-reminder (-> this tasks) 1 2)
             )
         (new 'static 'spool-anim :name "assistant-reminder-1-race-bike" :index 13 :parts 3 :command-list '())
         )
        (else
          (if arg0
-             (save-reminder (-> obj tasks) 0 2)
+             (save-reminder (-> this tasks) 0 2)
              )
          (new 'static 'spool-anim :name "assistant-reminder-1-blue-eco-switch" :index 11 :parts 3 :command-list '())
          )
@@ -165,23 +162,24 @@
           (format
             0
             "ERROR: <GMJ>: ~S playing anim for task status ~S~%"
-            (-> obj name)
-            (task-status->string (current-status (-> obj tasks)))
+            (-> this name)
+            (task-status->string (current-status (-> this tasks)))
             )
           )
-      (-> obj draw art-group data 3)
+      (-> this draw art-group data 3)
       )
     )
   )
 
 ;; definition for method 31 of type assistant
-(defmethod get-art-elem assistant ((obj assistant))
-  (-> obj draw art-group data 3)
+(defmethod get-art-elem ((this assistant))
+  (-> this draw art-group data 3)
   )
 
 ;; definition for method 43 of type assistant
-(defmethod process-taskable-method-43 assistant ((obj assistant))
-  (let ((s5-0 (ambient-control-method-10 (-> obj ambient) (new 'stack-no-clear 'vector) (seconds 30) 122880.0 obj)))
+(defmethod process-taskable-method-43 ((this assistant))
+  (let ((s5-0 (ambient-control-method-10 (-> this ambient) (new 'stack-no-clear 'vector) (seconds 30) 122880.0 this))
+        )
     (when s5-0
       (let ((f0-2 (rand-float-gen)))
         (cond
@@ -189,19 +187,19 @@
            #f
            )
           ((< 0.8 f0-2)
-           (play-ambient (-> obj ambient) "ASSTLP01" #f (-> obj root-override trans))
+           (play-ambient (-> this ambient) "ASSTLP01" #f (-> this root trans))
            )
           ((< 0.6 f0-2)
-           (play-ambient (-> obj ambient) "ASSTLP04" #f (-> obj root-override trans))
+           (play-ambient (-> this ambient) "ASSTLP04" #f (-> this root trans))
            )
           ((< 0.4 f0-2)
-           (play-ambient (-> obj ambient) "ASSTLP05" #f (-> obj root-override trans))
+           (play-ambient (-> this ambient) "ASSTLP05" #f (-> this root trans))
            )
           ((< 0.2 f0-2)
-           (play-ambient (-> obj ambient) "ASSTLP02" #f (-> obj root-override trans))
+           (play-ambient (-> this ambient) "ASSTLP02" #f (-> this root trans))
            )
           (else
-            (play-ambient (-> obj ambient) "ASSTLP03" #f (-> obj root-override trans))
+            (play-ambient (-> this ambient) "ASSTLP03" #f (-> this root trans))
             )
           )
         )
@@ -242,13 +240,13 @@
            (countdown (gp-2 (+ (the int (* f30-0 (+ -1.0 (the-as float v1-77)))) 4))
              (ja-no-eval :group! (ja-group) :num! (seek!) :frame-num 0.0)
              (until (ja-done? 0)
-               (spawn (-> self part) (vector<-cspace! (new 'stack-no-clear 'vector) (-> self node-list data 30)))
+               (spawn (-> self part) (vector<-cspace! (new 'stack-no-clear 'vector) (joint-node assistant-lod0-jg torchTIP)))
                (suspend)
                (ja :num! (seek!))
                )
              (ja-no-eval :group! (ja-group) :num! (seek! 0.0) :frame-num max)
              (until (ja-done? 0)
-               (spawn (-> self part) (vector<-cspace! (new 'stack-no-clear 'vector) (-> self node-list data 30)))
+               (spawn (-> self part) (vector<-cspace! (new 'stack-no-clear 'vector) (joint-node assistant-lod0-jg torchTIP)))
                (suspend)
                (ja :num! (seek! 0.0))
                )
@@ -289,7 +287,6 @@
           )
         )
       )
-    (none)
     )
   )
 
@@ -373,34 +370,28 @@
           (sound-play "water-drop")
           )
       (set-vector! gp-0 (-> arg2 x) (-> arg1 user-float) (-> arg2 z) 1.0)
-      (sp-launch-particles-var
-        *sp-particle-system-2d*
-        (-> *part-id-table* 367)
-        gp-0
-        (the-as sparticle-launch-state #f)
-        (the-as sparticle-launch-control #f)
-        1.0
-        )
+      (launch-particles (-> *part-id-table* 367) gp-0)
       )
     )
   (none)
   )
 
 ;; definition for method 11 of type assistant
-(defmethod init-from-entity! assistant ((obj assistant) (arg0 entity-actor))
-  (process-taskable-method-40 obj arg0 *assistant-sg* 3 31 (new 'static 'vector :w 4096.0) 5)
-  (set! (-> obj bounce-away) #f)
-  (set! (-> obj part) (create-launch-control (-> *part-group-id-table* 122) obj))
-  (set! (-> obj tasks) (get-task-control (game-task jungle-eggtop)))
-  (set! (-> obj sound-id) (new-sound-id))
-  (set! (-> obj draw light-index) (the-as uint 1))
+;; INFO: Return type mismatch object vs none.
+(defmethod init-from-entity! ((this assistant) (arg0 entity-actor))
+  (process-taskable-method-40 this arg0 *assistant-sg* 3 31 (new 'static 'vector :w 4096.0) 5)
+  (set! (-> this bounce-away) #f)
+  (set! (-> this part) (create-launch-control (-> *part-group-id-table* 122) this))
+  (set! (-> this tasks) (get-task-control (game-task jungle-eggtop)))
+  (set! (-> this sound-id) (new-sound-id))
+  (set! (-> this draw light-index) (the-as uint 1))
   (case (get-task-status (game-task firecanyon-assistant))
     (((task-status unknown))
-     (go (method-of-object obj idle))
+     (go (method-of-object this idle))
      )
     (else
-      (cleanup-for-death obj)
-      (deactivate obj)
+      (cleanup-for-death this)
+      (deactivate this)
       )
     )
   (none)

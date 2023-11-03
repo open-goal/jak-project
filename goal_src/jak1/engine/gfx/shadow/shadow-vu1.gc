@@ -5,126 +5,84 @@
 ;; name in dgo: shadow-vu1
 ;; dgos: GAME, ENGINE
 
+;; DECOMP BEGINS
+
 (deftype shadow-vu1-constants (structure)
-  ((hmgescale vector     :inline   :offset-assert   0)
-   (invhscale vector     :inline   :offset-assert  16)
-   (texoffset vector     :inline   :offset-assert  32)
-   (texscale  vector     :inline   :offset-assert  48)
-   (hvdfoff   vector     :inline   :offset-assert  64)
-   (fog       vector     :inline   :offset-assert  80)
-   (clrs      vector     2 :inline :offset-assert  96)
-   (adgif     gs-gif-tag :inline   :offset-assert 128)
-   (texflush  ad-cmd     :inline   :offset-assert 144)
-   (flush     ad-cmd     :inline   :offset-assert 160)
-   (trigif    gs-gif-tag :inline   :offset-assert 176)
-   (quadgif   gs-gif-tag :inline   :offset-assert 192)
+  ((hmgescale  vector      :inline)
+   (invhscale  vector      :inline)
+   (texoffset  vector      :inline)
+   (texscale   vector      :inline)
+   (hvdfoff    vector      :inline)
+   (fog        vector      :inline)
+   (clrs       vector      2 :inline)
+   (adgif      gs-gif-tag  :inline)
+   (texflush   ad-cmd      :inline)
+   (flush      ad-cmd      :inline)
+   (trigif     gs-gif-tag  :inline)
+   (quadgif    gs-gif-tag  :inline)
    )
-  :method-count-assert 9
-  :size-assert         #xd0
-  :flag-assert         #x9000000d0
   )
 
-(defmethod inspect shadow-vu1-constants ((obj shadow-vu1-constants))
-  (format #t "[~8x] ~A~%" obj 'shadow-vu1-constants)
-  (format #t "~Thmgescale: #<vector @ #x~X>~%" (-> obj hmgescale))
-  (format #t "~Tinvhscale: #<vector @ #x~X>~%" (-> obj invhscale))
-  (format #t "~Ttexoffset: #<vector @ #x~X>~%" (-> obj texoffset))
-  (format #t "~Ttexscale: #<vector @ #x~X>~%" (-> obj texscale))
-  (format #t "~Thvdfoff: #<vector @ #x~X>~%" (-> obj hvdfoff))
-  (format #t "~Tfog: #<vector @ #x~X>~%" (-> obj fog))
-  (format #t "~Tclrs[2] @ #x~X~%" (-> obj clrs))
-  (format #t "~Tadgif: #<gs-gif-tag @ #x~X>~%" (-> obj adgif))
-  (format #t "~Ttexflush: #<ad-cmd @ #x~X>~%" (-> obj texflush))
-  (format #t "~Tflush: #<ad-cmd @ #x~X>~%" (-> obj flush))
-  (format #t "~Ttrigif: #<gs-gif-tag @ #x~X>~%" (-> obj trigif))
-  (format #t "~Tquadgif: #<gs-gif-tag @ #x~X>~%" (-> obj quadgif))
-  obj
-  )
 
 (deftype shadow-vu1-gifbuf-template (structure)
-  ((adgif   gs-gif-tag :inline :offset-assert   0)
-   (ad      ad-cmd     :inline :offset-assert  16)
-   (flush   ad-cmd     :inline :offset-assert  32)
-   (trigif  gs-gif-tag :inline :offset-assert  48)
-   (quadgif gs-gif-tag :inline :offset-assert  64)
+  ((adgif    gs-gif-tag  :inline)
+   (ad       ad-cmd      :inline)
+   (flush    ad-cmd      :inline)
+   (trigif   gs-gif-tag  :inline)
+   (quadgif  gs-gif-tag  :inline)
    )
-  :method-count-assert 9
-  :size-assert         #x50
-  :flag-assert         #x900000050
   )
 
-(defmethod inspect shadow-vu1-gifbuf-template ((obj shadow-vu1-gifbuf-template))
-  (format #t "[~8x] ~A~%" obj 'shadow-vu1-gifbuf-template)
-  (format #t "~Tadgif: #<gs-gif-tag @ #x~X>~%" (-> obj adgif))
-  (format #t "~Tad: #<ad-cmd @ #x~X>~%" (-> obj ad))
-  (format #t "~Tflush: #<ad-cmd @ #x~X>~%" (-> obj flush))
-  (format #t "~Ttrigif: #<gs-gif-tag @ #x~X>~%" (-> obj trigif))
-  (format #t "~Tquadgif: #<gs-gif-tag @ #x~X>~%" (-> obj quadgif))
-  obj
-  )
 
-(define
-  *shadow-vu1-tri-template*
-  (new 'static 'shadow-vu1-gifbuf-template
-    :adgif
-    (new 'static 'gs-gif-tag
-      :tag
-      (new 'static 'gif-tag64 :nloop #x1 :nreg #x1)
-      :regs
-      (new 'static 'gif-tag-regs :regs0 (gif-reg-id a+d))
-      )
-    :ad
-    (new 'static 'ad-cmd :word (new 'static 'array uint32 4 #x0 #x0 #x3f #x0))
-    :flush
-    (new 'static 'ad-cmd :word (new 'static 'array uint32 4 #x0 #x3f800000 #x1 #x0))
-    :trigif
-    (new 'static 'gs-gif-tag
-      :tag
-      (new 'static 'gif-tag64
-        :nloop #x1
-        :eop #x1
-        :pre #x1
-        :prim (new 'static 'gs-prim :prim (gs-prim-type tri-fan) :tme #x1)
-        :nreg #x7
+(define *shadow-vu1-tri-template* (new 'static 'shadow-vu1-gifbuf-template
+                                    :adgif (new 'static 'gs-gif-tag
+                                      :tag (new 'static 'gif-tag64 :nloop #x1 :nreg #x1)
+                                      :regs (new 'static 'gif-tag-regs :regs0 (gif-reg-id a+d))
+                                      )
+                                    :ad (new 'static 'ad-cmd :cmd (gs-reg texflush))
+                                    :flush (new 'static 'ad-cmd :data #x3f80000000000000 :cmd (gs-reg rgbaq))
+                                    :trigif (new 'static 'gs-gif-tag
+                                      :tag (new 'static 'gif-tag64
+                                        :nloop #x1
+                                        :eop #x1
+                                        :pre #x1
+                                        :prim (new 'static 'gs-prim :prim (gs-prim-type tri-fan) :tme #x1)
+                                        :nreg #x7
+                                        )
+                                      :regs (new 'static 'gif-tag-regs
+                                        :regs0 (gif-reg-id rgbaq)
+                                        :regs1 (gif-reg-id st)
+                                        :regs2 (gif-reg-id xyzf2)
+                                        :regs3 (gif-reg-id st)
+                                        :regs4 (gif-reg-id xyzf2)
+                                        :regs5 (gif-reg-id st)
+                                        :regs6 (gif-reg-id xyzf2)
+                                        )
+                                      )
+                                    :quadgif (new 'static 'gs-gif-tag
+                                      :tag (new 'static 'gif-tag64
+                                        :nloop #x1
+                                        :eop #x1
+                                        :pre #x1
+                                        :prim (new 'static 'gs-prim :prim (gs-prim-type tri-fan) :tme #x1)
+                                        :nreg #x9
+                                        )
+                                      :regs (new 'static 'gif-tag-regs
+                                        :regs0 (gif-reg-id rgbaq)
+                                        :regs1 (gif-reg-id st)
+                                        :regs2 (gif-reg-id xyzf2)
+                                        :regs3 (gif-reg-id st)
+                                        :regs4 (gif-reg-id xyzf2)
+                                        :regs5 (gif-reg-id st)
+                                        :regs6 (gif-reg-id xyzf2)
+                                        :regs7 (gif-reg-id st)
+                                        :regs8 (gif-reg-id xyzf2)
+                                        )
+                                      )
+                                    )
         )
-      :regs
-      (new 'static 'gif-tag-regs
-        :regs0 (gif-reg-id rgbaq)
-        :regs1 (gif-reg-id st)
-        :regs2 (gif-reg-id xyzf2)
-        :regs3 (gif-reg-id st)
-        :regs4 (gif-reg-id xyzf2)
-        :regs5 (gif-reg-id st)
-        :regs6 (gif-reg-id xyzf2)
-        )
-      )
-    :quadgif
-    (new 'static 'gs-gif-tag
-      :tag
-      (new 'static 'gif-tag64
-        :nloop #x1
-        :eop #x1
-        :pre #x1
-        :prim (new 'static 'gs-prim :prim (gs-prim-type tri-fan) :tme #x1)
-        :nreg #x9
-        )
-      :regs
-      (new 'static 'gif-tag-regs
-        :regs0 (gif-reg-id rgbaq)
-        :regs1 (gif-reg-id st)
-        :regs2 (gif-reg-id xyzf2)
-        :regs3 (gif-reg-id st)
-        :regs4 (gif-reg-id xyzf2)
-        :regs5 (gif-reg-id st)
-        :regs6 (gif-reg-id xyzf2)
-        :regs7 (gif-reg-id st)
-        :regs8 (gif-reg-id xyzf2)
-        )
-      )
-    )
-  )
 
-(define shadow-vu1-block (new 'static 'vu-function :length #x0 :qlength #x0))
+(define shadow-vu1-block (new 'static 'vu-function #| :length #x2e4 :qlength #x172|#))
 
 (defun shadow-vu1-add-constants ((arg0 dma-buffer))
   (let* ((a2-0 13)
@@ -237,7 +195,3 @@
     )
   (none)
   )
-
-
-
-

@@ -177,78 +177,75 @@
 (set! (-> *kid-escort-nav-enemy-info* fact-defaults) *fact-info-enemy-defaults*)
 
 ;; definition for method 74 of type kid-escort
-(defmethod general-event-handler kid-escort ((obj kid-escort) (arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+(defmethod general-event-handler ((this kid-escort) (arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
   "Handles various events for the enemy
 @TODO - unsure if there is a pattern for the events and this should have a more specific name"
   (case arg2
     (('arrest)
-     (let* ((s4-0 (handle->process (-> obj arrestor-handle)))
+     (let* ((s4-0 (handle->process (-> this arrestor-handle)))
             (v1-4 (if (type? s4-0 process-focusable)
                       s4-0
                       )
                   )
             )
-       (when (or (not v1-4)
-                 (= v1-4 arg0)
-                 (and (!= v1-4 arg0) (>= (- (current-time) (-> obj arrest-attempt-time)) (seconds 0.1)))
-                 )
-         (set! (-> obj arrestor-handle) (process->handle arg0))
-         (set! (-> obj arrest-attempt-time) (current-time))
+       (when (or (not v1-4) (= v1-4 arg0) (and (!= v1-4 arg0) (time-elapsed? (-> this arrest-attempt-time) (seconds 0.1))))
+         (set! (-> this arrestor-handle) (process->handle arg0))
+         (set-time! (-> this arrest-attempt-time))
          (if (!= v1-4 arg0)
-             (send-event (handle->process (-> obj master-handle)) 'notify 'arrest arg0)
+             (send-event (handle->process (-> this master-handle)) 'notify 'arrest arg0)
              )
          )
        )
      #t
      )
     (('instant-arrest)
-     (logior! (-> obj bot-flags) (bot-flags bf19))
+     (logior! (-> this bot-flags) (bot-flags bf19))
      (let ((s5-1 (the-as crimson-guard (-> arg3 param 0))))
-       (set! (-> obj arrestor-handle) (process->handle s5-1))
-       (set! (-> obj arrest-attempt-time) (current-time))
+       (set! (-> this arrestor-handle) (process->handle s5-1))
+       (set-time! (-> this arrest-attempt-time))
        (let ((a1-11 (new 'stack-no-clear 'vector)))
-         (vector-! a1-11 (-> s5-1 root trans) (-> obj root trans))
+         (vector-! a1-11 (-> s5-1 root trans) (-> this root trans))
          (set! (-> a1-11 y) 0.0)
-         (forward-up->quaternion (-> obj root quat) a1-11 *up-vector*)
+         (forward-up->quaternion (-> this root quat) a1-11 *up-vector*)
          )
-       (logclear! (-> obj enemy-flags) (enemy-flag enable-on-active checking-water))
-       (logclear! (-> obj mask) (process-mask collectable))
-       (logclear! (-> obj enemy-flags) (enemy-flag look-at-move-dest))
-       (logclear! (-> obj mask) (process-mask actor-pause))
-       (logclear! (-> obj enemy-flags) (enemy-flag notice))
-       (send-event (handle->process (-> obj master-handle)) 'notify 'arrest s5-1)
+       (logclear! (-> this enemy-flags) (enemy-flag enable-on-active checking-water))
+       (logclear! (-> this mask) (process-mask collectable))
+       (logclear! (-> this enemy-flags) (enemy-flag look-at-move-dest))
+       (logclear! (-> this mask) (process-mask actor-pause))
+       (logclear! (-> this enemy-flags) (enemy-flag notice))
+       (send-event (handle->process (-> this master-handle)) 'notify 'arrest s5-1)
        )
-     (go (method-of-object obj arrested))
+     (go (method-of-object this arrested))
      )
     (('attack)
-     ((method-of-type bot general-event-handler) obj arg0 arg1 arg2 arg3)
+     ((method-of-type bot general-event-handler) this arg0 arg1 arg2 arg3)
      #f
      )
     (('nav-mesh-kill)
-     (change-to *default-nav-mesh* obj)
+     (change-to *default-nav-mesh* this)
      #t
      )
     (else
-      ((method-of-type bot general-event-handler) obj arg0 arg1 arg2 arg3)
+      ((method-of-type bot general-event-handler) this arg0 arg1 arg2 arg3)
       )
     )
   )
 
 ;; definition for method 12 of type kid-escort
-(defmethod run-logic? kid-escort ((obj kid-escort))
+(defmethod run-logic? ((this kid-escort))
   (or (not (logtest? (process-mask enemy) (-> *setting-control* user-current process-mask)))
-      (logtest? (-> obj bot-flags) (bot-flags bf09))
+      (logtest? (-> this bot-flags) (bot-flags bf09))
       )
   )
 
 ;; definition for method 97 of type kid-escort
-(defmethod enemy-method-97 kid-escort ((obj kid-escort))
-  (let* ((s4-0 (handle->process (-> obj attacker-handle)))
+(defmethod enemy-method-97 ((this kid-escort))
+  (let* ((s4-0 (handle->process (-> this attacker-handle)))
          (s5-0 (if (type? s4-0 process-focusable)
                    s4-0
                    )
                )
-         (s3-0 (handle->process (-> obj arrestor-handle)))
+         (s3-0 (handle->process (-> this arrestor-handle)))
          (s4-1 (if (type? s3-0 process-focusable)
                    s3-0
                    )
@@ -257,33 +254,33 @@
     (when s5-0
       (cond
         ((= (-> s5-0 type) target)
-         (when (or (not (logtest? (-> obj bot-flags) (bot-flags attacked)))
-                   (>= (- (current-time) (-> obj attacker-time)) (seconds 1.5))
+         (when (or (not (logtest? (-> this bot-flags) (bot-flags attacked)))
+                   (time-elapsed? (-> this attacker-time) (seconds 1.5))
                    )
-           (if (logtest? (-> obj bot-flags) (bot-flags attacked))
-               (reset-attacker! obj)
+           (if (logtest? (-> this bot-flags) (bot-flags attacked))
+               (reset-attacker! this)
                )
            (set! s5-0 (the-as process #f))
-           (set! (-> obj attacker-handle) (the-as handle #f))
+           (set! (-> this attacker-handle) (the-as handle #f))
            )
          )
         (else
-          (when (>= (- (current-time) (-> obj attacker-time)) (seconds 6))
+          (when (time-elapsed? (-> this attacker-time) (seconds 6))
             (set! s5-0 (the-as process #f))
-            (set! (-> obj attacker-handle) (the-as handle #f))
+            (set! (-> this attacker-handle) (the-as handle #f))
             )
           )
         )
       )
     (when s4-1
-      (when (or (>= (- (current-time) (-> obj arrest-attempt-time)) (seconds 0.5))
+      (when (or (time-elapsed? (-> this arrest-attempt-time) (seconds 0.5))
                 (focus-test? (the-as process-focusable s4-1) dead hit)
                 )
         (set! s4-1 (the-as process #f))
-        (set! (-> obj arrestor-handle) (the-as handle #f))
+        (set! (-> this arrestor-handle) (the-as handle #f))
         )
       )
-    (let ((v1-34 (-> obj focus-mode))
+    (let ((v1-34 (-> this focus-mode))
           (s3-1 (the-as process #f))
           )
       (cond
@@ -295,11 +292,11 @@
            (s5-0
              (set! s3-1 s5-0)
              )
-           ((begin (set! s3-1 (select-focus! obj)) s3-1)
+           ((begin (set! s3-1 (select-focus! this)) s3-1)
             (empty)
             )
            (else
-             (let ((s5-1 (handle->process (-> obj poi-handle))))
+             (let ((s5-1 (handle->process (-> this poi-handle))))
                (set! s3-1 (if (type? s5-1 process-focusable)
                               s5-1
                               )
@@ -321,7 +318,7 @@
              (set! s3-1 s5-0)
              )
            (else
-             (let ((s5-2 (handle->process (-> obj poi-handle))))
+             (let ((s5-2 (handle->process (-> this poi-handle))))
                (set! s3-1 (if (type? s5-2 process-focusable)
                               s5-2
                               )
@@ -331,7 +328,7 @@
                (s3-1
                  (empty)
                  )
-               ((begin (set! s3-1 (select-focus! obj)) s3-1)
+               ((begin (set! s3-1 (select-focus! this)) s3-1)
                 (empty)
                 )
                (else
@@ -344,14 +341,14 @@
         )
       (cond
         (s3-1
-          (try-update-focus (-> obj focus) (the-as process-focusable s3-1) obj)
-          (if (and (logtest? (-> obj bot-flags) (bot-flags attacked)) (!= (-> s3-1 type) target))
-              (logclear! (-> obj bot-flags) (bot-flags attacked))
+          (try-update-focus (-> this focus) (the-as process-focusable s3-1) this)
+          (if (and (logtest? (-> this bot-flags) (bot-flags attacked)) (!= (-> s3-1 type) target))
+              (logclear! (-> this bot-flags) (bot-flags attacked))
               )
           )
         (else
-          (clear-focused (-> obj focus))
-          (logclear! (-> obj bot-flags) (bot-flags attacked))
+          (clear-focused (-> this focus))
+          (logclear! (-> this bot-flags) (bot-flags attacked))
           )
         )
       s3-1
@@ -361,34 +358,34 @@
 
 ;; definition for method 183 of type kid-escort
 ;; WARN: Return type mismatch object vs symbol.
-(defmethod alive? kid-escort ((obj kid-escort))
+(defmethod alive? ((this kid-escort))
   (let ((t9-0 (method-of-type bot alive?)))
-    (the-as symbol (and (t9-0 obj) (-> obj next-state) (let ((v1-3 (-> obj next-state name)))
-                                                         (or (= v1-3 'waiting-idle) (= v1-3 'waiting-turn))
-                                                         )
+    (the-as symbol (and (t9-0 this) (-> this next-state) (let ((v1-3 (-> this next-state name)))
+                                                           (or (= v1-3 'waiting-idle) (= v1-3 'waiting-turn))
+                                                           )
                         )
             )
     )
   )
 
 ;; definition for method 11 of type kid-escort
-(defmethod init-from-entity! kid-escort ((obj kid-escort) (arg0 entity-actor))
+(defmethod init-from-entity! ((this kid-escort) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
 - stack size
 - collision information
 - loading the skeleton group / bones
 - sounds"
-  (stack-size-set! (-> obj main-thread) 512)
-  ((method-of-type bot init-from-entity!) obj arg0)
+  (stack-size-set! (-> this main-thread) 512)
+  ((method-of-type bot init-from-entity!) this arg0)
   (none)
   )
 
 ;; definition for method 114 of type kid-escort
 ;; WARN: Return type mismatch int vs none.
-(defmethod init-enemy-collision! kid-escort ((obj kid-escort))
+(defmethod init-enemy-collision! ((this kid-escort))
   "Initializes the [[collide-shape-moving]] and any ancillary tasks to make the enemy collide properly"
-  (let ((s5-0 (new 'process 'collide-shape-moving obj (collide-list-enum hit-by-others))))
+  (let ((s5-0 (new 'process 'collide-shape-moving this (collide-list-enum hit-by-others))))
     (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s5-0 reaction) cshape-reaction-default)
     (set! (-> s5-0 no-reaction)
@@ -453,7 +450,7 @@ This commonly includes things such as:
       )
     (set! (-> s5-0 max-iteration-count) (the-as uint 3))
     (set! (-> s5-0 event-priority) (the-as uint 3))
-    (set! (-> obj root) s5-0)
+    (set! (-> this root) s5-0)
     )
   0
   (none)
@@ -461,37 +458,37 @@ This commonly includes things such as:
 
 ;; definition for method 210 of type kid-escort
 ;; WARN: Return type mismatch int vs none.
-(defmethod init! kid-escort ((obj kid-escort))
+(defmethod init! ((this kid-escort))
   "Set defaults for various fields."
   (let ((t9-0 (method-of-type bot init!)))
-    (t9-0 obj)
+    (t9-0 this)
     )
-  (set! (-> obj min-speed) 18022.4)
-  (set! (-> obj max-speed) 18432.0)
-  (set! (-> obj channel) (the-as uint 26))
-  (set! (-> obj notice-enemy-dist) 122880.0)
-  (set! (-> obj travel-anim-interp) 0.0)
-  (set! (-> obj focus-info max-los-dist) 0.0)
-  (set-vector! (-> obj root scale) 1.2 1.2 1.2 1.0)
-  (set! (-> obj spot-color) (the-as uint #x60004f8f))
-  (set! (-> obj arrestor-handle) (the-as handle #f))
-  (set! (-> obj crocadog-handle) (the-as handle #f))
+  (set! (-> this min-speed) 18022.4)
+  (set! (-> this max-speed) 18432.0)
+  (set! (-> this channel) (the-as uint 26))
+  (set! (-> this notice-enemy-dist) 122880.0)
+  (set! (-> this travel-anim-interp) 0.0)
+  (set! (-> this focus-info max-los-dist) 0.0)
+  (set-vector! (-> this root scale) 1.2 1.2 1.2 1.0)
+  (set! (-> this spot-color) (the-as uint #x60004f8f))
+  (set! (-> this arrestor-handle) (the-as handle #f))
+  (set! (-> this crocadog-handle) (the-as handle #f))
   0
   (none)
   )
 
 ;; definition for method 115 of type kid-escort
 ;; WARN: Return type mismatch int vs none.
-(defmethod init-enemy! kid-escort ((obj kid-escort))
+(defmethod init-enemy! ((this kid-escort))
   "Common method called to initialize the enemy, typically sets up default field values and calls ancillary helper methods"
-  (init! obj)
+  (init! this)
   (initialize-skeleton
-    obj
+    this
     (the-as skeleton-group (art-group-get-by-name *level* "skel-kid-escort" (the-as (pointer uint32) #f)))
     (the-as pair 0)
     )
-  (init-enemy-behaviour-and-stats! obj *kid-escort-nav-enemy-info*)
-  (let ((v1-7 (-> obj neck)))
+  (init-enemy-behaviour-and-stats! this *kid-escort-nav-enemy-info*)
+  (let ((v1-7 (-> this neck)))
     (set! (-> v1-7 up) (the-as uint 1))
     (set! (-> v1-7 nose) (the-as uint 2))
     (set! (-> v1-7 ear) (the-as uint 0))
@@ -499,52 +496,52 @@ This commonly includes things such as:
     (set! (-> v1-7 ignore-angle) 30947.555)
     )
   (let ((t9-4 (method-of-type bot init-enemy!)))
-    (t9-4 obj)
+    (t9-4 this)
     )
-  (let ((v1-10 (-> obj nav)))
+  (let ((v1-10 (-> this nav)))
     (set! (-> v1-10 sphere-mask) (the-as uint 126))
     )
   0
-  (set! (-> obj my-simple-focus) (process-spawn simple-focus :to obj))
-  (set! (-> obj draw light-index) (the-as uint 10))
+  (set! (-> this my-simple-focus) (process-spawn simple-focus :to this))
+  (set! (-> this draw light-index) (the-as uint 10))
   0
   (none)
   )
 
 ;; definition for method 214 of type kid-escort
-(defmethod bot-method-214 kid-escort ((obj kid-escort))
+(defmethod bot-method-214 ((this kid-escort))
   #f
   )
 
 ;; definition for method 72 of type kid-escort
-(defmethod react-to-focus kid-escort ((obj kid-escort))
+;; WARN: Return type mismatch none vs object.
+(defmethod react-to-focus ((this kid-escort))
   "@TODO - flesh out docs"
-  (check-arrest obj)
-  (none)
+  (check-arrest this)
   )
 
 ;; definition for method 237 of type kid-escort
 ;; WARN: Return type mismatch object vs none.
-(defmethod go-waiting-turn kid-escort ((obj kid-escort))
-  (go (method-of-object obj waiting-turn))
+(defmethod go-waiting-turn ((this kid-escort))
+  (go (method-of-object this waiting-turn))
   (none)
   )
 
 ;; definition for method 236 of type kid-escort
 ;; WARN: Return type mismatch object vs none.
-(defmethod check-arrest kid-escort ((obj kid-escort))
-  (let ((s5-0 (handle->process (-> obj arrestor-handle))))
+(defmethod check-arrest ((this kid-escort))
+  (let ((s5-0 (handle->process (-> this arrestor-handle))))
     (cond
       ((if (type? s5-0 process-focusable)
            s5-0
            )
-       (go (method-of-object obj arrested))
+       (go (method-of-object this arrested))
        )
-      ((logtest? (-> obj bot-flags) (bot-flags bf15))
-       (go (method-of-object obj move-to-vehicle))
+      ((logtest? (-> this bot-flags) (bot-flags bf15))
+       (go (method-of-object this move-to-vehicle))
        )
       (else
-        (go (method-of-object obj waiting-idle))
+        (go (method-of-object this waiting-idle))
         )
       )
     )
@@ -553,22 +550,22 @@ This commonly includes things such as:
 
 ;; definition for method 239 of type kid-escort
 ;; WARN: Return type mismatch int vs none.
-(defmethod play-walk-anim kid-escort ((obj kid-escort))
+(defmethod play-walk-anim ((this kid-escort))
   (with-pp
-    (let ((f30-0 (-> obj nav state speed))
-          (v1-5 (if (> (-> obj skel active-channels) 0)
-                    (-> obj skel root-channel 0 frame-group)
+    (let ((f30-0 (-> this nav state speed))
+          (v1-5 (if (> (-> this skel active-channels) 0)
+                    (-> this skel root-channel 0 frame-group)
                     )
                 )
           )
       (cond
-        ((and v1-5 (= v1-5 (-> obj draw art-group data 4)))
-         (let* ((f28-0 (current-cycle-distance (-> obj skel)))
-                (f0-1 (quaternion-y-angle (-> obj root quat)))
-                (f1-0 (deg- f0-1 (-> obj travel-prev-ry)))
+        ((and v1-5 (= v1-5 (-> this draw art-group data 4)))
+         (let* ((f28-0 (current-cycle-distance (-> this skel)))
+                (f0-1 (quaternion-y-angle (-> this root quat)))
+                (f1-0 (deg- f0-1 (-> this travel-prev-ry)))
                 (f0-4 (fmin 18432.0 (* 0.35342914 (-> pp clock frames-per-second) (fabs f1-0))))
                 (f0-7 (/ (* 8.0 (fmax f30-0 f0-4)) (* 15.0 f28-0)))
-                (a0-8 (-> obj skel root-channel 0))
+                (a0-8 (-> this skel root-channel 0))
                 )
            (set! (-> a0-8 param 0) f0-7)
            (joint-control-channel-group-eval! a0-8 (the-as art-joint-anim #f) num-func-loop!)
@@ -576,11 +573,11 @@ This commonly includes things such as:
          )
         (else
           (ja-channel-push! 1 (seconds 0.15))
-          (let ((a0-10 (-> obj skel root-channel 0)))
+          (let ((a0-10 (-> this skel root-channel 0)))
             (set! (-> a0-10 dist) 6553.6)
-            (set! (-> a0-10 frame-group) (the-as art-joint-anim (-> obj draw art-group data 4)))
+            (set! (-> a0-10 frame-group) (the-as art-joint-anim (-> this draw art-group data 4)))
             (set! (-> a0-10 param 0) 1.0)
-            (joint-control-channel-group! a0-10 (the-as art-joint-anim (-> obj draw art-group data 4)) num-func-loop!)
+            (joint-control-channel-group! a0-10 (the-as art-joint-anim (-> this draw art-group data 4)) num-func-loop!)
             )
           )
         )
@@ -590,21 +587,21 @@ This commonly includes things such as:
   )
 
 ;; definition for method 56 of type kid-escort
-(defmethod damage-amount-from-attack kid-escort ((obj kid-escort) (arg0 process) (arg1 event-message-block))
+(defmethod damage-amount-from-attack ((this kid-escort) (arg0 process) (arg1 event-message-block))
   "@returns the amount of damage taken from an attack.  This can come straight off the [[attack-info]] or via [[penetrate-using->damage]]"
   0
   )
 
 ;; definition for method 190 of type kid-escort
-(defmethod bot-method-190 kid-escort ((obj kid-escort))
+(defmethod bot-method-190 ((this kid-escort))
   #t
   )
 
 ;; definition for method 78 of type kid-escort
-(defmethod enemy-method-78 kid-escort ((obj kid-escort) (arg0 (pointer float)))
+(defmethod enemy-method-78 ((this kid-escort) (arg0 (pointer float)))
   (ja-channel-push! 1 (seconds 0.1))
-  (let ((a1-2 (-> obj draw art-group data (-> obj enemy-info knocked-land-anim)))
-        (a0-4 (-> obj skel root-channel 0))
+  (let ((a1-2 (-> this draw art-group data (-> this enemy-info knocked-land-anim)))
+        (a0-4 (-> this skel root-channel 0))
         )
     (set! (-> a0-4 frame-group) (the-as art-joint-anim a1-2))
     (set! (-> a0-4 param 0) (the float (+ (-> (the-as art-joint-anim a1-2) frames num-frames) -1)))
@@ -617,39 +614,39 @@ This commonly includes things such as:
 
 ;; definition for method 198 of type kid-escort
 ;; WARN: Return type mismatch float vs meters.
-(defmethod set-cam-height! kid-escort ((obj kid-escort) (arg0 vector))
+(defmethod set-cam-height! ((this kid-escort) (arg0 vector))
   (the-as
     meters
     (cond
-      ((and (-> obj next-state) (= (-> obj next-state name) 'arrested))
+      ((and (-> this next-state) (= (-> this next-state name) 'arrested))
        (set-vector! arg0 49152.0 12288.0 49152.0 1.0)
-       (vector<-cspace+vector! arg0 (-> obj node-list data 2) arg0)
-       (if (focus-test? obj under-water)
-           (set! (-> arg0 y) (+ (get-water-height obj) (-> *setting-control* cam-current target-height)))
+       (vector<-cspace+vector! arg0 (-> this node-list data 2) arg0)
+       (if (focus-test? this under-water)
+           (set! (-> arg0 y) (+ (get-water-height this) (-> *setting-control* cam-current target-height)))
            )
        )
       (else
-        ((method-of-type bot set-cam-height!) obj arg0)
+        ((method-of-type bot set-cam-height!) this arg0)
         )
       )
     )
   )
 
 ;; definition for method 59 of type kid-escort
-(defmethod get-penetrate-info kid-escort ((obj kid-escort))
+(defmethod get-penetrate-info ((this kid-escort))
   "@returns the allowed way(s) this enemy can take damage
 @see [[penetrate]] and [[penetrated-by-all&hit-points->penetrated-by]]"
-  (let ((v1-1 ((method-of-type bot get-penetrate-info) obj)))
+  (let ((v1-1 ((method-of-type bot get-penetrate-info) this)))
     (logior (penetrate jak-yellow-shot jak-red-shot jak-blue-shot) v1-1)
     )
   )
 
 ;; definition for method 193 of type kid-escort
-(defmethod bot-method-193 kid-escort ((obj kid-escort))
+(defmethod bot-method-193 ((this kid-escort))
   (let* ((t9-0 (method-of-type bot bot-method-193))
-         (v0-0 (t9-0 obj))
+         (v0-0 (t9-0 this))
          )
-    (if (and (not v0-0) (logtest? #x1c00000 (-> obj incoming penetrate-using)))
+    (if (and (not v0-0) (logtest? #x1c00000 (-> this incoming penetrate-using)))
         (set! v0-0 #t)
         )
     v0-0
@@ -657,7 +654,7 @@ This commonly includes things such as:
   )
 
 ;; definition for method 79 of type kid-escort
-(defmethod enemy-method-79 kid-escort ((obj kid-escort) (arg0 int) (arg1 enemy-knocked-info))
+(defmethod enemy-method-79 ((this kid-escort) (arg0 int) (arg1 enemy-knocked-info))
   (local-vars (gp-0 symbol))
   (case arg0
     ((3)
@@ -666,7 +663,7 @@ This commonly includes things such as:
        (if (>= (ja-aframe-num 0) 5.0)
            (set! f30-0 0.28)
            )
-       (let ((a0-4 (-> obj skel root-channel 0)))
+       (let ((a0-4 (-> this skel root-channel 0)))
          (set! (-> a0-4 param 0) (the float (+ (-> a0-4 frame-group frames num-frames) -1)))
          (set! (-> a0-4 param 1) f30-0)
          (joint-control-channel-group-eval! a0-4 (the-as art-joint-anim #f) num-func-seek!)
@@ -674,7 +671,7 @@ This commonly includes things such as:
        )
      )
     (else
-      (set! gp-0 ((method-of-type bot enemy-method-79) obj arg0 arg1))
+      (set! gp-0 ((method-of-type bot enemy-method-79) this arg0 arg1))
       )
     )
   gp-0
@@ -682,23 +679,23 @@ This commonly includes things such as:
 
 ;; definition for method 235 of type kid-escort
 ;; INFO: Used lq/sq
-(defmethod want-exit-vehicle? kid-escort ((obj kid-escort) (arg0 vector))
-  (let ((s3-0 (handle->process (-> obj vehicle-handle))))
-    (if (or (not s3-0) (not (-> obj nav)))
+(defmethod want-exit-vehicle? ((this kid-escort) (arg0 vector))
+  (let ((s3-0 (handle->process (-> this vehicle-handle))))
+    (if (or (not s3-0) (not (-> this nav)))
         (return #f)
         )
     (let ((s4-0 (new 'stack-no-clear 'vector)))
-      (compute-seat-position (the-as vehicle s3-0) s4-0 (-> obj vehicle-seat-index))
+      (compute-seat-position (the-as vehicle s3-0) s4-0 (-> this vehicle-seat-index))
       (vector-! s4-0 s4-0 (-> (the-as vehicle s3-0) root trans))
       (set! (-> s4-0 y) 0.0)
       (vector-normalize! s4-0 (+ 14336.0 (vector-length s4-0)))
       (vector+! s4-0 s4-0 (-> (the-as vehicle s3-0) root trans))
       (let ((s3-1 (new 'stack-no-clear 'collide-query)))
-        (when (enemy-above-ground? obj s3-1 s4-0 (collide-spec backgnd) 8192.0 81920.0 1024.0)
+        (when (enemy-above-ground? this s3-1 s4-0 (collide-spec backgnd) 8192.0 81920.0 1024.0)
           (set! (-> s4-0 y) (-> s3-1 best-other-tri intersect y))
           (let ((s3-2 (new 'stack-no-clear 'vector)))
-            (do-navigation-to-destination (-> obj nav state) (-> obj root trans))
-            (when (cloest-point-on-mesh (-> obj nav) s3-2 s4-0 (the-as nav-poly #f))
+            (do-navigation-to-destination (-> this nav state) (-> this root trans))
+            (when (cloest-point-on-mesh (-> this nav) s3-2 s4-0 (the-as nav-poly #f))
               (let ((f0-4 2048.0))
                 (when (>= (* f0-4 f0-4) (vector-vector-xz-distance-squared s3-2 s4-0))
                   (set! (-> arg0 quad) (-> s3-2 quad))
@@ -716,103 +713,88 @@ This commonly includes things such as:
 ;; definition for method 238 of type kid-escort
 ;; INFO: Used lq/sq
 ;; WARN: Return type mismatch int vs none.
-(defmethod check-vehicle-exit kid-escort ((obj kid-escort))
+(defmethod check-vehicle-exit ((this kid-escort))
   (local-vars (v1-25 enemy-flag))
-  (with-pp
-    (when (focus-test? obj pilot)
-      (let ((s5-0 (handle->process (-> obj vehicle-handle))))
-        (when (or (not s5-0) (logtest? (-> (the-as vehicle s5-0) flags) (rigid-body-object-flag dead)))
-          (logior! (-> obj bot-flags) (bot-flags bf17))
-          (logclear! (-> obj bot-flags) (bot-flags bf15))
-          (logclear! (-> obj focus-status) (focus-status pilot-riding pilot))
-          (if (the-as vehicle s5-0)
-              (remove-rider (the-as vehicle s5-0) obj)
-              )
-          (set! (-> obj vehicle-seat-index) -1)
-          (set! (-> obj vehicle-handle) (the-as handle #f))
-          (logior! (-> obj root nav-flags) (nav-flags has-root-sphere))
-          (let* ((s4-0 (-> obj root quat))
-                 (f30-0 (quaternion-y-angle s4-0))
-                 )
-            (quaternion-identity! s4-0)
-            (quaternion-rotate-y! s4-0 s4-0 f30-0)
+  (when (focus-test? this pilot)
+    (let ((s5-0 (handle->process (-> this vehicle-handle))))
+      (when (or (not s5-0) (logtest? (-> (the-as vehicle s5-0) flags) (rigid-body-object-flag dead)))
+        (logior! (-> this bot-flags) (bot-flags bf17))
+        (logclear! (-> this bot-flags) (bot-flags bf15))
+        (logclear! (-> this focus-status) (focus-status pilot-riding pilot))
+        (if (the-as vehicle s5-0)
+            (remove-rider (the-as vehicle s5-0) this)
             )
-          (let ((v1-24 (-> obj enemy-flags)))
-            (if (logtest? v1-24 (enemy-flag checking-water))
-                (set! v1-25 (logior v1-24 (enemy-flag enable-on-active)))
-                (set! v1-25 (logclear v1-24 (enemy-flag enable-on-active)))
-                )
-            )
-          (set! (-> obj enemy-flags) v1-25)
-          (let ((s4-2 (vector-! (new 'stack-no-clear 'vector) (-> obj root trans) (-> (the-as vehicle s5-0) root trans))))
-            (vector-normalize! s4-2 57344.0)
-            (let ((a1-4 (new 'stack-no-clear 'event-message-block)))
-              (set! (-> a1-4 from) (process->ppointer pp))
-              (set! (-> a1-4 num-params) 2)
-              (set! (-> a1-4 message) 'attack)
-              (set! (-> a1-4 param 0) (the-as uint #f))
-              (let ((v1-31 (new 'static 'attack-info :mask (attack-info-mask vector id attacker-velocity knock))))
-                (let* ((a0-23 *game-info*)
-                       (a2-2 (+ (-> a0-23 attack-id) 1))
-                       )
-                  (set! (-> a0-23 attack-id) a2-2)
-                  (set! (-> v1-31 id) a2-2)
-                  )
-                (set! (-> v1-31 vector quad) (-> s4-2 quad))
-                (set! (-> v1-31 attacker-velocity quad) (-> s4-2 quad))
-                (set! (-> v1-31 knock) (the-as uint 8))
-                (set! (-> a1-4 param 1) (the-as uint v1-31))
-                )
-              (send-event-function obj a1-4)
+        (set! (-> this vehicle-seat-index) -1)
+        (set! (-> this vehicle-handle) (the-as handle #f))
+        (logior! (-> this root nav-flags) (nav-flags has-root-sphere))
+        (let* ((s4-0 (-> this root quat))
+               (f30-0 (quaternion-y-angle s4-0))
+               )
+          (quaternion-identity! s4-0)
+          (quaternion-rotate-y! s4-0 s4-0 f30-0)
+          )
+        (let ((v1-24 (-> this enemy-flags)))
+          (if (logtest? v1-24 (enemy-flag checking-water))
+              (set! v1-25 (logior v1-24 (enemy-flag enable-on-active)))
+              (set! v1-25 (logclear v1-24 (enemy-flag enable-on-active)))
               )
+          )
+        (set! (-> this enemy-flags) v1-25)
+        (let ((s4-2 (vector-! (new 'stack-no-clear 'vector) (-> this root trans) (-> (the-as vehicle s5-0) root trans))))
+          (vector-normalize! s4-2 57344.0)
+          (send-event
+            this
+            'attack
+            #f
+            (static-attack-info ((id (new-attack-id)) (vector s4-2) (attacker-velocity s4-2) (knock (the-as uint 8))))
             )
           )
         )
       )
-    0
-    (none)
     )
-  )
-
-;; definition for method 70 of type kid-escort
-(defmethod go-hostile kid-escort ((obj kid-escort))
-  (cond
-    ((logtest? (bot-flags bf17) (-> obj bot-flags))
-     (logior! (-> obj bot-flags) (bot-flags bf09))
-     (logclear! (-> obj enemy-flags) (enemy-flag enable-on-active checking-water))
-     (logclear! (-> obj focus-status) (focus-status dangerous))
-     (logclear! (-> obj enemy-flags) (enemy-flag check-water))
-     (logclear! (-> obj mask) (process-mask collectable))
-     (logclear! (-> obj enemy-flags) (enemy-flag look-at-move-dest))
-     (logclear! (-> obj mask) (process-mask actor-pause))
-     (logclear! (-> obj enemy-flags) (enemy-flag notice))
-     (logior! (-> obj focus-status) (focus-status disable))
-     (go (method-of-object obj knocked-off-vehicle))
-     )
-    (else
-      (react-to-focus obj)
-      )
-    )
+  0
   (none)
   )
 
+;; definition for method 70 of type kid-escort
+(defmethod go-hostile ((this kid-escort))
+  (cond
+    ((logtest? (bot-flags bf17) (-> this bot-flags))
+     (logior! (-> this bot-flags) (bot-flags bf09))
+     (logclear! (-> this enemy-flags) (enemy-flag enable-on-active checking-water))
+     (logclear! (-> this focus-status) (focus-status dangerous))
+     (logclear! (-> this enemy-flags) (enemy-flag check-water))
+     (logclear! (-> this mask) (process-mask collectable))
+     (logclear! (-> this enemy-flags) (enemy-flag look-at-move-dest))
+     (logclear! (-> this mask) (process-mask actor-pause))
+     (logclear! (-> this enemy-flags) (enemy-flag notice))
+     (logior! (-> this focus-status) (focus-status disable))
+     (go (method-of-object this knocked-off-vehicle))
+     )
+    (else
+      (react-to-focus this)
+      )
+    )
+  )
+
 ;; definition for method 102 of type kid-escort
-(defmethod enemy-method-102 kid-escort ((obj kid-escort))
-  (if (logtest? (bot-flags bf19) (-> obj bot-flags))
+(defmethod enemy-method-102 ((this kid-escort))
+  (if (logtest? (bot-flags bf19) (-> this bot-flags))
       #f
-      ((method-of-type bot enemy-method-102) obj)
+      ((method-of-type bot enemy-method-102) this)
       )
   )
 
 ;; definition for method 116 of type kid-escort
-(defmethod go-idle kid-escort ((obj kid-escort))
+;; WARN: Return type mismatch object vs none.
+(defmethod go-idle ((this kid-escort))
   (cond
     ((task-node-closed? (game-task-node city-escort-kid-resolution))
-     (cleanup-for-death obj)
-     (go (method-of-object obj die-fast))
+     (cleanup-for-death this)
+     (go (method-of-object this die-fast))
      )
     (else
-      (check-arrest obj)
+      (check-arrest this)
       )
     )
   (none)

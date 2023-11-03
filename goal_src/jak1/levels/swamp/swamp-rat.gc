@@ -11,24 +11,19 @@
 
 ;; DECOMP BEGINS
 
-
 (deftype swamp-rat (nav-enemy)
-  ((up-vector          vector     :inline :offset-assert 400)
-   (state-float        float              :offset-assert 416)
-   (state-vector       vector     :inline :offset-assert 432)
-   (_hack              uint64             :offset-assert 448)
-   (wiggle-time        time-frame         :offset-assert 456)
-   (wiggle-angle       float              :offset-assert 464)
-   (delta-wiggle-angle float              :offset-assert 468)
-   (wiggle-factor      float              :offset-assert 472)
-   (min-height         float              :offset-assert 476)
-   (chase-rest-time    time-frame         :offset-assert 480)
-   (target-nav-time    time-frame         :offset-assert 488)
+  ((up-vector           vector  :inline)
+   (state-float         float)
+   (state-vector        vector  :inline)
+   (_hack               uint64)
+   (wiggle-time         time-frame)
+   (wiggle-angle        float)
+   (delta-wiggle-angle  float)
+   (wiggle-factor       float)
+   (min-height          float)
+   (chase-rest-time     time-frame)
+   (target-nav-time     time-frame)
    )
-  :heap-base #x180
-  :method-count-assert 76
-  :size-assert         #x1f0
-  :flag-assert         #x4c018001f0
   (:states
     swamp-rat-spawn
     )
@@ -41,14 +36,14 @@
               :longest-edge (meters 1)
               )
 
-(defmethod touch-handler swamp-rat ((obj swamp-rat) (arg0 process) (arg1 event-message-block))
+(defmethod touch-handler ((this swamp-rat) (arg0 process) (arg1 event-message-block))
   (when ((method-of-type touching-shapes-entry prims-touching?)
          (the-as touching-shapes-entry (-> arg1 param 0))
-         (-> obj collide-info)
+         (-> this collide-info)
          (the-as uint 1)
          )
     (when (nav-enemy-send-attack arg0 (the-as touching-shapes-entry (-> arg1 param 0)) 'generic)
-      (let* ((s5-1 (-> obj parent))
+      (let* ((s5-1 (-> this parent))
              (a0-4 (if (and (nonzero? s5-1) (type-type? pointer process-drawable))
                        s5-1
                        )
@@ -56,55 +51,55 @@
              )
         (if a0-4
             (send-event (the-as process-tree a0-4) 'victory)
-            (go (method-of-object obj nav-enemy-victory))
+            (go (method-of-object this nav-enemy-victory))
             )
         )
       )
     )
   )
 
-;; WARN: rewrite_to_get_var got a none typed variable. Is there unreachable code? [OP: 7]
 (defbehavior swamp-rat-default-event-handler swamp-rat ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-  (let ((v1-0 arg2))
-    (the-as object (if (= v1-0 'victory)
-                       (go-virtual nav-enemy-victory)
-                       (nav-enemy-default-event-handler arg0 arg1 arg2 arg3)
-                       )
-            )
+  (case arg2
+    (('victory)
+     (go-virtual nav-enemy-victory)
+     )
+    (else
+      (nav-enemy-default-event-handler arg0 arg1 arg2 arg3)
+      )
     )
   )
 
 swamp-rat-default-event-handler
 
-(defmethod common-post swamp-rat ((obj swamp-rat))
-  (when (logtest? (-> obj collide-info status) (cshape-moving-flags onsurf))
-    (vector-deg-seek (-> obj up-vector) (-> obj up-vector) (-> obj collide-info surface-normal) 910.2222)
-    (vector-normalize! (-> obj up-vector) 1.0)
+(defmethod common-post ((this swamp-rat))
+  (when (logtest? (-> this collide-info status) (cshape-moving-flags onsurf))
+    (vector-deg-seek (-> this up-vector) (-> this up-vector) (-> this collide-info surface-normal) 910.2222)
+    (vector-normalize! (-> this up-vector) 1.0)
     )
   (forward-up-nopitch->quaternion
-    (-> obj collide-info quat)
-    (vector-z-quaternion! (new-stack-vector0) (-> obj collide-info quat))
-    (-> obj up-vector)
+    (-> this collide-info quat)
+    (vector-z-quaternion! (new-stack-vector0) (-> this collide-info quat))
+    (-> this up-vector)
     )
-  ((the-as (function nav-enemy none) (find-parent-method swamp-rat 39)) obj)
+  (call-parent-method this)
   (none)
   )
 
-(defmethod nav-enemy-method-38 swamp-rat ((obj swamp-rat))
+(defmethod nav-enemy-method-38 ((this swamp-rat))
   (integrate-for-enemy-with-move-to-ground!
-    (-> obj collide-info)
-    (-> obj collide-info transv)
+    (-> this collide-info)
+    (-> this collide-info transv)
     (collide-kind background)
     8192.0
     #t
     #f
     #f
     )
-  (when (< (-> obj collide-info trans y) (-> obj min-height))
+  (when (< (-> this collide-info trans y) (-> this min-height))
     (let ((a1-1 (new 'stack-no-clear 'vector)))
-      (set! (-> a1-1 quad) (-> obj collide-info trans quad))
-      (set! (-> a1-1 y) (-> obj min-height))
-      (move-to-ground-point! (-> obj collide-info) a1-1 (-> obj collide-info transv) *y-vector*)
+      (set! (-> a1-1 quad) (-> this collide-info trans quad))
+      (set! (-> a1-1 y) (-> this min-height))
+      (move-to-ground-point! (-> this collide-info) a1-1 (-> this collide-info transv) *y-vector*)
       )
     )
   0
@@ -116,7 +111,6 @@ swamp-rat-default-event-handler
   :event swamp-rat-default-event-handler
   :post (behavior ()
     (ja-post)
-    (none)
     )
   )
 
@@ -136,7 +130,6 @@ swamp-rat-default-event-handler
           )
         )
       )
-    (none)
     )
   )
 
@@ -154,7 +147,6 @@ swamp-rat-default-event-handler
       )
     (ja-no-eval :num! (seek!))
     (go-virtual nav-enemy-chase)
-    (none)
     )
   )
 
@@ -172,7 +164,8 @@ swamp-rat-default-event-handler
   )
 
 (defbehavior swamp-rat-update-wiggle-target swamp-rat ((arg0 vector))
-  (+! (-> self wiggle-angle) (* DISPLAY_FPS_RATIO (-> self delta-wiggle-angle))) ;; changed for high fps
+  ;; og:preserve-this changed for high fps
+  (+! (-> self wiggle-angle) (* DISPLAY_FPS_RATIO (-> self delta-wiggle-angle)))
   (if (< 65536.0 (-> self wiggle-angle))
       (+! (-> self wiggle-angle) -65536.0)
       )
@@ -193,33 +186,30 @@ swamp-rat-default-event-handler
   :virtual #t
   :event swamp-rat-default-event-handler
   :trans (behavior ()
-    (if (>= (- (-> *display* base-frame-counter) (-> self state-time)) (-> self chase-rest-time))
+    (if (time-elapsed? (-> self state-time) (-> self chase-rest-time))
         (go-virtual nav-enemy-victory)
         )
     ((-> (method-of-type nav-enemy nav-enemy-chase) trans))
-    (none)
     )
   :code (behavior ()
-    (set! (-> self target-nav-time) (-> *display* base-frame-counter))
-    (set! (-> self wiggle-time) (+ (-> *display* base-frame-counter) (seconds -10)))
+    (set-time! (-> self target-nav-time))
+    (set! (-> self wiggle-time) (+ (current-time) (seconds -10)))
     (set! (-> self wiggle-angle) 0.0)
     (set! (-> self chase-rest-time) (rand-vu-int-range (seconds 1) (seconds 4)))
     (ja-channel-push! 1 (seconds 0.17))
     (ja :group! swamp-rat-run-ja :num! min)
     (loop
-      (when (>= (- (-> *display* base-frame-counter) (-> self wiggle-time)) (seconds 1))
-        (set! (-> self wiggle-time) (-> *display* base-frame-counter))
+      (when (time-elapsed? (-> self wiggle-time) (seconds 1))
+        (set-time! (-> self wiggle-time))
         (swamp-rat-update-wiggle-params)
         )
       (suspend)
       (ja :num! (loop!))
       )
-    (none)
     )
   :post (behavior ()
     (swamp-rat-update-wiggle-target (target-pos 0))
     (nav-enemy-travel-post)
-    (none)
     )
   )
 
@@ -247,9 +237,9 @@ swamp-rat-default-event-handler
         (ja-no-eval :num! (loop!))
         (logclear! (-> self nav-enemy-flags) (nav-enemy-flags enable-travel))
         (let ((gp-0 (rand-vu-int-range 300 600))
-              (s5-0 (-> *display* base-frame-counter))
+              (s5-0 (current-time))
               )
-          (until (>= (- (-> *display* base-frame-counter) s5-0) gp-0)
+          (until (time-elapsed? s5-0 gp-0)
             (ja :num-func num-func-identity :frame-num 0.0)
             (ja-blend-eval)
             (suspend)
@@ -258,7 +248,6 @@ swamp-rat-default-event-handler
           )
         )
       )
-    (none)
     )
   )
 
@@ -286,7 +275,6 @@ swamp-rat-default-event-handler
       (ja :num! (seek!))
       )
     (go-virtual nav-enemy-patrol)
-    (none)
     )
   )
 
@@ -301,7 +289,6 @@ swamp-rat-default-event-handler
       (ja :num! (seek!))
       )
     (go-virtual nav-enemy-victory)
-    (none)
     )
   )
 
@@ -320,7 +307,7 @@ swamp-rat-default-event-handler
       (set! (-> gp-0 z) 0.0)
       (set! (-> gp-0 w) 1.0)
       (let ((f30-0 0.125))
-        (set! (-> self state-time) (-> *display* base-frame-counter))
+        (set-time! (-> self state-time))
         (ja :group! swamp-rat-fall-ja :num! min)
         (loop
           (set! f30-0 (seek f30-0 1.5 0.1))
@@ -335,9 +322,7 @@ swamp-rat-default-event-handler
             #f
             )
           (when (or (logtest? (-> self collide-info status) (cshape-moving-flags tsurf))
-                    (or (< (-> self collide-info trans y) (-> self min-height))
-                        (>= (- (-> *display* base-frame-counter) (-> self state-time)) (seconds 1))
-                        )
+                    (or (< (-> self collide-info trans y) (-> self min-height)) (time-elapsed? (-> self state-time) (seconds 1)))
                     )
             0
             (goto cfg-13)
@@ -363,9 +348,8 @@ swamp-rat-default-event-handler
         (go-virtual nav-enemy-chase)
         (go-virtual nav-enemy-idle)
         )
-    (none)
     )
-  :post (the-as (function none :behavior swamp-rat) nav-enemy-simple-post)
+  :post nav-enemy-simple-post
   )
 
 (define *swamp-rat-nav-enemy-info* (new 'static 'nav-enemy-info
@@ -421,8 +405,8 @@ swamp-rat-default-event-handler
                                      )
         )
 
-(defmethod initialize-collision swamp-rat ((obj swamp-rat))
-  (let ((s5-0 (new 'process 'collide-shape-moving obj (collide-list-enum usually-hit-by-player))))
+(defmethod initialize-collision ((this swamp-rat))
+  (let ((s5-0 (new 'process 'collide-shape-moving this (collide-list-enum usually-hit-by-player))))
     (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s5-0 reaction) default-collision-reaction)
     (set! (-> s5-0 no-reaction)
@@ -438,30 +422,30 @@ swamp-rat-default-event-handler
       )
     (set! (-> s5-0 nav-radius) (* 0.75 (-> s5-0 root-prim local-sphere w)))
     (backup-collide-with-as s5-0)
-    (set! (-> obj collide-info) s5-0)
+    (set! (-> this collide-info) s5-0)
     )
   0
   (none)
   )
 
-(defmethod nav-enemy-method-48 swamp-rat ((obj swamp-rat))
-  (initialize-skeleton obj *swamp-rat-sg* '())
-  (init-defaults! obj *swamp-rat-nav-enemy-info*)
-  (vector-float*! (-> obj collide-info scale) *identity-vector* 1.5)
-  (set! (-> obj neck up) (the-as uint 1))
-  (set! (-> obj neck nose) (the-as uint 2))
-  (set! (-> obj neck ear) (the-as uint 0))
-  (set! (-> obj wiggle-angle) 0.0)
-  (set! (-> obj delta-wiggle-angle) 910.2222)
-  (set! (-> obj wiggle-factor) 1.5)
-  (set! (-> obj reaction-time) (rand-vu-int-range (seconds 0.1) (seconds 0.8)))
-  (set! (-> obj chase-rest-time) (seconds 1))
-  (set! (-> obj water) (new 'process 'water-control obj 7 0.0 8192.0 2048.0))
-  (set! (-> obj water flags) (water-flags wt01))
-  (set! (-> obj water height) (res-lump-float (-> obj entity) 'water-height))
-  (set! (-> obj water ripple-size) 12288.0)
-  (set! (-> obj min-height) (+ -2048.0 (-> obj water height)))
-  (set! (-> obj up-vector quad) (-> *y-vector* quad))
+(defmethod nav-enemy-method-48 ((this swamp-rat))
+  (initialize-skeleton this *swamp-rat-sg* '())
+  (init-defaults! this *swamp-rat-nav-enemy-info*)
+  (vector-float*! (-> this collide-info scale) *identity-vector* 1.5)
+  (set! (-> this neck up) (the-as uint 1))
+  (set! (-> this neck nose) (the-as uint 2))
+  (set! (-> this neck ear) (the-as uint 0))
+  (set! (-> this wiggle-angle) 0.0)
+  (set! (-> this delta-wiggle-angle) 910.2222)
+  (set! (-> this wiggle-factor) 1.5)
+  (set! (-> this reaction-time) (rand-vu-int-range (seconds 0.1) (seconds 0.8)))
+  (set! (-> this chase-rest-time) (seconds 1))
+  (set! (-> this water) (new 'process 'water-control this 7 0.0 8192.0 2048.0))
+  (set! (-> this water flags) (water-flags wt01))
+  (set! (-> this water height) (res-lump-float (-> this entity) 'water-height))
+  (set! (-> this water ripple-size) 12288.0)
+  (set! (-> this min-height) (+ -2048.0 (-> this water height)))
+  (set! (-> this up-vector quad) (-> *y-vector* quad))
   0
   (none)
   )

@@ -438,6 +438,7 @@ class SetFormFormElement : public FormElement {
   const std::optional<TypeSpec>& cast_for_define() const { return m_cast_for_define; }
   void set_cast_for_set(const std::optional<TypeSpec>& ts) { m_cast_for_set = ts; }
   void set_cast_for_define(const std::optional<TypeSpec>& ts) { m_cast_for_define = ts; }
+  FormElement* make_set_time(const Env& env, FormPool& pool, FormStack& stack);
 
  private:
   int m_real_push_count = 0;
@@ -598,6 +599,10 @@ class ConditionElement : public FormElement {
                                                   FormPool& pool,
                                                   const std::vector<Form*>& source_forms,
                                                   const std::vector<TypeSpec>& types);
+  FormElement* make_time_elapsed(const Env& env,
+                                 FormPool& pool,
+                                 const std::vector<Form*>& source_forms,
+                                 const std::vector<TypeSpec>& types);
   bool allow_in_if() const override { return false; }
 
  private:
@@ -1294,7 +1299,9 @@ class DerefElement : public FormElement {
 
  private:
   ConstantTokenElement* try_as_art_const(const Env& env, FormPool& pool);
-  GenericElement* try_as_curtime(FormPool& pool);
+  GenericElement* try_as_joint_node_index(const Env& env, FormPool& pool);
+  GenericElement* try_as_curtime(const Env& env, FormPool& pool);
+  GenericElement* try_as_seconds_per_frame(const Env& env, FormPool& pool);
 
   Form* m_base = nullptr;
   bool m_is_addr_of = false;

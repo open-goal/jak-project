@@ -8,12 +8,8 @@
 ;; DECOMP BEGINS
 
 (deftype sinking-plat (rigid-body-platform)
-  ((anchor-point vector :inline :offset-assert 384)
+  ((anchor-point  vector  :inline)
    )
-  :heap-base #x110
-  :method-count-assert 57
-  :size-assert         #x190
-  :flag-assert         #x3901100190
   )
 
 
@@ -22,15 +18,15 @@
               :bounds (static-spherem 0 1 0 4)
               )
 
-(defmethod rigid-body-object-method-29 sinking-plat ((obj sinking-plat) (arg0 float))
-  ((the-as (function rigid-body-platform float none) (find-parent-method sinking-plat 29)) obj arg0)
-  (rigid-body-platform-method-56 obj (-> obj anchor-point))
+(defmethod rigid-body-object-method-29 ((this sinking-plat) (arg0 float))
+  (call-parent-method this arg0)
+  (rigid-body-platform-method-56 this (-> this anchor-point))
   0
   (none)
   )
 
-(defmethod allocate-and-init-cshape sinking-plat ((obj sinking-plat))
-  (let ((s5-0 (new 'process 'collide-shape-moving obj (collide-list-enum hit-by-player))))
+(defmethod allocate-and-init-cshape ((this sinking-plat))
+  (let ((s5-0 (new 'process 'collide-shape-moving this (collide-list-enum hit-by-player))))
     (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s5-0 reaction) cshape-reaction-default)
     (set! (-> s5-0 no-reaction)
@@ -51,7 +47,7 @@
       (set! (-> s5-0 backup-collide-as) (-> v1-15 prim-core collide-as))
       (set! (-> s5-0 backup-collide-with) (-> v1-15 prim-core collide-with))
       )
-    (set! (-> obj root) s5-0)
+    (set! (-> this root) s5-0)
     )
   0
   (none)
@@ -90,18 +86,18 @@
                                              )
         )
 
-(defmethod init-skel-and-rigid-body sinking-plat ((obj sinking-plat))
+(defmethod init-skel-and-rigid-body ((this sinking-plat))
   (initialize-skeleton
-    obj
+    this
     (the-as skeleton-group (art-group-get-by-name *level* "skel-sinking-plat" (the-as (pointer uint32) #f)))
     (the-as pair 0)
     )
-  (set! (-> obj float-height-offset) 4096.0)
-  (alloc-and-init-rigid-body-control obj *ruins-sinking-platform-constants*)
-  (set! (-> obj anchor-point quad) (-> obj root trans quad))
-  (let ((s5-1 (-> obj info control-point-count)))
+  (set! (-> this float-height-offset) 4096.0)
+  (alloc-and-init-rigid-body-control this *ruins-sinking-platform-constants*)
+  (set! (-> this anchor-point quad) (-> this root trans quad))
+  (let ((s5-1 (-> this info control-point-count)))
     (dotimes (s4-1 s5-1)
-      (let ((s3-0 (-> obj control-point-array data s4-1)))
+      (let ((s3-0 (-> this control-point-array data s4-1)))
         (let ((f30-0 (* 65536.0 (/ (the float s4-1) (the float s5-1)))))
           (set! (-> s3-0 local-pos x) (* 12288.0 (sin f30-0)))
           (set! (-> s3-0 local-pos y) 4096.0)
@@ -117,41 +113,29 @@
 
 (defstate idle (sinking-plat)
   :virtual #t
-  :event (the-as
-    (function process int symbol event-message-block object :behavior sinking-plat)
-    rigid-body-object-event-handler
-    )
+  :event rigid-body-object-event-handler
   :code (behavior ()
     (until #f
-      (ja-no-eval :group! (ja-group)
-                  :num! (seek! (the float (+ (-> (ja-group) frames num-frames) -1)))
-                  :frame-num 0.0
-                  )
+      (ja-no-eval :group! (ja-group) :num! (seek!) :frame-num 0.0)
       (until (ja-done? 0)
         (suspend)
         (ja :num! (seek!))
         )
       )
     #f
-    (none)
     )
   :post (behavior ()
     (set! (-> self info) *ruins-sinking-platform-constants*)
     (set! (-> self rbody state info) (-> self info info))
     (rigid-body-object-method-37 self)
-    (none)
     )
   )
 
 (deftype beam (process-drawable)
   ()
-  :heap-base #x50
-  :method-count-assert 22
-  :size-assert         #xc8
-  :flag-assert         #x16005000c8
-  (:methods
-    (idle () _type_ :state 20)
-    (collapse () _type_ :state 21)
+  (:state-methods
+    idle
+    collapse
     )
   )
 
@@ -171,19 +155,15 @@
           (go-virtual collapse)
           )
       )
-    (none)
     )
-  :code (the-as (function none :behavior beam) sleep-code)
+  :code sleep-code
   )
 
 (defstate collapse (beam)
   :virtual #t
   :code (behavior ()
     (sound-play "beam-slip")
-    (ja-no-eval :group! (-> self draw art-group data 3)
-                :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 3)) frames num-frames) -1)))
-                :frame-num 0.0
-                )
+    (ja-no-eval :group! beam-slide-center-ja :num! (seek!) :frame-num 0.0)
     (until (ja-done? 0)
       (suspend)
       (ja :num! (seek!))
@@ -191,46 +171,41 @@
     (logior! (-> self mask) (process-mask sleep))
     (suspend)
     0
-    (none)
     )
-  :post (the-as (function none :behavior beam) ja-post)
+  :post ja-post
   )
 
 ;; WARN: Return type mismatch object vs none.
-(defmethod init-from-entity! beam ((obj beam) (arg0 entity-actor))
+(defmethod init-from-entity! ((this beam) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
 - stack size
 - collision information
 - loading the skeleton group / bones
 - sounds"
-  (set! (-> obj root) (new 'process 'trsqv))
-  (process-drawable-from-entity! obj arg0)
+  (set! (-> this root) (new 'process 'trsqv))
+  (process-drawable-from-entity! this arg0)
   (initialize-skeleton
-    obj
+    this
     (the-as skeleton-group (art-group-get-by-name *level* "skel-beam" (the-as (pointer uint32) #f)))
     (the-as pair 0)
     )
   (ja-channel-push! 1 0)
-  (let ((s5-2 (-> obj skel root-channel 0)))
+  (let ((s5-2 (-> this skel root-channel 0)))
     (joint-control-channel-group-eval!
       s5-2
-      (the-as art-joint-anim (-> obj draw art-group data 2))
+      (the-as art-joint-anim (-> this draw art-group data 2))
       num-func-identity
       )
     (set! (-> s5-2 frame-num) 0.0)
     )
   (ja-post)
-  (go (method-of-object obj idle))
+  (go (method-of-object this idle))
   (none)
   )
 
 (deftype ruins-bridge (drop-plat)
   ()
-  :heap-base #xc0
-  :method-count-assert 36
-  :size-assert         #x140
-  :flag-assert         #x2400c00140
   )
 
 
@@ -239,19 +214,19 @@ This commonly includes things such as:
               :bounds (static-spherem 0 0 0 7)
               )
 
-(defmethod start-bouncing! ruins-bridge ((obj ruins-bridge))
+(defmethod start-bouncing! ((this ruins-bridge))
   "Sets `bouncing` to [[#t]] and sets up the clock to periodically bounce
 and translate the platform via the `smush`
 @see [[smush-control]]"
-  (logclear! (-> obj mask) (process-mask sleep))
-  (logclear! (-> obj mask) (process-mask sleep-code))
+  (logclear! (-> this mask) (process-mask sleep))
+  (logclear! (-> this mask) (process-mask sleep-code))
   0
   (none)
   )
 
 (defstate fall (ruins-bridge)
   :virtual #t
-  :trans (the-as (function none :behavior ruins-bridge) rider-trans)
+  :trans rider-trans
   :code (behavior ((arg0 symbol))
     (process-entity-status! self (entity-perm-status subtask-complete) #t)
     (set! (-> self draw bounds y) -102400.0)
@@ -279,11 +254,11 @@ and translate the platform via the `smush`
       (format (clear *temp-string*) "~S-end" (-> self art-name))
       (let ((s5-1 (s4-0 s5-0 *temp-string* art-joint-anim)))
         (if (not arg0)
-            ;; added cast
+            ;; og:preserve-this added cast
             (ja-play-spooled-anim (-> self anim) (ja-group) (the-as art-joint-anim s5-1) (the-as (function process-drawable symbol) false-func))
             )
         (ja-channel-set! 1)
-        ;; added cast
+        ;; og:preserve-this added cast
         (set! (-> self skel root-channel 0 frame-group) (the-as art-joint-anim s5-1))
         )
       )
@@ -296,20 +271,19 @@ and translate the platform via the `smush`
     (logior! (-> self mask) (process-mask sleep))
     (suspend)
     0
-    (none)
     )
   )
 
 ;; WARN: Return type mismatch object vs none.
-(defmethod init-from-entity! ruins-bridge ((obj ruins-bridge) (arg0 entity-actor))
+(defmethod init-from-entity! ((this ruins-bridge) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
 - stack size
 - collision information
 - loading the skeleton group / bones
 - sounds"
-  (stack-size-set! (-> obj main-thread) 512)
-  (let ((s4-0 (new 'process 'collide-shape-moving obj (collide-list-enum hit-by-player))))
+  (stack-size-set! (-> this main-thread) 512)
+  (let ((s4-0 (new 'process 'collide-shape-moving this (collide-list-enum hit-by-player))))
     (set! (-> s4-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s4-0 reaction) cshape-reaction-default)
     (set! (-> s4-0 no-reaction)
@@ -357,32 +331,28 @@ This commonly includes things such as:
       (set! (-> s4-0 backup-collide-as) (-> v1-25 prim-core collide-as))
       (set! (-> s4-0 backup-collide-with) (-> v1-25 prim-core collide-with))
       )
-    (set! (-> obj root) s4-0)
+    (set! (-> this root) s4-0)
     )
-  (process-drawable-from-entity! obj arg0)
+  (process-drawable-from-entity! this arg0)
   (initialize-skeleton
-    obj
+    this
     (the-as skeleton-group (art-group-get-by-name *level* "skel-ruins-bridge-1" (the-as (pointer uint32) #f)))
     (the-as pair 0)
     )
-  (set! (-> obj art-name) "ruins-bridge-1")
-  (set! (-> obj anim)
+  (set! (-> this art-name) "ruins-bridge-1")
+  (set! (-> this anim)
         (new 'static 'spool-anim :name "ruins-bridge-1" :anim-name "1-crumble" :parts 2 :command-list '())
         )
-  (set! (-> obj basetrans quad) (-> obj root trans quad))
-  (if (and (-> obj entity) (logtest? (-> obj entity extra perm status) (entity-perm-status subtask-complete)))
-      (go (method-of-object obj fall) #t)
-      (go (method-of-object obj idle))
+  (set! (-> this basetrans quad) (-> this root trans quad))
+  (if (and (-> this entity) (logtest? (-> this entity extra perm status) (entity-perm-status subtask-complete)))
+      (go (method-of-object this fall) #t)
+      (go (method-of-object this idle))
       )
   (none)
   )
 
 (deftype ruins-drop-plat (drop-plat)
   ()
-  :heap-base #xc0
-  :method-count-assert 36
-  :size-assert         #x140
-  :flag-assert         #x2400c00140
   )
 
 
@@ -434,23 +404,23 @@ This commonly includes things such as:
               :origin-joint-index 3
               )
 
-(defmethod start-bouncing! ruins-drop-plat ((obj ruins-drop-plat))
+(defmethod start-bouncing! ((this ruins-drop-plat))
   "Sets `bouncing` to [[#t]] and sets up the clock to periodically bounce
 and translate the platform via the `smush`
 @see [[smush-control]]"
-  (activate! (-> obj smush) -1.0 60 150 1.0 1.0 (-> self clock))
-  (set! (-> obj bounce-time) (current-time))
-  (set! (-> obj bouncing) #t)
-  (logclear! (-> obj mask) (process-mask sleep))
-  (logclear! (-> obj mask) (process-mask sleep-code))
+  (activate! (-> this smush) -1.0 60 150 1.0 1.0 (-> self clock))
+  (set-time! (-> this bounce-time))
+  (set! (-> this bouncing) #t)
+  (logclear! (-> this mask) (process-mask sleep))
+  (logclear! (-> this mask) (process-mask sleep-code))
   0
   (none)
   )
 
 (defstate fall (ruins-drop-plat)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('collide-shape)
        (let ((v1-2 (-> self root root-prim)))
          (set! (-> v1-2 prim-core collide-as) (collide-spec))
@@ -464,7 +434,7 @@ and translate the platform via the `smush`
        0
        )
       (else
-        ((-> (method-of-type drop-plat fall) event) proc arg1 event-type event)
+        ((-> (method-of-type drop-plat fall) event) proc argc message block)
         )
       )
     )
@@ -496,21 +466,20 @@ and translate the platform via the `smush`
             )
           (set! (-> self anim anim-name) (-> self break-anim-name))
           (sound-play "tower-plat-fall")
-          ;; added cast
+          ;; og:preserve-this added cast
           (ja-play-spooled-anim (-> self anim) (ja-group) (the-as art-joint-anim gp-1) (the-as (function process-drawable symbol) false-func))
           )
         (ja-channel-set! 1)
-        ;; added cast
+        ;; og:preserve-this added cast
         (set! (-> self skel root-channel 0 frame-group) (the-as art-joint-anim gp-1))
         )
       )
     (suspend)
     (cleanup-for-death self)
-    (none)
     )
   :post (behavior ()
     (when (and (nonzero? (-> self root root-prim prim-core collide-as))
-               (>= (- (current-time) (-> self state-time)) (seconds 0.25))
+               (time-elapsed? (-> self state-time) (seconds 0.25))
                )
       (let ((v1-9 (-> self root root-prim)))
         (set! (-> v1-9 prim-core collide-as) (collide-spec))
@@ -523,20 +492,19 @@ and translate the platform via the `smush`
           ((the-as (function none) t9-0))
           )
       )
-    (none)
     )
   )
 
 ;; WARN: Return type mismatch object vs none.
-(defmethod init-from-entity! ruins-drop-plat ((obj ruins-drop-plat) (arg0 entity-actor))
+(defmethod init-from-entity! ((this ruins-drop-plat) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
 - stack size
 - collision information
 - loading the skeleton group / bones
 - sounds"
-  (stack-size-set! (-> obj main-thread) 512)
-  (let ((s4-0 (new 'process 'collide-shape-moving obj (collide-list-enum hit-by-player))))
+  (stack-size-set! (-> this main-thread) 512)
+  (let ((s4-0 (new 'process 'collide-shape-moving this (collide-list-enum hit-by-player))))
     (set! (-> s4-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s4-0 reaction) cshape-reaction-default)
     (set! (-> s4-0 no-reaction)
@@ -570,11 +538,11 @@ This commonly includes things such as:
       (set! (-> s4-0 backup-collide-as) (-> v1-21 prim-core collide-as))
       (set! (-> s4-0 backup-collide-with) (-> v1-21 prim-core collide-with))
       )
-    (set! (-> obj root) s4-0)
+    (set! (-> this root) s4-0)
     )
-  (process-drawable-from-entity! obj arg0)
+  (process-drawable-from-entity! this arg0)
   (let ((s5-1 ((method-of-type res-lump get-property-struct)
-               (-> obj entity)
+               (-> this entity)
                'art-name
                'interp
                -1000000000.0
@@ -584,117 +552,117 @@ This commonly includes things such as:
                )
               )
         )
-    (set! (-> obj art-name) (the-as string s5-1))
+    (set! (-> this art-name) (the-as string s5-1))
     (cond
       ((string= (the-as string s5-1) "ruins-drop-plat-a-1")
        (initialize-skeleton
-         obj
+         this
          (the-as
            skeleton-group
            (art-group-get-by-name *level* "skel-ruins-drop-plat-a-1" (the-as (pointer uint32) #f))
            )
          (the-as pair 0)
          )
-       (set! (-> obj art-name) "ruins-drop-plat-a-1")
-       (set! (-> obj anim)
+       (set! (-> this art-name) "ruins-drop-plat-a-1")
+       (set! (-> this anim)
              (new 'static 'spool-anim :name "ruins-drop-plat-a-1" :anim-name "a-1-break-center" :parts 1 :command-list '())
              )
        )
       ((string= (the-as string s5-1) "ruins-drop-plat-a-2")
        (initialize-skeleton
-         obj
+         this
          (the-as
            skeleton-group
            (art-group-get-by-name *level* "skel-ruins-drop-plat-a-2" (the-as (pointer uint32) #f))
            )
          (the-as pair 0)
          )
-       (set! (-> obj art-name) "ruins-drop-plat-a-2")
-       (set! (-> obj anim)
+       (set! (-> this art-name) "ruins-drop-plat-a-2")
+       (set! (-> this anim)
              (new 'static 'spool-anim :name "ruins-drop-plat-a-1" :anim-name "a-2-break-center" :parts 1 :command-list '())
              )
        )
       ((string= (the-as string s5-1) "ruins-drop-plat-a-3")
        (initialize-skeleton
-         obj
+         this
          (the-as
            skeleton-group
            (art-group-get-by-name *level* "skel-ruins-drop-plat-a-3" (the-as (pointer uint32) #f))
            )
          (the-as pair 0)
          )
-       (set! (-> obj art-name) "ruins-drop-plat-a-3")
-       (set! (-> obj anim)
+       (set! (-> this art-name) "ruins-drop-plat-a-3")
+       (set! (-> this anim)
              (new 'static 'spool-anim :name "ruins-drop-plat-a-1" :anim-name "a-3-break-center" :parts 1 :command-list '())
              )
        )
       ((string= (the-as string s5-1) "ruins-drop-plat-b-1")
        (initialize-skeleton
-         obj
+         this
          (the-as
            skeleton-group
            (art-group-get-by-name *level* "skel-ruins-drop-plat-b-1" (the-as (pointer uint32) #f))
            )
          (the-as pair 0)
          )
-       (set! (-> obj art-name) "ruins-drop-plat-b-1")
-       (set! (-> obj anim)
+       (set! (-> this art-name) "ruins-drop-plat-b-1")
+       (set! (-> this anim)
              (new 'static 'spool-anim :name "ruins-drop-plat-b-1" :anim-name "b-1-break-center" :parts 1 :command-list '())
              )
        )
       ((string= (the-as string s5-1) "ruins-drop-plat-b-2")
        (initialize-skeleton
-         obj
+         this
          (the-as
            skeleton-group
            (art-group-get-by-name *level* "skel-ruins-drop-plat-b-2" (the-as (pointer uint32) #f))
            )
          (the-as pair 0)
          )
-       (set! (-> obj art-name) "ruins-drop-plat-b-2")
-       (set! (-> obj anim)
+       (set! (-> this art-name) "ruins-drop-plat-b-2")
+       (set! (-> this anim)
              (new 'static 'spool-anim :name "ruins-drop-plat-b-1" :anim-name "b-2-break-center" :parts 1 :command-list '())
              )
        )
       ((string= (the-as string s5-1) "ruins-drop-plat-c-1")
        (initialize-skeleton
-         obj
+         this
          (the-as
            skeleton-group
            (art-group-get-by-name *level* "skel-ruins-drop-plat-c-1" (the-as (pointer uint32) #f))
            )
          (the-as pair 0)
          )
-       (set! (-> obj art-name) "ruins-drop-plat-c-1")
-       (set! (-> obj anim)
+       (set! (-> this art-name) "ruins-drop-plat-c-1")
+       (set! (-> this anim)
              (new 'static 'spool-anim :name "ruins-drop-plat-c-1" :anim-name "c-1-break-center" :parts 1 :command-list '())
              )
        )
       ((string= (the-as string s5-1) "ruins-drop-plat-c-2")
        (initialize-skeleton
-         obj
+         this
          (the-as
            skeleton-group
            (art-group-get-by-name *level* "skel-ruins-drop-plat-c-2" (the-as (pointer uint32) #f))
            )
          (the-as pair 0)
          )
-       (set! (-> obj art-name) "ruins-drop-plat-c-2")
-       (set! (-> obj anim)
+       (set! (-> this art-name) "ruins-drop-plat-c-2")
+       (set! (-> this anim)
              (new 'static 'spool-anim :name "ruins-drop-plat-c-1" :anim-name "c-2-break-center" :parts 1 :command-list '())
              )
        )
       ((string= (the-as string s5-1) "ruins-drop-plat-c-3")
        (initialize-skeleton
-         obj
+         this
          (the-as
            skeleton-group
            (art-group-get-by-name *level* "skel-ruins-drop-plat-c-3" (the-as (pointer uint32) #f))
            )
          (the-as pair 0)
          )
-       (set! (-> obj art-name) "ruins-drop-plat-c-3")
-       (set! (-> obj anim)
+       (set! (-> this art-name) "ruins-drop-plat-c-3")
+       (set! (-> this anim)
              (new 'static 'spool-anim :name "ruins-drop-plat-c-1" :anim-name "c-3-break-center" :parts 1 :command-list '())
              )
        )
@@ -703,13 +671,13 @@ This commonly includes things such as:
         )
       )
     )
-  (set! (-> obj draw force-lod) 1)
-  (set! (-> obj break-anim-name) (new 'process 'string 128 (the-as string #f)))
-  (set! (-> obj basetrans quad) (-> obj root trans quad))
-  (set! (-> obj bounce-scale) 0.0)
-  (if (and (-> obj entity) (logtest? (-> obj entity extra perm status) (entity-perm-status subtask-complete)))
-      (go (method-of-object obj fall) #t)
-      (go (method-of-object obj idle))
+  (set! (-> this draw force-lod) 1)
+  (set! (-> this break-anim-name) (new 'process 'string 128 (the-as string #f)))
+  (set! (-> this basetrans quad) (-> this root trans quad))
+  (set! (-> this bounce-scale) 0.0)
+  (if (and (-> this entity) (logtest? (-> this entity extra perm status) (entity-perm-status subtask-complete)))
+      (go (method-of-object this fall) #t)
+      (go (method-of-object this idle))
       )
   (none)
   )
@@ -731,7 +699,7 @@ This commonly includes things such as:
     (set! (-> self data-int32 0) 0)
     (set! (-> self beep-time) (+ (current-time) (seconds -30)))
     (until #f
-      (when (>= (- (current-time) (-> self beep-time)) (seconds 40))
+      (when (time-elapsed? (-> self beep-time) (seconds 40))
         (let ((v1-8 (mod (-> self data-int32 0) (if (= (-> self node-info task) (game-task ruins-tower))
                                                     4
                                                     2
@@ -754,7 +722,7 @@ This commonly includes things such as:
              )
             )
           )
-        (set! (-> self beep-time) (current-time))
+        (set-time! (-> self beep-time))
         (+! (-> self data-int32 0) 1)
         )
       (b!
@@ -771,7 +739,7 @@ This commonly includes things such as:
           (quaternion-identity! (-> gp-5 quat))
           (set! (-> gp-5 flags) (task-arrow-flags))
           (set! (-> gp-5 map-icon) (the-as uint 15))
-          (set! (-> self arrow) (process->handle (task-arrow-spawn gp-5 (the-as task-arrow self))))
+          (set! (-> self arrow) (process->handle (task-arrow-spawn gp-5 self)))
           )
         )
       (label cfg-39)
@@ -802,17 +770,17 @@ This commonly includes things such as:
           (quaternion-identity! (-> s5-0 quat))
           (set! (-> s5-0 flags) (task-arrow-flags))
           (set! (-> s5-0 map-icon) (the-as uint 15))
-          (set! (-> self arrow) (process->handle (task-arrow-spawn s5-0 (the-as task-arrow self))))
+          (set! (-> self arrow) (process->handle (task-arrow-spawn s5-0 self)))
           )
         )
       (b! #t cfg-17 :delay (nop!))
       (label cfg-8)
-      (when (and (>= (- (current-time) (-> self time-limit)) (seconds 10))
+      (when (and (time-elapsed? (-> self time-limit) (seconds 10))
                  gp-0
                  (< (vector-vector-xz-distance (target-pos 0) (-> gp-0 extra trans)) 40960.0)
                  )
         (talker-spawn-func (-> *talker-speech* 452) *entity-pool* (target-pos 0) (the-as region #f))
-        (set! (-> self time-limit) (current-time))
+        (set-time! (-> self time-limit))
         )
       (suspend)
       (label cfg-17)
@@ -831,22 +799,22 @@ This commonly includes things such as:
       (until (not (or (not *target*) (not (logtest? (focus-status mech) (-> *target* focus-status)))))
         (b! #t cfg-47 :delay (nop!))
         (label cfg-38)
-        (when (and (>= (- (current-time) (-> self time-limit)) (seconds 10))
+        (when (and (time-elapsed? (-> self time-limit) (seconds 10))
                    gp-0
                    (< (vector-vector-xz-distance (target-pos 0) (-> gp-0 extra trans)) 40960.0)
                    )
           (talker-spawn-func (-> *talker-speech* 452) *entity-pool* (target-pos 0) (the-as region #f))
-          (set! (-> self time-limit) (current-time))
+          (set-time! (-> self time-limit))
           )
         (suspend)
         (label cfg-47)
         (b! (or (not *target*) (not (logtest? (focus-status mech) (-> *target* focus-status)))) cfg-38 :delay (nop!))
         (talker-spawn-func (-> *talker-speech* 457) *entity-pool* (target-pos 0) (the-as region #f))
-        (set! (-> self time-limit) (current-time))
+        (set-time! (-> self time-limit))
         (b! #t cfg-66 :delay (nop!))
         (label cfg-52)
         )
-      (when (>= (- (current-time) (-> self time-limit)) (seconds 10))
+      (when (time-elapsed? (-> self time-limit) (seconds 10))
         (b!
           (not (and gp-0 (< (vector-vector-xz-distance (target-pos 0) (-> gp-0 extra trans)) 61440.0)))
           cfg-63
@@ -857,7 +825,7 @@ This commonly includes things such as:
         (label cfg-63)
         (talker-spawn-func (-> *talker-speech* 454) *entity-pool* (target-pos 0) (the-as region #f))
         (label cfg-64)
-        (set! (-> self time-limit) (current-time))
+        (set-time! (-> self time-limit))
         )
       (suspend)
       (label cfg-66)
@@ -885,7 +853,7 @@ This commonly includes things such as:
       (label cfg-1)
       (b! #t cfg-14 :delay (nop!))
       (label cfg-2)
-      (let ((a0-2 (>= (- (current-time) (-> self time-limit)) (seconds 10))))
+      (let ((a0-2 (time-elapsed? (-> self time-limit) (seconds 10))))
         (b! (not a0-2) cfg-11 :likely-delay (set! v1-3 a0-2))
         )
       (b! (not gp-0) cfg-11 :likely-delay (set! v1-3 gp-0))
@@ -902,7 +870,7 @@ This commonly includes things such as:
       (label cfg-11)
       (when v1-3
         (talker-spawn-func (-> *talker-speech* 452) *entity-pool* (target-pos 0) (the-as region #f))
-        (set! (-> self time-limit) (current-time))
+        (set-time! (-> self time-limit))
         )
       (suspend)
       (label cfg-14)
@@ -915,7 +883,7 @@ This commonly includes things such as:
         (set! v1-18 (not (logtest? (focus-status mech) (-> *target* focus-status))))
         (label cfg-22)
         (b! v1-18 cfg-1 :delay (nop!))
-        (when (>= (- (current-time) (-> self time-limit)) (seconds 10))
+        (when (time-elapsed? (-> self time-limit) (seconds 10))
           (b! (not gp-0) cfg-38 :likely-delay (set! v1-25 gp-0))
           (let ((v1-27 (-> gp-0 extra process)))
             (b! (not v1-27) cfg-28 :delay (nop!))
@@ -940,7 +908,7 @@ This commonly includes things such as:
           (label cfg-38)
           (when v1-25
             (talker-spawn-func (-> *talker-speech* 458) *entity-pool* (target-pos 0) (the-as region #f))
-            (set! (-> self time-limit) (current-time))
+            (set-time! (-> self time-limit))
             )
           )
         (suspend)
@@ -974,7 +942,7 @@ This commonly includes things such as:
         (b! #t cfg-20 :delay (nop!))
         (label cfg-8)
         (set! v1-6
-              (and (>= (- (current-time) (-> self time-limit)) (seconds 10))
+              (and (time-elapsed? (-> self time-limit) (seconds 10))
                    (and gp-0 (begin
                                (let ((v1-8 (-> gp-0 extra process)))
                                  (b! (not v1-8) cfg-14 :delay (nop!))
@@ -994,7 +962,7 @@ This commonly includes things such as:
         (label cfg-17)
         (b! (not v1-6) cfg-19 :delay (empty-form))
         (talker-spawn-func (-> *talker-speech* 452) *entity-pool* (target-pos 0) (the-as region #f))
-        (set! (-> self time-limit) (current-time))
+        (set-time! (-> self time-limit))
         (label cfg-19)
         (suspend)
         (label cfg-20)
@@ -1002,7 +970,7 @@ This commonly includes things such as:
         (b! #t cfg-53 :delay (nop!))
         (label cfg-25)
         )
-      (when (>= (- (current-time) (-> self time-limit)) (seconds 10))
+      (when (time-elapsed? (-> self time-limit) (seconds 10))
         (b! (not (and *target* (focus-test? *target* carry))) cfg-43 :delay (empty-form))
         (when (< (vector-vector-xz-distance
                    (target-pos 0)
@@ -1030,7 +998,7 @@ This commonly includes things such as:
               )
             )
           (talker-spawn-func (-> *talker-speech* 459) *entity-pool* (target-pos 0) (the-as region #f))
-          (set! (-> self time-limit) (current-time))
+          (set-time! (-> self time-limit))
           )
         (b! #t cfg-52 :delay (nop!))
         (label cfg-43)
@@ -1046,7 +1014,7 @@ This commonly includes things such as:
                           )
                    )
           (talker-spawn-func (-> *talker-speech* 458) *entity-pool* (target-pos 0) (the-as region #f))
-          (set! (-> self time-limit) (current-time))
+          (set-time! (-> self time-limit))
           )
         )
       (label cfg-52)

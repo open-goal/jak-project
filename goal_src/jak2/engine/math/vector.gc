@@ -553,49 +553,37 @@
 (defun vector-v! ((arg0 vector))
   "Convert a velocity to a displacement per frame. The velocity should be in X/actual_second.
    Uses the current process clock."
-  (with-pp
-    (vector-float*! arg0 arg0 (-> pp clock seconds-per-frame))
-    arg0
-    )
+  (vector-float*! arg0 arg0 (seconds-per-frame))
+  arg0
   )
 
 (defun vector-v+! ((arg0 vector) (arg1 vector) (arg2 vector))
   "Euler forward step, using the current display time settings"
-  (with-pp
-    (vector+float*! arg0 arg1 arg2 (-> pp clock seconds-per-frame))
-    arg0
-    )
+  (vector+float*! arg0 arg1 arg2 (seconds-per-frame))
+  arg0
   )
 
 (defun vector-v*float+! ((arg0 vector) (arg1 vector) (arg2 vector) (arg3 float))
   "Euler forward step, scaling velocity by velocity-scale"
-  (with-pp
-    (vector+float*! arg0 arg1 arg2 (* arg3 (-> pp clock seconds-per-frame)))
-    arg0
-    )
+  (vector+float*! arg0 arg1 arg2 (* arg3 (seconds-per-frame)))
+  arg0
   )
 
 (defun vector-v++! ((arg0 vector) (arg1 vector))
   "Update position in place, using display's current timing"
-  (with-pp
-    (vector+float*! arg0 arg0 arg1 (-> pp clock seconds-per-frame))
-    arg0
-    )
+  (vector+float*! arg0 arg0 arg1 (seconds-per-frame))
+  arg0
   )
 
 (defun vector-v*float! ((arg0 vector) (arg1 vector) (arg2 float))
   "Go from velocity to delta-p per frame, scaling by scale"
-  (with-pp
-    (vector-float*! arg0 arg1 (* arg2 (-> pp clock seconds-per-frame)))
-    )
+  (vector-float*! arg0 arg1 (* arg2 (seconds-per-frame)))
   )
 
 (defun vector-v*float++! ((arg0 vector) (arg1 vector) (arg2 float))
   "update position with given velocity, scaled by scale."
-  (with-pp
-    (vector+float*! arg0 arg0 arg1 (* arg2 (-> pp clock seconds-per-frame)))
-    arg0
-    )
+  (vector+float*! arg0 arg0 arg1 (* arg2 (seconds-per-frame)))
+  arg0
   )
 
 (defun vector-to-ups! ((arg0 vector) (arg1 vector))
@@ -623,22 +611,20 @@
 (defun vector-from-ups! ((arg0 vector) (arg1 vector))
   "Go from units per second to units per frame?"
   (local-vars (at-0 int))
-  (with-pp
-    (rlet ((vf0 :class vf)
-           (vf1 :class vf)
-           (vf2 :class vf)
-           )
-      (init-vf0-vector)
-      (.lvf vf1 (&-> arg1 quad))
-      (let ((f0-0 (-> pp clock seconds-per-frame)))
-        (.mov at-0 f0-0)
-        )
-      (.mov vf2 at-0)
-      (.mov.vf vf1 vf0 :mask #b1000)
-      (.mul.x.vf vf1 vf1 vf2 :mask #b111)
-      (.svf (&-> arg0 quad) vf1)
-      arg0
+  (rlet ((vf0 :class vf)
+         (vf1 :class vf)
+         (vf2 :class vf)
+         )
+    (init-vf0-vector)
+    (.lvf vf1 (&-> arg1 quad))
+    (let ((f0-0 (seconds-per-frame)))
+      (.mov at-0 f0-0)
       )
+    (.mov vf2 at-0)
+    (.mov.vf vf1 vf0 :mask #b1000)
+    (.mul.x.vf vf1 vf1 vf2 :mask #b111)
+    (.svf (&-> arg0 quad) vf1)
+    arg0
     )
   )
 
@@ -827,6 +813,7 @@
       )
     )
   arg0
+  ;; og:preserve-this
   ; (rlet ((acc :class vf)
   ;        (Q :class vf)
   ;        (vf0 :class vf)
@@ -866,6 +853,7 @@
     f0-0
     )
 
+  ;; og:preserve-this
   ; (local-vars (v1-1 float))
   ; (rlet ((acc :class vf)
   ;        (Q :class vf)
@@ -961,7 +949,7 @@
   "Make vector at most arg1 length (xyz only).
    If it is larger, project onto sphere.
    Doesn't touch w"
-   ;; note: converted to asm in jak 2
+   ;; og:preserve-this converted to asm in jak 2
   (let ((f0-0 (vector-length arg0)))
     (when (not (or (= f0-0 0.0) (< f0-0 arg1)))
       (let ((f0-1 (/ f0-0 arg1)))
@@ -1594,9 +1582,9 @@
 
 (defun sphere<-vector! ((arg0 sphere) (arg1 vector))
   "Set the position of the sphere to arg1. Does not change the radius"
-  (let ((f0-0 (-> arg0 w)))
+  (let ((f0-0 (-> arg0 r)))
     (set! (-> arg0 quad) (-> arg1 quad))
-    (set! (-> arg0 w) f0-0)
+    (set! (-> arg0 r) f0-0)
     )
   arg0
   )
@@ -1604,7 +1592,7 @@
 (defun sphere<-vector+r! ((arg0 sphere) (arg1 vector) (arg2 float))
   "Set the position of the sphere from arg1 and the radius from arg2"
   (set! (-> arg0 quad) (-> arg1 quad))
-  (set! (-> arg0 w) arg2)
+  (set! (-> arg0 r) arg2)
   arg0
   )
 
@@ -1621,7 +1609,7 @@
   (vector-normalize! arg0 (rand-vu-float-range 0.0 arg1))
   )
 
-(defmethod print vector2 ((obj vector2))
+(defmethod print ((obj vector2))
   "Print a vector2."
   (format #t "#<vector ~F ~F @ #x~X>" (-> obj x) (-> obj y) obj)
   obj
@@ -1640,7 +1628,8 @@
        0.0
        )
       ((>= -1.0 f0-1)
-       0.017257283 ;; what is this value?? this should be 180 degrees.
+       ;; og:preserve-this what is this value?? this should be 180 degrees.
+       0.017257283
        )
       (else
         (acos f0-1)
@@ -1648,7 +1637,3 @@
       )
     )
   )
-
-
-
-

@@ -9,16 +9,11 @@
 
 ;; DECOMP BEGINS
 
-
 (deftype teetertotter (process-drawable)
-  ((launched-player   basic  :offset-assert 176)
-   (in-launch-window  basic  :offset-assert 180)
-   (rock-is-dangerous basic  :offset-assert 184)
+  ((launched-player    basic)
+   (in-launch-window   basic)
+   (rock-is-dangerous  basic)
    )
-  :heap-base #x50
-  :method-count-assert 20
-  :size-assert         #xbc
-  :flag-assert         #x14005000bc
   (:states
     teetertotter-bend
     teetertotter-idle
@@ -41,10 +36,10 @@
   )
 
 (defstate teetertotter-idle (teetertotter)
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-    (case arg2
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('attack)
-       (case (-> arg3 param 1)
+       (case (-> block param 1)
          (('flop)
           (when (target-on-end-of-teetertotter? self)
             (set! (-> self in-launch-window) #f)
@@ -56,61 +51,51 @@
        )
       (('bonk)
        (when (target-on-end-of-teetertotter? self)
-         (level-hint-spawn
-           (text-id misty-teetertotter)
-           "sksp0070"
-           (the-as entity #f)
-           *entity-pool*
-           (game-task none)
-           )
+         (level-hint-spawn (text-id misty-teetertotter) "sksp0070" (the-as entity #f) *entity-pool* (game-task none))
          (go teetertotter-bend)
          )
        )
       )
     )
   :code (behavior ()
-    (ja :group! (-> self draw art-group data 4) :num! min)
+    (ja :group! teetertotter-idle-ja :num! min)
     (loop
       (suspend)
       )
-    (none)
     )
-  :post (the-as (function none :behavior teetertotter) transform-post)
+  :post transform-post
   )
 
 (defstate teetertotter-launch (teetertotter)
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-    (the-as
-      object
-      (when (= arg2 'touch)
-        (if (and ((method-of-type touching-shapes-entry prims-touching?)
-                  (the-as touching-shapes-entry (-> arg3 param 0))
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (when (= message 'touch)
+      (if (and ((method-of-type touching-shapes-entry prims-touching?)
+                (the-as touching-shapes-entry (-> block param 0))
+                (the-as collide-shape-moving (-> self root))
+                (the-as uint 1)
+                )
+               (-> self rock-is-dangerous)
+               )
+          (send-event proc 'attack (-> block param 0) (static-attack-info ((mode 'deadly))))
+          )
+      (when (and ((method-of-type touching-shapes-entry prims-touching?)
+                  (the-as touching-shapes-entry (-> block param 0))
                   (the-as collide-shape-moving (-> self root))
-                  (the-as uint 1)
+                  (the-as uint 2)
                   )
-                 (-> self rock-is-dangerous)
+                 (target-on-end-of-teetertotter? self)
+                 (not (-> self launched-player))
+                 (-> self in-launch-window)
                  )
-            (send-event arg0 'attack (-> arg3 param 0) (static-attack-info ((mode 'deadly))))
-            )
-        (when (and ((method-of-type touching-shapes-entry prims-touching?)
-                    (the-as touching-shapes-entry (-> arg3 param 0))
-                    (the-as collide-shape-moving (-> self root))
-                    (the-as uint 2)
-                    )
-                   (target-on-end-of-teetertotter? self)
-                   (not (-> self launched-player))
-                   (-> self in-launch-window)
-                   )
-          (when (send-event
-                  arg0
-                  'shove
-                  #f
-                  (static-attack-info ((shove-back (meters 0)) (shove-up (meters 13)) (angle 'jump) (control 1.0)))
-                  )
-            (let ((v0-0 #t))
-              (set! (-> self launched-player) v0-0)
-              v0-0
-              )
+        (when (send-event
+                proc
+                'shove
+                #f
+                (static-attack-info ((shove-back (meters 0)) (shove-up (meters 13)) (angle 'jump) (control 1.0)))
+                )
+          (let ((v0-0 #t))
+            (set! (-> self launched-player) v0-0)
+            v0-0
             )
           )
         )
@@ -118,7 +103,7 @@
     )
   :code (behavior ()
     (set! (-> self launched-player) #f)
-    (ja-no-eval :group! (-> self draw art-group data 4) :num! (seek!) :frame-num 0.0)
+    (ja-no-eval :group! teetertotter-idle-ja :num! (seek!) :frame-num 0.0)
     (until (ja-done? 0)
       (let ((f0-4 (ja-aframe-num 0)))
         (set! (-> self in-launch-window) (and (>= f0-4 76.0) (>= 82.0 f0-4)))
@@ -130,26 +115,24 @@
       (ja :num! (seek!))
       )
     (go teetertotter-idle)
-    (none)
     )
-  :post (the-as (function none :behavior teetertotter) rider-post)
+  :post rider-post
   )
 
 (defstate teetertotter-bend (teetertotter)
   :code (behavior ()
-    (ja-no-eval :group! (-> self draw art-group data 5) :num! (seek!) :frame-num 0.0)
+    (ja-no-eval :group! teetertotter-landing-ja :num! (seek!) :frame-num 0.0)
     (until (ja-done? 0)
       (suspend)
       (ja :num! (seek!))
       )
     (go teetertotter-idle)
-    (none)
     )
-  :post (the-as (function none :behavior teetertotter) rider-post)
+  :post rider-post
   )
 
-(defmethod init-from-entity! teetertotter ((obj teetertotter) (arg0 entity-actor))
-  (let ((s4-0 (new 'process 'collide-shape-moving obj (collide-list-enum hit-by-player))))
+(defmethod init-from-entity! ((this teetertotter) (arg0 entity-actor))
+  (let ((s4-0 (new 'process 'collide-shape-moving this (collide-list-enum hit-by-player))))
     (set! (-> s4-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s4-0 reaction) default-collision-reaction)
     (set! (-> s4-0 no-reaction)
@@ -210,17 +193,13 @@
       )
     (set! (-> s4-0 nav-radius) (* 0.75 (-> s4-0 root-prim local-sphere w)))
     (backup-collide-with-as s4-0)
-    (set! (-> obj root) s4-0)
+    (set! (-> this root) s4-0)
     )
-  (process-drawable-from-entity! obj arg0)
-  (initialize-skeleton obj *teetertotter-sg* '())
-  (set! (-> obj launched-player) #f)
-  (set! (-> obj in-launch-window) #f)
-  (set! (-> obj rock-is-dangerous) #f)
+  (process-drawable-from-entity! this arg0)
+  (initialize-skeleton this *teetertotter-sg* '())
+  (set! (-> this launched-player) #f)
+  (set! (-> this in-launch-window) #f)
+  (set! (-> this rock-is-dangerous) #f)
   (go teetertotter-idle)
   (none)
   )
-
-
-
-

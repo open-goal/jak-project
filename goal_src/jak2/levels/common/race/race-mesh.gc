@@ -22,174 +22,141 @@
 ;; DECOMP BEGINS
 
 (deftype race-mesh-hash-search (structure)
-  ((best-dist             float                    :offset-assert   0)
-   (debug-cells-searched  int32                    :offset-assert   4)
-   (debug-slices-searched int32                    :offset-assert   8)
-   (bounds                bounding-box4w :inline   :offset-assert  16)
-   (cell-quads            vector         2 :inline :offset-assert  48)
-   (slice-quads           vector         4 :inline :offset-assert  80)
-   (cell-bits             vector16ub     2 :inline :offset         48)
-   (slice-bits            vector16ub     4 :inline :offset         80)
+  ((best-dist              float)
+   (debug-cells-searched   int32)
+   (debug-slices-searched  int32)
+   (bounds                 bounding-box4w  :inline)
+   (cell-quads             vector          2 :inline)
+   (slice-quads            vector          4 :inline)
+   (cell-bits              vector16ub      2 :inline :overlay-at cell-quads)
+   (slice-bits             vector16ub      4 :inline :overlay-at slice-quads)
    )
-  :method-count-assert 9
-  :size-assert         #x90
-  :flag-assert         #x900000090
   )
 
 
 (deftype race-mesh-slice-query (structure)
-  ((slice-id      int16            :offset-assert   0)
-   (lap-dist      float            :offset-assert   4)
-   (pt-on-slice   vector :inline   :offset-assert  16)
-   (slice-corners vector 4 :inline :offset-assert  32)
-   (search-sphere sphere :inline   :offset-assert  96)
+  ((slice-id       int16)
+   (lap-dist       float)
+   (pt-on-slice    vector  :inline)
+   (slice-corners  vector  4 :inline)
+   (search-sphere  sphere  :inline)
    )
-  :method-count-assert 9
-  :size-assert         #x70
-  :flag-assert         #x900000070
   )
 
 
 (deftype race-path-edge-info (structure)
-  ((sample-t float  :offset-assert   0)
+  ((sample-t  float)
    )
-  :method-count-assert 9
-  :size-assert         #x4
-  :flag-assert         #x900000004
   )
 
 
 (deftype race-path-sample (structure)
-  ((bytes    uint8      32      :offset-assert   0)
-   (pos      vector     :inline :offset          0)
-   (quat     quaternion :inline :offset         16)
-   (stick-x  int8               :offset         12)
-   (stick-y  int8               :offset         13)
-   (throttle uint8              :offset         14)
-   (flags    uint8              :offset         15)
+  ((bytes     uint8       32)
+   (pos       vector      :inline :overlay-at (-> bytes 0))
+   (quat      quaternion  :inline :overlay-at (-> bytes 16))
+   (stick-x   int8                :overlay-at (-> bytes 12))
+   (stick-y   int8                :overlay-at (-> bytes 13))
+   (throttle  uint8               :overlay-at (-> bytes 14))
+   (flags     uint8               :overlay-at (-> bytes 15))
    )
-  :method-count-assert 9
-  :size-assert         #x20
-  :flag-assert         #x900000020
   )
 
 
 (deftype race-path (structure)
-  ((sample-count uint16                              :offset-assert   0)
-   (record-id    int8                                :offset-assert   2)
-   (pad          uint8                               :offset-assert   3)
-   (samples      (inline-array race-path-sample)     :offset-assert   4)
-   (edge-infos   (inline-array race-path-edge-info)  :offset-assert   8)
+  ((sample-count  uint16)
+   (record-id     int8)
+   (pad           uint8)
+   (samples       (inline-array race-path-sample))
+   (edge-infos    (inline-array race-path-edge-info))
    )
-  :method-count-assert 13
-  :size-assert         #xc
-  :flag-assert         #xd0000000c
   (:methods
-    (draw-path-debug (_type_ rgba rgba) none 9)
-    (race-path-method-10 (_type_ vector float float) none 10)
-    (race-path-method-11 (_type_ race-path-sample vector float) none 11)
-    (race-path-method-12 (_type_ vector float float) float 12)
+    (draw-path-debug (_type_ rgba rgba) none)
+    (race-path-method-10 (_type_ vector float float) none)
+    (race-path-method-11 (_type_ race-path-sample vector float) none)
+    (race-path-method-12 (_type_ vector float float) float)
     )
   )
 
 
 (deftype race-path-group (structure)
-  ((name       string                     :offset-assert   0)
-   (path-count int8                       :offset-assert   4)
-   (pad        uint8                    3 :offset-assert   5)
-   (paths      (inline-array race-path)   :offset-assert   8)
+  ((name        string)
+   (path-count  int8)
+   (pad         uint8  3)
+   (paths       (inline-array race-path))
    )
-  :method-count-assert 9
-  :size-assert         #xc
-  :flag-assert         #x90000000c
   )
 
 
 (deftype race-mesh-edge (structure)
-  ((left     vector :inline :offset-assert   0)
-   (right    vector :inline :offset-assert  16)
-   (lap-dist float          :offset         12)
+  ((left      vector  :inline)
+   (right     vector  :inline)
+   (lap-dist  float   :overlay-at (-> left data 3))
    )
-  :method-count-assert 9
-  :size-assert         #x20
-  :flag-assert         #x900000020
   )
 
 
 (deftype race-mesh-slice (structure)
-  ((edge-index-array uint16 2 :offset-assert   0)
-   (start-edge       int16    :offset          0)
-   (end-edge         int16    :offset          2)
+  ((edge-index-array  uint16  2)
+   (start-edge        int16   :overlay-at (-> edge-index-array 0))
+   (end-edge          int16   :overlay-at (-> edge-index-array 1))
    )
   :pack-me
-  :method-count-assert 9
-  :size-assert         #x4
-  :flag-assert         #x900000004
   )
 
 
 (deftype race-mesh-hash-cell (structure)
-  ((first-slice int16  :offset-assert   0)
-   (slice-count uint8  :offset-assert   2)
-   (pad         uint8  :offset-assert   3)
+  ((first-slice  int16)
+   (slice-count  uint8)
+   (pad          uint8)
    )
-  :method-count-assert 9
-  :size-assert         #x4
-  :flag-assert         #x900000004
   )
 
 
 (deftype race-mesh-hash (structure)
-  ((cells-wide  int8                                       :offset-assert   0)
-   (cells-tall  int8                                       :offset-assert   1)
-   (cell-length float                                      :offset-assert   4)
-   (cells       (inline-array race-mesh-hash-cell)         :offset-assert   8)
-   (slice-table (inline-array race-mesh-slice)             :offset-assert  12)
-   (origin      vector                             :inline :offset-assert  16)
+  ((cells-wide   int8)
+   (cells-tall   int8)
+   (cell-length  float)
+   (cells        (inline-array race-mesh-hash-cell))
+   (slice-table  (inline-array race-mesh-slice))
+   (origin       vector  :inline)
    )
-  :method-count-assert 9
-  :size-assert         #x20
-  :flag-assert         #x900000020
   )
 
 
 (deftype race-mesh (basic)
-  ((version          uint8                            :offset-assert   4)
-   (path-group-count uint8                            :offset-assert   5)
-   (flags            race-mesh-flags                  :offset-assert   6)
-   (pad              uint8                          1 :offset-assert   7)
-   (slice-count      int16                            :offset-assert   8)
-   (edge-count       int16                            :offset-assert  10)
-   (slices           (inline-array race-mesh-slice)   :offset-assert  12)
-   (edges            (inline-array race-mesh-edge)    :offset-assert  16)
-   (hash             race-mesh-hash                   :offset-assert  20)
-   (path-groups      (inline-array race-path-group)   :offset-assert  24)
+  ((version           uint8)
+   (path-group-count  uint8)
+   (flags             race-mesh-flags)
+   (pad               uint8  1)
+   (slice-count       int16)
+   (edge-count        int16)
+   (slices            (inline-array race-mesh-slice))
+   (edges             (inline-array race-mesh-edge))
+   (hash              race-mesh-hash)
+   (path-groups       (inline-array race-path-group))
    )
-  :method-count-assert 20
-  :size-assert         #x1c
-  :flag-assert         #x140000001c
   (:methods
-    (debug-draw-path (_type_ int int rgba rgba) none 9)
-    (debug-draw-path-from-history (_type_ int int) symbol 10)
-    (debug-draw-slice (_type_ int) none 11)
-    (debug-draw-edges (_type_) none 12)
-    (race-mesh-method-13 (_type_ race-mesh-slice-query) none 13)
-    (race-mesh-method-14 (_type_ race-mesh-slice-query) none 14)
-    (race-mesh-method-15 (_type_ int race-mesh-slice-query) none 15)
-    (race-mesh-method-16 (_type_ race-mesh-slice-query) none 16)
-    (race-mesh-method-17 (_type_ race-mesh-slice-query) symbol 17)
-    (race-mesh-method-18 (_type_ race-mesh-hash-search int int race-mesh-slice-query) none 18)
-    (race-mesh-method-19 (_type_ int race-mesh-slice-query) symbol 19)
+    (debug-draw-path (_type_ int int rgba rgba) none)
+    (debug-draw-path-from-history (_type_ int int) symbol)
+    (debug-draw-slice (_type_ int) none)
+    (debug-draw-edges (_type_) none)
+    (race-mesh-method-13 (_type_ race-mesh-slice-query) none)
+    (race-mesh-method-14 (_type_ race-mesh-slice-query) none)
+    (race-mesh-method-15 (_type_ int race-mesh-slice-query) none)
+    (race-mesh-method-16 (_type_ race-mesh-slice-query) none)
+    (race-mesh-method-17 (_type_ race-mesh-slice-query) symbol)
+    (race-mesh-method-18 (_type_ race-mesh-hash-search int int race-mesh-slice-query) none)
+    (race-mesh-method-19 (_type_ int race-mesh-slice-query) symbol)
     )
   )
 
 
-(defmethod race-path-method-10 race-path ((obj race-path) (arg0 vector) (arg1 float) (arg2 float))
+(defmethod race-path-method-10 ((this race-path) (arg0 vector) (arg1 float) (arg2 float))
   (let ((v1-0 (new 'stack-no-clear 'inline-array 'vector 4))
         (a3-1 (the int arg1))
         )
-    (set! (-> v1-0 0 quad) (-> obj samples a3-1 pos quad))
-    (set! (-> v1-0 1 quad) (-> obj samples (+ a3-1 1) pos quad))
+    (set! (-> v1-0 0 quad) (-> this samples a3-1 pos quad))
+    (set! (-> v1-0 1 quad) (-> this samples (+ a3-1 1) pos quad))
     (let ((f0-3 (- arg1 (the float a3-1))))
       (vector-lerp! arg0 (-> v1-0 0) (-> v1-0 1) f0-3)
       )
@@ -198,9 +165,9 @@
   (none)
   )
 
-(defmethod race-path-method-11 race-path ((obj race-path) (arg0 race-path-sample) (arg1 vector) (arg2 float))
+(defmethod race-path-method-11 ((this race-path) (arg0 race-path-sample) (arg1 vector) (arg2 float))
   (let ((gp-0 (new 'stack-no-clear 'inline-array 'race-path-sample 6)))
-    (let ((f0-1 (the float (-> obj sample-count))))
+    (let ((f0-1 (the float (-> this sample-count))))
       (if (< f0-1 arg2)
           (set! arg2 (- arg2 f0-1))
           )
@@ -209,13 +176,13 @@
           )
       )
     (let ((s1-0 (the int arg2)))
-      (mem-copy! (the-as pointer (-> gp-0 0)) (the-as pointer (-> obj samples s1-0)) 32)
-      (mem-copy! (the-as pointer (-> gp-0 1)) (the-as pointer (-> obj samples (+ s1-0 1))) 32)
+      (mem-copy! (the-as pointer (-> gp-0 0)) (the-as pointer (-> this samples s1-0)) 32)
+      (mem-copy! (the-as pointer (-> gp-0 1)) (the-as pointer (-> this samples (+ s1-0 1))) 32)
       (let ((v1-7 (+ s1-0 2)))
-        (if (< (the-as int (-> obj sample-count)) v1-7)
-            (set! v1-7 (- v1-7 (the-as int (-> obj sample-count))))
+        (if (< (the-as int (-> this sample-count)) v1-7)
+            (set! v1-7 (- v1-7 (the-as int (-> this sample-count))))
             )
-        (mem-copy! (the-as pointer (-> gp-0 2)) (the-as pointer (-> obj samples v1-7)) 32)
+        (mem-copy! (the-as pointer (-> gp-0 2)) (the-as pointer (-> this samples v1-7)) 32)
         )
       (let ((f30-0 (- arg2 (the float s1-0))))
         (vector-lerp! (the-as vector (-> arg0 bytes)) (the-as vector (-> gp-0 0)) (the-as vector (-> gp-0 1)) f30-0)
@@ -246,7 +213,7 @@
   (none)
   )
 
-(defmethod race-path-method-12 race-path ((obj race-path) (arg0 vector) (arg1 float) (arg2 float))
+(defmethod race-path-method-12 ((this race-path) (arg0 vector) (arg1 float) (arg2 float))
   (local-vars (v1-15 float))
   (rlet ((acc :class vf)
          (vf0 :class vf)
@@ -256,7 +223,7 @@
     (init-vf0-vector)
     (let ((gp-0 arg2)
           (s4-0 (new 'stack-no-clear 'matrix))
-          (f30-0 (the float (-> obj sample-count)))
+          (f30-0 (the float (-> this sample-count)))
           )
       (if (< f30-0 gp-0)
           (set! gp-0 (- gp-0 f30-0))
@@ -264,8 +231,8 @@
       (if (< arg1 0.0)
           (set! arg1 (+ arg1 f30-0))
           )
-      (race-path-method-10 obj (the-as vector (-> s4-0 vector)) arg1 arg2)
-      (race-path-method-10 obj (-> s4-0 vector 1) gp-0 arg2)
+      (race-path-method-10 this (the-as vector (-> s4-0 vector)) arg1 arg2)
+      (race-path-method-10 this (-> s4-0 vector 1) gp-0 arg2)
       (vector-! (-> s4-0 vector 2) (-> s4-0 vector 1) (the-as vector (-> s4-0 vector)))
       (vector-! (-> s4-0 trans) arg0 (the-as vector (-> s4-0 vector)))
       (let ((f0-7 0.0)
@@ -298,15 +265,15 @@
     )
   )
 
-(defmethod draw-path-debug race-path ((obj race-path) (arg0 rgba) (arg1 rgba))
+(defmethod draw-path-debug ((this race-path) (arg0 rgba) (arg1 rgba))
   (let ((s1-0 0)
         (s3-0 1)
-        (s2-0 (+ (-> obj sample-count) -1))
+        (s2-0 (+ (-> this sample-count) -1))
         )
     (set! (-> (new 'stack-no-clear 'vector) quad) (-> (camera-pos) quad))
     (while (< s1-0 (the-as int s2-0))
-      (let ((v1-4 (-> obj samples s1-0))
-            (a3-0 (-> obj samples s3-0))
+      (let ((v1-4 (-> this samples s1-0))
+            (a3-0 (-> this samples s3-0))
             )
         (add-debug-line
           #t
@@ -326,9 +293,9 @@
   (none)
   )
 
-(defmethod debug-draw-path race-mesh ((obj race-mesh) (arg0 int) (arg1 int) (arg2 rgba) (arg3 rgba))
-  (when (< arg1 (the-as int (-> obj path-group-count)))
-    (let ((v1-2 (-> obj path-groups arg1)))
+(defmethod debug-draw-path ((this race-mesh) (arg0 int) (arg1 int) (arg2 rgba) (arg3 rgba))
+  (when (< arg1 (the-as int (-> this path-group-count)))
+    (let ((v1-2 (-> this path-groups arg1)))
       (if (< arg0 (-> v1-2 path-count))
           (draw-path-debug (-> v1-2 paths arg0) arg2 arg3)
           )
@@ -337,9 +304,9 @@
   (none)
   )
 
-(defmethod debug-draw-path-from-history race-mesh ((obj race-mesh) (arg0 int) (arg1 int))
-  (when (< arg1 (the-as int (-> obj path-group-count)))
-    (let ((v1-2 (-> obj path-groups arg1)))
+(defmethod debug-draw-path-from-history ((this race-mesh) (arg0 int) (arg1 int))
+  (when (< arg1 (the-as int (-> this path-group-count)))
+    (let ((v1-2 (-> this path-groups arg1)))
       (countdown (a2-1 (-> v1-2 path-count))
         (let ((a0-3 (-> v1-2 paths a2-1)))
           (when (= (-> a0-3 record-id) arg0)
@@ -376,10 +343,10 @@
   )
 
 ;; WARN: Return type mismatch symbol vs none.
-(defmethod debug-draw-slice race-mesh ((obj race-mesh) (arg0 int))
-  (let* ((v1-1 (-> obj slices arg0))
-         (s3-0 (-> obj edges (-> v1-1 start-edge)))
-         (s4-0 (-> obj edges (-> v1-1 end-edge)))
+(defmethod debug-draw-slice ((this race-mesh) (arg0 int))
+  (let* ((v1-1 (-> this slices arg0))
+         (s3-0 (-> this edges (-> v1-1 start-edge)))
+         (s4-0 (-> this edges (-> v1-1 end-edge)))
          )
     (add-debug-line
       #t
@@ -434,14 +401,14 @@
   (none)
   )
 
-(defmethod debug-draw-edges race-mesh ((obj race-mesh))
+(defmethod debug-draw-edges ((this race-mesh))
   (let ((idx 0)
-        (slice-cnt (+ (-> obj slice-count) -1))
+        (slice-cnt (+ (-> this slice-count) -1))
         )
     (while (>= slice-cnt idx)
-      (let* ((v1-2 (-> obj slices idx))
-             (s3-0 (-> obj edges (-> v1-2 start-edge)))
-             (s2-0 (-> obj edges (-> v1-2 end-edge)))
+      (let* ((v1-2 (-> this slices idx))
+             (s3-0 (-> this edges (-> v1-2 start-edge)))
+             (s2-0 (-> this edges (-> v1-2 end-edge)))
              )
         (add-debug-line #t (bucket-id debug-no-zbuf1) (-> s3-0 left) (-> s2-0 left) *color-white* #f (the-as rgba -1))
         (add-debug-line
@@ -458,7 +425,7 @@
       (+! idx 1)
       )
     )
-  (let ((v1-8 (-> obj edges 0)))
+  (let ((v1-8 (-> this edges 0)))
     (add-debug-line
       #t
       (bucket-id debug-no-zbuf1)
@@ -469,8 +436,8 @@
       (the-as rgba -1)
       )
     )
-  (let ((s5-1 (+ (-> obj edge-count) -1)))
-    (let ((v1-12 (-> obj edges s5-1)))
+  (let ((s5-1 (+ (-> this edge-count) -1)))
+    (let ((v1-12 (-> this edges s5-1)))
       (add-debug-line
         #t
         (bucket-id debug-no-zbuf1)
@@ -481,17 +448,17 @@
         (the-as rgba -1)
         )
       )
-    (format *stdcon* "edge-count ~d last-edge ~d~%" (-> obj edge-count) s5-1)
+    (format *stdcon* "edge-count ~d last-edge ~d~%" (-> this edge-count) s5-1)
     )
   0
   (none)
   )
 
-(defmethod race-mesh-method-19 race-mesh ((obj race-mesh) (arg0 int) (arg1 race-mesh-slice-query))
+(defmethod race-mesh-method-19 ((this race-mesh) (arg0 int) (arg1 race-mesh-slice-query))
   (set! (-> arg1 slice-id) -1)
-  (let* ((v1-2 (-> obj slices arg0))
-         (a1-3 (-> obj edges (-> v1-2 start-edge)))
-         (v1-5 (-> obj edges (-> v1-2 end-edge)))
+  (let* ((v1-2 (-> this slices arg0))
+         (a1-3 (-> this edges (-> v1-2 start-edge)))
+         (v1-5 (-> this edges (-> v1-2 end-edge)))
          )
     (set! (-> arg1 slice-corners 0 quad) (-> a1-3 left quad))
     (set! (-> arg1 slice-corners 1 quad) (-> a1-3 right quad))
@@ -542,9 +509,9 @@
   #t
   )
 
-(defmethod race-mesh-method-17 race-mesh ((obj race-mesh) (slice-query race-mesh-slice-query))
+(defmethod race-mesh-method-17 ((this race-mesh) (slice-query race-mesh-slice-query))
   (set! (-> slice-query slice-id) -1)
-  (let* ((race-hash (-> obj hash))
+  (let* ((race-hash (-> this hash))
          (v1-2
            (max
              0
@@ -575,7 +542,7 @@
           (+! s1-0 -1)
           (let ((a1-7 (-> (&-> (-> race-hash slice-table) 0 edge-index-array (+ (-> (the-as (pointer int16) s3-0)) s1-0)) 0))
                 )
-            (when (race-mesh-method-19 obj (the-as int a1-7) s2-0)
+            (when (race-mesh-method-19 this (the-as int a1-7) s2-0)
               (if (or (= (-> slice-query slice-id) -1)
                       (< (vector-vector-distance-squared (-> s2-0 pt-on-slice) (-> slice-query search-sphere))
                          (vector-vector-distance-squared (-> slice-query pt-on-slice) (-> slice-query search-sphere))
@@ -593,12 +560,12 @@
   )
 
 ;; WARN: Return type mismatch vector vs none.
-(defmethod race-mesh-method-15 race-mesh ((obj race-mesh) (id int) (slice-query race-mesh-slice-query))
+(defmethod race-mesh-method-15 ((this race-mesh) (id int) (slice-query race-mesh-slice-query))
   (local-vars (v1-8 symbol))
   (set! (-> slice-query slice-id) id)
-  (let* ((v1-1 (-> obj slices id))
-         (a1-3 (-> obj edges (-> v1-1 start-edge)))
-         (v1-4 (-> obj edges (-> v1-1 end-edge)))
+  (let* ((v1-1 (-> this slices id))
+         (a1-3 (-> this edges (-> v1-1 start-edge)))
+         (v1-4 (-> this edges (-> v1-1 end-edge)))
          )
     (set! (-> slice-query slice-corners 0 quad) (-> a1-3 left quad))
     (set! (-> slice-query slice-corners 1 quad) (-> a1-3 right quad))
@@ -677,16 +644,16 @@
   )
 
 ;; WARN: Return type mismatch symbol vs none.
-(defmethod race-mesh-method-18 race-mesh ((obj race-mesh) (arg0 race-mesh-hash-search) (arg1 int) (arg2 int) (arg3 race-mesh-slice-query))
-  (let* ((v1-3 (+ (* arg2 (-> obj hash cells-wide)) arg1))
+(defmethod race-mesh-method-18 ((this race-mesh) (arg0 race-mesh-hash-search) (arg1 int) (arg2 int) (arg3 race-mesh-slice-query))
+  (let* ((v1-3 (+ (* arg2 (-> this hash cells-wide)) arg1))
          (a0-1 (/ v1-3 8))
          (a1-2 (ash 1 (logand v1-3 7)))
          (a2-4 (-> (the-as race-mesh-hash-search (+ a0-1 (the-as int arg0))) cell-bits 0 data 0))
          )
     (when (not (logtest? a2-4 a1-2))
       (set! (-> arg0 cell-bits 0 data a0-1) (logior a2-4 a1-2))
-      (let* ((v1-5 (the-as object (+ (the-as uint (-> obj hash cells)) (* v1-3 4))))
-             (s3-0 (&-> (-> obj hash slice-table) 0 edge-index-array (-> (the-as (pointer int16) v1-5))))
+      (let* ((v1-5 (the-as object (+ (the-as uint (-> this hash cells)) (* v1-3 4))))
+             (s3-0 (&-> (-> this hash slice-table) 0 edge-index-array (-> (the-as (pointer int16) v1-5))))
              (s1-0 (-> (the-as race-mesh-hash-cell v1-5) slice-count))
              )
         (when (nonzero? s1-0)
@@ -701,7 +668,7 @@
                      )
                 (when (not (logtest? a2-9 a0-10))
                   (set! (-> arg0 slice-bits 0 data v1-6) (logior a2-9 a0-10))
-                  (race-mesh-method-15 obj (the-as int a1-7) s2-0)
+                  (race-mesh-method-15 this (the-as int a1-7) s2-0)
                   (let ((f0-0 (vector-vector-distance-squared (-> s2-0 pt-on-slice) (-> arg3 search-sphere))))
                     (when (or (= (-> arg3 slice-id) -1) (< f0-0 (-> arg0 best-dist)))
                       (set! (-> arg0 best-dist) f0-0)
@@ -720,12 +687,12 @@
   (none)
   )
 
-(defmethod race-mesh-method-16 race-mesh ((obj race-mesh) (arg0 race-mesh-slice-query))
+(defmethod race-mesh-method-16 ((this race-mesh) (arg0 race-mesh-slice-query))
   (set! (-> arg0 slice-id) -1)
-  (let ((s4-0 (-> obj hash))
+  (let ((s4-0 (-> this hash))
         (s3-0 (new 'stack-no-clear 'race-mesh-hash-search))
         )
-    (let ((v1-3 (/ (+ (-> obj slice-count) 127) 128)))
+    (let ((v1-3 (/ (+ (-> this slice-count) 127) 128)))
       (when (< 4 v1-3)
         (break!)
         0
@@ -765,7 +732,7 @@
       (until (< (-> s3-0 bounds max z) s2-0)
         (let ((s1-0 (-> s3-0 bounds min x)))
           (until (< (-> s3-0 bounds max x) s1-0)
-            (race-mesh-method-18 obj s3-0 s1-0 s2-0 arg0)
+            (race-mesh-method-18 this s3-0 s1-0 s2-0 arg0)
             (+! s1-0 1)
             )
           )
@@ -780,15 +747,15 @@
         (set! (-> s3-0 bounds max z) (min (+ (-> s3-0 bounds max z) 1) (+ (-> s4-0 cells-tall) -1)))
         (let ((s2-1 (-> s3-0 bounds min x)))
           (until (< (-> s3-0 bounds max x) s2-1)
-            (race-mesh-method-18 obj s3-0 s2-1 (-> s3-0 bounds min z) arg0)
-            (race-mesh-method-18 obj s3-0 s2-1 (-> s3-0 bounds max z) arg0)
+            (race-mesh-method-18 this s3-0 s2-1 (-> s3-0 bounds min z) arg0)
+            (race-mesh-method-18 this s3-0 s2-1 (-> s3-0 bounds max z) arg0)
             (+! s2-1 1)
             )
           )
         (let ((s2-2 (-> s3-0 bounds min z)))
           (until (< (-> s3-0 bounds max z) s2-2)
-            (race-mesh-method-18 obj s3-0 (-> s3-0 bounds min x) s2-2 arg0)
-            (race-mesh-method-18 obj s3-0 (-> s3-0 bounds max x) s2-2 arg0)
+            (race-mesh-method-18 this s3-0 (-> s3-0 bounds min x) s2-2 arg0)
+            (race-mesh-method-18 this s3-0 (-> s3-0 bounds max x) s2-2 arg0)
             (+! s2-2 1)
             )
           )
@@ -800,7 +767,7 @@
   )
 
 ;; WARN: Return type mismatch float vs none.
-(defmethod race-mesh-method-14 race-mesh ((obj race-mesh) (arg0 race-mesh-slice-query))
+(defmethod race-mesh-method-14 ((this race-mesh) (arg0 race-mesh-slice-query))
   (let* ((f30-0 (vector-line-distance-point!
                   (-> arg0 pt-on-slice)
                   (the-as vector (-> arg0 slice-corners))
@@ -816,22 +783,22 @@
                  )
                )
          (f0-0 (+ f30-0 f1-0))
-         (v1-1 (-> obj slices (-> arg0 slice-id)))
-         (f2-0 (-> obj edges (-> v1-1 start-edge) left w))
-         (f3-0 (-> obj edges (-> v1-1 end-edge) left w))
+         (v1-1 (-> this slices (-> arg0 slice-id)))
+         (f2-0 (-> this edges (-> v1-1 start-edge) left w))
+         (f3-0 (-> this edges (-> v1-1 end-edge) left w))
          )
     (set! (-> arg0 lap-dist) (+ (* (/ f1-0 f0-0) f2-0) (* (/ f30-0 f0-0) f3-0)))
     )
   (none)
   )
 
-(defmethod race-mesh-method-13 race-mesh ((obj race-mesh) (arg0 race-mesh-slice-query))
-  (race-mesh-method-17 obj arg0)
+(defmethod race-mesh-method-13 ((this race-mesh) (arg0 race-mesh-slice-query))
+  (race-mesh-method-17 this arg0)
   (if (and (= (-> arg0 slice-id) -1) (< 0.0 (-> arg0 search-sphere r)))
-      (race-mesh-method-16 obj arg0)
+      (race-mesh-method-16 this arg0)
       )
   (when (!= (-> arg0 slice-id) -1)
-    (race-mesh-method-14 obj arg0)
+    (race-mesh-method-14 this arg0)
     0
     )
   (none)

@@ -7,22 +7,20 @@
 
 ;; DECOMP BEGINS
 
-(defmethod length string ((obj string))
-  "Get the length of a string. Like strlen"
-  (let ((v1-0 (-> obj data)))
+(defmethod length ((this string))
+  (let ((v1-0 (-> this data)))
     (while (nonzero? (-> v1-0 0))
       (nop!)
       (nop!)
       (nop!)
       (set! v1-0 (&-> v1-0 1))
       )
-    (&- v1-0 (the-as uint (-> obj data)))
+    (&- v1-0 (the-as uint (-> this data)))
     )
   )
 
-(defmethod asize-of string ((obj string))
-  "get the size in bytes of a string."
-  (+ (-> obj allocated-length) 1 (-> string size))
+(defmethod asize-of ((this string))
+  (+ (-> this allocated-length) 1 (-> string size))
   )
 
 (defun copy-string<-string ((arg0 string) (arg1 string))
@@ -669,7 +667,7 @@
   )
 
 (defun string->float ((arg0 string))
-  "They implemented it!"
+  "They implemented it! This even supports exponential notation"
   (let ((a0-1 (-> arg0 data))
         (f0-0 0.0)
         (v1-0 #f)
@@ -792,12 +790,19 @@
 (kmemopen global "gstring-globals")
 
 (define *debug-draw-pauseable* #f)
+
 (define *stdcon0* (new 'global 'string #x4000 (the-as string #f)))
+
 (define *stdcon1* (new 'global 'string #x4000 (the-as string #f)))
+
 (define *stdcon* *stdcon0*)
 
 ;; up from 256 bytes in jak 1
 (define *temp-string* (new 'global 'string 2048 (the-as string #f)))
+
+(define *pc-cpp-temp-string*
+  "A convenient place to retrieve a string from C++"
+  (new 'global 'string 2048 (the-as string #f)))
 
 (defmacro string-format (&rest args)
   "Formats into *temp-string* and returns it, for in-place string formating.
@@ -809,8 +814,6 @@
      )
   )
 
+(define *pc-encoded-temp-string* (new 'global 'string 2048 (the-as string #f)))
+
 (kmemclose)
-
-
-
-

@@ -3,51 +3,49 @@
 
 ;; definition of type intro-flamer
 (deftype intro-flamer (process-drawable)
-  ((up-dir           vector :inline :offset-assert 208)
-   (average-dir      vector :inline :offset-assert 224)
-   (id               int32          :offset-assert 240)
-   (path-u           float          :offset-assert 244)
-   (path-du          float          :offset-assert 248)
-   (z-rot            float          :offset-assert 252)
-   (flit-prev-offset vector :inline :offset-assert 256)
-   (flit-next-offset vector :inline :offset-assert 272)
-   (flit-factor      float          :offset-assert 288)
-   (flit-timer       uint64         :offset-assert 296)
-   (flit-interval    uint64         :offset-assert 304)
+  ((up-dir            vector  :inline)
+   (average-dir       vector  :inline)
+   (id                int32)
+   (path-u            float)
+   (path-du           float)
+   (z-rot             float)
+   (flit-prev-offset  vector  :inline)
+   (flit-next-offset  vector  :inline)
+   (flit-factor       float)
+   (flit-timer        uint64)
+   (flit-interval     uint64)
    )
-  :heap-base #xc0
-  :method-count-assert 23
-  :size-assert         #x138
-  :flag-assert         #x1700c00138
+  (:state-methods
+    idle
+    die
+    )
   (:methods
-    (idle () _type_ :state 20)
-    (die () _type_ :state 21)
-    (intro-flamer-method-22 (_type_) path-control 22)
+    (intro-flamer-method-22 (_type_) path-control)
     )
   )
 
 ;; definition for method 3 of type intro-flamer
-(defmethod inspect intro-flamer ((obj intro-flamer))
-  (when (not obj)
-    (set! obj obj)
+(defmethod inspect ((this intro-flamer))
+  (when (not this)
+    (set! this this)
     (goto cfg-4)
     )
   (let ((t9-0 (method-of-type process-drawable inspect)))
-    (t9-0 obj)
+    (t9-0 this)
     )
-  (format #t "~2Tup-dir: #<vector @ #x~X>~%" (-> obj up-dir))
-  (format #t "~2Taverage-dir: #<vector @ #x~X>~%" (-> obj average-dir))
-  (format #t "~2Tid: ~D~%" (-> obj id))
-  (format #t "~2Tpath-u: ~f~%" (-> obj path-u))
-  (format #t "~2Tpath-du: ~f~%" (-> obj path-du))
-  (format #t "~2Tz-rot: ~f~%" (-> obj z-rot))
-  (format #t "~2Tflit-prev-offset: #<vector @ #x~X>~%" (-> obj flit-prev-offset))
-  (format #t "~2Tflit-next-offset: #<vector @ #x~X>~%" (-> obj flit-next-offset))
-  (format #t "~2Tflit-factor: ~f~%" (-> obj flit-factor))
-  (format #t "~2Tflit-timer: ~D~%" (-> obj flit-timer))
-  (format #t "~2Tflit-interval: ~D~%" (-> obj flit-interval))
+  (format #t "~2Tup-dir: #<vector @ #x~X>~%" (-> this up-dir))
+  (format #t "~2Taverage-dir: #<vector @ #x~X>~%" (-> this average-dir))
+  (format #t "~2Tid: ~D~%" (-> this id))
+  (format #t "~2Tpath-u: ~f~%" (-> this path-u))
+  (format #t "~2Tpath-du: ~f~%" (-> this path-du))
+  (format #t "~2Tz-rot: ~f~%" (-> this z-rot))
+  (format #t "~2Tflit-prev-offset: #<vector @ #x~X>~%" (-> this flit-prev-offset))
+  (format #t "~2Tflit-next-offset: #<vector @ #x~X>~%" (-> this flit-next-offset))
+  (format #t "~2Tflit-factor: ~f~%" (-> this flit-factor))
+  (format #t "~2Tflit-timer: ~D~%" (-> this flit-timer))
+  (format #t "~2Tflit-interval: ~D~%" (-> this flit-interval))
   (label cfg-4)
-  obj
+  this
   )
 
 ;; failed to figure out what this is:
@@ -61,8 +59,8 @@
 ;; failed to figure out what this is:
 (defstate idle (intro-flamer)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('die)
        (go-virtual die)
        )
@@ -72,7 +70,7 @@
     (if (= (-> self path-u) 1.0)
         (go-virtual die)
         )
-    (when (>= (- (current-time) (the-as int (-> self flit-timer))) (the-as time-frame (-> self flit-interval)))
+    (when (time-elapsed? (the-as int (-> self flit-timer)) (the-as time-frame (-> self flit-interval)))
       (let ((f28-0 (rand-vu-float-range -1.0 1.0))
             (f30-0 (rand-vu-float-range -1.0 1.0))
             (f0-1 (rand-vu-float-range 0.2 0.6))
@@ -84,19 +82,12 @@
         )
       (set! (-> self flit-timer) (the-as uint (current-time)))
       )
-    (none)
     )
   :code (behavior ()
     (ja-channel-set! 1)
     (let ((f30-0 (rand-vu-float-range 0.8 1.2)))
       (until #f
-        (ja-no-eval :group! (-> self draw art-group data 5)
-                    :num! (seek!
-                      (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 5)) frames num-frames) -1))
-                      f30-0
-                      )
-                    :frame-num 0.0
-                    )
+        (ja-no-eval :group! intro-flamer-fly-straight-ja :num! (seek! max f30-0) :frame-num 0.0)
         (until (ja-done? 0)
           (suspend)
           (ja :num! (seek! max f30-0))
@@ -104,10 +95,9 @@
         )
       )
     #f
-    (none)
     )
   :post (behavior ()
-    (seek! (-> self path-u) 1.0 (* (-> self path-du) (-> self clock seconds-per-frame)))
+    (seek! (-> self path-u) 1.0 (* (-> self path-du) (seconds-per-frame)))
     (let ((s3-0 (intro-flamer-method-22 self))
           (s4-0 (new 'stack-no-clear 'vector))
           (s5-0 (new 'stack-no-clear 'quaternion))
@@ -135,11 +125,8 @@
                  (f0-15 (vector-dot (vector-cross! (new 'stack-no-clear 'vector) s3-1 v1-10) *up-vector*))
                  (f0-16 (* 49152.0 f0-15))
                  )
-            (set! (-> self z-rot) (deg-seek
-                                    (-> self z-rot)
-                                    (fmax -15473.777 (fmin 15473.777 f0-16))
-                                    (* 21845.334 (-> self clock seconds-per-frame))
-                                    )
+            (set! (-> self z-rot)
+                  (deg-seek (-> self z-rot) (fmax -15473.777 (fmin 15473.777 f0-16)) (* 21845.334 (seconds-per-frame)))
                   )
             )
           )
@@ -147,8 +134,8 @@
       (let ((a2-5 (vector-rotate-z! (new 'stack-no-clear 'vector) *up-vector* (-> self z-rot))))
         (forward-up->quaternion s5-0 s4-0 a2-5)
         )
-      (quaternion-slerp! (-> self root quat) (-> self root quat) s5-0 (* 8.0 (-> self clock seconds-per-frame)))
-      (seek! (-> self flit-factor) 1.0 (* 8.0 (-> self clock seconds-per-frame)))
+      (quaternion-slerp! (-> self root quat) (-> self root quat) s5-0 (* 8.0 (seconds-per-frame)))
+      (seek! (-> self flit-factor) 1.0 (* 8.0 (seconds-per-frame)))
       (let* ((v1-25 (-> self flit-prev-offset))
              (a1-10 (-> self flit-next-offset))
              (a0-14 (vector-! (new 'stack-no-clear 'vector) a1-10 v1-25))
@@ -215,7 +202,6 @@
         )
       )
     (ja-post)
-    (none)
     )
   )
 
@@ -225,33 +211,32 @@
   :code (behavior ()
     (suspend)
     (cleanup-for-death self)
-    (none)
     )
   )
 
 ;; definition for method 22 of type intro-flamer
 ;; WARN: Return type mismatch object vs path-control.
-(defmethod intro-flamer-method-22 intro-flamer ((obj intro-flamer))
-  (the-as path-control (send-event (ppointer->process (-> obj parent)) 'path (-> obj id)))
+(defmethod intro-flamer-method-22 ((this intro-flamer))
+  (the-as path-control (send-event (ppointer->process (-> this parent)) 'path (-> this id)))
   )
 
 ;; definition for method 11 of type intro-flamer
 ;; WARN: Return type mismatch object vs none.
-(defmethod init-from-entity! intro-flamer ((obj intro-flamer) (arg0 entity-actor))
+(defmethod init-from-entity! ((this intro-flamer) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
 - stack size
 - collision information
 - loading the skeleton group / bones
 - sounds"
-  (set! (-> obj root) (new 'process 'trsqv))
-  (process-drawable-from-entity! obj arg0)
+  (set! (-> this root) (new 'process 'trsqv))
+  (process-drawable-from-entity! this arg0)
   (initialize-skeleton
-    obj
+    this
     (the-as skeleton-group (art-group-get-by-name *level* "skel-intro-flamer" (the-as (pointer uint32) #f)))
     (the-as pair 0)
     )
-  (go (method-of-object obj idle))
+  (go (method-of-object this idle))
   (none)
   )
 
@@ -291,58 +276,54 @@ This commonly includes things such as:
 
 ;; definition of type metalhead-spawner
 (deftype metalhead-spawner (process)
-  ((path-tbl    path-control 19      :offset-assert 128)
-   (init-pos    vector       :inline :offset-assert 208)
-   (average-dir vector       :inline :offset-assert 224)
+  ((path-tbl     path-control  19)
+   (init-pos     vector        :inline)
+   (average-dir  vector        :inline)
    )
-  :heap-base #x70
-  :method-count-assert 17
-  :size-assert         #xf0
-  :flag-assert         #x11007000f0
-  (:methods
-    (idle () _type_ :state 14)
-    (active () _type_ :state 15)
-    (die () _type_ :state 16)
+  (:state-methods
+    idle
+    active
+    die
     )
   )
 
 ;; definition for method 3 of type metalhead-spawner
-(defmethod inspect metalhead-spawner ((obj metalhead-spawner))
-  (when (not obj)
-    (set! obj obj)
+(defmethod inspect ((this metalhead-spawner))
+  (when (not this)
+    (set! this this)
     (goto cfg-4)
     )
   (let ((t9-0 (method-of-type process inspect)))
-    (t9-0 obj)
+    (t9-0 this)
     )
-  (format #t "~2Tpath-tbl[19] @ #x~X~%" (-> obj path-tbl))
-  (format #t "~2Tinit-pos: #<vector @ #x~X>~%" (-> obj init-pos))
-  (format #t "~2Taverage-dir: #<vector @ #x~X>~%" (-> obj average-dir))
+  (format #t "~2Tpath-tbl[19] @ #x~X~%" (-> this path-tbl))
+  (format #t "~2Tinit-pos: #<vector @ #x~X>~%" (-> this init-pos))
+  (format #t "~2Taverage-dir: #<vector @ #x~X>~%" (-> this average-dir))
   (label cfg-4)
-  obj
+  this
   )
 
 ;; failed to figure out what this is:
 (defstate idle (metalhead-spawner)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('trigger)
        (go-virtual active)
        )
       (('path)
-       (-> self path-tbl (-> event param 0))
+       (-> self path-tbl (-> block param 0))
        )
       )
     )
-  :code (the-as (function none :behavior metalhead-spawner) sleep-code)
+  :code sleep-code
   )
 
 ;; failed to figure out what this is:
 (defstate active (metalhead-spawner)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('untrigger)
        (go-virtual idle)
        )
@@ -350,7 +331,7 @@ This commonly includes things such as:
        (go-virtual die)
        )
       (('path)
-       (-> self path-tbl (-> event param 0))
+       (-> self path-tbl (-> block param 0))
        )
       )
     )
@@ -370,20 +351,18 @@ This commonly includes things such as:
         (let ((s5-1 (the int (* 300.0 (rand-vu-float-range 0.03 0.08))))
               (s4-0 (current-time))
               )
-          (until (>= (- (current-time) s4-0) s5-1)
+          (until (time-elapsed? s4-0 s5-1)
             (suspend)
             )
           )
         )
       )
     #f
-    (none)
     )
   :post (behavior ()
     (dotimes (gp-0 19)
       (debug-draw (-> self path-tbl gp-0))
       )
-    (none)
     )
   )
 
@@ -401,77 +380,68 @@ This commonly includes things such as:
       (suspend)
       )
     (process-entity-status! self (entity-perm-status dead) #t)
-    (none)
     )
   )
 
 ;; definition for method 7 of type metalhead-spawner
-;; WARN: Return type mismatch process vs metalhead-spawner.
-(defmethod relocate metalhead-spawner ((obj metalhead-spawner) (arg0 int))
+(defmethod relocate ((this metalhead-spawner) (arg0 int))
   (dotimes (v1-0 19)
-    (if (nonzero? (-> obj path-tbl v1-0))
-        (&+! (-> obj path-tbl v1-0) arg0)
+    (if (nonzero? (-> this path-tbl v1-0))
+        (&+! (-> this path-tbl v1-0) arg0)
         )
     )
-  (the-as
-    metalhead-spawner
-    ((the-as (function process int process) (find-parent-method metalhead-spawner 7)) obj arg0)
-    )
+  (call-parent-method this arg0)
   )
 
 ;; definition for method 11 of type metalhead-spawner
 ;; INFO: Used lq/sq
 ;; WARN: Return type mismatch object vs none.
-(defmethod init-from-entity! metalhead-spawner ((obj metalhead-spawner) (arg0 entity-actor))
+(defmethod init-from-entity! ((this metalhead-spawner) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
 - stack size
 - collision information
 - loading the skeleton group / bones
 - sounds"
-  (set! (-> obj init-pos quad) (-> arg0 extra trans quad))
-  (vector-reset! (-> obj average-dir))
+  (set! (-> this init-pos quad) (-> arg0 extra trans quad))
+  (vector-reset! (-> this average-dir))
   (dotimes (s5-0 19)
-    (let ((s4-0 (new 'process 'curve-control obj 'path (the float (+ s5-0 1)))))
-      (set! (-> obj path-tbl s5-0) s4-0)
+    (let ((s4-0 (new 'process 'curve-control this 'path (the float (+ s5-0 1)))))
+      (set! (-> this path-tbl s5-0) s4-0)
       (logior! (-> s4-0 flags) (path-control-flag display draw-line draw-point draw-text))
       (let* ((s3-0 (get-point-at-percent-along-path! s4-0 (new 'stack-no-clear 'vector) 0.0 'interp))
              (v1-10 (get-point-at-percent-along-path! s4-0 (new 'stack-no-clear 'vector) 1.0 'interp))
              (s4-2 (vector-! (new 'stack-no-clear 'vector) v1-10 s3-0))
              )
         (vector-normalize! s4-2 1.0)
-        (vector+! (-> obj average-dir) (-> obj average-dir) s4-2)
+        (vector+! (-> this average-dir) (-> this average-dir) s4-2)
         )
       )
     )
-  (vector-normalize! (-> obj average-dir) 1.0)
-  (go (method-of-object obj idle))
+  (vector-normalize! (-> this average-dir) 1.0)
+  (go (method-of-object this idle))
   (none)
   )
 
 ;; definition of type vil-windmill-sail
 (deftype vil-windmill-sail (process-drawable)
   ()
-  :heap-base #x50
-  :method-count-assert 21
-  :size-assert         #xc8
-  :flag-assert         #x15005000c8
-  (:methods
-    (idle () _type_ :state 20)
+  (:state-methods
+    idle
     )
   )
 
 ;; definition for method 3 of type vil-windmill-sail
-(defmethod inspect vil-windmill-sail ((obj vil-windmill-sail))
-  (when (not obj)
-    (set! obj obj)
+(defmethod inspect ((this vil-windmill-sail))
+  (when (not this)
+    (set! this this)
     (goto cfg-4)
     )
   (let ((t9-0 (method-of-type process-drawable inspect)))
-    (t9-0 obj)
+    (t9-0 this)
     )
   (label cfg-4)
-  obj
+  this
   )
 
 ;; failed to figure out what this is:
@@ -485,37 +455,33 @@ This commonly includes things such as:
   :virtual #t
   :code (behavior ()
     (until #f
-      (ja-no-eval :group! (ja-group)
-                  :num! (seek! (the float (+ (-> (ja-group) frames num-frames) -1)))
-                  :frame-num 0.0
-                  )
+      (ja-no-eval :group! (ja-group) :num! (seek!) :frame-num 0.0)
       (until (ja-done? 0)
         (suspend)
         (ja :num! (seek!))
         )
       )
     #f
-    (none)
     )
-  :post (the-as (function none :behavior vil-windmill-sail) ja-post)
+  :post ja-post
   )
 
 ;; definition for method 11 of type vil-windmill-sail
 ;; WARN: Return type mismatch object vs none.
-(defmethod init-from-entity! vil-windmill-sail ((obj vil-windmill-sail) (arg0 entity-actor))
+(defmethod init-from-entity! ((this vil-windmill-sail) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
 - stack size
 - collision information
 - loading the skeleton group / bones
 - sounds"
-  (set! (-> obj root) (new 'process 'trsqv))
-  (process-drawable-from-entity! obj arg0)
+  (set! (-> this root) (new 'process 'trsqv))
+  (process-drawable-from-entity! this arg0)
   (initialize-skeleton
-    obj
+    this
     (the-as skeleton-group (art-group-get-by-name *level* "skel-vil-windmill-sail" (the-as (pointer uint32) #f)))
     (the-as pair 0)
     )
-  (go (method-of-object obj idle))
+  (go (method-of-object this idle))
   (none)
   )

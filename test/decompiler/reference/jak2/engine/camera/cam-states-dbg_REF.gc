@@ -3,25 +3,22 @@
 
 ;; definition of type cam-point-watch-bank
 (deftype cam-point-watch-bank (basic)
-  ((speed     float    :offset-assert   4)
-   (rot-speed degrees  :offset-assert   8)
+  ((speed      float)
+   (rot-speed  degrees)
    )
-  :method-count-assert 9
-  :size-assert         #xc
-  :flag-assert         #x90000000c
   )
 
 ;; definition for method 3 of type cam-point-watch-bank
-(defmethod inspect cam-point-watch-bank ((obj cam-point-watch-bank))
-  (when (not obj)
-    (set! obj obj)
+(defmethod inspect ((this cam-point-watch-bank))
+  (when (not this)
+    (set! this this)
     (goto cfg-4)
     )
-  (format #t "[~8x] ~A~%" obj (-> obj type))
-  (format #t "~1Tspeed: ~f~%" (-> obj speed))
-  (format #t "~1Trot-speed: (deg ~r)~%" (-> obj rot-speed))
+  (format #t "[~8x] ~A~%" this (-> this type))
+  (format #t "~1Tspeed: ~f~%" (-> this speed))
+  (format #t "~1Trot-speed: (deg ~r)~%" (-> this rot-speed))
   (label cfg-4)
-  obj
+  this
   )
 
 ;; definition for symbol *CAM_POINT_WATCH-bank*, type cam-point-watch-bank
@@ -29,13 +26,14 @@
 
 ;; failed to figure out what this is:
 (defstate cam-point-watch (camera-slave)
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (let ((v1-0 event-type))
-      (the-as object (if (= v1-0 'teleport)
-                         #f
-                         (the-as symbol (cam-standard-event-handler proc arg1 event-type event))
-                         )
-              )
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
+      (('teleport)
+       #f
+       )
+      (else
+        (cam-standard-event-handler proc argc message block)
+        )
       )
     )
   :enter (behavior ()
@@ -44,7 +42,6 @@
       (set! (-> self blend-from-type) (the-as uint 1))
       (set! (-> self blend-to-type) (camera-blend-to-type unknown-1))
       )
-    (none)
     )
   :code (behavior ()
     (until #f
@@ -93,31 +90,27 @@
       0
       )
     #f
-    (none)
     )
   )
 
 ;; definition of type cam-free-bank
 (deftype cam-free-bank (basic)
-  ((speed     float    :offset-assert   4)
-   (rot-speed degrees  :offset-assert   8)
+  ((speed      float)
+   (rot-speed  degrees)
    )
-  :method-count-assert 9
-  :size-assert         #xc
-  :flag-assert         #x90000000c
   )
 
 ;; definition for method 3 of type cam-free-bank
-(defmethod inspect cam-free-bank ((obj cam-free-bank))
-  (when (not obj)
-    (set! obj obj)
+(defmethod inspect ((this cam-free-bank))
+  (when (not this)
+    (set! this this)
     (goto cfg-4)
     )
-  (format #t "[~8x] ~A~%" obj (-> obj type))
-  (format #t "~1Tspeed: ~f~%" (-> obj speed))
-  (format #t "~1Trot-speed: (deg ~r)~%" (-> obj rot-speed))
+  (format #t "[~8x] ~A~%" this (-> this type))
+  (format #t "~1Tspeed: ~f~%" (-> this speed))
+  (format #t "~1Trot-speed: (deg ~r)~%" (-> this rot-speed))
   (label cfg-4)
-  obj
+  this
   )
 
 ;; definition for symbol *CAM_FREE-bank*, type cam-free-bank
@@ -413,29 +406,26 @@
 
 ;; definition of type camera-free-floating-move-info
 (deftype camera-free-floating-move-info (structure)
-  ((rv vector :inline :offset-assert   0)
-   (tv vector :inline :offset-assert  16)
-   (up vector :inline :offset-assert  32)
-   (tm matrix :inline :offset-assert  48)
+  ((rv  vector  :inline)
+   (tv  vector  :inline)
+   (up  vector  :inline)
+   (tm  matrix  :inline)
    )
-  :method-count-assert 9
-  :size-assert         #x70
-  :flag-assert         #x900000070
   )
 
 ;; definition for method 3 of type camera-free-floating-move-info
-(defmethod inspect camera-free-floating-move-info ((obj camera-free-floating-move-info))
-  (when (not obj)
-    (set! obj obj)
+(defmethod inspect ((this camera-free-floating-move-info))
+  (when (not this)
+    (set! this this)
     (goto cfg-4)
     )
-  (format #t "[~8x] ~A~%" obj 'camera-free-floating-move-info)
-  (format #t "~1Trv: #<vector @ #x~X>~%" (-> obj rv))
-  (format #t "~1Ttv: #<vector @ #x~X>~%" (-> obj tv))
-  (format #t "~1Tup: #<vector @ #x~X>~%" (-> obj up))
-  (format #t "~1Ttm: #<matrix @ #x~X>~%" (-> obj tm))
+  (format #t "[~8x] ~A~%" this 'camera-free-floating-move-info)
+  (format #t "~1Trv: #<vector @ #x~X>~%" (-> this rv))
+  (format #t "~1Ttv: #<vector @ #x~X>~%" (-> this tv))
+  (format #t "~1Tup: #<vector @ #x~X>~%" (-> this up))
+  (format #t "~1Ttm: #<matrix @ #x~X>~%" (-> this tm))
   (label cfg-4)
-  obj
+  this
   )
 
 ;; definition for function cam-free-floating-move
@@ -478,13 +468,14 @@
 
 ;; failed to figure out what this is:
 (defstate cam-free-floating (camera-slave)
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (let ((v1-0 event-type))
-      (the-as object (if (= v1-0 'teleport)
-                         #f
-                         (the-as symbol (cam-standard-event-handler proc arg1 event-type event))
-                         )
-              )
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
+      (('teleport)
+       #f
+       )
+      (else
+        (cam-standard-event-handler proc argc message block)
+        )
       )
     )
   :enter (behavior ()
@@ -493,7 +484,6 @@
       (set! (-> self blend-to-type) (camera-blend-to-type unknown-1))
       (send-event *camera-combiner* 'stop-tracking)
       )
-    (none)
     )
   :code (behavior ()
     (until #f
@@ -511,10 +501,5 @@
       (suspend)
       )
     #f
-    (none)
     )
   )
-
-
-
-

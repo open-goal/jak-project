@@ -14,20 +14,17 @@ Changes:
 
 ;; Array of booleans, stored as bits.
 (deftype bit-array (basic)
-  ((length           int32          :offset-assert   4)
-   (allocated-length int32          :offset-assert   8)
-   (_pad             uint8          :offset-assert  12)
-   (bytes            uint8 :dynamic :offset         12)
+  ((length            int32)
+   (allocated-length  int32)
+   (_pad              uint8)
+   (bytes             uint8  :dynamic :overlay-at _pad)
    )
-  :method-count-assert 13
-  :size-assert         #xd
-  :flag-assert         #xd0000000d
   (:methods
-    (new (symbol type int) _type_ 0)
-    (get-bit (_type_ int) symbol 9)
-    (clear-bit (_type_ int) int 10)
-    (set-bit (_type_ int) int 11)
-    (clear-all! (_type_) _type_ 12)
+    (new (symbol type int) _type_)
+    (get-bit (_type_ int) symbol)
+    (clear-bit (_type_ int) int)
+    (set-bit (_type_ int) int)
+    (clear-all! (_type_) _type_)
     )
   )
 
@@ -40,36 +37,36 @@ Changes:
     )
   )
 
-(defmethod length bit-array ((obj bit-array))
+(defmethod length ((obj bit-array))
   "Get the number of bits."
   (-> obj length)
   )
 
-(defmethod asize-of bit-array ((obj bit-array))
+(defmethod asize-of ((obj bit-array))
   "Get the size in memory."
   (the-as int (+ (-> obj type size) (/ (logand -8 (+ (-> obj allocated-length) 7)) 8)))
   )
 
-(defmethod get-bit bit-array ((obj bit-array) (arg0 int))
+(defmethod get-bit ((obj bit-array) (arg0 int))
   "Get the nth bit as a boolean."
   (let ((v1-2 (-> obj bytes (/ arg0 8))))
     (logtest? v1-2 (ash 1 (logand arg0 7)))
     )
   )
 
-(defmethod clear-bit bit-array ((obj bit-array) (arg0 int))
+(defmethod clear-bit ((obj bit-array) (arg0 int))
   "Set the nth bit to 0."
   (logclear! (-> obj bytes (/ arg0 8)) (ash 1 (logand arg0 7)))
   0
   )
 
-(defmethod set-bit bit-array ((obj bit-array) (arg0 int))
+(defmethod set-bit ((obj bit-array) (arg0 int))
   "Set the nth bit to 1."
   (logior! (-> obj bytes (/ arg0 8)) (ash 1 (logand arg0 7)))
   0
   )
 
-(defmethod clear-all! bit-array ((obj bit-array))
+(defmethod clear-all! ((obj bit-array))
   "Set all bits to 0."
   (countdown (v1-2 (/ (logand -8 (+ (-> obj allocated-length) 7)) 8))
     (nop!)
@@ -95,194 +92,149 @@ Changes:
 ;; BYTE vectors
 
 (deftype vector16ub (structure)
-  ((data uint8   16 :offset-assert   0)
-   (quad uint128    :offset          0)
+  ((data  uint8    16)
+   (quad  uint128  :overlay-at (-> data 0))
    )
-  :method-count-assert 9
-  :size-assert         #x10
-  :flag-assert         #x900000010
   )
 
 (deftype vector4ub (structure)
-  ((data uint8  4 :offset-assert   0)
-   (x    uint8    :offset          0)
-   (y    uint8    :offset          1)
-   (z    uint8    :offset          2)
-   (w    uint8    :offset          3)
-   (clr  uint32   :offset          0)
+  ((data  uint8   4)
+   (x     uint8   :overlay-at (-> data 0))
+   (y     uint8   :overlay-at (-> data 1))
+   (z     uint8   :overlay-at (-> data 2))
+   (w     uint8   :overlay-at (-> data 3))
+   (clr   uint32  :overlay-at (-> data 0))
    )
   :pack-me
-  :method-count-assert 9
-  :size-assert         #x4
-  :flag-assert         #x900000004
   )
 
 (deftype vector4b (structure)
-  ((data int8  4 :offset-assert   0)
-   (x    int8    :offset          0)
-   (y    int8    :offset          1)
-   (z    int8    :offset          2)
-   (w    int8    :offset          3)
-   (clr  int32   :offset          0)
+  ((data  int8   4)
+   (x     int8   :overlay-at (-> data 0))
+   (y     int8   :overlay-at (-> data 1))
+   (z     int8   :overlay-at (-> data 2))
+   (w     int8   :overlay-at (-> data 3))
+   (clr   int32  :overlay-at (-> data 0))
    )
   :pack-me
-  :method-count-assert 9
-  :size-assert         #x4
-  :flag-assert         #x900000004
   )
 
 (deftype vector2ub (structure)
-  ((data uint8  2 :offset-assert   0)
-   (x    uint8    :offset          0)
-   (y    uint8    :offset          1)
-   (clr  uint16   :offset          0)
+  ((data  uint8   2)
+   (x     uint8   :overlay-at (-> data 0))
+   (y     uint8   :overlay-at (-> data 1))
+   (clr   uint16  :overlay-at (-> data 0))
    )
   :pack-me
-  :method-count-assert 9
-  :size-assert         #x2
-  :flag-assert         #x900000002
   )
 
 (deftype vector2b (structure)
-  ((data int8  2 :offset-assert   0)
-   (x    int8    :offset          0)
-   (y    int8    :offset          1)
-   (clr  int16   :offset          0)
+  ((data  int8   2)
+   (x     int8   :overlay-at (-> data 0))
+   (y     int8   :overlay-at (-> data 1))
+   (clr   int16  :overlay-at (-> data 0))
    )
-  :method-count-assert 9
-  :size-assert         #x2
-  :flag-assert         #x900000002
   )
 
 ;; HALFWORD vectors
 
 (deftype vector2h (structure)
-  ((data int16 2 :offset-assert   0)
-   (x    int16   :offset          0)
-   (y    int16   :offset          2)
+  ((data  int16  2)
+   (x     int16  :overlay-at (-> data 0))
+   (y     int16  :overlay-at (-> data 1))
    )
   :pack-me
-  :method-count-assert 9
-  :size-assert         #x4
-  :flag-assert         #x900000004
   )
 
 (deftype vector2uh (structure)
-  ((data uint16 2 :offset-assert   0)
-   (x    uint16   :offset          0)
-   (y    uint16   :offset          2)
-   (val  uint32   :offset          0)
+  ((data  uint16  2)
+   (x     uint16  :overlay-at (-> data 0))
+   (y     uint16  :overlay-at (-> data 1))
+   (val   uint32  :overlay-at (-> data 0))
    )
   :pack-me
-  :method-count-assert 9
-  :size-assert         #x4
-  :flag-assert         #x900000004
   )
 
 (deftype vector3h (structure)
-  ((data int16 3 :offset-assert   0)
-   (x    int16   :offset          0)
-   (y    int16   :offset          2)
-   (z    int16   :offset          4)
+  ((data  int16  3)
+   (x     int16  :overlay-at (-> data 0))
+   (y     int16  :overlay-at (-> data 1))
+   (z     int16  :overlay-at (-> data 2))
    )
-  :method-count-assert 9
-  :size-assert         #x6
-  :flag-assert         #x900000006
   )
 
 (deftype vector3uh (structure)
-  ((data uint16 3 :offset-assert   0)
-   (x    uint16   :offset          0)
-   (y    uint16   :offset          2)
-   (z    uint16   :offset          4)
+  ((data  uint16  3)
+   (x     uint16  :overlay-at (-> data 0))
+   (y     uint16  :overlay-at (-> data 1))
+   (z     uint16  :overlay-at (-> data 2))
    )
-  :method-count-assert 9
-  :size-assert         #x6
-  :flag-assert         #x900000006
   )
 
 ;; WORD vectors
 
 (deftype vector2w (structure)
-  ((data int32 2 :offset-assert   0)
-   (x    int32   :offset          0)
-   (y    int32   :offset          4)
+  ((data  int32  2)
+   (x     int32  :overlay-at (-> data 0))
+   (y     int32  :overlay-at (-> data 1))
    )
-  :method-count-assert 9
-  :size-assert         #x8
-  :flag-assert         #x900000008
   )
 
 (deftype vector3w (structure)
-  ((data int32 3 :offset-assert   0)
-   (x    int32   :offset          0)
-   (y    int32   :offset          4)
-   (z    int32   :offset          8)
+  ((data  int32  3)
+   (x     int32  :overlay-at (-> data 0))
+   (y     int32  :overlay-at (-> data 1))
+   (z     int32  :overlay-at (-> data 2))
    )
-  :method-count-assert 9
-  :size-assert         #xc
-  :flag-assert         #x90000000c
   )
 
 (deftype vector4w (structure)
-  ((data  int32  4  :offset-assert   0)
-   (x     int32     :offset          0)
-   (y     int32     :offset          4)
-   (z     int32     :offset          8)
-   (w     int32     :offset         12)
-   (dword uint64  2 :offset          0)
-   (quad  uint128   :offset          0)
+  ((data   int32    4)
+   (x      int32      :overlay-at (-> data 0))
+   (y      int32      :overlay-at (-> data 1))
+   (z      int32      :overlay-at (-> data 2))
+   (w      int32      :overlay-at (-> data 3))
+   (dword  uint64   2 :overlay-at (-> data 0))
+   (quad   uint128    :overlay-at (-> data 0))
    )
-  :method-count-assert 9
-  :size-assert         #x10
-  :flag-assert         #x900000010
   )
 
 ;; FLOAT vectors
 
 (deftype vector2 (structure)
-  ((data float 2 :offset-assert   0)
-   (x    float   :offset          0)
-   (y    float   :offset          4)
+  ((data  float  2)
+   (x     float  :overlay-at (-> data 0))
+   (y     float  :overlay-at (-> data 1))
    )
   :allow-misaligned
-  :method-count-assert 9
-  :size-assert         #x8
-  :flag-assert         #x900000008
   )
 
 (deftype vector3 (structure)
-  ((data float 3 :offset-assert   0)
-   (x    float   :offset          0)
-   (y    float   :offset          4)
-   (z    float   :offset          8)
+  ((data  float  3)
+   (x     float  :overlay-at (-> data 0))
+   (y     float  :overlay-at (-> data 1))
+   (z     float  :overlay-at (-> data 2))
    )
-  :method-count-assert 9
-  :size-assert         #xc
-  :flag-assert         #x90000000c
   )
 
 ;; Note: typically vector is used instead of vector4.
 ;; vector usually means "xyz only, with w = 1", and vector4
 ;; is sometimes used when w is more meaningful.
 (deftype vector4 (structure)
-  ((data  float   4 :offset-assert   0)
-   (x     float     :offset          0)
-   (y     float     :offset          4)
-   (z     float     :offset          8)
-   (w     float     :offset         12)
-   (dword uint64  2 :offset          0)
-   (quad  uint128   :offset          0)
+  ((data   float    4)
+   (x      float      :overlay-at (-> data 0))
+   (y      float      :overlay-at (-> data 1))
+   (z      float      :overlay-at (-> data 2))
+   (w      float      :overlay-at (-> data 3))
+   (dword  uint64   2 :overlay-at (-> data 0))
+   (quad   uint128    :overlay-at (-> data 0))
    )
-  :method-count-assert 9
-  :size-assert         #x10
-  :flag-assert         #x900000010
   )
 
 
 ;; SPECIAL vectors
 
-(defmethod print vector4w ((obj vector4w))
+(defmethod print ((obj vector4w))
   "Print a vector4w"
   (format #t "#<vector4w ~D ~D ~D ~D @ #x~X>" (-> obj x) (-> obj y) (-> obj z) (-> obj w) obj)
   obj
@@ -290,78 +242,60 @@ Changes:
 
 ;; group of 2 vector4w's
 (deftype vector4w-2 (structure)
-  ((data   int32    8         :offset-assert   0)
-   (quad   uint128  2         :offset          0)
-   (vector vector4w 2 :inline :offset          0)
+  ((data    int32     8)
+   (quad    uint128   2         :overlay-at (-> data 0))
+   (vector  vector4w  2 :inline :overlay-at (-> data 0))
    )
-  :method-count-assert 9
-  :size-assert         #x20
-  :flag-assert         #x900000020
   )
 
 
 (deftype vector4w-3 (structure)
-  ((data   int32    12        :offset-assert   0)
-   (quad   uint128  3         :offset          0)
-   (vector vector4w 3 :inline :offset          0)
+  ((data    int32     12)
+   (quad    uint128   3         :overlay-at (-> data 0))
+   (vector  vector4w  3 :inline :overlay-at (-> data 0))
    )
-  :method-count-assert 9
-  :size-assert         #x30
-  :flag-assert         #x900000030
   )
 
 (deftype vector4w-4 (structure)
-  ((data   int32    16        :offset-assert   0)
-   (quad   uint128  4         :offset          0)
-   (vector vector4w 4 :inline :offset          0)
+  ((data    int32     16)
+   (quad    uint128   4         :overlay-at (-> data 0))
+   (vector  vector4w  4 :inline :overlay-at (-> data 0))
    )
-  :method-count-assert 9
-  :size-assert         #x40
-  :flag-assert         #x900000040
   )
 
 (deftype vector4h (structure)
-  ((data int16  4 :offset-assert   0)
-   (x    int16    :offset          0)
-   (y    int16    :offset          2)
-   (z    int16    :offset          4)
-   (w    int16    :offset          6)
-   (long uint64   :offset          0)
+  ((data  int16   4)
+   (x     int16   :overlay-at (-> data 0))
+   (y     int16   :overlay-at (-> data 1))
+   (z     int16   :overlay-at (-> data 2))
+   (w     int16   :overlay-at (-> data 3))
+   (long  uint64  :overlay-at (-> data 0))
    )
   :pack-me
-  :method-count-assert 9
-  :size-assert         #x8
-  :flag-assert         #x900000008
   )
 
 (deftype vector8h (structure)
-  ((data int16   8 :offset-assert   0)
-   (quad uint128   :offset          0)
+  ((data  int16    8)
+   (quad  uint128  :overlay-at (-> data 0))
    )
-  :method-count-assert 9
-  :size-assert         #x10
-  :flag-assert         #x900000010
   )
 
 
 (deftype vector16b (structure)
-  ((data int8    16 :offset-assert   0)
-   (quad uint128    :offset          0)
+  ((data  int8     16)
+   (quad  uint128  :overlay-at (-> data 0))
    )
-  :method-count-assert 9
-  :size-assert         #x10
-  :flag-assert         #x900000010
   )
 
 
-(defmethod inspect vector ((obj vector))
+(defmethod inspect ((obj vector))
   "Inspect a vector."
   (format #t "[~8x] vector~%" obj)
   (format #t "~T[~F] [~F] [~F] [~F]~%" (-> obj x) (-> obj y) (-> obj z) (-> obj w))
   obj
   )
 
-(defmethod print vector ((obj vector))
+(defmethod print ((obj vector))
   "Print a vector."
   (format #t "#<vector ~F ~F ~F ~F @ #x~X>" (-> obj x) (-> obj y) (-> obj z) (-> obj w) obj)
   obj
@@ -379,170 +313,134 @@ Changes:
 ;; SPECIAL vector (of floats)
 
 (deftype vector4s-3 (structure)
-  ((data   float   12        :offset-assert   0)
-   (quad   uint128 3         :offset          0)
-   (vector vector  3 :inline :offset          0)
+  ((data    float    12)
+   (quad    uint128  3         :overlay-at (-> data 0))
+   (vector  vector   3 :inline :overlay-at (-> data 0))
    )
-  :method-count-assert 9
-  :size-assert         #x30
-  :flag-assert         #x900000030
   )
 
 ;; definition of type vector-array
 (deftype vector-array (inline-array-class)
-  ((data vector :inline :dynamic :offset-assert  16)
+  ((data  vector  :inline :dynamic)
    )
-  :method-count-assert 9
-  :size-assert         #x10
-  :flag-assert         #x900000010
   )
 (set! (-> vector-array heap-base) (the-as uint 16))
 
 (deftype rgbaf (vector)
-  ((r float  :offset   0)
-   (g float  :offset   4)
-   (b float  :offset   8)
-   (a float  :offset  12)
+  ((r  float  :overlay-at (-> data 0))
+   (g  float  :overlay-at (-> data 1))
+   (b  float  :overlay-at (-> data 2))
+   (a  float  :overlay-at (-> data 3))
    )
-  :method-count-assert 9
-  :size-assert         #x10
-  :flag-assert         #x900000010
   )
 
 ;; ax + by + cz = d form
 (deftype plane (vector)
-  ((a float  :offset   0)
-   (b float  :offset   4)
-   (c float  :offset   8)
-   (d float  :offset  12)
+  ((a  float  :overlay-at (-> data 0))
+   (b  float  :overlay-at (-> data 1))
+   (c  float  :overlay-at (-> data 2))
+   (d  float  :overlay-at (-> data 3))
    )
-  :method-count-assert 9
-  :size-assert         #x10
-  :flag-assert         #x900000010
   )
 
 (deftype sphere (vector)
-  ((r float  :offset  12)
+  ((r  float  :overlay-at (-> data 3))
    )
-  :method-count-assert 9
-  :size-assert         #x10
-  :flag-assert         #x900000010
   )
 
 (deftype isphere (vec4s)
   ()
-  :method-count-assert 9
-  :size-assert         #x10
-  :flag-assert         #x900000010
   )
 
-(defmacro static-vectorm (x y z w)
-  `(new 'static 'vector :x (meters ,x) :y (meters ,y) :z (meters ,z) :w (meters ,w))
+(defmacro static-vector (x y z w)
+  "creates a static vector."
+  `(new 'static 'vector :x ,x :y ,y :z ,z :w ,w)
+  )
+(defmacro static-vectorm (x y z)
+  "creates a static vector using meters. w is set to 1.0"
+  `(new 'static 'vector :x (meters ,x) :y (meters ,y) :z (meters ,z) :w 1.0)
   )
 (defmacro static-spherem (x y z r)
-  "actually makes a vector. use bspherem for sphere."
+  "creates a static vector using meters where the w component is used as sphere radius. for a 'real' sphere use static-bspherem."
   `(new 'static 'vector :x (meters ,x) :y (meters ,y) :z (meters ,z) :w (meters ,r))
   )
 (defmacro static-bspherem (x y z r)
+  "creates a static sphere using meters."
   `(new 'static 'sphere :x (meters ,x) :y (meters ,y) :z (meters ,z) :w (meters ,r))
   )
 
 ;; box, stored as 8 floats (min/max along each dim, unused w's)
 (deftype box8s (structure)
-  ((data   float   8       :offset-assert   0)
-   (quad   uint128 2       :offset          0)
-   (vector vector  2       :offset          0)
-   (min    vector  :inline :offset          0)
-   (max    vector  :inline :offset         16)
+  ((data    float    8)
+   (quad    uint128  2       :overlay-at (-> data 0))
+   (vector  vector   2       :overlay-at (-> data 0))
+   (min     vector   :inline :overlay-at (-> data 0))
+   (max     vector   :inline :overlay-at (-> data 4))
    )
-  :method-count-assert 9
-  :size-assert         #x20
-  :flag-assert         #x900000020
   )
 
 (deftype box8s-array (inline-array-class)
-  ((data box8s :inline :dynamic :offset-assert  16)
+  ((data  box8s  :inline :dynamic)
    )
-  :method-count-assert 9
-  :size-assert         #x10
-  :flag-assert         #x900000010
   )
 (set! (-> box8s-array heap-base) (the-as uint 32))
 
 ;; actually a capsule
 (deftype cylinder (structure)
-  ((origin vector :inline :offset-assert   0)
-   (axis   vector :inline :offset-assert  16)
-   (radius float          :offset-assert  32)
-   (length float          :offset-assert  36)
+  ((origin  vector  :inline)
+   (axis    vector  :inline)
+   (radius  float)
+   (length  float)
    )
-  :method-count-assert 11
-  :size-assert         #x28
-  :flag-assert         #xb00000028
   (:methods
-    (debug-draw (_type_ vector4w) none 9)
-    (ray-capsule-intersect (_type_ vector vector) float 10)
+    (debug-draw (_type_ vector4w) none)
+    (ray-capsule-intersect (_type_ vector vector) float)
     )
   )
 
 ;; a normal cylinder
 (deftype cylinder-flat (structure)
-  ((origin vector :inline :offset-assert   0)
-   (axis   vector :inline :offset-assert  16)
-   (radius float          :offset-assert  32)
-   (length float          :offset-assert  36)
+  ((origin  vector  :inline)
+   (axis    vector  :inline)
+   (radius  float)
+   (length  float)
    )
-  :method-count-assert 11
-  :size-assert         #x28
-  :flag-assert         #xb00000028
   (:methods
-    (debug-draw (_type_ vector4w) none 9)
-    (ray-flat-cyl-intersect (_type_ vector vector) float 10)
+    (debug-draw (_type_ vector4w) none)
+    (ray-flat-cyl-intersect (_type_ vector vector) float)
     )
   )
 
 (deftype vertical-planes (structure)
-  ((data uint128 4 :offset-assert   0)
+  ((data  uint128  4)
    )
-  :method-count-assert 9
-  :size-assert         #x40
-  :flag-assert         #x900000040
   )
 
 (deftype vertical-planes-array (basic)
-  ((length uint32                           :offset-assert   4)
-   (data   vertical-planes :inline :dynamic :offset-assert  16)
+  ((length  uint32)
+   (data    vertical-planes  :inline :dynamic)
    )
-  :method-count-assert 9
-  :size-assert         #x10
-  :flag-assert         #x900000010
   )
 
 (deftype qword (structure)
-  ((data     uint32   4       :offset-assert   0)
-   (byte     uint8    16      :offset          0)
-   (hword    uint16   8       :offset          0)
-   (word     uint32   4       :offset          0)
-   (dword    uint64   2       :offset          0)
-   (quad     uint128          :offset          0)
-   (vector   vector   :inline :offset          0)
-   (vector4w vector4w :inline :offset          0)
+  ((data      uint32    4)
+   (byte      uint8     16      :overlay-at (-> data 0))
+   (hword     uint16    8       :overlay-at (-> data 0))
+   (word      uint32    4       :overlay-at (-> data 0))
+   (dword     uint64    2       :overlay-at (-> data 0))
+   (quad      uint128           :overlay-at (-> data 0))
+   (vector    vector    :inline :overlay-at (-> data 0))
+   (vector4w  vector4w  :inline :overlay-at (-> data 0))
    )
-  :method-count-assert 9
-  :size-assert         #x10
-  :flag-assert         #x900000010
   )
 
 (deftype vector3s (structure)
-  ((data float 3 :offset-assert   0)
-   (x    float   :offset          0)
-   (y    float   :offset          4)
-   (z    float   :offset          8)
+  ((data  float  3)
+   (x     float  :overlay-at (-> data 0))
+   (y     float  :overlay-at (-> data 1))
+   (z     float  :overlay-at (-> data 2))
    )
-  :pack-me ;; removeme
-  :method-count-assert 9
-  :size-assert         #xc
-  :flag-assert         #x90000000c
+  :pack-me
   )
 
 (define-extern vector-cross! (function vector vector vector vector))
@@ -571,6 +469,17 @@ Changes:
        (set! (-> ,vec y) ,yv)
        (set! (-> ,vec z) ,zv)
        (set! (-> ,vec w) ,wv)
+       ,vec
+       ))
+     )
+
+(defmacro set-vector-xyz! (v xv yv zv)
+  "Set xyz fields in a vector"
+  (with-gensyms (vec)
+     `(let ((,vec ,v))
+       (set! (-> ,vec x) ,xv)
+       (set! (-> ,vec y) ,yv)
+       (set! (-> ,vec z) ,zv)
        ,vec
        ))
      )

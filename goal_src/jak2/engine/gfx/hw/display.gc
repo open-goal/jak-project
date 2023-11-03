@@ -22,23 +22,27 @@
   (-> *display* base-clock integral-frame-counter)
   )
 
-(defmethod set-time-ratios display ((obj display) (arg0 float))
+(defmethod set-time-ratios ((this display) (arg0 float))
   "Set the 'dog ratio'. This should be 1 when the game is running at full speed.
    Larger dog ratio means slower."
 
   ;; cap ratio if we're slower than 4x
-  (set! (-> obj dog-ratio) (fmin 4.0 arg0))
+  (set! (-> this dog-ratio) (fmin 4.0 arg0))
 
   ;; set the time per vsync.
   (case (get-video-mode)
     (('pal)
-     (set! (-> obj time-factor) 6.0)
+     (set! (-> this time-factor) 6.0)
+     )
+    ;; og:preserve-this added custom video mode for high fps
+    (('custom)
+     (set! (-> this time-factor) (/ 300.0 (-> *pc-settings* target-fps)))
      )
     (else
-      (set! (-> obj time-factor) 5.0)
+      (set! (-> this time-factor) 5.0)
       )
     )
-  (-> obj dog-ratio)
+  (-> this dog-ratio)
   )
 
 (defun set-display ((arg0 display))
@@ -88,6 +92,7 @@
   (new 'global 'font-context *font-default-matrix* 0 0 0.0 (font-color default) (font-flags shadow kerning))
   )
 
+;; WARN: Return type mismatch pointer vs none.
 (defun draw-sprite2d-xy ((arg0 dma-buffer) (arg1 int) (arg2 int) (arg3 int) (arg4 int) (arg5 rgba))
   "Draw a sprite primitive with the given color and dimensions."
   (let* ((t2-1 (new 'stack 'draw-context arg1 arg2 arg3 arg4 arg5))
@@ -145,6 +150,7 @@
   (none)
   )
 
+;; WARN: Return type mismatch pointer vs none.
 (defun draw-sprite2d-xy-absolute ((arg0 dma-buffer) (arg1 int) (arg2 int) (arg3 int) (arg4 int) (arg5 rgba))
   "Draw a sprite primitive, setting the gs-xzyf register to exactly the values specified (no offset/clamp)"
   (let ((t2-0 (+ arg1 1792))
@@ -198,6 +204,7 @@
   (none)
   )
 
+;; WARN: Return type mismatch pointer vs none.
 (defun draw-quad2d ((arg0 dma-buffer) (arg1 draw-context))
   "Draw a quad that fills the entire context"
   (let ((a3-1 (max 1792 (min 2304 (+ (-> arg1 orgx) 1792))))
@@ -568,10 +575,9 @@
 (kmemopen global "dma-buffers")
 
 (define *vu0-dma-list* (new 'global 'dma-buffer 4096))
+
 (define *display* (new 'global 'display 0 512 416 2 49))
+
 (allocate-dma-buffers *display*)
+
 (kmemclose)
-
-
-
-

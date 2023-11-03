@@ -102,6 +102,7 @@ MakeSystem::MakeSystem(const std::optional<REPL::Config> repl_config, const std:
   add_tool<SubtitleTool>();
   add_tool<SubtitleV2Tool>();
   add_tool<BuildLevelTool>();
+  add_tool<BuildLevel2Tool>();
 }
 
 /*!
@@ -136,7 +137,7 @@ goos::Object MakeSystem::handle_defstep(const goos::Object& form,
     step->outputs.push_back(m_path_map.apply_remaps(obj.as_string()->data));
   });
 
-  step->tool = args.get_named("tool").as_symbol()->name;
+  step->tool = args.get_named("tool").as_symbol().name_ptr;
 
   if (m_tools.find(step->tool) == m_tools.end()) {
     throw std::runtime_error(fmt::format("The tool {} is unknown.", step->tool));
@@ -232,7 +233,7 @@ goos::Object MakeSystem::handle_get_gsrc_path(const goos::Object& form,
   if (m_gsrc_files.count(file_name) != 0) {
     return goos::StringObject::make_new(m_gsrc_files.at(file_name));
   } else {
-    return goos::SymbolObject::make_new(m_goos.reader.symbolTable, "#f");
+    return goos::Object::make_symbol(&m_goos.reader.symbolTable, "#f");
   }
 }
 

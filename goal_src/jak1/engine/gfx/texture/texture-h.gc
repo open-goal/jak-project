@@ -12,6 +12,8 @@
 
 ;; There are a lot more details, see texture.gc for more info
 
+;; DECOMP BEGINS
+
 ;;;;;;;;;;;;;;;;;;;;;;
 ;; Texture Control
 ;;;;;;;;;;;;;;;;;;;;;;
@@ -35,12 +37,9 @@
 
 ;; Any individual texture can be uniquely identified with a texture-id.
 (deftype texture-id (uint32)
-  ((index  uint16 :offset 8  :size 12) ;; index of texture in its tpage
-   (page   uint16 :offset 20 :size 12) ;; tpage number
+  ((index uint16 :offset   8 :size  12)
+   (page  uint16 :offset  20 :size  12)
    )
-  :method-count-assert 9
-  :size-assert         #x4
-  :flag-assert         #x900000004
   )
 
 
@@ -50,13 +49,10 @@
 
 ;; A texture-pool-segment is a chunk of VRAM used to store textures
 (deftype texture-pool-segment (structure)
-  ((dest uint32  :offset-assert 0) ;; VRAM address (4-byte VRAM words)
-   (size uint32  :offset-assert 4) ;; size in 4-byte VRAM words
+  ((dest  uint32)
+   (size  uint32)
    )
   :pack-me
-  :method-count-assert 9
-  :size-assert         #x8
-  :flag-assert         #x900000008
   )
 
 (declare-type texture-page basic)
@@ -64,48 +60,44 @@
 
 ;; There is a single texture-pool which manages storing textures in VRAM
 (deftype texture-pool (basic)
-  ((top              int32    :offset-assert 4) ;; seems be 0 always, start of VRAM managed by pool
-   (cur              int32    :offset-assert 8) ;; highest address in use by the pool
+  ((top               int32) ;; seems be 0 always, start of VRAM managed by pool
+   (cur               int32) ;; highest address in use by the pool
 
    ;; the allocate function is used to add a texture-page to the pool.
-   (allocate-func    (function texture-pool texture-page kheap int texture-page)  :offset-assert 12)
+   (allocate-func     (function texture-pool texture-page kheap int texture-page))
 
    ;; the location of the color look-up table for font texture (vram word idx)
-   (font-palette     int32     :offset-assert 16)
+   (font-palette      int32)
 
-   ;; these were reordered
    ;; we have 4 segments, but only the near and common are used.
-   (segment-near     texture-pool-segment   :inline :offset-assert 20)
-   (segment-common   texture-pool-segment   :inline :offset-assert 28)
-   (segment          texture-pool-segment 4 :inline :offset 20)
+   (segment           texture-pool-segment  4 :inline)
+   (segment-near      texture-pool-segment  :inline :overlay-at (-> segment 0))
+   (segment-common    texture-pool-segment  :inline :overlay-at (-> segment 1))
 
    ;; tpages that are not part of level textures are stored here.
-   (common-page      texture-page  32       :offset-assert 52)
+   (common-page       texture-page          32)
    ;; ??
-   (common-page-mask int32                  :offset-assert 180)
+   (common-page-mask  int32)
    ;; for each pool page, stores the id of the tpage which is currently loaded in VRAM.
-   (ids              uint32        126      :offset-assert 184)
+   (ids               uint32                126)
    )
-  :method-count-assert 23
-  :size-assert         #x2b0
-  :flag-assert         #x17000002b0
   (:methods
-   (new (symbol type) _type_ 0)
-   (initialize! (_type_) _type_ 9)
-   (print-usage (_type_) _type_ 10)
-   (setup-font-texture! (_type_) none 11)
-   (allocate-defaults! (_type_) none 12)
-   (login-level-textures (_type_ level int (pointer texture-id)) none 13)
-   (add-tex-to-dma! (_type_ level int) none 14)
-   (allocate-vram-words! (_type_ int) int 15)
-   (allocate-segment! (_type_ texture-pool-segment int) texture-pool-segment 16)
-   (unused-17 () none 17)
-   (unused-18 () none 18)
-   (unused-19 () none 19)
-   (unload! (_type_ texture-page) int 20)
-   (upload-one-common! (_type_ level) symbol 21)
-   (lookup-boot-common-id (_type_ int) int 22)
-   )
+    (new (symbol type) _type_)
+    (initialize! (_type_) _type_)
+    (print-usage (_type_) _type_)
+    (setup-font-texture! (_type_) none)
+    (allocate-defaults! (_type_) none)
+    (login-level-textures (_type_ level int (pointer texture-id)) none)
+    (add-tex-to-dma! (_type_ level int) none)
+    (allocate-vram-words! (_type_ int) int)
+    (allocate-segment! (_type_ texture-pool-segment int) texture-pool-segment)
+    (unused-17 () none)
+    (unused-18 () none)
+    (unused-19 () none)
+    (unload! (_type_ texture-page) int)
+    (upload-one-common! (_type_ level) symbol)
+    (lookup-boot-common-id (_type_ int) int)
+    )
   )
 
 
@@ -118,74 +110,67 @@
 ;; This refers to data stored elsewhere, either in the data of a tpage or VRAM.
 ;; After a tpage has been allocated, the dest will be the VRAM address of the texture.
 (deftype texture (basic)
-  ((w            int16     :offset-assert 4)
-   (wu           uint16    :offset 4)  ;; inline asm read this as u16
-   (h            int16     :offset-assert 6)
-   (hu           uint16    :offset 6)
-   (num-mips     uint8     :offset-assert 8) ;; number of mipmap levels
-   (tex1-control uint8     :offset-assert 9) ;; ?
-   (psm          gs-psm    :offset-assert 10) ;; texture format
-   (mip-shift    uint8     :offset-assert 11)
-   (clutpsm      uint16    :offset-assert 12) ;; color look-up table format
-   (dest         uint16 7  :offset-assert 14) ;; per mip VRAM address
-   (clutdest     uint16    :offset-assert 28) ;; color look-up table location.
-   (width        uint8 7   :offset-assert 30) ;; per mip
-   (name         string    :offset-assert 40)
-   (size         uint32    :offset-assert 44)
-   (uv-dist      float     :offset-assert 48)
-   (masks        uint32 3  :offset-assert 52)
+  ((w             int16)
+   (wu            uint16  :overlay-at w)
+   (h             int16)
+   (hu            uint16  :overlay-at h)
+   (num-mips      uint8)
+   (tex1-control  uint8)
+   (psm           gs-psm)
+   (mip-shift     uint8)
+   (clutpsm       uint16)
+   (dest          uint16  7)
+   (clutdest      uint16)
+   (width         uint8   7)
+   (name          string)
+   (size          uint32)
+   (uv-dist       float)
+   (masks         uint32  3)
    )
-  :method-count-assert 9
-  :size-assert         #x40
-  :flag-assert         #x900000040
   )
 
 ;; tpages themselves are divided into segments.
 ;; some renderers may know ahead of time that they don't need all segments
 ;; and can skip uploading unused texture data.
 (deftype texture-page-segment (structure)
-  ((block-data pointer :offset-assert 0) ;; location in EE memory of texture data.
-   (size       uint32  :offset-assert 4) ;; ?? units
-   (dest       uint32  :offset-assert 8) ;; VRAM destination where it will be loaded to.
+  ((block-data  pointer)
+   (size        uint32)
+   (dest        uint32)
    )
   :pack-me
-  :method-count-assert 9
-  :size-assert         #xc
-  :flag-assert         #x90000000c
   )
+
 
 (defun texture-mip->segment ((arg0 int) (arg1 int))
   "Convert a mip level to the segment that it is stored in."
-  (if (>= 2 arg1) (+ (- -1 arg0) arg1) (max 0 (- 2 arg0)))
+  (if (>= 2 arg1)
+      (+ (- -1 arg0) arg1)
+      (max 0 (- 2 arg0))
+      )
   )
 
 ;; The actual texture-page header
 ;; After the dynamic array of texture is the actual texture data.
 ;; This may be thrown away if the texture is permanently in VRAM.
 (deftype texture-page (basic)
-  ((info      file-info        :offset-assert 4)
-   (name      basic            :offset-assert 8)
-   (id        uint32           :offset-assert 12)
-   (length    int32            :offset-assert 16) ;; number of textures.
-   (mip0-size uint32           :offset-assert 20)
-   (size      uint32           :offset-assert 24) ;; VRAM words
-   (segment   texture-page-segment 3 :inline :offset-assert 28)
-   (pad       uint32 16       :offset-assert 64)
-
-   ;; array of texture descriptions.
-   (data      texture :dynamic :offset-assert 128)
+  ((info       file-info)
+   (name       basic)
+   (id         uint32)
+   (length     int32)
+   (mip0-size  uint32)
+   (size       uint32)
+   (segment    texture-page-segment  3 :inline)
+   (pad        uint32                16)
+   (data       texture               :dynamic)
    )
-  :method-count-assert 15
-  :size-assert         #x80
-  :flag-assert         #xf00000080
   (:methods
-    (relocate (_type_ kheap (pointer uint8)) none :replace 7)
-    (remove-from-heap (_type_ kheap) _type_ 9)
-    (get-leftover-block-count (_type_ int int) int 10)
-    (unused-11 () none 11)
-    (relocate-dests! (_type_ int int) none 12)
-    (add-to-dma-buffer (_type_ dma-buffer int) int 13)
-    (upload-now! (_type_ int) none 14)
+    (relocate (_type_ kheap (pointer uint8)) none :replace)
+    (remove-from-heap (_type_ kheap) _type_)
+    (get-leftover-block-count (_type_ int int) int)
+    (unused-11 () none)
+    (relocate-dests! (_type_ int int) none)
+    (add-to-dma-buffer (_type_ dma-buffer int) int)
+    (upload-now! (_type_ int) none)
     )
   )
 
@@ -203,47 +188,38 @@
 ;; the A+D format only uses bits 0-72, this fits in 72-96. The use of 96-128 is unknown
 ;; the shader value must be multiplied by 16 first.
 (deftype shader-ptr (uint32)
-  ((shader uint32 :offset 8 :size 24))
-  :method-count-assert 9
-  :size-assert         #x4
-  :flag-assert         #x900000004
+  ((shader uint32 :offset   8 :size  24)
+   )
   )
 
 ;; This is a dynamic array of shader-ptrs
 ;; There will be one array per texture-page, and this array will have one entry per texture.
 ;; These arrays will be allocated by the texture system and stored in level heaps.
 (deftype texture-link (structure)
-  ((next shader-ptr 1 :offset-assert 0)
+  ((next  shader-ptr  1)
    )
-  :method-count-assert 9
-  :size-assert         #x4
-  :flag-assert         #x900000004
   )
 
 ;; Each texture-page will have a texture-page-dir-entry for it
 (deftype texture-page-dir-entry (structure)
-  ((length int16   :offset-assert 0)        ;; number of textures
-   (status uint16  :offset-assert 2)        ;; ??
-   (page   texture-page   :offset-assert 4) ;; the actual texture page
-   (link   texture-link  :offset-assert 8) ;; the array of texture-links, per texture. #f if unallocated
+  ((length  int16)
+   (status  uint16)
+   (page    texture-page)
+   (link    texture-link)
    )
   :pack-me
-  :method-count-assert 9
-  :size-assert         #xc
-  :flag-assert         #x90000000c
   )
 
 ;; There is a single texture-page-dir with a slot for each texture-page.
 ;; It's stored on the DVD and loaded with the engine.
 (deftype texture-page-dir (basic)
-  ((length int32)
-   (entries texture-page-dir-entry 1 :inline)
+  ((length   int32)
+   (entries  texture-page-dir-entry  1 :inline)
    )
   (:methods
-   (relocate (_type_ kheap (pointer uint8)) none :replace 7)
-   (unlink-textures-in-heap! (_type_ kheap) int 9)
-   )
-  :flag-assert #xa00000014
+    (relocate (_type_ kheap (pointer uint8)) none :replace)
+    (unlink-textures-in-heap! (_type_ kheap) int)
+    )
   )
 
 
@@ -256,16 +232,13 @@
 ;; The texture system will set this up, then the level system will do this when there's time.
 
 (deftype texture-relocate-later (basic)
-  ((memcpy symbol                  :offset-assert 4)  ;; set to #t when there's a pending copy
-   (dest   uint32                  :offset-assert 8)  ;; destination address
-   (source uint32                  :offset-assert 12) ;; source address
-   (move   uint32                  :offset-assert 16) ;; size to move
-   (entry  texture-page-dir-entry  :offset-assert 20) ;; the entry for the page we're moving
-   (page   texture-page            :offset-assert 24) ;; the page header.
+  ((memcpy  symbol)
+   (dest    uint32)
+   (source  uint32)
+   (move    uint32)
+   (entry   texture-page-dir-entry)
+   (page    texture-page)
    )
-  :method-count-assert 9
-  :size-assert         #x1c
-  :flag-assert         #x90000001c
   )
 
 
@@ -292,50 +265,45 @@
 ;; The actual adgif-shader is a 5 quadwords of A+D for GIF PACKED mode.
 ;; there is some extra data snuck in.
 (deftype adgif-shader (structure)
-  ((quad       qword  5 :score -100 :inline  :offset 0)
-   (prims      gs-reg64 10 :score -100 :offset 0)
+  ((quad             qword            5 :inline :offset   0)
+   (prims            gs-reg64         10        :overlay-at quad)
 
    ;; tex0, contains texture location, size, format, clut settings
-   (tex0       gs-tex0     :offset 0)
+   (tex0             gs-tex0                    :overlay-at (-> prims 0))
    ;; prims 1 is the register id
    ;; prims 1 is shared with the link-test bitfield.
 
    ;; tex1, more texture information (LOD/MIP setup)
-   (tex1       gs-tex1     :offset 16)
+   (tex1             gs-tex1                    :overlay-at (-> prims 2))
    ;; prims 3
    ;; prims 3 is shared with texture-id
 
    ;; miptb1, mip addresses/widths (levels 1 - 3)
-   (miptbp1    gs-miptbp     :offset 32)
+   (miptbp1          gs-miptbp                  :overlay-at (-> prims 4))
    ;; prims 5
    ;; prims 5 is shared with the next shader-ptr
 
    ;; clamp, used for texture wrapping
-   (clamp      gs-clamp     :offset 48)
-   (clamp-reg  gs-reg64     :offset 56) ;; or prims 7
+   (clamp            gs-clamp                   :overlay-at (-> prims 6))
+   (clamp-reg        gs-reg64                   :overlay-at (-> prims 7))
 
    ;; alpha blending. NOTE: this can also be miptbp2 (mip 4+ settings)
-   (alpha           gs-alpha     :offset 64)
-   (alpha-as-miptb2 gs-miptbp    :offset 64)
+   (alpha            gs-alpha                   :overlay-at (-> prims 8))
+   (alpha-as-miptb2  gs-miptbp                  :overlay-at alpha)
    ;; prims 9
 
 
    ;; sneaky overlays
-   (link-test  link-test-flags     :offset 8) ;; don't touch lower 8 bits of this
-   (texture-id texture-id     :offset 24)     ;; ok to touch all bits
-   (next       shader-ptr :offset 40)         ;; don't touch lower 8 bits of this
+   (link-test        link-test-flags            :overlay-at (-> prims 1)) ;; don't touch lower 8 bits of this
+   (texture-id       texture-id                 :overlay-at (-> prims 3)) ;; ok to touch all bits
+   (next             shader-ptr                 :overlay-at (-> prims 5)) ;; don't touch lower 8 bits of this
    )
-  :method-count-assert 9
-  :size-assert         #x50
-  :flag-assert         #x900000050
   )
 
+
 (deftype adgif-shader-array (inline-array-class)
-  ((data  adgif-shader  :inline :dynamic :offset 16)
+  ((data  adgif-shader  :inline :dynamic :offset  16)
    )
-  :method-count-assert 9
-  :size-assert         #x10
-  :flag-assert         #x900000010
   )
 (set! (-> adgif-shader-array heap-base) 80)
 

@@ -5,26 +5,18 @@
 ;; name in dgo: generic-merc
 ;; dgos: GAME, ENGINE
 
+;; DECOMP BEGINS
+
 (define mercneric-vu0-block (new 'static 'vu-function :length #x0 :origin #x0 :qlength #x0))
 
 (deftype invinitdata (structure)
-  ((count     uint8   :offset-assert   0)
-   (init-data uint8   :offset-assert   1)
-   (init-addr uint16  :offset-assert   2)
+  ((count      uint8)
+   (init-data  uint8)
+   (init-addr  uint16)
    )
   :pack-me
-  :method-count-assert 9
-  :size-assert         #x4
-  :flag-assert         #x900000004
   )
 
-(defmethod inspect invinitdata ((obj invinitdata))
-  (format #t "[~8x] ~A~%" obj 'invinitdata)
-  (format #t "~Tcount: ~D~%" (-> obj count))
-  (format #t "~Tinit-data: ~D~%" (-> obj init-data))
-  (format #t "~Tinit-addr: ~D~%" (-> obj init-addr))
-  obj
-  )
 
 (define *inv-init-table* (new 'static 'inline-array invinitdata 8
                            (new 'static 'invinitdata :count #x48 :init-addr #x1)
@@ -63,7 +55,6 @@
   "Run the EE part of the generic renderer for all generic merc stuff.
    This will build DMA data in the format for generic."
   (local-vars (a0-26 int) (a0-28 int))
-  ;; (format 0 "[GMERC] starting generic-merc-execute-all with ~d to execute~%" (-> *merc-global-array* count))
   (when (nonzero? (-> *merc-global-array* count))
     (let ((gp-0 (-> *display* frames (-> *display* on-screen) frame global-buf base)))
 
@@ -114,7 +105,6 @@
             (let* ((s1-0 (-> *display* frames (-> *display* on-screen) frame global-buf))
                    (s2-0 (-> s1-0 base))
                    )
-              ;; (format 0 "[GMERC]  running ~D~%" s4-0)
               (generic-work-init s3-0)
               (set! (-> (scratchpad-object terrain-context) work foreground generic-work saves basep)
                     (the-as uint (-> s1-0 base))
@@ -197,9 +187,5 @@
         )
       )
     )
-  ;; (format 0 "[GMERC] made it to the end of generic-merc-execute-all.~%")
   (none)
   )
-
-
-

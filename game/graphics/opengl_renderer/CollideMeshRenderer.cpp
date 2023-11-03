@@ -1,9 +1,11 @@
 #include "CollideMeshRenderer.h"
 
+#include <vector>
+
 #include "game/graphics/gfx.h"
 #include "game/graphics/opengl_renderer/background/background_common.h"
 
-float material_colors_jak1[23 * 3] = {
+const static std::vector<float> material_colors_jak1 = {
     1.0f,  0.7f,  1.0f,   // 0, stone
     0.1f,  2.0f,  2.0f,   // 1, ice
     0.75f, 0.25f, 0.1f,   // 2, quicksand
@@ -29,7 +31,7 @@ float material_colors_jak1[23 * 3] = {
     1.0f,  1.0f,  1.0f,   // 22, neutral
 };
 
-float event_colors_jak1[7 * 3] = {
+const static std::vector<float> event_colors_jak1 = {
     1.0f, 1.0f, 1.0f,  // 0, none
     0.2f, 1.0f, 1.0f,  // 1, deadly
     0.1f, 1.0f, 0.1f,  // 2, endlessfall
@@ -39,10 +41,67 @@ float event_colors_jak1[7 * 3] = {
     1.0f, 0.1f, 0.1f,  // 6, melt
 };
 
-float mode_colors_jak1[3 * 3] = {
+const static std::vector<float> mode_colors_jak1 = {
     1.25f, 0.1f, 0.1f,  // 0, ground
     0.1f,  0.1f, 1.0f,  // 1, wall
     1.0f,  0.1f, 1.0f,  // 2, obstacle
+};
+
+const static std::vector<float> material_colors_jak2 = {
+    1.0f,  0.1f,  1.0f,   // 0, unknown
+    0.1f,  2.0f,  2.0f,   // 1, ice
+    0.75f, 0.25f, 0.1f,   // 2, quicksand
+    0.1f,  0.25f, 0.75f,  // 3, waterbottom
+    0.5f,  0.15f, 0.1f,   // 4, tar
+    2.0f,  1.5f,  0.5f,   // 5, sand
+    1.5f,  0.75f, 0.1f,   // 6, wood
+    0.1f,  1.35f, 0.1f,   // 7, grass
+    1.7f,  1.3f,  0.1f,   // 8, pcmetal
+    1.8f,  1.8f,  1.8f,   // 9, snow
+    1.5f,  0.2f,  1.0f,   // 10, deepsnow
+    1.2f,  0.5f,  0.3f,   // 11, hotcoals
+    1.4f,  0.1f,  0.1f,   // 12, lava
+    0.8f,  0.3f,  0.1f,   // 13, crwood
+    1.0f,  0.4f,  1.0f,   // 14, gravel
+    1.5f,  0.5f,  0.15f,  // 15, dirt
+    0.7f,  0.7f,  1.0f,   // 16, metal
+    0.1f,  0.1f,  1.2f,   // 17, straw
+    0.75f, 1.75f, 0.75f,  // 18, tube
+    0.4f,  0.1f,  0.8f,   // 19, swamp
+    0.1f,  0.4f,  0.8f,   // 20, stopproj
+    1.9f,  0.1f,  1.9f,   // 21, rotate
+    1.0f,  1.0f,  1.0f,   // 22, neutral
+    1.0f,  0.7f,  1.0f,   // 23, stone
+    0.8f,  1.2f,  1.2f,   // 24, crmetal
+    0.7f,  0.0f,  0.0f,   // 25, carpet
+    0.1f,  0.9f,  0.1f,   // 26, grmetal
+    1.4f,  0.7f,  0.1f,   // 27, shmetal
+    0.5f,  0.5f,  0.0f,   // 28, hdwood
+};
+
+const static std::vector<float> event_colors_jak2 = {
+    1.0f, 1.0f, 1.0f,  // 0, none
+    0.5f, 1.0f, 1.0f,  // 1, deadly
+    0.1f, 1.0f, 0.1f,  // 2, endlessfall
+    1.0f, 1.0f, 0.1f,  // 3, burn
+    0.1f, 0.1f, 1.0f,  // 4, deadlyup
+    1.0f, 0.1f, 0.5f,  // 5, burnup
+    1.0f, 0.1f, 0.1f,  // 6, melt
+    0.1f, 0.7f, 0.7f,  // 7, slide
+    1.0f, 0.2f, 1.0f,  // 8, lip
+    0.5f, 0.2f, 1.0f,  // 9, lipramp
+    0.1f, 0.5f, 1.0f,  // 10, shock
+    0.5f, 0.6f, 1.0f,  // 11, shockup
+    0.5f, 0.6f, 0.5f,  // 12, hide
+    0.5f, 1.0f, 0.5f,  // 13, rail
+    0.7f, 0.7f, 0.7f,  // 14, slippery
+};
+
+const static std::vector<float> mode_colors_jak2 = {
+    1.25f, 0.1f, 0.1f,  // 0, ground
+    0.1f,  0.1f, 1.0f,  // 1, wall
+    1.0f,  0.1f, 1.0f,  // 2, obstacle
+    1.0f,  1.0f, 0.1f,  // 3, halfpipe
 };
 
 CollideMeshRenderer::CollideMeshRenderer(GameVersion version) {
@@ -62,36 +121,53 @@ CollideMeshRenderer::~CollideMeshRenderer() {
 }
 
 void CollideMeshRenderer::init_pat_colors(GameVersion version) {
-  for (int i = 0; i < 0x8; ++i) {
+  for (int i = 0; i < 4; ++i) {
     m_colors.pat_mode_colors[i].x() = -1.f;
     m_colors.pat_mode_colors[i].y() = -1.f;
     m_colors.pat_mode_colors[i].z() = -1.f;
   }
-  for (int i = 0; i < 0x40; ++i) {
+  for (int i = 0; i < 32; ++i) {
     m_colors.pat_material_colors[i].x() = -1.f;
     m_colors.pat_material_colors[i].y() = -1.f;
     m_colors.pat_material_colors[i].z() = -1.f;
   }
-  for (int i = 0; i < 0x40; ++i) {
+  for (int i = 0; i < 32; ++i) {
     m_colors.pat_event_colors[i].x() = -1.f;
     m_colors.pat_event_colors[i].y() = -1.f;
     m_colors.pat_event_colors[i].z() = -1.f;
   }
 
+  const std::vector<float>* material_colors = nullptr;
+  const std::vector<float>* event_colors = nullptr;
+  const std::vector<float>* mode_colors = nullptr;
+
   switch (version) {
     case GameVersion::Jak1:
-      for (int i = 0; i < 23 * 3; ++i) {
-        m_colors.pat_material_colors[i / 3].data()[i % 3] = material_colors_jak1[i];
-      }
-      for (int i = 0; i < 7 * 3; ++i) {
-        m_colors.pat_event_colors[i / 3].data()[i % 3] = event_colors_jak1[i];
-      }
-      for (int i = 0; i < 3 * 3; ++i) {
-        m_colors.pat_mode_colors[i / 3].data()[i % 3] = mode_colors_jak1[i];
-      }
+      material_colors = &material_colors_jak1;
+      event_colors = &event_colors_jak1;
+      mode_colors = &mode_colors_jak1;
       break;
     case GameVersion::Jak2:
+      material_colors = &material_colors_jak2;
+      event_colors = &event_colors_jak2;
+      mode_colors = &mode_colors_jak2;
       break;
+  }
+
+  if (material_colors) {
+    for (size_t i = 0; i < material_colors->size(); ++i) {
+      m_colors.pat_material_colors[i / 3].data()[i % 3] = material_colors->at(i);
+    }
+  }
+  if (event_colors) {
+    for (size_t i = 0; i < event_colors->size(); ++i) {
+      m_colors.pat_event_colors[i / 3].data()[i % 3] = event_colors->at(i);
+    }
+  }
+  if (mode_colors) {
+    for (size_t i = 0; i < mode_colors->size(); ++i) {
+      m_colors.pat_mode_colors[i / 3].data()[i % 3] = mode_colors->at(i);
+    }
   }
 }
 
@@ -161,6 +237,8 @@ void CollideMeshRenderer::render(SharedRenderState* render_state, ScopedProfiler
                            (void*)offsetof(tfrag3::CollisionMesh::Vertex, pat)  // offset (0)
     );
     glUniform1i(glGetUniformLocation(shader, "wireframe"), 0);
+    glUniform1i(glGetUniformLocation(shader, "wireframe_enabled"),
+                Gfx::g_global_settings.collision_wireframe);
     glUniform1uiv(glGetUniformLocation(shader, "collision_mode_mask"),
                   Gfx::g_global_settings.collision_mode_mask.size(),
                   Gfx::g_global_settings.collision_mode_mask.data());
@@ -172,6 +250,10 @@ void CollideMeshRenderer::render(SharedRenderState* render_state, ScopedProfiler
                   Gfx::g_global_settings.collision_material_mask.data());
     glUniform1ui(glGetUniformLocation(shader, "collision_skip_mask"),
                  Gfx::g_global_settings.collision_skip_mask);
+    glUniform1ui(glGetUniformLocation(shader, "collision_skip_hide_mask"),
+                 Gfx::g_global_settings.collision_skip_hide_mask);
+    glUniform1ui(glGetUniformLocation(shader, "collision_skip_nomask_allowed"),
+                 Gfx::g_global_settings.collision_skip_nomask_allowed);
     glUniform1i(glGetUniformLocation(shader, "mode"), Gfx::g_global_settings.collision_mode);
     glDrawArrays(GL_TRIANGLES, 0, lev->level->collision.vertices.size());
 

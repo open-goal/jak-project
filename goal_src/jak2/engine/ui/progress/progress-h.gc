@@ -24,555 +24,391 @@
 ;; DECOMP BEGINS
 
 (deftype progress (process-drawable)
-  ((current-options    menu-option-list         :offset-assert 200)
-   (menu-transition    float                    :offset-assert 204)
-   (option-index       int32                    :offset-assert 208)
-   (want-option-index  int32                    :offset-assert 212)
-   (next-option-index  int32                    :offset-assert 216)
-   (graphic-index      int32                    :offset-assert 220)
-   (selected-option    symbol                   :offset-assert 224)
-   (current            symbol                   :offset-assert 228)
-   (next               symbol                   :offset-assert 232)
-   (ring-angle         float                    :offset-assert 236)
-   (ring-want-angle    float                    :offset-assert 240)
-   (init-quat          quaternion       :inline :offset-assert 256)
-   (pos-transition     float                    :offset-assert 272)
-   (anim-frame         float                    :offset-assert 276)
-   (swing              float                    :offset-assert 280)
-   (main-menu          symbol                   :offset-assert 284)
-   (state-stack        symbol           5       :offset-assert 288)
-   (option-index-stack int32            5       :offset-assert 308)
-   (state-pos          int32                    :offset-assert 328)
-   (secret-buying      basic                    :offset-assert 332)
-   (secret-buy-choice  basic                    :offset-assert 336)
-   (sliding            float                    :offset-assert 340)
-   (sliding-off        float                    :offset-assert 344)
-   (scanlines-alpha    float                    :offset-assert 348)
-   (sliding-height     float                    :offset-assert 352)
+  ((current-options     menu-option-list)
+   (menu-transition     float)
+   (option-index        int32)
+   (want-option-index   int32)
+   (next-option-index   int32)
+   (graphic-index       int32)
+   (selected-option     symbol)
+   (current             symbol)
+   (next                symbol)
+   (ring-angle          float)
+   (ring-want-angle     float)
+   (init-quat           quaternion  :inline)
+   (pos-transition      float)
+   (anim-frame          float)
+   (swing               float)
+   (main-menu           symbol)
+   (state-stack         symbol      5)
+   (option-index-stack  int32       5)
+   (state-pos           int32)
+   (secret-buying       basic)
+   (secret-buy-choice   basic)
+   (sliding             float)
+   (sliding-off         float)
+   (scanlines-alpha     float)
+   (sliding-height      float)
    )
-  :heap-base #xf0
-  :method-count-assert 33
-  :size-assert         #x164
-  :flag-assert         #x2100f00164
+  (:state-methods
+    come-in
+    idle
+    go-away
+    gone
+    )
   (:methods
-    (come-in () _type_ :state 20)
-    (idle () _type_ :state 21)
-    (go-away () _type_ :state 22)
-    (gone () _type_ :state 23)
-    (init-defaults (_type_) object 24)
-    (respond-to-cpad (_type_) none 25)
-    (gone? (_type_) object 26)
-    (can-go-back? (_type_) symbol 27)
-    (get-state-check-card (_type_ symbol) symbol 28)
-    (push-state (_type_) int 29)
-    (pop-state (_type_) int 30)
-    (set-next-state (_type_ symbol int) int 31)
-    (set-menu-options (_type_ symbol) int 32)
+    (init-defaults (_type_) object)
+    (respond-to-cpad (_type_) none)
+    (gone? (_type_) object)
+    (can-go-back? (_type_) symbol)
+    (get-state-check-card (_type_ symbol) symbol)
+    (push-state (_type_) int)
+    (pop-state (_type_) int)
+    (set-next-state (_type_ symbol int) int)
+    (set-menu-options (_type_ symbol) int)
     )
   )
 
 
 (deftype menu-option (basic)
-  ((name    text-id               :offset-assert   4)
-   (scale   symbol                :offset-assert   8)
-   (unknown function              :offset-assert  12)
-   (box     hud-box     1 :inline :offset-assert  16)
-   (options menu-option 8         :offset         16)
+  ((name     text-id)
+   (scale    symbol)
+   (unknown  function)
+   (box      hud-box      1 :inline)
+   (options  menu-option  8 :overlay-at box)
    )
-  :method-count-assert 12
-  :size-assert         #x30
-  :flag-assert         #xc00000030
   (:methods
-    (respond-progress (_type_ progress symbol) int :behavior progress 9)
-    (draw-option (_type_ progress font-context int symbol) none 10)
-    (menu-option-method-11 () none 11)
+    (respond-progress (_type_ progress symbol) int :behavior progress)
+    (draw-option (_type_ progress font-context int symbol) none)
+    (menu-option-method-11 () none)
     )
   )
 
 
 (deftype menu-on-off-option (menu-option)
-  ((value-to-modify (pointer symbol)  :offset-assert  48)
+  ((value-to-modify  (pointer symbol))
    )
-  :method-count-assert 12
-  :size-assert         #x34
-  :flag-assert         #xc00000034
   )
 
 
 (deftype menu-yes-no-option (menu-option)
-  ((value-to-modify pointer  :offset-assert  48)
+  ((value-to-modify  pointer)
    )
-  :method-count-assert 12
-  :size-assert         #x34
-  :flag-assert         #xc00000034
   )
 
 
 (deftype menu-language-option (menu-option)
-  ((language-selection  language-enum  :offset-assert  48)
-   (language-direction  symbol         :offset-assert  56)
-   (language-transition basic          :offset-assert  60)
-   (language-x-offset   int32          :offset-assert  64)
+  ((language-selection   language-enum)
+   (language-direction   symbol)
+   (language-transition  basic)
+   (language-x-offset    int32)
    )
-  :method-count-assert 12
-  :size-assert         #x44
-  :flag-assert         #xc00000044
   )
 
 
 (deftype menu-quit-option (menu-option)
   ()
-  :method-count-assert 12
-  :size-assert         #x30
-  :flag-assert         #xc00000030
   )
 
 
 (deftype menu-slider-option (menu-option)
-  ((value-to-modify pointer              :offset-assert  48)
-   (sprites         hud-sprite 5 :inline :offset         64)
+  ((value-to-modify  pointer)
+   (sprites          hud-sprite  5 :inline :offset  64)
    )
-  :method-count-assert 12
-  :size-assert         #x180
-  :flag-assert         #xc00000180
   )
 
 
 (deftype menu-sub-menu-option (menu-option)
-  ((next-state symbol    :offset-assert  48)
-   (pad        uint8  44 :offset-assert  52)
+  ((next-state  symbol)
+   (pad         uint8  44)
    )
-  :method-count-assert 12
-  :size-assert         #x60
-  :flag-assert         #xc00000060
   )
 
 
 (deftype menu-sub-menu-sound-option (menu-option)
-  ((next-state symbol  :offset-assert  48)
+  ((next-state  symbol)
    )
-  :method-count-assert 12
-  :size-assert         #x34
-  :flag-assert         #xc00000034
   )
 
 
 (deftype menu-stereo-mode-sound-option (menu-option)
   ()
-  :method-count-assert 12
-  :size-assert         #x30
-  :flag-assert         #xc00000030
   )
 
 
 (deftype menu-sub-menu-graphic-option (menu-option)
-  ((next-state symbol  :offset-assert  48)
+  ((next-state  symbol)
    )
-  :method-count-assert 12
-  :size-assert         #x34
-  :flag-assert         #xc00000034
   )
 
 
 (deftype menu-unlocked-menu-option (menu-sub-menu-option)
   ()
-  :method-count-assert 12
-  :size-assert         #x60
-  :flag-assert         #xc00000060
   )
 
 
 (deftype menu-main-menu-option (menu-option)
-  ((next-state symbol  :offset-assert  48)
+  ((next-state  symbol)
    )
-  :method-count-assert 12
-  :size-assert         #x34
-  :flag-assert         #xc00000034
   )
 
 
 (deftype menu-memcard-slot-option (menu-option)
-  ((sprites hud-sprite 5 :inline :offset         48)
-   (pad     uint8      32        :offset-assert 368)
+  ((sprites  hud-sprite  5 :inline :offset  48)
+   (pad      uint8       32)
    )
-  :method-count-assert 12
-  :size-assert         #x190
-  :flag-assert         #xc00000190
   )
 
 
 (deftype menu-loading-option (menu-option)
   ()
-  :method-count-assert 12
-  :size-assert         #x30
-  :flag-assert         #xc00000030
   )
 
 
 (deftype menu-insufficient-space-option (menu-option)
-  ((last-move time-frame  :offset-assert  48)
+  ((last-move  time-frame)
    )
-  :method-count-assert 12
-  :size-assert         #x38
-  :flag-assert         #xc00000038
   )
 
 
 (deftype menu-secrets-insufficient-space-option (menu-option)
   ()
-  :method-count-assert 12
-  :size-assert         #x30
-  :flag-assert         #xc00000030
   )
 
 
 (deftype menu-insert-card-option (menu-option)
   ()
-  :method-count-assert 12
-  :size-assert         #x30
-  :flag-assert         #xc00000030
   )
 
 
 (deftype menu-error-loading-option (menu-option)
   ()
-  :method-count-assert 12
-  :size-assert         #x30
-  :flag-assert         #xc00000030
   )
 
 
 (deftype menu-error-auto-saving-option (menu-option)
   ()
-  :method-count-assert 12
-  :size-assert         #x30
-  :flag-assert         #xc00000030
   )
 
 
 (deftype menu-card-removed-option (menu-option)
   ()
-  :method-count-assert 12
-  :size-assert         #x30
-  :flag-assert         #xc00000030
   )
 
 
 (deftype menu-error-disc-removed-option (menu-option)
   ()
-  :method-count-assert 12
-  :size-assert         #x30
-  :flag-assert         #xc00000030
   )
 
 
 (deftype menu-error-reading-option (menu-option)
   ()
-  :method-count-assert 12
-  :size-assert         #x30
-  :flag-assert         #xc00000030
   )
 
 
 (deftype menu-icon-info-option (menu-option)
-  ((sprites hud-sprite 2 :inline :offset  48)
+  ((sprites  hud-sprite  2 :inline :offset  48)
    )
-  :method-count-assert 12
-  :size-assert         #xb0
-  :flag-assert         #xc000000b0
   )
 
 
 (deftype menu-format-card-option (menu-option)
   ()
-  :method-count-assert 12
-  :size-assert         #x30
-  :flag-assert         #xc00000030
   )
 
 
 (deftype menu-already-exists-option (menu-option)
   ()
-  :method-count-assert 12
-  :size-assert         #x30
-  :flag-assert         #xc00000030
   )
 
 
 (deftype menu-create-game-option (menu-option)
   ()
-  :method-count-assert 12
-  :size-assert         #x30
-  :flag-assert         #xc00000030
   )
 
 
 (deftype menu-video-mode-warning-option (menu-option)
   ()
-  :method-count-assert 12
-  :size-assert         #x30
-  :flag-assert         #xc00000030
   )
 
 
 (deftype menu-video-mode-ok-option (menu-option)
   ()
-  :method-count-assert 12
-  :size-assert         #x30
-  :flag-assert         #xc00000030
   )
 
 
 (deftype menu-progressive-mode-warning-option (menu-option)
   ()
-  :method-count-assert 12
-  :size-assert         #x30
-  :flag-assert         #xc00000030
   )
 
 
 (deftype menu-progressive-mode-ok-option (menu-option)
   ()
-  :method-count-assert 12
-  :size-assert         #x30
-  :flag-assert         #xc00000030
   )
 
 
 (deftype menu-select-start-option (menu-option)
-  ((task-index      int32   :offset-assert  48)
-   (real-task-index int32   :offset-assert  52)
-   (last-move       time-frame  :offset-assert  56)
+  ((task-index       int32)
+   (real-task-index  int32)
+   (last-move        time-frame)
    )
-  :method-count-assert 12
-  :size-assert         #x40
-  :flag-assert         #xc00000040
   )
 
 
 (deftype menu-select-scene-option (menu-option)
-  ((task-index int32   :offset-assert  48)
-   (last-move  time-frame  :offset-assert  56)
+  ((task-index  int32)
+   (last-move   time-frame)
    )
-  :method-count-assert 12
-  :size-assert         #x40
-  :flag-assert         #xc00000040
   )
 
 
 (deftype menu-bigmap-option (menu-option)
   ()
-  :method-count-assert 12
-  :size-assert         #x30
-  :flag-assert         #xc00000030
   )
 
 
 (deftype paged-menu-option (menu-option)
-  ((page-index      int32  :offset-assert  48)
-   (prev-page-index int32  :offset-assert  52)
-   (num-pages       int32  :offset-assert  56)
-   (slide-dir       float  :offset-assert  60)
+  ((page-index       int32)
+   (prev-page-index  int32)
+   (num-pages        int32)
+   (slide-dir        float)
    )
-  :method-count-assert 12
-  :size-assert         #x40
-  :flag-assert         #xc00000040
   )
 
 
 (deftype menu-missions-option (paged-menu-option)
-  ((task-line-index int32   :offset-assert  64)
-   (last-move       time-frame  :offset-assert  72)
+  ((task-line-index  int32)
+   (last-move        time-frame)
    )
-  :method-count-assert 12
-  :size-assert         #x50
-  :flag-assert         #xc00000050
   )
 
 
 (deftype menu-highscores-option (paged-menu-option)
-  ((last-move time-frame               :offset-assert  64)
-   (sprites   hud-sprite 2 :inline :offset         80)
+  ((last-move  time-frame)
+   (sprites    hud-sprite  2 :inline :offset  80)
    )
-  :method-count-assert 12
-  :size-assert         #xd0
-  :flag-assert         #xc000000d0
   )
 
 
 (deftype secret-item-option (menu-option)
-  ((cost        int32           :offset-assert  48)
-   (can-toggle  symbol          :offset-assert  52)
-   (flag        game-secrets    :offset-assert  56)
-   (avail-after game-task-node  :offset-assert  60)
+  ((cost         int32)
+   (can-toggle   symbol)
+   (flag         game-secrets)
+   (avail-after  game-task-node)
    )
-  :method-count-assert 12
-  :size-assert         #x3e
-  :flag-assert         #xc0000003e
   )
 
 
 (deftype menu-secret-option (menu-option)
-  ((item-index      int32                                :offset-assert  48)
-   (prev-item-index int32                                :offset-assert  52)
-   (num-items       int32                                :offset-assert  56)
-   (num-hero-items  int32                                :offset-assert  60)
-   (secret-items    (array secret-item-option)           :offset-assert  64)
-   (last-move       time-frame                               :offset-assert  72)
-   (sprites         hud-sprite                 2 :inline :offset         80)
+  ((item-index       int32)
+   (prev-item-index  int32)
+   (num-items        int32)
+   (num-hero-items   int32)
+   (secret-items     (array secret-item-option))
+   (last-move        time-frame)
+   (sprites          hud-sprite  2 :inline :offset  80)
    )
-  :method-count-assert 12
-  :size-assert         #xd0
-  :flag-assert         #xc000000d0
   )
 
 
 (deftype menu-option-list (basic)
-  ((y-center int32                :offset-assert   4)
-   (y-space  int32                :offset-assert   8)
-   (scale    float                :offset-assert  12)
-   (options  (array menu-option)  :offset-assert  16)
+  ((y-center  int32)
+   (y-space   int32)
+   (scale     float)
+   (options   (array menu-option))
    )
-  :method-count-assert 9
-  :size-assert         #x14
-  :flag-assert         #x900000014
   )
 
 
 (deftype menu-qr-option (menu-option)
-  ((last-move       time-frame    :offset-assert  48)
-   (value-to-modify function  :offset         60)
+  ((last-move        time-frame)
+   (value-to-modify  function  :offset  60)
    )
-  :method-count-assert 12
-  :size-assert         #x40
-  :flag-assert         #xc00000040
   )
 
 
 (deftype menu-restart-mission-qr-option (menu-qr-option)
-  ((next-state symbol  :offset-assert  64)
+  ((next-state  symbol)
    )
-  :method-count-assert 12
-  :size-assert         #x44
-  :flag-assert         #xc00000044
   )
 
 
 (deftype menu-quit-qr-option (menu-qr-option)
-  ((next-state symbol  :offset-assert  64)
+  ((next-state  symbol)
    )
-  :method-count-assert 12
-  :size-assert         #x44
-  :flag-assert         #xc00000044
   )
 
 
 (deftype menu-sub-menu-qr-option (menu-qr-option)
-  ((next-state symbol  :offset-assert  64)
+  ((next-state  symbol)
    )
-  :method-count-assert 12
-  :size-assert         #x44
-  :flag-assert         #xc00000044
   )
 
 
 (deftype menu-graphic-option (menu-option)
-  ((last-move       time-frame   :offset-assert  48)
-   (value-to-modify pointer  :offset         60)
+  ((last-move        time-frame)
+   (value-to-modify  pointer  :offset  60)
    )
-  :method-count-assert 12
-  :size-assert         #x40
-  :flag-assert         #xc00000040
   )
 
 
 (deftype menu-on-off-progressive-scan-graphic-option (menu-graphic-option)
   ()
-  :method-count-assert 12
-  :size-assert         #x40
-  :flag-assert         #xc00000040
   )
 
 
 (deftype menu-aspect-ratio-option (menu-graphic-option)
   ()
-  :method-count-assert 12
-  :size-assert         #x40
-  :flag-assert         #xc00000040
   )
 
 
 (deftype menu-center-screen-graphic-option (menu-graphic-option)
-  ((next-state symbol  :offset-assert  64)
+  ((next-state  symbol)
    )
-  :method-count-assert 12
-  :size-assert         #x44
-  :flag-assert         #xc00000044
   )
 
 
 (deftype menu-video-mode-option (menu-graphic-option)
   ()
-  :method-count-assert 12
-  :size-assert         #x40
-  :flag-assert         #xc00000040
   )
 
 
 (deftype menu-game-option (menu-option)
-  ((last-move       time-frame   :offset-assert  48)
-   (value-to-modify pointer  :offset         60)
+  ((last-move        time-frame)
+   (value-to-modify  pointer  :offset  60)
    )
-  :method-count-assert 12
-  :size-assert         #x40
-  :flag-assert         #xc00000040
   )
 
 
 (deftype menu-on-off-game-vibrations-option (menu-game-option)
   ()
-  :method-count-assert 12
-  :size-assert         #x40
-  :flag-assert         #xc00000040
   )
 
 
 (deftype menu-on-off-game-subtitles-option (menu-game-option)
   ()
-  :method-count-assert 12
-  :size-assert         #x40
-  :flag-assert         #xc00000040
   )
 
 
 (deftype menu-sub-menu-game-option (menu-game-option)
-  ((next-state symbol  :offset-assert  64)
+  ((next-state  symbol)
    )
-  :method-count-assert 12
-  :size-assert         #x44
-  :flag-assert         #xc00000044
   )
 
 
 (deftype menu-language-game-option (menu-game-option)
-  ((language-selection  uint64  :offset-assert  64)
-   (language-direction  basic   :offset-assert  72)
-   (language-transition basic   :offset-assert  76)
-   (language-x-offset   int32   :offset-assert  80)
+  ((language-selection   uint64)
+   (language-direction   basic)
+   (language-transition  basic)
+   (language-x-offset    int32)
    )
-  :method-count-assert 12
-  :size-assert         #x54
-  :flag-assert         #xc00000054
   )
 
 
 (deftype menu-subtitle-language-game-option (menu-game-option)
-  ((language-selection  uint64  :offset-assert  64)
-   (language-direction  basic   :offset-assert  72)
-   (language-transition basic   :offset-assert  76)
-   (language-x-offset   int32   :offset-assert  80)
+  ((language-selection   uint64)
+   (language-direction   basic)
+   (language-transition  basic)
+   (language-x-offset    int32)
    )
-  :method-count-assert 12
-  :size-assert         #x54
-  :flag-assert         #xc00000054
   )

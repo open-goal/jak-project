@@ -5,8 +5,10 @@
 ;; name in dgo: gsound
 ;; dgos: GAME, ENGINE
 
+;; DECOMP BEGINS
+
 ;; The sound playback stuff is all on the IOP so we use IOP RPCs to control it.
-;; Ther is a "player" that plays sound effects, and a "loader" that takes care of loading banks.
+;; There is a "player" that plays sound effects, and a "loader" that takes care of loading banks.
 (define *sound-player-rpc* (new 'global 'rpc-buffer-pair (the uint (size-of sound-rpc-union)) (the-as uint 128) RPC-SOUND-PLAYER))
 (define *sound-loader-rpc* (new 'global 'rpc-buffer-pair (the uint (size-of sound-rpc-union)) (the-as uint 1) RPC-SOUND-LOADER))
 
@@ -19,24 +21,21 @@
   )
 
 (deftype sound-iop-info (basic)
-  ((frame       uint32     :offset  16)
-   (strpos      int32      :offset-assert 20)
-   (str-id      sound-id   :offset-assert 24)
-   (str-id-sign int32      :offset  24)
-   (freemem     uint32     :offset-assert 28)
-   (chinfo      uint8  48  :offset-assert 32)
-   (freemem2    uint32     :offset-assert 80)
-   (nocd        uint32     :offset-assert 84)
-   (dirtycd     uint32     :offset-assert 88)
-   (diskspeed   uint32 2   :offset-assert 92)
-   (lastspeed   uint32     :offset-assert 100)
-   (dupseg      int32      :offset-assert 104)
-   (times       uint32 41  :offset-assert 108)
-   (times-seq   uint32     :offset-assert 272)
+  ((frame        uint32  :offset  16)
+   (strpos       int32)
+   (str-id       sound-id)
+   (str-id-sign  int32   :overlay-at str-id)
+   (freemem      uint32)
+   (chinfo       uint8   48)
+   (freemem2     uint32)
+   (nocd         uint32)
+   (dirtycd      uint32)
+   (diskspeed    uint32  2)
+   (lastspeed    uint32)
+   (dupseg       int32)
+   (times        uint32  41)
+   (times-seq    uint32)
    )
-  :method-count-assert 9
-  :size-assert         #x114
-  :flag-assert         #x900000114
   )
 
 (define *sound-iop-info* (new 'global 'sound-iop-info))
@@ -576,33 +575,33 @@
 
       (cond
         ((or spec (nonzero? name))
-         (let ((obj (object-new allocation type-to-make (the-as int (-> type-to-make size)))))
-             (set! (-> obj spec) spec)
-             (set! (-> obj name) name)
-             (set! (-> obj playing-id) (new-sound-id))
-             (set! (-> obj params) (the-as (pointer float) params))
-             (set! (-> obj param-count) param-count)
-             (set! (-> obj entity) #f)
-             (set! (-> obj sound-count) 1)
-             (set! (-> obj volume) 1024)
-             (set! (-> obj pitch) 0)
+         (let ((this (object-new allocation type-to-make (the-as int (-> type-to-make size)))))
+             (set! (-> this spec) spec)
+             (set! (-> this name) name)
+             (set! (-> this playing-id) (new-sound-id))
+             (set! (-> this params) (the-as (pointer float) params))
+             (set! (-> this param-count) param-count)
+             (set! (-> this entity) #f)
+             (set! (-> this sound-count) 1)
+             (set! (-> this volume) 1024)
+             (set! (-> this pitch) 0)
              (when (and spec (!= spec *ambient-spec*))
                (if (logtest? (-> spec mask) (sound-mask volume))
-                 (set! (-> obj volume) (-> spec volume)))
+                 (set! (-> this volume) (-> spec volume)))
                (if (logtest? (-> spec mask) (sound-mask pitch))
-                 (set! (-> obj pitch) (-> spec pitch-mod)))
+                 (set! (-> this pitch) (-> spec pitch-mod)))
                )
              (cond
                (sound-times
-                (set! (-> obj time-base) (the int (* 300.0 (-> sound-times 0))))
-                (set! (-> obj time-random) (the int (* 300.0 (-> sound-times 1))))
+                (set! (-> this time-base) (the int (* 300.0 (-> sound-times 0))))
+                (set! (-> this time-random) (the int (* 300.0 (-> sound-times 1))))
                 )
                (else
-                (set! (-> obj time-base) -1)
+                (set! (-> this time-base) -1)
                 )
                )
-             (set! (-> obj trans quad) (-> sound-trans quad))
-             obj
+             (set! (-> this trans quad) (-> sound-trans quad))
+             this
              )
          )
         (else
@@ -614,42 +613,42 @@
 
 
 (define-extern *debug-effect-control* symbol)
-(defmethod update! ambient-sound ((obj ambient-sound))
+(defmethod update! ((this ambient-sound))
   "Called once per frame to update the sound playback"
 
   (if (not *ambient-sound-class*)
       (return (the int #f))
       )
   (cond
-    ((-> obj spec)
-     (when (or (< (-> obj time-base) 0)
-               (>= (-> *display* base-frame-counter) (-> obj play-time))
+    ((-> this spec)
+     (when (or (< (-> this time-base) 0)
+               (>= (-> *display* base-frame-counter) (-> this play-time))
                )
-       (when (>= (-> obj time-base) 0)
-         (set! (-> obj play-time) (+ (-> *display* base-frame-counter)
-                                     (-> obj time-base)
-                                     (rand-vu-int-count (-> obj time-random))
+       (when (>= (-> this time-base) 0)
+         (set! (-> this play-time) (+ (-> *display* base-frame-counter)
+                                     (-> this time-base)
+                                     (rand-vu-int-count (-> this time-random))
                                      ))
-         (set! (-> obj playing-id) (new-sound-id))
+         (set! (-> this playing-id) (new-sound-id))
          )
-       (let ((spec (-> obj spec)))
+       (let ((spec (-> this spec)))
          (when (= spec *ambient-spec*)
-           (set! (-> spec volume) (-> obj volume))
-           (set! (-> spec pitch-mod) (-> obj pitch))
+           (set! (-> spec volume) (-> this volume))
+           (set! (-> spec pitch-mod) (-> this pitch))
            (set! (-> spec bend) 0)
-           (set! (-> spec sound-name) (-> obj name))
-           (set! (-> spec fo-max) (-> obj falloff-far))
+           (set! (-> spec sound-name) (-> this name))
+           (set! (-> spec fo-max) (-> this falloff-far))
            (set! (-> spec mask) (sound-mask))
-           (if (-> obj params)
-               (effect-param->sound-spec spec (-> obj params) (-> obj param-count))
+           (if (-> this params)
+               (effect-param->sound-spec spec (-> this params) (-> this param-count))
                )
            )
          (if (and (nonzero? (-> spec fo-max))
                   (< (* 4096.0 (the float (-> spec fo-max)))
-                     (vector-vector-distance (ear-trans) (-> obj trans))))
+                     (vector-vector-distance (ear-trans) (-> this trans))))
              (return 0)
              )
-         (when (and *debug-effect-control* (>= (-> obj time-base) 0))
+         (when (and *debug-effect-control* (>= (-> this time-base) 0))
            (with-pp
              (format #t "(~5D) effect sound ~A ~G "
                      (-> *display* base-frame-counter)
@@ -661,8 +660,8 @@
              )
            )
          (let ((spec-volume (-> spec volume)))
-           (set! (-> spec volume) (-> obj volume))
-           (set! (-> obj playing-id) (sound-play-by-spec spec (-> obj playing-id) (-> obj trans)))
+           (set! (-> spec volume) (-> this volume))
+           (set! (-> this playing-id) (sound-play-by-spec spec (-> this playing-id) (-> this trans)))
            (set! (-> spec volume) spec-volume)
            )
          )
@@ -670,29 +669,29 @@
      )
     (else
      (cond
-       ((< (-> obj time-base) 0)
-        (set! (-> obj playing-id) (sound-play-by-name
-                                   (-> obj name)
-                                   (-> obj playing-id)
-                                   (-> obj volume)
-                                   (-> obj pitch)
+       ((< (-> this time-base) 0)
+        (set! (-> this playing-id) (sound-play-by-name
+                                   (-> this name)
+                                   (-> this playing-id)
+                                   (-> this volume)
+                                   (-> this pitch)
                                    0
                                    (sound-group sfx)
-                                   (the-as symbol (-> obj trans))))
+                                   (the-as symbol (-> this trans))))
         )
        (else
-        (when (>= (-> *display* base-frame-counter) (-> obj play-time))
-          (set! (-> obj playing-id) (sound-play-by-name
-                                     (-> obj name)
+        (when (>= (-> *display* base-frame-counter) (-> this play-time))
+          (set! (-> this playing-id) (sound-play-by-name
+                                     (-> this name)
                                      (new-sound-id)
-                                     (-> obj volume)
-                                     (-> obj pitch)
+                                     (-> this volume)
+                                     (-> this pitch)
                                      0
                                      (sound-group sfx)
-                                     (the-as symbol (-> obj trans))))
-          (set! (-> obj play-time) (+ (-> *display* base-frame-counter)
-                                      (-> obj time-base)
-                                      (rand-vu-int-count (-> obj time-random))
+                                     (the-as symbol (-> this trans))))
+          (set! (-> this play-time) (+ (-> *display* base-frame-counter)
+                                      (-> this time-base)
+                                      (rand-vu-int-count (-> this time-random))
                                       ))
           )
         )
@@ -702,21 +701,21 @@
   0
   )
 
-(defmethod stop! ambient-sound ((obj ambient-sound))
+(defmethod stop! ((this ambient-sound))
   "Halt playback of this ambient-sound"
 
-  (sound-stop (-> obj playing-id))
+  (sound-stop (-> this playing-id))
   0
   )
 
-(defmethod update-trans! ambient-sound ((obj ambient-sound) (sound-trans vector))
+(defmethod update-trans! ((this ambient-sound) (sound-trans vector))
   "Update the position of the thing playing the sound"
 
-  (set! (-> obj trans quad) (-> sound-trans quad))
-  (when (nonzero? (-> obj playing-id))
+  (set! (-> this trans quad) (-> sound-trans quad))
+  (when (nonzero? (-> this playing-id))
     (let ((cmd (the sound-rpc-set-param (get-sound-buffer-entry))))
         (set! (-> cmd command) (sound-command set-param))
-        (set! (-> cmd id) (-> obj playing-id))
+        (set! (-> cmd id) (-> this playing-id))
 
         (sound-trans-from-process cmd sound-trans)
 
@@ -727,28 +726,28 @@
   0
   )
 
-(defmethod update-vol! ambient-sound ((obj ambient-sound) (arg0 int))
+(defmethod update-vol! ((this ambient-sound) (arg0 int))
   "Update the volume of the sound"
 
-  (when (nonzero? (-> obj playing-id))
+  (when (nonzero? (-> this playing-id))
     (let ((cmd (the-as sound-rpc-set-param (get-sound-buffer-entry))))
       (set! (-> cmd command) (sound-command set-param))
-      (set! (-> cmd id) (-> obj playing-id))
+      (set! (-> cmd id) (-> this playing-id))
       (set! (-> cmd parms volume) (the int (* 10.24 (the float arg0))))
       (set! (-> cmd parms mask) (sound-mask volume))
       (-> cmd id)
       )
     )
-  (set! (-> obj volume) (the int (* 10.24 (the float arg0))))
+  (set! (-> this volume) (the int (* 10.24 (the float arg0))))
   0
   )
 
-(defmethod change-sound! ambient-sound ((obj ambient-sound) (name sound-name))
+(defmethod change-sound! ((this ambient-sound) (name sound-name))
   "Change the sound being played"
-  (when (not (sound-name= (-> obj name) name))
-    (stop! obj)
-    (set! (-> obj playing-id) (new-sound-id))
-    (set! (-> obj name) name)
+  (when (not (sound-name= (-> this name) name))
+    (stop! this)
+    (set! (-> this playing-id) (new-sound-id))
+    (set! (-> this name) name)
     )
   0
   )
@@ -830,21 +829,16 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (deftype flava-table-row (structure)
-  ((music symbol   :offset-assert 0)
-   (flava uint8 50 :offset-assert 4) ;; index is some flava event, value is music variation
+  ((music  symbol)
+   (flava  uint8  50) ;; index is some flava event, value is music variation
    )
-  :allow-misaligned  :method-count-assert 9
-  :size-assert         #x36
-  :flag-assert         #x900000036
+  :allow-misaligned
   )
 
 (deftype flava-table (basic)
-  ((row   flava-table-row 20 :inline :offset-assert 4)
-   (count int32                      :offset-assert 1284)
+  ((row    flava-table-row  20 :inline)
+   (count  int32)
    )
-  :method-count-assert 9
-  :size-assert         #x508
-  :flag-assert         #x900000508
   )
 
 ;; make a new flava table with nothing defined

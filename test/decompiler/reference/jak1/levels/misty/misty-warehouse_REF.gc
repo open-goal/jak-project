@@ -3,13 +3,9 @@
 
 ;; definition of type silostep
 (deftype silostep (process-drawable)
-  ((anim-limit  float   :offset-assert 176)
-   (cam-tracker handle  :offset-assert 184)
+  ((anim-limit   float)
+   (cam-tracker  handle)
    )
-  :heap-base #x50
-  :method-count-assert 20
-  :size-assert         #xc0
-  :flag-assert         #x14005000c0
   (:states
     silostep-camera
     silostep-idle
@@ -18,13 +14,13 @@
   )
 
 ;; definition for method 3 of type silostep
-(defmethod inspect silostep ((obj silostep))
+(defmethod inspect ((this silostep))
   (let ((t9-0 (method-of-type process-drawable inspect)))
-    (t9-0 obj)
+    (t9-0 this)
     )
-  (format #t "~T~Tanim-limit: ~f~%" (-> obj anim-limit))
-  (format #t "~T~Tcam-tracker: ~D~%" (-> obj cam-tracker))
-  obj
+  (format #t "~T~Tanim-limit: ~f~%" (-> this anim-limit))
+  (format #t "~T~Tcam-tracker: ~D~%" (-> this cam-tracker))
+  this
   )
 
 ;; failed to figure out what this is:
@@ -35,8 +31,8 @@
 
 ;; failed to figure out what this is:
 (defstate silostep-idle (silostep)
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('trigger)
        (go silostep-camera)
        )
@@ -46,14 +42,13 @@
       )
     )
   :code (behavior ()
-    (ja :group! (-> self draw art-group data 2) :num! min)
+    (ja :group! silostep-idle-ja :num! min)
     (transform-post)
     (loop
       (suspend)
       )
-    (none)
     )
-  :post (the-as (function none :behavior silostep) ja-post)
+  :post ja-post
   )
 
 ;; definition for function misty-camera-view
@@ -69,8 +64,8 @@
                                 (suspend)
                                 )
                               (camera-change-to "camera-160" 150 #f)
-                              (let ((gp-0 (-> *display* base-frame-counter)))
-                                (until (>= (- (-> *display* base-frame-counter) gp-0) (seconds 3))
+                              (let ((gp-0 (current-time)))
+                                (until (time-elapsed? gp-0 (seconds 3))
                                   (suspend)
                                   )
                                 )
@@ -96,18 +91,17 @@
            )
       (save-reminder gp-0 (logior v1-1 2) 0)
       )
-    (set! (-> self state-time) (-> *display* base-frame-counter))
-    (let ((gp-1 (-> *display* base-frame-counter)))
-      (until (>= (- (-> *display* base-frame-counter) gp-1) (seconds 1))
+    (set-time! (-> self state-time))
+    (let ((gp-1 (current-time)))
+      (until (time-elapsed? gp-1 (seconds 1))
         (suspend)
         )
       )
     (sound-play "arena-steps")
     (send-to-all-after (-> self link) 'trigger-rise)
     (go silostep-rise #f)
-    (none)
     )
-  :post (the-as (function none :behavior silostep) ja-post)
+  :post ja-post
   )
 
 ;; failed to figure out what this is:
@@ -115,7 +109,7 @@
   :code (behavior ((arg0 symbol))
     (process-entity-status! self (entity-perm-status complete) #t)
     (when (not arg0)
-      (ja-no-eval :group! (-> self draw art-group data 2) :num! (seek! (-> self anim-limit)) :frame-num 0.0)
+      (ja-no-eval :group! silostep-idle-ja :num! (seek! (-> self anim-limit)) :frame-num 0.0)
       (until (ja-done? 0)
         (rider-trans)
         (rider-post)
@@ -123,22 +117,21 @@
         (ja :num! (seek! (-> self anim-limit)))
         )
       )
-    (ja :group! (-> self draw art-group data 2) :num! (identity (-> self anim-limit)))
+    (ja :group! silostep-idle-ja :num! (identity (-> self anim-limit)))
     (rider-post)
     (loop
       (ja-post)
       (suspend)
       )
-    (none)
     )
-  :post (the-as (function none :behavior silostep) #f)
+  :post #f
   )
 
 ;; definition for method 11 of type silostep
 ;; INFO: Return type mismatch object vs none.
-(defmethod init-from-entity! silostep ((obj silostep) (arg0 entity-actor))
-  (logior! (-> obj mask) (process-mask movie-subject))
-  (let ((s4-0 (new 'process 'collide-shape-moving obj (collide-list-enum hit-by-player))))
+(defmethod init-from-entity! ((this silostep) (arg0 entity-actor))
+  (logior! (-> this mask) (process-mask movie-subject))
+  (let ((s4-0 (new 'process 'collide-shape-moving this (collide-list-enum hit-by-player))))
     (set! (-> s4-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s4-0 reaction) default-collision-reaction)
     (set! (-> s4-0 no-reaction)
@@ -156,17 +149,17 @@
       )
     (set! (-> s4-0 nav-radius) (* 0.75 (-> s4-0 root-prim local-sphere w)))
     (backup-collide-with-as s4-0)
-    (set! (-> obj root) s4-0)
+    (set! (-> this root) s4-0)
     )
-  (process-drawable-from-entity! obj arg0)
-  (initialize-skeleton obj *silostep-sg* '())
-  (set! (-> obj anim-limit)
+  (process-drawable-from-entity! this arg0)
+  (initialize-skeleton this *silostep-sg* '())
+  (set! (-> this anim-limit)
         (* (res-lump-float arg0 'distance :default 1.0)
-           (the float (+ (-> (the-as art-joint-anim (-> obj draw art-group data 2)) data 0 length) -1))
+           (the float (+ (-> (the-as art-joint-anim (-> this draw art-group data 2)) data 0 length) -1))
            )
         )
-  (set! (-> obj link) (new 'process 'actor-link-info obj))
-  (if (and (-> obj entity) (logtest? (-> obj entity extra perm status) (entity-perm-status complete)))
+  (set! (-> this link) (new 'process 'actor-link-info this))
+  (if (and (-> this entity) (logtest? (-> this entity extra perm status) (entity-perm-status complete)))
       (go silostep-rise #t)
       (go silostep-idle)
       )
@@ -182,24 +175,20 @@
 ;; definition of type rounddoor
 (deftype rounddoor (eco-door)
   ()
-  :heap-base #xa0
-  :method-count-assert 27
-  :size-assert         #x104
-  :flag-assert         #x1b00a00104
   )
 
 ;; definition for method 3 of type rounddoor
-(defmethod inspect rounddoor ((obj rounddoor))
+(defmethod inspect ((this rounddoor))
   (let ((t9-0 (method-of-type eco-door inspect)))
-    (t9-0 obj)
+    (t9-0 this)
     )
-  obj
+  this
   )
 
 ;; definition for method 24 of type rounddoor
 ;; INFO: Return type mismatch int vs none.
-(defmethod eco-door-method-24 rounddoor ((obj rounddoor))
-  (let ((s5-0 (new 'process 'collide-shape obj (collide-list-enum hit-by-others))))
+(defmethod eco-door-method-24 ((this rounddoor))
+  (let ((s5-0 (new 'process 'collide-shape this (collide-list-enum hit-by-others))))
     (let ((s4-0 (new 'process 'collide-shape-prim-mesh s5-0 (the-as uint 0) (the-as uint 0))))
       (set! (-> s4-0 prim-core collide-as) (collide-kind ground-object))
       (set! (-> s4-0 collide-with) (collide-kind target))
@@ -211,7 +200,7 @@
       )
     (set! (-> s5-0 nav-radius) (* 0.75 (-> s5-0 root-prim local-sphere w)))
     (backup-collide-with-as s5-0)
-    (set! (-> obj root-override) s5-0)
+    (set! (-> this root) s5-0)
     )
   0
   (none)
@@ -220,18 +209,18 @@
 ;; definition for method 25 of type rounddoor
 ;; INFO: Used lq/sq
 ;; INFO: Return type mismatch int vs none.
-(defmethod eco-door-method-25 rounddoor ((obj rounddoor))
-  (initialize-skeleton obj *rounddoor-sg* '())
-  (set! (-> obj open-distance) 69632.0)
-  (set! (-> obj close-distance) 81920.0)
-  (set! (-> obj open-sound) (static-sound-name "arenadoor-open"))
-  (set! (-> obj close-sound) (static-sound-name "arenadoor-close"))
-  (set! (-> obj speed) 1.5)
-  (set! (-> obj auto-close) #t)
-  (set! (-> obj one-way) #t)
-  (vector-x-quaternion! (-> obj out-dir) (-> obj root-override quat))
-  (set! (-> obj out-dir w) (- 8192.0 (vector-dot (-> obj out-dir) (-> obj root-override trans))))
-  (update-transforms! (-> obj root-override))
+(defmethod eco-door-method-25 ((this rounddoor))
+  (initialize-skeleton this *rounddoor-sg* '())
+  (set! (-> this open-distance) 69632.0)
+  (set! (-> this close-distance) 81920.0)
+  (set! (-> this open-sound) (static-sound-name "arenadoor-open"))
+  (set! (-> this close-sound) (static-sound-name "arenadoor-close"))
+  (set! (-> this speed) 1.5)
+  (set! (-> this auto-close) #t)
+  (set! (-> this one-way) #t)
+  (vector-x-quaternion! (-> this out-dir) (-> this root quat))
+  (set! (-> this out-dir w) (- 8192.0 (vector-dot (-> this out-dir) (-> this root trans))))
+  (update-transforms! (-> this root))
   0
   (none)
   )

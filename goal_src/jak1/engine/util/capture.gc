@@ -8,24 +8,26 @@
 ;; Functions for taking a screenshot of VRAM.
 ;; These are debug-only and leak memory.
 
+;; DECOMP BEGINS
+
+;; this file is debug only
+(declare-file (debug))
+
 ;; vif/gif tags to do a transfer of data from VRAM to EE memory.
 (deftype gs-store-image-packet (structure)
-  ((vifcode        vif-tag      4 :offset-assert 0)
-   (giftag         gif-tag        :offset-assert 16)
-   (bitbltbuf      gs-bitbltbuf   :offset-assert 32)
-   (bitbltbuf-addr gs-reg64       :offset-assert 40)
-   (trxpos         gs-trxpos      :offset-assert 48)
-   (trxpos-addr    gs-reg64       :offset-assert 56)
-   (trxreg         gs-trxreg      :offset-assert 64)
-   (trxreg-addr    gs-reg64       :offset-assert 72)
-   (finish         int64          :offset-assert 80)
-   (finish-addr    gs-reg64       :offset-assert 88)
-   (trxdir         gs-trxdir      :offset-assert 96)
-   (trxdir-addr    gs-reg64       :offset-assert 104)
+  ((vifcode         vif-tag  4)
+   (giftag          gif-tag)
+   (bitbltbuf       gs-bitbltbuf)
+   (bitbltbuf-addr  gs-reg64)
+   (trxpos          gs-trxpos)
+   (trxpos-addr     gs-reg64)
+   (trxreg          gs-trxreg)
+   (trxreg-addr     gs-reg64)
+   (finish          int64)
+   (finish-addr     gs-reg64)
+   (trxdir          gs-trxdir)
+   (trxdir-addr     gs-reg64)
    )
-  :method-count-assert 9
-  :size-assert         #x70
-  :flag-assert         #x900000070
   )
 
 (defun gs-set-default-store-image ((packet gs-store-image-packet) (src-fbp int) (src-w int) (src-psm int) (ssax int) (ssay int) (rrw int) (rrh int))
@@ -77,17 +79,17 @@
         (file (new 'debug 'file-stream "image.raw" 'write))
         )
     ;; create (and leak memory) for 2 arrays.
-    (let ((buff0 (new 'debug 'boxed-array uint128 (sar (* width height) 2))))
-      (let ((buff1 (new 'debug 'boxed-array uint128 (sar (* width height) 2))))
+    (let ((buff0 (the-as (array uint128) (new 'debug 'boxed-array uint128 (/ (* width height) 4)))))
+      (let ((buff1 (the-as (array uint128) (new 'debug 'boxed-array uint128 (/ (* width height) 4)))))
         ;; set up a packet.
         (let ((packet (new 'static 'gs-store-image-packet)))
           ;; capture one field
-          (gs-set-default-store-image packet #x2800 (sar width 6) 0 0 0 width height)
+          (gs-set-default-store-image packet #x2800 (/ width 64) 0 0 0 width height)
           (flush-cache 0)
           (gs-store-image packet (-> buff0 data))
           (sync-path 0 0)
           ;; capture other field
-          (gs-set-default-store-image packet #x3000 (sar width 6) 0 0 0 width height)
+          (gs-set-default-store-image packet #x3000 (/ width 64) 0 0 0 width height)
           (flush-cache 0)
           (gs-store-image packet (-> buff1 data))
           )
@@ -99,19 +101,19 @@
             ((zero? oddeven)
              (set! y-idx 0)
              (while (< y-idx height)
-               (file-stream-write file (&+ ptr-0 (* y-idx (shl width 2))) (the-as uint (shl width 2)))
-               (file-stream-write file (&+ ptr-1 (* y-idx (shl width 2))) (the-as uint (shl width 2)))
+               (file-stream-write file (&+ ptr-0 (* y-idx (* width 4))) (the-as uint (* width 4)))
+               (file-stream-write file (&+ ptr-1 (* y-idx (* width 4))) (the-as uint (* width 4)))
                (set! y-idx (+ y-idx 1))
                )
              )
             (else
-             (set! y-idx-2 0)
-             (while (< y-idx-2 height)
-               (file-stream-write file (&+ ptr-1 (* y-idx-2 (shl width 2))) (the-as uint (shl width 2)))
-               (file-stream-write file (&+ ptr-0 (* y-idx-2 (shl width 2))) (the-as uint (shl width 2)))
-               (set! y-idx-2 (+ y-idx-2 1))
-               )
-             )
+              (set! y-idx-2 0)
+              (while (< y-idx-2 height)
+                (file-stream-write file (&+ ptr-1 (* y-idx-2 (* width 4))) (the-as uint (* width 4)))
+                (file-stream-write file (&+ ptr-0 (* y-idx-2 (* width 4))) (the-as uint (* width 4)))
+                (set! y-idx-2 (+ y-idx-2 1))
+                )
+              )
             )
           )
         (format #t "oddeven = ~d~%" oddeven)

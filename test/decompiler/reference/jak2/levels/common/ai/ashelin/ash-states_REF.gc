@@ -4,9 +4,9 @@
 ;; failed to figure out what this is:
 (defstate waiting-idle (ashelin)
   :virtual #t
-  :event (the-as (function process int symbol event-message-block object :behavior ashelin) enemy-event-handler)
+  :event enemy-event-handler
   :enter (behavior ()
-    (set! (-> self state-time) (current-time))
+    (set-time! (-> self state-time))
     (let ((v1-2 self))
       (set! (-> v1-2 enemy-flags) (the-as enemy-flag (logclear (-> v1-2 enemy-flags) (enemy-flag enemy-flag36))))
       (set! (-> v1-2 nav callback-info) *nav-enemy-null-callback-info*)
@@ -19,7 +19,6 @@
     0
     (look-at-target! self (enemy-flag lock-focus))
     (set! (-> self travel-anim-interp) 0.0)
-    (none)
     )
   :trans (behavior ()
     (bot-method-223 self #f)
@@ -34,12 +33,11 @@
         )
       )
     0
-    (none)
     )
   :code (behavior ()
     (let ((v1-2 (ja-group)))
       (cond
-        ((and v1-2 (= v1-2 (-> self draw art-group data 3)))
+        ((and v1-2 (= v1-2 ashelin-idle0-ja))
          (ja-no-eval :num! (seek!))
          (while (not (ja-done? 0))
            (suspend)
@@ -47,7 +45,7 @@
            )
          )
         ((let ((v1-16 (ja-group)))
-           (and v1-16 (= v1-16 (-> self draw art-group data 29)))
+           (and v1-16 (= v1-16 ashelin-standing-idle-ja))
            )
          (ja-no-eval :num! (seek!))
          (while (not (ja-done? 0))
@@ -55,10 +53,7 @@
            (ja-eval)
            )
          (ja-channel-push! 1 (seconds 0.03))
-         (ja-no-eval :group! (-> self draw art-group data 30)
-                     :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 30)) frames num-frames) -1)))
-                     :frame-num 0.0
-                     )
+         (ja-no-eval :group! ashelin-standing-to-waiting-ja :num! (seek!) :frame-num 0.0)
          (until (ja-done? 0)
            (suspend)
            (ja :num! (seek!))
@@ -68,7 +63,7 @@
         (else
           (let ((v1-55 (ja-group)))
             (cond
-              ((and v1-55 (= v1-55 (-> self draw art-group data 30)))
+              ((and v1-55 (= v1-55 ashelin-standing-to-waiting-ja))
                (ja-no-eval :num! (seek!))
                (while (not (ja-done? 0))
                  (suspend)
@@ -85,27 +80,23 @@
         )
       )
     (until #f
-      (ja-no-eval :group! (-> self draw art-group data 3)
-                  :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 3)) frames num-frames) -1)))
-                  :frame-num 0.0
-                  )
+      (ja-no-eval :group! ashelin-idle0-ja :num! (seek!) :frame-num 0.0)
       (until (ja-done? 0)
         (suspend)
         (ja :num! (seek!))
         )
       )
     #f
-    (none)
     )
-  :post (the-as (function none :behavior ashelin) nav-enemy-simple-post)
+  :post nav-enemy-simple-post
   )
 
 ;; failed to figure out what this is:
 (defstate standing-idle (ashelin)
   :virtual #t
-  :event (the-as (function process int symbol event-message-block object :behavior ashelin) enemy-event-handler)
+  :event enemy-event-handler
   :enter (behavior ()
-    (set! (-> self state-time) (current-time))
+    (set-time! (-> self state-time))
     (let ((v1-2 self))
       (set! (-> v1-2 enemy-flags) (the-as enemy-flag (logclear (-> v1-2 enemy-flags) (enemy-flag enemy-flag36))))
       (set! (-> v1-2 nav callback-info) *nav-enemy-null-callback-info*)
@@ -119,7 +110,6 @@
     (look-at-target! self (enemy-flag lock-focus))
     (set! (-> self travel-anim-interp) 0.0)
     (logclear! (-> self bot-flags) (bot-flags bf21))
-    (none)
     )
   :trans (behavior ()
     (bot-method-223 self #t)
@@ -128,7 +118,7 @@
        (cond
          ((ashelin-method-238 self #t #t)
           (when (and (ashelin-method-235 self #t) (let ((v1-11 (ja-group)))
-                                                    (and v1-11 (= v1-11 (-> self draw art-group data 29)))
+                                                    (and v1-11 (= v1-11 ashelin-standing-idle-ja))
                                                     )
                      )
             (cond
@@ -165,7 +155,7 @@
                 (ashelin-method-240 self a1-6)
                 )
                (else
-                 (if (and (>= (- (current-time) (-> self state-time)) (-> self reaction-time)) (ashelin-method-247 self))
+                 (if (and (time-elapsed? (-> self state-time) (-> self reaction-time)) (ashelin-method-247 self))
                      (go-virtual chase)
                      )
                  )
@@ -183,17 +173,16 @@
          )
        )
       (else
-        (if (>= (- (current-time) (-> self state-time)) (-> self reaction-time))
+        (if (time-elapsed? (-> self state-time) (-> self reaction-time))
             (ashelin-method-239 self)
             )
         )
       )
-    (none)
     )
   :code (behavior ()
     (let ((v1-2 (ja-group)))
       (cond
-        ((and v1-2 (= v1-2 (-> self draw art-group data 29)))
+        ((and v1-2 (= v1-2 ashelin-standing-idle-ja))
          (ja-no-eval :num! (seek!))
          (while (not (ja-done? 0))
            (suspend)
@@ -201,9 +190,9 @@
            )
          )
         ((let ((v1-16 (ja-group)))
-           (and v1-16 (or (= v1-16 (-> self draw art-group data 27))
-                          (= v1-16 (-> self draw art-group data 31))
-                          (= v1-16 (-> self draw art-group data 32))
+           (and v1-16 (or (= v1-16 ashelin-waiting-to-standing-ja)
+                          (= v1-16 ashelin-standing-turn-left-ja)
+                          (= v1-16 ashelin-standing-turn-right-ja)
                           )
                 )
            )
@@ -215,13 +204,10 @@
          (ja-channel-push! 1 (seconds 0.03))
          )
         ((let ((v1-31 (ja-group)))
-           (and v1-31 (= v1-31 (-> self draw art-group data 3)))
+           (and v1-31 (= v1-31 ashelin-idle0-ja))
            )
          (ja-channel-push! 1 (seconds 0.1))
-         (ja-no-eval :group! (-> self draw art-group data 27)
-                     :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 27)) frames num-frames) -1)))
-                     :frame-num 0.0
-                     )
+         (ja-no-eval :group! ashelin-waiting-to-standing-ja :num! (seek!) :frame-num 0.0)
          (until (ja-done? 0)
            (suspend)
            (ja :num! (seek!))
@@ -234,27 +220,23 @@
         )
       )
     (until #f
-      (ja-no-eval :group! (-> self draw art-group data 29)
-                  :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 29)) frames num-frames) -1)))
-                  :frame-num 0.0
-                  )
+      (ja-no-eval :group! ashelin-standing-idle-ja :num! (seek!) :frame-num 0.0)
       (until (ja-done? 0)
         (suspend)
         (ja :num! (seek!))
         )
       )
     #f
-    (none)
     )
-  :post (the-as (function none :behavior ashelin) nav-enemy-simple-post)
+  :post nav-enemy-simple-post
   )
 
 ;; failed to figure out what this is:
 (defstate standing-turn (ashelin)
   :virtual #t
-  :event (the-as (function process int symbol event-message-block object :behavior ashelin) enemy-event-handler)
+  :event enemy-event-handler
   :enter (behavior ()
-    (set! (-> self state-time) (current-time))
+    (set-time! (-> self state-time))
     (let ((v1-2 self))
       (set! (-> v1-2 enemy-flags) (the-as enemy-flag (logclear (-> v1-2 enemy-flags) (enemy-flag enemy-flag36))))
       (set! (-> v1-2 nav callback-info) *nav-enemy-null-callback-info*)
@@ -268,7 +250,6 @@
     (look-at-target! self (enemy-flag lock-focus))
     (set! (-> self travel-anim-interp) 0.0)
     (logclear! (-> self bot-flags) (bot-flags bf21))
-    (none)
     )
   :trans (behavior ()
     (bot-method-223 self #f)
@@ -287,7 +268,6 @@
           )
         )
       )
-    (none)
     )
   :code (behavior ()
     (let ((gp-0 (new 'stack-no-clear 'bot-turn-info)))
@@ -311,10 +291,7 @@
               (f28-0 10.0)
               )
           (quaternion-rotate-y! s5-1 (-> gp-0 src-quat) f0-1)
-          (ja-no-eval :group! s4-0
-                      :num! (seek! (the float (+ (-> (the-as art-joint-anim s4-0) frames num-frames) -1)) 2.0)
-                      :frame-num 0.0
-                      )
+          (ja-no-eval :group! s4-0 :num! (seek! max 2.0) :frame-num 0.0)
           (until (ja-done? 0)
             (let ((f0-6 (ja-aframe-num 0)))
               (cond
@@ -335,17 +312,16 @@
         )
       )
     (go-virtual standing-idle)
-    (none)
     )
-  :post (the-as (function none :behavior ashelin) nav-enemy-simple-post)
+  :post nav-enemy-simple-post
   )
 
 ;; failed to figure out what this is:
 (defstate traveling (ashelin)
   :virtual #t
-  :event (the-as (function process int symbol event-message-block object :behavior ashelin) enemy-event-handler)
+  :event enemy-event-handler
   :enter (behavior ()
-    (set! (-> self state-time) (current-time))
+    (set-time! (-> self state-time))
     (let ((v1-2 self))
       (if (not (logtest? (enemy-flag enemy-flag36) (-> v1-2 enemy-flags)))
           (set! (-> v1-2 enemy-flags) (the-as enemy-flag (logior (enemy-flag enemy-flag38) (-> v1-2 enemy-flags))))
@@ -361,7 +337,6 @@
     (stop-looking-at-target! self)
     (nav-enemy-method-165 self)
     (set! (-> self player-blocking) 0.0)
-    (none)
     )
   :trans (behavior ()
     (if (focus-test? self grabbed)
@@ -375,15 +350,14 @@
       ((outside-spot-radius? self (the-as bot-spot #f) (the-as vector #f) #t)
        (ashelin-method-239 self)
        )
-      ((and (>= (- (current-time) (-> self state-time)) (seconds 0.5)) (bot-method-208 self))
+      ((and (time-elapsed? (-> self state-time) (seconds 0.5)) (bot-method-208 self))
        (go-virtual traveling-blocked)
        )
-      ((and (nav-enemy-method-163 self) (>= (- (current-time) (-> self state-time)) (-> self reaction-time)))
+      ((and (nav-enemy-method-163 self) (time-elapsed? (-> self state-time) (-> self reaction-time)))
        (go-stare2 self)
        )
       )
     0
-    (none)
     )
   :code (behavior ()
     (until #f
@@ -391,7 +365,6 @@
       (suspend)
       )
     #f
-    (none)
     )
   :post (behavior ()
     (let ((a0-0 (-> self nav state))
@@ -403,16 +376,15 @@
       )
     0
     (nav-enemy-travel-post)
-    (none)
     )
   )
 
 ;; failed to figure out what this is:
 (defstate traveling-blocked (ashelin)
   :virtual #t
-  :event (the-as (function process int symbol event-message-block object :behavior ashelin) enemy-event-handler)
+  :event enemy-event-handler
   :enter (behavior ()
-    (set! (-> self state-time) (current-time))
+    (set-time! (-> self state-time))
     (let ((v1-2 self))
       (set! (-> v1-2 enemy-flags) (the-as enemy-flag (logclear (-> v1-2 enemy-flags) (enemy-flag enemy-flag36))))
       (set! (-> v1-2 nav callback-info) *nav-enemy-null-callback-info*)
@@ -425,7 +397,6 @@
     0
     (look-at-target! self (enemy-flag lock-focus))
     (set! (-> self travel-anim-interp) 0.0)
-    (none)
     )
   :trans (behavior ()
     (bot-method-223 self #f)
@@ -433,14 +404,13 @@
       ((bot-method-214 self)
        (go-hostile self)
        )
-      ((and (>= (- (current-time) (-> self state-time)) (seconds 1)) (not (bot-method-208 self)))
+      ((and (time-elapsed? (-> self state-time) (seconds 1)) (not (bot-method-208 self)))
        (go-virtual traveling)
        )
       )
-    (none)
     )
   :code (-> (method-of-type ashelin waiting-idle) code)
-  :post (the-as (function none :behavior ashelin) nav-enemy-simple-post)
+  :post nav-enemy-simple-post
   )
 
 ;; failed to figure out what this is:
@@ -457,11 +427,10 @@
       )
     0
     (set! (-> self travel-anim-interp) 0.0)
-    (none)
     )
   :trans (behavior ()
     (bot-method-223 self #f)
-    (when (>= (- (current-time) (-> self state-time)) (seconds 0.1))
+    (when (time-elapsed? (-> self state-time) (seconds 0.1))
       (when (bot-method-214 self)
         (if (ashelin-method-238 self #t #f)
             (go-virtual standing-idle)
@@ -471,7 +440,6 @@
           (go-virtual traveling)
           )
       )
-    (none)
     )
   :code (-> (method-of-type ashelin waiting-idle) code)
   )
@@ -479,7 +447,7 @@
 ;; failed to figure out what this is:
 (defstate standing-blast (ashelin)
   :virtual #t
-  :event (the-as (function process int symbol event-message-block object :behavior ashelin) enemy-event-handler)
+  :event enemy-event-handler
   :enter (behavior ()
     ((-> (method-of-type nav-enemy hostile) enter))
     (let ((v1-2 self))
@@ -493,11 +461,9 @@
         (react-to-focus self)
         )
     (set! (-> self travel-anim-interp) 0.0)
-    (none)
     )
   :exit (behavior ()
     (logclear! (-> self enemy-flags) (enemy-flag actor-pause-backup))
-    (none)
     )
   :code (behavior ()
     (bot-method-223 self #t)
@@ -505,16 +471,13 @@
         (react-to-focus self)
         )
     (let ((v1-12 (ja-group)))
-      (if (and v1-12 (or (= v1-12 (-> self draw art-group data 29)) (= v1-12 (-> self draw art-group data 28))))
+      (if (and v1-12 (or (= v1-12 ashelin-standing-idle-ja) (= v1-12 ashelin-standing-fire-ja)))
           (ja-channel-push! 1 (seconds 0.03))
           (ja-channel-push! 1 (seconds 0.08))
           )
       )
     (let ((gp-0 #f))
-      (ja-no-eval :group! (-> self draw art-group data 28)
-                  :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 28)) frames num-frames) -1)))
-                  :frame-num 0.0
-                  )
+      (ja-no-eval :group! ashelin-standing-fire-ja :num! (seek!) :frame-num 0.0)
       (until (ja-done? 0)
         (when (and (not gp-0) (>= (ja-aframe-num 0) 7.0))
           (set! gp-0 #t)
@@ -534,31 +497,29 @@
        )
       )
     (react-to-focus self)
-    (none)
     )
-  :post (the-as (function none :behavior ashelin) nav-enemy-simple-post)
+  :post nav-enemy-simple-post
   )
 
 ;; failed to figure out what this is:
 (defstate chase (ashelin)
   :virtual #t
-  :event (the-as (function process int symbol event-message-block object :behavior ashelin) enemy-event-handler)
+  :event enemy-event-handler
   :enter (behavior ()
     ((-> (method-of-type nav-enemy hostile) enter))
     (nav-enemy-method-166 self)
-    (none)
     )
   :trans (behavior ()
     (bot-method-223 self #t)
     (cond
-      ((and (nav-enemy-method-163 self) (>= (- (current-time) (-> self state-time)) (-> self reaction-time)))
+      ((and (nav-enemy-method-163 self) (time-elapsed? (-> self state-time) (-> self reaction-time)))
        (go-stare2 self)
        )
       ((not (bot-method-214 self))
        (go-virtual traveling)
        )
       )
-    (when (>= (- (current-time) (-> self state-time)) (-> self reaction-time))
+    (when (time-elapsed? (-> self state-time) (-> self reaction-time))
       (if (or (ashelin-method-238 self #t #f) (ashelin-method-248 self))
           (go-virtual standing-idle)
           )
@@ -574,7 +535,6 @@
             )
       )
     0
-    (none)
     )
   :code (behavior ()
     (until #f
@@ -582,7 +542,6 @@
       (suspend)
       )
     #f
-    (none)
     )
   :post (behavior ()
     (let ((gp-0 (-> self nav state))
@@ -594,16 +553,15 @@
       )
     0
     (nav-enemy-travel-post)
-    (none)
     )
   )
 
 ;; failed to figure out what this is:
 (defstate back-spring (ashelin)
   :virtual #t
-  :event (the-as (function process int symbol event-message-block object :behavior ashelin) enemy-event-handler)
+  :event enemy-event-handler
   :enter (behavior ()
-    (set! (-> self state-time) (current-time))
+    (set-time! (-> self state-time))
     (let ((v1-2 self))
       (set! (-> v1-2 enemy-flags) (the-as enemy-flag (logclear (-> v1-2 enemy-flags) (enemy-flag enemy-flag36))))
       (set! (-> v1-2 nav callback-info) *nav-enemy-null-callback-info*)
@@ -617,14 +575,12 @@
     (nav-enemy-method-167 self)
     (logclear! (-> self nav flags) (nav-control-flag update-heading-from-facing))
     (set! (-> self travel-anim-interp) 0.0)
-    (none)
     )
   :exit (behavior ()
     (if (logtest? (enemy-flag enemy-flag43) (-> self enemy-flags))
         (logior! (-> self nav flags) (nav-control-flag update-heading-from-facing))
         (logclear! (-> self nav flags) (nav-control-flag update-heading-from-facing))
         )
-    (none)
     )
   :code (behavior ()
     (ja-channel-push! 1 (seconds 0.2))
@@ -634,10 +590,7 @@
             )
         (quaternion-copy! s5-0 (-> self root quat))
         (quaternion<-rotate-y-vector s4-0 gp-1)
-        (ja-no-eval :group! (-> self draw art-group data 33)
-                    :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 33)) frames num-frames) -1)))
-                    :frame-num 0.0
-                    )
+        (ja-no-eval :group! ashelin-back-spring-start-ja :num! (seek!) :frame-num 0.0)
         (until (ja-done? 0)
           (quaternion-slerp! (-> self root quat) s5-0 s4-0 (/ (ja-frame-num 0) (the float (ja-num-frames 0))))
           (suspend)
@@ -683,10 +636,7 @@
           (set! (-> self nav state speed) f0-13)
           )
         0
-        (ja-no-eval :group! (-> self draw art-group data 34)
-                    :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 34)) frames num-frames) -1)) 1.4)
-                    :frame-num 0.0
-                    )
+        (ja-no-eval :group! ashelin-back-spring-loop-ja :num! (seek! max 1.4) :frame-num 0.0)
         (until (ja-done? 0)
           (let ((a1-12 (-> self nav state)))
             (set! (-> gp-1 quad) (-> a1-12 heading quad))
@@ -716,16 +666,12 @@
         (logior! (-> self focus-status) (focus-status dangerous))
         (logclear! (-> self focus-status) (focus-status dangerous))
         )
-    (ja-no-eval :group! (-> self draw art-group data 35)
-                :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 35)) frames num-frames) -1)))
-                :frame-num 0.0
-                )
+    (ja-no-eval :group! ashelin-back-spring-land-ja :num! (seek!) :frame-num 0.0)
     (until (ja-done? 0)
       (suspend)
       (ja :num! (seek!))
       )
     (react-to-focus self)
-    (none)
     )
   :post (behavior ()
     (let ((a0-0 (-> self nav state))
@@ -737,16 +683,15 @@
       )
     0
     (nav-enemy-travel-post)
-    (none)
     )
   )
 
 ;; failed to figure out what this is:
 (defstate cartwheel-left (ashelin)
   :virtual #t
-  :event (the-as (function process int symbol event-message-block object :behavior ashelin) enemy-event-handler)
+  :event enemy-event-handler
   :enter (behavior ()
-    (set! (-> self state-time) (current-time))
+    (set-time! (-> self state-time))
     (let ((v1-2 self))
       (set! (-> v1-2 enemy-flags) (the-as enemy-flag (logclear (-> v1-2 enemy-flags) (enemy-flag enemy-flag36))))
       (set! (-> v1-2 nav callback-info) *nav-enemy-null-callback-info*)
@@ -760,14 +705,12 @@
     (nav-enemy-method-167 self)
     (logclear! (-> self nav flags) (nav-control-flag update-heading-from-facing))
     (set! (-> self travel-anim-interp) 0.0)
-    (none)
     )
   :exit (behavior ()
     (if (logtest? (enemy-flag enemy-flag43) (-> self enemy-flags))
         (logior! (-> self nav flags) (nav-control-flag update-heading-from-facing))
         (logclear! (-> self nav flags) (nav-control-flag update-heading-from-facing))
         )
-    (none)
     )
   :code (behavior ()
     (ja-channel-push! 1 (seconds 0.2))
@@ -778,10 +721,7 @@
         (quaternion-copy! s5-0 (-> self root quat))
         (quaternion<-rotate-y-vector s4-0 gp-1)
         (quaternion-rotate-y! s4-0 s4-0 -16384.0)
-        (ja-no-eval :group! (-> self draw art-group data 36)
-                    :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 36)) frames num-frames) -1)))
-                    :frame-num 0.0
-                    )
+        (ja-no-eval :group! ashelin-cartwheel-left-start-ja :num! (seek!) :frame-num 0.0)
         (until (ja-done? 0)
           (quaternion-slerp! (-> self root quat) s5-0 s4-0 (/ (ja-frame-num 0) (the float (ja-num-frames 0))))
           (suspend)
@@ -825,10 +765,7 @@
         (set! (-> self nav state speed) f0-13)
         )
       0
-      (ja-no-eval :group! (-> self draw art-group data 37)
-                  :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 37)) frames num-frames) -1)))
-                  :frame-num 0.0
-                  )
+      (ja-no-eval :group! ashelin-cartwheel-left-loop-ja :num! (seek!) :frame-num 0.0)
       (until (ja-done? 0)
         (let ((a1-11 (-> self nav state)))
           (set! (-> gp-1 quad) (-> a1-11 heading quad))
@@ -852,16 +789,12 @@
         (logior! (-> self focus-status) (focus-status dangerous))
         (logclear! (-> self focus-status) (focus-status dangerous))
         )
-    (ja-no-eval :group! (-> self draw art-group data 38)
-                :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 38)) frames num-frames) -1)))
-                :frame-num 0.0
-                )
+    (ja-no-eval :group! ashelin-cartwheel-left-land-ja :num! (seek!) :frame-num 0.0)
     (until (ja-done? 0)
       (suspend)
       (ja :num! (seek!))
       )
     (react-to-focus self)
-    (none)
     )
   :post (behavior ()
     (let ((a0-0 (-> self nav state))
@@ -873,16 +806,15 @@
       )
     0
     (nav-enemy-travel-post)
-    (none)
     )
   )
 
 ;; failed to figure out what this is:
 (defstate tumble-right (ashelin)
   :virtual #t
-  :event (the-as (function process int symbol event-message-block object :behavior ashelin) enemy-event-handler)
+  :event enemy-event-handler
   :enter (behavior ()
-    (set! (-> self state-time) (current-time))
+    (set-time! (-> self state-time))
     (let ((v1-2 self))
       (set! (-> v1-2 enemy-flags) (the-as enemy-flag (logclear (-> v1-2 enemy-flags) (enemy-flag enemy-flag36))))
       (set! (-> v1-2 nav callback-info) *nav-enemy-null-callback-info*)
@@ -896,14 +828,12 @@
     (nav-enemy-method-167 self)
     (logclear! (-> self nav flags) (nav-control-flag update-heading-from-facing))
     (set! (-> self travel-anim-interp) 0.0)
-    (none)
     )
   :exit (behavior ()
     (if (logtest? (enemy-flag enemy-flag43) (-> self enemy-flags))
         (logior! (-> self nav flags) (nav-control-flag update-heading-from-facing))
         (logclear! (-> self nav flags) (nav-control-flag update-heading-from-facing))
         )
-    (none)
     )
   :code (behavior ()
     (ja-channel-push! 1 (seconds 0.2))
@@ -914,10 +844,7 @@
         (quaternion-copy! s5-0 (-> self root quat))
         (quaternion<-rotate-y-vector s4-0 gp-1)
         (quaternion-rotate-y! s4-0 s4-0 16384.0)
-        (ja-no-eval :group! (-> self draw art-group data 39)
-                    :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 39)) frames num-frames) -1)))
-                    :frame-num 0.0
-                    )
+        (ja-no-eval :group! ashelin-tumble-right-start-ja :num! (seek!) :frame-num 0.0)
         (until (ja-done? 0)
           (quaternion-slerp! (-> self root quat) s5-0 s4-0 (/ (ja-frame-num 0) (the float (ja-num-frames 0))))
           (suspend)
@@ -961,10 +888,7 @@
         (set! (-> self nav state speed) f0-13)
         )
       0
-      (ja-no-eval :group! (-> self draw art-group data 40)
-                  :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 40)) frames num-frames) -1)))
-                  :frame-num 0.0
-                  )
+      (ja-no-eval :group! ashelin-tumble-right-loop-ja :num! (seek!) :frame-num 0.0)
       (until (ja-done? 0)
         (let ((a1-11 (-> self nav state)))
           (set! (-> gp-1 quad) (-> a1-11 heading quad))
@@ -988,16 +912,12 @@
         (logior! (-> self focus-status) (focus-status dangerous))
         (logclear! (-> self focus-status) (focus-status dangerous))
         )
-    (ja-no-eval :group! (-> self draw art-group data 41)
-                :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 41)) frames num-frames) -1)))
-                :frame-num 0.0
-                )
+    (ja-no-eval :group! ashelin-tumble-right-land-ja :num! (seek!) :frame-num 0.0)
     (until (ja-done? 0)
       (suspend)
       (ja :num! (seek!))
       )
     (react-to-focus self)
-    (none)
     )
   :post (behavior ()
     (let ((a0-0 (-> self nav state))
@@ -1009,7 +929,6 @@
       )
     0
     (nav-enemy-travel-post)
-    (none)
     )
   )
 
@@ -1025,7 +944,6 @@
     (set! (-> self travel-anim-interp) 0.0)
     (set! (-> self last-fire-time) 0)
     0
-    (none)
     )
   :code (behavior ()
     (local-vars (v1-7 enemy-flag) (v1-15 enemy-flag))
@@ -1054,7 +972,6 @@
     (logclear! (-> self enemy-flags) (enemy-flag actor-pause-backup))
     (logclear! (-> self focus-status) (focus-status hit))
     (react-to-focus self)
-    (none)
     )
   )
 
@@ -1076,7 +993,6 @@
           (logior! (-> self bot-flags) (bot-flags bf23))
           )
       )
-    (none)
     )
   :trans (behavior ()
     (let ((t9-0 (-> (method-of-type bot knocked) trans)))
@@ -1088,7 +1004,6 @@
       (logclear! (-> self bot-flags) (bot-flags bf23))
       (ashelin-method-244 self)
       )
-    (none)
     )
   )
 
@@ -1102,7 +1017,6 @@
           )
       )
     (set! (-> self travel-anim-interp) 0.0)
-    (none)
     )
   :code (behavior ()
     (let ((v1-1 (get-rand-int self 3)))
@@ -1120,7 +1034,7 @@
       )
     (let ((v1-10 (ja-group)))
       (cond
-        ((and v1-10 (or (= v1-10 (-> self draw art-group data 9)) (= v1-10 (-> self draw art-group data 12))))
+        ((and v1-10 (or (= v1-10 ashelin-knocked-back-die0-ja) (= v1-10 ashelin-knocked-right-die0-ja)))
          (ja-no-eval :num! (seek!))
          (while (not (ja-done? 0))
            (suspend)
@@ -1137,10 +1051,7 @@
                       )
                 (f30-0 (get-rand-float-range self 0.8 1.2))
                 )
-            (ja-no-eval :group! gp-0
-                        :num! (seek! (the float (+ (-> (the-as art-joint-anim gp-0) frames num-frames) -1)) f30-0)
-                        :frame-num 0.0
-                        )
+            (ja-no-eval :group! gp-0 :num! (seek! max f30-0) :frame-num 0.0)
             (until (ja-done? 0)
               (suspend)
               (ja :num! (seek! max f30-0))
@@ -1156,7 +1067,6 @@
       (suspend)
       )
     #f
-    (none)
     )
   )
 
@@ -1165,6 +1075,5 @@
   :virtual #t
   :enter (behavior ()
     (go-virtual die-falling)
-    (none)
     )
   )

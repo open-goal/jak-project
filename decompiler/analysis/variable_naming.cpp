@@ -655,34 +655,23 @@ namespace {
 
 TP_Type lca_for_var_types(const TP_Type& existing,
                           const TP_Type& add,
-                          const DecompilerTypeSystem& dts,
-                          bool event_handler_hack) {
+                          const DecompilerTypeSystem& dts) {
   bool changed;
   auto normal = dts.tp_lca(existing, add, &changed);
-  if (!event_handler_hack || normal.typespec().base_type() != "none") {
-    return normal;
-  }
-  if (existing.typespec().base_type() == "none") {
-    return add;
-  } else if (add.typespec().base_type() == "none") {
-    return existing;
-  } else {
-    return normal;
-  }
+  return normal;
 }
 
 void update_var_info(VariableNames::VarInfo* info,
                      Register reg,
                      const TypeState& ts,
                      int var_id,
-                     const DecompilerTypeSystem& dts,
-                     bool event_handler_hack) {
+                     const DecompilerTypeSystem& dts) {
   auto& type = ts.get(reg);
   if (info->initialized) {
     ASSERT(info->reg_id.id == var_id);
     ASSERT(info->reg_id.reg == reg);
 
-    info->type = lca_for_var_types(info->type, type, dts, event_handler_hack);
+    info->type = lca_for_var_types(info->type, type, dts);
 
   } else {
     info->reg_id.id = var_id;
@@ -695,10 +684,9 @@ void update_var_info(VariableNames::VarInfo* info,
 
 bool merge_infos(VariableNames::VarInfo* info1,
                  VariableNames::VarInfo* info2,
-                 const DecompilerTypeSystem& dts,
-                 bool event_handler_hack) {
+                 const DecompilerTypeSystem& dts) {
   if (info1->initialized && info2->initialized) {
-    auto new_type = lca_for_var_types(info1->type, info2->type, dts, event_handler_hack);
+    auto new_type = lca_for_var_types(info1->type, info2->type, dts);
 
     info1->type = new_type;
     info2->type = new_type;
@@ -710,13 +698,12 @@ bool merge_infos(VariableNames::VarInfo* info1,
 void merge_infos(
     std::unordered_map<Register, std::vector<VariableNames::VarInfo>, Register::hash>& info1,
     std::unordered_map<Register, std::vector<VariableNames::VarInfo>, Register::hash>& info2,
-    const DecompilerTypeSystem& dts,
-    bool event_handler_hack) {
+    const DecompilerTypeSystem& dts) {
   for (auto& [reg, infos] : info1) {
     auto other = info2.find(reg);
     if (other != info2.end()) {
       for (size_t i = 0; i < std::min(other->second.size(), infos.size()); i++) {
-        merge_infos(&infos.at(i), &other->second.at(i), dts, event_handler_hack);
+        merge_infos(&infos.at(i), &other->second.at(i), dts);
       }
     }
   }
@@ -730,27 +717,6 @@ void merge_infos(
  * the none variables
  */
 void SSA::make_vars(const Function& function, const DecompilerTypeSystem& dts) {
-  bool event_handler_hack = false;
-
-  if (function.ir2.env.version == GameVersion::Jak2) {
-    event_handler_hack = function.guessed_name.is_event_handler() ||
-                         function.guessed_name.to_string() == "target-generic-event-handler" ||
-                         function.guessed_name.to_string() == "target-standard-event-handler" ||
-                         function.guessed_name.to_string() == "target-board-handler" ||
-                         function.guessed_name.to_string() == "(method 74 pegasus)" ||
-                         function.guessed_name.to_string() == "(method 74 crimson-guard-level)" ||
-                         function.guessed_name.to_string() == "widow-handler" ||
-                         function.guessed_name.to_string() == "(method 74 hal)" ||
-                         function.guessed_name.to_string() == "water-anim-event-handler" ||
-                         function.guessed_name.to_string() == "(method 74 civilian)" ||
-                         function.guessed_name.to_string() == "(method 74 crimson-guard)";
-  }
-
-  if (function.ir2.env.version == GameVersion::Jak1) {
-    event_handler_hack = function.guessed_name.is_event_handler() ||
-                         function.guessed_name.to_string() == "target-generic-event-handler";
-  }
-
   for (int block_id = 0; block_id < int(blocks.size()); block_id++) {
     const auto& block = blocks.at(block_id);
     const TypeState* init_types = &function.ir2.env.get_types_at_block_entry(block_id);
@@ -765,13 +731,13 @@ void SSA::make_vars(const Function& function, const DecompilerTypeSystem& dts) {
       if (instr.dst.has_value()) {
         auto var_id = map.var_id(*instr.dst);
         auto* info = &program_write_vars[instr.dst->reg()].at(var_id);
-        update_var_info(info, instr.dst->reg(), *end_types, var_id, dts, event_handler_hack);
+        update_var_info(info, instr.dst->reg(), *end_types, var_id, dts);
       }
 
       for (auto& src : instr.src) {
         auto var_id = map.var_id(src);
         auto* info = &program_read_vars[src.reg()].at(var_id);
-        update_var_info(info, src.reg(), *init_types, var_id, dts, event_handler_hack);
+        update_var_info(info, src.reg(), *init_types, var_id, dts);
       }
 
       init_types = end_types;
@@ -792,7 +758,7 @@ void SSA::make_vars(const Function& function, const DecompilerTypeSystem& dts) {
     }
   }
 
-  merge_infos(program_write_vars, program_read_vars, dts, event_handler_hack);
+  merge_infos(program_write_vars, program_read_vars, dts);
 
   // copy types from input argument coloring moves:
   for (auto& instr : blocks.at(0).ins) {

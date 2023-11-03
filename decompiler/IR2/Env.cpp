@@ -66,7 +66,7 @@ void Env::set_remap_for_new_method(const TypeSpec& ts) {
 
 void Env::set_remap_for_method(const TypeSpec& ts) {
   int nargs = ts.arg_count() - 1;
-  m_var_remap["a0-0"] = "obj";
+  m_var_remap["a0-0"] = "this";
   for (int i = 1; i < nargs; i++) {
     m_var_remap[get_reg_name(i)] = ("arg" + std::to_string(i - 1));
   }
@@ -121,6 +121,16 @@ goos::Object Env::get_variable_name_with_cast(const RegisterAccess& access) cons
 
 std::string Env::get_variable_name(const RegisterAccess& access) const {
   return get_variable_and_cast(access).name;
+}
+
+std::string Env::get_variable_name_name_only(const RegisterAccess& access) const {
+  if (access.reg().get_kind() == Reg::FPR || access.reg().get_kind() == Reg::GPR) {
+    auto& var_info = m_var_names.lookup(access.reg(), access.idx(), access.mode());
+    return var_info.name();
+
+  } else {
+    return std::string(access.reg().to_charp());
+  }
 }
 
 VariableWithCast Env::get_variable_and_cast(const RegisterAccess& access) const {
@@ -600,6 +610,22 @@ std::optional<std::string> Env::get_art_elt_name(int idx) const {
     const auto& art_group = it->second;
     auto it2 = art_group.find(idx);
     if (it2 == art_group.end()) {
+      return {};
+    } else {
+      return it2->second;
+    }
+  }
+}
+
+std::optional<std::string> Env::get_joint_node_name(int idx) const {
+  ASSERT(dts);
+  auto it = dts->jg_info.find(joint_geo());
+  if (it == dts->jg_info.end()) {
+    return {};
+  } else {
+    const auto& jg = it->second;
+    auto it2 = jg.find(idx);
+    if (it2 == jg.end()) {
       return {};
     } else {
       return it2->second;

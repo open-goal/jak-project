@@ -3,40 +3,37 @@
 
 ;; definition of type tie-near-consts
 (deftype tie-near-consts (structure)
-  ((extra     qword      :inline   :offset-assert   0)
-   (gifbufs   qword      :inline   :offset-assert  16)
-   (clrbufs   qword      :inline   :offset-assert  32)
-   (adgif     gs-gif-tag :inline   :offset-assert  48)
-   (strgif    gs-gif-tag :inline   :offset-assert  64)
-   (fangif    gs-gif-tag :inline   :offset-assert  80)
-   (hvdfoffs  vector     :inline   :offset-assert  96)
-   (invhscale vector     :inline   :offset-assert 112)
-   (guard     vector     :inline   :offset-assert 128)
-   (atest     ad-cmd     2 :inline :offset-assert 144)
-   (atest-tra ad-cmd     :inline   :offset        144)
-   (atest-def ad-cmd     :inline   :offset        160)
+  ((extra      qword       :inline)
+   (gifbufs    qword       :inline)
+   (clrbufs    qword       :inline)
+   (adgif      gs-gif-tag  :inline)
+   (strgif     gs-gif-tag  :inline)
+   (fangif     gs-gif-tag  :inline)
+   (hvdfoffs   vector      :inline)
+   (invhscale  vector      :inline)
+   (guard      vector      :inline)
+   (atest      ad-cmd      2 :inline)
+   (atest-tra  ad-cmd      :inline :overlay-at (-> atest 0))
+   (atest-def  ad-cmd      :inline :overlay-at (-> atest 1))
    )
-  :method-count-assert 9
-  :size-assert         #xb0
-  :flag-assert         #x9000000b0
   )
 
 ;; definition for method 3 of type tie-near-consts
-(defmethod inspect tie-near-consts ((obj tie-near-consts))
-  (format #t "[~8x] ~A~%" obj 'tie-near-consts)
-  (format #t "~Textra: #<qword @ #x~X>~%" (-> obj extra))
-  (format #t "~Tgifbufs: #<qword @ #x~X>~%" (-> obj gifbufs))
-  (format #t "~Tclrbufs: #<qword @ #x~X>~%" (-> obj clrbufs))
-  (format #t "~Tadgif: #<qword @ #x~X>~%" (-> obj adgif))
-  (format #t "~Tstrgif: #<qword @ #x~X>~%" (-> obj strgif))
-  (format #t "~Tfangif: #<qword @ #x~X>~%" (-> obj fangif))
-  (format #t "~Thvdfoffs: #<vector @ #x~X>~%" (-> obj hvdfoffs))
-  (format #t "~Tinvhscale: #<vector @ #x~X>~%" (-> obj invhscale))
-  (format #t "~Tguard: #<vector @ #x~X>~%" (-> obj guard))
-  (format #t "~Tatest[2] @ #x~X~%" (-> obj atest))
-  (format #t "~Tatest-tra: #<ad-cmd @ #x~X>~%" (-> obj atest))
-  (format #t "~Tatest-def: #<ad-cmd @ #x~X>~%" (-> obj atest-def))
-  obj
+(defmethod inspect ((this tie-near-consts))
+  (format #t "[~8x] ~A~%" this 'tie-near-consts)
+  (format #t "~Textra: #<qword @ #x~X>~%" (-> this extra))
+  (format #t "~Tgifbufs: #<qword @ #x~X>~%" (-> this gifbufs))
+  (format #t "~Tclrbufs: #<qword @ #x~X>~%" (-> this clrbufs))
+  (format #t "~Tadgif: #<qword @ #x~X>~%" (-> this adgif))
+  (format #t "~Tstrgif: #<qword @ #x~X>~%" (-> this strgif))
+  (format #t "~Tfangif: #<qword @ #x~X>~%" (-> this fangif))
+  (format #t "~Thvdfoffs: #<vector @ #x~X>~%" (-> this hvdfoffs))
+  (format #t "~Tinvhscale: #<vector @ #x~X>~%" (-> this invhscale))
+  (format #t "~Tguard: #<vector @ #x~X>~%" (-> this guard))
+  (format #t "~Tatest[2] @ #x~X~%" (-> this atest))
+  (format #t "~Tatest-tra: #<ad-cmd @ #x~X>~%" (-> this atest))
+  (format #t "~Tatest-def: #<ad-cmd @ #x~X>~%" (-> this atest-def))
+  this
   )
 
 ;; definition for symbol tie-near-vu1-block, type vu-function
@@ -130,6 +127,18 @@
 ;; definition for function tie-near-init-engine
 ;; INFO: Return type mismatch int vs none.
 ;; ERROR: Failed store: (s.w! (+ a0-2 8) a1-4) at op 19
+;; ERROR: Failed store: (s.w! (+ a0-2 12) a1-6) at op 24
+;; ERROR: Failed store: (s.w! (+ a0-6 8) a1-9) at op 40
+;; ERROR: Failed store: (s.w! (+ a0-6 12) a1-10) at op 42
+;; ERROR: Failed store: (s.w! (+ a0-8 8) 0) at op 49
+;; ERROR: Failed store: (s.w! (+ a0-8 12) a1-12) at op 51
+;; ERROR: Failed store: (s.w! (+ v1-7 4) a0-11) at op 58
+;; ERROR: Failed store: (s.w! (+ v1-7 8) a0-12) at op 60
+;; ERROR: Failed store: (s.w! (+ v1-7 12) a0-13) at op 62
+;; ERROR: Failed store: (s.w! (+ v1-7 16) a0-14) at op 64
+;; ERROR: Failed store: (s.w! (+ v1-7 20) a0-15) at op 66
+;; ERROR: Failed store: (s.w! (+ v1-7 24) a0-16) at op 68
+;; ERROR: Failed store: (s.w! (+ v1-7 28) a0-17) at op 70
 (defun tie-near-init-engine ((arg0 dma-buffer) (arg1 gs-test) (arg2 int))
   (when (logtest? *vu1-enable-user* (vu1-renderer-mask tie-near))
     (dma-buffer-add-vu-function arg0 tie-near-vu1-block 1)
@@ -203,7 +212,15 @@
 
 ;; definition for function tie-near-end-buffer
 ;; INFO: Return type mismatch int vs none.
-;; ERROR: Failed store: (s.w! (+ a1-0 8) 0) at op 7
+;; ERROR: Failed store: (s.w! (+ a1-6 8) a2-8) at op 34
+;; ERROR: Failed store: (s.w! (+ a1-6 12) 0) at op 35
+;; ERROR: Failed store: (s.w! (+ a0-1 4) a1-9) at op 43
+;; ERROR: Failed store: (s.w! (+ a0-1 8) a1-10) at op 45
+;; ERROR: Failed store: (s.w! (+ a0-1 12) a1-11) at op 47
+;; ERROR: Failed store: (s.w! (+ a0-1 16) 0) at op 48
+;; ERROR: Failed store: (s.w! (+ a0-1 20) 0) at op 49
+;; ERROR: Failed store: (s.w! (+ a0-1 24) 0) at op 50
+;; ERROR: Failed store: (s.w! (+ a0-1 28) 0) at op 51
 (defun tie-near-end-buffer ((arg0 dma-buffer))
   (when (logtest? *vu1-enable-user* (vu1-renderer-mask tie-near))
     (dma-buffer-add-gs-set arg0 (test-1 (new 'static 'gs-test

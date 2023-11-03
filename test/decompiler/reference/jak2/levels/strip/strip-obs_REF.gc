@@ -3,135 +3,121 @@
 
 ;; definition for method 15 of type hud-plasmite
 ;; WARN: Return type mismatch int vs none.
-(defmethod draw hud-plasmite ((obj hud-plasmite))
+(defmethod draw ((this hud-plasmite))
   (set-hud-piece-position!
-    (the-as hud-sprite (-> obj sprites))
-    (the int (+ 457.0 (* 130.0 (-> obj offset))))
+    (the-as hud-sprite (-> this sprites))
+    (the int (+ 457.0 (* 130.0 (-> this offset))))
     210
     )
-  (format (clear (-> obj strings 0 text)) "~D" (-> obj values 0 current))
-  (set-as-offset-from! (the-as hud-sprite (-> obj strings 0 pos)) (the-as vector4w (-> obj sprites)) -16 20)
-  ((method-of-type hud draw) obj)
+  (format (clear (-> this strings 0 text)) "~D" (-> this values 0 current))
+  (set-as-offset-from! (the-as hud-sprite (-> this strings 0 pos)) (the-as vector4w (-> this sprites)) -16 20)
+  ((method-of-type hud draw) this)
   0
   (none)
   )
 
 ;; definition for method 16 of type hud-plasmite
 ;; WARN: Return type mismatch int vs none.
-(defmethod update-values hud-plasmite ((obj hud-plasmite))
-  (set! (-> obj values 0 target) (the int (-> *game-info* counter)))
-  ((method-of-type hud update-values) obj)
+(defmethod update-values ((this hud-plasmite))
+  (set! (-> this values 0 target) (the int (-> *game-info* counter)))
+  ((method-of-type hud update-values) this)
   0
   (none)
   )
 
 ;; definition for method 17 of type hud-plasmite
 ;; WARN: Return type mismatch int vs none.
-(defmethod init-callback hud-plasmite ((obj hud-plasmite))
-  (set! (-> obj level) (level-get *level* 'strip))
-  (set! (-> obj gui-id)
-        (add-process *gui-control* obj (gui-channel hud-middle-right) (gui-action hidden) (-> obj name) 81920.0 0)
+(defmethod init-callback ((this hud-plasmite))
+  (set! (-> this level) (level-get *level* 'strip))
+  (set! (-> this gui-id)
+        (add-process *gui-control* this (gui-channel hud-middle-right) (gui-action hidden) (-> this name) 81920.0 0)
         )
-  (logior! (-> obj flags) (hud-flags show))
-  (set! (-> obj sprites 0 tex) (lookup-texture-by-id (new 'static 'texture-id :page #xb26)))
-  (set! (-> obj sprites 0 flags) (the-as uint 4))
-  (set! (-> obj sprites 0 scale-x) 1.0)
-  (set! (-> obj sprites 0 scale-y) 1.0)
-  (alloc-string-if-needed obj 0)
-  (set! (-> obj strings 0 scale) 0.6)
-  (set! (-> obj strings 0 flags) (font-flags kerning middle large))
+  (logior! (-> this flags) (hud-flags show))
+  (set! (-> this sprites 0 tex) (lookup-texture-by-id (new 'static 'texture-id :page #xb26)))
+  (set! (-> this sprites 0 flags) (the-as uint 4))
+  (set! (-> this sprites 0 scale-x) 1.0)
+  (set! (-> this sprites 0 scale-y) 1.0)
+  (alloc-string-if-needed this 0)
+  (set! (-> this strings 0 scale) 0.6)
+  (set! (-> this strings 0 flags) (font-flags kerning middle large))
   0
   (none)
   )
 
 ;; definition of type strip-hazard
 (deftype strip-hazard (process-drawable)
-  ((root               collide-shape-moving         :override)
-   (sync               sync-linear          :inline :offset-assert 200)
-   (shove-vec          vector               :inline :offset-assert 224)
-   (no-collision-timer uint64                       :offset-assert 240)
-   (attack-id          uint32                       :offset-assert 248)
+  ((root                collide-shape-moving :override)
+   (sync                sync-linear           :inline)
+   (shove-vec           vector                :inline)
+   (no-collision-timer  uint64)
+   (attack-id           uint32)
    )
-  :heap-base #x80
-  :method-count-assert 21
-  :size-assert         #xfc
-  :flag-assert         #x15008000fc
-  (:methods
-    (idle () _type_ :state 20)
+  (:state-methods
+    idle
     )
   )
 
 ;; definition for method 3 of type strip-hazard
-(defmethod inspect strip-hazard ((obj strip-hazard))
-  (when (not obj)
-    (set! obj obj)
+(defmethod inspect ((this strip-hazard))
+  (when (not this)
+    (set! this this)
     (goto cfg-4)
     )
   (let ((t9-0 (method-of-type process-drawable inspect)))
-    (t9-0 obj)
+    (t9-0 this)
     )
-  (format #t "~2Tsync: #<sync-linear @ #x~X>~%" (-> obj sync))
-  (format #t "~2Tshove-vec: #<vector @ #x~X>~%" (-> obj shove-vec))
-  (format #t "~2Tno-collision-timer: ~D~%" (-> obj no-collision-timer))
-  (format #t "~2Tattack-id: ~D~%" (-> obj attack-id))
+  (format #t "~2Tsync: #<sync-linear @ #x~X>~%" (-> this sync))
+  (format #t "~2Tshove-vec: #<vector @ #x~X>~%" (-> this shove-vec))
+  (format #t "~2Tno-collision-timer: ~D~%" (-> this no-collision-timer))
+  (format #t "~2Tattack-id: ~D~%" (-> this attack-id))
   (label cfg-4)
-  obj
+  this
   )
 
 ;; definition for function strip-handler
 ;; INFO: Used lq/sq
 ;; WARN: Return type mismatch int vs object.
 (defbehavior strip-handler strip-hazard ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-  (the-as
-    object
-    (case arg2
-      (('touch 'attack)
-       (let* ((s4-0 arg0)
-              (gp-0 (if (type? s4-0 process-focusable)
-                        (the-as process-focusable s4-0)
-                        )
-                    )
-              )
-         (when gp-0
-           (let ((s4-1 (vector-z-quaternion! (new 'stack-no-clear 'vector) (-> self root quat))))
-             (let* ((v1-4 (vector-z-quaternion! (new 'stack-no-clear 'vector) (-> gp-0 root quat)))
-                    (f0-1 (vector-dot s4-1 v1-4))
-                    )
-               (if (< 0.0 f0-1)
-                   (vector-float*! s4-1 s4-1 -1.0)
-                   )
-               )
-             (let ((a1-7 (new 'stack-no-clear 'event-message-block)))
-               (set! (-> a1-7 from) (process->ppointer self))
-               (set! (-> a1-7 num-params) 2)
-               (set! (-> a1-7 message) 'attack)
-               (set! (-> a1-7 param 0) (-> arg3 param 0))
-               (let ((v1-13 (new 'static 'attack-info :mask (attack-info-mask vector shove-back shove-up control id))))
-                 (set! (-> v1-13 id) (-> self attack-id))
-                 (set! (-> v1-13 vector quad) (-> s4-1 quad))
-                 (set! (-> v1-13 shove-back) (-> self shove-vec z))
-                 (set! (-> v1-13 shove-up) (-> self shove-vec y))
-                 (set! (-> v1-13 control) (if (focus-test? gp-0 board)
-                                              1.0
-                                              0.0
-                                              )
-                       )
-                 (set! (-> a1-7 param 1) (the-as uint v1-13))
+  (case arg2
+    (('touch 'attack)
+     (let* ((s4-0 arg0)
+            (gp-0 (if (type? s4-0 process-focusable)
+                      (the-as process-focusable s4-0)
+                      )
+                  )
+            )
+       (when gp-0
+         (let ((s4-1 (vector-z-quaternion! (new 'stack-no-clear 'vector) (-> self root quat))))
+           (let* ((v1-4 (vector-z-quaternion! (new 'stack-no-clear 'vector) (-> gp-0 root quat)))
+                  (f0-1 (vector-dot s4-1 v1-4))
+                  )
+             (if (< 0.0 f0-1)
+                 (vector-float*! s4-1 s4-1 -1.0)
                  )
-               (when (send-event-function gp-0 a1-7)
-                 (set! (-> self no-collision-timer) (the-as uint (current-time)))
-                 (let ((v1-18 (-> self root root-prim)))
-                   (set! (-> v1-18 prim-core collide-as) (collide-spec))
-                   (set! (-> v1-18 prim-core collide-with) (collide-spec))
-                   )
-                 0
-                 )
+             )
+           (when (send-event gp-0 'attack (-> arg3 param 0) (static-attack-info ((id (-> self attack-id))
+                                                                                 (vector s4-1)
+                                                                                 (shove-back (-> self shove-vec z))
+                                                                                 (shove-up (-> self shove-vec y))
+                                                                                 (control (if (focus-test? gp-0 board)
+                                                                                              1.0
+                                                                                              0.0
+                                                                                              )
+                                                                                          )
+                                                                                 )
+                                                                                )
+                             )
+             (set! (-> self no-collision-timer) (the-as uint (current-time)))
+             (let ((v1-18 (-> self root root-prim)))
+               (set! (-> v1-18 prim-core collide-as) (collide-spec))
+               (set! (-> v1-18 prim-core collide-with) (collide-spec))
                )
+             0
              )
            )
          )
        )
-      )
+     )
     )
   )
 
@@ -139,7 +125,7 @@
 ;; WARN: Return type mismatch symbol vs none.
 (defbehavior strip-trans strip-hazard ()
   (when (and (nonzero? (-> self no-collision-timer))
-             (>= (- (current-time) (the-as int (-> self no-collision-timer))) (seconds 0.3))
+             (time-elapsed? (the-as int (-> self no-collision-timer)) (seconds 0.3))
              )
     (let ((v1-7 (-> self root root-prim)))
       (set! (-> v1-7 prim-core collide-as) (-> self root backup-collide-as))
@@ -177,14 +163,13 @@
       (suspend)
       )
     #f
-    (none)
     )
-  :post (the-as (function none :behavior strip-hazard) transform-post)
+  :post transform-post
   )
 
 ;; definition for method 11 of type strip-hazard
 ;; INFO: Used lq/sq
-(defmethod init-from-entity! strip-hazard ((obj strip-hazard) (arg0 entity-actor))
+(defmethod init-from-entity! ((this strip-hazard) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
 - stack size
@@ -192,13 +177,13 @@ This commonly includes things such as:
 - loading the skeleton group / bones
 - sounds"
   (local-vars (sv-64 res-tag))
-  (set-vector! (-> obj shove-vec) 0.0 12288.0 24576.0 1.0)
-  (set! (-> obj no-collision-timer) (the-as uint 0))
+  (set-vector! (-> this shove-vec) 0.0 12288.0 24576.0 1.0)
+  (set! (-> this no-collision-timer) (the-as uint 0))
   (let* ((v1-1 *game-info*)
          (a0-5 (+ (-> v1-1 attack-id) 1))
          )
     (set! (-> v1-1 attack-id) a0-5)
-    (set! (-> obj attack-id) a0-5)
+    (set! (-> this attack-id) a0-5)
     )
   (let ((s4-0 (new 'stack-no-clear 'sync-info-params))
         (s3-0 1200)
@@ -221,40 +206,36 @@ This commonly includes things such as:
     (set! (-> s4-0 entity) arg0)
     (set! (-> s4-0 period) (the-as uint s3-0))
     (set! (-> s4-0 percent) 0.0)
-    (initialize! (-> obj sync) s4-0)
-    (sync-now! (-> obj sync) f30-0)
+    (initialize! (-> this sync) s4-0)
+    (sync-now! (-> this sync) f30-0)
     )
   (none)
   )
 
 ;; definition of type fencespikes
 (deftype fencespikes (strip-hazard)
-  ((start-quat   quaternion :inline :offset-assert 256)
-   (spin         float              :offset-assert 272)
-   (offset       float              :offset-assert 276)
-   (sparks-group uint32             :offset-assert 280)
+  ((start-quat    quaternion  :inline)
+   (spin          float)
+   (offset        float)
+   (sparks-group  uint32)
    )
-  :heap-base #xa0
-  :method-count-assert 21
-  :size-assert         #x11c
-  :flag-assert         #x1500a0011c
   )
 
 ;; definition for method 3 of type fencespikes
-(defmethod inspect fencespikes ((obj fencespikes))
-  (when (not obj)
-    (set! obj obj)
+(defmethod inspect ((this fencespikes))
+  (when (not this)
+    (set! this this)
     (goto cfg-4)
     )
   (let ((t9-0 (method-of-type strip-hazard inspect)))
-    (t9-0 obj)
+    (t9-0 this)
     )
-  (format #t "~2Tstart-quat: #<quaternion @ #x~X>~%" (-> obj start-quat))
-  (format #t "~2Tspin: ~f~%" (-> obj spin))
-  (format #t "~2Toffset: ~f~%" (-> obj offset))
-  (format #t "~2Tsparks-group: #x~X~%" (-> obj sparks-group))
+  (format #t "~2Tstart-quat: #<quaternion @ #x~X>~%" (-> this start-quat))
+  (format #t "~2Tspin: ~f~%" (-> this spin))
+  (format #t "~2Toffset: ~f~%" (-> this offset))
+  (format #t "~2Tsparks-group: #x~X~%" (-> this sparks-group))
   (label cfg-4)
-  obj
+  this
   )
 
 ;; failed to figure out what this is:
@@ -271,30 +252,25 @@ This commonly includes things such as:
           (f0-0 (ja-aframe-num 0))
           )
       (cond
-        ((and (= gp-0 (-> self draw art-group data 3)) (>= f0-0 47.0) (>= 67.0 f0-0))
-         (spawn (-> self part) (vector<-cspace! (new 'stack-no-clear 'vector) (-> self node-list data 9)))
+        ((and (= gp-0 fencespikes-idle-ja) (>= f0-0 47.0) (>= 67.0 f0-0))
+         (spawn (-> self part) (vector<-cspace! (new 'stack-no-clear 'vector) (joint-node fencespikes-lod0-jg head)))
          )
-        ((and (= gp-0 (-> self draw art-group data 3)) (>= f0-0 42.0) (>= 65.0 f0-0))
+        ((and (= gp-0 fencespikes-idle-ja) (>= f0-0 42.0) (>= 65.0 f0-0))
          (seek! (-> self spin) 393216.0 32768.0)
          )
-        ((and (= gp-0 (-> self draw art-group data 3)) (>= f0-0 66.0) (>= 78.0 f0-0))
+        ((and (= gp-0 fencespikes-idle-ja) (>= f0-0 66.0) (>= 78.0 f0-0))
          (seek! (-> self spin) 0.0 16384.0)
          )
         )
       )
-    (quaternion-rotate-local-x!
-      (-> self root quat)
-      (-> self root quat)
-      (* (-> self spin) (-> self clock seconds-per-frame))
-      )
+    (quaternion-rotate-local-x! (-> self root quat) (-> self root quat) (* (-> self spin) (seconds-per-frame)))
     (strip-trans)
-    (none)
     )
   )
 
 ;; definition for method 11 of type fencespikes
 ;; WARN: Return type mismatch object vs none.
-(defmethod init-from-entity! fencespikes ((obj fencespikes) (arg0 entity-actor))
+(defmethod init-from-entity! ((this fencespikes) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
 - stack size
@@ -302,7 +278,7 @@ This commonly includes things such as:
 - loading the skeleton group / bones
 - sounds"
   (local-vars (sv-16 string))
-  (let ((s4-0 (new 'process 'collide-shape-moving obj (collide-list-enum hit-by-player))))
+  (let ((s4-0 (new 'process 'collide-shape-moving this (collide-list-enum hit-by-player))))
     (set! (-> s4-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s4-0 reaction) cshape-reaction-default)
     (set! (-> s4-0 no-reaction)
@@ -334,55 +310,51 @@ This commonly includes things such as:
       (set! (-> s4-0 backup-collide-as) (-> v1-19 prim-core collide-as))
       (set! (-> s4-0 backup-collide-with) (-> v1-19 prim-core collide-with))
       )
-    (set! (-> obj root) s4-0)
+    (set! (-> this root) s4-0)
     )
-  (process-drawable-from-entity! obj arg0)
+  (process-drawable-from-entity! this arg0)
   (initialize-skeleton
-    obj
+    this
     (the-as skeleton-group (art-group-get-by-name *level* "skel-fencespikes" (the-as (pointer uint32) #f)))
     (the-as pair 0)
     )
   (let ((t9-9 (method-of-type strip-hazard init-from-entity!)))
-    (t9-9 obj arg0)
+    (t9-9 this arg0)
     )
-  (quaternion-copy! (-> obj start-quat) (-> obj root quat))
+  (quaternion-copy! (-> this start-quat) (-> this root quat))
   (set! sv-16 "#f")
   (let ((a0-24 (entity-lookup-part-group arg0 (& sv-16) 'art-name)))
     (when a0-24
       (let ((a0-25 (-> a0-24 0)))
         (if (and (nonzero? a0-25) (= (-> a0-25 type) sparticle-launch-group))
-            (set! (-> obj part) (create-launch-control a0-25 obj))
+            (set! (-> this part) (create-launch-control a0-25 this))
             )
         )
       )
     )
-  (logclear! (-> obj mask) (process-mask actor-pause))
-  (go (method-of-object obj idle))
+  (logclear! (-> this mask) (process-mask actor-pause))
+  (go (method-of-object this idle))
   (none)
   )
 
 ;; definition of type pitspikes
 (deftype pitspikes (strip-hazard)
-  ((spinner basic  :offset-assert 252)
+  ((spinner  basic)
    )
-  :heap-base #x80
-  :method-count-assert 21
-  :size-assert         #x100
-  :flag-assert         #x1500800100
   )
 
 ;; definition for method 3 of type pitspikes
-(defmethod inspect pitspikes ((obj pitspikes))
-  (when (not obj)
-    (set! obj obj)
+(defmethod inspect ((this pitspikes))
+  (when (not this)
+    (set! this this)
     (goto cfg-4)
     )
   (let ((t9-0 (method-of-type strip-hazard inspect)))
-    (t9-0 obj)
+    (t9-0 this)
     )
-  (format #t "~2Tspinner: ~A~%" (-> obj spinner))
+  (format #t "~2Tspinner: ~A~%" (-> this spinner))
   (label cfg-4)
-  obj
+  this
   )
 
 ;; failed to figure out what this is:
@@ -423,9 +395,11 @@ This commonly includes things such as:
           (t9-0)
           )
       )
-    (update-trans! (-> self sound) (vector<-cspace! (new 'static 'vector) (-> self node-list data 4)))
+    (update-trans!
+      (-> self sound)
+      (vector<-cspace! (new 'static 'vector) (joint-node pitspikes-lod0-jg rotatnode))
+      )
     (update! (-> self sound))
-    (none)
     )
   :post (behavior ()
     (let ((t9-0 (-> (method-of-type strip-hazard idle) post)))
@@ -433,39 +407,34 @@ This commonly includes things such as:
           ((the-as (function none) t9-0))
           )
       )
-    (let ((gp-0 (vector<-cspace! (new 'stack-no-clear 'vector) (-> self node-list data 3))))
+    (let ((gp-0 (vector<-cspace! (new 'stack-no-clear 'vector) (joint-node pitspikes-lod0-jg main))))
       (let ((f0-0 (quaternion-y-angle (-> self root quat))))
         (set! (-> *pitspikes-rotate-pos* quad) (-> gp-0 quad))
         (set! (-> *pitspikes-rotate-pos* w) f0-0)
         )
       (spawn (-> self part) gp-0)
       )
-    (none)
     )
   )
 
 ;; definition for method 7 of type pitspikes
-;; WARN: Return type mismatch strip-hazard vs pitspikes.
-(defmethod relocate pitspikes ((obj pitspikes) (arg0 int))
-  (if (nonzero? (-> obj spinner))
-      (&+! (-> obj spinner) arg0)
+(defmethod relocate ((this pitspikes) (arg0 int))
+  (if (nonzero? (-> this spinner))
+      (&+! (-> this spinner) arg0)
       )
-  (the-as
-    pitspikes
-    ((the-as (function strip-hazard int strip-hazard) (find-parent-method pitspikes 7)) obj arg0)
-    )
+  (call-parent-method this arg0)
   )
 
 ;; definition for method 11 of type pitspikes
 ;; WARN: Return type mismatch object vs none.
-(defmethod init-from-entity! pitspikes ((obj pitspikes) (arg0 entity-actor))
+(defmethod init-from-entity! ((this pitspikes) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
 - stack size
 - collision information
 - loading the skeleton group / bones
 - sounds"
-  (let ((s4-0 (new 'process 'collide-shape-moving obj (collide-list-enum hit-by-player))))
+  (let ((s4-0 (new 'process 'collide-shape-moving this (collide-list-enum hit-by-player))))
     (set! (-> s4-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s4-0 reaction) cshape-reaction-default)
     (set! (-> s4-0 no-reaction)
@@ -484,51 +453,47 @@ This commonly includes things such as:
       (set! (-> s4-0 backup-collide-as) (-> v1-9 prim-core collide-as))
       (set! (-> s4-0 backup-collide-with) (-> v1-9 prim-core collide-with))
       )
-    (set! (-> obj root) s4-0)
+    (set! (-> this root) s4-0)
     )
-  (process-drawable-from-entity! obj arg0)
+  (process-drawable-from-entity! this arg0)
   (initialize-skeleton
-    obj
+    this
     (the-as skeleton-group (art-group-get-by-name *level* "skel-pitspikes" (the-as (pointer uint32) #f)))
     (the-as pair 0)
     )
   (let ((t9-6 (method-of-type strip-hazard init-from-entity!)))
-    (t9-6 obj arg0)
+    (t9-6 this arg0)
     )
-  (set! (-> obj spinner) (new 'process 'joint-mod-spinner obj 4 (new 'static 'vector :x 1.0 :w 1.0) 262144.0))
-  (set! (-> obj sound) (new
-                         'process
-                         'ambient-sound
-                         (static-sound-spec "pit-spikes" :fo-max 55)
-                         (vector<-cspace! (new 'static 'vector) (-> obj node-list data 4))
-                         )
+  (set! (-> this spinner) (new 'process 'joint-mod-spinner this 4 (new 'static 'vector :x 1.0 :w 1.0) 262144.0))
+  (set! (-> this sound) (new
+                          'process
+                          'ambient-sound
+                          (static-sound-spec "pit-spikes" :fo-max 55)
+                          (vector<-cspace! (new 'static 'vector) (-> this node-list data 4))
+                          )
         )
-  (set! (-> obj part) (create-launch-control (-> *part-group-id-table* 214) obj))
-  (logclear! (-> obj mask) (process-mask actor-pause))
-  (go (method-of-object obj idle))
+  (set! (-> this part) (create-launch-control (-> *part-group-id-table* 214) this))
+  (logclear! (-> this mask) (process-mask actor-pause))
+  (go (method-of-object this idle))
   (none)
   )
 
 ;; definition of type curtainsaw
 (deftype curtainsaw (strip-hazard)
   ()
-  :heap-base #x80
-  :method-count-assert 21
-  :size-assert         #xfc
-  :flag-assert         #x15008000fc
   )
 
 ;; definition for method 3 of type curtainsaw
-(defmethod inspect curtainsaw ((obj curtainsaw))
-  (when (not obj)
-    (set! obj obj)
+(defmethod inspect ((this curtainsaw))
+  (when (not this)
+    (set! this this)
     (goto cfg-4)
     )
   (let ((t9-0 (method-of-type strip-hazard inspect)))
-    (t9-0 obj)
+    (t9-0 this)
     )
   (label cfg-4)
-  obj
+  this
   )
 
 ;; failed to figure out what this is:
@@ -547,9 +512,8 @@ This commonly includes things such as:
           (t9-0)
           )
       )
-    (update-trans! (-> self sound) (vector<-cspace! (new 'static 'vector) (-> self node-list data 3)))
+    (update-trans! (-> self sound) (vector<-cspace! (new 'static 'vector) (joint-node curtainsaw-lod0-jg main)))
     (update! (-> self sound))
-    (none)
     )
   :post (behavior ()
     (let ((t9-0 (-> (method-of-type strip-hazard idle) post)))
@@ -562,26 +526,25 @@ This commonly includes things such as:
       (set! (-> gp-0 y) 0.0)
       (set! (-> gp-0 z) 0.0)
       (set! (-> gp-0 w) 1.0)
-      (let ((s5-0 (vector<-cspace! (new 'stack-no-clear 'vector) (-> self node-list data 3))))
+      (let ((s5-0 (vector<-cspace! (new 'stack-no-clear 'vector) (joint-node curtainsaw-lod0-jg main))))
         (vector-orient-by-quat! gp-0 gp-0 (-> self root quat))
         (vector+! s5-0 s5-0 gp-0)
         (spawn (-> self part) s5-0)
         )
       )
-    (none)
     )
   )
 
 ;; definition for method 11 of type curtainsaw
 ;; WARN: Return type mismatch object vs none.
-(defmethod init-from-entity! curtainsaw ((obj curtainsaw) (arg0 entity-actor))
+(defmethod init-from-entity! ((this curtainsaw) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
 - stack size
 - collision information
 - loading the skeleton group / bones
 - sounds"
-  (let ((s4-0 (new 'process 'collide-shape-moving obj (collide-list-enum hit-by-player))))
+  (let ((s4-0 (new 'process 'collide-shape-moving this (collide-list-enum hit-by-player))))
     (set! (-> s4-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s4-0 reaction) cshape-reaction-default)
     (set! (-> s4-0 no-reaction)
@@ -600,106 +563,102 @@ This commonly includes things such as:
       (set! (-> s4-0 backup-collide-as) (-> v1-9 prim-core collide-as))
       (set! (-> s4-0 backup-collide-with) (-> v1-9 prim-core collide-with))
       )
-    (set! (-> obj root) s4-0)
+    (set! (-> this root) s4-0)
     )
-  (process-drawable-from-entity! obj arg0)
+  (process-drawable-from-entity! this arg0)
   (initialize-skeleton
-    obj
+    this
     (the-as skeleton-group (art-group-get-by-name *level* "skel-curtainsaw" (the-as (pointer uint32) #f)))
     (the-as pair 0)
     )
   (let ((t9-6 (method-of-type strip-hazard init-from-entity!)))
-    (t9-6 obj arg0)
+    (t9-6 this arg0)
     )
-  (set! (-> obj sound) (new
-                         'process
-                         'ambient-sound
-                         (static-sound-spec "curtainsaw" :fo-max 55)
-                         (vector<-cspace! (new 'static 'vector) (-> obj node-list data 3))
-                         )
+  (set! (-> this sound) (new
+                          'process
+                          'ambient-sound
+                          (static-sound-spec "curtainsaw" :fo-max 55)
+                          (vector<-cspace! (new 'static 'vector) (-> this node-list data 3))
+                          )
         )
-  (set! (-> obj part) (create-launch-control (-> *part-group-id-table* 213) obj))
-  (logclear! (-> obj mask) (process-mask actor-pause))
-  (go (method-of-object obj idle))
+  (set! (-> this part) (create-launch-control (-> *part-group-id-table* 213) this))
+  (logclear! (-> this mask) (process-mask actor-pause))
+  (go (method-of-object this idle))
   (none)
   )
 
 ;; definition of type grenade-point
 (deftype grenade-point (process-drawable)
-  ((root               collide-shape             :override)
-   (camera-name        string                    :offset-assert 200)
-   (parented?          symbol                    :offset-assert 204)
-   (lightning-time     time-frame                :offset-assert 208)
-   (strike-table       (array vector)            :offset-assert 216)
-   (last-strike-index  int32                     :offset-assert 220)
-   (speed              meters                    :offset-assert 224)
-   (part2              sparticle-launch-control  :offset-assert 228)
-   (part3              sparticle-launch-control  :offset-assert 232)
-   (part-lightning-hit sparticle-launch-control  :offset-assert 236)
-   (enter-time         time-frame                :offset-assert 240)
-   (minimap            connection-minimap        :offset-assert 248)
+  ((root                collide-shape :override)
+   (camera-name         string)
+   (parented?           symbol)
+   (lightning-time      time-frame)
+   (strike-table        (array vector))
+   (last-strike-index   int32)
+   (speed               meters)
+   (part2               sparticle-launch-control)
+   (part3               sparticle-launch-control)
+   (part-lightning-hit  sparticle-launch-control)
+   (enter-time          time-frame)
+   (minimap             connection-minimap)
    )
-  :heap-base #x80
-  :method-count-assert 22
-  :size-assert         #xfc
-  :flag-assert         #x16008000fc
-  (:methods
-    (idle () _type_ :state 20)
-    (die (symbol) _type_ :state 21)
+  (:state-methods
+    idle
+    (die symbol)
     )
   )
 
 ;; definition for method 3 of type grenade-point
-(defmethod inspect grenade-point ((obj grenade-point))
-  (when (not obj)
-    (set! obj obj)
+(defmethod inspect ((this grenade-point))
+  (when (not this)
+    (set! this this)
     (goto cfg-4)
     )
   (let ((t9-0 (method-of-type process-drawable inspect)))
-    (t9-0 obj)
+    (t9-0 this)
     )
-  (format #t "~2Tcamera-name: ~A~%" (-> obj camera-name))
-  (format #t "~2Tparented?: ~A~%" (-> obj parented?))
-  (format #t "~2Tlightning-time: ~D~%" (-> obj lightning-time))
-  (format #t "~2Tstrike-table: ~A~%" (-> obj strike-table))
-  (format #t "~2Tlast-strike-index: ~D~%" (-> obj last-strike-index))
-  (format #t "~2Tspeed: (meters ~m)~%" (-> obj speed))
-  (format #t "~2Tpart2: ~A~%" (-> obj part2))
-  (format #t "~2Tpart3: ~A~%" (-> obj part3))
-  (format #t "~2Tpart-lightning-hit: ~A~%" (-> obj part-lightning-hit))
-  (format #t "~2Tenter-time: ~D~%" (-> obj enter-time))
-  (format #t "~2Tminimap: #<connection-minimap @ #x~X>~%" (-> obj minimap))
+  (format #t "~2Tcamera-name: ~A~%" (-> this camera-name))
+  (format #t "~2Tparented?: ~A~%" (-> this parented?))
+  (format #t "~2Tlightning-time: ~D~%" (-> this lightning-time))
+  (format #t "~2Tstrike-table: ~A~%" (-> this strike-table))
+  (format #t "~2Tlast-strike-index: ~D~%" (-> this last-strike-index))
+  (format #t "~2Tspeed: (meters ~m)~%" (-> this speed))
+  (format #t "~2Tpart2: ~A~%" (-> this part2))
+  (format #t "~2Tpart3: ~A~%" (-> this part3))
+  (format #t "~2Tpart-lightning-hit: ~A~%" (-> this part-lightning-hit))
+  (format #t "~2Tenter-time: ~D~%" (-> this enter-time))
+  (format #t "~2Tminimap: #<connection-minimap @ #x~X>~%" (-> this minimap))
   (label cfg-4)
-  obj
+  this
   )
 
 ;; definition for method 7 of type grenade-point
 ;; WARN: Return type mismatch process-drawable vs grenade-point.
-(defmethod relocate grenade-point ((obj grenade-point) (arg0 int))
-  (if (nonzero? (-> obj part2))
-      (&+! (-> obj part2) arg0)
+(defmethod relocate ((this grenade-point) (arg0 int))
+  (if (nonzero? (-> this part2))
+      (&+! (-> this part2) arg0)
       )
-  (if (nonzero? (-> obj part3))
-      (&+! (-> obj part3) arg0)
+  (if (nonzero? (-> this part3))
+      (&+! (-> this part3) arg0)
       )
-  (if (nonzero? (-> obj part-lightning-hit))
-      (&+! (-> obj part-lightning-hit) arg0)
+  (if (nonzero? (-> this part-lightning-hit))
+      (&+! (-> this part-lightning-hit) arg0)
       )
-  (the-as grenade-point ((method-of-type process-drawable relocate) obj arg0))
+  (the-as grenade-point ((method-of-type process-drawable relocate) this arg0))
   )
 
 ;; definition for method 10 of type grenade-point
-(defmethod deactivate grenade-point ((obj grenade-point))
-  (if (nonzero? (-> obj part2))
-      (kill-and-free-particles (-> obj part2))
+(defmethod deactivate ((this grenade-point))
+  (if (nonzero? (-> this part2))
+      (kill-and-free-particles (-> this part2))
       )
-  (if (nonzero? (-> obj part3))
-      (kill-and-free-particles (-> obj part3))
+  (if (nonzero? (-> this part3))
+      (kill-and-free-particles (-> this part3))
       )
-  (if (nonzero? (-> obj part-lightning-hit))
-      (kill-and-free-particles (-> obj part-lightning-hit))
+  (if (nonzero? (-> this part-lightning-hit))
+      (kill-and-free-particles (-> this part-lightning-hit))
       )
-  ((method-of-type process-drawable deactivate) obj)
+  ((method-of-type process-drawable deactivate) this)
   (none)
   )
 
@@ -867,48 +826,45 @@ This commonly includes things such as:
 ;; failed to figure out what this is:
 (defstate idle (grenade-point)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (the-as object (case event-type
-                     (('touch 'attack)
-                      (send-event proc 'ramp)
-                      (when (logtest? (-> self level task-mask) (task-mask task1))
-                        (cond
-                          ((send-event proc 'grenade (-> self speed))
-                           (if (-> self camera-name)
-                               (set-setting! 'entity-name (-> self camera-name) 0.0 -1)
-                               )
-                           )
-                          ((>= (- (current-time) (-> self enter-time)) (seconds 3))
-                           (talker-speech-class-method-12 (-> *talker-speech* 194) 1)
-                           )
-                          )
-                        (set! (-> self enter-time) (current-time))
-                        )
-                      #f
-                      )
-                     (('exit)
-                      (the-as object (remove-setting! 'entity-name))
-                      )
-                     (('die)
-                      (go-virtual die #t)
-                      )
-                     (('kill)
-                      (process-entity-status! self (entity-perm-status subtask-complete) #t)
-                      (cleanup-for-death self)
-                      (the-as object (deactivate self))
-                      )
-                     )
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
+      (('touch 'attack)
+       (send-event proc 'ramp)
+       (when (logtest? (-> self level task-mask) (task-mask task1))
+         (cond
+           ((send-event proc 'grenade (-> self speed))
+            (if (-> self camera-name)
+                (set-setting! 'entity-name (-> self camera-name) 0.0 -1)
+                )
             )
+           ((time-elapsed? (-> self enter-time) (seconds 3))
+            (talker-speech-class-method-12 (-> *talker-speech* 194) 1)
+            )
+           )
+         (set-time! (-> self enter-time))
+         )
+       #f
+       )
+      (('exit)
+       (remove-setting! 'entity-name)
+       )
+      (('die)
+       (go-virtual die #t)
+       )
+      (('kill)
+       (process-entity-status! self (entity-perm-status subtask-complete) #t)
+       (cleanup-for-death self)
+       (deactivate self)
+       )
+      )
     )
   :enter (behavior ()
     (set! (-> self lightning-time) (+ (current-time) -1))
-    (none)
     )
   :exit (behavior ()
     (remove-setting! 'entity-name)
-    (none)
     )
-  :code (the-as (function none :behavior grenade-point) sleep-code)
+  :code sleep-code
   :post (behavior ()
     (spawn (-> self part) (-> self root trans))
     (when (< (-> self lightning-time) (current-time))
@@ -954,22 +910,20 @@ This commonly includes things such as:
         )
       )
     (update! (-> self sound))
-    (none)
     )
   )
 
 ;; failed to figure out what this is:
 (defstate die (grenade-point)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (the-as object (case event-type
-                     (('kill)
-                      (process-entity-status! self (entity-perm-status subtask-complete) #t)
-                      (cleanup-for-death self)
-                      (the-as symbol (deactivate self))
-                      )
-                     )
-            )
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
+      (('kill)
+       (process-entity-status! self (entity-perm-status subtask-complete) #t)
+       (cleanup-for-death self)
+       (deactivate self)
+       )
+      )
     )
   :code (behavior ((arg0 symbol))
     (play-communicator-speech! (-> *talker-speech* 194))
@@ -989,29 +943,28 @@ This commonly includes things such as:
       (suspend)
       )
     #f
-    (none)
     )
   )
 
 ;; definition for method 11 of type grenade-point
 ;; WARN: Return type mismatch object vs none.
-(defmethod init-from-entity! grenade-point ((obj grenade-point) (arg0 entity-actor))
+(defmethod init-from-entity! ((this grenade-point) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
 - stack size
 - collision information
 - loading the skeleton group / bones
 - sounds"
-  (set! (-> obj parented?) #f)
-  (when (not (-> obj parented?))
+  (set! (-> this parented?) #f)
+  (when (not (-> this parented?))
     (let ((a1-1 (handle->process (-> *game-info* controller 0))))
       (when a1-1
-        (change-parent obj a1-1)
-        (set! (-> obj parented?) #t)
+        (change-parent this a1-1)
+        (set! (-> this parented?) #t)
         )
       )
     )
-  (let ((s4-0 (new 'process 'collide-shape obj (collide-list-enum hit-by-player))))
+  (let ((s4-0 (new 'process 'collide-shape this (collide-list-enum hit-by-player))))
     (let ((v1-10 (new 'process 'collide-shape-prim-sphere s4-0 (the-as uint 0))))
       (set! (-> v1-10 prim-core collide-as) (collide-spec backgnd obstacle))
       (set-vector! (-> v1-10 local-sphere) 0.0 0.0 0.0 81920.0)
@@ -1023,66 +976,62 @@ This commonly includes things such as:
       (set! (-> s4-0 backup-collide-as) (-> v1-13 prim-core collide-as))
       (set! (-> s4-0 backup-collide-with) (-> v1-13 prim-core collide-with))
       )
-    (set! (-> obj root) s4-0)
+    (set! (-> this root) s4-0)
     )
-  (process-drawable-from-entity! obj arg0)
-  (set! (-> obj camera-name) (res-lump-struct (-> obj entity) 'camera-name string))
-  (set! (-> obj part) (create-launch-control (-> *part-group-id-table* 215) obj))
-  (set! (-> obj part2) (create-launch-control (-> *part-group-id-table* 216) obj))
-  (set! (-> obj part3) (create-launch-control (-> *part-group-id-table* 217) obj))
-  (set! (-> obj part-lightning-hit) (create-launch-control (-> *part-group-id-table* 218) obj))
-  (set! (-> obj lightning-time) 0)
-  (set! (-> obj strike-table)
+  (process-drawable-from-entity! this arg0)
+  (set! (-> this camera-name) (res-lump-struct (-> this entity) 'camera-name string))
+  (set! (-> this part) (create-launch-control (-> *part-group-id-table* 215) this))
+  (set! (-> this part2) (create-launch-control (-> *part-group-id-table* 216) this))
+  (set! (-> this part3) (create-launch-control (-> *part-group-id-table* 217) this))
+  (set! (-> this part-lightning-hit) (create-launch-control (-> *part-group-id-table* 218) this))
+  (set! (-> this lightning-time) 0)
+  (set! (-> this strike-table)
         (-> *grenade-point-strike-table*
-            (+ (res-lump-value (-> obj entity) 'extra-id uint128 :default (the-as uint128 1) :time -1000000000.0) -1)
+            (+ (res-lump-value (-> this entity) 'extra-id uint128 :default (the-as uint128 1) :time -1000000000.0) -1)
             )
         )
-  (set! (-> obj last-strike-index) (rand-vu-int-range 0 19))
-  (set! (-> obj speed) (res-lump-float (-> obj entity) 'speed :default 118784.0))
-  (set! (-> obj sound)
-        (new 'process 'ambient-sound (static-sound-spec "eco-plume1" :fo-min 5 :fo-max 90) (-> obj root trans))
+  (set! (-> this last-strike-index) (rand-vu-int-range 0 19))
+  (set! (-> this speed) (res-lump-float (-> this entity) 'speed :default 118784.0))
+  (set! (-> this sound)
+        (new 'process 'ambient-sound (static-sound-spec "eco-plume1" :fo-min 5 :fo-max 90) (-> this root trans))
         )
-  (update-transforms (-> obj root))
-  (logclear! (-> obj mask) (process-mask actor-pause))
-  (if (or (and (-> obj entity) (logtest? (-> obj entity extra perm status) (entity-perm-status subtask-complete)))
+  (update-transforms (-> this root))
+  (logclear! (-> this mask) (process-mask actor-pause))
+  (if (or (and (-> this entity) (logtest? (-> this entity extra perm status) (entity-perm-status subtask-complete)))
           (task-complete? *game-info* (game-task strip-grenade))
           )
-      (go (method-of-object obj die) #f)
-      (go (method-of-object obj idle))
+      (go (method-of-object this die) #f)
+      (go (method-of-object this idle))
       )
   (none)
   )
 
 ;; definition of type grenade
 (deftype grenade (projectile)
-  ((tumble-quat  quaternion :inline :offset-assert 480)
-   (blast-radius float              :offset-assert 496)
-   (end-target   handle             :offset-assert 504)
+  ((tumble-quat   quaternion  :inline)
+   (blast-radius  float)
+   (end-target    handle)
    )
-  :heap-base #x180
-  :method-count-assert 42
-  :size-assert         #x200
-  :flag-assert         #x2a01800200
   (:methods
-    (grenade-method-40 (_type_) none 40)
-    (grenade-method-41 (_type_) none 41)
+    (grenade-method-40 (_type_) none)
+    (grenade-method-41 (_type_) none)
     )
   )
 
 ;; definition for method 3 of type grenade
-(defmethod inspect grenade ((obj grenade))
-  (when (not obj)
-    (set! obj obj)
+(defmethod inspect ((this grenade))
+  (when (not this)
+    (set! this this)
     (goto cfg-4)
     )
   (let ((t9-0 (method-of-type projectile inspect)))
-    (t9-0 obj)
+    (t9-0 this)
     )
-  (format #t "~2Ttumble-quat: #<quaternion @ #x~X>~%" (-> obj tumble-quat))
-  (format #t "~2Tblast-radius: ~f~%" (-> obj blast-radius))
-  (format #t "~2Tend-target: ~D~%" (-> obj end-target))
+  (format #t "~2Ttumble-quat: #<quaternion @ #x~X>~%" (-> this tumble-quat))
+  (format #t "~2Tblast-radius: ~f~%" (-> this blast-radius))
+  (format #t "~2Tend-target: ~D~%" (-> this end-target))
   (label cfg-4)
-  obj
+  this
   )
 
 ;; failed to figure out what this is:
@@ -1271,7 +1220,7 @@ This commonly includes things such as:
 ;; definition for method 24 of type grenade
 ;; INFO: Used lq/sq
 ;; WARN: Return type mismatch int vs none.
-(defmethod draw-laser-sight grenade ((obj grenade))
+(defmethod draw-laser-sight ((this grenade))
   "TODO - confirm If applicable, draw the laser sight particles"
   (let ((gp-0 (get-process *default-dead-pool* part-tracker #x4000)))
     (when gp-0
@@ -1293,7 +1242,7 @@ This commonly includes things such as:
             (t2-0 #f)
             (t3-0 *launch-matrix*)
             )
-        (set! (-> t3-0 trans quad) (-> obj root trans quad))
+        (set! (-> t3-0 trans quad) (-> this root trans quad))
         ((the-as (function object object object object object object object object none) t9-2)
          a0-3
          a1-2
@@ -1314,9 +1263,9 @@ This commonly includes things such as:
 
 ;; definition for method 25 of type grenade
 ;; WARN: Return type mismatch int vs none.
-(defmethod spawn-impact-particles grenade ((obj grenade))
+(defmethod spawn-impact-particles ((this grenade))
   "Spawns associated particles with the projectile if applicable"
-  ((method-of-type projectile spawn-impact-particles) obj)
+  ((method-of-type projectile spawn-impact-particles) this)
   (ja-post)
   0
   (none)
@@ -1325,7 +1274,7 @@ This commonly includes things such as:
 ;; definition for method 26 of type grenade
 ;; INFO: Used lq/sq
 ;; WARN: Return type mismatch int vs none.
-(defmethod spawn-shell-particles grenade ((obj grenade))
+(defmethod spawn-shell-particles ((this grenade))
   "TODO - confirm"
   (let ((gp-0 (get-process *default-dead-pool* part-tracker #x4000)))
     (when gp-0
@@ -1347,7 +1296,7 @@ This commonly includes things such as:
             (t2-0 #f)
             (t3-0 *launch-matrix*)
             )
-        (set! (-> t3-0 trans quad) (-> obj root trans quad))
+        (set! (-> t3-0 trans quad) (-> this root trans quad))
         ((the-as (function object object object object object object object object none) t9-2)
          a0-3
          a1-2
@@ -1368,7 +1317,7 @@ This commonly includes things such as:
 
 ;; definition for method 28 of type grenade
 ;; WARN: Return type mismatch int vs none.
-(defmethod play-impact-sound grenade ((obj grenade) (arg0 projectile-options))
+(defmethod play-impact-sound ((this grenade) (arg0 projectile-options))
   (let ((v1-0 arg0))
     (cond
       ((zero? v1-0)
@@ -1386,8 +1335,8 @@ This commonly includes things such as:
 ;; failed to figure out what this is:
 (defstate impact (grenade)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('touched)
        (let* ((s4-0 proc)
               (v1-1 (if (type? s4-0 process-drawable)
@@ -1414,20 +1363,9 @@ This commonly includes things such as:
                (set! (-> v1-5 ignore-pat) (-> self root pat-ignore-mask))
                (set! (-> v1-5 action-mask) (collide-action solid))
                )
-             (when (< (fill-and-probe-using-line-sphere *collide-cache* a1-2) 0.0)
-               (let ((a1-3 (new 'stack-no-clear 'event-message-block)))
-                 (set! (-> a1-3 from) (process->ppointer self))
-                 (set! (-> a1-3 num-params) 2)
-                 (set! (-> a1-3 message) 'attack)
-                 (set! (-> a1-3 param 0) (-> event param 0))
-                 (let ((v1-12 (new 'static 'attack-info :mask (attack-info-mask mode id))))
-                   (set! (-> v1-12 id) (-> self attack-id))
-                   (set! (-> v1-12 mode) 'explode)
-                   (set! (-> a1-3 param 1) (the-as uint v1-12))
-                   )
-                 (send-event-function proc a1-3)
+             (if (< (fill-and-probe-using-line-sphere *collide-cache* a1-2) 0.0)
+                 (send-event proc 'attack (-> block param 0) (static-attack-info ((id (-> self attack-id)) (mode 'explode))))
                  )
-               )
              )
            )
          )
@@ -1440,10 +1378,9 @@ This commonly includes things such as:
           (t9-0)
           )
       )
-    (set! (-> self state-time) (current-time))
+    (set-time! (-> self state-time))
     (send-event (handle->process (-> self end-target)) 'die)
     (remove-setting! 'point-of-interest)
-    (none)
     )
   :code (behavior ()
     (ja-channel-set! 0)
@@ -1469,7 +1406,6 @@ This commonly includes things such as:
       )
     0
     (deactivate self)
-    (none)
     )
   )
 
@@ -1478,50 +1414,49 @@ This commonly includes things such as:
   :virtual #t
   :enter (behavior ()
     (go-virtual impact)
-    (none)
     )
   )
 
 ;; definition for method 40 of type grenade
 ;; INFO: Used lq/sq
 ;; WARN: Return type mismatch int vs none.
-(defmethod grenade-method-40 grenade ((obj grenade))
-  (let ((s5-0 (the-as process-drawable (-> obj end-target process 0))))
+(defmethod grenade-method-40 ((this grenade))
+  (let ((s5-0 (the-as process-drawable (-> this end-target process 0))))
     (when s5-0
-      (set! (-> obj root transv x) (* 4.0 (- (-> s5-0 root trans x) (-> obj root trans x))))
-      (set! (-> obj root transv z) (* 4.0 (- (-> s5-0 root trans z) (-> obj root trans z))))
-      (let ((v1-12 (-> obj root transv)))
+      (set! (-> this root transv x) (* 4.0 (- (-> s5-0 root trans x) (-> this root trans x))))
+      (set! (-> this root transv z) (* 4.0 (- (-> s5-0 root trans z) (-> this root trans z))))
+      (let ((v1-12 (-> this root transv)))
         (if (< (sqrtf (+ (* (-> v1-12 x) (-> v1-12 x)) (* (-> v1-12 z) (-> v1-12 z)))) 16384.0)
-            (vector-xz-normalize! (-> obj root transv) 16384.0)
+            (vector-xz-normalize! (-> this root transv) 16384.0)
             )
         )
-      (if (or (logtest? (-> obj root status) (collide-status on-surface on-ground))
-              (< (vector-vector-distance (-> s5-0 root trans) (-> obj root trans)) 4096.0)
+      (if (or (logtest? (-> this root status) (collide-status on-surface on-ground))
+              (< (vector-vector-distance (-> s5-0 root trans) (-> this root trans)) 4096.0)
               )
-          (go (method-of-object obj impact))
+          (go (method-of-object this impact))
           )
       )
     )
-  (vector-v++! (-> obj root transv) (compute-acc-due-to-gravity (-> obj root) (new-stack-vector0) 1.0))
+  (vector-v++! (-> this root transv) (compute-acc-due-to-gravity (-> this root) (new-stack-vector0) 1.0))
   0
   (none)
   )
 
 ;; definition for method 41 of type grenade
 ;; WARN: Return type mismatch int vs none.
-(defmethod grenade-method-41 grenade ((obj grenade))
-  (quaternion*! (-> obj root quat) (-> obj root quat) (-> obj tumble-quat))
-  (projectile-move-fill-all-dirs obj)
-  (set-setting! 'point-of-interest 'abs (-> obj root trans) 0)
+(defmethod grenade-method-41 ((this grenade))
+  (quaternion*! (-> this root quat) (-> this root quat) (-> this tumble-quat))
+  (projectile-move-fill-all-dirs this)
+  (set-setting! 'point-of-interest 'abs (-> this root trans) 0)
   0
   (none)
   )
 
 ;; definition for method 30 of type grenade
 ;; WARN: Return type mismatch collide-shape-moving vs none.
-(defmethod init-proj-collision! grenade ((obj grenade))
+(defmethod init-proj-collision! ((this grenade))
   "Init the [[projectile]]'s [[collide-shape]]"
-  (let ((s5-0 (new 'process 'collide-shape-moving obj (collide-list-enum hit-by-player))))
+  (let ((s5-0 (new 'process 'collide-shape-moving this (collide-list-enum hit-by-player))))
     (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s5-0 reaction) cshape-reaction-projectile)
     (set! (-> s5-0 no-reaction)
@@ -1545,49 +1480,49 @@ This commonly includes things such as:
       )
     (set! (-> s5-0 max-iteration-count) (the-as uint 2))
     (set! (-> s5-0 event-self) 'touched)
-    (set! (-> obj root) s5-0)
+    (set! (-> this root) s5-0)
     )
   (none)
   )
 
 ;; definition for method 31 of type grenade
-(defmethod init-proj-settings! grenade ((obj grenade))
+(defmethod init-proj-settings! ((this grenade))
   "Init relevant settings for the [[projectile]] such as gravity, speed, timeout, etc"
   (with-pp
     (initialize-skeleton
-      obj
+      this
       (the-as skeleton-group (art-group-get-by-name *level* "skel-grenade" (the-as (pointer uint32) #f)))
       (the-as pair 0)
       )
-    (logclear! (-> obj options) (projectile-options proj-options-4))
-    (vector-normalize! (-> obj root transv) 1.0)
-    (+! (-> obj root transv y) 1.0)
-    (vector-normalize! (-> obj root transv) 184320.0)
-    (set! (-> obj attack-mode) 'eco-yellow)
-    (set! (-> obj blast-radius) 20480.0)
-    (set! (-> obj max-speed) 184320.0)
-    (set! (-> obj timeout) (seconds 3.6))
-    (set! (-> obj update-velocity) (method-of-object obj grenade-method-40))
-    (set! (-> obj move) (method-of-object obj grenade-method-41))
-    (set! (-> obj root dynam gravity y) 327680.0)
-    (set! (-> obj root dynam gravity-length) 327680.0)
-    (set! (-> obj root dynam gravity-max) 327680.0)
+    (logclear! (-> this options) (projectile-options proj-options-4))
+    (vector-normalize! (-> this root transv) 1.0)
+    (+! (-> this root transv y) 1.0)
+    (vector-normalize! (-> this root transv) 184320.0)
+    (set! (-> this attack-mode) 'eco-yellow)
+    (set! (-> this blast-radius) 20480.0)
+    (set! (-> this max-speed) 184320.0)
+    (set! (-> this timeout) (seconds 3.6))
+    (set! (-> this update-velocity) (method-of-object this grenade-method-40))
+    (set! (-> this move) (method-of-object this grenade-method-41))
+    (set! (-> this root dynam gravity y) 327680.0)
+    (set! (-> this root dynam gravity-length) 327680.0)
+    (set! (-> this root dynam gravity-max) 327680.0)
     (let ((f0-7 1092.2667))
-      (quaternion-axis-angle! (-> obj tumble-quat) 1.0 0.0 0.0 f0-7)
+      (quaternion-axis-angle! (-> this tumble-quat) 1.0 0.0 0.0 f0-7)
       )
     (let ((a1-5 (new 'stack-no-clear 'event-message-block)))
       (set! (-> a1-5 from) (process->ppointer pp))
       (set! (-> a1-5 num-params) 0)
       (set! (-> a1-5 message) 'target)
-      (let ((s5-1 (send-event-function (ppointer->process (-> obj parent)) a1-5)))
-        (set! (-> obj end-target) (process->handle (if (type? s5-1 process-drawable)
-                                                       (the-as process-drawable s5-1)
-                                                       )
-                                                   )
+      (let ((s5-1 (send-event-function (ppointer->process (-> this parent)) a1-5)))
+        (set! (-> this end-target) (process->handle (if (type? s5-1 process-drawable)
+                                                        (the-as process-drawable s5-1)
+                                                        )
+                                                    )
               )
         )
       )
-    (set! (-> obj part) (create-launch-control (-> *part-group-id-table* 235) obj))
+    (set! (-> this part) (create-launch-control (-> *part-group-id-table* 235) this))
     (cpad-set-buzz! (-> *cpad-list* cpads 0) 1 204 (seconds 0.1))
     (none)
     )
@@ -1654,11 +1589,11 @@ This commonly includes things such as:
   (lambda :behavior task-manager
     ()
     (local-vars (sv-16 object))
-    (set! (-> self start-time) (current-time))
+    (set-time! (-> self start-time))
     (set! (-> self total-time) (seconds 120))
     (set! (-> self hud-timer) (ppointer->handle (process-spawn hud-timer :init hud-init-by-other :to *target*)))
     (set! (-> self hud-counter) (ppointer->handle (process-spawn hud-plasmite :init hud-init-by-other :to self)))
-    (while (or (< (- (current-time) (-> self start-time)) (-> self total-time))
+    (while (or (not (time-elapsed? (-> self start-time) (-> self total-time)))
                (and *target* (focus-test? *target* in-air))
                )
       (let ((v1-18 (the-as int (- (-> self total-time) (- (current-time) (-> self start-time))))))
@@ -1714,7 +1649,7 @@ This commonly includes things such as:
          (talker-spawn-func (-> *talker-speech* 195) *entity-pool* (target-pos 0) (the-as region #f))
          )
         )
-      (set! (-> self state-time) (current-time))
+      (set-time! (-> self state-time))
       (set! (-> *game-info* counter) (the float (the-as int sv-16)))
       (if (>= 1 (the-as int sv-16))
           (gui-control-method-12
@@ -1747,66 +1682,46 @@ This commonly includes things such as:
   TASK_MANAGER_FAIL_HOOK
   (lambda :behavior task-manager
     ()
-    (let ((a1-0 (new 'stack-no-clear 'event-message-block)))
-      (set! (-> a1-0 from) (process->ppointer self))
-      (set! (-> a1-0 num-params) 2)
-      (set! (-> a1-0 message) 'attack-invinc)
-      (set! (-> a1-0 param 0) (the-as uint #f))
-      (let ((v1-3 (new 'static 'attack-info :mask (attack-info-mask mode id))))
-        (let* ((a0-1 *game-info*)
-               (a2-1 (+ (-> a0-1 attack-id) 1))
-               )
-          (set! (-> a0-1 attack-id) a2-1)
-          (set! (-> v1-3 id) a2-1)
-          )
-        (set! (-> v1-3 mode) 'big-explosion)
-        (set! (-> a1-0 param 1) (the-as uint v1-3))
-        )
-      (send-event-function *target* a1-0)
-      )
+    (send-event *target* 'attack-invinc #f (static-attack-info ((id (new-attack-id)) (mode 'big-explosion))))
     (none)
     )
   )
 
 ;; definition of type drill-plat
 (deftype drill-plat (strip-hazard)
-  ((plat-sound ambient-sound  :offset-assert 252)
+  ((plat-sound  ambient-sound)
    )
-  :heap-base #x80
-  :method-count-assert 21
-  :size-assert         #x100
-  :flag-assert         #x1500800100
   )
 
 ;; definition for method 3 of type drill-plat
-(defmethod inspect drill-plat ((obj drill-plat))
-  (when (not obj)
-    (set! obj obj)
+(defmethod inspect ((this drill-plat))
+  (when (not this)
+    (set! this this)
     (goto cfg-4)
     )
   (let ((t9-0 (method-of-type strip-hazard inspect)))
-    (t9-0 obj)
+    (t9-0 this)
     )
-  (format #t "~2Tplat-sound: ~A~%" (-> obj plat-sound))
+  (format #t "~2Tplat-sound: ~A~%" (-> this plat-sound))
   (label cfg-4)
-  obj
+  this
   )
 
 ;; definition for method 7 of type drill-plat
 ;; WARN: Return type mismatch process-drawable vs drill-plat.
-(defmethod relocate drill-plat ((obj drill-plat) (arg0 int))
-  (if (nonzero? (-> obj plat-sound))
-      (&+! (-> obj plat-sound) arg0)
+(defmethod relocate ((this drill-plat) (arg0 int))
+  (if (nonzero? (-> this plat-sound))
+      (&+! (-> this plat-sound) arg0)
       )
-  (the-as drill-plat ((method-of-type process-drawable relocate) obj arg0))
+  (the-as drill-plat ((method-of-type process-drawable relocate) this arg0))
   )
 
 ;; definition for method 10 of type drill-plat
-(defmethod deactivate drill-plat ((obj drill-plat))
-  (if (nonzero? (-> obj plat-sound))
-      (stop! (-> obj plat-sound))
+(defmethod deactivate ((this drill-plat))
+  (if (nonzero? (-> this plat-sound))
+      (stop! (-> this plat-sound))
       )
-  ((method-of-type process-drawable deactivate) obj)
+  ((method-of-type process-drawable deactivate) this)
   (none)
   )
 
@@ -1819,13 +1734,13 @@ This commonly includes things such as:
 ;; failed to figure out what this is:
 (defstate idle (drill-plat)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('touch 'attack)
        #f
        )
       (else
-        (strip-handler proc arg1 event-type event)
+        (strip-handler proc argc message block)
         )
       )
     )
@@ -1836,7 +1751,6 @@ This commonly includes things such as:
           )
       )
     (rider-trans)
-    (none)
     )
   :code (behavior ()
     (until #f
@@ -1856,7 +1770,6 @@ This commonly includes things such as:
       (suspend)
       )
     #f
-    (none)
     )
   :post (behavior ()
     (let ((t9-0 (-> (method-of-type strip-hazard idle) post)))
@@ -1868,24 +1781,23 @@ This commonly includes things such as:
     (update! (-> self sound))
     (update-trans!
       (-> self plat-sound)
-      (vector<-cspace! (new 'stack-no-clear 'vector) (-> self node-list data 7))
+      (vector<-cspace! (new 'stack-no-clear 'vector) (joint-node drill-plat-lod0-jg plat))
       )
     (update! (-> self plat-sound))
-    (none)
     )
   )
 
 ;; definition for method 11 of type drill-plat
 ;; INFO: Used lq/sq
 ;; WARN: Return type mismatch object vs none.
-(defmethod init-from-entity! drill-plat ((obj drill-plat) (arg0 entity-actor))
+(defmethod init-from-entity! ((this drill-plat) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
 - stack size
 - collision information
 - loading the skeleton group / bones
 - sounds"
-  (let ((s4-0 (new 'process 'collide-shape-moving obj (collide-list-enum hit-by-player))))
+  (let ((s4-0 (new 'process 'collide-shape-moving this (collide-list-enum hit-by-player))))
     (set! (-> s4-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s4-0 reaction) cshape-reaction-default)
     (set! (-> s4-0 no-reaction)
@@ -1927,32 +1839,32 @@ This commonly includes things such as:
       (set! (-> s4-0 backup-collide-as) (-> v1-21 prim-core collide-as))
       (set! (-> s4-0 backup-collide-with) (-> v1-21 prim-core collide-with))
       )
-    (set! (-> obj root) s4-0)
+    (set! (-> this root) s4-0)
     )
-  (process-drawable-from-entity! obj arg0)
+  (process-drawable-from-entity! this arg0)
   (initialize-skeleton
-    obj
+    this
     (the-as skeleton-group (art-group-get-by-name *level* "skel-drill-plat" (the-as (pointer uint32) #f)))
     (the-as pair 0)
     )
   (let ((t9-10 (method-of-type strip-hazard init-from-entity!)))
-    (t9-10 obj arg0)
+    (t9-10 this arg0)
     )
-  (logclear! (-> obj mask) (process-mask actor-pause))
+  (logclear! (-> this mask) (process-mask actor-pause))
   (let ((a3-5 (new 'stack-no-clear 'vector)))
-    (set! (-> a3-5 quad) (-> obj root trans quad))
+    (set! (-> a3-5 quad) (-> this root trans quad))
     (+! (-> a3-5 x) 57344.0)
-    (set! (-> obj sound) (new 'process 'ambient-sound (static-sound-spec "drill-plat-a" :fo-max 90) a3-5))
+    (set! (-> this sound) (new 'process 'ambient-sound (static-sound-spec "drill-plat-a" :fo-max 90) a3-5))
     )
   (ja-post)
-  (set! (-> obj plat-sound) (new
-                              'process
-                              'ambient-sound
-                              (static-sound-spec "drill-plat-b" :fo-max 50)
-                              (vector<-cspace! (new 'stack-no-clear 'vector) (-> obj node-list data 7))
-                              )
+  (set! (-> this plat-sound) (new
+                               'process
+                               'ambient-sound
+                               (static-sound-spec "drill-plat-b" :fo-max 50)
+                               (vector<-cspace! (new 'stack-no-clear 'vector) (-> this node-list data 7))
+                               )
         )
-  (go (method-of-object obj idle))
+  (go (method-of-object this idle))
   (none)
   )
 
@@ -1968,7 +1880,7 @@ This commonly includes things such as:
       (quaternion-identity! (-> gp-0 quat))
       (set! (-> gp-0 flags) (task-arrow-flags))
       (set! (-> gp-0 map-icon) (the-as uint 15))
-      (set! (-> self arrow) (process->handle (task-arrow-spawn gp-0 (the-as task-arrow self))))
+      (set! (-> self arrow) (process->handle (task-arrow-spawn gp-0 self)))
       )
     (while (>= (vector-vector-distance (target-pos 0) (-> self info end-sphere)) (-> self info end-sphere r))
       (suspend)

@@ -8,16 +8,11 @@
 
 ;; DECOMP BEGINS
 
-
 (deftype eggtop (process-drawable)
-  ((root-override collide-shape-moving  :offset        112)
-   (cam-tracker   handle                :offset-assert 176)
-   (sound-id      sound-id              :offset-assert 184)
+  ((root         collide-shape-moving :override)
+   (cam-tracker  handle)
+   (sound-id     sound-id)
    )
-  :heap-base #x50
-  :method-count-assert 20
-  :size-assert         #xbc
-  :flag-assert         #x14005000bc
   (:states
     (eggtop-close symbol)
     eggtop-idle
@@ -175,46 +170,41 @@
   )
 
 (defstate eggtop-idle (eggtop)
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (the-as object (case event-type
-                     (('notify)
-                      (case (-> event param 0)
-                        (('pickup)
-                         (if (type-type? (-> proc type) fuel-cell)
-                             (save-reminder (get-task-control (-> self entity extra perm task)) 1 0)
-                             )
-                         )
-                        )
-                      )
-                     )
-            )
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
+      (('notify)
+       (case (-> block param 0)
+         (('pickup)
+          (if (type-type? (-> proc type) fuel-cell)
+              (save-reminder (get-task-control (-> self entity extra perm task)) 1 0)
+              )
+          )
+         )
+       )
+      )
     )
   :exit (behavior ()
     (sound-stop (-> self sound-id))
-    (none)
     )
   :trans (behavior ()
     (if (and (not (-> self child)) (task-complete? *game-info* (-> self entity extra perm task)))
         (go eggtop-close #f)
         )
-    (spawn (-> self part) (-> self root-override trans))
+    (spawn (-> self part) (-> self root trans))
     (sound-play "electric-loop" :id (-> self sound-id))
-    (none)
     )
   :code (behavior ()
     (suspend)
-    (update-transforms! (-> self root-override))
+    (update-transforms! (-> self root))
     (anim-loop)
-    (none)
     )
-  :post (the-as (function none :behavior eggtop) ja-post)
+  :post ja-post
   )
 
 (defstate eggtop-close (eggtop)
   :trans (behavior ()
     (rider-trans)
     (hide-hud-quick)
-    (none)
     )
   :code (behavior ((arg0 symbol))
     (when (not arg0)
@@ -227,7 +217,7 @@
         #f
         #f
         #f
-        (-> self root-override trans)
+        (-> self root trans)
         :to *entity-pool*
         )
       (set! (-> self cam-tracker)
@@ -239,16 +229,16 @@
                                   (while (not (process-grab? *target*))
                                     (suspend)
                                     )
-                                  (let ((gp-0 (-> *display* base-frame-counter)))
-                                    (until (>= (- (-> *display* base-frame-counter) gp-0) (seconds 1))
+                                  (let ((gp-0 (current-time)))
+                                    (until (time-elapsed? gp-0 (seconds 1))
                                       (suspend)
                                       )
                                     )
                                   (send-event *camera* 'blend-from-as-fixed)
                                   (camera-look-at (the-as pair "ecovent-171") (the-as uint 0))
                                   (camera-change-to "camera-223" 0 #f)
-                                  (let ((gp-1 (-> *display* base-frame-counter)))
-                                    (until (>= (- (-> *display* base-frame-counter) gp-1) (seconds 3))
+                                  (let ((gp-1 (current-time)))
+                                    (until (time-elapsed? gp-1 (seconds 3))
                                       (suspend)
                                       )
                                     )
@@ -274,7 +264,7 @@
             )
       (save-reminder (get-task-control (-> self entity extra perm task)) 2 0)
       (sound-play "jngb-eggtop-seq")
-      (ja-no-eval :group! (-> self draw art-group data 2) :num! (seek!) :frame-num 0.0)
+      (ja-no-eval :group! eggtop-idle-ja :num! (seek!) :frame-num 0.0)
       (until (ja-done? 0)
         (suspend)
         (ja :num! (seek!))
@@ -286,18 +276,17 @@
           (entity-task-complete-on a0-20)
           )
       )
-    (ja :group! (-> self draw art-group data 2) :num! max)
+    (ja :group! eggtop-idle-ja :num! max)
     (suspend)
     (logior! (-> self mask) (process-mask sleep))
     (suspend)
     0
-    (none)
     )
-  :post (the-as (function none :behavior eggtop) rider-post)
+  :post rider-post
   )
 
-(defmethod init-from-entity! eggtop ((obj eggtop) (arg0 entity-actor))
-  (let ((s4-0 (new 'process 'collide-shape-moving obj (collide-list-enum hit-by-player))))
+(defmethod init-from-entity! ((this eggtop) (arg0 entity-actor))
+  (let ((s4-0 (new 'process 'collide-shape-moving this (collide-list-enum hit-by-player))))
     (set! (-> s4-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s4-0 reaction) default-collision-reaction)
     (set! (-> s4-0 no-reaction)
@@ -315,25 +304,25 @@
       )
     (set! (-> s4-0 nav-radius) (* 0.75 (-> s4-0 root-prim local-sphere w)))
     (backup-collide-with-as s4-0)
-    (set! (-> obj root-override) s4-0)
+    (set! (-> this root) s4-0)
     )
-  (process-drawable-from-entity! obj arg0)
-  (initialize-skeleton obj *eggtop-sg* '())
-  (logior! (-> obj skel status) (janim-status inited))
-  (update-transforms! (-> obj root-override))
-  (set! (-> obj part) (create-launch-control (-> *part-group-id-table* 189) obj))
-  (set! (-> obj sound-id) (new-sound-id))
+  (process-drawable-from-entity! this arg0)
+  (initialize-skeleton this *eggtop-sg* '())
+  (logior! (-> this skel status) (janim-status inited))
+  (update-transforms! (-> this root))
+  (set! (-> this part) (create-launch-control (-> *part-group-id-table* 189) this))
+  (set! (-> this sound-id) (new-sound-id))
   (cond
-    ((task-complete? *game-info* (-> obj entity extra perm task))
+    ((task-complete? *game-info* (-> this entity extra perm task))
      (go eggtop-close #t)
      )
     (else
       (birth-pickup-at-point
-        (vector+! (new 'stack-no-clear 'vector) (-> obj root-override trans) (new 'static 'vector :y 6144.0 :w 1.0))
+        (vector+! (new 'stack-no-clear 'vector) (-> this root trans) (new 'static 'vector :y 6144.0 :w 1.0))
         (pickup-type fuel-cell)
-        (the float (-> obj entity extra perm task))
+        (the float (-> this entity extra perm task))
         #f
-        obj
+        this
         (the-as fact-info #f)
         )
       (go eggtop-idle)
@@ -344,10 +333,6 @@
 
 (deftype jng-iris-door (eco-door)
   ()
-  :heap-base #xa0
-  :method-count-assert 27
-  :size-assert         #x104
-  :flag-assert         #x1b00a00104
   )
 
 
@@ -356,8 +341,8 @@
               :bounds (static-spherem 0 0 0 8)
               )
 
-(defmethod eco-door-method-24 jng-iris-door ((obj jng-iris-door))
-  (let ((s5-0 (new 'process 'collide-shape obj (collide-list-enum hit-by-others))))
+(defmethod eco-door-method-24 ((this jng-iris-door))
+  (let ((s5-0 (new 'process 'collide-shape this (collide-list-enum hit-by-others))))
     (let ((s4-0 (new 'process 'collide-shape-prim-mesh s5-0 (the-as uint 0) (the-as uint 0))))
       (set! (-> s4-0 prim-core collide-as) (collide-kind wall-object))
       (set! (-> s4-0 collide-with) (collide-kind target))
@@ -369,17 +354,17 @@
       )
     (set! (-> s5-0 nav-radius) (* 0.75 (-> s5-0 root-prim local-sphere w)))
     (backup-collide-with-as s5-0)
-    (set! (-> obj root-override) s5-0)
+    (set! (-> this root) s5-0)
     )
   0
   (none)
   )
 
-(defmethod eco-door-method-25 jng-iris-door ((obj jng-iris-door))
-  (initialize-skeleton obj *jng-iris-door-sg* '())
-  (set! (-> obj open-distance) 32768.0)
-  (set! (-> obj close-distance) 49152.0)
-  (update-transforms! (-> obj root-override))
+(defmethod eco-door-method-25 ((this jng-iris-door))
+  (initialize-skeleton this *jng-iris-door-sg* '())
+  (set! (-> this open-distance) 32768.0)
+  (set! (-> this close-distance) 49152.0)
+  (update-transforms! (-> this root))
   0
   (none)
   )

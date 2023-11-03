@@ -219,122 +219,116 @@
 (set! (-> *metalhead-grunt-nav-enemy-info* fact-defaults) *fact-info-enemy-defaults*)
 
 (deftype metalhead-grunt (citizen-enemy)
-  ((patrol-anim            grunt-anim-info         :offset-assert 980)
-   (charge-anim            grunt-anim-info         :offset-assert 984)
-   (attack-anim            grunt-anim-info         :offset-assert 988)
-   (knocked-anim           grunt-anim-info         :offset-assert 992)
-   (yellow-hit-anim        grunt-anim-info         :offset-assert 996)
-   (blue-hit-anim          grunt-anim-info         :offset-assert 1000)
-   (intro-path             path-control            :offset-assert 1004)
-   (pad-jh1b23jhb13        uint32                  :offset-assert 1008)
-   (use-charge-anim-index  int8                    :offset-assert 1012)
-   (knocked-anim-index     int8                    :offset-assert 1013)
-   (jumping-ambush-path-pt int8                    :offset-assert 1014)
-   (grunt-flags            uint8                   :offset-assert 1015)
-   (state-timeout2         uint64                  :offset-assert 1016)
-   (next-warn-time         time-frame              :offset-assert 1024)
-   (dest                   vector          :inline :offset-assert 1040)
-   (pad-kj1n23kj1n23       uint32          4       :offset-assert 1056)
+  ((patrol-anim             grunt-anim-info)
+   (charge-anim             grunt-anim-info)
+   (attack-anim             grunt-anim-info)
+   (knocked-anim            grunt-anim-info)
+   (yellow-hit-anim         grunt-anim-info)
+   (blue-hit-anim           grunt-anim-info)
+   (intro-path              path-control)
+   (pad-jh1b23jhb13         uint32)
+   (use-charge-anim-index   int8)
+   (knocked-anim-index      int8)
+   (jumping-ambush-path-pt  int8)
+   (grunt-flags             uint8)
+   (state-timeout2          uint64)
+   (next-warn-time          time-frame)
+   (dest                    vector  :inline)
+   (pad-kj1n23kj1n23        uint32  4)
    )
-  :heap-base #x3b0
-  :method-count-assert 212
-  :size-assert         #x430
-  :flag-assert         #xd403b00430
+  (:state-methods
+    attack
+    falling-ambush
+    jumping-ambush
+    jumping-ambush-cont
+    wait-for-focus
+    spin-attack
+    )
   (:methods
-    (attack () _type_ :state 203)
-    (falling-ambush () _type_ :state 204)
-    (jumping-ambush () _type_ :state 205)
-    (jumping-ambush-cont () _type_ :state 206)
-    (wait-for-focus () _type_ :state 207)
-    (spin-attack () _type_ :state 208)
-    (metalhead-grunt-method-209 (_type_ float) process-focusable 209)
-    (get-nav-info (_type_) nav-enemy-info 210)
-    (metalhead-grunt-method-211 (_type_) none 211)
+    (metalhead-grunt-method-209 (_type_ float) process-focusable)
+    (get-nav-info (_type_) nav-enemy-info)
+    (metalhead-grunt-method-211 (_type_) none)
     )
   )
 
 
-(defmethod general-event-handler metalhead-grunt ((obj metalhead-grunt) (arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+(defmethod general-event-handler ((this metalhead-grunt) (arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
   "Handles various events for the enemy
 @TODO - unsure if there is a pattern for the events and this should have a more specific name"
   (case arg2
     (('hit 'hit-knocked)
-     (logclear! (-> obj mask) (process-mask actor-pause))
-     (logclear! (-> obj focus-status) (focus-status dangerous))
-     (logclear! (-> obj enemy-flags) (enemy-flag enable-on-notice))
-     (logior! (-> obj enemy-flags) (enemy-flag chase-startup))
-     (logior! (-> obj focus-status) (focus-status hit))
-     (if (zero? (-> obj hit-points))
-         (logior! (-> obj focus-status) (focus-status dead))
+     (logclear! (-> this mask) (process-mask actor-pause))
+     (logclear! (-> this focus-status) (focus-status dangerous))
+     (logclear! (-> this enemy-flags) (enemy-flag enable-on-notice))
+     (logior! (-> this enemy-flags) (enemy-flag chase-startup))
+     (logior! (-> this focus-status) (focus-status hit))
+     (if (zero? (-> this hit-points))
+         (logior! (-> this focus-status) (focus-status dead))
          )
-     (logclear! (-> obj enemy-flags) (enemy-flag actor-pause-backup))
-     (enemy-method-62 obj)
-     (logior! (-> obj enemy-flags) (enemy-flag actor-pause-backup))
+     (logclear! (-> this enemy-flags) (enemy-flag actor-pause-backup))
+     (enemy-method-62 this)
+     (logior! (-> this enemy-flags) (enemy-flag actor-pause-backup))
      (process-contact-action arg0)
      (send-event arg0 'get-attack-count 1)
      (cond
-       ((zero? (-> obj hit-points))
-        (let ((s5-1 (-> obj incoming knocked-type)))
+       ((zero? (-> this hit-points))
+        (let ((s5-1 (-> this incoming knocked-type)))
           (cond
             ((and (= s5-1 (knocked-type knocked-type-4))
-                  (not (and (-> obj next-state) (let ((v1-33 (-> obj next-state name)))
-                                                  (or (= v1-33 'knocked) (= v1-33 'jump) (= v1-33 'jump-land))
-                                                  )
+                  (not (and (-> this next-state) (let ((v1-33 (-> this next-state name)))
+                                                   (or (= v1-33 'knocked) (= v1-33 'jump) (= v1-33 'jump-land))
+                                                   )
                             )
                        )
-                  (zero? (get-rand-int obj 3))
-                  (let ((f0-0 (vector-vector-distance-squared (-> obj root trans) (target-pos 0)))
+                  (zero? (get-rand-int this 3))
+                  (let ((f0-0 (vector-vector-distance-squared (-> this root trans) (target-pos 0)))
                         (f1-0 32768.0)
                         )
                     (>= f0-0 (* f1-0 f1-0))
                     )
                   )
-             (kill-prefer-falling obj)
+             (kill-prefer-falling this)
              )
             ((or (= s5-1 (knocked-type knocked-type-4)) (= s5-1 (knocked-type knocked-type-6)))
-             (set! (-> obj incoming knocked-type) (knocked-type knocked-type-0))
-             (go (method-of-object obj knocked))
+             (set! (-> this incoming knocked-type) (knocked-type knocked-type-0))
+             (go (method-of-object this knocked))
              )
             (else
-              (go (method-of-object obj knocked))
+              (go (method-of-object this knocked))
               )
             )
           )
         )
        (else
-         (go (method-of-object obj knocked))
+         (go (method-of-object this knocked))
          )
        )
      #t
      )
     (else
-      ((method-of-type citizen-enemy general-event-handler) obj arg0 arg1 arg2 arg3)
+      ((method-of-type citizen-enemy general-event-handler) this arg0 arg1 arg2 arg3)
       )
     )
   )
 
-(defmethod go-ambush metalhead-grunt ((obj metalhead-grunt))
+(defmethod go-ambush ((this metalhead-grunt))
   (cond
-    ((logtest? (-> obj fact enemy-options) (enemy-option user10))
-     (go (method-of-object obj falling-ambush))
+    ((logtest? (-> this fact enemy-options) (enemy-option user10))
+     (go (method-of-object this falling-ambush))
      )
-    ((logtest? (-> obj fact enemy-options) (enemy-option user11))
-     (go (method-of-object obj jumping-ambush))
+    ((logtest? (-> this fact enemy-options) (enemy-option user11))
+     (go (method-of-object this jumping-ambush))
      )
     (else
-      (format 0 "ERROR: ~A doesn't specify which ambush behavior to use.~%" (-> obj name))
-      (go-hostile obj)
+      (format 0 "ERROR: ~A doesn't specify which ambush behavior to use.~%" (-> this name))
+      (go-hostile this)
       )
     )
-  (none)
   )
 
 (defstate falling-ambush (metalhead-grunt)
   :virtual #t
-  :event (the-as
-    (function process int symbol event-message-block object :behavior metalhead-grunt)
-    enemy-event-handler
-    )
+  :event enemy-event-handler
   :enter (behavior ()
     (when (logtest? (-> self enemy-flags) (enemy-flag auto-reset-penetrate))
       (logclear! (-> self enemy-flags) (enemy-flag auto-reset-penetrate))
@@ -366,17 +360,10 @@
       (set! (-> v1-17 attack-id) v0-9)
       (set! (-> self attack-id) v0-9)
       )
-    (none)
     )
   :code (behavior ()
     (ja-no-eval :group! (-> self draw art-group data (-> self enemy-info notice-anim))
-                :num! (seek!
-                  (the float
-                       (+ (-> (the-as art-joint-anim (-> self draw art-group data (-> self enemy-info notice-anim))) frames num-frames)
-                          -1
-                          )
-                       )
-                  )
+                :num! (seek!)
                 :frame-num 0.0
                 )
     (until (ja-done? 0)
@@ -385,18 +372,18 @@
       )
     (sound-play "grunt-notice")
     (go-virtual hostile)
-    (none)
     )
-  :post (the-as (function none :behavior metalhead-grunt) nav-enemy-falling-post)
+  :post nav-enemy-falling-post
   )
 
-(defmethod enemy-method-93 metalhead-grunt ((obj metalhead-grunt))
-  (case (-> obj jump-why)
+;; WARN: Return type mismatch object vs none.
+(defmethod enemy-method-93 ((this metalhead-grunt))
+  (case (-> this jump-why)
     ((2)
-     (go (method-of-object obj jumping-ambush-cont))
+     (go (method-of-object this jumping-ambush-cont))
      )
     (else
-      ((method-of-type citizen-enemy enemy-method-93) obj)
+      ((method-of-type citizen-enemy enemy-method-93) this)
       )
     )
   (none)
@@ -404,10 +391,7 @@
 
 (defstate jumping-ambush (metalhead-grunt)
   :virtual #t
-  :event (the-as
-    (function process int symbol event-message-block object :behavior metalhead-grunt)
-    enemy-event-handler
-    )
+  :event enemy-event-handler
   :enter (behavior ()
     ((-> (method-of-type nav-enemy ambush) enter))
     (when (zero? (-> self intro-path))
@@ -415,7 +399,6 @@
       (go-virtual notice)
       )
     (get-point-in-path! (-> self intro-path) (-> self root trans) 0.0 'interp)
-    (none)
     )
   :code (behavior ()
     (set! (-> self jumping-ambush-path-pt) 1)
@@ -437,16 +420,12 @@
       (suspend)
       )
     #f
-    (none)
     )
   )
 
 (defstate jumping-ambush-cont (metalhead-grunt)
   :virtual #t
-  :event (the-as
-    (function process int symbol event-message-block object :behavior metalhead-grunt)
-    enemy-event-handler
-    )
+  :event enemy-event-handler
   :code (behavior ()
     (let ((a0-0 (-> self intro-path))
           (v1-1 (+ (-> self jumping-ambush-path-pt) 1))
@@ -474,7 +453,6 @@
       (suspend)
       )
     #f
-    (none)
     )
   )
 
@@ -482,17 +460,10 @@
   :virtual #t
   :code (behavior ()
     (let ((v1-2 (ja-group)))
-      (when (or (and v1-2 (or (= v1-2 (-> self draw art-group data 14))
-                              (= v1-2 (-> self draw art-group data 15))
-                              (= v1-2 (-> self draw art-group data 16))
-                              )
-                     )
+      (when (or (and v1-2 (or (= v1-2 grunt-charge0-ja) (= v1-2 grunt-charge1-ja) (= v1-2 grunt-charge2-ja)))
                 (let ((v1-8 (ja-group)))
-                  (and v1-8 (or (= v1-8 (-> self draw art-group data 11))
-                                (= v1-8 (-> self draw art-group data 12))
-                                (= v1-8 (-> self draw art-group data 14))
-                                (= v1-8 (-> self draw art-group data 15))
-                                )
+                  (and v1-8
+                       (or (= v1-8 grunt-patrol0-ja) (= v1-8 grunt-patrol1-ja) (= v1-8 grunt-charge0-ja) (= v1-8 grunt-charge1-ja))
                        )
                   )
                 )
@@ -519,10 +490,7 @@
                 )
             )
           (dotimes (s4-0 s5-0)
-            (ja-no-eval :group! gp-0
-                        :num! (seek! (the float (+ (-> (the-as art-joint-anim gp-0) frames num-frames) -1)) f30-0)
-                        :frame-num 0.0
-                        )
+            (ja-no-eval :group! gp-0 :num! (seek! max f30-0) :frame-num 0.0)
             (until (ja-done? 0)
               (suspend)
               (ja :num! (seek! max f30-0))
@@ -540,20 +508,14 @@
           (let ((gp-1 (-> self draw art-group data (-> self patrol-anim anim-index)))
                 (s5-1 (get-rand-int-range self 2 5))
                 )
-            (ja-no-eval :group! gp-1
-                        :num! (seek! (the float (+ (-> (the-as art-joint-anim gp-1) frames num-frames) -1)) f30-0)
-                        :frame-num 0.0
-                        )
+            (ja-no-eval :group! gp-1 :num! (seek! max f30-0) :frame-num 0.0)
             (until (ja-done? 0)
               (ja-blend-eval)
               (suspend)
               (ja :num! (seek! max f30-0))
               )
             (dotimes (s4-1 s5-1)
-              (ja-no-eval :group! gp-1
-                          :num! (seek! (the float (+ (-> (the-as art-joint-anim gp-1) frames num-frames) -1)) f30-0)
-                          :frame-num 0.0
-                          )
+              (ja-no-eval :group! gp-1 :num! (seek! max f30-0) :frame-num 0.0)
               (until (ja-done? 0)
                 (suspend)
                 (ja :num! (seek! max f30-0))
@@ -572,14 +534,7 @@
           (nav-enemy-method-167 self)
           (ja-channel-push! 1 (seconds 0.3))
           (ja-no-eval :group! (-> self draw art-group data (-> self enemy-info idle-anim))
-                      :num! (seek!
-                        (the float
-                             (+ (-> (the-as art-joint-anim (-> self draw art-group data (-> self enemy-info idle-anim))) frames num-frames)
-                                -1
-                                )
-                             )
-                        f30-0
-                        )
+                      :num! (seek! max f30-0)
                       :frame-num 0.0
                       )
           (until (ja-done? 0)
@@ -588,14 +543,7 @@
             )
           (until (not (enemy-method-123 self 0.2))
             (ja-no-eval :group! (-> self draw art-group data (-> self enemy-info idle-anim))
-                        :num! (seek!
-                          (the float
-                               (+ (-> (the-as art-joint-anim (-> self draw art-group data (-> self enemy-info idle-anim))) frames num-frames)
-                                  -1
-                                  )
-                               )
-                          f30-0
-                          )
+                        :num! (seek! max f30-0)
                         :frame-num 0.0
                         )
             (until (ja-done? 0)
@@ -615,11 +563,10 @@
         )
       )
     #f
-    (none)
     )
   )
 
-(defmethod metalhead-grunt-method-209 metalhead-grunt ((obj metalhead-grunt) (arg0 float))
+(defmethod metalhead-grunt-method-209 ((this metalhead-grunt) (arg0 float))
   (local-vars (v1-5 float))
   (rlet ((acc :class vf)
          (vf0 :class vf)
@@ -627,12 +574,12 @@
          (vf2 :class vf)
          )
     (init-vf0-vector)
-    (let ((gp-0 (get-enemy-target obj)))
+    (let ((gp-0 (get-enemy-target this)))
       (when gp-0
         (let ((v1-3 (get-trans gp-0 0))
               (s4-0 (new 'stack-no-clear 'vector))
               )
-          (vector-! s4-0 v1-3 (-> obj root trans))
+          (vector-! s4-0 v1-3 (-> this root trans))
           (.lvf vf1 (&-> s4-0 quad))
           (.add.w.vf vf2 vf0 vf0 :mask #b1)
           (.mul.vf vf1 vf1 vf1)
@@ -646,18 +593,18 @@
                  (f0-2 12288.0)
                  )
             (when (or (>= (* f0-2 f0-2) f30-0) (>= f28-0 f30-0))
-              (let ((f26-0 (quaternion-y-angle (-> obj root quat)))
+              (let ((f26-0 (quaternion-y-angle (-> this root quat)))
                     (f0-7 (atan (-> s4-0 x) (-> s4-0 z)))
                     (f1-0 1228.8)
                     )
                 (cond
                   ((and (< (* f1-0 f1-0) f30-0) (>= f28-0 f30-0) (>= 8192.0 (fabs (deg- f26-0 f0-7))))
-                   (go (method-of-object obj attack))
+                   (go (method-of-object this attack))
                    )
                   ((let ((f0-10 12288.0))
                      (< f30-0 (* f0-10 f0-10))
                      )
-                   (go (method-of-object obj spin-attack))
+                   (go (method-of-object this spin-attack))
                    )
                   )
                 )
@@ -693,15 +640,10 @@
           )
         )
       )
-    (none)
     )
   :code (behavior ()
     (let ((v1-2 (ja-group)))
-      (when (and v1-2 (or (= v1-2 (-> self draw art-group data 14))
-                          (= v1-2 (-> self draw art-group data 15))
-                          (= v1-2 (-> self draw art-group data 16))
-                          )
-                 )
+      (when (and v1-2 (or (= v1-2 grunt-charge0-ja) (= v1-2 grunt-charge1-ja) (= v1-2 grunt-charge2-ja)))
         (let ((v1-6 (-> self nav)))
           (set! (-> v1-6 target-speed) (-> self charge-anim travel-speed))
           )
@@ -737,10 +679,7 @@
               0
               )
             )
-          (ja-no-eval :group! gp-0
-                      :num! (seek! (the float (+ (-> (the-as art-joint-anim gp-0) frames num-frames) -1)) f30-0)
-                      :frame-num 0.0
-                      )
+          (ja-no-eval :group! gp-0 :num! (seek! max f30-0) :frame-num 0.0)
           )
         (until (ja-done? 0)
           (suspend)
@@ -749,17 +688,13 @@
         )
       )
     #f
-    (none)
     )
-  :post (the-as (function none :behavior metalhead-grunt) nav-enemy-chase-post)
+  :post nav-enemy-chase-post
   )
 
 (defstate attack (metalhead-grunt)
   :virtual #t
-  :event (the-as
-    (function process int symbol event-message-block object :behavior metalhead-grunt)
-    enemy-event-handler
-    )
+  :event enemy-event-handler
   :enter (behavior ()
     (let ((v1-1 (-> self nav state)))
       (set! (-> v1-1 speed) (-> self enemy-info run-travel-speed))
@@ -781,7 +716,6 @@
       #t
       (t9-1 a0-6)
       )
-    (none)
     )
   :exit (behavior ()
     (let* ((a0-0 self)
@@ -794,7 +728,6 @@
         (logior! (-> self focus-status) (focus-status dangerous))
         (logclear! (-> self focus-status) (focus-status dangerous))
         )
-    (none)
     )
   :trans (behavior ()
     (enemy-method-49 self)
@@ -802,7 +735,6 @@
       (logclear! (-> self enemy-flags) (enemy-flag look-at-focus))
       (sound-play "grunt-hit")
       )
-    (none)
     )
   :code (behavior ()
     (set! (-> self attack-anim) (-> *grunt-global-info* attack-anim (get-rand-int self 2)))
@@ -822,10 +754,7 @@
             (ja-channel-push! 1 (seconds 0.2))
             )
         )
-      (ja-no-eval :group! gp-0
-                  :num! (seek! (the float (+ (-> (the-as art-joint-anim gp-0) frames num-frames) -1)) f30-0)
-                  :frame-num 0.0
-                  )
+      (ja-no-eval :group! gp-0 :num! (seek! max f30-0) :frame-num 0.0)
       (until (ja-done? 0)
         (suspend)
         (ja :num! (seek! max f30-0))
@@ -865,17 +794,13 @@
       (set! (-> self use-charge-anim-index) v1-57)
       )
     (go-virtual hostile)
-    (none)
     )
-  :post (the-as (function none :behavior metalhead-grunt) nav-enemy-chase-post)
+  :post nav-enemy-chase-post
   )
 
 (defstate spin-attack (metalhead-grunt)
   :virtual #t
-  :event (the-as
-    (function process int symbol event-message-block object :behavior metalhead-grunt)
-    enemy-event-handler
-    )
+  :event enemy-event-handler
   :enter (behavior ()
     (logior! (-> self enemy-flags) (enemy-flag actor-pause-backup))
     (let ((v1-2 self))
@@ -907,7 +832,6 @@
       #t
       (t9-3 a0-14)
       )
-    (none)
     )
   :exit (behavior ()
     (let* ((a0-0 self)
@@ -920,14 +844,12 @@
         (logior! (-> self focus-status) (focus-status dangerous))
         (logclear! (-> self focus-status) (focus-status dangerous))
         )
-    (none)
     )
   :trans (behavior ()
     (when (logtest? (-> self enemy-flags) (enemy-flag look-at-focus))
       (logclear! (-> self enemy-flags) (enemy-flag look-at-focus))
       (sound-play "grunt-hit")
       )
-    (none)
     )
   :code (behavior ()
     (set! (-> self attack-anim) (-> *grunt-global-info* attack-anim (get-rand-int self 2)))
@@ -939,10 +861,7 @@
             (ja-channel-push! 1 (seconds 0.2))
             )
         )
-      (ja-no-eval :group! gp-0
-                  :num! (seek! (the float (+ (-> (the-as art-joint-anim gp-0) frames num-frames) -1)) f30-0)
-                  :frame-num 0.0
-                  )
+      (ja-no-eval :group! gp-0 :num! (seek! max f30-0) :frame-num 0.0)
       (until (ja-done? 0)
         (let ((a0-9 (handle->process (-> self focus handle))))
           (if a0-9
@@ -960,9 +879,8 @@
           )
       )
     (go-virtual hostile)
-    (none)
     )
-  :post (the-as (function none :behavior metalhead-grunt) nav-enemy-simple-post)
+  :post nav-enemy-simple-post
   )
 
 (defstate stop-chase (metalhead-grunt)
@@ -987,10 +905,7 @@
             )
         )
       (until #f
-        (ja-no-eval :group! gp-0
-                    :num! (seek! (the float (+ (-> (the-as art-joint-anim gp-0) frames num-frames) -1)) f30-0)
-                    :frame-num 0.0
-                    )
+        (ja-no-eval :group! gp-0 :num! (seek! max f30-0) :frame-num 0.0)
         (until (ja-done? 0)
           (suspend)
           (ja :num! (seek! max f30-0))
@@ -998,43 +913,42 @@
         )
       )
     #f
-    (none)
     )
   )
 
-(defmethod enemy-method-77 metalhead-grunt ((obj metalhead-grunt) (arg0 (pointer float)))
+(defmethod enemy-method-77 ((this metalhead-grunt) (arg0 (pointer float)))
   (local-vars (v1-72 int) (a2-3 int) (a2-5 int))
-  (case (-> obj incoming knocked-type)
+  (case (-> this incoming knocked-type)
     (((knocked-type knocked-type-4))
      (let ((v1-2 (ash 1 (-> *grunt-global-info* prev-yellow-hit-anim-index)))
-           (a0-7 (if (> (-> obj skel active-channels) 0)
-                     (-> obj skel root-channel 0 frame-group)
+           (a0-7 (if (> (-> this skel active-channels) 0)
+                     (-> this skel root-channel 0 frame-group)
                      )
                  )
            )
-       (if (and a0-7 (or (= a0-7 (-> obj draw art-group data 16))
-                         (= a0-7 (-> obj draw art-group data 38))
-                         (= a0-7 (-> obj draw art-group data 39))
-                         (= a0-7 (-> obj draw art-group data 40))
+       (if (and a0-7 (or (= a0-7 (-> this draw art-group data 16))
+                         (= a0-7 (-> this draw art-group data 38))
+                         (= a0-7 (-> this draw art-group data 39))
+                         (= a0-7 (-> this draw art-group data 40))
                          )
                 )
            (set! a2-3 (logior v1-2 4))
            (set! a2-3 (logior v1-2 8))
            )
        )
-     (let ((s4-0 (enemy-method-120 obj 4 a2-3)))
+     (let ((s4-0 (enemy-method-120 this 4 a2-3)))
        (set! (-> *grunt-global-info* prev-yellow-hit-anim-index) s4-0)
-       (set! (-> obj yellow-hit-anim) (-> *grunt-global-info* yellow-hit-anim s4-0))
-       (let ((v1-11 (get-rand-int obj 3)))
+       (set! (-> this yellow-hit-anim) (-> *grunt-global-info* yellow-hit-anim s4-0))
+       (let ((v1-11 (get-rand-int this 3)))
          (if (= s4-0 3)
              (set! v1-11 2)
              )
-         (set! (-> obj use-charge-anim-index) v1-11)
+         (set! (-> this use-charge-anim-index) v1-11)
          )
        )
-     (let ((s4-1 (-> obj draw art-group data (-> obj yellow-hit-anim anim-index))))
+     (let ((s4-1 (-> this draw art-group data (-> this yellow-hit-anim anim-index))))
        (ja-channel-push! 1 0)
-       (let ((a0-19 (-> obj skel root-channel 0)))
+       (let ((a0-19 (-> this skel root-channel 0)))
          (set! (-> a0-19 frame-group) (the-as art-joint-anim s4-1))
          (set! (-> a0-19 param 0) (the float (+ (-> (the-as art-joint-anim s4-1) frames num-frames) -1)))
          (set! (-> a0-19 param 1) (-> arg0 0))
@@ -1045,33 +959,33 @@
      #t
      )
     (((knocked-type knocked-type-6))
-     (let* ((v1-24 (if (> (-> obj skel active-channels) 0)
-                       (-> obj skel root-channel 0 frame-group)
+     (let* ((v1-24 (if (> (-> this skel active-channels) 0)
+                       (-> this skel root-channel 0 frame-group)
                        )
                    )
-            (s4-2 (and v1-24 (or (= v1-24 (-> obj draw art-group data 16))
-                                 (= v1-24 (-> obj draw art-group data 38))
-                                 (= v1-24 (-> obj draw art-group data 39))
-                                 (= v1-24 (-> obj draw art-group data 40))
+            (s4-2 (and v1-24 (or (= v1-24 (-> this draw art-group data 16))
+                                 (= v1-24 (-> this draw art-group data 38))
+                                 (= v1-24 (-> this draw art-group data 39))
+                                 (= v1-24 (-> this draw art-group data 40))
                                  )
                        )
                   )
             )
-       (if (>= (-> obj incoming blue-juggle-count) (the-as uint 2))
-           (logior! (-> obj grunt-flags) 2)
+       (if (>= (-> this incoming blue-juggle-count) (the-as uint 2))
+           (logior! (-> this grunt-flags) 2)
            )
        (cond
-         ((and (not s4-2) (logtest? (-> obj grunt-flags) 2))
+         ((and (not s4-2) (logtest? (-> this grunt-flags) 2))
           (set! s4-2 #t)
           (ja-channel-push! 1 (seconds 0.17))
           )
          (else
-           (let ((v1-36 (if (> (-> obj skel active-channels) 0)
-                            (-> obj skel root-channel 0 frame-group)
+           (let ((v1-36 (if (> (-> this skel active-channels) 0)
+                            (-> this skel root-channel 0 frame-group)
                             )
                         )
                  )
-             (if (and v1-36 (= v1-36 (-> obj draw art-group data 44)))
+             (if (and v1-36 (= v1-36 (-> this draw art-group data 44)))
                  (ja-channel-push! 1 (seconds 0.17))
                  (ja-channel-push! 1 (seconds 0.02))
                  )
@@ -1084,22 +998,22 @@
              (set! a2-5 (logior v1-42 7))
              )
          )
-       (let ((v1-46 (enemy-method-120 obj 6 a2-5)))
+       (let ((v1-46 (enemy-method-120 this 6 a2-5)))
          (set! (-> *grunt-global-info* prev-blue-hit-anim-index) v1-46)
-         (set! (-> obj blue-hit-anim) (-> *grunt-global-info* blue-hit-anim v1-46))
+         (set! (-> this blue-hit-anim) (-> *grunt-global-info* blue-hit-anim v1-46))
          )
        (let ((a2-6 0))
-         (when (not (logtest? (-> obj grunt-flags) 2))
+         (when (not (logtest? (-> this grunt-flags) 2))
            (if s4-2
                (set! a2-6 (logior a2-6 3))
                (set! a2-6 (logior a2-6 4))
                )
            )
-         (set! (-> obj use-charge-anim-index) (enemy-method-120 obj 3 a2-6))
+         (set! (-> this use-charge-anim-index) (enemy-method-120 this 3 a2-6))
          )
        )
-     (let ((a1-26 (-> obj draw art-group data (-> obj blue-hit-anim anim-index)))
-           (a0-51 (-> obj skel root-channel 0))
+     (let ((a1-26 (-> this draw art-group data (-> this blue-hit-anim anim-index)))
+           (a0-51 (-> this skel root-channel 0))
            )
        (set! (-> a0-51 frame-group) (the-as art-joint-anim a1-26))
        (set! (-> a0-51 param 0) (the float (+ (-> (the-as art-joint-anim a1-26) frames num-frames) -1)))
@@ -1112,28 +1026,28 @@
     (else
       0
       (cond
-        ((or (= (-> obj incoming knocked-type) (knocked-type knocked-type-2))
-             (= (-> obj incoming knocked-type) (knocked-type knocked-type-3))
+        ((or (= (-> this incoming knocked-type) (knocked-type knocked-type-2))
+             (= (-> this incoming knocked-type) (knocked-type knocked-type-3))
              )
          (set! v1-72 3)
          )
         (else
           (let ((s4-3 (ash 1 (-> *grunt-global-info* prev-knocked-anim-index))))
-            (let ((s3-0 (-> obj root)))
+            (let ((s3-0 (-> this root)))
               (if (>= 16384.0 (fabs (deg- (quaternion-y-angle (-> s3-0 quat)) (atan (-> s3-0 transv x) (-> s3-0 transv z)))))
                   (set! s4-3 (logior s4-3 4))
                   )
               )
-            (set! v1-72 (enemy-method-120 obj 3 s4-3))
+            (set! v1-72 (enemy-method-120 this 3 s4-3))
             )
           )
         )
       (set! (-> *grunt-global-info* prev-knocked-anim-index) v1-72)
-      (set! (-> obj knocked-anim-index) v1-72)
-      (set! (-> obj knocked-anim) (-> *grunt-global-info* knocked-anim v1-72))
-      (let ((s4-4 (-> obj draw art-group data (-> obj knocked-anim anim-index))))
+      (set! (-> this knocked-anim-index) v1-72)
+      (set! (-> this knocked-anim) (-> *grunt-global-info* knocked-anim v1-72))
+      (let ((s4-4 (-> this draw art-group data (-> this knocked-anim anim-index))))
         (ja-channel-push! 1 0)
-        (let ((a0-68 (-> obj skel root-channel 0)))
+        (let ((a0-68 (-> this skel root-channel 0)))
           (set! (-> a0-68 frame-group) (the-as art-joint-anim s4-4))
           (set! (-> a0-68 param 0) (the float (+ (-> (the-as art-joint-anim s4-4) frames num-frames) -1)))
           (set! (-> a0-68 param 1) (-> arg0 0))
@@ -1146,26 +1060,26 @@
     )
   )
 
-(defmethod enemy-method-78 metalhead-grunt ((obj metalhead-grunt) (arg0 (pointer float)))
+(defmethod enemy-method-78 ((this metalhead-grunt) (arg0 (pointer float)))
   (cond
-    ((= (-> obj incoming knocked-type) (knocked-type knocked-type-6))
-     (when (or (logtest? (-> obj grunt-flags) 2) (let ((v1-7 (if (> (-> obj skel active-channels) 0)
-                                                                 (-> obj skel root-channel 0 frame-group)
-                                                                 )
-                                                             )
-                                                       )
-                                                   (not (and v1-7 (or (= v1-7 (-> obj draw art-group data 16))
-                                                                      (= v1-7 (-> obj draw art-group data 38))
-                                                                      (= v1-7 (-> obj draw art-group data 39))
-                                                                      (= v1-7 (-> obj draw art-group data 40))
-                                                                      )
-                                                             )
+    ((= (-> this incoming knocked-type) (knocked-type knocked-type-6))
+     (when (or (logtest? (-> this grunt-flags) 2) (let ((v1-7 (if (> (-> this skel active-channels) 0)
+                                                                  (-> this skel root-channel 0 frame-group)
+                                                                  )
+                                                              )
                                                         )
-                                                   )
+                                                    (not (and v1-7 (or (= v1-7 (-> this draw art-group data 16))
+                                                                       (= v1-7 (-> this draw art-group data 38))
+                                                                       (= v1-7 (-> this draw art-group data 39))
+                                                                       (= v1-7 (-> this draw art-group data 40))
+                                                                       )
+                                                              )
+                                                         )
+                                                    )
                )
-       (let ((s4-0 (-> obj draw art-group data 44)))
+       (let ((s4-0 (-> this draw art-group data 44)))
          (ja-channel-push! 1 (seconds 0.17))
-         (let ((a0-16 (-> obj skel root-channel 0)))
+         (let ((a0-16 (-> this skel root-channel 0)))
            (set! (-> a0-16 frame-group) (the-as art-joint-anim s4-0))
            (set! (-> a0-16 param 0) (the float (+ (-> (the-as art-joint-anim s4-0) frames num-frames) -1)))
            (set! (-> a0-16 param 1) (-> arg0 0))
@@ -1173,15 +1087,19 @@
            (joint-control-channel-group! a0-16 (the-as art-joint-anim s4-0) num-func-seek!)
            )
          )
-       (logand! (-> obj grunt-flags) -3)
+       (logand! (-> this grunt-flags) -3)
        #t
        )
      )
-    ((!= (-> obj incoming knocked-type) (knocked-type knocked-type-4))
-     (let ((a1-6
-             (-> obj draw art-group data (-> *grunt-global-info* knocked-land-anim (-> obj knocked-anim-index) anim-index))
-             )
-           (a0-23 (-> obj skel root-channel 0))
+    ((!= (-> this incoming knocked-type) (knocked-type knocked-type-4))
+     (let ((a1-6 (-> this
+                     draw
+                     art-group
+                     data
+                     (-> *grunt-global-info* knocked-land-anim (-> this knocked-anim-index) anim-index)
+                     )
+                 )
+           (a0-23 (-> this skel root-channel 0))
            )
        (set! (-> a0-23 frame-group) (the-as art-joint-anim a1-6))
        (set! (-> a0-23 param 0) (the float (+ (-> (the-as art-joint-anim a1-6) frames num-frames) -1)))
@@ -1196,10 +1114,7 @@
 
 (defstate wait-for-focus (metalhead-grunt)
   :virtual #t
-  :event (the-as
-    (function process int symbol event-message-block object :behavior metalhead-grunt)
-    enemy-event-handler
-    )
+  :event enemy-event-handler
   :enter (-> (method-of-type nav-enemy idle) enter)
   :trans (behavior ()
     (let ((s5-0 (handle->process (-> self focus handle))))
@@ -1239,28 +1154,27 @@
           )
         )
       )
-    (none)
     )
   :code (-> (method-of-type nav-enemy idle) code)
   :post (-> (method-of-type nav-enemy idle) post)
   )
 
-(defmethod metalhead-grunt-method-211 metalhead-grunt ((obj metalhead-grunt))
+(defmethod metalhead-grunt-method-211 ((this metalhead-grunt))
   0
   (none)
   )
 
 ;; WARN: Return type mismatch citizen-enemy vs metalhead-grunt.
-(defmethod relocate metalhead-grunt ((obj metalhead-grunt) (arg0 int))
-  (if (nonzero? (-> obj intro-path))
-      (&+! (-> obj intro-path) arg0)
+(defmethod relocate ((this metalhead-grunt) (arg0 int))
+  (if (nonzero? (-> this intro-path))
+      (&+! (-> this intro-path) arg0)
       )
-  (the-as metalhead-grunt ((method-of-type citizen-enemy relocate) obj arg0))
+  (the-as metalhead-grunt ((method-of-type citizen-enemy relocate) this arg0))
   )
 
-(defmethod init-enemy-collision! metalhead-grunt ((obj metalhead-grunt))
+(defmethod init-enemy-collision! ((this metalhead-grunt))
   "Initializes the [[collide-shape-moving]] and any ancillary tasks to make the enemy collide properly"
-  (let ((s5-0 (new 'process 'collide-shape-moving obj (collide-list-enum usually-hit-by-player))))
+  (let ((s5-0 (new 'process 'collide-shape-moving this (collide-list-enum usually-hit-by-player))))
     (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s5-0 reaction) cshape-reaction-default)
     (set! (-> s5-0 no-reaction)
@@ -1347,67 +1261,67 @@
       )
     (set! (-> s5-0 max-iteration-count) (the-as uint 3))
     (set! (-> s5-0 event-priority) (the-as uint 8))
-    (set! (-> obj root) s5-0)
+    (set! (-> this root) s5-0)
     )
   0
   (none)
   )
 
-(defmethod get-nav-info metalhead-grunt ((obj metalhead-grunt))
+(defmethod get-nav-info ((this metalhead-grunt))
   *metalhead-grunt-nav-enemy-info*
   )
 
-(defmethod init-enemy! metalhead-grunt ((obj metalhead-grunt))
+(defmethod init-enemy! ((this metalhead-grunt))
   "Common method called to initialize the enemy, typically sets up default field values and calls ancillary helper methods"
   (initialize-skeleton
-    obj
+    this
     (the-as skeleton-group (art-group-get-by-name *level* "skel-grunt" (the-as (pointer uint32) #f)))
     (the-as pair 0)
     )
-  (init-enemy-behaviour-and-stats! obj (get-nav-info obj))
-  (let ((v1-6 (-> obj neck)))
+  (init-enemy-behaviour-and-stats! this (get-nav-info this))
+  (let ((v1-6 (-> this neck)))
     (set! (-> v1-6 up) (the-as uint 1))
     (set! (-> v1-6 nose) (the-as uint 2))
     (set! (-> v1-6 ear) (the-as uint 0))
     (set-vector! (-> v1-6 twist-max) 11832.889 11832.889 0.0 1.0)
     (set! (-> v1-6 ignore-angle) 30947.555)
     )
-  (let ((v1-8 (-> obj nav)))
+  (let ((v1-8 (-> this nav)))
     (set! (-> v1-8 speed-scale) 1.0)
     )
   0
-  (set-gravity-length (-> obj root dynam) 573440.0)
+  (set-gravity-length (-> this root dynam) 573440.0)
   (let ((s5-2 *grunt-global-info*))
-    (set! (-> obj patrol-anim) (-> s5-2 patrol-anim (get-rand-int obj 4)))
-    (set! (-> obj charge-anim) (-> s5-2 charge-anim (get-rand-int obj 3)))
-    (set! (-> obj attack-anim) (-> s5-2 attack-anim (get-rand-int obj 2)))
+    (set! (-> this patrol-anim) (-> s5-2 patrol-anim (get-rand-int this 4)))
+    (set! (-> this charge-anim) (-> s5-2 charge-anim (get-rand-int this 3)))
+    (set! (-> this attack-anim) (-> s5-2 attack-anim (get-rand-int this 2)))
     )
-  (set! (-> obj use-charge-anim-index) -1)
-  (if (zero? (get-rand-int obj 2))
-      (logior! (-> obj grunt-flags) 1)
+  (set! (-> this use-charge-anim-index) -1)
+  (if (zero? (get-rand-int this 2))
+      (logior! (-> this grunt-flags) 1)
       )
-  (if (zero? (get-rand-int obj 2))
-      (logior! (-> obj grunt-flags) 4)
+  (if (zero? (get-rand-int this 2))
+      (logior! (-> this grunt-flags) 4)
       )
-  (set! (-> obj intro-path) (new 'process 'path-control obj 'intro 0.0 (the-as entity #f) #t))
+  (set! (-> this intro-path) (new 'process 'path-control this 'intro 0.0 (the-as entity #f) #t))
   (add-connection
     *part-engine*
-    obj
+    this
     6
-    obj
+    this
     318
     (new 'static 'vector :x 1433.6 :y 2785.28 :z -1761.28 :w 163840.0)
     )
   (add-connection
     *part-engine*
-    obj
+    this
     6
-    obj
+    this
     318
     (new 'static 'vector :x -1433.6 :y 2785.28 :z -1761.28 :w 163840.0)
     )
-  (set! (-> obj water-anim) -1)
-  (set! (-> obj minimap) #f)
+  (set! (-> this water-anim) -1)
+  (set! (-> this minimap) #f)
   0
   (none)
   )

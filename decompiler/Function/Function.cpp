@@ -584,6 +584,13 @@ void Function::find_type_defs(LinkedObjectFile& file, DecompilerTypeSystem& dts)
   int label_idx = -1;
 
   for (const auto& instr : instructions) {
+    // far labels
+    if (label_idx != -1 && state == 5 &&
+        !(instr.kind == InstructionKind::JALR && instr.get_dst(0).get_reg() == make_gpr(Reg::RA) &&
+          instr.get_src(0).get_reg() == make_gpr(Reg::T9))) {
+      continue;
+    }
+
     // look for lw xx, type(s7)
     if (instr.kind == InstructionKind::LW && instr.get_src(0).is_sym() &&
         instr.get_src(0).get_sym() == "type" && instr.get_src(1).get_reg() == make_gpr(Reg::S7)) {
@@ -630,8 +637,14 @@ void Function::find_type_defs(LinkedObjectFile& file, DecompilerTypeSystem& dts)
 
     if (state == 4) {
       // look for ld a2, LXX(fp)
-      if (instr.kind == InstructionKind::LD && instr.get_dst(0).get_reg() == make_gpr(Reg::A2) &&
-          instr.get_src(0).is_label() && instr.get_src(1).get_reg() == make_gpr(Reg::FP)) {
+      if ((instr.kind == InstructionKind::LD && instr.get_dst(0).get_reg() == make_gpr(Reg::A2) &&
+           instr.get_src(0).is_label() && instr.get_src(1).get_reg() == make_gpr(Reg::FP))) {
+        state = 5;
+        label_idx = instr.get_src(0).get_label();
+        continue;
+      } else if ((instr.kind == InstructionKind::LUI &&
+                  instr.get_dst(0).get_reg() == make_gpr(Reg::V1) && instr.get_src(0).is_label())) {
+        // far labels
         state = 5;
         label_idx = instr.get_src(0).get_label();
         continue;

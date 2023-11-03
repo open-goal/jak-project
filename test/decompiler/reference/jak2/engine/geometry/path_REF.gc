@@ -3,46 +3,46 @@
 
 ;; definition for method 9 of type path-control
 ;; WARN: Return type mismatch int vs none.
-(defmethod debug-draw path-control ((obj path-control))
+(defmethod debug-draw ((this path-control))
   (cond
-    ((logtest? (-> obj flags) (path-control-flag not-found))
-     (when (and (type? (-> obj process) process-drawable) *display-entity-errors*)
+    ((logtest? (-> this flags) (path-control-flag not-found))
+     (when (and (type? (-> this process) process-drawable) *display-entity-errors*)
        (let ((s5-0 add-debug-text-3d)
              (s4-0 #t)
              (s3-0 318)
              )
-         (format (clear *temp-string*) "path data error in ~S" (-> obj process name))
+         (format (clear *temp-string*) "path data error in ~S" (-> this process name))
          (s5-0
            s4-0
            (the-as bucket-id s3-0)
            *temp-string*
-           (-> obj process root trans)
+           (-> this process root trans)
            (font-color red)
            (the-as vector2h #f)
            )
          )
        )
      )
-    ((let ((a0-5 obj))
+    ((let ((a0-5 this))
        (and *display-path-marks* (logtest? (-> a0-5 flags) (path-control-flag display)))
        )
-     (dotimes (s5-1 (-> obj curve num-cverts))
-       (let ((s4-1 (-> obj curve cverts s5-1)))
-         (if (and (logtest? (-> obj flags) (path-control-flag draw-line)) (< s5-1 (+ (-> obj curve num-cverts) -1)))
+     (dotimes (s5-1 (-> this curve num-cverts))
+       (let ((s4-1 (-> this curve cverts s5-1)))
+         (if (and (logtest? (-> this flags) (path-control-flag draw-line)) (< s5-1 (+ (-> this curve num-cverts) -1)))
              (add-debug-line
                #t
                (bucket-id debug-no-zbuf1)
                s4-1
-               (-> obj curve cverts (+ s5-1 1))
+               (-> this curve cverts (+ s5-1 1))
                (new 'static 'rgba :r #xff :g #x80 :a #x80)
                #f
                (the-as rgba -1)
                )
              )
-         (if (logtest? (-> obj flags) (path-control-flag draw-point))
+         (if (logtest? (-> this flags) (path-control-flag draw-point))
              (add-debug-x #t (bucket-id debug-no-zbuf1) s4-1 (new 'static 'rgba :r #xff :a #x80))
              )
-         (when (logtest? (-> obj flags) (path-control-flag draw-text))
+         (when (logtest? (-> this flags) (path-control-flag draw-text))
            (let ((s3-1 add-debug-text-3d)
                  (s2-1 #t)
                  (s1-0 318)
@@ -60,25 +60,25 @@
   )
 
 ;; definition for method 18 of type path-control
-(defmethod total-distance path-control ((obj path-control))
+(defmethod total-distance ((this path-control))
   "Calcuate the total path length by summing the distance between each adjacent [[curve]] vertex"
   (let ((f30-0 0.0))
-    (dotimes (s5-0 (+ (-> obj curve num-cverts) -1))
-      (+! f30-0 (vector-vector-distance (-> obj curve cverts s5-0) (-> obj curve cverts (+ s5-0 1))))
+    (dotimes (s5-0 (+ (-> this curve num-cverts) -1))
+      (+! f30-0 (vector-vector-distance (-> this curve cverts s5-0) (-> this curve cverts (+ s5-0 1))))
       )
     f30-0
     )
   )
 
 ;; definition for method 18 of type curve-control
-(defmethod total-distance curve-control ((obj curve-control))
+(defmethod total-distance ((this curve-control))
   "Will lazily calculate and set the [[curve]]'s `length`
 @returns total path length of the [[curve]]
 @see [[curve-length]]"
-  (let ((f0-0 (-> obj curve length)))
+  (let ((f0-0 (-> this curve length)))
     (when (= f0-0 0.0)
-      (set! f0-0 (curve-length (-> obj curve)))
-      (set! (-> obj curve length) f0-0)
+      (set! f0-0 (curve-length (-> this curve)))
+      (set! (-> this curve length) f0-0)
       )
     f0-0
     )
@@ -86,7 +86,7 @@
 
 ;; definition for method 10 of type path-control
 ;; INFO: Used lq/sq
-(defmethod get-point-in-path! path-control ((obj path-control) (ret vector) (idx float) (search-type symbol))
+(defmethod get-point-in-path! ((this path-control) (ret vector) (idx float) (search-type symbol))
   "Depending on the value of `idx`, the result can be quite different:
 - if `idx` is less than `0.0` - return the first vertex in the path
 - if `idx` is greater than the number of vertices in the path, return the last vertex
@@ -98,24 +98,24 @@ using the fractional component of `idx` as the interpolant, return this result
 @param idx Either the vertex index or also partially the interpolant in a LERP
 @param search-type The only recognized value is `exact`
 @returns Either a distinct vertex along the path, or some fractional point between two vertices"
-  (let ((num-vertices (-> obj curve num-cverts))
+  (let ((num-vertices (-> this curve num-cverts))
         (vert-idx (the float (the int idx)))
         )
     (cond
       ((< idx 0.0)
-       (set! (-> ret quad) (-> obj curve cverts 0 quad))
+       (set! (-> ret quad) (-> this curve cverts 0 quad))
        )
       ((>= vert-idx (the float (+ num-vertices -1)))
-       (set! (-> ret quad) (-> obj curve cverts (+ num-vertices -1) quad))
+       (set! (-> ret quad) (-> this curve cverts (+ num-vertices -1) quad))
        )
       ((or (= search-type 'exact) (= vert-idx idx))
-       (set! (-> ret quad) (-> obj curve cverts (the int vert-idx) quad))
+       (set! (-> ret quad) (-> this curve cverts (the int vert-idx) quad))
        )
       (else
         (vector-lerp!
           ret
-          (-> obj curve cverts (the int vert-idx))
-          (-> obj curve cverts (the int (+ 1.0 vert-idx)))
+          (-> this curve cverts (the int vert-idx))
+          (-> this curve cverts (the int (+ 1.0 vert-idx)))
           (- idx vert-idx)
           )
         )
@@ -126,12 +126,12 @@ using the fractional component of `idx` as the interpolant, return this result
 
 ;; definition for method 11 of type path-control
 ;; INFO: Used lq/sq
-(defmethod get-random-point path-control ((obj path-control) (arg0 vector))
+(defmethod get-random-point ((this path-control) (arg0 vector))
   "Attempts to retrieve a random point along the path, returns the [[*null-vector*]] if no vertices are defined"
   (cond
-    ((> (-> obj curve num-cverts) 0)
-     (let ((a0-2 (rand-vu-int-count (-> obj curve num-cverts))))
-       (set! (-> arg0 quad) (-> obj curve cverts a0-2 quad))
+    ((> (-> this curve num-cverts) 0)
+     (let ((a0-2 (rand-vu-int-count (-> this curve num-cverts))))
+       (set! (-> arg0 quad) (-> this curve cverts a0-2 quad))
        )
      )
     (else
@@ -146,37 +146,37 @@ using the fractional component of `idx` as the interpolant, return this result
   )
 
 ;; definition for method 14 of type path-control
-(defmethod get-point-at-percent-along-path! path-control ((obj path-control) (ret vector) (percent float) (search-type symbol))
+(defmethod get-point-at-percent-along-path! ((this path-control) (ret vector) (percent float) (search-type symbol))
   "@param! ret The [[vector]] that is used to hold the return value
 @param percent The percentage along the path
 @param search-type The only recognized value is `exact`
 @returns the point closest to some arbitrary percentage along the path
 @see [[path-control::10]]"
-  (get-point-in-path! obj ret (* percent (the float (+ (-> obj curve num-cverts) -1))) search-type)
+  (get-point-in-path! this ret (* percent (the float (+ (-> this curve num-cverts) -1))) search-type)
   )
 
 ;; definition for method 14 of type curve-control
-(defmethod get-point-at-percent-along-path! curve-control ((obj curve-control) (arg0 vector) (arg1 float) (arg2 symbol))
+(defmethod get-point-at-percent-along-path! ((this curve-control) (arg0 vector) (arg1 float) (arg2 symbol))
   "@param! ret The [[vector]] that is used to hold the return value
 @param percent The percentage along the path
 @param search-type The only recognized value is `exact`
 @returns the point closest to some arbitrary percentage along the path
 @see [[path-control::10]]"
-  (if (not (logtest? (-> obj flags) (path-control-flag not-found)))
+  (if (not (logtest? (-> this flags) (path-control-flag not-found)))
       (curve-evaluate!
         arg0
         arg1
-        (-> obj curve cverts)
-        (-> obj curve num-cverts)
-        (-> obj curve knots)
-        (-> obj curve num-knots)
+        (-> this curve cverts)
+        (-> this curve num-cverts)
+        (-> this curve knots)
+        (-> this curve num-knots)
         )
       )
   arg0
   )
 
 ;; definition for method 10 of type curve-control
-(defmethod get-point-in-path! curve-control ((obj curve-control) (arg0 vector) (arg1 float) (arg2 symbol))
+(defmethod get-point-in-path! ((this curve-control) (arg0 vector) (arg1 float) (arg2 symbol))
   "Depending on the value of `idx`, the result can be quite different:
 - if `idx` is less than `0.0` - return the first vertex in the path
 - if `idx` is greater than the number of vertices in the path, return the last vertex
@@ -188,21 +188,21 @@ using the fractional component of `idx` as the interpolant, return this result
 @param idx Either the vertex index or also partially the interpolant in a LERP
 @param search-type The only recognized value is `exact`
 @returns Either a distinct vertex along the path, or some fractional point between two vertices"
-  (if (not (logtest? (-> obj flags) (path-control-flag not-found)))
+  (if (not (logtest? (-> this flags) (path-control-flag not-found)))
       (curve-evaluate!
         arg0
-        (/ arg1 (the float (+ (-> obj curve num-cverts) -1)))
-        (-> obj curve cverts)
-        (-> obj curve num-cverts)
-        (-> obj curve knots)
-        (-> obj curve num-knots)
+        (/ arg1 (the float (+ (-> this curve num-cverts) -1)))
+        (-> this curve cverts)
+        (-> this curve num-cverts)
+        (-> this curve knots)
+        (-> this curve num-knots)
         )
       )
   arg0
   )
 
 ;; definition for method 26 of type path-control
-(defmethod displacement-between-two-points! path-control ((obj path-control) (ret vector) (idx float) (mag float))
+(defmethod displacement-between-two-points! ((this path-control) (ret vector) (idx float) (mag float))
   "Return value can differ quite a bit:
 - If [[path-control-flag::4]] is set OR there are less than 2 vertices OR `idx` is less than `0.0` - return [[*null-vector*]]
 - Otherwise, find the scaled (by `mag`) displacement vector between two points in the path:
@@ -213,16 +213,16 @@ using the fractional component of `idx` as the interpolant, return this result
 @param idx The vertex index
 @param mag The magnitude to scale the resulting displacement vector by
 @returns The displacement [[vector]] between two points in the path, the last 2, or the [[*null-vector*]]"
-  (let ((num-vertices (-> obj curve num-cverts))
+  (let ((num-vertices (-> this curve num-cverts))
         (vert-idx (the float (the int idx)))
         )
     (cond
-      ((or (logtest? (-> obj flags) (path-control-flag not-found)) (< num-vertices 2) (< idx 0.0))
+      ((or (logtest? (-> this flags) (path-control-flag not-found)) (< num-vertices 2) (< idx 0.0))
        (vector-reset! ret)
        )
       (else
         (let ((capped-idx (fmin vert-idx (the float (+ num-vertices -2)))))
-          (vector-! ret (-> obj curve cverts (the int (+ 1.0 capped-idx))) (-> obj curve cverts (the int capped-idx)))
+          (vector-! ret (-> this curve cverts (the int (+ 1.0 capped-idx))) (-> this curve cverts (the int capped-idx)))
           )
         (vector-float*! ret ret mag)
         )
@@ -232,51 +232,55 @@ using the fractional component of `idx` as the interpolant, return this result
   )
 
 ;; definition for method 12 of type path-control
-(defmethod displacement-between-two-points-copy! path-control ((obj path-control) (ret vector) (idx float) (mag float))
+(defmethod displacement-between-two-points-copy! ((this path-control) (ret vector) (idx float) (mag float))
   "Calls [[path-control::26]] with the provided args
 @see [[path-control::26]]"
-  (displacement-between-two-points! obj ret idx mag)
+  (displacement-between-two-points! this ret idx mag)
   )
 
 ;; definition for method 15 of type path-control
-(defmethod displacement-between-points-at-percent-scaled! path-control ((obj path-control) (ret vector) (percent float) (mag float))
+(defmethod displacement-between-points-at-percent-scaled! ((this path-control) (ret vector) (percent float) (mag float))
   "Calls [[path-control::12], with the `idx` at a given percent along the path
 @param ret The [[vector]] that is used to hold the return value
 @param percent The percentage along the path to find the first index
 @param mag Multiplied by the number of points in the path and scales the resulting vector
 @returns The displacement between the last two points of the path scaled to the magnitude equal to the number of points in the path"
   (displacement-between-two-points-copy!
-    obj
+    this
     ret
-    (* percent (the float (+ (-> obj curve num-cverts) -1)))
-    (* mag (the float (+ (-> obj curve num-cverts) -1)))
+    (* percent (the float (+ (-> this curve num-cverts) -1)))
+    (* mag (the float (+ (-> this curve num-cverts) -1)))
     )
   )
 
 ;; definition for method 13 of type path-control
-(defmethod displacement-between-two-points-normalized! path-control ((obj path-control) (ret vector) (idx float))
+(defmethod displacement-between-two-points-normalized! ((this path-control) (ret vector) (idx float))
   "Calls [[path-control::26], with the provided `idx`
 @param! ret The [[vector]] the result is stored within
 @param  idx The vertex index
 @returns The resulting displacement vector, normalized
 @see [[path-control::26]]"
-  (displacement-between-two-points! obj ret idx 1.0)
+  (displacement-between-two-points! this ret idx 1.0)
   (vector-normalize! ret 1.0)
   )
 
 ;; definition for method 16 of type path-control
-(defmethod displacement-between-points-at-percent-normalized! path-control ((obj path-control) (ret vector) (percent float))
+(defmethod displacement-between-points-at-percent-normalized! ((this path-control) (ret vector) (percent float))
   "Calls [[path-control::13], with the `idx` at a given percent along the path
 @param! ret The [[vector]] the result is stored within
 @param  percent The percentage along the path
 @returns The resulting displacement vector, normalized
 @see [[path-control::13]]
 @see [[path-control::14]]"
-  (displacement-between-two-points-normalized! obj ret (* percent (the float (+ (-> obj curve num-cverts) -1))))
+  (displacement-between-two-points-normalized!
+    this
+    ret
+    (* percent (the float (+ (-> this curve num-cverts) -1)))
+    )
   )
 
 ;; definition for method 26 of type curve-control
-(defmethod displacement-between-two-points! curve-control ((obj curve-control) (arg0 vector) (arg1 float) (arg2 float))
+(defmethod displacement-between-two-points! ((this curve-control) (arg0 vector) (arg1 float) (arg2 float))
   "Return value can differ quite a bit:
 - If [[path-control-flag::4]] is set OR there are less than 2 vertices OR `idx` is less than `0.0` - return [[*null-vector*]]
 - Otherwise, find the scaled (by `mag`) displacement vector between two points in the path:
@@ -287,25 +291,25 @@ using the fractional component of `idx` as the interpolant, return this result
 @param idx The vertex index
 @param mag The magnitude to scale the resulting displacement vector by
 @returns The displacement [[vector]] between two points in the path, the last 2, or the [[*null-vector*]]"
-  (when (not (logtest? (-> obj flags) (path-control-flag not-found)))
+  (when (not (logtest? (-> this flags) (path-control-flag not-found)))
     (let ((s4-0 (new 'stack-no-clear 'vector)))
       (curve-evaluate!
         arg0
         arg1
-        (-> obj curve cverts)
-        (-> obj curve num-cverts)
-        (-> obj curve knots)
-        (-> obj curve num-knots)
+        (-> this curve cverts)
+        (-> this curve num-cverts)
+        (-> this curve knots)
+        (-> this curve num-knots)
         )
       (cond
         ((< arg1 (- 1.0 arg2))
          (curve-evaluate!
            s4-0
            (+ arg1 arg2)
-           (-> obj curve cverts)
-           (-> obj curve num-cverts)
-           (-> obj curve knots)
-           (-> obj curve num-knots)
+           (-> this curve cverts)
+           (-> this curve num-cverts)
+           (-> this curve knots)
+           (-> this curve num-knots)
            )
          (vector-! arg0 s4-0 arg0)
          )
@@ -313,10 +317,10 @@ using the fractional component of `idx` as the interpolant, return this result
           (curve-evaluate!
             s4-0
             (- arg1 arg2)
-            (-> obj curve cverts)
-            (-> obj curve num-cverts)
-            (-> obj curve knots)
-            (-> obj curve num-knots)
+            (-> this curve cverts)
+            (-> this curve num-cverts)
+            (-> this curve knots)
+            (-> this curve num-knots)
             )
           (vector-! arg0 arg0 s4-0)
           )
@@ -326,46 +330,46 @@ using the fractional component of `idx` as the interpolant, return this result
   )
 
 ;; definition for method 12 of type curve-control
-(defmethod displacement-between-two-points-copy! curve-control ((obj curve-control) (ret vector) (percent float) (mag float))
+(defmethod displacement-between-two-points-copy! ((this curve-control) (ret vector) (percent float) (mag float))
   "Calls [[path-control::26]] with the `idx` at a given percent along the path @see [[path-control::26]]"
-  (displacement-between-two-points! obj ret (/ percent (the float (+ (-> obj curve num-cverts) -1))) mag)
+  (displacement-between-two-points! this ret (/ percent (the float (+ (-> this curve num-cverts) -1))) mag)
   )
 
 ;; definition for method 15 of type curve-control
-(defmethod displacement-between-points-at-percent-scaled! curve-control ((obj curve-control) (ret vector) (idx float) (mag float))
+(defmethod displacement-between-points-at-percent-scaled! ((this curve-control) (ret vector) (idx float) (mag float))
   "Calls [[path-control::12], with the `idx` at a given percent along the path
 @param ret The [[vector]] that is used to hold the return value
 @param percent The percentage along the path to find the first index
 @param mag Multiplied by the number of points in the path and scales the resulting vector
 @returns The displacement between the last two points of the path scaled to the magnitude equal to the number of points in the path"
-  (displacement-between-two-points! obj ret idx mag)
+  (displacement-between-two-points! this ret idx mag)
   )
 
 ;; definition for method 16 of type curve-control
-(defmethod displacement-between-points-at-percent-normalized! curve-control ((obj curve-control) (ret vector) (percent float))
+(defmethod displacement-between-points-at-percent-normalized! ((this curve-control) (ret vector) (percent float))
   "Calls [[path-control::13], with the `idx` at a given percent along the path
 @param! ret The [[vector]] the result is stored within
 @param  percent The percentage along the path
 @returns The resulting displacement vector, normalized
 @see [[path-control::13]]
 @see [[path-control::14]]"
-  (displacement-between-two-points! obj ret percent 0.01)
+  (displacement-between-two-points! this ret percent 0.01)
   (vector-normalize! ret 1.0)
   )
 
 ;; definition for method 13 of type curve-control
-(defmethod displacement-between-two-points-normalized! curve-control ((obj curve-control) (ret vector) (idx float))
+(defmethod displacement-between-two-points-normalized! ((this curve-control) (ret vector) (idx float))
   "@see [[curve-control::12]]"
   (displacement-between-points-at-percent-normalized!
-    obj
+    this
     ret
-    (/ idx (the float (+ (-> obj curve num-cverts) -1)))
+    (/ idx (the float (+ (-> this curve num-cverts) -1)))
     )
   )
 
 ;; definition for method 22 of type path-control
 ;; INFO: Used lq/sq
-(defmethod get-furthest-point-on-path path-control ((obj path-control) (point vector))
+(defmethod get-furthest-point-on-path ((this path-control) (point vector))
   "@param point The point to calculate distance from
 @returns the `vertex-idx.interpolant` value to the point on the path furthest away from the `point`
 @see [[path-control::10]]"
@@ -378,11 +382,11 @@ using the fractional component of `idx` as the interpolant, return this result
     (let ((closest-point (new 'stack-no-clear 'vector)))
       (set! (-> given-point quad) (-> point quad))
       (set! (-> given-point y) 0.0)
-      (get-point-in-path! obj next-point 0.0 'interp)
+      (get-point-in-path! this next-point 0.0 'interp)
       (set! (-> next-point y) 0.0)
-      (dotimes (idx (+ (-> obj curve num-cverts) -1))
+      (dotimes (idx (+ (-> this curve num-cverts) -1))
         (set! (-> curr-point quad) (-> next-point quad))
-        (get-point-in-path! obj next-point (the float (+ idx 1)) 'interp)
+        (get-point-in-path! this next-point (the float (+ idx 1)) 'interp)
         (set! (-> next-point y) 0.0)
         (let ((dist-to-point (vector-segment-distance-point! given-point curr-point next-point closest-point)))
           (when (< dist-to-point furthest-dist)
@@ -401,47 +405,53 @@ using the fractional component of `idx` as the interpolant, return this result
   )
 
 ;; definition for method 23 of type path-control
-(defmethod get-path-percentage-at-furthest-point path-control ((obj path-control) (point vector))
+(defmethod get-path-percentage-at-furthest-point ((this path-control) (point vector))
   "@param point The point to calculate distance from
 @returns the percentage of path completion from the point on the path furthest away from the `point`
 @see [[path-control::14]]"
-  (/ (get-furthest-point-on-path obj point) (the float (+ (-> obj curve num-cverts) -1)))
+  (/ (get-furthest-point-on-path this point) (the float (+ (-> this curve num-cverts) -1)))
   )
 
 ;; definition for method 9 of type curve-control
 ;; WARN: Return type mismatch int vs none.
-(defmethod debug-draw curve-control ((obj curve-control))
+(defmethod debug-draw ((this curve-control))
   (cond
-    ((logtest? (-> obj flags) (path-control-flag not-found))
-     (when (and (type? (-> obj process) process-drawable) *display-entity-errors*)
+    ((logtest? (-> this flags) (path-control-flag not-found))
+     (when (and (type? (-> this process) process-drawable) *display-entity-errors*)
        (let ((s5-0 add-debug-text-3d)
              (s4-0 #t)
              (s3-0 318)
              )
-         (format (clear *temp-string*) "curve data error in ~S" (-> obj process name))
+         (format (clear *temp-string*) "curve data error in ~S" (-> this process name))
          (s5-0
            s4-0
            (the-as bucket-id s3-0)
            *temp-string*
-           (-> obj process root trans)
+           (-> this process root trans)
            (font-color red)
            (the-as vector2h #f)
            )
          )
        )
      )
-    ((let ((a0-5 obj))
+    ((let ((a0-5 this))
        (and *display-path-marks* (logtest? (-> a0-5 flags) (path-control-flag display)))
        )
-     (if (and (logtest? (-> obj flags) (path-control-flag draw-line)) (> (-> obj curve num-cverts) 0))
-         (add-debug-curve2 #t (bucket-id debug-no-zbuf1) (-> obj curve) (new 'static 'rgba :r #xff :g #x80 :a #x80) #f)
+     (if (and (logtest? (-> this flags) (path-control-flag draw-line)) (> (-> this curve num-cverts) 0))
+         (add-debug-curve2
+           #t
+           (bucket-id debug-no-zbuf1)
+           (-> this curve)
+           (new 'static 'rgba :r #xff :g #x80 :a #x80)
+           #f
+           )
          )
-     (dotimes (s5-1 (-> obj curve num-cverts))
-       (let ((s4-1 (-> obj curve cverts s5-1)))
-         (if (logtest? (-> obj flags) (path-control-flag draw-point))
+     (dotimes (s5-1 (-> this curve num-cverts))
+       (let ((s4-1 (-> this curve cverts s5-1)))
+         (if (logtest? (-> this flags) (path-control-flag draw-point))
              (add-debug-x #t (bucket-id debug-no-zbuf1) s4-1 (new 'static 'rgba :r #xff :a #x80))
              )
-         (when (logtest? (-> obj flags) (path-control-flag draw-text))
+         (when (logtest? (-> this flags) (path-control-flag draw-text))
            (let ((s3-1 add-debug-text-3d)
                  (s2-1 #t)
                  (s1-0 318)
@@ -459,23 +469,23 @@ using the fractional component of `idx` as the interpolant, return this result
   )
 
 ;; definition for method 24 of type path-control
-(defmethod path-control-method-24 path-control ((obj path-control) (arg0 vector))
+(defmethod path-control-method-24 ((this path-control) (arg0 vector))
   "TODO"
-  (let ((s4-0 (-> obj curve num-cverts)))
+  (let ((s4-0 (-> this curve num-cverts)))
     (let ((f30-0 (/ 1.0 (the float s4-0))))
       (set-vector! arg0 0.0 0.0 0.0 0.0)
       (dotimes (s3-0 s4-0)
         (vector+float*!
           arg0
           arg0
-          (get-point-in-path! obj (new 'stack-no-clear 'vector) (the float s3-0) 'interp)
+          (get-point-in-path! this (new 'stack-no-clear 'vector) (the float s3-0) 'interp)
           f30-0
           )
         )
       )
     (dotimes (s3-1 s4-0)
       (let ((f0-10
-              (vector-vector-distance arg0 (get-point-in-path! obj (new 'stack-no-clear 'vector) (the float s3-1) 'interp))
+              (vector-vector-distance arg0 (get-point-in-path! this (new 'stack-no-clear 'vector) (the float s3-1) 'interp))
               )
             )
         (if (< (-> arg0 w) f0-10)

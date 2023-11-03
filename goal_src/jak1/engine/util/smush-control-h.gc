@@ -10,77 +10,77 @@
 ;;  - there is a maximum duration.
 ;;  - the amplitude is additionally linearly scaled to go to zero over the duration.
 
+;; DECOMP BEGINS
+
 (deftype smush-control (structure)
-  ((start-time  time-frame  :offset-assert 0)
-   (period      float  :offset-assert 8)
-   (duration    float  :offset-assert 12)
-   (amp         float  :offset-assert 16)
-   (damp-amp    float  :offset-assert 20)
-   (damp-period float  :offset-assert 24) ;; set a negative value here to flag as die on next update
-   (ticks       float  :offset-assert 28)
+  ((start-time   time-frame)
+   (period       float)
+   (duration     float)
+   (amp          float)
+   (damp-amp     float)
+   (damp-period  float) ;; set a negative value here to flag as die on next update
+   (ticks        float)
    )
   :pack-me
-  :method-count-assert 15
-  :size-assert         #x20
-  :flag-assert         #xf00000020
   (:methods
-   (set-zero! (_type_) _type_ 9)
-   (update! (_type_) float 10)
-   (get-no-update (_type_) float 11)
-   (activate! (_type_ float int int float float) _type_ 12)
-   (nonzero-amplitude? (_type_) symbol 13)
-   (die-on-next-update! (_type_) _type_ 14)
-   )
+    (set-zero! (_type_) _type_)
+    (update! (_type_) float)
+    (get-no-update (_type_) float)
+    (activate! (_type_ float int int float float) _type_)
+    (nonzero-amplitude? (_type_) symbol)
+    (die-on-next-update! (_type_) _type_)
+    )
   )
 
-(defmethod nonzero-amplitude? smush-control ((obj smush-control))
+
+(defmethod nonzero-amplitude? ((this smush-control))
   "Return #t if amp is not zero, #f otherwise"
   (declare (inline))
-  
-  (!= (-> obj amp) 0.0)
+
+  (!= (-> this amp) 0.0)
   )
 
-(defmethod set-zero! smush-control ((obj smush-control))
-  (set! (-> obj period) 0.0)
-  (set! (-> obj duration) 0.0)
-  (set! (-> obj amp) 0.0)
-  (set! (-> obj damp-amp) 0.0)
-  (set! (-> obj damp-period) 0.0)
-  (set! (-> obj ticks) 0.0)
-  obj
+(defmethod set-zero! ((this smush-control))
+  (set! (-> this period) 0.0)
+  (set! (-> this duration) 0.0)
+  (set! (-> this amp) 0.0)
+  (set! (-> this damp-amp) 0.0)
+  (set! (-> this damp-period) 0.0)
+  (set! (-> this ticks) 0.0)
+  this
   )
 
-(defmethod update! smush-control ((obj smush-control))
+(defmethod update! ((this smush-control))
   "Run the smush control and return the result. Updates the internal state."
 
   (cond
-    ((nonzero-amplitude? obj)
-     (let* ((time-since-start (the float (- (-> *display* base-frame-counter) (-> obj start-time))))
+    ((nonzero-amplitude? this)
+     (let* ((time-since-start (the float (- (-> *display* base-frame-counter) (-> this start-time))))
             ;; use float to int rounding to figure out offset into the current period.
-            (time-since-period-start (- time-since-start (* (the float (the int (/ time-since-start (-> obj period)))) (-> obj period))))
+            (time-since-period-start (- time-since-start (* (the float (the int (/ time-since-start (-> this period)))) (-> this period))))
             )
          ;; we completed a new period!
-         (when (>= (- time-since-start (-> obj ticks)) (-> obj period))
+         (when (>= (- time-since-start (-> this ticks)) (-> this period))
            ;; once per period updates of amp/period
-           (set! (-> obj amp) (* (-> obj amp) (-> obj damp-amp)))
-           (set! (-> obj period) (* (-> obj period) (-> obj damp-period)))
+           (set! (-> this amp) (* (-> this amp) (-> this damp-amp)))
+           (set! (-> this period) (* (-> this period) (-> this damp-period)))
            ;; store the ticks that we did this on
-           (set! (-> obj ticks) time-since-start)
+           (set! (-> this ticks) time-since-start)
            ;; you can set damp-period to a negative number to indicate
            ;; that it should die on the next update. Do that here.
-           (if (< (-> obj damp-period) 0.0)
-             (set-zero! obj)
+           (if (< (-> this damp-period) 0.0)
+             (set-zero! this)
              )
            )
 
          ;; absolute duraction check
-         (if (>= time-since-start (-> obj duration))
-           (set-zero! obj)
+         (if (>= time-since-start (-> this duration))
+           (set-zero! this)
            )
          ;; sine term multiplied by amplitude, and scaled by how much is left to go.
-         (* (sin (/ (* DEGREES_PER_ROT time-since-period-start) (-> obj period)))
-            (* (-> obj amp)
-               (/ (- (-> obj duration) time-since-start) (-> obj duration)))
+         (* (sin (/ (* DEGREES_PER_ROT time-since-period-start) (-> this period)))
+            (* (-> this amp)
+               (/ (- (-> this duration) time-since-start) (-> this duration)))
             )
          )
      )
@@ -89,17 +89,17 @@
     )
   )
 
-(defmethod get-no-update smush-control ((obj smush-control))
+(defmethod get-no-update ((this smush-control))
   "Get the value, but don't update internal state"
 
   (cond
-    ((nonzero-amplitude? obj)
-     (let* ((time-since-start (the float (- (-> *display* base-frame-counter) (-> obj start-time))))
-            (time-since-period-start (- time-since-start (* (the float (the int (/ time-since-start (-> obj period)))) (-> obj period))))
+    ((nonzero-amplitude? this)
+     (let* ((time-since-start (the float (- (-> *display* base-frame-counter) (-> this start-time))))
+            (time-since-period-start (- time-since-start (* (the float (the int (/ time-since-start (-> this period)))) (-> this period))))
             )
-         (* (sin (/ (* DEGREES_PER_ROT time-since-period-start) (-> obj period)))
-            (* (-> obj amp)
-               (/ (- (-> obj duration) time-since-start) (-> obj duration)))
+         (* (sin (/ (* DEGREES_PER_ROT time-since-period-start) (-> this period)))
+            (* (-> this amp)
+               (/ (- (-> this duration) time-since-start) (-> this duration)))
             )
          )
      )
@@ -108,35 +108,26 @@
     )
   )
 
-(defmethod die-on-next-update! smush-control ((obj smush-control))
+(defmethod die-on-next-update! ((this smush-control))
   "On the next call to update!, zero everything.
    Calls to get-no-update will still work."
 
-  (if (nonzero-amplitude? obj)
-    (set! (-> obj damp-period) -1.0)
+  (if (nonzero-amplitude? this)
+    (set! (-> this damp-period) -1.0)
     )
-  obj
+  this
   )
 
-(defmethod activate! smush-control ((obj smush-control)
-                                    (arg0 float)
-                                    (arg1 int)
-                                    (arg2 int)
-                                    (arg3 float)
-                                    (arg4 float)
-                                    )
+(defmethod activate! ((this smush-control) (arg0 float) (arg1 int) (arg2 int) (arg3 float) (arg4 float))
   "Activate the smush! This only activates if the ongoing smush is mostly done."
-
-  (when (>= (fabs (* 0.2 (-> obj amp)))
-            (fabs (get-no-update obj))
-            )
-    (set! (-> obj amp) arg0)
-    (set! (-> obj period) (the float arg1))
-    (set! (-> obj duration) (the float arg2))
-    (set! (-> obj damp-amp) arg3)
-    (set! (-> obj damp-period) arg4)
-    (set! (-> obj ticks) 0.0)
-    (set! (-> obj start-time) (-> *display* base-frame-counter))
+  (when (>= (fabs (* 0.2 (-> this amp))) (fabs (get-no-update this)))
+    (set! (-> this amp) arg0)
+    (set! (-> this period) (the float arg1))
+    (set! (-> this duration) (the float arg2))
+    (set! (-> this damp-amp) arg3)
+    (set! (-> this damp-period) arg4)
+    (set! (-> this ticks) 0.0)
+    (set-time! (-> this start-time))
     )
-  obj
+  this
   )

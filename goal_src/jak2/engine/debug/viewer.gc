@@ -17,12 +17,8 @@
         )
 
 (deftype viewer (process-drawable)
-  ((janim art-joint-anim  :offset-assert 200)
+  ((janim  art-joint-anim)
    )
-  :heap-base #x50
-  :method-count-assert 20
-  :size-assert         #xcc
-  :flag-assert         #x14005000cc
   (:states
     viewer-process
     )
@@ -50,9 +46,8 @@
         )
       )
     #f
-    (none)
     )
-  :post (the-as (function none :behavior viewer) ja-post)
+  :post ja-post
   )
 
 (define viewer-string (new 'global 'string 64 (the-as string #f)))
@@ -206,16 +201,17 @@
   (none)
   )
 
-(defmethod init-from-entity! viewer ((obj viewer) (arg0 entity-actor))
+;; WARN: Return type mismatch object vs none.
+(defmethod init-from-entity! ((this viewer) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
 - stack size
 - collision information
 - loading the skeleton group / bones
 - sounds"
-  (set! *viewer* obj)
-  (set! (-> obj root) (new 'process 'trsqv))
-  (process-drawable-from-entity! obj arg0)
+  (set! *viewer* this)
+  (set! (-> this root) (new 'process 'trsqv))
+  (process-drawable-from-entity! this arg0)
   (let ((s4-0 (-> arg0 etype)))
     (if (valid? s4-0 type (the-as string #f) #f 0)
         (init-viewer (symbol->string (-> s4-0 symbol)) (res-lump-struct arg0 'name string))
@@ -271,5 +267,5 @@ This commonly includes things such as:
 (defun birth-viewer ((arg0 process) (arg1 entity-actor))
   (set! (-> arg0 type) viewer)
   (init-entity arg0 arg1 viewer)
-  (the-as object #t)
+  #t
   )

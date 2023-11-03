@@ -3,36 +3,34 @@
 
 ;; definition of type rhino-wall
 (deftype rhino-wall (process-focusable)
-  ((anim     spool-anim  :offset-assert 204)
-   (art-name string      :offset-assert 208)
-   (id       int8        :offset-assert 212)
+  ((anim      spool-anim)
+   (art-name  string)
+   (id        int8)
    )
-  :heap-base #x60
-  :method-count-assert 31
-  :size-assert         #xd5
-  :flag-assert         #x1f006000d5
+  (:state-methods
+    unbroken
+    hit
+    broken
+    )
   (:methods
-    (unbroken () _type_ :state 27)
-    (hit () _type_ :state 28)
-    (broken () _type_ :state 29)
-    (rhino-wall-method-30 (_type_) none 30)
+    (rhino-wall-method-30 (_type_) none)
     )
   )
 
 ;; definition for method 3 of type rhino-wall
-(defmethod inspect rhino-wall ((obj rhino-wall))
-  (when (not obj)
-    (set! obj obj)
+(defmethod inspect ((this rhino-wall))
+  (when (not this)
+    (set! this this)
     (goto cfg-4)
     )
   (let ((t9-0 (method-of-type process-focusable inspect)))
-    (t9-0 obj)
+    (t9-0 this)
     )
-  (format #t "~2Tanim: ~A~%" (-> obj anim))
-  (format #t "~2Tart-name: ~A~%" (-> obj art-name))
-  (format #t "~2Tid: ~D~%" (-> obj id))
+  (format #t "~2Tanim: ~A~%" (-> this anim))
+  (format #t "~2Tart-name: ~A~%" (-> this art-name))
+  (format #t "~2Tid: ~D~%" (-> this id))
   (label cfg-4)
-  obj
+  this
   )
 
 ;; failed to figure out what this is:
@@ -49,8 +47,8 @@
 
 ;; definition for method 30 of type rhino-wall
 ;; WARN: Return type mismatch vector vs none.
-(defmethod rhino-wall-method-30 rhino-wall ((obj rhino-wall))
-  (let ((v1-1 (-> obj root root-prim)))
+(defmethod rhino-wall-method-30 ((this rhino-wall))
+  (let ((v1-1 (-> this root root-prim)))
     (countdown (a1-0 (-> v1-1 specific 0))
       (let ((a2-1 (-> (the-as collide-shape-prim-group v1-1) child a1-0)))
         (cond
@@ -64,16 +62,16 @@
           )
         )
       )
-    (case (-> obj id)
+    (case (-> this id)
       ((1)
-       (set! (-> obj draw origin-joint-index) (the-as uint 2))
-       (set-vector! (-> obj draw bounds) 0.0 0.0 81920.0 131072.0)
+       (set! (-> this draw origin-joint-index) (the-as uint 2))
+       (set-vector! (-> this draw bounds) 0.0 0.0 81920.0 131072.0)
        (set! (-> v1-1 transform-index) 2)
        (set-vector! (-> v1-1 local-sphere) 0.0 0.0 81920.0 122880.0)
        )
       ((2)
-       (set! (-> obj draw origin-joint-index) (the-as uint 2))
-       (set-vector! (-> obj draw bounds) 0.0 0.0 81920.0 131072.0)
+       (set! (-> this draw origin-joint-index) (the-as uint 2))
+       (set-vector! (-> this draw bounds) 0.0 0.0 81920.0 131072.0)
        (set! (-> v1-1 transform-index) 2)
        (set-vector! (-> v1-1 local-sphere) 0.0 0.0 81920.0 122880.0)
        )
@@ -85,8 +83,8 @@
 ;; failed to figure out what this is:
 (defstate unbroken (rhino-wall)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('trigger)
        (go-virtual hit)
        )
@@ -98,14 +96,13 @@
     (suspend)
     (transform-post)
     (sleep-code)
-    (none)
     )
   )
 
 ;; failed to figure out what this is:
 (defstate hit (rhino-wall)
   :virtual #t
-  :post (the-as (function none :behavior rhino-wall) transform-post)
+  :post transform-post
   )
 
 ;; failed to figure out what this is:
@@ -115,23 +112,23 @@
 
 ;; definition for method 11 of type rhino-wall
 ;; WARN: Return type mismatch object vs none.
-(defmethod init-from-entity! rhino-wall ((obj rhino-wall) (arg0 entity-actor))
+(defmethod init-from-entity! ((this rhino-wall) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
 - stack size
 - collision information
 - loading the skeleton group / bones
 - sounds"
-  (stack-size-set! (-> obj main-thread) 512)
-  (logior! (-> obj mask) (process-mask collectable))
-  (let ((s3-0 (res-lump-struct (-> obj entity) 'art-name structure))
+  (stack-size-set! (-> this main-thread) 512)
+  (logior! (-> this mask) (process-mask collectable))
+  (let ((s3-0 (res-lump-struct (-> this entity) 'art-name structure))
         (s4-0 (art-group-get-by-name *level* "skel-rhino-wall-1" (the-as (pointer uint32) #f)))
         )
-    (set! (-> obj art-name) (the-as string s3-0))
+    (set! (-> this art-name) (the-as string s3-0))
     (cond
       ((string= (the-as string s3-0) "rhino-wall-1")
-       (set! (-> obj id) 1)
-       (let ((s4-1 (new 'process 'collide-shape-moving obj (collide-list-enum usually-hit-by-player))))
+       (set! (-> this id) 1)
+       (let ((s4-1 (new 'process 'collide-shape-moving this (collide-list-enum usually-hit-by-player))))
          (set! (-> s4-1 dynam) (copy *standard-dynamics* 'process))
          (set! (-> s4-1 reaction) cshape-reaction-default)
          (set! (-> s4-1 no-reaction)
@@ -197,16 +194,16 @@ This commonly includes things such as:
            (set! (-> s4-1 backup-collide-as) (-> v1-38 prim-core collide-as))
            (set! (-> s4-1 backup-collide-with) (-> v1-38 prim-core collide-with))
            )
-         (set! (-> obj root) s4-1)
+         (set! (-> this root) s4-1)
          )
        (set! s4-0 (art-group-get-by-name *level* "skel-rhino-wall-1" (the-as (pointer uint32) #f)))
-       (set! (-> obj anim)
+       (set! (-> this anim)
              (new 'static 'spool-anim :name "rhino-wall-1" :anim-name "1-break" :parts 2 :command-list '())
              )
        )
       ((string= (the-as string s3-0) "rhino-wall-2")
-       (set! (-> obj id) 2)
-       (let ((s4-2 (new 'process 'collide-shape-moving obj (collide-list-enum usually-hit-by-player))))
+       (set! (-> this id) 2)
+       (let ((s4-2 (new 'process 'collide-shape-moving this (collide-list-enum usually-hit-by-player))))
          (set! (-> s4-2 dynam) (copy *standard-dynamics* 'process))
          (set! (-> s4-2 reaction) cshape-reaction-default)
          (set! (-> s4-2 no-reaction)
@@ -272,10 +269,10 @@ This commonly includes things such as:
            (set! (-> s4-2 backup-collide-as) (-> v1-74 prim-core collide-as))
            (set! (-> s4-2 backup-collide-with) (-> v1-74 prim-core collide-with))
            )
-         (set! (-> obj root) s4-2)
+         (set! (-> this root) s4-2)
          )
        (set! s4-0 (art-group-get-by-name *level* "skel-rhino-wall-2" (the-as (pointer uint32) #f)))
-       (set! (-> obj anim)
+       (set! (-> this anim)
              (new 'static 'spool-anim :name "rhino-wall-2" :anim-name "2-break" :parts 1 :command-list '())
              )
        )
@@ -283,12 +280,12 @@ This commonly includes things such as:
         (go process-drawable-art-error (the-as string s3-0))
         )
       )
-    (process-drawable-from-entity! obj arg0)
-    (initialize-skeleton obj (the-as skeleton-group s4-0) (the-as pair 0))
+    (process-drawable-from-entity! this arg0)
+    (initialize-skeleton this (the-as skeleton-group s4-0) (the-as pair 0))
     )
-  (if (and (-> obj entity) (logtest? (-> obj entity extra perm status) (entity-perm-status subtask-complete)))
-      (go (method-of-object obj broken))
-      (go (method-of-object obj unbroken))
+  (if (and (-> this entity) (logtest? (-> this entity extra perm status) (entity-perm-status subtask-complete)))
+      (go (method-of-object this broken))
+      (go (method-of-object this unbroken))
       )
   (none)
   )

@@ -29,27 +29,6 @@
   "return the current pckernel version"
   PC_KERNEL_VERSION)
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;; global variables
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-
-;; collision renderer things. debug only.
-(define *collision-renderer* #f)
-(define *collision-wireframe* #f)
-(define *collision-mode* (pc-collision-mode mode))
-
-;; todo
-(defenum pc-pat-skip-hack
-  :bitfield #t
-  (noentity 0)
-  (nocamera 1)
-  (noedge   2)
-  (nolineofsight 12)
-  (unknowncamera 13)
-  (unknown 15)
-  )
-
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;; updates
@@ -256,10 +235,12 @@
     ;; now multiply by the brightness setting
     (vector-float*! (-> obj controller-led-color) (-> obj controller-led-color) (-> obj controller-led-brightness))
     ;; now use it as the controller led color
-    (pc-set-controller-led! 0
-                            (the int (lerp-scale 0.0 255.0 (-> obj controller-led-color r) 0.0 1.0))
-                            (the int (lerp-scale 0.0 255.0 (-> obj controller-led-color g) 0.0 1.0))
-                            (the int (lerp-scale 0.0 255.0 (-> obj controller-led-color b) 0.0 1.0)))
+    (let ((led-rgba (new 'static 'rgba :r (the int (lerp-scale 0.0 255.0 (-> obj controller-led-color r) 0.0 1.0))
+                                       :g (the int (lerp-scale 0.0 255.0 (-> obj controller-led-color g) 0.0 1.0))
+                                       :b (the int (lerp-scale 0.0 255.0 (-> obj controller-led-color b) 0.0 1.0))
+                                       :a #x80)))
+        (set! *display-led-rgba* led-rgba)
+        (pc-set-controller-led! 0 (the-as int (-> led-rgba r)) (the-as int (-> led-rgba g)) (the-as int (-> led-rgba b))))
     )
 
   (none))
@@ -295,14 +276,13 @@
   (update-discord-rpc obj)
 
   ;; update auto-splitter info
-  (when (-> *pc-settings* speedrunner-mode?)
-    (update-speedrun obj))
+  (update-speedrun obj)
 
   (when (not (-> obj use-vis?))
     (update-video-hacks obj)
     )
   (cond
-    ((not (-> *pc-settings* ps2-actor-vis?))
+    ((not (-> obj ps2-actor-vis?))
       ;; kinda overkill.
       (set! (-> *ACTOR-bank* birth-dist) (meters 10000))
       (set! (-> *ACTOR-bank* pause-dist) (meters 10000))
@@ -410,6 +390,14 @@
   (pc-set-mouse-camera-sens! (-> obj mouse-xsens) (-> obj mouse-ysens))
   (pc-set-auto-hide-cursor! (-> obj auto-hide-cursor?))
   (none))
+
+
+(defmethod debug-font-scale-factor pc-settings ((this pc-settings))
+  "return the debug font scale factor to be used."
+  (declare (inline))
+  (if (-> this debug-font-scale-auto?)
+      (/ (-> this debug-font-scale) (max 1.0 (/ (the float (get-current-game-height this)) PC_BASE_HEIGHT)))
+      (-> this debug-font-scale)))
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -678,9 +666,9 @@
     (("subtitle-speaker") (set! (-> obj subtitle-speaker?) (file-stream-read-symbol file)))
 
     (("ignore-controller-win-unfocused?") (set-ignore-controller-in-bg! obj (file-stream-read-symbol file)))
-    (("controller-hp-led?") (set! (-> obj controller-hp-led?) (file-stream-read-symbol file)))
-    (("controller-eco-led?") (set! (-> obj controller-eco-led?) (file-stream-read-symbol file)))
-    (("controller-heat-led?") (set! (-> obj controller-heat-led?) (file-stream-read-symbol file)))
+    (("controller-hp-led?") (set! (-> obj controller-led-hp?) (file-stream-read-symbol file)))
+    (("controller-eco-led?") (set! (-> obj controller-led-eco?) (file-stream-read-symbol file)))
+    (("controller-heat-led?") (set! (-> obj controller-led-heat?) (file-stream-read-symbol file)))
     (("stick-deadzone") (set! (-> obj stick-deadzone) (file-stream-read-float file)))
     (("keyboard-enabled?") (set-enable-keyboard! obj (file-stream-read-symbol file)))
     (("mouse-enabled?") (set! (-> obj mouse-enabled?) (file-stream-read-symbol file)))
@@ -713,6 +701,10 @@
     (("controller-led-brightness") (set! (-> obj controller-led-brightness) (file-stream-read-float file)))
     (("controller-led-min-brightness") (set! (-> obj controller-led-min-brightness) (file-stream-read-float file)))
     (("controller-led-max-brightness") (set! (-> obj controller-led-max-brightness) (file-stream-read-float file)))
+
+    ;; debug
+    (("debug-font-scale") (set! (-> obj debug-font-scale) (file-stream-read-float file)))
+    (("debug-font-scale-auto?") (set! (-> obj debug-font-scale-auto?) (file-stream-read-symbol file)))
     (("panic")
       (when (file-stream-read-symbol file)
         (reset obj #t)
@@ -738,6 +730,8 @@
   (format file "  (letterbox ~A)~%" (-> obj letterbox?))
   (format file "  (vsync ~A)~%" (-> obj vsync?))
   ;(format file "  (font-scale ~f)~%" (-> obj font-scale))
+  (format file "  (debug-font-scale ~f)~%" (-> obj debug-font-scale))
+  (format file "  (debug-font-scale-auto? ~A)~%" (-> obj debug-font-scale-auto?))
 
   ;(format file "  (audio-latency-ms ~D)~%" (-> obj audio-latency-ms))
   ;(format file "  (audio-pan-override ~f)~%" (-> obj audio-pan-override))
@@ -755,9 +749,9 @@
   (format file "  (lod-force-actor ~D)~%" (-> obj lod-force-actor))
 
   (format file "  (ignore-controller-win-unfocused? ~A)~%" (-> obj ignore-controller-win-unfocused?))
-  (format file "  (controller-hp-led? ~A)~%" (-> obj controller-hp-led?))
-  (format file "  (controller-eco-led? ~A)~%" (-> obj controller-eco-led?))
-  (format file "  (controller-heat-led? ~A)~%" (-> obj controller-heat-led?))
+  (format file "  (controller-hp-led? ~A)~%" (-> obj controller-led-hp?))
+  (format file "  (controller-eco-led? ~A)~%" (-> obj controller-led-eco?))
+  (format file "  (controller-heat-led? ~A)~%" (-> obj controller-led-heat?))
   (format file "  (controller-led-brightness ~f)~%" (-> obj controller-led-brightness))
   (format file "  (controller-led-min-brightness ~f)~%" (-> obj controller-led-min-brightness))
   (format file "  (controller-led-max-brightness ~f)~%" (-> obj controller-led-max-brightness))
@@ -856,6 +850,7 @@
    (scroll-y-max int16)
    (entity entity)
    (show-actor-info symbol)
+   (show-long-info symbol)
    )
   (:methods
     (new (symbol type) _type_)
@@ -873,6 +868,7 @@
     (set! (-> obj scroll-y-max) 0)
     (set! (-> obj entity) (the entity #f))
     (set! (-> obj show-actor-info) #f)
+    (set! (-> obj show-long-info) #f)
     obj
     )
   )
@@ -889,6 +885,9 @@
   ;; toggle actor info
   (if (cpad-pressed? pad-idx l3)
     (not! (-> obj show-actor-info)))
+  ;; toggle long info
+  (if (cpad-pressed? pad-idx up)
+    (not! (-> obj show-long-info)))
 
   (minmax! (-> obj scroll-y) 0 (-> obj scroll-y-max))
 

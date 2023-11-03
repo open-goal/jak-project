@@ -5,106 +5,110 @@
 ;; name in dgo: trajectory
 ;; dgos: GAME, ENGINE
 
-(defmethod eval-position! trajectory ((obj trajectory) (time float) (result vector))
+;; DECOMP BEGINS
+
+(defmethod eval-position! ((this trajectory) (time float) (result vector))
   "Evaluate the position of the object at a give time"
-  (set! (-> result quad) (-> obj initial-position quad))
-  (+! (-> result x) (* time (-> obj initial-velocity x)))
-  (+! (-> result y) (* time (-> obj initial-velocity y)))
-  (+! (-> result z) (* time (-> obj initial-velocity z)))
-  (+! (-> result y) (* (* (* 0.5 time) time) (-> obj gravity)))
+  (set! (-> result quad) (-> this initial-position quad))
+  (+! (-> result x) (* time (-> this initial-velocity x)))
+  (+! (-> result y) (* time (-> this initial-velocity y)))
+  (+! (-> result z) (* time (-> this initial-velocity z)))
+  (+! (-> result y) (* 0.5 time time (-> this gravity)))
   result
   )
 
-(defmethod eval-velocity! trajectory ((obj trajectory) (time float) (result vector))
+(defmethod eval-velocity! ((this trajectory) (time float) (result vector))
   "Evaluate the velocity of the object at a given time"
-  (set! (-> result quad) (-> obj initial-velocity quad))
-  (+! (-> result y) (* time (-> obj gravity)))
+  (set! (-> result quad) (-> this initial-velocity quad))
+  (+! (-> result y) (* time (-> this gravity)))
   result
   )
 
-(defmethod setup-from-to-duration! trajectory ((obj trajectory) (from vector) (to vector) (duration float) (grav float))
+(defmethod setup-from-to-duration! ((this trajectory) (from vector) (to vector) (duration float) (grav float))
   "Set up a trajectory that goes from->to in the given duration"
-  (set! (-> obj initial-position quad) (-> from quad))
-  (set! (-> obj gravity) grav)
-  (set! (-> obj time) duration)
+  (set! (-> this initial-position quad) (-> from quad))
+  (set! (-> this gravity) grav)
+  (set! (-> this time) duration)
   ;; the velocity we need in xz to make it in time
   (let ((xz-vel (/ (vector-vector-xz-distance to from) duration)))
     ;; our velocity will point along from -> to
-    (vector-! (-> obj initial-velocity) to from)
+    (vector-! (-> this initial-velocity) to from)
     ;; but have magnitude that we calculated above.
-    (vector-xz-normalize! (-> obj initial-velocity) xz-vel)
+    (vector-xz-normalize! (-> this initial-velocity) xz-vel)
     )
   ;; solve for the y velocity that makes us land at the right height.
-  (set! (-> obj initial-velocity y)
-   (- (/ (- (-> to y) (-> from y)) duration)
-    (* (* 0.5 duration) (-> obj gravity))
-    )
-   )
-  (none)
-  )
-
-(defmethod setup-from-to-xz-vel! trajectory ((obj trajectory) (from vector) (to vector) (xz-vel float) (grav float))
-  "Set up a trajectory that goes from->to with the given velocity"
-  ;; just solve for the duration and use the previous
-  (let ((duration (/ (vector-vector-xz-distance to from) xz-vel)))
-    (setup-from-to-duration! obj from to duration grav)
-    )
-  (none)
-  )
-
-(defmethod setup-from-to-y-vel! trajectory ((obj trajectory) (from vector) (to vector) (y-vel float) (grav float))
-  "Set up a trajectory with the given initial y velocity."
-  (let* ((f0-0 y-vel)
-         (f1-3 (- (* f0-0 f0-0) (* (* 2.0 (- (-> from y) (-> to y))) grav)))
-         (f0-3 900.0)
-         )
-   (when (>= f1-3 0.0)
-    (let ((f0-4 (sqrtf f1-3)))
-     (set! f0-3 (fmax (/ (- (- y-vel) f0-4) grav) (/ (+ (- y-vel) f0-4) grav)))
-     )
-    )
-   (setup-from-to-duration! obj from to f0-3 grav)
-   )
+  (set! (-> this initial-velocity y)
+        (- (/ (- (-> to y) (-> from y)) duration) (* 0.5 duration (-> this gravity)))
+        )
   0
   (none)
   )
 
-(defmethod setup-from-to-height! trajectory ((obj trajectory) (arg0 vector) (arg1 vector) (arg2 float) (arg3 float))
-  "Setup a trajectory that reaches a given height"
-  (let* ((f1-2 (+ arg2 (fmax (-> arg0 y) (-> arg1 y))))
-         (f1-5 (* (* 2.0 (- (-> arg0 y) f1-2)) arg3))
-         (f0-3 4096.0)
-         )
-   (if (< 0.0 f1-5)
-    (set! f0-3 (sqrtf f1-5))
+(defmethod setup-from-to-xz-vel! ((this trajectory) (from vector) (to vector) (xz-vel float) (grav float))
+  "Set up a trajectory that goes from->to with the given velocity"
+  ;; just solve for the duration and use the previous
+  (let ((duration (/ (vector-vector-xz-distance to from) xz-vel)))
+    (setup-from-to-duration! this from to duration grav)
     )
-   (setup-from-to-y-vel! obj arg0 arg1 f0-3 arg3)
-   )
+  0
   (none)
   )
 
-(defmethod debug-draw! trajectory ((obj trajectory))
+(defmethod setup-from-to-y-vel! ((this trajectory) (from vector) (to vector) (y-vel float) (grav float))
+  "Set up a trajectory with the given initial y velocity."
+  (let* ((f0-0 y-vel)
+         (f1-3 (- (* f0-0 f0-0) (* 2.0 (- (-> from y) (-> to y)) grav)))
+         (f0-3 900.0)
+         )
+    (when (>= f1-3 0.0)
+      (let ((f0-4 (sqrtf f1-3)))
+        (set! f0-3 (fmax (/ (- (- y-vel) f0-4) grav) (/ (+ (- y-vel) f0-4) grav)))
+        )
+      )
+    (setup-from-to-duration! this from to f0-3 grav)
+    )
+  0
+  (none)
+  )
+
+(defmethod setup-from-to-height! ((this trajectory) (arg0 vector) (arg1 vector) (arg2 float) (arg3 float))
+  "Setup a trajectory that reaches a given height"
+  (let* ((f1-2 (+ arg2 (fmax (-> arg0 y) (-> arg1 y))))
+         (f1-5 (* 2.0 (- (-> arg0 y) f1-2) arg3))
+         (f0-3 4096.0)
+         )
+    (if (< 0.0 f1-5)
+        (set! f0-3 (sqrtf f1-5))
+        )
+    (setup-from-to-y-vel! this arg0 arg1 f0-3 arg3)
+    )
+  0
+  (none)
+  )
+
+(defmethod debug-draw! ((this trajectory))
   "Draw the trajectory"
   (let ((prev-pos (new 'stack-no-clear 'vector))
         (pos (new 'stack-no-clear 'vector))
         (num-segments 10)
         )
-    (set! (-> pos quad) (-> obj initial-position quad))
+    (set! (-> pos quad) (-> this initial-position quad))
     (dotimes (s2-0 num-segments)
       (set! (-> prev-pos quad) (-> pos quad))
-      (let ((t-eval (* (-> obj time) (/ (+ 1.0 (the float s2-0)) (the float num-segments)))))
-        (eval-position! obj t-eval pos)
+      (let ((t-eval (* (-> this time) (/ (+ 1.0 (the float s2-0)) (the float num-segments)))))
+        (eval-position! this t-eval pos)
         )
       (add-debug-line
-       #t
-       (bucket-id debug-no-zbuf)
-       prev-pos
-       pos
-       (new 'static 'rgba :r #xff :a #x80)
-       #f
-       (the-as rgba -1)
-       )
+        #t
+        (bucket-id debug-no-zbuf)
+        prev-pos
+        pos
+        (new 'static 'rgba :r #xff :a #x80)
+        #f
+        (the-as rgba -1)
+        )
       )
     )
+  0
   (none)
   )

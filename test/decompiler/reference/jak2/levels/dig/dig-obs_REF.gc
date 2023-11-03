@@ -3,40 +3,36 @@
 
 ;; definition of type dig-sinking-plat
 (deftype dig-sinking-plat (rigid-body-platform)
-  ((anchor-point      vector      :inline :offset-assert 384)
-   (sync              sync-linear :inline :offset-assert 400)
-   (last-ridden-time  time-frame          :offset-assert 416)
-   (prev-pos          float               :offset-assert 424)
-   (path-pos          float               :offset-assert 428)
-   (surface-height    float               :offset-assert 432)
-   (once              basic               :offset-assert 436)
-   (bubbling-sound-id sound-id            :offset-assert 440)
+  ((anchor-point       vector       :inline)
+   (sync               sync-linear  :inline)
+   (last-ridden-time   time-frame)
+   (prev-pos           float)
+   (path-pos           float)
+   (surface-height     float)
+   (once               basic)
+   (bubbling-sound-id  sound-id)
    )
-  :heap-base #x140
-  :method-count-assert 57
-  :size-assert         #x1bc
-  :flag-assert         #x39014001bc
   )
 
 ;; definition for method 3 of type dig-sinking-plat
-(defmethod inspect dig-sinking-plat ((obj dig-sinking-plat))
-  (when (not obj)
-    (set! obj obj)
+(defmethod inspect ((this dig-sinking-plat))
+  (when (not this)
+    (set! this this)
     (goto cfg-4)
     )
   (let ((t9-0 (method-of-type rigid-body-platform inspect)))
-    (t9-0 obj)
+    (t9-0 this)
     )
-  (format #t "~2Tanchor-point: #<vector @ #x~X>~%" (-> obj anchor-point))
-  (format #t "~2Tsync: #<sync-linear @ #x~X>~%" (-> obj sync))
-  (format #t "~2Tlast-ridden-time: ~D~%" (-> obj last-ridden-time))
-  (format #t "~2Tprev-pos: ~f~%" (-> obj prev-pos))
-  (format #t "~2Tpath-pos: ~f~%" (-> obj path-pos))
-  (format #t "~2Tsurface-height: ~f~%" (-> obj surface-height))
-  (format #t "~2Tonce: ~A~%" (-> obj once))
-  (format #t "~2Tbubbling-sound-id: ~D~%" (-> obj bubbling-sound-id))
+  (format #t "~2Tanchor-point: #<vector @ #x~X>~%" (-> this anchor-point))
+  (format #t "~2Tsync: #<sync-linear @ #x~X>~%" (-> this sync))
+  (format #t "~2Tlast-ridden-time: ~D~%" (-> this last-ridden-time))
+  (format #t "~2Tprev-pos: ~f~%" (-> this prev-pos))
+  (format #t "~2Tpath-pos: ~f~%" (-> this path-pos))
+  (format #t "~2Tsurface-height: ~f~%" (-> this surface-height))
+  (format #t "~2Tonce: ~A~%" (-> this once))
+  (format #t "~2Tbubbling-sound-id: ~D~%" (-> this bubbling-sound-id))
   (label cfg-4)
-  obj
+  this
   )
 
 ;; failed to figure out what this is:
@@ -47,17 +43,17 @@
 
 ;; definition for method 29 of type dig-sinking-plat
 ;; WARN: Return type mismatch int vs none.
-(defmethod rigid-body-object-method-29 dig-sinking-plat ((obj dig-sinking-plat) (arg0 float))
-  ((the-as (function rigid-body-platform float none) (find-parent-method dig-sinking-plat 29)) obj arg0)
-  (rigid-body-platform-method-56 obj (-> obj anchor-point))
+(defmethod rigid-body-object-method-29 ((this dig-sinking-plat) (arg0 float))
+  (call-parent-method this arg0)
+  (rigid-body-platform-method-56 this (-> this anchor-point))
   0
   (none)
   )
 
 ;; definition for method 32 of type dig-sinking-plat
 ;; WARN: Return type mismatch int vs none.
-(defmethod allocate-and-init-cshape dig-sinking-plat ((obj dig-sinking-plat))
-  (let ((s5-0 (new 'process 'collide-shape-moving obj (collide-list-enum usually-hit-by-player))))
+(defmethod allocate-and-init-cshape ((this dig-sinking-plat))
+  (let ((s5-0 (new 'process 'collide-shape-moving this (collide-list-enum usually-hit-by-player))))
     (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s5-0 reaction) cshape-reaction-default)
     (set! (-> s5-0 no-reaction)
@@ -79,7 +75,7 @@
       (set! (-> s5-0 backup-collide-as) (-> v1-16 prim-core collide-as))
       (set! (-> s5-0 backup-collide-with) (-> v1-16 prim-core collide-with))
       )
-    (set! (-> obj root) s5-0)
+    (set! (-> this root) s5-0)
     )
   0
   (none)
@@ -120,65 +116,65 @@
         )
 
 ;; definition for method 53 of type dig-sinking-plat
-(defmethod rigid-body-platform-method-53 dig-sinking-plat ((obj dig-sinking-plat) (arg0 vector))
-  (-> obj surface-height)
+(defmethod rigid-body-platform-method-53 ((this dig-sinking-plat) (arg0 vector))
+  (-> this surface-height)
   )
 
 ;; definition for method 37 of type dig-sinking-plat
-(defmethod rigid-body-object-method-37 dig-sinking-plat ((obj dig-sinking-plat))
-  (when (not (logtest? (-> obj path flags) (path-control-flag not-found)))
-    (set! (-> obj prev-pos) (-> obj path-pos))
-    (set! (-> obj path-pos) (get-norm! (-> obj sync) 0))
-    (when (< (-> obj path-pos) (-> obj prev-pos))
-      (let ((a0-2 (-> obj skel root-channel 0)))
-        (set! (-> a0-2 frame-group) (the-as art-joint-anim (-> obj draw art-group data 2)))
+(defmethod rigid-body-object-method-37 ((this dig-sinking-plat))
+  (when (not (logtest? (-> this path flags) (path-control-flag not-found)))
+    (set! (-> this prev-pos) (-> this path-pos))
+    (set! (-> this path-pos) (get-norm! (-> this sync) 0))
+    (when (< (-> this path-pos) (-> this prev-pos))
+      (let ((a0-2 (-> this skel root-channel 0)))
+        (set! (-> a0-2 frame-group) (the-as art-joint-anim (-> this draw art-group data 2)))
         (set! (-> a0-2 param 0)
-              (the float (+ (-> (the-as art-joint-anim (-> obj draw art-group data 2)) frames num-frames) -1))
+              (the float (+ (-> (the-as art-joint-anim (-> this draw art-group data 2)) frames num-frames) -1))
               )
         (set! (-> a0-2 param 1) 1.0)
         (set! (-> a0-2 frame-num) 0.0)
-        (joint-control-channel-group! a0-2 (the-as art-joint-anim (-> obj draw art-group data 2)) num-func-seek!)
+        (joint-control-channel-group! a0-2 (the-as art-joint-anim (-> this draw art-group data 2)) num-func-seek!)
         )
-      (let ((a0-3 (-> obj skel root-channel 0)))
+      (let ((a0-3 (-> this skel root-channel 0)))
         (set! (-> a0-3 param 0) (the float (+ (-> a0-3 frame-group frames num-frames) -1)))
         (set! (-> a0-3 param 1) 1.0)
         (joint-control-channel-group-eval! a0-3 (the-as art-joint-anim #f) num-func-seek!)
         )
       )
-    (let ((f30-0 (/ 300.0 (the float (-> obj sync period)))))
+    (let ((f30-0 (/ 300.0 (the float (-> this sync period)))))
       (let* ((f0-12 (/ 1.0 (- 1.0 (* 2.0 f30-0))))
-             (f0-13 (* (fmax 0.0 (- (-> obj path-pos) f30-0)) f0-12))
+             (f0-13 (* (fmax 0.0 (- (-> this path-pos) f30-0)) f0-12))
              )
-        (get-point-at-percent-along-path! (-> obj path) (-> obj anchor-point) f0-13 'interp)
+        (get-point-at-percent-along-path! (-> this path) (-> this anchor-point) f0-13 'interp)
         )
       (cond
-        ((< (-> obj path-pos) f30-0)
-         (set! (-> obj float-height-offset) (* -8192.0 (/ (- f30-0 (-> obj path-pos)) f30-0)))
+        ((< (-> this path-pos) f30-0)
+         (set! (-> this float-height-offset) (* -8192.0 (/ (- f30-0 (-> this path-pos)) f30-0)))
          )
-        ((< (- 1.0 (* 2.0 f30-0)) (-> obj path-pos))
+        ((< (- 1.0 (* 2.0 f30-0)) (-> this path-pos))
          (cond
-           ((< (- 1.0 f30-0) (-> obj path-pos))
-            (set! (-> obj float-height-offset) (* -8192.0 (/ (- (-> obj path-pos) (- 1.0 f30-0)) f30-0)))
-            (let ((a0-5 (-> obj skel root-channel 0)))
+           ((< (- 1.0 f30-0) (-> this path-pos))
+            (set! (-> this float-height-offset) (* -8192.0 (/ (- (-> this path-pos) (- 1.0 f30-0)) f30-0)))
+            (let ((a0-5 (-> this skel root-channel 0)))
               (set! (-> a0-5 param 0) (the float (+ (-> a0-5 frame-group frames num-frames) -1)))
               (set! (-> a0-5 param 1) 1.0)
               (joint-control-channel-group-eval! a0-5 (the-as art-joint-anim #f) num-func-seek!)
               )
             )
            (else
-             (when (-> obj once)
-               (let ((a0-6 (-> obj skel root-channel 0)))
-                 (set! (-> a0-6 frame-group) (the-as art-joint-anim (-> obj draw art-group data 3)))
+             (when (-> this once)
+               (let ((a0-6 (-> this skel root-channel 0)))
+                 (set! (-> a0-6 frame-group) (the-as art-joint-anim (-> this draw art-group data 3)))
                  (set! (-> a0-6 param 0)
-                       (the float (+ (-> (the-as art-joint-anim (-> obj draw art-group data 3)) frames num-frames) -1))
+                       (the float (+ (-> (the-as art-joint-anim (-> this draw art-group data 3)) frames num-frames) -1))
                        )
                  (set! (-> a0-6 param 1) 1.0)
                  (set! (-> a0-6 frame-num) 0.0)
-                 (joint-control-channel-group! a0-6 (the-as art-joint-anim (-> obj draw art-group data 3)) num-func-seek!)
+                 (joint-control-channel-group! a0-6 (the-as art-joint-anim (-> this draw art-group data 3)) num-func-seek!)
                  )
-               (set! (-> obj once) #f)
+               (set! (-> this once) #f)
                )
-             (let ((a0-7 (-> obj skel root-channel 0)))
+             (let ((a0-7 (-> this skel root-channel 0)))
                (set! (-> a0-7 param 0) (the float (+ (-> a0-7 frame-group frames num-frames) -1)))
                (set! (-> a0-7 param 1) 1.0)
                (joint-control-channel-group-eval! a0-7 (the-as art-joint-anim #f) num-func-seek!)
@@ -187,53 +183,53 @@
            )
          )
         (else
-          (set! (-> obj float-height-offset) 0.0)
+          (set! (-> this float-height-offset) 0.0)
           )
         )
       )
     )
   (cond
-    ((>= (- (current-time) (-> obj last-ridden-time)) (seconds 0.5))
-     (when (nonzero? (-> obj bubbling-sound-id))
+    ((time-elapsed? (-> this last-ridden-time) (seconds 0.5))
+     (when (nonzero? (-> this bubbling-sound-id))
        (let ((v1-84 (the-as sound-rpc-set-param (get-sound-buffer-entry))))
          (set! (-> v1-84 command) (sound-command set-param))
-         (set! (-> v1-84 id) (-> obj bubbling-sound-id))
+         (set! (-> v1-84 id) (-> this bubbling-sound-id))
          (set! (-> v1-84 params volume) -4)
          (set! (-> v1-84 auto-time) 120)
          (set! (-> v1-84 auto-from) 2)
          (set! (-> v1-84 params mask) (the-as uint 17))
          (-> v1-84 id)
          )
-       (set! (-> obj bubbling-sound-id) (new 'static 'sound-id))
+       (set! (-> this bubbling-sound-id) (new 'static 'sound-id))
        0
        )
      )
     (else
-      (if (zero? (-> obj bubbling-sound-id))
-          (set! (-> obj bubbling-sound-id) (sound-play "lava-plat-sink"))
+      (if (zero? (-> this bubbling-sound-id))
+          (set! (-> this bubbling-sound-id) (sound-play "lava-plat-sink"))
           )
       )
     )
-  ((method-of-type rigid-body-platform rigid-body-object-method-37) obj)
+  ((method-of-type rigid-body-platform rigid-body-object-method-37) this)
   (none)
   )
 
 ;; definition for method 56 of type dig-sinking-plat
 ;; INFO: Used lq/sq
 ;; WARN: Return type mismatch int vs none.
-(defmethod rigid-body-platform-method-56 dig-sinking-plat ((obj dig-sinking-plat) (arg0 vector))
-  (when (not (logtest? (-> obj path flags) (path-control-flag not-found)))
+(defmethod rigid-body-platform-method-56 ((this dig-sinking-plat) (arg0 vector))
+  (when (not (logtest? (-> this path flags) (path-control-flag not-found)))
     (let ((v1-4 (new 'stack-no-clear 'vector)))
       (cond
-        ((< (-> obj prev-pos) (-> obj path-pos))
-         (vector-! v1-4 arg0 (-> obj rbody state position))
+        ((< (-> this prev-pos) (-> this path-pos))
+         (vector-! v1-4 arg0 (-> this rbody state position))
          (set! (-> v1-4 y) 0.0)
          (let* ((f0-2 (vector-length v1-4))
                 (f1-2 (* 1000.0 (fmax 0.0 (fmin 4096.0 (+ -4096.0 f0-2)))))
                 )
            (when (< 0.0 f1-2)
              (vector-float*! v1-4 v1-4 (/ f1-2 f0-2))
-             (rigid-body-method-20 (-> obj rbody state) v1-4)
+             (rigid-body-method-20 (-> this rbody state) v1-4)
              )
            )
          )
@@ -241,13 +237,13 @@
           (let ((v1-5 (new 'stack-no-clear 'vector)))
             (set! (-> v1-5 quad) (-> arg0 quad))
             (+! (-> v1-5 y) -8192.0)
-            (let ((a0-16 (-> obj rbody))
-                  (a2-2 (-> obj root quat))
+            (let ((a0-16 (-> this rbody))
+                  (a2-2 (-> this root quat))
                   )
               (rigid-body-method-26 (-> a0-16 state) v1-5 a2-2)
               )
             )
-          (set! (-> obj once) (the-as basic #t))
+          (set! (-> this once) (the-as basic #t))
           )
         )
       )
@@ -259,13 +255,13 @@
 ;; failed to figure out what this is:
 (defstate idle (dig-sinking-plat)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('ridden)
-       (set! (-> self last-ridden-time) (current-time))
+       (set-time! (-> self last-ridden-time))
        )
       )
-    (rigid-body-object-event-handler proc arg1 event-type event)
+    (rigid-body-object-event-handler proc argc message block)
     )
   )
 
@@ -278,18 +274,18 @@
 ;; definition for method 33 of type dig-sinking-plat
 ;; INFO: Used lq/sq
 ;; WARN: Return type mismatch int vs none.
-(defmethod init-skel-and-rigid-body dig-sinking-plat ((obj dig-sinking-plat))
+(defmethod init-skel-and-rigid-body ((this dig-sinking-plat))
   (initialize-skeleton
-    obj
+    this
     (the-as skeleton-group (art-group-get-by-name *level* "skel-dig-sinking-plat" (the-as (pointer uint32) #f)))
     (the-as pair 0)
     )
-  (alloc-and-init-rigid-body-control obj *dig-sinking-platform-constants*)
-  (set! (-> obj anchor-point quad) (-> obj root trans quad))
-  (set! (-> obj surface-height) (+ -4096.0 (-> obj root trans y)))
-  (let ((s5-1 (-> obj info control-point-count)))
+  (alloc-and-init-rigid-body-control this *dig-sinking-platform-constants*)
+  (set! (-> this anchor-point quad) (-> this root trans quad))
+  (set! (-> this surface-height) (+ -4096.0 (-> this root trans y)))
+  (let ((s5-1 (-> this info control-point-count)))
     (dotimes (s4-1 s5-1)
-      (let ((s3-0 (-> obj control-point-array data s4-1)))
+      (let ((s3-0 (-> this control-point-array data s4-1)))
         (let ((f30-0 (* 65536.0 (/ (the float s4-1) (the float s5-1)))))
           (set! (-> s3-0 local-pos x) (* 16384.0 (sin f30-0)))
           (set! (-> s3-0 local-pos y) -8192.0)
@@ -299,11 +295,11 @@
         )
       )
     )
-  (let ((s5-2 (-> obj entity)))
-    (set! (-> obj path) (new 'process 'path-control obj 'path 0.0 s5-2 #f))
-    (logior! (-> obj path flags) (path-control-flag display draw-line draw-point draw-text))
-    (set! (-> obj fact)
-          (new 'process 'fact-info obj (pickup-type eco-pill-random) (-> *FACT-bank* default-eco-pill-green-inc))
+  (let ((s5-2 (-> this entity)))
+    (set! (-> this path) (new 'process 'path-control this 'path 0.0 s5-2 #f))
+    (logior! (-> this path flags) (path-control-flag display draw-line draw-point draw-text))
+    (set! (-> this fact)
+          (new 'process 'fact-info this (pickup-type eco-pill-random) (-> *FACT-bank* default-eco-pill-green-inc))
           )
     (let ((a1-5 (new 'stack-no-clear 'sync-info-params)))
       (let ((v1-25 0))
@@ -316,11 +312,11 @@
       (set! (-> a1-5 entity) s5-2)
       (set! (-> a1-5 period) (the-as uint 3000))
       (set! (-> a1-5 percent) 0.0)
-      (initialize! (-> obj sync) a1-5)
+      (initialize! (-> this sync) a1-5)
       )
     )
-  (set! (-> obj bubbling-sound-id) (new 'static 'sound-id))
-  (set! (-> obj once) (the-as basic #t))
+  (set! (-> this bubbling-sound-id) (new 'static 'sound-id))
+  (set! (-> this once) (the-as basic #t))
   0
   (none)
   )
@@ -460,25 +456,22 @@
 
 ;; definition of type dig-log-button-info
 (deftype dig-log-button-info (basic)
-  ((cam-ret-mode symbol         :offset-assert   4)
-   (cam-ret-dir  vector :inline :offset-assert  16)
+  ((cam-ret-mode  symbol)
+   (cam-ret-dir   vector  :inline)
    )
-  :method-count-assert 9
-  :size-assert         #x20
-  :flag-assert         #x900000020
   )
 
 ;; definition for method 3 of type dig-log-button-info
-(defmethod inspect dig-log-button-info ((obj dig-log-button-info))
-  (when (not obj)
-    (set! obj obj)
+(defmethod inspect ((this dig-log-button-info))
+  (when (not this)
+    (set! this this)
     (goto cfg-4)
     )
-  (format #t "[~8x] ~A~%" obj (-> obj type))
-  (format #t "~1Tcam-ret-mode: ~A~%" (-> obj cam-ret-mode))
-  (format #t "~1Tcam-ret-dir: #<vector @ #x~X>~%" (-> obj cam-ret-dir))
+  (format #t "[~8x] ~A~%" this (-> this type))
+  (format #t "~1Tcam-ret-mode: ~A~%" (-> this cam-ret-mode))
+  (format #t "~1Tcam-ret-dir: #<vector @ #x~X>~%" (-> this cam-ret-dir))
   (label cfg-4)
-  obj
+  this
   )
 
 ;; definition for symbol *dig-log-button-infos*, type (array dig-log-button-info)
@@ -515,41 +508,39 @@
 
 ;; definition of type dig-log
 (deftype dig-log (process-drawable)
-  ((pressed-count    int8     :offset-assert 200)
-   (total-buttons    int8     :offset-assert 201)
-   (last-button-id   int8     :offset-assert 202)
-   (base-y           float    :offset-assert 204)
-   (hud-handle       handle   :offset-assert 208)
-   (pad-ihj1bn234i1b int32  2 :offset-assert 216)
+  ((pressed-count     int8)
+   (total-buttons     int8)
+   (last-button-id    int8)
+   (base-y            float)
+   (hud-handle        handle)
+   (pad-ihj1bn234i1b  int32  2)
    )
-  :heap-base #x60
-  :method-count-assert 23
-  :size-assert         #xe0
-  :flag-assert         #x17006000e0
+  (:state-methods
+    idle
+    moving
+    )
   (:methods
-    (idle () _type_ :state 20)
-    (moving () _type_ :state 21)
-    (dig-log-method-22 (_type_ symbol) symbol 22)
+    (dig-log-method-22 (_type_ symbol) symbol)
     )
   )
 
 ;; definition for method 3 of type dig-log
-(defmethod inspect dig-log ((obj dig-log))
-  (when (not obj)
-    (set! obj obj)
+(defmethod inspect ((this dig-log))
+  (when (not this)
+    (set! this this)
     (goto cfg-4)
     )
   (let ((t9-0 (method-of-type process-drawable inspect)))
-    (t9-0 obj)
+    (t9-0 this)
     )
-  (format #t "~2Tpressed-count: ~D~%" (-> obj pressed-count))
-  (format #t "~2Ttotal-buttons: ~D~%" (-> obj total-buttons))
-  (format #t "~2Tlast-button-id: ~D~%" (-> obj last-button-id))
-  (format #t "~2Tbase-y: ~f~%" (-> obj base-y))
-  (format #t "~2Thud-handle: ~D~%" (-> obj hud-handle))
-  (format #t "~2Tstate-time: ~D~%" (-> obj state-time))
+  (format #t "~2Tpressed-count: ~D~%" (-> this pressed-count))
+  (format #t "~2Ttotal-buttons: ~D~%" (-> this total-buttons))
+  (format #t "~2Tlast-button-id: ~D~%" (-> this last-button-id))
+  (format #t "~2Tbase-y: ~f~%" (-> this base-y))
+  (format #t "~2Thud-handle: ~D~%" (-> this hud-handle))
+  (format #t "~2Tstate-time: ~D~%" (-> this state-time))
   (label cfg-4)
-  obj
+  this
   )
 
 ;; failed to figure out what this is:
@@ -584,30 +575,30 @@
   )
 
 ;; definition for method 12 of type dig-log
-(defmethod run-logic? dig-log ((obj dig-log))
+(defmethod run-logic? ((this dig-log))
   #t
   )
 
 ;; definition for method 22 of type dig-log
 ;; WARN: Return type mismatch int vs symbol.
 ;; WARN: disable def twice: 16. This may happen when a cond (no else) is nested inside of another conditional, but it should be rare.
-(defmethod dig-log-method-22 dig-log ((obj dig-log) (arg0 symbol))
+(defmethod dig-log-method-22 ((this dig-log) (arg0 symbol))
   (the-as
     symbol
     (cond
       (arg0
-        (when (!= (-> obj pressed-count) (-> obj total-buttons))
-          (when (not (handle->process (-> obj hud-handle)))
-            (let ((v0-0 (ppointer->handle (process-spawn hud-dig-button :init hud-init-by-other :to obj))))
-              (set! (-> obj hud-handle) (the-as handle v0-0))
+        (when (!= (-> this pressed-count) (-> this total-buttons))
+          (when (not (handle->process (-> this hud-handle)))
+            (let ((v0-0 (ppointer->handle (process-spawn hud-dig-button :init hud-init-by-other :to this))))
+              (set! (-> this hud-handle) (the-as handle v0-0))
               v0-0
               )
             )
           )
         )
       (else
-        (send-event (handle->process (-> obj hud-handle)) 'hide-and-die)
-        (set! (-> obj hud-handle) (the-as handle #f))
+        (send-event (handle->process (-> this hud-handle)) 'hide-and-die)
+        (set! (-> this hud-handle) (the-as handle #f))
         (the-as int #f)
         )
       )
@@ -618,7 +609,7 @@
 (defstate idle (dig-log)
   :virtual #t
   :event dig-log-event-handler
-  :code (the-as (function none :behavior dig-log) sleep-code)
+  :code sleep-code
   )
 
 ;; failed to figure out what this is:
@@ -626,11 +617,9 @@
   :virtual #t
   :enter (behavior ()
     (set-setting! 'ignore-target #t 0.0 0)
-    (none)
     )
   :exit (behavior ()
     (remove-setting! 'ignore-target)
-    (none)
     )
   :code (behavior ()
     (local-vars (v1-12 object))
@@ -642,8 +631,8 @@
                    )
              (s5-0 (add-process *gui-control* self (gui-channel jak) (gui-action queue) t0-0 -99.0 0))
              )
-        (set! (-> self state-time) (current-time))
-        (until (>= (- (current-time) (-> self state-time)) (seconds 0.15))
+        (set-time! (-> self state-time))
+        (until (time-elapsed? (-> self state-time) (seconds 0.15))
           (suspend)
           )
         (until v1-12
@@ -653,8 +642,8 @@
         (while (!= (get-status *gui-control* s5-0) (gui-status ready))
           (suspend)
           )
-        (set! (-> self state-time) (current-time))
-        (until (>= (- (current-time) (-> self state-time)) (seconds 0.2))
+        (set-time! (-> self state-time))
+        (until (time-elapsed? (-> self state-time) (seconds 0.2))
           (suspend)
           )
         (set-setting! 'entity-name "camera-249" 0.0 0)
@@ -669,8 +658,8 @@
           (the-as process #f)
           )
         )
-      (set! (-> self state-time) (current-time))
-      (until (>= (- (current-time) (-> self state-time)) (seconds 0.5))
+      (set-time! (-> self state-time))
+      (until (time-elapsed? (-> self state-time) (seconds 0.5))
         (suspend)
         )
       (let ((f30-0
@@ -680,7 +669,7 @@
             )
         (until (>= (-> self root trans y) f30-0)
           (set! (-> self root trans y)
-                (seek-with-smooth (-> self root trans y) f30-0 (* 4096.0 (-> self clock seconds-per-frame)) 0.25 40.96)
+                (seek-with-smooth (-> self root trans y) f30-0 (* 4096.0 (seconds-per-frame)) 0.25 40.96)
                 )
           (when (>= (current-time) s5-1)
             (activate!
@@ -702,8 +691,8 @@
           (suspend)
           )
         )
-      (set! (-> self state-time) (current-time))
-      (until (>= (- (current-time) (-> self state-time)) (seconds 1))
+      (set-time! (-> self state-time))
+      (until (time-elapsed? (-> self state-time) (seconds 1))
         (suspend)
         )
       (if (= (-> gp-0 cam-ret-mode) 'instant)
@@ -712,34 +701,33 @@
       (set-setting! 'string-startup-vector 'abs (-> gp-0 cam-ret-dir) 0)
       (remove-setting! 'entity-name)
       (when (!= (-> gp-0 cam-ret-mode) 'instant)
-        (set! (-> self state-time) (current-time))
-        (until (>= (- (current-time) (-> self state-time)) (seconds 1))
+        (set-time! (-> self state-time))
+        (until (time-elapsed? (-> self state-time) (seconds 1))
           (suspend)
           )
         )
       )
-    (set! (-> self state-time) (current-time))
-    (until (>= (- (current-time) (-> self state-time)) (seconds 0.1))
+    (set-time! (-> self state-time))
+    (until (time-elapsed? (-> self state-time) (seconds 0.1))
       (suspend)
       )
     (remove-setting! 'string-startup-vector)
     (until (process-release? *target*)
       (suspend)
       )
-    (set! (-> self state-time) (current-time))
-    (until (>= (- (current-time) (-> self state-time)) (seconds 4))
+    (set-time! (-> self state-time))
+    (until (time-elapsed? (-> self state-time) (seconds 4))
       (suspend)
       )
     (go-virtual idle)
-    (none)
     )
-  :post (the-as (function none :behavior dig-log) transform-post)
+  :post transform-post
   )
 
 ;; definition for method 11 of type dig-log
 ;; INFO: Used lq/sq
 ;; WARN: Return type mismatch object vs none.
-(defmethod init-from-entity! dig-log ((obj dig-log) (arg0 entity-actor))
+(defmethod init-from-entity! ((this dig-log) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
 - stack size
@@ -747,8 +735,8 @@ This commonly includes things such as:
 - loading the skeleton group / bones
 - sounds"
   (local-vars (sv-16 res-tag))
-  (set! (-> obj hud-handle) (the-as handle #f))
-  (let ((s4-0 (new 'process 'collide-shape obj (collide-list-enum usually-hit-by-player))))
+  (set! (-> this hud-handle) (the-as handle #f))
+  (let ((s4-0 (new 'process 'collide-shape this (collide-list-enum usually-hit-by-player))))
     (let ((s3-0 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 0) (the-as uint 0))))
       (set! (-> s3-0 prim-core collide-as) (collide-spec obstacle camera-blocker pusher))
       (set! (-> s3-0 prim-core collide-with) (collide-spec jak bot player-list))
@@ -764,28 +752,28 @@ This commonly includes things such as:
       (set! (-> s4-0 backup-collide-as) (-> v1-12 prim-core collide-as))
       (set! (-> s4-0 backup-collide-with) (-> v1-12 prim-core collide-with))
       )
-    (set! (-> obj root) s4-0)
+    (set! (-> this root) s4-0)
     )
-  (process-drawable-from-entity! obj arg0)
-  (set! (-> obj base-y) (-> obj root trans y))
+  (process-drawable-from-entity! this arg0)
+  (set! (-> this base-y) (-> this root trans y))
   (initialize-skeleton
-    obj
+    this
     (the-as skeleton-group (art-group-get-by-name *level* "skel-dig-log" (the-as (pointer uint32) #f)))
     (the-as pair 0)
     )
-  (set! (-> obj pressed-count) 0)
-  (set! (-> obj total-buttons) 0)
+  (set! (-> this pressed-count) 0)
+  (set! (-> this total-buttons) 0)
   (set! sv-16 (new 'static 'res-tag))
-  (let ((v1-19 (res-lump-data (-> obj entity) 'actor-groups (pointer actor-group) :tag-ptr (& sv-16))))
+  (let ((v1-19 (res-lump-data (-> this entity) 'actor-groups (pointer actor-group) :tag-ptr (& sv-16))))
     (when (and v1-19 (nonzero? (-> sv-16 elt-count)))
       (let ((s5-2 (-> v1-19 0)))
         (countdown (s4-2 (-> s5-2 length))
           (let ((s3-1 (-> s5-2 data s4-2 actor)))
             (when s3-1
-              (add-icon! *minimap* obj (the-as uint 16) (the-as int #f) (the-as vector s3-1) 0)
-              (+! (-> obj total-buttons) 1)
+              (add-icon! *minimap* this (the-as uint 16) (the-as int #f) (the-as vector s3-1) 0)
+              (+! (-> this total-buttons) 1)
               (if (logtest? (-> s3-1 extra perm status) (entity-perm-status subtask-complete))
-                  (+! (-> obj pressed-count) 1)
+                  (+! (-> this pressed-count) 1)
                   )
               )
             )
@@ -794,51 +782,47 @@ This commonly includes things such as:
       )
     )
   (if (task-node-closed? (game-task-node dig-find-totem-raise-log))
-      (set! (-> obj pressed-count) (-> obj total-buttons))
+      (set! (-> this pressed-count) (-> this total-buttons))
       )
-  (set! (-> obj root trans y)
-        (+ (-> (&-> *dig-log-heights* 0 data (- (-> obj total-buttons) (-> obj pressed-count))) 0) (-> obj base-y))
+  (set! (-> this root trans y)
+        (+ (-> (&-> *dig-log-heights* 0 data (- (-> this total-buttons) (-> this pressed-count))) 0) (-> this base-y))
         )
   (transform-post)
-  (when (!= (-> obj pressed-count) (-> obj total-buttons))
-    (set! (-> *game-info* counter) (the float (- (-> obj total-buttons) (-> obj pressed-count))))
+  (when (!= (-> this pressed-count) (-> this total-buttons))
+    (set! (-> *game-info* counter) (the float (- (-> this total-buttons) (-> this pressed-count))))
     (if (string= (-> *game-info* last-continue name) "dig3b-back-room")
-        (dig-log-method-22 obj #t)
+        (dig-log-method-22 this #t)
         )
     )
-  (set! (-> obj part) (create-launch-control (-> *part-group-id-table* 1145) obj))
-  (set! (-> obj event-hook) dig-log-event-handler)
-  (go (method-of-object obj idle))
+  (set! (-> this part) (create-launch-control (-> *part-group-id-table* 1145) this))
+  (set! (-> this event-hook) dig-log-event-handler)
+  (go (method-of-object this idle))
   (none)
   )
 
 ;; definition of type dig-button
 (deftype dig-button (process-drawable)
-  ((down-y float  :offset-assert 200)
+  ((down-y  float)
    )
-  :heap-base #x50
-  :method-count-assert 23
-  :size-assert         #xcc
-  :flag-assert         #x17005000cc
-  (:methods
-    (idle-up () _type_ :state 20)
-    (going-down () _type_ :state 21)
-    (idle-down () _type_ :state 22)
+  (:state-methods
+    idle-up
+    going-down
+    idle-down
     )
   )
 
 ;; definition for method 3 of type dig-button
-(defmethod inspect dig-button ((obj dig-button))
-  (when (not obj)
-    (set! obj obj)
+(defmethod inspect ((this dig-button))
+  (when (not this)
+    (set! this this)
     (goto cfg-4)
     )
   (let ((t9-0 (method-of-type process-drawable inspect)))
-    (t9-0 obj)
+    (t9-0 this)
     )
-  (format #t "~2Tdown-y: ~f~%" (-> obj down-y))
+  (format #t "~2Tdown-y: ~f~%" (-> this down-y))
   (label cfg-4)
-  obj
+  this
   )
 
 ;; failed to figure out what this is:
@@ -848,24 +832,21 @@ This commonly includes things such as:
               )
 
 ;; definition for method 12 of type dig-button
-(defmethod run-logic? dig-button ((obj dig-button))
+(defmethod run-logic? ((this dig-button))
   #t
   )
 
 ;; failed to figure out what this is:
 (defstate idle-up (dig-button)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (the-as
-      object
-      (case event-type
-        (('attack)
-         (when (logtest? (-> (the-as attack-info (-> event param 1)) penetrate-using) (penetrate flop))
-           (go-virtual going-down)
-           #f
-           )
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
+      (('attack)
+       (when (logtest? (-> (the-as attack-info (-> block param 1)) penetrate-using) (penetrate flop))
+         (go-virtual going-down)
+         #f
          )
-        )
+       )
       )
     )
   :code (behavior ()
@@ -873,7 +854,6 @@ This commonly includes things such as:
     (suspend)
     (transform-post)
     (sleep-code)
-    (none)
     )
   )
 
@@ -883,7 +863,7 @@ This commonly includes things such as:
   :code (behavior ()
     (sound-play "dig-button")
     (until (= (-> self root trans y) (-> self down-y))
-      (seek! (-> self root trans y) (-> self down-y) (* 16384.0 (-> self clock seconds-per-frame)))
+      (seek! (-> self root trans y) (-> self down-y) (* 16384.0 (seconds-per-frame)))
       (logior! (-> self skel status) (joint-control-status sync-math))
       (transform-post)
       (logclear! (-> self skel status) (joint-control-status sync-math))
@@ -896,7 +876,6 @@ This commonly includes things such as:
           )
       )
     (go-virtual idle-down)
-    (none)
     )
   )
 
@@ -909,20 +888,19 @@ This commonly includes things such as:
     (suspend)
     (transform-post)
     (sleep-code)
-    (none)
     )
   )
 
 ;; definition for method 11 of type dig-button
 ;; WARN: Return type mismatch object vs none.
-(defmethod init-from-entity! dig-button ((obj dig-button) (arg0 entity-actor))
+(defmethod init-from-entity! ((this dig-button) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
 - stack size
 - collision information
 - loading the skeleton group / bones
 - sounds"
-  (let ((s4-0 (new 'process 'collide-shape obj (collide-list-enum usually-hit-by-player))))
+  (let ((s4-0 (new 'process 'collide-shape this (collide-list-enum usually-hit-by-player))))
     (let ((v1-2 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 0) (the-as uint 0))))
       (set! (-> v1-2 prim-core collide-as) (collide-spec obstacle))
       (set! (-> v1-2 prim-core collide-with) (collide-spec jak bot player-list))
@@ -937,64 +915,64 @@ This commonly includes things such as:
       (set! (-> s4-0 backup-collide-as) (-> v1-5 prim-core collide-as))
       (set! (-> s4-0 backup-collide-with) (-> v1-5 prim-core collide-with))
       )
-    (set! (-> obj root) s4-0)
+    (set! (-> this root) s4-0)
     )
-  (process-drawable-from-entity! obj arg0)
+  (process-drawable-from-entity! this arg0)
   (initialize-skeleton
-    obj
+    this
     (the-as skeleton-group (art-group-get-by-name *level* "skel-dig-button" (the-as (pointer uint32) #f)))
     (the-as pair 0)
     )
-  (set! (-> obj down-y) (+ -2048.0 (-> obj root trans y)))
+  (set! (-> this down-y) (+ -2048.0 (-> this root trans y)))
   (if (task-node-closed? (game-task-node dig-find-totem-raise-log))
-      (process-entity-status! obj (entity-perm-status subtask-complete) #t)
+      (process-entity-status! this (entity-perm-status subtask-complete) #t)
       )
-  (if (and (-> obj entity) (logtest? (-> obj entity extra perm status) (entity-perm-status subtask-complete)))
-      (go (method-of-object obj idle-down))
-      (go (method-of-object obj idle-up))
+  (if (and (-> this entity) (logtest? (-> this entity extra perm status) (entity-perm-status subtask-complete)))
+      (go (method-of-object this idle-down))
+      (go (method-of-object this idle-up))
       )
   (none)
   )
 
 ;; definition for method 15 of type hud-dig-button
 ;; WARN: Return type mismatch int vs none.
-(defmethod draw hud-dig-button ((obj hud-dig-button))
+(defmethod draw ((this hud-dig-button))
   (set-hud-piece-position!
-    (the-as hud-sprite (-> obj sprites))
-    (the int (+ 487.0 (* 130.0 (-> obj offset))))
+    (the-as hud-sprite (-> this sprites))
+    (the int (+ 487.0 (* 130.0 (-> this offset))))
     210
     )
-  (format (clear (-> obj strings 0 text)) "~D" (-> obj values 0 current))
-  (set-as-offset-from! (the-as hud-sprite (-> obj strings 0 pos)) (the-as vector4w (-> obj sprites)) -16 20)
-  ((method-of-type hud draw) obj)
+  (format (clear (-> this strings 0 text)) "~D" (-> this values 0 current))
+  (set-as-offset-from! (the-as hud-sprite (-> this strings 0 pos)) (the-as vector4w (-> this sprites)) -16 20)
+  ((method-of-type hud draw) this)
   0
   (none)
   )
 
 ;; definition for method 16 of type hud-dig-button
 ;; WARN: Return type mismatch int vs none.
-(defmethod update-values hud-dig-button ((obj hud-dig-button))
-  (set! (-> obj values 0 target) (the int (-> *game-info* counter)))
-  ((method-of-type hud update-values) obj)
+(defmethod update-values ((this hud-dig-button))
+  (set! (-> this values 0 target) (the int (-> *game-info* counter)))
+  ((method-of-type hud update-values) this)
   0
   (none)
   )
 
 ;; definition for method 17 of type hud-dig-button
 ;; WARN: Return type mismatch int vs none.
-(defmethod init-callback hud-dig-button ((obj hud-dig-button))
-  (set! (-> obj level) (level-get *level* 'dig3a))
-  (set! (-> obj sprites 0 tex) (lookup-texture-by-id (new 'static 'texture-id :page #xd21)))
-  (set! (-> obj gui-id)
-        (add-process *gui-control* obj (gui-channel hud-middle-right) (gui-action hidden) (-> obj name) 81920.0 0)
+(defmethod init-callback ((this hud-dig-button))
+  (set! (-> this level) (level-get *level* 'dig3a))
+  (set! (-> this sprites 0 tex) (lookup-texture-by-id (new 'static 'texture-id :page #xd21)))
+  (set! (-> this gui-id)
+        (add-process *gui-control* this (gui-channel hud-middle-right) (gui-action hidden) (-> this name) 81920.0 0)
         )
-  (logior! (-> obj flags) (hud-flags show))
-  (set! (-> obj sprites 0 flags) (the-as uint 4))
-  (set! (-> obj sprites 0 scale-x) 1.0)
-  (set! (-> obj sprites 0 scale-y) 1.0)
-  (alloc-string-if-needed obj 0)
-  (set! (-> obj strings 0 scale) 0.6)
-  (set! (-> obj strings 0 flags) (font-flags kerning middle large))
+  (logior! (-> this flags) (hud-flags show))
+  (set! (-> this sprites 0 flags) (the-as uint 4))
+  (set! (-> this sprites 0 scale-x) 1.0)
+  (set! (-> this sprites 0 scale-y) 1.0)
+  (alloc-string-if-needed this 0)
+  (set! (-> this strings 0 scale) 0.6)
+  (set! (-> this strings 0 flags) (font-flags kerning middle large))
   0
   (none)
   )

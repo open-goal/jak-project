@@ -26,181 +26,142 @@
 ;; flags: 1 = load
 ;;        2 = display
 
+;; DECOMP BEGINS
+
 ;; a node in the bsp tree
 (deftype bsp-node (structure)
-  ((front       int32          :offset-assert 0)  ;; if > 0, is a pointer to another bsp-node
-   (back        int32          :offset-assert 4)  ;; if > 0, is a pointer to another bsp-node
-   (front-flags uint32         :offset-assert 8)  ;; ?
-   (back-flags  uint32         :offset-assert 12) ;; ?
-   (plane       vector :inline :offset-assert 16) ;; the partitioning plane
+  ((front        int32)
+   (back         int32)
+   (front-flags  uint32)
+   (back-flags   uint32)
+   (plane        vector  :inline)
    )
-  :method-count-assert 9
-  :size-assert         #x20
-  :flag-assert         #x900000020
   )
 
 ;; This is the object stored first in the level bt (-vis)
 ;; It is also a drawable, and drawing it will draw the level.
 (deftype bsp-header (drawable)
-  ((info                   file-info                        :offset          4)
-   (all-visible-list       (pointer uint16)                 :offset-assert  32)
-   (visible-list-length    int32                            :offset-assert  36)
-   (drawable-trees         drawable-tree-array              :offset-assert  40)
-   (pat                    pointer                          :offset-assert  44)
-   (pat-length             int32                            :offset-assert  48)
-   (texture-remap-table    (pointer uint64)                 :offset-assert  52)
-   (texture-remap-table-len int32                           :offset-assert  56)
-   (texture-ids            (pointer texture-id)             :offset-assert  60)
-   (texture-page-count     int32                            :offset-assert  64)
-   (unk-zero-0             basic                            :offset-assert  68)
-   (name                   symbol                           :offset-assert  72)
-   (nickname               symbol                           :offset-assert  76)
-   (vis-info               level-vis-info                8  :offset-assert  80) ;; note: 0 when not present.
-   (actors                 drawable-inline-array-actor      :offset-assert 112)
-   (cameras                (array entity-camera)            :offset-assert 116)
-   (nodes                  (inline-array bsp-node)          :offset-assert 120)
-   (level                  level                            :offset-assert 124)
-   (current-leaf-idx       uint16                           :offset-assert 128)
-   (unk-data-2             uint16                        9  :offset-assert 130)
-   (boxes                  box8s-array                      :offset-assert 148)
-   (current-bsp-back-flags uint32                           :offset-assert 152)
-   (ambients               drawable-inline-array-ambient    :offset-assert 156)
-   (unk-data-4             float                            :offset-assert 160)
-   (unk-data-5             float                            :offset-assert 164)
-   (adgifs                 adgif-shader-array               :offset-assert 168)
-   (actor-birth-order      (pointer uint32)                 :offset-assert 172)
-   (split-box-indices      (pointer uint16)                 :offset-assert 176)
-   (unk-data-8             uint32                        55 :offset-assert 180)
+  ((info                     file-info       :overlay-at id)
+   (all-visible-list         (pointer uint16))
+   (visible-list-length      int32)
+   (drawable-trees           drawable-tree-array)
+   (pat                      pointer)
+   (pat-length               int32)
+   (texture-remap-table      (pointer uint64))
+   (texture-remap-table-len  int32)
+   (texture-ids              (pointer texture-id))
+   (texture-page-count       int32)
+   (unk-zero-0               basic)
+   (name                     symbol)
+   (nickname                 symbol)
+   (vis-info                 level-vis-info  8)
+   (actors                   drawable-inline-array-actor)
+   (cameras                  (array entity-camera))
+   (nodes                    (inline-array bsp-node))
+   (level                    level)
+   (current-leaf-idx         uint16)
+   (unk-data-2               uint16          9)
+   (boxes                    box8s-array)
+   (current-bsp-back-flags   uint32)
+   (ambients                 drawable-inline-array-ambient)
+   (unk-data-4               float)
+   (unk-data-5               float)
+   (adgifs                   adgif-shader-array)
+   (actor-birth-order        (pointer uint32))
+   (split-box-indices        (pointer uint16))
+   (unk-data-8               uint32          55)
    )
-  :method-count-assert 20
-  :size-assert         #x190
-  :flag-assert         #x1400000190
   (:methods
-   (relocate (_type_ kheap (pointer uint8)) none :replace 7)
-   (birth (_type_) none 18)
-   (deactivate-entities (_type_) none 19)
-   )
+    (relocate (_type_ kheap (pointer uint8)) none :replace)
+    (birth (_type_) none)
+    (deactivate-entities (_type_) none)
+    )
   )
 
 ;; seems to be unused?
 ;; In practice, a normal bsp-header is a game-level.
 (deftype game-level (basic)
-  ((master-bsp basic  :offset-assert 4)
+  ((master-bsp  basic)
    )
-  :method-count-assert 9
-  :size-assert         #x8
-  :flag-assert         #x900000008
   )
+
 
 (deftype view-frustum (structure)
-  ((hither-top-left     vector :inline :offset-assert 0)
-   (hither-top-right    vector :inline :offset-assert 16)
-   (hither-bottom-left  vector :inline :offset-assert 32)
-   (hither-bottom-right vector :inline :offset-assert 48)
-   (yon-top-left        vector :inline :offset-assert 64)
-   (yon-top-right       vector :inline :offset-assert 80)
-   (yon-bottom-left     vector :inline :offset-assert 96)
-   (yon-bottom-right    vector :inline :offset-assert 112)
+  ((hither-top-left      vector  :inline)
+   (hither-top-right     vector  :inline)
+   (hither-bottom-left   vector  :inline)
+   (hither-bottom-right  vector  :inline)
+   (yon-top-left         vector  :inline)
+   (yon-top-right        vector  :inline)
+   (yon-bottom-left      vector  :inline)
+   (yon-bottom-right     vector  :inline)
    )
-  :method-count-assert 9
-  :size-assert         #x80
-  :flag-assert         #x900000080
-  )
-(define-extern inspect-bsp-tree (function bsp-header bsp-node none))
-
-(defmethod inspect bsp-header ((obj bsp-header))
-  (format #t "[~8x] ~A~%" obj (-> obj type))
-  (format #t "~Tall-visible-list: #x~X~%" (-> obj all-visible-list))
-  (format #t "~Tvisible-list-length: ~D~%" (-> obj visible-list-length))
-  (format #t "~Tdrawable-trees: ~A~%" (-> obj drawable-trees))
-  (format #t "~Tpat: #x~X~%" (-> obj pat))
-  (format #t "~Tpat-length: ~D~%" (-> obj pat-length))
-  ;; putting this stuff here for debugging!
-  (format #t "~Ttexture-remap-table-len: ~D~%" (-> obj texture-remap-table-len))
-  (dotimes (i (-> obj texture-remap-table-len))
-    (let* ((tex-id-array (the (pointer texture-id) (&-> obj texture-remap-table i)))
-          (tex-id-from (-> tex-id-array 0))
-          (tex-id-to (-> tex-id-array 1))
-          )
-      (format #t "~T~Ttex-remap[~D]: #<texture-id :page ~D :index ~D> --> #<texture-id :page ~D :index ~D>~%"
-                 i
-                 (-> tex-id-from page) (-> tex-id-from index)
-                 (-> tex-id-to page) (-> tex-id-to index)
-                 )
-      )
-    )
-  ;;(inspect-bsp-tree obj (the-as bsp-node (-> obj nodes)))
-  obj
   )
 
-(defun-debug inspect-bsp-tree ((arg0 bsp-header) (arg1 bsp-node))
+
+(defun-debug-recursive inspect-bsp-tree none ((arg0 bsp-header) (arg1 bsp-node))
   "Recursively print all nodes in a bsp tree. This makes a huge mess"
   (cond
-   ((zero? arg1)
-    )
-   (else
-    (format #t "_#x~X________________~%" arg1)
-    (inspect arg1)
-    (let ((s4-0 *print-column*))
-     (set! *print-column* (+ *print-column* 8))
-     (if (> (-> arg1 front) 0)
-      (inspect-bsp-tree arg0 (the-as bsp-node (-> arg1 front)))
-      (format #t "_#x~X________________~%" arg1)
-      )
-     (if (> (-> arg1 back) 0)
-      (inspect-bsp-tree arg0 (the-as bsp-node (-> arg1 back)))
-      (format #t "_#x~X________________~%" arg1)
-      )
-     (set! *print-column* s4-0)
+    ((zero? arg1)
      )
+    (else
+      (format #t "_#x~X________________~%" arg1)
+      (inspect arg1)
+      (let ((s4-0 *print-column*))
+        (set! *print-column* (+ *print-column* 64))
+        (if (> (-> arg1 front) 0)
+            (inspect-bsp-tree arg0 (the-as bsp-node (-> arg1 front)))
+            (format #t "_#x~X________________~%" arg1)
+            )
+        (if (> (-> arg1 back) 0)
+            (inspect-bsp-tree arg0 (the-as bsp-node (-> arg1 back)))
+            (format #t "_#x~X________________~%" arg1)
+            )
+        (set! *print-column* s4-0)
+        )
+      )
     )
-   )
   (none)
   )
 
 (defun-recursive map-bsp-tree none ((arg0 (function bsp-node none)) (arg1 bsp-header) (arg2 bsp-node))
   "Recursively apply arg0 to all nodes in the bsp tree"
   (cond
-   ((zero? arg2)
-    )
-   (else
-    (if (> (-> arg2 front) 0)
-     (map-bsp-tree arg0 arg1 (the-as bsp-node (-> arg2 front)))
-     (arg0 arg2)
+    ((zero? arg2)
      )
-    (if (> (-> arg2 back) 0)
-     (map-bsp-tree arg0 arg1 (the-as bsp-node (-> arg2 back)))
-     (arg0 arg2)
-     )
+    (else
+      (if (> (-> arg2 front) 0)
+          (map-bsp-tree arg0 arg1 (the-as bsp-node (-> arg2 front)))
+          (arg0 arg2)
+          )
+      (if (> (-> arg2 back) 0)
+          (map-bsp-tree arg0 arg1 (the-as bsp-node (-> arg2 back)))
+          (arg0 arg2)
+          )
+      )
     )
-   )
   (none)
   )
 
 (deftype cl-stat (structure)
-  ((fragments uint32  :offset-assert 0)
-   (tris      uint32  :offset-assert 4)
-   (output    uint32  :offset-assert 8)
+  ((fragments  uint32)
+   (tris       uint32)
+   (output     uint32)
    )
   :pack-me
-  :method-count-assert 9
-  :size-assert         #xc
-  :flag-assert         #x90000000c
   )
 
+
 (deftype collide-stats (structure)
-  ((other             cl-stat   :inline :offset-assert 0)
-   (total             cl-stat   :inline :offset-assert 12)
-   (nodes             uint32            :offset-assert 24)
-   (calls             uint32            :offset-assert 28)
-   (total-target      stopwatch :inline :offset-assert 32)
-   (target-cache-fill stopwatch :inline :offset-assert 64)
-   (target-ray-poly   stopwatch :inline :offset-assert 96)
-   (pad               uint32            :offset-assert 124)
+  ((other              cl-stat    :inline)
+   (total              cl-stat    :inline)
+   (nodes              uint32)
+   (calls              uint32)
+   (total-target       stopwatch  :inline)
+   (target-cache-fill  stopwatch  :inline)
+   (target-ray-poly    stopwatch  :inline)
+   (pad                uint32)
    )
-  :method-count-assert 9
-  :size-assert         #x80
-  :flag-assert         #x900000080
   )
 
 ;; offsets of stuff in the scratchpad during bsp draw.

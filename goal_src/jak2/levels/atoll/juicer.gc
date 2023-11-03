@@ -108,36 +108,32 @@
   )
 
 (deftype juicer-shot (projectile)
-  ((lightning lightning-control 5 :offset-assert 472)
-   (victim    handle              :offset-assert 496)
+  ((lightning  lightning-control  5)
+   (victim     handle)
    )
-  :heap-base #x180
-  :method-count-assert 40
-  :size-assert         #x1f8
-  :flag-assert         #x28018001f8
   )
 
 
-(defmethod event-handler! juicer-shot ((obj juicer-shot) (arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+(defmethod event-handler! ((this juicer-shot) (arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
   "Multiplex the projectile's event processing, called by [[projectile-event-handler]]"
   (case arg2
     (('reset)
      (let ((v1-1 (the-as object (-> arg3 param 0))))
-       (set! (-> obj root trans quad) (-> (the-as matrix v1-1) trans quad))
-       (set! (-> obj starting-pos quad) (-> (the-as matrix v1-1) trans quad))
-       (set! (-> obj root transv quad) (-> (&+ (the-as matrix v1-1) 64) quad 0))
-       (set! (-> obj pre-move-transv quad) (-> (&+ (the-as matrix v1-1) 64) quad 0))
+       (set! (-> this root trans quad) (-> (the-as matrix v1-1) trans quad))
+       (set! (-> this starting-pos quad) (-> (the-as matrix v1-1) trans quad))
+       (set! (-> this root transv quad) (-> (&+ (the-as matrix v1-1) 64) quad 0))
+       (set! (-> this pre-move-transv quad) (-> (&+ (the-as matrix v1-1) 64) quad 0))
        )
-     (set! (-> obj hits) 0)
-     (set! (-> obj spawn-time) (current-time))
-     (if (made-impact? obj)
-         (go (method-of-object obj impact))
-         (go (method-of-object obj moving))
+     (set! (-> this hits) 0)
+     (set-time! (-> this spawn-time))
+     (if (made-impact? this)
+         (go (method-of-object this impact))
+         (go (method-of-object this moving))
          )
      #t
      )
     (else
-      ((method-of-type projectile event-handler!) obj arg0 arg1 arg2 arg3)
+      ((method-of-type projectile event-handler!) this arg0 arg1 arg2 arg3)
       )
     )
   )
@@ -146,11 +142,10 @@
   :virtual #t
   :enter (behavior ()
     (go-virtual impact)
-    (none)
     )
   )
 
-(defmethod deal-damage! juicer-shot ((obj juicer-shot) (arg0 process) (arg1 event-message-block))
+(defmethod deal-damage! ((this juicer-shot) (arg0 process) (arg1 event-message-block))
   "Constructs an [[attack-info]] according to the projectile's `options`"
   (let ((a0-2 (if (type? arg0 process-focusable)
                   arg0
@@ -158,55 +153,27 @@
               )
         )
     (when a0-2
-      (set! (-> obj victim) (process->handle a0-2))
+      (set! (-> this victim) (process->handle a0-2))
       #t
       )
     )
   )
 
-(defmethod spawn-impact-particles juicer-shot ((obj juicer-shot))
+(defmethod spawn-impact-particles ((this juicer-shot))
   "Spawns associated particles with the projectile if applicable"
-  (let ((s5-0 (-> obj starting-pos))
-        (s4-0 (-> obj root trans))
+  (let ((s5-0 (-> this starting-pos))
+        (s4-0 (-> this root trans))
         )
     (when (line-in-view-frustum? s5-0 s4-0)
       (let ((s3-0 (new 'stack-no-clear 'vector))
             (s2-0 (new 'stack-no-clear 'vector))
             (s1-0 (new 'stack-no-clear 'matrix))
             )
-        (let ((t9-1 sp-launch-particles-var)
-              (a0-2 *sp-particle-system-2d*)
-              (a1-1 (-> *part-id-table* 4637))
-              (a2-0 *launch-matrix*)
-              )
-          (set! (-> a2-0 trans quad) (-> s5-0 quad))
-          (t9-1 a0-2 a1-1 a2-0 (the-as sparticle-launch-state #f) (the-as sparticle-launch-control #f) 1.0)
-          )
-        (let ((t9-2 sp-launch-particles-var)
-              (a0-3 *sp-particle-system-2d*)
-              (a1-2 (-> *part-id-table* 4638))
-              (a2-1 *launch-matrix*)
-              )
-          (set! (-> a2-1 trans quad) (-> s5-0 quad))
-          (t9-2 a0-3 a1-2 a2-1 (the-as sparticle-launch-state #f) (the-as sparticle-launch-control #f) 1.0)
-          )
-        (when (not (handle->process (-> obj victim)))
-          (let ((t9-3 sp-launch-particles-var)
-                (a0-8 *sp-particle-system-2d*)
-                (a1-4 (-> *part-id-table* 4637))
-                (a2-2 *launch-matrix*)
-                )
-            (set! (-> a2-2 trans quad) (-> s4-0 quad))
-            (t9-3 a0-8 a1-4 a2-2 (the-as sparticle-launch-state #f) (the-as sparticle-launch-control #f) 1.0)
-            )
-          (let ((t9-4 sp-launch-particles-var)
-                (a0-9 *sp-particle-system-2d*)
-                (a1-5 (-> *part-id-table* 4638))
-                (a2-3 *launch-matrix*)
-                )
-            (set! (-> a2-3 trans quad) (-> s4-0 quad))
-            (t9-4 a0-9 a1-5 a2-3 (the-as sparticle-launch-state #f) (the-as sparticle-launch-control #f) 1.0)
-            )
+        (launch-particles (-> *part-id-table* 4637) s5-0)
+        (launch-particles (-> *part-id-table* 4638) s5-0)
+        (when (not (handle->process (-> this victim)))
+          (launch-particles (-> *part-id-table* 4637) s4-0)
+          (launch-particles (-> *part-id-table* 4638) s4-0)
           )
         (vector-! s2-0 s4-0 s5-0)
         (vector-normalize! s2-0 1.0)
@@ -217,12 +184,12 @@
         (dotimes (s0-0 5)
           (vector-matrix*! s3-0 s3-0 s1-0)
           (vector+! s2-0 s3-0 s5-0)
-          (let ((a0-17 (-> obj lightning s0-0))
+          (let ((a0-17 (-> this lightning s0-0))
                 (v1-21 s2-0)
                 )
             (set! (-> a0-17 state meet data 0 quad) (-> v1-21 quad))
             )
-          (let ((a0-20 (-> obj lightning s0-0))
+          (let ((a0-20 (-> this lightning s0-0))
                 (v1-25 s4-0)
                 )
             (set! (-> a0-20 state meet data (+ (the-as int (-> a0-20 state points-to-draw)) -1) quad) (-> v1-25 quad))
@@ -235,9 +202,9 @@
   (none)
   )
 
-(defmethod spawn-shell-particles juicer-shot ((obj juicer-shot))
+(defmethod spawn-shell-particles ((this juicer-shot))
   "TODO - confirm"
-  (spawn-impact-particles obj)
+  (spawn-impact-particles this)
   (let ((s5-0 (get-process *default-dead-pool* part-tracker #x4000)))
     (when s5-0
       (let ((t9-2 (method-of-type part-tracker activate)))
@@ -258,7 +225,7 @@
             (t2-0 #f)
             (t3-0 *launch-matrix*)
             )
-        (set! (-> t3-0 trans quad) (-> obj root trans quad))
+        (set! (-> t3-0 trans quad) (-> this root trans quad))
         ((the-as (function object object object object object object object object none) t9-3)
          a0-4
          a1-2
@@ -277,20 +244,20 @@
   (none)
   )
 
-(defmethod made-impact? juicer-shot ((obj juicer-shot))
+(defmethod made-impact? ((this juicer-shot))
   "TODO - queries the collision cache, return true/false"
-  (let ((gp-0 (-> obj root))
+  (let ((gp-0 (-> this root))
         (s5-0 (new 'stack-no-clear 'collide-query))
         )
     (let ((v1-0 s5-0))
       (set! (-> v1-0 radius) (-> gp-0 root-prim prim-core world-sphere w))
       (set! (-> v1-0 collide-with) (-> gp-0 root-prim prim-core collide-with))
-      (set! (-> v1-0 ignore-process0) obj)
-      (set! (-> v1-0 ignore-process1) (ppointer->process (-> obj parent)))
+      (set! (-> v1-0 ignore-process0) this)
+      (set! (-> v1-0 ignore-process1) (ppointer->process (-> this parent)))
       (set! (-> v1-0 ignore-pat) (new 'static 'pat-surface :noentity #x1 :nojak #x1 :probe #x1 :noendlessfall #x1))
       (set! (-> v1-0 action-mask) (collide-action solid))
       )
-    (let ((a0-2 (handle->process (-> obj notify-handle))))
+    (let ((a0-2 (handle->process (-> this notify-handle))))
       (when a0-2
         (let* ((s4-1 (vector-! (new 'stack-no-clear 'vector) (-> gp-0 trans) (get-trans (the-as process-focusable a0-2) 3)))
                (f0-2 (- (vector-length s4-1)))
@@ -321,9 +288,9 @@
   (none)
   )
 
-(defmethod init-proj-collision! juicer-shot ((obj juicer-shot))
+(defmethod init-proj-collision! ((this juicer-shot))
   "Init the [[projectile]]'s [[collide-shape]]"
-  (let ((s5-0 (new 'process 'collide-shape-moving obj (collide-list-enum hit-by-player))))
+  (let ((s5-0 (new 'process 'collide-shape-moving this (collide-list-enum hit-by-player))))
     (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s5-0 reaction) cshape-reaction-default)
     (set! (-> s5-0 no-reaction)
@@ -358,61 +325,61 @@
       (set! (-> s5-0 backup-collide-with) (-> v1-10 prim-core collide-with))
       )
     (set! (-> s5-0 max-iteration-count) (the-as uint 1))
-    (set! (-> obj root) s5-0)
+    (set! (-> this root) s5-0)
     )
-  (set! (-> obj root pat-ignore-mask)
+  (set! (-> this root pat-ignore-mask)
         (new 'static 'pat-surface :noentity #x1 :nojak #x1 :probe #x1 :noproj #x1 :noendlessfall #x1)
         )
   (none)
   )
 
 ;; WARN: Return type mismatch projectile vs juicer-shot.
-(defmethod relocate juicer-shot ((obj juicer-shot) (arg0 int))
+(defmethod relocate ((this juicer-shot) (arg0 int))
   (dotimes (v1-0 5)
-    (if (nonzero? (-> obj lightning v1-0))
-        (&+! (-> obj lightning v1-0) arg0)
+    (if (nonzero? (-> this lightning v1-0))
+        (&+! (-> this lightning v1-0) arg0)
         )
     )
-  (the-as juicer-shot ((method-of-type projectile relocate) obj arg0))
+  (the-as juicer-shot ((method-of-type projectile relocate) this arg0))
   )
 
-(defmethod init-proj-settings! juicer-shot ((obj juicer-shot))
+(defmethod init-proj-settings! ((this juicer-shot))
   "Init relevant settings for the [[projectile]] such as gravity, speed, timeout, etc"
-  (logior! (-> obj options) (projectile-options proj-options-8000))
-  (set! (-> obj attack-mode) 'eco-yellow)
-  (set! (-> obj move) juicer-proj-move)
-  (set! (-> obj root dynam gravity y) 0.0)
-  (set! (-> obj root dynam gravity-length) 0.0)
-  (set! (-> obj root dynam gravity-max) 0.0)
-  (set! (-> obj attack-mode) 'shock-red)
+  (logior! (-> this options) (projectile-options proj-options-8000))
+  (set! (-> this attack-mode) 'eco-yellow)
+  (set! (-> this move) juicer-proj-move)
+  (set! (-> this root dynam gravity y) 0.0)
+  (set! (-> this root dynam gravity-length) 0.0)
+  (set! (-> this root dynam gravity-max) 0.0)
+  (set! (-> this attack-mode) 'shock-red)
   (dotimes (s5-0 5)
-    (set! (-> obj lightning s5-0) (new
-                                    'process
-                                    'lightning-control
-                                    (new 'static 'lightning-spec
-                                      :name #f
-                                      :flags (lightning-spec-flags lsf0)
-                                      :start-color (new 'static 'rgba :r #x80 :g #x80 :b #x80 :a #x80)
-                                      :end-color (new 'static 'rgba :r #x80 :g #x80 :b #x80 :a #x80)
-                                      :fade-to-color (new 'static 'rgba :r #xbf :b #x8f :a #x5)
-                                      :fade-start-factor 0.2
-                                      :fade-time 120.0
-                                      :texture (new 'static 'texture-id :index #x86 :page #xc)
-                                      :reduction 0.42
-                                      :num-points 8
-                                      :box-size 8192.0
-                                      :merge-factor 0.5
-                                      :merge-count 2
-                                      :radius 1433.6
-                                      :duration -1.0
-                                      :sound #f
-                                      )
-                                    obj
-                                    0.0
-                                    )
+    (set! (-> this lightning s5-0) (new
+                                     'process
+                                     'lightning-control
+                                     (new 'static 'lightning-spec
+                                       :name #f
+                                       :flags (lightning-spec-flags lsf0)
+                                       :start-color (new 'static 'rgba :r #x80 :g #x80 :b #x80 :a #x80)
+                                       :end-color (new 'static 'rgba :r #x80 :g #x80 :b #x80 :a #x80)
+                                       :fade-to-color (new 'static 'rgba :r #xbf :b #x8f :a #x5)
+                                       :fade-start-factor 0.2
+                                       :fade-time 120.0
+                                       :texture (new 'static 'texture-id :index #x86 :page #xc)
+                                       :reduction 0.42
+                                       :num-points 8
+                                       :box-size 8192.0
+                                       :merge-factor 0.5
+                                       :merge-count 2
+                                       :radius 1433.6
+                                       :duration -1.0
+                                       :sound #f
+                                       )
+                                     this
+                                     0.0
+                                     )
           )
     )
-  (set! (-> obj victim) (the-as handle #f))
+  (set! (-> this victim) (the-as handle #f))
   0
   (none)
   )
@@ -425,63 +392,55 @@
               )
 
 (deftype juicer-anim-info (structure)
-  ((anim-index int32  :offset-assert   0)
+  ((anim-index  int32)
    )
-  :method-count-assert 9
-  :size-assert         #x4
-  :flag-assert         #x900000004
   )
 
 
 (deftype juicer-global-info (basic)
-  ((prev-yellow-hit int8    :offset-assert   4)
-   (prev-blue-hit   int8    :offset-assert   5)
-   (idle-anim       int32 3 :offset-assert   8)
-   (patrol-anim     int32 2 :offset-assert  20)
-   (notice-anim     int32 2 :offset-assert  28)
-   (charge-anim     int32 2 :offset-assert  36)
-   (knocked-anim    int32 2 :offset-assert  44)
-   (celebrate-anim  int32 2 :offset-assert  52)
-   (yellow-hit-anim int32 4 :offset-assert  60)
-   (blue-hit-anim   int32 6 :offset-assert  76)
+  ((prev-yellow-hit  int8)
+   (prev-blue-hit    int8)
+   (idle-anim        int32  3)
+   (patrol-anim      int32  2)
+   (notice-anim      int32  2)
+   (charge-anim      int32  2)
+   (knocked-anim     int32  2)
+   (celebrate-anim   int32  2)
+   (yellow-hit-anim  int32  4)
+   (blue-hit-anim    int32  6)
    )
-  :method-count-assert 9
-  :size-assert         #x64
-  :flag-assert         #x900000064
   )
 
 
 (deftype juicer (nav-enemy)
-  ((los                los-control  :inline :offset-assert 608)
-   (intro-path         path-control         :offset-assert 756)
-   (joint              joint-mod            :offset-assert 760)
-   (joint-enable       symbol               :offset-assert 764)
-   (joint-blend        float                :offset-assert 768)
-   (last-fire-time     time-frame           :offset-assert 776)
-   (heading            basic                :offset-assert 784)
-   (move-angle         float                :offset-assert 788)
-   (torso-track-player basic                :offset-assert 792)
-   (circle-backward?   symbol               :offset        800)
-   (using-turn-anim    symbol               :offset-assert 804)
-   (hit-focus          enemy-focus          :offset-assert 808)
-   (ambush-path-pt     int8                 :offset-assert 812)
-   (charge-index       int8                 :offset-assert 813)
-   (hostile-dest       vector       :inline :offset-assert 816)
-   (focus-is-up        symbol               :offset-assert 832)
-   (current-projectile handle               :offset-assert 840)
+  ((los                 los-control  :inline)
+   (intro-path          path-control)
+   (joint               joint-mod)
+   (joint-enable        symbol)
+   (joint-blend         float)
+   (last-fire-time      time-frame)
+   (heading             basic)
+   (move-angle          float)
+   (torso-track-player  basic)
+   (circle-backward?    symbol       :offset 800)
+   (using-turn-anim     symbol)
+   (hit-focus           enemy-focus)
+   (ambush-path-pt      int8)
+   (charge-index        int8)
+   (hostile-dest        vector       :inline)
+   (focus-is-up         symbol)
+   (current-projectile  handle)
    )
-  :heap-base #x2d0
-  :method-count-assert 185
-  :size-assert         #x350
-  :flag-assert         #xb902d00350
+  (:state-methods
+    ambush-cont
+    attack
+    )
   (:methods
-    (ambush-cont () _type_ :state 178)
-    (attack () _type_ :state 179)
-    (juicer-method-180 (_type_) none 180)
-    (fire-projectile (_type_ process-focusable uint) none 181)
-    (juicer-method-182 (_type_) none 182)
-    (juicer-method-183 (_type_) none 183)
-    (juicer-method-184 (_type_ symbol) none 184)
+    (juicer-method-180 (_type_) none)
+    (fire-projectile (_type_ process-focusable uint) none)
+    (juicer-method-182 (_type_) none)
+    (juicer-method-183 (_type_) none)
+    (juicer-method-184 (_type_ symbol) none)
     )
   )
 
@@ -677,20 +636,20 @@
 
 (set! (-> *juicer-nav-enemy-info* fact-defaults) *fact-info-enemy-defaults*)
 
-(defmethod juicer-method-182 juicer ((obj juicer))
-  (let ((s3-0 (handle->process (-> obj focus handle))))
+(defmethod juicer-method-182 ((this juicer))
+  (let ((s3-0 (handle->process (-> this focus handle))))
     (when s3-0
-      (let ((s4-0 (vector<-cspace! (new 'stack-no-clear 'vector) (-> obj node-list data 4)))
+      (let ((s4-0 (vector<-cspace! (new 'stack-no-clear 'vector) (-> this node-list data 4)))
             (s5-0 (new 'stack-no-clear 'vector))
             )
         (set! (-> s5-0 quad) (-> (get-trans (the-as process-focusable s3-0) 3) quad))
         (let ((s3-1
-                (vector-normalize-copy! (new 'stack-no-clear 'vector) (-> obj node-list data 4 bone transform vector 2) 1.0)
+                (vector-normalize-copy! (new 'stack-no-clear 'vector) (-> this node-list data 4 bone transform vector 2) 1.0)
                 )
               )
           (vector-! s5-0 s5-0 s4-0)
           (vector-normalize! s5-0 1.0)
-          (quaternion-from-two-vectors-partial! (-> obj joint quat) s3-1 s5-0 (-> obj joint-blend))
+          (quaternion-from-two-vectors-partial! (-> this joint quat) s3-1 s5-0 (-> this joint-blend))
           )
         )
       )
@@ -699,85 +658,83 @@
   (none)
   )
 
-(defmethod juicer-method-183 juicer ((obj juicer))
-  (with-pp
-    (cond
-      ((-> obj torso-track-player)
-       (set! (-> obj joint-enable) #t)
-       (seek! (-> obj joint-blend) 1.0 (* 2.0 (-> pp clock seconds-per-frame)))
-       (juicer-method-182 obj)
-       )
-      ((-> obj joint-enable)
-       (seek! (-> obj joint-blend) 0.0 (* 4.0 (-> pp clock seconds-per-frame)))
-       (juicer-method-182 obj)
-       (if (= (-> obj joint-blend) 0.0)
-           (set! (-> obj joint-enable) #f)
-           )
-       )
-      )
-    0
-    (none)
+(defmethod juicer-method-183 ((this juicer))
+  (cond
+    ((-> this torso-track-player)
+     (set! (-> this joint-enable) #t)
+     (seek! (-> this joint-blend) 1.0 (* 2.0 (seconds-per-frame)))
+     (juicer-method-182 this)
+     )
+    ((-> this joint-enable)
+     (seek! (-> this joint-blend) 0.0 (* 4.0 (seconds-per-frame)))
+     (juicer-method-182 this)
+     (if (= (-> this joint-blend) 0.0)
+         (set! (-> this joint-enable) #f)
+         )
+     )
     )
+  0
+  (none)
   )
 
-(defmethod track-target! juicer ((obj juicer))
+(defmethod track-target! ((this juicer))
   "Does a lot of various things relating to interacting with the target
 - tracks when the enemy was last drawn
 - looks at the target and handles attacking
 @TODO Not extremely well understood yet"
   (let ((t9-0 (method-of-type nav-enemy track-target!)))
-    (t9-0 obj)
+    (t9-0 this)
     )
-  (los-control-method-9 (-> obj los) (the-as process-focusable #f) (the-as vector #f) 2048.0)
-  (juicer-method-183 obj)
+  (los-control-method-9 (-> this los) (the-as process-focusable #f) (the-as vector #f) 2048.0)
+  (juicer-method-183 this)
   (none)
   )
 
 ;; WARN: Return type mismatch object vs none.
-(defmethod juicer-method-180 juicer ((obj juicer))
-  (if (and (= (-> obj incoming knocked-type) (knocked-type knocked-type-4))
-           (not (and (-> obj next-state) (let ((v1-6 (-> obj next-state name)))
-                                           (or (= v1-6 'knocked) (= v1-6 'jump) (= v1-6 'jump-land))
-                                           )
+(defmethod juicer-method-180 ((this juicer))
+  (if (and (= (-> this incoming knocked-type) (knocked-type knocked-type-4))
+           (not (and (-> this next-state) (let ((v1-6 (-> this next-state name)))
+                                            (or (= v1-6 'knocked) (= v1-6 'jump) (= v1-6 'jump-land))
+                                            )
                      )
                 )
-           (zero? (get-rand-int obj 3))
-           (let ((f0-0 (vector-vector-distance-squared (-> obj root trans) (target-pos 0)))
+           (zero? (get-rand-int this 3))
+           (let ((f0-0 (vector-vector-distance-squared (-> this root trans) (target-pos 0)))
                  (f1-0 32768.0)
                  )
              (>= f0-0 (* f1-0 f1-0))
              )
            )
-      (kill-prefer-falling obj)
-      (go (method-of-object obj knocked))
+      (kill-prefer-falling this)
+      (go (method-of-object this knocked))
       )
   (none)
   )
 
-(defmethod general-event-handler juicer ((obj juicer) (arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+(defmethod general-event-handler ((this juicer) (arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
   "Handles various events for the enemy
 @TODO - unsure if there is a pattern for the events and this should have a more specific name"
   (case arg2
     (('hit-flinch)
      (cond
-       ((zero? (-> obj hit-points))
-        (logclear! (-> obj mask) (process-mask actor-pause))
-        (logclear! (-> obj focus-status) (focus-status dangerous))
-        (logclear! (-> obj enemy-flags) (enemy-flag enable-on-notice))
-        (logior! (-> obj enemy-flags) (enemy-flag chase-startup))
-        (logior! (-> obj focus-status) (focus-status hit))
-        (if (zero? (-> obj hit-points))
-            (logior! (-> obj focus-status) (focus-status dead))
+       ((zero? (-> this hit-points))
+        (logclear! (-> this mask) (process-mask actor-pause))
+        (logclear! (-> this focus-status) (focus-status dangerous))
+        (logclear! (-> this enemy-flags) (enemy-flag enable-on-notice))
+        (logior! (-> this enemy-flags) (enemy-flag chase-startup))
+        (logior! (-> this focus-status) (focus-status hit))
+        (if (zero? (-> this hit-points))
+            (logior! (-> this focus-status) (focus-status dead))
             )
-        (logclear! (-> obj enemy-flags) (enemy-flag actor-pause-backup))
-        (enemy-method-62 obj)
-        (logior! (-> obj enemy-flags) (enemy-flag actor-pause-backup))
+        (logclear! (-> this enemy-flags) (enemy-flag actor-pause-backup))
+        (enemy-method-62 this)
+        (logior! (-> this enemy-flags) (enemy-flag actor-pause-backup))
         (process-contact-action arg0)
         (send-event arg0 'get-attack-count 1)
-        (juicer-method-180 obj)
+        (juicer-method-180 this)
         )
        (else
-         (let ((v1-31 (ja-channel-float! (the-as art-joint-anim (-> obj draw art-group data 11)) 0.0 0.0 0.0)))
+         (let ((v1-31 (ja-channel-float! (the-as art-joint-anim (-> this draw art-group data 11)) 0.0 0.0 0.0)))
            (when v1-31
              (set! (-> v1-31 param 0) 1.0)
              (set! (-> v1-31 param 1) 0.75)
@@ -790,59 +747,59 @@
      #t
      )
     (('hit)
-     (logclear! (-> obj mask) (process-mask actor-pause))
-     (logclear! (-> obj focus-status) (focus-status dangerous))
-     (logclear! (-> obj enemy-flags) (enemy-flag enable-on-notice))
-     (logior! (-> obj enemy-flags) (enemy-flag chase-startup))
-     (logior! (-> obj focus-status) (focus-status hit))
-     (if (zero? (-> obj hit-points))
-         (logior! (-> obj focus-status) (focus-status dead))
+     (logclear! (-> this mask) (process-mask actor-pause))
+     (logclear! (-> this focus-status) (focus-status dangerous))
+     (logclear! (-> this enemy-flags) (enemy-flag enable-on-notice))
+     (logior! (-> this enemy-flags) (enemy-flag chase-startup))
+     (logior! (-> this focus-status) (focus-status hit))
+     (if (zero? (-> this hit-points))
+         (logior! (-> this focus-status) (focus-status dead))
          )
-     (logclear! (-> obj enemy-flags) (enemy-flag actor-pause-backup))
-     (enemy-method-62 obj)
-     (logior! (-> obj enemy-flags) (enemy-flag actor-pause-backup))
+     (logclear! (-> this enemy-flags) (enemy-flag actor-pause-backup))
+     (enemy-method-62 this)
+     (logior! (-> this enemy-flags) (enemy-flag actor-pause-backup))
      (process-contact-action arg0)
      (send-event arg0 'get-attack-count 1)
-     (if (zero? (-> obj hit-points))
-         (juicer-method-180 obj)
-         (go (method-of-object obj hit))
+     (if (zero? (-> this hit-points))
+         (juicer-method-180 this)
+         (go (method-of-object this hit))
          )
      #t
      )
     (('instant-death)
-     (when (> (-> obj hit-points) 0)
-       (set! (-> obj hit-points) 0)
-       (set! (-> obj root penetrated-by) (get-penetrate-info obj))
-       (let ((s4-0 (enemy-method-50 obj (new 'stack-no-clear 'vector))))
-         (vector-z-quaternion! s4-0 (-> obj root quat))
+     (when (> (-> this hit-points) 0)
+       (set! (-> this hit-points) 0)
+       (set! (-> this root penetrated-by) (get-penetrate-info this))
+       (let ((s4-0 (enemy-method-50 this (new 'stack-no-clear 'vector))))
+         (vector-z-quaternion! s4-0 (-> this root quat))
          (vector-float*! s4-0 s4-0 -1.0)
          (vector-normalize! s4-0 1.0)
          )
-       (logclear! (-> obj mask) (process-mask actor-pause))
-       (logclear! (-> obj focus-status) (focus-status dangerous))
-       (logclear! (-> obj enemy-flags) (enemy-flag enable-on-notice))
-       (logior! (-> obj enemy-flags) (enemy-flag chase-startup))
-       (logior! (-> obj focus-status) (focus-status hit))
-       (if (zero? (-> obj hit-points))
-           (logior! (-> obj focus-status) (focus-status dead))
+       (logclear! (-> this mask) (process-mask actor-pause))
+       (logclear! (-> this focus-status) (focus-status dangerous))
+       (logclear! (-> this enemy-flags) (enemy-flag enable-on-notice))
+       (logior! (-> this enemy-flags) (enemy-flag chase-startup))
+       (logior! (-> this focus-status) (focus-status hit))
+       (if (zero? (-> this hit-points))
+           (logior! (-> this focus-status) (focus-status dead))
            )
-       (logclear! (-> obj enemy-flags) (enemy-flag actor-pause-backup))
-       (enemy-method-62 obj)
-       (logior! (-> obj enemy-flags) (enemy-flag actor-pause-backup))
+       (logclear! (-> this enemy-flags) (enemy-flag actor-pause-backup))
+       (enemy-method-62 this)
+       (logior! (-> this enemy-flags) (enemy-flag actor-pause-backup))
        (process-contact-action arg0)
        (send-event arg0 'get-attack-count 1)
-       (juicer-method-180 obj)
+       (juicer-method-180 this)
        )
      #t
      )
     (('notify)
-     (if (and (= (-> arg3 param 0) 'attack) (= (-> arg3 param 1) (handle->process (-> obj focus handle))))
-         (set! (-> obj hit-focus) (the-as enemy-focus #t))
+     (if (and (= (-> arg3 param 0) 'attack) (= (-> arg3 param 1) (handle->process (-> this focus handle))))
+         (set! (-> this hit-focus) (the-as enemy-focus #t))
          )
-     ((method-of-type nav-enemy general-event-handler) obj arg0 arg1 arg2 arg3)
+     ((method-of-type nav-enemy general-event-handler) this arg0 arg1 arg2 arg3)
      )
     (else
-      ((method-of-type nav-enemy general-event-handler) obj arg0 arg1 arg2 arg3)
+      ((method-of-type nav-enemy general-event-handler) this arg0 arg1 arg2 arg3)
       )
     )
   )
@@ -874,10 +831,7 @@
                 )
             )
           (dotimes (s4-0 s5-0)
-            (ja-no-eval :group! gp-0
-                        :num! (seek! (the float (+ (-> (the-as art-joint-anim gp-0) frames num-frames) -1)) f30-0)
-                        :frame-num 0.0
-                        )
+            (ja-no-eval :group! gp-0 :num! (seek! max f30-0) :frame-num 0.0)
             (until (ja-done? 0)
               (suspend)
               (ja :num! (seek! max f30-0))
@@ -897,15 +851,9 @@
                      (a1-16 (-> self draw art-group data (-> *juicer-global-info* idle-anim v1-62)))
                      )
                 (set! gp-1 (ash 1 v1-62))
-                (ja-no-eval :group! a1-16
-                            :num! (seek! (the float (+ (-> (the-as art-joint-anim a1-16) frames num-frames) -1)) f30-0)
-                            :frame-num 0.0
-                            )
+                (ja-no-eval :group! a1-16 :num! (seek! max f30-0) :frame-num 0.0)
                 )
-              (ja-no-eval :group! (ja-group)
-                          :num! (seek! (the float (+ (-> (ja-group) frames num-frames) -1)) f30-0)
-                          :frame-num 0.0
-                          )
+              (ja-no-eval :group! (ja-group) :num! (seek! max f30-0) :frame-num 0.0)
               (until (ja-done? 0)
                 (suspend)
                 (ja :num! (seek! max f30-0))
@@ -924,32 +872,32 @@
         )
       )
     #f
-    (none)
     )
   )
 
-(defmethod enemy-method-84 juicer ((obj juicer) (arg0 enemy-jump-info))
+(defmethod enemy-method-84 ((this juicer) (arg0 enemy-jump-info))
   (cond
-    ((logtest? (-> obj fact enemy-options) (enemy-option user8))
+    ((logtest? (-> this fact enemy-options) (enemy-option user8))
      (vector-vector-xz-distance (-> arg0 start-pos) (-> arg0 dest-pos))
      (let ((f0-1 8192.0))
        (setup-from-to-height! (-> arg0 traj) (-> arg0 start-pos) (-> arg0 dest-pos) f0-1 -4.551111)
        )
      )
     (else
-      ((method-of-type nav-enemy enemy-method-84) obj arg0)
+      ((method-of-type nav-enemy enemy-method-84) this arg0)
       )
     )
   (none)
   )
 
-(defmethod enemy-method-93 juicer ((obj juicer))
-  (case (-> obj jump-why)
+;; WARN: Return type mismatch object vs none.
+(defmethod enemy-method-93 ((this juicer))
+  (case (-> this jump-why)
     ((2)
-     (go (method-of-object obj ambush-cont))
+     (go (method-of-object this ambush-cont))
      )
     (else
-      ((method-of-type nav-enemy enemy-method-93) obj)
+      ((method-of-type nav-enemy enemy-method-93) this)
       )
     )
   (none)
@@ -968,7 +916,6 @@
       (go-virtual notice)
       )
     (get-point-in-path! (-> self intro-path) (-> self root trans) 0.0 'interp)
-    (none)
     )
   :code (behavior ()
     (set! (-> self ambush-path-pt) 1)
@@ -990,13 +937,12 @@
       (suspend)
       )
     #f
-    (none)
     )
   )
 
 (defstate ambush-cont (juicer)
   :virtual #t
-  :event (the-as (function process int symbol event-message-block object :behavior juicer) enemy-event-handler)
+  :event enemy-event-handler
   :code (behavior ()
     (let ((a0-0 (-> self intro-path))
           (v1-1 (+ (-> self ambush-path-pt) 1))
@@ -1024,7 +970,6 @@
       (suspend)
       )
     #f
-    (none)
     )
   )
 
@@ -1057,10 +1002,7 @@
         (let* ((a0-13 (enemy-method-120 self 2 s5-0))
                (a1-8 (-> self draw art-group data (-> *juicer-global-info* notice-anim a0-13)))
                )
-          (ja-no-eval :group! a1-8
-                      :num! (seek! (the float (+ (-> (the-as art-joint-anim a1-8) frames num-frames) -1)) f30-1)
-                      :frame-num 0.0
-                      )
+          (ja-no-eval :group! a1-8 :num! (seek! max f30-1) :frame-num 0.0)
           )
         (until (ja-done? 0)
           (let ((a1-9 (-> self nav state)))
@@ -1073,7 +1015,6 @@
         )
       )
     (react-to-focus self)
-    (none)
     )
   )
 
@@ -1084,17 +1025,13 @@
     (let ((gp-1 (-> self draw art-group data (-> *juicer-global-info* celebrate-anim (get-rand-int self 2))))
           (f30-0 (get-rand-float-range self 0.9 1.1))
           )
-      (ja-no-eval :group! gp-1
-                  :num! (seek! (the float (+ (-> (the-as art-joint-anim gp-1) frames num-frames) -1)) f30-0)
-                  :frame-num 0.0
-                  )
+      (ja-no-eval :group! gp-1 :num! (seek! max f30-0) :frame-num 0.0)
       (until (ja-done? 0)
         (suspend)
         (ja :num! (seek! max f30-0))
         )
       )
     (react-to-focus self)
-    (none)
     )
   )
 
@@ -1107,7 +1044,6 @@
           )
       )
     (set! (-> self focus-is-up) #f)
-    (none)
     )
   :exit (behavior ()
     (let ((t9-0 (-> (method-of-type nav-enemy hostile) exit)))
@@ -1115,7 +1051,6 @@
           (t9-0)
           )
       )
-    (none)
     )
   :code (behavior ()
     (let ((v1-2 (ja-group)))
@@ -1146,7 +1081,6 @@
         )
       )
     #f
-    (none)
     )
   :post (behavior ()
     (let ((a0-1 (handle->process (-> self focus handle))))
@@ -1190,11 +1124,9 @@
               (when (and (or (logtest? (-> self nav state flags) (nav-state-flag blocked))
                              (logtest? (-> self nav state flags) (nav-state-flag at-target))
                              )
-                         (>= (- (current-time) (-> self state-time)) (-> self reaction-time))
+                         (time-elapsed? (-> self state-time) (-> self reaction-time))
                          )
-                (if (and (>= (- (current-time) (-> self last-fire-time)) (rand-vu-int-range (seconds 1) (seconds 2)))
-                         (< 20480.0 f30-0)
-                         )
+                (if (and (time-elapsed? (-> self last-fire-time) (rand-vu-int-range (seconds 1) (seconds 2))) (< 20480.0 f30-0))
                     (go-virtual attack)
                     (go-virtual circling)
                     )
@@ -1203,9 +1135,7 @@
             )
           (if (and (check-los? (-> self los) 0)
                    (or (>= 11468.8 f30-0)
-                       (and (>= (- (current-time) (-> self last-fire-time)) (rand-vu-int-range (seconds 5) (seconds 8)))
-                            (>= 53248.0 f30-0)
-                            )
+                       (and (time-elapsed? (-> self last-fire-time) (rand-vu-int-range (seconds 5) (seconds 8))) (>= 53248.0 f30-0))
                        )
                    )
               (go-virtual attack)
@@ -1214,7 +1144,6 @@
         )
       )
     (nav-enemy-travel-post)
-    (none)
     )
   )
 
@@ -1257,29 +1186,29 @@
   )
 
 ;; WARN: Return type mismatch object vs none.
-(defmethod fire-projectile juicer ((obj juicer) (arg0 process-focusable) (arg1 uint))
+(defmethod fire-projectile ((this juicer) (arg0 process-focusable) (arg1 uint))
   (with-pp
-    (let ((s4-0 (vector<-cspace! (new 'stack-no-clear 'vector) (-> obj node-list data 20)))
+    (let ((s4-0 (vector<-cspace! (new 'stack-no-clear 'vector) (-> this node-list data 20)))
           (s5-0 (new 'stack-no-clear 'projectile-init-by-other-params))
           )
-      (when (not (handle->process (-> obj current-projectile)))
-        (set! (-> s5-0 ent) (-> obj entity))
+      (when (not (handle->process (-> this current-projectile)))
+        (set! (-> s5-0 ent) (-> this entity))
         (set! (-> s5-0 charge) 1.0)
         (set! (-> s5-0 options) (projectile-options))
-        (set! (-> s5-0 notify-handle) (process->handle obj))
+        (set! (-> s5-0 notify-handle) (process->handle this))
         (set! (-> s5-0 owner-handle) (the-as handle #f))
-        (set! (-> s5-0 ignore-handle) (process->handle obj))
+        (set! (-> s5-0 ignore-handle) (process->handle this))
         (set! (-> s5-0 attack-id) arg1)
         (set! (-> s5-0 timeout) (seconds 4))
         )
       (vector-normalize! (vector-! (-> s5-0 pos) (get-trans arg0 3) s4-0) 1.0)
       (vector-float*! (-> s5-0 vel) (-> s5-0 pos) (* 24576.0 (-> pp clock frames-per-second)))
       (vector+float*! (-> s5-0 pos) s4-0 (-> s5-0 pos) -1024.0)
-      (let ((a0-20 (handle->process (-> obj current-projectile))))
+      (let ((a0-20 (handle->process (-> this current-projectile))))
         (if a0-20
             (send-event a0-20 'reset s5-0)
-            (set! (-> obj current-projectile)
-                  (ppointer->handle (spawn-projectile juicer-shot s5-0 obj *default-dead-pool*))
+            (set! (-> this current-projectile)
+                  (ppointer->handle (spawn-projectile juicer-shot s5-0 this *default-dead-pool*))
                   )
             )
         )
@@ -1290,7 +1219,7 @@
 
 (defstate attack (juicer)
   :virtual #t
-  :event (the-as (function process int symbol event-message-block object :behavior juicer) enemy-event-handler)
+  :event enemy-event-handler
   :enter (behavior ()
     (let ((v1-1 (-> self nav state))
           (a0-1 (-> self root trans))
@@ -1310,31 +1239,25 @@
       (set! (-> v1-9 attack-id) v0-0)
       (set! (-> self attack-id) v0-0)
       )
-    (none)
     )
   :exit (behavior ()
     (set! (-> self torso-track-player) #f)
     (logclear! (-> self enemy-flags) (enemy-flag actor-pause-backup))
     (juicer-method-184 self #f)
-    (set! (-> self last-fire-time) (current-time))
+    (set-time! (-> self last-fire-time))
     (if (logtest? (-> self enemy-flags) (enemy-flag check-water))
         (logior! (-> self focus-status) (focus-status dangerous))
         (logclear! (-> self focus-status) (focus-status dangerous))
         )
     (send-event (handle->process (-> self current-projectile)) 'die)
-    (none)
     )
   :trans (behavior ()
     (when (skip-check-los? (-> self los) 90)
       )
-    (none)
     )
   :code (behavior ()
     (ja-channel-push! 1 (seconds 0.1))
-    (ja-no-eval :group! juicer-attack0-start-ja
-                :num! (seek! (the float (+ (-> (the-as art-joint-anim juicer-attack0-start-ja) frames num-frames) -1)))
-                :frame-num 0.0
-                )
+    (ja-no-eval :group! juicer-attack0-start-ja :num! (seek!) :frame-num 0.0)
     (until (ja-done? 0)
       (if (< 11.0 (ja-aframe-num 0))
           (juicer-method-184 self #t)
@@ -1349,11 +1272,8 @@
            )
       (set! (-> v1-29 attack-id) s5-0)
       (let ((s4-0 (current-time)))
-        (until (>= (- (current-time) s4-0) (seconds 0.25))
-          (ja-no-eval :group! juicer-attack0-ja
-                      :num! (seek! (the float (+ (-> (the-as art-joint-anim juicer-attack0-ja) frames num-frames) -1)))
-                      :frame-num 0.0
-                      )
+        (until (time-elapsed? s4-0 (seconds 0.25))
+          (ja-no-eval :group! juicer-attack0-ja :num! (seek!) :frame-num 0.0)
           (until (ja-done? 0)
             (let ((s3-0 (handle->process (-> self focus handle))))
               (when s3-0
@@ -1409,7 +1329,6 @@
         (go-virtual victory)
         )
     (go-hostile self)
-    (none)
     )
   :post juicer-face-player-post
   )
@@ -1454,10 +1373,7 @@
               )
           (while (nonzero? s5-0)
             (+! s5-0 -1)
-            (ja-no-eval :group! gp-0
-                        :num! (seek! (the float (+ (-> (the-as art-joint-anim gp-0) frames num-frames) -1)) f30-0)
-                        :frame-num 0.0
-                        )
+            (ja-no-eval :group! gp-0 :num! (seek! max f30-0) :frame-num 0.0)
             (until (ja-done? 0)
               (suspend)
               (ja :num! (seek! max f30-0))
@@ -1480,10 +1396,7 @@
         (let ((gp-2 (-> self draw art-group data (-> *juicer-global-info* celebrate-anim (get-rand-int self 2))))
               (f30-2 (get-rand-float-range self 0.9 1.1))
               )
-          (ja-no-eval :group! gp-2
-                      :num! (seek! (the float (+ (-> (the-as art-joint-anim gp-2) frames num-frames) -1)) f30-2)
-                      :frame-num 0.0
-                      )
+          (ja-no-eval :group! gp-2 :num! (seek! max f30-2) :frame-num 0.0)
           (until (ja-done? 0)
             (suspend)
             (ja :num! (seek! max f30-2))
@@ -1492,7 +1405,6 @@
         )
       )
     #f
-    (none)
     )
   )
 
@@ -1503,14 +1415,7 @@
     (ja-channel-push! 1 (seconds 0.2))
     (let ((f30-0 (get-rand-float-range self 0.9 1.1)))
       (ja-no-eval :group! (-> self draw art-group data (-> self enemy-info hit-anim))
-                  :num! (seek!
-                    (the float
-                         (+ (-> (the-as art-joint-anim (-> self draw art-group data (-> self enemy-info hit-anim))) frames num-frames)
-                            -1
-                            )
-                         )
-                    f30-0
-                    )
+                  :num! (seek! max f30-0)
                   :frame-num 0.0
                   )
       (until (ja-done? 0)
@@ -1543,7 +1448,6 @@
     (logclear! (-> self enemy-flags) (enemy-flag actor-pause-backup))
     (logclear! (-> self focus-status) (focus-status hit))
     (go-virtual hostile)
-    (none)
     )
   )
 
@@ -1555,10 +1459,7 @@
           (gp-0 (-> self draw art-group data (-> self enemy-info idle-anim)))
           )
       (until #f
-        (ja-no-eval :group! gp-0
-                    :num! (seek! (the float (+ (-> (the-as art-joint-anim gp-0) frames num-frames) -1)) f30-0)
-                    :frame-num 0.0
-                    )
+        (ja-no-eval :group! gp-0 :num! (seek! max f30-0) :frame-num 0.0)
         (until (ja-done? 0)
           (suspend)
           (ja :num! (seek! max f30-0))
@@ -1566,7 +1467,6 @@
         )
       )
     #f
-    (none)
     )
   )
 
@@ -1583,21 +1483,14 @@
                     :num! (loop! f28-0)
                     :frame-num 0.0
                     )
-        (until (>= (- (current-time) s5-0) gp-0)
+        (until (time-elapsed? s5-0 gp-0)
           (suspend)
           (ja :num! (loop! f28-0))
           )
         )
       (ja-channel-push! 1 (seconds 0.1))
       (ja-no-eval :group! (-> self draw art-group data (-> self enemy-info taunt-anim))
-                  :num! (seek!
-                    (the float
-                         (+ (-> (the-as art-joint-anim (-> self draw art-group data (-> self enemy-info taunt-anim))) frames num-frames)
-                            -1
-                            )
-                         )
-                    f30-0
-                    )
+                  :num! (seek! max f30-0)
                   :frame-num 0.0
                   )
       (until (ja-done? 0)
@@ -1606,21 +1499,20 @@
         )
       )
     (go-virtual stare)
-    (none)
     )
   )
 
-(defmethod enemy-method-77 juicer ((obj juicer) (arg0 (pointer float)))
+(defmethod enemy-method-77 ((this juicer) (arg0 (pointer float)))
   (local-vars (a2-2 int))
-  (case (-> obj incoming knocked-type)
+  (case (-> this incoming knocked-type)
     (((knocked-type knocked-type-4))
      (ja-channel-push! 1 0)
      (let* ((a2-0 (ash 1 (-> *juicer-global-info* prev-yellow-hit)))
-            (v1-3 (enemy-method-120 obj 4 a2-0))
-            (a1-6 (-> obj draw art-group data (-> *juicer-global-info* yellow-hit-anim v1-3)))
+            (v1-3 (enemy-method-120 this 4 a2-0))
+            (a1-6 (-> this draw art-group data (-> *juicer-global-info* yellow-hit-anim v1-3)))
             )
        (set! (-> *juicer-global-info* prev-yellow-hit) v1-3)
-       (let ((a0-13 (-> obj skel root-channel 0)))
+       (let ((a0-13 (-> this skel root-channel 0)))
          (set! (-> a0-13 frame-group) (the-as art-joint-anim a1-6))
          (set! (-> a0-13 param 0) (the float (+ (-> (the-as art-joint-anim a1-6) frames num-frames) -1)))
          (set! (-> a0-13 param 1) (-> arg0 0))
@@ -1631,26 +1523,26 @@
      )
     (((knocked-type knocked-type-6))
      (let ((v1-11 (ash 1 (-> *juicer-global-info* prev-blue-hit))))
-       (if (zero? (-> obj charge-index))
+       (if (zero? (-> this charge-index))
            (set! a2-2 (logior v1-11 56))
            (set! a2-2 (logior v1-11 7))
            )
        )
-     (let* ((v1-15 (enemy-method-120 obj 6 a2-2))
-            (s5-1 (-> obj draw art-group data (-> *juicer-global-info* blue-hit-anim v1-15)))
+     (let* ((v1-15 (enemy-method-120 this 6 a2-2))
+            (s5-1 (-> this draw art-group data (-> *juicer-global-info* blue-hit-anim v1-15)))
             )
        (set! (-> *juicer-global-info* prev-blue-hit) v1-15)
-       (let ((v1-18 (if (> (-> obj skel active-channels) 0)
-                        (-> obj skel root-channel 0 frame-group)
+       (let ((v1-18 (if (> (-> this skel active-channels) 0)
+                        (-> this skel root-channel 0 frame-group)
                         )
                     )
              )
-         (if (and v1-18 (= v1-18 (-> obj draw art-group data 32)))
+         (if (and v1-18 (= v1-18 (-> this draw art-group data 32)))
              (ja-channel-push! 1 (seconds 0.17))
              (ja-channel-push! 1 (seconds 0.02))
              )
          )
-       (let ((a0-32 (-> obj skel root-channel 0)))
+       (let ((a0-32 (-> this skel root-channel 0)))
          (set! (-> a0-32 frame-group) (the-as art-joint-anim s5-1))
          (set! (-> a0-32 param 0) (the float (+ (-> (the-as art-joint-anim s5-1) frames num-frames) -1)))
          (set! (-> a0-32 param 1) 1.0)
@@ -1660,9 +1552,9 @@
        )
      )
     (else
-      (let ((s4-1 (-> obj draw art-group data (-> *juicer-global-info* knocked-anim (get-rand-int obj 2)))))
+      (let ((s4-1 (-> this draw art-group data (-> *juicer-global-info* knocked-anim (get-rand-int this 2)))))
         (ja-channel-push! 1 (seconds 0.17))
-        (let ((a0-37 (-> obj skel root-channel 0)))
+        (let ((a0-37 (-> this skel root-channel 0)))
           (set! (-> a0-37 frame-group) (the-as art-joint-anim s4-1))
           (set! (-> a0-37 param 0) (the float (+ (-> (the-as art-joint-anim s4-1) frames num-frames) -1)))
           (set! (-> a0-37 param 1) (-> arg0 0))
@@ -1675,13 +1567,13 @@
   #t
   )
 
-(defmethod enemy-method-78 juicer ((obj juicer) (arg0 (pointer float)))
+(defmethod enemy-method-78 ((this juicer) (arg0 (pointer float)))
   (cond
-    ((= (-> obj incoming knocked-type) (knocked-type knocked-type-6))
-     (when (>= (-> obj incoming blue-juggle-count) (the-as uint 2))
-       (let ((s4-0 (-> obj draw art-group data 32)))
+    ((= (-> this incoming knocked-type) (knocked-type knocked-type-6))
+     (when (>= (-> this incoming blue-juggle-count) (the-as uint 2))
+       (let ((s4-0 (-> this draw art-group data 32)))
          (ja-channel-push! 1 (seconds 0.17))
-         (let ((a0-3 (-> obj skel root-channel 0)))
+         (let ((a0-3 (-> this skel root-channel 0)))
            (set! (-> a0-3 frame-group) (the-as art-joint-anim s4-0))
            (set! (-> a0-3 param 0) (the float (+ (-> (the-as art-joint-anim s4-0) frames num-frames) -1)))
            (set! (-> a0-3 param 1) (-> arg0 0))
@@ -1692,19 +1584,19 @@
        #t
        )
      )
-    ((!= (-> obj incoming knocked-type) (knocked-type knocked-type-4))
-     (let* ((v1-14 (if (> (-> obj skel active-channels) 0)
-                       (-> obj skel root-channel 0 frame-group)
+    ((!= (-> this incoming knocked-type) (knocked-type knocked-type-4))
+     (let* ((v1-14 (if (> (-> this skel active-channels) 0)
+                       (-> this skel root-channel 0 frame-group)
                        )
                    )
-            (s4-1 (if (and v1-14 (= v1-14 (-> obj draw art-group data 18)))
-                      (-> obj draw art-group data 19)
-                      (-> obj draw art-group data 17)
+            (s4-1 (if (and v1-14 (= v1-14 (-> this draw art-group data 18)))
+                      (-> this draw art-group data 19)
+                      (-> this draw art-group data 17)
                       )
                   )
             )
        (ja-channel-push! 1 (seconds 0.17))
-       (let ((a0-10 (-> obj skel root-channel 0)))
+       (let ((a0-10 (-> this skel root-channel 0)))
          (set! (-> a0-10 frame-group) (the-as art-joint-anim s4-1))
          (set! (-> a0-10 param 0) (the float (+ (-> (the-as art-joint-anim s4-1) frames num-frames) -1)))
          (set! (-> a0-10 param 1) (-> arg0 0))
@@ -1718,8 +1610,8 @@
   )
 
 ;; WARN: Return type mismatch symbol vs none.
-(defmethod juicer-method-184 juicer ((obj juicer) (arg0 symbol))
-  (let ((v1-1 (-> obj root root-prim)))
+(defmethod juicer-method-184 ((this juicer) (arg0 symbol))
+  (let ((v1-1 (-> this root root-prim)))
     (dotimes (a0-1 (the-as int (-> v1-1 specific 0)))
       (let ((a2-1 (-> (the-as collide-shape-prim-group v1-1) child a0-1)))
         (if arg0
@@ -1733,18 +1625,18 @@
   )
 
 ;; WARN: Return type mismatch none vs symbol.
-(defmethod enemy-method-63 juicer ((obj juicer) (arg0 process-focusable) (arg1 enemy-aware))
+(defmethod enemy-method-63 ((this juicer) (arg0 process-focusable) (arg1 enemy-aware))
   (let ((t9-0 (method-of-type nav-enemy enemy-method-63)))
-    (the-as symbol (if (t9-0 obj arg0 arg1)
-                       (set-dst-proc! (-> obj los) (-> obj focus handle))
+    (the-as symbol (if (t9-0 this arg0 arg1)
+                       (set-dst-proc! (-> this los) (-> this focus handle))
                        )
             )
     )
   )
 
-(defmethod init-enemy-collision! juicer ((obj juicer))
+(defmethod init-enemy-collision! ((this juicer))
   "Initializes the [[collide-shape-moving]] and any ancillary tasks to make the enemy collide properly"
-  (let ((s5-0 (new 'process 'collide-shape-moving obj (collide-list-enum usually-hit-by-player))))
+  (let ((s5-0 (new 'process 'collide-shape-moving this (collide-list-enum usually-hit-by-player))))
     (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s5-0 reaction) cshape-reaction-default)
     (set! (-> s5-0 no-reaction)
@@ -1828,83 +1720,79 @@
       (set! (-> s5-0 backup-collide-with) (-> v1-26 prim-core collide-with))
       )
     (set! (-> s5-0 max-iteration-count) (the-as uint 3))
-    (set! (-> obj root) s5-0)
+    (set! (-> this root) s5-0)
     )
   0
   (none)
   )
 
-;; WARN: Return type mismatch process-focusable vs juicer.
-(defmethod relocate juicer ((obj juicer) (arg0 int))
-  (if (nonzero? (-> obj intro-path))
-      (&+! (-> obj intro-path) arg0)
+(defmethod relocate ((this juicer) (arg0 int))
+  (if (nonzero? (-> this intro-path))
+      (&+! (-> this intro-path) arg0)
       )
-  (if (nonzero? (-> obj joint))
-      (&+! (-> obj joint) arg0)
+  (if (nonzero? (-> this joint))
+      (&+! (-> this joint) arg0)
       )
-  (the-as
-    juicer
-    ((the-as (function process-focusable int process-focusable) (find-parent-method juicer 7)) obj arg0)
-    )
+  (call-parent-method this arg0)
   )
 
-(defmethod init-enemy! juicer ((obj juicer))
+(defmethod init-enemy! ((this juicer))
   "Common method called to initialize the enemy, typically sets up default field values and calls ancillary helper methods"
   (initialize-skeleton
-    obj
+    this
     (the-as skeleton-group (art-group-get-by-name *level* "skel-juicer" (the-as (pointer uint32) #f)))
     (the-as pair 0)
     )
-  (init-enemy-behaviour-and-stats! obj *juicer-nav-enemy-info*)
-  (let ((v1-5 (-> obj neck)))
+  (init-enemy-behaviour-and-stats! this *juicer-nav-enemy-info*)
+  (let ((v1-5 (-> this neck)))
     (set! (-> v1-5 up) (the-as uint 1))
     (set! (-> v1-5 nose) (the-as uint 2))
     (set! (-> v1-5 ear) (the-as uint 0))
     (set-vector! (-> v1-5 twist-max) 11832.889 11832.889 0.0 1.0)
     (set! (-> v1-5 ignore-angle) 30947.555)
     )
-  (let ((v1-7 (-> obj nav)))
+  (let ((v1-7 (-> this nav)))
     (set! (-> v1-7 speed-scale) 1.0)
     )
   0
-  (set-gravity-length (-> obj root dynam) 573440.0)
-  (set! (-> obj last-fire-time) 0)
-  (set! (-> obj heading) (the-as basic (if (rand-vu-percent? 0.5)
-                                           #t
-                                           #f
-                                           )
-                                 )
+  (set-gravity-length (-> this root dynam) 573440.0)
+  (set! (-> this last-fire-time) 0)
+  (set! (-> this heading) (the-as basic (if (rand-vu-percent? 0.5)
+                                            #t
+                                            #f
+                                            )
+                                  )
         )
-  (set! (-> obj move-angle) 5461.3335)
-  (set! (-> obj torso-track-player) #f)
-  (new-source! (-> obj los) obj (seconds 0.2) (collide-spec backgnd obstacle))
-  (set! (-> obj joint) (new 'process 'joint-mod (joint-mod-mode joint-set*-world) obj 5))
-  (set! (-> obj using-turn-anim) #f)
-  (let ((v1-18 (new 'process 'path-control obj 'intro 0.0 (the-as entity #f) #t)))
-    (set! (-> obj intro-path) v1-18)
+  (set! (-> this move-angle) 5461.3335)
+  (set! (-> this torso-track-player) #f)
+  (new-source! (-> this los) this (seconds 0.2) (collide-spec backgnd obstacle))
+  (set! (-> this joint) (new 'process 'joint-mod (joint-mod-mode joint-set*-world) this 5))
+  (set! (-> this using-turn-anim) #f)
+  (let ((v1-18 (new 'process 'path-control this 'intro 0.0 (the-as entity #f) #t)))
+    (set! (-> this intro-path) v1-18)
     (if (nonzero? v1-18)
         (logior! (-> v1-18 flags) (path-control-flag display draw-line draw-point draw-text))
         )
     )
   (add-connection
     *part-engine*
-    obj
+    this
     34
-    obj
+    this
     318
     (new 'static 'vector :x 901.12 :y -1146.88 :z 1269.76 :w 163840.0)
     )
   (add-connection
     *part-engine*
-    obj
+    this
     34
-    obj
+    this
     318
     (new 'static 'vector :x -901.12 :y -1146.88 :z 1269.76 :w 163840.0)
     )
-  (add-connection *part-engine* obj 20 obj 4635 (new 'static 'vector :w 163840.0))
-  (set! (-> obj root pause-adjust-distance) 81920.0)
-  (set! (-> obj current-projectile) (the-as handle #f))
+  (add-connection *part-engine* this 20 this 4635 (new 'static 'vector :w 163840.0))
+  (set! (-> this root pause-adjust-distance) 81920.0)
+  (set! (-> this current-projectile) (the-as handle #f))
   0
   (none)
   )

@@ -3,53 +3,47 @@
 
 ;; definition of type dma-packet
 (deftype dma-packet (structure)
-  ((dma  dma-tag  :offset-assert   0)
-   (vif0 vif-tag  :offset-assert   8)
-   (vif1 vif-tag  :offset-assert  12)
-   (quad uint128  :offset          0)
+  ((dma   dma-tag)
+   (vif0  vif-tag)
+   (vif1  vif-tag)
+   (quad  uint128  :overlay-at dma)
    )
-  :method-count-assert 9
-  :size-assert         #x10
-  :flag-assert         #x900000010
   )
 
 ;; definition for method 3 of type dma-packet
 ;; INFO: Used lq/sq
-(defmethod inspect dma-packet ((obj dma-packet))
-  (when (not obj)
-    (set! obj obj)
+(defmethod inspect ((this dma-packet))
+  (when (not this)
+    (set! this this)
     (goto cfg-4)
     )
-  (format #t "[~8x] ~A~%" obj 'dma-packet)
-  (format #t "~1Tdma: #x~X~%" (-> obj dma))
-  (format #t "~1Tvif0: #x~X~%" (-> obj vif0))
-  (format #t "~1Tvif1: #x~X~%" (-> obj vif1))
-  (format #t "~1Tquad: ~D~%" (-> obj quad))
+  (format #t "[~8x] ~A~%" this 'dma-packet)
+  (format #t "~1Tdma: #x~X~%" (-> this dma))
+  (format #t "~1Tvif0: #x~X~%" (-> this vif0))
+  (format #t "~1Tvif1: #x~X~%" (-> this vif1))
+  (format #t "~1Tquad: ~D~%" (-> this quad))
   (label cfg-4)
-  obj
+  this
   )
 
 ;; definition of type dma-packet-array
 (deftype dma-packet-array (inline-array-class)
-  ((data dma-packet :inline :dynamic :offset-assert  16)
+  ((data  dma-packet  :inline :dynamic)
    )
-  :method-count-assert 9
-  :size-assert         #x10
-  :flag-assert         #x900000010
   )
 
 ;; definition for method 3 of type dma-packet-array
-(defmethod inspect dma-packet-array ((obj dma-packet-array))
-  (when (not obj)
-    (set! obj obj)
+(defmethod inspect ((this dma-packet-array))
+  (when (not this)
+    (set! this this)
     (goto cfg-4)
     )
-  (format #t "[~8x] ~A~%" obj (-> obj type))
-  (format #t "~1Tlength: ~D~%" (-> obj length))
-  (format #t "~1Tallocated-length: ~D~%" (-> obj allocated-length))
-  (format #t "~1Tdata[0] @ #x~X~%" (-> obj data))
+  (format #t "[~8x] ~A~%" this (-> this type))
+  (format #t "~1Tlength: ~D~%" (-> this length))
+  (format #t "~1Tallocated-length: ~D~%" (-> this allocated-length))
+  (format #t "~1Tdata[0] @ #x~X~%" (-> this data))
   (label cfg-4)
-  obj
+  this
   )
 
 ;; failed to figure out what this is:
@@ -57,86 +51,77 @@
 
 ;; definition of type dma-gif
 (deftype dma-gif (structure)
-  ((gif  uint64  2 :offset-assert   0)
-   (quad uint128   :offset          0)
-   (gif0 uint64    :offset          0)
-   (gif1 uint64    :offset          8)
+  ((gif   uint64   2)
+   (quad  uint128  :overlay-at (-> gif 0))
+   (gif0  uint64   :overlay-at (-> gif 0))
+   (gif1  uint64   :overlay-at (-> gif 1))
    )
-  :method-count-assert 9
-  :size-assert         #x10
-  :flag-assert         #x900000010
   )
 
 ;; definition for method 3 of type dma-gif
 ;; INFO: Used lq/sq
-(defmethod inspect dma-gif ((obj dma-gif))
-  (when (not obj)
-    (set! obj obj)
+(defmethod inspect ((this dma-gif))
+  (when (not this)
+    (set! this this)
     (goto cfg-4)
     )
-  (format #t "[~8x] ~A~%" obj 'dma-gif)
-  (format #t "~1Tgif[2] @ #x~X~%" (&-> obj gif0))
-  (format #t "~1Tquad: ~D~%" (-> obj quad))
+  (format #t "[~8x] ~A~%" this 'dma-gif)
+  (format #t "~1Tgif[2] @ #x~X~%" (&-> this gif0))
+  (format #t "~1Tquad: ~D~%" (-> this quad))
   (label cfg-4)
-  obj
+  this
   )
 
 ;; definition of type dma-gif-packet
 (deftype dma-gif-packet (structure)
-  ((dma-vif dma-packet :inline :offset-assert   0)
-   (gif     uint64     2       :offset-assert  16)
-   (gif0    uint64             :offset         16)
-   (gif1    uint64             :offset         24)
-   (quad    uint128    2       :offset          0)
+  ((dma-vif  dma-packet  :inline)
+   (gif      uint64      2)
+   (gif0     uint64        :overlay-at (-> gif 0))
+   (gif1     uint64        :overlay-at (-> gif 1))
+   (quad     uint128     2 :overlay-at (-> dma-vif dma))
    )
-  :method-count-assert 9
-  :size-assert         #x20
-  :flag-assert         #x900000020
   )
 
 ;; definition for method 3 of type dma-gif-packet
-(defmethod inspect dma-gif-packet ((obj dma-gif-packet))
-  (when (not obj)
-    (set! obj obj)
+(defmethod inspect ((this dma-gif-packet))
+  (when (not this)
+    (set! this this)
     (goto cfg-4)
     )
-  (format #t "[~8x] ~A~%" obj 'dma-gif-packet)
-  (format #t "~1Tdma-vif: #<dma-packet @ #x~X>~%" (-> obj dma-vif))
-  (format #t "~1Tgif[2] @ #x~X~%" (&-> obj gif0))
-  (format #t "~1Tquad[2] @ #x~X~%" (-> obj dma-vif))
+  (format #t "[~8x] ~A~%" this 'dma-gif-packet)
+  (format #t "~1Tdma-vif: #<dma-packet @ #x~X>~%" (-> this dma-vif))
+  (format #t "~1Tgif[2] @ #x~X~%" (&-> this gif0))
+  (format #t "~1Tquad[2] @ #x~X~%" (-> this dma-vif))
   (label cfg-4)
-  obj
+  this
   )
 
 ;; definition of type dma-buffer
 (deftype dma-buffer (basic)
-  ((allocated-length int32            :offset-assert   4)
-   (base             pointer          :offset-assert   8)
-   (end              pointer          :offset-assert  12)
-   (data             uint64  1        :offset-assert  16)
-   (data-buffer      uint8   :dynamic :offset         16)
+  ((allocated-length  int32)
+   (base              pointer)
+   (end               pointer)
+   (data              uint64  1)
+   (data-buffer       uint8   :dynamic :overlay-at (-> data 0))
    )
-  :method-count-assert 9
-  :size-assert         #x18
-  :flag-assert         #x900000018
   (:methods
-    (new (symbol type int) _type_ 0)
+    (new (symbol type int) _type_)
     )
   )
 
 ;; definition for method 3 of type dma-buffer
-(defmethod inspect dma-buffer ((obj dma-buffer))
-  (when (not obj)
-    (set! obj obj)
+(defmethod inspect ((this dma-buffer))
+  (when (not this)
+    (set! this this)
     (goto cfg-4)
     )
-  (format #t "[~8x] ~A~%" obj (-> obj type))
-  (format #t "~1Tallocated-length: ~D~%" (-> obj allocated-length))
-  (format #t "~1Tbase: #x~X~%" (-> obj base))
-  (format #t "~1Tend: #x~X~%" (-> obj end))
-  (format #t "~1Tdata[1] @ #x~X~%" (-> obj data))
+  (format #t "[~8x] ~A~%" this (-> this type))
+  (format #t "~1Tallocated-length: ~D~%" (-> this allocated-length))
+  (format #t "~1Tbase: #x~X~%" (-> this base))
+  (format #t "~1Tend: #x~X~%" (-> this end))
+  (format #t "~1Tdata[1] @ #x~X~%" (-> this data))
   (label cfg-4)
-  obj
+  this
   )
 
 ;; definition for method 0 of type dma-buffer
@@ -156,13 +141,13 @@
   )
 
 ;; definition for method 4 of type dma-buffer
-(defmethod length dma-buffer ((obj dma-buffer))
-  (-> obj allocated-length)
+(defmethod length ((this dma-buffer))
+  (-> this allocated-length)
   )
 
 ;; definition for method 5 of type dma-buffer
-(defmethod asize-of dma-buffer ((obj dma-buffer))
-  (+ (-> obj allocated-length) -4 (-> dma-buffer size))
+(defmethod asize-of ((this dma-buffer))
+  (+ (-> this allocated-length) -4 (-> dma-buffer size))
   )
 
 ;; definition for function dma-buffer-length

@@ -17,23 +17,19 @@
 
 ;; definition of type logtrap
 (deftype logtrap (process-drawable)
-  ((root-override collide-shape-moving  :offset 112)
+  ((root  collide-shape-moving :override)
    )
-  :heap-base #x40
-  :method-count-assert 21
-  :size-assert         #xb0
-  :flag-assert         #x15004000b0
-  (:methods
-    (idle () _type_ :state 20)
+  (:state-methods
+    idle
     )
   )
 
 ;; definition for method 3 of type logtrap
-(defmethod inspect logtrap ((obj logtrap))
+(defmethod inspect ((this logtrap))
   (let ((t9-0 (method-of-type process-drawable inspect)))
-    (t9-0 obj)
+    (t9-0 this)
     )
-  obj
+  this
   )
 
 ;; failed to figure out what this is:
@@ -47,15 +43,15 @@
 ;; failed to figure out what this is:
 (defstate idle (logtrap)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (if (or (= event-type 'touch) (= event-type 'attack))
-        (send-event proc 'attack (-> event param 0) (new 'static 'attack-info))
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (if (or (= message 'touch) (= message 'attack))
+        (send-event proc 'attack (-> block param 0) (new 'static 'attack-info))
         )
     )
   :code (behavior ()
     (transform-post)
     (loop
-      (ja-no-eval :group! (-> self draw art-group data 4) :num! (seek!) :frame-num 0.0)
+      (ja-no-eval :group! logtrap-idle-ja :num! (seek!) :frame-num 0.0)
       (until (ja-done? 0)
         (when (logtest? (-> self draw status) (draw-status was-drawn))
           (cond
@@ -65,7 +61,7 @@
             (else
               (transform-post)
               (if *target*
-                  (look-at-enemy! (-> *target* neck) (the-as vector (-> self root-override root-prim prim-core)) #f self)
+                  (look-at-enemy! (-> *target* neck) (the-as vector (-> self root root-prim prim-core)) #f self)
                   )
               )
             )
@@ -74,15 +70,14 @@
         (ja :num! (seek!))
         )
       )
-    (none)
     )
   )
 
 ;; definition for method 11 of type logtrap
 ;; INFO: Return type mismatch object vs none.
-(defmethod init-from-entity! logtrap ((obj logtrap) (arg0 entity-actor))
-  (logior! (-> obj mask) (process-mask enemy))
-  (let ((s4-0 (new 'process 'collide-shape-moving obj (collide-list-enum hit-by-player))))
+(defmethod init-from-entity! ((this logtrap) (arg0 entity-actor))
+  (logior! (-> this mask) (process-mask enemy))
+  (let ((s4-0 (new 'process 'collide-shape-moving this (collide-list-enum hit-by-player))))
     (set! (-> s4-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s4-0 reaction) default-collision-reaction)
     (set! (-> s4-0 no-reaction)
@@ -97,36 +92,34 @@
       )
     (set! (-> s4-0 nav-radius) (* 0.75 (-> s4-0 root-prim local-sphere w)))
     (backup-collide-with-as s4-0)
-    (set! (-> obj root-override) s4-0)
+    (set! (-> this root) s4-0)
     )
-  (process-drawable-from-entity! obj arg0)
-  (initialize-skeleton obj *logtrap-sg* '())
-  (set! (-> obj draw shadow-ctrl) (new 'process 'shadow-control -5734.4 0.0 614400.0 (the-as float 1) 163840.0))
-  (logclear! (-> obj mask) (process-mask actor-pause))
-  (update-transforms! (-> obj root-override))
-  (go (method-of-object obj idle))
+  (process-drawable-from-entity! this arg0)
+  (initialize-skeleton this *logtrap-sg* '())
+  (set! (-> this draw shadow-ctrl)
+        (new 'process 'shadow-control -5734.4 0.0 614400.0 (the-as float 1) 163840.0)
+        )
+  (logclear! (-> this mask) (process-mask actor-pause))
+  (update-transforms! (-> this root))
+  (go (method-of-object this idle))
   (none)
   )
 
 ;; definition of type towertop
 (deftype towertop (process-drawable)
-  ((root-override trsq  :offset 112)
+  ((root-override  trsq  :overlay-at root)
    )
-  :heap-base #x40
-  :method-count-assert 20
-  :size-assert         #xb0
-  :flag-assert         #x14004000b0
   (:states
     towertop-idle
     )
   )
 
 ;; definition for method 3 of type towertop
-(defmethod inspect towertop ((obj towertop))
+(defmethod inspect ((this towertop))
   (let ((t9-0 (method-of-type process-drawable inspect)))
-    (t9-0 obj)
+    (t9-0 this)
     )
-  obj
+  this
   )
 
 ;; failed to figure out what this is:
@@ -139,52 +132,47 @@
 (defstate towertop-idle (towertop)
   :code (behavior ()
     (loop
-      (ja-no-eval :group! (-> self draw art-group data 4) :num! (seek! max 0.4) :frame-num 0.0)
+      (ja-no-eval :group! towertop-idle-ja :num! (seek! max 0.4) :frame-num 0.0)
       (until (ja-done? 0)
         (suspend)
         (ja :num! (seek! max 0.4))
         )
       )
-    (none)
     )
-  :post (the-as (function none :behavior towertop) ja-post)
+  :post ja-post
   )
 
 ;; definition for method 11 of type towertop
 ;; INFO: Return type mismatch object vs none.
-(defmethod init-from-entity! towertop ((obj towertop) (arg0 entity-actor))
-  (logior! (-> obj mask) (process-mask ambient))
-  (set! (-> obj root-override) (new 'process 'trsq))
-  (process-drawable-from-entity! obj arg0)
-  (logclear! (-> obj mask) (process-mask actor-pause))
-  (initialize-skeleton obj *towertop-sg* '())
+(defmethod init-from-entity! ((this towertop) (arg0 entity-actor))
+  (logior! (-> this mask) (process-mask ambient))
+  (set! (-> this root-override) (new 'process 'trsq))
+  (process-drawable-from-entity! this arg0)
+  (logclear! (-> this mask) (process-mask actor-pause))
+  (initialize-skeleton this *towertop-sg* '())
   (go towertop-idle)
   (none)
   )
 
 ;; definition of type lurkerm-tall-sail
 (deftype lurkerm-tall-sail (process-drawable)
-  ((root-override collide-shape-moving  :offset        112)
-   (speed         float                 :offset-assert 176)
-   (alt-actor     entity-actor          :offset-assert 180)
+  ((root       collide-shape-moving :override)
+   (speed      float)
+   (alt-actor  entity-actor)
    )
-  :heap-base #x50
-  :method-count-assert 20
-  :size-assert         #xb8
-  :flag-assert         #x14005000b8
   (:states
     lurkerm-tall-sail-idle
     )
   )
 
 ;; definition for method 3 of type lurkerm-tall-sail
-(defmethod inspect lurkerm-tall-sail ((obj lurkerm-tall-sail))
+(defmethod inspect ((this lurkerm-tall-sail))
   (let ((t9-0 (method-of-type process-drawable inspect)))
-    (t9-0 obj)
+    (t9-0 this)
     )
-  (format #t "~T~Tspeed: ~f~%" (-> obj speed))
-  (format #t "~T~Talt-actor: ~A~%" (-> obj alt-actor))
-  obj
+  (format #t "~T~Tspeed: ~f~%" (-> this speed))
+  (format #t "~T~Talt-actor: ~A~%" (-> this alt-actor))
+  this
   )
 
 ;; failed to figure out what this is:
@@ -199,39 +187,37 @@
 
 ;; failed to figure out what this is:
 (defstate lurkerm-tall-sail-idle (lurkerm-tall-sail)
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (the-as object (case event-type
-                     (('stop)
-                      (process-entity-status! self (entity-perm-status complete) #t)
-                      (set! (-> self speed) 0.0)
-                      )
-                     )
-            )
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
+      (('stop)
+       (process-entity-status! self (entity-perm-status complete) #t)
+       (set! (-> self speed) 0.0)
+       )
+      )
     )
-  :trans (the-as (function none :behavior lurkerm-tall-sail) rider-trans)
+  :trans rider-trans
   :code (behavior ()
     (loop
-      (ja-no-eval :group! (-> self draw art-group data 4) :num! (seek! max (* 0.5 (-> self speed))) :frame-num 0.0)
+      (ja-no-eval :group! lurkerm-tall-sail-idle-ja :num! (seek! max (* 0.5 (-> self speed))) :frame-num 0.0)
       (until (ja-done? 0)
         (quaternion-rotate-local-y!
-          (-> self root-override quat)
-          (-> self root-override quat)
-          (* 12743.111 (-> *display* seconds-per-frame) (-> self speed))
+          (-> self root quat)
+          (-> self root quat)
+          (* 12743.111 (seconds-per-frame) (-> self speed))
           )
         (suspend)
         (ja :num! (seek! max (* 0.5 (-> self speed))))
         )
       )
-    (none)
     )
-  :post (the-as (function none :behavior lurkerm-tall-sail) rider-post)
+  :post rider-post
   )
 
 ;; definition for method 11 of type lurkerm-tall-sail
 ;; INFO: Return type mismatch object vs none.
-(defmethod init-from-entity! lurkerm-tall-sail ((obj lurkerm-tall-sail) (arg0 entity-actor))
-  (logior! (-> obj mask) (process-mask platform))
-  (let ((s4-0 (new 'process 'collide-shape-moving obj (collide-list-enum hit-by-player))))
+(defmethod init-from-entity! ((this lurkerm-tall-sail) (arg0 entity-actor))
+  (logior! (-> this mask) (process-mask platform))
+  (let ((s4-0 (new 'process 'collide-shape-moving this (collide-list-enum hit-by-player))))
     (set! (-> s4-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s4-0 reaction) default-collision-reaction)
     (set! (-> s4-0 no-reaction)
@@ -257,16 +243,16 @@
       )
     (set! (-> s4-0 nav-radius) (* 0.75 (-> s4-0 root-prim local-sphere w)))
     (backup-collide-with-as s4-0)
-    (set! (-> obj root-override) s4-0)
+    (set! (-> this root) s4-0)
     )
-  (process-drawable-from-entity! obj arg0)
-  (initialize-skeleton obj *lurkerm-tall-sail-sg* '())
-  (logior! (-> obj skel status) (janim-status inited))
-  (update-transforms! (-> obj root-override))
-  (set! (-> obj alt-actor) (entity-actor-lookup (-> obj entity) 'alt-actor 0))
-  (set! (-> obj speed) 1.0)
-  (if (and (-> obj entity) (logtest? (-> obj entity extra perm status) (entity-perm-status complete)))
-      (set! (-> obj speed) 0.0)
+  (process-drawable-from-entity! this arg0)
+  (initialize-skeleton this *lurkerm-tall-sail-sg* '())
+  (logior! (-> this skel status) (janim-status inited))
+  (update-transforms! (-> this root))
+  (set! (-> this alt-actor) (entity-actor-lookup (-> this entity) 'alt-actor 0))
+  (set! (-> this speed) 1.0)
+  (if (and (-> this entity) (logtest? (-> this entity extra perm status) (entity-perm-status complete)))
+      (set! (-> this speed) 0.0)
       )
   (go lurkerm-tall-sail-idle)
   (none)
@@ -274,27 +260,23 @@
 
 ;; definition of type lurkerm-short-sail
 (deftype lurkerm-short-sail (process-drawable)
-  ((root-override collide-shape-moving  :offset        112)
-   (speed         float                 :offset-assert 176)
-   (alt-actor     entity-actor          :offset-assert 180)
+  ((root       collide-shape-moving :override)
+   (speed      float)
+   (alt-actor  entity-actor)
    )
-  :heap-base #x50
-  :method-count-assert 20
-  :size-assert         #xb8
-  :flag-assert         #x14005000b8
   (:states
     lurkerm-short-sail-idle
     )
   )
 
 ;; definition for method 3 of type lurkerm-short-sail
-(defmethod inspect lurkerm-short-sail ((obj lurkerm-short-sail))
+(defmethod inspect ((this lurkerm-short-sail))
   (let ((t9-0 (method-of-type process-drawable inspect)))
-    (t9-0 obj)
+    (t9-0 this)
     )
-  (format #t "~T~Tspeed: ~f~%" (-> obj speed))
-  (format #t "~T~Talt-actor: ~A~%" (-> obj alt-actor))
-  obj
+  (format #t "~T~Tspeed: ~f~%" (-> this speed))
+  (format #t "~T~Talt-actor: ~A~%" (-> this alt-actor))
+  this
   )
 
 ;; failed to figure out what this is:
@@ -305,39 +287,37 @@
 
 ;; failed to figure out what this is:
 (defstate lurkerm-short-sail-idle (lurkerm-short-sail)
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (the-as object (case event-type
-                     (('stop)
-                      (process-entity-status! self (entity-perm-status complete) #t)
-                      (set! (-> self speed) 0.0)
-                      )
-                     )
-            )
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
+      (('stop)
+       (process-entity-status! self (entity-perm-status complete) #t)
+       (set! (-> self speed) 0.0)
+       )
+      )
     )
-  :trans (the-as (function none :behavior lurkerm-short-sail) rider-trans)
+  :trans rider-trans
   :code (behavior ()
     (loop
       (ja-no-eval :group! (-> self draw art-group data 4) :num! (seek! max (* 0.5 (-> self speed))) :frame-num 0.0)
       (until (ja-done? 0)
         (quaternion-rotate-local-y!
-          (-> self root-override quat)
-          (-> self root-override quat)
-          (* -12743.111 (-> *display* seconds-per-frame) (-> self speed))
+          (-> self root quat)
+          (-> self root quat)
+          (* -12743.111 (seconds-per-frame) (-> self speed))
           )
         (suspend)
         (ja :num! (seek! max (* 0.5 (-> self speed))))
         )
       )
-    (none)
     )
-  :post (the-as (function none :behavior lurkerm-short-sail) rider-post)
+  :post rider-post
   )
 
 ;; definition for method 11 of type lurkerm-short-sail
 ;; INFO: Return type mismatch object vs none.
-(defmethod init-from-entity! lurkerm-short-sail ((obj lurkerm-short-sail) (arg0 entity-actor))
-  (logior! (-> obj mask) (process-mask platform))
-  (let ((s4-0 (new 'process 'collide-shape-moving obj (collide-list-enum hit-by-player))))
+(defmethod init-from-entity! ((this lurkerm-short-sail) (arg0 entity-actor))
+  (logior! (-> this mask) (process-mask platform))
+  (let ((s4-0 (new 'process 'collide-shape-moving this (collide-list-enum hit-by-player))))
     (set! (-> s4-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s4-0 reaction) default-collision-reaction)
     (set! (-> s4-0 no-reaction)
@@ -380,16 +360,16 @@
       )
     (set! (-> s4-0 nav-radius) (* 0.75 (-> s4-0 root-prim local-sphere w)))
     (backup-collide-with-as s4-0)
-    (set! (-> obj root-override) s4-0)
+    (set! (-> this root) s4-0)
     )
-  (process-drawable-from-entity! obj arg0)
-  (initialize-skeleton obj *lurkerm-short-sail-sg* '())
-  (logior! (-> obj skel status) (janim-status inited))
-  (update-transforms! (-> obj root-override))
-  (set! (-> obj alt-actor) (entity-actor-lookup (-> obj entity) 'alt-actor 0))
-  (set! (-> obj speed) 1.0)
-  (if (and (-> obj entity) (logtest? (-> obj entity extra perm status) (entity-perm-status complete)))
-      (set! (-> obj speed) 0.0)
+  (process-drawable-from-entity! this arg0)
+  (initialize-skeleton this *lurkerm-short-sail-sg* '())
+  (logior! (-> this skel status) (janim-status inited))
+  (update-transforms! (-> this root))
+  (set! (-> this alt-actor) (entity-actor-lookup (-> this entity) 'alt-actor 0))
+  (set! (-> this speed) 1.0)
+  (if (and (-> this entity) (logtest? (-> this entity extra perm status) (entity-perm-status complete)))
+      (set! (-> this speed) 0.0)
       )
   (go lurkerm-short-sail-idle)
   (none)
@@ -397,33 +377,29 @@
 
 ;; definition of type lurkerm-piston
 (deftype lurkerm-piston (process-drawable)
-  ((root-override collide-shape-moving         :offset        112)
-   (sync          sync-info            :inline :offset-assert 176)
-   (base          vector               :inline :offset-assert 192)
-   (height        vector               :inline :offset-assert 208)
-   (speed         float                        :offset-assert 224)
-   (alt-actor     entity-actor                 :offset-assert 228)
+  ((root       collide-shape-moving :override)
+   (sync       sync-info             :inline)
+   (base       vector                :inline)
+   (height     vector                :inline)
+   (speed      float)
+   (alt-actor  entity-actor)
    )
-  :heap-base #x80
-  :method-count-assert 20
-  :size-assert         #xe8
-  :flag-assert         #x14008000e8
   (:states
     lurkerm-piston-idle
     )
   )
 
 ;; definition for method 3 of type lurkerm-piston
-(defmethod inspect lurkerm-piston ((obj lurkerm-piston))
+(defmethod inspect ((this lurkerm-piston))
   (let ((t9-0 (method-of-type process-drawable inspect)))
-    (t9-0 obj)
+    (t9-0 this)
     )
-  (format #t "~T~Tsync: #<sync-info @ #x~X>~%" (-> obj sync))
-  (format #t "~T~Tbase: ~`vector`P~%" (-> obj base))
-  (format #t "~T~Theight: ~`vector`P~%" (-> obj height))
-  (format #t "~T~Tspeed: ~f~%" (-> obj speed))
-  (format #t "~T~Talt-actor: ~A~%" (-> obj alt-actor))
-  obj
+  (format #t "~T~Tsync: #<sync-info @ #x~X>~%" (-> this sync))
+  (format #t "~T~Tbase: ~`vector`P~%" (-> this base))
+  (format #t "~T~Theight: ~`vector`P~%" (-> this height))
+  (format #t "~T~Tspeed: ~f~%" (-> this speed))
+  (format #t "~T~Talt-actor: ~A~%" (-> this alt-actor))
+  this
   )
 
 ;; failed to figure out what this is:
@@ -434,41 +410,39 @@
 
 ;; failed to figure out what this is:
 (defstate lurkerm-piston-idle (lurkerm-piston)
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (the-as object (case event-type
-                     (('stop)
-                      (process-entity-status! self (entity-perm-status complete) #t)
-                      (set! (-> self speed) 0.0)
-                      )
-                     )
-            )
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
+      (('stop)
+       (process-entity-status! self (entity-perm-status complete) #t)
+       (set! (-> self speed) 0.0)
+       )
+      )
     )
-  :trans (the-as (function none :behavior lurkerm-piston) rider-trans)
+  :trans rider-trans
   :code (behavior ()
     (loop
-      (ja-no-eval :group! (-> self draw art-group data 2) :num! (seek! max (-> self speed)) :frame-num 0.0)
+      (ja-no-eval :group! lurkerm-piston-idle-ja :num! (seek! max (-> self speed)) :frame-num 0.0)
       (until (ja-done? 0)
         (let ((gp-0 (new-stack-vector0)))
           (set! (-> gp-0 quad) (-> self base quad))
           (+! (-> gp-0 y) (* (get-current-value-with-mirror (-> self sync) (-> self height y)) (-> self speed)))
-          (move-to-point! (-> self root-override) gp-0)
+          (move-to-point! (-> self root) gp-0)
           )
         (suspend)
         (ja :num! (seek! max (-> self speed)))
         )
       )
-    (none)
     )
-  :post (the-as (function none :behavior lurkerm-piston) rider-post)
+  :post rider-post
   )
 
 ;; definition for method 11 of type lurkerm-piston
 ;; INFO: Used lq/sq
 ;; INFO: Return type mismatch object vs none.
-(defmethod init-from-entity! lurkerm-piston ((obj lurkerm-piston) (arg0 entity-actor))
+(defmethod init-from-entity! ((this lurkerm-piston) (arg0 entity-actor))
   (local-vars (sv-16 res-tag) (sv-32 res-tag))
-  (logior! (-> obj mask) (process-mask platform))
-  (let ((s4-0 (new 'process 'collide-shape-moving obj (collide-list-enum hit-by-player))))
+  (logior! (-> this mask) (process-mask platform))
+  (let ((s4-0 (new 'process 'collide-shape-moving this (collide-list-enum hit-by-player))))
     (set! (-> s4-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s4-0 reaction) default-collision-reaction)
     (set! (-> s4-0 no-reaction)
@@ -486,26 +460,26 @@
       )
     (set! (-> s4-0 nav-radius) (* 0.75 (-> s4-0 root-prim local-sphere w)))
     (backup-collide-with-as s4-0)
-    (set! (-> obj root-override) s4-0)
+    (set! (-> this root) s4-0)
     )
-  (process-drawable-from-entity! obj arg0)
-  (logclear! (-> obj mask) (process-mask actor-pause))
-  (initialize-skeleton obj *lurkerm-piston-sg* '())
-  (logior! (-> obj skel status) (janim-status inited))
-  (update-transforms! (-> obj root-override))
-  (set! (-> obj base quad) (-> obj root-override trans quad))
-  (let ((f30-0 (-> obj base y)))
+  (process-drawable-from-entity! this arg0)
+  (logclear! (-> this mask) (process-mask actor-pause))
+  (initialize-skeleton this *lurkerm-piston-sg* '())
+  (logior! (-> this skel status) (janim-status inited))
+  (update-transforms! (-> this root))
+  (set! (-> this base quad) (-> this root trans quad))
+  (let ((f30-0 (-> this base y)))
     (set! sv-16 (new 'static 'res-tag))
     (let ((v1-32 (res-lump-data arg0 'height-info pointer :tag-ptr (& sv-16))))
-      (set! (-> obj base y) (+ f30-0 (if (and v1-32 (> (the-as int (-> sv-16 elt-count)) 0))
-                                         (-> (the-as (pointer float) v1-32))
-                                         0.0
-                                         )
-                               )
+      (set! (-> this base y) (+ f30-0 (if (and v1-32 (> (the-as int (-> sv-16 elt-count)) 0))
+                                          (-> (the-as (pointer float) v1-32))
+                                          0.0
+                                          )
+                                )
             )
       )
     )
-  (let ((s4-1 (-> obj height)))
+  (let ((s4-1 (-> this height)))
     (set! (-> s4-1 x) 0.0)
     (set! sv-32 (new 'static 'res-tag))
     (let ((v1-35 (res-lump-data arg0 'height-info (pointer float) :tag-ptr (& sv-32))))
@@ -518,11 +492,11 @@
     (set! (-> s4-1 z) 0.0)
     (set! (-> s4-1 w) 1.0)
     )
-  (load-params! (-> obj sync) obj (the-as uint 1500) 0.0 0.15 0.15)
-  (set! (-> obj alt-actor) (entity-actor-lookup (-> obj entity) 'alt-actor 0))
-  (set! (-> obj speed) 1.0)
-  (if (and (-> obj entity) (logtest? (-> obj entity extra perm status) (entity-perm-status complete)))
-      (set! (-> obj speed) 0.0)
+  (load-params! (-> this sync) this (the-as uint 1500) 0.0 0.15 0.15)
+  (set! (-> this alt-actor) (entity-actor-lookup (-> this entity) 'alt-actor 0))
+  (set! (-> this speed) 1.0)
+  (if (and (-> this entity) (logtest? (-> this entity extra perm status) (entity-perm-status complete)))
+      (set! (-> this speed) 0.0)
       )
   (go lurkerm-piston-idle)
   (none)
@@ -530,26 +504,22 @@
 
 ;; definition of type accordian
 (deftype accordian (process-drawable)
-  ((speed     float         :offset-assert 176)
-   (alt-actor entity-actor  :offset-assert 180)
+  ((speed      float)
+   (alt-actor  entity-actor)
    )
-  :heap-base #x50
-  :method-count-assert 20
-  :size-assert         #xb8
-  :flag-assert         #x14005000b8
   (:states
     accordian-idle
     )
   )
 
 ;; definition for method 3 of type accordian
-(defmethod inspect accordian ((obj accordian))
+(defmethod inspect ((this accordian))
   (let ((t9-0 (method-of-type process-drawable inspect)))
-    (t9-0 obj)
+    (t9-0 this)
     )
-  (format #t "~T~Tspeed: ~f~%" (-> obj speed))
-  (format #t "~T~Talt-actor: ~A~%" (-> obj alt-actor))
-  obj
+  (format #t "~T~Tspeed: ~f~%" (-> this speed))
+  (format #t "~T~Talt-actor: ~A~%" (-> this alt-actor))
+  this
   )
 
 ;; failed to figure out what this is:
@@ -561,14 +531,13 @@
 
 ;; failed to figure out what this is:
 (defstate accordian-idle (accordian)
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (the-as object (case event-type
-                     (('stop)
-                      (process-entity-status! self (entity-perm-status complete) #t)
-                      (set! (-> self speed) 0.0)
-                      )
-                     )
-            )
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
+      (('stop)
+       (process-entity-status! self (entity-perm-status complete) #t)
+       (set! (-> self speed) 0.0)
+       )
+      )
     )
   :code (behavior ()
     (ja-no-eval :num! (loop!) :frame-num 0.0)
@@ -580,21 +549,20 @@
         (ja-post)
         )
       )
-    (none)
     )
   )
 
 ;; definition for method 11 of type accordian
 ;; INFO: Return type mismatch object vs none.
-(defmethod init-from-entity! accordian ((obj accordian) (arg0 entity-actor))
-  (set! (-> obj root) (new 'process 'trsqv))
-  (process-drawable-from-entity! obj arg0)
-  (initialize-skeleton obj *accordian-sg* '())
-  (set! (-> obj root pause-adjust-distance) 204800.0)
-  (set! (-> obj alt-actor) (entity-actor-lookup (-> obj entity) 'alt-actor 0))
-  (set! (-> obj speed) 1.0)
-  (if (and (-> obj entity) (logtest? (-> obj entity extra perm status) (entity-perm-status complete)))
-      (set! (-> obj speed) 0.0)
+(defmethod init-from-entity! ((this accordian) (arg0 entity-actor))
+  (set! (-> this root) (new 'process 'trsqv))
+  (process-drawable-from-entity! this arg0)
+  (initialize-skeleton this *accordian-sg* '())
+  (set! (-> this root pause-adjust-distance) 204800.0)
+  (set! (-> this alt-actor) (entity-actor-lookup (-> this entity) 'alt-actor 0))
+  (set! (-> this speed) 1.0)
+  (if (and (-> this entity) (logtest? (-> this entity extra perm status) (entity-perm-status complete)))
+      (set! (-> this speed) 0.0)
       )
   (go accordian-idle)
   (none)
@@ -609,58 +577,51 @@
 ;; definition of type junglecam
 (deftype junglecam (process-hidden)
   ()
-  :method-count-assert 15
-  :size-assert         #x70
-  :flag-assert         #xf00000070
   )
 
 ;; definition for method 3 of type junglecam
-(defmethod inspect junglecam ((obj junglecam))
-  (format #t "[~8x] ~A~%" obj (-> obj type))
-  (format #t "~Tname: ~A~%" (-> obj name))
-  (format #t "~Tmask: ~D~%" (-> obj mask))
-  (format #t "~Tparent: #x~X~%" (-> obj parent))
-  (format #t "~Tbrother: #x~X~%" (-> obj brother))
-  (format #t "~Tchild: #x~X~%" (-> obj child))
-  (format #t "~Tppointer: #x~X~%" (-> obj ppointer))
-  (format #t "~Tself: ~A~%" (-> obj self))
-  (format #t "~Tpool: ~A~%" (-> obj pool))
-  (format #t "~Tstatus: ~A~%" (-> obj status))
-  (format #t "~Tpid: ~D~%" (-> obj pid))
-  (format #t "~Tmain-thread: ~A~%" (-> obj main-thread))
-  (format #t "~Ttop-thread: ~A~%" (-> obj top-thread))
-  (format #t "~Tentity: ~A~%" (-> obj entity))
-  (format #t "~Tstate: ~A~%" (-> obj state))
-  (format #t "~Ttrans-hook: ~A~%" (-> obj trans-hook))
-  (format #t "~Tpost-hook: ~A~%" (-> obj post-hook))
-  (format #t "~Tevent-hook: ~A~%" (-> obj event-hook))
-  (format #t "~Tallocated-length: ~D~%" (-> obj allocated-length))
-  (format #t "~Tnext-state: ~A~%" (-> obj next-state))
-  (format #t "~Theap-base: #x~X~%" (-> obj heap-base))
-  (format #t "~Theap-top: #x~X~%" (-> obj heap-top))
-  (format #t "~Theap-cur: #x~X~%" (-> obj heap-cur))
-  (format #t "~Tstack-frame-top: ~A~%" (-> obj stack-frame-top))
-  (format #t "~Theap: #<kheap @ #x~X>~%" (&-> obj heap-base))
-  (format #t "~Tconnection-list: ~`'connectable`P~%" (-> obj connection-list))
-  (format #t "~Tstack[0] @ #x~X~%" (-> obj stack))
-  obj
+(defmethod inspect ((this junglecam))
+  (format #t "[~8x] ~A~%" this (-> this type))
+  (format #t "~Tname: ~A~%" (-> this name))
+  (format #t "~Tmask: ~D~%" (-> this mask))
+  (format #t "~Tparent: #x~X~%" (-> this parent))
+  (format #t "~Tbrother: #x~X~%" (-> this brother))
+  (format #t "~Tchild: #x~X~%" (-> this child))
+  (format #t "~Tppointer: #x~X~%" (-> this ppointer))
+  (format #t "~Tself: ~A~%" (-> this self))
+  (format #t "~Tpool: ~A~%" (-> this pool))
+  (format #t "~Tstatus: ~A~%" (-> this status))
+  (format #t "~Tpid: ~D~%" (-> this pid))
+  (format #t "~Tmain-thread: ~A~%" (-> this main-thread))
+  (format #t "~Ttop-thread: ~A~%" (-> this top-thread))
+  (format #t "~Tentity: ~A~%" (-> this entity))
+  (format #t "~Tstate: ~A~%" (-> this state))
+  (format #t "~Ttrans-hook: ~A~%" (-> this trans-hook))
+  (format #t "~Tpost-hook: ~A~%" (-> this post-hook))
+  (format #t "~Tevent-hook: ~A~%" (-> this event-hook))
+  (format #t "~Tallocated-length: ~D~%" (-> this allocated-length))
+  (format #t "~Tnext-state: ~A~%" (-> this next-state))
+  (format #t "~Theap-base: #x~X~%" (-> this heap-base))
+  (format #t "~Theap-top: #x~X~%" (-> this heap-top))
+  (format #t "~Theap-cur: #x~X~%" (-> this heap-cur))
+  (format #t "~Tstack-frame-top: ~A~%" (-> this stack-frame-top))
+  (format #t "~Theap: #<kheap @ #x~X>~%" (&-> this heap-base))
+  (format #t "~Tconnection-list: ~`'connectable`P~%" (-> this connection-list))
+  (format #t "~Tstack[0] @ #x~X~%" (-> this stack))
+  this
   )
 
 ;; definition of type precurbridgecam
 (deftype precurbridgecam (pov-camera)
   ()
-  :heap-base #x70
-  :method-count-assert 30
-  :size-assert         #xdc
-  :flag-assert         #x1e007000dc
   )
 
 ;; definition for method 3 of type precurbridgecam
-(defmethod inspect precurbridgecam ((obj precurbridgecam))
+(defmethod inspect ((this precurbridgecam))
   (let ((t9-0 (method-of-type pov-camera inspect)))
-    (t9-0 obj)
+    (t9-0 this)
     )
-  obj
+  this
   )
 
 ;; failed to figure out what this is:
@@ -668,8 +629,8 @@
   :virtual #t
   :code (behavior ()
     (ambient-hint-spawn "gamcam30" (the-as vector #f) *entity-pool* 'camera)
-    (ja :group! (-> self draw art-group data 8))
-    (ja-no-eval :group! (-> self draw art-group data 8) :num! (seek! (ja-aframe 0.0 0)) :frame-num 0.0)
+    (ja :group! junglecam-precurbridgecam-ja)
+    (ja-no-eval :group! junglecam-precurbridgecam-ja :num! (seek! (ja-aframe 0.0 0)) :frame-num 0.0)
     (until (ja-done? 0)
       (suspend)
       (ja :num! (seek! (ja-aframe 0.0 0)))
@@ -681,36 +642,28 @@
       (ja-eval)
       )
     (go-virtual pov-camera-done-playing)
-    (none)
     )
   )
 
 ;; definition of type precurbridge-span
 (deftype precurbridge-span (structure)
   ()
-  :method-count-assert 9
-  :size-assert         #x0
-  :flag-assert         #x900000000
   )
 
 ;; definition for method 3 of type precurbridge-span
-(defmethod inspect precurbridge-span ((obj precurbridge-span))
-  (format #t "[~8x] ~A~%" obj 'precurbridge-span)
-  obj
+(defmethod inspect ((this precurbridge-span))
+  (format #t "[~8x] ~A~%" this 'precurbridge-span)
+  this
   )
 
 ;; definition of type precurbridge
 (deftype precurbridge (process-drawable)
-  ((root-override    collide-shape-moving         :offset        112)
-   (smush            smush-control        :inline :offset-assert 176)
-   (base             vector               :inline :offset-assert 208)
-   (activation-point vector               :inline :offset-assert 224)
-   (span-array       precurbridge-span    8       :offset-assert 240)
+  ((root              collide-shape-moving :override)
+   (smush             smush-control         :inline)
+   (base              vector                :inline)
+   (activation-point  vector                :inline)
+   (span-array        precurbridge-span     8)
    )
-  :heap-base #xa0
-  :method-count-assert 20
-  :size-assert         #x110
-  :flag-assert         #x1400a00110
   (:states
     precurbridge-activate
     (precurbridge-active symbol)
@@ -719,15 +672,15 @@
   )
 
 ;; definition for method 3 of type precurbridge
-(defmethod inspect precurbridge ((obj precurbridge))
+(defmethod inspect ((this precurbridge))
   (let ((t9-0 (method-of-type process-drawable inspect)))
-    (t9-0 obj)
+    (t9-0 this)
     )
-  (format #t "~T~Tsmush: #<smush-control @ #x~X>~%" (-> obj smush))
-  (format #t "~T~Tbase: ~`vector`P~%" (-> obj base))
-  (format #t "~T~Tactivation-point: #<vector @ #x~X>~%" (-> obj activation-point))
-  (format #t "~T~Tspan-array[8] @ #x~X~%" (-> obj span-array))
-  obj
+  (format #t "~T~Tsmush: #<smush-control @ #x~X>~%" (-> this smush))
+  (format #t "~T~Tbase: ~`vector`P~%" (-> this base))
+  (format #t "~T~Tactivation-point: #<vector @ #x~X>~%" (-> this activation-point))
+  (format #t "~T~Tspan-array[8] @ #x~X~%" (-> this span-array))
+  this
   )
 
 ;; failed to figure out what this is:
@@ -739,15 +692,15 @@
 
 ;; failed to figure out what this is:
 (defstate precurbridge-idle (precurbridge)
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('go)
        (go precurbridge-activate)
        )
       )
     )
   :code (behavior ()
-    (ja :group! (-> self draw art-group data 3) :num! min)
+    (ja :group! precurbridge-idle-ja :num! min)
     (transform-post)
     (loop
       (when (and *target*
@@ -795,22 +748,20 @@
         )
       (suspend)
       )
-    (none)
     )
-  :post (the-as (function none :behavior precurbridge) ja-post)
+  :post ja-post
   )
 
 ;; failed to figure out what this is:
 (defstate precurbridge-activate (precurbridge)
   :exit (behavior ()
     (logior! (-> self mask) (process-mask actor-pause))
-    (none)
     )
-  :trans (the-as (function none :behavior precurbridge) rider-trans)
+  :trans rider-trans
   :code (behavior ()
     (process-entity-status! self (entity-perm-status complete) #t)
-    (sound-play "blue-eco-on" :position (the-as symbol (-> self root-override trans)))
-    (ja-no-eval :group! (-> self draw art-group data 3) :num! (seek! max 0.25) :frame-num 0.0)
+    (sound-play "blue-eco-on" :position (the-as symbol (-> self root trans)))
+    (ja-no-eval :group! precurbridge-idle-ja :num! (seek! max 0.25) :frame-num 0.0)
     (until (ja-done? 0)
       (if (rand-vu-percent? 0.1)
           (spawn-projectile-blue *target*)
@@ -819,55 +770,51 @@
       (ja :num! (seek! max 0.25))
       )
     (go precurbridge-active #f)
-    (none)
     )
-  :post (the-as (function none :behavior precurbridge) rider-post)
+  :post rider-post
   )
 
 ;; failed to figure out what this is:
 (defstate precurbridge-active (precurbridge)
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (the-as
-      object
-      (case event-type
-        (('bonk)
-         (let* ((gp-0 (the-as object (-> event param 0)))
-                (a0-2 (-> (the-as touching-shapes-entry gp-0) head))
-                (s5-0 (-> self root-override))
-                )
-           (get-touched-prim a0-2 s5-0 (the-as touching-shapes-entry gp-0))
-           ((method-of-type touching-shapes-entry get-touched-shape) (the-as touching-shapes-entry gp-0) s5-0)
-           )
-         (activate! (-> self smush) -1.0 150 600 1.0 1.0)
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
+      (('bonk)
+       (let* ((gp-0 (the-as object (-> block param 0)))
+              (a0-2 (-> (the-as touching-shapes-entry gp-0) head))
+              (s5-0 (-> self root))
+              )
+         (get-touched-prim a0-2 s5-0 (the-as touching-shapes-entry gp-0))
+         ((method-of-type touching-shapes-entry get-touched-shape) (the-as touching-shapes-entry gp-0) s5-0)
          )
-        )
+       (activate! (-> self smush) -1.0 150 600 1.0 1.0)
+       )
       )
     )
-  :trans (the-as (function none :behavior precurbridge) rider-trans)
+  :trans rider-trans
   :code (behavior ((arg0 symbol))
     (set! (-> self draw bounds w) 81920.0)
     (when arg0
       (ja-channel-set! 1)
-      (ja :group! (-> self draw art-group data 4) :num! min)
+      (ja :group! precurbridge-float-ja :num! min)
       )
     (ja-post)
-    (update-transforms! (-> self root-override))
+    (update-transforms! (-> self root))
     (logior! (-> self mask) (process-mask actor-pause))
     (loop
       (if (not (movie?))
           (logior! (-> self mask) (process-mask platform))
           )
       (cond
-        ((and *target* (>= 61440.0 (vector-vector-distance (-> self root-override trans) (-> *target* control trans))))
-         (when (not (ja-group? (-> self draw art-group data 5)))
+        ((and *target* (>= 61440.0 (vector-vector-distance (-> self root trans) (-> *target* control trans))))
+         (when (not (ja-group? precurbridge-static-ja))
            (ja-channel-push! 1 (seconds 0.2))
-           (ja :group! (-> self draw art-group data 5) :num! min)
+           (ja :group! precurbridge-static-ja :num! min)
            )
          )
         (else
-          (when (not (ja-group? (-> self draw art-group data 4)))
+          (when (not (ja-group? precurbridge-float-ja))
             (ja-channel-push! 1 (seconds 0.2))
-            (ja :group! (-> self draw art-group data 4) :num! min)
+            (ja :group! precurbridge-float-ja :num! min)
             )
           )
         )
@@ -875,18 +822,17 @@
       (ja :num! (loop! 0.4))
       (suspend)
       )
-    (none)
     )
-  :post (the-as (function none :behavior precurbridge) rider-post)
+  :post rider-post
   )
 
 ;; definition for method 11 of type precurbridge
 ;; INFO: Used lq/sq
 ;; INFO: Return type mismatch object vs none.
-(defmethod init-from-entity! precurbridge ((obj precurbridge) (arg0 entity-actor))
-  (stack-size-set! (-> obj main-thread) 512)
-  (logior! (-> obj mask) (process-mask platform))
-  (let ((s4-0 (new 'process 'collide-shape-moving obj (collide-list-enum hit-by-player))))
+(defmethod init-from-entity! ((this precurbridge) (arg0 entity-actor))
+  (stack-size-set! (-> this main-thread) 512)
+  (logior! (-> this mask) (process-mask platform))
+  (let ((s4-0 (new 'process 'collide-shape-moving this (collide-list-enum hit-by-player))))
     (set! (-> s4-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s4-0 reaction) default-collision-reaction)
     (set! (-> s4-0 no-reaction)
@@ -1047,19 +993,19 @@
       )
     (set! (-> s4-0 nav-radius) (* 0.75 (-> s4-0 root-prim local-sphere w)))
     (backup-collide-with-as s4-0)
-    (set! (-> obj root-override) s4-0)
+    (set! (-> this root) s4-0)
     )
-  (process-drawable-from-entity! obj arg0)
-  (set-vector! (-> obj activation-point) 1765785.6 61440.0 -1279180.8 1.0)
-  (initialize-skeleton obj *precurbridge-sg* '())
-  (logior! (-> obj skel status) (janim-status inited))
+  (process-drawable-from-entity! this arg0)
+  (set-vector! (-> this activation-point) 1765785.6 61440.0 -1279180.8 1.0)
+  (initialize-skeleton this *precurbridge-sg* '())
+  (logior! (-> this skel status) (janim-status inited))
   (ja-post)
-  (update-transforms! (-> obj root-override))
-  (set! (-> obj base quad) (-> obj root-override trans quad))
-  (set! (-> obj sound) (new 'process 'ambient-sound arg0 (-> obj root-override trans)))
+  (update-transforms! (-> this root))
+  (set! (-> this base quad) (-> this root trans quad))
+  (set! (-> this sound) (new 'process 'ambient-sound arg0 (-> this root trans)))
   (cond
-    ((and (-> obj entity) (logtest? (-> obj entity extra perm status) (entity-perm-status complete)))
-     (logclear! (-> obj mask) (process-mask actor-pause))
+    ((and (-> this entity) (logtest? (-> this entity extra perm status) (entity-perm-status complete)))
+     (logclear! (-> this mask) (process-mask actor-pause))
      (go precurbridge-active #t)
      )
     (else
@@ -1071,13 +1017,9 @@
 
 ;; definition of type maindoor
 (deftype maindoor (process-drawable)
-  ((root-override collide-shape         :offset        112)
-   (thresh        vector        :inline :offset-assert 176)
+  ((root    collide-shape :override)
+   (thresh  vector         :inline)
    )
-  :heap-base #x50
-  :method-count-assert 20
-  :size-assert         #xc0
-  :flag-assert         #x14005000c0
   (:states
     (maindoor-closed symbol)
     (maindoor-open symbol)
@@ -1085,12 +1027,12 @@
   )
 
 ;; definition for method 3 of type maindoor
-(defmethod inspect maindoor ((obj maindoor))
+(defmethod inspect ((this maindoor))
   (let ((t9-0 (method-of-type process-drawable inspect)))
-    (t9-0 obj)
+    (t9-0 this)
     )
-  (format #t "~T~Tthresh: ~`vector`P~%" (-> obj thresh))
-  obj
+  (format #t "~T~Tthresh: ~`vector`P~%" (-> this thresh))
+  this
   )
 
 ;; failed to figure out what this is:
@@ -1108,20 +1050,20 @@
         (ja :num-func num-func-identity :frame-num 0.0)
         )
     (suspend)
-    (update-transforms! (-> self root-override))
+    (update-transforms! (-> self root))
     (loop
       (when (or (and (-> self entity) (logtest? (-> self entity extra perm status) (entity-perm-status complete)))
                 (and (and *target*
-                          (>= (-> self thresh w) (vector-vector-distance (-> self root-override trans) (-> *target* control trans)))
+                          (>= (-> self thresh w) (vector-vector-distance (-> self root trans) (-> *target* control trans)))
                           )
                      (send-event *target* 'query 'powerup (pickup-type eco-blue))
                      )
                 )
-        (sound-play "blue-eco-on" :position (the-as symbol (-> self root-override trans)))
+        (sound-play "blue-eco-on" :position (the-as symbol (-> self root trans)))
         (go maindoor-open #f)
         )
       (if (and *target*
-               (>= (-> self thresh w) (vector-vector-distance (-> self root-override trans) (-> *target* control trans)))
+               (>= (-> self thresh w) (vector-vector-distance (-> self root trans) (-> *target* control trans)))
                )
           (level-hint-spawn
             (text-id sidekick-hint-rounddoor)
@@ -1132,14 +1074,13 @@
             )
           )
       (when (ja-min? 0)
-        (set! (-> self root-override root-prim prim-core action) (collide-action solid))
-        (set! (-> self root-override root-prim prim-core offense) (collide-offense indestructible))
+        (set! (-> self root root-prim prim-core action) (collide-action solid))
+        (set! (-> self root root-prim prim-core offense) (collide-offense indestructible))
         )
       (ja :num! (seek! 0.0))
       (ja-post)
       (suspend)
       )
-    (none)
     )
   )
 
@@ -1152,8 +1093,8 @@
     (if arg0
         (ja :num-func num-func-identity :frame-num max)
         )
-    (set! (-> self root-override root-prim prim-core action) (collide-action))
-    (set! (-> self root-override root-prim prim-core offense) (collide-offense no-offense))
+    (set! (-> self root root-prim prim-core action) (collide-action))
+    (set! (-> self root root-prim prim-core offense) (collide-offense no-offense))
     (while (not (ja-max? 0))
       (ja :num! (seek! max 2.0))
       (if (and (not arg0) (rand-vu-percent? 0.2))
@@ -1165,15 +1106,14 @@
     (loop
       (suspend)
       )
-    (none)
     )
-  :post (the-as (function none :behavior maindoor) ja-post)
+  :post ja-post
   )
 
 ;; definition for method 11 of type maindoor
 ;; INFO: Return type mismatch object vs none.
-(defmethod init-from-entity! maindoor ((obj maindoor) (arg0 entity-actor))
-  (let ((s4-0 (new 'process 'collide-shape obj (collide-list-enum hit-by-others))))
+(defmethod init-from-entity! ((this maindoor) (arg0 entity-actor))
+  (let ((s4-0 (new 'process 'collide-shape this (collide-list-enum hit-by-others))))
     (let ((s3-0 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 0) (the-as uint 0))))
       (set! (-> s3-0 prim-core collide-as) (collide-kind wall-object))
       (set! (-> s3-0 collide-with) (collide-kind target))
@@ -1185,15 +1125,15 @@
       )
     (set! (-> s4-0 nav-radius) (* 0.75 (-> s4-0 root-prim local-sphere w)))
     (backup-collide-with-as s4-0)
-    (set! (-> obj root-override) s4-0)
+    (set! (-> this root) s4-0)
     )
-  (process-drawable-from-entity! obj arg0)
-  (initialize-skeleton obj *maindoor-sg* '())
-  (update-transforms! (-> obj root-override))
-  (set! (-> obj thresh w) 61440.0)
-  (if (or (and (-> obj entity) (logtest? (-> obj entity extra perm status) (entity-perm-status complete)))
+  (process-drawable-from-entity! this arg0)
+  (initialize-skeleton this *maindoor-sg* '())
+  (update-transforms! (-> this root))
+  (set! (-> this thresh w) 61440.0)
+  (if (or (and (-> this entity) (logtest? (-> this entity extra perm status) (entity-perm-status complete)))
           (and (and *target*
-                    (>= (-> obj thresh w) (vector-vector-distance (-> obj root-override trans) (-> *target* control trans)))
+                    (>= (-> this thresh w) (vector-vector-distance (-> this root trans) (-> *target* control trans)))
                     )
                (send-event *target* 'query 'powerup (pickup-type eco-blue))
                )
@@ -1207,18 +1147,14 @@
 ;; definition of type sidedoor
 (deftype sidedoor (eco-door)
   ()
-  :heap-base #xa0
-  :method-count-assert 27
-  :size-assert         #x104
-  :flag-assert         #x1b00a00104
   )
 
 ;; definition for method 3 of type sidedoor
-(defmethod inspect sidedoor ((obj sidedoor))
+(defmethod inspect ((this sidedoor))
   (let ((t9-0 (method-of-type eco-door inspect)))
-    (t9-0 obj)
+    (t9-0 this)
     )
-  obj
+  this
   )
 
 ;; failed to figure out what this is:
@@ -1229,8 +1165,8 @@
 
 ;; definition for method 24 of type sidedoor
 ;; INFO: Return type mismatch int vs none.
-(defmethod eco-door-method-24 sidedoor ((obj sidedoor))
-  (let ((s5-0 (new 'process 'collide-shape obj (collide-list-enum hit-by-player))))
+(defmethod eco-door-method-24 ((this sidedoor))
+  (let ((s5-0 (new 'process 'collide-shape this (collide-list-enum hit-by-player))))
     (let ((s4-0 (new 'process 'collide-shape-prim-mesh s5-0 (the-as uint 0) (the-as uint 0))))
       (set! (-> s4-0 prim-core collide-as) (collide-kind wall-object))
       (set! (-> s4-0 collide-with) (collide-kind target))
@@ -1242,7 +1178,7 @@
       )
     (set! (-> s5-0 nav-radius) (* 0.75 (-> s5-0 root-prim local-sphere w)))
     (backup-collide-with-as s5-0)
-    (set! (-> obj root-override) s5-0)
+    (set! (-> this root) s5-0)
     )
   0
   (none)
@@ -1250,51 +1186,43 @@
 
 ;; definition for method 25 of type sidedoor
 ;; INFO: Return type mismatch int vs none.
-(defmethod eco-door-method-25 sidedoor ((obj sidedoor))
-  (initialize-skeleton obj *sidedoor-sg* '())
-  (set! (-> obj open-distance) 22528.0)
-  (set! (-> obj close-distance) 61440.0)
-  (set! (-> obj speed) 6.0)
-  (update-transforms! (-> obj root-override))
+(defmethod eco-door-method-25 ((this sidedoor))
+  (initialize-skeleton this *sidedoor-sg* '())
+  (set! (-> this open-distance) 22528.0)
+  (set! (-> this close-distance) 61440.0)
+  (set! (-> this speed) 6.0)
+  (update-transforms! (-> this root))
   0
   (none)
   )
 
 ;; definition of type jngpusher
 (deftype jngpusher (process-drawable)
-  ((root-override trsqv                      :offset        112)
-   (sync          sync-info          :inline :offset-assert 176)
-   (back-prim     collide-shape-prim         :offset-assert 184)
+  ((root       trsqv     :override)
+   (sync       sync-info  :inline)
+   (back-prim  collide-shape-prim)
    )
-  :heap-base #x50
-  :method-count-assert 20
-  :size-assert         #xbc
-  :flag-assert         #x14005000bc
   (:states
     jngpusher-idle
     )
   )
 
 ;; definition for method 3 of type jngpusher
-(defmethod inspect jngpusher ((obj jngpusher))
+(defmethod inspect ((this jngpusher))
   (let ((t9-0 (method-of-type process-drawable inspect)))
-    (t9-0 obj)
+    (t9-0 this)
     )
-  (format #t "~T~Tsync: #<sync-info @ #x~X>~%" (-> obj sync))
-  (format #t "~T~Tback-prim: ~A~%" (-> obj back-prim))
-  obj
+  (format #t "~T~Tsync: #<sync-info @ #x~X>~%" (-> this sync))
+  (format #t "~T~Tback-prim: ~A~%" (-> this back-prim))
+  this
   )
 
 ;; definition for method 7 of type jngpusher
-;; INFO: Return type mismatch process-drawable vs jngpusher.
-(defmethod relocate jngpusher ((obj jngpusher) (arg0 int))
-  (if (nonzero? (-> obj back-prim))
-      (&+! (-> obj back-prim) arg0)
+(defmethod relocate ((this jngpusher) (arg0 int))
+  (if (nonzero? (-> this back-prim))
+      (&+! (-> this back-prim) arg0)
       )
-  (the-as
-    jngpusher
-    ((the-as (function process-drawable int process-drawable) (find-parent-method jngpusher 7)) obj arg0)
-    )
+  (call-parent-method this arg0)
   )
 
 ;; failed to figure out what this is:
@@ -1302,7 +1230,7 @@
 
 ;; failed to figure out what this is:
 (defstate jngpusher-idle (jngpusher)
-  :trans (the-as (function none :behavior jngpusher) rider-trans)
+  :trans rider-trans
   :code (behavior ()
     (loop
       (ja :num-func num-func-identity
@@ -1321,16 +1249,15 @@
         )
       (suspend)
       )
-    (none)
     )
-  :post (the-as (function none :behavior jngpusher) rider-post)
+  :post rider-post
   )
 
 ;; definition for method 11 of type jngpusher
 ;; INFO: Return type mismatch object vs none.
-(defmethod init-from-entity! jngpusher ((obj jngpusher) (arg0 entity-actor))
-  (logior! (-> obj mask) (process-mask enemy platform))
-  (let ((s4-0 (new 'process 'collide-shape-moving obj (collide-list-enum hit-by-player))))
+(defmethod init-from-entity! ((this jngpusher) (arg0 entity-actor))
+  (logior! (-> this mask) (process-mask enemy platform))
+  (let ((s4-0 (new 'process 'collide-shape-moving this (collide-list-enum hit-by-player))))
     (set! (-> s4-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s4-0 reaction) default-collision-reaction)
     (set! (-> s4-0 no-reaction)
@@ -1360,16 +1287,16 @@
         (set! (-> s2-1 transform-index) 4)
         (set-vector! (-> s2-1 local-sphere) 36864.0 0.0 0.0 20480.0)
         (append-prim s3-0 s2-1)
-        (set! (-> obj back-prim) s2-1)
+        (set! (-> this back-prim) s2-1)
         )
       )
     (set! (-> s4-0 nav-radius) (* 0.75 (-> s4-0 root-prim local-sphere w)))
     (backup-collide-with-as s4-0)
-    (set! (-> obj root) s4-0)
+    (set! (-> this root) s4-0)
     )
-  (process-drawable-from-entity! obj arg0)
-  (initialize-skeleton obj *jngpusher-sg* '())
-  (load-params! (-> obj sync) obj (the-as uint 1500) 0.0 0.15 0.15)
+  (process-drawable-from-entity! this arg0)
+  (initialize-skeleton this *jngpusher-sg* '())
+  (load-params! (-> this sync) this (the-as uint 1500) 0.0 0.15 0.15)
   (go jngpusher-idle)
   (none)
   )
@@ -1377,18 +1304,14 @@
 ;; definition of type jungle-water
 (deftype jungle-water (water-anim)
   ()
-  :heap-base #x70
-  :method-count-assert 30
-  :size-assert         #xdc
-  :flag-assert         #x1e007000dc
   )
 
 ;; definition for method 3 of type jungle-water
-(defmethod inspect jungle-water ((obj jungle-water))
+(defmethod inspect ((this jungle-water))
   (let ((t9-0 (method-of-type water-anim inspect)))
-    (t9-0 obj)
+    (t9-0 this)
     )
-  obj
+  this
   )
 
 ;; definition for symbol ripple-for-jungle-water, type ripple-wave-set
@@ -1407,13 +1330,13 @@
 
 ;; definition for method 22 of type jungle-water
 ;; INFO: Return type mismatch ripple-wave-set vs none.
-(defmethod water-vol-method-22 jungle-water ((obj jungle-water))
+(defmethod water-vol-method-22 ((this jungle-water))
   (let ((t9-0 (method-of-type water-anim water-vol-method-22)))
-    (t9-0 obj)
+    (t9-0 this)
     )
   (let ((v1-2 (new 'process 'ripple-control)))
-    (set! (-> obj draw ripple) v1-2)
-    (set-vector! (-> obj draw color-mult) 0.01 0.45 0.5 0.75)
+    (set! (-> this draw ripple) v1-2)
+    (set-vector! (-> this draw color-mult) 0.01 0.45 0.5 0.75)
     (set! (-> v1-2 global-scale) 3072.0)
     (set! (-> v1-2 close-fade-dist) 163840.0)
     (set! (-> v1-2 far-fade-dist) 245760.0)

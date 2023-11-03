@@ -8,15 +8,11 @@
 ;; DECOMP BEGINS
 
 (deftype fort-twist-rail (process-drawable)
-  ((sync      sync-eased :inline :offset-assert 200)
-   (init-quat quaternion :inline :offset-assert 256)
+  ((sync       sync-eased  :inline)
+   (init-quat  quaternion  :inline)
    )
-  :heap-base #x90
-  :method-count-assert 21
-  :size-assert         #x110
-  :flag-assert         #x1500900110
-  (:methods
-    (idle () _type_ :state 20)
+  (:state-methods
+    idle
     )
   )
 
@@ -28,26 +24,25 @@
 
 (defstate idle (fort-twist-rail)
   :virtual #t
-  :trans (the-as (function none :behavior fort-twist-rail) rider-trans)
-  :code (the-as (function none :behavior fort-twist-rail) sleep-code)
+  :trans rider-trans
+  :code sleep-code
   :post (behavior ()
     (let ((f0-0 (get-norm! (-> self sync) 0)))
       (quaternion-rotate-y! (-> self root quat) (-> self init-quat) (+ -2730.6667 (* 5461.3335 f0-0)))
       )
     (rider-post)
-    (none)
     )
   )
 
 ;; WARN: Return type mismatch object vs none.
-(defmethod init-from-entity! fort-twist-rail ((obj fort-twist-rail) (arg0 entity-actor))
+(defmethod init-from-entity! ((this fort-twist-rail) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
 - stack size
 - collision information
 - loading the skeleton group / bones
 - sounds"
-  (let ((s4-0 (new 'process 'collide-shape-moving obj (collide-list-enum usually-hit-by-player))))
+  (let ((s4-0 (new 'process 'collide-shape-moving this (collide-list-enum usually-hit-by-player))))
     (set! (-> s4-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s4-0 reaction) cshape-reaction-default)
     (set! (-> s4-0 no-reaction)
@@ -82,15 +77,15 @@ This commonly includes things such as:
       (set! (-> s4-0 backup-collide-as) (-> v1-20 prim-core collide-as))
       (set! (-> s4-0 backup-collide-with) (-> v1-20 prim-core collide-with))
       )
-    (set! (-> obj root) s4-0)
+    (set! (-> this root) s4-0)
     )
-  (process-drawable-from-entity! obj arg0)
+  (process-drawable-from-entity! this arg0)
   (initialize-skeleton
-    obj
+    this
     (the-as skeleton-group (art-group-get-by-name *level* "skel-fort-twist-rail" (the-as (pointer uint32) #f)))
     (the-as pair 0)
     )
-  (quaternion-copy! (-> obj init-quat) (-> obj root quat))
+  (quaternion-copy! (-> this init-quat) (-> this root quat))
   (let ((a1-14 (new 'stack-no-clear 'sync-info-params)))
     (let ((v1-26 0))
       (if #t
@@ -100,41 +95,37 @@ This commonly includes things such as:
       (set! (-> a1-14 sync-flags) (the-as sync-flags v1-26))
       )
     (set! (-> a1-14 period) (the-as uint 900))
-    (set! (-> a1-14 entity) (-> obj entity))
+    (set! (-> a1-14 entity) (-> this entity))
     (set! (-> a1-14 percent) 0.0)
     (set! (-> a1-14 ease-in) 0.15)
     (set! (-> a1-14 ease-out) 0.15)
     (set! (-> a1-14 pause-in) 0.0)
     (set! (-> a1-14 pause-out) 0.0)
-    (initialize! (-> obj sync) a1-14)
+    (initialize! (-> this sync) a1-14)
     )
-  (let ((a0-29 (-> obj skel root-channel 0)))
-    (set! (-> a0-29 frame-group) (the-as art-joint-anim (-> obj draw art-group data 3)))
+  (let ((a0-29 (-> this skel root-channel 0)))
+    (set! (-> a0-29 frame-group) (the-as art-joint-anim (-> this draw art-group data 3)))
     (set! (-> a0-29 frame-num) 0.0)
-    (joint-control-channel-group! a0-29 (the-as art-joint-anim (-> obj draw art-group data 3)) num-func-identity)
+    (joint-control-channel-group! a0-29 (the-as art-joint-anim (-> this draw art-group data 3)) num-func-identity)
     )
   (transform-post)
-  (go (method-of-object obj idle))
+  (go (method-of-object this idle))
   (none)
   )
 
 (deftype fort-elec-belt-inst (process-drawable)
-  ((l-spec    lightning-spec               :offset-assert 200)
-   (l-bolt    lightning-control            :offset-assert 204)
-   (points    vector            17 :inline :offset-assert 208)
-   (path-u    float                        :offset-assert 480)
-   (path-du   float                        :offset-assert 484)
-   (attack-id uint32                       :offset-assert 488)
-   (sound-id  sound-id                     :offset-assert 492)
+  ((l-spec     lightning-spec)
+   (l-bolt     lightning-control)
+   (points     vector  17 :inline)
+   (path-u     float)
+   (path-du    float)
+   (attack-id  uint32)
+   (sound-id   sound-id)
    )
-  :heap-base #x170
-  :method-count-assert 23
-  :size-assert         #x1f0
-  :flag-assert         #x17017001f0
-  (:methods
-    (idle () _type_ :state 20)
-    (running () _type_ :state 21)
-    (die () _type_ :state 22)
+  (:state-methods
+    idle
+    running
+    die
     )
   )
 
@@ -167,7 +158,6 @@ This commonly includes things such as:
       (set! (-> v1-0 state mode) (the-as lightning-mode a0-0))
       )
     (go-virtual running)
-    (none)
     )
   :post (behavior ()
     (let ((a1-0 (new 'stack-no-clear 'event-message-block)))
@@ -180,9 +170,8 @@ This commonly includes things such as:
         (set! (-> self root trans quad) (-> v1-7 quad))
         )
       )
-    (+! (-> self path-u) (* (-> self path-du) (-> self clock seconds-per-frame)))
+    (+! (-> self path-u) (* (-> self path-du) (seconds-per-frame)))
     (ja-post)
-    (none)
     )
   )
 
@@ -190,15 +179,13 @@ This commonly includes things such as:
   :virtual #t
   :exit (behavior ()
     (sound-stop (-> self sound-id))
-    (none)
     )
   :trans (behavior ()
     (if (>= (-> self path-u) 1.0)
         (go-virtual die)
         )
-    (none)
     )
-  :code (the-as (function none :behavior fort-elec-belt-inst) sleep-code)
+  :code sleep-code
   :post (behavior ()
     (local-vars
       (sv-1696
@@ -216,9 +203,9 @@ This commonly includes things such as:
         (set! (-> self root trans quad) (-> v1-7 quad))
         )
       )
-    (+! (-> self path-u) (* (-> self path-du) (-> self clock seconds-per-frame)))
-    (let ((s3-0 (vector<-cspace! (new 'stack-no-clear 'vector) (-> self node-list data 4)))
-          (s2-0 (vector<-cspace! (new 'stack-no-clear 'vector) (-> self node-list data 5)))
+    (+! (-> self path-u) (* (-> self path-du) (seconds-per-frame)))
+    (let ((s3-0 (vector<-cspace! (new 'stack-no-clear 'vector) (joint-node fort-elec-belt-lod0-jg raya_)))
+          (s2-0 (vector<-cspace! (new 'stack-no-clear 'vector) (joint-node fort-elec-belt-lod0-jg rayb_)))
           )
       (let ((t2-0 (new 'stack-no-clear 'vector)))
         (vector+! t2-0 s3-0 s2-0)
@@ -341,21 +328,13 @@ This commonly includes things such as:
                     (-> s2-4 ppointer)
                     )
                   )
-                (let ((v1-68 (vector-reset! (new 'stack-no-clear 'vector)))
-                      (a1-28 (new 'stack-no-clear 'event-message-block))
-                      )
-                  (set! (-> a1-28 from) (process->ppointer self))
-                  (set! (-> a1-28 num-params) 2)
-                  (set! (-> a1-28 message) 'attack)
-                  (set! (-> a1-28 param 0) (the-as uint #f))
-                  (let ((a0-50 (new 'static 'attack-info :mask (attack-info-mask vector invinc-time shove-up id))))
-                    (set! (-> a0-50 id) (-> self attack-id))
-                    (set! (-> a0-50 invinc-time) (seconds 3))
-                    (set! (-> a0-50 vector quad) (-> v1-68 quad))
-                    (set! (-> a0-50 shove-up) 12288.0)
-                    (set! (-> a1-28 param 1) (the-as uint a0-50))
+                (let ((v1-68 (vector-reset! (new 'stack-no-clear 'vector))))
+                  (send-event
+                    (-> s3-3 cshape process)
+                    'attack
+                    #f
+                    (static-attack-info ((id (-> self attack-id)) (invinc-time (seconds 3)) (vector v1-68) (shove-up (meters 3))))
                     )
-                  (send-event-function (-> s3-3 cshape process) a1-28)
                   )
                 )
               )
@@ -365,7 +344,6 @@ This commonly includes things such as:
         )
       )
     (ja-post)
-    (none)
     )
   )
 
@@ -392,21 +370,20 @@ This commonly includes things such as:
       )
     (suspend)
     (cleanup-for-death self)
-    (none)
     )
   )
 
 ;; WARN: Return type mismatch process-drawable vs fort-elec-belt-inst.
-(defmethod relocate fort-elec-belt-inst ((obj fort-elec-belt-inst) (arg0 int))
-  (if (nonzero? (-> obj l-bolt))
-      (&+! (-> obj l-bolt) arg0)
+(defmethod relocate ((this fort-elec-belt-inst) (arg0 int))
+  (if (nonzero? (-> this l-bolt))
+      (&+! (-> this l-bolt) arg0)
       )
-  (the-as fort-elec-belt-inst ((method-of-type process-drawable relocate) obj arg0))
+  (the-as fort-elec-belt-inst ((method-of-type process-drawable relocate) this arg0))
   )
 
-(defmethod deactivate fort-elec-belt-inst ((obj fort-elec-belt-inst))
-  (sound-stop (-> obj sound-id))
-  ((the-as (function process-drawable none) (find-parent-method fort-elec-belt-inst 10)) obj)
+(defmethod deactivate ((this fort-elec-belt-inst))
+  (sound-stop (-> this sound-id))
+  (call-parent-method this)
   (none)
   )
 
@@ -447,46 +424,43 @@ This commonly includes things such as:
   (set! (-> self l-spec) arg3)
   (set! (-> self attack-id) arg4)
   (set! (-> self sound-id) (new-sound-id))
-  (ja-no-eval :group! (-> self draw art-group data 2) :num! zero)
+  (ja-no-eval :group! fort-elec-belt-idle-ja :num! zero)
   (ja-post)
   (go-virtual idle)
   (none)
   )
 
 (deftype fort-elec-belt (process)
-  ((l-spec          lightning-spec         :offset-assert 128)
-   (next-spawn-time time-frame             :offset-assert 136)
-   (path            path-control           :offset-assert 144)
-   (init-quat       quaternion     :inline :offset-assert 160)
-   (sync            sync-linear    :inline :offset-assert 176)
-   (attack-id       uint32                 :offset-assert 192)
-   (path-du         float                  :offset-assert 196)
+  ((l-spec           lightning-spec)
+   (next-spawn-time  time-frame)
+   (path             path-control)
+   (init-quat        quaternion   :inline)
+   (sync             sync-linear  :inline)
+   (attack-id        uint32)
+   (path-du          float)
    )
-  :heap-base #x50
-  :method-count-assert 16
-  :size-assert         #xc8
-  :flag-assert         #x10005000c8
+  (:state-methods
+    idle
+    )
   (:methods
-    (idle () _type_ :state 14)
-    (fort-elec-belt-method-15 (_type_) none 15)
+    (fort-elec-belt-method-15 (_type_) none)
     )
   )
 
 
 (defstate idle (fort-elec-belt)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (the-as object (case event-type
-                     (('get-point-norm)
-                      (get-point-at-percent-along-path!
-                        (-> self path)
-                        (the-as vector (-> event param 0))
-                        (the-as float (-> event param 1))
-                        'interp
-                        )
-                      )
-                     )
-            )
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
+      (('get-point-norm)
+       (get-point-at-percent-along-path!
+         (-> self path)
+         (the-as vector (-> block param 0))
+         (the-as float (-> block param 1))
+         'interp
+         )
+       )
+      )
     )
   :trans (behavior ()
     (set-forrescb-electricity-scale! 1.0 0)
@@ -502,15 +476,14 @@ This commonly includes things such as:
         )
       (set! (-> self next-spawn-time) (get-timeframe-offset! (-> self sync) 0))
       )
-    (none)
     )
-  :code (the-as (function none :behavior fort-elec-belt) sleep-code)
+  :code sleep-code
   )
 
 ;; WARN: Return type mismatch symbol vs none.
-(defmethod fort-elec-belt-method-15 fort-elec-belt ((obj fort-elec-belt))
-  (let* ((f28-0 (total-distance (-> obj path)))
-         (s5-0 (-> obj sync))
+(defmethod fort-elec-belt-method-15 ((this fort-elec-belt))
+  (let* ((f28-0 (total-distance (-> this path)))
+         (s5-0 (-> this sync))
          (f26-0 81.92)
          (a0-3 (- (current-time) (get-timeframe-offset! s5-0 0)))
          (v1-6 (-> s5-0 period))
@@ -521,12 +494,12 @@ This commonly includes things such as:
       (if (>= f30-0 0.0)
           (process-spawn
             fort-elec-belt-inst
-            (-> obj init-quat)
+            (-> this init-quat)
             f30-0
-            (-> obj path-du)
-            (-> obj l-spec)
-            (-> obj attack-id)
-            :to obj
+            (-> this path-du)
+            (-> this l-spec)
+            (-> this attack-id)
+            :to this
             )
           )
       (+! f30-0 f28-1)
@@ -536,15 +509,15 @@ This commonly includes things such as:
   )
 
 ;; WARN: Return type mismatch process vs fort-elec-belt.
-(defmethod relocate fort-elec-belt ((obj fort-elec-belt) (arg0 int))
-  (if (nonzero? (-> obj path))
-      (&+! (-> obj path) arg0)
+(defmethod relocate ((this fort-elec-belt) (arg0 int))
+  (if (nonzero? (-> this path))
+      (&+! (-> this path) arg0)
       )
-  (the-as fort-elec-belt ((method-of-type process relocate) obj arg0))
+  (the-as fort-elec-belt ((method-of-type process relocate) this arg0))
   )
 
 ;; WARN: Return type mismatch object vs none.
-(defmethod init-from-entity! fort-elec-belt ((obj fort-elec-belt) (arg0 entity-actor))
+(defmethod init-from-entity! ((this fort-elec-belt) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
 - stack size
@@ -552,7 +525,7 @@ This commonly includes things such as:
 - loading the skeleton group / bones
 - sounds"
   (local-vars (sv-64 int))
-  (quaternion-copy! (-> obj init-quat) (-> arg0 quat))
+  (quaternion-copy! (-> this init-quat) (-> arg0 quat))
   (let ((s5-0 (new 'stack-no-clear 'sync-info-params)))
     (let ((s3-0 1200))
       0.0
@@ -574,50 +547,46 @@ This commonly includes things such as:
       (set! (-> s5-0 period) (the-as uint s3-0))
       )
     (set! (-> s5-0 percent) 0.0)
-    (initialize! (-> obj sync) s5-0)
+    (initialize! (-> this sync) s5-0)
     )
-  (set! (-> obj l-spec) (new 'static 'lightning-spec
-                          :name #f
-                          :flags (lightning-spec-flags lsf2)
-                          :rand-func #x2
-                          :start-color (new 'static 'rgba :r #xff :g #xff :b #xff :a #x80)
-                          :end-color (new 'static 'rgba :a #x80)
-                          :fade-to-color (new 'static 'rgba :r #xbf :b #x8f :a #x5)
-                          :fade-start-factor 0.2
-                          :fade-time 120.0
-                          :texture (new 'static 'texture-id :index #x83 :page #xc)
-                          :reduction 0.72
-                          :num-points 17
-                          :box-size 4997.12
-                          :merge-factor 0.32
-                          :merge-count 2
-                          :radius 7372.8
-                          :duration -1.0
-                          :sound #f
-                          )
+  (set! (-> this l-spec) (new 'static 'lightning-spec
+                           :name #f
+                           :flags (lightning-spec-flags lsf2)
+                           :rand-func #x2
+                           :start-color (new 'static 'rgba :r #xff :g #xff :b #xff :a #x80)
+                           :end-color (new 'static 'rgba :a #x80)
+                           :fade-to-color (new 'static 'rgba :r #xbf :b #x8f :a #x5)
+                           :fade-start-factor 0.2
+                           :fade-time 120.0
+                           :texture (new 'static 'texture-id :index #x83 :page #xc)
+                           :reduction 0.72
+                           :num-points 17
+                           :box-size 4997.12
+                           :merge-factor 0.32
+                           :merge-count 2
+                           :radius 7372.8
+                           :duration -1.0
+                           :sound #f
+                           )
         )
-  (set! (-> obj path) (new 'process 'path-control obj 'path 0.0 (the-as entity #f) #f))
-  (logior! (-> obj path flags) (path-control-flag display draw-line draw-point draw-text))
-  (set! (-> obj path-du) (/ 24576.0 (total-distance (-> obj path))))
+  (set! (-> this path) (new 'process 'path-control this 'path 0.0 (the-as entity #f) #f))
+  (logior! (-> this path flags) (path-control-flag display draw-line draw-point draw-text))
+  (set! (-> this path-du) (/ 24576.0 (total-distance (-> this path))))
   (let* ((v1-14 *game-info*)
          (a0-15 (+ (-> v1-14 attack-id) 1))
          )
     (set! (-> v1-14 attack-id) a0-15)
-    (set! (-> obj attack-id) a0-15)
+    (set! (-> this attack-id) a0-15)
     )
-  (fort-elec-belt-method-15 obj)
-  (set! (-> obj next-spawn-time) (get-timeframe-offset! (-> obj sync) 0))
-  (logclear! (-> obj mask) (process-mask actor-pause))
-  (go (method-of-object obj idle))
+  (fort-elec-belt-method-15 this)
+  (set! (-> this next-spawn-time) (get-timeframe-offset! (-> this sync) 0))
+  (logclear! (-> this mask) (process-mask actor-pause))
+  (go (method-of-object this idle))
   (none)
   )
 
 (deftype fort-conveyor (conveyor)
   ()
-  :heap-base #x80
-  :method-count-assert 28
-  :size-assert         #x100
-  :flag-assert         #x1c00800100
   )
 
 
@@ -626,15 +595,15 @@ This commonly includes things such as:
               :bounds (static-spherem 0 0 16 16.5)
               )
 
-(defmethod get-art-group fort-conveyor ((obj fort-conveyor))
+(defmethod get-art-group ((this fort-conveyor))
   "@returns The respective [[art-group]] for the [[conveyor]]"
   (art-group-get-by-name *level* "skel-fort-conveyor" (the-as (pointer uint32) #f))
   )
 
 ;; WARN: Return type mismatch collide-shape-moving vs none.
-(defmethod reset-root! fort-conveyor ((obj fort-conveyor))
+(defmethod reset-root! ((this fort-conveyor))
   "Re-initializes the `root` [[trsqv]]"
-  (let ((s5-0 (new 'process 'collide-shape-moving obj (collide-list-enum hit-by-player))))
+  (let ((s5-0 (new 'process 'collide-shape-moving this (collide-list-enum hit-by-player))))
     (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s5-0 reaction) cshape-reaction-default)
     (set! (-> s5-0 no-reaction)
@@ -655,33 +624,33 @@ This commonly includes things such as:
       (set! (-> s5-0 backup-collide-as) (-> v1-15 prim-core collide-as))
       (set! (-> s5-0 backup-collide-with) (-> v1-15 prim-core collide-with))
       )
-    (set! (-> obj root) s5-0)
+    (set! (-> this root) s5-0)
     )
   (none)
   )
 
 ;; WARN: Return type mismatch vector vs none.
-(defmethod init! fort-conveyor ((obj fort-conveyor))
+(defmethod init! ((this fort-conveyor))
   "Initializes defaults for things like the `speed` and `belt-radius`"
-  (set! (-> obj speed) -47104.0)
-  (set! (-> obj belt-radius) 24576.0)
-  (set! (-> obj pull-y-threshold) 4096.0)
-  (if (name= (-> obj name) "fort-conveyor-4")
-      (set-vector! (-> obj root scale) 0.8 0.0 0.657 1.0)
+  (set! (-> this speed) -47104.0)
+  (set! (-> this belt-radius) 24576.0)
+  (set! (-> this pull-y-threshold) 4096.0)
+  (if (name= (-> this name) "fort-conveyor-4")
+      (set-vector! (-> this root scale) 0.8 0.0 0.657 1.0)
       )
   (none)
   )
 
-(defmethod set-and-get-ambient-sound! fort-conveyor ((obj fort-conveyor))
+(defmethod set-and-get-ambient-sound! ((this fort-conveyor))
   "So long as [[actor-option::16]] is not set, fetch the [[ambient-sound]] for the [[conveyor]]
 and return it as well.  Otherwise, set it to `0`"
-  (let* ((s5-0 (get-point-in-path! (-> obj path) (new 'stack-no-clear 'vector) 0.0 'interp))
-         (v1-2 (get-point-in-path! (-> obj path) (new 'stack-no-clear 'vector) 1.0 'interp))
+  (let* ((s5-0 (get-point-in-path! (-> this path) (new 'stack-no-clear 'vector) 0.0 'interp))
+         (v1-2 (get-point-in-path! (-> this path) (new 'stack-no-clear 'vector) 1.0 'interp))
          (a3-3 (vector+! (new 'stack-no-clear 'vector) s5-0 v1-2))
          )
     (vector-float*! a3-3 a3-3 0.5)
     (let ((v0-2 (new 'process 'ambient-sound (static-sound-spec "fort-conveyor" :fo-max 50) a3-3)))
-      (set! (-> obj sound) v0-2)
+      (set! (-> this sound) v0-2)
       v0-2
       )
     )

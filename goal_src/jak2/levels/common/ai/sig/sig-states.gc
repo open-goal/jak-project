@@ -9,9 +9,9 @@
 
 (defstate waiting-crouched (sig)
   :virtual #t
-  :event (the-as (function process int symbol event-message-block object :behavior sig) enemy-event-handler)
+  :event enemy-event-handler
   :enter (behavior ()
-    (set! (-> self state-time) (current-time))
+    (set-time! (-> self state-time))
     (let ((v1-2 self))
       (set! (-> v1-2 enemy-flags) (the-as enemy-flag (logclear (-> v1-2 enemy-flags) (enemy-flag enemy-flag36))))
       (set! (-> v1-2 nav callback-info) *nav-enemy-null-callback-info*)
@@ -27,7 +27,6 @@
     (set! (-> self travel-anim-interp) 0.0)
     (logclear! (-> self enemy-flags) (enemy-flag enable-on-active))
     (logior! (-> self focus-status) (focus-status disable))
-    (none)
     )
   :exit (behavior ()
     (local-vars (v1-1 enemy-flag))
@@ -39,7 +38,6 @@
       )
     (set! (-> self enemy-flags) v1-1)
     (logclear! (-> self focus-status) (focus-status disable))
-    (none)
     )
   :trans (behavior ()
     (if (and (not (focus-test? self grabbed))
@@ -47,31 +45,26 @@
              )
         (go-virtual traveling)
         )
-    (none)
     )
   :code (behavior ()
     (ja-channel-push! 1 (seconds 0.2))
     (until #f
-      (ja-no-eval :group! (-> self draw art-group data 47)
-                  :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 47)) frames num-frames) -1)))
-                  :frame-num 0.0
-                  )
+      (ja-no-eval :group! sig-idle-crouch-ja :num! (seek!) :frame-num 0.0)
       (until (ja-done? 0)
         (suspend)
         (ja :num! (seek!))
         )
       )
     #f
-    (none)
     )
-  :post (the-as (function none :behavior sig) nav-enemy-simple-post)
+  :post nav-enemy-simple-post
   )
 
 (defstate waiting-far (sig)
   :virtual #t
-  :event (the-as (function process int symbol event-message-block object :behavior sig) enemy-event-handler)
+  :event enemy-event-handler
   :enter (behavior ()
-    (set! (-> self state-time) (current-time))
+    (set-time! (-> self state-time))
     (let ((v1-2 self))
       (set! (-> v1-2 enemy-flags) (the-as enemy-flag (logclear (-> v1-2 enemy-flags) (enemy-flag enemy-flag36))))
       (set! (-> v1-2 nav callback-info) *nav-enemy-null-callback-info*)
@@ -85,7 +78,6 @@
     (look-at-target! self (enemy-flag lock-focus))
     (set! (-> self skel top-anim interp) 0.0)
     (set! (-> self travel-anim-interp) 0.0)
-    (none)
     )
   :trans (behavior ()
     (bot-method-223 self #f)
@@ -118,12 +110,11 @@
              )
         (go-virtual waiting-close)
         )
-    (none)
     )
   :code (behavior ()
     (let ((v1-2 (ja-group)))
       (cond
-        ((and v1-2 (= v1-2 (-> self draw art-group data 6)))
+        ((and v1-2 (= v1-2 sig-ready0-to-idle-right0-ja))
          (ja-no-eval :num! (seek!))
          (while (not (ja-done? 0))
            (suspend)
@@ -132,7 +123,7 @@
          (ja-channel-push! 1 (seconds 0.2))
          )
         ((let ((v1-17 (ja-group)))
-           (and v1-17 (= v1-17 (-> self draw art-group data 4)))
+           (and v1-17 (= v1-17 sig-idle-right0-ja))
            )
          (ja-no-eval :num! (seek!))
          (while (not (ja-done? 0))
@@ -142,10 +133,7 @@
          )
         (else
           (ja-channel-push! 1 (seconds 0.3))
-          (ja-no-eval :group! (-> self draw art-group data 6)
-                      :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 6)) frames num-frames) -1)))
-                      :frame-num 0.0
-                      )
+          (ja-no-eval :group! sig-ready0-to-idle-right0-ja :num! (seek!) :frame-num 0.0)
           (until (ja-done? 0)
             (suspend)
             (ja :num! (seek!))
@@ -155,26 +143,22 @@
         )
       )
     (until #f
-      (ja-no-eval :group! (-> self draw art-group data 4)
-                  :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 4)) frames num-frames) -1)))
-                  :frame-num 0.0
-                  )
+      (ja-no-eval :group! sig-idle-right0-ja :num! (seek!) :frame-num 0.0)
       (until (ja-done? 0)
         (suspend)
         (ja :num! (seek!))
         )
       )
     #f
-    (none)
     )
-  :post (the-as (function none :behavior sig) nav-enemy-simple-post)
+  :post nav-enemy-simple-post
   )
 
 (defstate waiting-close (sig)
   :virtual #t
-  :event (the-as (function process int symbol event-message-block object :behavior sig) enemy-event-handler)
+  :event enemy-event-handler
   :enter (behavior ()
-    (set! (-> self state-time) (current-time))
+    (set-time! (-> self state-time))
     (let ((v1-2 self))
       (set! (-> v1-2 enemy-flags) (the-as enemy-flag (logclear (-> v1-2 enemy-flags) (enemy-flag enemy-flag36))))
       (set! (-> v1-2 nav callback-info) *nav-enemy-null-callback-info*)
@@ -188,7 +172,6 @@
     (look-at-target! self (enemy-flag lock-focus))
     (set! (-> self skel top-anim interp) 0.0)
     (set! (-> self travel-anim-interp) 0.0)
-    (none)
     )
   :trans (behavior ()
     (bot-method-223 self #f)
@@ -217,57 +200,54 @@
          )
         )
       )
-    (if (and (>= (- (current-time) (-> self state-time)) (seconds 1))
+    (if (and (time-elapsed? (-> self state-time) (seconds 1))
              (or (not (-> self focus-info fproc)) (>= (-> self focus-info bullseye-xz-dist) 102400.0))
              )
         (go-virtual waiting-far)
         )
-    (none)
     )
   :code (behavior ()
     (let* ((v1-2 (ja-group))
-           (gp-0
-             (-> self
-                 draw
-                 art-group
-                 data
-                 (cond
-                   ((and v1-2 (= v1-2 (-> self draw art-group data 4)))
-                    (ja-channel-push! 1 (seconds 0.1))
-                    (ja-no-eval :group! (-> self draw art-group data 5)
-                                :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 5)) frames num-frames) -1)))
-                                :frame-num 0.0
-                                )
-                    (until (ja-done? 0)
-                      (suspend)
-                      (ja :num! (seek!))
-                      )
-                    7
-                    )
-                   (else
-                     (let ((v1-32 (ja-group)))
-                       (cond
-                         ((and v1-32 (= v1-32 (-> self draw art-group data 5)))
-                          (ja-no-eval :num! (seek!))
-                          (while (not (ja-done? 0))
-                            (suspend)
-                            (ja-eval)
-                            )
-                          7
+           (gp-0 (-> self
+                     draw
+                     art-group
+                     data
+                     (cond
+                       ((and v1-2 (= v1-2 sig-idle-right0-ja))
+                        (ja-channel-push! 1 (seconds 0.1))
+                        (ja-no-eval :group! sig-idle-right0-to-ready0-ja :num! (seek!) :frame-num 0.0)
+                        (until (ja-done? 0)
+                          (suspend)
+                          (ja :num! (seek!))
                           )
-                         (else
-                           (let ((v1-46 (ja-group)))
-                             (cond
-                               ((and v1-46 (= v1-46 (-> self draw art-group data 7)))
-                                (ja-no-eval :num! (seek!))
-                                (while (not (ja-done? 0))
-                                  (suspend)
-                                  (ja-eval)
-                                  )
-                                7
+                        7
+                        )
+                       (else
+                         (let ((v1-32 (ja-group)))
+                           (cond
+                             ((and v1-32 (= v1-32 sig-idle-right0-to-ready0-ja))
+                              (ja-no-eval :num! (seek!))
+                              (while (not (ja-done? 0))
+                                (suspend)
+                                (ja-eval)
                                 )
-                               (else
-                                 7
+                              7
+                              )
+                             (else
+                               (let ((v1-46 (ja-group)))
+                                 (cond
+                                   ((and v1-46 (= v1-46 sig-ready0-ja))
+                                    (ja-no-eval :num! (seek!))
+                                    (while (not (ja-done? 0))
+                                      (suspend)
+                                      (ja-eval)
+                                      )
+                                    7
+                                    )
+                                   (else
+                                     7
+                                     )
+                                   )
                                  )
                                )
                              )
@@ -275,9 +255,7 @@
                          )
                        )
                      )
-                   )
                  )
-             )
            )
       (let ((v1-62 (ja-group)))
         (if (not (and v1-62 (= v1-62 gp-0)))
@@ -285,10 +263,7 @@
             )
         )
       (until #f
-        (ja-no-eval :group! gp-0
-                    :num! (seek! (the float (+ (-> (the-as art-joint-anim gp-0) frames num-frames) -1)))
-                    :frame-num 0.0
-                    )
+        (ja-no-eval :group! gp-0 :num! (seek!) :frame-num 0.0)
         (until (ja-done? 0)
           (suspend)
           (ja :num! (seek!))
@@ -296,16 +271,15 @@
         )
       )
     #f
-    (none)
     )
-  :post (the-as (function none :behavior sig) nav-enemy-simple-post)
+  :post nav-enemy-simple-post
   )
 
 (defstate waiting-turn (sig)
   :virtual #t
-  :event (the-as (function process int symbol event-message-block object :behavior sig) enemy-event-handler)
+  :event enemy-event-handler
   :enter (behavior ()
-    (set! (-> self state-time) (current-time))
+    (set-time! (-> self state-time))
     (let ((v1-2 self))
       (set! (-> v1-2 enemy-flags) (the-as enemy-flag (logclear (-> v1-2 enemy-flags) (enemy-flag enemy-flag36))))
       (set! (-> v1-2 nav callback-info) *nav-enemy-null-callback-info*)
@@ -319,7 +293,6 @@
     (look-at-target! self (enemy-flag lock-focus))
     (set! (-> self skel top-anim interp) 0.0)
     (set! (-> self travel-anim-interp) 0.0)
-    (none)
     )
   :trans (behavior ()
     (bot-method-223 self #f)
@@ -339,7 +312,6 @@
          )
         )
       )
-    (none)
     )
   :code (behavior ()
     (local-vars (s4-1 art-element) (f0-19 float))
@@ -352,12 +324,9 @@
         )
       (let ((v1-8 (ja-group)))
         (cond
-          ((and v1-8 (or (= v1-8 (-> self draw art-group data 4)) (= v1-8 (-> self draw art-group data 6))))
+          ((and v1-8 (or (= v1-8 sig-idle-right0-ja) (= v1-8 sig-ready0-to-idle-right0-ja)))
            (ja-channel-push! 1 (seconds 0.1))
-           (ja-no-eval :group! (-> self draw art-group data 5)
-                       :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 5)) frames num-frames) -1)))
-                       :frame-num 0.0
-                       )
+           (ja-no-eval :group! sig-idle-right0-to-ready0-ja :num! (seek!) :frame-num 0.0)
            (until (ja-done? 0)
              (suspend)
              (ja :num! (seek!))
@@ -367,7 +336,7 @@
           (else
             (let ((v1-38 (ja-group)))
               (cond
-                ((and v1-38 (= v1-38 (-> self draw art-group data 5)))
+                ((and v1-38 (= v1-38 sig-idle-right0-to-ready0-ja))
                  (ja-no-eval :num! (seek!))
                  (while (not (ja-done? 0))
                    (suspend)
@@ -377,7 +346,7 @@
                  )
                 (else
                   (let ((v1-53 (ja-group)))
-                    (if (and v1-53 (= v1-53 (-> self draw art-group data 7)))
+                    (if (and v1-53 (= v1-53 sig-ready0-ja))
                         (ja-channel-push! 1 (seconds 0.1))
                         (ja-channel-push! 1 (seconds 0.3))
                         )
@@ -401,10 +370,7 @@
                          )
                      )
               )
-          (ja-no-eval :group! a1-11
-                      :num! (seek! (the float (+ (-> (the-as art-joint-anim a1-11) frames num-frames) -1)) 1.3)
-                      :frame-num 0.0
-                      )
+          (ja-no-eval :group! a1-11 :num! (seek! max 1.3) :frame-num 0.0)
           )
         (until (ja-done? 0)
           (suspend)
@@ -428,16 +394,16 @@
               (cond
                 ((< f0-18 18204.445)
                  (set! f0-19 9102.223)
-                 (set! s4-1 (-> self draw art-group data 49))
+                 (set! s4-1 sig-turn-left50-end0-ja)
                  (set! f28-0 18.0)
                  )
                 ((< f0-18 27306.666)
                  (set! f0-19 18204.445)
-                 (set! s4-1 (-> self draw art-group data 50))
+                 (set! s4-1 sig-turn-left100-end0-ja)
                  )
                 (else
                   (set! f0-19 27306.666)
-                  (set! s4-1 (-> self draw art-group data 51))
+                  (set! s4-1 sig-turn-left150-end0-ja)
                   )
                 )
               )
@@ -448,25 +414,22 @@
               (cond
                 ((< -18204.445 f0-18)
                  (set! f0-19 -9102.223)
-                 (set! s4-1 (-> self draw art-group data 53))
+                 (set! s4-1 sig-turn-right50-end0-ja)
                  (set! f28-0 18.0)
                  )
                 ((< -27306.666 f0-18)
                  (set! f0-19 -18204.445)
-                 (set! s4-1 (-> self draw art-group data 54))
+                 (set! s4-1 sig-turn-right100-end0-ja)
                  )
                 (else
                   (set! f0-19 -27306.666)
-                  (set! s4-1 (-> self draw art-group data 55))
+                  (set! s4-1 sig-turn-right150-end0-ja)
                   )
                 )
               )
             )
           (quaternion-rotate-y! s5-1 (-> gp-0 src-quat) f0-19)
-          (ja-no-eval :group! s4-1
-                      :num! (seek! (the float (+ (-> (the-as art-joint-anim s4-1) frames num-frames) -1)) 1.3)
-                      :frame-num 0.0
-                      )
+          (ja-no-eval :group! s4-1 :num! (seek! max 1.3) :frame-num 0.0)
           (until (ja-done? 0)
             (let ((f0-24 (ja-aframe-num 0)))
               (cond
@@ -487,16 +450,15 @@
         )
       )
     (go-virtual waiting-close)
-    (none)
     )
-  :post (the-as (function none :behavior sig) nav-enemy-simple-post)
+  :post nav-enemy-simple-post
   )
 
 (defstate charge-plasma (sig)
   :virtual #t
-  :event (the-as (function process int symbol event-message-block object :behavior sig) enemy-event-handler)
+  :event enemy-event-handler
   :enter (behavior ()
-    (set! (-> self state-time) (current-time))
+    (set-time! (-> self state-time))
     (let ((v1-2 self))
       (set! (-> v1-2 enemy-flags) (the-as enemy-flag (logclear (-> v1-2 enemy-flags) (enemy-flag enemy-flag36))))
       (set! (-> v1-2 nav callback-info) *nav-enemy-null-callback-info*)
@@ -512,12 +474,10 @@
     (set! (-> self travel-anim-interp) 0.0)
     (logclear! (-> self plasma flags) (plasma-flags pf02 pf03 pf04))
     (logclear! (-> self bot-flags) (bot-flags bf11))
-    (none)
     )
   :exit (behavior ()
     (logclear! (-> self plasma flags) (plasma-flags pf01 pf02 pf03))
     (logior! (-> self bot-flags) (bot-flags bf11))
-    (none)
     )
   :trans (behavior ()
     (bot-method-223 self #f)
@@ -538,14 +498,10 @@
         (logior! (-> self plasma flags) (plasma-flags pf02))
         (logclear! (-> self plasma flags) (plasma-flags pf02))
         )
-    (none)
     )
   :code (behavior ()
     (ja-channel-push! 1 (seconds 0.15))
-    (ja-no-eval :group! (-> self draw art-group data 35)
-                :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 35)) frames num-frames) -1)))
-                :frame-num 0.0
-                )
+    (ja-no-eval :group! sig-charge-to-crouch-ja :num! (seek!) :frame-num 0.0)
     (until (ja-done? 0)
       (suspend)
       (ja :num! (seek!))
@@ -553,10 +509,7 @@
     (logior! (-> self plasma flags) (plasma-flags pf01))
     (ja-channel-push! 1 (seconds 0.07))
     (until #f
-      (ja-no-eval :group! (-> self draw art-group data 36)
-                  :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 36)) frames num-frames) -1)))
-                  :frame-num 0.0
-                  )
+      (ja-no-eval :group! sig-charge0-ja :num! (seek!) :frame-num 0.0)
       (until (ja-done? 0)
         (if (and (logtest? (-> self plasma flags) (plasma-flags pf02))
                  (logtest? (-> self plasma flags) (plasma-flags pf03))
@@ -570,20 +523,14 @@
     #f
     (label cfg-12)
     (ja-channel-push! 1 (seconds 0.1))
-    (ja-no-eval :group! (-> self draw art-group data 37)
-                :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 37)) frames num-frames) -1)))
-                :frame-num 0.0
-                )
+    (ja-no-eval :group! sig-charge-to-ready-ja :num! (seek!) :frame-num 0.0)
     (until (ja-done? 0)
       (suspend)
       (ja :num! (seek!))
       )
     (ja-channel-push! 1 (seconds 0.07))
     (until #f
-      (ja-no-eval :group! (-> self draw art-group data 38)
-                  :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 38)) frames num-frames) -1)))
-                  :frame-num 0.0
-                  )
+      (ja-no-eval :group! sig-charge-ready-ja :num! (seek!) :frame-num 0.0)
       (until (ja-done? 0)
         (if (logtest? (-> self plasma flags) (plasma-flags pf03))
             (logior! (-> self plasma flags) (plasma-flags pf04))
@@ -594,18 +541,16 @@
         )
       )
     #f
-    (none)
     )
   :post (behavior ()
     (logclear! (-> self plasma flags) (plasma-flags pf03))
     (nav-enemy-simple-post)
-    (none)
     )
   )
 
 (defstate gun-jam (sig)
   :virtual #t
-  :event (the-as (function process int symbol event-message-block object :behavior sig) enemy-event-handler)
+  :event enemy-event-handler
   :enter (behavior ()
     ((-> (method-of-type nav-enemy hostile) enter))
     (let ((v1-2 self))
@@ -617,15 +562,13 @@
     (set! (-> self skel top-anim interp) 0.0)
     (set! (-> self travel-anim-interp) 0.0)
     (logclear! (-> self bot-flags) (bot-flags bf11))
-    (none)
     )
   :exit (behavior ()
     (logior! (-> self bot-flags) (bot-flags bf11))
-    (none)
     )
   :code (behavior ()
     (ja-channel-push! 1 (seconds 0.2))
-    (ja-no-eval :group! (-> self draw art-group data 12) :num! (seek! (ja-aframe 8.0 0)) :frame-num 0.0)
+    (ja-no-eval :group! sig-blast-forward-ja :num! (seek! (ja-aframe 8.0 0)) :frame-num 0.0)
     (until (ja-done? 0)
       (suspend)
       (ja :num! (seek! (ja-aframe 8.0 0)))
@@ -639,16 +582,15 @@
       (ja-eval)
       )
     (go-virtual repair-gun)
-    (none)
     )
-  :post (the-as (function none :behavior sig) nav-enemy-simple-post)
+  :post nav-enemy-simple-post
   )
 
 (defstate repair-gun (sig)
   :virtual #t
-  :event (the-as (function process int symbol event-message-block object :behavior sig) enemy-event-handler)
+  :event enemy-event-handler
   :enter (behavior ()
-    (set! (-> self state-time) (current-time))
+    (set-time! (-> self state-time))
     (let ((v1-2 self))
       (set! (-> v1-2 enemy-flags) (the-as enemy-flag (logclear (-> v1-2 enemy-flags) (enemy-flag enemy-flag36))))
       (set! (-> v1-2 nav callback-info) *nav-enemy-null-callback-info*)
@@ -666,11 +608,9 @@
         (reset-attacker! self)
         )
     (logclear! (-> self bot-flags) (bot-flags bf11))
-    (none)
     )
   :exit (behavior ()
     (logior! (-> self bot-flags) (bot-flags bf11))
-    (none)
     )
   :trans (behavior ()
     (bot-method-223 self #f)
@@ -680,17 +620,13 @@
           )
       )
     (when (and (logtest? (bot-flags bf21) (-> self bot-flags)) (zero? (-> self played-unjam-time)))
-      (set! (-> self played-unjam-time) (current-time))
+      (set-time! (-> self played-unjam-time))
       (sound-play "sig-gun-unjam")
       )
-    (none)
     )
   :code (behavior ()
     (ja-channel-push! 1 (seconds 0.2))
-    (ja-no-eval :group! (-> self draw art-group data 26)
-                :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 26)) frames num-frames) -1)))
-                :frame-num 0.0
-                )
+    (ja-no-eval :group! sig-gun-fix-start-ja :num! (seek!) :frame-num 0.0)
     (until (ja-done? 0)
       (suspend)
       (ja :num! (seek!))
@@ -698,140 +634,115 @@
     (until #f
       (ja-channel-push! 1 (seconds 0.07))
       (countdown (gp-0 (get-rand-int-range self 2 4))
-        (ja-no-eval :group! (-> self draw art-group data 27)
-                    :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 27)) frames num-frames) -1)))
-                    :frame-num 0.0
-                    )
+        (ja-no-eval :group! sig-gun-fix-hit-ja :num! (seek!) :frame-num 0.0)
         (until (ja-done? 0)
           (suspend)
           (ja :num! (seek!))
           )
         (when (and (logtest? (bot-flags bf21) (-> self bot-flags))
-                   (>= (- (current-time) (-> self played-unjam-time)) (seconds 0.35))
+                   (time-elapsed? (-> self played-unjam-time) (seconds 0.35))
                    )
           (logclear! (-> self bot-flags) (bot-flags bf19 bf21))
           (go-virtual waiting-close)
           )
         )
       (ja-channel-push! 1 (seconds 0.07))
-      (ja-no-eval :group! (-> self draw art-group data 28)
-                  :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 28)) frames num-frames) -1)))
-                  :frame-num 0.0
-                  )
+      (ja-no-eval :group! sig-gun-fix-hit-to-look-a-ja :num! (seek!) :frame-num 0.0)
       (until (ja-done? 0)
         (suspend)
         (ja :num! (seek!))
         )
       (when (and (logtest? (bot-flags bf21) (-> self bot-flags))
-                 (>= (- (current-time) (-> self played-unjam-time)) (seconds 0.35))
+                 (time-elapsed? (-> self played-unjam-time) (seconds 0.35))
                  )
         (logclear! (-> self bot-flags) (bot-flags bf19 bf21))
         (go-virtual waiting-close)
         )
       (ja-channel-push! 1 (seconds 0.13))
-      (ja-no-eval :group! (-> self draw art-group data 29)
-                  :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 29)) frames num-frames) -1)))
-                  :frame-num 0.0
-                  )
+      (ja-no-eval :group! sig-gun-fix-look-a-ja :num! (seek!) :frame-num 0.0)
       (until (ja-done? 0)
         (suspend)
         (ja :num! (seek!))
         )
       (when (and (logtest? (bot-flags bf21) (-> self bot-flags))
-                 (>= (- (current-time) (-> self played-unjam-time)) (seconds 0.35))
+                 (time-elapsed? (-> self played-unjam-time) (seconds 0.35))
                  )
         (logclear! (-> self bot-flags) (bot-flags bf19 bf21))
         (go-virtual waiting-close)
         )
       (ja-channel-push! 1 (seconds 0.07))
-      (ja-no-eval :group! (-> self draw art-group data 31)
-                  :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 31)) frames num-frames) -1)))
-                  :frame-num 0.0
-                  )
+      (ja-no-eval :group! sig-gun-fix-shake-look-ja :num! (seek!) :frame-num 0.0)
       (until (ja-done? 0)
         (suspend)
         (ja :num! (seek!))
         )
       (when (and (logtest? (bot-flags bf21) (-> self bot-flags))
-                 (>= (- (current-time) (-> self played-unjam-time)) (seconds 0.35))
+                 (time-elapsed? (-> self played-unjam-time) (seconds 0.35))
                  )
         (logclear! (-> self bot-flags) (bot-flags bf19 bf21))
         (go-virtual waiting-close)
         )
       (ja-channel-push! 1 (seconds 0.13))
-      (ja-no-eval :group! (-> self draw art-group data 30)
-                  :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 30)) frames num-frames) -1)))
-                  :frame-num 0.0
-                  )
+      (ja-no-eval :group! sig-gun-fix-look-b-ja :num! (seek!) :frame-num 0.0)
       (until (ja-done? 0)
         (suspend)
         (ja :num! (seek!))
         )
       (when (and (logtest? (bot-flags bf21) (-> self bot-flags))
-                 (>= (- (current-time) (-> self played-unjam-time)) (seconds 0.35))
+                 (time-elapsed? (-> self played-unjam-time) (seconds 0.35))
                  )
         (logclear! (-> self bot-flags) (bot-flags bf19 bf21))
         (go-virtual waiting-close)
         )
       (ja-channel-push! 1 (seconds 0.07))
-      (ja-no-eval :group! (-> self draw art-group data 32)
-                  :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 32)) frames num-frames) -1)))
-                  :frame-num 0.0
-                  )
+      (ja-no-eval :group! sig-gun-fix-look-to-stomp-ja :num! (seek!) :frame-num 0.0)
       (until (ja-done? 0)
         (suspend)
         (ja :num! (seek!))
         )
       (when (and (logtest? (bot-flags bf21) (-> self bot-flags))
-                 (>= (- (current-time) (-> self played-unjam-time)) (seconds 0.35))
+                 (time-elapsed? (-> self played-unjam-time) (seconds 0.35))
                  )
         (logclear! (-> self bot-flags) (bot-flags bf19 bf21))
         (go-virtual waiting-close)
         )
       (countdown (gp-1 (get-rand-int-range self 2 3))
         (ja-channel-push! 1 (seconds 0.07))
-        (ja-no-eval :group! (-> self draw art-group data 33)
-                    :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 33)) frames num-frames) -1)))
-                    :frame-num 0.0
-                    )
+        (ja-no-eval :group! sig-gun-fix-stomp-ja :num! (seek!) :frame-num 0.0)
         (until (ja-done? 0)
           (suspend)
           (ja :num! (seek!))
           )
         (when (and (logtest? (bot-flags bf21) (-> self bot-flags))
-                   (>= (- (current-time) (-> self played-unjam-time)) (seconds 0.35))
+                   (time-elapsed? (-> self played-unjam-time) (seconds 0.35))
                    )
           (logclear! (-> self bot-flags) (bot-flags bf19 bf21))
           (go-virtual waiting-close)
           )
         )
       (ja-channel-push! 1 (seconds 0.07))
-      (ja-no-eval :group! (-> self draw art-group data 34)
-                  :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 34)) frames num-frames) -1)))
-                  :frame-num 0.0
-                  )
+      (ja-no-eval :group! sig-gun-fix-stomp-to-hit-ja :num! (seek!) :frame-num 0.0)
       (until (ja-done? 0)
         (suspend)
         (ja :num! (seek!))
         )
       (when (and (logtest? (bot-flags bf21) (-> self bot-flags))
-                 (>= (- (current-time) (-> self played-unjam-time)) (seconds 0.35))
+                 (time-elapsed? (-> self played-unjam-time) (seconds 0.35))
                  )
         (logclear! (-> self bot-flags) (bot-flags bf19 bf21))
         (go-virtual waiting-close)
         )
       )
     #f
-    (none)
     )
-  :post (the-as (function none :behavior sig) nav-enemy-simple-post)
+  :post nav-enemy-simple-post
   )
 
 (defstate clean-gun (sig)
   :virtual #t
-  :event (the-as (function process int symbol event-message-block object :behavior sig) enemy-event-handler)
+  :event enemy-event-handler
   :enter (behavior ()
-    (set! (-> self state-time) (current-time))
+    (set-time! (-> self state-time))
     (let ((v1-2 self))
       (set! (-> v1-2 enemy-flags) (the-as enemy-flag (logclear (-> v1-2 enemy-flags) (enemy-flag enemy-flag36))))
       (set! (-> v1-2 nav callback-info) *nav-enemy-null-callback-info*)
@@ -849,11 +760,9 @@
         (reset-attacker! self)
         )
     (logclear! (-> self bot-flags) (bot-flags bf11))
-    (none)
     )
   :exit (behavior ()
     (logior! (-> self bot-flags) (bot-flags bf11))
-    (none)
     )
   :trans (behavior ()
     (bot-method-223 self #f)
@@ -867,14 +776,10 @@
          )
         )
       )
-    (none)
     )
   :code (behavior ()
     (ja-channel-push! 1 (seconds 0.15))
-    (ja-no-eval :group! (-> self draw art-group data 7)
-                :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 7)) frames num-frames) -1)))
-                :frame-num 0.0
-                )
+    (ja-no-eval :group! sig-ready0-ja :num! (seek!) :frame-num 0.0)
     (until (ja-done? 0)
       (suspend)
       (ja :num! (seek!))
@@ -888,10 +793,7 @@
              (ja-channel-push! 1 (seconds 0.13))
              (while (nonzero? s5-0)
                (+! s5-0 -1)
-               (ja-no-eval :group! (-> self draw art-group data 29)
-                           :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 29)) frames num-frames) -1)))
-                           :frame-num 0.0
-                           )
+               (ja-no-eval :group! sig-gun-fix-look-a-ja :num! (seek!) :frame-num 0.0)
                (until (ja-done? 0)
                  (suspend)
                  (ja :num! (seek!))
@@ -904,10 +806,7 @@
               (ja-channel-push! 1 (seconds 0.13))
               (while (nonzero? s5-1)
                 (+! s5-1 -1)
-                (ja-no-eval :group! (-> self draw art-group data 30)
-                            :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 30)) frames num-frames) -1)))
-                            :frame-num 0.0
-                            )
+                (ja-no-eval :group! sig-gun-fix-look-b-ja :num! (seek!) :frame-num 0.0)
                 (until (ja-done? 0)
                   (suspend)
                   (ja :num! (seek!))
@@ -918,10 +817,7 @@
           )
         (when (nonzero? gp-0)
           (ja-channel-push! 1 (seconds 0.07))
-          (ja-no-eval :group! (-> self draw art-group data 31)
-                      :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 31)) frames num-frames) -1)))
-                      :frame-num 0.0
-                      )
+          (ja-no-eval :group! sig-gun-fix-shake-look-ja :num! (seek!) :frame-num 0.0)
           (until (ja-done? 0)
             (suspend)
             (ja :num! (seek!))
@@ -930,16 +826,15 @@
         )
       )
     #f
-    (none)
     )
-  :post (the-as (function none :behavior sig) nav-enemy-simple-post)
+  :post nav-enemy-simple-post
   )
 
 (defstate traveling (sig)
   :virtual #t
-  :event (the-as (function process int symbol event-message-block object :behavior sig) enemy-event-handler)
+  :event enemy-event-handler
   :enter (behavior ()
-    (set! (-> self state-time) (current-time))
+    (set-time! (-> self state-time))
     (let ((v1-2 self))
       (if (not (logtest? (enemy-flag enemy-flag36) (-> v1-2 enemy-flags)))
           (set! (-> v1-2 enemy-flags) (the-as enemy-flag (logior (enemy-flag enemy-flag38) (-> v1-2 enemy-flags))))
@@ -956,7 +851,6 @@
     (nav-enemy-method-166 self)
     (set! (-> self skel top-anim interp) 1.0)
     (set! (-> self player-blocking) 0.0)
-    (none)
     )
   :trans (behavior ()
     (bot-method-223 self #f)
@@ -973,15 +867,14 @@
       ((outside-spot-radius? self (the-as bot-spot #f) (the-as vector #f) #t)
        (go-virtual waiting-close)
        )
-      ((and (>= (- (current-time) (-> self state-time)) (seconds 0.5)) (bot-method-208 self))
+      ((and (time-elapsed? (-> self state-time) (seconds 0.5)) (bot-method-208 self))
        (go-virtual traveling-blocked)
        )
-      ((and (nav-enemy-method-163 self) (>= (- (current-time) (-> self state-time)) (-> self reaction-time)))
+      ((and (nav-enemy-method-163 self) (time-elapsed? (-> self state-time) (-> self reaction-time)))
        (go-stare2 self)
        )
       )
     0
-    (none)
     )
   :code (behavior ()
     (until #f
@@ -989,7 +882,6 @@
       (suspend)
       )
     #f
-    (none)
     )
   :post (behavior ()
     (let ((a0-0 (-> self nav state))
@@ -1001,15 +893,14 @@
       )
     0
     (nav-enemy-travel-post)
-    (none)
     )
   )
 
 (defstate traveling-blocked (sig)
   :virtual #t
-  :event (the-as (function process int symbol event-message-block object :behavior sig) enemy-event-handler)
+  :event enemy-event-handler
   :enter (behavior ()
-    (set! (-> self state-time) (current-time))
+    (set-time! (-> self state-time))
     (let ((v1-2 self))
       (set! (-> v1-2 enemy-flags) (the-as enemy-flag (logclear (-> v1-2 enemy-flags) (enemy-flag enemy-flag36))))
       (set! (-> v1-2 nav callback-info) *nav-enemy-null-callback-info*)
@@ -1023,7 +914,6 @@
     (look-at-target! self (enemy-flag lock-focus))
     (set! (-> self skel top-anim interp) 0.0)
     (set! (-> self travel-anim-interp) 0.0)
-    (none)
     )
   :trans (behavior ()
     (bot-method-223 self #f)
@@ -1037,28 +927,23 @@
       ((sig-method-255 self)
        (go-virtual repair-gun)
        )
-      ((and (>= (- (current-time) (-> self state-time)) (seconds 1)) (not (bot-method-208 self)))
+      ((and (time-elapsed? (-> self state-time) (seconds 1)) (not (bot-method-208 self)))
        (go-virtual traveling)
        )
       )
-    (none)
     )
   :code (behavior ()
     (ja-channel-push! 1 (seconds 0.3))
     (until #f
-      (ja-no-eval :group! (-> self draw art-group data 7)
-                  :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 7)) frames num-frames) -1)))
-                  :frame-num 0.0
-                  )
+      (ja-no-eval :group! sig-ready0-ja :num! (seek!) :frame-num 0.0)
       (until (ja-done? 0)
         (suspend)
         (ja :num! (seek!))
         )
       )
     #f
-    (none)
     )
-  :post (the-as (function none :behavior sig) nav-enemy-simple-post)
+  :post nav-enemy-simple-post
   )
 
 (defstate stare (sig)
@@ -1075,11 +960,10 @@
     0
     (set! (-> self skel top-anim interp) 0.0)
     (set! (-> self travel-anim-interp) 0.0)
-    (none)
     )
   :trans (behavior ()
     (bot-method-223 self #f)
-    (when (>= (- (current-time) (-> self state-time)) (seconds 0.1))
+    (when (time-elapsed? (-> self state-time) (seconds 0.1))
       (when (bot-method-214 self)
         (cond
           ((sig-method-246 self)
@@ -1102,52 +986,49 @@
          )
         )
       )
-    (none)
     )
   :code (behavior ()
     (let* ((v1-2 (ja-group))
-           (gp-0
-             (-> self
-                 draw
-                 art-group
-                 data
-                 (cond
-                   ((and v1-2 (= v1-2 (-> self draw art-group data 4)))
-                    (ja-channel-push! 1 (seconds 0.1))
-                    (ja-no-eval :group! (-> self draw art-group data 5)
-                                :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 5)) frames num-frames) -1)))
-                                :frame-num 0.0
-                                )
-                    (until (ja-done? 0)
-                      (suspend)
-                      (ja :num! (seek!))
-                      )
-                    7
-                    )
-                   (else
-                     (let ((v1-32 (ja-group)))
-                       (cond
-                         ((and v1-32 (= v1-32 (-> self draw art-group data 5)))
-                          (ja-no-eval :num! (seek!))
-                          (while (not (ja-done? 0))
-                            (suspend)
-                            (ja-eval)
-                            )
-                          7
+           (gp-0 (-> self
+                     draw
+                     art-group
+                     data
+                     (cond
+                       ((and v1-2 (= v1-2 sig-idle-right0-ja))
+                        (ja-channel-push! 1 (seconds 0.1))
+                        (ja-no-eval :group! sig-idle-right0-to-ready0-ja :num! (seek!) :frame-num 0.0)
+                        (until (ja-done? 0)
+                          (suspend)
+                          (ja :num! (seek!))
                           )
-                         (else
-                           (let ((v1-46 (ja-group)))
-                             (cond
-                               ((and v1-46 (= v1-46 (-> self draw art-group data 7)))
-                                (ja-no-eval :num! (seek!))
-                                (while (not (ja-done? 0))
-                                  (suspend)
-                                  (ja-eval)
-                                  )
-                                7
+                        7
+                        )
+                       (else
+                         (let ((v1-32 (ja-group)))
+                           (cond
+                             ((and v1-32 (= v1-32 sig-idle-right0-to-ready0-ja))
+                              (ja-no-eval :num! (seek!))
+                              (while (not (ja-done? 0))
+                                (suspend)
+                                (ja-eval)
                                 )
-                               (else
-                                 7
+                              7
+                              )
+                             (else
+                               (let ((v1-46 (ja-group)))
+                                 (cond
+                                   ((and v1-46 (= v1-46 sig-ready0-ja))
+                                    (ja-no-eval :num! (seek!))
+                                    (while (not (ja-done? 0))
+                                      (suspend)
+                                      (ja-eval)
+                                      )
+                                    7
+                                    )
+                                   (else
+                                     7
+                                     )
+                                   )
                                  )
                                )
                              )
@@ -1155,9 +1036,7 @@
                          )
                        )
                      )
-                   )
                  )
-             )
            )
       (let ((v1-62 (ja-group)))
         (if (not (and v1-62 (= v1-62 gp-0)))
@@ -1165,10 +1044,7 @@
             )
         )
       (until #f
-        (ja-no-eval :group! gp-0
-                    :num! (seek! (the float (+ (-> (the-as art-joint-anim gp-0) frames num-frames) -1)))
-                    :frame-num 0.0
-                    )
+        (ja-no-eval :group! gp-0 :num! (seek!) :frame-num 0.0)
         (until (ja-done? 0)
           (suspend)
           (ja :num! (seek!))
@@ -1176,13 +1052,12 @@
         )
       )
     #f
-    (none)
     )
   )
 
 (defstate whip (sig)
   :virtual #t
-  :event (the-as (function process int symbol event-message-block object :behavior sig) enemy-event-handler)
+  :event enemy-event-handler
   :enter (behavior ()
     ((-> (method-of-type nav-enemy hostile) enter))
     (let ((v1-2 self))
@@ -1201,7 +1076,6 @@
       )
     (set! (-> self skel top-anim interp) 0.0)
     (set! (-> self travel-anim-interp) 0.0)
-    (none)
     )
   :exit (behavior ()
     (logclear! (-> self enemy-flags) (enemy-flag actor-pause-backup))
@@ -1210,11 +1084,9 @@
         (logclear! (-> self focus-status) (focus-status dangerous))
         )
     (enemy-method-46 self 0)
-    (none)
     )
   :trans (behavior ()
     (bot-method-223 self #f)
-    (none)
     )
   :code (behavior ()
     (local-vars (a1-2 art-element))
@@ -1223,24 +1095,21 @@
     0.0
     (let ((f30-0 (cond
                    ((< (fabs (-> self focus-info ry-diff)) 8192.0)
-                    (set! a1-2 (-> self draw art-group data 9))
+                    (set! a1-2 sig-whip-forward-ja)
                     18.0
                     )
                    ((< (-> self focus-info ry-diff) 0.0)
-                    (set! a1-2 (-> self draw art-group data 11))
+                    (set! a1-2 sig-whip-right-ja)
                     16.0
                     )
                    (else
-                     (set! a1-2 (-> self draw art-group data 10))
+                     (set! a1-2 sig-whip-left-ja)
                      18.0
                      )
                    )
                  )
           )
-      (ja-no-eval :group! a1-2
-                  :num! (seek! (the float (+ (-> (the-as art-joint-anim a1-2) frames num-frames) -1)))
-                  :frame-num 0.0
-                  )
+      (ja-no-eval :group! a1-2 :num! (seek!) :frame-num 0.0)
       (until (ja-done? 0)
         (when (and (focus-test? self dangerous) (< f30-0 (ja-aframe-num 0)))
           (if (logtest? (-> self enemy-flags) (enemy-flag check-water))
@@ -1256,18 +1125,16 @@
         (reset-attacker! self)
         )
     (react-to-focus self)
-    (none)
     )
   :post (behavior ()
     (seek-toward-heading-vec! (-> self root) (-> self focus-info bullseye-xz-dir) 131072.0 (seconds 0.05))
     (nav-enemy-simple-post)
-    (none)
     )
   )
 
 (defstate blast (sig)
   :virtual #t
-  :event (the-as (function process int symbol event-message-block object :behavior sig) enemy-event-handler)
+  :event enemy-event-handler
   :enter (behavior ()
     ((-> (method-of-type nav-enemy hostile) enter))
     (let ((v1-2 self))
@@ -1282,11 +1149,9 @@
         )
     (set! (-> self skel top-anim interp) 0.0)
     (set! (-> self travel-anim-interp) 0.0)
-    (none)
     )
   :exit (behavior ()
     (logclear! (-> self enemy-flags) (enemy-flag actor-pause-backup))
-    (none)
     )
   :code (behavior ()
     (local-vars (gp-0 art-element))
@@ -1294,15 +1159,15 @@
       (cond
         ((< (fabs (-> self focus-info ry-diff)) 8192.0)
          (ja-channel-push! 1 (seconds 0.1))
-         (set! gp-0 (-> self draw art-group data 12))
+         (set! gp-0 sig-blast-forward-ja)
          )
         ((< (-> self focus-info ry-diff) 0.0)
          (ja-channel-push! 1 (seconds 0.1))
-         (set! gp-0 (-> self draw art-group data 14))
+         (set! gp-0 sig-blast-right-ja)
          )
         (else
           (ja-channel-push! 1 (seconds 0.1))
-          (set! gp-0 (-> self draw art-group data 13))
+          (set! gp-0 sig-blast-left-ja)
           )
         )
       (let ((f30-1 (ja-aframe f30-0 0)))
@@ -1310,7 +1175,7 @@
         (until (ja-done? 0)
           (seek-toward-heading-vec! (-> self root) (-> self focus-info bullseye-xz-dir) 131072.0 (seconds 0.05))
           (bot-method-223 self #t)
-          (if (and (>= (- (current-time) (-> self state-time)) (seconds 0.1))
+          (if (and (time-elapsed? (-> self state-time) (seconds 0.1))
                    (or (not (bot-method-214 self)) (not (sig-method-245 self)))
                    )
               (react-to-focus self)
@@ -1337,23 +1202,21 @@
         (reset-attacker! self)
         )
     (react-to-focus self)
-    (none)
     )
-  :post (the-as (function none :behavior sig) nav-enemy-simple-post)
+  :post nav-enemy-simple-post
   )
 
 (defstate chase (sig)
   :virtual #t
-  :event (the-as (function process int symbol event-message-block object :behavior sig) enemy-event-handler)
+  :event enemy-event-handler
   :enter (behavior ()
     ((-> (method-of-type nav-enemy hostile) enter))
     (set! (-> self skel top-anim interp) 1.0)
-    (none)
     )
   :trans (behavior ()
     (bot-method-223 self #t)
     (cond
-      ((and (nav-enemy-method-163 self) (>= (- (current-time) (-> self state-time)) (-> self reaction-time)))
+      ((and (nav-enemy-method-163 self) (time-elapsed? (-> self state-time) (-> self reaction-time)))
        (go-stare2 self)
        )
       ((not (bot-method-214 self))
@@ -1374,7 +1237,6 @@
        (go-virtual chase-attack)
        )
       )
-    (none)
     )
   :code (behavior ()
     (until #f
@@ -1382,7 +1244,6 @@
       (suspend)
       )
     #f
-    (none)
     )
   :post (behavior ()
     (let ((gp-0 (-> self nav state))
@@ -1394,13 +1255,12 @@
       )
     0
     (nav-enemy-travel-post)
-    (none)
     )
   )
 
 (defstate chase-attack (sig)
   :virtual #t
-  :event (the-as (function process int symbol event-message-block object :behavior sig) enemy-event-handler)
+  :event enemy-event-handler
   :enter (behavior ()
     ((-> (method-of-type sig chase) enter))
     (set! (-> self skel top-anim interp) 1.0)
@@ -1408,24 +1268,13 @@
         (go-virtual traveling)
         )
     (logior! (-> self enemy-flags) (enemy-flag actor-pause-backup))
-    (none)
     )
   :exit (behavior ()
     (logclear! (-> self enemy-flags) (enemy-flag actor-pause-backup))
-    (none)
     )
   :code (behavior ()
-    (push-anim-to-targ
-      (-> self skel top-anim)
-      (the-as art-joint-anim (-> self draw art-group data 45))
-      0.0
-      9
-      9
-      1.0
-      0.0
-      #f
-      )
-    (until (>= (- (current-time) (-> self state-time)) (seconds 0.167))
+    (push-anim-to-targ (-> self skel top-anim) (the-as art-joint-anim sig-upper-shoot-ja) 0.0 9 9 1.0 0.0 #f)
+    (until (time-elapsed? (-> self state-time) (seconds 0.167))
       (sig-method-258 self)
       (suspend)
       )
@@ -1442,20 +1291,11 @@
          0
          )
         (else
-          (push-anim-to-targ
-            (-> self skel top-anim)
-            (the-as art-joint-anim (-> self draw art-group data 44))
-            0.0
-            30
-            0
-            1.0
-            0.0
-            #f
-            )
+          (push-anim-to-targ (-> self skel top-anim) (the-as art-joint-anim sig-upper-base-high-ja) 0.0 30 0 1.0 0.0 #f)
           )
         )
       )
-    (until (>= (- (current-time) (-> self state-time)) (seconds 0.8))
+    (until (time-elapsed? (-> self state-time) (seconds 0.8))
       (sig-method-258 self)
       (suspend)
       )
@@ -1463,7 +1303,6 @@
         (reset-attacker! self)
         )
     (go-virtual chase)
-    (none)
     )
   :post (behavior ()
     (let ((a0-1 (handle->process (-> self focus handle))))
@@ -1479,7 +1318,6 @@
         )
       )
     (nav-enemy-travel-post)
-    (none)
     )
   )
 
@@ -1493,15 +1331,11 @@
       )
     (set! (-> self skel top-anim interp) 0.0)
     (set! (-> self travel-anim-interp) 0.0)
-    (none)
     )
   :code (behavior ()
     (local-vars (v1-31 enemy-flag) (v1-39 enemy-flag))
     (ja-channel-push! 1 (seconds 0.1))
-    (ja-no-eval :group! (-> self draw art-group data 4)
-                :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 4)) frames num-frames) -1)))
-                :frame-num 0.0
-                )
+    (ja-no-eval :group! sig-idle-right0-ja :num! (seek!) :frame-num 0.0)
     (until (ja-done? 0)
       (suspend)
       (ja :num! (seek!))
@@ -1531,7 +1365,6 @@
     (logclear! (-> self enemy-flags) (enemy-flag actor-pause-backup))
     (logclear! (-> self focus-status) (focus-status hit))
     (react-to-focus self)
-    (none)
     )
   )
 
@@ -1549,7 +1382,6 @@
     (if (logtest? (bot-flags bf19 bf20) (-> self bot-flags))
         (logclear! (-> self bot-flags) (bot-flags bf12))
         )
-    (none)
     )
   )
 
@@ -1565,7 +1397,6 @@
     (set! (-> self travel-anim-interp) 0.0)
     (set! (-> self skel top-anim interp) 0.0)
     (play-death-sound self "sigt093")
-    (none)
     )
   )
 
@@ -1580,37 +1411,27 @@
     (sig-plasma-method-11 (-> self plasma) #f)
     (set! (-> self travel-anim-interp) 0.0)
     (set! (-> self skel top-anim interp) 0.0)
-    (none)
     )
   :code (behavior ()
     (ja-channel-push! 1 (seconds 0.2))
-    (ja-no-eval :group! (-> self draw art-group data 7)
-                :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 7)) frames num-frames) -1)))
-                :frame-num 0.0
-                )
+    (ja-no-eval :group! sig-ready0-ja :num! (seek!) :frame-num 0.0)
     (until (ja-done? 0)
       (suspend)
       (ja :num! (seek!))
       )
     (ja-channel-push! 1 (seconds 0.2))
-    (ja-no-eval :group! (-> self draw art-group data 6)
-                :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 6)) frames num-frames) -1)))
-                :frame-num 0.0
-                )
+    (ja-no-eval :group! sig-ready0-to-idle-right0-ja :num! (seek!) :frame-num 0.0)
     (until (ja-done? 0)
       (suspend)
       (ja :num! (seek!))
       )
     (ja-channel-push! 1 (seconds 0.2))
-    (set! (-> self state-time) (current-time))
+    (set-time! (-> self state-time))
     (until #f
-      (ja-no-eval :group! (-> self draw art-group data 4)
-                  :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 4)) frames num-frames) -1)))
-                  :frame-num 0.0
-                  )
+      (ja-no-eval :group! sig-idle-right0-ja :num! (seek!) :frame-num 0.0)
       (until (ja-done? 0)
         (if (and (logtest? (-> self bot-flags) (bot-flags failed))
-                 (>= (- (current-time) (-> self state-time)) (seconds 0.5))
+                 (time-elapsed? (-> self state-time) (seconds 0.5))
                  (reset? *fail-mission-control*)
                  )
             (reset! *fail-mission-control*)
@@ -1620,15 +1441,14 @@
         )
       )
     #f
-    (none)
     )
   )
 
 (defstate sig-path-run (sig)
   :virtual #t
-  :event (the-as (function process int symbol event-message-block object :behavior sig) enemy-event-handler)
+  :event enemy-event-handler
   :enter (behavior ()
-    (set! (-> self state-time) (current-time))
+    (set-time! (-> self state-time))
     (let ((v1-2 self))
       (set! (-> v1-2 enemy-flags) (the-as enemy-flag (logclear (-> v1-2 enemy-flags) (enemy-flag enemy-flag36))))
       (set! (-> v1-2 nav callback-info) *nav-enemy-null-callback-info*)
@@ -1642,7 +1462,6 @@
     (look-at-target! self (enemy-flag lock-focus))
     (set! (-> self skel top-anim interp) 0.0)
     (set! (-> self travel-anim-interp) 0.0)
-    (none)
     )
   :trans (behavior ()
     (let ((gp-0 (new 'stack-no-clear 'sig-path-sample)))
@@ -1662,16 +1481,15 @@
     (if (sig-method-257 self)
         (go-virtual sig-path-idle)
         )
-    (none)
     )
   :code (behavior ()
     (let ((v1-2 (ja-group)))
-      (if (and v1-2 (or (= v1-2 (-> self draw art-group data 58)) (= v1-2 (-> self draw art-group data 60))))
+      (if (and v1-2 (or (= v1-2 sig-chased-run-jump-land0-ja) (= v1-2 sig-chased-shoot-jump-land0-ja)))
           (ja-channel-push! 1 (seconds 0.07))
           (ja-channel-push! 1 (seconds 0.15))
           )
       )
-    (ja-no-eval :group! (-> self draw art-group data 56) :num! (loop!))
+    (ja-no-eval :group! sig-chased-run0-ja :num! (loop!))
     (until #f
       (suspend)
       (let* ((f0-1 (vector-length (-> self root transv)))
@@ -1681,16 +1499,15 @@
         )
       )
     #f
-    (none)
     )
-  :post (the-as (function none :behavior sig) nav-enemy-simple-post)
+  :post nav-enemy-simple-post
   )
 
 (defstate sig-path-jump (sig)
   :virtual #t
-  :event (the-as (function process int symbol event-message-block object :behavior sig) enemy-event-handler)
+  :event enemy-event-handler
   :enter (behavior ()
-    (set! (-> self state-time) (current-time))
+    (set-time! (-> self state-time))
     (let ((v1-2 self))
       (set! (-> v1-2 enemy-flags) (the-as enemy-flag (logclear (-> v1-2 enemy-flags) (enemy-flag enemy-flag36))))
       (set! (-> v1-2 nav callback-info) *nav-enemy-null-callback-info*)
@@ -1705,7 +1522,6 @@
     (set! (-> self skel top-anim interp) 0.0)
     (set! (-> self travel-anim-interp) 0.0)
     (logior! (-> self bot-flags) (bot-flags bf24))
-    (none)
     )
   :trans (behavior ()
     (let ((gp-0 (new 'stack-no-clear 'sig-path-sample)))
@@ -1720,7 +1536,7 @@
         (if (logtest? s5-0 2)
             (go-virtual sig-path-shoot-jump)
             )
-        (if (and (>= (- (current-time) (-> self state-time)) (seconds 0.05)) (not (logtest? s5-0 4)))
+        (if (and (time-elapsed? (-> self state-time) (seconds 0.05)) (not (logtest? s5-0 4)))
             (go-virtual sig-path-jump-land)
             )
         )
@@ -1730,20 +1546,16 @@
         (quaternion-copy! (-> v1-27 quat) (-> gp-0 quat))
         )
       )
-    (none)
     )
   :code (behavior ()
     (let ((f30-0 0.0))
       (let ((v1-2 (ja-group)))
-        (if (and v1-2 (= v1-2 (-> self draw art-group data 57)))
+        (if (and v1-2 (= v1-2 sig-chased-run-jump0-ja))
             (set! f30-0 1.0)
             )
         )
       (ja-channel-push! 1 (seconds 0.07))
-      (ja-no-eval :group! (-> self draw art-group data 57)
-                  :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 57)) frames num-frames) -1)))
-                  :frame-num f30-0
-                  )
+      (ja-no-eval :group! sig-chased-run-jump0-ja :num! (seek!) :frame-num f30-0)
       )
     (until (ja-done? 0)
       (suspend)
@@ -1753,16 +1565,15 @@
       (suspend)
       )
     #f
-    (none)
     )
-  :post (the-as (function none :behavior sig) nav-enemy-simple-post)
+  :post nav-enemy-simple-post
   )
 
 (defstate sig-path-jump-land (sig)
   :virtual #t
-  :event (the-as (function process int symbol event-message-block object :behavior sig) enemy-event-handler)
+  :event enemy-event-handler
   :enter (behavior ()
-    (set! (-> self state-time) (current-time))
+    (set-time! (-> self state-time))
     (let ((v1-2 self))
       (set! (-> v1-2 enemy-flags) (the-as enemy-flag (logclear (-> v1-2 enemy-flags) (enemy-flag enemy-flag36))))
       (set! (-> v1-2 nav callback-info) *nav-enemy-null-callback-info*)
@@ -1776,7 +1587,6 @@
     (look-at-target! self (enemy-flag lock-focus))
     (set! (-> self skel top-anim interp) 0.0)
     (set! (-> self travel-anim-interp) 0.0)
-    (none)
     )
   :trans (behavior ()
     (let ((gp-0 (new 'stack-no-clear 'sig-path-sample)))
@@ -1798,20 +1608,13 @@
         (quaternion-copy! (-> v1-18 quat) (-> gp-0 quat))
         )
       )
-    (none)
     )
   :code (behavior ()
     (ja-channel-push! 1 (seconds 0.15))
     (let* ((f0-0 (vector-length (-> self root transv)))
            (f0-2 (fmax 0.1 (* 0.000020345053 f0-0)))
            )
-      (ja-no-eval :group! (-> self draw art-group data 58)
-                  :num! (seek!
-                    (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 58)) frames num-frames) -1))
-                    f0-2
-                    )
-                  :frame-num 0.0
-                  )
+      (ja-no-eval :group! sig-chased-run-jump-land0-ja :num! (seek! max f0-2) :frame-num 0.0)
       )
     (until (ja-done? 0)
       (suspend)
@@ -1822,16 +1625,15 @@
         )
       )
     (go-virtual sig-path-run)
-    (none)
     )
-  :post (the-as (function none :behavior sig) nav-enemy-simple-post)
+  :post nav-enemy-simple-post
   )
 
 (defstate sig-path-shoot-jump (sig)
   :virtual #t
-  :event (the-as (function process int symbol event-message-block object :behavior sig) enemy-event-handler)
+  :event enemy-event-handler
   :enter (behavior ()
-    (set! (-> self state-time) (current-time))
+    (set-time! (-> self state-time))
     (let ((v1-2 self))
       (set! (-> v1-2 enemy-flags) (the-as enemy-flag (logclear (-> v1-2 enemy-flags) (enemy-flag enemy-flag36))))
       (set! (-> v1-2 nav callback-info) *nav-enemy-null-callback-info*)
@@ -1847,7 +1649,6 @@
     (set! (-> self travel-anim-interp) 0.0)
     (logior! (-> self bot-flags) (bot-flags bf24))
     (logclear! (-> self bot-flags) (bot-flags bf25))
-    (none)
     )
   :trans (behavior ()
     (let ((gp-0 (new 'stack-no-clear 'sig-path-sample)))
@@ -1862,7 +1663,7 @@
         (if (and (logtest? s5-0 1) (logtest? (bot-flags bf25) (-> self bot-flags)))
             (go-virtual sig-path-jump)
             )
-        (if (and (>= (- (current-time) (-> self state-time)) (seconds 0.05)) (not (logtest? s5-0 4)))
+        (if (and (time-elapsed? (-> self state-time) (seconds 0.05)) (not (logtest? s5-0 4)))
             (go-virtual sig-path-shoot-jump-land)
             )
         )
@@ -1872,20 +1673,16 @@
         (quaternion-copy! (-> v1-29 quat) (-> gp-0 quat))
         )
       )
-    (none)
     )
   :code (behavior ()
     (let ((f30-0 0.0))
       (let ((v1-2 (ja-group)))
-        (if (and v1-2 (= v1-2 (-> self draw art-group data 59)))
+        (if (and v1-2 (= v1-2 sig-chased-shoot-jump0-ja))
             (set! f30-0 1.0)
             )
         )
       (ja-channel-push! 1 (seconds 0.07))
-      (ja-no-eval :group! (-> self draw art-group data 59)
-                  :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 59)) frames num-frames) -1)))
-                  :frame-num f30-0
-                  )
+      (ja-no-eval :group! sig-chased-shoot-jump0-ja :num! (seek!) :frame-num f30-0)
       )
     (until (ja-done? 0)
       (if (and (not (logtest? (bot-flags bf25) (-> self bot-flags)))
@@ -1900,16 +1697,15 @@
       (suspend)
       )
     #f
-    (none)
     )
-  :post (the-as (function none :behavior sig) nav-enemy-simple-post)
+  :post nav-enemy-simple-post
   )
 
 (defstate sig-path-shoot-jump-land (sig)
   :virtual #t
-  :event (the-as (function process int symbol event-message-block object :behavior sig) enemy-event-handler)
+  :event enemy-event-handler
   :enter (behavior ()
-    (set! (-> self state-time) (current-time))
+    (set-time! (-> self state-time))
     (let ((v1-2 self))
       (set! (-> v1-2 enemy-flags) (the-as enemy-flag (logclear (-> v1-2 enemy-flags) (enemy-flag enemy-flag36))))
       (set! (-> v1-2 nav callback-info) *nav-enemy-null-callback-info*)
@@ -1923,7 +1719,6 @@
     (look-at-target! self (enemy-flag lock-focus))
     (set! (-> self skel top-anim interp) 0.0)
     (set! (-> self travel-anim-interp) 0.0)
-    (none)
     )
   :trans (behavior ()
     (let ((gp-0 (new 'stack-no-clear 'sig-path-sample)))
@@ -1945,20 +1740,13 @@
         (quaternion-copy! (-> v1-18 quat) (-> gp-0 quat))
         )
       )
-    (none)
     )
   :code (behavior ()
     (ja-channel-push! 1 (seconds 0.15))
     (let* ((f0-0 (vector-length (-> self root transv)))
            (f0-2 (fmax 0.1 (* 0.000020345053 f0-0)))
            )
-      (ja-no-eval :group! (-> self draw art-group data 60)
-                  :num! (seek!
-                    (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 60)) frames num-frames) -1))
-                    f0-2
-                    )
-                  :frame-num 0.0
-                  )
+      (ja-no-eval :group! sig-chased-shoot-jump-land0-ja :num! (seek! max f0-2) :frame-num 0.0)
       )
     (until (ja-done? 0)
       (suspend)
@@ -1969,16 +1757,15 @@
         )
       )
     (go-virtual sig-path-run)
-    (none)
     )
-  :post (the-as (function none :behavior sig) nav-enemy-simple-post)
+  :post nav-enemy-simple-post
   )
 
 (defstate sig-path-idle (sig)
   :virtual #t
-  :event (the-as (function process int symbol event-message-block object :behavior sig) enemy-event-handler)
+  :event enemy-event-handler
   :enter (behavior ()
-    (set! (-> self state-time) (current-time))
+    (set-time! (-> self state-time))
     (let ((v1-2 self))
       (set! (-> v1-2 enemy-flags) (the-as enemy-flag (logclear (-> v1-2 enemy-flags) (enemy-flag enemy-flag36))))
       (set! (-> v1-2 nav callback-info) *nav-enemy-null-callback-info*)
@@ -1993,30 +1780,22 @@
     (set! (-> self skel top-anim interp) 0.0)
     (set! (-> self travel-anim-interp) 0.0)
     (vector-reset! (-> self root transv))
-    (none)
     )
   :code (behavior ()
     (ja-channel-push! 1 (seconds 0.15))
-    (ja-no-eval :group! (-> self draw art-group data 61)
-                :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 61)) frames num-frames) -1)))
-                :frame-num 0.0
-                )
+    (ja-no-eval :group! sig-chased-idle-start-ja :num! (seek!) :frame-num 0.0)
     (until (ja-done? 0)
       (suspend)
       (ja :num! (seek!))
       )
     (until #f
-      (ja-no-eval :group! (-> self draw art-group data 62)
-                  :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 62)) frames num-frames) -1)))
-                  :frame-num 0.0
-                  )
+      (ja-no-eval :group! sig-chased-idle-loop-ja :num! (seek!) :frame-num 0.0)
       (until (ja-done? 0)
         (suspend)
         (ja :num! (seek!))
         )
       )
     #f
-    (none)
     )
-  :post (the-as (function none :behavior sig) nav-enemy-simple-post)
+  :post nav-enemy-simple-post
   )

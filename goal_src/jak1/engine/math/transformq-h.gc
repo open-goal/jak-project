@@ -5,25 +5,21 @@
 ;; name in dgo: transformq-h
 ;; dgos: GAME, ENGINE
 
+;; DECOMP BEGINS
+
 ;; the transformq is a transform, but _replaces_ the rotation field with a quaternion.
 ;; it is much more commonly used than transform.
 (deftype transformq (transform)
   ;; this overlays the rot field of transform.
-  ((quat  quaternion :inline :offset 16)
+  ((quat  quaternion  :inline :overlay-at (-> rot x))
    )
-  :method-count-assert 9
-  :size-assert         #x30
-  :flag-assert         #x900000030
   )
 
 ;; trsq is the quaternion version of trs (trs is like a transform, but is basic.)
 (deftype trsq (trs)
   ;; this overlays the rot field of trs.
-  ((quat  quaternion :inline :offset 32)
+  ((quat  quaternion  :inline :overlay-at (-> rot x))
    )
-  :method-count-assert 9
-  :size-assert         #x40
-  :flag-assert         #x900000040
   )
 
 ;; Representing a translate/rotate/scale with a quaternion and a velocity.
@@ -32,57 +28,50 @@
 ;; many of these functions assume that y is up and assume that roll/pitch is small
 ;; (a reasonable assumption for most in-game objects that don't do flips)
 ;; note: Jak's control uses this as a base class.
+
 (deftype trsqv (trsq)
-  ((pause-adjust-distance meters             :offset          4)  ;; hack: adjusts the distance where actor logic is paused, if this is an actor
-   (nav-radius            meters             :offset          8)  ;; hack: the radius of the bounding sphere used by the navigate system.
-   (transv                vector     :inline :offset-assert  64)  ;; velocity (meters/second)
-   (rotv                  vector     :inline :offset-assert  80)  ;; angular velocity (deg/second)
-   (scalev                vector     :inline :offset-assert  96)  ;; scale velocity (unused?)
+  ((pause-adjust-distance  meters      :offset   4) ;; hack: adjusts the distance where actor logic is paused, if this is an actor
+   (nav-radius             meters      :offset   8) ;; hack: the radius of the bounding sphere used by the navigate system.
+   (transv                 vector      :inline) ;; velocity (meters/second)
+   (rotv                   vector      :inline) ;; angular velocity (deg/second)
+   (scalev                 vector      :inline) ;; scale velocity (unused?)
 
    ;; there's a hacky ~first-order orientation yaw control with hysteresis
    ;; it makes the yaw change smoothly and attempts to cancel out oscillations from the collision system
-   (dir-targ              quaternion :inline :offset-assert 112)  ;; direction target
-   (angle-change-time     time-frame         :offset-assert 128)  ;; the time when we change rotation directions
-   (old-y-angle-diff      float              :offset-assert 136)  ;; the amount we moved last time
+   (dir-targ               quaternion  :inline) ;; direction target
+   (angle-change-time      time-frame) ;; the time when we change rotation directions
+   (old-y-angle-diff       float) ;; the amount we moved last time
    )
-  :method-count-assert 28
-  :size-assert         #x8c
-  :flag-assert         #x1c0000008c
   (:methods
-   (seek-toward-heading-vec! (_type_ vector float time-frame) quaternion 9)
-   (set-heading-vec! (_type_ vector) quaternion 10)
-   (seek-to-point-toward-point! (_type_ vector float time-frame) quaternion 11)
-   (point-toward-point! (_type_ vector) quaternion 12)
-   (seek-toward-yaw-angle! (_type_ float float time-frame) quaternion 13)
-   (set-yaw-angle-clear-roll-pitch! (_type_ float) quaternion 14)
-   (set-roll-to-grav! (_type_ float) quaternion 15)
-   (set-roll-to-grav-2! (_type_ float) quaternion 16)
-   (rotate-toward-orientation! (_type_ quaternion float float) quaternion 17)
-   (set-quaternion! (_type_ quaternion) quaternion 18)
-   (set-heading-vec-clear-roll-pitch! (_type_ vector) quaternion 19)
-   (point-toward-point-clear-roll-pitch! (_type_ vector) quaternion 20)
-   (rot->dir-targ! (_type_) quaternion 21)
-   (y-angle (_type_) float 22)
-   (global-y-angle-to-point (_type_ vector) float 23)
-   (relative-y-angle-to-point (_type_ vector) float 24)
-   (roll-relative-to-gravity (_type_) float 25)
-   (set-and-limit-velocity (_type_ int vector float) trsqv 26)
-
-   ;; note: child classes can override this method to use a different quaternion
-   ;; to represent the "current" orientation for the above methods.
-   (get-quaternion (_type_) quaternion 27)
-   )
+    (seek-toward-heading-vec! (_type_ vector float time-frame) quaternion)
+    (set-heading-vec! (_type_ vector) quaternion)
+    (seek-to-point-toward-point! (_type_ vector float time-frame) quaternion)
+    (point-toward-point! (_type_ vector) quaternion)
+    (seek-toward-yaw-angle! (_type_ float float time-frame) quaternion)
+    (set-yaw-angle-clear-roll-pitch! (_type_ float) quaternion)
+    (set-roll-to-grav! (_type_ float) quaternion)
+    (set-roll-to-grav-2! (_type_ float) quaternion)
+    (rotate-toward-orientation! (_type_ quaternion float float) quaternion)
+    (set-quaternion! (_type_ quaternion) quaternion)
+    (set-heading-vec-clear-roll-pitch! (_type_ vector) quaternion)
+    (point-toward-point-clear-roll-pitch! (_type_ vector) quaternion)
+    (rot->dir-targ! (_type_) quaternion)
+    (y-angle (_type_) float)
+    (global-y-angle-to-point (_type_ vector) float)
+    (relative-y-angle-to-point (_type_ vector) float)
+    (roll-relative-to-gravity (_type_) float)
+    (set-and-limit-velocity (_type_ int vector float) trsqv)
+    (get-quaternion (_type_) quaternion)
+    )
   )
 
-(defmethod global-y-angle-to-point trsqv ((obj trsqv) (arg0 vector))
+
+(defmethod global-y-angle-to-point ((this trsqv) (arg0 vector))
   "Get the angle in the xz plane from the position of this trsqv to the point arg0."
-  (vector-y-angle (vector-! (new 'stack-no-clear 'vector) arg0 (-> obj trans)))
+  (vector-y-angle (vector-! (new 'stack-no-clear 'vector) arg0 (-> this trans)))
   )
 
-(defmethod relative-y-angle-to-point trsqv ((obj trsqv) (arg0 vector))
+(defmethod relative-y-angle-to-point ((this trsqv) (arg0 vector))
   "Get the y angle between the current orientation and arg0."
-  (deg-diff
-   (y-angle obj)
-   (vector-y-angle (vector-! (new 'stack-no-clear 'vector) arg0 (-> obj trans)))
-   )
+  (deg-diff (y-angle this) (vector-y-angle (vector-! (new 'stack-no-clear 'vector) arg0 (-> this trans))))
   )

@@ -7,39 +7,39 @@
 
 ;; DECOMP BEGINS
 
-(defmethod draw hud-moneybag ((obj hud-moneybag))
+(defmethod draw ((this hud-moneybag))
   (set-hud-piece-position!
-    (the-as hud-sprite (-> obj sprites))
-    (the int (+ 462.0 (* 130.0 (-> obj offset))))
+    (the-as hud-sprite (-> this sprites))
+    (the int (+ 462.0 (* 130.0 (-> this offset))))
     210
     )
-  (format (clear (-> obj strings 0 text)) "~D" (-> obj values 0 current))
-  (set-as-offset-from! (the-as hud-sprite (-> obj strings 0 pos)) (the-as vector4w (-> obj sprites)) -25 25)
-  ((method-of-type hud draw) obj)
+  (format (clear (-> this strings 0 text)) "~D" (-> this values 0 current))
+  (set-as-offset-from! (the-as hud-sprite (-> this strings 0 pos)) (the-as vector4w (-> this sprites)) -25 25)
+  ((method-of-type hud draw) this)
   0
   (none)
   )
 
-(defmethod update-values hud-moneybag ((obj hud-moneybag))
-  (set! (-> obj values 0 target) (the int (-> *game-info* counter)))
-  ((method-of-type hud update-values) obj)
+(defmethod update-values ((this hud-moneybag))
+  (set! (-> this values 0 target) (the int (-> *game-info* counter)))
+  ((method-of-type hud update-values) this)
   0
   (none)
   )
 
-(defmethod init-callback hud-moneybag ((obj hud-moneybag))
-  (set! (-> obj level) (level-get *level* 'ctywide))
-  (set! (-> obj gui-id)
-        (add-process *gui-control* obj (gui-channel hud-middle-right) (gui-action hidden) (-> obj name) 81920.0 0)
+(defmethod init-callback ((this hud-moneybag))
+  (set! (-> this level) (level-get *level* 'ctywide))
+  (set! (-> this gui-id)
+        (add-process *gui-control* this (gui-channel hud-middle-right) (gui-action hidden) (-> this name) 81920.0 0)
         )
-  (logior! (-> obj flags) (hud-flags show))
-  (set! (-> obj sprites 0 tex) (lookup-texture-by-id (new 'static 'texture-id :index #x7 :page #x679)))
-  (set! (-> obj sprites 0 flags) (the-as uint 4))
-  (set! (-> obj sprites 0 scale-x) 1.2)
-  (set! (-> obj sprites 0 scale-y) 1.2)
-  (alloc-string-if-needed obj 0)
-  (set! (-> obj strings 0 scale) 0.6)
-  (set! (-> obj strings 0 flags) (font-flags kerning middle large))
+  (logior! (-> this flags) (hud-flags show))
+  (set! (-> this sprites 0 tex) (lookup-texture-by-id (new 'static 'texture-id :index #x7 :page #x679)))
+  (set! (-> this sprites 0 flags) (the-as uint 4))
+  (set! (-> this sprites 0 scale-x) 1.2)
+  (set! (-> this sprites 0 scale-y) 1.2)
+  (alloc-string-if-needed this 0)
+  (set! (-> this strings 0 scale) 0.6)
+  (set! (-> this strings 0 flags) (font-flags kerning middle large))
   0
   (none)
   )
@@ -52,24 +52,22 @@
 
 (deftype krew-collection-item (process-drawable)
   ()
-  :heap-base #x50
-  :method-count-assert 23
-  :size-assert         #xc8
-  :flag-assert         #x17005000c8
+  (:state-methods
+    idle
+    die
+    )
   (:methods
-    (idle () _type_ :state 20)
-    (die () _type_ :state 21)
-    (find-ground (_type_) symbol 22)
+    (find-ground (_type_) symbol)
     )
   )
 
 
-(defmethod find-ground krew-collection-item ((obj krew-collection-item))
+(defmethod find-ground ((this krew-collection-item))
   "TODO - understand the collision query stuff more
 @returns whether or not the [[self]] is above the ground"
   (let ((on-ground? #f))
     (let ((query (new 'stack-no-clear 'collide-query-with-2vec)))
-      (set! (-> query vec quad) (-> obj root trans quad))
+      (set! (-> query vec quad) (-> this root trans quad))
       (set! (-> query cquery start-pos quad) (-> query vec quad))
       (vector-reset! (-> query vec2))
       (set! (-> query vec2 y) 1.0)
@@ -93,8 +91,8 @@
           (format #t "krew-collection-item::find-ground: ground y ~M~%" (-> query vec y))
           )
         )
-      (set! (-> obj root trans quad) (-> query vec quad))
-      (forward-up-nopitch->quaternion (-> obj root quat) (new 'static 'vector :z 1.0 :w 1.0) (-> query vec2))
+      (set! (-> this root trans quad) (-> query vec quad))
+      (forward-up-nopitch->quaternion (-> this root quat) (new 'static 'vector :z 1.0 :w 1.0) (-> query vec2))
       )
     on-ground?
     )
@@ -125,7 +123,6 @@
           )
         )
       )
-    (none)
     )
   :code (behavior ()
     (let ((beam-params (new 'stack-no-clear 'task-arrow-params)))
@@ -137,29 +134,24 @@
       (quaternion-identity! (-> beam-params quat))
       (set! (-> beam-params flags) (task-arrow-flags))
       (set! (-> beam-params map-icon) (the-as uint 15))
-      (task-arrow-spawn beam-params (the-as task-arrow self))
+      (task-arrow-spawn beam-params self)
       )
     (until #f
-      (ja-no-eval :group! (ja-group)
-                  :num! (seek! (the float (+ (-> (ja-group) frames num-frames) -1)))
-                  :frame-num 0.0
-                  )
+      (ja-no-eval :group! (ja-group) :num! (seek!) :frame-num 0.0)
       (until (ja-done? 0)
         (suspend)
         (ja :num! (seek!))
         )
       )
     #f
-    (none)
     )
-  :post (the-as (function none :behavior krew-collection-item) ja-post)
+  :post ja-post
   )
 
 (defstate die (krew-collection-item)
   :virtual #t
   :code (behavior ()
     (cleanup-for-death self)
-    (none)
     )
   )
 
@@ -313,7 +305,7 @@
                  (when krew-item
                    (set! (-> self slave 0) (process->handle krew-item))
                    (set! (-> self time-limit) (the-as time-frame (-> self data-int32 task-count)))
-                   (set! (-> self start-time) (current-time))
+                   (set-time! (-> self start-time))
                    (+! (-> self count) 1)
                    )
                  )
@@ -353,8 +345,8 @@
           (ppointer->handle (process-spawn hud-moneybag :init hud-init-by-other :to *target*))
           )
     (send-event *traffic-manager* 'set-target-level 1.0)
-    (set! (-> self state-time) (current-time))
-    (while (< (- (current-time) (-> self state-time)) (seconds 5))
+    (set-time! (-> self state-time))
+    (while (not (time-elapsed? (-> self state-time) (seconds 5)))
       (suspend)
       )
     (send-event *traffic-manager* 'set-alert-level 2)
@@ -366,7 +358,7 @@
   *game-info*
   (game-task-node city-krew-collection-collection)
   TASK_MANAGER_FAIL_HOOK
-  (lambda :behavior task-manager () (the-as object (kill-all-children self)))
+  (lambda :behavior task-manager () (kill-all-children self))
   )
 
 (set-subtask-hook!
@@ -377,8 +369,8 @@
     ()
     (send-event *traffic-manager* 'decrease-alert-level 0)
     (send-event *traffic-manager* 'set-alert-duration (seconds 30))
-    (set! (-> self state-time) (current-time))
-    (while (< (- (current-time) (-> self state-time)) (seconds 2))
+    (set-time! (-> self state-time))
+    (while (not (time-elapsed? (-> self state-time) (seconds 2)))
       (suspend)
       )
     (talker-spawn-func (-> *talker-speech* 88) *entity-pool* (target-pos 0) (the-as region #f))

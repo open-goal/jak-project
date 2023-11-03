@@ -4,9 +4,9 @@
 ;; failed to figure out what this is:
 (defstate waiting-idle (kid)
   :virtual #t
-  :event (the-as (function process int symbol event-message-block object :behavior kid) enemy-event-handler)
+  :event enemy-event-handler
   :enter (behavior ()
-    (set! (-> self state-time) (current-time))
+    (set-time! (-> self state-time))
     (let ((v1-2 self))
       (set! (-> v1-2 enemy-flags) (the-as enemy-flag (logclear (-> v1-2 enemy-flags) (enemy-flag enemy-flag36))))
       (set! (-> v1-2 nav callback-info) *nav-enemy-null-callback-info*)
@@ -20,7 +20,6 @@
     (vector-reset! (-> self root transv))
     (look-at-target! self (enemy-flag lock-focus))
     (set! (-> self travel-anim-interp) 0.0)
-    (none)
     )
   :trans (behavior ()
     (bot-method-223 self #f)
@@ -45,12 +44,11 @@
           (go-virtual traveling)
           )
       )
-    (none)
     )
   :code (behavior ()
     (let ((v1-2 (ja-group)))
       (cond
-        ((and v1-2 (= v1-2 (-> self draw art-group data 3)))
+        ((and v1-2 (= v1-2 kid-idle0-ja))
          (ja-no-eval :num! (seek!))
          (while (not (ja-done? 0))
            (suspend)
@@ -63,27 +61,23 @@
         )
       )
     (until #f
-      (ja-no-eval :group! (-> self draw art-group data 3)
-                  :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 3)) frames num-frames) -1)))
-                  :frame-num 0.0
-                  )
+      (ja-no-eval :group! kid-idle0-ja :num! (seek!) :frame-num 0.0)
       (until (ja-done? 0)
         (suspend)
         (ja :num! (seek!))
         )
       )
     #f
-    (none)
     )
-  :post (the-as (function none :behavior kid) nav-enemy-simple-post)
+  :post nav-enemy-simple-post
   )
 
 ;; failed to figure out what this is:
 (defstate waiting-turn (kid)
   :virtual #t
-  :event (the-as (function process int symbol event-message-block object :behavior kid) enemy-event-handler)
+  :event enemy-event-handler
   :enter (behavior ()
-    (set! (-> self state-time) (current-time))
+    (set-time! (-> self state-time))
     (let ((v1-2 self))
       (set! (-> v1-2 enemy-flags) (the-as enemy-flag (logclear (-> v1-2 enemy-flags) (enemy-flag enemy-flag36))))
       (set! (-> v1-2 nav callback-info) *nav-enemy-null-callback-info*)
@@ -96,7 +90,6 @@
     0
     (look-at-target! self (enemy-flag lock-focus))
     (set! (-> self travel-anim-interp) 0.0)
-    (none)
     )
   :trans (behavior ()
     (bot-method-223 self #f)
@@ -112,7 +105,6 @@
           (go-virtual traveling)
           )
       )
-    (none)
     )
   :code (behavior ()
     (local-vars (s4-1 art-element) (f0-9 float))
@@ -132,10 +124,7 @@
                     )
               )
           (ja-channel-push! 1 (seconds 0.4))
-          (ja-no-eval :group! s5-1
-                      :num! (seek! (the float (+ (-> (the-as art-joint-anim s5-1) frames num-frames) -1)))
-                      :frame-num 0.0
-                      )
+          (ja-no-eval :group! s5-1 :num! (seek!) :frame-num 0.0)
           )
         (until (ja-done? 0)
           (suspend)
@@ -159,16 +148,16 @@
               (cond
                 ((< f0-8 18204.445)
                  (set! f0-9 9102.223)
-                 (set! s4-1 (-> self draw art-group data 8))
+                 (set! s4-1 kid-turn-left50-end0-ja)
                  (set! f28-0 8.0)
                  )
                 ((< f0-8 27306.666)
                  (set! f0-9 18204.445)
-                 (set! s4-1 (-> self draw art-group data 9))
+                 (set! s4-1 kid-turn-left100-end0-ja)
                  )
                 (else
                   (set! f0-9 27306.666)
-                  (set! s4-1 (-> self draw art-group data 10))
+                  (set! s4-1 kid-turn-left150-end0-ja)
                   )
                 )
               )
@@ -179,25 +168,22 @@
               (cond
                 ((< -18204.445 f0-8)
                  (set! f0-9 -9102.223)
-                 (set! s4-1 (-> self draw art-group data 12))
+                 (set! s4-1 kid-turn-right50-end0-ja)
                  (set! f28-0 8.0)
                  )
                 ((< -27306.666 f0-8)
                  (set! f0-9 -18204.445)
-                 (set! s4-1 (-> self draw art-group data 13))
+                 (set! s4-1 kid-turn-right100-end0-ja)
                  )
                 (else
                   (set! f0-9 -27306.666)
-                  (set! s4-1 (-> self draw art-group data 14))
+                  (set! s4-1 kid-turn-right150-end0-ja)
                   )
                 )
               )
             )
           (quaternion-rotate-y! s5-2 (-> gp-0 src-quat) f0-9)
-          (ja-no-eval :group! s4-1
-                      :num! (seek! (the float (+ (-> (the-as art-joint-anim s4-1) frames num-frames) -1)))
-                      :frame-num 0.0
-                      )
+          (ja-no-eval :group! s4-1 :num! (seek!) :frame-num 0.0)
           (until (ja-done? 0)
             (let ((f0-14 (ja-aframe-num 0)))
               (cond
@@ -218,15 +204,14 @@
         )
       )
     (kid-method-232 self)
-    (none)
     )
-  :post (the-as (function none :behavior kid) nav-enemy-simple-post)
+  :post nav-enemy-simple-post
   )
 
 ;; failed to figure out what this is:
 (defstate waiting-with-kor (kid)
   :virtual #t
-  :event (the-as (function process int symbol event-message-block object :behavior kid) enemy-event-handler)
+  :event enemy-event-handler
   :enter (-> (method-of-type kid waiting-idle) enter)
   :exit (-> (method-of-type kid waiting-idle) exit)
   :trans (behavior ()
@@ -236,7 +221,6 @@
           (go-virtual traveling)
           )
       )
-    (none)
     )
   :code (-> (method-of-type kid waiting-idle) code)
   :post (-> (method-of-type kid waiting-idle) post)
@@ -245,9 +229,9 @@
 ;; failed to figure out what this is:
 (defstate scared-idle (kid)
   :virtual #t
-  :event (the-as (function process int symbol event-message-block object :behavior kid) enemy-event-handler)
+  :event enemy-event-handler
   :enter (behavior ()
-    (set! (-> self state-time) (current-time))
+    (set-time! (-> self state-time))
     (let ((v1-2 self))
       (set! (-> v1-2 enemy-flags) (the-as enemy-flag (logclear (-> v1-2 enemy-flags) (enemy-flag enemy-flag36))))
       (set! (-> v1-2 nav callback-info) *nav-enemy-null-callback-info*)
@@ -261,7 +245,6 @@
     (vector-reset! (-> self root transv))
     (look-at-target! self (enemy-flag lock-focus))
     (set! (-> self travel-anim-interp) 0.0)
-    (none)
     )
   :trans (behavior ()
     (bot-method-223 self #f)
@@ -286,12 +269,11 @@
           (go-virtual traveling)
           )
       )
-    (none)
     )
   :code (behavior ()
     (let ((v1-2 (ja-group)))
       (cond
-        ((and v1-2 (= v1-2 (-> self draw art-group data 4)))
+        ((and v1-2 (= v1-2 kid-scared0-ja))
          (ja-no-eval :num! (seek!))
          (while (not (ja-done? 0))
            (suspend)
@@ -304,27 +286,23 @@
         )
       )
     (until #f
-      (ja-no-eval :group! (-> self draw art-group data 4)
-                  :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 4)) frames num-frames) -1)))
-                  :frame-num 0.0
-                  )
+      (ja-no-eval :group! kid-scared0-ja :num! (seek!) :frame-num 0.0)
       (until (ja-done? 0)
         (suspend)
         (ja :num! (seek!))
         )
       )
     #f
-    (none)
     )
-  :post (the-as (function none :behavior kid) nav-enemy-simple-post)
+  :post nav-enemy-simple-post
   )
 
 ;; failed to figure out what this is:
 (defstate traveling (kid)
   :virtual #t
-  :event (the-as (function process int symbol event-message-block object :behavior kid) enemy-event-handler)
+  :event enemy-event-handler
   :enter (behavior ()
-    (set! (-> self state-time) (current-time))
+    (set-time! (-> self state-time))
     (let ((v1-2 self))
       (if (not (logtest? (enemy-flag enemy-flag36) (-> v1-2 enemy-flags)))
           (set! (-> v1-2 enemy-flags) (the-as enemy-flag (logior (enemy-flag enemy-flag38) (-> v1-2 enemy-flags))))
@@ -340,7 +318,6 @@
     (stop-looking-at-target! self)
     (nav-enemy-method-166 self)
     (set! (-> self player-blocking) 0.0)
-    (none)
     )
   :trans (behavior ()
     (bot-method-223 self #f)
@@ -354,16 +331,15 @@
         ((outside-spot-radius? self (the-as bot-spot #f) (the-as vector #f) #t)
          (kid-method-232 self)
          )
-        ((and (>= (- (current-time) (-> self state-time)) (seconds 0.5)) (bot-method-208 self))
+        ((and (time-elapsed? (-> self state-time) (seconds 0.5)) (bot-method-208 self))
          (go-virtual traveling-blocked)
          )
-        ((and (nav-enemy-method-163 self) (>= (- (current-time) (-> self state-time)) (-> self reaction-time)))
+        ((and (nav-enemy-method-163 self) (time-elapsed? (-> self state-time) (-> self reaction-time)))
          (go-stare2 self)
          )
         )
       )
     0
-    (none)
     )
   :code (behavior ()
     (until #f
@@ -371,7 +347,6 @@
       (suspend)
       )
     #f
-    (none)
     )
   :post (behavior ()
     (let ((a0-0 (-> self nav state))
@@ -383,16 +358,15 @@
       )
     0
     (nav-enemy-travel-post)
-    (none)
     )
   )
 
 ;; failed to figure out what this is:
 (defstate traveling-blocked (kid)
   :virtual #t
-  :event (the-as (function process int symbol event-message-block object :behavior kid) enemy-event-handler)
+  :event enemy-event-handler
   :enter (behavior ()
-    (set! (-> self state-time) (current-time))
+    (set-time! (-> self state-time))
     (let ((v1-2 self))
       (set! (-> v1-2 enemy-flags) (the-as enemy-flag (logclear (-> v1-2 enemy-flags) (enemy-flag enemy-flag36))))
       (set! (-> v1-2 nav callback-info) *nav-enemy-null-callback-info*)
@@ -406,7 +380,6 @@
     (vector-reset! (-> self root transv))
     (look-at-target! self (enemy-flag lock-focus))
     (set! (-> self travel-anim-interp) 0.0)
-    (none)
     )
   :trans (behavior ()
     (bot-method-223 self #f)
@@ -417,15 +390,14 @@
              )
          (go-virtual arrested)
          )
-        ((and (>= (- (current-time) (-> self state-time)) (seconds 1)) (not (bot-method-208 self)))
+        ((and (time-elapsed? (-> self state-time) (seconds 1)) (not (bot-method-208 self)))
          (go-virtual traveling)
          )
         )
       )
-    (none)
     )
   :code (-> (method-of-type kid waiting-idle) code)
-  :post (the-as (function none :behavior kid) nav-enemy-simple-post)
+  :post nav-enemy-simple-post
   )
 
 ;; failed to figure out what this is:
@@ -442,7 +414,6 @@
       )
     0
     (set! (-> self travel-anim-interp) 0.0)
-    (none)
     )
   :trans (behavior ()
     (bot-method-223 self #f)
@@ -453,12 +424,11 @@
           (go-virtual arrested)
           )
       )
-    (when (>= (- (current-time) (-> self state-time)) (seconds 0.1))
+    (when (time-elapsed? (-> self state-time) (seconds 0.1))
       (if (not (nav-enemy-method-163 self))
           (go-virtual traveling)
           )
       )
-    (none)
     )
   :code (-> (method-of-type kid waiting-idle) code)
   )
@@ -473,15 +443,11 @@
           )
       )
     (set! (-> self travel-anim-interp) 0.0)
-    (none)
     )
   :code (behavior ()
     (local-vars (v1-31 enemy-flag) (v1-39 enemy-flag))
     (ja-channel-push! 1 (seconds 0.1))
-    (ja-no-eval :group! (-> self draw art-group data 3)
-                :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 3)) frames num-frames) -1)))
-                :frame-num 0.0
-                )
+    (ja-no-eval :group! kid-idle0-ja :num! (seek!) :frame-num 0.0)
     (until (ja-done? 0)
       (suspend)
       (ja :num! (seek!))
@@ -511,7 +477,6 @@
     (logclear! (-> self enemy-flags) (enemy-flag actor-pause-backup))
     (logclear! (-> self focus-status) (focus-status hit))
     (react-to-focus self)
-    (none)
     )
   )
 
@@ -525,16 +490,15 @@
           )
       )
     (set! (-> self travel-anim-interp) 0.0)
-    (none)
     )
   )
 
 ;; failed to figure out what this is:
 (defstate arrested (kid)
   :virtual #t
-  :event (the-as (function process int symbol event-message-block object :behavior kid) enemy-event-handler)
+  :event enemy-event-handler
   :enter (behavior ()
-    (set! (-> self state-time) (current-time))
+    (set-time! (-> self state-time))
     (let ((v1-2 self))
       (set! (-> v1-2 enemy-flags) (the-as enemy-flag (logclear (-> v1-2 enemy-flags) (enemy-flag enemy-flag36))))
       (set! (-> v1-2 nav callback-info) *nav-enemy-null-callback-info*)
@@ -551,7 +515,6 @@
     (if (logtest? (bot-flags bf20) (-> self bot-flags))
         (logclear! (-> self enemy-flags) (enemy-flag enable-on-active checking-water))
         )
-    (none)
     )
   :trans (behavior ()
     (cond
@@ -577,15 +540,11 @@
           )
         )
       )
-    (none)
     )
   :code (behavior ()
     (when (not (logtest? (bot-flags bf20) (-> self bot-flags)))
       (ja-channel-push! 1 (seconds 0.1))
-      (ja-no-eval :group! (-> self draw art-group data 15)
-                  :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 15)) frames num-frames) -1)))
-                  :frame-num 0.0
-                  )
+      (ja-no-eval :group! kid-arrest-start-ja :num! (seek!) :frame-num 0.0)
       (until (ja-done? 0)
         (suspend)
         (ja :num! (seek!))
@@ -603,19 +562,16 @@
           )
       )
     (let ((v1-35 (ja-group)))
-      (if (not (and v1-35 (= v1-35 (-> self draw art-group data 15))))
+      (if (not (and v1-35 (= v1-35 kid-arrest-start-ja)))
           (ja-channel-push! 1 (seconds 0.1))
           )
       )
-    (set! (-> self state-time) (current-time))
+    (set-time! (-> self state-time))
     (until #f
-      (ja-no-eval :group! (-> self draw art-group data 16)
-                  :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 16)) frames num-frames) -1)))
-                  :frame-num 0.0
-                  )
+      (ja-no-eval :group! kid-arrest-idle0-ja :num! (seek!) :frame-num 0.0)
       (until (ja-done? 0)
         (if (and (logtest? (-> self bot-flags) (bot-flags failed))
-                 (>= (- (current-time) (-> self state-time)) (seconds 4))
+                 (time-elapsed? (-> self state-time) (seconds 4))
                  (reset? *fail-mission-control*)
                  )
             (reset! *fail-mission-control*)
@@ -625,9 +581,8 @@
         )
       )
     #f
-    (none)
     )
-  :post (the-as (function none :behavior kid) nav-enemy-simple-post)
+  :post nav-enemy-simple-post
   )
 
 ;; failed to figure out what this is:
@@ -636,7 +591,6 @@
   :enter (behavior ()
     (logior! (-> self bot-flags) (bot-flags bf20))
     ((-> (method-of-type kid arrested) enter))
-    (none)
     )
   :trans (-> (method-of-type kid arrested) trans)
   :code (-> (method-of-type kid arrested) code)

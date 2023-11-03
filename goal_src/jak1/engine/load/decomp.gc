@@ -7,6 +7,8 @@
 
 ;; This file contains update-vis! which updates the vis-bits string from the loaded VIS file.
 
+;; DECOMP BEGINS
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; decompression functions
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -15,32 +17,38 @@
   "Unpack run-length-encoded data. Has sections of repeated values, then normally copied."
   (local-vars (current-input int) (copy-length int))
   (nop!)
-  (while #t
-    (while #t
-      
+  (loop
+    (loop
+
       ;; read the input and see what kind it is, based on number.
       (set! current-input (-> in 0))
       (set! in (&-> in 1))
       (b! (<= current-input 0) cfg-5 :delay (nop!))
-      
+
       ;; it's a repated value, loop to copy it.
       (let ((repeated-value (-> in 0)))
         (set! in (&-> in 1))
         (label cfg-3)
+        (nop!)
+        (nop!)
+        (nop!)
+        (nop!)
         (set! (-> out 0) repeated-value)
         )
       (set! out (&-> out 1))
       (b! (> current-input 0) cfg-3 :delay (set! current-input (+ current-input -1)))
       )
-    
+
     (label cfg-5)
     ;; check for end
     (b! (zero? current-input) cfg-8 :delay (set! copy-length (- current-input)))
-    
+
     ;; copy
     (label cfg-6)
     (let ((src-val (-> in 0)))
       (set! in (&-> in 1))
+      (nop!)
+      (nop!)
       (set! (-> out 0) src-val)
       )
     (+! copy-length -1)
@@ -51,19 +59,17 @@
   (none)
   )
 
-
 (deftype huf-dictionary-node (structure)
-  ((zero uint16  :offset-assert   0)
-   (one  uint16  :offset-assert   2)
+  ((zero  uint16)
+   (one   uint16)
    )
-  :method-count-assert 9
-  :size-assert         #x4
-  :flag-assert         #x900000004
   )
+
 
 (defun unpack-comp-huf ((dst (pointer uint8)) (src (pointer uint8)) (arg2 uint) (dict huf-dictionary-node))
   "Unpack data compressed with huffman encoding."
   (local-vars (t1-1 uint) (t3-2 object))
+  (nop!)
   (let ((t1-0 (-> dict zero))
         (a2-1 (+ arg2 -1028))
         (t2-0 (-> dict one))
@@ -87,13 +93,9 @@
         (let ((t3-1 (* t1-1 4)))
           (b! (< (the-as int t2-1) 0) cfg-8 :delay (set! t3-2 (+ t3-1 a2-1)))
           )
-        (b! (zero? t2-1) cfg-10
-            :delay (set! t1-0 (-> (the-as (pointer uint16) t3-2) 0))
-            )
+        (b! (zero? t2-1) cfg-10 :delay (set! t1-0 (-> (the-as (pointer uint16) t3-2) 0)))
         )
-      (b! (nonzero? v1-4) cfg-2
-          :delay (set! t2-0 (-> (the-as (pointer uint16) t3-2) 1))
-          )
+      (b! (nonzero? v1-4) cfg-2 :delay (set! t2-0 (-> (the-as (pointer uint16) t3-2) 1)))
       (b! #t cfg-1 :delay (nop!))
       (label cfg-8)
       (set! (-> dst 0) t1-1)
@@ -111,7 +113,7 @@
   (none)
   )
 
-(defmethod update-vis! level ((obj level) (vis-info level-vis-info) (arg1 uint) (arg2 uint))
+(defmethod update-vis! ((this level) (vis-info level-vis-info) (arg1 uint) (arg2 uint))
   "Update the vis-bits for the level with the given vis info.
    arg1 unused. if the vis-file flag isn't set, will use arg2 as vis data."
   (local-vars (t0-3 uint128) (vis-buffer object))
@@ -136,7 +138,7 @@
            )
          ;; we're done! Deal with the vis data.
          (logclear! (-> vis-info flags) (vis-info-flag waiting-for-iop-to-ee))
-         (set! vis-buffer (-> obj vis-buffer))
+         (set! vis-buffer (-> this vis-buffer))
          (b! #t cfg-27 :delay (nop!))
          )
         (else
@@ -166,13 +168,13 @@
     
     ;; start a ramdisk load.  This should have already been done as part of level loading anyway.
     ;; so this will just get the ramdisk file ID.
-    (let ((vis-load-result (vis-load obj)))
+    (let ((vis-load-result (vis-load this)))
       (b! (nonzero? vis-load-result) cfg-21)
       
       ;; ramdisk failed, make everything visible.
       (let* ((dest-bits (-> vis-info vis-bits))
-             (len (-> obj bsp visible-list-length))
-             (bsp-bits (the-as (pointer uinteger) (-> obj bsp all-visible-list)))
+             (len (-> this bsp visible-list-length))
+             (bsp-bits (the-as (pointer uinteger) (-> this bsp all-visible-list)))
              (len-qw (/ (+ len 15) 16))
              )
         (dotimes (a2-1 len-qw)
@@ -192,7 +194,7 @@
         ;; from the DVD.  So display a message and keep us in loading.
         (when (check-busy *ramdisk-rpc*)
           (set! (-> vis-info current-vis-string) (the-as uint -1))
-          (set! (-> obj all-visible?) 'loading)
+          (set! (-> this all-visible?) 'loading)
           (if (= *cheat-mode* 'debug)
               (format *stdcon* "Ramdisk loading~%")
               )
@@ -206,7 +208,7 @@
           (the-as int vis-load-result)  ;; file ID in ramdisk
           desired-vis-str               ;; the offset in the VIS file
           (the-as uint 2048)            ;; always do 2kB. it's a worst case if the string can't be compressed
-          (-> obj vis-buffer)           ;; copy to the level buffer for vis data
+          (-> this vis-buffer)           ;; copy to the level buffer for vis data
           )
         (set! result #f)                ;; this takes time, so quit and report that we failed.
         (b! #t cfg-55 :delay (nop!))
@@ -219,7 +221,7 @@
         (let ((lower-flag-bits (the-as int (logand #x1fffffff (-> vis-info flags))))
               (spad-start (the-as object (scratchpad-object object :offset 16)))
               (spad-end (the-as int (scratchpad-object int :offset 2064)))
-              (list-len (-> obj bsp visible-list-length))
+              (list-len (-> this bsp visible-list-length))
               )
           (when (zero? (the-as vis-info-flag lower-flag-bits))
             ;; set the spad buffer to 0 (but we write over this next??)
@@ -243,7 +245,7 @@
                        )
                      )
                    (unpack-vis
-                     (-> obj bsp drawable-trees)
+                     (-> this bsp drawable-trees)
                      (the-as (pointer int8) spad-start)
                      (the-as (pointer int8) vis-buffer)
                      )
@@ -282,7 +284,7 @@
           ;; remove any bits.
           ;; this just prints errors.
           (let ((s2-1 (the-as object vis-buffer))
-                (s1-1 (the-as (pointer uinteger) (-> obj bsp all-visible-list)))
+                (s1-1 (the-as (pointer uinteger) (-> this bsp all-visible-list)))
                 (v1-67 #f) ;; found error
                 )
             (dotimes (s0-1 list-len)
@@ -318,7 +320,7 @@
           ;; also copy from vis-buffer (may be spad) to the final vis-bits output
           (let ((v1-71 (the-as object vis-buffer))
                 (a0-47 (-> vis-info vis-bits))
-                (a1-22 (the-as (pointer uinteger) (-> obj bsp all-visible-list)))
+                (a1-22 (the-as (pointer uinteger) (-> this bsp all-visible-list)))
                 (a2-11 (/ (+ list-len 15) 16))
                 )
             (dotimes (a3-8 a2-11)

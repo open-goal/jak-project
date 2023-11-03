@@ -7,15 +7,10 @@
 
 ;; DECOMP BEGINS
 
-
 (deftype hopper (nav-enemy)
-  ((jump-length  float  :offset-assert 400)
-   (shadow-min-y float  :offset-assert 404)
+  ((jump-length   float)
+   (shadow-min-y  float)
    )
-  :heap-base #x130
-  :method-count-assert 76
-  :size-assert         #x198
-  :flag-assert         #x4c01300198
   )
 
 
@@ -28,12 +23,12 @@
 
 nav-enemy-default-event-handler
 
-(defmethod common-post hopper ((obj hopper))
-  (let ((v1-1 (-> obj draw shadow-ctrl)))
-    (set! (-> v1-1 settings bot-plane w) (- (- (-> obj shadow-min-y) (-> obj collide-info trans y))))
+(defmethod common-post ((this hopper))
+  (let ((v1-1 (-> this draw shadow-ctrl)))
+    (set! (-> v1-1 settings bot-plane w) (- (- (-> this shadow-min-y) (-> this collide-info trans y))))
     )
   0
-  ((the-as (function nav-enemy none) (find-parent-method hopper 39)) obj)
+  (call-parent-method this)
   0
   (none)
   )
@@ -110,10 +105,7 @@ nav-enemy-default-event-handler
 
 (defstate nav-enemy-idle (hopper)
   :virtual #t
-  :event (the-as
-    (function process int symbol event-message-block object :behavior hopper)
-    nav-enemy-default-event-handler
-    )
+  :event nav-enemy-default-event-handler
   :code (behavior ()
     (ja-channel-push! 1 (seconds 0.075))
     (loop
@@ -130,21 +122,16 @@ nav-enemy-default-event-handler
         (ja :num! (seek!))
         )
       )
-    (none)
     )
   )
 
 (defstate nav-enemy-patrol (hopper)
   :virtual #t
-  :event (the-as
-    (function process int symbol event-message-block object :behavior hopper)
-    nav-enemy-jump-event-handler
-    )
+  :event nav-enemy-jump-event-handler
   :trans (behavior ()
     (if (not (logtest? (-> self nav-enemy-flags) (nav-enemy-flags enable-rotate)))
         ((-> (method-of-type nav-enemy nav-enemy-patrol) trans))
         )
-    (none)
     )
   :code (behavior ()
     (vector-reset! (-> self collide-info transv))
@@ -174,9 +161,9 @@ nav-enemy-default-event-handler
           (ja-channel-push! 1 (seconds 0.075))
           )
         )
-      (set! (-> self state-time) (-> *display* base-frame-counter))
+      (set-time! (-> self state-time))
       (ja :group! hopper-idle-ja :num! min)
-      (until (>= (- (-> *display* base-frame-counter) (-> self state-time)) (seconds 0.5))
+      (until (time-elapsed? (-> self state-time) (seconds 0.5))
         (suspend)
         (ja :num! (loop!))
         )
@@ -188,34 +175,25 @@ nav-enemy-default-event-handler
         )
       (hopper-do-jump)
       )
-    (none)
     )
-  :post (the-as (function none :behavior hopper) nav-enemy-jump-post)
+  :post nav-enemy-jump-post
   )
 
 (defstate nav-enemy-notice (hopper)
   :virtual #t
-  :event (the-as
-    (function process int symbol event-message-block object :behavior hopper)
-    nav-enemy-default-event-handler
-    )
+  :event nav-enemy-default-event-handler
   :code (behavior ()
     (go-virtual nav-enemy-chase)
-    (none)
     )
   )
 
 (defstate nav-enemy-chase (hopper)
   :virtual #t
-  :event (the-as
-    (function process int symbol event-message-block object :behavior hopper)
-    nav-enemy-jump-event-handler
-    )
+  :event nav-enemy-jump-event-handler
   :trans (behavior ()
     (if (not (logtest? (-> self nav-enemy-flags) (nav-enemy-flags enable-rotate)))
         ((-> (method-of-type nav-enemy nav-enemy-chase) trans))
         )
-    (none)
     )
   :code (behavior ()
     (vector-reset! (-> self collide-info transv))
@@ -245,29 +223,24 @@ nav-enemy-default-event-handler
           (ja-channel-push! 1 (seconds 0.075))
           )
         )
-      (set! (-> self state-time) (-> *display* base-frame-counter))
+      (set-time! (-> self state-time))
       (ja :group! hopper-idle-ja :num! min)
-      (until (>= (- (-> *display* base-frame-counter) (-> self state-time)) (seconds 0.2))
+      (until (time-elapsed? (-> self state-time) (seconds 0.2))
         (suspend)
         (ja :num! (loop!))
         )
       (set! (-> self nav target-pos quad) (-> (target-pos 0) quad))
       (hopper-do-jump)
       )
-    (none)
     )
-  :post (the-as (function none :behavior hopper) nav-enemy-jump-post)
+  :post nav-enemy-jump-post
   )
 
 (defstate nav-enemy-stop-chase (hopper)
   :virtual #t
-  :event (the-as
-    (function process int symbol event-message-block object :behavior hopper)
-    nav-enemy-default-event-handler
-    )
+  :event nav-enemy-default-event-handler
   :code (behavior ()
     (go-virtual nav-enemy-stare)
-    (none)
     )
   )
 
@@ -325,8 +298,8 @@ nav-enemy-default-event-handler
                                   )
         )
 
-(defmethod initialize-collision hopper ((obj hopper))
-  (let ((s5-0 (new 'process 'collide-shape-moving obj (collide-list-enum usually-hit-by-player))))
+(defmethod initialize-collision ((this hopper))
+  (let ((s5-0 (new 'process 'collide-shape-moving this (collide-list-enum usually-hit-by-player))))
     (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s5-0 reaction) default-collision-reaction)
     (set! (-> s5-0 no-reaction)
@@ -358,16 +331,16 @@ nav-enemy-default-event-handler
     (set! (-> s5-0 nav-radius) 6144.0)
     (backup-collide-with-as s5-0)
     (set! (-> s5-0 max-iteration-count) (the-as uint 2))
-    (set! (-> obj collide-info) s5-0)
+    (set! (-> this collide-info) s5-0)
     )
   0
   (none)
   )
 
-(defmethod nav-enemy-method-48 hopper ((obj hopper))
-  (initialize-skeleton obj *hopper-sg* '())
-  (init-defaults! obj *hopper-nav-enemy-info*)
-  (set! (-> obj shadow-min-y) (+ (-> obj collide-info trans y) (-> obj nav-info shadow-min-y)))
+(defmethod nav-enemy-method-48 ((this hopper))
+  (initialize-skeleton this *hopper-sg* '())
+  (init-defaults! this *hopper-nav-enemy-info*)
+  (set! (-> this shadow-min-y) (+ (-> this collide-info trans y) (-> this nav-info shadow-min-y)))
   0
   (none)
   )

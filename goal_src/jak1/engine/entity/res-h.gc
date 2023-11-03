@@ -7,16 +7,17 @@
 
 ;; res is the very generic resource storage system. See res.gc for more information.
 
+;; DECOMP BEGINS
+
 ;; the res-tag describes some data
 (deftype res-tag (uint128)
-  ((name        symbol  :offset 0)       ;; name used for lookups
-   (key-frame   float   :offset 32)      ;; if it has a time value associated with it
-   (elt-type    type    :offset 64)      ;; the type of the data stored
-   (data-offset uint16  :offset 96)      ;; offset to our data within our lump
-   (elt-count   uint32  :offset 112 :size 15) ;; if we're an array
-   (inlined?    uint8   :offset 127 :size 1)  ;; if our data is an inline array or not.
+  ((name        symbol :offset   0)      ;; name used for lookups
+   (key-frame   float  :offset  32)      ;; if it has a time value associated with it
+   (elt-type    type   :offset  64)      ;; the type of the data stored
+   (data-offset uint16 :offset  96)      ;; offset to our data within our lump
+   (elt-count   uint32 :offset 112 :size  15) ;; if we're an array
+   (inlined?    uint8  :offset 127 :size   1) ;; if our data is an inline array or not.
    )
-  :flag-assert #x900000010
   )
 
 ;; the indices of two res tags. If the specific key-frame time is in between two
@@ -32,34 +33,29 @@
 ;; a res-lump is a collection of res-tags and the associated data.
 ;; it's used as the base type for entities where the res stores various parameters.
 (deftype res-lump (basic)
-  ((length           int32              :offset-assert 4)
-   (allocated-length int32              :offset-assert 8)
-   (data-base        pointer            :offset-assert 12)
-   (data-top         pointer            :offset-assert 16)
-   (data-size        int32              :offset-assert 20)
-   (extra            entity-links       :offset-assert 24)
-   (tag              (pointer res-tag)  :offset-assert 28)
+  ((length            int32)
+   (allocated-length  int32)
+   (data-base         pointer)
+   (data-top          pointer)
+   (data-size         int32)
+   (extra             entity-links)
+   (tag               (pointer res-tag))
    )
-
-  :method-count-assert 22
-  :size-assert         #x20
-  :flag-assert         #x1600000020
-  ;; field extra is a basic loaded with a signed load
   (:methods
-    (new (symbol type int int) _type_ 0)
-    (get-property-data (_type_ symbol symbol float pointer (pointer res-tag) pointer) pointer :no-virtual 9)
-    (get-property-struct (_type_ symbol symbol float structure (pointer res-tag) pointer) structure :no-virtual 10)
-    (get-property-value (_type_ symbol symbol float uint128 (pointer res-tag) pointer) uint128 :no-virtual 11)
-    (get-property-value-float (_type_ symbol symbol float float (pointer res-tag) pointer) float :no-virtual 12)
-    (get-tag-index-data (_type_ int) pointer 13)
-    (get-tag-data (_type_ res-tag) pointer 14)
-    (allocate-data-memory-for-tag! (_type_ res-tag) res-tag 15)
-    (sort! (_type_) _type_ 16)
-    (add-data! (_type_ res-tag pointer) res-lump 17)
-    (add-32bit-data! (_type_ res-tag object) res-lump 18)
-    (lookup-tag-idx (_type_ symbol symbol float) res-tag-pair :no-virtual 19)
-    (make-property-data (_type_ float res-tag-pair pointer) pointer 20)
-    (get-curve-data! (_type_ curve symbol symbol float) symbol 21)
+    (new (symbol type int int) _type_)
+    (get-property-data (_type_ symbol symbol float pointer (pointer res-tag) pointer) pointer :no-virtual)
+    (get-property-struct (_type_ symbol symbol float structure (pointer res-tag) pointer) structure :no-virtual)
+    (get-property-value (_type_ symbol symbol float uint128 (pointer res-tag) pointer) uint128 :no-virtual)
+    (get-property-value-float (_type_ symbol symbol float float (pointer res-tag) pointer) float :no-virtual)
+    (get-tag-index-data (_type_ int) pointer)
+    (get-tag-data (_type_ res-tag) pointer)
+    (allocate-data-memory-for-tag! (_type_ res-tag) res-tag)
+    (sort! (_type_) _type_)
+    (add-data! (_type_ res-tag pointer) res-lump)
+    (add-32bit-data! (_type_ res-tag object) res-lump)
+    (lookup-tag-idx (_type_ symbol symbol float) res-tag-pair :no-virtual)
+    (make-property-data (_type_ float res-tag-pair pointer) pointer)
+    (get-curve-data! (_type_ curve symbol symbol float) symbol)
     )
   )
 

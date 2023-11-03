@@ -44,11 +44,88 @@
 #include <cstring>
 
 #include "common/util/FileUtil.h"
+#include "common/util/crc32.h"
 #include "common/util/print_float.h"
 
 #include "third-party/fmt/core.h"
 
 namespace goos {
+
+SymbolTable::SymbolTable() {
+  m_power_of_two_size = 1;  // 2 ^ 1 = 2
+  m_entries.resize(2);
+  m_used_entries = 0;
+  m_next_resize = (m_entries.size() * kMaxUsed);
+  m_mask = 0b1;
+}
+
+SymbolTable::~SymbolTable() {
+  for (auto& e : m_entries) {
+    delete[] e.name;
+  }
+}
+
+InternedSymbolPtr SymbolTable::intern(const char* str) {
+  size_t string_len = strlen(str);
+  u32 hash = crc32((const u8*)str, string_len);
+
+  // probe
+  for (u32 i = 0; i < m_entries.size(); i++) {
+    u32 slot_addr = (hash + i) & m_mask;
+    auto& slot = m_entries[slot_addr];
+    if (!slot.name) {
+      // not found, insert!
+      slot.hash = hash;
+      auto* name = new char[string_len + 1];
+      memcpy(name, str, string_len + 1);
+      slot.name = name;
+      m_used_entries++;
+
+      if (m_used_entries >= m_next_resize) {
+        resize();
+        return intern(str);
+      }
+      return {name};
+    } else {
+      if (slot.hash != hash) {
+        continue;  // bad hash
+      }
+      if (strcmp(slot.name, str) != 0) {
+        continue;  // bad name
+      }
+      return {slot.name};
+    }
+  }
+
+  // should be impossible to reach.
+  ASSERT_NOT_REACHED();
+}
+
+void SymbolTable::resize() {
+  m_power_of_two_size++;
+  m_mask = (1U << m_power_of_two_size) - 1;
+
+  std::vector<Entry> new_entries(m_entries.size() * 2);
+  for (const auto& old_entry : m_entries) {
+    if (old_entry.name) {
+      bool done = false;
+      for (u32 i = 0; i < new_entries.size(); i++) {
+        u32 slot_addr = (old_entry.hash + i) & m_mask;
+        auto& slot = new_entries[slot_addr];
+        if (!slot.name) {
+          slot.name = old_entry.name;
+          slot.hash = old_entry.hash;
+          done = true;
+          break;
+        }
+      }
+      ASSERT(done);
+    }
+  }
+
+  m_entries = std::move(new_entries);
+  m_next_resize = kMaxUsed * m_entries.size();
+}
 
 /*!
  * Convert type to string (name in brackets)
@@ -137,14 +214,9 @@ std::string fixed_to_string(char x) {
   return {buff};
 }
 
-/*!
- * Create a new symbol object by interning
- */
-Object SymbolObject::make_new(SymbolTable& st, const std::string& name) {
-  Object obj;
-  obj.type = ObjectType::SYMBOL;
-  obj.heap_obj = st.intern(name);
-  return obj;
+template <>
+std::string fixed_to_string(InternedSymbolPtr x) {
+  return x.name_ptr;
 }
 
 /*!
@@ -238,8 +310,9 @@ bool Object::operator==(const Object& other) const {
       return float_obj == other.float_obj;
     case ObjectType::CHAR:
       return char_obj == other.char_obj;
-
     case ObjectType::SYMBOL:
+      return symbol_obj == other.symbol_obj;
+
     case ObjectType::ENVIRONMENT:
     case ObjectType::LAMBDA:
     case ObjectType::MACRO:
@@ -271,7 +344,7 @@ bool Object::operator==(const Object& other) const {
 }
 
 bool Object::is_symbol(const std::string& name) const {
-  return is_symbol() && as_symbol()->name == name;
+  return is_symbol() && name == as_symbol().name_ptr;
 }
 
 bool Object::is_string(const std::string& val) const {

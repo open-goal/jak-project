@@ -63,9 +63,9 @@ Val* Compiler::compile_define(const goos::Object& form, const goos::Object& rest
   }
 
   auto in_gpr = compiled_val->to_gpr(form, fe);
-  auto existing_type = m_symbol_types.find(sym.as_symbol()->name);
+  auto existing_type = m_symbol_types.find(sym.as_symbol());
   if (existing_type == m_symbol_types.end()) {
-    m_symbol_types[sym.as_symbol()->name] = in_gpr->type();
+    m_symbol_types[sym.as_symbol()] = in_gpr->type();
   } else {
     bool do_typecheck = true;
     if (args.has_named("no-typecheck")) {
@@ -73,7 +73,7 @@ Val* Compiler::compile_define(const goos::Object& form, const goos::Object& rest
     }
     if (do_typecheck) {
       typecheck(form, existing_type->second, in_gpr->type(),
-                fmt::format("define on existing symbol {}", sym.as_symbol()->name));
+                fmt::format("define on existing symbol {}", sym.as_symbol().name_ptr));
     }
   }
 
@@ -104,25 +104,27 @@ Val* Compiler::compile_define_extern(const goos::Object& form, const goos::Objec
 
   auto new_type = parse_typespec(typespec, env);
 
-  auto existing_type = m_symbol_types.find(symbol_string(sym));
+  auto existing_type = m_symbol_types.find(sym.as_symbol());
+  // symbol already declared, and doesn't match existing definition. do more checks...
   if (existing_type != m_symbol_types.end() && existing_type->second != new_type) {
     if (m_allow_inconsistent_definition_symbols.find(symbol_string(sym)) ==
         m_allow_inconsistent_definition_symbols.end()) {
-      if (m_throw_on_define_extern_redefinition) {
+      // throw if we have throws enabled, and new definition is NOT just more generic
+      // (that case is fine in goal)
+      if (!m_ts.tc(new_type, existing_type->second) && m_throw_on_define_extern_redefinition) {
         throw_compiler_error(form,
                              "define-extern would redefine the type of symbol {} from {} to {}.",
                              symbol_string(sym), existing_type->second.print(), new_type.print());
       } else {
         print_compiler_warning(
-            "[Warning] define-extern has redefined the type of symbol {}\npreviously: {}\nnow: "
-            "{}\n",
+            "define-extern has redefined the type of symbol {}\npreviously: {}\nnow: {}\n",
             symbol_string(sym).c_str(), existing_type->second.print().c_str(),
             new_type.print().c_str());
       }
     }
   }
 
-  m_symbol_types[symbol_string(sym)] = new_type;
+  m_symbol_types[sym.as_symbol()] = new_type;
   m_symbol_info.add_fwd_dec(symbol_string(sym), form);
   return get_none();
 }

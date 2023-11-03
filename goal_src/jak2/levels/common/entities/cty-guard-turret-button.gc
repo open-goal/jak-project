@@ -14,20 +14,16 @@
 
 (deftype cty-guard-turret-button (basebutton)
   ()
-  :heap-base #xa0
-  :method-count-assert 40
-  :size-assert         #x120
-  :flag-assert         #x2800a00120
-  (:methods
-    (pop-up () _type_ :state 39)
+  (:state-methods
+    pop-up
     )
   )
 
 
-(defmethod basebutton-method-33 cty-guard-turret-button ((obj cty-guard-turret-button))
+(defmethod basebutton-method-33 ((this cty-guard-turret-button))
   "TODO - joint stuff"
   (initialize-skeleton
-    obj
+    this
     (the-as
       skeleton-group
       (art-group-get-by-name *level* "skel-cty-guard-turret-button" (the-as (pointer uint32) #f))
@@ -36,23 +32,23 @@
     )
   (ja-channel-set! 1)
   (cond
-    ((logtest? (-> obj button-status) (button-status pressed))
-     (let ((s5-1 (-> obj skel root-channel 0)))
+    ((logtest? (-> this button-status) (button-status pressed))
+     (let ((s5-1 (-> this skel root-channel 0)))
        (joint-control-channel-group-eval!
          s5-1
-         (the-as art-joint-anim (-> obj draw art-group data 2))
+         (the-as art-joint-anim (-> this draw art-group data 2))
          num-func-identity
          )
        (set! (-> s5-1 frame-num)
-             (the float (+ (-> (the-as art-joint-anim (-> obj draw art-group data 2)) frames num-frames) -1))
+             (the float (+ (-> (the-as art-joint-anim (-> this draw art-group data 2)) frames num-frames) -1))
              )
        )
      )
     (else
-      (let ((s5-2 (-> obj skel root-channel 0)))
+      (let ((s5-2 (-> this skel root-channel 0)))
         (joint-control-channel-group-eval!
           s5-2
-          (the-as art-joint-anim (-> obj draw art-group data 2))
+          (the-as art-joint-anim (-> this draw art-group data 2))
           num-func-identity
           )
         (set! (-> s5-2 frame-num) 0.0)
@@ -64,9 +60,9 @@
   )
 
 ;; WARN: Return type mismatch collide-shape vs none.
-(defmethod basebutton-method-34 cty-guard-turret-button ((obj cty-guard-turret-button))
+(defmethod basebutton-method-34 ((this cty-guard-turret-button))
   "TODO - collision stuff"
-  (let ((s5-0 (new 'process 'collide-shape obj (collide-list-enum hit-by-player))))
+  (let ((s5-0 (new 'process 'collide-shape this (collide-list-enum hit-by-player))))
     (let ((s4-0 (new 'process 'collide-shape-prim-group s5-0 (the-as uint 2) 0)))
       (set! (-> s5-0 total-prims) (the-as uint 3))
       (set! (-> s4-0 prim-core collide-as) (collide-spec pusher))
@@ -95,58 +91,50 @@
       (set! (-> s5-0 backup-collide-as) (-> v1-15 prim-core collide-as))
       (set! (-> s5-0 backup-collide-with) (-> v1-15 prim-core collide-with))
       )
-    (set! (-> obj root) s5-0)
+    (set! (-> this root) s5-0)
     )
   (none)
   )
 
 ;; WARN: Return type mismatch symbol vs none.
-(defmethod prepare-trigger-event! cty-guard-turret-button ((obj cty-guard-turret-button))
+(defmethod prepare-trigger-event! ((this cty-guard-turret-button))
   "Sets `event-going-down` to `'trigger`"
-  (logior! (-> obj button-status) (button-status button-status-4))
-  (set! (-> obj event-going-down) 'trigger)
+  (logior! (-> this button-status) (button-status button-status-4))
+  (set! (-> this event-going-down) 'trigger)
   (none)
   )
 
 (defstate pop-up (cty-guard-turret-button)
   :virtual #t
   :code (behavior ()
-    (ja-no-eval :group! cty-guard-turret-button-pop-up-ja
-                :num! (seek!
-                  (the float (+ (-> (the-as art-joint-anim cty-guard-turret-button-pop-up-ja) frames num-frames) -1))
-                  0.4
-                  )
-                :frame-num 0.0
-                )
+    (ja-no-eval :group! cty-guard-turret-button-pop-up-ja :num! (seek! max 0.4) :frame-num 0.0)
     (until (ja-done? 0)
       (suspend)
       (ja :num! (seek! max 0.4))
       )
     (ja :group! cty-guard-turret-button-idle-ja :num! min)
     (go-virtual up-idle)
-    (none)
     )
   :post (behavior ()
     (rider-post)
-    (none)
     )
   )
 
-(defmethod idle-state-transition cty-guard-turret-button ((obj cty-guard-turret-button))
+(defmethod idle-state-transition ((this cty-guard-turret-button))
   "If `button-status` has [[button-status:0]] set, transition to [[basebutton::27]] otherwise, [[basebutton::30]]"
-  (setup-masks (-> obj draw) 0 -1)
+  (setup-masks (-> this draw) 0 -1)
   (cond
-    ((logtest? (-> obj button-status) (button-status pressed))
+    ((logtest? (-> this button-status) (button-status pressed))
      (format #t "off~%")
-     (setup-masks (-> obj draw) 4 0)
-     (setup-masks (-> obj draw) 1 0)
-     (go (method-of-object obj down-idle))
+     (setup-masks (-> this draw) 4 0)
+     (setup-masks (-> this draw) 1 0)
+     (go (method-of-object this down-idle))
      )
     (else
       (format #t "on~%")
-      (setup-masks (-> obj draw) 4 0)
-      (setup-masks (-> obj draw) 2 0)
-      (go (method-of-object obj pop-up))
+      (setup-masks (-> this draw) 4 0)
+      (setup-masks (-> this draw) 2 0)
+      (go (method-of-object this pop-up))
       )
     )
   )
@@ -160,6 +148,5 @@
     (setup-masks (-> self draw) 4 0)
     (setup-masks (-> self draw) 1 0)
     (press! self #t)
-    (none)
     )
   )

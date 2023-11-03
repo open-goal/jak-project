@@ -121,34 +121,28 @@
   )
 
 (deftype tube-info (basic)
-  ((entity          basic              :offset-assert   4)
-   (tube            handle             :offset-assert   8)
-   (downhill        vector     :inline :offset-assert  16)
-   (centertube      vector     :inline :offset-assert  32)
-   (downtube        vector     :inline :offset-assert  48)
-   (sidetube        vector     :inline :offset-assert  64)
-   (foretube        vector     :inline :offset-assert  80)
-   (old-transv      vector     :inline :offset-assert  96)
-   (mod-x           float              :offset-assert 112)
-   (mod-y           float              :offset-assert 116)
-   (start-time      time-frame         :offset-assert 120)
-   (turn-anim-targ  float              :offset-assert 128)
-   (turn-anim-frame float              :offset-assert 132)
-   (turn-anim-vel   float              :offset-assert 136)
-   (tube-sound-id   sound-id           :offset-assert 140)
-   (tube-sound-vol  float              :offset-assert 144)
+  ((entity           basic)
+   (tube             handle)
+   (downhill         vector  :inline)
+   (centertube       vector  :inline)
+   (downtube         vector  :inline)
+   (sidetube         vector  :inline)
+   (foretube         vector  :inline)
+   (old-transv       vector  :inline)
+   (mod-x            float)
+   (mod-y            float)
+   (start-time       time-frame)
+   (turn-anim-targ   float)
+   (turn-anim-frame  float)
+   (turn-anim-vel    float)
+   (tube-sound-id    sound-id)
+   (tube-sound-vol   float)
    )
-  :method-count-assert 9
-  :size-assert         #x94
-  :flag-assert         #x900000094
   )
 
 
 (deftype tube-bank (basic)
   ()
-  :method-count-assert 9
-  :size-assert         #x4
-  :flag-assert         #x900000004
   )
 
 
@@ -161,7 +155,7 @@
         100.0
         0.0
         )
-    (* 200.0 (-> *display* seconds-per-frame))
+    (* 200.0 (seconds-per-frame))
     )
   (let ((f30-0 (-> self tube tube-sound-vol))
         (f0-5 (lerp-scale -0.3 0.3 (-> self control unknown-float01) 0.0 122880.0))
@@ -277,7 +271,7 @@
     (vector-v++! (-> self control unknown-vector00) s4-2)
     )
   (let* ((f1-6 (-> self control unknown-surface01 fric))
-         (f1-9 (- 1.0 (* 60.0 (-> *display* seconds-per-frame) (- 1.0 f1-6))))
+         (f1-9 (- 1.0 (* 60.0 (seconds-per-frame) (- 1.0 f1-6))))
          (f0-21 (* 0.5 (+ 1.0 f1-9)))
          )
     (set! (-> self control unknown-vector00 x) (* (-> self control unknown-vector00 x) f0-21))
@@ -425,13 +419,13 @@
   )
 
 (defstate target-tube-start (target)
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
     (cond
-      ((and (= event-type 'query) (= (-> event param 0) 'mode))
+      ((and (= message 'query) (= (-> block param 0) 'mode))
        'tube
        )
       (else
-        (case event-type
+        (case message
           (('end-mode)
            (go
              target-jump
@@ -441,20 +435,20 @@
              )
            )
           (('touched)
-           (send-event proc 'attack (-> event param 0) 'tube 0 0)
+           (send-event proc 'attack (-> block param 0) 'tube 0 0)
            #f
            )
           (('attack 'attack-or-shove 'attack-invinc)
            (target-attacked
              'attack-or-shove
-             (the-as attack-info (-> event param 1))
+             (the-as attack-info (-> block param 1))
              proc
-             (the-as touching-shapes-entry (-> event param 0))
+             (the-as touching-shapes-entry (-> block param 0))
              target-tube-hit
              )
            )
           (else
-            (target-generic-event-handler proc arg1 event-type event)
+            (target-generic-event-handler proc argc message block)
             )
           )
         )
@@ -484,7 +478,6 @@
       (send-event (handle->process (-> self tube tube)) 'end-mode)
       (target-exit)
       )
-    (none)
     )
   :code (behavior ((arg0 handle))
     (send-event *camera* 'set-slave-option #x6000)
@@ -502,7 +495,7 @@
           (set! (-> self tube entity) (-> a0-4 entity))
           )
       )
-    (set! (-> self tube start-time) (-> *display* base-frame-counter))
+    (set-time! (-> self tube start-time))
     (set! (-> self tube tube-sound-id) (new-sound-id))
     (set! (-> self tube tube-sound-vol) 0.0)
     (target-collide-set! 'tube 0.0)
@@ -536,7 +529,6 @@
         (go target-tube)
         )
       )
-    (none)
     )
   :post target-post
   )
@@ -562,7 +554,7 @@
                0.0
                36864.0
                )
-             (-> *display* seconds-per-frame)
+             (seconds-per-frame)
              )
           )
       (set! (-> self tube turn-anim-vel)
@@ -574,7 +566,7 @@
                 )
               )
             )
-      (+! (-> self tube turn-anim-frame) (* (-> self tube turn-anim-vel) (-> *display* seconds-per-frame)))
+      (+! (-> self tube turn-anim-frame) (* (-> self tube turn-anim-vel) (seconds-per-frame)))
       (set! (-> self tube turn-anim-frame) (fmax -20.0 (fmin 20.0 (-> self tube turn-anim-frame))))
       (cond
         ((and (>= (-> self tube turn-anim-frame) 20.0) (>= (-> self tube turn-anim-vel) 0.0))
@@ -587,7 +579,7 @@
       )
     (set-time-ratios *display* (the float gp-0))
     )
-  (ja :group! (-> self draw art-group data 105) :num! (identity (ja-aframe (-> self tube turn-anim-frame) 0)))
+  (ja :group! eichar-tube-turn-ja :num! (identity (ja-aframe (-> self tube turn-anim-frame) 0)))
   0
   (none)
   )
@@ -597,7 +589,6 @@
   :enter (behavior ()
     (set! (-> self control unknown-surface00) *tube-mods*)
     (set! (-> self control surf) *tube-surface*)
-    (none)
     )
   :exit (-> target-tube-start exit)
   :trans (behavior ()
@@ -612,13 +603,12 @@
              )
         (go target-tube-jump (-> *TARGET-bank* tube-jump-height-min) (-> *TARGET-bank* tube-jump-height-max))
         )
-    (none)
     )
   :code (behavior ()
     (case (ja-group)
-      (((-> self draw art-group data 41) (-> self draw art-group data 38))
+      ((eichar-duck-high-jump-ja eichar-jump-loop-ja)
        (ja-channel-push! 1 (seconds 0.04))
-       (ja-no-eval :group! (-> self draw art-group data 106) :num! (seek!) :frame-num 0.0)
+       (ja-no-eval :group! eichar-tube-jump-land-ja :num! (seek!) :frame-num 0.0)
        (until (ja-done? 0)
          (suspend)
          (ja :num! (seek!))
@@ -634,22 +624,19 @@
       (target-tube-turn-anim)
       (suspend)
       )
-    (none)
     )
   :post (behavior ()
     (target-tube-post)
-    (none)
     )
   )
 
 (defstate target-tube-jump (target)
   :event (-> target-tube-start event)
   :enter (behavior ((arg0 float) (arg1 float))
-    (set! (-> self state-time) (-> *display* base-frame-counter))
+    (set-time! (-> self state-time))
     (init-var-jump arg0 arg1 (the-as vector #t) (the-as vector #f) (-> self control transv))
     (logclear! (-> self control status) (cshape-moving-flags onsurf onground tsurf))
     (set! (-> self control unknown-surface00) *tube-jump-mods*)
-    (none)
     )
   :exit (-> target-tube-start exit)
   :trans (behavior ()
@@ -660,13 +647,12 @@
     (seek!
       (-> self control unknown-float122)
       (fmax 0.0 (fmin 1.0 (* 0.00012207031 (+ -2048.0 (-> self control unknown-float01)))))
-      (-> *display* seconds-per-frame)
+      (seconds-per-frame)
       )
-    (none)
     )
   :code (behavior ((arg0 float) (arg1 float))
     (ja-channel-push! 1 (seconds 0.05))
-    (ja :group! (-> self draw art-group data 41) :num! (identity (ja-aframe 16.0 0)))
+    (ja :group! eichar-duck-high-jump-ja :num! (identity (ja-aframe 16.0 0)))
     (let ((f30-0 35.0)
           (f28-0 1.0)
           )
@@ -689,12 +675,11 @@
         (suspend)
         )
       )
-    (ja-no-eval :group! (-> self draw art-group data 38) :num! (loop!) :frame-num 0.0)
+    (ja-no-eval :group! eichar-jump-loop-ja :num! (loop!) :frame-num 0.0)
     (loop
       (suspend)
-      (ja :group! (-> self draw art-group data 38) :num! (loop!))
+      (ja :group! eichar-jump-loop-ja :num! (loop!))
       )
-    (none)
     )
   :post (-> target-tube post)
   )
@@ -710,7 +695,6 @@
       (-> self tube sidetube)
       (-> self tube foretube)
       )
-    (none)
     )
   :exit (behavior ()
     (if (!= (-> self next-state name) 'target-tube-death)
@@ -718,13 +702,12 @@
         )
     (logclear! (-> self state-flags) (state-flags sf02 do-not-notice grabbed first-person-mode))
     ((-> target-tube-start exit))
-    (none)
     )
   :code (behavior ((arg0 symbol) (arg1 attack-info))
     (let ((gp-0 (-> self attack-info)))
-      (set! (-> self state-time) (-> *display* base-frame-counter))
+      (set-time! (-> self state-time))
       (logior! (-> self state-flags) (state-flags being-attacked))
-      (set! (-> self game hit-time) (-> *display* base-frame-counter))
+      (set-time! (-> self game hit-time))
       (when (not (logtest? (-> arg1 mask) (attack-mask vector)))
         (vector-!
           (-> arg1 vector)
@@ -771,7 +754,7 @@
       (combine! gp-0 arg1)
       (when (= arg0 'attack)
         (pickup-collectable!
-          (-> self fact-info-target)
+          (-> self fact)
           (pickup-type eco-green)
           (- (-> *FACT-bank* health-single-inc))
           (the-as handle #f)
@@ -805,12 +788,11 @@
         (set! (-> a0-35 quad) (-> self control transv quad))
         (s5-3 s4-2 (t9-9 a0-35 1.0) (vector-y-quaternion! (new-stack-vector0) (-> self control dir-targ)))
         )
-      (if (and (= (-> self game mode) 'play) (>= 0.0 (-> self fact-info-target health)))
+      (if (and (= (-> self game mode) 'play) (>= 0.0 (-> self fact health)))
           (go target-tube-death (-> gp-0 mode))
           )
       )
     (go target-tube)
-    (none)
     )
   :post target-post
   )
@@ -823,7 +805,6 @@
     (remove-setting! 'process-mask)
     (apply-settings *setting-control*)
     ((-> target-tube-start exit))
-    (none)
     )
   :code (behavior ((arg0 symbol))
     (local-vars (v1-40 symbol))
@@ -834,7 +815,7 @@
     (set! (-> self control transv quad) (the-as uint128 0))
     (set! (-> self control unknown-surface00) *neutral-mods*)
     (ja-channel-push! 1 (seconds 0.1))
-    (ja-no-eval :group! (-> self draw art-group data 76) :num! (seek! (ja-aframe 134.0 0)) :frame-num 0.0)
+    (ja-no-eval :group! eichar-deatha-ja :num! (seek! (ja-aframe 134.0 0)) :frame-num 0.0)
     (until (ja-done? 0)
       (compute-alignment! (-> self align))
       (let ((gp-2 (new 'stack-no-clear 'vector)))
@@ -848,31 +829,26 @@
       )
     (set! (-> self control transv quad) (the-as uint128 0))
     (initialize! (-> self game) 'dead (the-as game-save #f) (the-as string #f))
-    (set! (-> self state-time) (-> *display* base-frame-counter))
+    (set-time! (-> self state-time))
     (until v1-40
       (suspend)
-      (set! v1-40 (and (>= (- (-> *display* base-frame-counter) (-> self state-time)) (seconds 1)) (not (movie?))))
+      (set! v1-40 (and (time-elapsed? (-> self state-time) (seconds 1)) (not (movie?))))
       )
     (go target-tube)
-    (none)
     )
   :post target-no-stick-post
   )
 
 (deftype slide-control (process-drawable)
-  ((target handle         :offset-assert 176)
-   (pos    float          :offset-assert 184)
-   (trans  vector :inline :offset-assert 192)
-   (rot    vector :inline :offset-assert 208)
-   (side   vector :inline :offset-assert 224)
+  ((target  handle)
+   (pos     float)
+   (trans   vector  :inline)
+   (rot     vector  :inline)
+   (side    vector  :inline)
    )
-  :heap-base #x80
-  :method-count-assert 22
-  :size-assert         #xf0
-  :flag-assert         #x16008000f0
-  (:methods
-    (slide-control-watch () _type_ :state 20)
-    (slide-control-ride () _type_ :state 21)
+  (:state-methods
+    slide-control-watch
+    slide-control-ride
     )
   )
 
@@ -931,7 +907,6 @@
     (eval-path-curve-div! (-> self path) (-> self root trans) 0.2 'interp)
     (path-control-method-12 (-> self path) (-> self rot) 0.2)
     (set! (-> self pos) 0.2)
-    (none)
     )
   :trans (behavior ()
     (if (and (and *target* (>= 81920.0 (vector-vector-distance (-> self root trans) (-> *target* control trans))))
@@ -945,15 +920,14 @@
              )
         (go-virtual slide-control-ride)
         )
-    (none)
     )
-  :code (the-as (function none :behavior slide-control) anim-loop)
+  :code anim-loop
   )
 
 (defstate slide-control-ride (slide-control)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('end-mode)
        (go-virtual slide-control-watch)
        )
@@ -967,10 +941,10 @@
          (if gp-0
              (find-target-point (-> (the-as process-drawable gp-0) root trans))
              )
-         (set! (-> (the-as vector (-> event param 0)) quad) (-> self trans quad))
-         (set! (-> (the-as vector (-> event param 1)) quad) (-> self rot quad))
-         (set! (-> (the-as vector (-> event param 2)) quad) (-> self side quad))
-         (eval-path-curve-div! (-> self path) (the-as vector (-> event param 3)) (+ 0.2 (-> self pos)) 'interp)
+         (set! (-> (the-as vector (-> block param 0)) quad) (-> self trans quad))
+         (set! (-> (the-as vector (-> block param 1)) quad) (-> self rot quad))
+         (set! (-> (the-as vector (-> block param 2)) quad) (-> self side quad))
+         (eval-path-curve-div! (-> self path) (the-as vector (-> block param 3)) (+ 0.2 (-> self pos)) 'interp)
          (if (>= (-> self pos) (+ -0.2 (the float (+ (-> self path curve num-cverts) -1))))
              (send-event gp-0 'end-mode)
              )
@@ -983,12 +957,10 @@
     (set! (-> self pos) 0.0)
     (set! (-> self target) (process->handle *target*))
     (process-entity-status! self (entity-perm-status bit-3) #t)
-    (none)
     )
   :exit (behavior ()
     (set! (-> self target) (the-as handle #f))
     (process-entity-status! self (entity-perm-status bit-3) #f)
-    (none)
     )
   :trans (behavior ()
     (let ((gp-0 (handle->process (-> self target))))
@@ -1002,18 +974,17 @@
           )
         )
       )
-    (none)
     )
-  :code (the-as (function none :behavior slide-control) anim-loop)
+  :code anim-loop
   )
 
-(defmethod init-from-entity! slide-control ((obj slide-control) (arg0 entity-actor))
-  (set! (-> obj root) (new 'process 'trsqv))
-  (process-drawable-from-entity! obj arg0)
-  (logclear! (-> obj mask) (process-mask actor-pause))
-  (set! (-> obj path) (new 'process 'curve-control obj 'path -1000000000.0))
-  (logior! (-> obj path flags) (path-control-flag display draw-line draw-point draw-text))
-  (set! (-> obj target) (the-as handle #f))
-  (go (method-of-object obj slide-control-watch))
+(defmethod init-from-entity! ((this slide-control) (arg0 entity-actor))
+  (set! (-> this root) (new 'process 'trsqv))
+  (process-drawable-from-entity! this arg0)
+  (logclear! (-> this mask) (process-mask actor-pause))
+  (set! (-> this path) (new 'process 'curve-control this 'path -1000000000.0))
+  (logior! (-> this path flags) (path-control-flag display draw-line draw-point draw-text))
+  (set! (-> this target) (the-as handle #f))
+  (go (method-of-object this slide-control-watch))
   (none)
   )

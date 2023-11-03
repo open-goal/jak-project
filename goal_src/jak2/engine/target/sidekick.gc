@@ -68,7 +68,7 @@
       ,(lambda :behavior sidekick
          ((arg0 object) (arg1 vector) (arg2 object))
          (let ((gp-0 (ppointer->process (-> self parent))))
-           (when (>= (- (current-time) (-> self special-anim-time)) (seconds 1))
+           (when (time-elapsed? (-> self special-anim-time) (seconds 1))
              (set! (-> self special-anim-interp) 0.0)
              (set! (-> self special-anim-frame) 0.0)
              )
@@ -78,17 +78,17 @@
                   )
               (case arg2
                 ((1)
-                 (set! (-> self special-anim-time) (current-time))
+                 (set-time! (-> self special-anim-time))
                  (cond
                    ((= (-> gp-0 control mod-surface name) 'spin)
                     (set! (-> arg1 z)
                           (* (lerp-scale 0.0 5.0 (fabs (-> gp-0 board trotyv)) 0.0 182044.44) (-> self special-anim-interp))
                           )
                     (set! (-> self special-anim-frame) (-> arg1 z))
-                    (seek! (-> self special-anim-interp) 1.0 (* 8.0 (-> self clock seconds-per-frame)))
+                    (seek! (-> self special-anim-interp) 1.0 (* 8.0 (seconds-per-frame)))
                     )
                    (else
-                     (seek! (-> self special-anim-interp) 0.0 (* 4.0 (-> self clock seconds-per-frame)))
+                     (seek! (-> self special-anim-interp) 0.0 (* 4.0 (seconds-per-frame)))
                      (set! (-> arg1 z) (* (-> self special-anim-frame) (-> self special-anim-interp)))
                      )
                    )
@@ -169,11 +169,11 @@
   )
 
 (defstate sidekick-clone (sidekick)
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
     (local-vars (v0-0 object))
-    (case event-type
+    (case message
       (('matrix)
-       (case (-> event param 0)
+       (case (-> block param 0)
          (('play-anim)
           (set! v0-0 (-> self node-list data))
           (set! (-> (the-as (inline-array cspace) v0-0) 0 param0)
@@ -230,13 +230,13 @@
        v0-0
        )
       (('shadow)
-       (set! v0-0 (-> event param 0))
+       (set! v0-0 (-> block param 0))
        (set! (-> self shadow-in-movie?) (the-as symbol v0-0))
        v0-0
        )
       (('blend-shape)
        (cond
-         ((-> event param 0)
+         ((-> block param 0)
           (set! v0-0 (logior (-> self skel status) (joint-control-status blend-shape)))
           (set! (-> self skel status) (the-as joint-control-status v0-0))
           )
@@ -249,7 +249,7 @@
        )
       )
     )
-  :code (the-as (function none :behavior sidekick) looping-code)
+  :code looping-code
   :post (behavior ()
     (when (not (and (-> (ppointer->process (-> self parent)) next-state)
                     (= (-> (ppointer->process (-> self parent)) next-state name) 'process-drawable-art-error)
@@ -408,7 +408,7 @@
           (the-as
             shadow-geo
             (if (or (and (movie?) (-> self shadow-in-movie?)) (logtest? (focus-status indax) (-> self parent 0 focus-status)))
-                (-> self draw art-group data 3)
+                daxter-shadow-mg
                 )
             )
           )
@@ -460,7 +460,6 @@
           )
         )
       )
-    (none)
     )
   )
 

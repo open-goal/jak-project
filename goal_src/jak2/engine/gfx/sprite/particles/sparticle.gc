@@ -12,15 +12,17 @@
 
 ;; DECOMP BEGINS
 
-(defmethod print sparticle-cpuinfo ((obj sparticle-cpuinfo))
+;; WARN: Return type mismatch object vs sparticle-cpuinfo.
+(defmethod print ((this sparticle-cpuinfo))
   (format #t "<sparticle-cpuinfo>~%")
   (dotimes (s5-0 16)
-    (format #t "~D:~F~%" s5-0 (the-as float (-> obj data s5-0)))
+    (format #t "~D:~F~%" s5-0 (the-as float (-> this data s5-0)))
     )
-  (format #t "TIMER:~D~%" (-> obj timer))
-  (the-as sparticle-cpuinfo (format #t "FLAGS:~X~%" (-> obj flags)))
+  (format #t "TIMER:~D~%" (-> this timer))
+  (the-as sparticle-cpuinfo (format #t "FLAGS:~X~%" (-> this flags)))
   )
 
+;; WARN: Return type mismatch (function sparticle-system sparticle-cpuinfo sprite-vec-data-3d uint none) vs none.
 (defun sp-particle-copy! ((arg0 sparticle-cpuinfo) (arg1 sparticle-cpuinfo))
   (let ((v1-1 (-> arg1 sprite x-y-z-sx quad)))
     (set! (-> arg0 sprite x-y-z-sx quad) v1-1)
@@ -54,6 +56,7 @@
                                (arg3 pointer)
                                (arg4 (inline-array adgif-shader))
                                )
+  ;; og:preserve-this
   (#when PC_BIG_MEMORY
     (*! arg0 SPRITE_MAX_AMOUNT_MULT)
     ; (*! arg1 SPRITE_MAX_AMOUNT_MULT)
@@ -180,20 +183,11 @@
   )
 
 (defun sp-get-particle ((arg0 sparticle-system) (arg1 int) (arg2 sparticle-launch-state))
-  (local-vars
-    (a2-3 int)
-    (a2-4 int)
-    (a2-5 int)
-    (a2-6 int)
-    (a2-7 int)
-    (a2-8 int)
-    (t1-16 int)
-    (t1-17 int)
-    (t1-18 int)
-    (t1-19 int)
-    (t1-20 int)
-    (t3-5 int)
-    )
+  ;; og:preserve-this
+  ;; pc port note : this function originally attempted to find a free sparticle by picking a "random"
+  ;; (actually incremental) starting block and going from there. we disable that completely for pc
+  ;; because it is actually detrimental since we may alloc sparticles spread over way too many blocks
+  ;; which can have a negative impact on our performance.
   (let ((v1-0 0)
         (t0-0 (-> arg0 blocks 0))
         (a3-0 0)
@@ -202,62 +196,13 @@
       (set! v1-0 t0-0)
       (set! t0-0 (-> arg0 blocks 1))
       )
-    (when arg2
-      (set! a3-0 (the-as int (-> arg2 randomize)))
-      (+! (-> arg2 randomize) 1)
-      (when (= (-> arg2 randomize) (/ t0-0 SPRITE_MAX_AMOUNT_MULT))
-        (set! (-> arg2 randomize) (the-as uint 0))
-        0
-        )
-      )
-    (dotimes (a2-1 t0-0)
+    (dotimes (blk t0-0)
       (when (nonzero? (-> arg0 alloc-table (+ v1-0 a3-0)))
-        (let ((a2-2 0)
-              (t1-15 (-> arg0 alloc-table (+ v1-0 a3-0)))
-              (t0-4 (* (+ v1-0 a3-0) 64))
-              )
-          0
-          0
-          (let ((t2-4 (shl t1-15 32))
-                (t3-0 (+ a2-2 32))
-                )
-            (.movn t1-16 t2-4 t2-4 t1-15)
-            (.movz a2-3 t3-0 t2-4 a2-2)
-            )
-          (let ((t2-5 (shl t1-16 16))
-                (t3-1 (+ a2-3 16))
-                )
-            (.movn t1-17 t2-5 t2-5 t1-16)
-            (.movz a2-4 t3-1 t2-5 a2-3)
-            )
-          (let ((t2-6 (* t1-17 256))
-                (t3-2 (+ a2-4 8))
-                )
-            (.movn t1-18 t2-6 t2-6 t1-17)
-            (.movz a2-5 t3-2 t2-6 a2-4)
-            )
-          (let ((t2-7 (* t1-18 16))
-                (t3-3 (+ a2-5 4))
-                )
-            (.movn t1-19 t2-7 t2-7 t1-18)
-            (.movz a2-6 t3-3 t2-7 a2-5)
-            )
-          (let ((t2-8 (* t1-19 4))
-                (t3-4 (+ a2-6 2))
-                )
-            (.movn t1-20 t2-8 t2-8 t1-19)
-            (.movz a2-7 t3-4 t2-8 a2-6)
-            (let ((t1-21 (* t1-20 2))
-                  (t2-9 (+ a2-7 1))
-                  )
-              (.movn t3-5 t1-21 t1-21 t3-4)
-              (.movz a2-8 t2-9 t1-21 a2-7)
-              )
-            )
-          (let ((t0-5 (+ t0-4 a2-8)))
-            (logxor! (-> arg0 alloc-table (+ v1-0 a3-0)) (the-as uint (ash 1 a2-8)))
+        (dotimes (bit 64)
+          (when (nonzero? (logand (ash 1 bit) (-> arg0 alloc-table (+ v1-0 a3-0))))
+            (logxor! (-> arg0 alloc-table (+ v1-0 a3-0)) (ash 1 bit))
             (+! (-> arg0 num-alloc arg1) 1)
-            (let ((v1-9 (-> arg0 cpuinfo-table t0-5)))
+            (let ((v1-9 (-> arg0 cpuinfo-table (+ bit (* (+ v1-0 a3-0) 64)))))
               (set! (-> v1-9 valid) (the-as uint 1))
               (return v1-9)
               )
@@ -332,6 +277,7 @@
   )
 
 (def-mips2c sp-process-block-2d (function sparticle-system int int int int symbol none))
+
 (def-mips2c sp-process-block-3d (function sparticle-system int int int int symbol none))
 
 (defun sp-copy-to-spr ((arg0 int) (arg1 pointer) (arg2 int))
@@ -487,7 +433,7 @@
   )
 
 (defun sparticle-kill-it-level0 ((arg0 sparticle-system) (arg1 sparticle-cpuinfo))
-  (if (zero? (logand (-> arg1 flags) (sp-cpuinfo-flag sp-cpuinfo-flag-9 level0 level1)))
+  (if (not (logtest? (-> arg1 flags) (sp-cpuinfo-flag sp-cpuinfo-flag-9 level0 level1)))
       (sparticle-kill-it arg0 arg1)
       )
   0
@@ -656,6 +602,7 @@
   (none)
   )
 
+;; WARN: Return type mismatch gs-miptbp vs none.
 (defun remap-particle ((arg0 sparticle-system) (arg1 sparticle-cpuinfo) (arg2 pointer))
   (let* ((gp-0 (-> arg1 adgif))
          (a0-1 (-> gp-0 texture-id))
@@ -749,7 +696,7 @@
       (.mfc0 v1-53 Count)
       (- v1-53 gp-0)
       (when *display-sprite-info*
-        ;; pc port note : this is unnecessary
+        ;; og:preserve-this this is unnecessary
         ;; (if (movie?)
         ;;     (format *stdcon* "~%~%~%")
         ;;     )
@@ -767,7 +714,3 @@
     (none)
     )
   )
-
-
-
-

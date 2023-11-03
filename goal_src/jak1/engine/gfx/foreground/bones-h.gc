@@ -9,76 +9,65 @@
 ;; It looks like it also expanded to do most of the DMA generation
 ;; for the foreground renderers.
 
+;; DECOMP BEGINS
+
 (deftype bone-buffer (structure)
-  ((joint joint-anim-compressed-hdr 16 :inline :offset-assert 0)
-   (bone  bone                      16 :inline :offset-assert 1024)
-   (_pad  uint8                     2048       :offset-assert 2560)
+  ((joint  joint-anim-compressed-hdr  16 :inline)
+   (bone   bone                       16 :inline)
+   (_pad   uint8                      2048)
    )
-  :method-count-assert 9
-  :size-assert         #x1200
-  :flag-assert         #x900001200
   )
+
 
 (deftype bone-layout (structure)
-  ((joint  joint  2             :offset-assert 0)
-   (bone   bone   2             :offset-assert 8)
-   (data   uint16 8 :offset   0)
-   (output uint32 2             :offset-assert 16)
-   (cache  uint32 2             :offset-assert 24)
+  ((joint   joint   2)
+   (bone    bone    2)
+   (data    uint16  8 :overlay-at (-> joint 0))
+   (output  uint32  2)
+   (cache   uint32  2)
    )
-  :method-count-assert 9
-  :size-assert         #x20
-  :flag-assert         #x900000020
   )
+
 
 (deftype bone-regs (structure)
-  ((joint-ptr (inline-array joint) :offset-assert 0)
-   (bone-ptr  (inline-array bone)  :offset-assert 4)
-   (num-bones uint32          :offset-assert 8)
+  ((joint-ptr  (inline-array joint))
+   (bone-ptr   (inline-array bone))
+   (num-bones  uint32)
    )
-  :method-count-assert 9
-  :size-assert         #xc
-  :flag-assert         #x90000000c
   )
+
 
 (deftype bone-work (structure)
-  ((layout     bone-layout :inline :offset-assert 0)
-   (bounds     sphere      :inline :offset-assert 32)
-   (lights     vu-lights   :inline :offset-assert 48)
-   (distance   vector      :inline :offset-assert 160)
-   (next-tag   dma-packet  :inline :offset-assert 176)
-   (dma-buf    dma-buffer          :offset-assert 192)
-   (sink-group dma-foreground-sink-group  :offset-assert 196)
-   (next-pris  dma-packet          :offset-assert 200)
-   (next-merc  dma-packet          :offset-assert 204)
-   (wait-count uint32              :offset-assert 208)
-   (in-count   uint32              :offset-assert 212)
-   (sp-size    uint32              :offset-assert 216)
-   (sp-bufnum  uint32              :offset-assert 220)
-   (regs       bone-regs   :inline :offset-assert 224)
+  ((layout      bone-layout  :inline)
+   (bounds      sphere       :inline)
+   (lights      vu-lights    :inline)
+   (distance    vector       :inline)
+   (next-tag    dma-packet   :inline)
+   (dma-buf     dma-buffer)
+   (sink-group  dma-foreground-sink-group)
+   (next-pris   dma-packet)
+   (next-merc   dma-packet)
+   (wait-count  uint32)
+   (in-count    uint32)
+   (sp-size     uint32)
+   (sp-bufnum   uint32)
+   (regs        bone-regs    :inline)
    )
-  :method-count-assert 9
-  :size-assert         #xec
-  :flag-assert         #x9000000ec
   )
+
 
 (deftype bone-debug (structure)
-  ((time-ctr uint32     :offset-assert 0)
-   (timing   uint32 360 :offset-assert 4)
+  ((time-ctr  uint32)
+   (timing    uint32  360)
    )
-  :method-count-assert 9
-  :size-assert         #x5a4
-  :flag-assert         #x9000005a4
   )
 
+
 (deftype bone-memory (structure)
-  ((work     bone-work   :inline             :offset-assert 0)
-   (buffer   bone-buffer 2 :inline           :offset-assert 240)
-   (dma-list dma-packet  :inline :offset 240)
+  ((work      bone-work    :inline)
+   (buffer    bone-buffer  2 :inline)
+   (dma-list  dma-packet   :inline :overlay-at (-> buffer 0 joint 0 control-bits 0))
    )
-  :method-count-assert 9
-  :size-assert         #x24f0
-  :flag-assert         #x9000024f0
   )
 
 (defun invalidate-cache-line ((arg0 pointer))
@@ -95,37 +84,30 @@
   )
 
 (deftype merc-globals (structure)
-  ((first uint32  :offset-assert 0)
-   (next  (pointer uint32)  :offset-assert 4)
-   (sink  generic-dma-foreground-sink   :offset-assert 8)
+  ((first  uint32)
+   (next   (pointer uint32))
+   (sink   generic-dma-foreground-sink)
    )
   :allow-misaligned
-  :method-count-assert 9
-  :size-assert         #xc
-  :flag-assert         #x90000000c
   )
 
+
 (deftype merc-global-array (structure)
-  ((count   uint32                 :offset-assert 0)
-   (globals merc-globals 8 :inline :offset-assert 4)
+  ((count    uint32)
+   (globals  merc-globals  8 :inline)
    )
-  :method-count-assert 9
-  :size-assert         #x84
-  :flag-assert         #x900000084
   )
+
 
 (define *merc-globals* (the-as merc-globals #f))
 
 (deftype shadow-dma-packet (structure)
-  ((tag      generic-merc-tag :inline :offset-assert 0)
-   (settings shadow-settings  :inline :offset-assert 16)
-   (geo-ref  dma-packet       :inline :offset-assert 96)
-   (mtx-ref  dma-packet       :inline :offset-assert 112)
-   (end-tag  dma-packet       :inline :offset-assert 128)
+  ((tag       generic-merc-tag  :inline)
+   (settings  shadow-settings   :inline)
+   (geo-ref   dma-packet        :inline)
+   (mtx-ref   dma-packet        :inline)
+   (end-tag   dma-packet        :inline)
    )
-  :method-count-assert 9
-  :size-assert         #x90
-  :flag-assert         #x900000090
   )
 
 (define-extern vu-lights<-light-group! (function vu-lights light-group none))

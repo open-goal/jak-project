@@ -10,18 +10,14 @@
 ;; DECOMP BEGINS
 
 (deftype jinx-bomb (process-focusable)
-  ((fuse-delay    uint32                     :offset-assert 204)
-   (attack-id     uint32                     :offset-assert 208)
-   (shake-screen? symbol                     :offset-assert 212)
-   (explode-func  (function jinx-bomb none)  :offset-assert 216)
+  ((fuse-delay     uint32)
+   (attack-id      uint32)
+   (shake-screen?  symbol)
+   (explode-func   (function jinx-bomb none))
    )
-  :heap-base #x60
-  :method-count-assert 29
-  :size-assert         #xdc
-  :flag-assert         #x1d006000dc
-  (:methods
-    (idle () _type_ :state 27)
-    (explode () _type_ :state 28)
+  (:state-methods
+    idle
+    explode
     )
   )
 
@@ -33,8 +29,8 @@
 
 (defstate idle (jinx-bomb)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('trigger)
        (go-virtual explode)
        )
@@ -44,16 +40,14 @@
       )
     )
   :enter (behavior ()
-    (set! (-> self state-time) (current-time))
-    (none)
+    (set-time! (-> self state-time))
     )
   :trans (behavior ()
     (if (and (nonzero? (-> self fuse-delay))
-             (>= (- (current-time) (-> self state-time)) (the-as time-frame (-> self fuse-delay)))
+             (time-elapsed? (-> self state-time) (the-as time-frame (-> self fuse-delay)))
              )
         (go-virtual explode)
         )
-    (none)
     )
   :code (behavior ()
     (let ((v1-1 (-> self root root-prim)))
@@ -61,15 +55,14 @@
       (set! (-> v1-1 prim-core collide-with) (-> self root backup-collide-with))
       )
     (sleep-code)
-    (none)
     )
-  :post (the-as (function none :behavior jinx-bomb) ja-post)
+  :post ja-post
   )
 
 (defstate explode (jinx-bomb)
   :virtual #t
   :code (behavior ()
-    (set! (-> self state-time) (current-time))
+    (set-time! (-> self state-time))
     (logior! (-> self draw status) (draw-control-status no-draw))
     (let ((v1-6 (-> self root root-prim)))
       (set! (-> v1-6 prim-core collide-as) (collide-spec))
@@ -97,7 +90,6 @@
       (suspend)
       )
     (deactivate self)
-    (none)
     )
   )
 

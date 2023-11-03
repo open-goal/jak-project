@@ -5,16 +5,10 @@
 ;; name in dgo: ctypal-obs
 ;; dgos: CPA
 
-;; og:update-with-merge:substr
-
 ;; DECOMP BEGINS
 
 (deftype water-anim-ctypal (water-anim)
   ()
-  :heap-base #x80
-  :method-count-assert 29
-  :size-assert         #x100
-  :flag-assert         #x1d00800100
   )
 
 
@@ -45,19 +39,19 @@
         )
 
 ;; WARN: Return type mismatch ripple-wave-set vs none.
-(defmethod init-water! water-anim-ctypal ((obj water-anim-ctypal))
+(defmethod init-water! ((this water-anim-ctypal))
   "Initialize a [[water-anim]]'s default settings, this may include applying a [[riple-control]]"
   (let ((t9-0 (method-of-type water-anim init-water!)))
-    (t9-0 obj)
+    (t9-0 this)
     )
   (let ((v1-2 (new 'process 'ripple-control)))
-    (set! (-> obj draw ripple) v1-2)
-    (set-vector! (-> obj draw color-mult) 0.01 0.45 0.5 0.75)
+    (set! (-> this draw ripple) v1-2)
+    (set-vector! (-> this draw color-mult) 0.01 0.45 0.5 0.75)
     (set! (-> v1-2 global-scale) 3072.0)
     (set! (-> v1-2 close-fade-dist) 163840.0)
     (set! (-> v1-2 far-fade-dist) 245760.0)
     (set! (-> v1-2 waveform) ripple-for-water-anim-ctypal)
-    (case (-> obj look)
+    (case (-> this look)
       ((32 30)
        (set! (-> v1-2 waveform) ripple-ctypal-smlground-pool)
        )
@@ -73,23 +67,20 @@
 
 (deftype palace-door (com-airlock)
   ()
-  :heap-base #x100
-  :method-count-assert 28
-  :size-assert         #x174
-  :flag-assert         #x1c01000174
   )
 
 
 ;; WARN: Return type mismatch object vs none.
-(defmethod init-from-entity! palace-door ((obj palace-door) (arg0 entity-actor))
+(defmethod init-from-entity! ((this palace-door) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
 - stack size
 - collision information
 - loading the skeleton group / bones
 - sounds"
-  (stack-size-set! (-> obj main-thread) 1024)
-  (let ((s5-0 (new 'process 'collide-shape obj (collide-list-enum usually-hit-by-player))))
+  ;; og:preserve-this added
+  (stack-size-set! (-> this main-thread) 1024)
+  (let ((s5-0 (new 'process 'collide-shape this (collide-list-enum usually-hit-by-player))))
     (set! (-> s5-0 penetrated-by) (penetrate))
     (let ((s4-0 (new 'process 'collide-shape-prim-group s5-0 (the-as uint 2) 0)))
       (set! (-> s5-0 total-prims) (the-as uint 3))
@@ -115,37 +106,33 @@ This commonly includes things such as:
       (set! (-> s5-0 backup-collide-as) (-> v1-12 prim-core collide-as))
       (set! (-> s5-0 backup-collide-with) (-> v1-12 prim-core collide-with))
       )
-    (set! (-> obj root) s5-0)
+    (set! (-> this root) s5-0)
     )
   (initialize-skeleton
-    obj
+    this
     (the-as skeleton-group (art-group-get-by-name *level* "skel-palace-door" (the-as (pointer uint32) #f)))
     (the-as pair 0)
     )
-  (init-airlock! obj)
-  (set! (-> obj pre-open-frame) 48.0)
-  (set! (-> obj lock-frame) 60.0)
-  (set! (-> obj open-frame) 60.0)
-  (set! (-> obj sound-pre-open) (static-sound-spec "pal-door-open-1"))
-  (set! (-> obj sound-open) (static-sound-spec "pal-door-open-2"))
-  (set! (-> obj sound-close) (static-sound-spec "pal-door-close"))
-  (set! (-> obj sound-post-close) (static-sound-spec "pal-door-close2"))
-  (set! (-> obj sound-behind?) #t)
-  (set! (-> obj door-radius) 40960.0)
-  (go (method-of-object obj close) #t)
+  (init-airlock! this)
+  (set! (-> this pre-open-frame) 48.0)
+  (set! (-> this lock-frame) 60.0)
+  (set! (-> this open-frame) 60.0)
+  (set! (-> this sound-pre-open) (static-sound-spec "pal-door-open-1"))
+  (set! (-> this sound-open) (static-sound-spec "pal-door-open-2"))
+  (set! (-> this sound-close) (static-sound-spec "pal-door-close"))
+  (set! (-> this sound-post-close) (static-sound-spec "pal-door-close2"))
+  (set! (-> this sound-behind?) #t)
+  (set! (-> this door-radius) 40960.0)
+  (go (method-of-object this close) #t)
   (none)
   )
 
 (deftype ctypal-broke-wall (process-drawable)
-  ((ent basic  :offset-assert 200)
+  ((ent  basic)
    )
-  :heap-base #x50
-  :method-count-assert 22
-  :size-assert         #xcc
-  :flag-assert         #x16005000cc
-  (:methods
-    (idle () _type_ :state 20)
-    (done () _type_ :state 21)
+  (:state-methods
+    idle
+    done
     )
   )
 
@@ -163,34 +150,31 @@ This commonly includes things such as:
       (process-drawable-from-entity! self (the-as entity-actor (-> self ent)))
       (go-virtual done)
       )
-    (none)
     )
-  :code (the-as (function none :behavior ctypal-broke-wall) sleep-code)
+  :code sleep-code
   :post (behavior ()
     (transform-post)
-    (none)
     )
   )
 
 (defstate done (ctypal-broke-wall)
   :virtual #t
-  :code (the-as (function none :behavior ctypal-broke-wall) sleep-code)
+  :code sleep-code
   :post (behavior ()
     (transform-post)
-    (none)
     )
   )
 
 ;; WARN: Return type mismatch object vs none.
-(defmethod init-from-entity! ctypal-broke-wall ((obj ctypal-broke-wall) (arg0 entity-actor))
+(defmethod init-from-entity! ((this ctypal-broke-wall) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
 - stack size
 - collision information
 - loading the skeleton group / bones
 - sounds"
-  (format #t "~A initialising~%" (-> obj name))
-  (let ((s4-0 (new 'process 'collide-shape obj (collide-list-enum usually-hit-by-player))))
+  (format #t "~A initialising~%" (-> this name))
+  (let ((s4-0 (new 'process 'collide-shape this (collide-list-enum usually-hit-by-player))))
     (let ((v1-2 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 0) (the-as uint 0))))
       (set! (-> v1-2 prim-core collide-as) (collide-spec obstacle))
       (set! (-> v1-2 prim-core collide-with) (collide-spec jak player-list))
@@ -205,14 +189,14 @@ This commonly includes things such as:
       (set! (-> s4-0 backup-collide-as) (-> v1-5 prim-core collide-as))
       (set! (-> s4-0 backup-collide-with) (-> v1-5 prim-core collide-with))
       )
-    (set! (-> obj root) s4-0)
+    (set! (-> this root) s4-0)
     )
   (initialize-skeleton
-    obj
+    this
     (the-as skeleton-group (art-group-get-by-name *level* "skel-ctypal-broke-wall" (the-as (pointer uint32) #f)))
     (the-as pair 0)
     )
-  (let ((v1-10 (-> obj root)))
+  (let ((v1-10 (-> this root)))
     (format
       0
       "trans ~F ~F ~F~%"
@@ -221,19 +205,15 @@ This commonly includes things such as:
       (* 0.00024414062 (-> v1-10 trans z))
       )
     )
-  (set! (-> obj ent) arg0)
-  (go (method-of-object obj idle))
+  (set! (-> this ent) arg0)
+  (go (method-of-object this idle))
   (none)
   )
 
 (deftype ctypal-baron-statue-broken (process-drawable)
   ()
-  :heap-base #x50
-  :method-count-assert 21
-  :size-assert         #xc8
-  :flag-assert         #x15005000c8
-  (:methods
-    (idle () _type_ :state 20)
+  (:state-methods
+    idle
     )
   )
 
@@ -243,27 +223,27 @@ This commonly includes things such as:
               :bounds (static-spherem 0 5 0 72)
               )
 
-(defmethod run-logic? ctypal-baron-statue-broken ((obj ctypal-baron-statue-broken))
+(defmethod run-logic? ((this ctypal-baron-statue-broken))
   #t
   )
 
 (defstate idle (ctypal-baron-statue-broken)
   :virtual #t
-  :code (the-as (function none :behavior ctypal-baron-statue-broken) sleep-code)
+  :code sleep-code
   )
 
 ;; WARN: Return type mismatch object vs none.
-(defmethod init-from-entity! ctypal-baron-statue-broken ((obj ctypal-baron-statue-broken) (arg0 entity-actor))
+(defmethod init-from-entity! ((this ctypal-baron-statue-broken) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
 - stack size
 - collision information
 - loading the skeleton group / bones
 - sounds"
-  (set! (-> obj root) (new 'process 'trsqv))
-  (process-drawable-from-entity! obj arg0)
+  (set! (-> this root) (new 'process 'trsqv))
+  (process-drawable-from-entity! this arg0)
   (initialize-skeleton
-    obj
+    this
     (the-as
       skeleton-group
       (art-group-get-by-name *level* "skel-ctypal-baron-statue-broken" (the-as (pointer uint32) #f))
@@ -271,9 +251,9 @@ This commonly includes things such as:
     (the-as pair 0)
     )
   (if (not (task-node-closed? (game-task-node canyon-insert-items-resolution)))
-      (logior! (-> obj draw status) (draw-control-status no-draw))
+      (logior! (-> this draw status) (draw-control-status no-draw))
       )
   (ja-post)
-  (go (method-of-object obj idle))
+  (go (method-of-object this idle))
   (none)
   )

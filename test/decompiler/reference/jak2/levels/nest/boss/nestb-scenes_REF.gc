@@ -16,13 +16,13 @@
       (set! (-> a1-0 param 0) (the-as uint 7))
       (let ((f30-0 (send-event-function *target* a1-0)))
         (let ((gp-0 (current-time)))
-          (until (>= (- (current-time) gp-0) (seconds 0.1))
+          (until (time-elapsed? gp-0 (seconds 0.1))
             (suspend)
             )
           )
         (send-event *target* 'change-mode 'darkjak #f (darkjak-stage no-anim))
         (let ((gp-1 (current-time)))
-          (until (>= (- (current-time) gp-1) (seconds 0.1))
+          (until (time-elapsed? gp-1 (seconds 0.1))
             (suspend)
             )
           )
@@ -435,14 +435,7 @@
                 (set! (-> *part-id-table* 621 init-specs 4 initial-valuef) f28-0)
                 )
               (vector-normalize! s5-1 1.0)
-              (let ((t9-4 sp-launch-particles-var)
-                    (a0-8 *sp-particle-system-2d*)
-                    (a1-9 (-> *part-id-table* 622))
-                    (a2-3 *launch-matrix*)
-                    )
-                (set! (-> a2-3 trans quad) (-> s3-2 quad))
-                (t9-4 a0-8 a1-9 a2-3 (the-as sparticle-launch-state #f) (the-as sparticle-launch-control #f) 1.0)
-                )
+              (launch-particles (-> *part-id-table* 622) s3-2)
               )
             (let ((s4-1 (new 'stack-no-clear 'matrix))
                   (f26-0 (* 0.000020345053 f30-0))
@@ -453,14 +446,7 @@
               (set! (-> s4-1 trans quad) (-> gp-0 quad))
               (set! (-> *part-id-table* 623 init-specs 3 initial-valuef) (* f26-0 f30-1))
               (set! (-> *part-id-table* 623 init-specs 5 initial-valuef) (* f26-0 f28-1))
-              (sp-launch-particles-var
-                *sp-particle-system-2d*
-                (-> *part-id-table* 623)
-                s4-1
-                (the-as sparticle-launch-state #f)
-                (the-as sparticle-launch-control #f)
-                1.0
-                )
+              (launch-particles (-> *part-id-table* 623) s4-1 :origin-is-matrix #t)
               (set! (-> *part-id-table* 623 init-specs 3 initial-valuef) f30-1)
               (set! (-> *part-id-table* 623 init-specs 5 initial-valuef) f28-1)
               )
@@ -1651,26 +1637,22 @@
 ;; definition of type nest-gun-parts
 (deftype nest-gun-parts (process-drawable)
   ()
-  :heap-base #x50
-  :method-count-assert 21
-  :size-assert         #xc8
-  :flag-assert         #x15005000c8
-  (:methods
-    (idle () _type_ :state 20)
+  (:state-methods
+    idle
     )
   )
 
 ;; definition for method 3 of type nest-gun-parts
-(defmethod inspect nest-gun-parts ((obj nest-gun-parts))
-  (when (not obj)
-    (set! obj obj)
+(defmethod inspect ((this nest-gun-parts))
+  (when (not this)
+    (set! this this)
     (goto cfg-4)
     )
   (let ((t9-0 (method-of-type process-drawable inspect)))
-    (t9-0 obj)
+    (t9-0 this)
     )
   (label cfg-4)
-  obj
+  this
   )
 
 ;; failed to figure out what this is:
@@ -1685,65 +1667,57 @@
   :virtual #t
   :code (behavior ()
     (until #f
-      (ja-no-eval :group! (ja-group)
-                  :num! (seek! (the float (+ (-> (ja-group) frames num-frames) -1)))
-                  :frame-num 0.0
-                  )
+      (ja-no-eval :group! (ja-group) :num! (seek!) :frame-num 0.0)
       (until (ja-done? 0)
         (suspend)
         (ja :num! (seek!))
         )
       )
     #f
-    (none)
     )
-  :post (the-as (function none :behavior nest-gun-parts) ja-post)
+  :post ja-post
   )
 
 ;; definition for method 11 of type nest-gun-parts
 ;; WARN: Return type mismatch object vs none.
-(defmethod init-from-entity! nest-gun-parts ((obj nest-gun-parts) (arg0 entity-actor))
+(defmethod init-from-entity! ((this nest-gun-parts) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
 - stack size
 - collision information
 - loading the skeleton group / bones
 - sounds"
-  (set! (-> obj root) (new 'process 'trsqv))
-  (process-drawable-from-entity! obj arg0)
+  (set! (-> this root) (new 'process 'trsqv))
+  (process-drawable-from-entity! this arg0)
   (initialize-skeleton
-    obj
+    this
     (the-as skeleton-group (art-group-get-by-name *level* "skel-nest-gun-parts" (the-as (pointer uint32) #f)))
     (the-as pair 0)
     )
-  (set! (-> obj draw light-index) (the-as uint 11))
-  (go (method-of-object obj idle))
+  (set! (-> this draw light-index) (the-as uint 11))
+  (go (method-of-object this idle))
   (none)
   )
 
 ;; definition of type nest-unbroken-rocks
 (deftype nest-unbroken-rocks (process-drawable)
   ()
-  :heap-base #x50
-  :method-count-assert 21
-  :size-assert         #xc8
-  :flag-assert         #x15005000c8
-  (:methods
-    (idle () _type_ :state 20)
+  (:state-methods
+    idle
     )
   )
 
 ;; definition for method 3 of type nest-unbroken-rocks
-(defmethod inspect nest-unbroken-rocks ((obj nest-unbroken-rocks))
-  (when (not obj)
-    (set! obj obj)
+(defmethod inspect ((this nest-unbroken-rocks))
+  (when (not this)
+    (set! this this)
     (goto cfg-4)
     )
   (let ((t9-0 (method-of-type process-drawable inspect)))
-    (t9-0 obj)
+    (t9-0 this)
     )
   (label cfg-4)
-  obj
+  this
   )
 
 ;; failed to figure out what this is:
@@ -1758,43 +1732,40 @@ This commonly includes things such as:
   :virtual #t
   :code (behavior ()
     (until #f
-      (ja-no-eval :group! (ja-group)
-                  :num! (seek! (the float (+ (-> (ja-group) frames num-frames) -1)))
-                  :frame-num 0.0
-                  )
+      (ja-no-eval :group! (ja-group) :num! (seek!) :frame-num 0.0)
       (until (ja-done? 0)
         (suspend)
         (ja :num! (seek!))
         )
       )
     #f
-    (none)
     )
-  :post (the-as (function none :behavior nest-unbroken-rocks) ja-post)
+  :post ja-post
   )
 
 ;; definition for method 11 of type nest-unbroken-rocks
-(defmethod init-from-entity! nest-unbroken-rocks ((obj nest-unbroken-rocks) (arg0 entity-actor))
+;; WARN: Return type mismatch object vs none.
+(defmethod init-from-entity! ((this nest-unbroken-rocks) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
 - stack size
 - collision information
 - loading the skeleton group / bones
 - sounds"
-  (set! (-> obj root) (new 'process 'trsqv))
-  (process-drawable-from-entity! obj arg0)
+  (set! (-> this root) (new 'process 'trsqv))
+  (process-drawable-from-entity! this arg0)
   (initialize-skeleton
-    obj
+    this
     (the-as
       skeleton-group
       (art-group-get-by-name *level* "skel-nest-unbroken-rocks" (the-as (pointer uint32) #f))
       )
     (the-as pair 0)
     )
-  (set! (-> obj draw light-index) (the-as uint 1))
+  (set! (-> this draw light-index) (the-as uint 1))
   (if (task-node-closed? (game-task-node nest-get-to-gun-resolution))
-      (cleanup-for-death obj)
-      (go (method-of-object obj idle))
+      (cleanup-for-death this)
+      (go (method-of-object this idle))
       )
   (none)
   )

@@ -12,91 +12,78 @@
 ;; DECOMP BEGINS
 
 (deftype mercneric-chain (structure)
-  ((first      uint32                       :offset-assert   0)
-   (next       uint32                       :offset-assert   4)
-   (state      generic-bucket-state :inline :offset-assert   8)
-   (vu1-bucket bucket-id                    :offset-assert  16)
+  ((first       uint32)
+   (next        uint32)
+   (state       generic-bucket-state  :inline)
+   (vu1-bucket  bucket-id)
    )
   :pack-me
-  :method-count-assert 9
-  :size-assert         #x14
-  :flag-assert         #x900000014
   )
+
 
 (deftype merc-chain (structure)
-  ((first      dma-packet  :offset-assert   0)
-   (patch      dma-packet  :offset-assert   4)
-   (vu1-bucket bucket-id   :offset-assert   8)
+  ((first       dma-packet)
+   (patch       dma-packet)
+   (vu1-bucket  bucket-id)
    )
   :pack-me
-  :method-count-assert 9
-  :size-assert         #xc
-  :flag-assert         #x90000000c
   )
+
 
 (deftype foreground-bucket (structure)
-  ((merc      merc-chain      :inline :offset-assert   0)
-   (emerc     merc-chain      :inline :offset-assert  12)
-   (mercneric mercneric-chain :inline :offset-assert  24)
+  ((merc       merc-chain       :inline)
+   (emerc      merc-chain       :inline)
+   (mercneric  mercneric-chain  :inline)
    )
-  :method-count-assert 9
-  :size-assert         #x2c
-  :flag-assert         #x90000002c
   )
+
 
 (deftype foreground-level-buckets (structure)
-  ((data foreground-bucket 7 :inline :offset-assert   0)
+  ((data  foreground-bucket  7 :inline)
    )
-  :method-count-assert 9
-  :size-assert         #x150
-  :flag-assert         #x900000150
   )
+
 
 (deftype foreground-bucket-grid (structure)
-  ((level-buckets foreground-level-buckets LEVEL_TOTAL :inline :offset-assert   0)
-   (warp-chain    mercneric-chain          :inline   :offset-assert 2352)
+  ((level-buckets  foreground-level-buckets  7 :inline)
+   (warp-chain     mercneric-chain           :inline)
    )
-  :method-count-assert 9
-  :size-assert         #x944
-  :flag-assert         #x900000944
   )
+
 
 (deftype foreground-regs (structure)
-  ((dist                  float                     :offset-assert   0)
-   (merc-used             uint32                    :offset-assert   4)
-   (emerc-used            uint32                    :offset-assert   8)
-   (mercneric-used        uint32                    :offset-assert  12)
-   (use-isometric         uint32                    :offset-assert  16)
-   (base-start            dma-packet                :offset-assert  20)
-   (joint-ptr             (inline-array joint)      :offset-assert  24)
-   (bone-ptr              (inline-array bone)       :offset-assert  28)
-   (num-bones             uint32                    :offset-assert  32)
-   (mtxs                  (inline-array pris-mtx)   :offset-assert  36)
-   (dma-buf               dma-buffer                :offset-assert  40)
-   (default-texture-index uint32                    :offset-assert  44)
-   (mercneric-chain       mercneric-chain           :offset-assert  48)
-   (level-buckets         foreground-level-buckets  :offset-assert  52)
+  ((dist                   float)
+   (merc-used              uint32)
+   (emerc-used             uint32)
+   (mercneric-used         uint32)
+   (use-isometric          uint32)
+   (base-start             dma-packet)
+   (joint-ptr              (inline-array joint))
+   (bone-ptr               (inline-array bone))
+   (num-bones              uint32)
+   (mtxs                   (inline-array pris-mtx))
+   (dma-buf                dma-buffer)
+   (default-texture-index  uint32)
+   (mercneric-chain        mercneric-chain)
+   (level-buckets          foreground-level-buckets)
    )
-  :method-count-assert 9
-  :size-assert         #x38
-  :flag-assert         #x900000038
   )
+
 
 (deftype foreground-work (structure)
-  ((regs           foreground-regs        :inline :offset-assert   0)
-   (draw-index-map uint8                  LEVEL_TOTAL :offset     64)
-   (grid           foreground-bucket-grid :inline :offset-assert  80)
-   (bounds         sphere                 :inline :offset-assert 2464)
-   (lights         vu-lights              :inline :offset-assert 2480)
-   (distance       vector                 :inline :offset-assert 2592)
-   (next-tmpl      dma-packet             :inline :offset-assert 2608)
+  ((regs            foreground-regs         :inline)
+   (draw-index-map  uint8                   7 :offset  64)
+   (grid            foreground-bucket-grid  :inline)
+   (bounds          sphere                  :inline)
+   (lights          vu-lights               :inline)
+   (distance        vector                  :inline)
+   (next-tmpl       dma-packet              :inline)
    )
-  :method-count-assert 9
-  :size-assert         #xa40
-  :flag-assert         #x900000a40
   )
 
 
+;; ERROR: Unsupported inline assembly instruction kind - [cache dxwbin a0, 0]
+;; ERROR: Unsupported inline assembly instruction kind - [cache dxwbin a0, 1]
 (defun invalidate-cache-line ((arg0 pointer))
   ; (.sync.l)
   ; (.cache dxwbin arg0 0)
@@ -107,61 +94,49 @@
   )
 
 (deftype texscroll-globals (structure)
-  ((requests int32          :offset-assert   0)
-   (effects  merc-effect 32 :offset-assert   4)
+  ((requests  int32)
+   (effects   merc-effect  32)
    )
-  :method-count-assert 9
-  :size-assert         #x84
-  :flag-assert         #x900000084
   )
+
 
 (deftype merc-effect-bucket-info (structure)
-  ((color-fade     rgba   :offset-assert   0)
-   (alpha          uint8  :offset          3)
-   (merc-path      uint8  :offset-assert   4)
-   (ignore-alpha   uint8  :offset-assert   5)
-   (disable-draw   uint8  :offset-assert   6)
-   (disable-envmap uint8  :offset-assert   7)
+  ((color-fade      rgba)
+   (alpha           uint8  :offset   3)
+   (merc-path       uint8)
+   (ignore-alpha    uint8)
+   (disable-draw    uint8)
+   (disable-envmap  uint8)
    )
   :pack-me
-  :method-count-assert 9
-  :size-assert         #x8
-  :flag-assert         #x900000008
   )
+
 
 (deftype merc-bucket-info (structure)
-  ((light                       vu-lights               :inline    :offset-assert   0)
-   (needs-clip                  int32                              :offset-assert 112)
-   (need-mercprime-if-merc      int32                              :offset-assert 116)
-   (must-use-mercneric-for-clip int32                              :offset-assert 120)
-   (effect                      merc-effect-bucket-info 64 :inline :offset-assert 124)
+  ((light                        vu-lights                :inline)
+   (needs-clip                   int32)
+   (need-mercprime-if-merc       int32)
+   (must-use-mercneric-for-clip  int32)
+   (effect                       merc-effect-bucket-info  64 :inline)
    )
-  :method-count-assert 9
-  :size-assert         #x27c
-  :flag-assert         #x90000027c
   )
 
+
 (deftype foreground-globals (structure)
-  ((foreground-grid  foreground-bucket-grid :inline :offset-assert   0)
-   (merc-bucket-info merc-bucket-info       :inline :offset-assert 2384)
-   (texscroll        texscroll-globals      :inline :offset-assert 3024)
+  ((foreground-grid   foreground-bucket-grid  :inline)
+   (merc-bucket-info  merc-bucket-info        :inline)
+   (texscroll         texscroll-globals       :inline)
    )
-  :method-count-assert 9
-  :size-assert         #xc54
-  :flag-assert         #x900000c54
   )
+
 
 (define *foreground* (new 'global 'foreground-globals))
 
-;; definition of type shadow-dma-packet
 (deftype shadow-dma-packet (structure)
-  ((tag      generic-merc-tag :inline :offset-assert   0)
-   (settings shadow-settings  :inline :offset-assert  16)
-   (geo-ref  dma-packet       :inline :offset-assert  96)
-   (mtx-ref  dma-packet       :inline :offset-assert 112)
-   (end-tag  dma-packet       :inline :offset-assert 128)
+  ((tag       generic-merc-tag  :inline)
+   (settings  shadow-settings   :inline)
+   (geo-ref   dma-packet        :inline)
+   (mtx-ref   dma-packet        :inline)
+   (end-tag   dma-packet        :inline)
    )
-  :method-count-assert 9
-  :size-assert         #x90
-  :flag-assert         #x900000090
   )

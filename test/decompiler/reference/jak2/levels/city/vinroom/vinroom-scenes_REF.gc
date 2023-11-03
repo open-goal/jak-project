@@ -4,23 +4,19 @@
 ;; definition of type vin-npc
 (deftype vin-npc (process-taskable)
   ()
-  :heap-base #xa0
-  :method-count-assert 38
-  :size-assert         #x120
-  :flag-assert         #x2600a00120
   )
 
 ;; definition for method 3 of type vin-npc
-(defmethod inspect vin-npc ((obj vin-npc))
-  (when (not obj)
-    (set! obj obj)
+(defmethod inspect ((this vin-npc))
+  (when (not this)
+    (set! this this)
     (goto cfg-4)
     )
   (let ((t9-0 (method-of-type process-taskable inspect)))
-    (t9-0 obj)
+    (t9-0 this)
     )
   (label cfg-4)
-  obj
+  this
   )
 
 ;; failed to figure out what this is:
@@ -33,10 +29,10 @@
 
 ;; definition for method 33 of type vin-npc
 ;; WARN: Return type mismatch draw-control vs none.
-(defmethod init-art! vin-npc ((obj vin-npc))
+(defmethod init-art! ((this vin-npc))
   "@see [[initialize-skeleton]]"
   (initialize-skeleton
-    obj
+    this
     (the-as skeleton-group (art-group-get-by-name *level* "skel-vin" (the-as (pointer uint32) #f)))
     (the-as pair 0)
     )
@@ -133,22 +129,8 @@
     (let ((gp-0 (new 'stack-no-clear 'vector)))
       (sp-kill-particle arg0 arg1)
       (set-vector! gp-0 (-> arg2 vector 0 x) (-> arg1 user-float) (-> arg2 vector 0 z) 1.0)
-      (let ((t9-1 sp-launch-particles-var)
-            (a0-2 *sp-particle-system-2d*)
-            (a1-2 (-> *part-id-table* 1234))
-            (a2-1 *launch-matrix*)
-            )
-        (set! (-> a2-1 trans quad) (-> gp-0 quad))
-        (t9-1 a0-2 a1-2 a2-1 (the-as sparticle-launch-state #f) (the-as sparticle-launch-control #f) 1.0)
-        )
-      (let ((t9-2 sp-launch-particles-var)
-            (a0-3 *sp-particle-system-3d*)
-            (a1-3 (-> *part-id-table* 1235))
-            (a2-2 *launch-matrix*)
-            )
-        (set! (-> a2-2 trans quad) (-> gp-0 quad))
-        (t9-2 a0-3 a1-3 a2-2 (the-as sparticle-launch-state #f) (the-as sparticle-launch-control #f) 1.0)
-        )
+      (launch-particles (-> *part-id-table* 1234) gp-0)
+      (launch-particles :system *sp-particle-system-3d* (-> *part-id-table* 1235) gp-0)
       )
     )
   (none)

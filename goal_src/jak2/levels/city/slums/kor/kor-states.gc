@@ -9,9 +9,9 @@
 
 (defstate waiting-idle (kor)
   :virtual #t
-  :event (the-as (function process int symbol event-message-block object :behavior kor) enemy-event-handler)
+  :event enemy-event-handler
   :enter (behavior ()
-    (set! (-> self state-time) (current-time))
+    (set-time! (-> self state-time))
     (let ((v1-2 self))
       (set! (-> v1-2 enemy-flags) (the-as enemy-flag (logclear (-> v1-2 enemy-flags) (enemy-flag enemy-flag36))))
       (set! (-> v1-2 nav callback-info) *nav-enemy-null-callback-info*)
@@ -25,7 +25,6 @@
     (vector-reset! (-> self root transv))
     (look-at-target! self (enemy-flag lock-focus))
     (set! (-> self travel-anim-interp) 0.0)
-    (none)
     )
   :trans (behavior ()
     (bot-method-223 self #f)
@@ -50,12 +49,11 @@
           (go-virtual traveling)
           )
       )
-    (none)
     )
   :code (behavior ()
     (let ((v1-2 (ja-group)))
       (cond
-        ((and v1-2 (= v1-2 (-> self draw art-group data 3)))
+        ((and v1-2 (= v1-2 kor-idle0-ja))
          (ja-no-eval :num! (seek!))
          (while (not (ja-done? 0))
            (suspend)
@@ -68,26 +66,22 @@
         )
       )
     (until #f
-      (ja-no-eval :group! (-> self draw art-group data 3)
-                  :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 3)) frames num-frames) -1)))
-                  :frame-num 0.0
-                  )
+      (ja-no-eval :group! kor-idle0-ja :num! (seek!) :frame-num 0.0)
       (until (ja-done? 0)
         (suspend)
         (ja :num! (seek!))
         )
       )
     #f
-    (none)
     )
-  :post (the-as (function none :behavior kor) nav-enemy-simple-post)
+  :post nav-enemy-simple-post
   )
 
 (defstate waiting-turn (kor)
   :virtual #t
-  :event (the-as (function process int symbol event-message-block object :behavior kor) enemy-event-handler)
+  :event enemy-event-handler
   :enter (behavior ()
-    (set! (-> self state-time) (current-time))
+    (set-time! (-> self state-time))
     (let ((v1-2 self))
       (set! (-> v1-2 enemy-flags) (the-as enemy-flag (logclear (-> v1-2 enemy-flags) (enemy-flag enemy-flag36))))
       (set! (-> v1-2 nav callback-info) *nav-enemy-null-callback-info*)
@@ -101,7 +95,6 @@
     (vector-reset! (-> self root transv))
     (look-at-target! self (enemy-flag lock-focus))
     (set! (-> self travel-anim-interp) 0.0)
-    (none)
     )
   :trans (behavior ()
     (bot-method-223 self #f)
@@ -117,7 +110,6 @@
           (go-virtual traveling)
           )
       )
-    (none)
     )
   :code (behavior ()
     (local-vars (s4-1 art-element) (f0-9 float))
@@ -137,10 +129,7 @@
                     )
               )
           (ja-channel-push! 1 (seconds 0.2))
-          (ja-no-eval :group! s5-1
-                      :num! (seek! (the float (+ (-> (the-as art-joint-anim s5-1) frames num-frames) -1)))
-                      :frame-num 0.0
-                      )
+          (ja-no-eval :group! s5-1 :num! (seek!) :frame-num 0.0)
           )
         (until (ja-done? 0)
           (suspend)
@@ -164,19 +153,19 @@
                           (cond
                             ((< f0-8 18204.445)
                              (set! f0-9 9102.223)
-                             (set! s4-1 (-> self draw art-group data 8))
+                             (set! s4-1 kor-turn-left50-end0-ja)
                              (set! f30-0 5.0)
                              14.0
                              )
                             ((< f0-8 27306.666)
                              (set! f0-9 18204.445)
-                             (set! s4-1 (-> self draw art-group data 9))
+                             (set! s4-1 kor-turn-left100-end0-ja)
                              (set! f30-0 5.0)
                              23.0
                              )
                             (else
                               (set! f0-9 27306.666)
-                              (set! s4-1 (-> self draw art-group data 10))
+                              (set! s4-1 kor-turn-left150-end0-ja)
                               (set! f30-0 5.0)
                               23.0
                               )
@@ -189,17 +178,17 @@
                           (cond
                             ((< -18204.445 f0-8)
                              (set! f0-9 -9102.223)
-                             (set! s4-1 (-> self draw art-group data 12))
+                             (set! s4-1 kor-turn-right50-end0-ja)
                              )
                             ((< -27306.666 f0-8)
                              (set! f0-9 -18204.445)
-                             (set! s4-1 (-> self draw art-group data 13))
+                             (set! s4-1 kor-turn-right100-end0-ja)
                              (set! f30-0 5.0)
                              (set! f28-0 23.0)
                              )
                             (else
                               (set! f0-9 -27306.666)
-                              (set! s4-1 (-> self draw art-group data 14))
+                              (set! s4-1 kor-turn-right150-end0-ja)
                               (set! f30-0 5.0)
                               (set! f28-0 23.0)
                               )
@@ -209,10 +198,7 @@
                         )
                 )
           (quaternion-rotate-y! s5-2 (-> gp-0 src-quat) f0-9)
-          (ja-no-eval :group! s4-1
-                      :num! (seek! (the float (+ (-> (the-as art-joint-anim s4-1) frames num-frames) -1)))
-                      :frame-num 0.0
-                      )
+          (ja-no-eval :group! s4-1 :num! (seek!) :frame-num 0.0)
           (until (ja-done? 0)
             (let ((f0-14 (ja-aframe-num 0)))
               (cond
@@ -233,14 +219,13 @@
         )
       )
     (kor-method-232 self)
-    (none)
     )
-  :post (the-as (function none :behavior kor) nav-enemy-simple-post)
+  :post nav-enemy-simple-post
   )
 
 (defstate waiting-with-kid (kor)
   :virtual #t
-  :event (the-as (function process int symbol event-message-block object :behavior kor) enemy-event-handler)
+  :event enemy-event-handler
   :enter (-> (method-of-type kor waiting-idle) enter)
   :exit (-> (method-of-type kor waiting-idle) exit)
   :trans (behavior ()
@@ -250,7 +235,6 @@
           (go-virtual traveling)
           )
       )
-    (none)
     )
   :code (-> (method-of-type kor waiting-idle) code)
   :post (-> (method-of-type kor waiting-idle) post)
@@ -258,9 +242,9 @@
 
 (defstate scared-idle (kor)
   :virtual #t
-  :event (the-as (function process int symbol event-message-block object :behavior kor) enemy-event-handler)
+  :event enemy-event-handler
   :enter (behavior ()
-    (set! (-> self state-time) (current-time))
+    (set-time! (-> self state-time))
     (let ((v1-2 self))
       (set! (-> v1-2 enemy-flags) (the-as enemy-flag (logclear (-> v1-2 enemy-flags) (enemy-flag enemy-flag36))))
       (set! (-> v1-2 nav callback-info) *nav-enemy-null-callback-info*)
@@ -274,7 +258,6 @@
     (vector-reset! (-> self root transv))
     (look-at-target! self (enemy-flag lock-focus))
     (set! (-> self travel-anim-interp) 0.0)
-    (none)
     )
   :trans (behavior ()
     (bot-method-223 self #f)
@@ -299,12 +282,11 @@
           (go-virtual traveling)
           )
       )
-    (none)
     )
   :code (behavior ()
     (let ((v1-2 (ja-group)))
       (cond
-        ((and v1-2 (= v1-2 (-> self draw art-group data 4)))
+        ((and v1-2 (= v1-2 kor-scared0-ja))
          (ja-no-eval :num! (seek!))
          (while (not (ja-done? 0))
            (suspend)
@@ -317,26 +299,22 @@
         )
       )
     (until #f
-      (ja-no-eval :group! (-> self draw art-group data 4)
-                  :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 4)) frames num-frames) -1)))
-                  :frame-num 0.0
-                  )
+      (ja-no-eval :group! kor-scared0-ja :num! (seek!) :frame-num 0.0)
       (until (ja-done? 0)
         (suspend)
         (ja :num! (seek!))
         )
       )
     #f
-    (none)
     )
-  :post (the-as (function none :behavior kor) nav-enemy-simple-post)
+  :post nav-enemy-simple-post
   )
 
 (defstate traveling (kor)
   :virtual #t
-  :event (the-as (function process int symbol event-message-block object :behavior kor) enemy-event-handler)
+  :event enemy-event-handler
   :enter (behavior ()
-    (set! (-> self state-time) (current-time))
+    (set-time! (-> self state-time))
     (let ((v1-2 self))
       (if (not (logtest? (enemy-flag enemy-flag36) (-> v1-2 enemy-flags)))
           (set! (-> v1-2 enemy-flags) (the-as enemy-flag (logior (enemy-flag enemy-flag38) (-> v1-2 enemy-flags))))
@@ -352,7 +330,6 @@
     (stop-looking-at-target! self)
     (nav-enemy-method-166 self)
     (set! (-> self player-blocking) 0.0)
-    (none)
     )
   :trans (behavior ()
     (bot-method-223 self #f)
@@ -366,16 +343,15 @@
         ((outside-spot-radius? self (the-as bot-spot #f) (the-as vector #f) #t)
          (kor-method-232 self)
          )
-        ((and (>= (- (current-time) (-> self state-time)) (seconds 0.5)) (bot-method-208 self))
+        ((and (time-elapsed? (-> self state-time) (seconds 0.5)) (bot-method-208 self))
          (go-virtual traveling-blocked)
          )
-        ((and (nav-enemy-method-163 self) (>= (- (current-time) (-> self state-time)) (-> self reaction-time)))
+        ((and (nav-enemy-method-163 self) (time-elapsed? (-> self state-time) (-> self reaction-time)))
          (go-stare2 self)
          )
         )
       )
     0
-    (none)
     )
   :code (behavior ()
     (until #f
@@ -383,7 +359,6 @@
       (suspend)
       )
     #f
-    (none)
     )
   :post (behavior ()
     (let ((a0-0 (-> self nav state))
@@ -395,15 +370,14 @@
       )
     0
     (nav-enemy-travel-post)
-    (none)
     )
   )
 
 (defstate traveling-blocked (kor)
   :virtual #t
-  :event (the-as (function process int symbol event-message-block object :behavior kor) enemy-event-handler)
+  :event enemy-event-handler
   :enter (behavior ()
-    (set! (-> self state-time) (current-time))
+    (set-time! (-> self state-time))
     (let ((v1-2 self))
       (set! (-> v1-2 enemy-flags) (the-as enemy-flag (logclear (-> v1-2 enemy-flags) (enemy-flag enemy-flag36))))
       (set! (-> v1-2 nav callback-info) *nav-enemy-null-callback-info*)
@@ -417,7 +391,6 @@
     (vector-reset! (-> self root transv))
     (look-at-target! self (enemy-flag lock-focus))
     (set! (-> self travel-anim-interp) 0.0)
-    (none)
     )
   :trans (behavior ()
     (bot-method-223 self #f)
@@ -428,15 +401,14 @@
              )
          (go-virtual arrested)
          )
-        ((and (>= (- (current-time) (-> self state-time)) (seconds 1)) (not (bot-method-208 self)))
+        ((and (time-elapsed? (-> self state-time) (seconds 1)) (not (bot-method-208 self)))
          (go-virtual traveling)
          )
         )
       )
-    (none)
     )
   :code (-> (method-of-type kor waiting-idle) code)
-  :post (the-as (function none :behavior kor) nav-enemy-simple-post)
+  :post nav-enemy-simple-post
   )
 
 (defstate stare (kor)
@@ -452,7 +424,6 @@
       )
     0
     (set! (-> self travel-anim-interp) 0.0)
-    (none)
     )
   :trans (behavior ()
     (bot-method-223 self #f)
@@ -463,12 +434,11 @@
           (go-virtual arrested)
           )
       )
-    (when (>= (- (current-time) (-> self state-time)) (seconds 0.1))
+    (when (time-elapsed? (-> self state-time) (seconds 0.1))
       (if (not (nav-enemy-method-163 self))
           (go-virtual traveling)
           )
       )
-    (none)
     )
   :code (-> (method-of-type kor waiting-idle) code)
   )
@@ -482,15 +452,11 @@
           )
       )
     (set! (-> self travel-anim-interp) 0.0)
-    (none)
     )
   :code (behavior ()
     (local-vars (v1-31 enemy-flag) (v1-39 enemy-flag))
     (ja-channel-push! 1 (seconds 0.1))
-    (ja-no-eval :group! (-> self draw art-group data 3)
-                :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 3)) frames num-frames) -1)))
-                :frame-num 0.0
-                )
+    (ja-no-eval :group! kor-idle0-ja :num! (seek!) :frame-num 0.0)
     (until (ja-done? 0)
       (suspend)
       (ja :num! (seek!))
@@ -520,7 +486,6 @@
     (logclear! (-> self enemy-flags) (enemy-flag actor-pause-backup))
     (logclear! (-> self focus-status) (focus-status hit))
     (react-to-focus self)
-    (none)
     )
   )
 
@@ -533,15 +498,14 @@
           )
       )
     (set! (-> self travel-anim-interp) 0.0)
-    (none)
     )
   )
 
 (defstate arrested (kor)
   :virtual #t
-  :event (the-as (function process int symbol event-message-block object :behavior kor) enemy-event-handler)
+  :event enemy-event-handler
   :enter (behavior ()
-    (set! (-> self state-time) (current-time))
+    (set-time! (-> self state-time))
     (let ((v1-2 self))
       (set! (-> v1-2 enemy-flags) (the-as enemy-flag (logclear (-> v1-2 enemy-flags) (enemy-flag enemy-flag36))))
       (set! (-> v1-2 nav callback-info) *nav-enemy-null-callback-info*)
@@ -558,7 +522,6 @@
     (if (logtest? (bot-flags bf20) (-> self bot-flags))
         (logclear! (-> self enemy-flags) (enemy-flag enable-on-active checking-water))
         )
-    (none)
     )
   :trans (behavior ()
     (cond
@@ -584,25 +547,21 @@
           )
         )
       )
-    (none)
     )
   :code (behavior ()
     (ja-channel-push! 1 (seconds 0.25))
     (cond
       ((and (not (logtest? (bot-flags bf20) (-> self bot-flags)))
-            (< (- (current-time) (-> self arrest-attempt-time)) (seconds 0.8))
+            (not (time-elapsed? (-> self arrest-attempt-time) (seconds 0.8)))
             )
-       (ja-no-eval :group! (-> self draw art-group data 4)
-                   :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 4)) frames num-frames) -1)))
-                   :frame-num 0.0
-                   )
+       (ja-no-eval :group! kor-scared0-ja :num! (seek!) :frame-num 0.0)
        (until (ja-done? 0)
          (suspend)
          (ja :num! (seek!))
          )
        )
       (else
-        (ja-no-eval :group! (-> self draw art-group data 4) :num! (seek! (ja-aframe 8.0 0)) :frame-num 0.0)
+        (ja-no-eval :group! kor-scared0-ja :num! (seek! (ja-aframe 8.0 0)) :frame-num 0.0)
         (until (ja-done? 0)
           (suspend)
           (ja :num! (seek! (ja-aframe 8.0 0)))
@@ -621,23 +580,17 @@
           )
       )
     (ja-channel-push! 1 (seconds 0.1))
-    (ja-no-eval :group! (-> self draw art-group data 17)
-                :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 17)) frames num-frames) -1)))
-                :frame-num (ja-aframe 4.0 0)
-                )
+    (ja-no-eval :group! kor-arrest-start-ja :num! (seek!) :frame-num (ja-aframe 4.0 0))
     (until (ja-done? 0)
       (suspend)
       (ja :num! (seek!))
       )
-    (set! (-> self state-time) (current-time))
+    (set-time! (-> self state-time))
     (until #f
-      (ja-no-eval :group! (-> self draw art-group data 18)
-                  :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 18)) frames num-frames) -1)))
-                  :frame-num 0.0
-                  )
+      (ja-no-eval :group! kor-arrest-idle0-ja :num! (seek!) :frame-num 0.0)
       (until (ja-done? 0)
         (if (and (logtest? (-> self bot-flags) (bot-flags failed))
-                 (>= (- (current-time) (-> self state-time)) (seconds 3))
+                 (time-elapsed? (-> self state-time) (seconds 3))
                  (reset? *fail-mission-control*)
                  )
             (reset! *fail-mission-control*)
@@ -647,9 +600,8 @@
         )
       )
     #f
-    (none)
     )
-  :post (the-as (function none :behavior kor) nav-enemy-simple-post)
+  :post nav-enemy-simple-post
   )
 
 (defstate failed (kor)
@@ -657,7 +609,6 @@
   :enter (behavior ()
     (logior! (-> self bot-flags) (bot-flags bf20))
     ((-> (method-of-type kor arrested) enter))
-    (none)
     )
   :trans (-> (method-of-type kor arrested) trans)
   :code (-> (method-of-type kor arrested) code)

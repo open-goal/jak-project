@@ -4,18 +4,14 @@
 ;; definition of type training-part
 (deftype training-part (part-spawner)
   ()
-  :heap-base #x60
-  :method-count-assert 21
-  :size-assert         #xd0
-  :flag-assert         #x15006000d0
   )
 
 ;; definition for method 3 of type training-part
-(defmethod inspect training-part ((obj training-part))
+(defmethod inspect ((this training-part))
   (let ((t9-0 (method-of-type part-spawner inspect)))
-    (t9-0 obj)
+    (t9-0 this)
     )
-  obj
+  this
   )
 
 ;; failed to figure out what this is:
@@ -308,22 +304,8 @@
           (sound-play "water-drop")
           )
       (set-vector! gp-0 (-> arg2 x) (-> arg1 user-float) (-> arg2 z) 1.0)
-      (sp-launch-particles-var
-        *sp-particle-system-2d*
-        (-> *part-id-table* 763)
-        gp-0
-        (the-as sparticle-launch-state #f)
-        (the-as sparticle-launch-control #f)
-        1.0
-        )
-      (sp-launch-particles-var
-        *sp-particle-system-3d*
-        (-> *part-id-table* 764)
-        gp-0
-        (the-as sparticle-launch-state #f)
-        (the-as sparticle-launch-control #f)
-        1.0
-        )
+      (launch-particles (-> *part-id-table* 763) gp-0)
+      (launch-particles :system *sp-particle-system-3d* (-> *part-id-table* 764) gp-0)
       )
     )
   (none)
@@ -866,7 +848,7 @@
 ;; INFO: Return type mismatch int vs none.
 (defun tra-bird-bob-func ((arg0 sparticle-system) (arg1 sparticle-cpuinfo) (arg2 vector))
   (set! (-> arg2 y) (+ (-> (the-as process-drawable (-> arg1 key proc)) root trans y)
-                       (* -2048.0 (sin (* 218.45334 (the float (mod (-> *display* base-frame-counter) 300)))))
+                       (* -2048.0 (sin (* 218.45334 (the float (mod (current-time) 300)))))
                        )
         )
   0

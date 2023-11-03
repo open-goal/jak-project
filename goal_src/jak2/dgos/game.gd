@@ -162,6 +162,7 @@
   "hud-h.o"
   "progress-h.o"
   "progress-h-pc.o" ;; added
+  "progress-generic-h-pc.o" ;; added
   "rpc-h.o"
   "path-h.o"
   "nav-mesh-h.o"
@@ -237,8 +238,8 @@
   "settings.o"
   "autosplit-h.o" ;; added
   "autosplit.o" ;; added
+  "popup-menu-h.o" ;; added
   "speedruns-h.o" ;; added
-  "speedruns.o" ;; added
   "mood-tables.o"
   "mood-tables2.o"
   "mood.o"
@@ -326,6 +327,8 @@
   "board-states.o"
   "mech-h.o"
   "menu.o"
+  "popup-menu.o" ;; added
+  "speedruns.o" ;; added
   "drawable.o"
   "drawable-group.o"
   "drawable-inline-array.o"
@@ -361,8 +364,10 @@
   "progress-static-pc.o" ;; added
   "progress.o"
   "progress-pc.o" ;; added
+  "progress-generic-pc.o" ;; added
   "progress-draw.o"
   "progress-draw-pc.o" ;; added
+  "progress-generic-draw-pc.o" ;; added
   "ocean.o"
   "ocean-vu0.o"
   "ocean-texture.o"

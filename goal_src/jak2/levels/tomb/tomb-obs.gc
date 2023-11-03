@@ -17,13 +17,9 @@
 ;; DECOMP BEGINS
 
 (deftype tomb-plat-wall (plat)
-  ((position vector :inline :offset-assert 336)
-   (last-pos float          :offset-assert 352)
+  ((position  vector  :inline)
+   (last-pos  float)
    )
-  :heap-base #xf0
-  :method-count-assert 37
-  :size-assert         #x164
-  :flag-assert         #x2500f00164
   )
 
 
@@ -33,21 +29,20 @@
               :origin-joint-index 3
               )
 
-(defmethod get-art-group tomb-plat-wall ((obj tomb-plat-wall))
+(defmethod get-art-group ((this tomb-plat-wall))
   "@returns The associated [[art-group]]"
   (art-group-get-by-name *level* "skel-tomb-plat-wall" (the-as (pointer uint32) #f))
   )
 
 (defstate plat-idle (tomb-plat-wall)
   :virtual #t
-  :event (the-as (function process int symbol event-message-block object :behavior tomb-plat-wall) plat-event)
+  :event plat-event
   :exit (behavior ()
     (when (nonzero? (-> self sound-id))
       (sound-stop (-> self sound-id))
       (set! (-> self sound-id) (new 'static 'sound-id))
       0
       )
-    (none)
     )
   :trans (behavior ()
     (rlet ((acc :class vf)
@@ -94,34 +89,29 @@
         (set! (-> self last-pos) f30-0)
         )
       (plat-trans)
-      (none)
       )
     )
   :code (behavior ()
     (until #f
-      (ja-no-eval :group! (ja-group)
-                  :num! (seek! (the float (+ (-> (ja-group) frames num-frames) -1)))
-                  :frame-num 0.0
-                  )
+      (ja-no-eval :group! (ja-group) :num! (seek!) :frame-num 0.0)
       (until (ja-done? 0)
         (suspend)
         (ja :num! (seek!))
         )
       )
     #f
-    (none)
     )
-  :post (the-as (function none :behavior tomb-plat-wall) plat-post)
+  :post plat-post
   )
 
-(defmethod base-plat-method-32 tomb-plat-wall ((obj tomb-plat-wall))
+(defmethod base-plat-method-32 ((this tomb-plat-wall))
   0
   (none)
   )
 
-(defmethod init-plat-collision! tomb-plat-wall ((obj tomb-plat-wall))
+(defmethod init-plat-collision! ((this tomb-plat-wall))
   "TODO - collision stuff for setting up the platform"
-  (let ((s5-0 (new 'process 'collide-shape obj (collide-list-enum usually-hit-by-player))))
+  (let ((s5-0 (new 'process 'collide-shape this (collide-list-enum usually-hit-by-player))))
     (let ((s4-0 (new 'process 'collide-shape-prim-mesh s5-0 (the-as uint 0) (the-as uint 0))))
       (set! (-> s4-0 prim-core collide-as) (collide-spec pusher))
       (set! (-> s4-0 prim-core collide-with) (collide-spec jak bot player-list))
@@ -137,34 +127,34 @@
       (set! (-> s5-0 backup-collide-as) (-> v1-12 prim-core collide-as))
       (set! (-> s5-0 backup-collide-with) (-> v1-12 prim-core collide-with))
       )
-    (set! (-> obj root) (the-as collide-shape-moving s5-0))
+    (set! (-> this root) (the-as collide-shape-moving s5-0))
     )
   0
   (none)
   )
 
 ;; WARN: Return type mismatch object vs none.
-(defmethod init-from-entity! tomb-plat-wall ((obj tomb-plat-wall) (arg0 entity-actor))
+(defmethod init-from-entity! ((this tomb-plat-wall) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
 - stack size
 - collision information
 - loading the skeleton group / bones
 - sounds"
-  (logior! (-> obj mask) (process-mask platform))
-  (init-plat-collision! obj)
-  (process-drawable-from-entity! obj arg0)
-  (initialize-skeleton obj (the-as skeleton-group (get-art-group obj)) (the-as pair 0))
-  (set! (-> obj draw light-index) (the-as uint 1))
-  (update-transforms (-> obj root))
-  (stop-bouncing! obj)
-  (base-plat-method-32 obj)
-  (set! (-> obj fact)
-        (new 'process 'fact-info obj (pickup-type eco-pill-random) (-> *FACT-bank* default-eco-pill-green-inc))
+  (logior! (-> this mask) (process-mask platform))
+  (init-plat-collision! this)
+  (process-drawable-from-entity! this arg0)
+  (initialize-skeleton this (the-as skeleton-group (get-art-group this)) (the-as pair 0))
+  (set! (-> this draw light-index) (the-as uint 1))
+  (update-transforms (-> this root))
+  (stop-bouncing! this)
+  (base-plat-method-32 this)
+  (set! (-> this fact)
+        (new 'process 'fact-info this (pickup-type eco-pill-random) (-> *FACT-bank* default-eco-pill-green-inc))
         )
   (let ((a1-4 (new 'stack-no-clear 'sync-info-params)))
     (let ((v1-16 0))
-      (if (not (logtest? (-> obj fact options) (actor-option loop)))
+      (if (not (logtest? (-> this fact options) (actor-option loop)))
           (set! v1-16 (logior v1-16 1))
           )
       (set! (-> a1-4 sync-type) 'sync-eased)
@@ -177,24 +167,20 @@ This commonly includes things such as:
     (set! (-> a1-4 ease-out) 0.15)
     (set! (-> a1-4 pause-in) 0.0)
     (set! (-> a1-4 pause-out) 0.0)
-    (initialize! (-> obj sync) a1-4)
+    (initialize! (-> this sync) a1-4)
     )
-  (set! (-> obj sound-id) (new 'static 'sound-id))
-  (set! (-> obj position quad) (-> obj root trans quad))
-  (set! (-> obj last-pos) 0.0)
-  (go (method-of-object obj plat-idle))
+  (set! (-> this sound-id) (new 'static 'sound-id))
+  (set! (-> this position quad) (-> this root trans quad))
+  (set! (-> this last-pos) 0.0)
+  (go (method-of-object this plat-idle))
   (none)
   )
 
 (deftype tomb-stair-block-spikes (process-drawable)
-  ((root collide-shape-moving  :override)
+  ((root  collide-shape-moving :override)
    )
-  :heap-base #x50
-  :method-count-assert 21
-  :size-assert         #xc8
-  :flag-assert         #x15005000c8
-  (:methods
-    (idle () _type_ :state 20)
+  (:state-methods
+    idle
     )
   )
 
@@ -207,34 +193,33 @@ This commonly includes things such as:
 ;; WARN: Return type mismatch int vs object.
 (defbehavior tomb-stair-block-collision tomb-stair-block-spikes ((arg0 symbol))
   (let ((v1-1 (-> self root root-prim)))
-    (the-as object (cond
-                     (arg0
-                       (set! (-> v1-1 prim-core collide-with) (collide-spec jak bot player-list))
-                       (let ((v0-0 (the-as int (-> v1-1 specific 1))))
-                         (set! (-> v1-1 specific 0) (the-as uint v0-0))
-                         v0-0
-                         )
-                       )
-                     (else
-                       (set! (-> v1-1 prim-core collide-with) (collide-spec))
-                       (set! (-> v1-1 specific 0) (the-as uint 0))
-                       0
-                       )
-                     )
-            )
+    (cond
+      (arg0
+        (set! (-> v1-1 prim-core collide-with) (collide-spec jak bot player-list))
+        (let ((v0-0 (the-as int (-> v1-1 specific 1))))
+          (set! (-> v1-1 specific 0) (the-as uint v0-0))
+          v0-0
+          )
+        )
+      (else
+        (set! (-> v1-1 prim-core collide-with) (collide-spec))
+        (set! (-> v1-1 specific 0) (the-as uint 0))
+        0
+        )
+      )
     )
   )
 
 (defstate idle (tomb-stair-block-spikes)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('sound)
        (sound-play "tomb-spikes")
        )
       (('set-position)
        (let ((v0-1 (the-as object (-> self root trans))))
-         (set! (-> (the-as vector v0-1) quad) (-> (the-as vector (-> event param 0)) quad))
+         (set! (-> (the-as vector v0-1) quad) (-> (the-as vector (-> block param 0)) quad))
          v0-1
          )
        )
@@ -243,31 +228,19 @@ This commonly includes things such as:
        )
       (('touch)
        (when (= proc *target*)
-         (let ((a1-9 (new 'stack-no-clear 'event-message-block)))
-           (set! (-> a1-9 from) (process->ppointer self))
-           (set! (-> a1-9 num-params) 2)
-           (set! (-> a1-9 message) 'attack)
-           (set! (-> a1-9 param 0) (the-as uint #f))
-           (let ((v1-9 (new 'static 'attack-info :mask (attack-info-mask shove-back shove-up id))))
-             (let* ((a2-3 *game-info*)
-                    (a3-3 (+ (-> a2-3 attack-id) 1))
-                    )
-               (set! (-> a2-3 attack-id) a3-3)
-               (set! (-> v1-9 id) a3-3)
-               )
-             (set! (-> v1-9 shove-up) 8192.0)
-             (set! (-> v1-9 shove-back) 0.0)
-             (set! (-> a1-9 param 1) (the-as uint v1-9))
-             )
-           (send-event-function proc a1-9)
+         (send-event
+           proc
+           'attack
+           #f
+           (static-attack-info ((id (new-attack-id)) (shove-up (meters 2)) (shove-back (meters 0))))
            )
          (tomb-stair-block-collision #f)
          )
        )
       )
     )
-  :code (the-as (function none :behavior tomb-stair-block-spikes) sleep-code)
-  :post (the-as (function none :behavior tomb-stair-block-spikes) transform-post)
+  :code sleep-code
+  :post transform-post
   )
 
 ;; WARN: Return type mismatch object vs none.
@@ -339,36 +312,29 @@ This commonly includes things such as:
   )
 
 (deftype tomb-stair-block-spike-info (structure)
-  ((spike    handle  :offset-assert   0)
-   (joint    int32   :offset-assert   8)
-   (y-offset float   :offset-assert  12)
-   (up       basic   :offset-assert  16)
-   (sounded  basic   :offset-assert  20)
+  ((spike     handle)
+   (joint     int32)
+   (y-offset  float)
+   (up        basic)
+   (sounded   basic)
    )
-  :method-count-assert 9
-  :size-assert         #x18
-  :flag-assert         #x900000018
   )
 
 
 (deftype tomb-stair-block (process-drawable)
-  ((root         collide-shape-moving                  :override)
-   (initial-y    float                                 :offset-assert 200)
-   (spike-info   tomb-stair-block-spike-info 4 :inline :offset        208)
-   (camera-state int32                                 :offset        336)
-   (sink-sound   sound-id                              :offset        340)
-   (rise-sound   sound-id                              :offset        344)
+  ((root          collide-shape-moving        :override)
+   (initial-y     float)
+   (spike-info    tomb-stair-block-spike-info  4 :inline :offset 208)
+   (camera-state  int32                                  :offset 336)
+   (sink-sound    sound-id                               :offset 340)
+   (rise-sound    sound-id                               :offset 344)
    )
-  :heap-base #xe0
-  :method-count-assert 25
-  :size-assert         #x15c
-  :flag-assert         #x1900e0015c
-  (:methods
-    (wait-for-pools () _type_ :state 20)
-    (idle () _type_ :state 21)
-    (moving () _type_ :state 22)
-    (sink () _type_ :state 23)
-    (sunk () _type_ :state 24)
+  (:state-methods
+    wait-for-pools
+    idle
+    moving
+    sink
+    sunk
     )
   )
 
@@ -476,24 +442,19 @@ This commonly includes things such as:
   :virtual #t
   :enter (behavior ()
     (set! (-> self root trans y) (-> self initial-y))
-    (ja :group! (-> self draw art-group data 4)
-        :num! (identity (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 4)) frames num-frames) -1)))
-        )
+    (ja :group! tomb-stair-block-sink-ja :num! max)
     (transform-post)
-    (none)
     )
   :trans (behavior ()
     (lift-pool 1)
     (drop-pool 0)
     (position-spikes 1200)
-    (none)
     )
   :code (behavior ()
     (suspend)
     (suspend)
     (transform-post)
     (sleep-code)
-    (none)
     )
   )
 
@@ -501,15 +462,13 @@ This commonly includes things such as:
   :virtual #t
   :enter (behavior ()
     (set! (-> self camera-state) 0)
-    (set! (-> self state-time) (current-time))
+    (set-time! (-> self state-time))
     (task-node-close! (game-task-node tomb-poles-block))
-    (none)
     )
   :exit (behavior ()
     (remove-setting! 'entity-name)
     (remove-setting! 'interp-time)
     (remove-setting! 'string-startup-vector)
-    (none)
     )
   :trans (behavior ()
     (rider-trans)
@@ -522,7 +481,7 @@ This commonly includes things such as:
        (remove-setting! 'string-startup-vector)
        (set! (-> self camera-state) 3)
        )
-      ((and (= (-> self camera-state) 1) (>= (- (current-time) (-> self state-time)) (seconds 8)))
+      ((and (= (-> self camera-state) 1) (time-elapsed? (-> self state-time) (seconds 8)))
        (set-setting! 'interp-time 'abs 0.0 0)
        (set-setting! 'string-startup-vector 'abs (new 'static 'vector :x 1.0) 0)
        (remove-setting! 'entity-name)
@@ -530,7 +489,6 @@ This commonly includes things such as:
        (process-release? *target*)
        )
       )
-    (none)
     )
   :code (behavior ()
     (local-vars (v1-5 symbol) (v1-51 symbol))
@@ -544,9 +502,9 @@ This commonly includes things such as:
     (set-setting! 'entity-name "camera-171" 0.0 0)
     (set! (-> self camera-state) 1)
     (ja-channel-push! 1 (seconds 2))
-    (ja :group! (-> self draw art-group data 3) :num! min)
-    (set! (-> self state-time) (current-time))
-    (until (>= (- (current-time) (-> self state-time)) (seconds 2))
+    (ja :group! tomb-stair-block-straight-ja :num! min)
+    (set-time! (-> self state-time))
+    (until (time-elapsed? (-> self state-time) (seconds 2))
       (lift-pool 0)
       (drop-pool 1)
       (suspend)
@@ -560,10 +518,7 @@ This commonly includes things such as:
       (drop-pool 1)
       (suspend)
       )
-    (ja-no-eval :group! (-> self draw art-group data 4)
-                :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 4)) frames num-frames) -1)))
-                :frame-num 0.0
-                )
+    (ja-no-eval :group! tomb-stair-block-sink-ja :num! (seek!) :frame-num 0.0)
     (until (ja-done? 0)
       (lift-pool 1)
       (drop-pool 0)
@@ -577,15 +532,14 @@ This commonly includes things such as:
       (set! v1-51 (or (not *target*) (process-release? *target*)))
       )
     (go-virtual sunk)
-    (none)
     )
-  :post (the-as (function none :behavior tomb-stair-block) rider-post)
+  :post rider-post
   )
 
 (defstate moving (tomb-stair-block)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('cue-chase)
        (set-action!
          *gui-control*
@@ -608,13 +562,11 @@ This commonly includes things such as:
           )
     (set! (-> self camera-state) 0)
     0
-    (none)
     )
   :exit (behavior ()
     (remove-setting! 'entity-name)
     (remove-setting! 'interp-time)
     (remove-setting! 'string-startup-vector)
-    (none)
     )
   :trans (behavior ()
     (rider-trans)
@@ -633,7 +585,7 @@ This commonly includes things such as:
            (set! (-> self camera-state) 3)
            )
        )
-      ((and (= (-> self camera-state) 1) (>= (- (current-time) (-> self state-time)) (seconds 4)))
+      ((and (= (-> self camera-state) 1) (time-elapsed? (-> self state-time) (seconds 4)))
        (set-setting! 'interp-time 'abs 0.0 0)
        (set-setting! 'string-startup-vector 'abs (new 'static 'vector :x 1.0) 0)
        (remove-setting! 'entity-name)
@@ -655,7 +607,6 @@ This commonly includes things such as:
       )
     (lift-pool 0)
     (drop-pool 1)
-    (none)
     )
   :code (behavior ()
     (local-vars (v1-1 symbol))
@@ -664,32 +615,25 @@ This commonly includes things such as:
       (set! v1-1 (or (not *target*) (process-grab? *target* #f)))
       )
     (set-setting! 'entity-name "camera-170" 0.0 0)
-    (set! (-> self state-time) (current-time))
+    (set-time! (-> self state-time))
     (set! (-> self camera-state) 1)
     (ja-channel-push! 1 (seconds 2))
     (until #f
-      (ja-no-eval :group! (-> self draw art-group data 2)
-                  :num! (seek!
-                    (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 2)) frames num-frames) -1))
-                    0.125
-                    )
-                  :frame-num 0.0
-                  )
+      (ja-no-eval :group! tomb-stair-block-idle-ja :num! (seek! max 0.125) :frame-num 0.0)
       (until (ja-done? 0)
         (suspend)
         (ja :num! (seek! max 0.125))
         )
       )
     #f
-    (none)
     )
-  :post (the-as (function none :behavior tomb-stair-block) rider-post)
+  :post rider-post
   )
 
 (defstate idle (tomb-stair-block)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('cue-chase)
        (set-action!
          *gui-control*
@@ -709,7 +653,7 @@ This commonly includes things such as:
   :enter (behavior ()
     (local-vars (sv-16 res-tag))
     (ja-channel-push! 1 (seconds 2))
-    (ja :group! (-> self draw art-group data 3) :num! min)
+    (ja :group! tomb-stair-block-straight-ja :num! min)
     (set! (-> self rise-sound)
           (add-process *gui-control* self (gui-channel jak) (gui-action queue) "tombplta" -99.0 0)
           )
@@ -735,7 +679,6 @@ This commonly includes things such as:
           )
         )
       )
-    (none)
     )
   :trans (behavior ()
     (let ((f0-3 (seek (-> self root trans y) (+ -104448.0 (-> self initial-y)) 409.6)))
@@ -745,10 +688,9 @@ This commonly includes things such as:
     (lift-pool 0)
     (drop-pool 1)
     (position-spikes 1500)
-    (none)
     )
-  :code (the-as (function none :behavior tomb-stair-block) sleep-code)
-  :post (the-as (function none :behavior tomb-stair-block) transform-post)
+  :code sleep-code
+  :post transform-post
   )
 
 (defstate wait-for-pools (tomb-stair-block)
@@ -791,20 +733,19 @@ This commonly includes things such as:
             )
         )
       )
-    (none)
     )
-  :code (the-as (function none :behavior tomb-stair-block) sleep-code)
+  :code sleep-code
   )
 
 ;; WARN: Return type mismatch object vs none.
-(defmethod init-from-entity! tomb-stair-block ((obj tomb-stair-block) (arg0 entity-actor))
+(defmethod init-from-entity! ((this tomb-stair-block) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
 - stack size
 - collision information
 - loading the skeleton group / bones
 - sounds"
-  (let ((s4-0 (new 'process 'collide-shape obj (collide-list-enum usually-hit-by-player))))
+  (let ((s4-0 (new 'process 'collide-shape this (collide-list-enum usually-hit-by-player))))
     (set! (-> s4-0 penetrated-by) (penetrate))
     (let ((s3-0 (new 'process 'collide-shape-prim-group s4-0 (the-as uint 8) 0)))
       (set! (-> s4-0 total-prims) (the-as uint 9))
@@ -876,43 +817,45 @@ This commonly includes things such as:
       (set! (-> s4-0 backup-collide-as) (-> v1-27 prim-core collide-as))
       (set! (-> s4-0 backup-collide-with) (-> v1-27 prim-core collide-with))
       )
-    (set! (-> obj root) (the-as collide-shape-moving s4-0))
+    (set! (-> this root) (the-as collide-shape-moving s4-0))
     )
-  (process-drawable-from-entity! obj arg0)
+  (process-drawable-from-entity! this arg0)
   (initialize-skeleton
-    obj
+    this
     (the-as skeleton-group (art-group-get-by-name *level* "skel-tomb-stair-block" (the-as (pointer uint32) #f)))
     (the-as pair 0)
     )
-  (set! (-> obj draw light-index) (the-as uint 1))
-  (logclear! (-> obj mask) (process-mask actor-pause))
-  (set! (-> obj initial-y) (-> obj root trans y))
+  (set! (-> this draw light-index) (the-as uint 1))
+  (logclear! (-> this mask) (process-mask actor-pause))
+  (set! (-> this initial-y) (-> this root trans y))
   (ja-post)
-  (set! (-> obj spike-info 0 joint) 4)
-  (set! (-> obj spike-info 1 joint) 6)
-  (set! (-> obj spike-info 2 joint) 8)
-  (set! (-> obj spike-info 3 joint) 10)
+  (set! (-> this spike-info 0 joint) 4)
+  (set! (-> this spike-info 1 joint) 6)
+  (set! (-> this spike-info 2 joint) 8)
+  (set! (-> this spike-info 3 joint) 10)
   (let ((s5-2 (new 'stack-no-clear 'vector)))
     (dotimes (s4-2 4)
-      (set! (-> obj spike-info s4-2 y-offset) 0.0)
-      (vector<-cspace! s5-2 (-> obj node-list data (-> obj spike-info s4-2 joint)))
-      (set! (-> obj spike-info s4-2 spike) (ppointer->handle (process-spawn tomb-stair-block-spikes s5-2 :to obj)))
-      (set! (-> obj spike-info s4-2 up) #f)
-      (set! (-> obj spike-info s4-2 sounded) #f)
+      (set! (-> this spike-info s4-2 y-offset) 0.0)
+      (vector<-cspace! s5-2 (-> this node-list data (-> this spike-info s4-2 joint)))
+      (set! (-> this spike-info s4-2 spike)
+            (ppointer->handle (process-spawn tomb-stair-block-spikes s5-2 :to this))
+            )
+      (set! (-> this spike-info s4-2 up) #f)
+      (set! (-> this spike-info s4-2 sounded) #f)
       )
     )
-  (set! (-> obj root trans y) (+ -104448.0 (-> obj initial-y)))
-  (let ((s5-3 (-> obj skel root-channel 0)))
+  (set! (-> this root trans y) (+ -104448.0 (-> this initial-y)))
+  (let ((s5-3 (-> this skel root-channel 0)))
     (joint-control-channel-group-eval!
       s5-3
-      (the-as art-joint-anim (-> obj draw art-group data 3))
+      (the-as art-joint-anim (-> this draw art-group data 3))
       num-func-identity
       )
     (set! (-> s5-3 frame-num) 0.0)
     )
-  (set! (-> obj rise-sound) (new-sound-id))
-  (set! (-> obj sink-sound) (new-sound-id))
-  (go (method-of-object obj wait-for-pools))
+  (set! (-> this rise-sound) (new-sound-id))
+  (set! (-> this sink-sound) (new-sound-id))
+  (go (method-of-object this wait-for-pools))
   (none)
   )
 
@@ -923,27 +866,23 @@ This commonly includes things such as:
 
 (deftype tomb-bounce-web (bouncer)
   ()
-  :heap-base #x60
-  :method-count-assert 25
-  :size-assert         #xd4
-  :flag-assert         #x19006000d4
   )
 
 
-(defmethod init-skeleton! tomb-bounce-web ((obj tomb-bounce-web))
+(defmethod init-skeleton! ((this tomb-bounce-web))
   (initialize-skeleton
-    obj
+    this
     (the-as skeleton-group (art-group-get-by-name *level* "skel-tomb-bounce-web" (the-as (pointer uint32) #f)))
     (the-as pair 0)
     )
-  (set! (-> obj mods) *indax-bounce-mods*)
+  (set! (-> this mods) *indax-bounce-mods*)
   0
   (none)
   )
 
-(defmethod bouncer-method-24 tomb-bounce-web ((obj tomb-bounce-web))
+(defmethod bouncer-method-24 ((this tomb-bounce-web))
   "TODO - collision stuff"
-  (let ((s5-0 (new 'process 'collide-shape obj (collide-list-enum hit-by-player))))
+  (let ((s5-0 (new 'process 'collide-shape this (collide-list-enum hit-by-player))))
     (let ((s4-0 (new 'process 'collide-shape-prim-group s5-0 (the-as uint 4) 0)))
       (set! (-> s5-0 total-prims) (the-as uint 5))
       (set! (-> s4-0 prim-core collide-as) (collide-spec crate))
@@ -986,7 +925,7 @@ This commonly includes things such as:
       (set! (-> s5-0 backup-collide-as) (-> v1-17 prim-core collide-as))
       (set! (-> s5-0 backup-collide-with) (-> v1-17 prim-core collide-with))
       )
-    (set! (-> obj root) s5-0)
+    (set! (-> this root) s5-0)
     )
   0
   (none)
@@ -994,10 +933,6 @@ This commonly includes things such as:
 
 (deftype tomb-plat-pillar (plat)
   ()
-  :heap-base #xd0
-  :method-count-assert 37
-  :size-assert         #x144
-  :flag-assert         #x2500d00144
   )
 
 
@@ -1006,20 +941,20 @@ This commonly includes things such as:
               :bounds (static-spherem 0 -7 0 8)
               )
 
-(defmethod get-art-group tomb-plat-pillar ((obj tomb-plat-pillar))
+(defmethod get-art-group ((this tomb-plat-pillar))
   "@returns The associated [[art-group]]"
   (art-group-get-by-name *level* "skel-tomb-plat-pillar" (the-as (pointer uint32) #f))
   )
 
-(defmethod base-plat-method-32 tomb-plat-pillar ((obj tomb-plat-pillar))
+(defmethod base-plat-method-32 ((this tomb-plat-pillar))
   0
   (none)
   )
 
 ;; WARN: Return type mismatch collide-shape vs none.
-(defmethod init-plat-collision! tomb-plat-pillar ((obj tomb-plat-pillar))
+(defmethod init-plat-collision! ((this tomb-plat-pillar))
   "TODO - collision stuff for setting up the platform"
-  (let ((s5-0 (new 'process 'collide-shape obj (collide-list-enum hit-by-player))))
+  (let ((s5-0 (new 'process 'collide-shape this (collide-list-enum hit-by-player))))
     (let ((s4-0 (new 'process 'collide-shape-prim-mesh s5-0 (the-as uint 0) (the-as uint 0))))
       (set! (-> s4-0 prim-core collide-as) (collide-spec obstacle pusher))
       (set! (-> s4-0 prim-core collide-with) (collide-spec jak bot player-list))
@@ -1035,19 +970,15 @@ This commonly includes things such as:
       (set! (-> s5-0 backup-collide-as) (-> v1-12 prim-core collide-as))
       (set! (-> s5-0 backup-collide-with) (-> v1-12 prim-core collide-with))
       )
-    (set! (-> obj root) (the-as collide-shape-moving s5-0))
+    (set! (-> this root) (the-as collide-shape-moving s5-0))
     )
   (none)
   )
 
 (deftype tomb-elevator (elevator)
-  ((last-pos vector :inline :offset-assert 368)
-   (speed    float          :offset-assert 384)
+  ((last-pos  vector  :inline)
+   (speed     float)
    )
-  :heap-base #x110
-  :method-count-assert 49
-  :size-assert         #x184
-  :flag-assert         #x3101100184
   )
 
 
@@ -1065,11 +996,10 @@ This commonly includes things such as:
           )
       )
     (set! (-> self speed) 0.0)
-    (none)
     )
   :code (behavior ()
     (logior! (-> self elevator-status) (elevator-status waiting-to-ascend))
-    (ja-no-eval :group! (-> self draw art-group data 4) :num! (loop! 0.0))
+    (ja-no-eval :group! tomb-elevator-run-ja :num! (loop! 0.0))
     (until #f
       (when (= (-> self path-pos) 1.0)
         (logclear! (-> self elevator-status) (elevator-status waiting-to-ascend))
@@ -1079,7 +1009,6 @@ This commonly includes things such as:
       (ja :num! (loop! (* 0.00007771238 (-> self speed))))
       )
     #f
-    (none)
     )
   :post (behavior ()
     (set! (-> self last-pos quad) (-> self basetrans quad))
@@ -1089,11 +1018,10 @@ This commonly includes things such as:
           )
       )
     (set! (-> self speed) (* (- (-> self last-pos y) (-> self basetrans y)) (-> self clock frames-per-second)))
-    (none)
     )
   )
 
-(defmethod init-defaults! tomb-elevator ((obj tomb-elevator))
+(defmethod init-defaults! ((this tomb-elevator))
   "Initializes default settings related to the [[elevator]]:
 - `elevator-xz-threshold`
 - `elevator-y-threshold`
@@ -1101,22 +1029,22 @@ This commonly includes things such as:
 - `elevator-move-rate`
 - `elevator-flags`"
   (let ((t9-0 (method-of-type elevator init-defaults!)))
-    (t9-0 obj)
+    (t9-0 this)
     )
-  (set! (-> obj params flags) (elevator-flags elevator-flags-2))
-  (set! (-> obj draw light-index) (the-as uint 1))
+  (set! (-> this params flags) (elevator-flags elevator-flags-2))
+  (set! (-> this draw light-index) (the-as uint 1))
   (none)
   )
 
-(defmethod get-art-group tomb-elevator ((obj tomb-elevator))
+(defmethod get-art-group ((this tomb-elevator))
   "@returns The associated [[art-group]]"
   (art-group-get-by-name *level* "skel-tomb-elevator" (the-as (pointer uint32) #f))
   )
 
 ;; WARN: Return type mismatch collide-shape vs none.
-(defmethod init-plat-collision! tomb-elevator ((obj tomb-elevator))
+(defmethod init-plat-collision! ((this tomb-elevator))
   "TODO - collision stuff for setting up the platform"
-  (let ((s5-0 (new 'process 'collide-shape obj (collide-list-enum hit-by-player))))
+  (let ((s5-0 (new 'process 'collide-shape this (collide-list-enum hit-by-player))))
     (let ((s4-0 (new 'process 'collide-shape-prim-mesh s5-0 (the-as uint 2) (the-as uint 0))))
       (set! (-> s4-0 prim-core collide-as) (collide-spec obstacle pusher))
       (set! (-> s4-0 prim-core collide-with) (collide-spec jak bot player-list))
@@ -1132,15 +1060,15 @@ This commonly includes things such as:
       (set! (-> s5-0 backup-collide-as) (-> v1-12 prim-core collide-as))
       (set! (-> s5-0 backup-collide-with) (-> v1-12 prim-core collide-with))
       )
-    (set! (-> obj root) (the-as collide-shape-moving s5-0))
+    (set! (-> this root) (the-as collide-shape-moving s5-0))
     )
   (none)
   )
 
-(defmethod set-ambient-sound! tomb-elevator ((obj tomb-elevator))
+(defmethod set-ambient-sound! ((this tomb-elevator))
   "Sets the elevator's [[ambient-sound]] up"
-  (set! (-> obj sound)
-        (new 'process 'ambient-sound (static-sound-spec "tomb-elevator" :fo-max 70) (-> obj root trans))
+  (set! (-> this sound)
+        (new 'process 'ambient-sound (static-sound-spec "tomb-elevator" :fo-max 70) (-> this root trans))
         )
   0
   (none)
@@ -1154,23 +1082,20 @@ This commonly includes things such as:
 
 (deftype tomb-boss-door (com-airlock)
   ()
-  :heap-base #x100
-  :method-count-assert 28
-  :size-assert         #x174
-  :flag-assert         #x1c01000174
   )
 
 
 ;; WARN: Return type mismatch object vs none.
-(defmethod init-from-entity! tomb-boss-door ((obj tomb-boss-door) (arg0 entity-actor))
+(defmethod init-from-entity! ((this tomb-boss-door) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
 - stack size
 - collision information
 - loading the skeleton group / bones
 - sounds"
-  (stack-size-set! (-> obj main-thread) 1024) ;; added
-  (let ((s5-0 (new 'process 'collide-shape obj (collide-list-enum usually-hit-by-player))))
+  ;; og:preserve-this added
+  (stack-size-set! (-> this main-thread) 1024)
+  (let ((s5-0 (new 'process 'collide-shape this (collide-list-enum usually-hit-by-player))))
     (set! (-> s5-0 penetrated-by) (penetrate))
     (let ((s4-0 (new 'process 'collide-shape-prim-group s5-0 (the-as uint 2) 0)))
       (set! (-> s5-0 total-prims) (the-as uint 3))
@@ -1199,25 +1124,21 @@ This commonly includes things such as:
       (set! (-> s5-0 backup-collide-as) (-> v1-13 prim-core collide-as))
       (set! (-> s5-0 backup-collide-with) (-> v1-13 prim-core collide-with))
       )
-    (set! (-> obj root) s5-0)
+    (set! (-> this root) s5-0)
     )
   (initialize-skeleton
-    obj
+    this
     (the-as skeleton-group (art-group-get-by-name *level* "skel-tomb-boss-door" (the-as (pointer uint32) #f)))
     (the-as pair 0)
     )
-  (init-airlock! obj)
-  (set! (-> obj door-radius) 61440.0)
-  (go (method-of-object obj close) #t)
+  (init-airlock! this)
+  (set! (-> this door-radius) 61440.0)
+  (go (method-of-object this close) #t)
   (none)
   )
 
 (deftype water-anim-tomb (water-anim)
   ()
-  :heap-base #x80
-  :method-count-assert 29
-  :size-assert         #x100
-  :flag-assert         #x1d00800100
   )
 
 
@@ -1235,14 +1156,14 @@ This commonly includes things such as:
         )
 
 ;; WARN: Return type mismatch ripple-wave-set vs none.
-(defmethod init-water! water-anim-tomb ((obj water-anim-tomb))
+(defmethod init-water! ((this water-anim-tomb))
   "Initialize a [[water-anim]]'s default settings, this may include applying a [[riple-control]]"
   (let ((t9-0 (method-of-type water-anim init-water!)))
-    (t9-0 obj)
+    (t9-0 this)
     )
   (let ((v1-2 (new 'process 'ripple-control)))
-    (set! (-> obj draw ripple) v1-2)
-    (set-vector! (-> obj draw color-mult) 0.01 0.45 0.5 0.75)
+    (set! (-> this draw ripple) v1-2)
+    (set-vector! (-> this draw color-mult) 0.01 0.45 0.5 0.75)
     (set! (-> v1-2 global-scale) 3072.0)
     (set! (-> v1-2 close-fade-dist) 163840.0)
     (set! (-> v1-2 far-fade-dist) 245760.0)
@@ -1258,23 +1179,20 @@ This commonly includes things such as:
 
 (deftype tomb-wing-door (com-airlock)
   ()
-  :heap-base #x100
-  :method-count-assert 28
-  :size-assert         #x174
-  :flag-assert         #x1c01000174
   )
 
 
 ;; WARN: Return type mismatch object vs none.
-(defmethod init-from-entity! tomb-wing-door ((obj tomb-wing-door) (arg0 entity-actor))
+(defmethod init-from-entity! ((this tomb-wing-door) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
 - stack size
 - collision information
 - loading the skeleton group / bones
 - sounds"
-  (stack-size-set! (-> obj main-thread) 1024) ;; added
-  (let ((s5-0 (new 'process 'collide-shape obj (collide-list-enum usually-hit-by-player))))
+  ;; og:preserve-this added
+  (stack-size-set! (-> this main-thread) 1024)
+  (let ((s5-0 (new 'process 'collide-shape this (collide-list-enum usually-hit-by-player))))
     (set! (-> s5-0 penetrated-by) (penetrate))
     (let ((s4-0 (new 'process 'collide-shape-prim-group s5-0 (the-as uint 3) 0)))
       (set! (-> s5-0 total-prims) (the-as uint 4))
@@ -1310,19 +1228,19 @@ This commonly includes things such as:
       (set! (-> s5-0 backup-collide-as) (-> v1-15 prim-core collide-as))
       (set! (-> s5-0 backup-collide-with) (-> v1-15 prim-core collide-with))
       )
-    (set! (-> obj root) s5-0)
+    (set! (-> this root) s5-0)
     )
   (initialize-skeleton
-    obj
+    this
     (the-as skeleton-group (art-group-get-by-name *level* "skel-tomb-wing-door" (the-as (pointer uint32) #f)))
     (the-as pair 0)
     )
-  (init-airlock! obj)
-  (set! (-> obj sound-open-loop) (static-sound-spec "wing-door-open"))
-  (set! (-> obj sound-open-stop) (static-sound-spec "wing-open-hit"))
-  (set! (-> obj sound-close-loop) (static-sound-spec "wing-door-close"))
-  (set! (-> obj sound-close-stop) (static-sound-spec "wing-close-hit"))
-  (go (method-of-object obj close) #t)
+  (init-airlock! this)
+  (set! (-> this sound-open-loop) (static-sound-spec "wing-door-open"))
+  (set! (-> this sound-open-stop) (static-sound-spec "wing-open-hit"))
+  (set! (-> this sound-close-loop) (static-sound-spec "wing-door-close"))
+  (set! (-> this sound-close-stop) (static-sound-spec "wing-close-hit"))
+  (go (method-of-object this close) #t)
   (none)
   )
 
@@ -1333,23 +1251,19 @@ This commonly includes things such as:
               )
 
 (deftype tomb-boulder-door (process-drawable)
-  ((root collide-shape-moving  :override)
+  ((root  collide-shape-moving :override)
    )
-  :heap-base #x50
-  :method-count-assert 22
-  :size-assert         #xc8
-  :flag-assert         #x16005000c8
-  (:methods
-    (open () _type_ :state 20)
-    (close () _type_ :state 21)
+  (:state-methods
+    open
+    close
     )
   )
 
 
 (defstate close (tomb-boulder-door)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('reset)
        (if (task-node-closed? (game-task-node tomb-poles-boulder))
            (go-virtual close)
@@ -1366,7 +1280,6 @@ This commonly includes things such as:
     (logior! (-> self mask) (process-mask sleep))
     (suspend)
     0
-    (none)
     )
   )
 
@@ -1379,19 +1292,18 @@ This commonly includes things such as:
     (logior! (-> self mask) (process-mask sleep))
     (suspend)
     0
-    (none)
     )
   )
 
 ;; WARN: Return type mismatch object vs none.
-(defmethod init-from-entity! tomb-boulder-door ((obj tomb-boulder-door) (arg0 entity-actor))
+(defmethod init-from-entity! ((this tomb-boulder-door) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
 - stack size
 - collision information
 - loading the skeleton group / bones
 - sounds"
-  (let ((s4-0 (new 'process 'collide-shape obj (collide-list-enum usually-hit-by-player))))
+  (let ((s4-0 (new 'process 'collide-shape this (collide-list-enum usually-hit-by-player))))
     (let ((v1-2 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 0) (the-as uint 0))))
       (set! (-> v1-2 prim-core collide-as) (collide-spec obstacle camera-blocker))
       (set! (-> v1-2 prim-core collide-with) (collide-spec jak bot player-list))
@@ -1406,40 +1318,36 @@ This commonly includes things such as:
       (set! (-> s4-0 backup-collide-as) (-> v1-5 prim-core collide-as))
       (set! (-> s4-0 backup-collide-with) (-> v1-5 prim-core collide-with))
       )
-    (set! (-> obj root) (the-as collide-shape-moving s4-0))
+    (set! (-> this root) (the-as collide-shape-moving s4-0))
     )
-  (process-drawable-from-entity! obj arg0)
+  (process-drawable-from-entity! this arg0)
   (initialize-skeleton
-    obj
+    this
     (the-as skeleton-group (art-group-get-by-name *level* "skel-tomb-boulder-door" (the-as (pointer uint32) #f)))
     (the-as pair 0)
     )
   (if (task-node-closed? (game-task-node tomb-poles-boulder))
-      (go (method-of-object obj close))
-      (go (method-of-object obj open))
+      (go (method-of-object this close))
+      (go (method-of-object this open))
       )
   (none)
   )
 
 (deftype tomb-plat-return (base-plat)
-  ((intro-path path-control     :offset-assert 272)
-   (ride-timer time-frame       :offset-assert 280)
-   (flags      tomb-plat-flags  :offset-assert 288)
-   (path-pos   float            :offset-assert 292)
-   (dest-pos   float            :offset-assert 296)
-   (path-speed float            :offset-assert 300)
-   (sound-id   sound-id         :offset-assert 304)
+  ((intro-path  path-control)
+   (ride-timer  time-frame)
+   (flags       tomb-plat-flags)
+   (path-pos    float)
+   (dest-pos    float)
+   (path-speed  float)
+   (sound-id    sound-id)
    )
-  :heap-base #xc0
-  :method-count-assert 39
-  :size-assert         #x134
-  :flag-assert         #x2700c00134
-  (:methods
-    (hidden () _type_ :state 34)
-    (run-intro () _type_ :state 35)
-    (waiting () _type_ :state 36)
-    (running () _type_ :state 37)
-    (waiting-for-no-player () _type_ :state 38)
+  (:state-methods
+    hidden
+    run-intro
+    waiting
+    running
+    waiting-for-no-player
     )
   )
 
@@ -1451,8 +1359,8 @@ This commonly includes things such as:
 
 (defstate hidden (tomb-plat-return)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('trigger 'cue-chase)
        (go-virtual run-intro)
        )
@@ -1460,26 +1368,23 @@ This commonly includes things such as:
     )
   :enter (behavior ()
     (logior! (-> self draw status) (draw-control-status no-draw))
-    (none)
     )
-  :code (the-as (function none :behavior tomb-plat-return) sleep-code)
+  :code sleep-code
   )
 
 (defstate run-intro (tomb-plat-return)
   :virtual #t
-  :event (the-as (function process int symbol event-message-block object :behavior tomb-plat-return) plat-event)
+  :event plat-event
   :enter (behavior ()
     (process-entity-status! self (entity-perm-status subtask-complete) #t)
     (logclear! (-> self draw status) (draw-control-status no-draw))
     (ja-channel-set! 1)
-    (ja-no-eval :group! (-> self draw art-group data 2) :num! zero)
+    (ja-no-eval :group! tomb-plat-return-idle-ja :num! zero)
     (set! (-> self path-pos) 0.0)
     (set-vector! (-> self root scale) 0.0 0.0 0.0 0.0)
-    (none)
     )
   :exit (behavior ()
     (sound-stop (-> self sound-id))
-    (none)
     )
   :trans (behavior ()
     (when (= (-> self path-pos) 1.0)
@@ -1487,12 +1392,11 @@ This commonly includes things such as:
       (go-virtual waiting)
       )
     (plat-trans)
-    (none)
     )
-  :code (the-as (function none :behavior tomb-plat-return) sleep-code)
+  :code sleep-code
   :post (behavior ()
     (sound-play "tomb-plat-ret" :id (-> self sound-id) :position (-> self root trans))
-    (seek! (-> self path-pos) 1.0 (* 2.0 (-> self clock seconds-per-frame) (-> self path-speed)))
+    (seek! (-> self path-pos) 1.0 (* 2.0 (seconds-per-frame) (-> self path-speed)))
     (let ((f30-0 (-> self path-pos)))
       (get-point-at-percent-along-path!
         (-> self intro-path)
@@ -1503,14 +1407,13 @@ This commonly includes things such as:
       (set-vector! (-> self root scale) f30-0 f30-0 f30-0 f30-0)
       )
     (plat-post)
-    (none)
     )
   )
 
 (defstate waiting (tomb-plat-return)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('ridden)
        (let ((v0-0 (the-as object (logior (-> self flags) (tomb-plat-flags topflags-0)))))
          (set! (-> self flags) (the-as tomb-plat-flags v0-0))
@@ -1518,38 +1421,36 @@ This commonly includes things such as:
          )
        )
       (else
-        (plat-event proc arg1 event-type event)
+        (plat-event proc argc message block)
         )
       )
     )
   :enter (behavior ()
-    (set! (-> self ride-timer) (current-time))
+    (set-time! (-> self ride-timer))
     (get-point-at-percent-along-path! (-> self path) (-> self basetrans) (-> self path-pos) 'interp)
-    (none)
     )
   :trans (behavior ()
     (logclear! (-> self flags) (tomb-plat-flags topflags-0))
     (plat-trans)
     (if (not (logtest? (-> self flags) (tomb-plat-flags topflags-0)))
-        (set! (-> self ride-timer) (current-time))
+        (set-time! (-> self ride-timer))
         )
-    (when (>= (- (current-time) (-> self ride-timer)) (seconds 0.5))
+    (when (time-elapsed? (-> self ride-timer) (seconds 0.5))
       (if (= (-> self path-pos) 0.0)
           (set! (-> self dest-pos) 1.0)
           (set! (-> self dest-pos) 0.0)
           )
       (go-virtual running)
       )
-    (none)
     )
-  :code (the-as (function none :behavior tomb-plat-return) sleep-code)
-  :post (the-as (function none :behavior tomb-plat-return) plat-post)
+  :code sleep-code
+  :post plat-post
   )
 
 (defstate running (tomb-plat-return)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('ridden)
        (let ((v0-0 (the-as object (logior (-> self flags) (tomb-plat-flags topflags-0)))))
          (set! (-> self flags) (the-as tomb-plat-flags v0-0))
@@ -1557,25 +1458,23 @@ This commonly includes things such as:
          )
        )
       (else
-        (plat-event proc arg1 event-type event)
+        (plat-event proc argc message block)
         )
       )
     )
   :exit (behavior ()
     (sound-stop (-> self sound-id))
-    (none)
     )
   :trans (behavior ()
     (if (= (-> self path-pos) (-> self dest-pos))
         (go-virtual waiting-for-no-player)
         )
     (plat-trans)
-    (none)
     )
-  :code (the-as (function none :behavior tomb-plat-return) sleep-code)
+  :code sleep-code
   :post (behavior ()
     (sound-play "tomb-plat-ret" :id (-> self sound-id) :position (-> self root trans))
-    (seek! (-> self path-pos) (-> self dest-pos) (* (-> self path-speed) (-> self clock seconds-per-frame)))
+    (seek! (-> self path-pos) (-> self dest-pos) (* (-> self path-speed) (seconds-per-frame)))
     (get-point-at-percent-along-path!
       (-> self path)
       (-> self basetrans)
@@ -1583,14 +1482,13 @@ This commonly includes things such as:
       'interp
       )
     (plat-post)
-    (none)
     )
   )
 
 (defstate waiting-for-no-player (tomb-plat-return)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('ridden)
        (let ((v0-0 (the-as object (current-time))))
          (set! (-> self ride-timer) (the-as time-frame v0-0))
@@ -1598,13 +1496,13 @@ This commonly includes things such as:
          )
        )
       (else
-        (plat-event proc arg1 event-type event)
+        (plat-event proc argc message block)
         )
       )
     )
   :trans (behavior ()
     (plat-trans)
-    (when (>= (- (current-time) (-> self ride-timer)) (seconds 1))
+    (when (time-elapsed? (-> self ride-timer) (seconds 1))
       (cond
         ((= (-> self path-pos) 1.0)
          (set! (-> self dest-pos) 0.0)
@@ -1615,29 +1513,28 @@ This commonly includes things such as:
           )
         )
       )
-    (none)
     )
-  :code (the-as (function none :behavior tomb-plat-return) sleep-code)
-  :post (the-as (function none :behavior tomb-plat-return) plat-post)
+  :code sleep-code
+  :post plat-post
   )
 
 ;; WARN: Return type mismatch process-drawable vs tomb-plat-return.
-(defmethod relocate tomb-plat-return ((obj tomb-plat-return) (arg0 int))
-  (if (nonzero? (-> obj intro-path))
-      (&+! (-> obj intro-path) arg0)
+(defmethod relocate ((this tomb-plat-return) (arg0 int))
+  (if (nonzero? (-> this intro-path))
+      (&+! (-> this intro-path) arg0)
       )
-  (the-as tomb-plat-return ((method-of-type process-drawable relocate) obj arg0))
+  (the-as tomb-plat-return ((method-of-type process-drawable relocate) this arg0))
   )
 
-(defmethod deactivate tomb-plat-return ((obj tomb-plat-return))
-  (sound-stop (-> obj sound-id))
-  ((the-as (function process-drawable none) (find-parent-method tomb-plat-return 10)) obj)
+(defmethod deactivate ((this tomb-plat-return))
+  (sound-stop (-> this sound-id))
+  (call-parent-method this)
   (none)
   )
 
-(defmethod init-plat-collision! tomb-plat-return ((obj tomb-plat-return))
+(defmethod init-plat-collision! ((this tomb-plat-return))
   "TODO - collision stuff for setting up the platform"
-  (let ((s5-0 (new 'process 'collide-shape obj (collide-list-enum usually-hit-by-player))))
+  (let ((s5-0 (new 'process 'collide-shape this (collide-list-enum usually-hit-by-player))))
     (let ((s4-0 (new 'process 'collide-shape-prim-mesh s5-0 (the-as uint 0) (the-as uint 0))))
       (set! (-> s4-0 prim-core collide-as) (collide-spec pusher))
       (set! (-> s4-0 prim-core collide-with) (collide-spec jak player-list))
@@ -1653,52 +1550,52 @@ This commonly includes things such as:
       (set! (-> s5-0 backup-collide-as) (-> v1-11 prim-core collide-as))
       (set! (-> s5-0 backup-collide-with) (-> v1-11 prim-core collide-with))
       )
-    (set! (-> obj root) (the-as collide-shape-moving s5-0))
+    (set! (-> this root) (the-as collide-shape-moving s5-0))
     )
   0
   (none)
   )
 
 ;; WARN: Return type mismatch object vs none.
-(defmethod init-from-entity! tomb-plat-return ((obj tomb-plat-return) (arg0 entity-actor))
+(defmethod init-from-entity! ((this tomb-plat-return) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
 - stack size
 - collision information
 - loading the skeleton group / bones
 - sounds"
-  (init-plat-collision! obj)
-  (process-drawable-from-entity! obj arg0)
+  (init-plat-collision! this)
+  (process-drawable-from-entity! this arg0)
   (initialize-skeleton
-    obj
+    this
     (the-as skeleton-group (art-group-get-by-name *level* "skel-tomb-plat-return" (the-as (pointer uint32) #f)))
     (the-as pair 0)
     )
-  (stop-bouncing! obj)
-  (set! (-> obj flags) (tomb-plat-flags))
-  (set! (-> obj path-pos) 0.0)
-  (let ((s4-1 (new 'process 'curve-control obj 'path -1000000000.0)))
+  (stop-bouncing! this)
+  (set! (-> this flags) (tomb-plat-flags))
+  (set! (-> this path-pos) 0.0)
+  (let ((s4-1 (new 'process 'curve-control this 'path -1000000000.0)))
     (if (logtest? (-> s4-1 flags) (path-control-flag not-found))
         (go process-drawable-art-error "error in path")
         )
     (logior! (-> s4-1 flags) (path-control-flag display draw-line draw-point draw-text))
-    (set! (-> obj path) s4-1)
+    (set! (-> this path) s4-1)
     )
-  (let ((s4-2 (new 'process 'curve-control obj 'intro -1000000000.0)))
+  (let ((s4-2 (new 'process 'curve-control this 'intro -1000000000.0)))
     (if (logtest? (-> s4-2 flags) (path-control-flag not-found))
         (go process-drawable-art-error "error in intro-path")
         )
     (logior! (-> s4-2 flags) (path-control-flag display draw-line draw-point draw-text))
-    (set! (-> obj intro-path) s4-2)
+    (set! (-> this intro-path) s4-2)
     )
-  (let ((f30-0 (total-distance (-> obj path))))
-    (set! (-> obj path-speed) (/ (res-lump-float arg0 'speed :default 40960.0) f30-0))
-    (set! (-> obj root pause-adjust-distance) (+ 204800.0 f30-0))
+  (let ((f30-0 (total-distance (-> this path))))
+    (set! (-> this path-speed) (/ (res-lump-float arg0 'speed :default 40960.0) f30-0))
+    (set! (-> this root pause-adjust-distance) (+ 204800.0 f30-0))
     )
-  (set! (-> obj sound-id) (new-sound-id))
-  (init-plat! obj)
+  (set! (-> this sound-id) (new-sound-id))
+  (init-plat! this)
   (if (or (task-closed? (the-as string ((method-of-type res-lump get-property-struct)
-                                        (-> obj entity)
+                                        (-> this entity)
                                         'task-name
                                         'interp
                                         -1000000000.0
@@ -1708,10 +1605,10 @@ This commonly includes things such as:
                                         )
                                 )
                         )
-          (and (-> obj entity) (logtest? (-> obj entity extra perm status) (entity-perm-status subtask-complete)))
+          (and (-> this entity) (logtest? (-> this entity extra perm status) (entity-perm-status subtask-complete)))
           )
-      (go (method-of-object obj run-intro))
-      (go (method-of-object obj hidden))
+      (go (method-of-object this run-intro))
+      (go (method-of-object this hidden))
       )
   (none)
   )
@@ -1774,59 +1671,41 @@ This commonly includes things such as:
     (set! (-> *part-id-table* 3159 init-specs 4 initial-valuef) (vector-length a2-1))
     (draw-beam (-> *part-id-table* 3159) arg0 a2-1 #f #t)
     )
-  (let ((t9-1 sp-launch-particles-var)
-        (a0-3 *sp-particle-system-2d*)
-        (a1-2 (-> *part-id-table* 3160))
-        (a2-2 *launch-matrix*)
-        )
-    (set! (-> a2-2 trans quad) (-> arg0 quad))
-    (t9-1 a0-3 a1-2 a2-2 (the-as sparticle-launch-state #f) (the-as sparticle-launch-control #f) 1.0)
-    )
-  (let ((t9-2 sp-launch-particles-var)
-        (a0-4 *sp-particle-system-2d*)
-        (a1-3 (-> *part-id-table* 3161))
-        (a2-3 *launch-matrix*)
-        )
-    (set! (-> a2-3 trans quad) (-> arg1 quad))
-    (t9-2 a0-4 a1-3 a2-3 (the-as sparticle-launch-state #f) (the-as sparticle-launch-control #f) 1.0)
-    )
+  (launch-particles (-> *part-id-table* 3160) arg0)
+  (launch-particles (-> *part-id-table* 3161) arg1)
   (none)
   )
 
 (deftype tomb-sphinx (process-drawable)
-  ((root         collide-shape-moving  :override)
-   (target-actor entity-actor          :offset-assert 200)
-   (sound-id     sound-id              :offset-assert 204)
-   (move-dir     float                 :offset        216)
+  ((root          collide-shape-moving :override)
+   (target-actor  entity-actor)
+   (sound-id      sound-id)
+   (move-dir      float                 :offset 216)
    )
-  :heap-base #x60
-  :method-count-assert 23
-  :size-assert         #xdc
-  :flag-assert         #x17006000dc
-  (:methods
-    (idle () _type_ :state 20)
-    (active () _type_ :state 21)
-    (doors-open () _type_ :state 22)
+  (:state-methods
+    idle
+    active
+    doors-open
     )
   )
 
 
 (defstate idle (tomb-sphinx)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('trigger 'cue-chase)
        (go-virtual active)
        )
       )
     )
-  :code (the-as (function none :behavior tomb-sphinx) sleep-code)
+  :code sleep-code
   )
 
 (defstate active (tomb-sphinx)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('door-left)
        (set! (-> self move-dir) -1.0)
        (go-virtual doors-open)
@@ -1838,8 +1717,7 @@ This commonly includes things such as:
       )
     )
   :enter (behavior ()
-    (set! (-> self state-time) (current-time))
-    (none)
+    (set-time! (-> self state-time))
     )
   :code (behavior ()
     (local-vars (sv-96 vector))
@@ -1888,13 +1766,12 @@ This commonly includes things such as:
               (sound-play "tomb-lasr-loop" :id (-> self sound-id) :position s3-1)
               )
             (suspend)
-            ;; WORKAROUND for GOAL bug - vf0 is clobbered on suspend.
+            ;; og:preserve-this WORKAROUND for GOAL bug - vf0 is clobbered on suspend.
             (init-vf0-vector)
             )
           )
         )
       #f
-      (none)
       )
     )
   )
@@ -1902,8 +1779,7 @@ This commonly includes things such as:
 (defstate doors-open (tomb-sphinx)
   :virtual #t
   :enter (behavior ()
-    (set! (-> self state-time) (current-time))
-    (none)
+    (set-time! (-> self state-time))
     )
   :code (behavior ()
     (local-vars (sv-96 vector) (sv-112 vector))
@@ -1972,46 +1848,45 @@ This commonly includes things such as:
               (s2-0 s1-0 sv-112)
               )
             (suspend)
-            ;; WORKAROUND for GOAL bug - vf0 is clobbered on suspend.
+            ;; og:preserve-this WORKAROUND for GOAL bug - vf0 is clobbered on suspend.
             (init-vf0-vector)
             )
           )
         )
       #f
-      (none)
       )
     )
   )
 
 ;; WARN: Return type mismatch process-drawable vs tomb-sphinx.
-(defmethod relocate tomb-sphinx ((obj tomb-sphinx) (arg0 int))
-  (the-as tomb-sphinx ((method-of-type process-drawable relocate) obj arg0))
+(defmethod relocate ((this tomb-sphinx) (arg0 int))
+  (the-as tomb-sphinx ((method-of-type process-drawable relocate) this arg0))
   )
 
-(defmethod deactivate tomb-sphinx ((obj tomb-sphinx))
-  (sound-stop (-> obj sound-id))
-  ((the-as (function process-drawable none) (find-parent-method tomb-sphinx 10)) obj)
+(defmethod deactivate ((this tomb-sphinx))
+  (sound-stop (-> this sound-id))
+  (call-parent-method this)
   (none)
   )
 
 ;; WARN: Return type mismatch object vs none.
-(defmethod init-from-entity! tomb-sphinx ((obj tomb-sphinx) (arg0 entity-actor))
+(defmethod init-from-entity! ((this tomb-sphinx) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
 - stack size
 - collision information
 - loading the skeleton group / bones
 - sounds"
-  (set! (-> obj root) (the-as collide-shape-moving (new 'process 'trsqv)))
-  (process-drawable-from-entity! obj arg0)
-  (set! (-> obj target-actor) (entity-actor-lookup arg0 'alt-actor 0))
-  (set! (-> obj sound-id) (new-sound-id))
-  (set! (-> obj move-dir) 0.0)
-  (if (and (task-complete? *game-info* (-> obj entity task))
+  (set! (-> this root) (the-as collide-shape-moving (new 'process 'trsqv)))
+  (process-drawable-from-entity! this arg0)
+  (set! (-> this target-actor) (entity-actor-lookup arg0 'alt-actor 0))
+  (set! (-> this sound-id) (new-sound-id))
+  (set! (-> this move-dir) 0.0)
+  (if (and (task-complete? *game-info* (-> this entity task))
            (not (task-node-closed? (game-task-node tomb-boss-door)))
            )
-      (go (method-of-object obj active))
-      (go (method-of-object obj idle))
+      (go (method-of-object this active))
+      (go (method-of-object this idle))
       )
   (none)
   )

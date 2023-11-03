@@ -8,48 +8,45 @@
 ;; DECOMP BEGINS
 
 (deftype ticky (structure)
-  ((delay-til-ramp    time-frame  :offset-assert   0)
-   (delay-til-timeout time-frame  :offset-assert   8)
-   (starting-time     time-frame  :offset-assert  16)
-   (last-tick-time    time-frame  :offset-assert  24)
+  ((delay-til-ramp     time-frame)
+   (delay-til-timeout  time-frame)
+   (starting-time      time-frame)
+   (last-tick-time     time-frame)
    )
-  :method-count-assert 12
-  :size-assert         #x20
-  :flag-assert         #xc00000020
   (:methods
-    (sleep (_type_ time-frame) none 9)
-    (reached-delay? (_type_ time-frame) symbol 10)
-    (completed? (_type_) symbol 11)
+    (sleep (_type_ time-frame) none)
+    (reached-delay? (_type_ time-frame) symbol)
+    (completed? (_type_) symbol)
     )
   )
 
 
-(defmethod sleep ticky ((obj ticky) (arg0 time-frame))
-  (set! (-> obj starting-time) (-> *display* base-frame-counter))
-  (set! (-> obj delay-til-timeout) arg0)
-  (set! (-> obj delay-til-ramp) (max 0 (+ arg0 (seconds -4))))
-  (set! (-> obj last-tick-time) 0)
+(defmethod sleep ((this ticky) (arg0 time-frame))
+  (set-time! (-> this starting-time))
+  (set! (-> this delay-til-timeout) arg0)
+  (set! (-> this delay-til-ramp) (max 0 (+ arg0 (seconds -4))))
+  (set! (-> this last-tick-time) 0)
   0
   (none)
   )
 
-(defmethod completed? ticky ((obj ticky))
+(defmethod completed? ((this ticky))
   (let ((gp-0 #f))
-    (let ((v1-2 (- (-> *display* base-frame-counter) (-> obj starting-time))))
+    (let ((v1-2 (- (current-time) (-> this starting-time))))
       (cond
-        ((>= v1-2 (-> obj delay-til-timeout))
+        ((>= v1-2 (-> this delay-til-timeout))
          (set! gp-0 #t)
          )
         (else
-          (let* ((f0-1 (fmin 1.0 (/ (the float (max 0 (- v1-2 (-> obj delay-til-ramp))))
-                                    (the float (- (-> obj delay-til-timeout) (-> obj delay-til-ramp)))
+          (let* ((f0-1 (fmin 1.0 (/ (the float (max 0 (- v1-2 (-> this delay-til-ramp))))
+                                    (the float (- (-> this delay-til-timeout) (-> this delay-til-ramp)))
                                     )
                              )
                        )
                  (v1-7 (the int (lerp 105.0 41.0 f0-1)))
                  )
-            (when (>= (- (-> *display* base-frame-counter) (-> obj last-tick-time)) v1-7)
-              (set! (-> obj last-tick-time) (-> *display* base-frame-counter))
+            (when (time-elapsed? (-> this last-tick-time) v1-7)
+              (set-time! (-> this last-tick-time))
               (sound-play "stopwatch")
               )
             )
@@ -60,10 +57,6 @@
     )
   )
 
-(defmethod reached-delay? ticky ((obj ticky) (arg0 time-frame))
-  (>= (- (-> *display* base-frame-counter) (-> obj starting-time)) arg0)
+(defmethod reached-delay? ((this ticky) (arg0 time-frame))
+  (time-elapsed? (-> this starting-time) arg0)
   )
-
-
-
-

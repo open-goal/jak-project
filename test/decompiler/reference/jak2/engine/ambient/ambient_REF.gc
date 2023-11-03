@@ -113,43 +113,43 @@
   )
 
 ;; definition for method 9 of type talker-speech-class
-(defmethod talker-speech-class-method-9 talker-speech-class ((obj talker-speech-class))
-  (and (>= (-> *game-info* unknown-pad6 (* (-> obj speech) 2)) (-> obj pos))
-       (>= (-> obj neg) (-> *game-info* unknown-pad6 (+ (* (-> obj speech) 2) 1)))
+(defmethod talker-speech-class-method-9 ((this talker-speech-class))
+  (and (>= (-> *game-info* unknown-pad6 (* (-> this speech) 2)) (-> this pos))
+       (>= (-> this neg) (-> *game-info* unknown-pad6 (+ (* (-> this speech) 2) 1)))
        )
   )
 
 ;; definition for method 10 of type talker-speech-class
 ;; WARN: Return type mismatch int vs none.
-(defmethod play-communicator-speech! talker-speech-class ((obj talker-speech-class))
+(defmethod play-communicator-speech! ((this talker-speech-class))
   "Plays the provided [[talker-speech-class]]
 @TODO - understand the array from [[game-info]] better"
-  (set! (-> *game-info* unknown-pad6 (+ (* (-> obj speech) 2) 1)) (the-as uint #xffff))
+  (set! (-> *game-info* unknown-pad6 (+ (* (-> this speech) 2) 1)) (the-as uint #xffff))
   0
   (none)
   )
 
 ;; definition for method 11 of type talker-speech-class
 ;; WARN: Return type mismatch int vs none.
-(defmethod talker-speech-class-method-11 talker-speech-class ((obj talker-speech-class))
-  (set! (-> *game-info* unknown-pad6 (+ (* (-> obj speech) 2) 1)) (the-as uint 0))
+(defmethod talker-speech-class-method-11 ((this talker-speech-class))
+  (set! (-> *game-info* unknown-pad6 (+ (* (-> this speech) 2) 1)) (the-as uint 0))
   0
   (none)
   )
 
 ;; definition for method 12 of type talker-speech-class
 ;; WARN: Return type mismatch int vs none.
-(defmethod talker-speech-class-method-12 talker-speech-class ((obj talker-speech-class) (arg0 int))
+(defmethod talker-speech-class-method-12 ((this talker-speech-class) (arg0 int))
   (if (>= arg0 0)
-      (set! (-> *game-info* unknown-pad6 (* (-> obj speech) 2))
-            (the-as uint (seekl (the-as int (-> *game-info* unknown-pad6 (* (-> obj speech) 2))) #xfff0 arg0))
+      (set! (-> *game-info* unknown-pad6 (* (-> this speech) 2))
+            (the-as uint (seekl (the-as int (-> *game-info* unknown-pad6 (* (-> this speech) 2))) #xfff0 arg0))
             )
-      (set! (-> *game-info* unknown-pad6 (* (-> obj speech) 2))
-            (the-as uint (seekl (the-as int (-> *game-info* unknown-pad6 (* (-> obj speech) 2))) 0 (- arg0)))
+      (set! (-> *game-info* unknown-pad6 (* (-> this speech) 2))
+            (the-as uint (seekl (the-as int (-> *game-info* unknown-pad6 (* (-> this speech) 2))) 0 (- arg0)))
             )
       )
-  (if (talker-speech-class-method-9 obj)
-      (talker-spawn-func obj *entity-pool* (target-pos 0) (the-as region #f))
+  (if (talker-speech-class-method-9 this)
+      (talker-spawn-func this *entity-pool* (target-pos 0) (the-as region #f))
       )
   0
   (none)
@@ -157,13 +157,13 @@
 
 ;; definition for method 13 of type talker-speech-class
 ;; WARN: Return type mismatch int vs none.
-(defmethod talker-speech-class-method-13 talker-speech-class ((obj talker-speech-class) (arg0 int))
+(defmethod talker-speech-class-method-13 ((this talker-speech-class) (arg0 int))
   (if (>= arg0 0)
-      (set! (-> *game-info* unknown-pad6 (+ (* (-> obj speech) 2) 1))
-            (the-as uint (seekl (the-as int (-> *game-info* unknown-pad6 (+ (* (-> obj speech) 2) 1))) #xfff0 arg0))
+      (set! (-> *game-info* unknown-pad6 (+ (* (-> this speech) 2) 1))
+            (the-as uint (seekl (the-as int (-> *game-info* unknown-pad6 (+ (* (-> this speech) 2) 1))) #xfff0 arg0))
             )
-      (set! (-> *game-info* unknown-pad6 (+ (* (-> obj speech) 2) 1))
-            (the-as uint (seekl (the-as int (-> *game-info* unknown-pad6 (+ (* (-> obj speech) 2) 1))) 0 (- arg0)))
+      (set! (-> *game-info* unknown-pad6 (+ (* (-> this speech) 2) 1))
+            (the-as uint (seekl (the-as int (-> *game-info* unknown-pad6 (+ (* (-> this speech) 2) 1))) 0 (- arg0)))
             )
       )
   0
@@ -257,7 +257,7 @@
   (set! (-> self region) arg2)
   (set! (-> self total-time) 0)
   (set! (-> self total-off-time) 0)
-  (set! (-> self start-time) (current-time))
+  (set-time! (-> self start-time))
   (set! (-> self voicebox) (the-as handle #f))
   (set! (-> self save?) #f)
   (if (logtest? (-> self message flags) 96)
@@ -270,15 +270,15 @@
   )
 
 ;; definition for method 10 of type talker
-(defmethod deactivate talker ((obj talker))
-  (send-event (handle->process (-> obj voicebox)) 'die)
-  ((the-as (function process none) (find-parent-method talker 10)) obj)
+(defmethod deactivate ((this talker))
+  (send-event (handle->process (-> this voicebox)) 'die)
+  (call-parent-method this)
   (none)
   )
 
 ;; definition for method 17 of type talker
 ;; WARN: Return type mismatch int vs none.
-(defmethod talker-method-17 talker ((obj talker))
+(defmethod talker-method-17 ((this talker))
   (let ((gp-0
           (new 'stack 'font-context *font-default-matrix* 36 310 0.0 (font-color default) (font-flags shadow kerning))
           )
@@ -287,10 +287,10 @@
       (let ((v1-2 gp-0))
         (set! (-> v1-2 scale) 0.75)
         )
-      (case (-> obj message channel)
+      (case (-> this message channel)
         (((gui-channel notice))
          (cond
-           ((logtest? (-> obj message flags) 128)
+           ((logtest? (-> this message flags) 128)
             (let ((v1-9 gp-0)
                   (a1-1 36)
                   (a0-4 140)
@@ -322,14 +322,14 @@
         (set! (-> v1-15 height) (the float 140))
         )
       (set! (-> gp-0 flags) (font-flags shadow kerning middle large))
-      (if (logtest? (-> obj message flags) 32)
-          (set! (-> gp-0 alpha) (-> obj interp))
+      (if (logtest? (-> this message flags) 32)
+          (set! (-> gp-0 alpha) (-> this interp))
           (set! (-> gp-0 alpha) 1.0)
           )
-      (when (logtest? (-> obj message flags) 64)
+      (when (logtest? (-> this message flags) 64)
         (let ((s4-0 gp-0)
               (s3-0 36)
-              (v1-27 (the int (lerp-scale 400.0 f0-0 (-> obj interp) 0.0 1.0)))
+              (v1-27 (the int (lerp-scale 400.0 f0-0 (-> this interp) 0.0 1.0)))
               )
           (set! (-> s4-0 origin x) (the float s3-0))
           (set! (-> s4-0 origin y) (the float v1-27))
@@ -337,10 +337,10 @@
         )
       )
     (let ((s4-1 print-game-text)
-          (a0-11 (lookup-text! *common-text* (-> obj message text-message) #f))
+          (a0-11 (lookup-text! *common-text* (-> this message text-message) #f))
           (a2-3 #f)
           (a3-2 44)
-          (v1-31 (-> obj message channel))
+          (v1-31 (-> this message channel))
           )
       (s4-1
         a0-11
@@ -363,7 +363,7 @@
   :virtual #t
   :code (behavior ()
     (let ((gp-0 (current-time)))
-      (until (>= (- (current-time) gp-0) (the-as time-frame (-> self message delay)))
+      (until (time-elapsed? gp-0 (the-as time-frame (-> self message delay)))
         (suspend)
         )
       )
@@ -374,7 +374,7 @@
            )
        )
       )
-    (while (< (- (current-time) (-> self start-time)) (the-as time-frame (+ (-> self message delay) 300)))
+    (while (not (time-elapsed? (-> self start-time) (the-as time-frame (+ (-> self message delay) 300))))
       (if (and (or (zero? (-> self voice-id)) (= (get-status *gui-control* (-> self voice-id)) (gui-status ready)))
                (or (zero? (-> self message-id)) (= (get-status *gui-control* (-> self message-id)) (gui-status active)))
                )
@@ -383,7 +383,6 @@
       (suspend)
       )
     (go-virtual exit)
-    (none)
     )
   )
 
@@ -391,7 +390,7 @@
 (defstate active (talker)
   :virtual #t
   :enter (behavior ()
-    (set! (-> self state-time) (current-time))
+    (set-time! (-> self state-time))
     (if (logtest? (-> self message flags) 1)
         (play-communicator-speech! (-> self message))
         )
@@ -418,7 +417,6 @@
         (auto-save-user)
         )
     (apply-settings *setting-control*)
-    (none)
     )
   :exit (behavior ()
     (let ((gp-0 (-> self message on-close)))
@@ -470,7 +468,6 @@
     (remove-setting! 'hint)
     (remove-setting! 'speech-control)
     (apply-settings *setting-control*)
-    (none)
     )
   :code (behavior ()
     (local-vars (v1-43 symbol))
@@ -491,16 +488,16 @@
                           )
                         (set! v1-43 #t)
                         (label cfg-39)
-                        (and v1-43 (< (- (current-time) (-> self state-time)) (seconds 120)))
+                        (and v1-43 (not (time-elapsed? (-> self state-time) (seconds 120))))
                         )
                       )
                  (and (nonzero? (-> self message-id))
                       (= (get-status *gui-control* (-> self message-id)) (gui-status active))
-                      (or (< (- (current-time) (-> self state-time)) (the-as time-frame (-> self message text-duration)))
+                      (or (not (time-elapsed? (-> self state-time) (the-as time-frame (-> self message text-duration))))
                           (and (logtest? (-> self message flags) 16) (-> self region) (region-method-9 (-> self region) (target-pos 0)))
                           )
                       )
-                 (< (- (current-time) (-> self state-time)) (seconds 0.05))
+                 (not (time-elapsed? (-> self state-time) (seconds 0.05)))
                  )
         (when (and (nonzero? (-> self voice-id)) (not gp-1) (zero? (get-status *gui-control* (-> self voice-id))))
           (remove-setting! 'music-volume)
@@ -513,8 +510,8 @@
                    (not (paused?))
                    )
           (if (logtest? (-> self message flags) 32)
-              (seek! (-> self interp) 1.0 (* 0.5 (-> self clock seconds-per-frame)))
-              (seek! (-> self interp) 1.0 (* 4.0 (-> self clock seconds-per-frame)))
+              (seek! (-> self interp) 1.0 (* 0.5 (seconds-per-frame)))
+              (seek! (-> self interp) 1.0 (* 4.0 (seconds-per-frame)))
               )
           (talker-method-17 self)
           )
@@ -524,8 +521,8 @@
     (when (and (nonzero? (-> self message-id)) (logtest? (-> self message flags) 96))
       (while (!= (-> self interp) 0.0)
         (if (logtest? (-> self message flags) 32)
-            (seek! (-> self interp) 0.0 (* 0.5 (-> self clock seconds-per-frame)))
-            (seek! (-> self interp) 0.0 (* 4.0 (-> self clock seconds-per-frame)))
+            (seek! (-> self interp) 0.0 (* 0.5 (seconds-per-frame)))
+            (seek! (-> self interp) 0.0 (* 4.0 (seconds-per-frame)))
             )
         (talker-method-17 self)
         (suspend)
@@ -533,7 +530,7 @@
       )
     (when (and (logtest? (-> self message flags) 8) (not (-> self save?)))
       (let ((gp-2 (current-time)))
-        (until (>= (- (current-time) gp-2) (seconds 1))
+        (until (time-elapsed? gp-2 (seconds 1))
           (suspend)
           )
         )
@@ -541,12 +538,11 @@
       (auto-save-user)
       )
     (go-virtual exit)
-    (none)
     )
   )
 
 ;; failed to figure out what this is:
 (defstate exit (talker)
   :virtual #t
-  :code (the-as (function none :behavior talker) nothing)
+  :code nothing
   )

@@ -10,32 +10,31 @@
 ;; - the "load state"
 ;; - checkpoints
 
+;; DECOMP BEGINS
+
 ;; Game parameters.
 (deftype game-bank (basic)
-  ((life-max-default   float  :offset-assert 4)  ;; yes this life system works, but does nothing
-   (life-start-default float  :offset-assert 8)
-   (life-single-inc    float  :offset-assert 12)
-   (money-task-inc     float  :offset-assert 16)
-   (money-oracle-inc   float  :offset-assert 20)
+  ((life-max-default    float)  ;; yes this life system works, but does nothing
+   (life-start-default  float)
+   (life-single-inc     float)
+   (money-task-inc      float)
+   (money-oracle-inc    float)
    )
-  :method-count-assert 9
-  :size-assert         #x18
-  :flag-assert         #x900000018
   )
 
+
 (define *GAME-bank* (new 'static 'game-bank
-                         :life-max-default 99.0
-                         :life-start-default 5.0
-                         :life-single-inc 1.0
-                         :money-task-inc 90.0
-                         :money-oracle-inc 120.0
-                         )
-  )
+                      :life-max-default 99.0
+                      :life-start-default 5.0
+                      :life-single-inc 1.0
+                      :money-task-inc 90.0
+                      :money-oracle-inc 120.0
+                      )
+        )
 
 ;; aid
 (deftype actor-id (uint32)
   ()
-  :flag-assert #x900000004
   )
 
 ;;;;;;;;;;;;;;;
@@ -47,43 +46,37 @@
 
 ;; the possible load state for a level.
 (deftype level-buffer-state (structure)
-  ((name          symbol :offset-assert 0)  ;; level name
-   (display?      symbol :offset-assert 4)  ;; should it be drawn?
-   (force-vis?    symbol :offset-assert 8)  ;; force everything to be visible.
-   (force-inside? symbol :offset-assert 12) ;; force player to be considered inside.
+  ((name           symbol)
+   (display?       symbol)
+   (force-vis?     symbol)
+   (force-inside?  symbol)
    )
   :pack-me
-  :method-count-assert 9
-  :size-assert         #x10
-  :flag-assert         #x900000010
   )
 
 ;; This includes more state than just "loading" - it also has a list of commands to execute and
 ;; other random state.
 (deftype load-state (basic)
-  ((want          level-buffer-state  2 :inline  :offset-assert 4) ;; the two levels we want loaded
-   (vis-nick      symbol     :offset-assert 36) ;; the vis file we have loaded
-   (command-list  pair       :offset-assert 40) ;; list of additional commands
-   (object-name   symbol 256 :offset-assert 44) ;; state of various in-game objects
-   (object-status basic  256 :offset-assert 1068)
+  ((want           level-buffer-state  2 :inline)
+   (vis-nick       symbol)
+   (command-list   pair)
+   (object-name    symbol              256)
+   (object-status  basic               256)
    )
-  :method-count-assert 21
-  :size-assert         #x82c
-  :flag-assert         #x150000082c
   (:methods
-    (new (symbol type) _type_ 0)
-    (reset! (_type_) _type_ 9)
-    (update! (_type_) int 10)
-    (want-levels (_type_ symbol symbol) int 11)
-    (want-display-level (_type_ symbol symbol) int 12)
-    (want-vis (_type_ symbol) int 13)
-    (want-force-vis (_type_ symbol symbol) int 14)
-    (execute-command (_type_ pair) none 15)
-    (execute-commands-up-to (_type_ float) int 16)
-    (backup-load-state-and-set-cmds (_type_ pair) int 17)
-    (restore-load-state-and-cleanup (_type_) int 18)
-    (restore-load-state (_type_) int 19)
-    (set-force-inside! (_type_ symbol symbol) none 20)
+    (new (symbol type) _type_)
+    (reset! (_type_) _type_)
+    (update! (_type_) int)
+    (want-levels (_type_ symbol symbol) int)
+    (want-display-level (_type_ symbol symbol) int)
+    (want-vis (_type_ symbol) int)
+    (want-force-vis (_type_ symbol symbol) int)
+    (execute-command (_type_ pair) none)
+    (execute-commands-up-to (_type_ float) int)
+    (backup-load-state-and-set-cmds (_type_ pair) int)
+    (restore-load-state-and-cleanup (_type_) int)
+    (restore-load-state (_type_) int)
+    (set-force-inside! (_type_ symbol symbol) none)
     )
   )
 
@@ -119,25 +112,22 @@
 
 ;; static data for a continue point
 (deftype continue-point (basic)
-  ((name          string          :offset-assert 4)
-   (level         symbol          :offset-assert 8)
-   (flags         continue-flags  :offset-assert 12)
-   (trans         vector  :inline :offset-assert 16)
-   (quat          quaternion  :inline :offset-assert 32)
-   (camera-trans  vector  :inline :offset-assert 48)
-   (camera-rot    float  9        :offset-assert 64)
-   (load-commands pair            :offset-assert 100)
-   (vis-nick      symbol          :offset-assert 104)
-   (lev0          symbol          :offset-assert 108)
-   (disp0         symbol          :offset-assert 112)
-   (lev1          symbol          :offset-assert 116)
-   (disp1         symbol          :offset-assert 120)
+  ((name           string)
+   (level          symbol)
+   (flags          continue-flags)
+   (trans          vector      :inline)
+   (quat           quaternion  :inline)
+   (camera-trans   vector      :inline)
+   (camera-rot     float       9)
+   (load-commands  pair)
+   (vis-nick       symbol)
+   (lev0           symbol)
+   (disp0          symbol)
+   (lev1           symbol)
+   (disp1          symbol)
    )
-  :method-count-assert 10
-  :size-assert         #x7c
-  :flag-assert         #xa0000007c
   (:methods
-    (debug-draw! (_type_) none 9)
+    (debug-draw! (_type_) none)
     )
   )
 
@@ -148,76 +138,73 @@
 ;; this information can be saved/loaded from a game save.
 ;; also, it must be manually synchronized with entity permanent state in the levels
 (deftype game-info (basic)
-  ((mode                  symbol                        :offset-assert   4) ;; can be play/debug
-   (save-name             basic                         :offset-assert   8)
-   (life                  float                         :offset-assert  12)
-   (life-max              float                         :offset-assert  16)
-   (money                 float                         :offset-assert  20)
-   (money-total           float                         :offset-assert  24)
-   (money-per-level       uint8                      32 :offset-assert  28)
-   (deaths-per-level      uint8                      32 :offset-assert  60)
-   (buzzer-total          float                         :offset-assert  92)
-   (fuel                  float                         :offset-assert  96)
-   (perm-list             entity-perm-array             :offset-assert 100) ;; permament storage for entities
-   (task-perm-list        entity-perm-array             :offset-assert 104) ;; permanent storage for task entities
-   (current-continue      continue-point                :offset-assert 108)
-   (text-ids-seen         bit-array                     :offset-assert 112)
-   (level-opened          uint8                      32 :offset-assert 116)
-   (hint-control          (array level-hint-control)    :offset-assert 148)
-   (task-hint-control     (array task-hint-control-group) :offset-assert 152)
-   (total-deaths          int32                         :offset-assert 156)
-   (continue-deaths       int32                         :offset-assert 160)
-   (fuel-cell-deaths      int32                         :offset-assert 164)
-   (game-start-time       time-frame                    :offset-assert 168)
-   (continue-time         time-frame                    :offset-assert 176)
-   (death-time            time-frame                    :offset-assert 184)
-   (hit-time              time-frame                    :offset-assert 192)
-   (fuel-cell-pickup-time time-frame                    :offset-assert 200)
-   (fuel-cell-time        (array time-frame)            :offset-assert 208)
-   (enter-level-time      (array time-frame)            :offset-assert 212)
-   (in-level-time         (array time-frame)            :offset-assert 216)
-   (blackout-time         time-frame                    :offset-assert 224)
-   (letterbox-time        time-frame                    :offset-assert 232) ;; time to turn off letterboxing, base-frame
-   (hint-play-time        time-frame                    :offset-assert 240)
-   (display-text-time     time-frame                    :offset-assert 248)
-   (display-text-handle   handle                        :offset-assert 256)
-   (death-movie-tick      int32                         :offset-assert 264)
-   (want-auto-save        symbol                        :offset-assert 268)
-   (auto-save-proc        handle                        :offset-assert 272)
-   (auto-save-status      mc-status-code                :offset-assert 280)
-   (auto-save-card        int32                         :offset-assert 284)
-   (auto-save-which       int32                         :offset-assert 288)
-   (pov-camera-handle     handle                        :offset-assert 296)
-   (other-camera-handle   handle                        :offset-assert 304)
-   (death-pos             vector-array                  :offset-assert 312)
-   (dummy                 basic                         :offset-assert 316)
-   (auto-save-count       int32                         :offset-assert 320)
+  ((mode                   symbol)
+   (save-name              basic)
+   (life                   float)
+   (life-max               float)
+   (money                  float)
+   (money-total            float)
+   (money-per-level        uint8  32)
+   (deaths-per-level       uint8  32)
+   (buzzer-total           float)
+   (fuel                   float)
+   (perm-list              entity-perm-array)
+   (task-perm-list         entity-perm-array)
+   (current-continue       continue-point)
+   (text-ids-seen          bit-array)
+   (level-opened           uint8  32)
+   (hint-control           (array level-hint-control))
+   (task-hint-control      (array task-hint-control-group))
+   (total-deaths           int32)
+   (continue-deaths        int32)
+   (fuel-cell-deaths       int32)
+   (game-start-time        time-frame)
+   (continue-time          time-frame)
+   (death-time             time-frame)
+   (hit-time               time-frame)
+   (fuel-cell-pickup-time  time-frame)
+   (fuel-cell-time         (array time-frame))
+   (enter-level-time       (array time-frame))
+   (in-level-time          (array time-frame))
+   (blackout-time          time-frame)
+   (letterbox-time         time-frame)
+   (hint-play-time         time-frame)
+   (display-text-time      time-frame)
+   (display-text-handle    handle)
+   (death-movie-tick       int32)
+   (want-auto-save         symbol)
+   (auto-save-proc         handle)
+   (auto-save-status       mc-status-code)
+   (auto-save-card         int32)
+   (auto-save-which        int32)
+   (pov-camera-handle      handle)
+   (other-camera-handle    handle)
+   (death-pos              vector-array)
+   (dummy                  basic)
+   (auto-save-count        int32)
    )
-  :method-count-assert 29
-  :size-assert         #x144
-  :flag-assert         #x1d00000144
   (:methods
-   (initialize! (_type_ symbol game-save string) _type_ 9)
-   (adjust (_type_ symbol float handle) float 10)
-   (task-complete? (_type_ game-task) symbol 11)
-   (lookup-entity-perm-by-aid (_type_ actor-id) entity-perm 12)
-   (get-entity-task-perm (_type_ game-task) entity-perm 13)
-   (copy-perms-from-level! (_type_ level) none 14)
-   (copy-perms-to-level! (_type_ level) none 15)
-   (debug-print (_type_ symbol) _type_ 16)
-   (get-or-create-continue! (_type_) continue-point 17)
-   (get-continue-by-name (_type_ string) continue-point 18)
-   (set-continue! (_type_ basic) continue-point 19)
-   (buzzer-count (_type_ game-task) int 20)
-   (seen-text? (_type_ text-id) symbol 21)
-   (mark-text-as-seen (_type_ text-id) none 22)
-   (got-buzzer? (_type_ game-task int) symbol 23)
-   (save-game! (_type_ game-save string) none 24)
-   (load-game! (_type_ game-save) game-save 25)
-   (clear-text-seen! (_type_ text-id) none 26)
-   (get-death-count (_type_ symbol) int 27)
-   (get-health-percent-lost (_type_ symbol) float 28)
-   )
+    (initialize! (_type_ symbol game-save string) _type_)
+    (adjust (_type_ symbol float handle) float)
+    (task-complete? (_type_ game-task) symbol)
+    (lookup-entity-perm-by-aid (_type_ actor-id) entity-perm)
+    (get-entity-task-perm (_type_ game-task) entity-perm)
+    (copy-perms-from-level! (_type_ level) none)
+    (copy-perms-to-level! (_type_ level) none)
+    (debug-print (_type_ symbol) _type_)
+    (get-or-create-continue! (_type_) continue-point)
+    (get-continue-by-name (_type_ string) continue-point)
+    (set-continue! (_type_ basic) continue-point)
+    (buzzer-count (_type_ game-task) int)
+    (seen-text? (_type_ text-id) symbol)
+    (mark-text-as-seen (_type_ text-id) none)
+    (got-buzzer? (_type_ game-task int) symbol)
+    (save-game! (_type_ game-save string) none)
+    (load-game! (_type_ game-save) game-save)
+    (clear-text-seen! (_type_ text-id) none)
+    (get-death-count (_type_ symbol) int)
+    (get-health-percent-lost (_type_ symbol) float)
+    )
   )
 
 (define-extern *game-info* game-info)

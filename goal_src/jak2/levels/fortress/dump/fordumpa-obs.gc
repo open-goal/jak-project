@@ -8,21 +8,17 @@
 ;; DECOMP BEGINS
 
 (deftype fort-elec-switch (process-drawable)
-  ((root               collide-shape          :override)
-   (l-bolt             lightning-control      :offset-assert 200)
-   (notify-actor       entity-actor           :offset-assert 204)
-   (tank-actor         entity-actor           :offset-assert 208)
-   (switch-group       (pointer actor-group)  :offset-assert 212)
-   (switch-group-count int32                  :offset-assert 216)
+  ((root                collide-shape :override)
+   (l-bolt              lightning-control)
+   (notify-actor        entity-actor)
+   (tank-actor          entity-actor)
+   (switch-group        (pointer actor-group))
+   (switch-group-count  int32)
    )
-  :heap-base #x60
-  :method-count-assert 23
-  :size-assert         #xdc
-  :flag-assert         #x17006000dc
-  (:methods
-    (idle () _type_ :state 20)
-    (play-hint () _type_ :state 21)
-    (die () _type_ :state 22)
+  (:state-methods
+    idle
+    play-hint
+    die
     )
   )
 
@@ -34,8 +30,8 @@
 
 (defstate idle (fort-elec-switch)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('attack)
        (go-virtual die)
        'push
@@ -45,7 +41,7 @@
        )
       )
     )
-  :code (the-as (function none :behavior fort-elec-switch) sleep-code)
+  :code sleep-code
   )
 
 (defstate play-hint (fort-elec-switch)
@@ -53,7 +49,7 @@
   :event (-> (method-of-type fort-elec-switch idle) event)
   :code (behavior ()
     (let ((gp-0 (current-time)))
-      (until (>= (- (current-time) gp-0) (seconds 16))
+      (until (time-elapsed? gp-0 (seconds 16))
         (suspend)
         )
       )
@@ -61,13 +57,12 @@
       (suspend)
       )
     (let ((gp-1 (current-time)))
-      (until (>= (- (current-time) gp-1) (seconds 0.4))
+      (until (time-elapsed? gp-1 (seconds 0.4))
         (suspend)
         )
       )
     (talker-spawn-func (-> *talker-speech* 86) *entity-pool* (target-pos 0) (the-as region #f))
     (sleep-code)
-    (none)
     )
   :post (-> (method-of-type fort-elec-switch idle) post)
   )
@@ -94,7 +89,6 @@
         )
       (set! (-> v1-0 state mode) (the-as lightning-mode v0-1))
       )
-    (none)
     )
   :code (behavior ()
     (let ((v1-1 (-> self root root-prim)))
@@ -144,7 +138,7 @@
       )
     (sound-play "elec-switch")
     (let ((gp-2 (current-time)))
-      (until (>= (- (current-time) gp-2) (seconds 0.5))
+      (until (time-elapsed? gp-2 (seconds 0.5))
         (suspend)
         )
       )
@@ -180,7 +174,7 @@
             )
           )
         (let ((gp-3 (current-time)))
-          (until (>= (- (current-time) gp-3) (seconds 0.75))
+          (until (time-elapsed? gp-3 (seconds 0.75))
             (suspend)
             )
           )
@@ -200,7 +194,7 @@
             )
           )
         (let ((gp-4 (current-time)))
-          (until (>= (- (current-time) gp-4) (seconds 1.5))
+          (until (time-elapsed? gp-4 (seconds 1.5))
             (suspend)
             )
           )
@@ -225,29 +219,29 @@
         )
       )
     (cleanup-for-death self)
-    (none)
     )
   )
 
 ;; WARN: Return type mismatch process-drawable vs fort-elec-switch.
-(defmethod relocate fort-elec-switch ((obj fort-elec-switch) (arg0 int))
-  (if (nonzero? (-> obj l-bolt))
-      (&+! (-> obj l-bolt) arg0)
+(defmethod relocate ((this fort-elec-switch) (arg0 int))
+  (if (nonzero? (-> this l-bolt))
+      (&+! (-> this l-bolt) arg0)
       )
-  (the-as fort-elec-switch ((method-of-type process-drawable relocate) obj arg0))
+  (the-as fort-elec-switch ((method-of-type process-drawable relocate) this arg0))
   )
 
 ;; WARN: Return type mismatch object vs none.
-(defmethod init-from-entity! fort-elec-switch ((obj fort-elec-switch) (arg0 entity-actor))
+(defmethod init-from-entity! ((this fort-elec-switch) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
 - stack size
 - collision information
 - loading the skeleton group / bones
 - sounds"
-  (stack-size-set! (-> obj main-thread) 512) ;; added
   (local-vars (sv-16 res-tag))
-  (let ((s4-0 (new 'process 'collide-shape obj (collide-list-enum usually-hit-by-player))))
+  ;; og:preserve-this added
+  (stack-size-set! (-> this top-thread) 512)
+  (let ((s4-0 (new 'process 'collide-shape this (collide-list-enum usually-hit-by-player))))
     (let ((v1-2 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 0) (the-as uint 0))))
       (set! (-> v1-2 prim-core collide-as) (collide-spec obstacle))
       (set! (-> v1-2 prim-core collide-with) (collide-spec jak bot player-list))
@@ -262,34 +256,34 @@ This commonly includes things such as:
       (set! (-> s4-0 backup-collide-as) (-> v1-5 prim-core collide-as))
       (set! (-> s4-0 backup-collide-with) (-> v1-5 prim-core collide-with))
       )
-    (set! (-> obj root) s4-0)
+    (set! (-> this root) s4-0)
     )
-  (process-drawable-from-entity! obj arg0)
+  (process-drawable-from-entity! this arg0)
   (initialize-skeleton
-    obj
+    this
     (the-as skeleton-group (art-group-get-by-name *level* "skel-fort-elec-switch" (the-as (pointer uint32) #f)))
     (the-as pair 0)
     )
-  (set! (-> obj notify-actor) (entity-actor-lookup arg0 'alt-actor 0))
-  (set! (-> obj tank-actor) (entity-actor-lookup arg0 'alt-actor 1))
+  (set! (-> this notify-actor) (entity-actor-lookup arg0 'alt-actor 0))
+  (set! (-> this tank-actor) (entity-actor-lookup arg0 'alt-actor 1))
   (set! sv-16 (new 'static 'res-tag))
-  (let ((v1-11 (res-lump-data (-> obj entity) 'actor-groups pointer :tag-ptr (& sv-16))))
+  (let ((v1-11 (res-lump-data (-> this entity) 'actor-groups pointer :tag-ptr (& sv-16))))
     (cond
       ((and v1-11 (nonzero? (-> sv-16 elt-count)))
-       (set! (-> obj switch-group) (the-as (pointer actor-group) v1-11))
-       (set! (-> obj switch-group-count) (the-as int (-> sv-16 elt-count)))
+       (set! (-> this switch-group) (the-as (pointer actor-group) v1-11))
+       (set! (-> this switch-group-count) (the-as int (-> sv-16 elt-count)))
        )
       (else
-        (set! (-> obj switch-group) (the-as (pointer actor-group) #f))
-        (set! (-> obj switch-group-count) 0)
+        (set! (-> this switch-group) (the-as (pointer actor-group) #f))
+        (set! (-> this switch-group-count) 0)
         0
         )
       )
     )
-  (let ((a0-18 (-> obj skel root-channel 0)))
-    (set! (-> a0-18 frame-group) (the-as art-joint-anim (-> obj draw art-group data 2)))
+  (let ((a0-18 (-> this skel root-channel 0)))
+    (set! (-> a0-18 frame-group) (the-as art-joint-anim (-> this draw art-group data 2)))
     (set! (-> a0-18 frame-num) 0.0)
-    (joint-control-channel-group! a0-18 (the-as art-joint-anim (-> obj draw art-group data 2)) num-func-identity)
+    (joint-control-channel-group! a0-18 (the-as art-joint-anim (-> this draw art-group data 2)) num-func-identity)
     )
   (transform-post)
   (let ((a2-8 (new 'static 'lightning-spec
@@ -312,40 +306,38 @@ This commonly includes things such as:
                 )
               )
         )
-    (set! (-> obj l-bolt) (new 'process 'lightning-control a2-8 obj 0.0))
+    (set! (-> this l-bolt) (new 'process 'lightning-control a2-8 this 0.0))
     )
   (let ((a0-20 (new 'stack-no-clear 'vector))
         (v1-26 (new 'stack-no-clear 'vector))
         )
-    (set! (-> a0-20 quad) (-> obj root trans quad))
-    (set! (-> v1-26 quad) (-> obj root trans quad))
+    (set! (-> a0-20 quad) (-> this root trans quad))
+    (set! (-> v1-26 quad) (-> this root trans quad))
     (+! (-> a0-20 y) 4915.2)
     (+! (-> v1-26 y) 17203.2)
-    (set! (-> obj l-bolt state meet data 0 quad) (-> a0-20 quad))
-    (let ((a0-22 (-> obj l-bolt)))
+    (set! (-> this l-bolt state meet data 0 quad) (-> a0-20 quad))
+    (let ((a0-22 (-> this l-bolt)))
       (set! (-> a0-22 state meet data (+ (-> a0-22 state points-to-draw) -1) quad) (-> v1-26 quad))
       )
     )
-  (go (method-of-object obj idle))
+  (go (method-of-object this idle))
   (none)
   )
 
 (deftype fort-fence (process-drawable)
-  ((root      collide-shape  :override)
-   (anim      spool-anim     :offset-assert 200)
-   (exit-anim basic          :offset-assert 204)
-   (loading?  symbol         :offset-assert 208)
-   (tank      handle         :offset-assert 216)
+  ((root       collide-shape :override)
+   (anim       spool-anim)
+   (exit-anim  basic)
+   (loading?   symbol)
+   (tank       handle)
    )
-  :heap-base #x60
-  :method-count-assert 24
-  :size-assert         #xe0
-  :flag-assert         #x18006000e0
+  (:state-methods
+    idle
+    breaking
+    )
   (:methods
-    (idle () _type_ :state 20)
-    (breaking () _type_ :state 21)
-    (fort-fence-method-22 (_type_) none 22)
-    (fort-fence-method-23 (_type_) none 23)
+    (fort-fence-method-22 (_type_) none)
+    (fort-fence-method-23 (_type_) none)
     )
   )
 
@@ -360,20 +352,20 @@ This commonly includes things such as:
               :bounds (static-spherem 0 11 0 18)
               )
 
-(defmethod fort-fence-method-22 fort-fence ((obj fort-fence))
+(defmethod fort-fence-method-22 ((this fort-fence))
   0
   (none)
   )
 
-(defmethod fort-fence-method-23 fort-fence ((obj fort-fence))
+(defmethod fort-fence-method-23 ((this fort-fence))
   0
   (none)
   )
 
 (defstate idle (fort-fence)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('break)
        (go-virtual breaking)
        )
@@ -410,9 +402,8 @@ This commonly includes things such as:
           )
         )
       )
-    (none)
     )
-  :code (the-as (function none :behavior fort-fence) sleep-code)
+  :code sleep-code
   )
 
 (defstate breaking (fort-fence)
@@ -428,7 +419,6 @@ This commonly includes things such as:
       (set! (-> v1-4 prim-core collide-as) (collide-spec))
       )
     0
-    (none)
     )
   :exit (behavior ()
     (let ((a0-0 (-> self anim)))
@@ -438,7 +428,6 @@ This commonly includes things such as:
         (ja :group! (-> self exit-anim) :num! min)
         )
       )
-    (none)
     )
   :code (behavior ()
     (logclear! (-> self mask) (process-mask actor-pause))
@@ -451,92 +440,83 @@ This commonly includes things such as:
     (logior! (-> self mask) (process-mask sleep))
     (suspend)
     0
-    (none)
     )
-  :post (the-as (function none :behavior fort-fence) transform-post)
+  :post transform-post
   )
 
 ;; WARN: Return type mismatch object vs none.
-(defmethod init-from-entity! fort-fence ((obj fort-fence) (arg0 entity-actor))
+(defmethod init-from-entity! ((this fort-fence) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
 - stack size
 - collision information
 - loading the skeleton group / bones
 - sounds"
-  (stack-size-set! (-> obj main-thread) 512)
-  (fort-fence-method-23 obj)
-  (process-drawable-from-entity! obj arg0)
-  (fort-fence-method-22 obj)
-  (process-entity-status! obj (entity-perm-status no-kill) #t)
-  (set! (-> obj loading?) #f)
-  (let ((a0-6 (-> obj skel root-channel 0)))
-    (set! (-> a0-6 frame-group) (if (> (-> obj skel active-channels) 0)
-                                    (-> obj skel root-channel 0 frame-group)
+  (stack-size-set! (-> this main-thread) 512)
+  (fort-fence-method-23 this)
+  (process-drawable-from-entity! this arg0)
+  (fort-fence-method-22 this)
+  (process-entity-status! this (entity-perm-status no-kill) #t)
+  (set! (-> this loading?) #f)
+  (let ((a0-6 (-> this skel root-channel 0)))
+    (set! (-> a0-6 frame-group) (if (> (-> this skel active-channels) 0)
+                                    (-> this skel root-channel 0 frame-group)
                                     )
           )
     (set! (-> a0-6 frame-num) 0.0)
     (joint-control-channel-group!
       a0-6
-      (if (> (-> obj skel active-channels) 0)
-          (-> obj skel root-channel 0 frame-group)
+      (if (> (-> this skel active-channels) 0)
+          (-> this skel root-channel 0 frame-group)
           )
       num-func-identity
       )
     )
   (transform-post)
-  (go (method-of-object obj idle))
+  (go (method-of-object this idle))
   (none)
   )
 
 (deftype fort-fence-a (fort-fence)
   ()
-  :heap-base #x60
-  :method-count-assert 24
-  :size-assert         #xe0
-  :flag-assert         #x18006000e0
   )
 
 
 (deftype fort-fence-b (fort-fence)
   ()
-  :heap-base #x60
-  :method-count-assert 24
-  :size-assert         #xe0
-  :flag-assert         #x18006000e0
   )
 
 
-(defmethod fort-fence-method-22 fort-fence-a ((obj fort-fence-a))
+(defmethod fort-fence-method-22 ((this fort-fence-a))
   (initialize-skeleton
-    obj
+    this
     (the-as skeleton-group (art-group-get-by-name *level* "skel-fort-fence-a" (the-as (pointer uint32) #f)))
     (the-as pair 0)
     )
-  (set! (-> obj anim)
+  (set! (-> this anim)
         (new 'static 'spool-anim :name "fort-fence-a" :anim-name "a-break" :parts 2 :command-list '())
         )
-  (set! (-> obj exit-anim) (-> obj draw art-group data 3))
+  (set! (-> this exit-anim) (-> this draw art-group data 3))
   0
   (none)
   )
 
-(defmethod fort-fence-method-22 fort-fence-b ((obj fort-fence-b))
+(defmethod fort-fence-method-22 ((this fort-fence-b))
   (initialize-skeleton
-    obj
+    this
     (the-as skeleton-group (art-group-get-by-name *level* "skel-fort-fence-b" (the-as (pointer uint32) #f)))
     (the-as pair 0)
     )
-  (set! (-> obj anim)
+  (set! (-> this anim)
         (new 'static 'spool-anim :name "fort-fence-b" :anim-name "b-break" :parts 2 :command-list '())
         )
-  (set! (-> obj exit-anim) (-> obj draw art-group data 8))
+  (set! (-> this exit-anim) (-> this draw art-group data 8))
   0
   (none)
   )
 
-(defmethod fort-fence-method-23 fort-fence-a ((obj fort-fence-a))
-  (let ((s5-0 (new 'process 'collide-shape obj (collide-list-enum usually-hit-by-player))))
+(defmethod fort-fence-method-23 ((this fort-fence-a))
+  (let ((s5-0 (new 'process 'collide-shape this (collide-list-enum usually-hit-by-player))))
     (let ((s4-0 (new 'process 'collide-shape-prim-group s5-0 (the-as uint 2) 0)))
       (set! (-> s5-0 total-prims) (the-as uint 3))
       (set! (-> s4-0 prim-core collide-as) (collide-spec obstacle camera-blocker))
@@ -561,14 +541,14 @@ This commonly includes things such as:
       (set! (-> s5-0 backup-collide-as) (-> v1-12 prim-core collide-as))
       (set! (-> s5-0 backup-collide-with) (-> v1-12 prim-core collide-with))
       )
-    (set! (-> obj root) s5-0)
+    (set! (-> this root) s5-0)
     )
   0
   (none)
   )
 
-(defmethod fort-fence-method-23 fort-fence-b ((obj fort-fence-b))
-  (let ((s5-0 (new 'process 'collide-shape obj (collide-list-enum usually-hit-by-player))))
+(defmethod fort-fence-method-23 ((this fort-fence-b))
+  (let ((s5-0 (new 'process 'collide-shape this (collide-list-enum usually-hit-by-player))))
     (let ((s4-0 (new 'process 'collide-shape-prim-group s5-0 (the-as uint 2) 0)))
       (set! (-> s5-0 total-prims) (the-as uint 3))
       (set! (-> s4-0 prim-core collide-as) (collide-spec obstacle camera-blocker))
@@ -593,7 +573,7 @@ This commonly includes things such as:
       (set! (-> s5-0 backup-collide-as) (-> v1-12 prim-core collide-as))
       (set! (-> s5-0 backup-collide-with) (-> v1-12 prim-core collide-with))
       )
-    (set! (-> obj root) s5-0)
+    (set! (-> this root) s5-0)
     )
   0
   (none)

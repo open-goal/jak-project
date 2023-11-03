@@ -11,160 +11,157 @@
   (enum->string task-status arg0)
   )
 
-(defmethod get-task task-cstage ((obj task-cstage))
+(defmethod get-task ((this task-cstage))
   "Get the game task for this cstage"
-  (-> obj game-task)
+  (-> this game-task)
   )
 
-(defmethod get-status task-cstage ((obj task-cstage))
+(defmethod get-status ((this task-cstage))
   "Get the status for this cstage"
-  (-> obj status)
+  (-> this status)
   )
 
-(defmethod closed? task-cstage ((obj task-cstage))
+(defmethod closed? ((this task-cstage))
   "Is the closed flag set?"
   (declare (inline))
 
-  (logtest? (-> obj flags) (task-flags closed))
+  (logtest? (-> this flags) (task-flags closed))
   )
 
-(defmethod closed-by-default? task-cstage ((obj task-cstage))
+(defmethod closed-by-default? ((this task-cstage))
   "Is the closed-by-default flag set?"
   (declare (inline))
 
-  (logtest? (-> obj flags) (task-flags closed-by-default))
+  (logtest? (-> this flags) (task-flags closed-by-default))
   )
 
-(defmethod task-available? task-cstage ((obj task-cstage) (arg0 task-control))
+(defmethod task-available? ((this task-cstage) (arg0 task-control))
   "Is this task available to be the current task?"
   (cond
-    ((closed? obj)
+    ((closed? this)
      ;; we're already closed.
      #f
      )
-    ((>= (the-as int (-> (get-entity-task-perm *game-info* (-> obj game-task)) user-uint8 0))
-         (the-as int (-> obj status))
+    ((>= (the-as int (-> (get-entity-task-perm *game-info* (-> this game-task)) user-uint8 0))
+         (the-as int (-> this status))
          )
      ;; the permanent entity for this task has stored that we have progresssed past
      ;; our status. Remember that we are closed, and return #f.
-     (logior! (-> obj flags) (task-flags closed))
+     (logior! (-> this flags) (task-flags closed))
      #f
      )
-    ((task-complete? *game-info* (-> obj game-task))
+    ((task-complete? *game-info* (-> this game-task))
      ;; the game-info thinks that we have completed this task already.
      ;; remember we are closed and return #f
-     (logior! (-> obj flags) (task-flags closed))
+     (logior! (-> this flags) (task-flags closed))
      #f
      )
     (else
      ;; we aren't closed. Check the condition.
-     ((-> obj condition) arg0)
+     ((-> this condition) arg0)
      )
     )
   )
 
-(defmethod close-task! task-cstage ((obj task-cstage))
+(defmethod close-task! ((this task-cstage))
   "Close this task!"
-  (if (= (-> obj game-task) (game-task none))
+  (if (= (-> this game-task) (game-task none))
       ;; invalid task.
       (return (the-as int #f))
       )
 
   ;; flag as closed
-  (logior! (-> obj flags) (task-flags closed))
+  (logior! (-> this flags) (task-flags closed))
   ;; do we have an entity to update?
-  (when (logtest? (-> obj flags) (task-flags has-entity))
+  (when (logtest? (-> this flags) (task-flags has-entity))
 
     ;; look up the permanent storage for the entity associated with our task
-    (let ((v1-9 (get-entity-task-perm *game-info* (-> obj game-task))))
+    (let ((v1-9 (get-entity-task-perm *game-info* (-> this game-task))))
       ;; we set a bit to indicate that we are storing a non-default status
       (logior! (-> v1-9 status) (entity-perm-status user-set-from-cstage))
       ;; and store the actual status (only increment)
-      (if (< (-> v1-9 user-uint8 0) (the-as uint (-> obj status)))
-          (set! (-> v1-9 user-int8 0) (the-as int (-> obj status)))
+      (if (< (-> v1-9 user-uint8 0) (the-as uint (-> this status)))
+          (set! (-> v1-9 user-int8 0) (the-as int (-> this status)))
           )
       )
     )
   0
   )
 
-(defmethod open-task! task-cstage ((obj task-cstage))
+(defmethod open-task! ((this task-cstage))
   "Clear the closed flag."
-  (logclear! (-> obj flags) (task-flags closed))
+  (logclear! (-> this flags) (task-flags closed))
   0
   )
 
 ;; a task-control containing no cstages
-(define *null-task-control* (new 'static 'task-control
-                              :current-stage -1
-                              :stage
-                              (new 'static 'boxed-array :type task-cstage :length 0 :allocated-length 0)
-                              )
-        )
+(define *null-task-control*
+  (new 'static 'task-control :current-stage -1 :stage (new 'static 'boxed-array :type task-cstage))
+  )
 
-(defmethod current-task task-control ((obj task-control))
+(defmethod current-task ((this task-control))
   "Get the current task that is being played. If unknown returns the none task"
   (cond
-    ((= obj *null-task-control*)
+    ((= this *null-task-control*)
      (format 0 "ERROR<GMJ>: current-task received *null-task-control*~%")
      (game-task none)
      )
-    ((= (-> obj current-stage) -1)
+    ((= (-> this current-stage) -1)
      ;; state unknown
      (game-task none) 
      )
     (else
      ;; look up the current cstage's task
-     (-> obj stage (-> obj current-stage) game-task)
+     (-> this stage (-> this current-stage) game-task)
      )
     )
   )
 
-(defmethod current-status task-control ((obj task-control))
+(defmethod current-status ((this task-control))
   "Get the status of the cstage that is being played.
    Will return invalid if not possible"
   (cond
-    ((= obj *null-task-control*)
+    ((= this *null-task-control*)
      (format 0 "ERROR<GMJ>: current-status received self of *null-task-control*~%~%")
      (task-status invalid)
      )
-    ((= (-> obj current-stage) -1)
+    ((= (-> this current-stage) -1)
      (task-status invalid)
      )
     (else
-     (-> obj stage (-> obj current-stage) status)
+     (-> this stage (-> this current-stage) status)
      )
     )
   )
 
-(defmethod close-current! task-control ((obj task-control))
+(defmethod close-current! ((this task-control))
   (cond
-    ((= obj *null-task-control*)
+    ((= this *null-task-control*)
      (format 0 "ERROR<GMJ>: close-current! received self of *null-task-control*~%~%")
      )
-    ((= (-> obj current-stage) -1)
+    ((= (-> this current-stage) -1)
      ;; no current stage, do nothing
      )
     (else
-     (close-task! (-> obj stage (-> obj current-stage)))
+     (close-task! (-> this stage (-> this current-stage)))
      )
     )
   ;; attempt to update the current task
-  (first-any obj #t)
+  (first-any this #t)
   )
 
-(defmethod close-status! task-control ((obj task-control) (arg0 task-status))
+(defmethod close-status! ((this task-control) (arg0 task-status))
   "Close the cstage that:
     - is associated with the task for the current cstage
     - is for the given status
    "
-  (let ((a0-2 (current-task obj)))
+  (let ((a0-2 (current-task this)))
     ;; iterate over all cstages
-    (dotimes (v1-1 (-> obj stage length))
-      (when (and (= a0-2 (-> obj stage v1-1 game-task)) (= arg0 (-> obj stage v1-1 status)))
+    (dotimes (v1-1 (-> this stage length))
+      (when (and (= a0-2 (-> this stage v1-1 game-task)) (= arg0 (-> this stage v1-1 status)))
         ;; found it! close and update current stage
-        (close-task! (-> obj stage v1-1))
-        (return (first-any obj #t))
+        (close-task! (-> this stage v1-1))
+        (return (first-any this #t))
         )
       )
     ;; nope, complain.
@@ -176,12 +173,12 @@
   (game-task none)
   )
 
-(defmethod first-any task-control ((obj task-control) (arg0 symbol))
+(defmethod first-any ((this task-control) (arg0 symbol))
   "Iterate through tasks, finding an unclosed one to mark as current
    If arg0 is #t, warn on receiving null-task-control"
 
   ;; check for null
-  (when (= obj *null-task-control*)
+  (when (= this *null-task-control*)
     (if arg0
         (format 0 "ERROR<GMJ>: first-any received self of *null-task-control*~%~%")
         )
@@ -189,57 +186,57 @@
     )
 
   ;; iterate through all tasks
-  (dotimes (s5-0 (-> obj stage length))
-    (when (task-available? (-> obj stage s5-0) obj)
+  (dotimes (s5-0 (-> this stage length))
+    (when (task-available? (-> this stage s5-0) this)
       ;; found an available task, set it.
-      (set! (-> obj current-stage) s5-0)
-      (return (-> obj stage s5-0 game-task))
+      (set! (-> this current-stage) s5-0)
+      (return (-> this stage s5-0 game-task))
       )
     )
   ;; none available.
-  (set! (-> obj current-stage) -1)
+  (set! (-> this current-stage) -1)
   (game-task none)
   )
 
-(defmethod reset! task-control ((obj task-control) (reset-mode symbol) (arg1 symbol))
+(defmethod reset! ((this task-control) (reset-mode symbol) (arg1 symbol))
   "Reset a task control. arg1 to warn on null, reset-mode 'game for a game reset"
 
-  (when (= obj *null-task-control*)
+  (when (= this *null-task-control*)
     (if arg1
         (format 0 "ERROR<GMJ>: reset! received self of *null-task-control*~%~%")
         )
     (return 0)
     )
-  (dotimes (s4-0 (-> obj stage length))
+  (dotimes (s4-0 (-> this stage length))
     ;; do we open the task?
     (if (or (= reset-mode 'game) ;; open every task on game reset
-            (not (closed-by-default? (-> obj stage s4-0))) ;; todo this flag?
+            (not (closed-by-default? (-> this stage s4-0))) ;; todo this flag?
             )
-        (open-task! (-> obj stage s4-0))
+        (open-task! (-> this stage s4-0))
         )
 
     ;; call close-task! to send closed stuff to entities
-    (if (closed? (-> obj stage s4-0))
-      (close-task! (-> obj stage s4-0))
+    (if (closed? (-> this stage s4-0))
+      (close-task! (-> this stage s4-0))
       )
     )
   (the-as int #f)
   )
 
 
-(defmethod closed? task-control ((obj task-control) (arg0 game-task) (arg1 task-status))
+(defmethod closed? ((this task-control) (arg0 game-task) (arg1 task-status))
   "Is the given task/status cstage closed?"
 
-  (when (= obj *null-task-control*)
+  (when (= this *null-task-control*)
     (format 0 "ERROR<GMJ>: closed? received self of *null-task-control*~%~%")
     (return #f)
     )
   ;; iterate all and check for match
-  (dotimes (v1-3 (-> obj stage length))
-    (when (and (= arg0 (-> obj stage v1-3 game-task))
-               (= arg1 (-> obj stage v1-3 status))
+  (dotimes (v1-3 (-> this stage length))
+    (when (and (= arg0 (-> this stage v1-3 game-task))
+               (= arg1 (-> this stage v1-3 status))
                )
-      (return (closed? (-> obj stage v1-3)))
+      (return (closed? (-> this stage v1-3)))
       )
     )
   (format 0 "ERROR<GMJ>: closed? received non-existent task-cstage(~S ~S)--returning #t.~%"
@@ -249,38 +246,38 @@
   #t
   )
 
-(defmethod exists? task-control ((obj task-control) (arg0 game-task) (arg1 task-status))
+(defmethod exists? ((this task-control) (arg0 game-task) (arg1 task-status))
   "Is there a cstage for the given task and status?"
-  (when (= obj *null-task-control*)
+  (when (= this *null-task-control*)
     (format 0 "ERROR<GMJ>: exists? received self of *null-task-control*~%~%")
     (return #f)
     )
-  (dotimes (v1-3 (-> obj stage length))
-    (if (and (= arg0 (-> obj stage v1-3 game-task)) (= arg1 (-> obj stage v1-3 status)))
+  (dotimes (v1-3 (-> this stage length))
+    (if (and (= arg0 (-> this stage v1-3 game-task)) (= arg1 (-> this stage v1-3 status)))
         (return #t)
         )
     )
   #f
   )
 
-(defmethod get-reminder task-control ((obj task-control) (arg0 int))
+(defmethod get-reminder ((this task-control) (arg0 int))
   "Get the arg0th reminder. "
-  (when (= obj *null-task-control*)
+  (when (= this *null-task-control*)
     (format 0 "ERROR<GMJ>: get-reminder received self of *null-task-control*~%~%")
     (return 0)
     )
-  (let ((v1-4 (get-entity-task-perm *game-info* (-> obj stage 0 game-task))))
+  (let ((v1-4 (get-entity-task-perm *game-info* (-> this stage 0 game-task))))
     (the-as int (-> v1-4 user-uint8 (+ arg0 1)))
     )
   )
 
-(defmethod save-reminder task-control ((obj task-control) (arg0 int) (arg1 int))
+(defmethod save-reminder ((this task-control) (arg0 int) (arg1 int))
   "Set the arg1th reminder to arg0"
-  (when (= obj *null-task-control*)
+  (when (= this *null-task-control*)
     (format 0 "ERROR<GMJ>: save-reminder received self of *null-task-control*~%~%")
     (return 0)
     )
-  (let ((v1-4 (get-entity-task-perm *game-info* (-> obj stage 0 game-task))))
+  (let ((v1-4 (get-entity-task-perm *game-info* (-> this stage 0 game-task))))
     ;; remember that we have a change.
     (logior! (-> v1-4 status) (entity-perm-status user-set-from-cstage))
     (set! (-> v1-4 user-int8 (+ arg1 1)) arg0)

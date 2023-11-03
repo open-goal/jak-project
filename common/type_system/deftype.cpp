@@ -54,7 +54,7 @@ std::string deftype_parent_list(const goos::Object& list) {
     throw std::runtime_error("invalid parent in deftype parent list");
   }
 
-  return parent.as_symbol()->name;
+  return parent.as_symbol().name_ptr;
 }
 
 bool is_type(const std::string& expected, const TypeSpec& actual, const TypeSystem* ts) {
@@ -63,7 +63,7 @@ bool is_type(const std::string& expected, const TypeSpec& actual, const TypeSyst
 
 std::string symbol_string(const goos::Object& obj) {
   if (obj.is_symbol()) {
-    return obj.as_symbol()->name;
+    return obj.as_symbol().name_ptr;
   }
   throw std::runtime_error(obj.print() + " was supposed to be a symbol, but isn't");
 }
@@ -84,10 +84,12 @@ double get_float(const goos::Object& obj) {
   throw std::runtime_error(obj.print() + " was supposed to be an number, but isn't");
 }
 
-void add_field(StructureType* structure,
-               TypeSystem* ts,
-               const goos::Object& def,
-               std::unordered_map<goos::HeapObject*, goos::Object>& constants) {
+void add_field(
+    StructureType* structure,
+    TypeSystem* ts,
+    const goos::Object& def,
+    std::unordered_map<goos::InternedSymbolPtr, goos::Object, goos::InternedSymbolPtr::hash>&
+        constants) {
   auto rest = &def;
 
   auto name = symbol_string(car(rest));
@@ -134,14 +136,66 @@ void add_field(StructureType* structure,
           throw std::runtime_error(fmt::format("Field {} not found to override", name));
         }
       } else if (opt_name == ":overlay-at") {
-        auto field_name = symbol_string(car(rest));
-        Field overlay_field;
-        if (!structure->lookup_field(field_name, &overlay_field)) {
-          throw std::runtime_error(
-              fmt::format("Field {} not found to overlay for {}", field_name, name));
-        }
-        offset_override = overlay_field.offset();
+        const auto& param = car(rest);
         rest = cdr(rest);
+        Field overlay_field;
+        if (param.is_symbol()) {
+          auto field_name = symbol_string(param);
+          if (!structure->lookup_field(field_name, &overlay_field)) {
+            throw std::runtime_error(
+                fmt::format("Field {} not found to overlay for {}", field_name, name));
+          }
+          offset_override = overlay_field.offset();
+        } else if (param.is_pair() && car(&param).is_symbol("->")) {
+          auto name_it = cdr(&param);
+          if (name_it->is_empty_list()) {
+            throw std::runtime_error(
+                fmt::format("Field list for overlay-at in {} was empty", name));
+          }
+          auto type_to_use = structure;
+          offset_override = 0;
+          while (!name_it->is_empty_list()) {
+            const auto& deref_field = car(name_it);
+            if (deref_field.is_int()) {
+              auto ref_array_field = !type_to_use && !overlay_field.is_inline()
+                                         ? ts->lookup_type_allow_partial_def(overlay_field.type())
+                                         : nullptr;
+              if (ref_array_field) {
+                // we can have an array of references (non-inline) to a forward-declared type
+                offset_override += ref_array_field->get_load_size() * deref_field.as_int();
+              } else {
+                auto type_to_deref = type_to_use && overlay_field.is_inline()
+                                         ? TypeSpec("inline-array")
+                                         : TypeSpec("pointer");
+                type_to_deref.add_arg(overlay_field.type());
+                auto deref_info = ts->get_deref_info(type_to_deref);
+                if (!deref_info.can_deref) {
+                  throw std::runtime_error(
+                      fmt::format("Array could not be dereferenced for overlay-at in {}", name));
+                }
+                // overlay_field.type() = deref_info.result_type;
+                offset_override += deref_info.stride * deref_field.as_int();
+              }
+            } else {
+              if (!type_to_use) {
+                throw std::runtime_error(
+                    fmt::format("Field {} not inside a structure for overlay-at in {}",
+                                overlay_field.name(), name));
+              }
+              auto field_name = symbol_string(car(name_it));
+              if (!type_to_use->lookup_field(field_name, &overlay_field)) {
+                throw std::runtime_error(
+                    fmt::format("Field {} not found to overlay for {}", field_name, name));
+              }
+              type_to_use =
+                  dynamic_cast<StructureType*>(ts->lookup_type_no_throw(overlay_field.type()));
+              offset_override += overlay_field.offset();
+            }
+            name_it = cdr(name_it);
+          }
+        } else {
+          throw std::runtime_error(fmt::format("Unknown parameter for overlay-at in {}", name));
+        }
       } else if (opt_name == ":score") {
         score = get_float(car(rest));
         rest = cdr(rest);
@@ -274,13 +328,19 @@ void declare_method(Type* type,
     // - this effectively does a :replace without having to re-define the name and signature and
     // keep that in-sync
     std::string method_name;
+    std::string method_overlay_name;
     TypeSpec function_typespec("function");
     std::optional<std::string> docstring;
     goos::Object args;
     goos::Object return_type;
     bool no_virtual = false;
     bool replace_method = false;
+    bool overlay_method = false;
     bool overriding_doc = false;
+
+    // name
+    method_name = symbol_string(car(obj));
+    obj = cdr(obj);
 
     if (!obj->is_empty_list() && car(obj).is_symbol(":override-doc")) {
       obj = cdr(obj);
@@ -294,10 +354,6 @@ void declare_method(Type* type,
     }
 
     if (!overriding_doc) {
-      // name
-      method_name = symbol_string(car(obj));
-      obj = cdr(obj);
-
       // docstring
       if (obj->is_pair() && car(obj).is_string()) {
         docstring = str_util::trim_newline_indents(car(obj).as_string()->data);
@@ -317,25 +373,21 @@ void declare_method(Type* type,
       //
       // Doing it like this makes the ordering not critical
       while (!obj->is_empty_list() && car(obj).is_symbol()) {
-        const auto& keyword = car(obj).as_symbol()->name;
+        const auto& keyword = car(obj).as_symbol();
         if (keyword == ":no-virtual") {
           no_virtual = true;
         } else if (keyword == ":replace") {
           replace_method = true;
         } else if (keyword == ":state") {
-          auto behavior_tag = function_typespec.try_get_tag("behavior");
           function_typespec = TypeSpec("state");
-          if (behavior_tag) {
-            function_typespec.add_new_tag("behavior", behavior_tag.value());
-          }
           // parse state docstrings if available
-          if (car(cdr(obj)).is_list()) {
+          if (!cdr(obj)->is_empty_list() && car(cdr(obj)).is_list()) {
             obj = cdr(obj);
             auto docstring_list = &car(obj);
             auto elem = docstring_list;
             while (!elem->is_empty_list() && car(elem).is_symbol()) {
-              const auto& handler = car(elem).as_symbol()->name;
-              const auto handler_kind = handler_keyword_to_kind(handler);
+              const auto& handler = car(elem).as_symbol();
+              const auto handler_kind = handler_keyword_to_kind(handler.name_ptr);
 
               // Get the docstring
               elem = cdr(elem);
@@ -360,6 +412,13 @@ void declare_method(Type* type,
             throw std::runtime_error("Bad usage of :behavior in a method declaration");
           }
           function_typespec.add_new_tag("behavior", symbol_string(obj->as_pair()->car));
+        } else if (keyword == ":overlay-at") {
+          obj = cdr(obj);
+          if (!car(obj).is_symbol()) {
+            throw std::runtime_error("Invalid parameter to method overlay-at");
+          }
+          method_overlay_name = symbol_string(car(obj));
+          overlay_method = true;
         }
         obj = cdr(obj);
       }
@@ -371,36 +430,62 @@ void declare_method(Type* type,
       function_typespec.add_arg(parse_typespec(type_system, return_type));
     }
 
-    // determine the method id, it should be the last in the list
-    int id = -1;
-    if (!obj->is_empty_list() && car(obj).is_int()) {
-      auto& id_obj = car(obj);
-      id = get_int(id_obj);
-      obj = cdr(obj);
+    if (!obj->is_empty_list()) {
+      throw std::runtime_error(fmt::format("found unknown data in a method declaration:\n{}\n\n{}",
+                                           obj->print(), _obj.print()));
     }
 
-    if (!obj->is_empty_list()) {
-      throw std::runtime_error("found symbols after the `id` in a method defintion: " +
-                               def.print());
+    if (overlay_method && (no_virtual || replace_method)) {
+      throw std::runtime_error(
+          fmt::format("method {} in type {} has invalid combination of keywords", method_name,
+                      type->get_name()));
     }
 
     MethodInfo info;
     if (overriding_doc) {
-      info = type_system->override_method(type, method_name, id, docstring);
+      info = type_system->override_method(type, method_name, docstring);
+    } else if (overlay_method) {
+      info = type_system->overlay_method(type, method_name, method_overlay_name, docstring,
+                                         function_typespec);
     } else {
       info = type_system->declare_method(type, method_name, docstring, no_virtual,
-                                         function_typespec, replace_method, id);
+                                         function_typespec, replace_method);
     }
+  });
+}
 
-    // check the method assert
-    if (id != -1) {
-      // method id assert!
-      if (id != info.id) {
-        lg::print("WARNING - ID assert failed on method {} of type {} (wanted {} got {})\n",
-                  method_name.c_str(), type->get_name().c_str(), id, info.id);
-        throw std::runtime_error("Method ID assert failed");
+void declare_state_methods(Type* type,
+                           TypeSystem* type_system,
+                           const goos::Object& def,
+                           StructureDefResult& struct_def) {
+  for_each_in_list(def, [&](const goos::Object& _obj) {
+    auto obj = &_obj;
+    // either state-name or (state-name args...) or (state-name "docstring" args...)
+    std::string method_name;
+    TypeSpec function_typespec("state");
+    std::optional<std::string> docstring;
+
+    if (obj->is_symbol()) {
+      method_name = obj->as_symbol().name_ptr;
+    } else if (obj->is_list()) {
+      if (!car(obj).is_symbol()) {
+        throw std::runtime_error(
+            fmt::format("{} is not a valid name for a state-method", obj->print()));
       }
+      method_name = car(obj).as_symbol().name_ptr;
+      auto& args = *cdr(obj);
+      if (car(obj).is_string()) {
+        // docstring first
+        docstring = car(obj).as_string()->data;
+        obj = cdr(obj);
+      }
+      for_each_in_list(args, [&](const goos::Object& o) {
+        function_typespec.add_arg(parse_typespec(type_system, o));
+      });
     }
+    function_typespec.add_arg(TypeSpec("_type_"));
+
+    type_system->declare_method(type, method_name, docstring, false, function_typespec, false);
   });
 }
 
@@ -419,8 +504,8 @@ void declare_state(Type* type,
         auto docstring_list = &car(obj);
         auto elem = docstring_list;
         while (!elem->is_empty_list() && car(elem).is_symbol()) {
-          const auto& handler = car(elem).as_symbol()->name;
-          const auto handler_kind = handler_keyword_to_kind(handler);
+          const auto& handler = car(elem).as_symbol();
+          const auto handler_kind = handler_keyword_to_kind(handler.name_ptr);
 
           // Get the docstring
           elem = cdr(elem);
@@ -463,7 +548,8 @@ StructureDefResult parse_structure_def(
     TypeSystem* ts,
     const goos::Object& fields,
     const goos::Object& options,
-    std::unordered_map<goos::HeapObject*, goos::Object>& constants) {
+    std::unordered_map<goos::InternedSymbolPtr, goos::Object, goos::InternedSymbolPtr::hash>&
+        constants) {
   StructureDefResult result;
   for_each_in_list(fields, [&](const goos::Object& o) { add_field(type, ts, o, constants); });
   TypeFlags flags;
@@ -489,6 +575,8 @@ StructureDefResult parse_structure_def(
         declare_method(type, ts, *opt_list, result);
       } else if (list_name == ":states") {
         declare_state(type, ts, *opt_list, result);
+      } else if (list_name == ":state-methods") {
+        declare_state_methods(type, ts, *opt_list, result);
       } else {
         throw std::runtime_error("Invalid option list in field specification: " +
                                  car(rest).print());
@@ -686,8 +774,8 @@ TypeSpec parse_typespec(const TypeSystem* type_system, const goos::Object& src) 
     while (rest->is_pair()) {
       auto& it = rest->as_pair()->car;
 
-      if (it.is_symbol() && it.as_symbol()->name.at(0) == ':') {
-        auto tag_name = it.as_symbol()->name.substr(1);
+      if (it.is_symbol() && it.as_symbol().name_ptr[0] == ':') {
+        auto tag_name = it.as_symbol().name_ptr + 1;
         rest = &rest->as_pair()->cdr;
 
         if (!rest->is_pair()) {
@@ -696,13 +784,13 @@ TypeSpec parse_typespec(const TypeSystem* type_system, const goos::Object& src) 
 
         auto& tag_val = rest->as_pair()->car;
 
-        if (tag_name == "behavior") {
-          if (!type_system->fully_defined_type_exists(tag_val.as_symbol()->name) &&
-              !type_system->partially_defined_type_exists(tag_val.as_symbol()->name)) {
+        if (std::string_view(tag_name) == "behavior") {
+          if (!type_system->fully_defined_type_exists(tag_val.as_symbol().name_ptr) &&
+              !type_system->partially_defined_type_exists(tag_val.as_symbol().name_ptr)) {
             throw std::runtime_error(
-                fmt::format("Behavior tag uses an unknown type {}", tag_val.as_symbol()->name));
+                fmt::format("Behavior tag uses an unknown type {}", tag_val.as_symbol().name_ptr));
           }
-          ts.add_new_tag(tag_name, tag_val.as_symbol()->name);
+          ts.add_new_tag(tag_name, tag_val.as_symbol().name_ptr);
         } else {
           throw std::runtime_error(fmt::format("Type tag {} is unknown", tag_name));
         }
@@ -723,11 +811,14 @@ TypeSpec parse_typespec(const TypeSystem* type_system, const goos::Object& src) 
   return {};
 }
 
-DeftypeResult parse_deftype(const goos::Object& deftype,
-                            TypeSystem* ts,
-                            std::unordered_map<goos::HeapObject*, goos::Object>* constants) {
+DeftypeResult parse_deftype(
+    const goos::Object& deftype,
+    TypeSystem* ts,
+    std::unordered_map<goos::InternedSymbolPtr, goos::Object, goos::InternedSymbolPtr::hash>*
+        constants) {
   DefinitionMetadata symbol_metadata;
-  std::unordered_map<goos::HeapObject*, goos::Object> no_consts;
+  std::unordered_map<goos::InternedSymbolPtr, goos::Object, goos::InternedSymbolPtr::hash>
+      no_consts;
   auto& constants_to_use = no_consts;
   if (constants != nullptr) {
     constants_to_use = *constants;
@@ -752,7 +843,7 @@ DeftypeResult parse_deftype(const goos::Object& deftype,
     throw std::runtime_error("deftype must be given a symbol as the type name");
   }
 
-  auto& name = type_name_obj.as_symbol()->name;
+  auto& name = type_name_obj.as_symbol().name_ptr;
   auto parent_type_name = deftype_parent_list(parent_list_obj);
   auto parent_type = ts->make_typespec(parent_type_name);
   DeftypeResult result;

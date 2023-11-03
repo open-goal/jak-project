@@ -127,36 +127,32 @@
 ;; definition of type hud-pickups
 (deftype hud-pickups (hud)
   ()
-  :heap-base #xb0
-  :method-count-assert 27
-  :size-assert         #x118
-  :flag-assert         #x1b00b00118
   )
 
 ;; definition for method 3 of type hud-pickups
-(defmethod inspect hud-pickups ((obj hud-pickups))
+(defmethod inspect ((this hud-pickups))
   (let ((t9-0 (method-of-type hud inspect)))
-    (t9-0 obj)
+    (t9-0 this)
     )
-  obj
+  this
   )
 
 ;; definition for method 15 of type hud-pickups
 ;; INFO: Return type mismatch int vs none.
-(defmethod draw-hud hud-pickups ((obj hud-pickups))
+(defmethod draw-hud ((this hud-pickups))
   (let ((t9-0 (method-of-type hud draw-hud)))
-    (t9-0 obj)
+    (t9-0 this)
     )
   (let* ((s5-0 (-> *display* frames (-> *display* on-screen) frame global-buf))
          (gp-0 (-> s5-0 base))
          )
     (let ((s4-0 draw-string-xy))
-      (format (clear *temp-string*) "~D" (-> obj value))
+      (format (clear *temp-string*) "~D" (-> this value))
       (s4-0
         *temp-string*
         s5-0
-        (+ (-> obj text-x) (* (-> obj x-sgn) (-> obj offset)))
-        (/ (* (+ (-> obj text-y) (* (-> obj y-sgn) (-> obj offset)) (-> obj y-offset))
+        (+ (-> this text-x) (* (-> this x-sgn) (-> this offset)))
+        (/ (* (+ (-> this text-y) (* (-> this y-sgn) (-> this offset)) (-> this y-offset))
               (the int (-> *video-parms* relative-y-scale))
               )
            2
@@ -186,9 +182,9 @@
 
 ;; definition for method 19 of type hud-pickups
 ;; INFO: Return type mismatch int vs none.
-(defmethod hud-update hud-pickups ((obj hud-pickups))
+(defmethod hud-update ((this hud-pickups))
   (if *target*
-      (tally-value obj (the int (+ 0.5 (-> *target* fact-info-target eco-pill))) 0)
+      (tally-value this (the int (+ 0.5 (-> *target* fact eco-pill))) 0)
       )
   0
   (none)
@@ -196,28 +192,28 @@
 
 ;; definition for method 20 of type hud-pickups
 ;; INFO: Return type mismatch int vs none.
-(defmethod init-particles! hud-pickups ((obj hud-pickups) (arg0 int))
-  (when (< (-> obj nb-of-particles) (-> obj max-nb-of-particles))
-    (let ((s5-0 (-> obj nb-of-particles)))
-      (set! (-> obj particles s5-0) (new 'static 'hud-particle))
-      (set! (-> obj particles s5-0 part) (create-launch-control (-> *part-group-id-table* 75) obj))
-      (set! (-> obj particles s5-0 init-pos x) 110.0)
-      (set! (-> obj particles s5-0 init-pos y) 55.0)
-      (set! (-> obj particles s5-0 init-pos z) 1.0)
-      (set! (-> obj particles s5-0 part matrix) -1)
+(defmethod init-particles! ((this hud-pickups) (arg0 int))
+  (when (< (-> this nb-of-particles) (-> this max-nb-of-particles))
+    (let ((s5-0 (-> this nb-of-particles)))
+      (set! (-> this particles s5-0) (new 'static 'hud-particle))
+      (set! (-> this particles s5-0 part) (create-launch-control (-> *part-group-id-table* 75) this))
+      (set! (-> this particles s5-0 init-pos x) 110.0)
+      (set! (-> this particles s5-0 init-pos y) 55.0)
+      (set! (-> this particles s5-0 init-pos z) 1.0)
+      (set! (-> this particles s5-0 part matrix) -1)
       )
-    (+! (-> obj nb-of-particles) 1)
+    (+! (-> this nb-of-particles) 1)
     )
-  (dotimes (s5-1 (-> obj nb-of-particles))
-    (if (= (-> obj particles s5-1 part matrix) -1)
-        (set! (-> obj particles s5-1 part matrix) (sprite-allocate-user-hvdf))
+  (dotimes (s5-1 (-> this nb-of-particles))
+    (if (= (-> this particles s5-1 part matrix) -1)
+        (set! (-> this particles s5-1 part matrix) (sprite-allocate-user-hvdf))
         )
     )
-  (set! (-> obj text-x) 118)
-  (set! (-> obj text-y) 45)
-  (set! (-> obj x-sgn) -1)
-  (set! (-> obj y-sgn) -1)
-  (set! (-> obj friend) 3)
+  (set! (-> this text-x) 118)
+  (set! (-> this text-y) 45)
+  (set! (-> this x-sgn) -1)
+  (set! (-> this y-sgn) -1)
+  (set! (-> this friend) 3)
   0
   (none)
   )
@@ -296,21 +292,17 @@
 
 ;; definition of type hud-health
 (deftype hud-health (hud)
-  ((scale float  :offset-assert 280)
+  ((scale  float)
    )
-  :heap-base #xb0
-  :method-count-assert 27
-  :size-assert         #x11c
-  :flag-assert         #x1b00b0011c
   )
 
 ;; definition for method 3 of type hud-health
-(defmethod inspect hud-health ((obj hud-health))
+(defmethod inspect ((this hud-health))
   (let ((t9-0 (method-of-type hud inspect)))
-    (t9-0 obj)
+    (t9-0 this)
     )
-  (format #t "~T~Tscale: ~f~%" (-> obj scale))
-  obj
+  (format #t "~T~Tscale: ~f~%" (-> this scale))
+  this
   )
 
 ;; definition for function part-hud-health-01-func
@@ -321,12 +313,12 @@
     (set! (-> arg2 pos x) f0-0)
     )
   (cond
-    ((and *target* (< (-> *target* fact-info-target health) 1.0))
+    ((and *target* (< (-> *target* fact health) 1.0))
      (set! (-> arg2 prev-pos x) 32.0)
      )
     (else
       (let ((f0-3 128.0))
-        (when (and *target* (= (-> *target* fact-info-target health) 1.0))
+        (when (and *target* (= (-> *target* fact health) 1.0))
           (let ((v1-16 (logand (-> *display* integral-frame-counter) 7)))
             (set! f0-3 (if (not (logtest? (-> *display* integral-frame-counter) 8))
                            (+ 128.0 (* 18.142857 (the float v1-16)))
@@ -353,7 +345,7 @@
     (set! (-> arg2 init-pos x) f0-0)
     (set! (-> arg2 pos x) f0-0)
     )
-  (if (and *target* (< (-> *target* fact-info-target health) 2.0))
+  (if (and *target* (< (-> *target* fact health) 2.0))
       (set! (-> arg2 prev-pos x) 32.0)
       (set! (-> arg2 prev-pos x) 128.0)
       )
@@ -368,7 +360,7 @@
     (set! (-> arg2 init-pos x) f0-0)
     (set! (-> arg2 pos x) f0-0)
     )
-  (if (and *target* (< (-> *target* fact-info-target health) 3.0))
+  (if (and *target* (< (-> *target* fact health) 3.0))
       (set! (-> arg2 prev-pos x) 32.0)
       (set! (-> arg2 prev-pos x) 128.0)
       )
@@ -378,21 +370,17 @@
 
 ;; definition for method 15 of type hud-health
 ;; INFO: Return type mismatch int vs none.
-(defmethod draw-hud hud-health ((obj hud-health))
-  ((method-of-type hud draw-hud) obj)
+(defmethod draw-hud ((this hud-health))
+  ((method-of-type hud draw-hud) this)
   0
   (none)
   )
 
 ;; definition for method 19 of type hud-health
 ;; INFO: Return type mismatch int vs none.
-(defmethod hud-update hud-health ((obj hud-health))
+(defmethod hud-update ((this hud-health))
   (if *target*
-      (tally-value
-        obj
-        (the int (-> *target* fact-info-target health))
-        (the-as int (-> *target* fact-info-target health-pickup-time))
-        )
+      (tally-value this (the int (-> *target* fact health)) (the-as int (-> *target* fact health-pickup-time)))
       )
   0
   (none)
@@ -400,74 +388,74 @@
 
 ;; definition for method 20 of type hud-health
 ;; INFO: Return type mismatch int vs none.
-(defmethod init-particles! hud-health ((obj hud-health) (arg0 int))
-  (when (< (-> obj nb-of-particles) (-> obj max-nb-of-particles))
-    (let ((s5-0 (-> obj nb-of-particles)))
-      (set! (-> obj particles s5-0) (new 'static 'hud-particle))
-      (set! (-> obj particles s5-0 part) (create-launch-control (-> *part-group-id-table* 76) obj))
-      (set! (-> obj particles s5-0 init-pos x) 61.0)
-      (set! (-> obj particles s5-0 init-pos y) 55.0)
-      (set! (-> obj particles s5-0 init-pos z) 5.0)
-      (set! (-> obj particles s5-0 part matrix) -1)
+(defmethod init-particles! ((this hud-health) (arg0 int))
+  (when (< (-> this nb-of-particles) (-> this max-nb-of-particles))
+    (let ((s5-0 (-> this nb-of-particles)))
+      (set! (-> this particles s5-0) (new 'static 'hud-particle))
+      (set! (-> this particles s5-0 part) (create-launch-control (-> *part-group-id-table* 76) this))
+      (set! (-> this particles s5-0 init-pos x) 61.0)
+      (set! (-> this particles s5-0 init-pos y) 55.0)
+      (set! (-> this particles s5-0 init-pos z) 5.0)
+      (set! (-> this particles s5-0 part matrix) -1)
       )
-    (+! (-> obj nb-of-particles) 1)
+    (+! (-> this nb-of-particles) 1)
     )
-  (when (< (-> obj nb-of-particles) (-> obj max-nb-of-particles))
-    (let ((s5-1 (-> obj nb-of-particles)))
-      (set! (-> obj particles s5-1) (new 'static 'hud-particle))
-      (set! (-> obj particles s5-1 part) (create-launch-control (-> *part-group-id-table* 77) obj))
-      (set! (-> obj particles s5-1 init-pos x) 98.0)
-      (set! (-> obj particles s5-1 init-pos y) 55.0)
-      (set! (-> obj particles s5-1 init-pos z) 5.0)
-      (set! (-> obj particles s5-1 part matrix) -1)
+  (when (< (-> this nb-of-particles) (-> this max-nb-of-particles))
+    (let ((s5-1 (-> this nb-of-particles)))
+      (set! (-> this particles s5-1) (new 'static 'hud-particle))
+      (set! (-> this particles s5-1 part) (create-launch-control (-> *part-group-id-table* 77) this))
+      (set! (-> this particles s5-1 init-pos x) 98.0)
+      (set! (-> this particles s5-1 init-pos y) 55.0)
+      (set! (-> this particles s5-1 init-pos z) 5.0)
+      (set! (-> this particles s5-1 part matrix) -1)
       )
-    (+! (-> obj nb-of-particles) 1)
+    (+! (-> this nb-of-particles) 1)
     )
-  (when (< (-> obj nb-of-particles) (-> obj max-nb-of-particles))
-    (let ((s5-2 (-> obj nb-of-particles)))
-      (set! (-> obj particles s5-2) (new 'static 'hud-particle))
-      (set! (-> obj particles s5-2 part) (create-launch-control (-> *part-group-id-table* 78) obj))
-      (set! (-> obj particles s5-2 init-pos x) 70.0)
-      (set! (-> obj particles s5-2 init-pos y) 76.0)
-      (set! (-> obj particles s5-2 init-pos z) 5.0)
-      (set! (-> obj particles s5-2 part matrix) -1)
+  (when (< (-> this nb-of-particles) (-> this max-nb-of-particles))
+    (let ((s5-2 (-> this nb-of-particles)))
+      (set! (-> this particles s5-2) (new 'static 'hud-particle))
+      (set! (-> this particles s5-2 part) (create-launch-control (-> *part-group-id-table* 78) this))
+      (set! (-> this particles s5-2 init-pos x) 70.0)
+      (set! (-> this particles s5-2 init-pos y) 76.0)
+      (set! (-> this particles s5-2 init-pos z) 5.0)
+      (set! (-> this particles s5-2 part matrix) -1)
       )
-    (+! (-> obj nb-of-particles) 1)
+    (+! (-> this nb-of-particles) 1)
     )
-  (dotimes (s5-3 (-> obj nb-of-particles))
-    (if (= (-> obj particles s5-3 part matrix) -1)
-        (set! (-> obj particles s5-3 part matrix) (sprite-allocate-user-hvdf))
+  (dotimes (s5-3 (-> this nb-of-particles))
+    (if (= (-> this particles s5-3 part matrix) -1)
+        (set! (-> this particles s5-3 part matrix) (sprite-allocate-user-hvdf))
         )
     )
-  (set-pos-and-scale obj (= (get-aspect-ratio) 'aspect16x9) (= (get-video-mode) 'pal))
-  (set! (-> obj x-sgn) -1)
-  (set! (-> obj y-sgn) -1)
-  (set! (-> obj friend) 0)
+  (set-pos-and-scale this (= (get-aspect-ratio) 'aspect16x9) (= (get-video-mode) 'pal))
+  (set! (-> this x-sgn) -1)
+  (set! (-> this y-sgn) -1)
+  (set! (-> this friend) 0)
   0
   (none)
   )
 
 ;; definition for method 24 of type hud-health
 ;; INFO: Return type mismatch int vs none.
-(defmethod set-pos-and-scale hud-health ((obj hud-health) (arg0 symbol) (arg1 symbol))
+(defmethod set-pos-and-scale ((this hud-health) (arg0 symbol) (arg1 symbol))
   (cond
     (arg0
-      (set! (-> obj particles 0 init-pos x) 65.0)
-      (set! (-> obj particles 0 init-pos y) 55.0)
-      (set! (-> obj particles 1 init-pos x) 98.0)
-      (set! (-> obj particles 1 init-pos y) 55.0)
-      (set! (-> obj particles 2 init-pos x) 73.0)
-      (set! (-> obj particles 2 init-pos y) 80.0)
-      (set! (-> obj scale) 6144.0)
+      (set! (-> this particles 0 init-pos x) 65.0)
+      (set! (-> this particles 0 init-pos y) 55.0)
+      (set! (-> this particles 1 init-pos x) 98.0)
+      (set! (-> this particles 1 init-pos y) 55.0)
+      (set! (-> this particles 2 init-pos x) 73.0)
+      (set! (-> this particles 2 init-pos y) 80.0)
+      (set! (-> this scale) 6144.0)
       )
     (else
-      (set! (-> obj particles 0 init-pos x) 61.0)
-      (set! (-> obj particles 0 init-pos y) 55.0)
-      (set! (-> obj particles 1 init-pos x) 98.0)
-      (set! (-> obj particles 1 init-pos y) 55.0)
-      (set! (-> obj particles 2 init-pos x) 70.0)
-      (set! (-> obj particles 2 init-pos y) 76.0)
-      (set! (-> obj scale) 6963.2)
+      (set! (-> this particles 0 init-pos x) 61.0)
+      (set! (-> this particles 0 init-pos y) 55.0)
+      (set! (-> this particles 1 init-pos x) 98.0)
+      (set! (-> this particles 1 init-pos y) 55.0)
+      (set! (-> this particles 2 init-pos x) 70.0)
+      (set! (-> this particles 2 init-pos y) 76.0)
+      (set! (-> this scale) 6963.2)
       )
     )
   0
@@ -499,49 +487,45 @@
 
 ;; definition of type hud-money-all
 (deftype hud-money-all (hud)
-  ((x-scale     float       :offset-assert 280)
-   (y-scale     float       :offset-assert 284)
-   (y-pos       int32       :offset-assert 288)
-   (total-orbs  int32       :offset-assert 292)
-   (level-index int32       :offset-assert 296)
-   (start-time  time-frame  :offset-assert 304)
+  ((x-scale      float)
+   (y-scale      float)
+   (y-pos        int32)
+   (total-orbs   int32)
+   (level-index  int32)
+   (start-time   time-frame)
    )
-  :heap-base #xd0
-  :method-count-assert 27
-  :size-assert         #x138
-  :flag-assert         #x1b00d00138
   )
 
 ;; definition for method 3 of type hud-money-all
-(defmethod inspect hud-money-all ((obj hud-money-all))
+(defmethod inspect ((this hud-money-all))
   (let ((t9-0 (method-of-type hud inspect)))
-    (t9-0 obj)
+    (t9-0 this)
     )
-  (format #t "~T~Tx-scale: ~f~%" (-> obj x-scale))
-  (format #t "~T~Ty-scale: ~f~%" (-> obj y-scale))
-  (format #t "~T~Ty-pos: ~D~%" (-> obj y-pos))
-  (format #t "~T~Ttotal-orbs: ~D~%" (-> obj total-orbs))
-  (format #t "~T~Tlevel-index: ~D~%" (-> obj level-index))
-  (format #t "~T~Tstart-time: ~D~%" (-> obj start-time))
-  obj
+  (format #t "~T~Tx-scale: ~f~%" (-> this x-scale))
+  (format #t "~T~Ty-scale: ~f~%" (-> this y-scale))
+  (format #t "~T~Ty-pos: ~D~%" (-> this y-pos))
+  (format #t "~T~Ttotal-orbs: ~D~%" (-> this total-orbs))
+  (format #t "~T~Tlevel-index: ~D~%" (-> this level-index))
+  (format #t "~T~Tstart-time: ~D~%" (-> this start-time))
+  this
   )
 
 ;; definition for method 15 of type hud-money-all
 ;; INFO: Return type mismatch int vs none.
-(defmethod draw-hud hud-money-all ((obj hud-money-all))
+(defmethod draw-hud ((this hud-money-all))
   (let ((t9-0 (method-of-type hud draw-hud)))
-    (t9-0 obj)
+    (t9-0 this)
     )
   0
   (let ((s5-0 0))
-    (when (>= (-> obj level-index) 0)
+    (when (>= (-> this level-index) 0)
       (let ((s5-1
               (new
                 'stack
                 'font-context
                 *font-default-matrix*
-                (+ (* (-> obj x-sgn) (-> obj offset)) -60 (-> obj text-x))
-                (+ (/ (* (+ (-> obj text-y) (* (-> obj y-sgn) (-> obj offset)) (-> obj y-offset))
+                (+ (* (-> this x-sgn) (-> this offset)) -60 (-> this text-x))
+                (+ (/ (* (+ (-> this text-y) (* (-> this y-sgn) (-> this offset)) (-> this y-offset))
                          (the int (-> *video-parms* relative-y-scale))
                          )
                       2
@@ -563,9 +547,9 @@
         (let ((v1-14 s5-1))
           (set! (-> v1-14 scale) 0.6)
           )
-        (set! (-> s5-1 flags) (font-flags shadow kerning middle left large))
+        (set! (-> s5-1 flags) (font-flags shadow kerning middle middle-vert large))
         (print-game-text
-          (lookup-text! *common-text* (-> *level-task-data* (-> obj level-index) level-name-id) #f)
+          (lookup-text! *common-text* (-> *level-task-data* (-> this level-index) level-name-id) #f)
           s5-1
           #f
           128
@@ -579,12 +563,12 @@
            (s4-1 (-> s3-0 base))
            )
       (let ((s2-0 draw-string-xy))
-        (format (clear *temp-string*) "~D/~D" (-> obj total-orbs) (-> obj total-orbs))
+        (format (clear *temp-string*) "~D/~D" (-> this total-orbs) (-> this total-orbs))
         (s2-0
           *temp-string*
           s3-0
-          (+ (-> obj text-x) (* (-> obj x-sgn) (-> obj offset)) s1-0)
-          (+ (/ (* (+ (-> obj text-y) (* (-> obj y-sgn) (-> obj offset)) (-> obj y-offset))
+          (+ (-> this text-x) (* (-> this x-sgn) (-> this offset)) s1-0)
+          (+ (/ (* (+ (-> this text-y) (* (-> this y-sgn) (-> this offset)) (-> this y-offset))
                    (the int (-> *video-parms* relative-y-scale))
                    )
                 2
@@ -617,15 +601,15 @@
 
 ;; definition for method 19 of type hud-money-all
 ;; INFO: Return type mismatch int vs none.
-(defmethod hud-update hud-money-all ((obj hud-money-all))
+(defmethod hud-update ((this hud-money-all))
   (when *target*
     (hide-bottom-hud)
     (when (!= *master-mode* 'pause)
-      (when (and (!= (-> obj icons 0) 0) (-> obj icons 0 icon))
-        (set! (-> obj icons 0 scale-x) (-> obj x-scale))
-        (set! (-> obj icons 0 scale-y) (-> obj y-scale))
-        (set! (-> obj icons 0 icon-y) (* (-> obj y-pos) (the int (-> *video-parms* relative-y-scale))))
-        (let ((a0-6 (-> obj icons 0 icon 0 root)))
+      (when (and (!= (-> this icons 0) 0) (-> this icons 0 icon))
+        (set! (-> this icons 0 scale-x) (-> this x-scale))
+        (set! (-> this icons 0 scale-y) (-> this y-scale))
+        (set! (-> this icons 0 icon-y) (* (-> this y-pos) (the int (-> *video-parms* relative-y-scale))))
+        (let ((a0-6 (-> this icons 0 icon 0 root)))
           (set-yaw-angle-clear-roll-pitch!
             a0-6
             (- (y-angle a0-6) (* 182.04445 (* 4.0 (-> *display* time-adjust-ratio))))
@@ -633,9 +617,9 @@
           )
         )
       )
-    (if (>= (+ (-> *display* base-frame-counter) (seconds -5)) (-> obj start-time))
-        (set! (-> obj deactivate-when-hidden) #t)
-        (tally-value obj (the-as int (-> *display* base-frame-counter)) 0)
+    (if (>= (+ (current-time) (seconds -5)) (-> this start-time))
+        (set! (-> this deactivate-when-hidden) #t)
+        (tally-value this (the-as int (current-time)) 0)
         )
     )
   0
@@ -644,11 +628,11 @@
 
 ;; definition for method 20 of type hud-money-all
 ;; INFO: Return type mismatch int vs none.
-(defmethod init-particles! hud-money-all ((obj hud-money-all) (arg0 int))
-  (when (< (-> obj nb-of-icons) 6)
-    (let ((s4-0 (-> obj nb-of-icons)))
-      (set! (-> obj icons s4-0) (new 'static 'hud-icon))
-      (let ((s3-0 (manipy-spawn (new 'static 'vector :w 1.0) #f *money-sg* #f :to obj)))
+(defmethod init-particles! ((this hud-money-all) (arg0 int))
+  (when (< (-> this nb-of-icons) 6)
+    (let ((s4-0 (-> this nb-of-icons)))
+      (set! (-> this icons s4-0) (new 'static 'hud-icon))
+      (let ((s3-0 (manipy-spawn (new 'static 'vector :w 1.0) #f *money-sg* #f :to this)))
         (when s3-0
           (set! (-> (the-as process-drawable (-> s3-0 0)) draw dma-add-func) dma-add-process-drawable-hud)
           (set-vector! (-> (the-as process-drawable (-> s3-0 0)) root trans) 0.0 0.0 0.0 1.0)
@@ -657,42 +641,42 @@
               (send-event (ppointer->process s3-0) 'trans-hook #f)
               )
           )
-        (set! (-> obj icons s4-0 icon) (the-as (pointer manipy) s3-0))
+        (set! (-> this icons s4-0 icon) (the-as (pointer manipy) s3-0))
         (when s3-0
           (logior! (-> s3-0 0 mask) (process-mask pause))
           (logclear! (-> s3-0 0 mask) (process-mask menu progress))
           (set! (-> (the-as process-drawable (-> s3-0 0)) root trans z) 1024.0)
-          (set! (-> obj icons s4-0 icon-x) 170)
-          (set! (-> obj icons s4-0 icon-y) 0)
-          (set! (-> obj icons s4-0 icon-z) 0)
-          (set! (-> obj icons s4-0 scale-x) 0.0095)
-          (set! (-> obj icons s4-0 scale-y) -0.011)
+          (set! (-> this icons s4-0 icon-x) 170)
+          (set! (-> this icons s4-0 icon-y) 0)
+          (set! (-> this icons s4-0 icon-z) 0)
+          (set! (-> this icons s4-0 scale-x) 0.0095)
+          (set! (-> this icons s4-0 scale-y) -0.011)
           )
         )
       )
-    (+! (-> obj nb-of-icons) 1)
+    (+! (-> this nb-of-icons) 1)
     )
-  (when (< (-> obj nb-of-particles) (-> obj max-nb-of-particles))
-    (let ((s4-1 (-> obj nb-of-particles)))
-      (set! (-> obj particles s4-1) (new 'static 'hud-particle))
-      (set! (-> obj particles s4-1 part) (create-launch-control (-> *part-group-id-table* 705) obj))
-      (set! (-> obj particles s4-1 init-pos x) 172.0)
-      (set! (-> obj particles s4-1 init-pos y) 330.0)
-      (set! (-> obj particles s4-1 init-pos z) 2.0)
-      (set! (-> obj particles s4-1 part matrix) -1)
+  (when (< (-> this nb-of-particles) (-> this max-nb-of-particles))
+    (let ((s4-1 (-> this nb-of-particles)))
+      (set! (-> this particles s4-1) (new 'static 'hud-particle))
+      (set! (-> this particles s4-1 part) (create-launch-control (-> *part-group-id-table* 705) this))
+      (set! (-> this particles s4-1 init-pos x) 172.0)
+      (set! (-> this particles s4-1 init-pos y) 330.0)
+      (set! (-> this particles s4-1 init-pos z) 2.0)
+      (set! (-> this particles s4-1 part matrix) -1)
       )
-    (+! (-> obj nb-of-particles) 1)
+    (+! (-> this nb-of-particles) 1)
     )
-  (set-pos-and-scale obj (= (get-aspect-ratio) 'aspect16x9) (= (get-video-mode) 'pal))
-  (dotimes (s4-3 (-> obj nb-of-particles))
-    (if (= (-> obj particles s4-3 part matrix) -1)
-        (set! (-> obj particles s4-3 part matrix) (sprite-allocate-user-hvdf))
+  (set-pos-and-scale this (= (get-aspect-ratio) 'aspect16x9) (= (get-video-mode) 'pal))
+  (dotimes (s4-3 (-> this nb-of-particles))
+    (if (= (-> this particles s4-3 part matrix) -1)
+        (set! (-> this particles s4-3 part matrix) (sprite-allocate-user-hvdf))
         )
     )
-  (set! (-> obj text-x) 251)
-  (set! (-> obj text-y) 305)
-  (set! (-> obj x-sgn) 0)
-  (set! (-> obj y-sgn) 1)
+  (set! (-> this text-x) 251)
+  (set! (-> this text-y) 305)
+  (set! (-> this x-sgn) 0)
+  (set! (-> this y-sgn) 1)
   (hide-bottom-hud)
   (let ((s4-4 0)
         (s3-2 0)
@@ -713,19 +697,19 @@
       )
     (cond
       ((= s3-2 s4-4)
-       (set! (-> obj total-orbs) s4-4)
-       (set! (-> obj total-orbs) s4-4)
-       (set! (-> obj level-index) -1)
+       (set! (-> this total-orbs) s4-4)
+       (set! (-> this total-orbs) s4-4)
+       (set! (-> this level-index) -1)
        )
-      ((begin (set! (-> obj total-orbs) s2-2) (< arg0 (length *level-task-data*)))
-       (set! (-> obj level-index) arg0)
+      ((begin (set! (-> this total-orbs) s2-2) (< arg0 (length *level-task-data*)))
+       (set! (-> this level-index) arg0)
        )
       (else
-        (set! (-> obj level-index) -1)
+        (set! (-> this level-index) -1)
         )
       )
     )
-  (set! (-> obj start-time) (-> *display* base-frame-counter))
+  (set-time! (-> this start-time))
   (sound-play "get-all-orbs")
   0
   (none)
@@ -733,27 +717,27 @@
 
 ;; definition for method 24 of type hud-money-all
 ;; INFO: Return type mismatch int vs none.
-(defmethod set-pos-and-scale hud-money-all ((obj hud-money-all) (arg0 symbol) (arg1 symbol))
+(defmethod set-pos-and-scale ((this hud-money-all) (arg0 symbol) (arg1 symbol))
   (cond
     (arg0
-      (set! (-> obj x-scale) 0.01845)
-      (set! (-> obj y-scale) -0.02175)
-      (set! (-> obj y-pos) (if arg1
-                               374
-                               373
-                               )
+      (set! (-> this x-scale) 0.01845)
+      (set! (-> this y-scale) -0.02175)
+      (set! (-> this y-pos) (if arg1
+                                374
+                                373
+                                )
             )
       )
     (else
-      (set! (-> obj x-scale) 0.013499999)
-      (set! (-> obj y-scale) -0.01575)
-      (set! (-> obj y-pos) 361)
+      (set! (-> this x-scale) 0.013499999)
+      (set! (-> this y-scale) -0.01575)
+      (set! (-> this y-pos) 361)
       )
     )
   (when arg1
-    (set! (-> obj x-scale) (* 1.02 (-> obj x-scale)))
-    (set! (-> obj y-scale) (* 1.2 (-> obj y-scale)))
-    (set! (-> obj y-pos) (the int (* 1.21 (the float (-> obj y-pos)))))
+    (set! (-> this x-scale) (* 1.02 (-> this x-scale)))
+    (set! (-> this y-scale) (* 1.2 (-> this y-scale)))
+    (set! (-> this y-pos) (the int (* 1.21 (the float (-> this y-pos)))))
     )
   0
   (none)
@@ -784,43 +768,39 @@
 
 ;; definition of type hud-money
 (deftype hud-money (hud)
-  ((x-scale float  :offset-assert 280)
-   (y-scale float  :offset-assert 284)
-   (y-pos   int32  :offset-assert 288)
+  ((x-scale  float)
+   (y-scale  float)
+   (y-pos    int32)
    )
-  :heap-base #xc0
-  :method-count-assert 27
-  :size-assert         #x124
-  :flag-assert         #x1b00c00124
   )
 
 ;; definition for method 3 of type hud-money
-(defmethod inspect hud-money ((obj hud-money))
+(defmethod inspect ((this hud-money))
   (let ((t9-0 (method-of-type hud inspect)))
-    (t9-0 obj)
+    (t9-0 this)
     )
-  (format #t "~T~Tx-scale: ~f~%" (-> obj x-scale))
-  (format #t "~T~Ty-scale: ~f~%" (-> obj y-scale))
-  (format #t "~T~Ty-pos: ~D~%" (-> obj y-pos))
-  obj
+  (format #t "~T~Tx-scale: ~f~%" (-> this x-scale))
+  (format #t "~T~Ty-scale: ~f~%" (-> this y-scale))
+  (format #t "~T~Ty-pos: ~D~%" (-> this y-pos))
+  this
   )
 
 ;; definition for method 15 of type hud-money
 ;; INFO: Return type mismatch int vs none.
-(defmethod draw-hud hud-money ((obj hud-money))
+(defmethod draw-hud ((this hud-money))
   (let ((t9-0 (method-of-type hud draw-hud)))
-    (t9-0 obj)
+    (t9-0 this)
     )
   (let* ((s5-0 (-> *display* frames (-> *display* on-screen) frame global-buf))
          (gp-0 (-> s5-0 base))
          )
     (let ((s4-0 draw-string-xy))
-      (format (clear *temp-string*) "~D" (-> obj value))
+      (format (clear *temp-string*) "~D" (-> this value))
       (s4-0
         *temp-string*
         s5-0
-        (+ (-> obj text-x) (* (-> obj x-sgn) (-> obj offset)))
-        (/ (* (+ (-> obj text-y) (* (-> obj y-sgn) (-> obj offset)) (-> obj y-offset))
+        (+ (-> this text-x) (* (-> this x-sgn) (-> this offset)))
+        (/ (* (+ (-> this text-y) (* (-> this y-sgn) (-> this offset)) (-> this y-offset))
               (the int (-> *video-parms* relative-y-scale))
               )
            2
@@ -850,14 +830,14 @@
 
 ;; definition for method 19 of type hud-money
 ;; INFO: Return type mismatch int vs none.
-(defmethod hud-update hud-money ((obj hud-money))
+(defmethod hud-update ((this hud-money))
   (when *target*
     (when (!= *master-mode* 'pause)
-      (when (and (!= (-> obj icons 0) 0) (-> obj icons 0 icon))
-        (set! (-> obj icons 0 scale-x) (-> obj x-scale))
-        (set! (-> obj icons 0 scale-y) (-> obj y-scale))
-        (set! (-> obj icons 0 icon-y) (* (-> obj y-pos) (the int (-> *video-parms* relative-y-scale))))
-        (let ((a0-6 (-> obj icons 0 icon 0 root)))
+      (when (and (!= (-> this icons 0) 0) (-> this icons 0 icon))
+        (set! (-> this icons 0 scale-x) (-> this x-scale))
+        (set! (-> this icons 0 scale-y) (-> this y-scale))
+        (set! (-> this icons 0 icon-y) (* (-> this y-pos) (the int (-> *video-parms* relative-y-scale))))
+        (let ((a0-6 (-> this icons 0 icon 0 root)))
           (set-yaw-angle-clear-roll-pitch!
             a0-6
             (- (y-angle a0-6) (* 182.04445 (* 4.0 (-> *display* time-adjust-ratio))))
@@ -865,7 +845,7 @@
           )
         )
       )
-    (tally-value obj (the int (+ 0.5 (-> *target* game money))) 0)
+    (tally-value this (the int (+ 0.5 (-> *target* game money))) 0)
     )
   0
   (none)
@@ -873,11 +853,11 @@
 
 ;; definition for method 20 of type hud-money
 ;; INFO: Return type mismatch int vs none.
-(defmethod init-particles! hud-money ((obj hud-money) (arg0 int))
-  (when (< (-> obj nb-of-icons) 6)
-    (let ((s5-0 (-> obj nb-of-icons)))
-      (set! (-> obj icons s5-0) (new 'static 'hud-icon))
-      (let ((s4-0 (manipy-spawn (new 'static 'vector :w 1.0) #f *money-sg* #f :to obj)))
+(defmethod init-particles! ((this hud-money) (arg0 int))
+  (when (< (-> this nb-of-icons) 6)
+    (let ((s5-0 (-> this nb-of-icons)))
+      (set! (-> this icons s5-0) (new 'static 'hud-icon))
+      (let ((s4-0 (manipy-spawn (new 'static 'vector :w 1.0) #f *money-sg* #f :to this)))
         (when s4-0
           (set! (-> (the-as process-drawable (-> s4-0 0)) draw dma-add-func) dma-add-process-drawable-hud)
           (set-vector! (-> (the-as process-drawable (-> s4-0 0)) root trans) 0.0 0.0 0.0 1.0)
@@ -886,71 +866,71 @@
               (send-event (ppointer->process s4-0) 'trans-hook #f)
               )
           )
-        (set! (-> obj icons s5-0 icon) (the-as (pointer manipy) s4-0))
+        (set! (-> this icons s5-0 icon) (the-as (pointer manipy) s4-0))
         (when s4-0
           (logior! (-> s4-0 0 mask) (process-mask pause))
           (logclear! (-> s4-0 0 mask) (process-mask menu progress))
           (set! (-> (the-as process-drawable (-> s4-0 0)) root trans z) 1024.0)
-          (set! (-> obj icons s5-0 icon-x) 399)
-          (set! (-> obj icons s5-0 icon-y) 79)
-          (set! (-> obj icons s5-0 icon-z) 0)
-          (set! (-> obj icons s5-0 scale-x) 0.0095)
-          (set! (-> obj icons s5-0 scale-y) -0.011)
+          (set! (-> this icons s5-0 icon-x) 399)
+          (set! (-> this icons s5-0 icon-y) 79)
+          (set! (-> this icons s5-0 icon-z) 0)
+          (set! (-> this icons s5-0 scale-x) 0.0095)
+          (set! (-> this icons s5-0 scale-y) -0.011)
           )
         )
       )
-    (+! (-> obj nb-of-icons) 1)
+    (+! (-> this nb-of-icons) 1)
     )
-  (when (< (-> obj nb-of-particles) (-> obj max-nb-of-particles))
-    (let ((s5-1 (-> obj nb-of-particles)))
-      (set! (-> obj particles s5-1) (new 'static 'hud-particle))
-      (set! (-> obj particles s5-1 part) (create-launch-control (-> *part-group-id-table* 79) obj))
-      (set! (-> obj particles s5-1 init-pos x) 400.0)
-      (set! (-> obj particles s5-1 init-pos y) 58.0)
-      (set! (-> obj particles s5-1 init-pos z) 2.0)
-      (set! (-> obj particles s5-1 part matrix) -1)
+  (when (< (-> this nb-of-particles) (-> this max-nb-of-particles))
+    (let ((s5-1 (-> this nb-of-particles)))
+      (set! (-> this particles s5-1) (new 'static 'hud-particle))
+      (set! (-> this particles s5-1 part) (create-launch-control (-> *part-group-id-table* 79) this))
+      (set! (-> this particles s5-1 init-pos x) 400.0)
+      (set! (-> this particles s5-1 init-pos y) 58.0)
+      (set! (-> this particles s5-1 init-pos z) 2.0)
+      (set! (-> this particles s5-1 part matrix) -1)
       )
-    (+! (-> obj nb-of-particles) 1)
+    (+! (-> this nb-of-particles) 1)
     )
-  (set-pos-and-scale obj (= (get-aspect-ratio) 'aspect16x9) (= (get-video-mode) 'pal))
-  (dotimes (s5-3 (-> obj nb-of-particles))
-    (if (= (-> obj particles s5-3 part matrix) -1)
-        (set! (-> obj particles s5-3 part matrix) (sprite-allocate-user-hvdf))
+  (set-pos-and-scale this (= (get-aspect-ratio) 'aspect16x9) (= (get-video-mode) 'pal))
+  (dotimes (s5-3 (-> this nb-of-particles))
+    (if (= (-> this particles s5-3 part matrix) -1)
+        (set! (-> this particles s5-3 part matrix) (sprite-allocate-user-hvdf))
         )
     )
-  (set! (-> obj text-x) 420)
-  (set! (-> obj text-y) 45)
-  (set! (-> obj x-sgn) 1)
-  (set! (-> obj y-sgn) -1)
-  (set! (-> obj increment-on-event) #t)
+  (set! (-> this text-x) 420)
+  (set! (-> this text-y) 45)
+  (set! (-> this x-sgn) 1)
+  (set! (-> this y-sgn) -1)
+  (set! (-> this increment-on-event) #t)
   0
   (none)
   )
 
 ;; definition for method 24 of type hud-money
 ;; INFO: Return type mismatch int vs none.
-(defmethod set-pos-and-scale hud-money ((obj hud-money) (arg0 symbol) (arg1 symbol))
+(defmethod set-pos-and-scale ((this hud-money) (arg0 symbol) (arg1 symbol))
   (cond
     (arg0
-      (set! (-> obj x-scale) 0.0123)
-      (set! (-> obj y-scale) -0.0145)
-      (set! (-> obj y-pos) 86)
+      (set! (-> this x-scale) 0.0123)
+      (set! (-> this y-scale) -0.0145)
+      (set! (-> this y-pos) 86)
       )
     (else
-      (set! (-> obj x-scale) 0.0095)
-      (set! (-> obj y-scale) -0.011)
-      (set! (-> obj y-pos) 79)
+      (set! (-> this x-scale) 0.0095)
+      (set! (-> this y-scale) -0.011)
+      (set! (-> this y-pos) 79)
       )
     )
   (when arg1
-    (set! (-> obj x-scale) (* 1.1 (-> obj x-scale)))
-    (set! (-> obj y-scale) (* 1.2 (-> obj y-scale)))
-    (set! (-> obj y-pos) (the int (* (the float (-> obj y-pos)) (if arg0
-                                                                    0.95
-                                                                    0.9
-                                                                    )
-                                     )
-                              )
+    (set! (-> this x-scale) (* 1.1 (-> this x-scale)))
+    (set! (-> this y-scale) (* 1.2 (-> this y-scale)))
+    (set! (-> this y-pos) (the int (* (the float (-> this y-pos)) (if arg0
+                                                                      0.95
+                                                                      0.9
+                                                                      )
+                                      )
+                               )
           )
     )
   0
@@ -958,22 +938,22 @@
   )
 
 ;; definition for method 21 of type hud-money
-(defmethod get-icon-pos-x hud-money ((obj hud-money))
-  (-> obj icons 0 icon-x)
+(defmethod get-icon-pos-x ((this hud-money))
+  (-> this icons 0 icon-x)
   )
 
 ;; definition for method 22 of type hud-money
-(defmethod get-icon-pos-y hud-money ((obj hud-money))
-  (-> obj icons 0 icon-y)
+(defmethod get-icon-pos-y ((this hud-money))
+  (-> this icons 0 icon-y)
   )
 
 ;; definition for method 25 of type hud-money
-(defmethod get-icon-scale-x hud-money ((obj hud-money))
+(defmethod get-icon-scale-x ((this hud-money))
   0.01
   )
 
 ;; definition for method 26 of type hud-money
-(defmethod get-icon-scale-y hud-money ((obj hud-money))
+(defmethod get-icon-scale-y ((this hud-money))
   -0.011
   )
 
@@ -1195,51 +1175,47 @@
 
 ;; definition of type hud-fuel-cell
 (deftype hud-fuel-cell (hud)
-  ((scale-starburst-3-x float  :offset-assert 280)
-   (scale-starburst-3-y float  :offset-assert 284)
-   (scale-starburst-4-x float  :offset-assert 288)
-   (scale-starburst-4-y float  :offset-assert 292)
-   (scale-icon          float  :offset-assert 296)
-   (scale-center        float  :offset-assert 300)
-   (icon-pos-y          int32  :offset-assert 304)
+  ((scale-starburst-3-x  float)
+   (scale-starburst-3-y  float)
+   (scale-starburst-4-x  float)
+   (scale-starburst-4-y  float)
+   (scale-icon           float)
+   (scale-center         float)
+   (icon-pos-y           int32)
    )
-  :heap-base #xd0
-  :method-count-assert 27
-  :size-assert         #x134
-  :flag-assert         #x1b00d00134
   )
 
 ;; definition for method 3 of type hud-fuel-cell
-(defmethod inspect hud-fuel-cell ((obj hud-fuel-cell))
+(defmethod inspect ((this hud-fuel-cell))
   (let ((t9-0 (method-of-type hud inspect)))
-    (t9-0 obj)
+    (t9-0 this)
     )
-  (format #t "~T~Tscale-starburst-3-x: ~f~%" (-> obj scale-starburst-3-x))
-  (format #t "~T~Tscale-starburst-3-y: ~f~%" (-> obj scale-starburst-3-y))
-  (format #t "~T~Tscale-starburst-4-x: ~f~%" (-> obj scale-starburst-4-x))
-  (format #t "~T~Tscale-starburst-4-y: ~f~%" (-> obj scale-starburst-4-y))
-  (format #t "~T~Tscale-icon: ~f~%" (-> obj scale-icon))
-  (format #t "~T~Tscale-center: ~f~%" (-> obj scale-center))
-  (format #t "~T~Ticon-pos-y: ~D~%" (-> obj icon-pos-y))
-  obj
+  (format #t "~T~Tscale-starburst-3-x: ~f~%" (-> this scale-starburst-3-x))
+  (format #t "~T~Tscale-starburst-3-y: ~f~%" (-> this scale-starburst-3-y))
+  (format #t "~T~Tscale-starburst-4-x: ~f~%" (-> this scale-starburst-4-x))
+  (format #t "~T~Tscale-starburst-4-y: ~f~%" (-> this scale-starburst-4-y))
+  (format #t "~T~Tscale-icon: ~f~%" (-> this scale-icon))
+  (format #t "~T~Tscale-center: ~f~%" (-> this scale-center))
+  (format #t "~T~Ticon-pos-y: ~D~%" (-> this icon-pos-y))
+  this
   )
 
 ;; definition for method 15 of type hud-fuel-cell
 ;; INFO: Return type mismatch int vs none.
-(defmethod draw-hud hud-fuel-cell ((obj hud-fuel-cell))
+(defmethod draw-hud ((this hud-fuel-cell))
   (let ((t9-0 (method-of-type hud draw-hud)))
-    (t9-0 obj)
+    (t9-0 this)
     )
   (let* ((s5-0 (-> *display* frames (-> *display* on-screen) frame global-buf))
          (gp-0 (-> s5-0 base))
          )
     (let ((s4-0 draw-string-xy))
-      (format (clear *temp-string*) "~D" (-> obj value))
+      (format (clear *temp-string*) "~D" (-> this value))
       (s4-0
         *temp-string*
         s5-0
-        (+ (-> obj text-x) (* (-> obj x-sgn) (-> obj offset)))
-        (/ (* (+ (-> obj text-y) (* (-> obj y-sgn) (-> obj offset)) (-> obj y-offset))
+        (+ (-> this text-x) (* (-> this x-sgn) (-> this offset)))
+        (/ (* (+ (-> this text-y) (* (-> this y-sgn) (-> this offset)) (-> this y-offset))
               (the int (-> *video-parms* relative-y-scale))
               )
            2
@@ -1321,23 +1297,23 @@
 
 ;; definition for method 19 of type hud-fuel-cell
 ;; INFO: Return type mismatch int vs none.
-(defmethod hud-update hud-fuel-cell ((obj hud-fuel-cell))
+(defmethod hud-update ((this hud-fuel-cell))
   (when *target*
     (when (!= *master-mode* 'pause)
-      (let ((a0-2 (-> obj icons 0 icon 0 root)))
+      (let ((a0-2 (-> this icons 0 icon 0 root)))
         (set-yaw-angle-clear-roll-pitch!
           a0-2
           (+ (y-angle a0-2) (* 182.04445 (* 0.5 (-> *display* time-adjust-ratio))))
           )
         )
       )
-    (set! (-> obj icons 0 icon-y) (-> obj icon-pos-y))
-    (tally-value obj (the int (+ 0.5 (-> *target* game fuel))) 0)
+    (set! (-> this icons 0 icon-y) (-> this icon-pos-y))
+    (tally-value this (the int (+ 0.5 (-> *target* game fuel))) 0)
     (let ((s5-1 (new 'stack-no-clear 'vector)))
-      (vector<-cspace! s5-1 (-> obj icons 0 icon 0 node-list data 3))
-      (set! (-> obj particles 0 pos x) (-> s5-1 x))
-      (set! (-> obj particles 0 pos y) (* 0.5 (-> s5-1 y)))
-      (set! (-> obj particles 0 pos z) (+ 2.0 (* 0.05 (+ -2048.0 (-> s5-1 z)))))
+      (vector<-cspace! s5-1 (-> this icons 0 icon 0 node-list data 3))
+      (set! (-> this particles 0 pos x) (-> s5-1 x))
+      (set! (-> this particles 0 pos y) (* 0.5 (-> s5-1 y)))
+      (set! (-> this particles 0 pos z) (+ 2.0 (* 0.05 (+ -2048.0 (-> s5-1 z)))))
       )
     )
   0
@@ -1346,27 +1322,27 @@
 
 ;; definition for method 20 of type hud-fuel-cell
 ;; INFO: Return type mismatch int vs none.
-(defmethod init-particles! hud-fuel-cell ((obj hud-fuel-cell) (arg0 int))
-  (when (< (-> obj nb-of-particles) (-> obj max-nb-of-particles))
-    (let ((s5-0 (-> obj nb-of-particles)))
-      (set! (-> obj particles s5-0) (new 'static 'hud-particle))
-      (set! (-> obj particles s5-0 part) (create-launch-control (-> *part-group-id-table* 80) obj))
-      (set! (-> obj particles s5-0 init-pos x) 256.0)
-      (set! (-> obj particles s5-0 init-pos y) 224.0)
-      (set! (-> obj particles s5-0 init-pos z) 1.0)
-      (set! (-> obj particles s5-0 part matrix) -1)
+(defmethod init-particles! ((this hud-fuel-cell) (arg0 int))
+  (when (< (-> this nb-of-particles) (-> this max-nb-of-particles))
+    (let ((s5-0 (-> this nb-of-particles)))
+      (set! (-> this particles s5-0) (new 'static 'hud-particle))
+      (set! (-> this particles s5-0 part) (create-launch-control (-> *part-group-id-table* 80) this))
+      (set! (-> this particles s5-0 init-pos x) 256.0)
+      (set! (-> this particles s5-0 init-pos y) 224.0)
+      (set! (-> this particles s5-0 init-pos z) 1.0)
+      (set! (-> this particles s5-0 part matrix) -1)
       )
-    (+! (-> obj nb-of-particles) 1)
+    (+! (-> this nb-of-particles) 1)
     )
-  (dotimes (s5-1 (-> obj nb-of-particles))
-    (if (= (-> obj particles s5-1 part matrix) -1)
-        (set! (-> obj particles s5-1 part matrix) (sprite-allocate-user-hvdf))
+  (dotimes (s5-1 (-> this nb-of-particles))
+    (if (= (-> this particles s5-1 part matrix) -1)
+        (set! (-> this particles s5-1 part matrix) (sprite-allocate-user-hvdf))
         )
     )
-  (when (< (-> obj nb-of-icons) 6)
-    (let ((s5-2 (-> obj nb-of-icons)))
-      (set! (-> obj icons s5-2) (new 'static 'hud-icon))
-      (let ((s4-0 (manipy-spawn (new 'static 'vector :w 1.0) #f *fuelcell-naked-sg* #f :to obj)))
+  (when (< (-> this nb-of-icons) 6)
+    (let ((s5-2 (-> this nb-of-icons)))
+      (set! (-> this icons s5-2) (new 'static 'hud-icon))
+      (let ((s4-0 (manipy-spawn (new 'static 'vector :w 1.0) #f *fuelcell-naked-sg* #f :to this)))
         (when s4-0
           (set! (-> (the-as process-drawable (-> s4-0 0)) draw dma-add-func) dma-add-process-drawable-hud)
           (set-vector! (-> (the-as process-drawable (-> s4-0 0)) root trans) 0.0 0.0 0.0 1.0)
@@ -1375,31 +1351,31 @@
               (send-event (ppointer->process s4-0) 'trans-hook #f)
               )
           )
-        (set! (-> obj icons s5-2 icon) (the-as (pointer manipy) s4-0))
+        (set! (-> this icons s5-2 icon) (the-as (pointer manipy) s4-0))
         (when s4-0
           (logior! (-> s4-0 0 mask) (process-mask pause))
           (logclear! (-> s4-0 0 mask) (process-mask menu progress))
           (set! (-> (the-as process-drawable (-> s4-0 0)) root trans z) 2048.0)
-          (set! (-> obj icons s5-2 icon-x) 256)
-          (set! (-> obj icons s5-2 icon-y) 62)
-          (set! (-> obj icons s5-2 icon-z) 0)
-          (set! (-> obj icons s5-2 scale-x) 0.009)
-          (set! (-> obj icons s5-2 scale-y) 0.009)
+          (set! (-> this icons s5-2 icon-x) 256)
+          (set! (-> this icons s5-2 icon-y) 62)
+          (set! (-> this icons s5-2 icon-z) 0)
+          (set! (-> this icons s5-2 scale-x) 0.009)
+          (set! (-> this icons s5-2 scale-y) 0.009)
           )
         )
       )
-    (+! (-> obj nb-of-icons) 1)
+    (+! (-> this nb-of-icons) 1)
     )
-  (set! (-> obj text-x) 276)
-  (set! (-> obj text-y) 45)
-  (set! (-> obj x-sgn) 0)
-  (set! (-> obj y-sgn) -1)
-  (set! (-> obj increment-on-event) #t)
-  (set! (-> obj skip-particle) -2)
-  (set-pos-and-scale obj (= (get-aspect-ratio) 'aspect16x9) (= (get-video-mode) 'pal))
+  (set! (-> this text-x) 276)
+  (set! (-> this text-y) 45)
+  (set! (-> this x-sgn) 0)
+  (set! (-> this y-sgn) -1)
+  (set! (-> this increment-on-event) #t)
+  (set! (-> this skip-particle) -2)
+  (set-pos-and-scale this (= (get-aspect-ratio) 'aspect16x9) (= (get-video-mode) 'pal))
   (let ((s5-4 (new 'stack-no-clear 'quaternion)))
     (quaternion-axis-angle! s5-4 0.0 1.0 0.0 16384.0)
-    (quaternion*! (-> obj icons 0 icon 0 root quat) s5-4 (-> obj icons 0 icon 0 root quat))
+    (quaternion*! (-> this icons 0 icon 0 root quat) s5-4 (-> this icons 0 icon 0 root quat))
     )
   0
   (none)
@@ -1407,34 +1383,34 @@
 
 ;; definition for method 24 of type hud-fuel-cell
 ;; INFO: Return type mismatch int vs none.
-(defmethod set-pos-and-scale hud-fuel-cell ((obj hud-fuel-cell) (arg0 symbol) (arg1 symbol))
+(defmethod set-pos-and-scale ((this hud-fuel-cell) (arg0 symbol) (arg1 symbol))
   (cond
     (arg0
-      (set! (-> obj scale-starburst-3-x) 10240.0)
-      (set! (-> obj scale-starburst-3-y) 9420.8)
-      (set! (-> obj scale-starburst-4-x) 9420.8)
-      (set! (-> obj scale-starburst-4-y) 8192.0)
-      (set! (-> obj scale-icon) 0.007)
-      (set! (-> obj scale-center) 6144.0)
-      (set! (-> obj icon-pos-y) 62)
+      (set! (-> this scale-starburst-3-x) 10240.0)
+      (set! (-> this scale-starburst-3-y) 9420.8)
+      (set! (-> this scale-starburst-4-x) 9420.8)
+      (set! (-> this scale-starburst-4-y) 8192.0)
+      (set! (-> this scale-icon) 0.007)
+      (set! (-> this scale-center) 6144.0)
+      (set! (-> this icon-pos-y) 62)
       )
     (else
-      (set! (-> obj scale-starburst-3-x) 12288.0)
-      (set! (-> obj scale-starburst-3-y) 10240.0)
-      (set! (-> obj scale-starburst-4-x) 12288.0)
-      (set! (-> obj scale-starburst-4-y) 10240.0)
-      (set! (-> obj scale-icon) 0.009)
-      (set! (-> obj scale-center) 7372.8)
-      (set! (-> obj icon-pos-y) 62)
+      (set! (-> this scale-starburst-3-x) 12288.0)
+      (set! (-> this scale-starburst-3-y) 10240.0)
+      (set! (-> this scale-starburst-4-x) 12288.0)
+      (set! (-> this scale-starburst-4-y) 10240.0)
+      (set! (-> this scale-icon) 0.009)
+      (set! (-> this scale-center) 7372.8)
+      (set! (-> this icon-pos-y) 62)
       )
     )
   (if arg1
-      (set! (-> obj icon-pos-y) (the int (* (the float (-> obj icon-pos-y)) (if arg0
-                                                                                1.1
-                                                                                1.14
-                                                                                )
-                                            )
-                                     )
+      (set! (-> this icon-pos-y) (the int (* (the float (-> this icon-pos-y)) (if arg0
+                                                                                  1.1
+                                                                                  1.14
+                                                                                  )
+                                             )
+                                      )
             )
       )
   0
@@ -1488,23 +1464,19 @@
 
 ;; definition of type hud-buzzers
 (deftype hud-buzzers (hud)
-  ((scale         float  :offset-assert 280)
-   (text-y-offset int32  :offset-assert 284)
+  ((scale          float)
+   (text-y-offset  int32)
    )
-  :heap-base #xb0
-  :method-count-assert 27
-  :size-assert         #x120
-  :flag-assert         #x1b00b00120
   )
 
 ;; definition for method 3 of type hud-buzzers
-(defmethod inspect hud-buzzers ((obj hud-buzzers))
+(defmethod inspect ((this hud-buzzers))
   (let ((t9-0 (method-of-type hud inspect)))
-    (t9-0 obj)
+    (t9-0 this)
     )
-  (format #t "~T~Tscale: ~f~%" (-> obj scale))
-  (format #t "~T~Ttext-y-offset: ~D~%" (-> obj text-y-offset))
-  obj
+  (format #t "~T~Tscale: ~f~%" (-> this scale))
+  (format #t "~T~Ttext-y-offset: ~D~%" (-> this text-y-offset))
+  this
   )
 
 ;; definition for function part-hud-buzzer-func
@@ -1519,27 +1491,27 @@
 
 ;; definition for method 15 of type hud-buzzers
 ;; INFO: Return type mismatch int vs none.
-(defmethod draw-hud hud-buzzers ((obj hud-buzzers))
+(defmethod draw-hud ((this hud-buzzers))
   (let ((t9-0 (method-of-type hud draw-hud)))
-    (t9-0 obj)
+    (t9-0 this)
     )
-  (set! (-> obj text-y) (+ (if (nonzero? (-> obj next-y-offset))
-                               (-> obj text-y-offset)
-                               0
-                               )
-                           362
-                           )
+  (set! (-> this text-y) (+ (if (nonzero? (-> this next-y-offset))
+                                (-> this text-y-offset)
+                                0
+                                )
+                            362
+                            )
         )
   (let* ((s5-0 (-> *display* frames (-> *display* on-screen) frame global-buf))
          (gp-0 (-> s5-0 base))
          )
     (let ((s3-0 draw-string-xy))
-      (format (clear *temp-string*) "~2,' D" (-> obj value))
+      (format (clear *temp-string*) "~2,' D" (-> this value))
       (s3-0
         *temp-string*
         s5-0
-        (+ (-> obj text-x) (* (-> obj x-sgn) (-> obj offset)))
-        (/ (* (+ (-> obj text-y) (* (-> obj y-sgn) (-> obj offset)) (-> obj y-offset))
+        (+ (-> this text-x) (* (-> this x-sgn) (-> this offset)))
+        (/ (* (+ (-> this text-y) (* (-> this y-sgn) (-> this offset)) (-> this y-offset))
               (the int (-> *video-parms* relative-y-scale))
               )
            2
@@ -1569,9 +1541,9 @@
 
 ;; definition for method 19 of type hud-buzzers
 ;; INFO: Return type mismatch int vs none.
-(defmethod hud-update hud-buzzers ((obj hud-buzzers))
+(defmethod hud-update ((this hud-buzzers))
   (if *target*
-      (tally-value obj (the int (+ 0.5 (-> *target* fact-info-target buzzer))) 0)
+      (tally-value this (the int (+ 0.5 (-> *target* fact buzzer))) 0)
       )
   0
   (none)
@@ -1579,70 +1551,70 @@
 
 ;; definition for method 20 of type hud-buzzers
 ;; INFO: Return type mismatch int vs none.
-(defmethod init-particles! hud-buzzers ((obj hud-buzzers) (arg0 int))
-  (when (< (-> obj nb-of-particles) (-> obj max-nb-of-particles))
-    (let ((s5-0 (-> obj nb-of-particles)))
-      (set! (-> obj particles s5-0) (new 'static 'hud-particle))
-      (set! (-> obj particles s5-0 part) (create-launch-control (-> *part-group-id-table* 81) obj))
-      (set! (-> obj particles s5-0 init-pos x) 60.0)
-      (set! (-> obj particles s5-0 init-pos y) 380.0)
-      (set! (-> obj particles s5-0 init-pos z) 1.0)
-      (set! (-> obj particles s5-0 part matrix) -1)
+(defmethod init-particles! ((this hud-buzzers) (arg0 int))
+  (when (< (-> this nb-of-particles) (-> this max-nb-of-particles))
+    (let ((s5-0 (-> this nb-of-particles)))
+      (set! (-> this particles s5-0) (new 'static 'hud-particle))
+      (set! (-> this particles s5-0 part) (create-launch-control (-> *part-group-id-table* 81) this))
+      (set! (-> this particles s5-0 init-pos x) 60.0)
+      (set! (-> this particles s5-0 init-pos y) 380.0)
+      (set! (-> this particles s5-0 init-pos z) 1.0)
+      (set! (-> this particles s5-0 part matrix) -1)
       )
-    (+! (-> obj nb-of-particles) 1)
+    (+! (-> this nb-of-particles) 1)
     )
-  (dotimes (s5-1 (-> obj nb-of-particles))
-    (if (= (-> obj particles s5-1 part matrix) -1)
-        (set! (-> obj particles s5-1 part matrix) (sprite-allocate-user-hvdf))
+  (dotimes (s5-1 (-> this nb-of-particles))
+    (if (= (-> this particles s5-1 part matrix) -1)
+        (set! (-> this particles s5-1 part matrix) (sprite-allocate-user-hvdf))
         )
     )
-  (set-pos-and-scale obj (= (get-aspect-ratio) 'aspect16x9) (= (get-video-mode) 'pal))
-  (set! (-> obj text-x) 85)
-  (set! (-> obj text-y) 362)
-  (set! (-> obj x-sgn) -1)
-  (set! (-> obj y-sgn) 1)
-  (set! (-> obj text-y-offset) 0)
-  (set! (-> obj increment-on-event) #t)
+  (set-pos-and-scale this (= (get-aspect-ratio) 'aspect16x9) (= (get-video-mode) 'pal))
+  (set! (-> this text-x) 85)
+  (set! (-> this text-y) 362)
+  (set! (-> this x-sgn) -1)
+  (set! (-> this y-sgn) 1)
+  (set! (-> this text-y-offset) 0)
+  (set! (-> this increment-on-event) #t)
   0
   (none)
   )
 
 ;; definition for method 21 of type hud-buzzers
-(defmethod get-icon-pos-x hud-buzzers ((obj hud-buzzers))
-  (-> obj text-x)
+(defmethod get-icon-pos-x ((this hud-buzzers))
+  (-> this text-x)
   )
 
 ;; definition for method 22 of type hud-buzzers
-(defmethod get-icon-pos-y hud-buzzers ((obj hud-buzzers))
+(defmethod get-icon-pos-y ((this hud-buzzers))
   (+ (if (= (-> *setting-control* current video-mode) 'pal)
-         (+ (-> obj text-y) 120)
-         (+ (-> obj text-y) 50)
+         (+ (-> this text-y) 120)
+         (+ (-> this text-y) 50)
          )
-     (-> obj next-y-offset)
+     (-> this next-y-offset)
      )
   )
 
 ;; definition for method 25 of type hud-buzzers
-(defmethod get-icon-scale-x hud-buzzers ((obj hud-buzzers))
+(defmethod get-icon-scale-x ((this hud-buzzers))
   0.008
   )
 
 ;; definition for method 26 of type hud-buzzers
-(defmethod get-icon-scale-y hud-buzzers ((obj hud-buzzers))
+(defmethod get-icon-scale-y ((this hud-buzzers))
   -0.008
   )
 
 ;; definition for method 24 of type hud-buzzers
 ;; INFO: Return type mismatch int vs none.
-(defmethod set-pos-and-scale hud-buzzers ((obj hud-buzzers) (arg0 symbol) (arg1 symbol))
+(defmethod set-pos-and-scale ((this hud-buzzers) (arg0 symbol) (arg1 symbol))
   (cond
     (arg0
-      (set! (-> obj scale) 6553.6)
-      (set! (-> obj text-y-offset) -40)
+      (set! (-> this scale) 6553.6)
+      (set! (-> this text-y-offset) -40)
       )
     (else
-      (set! (-> obj scale) 7372.8)
-      (set! (-> obj text-y-offset) 0)
+      (set! (-> this scale) 7372.8)
+      (set! (-> this text-y-offset) 0)
       0
       )
     )
@@ -1756,25 +1728,21 @@
 
 ;; definition of type hud-power
 (deftype hud-power (hud)
-  ((scale-timer   float  :offset-assert 280)
-   (scale-backing float  :offset-assert 284)
-   (scale-blue    float  :offset-assert 288)
+  ((scale-timer    float)
+   (scale-backing  float)
+   (scale-blue     float)
    )
-  :heap-base #xc0
-  :method-count-assert 27
-  :size-assert         #x124
-  :flag-assert         #x1b00c00124
   )
 
 ;; definition for method 3 of type hud-power
-(defmethod inspect hud-power ((obj hud-power))
+(defmethod inspect ((this hud-power))
   (let ((t9-0 (method-of-type hud inspect)))
-    (t9-0 obj)
+    (t9-0 this)
     )
-  (format #t "~T~Tscale-timer: ~f~%" (-> obj scale-timer))
-  (format #t "~T~Tscale-backing: ~f~%" (-> obj scale-backing))
-  (format #t "~T~Tscale-blue: ~f~%" (-> obj scale-blue))
-  obj
+  (format #t "~T~Tscale-timer: ~f~%" (-> this scale-timer))
+  (format #t "~T~Tscale-backing: ~f~%" (-> this scale-backing))
+  (format #t "~T~Tscale-blue: ~f~%" (-> this scale-blue))
+  this
   )
 
 ;; definition for function calculate-rotation-and-color-for-slice
@@ -1824,12 +1792,10 @@
 (defun part-hud-eco-timer-01-func ((arg0 basic) (arg1 basic) (arg2 hud-particle))
   (let ((f0-2
           (/ (the float
-                  (the-as
-                    uint
-                    (- (-> *target* fact-info-target eco-timeout)
-                       (the-as uint (- (-> *display* game-frame-counter) (-> *target* fact-info-target eco-pickup-time)))
-                       )
-                    )
+                  (the-as uint (- (-> *target* fact eco-timeout)
+                                  (the-as uint (- (-> *display* game-frame-counter) (-> *target* fact eco-pickup-time)))
+                                  )
+                          )
                   )
              (the float (the-as uint (-> *FACT-bank* eco-full-timeout)))
              )
@@ -1838,7 +1804,7 @@
         (a3-0 64)
         (t0-0 128)
         )
-    (case (-> *target* fact-info-target eco-type)
+    (case (-> *target* fact eco-type)
       (((pickup-type eco-yellow))
        (set! a2-1 128)
        (set! a3-0 96)
@@ -1870,12 +1836,10 @@
 (defun part-hud-eco-timer-02-func ((arg0 basic) (arg1 basic) (arg2 hud-particle))
   (let ((f0-2
           (/ (the float
-                  (the-as
-                    uint
-                    (- (-> *target* fact-info-target eco-timeout)
-                       (the-as uint (- (-> *display* game-frame-counter) (-> *target* fact-info-target eco-pickup-time)))
-                       )
-                    )
+                  (the-as uint (- (-> *target* fact eco-timeout)
+                                  (the-as uint (- (-> *display* game-frame-counter) (-> *target* fact eco-pickup-time)))
+                                  )
+                          )
                   )
              (the float (the-as uint (-> *FACT-bank* eco-full-timeout)))
              )
@@ -1884,7 +1848,7 @@
         (a3-0 64)
         (t0-0 128)
         )
-    (case (-> *target* fact-info-target eco-type)
+    (case (-> *target* fact eco-type)
       (((pickup-type eco-yellow))
        (set! a2-1 128)
        (set! a3-0 96)
@@ -1916,12 +1880,10 @@
 (defun part-hud-eco-timer-03-func ((arg0 basic) (arg1 basic) (arg2 hud-particle))
   (let ((f0-2
           (/ (the float
-                  (the-as
-                    uint
-                    (- (-> *target* fact-info-target eco-timeout)
-                       (the-as uint (- (-> *display* game-frame-counter) (-> *target* fact-info-target eco-pickup-time)))
-                       )
-                    )
+                  (the-as uint (- (-> *target* fact eco-timeout)
+                                  (the-as uint (- (-> *display* game-frame-counter) (-> *target* fact eco-pickup-time)))
+                                  )
+                          )
                   )
              (the float (the-as uint (-> *FACT-bank* eco-full-timeout)))
              )
@@ -1930,7 +1892,7 @@
         (a3-0 64)
         (t0-0 128)
         )
-    (case (-> *target* fact-info-target eco-type)
+    (case (-> *target* fact eco-type)
       (((pickup-type eco-yellow))
        (set! a2-1 128)
        (set! a3-0 96)
@@ -1981,23 +1943,21 @@
 
 ;; definition for method 19 of type hud-power
 ;; INFO: Return type mismatch int vs none.
-(defmethod hud-update hud-power ((obj hud-power))
+(defmethod hud-update ((this hud-power))
   (if *target*
       (tally-value
-        obj
+        this
         (max
           0
           (min
-            (the-as
-              int
-              (- (-> *target* fact-info-target eco-timeout)
-                 (the-as uint (- (-> *display* game-frame-counter) (-> *target* fact-info-target eco-pickup-time)))
-                 )
-              )
-            (the-as int (-> *target* fact-info-target eco-timeout))
+            (the-as int (- (-> *target* fact eco-timeout)
+                           (the-as uint (- (-> *display* game-frame-counter) (-> *target* fact eco-pickup-time)))
+                           )
+                    )
+            (the-as int (-> *target* fact eco-timeout))
             )
           )
-        (the-as int (-> *target* fact-info-target eco-timeout))
+        (the-as int (-> *target* fact eco-timeout))
         )
       )
   0
@@ -2006,65 +1966,65 @@
 
 ;; definition for method 20 of type hud-power
 ;; INFO: Return type mismatch int vs none.
-(defmethod init-particles! hud-power ((obj hud-power) (arg0 int))
-  (when (< (-> obj nb-of-particles) (-> obj max-nb-of-particles))
-    (let ((s5-0 (-> obj nb-of-particles)))
-      (set! (-> obj particles s5-0) (new 'static 'hud-particle))
-      (set! (-> obj particles s5-0 part) (create-launch-control (-> *part-group-id-table* 83) obj))
-      (set! (-> obj particles s5-0 init-pos x) 435.0)
-      (set! (-> obj particles s5-0 init-pos y) 370.0)
-      (set! (-> obj particles s5-0 init-pos z) 10.0)
-      (set! (-> obj particles s5-0 part matrix) -1)
+(defmethod init-particles! ((this hud-power) (arg0 int))
+  (when (< (-> this nb-of-particles) (-> this max-nb-of-particles))
+    (let ((s5-0 (-> this nb-of-particles)))
+      (set! (-> this particles s5-0) (new 'static 'hud-particle))
+      (set! (-> this particles s5-0 part) (create-launch-control (-> *part-group-id-table* 83) this))
+      (set! (-> this particles s5-0 init-pos x) 435.0)
+      (set! (-> this particles s5-0 init-pos y) 370.0)
+      (set! (-> this particles s5-0 init-pos z) 10.0)
+      (set! (-> this particles s5-0 part matrix) -1)
       )
-    (+! (-> obj nb-of-particles) 1)
+    (+! (-> this nb-of-particles) 1)
     )
-  (when (< (-> obj nb-of-particles) (-> obj max-nb-of-particles))
-    (let ((s5-1 (-> obj nb-of-particles)))
-      (set! (-> obj particles s5-1) (new 'static 'hud-particle))
-      (set! (-> obj particles s5-1 part) (create-launch-control (-> *part-group-id-table* 84) obj))
-      (set! (-> obj particles s5-1 init-pos x) 432.0)
-      (set! (-> obj particles s5-1 init-pos y) 368.0)
-      (set! (-> obj particles s5-1 init-pos z) 3.0)
-      (set! (-> obj particles s5-1 part matrix) -1)
+  (when (< (-> this nb-of-particles) (-> this max-nb-of-particles))
+    (let ((s5-1 (-> this nb-of-particles)))
+      (set! (-> this particles s5-1) (new 'static 'hud-particle))
+      (set! (-> this particles s5-1 part) (create-launch-control (-> *part-group-id-table* 84) this))
+      (set! (-> this particles s5-1 init-pos x) 432.0)
+      (set! (-> this particles s5-1 init-pos y) 368.0)
+      (set! (-> this particles s5-1 init-pos z) 3.0)
+      (set! (-> this particles s5-1 part matrix) -1)
       )
-    (+! (-> obj nb-of-particles) 1)
+    (+! (-> this nb-of-particles) 1)
     )
-  (when (< (-> obj nb-of-particles) (-> obj max-nb-of-particles))
-    (let ((s5-2 (-> obj nb-of-particles)))
-      (set! (-> obj particles s5-2) (new 'static 'hud-particle))
-      (set! (-> obj particles s5-2 part) (create-launch-control (-> *part-group-id-table* 82) obj))
-      (set! (-> obj particles s5-2 init-pos x) 435.0)
-      (set! (-> obj particles s5-2 init-pos y) 370.0)
-      (set! (-> obj particles s5-2 init-pos z) 2.0)
-      (set! (-> obj particles s5-2 part matrix) -1)
+  (when (< (-> this nb-of-particles) (-> this max-nb-of-particles))
+    (let ((s5-2 (-> this nb-of-particles)))
+      (set! (-> this particles s5-2) (new 'static 'hud-particle))
+      (set! (-> this particles s5-2 part) (create-launch-control (-> *part-group-id-table* 82) this))
+      (set! (-> this particles s5-2 init-pos x) 435.0)
+      (set! (-> this particles s5-2 init-pos y) 370.0)
+      (set! (-> this particles s5-2 init-pos z) 2.0)
+      (set! (-> this particles s5-2 part matrix) -1)
       )
-    (+! (-> obj nb-of-particles) 1)
+    (+! (-> this nb-of-particles) 1)
     )
-  (dotimes (s5-3 (-> obj nb-of-particles))
-    (if (= (-> obj particles s5-3 part matrix) -1)
-        (set! (-> obj particles s5-3 part matrix) (sprite-allocate-user-hvdf))
+  (dotimes (s5-3 (-> this nb-of-particles))
+    (if (= (-> this particles s5-3 part matrix) -1)
+        (set! (-> this particles s5-3 part matrix) (sprite-allocate-user-hvdf))
         )
     )
-  (set-pos-and-scale obj (= (get-aspect-ratio) 'aspect16x9) (= (get-video-mode) 'pal))
-  (set! (-> obj x-sgn) 1)
-  (set! (-> obj y-sgn) 1)
+  (set-pos-and-scale this (= (get-aspect-ratio) 'aspect16x9) (= (get-video-mode) 'pal))
+  (set! (-> this x-sgn) 1)
+  (set! (-> this y-sgn) 1)
   0
   (none)
   )
 
 ;; definition for method 24 of type hud-power
 ;; INFO: Return type mismatch int vs none.
-(defmethod set-pos-and-scale hud-power ((obj hud-power) (arg0 symbol) (arg1 symbol))
+(defmethod set-pos-and-scale ((this hud-power) (arg0 symbol) (arg1 symbol))
   (cond
     (arg0
-      (set! (-> obj scale-blue) 7168.0)
-      (set! (-> obj scale-timer) 11468.8)
-      (set! (-> obj scale-backing) 8960.0)
+      (set! (-> this scale-blue) 7168.0)
+      (set! (-> this scale-timer) 11468.8)
+      (set! (-> this scale-backing) 8960.0)
       )
     (else
-      (set! (-> obj scale-blue) 8192.0)
-      (set! (-> obj scale-timer) 13107.2)
-      (set! (-> obj scale-backing) 10240.0)
+      (set! (-> this scale-blue) 8192.0)
+      (set! (-> this scale-timer) 13107.2)
+      (set! (-> this scale-backing) 10240.0)
       )
     )
   0

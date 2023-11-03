@@ -12,19 +12,16 @@
 
 ;; very basic settings for video output.
 (deftype video-params (structure)
-  ((set-video-mode              symbol  :offset-assert   0)
-   (reset-video-mode            symbol  :offset-assert   4)
-   (display-fbp                 int32   :offset-assert   8)
-   (relative-x-scale            float   :offset         16)
-   (display-dx                  int32   :offset-assert  20)
-   (display-dy                  int32   :offset-assert  24)
-   (display-sy                  int32   :offset-assert  28)
-   (relative-x-scale-reciprical float   :offset-assert  32)
-   (screen-pages-high           int32   :offset-assert  36)
+  ((set-video-mode               symbol)
+   (reset-video-mode             symbol)
+   (display-fbp                  int32)
+   (relative-x-scale             float  :offset  16)
+   (display-dx                   int32)
+   (display-dy                   int32)
+   (display-sy                   int32)
+   (relative-x-scale-reciprical  float)
+   (screen-pages-high            int32)
    )
-  :method-count-assert 9
-  :size-assert         #x28
-  :flag-assert         #x900000028
   )
 
 
@@ -44,3 +41,7 @@
 
 (define-extern set-graphics-mode (function none))
 (define-extern get-video-mode (function symbol))
+
+(defmacro correct-x-int (pos)
+  `(the int (* (-> *video-params* relative-x-scale) (the float ,pos)))
+  )

@@ -9,12 +9,8 @@
 
 (deftype cboss-tractor (process-drawable)
   ()
-  :heap-base #x50
-  :method-count-assert 21
-  :size-assert         #xc8
-  :flag-assert         #x15005000c8
-  (:methods
-    (idle () _type_ :state 20)
+  (:state-methods
+    idle
     )
   )
 
@@ -28,37 +24,33 @@
   :virtual #t
   :code (behavior ()
     (until #f
-      (ja-no-eval :group! (ja-group)
-                  :num! (seek! (the float (+ (-> (ja-group) frames num-frames) -1)))
-                  :frame-num 0.0
-                  )
+      (ja-no-eval :group! (ja-group) :num! (seek!) :frame-num 0.0)
       (until (ja-done? 0)
         (suspend)
         (ja :num! (seek!))
         )
       )
     #f
-    (none)
     )
-  :post (the-as (function none :behavior cboss-tractor) ja-post)
+  :post ja-post
   )
 
 ;; WARN: Return type mismatch object vs none.
-(defmethod init-from-entity! cboss-tractor ((obj cboss-tractor) (arg0 entity-actor))
+(defmethod init-from-entity! ((this cboss-tractor) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
 - stack size
 - collision information
 - loading the skeleton group / bones
 - sounds"
-  (set! (-> obj root) (new 'process 'trsqv))
-  (process-drawable-from-entity! obj arg0)
+  (set! (-> this root) (new 'process 'trsqv))
+  (process-drawable-from-entity! this arg0)
   (initialize-skeleton
-    obj
+    this
     (the-as skeleton-group (art-group-get-by-name *level* "skel-cboss-tractor" (the-as (pointer uint32) #f)))
     (the-as pair 0)
     )
-  (go (method-of-object obj idle))
+  (go (method-of-object this idle))
   (none)
   )
 
@@ -68,12 +60,8 @@ This commonly includes things such as:
               )
 
 (deftype cboss-elevator (elevator)
-  ((sound-id sound-id  :offset-assert 368)
+  ((sound-id  sound-id)
    )
-  :heap-base #x100
-  :method-count-assert 49
-  :size-assert         #x174
-  :flag-assert         #x3101000174
   )
 
 
@@ -86,7 +74,6 @@ This commonly includes things such as:
           )
       )
     (process-grab? *target* #f)
-    (none)
     )
   :exit (behavior ()
     (let ((t9-0 (-> (method-of-type elevator running) exit)))
@@ -97,7 +84,6 @@ This commonly includes things such as:
     (process-release? *target*)
     (sound-stop (-> self sound-id))
     (sound-play "cas-elevate-end")
-    (none)
     )
   :post (behavior ()
     (let ((t9-0 (-> (method-of-type elevator running) post)))
@@ -106,49 +92,48 @@ This commonly includes things such as:
           )
       )
     (sound-play "cas-elevate" :id (-> self sound-id) :position (-> self root trans))
-    (none)
     )
   )
 
-(defmethod get-art-group cboss-elevator ((obj cboss-elevator))
+(defmethod get-art-group ((this cboss-elevator))
   "@returns The associated [[art-group]]"
   (art-group-get-by-name *level* "skel-cboss-elevator" (the-as (pointer uint32) #f))
   )
 
-(defmethod deactivate cboss-elevator ((obj cboss-elevator))
-  (sound-stop (-> obj sound-id))
-  ((the-as (function process-drawable none) (find-parent-method cboss-elevator 10)) obj)
+(defmethod deactivate ((this cboss-elevator))
+  (sound-stop (-> this sound-id))
+  (call-parent-method this)
   (none)
   )
 
-(defmethod init-plat! cboss-elevator ((obj cboss-elevator))
+(defmethod init-plat! ((this cboss-elevator))
   "Does any necessary initial platform setup.
 For example for an elevator pre-compute the distance between the first and last points (both ways) and clear the sound."
-  (set! (-> obj sound-id) (new-sound-id))
+  (set! (-> this sound-id) (new-sound-id))
   0
   (none)
   )
 
-(defmethod move-between-points cboss-elevator ((obj cboss-elevator) (arg0 vector) (arg1 float) (arg2 float))
+(defmethod move-between-points ((this cboss-elevator) (arg0 vector) (arg1 float) (arg2 float))
   "Move between two points on the elevator's path
 @param vec TODO not sure
 @param point-a The first point fetched from the elevator's path
 @param point-b The second point fetched from the path
 @see [[path-control]] and [[elevator]]"
-  (let ((s4-0 (get-point-in-path! (-> obj path) (new 'stack-no-clear 'vector) arg1 'interp))
-        (a0-3 (get-point-in-path! (-> obj path) (new 'stack-no-clear 'vector) arg2 'interp))
-        (v1-3 (-> obj root trans))
+  (let ((s4-0 (get-point-in-path! (-> this path) (new 'stack-no-clear 'vector) arg1 'interp))
+        (a0-3 (get-point-in-path! (-> this path) (new 'stack-no-clear 'vector) arg2 'interp))
+        (v1-3 (-> this root trans))
         )
     (when (and (< (-> a0-3 y) (-> s4-0 y)) (< (-> arg0 y) (+ -8192.0 (-> v1-3 y))))
       (let ((s4-2 (vector-! (new 'stack-no-clear 'vector) arg0 v1-3)))
-        (vector-inv-orient-by-quat! s4-2 s4-2 (-> obj root quat))
+        (vector-inv-orient-by-quat! s4-2 s4-2 (-> this root quat))
         (and (< (fabs (-> s4-2 x)) 24576.0) (< 0.0 (-> s4-2 z)) (< (-> s4-2 z) 49152.0))
         )
       )
     )
   )
 
-(defmethod commited-to-ride? cboss-elevator ((obj cboss-elevator))
+(defmethod commited-to-ride? ((this cboss-elevator))
   "@returns if the target is considered within the elevator area enough to begin descending/ascending"
   (let* ((gp-0 *target*)
          (a0-2 (if (type? gp-0 process-focusable)
@@ -158,9 +143,9 @@ For example for an elevator pre-compute the distance between the first and last 
          )
     (when a0-2
       (let* ((v1-1 (get-trans a0-2 0))
-             (gp-2 (vector-! (new 'stack-no-clear 'vector) v1-1 (-> obj root trans)))
+             (gp-2 (vector-! (new 'stack-no-clear 'vector) v1-1 (-> this root trans)))
              )
-        (vector-inv-orient-by-quat! gp-2 gp-2 (-> obj root quat))
+        (vector-inv-orient-by-quat! gp-2 gp-2 (-> this root quat))
         (and (< (fabs (-> gp-2 x)) 40960.0) (< (fabs (-> gp-2 z)) 40960.0))
         )
       )
@@ -168,9 +153,9 @@ For example for an elevator pre-compute the distance between the first and last 
   )
 
 ;; WARN: Return type mismatch collide-shape-moving vs none.
-(defmethod init-plat-collision! cboss-elevator ((obj cboss-elevator))
+(defmethod init-plat-collision! ((this cboss-elevator))
   "TODO - collision stuff for setting up the platform"
-  (let ((s5-0 (new 'process 'collide-shape-moving obj (collide-list-enum usually-hit-by-player))))
+  (let ((s5-0 (new 'process 'collide-shape-moving this (collide-list-enum usually-hit-by-player))))
     (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s5-0 reaction) cshape-reaction-default)
     (set! (-> s5-0 no-reaction)
@@ -198,62 +183,56 @@ For example for an elevator pre-compute the distance between the first and last 
       (set! (-> s5-0 backup-collide-as) (-> v1-17 prim-core collide-as))
       (set! (-> s5-0 backup-collide-with) (-> v1-17 prim-core collide-with))
       )
-    (set! (-> obj root) s5-0)
+    (set! (-> this root) s5-0)
     )
   (none)
   )
 
 (deftype krew-boss-clone (nav-enemy)
-  ((old-y-deg          float               :offset-assert 604)
-   (diff-angle         degrees             :offset-assert 608)
-   (hit-target         symbol              :offset-assert 612)
-   (lightning          lightning-control 4 :offset-assert 616)
-   (wiggle-time        time-frame          :offset-assert 632)
-   (wiggle-angle       degrees             :offset-assert 640)
-   (delta-wiggle-angle degrees             :offset-assert 644)
-   (wiggle-factor      float               :offset-assert 648)
-   (id                 sound-id            :offset-assert 652)
+  ((old-y-deg           float)
+   (diff-angle          degrees)
+   (hit-target          symbol)
+   (lightning           lightning-control  4)
+   (wiggle-time         time-frame)
+   (wiggle-angle        degrees)
+   (delta-wiggle-angle  degrees)
+   (wiggle-factor       float)
+   (id                  sound-id)
    )
-  :heap-base #x210
-  :method-count-assert 181
-  :size-assert         #x290
-  :flag-assert         #xb502100290
+  (:state-methods
+    spawning
+    )
   (:methods
-    (spawning () _type_ :state 178)
-    (krew-boss-clone-method-179 (_type_ vector) none 179)
-    (krew-boss-clone-method-180 (_type_) none 180)
+    (krew-boss-clone-method-179 (_type_ vector) none)
+    (krew-boss-clone-method-180 (_type_) none)
     )
   )
 
 
 (deftype krew-boss (nav-enemy)
-  ((task-timeout           time-frame   :offset-assert 608)
-   (movie-handle           handle       :offset-assert 616)
-   (clones                 handle     8 :offset-assert 624)
-   (last-closest-spawn     int32        :offset-assert 688)
-   (next-clone-side        int32        :offset-assert 692)
-   (next-shooting-frame    int32        :offset-assert 696)
-   (old-y-deg              float        :offset-assert 700)
-   (diff-angle             degrees      :offset-assert 704)
-   (hit-target             symbol       :offset-assert 708)
-   (floating               symbol       :offset-assert 712)
-   (next-path-point        int32        :offset-assert 716)
-   (num-clones-to-spawn    int32        :offset-assert 720)
-   (gameplay-pass          int32        :offset-assert 724)
-   (hud-handle             handle       :offset-assert 728)
-   (channel                uint8        :offset-assert 736)
-   (id                     sound-id     :offset-assert 740)
-   (play-clone-wave-speech symbol       :offset-assert 744)
-   (last-damage-time       time-frame   :offset-assert 752)
-   (spawn-charge           symbol       :offset-assert 760)
+  ((task-timeout            time-frame)
+   (movie-handle            handle)
+   (clones                  handle  8)
+   (last-closest-spawn      int32)
+   (next-clone-side         int32)
+   (next-shooting-frame     int32)
+   (old-y-deg               float)
+   (diff-angle              degrees)
+   (hit-target              symbol)
+   (floating                symbol)
+   (next-path-point         int32)
+   (num-clones-to-spawn     int32)
+   (gameplay-pass           int32)
+   (hud-handle              handle)
+   (channel                 uint8)
+   (id                      sound-id)
+   (play-clone-wave-speech  symbol)
+   (last-damage-time        time-frame)
+   (spawn-charge            symbol)
    )
-  :heap-base #x280
-  :method-count-assert 180
-  :size-assert         #x2fc
-  :flag-assert         #xb4028002fc
-  (:methods
-    (hidden () _type_ :state 178)
-    (play-intro () _type_ :state 179)
+  (:state-methods
+    hidden
+    play-intro
     )
   )
 
@@ -722,53 +701,53 @@ For example for an elevator pre-compute the distance between the first and last 
 
 (set! (-> *krew-boss-clone-nav-enemy-info* fact-defaults) *fact-info-enemy-defaults*)
 
-(defmethod track-target! krew-boss-clone ((obj krew-boss-clone))
+(defmethod track-target! ((this krew-boss-clone))
   "Does a lot of various things relating to interacting with the target
 - tracks when the enemy was last drawn
 - looks at the target and handles attacking
 @TODO Not extremely well understood yet"
   (let ((t9-0 (method-of-type nav-enemy track-target!)))
-    (t9-0 obj)
+    (t9-0 this)
     )
   (let ((s5-0 (new 'stack-no-clear 'vector))
         (s4-0 (new 'stack-no-clear 'vector))
         )
-    (vector<-cspace! s5-0 (-> obj node-list data 36))
+    (vector<-cspace! s5-0 (-> this node-list data 36))
     (dotimes (s3-0 4)
       (let ((v1-2 s3-0))
         (cond
           ((zero? v1-2)
-           (vector<-cspace! s5-0 (-> obj node-list data 7))
-           (vector<-cspace! s4-0 (-> obj node-list data 15))
+           (vector<-cspace! s5-0 (-> this node-list data 7))
+           (vector<-cspace! s4-0 (-> this node-list data 15))
            )
           ((= v1-2 1)
-           (vector<-cspace! s5-0 (-> obj node-list data 6))
-           (vector<-cspace! s4-0 (-> obj node-list data 7))
+           (vector<-cspace! s5-0 (-> this node-list data 6))
+           (vector<-cspace! s4-0 (-> this node-list data 7))
            )
           ((= v1-2 2)
-           (vector<-cspace! s5-0 (-> obj node-list data 19))
-           (vector<-cspace! s4-0 (-> obj node-list data 27))
+           (vector<-cspace! s5-0 (-> this node-list data 19))
+           (vector<-cspace! s4-0 (-> this node-list data 27))
            )
           (else
-            (vector<-cspace! s5-0 (-> obj node-list data 18))
-            (vector<-cspace! s4-0 (-> obj node-list data 19))
+            (vector<-cspace! s5-0 (-> this node-list data 18))
+            (vector<-cspace! s4-0 (-> this node-list data 19))
             )
           )
         )
-      (let ((a0-13 (-> obj lightning s3-0))
+      (let ((a0-13 (-> this lightning s3-0))
             (v1-17 s5-0)
             )
         (set! (-> a0-13 state meet data 0 quad) (-> v1-17 quad))
         )
-      (let ((a0-16 (-> obj lightning s3-0))
+      (let ((a0-16 (-> this lightning s3-0))
             (v1-21 s4-0)
             )
         (set! (-> a0-16 state meet data (+ (-> a0-16 state points-to-draw) -1) quad) (-> v1-21 quad))
         )
-      (when (not (and (-> obj next-state) (= (-> obj next-state name) 'die-falling)))
-        (case (-> obj lightning s3-0 state mode)
+      (when (not (and (-> this next-state) (= (-> this next-state name) 'die-falling)))
+        (case (-> this lightning s3-0 state mode)
           (((lightning-mode lm0) (lightning-mode lm3))
-           (let ((v1-35 (-> obj lightning s3-0))
+           (let ((v1-35 (-> this lightning s3-0))
                  (a0-22 1)
                  )
              (let ((a1-14 (!= a0-22 (-> v1-35 state mode))))
@@ -791,66 +770,54 @@ For example for an elevator pre-compute the distance between the first and last 
         )
       )
     )
-  (if (< (-> obj root trans y) 1228800.0)
-      (deactivate obj)
+  (if (< (-> this root trans y) 1228800.0)
+      (deactivate this)
       )
   0
   (none)
   )
 
-(defmethod general-event-handler krew-boss-clone ((obj krew-boss-clone) (arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+(defmethod general-event-handler ((this krew-boss-clone) (arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
   "Handles various events for the enemy
 @TODO - unsure if there is a pattern for the events and this should have a more specific name"
   (with-pp
     (case arg2
       (('touch 'bonk 'attack)
-       (when (and (-> obj next-state) (= (-> obj next-state name) 'hostile))
-         (let ((a1-3 (new 'stack-no-clear 'event-message-block)))
-           (set! (-> a1-3 from) (process->ppointer pp))
-           (set! (-> a1-3 num-params) 2)
-           (set! (-> a1-3 message) 'attack)
-           (set! (-> a1-3 param 0) (the-as uint #f))
-           (let ((v1-8 (new 'static 'attack-info :mask (attack-info-mask mode shove-back shove-up id damage))))
-             (let* ((a0-7 *game-info*)
-                    (a2-2 (+ (-> a0-7 attack-id) 1))
-                    )
-               (set! (-> a0-7 attack-id) a2-2)
-               (set! (-> v1-8 id) a2-2)
-               )
-             (set! (-> v1-8 mode) 'shock-green)
-             (set! (-> v1-8 shove-up) 8192.0)
-             (set! (-> v1-8 shove-back) 16384.0)
-             (set! (-> v1-8 damage) 1.0)
-             (set! (-> a1-3 param 1) (the-as uint v1-8))
+       (when (and (-> this next-state) (= (-> this next-state name) 'hostile))
+         (send-event
+           arg0
+           'attack
+           #f
+           (static-attack-info
+             ((id (new-attack-id)) (mode 'shock-green) (shove-up (meters 2)) (shove-back (meters 4)) (damage 1.0))
              )
-           (send-event-function arg0 a1-3)
            )
          (cond
            ((!= arg0 *target*)
-            ((method-of-type nav-enemy general-event-handler) obj arg0 arg1 arg2 arg3)
+            ((method-of-type nav-enemy general-event-handler) this arg0 arg1 arg2 arg3)
             )
            (else
              (ja-channel-push! 1 (seconds 0.1))
-             (let ((a0-15 (-> obj skel root-channel 0)))
+             (let ((a0-15 (-> this skel root-channel 0)))
                (set! (-> a0-15 frame-group)
-                     (the-as art-joint-anim (-> obj draw art-group data (-> obj enemy-info die-anim)))
+                     (the-as art-joint-anim (-> this draw art-group data (-> this enemy-info die-anim)))
                      )
                (set! (-> a0-15 param 0) 0.0)
                (set! (-> a0-15 param 1) (* 2.0 (-> pp clock time-adjust-ratio)))
                (set! (-> a0-15 frame-num)
                      (the float
-                          (+ (-> (the-as art-joint-anim (-> obj draw art-group data (-> obj enemy-info die-anim))) frames num-frames)
+                          (+ (-> (the-as art-joint-anim (-> this draw art-group data (-> this enemy-info die-anim))) frames num-frames)
                              -1
                              )
                           )
                      )
                (joint-control-channel-group!
                  a0-15
-                 (the-as art-joint-anim (-> obj draw art-group data (-> obj enemy-info die-anim)))
+                 (the-as art-joint-anim (-> this draw art-group data (-> this enemy-info die-anim)))
                  num-func-seek!
                  )
                )
-             (kill-prefer-falling obj)
+             (kill-prefer-falling this)
              )
            )
          )
@@ -858,18 +825,18 @@ For example for an elevator pre-compute the distance between the first and last 
       (('track)
        (cond
          ((-> arg3 param 0)
-          (if (logtest? (-> obj enemy-flags) (enemy-flag enable-on-active))
+          (if (logtest? (-> this enemy-flags) (enemy-flag enable-on-active))
               #t
               'abort
               )
           )
          (else
-           (logtest? (-> obj enemy-flags) (enemy-flag enable-on-active))
+           (logtest? (-> this enemy-flags) (enemy-flag enable-on-active))
            )
          )
        )
       (else
-        ((method-of-type nav-enemy general-event-handler) obj arg0 arg1 arg2 arg3)
+        ((method-of-type nav-enemy general-event-handler) this arg0 arg1 arg2 arg3)
         )
       )
     )
@@ -877,17 +844,12 @@ For example for an elevator pre-compute the distance between the first and last 
 
 (defstate spawning (krew-boss-clone)
   :virtual #t
-  :event (the-as
-    (function process int symbol event-message-block object :behavior krew-boss-clone)
-    enemy-event-handler
-    )
+  :event enemy-event-handler
   :enter (behavior ()
     (sound-play "krew-spawn")
-    (none)
     )
   :exit (behavior ()
     (set! (-> self id) (sound-play "krew-travel"))
-    (none)
     )
   :trans (behavior ()
     (let ((gp-1 (vector-! (new 'stack-no-clear 'vector) (target-pos 0) (-> self root trans)))
@@ -900,19 +862,14 @@ For example for an elevator pre-compute the distance between the first and last 
         (quaternion-axis-angle! (-> self root quat) 0.0 1.0 0.0 (vector-y-angle a0-8))
         )
       )
-    (none)
     )
   :code (behavior ()
-    (ja-no-eval :group! (-> self draw art-group data 12)
-                :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 12)) frames num-frames) -1)))
-                :frame-num 0.0
-                )
+    (ja-no-eval :group! krew-clone-birth-ja :num! (seek!) :frame-num 0.0)
     (until (ja-done? 0)
       (suspend)
       (ja :num! (seek!))
       )
     (go-virtual hostile)
-    (none)
     )
   :post (behavior ()
     (logior! (-> self enemy-flags) (enemy-flag directed))
@@ -931,7 +888,6 @@ For example for an elevator pre-compute the distance between the first and last 
       )
     (enemy-method-111 self)
     (track-target! self)
-    (none)
     )
   )
 
@@ -944,41 +900,42 @@ For example for an elevator pre-compute the distance between the first and last 
           (t9-2)
           )
       )
-    (none)
     )
   )
 
-(defmethod enemy-method-77 krew-boss-clone ((obj krew-boss-clone) (arg0 (pointer float)))
+(defmethod enemy-method-77 ((this krew-boss-clone) (arg0 (pointer float)))
   (with-pp
     (ja-channel-push! 1 0)
     (cond
-      ((<= (-> obj hit-points) 0)
-       (let ((a0-2 (-> obj skel root-channel 0)))
-         (set! (-> a0-2 frame-group) (the-as art-joint-anim (-> obj draw art-group data (-> obj enemy-info die-anim))))
+      ((<= (-> this hit-points) 0)
+       (let ((a0-2 (-> this skel root-channel 0)))
+         (set! (-> a0-2 frame-group)
+               (the-as art-joint-anim (-> this draw art-group data (-> this enemy-info die-anim)))
+               )
          (set! (-> a0-2 param 0) 0.0)
          (set! (-> a0-2 param 1) (* 2.0 (-> pp clock time-adjust-ratio)))
          (set! (-> a0-2 frame-num)
                (the float
-                    (+ (-> (the-as art-joint-anim (-> obj draw art-group data (-> obj enemy-info die-anim))) frames num-frames)
+                    (+ (-> (the-as art-joint-anim (-> this draw art-group data (-> this enemy-info die-anim))) frames num-frames)
                        -1
                        )
                     )
                )
          (joint-control-channel-group!
            a0-2
-           (the-as art-joint-anim (-> obj draw art-group data (-> obj enemy-info die-anim)))
+           (the-as art-joint-anim (-> this draw art-group data (-> this enemy-info die-anim)))
            num-func-seek!
            )
          )
        )
       (else
-        (let ((a0-3 (-> obj skel root-channel 0)))
+        (let ((a0-3 (-> this skel root-channel 0)))
           (set! (-> a0-3 frame-group)
-                (the-as art-joint-anim (-> obj draw art-group data (-> obj enemy-info knocked-anim)))
+                (the-as art-joint-anim (-> this draw art-group data (-> this enemy-info knocked-anim)))
                 )
           (set! (-> a0-3 param 0)
                 (the float
-                     (+ (-> (the-as art-joint-anim (-> obj draw art-group data (-> obj enemy-info knocked-anim))) frames num-frames)
+                     (+ (-> (the-as art-joint-anim (-> this draw art-group data (-> this enemy-info knocked-anim))) frames num-frames)
                         -1
                         )
                      )
@@ -987,7 +944,7 @@ For example for an elevator pre-compute the distance between the first and last 
           (set! (-> a0-3 frame-num) 0.0)
           (joint-control-channel-group!
             a0-3
-            (the-as art-joint-anim (-> obj draw art-group data (-> obj enemy-info knocked-anim)))
+            (the-as art-joint-anim (-> this draw art-group data (-> this enemy-info knocked-anim)))
             num-func-seek!
             )
           )
@@ -997,16 +954,16 @@ For example for an elevator pre-compute the distance between the first and last 
     )
   )
 
-(defmethod enemy-method-78 krew-boss-clone ((obj krew-boss-clone) (arg0 (pointer float)))
-  (when (> (-> obj hit-points) 0)
+(defmethod enemy-method-78 ((this krew-boss-clone) (arg0 (pointer float)))
+  (when (> (-> this hit-points) 0)
     (ja-channel-push! 1 (seconds 0.1))
-    (let ((a0-2 (-> obj skel root-channel 0)))
+    (let ((a0-2 (-> this skel root-channel 0)))
       (set! (-> a0-2 frame-group)
-            (the-as art-joint-anim (-> obj draw art-group data (-> obj enemy-info knocked-land-anim)))
+            (the-as art-joint-anim (-> this draw art-group data (-> this enemy-info knocked-land-anim)))
             )
       (set! (-> a0-2 param 0)
             (the float
-                 (+ (-> (the-as art-joint-anim (-> obj draw art-group data (-> obj enemy-info knocked-land-anim)))
+                 (+ (-> (the-as art-joint-anim (-> this draw art-group data (-> this enemy-info knocked-land-anim)))
                         frames
                         num-frames
                         )
@@ -1018,7 +975,7 @@ For example for an elevator pre-compute the distance between the first and last 
       (set! (-> a0-2 frame-num) 0.0)
       (joint-control-channel-group!
         a0-2
-        (the-as art-joint-anim (-> obj draw art-group data (-> obj enemy-info knocked-land-anim)))
+        (the-as art-joint-anim (-> this draw art-group data (-> this enemy-info knocked-land-anim)))
         num-func-seek!
         )
       )
@@ -1026,12 +983,12 @@ For example for an elevator pre-compute the distance between the first and last 
   #t
   )
 
-(defmethod enemy-method-79 krew-boss-clone ((obj krew-boss-clone) (arg0 int) (arg1 enemy-knocked-info))
+(defmethod enemy-method-79 ((this krew-boss-clone) (arg0 int) (arg1 enemy-knocked-info))
   (local-vars (s5-0 symbol))
   (let ((v1-0 arg0))
     (cond
       ((zero? v1-0)
-       (enemy-method-77 obj (the-as (pointer float) arg1))
+       (enemy-method-77 this (the-as (pointer float) arg1))
        #f
        )
       ((= v1-0 1)
@@ -1040,8 +997,8 @@ For example for an elevator pre-compute the distance between the first and last 
        s5-0
        )
       ((= v1-0 2)
-       (set! s5-0 (not (enemy-method-78 obj (the-as (pointer float) arg1))))
-       (set! (-> obj incoming blue-juggle-count) (the-as uint 0))
+       (set! s5-0 (not (enemy-method-78 this (the-as (pointer float) arg1))))
+       (set! (-> this incoming blue-juggle-count) (the-as uint 0))
        s5-0
        )
       ((= v1-0 3)
@@ -1050,7 +1007,7 @@ For example for an elevator pre-compute the distance between the first and last 
        s5-0
        )
       ((= v1-0 4)
-       (vector-reset! (-> obj root transv))
+       (vector-reset! (-> this root transv))
        #t
        )
       (else
@@ -1060,21 +1017,21 @@ For example for an elevator pre-compute the distance between the first and last 
     )
   )
 
-(defmethod krew-boss-clone-method-180 krew-boss-clone ((obj krew-boss-clone))
+(defmethod krew-boss-clone-method-180 ((this krew-boss-clone))
   (let* ((f0-0 (rand-vu-float-range 0.0 1.0))
          (f1-1 (+ 1.0 (* 2.0 f0-0)))
          (f2-2 f1-1)
          (f2-4 (/ 1.0 f2-2))
          )
     (+ 1.0 (* 0.2 f0-0))
-    (set! (-> obj delta-wiggle-angle) (* 182.04445 f1-1))
-    (set! (-> obj wiggle-factor) (* 2.0 f2-4))
+    (set! (-> this delta-wiggle-angle) (* 182.04445 f1-1))
+    (set! (-> this wiggle-factor) (* 2.0 f2-4))
     )
   0
   (none)
   )
 
-(defmethod krew-boss-clone-method-179 krew-boss-clone ((obj krew-boss-clone) (arg0 vector))
+(defmethod krew-boss-clone-method-179 ((this krew-boss-clone) (arg0 vector))
   (rlet ((acc :class vf)
          (vf0 :class vf)
          (vf4 :class vf)
@@ -1083,16 +1040,16 @@ For example for an elevator pre-compute the distance between the first and last 
          (vf7 :class vf)
          )
     (init-vf0-vector)
-    (+! (-> obj wiggle-angle) (-> obj delta-wiggle-angle))
-    (if (< 65536.0 (-> obj wiggle-angle))
-        (+! (-> obj wiggle-angle) -65536.0)
+    (+! (-> this wiggle-angle) (-> this delta-wiggle-angle))
+    (if (< 65536.0 (-> this wiggle-angle))
+        (+! (-> this wiggle-angle) -65536.0)
         )
-    (let* ((v1-5 (-> obj root trans))
+    (let* ((v1-5 (-> this root trans))
            (a1-2 (vector-! (new 'stack-no-clear 'vector) v1-5 arg0))
            (s3-0 (vector-rotate-around-y! (new 'stack-no-clear 'vector) a1-2 16384.0))
            (s4-0 (new 'stack-no-clear 'vector))
            )
-      (let ((v1-6 (* (-> obj wiggle-factor) (sin (-> obj wiggle-angle)))))
+      (let ((v1-6 (* (-> this wiggle-factor) (sin (-> this wiggle-angle)))))
         (.mov vf7 v1-6)
         )
       (.lvf vf5 (&-> s3-0 quad))
@@ -1101,7 +1058,7 @@ For example for an elevator pre-compute the distance between the first and last 
       (.mul.x.vf acc vf5 vf7 :mask #b111)
       (.add.mul.w.vf vf6 vf4 vf0 acc :mask #b111)
       (.svf (&-> s4-0 quad) vf6)
-      (let ((v1-8 (-> obj nav state)))
+      (let ((v1-8 (-> this nav state)))
         (logclear! (-> v1-8 flags) (nav-state-flag directional-mode))
         (logior! (-> v1-8 flags) (nav-state-flag target-poly-dirty))
         (set! (-> v1-8 target-post quad) (-> s4-0 quad))
@@ -1113,10 +1070,8 @@ For example for an elevator pre-compute the distance between the first and last 
     )
   )
 
-;; WARN: Return type mismatch object vs none.
-(defmethod go-stare2 krew-boss-clone ((obj krew-boss-clone))
-  (go (method-of-object obj hostile))
-  (none)
+(defmethod go-stare2 ((this krew-boss-clone))
+  (go (method-of-object this hostile))
   )
 
 (defstate hostile (krew-boss-clone)
@@ -1133,7 +1088,6 @@ For example for an elevator pre-compute the distance between the first and last 
         (ja :group! (-> self draw art-group data (-> self enemy-info hostile-anim)) :num! min)
         )
       )
-    (none)
     )
   :code (behavior ()
     (set! (-> self wiggle-time) (+ (current-time) (seconds -10)))
@@ -1141,29 +1095,24 @@ For example for an elevator pre-compute the distance between the first and last 
     (let ((f30-0 (get-rand-float-range self 0.9 1.1)))
       (until #f
         (ja :num! (loop! f30-0))
-        (when (>= (- (current-time) (-> self wiggle-time)) (seconds 1))
-          (set! (-> self wiggle-time) (current-time))
+        (when (time-elapsed? (-> self wiggle-time) (seconds 1))
+          (set-time! (-> self wiggle-time))
           (krew-boss-clone-method-180 self)
           )
         (suspend)
         )
       )
     #f
-    (none)
     )
   :post (behavior ()
     (krew-boss-clone-method-179 self (target-pos 0))
     (nav-enemy-method-176 self)
-    (none)
     )
   )
 
 (defstate die (krew-boss-clone)
   :virtual #t
-  :event (the-as
-    (function process int symbol event-message-block object :behavior krew-boss-clone)
-    enemy-event-handler
-    )
+  :event enemy-event-handler
   :enter (behavior ()
     (if (nonzero? (-> self id))
         (sound-stop (-> self id))
@@ -1197,7 +1146,6 @@ For example for an elevator pre-compute the distance between the first and last 
           )
         )
       )
-    (none)
     )
   :code (behavior ()
     (while (not (ja-done? 0))
@@ -1209,14 +1157,13 @@ For example for an elevator pre-compute the distance between the first and last 
       (suspend)
       )
     (cleanup-for-death self)
-    (none)
     )
-  :post (the-as (function none :behavior krew-boss-clone) enemy-simple-post)
+  :post enemy-simple-post
   )
 
-(defmethod init-enemy-collision! krew-boss-clone ((obj krew-boss-clone))
+(defmethod init-enemy-collision! ((this krew-boss-clone))
   "Initializes the [[collide-shape-moving]] and any ancillary tasks to make the enemy collide properly"
-  (let ((s5-0 (new 'process 'collide-shape-moving obj (collide-list-enum usually-hit-by-player))))
+  (let ((s5-0 (new 'process 'collide-shape-moving this (collide-list-enum usually-hit-by-player))))
     (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s5-0 reaction) cshape-reaction-default)
     (set! (-> s5-0 no-reaction)
@@ -1273,67 +1220,67 @@ For example for an elevator pre-compute the distance between the first and last 
       )
     (set! (-> s5-0 max-iteration-count) (the-as uint 3))
     (set! (-> s5-0 pat-ignore-mask) (new 'static 'pat-surface :noentity #x1 :probe #x1 :noendlessfall #x1))
-    (set! (-> obj root) s5-0)
+    (set! (-> this root) s5-0)
     )
   0
   (none)
   )
 
-(defmethod coin-flip? krew-boss-clone ((obj krew-boss-clone))
+(defmethod coin-flip? ((this krew-boss-clone))
   "@returns The result of a 50/50 RNG roll"
   #f
   )
 
 ;; WARN: Return type mismatch nav-enemy vs krew-boss-clone.
-(defmethod relocate krew-boss-clone ((obj krew-boss-clone) (arg0 int))
+(defmethod relocate ((this krew-boss-clone) (arg0 int))
   (dotimes (v1-0 4)
-    (if (nonzero? (-> obj lightning v1-0))
-        (&+! (-> obj lightning v1-0) arg0)
+    (if (nonzero? (-> this lightning v1-0))
+        (&+! (-> this lightning v1-0) arg0)
         )
     )
-  (the-as krew-boss-clone ((method-of-type nav-enemy relocate) obj arg0))
+  (the-as krew-boss-clone ((method-of-type nav-enemy relocate) this arg0))
   )
 
 ;; WARN: Return type mismatch object vs none.
-(defmethod init-enemy! krew-boss-clone ((obj krew-boss-clone))
+(defmethod init-enemy! ((this krew-boss-clone))
   "Common method called to initialize the enemy, typically sets up default field values and calls ancillary helper methods"
   (initialize-skeleton
-    obj
+    this
     (the-as skeleton-group (art-group-get-by-name *level* "skel-krew-boss-clone" (the-as (pointer uint32) #f)))
     (the-as pair 0)
     )
-  (logior! (-> obj draw global-effect) (draw-control-global-effect disable-envmap))
-  (set! (-> obj enemy-flags) (the-as enemy-flag (logior (enemy-flag vulnerable-backup) (-> obj enemy-flags))))
+  (logior! (-> this draw global-effect) (draw-control-global-effect disable-envmap))
+  (set! (-> this enemy-flags) (the-as enemy-flag (logior (enemy-flag vulnerable-backup) (-> this enemy-flags))))
   (set! (-> *krew-boss-clone-nav-enemy-info* nav-mesh)
-        (nav-mesh-from-res-tag (-> obj entity) 'nav-mesh-actor 1)
+        (nav-mesh-from-res-tag (-> this entity) 'nav-mesh-actor 1)
         )
-  (init-enemy-behaviour-and-stats! obj *krew-boss-clone-nav-enemy-info*)
+  (init-enemy-behaviour-and-stats! this *krew-boss-clone-nav-enemy-info*)
   (dotimes (s5-1 4)
-    (set! (-> obj lightning s5-1) (new
-                                    'process
-                                    'lightning-control
-                                    (new 'static 'lightning-spec
-                                      :name #f
-                                      :flags (lightning-spec-flags lsf0)
-                                      :start-color (new 'static 'rgba :r #xff :g #xff :b #xff :a #x80)
-                                      :end-color (new 'static 'rgba :r #xff :g #xff :b #xff :a #x80)
-                                      :fade-to-color (new 'static 'rgba :r #xbf :b #x8f :a #x5)
-                                      :fade-start-factor 0.2
-                                      :texture (new 'static 'texture-id :page #xd82)
-                                      :reduction 0.42
-                                      :num-points 16
-                                      :box-size 8192.0
-                                      :merge-factor 0.5
-                                      :merge-count 2
-                                      :radius 512.0
-                                      :duration 30.0
-                                      :sound #f
-                                      )
-                                    obj
-                                    0.0
-                                    )
+    (set! (-> this lightning s5-1) (new
+                                     'process
+                                     'lightning-control
+                                     (new 'static 'lightning-spec
+                                       :name #f
+                                       :flags (lightning-spec-flags lsf0)
+                                       :start-color (new 'static 'rgba :r #xff :g #xff :b #xff :a #x80)
+                                       :end-color (new 'static 'rgba :r #xff :g #xff :b #xff :a #x80)
+                                       :fade-to-color (new 'static 'rgba :r #xbf :b #x8f :a #x5)
+                                       :fade-start-factor 0.2
+                                       :texture (new 'static 'texture-id :page #xd82)
+                                       :reduction 0.42
+                                       :num-points 16
+                                       :box-size 8192.0
+                                       :merge-factor 0.5
+                                       :merge-count 2
+                                       :radius 512.0
+                                       :duration 30.0
+                                       :sound #f
+                                       )
+                                     this
+                                     0.0
+                                     )
           )
-    (let ((v1-17 (-> obj lightning s5-1))
+    (let ((v1-17 (-> this lightning s5-1))
           (a0-8 0)
           )
       (let ((a1-6 (!= a0-8 (-> v1-17 state mode))))
@@ -1352,37 +1299,33 @@ For example for an elevator pre-compute the distance between the first and last 
       (set! (-> v1-17 state mode) (the-as lightning-mode a0-8))
       )
     )
-  (let ((v1-20 (-> obj neck)))
+  (let ((v1-20 (-> this neck)))
     (set! (-> v1-20 up) (the-as uint 1))
     (set! (-> v1-20 nose) (the-as uint 2))
     (set! (-> v1-20 ear) (the-as uint 0))
     (set-vector! (-> v1-20 twist-max) 3640.889 11832.889 0.0 1.0)
     (set! (-> v1-20 ignore-angle) 15473.777)
     )
-  (let ((v1-22 (-> obj nav)))
+  (let ((v1-22 (-> this nav)))
     (set! (-> v1-22 speed-scale) 1.0)
     )
   0
-  (set-gravity-length (-> obj root dynam) 573440.0)
-  (logior! (-> obj nav flags) (nav-control-flag momentum-ignore-heading))
-  (set-vector! (-> obj root scale) 0.8 0.8 0.8 1.0)
-  (set! (-> obj draw light-index) (the-as uint 1))
-  (set-vector! (-> obj draw color-emissive) 0.0 1.0 0.0 0.0)
-  (set! (-> obj wiggle-angle) 0.0)
-  (set! (-> obj delta-wiggle-angle) 182.04445)
-  (set! (-> obj wiggle-factor) 2.0)
-  (set! (-> obj id) (new 'static 'sound-id))
-  (logclear! (-> obj mask) (process-mask actor-pause))
-  (go (method-of-object obj spawning))
+  (set-gravity-length (-> this root dynam) 573440.0)
+  (logior! (-> this nav flags) (nav-control-flag momentum-ignore-heading))
+  (set-vector! (-> this root scale) 0.8 0.8 0.8 1.0)
+  (set! (-> this draw light-index) (the-as uint 1))
+  (set-vector! (-> this draw color-emissive) 0.0 1.0 0.0 0.0)
+  (set! (-> this wiggle-angle) 0.0)
+  (set! (-> this delta-wiggle-angle) 182.04445)
+  (set! (-> this wiggle-factor) 2.0)
+  (set! (-> this id) (new 'static 'sound-id))
+  (logclear! (-> this mask) (process-mask actor-pause))
+  (go (method-of-object this spawning))
   (none)
   )
 
 (deftype krew-boss-shot (guard-shot)
   ()
-  :heap-base #x170
-  :method-count-assert 40
-  :size-assert         #x1f0
-  :flag-assert         #x28017001f0
   )
 
 
@@ -1392,16 +1335,16 @@ For example for an elevator pre-compute the distance between the first and last 
   (none)
   )
 
-(defmethod init-proj-settings! krew-boss-shot ((obj krew-boss-shot))
+(defmethod init-proj-settings! ((this krew-boss-shot))
   "Init relevant settings for the [[projectile]] such as gravity, speed, timeout, etc"
-  ((the-as (function projectile none) (find-parent-method krew-boss-shot 31)) obj)
-  (set! (-> obj move) krew-boss-shot-move)
-  (set! (-> obj max-speed) 245760.0)
-  (set! (-> obj timeout) (seconds 5))
+  (call-parent-method this)
+  (set! (-> this move) krew-boss-shot-move)
+  (set! (-> this max-speed) 245760.0)
+  (set! (-> this timeout) (seconds 5))
   (none)
   )
 
-(defmethod play-impact-sound krew-boss-shot ((obj krew-boss-shot) (arg0 projectile-options))
+(defmethod play-impact-sound ((this krew-boss-shot) (arg0 projectile-options))
   (let ((v1-0 arg0))
     (cond
       ((zero? v1-0)
@@ -1418,63 +1361,59 @@ For example for an elevator pre-compute the distance between the first and last 
 
 (deftype hud-krew-boss (hud)
   ()
-  :heap-base #xb30
-  :method-count-assert 27
-  :size-assert         #xba4
-  :flag-assert         #x1b0b300ba4
   )
 
 
-(defmethod draw hud-krew-boss ((obj hud-krew-boss))
-  (set-hud-piece-position! (-> obj sprites 1) (the int (+ 462.0 (* 130.0 (-> obj offset)))) 350)
-  (set-as-offset-from! (the-as hud-sprite (-> obj sprites)) (the-as vector4w (-> obj sprites 1)) -32 0)
-  (set-as-offset-from! (-> obj sprites 2) (the-as vector4w (-> obj sprites 1)) -96 0)
-  (set-as-offset-from! (-> obj sprites 5) (the-as vector4w (-> obj sprites 1)) -62 14)
-  (set-as-offset-from! (-> obj sprites 6) (the-as vector4w (-> obj sprites 1)) -32 14)
-  (let ((s5-0 (-> obj values 0 current))
-        (f28-0 (* 0.01 (the float (-> obj values 1 current))))
-        (f30-0 (* 0.01 (the float (-> obj values 2 current))))
+(defmethod draw ((this hud-krew-boss))
+  (set-hud-piece-position! (-> this sprites 1) (the int (+ 462.0 (* 130.0 (-> this offset)))) 350)
+  (set-as-offset-from! (the-as hud-sprite (-> this sprites)) (the-as vector4w (-> this sprites 1)) -32 0)
+  (set-as-offset-from! (-> this sprites 2) (the-as vector4w (-> this sprites 1)) -96 0)
+  (set-as-offset-from! (-> this sprites 5) (the-as vector4w (-> this sprites 1)) -62 14)
+  (set-as-offset-from! (-> this sprites 6) (the-as vector4w (-> this sprites 1)) -32 14)
+  (let ((s5-0 (-> this values 0 current))
+        (f28-0 (* 0.01 (the float (-> this values 1 current))))
+        (f30-0 (* 0.01 (the float (-> this values 2 current))))
         )
-    (set-as-offset-from! (-> obj sprites 3) (the-as vector4w (-> obj sprites 1)) -92 15)
+    (set-as-offset-from! (-> this sprites 3) (the-as vector4w (-> this sprites 1)) -92 15)
     (cond
       ((zero? s5-0)
-       (set! (-> obj sprites 3 color x) 0)
-       (set! (-> obj sprites 3 color y) 255)
+       (set! (-> this sprites 3 color x) 0)
+       (set! (-> this sprites 3 color y) 255)
        (set! f28-0 (+ 2.0 f28-0))
        )
       ((= s5-0 1)
-       (set! (-> obj sprites 3 color y) 255)
-       (set! (-> obj sprites 3 color x) 255)
+       (set! (-> this sprites 3 color y) 255)
+       (set! (-> this sprites 3 color x) 255)
        (set! f28-0 (+ 1.0 f28-0))
        )
       (else
-        (set! (-> obj sprites 3 color x) 255)
-        (set! (-> obj sprites 3 color y) 0)
+        (set! (-> this sprites 3 color x) 255)
+        (set! (-> this sprites 3 color y) 0)
         0
         )
       )
-    (set! (-> obj sprites 3 scale-x) (* -7.25 f28-0))
-    (set-as-offset-from! (-> obj sprites 4) (the-as vector4w (-> obj sprites 1)) -84 4)
+    (set! (-> this sprites 3 scale-x) (* -7.25 f28-0))
+    (set-as-offset-from! (-> this sprites 4) (the-as vector4w (-> this sprites 1)) -84 4)
     (cond
       ((< f30-0 0.5)
-       (set! (-> obj sprites 4 color x) 255)
-       (set! (-> obj sprites 4 color y) (the int (lerp 0.0 255.0 (* 2.0 f30-0))))
+       (set! (-> this sprites 4 color x) 255)
+       (set! (-> this sprites 4 color y) (the int (lerp 0.0 255.0 (* 2.0 f30-0))))
        )
       (else
-        (set! (-> obj sprites 4 color x) (the int (lerp 255.0 0.0 (* 2.0 (+ -0.5 f30-0)))))
-        (set! (-> obj sprites 4 color y) 255)
+        (set! (-> this sprites 4 color x) (the int (lerp 255.0 0.0 (* 2.0 (+ -0.5 f30-0)))))
+        (set! (-> this sprites 4 color y) 255)
         )
       )
-    (set! (-> obj sprites 4 scale-x) (* -18.25 f30-0))
+    (set! (-> this sprites 4 scale-x) (* -18.25 f30-0))
     )
-  ((method-of-type hud draw) obj)
+  ((method-of-type hud draw) this)
   0
   (none)
   )
 
-(defmethod update-values hud-krew-boss ((obj hud-krew-boss))
-  (set! (-> obj values 0 target) (+ (-> (the-as krew-boss (-> obj parent 0)) gameplay-pass) -1))
-  (let ((v1-7 (/ (-> (the-as krew-boss (-> obj parent 0)) hit-points)
+(defmethod update-values ((this hud-krew-boss))
+  (set! (-> this values 0 target) (+ (-> (the-as krew-boss (-> this parent 0)) gameplay-pass) -1))
+  (let ((v1-7 (/ (-> (the-as krew-boss (-> this parent 0)) hit-points)
                  (if (logtest? (-> *game-info* secrets) (game-secrets hero-mode))
                      2
                      1
@@ -1482,59 +1421,59 @@ For example for an elevator pre-compute the distance between the first and last 
                  )
               )
         )
-    (case (-> (the-as krew-boss (-> obj parent 0)) gameplay-pass)
+    (case (-> (the-as krew-boss (-> this parent 0)) gameplay-pass)
       ((1)
-       (set! (-> obj values 1 target) (the int (* 3.3333333 (the float (+ v1-7 -70)))))
+       (set! (-> this values 1 target) (the int (* 3.3333333 (the float (+ v1-7 -70)))))
        )
       ((2)
-       (set! (-> obj values 1 target) (the int (* 3.3333333 (the float (+ v1-7 -40)))))
+       (set! (-> this values 1 target) (the int (* 3.3333333 (the float (+ v1-7 -40)))))
        )
       (else
-        (set! (-> obj values 1 target) (the int (* 2.5 (the float v1-7))))
+        (set! (-> this values 1 target) (the int (* 2.5 (the float v1-7))))
         )
       )
     )
-  (when (< (-> obj values 1 target) 0)
-    (set! (-> obj values 1 target) 0)
+  (when (< (-> this values 1 target) 0)
+    (set! (-> this values 1 target) 0)
     0
     )
-  ((method-of-type hud update-values) obj)
+  ((method-of-type hud update-values) this)
   0
   (none)
   )
 
-(defmethod init-callback hud-krew-boss ((obj hud-krew-boss))
-  (set! (-> obj gui-id)
-        (add-process *gui-control* obj (gui-channel hud-middle-right) (gui-action hidden) (-> obj name) 81920.0 0)
+(defmethod init-callback ((this hud-krew-boss))
+  (set! (-> this gui-id)
+        (add-process *gui-control* this (gui-channel hud-middle-right) (gui-action hidden) (-> this name) 81920.0 0)
         )
-  (set! (-> obj values 0 target) 0)
-  (set! (-> obj values 1 target) 100)
-  (logior! (-> obj flags) (hud-flags show))
-  (set! (-> obj sprites 0 tex) (lookup-texture-by-id (new 'static 'texture-id :index #x3b :page #x67a)))
-  (set! (-> obj sprites 0 flags) (the-as uint 4))
-  (set! (-> obj sprites 1 tex) (lookup-texture-by-id (new 'static 'texture-id :index #x3c :page #x67a)))
-  (set! (-> obj sprites 1 flags) (the-as uint 4))
-  (set! (-> obj sprites 2 tex)
+  (set! (-> this values 0 target) 0)
+  (set! (-> this values 1 target) 100)
+  (logior! (-> this flags) (hud-flags show))
+  (set! (-> this sprites 0 tex) (lookup-texture-by-id (new 'static 'texture-id :index #x3b :page #x67a)))
+  (set! (-> this sprites 0 flags) (the-as uint 4))
+  (set! (-> this sprites 1 tex) (lookup-texture-by-id (new 'static 'texture-id :index #x3c :page #x67a)))
+  (set! (-> this sprites 1 flags) (the-as uint 4))
+  (set! (-> this sprites 2 tex)
         (lookup-texture-by-name "hud-baronsymbol-01" (the-as string #f) (the-as (pointer texture-page) #f))
         )
-  (set! (-> obj sprites 2 flags) (the-as uint 4))
-  (set! (-> obj sprites 5 tex) (lookup-texture-by-id (new 'static 'texture-id :index #x3d :page #x67a)))
-  (set! (-> obj sprites 5 scale-x) 0.5)
-  (set! (-> obj sprites 5 flags) (the-as uint 4))
-  (set! (-> obj sprites 6 tex) (lookup-texture-by-id (new 'static 'texture-id :index #x3d :page #x67a)))
-  (set! (-> obj sprites 6 scale-x) 0.5)
-  (set! (-> obj sprites 6 flags) (the-as uint 4))
-  (set! (-> obj sprites 3 tex) (lookup-texture-by-id (new 'static 'texture-id :index #x41 :page #x67a)))
-  (set! (-> obj sprites 3 scale-y) 3.25)
-  (set! (-> obj sprites 3 color z) 0)
-  (set! (-> obj sprites 3 flags) (the-as uint 4))
-  (set! (-> obj sprites 4 tex) (lookup-texture-by-id (new 'static 'texture-id :index #x41 :page #x67a)))
-  (set! (-> obj sprites 4 scale-y) 1.5)
-  (set! (-> obj sprites 4 color z) 0)
-  (set! (-> obj sprites 4 flags) (the-as uint 4))
-  (alloc-string-if-needed obj 0)
-  (set! (-> obj strings 0 flags) (font-flags kerning large))
-  (set! (-> obj strings 0 scale) 0.5)
+  (set! (-> this sprites 2 flags) (the-as uint 4))
+  (set! (-> this sprites 5 tex) (lookup-texture-by-id (new 'static 'texture-id :index #x3d :page #x67a)))
+  (set! (-> this sprites 5 scale-x) 0.5)
+  (set! (-> this sprites 5 flags) (the-as uint 4))
+  (set! (-> this sprites 6 tex) (lookup-texture-by-id (new 'static 'texture-id :index #x3d :page #x67a)))
+  (set! (-> this sprites 6 scale-x) 0.5)
+  (set! (-> this sprites 6 flags) (the-as uint 4))
+  (set! (-> this sprites 3 tex) (lookup-texture-by-id (new 'static 'texture-id :index #x41 :page #x67a)))
+  (set! (-> this sprites 3 scale-y) 3.25)
+  (set! (-> this sprites 3 color z) 0)
+  (set! (-> this sprites 3 flags) (the-as uint 4))
+  (set! (-> this sprites 4 tex) (lookup-texture-by-id (new 'static 'texture-id :index #x41 :page #x67a)))
+  (set! (-> this sprites 4 scale-y) 1.5)
+  (set! (-> this sprites 4 color z) 0)
+  (set! (-> this sprites 4 flags) (the-as uint 4))
+  (alloc-string-if-needed this 0)
+  (set! (-> this strings 0 flags) (font-flags kerning large))
+  (set! (-> this strings 0 scale) 0.5)
   0
   (none)
   )
@@ -1876,68 +1815,68 @@ For example for an elevator pre-compute the distance between the first and last 
     )
   )
 
-(defmethod init-enemy! krew-boss ((obj krew-boss))
+(defmethod init-enemy! ((this krew-boss))
   "Common method called to initialize the enemy, typically sets up default field values and calls ancillary helper methods"
   (initialize-skeleton
-    obj
+    this
     (the-as skeleton-group (art-group-get-by-name *level* "skel-krew-boss" (the-as (pointer uint32) #f)))
     (the-as pair 0)
     )
-  (init-enemy-behaviour-and-stats! obj *krew-boss-nav-enemy-info*)
-  (let ((v1-5 (-> obj neck)))
+  (init-enemy-behaviour-and-stats! this *krew-boss-nav-enemy-info*)
+  (let ((v1-5 (-> this neck)))
     (set! (-> v1-5 up) (the-as uint 1))
     (set! (-> v1-5 nose) (the-as uint 2))
     (set! (-> v1-5 ear) (the-as uint 0))
     (set-vector! (-> v1-5 twist-max) 3640.889 11832.889 0.0 1.0)
     (set! (-> v1-5 ignore-angle) 15473.777)
     )
-  (logclear! (-> obj mask) (process-mask actor-pause))
-  (let ((v1-9 (-> obj nav)))
+  (logclear! (-> this mask) (process-mask actor-pause))
+  (let ((v1-9 (-> this nav)))
     (set! (-> v1-9 speed-scale) 1.0)
     )
   0
-  (set-gravity-length (-> obj root dynam) 573440.0)
-  (logior! (-> obj nav flags) (nav-control-flag momentum-ignore-heading))
-  (set-vector! (-> obj root trans) -1302528.0 -1449984.0 -6836224.0 1.0)
-  (let ((v1-20 (-> obj nav state))
-        (a0-17 (-> obj root trans))
+  (set-gravity-length (-> this root dynam) 573440.0)
+  (logior! (-> this nav flags) (nav-control-flag momentum-ignore-heading))
+  (set-vector! (-> this root trans) -1302528.0 -1449984.0 -6836224.0 1.0)
+  (let ((v1-20 (-> this nav state))
+        (a0-17 (-> this root trans))
         )
     (logclear! (-> v1-20 flags) (nav-state-flag directional-mode))
     (logior! (-> v1-20 flags) (nav-state-flag target-poly-dirty))
     (set! (-> v1-20 target-post quad) (-> a0-17 quad))
     )
   0
-  (set! (-> obj next-clone-side) 0)
-  (set! (-> obj last-closest-spawn) 0)
-  (set! (-> obj next-shooting-frame) 0)
-  (set! (-> obj floating) #f)
-  (set! (-> obj next-path-point) 0)
-  (set! (-> obj num-clones-to-spawn) 0)
-  (set! (-> obj gameplay-pass) 0)
-  (set! (-> obj hud-handle) (the-as handle #f))
-  (set! (-> obj id) (new 'static 'sound-id))
-  (set! (-> obj channel) (the-as uint 35))
-  (set! (-> obj play-clone-wave-speech) #f)
-  (set! (-> obj spawn-charge) #f)
+  (set! (-> this next-clone-side) 0)
+  (set! (-> this last-closest-spawn) 0)
+  (set! (-> this next-shooting-frame) 0)
+  (set! (-> this floating) #f)
+  (set! (-> this next-path-point) 0)
+  (set! (-> this num-clones-to-spawn) 0)
+  (set! (-> this gameplay-pass) 0)
+  (set! (-> this hud-handle) (the-as handle #f))
+  (set! (-> this id) (new 'static 'sound-id))
+  (set! (-> this channel) (the-as uint 35))
+  (set! (-> this play-clone-wave-speech) #f)
+  (set! (-> this spawn-charge) #f)
   (dotimes (v1-24 8)
-    (set! (-> obj clones v1-24) (the-as handle #f))
+    (set! (-> this clones v1-24) (the-as handle #f))
     )
-  (set! (-> obj enemy-flags) (the-as enemy-flag (logclear (-> obj enemy-flags) (enemy-flag enemy-flag36))))
-  (set! (-> obj nav callback-info) *nav-enemy-null-callback-info*)
+  (set! (-> this enemy-flags) (the-as enemy-flag (logclear (-> this enemy-flags) (enemy-flag enemy-flag36))))
+  (set! (-> this nav callback-info) *nav-enemy-null-callback-info*)
   0
   0
   (none)
   )
 
 ;; WARN: Return type mismatch object vs none.
-(defmethod go-idle krew-boss ((obj krew-boss))
+(defmethod go-idle ((this krew-boss))
   (cond
     ((task-node-closed? (game-task-node castle-boss-resolution))
-     (cleanup-for-death obj)
-     (go (method-of-object obj die-fast))
+     (cleanup-for-death this)
+     (go (method-of-object this die-fast))
      )
     (else
-      (go (method-of-object obj hidden))
+      (go (method-of-object this hidden))
       )
     )
   (none)
@@ -1945,8 +1884,8 @@ For example for an elevator pre-compute the distance between the first and last 
 
 (defstate hidden (krew-boss)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('trigger)
        (go-virtual play-intro)
        )
@@ -1960,15 +1899,13 @@ For example for an elevator pre-compute the distance between the first and last 
       )
     0
     (logior! (-> self draw status) (draw-control-status no-draw))
-    (none)
     )
   :trans (behavior ()
     (if (task-node-closed? (game-task-node castle-boss-introduction))
         (go-virtual play-intro)
         )
-    (none)
     )
-  :code (the-as (function none :behavior krew-boss) sleep-code)
+  :code sleep-code
   )
 
 (defstate play-intro (krew-boss)
@@ -1980,7 +1917,6 @@ For example for an elevator pre-compute the distance between the first and last 
       (set! (-> v1-5 prim-core collide-as) (-> self root backup-collide-as))
       (set! (-> v1-5 prim-core collide-with) (-> self root backup-collide-with))
       )
-    (none)
     )
   :code (behavior ()
     (when (not (task-node-closed? (game-task-node castle-boss-introduction)))
@@ -1994,71 +1930,70 @@ For example for an elevator pre-compute the distance between the first and last 
       (suspend)
       )
     (go-virtual idle)
-    (none)
     )
   )
 
 ;; WARN: disable def twice: 22. This may happen when a cond (no else) is nested inside of another conditional, but it should be rare.
-(defmethod general-event-handler krew-boss ((obj krew-boss) (arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+(defmethod general-event-handler ((this krew-boss) (arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
   "Handles various events for the enemy
 @TODO - unsure if there is a pattern for the events and this should have a more specific name"
   (case arg2
     (('track)
      (cond
        ((-> arg3 param 0)
-        (if (logtest? (-> obj enemy-flags) (enemy-flag enable-on-active))
+        (if (logtest? (-> this enemy-flags) (enemy-flag enable-on-active))
             #t
             'abort
             )
         )
        (else
-         (logtest? (-> obj enemy-flags) (enemy-flag enable-on-active))
+         (logtest? (-> this enemy-flags) (enemy-flag enable-on-active))
          )
        )
      )
     (('notify)
      (case (-> arg3 param 0)
        (('hit)
-        (krew-hits-jak-speech obj)
-        (set! (-> obj next-shooting-frame) 100)
-        (set! (-> obj spawn-charge) #t)
+        (krew-hits-jak-speech this)
+        (set! (-> this next-shooting-frame) 100)
+        (set! (-> this spawn-charge) #t)
         (let ((v0-0 (the-as object (current-time))))
-          (set! (-> obj state-time) (the-as time-frame v0-0))
+          (set! (-> this state-time) (the-as time-frame v0-0))
           v0-0
           )
         )
        )
      )
     (else
-      ((method-of-type nav-enemy general-event-handler) obj arg0 arg1 arg2 arg3)
+      ((method-of-type nav-enemy general-event-handler) this arg0 arg1 arg2 arg3)
       )
     )
   )
 
-(defmethod enemy-method-102 krew-boss ((obj krew-boss))
+(defmethod enemy-method-102 ((this krew-boss))
   #f
   )
 
-(defmethod enemy-method-77 krew-boss ((obj krew-boss) (arg0 (pointer float)))
+(defmethod enemy-method-77 ((this krew-boss) (arg0 (pointer float)))
   (with-pp
     (ja-channel-push! 1 0)
     (cond
-      ((<= (-> obj hit-points) 0)
-       (let ((a0-2 (-> obj skel root-channel 0)))
-         (set! (-> a0-2 frame-group) (the-as art-joint-anim (-> obj draw art-group data 14)))
+      ((<= (-> this hit-points) 0)
+       (let ((a0-2 (-> this skel root-channel 0)))
+         (set! (-> a0-2 frame-group) (the-as art-joint-anim (-> this draw art-group data 14)))
          (set! (-> a0-2 param 0) (-> pp clock time-adjust-ratio))
          (set! (-> a0-2 frame-num) 0.0)
-         (joint-control-channel-group! a0-2 (the-as art-joint-anim (-> obj draw art-group data 14)) num-func-loop!)
+         (joint-control-channel-group! a0-2 (the-as art-joint-anim (-> this draw art-group data 14)) num-func-loop!)
          )
        )
       (else
-        (let ((a0-3 (-> obj skel root-channel 0)))
+        (let ((a0-3 (-> this skel root-channel 0)))
           (set! (-> a0-3 frame-group)
-                (the-as art-joint-anim (-> obj draw art-group data (-> obj enemy-info knocked-anim)))
+                (the-as art-joint-anim (-> this draw art-group data (-> this enemy-info knocked-anim)))
                 )
           (set! (-> a0-3 param 0)
                 (the float
-                     (+ (-> (the-as art-joint-anim (-> obj draw art-group data (-> obj enemy-info knocked-anim))) frames num-frames)
+                     (+ (-> (the-as art-joint-anim (-> this draw art-group data (-> this enemy-info knocked-anim))) frames num-frames)
                         -1
                         )
                      )
@@ -2067,7 +2002,7 @@ For example for an elevator pre-compute the distance between the first and last 
           (set! (-> a0-3 frame-num) 0.0)
           (joint-control-channel-group!
             a0-3
-            (the-as art-joint-anim (-> obj draw art-group data (-> obj enemy-info knocked-anim)))
+            (the-as art-joint-anim (-> this draw art-group data (-> this enemy-info knocked-anim)))
             num-func-seek!
             )
           )
@@ -2077,20 +2012,20 @@ For example for an elevator pre-compute the distance between the first and last 
     )
   )
 
-(defmethod enemy-method-78 krew-boss ((obj krew-boss) (arg0 (pointer float)))
+(defmethod enemy-method-78 ((this krew-boss) (arg0 (pointer float)))
   (cond
-    ((<= (-> obj hit-points) 0)
+    ((<= (-> this hit-points) 0)
      #f
      )
     (else
       (ja-channel-push! 1 (seconds 0.1))
-      (let ((a0-2 (-> obj skel root-channel 0)))
+      (let ((a0-2 (-> this skel root-channel 0)))
         (set! (-> a0-2 frame-group)
-              (the-as art-joint-anim (-> obj draw art-group data (-> obj enemy-info knocked-land-anim)))
+              (the-as art-joint-anim (-> this draw art-group data (-> this enemy-info knocked-land-anim)))
               )
         (set! (-> a0-2 param 0)
               (the float
-                   (+ (-> (the-as art-joint-anim (-> obj draw art-group data (-> obj enemy-info knocked-land-anim)))
+                   (+ (-> (the-as art-joint-anim (-> this draw art-group data (-> this enemy-info knocked-land-anim)))
                           frames
                           num-frames
                           )
@@ -2102,7 +2037,7 @@ For example for an elevator pre-compute the distance between the first and last 
         (set! (-> a0-2 frame-num) 0.0)
         (joint-control-channel-group!
           a0-2
-          (the-as art-joint-anim (-> obj draw art-group data (-> obj enemy-info knocked-land-anim)))
+          (the-as art-joint-anim (-> this draw art-group data (-> this enemy-info knocked-land-anim)))
           num-func-seek!
           )
         )
@@ -2111,7 +2046,7 @@ For example for an elevator pre-compute the distance between the first and last 
     )
   )
 
-(defmethod enemy-method-81 krew-boss ((obj krew-boss))
+(defmethod enemy-method-81 ((this krew-boss))
   #f
   )
 
@@ -2126,7 +2061,6 @@ For example for an elevator pre-compute the distance between the first and last 
     (krew-hit-speech self)
     (logclear! (-> self enemy-flags) (enemy-flag enable-on-active))
     (logclear! (-> self nav flags) (nav-control-flag update-heading-from-facing))
-    (none)
     )
   :exit (behavior ()
     (local-vars (v1-5 enemy-flag))
@@ -2147,7 +2081,6 @@ For example for an elevator pre-compute the distance between the first and last 
         (logior! (-> self nav flags) (nav-control-flag update-heading-from-facing))
         (logclear! (-> self nav flags) (nav-control-flag update-heading-from-facing))
         )
-    (none)
     )
   :post (behavior ()
     (logior! (-> self enemy-flags) (enemy-flag directed))
@@ -2179,13 +2112,12 @@ For example for an elevator pre-compute the distance between the first and last 
     (enemy-method-111 self)
     (nav-enemy-method-142 self (-> self nav))
     (track-target! self)
-    (none)
     )
   )
 
-(defmethod init-enemy-collision! krew-boss ((obj krew-boss))
+(defmethod init-enemy-collision! ((this krew-boss))
   "Initializes the [[collide-shape-moving]] and any ancillary tasks to make the enemy collide properly"
-  (let ((s5-0 (new 'process 'collide-shape-moving obj (collide-list-enum usually-hit-by-player))))
+  (let ((s5-0 (new 'process 'collide-shape-moving this (collide-list-enum usually-hit-by-player))))
     (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s5-0 reaction) cshape-reaction-default)
     (set! (-> s5-0 no-reaction)
@@ -2235,13 +2167,13 @@ For example for an elevator pre-compute the distance between the first and last 
       (set! (-> s5-0 backup-collide-with) (-> v1-17 prim-core collide-with))
       )
     (set! (-> s5-0 max-iteration-count) (the-as uint 3))
-    (set! (-> obj root) s5-0)
+    (set! (-> this root) s5-0)
     )
   0
   (none)
   )
 
-(defmethod coin-flip? krew-boss ((obj krew-boss))
+(defmethod coin-flip? ((this krew-boss))
   "@returns The result of a 50/50 RNG roll"
   #f
   )
@@ -2283,7 +2215,6 @@ For example for an elevator pre-compute the distance between the first and last 
       )
     0
     (logior! (-> self nav flags) (nav-control-flag update-heading-from-facing))
-    (none)
     )
   :exit (behavior ()
     (set! (-> self next-shooting-frame) 200)
@@ -2300,10 +2231,10 @@ For example for an elevator pre-compute the distance between the first and last 
         (logior! (-> self nav flags) (nav-control-flag update-heading-from-facing))
         (logclear! (-> self nav flags) (nav-control-flag update-heading-from-facing))
         )
-    (none)
     )
   :trans (behavior ()
     (local-vars
+      ;; og:preserve-this array -> pointer
       (sv-752 (pointer collide-shape))
       (sv-756 sphere)
       (sv-760 (pointer uint32))
@@ -2353,7 +2284,7 @@ For example for an elevator pre-compute the distance between the first and last 
         0
         (set! (-> self root trans y) 1449984.0)
         (set! (-> self num-clones-to-spawn) 20)
-        (set! (-> self state-time) (current-time))
+        (set-time! (-> self state-time))
         )
       (when (< (vector-vector-xz-distance (-> self root trans) (-> *krew-boss-idle-path* (-> self next-path-point)))
                20480.0
@@ -2397,10 +2328,7 @@ For example for an elevator pre-compute the distance between the first and last 
                 (go-virtual hostile)
                 )
             )
-          (when (and (> gp-2 0)
-                     (> (-> self num-clones-to-spawn) 0)
-                     (>= (- (current-time) (-> self state-time)) (seconds 0.6))
-                     )
+          (when (and (> gp-2 0) (> (-> self num-clones-to-spawn) 0) (time-elapsed? (-> self state-time) (seconds 0.6)))
             (let ((s3-0 (-> self root))
                   (a1-26 (new 'stack-no-clear 'collide-query))
                   (s2-0 #t)
@@ -2418,7 +2346,7 @@ For example for an elevator pre-compute the distance between the first and last 
                 ((not s2-0)
                  (set! (-> s5-1 quad) (-> s3-0 trans quad))
                  (set! s4-1 #t)
-                 (set! (-> self state-time) (current-time))
+                 (set-time! (-> self state-time))
                  )
                 (else
                   (let ((s2-1 0)
@@ -2492,6 +2420,7 @@ For example for an elevator pre-compute the distance between the first and last 
                     )
                   )
                 )
+              ;; og:preserve-this array -> pointer
               (set! sv-752 (the-as (pointer collide-shape) (new 'stack-no-clear 'array 'collide-shape 10)))
               (let ((v1-121 (new 'stack-no-clear 'sphere)))
                 (set! (-> v1-121 quad) (-> s5-1 quad))
@@ -2566,6 +2495,7 @@ For example for an elevator pre-compute the distance between the first and last 
                     )
               (set! sv-768 0)
               (set! (-> sv-756 r) 10240.0)
+              ;; og:preserve-this
               (set! sv-768 (fill-actor-list-for-sphere *actor-hash* sv-756 sv-752 10))
               (if s4-1
                   (set! sv-768 (+ sv-768 -1))
@@ -2587,7 +2517,6 @@ For example for an elevator pre-compute the distance between the first and last 
             )
           )
         )
-      (none)
       )
     )
   :code (behavior ()
@@ -2600,7 +2529,6 @@ For example for an elevator pre-compute the distance between the first and last 
         )
       )
     #f
-    (none)
     )
   :post (behavior ()
     (let ((t9-0 (-> (method-of-type nav-enemy idle) post)))
@@ -2612,18 +2540,17 @@ For example for an elevator pre-compute the distance between the first and last 
         (seek! (-> self root trans y) 1470464.0 (* 204.8 (-> self clock time-adjust-ratio)))
         )
     (nav-enemy-method-176 self)
-    (none)
     )
   )
 
-(defmethod damage-amount-from-attack krew-boss ((obj krew-boss) (arg0 process) (arg1 event-message-block))
+(defmethod damage-amount-from-attack ((this krew-boss) (arg0 process) (arg1 event-message-block))
   "@returns the amount of damage taken from an attack.  This can come straight off the [[attack-info]] or via [[penetrate-using->damage]]"
   (let ((v1-0 (get-penetrate-using-from-attack-event (the-as process-drawable arg0) arg1)))
     (cond
       ((or (logtest? (penetrate jak-blue-shot) v1-0) (logtest? (penetrate jak-dark-shot) v1-0))
        (cond
-         ((>= (- (current-time) (-> obj last-damage-time)) (seconds 5))
-          (set! (-> obj last-damage-time) (current-time))
+         ((time-elapsed? (-> this last-damage-time) (seconds 5))
+          (set-time! (-> this last-damage-time))
           5
           )
          (else
@@ -2641,12 +2568,12 @@ For example for an elevator pre-compute the distance between the first and last 
     )
   )
 
-(defmethod nav-enemy-method-142 krew-boss ((obj krew-boss) (arg0 nav-control))
+(defmethod nav-enemy-method-142 ((this krew-boss) (arg0 nav-control))
   (with-pp
     (cond
-      ((not (logtest? (-> obj nav flags) (nav-control-flag update-heading-from-facing)))
-       (let ((s5-1 (vector-! (new 'stack-no-clear 'vector) (target-pos 0) (-> obj root trans)))
-             (s3-0 (quaternion->matrix (new-stack-matrix0) (-> obj root quat)))
+      ((not (logtest? (-> this nav flags) (nav-control-flag update-heading-from-facing)))
+       (let ((s5-1 (vector-! (new 'stack-no-clear 'vector) (target-pos 0) (-> this root trans)))
+             (s3-0 (quaternion->matrix (new-stack-matrix0) (-> this root quat)))
              )
          (vector-normalize! s5-1 1.0)
          (let* ((s4-0 (vector-normalize-copy! (new 'stack-no-clear 'vector) (-> s3-0 vector 1) 1.0))
@@ -2658,10 +2585,10 @@ For example for an elevator pre-compute the distance between the first and last 
                 (f2-0 182.04445)
                 )
            (cond
-             ((= (-> obj gameplay-pass) 2)
+             ((= (-> this gameplay-pass) 2)
               (set! f2-0 273.06668)
               )
-             ((= (-> obj gameplay-pass) 3)
+             ((= (-> this gameplay-pass) 3)
               (set! f2-0 364.0889)
               )
              )
@@ -2676,13 +2603,13 @@ For example for an elevator pre-compute the distance between the first and last 
                      )
                )
            (let ((f0-3 (seek f30-0 f0-0 (* f2-0 (-> pp clock time-adjust-ratio)))))
-             (quaternion-axis-angle! (-> obj root quat) 0.0 1.0 0.0 f0-3)
+             (quaternion-axis-angle! (-> this root quat) 0.0 1.0 0.0 f0-3)
              )
            )
          )
        )
       (else
-        ((method-of-type nav-enemy nav-enemy-method-142) obj arg0)
+        ((method-of-type nav-enemy nav-enemy-method-142) this arg0)
         )
       )
     0
@@ -2692,7 +2619,7 @@ For example for an elevator pre-compute the distance between the first and last 
 
 (defstate hostile (krew-boss)
   :virtual #t
-  :event (the-as (function process int symbol event-message-block object :behavior krew-boss) enemy-event-handler)
+  :event enemy-event-handler
   :enter (behavior ()
     (let ((gp-0 (/ (-> self hit-points) (if (logtest? (-> *game-info* secrets) (game-secrets hero-mode))
                                             2
@@ -2775,21 +2702,19 @@ For example for an elevator pre-compute the distance between the first and last 
     (set! (-> self spawn-charge) #t)
     (set! (-> self enemy-flags) (the-as enemy-flag (logxor (shl 256 32) (the-as int (-> self enemy-flags)))))
     (set! (-> self enemy-flags) (the-as enemy-flag (logclear (-> self enemy-flags) (enemy-flag enemy-flag41))))
-    (set! (-> self starting-time) (current-time))
+    (set-time! (-> self starting-time))
     (when (not (handle->process (-> self hud-handle)))
       (set! (-> self hud-handle) (ppointer->handle (process-spawn hud-krew-boss :init hud-init-by-other :to self)))
       (krew-comes-in-speech self)
       (send-event *target* 'get-notify self)
       )
     (logclear! (-> self nav flags) (nav-control-flag update-heading-from-facing))
-    (none)
     )
   :exit (behavior ()
     (if (logtest? (enemy-flag enemy-flag43) (-> self enemy-flags))
         (logior! (-> self nav flags) (nav-control-flag update-heading-from-facing))
         (logclear! (-> self nav flags) (nav-control-flag update-heading-from-facing))
         )
-    (none)
     )
   :trans (behavior ()
     (local-vars (v1-25 enemy-flag))
@@ -2799,7 +2724,7 @@ For example for an elevator pre-compute the distance between the first and last 
           )
       )
     (if (or (!= (-> self focus aware) 3) (not (get-enemy-target self)))
-        (set! (-> self starting-time) (current-time))
+        (set-time! (-> self starting-time))
         )
     (when (= (-> self next-shooting-frame) 200)
       (cond
@@ -2838,11 +2763,10 @@ For example for an elevator pre-compute the distance between the first and last 
            )
          )
         (else
-          (set! (-> self state-time) (current-time))
+          (set-time! (-> self state-time))
           )
         )
       )
-    (none)
     )
   :code (behavior ()
     (ja-channel-push! 2 (seconds 0.1))
@@ -2866,7 +2790,6 @@ For example for an elevator pre-compute the distance between the first and last 
         )
       )
     #f
-    (none)
     )
   :post (behavior ()
     (let ((a0-0 self))
@@ -2905,7 +2828,7 @@ For example for an elevator pre-compute the distance between the first and last 
         )
       )
     (let ((gp-2 (the int (* 300.0 (- 3.0 (* 0.5 (+ -1.0 (the float (-> self gameplay-pass)))))))))
-      (when (and (-> self spawn-charge) (>= (- (current-time) (-> self state-time)) (+ gp-2 -300)))
+      (when (and (-> self spawn-charge) (time-elapsed? (-> self state-time) (+ gp-2 -300)))
         (process-spawn
           part-tracker
           :init part-tracker-init
@@ -2919,7 +2842,7 @@ For example for an elevator pre-compute the distance between the first and last 
           )
         (set! (-> self spawn-charge) #f)
         )
-      (when (and (= (-> self next-shooting-frame) 100) (>= (- (current-time) (-> self state-time)) gp-2))
+      (when (and (= (-> self next-shooting-frame) 100) (time-elapsed? (-> self state-time) gp-2))
         (set! (-> self next-shooting-frame) 0)
         (ja :chan 1 :num-func num-func-identity :frame-num 0.0)
         )
@@ -2935,7 +2858,7 @@ For example for an elevator pre-compute the distance between the first and last 
         ((= (-> self next-shooting-frame) 20)
          (set! (-> self next-shooting-frame) 100)
          (set! (-> self spawn-charge) #t)
-         (set! (-> self state-time) (current-time))
+         (set-time! (-> self state-time))
          )
         (else
           (+! (-> self next-shooting-frame) 5)
@@ -2951,8 +2874,8 @@ For example for an elevator pre-compute the distance between the first and last 
           (let ((gp-6 (new 'stack-no-clear 'projectile-init-by-other-params)))
             (let ((s4-0 (new 'stack-no-clear 'vector)))
               (set! (-> s4-0 quad) (-> (get-trans a0-40 0) quad))
-              (let ((s2-0 (vector<-cspace! (new 'stack-no-clear 'vector) (-> self node-list data 32)))
-                    (s5-2 (vector<-cspace! (new 'stack-no-clear 'vector) (-> self node-list data 33)))
+              (let ((s2-0 (vector<-cspace! (new 'stack-no-clear 'vector) (joint-node krew-lowres-lod0-jg lightC)))
+                    (s5-2 (vector<-cspace! (new 'stack-no-clear 'vector) (joint-node krew-lowres-lod0-jg lightEnd)))
                     )
                 (let ((s3-0 (new 'stack-no-clear 'vector)))
                   0.0
@@ -2988,19 +2911,18 @@ For example for an elevator pre-compute the distance between the first and last 
           )
         )
       )
-    (none)
     )
   )
 
-(defmethod kill-prefer-falling krew-boss ((obj krew-boss))
+(defmethod kill-prefer-falling ((this krew-boss))
   "If available in `enemy-info`, [[go]] to the [[die-falling]] state, if not, [[die]]"
-  (when (handle->process (-> obj hud-handle))
-    (send-event (-> obj hud-handle process 0) 'hide-and-die)
-    (set! (-> obj hud-handle) (the-as handle #f))
+  (when (handle->process (-> this hud-handle))
+    (send-event (-> this hud-handle process 0) 'hide-and-die)
+    (set! (-> this hud-handle) (the-as handle #f))
     )
   (send-event *target* 'get-notify #f)
-  (add-process *gui-control* obj (the-as gui-channel (-> obj channel)) (gui-action play) "ds269" -99.0 0)
-  ((method-of-type nav-enemy kill-prefer-falling) obj)
+  (add-process *gui-control* this (the-as gui-channel (-> this channel)) (gui-action play) "ds269" -99.0 0)
+  ((method-of-type nav-enemy kill-prefer-falling) this)
   )
 
 (define *krew-boss-die-positions* (new 'static 'boxed-array :type vector
@@ -3013,7 +2935,7 @@ For example for an elevator pre-compute the distance between the first and last 
 
 (defstate die (krew-boss)
   :virtual #t
-  :event (the-as (function process int symbol event-message-block object :behavior krew-boss) enemy-event-handler)
+  :event enemy-event-handler
   :enter (behavior ()
     (let ((t9-0 (-> (method-of-type nav-enemy die) enter)))
       (if t9-0
@@ -3057,21 +2979,17 @@ For example for an elevator pre-compute the distance between the first and last 
       )
     (iterate-process-tree
       *entity-pool*
-      (the-as
-        (function object object)
-        (lambda ((arg0 collectable))
-          (if (and (or (type? arg0 ammo-collectable) (type? arg0 health))
-                   (and (nonzero? (-> arg0 root)) (>= 819200.0 (vector-vector-distance (-> arg0 root trans) (target-pos 0))))
-                   )
-              (deactivate arg0)
-              )
-          (none)
-          )
+      (lambda ((arg0 collectable))
+        (if (and (or (type? arg0 ammo-collectable) (type? arg0 health))
+                 (and (nonzero? (-> arg0 root)) (>= 819200.0 (vector-vector-distance (-> arg0 root trans) (target-pos 0))))
+                 )
+            (deactivate arg0)
+            )
+        (none)
         )
       *null-kernel-context*
       )
     (logior! (-> self nav flags) (nav-control-flag update-heading-from-facing))
-    (none)
     )
   :exit (behavior ()
     (let ((t9-0 (-> (method-of-type nav-enemy die) exit)))
@@ -3083,7 +3001,6 @@ For example for an elevator pre-compute the distance between the first and last 
       (set! (-> v1-4 sphere-mask) (the-as uint #x800f8))
       )
     0
-    (none)
     )
   :trans (behavior ()
     (let ((f30-0 (vector-vector-xz-distance (target-pos 0) (-> *krew-boss-die-positions* (-> self next-path-point)))))
@@ -3103,7 +3020,6 @@ For example for an elevator pre-compute the distance between the first and last 
         0
         )
       )
-    (none)
     )
   :code (behavior ()
     (while (< 81920.0
@@ -3113,11 +3029,8 @@ For example for an elevator pre-compute the distance between the first and last 
       (suspend)
       )
     (ja-channel-push! 1 (seconds 0.1))
-    (ja-no-eval :group! (-> self draw art-group data 15)
-                :num! (seek!
-                  (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 15)) frames num-frames) -1))
-                  (-> self clock time-adjust-ratio)
-                  )
+    (ja-no-eval :group! krew-lowres-death-land-ja
+                :num! (seek! max (-> self clock time-adjust-ratio))
                 :frame-num 0.0
                 )
     (while (not (ja-done? 0))
@@ -3154,11 +3067,9 @@ For example for an elevator pre-compute the distance between the first and last 
       (suspend)
       )
     (cleanup-for-death self)
-    (none)
     )
   :post (behavior ()
     (nav-enemy-method-176 self)
-    (none)
     )
   )
 

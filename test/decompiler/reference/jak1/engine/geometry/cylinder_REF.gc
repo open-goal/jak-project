@@ -2,7 +2,7 @@
 (in-package goal)
 
 ;; definition for method 10 of type cylinder
-(defmethod ray-capsule-intersect cylinder ((obj cylinder) (probe-origin vector) (probe-dir vector))
+(defmethod ray-capsule-intersect ((this cylinder) (probe-origin vector) (probe-dir vector))
   (let ((t2-0 (new 'stack-no-clear 'vector))
         (end-pt (new 'stack-no-clear 'vector))
         )
@@ -11,21 +11,21 @@
     (let ((result (ray-cylinder-intersect
                     probe-origin
                     probe-dir
-                    (-> obj origin)
-                    (-> obj axis)
-                    (-> obj radius)
-                    (-> obj length)
+                    (-> this origin)
+                    (-> this axis)
+                    (-> this radius)
+                    (-> this length)
                     t2-0
                     )
                   )
           )
-      (let ((u-origin-sph (ray-sphere-intersect probe-origin probe-dir (-> obj origin) (-> obj radius))))
+      (let ((u-origin-sph (ray-sphere-intersect probe-origin probe-dir (-> this origin) (-> this radius))))
         (if (and (>= u-origin-sph 0.0) (or (< result 0.0) (< u-origin-sph result)))
             (set! result u-origin-sph)
             )
         )
-      (vector+float*! end-pt (-> obj origin) (-> obj axis) (-> obj length))
-      (let ((u-end-sphere (ray-sphere-intersect probe-origin probe-dir end-pt (-> obj radius))))
+      (vector+float*! end-pt (-> this origin) (-> this axis) (-> this length))
+      (let ((u-end-sphere (ray-sphere-intersect probe-origin probe-dir end-pt (-> this radius))))
         (if (and (>= u-end-sphere 0.0) (or (< result 0.0) (< u-end-sphere result)))
             (set! result u-end-sphere)
             )
@@ -37,24 +37,21 @@
 
 ;; definition of type cylinder-verts
 (deftype cylinder-verts (structure)
-  ((vert vector 24 :inline :offset-assert   0)
+  ((vert  vector  24 :inline)
    )
-  :method-count-assert 9
-  :size-assert         #x180
-  :flag-assert         #x900000180
   )
 
 ;; definition for method 3 of type cylinder-verts
-(defmethod inspect cylinder-verts ((obj cylinder-verts))
-  (format #t "[~8x] ~A~%" obj 'cylinder-verts)
-  (format #t "~Tvert[24] @ #x~X~%" (-> obj vert))
-  obj
+(defmethod inspect ((this cylinder-verts))
+  (format #t "[~8x] ~A~%" this 'cylinder-verts)
+  (format #t "~Tvert[24] @ #x~X~%" (-> this vert))
+  this
   )
 
 ;; definition for method 9 of type cylinder
 ;; INFO: Used lq/sq
 ;; INFO: Return type mismatch int vs none.
-(defmethod debug-draw cylinder ((obj cylinder) (arg0 vector4w))
+(defmethod debug-draw ((this cylinder) (arg0 vector4w))
   (local-vars
     (sv-896 matrix)
     (sv-912 int)
@@ -84,21 +81,21 @@
     (let ((s1-0 (new 'stack-no-clear 'vector))
           (s0-0 (new 'stack-no-clear 'vector))
           )
-      (if (< 0.999 (fabs (-> obj axis y)))
-          (vector-cross! s1-0 (-> obj axis) (new 'static 'vector :z 1.0))
-          (vector-cross! s1-0 (-> obj axis) (new 'static 'vector :y 1.0))
+      (if (< 0.999 (fabs (-> this axis y)))
+          (vector-cross! s1-0 (-> this axis) (new 'static 'vector :z 1.0))
+          (vector-cross! s1-0 (-> this axis) (new 'static 'vector :y 1.0))
           )
-      (vector-normalize! s1-0 (-> obj radius))
-      (vector-float*! s0-0 (-> obj axis) (* 0.125 (-> obj length)))
+      (vector-normalize! s1-0 (-> this radius))
+      (vector-float*! s0-0 (-> this axis) (* 0.125 (-> this length)))
       (let ((s5-0 (new 'stack-no-clear 'cylinder-verts))
             (s4-0 (new 'stack-no-clear 'cylinder-verts))
             (s3-0 (new 'stack-no-clear 'matrix))
             )
-        (matrix-axis-angle! s3-0 (-> obj axis) 4096.0)
+        (matrix-axis-angle! s3-0 (-> this axis) 4096.0)
         (set! sv-896 (new 'stack-no-clear 'matrix))
-        (vector-matrix*! (the-as vector sv-896) (-> obj origin) s3-0)
+        (vector-matrix*! (the-as vector sv-896) (-> this origin) s3-0)
         (let ((v1-5 (-> s3-0 vector 3)))
-          (.lvf vf4 (&-> (-> obj origin) quad))
+          (.lvf vf4 (&-> (-> this origin) quad))
           (.lvf vf5 (&-> sv-896 vector 0 quad))
           (.mov.vf vf6 vf0 :mask #b1000)
           (.sub.vf vf6 vf4 vf5 :mask #b111)
@@ -106,14 +103,14 @@
           )
         (set! sv-912 0)
         (while (< sv-912 8)
-          (vector+! (-> s5-0 vert (+ sv-912 8)) (-> obj origin) s1-0)
+          (vector+! (-> s5-0 vert (+ sv-912 8)) (-> this origin) s1-0)
           (vector+float*! (-> s5-0 vert (+ sv-912 8)) (-> s5-0 vert (+ sv-912 8)) s0-0 (the float sv-912))
           (set! sv-912 (+ sv-912 1))
           )
         (dotimes (s0-1 8)
           (set! sv-928 vector+float*!)
           (set! sv-944 (-> s5-0 vert s0-1))
-          (set! sv-960 (-> obj origin))
+          (set! sv-960 (-> this origin))
           (set! sv-976 s1-0)
           (let ((a3-1 (cos (* 2048.0 (the float (- 7 s0-1))))))
             (sv-928 sv-944 sv-960 sv-976 a3-1)
@@ -121,13 +118,13 @@
           (set! sv-992 vector+float*!)
           (set! sv-1008 (-> s5-0 vert s0-1))
           (set! sv-1024 (-> s5-0 vert s0-1))
-          (set! sv-1040 (-> obj axis))
-          (let ((a3-2 (* (- (-> obj radius)) (sin (* 2048.0 (the float (- 7 s0-1)))))))
+          (set! sv-1040 (-> this axis))
+          (let ((a3-2 (* (- (-> this radius)) (sin (* 2048.0 (the float (- 7 s0-1)))))))
             (sv-992 sv-1008 sv-1024 sv-1040 a3-2)
             )
           (set! sv-1056 vector+float*!)
           (set! sv-1072 (-> s5-0 vert (+ s0-1 16)))
-          (set! sv-1088 (-> obj origin))
+          (set! sv-1088 (-> this origin))
           (set! sv-1104 s1-0)
           (let ((a3-3 (cos (* 2048.0 (the float s0-1)))))
             (sv-1056 sv-1072 sv-1088 sv-1104 a3-3)
@@ -135,8 +132,8 @@
           (set! sv-1120 vector+float*!)
           (set! sv-1136 (-> s5-0 vert (+ s0-1 16)))
           (set! sv-1152 (-> s5-0 vert (+ s0-1 16)))
-          (set! sv-1168 (-> obj axis))
-          (let ((a3-4 (+ (-> obj length) (* (-> obj radius) (sin (* 2048.0 (the float s0-1)))))))
+          (set! sv-1168 (-> this axis))
+          (let ((a3-4 (+ (-> this length) (* (-> this radius) (sin (* 2048.0 (the float s0-1)))))))
             (sv-1120 sv-1136 sv-1152 sv-1168 a3-4)
             )
           )
@@ -185,7 +182,7 @@
 
 ;; definition for method 10 of type cylinder-flat
 ;; INFO: Used lq/sq
-(defmethod ray-flat-cyl-intersect cylinder-flat ((obj cylinder-flat) (probe-origin vector) (probe-dir vector))
+(defmethod ray-flat-cyl-intersect ((this cylinder-flat) (probe-origin vector) (probe-dir vector))
   (let ((gp-0 (new 'stack-no-clear 'vector))
         (end-pt (new 'stack-no-clear 'vector))
         )
@@ -194,25 +191,26 @@
     (let ((result (ray-cylinder-intersect
                     probe-origin
                     probe-dir
-                    (-> obj origin)
-                    (-> obj axis)
-                    (-> obj radius)
-                    (-> obj length)
+                    (-> this origin)
+                    (-> this axis)
+                    (-> this radius)
+                    (-> this length)
                     gp-0
                     )
                   )
           )
       (let ((u-origin-circle
-              (ray-arbitrary-circle-intersect probe-origin probe-dir (-> obj origin) (-> obj axis) (-> obj radius))
+              (ray-arbitrary-circle-intersect probe-origin probe-dir (-> this origin) (-> this axis) (-> this radius))
               )
             )
         (when (and (>= u-origin-circle 0.0) (or (< result 0.0) (< u-origin-circle result)))
           (set! result u-origin-circle)
-          (set! (-> gp-0 quad) (-> obj origin quad))
+          (set! (-> gp-0 quad) (-> this origin quad))
           )
         )
-      (vector+float*! end-pt (-> obj origin) (-> obj axis) (-> obj length))
-      (let ((u-end-circle (ray-arbitrary-circle-intersect probe-origin probe-dir end-pt (-> obj axis) (-> obj radius))))
+      (vector+float*! end-pt (-> this origin) (-> this axis) (-> this length))
+      (let ((u-end-circle (ray-arbitrary-circle-intersect probe-origin probe-dir end-pt (-> this axis) (-> this radius)))
+            )
         (when (and (>= u-end-circle 0.0) (or (< result 0.0) (< u-end-circle result)))
           (set! result u-end-circle)
           (set! (-> gp-0 quad) (-> end-pt quad))
@@ -225,24 +223,21 @@
 
 ;; definition of type cylinder-flat-verts
 (deftype cylinder-flat-verts (structure)
-  ((vert vector 10 :inline :offset-assert   0)
+  ((vert  vector  10 :inline)
    )
-  :method-count-assert 9
-  :size-assert         #xa0
-  :flag-assert         #x9000000a0
   )
 
 ;; definition for method 3 of type cylinder-flat-verts
-(defmethod inspect cylinder-flat-verts ((obj cylinder-flat-verts))
-  (format #t "[~8x] ~A~%" obj 'cylinder-flat-verts)
-  (format #t "~Tvert[10] @ #x~X~%" (-> obj vert))
-  obj
+(defmethod inspect ((this cylinder-flat-verts))
+  (format #t "[~8x] ~A~%" this 'cylinder-flat-verts)
+  (format #t "~Tvert[10] @ #x~X~%" (-> this vert))
+  this
   )
 
 ;; definition for method 9 of type cylinder-flat
 ;; INFO: Used lq/sq
 ;; INFO: Return type mismatch int vs none.
-(defmethod debug-draw cylinder-flat ((obj cylinder-flat) (arg0 vector4w))
+(defmethod debug-draw ((this cylinder-flat) (arg0 vector4w))
   (local-vars (sv-448 vector) (sv-464 int))
   (rlet ((vf0 :class vf)
          (vf4 :class vf)
@@ -253,21 +248,21 @@
     (let ((s1-0 (new 'stack-no-clear 'vector))
           (s0-0 (new 'stack-no-clear 'vector))
           )
-      (if (< 0.999 (fabs (-> obj axis y)))
-          (vector-cross! s1-0 (-> obj axis) (new 'static 'vector :z 1.0))
-          (vector-cross! s1-0 (-> obj axis) (new 'static 'vector :y 1.0))
+      (if (< 0.999 (fabs (-> this axis y)))
+          (vector-cross! s1-0 (-> this axis) (new 'static 'vector :z 1.0))
+          (vector-cross! s1-0 (-> this axis) (new 'static 'vector :y 1.0))
           )
-      (vector-normalize! s1-0 (-> obj radius))
-      (vector-float*! s0-0 (-> obj axis) (* 0.14285715 (-> obj length)))
+      (vector-normalize! s1-0 (-> this radius))
+      (vector-float*! s0-0 (-> this axis) (* 0.14285715 (-> this length)))
       (let ((s5-0 (new 'stack-no-clear 'cylinder-flat-verts))
             (s4-0 (new 'stack-no-clear 'cylinder-flat-verts))
             (s3-0 (new 'stack-no-clear 'matrix))
             )
-        (matrix-axis-angle! s3-0 (-> obj axis) 4096.0)
+        (matrix-axis-angle! s3-0 (-> this axis) 4096.0)
         (set! sv-448 (new 'stack-no-clear 'vector))
-        (vector-matrix*! sv-448 (-> obj origin) s3-0)
+        (vector-matrix*! sv-448 (-> this origin) s3-0)
         (let ((v1-5 (-> s3-0 vector 3)))
-          (.lvf vf4 (&-> (-> obj origin) quad))
+          (.lvf vf4 (&-> (-> this origin) quad))
           (.lvf vf5 (&-> sv-448 quad))
           (.mov.vf vf6 vf0 :mask #b1000)
           (.sub.vf vf6 vf4 vf5 :mask #b111)
@@ -275,12 +270,12 @@
           )
         (set! sv-464 0)
         (while (< sv-464 8)
-          (vector+! (-> s5-0 vert (+ sv-464 1)) (-> obj origin) s1-0)
+          (vector+! (-> s5-0 vert (+ sv-464 1)) (-> this origin) s1-0)
           (vector+float*! (-> s5-0 vert (+ sv-464 1)) (-> s5-0 vert (+ sv-464 1)) s0-0 (the float sv-464))
           (set! sv-464 (+ sv-464 1))
           )
-        (set! (-> s5-0 vert 0 quad) (-> obj origin quad))
-        (vector+float*! (-> s5-0 vert 9) (-> obj origin) (-> obj axis) (-> obj length))
+        (set! (-> s5-0 vert 0 quad) (-> this origin quad))
+        (vector+float*! (-> s5-0 vert 9) (-> this origin) (-> this axis) (-> this length))
         (dotimes (s2-1 16)
           (dotimes (s1-1 10)
             (vector-matrix*! (-> s4-0 vert s1-1) (-> s5-0 vert s1-1) s3-0)

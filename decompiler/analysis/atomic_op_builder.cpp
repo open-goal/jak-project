@@ -364,6 +364,7 @@ std::unique_ptr<AtomicOp> make_asm_op(const Instruction& i0, int idx) {
     case InstructionKind::PMADDH:
     case InstructionKind::PMULTH:
     case InstructionKind::PEXEW:
+    case InstructionKind::PEXCW:
     case InstructionKind::PNOR:
     case InstructionKind::PCPYH:
     case InstructionKind::PINTEH:
@@ -1795,6 +1796,7 @@ std::unique_ptr<AtomicOp> convert_5(const Instruction& i0,
       process_offset = 44;
       break;
     case GameVersion::Jak2:
+    case GameVersion::Jak3:
       process_offset = 48;
       break;
     default:

@@ -5,13 +5,14 @@
 ;; name in dgo: display
 ;; dgos: GAME, ENGINE
 
-
 (defconstant DMA_BUFFER_GLOBAL_SIZE (#if (not PC_PORT)
                                          (* 1712 1024) ;; 1712K
                                          (* PROCESS_HEAP_MULT 2664 1024))) ;; 2600K x actor heap increase (usually 3x)
 (defconstant DMA_BUFFER_DEBUG_SIZE (#if (not PC_PORT)
                                         (* 8 1024 1024) ;; 8M
                                         (* 16 1024 1024))) ;; 16M
+
+;; DECOMP BEGINS
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; TIME
@@ -32,43 +33,42 @@
   (-> *display* integral-frame-counter)
   )
 
-
-(defmethod set-time-ratios display ((obj display) (slowdown float))
+(defmethod set-time-ratios ((this display) (slowdown float))
   "Set the time ratios for the current game speed. For example, set slowdown = 1.0 if the game
    is running at full speed or slowdown = 2.0 if the game is running at half speed."
 
   ;; don't allow slowdowns of more than 4x. This prevents the dt's in the physics
   ;; calculations from getting huge.
   (let ((ratio (fmin 4.0 slowdown)))
-    (set! (-> obj time-ratio) ratio)
+    (set! (-> this time-ratio) ratio)
     (case (get-video-mode)
       (('pal)
-       (set! (-> obj time-adjust-ratio) (* 1.2 ratio))
-       (set! (-> obj seconds-per-frame) (* 0.02 ratio))
-       (set! (-> obj frames-per-second) (* 50.0 (/ 1.0 ratio)))
+       (set! (-> this time-adjust-ratio) (* 1.2 ratio))
+       (set! (-> this seconds-per-frame) (* 0.02 ratio))
+       (set! (-> this frames-per-second) (* 50.0 (/ 1.0 ratio)))
        ;; 6 "ticks" per frame * 50 fps = 300 ticks per second.
-       (set! (-> obj time-factor) 6.0)
+       (set! (-> this time-factor) 6.0)
        )
       (('ntsc)
-       (set! (-> obj time-adjust-ratio) ratio)
-       (set! (-> obj seconds-per-frame) (* 0.016666668 ratio))
-       (set! (-> obj frames-per-second) (* 60.0 (/ 1.0 ratio)))
+       (set! (-> this time-adjust-ratio) ratio)
+       (set! (-> this seconds-per-frame) (* 0.016666668 ratio))
+       (set! (-> this frames-per-second) (* 60.0 (/ 1.0 ratio)))
        ;; 5 "ticks" per frame * 60 fps = 300 ticks per second.
-       (set! (-> obj time-factor) 5.0)
+       (set! (-> this time-factor) 5.0)
        )
       (('custom)
-       (set! (-> obj time-adjust-ratio) (* (/ 60.0 (-> *pc-settings* target-fps)) ratio))
-       (set! (-> obj seconds-per-frame) (/ ratio (-> *pc-settings* target-fps)))
-       (set! (-> obj frames-per-second) (* (the float (-> *pc-settings* target-fps)) (/ 1.0 ratio)))
+       (set! (-> this time-adjust-ratio) (* (/ 60.0 (-> *pc-settings* target-fps)) ratio))
+       (set! (-> this seconds-per-frame) (/ ratio (-> *pc-settings* target-fps)))
+       (set! (-> this frames-per-second) (* (the float (-> *pc-settings* target-fps)) (/ 1.0 ratio)))
        ;; x "ticks" per frame * y fps = 300 ticks per second.
-       (set! (-> obj time-factor) (/ 300.0 (-> *pc-settings* target-fps)))
+       (set! (-> this time-factor) (/ 300.0 (-> *pc-settings* target-fps)))
        )
       (else
        (format #t "Warning: Tried to set unsupported video-mode")
        )
       )
     )
-  (-> obj time-ratio)
+  (-> this time-ratio)
   )
 
 ;; new constant for use in high FPS scenarios
@@ -95,25 +95,20 @@
   ;; these will eventually be consumed by a sony function. I think it just sets GS registers.
 
   ;; set these to the mode that makes the GS actually work. Basically every game uses exactly this.
-  (set! (-> env pmode)
-        (new 'static 'gs-pmode :en1 #x1 :mmod #x1 :slbg #x1 :alp #xff)
-        )
+  (set! (-> env pmode) (new 'static 'gs-pmode :en1 #x1 :mmod #x1 :slbg #x1 :alp #xff))
   (set! (-> env smode2) (new 'static 'gs-smode2 :int #x1 :ffmd #x1))
 
   ;; set up the framebuffer.
-  (set! (-> env dspfb)
-        (new 'static 'gs-display-fb :psm psm :fbw (sar width 6) :fbp fbp)
-        )
+  (set! (-> env dspfb) (new 'static 'gs-display-fb :psm psm :fbw (/ width 64) :fbp fbp))
 
   ;; set up the display area (obscure PS2 video output junk)
-  (set! (-> env display)
-        (new 'static 'gs-display
-             :dw #x9ff
-             :dy (+ dy 50)
-             :dx (+ (* dx (/ 2560 width)) 652)
-             :dh (+ (shl height 1) -1)
-             :magh (+ (/ (+ width 2559) width) -1)
-             )
+  (set! (-> env display) (new 'static 'gs-display
+                           :dw #x9ff
+                           :dy (+ dy 50)
+                           :dx (+ (* dx (/ 2560 width)) 652)
+                           :dh (+ (* height 2) -1)
+                           :magh (+ (/ (+ width 2559) width) -1)
+                           )
         )
 
   ;; I think bgcolor = 0 is required.
@@ -128,31 +123,24 @@
 
   ;; frame buffer:
   (set! (-> env frame1addr) (gs-reg64 frame-1))
-  (set! (-> env frame1)
-        (new 'static 'gs-frame :fbw (sar width 6) :psm (logand psm 15) :fbp fbp)
-        )
+  (set! (-> env frame1) (new 'static 'gs-frame :fbw (/ width 64) :psm (logand psm 15) :fbp fbp))
 
   ;; dithering is enabled/disabled based on the texture format.
   ;; it's not allowed in psmct32 and psmct24 so I assume it's always off.
   (set! (-> env dtheaddr) (gs-reg64 dthe))
   (cond
-    ((zero? (logand psm 2))
+    ((not (logtest? psm 2))
      (set! (-> env dthe) (new 'static 'gs-dthe))
+     0
      )
     (else
-     (set! (-> env dthe) (new 'static 'gs-dthe :dthe #x1))
-     )
+      (set! (-> env dthe) (new 'static 'gs-dthe :dthe #x1))
+      )
     )
 
   ;; z buffer:
   (set! (-> env zbuf1addr) (gs-reg64 zbuf-1))
-  (set! (-> env zbuf1)
-        (new 'static 'gs-zbuf
-             :zbp #x1c0
-             :psm (logand zpsm 15)
-             :zmsk (if (zero? ztest) 1 0)
-             )
-        )
+  (set! (-> env zbuf1) (new 'static 'gs-zbuf :zbp #x1c0 :psm (logand zpsm 15) :zmsk (if (zero? ztest) 1 0)))
 
   ;; pixel test. you only get to pick the ztst field.
   (set! (-> env test1addr) (gs-reg64 test-1))
@@ -161,8 +149,8 @@
      (set! (-> env test1) (new 'static 'gs-test))
      )
     (else
-     (set! (-> env test1) (new 'static 'gs-test :zte #x1 :ztst ztest))
-     )
+      (set! (-> env test1) (new 'static 'gs-test :zte #x1 :ztst ztest))
+      )
     )
 
   ;; offset to window coordinate system (WCS)
@@ -177,9 +165,7 @@
   ;; scissor to the given width/height (in WCS pixels)
   (set! (-> env scissor1addr) (gs-reg64 scissor-1))
   ;; the lower bound is set to 0: the origin of the WCS which is the xyoffset
-  (set! (-> env scissor1)
-   (new 'static 'gs-scissor :scax1 (+ width -1) :scay1 (+ height -1))
-   )
+  (set! (-> env scissor1) (new 'static 'gs-scissor :scax1 (+ width -1) :scay1 (+ height -1)))
 
   ;; use the prim register for primitive settings, not prmode.
   (set! (-> env prmodecontaddr) (gs-reg64 prmodecont))
@@ -200,16 +186,9 @@
    "
   (set! (-> env xyoffset1)
         (new 'static 'gs-xy-offset
-             :ofx (shl (- x
-                          (shr (+ (-> env scissor1 scax1) 1) 1) ;; half the width.
-                          )
-                       4) ;; 12.4
-             :ofy (+ (shl (- y
-                             (shr (+ (-> env scissor1 scay1) 1) 1)) ;; half the height.
-                          4) ;; convert to 12.4
-                     (if (zero? arg3) 0 8) ;; and add a half-pixel offset.
-                     )
-             )
+          :ofx (* (- x (the-as int (shr (+ (-> env scissor1 scax1) 1) 1))) 16)
+          :ofy (+ (* (- y (the-as int (shr (+ (-> env scissor1 scay1) 1) 1))) 16) (if (zero? arg3) 0 8))
+          )
         )
   env
   )
@@ -318,35 +297,35 @@
 ;; PROFILE BAR
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defmethod add-frame profile-bar ((obj profile-bar) (name symbol) (color rgba))
+(defmethod add-frame ((this profile-bar) (name symbol) (color rgba))
   "Add a block to the profile bar. Looks at the timer to determine the current time."
-  (if *debug-segment*
-      (let ((new-frame (-> obj data (-> obj profile-frame-count))))
-        (set! (-> obj profile-frame-count) (+ (-> obj profile-frame-count) 1))
-        (set! (-> new-frame name) name)
-        (set! (-> new-frame time-stamp) (timer-count (the-as timer-bank #x10000800)))
-        (set! (-> new-frame color) color)
-        new-frame
-        )
+  (when *debug-segment*
+    (let ((new-frame (-> this data (-> this profile-frame-count))))
+      (+! (-> this profile-frame-count) 1)
+      (set! (-> new-frame name) name)
+      (set! (-> new-frame time-stamp) (timer-count (the-as timer-bank #x10000800)))
+      (set! (-> new-frame color) color)
+      new-frame
       )
+    )
   )
 
-(defmethod reset profile-bar ((obj profile-bar))
+(defmethod reset ((this profile-bar))
   "Clear all blocks from the profile bar. Adds the start block"
-  (set! (-> obj profile-frame-count) 0)
-  (add-frame obj 'start (new 'static 'rgba :r #x40 :b #x40 :a #x80))
-  obj
+  (set! (-> this profile-frame-count) 0)
+  (add-frame this 'start (new 'static 'rgba :r #x40 :b #x40 :a #x80))
+  this
   )
 
-(defmethod add-end-frame profile-bar ((obj profile-bar) (name symbol) (color rgba))
+(defmethod add-end-frame ((this profile-bar) (name symbol) (color rgba))
   "Finish the frame."
-  (let ((new-frame (-> obj data (-> obj profile-frame-count))))
-   (set! (-> obj profile-frame-count) (+ (-> obj profile-frame-count) 1))
-   (set! (-> new-frame name) name)
-   (set! (-> new-frame time-stamp) (the-as uint *ticks-per-frame*))
-   (set! (-> new-frame color) color)
-   new-frame
-   )
+  (let ((new-frame (-> this data (-> this profile-frame-count))))
+    (+! (-> this profile-frame-count) 1)
+    (set! (-> new-frame name) name)
+    (set! (-> new-frame time-stamp) (the-as uint *ticks-per-frame*))
+    (set! (-> new-frame color) color)
+    new-frame
+    )
   )
 
 ;; location and size
@@ -358,7 +337,7 @@
 ;; ticks or percent?
 (define *profile-ticks* #f)
 
-(defmethod draw profile-bar ((obj profile-bar) (buf dma-buffer) (bar-pos int))
+(defmethod draw ((this profile-bar) (buf dma-buffer) (bar-pos int))
   "Draw the bar! The bar pos shouldn't be changed."
 
   ;; recompute y stuff based on the current relative-y-scale.
@@ -367,7 +346,7 @@
     (set! *profile-h* height) ;; px
     )
   (let ((block-idx 1) ;; block to draw (0 is 'start)
-        (block-count (-> obj profile-frame-count)) ;; total number of blocks
+        (block-count (-> this profile-frame-count)) ;; total number of blocks
         (left (shl *profile-x* 4)) ;; x (12.4) of the current block. initialized to start of bar.
         (end-time 0)               ;; end of last block
         ;; if there's a single really slow frame, we want its time to appear for
@@ -391,7 +370,7 @@
 
       ;; loop through blocks to draw.
       (while (< block-idx block-count)
-        (let ((block (-> obj data block-idx)))
+        (let ((block (-> this data block-idx)))
           ;; add first three regs (prim, color, one vertex)
           (dma-buffer-add-uint64 buf (new 'static 'gs-prim :prim (gs-prim-type sprite) :abe 1)
                                      (-> block color)
@@ -428,11 +407,11 @@
     ;; update the worst time cache if its more than 0.25 seconds old, or we did worse
     ;; than the cached value.
     ;; we use bar-pos/10 as the index into the cache, which is kind of sketchy.
-    (when (or (< (seconds 0.25) (- (-> *display* real-frame-counter) (-> obj cache-time)))
+    (when (or (< (seconds 0.25) (- (-> *display* real-frame-counter) (-> this cache-time)))
               (>= end-time (the-as int (-> worst-time-cache (/ bar-pos 10))))
               )
       (set! (-> worst-time-cache (/ bar-pos 10)) (the-as uint end-time))
-      (set! (-> obj cache-time) (-> *display* real-frame-counter))
+      (set! (-> this cache-time) (-> *display* real-frame-counter))
       )
 
     ;; draw the time, either in ticks or percent.
@@ -541,13 +520,13 @@
 
 (defun screen-gradient ((arg0 dma-buffer) (arg1 rgba) (arg2 rgba) (arg3 rgba) (arg4 rgba))
   "Fill the screen with a sprite with the given colors."
-  (let ((a1-2 (new 'stack 'draw-context 0 0 512 224 (the-as rgba 0))))
-   (set! (-> a1-2 color 0) arg1)
-   (set! (-> a1-2 color 1) arg2)
-   (set! (-> a1-2 color 2) arg3)
-   (set! (-> a1-2 color 3) arg4)
-   (draw-quad2d arg0 a1-2)
-   )
+  (let ((a1-2 (new 'stack 'draw-context 0 0 512 224 (new 'static 'rgba))))
+    (set! (-> a1-2 color 0) arg1)
+    (set! (-> a1-2 color 1) arg2)
+    (set! (-> a1-2 color 2) arg3)
+    (set! (-> a1-2 color 3) arg4)
+    (draw-quad2d arg0 a1-2)
+    )
   (none)
   )
 

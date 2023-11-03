@@ -32,50 +32,38 @@ note that the second vifcode can also hold other stuff depending on the mode.
 ;; Most DMA stuff goes directly to the VIF, so this is the
 ;; most common.
 (deftype dma-packet (structure)
-  ((dma  dma-tag  :offset-assert   0)
-   (vif0 vif-tag  :offset-assert   8)
-   (vif1 vif-tag  :offset-assert  12)
-   (quad uint128  :offset          0)
+  ((dma   dma-tag)
+   (vif0  vif-tag)
+   (vif1  vif-tag)
+   (quad  uint128  :overlay-at dma)
    )
-  :method-count-assert 9
-  :size-assert         #x10
-  :flag-assert         #x900000010
   )
 
 ;; seems to be unused? Also, it seems to be broken. Do not use this.
 (deftype dma-packet-array (inline-array-class)
-  ((data dma-packet :inline :dynamic :offset-assert  16)
+  ((data  dma-packet  :inline :dynamic)
    )
-  :method-count-assert 9
-  :size-assert         #x10
-  :flag-assert         #x900000010
   )
 (set! (-> dma-packet-array heap-base) (the-as uint 16))
 
 
 (deftype dma-gif (structure)
-  ((gif  uint64  2 :offset-assert   0)
-   (quad uint128   :offset          0)
+  ((gif   uint64   2)
+   (quad  uint128  :overlay-at (-> gif 0))
    ;; added these two
-   (gif0    uint64 :offset 0 :score 1)
-   (gif1    uint64 :offset 8 :score 1)
+   (gif0  uint64   :overlay-at (-> gif 0))
+   (gif1  uint64   :overlay-at (-> gif 1))
    )
-  :method-count-assert 9
-  :size-assert         #x10
-  :flag-assert         #x900000010
   )
 
 ;; For doing a dma -> vif -> gif (path 2) transfer.
 (deftype dma-gif-packet (structure)
-  ((dma-vif dma-packet :inline :offset-assert   0)
-   (gif     uint64     2       :offset-assert  16)
-   (gif0    uint64             :offset         16) ;; added
-   (gif1    uint64             :offset         24) ;; added
-   (quad    uint128    2       :offset          0)
+  ((dma-vif  dma-packet  :inline)
+   (gif      uint64      2)
+   (gif0     uint64        :overlay-at (-> gif 0)) ;; added
+   (gif1     uint64        :overlay-at (-> gif 1)) ;; added
+   (quad     uint128     2 :overlay-at (-> dma-vif dma))
    )
-  :method-count-assert 9
-  :size-assert         #x20
-  :flag-assert         #x900000020
   )
 
 ;; dma-buffer is a dynamically sized container for storing DMA data.
@@ -83,17 +71,14 @@ note that the second vifcode can also hold other stuff depending on the mode.
 ;; I added a data-buffer field that overlaps with data to get at the array of
 ;; bytes more easily.
 (deftype dma-buffer (basic)
-  ((allocated-length int32     :offset-assert   4)
-   (base             pointer   :offset-assert   8)
-   (end              pointer   :offset-assert  12)
-   (data             uint64  1 :offset-assert  16)
-   (data-buffer      uint8    :dynamic :offset 16) ;; the actual dynamic array backing it.
+  ((allocated-length  int32)
+   (base              pointer)
+   (end               pointer)
+   (data              uint64  1)
+   (data-buffer       uint8   :dynamic :overlay-at (-> data 0)) ;; the actual dynamic array backing it.
    )
-  :method-count-assert 9
-  :size-assert         #x18
-  :flag-assert         #x900000018
   (:methods
-    (new (symbol type int) _type_ 0)
+    (new (symbol type int) _type_)
     )
   )
 
@@ -114,14 +99,14 @@ note that the second vifcode can also hold other stuff depending on the mode.
   arg0
   )
 
-(defmethod length dma-buffer ((obj dma-buffer))
+(defmethod length ((this dma-buffer))
   "Get the amount of data the buffer can hold, in bytes."
-  (-> obj allocated-length)
+  (-> this allocated-length)
   )
 
-(defmethod asize-of dma-buffer ((obj dma-buffer))
+(defmethod asize-of ((this dma-buffer))
   "Get the size in memory of the object"
-  (+ (-> obj allocated-length) -4 (-> dma-buffer size))
+  (+ (-> this allocated-length) -4 (-> dma-buffer size))
   )
 
 (defun dma-buffer-length ((arg0 dma-buffer))

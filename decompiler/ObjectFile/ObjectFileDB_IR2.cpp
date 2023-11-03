@@ -321,7 +321,7 @@ void ObjectFileDB::ir2_analyze_all_types(const fs::path& output_file,
                                          const std::unordered_set<std::string>& bad_types) {
   std::vector<PerObjectAllTypeInfo> per_object;
 
-  DecompilerTypeSystem previous_game_ts(GameVersion::Jak1);  // version here doesn't matter.
+  DecompilerTypeSystem previous_game_ts(GameVersion::Jak2);  // version here doesn't matter.
   if (previous_game_types) {
     previous_game_ts.parse_type_defs({*previous_game_types});
   }
@@ -329,44 +329,43 @@ void ObjectFileDB::ir2_analyze_all_types(const fs::path& output_file,
   TypeInspectorCache ti_cache;
 
   for_each_obj([&](ObjectFileData& data) {
-    if (data.obj_version != 3) {
-      return;
-    }
+    if (data.obj_version == 3 || (data.obj_version == 5 && data.linked_data.has_any_functions())) {
+      auto& object_result = per_object.emplace_back();
+      object_result.object_name = data.to_unique_name();
 
-    auto& object_result = per_object.emplace_back();
-    object_result.object_name = data.to_unique_name();
+      // Go through the top-level segment first to identify the type names associated with each
+      // symbol def
+      for_each_function_in_seg_in_obj(TOP_LEVEL_SEGMENT, data, [&](Function& f) {
+        inspect_top_level_for_metadata(f, data.linked_data, dts, previous_game_ts, object_result);
+      });
 
-    // Go through the top-level segment first to identify the type names associated with each symbol
-    // def
-    for_each_function_in_seg_in_obj(TOP_LEVEL_SEGMENT, data, [&](Function& f) {
-      inspect_top_level_for_metadata(f, data.linked_data, dts, previous_game_ts, object_result);
-    });
-
-    // Handle the top level last, which is fine as all symbol_defs are always written after typedefs
-    for_each_function_def_order_in_obj(data, [&](Function& f, int seg) {
-      if (seg != TOP_LEVEL_SEGMENT) {
-        if (f.is_inspect_method && bad_types.find(f.guessed_name.type_name) == bad_types.end()) {
-          auto deftype_from_inspect =
-              inspect_inspect_method(f, f.guessed_name.type_name, dts, data.linked_data,
-                                     previous_game_ts, ti_cache, object_result);
-          bool already_seen = object_result.type_info.count(f.guessed_name.type_name) > 0;
-          if (!already_seen) {
-            object_result.type_names_in_order.push_back(f.guessed_name.type_name);
+      // Handle the top level last, which is fine as all symbol_defs are always written after
+      // typedefs
+      for_each_function_def_order_in_obj(data, [&](Function& f, int seg) {
+        if (seg != TOP_LEVEL_SEGMENT) {
+          if (f.is_inspect_method && bad_types.find(f.guessed_name.type_name) == bad_types.end()) {
+            auto deftype_from_inspect =
+                inspect_inspect_method(f, f.guessed_name.type_name, dts, data.linked_data,
+                                       previous_game_ts, ti_cache, object_result);
+            bool already_seen = object_result.type_info.count(f.guessed_name.type_name) > 0;
+            if (!already_seen) {
+              object_result.type_names_in_order.push_back(f.guessed_name.type_name);
+            }
+            auto& info = object_result.type_info[f.guessed_name.type_name];
+            info.from_inspect_method = true;
+            info.type_definition = deftype_from_inspect;
+          } else {
+            // no inspect methods
+            // - can we solve custom print methods in a generic way?  ie `entity-links`
           }
-          auto& info = object_result.type_info[f.guessed_name.type_name];
-          info.from_inspect_method = true;
-          info.type_definition = deftype_from_inspect;
-        } else {
-          // no inspect methods
-          // - can we solve custom print methods in a generic way?  ie `entity-links`
         }
-      }
-    });
+      });
 
-    for_each_function_in_seg_in_obj(TOP_LEVEL_SEGMENT, data, [&](Function& f) {
-      object_result.symbol_defs += inspect_top_level_symbol_defines(
-          f, data.linked_data, dts, previous_game_ts, object_result);
-    });
+      for_each_function_in_seg_in_obj(TOP_LEVEL_SEGMENT, data, [&](Function& f) {
+        object_result.symbol_defs += inspect_top_level_symbol_defines(
+            f, data.linked_data, dts, previous_game_ts, object_result);
+      });
+    }
   });
 
   std::string result;
@@ -548,12 +547,30 @@ void ObjectFileDB::ir2_type_analysis_pass(int seg, const Config& config, ObjectF
         func.ir2.env.set_stack_structure_hints(
             try_lookup(config.stack_structure_hints_by_function, func_name));
 
-        if (config.art_groups_by_function.find(func_name) != config.art_groups_by_function.end()) {
-          func.ir2.env.set_art_group(config.art_groups_by_function.at(func_name));
-        } else if (config.art_groups_by_file.find(obj_name) != config.art_groups_by_file.end()) {
-          func.ir2.env.set_art_group(config.art_groups_by_file.at(obj_name));
+        if (func.guessed_name.kind == FunctionName::FunctionKind::V_STATE) {
+          if (config.art_group_type_remap.find(func.guessed_name.type_name) !=
+              config.art_group_type_remap.end()) {
+            func.ir2.env.set_art_group(config.art_group_type_remap.at(func.guessed_name.type_name));
+          } else {
+            func.ir2.env.set_art_group(func.guessed_name.type_name + "-ag");
+          }
+        } else if (func.guessed_name.kind == FunctionName::FunctionKind::NV_STATE ||
+                   func.type.try_get_tag("behavior").has_value()) {
+          std::string type = func.type.get_tag("behavior");
+          if (config.art_group_type_remap.find(type) != config.art_group_type_remap.end()) {
+            func.ir2.env.set_art_group(config.art_group_type_remap.at(type));
+          } else {
+            func.ir2.env.set_art_group(type + "-ag");
+          }
         } else {
           func.ir2.env.set_art_group(obj_name + "-ag");
+        }
+
+        func.ir2.env.set_jg(func.ir2.env.art_group());
+
+        if (config.joint_node_hacks.find(func.ir2.env.art_group()) !=
+            config.joint_node_hacks.end()) {
+          func.ir2.env.set_jg(config.joint_node_hacks.at(func.ir2.env.art_group()));
         }
 
         constexpr bool kForceNewTypes = false;
@@ -1162,7 +1179,7 @@ bool ObjectFileDB::lookup_function_type(const FunctionName& name,
 std::string ObjectFileDB::ir2_final_out(ObjectFileData& data,
                                         const std::vector<std::string>& imports,
                                         const std::unordered_set<std::string>& skip_functions) {
-  if (data.obj_version == 3) {
+  if (data.obj_version == 3 || (data.obj_version == 5 && data.linked_data.has_any_functions())) {
     std::string result;
     result += ";;-*-Lisp-*-\n";
     result += "(in-package goal)\n\n";

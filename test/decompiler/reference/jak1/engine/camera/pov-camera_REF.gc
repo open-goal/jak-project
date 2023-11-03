@@ -2,28 +2,26 @@
 (in-package goal)
 
 ;; definition for method 25 of type pov-camera
-(defmethod check-for-abort pov-camera ((obj pov-camera))
-  (when (or (and (>= (- (-> *display* base-frame-counter) (-> obj debounce-start-time)) (seconds 0.2))
-                 (cpad-pressed? 0 triangle)
-                 )
-            (logtest? (-> obj flags) (pov-camera-flag allow-abort))
+(defmethod check-for-abort ((this pov-camera))
+  (when (or (and (time-elapsed? (-> this debounce-start-time) (seconds 0.2)) (cpad-pressed? 0 triangle))
+            (logtest? (-> this flags) (pov-camera-flag allow-abort))
             )
     (logclear! (-> *cpad-list* cpads 0 button0-abs 0) (pad-buttons triangle))
     (logclear! (-> *cpad-list* cpads 0 button0-rel 0) (pad-buttons triangle))
-    (when (logtest? (-> obj flags) (pov-camera-flag notify-of-abort))
-      (send-event (handle->process (-> obj notify-handle)) 'notify 'abort-request)
+    (when (logtest? (-> this flags) (pov-camera-flag notify-of-abort))
+      (send-event (handle->process (-> this notify-handle)) 'notify 'abort-request)
       #t
       )
     )
   )
 
 ;; definition for method 26 of type pov-camera
-(defmethod target-grabbed? pov-camera ((obj pov-camera))
+(defmethod target-grabbed? ((this pov-camera))
   (or (not *target*) (process-grab? *target*))
   )
 
 ;; definition for method 28 of type pov-camera
-(defmethod target-released? pov-camera ()
+(defmethod target-released? ((this pov-camera))
   (or (not *target*) (process-release? *target*))
   )
 
@@ -32,7 +30,6 @@
   :virtual #t
   :code (behavior ()
     (go-virtual pov-camera-start-playing)
-    (none)
     )
   )
 
@@ -55,7 +52,6 @@
         )
       )
     (go-virtual pov-camera-playing)
-    (none)
     )
   )
 
@@ -82,8 +78,8 @@
 ;; failed to figure out what this is:
 (defstate pov-camera-playing (pov-camera)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('abort)
        (when (logtest? (-> self flags) (pov-camera-flag notify-of-abort))
          (logior! (-> self flags) (pov-camera-flag allow-abort))
@@ -95,11 +91,10 @@
       )
     )
   :enter (behavior ()
-    (set! (-> self debounce-start-time) (-> *display* base-frame-counter))
+    (set-time! (-> self debounce-start-time))
     (if (= (-> self anim-name type) string)
         (backup-load-state-and-set-cmds *load-state* (-> self command-list))
         )
-    (none)
     )
   :exit (behavior ()
     (if (= (-> self anim-name type) string)
@@ -107,7 +102,6 @@
         )
     (remove-setting! 'music-volume)
     (remove-setting! 'sfx-volume)
-    (none)
     )
   :code (behavior ()
     (add-setting! 'music-volume 'rel (-> self music-volume-movie) 0)
@@ -131,14 +125,12 @@
        )
       )
     (go-virtual pov-camera-done-playing)
-    (none)
     )
   :post (behavior ()
     (if (= (-> self anim-name type) string)
         (execute-commands-up-to *load-state* (ja-aframe-num 0))
         )
     (ja-post)
-    (none)
     )
   )
 
@@ -147,14 +139,12 @@
   :virtual #t
   :enter (behavior ()
     (logior! (-> self flags) (pov-camera-flag allow-abort))
-    (none)
     )
   :code (behavior ()
     (set-blackout-frames (seconds 0.035))
     (suspend)
     (suspend)
     (go-virtual pov-camera-done-playing)
-    (none)
     )
   )
 
@@ -162,7 +152,7 @@
 (defstate pov-camera-done-playing (pov-camera)
   :virtual #t
   :code (behavior ()
-    (while (begin self (not ((method-of-object self target-released?))))
+    (while (not (target-released? self))
       (suspend)
       )
     (send-event (handle->process (-> self notify-handle)) 'notify 'die)
@@ -170,20 +160,19 @@
     (suspend)
     (cleanup-for-death self)
     (deactivate self)
-    (none)
     )
   )
 
 ;; definition for method 27 of type pov-camera
 ;; INFO: Return type mismatch int vs none.
-(defmethod pre-startup-callback pov-camera ((obj pov-camera))
+(defmethod pre-startup-callback ((this pov-camera))
   0
   (none)
   )
 
 ;; definition for method 29 of type pov-camera
 ;; INFO: Return type mismatch symbol vs none.
-(defmethod set-stack-size! pov-camera ((obj pov-camera))
+(defmethod set-stack-size! ((this pov-camera))
   (none)
   )
 
@@ -201,7 +190,7 @@
       (set! (-> self notify-handle) (process->handle arg4))
       (set! (-> self notify-handle) (the-as handle #f))
       )
-  (set! (-> self debounce-start-time) (-> *display* base-frame-counter))
+  (set-time! (-> self debounce-start-time))
   (logclear! (-> self mask) (process-mask actor-pause movie enemy platform projectile))
   (set! (-> self root) (new 'process 'trsqv))
   (set! (-> self root trans quad) (-> arg0 quad))
@@ -233,25 +222,23 @@
      )
     )
   (set! (-> self mask-to-clear) (process-mask movie enemy platform projectile))
-  (set! (-> self event-hook)
-        (lambda :behavior pov-camera
-          ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-          (the-as object (case arg2
-                           (('mask)
-                            (let ((v0-0 (the-as number (-> arg3 param 0))))
-                              (set! (-> self mask-to-clear) (the-as process-mask v0-0))
-                              v0-0
-                              )
-                            )
-                           (('music-movie-volume)
-                            (set! (-> self music-volume-movie) (the-as float (-> arg3 param 0)))
-                            )
-                           (('sfx-movie-volume)
-                            (set! (-> self sfx-volume-movie) (the-as float (-> arg3 param 0)))
-                            )
-                           )
-                  )
-          )
+  (set! (-> self event-hook) (lambda :behavior pov-camera
+                               ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+                               (case arg2
+                                 (('mask)
+                                  (let ((v0-0 (the-as number (-> arg3 param 0))))
+                                    (set! (-> self mask-to-clear) (the-as process-mask v0-0))
+                                    v0-0
+                                    )
+                                  )
+                                 (('music-movie-volume)
+                                  (set! (-> self music-volume-movie) (the-as float (-> arg3 param 0)))
+                                  )
+                                 (('sfx-movie-volume)
+                                  (set! (-> self sfx-volume-movie) (the-as float (-> arg3 param 0)))
+                                  )
+                                 )
+                               )
         )
   (pre-startup-callback self)
   (go-virtual pov-camera-startup)

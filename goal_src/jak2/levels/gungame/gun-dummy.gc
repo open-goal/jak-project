@@ -1500,73 +1500,65 @@
   )
 
 (deftype tpath-control-frame (structure)
-  ((time      float          :offset-assert   0)
-   (path-pos  uint8          :offset-assert   4)
-   (command   tpath-command  :offset-assert   5)
-   (move-type uint8          :offset-assert   6)
-   (path-num  uint8          :offset-assert   7)
+  ((time       float)
+   (path-pos   uint8)
+   (command    tpath-command)
+   (move-type  uint8)
+   (path-num   uint8)
    )
-  :method-count-assert 9
-  :size-assert         #x8
-  :flag-assert         #x900000008
   )
 
 
 (deftype tpath-info (structure)
-  ((s-time       float                                :offset-assert   0)
-   (num          uint16                               :offset-assert   4)
-   (ref-time-num int16                                :offset-assert   6)
-   (score        int16                                :offset-assert   8)
-   (flags        tpath-flags                          :offset-assert  10)
-   (num-anims    uint8                                :offset-assert  11)
-   (bonus-time   float                                :offset-assert  12)
-   (list         (array int32)                        :offset-assert  16)
-   (anims        (inline-array tpath-control-frame) 3 :offset-assert  20)
-   (anim1        (inline-array tpath-control-frame)   :offset         20)
-   (anim2        (inline-array tpath-control-frame)   :offset         24)
-   (anim3        (inline-array tpath-control-frame)   :offset         28)
+  ((s-time        float)
+   (num           uint16)
+   (ref-time-num  int16)
+   (score         int16)
+   (flags         tpath-flags)
+   (num-anims     uint8)
+   (bonus-time    float)
+   (list          (array int32))
+   (anims         (inline-array tpath-control-frame)  3)
+   (anim1         (inline-array tpath-control-frame)  :overlay-at (-> anims 0))
+   (anim2         (inline-array tpath-control-frame)  :overlay-at (-> anims 1))
+   (anim3         (inline-array tpath-control-frame)  :overlay-at (-> anims 2))
    )
-  :method-count-assert 9
-  :size-assert         #x20
-  :flag-assert         #x900000020
   )
 
 
 (deftype gun-dummy (process-focusable)
-  ((incoming-attack-id uint32                                     :offset-assert 204)
-   (train-man          handle                                     :offset-assert 208)
-   (info               tpath-info                                 :offset-assert 216)
-   (y-offset           float                                      :offset-assert 220)
-   (rot-y-offset       float                                      :offset-assert 224)
-   (quat               quaternion                         :inline :offset-assert 240)
-   (hit-points         int32                                      :offset-assert 256)
-   (score              float                                      :offset-assert 260)
-   (path-num           uint32                                     :offset-assert 264)
-   (next-spark         int64                                      :offset-assert 272)
-   (inout-percent      float                                      :offset-assert 280)
-   (quat-ground        quaternion                         :inline :offset-assert 288)
-   (path-pos           float                                      :offset-assert 304)
-   (score-speed        float                                      :offset-assert 308)
-   (first-time-command symbol                                     :offset-assert 312)
-   (current            (inline-array tpath-control-frame)         :offset-assert 316)
-   (impact             vector                             :inline :offset-assert 320)
-   (done?              symbol                             :inline :offset-assert 336)
-   (move-sound         sound-id                                   :offset-assert 340)
-   (turn-sound         sound-id                                   :offset-assert 344)
-   (spin-sound         sound-id                                   :offset-assert 348)
-   (last-combo-time    time-frame                                 :offset-assert 352)
+  ((incoming-attack-id  uint32)
+   (train-man           handle)
+   (info                tpath-info)
+   (y-offset            float)
+   (rot-y-offset        float)
+   (quat                quaternion  :inline)
+   (hit-points          int32)
+   (score               float)
+   (path-num            uint32)
+   (next-spark          int64)
+   (inout-percent       float)
+   (quat-ground         quaternion  :inline)
+   (path-pos            float)
+   (score-speed         float)
+   (first-time-command  symbol)
+   (current             (inline-array tpath-control-frame))
+   (impact              vector      :inline)
+   (done?               symbol      :inline)
+   (move-sound          sound-id)
+   (turn-sound          sound-id)
+   (spin-sound          sound-id)
+   (last-combo-time     time-frame)
    )
-  :heap-base #xf0
-  :method-count-assert 33
-  :size-assert         #x168
-  :flag-assert         #x2100f00168
+  (:state-methods
+    idle
+    )
   (:methods
-    (idle () _type_ :state 27)
-    (init-dummy-collison! (_type_) none 28)
-    (path-playing? (_type_) symbol 29)
-    (path-time-elapsed (_type_) float 30)
-    (init-tpath-info! (_type_ tpath-info) none 31)
-    (break-dummy (_type_) none 32)
+    (init-dummy-collison! (_type_) none)
+    (path-playing? (_type_) symbol)
+    (path-time-elapsed (_type_) float)
+    (init-tpath-info! (_type_ tpath-info) none)
+    (break-dummy (_type_) none)
     )
   )
 
@@ -1890,16 +1882,16 @@
     )
   )
 
-(defmethod break-dummy gun-dummy ((obj gun-dummy))
+(defmethod break-dummy ((this gun-dummy))
   "Does what you'd expect, sets up the [[joint-exploder-tuning]] to break the dummy into pieces, plays sounds, etc"
   0
   (none)
   )
 
-(defmethod path-time-elapsed gun-dummy ((obj gun-dummy))
+(defmethod path-time-elapsed ((this gun-dummy))
   "@returns Calculates the combined total time across all control frames in the path"
   (let ((total-time 0.0))
-    (let ((curr-frame (the-as tpath-control-frame (-> obj current))))
+    (let ((curr-frame (the-as tpath-control-frame (-> this current))))
       (loop
         (case (-> curr-frame command)
           (((tpath-command begin))
@@ -1935,7 +1927,7 @@
     )
   )
 
-(defmethod path-playing? gun-dummy ((obj gun-dummy))
+(defmethod path-playing? ((this gun-dummy))
   "Core functionality for playing back the dummy's path.  Does things like:
 - calculates the score in case the dummy is hit based on the time elapsed
 - moves around the dummy
@@ -1953,31 +1945,31 @@
            (vf7 :class vf)
            )
       (init-vf0-vector)
-      (let ((curr-path-command (-> obj current))
+      (let ((curr-path-command (-> this current))
             (event-msg-block (new 'stack-no-clear 'event-message-block))
             )
         (set! (-> event-msg-block from) (process->ppointer pp))
         (set! (-> event-msg-block num-params) 1)
         (set! (-> event-msg-block message) 'path)
-        (set! (-> event-msg-block param 0) (-> obj path-num))
-        (let ((path (the-as path-control (send-event-function (handle->process (-> obj train-man)) event-msg-block)))
-              (f30-0 (* 0.0033333334 (the float (- (current-time) (-> obj state-time)))))
+        (set! (-> event-msg-block param 0) (-> this path-num))
+        (let ((path (the-as path-control (send-event-function (handle->process (-> this train-man)) event-msg-block)))
+              (f30-0 (* 0.0033333334 (the float (- (current-time) (-> this state-time)))))
               )
           (if (not path)
               (return #f)
               )
           (case (-> curr-path-command 0 command)
             (((tpath-command arise))
-             (set! (-> obj path-pos) (* 0.007843138 (the float (-> curr-path-command 0 path-pos))))
-             (get-point-in-path! path (-> obj root trans) (-> obj path-pos) 'interp)
-             (+! (-> obj root trans y) (lerp-scale -16384.0 0.0 f30-0 0.0 (-> curr-path-command 0 time)))
-             (let* ((s3-0 (get-point-in-path! path (new 'stack-no-clear 'vector) (-> obj path-pos) 'interp))
+             (set! (-> this path-pos) (* 0.007843138 (the float (-> curr-path-command 0 path-pos))))
+             (get-point-in-path! path (-> this root trans) (-> this path-pos) 'interp)
+             (+! (-> this root trans y) (lerp-scale -16384.0 0.0 f30-0 0.0 (-> curr-path-command 0 time)))
+             (let* ((s3-0 (get-point-in-path! path (new 'stack-no-clear 'vector) (-> this path-pos) 'interp))
                     (v1-26 (get-point-in-path!
                              path
                              (new 'stack-no-clear 'vector)
-                             (if (< (-> obj path-pos) 0.01)
-                                 (+ 0.1 (-> obj path-pos))
-                                 (+ -0.1 (-> obj path-pos))
+                             (if (< (-> this path-pos) 0.01)
+                                 (+ 0.1 (-> this path-pos))
+                                 (+ -0.1 (-> this path-pos))
                                  )
                              'interp
                              )
@@ -1989,44 +1981,44 @@
                    (vector-negate-in-place! s4-2)
                    )
                (vector-normalize! s4-2 1.0)
-               (forward-up-nopitch->quaternion (-> obj quat-ground) s4-2 *up-vector*)
+               (forward-up-nopitch->quaternion (-> this quat-ground) s4-2 *up-vector*)
                )
-             (quaternion-normalize! (-> obj quat-ground))
-             (if (-> obj first-time-command)
+             (quaternion-normalize! (-> this quat-ground))
+             (if (-> this first-time-command)
                  (sound-play "target-up-slow")
                  )
-             (set! (-> obj first-time-command) #f)
+             (set! (-> this first-time-command) #f)
              (when (>= f30-0 (-> curr-path-command 0 time))
-               (set! (-> obj current) (the-as (inline-array tpath-control-frame) (-> obj current 1)))
-               (set! (-> obj first-time-command) #t)
-               (set! (-> obj state-time) (current-time))
+               (set! (-> this current) (the-as (inline-array tpath-control-frame) (-> this current 1)))
+               (set! (-> this first-time-command) #t)
+               (set-time! (-> this state-time))
                )
              (return #t)
              ret
              )
             (((tpath-command lower))
-             (get-point-in-path! path (-> obj root trans) (-> obj path-pos) 'interp)
-             (+! (-> obj root trans y) (lerp-scale 0.0 -16384.0 f30-0 0.0 (-> curr-path-command 0 time)))
-             (if (-> obj first-time-command)
+             (get-point-in-path! path (-> this root trans) (-> this path-pos) 'interp)
+             (+! (-> this root trans y) (lerp-scale 0.0 -16384.0 f30-0 0.0 (-> curr-path-command 0 time)))
+             (if (-> this first-time-command)
                  (sound-play "target-dwn-slow")
                  )
-             (set! (-> obj first-time-command) #f)
+             (set! (-> this first-time-command) #f)
              (when (>= f30-0 (-> curr-path-command 0 time))
-               (set! (-> obj current) (the-as (inline-array tpath-control-frame) (-> obj current 1)))
-               (set! (-> obj first-time-command) #t)
-               (set! (-> obj state-time) (current-time))
+               (set! (-> this current) (the-as (inline-array tpath-control-frame) (-> this current 1)))
+               (set! (-> this first-time-command) #t)
+               (set-time! (-> this state-time))
                )
              (return #t)
              ret
              )
             (((tpath-command align-with-track))
-             (let ((s3-3 (get-point-in-path! path (new 'stack-no-clear 'vector) (-> obj path-pos) 'interp)))
+             (let ((s3-3 (get-point-in-path! path (new 'stack-no-clear 'vector) (-> this path-pos) 'interp)))
                (let* ((v1-68 (get-point-in-path!
                                path
                                (new 'stack-no-clear 'vector)
-                               (if (< (-> obj path-pos) 0.01)
-                                   (+ 0.1 (-> obj path-pos))
-                                   (+ -0.1 (-> obj path-pos))
+                               (if (< (-> this path-pos) 0.01)
+                                   (+ 0.1 (-> this path-pos))
+                                   (+ -0.1 (-> this path-pos))
                                    )
                                'interp
                                )
@@ -2038,25 +2030,25 @@
                      (vector-negate-in-place! s4-6)
                      )
                  (vector-normalize! s4-6 1.0)
-                 (forward-up-nopitch->quaternion (-> obj quat-ground) s4-6 *up-vector*)
+                 (forward-up-nopitch->quaternion (-> this quat-ground) s4-6 *up-vector*)
                  )
-               (quaternion-normalize! (-> obj quat-ground))
-               (set! (-> obj root trans quad) (-> s3-3 quad))
+               (quaternion-normalize! (-> this quat-ground))
+               (set! (-> this root trans quad) (-> s3-3 quad))
                )
-             (set! (-> obj inout-percent) (lerp-scale 0.0 1.0 f30-0 0.0 (-> curr-path-command 0 time)))
-             (set! (-> obj first-time-command) #f)
+             (set! (-> this inout-percent) (lerp-scale 0.0 1.0 f30-0 0.0 (-> curr-path-command 0 time)))
+             (set! (-> this first-time-command) #f)
              (when (>= f30-0 (-> curr-path-command 0 time))
-               (set! (-> obj current) (the-as (inline-array tpath-control-frame) (-> obj current 1)))
-               (set! (-> obj inout-percent) 1.0)
-               (set! (-> obj first-time-command) #t)
-               (set! (-> obj state-time) (current-time))
+               (set! (-> this current) (the-as (inline-array tpath-control-frame) (-> this current 1)))
+               (set! (-> this inout-percent) 1.0)
+               (set! (-> this first-time-command) #t)
+               (set-time! (-> this state-time))
                )
              (return #t)
              ret
              )
             (((tpath-command translate))
-             (set! (-> obj score) (- (-> obj score) (* (-> obj score-speed) (-> pp clock seconds-per-frame))))
-             (set! (-> obj inout-percent) (fmax 0.0 (- (-> obj inout-percent) (* 4.0 (-> pp clock seconds-per-frame)))))
+             (set! (-> this score) (- (-> this score) (* (-> this score-speed) (seconds-per-frame))))
+             (set! (-> this inout-percent) (fmax 0.0 (- (-> this inout-percent) (* 4.0 (seconds-per-frame)))))
              (let ((s2-4 (new 'stack-no-clear 'vector))
                    (s3-4 (new 'stack-no-clear 'vector))
                    (f28-2 (lerp-scale 0.0 1.0 f30-0 0.0 (-> curr-path-command 0 time)))
@@ -2076,13 +2068,13 @@
                     )
                    )
                  )
-               (get-point-in-path! path s2-4 (-> obj path-pos) 'interp)
+               (get-point-in-path! path s2-4 (-> this path-pos) 'interp)
                (get-point-in-path! path s3-4 (* 0.007843138 (the float (-> curr-path-command 0 path-pos))) 'interp)
                (let ((v1-102 (new 'stack-no-clear 'vector)))
-                 (set! (-> v1-102 quad) (-> obj root trans quad))
-                 (vector-float*! (-> obj root trans) s2-4 (- 1.0 f28-2))
-                 (let ((a0-63 (-> obj root trans)))
-                   (let ((a1-23 (-> obj root trans)))
+                 (set! (-> v1-102 quad) (-> this root trans quad))
+                 (vector-float*! (-> this root trans) s2-4 (- 1.0 f28-2))
+                 (let ((a0-63 (-> this root trans)))
+                   (let ((a1-23 (-> this root trans)))
                      (let ((a2-17 f28-2))
                        (.mov vf7 a2-17)
                        )
@@ -2094,8 +2086,8 @@
                    (.add.mul.w.vf vf6 vf4 vf0 acc :mask #b111)
                    (.svf (&-> a0-63 quad) vf6)
                    )
-                 (let ((a0-65 (-> obj root transv)))
-                   (.lvf vf1 (&-> (vector-! (new 'stack-no-clear 'vector) (-> obj root trans) v1-102) quad))
+                 (let ((a0-65 (-> this root transv)))
+                   (.lvf vf1 (&-> (vector-! (new 'stack-no-clear 'vector) (-> this root trans) v1-102) quad))
                    (let ((f0-50 (-> pp clock frames-per-second)))
                      (.mov at-0 f0-50)
                      )
@@ -2106,44 +2098,44 @@
                    )
                  )
                )
-             (if (zero? (-> obj move-sound))
-                 (set! (-> obj move-sound) (new-sound-id))
+             (if (zero? (-> this move-sound))
+                 (set! (-> this move-sound) (new-sound-id))
                  )
              (let ((s4-7 (static-sound-spec "target-mov-slow" :volume 100.0 :fo-max 60 :mask (pitch))))
-               (set! (-> s4-7 pitch-mod) (the int (lerp-scale -1.0 1.0 (vector-length (-> obj root transv)) 0.0 81920.0)))
-               (sound-play-by-spec s4-7 (-> obj move-sound) (-> obj root trans))
+               (set! (-> s4-7 pitch-mod) (the int (lerp-scale -1.0 1.0 (vector-length (-> this root transv)) 0.0 81920.0)))
+               (sound-play-by-spec s4-7 (-> this move-sound) (-> this root trans))
                )
-             (when (< (-> obj next-spark) (current-time))
-               (set! (-> obj next-spark) (the-as int (+ (current-time) (the int (* 300.0 (rand-vu-float-range 0.0 0.3))))))
-               (spawn (-> obj part) (-> obj root trans))
+             (when (< (-> this next-spark) (current-time))
+               (set! (-> this next-spark) (the-as int (+ (current-time) (the int (* 300.0 (rand-vu-float-range 0.0 0.3))))))
+               (spawn (-> this part) (-> this root trans))
                )
-             (set! (-> obj first-time-command) #f)
+             (set! (-> this first-time-command) #f)
              (when (>= f30-0 (-> curr-path-command 0 time))
-               (when (nonzero? (-> obj move-sound))
-                 (sound-stop (-> obj move-sound))
-                 (set! (-> obj move-sound) (new 'static 'sound-id))
+               (when (nonzero? (-> this move-sound))
+                 (sound-stop (-> this move-sound))
+                 (set! (-> this move-sound) (new 'static 'sound-id))
                  0
                  )
                (sound-play "target-stop")
-               (set! (-> obj current) (the-as (inline-array tpath-control-frame) (-> obj current 1)))
-               (set! (-> obj path-pos) (* 0.007843138 (the float (-> curr-path-command 0 path-pos))))
-               (set! (-> obj first-time-command) #t)
-               (set! (-> obj state-time) (current-time))
+               (set! (-> this current) (the-as (inline-array tpath-control-frame) (-> this current 1)))
+               (set! (-> this path-pos) (* 0.007843138 (the float (-> curr-path-command 0 path-pos))))
+               (set! (-> this first-time-command) #t)
+               (set-time! (-> this state-time))
                )
              (return #t)
              ret
              )
             (((tpath-command wait))
-             (set! (-> obj score) (- (-> obj score) (* (-> obj score-speed) (-> pp clock seconds-per-frame))))
-             (set! (-> obj inout-percent) (fmax 0.0 (- (-> obj inout-percent) (* 4.0 (-> pp clock seconds-per-frame)))))
-             (get-point-in-path! path (-> obj root trans) (-> obj path-pos) 'interp)
-             (set! (-> obj first-time-command) #f)
-             (when (or (and (= (-> curr-path-command 0 time) -1.0) (< (-> obj hit-points) 0))
+             (set! (-> this score) (- (-> this score) (* (-> this score-speed) (seconds-per-frame))))
+             (set! (-> this inout-percent) (fmax 0.0 (- (-> this inout-percent) (* 4.0 (seconds-per-frame)))))
+             (get-point-in-path! path (-> this root trans) (-> this path-pos) 'interp)
+             (set! (-> this first-time-command) #f)
+             (when (or (and (= (-> curr-path-command 0 time) -1.0) (< (-> this hit-points) 0))
                        (and (!= (-> curr-path-command 0 time) -1.0) (>= f30-0 (-> curr-path-command 0 time)))
                        )
-               (set! (-> obj current) (the-as (inline-array tpath-control-frame) (-> obj current 1)))
-               (set! (-> obj first-time-command) #t)
-               (set! (-> obj state-time) (current-time))
+               (set! (-> this current) (the-as (inline-array tpath-control-frame) (-> this current 1)))
+               (set! (-> this first-time-command) #t)
+               (set-time! (-> this state-time))
                )
              (return #t)
              ret
@@ -2159,9 +2151,9 @@
     )
   )
 
-(defmethod get-trans gun-dummy ((obj gun-dummy) (arg0 int))
+(defmethod get-trans ((this gun-dummy) (arg0 int))
   "@returns the `trans` [[vector]] from the process's `root` (typically either a [[trsqv]] or a [[collide-shape]])"
-  (let ((root (-> obj root)))
+  (let ((root (-> this root)))
     (case arg0
       ((3 2)
        (let ((vec (new 'static 'vector :w 1.0)))
@@ -2179,93 +2171,88 @@
 
 (defstate idle (gun-dummy)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (the-as
-      object
-      (case event-type
-        (('combo)
-         (set! (-> self last-combo-time) (current-time))
-         #t
-         )
-        (('track)
-         (cond
-           ((-> event param 0)
-            (if (and (not (logtest? (-> self info flags) (tpath-flags citizen))) (> (-> self hit-points) 0))
-                #t
-                'abort
-                )
-            )
-           (else
-             (and (not (logtest? (-> self info flags) (tpath-flags citizen))) (> (-> self hit-points) 0))
-             )
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
+      (('combo)
+       (set-time! (-> self last-combo-time))
+       #t
+       )
+      (('track)
+       (cond
+         ((-> block param 0)
+          (if (and (not (logtest? (-> self info flags) (tpath-flags citizen))) (> (-> self hit-points) 0))
+              #t
+              'abort
+              )
+          )
+         (else
+           (and (not (logtest? (-> self info flags) (tpath-flags citizen))) (> (-> self hit-points) 0))
            )
          )
-        (('attack)
-         (let ((attack-info (the-as attack-info (-> event param 1))))
-           (get-penetrate-using-from-attack-event (the-as process-drawable proc) event)
-           (when (or (not (logtest? (-> self info flags) (tpath-flags peace)))
-                     (and (logtest? (-> self info flags) (tpath-flags peace))
-                          (or (= (-> attack-info mode) 'eco-dark) (= (-> attack-info mode) 'explode))
-                          )
-                     )
-             (when (!= (-> attack-info id) (-> self incoming-attack-id))
-               (set! (-> self incoming-attack-id) (-> attack-info id))
-               (let ((proc-draw (if (type? proc process-drawable)
-                                    (the-as process-drawable proc)
-                                    )
-                                )
-                     )
-                 (when proc-draw
-                   (let ((cshape (-> proc-draw root)))
-                     (when (if (type? cshape collide-shape)
-                               cshape
-                               )
-                       (vector+float*! (-> self impact) (-> self root trans) *up-vector* 8192.0)
-                       (vector+!
-                         (-> self impact)
-                         (-> self impact)
-                         (vector-normalize! (vector-! (new 'stack-no-clear 'vector) (target-pos 0) (-> self root trans)) 4096.0)
-                         )
-                       )
-                     )
-                   (cond
-                     ((= (-> self hit-points) 2)
-                      (set! (-> self rot-y-offset) 262144.0)
-                      (set! (-> self spin-sound) (sound-play "target-spin"))
-                      )
-                     (else
-                       (if (and (logtest? (process-mask projectile) (-> proc-draw mask))
-                                (< (- (current-time) (-> self last-combo-time)) (seconds 1))
-                                )
-                           (send-event (ppointer->process (-> self parent)) 'combo)
-                           )
-                       )
-                     )
-                   (if (> (-> self hit-points) 0)
-                       (+! (-> self hit-points) -1)
-                       )
-                   #t
+       )
+      (('attack)
+       (let ((attack-info (the-as attack-info (-> block param 1))))
+         (get-penetrate-using-from-attack-event (the-as process-drawable proc) block)
+         (when (or (not (logtest? (-> self info flags) (tpath-flags peace)))
+                   (and (logtest? (-> self info flags) (tpath-flags peace))
+                        (or (= (-> attack-info mode) 'eco-dark) (= (-> attack-info mode) 'explode))
+                        )
                    )
+           (when (!= (-> attack-info id) (-> self incoming-attack-id))
+             (set! (-> self incoming-attack-id) (-> attack-info id))
+             (let ((proc-draw (if (type? proc process-drawable)
+                                  (the-as process-drawable proc)
+                                  )
+                              )
+                   )
+               (when proc-draw
+                 (let ((cshape (-> proc-draw root)))
+                   (when (if (type? cshape collide-shape)
+                             cshape
+                             )
+                     (vector+float*! (-> self impact) (-> self root trans) *up-vector* 8192.0)
+                     (vector+!
+                       (-> self impact)
+                       (-> self impact)
+                       (vector-normalize! (vector-! (new 'stack-no-clear 'vector) (target-pos 0) (-> self root trans)) 4096.0)
+                       )
+                     )
+                   )
+                 (cond
+                   ((= (-> self hit-points) 2)
+                    (set! (-> self rot-y-offset) 262144.0)
+                    (set! (-> self spin-sound) (sound-play "target-spin"))
+                    )
+                   (else
+                     (if (and (logtest? (process-mask projectile) (-> proc-draw mask))
+                              (not (time-elapsed? (-> self last-combo-time) (seconds 1)))
+                              )
+                         (send-event (ppointer->process (-> self parent)) 'combo)
+                         )
+                     )
+                   )
+                 (if (> (-> self hit-points) 0)
+                     (+! (-> self hit-points) -1)
+                     )
+                 #t
                  )
                )
              )
            )
          )
-        )
+       )
       )
     )
   :enter (behavior ()
-    (set! (-> self state-time) (current-time))
+    (set-time! (-> self state-time))
     (set! (-> self inout-percent) 1.0)
     (set! (-> self y-offset) 0.0)
     (set! (-> self rot-y-offset) 0.0)
     (set! (-> self first-time-command) #t)
     (set! (-> self done? value) (the-as object #f))
-    (none)
     )
   :exit (behavior ()
     (logior! (-> self info flags) (tpath-flags broken))
-    (none)
     )
   :code (behavior ()
     (while (not (-> self done? value))
@@ -2287,7 +2274,6 @@
       0
       )
     (cleanup-for-death self)
-    (none)
     )
   :post (behavior ()
     (set! (-> self done? value) (not (path-playing? self)))
@@ -2301,9 +2287,7 @@
       (set! (-> self hit-points) -1)
       )
     (+! (-> self root trans y) (-> self y-offset))
-    (set! (-> self rot-y-offset)
-          (- (-> self rot-y-offset) (* 8.0 (-> self clock seconds-per-frame) (-> self rot-y-offset)))
-          )
+    (set! (-> self rot-y-offset) (- (-> self rot-y-offset) (* 8.0 (seconds-per-frame) (-> self rot-y-offset))))
     (when (< (-> self rot-y-offset) 182.04445)
       (when (nonzero? (-> self spin-sound))
         (sound-stop (-> self spin-sound))
@@ -2318,13 +2302,12 @@
     (quaternion-rotate-local-y! (-> self root quat) (-> self root quat) (-> self rot-y-offset))
     (quaternion-slerp! (-> self root quat) (-> self root quat) (-> self quat-ground) (-> self inout-percent))
     (transform-post)
-    (none)
     )
   )
 
-(defmethod init-dummy-collison! gun-dummy ((obj gun-dummy))
+(defmethod init-dummy-collison! ((this gun-dummy))
   "Initializes the collision related stuff for the dummy"
-  (let ((cshape-moving (new 'process 'collide-shape-moving obj (collide-list-enum usually-hit-by-player))))
+  (let ((cshape-moving (new 'process 'collide-shape-moving this (collide-list-enum usually-hit-by-player))))
     (set! (-> cshape-moving dynam) (copy *standard-dynamics* 'process))
     (set! (-> cshape-moving reaction) cshape-reaction-default)
     (set! (-> cshape-moving no-reaction)
@@ -2344,179 +2327,139 @@
       (set! (-> cshape-moving backup-collide-as) (-> root-prim prim-core collide-as))
       (set! (-> cshape-moving backup-collide-with) (-> root-prim prim-core collide-with))
       )
-    (set! (-> obj root) cshape-moving)
+    (set! (-> this root) cshape-moving)
     )
   0
   (none)
   )
 
 ;; WARN: Return type mismatch process-focusable vs gun-dummy.
-(defmethod relocate gun-dummy ((obj gun-dummy) (arg0 int))
-  (the-as gun-dummy ((method-of-type process-focusable relocate) obj arg0))
+(defmethod relocate ((this gun-dummy) (arg0 int))
+  (the-as gun-dummy ((method-of-type process-focusable relocate) this arg0))
   )
 
 ;; WARN: Return type mismatch object vs none.
-(defmethod init-from-entity! gun-dummy ((obj gun-dummy) (arg0 entity-actor))
+(defmethod init-from-entity! ((this gun-dummy) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
 - stack size
 - collision information
 - loading the skeleton group / bones
 - sounds"
-  (init-dummy-collison! obj)
-  (process-drawable-from-entity! obj arg0)
-  (logclear! (-> obj mask) (process-mask actor-pause))
+  (init-dummy-collison! this)
+  (process-drawable-from-entity! this arg0)
+  (logclear! (-> this mask) (process-mask actor-pause))
   (initialize-skeleton
-    obj
+    this
     (the-as skeleton-group (art-group-get-by-name *level* "skel-gun-dummy" (the-as (pointer uint32) #f)))
     (the-as pair 0)
     )
   (transform-post)
-  (go (method-of-object obj idle))
+  (go (method-of-object this idle))
   (none)
   )
 
-(defmethod init-tpath-info! gun-dummy ((obj gun-dummy) (arg0 tpath-info))
+(defmethod init-tpath-info! ((this gun-dummy) (arg0 tpath-info))
   "Given a [[tpath-info]] use it to initialize the dummy with any relevant data or flags"
-  (logior! (-> obj mask) (process-mask enemy))
-  (logior! (-> obj mask) (process-mask collectable))
-  (vector-identity! (-> obj root scale))
-  (quaternion-copy! (-> obj quat) (-> obj root quat))
-  (+! (-> obj root trans y) -16384.0)
+  (logior! (-> this mask) (process-mask enemy))
+  (logior! (-> this mask) (process-mask collectable))
+  (vector-identity! (-> this root scale))
+  (quaternion-copy! (-> this quat) (-> this root quat))
+  (+! (-> this root trans y) -16384.0)
   (if (not (logtest? (-> arg0 flags) (tpath-flags tpath-rand)))
       (set! *tpath-rand* (the-as uint (rand-vu-int-count 16)))
       )
-  (set! (-> obj current)
+  (set! (-> this current)
         (the-as
           (inline-array tpath-control-frame)
           (-> (the-as (inline-array tpath-control-frame) (-> arg0 anims (mod *tpath-rand* (-> arg0 num-anims)))) 0)
           )
         )
-  (let ((path (-> obj current)))
+  (let ((path (-> this current)))
     (when (= (-> path 0 command) (tpath-command begin))
-      (set! (-> obj path-num) (-> path 0 path-num))
-      (set! (-> obj current) (the-as (inline-array tpath-control-frame) (-> obj current 1)))
+      (set! (-> this path-num) (-> path 0 path-num))
+      (set! (-> this current) (the-as (inline-array tpath-control-frame) (-> this current 1)))
       )
     )
-  (set! (-> obj score) (the float (-> arg0 score)))
+  (set! (-> this score) (the float (-> arg0 score)))
   (if (logtest? (-> arg0 flags) (tpath-flags citizen))
-      (set! (-> obj score-speed) 0.0)
-      (set! (-> obj score-speed) (/ (-> obj score) (path-time-elapsed obj)))
+      (set! (-> this score-speed) 0.0)
+      (set! (-> this score-speed) (/ (-> this score) (path-time-elapsed this)))
       )
-  (set! (-> obj hit-points) (if (logtest? (-> arg0 flags) (tpath-flags big))
-                                2
-                                1
-                                )
+  (set! (-> this hit-points) (if (logtest? (-> arg0 flags) (tpath-flags big))
+                                 2
+                                 1
+                                 )
         )
-  (set! (-> obj info) arg0)
-  (set! (-> obj part) (create-launch-control (-> *part-group-id-table* 519) obj))
-  (set! (-> obj next-spark) 0)
+  (set! (-> this info) arg0)
+  (set! (-> this part) (create-launch-control (-> *part-group-id-table* 519) this))
+  (set! (-> this next-spark) 0)
   0
   (none)
   )
 
 (deftype gun-dummy-a (gun-dummy)
   ()
-  :heap-base #xf0
-  :method-count-assert 33
-  :size-assert         #x168
-  :flag-assert         #x2100f00168
   )
 
 
 (deftype gun-dummy-b (gun-dummy)
   ()
-  :heap-base #xf0
-  :method-count-assert 33
-  :size-assert         #x168
-  :flag-assert         #x2100f00168
   )
 
 
 (deftype gun-dummy-c (gun-dummy)
   ()
-  :heap-base #xf0
-  :method-count-assert 33
-  :size-assert         #x168
-  :flag-assert         #x2100f00168
   )
 
 
 (deftype gun-dummy-big (gun-dummy)
   ()
-  :heap-base #xf0
-  :method-count-assert 33
-  :size-assert         #x168
-  :flag-assert         #x2100f00168
   )
 
 
 (deftype gun-dummy-gold (gun-dummy)
   ()
-  :heap-base #xf0
-  :method-count-assert 33
-  :size-assert         #x168
-  :flag-assert         #x2100f00168
   )
 
 
 (deftype gun-dummy-peace (gun-dummy)
   ()
-  :heap-base #xf0
-  :method-count-assert 33
-  :size-assert         #x168
-  :flag-assert         #x2100f00168
   )
 
 
 (deftype gun-cit-a (gun-dummy)
   ()
-  :heap-base #xf0
-  :method-count-assert 33
-  :size-assert         #x168
-  :flag-assert         #x2100f00168
   )
 
 
 (deftype gun-cit-b (gun-dummy)
   ()
-  :heap-base #xf0
-  :method-count-assert 33
-  :size-assert         #x168
-  :flag-assert         #x2100f00168
   )
 
 
 (deftype gun-cit-c (gun-dummy)
   ()
-  :heap-base #xf0
-  :method-count-assert 33
-  :size-assert         #x168
-  :flag-assert         #x2100f00168
   )
 
 
 (deftype gun-cit-d (gun-dummy)
   ()
-  :heap-base #xf0
-  :method-count-assert 33
-  :size-assert         #x168
-  :flag-assert         #x2100f00168
   )
 
 
-(defmethod break-dummy gun-dummy-a ((obj gun-dummy-a))
+(defmethod break-dummy ((this gun-dummy-a))
   "Does what you'd expect, sets up the [[joint-exploder-tuning]] to break the dummy into pieces, plays sounds, etc"
-  (let ((root-prim (-> obj root root-prim)))
+  (let ((root-prim (-> this root root-prim)))
     (set! (-> root-prim prim-core collide-as) (collide-spec))
     (set! (-> root-prim prim-core collide-with) (collide-spec))
     )
   0
-  (setup-masks (-> obj draw) 0 -1)
-  (setup-masks (-> obj draw) 1 0)
+  (setup-masks (-> this draw) 0 -1)
+  (setup-masks (-> this draw) 1 0)
   (sound-play "target-break")
   (let ((exploder-tuning (new 'stack 'joint-exploder-tuning (the-as uint 1))))
-    (set! (-> exploder-tuning fountain-rand-transv-lo quad) (-> obj impact quad))
+    (set! (-> exploder-tuning fountain-rand-transv-lo quad) (-> this impact quad))
     (set! (-> exploder-tuning fountain-rand-transv-hi x) 4096.0)
     (set! (-> exploder-tuning fountain-rand-transv-hi y) 122880.0)
     (process-spawn
@@ -2527,7 +2470,7 @@ This commonly includes things such as:
       #f
       #f
       #f
-      (-> obj node-list data 3 bone transform)
+      (-> this node-list data 3 bone transform)
       :to *entity-pool*
       )
     (process-spawn
@@ -2536,25 +2479,25 @@ This commonly includes things such as:
       5
       exploder-tuning
       *gun-dummy-a-exploder-params*
-      :to obj
+      :to this
       )
     )
   0
   (none)
   )
 
-(defmethod break-dummy gun-dummy-b ((obj gun-dummy-b))
+(defmethod break-dummy ((this gun-dummy-b))
   "Does what you'd expect, sets up the [[joint-exploder-tuning]] to break the dummy into pieces, plays sounds, etc"
-  (let ((root-prim (-> obj root root-prim)))
+  (let ((root-prim (-> this root root-prim)))
     (set! (-> root-prim prim-core collide-as) (collide-spec))
     (set! (-> root-prim prim-core collide-with) (collide-spec))
     )
   0
-  (setup-masks (-> obj draw) 0 -1)
-  (setup-masks (-> obj draw) 1 0)
+  (setup-masks (-> this draw) 0 -1)
+  (setup-masks (-> this draw) 1 0)
   (sound-play "target-break")
   (let ((exploder-tuning (new 'stack 'joint-exploder-tuning (the-as uint 1))))
-    (set! (-> exploder-tuning fountain-rand-transv-lo quad) (-> obj impact quad))
+    (set! (-> exploder-tuning fountain-rand-transv-lo quad) (-> this impact quad))
     (process-spawn
       part-tracker
       :init part-tracker-init
@@ -2563,7 +2506,7 @@ This commonly includes things such as:
       #f
       #f
       #f
-      (-> obj node-list data 3 bone transform)
+      (-> this node-list data 3 bone transform)
       :to *entity-pool*
       )
     (process-spawn
@@ -2572,25 +2515,25 @@ This commonly includes things such as:
       5
       exploder-tuning
       *gun-dummy-b-exploder-params*
-      :to obj
+      :to this
       )
     )
   0
   (none)
   )
 
-(defmethod break-dummy gun-dummy-c ((obj gun-dummy-c))
+(defmethod break-dummy ((this gun-dummy-c))
   "Does what you'd expect, sets up the [[joint-exploder-tuning]] to break the dummy into pieces, plays sounds, etc"
-  (let ((root-prim (-> obj root root-prim)))
+  (let ((root-prim (-> this root root-prim)))
     (set! (-> root-prim prim-core collide-as) (collide-spec))
     (set! (-> root-prim prim-core collide-with) (collide-spec))
     )
   0
-  (setup-masks (-> obj draw) 0 -1)
-  (setup-masks (-> obj draw) 1 0)
+  (setup-masks (-> this draw) 0 -1)
+  (setup-masks (-> this draw) 1 0)
   (sound-play "target-break")
   (let ((exploder-tuning (new 'stack 'joint-exploder-tuning (the-as uint 1))))
-    (set! (-> exploder-tuning fountain-rand-transv-lo quad) (-> obj impact quad))
+    (set! (-> exploder-tuning fountain-rand-transv-lo quad) (-> this impact quad))
     (process-spawn
       part-tracker
       :init part-tracker-init
@@ -2599,7 +2542,7 @@ This commonly includes things such as:
       #f
       #f
       #f
-      (-> obj node-list data 3 bone transform)
+      (-> this node-list data 3 bone transform)
       :to *entity-pool*
       )
     (process-spawn
@@ -2608,25 +2551,25 @@ This commonly includes things such as:
       5
       exploder-tuning
       *gun-dummy-c-exploder-params*
-      :to obj
+      :to this
       )
     )
   0
   (none)
   )
 
-(defmethod break-dummy gun-dummy-big ((obj gun-dummy-big))
+(defmethod break-dummy ((this gun-dummy-big))
   "Does what you'd expect, sets up the [[joint-exploder-tuning]] to break the dummy into pieces, plays sounds, etc"
-  (let ((root-prim (-> obj root root-prim)))
+  (let ((root-prim (-> this root root-prim)))
     (set! (-> root-prim prim-core collide-as) (collide-spec))
     (set! (-> root-prim prim-core collide-with) (collide-spec))
     )
   0
-  (setup-masks (-> obj draw) 0 -1)
-  (setup-masks (-> obj draw) 1 0)
+  (setup-masks (-> this draw) 0 -1)
+  (setup-masks (-> this draw) 1 0)
   (sound-play "target-break")
   (let ((exploder-tuning (new 'stack 'joint-exploder-tuning (the-as uint 1))))
-    (set! (-> exploder-tuning fountain-rand-transv-lo quad) (-> obj impact quad))
+    (set! (-> exploder-tuning fountain-rand-transv-lo quad) (-> this impact quad))
     (process-spawn
       part-tracker
       :init part-tracker-init
@@ -2635,7 +2578,7 @@ This commonly includes things such as:
       #f
       #f
       #f
-      (-> obj node-list data 3 bone transform)
+      (-> this node-list data 3 bone transform)
       :to *entity-pool*
       )
     (process-spawn
@@ -2644,25 +2587,25 @@ This commonly includes things such as:
       5
       exploder-tuning
       *gun-dummy-big-exploder-params*
-      :to obj
+      :to this
       )
     )
   0
   (none)
   )
 
-(defmethod break-dummy gun-dummy-gold ((obj gun-dummy-gold))
+(defmethod break-dummy ((this gun-dummy-gold))
   "Does what you'd expect, sets up the [[joint-exploder-tuning]] to break the dummy into pieces, plays sounds, etc"
-  (let ((root-prim (-> obj root root-prim)))
+  (let ((root-prim (-> this root root-prim)))
     (set! (-> root-prim prim-core collide-as) (collide-spec))
     (set! (-> root-prim prim-core collide-with) (collide-spec))
     )
   0
-  (setup-masks (-> obj draw) 0 -1)
-  (setup-masks (-> obj draw) 1 0)
+  (setup-masks (-> this draw) 0 -1)
+  (setup-masks (-> this draw) 1 0)
   (sound-play "target-bonus")
   (let ((exploder-tuning (new 'stack 'joint-exploder-tuning (the-as uint 1))))
-    (set! (-> exploder-tuning fountain-rand-transv-lo quad) (-> obj impact quad))
+    (set! (-> exploder-tuning fountain-rand-transv-lo quad) (-> this impact quad))
     (process-spawn
       part-tracker
       :init part-tracker-init
@@ -2671,7 +2614,7 @@ This commonly includes things such as:
       #f
       #f
       #f
-      (-> obj node-list data 3 bone transform)
+      (-> this node-list data 3 bone transform)
       :to *entity-pool*
       )
     (process-spawn
@@ -2680,25 +2623,25 @@ This commonly includes things such as:
       5
       exploder-tuning
       *gun-dummy-gold-exploder-params*
-      :to obj
+      :to this
       )
     )
   0
   (none)
   )
 
-(defmethod break-dummy gun-dummy-peace ((obj gun-dummy-peace))
+(defmethod break-dummy ((this gun-dummy-peace))
   "Does what you'd expect, sets up the [[joint-exploder-tuning]] to break the dummy into pieces, plays sounds, etc"
-  (let ((root-prim (-> obj root root-prim)))
+  (let ((root-prim (-> this root root-prim)))
     (set! (-> root-prim prim-core collide-as) (collide-spec))
     (set! (-> root-prim prim-core collide-with) (collide-spec))
     )
   0
-  (setup-masks (-> obj draw) 0 -1)
-  (setup-masks (-> obj draw) 1 0)
+  (setup-masks (-> this draw) 0 -1)
+  (setup-masks (-> this draw) 1 0)
   (sound-play "target-break")
   (let ((exploder-tuning (new 'stack 'joint-exploder-tuning (the-as uint 1))))
-    (set! (-> exploder-tuning fountain-rand-transv-lo quad) (-> obj impact quad))
+    (set! (-> exploder-tuning fountain-rand-transv-lo quad) (-> this impact quad))
     (process-spawn
       part-tracker
       :init part-tracker-init
@@ -2707,7 +2650,7 @@ This commonly includes things such as:
       #f
       #f
       #f
-      (-> obj node-list data 3 bone transform)
+      (-> this node-list data 3 bone transform)
       :to *entity-pool*
       )
     (process-spawn
@@ -2716,25 +2659,25 @@ This commonly includes things such as:
       5
       exploder-tuning
       *gun-dummy-peace-exploder-params*
-      :to obj
+      :to this
       )
     )
   0
   (none)
   )
 
-(defmethod break-dummy gun-cit-a ((obj gun-cit-a))
+(defmethod break-dummy ((this gun-cit-a))
   "Does what you'd expect, sets up the [[joint-exploder-tuning]] to break the dummy into pieces, plays sounds, etc"
-  (let ((root-prim (-> obj root root-prim)))
+  (let ((root-prim (-> this root root-prim)))
     (set! (-> root-prim prim-core collide-as) (collide-spec))
     (set! (-> root-prim prim-core collide-with) (collide-spec))
     )
   0
-  (setup-masks (-> obj draw) 0 -1)
-  (setup-masks (-> obj draw) 1 0)
+  (setup-masks (-> this draw) 0 -1)
+  (setup-masks (-> this draw) 1 0)
   (sound-play "target-break")
   (let ((exploder-tuning (new 'stack 'joint-exploder-tuning (the-as uint 1))))
-    (set! (-> exploder-tuning fountain-rand-transv-lo quad) (-> obj impact quad))
+    (set! (-> exploder-tuning fountain-rand-transv-lo quad) (-> this impact quad))
     (set! (-> exploder-tuning fountain-rand-transv-hi x) 4096.0)
     (set! (-> exploder-tuning fountain-rand-transv-hi y) 122880.0)
     (process-spawn
@@ -2745,7 +2688,7 @@ This commonly includes things such as:
       #f
       #f
       #f
-      (-> obj node-list data 3 bone transform)
+      (-> this node-list data 3 bone transform)
       :to *entity-pool*
       )
     (process-spawn
@@ -2754,25 +2697,25 @@ This commonly includes things such as:
       5
       exploder-tuning
       *gun-cit-a-exploder-params*
-      :to obj
+      :to this
       )
     )
   0
   (none)
   )
 
-(defmethod break-dummy gun-cit-b ((obj gun-cit-b))
+(defmethod break-dummy ((this gun-cit-b))
   "Does what you'd expect, sets up the [[joint-exploder-tuning]] to break the dummy into pieces, plays sounds, etc"
-  (let ((root-prim (-> obj root root-prim)))
+  (let ((root-prim (-> this root root-prim)))
     (set! (-> root-prim prim-core collide-as) (collide-spec))
     (set! (-> root-prim prim-core collide-with) (collide-spec))
     )
   0
-  (setup-masks (-> obj draw) 0 -1)
-  (setup-masks (-> obj draw) 1 0)
+  (setup-masks (-> this draw) 0 -1)
+  (setup-masks (-> this draw) 1 0)
   (sound-play "target-break")
   (let ((exploder-tuning (new 'stack 'joint-exploder-tuning (the-as uint 1))))
-    (set! (-> exploder-tuning fountain-rand-transv-lo quad) (-> obj impact quad))
+    (set! (-> exploder-tuning fountain-rand-transv-lo quad) (-> this impact quad))
     (set! (-> exploder-tuning fountain-rand-transv-hi x) 4096.0)
     (set! (-> exploder-tuning fountain-rand-transv-hi y) 122880.0)
     (process-spawn
@@ -2783,7 +2726,7 @@ This commonly includes things such as:
       #f
       #f
       #f
-      (-> obj node-list data 3 bone transform)
+      (-> this node-list data 3 bone transform)
       :to *entity-pool*
       )
     (process-spawn
@@ -2792,25 +2735,25 @@ This commonly includes things such as:
       5
       exploder-tuning
       *gun-cit-b-exploder-params*
-      :to obj
+      :to this
       )
     )
   0
   (none)
   )
 
-(defmethod break-dummy gun-cit-c ((obj gun-cit-c))
+(defmethod break-dummy ((this gun-cit-c))
   "Does what you'd expect, sets up the [[joint-exploder-tuning]] to break the dummy into pieces, plays sounds, etc"
-  (let ((root-prim (-> obj root root-prim)))
+  (let ((root-prim (-> this root root-prim)))
     (set! (-> root-prim prim-core collide-as) (collide-spec))
     (set! (-> root-prim prim-core collide-with) (collide-spec))
     )
   0
-  (setup-masks (-> obj draw) 0 -1)
-  (setup-masks (-> obj draw) 1 0)
+  (setup-masks (-> this draw) 0 -1)
+  (setup-masks (-> this draw) 1 0)
   (sound-play "target-break")
   (let ((exploder-tuning (new 'stack 'joint-exploder-tuning (the-as uint 1))))
-    (set! (-> exploder-tuning fountain-rand-transv-lo quad) (-> obj impact quad))
+    (set! (-> exploder-tuning fountain-rand-transv-lo quad) (-> this impact quad))
     (set! (-> exploder-tuning fountain-rand-transv-hi x) 4096.0)
     (set! (-> exploder-tuning fountain-rand-transv-hi y) 122880.0)
     (process-spawn
@@ -2821,7 +2764,7 @@ This commonly includes things such as:
       #f
       #f
       #f
-      (-> obj node-list data 3 bone transform)
+      (-> this node-list data 3 bone transform)
       :to *entity-pool*
       )
     (process-spawn
@@ -2830,25 +2773,25 @@ This commonly includes things such as:
       5
       exploder-tuning
       *gun-cit-c-exploder-params*
-      :to obj
+      :to this
       )
     )
   0
   (none)
   )
 
-(defmethod break-dummy gun-cit-d ((obj gun-cit-d))
+(defmethod break-dummy ((this gun-cit-d))
   "Does what you'd expect, sets up the [[joint-exploder-tuning]] to break the dummy into pieces, plays sounds, etc"
-  (let ((root-prim (-> obj root root-prim)))
+  (let ((root-prim (-> this root root-prim)))
     (set! (-> root-prim prim-core collide-as) (collide-spec))
     (set! (-> root-prim prim-core collide-with) (collide-spec))
     )
   0
-  (setup-masks (-> obj draw) 0 -1)
-  (setup-masks (-> obj draw) 1 0)
+  (setup-masks (-> this draw) 0 -1)
+  (setup-masks (-> this draw) 1 0)
   (sound-play "target-break")
   (let ((exploder-tuning (new 'stack 'joint-exploder-tuning (the-as uint 1))))
-    (set! (-> exploder-tuning fountain-rand-transv-lo quad) (-> obj impact quad))
+    (set! (-> exploder-tuning fountain-rand-transv-lo quad) (-> this impact quad))
     (set! (-> exploder-tuning fountain-rand-transv-hi x) 4096.0)
     (set! (-> exploder-tuning fountain-rand-transv-hi y) 122880.0)
     (process-spawn
@@ -2859,7 +2802,7 @@ This commonly includes things such as:
       #f
       #f
       #f
-      (-> obj node-list data 3 bone transform)
+      (-> this node-list data 3 bone transform)
       :to *entity-pool*
       )
     (process-spawn
@@ -2868,7 +2811,7 @@ This commonly includes things such as:
       5
       exploder-tuning
       *gun-cit-d-exploder-params*
-      :to obj
+      :to this
       )
     )
   0

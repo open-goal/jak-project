@@ -8,12 +8,8 @@
 ;; DECOMP BEGINS
 
 (deftype sniper (spyder)
-  ((next-pick-time time-frame  :offset-assert 944)
+  ((next-pick-time  time-frame)
    )
-  :heap-base #x340
-  :method-count-assert 186
-  :size-assert         #x3b8
-  :flag-assert         #xba034003b8
   )
 
 
@@ -192,21 +188,21 @@
 
 (set! (-> *sniper-nav-enemy-info* fact-defaults) *fact-info-enemy-defaults*)
 
-(defmethod run-logic? sniper ((obj sniper))
+(defmethod run-logic? ((this sniper))
   (let ((f0-0 573440.0))
-    (>= (* f0-0 f0-0) (vector-vector-distance-squared (-> obj root trans) (camera-pos)))
+    (>= (* f0-0 f0-0) (vector-vector-distance-squared (-> this root trans) (camera-pos)))
     )
   )
 
-(defmethod enemy-method-129 sniper ((obj sniper))
+(defmethod enemy-method-129 ((this sniper))
   (let ((a0-1 *target*))
     (if a0-1
-        (set! (-> obj focus handle) (process->handle a0-1))
-        (set! (-> obj focus handle) (the-as handle #f))
+        (set! (-> this focus handle) (process->handle a0-1))
+        (set! (-> this focus handle) (the-as handle #f))
         )
     )
-  (set! (-> obj focus aware)
-        (if (>= (vector-vector-distance (-> obj root trans) (camera-pos)) (-> obj fact idle-distance))
+  (set! (-> this focus aware)
+        (if (>= (vector-vector-distance (-> this root trans) (camera-pos)) (-> this fact idle-distance))
             (enemy-aware enemy-aware-0)
             (enemy-aware enemy-aware-1)
             )
@@ -214,23 +210,23 @@
   (none)
   )
 
-(defmethod nav-enemy-method-156 sniper ((obj sniper))
-  (let ((s4-0 (-> obj path curve num-cverts)))
+(defmethod nav-enemy-method-156 ((this sniper))
+  (let ((s4-0 (-> this path curve num-cverts)))
     (if (<= s4-0 0)
         (go process-drawable-art-error "no path")
         )
-    (let ((s2-0 (get-rand-int obj s4-0))
+    (let ((s2-0 (get-rand-int this s4-0))
           (gp-0 (new 'stack-no-clear 'vector))
           )
       (countdown (s3-0 s4-0)
-        (get-point-in-path! (-> obj path) gp-0 (the float s2-0) 'interp)
-        (if (< 409.6 (vector-vector-xz-distance gp-0 (-> obj root trans)))
+        (get-point-in-path! (-> this path) gp-0 (the float s2-0) 'interp)
+        (if (< 409.6 (vector-vector-xz-distance gp-0 (-> this root trans)))
             (goto cfg-9)
             )
         (set! s2-0 (mod (+ s2-0 1) s4-0))
         )
       (label cfg-9)
-      (let ((v1-16 (-> obj nav state)))
+      (let ((v1-16 (-> this nav state)))
         (logclear! (-> v1-16 flags) (nav-state-flag directional-mode))
         (logior! (-> v1-16 flags) (nav-state-flag target-poly-dirty))
         (set! (-> v1-16 target-post quad) (-> gp-0 quad))
@@ -250,22 +246,14 @@
           (t9-0)
           )
       )
-    (set! (-> self next-pick-time) (current-time))
-    (none)
+    (set-time! (-> self next-pick-time))
     )
   :code (behavior ()
     (ja-channel-push! 1 (seconds 0.2))
     (let ((f30-0 (get-rand-float-range self 0.9 1.1)))
       (until #f
         (ja-no-eval :group! (-> self draw art-group data (-> self enemy-info walk-anim))
-                    :num! (seek!
-                      (the float
-                           (+ (-> (the-as art-joint-anim (-> self draw art-group data (-> self enemy-info walk-anim))) frames num-frames)
-                              -1
-                              )
-                           )
-                      f30-0
-                      )
+                    :num! (seek! max f30-0)
                     :frame-num 0.0
                     )
         (until (ja-done? 0)
@@ -275,7 +263,6 @@
         )
       )
     #f
-    (none)
     )
   :post (behavior ()
     (when (or (logtest? (-> self nav state flags) (nav-state-flag at-target))
@@ -287,48 +274,47 @@
       (set! (-> self next-pick-time) (+ (current-time) (get-rand-int-range self 300 1050)))
       )
     (nav-enemy-method-176 self)
-    (none)
     )
   )
 
-(defmethod init-enemy! sniper ((obj sniper))
+(defmethod init-enemy! ((this sniper))
   "Common method called to initialize the enemy, typically sets up default field values and calls ancillary helper methods"
   (let ((t9-0 (method-of-type spyder init-enemy!)))
-    (t9-0 obj)
+    (t9-0 this)
     )
-  (set-enemy-info! obj *sniper-nav-enemy-info*)
-  (logior! (-> obj focus-status) (focus-status ignore))
-  (logclear! (-> obj focus-status) (focus-status dangerous))
-  (logclear! (-> obj enemy-flags) (enemy-flag check-water))
+  (set-enemy-info! this *sniper-nav-enemy-info*)
+  (logior! (-> this focus-status) (focus-status ignore))
+  (logclear! (-> this focus-status) (focus-status dangerous))
+  (logclear! (-> this enemy-flags) (enemy-flag check-water))
   0
   (none)
   )
 
-(defmethod init-enemy-collision! sniper ((obj sniper))
+(defmethod init-enemy-collision! ((this sniper))
   "Initializes the [[collide-shape-moving]] and any ancillary tasks to make the enemy collide properly"
   (let ((t9-0 (method-of-type spyder init-enemy-collision!)))
-    (t9-0 obj)
+    (t9-0 this)
     )
-  (let ((v1-2 (-> obj root root-prim)))
+  (let ((v1-2 (-> this root root-prim)))
     (set! (-> v1-2 prim-core collide-as) (collide-spec))
     (set! (-> v1-2 prim-core collide-with) (collide-spec))
     )
-  (set! (-> obj root backup-collide-as) (collide-spec))
-  (set! (-> obj root backup-collide-with) (collide-spec))
+  (set! (-> this root backup-collide-as) (collide-spec))
+  (set! (-> this root backup-collide-with) (collide-spec))
   0
   0
   (none)
   )
 
 ;; WARN: Return type mismatch object vs none.
-(defmethod go-idle sniper ((obj sniper))
+(defmethod go-idle ((this sniper))
   (cond
-    ((script-eval (res-lump-struct (-> obj entity) 'on-activate pair))
-     (cleanup-for-death obj)
-     (go (method-of-object obj die-fast))
+    ((script-eval (res-lump-struct (-> this entity) 'on-activate pair))
+     (cleanup-for-death this)
+     (go (method-of-object this die-fast))
      )
     (else
-      (go (method-of-object obj idle))
+      (go (method-of-object this idle))
       )
     )
   (none)

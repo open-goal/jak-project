@@ -9,21 +9,18 @@
 
 (deftype grim-sewer (grim)
   ()
-  :heap-base #x380
-  :method-count-assert 246
-  :size-assert         #x400
-  :flag-assert         #xf603800400
   )
 
 
-(defmethod go-idle grim-sewer ((obj grim-sewer))
+;; WARN: Return type mismatch object vs none.
+(defmethod go-idle ((this grim-sewer))
   (cond
     ((task-node-closed? (game-task-node sewer-escort-resolution))
-     (cleanup-for-death obj)
-     (go (method-of-object obj die-fast))
+     (cleanup-for-death this)
+     (go (method-of-object this die-fast))
      )
     (else
-      (ruffian-method-240 obj)
+      (ruffian-method-240 this)
       )
     )
   (none)
@@ -420,7 +417,7 @@
         :nav-mesh-index 2
         :skip-to -1
         :on-set (lambda ((arg0 grim-sewer))
-          (set! (-> arg0 waypoint-time0) (current-time))
+          (set-time! (-> arg0 waypoint-time0))
           (logior! (-> arg0 bot-flags) (bot-flags bf19))
           (clear-poi-and-focus! arg0)
           (logclear! (-> arg0 focus-status) (focus-status disable))
@@ -434,7 +431,7 @@
             (set! (-> (the-as ruft-wait-spot v1-12) check-done)
                   (the-as
                     (function ruft-wait-spot ruffian symbol)
-                    (lambda ((arg0 object) (arg1 grim-sewer)) (when (>= (- (current-time) (-> arg1 waypoint-time0)) (seconds 1))
+                    (lambda ((arg0 object) (arg1 grim-sewer)) (when (time-elapsed? (-> arg1 waypoint-time0) (seconds 1))
                                                                 (ai-task-control-method-12 (-> arg1 ai-ctrl) arg1)
                                                                 (go-to-waypoint! arg1 16 #f)
                                                                 (ai-task-control-method-10 (-> arg1 ai-ctrl) arg1)

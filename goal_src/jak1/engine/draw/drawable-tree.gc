@@ -11,43 +11,47 @@
 
 ;; This file contains common functions for all drawable trees.
 
-(defmethod draw drawable-tree-array ((obj drawable-tree-array) (arg0 drawable-tree-array) (arg1 display-frame))
+;; DECOMP BEGINS
+
+(defmethod draw ((this drawable-tree-array) (arg0 drawable-tree-array) (arg1 display-frame))
   "Draw a drawable tree array. If the current level is set to special or special-vis, the draw is skipped."
   (let ((v1-1 (-> (scratchpad-object terrain-context) bsp lev-index)))
     (case (-> *level* level v1-1 display?)
-          (('special 'special-vis #f)
-           )
-          (else
-            (dotimes (s3-0 (-> obj length))
-              (draw (-> obj trees s3-0) (-> arg0 trees s3-0) arg1)
-              )
-            )
+      (('special 'special-vis #f)
+       )
+      (else
+        (dotimes (s3-0 (-> this length))
+          (draw (-> this trees s3-0) (-> arg0 trees s3-0) arg1)
           )
+        )
+      )
     )
   0
   (none)
   )
 
-(defmethod collect-stats drawable-tree-array ((obj drawable-tree-array))
-  (dotimes (s5-0 (-> obj length))
-    (collect-stats (-> obj trees s5-0))
+(defmethod collect-stats ((this drawable-tree-array))
+  (dotimes (s5-0 (-> this length))
+    (collect-stats (-> this trees s5-0))
     )
+  0
   (none)
   )
 
-(defmethod debug-draw drawable-tree-array ((obj drawable-tree-array) (arg0 drawable) (arg1 display-frame))
-  (dotimes (s3-0 (-> obj length))
-    (debug-draw (-> obj trees s3-0) (-> (the-as drawable-tree-array arg0) trees s3-0) arg1)
+(defmethod debug-draw ((this drawable-tree-array) (arg0 drawable) (arg1 display-frame))
+  (dotimes (s3-0 (-> this length))
+    (debug-draw (-> this trees s3-0) (-> (the-as drawable-tree-array arg0) trees s3-0) arg1)
     )
+  0
   (none)
   )
 
-(defmethod unpack-vis drawable-tree ((obj drawable-tree) (arg0 (pointer int8)) (arg1 (pointer int8)))
+(defmethod unpack-vis ((this drawable-tree) (arg0 (pointer int8)) (arg1 (pointer int8)))
   "Copy our visibility data from arg1 to arg0, unpacking it."
   (local-vars (t5-1 int))
   
   ;; grab the first array
-  (let* ((v1-0 (the-as drawable-inline-array-node (-> obj data 0)))
+  (let* ((v1-0 (the-as drawable-inline-array-node (-> this data 0)))
          ;; first elt in top array
          (a3-1 (/ (-> v1-0 data 0 id) 8))
          ;; number in first array (8 or fewer)
@@ -69,13 +73,13 @@
       )
     )
   ;; now, the remaining arrays, excluding the final which isn't a draw node array.
-  (let ((v1-5 (+ (-> obj length) -1)))
+  (let ((v1-5 (+ (-> this length) -1)))
     (when (nonzero? v1-5)
       (dotimes (a3-5 v1-5)
         ;; pointer to this array
-        (let* ((t0-4 (-> obj data a3-5))
+        (let* ((t0-4 (-> this data a3-5))
                ;; pointer to next depth array
-               (t2-0 (-> obj data (+ a3-5 1)))
+               (t2-0 (-> this data (+ a3-5 1)))
                ;; id of first in prev
                (t1-5 (/ (-> (the-as drawable-inline-array-node t0-4) data 0 id) 8))
                ;; id of first in next

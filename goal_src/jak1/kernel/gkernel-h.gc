@@ -129,23 +129,25 @@
   `(format 0 ,@args)
   )
 
+;; DECOMP BEGINS
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; TYPES
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ;; this stores the current state of the kernel.
 (deftype kernel-context (basic)
-  ((prevent-from-run   process-mask  :offset-assert 4)  ;; don't run processes with any of these bits set.
-   (require-for-run    process-mask  :offset-assert 8)  ;; unused
-   (allow-to-run       process-mask  :offset-assert 12) ;; unused
-   (next-pid           int32         :offset-assert 16) ;; next unused unique process ID
-   (fast-stack-top     pointer       :offset-assert 20)
-   (current-process    process       :offset-assert 24) ;; currently executing process
-   (relocating-process basic         :offset-assert 28) ;; currently relocating process
-   (relocating-min     int32         :offset-assert 32) ;; start of memory being relocated
-   (relocating-max     int32         :offset-assert 36) ;; end of memory being relocated
-   (relocating-offset  int32         :offset-assert 40) ;; how far the memory being relocated is moving
-   (low-memory-message symbol        :offset-assert 44) ;; should we print warnings if low on memory?
+  ((prevent-from-run   process-mask)  ;; don't run processes with any of these bits set.
+   (require-for-run    process-mask)  ;; unused
+   (allow-to-run       process-mask) ;; unused
+   (next-pid           int32) ;; next unused unique process ID
+   (fast-stack-top     pointer)
+   (current-process    process) ;; currently executing process
+   (relocating-process basic) ;; currently relocating process
+   (relocating-min     int32) ;; start of memory being relocated
+   (relocating-max     int32) ;; end of memory being relocated
+   (relocating-offset  int32) ;; how far the memory being relocated is moving
+   (low-memory-message symbol) ;; should we print warnings if low on memory?
    )
 
   :size-assert #x30
@@ -168,26 +170,22 @@
 
 ;; NOTE! - this type is created in kscheme.cpp. It has room for 12 methods and size 0x28 bytes.
 (deftype thread (basic)
-  ((name          basic    :offset-assert 4) ;; name of the thread (usually a symbol?)
-   (process       process  :offset-assert 8) ;; process that the thread belongs to
-   (previous      thread   :offset-assert 12) ;; previous thread that was running in the process
-   (suspend-hook  (function cpu-thread none) :offset-assert 16) ;; function to suspend this thread
-   (resume-hook   (function cpu-thread none) :offset-assert 20) ;; function to resume this thread
-   (pc            pointer  :offset-assert 24) ;; program counter of the thread
-   (sp            pointer  :offset-assert 28) ;; stack pointer of the thread (actual stack)
-   (stack-top     pointer  :offset-assert 32) ;; top of the thread's stack (actual stack)
-   (stack-size    int32    :offset-assert 36) ;; size of the thread's stack (backup stack)
+  ((name          basic) ;; name of the thread (usually a symbol?)
+   (process       process) ;; process that the thread belongs to
+   (previous      thread) ;; previous thread that was running in the process
+   (suspend-hook  (function cpu-thread none)) ;; function to suspend this thread
+   (resume-hook   (function cpu-thread none)) ;; function to resume this thread
+   (pc            pointer) ;; program counter of the thread
+   (sp            pointer) ;; stack pointer of the thread (actual stack)
+   (stack-top     pointer) ;; top of the thread's stack (actual stack)
+   (stack-size    int32) ;; size of the thread's stack (backup stack)
    )
 
   (:methods
-    (stack-size-set! (_type_ int) none 9)
-    (thread-suspend (_type_) none 10)
-    (thread-resume  (_type_) none 11)
+    (stack-size-set! (_type_ int) none)
+    (thread-suspend (_type_) none)
+    (thread-resume  (_type_) none)
    )
-
-  :size-assert #x28
-  :method-count-assert 12
-  :flag-assert #xc00000028
   ;; is already defined in kscheme but we define it again.
   )
 
@@ -207,14 +205,10 @@
    )
 
   (:methods
-    (new (symbol type process symbol int pointer) _type_ 0)
-    (thread-suspend (_type_) none 10)
-    (thread-resume  (_type_) none 11)
+    (new (symbol type process symbol int pointer) _type_)
+    (thread-suspend (_type_) none)
+    (thread-resume  (_type_) none)
    )
-
-  :size-assert #x80
-  :method-count-assert 12
-  :flag-assert #xc00000080
   )
 
 ;; ppointer system:
@@ -228,62 +222,58 @@
 ;; (except GOAL is old and it looks like they called them left-child right-brother trees back then)
 (declare-type entity-actor basic)
 (deftype process-tree (basic)
-  ((name     basic                  :offset-assert 4)
-   (mask     process-mask           :offset-assert 8)
+  ((name     basic)
+   (mask     process-mask)
    ;; tree
-   (parent   (pointer process-tree) :offset-assert 12)
-   (brother  (pointer process-tree) :offset-assert 16)
-   (child    (pointer process-tree) :offset-assert 20)
-   (ppointer (pointer process)      :offset-assert 24)
+   (parent   (pointer process-tree))
+   (brother  (pointer process-tree))
+   (child    (pointer process-tree))
+   (ppointer (pointer process))
 
    ;; in cases where the process never moves, the kernel will set ppointer to the address of the self field
-   (self     process-tree           :offset-assert 28)
+   (self     process-tree)
    )
 
   (:methods
-    (new (symbol type basic) _type_ 0)
-    (activate (_type_ process-tree basic pointer) process-tree 9)
-    (deactivate  (_type_) none 10)
-    (init-from-entity! (_type_ entity-actor) none 11)
-    (run-logic? (_type_) symbol 12)
-    (process-tree-method-13 () none 13)
+    (new (symbol type basic) _type_)
+    (activate (_type_ process-tree basic pointer) process-tree)
+    (deactivate  (_type_) none)
+    (init-from-entity! (_type_ entity-actor) none)
+    (run-logic? (_type_) symbol)
+    (process-tree-method-13 () none)
    )
 
-  :size-assert #x20
-  :method-count-assert 14
   :no-runtime-type ;; already defined by kscheme. Don't do it again.
   )
 
 
 ;; A GOAL process.  A GOAL process contains memory and a suspendable main-thread.
 (deftype process (process-tree)
-  ((pool dead-pool :offset-assert #x20)  ;; the memory pool we came from, and should return to when we die
-   (status basic :offset-assert #x24)
-   (pid int32 :offset-assert #x28)              ;; unqiue process ID
-   (main-thread cpu-thread :offset-assert #x2c) ;; our suspendable main thread
-   (top-thread thread :offset-assert #x30)      ;; currently running thread
-   (entity entity-actor :offset-assert #x34)    ;; if we are a process spawned by an entity-actor, our entity
-   (state state :offset-assert #x38)            ;; if we use the state system, our current state
-   (trans-hook function :offset-assert #x3c)    ;; function to call for trans
-   (post-hook function :offset-assert #x40)     ;; function to call for post
-   (event-hook (function process int symbol event-message-block object) :offset-assert #x44) ;; function to call for events
-   (allocated-length int32 :offset-assert #x48) ;; size not included in process (including fields + heap)
-   (next-state state :offset-assert #x4c)       ;; if we are "going", the next state to go to.
-   (heap-base pointer :offset-assert #x50)      ;; process heap
-   (heap-top pointer :offset-assert #x54)
-   (heap-cur pointer :offset-assert #x58)
-   (stack-frame-top stack-frame :offset-assert #x5c)  ;; stack frame. top means "closest to current execution"
-   (connection-list connectable :inline :offset-assert #x60) ;; list of engines we're connected to
-   (stack uint8 :dynamic :offset-assert #x70) ;; memory for fields + process heap
+  ((pool              dead-pool)  ;; the memory pool we came from, and should return to when we die
+   (status            basic)
+   (pid               int32)      ;; unqiue process ID
+   (main-thread       cpu-thread) ;; our suspendable main thread
+   (top-thread        thread)     ;; currently running thread
+   (entity            entity-actor)    ;; if we are a process spawned by an entity-actor, our entity
+   (state             state)    ;; if we use the state system, our current state
+   (trans-hook        function) ;; function to call for trans
+   (post-hook         function) ;; function to call for post
+   (event-hook        (function process int symbol event-message-block object)) ;; function to call for events
+   (allocated-length  int32)   ;; size not included in process (including fields + heap)
+   (next-state        state)   ;; if we are "going", the next state to go to.
+   (heap-base         pointer) ;; process heap
+   (heap-top          pointer)
+   (heap-cur          pointer)
+   (stack-frame-top   stack-frame)  ;; stack frame. top means "closest to current execution"
+   (connection-list   connectable  :inline) ;; list of engines we're connected to
+   (stack             uint8  :dynamic) ;; memory for fields + process heap
    )
   (:methods
-    (new (symbol type basic int) _type_ 0)
+    (new (symbol type basic int) _type_)
    )
   (:states
     dead-state
     empty-state)
-  :size-assert #x70
-  :method-count-assert 14
   :no-runtime-type ;; already defined by kscheme. Don't do it again.
   )
 
@@ -294,13 +284,10 @@
    ;; nothing new!
    )
   (:methods
-    (new (symbol type int int basic) _type_ 0)
-    (get-process (_type_ type int) process 14)
-    (return-process ( _type_ process) none 15)
+    (new (symbol type int int basic) _type_)
+    (get-process (_type_ type int) process)
+    (return-process ( _type_ process) none)
    )
-  :size-assert #x20
-  :method-count-assert 16
-  :flag-assert #x1000000020
   )
 
 ;; A dead-pool-heap-rec is a record for a process which lives on a dead-pool-heap.
@@ -308,52 +295,45 @@
 ;; This is a small record that will be updated by the kernel so it always points to the process.
 ;; A handle can use a pointer to this type's "process" field as a fixed ppointer.
 (deftype dead-pool-heap-rec (structure)
-  ((process process         :offset-assert 0) ;; the process of this record
-   (prev dead-pool-heap-rec :offset-assert 4) ;; next rec in the linked list
-   (next dead-pool-heap-rec :offset-assert 8) ;; prev. rec in the linked list
+  ((process process) ;; the process of this record
+   (prev dead-pool-heap-rec) ;; next rec in the linked list
+   (next dead-pool-heap-rec) ;; prev. rec in the linked list
    )
 
   :pack-me ; don't worry about aligning me to 16-bytes in arrays and types.
-  :size-assert #xc
-  :method-count-assert 9
-  :flag-assert #x90000000c
   )
 
 ;; This is a pool of dead processes which can be dynamically sized and allocated from a common heap.
 ;; It doesn't quite behave like a tree, so there's some hacks related to child/brother etc.
 ;; Alive processes in a dead-pool-heap can be relocated and compacted to reduce heap fragmentation.
 (deftype dead-pool-heap (dead-pool)
-  ((allocated-length    int32                           :offset-assert #x20) ;; size of heap
-   (compact-time        uint32                          :offset-assert #x24) ;; unused...
-   (compact-count-targ  uint32                          :offset-assert #x28) ;; number of compactions requested
-   (compact-count       uint32                          :offset-assert #x2c) ;; number of compactions perfomed
-   (fill-percent        float                           :offset-assert #x30) ;; unused
-   (first-gap           dead-pool-heap-rec              :offset-assert #x34) ;; the lowest process with a gap in the heap
-   (first-shrink        dead-pool-heap-rec              :offset-assert #x38) ;; the lowest process that needs shrinking
-   (heap                kheap :inline                   :offset-assert 64)   ;; our shared heap for processes
-   (alive-list          dead-pool-heap-rec :inline      :offset-assert 80)   ;; records for processes that are alive
-   (last                dead-pool-heap-rec :offset #x54 :offset-assert #x54) ;; overlay of (-> alive-list prev)
-   (dead-list           dead-pool-heap-rec :inline      :offset-assert 92)   ;; unused records
-   (process-list        dead-pool-heap-rec :inline :dynamic :offset-assert 104) ;; array of records
+  ((allocated-length    int32) ;; size of heap
+   (compact-time        uint32) ;; unused...
+   (compact-count-targ  uint32) ;; number of compactions requested
+   (compact-count       uint32) ;; number of compactions perfomed
+   (fill-percent        float) ;; unused
+   (first-gap           dead-pool-heap-rec) ;; the lowest process with a gap in the heap
+   (first-shrink        dead-pool-heap-rec) ;; the lowest process that needs shrinking
+   (heap                kheap :inline)   ;; our shared heap for processes
+   (alive-list          dead-pool-heap-rec :inline)   ;; records for processes that are alive
+   (last                dead-pool-heap-rec :overlay-at (-> alive-list prev))
+   (dead-list           dead-pool-heap-rec :inline)   ;; unused records
+   (process-list        dead-pool-heap-rec :inline :dynamic) ;; array of records
    )
   (:methods
-    (new (symbol type basic int int) _type_ 0)
-    (compact (dead-pool-heap int) none 16)
-    (shrink-heap (dead-pool-heap process) dead-pool-heap 17)
-    (churn (dead-pool-heap int) none 18)
-    (memory-used (dead-pool-heap) int 19)
-    (memory-total (dead-pool-heap) int 20)
-    (gap-size (dead-pool-heap dead-pool-heap-rec) int 21)
-    (gap-location (dead-pool-heap dead-pool-heap-rec) pointer 22)
-    (find-gap (dead-pool-heap dead-pool-heap-rec) dead-pool-heap-rec 23)
-    (find-gap-by-size (dead-pool-heap int) dead-pool-heap-rec 24)
-    (memory-free (dead-pool-heap) int 25)
-    (compact-time (dead-pool-heap) uint 26)
+    (new (symbol type basic int int) _type_)
+    (compact (dead-pool-heap int) none)
+    (shrink-heap (dead-pool-heap process) dead-pool-heap)
+    (churn (dead-pool-heap int) none)
+    (memory-used (dead-pool-heap) int)
+    (memory-total (dead-pool-heap) int)
+    (gap-size (dead-pool-heap dead-pool-heap-rec) int)
+    (gap-location (dead-pool-heap dead-pool-heap-rec) pointer)
+    (find-gap (dead-pool-heap dead-pool-heap-rec) dead-pool-heap-rec)
+    (find-gap-by-size (dead-pool-heap int) dead-pool-heap-rec)
+    (memory-free (dead-pool-heap) int)
+    (compact-time (dead-pool-heap) uint)
    )
-
-  :size-assert #x68
-  :method-count-assert #x1b
-  :flag-assert #x1b00000068
   )
 
 
@@ -364,9 +344,6 @@
    (next stack-frame :offset 8) ;; follow this to get to the root frame, away from top.
    )
 
-  :size-assert #xc
-  :method-count-assert 9
-  :flag-assert #x90000000c
   :no-runtime-type ;; already constructed, don't do it again.
   )
 
@@ -387,23 +364,17 @@
    )
 
   (:methods
-   (new (symbol type symbol function (pointer uint64)) object 0)
+   (new (symbol type symbol function (pointer uint64)) object)
    )
-  :size-assert #xb0
-  :method-count-assert 9
-  :flag-assert #x9000000b0
   )
 
 ;; A protect frame is a frame which has a cleanup function called on exit.
 (deftype protect-frame (stack-frame)
-  ((exit (function none) :offset-assert 12)) ;; function to call to clean up
+  ((exit (function object))) ;; function to call to clean up
 
   (:methods
-   (new (symbol type (function none)) protect-frame)
+   (new (symbol type (function object)) protect-frame)
    )
-  :size-assert 16
-  :method-count-assert 9
-  :flag-assert #x900000010
   )
 
 ;; A handle is a reference to a _specific_ process.
@@ -419,14 +390,13 @@
    (pid int32 :offset 32)
    (u64 uint64 :offset 0)
    )
-  :flag-assert #x900000008
   )
 
-(defmethod inspect handle ((obj handle))
+(defmethod inspect ((this handle))
   (format #t "[~8x] ~A~%" 'handle)
-  (format #t "~Tprocess: #x~x~%" (-> obj process))
-  (format #t "~Tpid: ~D~%" (-> obj pid))
-  obj
+  (format #t "~Tprocess: #x~x~%" (-> this process))
+  (format #t "~Tpid: ~D~%" (-> this pid))
+  this
   )
 
 
@@ -472,16 +442,16 @@
   `(ppointer->handle (process->ppointer ,proc))
   )
 
-(defmethod print handle ((obj handle))
+(defmethod print ((this handle))
   "print a handle"
-  (if (nonzero? (-> obj u64)) ;; zero-initialized handles can't be derefenced safely.
+  (if (nonzero? (-> this u64)) ;; zero-initialized handles can't be derefenced safely.
       (format #t "#<handle :process ~A :pid ~D>"
-              (handle->process obj) ;; actually print the process stored
-              (-> obj pid)
+              (handle->process this) ;; actually print the process stored
+              (-> this pid)
               )
       (format #t "#<handle :process 0 :pid 0>")
       )
-  obj
+  this
   )
 
 ;; A "state" is a collection of 6 functions that describe what code a process should run.
@@ -494,37 +464,30 @@
 ;; While "state" is technically a stack frame, it's always the base stack frame, and just used for the exit
 ;; so if you abort out of a process, it cleans up the state too.
 (deftype state (protect-frame)
-  ((code  function         :offset-assert  16)
-   (trans (function none)  :offset-assert  20)
-   (post  function         :offset-assert  24)
-   (enter function         :offset-assert  28)
-   (event (function process int symbol event-message-block object)  :offset-assert  32)
+  ((code   function)
+   (trans  (function object))
+   (post   function)
+   (enter  function)
+   (event  (function process int symbol event-message-block object))
    )
   (:methods
     (new (symbol type symbol function
-          (function none)
+          (function object)
           function
-          (function none)
-          (function process int symbol event-message-block object)) _type_ 0)
+          (function object)
+          (function process int symbol event-message-block object)) _type_)
     )
-  :method-count-assert 9
-  :size-assert         #x24
-  :flag-assert         #x900000024
   )
 
 
 ;; this is used for the event system to pass around parameters from one process to another.
 (deftype event-message-block (structure)
-  ((to process :offset-assert 0)
-   (from process :offset-assert 4)
-   (num-params int32 :offset-assert 8)
-   (message symbol :offset-assert 12)
-   (param uint64 7 :offset-assert 16)
+  ((to          process)
+   (from        process)
+   (num-params  int32)
+   (message     symbol)
+   (param       uint64  7)
    )
-
-  :size-assert #x48
-  :method-count-assert 9
-  :flag-assert #x900000048
   :always-stack-singleton
   )
 

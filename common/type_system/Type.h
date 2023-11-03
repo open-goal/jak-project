@@ -32,6 +32,7 @@ struct MethodInfo {
   bool overrides_parent = false;
   bool only_overrides_docstring = false;
   std::optional<std::string> docstring;
+  std::optional<std::string> overlay_name;
 
   bool operator==(const MethodInfo& other) const;
   bool operator!=(const MethodInfo& other) const { return !((*this) == other); }
@@ -133,7 +134,7 @@ class Type {
   bool m_new_method_info_defined = false;
   bool m_generate_inspect = true;
 
-  std::string m_parent;  // the parent type (is empty for none and object)
+  std::string m_parent;  // the parent type (is empty for object)
   std::string m_name;
   bool m_allow_in_runtime = true;
   std::string m_runtime_name;
@@ -238,6 +239,9 @@ class Field {
   int offset() const { return m_offset; }
   bool skip_in_decomp() const { return m_skip_in_static_decomp; }
   bool user_placed() const { return m_placed_by_user; }
+  void set_comment(const std::string& comment) { m_comment = comment; }
+  const std::string& comment() const { return m_comment; }
+  bool has_comment() const { return !m_comment.empty(); }
   bool operator==(const Field& other) const;
   bool operator!=(const Field& other) const { return !((*this) == other); }
   std::string diff(const Field& other) const;
@@ -274,6 +278,7 @@ class Field {
   int m_alignment = -1;
   bool m_skip_in_static_decomp = false;
   bool m_placed_by_user = false;  // was this field placed manually by the user?
+  std::string m_comment;          // optional comment placed next to the field
 
   double m_field_score = 0.;
 

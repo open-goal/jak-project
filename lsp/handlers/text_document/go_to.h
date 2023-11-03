@@ -7,7 +7,7 @@
 #include "lsp/state/data/mips_instructions.h"
 #include "lsp/state/workspace.h"
 
-std::optional<json> go_to_definition_handler(Workspace& workspace, int id, json raw_params) {
+std::optional<json> go_to_definition_handler(Workspace& workspace, int /*id*/, json raw_params) {
   auto params = raw_params.get<LSPSpec::TextDocumentPositionParams>();
   const auto file_type = workspace.determine_filetype_from_uri(params.m_textDocument.m_uri);
 

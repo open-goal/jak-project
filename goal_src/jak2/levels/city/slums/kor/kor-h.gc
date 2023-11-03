@@ -8,43 +8,38 @@
 ;; DECOMP BEGINS
 
 (deftype kor (bot)
-  ((travel-anim-interp  float       :offset-assert 992)
-   (arrest-attempt-time time-frame  :offset-assert 1000)
-   (arrestor-handle     handle      :offset-assert 1008)
+  ((travel-anim-interp   float)
+   (arrest-attempt-time  time-frame)
+   (arrestor-handle      handle)
    )
-  :heap-base #x380
-  :method-count-assert 235
-  :size-assert         #x3f8
-  :flag-assert         #xeb038003f8
+  (:state-methods
+    traveling
+    traveling-blocked
+    waiting-with-kid
+    waiting-idle
+    waiting-turn
+    scared-idle
+    arrested
+    )
   (:methods
-    (traveling () _type_ :state 225)
-    (traveling-blocked () _type_ :state 226)
-    (waiting-with-kid () _type_ :state 227)
-    (waiting-idle () _type_ :state 228)
-    (waiting-turn () _type_ :state 229)
-    (scared-idle () _type_ :state 230)
-    (arrested () _type_ :state 231)
-    (kor-method-232 (_type_) none 232)
-    (kor-method-233 (_type_) none 233)
-    (kor-method-234 (_type_) none 234)
+    (kor-method-232 (_type_) none)
+    (kor-method-233 (_type_) none)
+    (kor-method-234 (_type_) none)
     )
   )
 
 
-(defskelgroup skel-kor kor 0 3
-              ((1 (meters 999999)))
+(defskelgroup skel-kor kor kor-lod0-jg kor-idle0-ja
+              ((kor-lod0-mg (meters 999999)))
               :bounds (static-spherem 0 0 0 2.5)
-              :shadow 2
+              :shadow kor-shadow-mg
               :origin-joint-index 13
               )
 
 (deftype kort-wait-spot (ai-task)
-  ((check-done   (function kort-wait-spot kor symbol)   :offset  32)
-   (which-spot   int8                                   :offset  36)
-   (num-spots    uint8                                  :offset  37)
-   (spot-indexes uint8                                6 :offset  38)
+  ((check-done    (function kort-wait-spot kor symbol)    :overlay-at (-> bytes 0))
+   (which-spot    int8                                    :overlay-at (-> bytes 4))
+   (num-spots     uint8                                   :overlay-at (-> bytes 5))
+   (spot-indexes  uint8                                 6 :overlay-at (-> bytes 6))
    )
-  :method-count-assert 12
-  :size-assert         #x30
-  :flag-assert         #xc00000030
   )

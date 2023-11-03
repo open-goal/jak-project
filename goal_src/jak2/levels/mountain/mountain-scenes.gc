@@ -1628,42 +1628,36 @@
   )
 
 (deftype mtn-plat-buried-rocks (process-drawable)
-  ((root collide-shape  :override)
+  ((root  collide-shape :override)
    )
-  :heap-base #x50
-  :method-count-assert 22
-  :size-assert         #xc8
-  :flag-assert         #x16005000c8
-  (:methods
-    (idle () _type_ :state 20)
-    (done (symbol) _type_ :state 21)
+  (:state-methods
+    idle
+    (done symbol)
     )
   )
 
 
 (defstate idle (mtn-plat-buried-rocks)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (the-as object (case event-type
-                     (('trigger)
-                      (process-spawn scene-player :init scene-player-init "mtn-plat-buried-rocks-a" #t #f)
-                      )
-                     (('done)
-                      (go-virtual done #f)
-                      )
-                     (('die)
-                      (cleanup-for-death self)
-                      (the-as object (deactivate self))
-                      )
-                     )
-            )
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
+      (('trigger)
+       (process-spawn scene-player :init scene-player-init "mtn-plat-buried-rocks-a" #t #f)
+       )
+      (('done)
+       (go-virtual done #f)
+       )
+      (('die)
+       (cleanup-for-death self)
+       (deactivate self)
+       )
+      )
     )
   :code (behavior ()
     (ja-post)
     (logior! (-> self mask) (process-mask sleep))
     (suspend)
     0
-    (none)
     )
   )
 
@@ -1690,19 +1684,18 @@
     (logior! (-> self mask) (process-mask sleep))
     (suspend)
     0
-    (none)
     )
   )
 
 ;; WARN: Return type mismatch object vs none.
-(defmethod init-from-entity! mtn-plat-buried-rocks ((obj mtn-plat-buried-rocks) (entity entity-actor))
+(defmethod init-from-entity! ((this mtn-plat-buried-rocks) (entity entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
 - stack size
 - collision information
 - loading the skeleton group / bones
 - sounds"
-  (let ((cshape (new 'process 'collide-shape obj (collide-list-enum hit-by-player))))
+  (let ((cshape (new 'process 'collide-shape this (collide-list-enum hit-by-player))))
     (let ((prim-mesh (new 'process 'collide-shape-prim-mesh cshape (the-as uint 0) (the-as uint 0))))
       (set! (-> prim-mesh prim-core collide-as) (collide-spec obstacle))
       (set! (-> prim-mesh prim-core collide-with) (collide-spec jak player-list))
@@ -1717,55 +1710,51 @@ This commonly includes things such as:
       (set! (-> cshape backup-collide-as) (-> v1-5 prim-core collide-as))
       (set! (-> cshape backup-collide-with) (-> v1-5 prim-core collide-with))
       )
-    (set! (-> obj root) cshape)
+    (set! (-> this root) cshape)
     )
-  (process-drawable-from-entity! obj entity)
+  (process-drawable-from-entity! this entity)
   (initialize-skeleton
-    obj
+    this
     (the-as
       skeleton-group
       (art-group-get-by-name *level* "skel-mtn-plat-buried-rocks" (the-as (pointer uint32) #f))
       )
     (the-as pair 0)
     )
-  (set! (-> obj draw force-lod) 1)
+  (set! (-> this draw force-lod) 1)
   (cond
-    ((and (-> obj entity) (logtest? (-> obj entity extra perm status) (entity-perm-status subtask-complete)))
-     (go (method-of-object obj done) #t)
+    ((and (-> this entity) (logtest? (-> this entity extra perm status) (entity-perm-status subtask-complete)))
+     (go (method-of-object this done) #t)
      )
     (else
-      (add-process *gui-control* obj (gui-channel art-load) (gui-action queue) "mtn-plat-buried-rocks-a" -99.0 0)
-      (go (method-of-object obj idle))
+      (add-process *gui-control* this (gui-channel art-load) (gui-action queue) "mtn-plat-buried-rocks-a" -99.0 0)
+      (go (method-of-object this idle))
       )
     )
   (none)
   )
 
 (deftype mtn-plat-buried (plat)
-  ((incoming-attack-id uint32        :offset-assert 324)
-   (offset             float         :offset-assert 328)
-   (options            actor-option  :offset-assert 336)
+  ((incoming-attack-id  uint32)
+   (offset              float)
+   (options             actor-option)
    )
-  :heap-base #xe0
-  :method-count-assert 37
-  :size-assert         #x158
-  :flag-assert         #x2500e00158
   )
 
 
-(defskelgroup skel-mtn-plat-buried mtn-plat-buried 0 4
-              ((1 (meters 999999)))
+(defskelgroup skel-mtn-plat-buried mtn-plat-buried mtn-plat-buried-lod0-jg mtn-plat-buried-idle-ja
+              ((mtn-plat-buried-lod0-mg (meters 999999)))
               :bounds (static-spherem 0 0 0 4.8)
               )
 
-(defmethod get-art-group mtn-plat-buried ((obj mtn-plat-buried))
+(defmethod get-art-group ((this mtn-plat-buried))
   "@returns The associated [[art-group]]"
   (art-group-get-by-name *level* "skel-mtn-plat-buried" (the-as (pointer uint32) #f))
   )
 
-(defmethod init-plat-collision! mtn-plat-buried ((obj mtn-plat-buried))
+(defmethod init-plat-collision! ((this mtn-plat-buried))
   "TODO - collision stuff for setting up the platform"
-  (let ((cshape (new 'process 'collide-shape-moving obj (collide-list-enum usually-hit-by-player))))
+  (let ((cshape (new 'process 'collide-shape-moving this (collide-list-enum usually-hit-by-player))))
     (set! (-> cshape dynam) (copy *standard-dynamics* 'process))
     (set! (-> cshape reaction) cshape-reaction-default)
     (set! (-> cshape no-reaction)
@@ -1786,45 +1775,46 @@ This commonly includes things such as:
       (set! (-> cshape backup-collide-as) (-> root-prim prim-core collide-as))
       (set! (-> cshape backup-collide-with) (-> root-prim prim-core collide-with))
       )
-    (set! (-> obj root) cshape)
+    (set! (-> this root) cshape)
     )
-  (set! (-> obj sound)
-        (new 'process 'ambient-sound (static-sound-spec "mtn-plat-lp" :fo-max 100) (-> obj root trans))
+  (set! (-> this sound)
+        (new 'process 'ambient-sound (static-sound-spec "mtn-plat-lp" :fo-max 100) (-> this root trans))
         )
-  (set! (-> obj options) (res-lump-value (-> obj entity) 'options actor-option :time -1000000000.0))
+  (set! (-> this options) (res-lump-value (-> this entity) 'options actor-option :time -1000000000.0))
   0
   (none)
   )
 
-(defmethod plat-path-sync mtn-plat-buried ((obj mtn-plat-buried))
+(defmethod plat-path-sync ((this mtn-plat-buried))
   "If the `sync` period is greater than `0` then transition the state to [[plat::35]]
 otherwise, [[plat::34]]
 
 @see [[sync-eased]]"
   (cond
-    ((or (logtest? (-> obj path flags) (path-control-flag not-found))
-         (and (not (and (-> obj entity) (logtest? (-> obj entity extra perm status) (entity-perm-status subtask-complete))))
-              (logtest? (-> obj options) (actor-option blocked))
+    ((or (logtest? (-> this path flags) (path-control-flag not-found))
+         (and (not (and (-> this entity) (logtest? (-> this entity extra perm status) (entity-perm-status subtask-complete)))
+                   )
+              (logtest? (-> this options) (actor-option blocked))
               )
          )
-     (go (method-of-object obj plat-idle))
+     (go (method-of-object this plat-idle))
      )
-    ((> (-> obj sync period) 0)
-     (go (method-of-object obj plat-path-active))
+    ((> (-> this sync period) 0)
+     (go (method-of-object this plat-path-active))
      )
     (else
-      (go (method-of-object obj plat-idle))
+      (go (method-of-object this plat-idle))
       )
     )
   )
 
 (defstate plat-idle (mtn-plat-buried)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('bonk)
        (if (not (logtest? (-> self options) (actor-option blocked)))
-           (plat-event proc arg1 event-type event)
+           (plat-event proc argc message block)
            )
        )
       (('trigger)
@@ -1835,7 +1825,7 @@ otherwise, [[plat::34]]
          )
        )
       (else
-        (plat-event proc arg1 event-type event)
+        (plat-event proc argc message block)
         )
       )
     )
@@ -1851,13 +1841,11 @@ otherwise, [[plat::34]]
           (func)
           )
       )
-    (none)
     )
   :trans (behavior ()
     (if (not (logtest? (-> self options) (actor-option blocked)))
         (execute-effects self)
         )
-    (none)
     )
   )
 
@@ -2906,118 +2894,105 @@ otherwise, [[plat::34]]
 
 (deftype mtn-lens (process-drawable)
   ()
-  :heap-base #x50
-  :method-count-assert 21
-  :size-assert         #xc8
-  :flag-assert         #x15005000c8
-  (:methods
-    (idle () _type_ :state 20)
+  (:state-methods
+    idle
     )
   )
 
 
 (defstate idle (mtn-lens)
   :virtual #t
-  :code (the-as (function none :behavior mtn-lens) sleep-code)
-  :post (the-as (function none :behavior mtn-lens) ja-post)
+  :code sleep-code
+  :post ja-post
   )
 
 ;; WARN: Return type mismatch object vs none.
-(defmethod init-from-entity! mtn-lens ((obj mtn-lens) (entity entity-actor))
+(defmethod init-from-entity! ((this mtn-lens) (entity entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
 - stack size
 - collision information
 - loading the skeleton group / bones
 - sounds"
-  (set! (-> obj root) (new 'process 'trsqv))
-  (process-drawable-from-entity! obj entity)
-  (logclear! (-> obj mask) (process-mask actor-pause))
+  (set! (-> this root) (new 'process 'trsqv))
+  (process-drawable-from-entity! this entity)
+  (logclear! (-> this mask) (process-mask actor-pause))
   (initialize-skeleton
-    obj
+    this
     (the-as skeleton-group (art-group-get-by-name *level* "skel-mtn-lens" (the-as (pointer uint32) #f)))
     (the-as pair 0)
     )
-  (go (method-of-object obj idle))
+  (go (method-of-object this idle))
   (none)
   )
 
 (deftype mtn-lens-base (process-drawable)
   ()
-  :heap-base #x50
-  :method-count-assert 21
-  :size-assert         #xc8
-  :flag-assert         #x15005000c8
-  (:methods
-    (idle () _type_ :state 20)
+  (:state-methods
+    idle
     )
   )
 
 
 (defstate idle (mtn-lens-base)
   :virtual #t
-  :code (the-as (function none :behavior mtn-lens-base) sleep-code)
-  :post (the-as (function none :behavior mtn-lens-base) ja-post)
+  :code sleep-code
+  :post ja-post
   )
 
 ;; WARN: Return type mismatch object vs none.
-(defmethod init-from-entity! mtn-lens-base ((obj mtn-lens-base) (entity entity-actor))
+(defmethod init-from-entity! ((this mtn-lens-base) (entity entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
 - stack size
 - collision information
 - loading the skeleton group / bones
 - sounds"
-  (set! (-> obj root) (new 'process 'trsqv))
-  (process-drawable-from-entity! obj entity)
-  (logclear! (-> obj mask) (process-mask actor-pause))
+  (set! (-> this root) (new 'process 'trsqv))
+  (process-drawable-from-entity! this entity)
+  (logclear! (-> this mask) (process-mask actor-pause))
   (initialize-skeleton
-    obj
+    this
     (the-as skeleton-group (art-group-get-by-name *level* "skel-mtn-lens-base" (the-as (pointer uint32) #f)))
     (the-as pair 0)
     )
   (when (task-complete? *game-info* (game-task mountain-lens))
     )
-  (go (method-of-object obj idle))
+  (go (method-of-object this idle))
   (none)
   )
 
 (deftype mtn-lens-floor (process-drawable)
   ()
-  :heap-base #x50
-  :method-count-assert 22
-  :size-assert         #xc8
-  :flag-assert         #x16005000c8
-  (:methods
-    (idle () _type_ :state 20)
-    (idle-no-beam () _type_ :state 21)
+  (:state-methods
+    idle
+    idle-no-beam
     )
   )
 
 
 (defstate idle (mtn-lens-floor)
   :virtual #t
-  :code (the-as (function none :behavior mtn-lens-floor) transform-and-sleep-code)
+  :code transform-and-sleep-code
   :post (behavior ()
-    (spawn-with-cspace (-> self part) (-> self node-list data 3))
-    (none)
+    (spawn-with-cspace (-> self part) (joint-node mtn-lens-floor-lod0-jg main))
     )
   )
 
 (defstate idle-no-beam (mtn-lens-floor)
   :virtual #t
-  :code (the-as (function none :behavior mtn-lens-floor) transform-and-sleep-code)
+  :code transform-and-sleep-code
   )
 
 ;; WARN: Return type mismatch object vs none.
-(defmethod init-from-entity! mtn-lens-floor ((obj mtn-lens-floor) (entity entity-actor))
+(defmethod init-from-entity! ((this mtn-lens-floor) (entity entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
 - stack size
 - collision information
 - loading the skeleton group / bones
 - sounds"
-  (let ((cshape (new 'process 'collide-shape obj (collide-list-enum usually-hit-by-player))))
+  (let ((cshape (new 'process 'collide-shape this (collide-list-enum usually-hit-by-player))))
     (let ((prim-mesh (new 'process 'collide-shape-prim-mesh cshape (the-as uint 0) (the-as uint 0))))
       (set! (-> prim-mesh prim-core collide-as) (collide-spec obstacle))
       (set! (-> prim-mesh prim-core collide-with) (collide-spec jak bot player-list))
@@ -3032,72 +3007,64 @@ This commonly includes things such as:
       (set! (-> cshape backup-collide-as) (-> root-prim prim-core collide-as))
       (set! (-> cshape backup-collide-with) (-> root-prim prim-core collide-with))
       )
-    (set! (-> obj root) cshape)
+    (set! (-> this root) cshape)
     )
-  (process-drawable-from-entity! obj entity)
-  (logclear! (-> obj mask) (process-mask actor-pause))
+  (process-drawable-from-entity! this entity)
+  (logclear! (-> this mask) (process-mask actor-pause))
   (initialize-skeleton
-    obj
+    this
     (the-as skeleton-group (art-group-get-by-name *level* "skel-mtn-lens-floor" (the-as (pointer uint32) #f)))
     (the-as pair 0)
     )
   (if (task-complete? *game-info* (game-task mountain-lens))
-      (go (method-of-object obj idle-no-beam))
+      (go (method-of-object this idle-no-beam))
       )
-  (set! (-> obj part) (create-launch-control (-> *part-group-id-table* 353) obj))
-  (go (method-of-object obj idle))
+  (set! (-> this part) (create-launch-control (-> *part-group-id-table* 353) this))
+  (go (method-of-object this idle))
   (none)
   )
 
 (deftype mtn-shard (process-drawable)
   ()
-  :heap-base #x50
-  :method-count-assert 21
-  :size-assert         #xc8
-  :flag-assert         #x15005000c8
-  (:methods
-    (idle () _type_ :state 20)
+  (:state-methods
+    idle
     )
   )
 
 
 (defstate idle (mtn-shard)
   :virtual #t
-  :code (the-as (function none :behavior mtn-shard) sleep-code)
-  :post (the-as (function none :behavior mtn-shard) ja-post)
+  :code sleep-code
+  :post ja-post
   )
 
 ;; WARN: Return type mismatch object vs none.
-(defmethod init-from-entity! mtn-shard ((obj mtn-shard) (entity entity-actor))
+(defmethod init-from-entity! ((this mtn-shard) (entity entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
 - stack size
 - collision information
 - loading the skeleton group / bones
 - sounds"
-  (set! (-> obj root) (new 'process 'trsqv))
-  (process-drawable-from-entity! obj entity)
-  (logclear! (-> obj mask) (process-mask actor-pause))
+  (set! (-> this root) (new 'process 'trsqv))
+  (process-drawable-from-entity! this entity)
+  (logclear! (-> this mask) (process-mask actor-pause))
   (initialize-skeleton
-    obj
+    this
     (the-as skeleton-group (art-group-get-by-name *level* "skel-mtn-shard" (the-as (pointer uint32) #f)))
     (the-as pair 0)
     )
-  (go (method-of-object obj idle))
+  (go (method-of-object this idle))
   (none)
   )
 
 (deftype mtn-step-plat-rocks-a (mtn-plat-buried-rocks)
   ()
-  :heap-base #x50
-  :method-count-assert 22
-  :size-assert         #xc8
-  :flag-assert         #x16005000c8
   )
 
 
 ;; WARN: Return type mismatch object vs none.
-(defmethod init-from-entity! mtn-step-plat-rocks-a ((obj mtn-step-plat-rocks-a) (entity entity-actor))
+(defmethod init-from-entity! ((this mtn-step-plat-rocks-a) (entity entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
 - stack size
@@ -3105,7 +3072,7 @@ This commonly includes things such as:
 - loading the skeleton group / bones
 - sounds"
   (local-vars (sv-16 collide-shape-prim-mesh) (sv-32 symbol) (sv-48 type) (sv-64 collide-shape))
-  (let ((cshape (new 'process 'collide-shape obj (collide-list-enum hit-by-player))))
+  (let ((cshape (new 'process 'collide-shape this (collide-list-enum hit-by-player))))
     (let ((prim-group (new 'process 'collide-shape-prim-group cshape (the-as uint 3) 0)))
       (set! (-> cshape total-prims) (the-as uint 4))
       (set! (-> prim-group prim-core collide-as) (collide-spec obstacle pusher))
@@ -3146,26 +3113,26 @@ This commonly includes things such as:
       (set! (-> cshape backup-collide-as) (-> root-prim prim-core collide-as))
       (set! (-> cshape backup-collide-with) (-> root-prim prim-core collide-with))
       )
-    (set! (-> obj root) cshape)
+    (set! (-> this root) cshape)
     )
-  (process-drawable-from-entity! obj entity)
+  (process-drawable-from-entity! this entity)
   (initialize-skeleton
-    obj
+    this
     (the-as
       skeleton-group
       (art-group-get-by-name *level* "skel-mtn-step-plat-rocks-a" (the-as (pointer uint32) #f))
       )
     (the-as pair 0)
     )
-  (set-vector! (-> obj draw bounds) 0.0 12288.0 0.0 20480.0)
-  (set! (-> obj draw lod-set lod 0 dist) 163840.0)
+  (set-vector! (-> this draw bounds) 0.0 12288.0 0.0 20480.0)
+  (set! (-> this draw lod-set lod 0 dist) 163840.0)
   (cond
-    ((and (-> obj entity) (logtest? (-> obj entity extra perm status) (entity-perm-status subtask-complete)))
-     (go (method-of-object obj done) #t)
+    ((and (-> this entity) (logtest? (-> this entity extra perm status) (entity-perm-status subtask-complete)))
+     (go (method-of-object this done) #t)
      )
     (else
-      (add-process *gui-control* obj (gui-channel art-load) (gui-action queue) "mtn-step-plat-rocks-a" -99.0 0)
-      (go (method-of-object obj idle))
+      (add-process *gui-control* this (gui-channel art-load) (gui-action queue) "mtn-step-plat-rocks-a" -99.0 0)
+      (go (method-of-object this idle))
       )
     )
   (none)
@@ -3173,15 +3140,11 @@ This commonly includes things such as:
 
 (deftype mtn-step-plat-rocks-b (mtn-plat-buried-rocks)
   ()
-  :heap-base #x50
-  :method-count-assert 22
-  :size-assert         #xc8
-  :flag-assert         #x16005000c8
   )
 
 
 ;; WARN: Return type mismatch object vs none.
-(defmethod init-from-entity! mtn-step-plat-rocks-b ((obj mtn-step-plat-rocks-b) (entity entity-actor))
+(defmethod init-from-entity! ((this mtn-step-plat-rocks-b) (entity entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
 - stack size
@@ -3189,7 +3152,7 @@ This commonly includes things such as:
 - loading the skeleton group / bones
 - sounds"
   (local-vars (sv-16 collide-shape-prim-mesh) (sv-32 symbol) (sv-48 type) (sv-64 collide-shape))
-  (let ((cshape (new 'process 'collide-shape obj (collide-list-enum hit-by-player))))
+  (let ((cshape (new 'process 'collide-shape this (collide-list-enum hit-by-player))))
     (let ((prim-group (new 'process 'collide-shape-prim-group cshape (the-as uint 17) 0)))
       (set! (-> cshape total-prims) (the-as uint 18))
       (set! (-> prim-group prim-core collide-as) (collide-spec obstacle pusher))
@@ -3248,26 +3211,26 @@ This commonly includes things such as:
       (set! (-> cshape backup-collide-as) (-> root-prim prim-core collide-as))
       (set! (-> cshape backup-collide-with) (-> root-prim prim-core collide-with))
       )
-    (set! (-> obj root) cshape)
+    (set! (-> this root) cshape)
     )
-  (process-drawable-from-entity! obj entity)
+  (process-drawable-from-entity! this entity)
   (initialize-skeleton
-    obj
+    this
     (the-as
       skeleton-group
       (art-group-get-by-name *level* "skel-mtn-step-plat-rocks-b" (the-as (pointer uint32) #f))
       )
     (the-as pair 0)
     )
-  (set-vector! (-> obj draw bounds) 0.0 -12288.0 0.0 40960.0)
-  (set! (-> obj draw lod-set lod 0 dist) 163840.0)
+  (set-vector! (-> this draw bounds) 0.0 -12288.0 0.0 40960.0)
+  (set! (-> this draw lod-set lod 0 dist) 163840.0)
   (cond
-    ((and (-> obj entity) (logtest? (-> obj entity extra perm status) (entity-perm-status subtask-complete)))
-     (go (method-of-object obj done) #t)
+    ((and (-> this entity) (logtest? (-> this entity extra perm status) (entity-perm-status subtask-complete)))
+     (go (method-of-object this done) #t)
      )
     (else
-      (add-process *gui-control* obj (gui-channel art-load) (gui-action queue) "mtn-step-plat-rocks-b" -99.0 0)
-      (go (method-of-object obj idle))
+      (add-process *gui-control* this (gui-channel art-load) (gui-action queue) "mtn-step-plat-rocks-b" -99.0 0)
+      (go (method-of-object this idle))
       )
     )
   (none)
@@ -3275,15 +3238,11 @@ This commonly includes things such as:
 
 (deftype mtn-step-plat-rocks-c (mtn-plat-buried-rocks)
   ()
-  :heap-base #x50
-  :method-count-assert 22
-  :size-assert         #xc8
-  :flag-assert         #x16005000c8
   )
 
 
 ;; WARN: Return type mismatch object vs none.
-(defmethod init-from-entity! mtn-step-plat-rocks-c ((obj mtn-step-plat-rocks-c) (entity entity-actor))
+(defmethod init-from-entity! ((this mtn-step-plat-rocks-c) (entity entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
 - stack size
@@ -3291,7 +3250,7 @@ This commonly includes things such as:
 - loading the skeleton group / bones
 - sounds"
   (local-vars (sv-16 collide-shape-prim-mesh) (sv-32 symbol) (sv-48 type) (sv-64 collide-shape))
-  (let ((cshape (new 'process 'collide-shape obj (collide-list-enum hit-by-player))))
+  (let ((cshape (new 'process 'collide-shape this (collide-list-enum hit-by-player))))
     (let ((prim-group (new 'process 'collide-shape-prim-group cshape (the-as uint 24) 0)))
       (set! (-> cshape total-prims) (the-as uint 25))
       (set! (-> prim-group prim-core collide-as) (collide-spec obstacle pusher))
@@ -3357,26 +3316,26 @@ This commonly includes things such as:
       (set! (-> cshape backup-collide-as) (-> root-prim prim-core collide-as))
       (set! (-> cshape backup-collide-with) (-> root-prim prim-core collide-with))
       )
-    (set! (-> obj root) cshape)
+    (set! (-> this root) cshape)
     )
-  (process-drawable-from-entity! obj entity)
+  (process-drawable-from-entity! this entity)
   (initialize-skeleton
-    obj
+    this
     (the-as
       skeleton-group
       (art-group-get-by-name *level* "skel-mtn-step-plat-rocks-c" (the-as (pointer uint32) #f))
       )
     (the-as pair 0)
     )
-  (set-vector! (-> obj draw bounds) 0.0 0.0 32768.0 57344.0)
-  (set! (-> obj draw lod-set lod 0 dist) 163840.0)
+  (set-vector! (-> this draw bounds) 0.0 0.0 32768.0 57344.0)
+  (set! (-> this draw lod-set lod 0 dist) 163840.0)
   (cond
-    ((and (-> obj entity) (logtest? (-> obj entity extra perm status) (entity-perm-status subtask-complete)))
-     (go (method-of-object obj done) #t)
+    ((and (-> this entity) (logtest? (-> this entity extra perm status) (entity-perm-status subtask-complete)))
+     (go (method-of-object this done) #t)
      )
     (else
-      (add-process *gui-control* obj (gui-channel art-load) (gui-action queue) "mtn-step-plat-rocks-c" -99.0 0)
-      (go (method-of-object obj idle))
+      (add-process *gui-control* this (gui-channel art-load) (gui-action queue) "mtn-step-plat-rocks-c" -99.0 0)
+      (go (method-of-object this idle))
       )
     )
   (none)

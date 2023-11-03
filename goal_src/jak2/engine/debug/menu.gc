@@ -11,21 +11,18 @@
 (declare-file (debug))
 
 (deftype debug-menu-context (basic)
-  ((is-active     symbol                      :offset-assert   4)
-   (sel-length    int32                       :offset-assert   8)
-   (sel-menu      debug-menu                8 :offset-assert  12)
-   (root-menu     debug-menu                  :offset-assert  44)
-   (joypad-func   (function basic int none)   :offset-assert  48)
-   (joypad-item   basic                       :offset-assert  52)
-   (font          font-context                :offset-assert  56)
-   (is-hidden     symbol                      :offset-assert  60)
-   (joypad-number int32                       :offset-assert  64)
+  ((is-active      symbol)
+   (sel-length     int32)
+   (sel-menu       debug-menu  8)
+   (root-menu      debug-menu)
+   (joypad-func    (function basic int none))
+   (joypad-item    basic)
+   (font           font-context)
+   (is-hidden      symbol)
+   (joypad-number  int32)
    )
-  :method-count-assert 9
-  :size-assert         #x44
-  :flag-assert         #x900000044
   (:methods
-    (new (symbol type) _type_ 0)
+    (new (symbol type) _type_)
     )
   )
 
@@ -39,7 +36,8 @@
     (set! (-> gp-0 joypad-func) #f)
     (set! (-> gp-0 joypad-item) #f)
     (set! (-> gp-0 font)
-          (new 'debug 'font-context *font-default-matrix* 0 0 0.0 (font-color default) (font-flags shadow kerning))
+          ;; og:preserve-this
+          (new 'debug 'font-context *font-default-matrix* 0 0 0.0 (font-color default) (font-flags shadow kerning pc-hack))
           )
     (set! (-> gp-0 joypad-number) 0)
     gp-0
@@ -47,34 +45,28 @@
   )
 
 (deftype debug-menu-node (basic)
-  ((name          string      :offset-assert   4)
-   (parent        debug-menu  :offset-assert   8)
-   (refresh-delay int32       :offset-assert  12)
-   (refresh-ctr   int32       :offset-assert  16)
+  ((name           string)
+   (parent         debug-menu)
+   (refresh-delay  int32)
+   (refresh-ctr    int32)
    )
-  :method-count-assert 9
-  :size-assert         #x14
-  :flag-assert         #x900000014
   )
 
 
-(defmethod print debug-menu-node ((obj debug-menu-node))
-  (format #t "#<~A ~A @ #x~X>" (-> obj type) (-> obj name) obj)
-  obj
+(defmethod print ((this debug-menu-node))
+  (format #t "#<~A ~A @ #x~X>" (-> this type) (-> this name) this)
+  this
   )
 
 (deftype debug-menu (debug-menu-node)
-  ((context       debug-menu-context  :offset-assert  20)
-   (selected-item debug-menu-item     :offset-assert  24)
-   (pix-width     int32               :offset-assert  28)
-   (pix-height    int32               :offset-assert  32)
-   (items         pair                :offset-assert  36)
+  ((context        debug-menu-context)
+   (selected-item  debug-menu-item)
+   (pix-width      int32)
+   (pix-height     int32)
+   (items          pair)
    )
-  :method-count-assert 9
-  :size-assert         #x28
-  :flag-assert         #x900000028
   (:methods
-    (new (symbol type debug-menu-context string) _type_ 0)
+    (new (symbol type debug-menu-context string) _type_)
     )
   )
 
@@ -91,22 +83,16 @@
   )
 
 (deftype debug-menu-item (debug-menu-node)
-  ((id int32  :offset-assert  20)
+  ((id  int32)
    )
-  :method-count-assert 9
-  :size-assert         #x18
-  :flag-assert         #x900000018
   )
 
 
 (deftype debug-menu-item-submenu (debug-menu-item)
-  ((submenu debug-menu  :offset-assert  24)
+  ((submenu  debug-menu)
    )
-  :method-count-assert 9
-  :size-assert         #x1c
-  :flag-assert         #x90000001c
   (:methods
-    (new (symbol type string debug-menu) _type_ 0)
+    (new (symbol type string debug-menu) _type_)
     )
   )
 
@@ -124,14 +110,11 @@
   )
 
 (deftype debug-menu-item-function (debug-menu-item)
-  ((activate-func (function object object)  :offset-assert  24)
-   (hilite-timer  int8                      :offset-assert  28)
+  ((activate-func  (function object object))
+   (hilite-timer   int8)
    )
-  :method-count-assert 9
-  :size-assert         #x1d
-  :flag-assert         #x90000001d
   (:methods
-    (new (symbol type string object (function object object)) _type_ 0)
+    (new (symbol type string object (function object object)) _type_)
     )
   )
 
@@ -150,14 +133,11 @@
   )
 
 (deftype debug-menu-item-flag (debug-menu-item)
-  ((activate-func (function object debug-menu-msg object)  :offset-assert  24)
-   (is-on         object                                   :offset-assert  28)
+  ((activate-func  (function object debug-menu-msg object))
+   (is-on          object)
    )
-  :method-count-assert 9
-  :size-assert         #x20
-  :flag-assert         #x900000020
   (:methods
-    (new (symbol type string object (function object debug-menu-msg object)) _type_ 0)
+    (new (symbol type string object (function object debug-menu-msg object)) _type_)
     )
   )
 
@@ -171,6 +151,7 @@
   (let ((v0-0 (object-new allocation type-to-make (the-as int (-> type-to-make size)))))
     (set! (-> v0-0 name) arg0)
     (set! (-> v0-0 parent) #f)
+    ;; og:preserve-this
     (set! (-> v0-0 refresh-delay) (#if PC_PORT 1 23))
     (set! (-> v0-0 refresh-ctr) (-> v0-0 refresh-delay))
     (set! (-> v0-0 id) (the-as int arg1))
@@ -181,38 +162,35 @@
   )
 
 (deftype debug-menu-item-var (debug-menu-item)
-  ((display-str      string                                           :offset-assert  24)
-   (grabbed-joypad-p symbol                                           :offset-assert  28)
-   (float-p          symbol                                           :offset-assert  32)
-   (range-p          symbol                                           :offset-assert  36)
-   (show-len         int32                                            :offset-assert  40)
-   (inc-delay        int32                                            :offset-assert  44)
-   (inc-delay-ctr    int32                                            :offset-assert  48)
-   (step-delay-ctr   int32                                            :offset-assert  52)
-   (inc-dir          int32                                            :offset-assert  56)
-   (fval             float                                            :offset-assert  60)
-   (fundo-val        float                                            :offset-assert  64)
-   (frange-min       float                                            :offset-assert  68)
-   (frange-max       float                                            :offset-assert  72)
-   (fstart-inc       float                                            :offset-assert  76)
-   (fstep            float                                            :offset-assert  80)
-   (fprecision       int32                                            :offset-assert  84)
-   (factivate-func   (function int debug-menu-msg float float float)  :offset-assert  88)
-   (ival             int32                                            :offset         60)
-   (iundo-val        int32                                            :offset         64)
-   (irange-min       int32                                            :offset         68)
-   (irange-max       int32                                            :offset         72)
-   (istart-inc       int32                                            :offset         76)
-   (istep            int32                                            :offset         80)
-   (ihex-p           symbol                                           :offset-assert  92)
-   (iactivate-func   (function int debug-menu-msg int int int)        :offset         88)
-   (ifloat-p         symbol                                           :offset-assert  96)
+  ((display-str       string)
+   (grabbed-joypad-p  symbol)
+   (float-p           symbol)
+   (range-p           symbol)
+   (show-len          int32)
+   (inc-delay         int32)
+   (inc-delay-ctr     int32)
+   (step-delay-ctr    int32)
+   (inc-dir           int32)
+   (fval              float)
+   (fundo-val         float)
+   (frange-min        float)
+   (frange-max        float)
+   (fstart-inc        float)
+   (fstep             float)
+   (fprecision        int32)
+   (factivate-func    (function int debug-menu-msg float float float))
+   (ival              int32                                      :overlay-at fval)
+   (iundo-val         int32                                      :overlay-at fundo-val)
+   (irange-min        int32                                      :overlay-at frange-min)
+   (irange-max        int32                                      :overlay-at frange-max)
+   (istart-inc        int32                                      :overlay-at fstart-inc)
+   (istep             int32                                      :overlay-at fstep)
+   (ihex-p            symbol)
+   (iactivate-func    (function int debug-menu-msg int int int)  :overlay-at factivate-func)
+   (ifloat-p          symbol)
    )
-  :method-count-assert 9
-  :size-assert         #x64
-  :flag-assert         #x900000064
   (:methods
-    (new (symbol type string int int) _type_ 0)
+    (new (symbol type string int int) _type_)
     )
   )
 
@@ -326,6 +304,7 @@
     (let ((v1-2 (/ arg2 8)))
       (set! (-> gp-0 name) arg0)
       (set! (-> gp-0 parent) #f)
+      ;; og:preserve-this
       (set! (-> gp-0 refresh-delay) (#if PC_PORT 1 31))
       (set! (-> gp-0 refresh-ctr) (-> gp-0 refresh-delay))
       (set! (-> gp-0 id) arg1)
@@ -471,7 +450,8 @@
         (debug-menu-context-send-msg gp-0 (debug-menu-msg deactivate) (debug-menu-dest activation))
         )
     (set! (-> arg1 parent) arg0)
-    (set! (-> arg0 items) (the-as pair (append! (-> arg0 items) (dcons arg1 '())))) ;; changed to dcons
+    ;; og:preserve-this changed to dcons
+    (set! (-> arg0 items) (the-as pair (append! (-> arg0 items) (dcons arg1 '()))))
     (debug-menu-rebuild arg0)
     (if s4-0
         (debug-menu-context-send-msg gp-0 (debug-menu-msg activate) (debug-menu-dest activation))
@@ -729,7 +709,6 @@
     )
   )
 
-;; ERROR: Failed store: (s.w! (+ v1-9 8) 0) at op 42
 (defun debug-menu-item-submenu-render ((arg0 debug-menu-item-submenu) (arg1 int) (arg2 int) (arg3 int) (arg4 symbol))
   (let ((s5-0 (-> arg0 parent context font)))
     (let ((v1-2 s5-0)
@@ -760,7 +739,6 @@
   arg0
   )
 
-;; ERROR: Failed store: (s.w! (+ v1-3 8) 0) at op 49
 (defun debug-menu-item-function-render ((arg0 debug-menu-item-function) (arg1 int) (arg2 int) (arg3 int) (arg4 symbol))
   (let ((v1-2 (-> arg0 parent context font)))
     (let ((a0-1 v1-2)
@@ -796,7 +774,6 @@
   arg0
   )
 
-;; ERROR: Failed store: (s.w! (+ v1-3 8) 0) at op 47
 (defun debug-menu-item-flag-render ((arg0 debug-menu-item-flag) (arg1 int) (arg2 int) (arg3 int) (arg4 symbol))
   (let ((v1-2 (-> arg0 parent context font)))
     (let ((a0-1 v1-2)
@@ -832,7 +809,6 @@
   arg0
   )
 
-;; ERROR: Failed store: (s.w! (+ v1-16 8) 0) at op 95
 (defun debug-menu-item-var-render ((arg0 debug-menu-item-var) (arg1 int) (arg2 int) (arg3 int) (arg4 symbol))
   (let ((s5-0 (-> arg0 parent context font)))
     (let ((v1-2 s5-0)
@@ -915,7 +891,6 @@
   arg0
   )
 
-;; ERROR: Failed store: (s.w! (+ v1-9 8) 0) at op 47
 (defun debug-menu-render ((arg0 debug-menu) (arg1 int) (arg2 int) (arg3 debug-menu-node) (arg4 int))
   (local-vars (sv-16 dma-buffer) (sv-32 pointer))
   (let ((v1-0 0))
@@ -939,7 +914,8 @@
   (with-dma-buffer-add-bucket ((s0-0 (-> *display* frames (-> *display* on-screen) debug-buf))
                                (bucket-id debug3)
                                )
-    (draw-sprite2d-xy s0-0 arg1 arg2 (-> arg0 pix-width) (-> arg0 pix-height) (new 'static 'rgba :a #x40))
+    ;; og:preserve-this fixed for widescreen
+    (draw-sprite2d-xy s0-0 (correct-x-int arg1) arg2 (correct-x-int (-> arg0 pix-width)) (-> arg0 pix-height) (static-rgba #x00 #x00 #x00 #x40))
     )
   (let* ((s3-1 (+ arg1 3))
          (s2-1 (+ arg2 5))
@@ -1460,11 +1436,13 @@
      (debug-menu-context-select-new-item arg0 1)
      )
     ((cpad-pressed? (-> arg0 joypad-number) left)
+     ;; og:preserve-this
      (debug-menu-context-select-new-item arg0 (#if PC_PORT
                                                    (if (cpad-hold? (-> arg0 joypad-number) l3) -20 -5)
                                                    -5))
      )
     ((cpad-pressed? (-> arg0 joypad-number) right)
+     ;; og:preserve-this
      (debug-menu-context-select-new-item arg0 (#if PC_PORT
                                                    (if (cpad-hold? (-> arg0 joypad-number) l3) 20 5)
                                                    5))

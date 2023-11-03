@@ -40,25 +40,29 @@ Condition Compiler::compile_condition(const goos::Object& condition, Env* env, b
       {">", ConditionKind::GT},           {"<", ConditionKind::LT},
       {">=", ConditionKind::GEQ},         {"<=", ConditionKind::LEQ}};
 
+  // we may have gotten a macro as a condition, expand it first.
+  // note : use the `condition` arg for errors still so that the user can actually tell what code
+  // went wrong!
+  auto new_c = expand_macro_completely(condition, env);
+
   // possibly a form with an optimizable condition?
-  if (condition.is_pair()) {
-    auto first = pair_car(condition);
-    auto rest = pair_cdr(condition);
+  if (new_c.is_pair()) {
+    auto& first = pair_car(new_c);
+    auto& rest = pair_cdr(new_c);
 
     if (first.is_symbol()) {
       auto fas = first.as_symbol();
 
       // if there's a not, we can just try again to get an optimization with the invert flipped.
-      if (fas->name == "not") {
-        auto arg = pair_car(rest);
+      if (fas == "not") {
         if (!pair_cdr(rest).is_empty_list()) {
           throw_compiler_error(condition, "A condition with \"not\" can have only one argument");
         }
-        return compile_condition(arg, env, !invert);
+        return compile_condition(pair_car(rest), env, !invert);
       }
 
       auto& conditions = invert ? conditions_inverted : conditions_normal;
-      auto nc_kv = conditions.find(fas->name);
+      auto nc_kv = conditions.find(fas.name_ptr);
 
       if (nc_kv != conditions.end()) {
         // it is an optimizable condition!
@@ -187,14 +191,14 @@ Val* Compiler::compile_cond(const goos::Object& form, const goos::Object& rest, 
   std::vector<TypeSpec> case_result_types;
 
   for_each_in_list(rest, [&](const goos::Object& o) {
-    auto test = pair_car(o);
-    auto clauses = pair_cdr(o);
+    const auto& test = pair_car(o);
+    const auto& clauses = pair_cdr(o);
 
     if (got_else) {
       throw_compiler_error(form, "Cond from cannot have any cases after else.");
     }
 
-    if (test.is_symbol() && symbol_string(test) == "else") {
+    if (test.is_symbol("else")) {
       got_else = true;
     }
 
@@ -228,12 +232,14 @@ Val* Compiler::compile_cond(const goos::Object& form, const goos::Object& rest, 
 
       // CODE
       Val* case_result = get_none();
+      const goos::Object* case_clause = nullptr;
       for_each_in_list(clauses, [&](const goos::Object& clause) {
         case_result = compile_error_guard(clause, env);
-        if (!dynamic_cast<None*>(case_result)) {
-          case_result = case_result->to_reg(clause, env);
-        }
+        case_clause = &clause;
       });
+      if (case_clause && !dynamic_cast<None*>(case_result)) {
+        case_result = case_result->to_reg(*case_clause, env);
+      }
 
       case_result_types.push_back(case_result->type());
       if (!is_none(case_result)) {
@@ -251,15 +257,24 @@ Val* Compiler::compile_cond(const goos::Object& form, const goos::Object& rest, 
   });
 
   if (!got_else) {
-    // if no else, clause, return #f.  But don't retype. todo what does goal do here?
+    // if no else clause, return #f.
     auto get_false = std::make_unique<IR_LoadSymbolPointer>(result, "#f");
     env->emit(form, std::move(get_false));
   }
 
   if (case_result_types.empty()) {
+    // completely empty cond
     result->set_type(TypeSpec("none"));
   } else {
-    result->set_type(coerce_to_reg_type(m_ts.lowest_common_ancestor(case_result_types)));
+    auto lca = m_ts.lowest_common_ancestor(case_result_types);
+    if (!got_else && lca == TypeSpec("none")) {
+      // least common ancestor was none, but there is still the #f from the missing else case.
+      // elevate cond to an `object` overall so we can capture that #f!
+      // (`object` is the direct ancestor of `none` and the ancestor to all types overall)
+      // TODO : what does goal do here?
+      lca = TypeSpec("object");
+    }
+    result->set_type(coerce_to_reg_type(lca));
   }
 
   // maybe use 128-bit register
@@ -275,7 +290,7 @@ Val* Compiler::compile_cond(const goos::Object& form, const goos::Object& rest, 
 }
 
 Val* Compiler::compile_and_or(const goos::Object& form, const goos::Object& rest, Env* env) {
-  std::string op_name = form.as_pair()->car.as_symbol()->name;
+  std::string op_name = form.as_pair()->car.as_symbol().name_ptr;
   bool is_and = false;
   if (op_name == "and") {
     is_and = true;

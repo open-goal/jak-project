@@ -3,37 +3,35 @@
 
 ;; definition of type ashelin-battle
 (deftype ashelin-battle (ashelin)
-  ((player-in-bounds-time time-frame  :offset-assert 1040)
+  ((player-in-bounds-time  time-frame)
    )
-  :heap-base #x3a0
-  :method-count-assert 252
-  :size-assert         #x418
-  :flag-assert         #xfc03a00418
   (:methods
-    (set-frontline-dist! (_type_) none 251)
+    (set-frontline-dist! (_type_) none)
     )
   )
 
 ;; definition for method 3 of type ashelin-battle
-(defmethod inspect ashelin-battle ((obj ashelin-battle))
-  (when (not obj)
-    (set! obj obj)
+(defmethod inspect ((this ashelin-battle))
+  (when (not this)
+    (set! this this)
     (goto cfg-4)
     )
   (let ((t9-0 (method-of-type ashelin inspect)))
-    (t9-0 obj)
+    (t9-0 this)
     )
-  (format #t "~2Tplayer-in-bounds-time: ~D~%" (-> obj player-in-bounds-time))
+  (format #t "~2Tplayer-in-bounds-time: ~D~%" (-> this player-in-bounds-time))
   (label cfg-4)
-  obj
+  this
   )
 
 ;; definition for method 251 of type ashelin-battle
 ;; WARN: Return type mismatch int vs none.
-(defmethod set-frontline-dist! ashelin-battle ((obj ashelin-battle))
+(defmethod set-frontline-dist! ((this ashelin-battle))
   (let ((a0-1 *target*))
     (when a0-1
-      (set! (-> obj frontline w) (- (+ 40960.0 (vector-dot (the-as vector (-> obj frontline)) (get-trans a0-1 0)))))
+      (set! (-> this frontline w)
+            (- (+ 40960.0 (vector-dot (the-as vector (-> this frontline)) (get-trans a0-1 0))))
+            )
       0
       )
     )
@@ -101,12 +99,12 @@
                                                                     )
                                                                   )
                                )
-                          (set! (-> arg1 waypoint-time0) (current-time))
+                          (set-time! (-> arg1 waypoint-time0))
                           )
                       (let ((s5-0 (get-current-task-event (-> arg1 task))))
                         (cond
                           ((and (nonzero? (-> arg1 waypoint-time0))
-                                (and (>= (- (current-time) (-> arg1 waypoint-time0)) (seconds 1))
+                                (and (time-elapsed? (-> arg1 waypoint-time0) (seconds 1))
                                      (let ((f0-0 143360.0))
                                        (and (>= (* f0-0 f0-0) (vector-vector-xz-distance-squared (target-pos 0) (-> arg1 root trans)))
                                             (= (-> s5-0 action) (game-task-action say))
@@ -205,13 +203,13 @@
                       (with-pp
                         (when (not (channel-active? arg1 (the-as uint 0)))
                           (cond
-                            ((and (not (speech-playing? arg1 45)) (>= (- (current-time) (-> arg1 waypoint-time0)) (seconds 2.5)))
+                            ((and (not (speech-playing? arg1 45)) (time-elapsed? (-> arg1 waypoint-time0) (seconds 2.5)))
                              (play-speech arg1 45)
                              )
-                            ((and (not (speech-playing? arg1 46)) (>= (- (current-time) (-> arg1 waypoint-time0)) (seconds 7)))
+                            ((and (not (speech-playing? arg1 46)) (time-elapsed? (-> arg1 waypoint-time0) (seconds 7)))
                              (play-speech arg1 46)
                              )
-                            ((and (not (speech-playing? arg1 47)) (>= (- (current-time) (-> arg1 waypoint-time0)) (seconds 14)))
+                            ((and (not (speech-playing? arg1 47)) (time-elapsed? (-> arg1 waypoint-time0) (seconds 14)))
                              (play-speech arg1 47)
                              )
                             )
@@ -249,9 +247,9 @@
           (set-frontline-dist! arg0)
           (let ((s5-0 (target-pos 0)))
             (if (>= (-> s5-0 y) 176128.0)
-                (set! (-> arg0 player-in-bounds-time) (current-time))
+                (set-time! (-> arg0 player-in-bounds-time))
                 )
-            (if (>= (- (current-time) (-> arg0 player-in-bounds-time)) (seconds 4))
+            (if (time-elapsed? (-> arg0 player-in-bounds-time) (seconds 4))
                 (send-event arg0 'instant-death)
                 )
             (if (< (-> s5-0 y) 192512.0)
@@ -308,7 +306,7 @@
             (set! (-> v1-22 bytes 8) 7)
             (let ((v0-12
                     (lambda ((arg0 asht-wait-spot) (arg1 ashelin-battle))
-                      (when (>= (- (current-time) (-> arg1 waypoint-time0)) (seconds 1.5))
+                      (when (time-elapsed? (-> arg1 waypoint-time0) (seconds 1.5))
                         (let ((s5-0 (get-current-task-event (-> arg1 task))))
                           (when (and (= (-> s5-0 action) (game-task-action say))
                                      (not (channel-active? arg1 (the-as uint 0)))

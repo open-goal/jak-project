@@ -14,40 +14,39 @@
 (defconstant RPC-LOAD-STR 4) ;; called STR in IOP code
 (defconstant RPC-PLAY-STR 5) ;; called PLAY in IOP code
 
+;; DECOMP BEGINS
+
 ;; an RPC buffer is a container of elements to send to the IOP.
 ;; each element is size elt-size, and there are maximum of elt-count elements
 ;; it is possible to use fewer elements than elt-count.
 ;; the buffer is 64-byte aligned.
 (deftype rpc-buffer (basic)
-  ((elt-size  uint32           :offset-assert 4)
-   (elt-count uint32           :offset-assert 8)
-   (elt-used  uint32           :offset-assert 12)
-   (busy      basic            :offset-assert 16)  ;; are we being sent currently?
-   (base      pointer          :offset-assert 20)  ;; 64-byte aligned buffer of elts.
+  ((elt-size   uint32)
+   (elt-count  uint32)
+   (elt-used   uint32)
+   (busy       basic)   ;; are we being sent currently?
+   (base       pointer) ;; 64-byte aligned buffer of elts.
    ;; I suspect this was 16-byte aligned for DMA purposes.
-   (data      uint8   :dynamic :offset 32)
+   (data       uint8  :dynamic :offset  32)
    )
   (:methods
-    (new (symbol type uint uint) rpc-buffer 0)
+    (new (symbol type uint uint) rpc-buffer)
     )
-  :method-count-assert 9
-  :size-assert         #x20
-  :flag-assert         #x900000020
   )
 
 (defmethod new rpc-buffer ((allocation symbol) (type-to-make type) (elt-size uint) (elt-count uint))
   "Create a new rpc-buffer with room for elt-count elements of elt-size. 
    The element array is 64-byte aligned."
   ;; we make room for a buffer of size elt-size * elt-count that is _64 byte_ aligned.
-  (let ((obj (object-new allocation type-to-make (the int (+ (-> type-to-make size) 63 (* elt-size elt-count))))))
-    (set! (-> obj elt-size) elt-size)
-    (set! (-> obj elt-count) elt-count)
-    (set! (-> obj elt-used) 0)
-    (set! (-> obj busy) #f)
-    ;(set! (-> obj base) (logand -64 (+ (the uint obj) 28 63)))
+  (let ((this (object-new allocation type-to-make (the int (+ (-> type-to-make size) 63 (* elt-size elt-count))))))
+    (set! (-> this elt-size) elt-size)
+    (set! (-> this elt-count) elt-count)
+    (set! (-> this elt-used) 0)
+    (set! (-> this busy) #f)
+    ;(set! (-> this base) (logand -64 (+ (the uint this) 28 63)))
     ;; base is the 64-byte aligned buffer.
-    (set! (-> obj base) (the pointer (logand -64 (+ (the uint (-> obj data)) 63))))
-    obj
+    (set! (-> this base) (the pointer (logand -64 (+ (the uint (-> this data)) 63))))
+    this
     )
   )
 
@@ -56,81 +55,78 @@
 ;; The other is referred to as the active buffer.
 ;; This also supports receiving data, though it just gives you a plain pointer.
 (deftype rpc-buffer-pair (basic)
-  ((buffer           rpc-buffer 2 :offset-assert 4)   ;; the two buffers
-   (current          rpc-buffer   :offset-assert 12)  ;; the buffer being loaded
-   (last-recv-buffer pointer   :offset-assert 16)     ;; the last reply
-   (rpc-port         int32     :offset-assert 20)     ;; the RPC port number
+  ((buffer            rpc-buffer  2) ;; the two buffers
+   (current           rpc-buffer) ;; the buffer being loaded
+   (last-recv-buffer  pointer) ;; the last reply
+   (rpc-port          int32) ;; the RPC port number
    )
-  :method-count-assert 15
-  :size-assert         #x18
-  :flag-assert         #xf00000018
   (:methods
-    (new (symbol type uint uint int) rpc-buffer-pair 0)
-    (call (rpc-buffer-pair uint pointer uint) int 9)
-    (add-element (rpc-buffer-pair) pointer 10)
-    (decrement-elt-used (rpc-buffer-pair) int 11)
-    (sync (rpc-buffer-pair symbol) int 12)
-    (check-busy (rpc-buffer-pair) symbol 13)
-    (pop-last-received (rpc-buffer-pair) pointer 14)
+    (new (symbol type uint uint int) rpc-buffer-pair)
+    (call (rpc-buffer-pair uint pointer uint) int)
+    (add-element (rpc-buffer-pair) pointer)
+    (decrement-elt-used (rpc-buffer-pair) int)
+    (sync (rpc-buffer-pair symbol) int)
+    (check-busy (rpc-buffer-pair) symbol)
+    (pop-last-received (rpc-buffer-pair) pointer)
     )
   )
 
 (defmethod new rpc-buffer-pair ((allocation symbol) (type-to-make type) (elt-size uint) (elt-count uint) (rpc-port int))
   "Create a new rpc-buffer-pair"
-  (let ((obj (object-new allocation type-to-make)))
-    (set! (-> obj buffer 0) (new 'global 'rpc-buffer elt-size elt-count))
-    (set! (-> obj buffer 1) (new 'global 'rpc-buffer elt-size elt-count))
-    (set! (-> obj current) (-> obj buffer 0))
-    (set! (-> obj last-recv-buffer) (the pointer #f))
-    (set! (-> obj rpc-port) rpc-port)
-    obj
+  (let ((this (object-new allocation type-to-make)))
+    (set! (-> this buffer 0) (new 'global 'rpc-buffer elt-size elt-count))
+    (set! (-> this buffer 1) (new 'global 'rpc-buffer elt-size elt-count))
+    (set! (-> this current) (-> this buffer 0))
+    (set! (-> this last-recv-buffer) (the pointer #f))
+    (set! (-> this rpc-port) rpc-port)
+    this
     )
   )
 
-;; method 12
-(defmethod sync rpc-buffer-pair ((obj rpc-buffer-pair) (print-stall-warning symbol))
+(defmethod sync ((this rpc-buffer-pair) (print-stall-warning symbol))
   "Wait for the in progress RPC to complete."
-  (let ((active-buffer (if (= (-> obj buffer 0) (-> obj current))
-                           (-> obj buffer 1)
-                           (-> obj buffer 0))
+  (let ((active-buffer (if (= (-> this current) (-> this buffer 0))
+                           (-> this buffer 1)
+                           (-> this buffer 0)
+                           )
                        )
         )
-    
     (when (-> active-buffer busy)
       ;; the flag is set, meaning we should check.
-      (cond 
-        ((!= 0 (rpc-busy? (-> obj rpc-port)))
-         ;; we're busy
-         (if print-stall-warning
-             (format 0 "STALL: waiting for IOP on RPC port #~D~%" (-> obj rpc-port))
-             )
-         (while (!= 0 (rpc-busy? (-> obj rpc-port)))
-           ;; real game has a bunch of nops
-           (+ 1 2 3)
-           )
-         )
-        (else
-          ;; not actually busy, clear the flag!
-          (set! (-> active-buffer busy) #f)
-          (set! (-> active-buffer elt-used) 0)
+      (when (nonzero? (rpc-busy? (-> this rpc-port)))
+        ;; we're busy
+        (if print-stall-warning
+            (format 0 "STALL: waiting for IOP on RPC port #~D~%" (-> this rpc-port))
+            )
+        (while (nonzero? (rpc-busy? (-> this rpc-port)))
+          (nop!)
+          (nop!)
+          (nop!)
+          (nop!)
+          (nop!)
+          (nop!)
+          (nop!)
+          (nop!)
           )
         )
+      ;; not longer busy, clear the flag!
+      (set! (-> active-buffer busy) #f)
+      (set! (-> active-buffer elt-used) (the-as uint 0))
+      0
       )
-      
     )
-   0
+  0
   )
 
-;; method 13
-(defmethod check-busy rpc-buffer-pair ((obj rpc-buffer-pair))
+(defmethod check-busy ((this rpc-buffer-pair))
   "Is the currently running RPC still busy?"
-  (let ((active-buffer (if (= (-> obj buffer 0) (-> obj current))
-                           (-> obj buffer 1)
-                           (-> obj buffer 0)
+  (let ((active-buffer (if (= (-> this current) (-> this buffer 0))
+                           (-> this buffer 1)
+                           (-> this buffer 0)
                            )))
     (when (-> active-buffer busy)
-      (if (!= 0 (rpc-busy? (-> obj rpc-port)))
-          (return-from #f #t)
+      (if (nonzero? (rpc-busy? (-> this rpc-port)))
+          (return #t)
           )
       (set! (-> active-buffer busy) #f)
       (set! (-> active-buffer elt-used) 0)
@@ -139,26 +135,33 @@
   #f
   )
 
-
-;; method 9
-(defmethod call rpc-buffer-pair ((obj rpc-buffer-pair) (fno uint) (recv-buff pointer) (recv-size uint))
+(defmethod call ((obj rpc-buffer-pair) (fno uint) (recv-buff pointer) (recv-size uint))
   "Call an RPC. This is an async RPC. Use check-busy or sync to see if it's done."
-  (when (!= 0 (-> obj current elt-used))
+  (when (nonzero? (-> obj current elt-used))
     ;; when we have used elements
-    ;; (format 0 "call rpc-buffer-pair with ~D elts~%" (-> obj current elt-used))
-    
+
     ;; make sure the previous buffer is done
-    (let ((active-buffer (if (= (-> obj buffer 0) (-> obj current))
+    (let ((active-buffer (if (= (-> obj current) (-> obj buffer 0))
                              (-> obj buffer 1)
-                             (-> obj buffer 0))))
+                             (-> obj buffer 0)
+                             )
+                         )
+          )
       (when (-> active-buffer busy)
         ;; we think the active buffer may be busy.
         ;; first lets just do a simple check
-        (when (!= 0 (rpc-busy? (-> obj rpc-port)))
+        (when (nonzero? (rpc-busy? (-> obj rpc-port)))
           ;; busy! print an error and stall!
           (format 0 "STALL: waiting for IOP on RPC port #~D~%" (-> obj rpc-port))
-          (while (!= 0 (rpc-busy? (-> obj rpc-port)))
-            (+ 1 2 3)
+          (while (nonzero? (rpc-busy? (-> obj rpc-port)))
+            (nop!)
+            (nop!)
+            (nop!)
+            (nop!)
+            (nop!)
+            (nop!)
+            (nop!)
+            (nop!)
             )
           )
         ;; not busy.
@@ -168,67 +171,62 @@
       ;; now we've cleared the last RPC call, we can do another
       (let ((current-buffer (-> obj current)))
         ;; rpc_channel, fno, async, send_buff, send_size, recv_buff, recv_size
-        ;; (format 0 "recv-size is ~D~%" recv-size)
-        (rpc-call (-> obj rpc-port)
-                  fno
-                  (the uint 1)
-                  (the uint (-> current-buffer base))
-                  (the int (* (-> current-buffer elt-used) (-> current-buffer elt-size)))
-                  (the uint recv-buff)
-                  (the int recv-size)
-                  )
+        (rpc-call
+          (-> obj rpc-port)
+          fno
+          (the-as uint 1)
+          (the-as uint (-> current-buffer base))
+          (the-as int (* (-> current-buffer elt-size) (-> current-buffer elt-used)))
+          (the-as uint recv-buff)
+          (the-as int recv-size)
+          )
         (set! (-> current-buffer busy) #t)
-        (set! (-> obj last-recv-buffer) recv-buff)
-        (set! (-> obj current) active-buffer)
         )
+      (set! (-> obj last-recv-buffer) recv-buff)
+      (set! (-> obj current) active-buffer)
       )
     )
   0
   )
 
-
-;; method 14
-(defmethod pop-last-received rpc-buffer-pair ((obj rpc-buffer-pair))
-  (let ((result (-> obj last-recv-buffer)))
-    (set! (-> obj last-recv-buffer) (the pointer #f))
+(defmethod pop-last-received ((this rpc-buffer-pair))
+  (let ((result (-> this last-recv-buffer)))
+    (set! (-> this last-recv-buffer) (the-as pointer #f))
     result
     )
   )
 
-;; method 10
-(defmethod add-element rpc-buffer-pair ((obj rpc-buffer-pair))
+(defmethod add-element ((this rpc-buffer-pair))
   "Add an element, and return a pointer to the element.
    If we are out of elements, flush by doing an RPC call.
    DANGER: this uses all arguments of 0. If you want something else, flush it yourself.
    If we're RPC 0 and we do this auto-flush, print a warning.
    "
-  (let ((current-buffer (-> obj current)))
-    (when (= (-> current-buffer elt-count) (-> current-buffer elt-used))
+  (let ((current-buffer (-> this current)))
+    (when (= (-> current-buffer elt-used) (-> current-buffer elt-count))
       ;; oops, we're full.
-      (when (= 0 (-> obj rpc-port))
+      (when (zero? (-> this rpc-port))
           ;; if we're RPC 0, this is evidently a situation to warn about.
           (format 0 "WARNING: too many sound commands queued~%")
           ;;(sound-buffer-dump)
           )
       ;; otherwise we just flush
       ;; seems kinda dangerous. these could be the wrong parameters...
-      (call obj (the uint 0) (the pointer 0) (the uint 0))
+      (call this (the-as uint 0) (the-as pointer 0) (the-as uint 0))
       ;; update the current-buffer.
-      (set! current-buffer (-> obj current))
+      (set! current-buffer (-> this current))
       )
-    (let ((result (&+ (-> current-buffer base) (* (-> current-buffer elt-size) (-> current-buffer elt-used)))))
+    (let ((result (&+ (-> current-buffer base) (* (-> current-buffer elt-used) (-> current-buffer elt-size)))))
       (+! (-> current-buffer elt-used) 1)
       result
       )
     )
   )
 
-
-;; method 11
-(defmethod decrement-elt-used rpc-buffer-pair ((obj rpc-buffer-pair))
+(defmethod decrement-elt-used ((this rpc-buffer-pair))
   "If elt-used > 0, decrease it by one."
-  (when (> (-> obj current elt-used) 0)
-   	(-! (-> obj current elt-used) 1) 
-    )
+  (if (> (-> this current elt-used) 0)
+      (+! (-> this current elt-used) -1)
+      )
   0
   )

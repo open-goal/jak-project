@@ -512,18 +512,15 @@ for example: tie-s-l1-tfrag
 ;; foreground renderers will output DMA data to one of these "sinks".
 (deftype dma-foreground-sink (basic)
    ;; which bucket to output to. determines draw order.
-  ((bucket                   bucket-id      :offset-assert 4)
+  ((bucket                    bucket-id)
    ;; what kind of textures will be uploaded at this time?
-   (foreground-texture-page  tpage-category :offset-assert 8)
+   (foreground-texture-page   tpage-category)
    ;; which level do we belong to?
-   (foreground-texture-level int8           :offset-assert 9)
+   (foreground-texture-level  int8)
    ;; if there are multiple buckets for the above categories, which bucket
    ;; (for example, jak 1 had separate merc/gmerc buckets in some categories)
-   (foreground-output-bucket int8           :offset-assert 10)
+   (foreground-output-bucket  int8)
    )
-  :method-count-assert 9
-  :size-assert         #xb
-  :flag-assert         #x90000000b
   )
 
 ;; the generic renderer is double buffered - while one fragment is uploading, another is rendering.
@@ -533,22 +530,15 @@ for example: tie-s-l1-tfrag
 ;; The generic renderer doesn't track this state internally, so we have some extra information
 ;; to add on to generic buckets.
 (deftype generic-bucket-state (structure)
-  ((gifbuf-adr uint32  :offset-assert   0)
-   (inbuf-adr  uint32  :offset-assert   4)
+  ((gifbuf-adr  uint32)
+   (inbuf-adr   uint32)
    )
   :allow-misaligned
-  :method-count-assert 9
-  :size-assert         #x8
-  :flag-assert         #x900000008
   )
 
 ;; as described above, the generic renderer needs a bit of extra state to double
 ;; buffer between models.
 (deftype generic-dma-foreground-sink (dma-foreground-sink)
-  ((state generic-bucket-state :inline :offset-assert  12)
+  ((state  generic-bucket-state  :inline)
    )
-  :method-count-assert 9
-  :size-assert         #x14
-  :flag-assert         #x900000014
   )
-

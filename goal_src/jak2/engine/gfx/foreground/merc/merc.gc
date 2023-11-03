@@ -10,27 +10,24 @@
 ;; DECOMP BEGINS
 
 (deftype texture-login-data (structure)
-  ((default-texture-index int32                :offset-assert   0)
-   (current-texture-index int32                :offset-assert   4)
-   (texture-usage-group   texture-usage-group  :offset-assert   8)
-   (merc-ctrl-header      merc-ctrl-header     :offset-assert  12)
-   (name                  basic                :offset-assert  16)
+  ((default-texture-index  int32)
+   (current-texture-index  int32)
+   (texture-usage-group    texture-usage-group)
+   (merc-ctrl-header       merc-ctrl-header)
+   (name                   basic)
    )
-  :method-count-assert 9
-  :size-assert         #x14
-  :flag-assert         #x900000014
   )
 
 
 (define *texture-login-data* (new 'global 'texture-login-data))
 
-(defmethod login art-joint-geo ((obj art-joint-geo))
+(defmethod login ((this art-joint-geo))
   (let ((s5-0 *texture-login-data*))
     (set! (-> s5-0 default-texture-index)
-          (res-lump-value (-> obj extra) 'texture-bucket int :default (the-as uint128 1) :time -1000000000.0)
+          (res-lump-value (-> this extra) 'texture-bucket int :default (the-as uint128 1) :time -1000000000.0)
           )
     )
-  obj
+  this
   )
 
 (defun texture-usage-init ((arg0 merc-ctrl))
@@ -84,12 +81,13 @@
   #f
   )
 
-(defmethod asize-of merc-fragment ((obj merc-fragment))
-  (the-as int (* (-> obj header mm-quadword-size) 16))
+;; WARN: Return type mismatch uint vs int.
+(defmethod asize-of ((this merc-fragment))
+  (the-as int (* (-> this header mm-quadword-size) 16))
   )
 
-(defmethod login-adgifs merc-fragment ((obj merc-fragment))
-  (let* ((s5-0 (merc-fragment-fp-data obj))
+(defmethod login-adgifs ((this merc-fragment))
+  (let* ((s5-0 (merc-fragment-fp-data this))
          (v1-1 (-> *texture-login-data* merc-ctrl-header))
          (s4-0 (if (nonzero? (-> v1-1 eye-ctrl))
                    (-> v1-1 eye-ctrl)
@@ -187,26 +185,29 @@
       (&+! s3-0 80)
       )
     )
-  obj
+  this
   )
 
-(defmethod asize-of merc-fragment-control ((obj merc-fragment-control))
-  (the-as int (+ (* (-> obj mat-xfer-count) 2) 4))
+;; WARN: Return type mismatch uint vs int.
+(defmethod asize-of ((this merc-fragment-control))
+  (the-as int (+ (* (-> this mat-xfer-count) 2) 4))
   )
 
-(defmethod login-adgifs merc-effect ((obj merc-effect))
+
+;; WARN: Return type mismatch merc-effect vs none.
+(defmethod login-adgifs ((this merc-effect))
   (let* ((data *texture-login-data*)
          (a0-1 (-> data default-texture-index))
          )
-    (when (= (-> obj merc-effect-version) 1)
-      (if (!= (-> obj texture-index) 255)
-          (set! a0-1 (the-as int (-> obj texture-index)))
+    (when (= (-> this merc-effect-version) 1)
+      (if (!= (-> this texture-index) 255)
+          (set! a0-1 (the-as int (-> this texture-index)))
           )
       )
     (set! (-> data current-texture-index) a0-1)
-    (set! (-> obj texture-index) (the-as uint a0-1))
+    (set! (-> this texture-index) (the-as uint a0-1))
     )
-  (let ((tex (-> obj extra-info)))
+  (let ((tex (-> this extra-info)))
     (when (nonzero? tex)
       (when (nonzero? (-> tex shader-offset))
         (let ((a0-6 (adgif-shader-login (the-as adgif-shader (+ (the-as uint tex) (* (-> tex shader-offset) 16))))))
@@ -217,10 +218,10 @@
         )
       )
     )
-  (let ((ctrl (-> obj frag-ctrl))
-        (geo (-> obj frag-geo))
+  (let ((ctrl (-> this frag-ctrl))
+        (geo (-> this frag-geo))
         )
-    (dotimes (frag-idx (the-as int (-> obj frag-count)))
+    (dotimes (frag-idx (the-as int (-> this frag-count)))
       (let ((ctrl-size (asize-of ctrl)))
         (let ((geo-size (asize-of geo)))
           (login-adgifs geo)
@@ -234,14 +235,14 @@
   )
 
 
-(defmethod mem-usage merc-ctrl ((obj merc-ctrl) (arg0 memory-usage-block) (arg1 int))
-  (if (-> obj extra)
-      (mem-usage (-> obj extra) arg0 arg1)
+(defmethod mem-usage ((this merc-ctrl) (arg0 memory-usage-block) (arg1 int))
+  (if (-> this extra)
+      (mem-usage (-> this extra) arg0 arg1)
       )
-  (let ((s4-0 (+ 32 128 (* (-> obj header effect-count) 32))))
-    (dotimes (s3-0 (the-as int (-> obj header effect-count)))
-      (let ((s2-0 (the-as object (-> obj effect s3-0 frag-ctrl))))
-        (dotimes (s1-0 (the-as int (-> obj effect s3-0 frag-count)))
+  (let ((s4-0 (+ 32 128 (* (-> this header effect-count) 32))))
+    (dotimes (s3-0 (the-as int (-> this header effect-count)))
+      (let ((s2-0 (the-as object (-> this effect s3-0 frag-ctrl))))
+        (dotimes (s1-0 (the-as int (-> this effect s3-0 frag-count)))
           (set! s4-0 (+ s4-0
                         (* (shr (+ (-> (the-as merc-fragment-control s2-0) unsigned-four-count) 3) 2) 16)
                         (* (shr (+ (-> (the-as merc-fragment-control s2-0) lump-four-count) 3) 2) 16)
@@ -260,10 +261,10 @@
     (+! (-> arg0 data 78 total) (logand -16 (+ s4-0 15)))
     )
   (let ((v1-35 0))
-    (dotimes (a0-15 (the-as int (-> obj header effect-count)))
-      (when (nonzero? (-> obj effect a0-15 blend-frag-count))
-        (let ((a1-9 (the-as object (-> obj effect a0-15 blend-ctrl))))
-          (dotimes (a2-1 (the-as int (-> obj effect a0-15 blend-frag-count)))
+    (dotimes (a0-15 (the-as int (-> this header effect-count)))
+      (when (nonzero? (-> this effect a0-15 blend-frag-count))
+        (let ((a1-9 (the-as object (-> this effect a0-15 blend-ctrl))))
+          (dotimes (a2-1 (the-as int (-> this effect a0-15 blend-frag-count)))
             (let ((v1-36
                     (+ v1-35
                        (* (+ (-> (the-as merc-blend-ctrl a1-9) nonzero-index-count) 1)
@@ -272,9 +273,9 @@
                        )
                     )
                   )
-              (set! v1-35 (the-as int (+ (-> obj header blend-target-count) 2 v1-36)))
+              (set! v1-35 (the-as int (+ (-> this header blend-target-count) 2 v1-36)))
               )
-            (set! a1-9 (&+ (the-as pointer a1-9) (+ (-> obj header blend-target-count) 2)))
+            (set! a1-9 (&+ (the-as pointer a1-9) (+ (-> this header blend-target-count) 2)))
             )
           )
         )
@@ -287,8 +288,8 @@
       (+! (-> arg0 data 80 total) (logand -16 (+ v1-35 15)))
       )
     )
-  (when (and (-> obj header eye-ctrl) (nonzero? (-> obj header eye-ctrl)))
-    (let ((a0-29 (-> obj header eye-ctrl)))
+  (when (and (-> this header eye-ctrl) (nonzero? (-> this header eye-ctrl)))
+    (let ((a0-29 (-> this header eye-ctrl)))
       (set! (-> arg0 length) (max 112 (-> arg0 length)))
       (set! (-> arg0 data 111 name) "eye-anim")
       (+! (-> arg0 data 111 count) 1)
@@ -298,17 +299,17 @@
         )
       )
     )
-  obj
+  this
   )
 
-(defmethod login merc-ctrl ((obj merc-ctrl))
-  (set! (-> *kernel-context* login-object) obj)
-  (texture-usage-init obj)
-  (dotimes (s5-0 (the-as int (-> obj header effect-count)))
-    (login-adgifs (-> obj effect s5-0))
+(defmethod login ((this merc-ctrl))
+  (set! (-> *kernel-context* login-object) this)
+  (texture-usage-init this)
+  (dotimes (s5-0 (the-as int (-> this header effect-count)))
+    (login-adgifs (-> this effect s5-0))
     )
-  (when (and (-> obj header eye-ctrl) (nonzero? (-> obj header eye-ctrl)))
-    (let ((s5-1 (-> obj header eye-ctrl)))
+  (when (and (-> this header eye-ctrl) (nonzero? (-> this header eye-ctrl)))
+    (let ((s5-1 (-> this header eye-ctrl)))
       (dotimes (s4-0 (-> s5-1 shader-count))
         (let ((a0-5 (adgif-shader-login (-> s5-1 shader s4-0))))
           (if a0-5
@@ -319,9 +320,10 @@
       )
     )
   (set! (-> *kernel-context* login-object) #f)
-  obj
+  this
   )
 
+;; WARN: Return type mismatch symbol vs none.
 (defun-debug merc-stats-display ((arg0 merc-ctrl))
   "Print merc debug stats."
   (format #t "~30s:" (-> arg0 name))
@@ -420,7 +422,6 @@
   (none)
   )
 
-;; definition for function merc-vu1-add-vu-function
 ;; WARN: Return type mismatch dma-packet vs dma-gif-packet.
 (defun merc-vu1-add-vu-function ((dma dma-packet) (func vu-function) (flush-mode int))
   "Add VU1 function to DMA chain."

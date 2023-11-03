@@ -13,40 +13,38 @@
               )
 
 (deftype seal-of-mar (process-drawable)
-  ((attach-object uint64  :offset-assert 200)
-   (scale         float   :offset-assert 208)
-   (trans-y       float   :offset-assert 212)
+  ((attach-object  uint64)
+   (scale          float)
+   (trans-y        float)
    )
-  :heap-base #x60
-  :method-count-assert 24
-  :size-assert         #xd8
-  :flag-assert         #x18006000d8
+  (:state-methods
+    idle
+    die
+    )
   (:methods
-    (idle () _type_ :state 20)
-    (die () _type_ :state 21)
-    (seal-of-mar-method-22 (_type_) none 22)
-    (seal-of-mar-method-23 (_type_) none 23)
+    (seal-of-mar-method-22 (_type_) none)
+    (seal-of-mar-method-23 (_type_) none)
     )
   )
 
 
-(defmethod seal-of-mar-method-22 seal-of-mar ((obj seal-of-mar))
-  (set! (-> obj root) (new 'process 'trsqv))
+(defmethod seal-of-mar-method-22 ((this seal-of-mar))
+  (set! (-> this root) (new 'process 'trsqv))
   0
   (none)
   )
 
-(defmethod seal-of-mar-method-23 seal-of-mar ((obj seal-of-mar))
+(defmethod seal-of-mar-method-23 ((this seal-of-mar))
   (with-pp
     (set! (-> pp level) (level-get *level* 'lprotect))
     (initialize-skeleton
-      obj
+      this
       (the-as skeleton-group (art-group-get-by-name *level* "skel-seal-of-mar-game" (the-as (pointer uint32) #f)))
       (the-as pair 0)
       )
-    (set! (-> obj draw force-lod) 0)
-    (set! (-> obj scale) 1.0)
-    (set! (-> obj draw lod-set lod 0 dist) 409600.0)
+    (set! (-> this draw force-lod) 0)
+    (set! (-> this scale) 1.0)
+    (set! (-> this draw lod-set lod 0 dist) 409600.0)
     0
     (none)
     )
@@ -54,11 +52,10 @@
 
 (defstate idle (seal-of-mar)
   :virtual #t
-  :code (the-as (function none :behavior seal-of-mar) sleep-code)
+  :code sleep-code
   :post (behavior ()
     (spawn (-> self part) (-> self node-list data 3 bone transform trans))
     (ja-post)
-    (none)
     )
   )
 
@@ -66,19 +63,18 @@
   :virtual #t
   :code (behavior ()
     (cleanup-for-death self)
-    (none)
     )
   )
 
 ;; WARN: Return type mismatch entity-perm-status vs none.
-(defmethod init-from-entity! seal-of-mar ((obj seal-of-mar) (arg0 entity-actor))
+(defmethod init-from-entity! ((this seal-of-mar) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
 - stack size
 - collision information
 - loading the skeleton group / bones
 - sounds"
-  (process-entity-status! obj (entity-perm-status dead) #t)
+  (process-entity-status! this (entity-perm-status dead) #t)
   (none)
   )
 
@@ -104,17 +100,14 @@ This commonly includes things such as:
   )
 
 (deftype city-slums-transport-info (structure)
-  ((id         uint32             :offset-assert   0)
-   (spawned    basic              :offset-assert   4)
-   (plane-pos  vector     :inline :offset-assert  16)
-   (plane-quat quaternion :inline :offset-assert  32)
-   (t-pos      vector     :inline :offset-assert  48)
-   (t-quat     quaternion :inline :offset-assert  64)
-   (num-guard  uint32             :offset-assert  80)
+  ((id          uint32)
+   (spawned     basic)
+   (plane-pos   vector      :inline)
+   (plane-quat  quaternion  :inline)
+   (t-pos       vector      :inline)
+   (t-quat      quaternion  :inline)
+   (num-guard   uint32)
    )
-  :method-count-assert 9
-  :size-assert         #x54
-  :flag-assert         #x900000054
   )
 
 
@@ -380,7 +373,7 @@ This commonly includes things such as:
       (quaternion-identity! (-> gp-2 quat))
       (set! (-> gp-2 flags) (task-arrow-flags))
       (set! (-> gp-2 map-icon) (the-as uint 15))
-      (set! (-> self arrow) (process->handle (task-arrow-spawn gp-2 (the-as task-arrow self))))
+      (set! (-> self arrow) (process->handle (task-arrow-spawn gp-2 self)))
       )
     (set! (-> self data-int32 0) 0)
     0
@@ -529,8 +522,8 @@ This commonly includes things such as:
   (lambda :behavior task-manager
     ()
     (send-event (handle->process (-> self arrow)) 'leave)
-    (set! (-> self state-time) (current-time))
-    (while (< (- (current-time) (-> self state-time)) (seconds 2))
+    (set-time! (-> self state-time))
+    (while (not (time-elapsed? (-> self state-time) (seconds 2)))
       (suspend)
       )
     (talker-spawn-func (-> *talker-speech* 185) *entity-pool* (target-pos 0) (the-as region #f))

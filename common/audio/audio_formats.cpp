@@ -8,62 +8,87 @@
 /*!
  * Write a wave file from a vector of samples.
  */
-void write_wave_file_mono(const std::vector<s16>& samples, s32 sample_rate, const fs::path& name) {
+void write_wave_file(const std::vector<s16>& left_samples,
+                     const std::vector<s16>& right_samples,
+                     s32 sample_rate,
+                     const fs::path& name) {
   WaveFileHeader header;
   memcpy(header.chunk_id, "RIFF", 4);
-  header.chunk_size = 36 + samples.size() * sizeof(s16);
+  header.chunk_size = 36 + ((left_samples.size() + right_samples.size()) * sizeof(s16));
   memcpy(header.format, "WAVE", 4);
 
   // now the format
   memcpy(header.subchunk1_id, "fmt ", 4);
   header.subchunk1_size = 16;
   header.aud_format = 1;
-  header.num_channels = 1;  // mono
+  if (right_samples.empty()) {
+    header.num_channels = 1;  // mono
+  } else {
+    header.num_channels = 2;  // stereo
+  }
+
   header.sample_rate = sample_rate;
   header.byte_rate = sample_rate * header.num_channels * sizeof(s16);
   header.block_align = header.num_channels * sizeof(s16);
   header.bits_per_sample = 16;
 
   memcpy(header.subchunk2_id, "data", 4);
-  header.subchunk2_size = samples.size() * sizeof(s16);
+  header.subchunk2_size = (left_samples.size() + right_samples.size()) * sizeof(s16);
 
   BinaryWriter writer;
   writer.add(header);
 
-  for (auto& samp : samples) {
-    writer.add(samp);
+  if (right_samples.empty()) {
+    for (const auto& sample : left_samples) {
+      writer.add(sample);
+    }
+  } else {
+    for (size_t i = 0; i < left_samples.size(); i++) {
+      writer.add(left_samples.at(i));
+      if (i < right_samples.size()) {
+        writer.add(right_samples.at(i));
+      } else {
+        writer.add(0);
+      }
+    }
   }
 
   writer.write_to_file(name);
 }
 
-std::vector<s16> decode_adpcm(BinaryReader& reader) {
-  std::vector<s16> decoded_samples;
-  s32 sample_prev[2] = {0, 0};
+std::pair<std::vector<s16>, std::vector<s16>> decode_adpcm(BinaryReader& reader, const bool mono) {
+  std::vector<s16> left_samples;
+  std::vector<s16> right_samples;
+  s32 left_sample_prev[2] = {0, 0};
+  s32 right_sample_prev[2] = {0, 0};
   constexpr s32 f1[5] = {0, 60, 115, 98, 122};
   constexpr s32 f2[5] = {0, 0, -52, -55, -60};
 
   [[maybe_unused]] int block_idx = 0;
+  // 16 byte blocks
+  int bytes_read = reader.get_seek();  // we've already read n bytes into the file
+  // Jak VAG's don't interleave the samples because of course they don't
+  // instead they are partitioned into contiguous 8kb (thats 8192 bytes) chunks
+  // alternating left/right
+  bool processing_left_chunk = true;
   while (true) {
     if (!reader.bytes_left()) {
       break;
     }
+
+    if (bytes_read == 0x2000) {
+      // switch streams
+      processing_left_chunk = !processing_left_chunk;
+      bytes_read = 0;
+    }
+
     u8 shift_filter = reader.read<u8>();
-    u8 flags = reader.read<u8>();
     u8 shift = shift_filter & 0b1111;
     u8 filter = shift_filter >> 4;
+    u8 flags = reader.read<u8>();
+    (void)flags;
 
-    if (shift > 12) {
-      ASSERT(false);
-    }
-
-    if (filter > 4) {
-      ASSERT(false);
-    }
-
-    if (flags == 7) {
-      break;
-    }
+    // removed assertions here (and that's probably why the audio doesn't sound right)
 
     u8 input_buffer[14];
 
@@ -81,25 +106,42 @@ std::vector<s16> decode_adpcm(BinaryReader& reader) {
 
       s32 sample = (s32)(s16)(nibble << 12);
       sample >>= shift;
-      sample += (sample_prev[0] * f1[filter] + sample_prev[1] * f2[filter] + 32) / 64;
 
-      if (sample > 0x7fff) {
-        sample = 0x7fff;
+      if (mono || processing_left_chunk) {
+        sample += (left_sample_prev[0] * f1[filter] + left_sample_prev[1] * f2[filter] + 32) / 64;
+
+        if (sample > 0x7fff) {
+          sample = 0x7fff;
+        }
+
+        if (sample < -0x8000) {
+          sample = -0x8000;
+        }
+
+        left_sample_prev[1] = left_sample_prev[0];
+        left_sample_prev[0] = sample;
+        left_samples.push_back(sample);
+      } else {
+        sample += (right_sample_prev[0] * f1[filter] + right_sample_prev[1] * f2[filter] + 32) / 64;
+
+        if (sample > 0x7fff) {
+          sample = 0x7fff;
+        }
+
+        if (sample < -0x8000) {
+          sample = -0x8000;
+        }
+
+        right_sample_prev[1] = right_sample_prev[0];
+        right_sample_prev[0] = sample;
+        right_samples.push_back(sample);
       }
-
-      if (sample < -0x8000) {
-        sample = -0x8000;
-      }
-
-      sample_prev[1] = sample_prev[0];
-      sample_prev[0] = sample;
-
-      decoded_samples.push_back(sample);
     }
+    bytes_read += 16;
     block_idx++;
   }
 
-  return decoded_samples;
+  return {left_samples, right_samples};
 }
 
 // I attempted to write an encoder below, which works, but has some limitations.

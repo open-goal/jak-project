@@ -52,79 +52,68 @@
 ;; DECOMP BEGINS
 
 (deftype elevator-params (structure)
-  ((xz-threshold float           :offset-assert   0)
-   (y-threshold  float           :offset-assert   4)
-   (start-pos    float           :offset-assert   8)
-   (move-rate    float           :offset-assert  12)
-   (flags        elevator-flags  :offset-assert  16)
+  ((xz-threshold  float)
+   (y-threshold   float)
+   (start-pos     float)
+   (move-rate     float)
+   (flags         elevator-flags)
    )
-  :method-count-assert 9
-  :size-assert         #x18
-  :flag-assert         #x900000018
   )
 
 
 (deftype path-step (structure)
-  ((next-pos float  :offset-assert   0)
-   (dist     float  :offset-assert   4)
+  ((next-pos  float)
+   (dist      float)
    )
-  :method-count-assert 9
-  :size-assert         #x8
-  :flag-assert         #x900000008
   )
 
 
 (deftype path-step-inline-array (inline-array-class)
-  ((data path-step :inline :dynamic :offset-assert  16)
+  ((data  path-step  :inline :dynamic)
    )
-  :method-count-assert 9
-  :size-assert         #x10
-  :flag-assert         #x900000010
   )
 
 
 (set! (-> path-step-inline-array heap-base) (the-as uint 16))
 
 (deftype elevator (base-plat)
-  ((params                       elevator-params        :inline :offset-assert 272)
-   (path-seq                     path-step-inline-array         :offset-assert 296)
-   (path-dest                    float                          :offset-assert 300)
-   (bottom-top                   float                  2       :offset-assert 304)
-   (move-pos                     float                  2       :offset-assert 312)
-   (move-dist                    float                          :offset-assert 320)
-   (path-pos                     float                          :offset-assert 324)
-   (path-eased-pos               float                          :offset-assert 328)
-   (ride-timer                   time-frame                     :offset-assert 336)
-   (sticky-player-last-ride-time time-frame                     :offset-assert 344)
-   (elevator-status              elevator-status                :offset-assert 352)
-   (on-activate                  pair                           :offset-assert 360)
-   (on-deactivate                pair                           :offset-assert 364)
+  ((params                        elevator-params  :inline)
+   (path-seq                      path-step-inline-array)
+   (path-dest                     float)
+   (bottom-top                    float            2)
+   (move-pos                      float            2)
+   (move-dist                     float)
+   (path-pos                      float)
+   (path-eased-pos                float)
+   (ride-timer                    time-frame)
+   (sticky-player-last-ride-time  time-frame)
+   (elevator-status               elevator-status)
+   (on-activate                   pair)
+   (on-deactivate                 pair)
    )
-  :heap-base #xf0
-  :method-count-assert 49
-  :size-assert         #x170
-  :flag-assert         #x3100f00170
+  (:state-methods
+    dormant
+    waiting
+    running
+    arrived
+    )
   (:methods
-    (dormant () _type_ :state 34)
-    (waiting () _type_ :state 35)
-    (running () _type_ :state 36)
-    (arrived () _type_ :state 37)
-    (elevator-method-38 (_type_) none 38)
-    (calc-dist-between-points! (_type_ int int) none 39)
-    (activate-elevator (_type_) object 40)
-    (init-defaults! (_type_) none 41)
-    (set-ambient-sound! (_type_) none 42)
-    (move-between-points (_type_ vector float float) symbol 43)
-    (elevator-method-44 (_type_) symbol 44)
-    (commited-to-ride? (_type_) symbol 45)
-    (move-to-next-point! (_type_) none 46)
-    (find-closest-point-in-path! (_type_ vector (pointer float) symbol symbol) symbol 47)
-    (elevator-method-48 (_type_) none 48)
+    (elevator-method-38 (_type_) none)
+    (calc-dist-between-points! (_type_ int int) none)
+    (activate-elevator (_type_) object)
+    (init-defaults! (_type_) none)
+    (set-ambient-sound! (_type_) none)
+    (move-between-points (_type_ vector float float) symbol)
+    (elevator-method-44 (_type_) symbol)
+    (commited-to-ride? (_type_) symbol)
+    (move-to-next-point! (_type_) none)
+    (find-closest-point-in-path! (_type_ vector (pointer float) symbol symbol) symbol)
+    (elevator-method-48 (_type_) none)
     )
   )
 
 
-(defmethod move-between-points elevator ((obj elevator) (arg0 vector) (arg1 float) (arg2 float))
+(defmethod move-between-points ((this elevator) (arg0 vector) (arg1 float) (arg2 float))
   "Move between two points on the elevator's path
 @param vec TODO not sure
 @param point-a The first point fetched from the elevator's path
@@ -133,7 +122,7 @@
   #f
   )
 
-(defmethod elevator-method-48 elevator ((obj elevator))
+(defmethod elevator-method-48 ((this elevator))
   "TODO - collision related"
   (let ((target *target*))
     (when target
@@ -167,68 +156,68 @@
   (none)
   )
 
-(defmethod init-defaults! elevator ((obj elevator))
+(defmethod init-defaults! ((this elevator))
   "Initializes default settings related to the [[elevator]]:
 - `elevator-xz-threshold`
 - `elevator-y-threshold`
 - `elevator-start-pos`
 - `elevator-move-rate`
 - `elevator-flags`"
-  (let ((entity (-> obj entity)))
-    (set! (-> obj params xz-threshold) ((method-of-object entity get-property-value-float)
+  (let ((entity (-> this entity)))
+    (set! (-> this params xz-threshold) ((method-of-object entity get-property-value-float)
+                                         entity
+                                         'elevator-xz-threshold
+                                         'interp
+                                         -1000000000.0
+                                         81920.0
+                                         (the-as (pointer res-tag) #f)
+                                         *res-static-buf*
+                                         )
+          )
+    (set! entity (-> this entity))
+    (set! (-> this params y-threshold) ((method-of-object entity get-property-value-float)
                                         entity
-                                        'elevator-xz-threshold
+                                        'elevator-y-threshold
                                         'interp
                                         -1000000000.0
-                                        81920.0
+                                        20480.0
                                         (the-as (pointer res-tag) #f)
                                         *res-static-buf*
                                         )
           )
-    (set! entity (-> obj entity))
-    (set! (-> obj params y-threshold) ((method-of-object entity get-property-value-float)
-                                       entity
-                                       'elevator-y-threshold
-                                       'interp
-                                       -1000000000.0
-                                       20480.0
-                                       (the-as (pointer res-tag) #f)
-                                       *res-static-buf*
-                                       )
+    (set! entity (-> this entity))
+    (set! (-> this params start-pos) ((method-of-object entity get-property-value-float)
+                                      entity
+                                      'elevator-start-pos
+                                      'interp
+                                      -1000000000.0
+                                      0.0
+                                      (the-as (pointer res-tag) #f)
+                                      *res-static-buf*
+                                      )
           )
-    (set! entity (-> obj entity))
-    (set! (-> obj params start-pos) ((method-of-object entity get-property-value-float)
-                                     entity
-                                     'elevator-start-pos
-                                     'interp
-                                     -1000000000.0
-                                     0.0
-                                     (the-as (pointer res-tag) #f)
-                                     *res-static-buf*
-                                     )
+    (set! entity (-> this entity))
+    (set! (-> this params move-rate) ((method-of-object entity get-property-value-float)
+                                      entity
+                                      'elevator-move-rate
+                                      'interp
+                                      -1000000000.0
+                                      25600.0
+                                      (the-as (pointer res-tag) #f)
+                                      *res-static-buf*
+                                      )
           )
-    (set! entity (-> obj entity))
-    (set! (-> obj params move-rate) ((method-of-object entity get-property-value-float)
-                                     entity
-                                     'elevator-move-rate
-                                     'interp
-                                     -1000000000.0
-                                     25600.0
-                                     (the-as (pointer res-tag) #f)
-                                     *res-static-buf*
-                                     )
-          )
-    (set! entity (-> obj entity))
-    (set! (-> obj params flags) (the-as elevator-flags ((method-of-object entity get-property-value)
-                                                        entity
-                                                        'elevator-flags
-                                                        'interp
-                                                        -1000000000.0
-                                                        (the-as uint128 1)
-                                                        (the-as (pointer res-tag) #f)
-                                                        *res-static-buf*
-                                                        )
-                                        )
+    (set! entity (-> this entity))
+    (set! (-> this params flags) (the-as elevator-flags ((method-of-object entity get-property-value)
+                                                         entity
+                                                         'elevator-flags
+                                                         'interp
+                                                         -1000000000.0
+                                                         (the-as uint128 1)
+                                                         (the-as (pointer res-tag) #f)
+                                                         *res-static-buf*
+                                                         )
+                                         )
           )
     )
   0
@@ -264,165 +253,144 @@ which is obviously useful for an elevator."
     )
   )
 
-;; WARN: Return type mismatch none vs object.
-;; WARN: rewrite_to_get_var got a none typed variable. Is there unreachable code? [OP: 18]
-;; WARN: rewrite_to_get_var got a none typed variable. Is there unreachable code? [OP: 119]
-;; WARN: rewrite_to_get_var got a none typed variable. Is there unreachable code? [OP: 209]
-;; WARN: rewrite_to_get_var got a none typed variable. Is there unreachable code? [OP: 222]
-;; WARN: rewrite_to_get_var got a none typed variable. Is there unreachable code? [OP: 236]
-;; WARN: rewrite_to_get_var got a none typed variable. Is there unreachable code? [OP: 246]
-;; WARN: rewrite_to_get_var got a none typed variable. Is there unreachable code? [OP: 257]
-;; WARN: rewrite_to_get_var got a none typed variable. Is there unreachable code? [OP: 264]
-;; WARN: rewrite_to_get_var got a none typed variable. Is there unreachable code? [OP: 276]
-;; WARN: rewrite_to_get_var got a none typed variable. Is there unreachable code? [OP: 301]
-;; WARN: rewrite_to_get_var got a none typed variable. Is there unreachable code? [OP: 326]
-;; WARN: rewrite_to_get_var got a none typed variable. Is there unreachable code? [OP: 334]
-;; WARN: rewrite_to_get_var got a none typed variable. Is there unreachable code? [OP: 337]
-;; WARN: rewrite_to_get_var got a none typed variable. Is there unreachable code? [OP: 174]
-;; WARN: rewrite_to_get_var got a none typed variable. Is there unreachable code? [OP: 40]
 ;; WARN: disable def twice: 11. This may happen when a cond (no else) is nested inside of another conditional, but it should be rare.
 (defbehavior elevator-event elevator ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-  (let ((evt-type event-type))
-    (the-as
-      object
-      (cond
-        ((= evt-type 'status?)
-         (and (= (the float (/ (the-as int (-> event param 0)) 8)) (-> self move-pos 0))
-              (= (the float (/ (the-as int (-> event param 1)) 8)) (-> self move-pos 1))
-              )
-         )
-        ((= evt-type 'ridden)
-         (let ((proc-focus (handle->process (-> (the-as focus (-> event param 0)) handle))))
-           (if (= (-> proc-focus type) target)
-               (set! (-> self sticky-player-last-ride-time) (current-time))
-               )
+  (case event-type
+    (('status?)
+     (and (= (the float (/ (the-as int (-> event param 0)) 8)) (-> self move-pos 0))
+          (= (the float (/ (the-as int (-> event param 1)) 8)) (-> self move-pos 1))
+          )
+     )
+    (('ridden)
+     (let ((proc-focus (handle->process (-> (the-as focus (-> event param 0)) handle))))
+       (if (= (-> proc-focus type) target)
+           (set-time! (-> self sticky-player-last-ride-time))
            )
-         #t
+       )
+     #t
+     )
+    (('use-camera)
+     (if (-> event param 0)
+         (set-setting! 'entity-name (-> event param 0) 0.0 0)
+         (remove-setting! 'entity-name)
          )
-        ((= evt-type 'use-camera)
-         (if (-> event param 0)
-             (set-setting! 'entity-name (-> event param 0) 0.0 0)
-             (remove-setting! 'entity-name)
-             )
-         )
-        ((= evt-type 'move-to)
-         (when (and (-> self next-state) (let ((next-state-0 (-> self next-state name)))
-                                           (or (= next-state-0 'waiting) (= next-state-0 'arrived))
-                                           )
-                    )
-           (set! (-> self move-pos 0) (-> self move-pos 1))
-           (cond
-             ((not (logtest? (-> event param 0) 7))
-              (let ((gp-0 (the-as number (-> event param 0))))
-                (set! (-> self move-pos 1) (if (type? (the-as uint gp-0) float)
-                                               (the-as float gp-0)
-                                               )
-                      )
+     )
+    (('move-to)
+     (when (and (-> self next-state) (let ((next-state-0 (-> self next-state name)))
+                                       (or (= next-state-0 'waiting) (= next-state-0 'arrived))
+                                       )
                 )
-              )
-             (else
-               (case (-> event param 0)
-                 (('quote 'bottom)
-                  (set! (-> self move-pos 1) (-> self bottom-top 0))
+       (set! (-> self move-pos 0) (-> self move-pos 1))
+       (cond
+         ((not (logtest? (-> event param 0) 7))
+          (let ((gp-0 (the-as number (-> event param 0))))
+            (set! (-> self move-pos 1) (if (type? (the-as uint gp-0) float)
+                                           (the-as float gp-0)
+                                           )
                   )
-                 (('quote 'top)
-                  (set! (-> self move-pos 1) (-> self bottom-top 1))
-                  )
-                 )
-               )
-             )
-           (go-virtual running)
-           )
-         )
-        ((= evt-type 'jump-to)
-         (cond
-           ((not (logtest? (-> event param 0) 7))
-            (let ((gp-1 (the-as number (-> event param 0))))
-              (set! (-> self move-pos 1) (if (type? (the-as uint gp-1) float)
-                                             (the-as float gp-1)
-                                             )
-                    )
-              )
             )
-           (else
-             (case (-> event param 0)
-               (('quote 'bottom)
-                (set! (-> self move-pos 1) (-> self bottom-top 0))
-                )
-               (('quote 'top)
-                (set! (-> self move-pos 1) (-> self bottom-top 1))
-                )
-               )
-             )
-           )
-         (set! (-> self move-pos 0) (-> self move-pos 1))
-         (get-point-in-path! (-> self path) (-> self basetrans) (-> self move-pos 0) 'interp)
-         (go-virtual waiting)
-         )
-        ((= evt-type 'trigger)
-         (when (and (-> self next-state) (let ((next-state-1 (-> self next-state name)))
-                                           (or (= next-state-1 'waiting) (= next-state-1 'arrived))
-                                           )
-                    )
-           (set! (-> self move-pos 0) (-> self move-pos 1))
-           (cond
-             ((= (-> self move-pos 0) (-> self bottom-top 0))
-              (set! (-> self move-pos 1) (-> self bottom-top 1))
-              )
-             ((= (-> self move-pos 0) (-> self bottom-top 1))
+          )
+         (else
+           (case (-> event param 0)
+             (('quote 'bottom)
               (set! (-> self move-pos 1) (-> self bottom-top 0))
               )
+             (('quote 'top)
+              (set! (-> self move-pos 1) (-> self bottom-top 1))
+              )
              )
-           (go-virtual running)
            )
          )
-        ((= evt-type 'query)
-         (case (-> event param 0)
-           (('waiting?)
-            (and (-> self next-state) (= (-> self next-state name) 'waiting))
-            )
-           (('arrived?)
-            (and (-> self next-state) (let ((v1-61 (-> self next-state name)))
-                                        (or (= v1-61 'arrived) (= v1-61 'waiting))
-                                        )
-                 )
-            )
-           (('running?)
-            (and (-> self next-state) (= (-> self next-state name) 'running))
-            )
-           (('path-pos?)
-            (+ (-> self move-pos 0) (* (-> self path-pos) (- (-> self move-pos 1) (-> self move-pos 0))))
-            )
-           (('player-standing-on?)
-            (= (-> self sticky-player-last-ride-time) (current-time))
-            )
-           (('point-inside-shaft?)
-            (move-between-points self (the-as vector (-> event param 1)) (-> self bottom-top 1) (-> self bottom-top 0))
-            )
-           (('going-down?)
-            (< (-> (get-point-in-path! (-> self path) (new 'stack-no-clear 'vector) (-> self move-pos 1) 'interp) y)
-               (-> (get-point-in-path! (-> self path) (new 'stack-no-clear 'vector) (-> self move-pos 0) 'interp) y)
-               )
-            )
-           (('going-up?)
-            (< (-> (get-point-in-path! (-> self path) (new 'stack-no-clear 'vector) (-> self move-pos 0) 'interp) y)
-               (-> (get-point-in-path! (-> self path) (new 'stack-no-clear 'vector) (-> self move-pos 1) 'interp) y)
-               )
-            )
-           )
-         )
-        ((= evt-type 'go-dormant)
-         (go-virtual dormant)
-         )
-        (else
-          (plat-event proc arg1 event-type event)
+       (go-virtual running)
+       )
+     )
+    (('jump-to)
+     (cond
+       ((not (logtest? (-> event param 0) 7))
+        (let ((gp-1 (the-as number (-> event param 0))))
+          (set! (-> self move-pos 1) (if (type? (the-as uint gp-1) float)
+                                         (the-as float gp-1)
+                                         )
+                )
           )
         )
+       (else
+         (case (-> event param 0)
+           (('quote 'bottom)
+            (set! (-> self move-pos 1) (-> self bottom-top 0))
+            )
+           (('quote 'top)
+            (set! (-> self move-pos 1) (-> self bottom-top 1))
+            )
+           )
+         )
+       )
+     (set! (-> self move-pos 0) (-> self move-pos 1))
+     (get-point-in-path! (-> self path) (-> self basetrans) (-> self move-pos 0) 'interp)
+     (go-virtual waiting)
+     )
+    (('trigger)
+     (when (and (-> self next-state) (let ((next-state-1 (-> self next-state name)))
+                                       (or (= next-state-1 'waiting) (= next-state-1 'arrived))
+                                       )
+                )
+       (set! (-> self move-pos 0) (-> self move-pos 1))
+       (cond
+         ((= (-> self move-pos 0) (-> self bottom-top 0))
+          (set! (-> self move-pos 1) (-> self bottom-top 1))
+          )
+         ((= (-> self move-pos 0) (-> self bottom-top 1))
+          (set! (-> self move-pos 1) (-> self bottom-top 0))
+          )
+         )
+       (go-virtual running)
+       )
+     )
+    (('query)
+     (case (-> event param 0)
+       (('waiting?)
+        (and (-> self next-state) (= (-> self next-state name) 'waiting))
+        )
+       (('arrived?)
+        (and (-> self next-state) (let ((v1-61 (-> self next-state name)))
+                                    (or (= v1-61 'arrived) (= v1-61 'waiting))
+                                    )
+             )
+        )
+       (('running?)
+        (and (-> self next-state) (= (-> self next-state name) 'running))
+        )
+       (('path-pos?)
+        (+ (-> self move-pos 0) (* (-> self path-pos) (- (-> self move-pos 1) (-> self move-pos 0))))
+        )
+       (('player-standing-on?)
+        (= (-> self sticky-player-last-ride-time) (current-time))
+        )
+       (('point-inside-shaft?)
+        (move-between-points self (the-as vector (-> event param 1)) (-> self bottom-top 1) (-> self bottom-top 0))
+        )
+       (('going-down?)
+        (< (-> (get-point-in-path! (-> self path) (new 'stack-no-clear 'vector) (-> self move-pos 1) 'interp) y)
+           (-> (get-point-in-path! (-> self path) (new 'stack-no-clear 'vector) (-> self move-pos 0) 'interp) y)
+           )
+        )
+       (('going-up?)
+        (< (-> (get-point-in-path! (-> self path) (new 'stack-no-clear 'vector) (-> self move-pos 0) 'interp) y)
+           (-> (get-point-in-path! (-> self path) (new 'stack-no-clear 'vector) (-> self move-pos 1) 'interp) y)
+           )
+        )
+       )
+     )
+    (('go-dormant)
+     (go-virtual dormant)
+     )
+    (else
+      (plat-event proc arg1 event-type event)
       )
     )
   )
 
-(defmethod find-closest-point-in-path! elevator ((obj elevator) (arg0 vector) (arg1 (pointer float)) (arg2 symbol) (arg3 symbol))
+(defmethod find-closest-point-in-path! ((this elevator) (arg0 vector) (arg1 (pointer float)) (arg2 symbol) (arg3 symbol))
   "Finds and sets the provided [[path-step]]'s `next-pos` field to the vertex index in the path which is closest to
 the provided [[vector]]
 
@@ -432,19 +400,19 @@ the provided [[vector]]
 @param arg3 TODO
 @returns [[#t]] if a point in the path was found"
   (local-vars (path-point vector))
-  (let ((elev-params (-> obj params))
+  (let ((elev-params (-> this params))
         (smallest-dist 0.0)
         (point-idx-tracker -1.0)
         )
-    (dotimes (path-vertex-idx (-> obj path curve num-cverts))
+    (dotimes (path-vertex-idx (-> this path curve num-cverts))
       (set! path-point
-            (get-point-in-path! (-> obj path) (new 'stack-no-clear 'vector) (the float path-vertex-idx) 'interp)
+            (get-point-in-path! (-> this path) (new 'stack-no-clear 'vector) (the float path-vertex-idx) 'interp)
             )
       (when (and (or (not arg2) (< (vector-vector-xz-distance path-point arg0) (-> elev-params xz-threshold)))
                  (or (not arg3)
                      (< (fabs (- (-> path-point y) (-> arg0 y))) (-> elev-params y-threshold))
-                     (and (= path-vertex-idx (the int (-> obj bottom-top 0))) (< (-> arg0 y) (-> path-point y)))
-                     (and (= path-vertex-idx (the int (-> obj bottom-top 1))) (< (-> path-point y) (-> arg0 y)))
+                     (and (= path-vertex-idx (the int (-> this bottom-top 0))) (< (-> arg0 y) (-> path-point y)))
+                     (and (= path-vertex-idx (the int (-> this bottom-top 1))) (< (-> path-point y) (-> arg0 y)))
                      )
                  )
         (let* ((t9-2 vector-vector-distance)
@@ -466,7 +434,7 @@ the provided [[vector]]
   )
 
 ;; WARN: Return type mismatch object vs symbol.
-(defmethod elevator-method-44 elevator ((obj elevator))
+(defmethod elevator-method-44 ((this elevator))
   (let* ((target-temp *target*)
          (target (if (type? target-temp process-focusable)
                      target-temp
@@ -475,17 +443,17 @@ the provided [[vector]]
          )
     (the-as
       symbol
-      (and target (move-between-points obj (get-trans target 0) (-> obj move-pos 0) (-> obj move-pos 1)))
+      (and target (move-between-points this (get-trans target 0) (-> this move-pos 0) (-> this move-pos 1)))
       )
     )
   )
 
-(defmethod commited-to-ride? elevator ((obj elevator))
+(defmethod commited-to-ride? ((this elevator))
   "@returns if the target is considered within the elevator area enough to begin descending/ascending"
   #t
   )
 
-(defmethod move-to-next-point! elevator ((obj elevator))
+(defmethod move-to-next-point! ((this elevator))
   "If the [[*target*]] is in a valid state and there is a point to transition to in the elevator's path
 do so.
 @see [[elevator::47]]"
@@ -498,11 +466,11 @@ do so.
                     )
                )
       (set! zero (the-as float 0.0))
-      (when (and (find-closest-point-in-path! obj (get-trans target 0) (& zero) #t #t) (!= (-> obj move-pos 1) zero))
-        (set! (-> obj move-pos 0) (-> obj move-pos 1))
-        (set! (-> obj move-pos 1) zero)
-        (logior! (-> obj elevator-status) (elevator-status moving))
-        (go (method-of-object obj running))
+      (when (and (find-closest-point-in-path! this (get-trans target 0) (& zero) #t #t) (!= (-> this move-pos 1) zero))
+        (set! (-> this move-pos 0) (-> this move-pos 1))
+        (set! (-> this move-pos 1) zero)
+        (logior! (-> this elevator-status) (elevator-status moving))
+        (go (method-of-object this running))
         )
       )
     )
@@ -524,8 +492,8 @@ do so.
 
 (defstate dormant (elevator)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('trigger)
        (go-virtual waiting)
        )
@@ -533,43 +501,42 @@ do so.
        #f
        )
       (else
-        (plat-event proc arg1 event-type event)
+        (plat-event proc argc message block)
         )
       )
     )
-  :trans (the-as (function none :behavior elevator) plat-trans)
-  :code (the-as (function none :behavior elevator) sleep-code)
-  :post (the-as (function none :behavior elevator) plat-post)
+  :trans plat-trans
+  :code sleep-code
+  :post plat-post
   )
 
 (defstate waiting (elevator)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('ridden)
        (if (commited-to-ride? self)
            (logior! (-> self elevator-status) (elevator-status waiting-to-descend))
            )
-       (elevator-event proc arg1 event-type event)
+       (elevator-event proc argc message block)
        )
       (else
-        (elevator-event proc arg1 event-type event)
+        (elevator-event proc argc message block)
         )
       )
     )
   :enter (behavior ()
-    (set! (-> self ride-timer) (current-time))
+    (set-time! (-> self ride-timer))
     (logclear! (-> self elevator-status) (elevator-status waiting-to-descend moving))
     (logior! (-> self mask) (process-mask actor-pause))
     (if (nonzero? (-> self sound))
         (update-vol! (-> self sound) 0.0)
         )
-    (none)
     )
   :trans (behavior ()
     (plat-trans)
     (when (not (logtest? (-> self elevator-status) (elevator-status waiting-to-descend)))
-      (set! (-> self ride-timer) (current-time))
+      (set-time! (-> self ride-timer))
       (-> self params)
       (if (and (logtest? (-> self params flags) (elevator-flags elevator-flags-0))
                (not (logtest? (-> self params flags) (elevator-flags elevator-flags-3)))
@@ -578,27 +545,25 @@ do so.
           )
       )
     (when (and (not (logtest? (-> self params flags) (elevator-flags elevator-flags-3)))
-               (>= (- (current-time) (-> self ride-timer)) (seconds 1))
+               (time-elapsed? (-> self ride-timer) (seconds 1))
                )
       (set! (-> self move-pos 0) (-> self move-pos 1))
       (set! (-> self move-pos 1) (-> self path-seq data (the int (-> self move-pos 1)) next-pos))
       (go-virtual running)
       )
-    (none)
     )
-  :code (the-as (function none :behavior elevator) sleep-code)
+  :code sleep-code
   :post (behavior ()
     (logclear! (-> self elevator-status) (elevator-status waiting-to-descend))
     (debug-draw (-> self path))
     (plat-post)
-    (none)
     )
   )
 
 (defstate running (elevator)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('running?)
        #t
        )
@@ -606,7 +571,7 @@ do so.
        (logtest? (-> self elevator-status) (elevator-status waiting-to-descend))
        )
       (else
-        (elevator-event proc arg1 event-type event)
+        (elevator-event proc argc message block)
         )
       )
     )
@@ -646,7 +611,6 @@ do so.
       (set-setting! 'jump #f 0.0 0)
       (apply-settings *setting-control*)
       )
-    (none)
     )
   :exit (behavior ()
     (if (not (logtest? (-> self params flags) (elevator-flags elevator-flags-7)))
@@ -656,7 +620,6 @@ do so.
     (if (logtest? (-> self params flags) (elevator-flags prevent-jump))
         (remove-setting! 'jump)
         )
-    (none)
     )
   :trans (behavior ()
     (if (and (not (logtest? (-> self elevator-status) (elevator-status waiting-to-ascend)))
@@ -672,7 +635,6 @@ do so.
         (elevator-method-48 self)
         )
     (plat-trans)
-    (none)
     )
   :code (behavior ()
     (logior! (-> self elevator-status) (elevator-status waiting-to-ascend))
@@ -683,16 +645,16 @@ do so.
           )
       )
     #f
-    (none)
     )
   :post (behavior ()
     (when (logtest? (-> self elevator-status) (elevator-status waiting-to-ascend))
       (seek!
         (-> self path-pos)
         (-> self path-dest)
+        ;; og:preserve-this pc port fast elevator option
         (* (/ (* (#if PC_PORT (if (eligible-for-fast-elevator? *pc-settings* self) 1.5 1.0)
                               1.0)
-              (-> self params move-rate)) (-> self move-dist)) (-> self clock seconds-per-frame))
+              (-> self params move-rate)) (-> self move-dist)) (seconds-per-frame))
         )
       (let* ((f30-0 (-> self move-pos 0))
              (f28-0 (-> self move-pos 1))
@@ -702,25 +664,24 @@ do so.
         )
       )
     (move-post)
-    (none)
     )
   )
 
 (defstate arrived (elevator)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('ridden)
-       (set! (-> self ride-timer) (current-time))
-       (elevator-event proc arg1 event-type event)
+       (set-time! (-> self ride-timer))
+       (elevator-event proc argc message block)
        )
       (else
-        (elevator-event proc arg1 event-type event)
+        (elevator-event proc argc message block)
         )
       )
     )
   :enter (behavior ()
-    (set! (-> self ride-timer) (current-time))
+    (set-time! (-> self ride-timer))
     (if (not (-> *setting-control* user-current jump))
         (remove-setting! 'jump)
         )
@@ -729,17 +690,16 @@ do so.
           (script-eval gp-0 :key (* (the int (-> self move-pos 1)) 8) :vector (-> self root trans))
           )
       )
-    (none)
     )
   :trans (behavior ()
     (if (and (< (- (-> self ride-timer) (-> self sticky-player-last-ride-time)) (seconds 2))
              (begin *target* *target*)
              (focus-test? *target* in-air)
              )
-        (set! (-> self ride-timer) (current-time))
+        (set-time! (-> self ride-timer))
         )
     (when (or (logtest? (-> self elevator-status) (elevator-status moving))
-              (>= (- (current-time) (-> self ride-timer)) (seconds 0.5))
+              (time-elapsed? (-> self ride-timer) (seconds 0.5))
               )
       (cond
         ((and (logtest? (-> self params flags) (elevator-flags elevator-flags-1))
@@ -755,59 +715,57 @@ do so.
         )
       )
     (plat-trans)
-    (none)
     )
-  :code (the-as (function none :behavior elevator) sleep-code)
-  :post (the-as (function none :behavior elevator) plat-post)
+  :code sleep-code
+  :post plat-post
   )
 
-(defmethod calc-dist-between-points! elevator ((obj elevator) (path-point-x int) (path-point-y int))
+(defmethod calc-dist-between-points! ((this elevator) (path-point-x int) (path-point-y int))
   "Calculates the distance between two points in the elevator's path.
 
 @param path-point-x The index of the first point in the distance calculation, and where `next-pos` and `dist` are stored in the `path-seq` array
 @param path-point-y The second point in the distance calculation"
-  (set! (-> obj path-seq data path-point-x next-pos) (the float path-point-y))
-  (let ((point-x (get-point-in-path! (-> obj path) (new 'stack-no-clear 'vector) (the float path-point-x) 'interp))
-        (point-y (get-point-in-path! (-> obj path) (new 'stack-no-clear 'vector) (the float path-point-y) 'interp))
+  (set! (-> this path-seq data path-point-x next-pos) (the float path-point-y))
+  (let ((point-x (get-point-in-path! (-> this path) (new 'stack-no-clear 'vector) (the float path-point-x) 'interp))
+        (point-y (get-point-in-path! (-> this path) (new 'stack-no-clear 'vector) (the float path-point-y) 'interp))
         )
-    (set! (-> obj path-seq data path-point-x dist) (vector-vector-distance point-x point-y))
+    (set! (-> this path-seq data path-point-x dist) (vector-vector-distance point-x point-y))
     )
   0
   (none)
   )
 
-(defmethod set-ambient-sound! elevator ((obj elevator))
+(defmethod set-ambient-sound! ((this elevator))
   "Sets the elevator's [[ambient-sound]] up"
-  (set! (-> obj sound) (the-as ambient-sound 0))
+  (set! (-> this sound) (the-as ambient-sound 0))
   0
   (none)
   )
 
-(defmethod init-plat! elevator ((obj elevator))
+(defmethod init-plat! ((this elevator))
   "Does any necessary initial platform setup.
 For example for an elevator pre-compute the distance between the first and last points (both ways) and clear the sound."
   0
   (none)
   )
 
-;; WARN: Return type mismatch base-plat vs elevator.
-(defmethod relocate elevator ((obj elevator) (arg0 int))
-  (if (nonzero? (-> obj path-seq))
-      (&+! (-> obj path-seq) arg0)
+(defmethod relocate ((this elevator) (arg0 int))
+  (if (nonzero? (-> this path-seq))
+      (&+! (-> this path-seq) arg0)
       )
-  (the-as elevator ((the-as (function base-plat int base-plat) (find-parent-method elevator 7)) obj arg0))
+  (call-parent-method this arg0)
   )
 
-(defmethod activate-elevator elevator ((obj elevator))
+(defmethod activate-elevator ((this elevator))
   "Puts the elevator initially into the correct state. This is typically based upon game completion"
-  (if (logtest? (-> obj params flags) (elevator-flags elevator-flags-6))
-      (go (method-of-object obj arrived))
-      (go (method-of-object obj waiting))
+  (if (logtest? (-> this params flags) (elevator-flags elevator-flags-6))
+      (go (method-of-object this arrived))
+      (go (method-of-object this waiting))
       )
   )
 
 ;; WARN: Return type mismatch object vs none.
-(defmethod init-from-entity! elevator ((obj elevator) (entity entity-actor))
+(defmethod init-from-entity! ((this elevator) (entity entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
 - stack size
@@ -815,37 +773,37 @@ This commonly includes things such as:
 - loading the skeleton group / bones
 - sounds"
   (local-vars (sv-32 float) (sv-36 path-control) (sv-40 target))
-  (init-plat-collision! obj)
-  (process-drawable-from-entity! obj entity)
-  (initialize-skeleton obj (the-as skeleton-group (get-art-group obj)) (the-as pair 0))
-  (stop-bouncing! obj)
-  (set! (-> obj elevator-status) (elevator-status))
-  (update-transforms (-> obj root))
-  (base-plat-method-32 obj)
-  (init-defaults! obj)
-  (set! (-> obj on-activate) (res-lump-struct (-> obj entity) 'on-activate pair))
-  (set! (-> obj on-deactivate) (res-lump-struct (-> obj entity) 'on-deactivate pair))
-  (set! (-> obj path) (new 'process 'path-control obj 'path 0.0 entity #f))
-  (if (logtest? (-> obj path flags) (path-control-flag not-found))
+  (init-plat-collision! this)
+  (process-drawable-from-entity! this entity)
+  (initialize-skeleton this (the-as skeleton-group (get-art-group this)) (the-as pair 0))
+  (stop-bouncing! this)
+  (set! (-> this elevator-status) (elevator-status))
+  (update-transforms (-> this root))
+  (base-plat-method-32 this)
+  (init-defaults! this)
+  (set! (-> this on-activate) (res-lump-struct (-> this entity) 'on-activate pair))
+  (set! (-> this on-deactivate) (res-lump-struct (-> this entity) 'on-deactivate pair))
+  (set! (-> this path) (new 'process 'path-control this 'path 0.0 entity #f))
+  (if (logtest? (-> this path flags) (path-control-flag not-found))
       (go process-drawable-art-error "error in path")
       )
-  (logior! (-> obj path flags) (path-control-flag display draw-line draw-point draw-text))
-  (let ((num-path-points (-> obj path curve num-cverts))
+  (logior! (-> this path flags) (path-control-flag display draw-line draw-point draw-text))
+  (let ((num-path-points (-> this path curve num-cverts))
         (s4-1 0)
         (f30-0 0.0)
         (f28-0 0.0)
         )
-    (set! (-> obj path-seq) (new 'process 'path-step-inline-array num-path-points))
+    (set! (-> this path-seq) (new 'process 'path-step-inline-array num-path-points))
     (dotimes (path-point-idx num-path-points)
-      (calc-dist-between-points! obj path-point-idx (mod (+ path-point-idx 1) num-path-points))
-      (let ((v1-31 (get-point-in-path! (-> obj path) (new 'stack-no-clear 'vector) (the float path-point-idx) 'interp)))
+      (calc-dist-between-points! this path-point-idx (mod (+ path-point-idx 1) num-path-points))
+      (let ((v1-31 (get-point-in-path! (-> this path) (new 'stack-no-clear 'vector) (the float path-point-idx) 'interp)))
         (when (or (not (logtest? s4-1 1)) (< (-> v1-31 y) f28-0))
-          (set! (-> obj bottom-top 0) (the float path-point-idx))
+          (set! (-> this bottom-top 0) (the float path-point-idx))
           (set! f28-0 (-> v1-31 y))
           (set! s4-1 (logior s4-1 1))
           )
         (when (or (not (logtest? s4-1 2)) (< f30-0 (-> v1-31 y)))
-          (set! (-> obj bottom-top 1) (the float path-point-idx))
+          (set! (-> this bottom-top 1) (the float path-point-idx))
           (set! f30-0 (-> v1-31 y))
           (set! s4-1 (logior s4-1 2))
           )
@@ -853,7 +811,7 @@ This commonly includes things such as:
       )
     )
   (set! sv-32 (the-as float 0.0))
-  (set! sv-36 (-> obj path))
+  (set! sv-36 (-> this path))
   (let ((s5-2 *target*))
     (set! sv-40 (if (type? s5-2 process-focusable)
                     s5-2
@@ -861,20 +819,20 @@ This commonly includes things such as:
           )
     )
   (if (not (and sv-40
-                (logtest? (-> obj params flags) (elevator-flags elevator-flags-4))
-                (find-closest-point-in-path! obj (get-trans sv-40 0) (& sv-32) #f #t)
+                (logtest? (-> this params flags) (elevator-flags elevator-flags-4))
+                (find-closest-point-in-path! this (get-trans sv-40 0) (& sv-32) #f #t)
                 )
            )
-      (set! sv-32 (-> obj params start-pos))
+      (set! sv-32 (-> this params start-pos))
       )
-  (set! (-> obj move-pos 0) sv-32)
-  (set! (-> obj move-pos 1) sv-32)
-  (get-point-in-path! sv-36 (-> obj basetrans) sv-32 'interp)
-  (set! (-> obj root pause-adjust-distance)
-        (+ 122880.0 (-> obj params xz-threshold) (total-distance (-> obj path)))
+  (set! (-> this move-pos 0) sv-32)
+  (set! (-> this move-pos 1) sv-32)
+  (get-point-in-path! sv-36 (-> this basetrans) sv-32 'interp)
+  (set! (-> this root pause-adjust-distance)
+        (+ 122880.0 (-> this params xz-threshold) (total-distance (-> this path)))
         )
-  (set-ambient-sound! obj)
-  (init-plat! obj)
-  (activate-elevator obj)
+  (set-ambient-sound! this)
+  (init-plat! this)
+  (activate-elevator this)
   (none)
   )

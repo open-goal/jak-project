@@ -5,13 +5,6 @@
 ;; name in dgo: surface-h
 ;; dgos: GAME, ENGINE
 
-;; A "surface" contains parameters for how Jak will behave.
-;; It can be used for different in-game surfaces (ice is slippery, grass isn't)
-;; but is also used for most other changes to Jak's control
-;; For example, when jumping, there's a separate "surface" for jumping that makes
-;; Jak less responsive to changing directions.
-;; Surfaces have flags and parameters that can be combined with other surfaces
-
 (defenum surface-flags
   :bitfield #t
   :type uint32
@@ -44,49 +37,53 @@
   (moving-ground) ;; unused, but would make sense if jak was on something moving
   )
 
+;; DECOMP BEGINS
+
+;; A "surface" contains parameters for how Jak will behave.
+;; It can be used for different in-game surfaces (ice is slippery, grass isn't)
+;; but is also used for most other changes to Jak's control
+;; For example, when jumping, there's a separate "surface" for jumping that makes
+;; Jak less responsive to changing directions.
+;; Surfaces have flags and parameters that can be combined with other surfaces
+
 ;; The "surface" defines how jak moves on the ground. It includes things like how fast he can go,
 ;; how slippery it is, and what functions should run when he hits it.
 ;; Note that "surface" can apply to weird things, like riding the zoomer or swimming as well.
+
 (deftype surface (basic)
-  ((name              symbol      :offset-assert   4)
-   ;; data went here
-   (turnv             float       :offset-assert   8)
-   (turnvv            float       :offset-assert  12)
-   (tiltv             float       :offset-assert  16)
-   (tiltvv            float       :offset-assert  20)
-   (transv-max        float       :offset-assert  24)
-   (target-speed      float       :offset-assert  28)
-   (seek0             float       :offset-assert  32)
-   (seek90            float       :offset-assert  36)
-   (seek180           float       :offset-assert  40)
-   (fric              float       :offset-assert  44)
-   (nonlin-fric-dist  float       :offset-assert  48)
-   (slip-factor       float       :offset-assert  52)
-   (slide-factor      float       :offset-assert  56)
-   (slope-up-factor   float       :offset-assert  60)
-   (slope-down-factor float       :offset-assert  64)
-   (slope-slip-angle  float       :offset-assert  68)
-   (impact-fric       float       :offset-assert  72)
-   (bend-factor       float       :offset-assert  76)
-   (bend-speed        float       :offset-assert  80)
-   (alignv            float       :offset-assert  84)
-   (slope-up-traction float       :offset-assert  88)
-   (align-speed       float       :offset-assert  92)
-   ;; hook went here
-   (active-hook       (function none)  :offset        128)
-   (touch-hook        (function none)  :offset-assert 132)
-   (impact-hook       function    :offset-assert 136)
-   (mult-hook         (function surface surface surface int none)    :offset-assert 140)
-   ;; dataw went here
-   (mode              symbol      :offset-assert 144)
-   (flags             surface-flags    :offset-assert 148)
-   (data              float            30 :offset          8)
-   (hook              function         4  :offset        128)
-   (dataw             uint32           2  :offset        144)
+  ((name               symbol)
+   (turnv              float)
+   (turnvv             float)
+   (tiltv              float)
+   (tiltvv             float)
+   (transv-max         float)
+   (target-speed       float)
+   (seek0              float)
+   (seek90             float)
+   (seek180            float)
+   (fric               float)
+   (nonlin-fric-dist   float)
+   (slip-factor        float)
+   (slide-factor       float)
+   (slope-up-factor    float)
+   (slope-down-factor  float)
+   (slope-slip-angle   float)
+   (impact-fric        float)
+   (bend-factor        float)
+   (bend-speed         float)
+   (alignv             float)
+   (slope-up-traction  float)
+   (align-speed        float)
+   (active-hook        (function none)     :offset 128)
+   (touch-hook         (function none))
+   (impact-hook        function)
+   (mult-hook          (function surface surface surface int none))
+   (mode               symbol)
+   (flags              surface-flags)
+   (data               float            30 :overlay-at turnv)
+   (hook               function         4  :overlay-at active-hook)
+   (dataw              uint32           2  :overlay-at mode)
    )
-  :method-count-assert 9
-  :size-assert         #x98
-  :flag-assert         #x900000098
   )
 
 ;; these calc-terminal functions are unused.
@@ -106,20 +103,19 @@
     )
   )
 
-(defmethod print surface ((obj surface))
+(defmethod print ((this surface))
   ;; seems this format string is wrong.
   (format
     #t
     "#<surface f0:~m f1:~f tf+:~f tf-:~f sf:~f tvv:~m"
-    (-> obj turnv)
-    (-> obj turnvv)
-    (-> obj tiltv)
-    (-> obj tiltvv)
-    (-> obj transv-max)
-    0
+    (-> this turnv)
+    (-> this turnvv)
+    (-> this tiltv)
+    (-> this tiltvv)
+    (-> this transv-max)
     )
-  (format #t "  tm:~m rv:~R rvv:~R @ #x~X>" (-> obj target-speed) (-> obj seek0) (-> obj seek90) obj)
-  obj
+  (format #t "  tm:~m rv:~R rvv:~R @ #x~X>" (-> this target-speed) (-> this seek0) (-> this seek90) this)
+  this
   )
 
 (defun surface-interp! ((dst surface) (src0 surface) (src1 surface) (amount float))
@@ -152,7 +148,6 @@
   (dotimes (v1-6 2)
     (set! (-> dst dataw v1-6) (-> src1 dataw v1-6))
     )
-
   dst
   )
 
@@ -301,6 +296,7 @@
             )
       )
   (set! (-> a0-3 mult-hook) surface-clamp-speed)
+  ;; og:preserve-this
   (define *duck-mods* a0-3)
   )
 
@@ -676,6 +672,7 @@
             )
       )
   (set! (-> a0-4 mult-hook) surface-clamp-speed)
+  ;; og:preserve-this
   (define *uppercut-jump-mods* a0-4)
   )
 
@@ -811,6 +808,7 @@
             )
       )
   (set! (-> a0-5 mult-hook) surface-clamp-speed)
+  ;; og:preserve-this
   (define *flop-land-mods* a0-5)
   )
 
@@ -926,18 +924,21 @@
 (let ((a0-7 (copy *walk-mods* 'global)))
   (set! (-> a0-7 name) 'pole)
   (set! (-> a0-7 flags) (surface-flags))
+  ;; og:preserve-this
   (define *pole-mods* a0-7)
   )
 
 (let ((a0-9 (copy *walk-mods* 'global)))
   (set! (-> a0-9 name) 'grab)
   (set! (-> a0-9 flags) (surface-flags))
+  ;; og:preserve-this
   (define *grab-mods* a0-9)
   )
 
 (let ((a0-11 (copy *walk-mods* 'global)))
   (set! (-> a0-11 name) 'edge-grab)
   (set! (-> a0-11 flags) (surface-flags))
+  ;; og:preserve-this
   (define *edge-grab-mods* a0-11)
   )
 
@@ -1018,6 +1019,7 @@
                )
              )
       )
+  ;; og:preserve-this
   (define *edge-surface* v1-42)
   (set! (-> v1-42 mult-hook) (the-as (function surface surface surface int none) nothing))
   (set! (-> v1-42 touch-hook) nothing)
@@ -1049,6 +1051,7 @@
                )
              )
       )
+  ;; og:preserve-this
   (define *wade-surface* v1-43)
   (set! (-> v1-43 mult-hook) (the-as (function surface surface surface int none) nothing))
   (set! (-> v1-43 touch-hook) nothing)
@@ -1080,6 +1083,7 @@
                )
              )
       )
+  ;; og:preserve-this
   (define *slope-surface* v1-44)
   (set! (-> v1-44 mult-hook) (the-as (function surface surface surface int none) nothing))
   (set! (-> v1-44 touch-hook) nothing)
@@ -1111,6 +1115,7 @@
                )
              )
       )
+  ;; og:preserve-this
   (define *quicksand-surface* v1-45)
   (set! (-> v1-45 mult-hook) (the-as (function surface surface surface int none) nothing))
   (set! (-> v1-45 touch-hook) nothing)
@@ -1142,6 +1147,7 @@
                )
              )
       )
+  ;; og:preserve-this
   (define *tar-surface* v1-46)
   (set! (-> v1-46 mult-hook) (the-as (function surface surface surface int none) nothing))
   (set! (-> v1-46 touch-hook) nothing)
@@ -1171,6 +1177,7 @@
                )
              )
       )
+  ;; og:preserve-this
   (define *grass-surface* v1-47)
   (set! (-> v1-47 mult-hook) (the-as (function surface surface surface int none) nothing))
   (set! (-> v1-47 touch-hook) nothing)
@@ -1200,6 +1207,7 @@
                )
              )
       )
+  ;; og:preserve-this
   (define *ice-surface* v1-48)
   (set! (-> v1-48 mult-hook) (the-as (function surface surface surface int none) nothing))
   (set! (-> v1-48 touch-hook) nothing)
@@ -1230,6 +1238,7 @@
                )
              )
       )
+  ;; og:preserve-this
   (define *tread-surface* v1-49)
   (set! (-> v1-49 mult-hook) (the-as (function surface surface surface int none) nothing))
   (set! (-> v1-49 touch-hook) nothing)
@@ -1237,6 +1246,8 @@
   )
 
 (define *standard-ground-surface* *stone-surface*)
+
 (define *swim-surface* *stone-surface*)
 
+;; og:preserve-this
 (define-extern *race-track-surface* surface)

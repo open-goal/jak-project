@@ -19,7 +19,7 @@
       )
   (when (if (and (< (target-move-dist (-> *TARGET-bank* stuck-time)) (-> *TARGET-bank* stuck-distance))
                  (>= arg1 0)
-                 (>= (- (current-time) (-> self state-time)) arg1)
+                 (time-elapsed? (-> self state-time) arg1)
                  (not (and *cheat-mode* (cpad-hold? (-> self control cpad number) r2)))
                  )
             #t
@@ -40,7 +40,6 @@
     (suspend)
     (suspend)
     (go target-stance)
-    (none)
     )
   :post target-no-move-post
   )
@@ -49,14 +48,12 @@
   :event target-standard-event-handler
   :enter (behavior ()
     (set! (-> self control mod-surface) *walk-mods*)
-    (set! (-> self state-time) (current-time))
-    (none)
+    (set-time! (-> self state-time))
     )
   :exit (behavior ()
     (logclear! (-> self state-flags) (state-flags lleg-still rleg-still))
     (set! (-> self control bend-target) 0.0)
     (target-state-hook-exit)
-    (none)
     )
   :trans (behavior ()
     ((-> self state-hook))
@@ -120,7 +117,7 @@
     (if (and (using-gun? self)
              (and (-> self next-state) (= (-> self next-state name) 'target-stance))
              (let ((v1-85 (ja-group)))
-               (and v1-85 (= v1-85 (-> self draw art-group data 5)))
+               (and v1-85 (= v1-85 jakb-stance-loop-ja))
                )
              )
         (go target-gun-stance)
@@ -138,7 +135,6 @@
         )
     (slide-down-test)
     (fall-test target-falling -4096000.0)
-    (none)
     )
   :code target-stance-anim
   :post target-post
@@ -150,14 +146,12 @@
     (if (and (using-gun? self) (-> self next-state) (= (-> self next-state name) 'target-walk))
         (go target-gun-walk)
         )
-    (set! (-> self state-time) (current-time))
+    (set-time! (-> self state-time))
     (set! (-> self control mod-surface) *walk-mods*)
-    (none)
     )
   :exit (behavior ()
     (target-effect-exit)
     (target-state-hook-exit)
-    (none)
     )
   :trans (behavior ()
     ((-> self state-hook))
@@ -223,7 +217,7 @@
              )
         (go target-running-attack)
         )
-    (when (and (turn-around?) (>= (- (current-time) (-> self state-time)) (seconds 0.3)))
+    (when (and (turn-around?) (time-elapsed? (-> self state-time) (seconds 0.3)))
       (set! (-> self control transv quad)
             (-> self control transv-history (-> self control idx-of-fastest-xz-vel) quad)
             )
@@ -246,11 +240,9 @@
         )
     (slide-down-test)
     (fall-test target-falling -4096000.0)
-    (none)
     )
   :code (behavior ()
     (target-walk-anim -300)
-    (none)
     )
   :post target-post
   )
@@ -261,7 +253,6 @@
     (vector-turn-to (-> self control transv))
     (set! (-> self control mod-surface) *turn-around-mods*)
     (set! (-> self control bend-target) 1.0)
-    (none)
     )
   :exit (behavior ()
     (target-state-hook-exit)
@@ -269,7 +260,6 @@
     (set! (-> self control ctrl-xz-vel) 0.0)
     (set-quaternion! (-> self control) (-> self control dir-targ))
     (set! (-> self control bend-target) 0.0)
-    (none)
     )
   :trans (behavior ()
     ((-> self state-hook))
@@ -291,16 +281,15 @@
         (go target-running-attack)
         )
     (if (and (not (logtest? (-> self control status) (collide-status on-surface)))
-             (>= (- (current-time) (-> self control last-time-on-surface)) (seconds 0.08))
+             (time-elapsed? (-> self control last-time-on-surface) (seconds 0.08))
              )
         (go target-falling #f)
         )
     (slide-down-test)
-    (none)
     )
   :code (behavior ()
     (ja-channel-push! 1 (seconds 0.04))
-    (ja :group! (-> self draw art-group data 22) :num! min)
+    (ja :group! jakb-turn-around-ja :num! min)
     (quaternion-rotate-y! (-> self control dir-targ) (-> self control dir-targ) 32768.0)
     (compute-alignment! (-> self align))
     (until (ja-done? 0)
@@ -315,7 +304,6 @@
     (set-forward-vel (-> self control ctrl-xz-vel))
     (target-state-hook-exit)
     (go target-walk)
-    (none)
     )
   :post target-no-stick-post
   )
@@ -324,11 +312,9 @@
   :event target-walk-event-handler
   :enter (behavior ()
     (set! (-> self control mod-surface) *jump-mods*)
-    (none)
     )
   :exit (behavior ()
-    (set! (-> self control unknown-time-frame13) (current-time))
-    (none)
+    (set-time! (-> self control unknown-time-frame13))
     )
   :trans (behavior ()
     (when (or (logtest? (-> self control status) (collide-status on-surface))
@@ -342,26 +328,21 @@
           (go target-duck-stance #f)
           )
       )
-    (none)
     )
   :code (behavior ()
     (let ((v1-2 (ja-group)))
-      (if (not (and v1-2 (= v1-2 (-> self draw art-group data 20))))
+      (if (not (and v1-2 (= v1-2 jakb-duck-stance-ja)))
           (ja-channel-push! 1 (seconds 0.1))
           )
       )
     (until #f
-      (ja-no-eval :group! (-> self draw art-group data 20)
-                  :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 20)) frames num-frames) -1)))
-                  :frame-num 0.0
-                  )
+      (ja-no-eval :group! jakb-duck-stance-ja :num! (seek!) :frame-num 0.0)
       (until (ja-done? 0)
         (suspend)
         (ja :num! (seek!))
         )
       )
     #f
-    (none)
     )
   :post target-post
   )
@@ -432,29 +413,27 @@
         )
 
 (defstate target-slide-down-to-ground (target)
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('slide)
        #f
        )
       (else
-        (target-standard-event-handler proc arg1 event-type event)
+        (target-standard-event-handler proc argc message block)
         )
       )
     )
   :enter (behavior ()
-    (set! (-> self state-time) (current-time))
+    (set-time! (-> self state-time))
     (set! (-> self control mod-surface) *slide-down-mods*)
     (set! (-> self control sliding-start-time) 0)
     (set! (-> self control force-turn-to-strength) 1.0)
     (set! (-> self control force-turn-to-speed) 1.0)
-    (none)
     )
   :exit (behavior ()
     (target-effect-exit)
     (target-exit)
-    (set! (-> self control unknown-time-frame13) (current-time))
-    (none)
+    (set-time! (-> self control unknown-time-frame13))
     )
   :trans (behavior ()
     (if (and (or (and (logtest? (-> self control status) (collide-status on-surface))
@@ -473,7 +452,7 @@
                  )
              (zero? (-> self control sliding-start-time))
              )
-        (set! (-> self control sliding-start-time) (current-time))
+        (set-time! (-> self control sliding-start-time))
         )
     (when (and (logtest? (logior (logior (-> *cpad-list* cpads (-> self control cpad number) button0-rel 0)
                                          (-> *cpad-list* cpads (-> self control cpad number) button0-rel 1)
@@ -513,7 +492,7 @@
                        (pad-buttons square)
                        )
              (can-hands? #t)
-             (>= (- (current-time) (-> self control last-running-attack-end-time)) (seconds 0.7))
+             (time-elapsed? (-> self control last-running-attack-end-time) (seconds 0.7))
              (!= (-> self state-time) (current-time))
              )
         (go target-running-attack)
@@ -526,7 +505,6 @@
           )
       )
     (set! (-> self control ctrl-xz-vel) (* 40960.0 (-> self darkjak-giant-interp)))
-    (none)
     )
   :code (-> target-walk code)
   :post (behavior ()
@@ -559,12 +537,11 @@
            )
        )
       ((nonzero? (-> self control sliding-start-time))
-       (seek! (-> self control force-turn-to-strength) 0.0 (* 4.0 (-> self clock seconds-per-frame)))
+       (seek! (-> self control force-turn-to-strength) 0.0 (* 4.0 (seconds-per-frame)))
        )
       )
     (set! (-> self control turn-lockout-end-time) (+ (current-time) (seconds 0.1)))
     (target-post)
-    (none)
     )
   )
 
@@ -577,7 +554,7 @@
     (set! arg1 (* arg1 (-> self darkjak-giant-interp)))
     )
   (logclear! (-> self control status) (collide-status touch-ceiling-sticky))
-  (set! (-> self control unknown-time-frame19) (current-time))
+  (set-time! (-> self control unknown-time-frame19))
   (delete-back-vel)
   (let* ((f0-4 arg5)
          (f1-2 0.0)
@@ -589,7 +566,7 @@
          (s3-1 (+ arg0 f0-5))
          )
     (let ((s2-1 (+ arg1 f0-5)))
-      (when (< (- (current-time) (-> self control rider-time)) (seconds 0.05))
+      (when (not (time-elapsed? (-> self control rider-time) (seconds 0.05)))
         (let ((f0-8
                 (fmax
                   0.0
@@ -784,12 +761,11 @@
   :event target-standard-event-handler
   :enter (behavior ((arg0 symbol))
     (if (not arg0)
-        (set! (-> self state-time) (current-time))
+        (set-time! (-> self state-time))
         )
     (set! (-> self control bend-target) 1.0)
     (set! (-> self control mod-surface) *duck-mods*)
     (target-collide-set! 'duck 1.0)
-    (none)
     )
   :exit (behavior ()
     (if (not (and (-> self next-state) (let ((v1-3 (-> self next-state name)))
@@ -808,7 +784,6 @@
     (if (= (-> self control collide-mode) 'duck)
         (target-collide-set! 'normal 0.0)
         )
-    (none)
     )
   :trans (behavior ()
     ((-> self state-hook))
@@ -816,10 +791,10 @@
                  (logtest? (-> self state-flags) (state-flags prevent-duck))
                  )
              (let ((v1-13 (ja-group)))
-               (and (not (and v1-13 (or (= v1-13 (-> self draw art-group data 60))
-                                        (= v1-13 (-> self draw art-group data 59))
-                                        (= v1-13 (-> self draw art-group data 283))
-                                        (= v1-13 (-> self draw art-group data 282))
+               (and (not (and v1-13 (or (= v1-13 jakb-duck-roll-end-ja)
+                                        (= v1-13 jakb-duck-roll-ja)
+                                        (= v1-13 jakb-gun-duck-roll-end-ja)
+                                        (= v1-13 jakb-gun-duck-roll-ja)
                                         )
                               )
                          )
@@ -863,12 +838,11 @@
         )
     (fall-test target-falling -4096000.0)
     (slide-down-test)
-    (none)
     )
   :code (behavior ((arg0 symbol))
     (let ((v1-2 (ja-group)))
       (cond
-        ((and v1-2 (or (= v1-2 (-> self draw art-group data 59)) (= v1-2 (-> self draw art-group data 282))))
+        ((and v1-2 (or (= v1-2 jakb-duck-roll-ja) (= v1-2 jakb-gun-duck-roll-ja)))
          (set! (-> self neck flex-blend) 0.0)
          (set! (-> self neck base-joint) (the-as uint 8))
          (cond
@@ -876,7 +850,7 @@
             (set! (-> self gun surpress-time) (+ (current-time) (seconds 0.7)))
             (push-anim-to-targ
               (-> self skel top-anim)
-              (the-as art-joint-anim (-> self draw art-group data 283))
+              (the-as art-joint-anim jakb-gun-duck-roll-end-ja)
               0.0
               0
               30
@@ -884,20 +858,14 @@
               6.0
               #f
               )
-            (ja-no-eval :group! (-> self draw art-group data 283)
-                        :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 283)) frames num-frames) -1)))
-                        :frame-num 0.0
-                        )
+            (ja-no-eval :group! jakb-gun-duck-roll-end-ja :num! (seek!) :frame-num 0.0)
             (until (ja-done? 0)
               (suspend)
               (ja :num! (seek!))
               )
             )
            (else
-             (ja-no-eval :group! (-> self draw art-group data 60)
-                         :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 60)) frames num-frames) -1)))
-                         :frame-num 0.0
-                         )
+             (ja-no-eval :group! jakb-duck-roll-end-ja :num! (seek!) :frame-num 0.0)
              (until (ja-done? 0)
                (suspend)
                (ja :num! (seek!))
@@ -908,13 +876,11 @@
          (set! (-> self neck base-joint) (the-as uint 6))
          )
         ((let ((v1-68 (ja-group)))
-           (and (and v1-68 (= v1-68 (-> self draw art-group data 20)))
-                (= (-> self skel root-channel 0) (-> self skel channel))
-                )
+           (and (and v1-68 (= v1-68 jakb-duck-stance-ja)) (= (-> self skel root-channel 0) (-> self skel channel)))
            )
          )
         ((let ((v1-78 (ja-group)))
-           (and v1-78 (or (= v1-78 (-> self draw art-group data 21)) (= v1-78 (-> self draw art-group data 302))))
+           (and v1-78 (or (= v1-78 jakb-duck-walk-ja) (= v1-78 jakb-gun-duck-walk-ja)))
            )
          (ja-channel-push! 1 (seconds 0.1))
          )
@@ -923,10 +889,7 @@
          )
         (else
           (ja-channel-push! 1 (seconds 0.04))
-          (ja-no-eval :group! (-> self draw art-group data 19)
-                      :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 19)) frames num-frames) -1)))
-                      :frame-num 0.0
-                      )
+          (ja-no-eval :group! jakb-stance-to-duck-ja :num! (seek!) :frame-num 0.0)
           (until (ja-done? 0)
             (suspend)
             (ja :num! (seek!))
@@ -935,17 +898,13 @@
         )
       )
     (until #f
-      (ja-no-eval :group! (-> self draw art-group data 20)
-                  :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 20)) frames num-frames) -1)))
-                  :frame-num 0.0
-                  )
+      (ja-no-eval :group! jakb-duck-stance-ja :num! (seek!) :frame-num 0.0)
       (until (ja-done? 0)
         (suspend)
         (ja :num! (seek!))
         )
       )
     #f
-    (none)
     )
   :post target-post
   )
@@ -954,16 +913,15 @@
   :event target-standard-event-handler
   :enter (behavior ((arg0 symbol))
     (if (not arg0)
-        (set! (-> self state-time) (current-time))
+        (set-time! (-> self state-time))
         )
     (set! (-> self control bend-target) 1.0)
     (target-collide-set! 'duck 1.0)
     (let ((v1-7 (ja-group)))
-      (if (not (and v1-7 (or (= v1-7 (-> self draw art-group data 59)) (= v1-7 (-> self draw art-group data 282)))))
+      (if (not (and v1-7 (or (= v1-7 jakb-duck-roll-ja) (= v1-7 jakb-gun-duck-roll-ja))))
           (set! (-> self control mod-surface) *duck-mods*)
           )
       )
-    (none)
     )
   :exit (-> target-duck-stance exit)
   :trans (behavior ()
@@ -979,7 +937,7 @@
                )
       (if (and (using-gun? self)
                (begin (set! v1-22 (get-channel (-> self skel top-anim) 0)) v1-22)
-               (= (-> v1-22 frame-group) (-> self draw art-group data 283))
+               (= (-> v1-22 frame-group) jakb-gun-duck-roll-end-ja)
                )
           (target-top-anim-base-mode 60)
           )
@@ -1019,25 +977,24 @@
         )
     (fall-test target-falling -4096000.0)
     (slide-down-test)
-    (none)
     )
   :code (behavior ((arg0 symbol))
     (let ((gp-0 (if (using-gun? self)
-                    (-> self draw art-group data 302)
-                    (-> self draw art-group data 21)
+                    jakb-gun-duck-walk-ja
+                    jakb-duck-walk-ja
                     )
                 )
           (v1-6 (ja-group))
           )
       (cond
-        ((and (and v1-6 (or (= v1-6 (-> self draw art-group data 21)) (= v1-6 (-> self draw art-group data 302))))
+        ((and (and v1-6 (or (= v1-6 jakb-duck-walk-ja) (= v1-6 jakb-gun-duck-walk-ja)))
               (= (-> self skel root-channel 0) (-> self skel channel))
               )
          )
         (else
           (let ((v1-16 (ja-group)))
             (cond
-              ((and v1-16 (= v1-16 (-> self draw art-group data 20)))
+              ((and v1-16 (= v1-16 jakb-duck-stance-ja))
                (ja-channel-push! 1 (seconds 0.45))
                (ja :group! gp-0 :num! min)
                )
@@ -1064,7 +1021,6 @@
       (suspend)
       )
     #f
-    (none)
     )
   :post target-post
   )
@@ -1075,9 +1031,9 @@
       (let ((s5-0 (-> gp-0 frame-group))
             (f0-0 (ja-aframe-num 0))
             )
-        (when (or (= s5-0 (-> self draw art-group data 304)) (= s5-0 (-> self draw art-group data 300)))
+        (when (or (= s5-0 jakb-gun-side-jump-ja) (= s5-0 jakb-gun-front-jump-ja))
           (let ((v1-13 (ja-group)))
-            (if (and v1-13 (= v1-13 (-> self draw art-group data 30)))
+            (if (and v1-13 (= v1-13 jakb-duck-high-jump-ja))
                 (set! (-> gp-0 frame-num) (/ (- f0-0 (+ 16.0 (-> s5-0 artist-base))) (-> s5-0 artist-step)))
                 (set! (-> gp-0 frame-num) (/ (- f0-0 (-> s5-0 artist-base)) (-> s5-0 artist-step)))
                 )
@@ -1105,7 +1061,7 @@
         (go target-launch (the-as float a0-7) (the-as symbol a1-3) a2-3 (-> self control unknown-dword10))
         )
       )
-    (set! (-> self state-time) (current-time))
+    (set-time! (-> self state-time))
     (sound-play "jump" :vol 70)
     (init-var-jump arg0 arg1 #t #t (-> self control transv) 2.0)
     (logclear! (-> self control status) (collide-status on-surface on-ground touch-surface))
@@ -1126,7 +1082,6 @@
     (set! (-> self control unknown-float35)
           (fmax 0.0 (fmin 1.0 (* 0.000048828126 (+ -10240.0 (-> self control ctrl-xz-vel)))))
           )
-    (none)
     )
   :exit target-exit
   :trans (behavior ()
@@ -1140,7 +1095,7 @@
           (a0-1 #f)
           (v1-12 (ja-group))
           )
-      (t9-0 a0-1 (the-as time-frame (if (and v1-12 (= v1-12 (-> self draw art-group data 27)))
+      (t9-0 a0-1 (the-as time-frame (if (and v1-12 (= v1-12 jakb-jump-loop-ja))
                                         15
                                         -1
                                         )
@@ -1163,9 +1118,7 @@
                      (* 26624.0 (-> self darkjak-giant-interp) (-> self darkjak-giant-interp))
                      )
                   (< -61440.0 (vector-dot (-> self control dynam gravity-normal) (-> self control transv)))
-                  (and (>= (- (current-time) (-> self control last-time-of-stuck))
-                           (the-as time-frame (-> *TARGET-bank* stuck-timeout))
-                           )
+                  (and (time-elapsed? (-> self control last-time-of-stuck) (the-as time-frame (-> *TARGET-bank* stuck-timeout)))
                        (not (logtest? (-> self state-flags) (state-flags prevent-attack)))
                        (not (logtest? (-> self control current-surface flags) (surface-flag no-attack no-hands)))
                        (not (and (not (using-gun? self)) (!= (-> self skel top-anim interp) 0.0)))
@@ -1188,9 +1141,8 @@
     (seek!
       (-> self control unknown-float35)
       (fmax 0.0 (fmin 1.0 (* 0.000048828126 (+ -10240.0 (-> self control ctrl-xz-vel)))))
-      (-> self clock seconds-per-frame)
+      (seconds-per-frame)
       )
-    (none)
     )
   :code (behavior ((arg0 float) (arg1 float) (arg2 surface))
     (let ((f28-0 20.0)
@@ -1200,21 +1152,12 @@
         (set! (-> self gun top-anim-low-high) 0.0)
         (case (-> self gun gun-type)
           (((pickup-type eco-blue))
-           (push-anim-to-targ
-             (-> self skel top-anim)
-             (the-as art-joint-anim (-> self draw art-group data 304))
-             0.0
-             30
-             30
-             1.0
-             0.0
-             #f
-             )
+           (push-anim-to-targ (-> self skel top-anim) (the-as art-joint-anim jakb-gun-side-jump-ja) 0.0 30 30 1.0 0.0 #f)
            )
           (else
             (push-anim-to-targ
               (-> self skel top-anim)
-              (the-as art-joint-anim (-> self draw art-group data 300))
+              (the-as art-joint-anim jakb-gun-front-jump-ja)
               0.0
               30
               30
@@ -1227,19 +1170,16 @@
         )
       (let ((v1-18 (ja-group)))
         (cond
-          ((and (and v1-18 (= v1-18 (-> self draw art-group data 54)))
-                (>= 25.0 (ja-aframe-num 0))
-                (>= (ja-aframe-num 0) 17.0)
-                )
+          ((and (and v1-18 (= v1-18 jakb-flop-down-land-ja)) (>= 25.0 (ja-aframe-num 0)) (>= (ja-aframe-num 0) 17.0))
            (set! (-> self neck flex-blend) 0.0)
            (ja-channel-push! 1 0)
            (cond
              ((using-gun? self)
-              (ja :group! (-> self draw art-group data 30) :num! (identity (ja-aframe 16.0 0)))
+              (ja :group! jakb-duck-high-jump-ja :num! (identity (ja-aframe 16.0 0)))
               (set! f28-0 35.0)
               )
              (else
-               (ja :group! (-> self draw art-group data 58) :num! (identity (ja-aframe 25.0 0)))
+               (ja :group! jakb-flop-jump-ja :num! (identity (ja-aframe 25.0 0)))
                (set! f28-0 24.0)
                (set! f30-0 0.3)
                )
@@ -1247,40 +1187,32 @@
            )
           ((and (focus-test? self dark) (nonzero? (-> self darkjak)))
            (ja-channel-push! 1 (seconds 0.05))
-           (ja :group! (-> self draw art-group data 394) :num! min)
+           (ja :group! jakb-darkjak-jump-ja :num! min)
            (suspend)
            0
            )
           (else
             (ja-channel-push! 2 (seconds 0.05))
-            (ja :group! (-> self draw art-group data 23) :num! min)
+            (ja :group! jakb-jump-ja :num! min)
             (let ((a0-23 (-> self skel root-channel 1)))
               (let ((f0-8 (-> self control unknown-float35)))
                 (set! (-> a0-23 frame-interp 1) f0-8)
                 (set! (-> a0-23 frame-interp 0) f0-8)
                 )
-              (set! (-> a0-23 frame-group) (the-as art-joint-anim (-> self draw art-group data 29)))
+              (set! (-> a0-23 frame-group) (the-as art-joint-anim jakb-jump-forward-ja))
               (set! (-> a0-23 param 0) 0.0)
-              (joint-control-channel-group-eval!
-                a0-23
-                (the-as art-joint-anim (-> self draw art-group data 29))
-                num-func-chan
-                )
+              (joint-control-channel-group-eval! a0-23 (the-as art-joint-anim jakb-jump-forward-ja) num-func-chan)
               )
             (suspend)
-            (ja :group! (-> self draw art-group data 23) :num! (+!))
+            (ja :group! jakb-jump-ja :num! (+!))
             (let ((a0-25 (-> self skel root-channel 1)))
               (let ((f0-11 (-> self control unknown-float35)))
                 (set! (-> a0-25 frame-interp 1) f0-11)
                 (set! (-> a0-25 frame-interp 0) f0-11)
                 )
-              (set! (-> a0-25 frame-group) (the-as art-joint-anim (-> self draw art-group data 29)))
+              (set! (-> a0-25 frame-group) (the-as art-joint-anim jakb-jump-forward-ja))
               (set! (-> a0-25 param 0) 0.0)
-              (joint-control-channel-group-eval!
-                a0-25
-                (the-as art-joint-anim (-> self draw art-group data 29))
-                num-func-chan
-                )
+              (joint-control-channel-group-eval! a0-25 (the-as art-joint-anim jakb-jump-forward-ja) num-func-chan)
               )
             (suspend)
             0
@@ -1314,7 +1246,6 @@
       )
     (target-falling-anim -1 (seconds 0.2))
     (go target-falling #f)
-    (none)
     )
   :post target-post
   )
@@ -1324,7 +1255,6 @@
   :enter (behavior ((arg0 float) (arg1 float))
     ((-> target-jump enter) arg0 arg1 (the-as surface #f))
     (set! (-> self control mod-surface) *forward-jump-mods*)
-    (none)
     )
   :exit target-exit
   :trans (-> target-jump trans)
@@ -1333,21 +1263,12 @@
       (set! (-> self gun top-anim-low-high) 0.0)
       (case (-> self gun gun-type)
         (((pickup-type eco-blue))
-         (push-anim-to-targ
-           (-> self skel top-anim)
-           (the-as art-joint-anim (-> self draw art-group data 304))
-           3.0
-           30
-           30
-           1.0
-           0.0
-           #f
-           )
+         (push-anim-to-targ (-> self skel top-anim) (the-as art-joint-anim jakb-gun-side-jump-ja) 3.0 30 30 1.0 0.0 #f)
          )
         (else
           (push-anim-to-targ
             (-> self skel top-anim)
-            (the-as art-joint-anim (-> self draw art-group data 300))
+            (the-as art-joint-anim jakb-gun-front-jump-ja)
             3.0
             30
             30
@@ -1359,23 +1280,19 @@
         )
       )
     (ja-channel-set! 1)
-    (ja-no-eval :group! (-> self draw art-group data 23)
-                :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 23)) frames num-frames) -1)))
-                :frame-num (ja-aframe 3.0 0)
-                )
+    (ja-no-eval :group! jakb-jump-ja :num! (seek!) :frame-num (ja-aframe 3.0 0))
     (until (ja-done? 0)
       (set! (-> self control time-of-last-clear-wall-in-jump) 0)
       (suspend)
       (ja :num! (seek!))
       )
-    (ja-no-eval :group! (-> self draw art-group data 27) :num! (loop!) :frame-num 0.0)
+    (ja-no-eval :group! jakb-jump-loop-ja :num! (loop!) :frame-num 0.0)
     (until #f
       (suspend)
       (target-jump-top-anim)
-      (ja :group! (-> self draw art-group data 27) :num! (loop!))
+      (ja :group! jakb-jump-loop-ja :num! (loop!))
       )
     #f
-    (none)
     )
   :post target-post
   )
@@ -1393,13 +1310,12 @@
         (go target-launch (the-as float a0-3) (the-as symbol a1-1) a2-0 (-> self control unknown-dword10))
         )
       )
-    (set! (-> self state-time) (current-time))
+    (set-time! (-> self state-time))
     (init-var-jump arg0 arg1 #t #t (-> self control transv) 2.0)
     (logclear! (-> self control status) (collide-status on-surface on-ground touch-surface))
     (if (!= (-> self control mod-surface) *slide-jump-mods*)
         (set! (-> self control mod-surface) *double-jump-mods*)
         )
-    (none)
     )
   :exit target-exit
   :trans (behavior ()
@@ -1407,7 +1323,7 @@
           (a0-0 #f)
           (v1-2 (ja-group))
           )
-      (t9-0 a0-0 (the-as time-frame (if (and v1-2 (= v1-2 (-> self draw art-group data 27)))
+      (t9-0 a0-0 (the-as time-frame (if (and v1-2 (= v1-2 jakb-jump-loop-ja))
                                         15
                                         -1
                                         )
@@ -1417,9 +1333,7 @@
     (if (and (cpad-pressed? (-> self control cpad number) square)
              (< (vector-dot (-> self control dynam gravity-normal) (-> self control transv)) 22118.4)
              (< -61440.0 (vector-dot (-> self control dynam gravity-normal) (-> self control transv)))
-             (and (>= (- (current-time) (-> self control last-time-of-stuck))
-                      (the-as time-frame (-> *TARGET-bank* stuck-timeout))
-                      )
+             (and (time-elapsed? (-> self control last-time-of-stuck) (the-as time-frame (-> *TARGET-bank* stuck-timeout)))
                   (not (logtest? (-> self state-flags) (state-flags prevent-attack)))
                   (not (logtest? (-> self control current-surface flags) (surface-flag no-attack no-hands)))
                   (not (and (not (using-gun? self)) (!= (-> self skel top-anim interp) 0.0)))
@@ -1442,9 +1356,8 @@
     (seek!
       (-> self control unknown-float35)
       (fmax 0.0 (fmin 1.0 (* 0.000048828126 (+ -10240.0 (-> self control ctrl-xz-vel)))))
-      (-> self clock seconds-per-frame)
+      (seconds-per-frame)
       )
-    (none)
     )
   :code (behavior ((arg0 float) (arg1 float))
     (sound-play "jump-double")
@@ -1452,21 +1365,12 @@
       (set! (-> self gun top-anim-low-high) 0.0)
       (case (-> self gun gun-type)
         (((pickup-type eco-blue))
-         (push-anim-to-targ
-           (-> self skel top-anim)
-           (the-as art-joint-anim (-> self draw art-group data 304))
-           7.0
-           30
-           30
-           1.0
-           0.0
-           #f
-           )
+         (push-anim-to-targ (-> self skel top-anim) (the-as art-joint-anim jakb-gun-side-jump-ja) 7.0 30 30 1.0 0.0 #f)
          )
         (else
           (push-anim-to-targ
             (-> self skel top-anim)
-            (the-as art-joint-anim (-> self draw art-group data 300))
+            (the-as art-joint-anim jakb-gun-front-jump-ja)
             7.0
             30
             30
@@ -1480,18 +1384,12 @@
     (cond
       ((and (focus-test? self dark) (nonzero? (-> self darkjak)))
        (ja-channel-push! 1 (seconds 0.05))
-       (ja-no-eval :group! (-> self draw art-group data 394)
-                   :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 394)) frames num-frames) -1)))
-                   :frame-num (ja-aframe 7.0 0)
-                   )
+       (ja-no-eval :group! jakb-darkjak-jump-ja :num! (seek!) :frame-num (ja-aframe 7.0 0))
        )
       (else
         (ja-channel-push! 2 (seconds 0.05))
-        (ja-no-eval :group! (-> self draw art-group data 23)
-                    :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 23)) frames num-frames) -1)))
-                    :frame-num (ja-aframe 5.0 0)
-                    )
-        (ja :chan 1 :group! (-> self draw art-group data 29) :num! (chan 0))
+        (ja-no-eval :group! jakb-jump-ja :num! (seek!) :frame-num (ja-aframe 5.0 0))
+        (ja :chan 1 :group! jakb-jump-forward-ja :num! (chan 0))
         )
       )
     (until (ja-done? 0)
@@ -1511,7 +1409,6 @@
       )
     (target-falling-anim -1 (seconds 0.2))
     (go target-falling #f)
-    (none)
     )
   :post target-post
   )
@@ -1533,7 +1430,7 @@
     (if (or (= arg2 'duck) (= arg2 'launch))
         (go target-duck-high-jump arg0 arg1 (the-as symbol arg2))
         )
-    (set! (-> self state-time) (current-time))
+    (set-time! (-> self state-time))
     (logclear! (-> self control status) (collide-status on-surface on-ground touch-surface))
     (sound-play "jump" :pitch 0.3)
     (init-var-jump arg0 arg1 #t #t (-> self control transv) 2.0)
@@ -1552,7 +1449,6 @@
     (set! (-> self control unknown-float35)
           (fmax 0.0 (fmin 0.5 (* 0.00008138021 (+ -409.6 (-> self control ctrl-xz-vel)))))
           )
-    (none)
     )
   :exit target-exit
   :trans (behavior ()
@@ -1560,7 +1456,7 @@
           (a0-0 #f)
           (v1-2 (ja-group))
           )
-      (t9-0 a0-0 (the-as time-frame (if (and v1-2 (= v1-2 (-> self draw art-group data 27)))
+      (t9-0 a0-0 (the-as time-frame (if (and v1-2 (= v1-2 jakb-jump-loop-ja))
                                         15
                                         -1
                                         )
@@ -1576,9 +1472,7 @@
                        )
              (< (vector-dot (-> self control dynam gravity-normal) (-> self control transv)) 73728.0)
              (< -61440.0 (vector-dot (-> self control dynam gravity-normal) (-> self control transv)))
-             (and (>= (- (current-time) (-> self control last-time-of-stuck))
-                      (the-as time-frame (-> *TARGET-bank* stuck-timeout))
-                      )
+             (and (time-elapsed? (-> self control last-time-of-stuck) (the-as time-frame (-> *TARGET-bank* stuck-timeout)))
                   (not (logtest? (-> self state-flags) (state-flags prevent-attack)))
                   (not (logtest? (-> self control current-surface flags) (surface-flag no-attack no-hands)))
                   (not (and (not (using-gun? self)) (!= (-> self skel top-anim interp) 0.0)))
@@ -1599,9 +1493,8 @@
     (seek!
       (-> self control unknown-float35)
       (fmax 0.0 (fmin 1.0 (* 0.00012207031 (+ -2048.0 (-> self control ctrl-xz-vel)))))
-      (-> self clock seconds-per-frame)
+      (seconds-per-frame)
       )
-    (none)
     )
   :code (-> target-jump code)
   :post target-post
@@ -1610,7 +1503,7 @@
 (defstate target-duck-high-jump (target)
   :event target-standard-event-handler
   :enter (behavior ((arg0 float) (arg1 float) (arg2 symbol))
-    (set! (-> self state-time) (current-time))
+    (set-time! (-> self state-time))
     (logclear! (-> self control status) (collide-status on-surface on-ground touch-surface))
     (set! (-> self control mod-surface) *turn-around-mods*)
     (case arg2
@@ -1619,32 +1512,28 @@
       (else
         )
       )
-    (none)
     )
   :exit target-exit
   :code (behavior ((arg0 float) (arg1 float) (arg2 symbol))
     (let ((v1-2 (ja-group)))
-      (if (not (and (and v1-2 (= v1-2 (-> self draw art-group data 20)))
-                    (= (-> self skel root-channel 0) (-> self skel channel))
-                    )
-               )
+      (if (not (and (and v1-2 (= v1-2 jakb-duck-stance-ja)) (= (-> self skel root-channel 0) (-> self skel channel))))
           (ja-channel-push! 1 (seconds 0.04))
           )
       )
     (let ((v1-11 arg2))
       (cond
         ((or (= v1-11 'flop) (= v1-11 'flop-forward))
-         (ja-no-eval :group! (-> self draw art-group data 58) :num! (seek! (ja-aframe 25.0 0)) :frame-num 0.0)
+         (ja-no-eval :group! jakb-flop-jump-ja :num! (seek! (ja-aframe 25.0 0)) :frame-num 0.0)
          (until (ja-done? 0)
            (suspend)
            (ja :num! (seek! (ja-aframe 25.0 0)))
            )
          )
         ((using-gun? self)
-         (ja :group! (-> self draw art-group data 30) :num! (identity (ja-aframe 16.0 0)))
+         (ja :group! jakb-duck-high-jump-ja :num! (identity (ja-aframe 16.0 0)))
          )
         (else
-          (ja-no-eval :group! (-> self draw art-group data 30) :num! (seek! (ja-aframe 16.0 0)) :frame-num 0.0)
+          (ja-no-eval :group! jakb-duck-high-jump-ja :num! (seek! (ja-aframe 16.0 0)) :frame-num 0.0)
           (until (ja-done? 0)
             (suspend)
             (ja :num! (seek! (ja-aframe 16.0 0)))
@@ -1653,7 +1542,6 @@
         )
       )
     (go target-duck-high-jump-jump arg0 arg1 arg2)
-    (none)
     )
   :post target-post
   )
@@ -1662,7 +1550,7 @@
   :event target-jump-event-handler
   :enter (behavior ((arg0 float) (arg1 float) (arg2 symbol))
     (set! (-> self control unknown-symbol03) (the-as float arg2))
-    (set! (-> self state-time) (current-time))
+    (set-time! (-> self state-time))
     (sound-play "jump" :vol 80 :pitch -0.4)
     (init-var-jump arg0 arg1 #t #f (-> self control transv) 2.0)
     (logclear! (-> self control status) (collide-status on-surface on-ground touch-surface))
@@ -1675,7 +1563,6 @@
         (set! (-> self control mod-surface) *high-jump-mods*)
         )
       )
-    (none)
     )
   :exit target-exit
   :trans (behavior ()
@@ -1703,28 +1590,18 @@
           )
         )
       )
-    (none)
     )
   :code (behavior ((arg0 float) (arg1 float) (arg2 symbol))
     (when (using-gun? self)
       (set! (-> self gun top-anim-low-high) 0.0)
       (case (-> self gun gun-type)
         (((pickup-type eco-blue))
-         (push-anim-to-targ
-           (-> self skel top-anim)
-           (the-as art-joint-anim (-> self draw art-group data 304))
-           0.0
-           30
-           30
-           1.0
-           0.0
-           #f
-           )
+         (push-anim-to-targ (-> self skel top-anim) (the-as art-joint-anim jakb-gun-side-jump-ja) 0.0 30 30 1.0 0.0 #f)
          )
         (else
           (push-anim-to-targ
             (-> self skel top-anim)
-            (the-as art-joint-anim (-> self draw art-group data 300))
+            (the-as art-joint-anim jakb-gun-front-jump-ja)
             0.0
             30
             30
@@ -1784,23 +1661,22 @@
     (cond
       ((or (= arg2 'flop) (= arg2 'flop-forward))
        (ja-channel-push! 1 (seconds 0.5))
-       (ja-no-eval :group! (-> self draw art-group data 27) :num! (loop!) :frame-num 0.0)
+       (ja-no-eval :group! jakb-jump-loop-ja :num! (loop!) :frame-num 0.0)
        (until #f
          (suspend)
-         (ja :group! (-> self draw art-group data 27) :num! (loop!))
+         (ja :group! jakb-jump-loop-ja :num! (loop!))
          )
        #f
        )
       (else
-        (ja-no-eval :group! (-> self draw art-group data 27) :num! (loop!) :frame-num 0.0)
+        (ja-no-eval :group! jakb-jump-loop-ja :num! (loop!) :frame-num 0.0)
         (until #f
           (suspend)
-          (ja :group! (-> self draw art-group data 27) :num! (loop!))
+          (ja :group! jakb-jump-loop-ja :num! (loop!))
           )
         #f
         )
       )
-    (none)
     )
   :post target-post
   )
@@ -1817,8 +1693,7 @@
         )
       )
     (set! (-> self control unknown-word04) (the-as uint arg0))
-    (set! (-> self state-time) (current-time))
-    (none)
+    (set-time! (-> self state-time))
     )
   :trans (behavior ()
     (target-falling-trans
@@ -1829,7 +1704,6 @@
                              )
               )
       )
-    (none)
     )
   :code (behavior ((arg0 symbol))
     (case arg0
@@ -1846,10 +1720,7 @@
        )
       (('hit)
        (ja-channel-push! 1 (seconds 0.3))
-       (ja-no-eval :group! (-> self draw art-group data 66)
-                   :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 66)) frames num-frames) -1)))
-                   :frame-num (ja-aframe 15.0 0)
-                   )
+       (ja-no-eval :group! jakb-hit-from-front-ja :num! (seek!) :frame-num (ja-aframe 15.0 0))
        (until (ja-done? 0)
          (suspend)
          (ja :num! (seek!))
@@ -1857,7 +1728,6 @@
        )
       )
     (target-falling-anim -1 (seconds 0.33))
-    (none)
     )
   :post target-post
   )
@@ -1924,7 +1794,7 @@
         (((pickup-type eco-blue))
          (push-anim-to-targ
            (-> self skel top-anim)
-           (the-as art-joint-anim (-> self draw art-group data 305))
+           (the-as art-joint-anim jakb-gun-side-jump-land-ja)
            0.0
            30
            30
@@ -1936,7 +1806,7 @@
         (((pickup-type eco-red) (pickup-type eco-dark))
          (push-anim-to-targ
            (-> self skel top-anim)
-           (the-as art-joint-anim (-> self draw art-group data 301))
+           (the-as art-joint-anim jakb-gun-front-jump-land-ja)
            0.0
            30
            30
@@ -1948,7 +1818,7 @@
         (else
           (push-anim-to-targ
             (-> self skel top-anim)
-            (the-as art-joint-anim (-> self draw art-group data 301))
+            (the-as art-joint-anim jakb-gun-front-jump-land-ja)
             0.0
             30
             30
@@ -1959,11 +1829,9 @@
           )
         )
       )
-    (none)
     )
   :exit (behavior ()
     (logclear! (-> self state-flags) (state-flags lleg-still rleg-still lleg-no-ik rleg-no-ik))
-    (none)
     )
   :trans (behavior ()
     (if (and (logtest? (logior (logior (-> *cpad-list* cpads (-> self control cpad number) button0-rel 0)
@@ -2010,12 +1878,10 @@
         )
     (fall-test target-falling -4096000.0)
     (slide-down-test)
-    (none)
     )
   :code (behavior ((arg0 symbol))
     (target-hit-ground-anim #f (are-still?))
     (go target-stance)
-    (none)
     )
   :post target-post
   )
@@ -2081,24 +1947,24 @@
   )
 
 (defstate target-attack (target)
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('touched)
        (cond
          (((method-of-type touching-shapes-entry prims-touching?)
-           (the-as touching-shapes-entry (-> event param 0))
+           (the-as touching-shapes-entry (-> block param 0))
            (-> self control)
            (the-as uint 1920)
            )
           (when (target-send-attack
                   proc
                   (-> self control danger-mode)
-                  (the-as touching-shapes-entry (-> event param 0))
+                  (the-as touching-shapes-entry (-> block param 0))
                   (the-as int (-> self control target-attack-id))
                   (the-as int (-> self control attack-count))
                   (-> self control penetrate-using)
                   )
-            (set! (-> self gun combo-window-start) (current-time))
+            (set-time! (-> self gun combo-window-start))
             (let ((v0-2 (the-as object (-> self state name))))
               (set! (-> self gun combo-window-state) (the-as symbol v0-2))
               v0-2
@@ -2106,12 +1972,12 @@
             )
           )
          (else
-           (target-dangerous-event-handler proc arg1 event-type event)
+           (target-dangerous-event-handler proc argc message block)
            )
          )
        )
       (('gun-combo)
-       (when (-> event param 0)
+       (when (-> block param 0)
          (forward-up-nopitch->quaternion
            (-> self control dir-targ)
            (vector-! (new 'stack-no-clear 'vector) (-> self gun track-trans) (-> self control trans))
@@ -2126,12 +1992,12 @@
        #f
        )
       (else
-        (target-dangerous-event-handler proc arg1 event-type event)
+        (target-dangerous-event-handler proc argc message block)
         )
       )
     )
   :enter (behavior ()
-    (set! (-> self state-time) (current-time))
+    (set-time! (-> self state-time))
     (target-start-attack)
     (target-danger-set! 'spin #f)
     (set! (-> self control mod-surface) *attack-mods*)
@@ -2149,21 +2015,19 @@
     (quaternion-copy! (-> self control unknown-quaternion04) (-> self control dir-targ))
     (set! (-> self control unknown-float41) 0.0)
     (set! (-> self control unknown-float42) 0.0)
-    (none)
     )
   :exit (behavior ()
     (if (zero? (-> self gun track-target-hold-time))
         (quaternion-copy! (-> self control dir-targ) (-> self control unknown-quaternion04))
         )
-    (set! (-> self control last-attack-end-time) (current-time))
+    (set-time! (-> self control last-attack-end-time))
     (target-exit)
-    (none)
     )
   :code (behavior ()
-    (let ((gp-0 (-> self draw art-group data 40)))
+    (let ((gp-0 jakb-attack-from-stance-ja))
       (cond
         ((and (focus-test? self dark) (nonzero? (-> self darkjak)))
-         (set! gp-0 (-> self draw art-group data 399))
+         (set! gp-0 jakb-darkjak-attack-spin-ja)
          (quaternion-rotate-y! (-> self control quat-for-control) (-> self control quat-for-control) -1365.3334)
          )
         ((using-gun? self)
@@ -2172,7 +2036,7 @@
            (((pickup-type eco-yellow))
             (push-anim-to-targ
               (-> self skel top-anim)
-              (the-as art-joint-anim (-> self draw art-group data 248))
+              (the-as art-joint-anim jakb-gun-attack-from-stance-ja)
               0.0
               30
               30
@@ -2180,13 +2044,13 @@
               0.0
               #f
               )
-            (set! gp-0 (-> self draw art-group data 248))
+            (set! gp-0 jakb-gun-attack-from-stance-ja)
             (quaternion-rotate-y! (-> self control quat-for-control) (-> self control quat-for-control) -3276.8)
             )
            (((pickup-type eco-blue))
             (push-anim-to-targ
               (-> self skel top-anim)
-              (the-as art-joint-anim (-> self draw art-group data 250))
+              (the-as art-joint-anim jakb-gun-attack-from-stance-blue-ja)
               0.0
               30
               30
@@ -2194,12 +2058,12 @@
               0.0
               #f
               )
-            (set! gp-0 (-> self draw art-group data 250))
+            (set! gp-0 jakb-gun-attack-from-stance-blue-ja)
             )
            (else
              (push-anim-to-targ
                (-> self skel top-anim)
-               (the-as art-joint-anim (-> self draw art-group data 248))
+               (the-as art-joint-anim jakb-gun-attack-from-stance-ja)
                0.0
                30
                30
@@ -2207,7 +2071,7 @@
                0.0
                #f
                )
-             (set! gp-0 (-> self draw art-group data 248))
+             (set! gp-0 jakb-gun-attack-from-stance-ja)
              (quaternion-rotate-y! (-> self control quat-for-control) (-> self control quat-for-control) -3276.8)
              )
            )
@@ -2218,13 +2082,7 @@
         )
       (ja-channel-push! 1 (seconds 0.05))
       (set! (-> self control unknown-sound-id01) (sound-play "spin-kick"))
-      (ja-no-eval :group! gp-0
-                  :num! (seek!
-                    (the float (+ (-> (the-as art-joint-anim gp-0) frames num-frames) -1))
-                    (-> self control current-surface align-speed)
-                    )
-                  :frame-num 0.0
-                  )
+      (ja-no-eval :group! gp-0 :num! (seek! max (-> self control current-surface align-speed)) :frame-num 0.0)
       )
     (until (ja-done? 0)
       (compute-alignment! (-> self align))
@@ -2259,7 +2117,7 @@
            (((pickup-type eco-blue))
             (push-anim-to-targ
               (-> self skel top-anim)
-              (the-as art-joint-anim (-> self draw art-group data 251))
+              (the-as art-joint-anim jakb-gun-attack-from-stance-blue-end-ja)
               0.0
               0
               60
@@ -2272,7 +2130,7 @@
            (((pickup-type eco-yellow))
             (push-anim-to-targ
               (-> self skel top-anim)
-              (the-as art-joint-anim (-> self draw art-group data 249))
+              (the-as art-joint-anim jakb-gun-attack-from-stance-end-ja)
               0.0
               0
               60
@@ -2285,7 +2143,7 @@
            (else
              (push-anim-to-targ
                (-> self skel top-anim)
-               (the-as art-joint-anim (-> self draw art-group data 249))
+               (the-as art-joint-anim jakb-gun-attack-from-stance-end-ja)
                0.0
                0
                60
@@ -2303,7 +2161,6 @@
         )
       )
     (go target-stance)
-    (none)
     )
   :post target-post
   )
@@ -2335,19 +2192,19 @@
         )
 
 (defstate target-running-attack (target)
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('touched)
        (cond
          (((method-of-type touching-shapes-entry prims-touching?)
-           (the-as touching-shapes-entry (-> event param 0))
+           (the-as touching-shapes-entry (-> block param 0))
            (-> self control)
            (the-as uint 1920)
            )
           (let ((gp-1 (target-send-attack
                         proc
                         (-> self control danger-mode)
-                        (the-as touching-shapes-entry (-> event param 0))
+                        (the-as touching-shapes-entry (-> block param 0))
                         (the-as int (-> self control target-attack-id))
                         (the-as int (-> self control attack-count))
                         (-> self control penetrate-using)
@@ -2355,8 +2212,8 @@
                       )
                 )
             (when gp-1
-              (set! (-> self control sliding-start-time) (current-time))
-              (set! (-> self gun combo-window-start) (current-time))
+              (set-time! (-> self control sliding-start-time))
+              (set-time! (-> self gun combo-window-start))
               (set! (-> self gun combo-window-state) (-> self state name))
               (let ((v1-13 (if (type? proc process-focusable)
                                proc
@@ -2397,12 +2254,12 @@
             )
           )
          (else
-           (target-dangerous-event-handler proc arg1 event-type event)
+           (target-dangerous-event-handler proc argc message block)
            )
          )
        )
       (('gun-combo)
-       (if (-> event param 0)
+       (if (-> block param 0)
            (go target-stance)
            )
        #t
@@ -2411,7 +2268,7 @@
        #f
        )
       (else
-        (target-dangerous-event-handler proc arg1 event-type event)
+        (target-dangerous-event-handler proc argc message block)
         )
       )
     )
@@ -2423,7 +2280,7 @@
         )
     (logclear! (-> *cpad-list* cpads (-> self control cpad number) button0-abs 0) (pad-buttons square))
     (logclear! (-> *cpad-list* cpads (-> self control cpad number) button0-rel 0) (pad-buttons square))
-    (set! (-> self state-time) (current-time))
+    (set-time! (-> self state-time))
     (combo-tracker-method-12
       (-> self control unknown-combo-tracker00)
       *null-vector*
@@ -2452,16 +2309,14 @@
         (set! (-> self control bend-target) 1.0)
         )
     (set! (-> self upper-body twist z) 0.0)
-    (none)
     )
   :exit (behavior ()
     (set! (-> self control dynam gravity-max) (-> self control standard-dynamics gravity-max))
     (set! (-> self control dynam gravity-length) (-> self control standard-dynamics gravity-length))
     (set! (-> *run-attack-mods* turnv) 0.0)
     (set! (-> *run-attack-mods* turnvv) 0.0)
-    (set! (-> self control last-running-attack-end-time) (current-time))
+    (set-time! (-> self control last-running-attack-end-time))
     (target-exit)
-    (none)
     )
   :trans (behavior ()
     (when (!= (-> self state-time) (current-time))
@@ -2471,7 +2326,7 @@
                           )
                      )
                  (begin
-                   (set! (-> self control unknown-time-frame18) (current-time))
+                   (set-time! (-> self control unknown-time-frame18))
                    (set! (-> self control bend-target) 0.0)
                    (let ((v1-11 (new-stack-vector0))
                          (f0-3 (vector-dot (-> self control dynam gravity-normal) (-> self control transv)))
@@ -2492,20 +2347,20 @@
                    #t
                    )
                  (or (zero? (-> self control sliding-start-time))
-                     (>= (- (current-time) (-> self control sliding-start-time)) (seconds 0.04))
+                     (time-elapsed? (-> self control sliding-start-time) (seconds 0.04))
                      )
                  (!= (-> self control unknown-word04) 1)
                  )
         )
       (if (and (cpad-pressed? (-> self control cpad number) x)
                (< 4096.0 (-> self control ctrl-xz-vel))
-               (or (>= (- (current-time) (-> self state-time)) (seconds 0.1))
+               (or (time-elapsed? (-> self state-time) (seconds 0.1))
                    (not (logtest? (-> *cpad-list* cpads (-> self control cpad number) button0-abs 0) (pad-buttons square)))
                    )
                (not (logtest? (-> self state-flags) (state-flags prevent-jump prevent-attack)))
                (not (logtest? (-> self control current-surface flags) (surface-flag no-attack)))
                (let ((v1-48 (ja-group)))
-                 (and (not (and v1-48 (= v1-48 (-> self draw art-group data 406))))
+                 (and (not (and v1-48 (= v1-48 jakb-darkjak-attack-combo3-ja)))
                       (and (not (logtest? (-> self control current-surface flags) (surface-flag no-jump)))
                            (not (logtest? (-> self state-flags) (state-flags prevent-jump)))
                            )
@@ -2524,7 +2379,7 @@
           (spawn-ripples
             (-> self water)
             0.6
-            (vector<-cspace! (new 'stack-no-clear 'vector) (-> self node-list data 8))
+            (vector<-cspace! (new 'stack-no-clear 'vector) (joint-node jakb-lod0-jg neckB))
             0
             (-> self control transv)
             #f
@@ -2536,7 +2391,6 @@
         (talker-spawn-func (-> *talker-speech* 328) *entity-pool* (target-pos 0) (the-as region #f))
         )
       )
-    (none)
     )
   :code (behavior ()
     (if (logtest? (water-flags touch-water) (-> self water flags))
@@ -2544,7 +2398,7 @@
         )
     (set! (-> self control dynam gravity-max) 368640.0)
     (set! (-> self control dynam gravity-length) 368640.0)
-    (let ((gp-1 (-> self draw art-group data 48)))
+    (let ((gp-1 jakb-attack-punch-ja))
       (ja-channel-push! 1 (seconds 0.02))
       (when (using-gun? self)
         (set! (-> self gun top-anim-low-high) 0.0)
@@ -2552,7 +2406,7 @@
           (((pickup-type eco-yellow))
            (push-anim-to-targ
              (-> self skel top-anim)
-             (the-as art-joint-anim (-> self draw art-group data 273))
+             (the-as art-joint-anim jakb-gun-attack-butt-ja)
              0.0
              30
              60
@@ -2560,12 +2414,12 @@
              0.0
              #f
              )
-           (set! gp-1 (-> self draw art-group data 275))
+           (set! gp-1 jakb-gun-attack-butt-blue-ja)
            )
           (((pickup-type eco-blue))
            (push-anim-to-targ
              (-> self skel top-anim)
-             (the-as art-joint-anim (-> self draw art-group data 275))
+             (the-as art-joint-anim jakb-gun-attack-butt-blue-ja)
              0.0
              30
              60
@@ -2573,12 +2427,12 @@
              0.0
              #f
              )
-           (set! gp-1 (-> self draw art-group data 275))
+           (set! gp-1 jakb-gun-attack-butt-blue-ja)
            )
           (else
             (push-anim-to-targ
               (-> self skel top-anim)
-              (the-as art-joint-anim (-> self draw art-group data 273))
+              (the-as art-joint-anim jakb-gun-attack-butt-ja)
               0.0
               30
               60
@@ -2586,11 +2440,11 @@
               0.0
               #f
               )
-            (set! gp-1 (-> self draw art-group data 273))
+            (set! gp-1 jakb-gun-attack-butt-ja)
             )
           )
         )
-      (ja-no-eval :group! gp-1 :num! (seek! (the float (+ (-> (the-as art-joint-anim gp-1) frames num-frames) -1))))
+      (ja-no-eval :group! gp-1 :num! (seek!))
       )
     (target-start-attack)
     (target-danger-set! 'punch #f)
@@ -2606,28 +2460,26 @@
           (cond
             ((and (>= (ja-aframe-num 0) 20.0)
                   (and (and (not (logtest? (-> self control status) (collide-status on-surface)))
-                            (>= (- (current-time) (-> self control last-time-on-surface))
-                                (the-as time-frame (-> *TARGET-bank* ground-timeout))
-                                )
+                            (time-elapsed? (-> self control last-time-on-surface) (the-as time-frame (-> *TARGET-bank* ground-timeout)))
                             (>= 0.0 (vector-dot (-> self control dynam gravity-normal) (-> self control transv)))
                             (>= (target-height-above-ground) (-> *TARGET-bank* fall-height))
                             )
-                       (>= (- (current-time) (-> self control sliding-start-time)) (seconds 0.04))
+                       (time-elapsed? (-> self control sliding-start-time) (seconds 0.04))
                        )
                   )
              (go target-falling #f)
              )
             ((< (the-as float f26-0) 0.0)
-             (set! f26-0 (seek (the-as float f26-0) -0.04096 (* 491520.0 (-> self clock seconds-per-frame))))
+             (set! f26-0 (seek (the-as float f26-0) -0.04096 (* 491520.0 (seconds-per-frame))))
              (set-forward-vel (the-as float f26-0))
              )
             ((and (nonzero? (-> self control unknown-time-frame18))
-                  (>= (- (current-time) (-> self control unknown-time-frame18)) (seconds 0.04))
+                  (time-elapsed? (-> self control unknown-time-frame18) (seconds 0.04))
                   )
              (set-forward-vel 0.0)
              )
             ((and (not (cpad-hold? (-> self control cpad number) square))
-                  (>= (- (current-time) (-> self control unknown-combo-tracker00 move-start-time)) (seconds 0.05))
+                  (time-elapsed? (-> self control unknown-combo-tracker00 move-start-time) (seconds 0.05))
                   )
              (if (= (-> self control ground-pat material) (pat-material ice))
                  (set-forward-vel (fmax 32768.0 (* 0.8 (-> self control ctrl-xz-vel))))
@@ -2659,21 +2511,19 @@
                    (let ((s5-2 (ja-group))
                          (f24-0 (ja-aframe-num 0))
                          )
-                     (if (or (and (= s5-2 (-> self draw art-group data 48))
+                     (if (or (and (= s5-2 jakb-attack-punch-ja)
                                   (>= f24-0 10.0)
-                                  (>= (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 48)) frames num-frames) -1))
+                                  (>= (the float (+ (-> (the-as art-joint-anim jakb-attack-punch-ja) frames num-frames) -1)) (ja-frame-num 0))
+                                  )
+                             (and (= s5-2 jakb-gun-attack-butt-ja)
+                                  (>= f24-0 10.0)
+                                  (>= (the float (+ (-> (the-as art-joint-anim jakb-gun-attack-butt-ja) frames num-frames) -1))
                                       (ja-frame-num 0)
                                       )
                                   )
-                             (and (= s5-2 (-> self draw art-group data 273))
+                             (and (= s5-2 jakb-gun-attack-butt-blue-ja)
                                   (>= f24-0 10.0)
-                                  (>= (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 273)) frames num-frames) -1))
-                                      (ja-frame-num 0)
-                                      )
-                                  )
-                             (and (= s5-2 (-> self draw art-group data 275))
-                                  (>= f24-0 10.0)
-                                  (>= (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 275)) frames num-frames) -1))
+                                  (>= (the float (+ (-> (the-as art-joint-anim jakb-gun-attack-butt-blue-ja) frames num-frames) -1))
                                       (ja-frame-num 0)
                                       )
                                   )
@@ -2747,7 +2597,7 @@
           )
         (suspend)
         (ja :num! (seek! max (* (-> self control current-surface align-speed) f28-0)))
-        (if (>= (- (current-time) (-> self state-time)) (seconds 0.1))
+        (if (time-elapsed? (-> self state-time) (seconds 0.1))
             (set! (-> *run-attack-mods* turnvv) 0.0)
             )
         (if (< 2 gp-2)
@@ -2757,9 +2607,7 @@
         )
       )
     (if (and (not (logtest? (-> self control status) (collide-status on-surface)))
-             (>= (- (current-time) (-> self control last-time-on-surface))
-                 (the-as time-frame (-> *TARGET-bank* ground-timeout))
-                 )
+             (time-elapsed? (-> self control last-time-on-surface) (the-as time-frame (-> *TARGET-bank* ground-timeout)))
              (>= 0.0 (vector-dot (-> self control dynam gravity-normal) (-> self control transv)))
              (>= (target-height-above-ground) (-> *TARGET-bank* fall-height))
              )
@@ -2774,7 +2622,7 @@
           (((pickup-type eco-blue))
            (push-anim-to-targ
              (-> self skel top-anim)
-             (the-as art-joint-anim (-> self draw art-group data 276))
+             (the-as art-joint-anim jakb-gun-attack-butt-blue-end-ja)
              0.0
              0
              60
@@ -2786,7 +2634,7 @@
           (else
             (push-anim-to-targ
               (-> self skel top-anim)
-              (the-as art-joint-anim (-> self draw art-group data 274))
+              (the-as art-joint-anim jakb-gun-attack-butt-end-ja)
               0.0
               0
               60
@@ -2799,7 +2647,6 @@
         )
       )
     (go target-stance)
-    (none)
     )
   :post target-post
   )
@@ -2855,21 +2702,21 @@
   )
 
 (defstate target-attack-air (target)
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (let ((v0-0 (target-bonk-event-handler proc arg1 event-type event)))
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (let ((v0-0 (target-bonk-event-handler proc argc message block)))
       (cond
         (v0-0
           (empty)
           v0-0
           )
         (else
-          (target-dangerous-event-handler proc arg1 event-type event)
+          (target-dangerous-event-handler proc argc message block)
           )
         )
       )
     )
   :enter (behavior ((arg0 symbol))
-    (set! (-> self state-time) (current-time))
+    (set-time! (-> self state-time))
     (logclear! (-> self control status) (collide-status on-surface on-ground touch-surface))
     (target-start-attack)
     (target-danger-set! 'spin-air #f)
@@ -2896,14 +2743,14 @@
            )
          )
         (else
-          (let* ((f1-5 (/ f0-2 (* (-> self control dynam gravity-length) (-> self clock seconds-per-frame))))
-                 (f0-7 (* 0.5 f1-5 (-> self clock seconds-per-frame) f0-2))
+          (let* ((f1-5 (/ f0-2 (* (-> self control dynam gravity-length) (seconds-per-frame))))
+                 (f0-7 (* 0.5 f1-5 (seconds-per-frame) f0-2))
                  )
             (let ((v1-22 (ja-group)))
               (if (and v1-22
-                       (or (= v1-22 (-> self draw art-group data 51))
-                           (= v1-22 (-> self draw art-group data 267))
-                           (= v1-22 (-> self draw art-group data 279))
+                       (or (= v1-22 jakb-attack-uppercut-ja)
+                           (= v1-22 jakb-gun-attack-upperbutt-ja)
+                           (= v1-22 jakb-gun-attack-upperbutt-blue-ja)
                            )
                        )
                   (set! f0-7
@@ -2941,28 +2788,26 @@
       )
     (set! (-> self control dynam gravity-length) 122880.0)
     (set! (-> self control last-trans-any-surf quad) (-> self control trans quad))
-    (none)
     )
   :exit (behavior ()
     (set! (-> self control dynam gravity-max) (-> self control standard-dynamics gravity-max))
     (set! (-> self control dynam gravity-length) (-> self control standard-dynamics gravity-length))
-    (set! (-> self control last-attack-end-time) (current-time))
+    (set-time! (-> self control last-attack-end-time))
     (target-exit)
-    (none)
     )
   :trans (behavior ()
     (when (logtest? (-> self control status) (collide-status on-surface))
       (set-quaternion! (-> self control) (-> self control dir-targ))
       (go target-hit-ground #f)
       )
-    (if (>= (- (current-time) (-> self state-time)) (seconds 0.5))
+    (if (time-elapsed? (-> self state-time) (seconds 0.5))
         (seek!
           (-> self control dynam gravity-length)
           (-> self control standard-dynamics gravity-length)
-          (* 245760.0 (-> self clock seconds-per-frame))
+          (* 245760.0 (seconds-per-frame))
           )
         )
-    (when (and (>= (- (current-time) (-> self state-time)) (seconds 0.05))
+    (when (and (time-elapsed? (-> self state-time) (seconds 0.05))
                (< (vector-dot (-> self control dynam gravity-normal) (-> self control last-transv))
                   (vector-dot (-> self control dynam gravity-normal) (-> self control transv))
                   )
@@ -2989,12 +2834,10 @@
          )
         )
       )
-    (none)
     )
   :code (behavior ((arg0 symbol))
     (target-attack-air-anim)
     (go target-falling #f)
-    (none)
     )
   :post target-post
   )
@@ -3048,7 +2891,7 @@
 (defstate target-attack-uppercut (target)
   :event target-dangerous-event-handler
   :enter (behavior ((arg0 float) (arg1 float))
-    (set! (-> self state-time) (current-time))
+    (set-time! (-> self state-time))
     (target-start-attack)
     (target-danger-set! 'uppercut #f)
     (set! (-> self control mod-surface) *uppercut-mods*)
@@ -3059,7 +2902,6 @@
         )
     (set! (-> self control unknown-sound-id00) (new 'static 'sound-id))
     0
-    (none)
     )
   :exit (behavior ()
     (if (not (and (-> self next-state) (= (-> self next-state name) 'target-darkjak-bomb1)))
@@ -3075,11 +2917,10 @@
           )
         )
     (target-exit)
-    (none)
     )
   :code (behavior ((arg0 float) (arg1 float))
     (let* ((v1-2 (ja-group))
-           (f30-0 (if (and v1-2 (= v1-2 (-> self draw art-group data 20)))
+           (f30-0 (if (and v1-2 (= v1-2 jakb-duck-stance-ja))
                       5.0
                       0.0
                       )
@@ -3092,7 +2933,7 @@
            (((pickup-type eco-blue))
             (push-anim-to-targ
               (-> self skel top-anim)
-              (the-as art-joint-anim (-> self draw art-group data 279))
+              (the-as art-joint-anim jakb-gun-attack-upperbutt-blue-ja)
               f30-0
               5
               30
@@ -3100,7 +2941,7 @@
               0.0
               #f
               )
-            (ja-no-eval :group! (-> self draw art-group data 279)
+            (ja-no-eval :group! jakb-gun-attack-upperbutt-blue-ja
                         :num! (seek! (ja-aframe 7.0 0))
                         :frame-num (ja-aframe f30-0 0)
                         )
@@ -3112,7 +2953,7 @@
            (else
              (push-anim-to-targ
                (-> self skel top-anim)
-               (the-as art-joint-anim (-> self draw art-group data 267))
+               (the-as art-joint-anim jakb-gun-attack-upperbutt-ja)
                f30-0
                5
                30
@@ -3120,7 +2961,7 @@
                0.0
                #f
                )
-             (ja-no-eval :group! (-> self draw art-group data 267)
+             (ja-no-eval :group! jakb-gun-attack-upperbutt-ja
                          :num! (seek! (ja-aframe 7.0 0))
                          :frame-num (ja-aframe f30-0 0)
                          )
@@ -3138,10 +2979,7 @@
          (set! (-> self control unknown-sound-id00)
                (add-process *gui-control* self (gui-channel jak) (gui-action queue) "darkbom1" -99.0 0)
                )
-         (ja-no-eval :group! (-> self draw art-group data 391)
-                     :num! (seek! (ja-aframe 7.0 0))
-                     :frame-num (ja-aframe f30-0 0)
-                     )
+         (ja-no-eval :group! jakb-darkjak-attack-ice-ja :num! (seek! (ja-aframe 7.0 0)) :frame-num (ja-aframe f30-0 0))
          (until (ja-done? 0)
            (suspend)
            (ja :num! (seek! (ja-aframe 7.0 0)))
@@ -3149,10 +2987,7 @@
          (go target-darkjak-bomb1 arg0 arg1)
          )
         (else
-          (ja-no-eval :group! (-> self draw art-group data 51)
-                      :num! (seek! (ja-aframe 7.0 0))
-                      :frame-num (ja-aframe f30-0 0)
-                      )
+          (ja-no-eval :group! jakb-attack-uppercut-ja :num! (seek! (ja-aframe 7.0 0)) :frame-num (ja-aframe f30-0 0))
           (until (ja-done? 0)
             (suspend)
             (ja :num! (seek! (ja-aframe 7.0 0)))
@@ -3161,16 +2996,15 @@
         )
       )
     (go target-attack-uppercut-jump arg0 arg1)
-    (none)
     )
   :post target-post
   )
 
 (defstate target-attack-uppercut-jump (target)
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('gun-combo)
-       (when (-> event param 0)
+       (when (-> block param 0)
          (forward-up-nopitch->quaternion
            (-> self control dir-targ)
            (vector-! (new 'stack-no-clear 'vector) (-> self gun track-trans) (-> self control trans))
@@ -3202,7 +3036,7 @@
        #t
        )
       (else
-        (target-dangerous-event-handler proc arg1 event-type event)
+        (target-dangerous-event-handler proc argc message block)
         )
       )
     )
@@ -3210,18 +3044,17 @@
     (if (and (= (-> self control ground-pat material) (pat-material ice)) (< 32768.0 (-> self control ctrl-xz-vel)))
         (set-forward-vel 32768.0)
         )
-    (set! (-> self state-time) (current-time))
+    (set-time! (-> self state-time))
     (init-var-jump arg0 arg1 #t #f (-> self control transv) 2.0)
     (logclear! (-> self control status) (collide-status on-surface on-ground touch-surface))
     (set! (-> self neck flex-blend) 0.0)
     (set! (-> self control mod-surface) *uppercut-jump-mods*)
     (target-start-attack)
     (target-danger-set! 'uppercut #f)
-    (set! (-> self gun combo-window-start) (current-time))
+    (set-time! (-> self gun combo-window-start))
     (set! (-> self gun combo-window-state) (-> self state name))
     (set! (-> self gun track-target-hold-time) 0)
     0
-    (none)
     )
   :exit target-exit
   :trans (behavior ()
@@ -3231,9 +3064,7 @@
     (when (and (cpad-pressed? (-> self control cpad number) square)
                (< (vector-dot (-> self control dynam gravity-normal) (-> self control transv)) 22118.4)
                (< -61440.0 (vector-dot (-> self control dynam gravity-normal) (-> self control transv)))
-               (and (>= (- (current-time) (-> self control last-time-of-stuck))
-                        (the-as time-frame (-> *TARGET-bank* stuck-timeout))
-                        )
+               (and (time-elapsed? (-> self control last-time-of-stuck) (the-as time-frame (-> *TARGET-bank* stuck-timeout)))
                     (not (logtest? (-> self state-flags) (state-flags prevent-attack)))
                     (not (logtest? (-> self control current-surface flags) (surface-flag no-attack no-hands)))
                     (not (and (not (using-gun? self)) (!= (-> self skel top-anim interp) 0.0)))
@@ -3255,7 +3086,7 @@
     (if (and (cpad-pressed? (-> self control cpad number) circle)
              (and (can-feet? #f)
                   (let ((v1-65 (ja-group)))
-                    (and v1-65 (or (= v1-65 (-> self draw art-group data 51)) (= v1-65 (-> self draw art-group data 267))))
+                    (and v1-65 (or (= v1-65 jakb-attack-uppercut-ja) (= v1-65 jakb-gun-attack-upperbutt-ja)))
                     )
                   (>= (ja-aframe-num 0) 12.0)
                   )
@@ -3273,11 +3104,10 @@
         (target-danger-set! 'harmless #f)
         )
     (slide-down-test)
-    (none)
     )
   :code (behavior ((arg0 float) (arg1 float))
-    (when (or (= (-> self skel top-anim frame-group) (-> self draw art-group data 267))
-              (= (-> self skel top-anim frame-group) (-> self draw art-group data 279))
+    (when (or (= (-> self skel top-anim frame-group) jakb-gun-attack-upperbutt-ja)
+              (= (-> self skel top-anim frame-group) jakb-gun-attack-upperbutt-blue-ja)
               )
       (let ((v1-10 (get-channel (-> self skel top-anim) 0)))
         (if v1-10
@@ -3292,7 +3122,7 @@
       (compute-alignment! (-> self align))
       (set! (-> self control turn-go-the-long-way) 1.0)
       (let ((v1-27 (ja-group)))
-        (if (and v1-27 (= v1-27 (-> self draw art-group data 51)))
+        (if (and v1-27 (= v1-27 jakb-attack-uppercut-ja))
             (align!
               (-> self align)
               (the-as align-opts (cond
@@ -3342,23 +3172,22 @@
             )
         )
       )
-    (set! (-> self gun surpress-time) (current-time))
+    (set-time! (-> self gun surpress-time))
     (go target-falling #f)
-    (none)
     )
   :post target-post
   )
 
 (defstate target-flop (target)
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
     (local-vars (v1-0 symbol))
-    (let ((v0-0 (target-bonk-event-handler proc arg1 event-type event)))
+    (let ((v0-0 (target-bonk-event-handler proc argc message block)))
       (cond
         (v0-0
           (empty)
           v0-0
           )
-        ((begin (set! v1-0 event-type) (= v1-0 'slide))
+        ((begin (set! v1-0 message) (= v1-0 'slide))
          #f
          )
         ((= v1-0 'swim)
@@ -3374,7 +3203,7 @@
            )
          )
         (else
-          (target-dangerous-event-handler proc arg1 event-type event)
+          (target-dangerous-event-handler proc argc message block)
           )
         )
       )
@@ -3395,7 +3224,7 @@
         (set-forward-vel arg2)
         (set-forward-vel (-> self control ctrl-xz-vel))
         )
-    (set! (-> self state-time) (current-time))
+    (set-time! (-> self state-time))
     (logclear! (-> self control status) (collide-status on-surface on-ground touch-surface))
     (set! (-> self control mod-surface) *flop-mods*)
     (set! (-> self neck flex-blend) 0.0)
@@ -3418,13 +3247,12 @@
           )
         )
       )
-    (none)
     )
   :exit (behavior ()
     (let ((v1-2 (get-channel (-> self skel top-anim) 0)))
       (when v1-2
         (case (-> v1-2 frame-group)
-          (((-> self draw art-group data 286))
+          ((jakb-gun-flop-down-ja)
            (set! (-> v1-2 param 1) 10.0)
            )
           )
@@ -3435,15 +3263,13 @@
     (set! (-> self control dynam gravity-length) (-> self control standard-dynamics gravity-length))
     (set! (-> self control dynam gravity quad) (-> self control standard-dynamics gravity quad))
     (set! (-> self neck flex-blend) 1.0)
-    (none)
     )
   :trans (behavior ()
     (delete-back-vel)
     (let ((gp-1 (logtest? (-> self control status) (collide-status on-surface))))
-      (when (and (not gp-1)
-                 (let ((v1-6 (ja-group)))
-                   (and v1-6 (or (= v1-6 (-> self draw art-group data 53)) (= v1-6 (-> self draw art-group data 55))))
-                   )
+      (when (and (not gp-1) (let ((v1-6 (ja-group)))
+                              (and v1-6 (or (= v1-6 jakb-flop-down-loop-ja) (= v1-6 jakb-moving-flop-down-ja)))
+                              )
                  )
         (when (and (or (< (target-move-dist (seconds 0.1)) 1638.4)
                        (and (logtest? (-> self control status) (collide-status touch-wall)) (< 0.7 (-> self control poly-angle)))
@@ -3451,7 +3277,7 @@
                    (not (logtest? (-> self control status) (collide-status touch-actor)))
                    (>= (-> self control unknown-word04) (the-as uint 2))
                    )
-          (set! (-> self control last-time-of-stuck) (current-time))
+          (set-time! (-> self control last-time-of-stuck))
           (set! gp-1 'stuck)
           )
         )
@@ -3475,7 +3301,7 @@
               (lambda :behavior target
                 ((arg0 target))
                 (set! (-> arg0 control root-prim local-sphere w)
-                      (seek (-> arg0 control root-prim local-sphere w) 28672.0 (* 286720.0 (-> self clock seconds-per-frame)))
+                      (seek (-> arg0 control root-prim local-sphere w) 28672.0 (* 286720.0 (seconds-per-frame)))
                       )
                 )
               )
@@ -3494,34 +3320,21 @@
       )
     (when (and (not (-> self control danger-mode))
                (let ((v1-82 (ja-group)))
-                 (and v1-82 (= v1-82 (-> self draw art-group data 52)))
+                 (and v1-82 (= v1-82 jakb-flop-down-ja))
                  )
                (>= (ja-aframe-num 0) 8.0)
                )
       (target-start-attack)
       (target-danger-set! 'flop #f)
       )
-    (none)
     )
   :code (behavior ((arg0 float) (arg1 float) (arg2 float))
     (if (using-gun? self)
-        (push-anim-to-targ
-          (-> self skel top-anim)
-          (the-as art-joint-anim (-> self draw art-group data 286))
-          0.0
-          0
-          30
-          1.0
-          0.0
-          #f
-          )
+        (push-anim-to-targ (-> self skel top-anim) (the-as art-joint-anim jakb-gun-flop-down-ja) 0.0 0 30 1.0 0.0 #f)
         )
     (ja-channel-set! 2)
-    (ja-no-eval :group! (-> self draw art-group data 52)
-                :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 52)) frames num-frames) -1)))
-                :frame-num 0.0
-                )
-    (ja :chan 1 :group! (-> self draw art-group data 55) :num! (chan 0) :frame-num 0.0)
+    (ja-no-eval :group! jakb-flop-down-ja :num! (seek!) :frame-num 0.0)
+    (ja :chan 1 :group! jakb-moving-flop-down-ja :num! (chan 0) :frame-num 0.0)
     (until (ja-done? 0)
       (suspend)
       (ja :num! (seek!))
@@ -3539,7 +3352,7 @@
     (set! (-> self control dynam gravity quad) (-> self control standard-dynamics gravity quad))
     (target-danger-set! 'flop-down #f)
     (let ((v1-56 (get-channel (-> self skel top-anim) 0)))
-      (if (and v1-56 (= (-> v1-56 frame-group) (-> self draw art-group data 286)))
+      (if (and v1-56 (= (-> v1-56 frame-group) jakb-gun-flop-down-ja))
           (set! (-> v1-56 param 1) 0.0)
           )
       )
@@ -3611,7 +3424,7 @@
               )
             )
           )
-        (if (and (>= (- (current-time) (-> self state-time)) (the-as time-frame (-> *TARGET-bank* fall-timeout)))
+        (if (and (time-elapsed? (-> self state-time) (the-as time-frame (-> *TARGET-bank* fall-timeout)))
                  (!= (-> self tobot?) 'tobot)
                  )
             (go target-falling #f)
@@ -3627,26 +3440,25 @@
         )
       )
     #f
-    (none)
     )
   :post target-post
   )
 
 (defstate target-flop-hit-ground (target)
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
     (cond
       ((and (-> self next-state) (= (-> self next-state name) 'target-flop-hit-ground))
-       (case event-type
+       (case message
          (('swim 'slide)
           #f
           )
          (else
-           (target-standard-event-handler proc arg1 event-type event)
+           (target-standard-event-handler proc argc message block)
            )
          )
        )
       (else
-        (target-jump-event-handler proc arg1 event-type event)
+        (target-jump-event-handler proc argc message block)
         )
       )
     )
@@ -3663,7 +3475,7 @@
       )
     (target-land-effect)
     (cpad-set-buzz! (-> *cpad-list* cpads 0) 1 255 (seconds 0.1))
-    (set! (-> self state-time) (current-time))
+    (set-time! (-> self state-time))
     (set! (-> self control unknown-word04) (the-as uint arg0))
     (set-forward-vel 0.0)
     (set! (-> self control mod-surface) *flop-land-mods*)
@@ -3676,7 +3488,6 @@
       (else
         )
       )
-    (none)
     )
   :exit target-exit
   :trans (behavior ()
@@ -3694,7 +3505,7 @@
           )
       )
     (when (and (and (= (-> self fact eco-type) 2) (>= (-> self fact eco-level) 1.0))
-               (< (- (current-time) (-> self state-time)) (seconds 0.25))
+               (not (time-elapsed? (-> self state-time) (seconds 0.25)))
                )
       (do-effect (-> self skel effect) 'group-red-eco-spinkick (ja-frame-num 0) (if (rand-vu-percent? 0.5)
                                                                                     22
@@ -3704,29 +3515,27 @@
       (cpad-set-buzz! (-> *cpad-list* cpads 0) 1 153 (seconds 0.1))
       )
     (let ((v1-37 (ja-group)))
-      (if (and (and v1-37 (= v1-37 (-> self draw art-group data 54))) (>= (ja-aframe-num 0) 28.0))
+      (if (and (and v1-37 (= v1-37 jakb-flop-down-land-ja)) (>= (ja-aframe-num 0) 28.0))
           (logior! (-> *flop-land-mods* flags) (surface-flag check-edge))
           )
       )
     (slide-down-test)
-    (none)
     )
   :code (behavior ((arg0 symbol))
     (target-hit-ground-anim arg0 (are-still?))
     (go target-falling #f)
-    (none)
     )
   :post target-post
   )
 
 (defstate target-roll (target)
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (if (= event-type 'touched)
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (if (= message 'touched)
         (send-event proc 'roll)
         )
-    (case event-type
+    (case message
       (('gun-combo)
-       (when (-> event param 0)
+       (when (-> block param 0)
          (forward-up-nopitch->quaternion
            (-> self control dir-targ)
            (vector-! (new 'stack-no-clear 'vector) (-> self gun track-trans) (-> self control trans))
@@ -3740,13 +3549,13 @@
        #t
        )
       (else
-        (target-standard-event-handler proc arg1 event-type event)
+        (target-standard-event-handler proc argc message block)
         )
       )
     )
   :enter (behavior ()
     (target-collide-set! 'duck 1.0)
-    (set! (-> self state-time) (current-time))
+    (set-time! (-> self state-time))
     (set! (-> self neck flex-blend) 0.0)
     (set! (-> self neck base-joint) (the-as uint 8))
     (set! (-> self control mod-surface) *roll-mods*)
@@ -3762,16 +3571,14 @@
     (set! (-> self control unknown-word04) (the-as uint 0))
     (set! (-> self control did-move-to-pole-or-max-jump-height) 0.0)
     (set! (-> self gun track-target-hold-time) 0)
-    (none)
     )
   :exit (behavior ()
     (when (not (and (-> self next-state) (= (-> self next-state name) 'target-roll)))
       (set! (-> self control unknown-word02) 0)
-      (set! (-> self control last-roll-end-time) (current-time))
+      (set-time! (-> self control last-roll-end-time))
       )
     (target-exit)
     (target-collide-set! 'normal 0.0)
-    (none)
     )
   :code (behavior ()
     (let ((gp-0 0))
@@ -3784,34 +3591,25 @@
         (cond
           ((using-gun? self)
            (set! (-> self gun top-anim-low-high) 0.0)
-           (push-anim-to-targ
-             (-> self skel top-anim)
-             (the-as art-joint-anim (-> self draw art-group data 282))
-             0.0
-             15
-             30
-             1.0
-             0.0
-             #f
-             )
-           (ja :group! (-> self draw art-group data 282) :num! min)
+           (push-anim-to-targ (-> self skel top-anim) (the-as art-joint-anim jakb-gun-duck-roll-ja) 0.0 15 30 1.0 0.0 #f)
+           (ja :group! jakb-gun-duck-roll-ja :num! min)
            )
           (else
-            (ja :group! (-> self draw art-group data 59) :num! min)
+            (ja :group! jakb-duck-roll-ja :num! min)
             )
           )
         (until (ja-done? 0)
           (if (cpad-pressed? (-> self control cpad number) x)
               (set! gp-0 (the-as int (current-time)))
               )
-          (when (and (not s4-0) (>= (- (current-time) (-> self state-time)) (seconds 0.2)))
+          (when (and (not s4-0) (time-elapsed? (-> self state-time) (seconds 0.2)))
             (set! s4-0 #t)
-            (set! (-> self gun combo-window-start) (current-time))
+            (set-time! (-> self gun combo-window-start))
             (set! (-> self gun combo-window-state) (-> self state name))
             )
           (when (and (or (smack-surface? #f) (>= (-> self control surface-slope-z) 0.7))
                      (>= (the-as uint (- (current-time) (the-as int (-> self control unknown-word04)))) (the-as uint 3))
-                     (>= (- (current-time) (-> self state-time)) 1)
+                     (time-elapsed? (-> self state-time) 1)
                      )
             (when (>= 6.0 (ja-aframe-num 0))
               (if (using-gun? self)
@@ -3849,7 +3647,7 @@
           (set! f30-0 (* f30-0 (fmin 1.0 (-> self control zx-vel-frac))))
           )
         )
-      (if (and (or (< (- (current-time) (the-as time-frame gp-0)) (the-as time-frame (-> *TARGET-bank* roll-jump-pre-window)))
+      (if (and (or (not (time-elapsed? (the-as time-frame gp-0) (the-as time-frame (-> *TARGET-bank* roll-jump-pre-window))))
                    (cpad-pressed? (-> self control cpad number) x)
                    )
                (can-jump? 'target-roll-flip)
@@ -3857,12 +3655,12 @@
           (go target-roll-flip (-> *TARGET-bank* roll-flip-height) (-> *TARGET-bank* roll-flip-dist))
           )
       )
-    (set! (-> self state-hook-time) (current-time))
+    (set-time! (-> self state-hook-time))
     (set! (-> self state-hook)
           (lambda :behavior target
             ()
             (cond
-              ((>= (- (current-time) (-> self state-hook-time)) (the-as time-frame (-> *TARGET-bank* roll-jump-post-window)))
+              ((time-elapsed? (-> self state-hook-time) (the-as time-frame (-> *TARGET-bank* roll-jump-post-window)))
                (set! (-> self state-hook) (the-as (function none :behavior target) nothing))
                )
               (else
@@ -3884,16 +3682,15 @@
           )
     (set! (-> self gun surpress-time) (+ (current-time) (seconds 0.2)))
     (go target-duck-stance 'roll)
-    (none)
     )
   :post target-post
   )
 
 (defstate target-roll-flip (target)
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('gun-combo)
-       (when (-> event param 0)
+       (when (-> block param 0)
          (forward-up-nopitch->quaternion
            (-> self control dir-targ)
            (vector-! (new 'stack-no-clear 'vector) (-> self gun track-trans) (-> self control trans))
@@ -3905,7 +3702,7 @@
        #t
        )
       (else
-        (target-jump-event-handler proc arg1 event-type event)
+        (target-jump-event-handler proc argc message block)
         )
       )
     )
@@ -3914,15 +3711,13 @@
     (set! (-> self neck flex-blend) 0.0)
     (set! (-> self neck base-joint) (the-as uint 8))
     (set! (-> self gun track-target-hold-time) 0)
-    (set! (-> self gun combo-window-start) (current-time))
+    (set-time! (-> self gun combo-window-start))
     (set! (-> self gun combo-window-state) (-> self state name))
     (target-collide-set! 'duck 1.0)
-    (none)
     )
   :exit (behavior ()
     (target-exit)
     (target-collide-set! 'normal 0.0)
-    (none)
     )
   :trans (behavior ()
     (if (and (or (smack-surface? #f)
@@ -3940,31 +3735,19 @@
     (if (and (cpad-pressed? (-> self control cpad number) circle)
              (can-feet? #f)
              (let ((v1-20 (ja-group)))
-               (and (and v1-20 (= v1-20 (-> self draw art-group data 27)))
-                    (= (-> self skel root-channel 0) (-> self skel channel))
-                    )
+               (and (and v1-20 (= v1-20 jakb-jump-loop-ja)) (= (-> self skel root-channel 0) (-> self skel channel)))
                )
              )
         (go target-attack-air #f)
         )
-    (none)
     )
   :code (behavior ((arg0 float) (arg1 float))
     (local-vars (v1-37 symbol))
     (ja-channel-push! 1 (seconds 0.04))
-    (ja :group! (-> self draw art-group data 61) :num! min)
+    (ja :group! jakb-roll-flip-ja :num! min)
     (when (using-gun? self)
       (set! (-> self gun top-anim-low-high) 0.0)
-      (push-anim-to-targ
-        (-> self skel top-anim)
-        (the-as art-joint-anim (-> self draw art-group data 284))
-        0.0
-        0
-        30
-        1.0
-        0.0
-        #f
-        )
+      (push-anim-to-targ (-> self skel top-anim) (the-as art-joint-anim jakb-gun-roll-flip-ja) 0.0 0 30 1.0 0.0 #f)
       )
     (let ((f30-0 1.0))
       (until v1-37
@@ -4000,13 +3783,13 @@
               )
         )
       )
-    (set! (-> self state-time) (current-time))
+    (set-time! (-> self state-time))
     (while (not (logtest? (-> self control status) (collide-status on-surface)))
-      (when (>= (- (current-time) (-> self state-time)) (seconds 0.01))
+      (when (time-elapsed? (-> self state-time) (seconds 0.01))
         (let ((v1-50 (ja-group)))
-          (when (not (and v1-50 (= v1-50 (-> self draw art-group data 27))))
+          (when (not (and v1-50 (= v1-50 jakb-jump-loop-ja)))
             (ja-channel-push! 1 (seconds 0.1))
-            (ja :group! (-> self draw art-group data 27) :num! min)
+            (ja :group! jakb-jump-loop-ja :num! min)
             )
           )
         )
@@ -4028,7 +3811,7 @@
         )
       (suspend)
       (let ((v1-62 (ja-group)))
-        (if (and v1-62 (= v1-62 (-> self draw art-group data 27)))
+        (if (and v1-62 (= v1-62 jakb-jump-loop-ja))
             (ja :num! (loop!))
             (ja :num-func num-func-identity :frame-num max)
             )
@@ -4036,12 +3819,12 @@
       )
     (target-land-effect)
     (set! (-> self gun surpress-time) (+ (current-time) (seconds 0.1)))
-    (set! (-> self state-hook-time) (current-time))
+    (set-time! (-> self state-hook-time))
     (set! (-> self state-hook)
           (lambda :behavior target
             ()
             (cond
-              ((>= (- (current-time) (-> self state-hook-time)) (seconds 0.1))
+              ((time-elapsed? (-> self state-hook-time) (seconds 0.1))
                (set! (-> self state-hook) (the-as (function none :behavior target) nothing))
                )
               (else
@@ -4068,14 +3851,13 @@
        )
       (else
         (let ((v1-86 (ja-group)))
-          (if (and v1-86 (= v1-86 (-> self draw art-group data 27)))
+          (if (and v1-86 (= v1-86 jakb-jump-loop-ja))
               (go target-hit-ground #f)
               (go target-stance)
               )
           )
         )
       )
-    (none)
     )
   :post target-post
   )

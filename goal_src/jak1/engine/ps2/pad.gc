@@ -14,6 +14,22 @@
 (define-extern get-current-time (function time-frame))
 (define-extern get-integral-current-time (function time-frame))
 
+(#when PC_PORT
+;;;;;;;;;;;;;;;;;;;;;;
+;; opengoal territory override
+;;;;;;;;;;;;;;;;;;;;;;
+
+(define *debug-territory* GAME_TERRITORY_SCEA)
+(defun scf-get-territory ()
+  "redefined from C kernel for convenience"
+  (if *debug-segment*
+      *debug-territory*
+      *default-territory*)
+  )
+)
+
+;; DECOMP BEGINS
+
 (defenum pad-buttons
     :bitfield #t
     :type uint32
@@ -50,53 +66,47 @@
 (deftype hw-cpad (basic)
   (;; BASIC CONTROLLER data
    ;; status = 0x40 | (data length / 2)
-   (valid   uint8     :offset-assert 4) ;; 0 if success, 255 if fail
-   (status  uint8     :offset-assert 5) ;; depends on controller
-   (button0 uint16    :offset-assert 6) ;; binary button states!
+   (valid    uint8) ;; 0 if success, 255 if fail
+   (status   uint8) ;; depends on controller
+   (button0  uint16) ;; binary button states!
    ;; DUALSHOCK or JOYSTICK data
    ;; status (dualshock) = 0x70 | (data length / 2)
    ;; status (joystick)  = 0x50 | (data length / 2)
-   (rightx  uint8     :offset-assert 8) ;; right stick xdir
-   (righty  uint8     :offset-assert 9) ;; right stick ydir
-   (leftx   uint8     :offset-assert 10) ;; left stick xdir
-   (lefty   uint8     :offset-assert 11) ;; left stick ydir
+   (rightx   uint8) ;; right stick xdir
+   (righty   uint8) ;; right stick ydir
+   (leftx    uint8) ;; left stick xdir
+   (lefty    uint8) ;; left stick ydir
    ;; DUALSHOCK 2 data
    ;; status = 0x70 | (data length / 2)
-   (abutton uint8  12 :offset-assert 12) ;; pressure sensitivity information
+   (abutton  uint8   12) ;; pressure sensitivity information
 
    ;; pad buffer needs to be 32 bytes large.
-   (dummy   uint8  12 :offset-assert 24)
+   (dummy    uint8   12)
    )
-  :method-count-assert 9
-  :size-assert         #x24
-  :flag-assert         #x900000024
   )
 
 ;; data from hardware + additional info calculated here.
 (deftype cpad-info (hw-cpad)
-  ((number             int32           :offset-assert 36) ;; controller port number
-   (cpad-file          int32           :offset-assert 40)
-   (button0-abs        pad-buttons 3   :offset-assert 44) ;; bitmask of buttons, pressed or not, with history
-   (button0-shadow-abs pad-buttons 1   :offset-assert 56) ;; modify this to change button history in the future.
-   (button0-rel        pad-buttons 3   :offset-assert 60) ;; bitmask of if button going down.
-   (stick0-dir         float           :offset-assert 72)
-   (stick0-speed       float           :offset-assert 76)
-   (new-pad            int32           :offset-assert 80)
-   (state              int32           :offset-assert 84)
-   (align              uint8 6         :offset-assert 88) ;; hardware control of buzzing.
-   (direct             uint8 6         :offset-assert 94) ;; hardware control of buzzing.
-   (buzz-val           uint8 2         :offset-assert 100) ;; intensity for buzzing
-   (buzz-time          time-frame 2         :offset-assert 104) ;; when to stop buzzing
-   (buzz               basic           :offset-assert 120) ;; is vibration enabled?
-   (buzz-act           int32           :offset-assert 124)
-   (change-time        time-frame           :offset-assert 128)
+  ((number              int32) ;; controller port number
+   (cpad-file           int32)
+   (button0-abs         pad-buttons  3) ;; bitmask of buttons, pressed or not, with history
+   (button0-shadow-abs  pad-buttons  1) ;; modify this to change button history in the future.
+   (button0-rel         pad-buttons  3) ;; bitmask of if button going down.
+   (stick0-dir          float)
+   (stick0-speed        float)
+   (new-pad             int32)
+   (state               int32)
+   (align               uint8  6) ;; hardware control of buzzing.
+   (direct              uint8  6) ;; hardware control of buzzing.
+   (buzz-val            uint8  2) ;; intensity for buzzing
+   (buzz-time           time-frame  2) ;; when to stop buzzing
+   (buzz                basic) ;; is vibration enabled?
+   (buzz-act            int32)
+   (change-time         time-frame)
    )
   (:methods
-   (new (symbol type int) _type_ 0)
+   (new (symbol type int) _type_)
    )
-  :method-count-assert 9
-  :size-assert         #x88
-  :flag-assert         #x900000088
   )
 
 (defmacro cpad-type? (type)
@@ -139,25 +149,22 @@
 
 (defmethod new cpad-info ((alloction symbol) (type-to-make type) (idx int))
   "Allocate a new cpad-info and open the pad itself through the kernel"
-  (let ((obj (object-new alloction type-to-make (the-as int (-> type-to-make size)))))
-   (set! (-> obj number) idx)
-   (set! (-> obj buzz) #f)
-   (cpad-open obj idx) ;; kernel function.
-   (cpad-invalid! obj)
+  (let ((this (object-new alloction type-to-make (the-as int (-> type-to-make size)))))
+   (set! (-> this number) idx)
+   (set! (-> this buzz) #f)
+   (cpad-open this idx) ;; kernel function.
+   (cpad-invalid! this)
    )
   )
 
 ;; List of controllers. It always has 4 controllers.
 (deftype cpad-list (basic)
-  ((num-cpads int32       :offset-assert 4)
-   (cpads     cpad-info 4 :offset-assert 8)  ;; modified from 2->4 for PC 4-pad support
+  ((num-cpads  int32)
+   (cpads      cpad-info 4)  ;; modified from 2->4 for PC 4-pad support
    )
   (:methods
-   (new (symbol type) _type_ 0)
+   (new (symbol type) _type_)
    )
-  :method-count-assert 9
-  :size-assert         #x18
-  :flag-assert         #x900000018
   )
 
 

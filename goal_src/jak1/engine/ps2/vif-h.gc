@@ -12,90 +12,67 @@
 ;; (during gameplay, everything is synchronized by DMA, so code generally does not know when
 ;;  it is safe to mess with VIF registers.)
 
+;; DECOMP BEGINS
+
 ;;VIF0_STAT or VIF1_STAT bitfields
 (deftype vif-stat (uint32)
-  ((vps uint8 :offset 0 :size 2)
-   (vew uint8 :offset 2 :size 1)
-   (mrk uint8 :offset 6 :size 1)
-   (vss uint8 :offset 8 :size 1)
-   (vfs uint8 :offset 9 :size 1)
-   (vis uint8 :offset 10 :size 1)
-   (int uint8 :offset 11 :size 1)
-   (er0 uint8 :offset 12 :size 1)
-   (er1 uint8 :offset 13 :size 1)
-   (fqc uint8 :offset 24 :size 4)
+  ((vps uint8 :offset   0 :size   2)
+   (vew uint8 :offset   2 :size   1)
+   (mrk uint8 :offset   6 :size   1)
+   (vss uint8 :offset   8 :size   1)
+   (vfs uint8 :offset   9 :size   1)
+   (vis uint8 :offset  10 :size   1)
+   (int uint8 :offset  11 :size   1)
+   (er0 uint8 :offset  12 :size   1)
+   (er1 uint8 :offset  13 :size   1)
+   (fqc uint8 :offset  24 :size   4)
    )
-
-  :method-count-assert 9
-  :size-assert         #x4
-  :flag-assert         #x900000004
   )
 
-(defmethod inspect vif-stat ((obj vif-stat))
-  (format #t "~Tvps: ~D" (-> obj vps))
-  (format #t "~Tvew: ~D" (-> obj vew))
-  (format #t "~Tmrk: ~D" (-> obj mrk))
-  (format #t "~Tvss: ~D" (-> obj vss))
-  (format #t "~Tvfs: ~D" (-> obj vfs))
-  (format #t "~Tvis: ~D" (-> obj vis))
-  (format #t "~Tint: ~D" (-> obj int))
-  (format #t "~Ter0: ~D" (-> obj er0))
-  (format #t "~Ter1: ~D" (-> obj er1))
-  (format #t "~Tfqc: ~D" (-> obj fqc))
-  obj)
 
 ;; VIF "reset" register.
 (deftype vif-fbrst (uint32)
-  ((rst uint8 :offset 0 :size 1)
-   (fbk uint8 :offset 1 :size 1)
-   (stp uint8 :offset 2 :size 1)
-   (stc uint8 :offset 3 :size 1)
+  ((rst uint8 :offset   0 :size   1)
+   (fbk uint8 :offset   1 :size   1)
+   (stp uint8 :offset   2 :size   1)
+   (stc uint8 :offset   3 :size   1)
    )
-  :method-count-assert 9
-  :size-assert         #x4
-  :flag-assert         #x900000004
   )
 
 ;; Error mask register
 (deftype vif-err (uint32)
-  ((mii uint8 :offset 0 :size 1)
-   (me0 uint8 :offset 1 :size 1) ;; PS2 hardware bug, must set this to 1 for correct operation.
-   (me1 uint8 :offset 2 :size 1)
+  ((mii uint8 :offset   0 :size   1)
+   (me0 uint8 :offset   1 :size   1)
+   (me1 uint8 :offset   2 :size   1)
    )
-  :method-count-assert 9
-  :size-assert         #x4
-  :flag-assert         #x900000004
   )
 
 ;; Common layout of hardware registers shared between the two VIFs
 (deftype vif-bank (structure)
-  ((stat   uint32  :offset-assert 0)
-   (fbrst  uint32  :offset 16)
-   (err    vif-err :offset 32)
-   (mark   uint32  :offset 48)
-   (cycle  uint32  :offset 64)
-   (mode   uint32  :offset 80)
-   (num    uint32  :offset 96)
-   (mask   uint32  :offset 112)
-   (code   uint32  :offset 128)
-   (itops  uint32  :offset 144)
-   (base   uint32  :offset 160)
-   (offset uint32  :offset 176)
-   (tops   uint32  :offset 192)
-   (itop   uint32  :offset 208)
-   (top    uint32  :offset 224)
-   (r0     uint32  :offset 256)
-   (r1     uint32  :offset 272)
-   (r2     uint32  :offset 288)
-   (r3     uint32  :offset 304)
-   (c0     uint32  :offset 320)
-   (c1     uint32  :offset 336)
-   (c2     uint32  :offset 352)
-   (c3     uint32  :offset 368)
+  ((stat    uint32)
+   (fbrst   uint32   :offset  16)
+   (err     vif-err  :offset  32)
+   (mark    uint32   :offset  48)
+   (cycle   uint32   :offset  64)
+   (mode    uint32   :offset  80)
+   (num     uint32   :offset  96)
+   (mask    uint32   :offset 112)
+   (code    uint32   :offset 128)
+   (itops   uint32   :offset 144)
+   (base    uint32   :offset 160)
+   (offset  uint32   :offset 176)
+   (tops    uint32   :offset 192)
+   (itop    uint32   :offset 208)
+   (top     uint32   :offset 224)
+   (r0      uint32   :offset 256)
+   (r1      uint32   :offset 272)
+   (r2      uint32   :offset 288)
+   (r3      uint32   :offset 304)
+   (c0      uint32   :offset 320)
+   (c1      uint32   :offset 336)
+   (c2      uint32   :offset 352)
+   (c3      uint32   :offset 368)
    )
-  :method-count-assert 9
-  :size-assert         #x174
-  :flag-assert         #x900000174
   )
 
 ;; PS2 VIF map. There are no VIFs in OpenGOAL.

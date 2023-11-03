@@ -18,219 +18,181 @@
 ;; The "ocean" renderer is used to render the infinite water.
 ;; It doesn't draw the rivers in FJ or the water near the farmer.
 
+;; DECOMP BEGINS
+
 (deftype ocean-corner (structure)
-  ((bsphere      sphere  :inline :offset-assert 0)
-   (start-corner vector  :inline :offset-assert 16)
-   (y-scales     vector  :inline :offset-assert 32)
-   (alphas       vector  :inline :offset-assert 48)
-   (colors       uint32 4       :offset-assert 64)
+  ((bsphere       sphere  :inline)
+   (start-corner  vector  :inline)
+   (y-scales      vector  :inline)
+   (alphas        vector  :inline)
+   (colors        uint32  4)
    )
-  :method-count-assert 9
-  :size-assert         #x50
-  :flag-assert         #x900000050
   )
+
 
 (deftype ocean-wave-info (structure)
-  ((frequency  float  :offset-assert 0)
-   (amplitude  float  :offset-assert 4)
-   (wave-speed float  :offset-assert 8)
-   (angle      float  :offset-assert 12)
-   (kx         float  :offset-assert 16)
-   (ky         float  :offset-assert 20)
-   (w          float  :offset-assert 24)
-   (flags      int32  :offset-assert 28)
+  ((frequency   float)
+   (amplitude   float)
+   (wave-speed  float)
+   (angle       float)
+   (kx          float)
+   (ky          float)
+   (w           float)
+   (flags       int32)
    )
-  :method-count-assert 9
-  :size-assert         #x20
-  :flag-assert         #x900000020
   )
+
 
 (deftype ocean-vertex (structure)
-  ((pos vector :inline :offset-assert 0)
-   (stq vector :inline :offset-assert 16)
-   (col vector :inline :offset-assert 32)
+  ((pos  vector  :inline)
+   (stq  vector  :inline)
+   (col  vector  :inline)
    )
-  :method-count-assert 9
-  :size-assert         #x30
-  :flag-assert         #x900000030
   )
+
 
 (deftype ocean-spheres (structure)
-  ((spheres sphere 36 :inline :offset-assert 0)
+  ((spheres  sphere  36 :inline)
    )
-  :method-count-assert 9
-  :size-assert         #x240
-  :flag-assert         #x900000240
   )
+
 
 (deftype ocean-colors (structure)
-  ((colors rgba  2548 :offset-assert 0)
+  ((colors  rgba  2548)
    )
-  :method-count-assert 9
-  :size-assert         #x27d0
-  :flag-assert         #x9000027d0
   )
+
 
 (deftype ocean-mid-mask (structure)
-  ((mask  uint8 8 :offset-assert 0)
-   (dword uint64    :offset 0)
+  ((mask   uint8   8)
+   (dword  uint64  :overlay-at (-> mask 0))
    )
   :pack-me
-  :method-count-assert 9
-  :size-assert         #x8
-  :flag-assert         #x900000008
   )
+
 
 (deftype ocean-mid-indices (basic)
-  ((data uint16 36 :offset-assert 4)
+  ((data  uint16  36)
    )
-  :method-count-assert 9
-  :size-assert         #x4c
-  :flag-assert         #x90000004c
   )
+
 
 (deftype ocean-mid-masks (basic)
-  ((data (inline-array ocean-mid-mask) :offset-assert 4)
+  ((data  (inline-array ocean-mid-mask))
    )
   :pack-me
-  :method-count-assert 9
-  :size-assert         #x8
-  :flag-assert         #x900000008
   )
+
 
 (deftype ocean-trans-mask (structure)
-  ((mask uint8   4 :offset-assert 0)
-   (word uint64    :offset 0)
+  ((mask  uint8   4)
+   (word  uint64  :overlay-at (-> mask 0))
    )
   :pack-me
-  :method-count-assert 9
-  :size-assert         #x8
-  :flag-assert         #x900000008
   )
+
 
 (deftype ocean-trans-index (structure)
-  ((parent int16  :offset-assert 0)
-   (child  int16  :offset-assert 2)
+  ((parent  int16)
+   (child   int16)
    )
   :pack-me
-  :method-count-assert 9
-  :size-assert         #x4
-  :flag-assert         #x900000004
   )
+
 
 (deftype ocean-trans-indices (basic)
-  ((data ocean-trans-index 2304 :inline :offset-assert 4)
+  ((data  ocean-trans-index  2304 :inline)
    )
-  :method-count-assert 9
-  :size-assert         #x2404
-  :flag-assert         #x900002404
   )
+
 
 (deftype ocean-near-index (structure)
-  ((data uint16 16 :offset-assert 0)
+  ((data  uint16  16)
    )
-  :method-count-assert 9
-  :size-assert         #x20
-  :flag-assert         #x900000020
   )
+
 
 (deftype ocean-near-indices (basic)
-  ((data (inline-array ocean-near-index)  :offset-assert 4)
+  ((data  (inline-array ocean-near-index))
    )
-  :method-count-assert 9
-  :size-assert         #x8
-  :flag-assert         #x900000008
   )
+
 
 (deftype ocean-near-colors (structure)
-  ((color0 vector :inline :offset-assert 0)
-   (color1 vector :inline :offset-assert 16)
-   (color2 vector :inline :offset-assert 32)
-   (color3 vector :inline :offset-assert 48)
+  ((color0  vector  :inline)
+   (color1  vector  :inline)
+   (color2  vector  :inline)
+   (color3  vector  :inline)
    )
-  :method-count-assert 9
-  :size-assert         #x40
-  :flag-assert         #x900000040
   )
+
 
 (deftype ocean-map (basic)
-  ((start-corner        vector        :inline :offset-assert 16)
-   (far-color           vector        :inline :offset-assert 32)
-   (ocean-spheres       ocean-spheres         :offset-assert 48)
-   (ocean-colors        ocean-colors          :offset-assert 52)
-   (ocean-mid-indices   ocean-mid-indices     :offset-assert 56)
-   (ocean-trans-indices ocean-trans-indices   :offset-assert 60)
-   (ocean-near-indices  ocean-near-indices    :offset-assert 64)
-   (ocean-mid-masks     ocean-mid-masks       :offset-assert 68)
+  ((start-corner         vector  :inline)
+   (far-color            vector  :inline)
+   (ocean-spheres        ocean-spheres)
+   (ocean-colors         ocean-colors)
+   (ocean-mid-indices    ocean-mid-indices)
+   (ocean-trans-indices  ocean-trans-indices)
+   (ocean-near-indices   ocean-near-indices)
+   (ocean-mid-masks      ocean-mid-masks)
    )
-  :method-count-assert 9
-  :size-assert         #x48
-  :flag-assert         #x900000048
   )
+
 
 (deftype ocean-trans-strip (structure)
-  ((verts uint128 10 :offset-assert 0)
+  ((verts  uint128  10)
    )
-  :method-count-assert 9
-  :size-assert         #xa0
-  :flag-assert         #x9000000a0
   )
+
 
 (deftype ocean-trans-strip-array (structure)
-  ((data ocean-trans-strip 4 :inline :offset-assert 0)
+  ((data  ocean-trans-strip  4 :inline)
    )
-  :method-count-assert 9
-  :size-assert         #x280
-  :flag-assert         #x900000280
   )
+
 
 (deftype ocean-wave-data (structure)
-  ((data uint8 1024 :offset-assert 0)
+  ((data  uint8  1024)
    )
-  :method-count-assert 9
-  :size-assert         #x400
-  :flag-assert         #x900000400
   )
+
 
 (deftype ocean-wave-frames (structure)
-  ((frame ocean-wave-data 64 :inline :offset-assert 0)
+  ((frame  ocean-wave-data  64 :inline)
    )
-  :method-count-assert 9
-  :size-assert         #x10000
-  ;:flag-assert         #x900010000
   )
 
+
 (deftype ocean-work (basic)
-  ((deltas             vector  :inline :offset-assert 16)
-   (map-min            vector  :inline :offset-assert 32)
-   (map-max            vector  :inline :offset-assert 48)
-   (interp             vector  :inline :offset-assert 64)
-   (corner-array       ocean-corner 25 :inline     :offset-assert 80)
-   (corner-count       int32           :offset-assert 2080)
-   (temp-vecs          vector 4 :inline        :offset-assert 2096)
-   (mid-mask-ptrs      (pointer int64) 36      :offset-assert 2160)
-   (mid-camera-masks   uint64 36     :offset-assert 2304)
-   (trans-mask-ptrs    (pointer int32) 64      :offset-assert 2592)
-   (trans-camera-masks ocean-trans-mask 16 :inline      :offset-assert 2848)
-   (trans-temp-masks   ocean-trans-mask 16 :inline     :offset-assert 2976)
-   (near-mask-indices  uint16 16      :offset-assert 3104)
-   (mid-minx           uint8           :offset-assert 3136)
-   (mid-maxx           uint8           :offset-assert 3137)
-   (mid-minz           uint8           :offset-assert 3138)
-   (mid-maxz           uint8           :offset-assert 3139)
-   (near-minx          uint8           :offset-assert 3140)
-   (near-maxx          uint8           :offset-assert 3141)
-   (near-minz          uint8           :offset-assert 3142)
-   (near-maxz          uint8           :offset-assert 3143)
-   (temp-minx          uint8           :offset-assert 3144)
-   (temp-maxx          uint8           :offset-assert 3145)
-   (temp-minz          uint8           :offset-assert 3146)
-   (temp-maxz          uint8           :offset-assert 3147)
+  ((deltas              vector            :inline)
+   (map-min             vector            :inline)
+   (map-max             vector            :inline)
+   (interp              vector            :inline)
+   (corner-array        ocean-corner      25 :inline)
+   (corner-count        int32)
+   (temp-vecs           vector            4 :inline)
+   (mid-mask-ptrs       (pointer int64)   36)
+   (mid-camera-masks    uint64            36)
+   (trans-mask-ptrs     (pointer int32)   64)
+   (trans-camera-masks  ocean-trans-mask  16 :inline)
+   (trans-temp-masks    ocean-trans-mask  16 :inline)
+   (near-mask-indices   uint16            16)
+   (mid-minx            uint8)
+   (mid-maxx            uint8)
+   (mid-minz            uint8)
+   (mid-maxz            uint8)
+   (near-minx           uint8)
+   (near-maxx           uint8)
+   (near-minz           uint8)
+   (near-maxz           uint8)
+   (temp-minx           uint8)
+   (temp-maxx           uint8)
+   (temp-minz           uint8)
+   (temp-maxz           uint8)
    )
-  :method-count-assert 9
-  :size-assert         #xc4c
-  :flag-assert         #x900000c4c
   )
+
 
 (define *ocean-work* (new 'static 'ocean-work))
 (define *ocean-facing* 0)
@@ -241,186 +203,160 @@
 (define *ocean-verts* (the-as (inline-array vector) #f))
 
 (deftype ocean-vu0-work (structure)
-  ((scales      vector    :inline :offset-assert 0)
-   (mask-hi     vector4w  :inline :offset-assert 16)
-   (mask-lo     vector4w  :inline :offset-assert 32)
-   (lights      vu-lights :inline :offset-assert 48)
-   (wait-to-vu0 uint32            :offset-assert 160)
+  ((scales       vector     :inline)
+   (mask-hi      vector4w   :inline)
+   (mask-lo      vector4w   :inline)
+   (lights       vu-lights  :inline)
+   (wait-to-vu0  uint32)
    )
-  :method-count-assert 9
-  :size-assert         #xa4
-  :flag-assert         #x9000000a4
   )
+
 
 (deftype ocean-texture-constants (structure)
-  ((giftag    gs-gif-tag :inline :offset-assert 0)
-   (buffers   vector4w   :inline :offset-assert 16)
-   (dests     vector4w   :inline :offset-assert 32)
-   (start     vector     :inline :offset-assert 48)
-   (offsets   vector     :inline :offset-assert 64)
-   (constants vector     :inline :offset-assert 80)
-   (cam-nrm   vector     :inline :offset-assert 96)
+  ((giftag     gs-gif-tag  :inline)
+   (buffers    vector4w    :inline)
+   (dests      vector4w    :inline)
+   (start      vector      :inline)
+   (offsets    vector      :inline)
+   (constants  vector      :inline)
+   (cam-nrm    vector      :inline)
    )
-  :method-count-assert 9
-  :size-assert         #x70
-  :flag-assert         #x900000070
   )
+
 
 (deftype ocean-texture-work (structure)
-  ((sprite-tmpl  dma-gif-packet :inline :offset-assert 0)
-   (sprite-tmpl2 dma-gif-packet :inline :offset-assert 32)
-   (adgif-tmpl   dma-gif-packet :inline :offset-assert 64)
+  ((sprite-tmpl   dma-gif-packet  :inline)
+   (sprite-tmpl2  dma-gif-packet  :inline)
+   (adgif-tmpl    dma-gif-packet  :inline)
    )
-  :method-count-assert 9
-  :size-assert         #x60
-  :flag-assert         #x900000060
   )
+
 
 (deftype ocean-mid-vertex (structure)
-  ((stq vector :inline :offset-assert 0)
-   (col vector :inline :offset-assert 16)
-   (pos vector :inline :offset-assert 32)
+  ((stq  vector  :inline)
+   (col  vector  :inline)
+   (pos  vector  :inline)
    )
-  :method-count-assert 9
-  :size-assert         #x30
-  :flag-assert         #x900000030
   )
+
 
 (deftype ocean-mid-constants (structure)
-  ((hmge-scale     vector       :inline :offset-assert 0)
-   (inv-hmge-scale vector       :inline :offset-assert 16)
-   (hvdf-offset    vector       :inline :offset-assert 32)
-   (fog            vector       :inline :offset-assert 48)
-   (constants      vector       :inline :offset-assert 64)
-   (constants2     vector       :inline :offset-assert 80)
-   (drw-fan        gs-gif-tag        :inline :offset-assert 96) ;; was qword
-   (env-fan        gs-gif-tag        :inline :offset-assert 112) ;; was qword
-   (drw-adgif      gs-gif-tag        :inline :offset-assert 128);; was qword
-   (drw-texture    adgif-shader :inline :offset-assert 144)
-   (drw-strip-0    gs-gif-tag        :inline :offset-assert 224) ;; was qword
-   (drw-strip-1    gs-gif-tag        :inline :offset-assert 240) ;; was qword
-   (env-adgif      gs-gif-tag        :inline :offset-assert 256) ;; was qword
-   (env-texture    adgif-shader :inline :offset-assert 272)
-   (env-strip      gs-gif-tag        :inline :offset-assert 352) ;; was qword
-   (env-color      vector       :inline :offset-assert 368)
-   (index-table    vector4w      8 :inline      :offset-assert 384)
-   (pos0           vector       :inline :offset-assert 512)
-   (pos1           vector       :inline :offset-assert 528)
-   (pos2           vector       :inline :offset-assert 544)
-   (pos3           vector       :inline :offset-assert 560)
+  ((hmge-scale      vector        :inline)
+   (inv-hmge-scale  vector        :inline)
+   (hvdf-offset     vector        :inline)
+   (fog             vector        :inline)
+   (constants       vector        :inline)
+   (constants2      vector        :inline)
+   (drw-fan         gs-gif-tag    :inline)
+   (env-fan         gs-gif-tag    :inline)
+   (drw-adgif       gs-gif-tag    :inline)
+   (drw-texture     adgif-shader  :inline)
+   (drw-strip-0     gs-gif-tag    :inline)
+   (drw-strip-1     gs-gif-tag    :inline)
+   (env-adgif       gs-gif-tag    :inline)
+   (env-texture     adgif-shader  :inline)
+   (env-strip       gs-gif-tag    :inline)
+   (env-color       vector        :inline)
+   (index-table     vector4w      8 :inline)
+   (pos0            vector        :inline)
+   (pos1            vector        :inline)
+   (pos2            vector        :inline)
+   (pos3            vector        :inline)
    )
-  :method-count-assert 9
-  :size-assert         #x240
-  :flag-assert         #x900000240
   )
+
 
 (deftype ocean-mid-upload (structure)
-  ((rot    matrix  :inline :offset-assert 0)
-   (matrix matrix  :inline :offset-assert 64)
-   (colors uint128 108     :offset-assert 128)
-   (masks  uint128 2       :offset-assert 1856)
+  ((rot     matrix   :inline)
+   (matrix  matrix   :inline)
+   (colors  uint128  108)
+   (masks   uint128  2)
    )
-  :method-count-assert 9
-  :size-assert         #x760
-  :flag-assert         #x900000760
   )
+
 
 (deftype ocean-mid-upload2 (structure)
-  ((rot    matrix   :inline :offset-assert 0)
-   (matrix matrix   :inline :offset-assert 64)
-   (count  vector4w :inline :offset-assert 128)
-   (tex0   vector   :inline :offset-assert 144)
-   (tex1   vector   :inline :offset-assert 160)
-   (tex2   vector   :inline :offset-assert 176)
-   (tex3   vector   :inline :offset-assert 192)
-   (clr0   vector   :inline :offset-assert 208)
-   (clr1   vector   :inline :offset-assert 224)
-   (clr2   vector   :inline :offset-assert 240)
-   (clr3   vector   :inline :offset-assert 256)
-   (verts  uint128  18      :offset-assert 272)
+  ((rot     matrix    :inline)
+   (matrix  matrix    :inline)
+   (count   vector4w  :inline)
+   (tex0    vector    :inline)
+   (tex1    vector    :inline)
+   (tex2    vector    :inline)
+   (tex3    vector    :inline)
+   (clr0    vector    :inline)
+   (clr1    vector    :inline)
+   (clr2    vector    :inline)
+   (clr3    vector    :inline)
+   (verts   uint128   18)
    )
-  :method-count-assert 9
-  :size-assert         #x230
-  :flag-assert         #x900000230
   )
+
 
 (deftype ocean-mid-work (structure)
-  ((env0    vector  :inline :offset-assert 0)
-   (env1    vector  :inline :offset-assert 16)
-   (env2    vector  :inline :offset-assert 32)
-   (hmg0    vector  :inline :offset-assert 48)
-   (hmg1    vector  :inline :offset-assert 64)
-   (hmg2    vector  :inline :offset-assert 80)
-   (indices uint128 16      :offset-assert 96)
+  ((env0     vector   :inline)
+   (env1     vector   :inline)
+   (env2     vector   :inline)
+   (hmg0     vector   :inline)
+   (hmg1     vector   :inline)
+   (hmg2     vector   :inline)
+   (indices  uint128  16)
    )
-  :method-count-assert 9
-  :size-assert         #x160
-  :flag-assert         #x900000160
   )
+
 
 (deftype ocean-near-constants (structure)
-  ((hmge-scale     vector       :inline :offset-assert 0)
-   (inv-hmge-scale vector       :inline :offset-assert 16)
-   (hvdf-offset    vector       :inline :offset-assert 32)
-   (fog            vector       :inline :offset-assert 48)
-   (constants      vector       :inline :offset-assert 64)
-   (constants2     vector       :inline :offset-assert 80)
-   (constants3     vector       :inline :offset-assert 96)
-   (constants4     vector       :inline :offset-assert 112)
-   (drw-fan        gs-gif-tag   :inline :offset-assert 128) ;; was qword
-   (drw2-fan       gs-gif-tag   :inline :offset-assert 144) ;; was qword
-   (env-fan        gs-gif-tag   :inline :offset-assert 160) ;; was qword
-   (drw-adgif      gs-gif-tag   :inline :offset-assert 176) ;; was qword
-   (drw-texture    adgif-shader :inline :offset-assert 192)
-   (drw-strip      gs-gif-tag   :inline :offset-assert 272) ;; was qword
-   (env-adgif      gs-gif-tag   :inline :offset-assert 288) ;; was qword
-   (env-texture    adgif-shader :inline :offset-assert 304) ;; was qword
-   (env-strip      gs-gif-tag   :inline :offset-assert 384)
-   (env-color      vector       :inline :offset-assert 400)
-   (drw2-adgif     gs-gif-tag   :inline :offset-assert 416)
-   (drw2-tex0      qword        :inline :offset-assert 432)
-   (drw2-frame     qword        :inline :offset-assert 448)
-   (drw2-strip     gs-gif-tag        :inline :offset-assert 464)
-   (drw3-adgif     gs-gif-tag        :inline :offset-assert 480)
-   (drw3-frame     qword        :inline :offset-assert 496)
-   (index-table    vector4w      4  :inline     :offset-assert 512)
+  ((hmge-scale      vector        :inline)
+   (inv-hmge-scale  vector        :inline)
+   (hvdf-offset     vector        :inline)
+   (fog             vector        :inline)
+   (constants       vector        :inline)
+   (constants2      vector        :inline)
+   (constants3      vector        :inline)
+   (constants4      vector        :inline)
+   (drw-fan         gs-gif-tag    :inline)
+   (drw2-fan        gs-gif-tag    :inline)
+   (env-fan         gs-gif-tag    :inline)
+   (drw-adgif       gs-gif-tag    :inline)
+   (drw-texture     adgif-shader  :inline)
+   (drw-strip       gs-gif-tag    :inline)
+   (env-adgif       gs-gif-tag    :inline)
+   (env-texture     adgif-shader  :inline)
+   (env-strip       gs-gif-tag    :inline)
+   (env-color       vector        :inline)
+   (drw2-adgif      gs-gif-tag    :inline)
+   (drw2-tex0       qword         :inline)
+   (drw2-frame      qword         :inline)
+   (drw2-strip      gs-gif-tag    :inline)
+   (drw3-adgif      gs-gif-tag    :inline)
+   (drw3-frame      qword         :inline)
+   (index-table     vector4w      4 :inline)
    )
-  :method-count-assert 9
-  :size-assert         #x240
-  :flag-assert         #x900000240
   )
 
+
 (deftype ocean-near-upload (structure)
-  ((rot          matrix            :inline :offset-assert 0)
-   (matrix       matrix            :inline :offset-assert 64)
-   (masks        uint128           2       :offset-assert 128)
-   (start-height vector4w          :inline :offset-assert 160)
-   (start-st     vector            :inline :offset-assert 176)
-   (near-colors  ocean-near-colors :inline :offset-assert 192)
+  ((rot           matrix             :inline)
+   (matrix        matrix             :inline)
+   (masks         uint128            2)
+   (start-height  vector4w           :inline)
+   (start-st      vector             :inline)
+   (near-colors   ocean-near-colors  :inline)
    )
-  :method-count-assert 9
-  :size-assert         #x100
-  :flag-assert         #x900000100
   )
 
 
 (deftype ocean-near-vertex (structure)
-  ((stq vector :inline :offset-assert 0)
-   (clr vector :inline :offset-assert 16)
-   (pos vector :inline :offset-assert 32)
+  ((stq  vector  :inline)
+   (clr  vector  :inline)
+   (pos  vector  :inline)
    )
-  :method-count-assert 9
-  :size-assert         #x30
-  :flag-assert         #x900000030
   )
 
+
 (deftype ocean-near-work (structure)
-  ((verts-ptr vector  :inline :offset-assert 0)
-   (indices   uint128 16      :offset-assert 16)
+  ((verts-ptr  vector   :inline)
+   (indices    uint128  16)
    )
-  :method-count-assert 9
-  :size-assert         #x110
-  :flag-assert         #x900000110
   )
 
 (define-extern *ocean-trans-corner-table* (inline-array vector4w-2))

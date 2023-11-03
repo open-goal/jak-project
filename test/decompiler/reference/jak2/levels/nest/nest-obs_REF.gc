@@ -3,43 +3,39 @@
 
 ;; definition of type nest-switch
 (deftype nest-switch (process-drawable)
-  ((set-camera   symbol        :offset-assert 200)
-   (notify-actor entity-actor  :offset-assert 204)
-   (y-start      float         :offset-assert 208)
-   (y-delta      float         :offset-assert 212)
-   (y-rot-rate   float         :offset-assert 216)
+  ((set-camera    symbol)
+   (notify-actor  entity-actor)
+   (y-start       float)
+   (y-delta       float)
+   (y-rot-rate    float)
    )
-  :heap-base #x60
-  :method-count-assert 22
-  :size-assert         #xdc
-  :flag-assert         #x16006000dc
-  (:methods
-    (up () _type_ :state 20)
-    (down () _type_ :state 21)
+  (:state-methods
+    up
+    down
     )
   )
 
 ;; definition for method 3 of type nest-switch
-(defmethod inspect nest-switch ((obj nest-switch))
-  (when (not obj)
-    (set! obj obj)
+(defmethod inspect ((this nest-switch))
+  (when (not this)
+    (set! this this)
     (goto cfg-4)
     )
   (let ((t9-0 (method-of-type process-drawable inspect)))
-    (t9-0 obj)
+    (t9-0 this)
     )
-  (format #t "~2Tset-camera: ~A~%" (-> obj set-camera))
-  (format #t "~2Tnotify-actor: ~A~%" (-> obj notify-actor))
-  (format #t "~2Ty-start: ~f~%" (-> obj y-start))
-  (format #t "~2Ty-delta: ~f~%" (-> obj y-delta))
-  (format #t "~2Ty-rot-rate: ~f~%" (-> obj y-rot-rate))
+  (format #t "~2Tset-camera: ~A~%" (-> this set-camera))
+  (format #t "~2Tnotify-actor: ~A~%" (-> this notify-actor))
+  (format #t "~2Ty-start: ~f~%" (-> this y-start))
+  (format #t "~2Ty-delta: ~f~%" (-> this y-delta))
+  (format #t "~2Ty-rot-rate: ~f~%" (-> this y-rot-rate))
   (label cfg-4)
-  obj
+  this
   )
 
 ;; failed to figure out what this is:
-(defskelgroup skel-nest-switch cas-switch 0 2
-              ((1 (meters 999999)))
+(defskelgroup skel-nest-switch cas-switch cas-switch-lod0-jg cas-switch-idle-ja
+              ((cas-switch-lod0-mg (meters 999999)))
               :bounds (static-spherem 0 2 0 3.5)
               :origin-joint-index 3
               )
@@ -47,10 +43,10 @@
 ;; failed to figure out what this is:
 (defstate up (nest-switch)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('attack)
-       (let ((v1-1 (the-as attack-info (-> event param 1))))
+       (let ((v1-1 (the-as attack-info (-> block param 1))))
          (when (or (= (-> v1-1 mode) 'spin) (= (-> v1-1 mode) 'spin-air))
            (let ((a1-3 (new 'stack-no-clear 'event-message-block)))
              (set! (-> a1-3 from) (process->ppointer self))
@@ -73,21 +69,20 @@
        )
       )
     )
-  :trans (the-as (function none :behavior nest-switch) rider-trans)
-  :code (the-as (function none :behavior nest-switch) sleep-code)
-  :post (the-as (function none :behavior nest-switch) rider-post)
+  :trans rider-trans
+  :code sleep-code
+  :post rider-post
   )
 
 ;; failed to figure out what this is:
 (defstate down (nest-switch)
   :virtual #t
   :enter (behavior ()
-    (set! (-> self state-time) (current-time))
+    (set-time! (-> self state-time))
     (set! (-> self set-camera) #f)
-    (none)
     )
   :trans (behavior ()
-    (when (and (not (-> self set-camera)) (>= (- (current-time) (-> self state-time)) (seconds 0.6)))
+    (when (and (not (-> self set-camera)) (time-elapsed? (-> self state-time) (seconds 0.6)))
       (process-grab? *target* #f)
       (hide-hud-quick #f)
       (set-setting! 'process-mask 'set 0.0 (process-mask movie enemy))
@@ -95,35 +90,34 @@
       (set! (-> self set-camera) #t)
       )
     (rider-trans)
-    (none)
     )
   :code (behavior ()
     (set! (-> self y-rot-rate) 0.0)
     (logclear! (-> self mask) (process-mask actor-pause))
     (while (< 0.0 (-> self y-delta))
-      (seek! (-> self y-rot-rate) 500.0 (* 1000.0 (-> self clock seconds-per-frame)))
+      (seek! (-> self y-rot-rate) 500.0 (* 1000.0 (seconds-per-frame)))
       (quaternion-rotate-y!
         (-> self root quat)
         (-> self root quat)
-        (* 182.04445 (-> self clock seconds-per-frame) (-> self y-rot-rate))
+        (* 182.04445 (seconds-per-frame) (-> self y-rot-rate))
         )
-      (seek! (-> self y-delta) 0.0 (* 4096.0 (-> self clock seconds-per-frame) (* 0.006 (-> self y-rot-rate))))
+      (seek! (-> self y-delta) 0.0 (* 4096.0 (seconds-per-frame) (* 0.006 (-> self y-rot-rate))))
       (set! (-> self root trans y) (+ (-> self y-start) (-> self y-delta)))
       (suspend)
       )
     (let ((gp-0 (current-time)))
-      (until (>= (- (current-time) gp-0) (seconds 1))
-        (seek! (-> self y-rot-rate) 0.0 (* 4000.0 (-> self clock seconds-per-frame)))
+      (until (time-elapsed? gp-0 (seconds 1))
+        (seek! (-> self y-rot-rate) 0.0 (* 4000.0 (seconds-per-frame)))
         (quaternion-rotate-y!
           (-> self root quat)
           (-> self root quat)
-          (* 182.04445 (-> self clock seconds-per-frame) (-> self y-rot-rate))
+          (* 182.04445 (seconds-per-frame) (-> self y-rot-rate))
           )
         (suspend)
         )
       )
     (let ((gp-1 (current-time)))
-      (until (>= (- (current-time) gp-1) (seconds 1))
+      (until (time-elapsed? gp-1 (seconds 1))
         (suspend)
         )
       )
@@ -132,21 +126,20 @@
     (process-release? *target*)
     (logior! (-> self mask) (process-mask actor-pause))
     (sleep-code)
-    (none)
     )
-  :post (the-as (function none :behavior nest-switch) rider-post)
+  :post rider-post
   )
 
 ;; definition for method 11 of type nest-switch
 ;; WARN: Return type mismatch object vs none.
-(defmethod init-from-entity! nest-switch ((obj nest-switch) (arg0 entity-actor))
+(defmethod init-from-entity! ((this nest-switch) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
 - stack size
 - collision information
 - loading the skeleton group / bones
 - sounds"
-  (let ((s4-0 (new 'process 'collide-shape obj (collide-list-enum usually-hit-by-player))))
+  (let ((s4-0 (new 'process 'collide-shape this (collide-list-enum usually-hit-by-player))))
     (let ((s3-0 (new 'process 'collide-shape-prim-group s4-0 (the-as uint 3) 0)))
       (set! (-> s4-0 total-prims) (the-as uint 4))
       (set! (-> s3-0 prim-core collide-as) (collide-spec obstacle))
@@ -180,49 +173,45 @@ This commonly includes things such as:
       (set! (-> s4-0 backup-collide-as) (-> v1-15 prim-core collide-as))
       (set! (-> s4-0 backup-collide-with) (-> v1-15 prim-core collide-with))
       )
-    (set! (-> obj root) s4-0)
+    (set! (-> this root) s4-0)
     )
-  (process-drawable-from-entity! obj arg0)
+  (process-drawable-from-entity! this arg0)
   (initialize-skeleton
-    obj
+    this
     (the-as skeleton-group (art-group-get-by-name *level* "skel-nest-switch" (the-as (pointer uint32) #f)))
     (the-as pair 0)
     )
-  (set! (-> obj notify-actor) (entity-actor-lookup arg0 'alt-actor 0))
-  (set! (-> obj y-start) (+ -12288.0 (-> obj root trans y)))
-  (set! (-> obj y-delta) 12288.0)
-  (go (method-of-object obj up))
+  (set! (-> this notify-actor) (entity-actor-lookup arg0 'alt-actor 0))
+  (set! (-> this y-start) (+ -12288.0 (-> this root trans y)))
+  (set! (-> this y-delta) 12288.0)
+  (go (method-of-object this up))
   (none)
   )
 
 ;; definition of type nest-piston
 (deftype nest-piston (process-drawable)
-  ((y-level  float  :offset-assert 200)
-   (y-offset float  :offset-assert 204)
+  ((y-level   float)
+   (y-offset  float)
    )
-  :heap-base #x50
-  :method-count-assert 22
-  :size-assert         #xd0
-  :flag-assert         #x16005000d0
-  (:methods
-    (idle () _type_ :state 20)
-    (up () _type_ :state 21)
+  (:state-methods
+    idle
+    up
     )
   )
 
 ;; definition for method 3 of type nest-piston
-(defmethod inspect nest-piston ((obj nest-piston))
-  (when (not obj)
-    (set! obj obj)
+(defmethod inspect ((this nest-piston))
+  (when (not this)
+    (set! this this)
     (goto cfg-4)
     )
   (let ((t9-0 (method-of-type process-drawable inspect)))
-    (t9-0 obj)
+    (t9-0 this)
     )
-  (format #t "~2Ty-level: ~f~%" (-> obj y-level))
-  (format #t "~2Ty-offset: ~f~%" (-> obj y-offset))
+  (format #t "~2Ty-level: ~f~%" (-> this y-level))
+  (format #t "~2Ty-offset: ~f~%" (-> this y-offset))
   (label cfg-4)
-  obj
+  this
   )
 
 ;; failed to figure out what this is:
@@ -234,48 +223,47 @@ This commonly includes things such as:
 ;; failed to figure out what this is:
 (defstate idle (nest-piston)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('trigger)
        (go-virtual up)
        )
       )
     )
-  :code (the-as (function none :behavior nest-piston) sleep-code)
+  :code sleep-code
   )
 
 ;; failed to figure out what this is:
 (defstate up (nest-piston)
   :virtual #t
-  :trans (the-as (function none :behavior nest-piston) rider-trans)
+  :trans rider-trans
   :code (behavior ()
     (let ((gp-0 (current-time)))
-      (until (>= (- (current-time) gp-0) (seconds 1))
+      (until (time-elapsed? gp-0 (seconds 1))
         (suspend)
         )
       )
     (while (< (-> self y-offset) 16384.0)
-      (seek! (-> self y-offset) 16384.0 (* 8192.0 (-> self clock seconds-per-frame)))
+      (seek! (-> self y-offset) 16384.0 (* 8192.0 (seconds-per-frame)))
       (set! (-> self root trans y) (+ (-> self y-level) (-> self y-offset)))
       (suspend)
       )
     (logior! (-> self mask) (process-mask actor-pause))
     (sleep-code)
-    (none)
     )
-  :post (the-as (function none :behavior nest-piston) rider-post)
+  :post rider-post
   )
 
 ;; definition for method 11 of type nest-piston
 ;; WARN: Return type mismatch object vs none.
-(defmethod init-from-entity! nest-piston ((obj nest-piston) (arg0 entity-actor))
+(defmethod init-from-entity! ((this nest-piston) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
 - stack size
 - collision information
 - loading the skeleton group / bones
 - sounds"
-  (let ((s4-0 (new 'process 'collide-shape obj (collide-list-enum usually-hit-by-player))))
+  (let ((s4-0 (new 'process 'collide-shape this (collide-list-enum usually-hit-by-player))))
     (let ((s3-0 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 0) (the-as uint 0))))
       (set! (-> s3-0 prim-core collide-as) (collide-spec obstacle pusher))
       (set! (-> s3-0 prim-core collide-with) (collide-spec jak bot player-list))
@@ -291,19 +279,19 @@ This commonly includes things such as:
       (set! (-> s4-0 backup-collide-as) (-> v1-12 prim-core collide-as))
       (set! (-> s4-0 backup-collide-with) (-> v1-12 prim-core collide-with))
       )
-    (set! (-> obj root) s4-0)
+    (set! (-> this root) s4-0)
     )
-  (process-drawable-from-entity! obj arg0)
+  (process-drawable-from-entity! this arg0)
   (initialize-skeleton
-    obj
+    this
     (the-as skeleton-group (art-group-get-by-name *level* "skel-nest-piston" (the-as (pointer uint32) #f)))
     (the-as pair 0)
     )
-  (logclear! (-> obj mask) (process-mask actor-pause))
-  (+! (-> obj root trans y) 8192.0)
-  (set! (-> obj y-level) (-> obj root trans y))
-  (set! (-> obj y-offset) 0.0)
+  (logclear! (-> this mask) (process-mask actor-pause))
+  (+! (-> this root trans y) 8192.0)
+  (set! (-> this y-level) (-> this root trans y))
+  (set! (-> this y-offset) 0.0)
   (transform-post)
-  (go (method-of-object obj idle))
+  (go (method-of-object this idle))
   (none)
   )

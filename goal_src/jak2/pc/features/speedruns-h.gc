@@ -5,32 +5,42 @@
 (defenum speedrun-category
   :type uint32
   ;; Main Categories
-  (full-game 0)       ;; Full game run (any category for now, can repurpose as Any% if we split them out later)
-  ;; (full-game-100 1)       ;; 100%
-  ;; (full-game-allMission 2)     ;; All Missions
-
-  ;; Individual Levels
-  (il-placeholder1    100) ;; Geyser Rock IL
-  (il-placeholdere3   101) ;; Sandover Village IL
-  (il-placeholder3    102) ;; Sentinel Beach IL
-
-
-  ;; Extension Categories (TBD)
+  (newgame-normal 0)
+  (newgame-heromode 1)
+  ;; TODO - add ILs and such later
+  ;; there's no point in adding categories that just start from a new-game and have later restrictions
+  ;; because we aren't going to modify the code to make that possible
+  ;; ie. removing mars tomb skip if you pick "all missions"
   )
 
+(deftype speedrun-info (structure)
+  ((category speedrun-category)
+   (display-run-info? symbol))
+  (:methods
+    (set-category! (_type_ speedrun-category) none)
+    (start-run! (_type_) none)
+    (enforce-settings! (_type_) none)
+    (hide-run-info! (_type_) none)
+    (update! (_type_) none)
+    (draw-run-info! (_type_) none)))
 
-(deftype speedrun-info-jak2 (structure)
-  (
-   (category speedrun-category)
-   (needs-post-blackout-setup? symbol)
-   (should-display? symbol)
-   )
-  )
+(define-extern *speedrun-info* speedrun-info)
 
-(define-extern start-speedrun (function speedrun-category none))
-(define-extern is-speedrun-category? (function symbol symbol))
-(define-extern hide-speedrun-display (function none))
-(define-extern speedrun-start-full-game-run (function none))
-(define-extern setup-speedrun-post-blackout (function none))
-(define-extern speedrun-mode-update (function none))
-(define-extern speedrun-draw-settings (function none))
+(defenum speedrun-menu-command
+  :type uint32
+  (reset 0)
+  (exit 1))
+
+(deftype speedrun-menu (process-drawable)
+  ((popup-menu popup-menu)
+   (draw-menu? symbol)
+   (ignore-menu-toggle? symbol)
+   (opened-with-start? symbol))
+  (:methods
+    (draw! (_type_) none))
+  (:states
+    idle))
+
+(define-extern *speedrun-popup-menu* popup-menu)
+(define-extern *speedrun-menu* (pointer speedrun-menu))
+(define-extern speedrun-menu-init (function none :behavior speedrun-menu))

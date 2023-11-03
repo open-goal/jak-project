@@ -11,19 +11,19 @@
 ;; DECOMP BEGINS
 
 ;; WARN: Return type mismatch uint vs int.
-(defmethod asize-of shadow-geo ((obj shadow-geo))
-  (the-as int (* (-> obj total-qwc) 16))
+(defmethod asize-of ((this shadow-geo))
+  (the-as int (* (-> this total-qwc) 16))
   )
 
-(defmethod mem-usage shadow-geo ((obj shadow-geo) (arg0 memory-usage-block) (arg1 int))
+(defmethod mem-usage ((this shadow-geo) (arg0 memory-usage-block) (arg1 int))
   (set! (-> arg0 length) (max 111 (-> arg0 length)))
   (set! (-> arg0 data 110 name) "shadow-geo")
   (+! (-> arg0 data 110 count) 1)
-  (let ((v1-6 (* (-> obj total-qwc) 16)))
+  (let ((v1-6 (* (-> this total-qwc) 16)))
     (+! (-> arg0 data 110 used) v1-6)
     (+! (-> arg0 data 110 total) (logand -16 (+ v1-6 15)))
     )
-  obj
+  this
   )
 
 (define *shadow-data* (new 'static 'shadow-data
@@ -492,45 +492,39 @@
   )
 
 (deftype shadow-stats (structure)
-  ((num-single-tris  uint32  :offset-assert   0)
-   (num-double-tris  uint32  :offset-assert   4)
-   (num-single-edges uint32  :offset-assert   8)
-   (num-double-edges uint32  :offset-assert  12)
-   (num-fragments    uint16  :offset-assert  16)
-   (num-objects      uint16  :offset-assert  18)
+  ((num-single-tris   uint32)
+   (num-double-tris   uint32)
+   (num-single-edges  uint32)
+   (num-double-edges  uint32)
+   (num-fragments     uint16)
+   (num-objects       uint16)
    )
-  :method-count-assert 9
-  :size-assert         #x14
-  :flag-assert         #x900000014
   )
 
 
 (deftype shadow-dcache (structure)
-  ((vtx-table              uint32                :offset-assert   0)
-   (single-edge-table      uint32                :offset-assert   4)
-   (double-edge-table      uint32                :offset-assert   8)
-   (double-tri-table       uint32                :offset-assert  12)
-   (dcache-top             uint32                :offset-assert  16)
-   (num-facing-single-tris uint32                :offset-assert  20)
-   (num-single-edges       uint32                :offset-assert  24)
-   (num-double-edges       uint32                :offset-assert  28)
-   (single-tri-list        uint32                :offset-assert  32)
-   (single-edge-list       uint32                :offset-assert  36)
-   (double-edge-list       uint32                :offset-assert  40)
-   (ptr-dual-verts         uint32                :offset-assert  44)
-   (stats                  shadow-stats :inline  :offset-assert  48)
-   (frag-qwc               uint32                :offset-assert  68)
-   (center                 vector       :inline  :offset-assert  80)
-   (plane                  vector       :inline  :offset-assert  96)
-   (top-plane              vector       :inline  :offset-assert 112)
-   (near-plane             vector       :inline  :offset-assert 128)
-   (light-dir              vector       :inline  :offset-assert 144)
-   (vtx-min                vector       :inline  :offset-assert 160)
-   (data                   uint8        :dynamic :offset-assert 176)
+  ((vtx-table               uint32)
+   (single-edge-table       uint32)
+   (double-edge-table       uint32)
+   (double-tri-table        uint32)
+   (dcache-top              uint32)
+   (num-facing-single-tris  uint32)
+   (num-single-edges        uint32)
+   (num-double-edges        uint32)
+   (single-tri-list         uint32)
+   (single-edge-list        uint32)
+   (double-edge-list        uint32)
+   (ptr-dual-verts          uint32)
+   (stats                   shadow-stats  :inline)
+   (frag-qwc                uint32)
+   (center                  vector        :inline)
+   (plane                   vector        :inline)
+   (top-plane               vector        :inline)
+   (near-plane              vector        :inline)
+   (light-dir               vector        :inline)
+   (vtx-min                 vector        :inline)
+   (data                    uint8         :dynamic)
    )
-  :method-count-assert 9
-  :size-assert         #xb0
-  :flag-assert         #x9000000b0
   )
 
 
@@ -566,8 +560,8 @@
 
 (def-mips2c shadow-add-double-edges function)
 
-(defmethod shadow-control-method-14 shadow-control ((obj shadow-control) (arg0 vector) (arg1 vector) (arg2 float) (arg3 float) (arg4 float))
-  (let ((gp-0 (-> obj settings)))
+(defmethod shadow-control-method-14 ((this shadow-control) (arg0 vector) (arg1 vector) (arg2 float) (arg3 float) (arg4 float))
+  (let ((gp-0 (-> this settings)))
     (let ((s4-0 (-> gp-0 shadow-dir)))
       (vector-normalize-copy! s4-0 arg1 1.0)
       (set! (-> gp-0 shadow-dir w) (- arg2))
@@ -632,6 +626,7 @@
 
 (def-mips2c shadow-execute (function shadow-dma-packet pointer pointer))
 
+;; ERROR: Failed store: (s.d! (+ (the-as dma-packet a0-5) 8) 0) at op 17
 (defun shadow-vu0-upload ()
   (#unless PC_PORT
     (let ((gp-0 *vu0-dma-list*))
@@ -656,6 +651,7 @@
   )
 
 ;; ERROR: Failed store: (s.h! (+ v1-24 18) 0) at op 58
+;; ERROR: Failed store: (s.h! (+ v1-24 16) 0) at op 59
 (defun shadow-execute-all ((arg0 dma-buffer))
   (when *debug-segment*
     (let ((gp-0 (-> *display* frames (-> *display* on-screen) profile-array data 0))
@@ -790,7 +786,7 @@
   (none)
   )
 
-(defmethod shadow-control-method-13 shadow-control ((obj shadow-control) (arg0 vector) (arg1 float) (arg2 float) (arg3 float))
+(defmethod shadow-control-method-13 ((this shadow-control) (arg0 vector) (arg1 float) (arg2 float) (arg3 float))
   (with-pp
     (let ((s4-0 (new 'stack-no-clear 'collide-query)))
       (let ((v1-0 pp))
@@ -808,19 +804,19 @@
         )
       (cond
         ((>= (fill-and-probe-using-line-sphere *collide-cache* s4-0) 0.0)
-         (let ((v1-5 obj))
+         (let ((v1-5 this))
            (logclear! (-> v1-5 settings flags) (shadow-flags disable-draw))
            )
          0
-         (let ((v1-7 obj))
+         (let ((v1-7 this))
            (set! (-> v1-7 settings bot-plane w) (- (+ (-> s4-0 best-other-tri intersect y) arg1)))
            )
          0
-         (set! (-> obj settings top-plane w) (- (+ (-> s4-0 best-other-tri intersect y) arg2)))
+         (set! (-> this settings top-plane w) (- (+ (-> s4-0 best-other-tri intersect y) arg2)))
          0
          )
         (else
-          (let ((v1-10 obj))
+          (let ((v1-10 this))
             (logior! (-> v1-10 settings flags) (shadow-flags disable-draw))
             )
           0

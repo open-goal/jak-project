@@ -3,21 +3,17 @@
 
 ;; definition of type sculptor
 (deftype sculptor (process-taskable)
-  ((muse handle  :offset-assert 384)
+  ((muse  handle)
    )
-  :heap-base #x120
-  :method-count-assert 53
-  :size-assert         #x188
-  :flag-assert         #x3501200188
   )
 
 ;; definition for method 3 of type sculptor
-(defmethod inspect sculptor ((obj sculptor))
+(defmethod inspect ((this sculptor))
   (let ((t9-0 (method-of-type process-taskable inspect)))
-    (t9-0 obj)
+    (t9-0 this)
     )
-  (format #t "~T~Tmuse: ~D~%" (-> obj muse))
-  obj
+  (format #t "~T~Tmuse: ~D~%" (-> this muse))
+  this
   )
 
 ;; failed to figure out what this is:
@@ -35,10 +31,10 @@
 
 ;; definition for method 52 of type sculptor
 ;; INFO: Return type mismatch int vs none.
-(defmethod process-taskable-method-52 sculptor ((obj sculptor))
-  (let ((v1-1 (-> obj draw shadow-ctrl)))
+(defmethod process-taskable-method-52 ((this sculptor))
+  (let ((v1-1 (-> this draw shadow-ctrl)))
     (when v1-1
-      (let ((f0-0 (-> obj root-override trans y)))
+      (let ((f0-0 (-> this root trans y)))
         (let ((a0-2 v1-1))
           (set! (-> a0-2 settings bot-plane w) (- (+ -2048.0 f0-0)))
           )
@@ -52,21 +48,22 @@
   )
 
 ;; definition for method 48 of type sculptor
-(defmethod draw-npc-shadow sculptor ((obj sculptor))
-  (-> obj draw shadow-ctrl)
+;; INFO: Return type mismatch object vs none.
+(defmethod draw-npc-shadow ((this sculptor))
+  (-> this draw shadow-ctrl)
   (cond
-    ((and (-> obj draw shadow)
-          (zero? (-> obj draw cur-lod))
-          (logtest? (-> obj draw status) (draw-status was-drawn))
+    ((and (-> this draw shadow)
+          (zero? (-> this draw cur-lod))
+          (logtest? (-> this draw status) (draw-status was-drawn))
           )
-     (let ((v1-9 (-> obj draw shadow-ctrl)))
+     (let ((v1-9 (-> this draw shadow-ctrl)))
        (logclear! (-> v1-9 settings flags) (shadow-flags disable-draw))
        )
      0
-     (update-direction-from-time-of-day (-> obj draw shadow-ctrl))
+     (update-direction-from-time-of-day (-> this draw shadow-ctrl))
      )
     (else
-      (let ((v1-14 (-> obj draw shadow-ctrl)))
+      (let ((v1-14 (-> this draw shadow-ctrl)))
         (logior! (-> v1-14 settings flags) (shadow-flags disable-draw))
         )
       0
@@ -98,16 +95,15 @@
   :virtual #t
   :enter (behavior ()
     (muse-to-idle (the-as muse self))
-    (none)
     )
   )
 
 ;; definition for method 32 of type sculptor
-(defmethod play-anim! sculptor ((obj sculptor) (arg0 symbol))
-  (case (current-status (-> obj tasks))
+(defmethod play-anim! ((this sculptor) (arg0 symbol))
+  (case (current-status (-> this tasks))
     (((task-status need-hint) (task-status need-introduction))
      (if arg0
-         (close-status! (-> obj tasks) (task-status need-introduction))
+         (close-status! (-> this tasks) (task-status need-introduction))
          )
      (new 'static 'spool-anim
        :name "sculptor-introduction"
@@ -134,23 +130,23 @@
        )
      )
     (((task-status need-reminder))
-     (set! (-> obj skippable) #t)
+     (set! (-> this skippable) #t)
      (new 'static 'spool-anim :name "sculptor-reminder-1" :index 17 :parts 2 :command-list '())
      )
     (((task-status need-reward-speech))
      (when arg0
-       (set! (-> obj cell-for-task) (current-task (-> obj tasks)))
-       (close-current! (-> obj tasks))
-       (set! (-> obj muse)
-             (ppointer->handle (manipy-spawn (-> obj root-override trans) (-> obj entity) *sculptor-muse-sg* #f :to obj))
+       (set! (-> this cell-for-task) (current-task (-> this tasks)))
+       (close-current! (-> this tasks))
+       (set! (-> this muse)
+             (ppointer->handle (manipy-spawn (-> this root trans) (-> this entity) *sculptor-muse-sg* #f :to this))
              )
-       (let ((v1-18 (handle->process (-> obj muse))))
+       (let ((v1-18 (handle->process (-> this muse))))
          (if v1-18
              (set! (-> (the-as muse v1-18) draw light-index) (the-as uint 3))
              )
          )
-       (send-event (handle->process (-> obj muse)) 'center-joint 4)
-       (send-event (handle->process (-> obj muse)) 'anim-mode 'clone-anim)
+       (send-event (handle->process (-> this muse)) 'center-joint 4)
+       (send-event (handle->process (-> this muse)) 'anim-mode 'clone-anim)
        )
      (new 'static 'spool-anim
        :name "sculptor-resolution"
@@ -164,52 +160,52 @@
           (format
             0
             "ERROR: <GMJ>: ~S playing anim for task status ~S~%"
-            (-> obj name)
-            (task-status->string (current-status (-> obj tasks)))
+            (-> this name)
+            (task-status->string (current-status (-> this tasks)))
             )
           )
-      (-> obj draw art-group data 4)
+      (-> this draw art-group data 4)
       )
     )
   )
 
 ;; definition for method 31 of type sculptor
-(defmethod get-art-elem sculptor ((obj sculptor))
-  (case (current-status (-> obj tasks))
+(defmethod get-art-elem ((this sculptor))
+  (case (current-status (-> this tasks))
     (((task-status invalid) (task-status need-resolution))
-     (-> obj draw art-group data 11)
+     (-> this draw art-group data 11)
      )
     (else
-      (-> obj draw art-group data 3)
+      (-> this draw art-group data 3)
       )
     )
   )
 
 ;; definition for method 43 of type sculptor
-(defmethod process-taskable-method-43 sculptor ((obj sculptor))
-  (when (ambient-control-method-10 (-> obj ambient) (new 'stack-no-clear 'vector) (seconds 30) 122880.0 obj)
+(defmethod process-taskable-method-43 ((this sculptor))
+  (when (ambient-control-method-10 (-> this ambient) (new 'stack-no-clear 'vector) (seconds 30) 122880.0 this)
     (let ((f0-2 (rand-float-gen)))
       (cond
         ((< 0.85714287 f0-2)
-         (play-ambient (-> obj ambient) "SCU-LO01" #f (-> obj root-override trans))
+         (play-ambient (-> this ambient) "SCU-LO01" #f (-> this root trans))
          )
         ((< 0.71428573 f0-2)
-         (play-ambient (-> obj ambient) "SCU-AM05" #f (-> obj root-override trans))
+         (play-ambient (-> this ambient) "SCU-AM05" #f (-> this root trans))
          )
         ((< 0.5714286 f0-2)
-         (play-ambient (-> obj ambient) "SCU-AM06" #f (-> obj root-override trans))
+         (play-ambient (-> this ambient) "SCU-AM06" #f (-> this root trans))
          )
         ((< 0.42857143 f0-2)
-         (play-ambient (-> obj ambient) "SCU-AM03" #f (-> obj root-override trans))
+         (play-ambient (-> this ambient) "SCU-AM03" #f (-> this root trans))
          )
         ((< 0.2857143 f0-2)
-         (play-ambient (-> obj ambient) "SCU-AM04" #f (-> obj root-override trans))
+         (play-ambient (-> this ambient) "SCU-AM04" #f (-> this root trans))
          )
         ((< 0.14285715 f0-2)
-         (play-ambient (-> obj ambient) "SCU-AM01" #f (-> obj root-override trans))
+         (play-ambient (-> this ambient) "SCU-AM01" #f (-> this root trans))
          )
         (else
-          (play-ambient (-> obj ambient) "SCU-AM02" #f (-> obj root-override trans))
+          (play-ambient (-> this ambient) "SCU-AM02" #f (-> this root trans))
           )
         )
       )
@@ -354,17 +350,16 @@
           )
         )
       )
-    (none)
     )
   )
 
 ;; definition for method 11 of type sculptor
-(defmethod init-from-entity! sculptor ((obj sculptor) (arg0 entity-actor))
-  (process-taskable-method-40 obj arg0 *sculptor-sg* 3 40 (new 'static 'vector :w 4096.0) 5)
-  (set! (-> obj tasks) (get-task-control (game-task misty-muse)))
-  (set! (-> obj muse) (the-as handle #f))
-  (set! (-> obj sound-flava) (music-flava sculptor))
-  (set! (-> obj draw light-index) (the-as uint 3))
-  (process-taskable-method-42 obj)
+(defmethod init-from-entity! ((this sculptor) (arg0 entity-actor))
+  (process-taskable-method-40 this arg0 *sculptor-sg* 3 40 (new 'static 'vector :w 4096.0) 5)
+  (set! (-> this tasks) (get-task-control (game-task misty-muse)))
+  (set! (-> this muse) (the-as handle #f))
+  (set! (-> this sound-flava) (music-flava sculptor))
+  (set! (-> this draw light-index) (the-as uint 3))
+  (process-taskable-method-42 this)
   (none)
   )

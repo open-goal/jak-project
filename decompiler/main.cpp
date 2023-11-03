@@ -205,19 +205,31 @@ int main(int argc, char** argv) {
 
   if (config.process_art_groups) {
     db.extract_art_info();
-    // dumb art info to json if requested
+    // dump art info to json if requested
     if (config.dump_art_group_info) {
-      auto file_name = out_folder / "dump" / "art-group-info.min.json";
-      nlohmann::json json = db.dts.art_group_info;
-      file_util::create_dir_if_needed_for_file(file_name);
-      file_util::write_text_file(file_name, json.dump(-1));
-      lg::info("[DUMP] Dumped art group info to {}", file_name.string());
+      auto ag_file_name = out_folder / "dump" / "art-group-info.min.json";
+      nlohmann::json ag_json = db.dts.art_group_info;
+      file_util::create_dir_if_needed_for_file(ag_file_name);
+      file_util::write_text_file(ag_file_name, ag_json.dump(-1));
+      lg::info("[DUMP] Dumped art group info to {}", ag_file_name.string());
     }
-  } else if (!config.art_group_info_dump.empty()) {
+    if (config.dump_joint_geo_info) {
+      auto jg_file_name = out_folder / "dump" / "joint-node-info.min.json";
+      nlohmann::json jg_json = db.dts.jg_info;
+      file_util::create_dir_if_needed_for_file(jg_file_name);
+      file_util::write_text_file(jg_file_name, jg_json.dump(-1));
+      lg::info("[DUMP] Dumped joint node info to {}", jg_file_name.string());
+    }
+  } else if (!config.art_group_info_dump.empty() || !config.jg_info_dump.empty()) {
     // process art groups (used in decompilation)
     // - if the config has a path to the art info dump, just use that
     // - otherwise (or if we want to dump it fresh) extract it
-    db.dts.art_group_info = config.art_group_info_dump;
+    if (!config.art_group_info_dump.empty()) {
+      db.dts.art_group_info = config.art_group_info_dump;
+    }
+    if (!config.jg_info_dump.empty()) {
+      db.dts.jg_info = config.jg_info_dump;
+    }
   } else {
     lg::error("`process_art_groups` was false and no art-group-info dump was provided!");
     return 1;
@@ -286,6 +298,13 @@ int main(int argc, char** argv) {
 
   mem_log("After textures: {} MB", get_peak_rss() / (1024 * 1024));
 
+  // Merge textures before replacing them, in other words, replacements take priority
+  auto texture_merge_path = file_util::get_jak_project_dir() / "game" / "assets" /
+                            game_version_names[config.game_version] / "texture_merges";
+  if (fs::exists(texture_merge_path)) {
+    tex_db.merge_textures(texture_merge_path);
+  }
+
   auto replacements_path = file_util::get_jak_project_dir() / "texture_replacements";
   if (fs::exists(replacements_path)) {
     tex_db.replace_textures(replacements_path);
@@ -312,7 +331,8 @@ int main(int argc, char** argv) {
     auto streaming_audio_in = in_folder / "VAG";
     auto streaming_audio_out = out_folder / "assets" / "streaming_audio";
     file_util::create_dir_if_needed(streaming_audio_out);
-    process_streamed_audio(streaming_audio_out, in_folder, config.streamed_audio_file_names);
+    process_streamed_audio(config, streaming_audio_out, in_folder,
+                           config.streamed_audio_file_names);
   }
 
   lg::info("Decompiler has finished successfully in {:.2f} seconds.", decomp_timer.getSeconds());

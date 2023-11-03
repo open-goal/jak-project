@@ -14,16 +14,13 @@
         )
 
 (deftype viewer (process-drawable)
-  ((janim art-joint-anim  :offset-assert 176)
+  ((janim  art-joint-anim)
    )
-  :heap-base #x50
-  :method-count-assert 20
-  :size-assert         #xb4
-  :flag-assert         #x14005000b4
   (:states
     viewer-process
     )
   )
+
 
 (define-extern *viewer* viewer)
 
@@ -47,9 +44,8 @@
         (ja :num! (seek!))
         )
       )
-    (none)
     )
-  :post (the-as (function none :behavior viewer) ja-post)
+  :post ja-post
   )
 
 (define viewer-string (new 'global 'string 64 (the-as string #f)))
@@ -173,10 +169,10 @@
     )
   )
 
-(defmethod init-from-entity! viewer ((obj viewer) (arg0 entity-actor))
-  (set! *viewer* obj)
-  (set! (-> obj root) (new 'process 'trsqv))
-  (process-drawable-from-entity! obj arg0)
+(defmethod init-from-entity! ((this viewer) (arg0 entity-actor))
+  (set! *viewer* this)
+  (set! (-> this root) (new 'process 'trsqv))
+  (process-drawable-from-entity! this arg0)
   (actor-get-arg! viewer-ja-name "ja" (res-lump-struct arg0 'name string))
   (actor-get-arg! viewer-geo-name "geo" (res-lump-struct arg0 'name string))
   (let ((gp-1 (-> arg0 etype)))
@@ -228,9 +224,5 @@
     viewer
     (t9-0 arg0 arg1)
     )
-  (the-as object #t)
+  #t
   )
-
-
-
-

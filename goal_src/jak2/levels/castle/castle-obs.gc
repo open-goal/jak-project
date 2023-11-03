@@ -5,45 +5,39 @@
 ;; name in dgo: castle-obs
 ;; dgos: CAS
 
-;; og:update-with-merge:substr
-
 ;; DECOMP BEGINS
 
 (define *cas-conveyor-room-id* 0)
 
 (deftype cas-conveyor (conveyor)
-  ((actor-group        (pointer actor-group)  :offset-assert 256)
-   (actor-group-count  int32                  :offset-assert 260)
-   (texture-anim-index uint32                 :offset-assert 264)
-   (my-id              int32                  :offset-assert 268)
-   (sound-id           sound-id               :offset-assert 272)
-   (target-speed       float                  :offset-assert 276)
+  ((actor-group         (pointer actor-group))
+   (actor-group-count   int32)
+   (texture-anim-index  uint32)
+   (my-id               int32)
+   (sound-id            sound-id)
+   (target-speed        float)
    )
-  :heap-base #xa0
-  :method-count-assert 28
-  :size-assert         #x118
-  :flag-assert         #x1c00a00118
   )
 
 
-(defmethod init! cas-conveyor ((obj cas-conveyor))
+(defmethod init! ((this cas-conveyor))
   "Initializes defaults for things like the `speed` and `belt-radius`"
   (let ((t9-0 (method-of-type conveyor init!)))
-    (t9-0 obj)
+    (t9-0 this)
     )
-  (set! (-> obj speed) (res-lump-float (-> obj entity) 'speed :default 30720.0))
-  (set! (-> obj belt-radius) (res-lump-float (-> obj entity) 'center-radius :default 15974.4))
-  (set! (-> obj texture-anim-index) (res-lump-value (-> obj entity) 'index uint :time -1000000000.0))
-  (set! (-> obj my-id)
-        (res-lump-value (-> obj entity) 'extra-id int :default (the-as uint128 -1) :time -1000000000.0)
+  (set! (-> this speed) (res-lump-float (-> this entity) 'speed :default 30720.0))
+  (set! (-> this belt-radius) (res-lump-float (-> this entity) 'center-radius :default 15974.4))
+  (set! (-> this texture-anim-index) (res-lump-value (-> this entity) 'index uint :time -1000000000.0))
+  (set! (-> this my-id)
+        (res-lump-value (-> this entity) 'extra-id int :default (the-as uint128 -1) :time -1000000000.0)
         )
-  (set! (-> obj pull-y-threshold) 409.6)
+  (set! (-> this pull-y-threshold) 409.6)
   0
   (none)
   )
 
 ;; WARN: Return type mismatch object vs none.
-(defmethod init-from-entity! cas-conveyor ((obj cas-conveyor) (arg0 entity-actor))
+(defmethod init-from-entity! ((this cas-conveyor) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
 - stack size
@@ -51,37 +45,37 @@ This commonly includes things such as:
 - loading the skeleton group / bones
 - sounds"
   (local-vars (sv-16 res-tag))
-  (reset-root! obj)
-  (set! (-> obj path) (new 'process 'path-control obj 'path 0.0 (the-as entity #f) #f))
-  (logior! (-> obj path flags) (path-control-flag display draw-line draw-point draw-text))
-  (if (< (-> obj path curve num-cverts) 2)
+  (reset-root! this)
+  (set! (-> this path) (new 'process 'path-control this 'path 0.0 (the-as entity #f) #f))
+  (logior! (-> this path flags) (path-control-flag display draw-line draw-point draw-text))
+  (if (< (-> this path curve num-cverts) 2)
       (go process-drawable-art-error "bad path")
       )
-  (init! obj)
-  (set! (-> obj sound-id) (new-sound-id))
-  (set! (-> obj target-speed) (-> obj speed))
-  (conveyor-method-21 obj)
+  (init! this)
+  (set! (-> this sound-id) (new-sound-id))
+  (set! (-> this target-speed) (-> this speed))
+  (conveyor-method-21 this)
   (set! sv-16 (new 'static 'res-tag))
-  (let ((v1-16 (res-lump-data (-> obj entity) 'actor-groups pointer :tag-ptr (& sv-16))))
+  (let ((v1-16 (res-lump-data (-> this entity) 'actor-groups pointer :tag-ptr (& sv-16))))
     (cond
       ((and v1-16 (nonzero? (-> sv-16 elt-count)))
-       (set! (-> obj actor-group) (the-as (pointer actor-group) v1-16))
-       (set! (-> obj actor-group-count) (the-as int (-> sv-16 elt-count)))
+       (set! (-> this actor-group) (the-as (pointer actor-group) v1-16))
+       (set! (-> this actor-group-count) (the-as int (-> sv-16 elt-count)))
        )
       (else
-        (set! (-> obj actor-group) (the-as (pointer actor-group) #f))
-        (set! (-> obj actor-group-count) 0)
+        (set! (-> this actor-group) (the-as (pointer actor-group) #f))
+        (set! (-> this actor-group-count) 0)
         0
         )
       )
     )
-  (go (method-of-object obj idle))
+  (go (method-of-object this idle))
   (none)
   )
 
-(defmethod deactivate cas-conveyor ((obj cas-conveyor))
-  (sound-stop (-> obj sound-id))
-  ((the-as (function conveyor none) (find-parent-method cas-conveyor 10)) obj)
+(defmethod deactivate ((this cas-conveyor))
+  (sound-stop (-> this sound-id))
+  (call-parent-method this)
   (none)
   )
 
@@ -110,7 +104,7 @@ This commonly includes things such as:
 (defstate idle (cas-conveyor)
   :virtual #t
   :trans sound-update
-  :code (the-as (function none :behavior cas-conveyor) sleep-code)
+  :code sleep-code
   :post (behavior ()
     (when (or (= (-> self my-id) -1) (= (-> self my-id) (/ *cas-conveyor-room-id* 8)))
       (cond
@@ -145,29 +139,24 @@ This commonly includes things such as:
           ((the-as (function none) t9-3))
           )
       )
-    (none)
     )
   )
 
 (deftype cas-conveyor-switch (process-focusable)
-  ((actor-group        (pointer actor-group)         :offset-assert 204)
-   (actor-group-count  int32                         :offset-assert 208)
-   (incoming-attack-id uint32                        :offset-assert 212)
-   (quat0              quaternion            :inline :offset-assert 224)
-   (quat180            quaternion            :inline :offset-assert 240)
-   (red-pos            vector                :inline :offset-assert 256)
-   (blue-pos           vector                :inline :offset-assert 272)
-   (track-flag         symbol                        :offset-assert 288)
-   (lightning-timer    time-frame                    :offset-assert 296)
-   (speed              float                         :offset-assert 304)
-   (target-speed       float                         :offset-assert 308)
+  ((actor-group         (pointer actor-group))
+   (actor-group-count   int32)
+   (incoming-attack-id  uint32)
+   (quat0               quaternion  :inline)
+   (quat180             quaternion  :inline)
+   (red-pos             vector      :inline)
+   (blue-pos            vector      :inline)
+   (track-flag          symbol)
+   (lightning-timer     time-frame)
+   (speed               float)
+   (target-speed        float)
    )
-  :heap-base #xc0
-  :method-count-assert 28
-  :size-assert         #x138
-  :flag-assert         #x1c00c00138
-  (:methods
-    (idle () _type_ :state 27)
+  (:state-methods
+    idle
     )
   )
 
@@ -199,10 +188,10 @@ This commonly includes things such as:
 
 (defstate idle (cas-conveyor-switch)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('attack)
-       (let ((v1-1 (the-as object (-> event param 1))))
+       (let ((v1-1 (the-as object (-> block param 1))))
          (when (!= (-> (the-as attack-info v1-1) id) (-> self incoming-attack-id))
            (set! (-> self incoming-attack-id) (-> (the-as attack-info v1-1) id))
            (when (and (-> self track-flag) (= (-> self speed) (-> self target-speed)))
@@ -226,25 +215,11 @@ This commonly includes things such as:
       (cond
         ((< f30-0 0.0)
          (quaternion-smooth-seek! (-> self root quat) (-> self root quat) (-> self quat180) 0.1)
-         (let ((t9-2 sp-launch-particles-var)
-               (a0-2 *sp-particle-system-2d*)
-               (a1-2 (-> *part-id-table* 5119))
-               (a2-2 *launch-matrix*)
-               )
-           (set! (-> a2-2 trans quad) (-> self blue-pos quad))
-           (t9-2 a0-2 a1-2 a2-2 (the-as sparticle-launch-state #f) (the-as sparticle-launch-control #f) 1.0)
-           )
+         (launch-particles (-> *part-id-table* 5119) (-> self blue-pos))
          )
         (else
           (quaternion-smooth-seek! (-> self root quat) (-> self root quat) (-> self quat0) 0.1)
-          (let ((t9-4 sp-launch-particles-var)
-                (a0-4 *sp-particle-system-2d*)
-                (a1-4 (-> *part-id-table* 5120))
-                (a2-4 *launch-matrix*)
-                )
-            (set! (-> a2-4 trans quad) (-> self red-pos quad))
-            (t9-4 a0-4 a1-4 a2-4 (the-as sparticle-launch-state #f) (the-as sparticle-launch-control #f) 1.0)
-            )
+          (launch-particles (-> *part-id-table* 5120) (-> self red-pos))
           )
         )
       )
@@ -291,9 +266,8 @@ This commonly includes things such as:
           )
         )
       )
-    (none)
     )
-  :code (the-as (function none :behavior cas-conveyor-switch) sleep-code)
+  :code sleep-code
   :post (behavior ()
     (local-vars (sv-608 symbol) (sv-624 symbol) (sv-640 (function vector cspace vector)) (sv-656 vector))
     (when (and (logtest? (actor-option user17) (-> self fact options))
@@ -364,12 +338,11 @@ This commonly includes things such as:
         )
       )
     (transform-post)
-    (none)
     )
   )
 
 ;; WARN: Return type mismatch object vs none.
-(defmethod init-from-entity! cas-conveyor-switch ((obj cas-conveyor-switch) (arg0 entity-actor))
+(defmethod init-from-entity! ((this cas-conveyor-switch) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
 - stack size
@@ -377,7 +350,7 @@ This commonly includes things such as:
 - loading the skeleton group / bones
 - sounds"
   (local-vars (sv-16 res-tag))
-  (let ((s4-0 (new 'process 'collide-shape obj (collide-list-enum usually-hit-by-player))))
+  (let ((s4-0 (new 'process 'collide-shape this (collide-list-enum usually-hit-by-player))))
     (let ((v1-2 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 0) (the-as uint 0))))
       (set! (-> v1-2 prim-core collide-as) (collide-spec enemy))
       (set! (-> v1-2 prim-core collide-with) (collide-spec jak hit-by-others-list player-list))
@@ -392,62 +365,58 @@ This commonly includes things such as:
       (set! (-> s4-0 backup-collide-as) (-> v1-5 prim-core collide-as))
       (set! (-> s4-0 backup-collide-with) (-> v1-5 prim-core collide-with))
       )
-    (set! (-> obj root) s4-0)
+    (set! (-> this root) s4-0)
     )
-  (process-drawable-from-entity! obj arg0)
+  (process-drawable-from-entity! this arg0)
   (initialize-skeleton
-    obj
+    this
     (the-as
       skeleton-group
       (art-group-get-by-name *level* "skel-cas-conveyor-switch" (the-as (pointer uint32) #f))
       )
     (the-as pair 0)
     )
-  (logior! (-> obj mask) (process-mask enemy))
-  (set! (-> obj fact)
-        (new 'process 'fact-info obj (pickup-type eco-pill-random) (-> *FACT-bank* default-eco-pill-green-inc))
+  (logior! (-> this mask) (process-mask enemy))
+  (set! (-> this fact)
+        (new 'process 'fact-info this (pickup-type eco-pill-random) (-> *FACT-bank* default-eco-pill-green-inc))
         )
-  (set! (-> obj path) (new 'process 'path-control obj 'path 0.0 (the-as entity #f) #f))
-  (logior! (-> obj path flags) (path-control-flag display draw-line draw-point draw-text))
-  (if (!= (-> obj path curve num-cverts) 2)
+  (set! (-> this path) (new 'process 'path-control this 'path 0.0 (the-as entity #f) #f))
+  (logior! (-> this path flags) (path-control-flag display draw-line draw-point draw-text))
+  (if (!= (-> this path curve num-cverts) 2)
       (go process-drawable-art-error "bad path")
       )
-  (get-point-in-path! (-> obj path) (-> obj red-pos) 0.0 'exact)
-  (get-point-in-path! (-> obj path) (-> obj blue-pos) 1.0 'exact)
-  (set! (-> obj lightning-timer) 0)
+  (get-point-in-path! (-> this path) (-> this red-pos) 0.0 'exact)
+  (get-point-in-path! (-> this path) (-> this blue-pos) 1.0 'exact)
+  (set! (-> this lightning-timer) 0)
   (set! sv-16 (new 'static 'res-tag))
-  (let ((v1-27 (res-lump-data (-> obj entity) 'actor-groups pointer :tag-ptr (& sv-16))))
+  (let ((v1-27 (res-lump-data (-> this entity) 'actor-groups pointer :tag-ptr (& sv-16))))
     (cond
       ((and v1-27 (nonzero? (-> sv-16 elt-count)))
-       (set! (-> obj actor-group) (the-as (pointer actor-group) v1-27))
-       (set! (-> obj actor-group-count) (the-as int (-> sv-16 elt-count)))
+       (set! (-> this actor-group) (the-as (pointer actor-group) v1-27))
+       (set! (-> this actor-group-count) (the-as int (-> sv-16 elt-count)))
        )
       (else
-        (set! (-> obj actor-group) (the-as (pointer actor-group) #f))
-        (set! (-> obj actor-group-count) 0)
+        (set! (-> this actor-group) (the-as (pointer actor-group) #f))
+        (set! (-> this actor-group-count) 0)
         0
         )
       )
     )
-  (set! (-> obj quat0 quad) (-> obj root quat quad))
-  (quaternion-rotate-y! (-> obj quat180) (-> obj quat0) 32768.0)
-  (set! (-> obj speed) (res-lump-float (-> obj entity) 'speed :default 30720.0))
-  (set! (-> obj target-speed) (-> obj speed))
-  (go (method-of-object obj idle))
+  (set! (-> this quat0 quad) (-> this root quat quad))
+  (quaternion-rotate-y! (-> this quat180) (-> this quat0) 32768.0)
+  (set! (-> this speed) (res-lump-float (-> this entity) 'speed :default 30720.0))
+  (set! (-> this target-speed) (-> this speed))
+  (go (method-of-object this idle))
   (none)
   )
 
 (deftype cas-electric-fence (process-focusable)
-  ((next-spawn-time time-frame  :offset-assert 208)
-   (stop            symbol      :offset-assert 216)
+  ((next-spawn-time  time-frame)
+   (stop             symbol)
    )
-  :heap-base #x60
-  :method-count-assert 29
-  :size-assert         #xdc
-  :flag-assert         #x1d006000dc
-  (:methods
-    (idle () _type_ :state 27)
-    (die () _type_ :state 28)
+  (:state-methods
+    idle
+    die
     )
   )
 
@@ -495,7 +464,6 @@ This commonly includes things such as:
       )
     0
     (logior! (-> self draw status) (draw-control-status no-draw))
-    (none)
     )
   :code (behavior ()
     (let ((gp-0 (new 'stack 'joint-exploder-tuning (the-as uint 0))))
@@ -512,41 +480,39 @@ This commonly includes things such as:
     (suspend)
     (logior! (-> self entity extra perm status) (entity-perm-status dead))
     (let ((gp-2 (current-time)))
-      (until (>= (- (current-time) gp-2) (seconds 4))
+      (until (time-elapsed? gp-2 (seconds 4))
         (suspend)
         )
       )
     (cleanup-for-death self)
-    (none)
     )
   )
 
 (defstate idle (cas-electric-fence)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (the-as object (case event-type
-                     (('touched)
-                      #f
-                      )
-                     (('attack)
-                      #f
-                      )
-                     (('track)
-                      #t
-                      )
-                     (('stop)
-                      (let ((v0-0 #t))
-                        (set! (-> self stop) v0-0)
-                        v0-0
-                        )
-                      )
-                     (('stopped?)
-                      (-> self stop)
-                      )
-                     )
-            )
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
+      (('touched)
+       #f
+       )
+      (('attack)
+       #f
+       )
+      (('track)
+       #t
+       )
+      (('stop)
+       (let ((v0-0 #t))
+         (set! (-> self stop) v0-0)
+         v0-0
+         )
+       )
+      (('stopped?)
+       (-> self stop)
+       )
+      )
     )
-  :code (the-as (function none :behavior cas-electric-fence) sleep-code)
+  :code sleep-code
   :post (behavior ()
     (when (not (-> self stop))
       (when (< (-> self next-spawn-time) (current-time))
@@ -603,14 +569,7 @@ This commonly includes things such as:
                           )
                       )
                     )
-                  (let ((t9-10 sp-launch-particles-var)
-                        (a0-21 *sp-particle-system-2d*)
-                        (a1-10 (-> *part-id-table* 166))
-                        (a2-8 *launch-matrix*)
-                        )
-                    (set! (-> a2-8 trans quad) (-> s5-2 quad))
-                    (t9-10 a0-21 a1-10 a2-8 (the-as sparticle-launch-state #f) (the-as sparticle-launch-control #f) 1.0)
-                    )
+                  (launch-particles (-> *part-id-table* 166) s5-2)
                   )
                 (set! (-> self next-spawn-time) (+ (current-time) (the int (* 300.0 (rand-vu-float-range 0.07 0.4)))))
                 )
@@ -622,31 +581,22 @@ This commonly includes things such as:
         (when (and gp-2 (not (logtest? (-> gp-2 focus-status) (focus-status disable dead ignore inactive))))
           (let ((s4-3 (get-trans gp-2 0)))
             (when (< (vector-vector-distance s4-3 (-> self root trans)) 24576.0)
-              (let ((s5-3 (new 'stack-no-clear 'event-message-block)))
-                (set! (-> s5-3 from) (process->ppointer self))
-                (set! (-> s5-3 num-params) 2)
-                (set! (-> s5-3 message) 'attack)
-                (set! (-> s5-3 param 0) (the-as uint #f))
-                (let ((s3-3 (new 'static 'attack-info :mask (attack-info-mask vector shove-back shove-up control id))))
-                  (let* ((v1-38 *game-info*)
-                         (a0-29 (+ (-> v1-38 attack-id) 1))
-                         )
-                    (set! (-> v1-38 attack-id) a0-29)
-                    (set! (-> s3-3 id) a0-29)
-                    )
-                  (set! (-> s3-3 vector quad)
-                        (-> (vector-normalize! (vector-! (new 'stack-no-clear 'vector) s4-3 (-> self root trans)) 1.0) quad)
-                        )
-                  (set! (-> s3-3 shove-back) 24576.0)
-                  (set! (-> s3-3 shove-up) 12288.0)
-                  (set! (-> s3-3 control) (if (focus-test? gp-2 board)
-                                              1.0
-                                              0.0
-                                              )
-                        )
-                  (set! (-> s5-3 param 1) (the-as uint s3-3))
+              (send-event
+                gp-2
+                'attack
+                #f
+                (static-attack-info
+                  ((id (new-attack-id))
+                   (vector (vector-normalize! (vector-! (new 'stack-no-clear 'vector) s4-3 (-> self root trans)) 1.0))
+                   (shove-back (meters 6))
+                   (shove-up (meters 3))
+                   (control (if (focus-test? gp-2 board)
+                                1.0
+                                0.0
+                                )
+                            )
+                   )
                   )
-                (send-event-function gp-2 s5-3)
                 )
               (let ((s5-4 (new 'stack-no-clear 'vector)))
                 (set! (-> s5-4 quad) (-> self root trans quad))
@@ -668,19 +618,18 @@ This commonly includes things such as:
           )
         )
       )
-    (none)
     )
   )
 
 ;; WARN: Return type mismatch object vs none.
-(defmethod init-from-entity! cas-electric-fence ((obj cas-electric-fence) (arg0 entity-actor))
+(defmethod init-from-entity! ((this cas-electric-fence) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
 - stack size
 - collision information
 - loading the skeleton group / bones
 - sounds"
-  (let ((s4-0 (new 'process 'collide-shape obj (collide-list-enum usually-hit-by-player))))
+  (let ((s4-0 (new 'process 'collide-shape this (collide-list-enum usually-hit-by-player))))
     (let ((v1-2 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 0) (the-as uint 0))))
       (set! (-> v1-2 prim-core collide-as) (collide-spec obstacle))
       (set! (-> v1-2 prim-core collide-with) (collide-spec jak hit-by-others-list player-list))
@@ -696,35 +645,31 @@ This commonly includes things such as:
       (set! (-> s4-0 backup-collide-with) (-> v1-5 prim-core collide-with))
       )
     (set! (-> s4-0 event-self) 'touched)
-    (set! (-> obj root) s4-0)
+    (set! (-> this root) s4-0)
     )
-  (process-drawable-from-entity! obj arg0)
+  (process-drawable-from-entity! this arg0)
   (initialize-skeleton
-    obj
+    this
     (the-as skeleton-group (art-group-get-by-name *level* "skel-cas-electric-fence" (the-as (pointer uint32) #f)))
     (the-as pair 0)
     )
-  (set! (-> obj next-spawn-time) 0)
-  (set! (-> obj stop) #f)
+  (set! (-> this next-spawn-time) 0)
+  (set! (-> this stop) #f)
   (ja-channel-set! 1)
-  (let ((a0-14 (-> obj skel root-channel 0)))
-    (set! (-> a0-14 frame-group) (the-as art-joint-anim (-> obj draw art-group data 2)))
+  (let ((a0-14 (-> this skel root-channel 0)))
+    (set! (-> a0-14 frame-group) (the-as art-joint-anim (-> this draw art-group data 2)))
     (set! (-> a0-14 frame-num) 0.0)
-    (joint-control-channel-group! a0-14 (the-as art-joint-anim (-> obj draw art-group data 2)) num-func-identity)
+    (joint-control-channel-group! a0-14 (the-as art-joint-anim (-> this draw art-group data 2)) num-func-identity)
     )
   (transform-post)
-  (go (method-of-object obj idle))
+  (go (method-of-object this idle))
   (none)
   )
 
 (deftype cas-button (basebutton)
   ()
-  :heap-base #xa0
-  :method-count-assert 40
-  :size-assert         #x120
-  :flag-assert         #x2800a00120
   (:methods
-    (cas-button-method-39 (_type_) none 39)
+    (cas-button-method-39 (_type_) none)
     )
   )
 
@@ -734,9 +679,9 @@ This commonly includes things such as:
               :bounds (static-spherem 0 0 0 2.25)
               )
 
-(defmethod basebutton-method-34 cas-button ((obj cas-button))
+(defmethod basebutton-method-34 ((this cas-button))
   "TODO - collision stuff"
-  (let ((s5-0 (new 'process 'collide-shape obj (collide-list-enum usually-hit-by-player))))
+  (let ((s5-0 (new 'process 'collide-shape this (collide-list-enum usually-hit-by-player))))
     (let ((s4-0 (new 'process 'collide-shape-prim-mesh s5-0 (the-as uint 0) (the-as uint 0))))
       (set! (-> s4-0 prim-core collide-as) (collide-spec obstacle pusher))
       (set! (-> s4-0 prim-core collide-with) (collide-spec jak bot player-list))
@@ -752,25 +697,25 @@ This commonly includes things such as:
       (set! (-> s5-0 backup-collide-as) (-> v1-12 prim-core collide-as))
       (set! (-> s5-0 backup-collide-with) (-> v1-12 prim-core collide-with))
       )
-    (set! (-> obj root) s5-0)
+    (set! (-> this root) s5-0)
     )
   0
   (none)
   )
 
-(defmethod prepare-trigger-event! cas-button ((obj cas-button))
+(defmethod prepare-trigger-event! ((this cas-button))
   "Sets `event-going-down` to `'trigger`"
-  (set! (-> obj event-down) 'shutdown)
+  (set! (-> this event-down) 'shutdown)
   0
   (none)
   )
 
 (defstate up-idle (cas-button)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('attack)
-       (let ((v1-1 (the-as attack-info (-> event param 1))))
+       (let ((v1-1 (the-as attack-info (-> block param 1))))
          (case (-> v1-1 mode)
            (('flop)
             (when (or (not (or (= (-> v1-1 mode) 'spin) (= (-> v1-1 mode) 'punch)))
@@ -788,52 +733,48 @@ This commonly includes things such as:
     )
   )
 
-(defmethod basebutton-method-33 cas-button ((obj cas-button))
+(defmethod basebutton-method-33 ((this cas-button))
   "TODO - joint stuff"
   (initialize-skeleton
-    obj
+    this
     (the-as skeleton-group (art-group-get-by-name *level* "skel-cas-button" (the-as (pointer uint32) #f)))
     (the-as pair 0)
     )
   (ja-channel-set! 1)
   (cond
-    ((logtest? (-> obj button-status) (button-status pressed))
-     (let ((s5-1 (-> obj skel root-channel 0)))
+    ((logtest? (-> this button-status) (button-status pressed))
+     (let ((s5-1 (-> this skel root-channel 0)))
        (joint-control-channel-group-eval!
          s5-1
-         (the-as art-joint-anim (-> obj draw art-group data 2))
+         (the-as art-joint-anim (-> this draw art-group data 2))
          num-func-identity
          )
        (set! (-> s5-1 frame-num)
-             (the float (+ (-> (the-as art-joint-anim (-> obj draw art-group data 2)) frames num-frames) -1))
+             (the float (+ (-> (the-as art-joint-anim (-> this draw art-group data 2)) frames num-frames) -1))
              )
        )
      )
     (else
-      (let ((s5-2 (-> obj skel root-channel 0)))
+      (let ((s5-2 (-> this skel root-channel 0)))
         (joint-control-channel-group-eval!
           s5-2
-          (the-as art-joint-anim (-> obj draw art-group data 2))
+          (the-as art-joint-anim (-> this draw art-group data 2))
           num-func-identity
           )
         (set! (-> s5-2 frame-num) 0.0)
         )
       )
     )
-  (set! (-> obj anim-speed) 2.0)
+  (set! (-> this anim-speed) 2.0)
   (transform-post)
   (none)
   )
 
 (deftype cas-elevator (elevator)
-  ((sound-id sound-id  :offset-assert 368)
+  ((sound-id  sound-id)
    )
-  :heap-base #x100
-  :method-count-assert 50
-  :size-assert         #x174
-  :flag-assert         #x3201000174
   (:methods
-    (cas-elevator-method-49 (_type_) none 49)
+    (cas-elevator-method-49 (_type_) none)
     )
   )
 
@@ -843,16 +784,16 @@ This commonly includes things such as:
               :bounds (static-spherem 0 0 0 9)
               )
 
-(defmethod get-art-group cas-elevator ((obj cas-elevator))
+(defmethod get-art-group ((this cas-elevator))
   "@returns The associated [[art-group]]"
   (art-group-get-by-name *level* "skel-cas-elevator" (the-as (pointer uint32) #f))
   )
 
 ;; WARN: Return type mismatch float vs none.
-(defmethod cas-elevator-method-49 cas-elevator ((obj cas-elevator))
-  (let* ((f0-1 (fmax 0.0 (- (-> obj root trans y) (-> obj bottom-top 0))))
+(defmethod cas-elevator-method-49 ((this cas-elevator))
+  (let* ((f0-1 (fmax 0.0 (- (-> this root trans y) (-> this bottom-top 0))))
          (f0-3 (* 0.001171875 (- f0-1 (* (the float (the int (/ f0-1 30720.0))) 30720.0))))
-         (v1-6 (-> obj skel root-channel 0))
+         (v1-6 (-> this skel root-channel 0))
          )
     (set! (-> v1-6 num-func) num-func-identity)
     (set! (-> v1-6 frame-num) f0-3)
@@ -860,15 +801,15 @@ This commonly includes things such as:
   (none)
   )
 
-(defmethod move-between-points cas-elevator ((obj cas-elevator) (arg0 vector) (arg1 float) (arg2 float))
+(defmethod move-between-points ((this cas-elevator) (arg0 vector) (arg1 float) (arg2 float))
   "Move between two points on the elevator's path
 @param vec TODO not sure
 @param point-a The first point fetched from the elevator's path
 @param point-b The second point fetched from the path
 @see [[path-control]] and [[elevator]]"
-  (let ((s5-0 (get-point-in-path! (-> obj path) (new 'stack-no-clear 'vector) arg1 'interp))
-        (a0-3 (get-point-in-path! (-> obj path) (new 'stack-no-clear 'vector) arg2 'interp))
-        (v1-3 (-> obj root trans))
+  (let ((s5-0 (get-point-in-path! (-> this path) (new 'stack-no-clear 'vector) arg1 'interp))
+        (a0-3 (get-point-in-path! (-> this path) (new 'stack-no-clear 'vector) arg2 'interp))
+        (v1-3 (-> this root trans))
         )
     (when (and (< (-> a0-3 y) (-> s5-0 y)) (< (-> arg0 y) (+ -8192.0 (-> v1-3 y))))
       (let ((a0-8 (vector-! (new 'stack-no-clear 'vector) arg0 v1-3)))
@@ -878,7 +819,7 @@ This commonly includes things such as:
     )
   )
 
-(defmethod commited-to-ride? cas-elevator ((obj cas-elevator))
+(defmethod commited-to-ride? ((this cas-elevator))
   "@returns if the target is considered within the elevator area enough to begin descending/ascending"
   (let* ((s5-0 *target*)
          (a0-2 (if (type? s5-0 process-focusable)
@@ -888,7 +829,7 @@ This commonly includes things such as:
          )
     (when a0-2
       (let* ((a0-3 (get-trans a0-2 0))
-             (v1-2 (vector-! (new 'stack-no-clear 'vector) a0-3 (-> obj root trans)))
+             (v1-2 (vector-! (new 'stack-no-clear 'vector) a0-3 (-> this root trans)))
              )
         (< (sqrtf (+ (* (-> v1-2 x) (-> v1-2 x)) (* (-> v1-2 z) (-> v1-2 z)))) 28672.0)
         )
@@ -907,7 +848,6 @@ This commonly includes things such as:
           ((the-as (function none) t9-1))
           )
       )
-    (none)
     )
   )
 
@@ -920,7 +860,6 @@ This commonly includes things such as:
           )
       )
     (sound-play "cas-elevate" :id (-> self sound-id) :position (-> self root trans))
-    (none)
     )
   :post (behavior ()
     (cas-elevator-method-49 self)
@@ -948,7 +887,6 @@ This commonly includes things such as:
         (-> gp-0 id)
         )
       )
-    (none)
     )
   )
 
@@ -962,7 +900,6 @@ This commonly includes things such as:
       )
     (sound-stop (-> self sound-id))
     (sound-play "cas-elevate-end")
-    (none)
     )
   :post (behavior ()
     (if (-> self bouncing)
@@ -973,27 +910,26 @@ This commonly includes things such as:
           ((the-as (function none) t9-1))
           )
       )
-    (none)
     )
   )
 
-(defmethod deactivate cas-elevator ((obj cas-elevator))
-  (sound-stop (-> obj sound-id))
-  ((the-as (function elevator none) (find-parent-method cas-elevator 10)) obj)
+(defmethod deactivate ((this cas-elevator))
+  (sound-stop (-> this sound-id))
+  (call-parent-method this)
   (none)
   )
 
-(defmethod init-plat! cas-elevator ((obj cas-elevator))
+(defmethod init-plat! ((this cas-elevator))
   "Does any necessary initial platform setup.
 For example for an elevator pre-compute the distance between the first and last points (both ways) and clear the sound."
-  (set! (-> obj sound-id) (new-sound-id))
-  (cas-elevator-method-49 obj)
+  (set! (-> this sound-id) (new-sound-id))
+  (cas-elevator-method-49 this)
   (none)
   )
 
-(defmethod init-plat-collision! cas-elevator ((obj cas-elevator))
+(defmethod init-plat-collision! ((this cas-elevator))
   "TODO - collision stuff for setting up the platform"
-  (let ((s5-0 (new 'process 'collide-shape-moving obj (collide-list-enum usually-hit-by-player))))
+  (let ((s5-0 (new 'process 'collide-shape-moving this (collide-list-enum usually-hit-by-player))))
     (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s5-0 reaction) cshape-reaction-default)
     (set! (-> s5-0 no-reaction)
@@ -1014,27 +950,23 @@ For example for an elevator pre-compute the distance between the first and last 
       (set! (-> s5-0 backup-collide-as) (-> v1-16 prim-core collide-as))
       (set! (-> s5-0 backup-collide-with) (-> v1-16 prim-core collide-with))
       )
-    (set! (-> obj root) s5-0)
+    (set! (-> this root) s5-0)
     )
   0
   (none)
   )
 
 (deftype cas-rot-bridge (process-drawable)
-  ((index      uint32    :offset-assert 200)
-   (anim-index uint32    :offset-assert 204)
-   (test-index uint32    :offset-assert 208)
-   (pos        float     :offset-assert 212)
-   (pos-old    float     :offset-assert 216)
-   (sound-id   sound-id  :offset-assert 220)
-   (sound-flag symbol    :offset-assert 224)
+  ((index       uint32)
+   (anim-index  uint32)
+   (test-index  uint32)
+   (pos         float)
+   (pos-old     float)
+   (sound-id    sound-id)
+   (sound-flag  symbol)
    )
-  :heap-base #x70
-  :method-count-assert 21
-  :size-assert         #xe4
-  :flag-assert         #x15007000e4
-  (:methods
-    (idle () _type_ :state 20)
+  (:state-methods
+    idle
     )
   )
 
@@ -1047,70 +979,69 @@ For example for an elevator pre-compute the distance between the first and last 
 
 (defstate idle (cas-rot-bridge)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
     (local-vars (v0-0 number))
-    (the-as object (case event-type
-                     (('move)
-                      (set! (-> self anim-index) (/ (the-as int (-> event param 0)) 8))
-                      (set! v0-0 (logclear (-> self mask) (process-mask sleep-code)))
-                      (set! (-> self mask) (the-as process-mask v0-0))
-                      v0-0
-                      )
-                     (('get-pos)
-                      (set! (-> self test-index) (/ (the-as int (-> event param 0)) 8))
-                      (let ((f0-0 (ja-aframe-num 0)))
-                        (cond
-                          ((zero? (-> self test-index))
-                           (if (< f0-0 10.0)
-                               (set! f0-0 10.0)
-                               )
-                           (if (< 40.0 f0-0)
-                               (set! f0-0 40.0)
-                               )
-                           (set! (-> self pos) (* 0.033333335 (+ -10.0 f0-0)))
-                           )
-                          ((= (-> self test-index) 1)
-                           (if (< f0-0 50.0)
-                               (set! f0-0 50.0)
-                               )
-                           (if (< 80.0 f0-0)
-                               (set! f0-0 80.0)
-                               )
-                           (set! (-> self pos) (* 0.033333335 (+ -50.0 f0-0)))
-                           )
-                          ((= (-> self test-index) 2)
-                           (if (< f0-0 90.0)
-                               (set! f0-0 90.0)
-                               )
-                           (if (< 120.0 f0-0)
-                               (set! f0-0 120.0)
-                               )
-                           (set! (-> self pos) (* 0.033333335 (+ -90.0 f0-0)))
-                           )
-                          ((= (-> self test-index) 3)
-                           (if (< f0-0 10.0)
-                               (set! f0-0 10.0)
-                               )
-                           (if (< 40.0 f0-0)
-                               (set! f0-0 40.0)
-                               )
-                           (set! (-> self pos) (* 0.033333335 (+ -10.0 f0-0)))
-                           )
-                          )
-                        )
-                      (-> self pos)
-                      )
-                     (('reset)
-                      (when (nonzero? (-> self anim-index))
-                        (ja-no-eval :group! (-> self draw art-group data 3) :num! min)
-                        (set! (-> self anim-index) (the-as uint 0))
-                        (set! v0-0 (logclear (-> self mask) (process-mask sleep-code)))
-                        (set! (-> self mask) (the-as process-mask v0-0))
-                        v0-0
-                        )
-                      )
-                     )
+    (case message
+      (('move)
+       (set! (-> self anim-index) (/ (the-as int (-> block param 0)) 8))
+       (set! v0-0 (logclear (-> self mask) (process-mask sleep-code)))
+       (set! (-> self mask) (the-as process-mask v0-0))
+       v0-0
+       )
+      (('get-pos)
+       (set! (-> self test-index) (/ (the-as int (-> block param 0)) 8))
+       (let ((f0-0 (ja-aframe-num 0)))
+         (cond
+           ((zero? (-> self test-index))
+            (if (< f0-0 10.0)
+                (set! f0-0 10.0)
+                )
+            (if (< 40.0 f0-0)
+                (set! f0-0 40.0)
+                )
+            (set! (-> self pos) (* 0.033333335 (+ -10.0 f0-0)))
             )
+           ((= (-> self test-index) 1)
+            (if (< f0-0 50.0)
+                (set! f0-0 50.0)
+                )
+            (if (< 80.0 f0-0)
+                (set! f0-0 80.0)
+                )
+            (set! (-> self pos) (* 0.033333335 (+ -50.0 f0-0)))
+            )
+           ((= (-> self test-index) 2)
+            (if (< f0-0 90.0)
+                (set! f0-0 90.0)
+                )
+            (if (< 120.0 f0-0)
+                (set! f0-0 120.0)
+                )
+            (set! (-> self pos) (* 0.033333335 (+ -90.0 f0-0)))
+            )
+           ((= (-> self test-index) 3)
+            (if (< f0-0 10.0)
+                (set! f0-0 10.0)
+                )
+            (if (< 40.0 f0-0)
+                (set! f0-0 40.0)
+                )
+            (set! (-> self pos) (* 0.033333335 (+ -10.0 f0-0)))
+            )
+           )
+         )
+       (-> self pos)
+       )
+      (('reset)
+       (when (nonzero? (-> self anim-index))
+         (ja-no-eval :group! cas-rot-bridge-section-one-ja :num! min)
+         (set! (-> self anim-index) (the-as uint 0))
+         (set! v0-0 (logclear (-> self mask) (process-mask sleep-code)))
+         (set! (-> self mask) (the-as process-mask v0-0))
+         v0-0
+         )
+       )
+      )
     )
   :code (behavior ()
     (until #f
@@ -1122,20 +1053,14 @@ For example for an elevator pre-compute the distance between the first and last 
            (when (or (= f0-0 10.0) (= f0-0 40.0) (= f0-0 50.0))
              (cond
                ((= f0-0 10.0)
-                (ja-no-eval :group! (-> self draw art-group data 3)
-                            :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 3)) frames num-frames) -1)))
-                            :frame-num 0.0
-                            )
+                (ja-no-eval :group! cas-rot-bridge-section-one-ja :num! (seek!) :frame-num 0.0)
                 (until (ja-done? 0)
                   (suspend)
                   (ja :num! (seek!))
                   )
                 )
                (else
-                 (ja-no-eval :group! (-> self draw art-group data 7)
-                             :num! (seek! 0.0)
-                             :frame-num (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 7)) frames num-frames) -1))
-                             )
+                 (ja-no-eval :group! cas-rot-bridge-section-one-reverse-ja :num! (seek! 0.0) :frame-num max)
                  (until (ja-done? 0)
                    (suspend)
                    (ja :num! (seek! 0.0))
@@ -1148,20 +1073,14 @@ For example for an elevator pre-compute the distance between the first and last 
            (when (or (= f0-0 40.0) (= f0-0 50.0) (= f0-0 80.0) (= f0-0 90.0))
              (cond
                ((or (= f0-0 40.0) (= f0-0 50.0))
-                (ja-no-eval :group! (-> self draw art-group data 4)
-                            :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 4)) frames num-frames) -1)))
-                            :frame-num 0.0
-                            )
+                (ja-no-eval :group! cas-rot-bridge-section-two-ja :num! (seek!) :frame-num 0.0)
                 (until (ja-done? 0)
                   (suspend)
                   (ja :num! (seek!))
                   )
                 )
                (else
-                 (ja-no-eval :group! (-> self draw art-group data 8)
-                             :num! (seek! 0.0)
-                             :frame-num (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 8)) frames num-frames) -1))
-                             )
+                 (ja-no-eval :group! cas-rot-bridge-section-two-reverse-ja :num! (seek! 0.0) :frame-num max)
                  (until (ja-done? 0)
                    (suspend)
                    (ja :num! (seek! 0.0))
@@ -1174,20 +1093,14 @@ For example for an elevator pre-compute the distance between the first and last 
            (when (or (= f0-0 80.0) (= f0-0 90.0) (= f0-0 120.0))
              (cond
                ((or (= f0-0 80.0) (= f0-0 90.0))
-                (ja-no-eval :group! (-> self draw art-group data 5)
-                            :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 5)) frames num-frames) -1)))
-                            :frame-num 0.0
-                            )
+                (ja-no-eval :group! cas-rot-bridge-section-three-ja :num! (seek!) :frame-num 0.0)
                 (until (ja-done? 0)
                   (suspend)
                   (ja :num! (seek!))
                   )
                 )
                (else
-                 (ja-no-eval :group! (-> self draw art-group data 9)
-                             :num! (seek! 0.0)
-                             :frame-num (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 9)) frames num-frames) -1))
-                             )
+                 (ja-no-eval :group! cas-rot-bridge-section-three-reverse-ja :num! (seek! 0.0) :frame-num max)
                  (until (ja-done? 0)
                    (suspend)
                    (ja :num! (seek! 0.0))
@@ -1199,20 +1112,14 @@ For example for an elevator pre-compute the distance between the first and last 
           ((= (-> self anim-index) 3)
            (cond
              ((= f0-0 10.0)
-              (ja-no-eval :group! (-> self draw art-group data 6)
-                          :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 6)) frames num-frames) -1)))
-                          :frame-num 0.0
-                          )
+              (ja-no-eval :group! cas-rot-bridge-single-section-ja :num! (seek!) :frame-num 0.0)
               (until (ja-done? 0)
                 (suspend)
                 (ja :num! (seek!))
                 )
               )
              (else
-               (ja-no-eval :group! (-> self draw art-group data 10)
-                           :num! (seek! 0.0)
-                           :frame-num (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 10)) frames num-frames) -1))
-                           )
+               (ja-no-eval :group! cas-rot-bridge-single-section-reverse-ja :num! (seek! 0.0) :frame-num max)
                (until (ja-done? 0)
                  (suspend)
                  (ja :num! (seek! 0.0))
@@ -1224,7 +1131,6 @@ For example for an elevator pre-compute the distance between the first and last 
         )
       )
     #f
-    (none)
     )
   :post (behavior ()
     (let ((f0-0 (ja-aframe-num 0)))
@@ -1279,14 +1185,14 @@ For example for an elevator pre-compute the distance between the first and last 
               (sound-play
                 "track-plat-loop"
                 :id (-> self sound-id)
-                :position (vector<-cspace! (new 'stack-no-clear 'vector) (-> self node-list data 5))
+                :position (vector<-cspace! (new 'stack-no-clear 'vector) (joint-node cas-rot-bridge-lod0-jg b))
                 )
               (set! (-> self sound-flag) #t)
               )
              ((-> self sound-flag)
               (sound-play
                 "track-plat-stop"
-                :position (vector<-cspace! (new 'stack-no-clear 'vector) (-> self node-list data 5))
+                :position (vector<-cspace! (new 'stack-no-clear 'vector) (joint-node cas-rot-bridge-lod0-jg b))
                 )
               (sound-stop (-> self sound-id))
               (set! (-> self sound-flag) #f)
@@ -1299,14 +1205,14 @@ For example for an elevator pre-compute the distance between the first and last 
                (sound-play
                  "track-plat-loop"
                  :id (-> self sound-id)
-                 :position (vector<-cspace! (new 'stack-no-clear 'vector) (-> self node-list data 5))
+                 :position (vector<-cspace! (new 'stack-no-clear 'vector) (joint-node cas-rot-bridge-lod0-jg b))
                  )
                (set! (-> self sound-flag) #t)
                )
               ((-> self sound-flag)
                (sound-play
                  "track-plat-stop"
-                 :position (vector<-cspace! (new 'stack-no-clear 'vector) (-> self node-list data 5))
+                 :position (vector<-cspace! (new 'stack-no-clear 'vector) (joint-node cas-rot-bridge-lod0-jg b))
                  )
                (sound-stop (-> self sound-id))
                (set! (-> self sound-flag) #f)
@@ -1317,19 +1223,18 @@ For example for an elevator pre-compute the distance between the first and last 
         )
       )
     (transform-post)
-    (none)
     )
   )
 
 ;; WARN: Return type mismatch object vs none.
-(defmethod init-from-entity! cas-rot-bridge ((obj cas-rot-bridge) (arg0 entity-actor))
+(defmethod init-from-entity! ((this cas-rot-bridge) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
 - stack size
 - collision information
 - loading the skeleton group / bones
 - sounds"
-  (let ((s4-0 (new 'process 'collide-shape obj (collide-list-enum usually-hit-by-player))))
+  (let ((s4-0 (new 'process 'collide-shape this (collide-list-enum usually-hit-by-player))))
     (let ((s3-0 (new 'process 'collide-shape-prim-group s4-0 (the-as uint 5) 0)))
       (set! (-> s4-0 total-prims) (the-as uint 6))
       (set! (-> s3-0 prim-core collide-as) (collide-spec obstacle))
@@ -1379,103 +1284,96 @@ This commonly includes things such as:
       (set! (-> s4-0 backup-collide-as) (-> v1-20 prim-core collide-as))
       (set! (-> s4-0 backup-collide-with) (-> v1-20 prim-core collide-with))
       )
-    (set! (-> obj root) s4-0)
+    (set! (-> this root) s4-0)
     )
-  (process-drawable-from-entity! obj arg0)
+  (process-drawable-from-entity! this arg0)
   (initialize-skeleton
-    obj
+    this
     (the-as skeleton-group (art-group-get-by-name *level* "skel-cas-rot-bridge" (the-as (pointer uint32) #f)))
     (the-as pair 0)
     )
-  (quaternion-rotate-y! (-> obj root quat) (-> obj root quat) 16384.0)
-  (logclear! (-> obj mask) (process-mask actor-pause))
-  (set! (-> obj index) (res-lump-value (-> obj entity) 'index uint :time -1000000000.0))
-  (let ((v1-30 (-> obj index)))
+  (quaternion-rotate-y! (-> this root quat) (-> this root quat) 16384.0)
+  (logclear! (-> this mask) (process-mask actor-pause))
+  (set! (-> this index) (res-lump-value (-> this entity) 'index uint :time -1000000000.0))
+  (let ((v1-30 (-> this index)))
     (cond
       ((zero? v1-30)
-       (+! (-> obj root trans x) 5734.4)
-       (let ((s5-2 (-> obj skel root-channel 0)))
-         (joint-control-channel-group! s5-2 (the-as art-joint-anim (-> obj draw art-group data 6)) num-func-identity)
+       (+! (-> this root trans x) 5734.4)
+       (let ((s5-2 (-> this skel root-channel 0)))
+         (joint-control-channel-group! s5-2 (the-as art-joint-anim (-> this draw art-group data 6)) num-func-identity)
          (set! (-> s5-2 frame-num) 0.0)
          )
        )
       ((= v1-30 1)
-       (let ((s5-3 (-> obj skel root-channel 0)))
-         (joint-control-channel-group! s5-3 (the-as art-joint-anim (-> obj draw art-group data 3)) num-func-identity)
+       (let ((s5-3 (-> this skel root-channel 0)))
+         (joint-control-channel-group! s5-3 (the-as art-joint-anim (-> this draw art-group data 3)) num-func-identity)
          (set! (-> s5-3 frame-num) 0.0)
          )
        )
       )
     )
-  (set! (-> obj draw light-index) (the-as uint 1))
-  (set! (-> obj sound-id) (new-sound-id))
-  (set! (-> obj sound-flag) #f)
+  (set! (-> this draw light-index) (the-as uint 1))
+  (set! (-> this sound-id) (new-sound-id))
+  (set! (-> this sound-flag) #f)
   (transform-post)
-  (go (method-of-object obj idle))
+  (go (method-of-object this idle))
   (none)
   )
 
 (deftype cas-switch (process-drawable)
-  ((actor-group        (pointer actor-group)  :offset-assert 200)
-   (actor-group-count  int32                  :offset-assert 204)
-   (incoming-attack-id uint32                 :offset-assert 208)
-   (anim-index         uint32                 :offset-assert 212)
-   (direction          uint32                 :offset-assert 216)
-   (pos-old            float                  :offset-assert 220)
-   (y-start            float                  :offset-assert 224)
-   (y-delta            float                  :offset-assert 228)
-   (sound-id           sound-id               :offset-assert 232)
-   (sound-flag         symbol                 :offset-assert 236)
+  ((actor-group         (pointer actor-group))
+   (actor-group-count   int32)
+   (incoming-attack-id  uint32)
+   (anim-index          uint32)
+   (direction           uint32)
+   (pos-old             float)
+   (y-start             float)
+   (y-delta             float)
+   (sound-id            sound-id)
+   (sound-flag          symbol)
    )
-  :heap-base #x70
-  :method-count-assert 21
-  :size-assert         #xf0
-  :flag-assert         #x15007000f0
-  (:methods
-    (idle () _type_ :state 20)
+  (:state-methods
+    idle
     )
   )
 
 
-(defskelgroup skel-cas-switch cas-switch 0 2
-              ((1 (meters 999999)))
+(defskelgroup skel-cas-switch cas-switch cas-switch-lod0-jg cas-switch-idle-ja
+              ((cas-switch-lod0-mg (meters 999999)))
               :bounds (static-spherem 0 2.7 0 3)
               :origin-joint-index 3
               )
 
 (defstate idle (cas-switch)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (the-as
-      object
-      (case event-type
-        (('attack)
-         (let ((gp-0 (the-as attack-info (-> event param 1))))
-           (when (or (= (-> gp-0 mode) 'spin) (= (-> gp-0 mode) 'spin-air))
-             (let* ((s5-0 (the-as object (-> event param 0)))
-                    (s4-0 (-> (the-as touching-shapes-entry s5-0) head))
-                    )
-               (while s4-0
-                 (let ((a0-2 (get-touched-prim s4-0 (the-as collide-shape (-> self root)) (the-as touching-shapes-entry s5-0))))
-                   (when (= (-> a0-2 prim-id) 1)
-                     (when (!= (-> gp-0 id) (-> self incoming-attack-id))
-                       (set! (-> self incoming-attack-id) (-> gp-0 id))
-                       (let ((s3-0 (-> self actor-group 0)))
-                         (dotimes (s2-0 (-> s3-0 length))
-                           (let ((a1-6 (new 'stack-no-clear 'event-message-block)))
-                             (set! (-> a1-6 from) (process->ppointer self))
-                             (set! (-> a1-6 num-params) 1)
-                             (set! (-> a1-6 message) 'move)
-                             (set! (-> a1-6 param 0) (* (-> self anim-index) 8))
-                             (let ((t9-1 send-event-function)
-                                   (v1-20 (-> s3-0 data s2-0 actor))
-                                   )
-                               (t9-1
-                                 (if v1-20
-                                     (-> v1-20 extra process)
-                                     )
-                                 a1-6
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
+      (('attack)
+       (let ((gp-0 (the-as attack-info (-> block param 1))))
+         (when (or (= (-> gp-0 mode) 'spin) (= (-> gp-0 mode) 'spin-air))
+           (let* ((s5-0 (the-as object (-> block param 0)))
+                  (s4-0 (-> (the-as touching-shapes-entry s5-0) head))
+                  )
+             (while s4-0
+               (let ((a0-2 (get-touched-prim s4-0 (the-as collide-shape (-> self root)) (the-as touching-shapes-entry s5-0))))
+                 (when (= (-> a0-2 prim-id) 1)
+                   (when (!= (-> gp-0 id) (-> self incoming-attack-id))
+                     (set! (-> self incoming-attack-id) (-> gp-0 id))
+                     (let ((s3-0 (-> self actor-group 0)))
+                       (dotimes (s2-0 (-> s3-0 length))
+                         (let ((a1-6 (new 'stack-no-clear 'event-message-block)))
+                           (set! (-> a1-6 from) (process->ppointer self))
+                           (set! (-> a1-6 num-params) 1)
+                           (set! (-> a1-6 message) 'move)
+                           (set! (-> a1-6 param 0) (* (-> self anim-index) 8))
+                           (let ((t9-1 send-event-function)
+                                 (v1-20 (-> s3-0 data s2-0 actor))
                                  )
+                             (t9-1
+                               (if v1-20
+                                   (-> v1-20 extra process)
+                                   )
+                               a1-6
                                )
                              )
                            )
@@ -1483,17 +1381,17 @@ This commonly includes things such as:
                        )
                      )
                    )
-                 (set! s4-0 (-> s4-0 next))
                  )
+               (set! s4-0 (-> s4-0 next))
                )
-             #f
              )
+           #f
            )
          )
-        )
+       )
       )
     )
-  :trans (the-as (function none :behavior cas-switch) rider-trans)
+  :trans rider-trans
   :code (behavior ()
     (until #f
       (let ((a1-0 (new 'stack-no-clear 'event-message-block)))
@@ -1551,13 +1449,12 @@ This commonly includes things such as:
       (suspend)
       )
     #f
-    (none)
     )
-  :post (the-as (function none :behavior cas-switch) rider-post)
+  :post rider-post
   )
 
 ;; WARN: Return type mismatch object vs none.
-(defmethod init-from-entity! cas-switch ((obj cas-switch) (arg0 entity-actor))
+(defmethod init-from-entity! ((this cas-switch) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
 - stack size
@@ -1565,7 +1462,7 @@ This commonly includes things such as:
 - loading the skeleton group / bones
 - sounds"
   (local-vars (sv-16 res-tag))
-  (let ((s4-0 (new 'process 'collide-shape obj (collide-list-enum usually-hit-by-player))))
+  (let ((s4-0 (new 'process 'collide-shape this (collide-list-enum usually-hit-by-player))))
     (let ((s3-0 (new 'process 'collide-shape-prim-group s4-0 (the-as uint 2) 0)))
       (set! (-> s4-0 total-prims) (the-as uint 3))
       (set! (-> s3-0 prim-core collide-as) (collide-spec obstacle))
@@ -1594,35 +1491,35 @@ This commonly includes things such as:
       (set! (-> s4-0 backup-collide-as) (-> v1-14 prim-core collide-as))
       (set! (-> s4-0 backup-collide-with) (-> v1-14 prim-core collide-with))
       )
-    (set! (-> obj root) s4-0)
+    (set! (-> this root) s4-0)
     )
-  (process-drawable-from-entity! obj arg0)
+  (process-drawable-from-entity! this arg0)
   (initialize-skeleton
-    obj
+    this
     (the-as skeleton-group (art-group-get-by-name *level* "skel-cas-switch" (the-as (pointer uint32) #f)))
     (the-as pair 0)
     )
-  (logclear! (-> obj mask) (process-mask actor-pause))
+  (logclear! (-> this mask) (process-mask actor-pause))
   (set! sv-16 (new 'static 'res-tag))
-  (let ((v1-22 (res-lump-data (-> obj entity) 'actor-groups pointer :tag-ptr (& sv-16))))
+  (let ((v1-22 (res-lump-data (-> this entity) 'actor-groups pointer :tag-ptr (& sv-16))))
     (cond
       ((and v1-22 (nonzero? (-> sv-16 elt-count)))
-       (set! (-> obj actor-group) (the-as (pointer actor-group) v1-22))
-       (set! (-> obj actor-group-count) (the-as int (-> sv-16 elt-count)))
+       (set! (-> this actor-group) (the-as (pointer actor-group) v1-22))
+       (set! (-> this actor-group-count) (the-as int (-> sv-16 elt-count)))
        )
       (else
-        (set! (-> obj actor-group) (the-as (pointer actor-group) #f))
-        (set! (-> obj actor-group-count) 0)
+        (set! (-> this actor-group) (the-as (pointer actor-group) #f))
+        (set! (-> this actor-group-count) 0)
         0
         )
       )
     )
-  (set! (-> obj anim-index) (res-lump-value (-> obj entity) 'index uint :time -1000000000.0))
-  (set! (-> obj direction) (res-lump-value (-> obj entity) 'extra-id uint :time -1000000000.0))
-  (let ((s5-2 (-> obj root trans))
-        (s4-2 (-> obj root trans))
+  (set! (-> this anim-index) (res-lump-value (-> this entity) 'index uint :time -1000000000.0))
+  (set! (-> this direction) (res-lump-value (-> this entity) 'extra-id uint :time -1000000000.0))
+  (let ((s5-2 (-> this root trans))
+        (s4-2 (-> this root trans))
         (t9-10 (method-of-type res-lump get-property-struct))
-        (a0-27 (-> obj entity))
+        (a0-27 (-> this entity))
         (a1-19 'trans-offset)
         (a2-9 'interp)
         (a3-7 -1000000000.0)
@@ -1638,27 +1535,23 @@ This commonly includes things such as:
       (the-as vector (t9-10 a0-27 a1-19 a2-9 a3-7 t0-6 (the-as (pointer res-tag) #f) *res-static-buf*))
       )
     )
-  (set! (-> obj y-start) (-> obj root trans y))
-  (if (zero? (-> obj direction))
-      (set! (-> obj y-delta) -12288.0)
-      (set! (-> obj y-delta) 12288.0)
+  (set! (-> this y-start) (-> this root trans y))
+  (if (zero? (-> this direction))
+      (set! (-> this y-delta) -12288.0)
+      (set! (-> this y-delta) 12288.0)
       )
-  (set! (-> obj sound-id) (new-sound-id))
-  (set! (-> obj sound-flag) #f)
-  (go (method-of-object obj idle))
+  (set! (-> this sound-id) (new-sound-id))
+  (set! (-> this sound-flag) #f)
+  (go (method-of-object this idle))
   (none)
   )
 
 (deftype cas-trapdoor (process-drawable)
-  ((root collide-shape  :override)
+  ((root  collide-shape :override)
    )
-  :heap-base #x50
-  :method-count-assert 22
-  :size-assert         #xc8
-  :flag-assert         #x16005000c8
-  (:methods
-    (idle () _type_ :state 20)
-    (die () _type_ :state 21)
+  (:state-methods
+    idle
+    die
     )
   )
 
@@ -1700,22 +1593,21 @@ This commonly includes things such as:
 
 (defstate idle (cas-trapdoor)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (the-as object (case event-type
-                     (('attack)
-                      (let ((gp-0 (the-as object (-> event param 1))))
-                        (when (and (not (task-node-closed? (game-task-node castle-boss-resolution)))
-                                   (logtest? (-> (the-as attack-info gp-0) penetrate-using) (penetrate flop))
-                                   )
-                          (go-virtual die)
-                          #f
-                          )
-                        )
-                      )
-                     )
-            )
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
+      (('attack)
+       (let ((gp-0 (the-as object (-> block param 1))))
+         (when (and (not (task-node-closed? (game-task-node castle-boss-resolution)))
+                    (logtest? (-> (the-as attack-info gp-0) penetrate-using) (penetrate flop))
+                    )
+           (go-virtual die)
+           #f
+           )
+         )
+       )
+      )
     )
-  :code (the-as (function none :behavior cas-trapdoor) sleep-code)
+  :code sleep-code
   )
 
 (defstate die (cas-trapdoor)
@@ -1752,14 +1644,13 @@ This commonly includes things such as:
         :to self
         )
       )
-    (none)
     )
   :code (behavior ()
     (sound-play "trapdoor")
     (suspend)
     (ja-channel-set! 0)
     (let ((gp-1 (current-time)))
-      (until (>= (- (current-time) gp-1) (seconds 1))
+      (until (time-elapsed? gp-1 (seconds 1))
         (suspend)
         )
       )
@@ -1768,20 +1659,19 @@ This commonly includes things such as:
       (suspend)
       )
     (cleanup-for-death self)
-    (none)
     )
-  :post (the-as (function none :behavior cas-trapdoor) ja-post)
+  :post ja-post
   )
 
 ;; WARN: Return type mismatch object vs none.
-(defmethod init-from-entity! cas-trapdoor ((obj cas-trapdoor) (arg0 entity-actor))
+(defmethod init-from-entity! ((this cas-trapdoor) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
 - stack size
 - collision information
 - loading the skeleton group / bones
 - sounds"
-  (let ((s4-0 (new 'process 'collide-shape obj (collide-list-enum usually-hit-by-player))))
+  (let ((s4-0 (new 'process 'collide-shape this (collide-list-enum usually-hit-by-player))))
     (let ((v1-2 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 0) (the-as uint 0))))
       (set! (-> v1-2 prim-core collide-as) (collide-spec obstacle))
       (set! (-> v1-2 prim-core collide-with) (collide-spec jak bot player-list))
@@ -1796,37 +1686,33 @@ This commonly includes things such as:
       (set! (-> s4-0 backup-collide-as) (-> v1-5 prim-core collide-as))
       (set! (-> s4-0 backup-collide-with) (-> v1-5 prim-core collide-with))
       )
-    (set! (-> obj root) s4-0)
+    (set! (-> this root) s4-0)
     )
   (if (not (task-node-closed? (game-task-node castle-boss-resolution)))
-      (set! (-> obj root penetrated-by) (penetrate flop))
+      (set! (-> this root penetrated-by) (penetrate flop))
       )
-  (process-drawable-from-entity! obj arg0)
+  (process-drawable-from-entity! this arg0)
   (initialize-skeleton
-    obj
+    this
     (the-as skeleton-group (art-group-get-by-name *level* "skel-cas-trapdoor" (the-as (pointer uint32) #f)))
     (the-as pair 0)
     )
-  (let ((a0-14 (-> obj skel root-channel 0)))
-    (set! (-> a0-14 frame-group) (the-as art-joint-anim (-> obj draw art-group data 2)))
+  (let ((a0-14 (-> this skel root-channel 0)))
+    (set! (-> a0-14 frame-group) (the-as art-joint-anim (-> this draw art-group data 2)))
     (set! (-> a0-14 frame-num) 0.0)
-    (joint-control-channel-group! a0-14 (the-as art-joint-anim (-> obj draw art-group data 2)) num-func-identity)
+    (joint-control-channel-group! a0-14 (the-as art-joint-anim (-> this draw art-group data 2)) num-func-identity)
     )
   (transform-post)
-  (go (method-of-object obj idle))
+  (go (method-of-object this idle))
   (none)
   )
 
 (deftype cas-chain-plat (process-focusable)
   ()
-  :heap-base #x50
-  :method-count-assert 30
-  :size-assert         #xcc
-  :flag-assert         #x1e005000cc
-  (:methods
-    (idle () _type_ :state 27)
-    (drop () _type_ :state 28)
-    (down () _type_ :state 29)
+  (:state-methods
+    idle
+    drop
+    down
     )
   )
 
@@ -1839,8 +1725,8 @@ This commonly includes things such as:
 
 (defstate idle (cas-chain-plat)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('attack)
        (sound-play "cas-shelf-plat")
        (go-virtual drop)
@@ -1850,41 +1736,37 @@ This commonly includes things such as:
        )
       )
     )
-  :code (the-as (function none :behavior cas-chain-plat) sleep-code)
-  :post (the-as (function none :behavior cas-chain-plat) ja-post)
+  :code sleep-code
+  :post ja-post
   )
 
 (defstate drop (cas-chain-plat)
   :virtual #t
   :code (behavior ()
-    (ja-no-eval :group! (-> self draw art-group data 3)
-                :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 3)) frames num-frames) -1)))
-                :frame-num 0.0
-                )
+    (ja-no-eval :group! cas-chain-plat-drop-ja :num! (seek!) :frame-num 0.0)
     (until (ja-done? 0)
       (suspend)
       (ja :num! (seek!))
       )
     (go-virtual down)
-    (none)
     )
-  :post (the-as (function none :behavior cas-chain-plat) transform-post)
+  :post transform-post
   )
 
 (defstate down (cas-chain-plat)
   :virtual #t
-  :code (the-as (function none :behavior cas-chain-plat) sleep-code)
+  :code sleep-code
   )
 
 ;; WARN: Return type mismatch object vs none.
-(defmethod init-from-entity! cas-chain-plat ((obj cas-chain-plat) (arg0 entity-actor))
+(defmethod init-from-entity! ((this cas-chain-plat) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
 - stack size
 - collision information
 - loading the skeleton group / bones
 - sounds"
-  (let ((s4-0 (new 'process 'collide-shape obj (collide-list-enum usually-hit-by-player))))
+  (let ((s4-0 (new 'process 'collide-shape this (collide-list-enum usually-hit-by-player))))
     (let ((v1-2 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 0) (the-as uint 0))))
       (set! (-> v1-2 prim-core collide-as) (collide-spec obstacle))
       (set! (-> v1-2 prim-core collide-with) (collide-spec jak hit-by-others-list player-list))
@@ -1899,31 +1781,27 @@ This commonly includes things such as:
       (set! (-> s4-0 backup-collide-as) (-> v1-5 prim-core collide-as))
       (set! (-> s4-0 backup-collide-with) (-> v1-5 prim-core collide-with))
       )
-    (set! (-> obj root) s4-0)
+    (set! (-> this root) s4-0)
     )
-  (process-drawable-from-entity! obj arg0)
+  (process-drawable-from-entity! this arg0)
   (initialize-skeleton
-    obj
+    this
     (the-as skeleton-group (art-group-get-by-name *level* "skel-cas-chain-plat" (the-as (pointer uint32) #f)))
     (the-as pair 0)
     )
-  (logior! (-> obj mask) (process-mask enemy))
-  (go (method-of-object obj idle))
+  (logior! (-> this mask) (process-mask enemy))
+  (go (method-of-object this idle))
   (none)
   )
 
 (deftype cas-rot-blade (process-drawable)
-  ((sync      sync-eased :inline :offset-assert 200)
-   (rot       float              :offset-assert 244)
-   (attack-id uint32             :offset-assert 248)
-   (sound-id  sound-id           :offset-assert 252)
+  ((sync       sync-eased  :inline)
+   (rot        float)
+   (attack-id  uint32)
+   (sound-id   sound-id)
    )
-  :heap-base #x80
-  :method-count-assert 21
-  :size-assert         #x100
-  :flag-assert         #x1500800100
-  (:methods
-    (idle () _type_ :state 20)
+  (:state-methods
+    idle
     )
   )
 
@@ -1953,41 +1831,23 @@ This commonly includes things such as:
 
 (defstate idle (cas-rot-blade)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (the-as
-      object
-      (case event-type
-        (('touched)
-         (let* ((s4-0 (the-as object (-> event param 0)))
-                (s3-0 (-> (the-as touching-shapes-entry s4-0) head))
-                )
-           (while s3-0
-             (let ((a0-3 (get-touched-prim s3-0 (the-as collide-shape (-> self root)) (the-as touching-shapes-entry s4-0))))
-               (when (= (-> a0-3 prim-id) 1)
-                 (let ((a1-2 (new 'stack-no-clear 'event-message-block)))
-                   (set! (-> a1-2 from) (process->ppointer self))
-                   (set! (-> a1-2 num-params) 2)
-                   (set! (-> a1-2 message) 'attack)
-                   (set! (-> a1-2 param 0) (-> event param 0))
-                   (let ((a0-6 (new 'static 'attack-info :mask (attack-info-mask id))))
-                     (let* ((v1-10 *game-info*)
-                            (a2-3 (+ (-> v1-10 attack-id) 1))
-                            )
-                       (set! (-> v1-10 attack-id) a2-3)
-                       (set! (-> a0-6 id) a2-3)
-                       )
-                     (set! (-> a1-2 param 1) (the-as uint a0-6))
-                     )
-                   (send-event-function proc a1-2)
-                   )
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
+      (('touched)
+       (let* ((s4-0 (the-as object (-> block param 0)))
+              (s3-0 (-> (the-as touching-shapes-entry s4-0) head))
+              )
+         (while s3-0
+           (let ((a0-3 (get-touched-prim s3-0 (the-as collide-shape (-> self root)) (the-as touching-shapes-entry s4-0))))
+             (if (= (-> a0-3 prim-id) 1)
+                 (send-event proc 'attack (-> block param 0) (static-attack-info ((id (new-attack-id)))))
                  )
-               )
-             (set! s3-0 (-> s3-0 next))
              )
+           (set! s3-0 (-> s3-0 next))
            )
-         #f
          )
-        )
+       #f
+       )
       )
     )
   :trans (behavior ()
@@ -1996,36 +1856,31 @@ This commonly includes things such as:
     (sound-play
       "cas-arm-blade"
       :id (-> self sound-id)
-      :position (vector<-cspace! (new 'stack-no-clear 'vector) (-> self node-list data 4))
+      :position (vector<-cspace! (new 'stack-no-clear 'vector) (joint-node cas-rot-blade-lod0-jg blade))
       )
-    (none)
     )
   :code (behavior ()
     (until #f
-      (ja-no-eval :group! (ja-group)
-                  :num! (seek! (the float (+ (-> (ja-group) frames num-frames) -1)))
-                  :frame-num 0.0
-                  )
+      (ja-no-eval :group! (ja-group) :num! (seek!) :frame-num 0.0)
       (until (ja-done? 0)
         (suspend)
         (ja :num! (seek!))
         )
       )
     #f
-    (none)
     )
-  :post (the-as (function none :behavior cas-rot-blade) transform-post)
+  :post transform-post
   )
 
 ;; WARN: Return type mismatch object vs none.
-(defmethod init-from-entity! cas-rot-blade ((obj cas-rot-blade) (arg0 entity-actor))
+(defmethod init-from-entity! ((this cas-rot-blade) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
 - stack size
 - collision information
 - loading the skeleton group / bones
 - sounds"
-  (let ((s4-0 (new 'process 'collide-shape obj (collide-list-enum usually-hit-by-player))))
+  (let ((s4-0 (new 'process 'collide-shape this (collide-list-enum usually-hit-by-player))))
     (let ((s3-0 (new 'process 'collide-shape-prim-group s4-0 (the-as uint 2) 0)))
       (set! (-> s4-0 total-prims) (the-as uint 3))
       (set! (-> s3-0 prim-core collide-as) (collide-spec obstacle))
@@ -2054,15 +1909,15 @@ This commonly includes things such as:
       (set! (-> s4-0 backup-collide-as) (-> v1-14 prim-core collide-as))
       (set! (-> s4-0 backup-collide-with) (-> v1-14 prim-core collide-with))
       )
-    (set! (-> obj root) s4-0)
+    (set! (-> this root) s4-0)
     )
-  (process-drawable-from-entity! obj arg0)
+  (process-drawable-from-entity! this arg0)
   (initialize-skeleton
-    obj
+    this
     (the-as skeleton-group (art-group-get-by-name *level* "skel-cas-rot-blade" (the-as (pointer uint32) #f)))
     (the-as pair 0)
     )
-  (set! (-> obj draw light-index) (the-as uint 2))
+  (set! (-> this draw light-index) (the-as uint 2))
   (let ((a1-10 (new 'stack-no-clear 'sync-info-params)))
     (let ((v1-20 0))
       (if #t
@@ -2078,32 +1933,28 @@ This commonly includes things such as:
     (set! (-> a1-10 ease-out) 0.15)
     (set! (-> a1-10 pause-in) 0.2)
     (set! (-> a1-10 pause-out) 0.0)
-    (initialize! (-> obj sync) a1-10)
+    (initialize! (-> this sync) a1-10)
     )
-  (let ((a0-26 (-> obj node-list data 4)))
+  (let ((a0-26 (-> this node-list data 4)))
     (set! (-> a0-26 param0) cas-rot-blade-callback)
-    (set! (-> a0-26 param1) obj)
+    (set! (-> a0-26 param1) this)
     )
-  (set! (-> obj sound-id) (new-sound-id))
-  (set! (-> obj draw shadow-ctrl) *cas-rot-blade-shadow-control*)
-  (go (method-of-object obj idle))
+  (set! (-> this sound-id) (new-sound-id))
+  (set! (-> this draw shadow-ctrl) *cas-rot-blade-shadow-control*)
+  (go (method-of-object this idle))
   (none)
   )
 
-(defmethod deactivate cas-rot-blade ((obj cas-rot-blade))
-  (sound-stop (-> obj sound-id))
-  ((the-as (function process-drawable none) (find-parent-method cas-rot-blade 10)) obj)
+(defmethod deactivate ((this cas-rot-blade))
+  (sound-stop (-> this sound-id))
+  (call-parent-method this)
   (none)
   )
 
 (deftype cas-flag-a (process-drawable)
   ()
-  :heap-base #x50
-  :method-count-assert 21
-  :size-assert         #xc8
-  :flag-assert         #x15005000c8
-  (:methods
-    (idle () _type_ :state 20)
+  (:state-methods
+    idle
     )
   )
 
@@ -2117,48 +1968,40 @@ This commonly includes things such as:
   :virtual #t
   :code (behavior ()
     (until #f
-      (ja-no-eval :group! (ja-group)
-                  :num! (seek! (the float (+ (-> (ja-group) frames num-frames) -1)))
-                  :frame-num 0.0
-                  )
+      (ja-no-eval :group! (ja-group) :num! (seek!) :frame-num 0.0)
       (until (ja-done? 0)
         (suspend)
         (ja :num! (seek!))
         )
       )
     #f
-    (none)
     )
-  :post (the-as (function none :behavior cas-flag-a) ja-post)
+  :post ja-post
   )
 
 ;; WARN: Return type mismatch object vs none.
-(defmethod init-from-entity! cas-flag-a ((obj cas-flag-a) (arg0 entity-actor))
+(defmethod init-from-entity! ((this cas-flag-a) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
 - stack size
 - collision information
 - loading the skeleton group / bones
 - sounds"
-  (set! (-> obj root) (new 'process 'trsqv))
-  (process-drawable-from-entity! obj arg0)
+  (set! (-> this root) (new 'process 'trsqv))
+  (process-drawable-from-entity! this arg0)
   (initialize-skeleton
-    obj
+    this
     (the-as skeleton-group (art-group-get-by-name *level* "skel-cas-flag-a" (the-as (pointer uint32) #f)))
     (the-as pair 0)
     )
-  (go (method-of-object obj idle))
+  (go (method-of-object this idle))
   (none)
   )
 
 (deftype cas-flag-b (process-drawable)
   ()
-  :heap-base #x50
-  :method-count-assert 21
-  :size-assert         #xc8
-  :flag-assert         #x15005000c8
-  (:methods
-    (idle () _type_ :state 20)
+  (:state-methods
+    idle
     )
   )
 
@@ -2172,62 +2015,54 @@ This commonly includes things such as:
   :virtual #t
   :code (behavior ()
     (until #f
-      (ja-no-eval :group! (ja-group)
-                  :num! (seek! (the float (+ (-> (ja-group) frames num-frames) -1)))
-                  :frame-num 0.0
-                  )
+      (ja-no-eval :group! (ja-group) :num! (seek!) :frame-num 0.0)
       (until (ja-done? 0)
         (suspend)
         (ja :num! (seek!))
         )
       )
     #f
-    (none)
     )
-  :post (the-as (function none :behavior cas-flag-b) ja-post)
+  :post ja-post
   )
 
 ;; WARN: Return type mismatch object vs none.
-(defmethod init-from-entity! cas-flag-b ((obj cas-flag-b) (arg0 entity-actor))
+(defmethod init-from-entity! ((this cas-flag-b) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
 - stack size
 - collision information
 - loading the skeleton group / bones
 - sounds"
-  (set! (-> obj root) (new 'process 'trsqv))
-  (process-drawable-from-entity! obj arg0)
+  (set! (-> this root) (new 'process 'trsqv))
+  (process-drawable-from-entity! this arg0)
   (initialize-skeleton
-    obj
+    this
     (the-as skeleton-group (art-group-get-by-name *level* "skel-cas-flag-b" (the-as (pointer uint32) #f)))
     (the-as pair 0)
     )
-  (go (method-of-object obj idle))
+  (go (method-of-object this idle))
   (none)
   )
 
 (deftype cas-robot-door (process-drawable)
-  ((spawner-actor     symbol                  :offset-assert 200)
-   (door-actor        entity-actor          2 :offset-assert 204)
-   (spawn-count       int32                   :offset-assert 212)
-   (spawn-count-total int32                   :offset-assert 216)
-   (spawn-max         int32                   :offset-assert 220)
-   (spawn-total       int32                   :offset-assert 224)
-   (notice-dist       float                   :offset-assert 228)
-   (player-dist       float                   :offset-assert 232)
-   (anim-index        int32                   :offset-assert 236)
-   (last-guard        handle                  :offset-assert 240)
-   (actor-group       (pointer actor-group)   :offset-assert 248)
-   (actor-group-count int32                   :offset-assert 252)
+  ((spawner-actor      symbol)
+   (door-actor         entity-actor  2)
+   (spawn-count        int32)
+   (spawn-count-total  int32)
+   (spawn-max          int32)
+   (spawn-total        int32)
+   (notice-dist        float)
+   (player-dist        float)
+   (anim-index         int32)
+   (last-guard         handle)
+   (actor-group        (pointer actor-group))
+   (actor-group-count  int32)
    )
-  :heap-base #x80
-  :method-count-assert 23
-  :size-assert         #x100
-  :flag-assert         #x1700800100
-  (:methods
-    (idle () _type_ :state 20)
-    (spawning () _type_ :state 21)
-    (castle-wait-end () _type_ :state 22)
+  (:state-methods
+    idle
+    spawning
+    castle-wait-end
     )
   )
 
@@ -2239,19 +2074,18 @@ This commonly includes things such as:
 
 (defstate idle (cas-robot-door)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('trigger)
        (go-virtual spawning)
        )
       )
     )
   :enter (behavior ()
-    (set! (-> self state-time) (current-time))
-    (none)
+    (set-time! (-> self state-time))
     )
   :trans (behavior ()
-    (when (>= (- (current-time) (-> self state-time)) (seconds 0.6))
+    (when (time-elapsed? (-> self state-time) (seconds 0.6))
       (let ((a0-1 *target*))
         (if (and a0-1
                  (not (focus-test? a0-1 disable dead))
@@ -2260,57 +2094,50 @@ This commonly includes things such as:
             (go-virtual spawning)
             )
         )
-      (set! (-> self state-time) (current-time))
+      (set-time! (-> self state-time))
       )
-    (none)
     )
-  :code (the-as (function none :behavior cas-robot-door) sleep-code)
+  :code sleep-code
   )
 
 (defstate spawning (cas-robot-door)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (the-as object (case event-type
-                     (('roboguard-die)
-                      (let ((v0-0 (+ (-> self spawn-count) -1)))
-                        (set! (-> self spawn-count) v0-0)
-                        v0-0
-                        )
-                      )
-                     )
-            )
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
+      (('roboguard-die)
+       (let ((v0-0 (+ (-> self spawn-count) -1)))
+         (set! (-> self spawn-count) v0-0)
+         v0-0
+         )
+       )
+      )
     )
   :enter (behavior ()
-    (set! (-> self state-time) (current-time))
+    (set-time! (-> self state-time))
     (set! (-> self spawn-count) 0)
     (set! (-> self spawn-count-total) 0)
     (set! (-> self player-dist) (-> self notice-dist))
-    (none)
     )
   :trans (behavior ()
-    (when (>= (- (current-time) (-> self state-time)) (seconds 0.6))
+    (when (time-elapsed? (-> self state-time) (seconds 0.6))
       (let ((a0-1 *target*))
         (if (and a0-1 (not (logtest? (-> a0-1 focus-status) (focus-status disable dead))))
             (set! (-> self player-dist) (vector-vector-distance (get-trans a0-1 0) (-> self root trans)))
             )
         )
-      (set! (-> self state-time) (current-time))
+      (set-time! (-> self state-time))
       )
-    (none)
     )
   :code (behavior ()
     (sound-play "robo-hatch-open")
-    (ja-no-eval :group! (-> self draw art-group data 2)
-                :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 2)) frames num-frames) -1)))
-                :frame-num 0.0
-                )
+    (ja-no-eval :group! cas-robot-door-idle-ja :num! (seek!) :frame-num 0.0)
     (until (ja-done? 0)
       (transform-post)
       (suspend)
       (ja :num! (seek!))
       )
     (let ((gp-1 (current-time)))
-      (until (>= (- (current-time) gp-1) (seconds 0.5))
+      (until (time-elapsed? gp-1 (seconds 0.5))
         (suspend)
         )
       )
@@ -2350,14 +2177,14 @@ This commonly includes things such as:
           )
         )
       (let ((gp-3 (current-time)))
-        (until (>= (- (current-time) gp-3) (the int (* 300.0 (rand-vu-float-range 0.5 1.0))))
+        (until (time-elapsed? gp-3 (the int (* 300.0 (rand-vu-float-range 0.5 1.0))))
           (suspend)
           )
         )
       )
     (while (> (-> self spawn-count) 0)
       (let ((gp-4 (current-time)))
-        (until (>= (- (current-time) gp-4) (seconds 0.43))
+        (until (time-elapsed? gp-4 (seconds 0.43))
           (suspend)
           )
         )
@@ -2379,7 +2206,7 @@ This commonly includes things such as:
                 )
             )
           (let ((gp-5 (current-time)))
-            (until (>= (- (current-time) gp-5) (seconds 2))
+            (until (time-elapsed? gp-5 (seconds 2))
               (suspend)
               )
             )
@@ -2413,7 +2240,7 @@ This commonly includes things such as:
               )
           )
         (let ((gp-7 (current-time)))
-          (until (>= (- (current-time) gp-7) (seconds 1))
+          (until (time-elapsed? gp-7 (seconds 1))
             (suspend)
             )
           )
@@ -2440,17 +2267,14 @@ This commonly includes things such as:
         )
       )
     (sound-play "robo-hatch-cls")
-    (ja-no-eval :group! (-> self draw art-group data 2)
-                :num! (seek! 0.0)
-                :frame-num (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 2)) frames num-frames) -1))
-                )
+    (ja-no-eval :group! cas-robot-door-idle-ja :num! (seek! 0.0) :frame-num max)
     (until (ja-done? 0)
       (transform-post)
       (suspend)
       (ja :num! (seek! 0.0))
       )
     (let ((gp-10 (current-time)))
-      (until (>= (- (current-time) gp-10) (seconds 1))
+      (until (time-elapsed? gp-10 (seconds 1))
         (suspend)
         )
       )
@@ -2459,11 +2283,9 @@ This commonly includes things such as:
       (suspend)
       )
     (sleep-code)
-    (none)
     )
   :post (behavior ()
     '()
-    (none)
     )
   )
 
@@ -2472,10 +2294,7 @@ This commonly includes things such as:
   :code (behavior ()
     (local-vars (v1-28 symbol))
     (sound-play "robo-hatch-cls")
-    (ja-no-eval :group! (-> self draw art-group data 2)
-                :num! (seek! 0.0)
-                :frame-num (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 2)) frames num-frames) -1))
-                )
+    (ja-no-eval :group! cas-robot-door-idle-ja :num! (seek! 0.0) :frame-num max)
     (until (ja-done? 0)
       (transform-post)
       (suspend)
@@ -2495,7 +2314,7 @@ This commonly includes things such as:
              (not v1-28)
              )
       (let ((gp-1 (current-time)))
-        (until (>= (- (current-time) gp-1) (seconds 0.51))
+        (until (time-elapsed? gp-1 (seconds 0.51))
           (suspend)
           )
         )
@@ -2509,7 +2328,7 @@ This commonly includes things such as:
           )
       )
     (let ((gp-2 (current-time)))
-      (until (>= (- (current-time) gp-2) (seconds 1))
+      (until (time-elapsed? gp-2 (seconds 1))
         (suspend)
         )
       )
@@ -2549,7 +2368,7 @@ This commonly includes things such as:
         )
       )
     (let ((gp-3 (current-time)))
-      (until (>= (- (current-time) gp-3) (seconds 2.5))
+      (until (time-elapsed? gp-3 (seconds 2.5))
         (suspend)
         )
       )
@@ -2558,21 +2377,21 @@ This commonly includes things such as:
       (suspend)
       )
     (sleep-code)
-    (none)
     )
   )
 
 ;; WARN: Return type mismatch object vs none.
-(defmethod init-from-entity! cas-robot-door ((obj cas-robot-door) (arg0 entity-actor))
+(defmethod init-from-entity! ((this cas-robot-door) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
 - stack size
 - collision information
 - loading the skeleton group / bones
 - sounds"
-  (stack-size-set! (-> obj main-thread) 512) ;; added
+  ;; og:preserve-this added
+  (stack-size-set! (-> this main-thread) 512)
   (local-vars (sv-16 res-tag) (sv-32 res-tag))
-  (let ((s4-0 (new 'process 'collide-shape obj (collide-list-enum usually-hit-by-player))))
+  (let ((s4-0 (new 'process 'collide-shape this (collide-list-enum usually-hit-by-player))))
     (let ((v1-2 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 0) (the-as uint 0))))
       (set! (-> v1-2 prim-core collide-as) (collide-spec obstacle))
       (set! (-> v1-2 prim-core collide-with) (collide-spec jak hit-by-others-list player-list))
@@ -2587,67 +2406,63 @@ This commonly includes things such as:
       (set! (-> s4-0 backup-collide-as) (-> v1-5 prim-core collide-as))
       (set! (-> s4-0 backup-collide-with) (-> v1-5 prim-core collide-with))
       )
-    (set! (-> obj root) s4-0)
+    (set! (-> this root) s4-0)
     )
-  (process-drawable-from-entity! obj arg0)
+  (process-drawable-from-entity! this arg0)
   (initialize-skeleton
-    obj
+    this
     (the-as skeleton-group (art-group-get-by-name *level* "skel-cas-robot-door" (the-as (pointer uint32) #f)))
     (the-as pair 0)
     )
-  (set! (-> obj spawner-actor) (the-as symbol (entity-actor-lookup arg0 'alt-actor 0)))
-  (set! (-> obj door-actor 0) (entity-actor-lookup arg0 'alt-actor 1))
-  (set! (-> obj door-actor 1) (entity-actor-lookup arg0 'alt-actor 2))
-  (set! (-> obj spawn-max) 5)
-  (set! (-> obj spawn-total) -1)
-  (set! (-> obj last-guard) (the-as handle #f))
+  (set! (-> this spawner-actor) (the-as symbol (entity-actor-lookup arg0 'alt-actor 0)))
+  (set! (-> this door-actor 0) (entity-actor-lookup arg0 'alt-actor 1))
+  (set! (-> this door-actor 1) (entity-actor-lookup arg0 'alt-actor 2))
+  (set! (-> this spawn-max) 5)
+  (set! (-> this spawn-total) -1)
+  (set! (-> this last-guard) (the-as handle #f))
   (set! sv-16 (new 'static 'res-tag))
   (let ((v1-13 (res-lump-data arg0 'extra-id (pointer int32) :tag-ptr (& sv-16))))
     (when v1-13
-      (set! (-> obj spawn-max) (-> v1-13 0))
+      (set! (-> this spawn-max) (-> v1-13 0))
       (if (< (the-as uint 1) (-> sv-16 elt-count))
-          (set! (-> obj spawn-total) (-> v1-13 1))
+          (set! (-> this spawn-total) (-> v1-13 1))
           )
       )
     )
-  (set! (-> obj notice-dist) (res-lump-float arg0 'notice-dist :default 122880.0))
-  (set! (-> obj anim-index)
-        (res-lump-value (-> obj entity) 'index int :default (the-as uint128 -1) :time -1000000000.0)
+  (set! (-> this notice-dist) (res-lump-float arg0 'notice-dist :default 122880.0))
+  (set! (-> this anim-index)
+        (res-lump-value (-> this entity) 'index int :default (the-as uint128 -1) :time -1000000000.0)
         )
   (set! sv-32 (new 'static 'res-tag))
-  (let ((v1-17 (res-lump-data (-> obj entity) 'actor-groups pointer :tag-ptr (& sv-32))))
+  (let ((v1-17 (res-lump-data (-> this entity) 'actor-groups pointer :tag-ptr (& sv-32))))
     (cond
       ((and v1-17 (nonzero? (-> sv-32 elt-count)))
-       (set! (-> obj actor-group) (the-as (pointer actor-group) v1-17))
-       (set! (-> obj actor-group-count) (the-as int (-> sv-32 elt-count)))
+       (set! (-> this actor-group) (the-as (pointer actor-group) v1-17))
+       (set! (-> this actor-group-count) (the-as int (-> sv-32 elt-count)))
        )
       (else
-        (set! (-> obj actor-group) (the-as (pointer actor-group) #f))
-        (set! (-> obj actor-group-count) 0)
+        (set! (-> this actor-group) (the-as (pointer actor-group) #f))
+        (set! (-> this actor-group-count) 0)
         0
         )
       )
     )
-  (let ((a0-27 (-> obj skel root-channel 0)))
-    (set! (-> a0-27 frame-group) (the-as art-joint-anim (-> obj draw art-group data 2)))
+  (let ((a0-27 (-> this skel root-channel 0)))
+    (set! (-> a0-27 frame-group) (the-as art-joint-anim (-> this draw art-group data 2)))
     (set! (-> a0-27 frame-num) 0.0)
-    (joint-control-channel-group! a0-27 (the-as art-joint-anim (-> obj draw art-group data 2)) num-func-identity)
+    (joint-control-channel-group! a0-27 (the-as art-joint-anim (-> this draw art-group data 2)) num-func-identity)
     )
   (transform-post)
-  (go (method-of-object obj idle))
+  (go (method-of-object this idle))
   (none)
   )
 
 (deftype lightning-ball (process-drawable)
-  ((root  collide-shape  :override)
-   (timer time-frame     :offset-assert 200)
+  ((root   collide-shape :override)
+   (timer  time-frame)
    )
-  :heap-base #x50
-  :method-count-assert 21
-  :size-assert         #xd0
-  :flag-assert         #x15005000d0
-  (:methods
-    (idle () _type_ :state 20)
+  (:state-methods
+    idle
     )
   )
 
@@ -2674,9 +2489,9 @@ This commonly includes things such as:
 
 (defstate idle (lightning-ball)
   :virtual #t
-  :code (the-as (function none :behavior lightning-ball) sleep-code)
+  :code sleep-code
   :post (behavior ()
-    (when (>= (- (current-time) (-> self timer)) (seconds 0.08))
+    (when (time-elapsed? (-> self timer) (seconds 0.08))
       (let ((gp-0 (new 'stack-no-clear 'collide-query)))
         (let ((f30-1 (* 182.04445 (rand-vu-float-range -20.0 20.0)))
               (f28-1 (* 182.04445 (rand-vu-float-range -180.0 180.0)))
@@ -2712,21 +2527,20 @@ This commonly includes things such as:
               )
           )
         )
-      (set! (-> self timer) (current-time))
+      (set-time! (-> self timer))
       )
-    (none)
     )
   )
 
 ;; WARN: Return type mismatch object vs none.
-(defmethod init-from-entity! lightning-ball ((obj lightning-ball) (arg0 entity-actor))
+(defmethod init-from-entity! ((this lightning-ball) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
 - stack size
 - collision information
 - loading the skeleton group / bones
 - sounds"
-  (let ((s4-0 (new 'process 'collide-shape obj (collide-list-enum usually-hit-by-player))))
+  (let ((s4-0 (new 'process 'collide-shape this (collide-list-enum usually-hit-by-player))))
     (let ((v1-2 (new 'process 'collide-shape-prim-sphere s4-0 (the-as uint 0))))
       (set! (-> v1-2 prim-core collide-as) (collide-spec obstacle))
       (set! (-> v1-2 prim-core action) (collide-action solid))
@@ -2739,11 +2553,11 @@ This commonly includes things such as:
       (set! (-> s4-0 backup-collide-as) (-> v1-5 prim-core collide-as))
       (set! (-> s4-0 backup-collide-with) (-> v1-5 prim-core collide-with))
       )
-    (set! (-> obj root) s4-0)
+    (set! (-> this root) s4-0)
     )
-  (process-drawable-from-entity! obj arg0)
-  (set! (-> obj timer) (current-time))
-  (update-transforms (-> obj root))
-  (go (method-of-object obj idle))
+  (process-drawable-from-entity! this arg0)
+  (set-time! (-> this timer))
+  (update-transforms (-> this root))
+  (go (method-of-object this idle))
   (none)
   )

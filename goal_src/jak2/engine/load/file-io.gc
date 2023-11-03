@@ -24,16 +24,13 @@ NOTE: this is a special type in three ways:
 ;; DECOMP BEGINS
 
 (deftype file-stream (basic)
-  ((flags uint32  :offset-assert   4)
-   (mode  symbol  :offset-assert   8)
-   (name  string  :offset-assert  12)
-   (file  uint32  :offset-assert  16)
+  ((flags  uint32)
+   (mode   symbol)
+   (name   string)
+   (file   uint32)
    )
-  :method-count-assert 9
-  :size-assert         #x14
-  :flag-assert         #x900000014
   (:methods
-    (new (symbol type string symbol) _type_ 0)
+    (new (symbol type string symbol) _type_)
     )
   )
 
@@ -69,32 +66,29 @@ NOTE: this is a special type in three ways:
   )
 
 (deftype file-info (basic)
-  ((file-type      (pointer string)  :offset-assert   4)
-   (file-name      basic             :offset-assert   8)
-   (major-version  uint32            :offset-assert  12)
-   (minor-version  uint32            :offset-assert  16)
-   (maya-file-name basic             :offset-assert  20)
-   (tool-debug     basic             :offset-assert  24)
-   (mdb-file-name  basic             :offset-assert  28)
+  ((file-type       (pointer string))
+   (file-name       basic)
+   (major-version   uint32)
+   (minor-version   uint32)
+   (maya-file-name  basic)
+   (tool-debug      basic)
+   (mdb-file-name   basic)
    )
-  :method-count-assert 9
-  :size-assert         #x20
-  :flag-assert         #x900000020
   )
 
 
-(defmethod print file-info ((obj file-info))
+(defmethod print ((this file-info))
   "Print information about a file"
   (format
     #t
     "#<~A ~A :version ~D.~D @ #x~X>"
-    (-> obj type)
-    (-> obj file-name)
-    (-> obj major-version)
-    (-> obj minor-version)
-    obj
+    (-> this type)
+    (-> this file-name)
+    (-> this major-version)
+    (-> this minor-version)
+    this
     )
-  obj
+  this
   )
 
 (define *file-temp-string* (new 'global 'string 128 (the-as string #f)))
@@ -151,19 +145,21 @@ NOTE: this is a special type in three ways:
      (format *file-temp-string* "map~D/~S-mp" MAP_FILE_VERSION arg1)
      )
     ((= arg0 (file-kind art-group))
-     (format
-       *file-temp-string*
-       "art-group~D/~S-ag"
-       (cond
-         ((> arg2 0)
-          arg2
-          )
-         (else
-           ART_GROUP_FILE_VERSION
-           )
-         )
-       arg1
-       )
+     ;; og:preserve-this removed art-group prefix
+     ; (format
+     ;   *file-temp-string*
+     ;   "art-group~D/~S-ag"
+     ;   (cond
+     ;     ((> arg2 0)
+     ;      arg2
+     ;      )
+     ;     (else
+     ;       ART_GROUP_FILE_VERSION
+     ;       )
+     ;     )
+     ;   arg1
+     ;   )
+     (format *file-temp-string* "~S-ag" arg1)
      )
     )
   *file-temp-string*
@@ -242,7 +238,3 @@ NOTE: this is a special type in three ways:
       )
     )
   )
-
-
-
-

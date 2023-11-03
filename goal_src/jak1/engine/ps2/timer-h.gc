@@ -48,63 +48,49 @@
   (busclk/256 2)
   (hblank 3)
   )
+
+;; DECOMP BEGINS
+
 ;; this matches the Tn_MODE register structure of the ps2 EE timers.
 ;; Only the lower 32 bits of these registers are usable, and the upper 16 hardwired to zero
 (deftype timer-mode (uint32)
-  ((clks  timer-clock-selection :offset 0 :size 2)
-   (gate  uint8 :offset 2 :size 1) ;; gate function enable
-   (gats  uint8 :offset 3 :size 1) ;; gate selection: 0 = hblank, 1 = vblank
-   ;; gate mode:
-   ;;  0: count while gate signal is low
-   ;;  1: start when gate signal rises
-   ;;  2: start when gate signal falls
-   ;;  3: start when gate signal rises/falls
-   (gatm  uint8 :offset 4 :size 2)
-   (zret  uint8 :offset 6 :size 1) ;; zero return: clear counter when equal to reference value
-   (cue   uint8 :offset 7 :size 1) ;; count-up enable
-   (cmpe  uint8 :offset 8 :size 1) ;; compare-interrupt enable
-   (ovfe  uint8 :offset 9 :size 1) ;; overflow-interrupt enable
-   (equf  uint8 :offset 10 :size 1) ;; equal-flag
-   (ovff  uint8 :offset 11 :size 1) ;; overflow-flag
+  ((clks timer-clock-selection :offset   0 :size   2)
+   (gate uint8                 :offset   2 :size   1)
+   (gats uint8                 :offset   3 :size   1)
+   (gatm uint8                 :offset   4 :size   2)
+   (zret uint8                 :offset   6 :size   1)
+   (cue  uint8                 :offset   7 :size   1)
+   (cmpe uint8                 :offset   8 :size   1)
+   (ovfe uint8                 :offset   9 :size   1)
+   (equf uint8                 :offset  10 :size   1)
+   (ovff uint8                 :offset  11 :size   1)
    )
-  :method-count-assert 9
-  :size-assert         #x4
-  :flag-assert         #x900000004
   )
 
 ;; this matches an EE timer (without a HOLD register, timers 2 and 3)
 ;; Each register is 128-bits wide, but only the lower 32-bits are usable, and the upper
 ;; 16-bits of that are hardwired to zero.
 (deftype timer-bank (structure)
-  ((count uint32      :offset 0)
-   (mode  timer-mode  :offset 16)
-   (comp  uint32      :offset 32)
+  ((count  uint32      :offset   0)
+   (mode   timer-mode  :offset  16)
+   (comp   uint32      :offset  32)
    )
-  :method-count-assert 9
-  :size-assert         #x24
-  :flag-assert         #x900000024
   )
 
 ;; this matches an EE timer (with a HOLD register, timers 0 and 1)
 (deftype timer-hold-bank (timer-bank)
-  ((hold  uint32  :offset 48)
+  ((hold  uint32  :offset  48)
    )
-  :method-count-assert 9
-  :size-assert         #x34
-  :flag-assert         #x900000034
   )
 
 ;; stopwatches are used to measure CPU clock cycles
 ;; they don't use the timer above, but instead the Count COP0 register
 ;; which counts CPU clock cycles directly
 (deftype stopwatch (basic)
-  ((prev-time-elapsed time-frame  :offset-assert 8)
-   (start-time        time-frame  :offset-assert 16)
-   (begin-level       int32   :offset-assert 24)
+  ((prev-time-elapsed  time-frame)
+   (start-time         time-frame)
+   (begin-level        int32)
    )
-  :method-count-assert 9
-  :size-assert         #x1c
-  :flag-assert         #x90000001c
   )
 
 ;; Confusing! What IS this measuring exactly? Hmm...
@@ -133,42 +119,27 @@
 
 ;; A single thing in the profiler
 (deftype profile-frame (structure)
-  ((name       symbol  :offset-assert 0)
-   (time-stamp uint32  :offset-assert 4)
-   (color      rgba    :offset-assert 8)
+  ((name        symbol)
+   (time-stamp  uint32)
+   (color       rgba)
    )
-  :method-count-assert 9
-  :size-assert         #xc
-  :flag-assert         #x90000000c
   )
 
-(defmethod inspect profile-frame ((obj profile-frame))
-  (let ((this-frame obj))
-    (format #t "[~8x] profile-frame~%" this-frame)
-    (format #t "~Tname: ~A~%" (-> this-frame name))
-    (format #t "~Ttime-stamp: ~D~%" (-> this-frame time-stamp))
-    (format #t "~Tcolor: ~D ~D ~D~%" (-> this-frame color r) (-> this-frame color g) (-> this-frame color b))
-    )
-  obj
-  )
 
 ;; A "bar" to display all the timed events
 (declare-type dma-buffer basic)
 (deftype profile-bar (basic)
-  ((profile-frame-count int32        :offset-assert 4)
-   (cache-time          time-frame       :offset-assert 8)
-   (data                profile-frame 1024 :inline :offset-assert 16)
+  ((profile-frame-count  int32)
+   (cache-time           time-frame)
+   (data                 profile-frame  1024 :inline)
    )
-  :method-count-assert 14
-  :size-assert         #x4010
-  :flag-assert         #xe00004010
   (:methods
-    (new (symbol type) _type_ 0)
-    (get-last-frame-time-stamp (_type_) uint 9)
-    (reset (_type_) _type_ 10)
-    (add-frame (_type_ symbol rgba) profile-frame 11)
-    (add-end-frame (_type_ symbol rgba) profile-frame 12)
-    (draw (_type_ dma-buffer int) float 13)
+    (new (symbol type) _type_)
+    (get-last-frame-time-stamp (_type_) uint)
+    (reset (_type_) _type_)
+    (add-frame (_type_ symbol rgba) profile-frame)
+    (add-end-frame (_type_ symbol rgba) profile-frame)
+    (draw (_type_ dma-buffer int) float)
     )
   )
 
@@ -183,8 +154,7 @@
   )
 
 ;; tentative name
-(defmethod get-last-frame-time-stamp profile-bar ((obj profile-bar))
+(defmethod get-last-frame-time-stamp profile-bar ((this profile-bar))
   "Returns the timestamp of the last (non-remaining) frame on the profiler bar."
-  (-> obj data (+ (-> obj profile-frame-count) -2) time-stamp)
+  (-> this data (+ (-> this profile-frame-count) -2) time-stamp)
   )
-

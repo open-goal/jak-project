@@ -192,7 +192,7 @@ GlowRenderer::GlowRenderer() {
 
   glBindTexture(GL_TEXTURE_2D, m_ogl.probe_fbo_depth_tex);
   glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT, m_ogl.probe_fbo_w, m_ogl.probe_fbo_h, 0,
-               GL_DEPTH_COMPONENT, GL_FLOAT, NULL);
+               GL_DEPTH_COMPONENT, GL_UNSIGNED_INT, NULL);
   glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D,
                          m_ogl.probe_fbo_depth_tex, 0);
 
@@ -527,7 +527,7 @@ void GlowRenderer::blit_depth(SharedRenderState* render_state) {
 
     glBindTexture(GL_TEXTURE_2D, m_ogl.probe_fbo_depth_tex);
     glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT, m_ogl.probe_fbo_w, m_ogl.probe_fbo_h, 0,
-                 GL_DEPTH_COMPONENT, GL_FLOAT, NULL);
+                 GL_DEPTH_COMPONENT, GL_UNSIGNED_INT, NULL);
     glBindTexture(GL_TEXTURE_2D, 0);
   }
 
@@ -550,6 +550,7 @@ void GlowRenderer::blit_depth(SharedRenderState* render_state) {
 void GlowRenderer::draw_debug_window() {
   ImGui::Checkbox("Show Probes", &m_debug.show_probes);
   ImGui::Checkbox("Show Copy", &m_debug.show_probe_copies);
+  ImGui::Checkbox("Enable Glow Boost", &m_debug.enable_glow_boost);
   ImGui::SliderFloat("Boost Glow", &m_debug.glow_boost, 0, 10);
   ImGui::Text("Count: %d", m_debug.num_sprites);
 }
@@ -808,6 +809,10 @@ void GlowRenderer::draw_sprites(SharedRenderState* render_state, ScopedProfilerN
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
 
   render_state->shaders[ShaderId::GLOW_DRAW].activate();
+  if (!m_debug.enable_glow_boost && Gfx::g_global_settings.target_fps > 60.0f) {
+    // on higher framerates, more glow sprites are drawn, so we scale the boost a bit
+    m_debug.glow_boost = 60.0f / Gfx::g_global_settings.target_fps;
+  }
   glUniform1f(glGetUniformLocation(render_state->shaders[ShaderId::GLOW_DRAW].id(), "glow_boost"),
               m_debug.glow_boost);
 

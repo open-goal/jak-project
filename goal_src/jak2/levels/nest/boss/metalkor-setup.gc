@@ -31,7 +31,7 @@
               :bounds (static-spherem 0 0 0 40)
               )
 
-(defskelgroup skel-metalkor-kid kid kid-lod0-jg 19
+(defskelgroup skel-metalkor-kid kid kid-lod0-jg kid-idle-floating-ja
               ((kid-lod0-mg (meters 999999)))
               :bounds (static-spherem 0 0 0 2)
               :shadow kid-shadow-mg
@@ -83,30 +83,22 @@
               )
 
 (deftype metalkor-bomb (process-drawable)
-  ((root       collide-shape-moving    :override)
-   (joint-mods joint-mod            49 :offset-assert 200)
+  ((root        collide-shape-moving :override)
+   (joint-mods  joint-mod             49)
    )
-  :heap-base #x110
-  :method-count-assert 21
-  :size-assert         #x18c
-  :flag-assert         #x150110018c
-  (:methods
-    (idle () _type_ :state 20)
+  (:state-methods
+    idle
     )
   )
 
 
 (deftype gem-tracker (process)
-  ((gems            handle 10 :offset-assert 128)
-   (gems-collected  int8      :offset-assert 208)
-   (perm-byte-index int8      :offset-assert 209)
+  ((gems             handle  10)
+   (gems-collected   int8)
+   (perm-byte-index  int8)
    )
-  :heap-base #x60
-  :method-count-assert 15
-  :size-assert         #xd2
-  :flag-assert         #xf006000d2
-  (:methods
-    (idle () _type_ :state 14)
+  (:state-methods
+    idle
     )
   )
 
@@ -142,8 +134,8 @@
 
 (defstate idle (gem-tracker)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('spawn-with-gem?)
        (!= (gem-tracker-get-slot (the-as process #f)) -1)
        )
@@ -151,9 +143,9 @@
        (!= (gem-tracker-get-slot proc) -1)
        )
       (('change-gem 'flitter-change-gem 'wasp-change-gem)
-       (let ((v1-3 (gem-tracker-get-slot (the-as process (-> event param 0)))))
+       (let ((v1-3 (gem-tracker-get-slot (the-as process (-> block param 0)))))
          (when (!= v1-3 -1)
-           (let ((gp-1 (-> event param 1)))
+           (let ((gp-1 (-> block param 1)))
              (set! (-> self gems v1-3) (process->handle (the-as process gp-1)))
              (if (type? gp-1 gem)
                  (send-event (the-as process-tree gp-1) 'get-notify self)
@@ -163,7 +155,7 @@
          )
        )
       (('notify)
-       (case (-> event param 0)
+       (case (-> block param 0)
          (('pickup)
           (+! (-> self gems-collected) 1)
           (let ((v1-14 (-> self entity extra perm)))
@@ -178,119 +170,81 @@
        )
       )
     )
-  :code (the-as (function none :behavior gem-tracker) sleep-code)
+  :code sleep-code
   )
 
 (deftype flitter-gem-tracker (gem-tracker)
   ()
-  :heap-base #x60
-  :method-count-assert 15
-  :size-assert         #xd2
-  :flag-assert         #xf006000d2
   )
 
 
 (deftype wasp-gem-tracker (gem-tracker)
   ()
-  :heap-base #x60
-  :method-count-assert 15
-  :size-assert         #xd2
-  :flag-assert         #xf006000d2
   )
 
 
 (deftype rift-occlude (process-drawable)
-  ((original-trans vector :inline :offset-assert 208)
+  ((original-trans  vector  :inline)
    )
-  :heap-base #x60
-  :method-count-assert 21
-  :size-assert         #xe0
-  :flag-assert         #x15006000e0
-  (:methods
-    (idle () _type_ :state 20)
+  (:state-methods
+    idle
     )
   )
 
 
 (deftype metalkor-distort (process-drawable)
-  ((root collide-shape-moving  :override)
+  ((root  collide-shape-moving :override)
    )
-  :heap-base #x50
-  :method-count-assert 21
-  :size-assert         #xc8
-  :flag-assert         #x15005000c8
-  (:methods
-    (idle () _type_ :state 20)
+  (:state-methods
+    idle
     )
   )
 
 
 (deftype metalkor-explode (process-drawable)
-  ((ring handle  :offset-assert 200)
+  ((ring  handle)
    )
-  :heap-base #x50
-  :method-count-assert 21
-  :size-assert         #xd0
-  :flag-assert         #x15005000d0
-  (:methods
-    (idle () _type_ :state 20)
+  (:state-methods
+    idle
     )
   )
 
 
 (deftype metalkor-kid (process-drawable)
   ()
-  :heap-base #x50
-  :method-count-assert 21
-  :size-assert         #xc8
-  :flag-assert         #x15005000c8
-  (:methods
-    (idle () _type_ :state 20)
+  (:state-methods
+    idle
     )
   )
 
 
 (deftype nestb-tail-bound (process-drawable)
   ()
-  :heap-base #x50
-  :method-count-assert 21
-  :size-assert         #xc8
-  :flag-assert         #x15005000c8
-  (:methods
-    (idle () _type_ :state 20)
+  (:state-methods
+    idle
     )
   )
 
 
 (deftype metalkor-ja-float-info (structure)
-  ((float-anim    art-joint-anim  :offset-assert   0)
-   (channel-index int8            :offset-assert   4)
+  ((float-anim     art-joint-anim)
+   (channel-index  int8)
    )
   :pack-me
-  :method-count-assert 9
-  :size-assert         #x5
-  :flag-assert         #x900000005
   )
 
 
 (deftype metalkor-spinner-info (structure)
-  ((joint-index  int8   :offset-assert   0)
-   (launch-angle float  :offset-assert   4)
+  ((joint-index   int8)
+   (launch-angle  float)
    )
   :pack-me
-  :method-count-assert 9
-  :size-assert         #x8
-  :flag-assert         #x900000008
   )
 
 
 (deftype metalkor-shot (metalhead-shot)
-  ((old-transv vector :inline :offset-assert 496)
+  ((old-transv  vector  :inline)
    )
-  :heap-base #x180
-  :method-count-assert 40
-  :size-assert         #x200
-  :flag-assert         #x2801800200
   )
 
 
@@ -397,233 +351,192 @@
 
 (deftype metalkor-flitter (flitter)
   ()
-  :heap-base #x240
-  :method-count-assert 184
-  :size-assert         #x2b8
-  :flag-assert         #xb8024002b8
   )
 
 
 (deftype metalkor-wasp (wasp)
   ()
-  :heap-base #x310
-  :method-count-assert 166
-  :size-assert         #x388
-  :flag-assert         #xa603100388
   )
 
 
 (deftype metalkor-spinner-chain-physics (chain-physics)
-  ((gravity-mult  float  :offset-assert 1392)
-   (velocity-mult float  :offset-assert 1396)
+  ((gravity-mult   float)
+   (velocity-mult  float)
    )
-  :method-count-assert 18
-  :size-assert         #x578
-  :flag-assert         #x1200000578
   )
 
 
 (deftype metalkor-spinner (process-drawable)
-  ((parent-joint-index int8                                   :offset-assert 200)
-   (target-pos         vector                         :inline :offset-assert 208)
-   (chain              metalkor-spinner-chain-physics         :offset-assert 224)
-   (anim-speed         float                                  :offset-assert 228)
+  ((parent-joint-index  int8)
+   (target-pos          vector  :inline)
+   (chain               metalkor-spinner-chain-physics)
+   (anim-speed          float)
    )
-  :heap-base #x70
-  :method-count-assert 23
-  :size-assert         #xe8
-  :flag-assert         #x17007000e8
-  (:methods
-    (break-it () _type_ :state 20)
-    (idle () _type_ :state 21)
-    (shoot-out () _type_ :state 22)
+  (:state-methods
+    break-it
+    idle
+    shoot-out
     )
   )
 
 
 (deftype metalkor-egg (process-focusable)
-  ((last-hit-normal vector     :inline :offset-assert 208)
-   (sticky-time     time-frame         :offset-assert 224)
-   (flitter-slot    int8               :offset-assert 232)
+  ((last-hit-normal  vector  :inline)
+   (sticky-time      time-frame)
+   (flitter-slot     int8)
    )
-  :heap-base #x70
-  :method-count-assert 31
-  :size-assert         #xe9
-  :flag-assert         #x1f007000e9
-  (:methods
-    (egg-pop () _type_ :state 27)
-    (fall () _type_ :state 28)
-    (hatch () _type_ :state 29)
-    (idle () _type_ :state 30)
+  (:state-methods
+    egg-pop
+    fall
+    hatch
+    idle
     )
   )
 
 
 (deftype metalkor-wings (process-drawable)
-  ((prefix string  :offset-assert 200)
+  ((prefix  string)
    )
-  :heap-base #x50
-  :method-count-assert 21
-  :size-assert         #xcc
-  :flag-assert         #x15005000cc
-  (:methods
-    (idle () _type_ :state 20)
+  (:state-methods
+    idle
     )
   )
 
 
 (deftype metalkor-foot-lock (structure)
-  ((lock         cam-float-seeker :inline :offset-assert   0)
-   (old-position vector           :inline :offset-assert  32)
-   (initialized  symbol                   :offset-assert  48)
+  ((lock          cam-float-seeker  :inline)
+   (old-position  vector            :inline)
+   (initialized   symbol)
    )
-  :method-count-assert 9
-  :size-assert         #x34
-  :flag-assert         #x900000034
   )
 
 
 (deftype metalkor-legs (process-focusable)
-  ((prefix        string                           :offset-assert 204)
-   (trackable     symbol                           :offset-assert 208)
-   (joint-ik      joint-mod-ik           6         :offset-assert 212)
-   (ja-float-info metalkor-ja-float-info 3 :inline :offset-assert 236)
-   (foot-locks    metalkor-foot-lock     6 :inline :offset        288)
+  ((prefix         string)
+   (trackable      symbol)
+   (joint-ik       joint-mod-ik            6)
+   (ja-float-info  metalkor-ja-float-info  3 :inline)
+   (foot-locks     metalkor-foot-lock      6 :inline :offset 288)
    )
-  :heap-base #x220
-  :method-count-assert 28
-  :size-assert         #x2a0
-  :flag-assert         #x1c022002a0
-  (:methods
-    (idle () _type_ :state 27)
+  (:state-methods
+    idle
     )
   )
 
 
 (deftype metalkor-chain-physics (chain-physics)
-  ((prev-rotation    float                      :offset-assert 1392)
-   (prev-y-rotation  float                      :offset-assert 1396)
-   (osc-z            oscillating-float  :inline :offset-assert 1400)
-   (osc-y            oscillating-float  :inline :offset-assert 1424)
-   (rand-z           delayed-rand-float :inline :offset-assert 1448)
-   (rand-y           delayed-rand-float :inline :offset-assert 1480)
-   (move-with-parent symbol                     :offset-assert 1508)
+  ((prev-rotation     float)
+   (prev-y-rotation   float)
+   (osc-z             oscillating-float   :inline)
+   (osc-y             oscillating-float   :inline)
+   (rand-z            delayed-rand-float  :inline)
+   (rand-y            delayed-rand-float  :inline)
+   (move-with-parent  symbol)
    )
-  :method-count-assert 18
-  :size-assert         #x5e8
-  :flag-assert         #x12000005e8
   )
 
 
 (deftype metalkor-lowtorso (process-focusable)
-  ((prefix               string                           :offset-assert 204)
-   (tail                 metalkor-chain-physics           :offset-assert 208)
-   (tail-initialized     symbol                           :offset-assert 212)
-   (spinners             handle                 4         :offset-assert 216)
-   (ja-float-info        metalkor-ja-float-info 3 :inline :offset-assert 248)
-   (no-collision-timer   time-frame                       :offset        296)
-   (egg-toss-joint-1     joint-mod                        :offset-assert 304)
-   (egg-toss-joint-2     joint-mod                        :offset-assert 308)
-   (egg-toss-joint-3     joint-mod                        :offset-assert 312)
-   (egg-toss-joint-angle oscillating-float      :inline   :offset-assert 316)
+  ((prefix                string)
+   (tail                  metalkor-chain-physics)
+   (tail-initialized      symbol)
+   (spinners              handle                  4)
+   (ja-float-info         metalkor-ja-float-info  3 :inline)
+   (no-collision-timer    time-frame              :offset 296)
+   (egg-toss-joint-1      joint-mod)
+   (egg-toss-joint-2      joint-mod)
+   (egg-toss-joint-3      joint-mod)
+   (egg-toss-joint-angle  oscillating-float       :inline)
    )
-  :heap-base #xe0
-  :method-count-assert 28
-  :size-assert         #x154
-  :flag-assert         #x1c00e00154
-  (:methods
-    (idle () _type_ :state 27)
+  (:state-methods
+    idle
     )
   )
 
 
 (deftype metalkor (process-focusable)
-  ((trackable                       symbol                           :offset-assert 204)
-   (flitters                        handle                   10      :offset-assert 208)
-   (flitter-gem-tracker             handle                           :offset-assert 288)
-   (wasps                           handle                   3       :offset-assert 296)
-   (wasp-gem-tracker                handle                           :offset-assert 320)
-   (last-flitter-launched           int8                             :offset-assert 328)
-   (last-wasp-launched              int8                             :offset-assert 329)
-   (live-flitters                   int8                             :offset-assert 330)
-   (live-wasps                      int8                             :offset-assert 331)
-   (shoot-timer                     time-frame                       :offset-assert 336)
-   (target-angle                    float                            :offset-assert 344)
-   (wave-timer                      time-frame                       :offset-assert 352)
-   (in-wave                         symbol                           :offset-assert 360)
-   (flitter-timer                   time-frame                       :offset-assert 368)
-   (wasp-timer                      time-frame                       :offset-assert 376)
-   (launching-flitters              symbol                           :offset-assert 384)
-   (launching-wasps                 symbol                           :offset-assert 388)
-   (egg-timer                       time-frame                       :offset-assert 392)
-   (last-close-attack               int8                             :offset-assert 400)
-   (last-standing-attack            int8                             :offset-assert 401)
-   (stage                           int8                             :offset-assert 402)
-   (next-stage-timer                time-frame                       :offset-assert 408)
-   (initial-y                       float                            :offset-assert 416)
-   (shots-fired                     int16                            :offset-assert 420)
-   (stage-hit-points                float                            :offset-assert 424)
-   (hud                             handle                           :offset-assert 432)
-   (lowtorso                        handle                           :offset-assert 440)
-   (legs                            handle                           :offset-assert 448)
-   (wings                           handle                           :offset-assert 456)
-   (kid                             handle                           :offset-assert 464)
-   (explode                         handle                           :offset-assert 472)
-   (rift-occlude                    handle                           :offset-assert 480)
-   (last-attack-id                  uint32                           :offset-assert 488)
-   (current-nav-poly                nav-poly                         :offset-assert 492)
-   (shot-anticipate                 sparticle-launch-control         :offset-assert 496)
-   (spinners                        handle                   4       :offset-assert 504)
-   (neck                            joint-mod                        :offset-assert 536)
-   (previous-flat-travel            vector                   :inline :offset-assert 544)
-   (previous-flat-travel-timer      time-frame                       :offset-assert 560)
-   (previous-flat-travel-long-timer time-frame                       :offset-assert 568)
-   (min-state-hit-points            float                            :offset-assert 576)
-   (countdown-to-roar               int8                             :offset-assert 580)
-   (for-back-interp                 cam-float-seeker         :inline :offset-assert 584)
-   (run-walk-interp                 cam-float-seeker         :inline :offset-assert 608)
-   (left-right-interp               cam-float-seeker         :inline :offset-assert 632)
-   (walk-turn-interp                cam-float-seeker         :inline :offset-assert 656)
-   (idle-interp                     cam-float-seeker         :inline :offset-assert 680)
-   (tmp-hit-points                  float                            :offset-assert 704)
-   (reps-till-idle-alt              int8                             :offset-assert 708)
-   (last-rotation                   float                            :offset-assert 712)
-   (no-collision-timer              time-frame                       :offset-assert 720)
-   (egg-angle                       float                            :offset        736)
-   (arm-frame                       float                            :offset-assert 740)
-   (been-to-entity                  symbol                           :offset-assert 744)
-   (flying-speed                    cam-float-seeker         :inline :offset-assert 748)
-   (wing-sound                      sound-id                         :offset-assert 772)
-   (wing-sound-playing              symbol                           :offset-assert 776)
-   (explode-sound                   sound-id                         :offset-assert 780)
-   (bomb-sound                      sound-id                         :offset-assert 784)
-   (stop-bomb-sound                 symbol                           :offset-assert 788)
-   (hit-ring-trans                  vector                   :inline :offset-assert 800)
-   (hit-ring-offset                 vector                   :inline :offset-assert 816)
-   (ring-cam-pos                    cam-float-seeker         :inline :offset-assert 832)
-   (need-teleport                   symbol                           :offset-assert 856)
+  ((trackable                        symbol)
+   (flitters                         handle            10)
+   (flitter-gem-tracker              handle)
+   (wasps                            handle            3)
+   (wasp-gem-tracker                 handle)
+   (last-flitter-launched            int8)
+   (last-wasp-launched               int8)
+   (live-flitters                    int8)
+   (live-wasps                       int8)
+   (shoot-timer                      time-frame)
+   (target-angle                     float)
+   (wave-timer                       time-frame)
+   (in-wave                          symbol)
+   (flitter-timer                    time-frame)
+   (wasp-timer                       time-frame)
+   (launching-flitters               symbol)
+   (launching-wasps                  symbol)
+   (egg-timer                        time-frame)
+   (last-close-attack                int8)
+   (last-standing-attack             int8)
+   (stage                            int8)
+   (next-stage-timer                 time-frame)
+   (initial-y                        float)
+   (shots-fired                      int16)
+   (stage-hit-points                 float)
+   (hud                              handle)
+   (lowtorso                         handle)
+   (legs                             handle)
+   (wings                            handle)
+   (kid                              handle)
+   (explode                          handle)
+   (rift-occlude                     handle)
+   (last-attack-id                   uint32)
+   (current-nav-poly                 nav-poly)
+   (shot-anticipate                  sparticle-launch-control)
+   (spinners                         handle            4)
+   (neck                             joint-mod)
+   (previous-flat-travel             vector            :inline)
+   (previous-flat-travel-timer       time-frame)
+   (previous-flat-travel-long-timer  time-frame)
+   (min-state-hit-points             float)
+   (countdown-to-roar                int8)
+   (for-back-interp                  cam-float-seeker  :inline)
+   (run-walk-interp                  cam-float-seeker  :inline)
+   (left-right-interp                cam-float-seeker  :inline)
+   (walk-turn-interp                 cam-float-seeker  :inline)
+   (idle-interp                      cam-float-seeker  :inline)
+   (tmp-hit-points                   float)
+   (reps-till-idle-alt               int8)
+   (last-rotation                    float)
+   (no-collision-timer               time-frame)
+   (egg-angle                        float             :offset 736)
+   (arm-frame                        float)
+   (been-to-entity                   symbol)
+   (flying-speed                     cam-float-seeker  :inline)
+   (wing-sound                       sound-id)
+   (wing-sound-playing               symbol)
+   (explode-sound                    sound-id)
+   (bomb-sound                       sound-id)
+   (stop-bomb-sound                  symbol)
+   (hit-ring-trans                   vector            :inline)
+   (hit-ring-offset                  vector            :inline)
+   (ring-cam-pos                     cam-float-seeker  :inline)
+   (need-teleport                    symbol)
    )
-  :heap-base #x2e0
-  :method-count-assert 43
-  :size-assert         #x35c
-  :flag-assert         #x2b02e0035c
-  (:methods
-    (beaten (symbol) _type_ :state 27)
-    (explode () _type_ :state 28)
-    (fly-to-ring () _type_ :state 29)
-    (last-gasp () _type_ :state 30)
-    (overload-recover () _type_ :state 31)
-    (fall-down () _type_ :state 32)
-    (tail-attack () _type_ :state 33)
-    (foot-attack () _type_ :state 34)
-    (get-close () _type_ :state 35)
-    (standing-shot () _type_ :state 36)
-    (chase-target () _type_ :state 37)
-    (play-drop-movie () _type_ :state 38)
-    (start-second-stage () _type_ :state 39)
-    (hang-shoot-n-launch () _type_ :state 40)
-    (hidden () _type_ :state 41)
-    (test () _type_ :state 42)
+  (:state-methods
+    (beaten symbol)
+    explode
+    fly-to-ring
+    last-gasp
+    overload-recover
+    fall-down
+    tail-attack
+    foot-attack
+    get-close
+    standing-shot
+    chase-target
+    play-drop-movie
+    start-second-stage
+    hang-shoot-n-launch
+    hidden
+    test
     )
   )
 
@@ -711,14 +624,14 @@
   )
 
 ;; WARN: Return type mismatch object vs none.
-(defmethod init-from-entity! nestb-tail-bound ((obj nestb-tail-bound) (arg0 entity-actor))
+(defmethod init-from-entity! ((this nestb-tail-bound) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
 - stack size
 - collision information
 - loading the skeleton group / bones
 - sounds"
-  (let ((s4-0 (new 'process 'collide-shape obj (collide-list-enum hit-by-others))))
+  (let ((s4-0 (new 'process 'collide-shape this (collide-list-enum hit-by-others))))
     (let ((v1-2 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 0) (the-as uint 0))))
       (set! (-> v1-2 prim-core collide-as) (collide-spec special-obstacle))
       (set! (-> v1-2 prim-core action) (collide-action solid))
@@ -732,18 +645,18 @@ This commonly includes things such as:
       (set! (-> s4-0 backup-collide-as) (-> v1-5 prim-core collide-as))
       (set! (-> s4-0 backup-collide-with) (-> v1-5 prim-core collide-with))
       )
-    (set! (-> obj root) s4-0)
+    (set! (-> this root) s4-0)
     )
-  (process-drawable-from-entity! obj arg0)
-  (+! (-> obj root trans y) -36864.0)
+  (process-drawable-from-entity! this arg0)
+  (+! (-> this root trans y) -36864.0)
   (initialize-skeleton
-    obj
+    this
     (the-as skeleton-group (art-group-get-by-name *level* "skel-nestb-tail-bound" (the-as (pointer uint32) #f)))
     (the-as pair 0)
     )
   (transform-post)
-  (logior! (-> obj draw status) (draw-control-status no-draw-bounds))
-  (go (method-of-object obj idle))
+  (logior! (-> this draw status) (draw-control-status no-draw-bounds))
+  (go (method-of-object this idle))
   (none)
   )
 
@@ -935,7 +848,7 @@ This commonly includes things such as:
     (cshape-reaction-update-state arg0 arg1 sv-16)
     (let ((s5-0 (-> arg0 process)))
       (cond
-        ((>= (- (current-time) (-> (the-as metalkor-egg s5-0) sticky-time)) (seconds 0.05))
+        ((time-elapsed? (-> (the-as metalkor-egg s5-0) sticky-time) (seconds 0.05))
          (let ((t9-1 vector--float*!)
                (a0-3 arg2)
                (a1-1 sv-16)
@@ -950,6 +863,7 @@ This commonly includes things such as:
                   (f5-0 (-> v1-4 y))
                   (f6-0 (-> v1-4 z))
                   )
+             ;; og:preserve-this inlined vector-dot
              ; (.mula.s f1-0 f4-0)
              ; (.madda.s f2-0 f5-0)
              ; (.madd.s f1-1 f3-0 f6-0)
@@ -995,9 +909,7 @@ This commonly includes things such as:
            0
            )
           ((let ((f1-6 4096.0))
-             (and (< (* f1-6 f1-6) f0-10)
-                  (>= (- (current-time) (-> (the-as metalkor-egg s5-0) sticky-time)) (seconds 0.2))
-                  )
+             (and (< (* f1-6 f1-6) f0-10) (time-elapsed? (-> (the-as metalkor-egg s5-0) sticky-time) (seconds 0.2)))
              )
            (vector-float*! arg2 arg2 (/ 4096.0 (sqrtf f0-10)))
            )
@@ -1091,12 +1003,9 @@ This commonly includes things such as:
   )
 
 (deftype metalkor-ik-setup (structure)
-  ((elbow-index int32  :offset-assert   0)
-   (hand-dist   float  :offset-assert   4)
+  ((elbow-index  int32)
+   (hand-dist    float)
    )
-  :method-count-assert 9
-  :size-assert         #x8
-  :flag-assert         #x900000008
   )
 
 
@@ -1551,7 +1460,7 @@ This commonly includes things such as:
   (none)
   )
 
-(defmethod init-from-entity! metalkor ((obj metalkor) (arg0 entity-actor))
+(defmethod init-from-entity! ((this metalkor) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
 - stack size
@@ -1559,7 +1468,7 @@ This commonly includes things such as:
 - loading the skeleton group / bones
 - sounds"
   (local-vars (sv-16 res-tag))
-  (let ((s4-0 (new 'process 'collide-shape-moving obj (collide-list-enum usually-hit-by-player))))
+  (let ((s4-0 (new 'process 'collide-shape-moving this (collide-list-enum usually-hit-by-player))))
     (set! (-> s4-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s4-0 reaction) cshape-reaction-default)
     (set! (-> s4-0 no-reaction)
@@ -1608,64 +1517,61 @@ This commonly includes things such as:
       (set! (-> s4-0 backup-collide-with) (-> v1-22 prim-core collide-with))
       )
     (set! (-> s4-0 event-self) 'touched)
-    (set! (-> obj root) s4-0)
+    (set! (-> this root) s4-0)
     )
-  (set! (-> obj root pause-adjust-distance) 409600.0)
-  (process-drawable-from-entity! obj arg0)
+  (set! (-> this root pause-adjust-distance) 409600.0)
+  (process-drawable-from-entity! this arg0)
   (initialize-skeleton
-    obj
+    this
     (the-as skeleton-group (art-group-get-by-name *level* "skel-metalkor" (the-as (pointer uint32) #f)))
     (the-as pair 0)
     )
-  (logior! (-> obj mask) (process-mask enemy))
-  (set! (-> obj draw light-index) (the-as uint 10))
-  (set! (-> obj lowtorso) (the-as handle #f))
-  (set! (-> obj trackable) #f)
+  (logior! (-> this mask) (process-mask enemy))
+  (set! (-> this draw light-index) (the-as uint 10))
+  (set! (-> this lowtorso) (the-as handle #f))
+  (set! (-> this trackable) #f)
   (dotimes (v1-33 10)
-    (set! (-> obj flitters v1-33) (the-as handle #f))
+    (set! (-> this flitters v1-33) (the-as handle #f))
     )
   (dotimes (v1-36 3)
-    (set! (-> obj wasps v1-36) (the-as handle #f))
+    (set! (-> this wasps v1-36) (the-as handle #f))
     )
-  (set! (-> obj initial-y) (-> obj root trans y))
-  (set! (-> obj hud) (the-as handle #f))
-  (set! (-> obj legs) (the-as handle #f))
-  (set! (-> obj kid) (the-as handle #f))
-  (set! (-> obj wings) (the-as handle #f))
-  (set! (-> obj explode) (the-as handle #f))
-  (set! (-> obj rift-occlude) (the-as handle #f))
-  (set! (-> obj last-attack-id) (the-as uint 0))
-  (let ((a0-40 (nav-mesh-from-res-tag (-> obj entity) 'nav-mesh-actor 1)))
+  (set! (-> this initial-y) (-> this root trans y))
+  (set! (-> this hud) (the-as handle #f))
+  (set! (-> this legs) (the-as handle #f))
+  (set! (-> this kid) (the-as handle #f))
+  (set! (-> this wings) (the-as handle #f))
+  (set! (-> this explode) (the-as handle #f))
+  (set! (-> this rift-occlude) (the-as handle #f))
+  (set! (-> this last-attack-id) (the-as uint 0))
+  (let ((a0-40 (nav-mesh-from-res-tag (-> this entity) 'nav-mesh-actor 1)))
     (if a0-40
-        (change-to a0-40 obj)
+        (change-to a0-40 this)
         )
     )
-  (set! (-> obj current-nav-poly) #f)
-  (set! (-> obj shot-anticipate) (create-launch-control (-> *part-group-id-table* 1232) obj))
-  (set! (-> obj last-flitter-launched) 0)
-  (set! (-> obj last-wasp-launched) 0)
-  (set! (-> obj live-flitters) 0)
-  (set! (-> obj live-wasps) 0)
-  (set! (-> obj flitter-gem-tracker) (the-as handle #f))
-  (set! (-> obj wasp-gem-tracker) (the-as handle #f))
+  (set! (-> this current-nav-poly) #f)
+  (set! (-> this shot-anticipate) (create-launch-control (-> *part-group-id-table* 1232) this))
+  (set! (-> this last-flitter-launched) 0)
+  (set! (-> this last-wasp-launched) 0)
+  (set! (-> this live-flitters) 0)
+  (set! (-> this live-wasps) 0)
+  (set! (-> this flitter-gem-tracker) (the-as handle #f))
+  (set! (-> this wasp-gem-tracker) (the-as handle #f))
   (set! sv-16 (new 'static 'res-tag))
-  (let ((v1-47 (res-lump-data (-> obj entity) 'actor-groups (pointer actor-group) :tag-ptr (& sv-16))))
+  (let ((v1-47 (res-lump-data (-> this entity) 'actor-groups (pointer actor-group) :tag-ptr (& sv-16))))
     (when (and v1-47 (> (-> sv-16 elt-count) 0))
       (let ((v1-48 (-> v1-47 0)))
         (when (>= (-> v1-48 length) 1)
           (let ((s5-2 (-> v1-48 data 0 actor)))
             (let ((a0-52 (search-process-tree
                            *active-pool*
-                           (the-as
-                             (function process-tree object)
-                             (lambda ((arg0 gem-tracker)) (= (-> arg0 type) flitter-gem-tracker) (none))
-                             )
+                           (lambda ((arg0 gem-tracker)) (= (-> arg0 type) flitter-gem-tracker) (none))
                            )
                          )
                   )
               (if a0-52
-                  (set! (-> obj flitter-gem-tracker) (process->handle a0-52))
-                  (set! (-> obj flitter-gem-tracker)
+                  (set! (-> this flitter-gem-tracker) (process->handle a0-52))
+                  (set! (-> this flitter-gem-tracker)
                         (ppointer->handle
                           (process-spawn flitter-gem-tracker :init gem-tracker-init-by-other s5-2 0 :to *entity-pool*)
                           )
@@ -1673,16 +1579,12 @@ This commonly includes things such as:
                   )
               )
             (let ((a0-63
-                    (search-process-tree *active-pool* (the-as
-                                                         (function process-tree object)
-                                                         (lambda ((arg0 gem-tracker)) (= (-> arg0 type) wasp-gem-tracker) (none))
-                                                         )
-                                         )
+                    (search-process-tree *active-pool* (lambda ((arg0 gem-tracker)) (= (-> arg0 type) wasp-gem-tracker) (none)))
                     )
                   )
               (if a0-63
-                  (set! (-> obj wasp-gem-tracker) (process->handle a0-63))
-                  (set! (-> obj wasp-gem-tracker)
+                  (set! (-> this wasp-gem-tracker) (process->handle a0-63))
+                  (set! (-> this wasp-gem-tracker)
                         (ppointer->handle (process-spawn wasp-gem-tracker :init gem-tracker-init-by-other s5-2 1 :to *entity-pool*))
                         )
                   )
@@ -1695,29 +1597,29 @@ This commonly includes things such as:
   (copy-nav-enemy-info! *metalkor-flitter-nav-enemy-info* *flitter-nav-enemy-info*)
   (set! (-> *metalkor-flitter-nav-enemy-info* notice-distance) 1638400.0)
   (dotimes (v1-71 4)
-    (set! (-> obj spinners v1-71) (the-as handle #f))
+    (set! (-> this spinners v1-71) (the-as handle #f))
     )
-  (set! (-> obj neck) (new 'process 'joint-mod (joint-mod-mode flex-blend) obj 6))
-  (set-vector! (-> obj neck twist-max) 8192.0 8192.0 0.0 1.0)
-  (set! (-> obj neck up) (the-as uint 1))
-  (set! (-> obj neck nose) (the-as uint 2))
-  (set! (-> obj neck ear) (the-as uint 0))
-  (set! (-> obj neck max-dist) 409600.0)
-  (set! (-> obj neck ignore-angle) 16384.0)
-  (mode-set! (-> obj neck) (joint-mod-mode look-at))
-  (set! (-> obj previous-flat-travel-timer) 0)
-  (set! (-> obj previous-flat-travel-long-timer) 0)
-  (set! (-> obj countdown-to-roar) 3)
-  (let ((v1-88 (-> obj root root-prim)))
-    (set! (-> obj root backup-collide-as) (-> v1-88 prim-core collide-as))
-    (set! (-> obj root backup-collide-with) (-> v1-88 prim-core collide-with))
+  (set! (-> this neck) (new 'process 'joint-mod (joint-mod-mode flex-blend) this 6))
+  (set-vector! (-> this neck twist-max) 8192.0 8192.0 0.0 1.0)
+  (set! (-> this neck up) (the-as uint 1))
+  (set! (-> this neck nose) (the-as uint 2))
+  (set! (-> this neck ear) (the-as uint 0))
+  (set! (-> this neck max-dist) 409600.0)
+  (set! (-> this neck ignore-angle) 16384.0)
+  (mode-set! (-> this neck) (joint-mod-mode look-at))
+  (set! (-> this previous-flat-travel-timer) 0)
+  (set! (-> this previous-flat-travel-long-timer) 0)
+  (set! (-> this countdown-to-roar) 3)
+  (let ((v1-88 (-> this root root-prim)))
+    (set! (-> this root backup-collide-as) (-> v1-88 prim-core collide-as))
+    (set! (-> this root backup-collide-with) (-> v1-88 prim-core collide-with))
     )
-  (set! (-> obj no-collision-timer) 0)
-  (set! (-> obj wing-sound) (new-sound-id))
-  (set! (-> obj wing-sound-playing) #f)
-  (set! (-> obj explode-sound) (new-sound-id))
-  (set! (-> obj bomb-sound) (new-sound-id))
-  (set! (-> obj stage) -1)
+  (set! (-> this no-collision-timer) 0)
+  (set! (-> this wing-sound) (new-sound-id))
+  (set! (-> this wing-sound-playing) #f)
+  (set! (-> this explode-sound) (new-sound-id))
+  (set! (-> this bomb-sound) (new-sound-id))
+  (set! (-> this stage) -1)
   (metalkor-go-next-stage)
   (none)
   )

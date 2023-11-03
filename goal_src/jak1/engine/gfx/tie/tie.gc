@@ -19,83 +19,82 @@
 ;; The exact procedure for GENERIC through TIE is unknown.
 ;;  The functions are generic-tie-execute and generic-tie-convert
 
+;; DECOMP BEGINS
+
 ;;;;;;;;;;;;;;;;;
 ;; Basic Methods
 ;;;;;;;;;;;;;;;;;
 
 ;; something is going wrong mem-usage (believed fixed)
 
-(defmethod login tie-fragment ((obj tie-fragment))
+(defmethod login ((this tie-fragment))
   "Initialize the shaders for a tie-fragment"
   
   ;; the gif data is just adgif shaders, each are 5 qw's
-  (let ((s5-0 (-> obj gif-ref))
-        (s4-0 (/ (-> obj tex-count) (the-as uint 5)))
+  (let ((s5-0 (-> this gif-ref))
+        (s4-0 (/ (-> this tex-count) (the-as uint 5)))
         )
     (dotimes (s3-0 (the-as int s4-0))
       ;; will modify the adgif-shaders in place to have the appropriate tbp.
       (adgif-shader-login-no-remap (-> s5-0 s3-0))
       )
     )
-  obj
+  this
   )
 
-(defmethod inspect drawable-inline-array-instance-tie ((obj drawable-inline-array-instance-tie))
+(defmethod inspect drawable-inline-array-instance-tie ((this drawable-inline-array-instance-tie))
   "Inspect an array of instances"
-  (format #t "[~8x] ~A~%" obj (-> obj type))
-  (format #t "~Tlength: ~D~%" (-> obj length))
-  (format #t "~Tdata[~D]: @ #x~X~%" (-> obj length) (-> obj data))
-  (dotimes (s5-0 (-> obj length))
-    (format #t "~T  [~D] ~A~%" s5-0 (-> obj data s5-0))
+  (format #t "[~8x] ~A~%" this (-> this type))
+  (format #t "~Tlength: ~D~%" (-> this length))
+  (format #t "~Tdata[~D]: @ #x~X~%" (-> this length) (-> this data))
+  (dotimes (s5-0 (-> this length))
+    (format #t "~T  [~D] ~A~%" s5-0 (-> this data s5-0))
     )
-  obj
+  this
   )
 
-(defmethod asize-of drawable-inline-array-instance-tie ((obj drawable-inline-array-instance-tie))
+(defmethod asize-of ((this drawable-inline-array-instance-tie))
   "Compute the size in memory of an array of instances."
-  (the-as int (+ (-> drawable-inline-array-instance-tie size)
-                 (* (+ (-> obj length) -1) 64) ;; 64 bytes / instance, minus the 1 in the type.
-                 )
-          )
+  (the-as int (+ (-> drawable-inline-array-instance-tie size) (* (+ (-> this length) -1) 64)))
   )
 
 #|
 ;; for some reason, this showed up twice.
-(defmethod login drawable-tree-instance-tie ((obj drawable-tree-instance-tie))
-obj
+(defmethod login drawable-tree-instance-tie ((this drawable-tree-instance-tie))
+this
 )
 |#
 
-(defmethod login drawable-tree-instance-tie ((obj drawable-tree-instance-tie))
+(defmethod login ((this drawable-tree-instance-tie))
   "Login method for the tie instance tree."
   ;; just log in all of the drawables.
-  (dotimes (s5-0 (-> obj length))
-    (login (-> obj data s5-0))
+  (dotimes (s5-0 (-> this length))
+    (login (-> this data s5-0))
     )
   (the-as drawable-tree-instance-tie #f)
   )
 
-(defmethod inspect prototype-tie ((obj prototype-tie))
+(defmethod inspect prototype-tie ((this prototype-tie))
   "Inspect the inline-array of tie"
-  (format #t "[~8x] ~A~%" obj (-> obj type))
-  (format #t "~Tlength: ~D~%" (-> obj length))
-  (format #t "~Tdata[~D]: @ #x~X~%" (-> obj length) (-> obj data))
+  (format #t "[~8x] ~A~%" this (-> this type))
+  (format #t "~Tlength: ~D~%" (-> this length))
+  (format #t "~Tdata[~D]: @ #x~X~%" (-> this length) (-> this data))
   ;; print each fragment
-  (dotimes (s5-0 (-> obj length))
-    (format #t "~T  [~D] ~A~%" s5-0 (-> obj data s5-0))
+  (dotimes (s5-0 (-> this length))
+    (format #t "~T  [~D] ~A~%" s5-0 (-> this data s5-0))
     )
-  obj
+  this
   )
 
-(defmethod login prototype-tie ((obj prototype-tie))
+(defmethod login ((this prototype-tie))
   "Login each tie-fragment."
-  (dotimes (s5-0 (-> obj length))
-    (login (-> obj data s5-0))
+  (dotimes (s5-0 (-> this length))
+    (login (-> this data s5-0))
     )
-  obj
+  this
   )
 
-(defmethod mem-usage drawable-tree-instance-tie ((obj drawable-tree-instance-tie) (arg0 memory-usage-block) (arg1 int))
+(defmethod mem-usage ((this drawable-tree-instance-tie) (arg0 memory-usage-block) (arg1 int))
   "Compute memory usage for a drawable tree of TIE instances"
   (set! (-> arg0 length) (max 1 (-> arg0 length)))
   (set! (-> arg0 data 0 name) (symbol->string 'drawable-group))
@@ -106,20 +105,20 @@ obj
     )
   
   ;; do our drawables
-  (dotimes (s3-0 (-> obj length))
-    (mem-usage (-> obj data s3-0) arg0 arg1)
+  (dotimes (s3-0 (-> this length))
+    (mem-usage (-> this data s3-0) arg0 arg1)
     )
   
   ;; do our prototypes, but with a flag set!
-  (mem-usage (-> obj prototypes prototype-array-tie) arg0 (logior arg1 1))
-  obj
+  (mem-usage (-> this prototypes prototype-array-tie) arg0 (logior arg1 1))
+  this
   )
 
-(defmethod mem-usage tie-fragment ((obj tie-fragment) (arg0 memory-usage-block) (arg1 int))
+(defmethod mem-usage ((this tie-fragment) (arg0 memory-usage-block) (arg1 int))
   "Compute the memory usage of a TIE prototype."
   (when (logtest? arg1 2)
     ;; count for an instance of this prototype.
-    (let ((v1-3 (* (-> obj color-count) 4))
+    (let ((v1-3 (* (-> this color-count) 4))
           ;; pick one of the instance color categories.
           (a0-2 (cond
                   ((logtest? arg1 4)
@@ -139,7 +138,7 @@ obj
       (+! (-> arg0 data a0-2 total) (logand -4 (+ v1-3 3)))
       )
     (set! (-> arg0 length) (max 23 (-> arg0 length)))
-    (set! obj obj)
+    (set! this this)
     (goto cfg-13)
     )
   
@@ -153,56 +152,53 @@ obj
   (set! (-> arg0 data 13 name) "tie-draw-points")
   (set! (-> arg0 data 17 name) "tie-generic")
   (+! (-> arg0 data 9 count) 1)
-  (let ((v1-21 (asize-of obj)))
+  (let ((v1-21 (asize-of this)))
     (+! (-> arg0 data 9 used) v1-21)
     (+! (-> arg0 data 9 total) (logand -16 (+ v1-21 15)))
     )
-  (let ((v1-26 (* (-> obj gif-count) 16)))
-    (+! (-> arg0 data 10 count) (-> obj tex-count))
+  (let ((v1-26 (* (-> this gif-count) 16)))
+    (+! (-> arg0 data 10 count) (-> this tex-count))
     (+! (-> arg0 data 10 used) v1-26)
     (+! (-> arg0 data 10 total) (logand -16 (+ v1-26 15)))
     )
-  (let ((v1-31 (* (-> obj vertex-count) 16)))
-    (+! (-> arg0 data 11 count) (-> obj vertex-count))
+  (let ((v1-31 (* (-> this vertex-count) 16)))
+    (+! (-> arg0 data 11 count) (-> this vertex-count))
     (+! (-> arg0 data 11 used) v1-31)
     (+! (-> arg0 data 11 total) (logand -16 (+ v1-31 15)))
     )
-  (let ((v1-36 (* (-> obj dp-qwc) 16)))
-    (+! (-> arg0 data 13 count) (* (-> obj dp-qwc) 16))
+  (let ((v1-36 (* (-> this dp-qwc) 16)))
+    (+! (-> arg0 data 13 count) (* (-> this dp-qwc) 16))
     (+! (-> arg0 data 13 used) v1-36)
     (+! (-> arg0 data 13 total) (logand -16 (+ v1-36 15)))
     )
-  (let ((v1-41 (* (-> obj generic-count) 16)))
+  (let ((v1-41 (* (-> this generic-count) 16)))
     (+! (-> arg0 data 17 count) 1)
     (+! (-> arg0 data 17 used) v1-41)
     (+! (-> arg0 data 17 total) (logand -16 (+ v1-41 15)))
     )
-  (when (nonzero? (-> obj debug-lines))
-    (dotimes (s4-0 (-> obj debug-lines length))
-      (+!
-        (-> arg0 data 14 count)
-        (-> (the-as (pointer int32) (-> obj debug-lines s4-0)) 0)
-        )
-      (let ((v1-52 (asize-of (the-as basic (-> obj debug-lines s4-0)))))
+  (when (nonzero? (-> this debug-lines))
+    (dotimes (s4-0 (-> this debug-lines length))
+      (+! (-> arg0 data 14 count) (-> (the-as (pointer int32) (-> this debug-lines s4-0)) 0))
+      (let ((v1-52 (asize-of (the-as basic (-> this debug-lines s4-0)))))
         (+! (-> arg0 data 12 used) v1-52)
         (+! (-> arg0 data 12 total) (logand -16 (+ v1-52 15)))
         )
       )
     )
   (label cfg-13)
-  obj
+  this
   )
 
-(defmethod mem-usage instance-tie ((obj instance-tie) (arg0 memory-usage-block) (arg1 int))
+(defmethod mem-usage ((this instance-tie) (arg0 memory-usage-block) (arg1 int))
   "Compute the memory usage of TIE instance."
   (set! (-> arg0 length) (max 19 (-> arg0 length)))
   (set! (-> arg0 data 18 name) "instance-tie")
   (+! (-> arg0 data 18 count) 1)
-  (let ((v1-6 (asize-of obj)))
+  (let ((v1-6 (asize-of this)))
     (+! (-> arg0 data 18 used) v1-6)
     (+! (-> arg0 data 18 total) (logand -16 (+ v1-6 15)))
     )
-  (when (nonzero? (-> obj error))
+  (when (nonzero? (-> this error))
     (set! (-> arg0 length) (max 24 (-> arg0 length)))
     (set! (-> arg0 data 23 name) "instance-tie-colors*")
     (set! (-> arg0 data 19 name) "instance-tie-colors0")
@@ -210,7 +206,7 @@ obj
     (set! (-> arg0 data 21 name) "instance-tie-colors2")
     (set! (-> arg0 data 22 name) "instance-tie-colors3")
     (+! (-> arg0 data 23 count) 1)
-    (let ((s3-0 (-> obj bucket-ptr)))
+    (let ((s3-0 (-> this bucket-ptr)))
       ;; unused
       (+ (-> arg0 data 19 used) (-> arg0 data 20 used) (-> arg0 data 21 used) (-> arg0 data 22 used))
       
@@ -235,10 +231,10 @@ obj
         )
       )
     )
-  obj
+  this
   )
 
-(defmethod mem-usage drawable-inline-array-instance-tie ((obj drawable-inline-array-instance-tie) (arg0 memory-usage-block) (arg1 int))
+(defmethod mem-usage ((this drawable-inline-array-instance-tie) (arg0 memory-usage-block) (arg1 int))
   "Compute the memory usage of an entire array of instances"
   (set! (-> arg0 length) (max 1 (-> arg0 length)))
   (set! (-> arg0 data 0 name) (symbol->string 'drawable-group))
@@ -248,13 +244,13 @@ obj
     (+! (-> arg0 data 0 total) (logand -16 (+ v1-7 15)))
     )
   ;; just call mem-usage on every element.
-  (dotimes (s3-0 (-> obj length))
-    (mem-usage (-> obj data s3-0) arg0 arg1)
+  (dotimes (s3-0 (-> this length))
+    (mem-usage (-> this data s3-0) arg0 arg1)
     )
-  obj
+  this
   )
 
-(defmethod mem-usage prototype-tie ((obj prototype-tie) (arg0 memory-usage-block) (arg1 int))
+(defmethod mem-usage ((this prototype-tie) (arg0 memory-usage-block) (arg1 int))
   "Compute the memory usage of an entire array of prototypes."
   (set! (-> arg0 length) (max 1 (-> arg0 length)))
   (set! (-> arg0 data 0 name) (symbol->string 'drawable-group))
@@ -264,16 +260,16 @@ obj
     (+! (-> arg0 data 0 total) (logand -16 (+ v1-7 15)))
     )
   ;; just call mem-usage on each.
-  (dotimes (s3-0 (-> obj length))
-    (mem-usage (-> obj data s3-0) arg0 arg1)
+  (dotimes (s3-0 (-> this length))
+    (mem-usage (-> this data s3-0) arg0 arg1)
     )
-  obj
+  this
   )
 
-(defmethod asize-of prototype-tie ((obj prototype-tie))
+(defmethod asize-of ((this prototype-tie))
   "Compute the size in memory of a prototype array"
   ;; 64 bytes/fragment, minus 1 in the type.
-  (the-as int (+ (-> prototype-tie size) (* (+ (-> obj length) -1) 64)))
+  (the-as int (+ (-> prototype-tie size) (* (+ (-> this length) -1) 64)))
   )
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -282,23 +278,20 @@ obj
 
 ;; these constants are uploaded to the VU once per frame.
 (deftype tie-consts (structure)
-  ((data      uint32  24        :offset-assert 0)
-   (vector    vector  6 :inline :offset 0)
-   (quads     uint128 6         :offset 0)
-   (adgif     gs-gif-tag     :inline :offset 0) ;; was qword
-   (strgif    gs-gif-tag     :inline :offset 16) ;; was qword
-   (extra     vector    :inline :offset 32) ;; was qword
-   (gifbufs   vector    :inline :offset 48) ;; was qword
-   (clrbufs   qword     :inline :offset 64)
-   (misc      qword     :inline :offset 80)
-   (atestgif  gs-gif-tag     :inline :offset 96)
-   (atest     ad-cmd 2  :inline :offset 112)
-   (atest-tra ad-cmd    :inline :offset 112)
-   (atest-def ad-cmd    :inline :offset 128)
+  ((data       uint32      24)
+   (vector     vector      6 :inline :overlay-at (-> data 0))
+   (quads      uint128     6         :overlay-at (-> data 0))
+   (adgif      gs-gif-tag  :inline   :overlay-at (-> data 0))
+   (strgif     gs-gif-tag  :inline   :overlay-at (-> data 4))
+   (extra      vector      :inline   :overlay-at (-> data 8))
+   (gifbufs    vector      :inline   :overlay-at (-> data 12))
+   (clrbufs    qword       :inline   :overlay-at (-> data 16))
+   (misc       qword       :inline   :overlay-at (-> data 20))
+   (atestgif   gs-gif-tag  :inline   :offset  96)
+   (atest      ad-cmd      2 :inline :offset 112)
+   (atest-tra  ad-cmd      :inline   :overlay-at (-> atest 0))
+   (atest-def  ad-cmd      :inline   :overlay-at (-> atest 1))
    )
-  :method-count-assert 9
-  :size-assert         #x90
-  :flag-assert         #x900000090
   )
 ;; definition for symbol tie-vu1-block, type vu-function
 (define tie-vu1-block (new 'static 'vu-function :length 0 :qlength 0)) ;; was 0x3e1, 0x1f1
@@ -421,26 +414,7 @@ obj
            (a0-4 (the-as object (-> v1-4 base)))
            )
       (set! (-> (the-as gs-gif-tag a0-4) tag) (new 'static 'gif-tag64 :nloop #x1 :eop #x1 :nreg #x1))
-      (set! (-> (the-as gs-gif-tag a0-4) regs)
-            (new 'static 'gif-tag-regs
-              :regs0 (gif-reg-id a+d)
-              :regs1 (gif-reg-id a+d)
-              :regs2 (gif-reg-id a+d)
-              :regs3 (gif-reg-id a+d)
-              :regs4 (gif-reg-id a+d)
-              :regs5 (gif-reg-id a+d)
-              :regs6 (gif-reg-id a+d)
-              :regs7 (gif-reg-id a+d)
-              :regs8 (gif-reg-id a+d)
-              :regs9 (gif-reg-id a+d)
-              :regs10 (gif-reg-id a+d)
-              :regs11 (gif-reg-id a+d)
-              :regs12 (gif-reg-id a+d)
-              :regs13 (gif-reg-id a+d)
-              :regs14 (gif-reg-id a+d)
-              :regs15 (gif-reg-id a+d)
-              )
-            )
+      (set! (-> (the-as gs-gif-tag a0-4) regs) GIF_REGS_ALL_AD)
       (set! (-> v1-4 base) (the-as pointer (&+ (the-as gs-gif-tag a0-4) 16)))
       )
     (let* ((v1-5 arg0)
@@ -521,26 +495,7 @@ obj
            (a1-2 (the-as object (-> v1-4 base)))
            )
       (set! (-> (the-as gs-gif-tag a1-2) tag) (new 'static 'gif-tag64 :nloop #x1 :eop #x1 :nreg #x1))
-      (set! (-> (the-as gs-gif-tag a1-2) regs)
-            (new 'static 'gif-tag-regs
-              :regs0 (gif-reg-id a+d)
-              :regs1 (gif-reg-id a+d)
-              :regs2 (gif-reg-id a+d)
-              :regs3 (gif-reg-id a+d)
-              :regs4 (gif-reg-id a+d)
-              :regs5 (gif-reg-id a+d)
-              :regs6 (gif-reg-id a+d)
-              :regs7 (gif-reg-id a+d)
-              :regs8 (gif-reg-id a+d)
-              :regs9 (gif-reg-id a+d)
-              :regs10 (gif-reg-id a+d)
-              :regs11 (gif-reg-id a+d)
-              :regs12 (gif-reg-id a+d)
-              :regs13 (gif-reg-id a+d)
-              :regs14 (gif-reg-id a+d)
-              :regs15 (gif-reg-id a+d)
-              )
-            )
+      (set! (-> (the-as gs-gif-tag a1-2) regs) GIF_REGS_ALL_AD)
       (set! (-> v1-4 base) (&+ (the-as pointer a1-2) 16))
       )
     (let* ((v1-5 arg0)
@@ -811,5 +766,3 @@ obj
     )
   (none)
   )
-
-

@@ -324,36 +324,32 @@
 
 ;; definition of type guard-shot
 (deftype guard-shot (projectile)
-  ((hit-actor? symbol         :offset-assert 472)
-   (tail-pos   vector :inline :offset-assert 480)
+  ((hit-actor?  symbol)
+   (tail-pos    vector  :inline)
    )
-  :heap-base #x170
-  :method-count-assert 40
-  :size-assert         #x1f0
-  :flag-assert         #x28017001f0
   )
 
 ;; definition for method 3 of type guard-shot
-(defmethod inspect guard-shot ((obj guard-shot))
-  (when (not obj)
-    (set! obj obj)
+(defmethod inspect ((this guard-shot))
+  (when (not this)
+    (set! this this)
     (goto cfg-4)
     )
   (let ((t9-0 (method-of-type projectile inspect)))
-    (t9-0 obj)
+    (t9-0 this)
     )
-  (format #t "~2Thit-actor?: ~A~%" (-> obj hit-actor?))
-  (format #t "~2Ttail-pos: #<vector @ #x~X>~%" (-> obj tail-pos))
+  (format #t "~2Thit-actor?: ~A~%" (-> this hit-actor?))
+  (format #t "~2Ttail-pos: #<vector @ #x~X>~%" (-> this tail-pos))
   (label cfg-4)
-  obj
+  this
   )
 
 ;; definition for method 37 of type guard-shot
-(defmethod deal-damage! guard-shot ((obj guard-shot) (arg0 process) (arg1 event-message-block))
+(defmethod deal-damage! ((this guard-shot) (arg0 process) (arg1 event-message-block))
   "Constructs an [[attack-info]] according to the projectile's `options`"
   (let ((t9-0 (method-of-type projectile deal-damage!)))
-    (when (t9-0 obj arg0 arg1)
-      (set! (-> obj hit-actor?) #t)
+    (when (t9-0 this arg0 arg1)
+      (set! (-> this hit-actor?) #t)
       #t
       )
     )
@@ -362,11 +358,11 @@
 ;; definition for method 24 of type guard-shot
 ;; INFO: Used lq/sq
 ;; WARN: Return type mismatch int vs none.
-(defmethod draw-laser-sight guard-shot ((obj guard-shot))
+(defmethod draw-laser-sight ((this guard-shot))
   "TODO - confirm If applicable, draw the laser sight particles"
-  (draw-beam (-> *part-id-table* 610) (-> obj tail-pos) (-> obj starting-dir) #f #t)
-  (let* ((a0-3 (vector-normalize-copy! (new 'stack-no-clear 'vector) (-> obj starting-dir) 2048.0))
-         (v1-2 (vector+! (new 'stack-no-clear 'vector) (-> obj tail-pos) a0-3))
+  (draw-beam (-> *part-id-table* 610) (-> this tail-pos) (-> this starting-dir) #f #t)
+  (let* ((a0-3 (vector-normalize-copy! (new 'stack-no-clear 'vector) (-> this starting-dir) 2048.0))
+         (v1-2 (vector+! (new 'stack-no-clear 'vector) (-> this tail-pos) a0-3))
          (t9-2 sp-launch-particles-var)
          (a0-4 *sp-particle-system-2d*)
          (a1-4 (-> *part-id-table* 611))
@@ -382,7 +378,7 @@
 ;; definition for method 25 of type guard-shot
 ;; INFO: Used lq/sq
 ;; WARN: Return type mismatch int vs none.
-(defmethod spawn-impact-particles guard-shot ((obj guard-shot))
+(defmethod spawn-impact-particles ((this guard-shot))
   "Spawns associated particles with the projectile if applicable"
   (rlet ((acc :class vf)
          (vf0 :class vf)
@@ -392,8 +388,8 @@
          (vf7 :class vf)
          )
     (init-vf0-vector)
-    (let* ((gp-0 (-> obj root trans))
-           (a1-0 (-> obj tail-pos))
+    (let* ((gp-0 (-> this root trans))
+           (a1-0 (-> this tail-pos))
            (s5-1 (vector-! (new 'stack-no-clear 'vector) gp-0 a1-0))
            (f30-0 (vector-length s5-1))
            )
@@ -417,22 +413,8 @@
           (set! (-> *part-id-table* 606 init-specs 4 initial-valuef) f28-0)
           )
         (vector-normalize! s5-1 1.0)
-        (let ((t9-2 sp-launch-particles-var)
-              (a0-5 *sp-particle-system-2d*)
-              (a1-2 (-> *part-id-table* 607))
-              (a2-3 *launch-matrix*)
-              )
-          (set! (-> a2-3 trans quad) (-> s4-0 quad))
-          (t9-2 a0-5 a1-2 a2-3 (the-as sparticle-launch-state #f) (the-as sparticle-launch-control #f) 1.0)
-          )
-        (let ((t9-3 sp-launch-particles-var)
-              (a0-6 *sp-particle-system-2d*)
-              (a1-3 (-> *part-id-table* 608))
-              (a2-4 *launch-matrix*)
-              )
-          (set! (-> a2-4 trans quad) (-> s4-0 quad))
-          (t9-3 a0-6 a1-3 a2-4 (the-as sparticle-launch-state #f) (the-as sparticle-launch-control #f) 1.0)
-          )
+        (launch-particles (-> *part-id-table* 607) s4-0)
+        (launch-particles (-> *part-id-table* 608) s4-0)
         )
       (let ((s4-1 (new 'stack-no-clear 'matrix))
             (f26-0 (* 0.000027126736 f30-0))
@@ -443,14 +425,7 @@
         (set! (-> s4-1 trans quad) (-> gp-0 quad))
         (set! (-> *part-id-table* 609 init-specs 3 initial-valuef) (* f26-0 f30-1))
         (set! (-> *part-id-table* 609 init-specs 4 initial-valuef) (* f26-0 f28-1))
-        (sp-launch-particles-var
-          *sp-particle-system-2d*
-          (-> *part-id-table* 609)
-          s4-1
-          (the-as sparticle-launch-state #f)
-          (the-as sparticle-launch-control #f)
-          1.0
-          )
+        (launch-particles (-> *part-id-table* 609) s4-1 :origin-is-matrix #t)
         (set! (-> *part-id-table* 609 init-specs 3 initial-valuef) f30-1)
         (set! (-> *part-id-table* 609 init-specs 4 initial-valuef) f28-1)
         )
@@ -463,16 +438,16 @@
 ;; definition for method 26 of type guard-shot
 ;; INFO: Used lq/sq
 ;; WARN: Return type mismatch int vs none.
-(defmethod spawn-shell-particles guard-shot ((obj guard-shot))
+(defmethod spawn-shell-particles ((this guard-shot))
   "TODO - confirm"
-  (let* ((s4-0 (-> obj root))
-         (v1-1 (vector-normalize! (vector-! (new 'stack-no-clear 'vector) (-> obj tail-pos) (-> s4-0 trans)) 2048.0))
+  (let* ((s4-0 (-> this root))
+         (v1-1 (vector-normalize! (vector-! (new 'stack-no-clear 'vector) (-> this tail-pos) (-> s4-0 trans)) 2048.0))
          (gp-0 (new 'stack-no-clear 'vector))
          )
     (set! (-> gp-0 quad) (-> s4-0 trans quad))
     (vector+! gp-0 gp-0 v1-1)
     (cond
-      ((-> obj hit-actor?)
+      ((-> this hit-actor?)
        (let ((s5-1 (get-process *default-dead-pool* part-tracker #x4000)))
          (when s5-1
            (let ((t9-2 (method-of-type part-tracker activate)))
@@ -554,7 +529,7 @@
 
 ;; definition for method 28 of type guard-shot
 ;; WARN: Return type mismatch int vs none.
-(defmethod play-impact-sound guard-shot ((obj guard-shot) (arg0 projectile-options))
+(defmethod play-impact-sound ((this guard-shot) (arg0 projectile-options))
   (let ((v1-0 arg0))
     (cond
       ((zero? v1-0)
@@ -592,7 +567,6 @@
         (send-event *traffic-manager* 'add-danger-sphere v1-5)
         )
       )
-    (none)
     )
   )
 
@@ -622,22 +596,22 @@
   )
 
 ;; definition for method 38 of type guard-shot
-(defmethod made-impact? guard-shot ((obj guard-shot))
+(defmethod made-impact? ((this guard-shot))
   "TODO - queries the collision cache, return true/false"
-  (let ((v1-0 (-> obj root))
+  (let ((v1-0 (-> this root))
         (t1-0 (new 'stack-no-clear 'collide-query))
         )
     (let ((a0-1 t1-0))
       (set! (-> a0-1 radius) (-> v1-0 root-prim prim-core world-sphere w))
       (set! (-> a0-1 collide-with) (-> v1-0 root-prim prim-core collide-with))
-      (set! (-> a0-1 ignore-process0) obj)
-      (set! (-> a0-1 ignore-process1) (ppointer->process (-> obj parent)))
+      (set! (-> a0-1 ignore-process0) this)
+      (set! (-> a0-1 ignore-process1) (ppointer->process (-> this parent)))
       (set! (-> a0-1 ignore-pat) (-> v1-0 pat-ignore-mask))
       (set! (-> a0-1 action-mask) (collide-action solid))
       )
     (when (fill-and-try-snap-to-surface v1-0 (-> v1-0 transv) -6144.0 0.0 -2048.0 t1-0)
-      (if (logtest? (-> obj root status) (collide-status touch-actor))
-          (set! (-> obj hit-actor?) #t)
+      (if (logtest? (-> this root status) (collide-status touch-actor))
+          (set! (-> this hit-actor?) #t)
           )
       #t
       )
@@ -646,9 +620,9 @@
 
 ;; definition for method 30 of type guard-shot
 ;; WARN: Return type mismatch int vs none.
-(defmethod init-proj-collision! guard-shot ((obj guard-shot))
+(defmethod init-proj-collision! ((this guard-shot))
   "Init the [[projectile]]'s [[collide-shape]]"
-  (let ((s5-0 (new 'process 'collide-shape-moving obj (collide-list-enum hit-by-player))))
+  (let ((s5-0 (new 'process 'collide-shape-moving this (collide-list-enum hit-by-player))))
     (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s5-0 reaction)
           (the-as (function control-info collide-query vector vector collide-status) cshape-reaction-just-move)
@@ -690,9 +664,9 @@
       )
     (set! (-> s5-0 max-iteration-count) (the-as uint 1))
     (set! (-> s5-0 event-self) 'touched)
-    (set! (-> obj root) s5-0)
+    (set! (-> this root) s5-0)
     )
-  (set! (-> obj root pat-ignore-mask)
+  (set! (-> this root pat-ignore-mask)
         (new 'static 'pat-surface :noentity #x1 :nojak #x1 :probe #x1 :noproj #x1 :noendlessfall #x1)
         )
   0
@@ -701,42 +675,38 @@
 
 ;; definition for method 31 of type guard-shot
 ;; INFO: Used lq/sq
-(defmethod init-proj-settings! guard-shot ((obj guard-shot))
+(defmethod init-proj-settings! ((this guard-shot))
   "Init relevant settings for the [[projectile]] such as gravity, speed, timeout, etc"
-  (set! (-> obj hit-actor?) #f)
-  (set! (-> obj tail-pos quad) (-> obj root trans quad))
-  (set! (-> obj attack-mode) 'guard-shot)
-  (set! (-> obj max-speed) 819200.0)
-  (set! (-> obj move) guard-shot-move)
-  (set! (-> obj update-velocity) projectile-update-velocity-space-wars)
-  (set! (-> obj timeout) (seconds 0.5))
-  (logior! (-> obj options) (projectile-options account-for-target-velocity))
-  (set-gravity-length (-> obj root dynam) 573440.0)
+  (set! (-> this hit-actor?) #f)
+  (set! (-> this tail-pos quad) (-> this root trans quad))
+  (set! (-> this attack-mode) 'guard-shot)
+  (set! (-> this max-speed) 819200.0)
+  (set! (-> this move) guard-shot-move)
+  (set! (-> this update-velocity) projectile-update-velocity-space-wars)
+  (set! (-> this timeout) (seconds 0.5))
+  (logior! (-> this options) (projectile-options account-for-target-velocity))
+  (set-gravity-length (-> this root dynam) 573440.0)
   (none)
   )
 
 ;; definition of type vehicle-grenade
 (deftype vehicle-grenade (projectile-bounce)
-  ((blast-radius float  :offset-assert 496)
+  ((blast-radius  float)
    )
-  :heap-base #x180
-  :method-count-assert 42
-  :size-assert         #x1f4
-  :flag-assert         #x2a018001f4
   )
 
 ;; definition for method 3 of type vehicle-grenade
-(defmethod inspect vehicle-grenade ((obj vehicle-grenade))
-  (when (not obj)
-    (set! obj obj)
+(defmethod inspect ((this vehicle-grenade))
+  (when (not this)
+    (set! this this)
     (goto cfg-4)
     )
   (let ((t9-0 (method-of-type projectile-bounce inspect)))
-    (t9-0 obj)
+    (t9-0 this)
     )
-  (format #t "~2Tblast-radius: ~f~%" (-> obj blast-radius))
+  (format #t "~2Tblast-radius: ~f~%" (-> this blast-radius))
   (label cfg-4)
-  obj
+  this
   )
 
 ;; failed to figure out what this is:
@@ -748,7 +718,7 @@
 
 ;; definition for method 28 of type vehicle-grenade
 ;; WARN: Return type mismatch int vs none.
-(defmethod play-impact-sound vehicle-grenade ((obj vehicle-grenade) (arg0 projectile-options))
+(defmethod play-impact-sound ((this vehicle-grenade) (arg0 projectile-options))
   (let ((v1-0 arg0))
     (cond
       ((zero? v1-0)
@@ -765,9 +735,9 @@
 
 ;; definition for method 30 of type vehicle-grenade
 ;; WARN: Return type mismatch int vs none.
-(defmethod init-proj-collision! vehicle-grenade ((obj vehicle-grenade))
+(defmethod init-proj-collision! ((this vehicle-grenade))
   "Init the [[projectile]]'s [[collide-shape]]"
-  (let ((s5-0 (new 'process 'collide-shape-moving obj (collide-list-enum hit-by-player))))
+  (let ((s5-0 (new 'process 'collide-shape-moving this (collide-list-enum hit-by-player))))
     (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s5-0 reaction) projectile-bounce-reaction)
     (set! (-> s5-0 no-reaction)
@@ -787,14 +757,14 @@
       )
     (set! (-> s5-0 max-iteration-count) (the-as uint 2))
     (set! (-> s5-0 event-self) 'touched)
-    (set! (-> obj root) s5-0)
+    (set! (-> this root) s5-0)
     )
   (set-collide-with!
-    (-> obj root)
+    (-> this root)
     (collide-spec backgnd jak crate civilian enemy obstacle vehicle-sphere hit-by-others-list player-list pusher)
     )
-  (set-collide-as! (-> obj root) (collide-spec enemy))
-  (set! (-> obj root pat-ignore-mask)
+  (set-collide-as! (-> this root) (collide-spec enemy))
+  (set! (-> this root pat-ignore-mask)
         (new 'static 'pat-surface :noentity #x1 :nojak #x1 :probe #x1 :noproj #x1 :noendlessfall #x1)
         )
   (none)
@@ -802,30 +772,30 @@
 
 ;; definition for method 31 of type vehicle-grenade
 ;; WARN: Return type mismatch int vs none.
-(defmethod init-proj-settings! vehicle-grenade ((obj vehicle-grenade))
+(defmethod init-proj-settings! ((this vehicle-grenade))
   "Init relevant settings for the [[projectile]] such as gravity, speed, timeout, etc"
-  (set! (-> obj attack-mode) 'eco-dark)
+  (set! (-> this attack-mode) 'eco-dark)
   (initialize-skeleton
-    obj
+    this
     (the-as skeleton-group (art-group-get-by-name *level* "skel-vehicle-grenade" (the-as (pointer uint32) #f)))
     (the-as pair 0)
     )
   (let ((t9-2 (method-of-type projectile-bounce init-proj-settings!)))
-    (t9-2 obj)
+    (t9-2 this)
     )
-  (set! (-> obj part) (create-launch-control (-> *part-group-id-table* 138) obj))
-  (set! (-> obj blast-radius) 16384.0)
-  (set! (-> obj max-speed) 90112.0)
-  (set! (-> obj timeout) (seconds 4))
+  (set! (-> this part) (create-launch-control (-> *part-group-id-table* 138) this))
+  (set! (-> this blast-radius) 16384.0)
+  (set! (-> this max-speed) 90112.0)
+  (set! (-> this timeout) (seconds 4))
   0
   (none)
   )
 
 ;; definition for method 25 of type vehicle-grenade
 ;; WARN: Return type mismatch int vs none.
-(defmethod spawn-impact-particles vehicle-grenade ((obj vehicle-grenade))
+(defmethod spawn-impact-particles ((this vehicle-grenade))
   "Spawns associated particles with the projectile if applicable"
-  (spawn (-> obj part) (-> obj root trans))
+  (spawn (-> this part) (-> this root trans))
   (ja-post)
   0
   (none)
@@ -833,27 +803,27 @@
 
 ;; definition for method 41 of type vehicle-grenade
 ;; WARN: Return type mismatch int vs none.
-(defmethod noop vehicle-grenade ((obj vehicle-grenade))
+(defmethod noop ((this vehicle-grenade))
   "Does nothing"
-  (spawn (-> obj part) (-> obj root trans))
+  (spawn (-> this part) (-> this root trans))
   0
   (none)
   )
 
 ;; definition for method 39 of type vehicle-grenade
 ;; WARN: Return type mismatch sound-id vs none.
-(defmethod play-impact-sound! vehicle-grenade ((obj vehicle-grenade))
+(defmethod play-impact-sound! ((this vehicle-grenade))
   "Plays impact sound"
-  (let* ((a2-0 (-> obj root))
+  (let* ((a2-0 (-> this root))
          (v1-0 (-> a2-0 status))
          )
     (if (logtest? v1-0 (collide-status touch-surface))
         (vector-float*! (-> a2-0 transv) (-> a2-0 transv) 0.2)
         )
     (when (and (logtest? v1-0 (collide-status impact-surface))
-               (>= (- (current-time) (-> obj played-bounce-time)) (seconds 0.3))
+               (time-elapsed? (-> this played-bounce-time) (seconds 0.3))
                )
-      (set! (-> obj played-bounce-time) (current-time))
+      (set-time! (-> this played-bounce-time))
       (sound-play "grenade-bounce")
       )
     )
@@ -863,26 +833,14 @@
 ;; failed to figure out what this is:
 (defstate impact (vehicle-grenade)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (the-as object (case event-type
-                     (('touched)
-                      (let ((a1-2 (new 'stack-no-clear 'event-message-block)))
-                        (set! (-> a1-2 from) (process->ppointer self))
-                        (set! (-> a1-2 num-params) 2)
-                        (set! (-> a1-2 message) 'attack)
-                        (set! (-> a1-2 param 0) (-> event param 0))
-                        (let ((v1-5 (new 'static 'attack-info :mask (attack-info-mask mode id))))
-                          (set! (-> v1-5 id) (-> self attack-id))
-                          (set! (-> v1-5 mode) 'explode)
-                          (set! (-> a1-2 param 1) (the-as uint v1-5))
-                          )
-                        (if (send-event-function proc a1-2)
-                            #t
-                            )
-                        )
-                      )
-                     )
-            )
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
+      (('touched)
+       (if (send-event proc 'attack (-> block param 0) (static-attack-info ((id (-> self attack-id)) (mode 'explode))))
+           #t
+           )
+       )
+      )
     )
   :code (behavior ()
     (let ((gp-0 (new 'stack-no-clear 'explosion-init-params)))
@@ -906,7 +864,6 @@
       (suspend)
       )
     (deactivate self)
-    (none)
     )
   )
 
@@ -1001,23 +958,19 @@
 ;; definition of type guard-lazer-shot
 (deftype guard-lazer-shot (projectile)
   ()
-  :heap-base #x160
-  :method-count-assert 40
-  :size-assert         #x1d8
-  :flag-assert         #x28016001d8
   )
 
 ;; definition for method 3 of type guard-lazer-shot
-(defmethod inspect guard-lazer-shot ((obj guard-lazer-shot))
-  (when (not obj)
-    (set! obj obj)
+(defmethod inspect ((this guard-lazer-shot))
+  (when (not this)
+    (set! this this)
     (goto cfg-4)
     )
   (let ((t9-0 (method-of-type projectile inspect)))
-    (t9-0 obj)
+    (t9-0 this)
     )
   (label cfg-4)
-  obj
+  this
   )
 
 ;; failed to figure out what this is:
@@ -1025,25 +978,24 @@
   :virtual #t
   :enter (behavior ()
     (go-virtual impact)
-    (none)
     )
   )
 
 ;; definition for method 38 of type guard-lazer-shot
-(defmethod made-impact? guard-lazer-shot ((obj guard-lazer-shot))
+(defmethod made-impact? ((this guard-lazer-shot))
   "TODO - queries the collision cache, return true/false"
-  (let ((gp-0 (-> obj root))
+  (let ((gp-0 (-> this root))
         (s5-0 (new 'stack-no-clear 'collide-query))
         )
     (let ((v1-0 s5-0))
       (set! (-> v1-0 radius) (-> gp-0 root-prim prim-core world-sphere w))
       (set! (-> v1-0 collide-with) (-> gp-0 root-prim prim-core collide-with))
-      (set! (-> v1-0 ignore-process0) obj)
-      (set! (-> v1-0 ignore-process1) (ppointer->process (-> obj parent)))
+      (set! (-> v1-0 ignore-process0) this)
+      (set! (-> v1-0 ignore-process1) (ppointer->process (-> this parent)))
       (set! (-> v1-0 ignore-pat) (new 'static 'pat-surface :noentity #x1 :nojak #x1 :probe #x1 :noendlessfall #x1))
       (set! (-> v1-0 action-mask) (collide-action solid))
       )
-    (let ((a0-2 (handle->process (-> obj notify-handle))))
+    (let ((a0-2 (handle->process (-> this notify-handle))))
       (when a0-2
         (let* ((s4-1 (vector-! (new 'stack-no-clear 'vector) (-> gp-0 trans) (get-trans (the-as process-focusable a0-2) 3)))
                (f0-2 (- (vector-length s4-1)))
@@ -1068,9 +1020,9 @@
 
 ;; definition for method 30 of type guard-lazer-shot
 ;; WARN: Return type mismatch int vs none.
-(defmethod init-proj-collision! guard-lazer-shot ((obj guard-lazer-shot))
+(defmethod init-proj-collision! ((this guard-lazer-shot))
   "Init the [[projectile]]'s [[collide-shape]]"
-  (let ((s5-0 (new 'process 'collide-shape-moving obj (collide-list-enum hit-by-player))))
+  (let ((s5-0 (new 'process 'collide-shape-moving this (collide-list-enum hit-by-player))))
     (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s5-0 reaction) cshape-reaction-default)
     (set! (-> s5-0 no-reaction)
@@ -1106,9 +1058,9 @@
       )
     (set! (-> s5-0 max-iteration-count) (the-as uint 1))
     (set! (-> s5-0 event-self) 'touched)
-    (set! (-> obj root) s5-0)
+    (set! (-> this root) s5-0)
     )
-  (set! (-> obj root pat-ignore-mask)
+  (set! (-> this root pat-ignore-mask)
         (new 'static 'pat-surface :noentity #x1 :nojak #x1 :probe #x1 :noproj #x1 :noendlessfall #x1)
         )
   0
@@ -1117,15 +1069,15 @@
 
 ;; definition for method 31 of type guard-lazer-shot
 ;; WARN: Return type mismatch int vs none.
-(defmethod init-proj-settings! guard-lazer-shot ((obj guard-lazer-shot))
+(defmethod init-proj-settings! ((this guard-lazer-shot))
   "Init relevant settings for the [[projectile]] such as gravity, speed, timeout, etc"
-  (set! (-> obj attack-mode) 'shock)
-  (set! (-> obj max-speed) 131072.0)
-  (set! (-> obj timeout) (seconds 0.125))
-  (set! (-> obj move) guard-lazer-shot-move)
-  (set! (-> obj root dynam gravity y) 0.0)
-  (set! (-> obj root dynam gravity-length) 0.0)
-  (set! (-> obj root dynam gravity-max) 0.0)
+  (set! (-> this attack-mode) 'shock)
+  (set! (-> this max-speed) 131072.0)
+  (set! (-> this timeout) (seconds 0.125))
+  (set! (-> this move) guard-lazer-shot-move)
+  (set! (-> this root dynam gravity y) 0.0)
+  (set! (-> this root dynam gravity-length) 0.0)
+  (set! (-> this root dynam gravity-max) 0.0)
   0
   (none)
   )

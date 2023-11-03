@@ -15,99 +15,80 @@
     )
 
 (deftype mech (process-drawable)
-  ((root              collide-shape-moving         :override)
-   (extra-trans       vector               :inline :offset-assert 208)
-   (condition         int32                        :offset-assert 224)
-   (shadow-backup     basic                        :offset-assert 228)
-   (rider             uint64                       :offset-assert 232)
-   (shield-value      float                        :offset-assert 240)
-   (nav-sphere-handle uint64                       :offset-assert 248)
-   (probe-time        time-frame                   :offset-assert 256)
+  ((root               collide-shape-moving :override)
+   (extra-trans        vector                :inline)
+   (condition          int32)
+   (shadow-backup      basic)
+   (rider              uint64)
+   (shield-value       float)
+   (nav-sphere-handle  uint64)
+   (probe-time         time-frame)
    )
-  :heap-base #x90
-  :method-count-assert 25
-  :size-assert         #x108
-  :flag-assert         #x1900900108
+  (:state-methods
+    wait-for-start
+    idle
+    (pickup (state mech))
+    wait-for-return
+    )
   (:methods
-    (wait-for-start () _type_ :state 20)
-    (idle () _type_ :state 21)
-    (pickup ((state mech)) _type_ :state 22)
-    (wait-for-return () _type_ :state 23)
-    (mech-method-24 (_type_) none 24)
+    (mech-method-24 (_type_) none)
     )
   )
 
 
-(defmethod mech-method-24 mech ((obj mech))
-  (if (nonzero? (-> obj part))
-      (spawn (-> obj part) (-> obj root trans))
+(defmethod mech-method-24 ((this mech))
+  (if (nonzero? (-> this part))
+      (spawn (-> this part) (-> this root trans))
       )
-  (update! (-> obj sound))
+  (update! (-> this sound))
   0
   (none)
   )
 
 (defstate wait-for-start (mech)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (the-as
-      object
-      (case event-type
-        (('attack 'bonk)
-         (send-event proc 'target-mech-get-off (seconds 0.3))
-         (let ((a1-3 (new 'stack-no-clear 'event-message-block)))
-           (set! (-> a1-3 from) (process->ppointer self))
-           (set! (-> a1-3 num-params) 2)
-           (set! (-> a1-3 message) 'shove)
-           (set! (-> a1-3 param 0) (the-as uint #f))
-           (let ((v1-9 (new 'static 'attack-info :mask (attack-info-mask shove-back shove-up id))))
-             (let* ((a0-8 *game-info*)
-                    (a2-2 (+ (-> a0-8 attack-id) 1))
-                    )
-               (set! (-> a0-8 attack-id) a2-2)
-               (set! (-> v1-9 id) a2-2)
-               )
-             (set! (-> v1-9 shove-back) 12288.0)
-             (set! (-> v1-9 shove-up) 4096.0)
-             (set! (-> a1-3 param 1) (the-as uint v1-9))
-             )
-           (send-event-function proc a1-3)
-           )
-         (the-as structure #f)
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
+      (('attack 'bonk)
+       (send-event proc 'target-mech-get-off (seconds 0.3))
+       (send-event
+         proc
+         'shove
+         #f
+         (static-attack-info ((id (new-attack-id)) (shove-back (meters 3)) (shove-up (meters 1))))
          )
-        (('touch)
-         (send-event proc 'target-mech-get-off (seconds 0.3))
-         (send-shoves (-> self root) proc (the-as touching-shapes-entry (-> event param 0)) 0.7 6144.0 16384.0)
-         (the-as structure #f)
-         )
-        (('trans)
-         (vector+! (the-as vector (-> event param 0)) (-> self root trans) (-> self extra-trans))
-         )
-        (('shadow)
-         (cond
-           ((-> event param 0)
-            (let ((v0-2 (the-as structure (-> self shadow-backup))))
-              (set! (-> self draw shadow) (the-as shadow-geo v0-2))
-              v0-2
-              )
+       (the-as structure #f)
+       )
+      (('touch)
+       (send-event proc 'target-mech-get-off (seconds 0.3))
+       (send-shoves (-> self root) proc (the-as touching-shapes-entry (-> block param 0)) 0.7 6144.0 16384.0)
+       (the-as structure #f)
+       )
+      (('trans)
+       (vector+! (the-as vector (-> block param 0)) (-> self root trans) (-> self extra-trans))
+       )
+      (('shadow)
+       (cond
+         ((-> block param 0)
+          (let ((v0-2 (the-as structure (-> self shadow-backup))))
+            (set! (-> self draw shadow) (the-as shadow-geo v0-2))
+            v0-2
             )
-           (else
-             (set! (-> self draw shadow) #f)
-             (the-as structure #f)
-             )
+          )
+         (else
+           (set! (-> self draw shadow) #f)
+           (the-as structure #f)
            )
          )
-        )
+       )
       )
     )
   :exit (behavior ()
     (set! (-> self root root-prim prim-core action) (collide-action))
     (set! (-> self root penetrated-by) (the-as penetrate -1))
-    (none)
     )
   :code (behavior ()
     (go-virtual idle)
-    (none)
     )
   )
 
@@ -128,12 +109,10 @@
           )
         )
       )
-    (none)
     )
   :exit (behavior ()
     (send-event (handle->process (-> self nav-sphere-handle)) 'die-fast)
     ((-> (method-of-type mech wait-for-start) exit))
-    (none)
     )
   :code (behavior ()
     (change-parent self *entity-pool*)
@@ -145,7 +124,7 @@
     (let ((f30-0 20480.0))
       (until #f
         (when (and (logtest? (-> self draw status) (draw-control-status on-screen))
-                   (>= (- (current-time) (-> self probe-time)) (seconds 1))
+                   (time-elapsed? (-> self probe-time) (seconds 1))
                    )
           (move-to-ground
             (-> self root)
@@ -154,7 +133,7 @@
             #t
             (collide-spec backgnd obstacle hit-by-player-list hit-by-others-list pusher)
             )
-          (set! (-> self probe-time) (current-time))
+          (set-time! (-> self probe-time))
           )
         (when (and (and *target* (and (>= f30-0 (vector-vector-distance (-> self root trans) (-> *target* control trans)))
                                       (not (logtest? (focus-status teleporting) (-> *target* focus-status)))
@@ -190,21 +169,21 @@
               (go-virtual pickup (method-of-object self wait-for-return))
               )
           )
+        ;; og:preserve-this target-look-at-me! macro
         (target-look-at-me! :trans (vector+! (new 'stack-no-clear 'vector) (the-as vector (-> self root root-prim prim-core)) (new 'static 'vector :y 2048.0 :w 1.0)))
         (mech-method-24 self)
         (suspend)
         )
       )
     #f
-    (none)
     )
-  :post (the-as (function none :behavior mech) ja-post)
+  :post ja-post
   )
 
 (defstate pickup (mech)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('draw)
        (ja-channel-set! 1)
        (ja :group! mech-mech-idle-ja)
@@ -213,14 +192,14 @@
        (transform-post)
        )
       (('trans)
-       (vector+! (the-as vector (-> event param 0)) (-> self root trans) (-> self extra-trans))
+       (vector+! (the-as vector (-> block param 0)) (-> self root trans) (-> self extra-trans))
        )
       (('touch 'attack 'bonk)
        #f
        )
       (('shadow)
        (cond
-         ((-> event param 0)
+         ((-> block param 0)
           (let ((v0-1 (the-as object (-> self shadow-backup))))
             (set! (-> self draw shadow) (the-as shadow-geo v0-1))
             v0-1
@@ -240,7 +219,6 @@
           (t9-0)
           )
       )
-    (none)
     )
   :code (behavior ((arg0 (state mech)))
     (ja-channel-set! 0)
@@ -260,45 +238,42 @@
       (suspend)
       )
     (let ((s5-0 (current-time)))
-      (until (>= (- (current-time) s5-0) (seconds 1))
+      (until (time-elapsed? s5-0 (seconds 1))
         (mech-method-24 self)
         (suspend)
         )
       )
     (go arg0)
-    (none)
     )
   )
 
 (defstate wait-for-return (mech)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (the-as object (case event-type
-                     (('trans)
-                      (vector+! (the-as vector (-> event param 0)) (-> self root trans) (-> self extra-trans))
-                      )
-                     (('shadow)
-                      (cond
-                        ((-> event param 0)
-                         (let ((v0-1 (the-as structure (-> self shadow-backup))))
-                           (set! (-> self draw shadow) (the-as shadow-geo v0-1))
-                           v0-1
-                           )
-                         )
-                        (else
-                          (set! (-> self draw shadow) #f)
-                          (the-as structure #f)
-                          )
-                        )
-                      )
-                     )
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
+      (('trans)
+       (vector+! (the-as vector (-> block param 0)) (-> self root trans) (-> self extra-trans))
+       )
+      (('shadow)
+       (cond
+         ((-> block param 0)
+          (let ((v0-1 (the-as structure (-> self shadow-backup))))
+            (set! (-> self draw shadow) (the-as shadow-geo v0-1))
+            v0-1
             )
+          )
+         (else
+           (set! (-> self draw shadow) #f)
+           (the-as structure #f)
+           )
+         )
+       )
+      )
     )
   :code (behavior ()
     (ja-channel-set! 0)
     (ja-post)
     (cleanup-for-death self)
-    (none)
     )
   )
 
@@ -374,7 +349,7 @@
   (none)
   )
 
-(defmethod init-from-entity! mech ((obj mech) (arg0 entity-actor))
+(defmethod init-from-entity! ((this mech) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
 - stack size
@@ -387,13 +362,9 @@ This commonly includes things such as:
 
 (deftype mech-target (process-drawable)
   ()
-  :heap-base #x50
-  :method-count-assert 22
-  :size-assert         #xc8
-  :flag-assert         #x16005000c8
-  (:methods
-    (idle () _type_ :state 20)
-    (active () _type_ :state 21)
+  (:state-methods
+    idle
+    active
     )
   )
 
@@ -405,10 +376,10 @@ This commonly includes things such as:
 
 (defstate idle (mech-target)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('look-at-point)
-       (set! (-> self state-time) (current-time))
+       (set-time! (-> self state-time))
        (go-virtual active)
        )
       )
@@ -422,11 +393,10 @@ This commonly includes things such as:
              )
         (go-virtual active)
         )
-    (none)
     )
   :code (behavior ()
     (while (< 0.0 (-> self root scale x))
-      (seek! (-> self root scale x) 0.0 (* 8.0 (-> self clock seconds-per-frame)))
+      (seek! (-> self root scale x) 0.0 (* 8.0 (seconds-per-frame)))
       (set! (-> self root scale y) (-> self root scale x))
       (ja-post)
       (suspend)
@@ -434,7 +404,6 @@ This commonly includes things such as:
     (logior! (-> self draw status) (draw-control-status no-draw))
     (ja-post)
     (sleep-code)
-    (none)
     )
   )
 
@@ -442,8 +411,7 @@ This commonly includes things such as:
   :virtual #t
   :event (-> (method-of-type mech-target idle) event)
   :enter (behavior ()
-    (set! (-> self state-time) (current-time))
-    (none)
+    (set-time! (-> self state-time))
     )
   :trans (behavior ()
     (if (and (or (or (not *target*) (or (< 106496.0 (vector-vector-distance (-> self root trans) (-> *target* control trans)))
@@ -452,33 +420,31 @@ This commonly includes things such as:
                      )
                  (not (logtest? (focus-status mech) (-> *target* focus-status)))
                  )
-             (>= (- (current-time) (-> self state-time)) (seconds 10))
+             (time-elapsed? (-> self state-time) (seconds 10))
              )
         (go-virtual idle)
         )
-    (none)
     )
   :code (behavior ()
     (sound-play "mech-target")
     (let ((f30-0 0.0))
       (logclear! (-> self draw status) (draw-control-status no-draw))
       (while (< (-> self root scale x) 1.0)
-        (seek! (-> self root scale x) 1.0 (* 8.0 (-> self clock seconds-per-frame)))
+        (seek! (-> self root scale x) 1.0 (* 8.0 (seconds-per-frame)))
         (set! (-> self root scale y) (-> self root scale x))
-        (set! f30-0 (seek f30-0 1.0 (* 2.0 (-> self clock seconds-per-frame))))
+        (set! f30-0 (seek f30-0 1.0 (* 2.0 (seconds-per-frame))))
         (ja :num! (loop! f30-0))
         (ja-post)
         (suspend)
         )
       (until #f
-        (set! f30-0 (seek f30-0 1.0 (* 0.25 (-> self clock seconds-per-frame))))
+        (set! f30-0 (seek f30-0 1.0 (* 0.25 (seconds-per-frame))))
         (ja :num! (loop! f30-0))
         (ja-post)
         (suspend)
         )
       )
     #f
-    (none)
     )
   )
 

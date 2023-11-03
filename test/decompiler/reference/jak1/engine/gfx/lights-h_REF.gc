@@ -3,199 +3,172 @@
 
 ;; definition of type vu-lights
 (deftype vu-lights (structure)
-  ((direction vector 3 :inline :offset-assert   0)
-   (color     vector 3 :inline :offset-assert  48)
-   (ambient   vector :inline   :offset-assert  96)
+  ((direction  vector  3 :inline)
+   (color      vector  3 :inline)
+   (ambient    vector  :inline)
    )
-  :method-count-assert 9
-  :size-assert         #x70
-  :flag-assert         #x900000070
   )
 
 ;; definition for method 3 of type vu-lights
-(defmethod inspect vu-lights ((obj vu-lights))
-  (format #t "[~8x] ~A~%" obj 'vu-lights)
-  (format #t "~Tdirection[3] @ #x~X~%" (-> obj direction))
-  (format #t "~Tcolor[3] @ #x~X~%" (-> obj color))
-  (format #t "~Tambient: ~`vector`P~%" (-> obj ambient))
-  obj
+(defmethod inspect ((this vu-lights))
+  (format #t "[~8x] ~A~%" this 'vu-lights)
+  (format #t "~Tdirection[3] @ #x~X~%" (-> this direction))
+  (format #t "~Tcolor[3] @ #x~X~%" (-> this color))
+  (format #t "~Tambient: ~`vector`P~%" (-> this ambient))
+  this
   )
 
 ;; definition of type light
 (deftype light (structure)
-  ((direction  vector :inline :offset-assert   0)
-   (color      rgbaf  :inline :offset-assert  16)
-   (levels     vector :inline :offset-assert  32)
-   (level      float          :offset         32)
-   (sort-level float          :offset         36)
+  ((direction   vector  :inline)
+   (color       rgbaf   :inline)
+   (levels      vector  :inline)
+   (level       float   :overlay-at (-> levels x))
+   (sort-level  float   :overlay-at (-> levels y))
    )
-  :method-count-assert 9
-  :size-assert         #x30
-  :flag-assert         #x900000030
   )
 
 ;; definition for method 3 of type light
-(defmethod inspect light ((obj light))
-  (format #t "[~8x] ~A~%" obj 'light)
-  (format #t "~Tdirection: #<vector @ #x~X>~%" (-> obj direction))
-  (format #t "~Tcolor: #<rgbaf @ #x~X>~%" (-> obj color))
-  (format #t "~Tlevels: #<vector @ #x~X>~%" (-> obj levels))
-  (format #t "~Tlevel: ~f~%" (-> obj levels x))
-  (format #t "~Tsort-level: ~f~%" (-> obj levels y))
-  obj
+(defmethod inspect ((this light))
+  (format #t "[~8x] ~A~%" this 'light)
+  (format #t "~Tdirection: #<vector @ #x~X>~%" (-> this direction))
+  (format #t "~Tcolor: #<rgbaf @ #x~X>~%" (-> this color))
+  (format #t "~Tlevels: #<vector @ #x~X>~%" (-> this levels))
+  (format #t "~Tlevel: ~f~%" (-> this levels x))
+  (format #t "~Tsort-level: ~f~%" (-> this levels y))
+  this
   )
 
 ;; definition of type light-ellipse
 (deftype light-ellipse (structure)
-  ((matrix              matrix :inline :offset-assert   0)
-   (color               rgbaf  :inline :offset-assert  64)
-   (name                basic          :offset         12)
-   (decay-start         float          :offset         28)
-   (ambient-point-ratio float          :offset         44)
-   (level               float          :offset         60)
-   (func-symbol         basic          :offset         76)
-   (func                basic          :offset         76)
+  ((matrix               matrix  :inline)
+   (color                rgbaf   :inline)
+   (name                 basic   :overlay-at (-> matrix data 3))
+   (decay-start          float   :overlay-at (-> matrix data 7))
+   (ambient-point-ratio  float   :overlay-at (-> matrix data 11))
+   (level                float   :overlay-at (-> matrix data 15))
+   (func-symbol          basic   :overlay-at (-> color a))
+   (func                 basic   :overlay-at (-> color a))
    )
-  :method-count-assert 9
-  :size-assert         #x50
-  :flag-assert         #x900000050
   )
 
 ;; definition for method 3 of type light-ellipse
-(defmethod inspect light-ellipse ((obj light-ellipse))
-  (format #t "[~8x] ~A~%" obj 'light-ellipse)
-  (format #t "~Tmatrix: #<matrix @ #x~X>~%" (-> obj matrix))
-  (format #t "~Tcolor: #<rgbaf @ #x~X>~%" (-> obj color))
-  (format #t "~Tname: ~A~%" (-> obj matrix vector 0 w))
-  (format #t "~Tdecay-start: ~f~%" (-> obj matrix vector 1 w))
-  (format #t "~Tambient-point-ratio: ~f~%" (-> obj matrix vector 2 w))
-  (format #t "~Tlevel: ~f~%" (-> obj matrix vector 3 w))
-  (format #t "~Tfunc-symbol: ~A~%" (-> obj color w))
-  (format #t "~Tfunc: ~A~%" (-> obj color w))
-  obj
+(defmethod inspect ((this light-ellipse))
+  (format #t "[~8x] ~A~%" this 'light-ellipse)
+  (format #t "~Tmatrix: #<matrix @ #x~X>~%" (-> this matrix))
+  (format #t "~Tcolor: #<rgbaf @ #x~X>~%" (-> this color))
+  (format #t "~Tname: ~A~%" (-> this matrix vector 0 w))
+  (format #t "~Tdecay-start: ~f~%" (-> this matrix vector 1 w))
+  (format #t "~Tambient-point-ratio: ~f~%" (-> this matrix vector 2 w))
+  (format #t "~Tlevel: ~f~%" (-> this matrix vector 3 w))
+  (format #t "~Tfunc-symbol: ~A~%" (-> this color w))
+  (format #t "~Tfunc: ~A~%" (-> this color w))
+  this
   )
 
 ;; definition of type light-array
 (deftype light-array (array)
   ()
-  :method-count-assert 9
-  :size-assert         #x10
-  :flag-assert         #x900000010
   )
 
 ;; definition for method 3 of type light-array
-(defmethod inspect light-array ((obj light-array))
-  (format #t "[~8x] ~A~%" obj (-> obj type))
-  (format #t "~Ttype: ~A~%" (-> obj type))
-  (format #t "~Tlength: ~D~%" (-> obj length))
-  (format #t "~Tallocated-length: ~D~%" (-> obj allocated-length))
-  (format #t "~Tcontent-type: ~A~%" (-> obj content-type))
-  obj
+(defmethod inspect ((this light-array))
+  (format #t "[~8x] ~A~%" this (-> this type))
+  (format #t "~Ttype: ~A~%" (-> this type))
+  (format #t "~Tlength: ~D~%" (-> this length))
+  (format #t "~Tallocated-length: ~D~%" (-> this allocated-length))
+  (format #t "~Tcontent-type: ~A~%" (-> this content-type))
+  this
   )
 
 ;; definition of type light-volume
 (deftype light-volume (basic)
-  ((light-array light-array  :offset-assert   4)
+  ((light-array  light-array)
    )
-  :method-count-assert 9
-  :size-assert         #x8
-  :flag-assert         #x900000008
   )
 
 ;; definition for method 3 of type light-volume
-(defmethod inspect light-volume ((obj light-volume))
-  (format #t "[~8x] ~A~%" obj (-> obj type))
-  (format #t "~Tlight-array: ~A~%" (-> obj light-array))
-  obj
+(defmethod inspect ((this light-volume))
+  (format #t "[~8x] ~A~%" this (-> this type))
+  (format #t "~Tlight-array: ~A~%" (-> this light-array))
+  this
   )
 
 ;; definition of type light-volume-sphere
 (deftype light-volume-sphere (light-volume)
-  ((bsphere sphere :inline :offset-assert  16)
+  ((bsphere  sphere  :inline)
    )
-  :method-count-assert 9
-  :size-assert         #x20
-  :flag-assert         #x900000020
   )
 
 ;; definition for method 3 of type light-volume-sphere
-(defmethod inspect light-volume-sphere ((obj light-volume-sphere))
-  (format #t "[~8x] ~A~%" obj (-> obj type))
-  (format #t "~Tlight-array: ~A~%" (-> obj light-array))
-  (format #t "~Tbsphere: #<sphere @ #x~X>~%" (-> obj bsphere))
-  obj
+(defmethod inspect ((this light-volume-sphere))
+  (format #t "[~8x] ~A~%" this (-> this type))
+  (format #t "~Tlight-array: ~A~%" (-> this light-array))
+  (format #t "~Tbsphere: #<sphere @ #x~X>~%" (-> this bsphere))
+  this
   )
 
 ;; definition of type light-volume-planes
 (deftype light-volume-planes (light-volume)
-  ((planes vertical-planes  :offset-assert   8)
+  ((planes  vertical-planes)
    )
-  :method-count-assert 9
-  :size-assert         #xc
-  :flag-assert         #x90000000c
   )
 
 ;; definition for method 3 of type light-volume-planes
-(defmethod inspect light-volume-planes ((obj light-volume-planes))
-  (format #t "[~8x] ~A~%" obj (-> obj type))
-  (format #t "~Tlight-array: ~A~%" (-> obj light-array))
-  (format #t "~Tplanes: #<vertical-planes @ #x~X>~%" (-> obj planes))
-  obj
+(defmethod inspect ((this light-volume-planes))
+  (format #t "[~8x] ~A~%" this (-> this type))
+  (format #t "~Tlight-array: ~A~%" (-> this light-array))
+  (format #t "~Tplanes: #<vertical-planes @ #x~X>~%" (-> this planes))
+  this
   )
 
 ;; definition of type light-volume-array
 (deftype light-volume-array (array)
   ()
-  :method-count-assert 9
-  :size-assert         #x10
-  :flag-assert         #x900000010
   )
 
 ;; definition for method 3 of type light-volume-array
-(defmethod inspect light-volume-array ((obj light-volume-array))
-  (format #t "[~8x] ~A~%" obj (-> obj type))
-  (format #t "~Ttype: ~A~%" (-> obj type))
-  (format #t "~Tlength: ~D~%" (-> obj length))
-  (format #t "~Tallocated-length: ~D~%" (-> obj allocated-length))
-  (format #t "~Tcontent-type: ~A~%" (-> obj content-type))
-  obj
+(defmethod inspect ((this light-volume-array))
+  (format #t "[~8x] ~A~%" this (-> this type))
+  (format #t "~Ttype: ~A~%" (-> this type))
+  (format #t "~Tlength: ~D~%" (-> this length))
+  (format #t "~Tallocated-length: ~D~%" (-> this allocated-length))
+  (format #t "~Tcontent-type: ~A~%" (-> this content-type))
+  this
   )
 
 ;; definition for method 2 of type light
-(defmethod print light ((obj light))
+(defmethod print ((this light))
   (format
     #t
     "#<light [~F] ~F ~F ~F  "
-    (-> obj levels x)
-    (-> obj direction x)
-    (-> obj direction y)
-    (-> obj direction z)
+    (-> this levels x)
+    (-> this direction x)
+    (-> this direction y)
+    (-> this direction z)
     )
-  (format #t "~F ~F ~F @ #x~X>" (-> obj color x) (-> obj color y) (-> obj color z) obj)
-  obj
+  (format #t "~F ~F ~F @ #x~X>" (-> this color x) (-> this color y) (-> this color z) this)
+  this
   )
 
 ;; definition of type light-group
 (deftype light-group (structure)
-  ((dir0   light :inline   :offset-assert   0)
-   (dir1   light :inline   :offset-assert  48)
-   (dir2   light :inline   :offset-assert  96)
-   (ambi   light :inline   :offset-assert 144)
-   (lights light 4 :inline :offset          0)
+  ((dir0    light  :inline)
+   (dir1    light  :inline)
+   (dir2    light  :inline)
+   (ambi    light  :inline)
+   (lights  light  4 :inline :overlay-at dir0)
    )
-  :method-count-assert 9
-  :size-assert         #xc0
-  :flag-assert         #x9000000c0
   )
 
 ;; definition for method 3 of type light-group
-(defmethod inspect light-group ((obj light-group))
-  (format #t "[~8x] ~A~%" obj 'light-group)
-  (format #t "~Tdir0: ~`light`P~%" (-> obj dir0))
-  (format #t "~Tdir1: ~`light`P~%" (-> obj dir1))
-  (format #t "~Tdir2: ~`light`P~%" (-> obj dir2))
-  (format #t "~Tambi: ~`light`P~%" (-> obj ambi))
-  obj
+(defmethod inspect ((this light-group))
+  (format #t "[~8x] ~A~%" this 'light-group)
+  (format #t "~Tdir0: ~`light`P~%" (-> this dir0))
+  (format #t "~Tdir1: ~`light`P~%" (-> this dir1))
+  (format #t "~Tdir2: ~`light`P~%" (-> this dir2))
+  (format #t "~Tambi: ~`light`P~%" (-> this ambi))
+  this
   )
 
 ;; failed to figure out what this is:

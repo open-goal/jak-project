@@ -5,6 +5,8 @@
 ;; name in dgo: main
 ;; dgos: GAME, ENGINE
 
+;; DECOMP BEGINS
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Letterbox and blackout
 ;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -104,7 +106,7 @@
 
 (defun set-master-mode ((new-mode symbol))
   "Update pause masks for the given mode, and set *master-mode*"
-  ;; PAL patch here
+  ;; og:preserve-this PAL patch here
   (let ((gp-0 *master-mode*))
     (set! *master-mode* new-mode)
     (if *debug-segment*
@@ -202,7 +204,7 @@
            (else
             (cond
               ;; debug mode pause allowed with select or R2.
-              ;; pc port note : allow select outside debug mode
+              ;; og:preserve-this allow select outside debug mode
               ((or (cpad-hold? 0 select)
                    (and *debug-segment* (cpad-hold? 0 r2)))
                ;; pushing select or R2, and debug. allow pause.
@@ -298,7 +300,7 @@
             'game
             )
            ;; pause -> game
-           ;; pc port note : changed to allow select pause in retail
+           ;; og:preserve-this changed to allow select pause in retail
            ((cpad-hold? 0 start select)
             'game
             )
@@ -343,9 +345,9 @@
          )
   )
 
-(defmethod draw screen-filter ((obj screen-filter))
+(defmethod draw ((this screen-filter))
   (with-dma-buffer-add-bucket ((buf (-> (current-frame) global-buf)) (bucket-id debug-no-zbuf))
-    (draw-sprite2d-xy buf -256 (- (-> *video-parms* screen-hy)) 512 (-> *video-parms* screen-sy) (-> obj color))
+    (draw-sprite2d-xy buf -256 (- (-> *video-parms* screen-hy)) 512 (-> *video-parms* screen-sy) (-> this color))
     )
   (none)
   )
@@ -683,9 +685,9 @@
 
       (with-profiler "post-sync-draw"
       ;; add letterbox effect
-      (when (or (movie?) (< (-> *display* base-frame-counter) (-> *game-info* letterbox-time)))
-        (if (< (-> *game-info* letterbox-time) (-> *display* base-frame-counter))
-            (set! (-> *game-info* letterbox-time) (-> *display* base-frame-counter))
+      (when (or (movie?) (< (current-time) (-> *game-info* letterbox-time)))
+        (if (< (-> *game-info* letterbox-time) (current-time))
+            (set! (-> *game-info* letterbox-time) (current-time))
             )
         (if (#if (not PC_PORT)
                  (= (-> *setting-control* current aspect-ratio) 'aspect4x3)
@@ -695,7 +697,7 @@
         )
 
       ;; add blackout effect
-      (if (< (-> *display* base-frame-counter) (-> *game-info* blackout-time))
+      (if (< (current-time) (-> *game-info* blackout-time))
           (set! (-> *setting-control* default bg-a-force) 1.0)
           (set! (-> *setting-control* default bg-a-force) 0.0)
           )
@@ -846,6 +848,7 @@
       (with-profiler "mc-run"
         (mc-run)
         )
+      ;; og:preserve-this
       ;; PC port note : this function checks to see if the memory card has been removed or swapped
       ;; and disabled auto-save if it has. the pc port can only disable auto-save manually through the menu option.
       ;; the port doesn't use memory cards so those checks will never pass.

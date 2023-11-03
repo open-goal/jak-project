@@ -3,19 +3,15 @@
 
 ;; definition of type cave-trap
 (deftype cave-trap (process-drawable)
-  ((root-override   collide-shape                :offset        112)
-   (spider-count    int32                        :offset-assert 176)
-   (alt-actors      (array entity-actor)         :offset-assert 180)
-   (spawn-delay     time-frame                   :offset-assert 184)
-   (last-spawn-time time-frame                   :offset-assert 192)
-   (debug-targ-pos  vector               :inline :offset-assert 208)
+  ((root             collide-shape :override)
+   (spider-count     int32)
+   (alt-actors       (array entity-actor))
+   (spawn-delay      time-frame)
+   (last-spawn-time  time-frame)
+   (debug-targ-pos   vector         :inline)
    )
-  :heap-base #x70
-  :method-count-assert 21
-  :size-assert         #xe0
-  :flag-assert         #x15007000e0
   (:methods
-    (cave-trap-method-20 (_type_) symbol 20)
+    (cave-trap-method-20 (_type_) symbol)
     )
   (:states
     cave-trap-active
@@ -25,51 +21,47 @@
   )
 
 ;; definition for method 3 of type cave-trap
-(defmethod inspect cave-trap ((obj cave-trap))
+(defmethod inspect ((this cave-trap))
   (let ((t9-0 (method-of-type process-drawable inspect)))
-    (t9-0 obj)
+    (t9-0 this)
     )
-  (format #t "~T~Tspider-count: ~D~%" (-> obj spider-count))
-  (format #t "~T~Talt-actors: ~A~%" (-> obj alt-actors))
-  (format #t "~T~Tspawn-delay: ~D~%" (-> obj spawn-delay))
-  (format #t "~T~Tlast-spawn-time: ~D~%" (-> obj last-spawn-time))
-  (format #t "~T~Tdebug-targ-pos: #<vector @ #x~X>~%" (-> obj debug-targ-pos))
-  obj
+  (format #t "~T~Tspider-count: ~D~%" (-> this spider-count))
+  (format #t "~T~Talt-actors: ~A~%" (-> this alt-actors))
+  (format #t "~T~Tspawn-delay: ~D~%" (-> this spawn-delay))
+  (format #t "~T~Tlast-spawn-time: ~D~%" (-> this last-spawn-time))
+  (format #t "~T~Tdebug-targ-pos: #<vector @ #x~X>~%" (-> this debug-targ-pos))
+  this
   )
 
 ;; definition of type spider-vent
 (deftype spider-vent (process-drawable)
-  ((last-spawn-time time-frame  :offset-assert 176)
+  ((last-spawn-time  time-frame)
    )
-  :heap-base #x50
-  :method-count-assert 20
-  :size-assert         #xb8
-  :flag-assert         #x14005000b8
   (:states
     spider-vent-idle
     )
   )
 
 ;; definition for method 3 of type spider-vent
-(defmethod inspect spider-vent ((obj spider-vent))
+(defmethod inspect ((this spider-vent))
   (let ((t9-0 (method-of-type process-drawable inspect)))
-    (t9-0 obj)
+    (t9-0 this)
     )
-  (format #t "~T~Tlast-spawn-time: ~D~%" (-> obj last-spawn-time))
-  obj
+  (format #t "~T~Tlast-spawn-time: ~D~%" (-> this last-spawn-time))
+  this
   )
 
 ;; failed to figure out what this is:
 (defstate spider-vent-idle (spider-vent)
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
     (local-vars (v0-0 object))
-    (case event-type
+    (case message
       (('can-spawn?)
-       (return (>= (- (-> *display* base-frame-counter) (-> self last-spawn-time)) (seconds 1)))
+       (return (time-elapsed? (-> self last-spawn-time) (seconds 1)))
        v0-0
        )
       (('notify-spawned)
-       (set! v0-0 (-> *display* base-frame-counter))
+       (set! v0-0 (current-time))
        (set! (-> self last-spawn-time) (the-as time-frame v0-0))
        v0-0
        )
@@ -79,16 +71,15 @@
     (logior! (-> self mask) (process-mask sleep-code))
     (suspend)
     0
-    (none)
     )
   )
 
 ;; definition for method 11 of type spider-vent
 ;; INFO: Return type mismatch object vs none.
-(defmethod init-from-entity! spider-vent ((obj spider-vent) (arg0 entity-actor))
-  (set! (-> obj last-spawn-time) 0)
-  (set! (-> obj root) (new 'process 'trsqv))
-  (process-drawable-from-entity! obj arg0)
+(defmethod init-from-entity! ((this spider-vent) (arg0 entity-actor))
+  (set! (-> this last-spawn-time) 0)
+  (set! (-> this root) (new 'process 'trsqv))
+  (process-drawable-from-entity! this arg0)
   (go spider-vent-idle)
   (none)
   )
@@ -114,43 +105,37 @@
 
 ;; definition of type spawn-baby-spider-best
 (deftype spawn-baby-spider-best (structure)
-  ((index int32  :offset-assert   0)
-   (dist  float  :offset-assert   4)
+  ((index  int32)
+   (dist   float)
    )
-  :method-count-assert 9
-  :size-assert         #x8
-  :flag-assert         #x900000008
   )
 
 ;; definition for method 3 of type spawn-baby-spider-best
-(defmethod inspect spawn-baby-spider-best ((obj spawn-baby-spider-best))
-  (format #t "[~8x] ~A~%" obj 'spawn-baby-spider-best)
-  (format #t "~Tindex: ~D~%" (-> obj index))
-  (format #t "~Tdist: ~f~%" (-> obj dist))
-  obj
+(defmethod inspect ((this spawn-baby-spider-best))
+  (format #t "[~8x] ~A~%" this 'spawn-baby-spider-best)
+  (format #t "~Tindex: ~D~%" (-> this index))
+  (format #t "~Tdist: ~f~%" (-> this dist))
+  this
   )
 
 ;; definition of type spawn-baby-spider-work
 (deftype spawn-baby-spider-work (structure)
-  ((best spawn-baby-spider-best 4 :inline :offset-assert   0)
+  ((best  spawn-baby-spider-best  4 :inline)
    )
-  :method-count-assert 9
-  :size-assert         #x40
-  :flag-assert         #x900000040
   )
 
 ;; definition for method 3 of type spawn-baby-spider-work
-(defmethod inspect spawn-baby-spider-work ((obj spawn-baby-spider-work))
-  (format #t "[~8x] ~A~%" obj 'spawn-baby-spider-work)
-  (format #t "~Tbest[4] @ #x~X~%" (-> obj best))
-  obj
+(defmethod inspect ((this spawn-baby-spider-work))
+  (format #t "[~8x] ~A~%" this 'spawn-baby-spider-work)
+  (format #t "~Tbest[4] @ #x~X~%" (-> this best))
+  this
   )
 
 ;; definition for method 20 of type cave-trap
 ;; INFO: Used lq/sq
-(defmethod cave-trap-method-20 cave-trap ((obj cave-trap))
-  (set! (-> obj last-spawn-time) (-> *display* base-frame-counter))
-  (set! (-> obj spawn-delay) (rand-vu-int-range (seconds 0.1) (seconds 0.5)))
+(defmethod cave-trap-method-20 ((this cave-trap))
+  (set-time! (-> this last-spawn-time))
+  (set! (-> this spawn-delay) (rand-vu-int-range (seconds 0.1) (seconds 0.5)))
   (let ((s5-0 (new 'stack-no-clear 'spawn-baby-spider-work)))
     (let ((s4-0 (new 'stack-no-clear 'vector)))
       (dotimes (v1-2 4)
@@ -161,8 +146,8 @@
       (vector-normalize! s4-0 102400.0)
       (vector+! s4-0 s4-0 (camera-pos))
       (set! (-> s4-0 y) (-> (target-pos 0) y))
-      (dotimes (s3-2 (-> obj alt-actors length))
-        (let* ((v1-10 (-> obj alt-actors s3-2))
+      (dotimes (s3-2 (-> this alt-actors length))
+        (let* ((v1-10 (-> this alt-actors s3-2))
                (s1-0 (if v1-10
                          (-> v1-10 extra process)
                          )
@@ -218,7 +203,7 @@
     (dotimes (s4-1 4)
       (let ((v1-29 (-> s5-0 best s4-1 index)))
         (when (>= v1-29 0)
-          (let* ((v1-32 (-> obj alt-actors v1-29))
+          (let* ((v1-32 (-> this alt-actors v1-29))
                  (s2-3 (if v1-32
                            (-> v1-32 extra process)
                            )
@@ -233,10 +218,10 @@
             (vector-! s2-4 (target-pos 0) (-> (the-as process-drawable s3-3) root trans))
             (vector-normalize! s2-4 1.0)
             (init! s1-1 (= (-> s3-3 type) spider-egg) #t #t #t 7 1 'untrigger)
-            (let ((v1-40 (process-spawn baby-spider obj (-> (the-as process-drawable s3-3) root trans) s2-4 s1-1 :to obj)))
+            (let ((v1-40 (process-spawn baby-spider this (-> (the-as process-drawable s3-3) root trans) s2-4 s1-1 :to this)))
               (when v1-40
                 (set! (-> (the-as baby-spider (-> v1-40 0)) die-if-not-visible?) #t)
-                (+! (-> obj spider-count) 1)
+                (+! (-> this spider-count) 1)
                 (send-event s3-3 'notify-spawned)
                 (return #f)
                 )
@@ -255,8 +240,8 @@
   :trans (behavior ()
     (when *target*
       (let* ((gp-0 (target-pos 0))
-             (f0-0 (vector-vector-xz-distance (-> self root-override trans) (target-pos 0)))
-             (f1-1 (- (-> gp-0 y) (-> self root-override trans y)))
+             (f0-0 (vector-vector-xz-distance (-> self root trans) (target-pos 0)))
+             (f1-1 (- (-> gp-0 y) (-> self root trans y)))
              )
         (when (and (>= 61440.0 f1-1) (>= f1-1 -16384.0))
           (when (>= 274432.0 f0-0)
@@ -269,13 +254,11 @@
           )
         )
       )
-    (none)
     )
   :code (behavior ()
     (logior! (-> self mask) (process-mask sleep-code))
     (suspend)
     0
-    (none)
     )
   )
 
@@ -284,22 +267,19 @@
   :event cave-trap-default-event-handler
   :enter (behavior ()
     (set! (-> self spawn-delay) (seconds 0.5))
-    (none)
     )
   :trans (behavior ()
     (cond
       (*target*
         (let* ((gp-0 (target-pos 0))
-               (f0-0 (vector-vector-xz-distance (-> self root-override trans) (target-pos 0)))
-               (f1-1 (- (-> gp-0 y) (-> self root-override trans y)))
+               (f0-0 (vector-vector-xz-distance (-> self root trans) (target-pos 0)))
+               (f1-1 (- (-> gp-0 y) (-> self root trans y)))
                )
           (if (or (< 73728.0 f1-1) (< f1-1 -24576.0) (< 368640.0 f0-0))
               (go cave-trap-give-up)
               )
           )
-        (if (and (< (-> self spider-count) 8)
-                 (>= (- (-> *display* base-frame-counter) (-> self last-spawn-time)) (-> self spawn-delay))
-                 )
+        (if (and (< (-> self spider-count) 8) (time-elapsed? (-> self last-spawn-time) (-> self spawn-delay)))
             (cave-trap-method-20 self)
             )
         )
@@ -308,13 +288,11 @@
         )
       )
     0
-    (none)
     )
   :code (behavior ()
     (logior! (-> self mask) (process-mask sleep-code))
     (suspend)
     0
-    (none)
     )
   )
 
@@ -324,29 +302,24 @@
   :code (behavior ()
     (suspend)
     (go cave-trap-idle)
-    (none)
     )
   )
 
 ;; definition for method 7 of type cave-trap
-;; INFO: Return type mismatch process-drawable vs cave-trap.
-(defmethod relocate cave-trap ((obj cave-trap) (arg0 int))
-  (if (nonzero? (-> obj alt-actors))
-      (&+! (-> obj alt-actors) arg0)
+(defmethod relocate ((this cave-trap) (arg0 int))
+  (if (nonzero? (-> this alt-actors))
+      (&+! (-> this alt-actors) arg0)
       )
-  (the-as
-    cave-trap
-    ((the-as (function process-drawable int process-drawable) (find-parent-method cave-trap 7)) obj arg0)
-    )
+  (call-parent-method this arg0)
   )
 
 ;; definition for method 11 of type cave-trap
 ;; INFO: Return type mismatch object vs none.
-(defmethod init-from-entity! cave-trap ((obj cave-trap) (arg0 entity-actor))
-  (set! (-> obj spider-count) 0)
-  (set! (-> obj spawn-delay) 0)
-  (set! (-> obj last-spawn-time) 0)
-  (let ((s4-0 (new 'process 'collide-shape obj (collide-list-enum hit-by-player))))
+(defmethod init-from-entity! ((this cave-trap) (arg0 entity-actor))
+  (set! (-> this spider-count) 0)
+  (set! (-> this spawn-delay) 0)
+  (set! (-> this last-spawn-time) 0)
+  (let ((s4-0 (new 'process 'collide-shape this (collide-list-enum hit-by-player))))
     (let ((s3-0 (new 'process 'collide-shape-prim-sphere s4-0 (the-as uint 0))))
       (set! (-> s3-0 prim-core offense) (collide-offense no-offense))
       (set-vector! (-> s3-0 local-sphere) 0.0 0.0 0.0 4096.0)
@@ -354,19 +327,19 @@
       )
     (set! (-> s4-0 nav-radius) (* 0.75 (-> s4-0 root-prim local-sphere w)))
     (backup-collide-with-as s4-0)
-    (set! (-> obj root-override) s4-0)
+    (set! (-> this root) s4-0)
     )
-  (process-drawable-from-entity! obj arg0)
-  (set! (-> obj nav) (new 'process 'nav-control (-> obj root-override) 16 40960.0))
-  (logior! (-> obj nav flags) (nav-control-flags display-marks navcf3 navcf5 navcf6 navcf7))
-  (set! (-> obj nav nearest-y-threshold) 409600.0)
-  (logclear! (-> obj root-override nav-flags) (nav-flags navf0))
-  (set! (-> obj path) (new 'process 'path-control obj 'path 0.0))
-  (logior! (-> obj path flags) (path-control-flag display draw-line draw-point draw-text))
+  (process-drawable-from-entity! this arg0)
+  (set! (-> this nav) (new 'process 'nav-control (-> this root) 16 40960.0))
+  (logior! (-> this nav flags) (nav-control-flags display-marks navcf3 navcf5 navcf6 navcf7))
+  (set! (-> this nav nearest-y-threshold) 409600.0)
+  (logclear! (-> this root nav-flags) (nav-flags navf0))
+  (set! (-> this path) (new 'process 'path-control this 'path 0.0))
+  (logior! (-> this path flags) (path-control-flag display draw-line draw-point draw-text))
   (let ((s4-1 (entity-actor-count arg0 'alt-actor)))
-    (set! (-> obj alt-actors) (new 'process 'boxed-array entity-actor s4-1))
+    (set! (-> this alt-actors) (new 'process 'boxed-array entity-actor s4-1))
     (dotimes (s3-1 s4-1)
-      (set! (-> obj alt-actors s3-1) (entity-actor-lookup arg0 'alt-actor s3-1))
+      (set! (-> this alt-actors s3-1) (entity-actor-lookup arg0 'alt-actor s3-1))
       )
     )
   (go cave-trap-idle)

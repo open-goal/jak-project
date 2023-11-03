@@ -3,13 +3,9 @@
 
 ;; definition of type springbox
 (deftype springbox (process-drawable)
-  ((spring-height meters  :offset-assert 176)
-   (smush         float   :offset-assert 180)
+  ((spring-height  meters)
+   (smush          float)
    )
-  :heap-base #x50
-  :method-count-assert 20
-  :size-assert         #xb8
-  :flag-assert         #x14005000b8
   (:states
     bouncer-fire
     bouncer-smush
@@ -18,13 +14,13 @@
   )
 
 ;; definition for method 3 of type springbox
-(defmethod inspect springbox ((obj springbox))
+(defmethod inspect ((this springbox))
   (let ((t9-0 (method-of-type process-drawable inspect)))
-    (t9-0 obj)
+    (t9-0 this)
     )
-  (format #t "~T~Tspring-height: (meters ~m)~%" (-> obj spring-height))
-  (format #t "~T~Tsmush: ~f~%" (-> obj smush))
-  obj
+  (format #t "~T~Tspring-height: (meters ~m)~%" (-> this spring-height))
+  (format #t "~T~Tsmush: ~f~%" (-> this smush))
+  this
   )
 
 ;; failed to figure out what this is:
@@ -38,8 +34,8 @@
 
 ;; failed to figure out what this is:
 (defstate bouncer-wait (springbox)
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('bonk)
        (when (send-event proc 'jump (-> self spring-height) (-> self spring-height) #f)
          (sound-play "trampoline")
@@ -52,7 +48,7 @@
            )
        )
       (('attack)
-       (when (and (= (-> event param 1) 'flop) (send-event proc 'jump (-> self spring-height) (-> self spring-height) #f))
+       (when (and (= (-> block param 1) 'flop) (send-event proc 'jump (-> self spring-height) (-> self spring-height) #f))
          (go bouncer-fire)
          #f
          )
@@ -60,34 +56,33 @@
       )
     )
   :code (behavior ()
-    (ja :group! (-> self draw art-group data 2) :num! min)
+    (ja :group! bounceytarp-idle-ja :num! min)
     (transform-post)
     (loop
       (logior! (-> self mask) (process-mask sleep))
       (suspend)
       )
-    (none)
     )
   )
 
 ;; failed to figure out what this is:
 (defstate bouncer-smush (springbox)
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('touch)
-       (set! (-> self state-time) (-> *display* base-frame-counter))
+       (set-time! (-> self state-time))
        #f
        )
       (else
-        ((-> bouncer-wait event) proc arg1 event-type event)
+        ((-> bouncer-wait event) proc argc message block)
         )
       )
     )
   :code (behavior ()
-    (set! (-> self state-time) (-> *display* base-frame-counter))
+    (set-time! (-> self state-time))
     (set! (-> self smush) 0.0)
     (loop
-      (if (>= (- (-> *display* base-frame-counter) (-> self state-time)) (seconds 0.2))
+      (if (time-elapsed? (-> self state-time) (seconds 0.2))
           (ja :num! (seek! 0.0 0.1))
           (ja :num! (seek!
                       (lerp-scale
@@ -106,30 +101,28 @@
           (go bouncer-wait)
           )
       )
-    (none)
     )
-  :post (the-as (function none :behavior springbox) transform-post)
+  :post transform-post
   )
 
 ;; failed to figure out what this is:
 (defstate bouncer-fire (springbox)
   :code (behavior ()
     (cpad-set-buzz! (-> *cpad-list* cpads 0) 1 178 (seconds 0.1))
-    (ja-no-eval :group! (-> self draw art-group data 2) :num! (seek!) :frame-num (ja-aframe 6.0 0))
+    (ja-no-eval :group! bounceytarp-idle-ja :num! (seek!) :frame-num (ja-aframe 6.0 0))
     (until (ja-done? 0)
       (suspend)
       (ja :num! (seek!))
       )
     (go bouncer-wait)
-    (none)
     )
-  :post (the-as (function none :behavior springbox) transform-post)
+  :post transform-post
   )
 
 ;; definition for method 11 of type springbox
 ;; INFO: Return type mismatch object vs none.
-(defmethod init-from-entity! springbox ((obj springbox) (arg0 entity-actor))
-  (let ((s4-0 (new 'process 'collide-shape-moving obj (collide-list-enum hit-by-player))))
+(defmethod init-from-entity! ((this springbox) (arg0 entity-actor))
+  (let ((s4-0 (new 'process 'collide-shape-moving this (collide-list-enum hit-by-player))))
     (set! (-> s4-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s4-0 reaction) default-collision-reaction)
     (set! (-> s4-0 no-reaction)
@@ -146,12 +139,12 @@
       )
     (set! (-> s4-0 nav-radius) (* 0.75 (-> s4-0 root-prim local-sphere w)))
     (backup-collide-with-as s4-0)
-    (set! (-> obj root) s4-0)
+    (set! (-> this root) s4-0)
     )
-  (process-drawable-from-entity! obj arg0)
-  (initialize-skeleton obj *bouncer-sg* '())
-  (nav-mesh-connect obj (-> obj root) (the-as nav-control #f))
-  (set! (-> obj spring-height) (res-lump-float arg0 'spring-height :default 45056.0))
+  (process-drawable-from-entity! this arg0)
+  (initialize-skeleton this *bouncer-sg* '())
+  (nav-mesh-connect this (-> this root) (the-as nav-control #f))
+  (set! (-> this spring-height) (res-lump-float arg0 'spring-height :default 45056.0))
   (go bouncer-wait)
   (none)
   )

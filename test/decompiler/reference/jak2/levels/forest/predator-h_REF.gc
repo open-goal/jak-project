@@ -3,36 +3,33 @@
 
 ;; definition of type predator-node
 (deftype predator-node (structure)
-  ((position    vector             :inline :offset-assert   0)
-   (nav-mesh-id uint32                     :offset-assert  16)
-   (edge-index  int16                      :offset-assert  20)
-   (edge-count  int16                      :offset-assert  22)
-   (radius      float                      :offset-assert  24)
-   (flags       predator-node-flag         :offset-assert  28)
-   (points      uint32                     :offset-assert  32)
-   (pos-x       float                      :offset          0)
-   (pos-y       float                      :offset          4)
-   (pos-z       float                      :offset          8)
+  ((position     vector  :inline)
+   (nav-mesh-id  uint32)
+   (edge-index   int16)
+   (edge-count   int16)
+   (radius       float)
+   (flags        predator-node-flag)
+   (points       uint32)
+   (pos-x        float   :overlay-at (-> position data 0))
+   (pos-y        float   :overlay-at (-> position data 1))
+   (pos-z        float   :overlay-at (-> position data 2))
    )
-  :method-count-assert 9
-  :size-assert         #x24
-  :flag-assert         #x900000024
   )
 
 ;; definition for method 3 of type predator-node
-(defmethod inspect predator-node ((obj predator-node))
-  (when (not obj)
-    (set! obj obj)
+(defmethod inspect ((this predator-node))
+  (when (not this)
+    (set! this this)
     (goto cfg-8)
     )
-  (format #t "[~8x] ~A~%" obj 'predator-node)
-  (format #t "~1Tposition: ~`vector`P~%" (-> obj position))
-  (format #t "~1Tnav-mesh-id: ~D~%" (-> obj nav-mesh-id))
-  (format #t "~1Tedge-index: ~D~%" (-> obj edge-index))
-  (format #t "~1Tedge-count: ~D~%" (-> obj edge-count))
-  (format #t "~1Tradius: ~f~%" (-> obj radius))
-  (format #t "~1Tflags: #x~X : (predator-node-flag " (-> obj flags))
-  (let ((s5-0 (-> obj flags)))
+  (format #t "[~8x] ~A~%" this 'predator-node)
+  (format #t "~1Tposition: ~`vector`P~%" (-> this position))
+  (format #t "~1Tnav-mesh-id: ~D~%" (-> this nav-mesh-id))
+  (format #t "~1Tedge-index: ~D~%" (-> this edge-index))
+  (format #t "~1Tedge-count: ~D~%" (-> this edge-count))
+  (format #t "~1Tradius: ~f~%" (-> this radius))
+  (format #t "~1Tflags: #x~X : (predator-node-flag " (-> this flags))
+  (let ((s5-0 (-> this flags)))
     (if (= (logand s5-0 (predator-node-flag spawnable)) (predator-node-flag spawnable))
         (format #t "spawnable ")
         )
@@ -41,65 +38,59 @@
         )
     )
   (format #t ")~%")
-  (format #t "~1Tpoints: ~D~%" (-> obj points))
-  (format #t "~1Tpos-x: ~f~%" (-> obj position x))
-  (format #t "~1Tpos-y: ~f~%" (-> obj position y))
-  (format #t "~1Tpos-z: ~f~%" (-> obj position z))
+  (format #t "~1Tpoints: ~D~%" (-> this points))
+  (format #t "~1Tpos-x: ~f~%" (-> this position x))
+  (format #t "~1Tpos-y: ~f~%" (-> this position y))
+  (format #t "~1Tpos-z: ~f~%" (-> this position z))
   (label cfg-8)
-  obj
+  this
   )
 
 ;; definition of type predator-edge
 (deftype predator-edge (structure)
-  ((dest-node-id uint16              :offset-assert   0)
-   (flags        predator-edge-flag  :offset-assert   2)
+  ((dest-node-id  uint16)
+   (flags         predator-edge-flag)
    )
   :pack-me
-  :method-count-assert 9
-  :size-assert         #x4
-  :flag-assert         #x900000004
   )
 
 ;; definition for method 3 of type predator-edge
-(defmethod inspect predator-edge ((obj predator-edge))
-  (when (not obj)
-    (set! obj obj)
+(defmethod inspect ((this predator-edge))
+  (when (not this)
+    (set! this this)
     (goto cfg-4)
     )
-  (format #t "[~8x] ~A~%" obj 'predator-edge)
-  (format #t "~1Tdest-node-id: ~D~%" (-> obj dest-node-id))
-  (format #t "~1Tflags: #x~X : (predator-edge-flag " (-> obj flags))
-  (-> obj flags)
+  (format #t "[~8x] ~A~%" this 'predator-edge)
+  (format #t "~1Tdest-node-id: ~D~%" (-> this dest-node-id))
+  (format #t "~1Tflags: #x~X : (predator-edge-flag " (-> this flags))
+  (-> this flags)
   (format #t ")~%")
   (label cfg-4)
-  obj
+  this
   )
 
 ;; definition of type predator-graph
 (deftype predator-graph (structure)
-  ((node-count uint16                        :offset-assert   0)
-   (edge-count uint16                        :offset-assert   2)
-   (node       (inline-array predator-node)  :offset-assert   4)
-   (edge       (inline-array predator-edge)  :offset-assert   8)
+  ((node-count  uint16)
+   (edge-count  uint16)
+   (node        (inline-array predator-node))
+   (edge        (inline-array predator-edge))
    )
-  :method-count-assert 9
-  :size-assert         #xc
-  :flag-assert         #x90000000c
   )
 
 ;; definition for method 3 of type predator-graph
-(defmethod inspect predator-graph ((obj predator-graph))
-  (when (not obj)
-    (set! obj obj)
+(defmethod inspect ((this predator-graph))
+  (when (not this)
+    (set! this this)
     (goto cfg-4)
     )
-  (format #t "[~8x] ~A~%" obj 'predator-graph)
-  (format #t "~1Tnode-count: ~D~%" (-> obj node-count))
-  (format #t "~1Tedge-count: ~D~%" (-> obj edge-count))
-  (format #t "~1Tnode: #x~X~%" (-> obj node))
-  (format #t "~1Tedge: #x~X~%" (-> obj edge))
+  (format #t "[~8x] ~A~%" this 'predator-graph)
+  (format #t "~1Tnode-count: ~D~%" (-> this node-count))
+  (format #t "~1Tedge-count: ~D~%" (-> this edge-count))
+  (format #t "~1Tnode: #x~X~%" (-> this node))
+  (format #t "~1Tedge: #x~X~%" (-> this edge))
   (label cfg-4)
-  obj
+  this
   )
 
 ;; failed to figure out what this is:

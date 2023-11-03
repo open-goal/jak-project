@@ -4,23 +4,19 @@
 ;; definition of type dark-eco-pool
 (deftype dark-eco-pool (water-anim)
   ()
-  :heap-base #x80
-  :method-count-assert 29
-  :size-assert         #x100
-  :flag-assert         #x1d00800100
   )
 
 ;; definition for method 3 of type dark-eco-pool
-(defmethod inspect dark-eco-pool ((obj dark-eco-pool))
-  (when (not obj)
-    (set! obj obj)
+(defmethod inspect ((this dark-eco-pool))
+  (when (not this)
+    (set! this this)
     (goto cfg-4)
     )
   (let ((t9-0 (method-of-type water-anim inspect)))
-    (t9-0 obj)
+    (t9-0 this)
     )
   (label cfg-4)
-  obj
+  this
   )
 
 ;; definition for symbol *ripple-for-dark-eco-pool*, type ripple-wave-set
@@ -54,18 +50,18 @@
 
 ;; definition for method 28 of type dark-eco-pool
 ;; WARN: Return type mismatch ambient-sound vs none.
-(defmethod offset! dark-eco-pool ((obj dark-eco-pool))
+(defmethod offset! ((this dark-eco-pool))
   "Offset a [[water-anim]]'s `trans` and `quat` by the lump data in `entity`."
   (let ((t9-0 (method-of-type water-anim offset!)))
-    (t9-0 obj)
+    (t9-0 this)
     )
-  (logclear! (-> obj flags) (water-flags part-water))
-  (logior! (-> obj flags) (water-flags dark-eco))
-  (set! (-> obj attack-event)
+  (logclear! (-> this flags) (water-flags part-water))
+  (logior! (-> this flags) (water-flags dark-eco))
+  (set! (-> this attack-event)
         (the-as
           symbol
           ((method-of-type res-lump get-property-struct)
-           (-> obj entity)
+           (-> this entity)
            'attack-event
            'interp
            -1000000000.0
@@ -75,27 +71,27 @@
            )
           )
         )
-  (set! (-> obj sound)
-        (new 'process 'ambient-sound (static-sound-spec "eco-pool" :fo-min 30 :fo-max 50) (-> obj root trans))
+  (set! (-> this sound)
+        (new 'process 'ambient-sound (static-sound-spec "eco-pool" :fo-min 30 :fo-max 50) (-> this root trans))
         )
   (none)
   )
 
 ;; definition for method 24 of type dark-eco-pool
 ;; WARN: Return type mismatch ripple-wave-set vs none.
-(defmethod init-water! dark-eco-pool ((obj dark-eco-pool))
+(defmethod init-water! ((this dark-eco-pool))
   "Initialize a [[water-anim]]'s default settings, this may include applying a [[riple-control]]"
   (let ((t9-0 (method-of-type water-anim init-water!)))
-    (t9-0 obj)
+    (t9-0 this)
     )
   (let ((s5-0 (new 'process 'ripple-control)))
-    (set! (-> obj draw ripple) s5-0)
+    (set! (-> this draw ripple) s5-0)
     (set! (-> s5-0 global-scale) 3072.0)
     (set! (-> s5-0 close-fade-dist) 163840.0)
     (set! (-> s5-0 far-fade-dist) 245760.0)
     (set! (-> s5-0 waveform) *ripple-for-dark-eco-pool*)
     (set! (-> s5-0 query) (new 'process 'ripple-merc-query 100))
-    (case (-> obj look)
+    (case (-> this look)
       ((5)
        (set! (-> s5-0 waveform) *ripple-strip-dark-eco-near-lift*)
        )
@@ -330,6 +326,5 @@
       (set! (-> gp-0 global-scale) (* 4096.0 (* 3.0 (+ 1.0 f0-9))))
       (set! (-> gp-0 individual-normal-scale) (+ 0.5 (* 0.5 f0-9)))
       )
-    (none)
     )
   )

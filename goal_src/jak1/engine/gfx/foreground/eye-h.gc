@@ -12,53 +12,41 @@
 ;; DECOMP BEGINS
 
 (deftype eye (structure)
-  ((data        vector 2 :inline :offset-assert   0)
-   (x           float            :offset          0)
-   (y           float            :offset          4)
-   (lid         float            :offset          8)
-   (iris-scale  float            :offset         16)
-   (pupil-scale float            :offset         20)
-   (lid-scale   float            :offset         24)
+  ((data         vector  2 :inline)
+   (x            float   :overlay-at (-> data 0 x))
+   (y            float   :overlay-at (-> data 0 y))
+   (lid          float   :overlay-at (-> data 0 z))
+   (iris-scale   float   :offset  16)
+   (pupil-scale  float   :offset  20)
+   (lid-scale    float   :offset  24)
    )
-  :method-count-assert 9
-  :size-assert         #x20
-  :flag-assert         #x900000020
   )
 
 
 (deftype eye-control (structure)
-  ((process     handle                              :offset-assert   0)
-   (random-time uint16                              :offset-assert   8)
-   (level       uint16                              :offset-assert  10)
-   (blink       float                               :offset-assert  12)
-   (shaders     (inline-array adgif-shader)         :offset-assert  16)
-   (left        eye                         :inline :offset-assert  32)
-   (right       eye                         :inline :offset-assert  64)
+  ((process      handle)
+   (random-time  uint16)
+   (level        uint16)
+   (blink        float)
+   (shaders      (inline-array adgif-shader))
+   (left         eye  :inline)
+   (right        eye  :inline)
    )
-  :method-count-assert 9
-  :size-assert         #x60
-  :flag-assert         #x900000060
   )
 
 
 (deftype eye-control-array (basic)
-  ((data eye-control 11 :inline :offset-assert  16)
+  ((data  eye-control  11 :inline)
    )
-  :method-count-assert 9
-  :size-assert         #x430
-  :flag-assert         #x900000430
   )
 
 
 (deftype eye-work (structure)
-  ((sprite-tmpl  dma-gif-packet :inline :offset-assert   0)
-   (sprite-tmpl2 dma-gif-packet :inline :offset-assert  32)
-   (adgif-tmpl   dma-gif-packet :inline :offset-assert  64)
-   (blink-table  float          10      :offset-assert  96)
+  ((sprite-tmpl   dma-gif-packet  :inline)
+   (sprite-tmpl2  dma-gif-packet  :inline)
+   (adgif-tmpl    dma-gif-packet  :inline)
+   (blink-table   float           10)
    )
-  :method-count-assert 9
-  :size-assert         #x88
-  :flag-assert         #x900000088
   )
 
 
@@ -70,9 +58,3 @@
   (set! (-> *eye-control-array* data v1-5 random-time) (the-as uint 60))
   (set! (-> *eye-control-array* data v1-5 blink) 0.0)
   )
-
-0
-
-
-
-

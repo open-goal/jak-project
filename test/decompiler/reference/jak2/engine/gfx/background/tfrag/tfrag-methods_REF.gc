@@ -549,33 +549,30 @@
 
 ;; definition of type tfrag-init-data
 (deftype tfrag-init-data (structure)
-  ((tfrag-bucket               bucket-id  :offset-assert   0)
-   (tfrag-scissor-bucket       bucket-id  :offset-assert   4)
-   (tfrag-trans-bucket         bucket-id  :offset-assert   8)
-   (tfrag-scissor-trans-bucket bucket-id  :offset-assert  12)
-   (tfrag-water-bucket         bucket-id  :offset-assert  16)
-   (tfrag-water-scissor-bucket bucket-id  :offset-assert  20)
+  ((tfrag-bucket                bucket-id)
+   (tfrag-scissor-bucket        bucket-id)
+   (tfrag-trans-bucket          bucket-id)
+   (tfrag-scissor-trans-bucket  bucket-id)
+   (tfrag-water-bucket          bucket-id)
+   (tfrag-water-scissor-bucket  bucket-id)
    )
-  :method-count-assert 9
-  :size-assert         #x18
-  :flag-assert         #x900000018
   )
 
 ;; definition for method 3 of type tfrag-init-data
-(defmethod inspect tfrag-init-data ((obj tfrag-init-data))
-  (when (not obj)
-    (set! obj obj)
+(defmethod inspect ((this tfrag-init-data))
+  (when (not this)
+    (set! this this)
     (goto cfg-4)
     )
-  (format #t "[~8x] ~A~%" obj 'tfrag-init-data)
-  (format #t "~1Ttfrag-bucket: ~D~%" (-> obj tfrag-bucket))
-  (format #t "~1Ttfrag-scissor-bucket: ~D~%" (-> obj tfrag-scissor-bucket))
-  (format #t "~1Ttfrag-trans-bucket: ~D~%" (-> obj tfrag-trans-bucket))
-  (format #t "~1Ttfrag-scissor-trans-bucket: ~D~%" (-> obj tfrag-scissor-trans-bucket))
-  (format #t "~1Ttfrag-water-bucket: ~D~%" (-> obj tfrag-water-bucket))
-  (format #t "~1Ttfrag-water-scissor-bucket: ~D~%" (-> obj tfrag-water-scissor-bucket))
+  (format #t "[~8x] ~A~%" this 'tfrag-init-data)
+  (format #t "~1Ttfrag-bucket: ~D~%" (-> this tfrag-bucket))
+  (format #t "~1Ttfrag-scissor-bucket: ~D~%" (-> this tfrag-scissor-bucket))
+  (format #t "~1Ttfrag-trans-bucket: ~D~%" (-> this tfrag-trans-bucket))
+  (format #t "~1Ttfrag-scissor-trans-bucket: ~D~%" (-> this tfrag-scissor-trans-bucket))
+  (format #t "~1Ttfrag-water-bucket: ~D~%" (-> this tfrag-water-bucket))
+  (format #t "~1Ttfrag-water-scissor-bucket: ~D~%" (-> this tfrag-water-scissor-bucket))
   (label cfg-4)
-  obj
+  this
   )
 
 ;; definition for symbol *tfrag-init-table*, type (inline-array tfrag-init-data)
@@ -705,11 +702,11 @@
 
 ;; definition for method 10 of type drawable-tree-tfrag
 ;; WARN: Return type mismatch int vs none.
-(defmethod draw drawable-tree-tfrag ((obj drawable-tree-tfrag) (arg0 drawable-tree-tfrag) (arg1 display-frame))
+(defmethod draw ((this drawable-tree-tfrag) (arg0 drawable-tree-tfrag) (arg1 display-frame))
   (let ((v1-1 (-> *background-work* tfrag-tree-count))
         (a1-4 (-> *level* draw-level *draw-index*))
         )
-    (set! (-> *background-work* tfrag-trees v1-1) obj)
+    (set! (-> *background-work* tfrag-trees v1-1) this)
     (set! (-> *background-work* tfrag-levels v1-1) a1-4)
     )
   (+! (-> *background-work* tfrag-tree-count) 1)
@@ -719,11 +716,11 @@
 
 ;; definition for method 10 of type drawable-tree-tfrag-trans
 ;; WARN: Return type mismatch int vs none.
-(defmethod draw drawable-tree-tfrag-trans ((obj drawable-tree-tfrag-trans) (arg0 drawable-tree-tfrag-trans) (arg1 display-frame))
+(defmethod draw ((this drawable-tree-tfrag-trans) (arg0 drawable-tree-tfrag-trans) (arg1 display-frame))
   (let ((v1-1 (-> *background-work* tfrag-trans-tree-count))
         (a1-4 (-> *level* draw-level *draw-index*))
         )
-    (set! (-> *background-work* tfrag-trans-trees v1-1) obj)
+    (set! (-> *background-work* tfrag-trans-trees v1-1) this)
     (set! (-> *background-work* tfrag-trans-levels v1-1) a1-4)
     )
   (+! (-> *background-work* tfrag-trans-tree-count) 1)
@@ -733,11 +730,11 @@
 
 ;; definition for method 10 of type drawable-tree-tfrag-water
 ;; WARN: Return type mismatch int vs none.
-(defmethod draw drawable-tree-tfrag-water ((obj drawable-tree-tfrag-water) (arg0 drawable-tree-tfrag-water) (arg1 display-frame))
+(defmethod draw ((this drawable-tree-tfrag-water) (arg0 drawable-tree-tfrag-water) (arg1 display-frame))
   (let ((v1-1 (-> *background-work* tfrag-water-tree-count))
         (a1-4 (-> *level* draw-level *draw-index*))
         )
-    (set! (-> *background-work* tfrag-water-trees v1-1) obj)
+    (set! (-> *background-work* tfrag-water-trees v1-1) this)
     (set! (-> *background-work* tfrag-water-levels v1-1) a1-4)
     )
   (+! (-> *background-work* tfrag-water-tree-count) 1)
@@ -747,8 +744,8 @@
 
 ;; definition for method 13 of type tfragment
 ;; WARN: Return type mismatch int vs none.
-(defmethod collect-stats tfragment ((obj tfragment))
-  (stats-tfrag-asm obj)
+(defmethod collect-stats ((this tfragment))
+  (stats-tfrag-asm this)
   0
   (none)
   )
@@ -756,7 +753,7 @@
 ;; definition for method 13 of type drawable-tree-tfrag
 ;; INFO: Used lq/sq
 ;; WARN: Return type mismatch int vs none.
-(defmethod collect-stats drawable-tree-tfrag ((obj drawable-tree-tfrag))
+(defmethod collect-stats ((this drawable-tree-tfrag))
   (when (logtest? (-> *display* vu1-enable-user) (vu1-renderer-mask tfrag))
     (set! (-> *tfrag-work* vu1-enable-tfrag)
           (the-as int (logand (-> *display* vu1-enable-user) (vu1-renderer-mask tfrag)))
@@ -769,8 +766,8 @@
     (let ((v1-15 (-> *tfrag-work* frag-dists quad)))
       (set! (-> *tfrag-work* frag-dists quad) v1-15)
       )
-    (dotimes (s5-0 (-> obj length))
-      (collect-stats (-> obj arrays s5-0))
+    (dotimes (s5-0 (-> this length))
+      (collect-stats (-> this arrays s5-0))
       )
     )
   0
@@ -780,7 +777,7 @@
 ;; definition for method 13 of type drawable-tree-tfrag-trans
 ;; INFO: Used lq/sq
 ;; WARN: Return type mismatch int vs none.
-(defmethod collect-stats drawable-tree-tfrag-trans ((obj drawable-tree-tfrag-trans))
+(defmethod collect-stats ((this drawable-tree-tfrag-trans))
   (when (logtest? (vu1-renderer-mask tfrag-trans) (-> *display* vu1-enable-user))
     (set! (-> *tfrag-work* vu1-enable-tfrag)
           (the-as int (logand (vu1-renderer-mask tfrag-trans) (-> *display* vu1-enable-user)))
@@ -793,8 +790,8 @@
     (let ((v1-12 (-> *tfrag-work* frag-dists quad)))
       (set! (-> *tfrag-work* frag-dists quad) v1-12)
       )
-    (dotimes (s5-0 (-> obj length))
-      (collect-stats (-> obj arrays s5-0))
+    (dotimes (s5-0 (-> this length))
+      (collect-stats (-> this arrays s5-0))
       )
     )
   0
@@ -804,7 +801,7 @@
 ;; definition for method 13 of type drawable-tree-tfrag-water
 ;; INFO: Used lq/sq
 ;; WARN: Return type mismatch int vs none.
-(defmethod collect-stats drawable-tree-tfrag-water ((obj drawable-tree-tfrag-water))
+(defmethod collect-stats ((this drawable-tree-tfrag-water))
   (when (logtest? (vu1-renderer-mask tfrag-water) (-> *display* vu1-enable-user))
     (set! (-> *tfrag-work* vu1-enable-tfrag)
           (the-as int (logand (vu1-renderer-mask tfrag-water) (-> *display* vu1-enable-user)))
@@ -817,8 +814,8 @@
     (let ((v1-12 (-> *tfrag-work* frag-dists quad)))
       (set! (-> *tfrag-work* frag-dists quad) v1-12)
       )
-    (dotimes (s5-0 (-> obj length))
-      (collect-stats (-> obj arrays s5-0))
+    (dotimes (s5-0 (-> this length))
+      (collect-stats (-> this arrays s5-0))
       )
     )
   0
@@ -827,10 +824,10 @@
 
 ;; definition for method 13 of type drawable-inline-array-tfrag
 ;; WARN: Return type mismatch int vs none.
-(defmethod collect-stats drawable-inline-array-tfrag ((obj drawable-inline-array-tfrag))
+(defmethod collect-stats ((this drawable-inline-array-tfrag))
   (when (logtest? (-> *display* vu1-enable-user) (vu1-renderer-mask tfrag))
-    (dotimes (s5-0 (-> obj length))
-      (let ((s4-0 (-> obj data s5-0)))
+    (dotimes (s5-0 (-> this length))
+      (let ((s4-0 (-> this data s5-0)))
         (if (vis-cull (-> s4-0 id))
             (collect-stats s4-0)
             )
@@ -843,10 +840,10 @@
 
 ;; definition for method 13 of type drawable-inline-array-tfrag-trans
 ;; WARN: Return type mismatch int vs none.
-(defmethod collect-stats drawable-inline-array-tfrag-trans ((obj drawable-inline-array-tfrag-trans))
+(defmethod collect-stats ((this drawable-inline-array-tfrag-trans))
   (when (logtest? (vu1-renderer-mask tfrag-trans) (-> *display* vu1-enable-user))
-    (dotimes (s5-0 (-> obj length))
-      (let ((s4-0 (-> obj data s5-0)))
+    (dotimes (s5-0 (-> this length))
+      (let ((s4-0 (-> this data s5-0)))
         (if (vis-cull (-> s4-0 id))
             (collect-stats s4-0)
             )
@@ -859,10 +856,10 @@
 
 ;; definition for method 13 of type drawable-inline-array-tfrag-water
 ;; WARN: Return type mismatch int vs none.
-(defmethod collect-stats drawable-inline-array-tfrag-water ((obj drawable-inline-array-tfrag-water))
+(defmethod collect-stats ((this drawable-inline-array-tfrag-water))
   (when (logtest? (vu1-renderer-mask tfrag-water) (-> *display* vu1-enable-user))
-    (dotimes (s5-0 (-> obj length))
-      (let ((s4-0 (-> obj data s5-0)))
+    (dotimes (s5-0 (-> this length))
+      (let ((s4-0 (-> this data s5-0)))
         (if (vis-cull (-> s4-0 id))
             (collect-stats s4-0)
             )
@@ -875,10 +872,10 @@
 
 ;; definition for method 14 of type drawable-tree-tfrag
 ;; WARN: Return type mismatch int vs none.
-(defmethod debug-draw drawable-tree-tfrag ((obj drawable-tree-tfrag) (arg0 drawable) (arg1 display-frame))
+(defmethod debug-draw ((this drawable-tree-tfrag) (arg0 drawable) (arg1 display-frame))
   (when (logtest? (-> *display* vu1-enable-user) (vu1-renderer-mask tfrag))
-    (dotimes (s4-0 (-> obj length))
-      (let ((a1-1 (-> obj arrays s4-0)))
+    (dotimes (s4-0 (-> this length))
+      (let ((a1-1 (-> this arrays s4-0)))
         (debug-draw a1-1 a1-1 arg1)
         )
       )
@@ -889,10 +886,10 @@
 
 ;; definition for method 14 of type drawable-tree-tfrag-trans
 ;; WARN: Return type mismatch int vs none.
-(defmethod debug-draw drawable-tree-tfrag-trans ((obj drawable-tree-tfrag-trans) (arg0 drawable) (arg1 display-frame))
+(defmethod debug-draw ((this drawable-tree-tfrag-trans) (arg0 drawable) (arg1 display-frame))
   (when (logtest? (vu1-renderer-mask tfrag-trans) (-> *display* vu1-enable-user))
-    (dotimes (s4-0 (-> obj length))
-      (let ((a1-1 (-> obj arrays s4-0)))
+    (dotimes (s4-0 (-> this length))
+      (let ((a1-1 (-> this arrays s4-0)))
         (debug-draw a1-1 a1-1 arg1)
         )
       )
@@ -903,10 +900,10 @@
 
 ;; definition for method 14 of type drawable-tree-tfrag-water
 ;; WARN: Return type mismatch int vs none.
-(defmethod debug-draw drawable-tree-tfrag-water ((obj drawable-tree-tfrag-water) (arg0 drawable) (arg1 display-frame))
+(defmethod debug-draw ((this drawable-tree-tfrag-water) (arg0 drawable) (arg1 display-frame))
   (when (logtest? (vu1-renderer-mask tfrag-water) (-> *display* vu1-enable-user))
-    (dotimes (s4-0 (-> obj length))
-      (let ((a1-1 (-> obj arrays s4-0)))
+    (dotimes (s4-0 (-> this length))
+      (let ((a1-1 (-> this arrays s4-0)))
         (debug-draw a1-1 a1-1 arg1)
         )
       )
@@ -917,9 +914,9 @@
 
 ;; definition for method 14 of type drawable-inline-array-tfrag
 ;; WARN: Return type mismatch int vs none.
-(defmethod debug-draw drawable-inline-array-tfrag ((obj drawable-inline-array-tfrag) (arg0 drawable) (arg1 display-frame))
-  (dotimes (s4-0 (-> obj length))
-    (let ((s3-0 (-> obj data s4-0)))
+(defmethod debug-draw ((this drawable-inline-array-tfrag) (arg0 drawable) (arg1 display-frame))
+  (dotimes (s4-0 (-> this length))
+    (let ((s3-0 (-> this data s4-0)))
       (if (vis-cull (-> s3-0 id))
           (debug-draw s3-0 s3-0 arg1)
           )
@@ -931,13 +928,9 @@
 
 ;; definition for method 14 of type tfragment
 ;; WARN: Return type mismatch int vs none.
-(defmethod debug-draw tfragment ((obj tfragment) (arg0 drawable) (arg1 display-frame))
+(defmethod debug-draw ((this tfragment) (arg0 drawable) (arg1 display-frame))
   (-> arg1 global-buf)
-  (edge-debug-lines (-> obj debug-data debug-lines))
+  (edge-debug-lines (-> this debug-data debug-lines))
   0
   (none)
   )
-
-
-
-

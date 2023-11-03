@@ -5,6 +5,8 @@
 ;; name in dgo: dma-buffer
 ;; dgos: GAME, ENGINE
 
+;; DECOMP BEGINS
+
 ;; DMA buffers store data to be sent over DMA.
 ;; They are a very simple wrapper around the data.
 ;; Typically a dma-buffer will store dma-buckets or other more complicated data structures.
@@ -29,38 +31,30 @@
 ;; Most DMA stuff goes directly to the VIF, so this is the
 ;; most common.
 (deftype dma-packet (structure)
-  ((dma  dma-tag   :offset-assert 0)
-   (vif0 vif-tag   :offset-assert 8)
-   (vif1 vif-tag   :offset-assert 12) ;; doesn't have to be a vif tag.
-   (quad uint128  :offset 0)
+  ((dma   dma-tag)
+   (vif0  vif-tag)
+   (vif1  vif-tag)
+   (quad  uint128  :overlay-at dma)
    )
-  :method-count-assert 9
-  :size-assert         #x10
-  :flag-assert         #x900000010
   )
 
 ;; seems to be unused? Also, it seems to be broken. Do not use this.
 (deftype dma-packet-array (inline-array-class)
   ()
-  :method-count-assert 9
-  :size-assert         #x10
-  :flag-assert         #x900000010
   )
-(set! (-> dma-packet-array heap-base) 16)
+
+
+(set! (-> dma-packet-array heap-base) (the-as uint 16))
 
 ;; For doing a dma -> vif -> gif (path 2) transfer.
 (deftype dma-gif-packet (structure)
-  ((dma-vif dma-packet :inline :offset-assert 0)
-   (gif     uint64    2       :offset-assert 16) ;; guess
+  ((dma-vif  dma-packet  :inline)
+   (gif      uint64      2)
    ;; these two were added to make it easier.
-   (gif0    uint64 :offset 16)
-   (gif1    uint64 :offset 24)
-
-   (quad    uint128    2       :offset 0)
+   (gif0     uint64        :overlay-at (-> gif 0))
+   (gif1     uint64        :overlay-at (-> gif 1))
+   (quad     uint128     2 :overlay-at (-> dma-vif dma))
    )
-  :method-count-assert 9
-  :size-assert         #x20
-  :flag-assert         #x900000020
   )
 
 ;; dma-buffer is a dynamically sized container for storing DMA data.
@@ -68,61 +62,54 @@
 ;; I added a data-buffer field that overlaps with data to get at the array of
 ;; bytes more easily.
 (deftype dma-buffer (basic)
-  ((allocated-length int32    :offset-assert 4)    ;; number of bytes.
-   (base             pointer  :offset-assert 8)    ;; first unused memory.
-   (end              pointer  :offset-assert 12)   ;; ?? unused ??
-   (data             uint64 1 :offset-assert 16)   ;; start of memory.
-   (data-buffer      uint8    :dynamic :offset 16) ;; the actual dynamic array backing it.
+  ((allocated-length  int32) ;; number of bytes.
+   (base              pointer) ;; first unused memory.
+   (end               pointer) ;; ?? unused ??
+   (data              uint64  1) ;; start of memory.
+   (data-buffer       uint8   :dynamic :overlay-at (-> data 0)) ;; the actual dynamic array backing it.
    )
   (:methods
-   (new (symbol type int) _type_  0)
-   )
-  :method-count-assert 9
-  :size-assert         #x18
-  :flag-assert         #x900000018
+    (new (symbol type int) _type_)
+    )
   )
+
 
 (defmethod new dma-buffer ((allocation symbol) (type-to-make type) (arg0 int))
   "Create a new dma-buffer with enough room to store arg0 bytes.
    Note that this does not set the end field."
-  (let ((v0-0 (object-new allocation type-to-make
-                          (+ (+ arg0 -4) (the-as int (-> type-to-make size)))
-                          )
-          )
-        )
+  (let ((v0-0 (object-new allocation type-to-make (+ arg0 -4 (-> type-to-make size)))))
     (set! (-> v0-0 base) (-> v0-0 data))
     (set! (-> v0-0 allocated-length) arg0)
     v0-0
     )
   )
 
-(defun dma-buffer-inplace-new ((obj dma-buffer) (size int))
+(defun dma-buffer-inplace-new ((arg0 dma-buffer) (arg1 int))
   "Create a dma-buffer in-place. Does not set the type of the dma-buffer object."
-  (set! (-> obj base) (-> obj data))
-  (set! (-> obj allocated-length) size)
-  obj
+  (set! (-> arg0 base) (-> arg0 data))
+  (set! (-> arg0 allocated-length) arg1)
+  arg0
   )
 
-(defmethod length dma-buffer ((obj dma-buffer))
+(defmethod length ((this dma-buffer))
   "Get the amount of data the buffer can hold, in bytes."
-  (-> obj allocated-length)
+  (-> this allocated-length)
   )
 
-(defmethod asize-of dma-buffer ((obj dma-buffer))
+(defmethod asize-of ((this dma-buffer))
   "Get the size in memory of the object"
-  (+ (+ (-> obj allocated-length) -4) (the-as int (-> dma-buffer size)))
+  (+ (-> this allocated-length) -4 (-> dma-buffer size))
   )
 
 (defun dma-buffer-length ((arg0 dma-buffer))
   "Get length used in quadwords, rounded down"
-  (shr (+ (&- (-> arg0 base) (-> arg0 data)) 15) 4)
+  (shr (+ (&- (-> arg0 base) (the-as uint (-> arg0 data))) 15) 4)
   )
 
 (defun dma-buffer-free ((arg0 dma-buffer))
   "Get the number of free quadwords, rounded down, between base and end pointers."
-  (shr (+ (&- (-> arg0 end) (-> arg0 base)) 15) 4)
+  (shr (+ (&- (-> arg0 end) (the-as uint (-> arg0 base))) 15) 4)
   )
-
 
 (defmacro dma-buffer-add-base-type (buf pkt dma-type &rest body)
   "Base macro for adding stuff to a dma-buffer. Don't use this directly!"
@@ -154,7 +141,6 @@
         )
     )
   )
-
 
 (defmacro dma-buffer-add-cnt-vif2 (buf qwc vif0 vif1)
   "Add a dma-packet to a dma-buffer.
@@ -254,9 +240,9 @@
                     (new 'static 'vif-tag :cmd (vif-cmd mpg) :num (shl qwc-now 1) :imm origin)
                     )
         ;; increment by qwc-now quadwords.
-        (&+! func-ptr (shl qwc-now 4))
+        (&+! func-ptr (* qwc-now 16))
         (set! qlen (- qlen qwc-now))
-        (+! origin (shl qwc-now 1))
+        (+! origin (* qwc-now 2))
         )
       )
     )
@@ -266,29 +252,20 @@
 
 (defun dma-buffer-send ((chan dma-bank) (buf dma-buffer))
   "Send the DMA buffer! DOES NOT TRANSFER TAG, you probably want dma-buffer-send-chain instead."
-  (when (< (-> buf allocated-length)
-           (&- (-> buf base) (-> buf data))
-           )
+  (when (< (-> buf allocated-length) (&- (-> buf base) (-> buf data)))
     ;; oops. we overflowed the DMA buffer. die.
     (segfault)
     )
-  (dma-send chan
-   (the-as uint (-> buf data))
-   (the-as uint (dma-buffer-length buf))
-   )
+  (dma-send chan (the-as uint (-> buf data)) (the-as uint (dma-buffer-length buf)))
   )
 
 (defun dma-buffer-send-chain ((chan dma-bank-source) (buf dma-buffer))
   "Send the DMA buffer! Sends the tags"
-  (when (< (-> buf allocated-length)
-           (&- (-> buf base) (-> buf data))
-           )
+  (when (< (-> buf allocated-length) (&- (-> buf base) (-> buf data)))
     ;; oops. we overflowed the DMA buffer. die.
     (segfault)
     )
-  (dma-send-chain chan
-   (the-as uint (-> buf data))
-   )
+  (dma-send-chain chan (the-as uint (-> buf data)))
   )
 
 (defmacro dma-buffer-add-gs-set-flusha (buf &rest reg-list)
@@ -471,5 +448,3 @@
       )
     )
   )
-
-

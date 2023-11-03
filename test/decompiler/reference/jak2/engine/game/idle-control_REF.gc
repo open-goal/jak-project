@@ -8,24 +8,21 @@
    (param0  uint8  :offset  16 :size   8)
    (param1  uint8  :offset  24 :size   8)
    )
-  :method-count-assert 9
-  :size-assert         #x4
-  :flag-assert         #x900000004
   )
 
 ;; definition for method 3 of type idle-control-frame
-(defmethod inspect idle-control-frame ((obj idle-control-frame))
+(defmethod inspect ((this idle-control-frame))
   (local-vars (a2-4 int))
-  (when (not obj)
-    (set! obj obj)
+  (when (not this)
+    (set! this this)
     (goto cfg-11)
     )
-  (format #t "[~8x] ~A~%" obj 'idle-control-frame)
+  (format #t "[~8x] ~A~%" this 'idle-control-frame)
   (let ((t9-1 format)
         (a0-2 #t)
         (a1-1 "~1Tcommand: #x~X : ~S~%")
-        (a2-1 (-> obj command))
-        (v1-4 (-> obj command))
+        (a2-1 (-> this command))
+        (v1-4 (-> this command))
         )
     (t9-1 a0-2 a1-1 a2-1 (cond
                            ((= v1-4 (ic-cmd play))
@@ -43,105 +40,91 @@
                            )
           )
     )
-  (format #t "~1Tanim: ~D~%" (-> obj anim))
-  (format #t "~1Tparam0: ~D~%" (-> obj param0))
+  (format #t "~1Tanim: ~D~%" (-> this anim))
+  (format #t "~1Tparam0: ~D~%" (-> this param0))
   (let ((t9-4 format)
         (a0-5 #t)
         (a1-4 "~1Tparam1: ~D~%")
         )
-    (shift-arith-right-32 a2-4 obj 24)
+    (shift-arith-right-32 a2-4 this 24)
     (t9-4 a0-5 a1-4 a2-4)
     )
   (label cfg-11)
-  obj
+  this
   )
 
 ;; definition of type idle-control
 (deftype idle-control (structure)
-  ((anim    (pointer idle-control-frame)  :offset-assert   0)
-   (current (pointer idle-control-frame)  :offset-assert   4)
-   (counter int32                         :offset-assert   8)
-   (target  int32                         :offset-assert  12)
+  ((anim     (pointer idle-control-frame))
+   (current  (pointer idle-control-frame))
+   (counter  int32)
+   (target   int32)
    )
-  :method-count-assert 11
-  :size-assert         #x10
-  :flag-assert         #xb00000010
   (:methods
-    (idle-control-method-9 (_type_ (pointer idle-control-frame)) none 9)
-    (idle-control-method-10 (_type_ process-drawable) none :behavior process-drawable 10)
+    (idle-control-method-9 (_type_ (pointer idle-control-frame)) none)
+    (idle-control-method-10 (_type_ process-drawable) none :behavior process-drawable)
     )
   )
 
 ;; definition for method 3 of type idle-control
-(defmethod inspect idle-control ((obj idle-control))
-  (when (not obj)
-    (set! obj obj)
+(defmethod inspect ((this idle-control))
+  (when (not this)
+    (set! this this)
     (goto cfg-4)
     )
-  (format #t "[~8x] ~A~%" obj 'idle-control)
-  (format #t "~1Tanim: #x~X~%" (-> obj anim))
-  (format #t "~1Tcurrent: #x~X~%" (-> obj current))
-  (format #t "~1Tcounter: ~D~%" (-> obj counter))
-  (format #t "~1Ttarget: ~D~%" (-> obj target))
+  (format #t "[~8x] ~A~%" this 'idle-control)
+  (format #t "~1Tanim: #x~X~%" (-> this anim))
+  (format #t "~1Tcurrent: #x~X~%" (-> this current))
+  (format #t "~1Tcounter: ~D~%" (-> this counter))
+  (format #t "~1Ttarget: ~D~%" (-> this target))
   (label cfg-4)
-  obj
+  this
   )
 
 ;; definition for method 9 of type idle-control
 ;; WARN: Return type mismatch idle-control vs none.
-(defmethod idle-control-method-9 idle-control ((obj idle-control) (arg0 (pointer idle-control-frame)))
-  (set! (-> obj anim) arg0)
-  (set! (-> obj current) arg0)
-  (set! (-> obj counter) 0)
-  (set! (-> obj target) 0)
+(defmethod idle-control-method-9 ((this idle-control) (arg0 (pointer idle-control-frame)))
+  (set! (-> this anim) arg0)
+  (set! (-> this current) arg0)
+  (set! (-> this counter) 0)
+  (set! (-> this target) 0)
   (none)
   )
 
 ;; definition for method 10 of type idle-control
 ;; WARN: Return type mismatch int vs none.
 ;; WARN: Function (method 10 idle-control) has a return type of none, but the expression builder found a return statement.
-(defmethod idle-control-method-10 idle-control ((obj idle-control) (arg0 process-drawable))
+(defmethod idle-control-method-10 ((this idle-control) (arg0 process-drawable))
   (local-vars (a1-1 int))
-  (when (nonzero? (-> obj anim))
+  (when (nonzero? (-> this anim))
     (let ((s5-0 self))
       (set! self arg0)
       (loop
-        (let ((s4-0 (-> obj current 0)))
+        (let ((s4-0 (-> this current 0)))
           (case (-> s4-0 command)
             (((ic-cmd play))
              (if (< (-> s4-0 anim) 0)
                  (return #f)
                  )
-             (when (zero? (-> obj target))
+             (when (zero? (-> this target))
                (let ((t9-0 rand-vu-int-range)
                      (a0-3 (-> s4-0 param0))
                      )
                  (shift-arith-right-32 a1-1 s4-0 24)
-                 (set! (-> obj target) (t9-0 (the-as int a0-3) a1-1))
+                 (set! (-> this target) (t9-0 (the-as int a0-3) a1-1))
                  )
                (ja :group! (-> (the-as process-drawable self) draw art-group data (-> s4-0 anim)) :num! min)
                (return #f)
                )
-             (ja :group! (-> (the-as process-drawable self) draw art-group data (-> s4-0 anim))
-                 :num! (seek!
-                   (the float
-                        (+ (-> (the-as art-joint-anim (-> (the-as process-drawable self) draw art-group data (-> s4-0 anim)))
-                               frames
-                               num-frames
-                               )
-                           -1
-                           )
-                        )
-                   )
-                 )
+             (ja :group! (-> (the-as process-drawable self) draw art-group data (-> s4-0 anim)) :num! (seek!))
              (cond
                ((ja-done? 0)
-                (+! (-> obj counter) 1)
+                (+! (-> this counter) 1)
                 (cond
-                  ((>= (-> obj counter) (-> obj target))
-                   (set! (-> obj current) (&-> (-> obj current) 1))
-                   (set! (-> obj counter) 0)
-                   (set! (-> obj target) 0)
+                  ((>= (-> this counter) (-> this target))
+                   (set! (-> this current) (&-> (-> this current) 1))
+                   (set! (-> this counter) 0)
+                   (set! (-> this target) 0)
                    0
                    )
                   (else
@@ -157,15 +140,15 @@
              )
             (((ic-cmd push))
              (ja-channel-push! 1 (the-as time-frame (-> s4-0 param0)))
-             (set! (-> obj current) (&-> (-> obj current) 1))
-             (set! (-> obj counter) 0)
-             (set! (-> obj target) 0)
+             (set! (-> this current) (&-> (-> this current) 1))
+             (set! (-> this counter) 0)
+             (set! (-> this target) 0)
              0
              )
             (((ic-cmd restart))
-             (set! (-> obj current) (-> obj anim))
-             (set! (-> obj counter) 0)
-             (set! (-> obj target) 0)
+             (set! (-> this current) (-> this anim))
+             (set! (-> this counter) 0)
+             (set! (-> this target) 0)
              0
              )
             )
@@ -177,7 +160,3 @@
   0
   (none)
   )
-
-
-
-

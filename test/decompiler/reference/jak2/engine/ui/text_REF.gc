@@ -36,60 +36,59 @@
 (kmemclose)
 
 ;; definition for method 7 of type game-text-info
-(defmethod relocate game-text-info ((obj game-text-info) (arg0 int))
+(defmethod relocate ((this game-text-info) (arg0 int))
   (let ((v1-1 (-> *level* loading-level)))
     (when v1-1
-      (set! (-> v1-1 loaded-text-info (-> v1-1 loaded-text-info-count)) obj)
+      (set! (-> v1-1 loaded-text-info (-> v1-1 loaded-text-info-count)) this)
       (+! (-> v1-1 loaded-text-info-count) 1)
       )
     )
-  obj
+  this
   )
 
 ;; definition for method 4 of type game-text-info
-(defmethod length game-text-info ((obj game-text-info))
-  (-> obj length)
+(defmethod length ((this game-text-info))
+  (-> this length)
   )
 
 ;; definition for method 5 of type game-text-info
 ;; WARN: Return type mismatch uint vs int.
-(defmethod asize-of game-text-info ((obj game-text-info))
-  (the-as int (+ (-> obj type size) (* (-> obj length) 8)))
+(defmethod asize-of ((this game-text-info))
+  (the-as int (+ (-> this type size) (* (-> this length) 8)))
   )
 
 ;; definition for method 3 of type game-text-info
-;; INFO: this function exists in multiple non-identical object files
-(defmethod inspect game-text-info ((obj game-text-info))
-  (format #t "[~8x] ~A~%" obj (-> obj type))
-  (format #t "~Tlength: ~D~%" (-> obj length))
-  (format #t "~Tlanguage-id: ~D~%" (-> obj language-id))
-  (format #t "~Tgroup-name: ~A~%" (-> obj group-name))
-  (format #t "~Tdata[~D]: @ #x~X~%" (-> obj length) (-> obj data))
-  (dotimes (s5-0 (-> obj length))
-    (format #t "~T  [~D] #x~X ~A~%" s5-0 (-> obj data s5-0 id) (-> obj data s5-0 text))
+(defmethod inspect ((this game-text-info))
+  (format #t "[~8x] ~A~%" this (-> this type))
+  (format #t "~Tlength: ~D~%" (-> this length))
+  (format #t "~Tlanguage-id: ~D~%" (-> this language-id))
+  (format #t "~Tgroup-name: ~A~%" (-> this group-name))
+  (format #t "~Tdata[~D]: @ #x~X~%" (-> this length) (-> this data))
+  (dotimes (s5-0 (-> this length))
+    (format #t "~T  [~D] #x~X ~A~%" s5-0 (-> this data s5-0 id) (-> this data s5-0 text))
     )
-  obj
+  this
   )
 
 ;; definition for method 8 of type game-text-info
-(defmethod mem-usage game-text-info ((obj game-text-info) (arg0 memory-usage-block) (arg1 int))
+(defmethod mem-usage ((this game-text-info) (arg0 memory-usage-block) (arg1 int))
   (set! (-> arg0 length) (max 84 (-> arg0 length)))
   (set! (-> arg0 data 83 name) "string")
   (+! (-> arg0 data 83 count) 1)
-  (let ((v1-6 (asize-of obj)))
+  (let ((v1-6 (asize-of this)))
     (+! (-> arg0 data 83 used) v1-6)
     (+! (-> arg0 data 83 total) (logand -16 (+ v1-6 15)))
     )
-  (dotimes (s4-0 (-> obj length))
+  (dotimes (s4-0 (-> this length))
     (set! (-> arg0 length) (max 84 (-> arg0 length)))
     (set! (-> arg0 data 83 name) "string")
     (+! (-> arg0 data 83 count) 1)
-    (let ((v1-18 (asize-of (-> obj data s4-0 text))))
+    (let ((v1-18 (asize-of (-> this data s4-0 text))))
       (+! (-> arg0 data 83 used) v1-18)
       (+! (-> arg0 data 83 total) (logand -16 (+ v1-18 15)))
       )
     )
-  obj
+  this
   )
 
 ;; definition for function convert-korean-text
@@ -182,9 +181,9 @@
   )
 
 ;; definition for method 9 of type game-text-info
-(defmethod lookup-text! game-text-info ((obj game-text-info) (arg0 text-id) (arg1 symbol))
+(defmethod lookup-text! ((this game-text-info) (arg0 text-id) (arg1 symbol))
   (cond
-    ((= obj #f)
+    ((= this #f)
      (cond
        (arg1
          (the-as string #f)
@@ -197,12 +196,12 @@
      )
     (else
       (let* ((a1-2 0)
-             (a3-0 (+ (-> obj length) 1))
+             (a3-0 (+ (-> this length) 1))
              (v1-2 (/ (+ a1-2 a3-0) 2))
              )
         (let ((t0-0 -1))
-          (while (and (!= (-> obj data v1-2 id) arg0) (!= v1-2 t0-0))
-            (if (< (the-as uint arg0) (the-as uint (-> obj data v1-2 id)))
+          (while (and (!= (-> this data v1-2 id) arg0) (!= v1-2 t0-0))
+            (if (< (the-as uint arg0) (the-as uint (-> this data v1-2 id)))
                 (set! a3-0 v1-2)
                 (set! a1-2 v1-2)
                 )
@@ -211,7 +210,7 @@
             )
           )
         (cond
-          ((!= (-> obj data v1-2 id) arg0)
+          ((!= (-> this data v1-2 id) arg0)
            (cond
              (arg1
                (the-as string #f)
@@ -222,11 +221,11 @@
                )
              )
            )
-          ((= (-> obj language-id) 6)
-           (convert-korean-text (-> obj data v1-2 text))
+          ((= (-> this language-id) 6)
+           (convert-korean-text (-> this data v1-2 text))
            )
           (else
-            (-> obj data v1-2 text)
+            (-> this data v1-2 text)
             )
           )
         )
@@ -235,11 +234,11 @@
   )
 
 ;; definition for method 23 of type level
-(defmethod lookup-text level ((obj level) (arg0 text-id) (arg1 symbol))
+(defmethod lookup-text ((this level) (arg0 text-id) (arg1 symbol))
   (let ((v1-0 *common-text*))
-    (dotimes (a3-0 (-> obj loaded-text-info-count))
-      (if (= (-> obj loaded-text-info a3-0 language-id) (-> *setting-control* user-current language))
-          (set! v1-0 (-> obj loaded-text-info a3-0))
+    (dotimes (a3-0 (-> this loaded-text-info-count))
+      (if (= (-> this loaded-text-info a3-0 language-id) (-> *setting-control* user-current language))
+          (set! v1-0 (-> this loaded-text-info a3-0))
           )
       )
     (lookup-text! v1-0 arg0 arg1)
@@ -403,7 +402,7 @@ in a single text group and file."
       (if (logtest? (-> arg2 flags) (font-flags middle))
           (+! (-> arg2 origin x) (* 0.5 (- f26-0 f0-1)))
           )
-      (if (logtest? (-> arg2 flags) (font-flags left))
+      (if (logtest? (-> arg2 flags) (font-flags middle-vert))
           (+! (-> arg2 origin y) (* 0.5 (- f30-0 f1-2)))
           )
       (let ((v1-10 arg2))
@@ -516,8 +515,8 @@ in a single text group and file."
      (set! sv-20 (-> arg1 origin y))
      (set! sv-24 (-> arg1 flags))
      (set! sv-28 (-> arg1 color))
-     (when (logtest? (-> arg1 flags) (font-flags left))
-       (logclear! (-> arg1 flags) (font-flags left))
+     (when (logtest? (-> arg1 flags) (font-flags middle-vert))
+       (logclear! (-> arg1 flags) (font-flags middle-vert))
        (+! (-> arg1 origin y)
            (the float (the int (* 0.5 (- (-> arg1 height) (print-game-text arg0 arg1 #t 44 (bucket-id progress))))))
            )

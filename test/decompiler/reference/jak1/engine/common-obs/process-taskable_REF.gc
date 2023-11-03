@@ -3,8 +3,8 @@
 
 ;; definition for method 52 of type process-taskable
 ;; INFO: Return type mismatch int vs none.
-(defmethod process-taskable-method-52 process-taskable ((obj process-taskable))
-  (let ((v1-1 (-> obj draw shadow-ctrl)))
+(defmethod process-taskable-method-52 ((this process-taskable))
+  (let ((v1-1 (-> this draw shadow-ctrl)))
     (when v1-1
       (let ((a0-1 v1-1))
         (set! (-> a0-1 settings bot-plane w) (- -12288.0))
@@ -19,31 +19,31 @@
 
 ;; definition for method 9 of type gui-query
 ;; INFO: Return type mismatch int vs none.
-(defmethod init! gui-query ((obj gui-query) (arg0 string) (arg1 int) (arg2 int) (arg3 int) (arg4 symbol) (arg5 string))
-  (set! (-> obj x-position) arg1)
-  (set! (-> obj y-position) arg2)
-  (set! (-> obj message-space) arg3)
-  (set! (-> obj only-allow-cancel) arg4)
-  (set! (-> obj message) arg0)
-  (set! (-> obj decision) 'undecided)
-  (set! (-> obj no-msg) arg5)
+(defmethod init! ((this gui-query) (arg0 string) (arg1 int) (arg2 int) (arg3 int) (arg4 symbol) (arg5 string))
+  (set! (-> this x-position) arg1)
+  (set! (-> this y-position) arg2)
+  (set! (-> this message-space) arg3)
+  (set! (-> this only-allow-cancel) arg4)
+  (set! (-> this message) arg0)
+  (set! (-> this decision) 'undecided)
+  (set! (-> this no-msg) arg5)
   0
   (none)
   )
 
 ;; definition for method 10 of type gui-query
-(defmethod get-response gui-query ((obj gui-query))
+(defmethod get-response ((this gui-query))
   (kill-current-level-hint '() '(sidekick voicebox stinger) 'exit)
   (level-hint-surpress!)
   (hide-hud)
   (when (hud-hidden?)
-    (when (-> obj message)
+    (when (-> this message)
       (let ((a1-2 (new
                     'stack
                     'font-context
                     *font-default-matrix*
-                    (-> obj x-position)
-                    (-> obj y-position)
+                    (-> this x-position)
+                    (-> this y-position)
                     0.0
                     (font-color default)
                     (font-flags shadow kerning)
@@ -51,7 +51,7 @@
                   )
             )
         (let ((v1-4 a1-2))
-          (set! (-> v1-4 width) (the float (- 512 (-> obj x-position))))
+          (set! (-> v1-4 width) (the float (- 512 (-> this x-position))))
           )
         (let ((v1-5 a1-2))
           (set! (-> v1-5 height) (the float 40))
@@ -59,23 +59,23 @@
         (let ((v1-6 a1-2))
           (set! (-> v1-6 scale) 0.9)
           )
-        (set! (-> a1-2 flags) (font-flags shadow kerning left large))
-        (print-game-text (-> obj message) a1-2 #f 128 22)
+        (set! (-> a1-2 flags) (font-flags shadow kerning middle-vert large))
+        (print-game-text (-> this message) a1-2 #f 128 22)
         )
       )
     (cond
-      ((-> obj only-allow-cancel)
-       (when (-> obj no-msg)
+      ((-> this only-allow-cancel)
+       (when (-> this no-msg)
          (clear *temp-string*)
-         (format *temp-string* "; = ~S" (-> obj no-msg))
+         (format *temp-string* "; = ~S" (-> this no-msg))
          (let* ((s4-0 (-> *display* frames (-> *display* on-screen) frame global-buf))
                 (s5-0 (-> s4-0 base))
                 )
            (draw-string-xy
              *temp-string*
              s4-0
-             (-> obj x-position)
-             (+ (-> obj y-position) 5 (-> obj message-space))
+             (-> this x-position)
+             (+ (-> this y-position) 5 (-> this message-space))
              (font-color default)
              (font-flags shadow kerning large)
              )
@@ -103,8 +103,8 @@
           (draw-string-xy
             (lookup-text! *common-text* (text-id confirm) #f)
             s4-1
-            (-> obj x-position)
-            (+ (-> obj y-position) 5 (-> obj message-space))
+            (-> this x-position)
+            (+ (-> this y-position) 5 (-> this message-space))
             (font-color default)
             (font-flags shadow kerning large)
             )
@@ -126,74 +126,68 @@
         )
       )
     (cond
-      ((!= (-> obj decision) 'undecided)
+      ((!= (-> this decision) 'undecided)
        )
-      ((and (cpad-pressed? 0 x) (not (-> obj only-allow-cancel)))
+      ((and (cpad-pressed? 0 x) (not (-> this only-allow-cancel)))
        (logclear! (-> *cpad-list* cpads 0 button0-abs 0) (pad-buttons x))
        (logclear! (-> *cpad-list* cpads 0 button0-rel 0) (pad-buttons x))
-       (set! (-> obj decision) 'yes)
+       (set! (-> this decision) 'yes)
        )
       ((cpad-pressed? 0 triangle)
        (logclear! (-> *cpad-list* cpads 0 button0-abs 0) (pad-buttons triangle))
        (logclear! (-> *cpad-list* cpads 0 button0-rel 0) (pad-buttons triangle))
-       (set! (-> obj decision) 'no)
+       (set! (-> this decision) 'no)
        )
       )
     )
-  (-> obj decision)
+  (-> this decision)
   )
 
 ;; definition for method 7 of type process-taskable
 ;; INFO: Return type mismatch process-drawable vs process-taskable.
-(defmethod relocate process-taskable ((obj process-taskable) (arg0 int))
-  (the-as process-taskable ((method-of-type process-drawable relocate) obj arg0))
+(defmethod relocate ((this process-taskable) (arg0 int))
+  (the-as process-taskable ((method-of-type process-drawable relocate) this arg0))
   )
 
 ;; definition for method 46 of type process-taskable
 ;; INFO: Return type mismatch int vs none.
-(defmethod process-taskable-method-46 process-taskable ((obj process-taskable))
-  (when (nonzero? (-> obj sound-flava))
-    (let ((s5-1 (vector-!
-                  (new 'stack-no-clear 'vector)
-                  (target-pos 0)
-                  (the-as vector (-> obj root-override root-prim prim-core))
-                  )
-                )
+(defmethod process-taskable-method-46 ((this process-taskable))
+  (when (nonzero? (-> this sound-flava))
+    (let ((s5-1
+            (vector-! (new 'stack-no-clear 'vector) (target-pos 0) (the-as vector (-> this root root-prim prim-core)))
+            )
           )
       (set! (-> s5-1 y) (* 4.0 (-> s5-1 y)))
       (cond
         ((< (vector-length s5-1) 102400.0)
-         (when (not (-> obj have-flava))
-           (set! (-> obj have-flava) #t)
-           (set-setting! 'sound-flava #f 20.0 (-> obj sound-flava))
+         (when (not (-> this have-flava))
+           (set! (-> this have-flava) #t)
+           (set-setting! 'sound-flava #f 20.0 (-> this sound-flava))
            )
          )
-        ((-> obj have-flava)
+        ((-> this have-flava)
          (remove-setting! 'sound-flava)
-         (set! (-> obj have-flava) #f)
+         (set! (-> this have-flava) #f)
          )
         )
       )
     )
-  (when (-> obj music)
-    (let ((s5-3 (vector-!
-                  (new 'stack-no-clear 'vector)
-                  (target-pos 0)
-                  (the-as vector (-> obj root-override root-prim prim-core))
-                  )
-                )
+  (when (-> this music)
+    (let ((s5-3
+            (vector-! (new 'stack-no-clear 'vector) (target-pos 0) (the-as vector (-> this root root-prim prim-core)))
+            )
           )
       (set! (-> s5-3 y) (* 4.0 (-> s5-3 y)))
       (cond
         ((< (vector-length s5-3) 102400.0)
-         (when (not (-> obj have-music))
-           (set! (-> obj have-music) #t)
-           (set-setting! 'music (-> obj music) 0.0 0)
+         (when (not (-> this have-music))
+           (set! (-> this have-music) #t)
+           (set-setting! 'music (-> this music) 0.0 0)
            )
          )
-        ((-> obj have-music)
+        ((-> this have-music)
          (remove-setting! 'music)
-         (set! (-> obj have-music) #f)
+         (set! (-> this have-music) #f)
          )
         )
       )
@@ -204,25 +198,25 @@
 
 ;; definition for method 31 of type process-taskable
 ;; INFO: Return type mismatch art-joint-anim vs art-element.
-(defmethod get-art-elem process-taskable ((obj process-taskable))
-  (the-as art-element (if (> (-> obj skel active-channels) 0)
-                          (-> obj skel root-channel 0 frame-group)
+(defmethod get-art-elem ((this process-taskable))
+  (the-as art-element (if (> (-> this skel active-channels) 0)
+                          (-> this skel root-channel 0 frame-group)
                           )
           )
   )
 
 ;; definition for method 32 of type process-taskable
 ;; INFO: Return type mismatch symbol vs basic.
-(defmethod play-anim! process-taskable ((obj process-taskable) (arg0 symbol))
+(defmethod play-anim! ((this process-taskable) (arg0 symbol))
   (the-as basic #f)
   )
 
 ;; definition for method 33 of type process-taskable
 ;; INFO: Return type mismatch int vs none.
-(defmethod process-taskable-method-33 process-taskable ((obj process-taskable))
-  (let ((s5-0 (play-anim! obj #f)))
+(defmethod process-taskable-method-33 ((this process-taskable))
+  (let ((s5-0 (play-anim! this #f)))
     (if (type-type? (-> s5-0 type) spool-anim)
-        (spool-push *art-control* (-> (the-as spool-anim s5-0) name) 0 obj -99.0)
+        (spool-push *art-control* (-> (the-as spool-anim s5-0) name) 0 this -99.0)
         )
     )
   0
@@ -230,8 +224,8 @@
   )
 
 ;; definition for method 51 of type process-taskable
-(defmethod close-anim-file! process-taskable ((obj process-taskable))
-  (let* ((gp-0 (play-anim! obj #f))
+(defmethod close-anim-file! ((this process-taskable))
+  (let* ((gp-0 (play-anim! this #f))
          (v1-2 (if (and (nonzero? gp-0) (type-type? (-> gp-0 type) spool-anim))
                    gp-0
                    )
@@ -245,16 +239,16 @@
 
 ;; definition for method 34 of type process-taskable
 ;; INFO: Return type mismatch symbol vs spool-anim.
-(defmethod get-accept-anim process-taskable ((obj process-taskable) (arg0 symbol))
+(defmethod get-accept-anim ((this process-taskable) (arg0 symbol))
   (the-as spool-anim #f)
   )
 
 ;; definition for method 35 of type process-taskable
 ;; INFO: Return type mismatch int vs none.
-(defmethod push-accept-anim process-taskable ((obj process-taskable))
-  (let ((s5-0 (get-accept-anim obj #f)))
+(defmethod push-accept-anim ((this process-taskable))
+  (let ((s5-0 (get-accept-anim this #f)))
     (if (type-type? (-> s5-0 type) spool-anim)
-        (spool-push *art-control* (-> s5-0 name) 0 obj -99.0)
+        (spool-push *art-control* (-> s5-0 name) 0 this -99.0)
         )
     )
   0
@@ -263,16 +257,16 @@
 
 ;; definition for method 36 of type process-taskable
 ;; INFO: Return type mismatch symbol vs spool-anim.
-(defmethod get-reject-anim process-taskable ((obj process-taskable) (arg0 symbol))
+(defmethod get-reject-anim ((this process-taskable) (arg0 symbol))
   (the-as spool-anim #f)
   )
 
 ;; definition for method 37 of type process-taskable
 ;; INFO: Return type mismatch int vs none.
-(defmethod push-reject-anim process-taskable ((obj process-taskable))
-  (let ((s5-0 (get-reject-anim obj #f)))
+(defmethod push-reject-anim ((this process-taskable))
+  (let ((s5-0 (get-reject-anim this #f)))
     (if (type-type? (-> s5-0 type) spool-anim)
-        (spool-push *art-control* (-> s5-0 name) 0 obj -99.0)
+        (spool-push *art-control* (-> s5-0 name) 0 this -99.0)
         )
     )
   0
@@ -281,11 +275,11 @@
 
 ;; definition for method 38 of type process-taskable
 ;; INFO: Return type mismatch object vs none.
-(defmethod process-taskable-method-38 process-taskable ((obj process-taskable))
-  (if (nonzero? (-> obj cell-for-task))
-      (go (method-of-object obj give-cell))
+(defmethod process-taskable-method-38 ((this process-taskable))
+  (if (nonzero? (-> this cell-for-task))
+      (go (method-of-object this give-cell))
       )
-  (go (method-of-object obj release))
+  (go (method-of-object this release))
   (none)
   )
 
@@ -319,10 +313,9 @@
       )
     (process-taskable-method-33 self)
     ((-> self cur-trans-hook))
-    (none)
     )
   :code process-taskable-anim-loop
-  :post (the-as (function none :behavior process-taskable) ja-post)
+  :post ja-post
   )
 
 ;; failed to figure out what this is:
@@ -353,39 +346,34 @@
     (go-virtual release)
     (process-taskable-method-33 self)
     ((-> self cur-trans-hook))
-    (none)
     )
   :code process-taskable-anim-loop
-  :post (the-as (function none :behavior process-taskable) ja-post)
+  :post ja-post
   )
 
 ;; failed to figure out what this is:
 (defstate lose (process-taskable)
   :virtual #t
   :enter (behavior ()
-    (set! (-> self state-time) (-> *display* base-frame-counter))
-    (none)
+    (set-time! (-> self state-time))
     )
   :trans (behavior ()
-    (if (and (>= (- (-> *display* base-frame-counter) (-> self state-time)) (seconds 5))
-             (or (not *target*)
-                 (< 20480.0 (vector-vector-distance (-> self root-override trans) (-> *target* control trans)))
-                 )
+    (if (and (time-elapsed? (-> self state-time) (seconds 5))
+             (or (not *target*) (< 20480.0 (vector-vector-distance (-> self root trans) (-> *target* control trans))))
              )
         (go-virtual idle)
         )
     ((-> self cur-trans-hook))
-    (none)
     )
   :code process-taskable-anim-loop
-  :post (the-as (function none :behavior process-taskable) ja-post)
+  :post ja-post
   )
 
 ;; failed to figure out what this is:
 (defstate enter-playing (process-taskable)
   :virtual #t
   :code process-taskable-anim-loop
-  :post (the-as (function none :behavior process-taskable) ja-post)
+  :post ja-post
   )
 
 ;; definition for function process-taskable-play-anim-enter
@@ -515,12 +503,11 @@
 ;; failed to figure out what this is:
 (defstate play-accept (process-taskable)
   :virtual #t
-  :enter (the-as (function none :behavior process-taskable) process-taskable-play-anim-enter)
+  :enter process-taskable-play-anim-enter
   :exit process-taskable-play-anim-exit
   :trans (behavior ()
     (process-taskable-play-anim-trans)
     ((-> self cur-trans-hook))
-    (none)
     )
   :code (behavior ()
     (process-taskable-play-anim-code (the-as art-joint-anim (get-art-elem self)) (get-accept-anim self #t))
@@ -528,27 +515,24 @@
       (suspend)
       )
     (go-virtual enter-playing)
-    (none)
     )
-  :post (the-as (function none :behavior process-taskable) ja-post)
+  :post ja-post
   )
 
 ;; failed to figure out what this is:
 (defstate play-reject (process-taskable)
   :virtual #t
-  :enter (the-as (function none :behavior process-taskable) process-taskable-play-anim-enter)
+  :enter process-taskable-play-anim-enter
   :exit process-taskable-play-anim-exit
   :trans (behavior ()
     (process-taskable-play-anim-trans)
     ((-> self cur-trans-hook))
-    (none)
     )
   :code (behavior ()
     (process-taskable-play-anim-code (the-as art-joint-anim (get-art-elem self)) (get-reject-anim self #t))
     (go-virtual release)
-    (none)
     )
-  :post (the-as (function none :behavior process-taskable) ja-post)
+  :post ja-post
   )
 
 ;; failed to figure out what this is:
@@ -564,7 +548,6 @@
       #f
       (lookup-text! *common-text* (text-id quit) #f)
       )
-    (none)
     )
   :exit process-taskable-play-anim-exit
   :trans (behavior ()
@@ -596,20 +579,19 @@
     (push-reject-anim self)
     (set! *camera-look-through-other* 2)
     ((-> self cur-trans-hook))
-    (none)
     )
   :code process-taskable-anim-loop
-  :post (the-as (function none :behavior process-taskable) ja-post)
+  :post ja-post
   )
 
 ;; failed to figure out what this is:
 (defstate play-anim (process-taskable)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('shadow)
        (cond
-         ((-> event param 0)
+         ((-> block param 0)
           (let ((v0-0 (the-as object (-> self shadow-backup))))
             (set! (-> self draw shadow) (the-as shadow-geo v0-0))
             v0-0
@@ -624,16 +606,16 @@
       (('shadow-min-max)
        (let ((v1-5 (-> self draw shadow-ctrl)))
          (let ((a0-4 v1-5))
-           (set! (-> a0-4 settings bot-plane w) (- (the-as float (-> event param 0))))
+           (set! (-> a0-4 settings bot-plane w) (- (the-as float (-> block param 0))))
            )
          0
-         (set! (-> v1-5 settings top-plane w) (- (the-as float (-> event param 1))))
+         (set! (-> v1-5 settings top-plane w) (- (the-as float (-> block param 1))))
          )
        0
        )
       )
     )
-  :enter (the-as (function none :behavior process-taskable) process-taskable-play-anim-enter)
+  :enter process-taskable-play-anim-enter
   :exit process-taskable-play-anim-exit
   :trans (behavior ()
     (process-taskable-play-anim-trans)
@@ -643,14 +625,12 @@
           )
       )
     ((-> self cur-trans-hook))
-    (none)
     )
   :code (behavior ()
     (process-taskable-play-anim-code (the-as art-joint-anim (get-art-elem self)) (play-anim! self #t))
     (process-taskable-method-38 self)
-    (none)
     )
-  :post (the-as (function none :behavior process-taskable) ja-post)
+  :post ja-post
   )
 
 ;; definition for function process-taskable-clean-up-after-talking
@@ -663,12 +643,11 @@
   )
 
 ;; definition for method 39 of type process-taskable
-(defmethod should-display? process-taskable ((obj process-taskable))
+(defmethod should-display? ((this process-taskable))
   #t
   )
 
 ;; definition for function process-taskable-hide-handler
-;; INFO: Return type mismatch object vs none.
 (defbehavior process-taskable-hide-handler process-taskable ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
   (case arg2
     (('clone)
@@ -683,19 +662,18 @@
      (go-virtual hidden-other)
      )
     )
-  (none)
   )
 
 ;; definition for function process-taskable-hide-enter
 ;; INFO: Return type mismatch none vs int.
 (defbehavior process-taskable-hide-enter process-taskable ()
-  (set! (-> self state-time) (-> *display* base-frame-counter))
+  (set-time! (-> self state-time))
   (let ((v1-3 (-> self draw shadow-ctrl)))
     (logior! (-> v1-3 settings flags) (shadow-flags disable-draw))
     )
   0
   (process-taskable-clean-up-after-talking)
-  (clear-collide-with-as (-> self root-override))
+  (clear-collide-with-as (-> self root))
   (ja-channel-set! 0)
   (the-as int (ja-post))
   )
@@ -710,7 +688,7 @@
     (else
       (ja-channel-set! 1)
       (ja :group! (get-art-elem self))
-      (restore-collide-with-as (-> self root-override))
+      (restore-collide-with-as (-> self root))
       (process-entity-status! self (entity-perm-status bit-3) #t)
       (let ((v1-7 (-> self draw shadow-ctrl)))
         (logclear! (-> v1-7 settings flags) (shadow-flags disable-draw))
@@ -724,36 +702,29 @@
 ;; failed to figure out what this is:
 (defstate hidden (process-taskable)
   :virtual #t
-  :event (the-as
-    (function process int symbol event-message-block object :behavior process-taskable)
-    process-taskable-hide-handler
-    )
-  :enter (the-as (function none :behavior process-taskable) process-taskable-hide-enter)
+  :event process-taskable-hide-handler
+  :enter process-taskable-hide-enter
   :exit (behavior ()
     (process-taskable-hide-exit (= (-> self next-state name) 'hidden))
-    (none)
     )
   :trans (behavior ()
-    (if (>= (- (-> *display* base-frame-counter) (-> self state-time)) (seconds 1))
+    (if (time-elapsed? (-> self state-time) (seconds 1))
         (process-entity-status! self (entity-perm-status bit-3) #f)
         )
     (if (or (-> self been-kicked) (should-display? self))
         (go-virtual idle)
         )
-    (none)
     )
-  :code (the-as (function none :behavior process-taskable) anim-loop)
+  :code anim-loop
   )
 
 ;; definition for method 50 of type process-taskable
 ;; WARN: disable def twice: 4. This may happen when a cond (no else) is nested inside of another conditional, but it should be rare.
-(defmethod process-taskable-method-50 process-taskable ((obj process-taskable))
+(defmethod process-taskable-method-50 ((this process-taskable))
   (if *target*
-      (or (not *target*)
-          (< 245760.0 (vector-vector-distance (-> obj root-override trans) (-> *target* control trans)))
-          )
+      (or (not *target*) (< 245760.0 (vector-vector-distance (-> this root trans) (-> *target* control trans))))
       (< 60397978000.0
-         (vector-vector-distance-squared (the-as vector (-> obj root-override root-prim prim-core)) (camera-pos))
+         (vector-vector-distance-squared (the-as vector (-> this root root-prim prim-core)) (camera-pos))
          )
       )
   )
@@ -761,17 +732,13 @@
 ;; failed to figure out what this is:
 (defstate hidden-other (process-taskable)
   :virtual #t
-  :event (the-as
-    (function process int symbol event-message-block object :behavior process-taskable)
-    process-taskable-hide-handler
-    )
-  :enter (the-as (function none :behavior process-taskable) process-taskable-hide-enter)
+  :event process-taskable-hide-handler
+  :enter process-taskable-hide-enter
   :exit (behavior ()
     (process-taskable-hide-exit (= (-> self next-state name) 'hidden-other))
-    (none)
     )
   :trans (behavior ()
-    (if (>= (- (-> *display* base-frame-counter) (-> self state-time)) (seconds 1))
+    (if (time-elapsed? (-> self state-time) (seconds 1))
         (process-entity-status! self (entity-perm-status bit-3) #f)
         )
     (cond
@@ -785,19 +752,18 @@
            )
        )
       )
-    (none)
     )
-  :code (the-as (function none :behavior process-taskable) anim-loop)
+  :code anim-loop
   )
 
 ;; failed to figure out what this is:
 (defstate be-clone (process-taskable)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (the-as shadow-geo (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (the-as shadow-geo (case message
                          (('shadow)
                           (the-as shadow-geo (cond
-                                               ((-> event param 0)
+                                               ((-> block param 0)
                                                 (let ((v0-0 (-> self shadow-backup)))
                                                   (set! (-> self draw shadow) v0-0)
                                                   v0-0
@@ -813,10 +779,10 @@
                          (('shadow-min-max)
                           (let ((v1-5 (-> self draw shadow-ctrl)))
                             (let ((a0-5 v1-5))
-                              (set! (-> a0-5 settings bot-plane w) (- (the-as float (-> event param 0))))
+                              (set! (-> a0-5 settings bot-plane w) (- (the-as float (-> block param 0))))
                               )
                             0
-                            (set! (-> v1-5 settings top-plane w) (- (the-as float (-> event param 1))))
+                            (set! (-> v1-5 settings top-plane w) (- (the-as float (-> block param 1))))
                             )
                           (the-as shadow-geo 0)
                           )
@@ -834,44 +800,40 @@
     (logior! (-> self skel status) (janim-status blerc))
     (logclear! (-> self mask) (process-mask actor-pause))
     (set-vector! (-> self draw bounds) 0.0 (-> self draw-bounds-y-offset) 0.0 (-> self draw bounds w))
-    (none)
     )
   :exit (behavior ()
     (logclear! (-> self skel status) (janim-status blerc spool))
     (logior! (-> self mask) (process-mask actor-pause))
     (let ((v1-6 (-> self entity extra trans)))
       (if v1-6
-          (set! (-> self root-override trans quad) (-> v1-6 quad))
+          (set! (-> self root trans quad) (-> v1-6 quad))
           )
       )
     (ja-channel-set! 0)
-    (none)
     )
   :trans (behavior ()
     (draw-npc-shadow self)
     ((-> self cur-trans-hook))
-    (none)
     )
   :code (behavior ((arg0 handle))
     (clone-anim arg0 (-> self center-joint-index) #t "")
     (format #t "ERROR<GMJ>: handle invalid while ~S is cloning~%" (-> self name))
     (go-virtual hidden)
-    (none)
     )
   )
 
 ;; definition for method 47 of type process-taskable
-(defmethod target-above-threshold? process-taskable ((obj process-taskable))
+(defmethod target-above-threshold? ((this process-taskable))
   #t
   )
 
 ;; failed to figure out what this is:
 (defstate idle (process-taskable)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
     (the-as
-      object
-      (case event-type
+      symbol
+      (case message
         (('attack)
          (the-as
            symbol
@@ -884,18 +846,13 @@
            )
          )
         (('touch)
-         (the-as symbol (send-shove-back
-                          (-> self root-override)
-                          proc
-                          (the-as touching-shapes-entry (-> event param 0))
-                          0.7
-                          6144.0
-                          16384.0
-                          )
-                 )
+         (the-as
+           symbol
+           (send-shove-back (-> self root) proc (the-as touching-shapes-entry (-> block param 0)) 0.7 6144.0 16384.0)
+           )
          )
         (('clone)
-         (the-as symbol (go-virtual be-clone (the-as handle (-> event param 0))))
+         (the-as symbol (go-virtual be-clone (the-as handle (-> block param 0))))
          )
         (('play-anim)
          (logclear! (-> self mask) (process-mask actor-pause))
@@ -911,9 +868,8 @@
       )
     )
   :enter (behavior ()
-    (set! (-> self state-time) (-> *display* base-frame-counter))
+    (set-time! (-> self state-time))
     (process-taskable-clean-up-after-talking)
-    (none)
     )
   :exit (behavior ()
     (cond
@@ -930,10 +886,9 @@
         (apply-settings *setting-control*)
         )
       )
-    (none)
     )
   :trans (behavior ()
-    (when (>= (- (-> *display* base-frame-counter) (-> self state-time)) (seconds 0.2))
+    (when (time-elapsed? (-> self state-time) (seconds 0.2))
       (logior! (-> self mask) (process-mask actor-pause))
       (process-entity-status! self (entity-perm-status bit-3) #f)
       )
@@ -951,10 +906,8 @@
                         (not (logtest? (-> *target* control status) (cshape-moving-flags onsurf)))
                         )
                    )
-              (< (-> (target-pos 0) y) (+ 8192.0 (-> self root-override root-prim prim-core world-sphere y)))
-              (< (vector-vector-distance (target-pos 0) (the-as vector (-> self root-override root-prim prim-core)))
-                 32768.0
-                 )
+              (< (-> (target-pos 0) y) (+ 8192.0 (-> self root root-prim prim-core world-sphere y)))
+              (< (vector-vector-distance (target-pos 0) (the-as vector (-> self root root-prim prim-core))) 32768.0)
               (= (-> *level* loading-level) (-> *level* level-default))
               (not (movie?))
               (not (level-hint-displayed?))
@@ -989,7 +942,7 @@
                 (let ((v1-59 gp-1))
                   (set! (-> v1-59 scale) 0.9)
                   )
-                (set! (-> gp-1 flags) (font-flags shadow kerning left large))
+                (set! (-> gp-1 flags) (font-flags shadow kerning middle-vert large))
                 (print-game-text (lookup-text! *common-text* (-> self talk-message) #f) gp-1 #f 128 22)
                 )
               (when (and (cpad-pressed? 0 circle) (process-grab? *target*))
@@ -1018,7 +971,6 @@
       (go-virtual play-anim)
       )
     ((-> self cur-trans-hook))
-    (none)
     )
   :code process-taskable-anim-loop
   :post (behavior ()
@@ -1033,14 +985,13 @@
         )
       )
     (transform-post)
-    (none)
     )
   )
 
 ;; definition for method 41 of type process-taskable
 ;; INFO: Return type mismatch int vs none.
-(defmethod initialize-collision process-taskable ((obj process-taskable) (arg0 int) (arg1 vector))
-  (let ((s5-0 (new 'process 'collide-shape obj (collide-list-enum hit-by-player))))
+(defmethod initialize-collision ((this process-taskable) (arg0 int) (arg1 vector))
+  (let ((s5-0 (new 'process 'collide-shape this (collide-list-enum hit-by-player))))
     (let ((s4-0 (new 'process 'collide-shape-prim-sphere s5-0 (the-as uint 0))))
       (set! (-> s4-0 prim-core collide-as) (collide-kind enemy))
       (set! (-> s4-0 collide-with) (collide-kind target))
@@ -1052,7 +1003,7 @@
       )
     (set! (-> s5-0 nav-radius) (* 0.75 (-> s5-0 root-prim local-sphere w)))
     (backup-collide-with-as s5-0)
-    (set! (-> obj root-override) s5-0)
+    (set! (-> this root) s5-0)
     )
   0
   (none)
@@ -1060,53 +1011,53 @@
 
 ;; definition for method 40 of type process-taskable
 ;; INFO: Return type mismatch int vs none.
-(defmethod process-taskable-method-40 process-taskable ((obj process-taskable) (arg0 object) (arg1 skeleton-group) (arg2 int) (arg3 int) (arg4 vector) (arg5 int))
-  (stack-size-set! (-> obj main-thread) 512)
-  (initialize-collision obj arg2 arg4)
-  (process-drawable-from-entity! obj (the-as entity-actor arg0))
-  (initialize-skeleton obj arg1 '())
-  (set! (-> obj shadow-backup) (-> obj draw shadow))
-  (logior! (-> obj skel status) (janim-status eye))
-  (set! (-> obj root-override pause-adjust-distance) -122880.0)
-  (set! (-> obj fuel-cell-anim) (fuel-cell-pick-anim obj))
-  (set! (-> obj draw origin-joint-index) (the-as uint arg2))
-  (set! (-> obj draw shadow-joint-index) (the-as uint arg2))
-  (set! (-> obj center-joint-index) arg2)
-  (set! (-> obj draw-bounds-y-offset) (-> obj draw bounds y))
-  (set! (-> obj have-flava) #f)
-  (set! (-> obj music) #f)
-  (set! (-> obj have-music) #f)
-  (set! (-> obj cam-joint-index) arg3)
-  (set! (-> obj cell-x) (the-as handle #f))
-  (set! (-> obj cell-for-task) (game-task none))
-  (set! (-> obj camera) (the-as handle #f))
-  (set! (-> obj will-talk) #t)
-  (set! (-> obj talk-message) (text-id press-to-talk))
-  (set! (-> obj last-talk) 0)
-  (set! (-> obj bounce-away) #t)
-  (set! (-> obj been-kicked) #f)
-  (set! (-> obj neck-joint-index) arg5)
-  (set! (-> obj cur-trans-hook) nothing)
-  (ambient-control-method-9 (-> obj ambient))
-  (set! (-> obj event-hook) (-> (method-of-object obj idle) event))
-  (set! (-> obj draw shadow-ctrl) (new 'process 'shadow-control 0.0 0.0 614400.0 (the-as float 60) 245760.0))
-  (process-taskable-method-52 obj)
+(defmethod process-taskable-method-40 ((this process-taskable) (arg0 object) (arg1 skeleton-group) (arg2 int) (arg3 int) (arg4 vector) (arg5 int))
+  (stack-size-set! (-> this main-thread) 512)
+  (initialize-collision this arg2 arg4)
+  (process-drawable-from-entity! this (the-as entity-actor arg0))
+  (initialize-skeleton this arg1 '())
+  (set! (-> this shadow-backup) (-> this draw shadow))
+  (logior! (-> this skel status) (janim-status eye))
+  (set! (-> this root pause-adjust-distance) -122880.0)
+  (set! (-> this fuel-cell-anim) (fuel-cell-pick-anim this))
+  (set! (-> this draw origin-joint-index) (the-as uint arg2))
+  (set! (-> this draw shadow-joint-index) (the-as uint arg2))
+  (set! (-> this center-joint-index) arg2)
+  (set! (-> this draw-bounds-y-offset) (-> this draw bounds y))
+  (set! (-> this have-flava) #f)
+  (set! (-> this music) #f)
+  (set! (-> this have-music) #f)
+  (set! (-> this cam-joint-index) arg3)
+  (set! (-> this cell-x) (the-as handle #f))
+  (set! (-> this cell-for-task) (game-task none))
+  (set! (-> this camera) (the-as handle #f))
+  (set! (-> this will-talk) #t)
+  (set! (-> this talk-message) (text-id press-to-talk))
+  (set! (-> this last-talk) 0)
+  (set! (-> this bounce-away) #t)
+  (set! (-> this been-kicked) #f)
+  (set! (-> this neck-joint-index) arg5)
+  (set! (-> this cur-trans-hook) nothing)
+  (ambient-control-method-9 (-> this ambient))
+  (set! (-> this event-hook) (-> (method-of-object this idle) event))
+  (set! (-> this draw shadow-ctrl) (new 'process 'shadow-control 0.0 0.0 614400.0 (the-as float 60) 245760.0))
+  (process-taskable-method-52 this)
   0
   (none)
   )
 
 ;; definition for method 42 of type process-taskable
 ;; INFO: Return type mismatch object vs none.
-(defmethod process-taskable-method-42 process-taskable ((obj process-taskable))
+(defmethod process-taskable-method-42 ((this process-taskable))
   (cond
-    ((not (should-display? obj))
-     (go (method-of-object obj hidden))
+    ((not (should-display? this))
+     (go (method-of-object this hidden))
      )
-    ((= (current-status (-> obj tasks)) (task-status need-resolution))
-     (go (method-of-object obj give-cell))
+    ((= (current-status (-> this tasks)) (task-status need-resolution))
+     (go (method-of-object this give-cell))
      )
     (else
-      (go (method-of-object obj idle))
+      (go (method-of-object this idle))
       )
     )
   (none)
@@ -1114,21 +1065,21 @@
 
 ;; definition for method 43 of type process-taskable
 ;; INFO: Return type mismatch int vs symbol.
-(defmethod process-taskable-method-43 process-taskable ((obj process-taskable))
+(defmethod process-taskable-method-43 ((this process-taskable))
   (the-as symbol 0)
   )
 
 ;; definition for method 9 of type ambient-control
 ;; INFO: Return type mismatch int vs none.
-(defmethod ambient-control-method-9 ambient-control ((obj ambient-control))
-  (set! (-> obj last-ambient-time) (-> *display* game-frame-counter))
+(defmethod ambient-control-method-9 ((this ambient-control))
+  (set! (-> this last-ambient-time) (-> *display* game-frame-counter))
   0
   (none)
   )
 
 ;; definition for method 10 of type ambient-control
-(defmethod ambient-control-method-10 ambient-control ((obj ambient-control) (arg0 vector) (arg1 time-frame) (arg2 float) (arg3 process-drawable))
-  (when (< (- (-> *display* game-frame-counter) (-> obj last-ambient-time)) arg1)
+(defmethod ambient-control-method-10 ((this ambient-control) (arg0 vector) (arg1 time-frame) (arg2 float) (arg3 process-drawable))
+  (when (< (- (-> *display* game-frame-counter) (-> this last-ambient-time)) arg1)
     (set! arg0 (the-as vector #f))
     (goto cfg-6)
     )
@@ -1142,14 +1093,14 @@
   )
 
 ;; definition for method 11 of type ambient-control
-(defmethod play-ambient ambient-control ((obj ambient-control) (arg0 string) (arg1 symbol) (arg2 vector))
-  (when (and (not (string= arg0 (-> obj last-ambient)))
+(defmethod play-ambient ((this ambient-control) (arg0 string) (arg1 symbol) (arg2 vector))
+  (when (and (not (string= arg0 (-> this last-ambient)))
              (or arg1 (can-hint-be-played? (text-id one) (the-as entity #f) (the-as string #f)))
              (= (-> *level* loading-level) (-> *level* level-default))
              (ambient-hint-spawn arg0 arg2 *entity-pool* 'ambient)
              )
-    (set! (-> obj last-ambient-time) (-> *display* game-frame-counter))
-    (set! (-> obj last-ambient) arg0)
+    (set! (-> this last-ambient-time) (-> *display* game-frame-counter))
+    (set! (-> this last-ambient) arg0)
     (return #t)
     )
   #f
@@ -1173,9 +1124,9 @@
 
 ;; failed to figure out what this is:
 (defstate othercam-running (othercam)
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
     (local-vars (v0-0 object))
-    (case event-type
+    (case message
       (('die)
        (set! v0-0 #t)
        (set! (-> self die?) (the-as symbol v0-0))
@@ -1183,13 +1134,13 @@
        )
       (('joint)
        (let ((t9-0 type-type?)
-             (v1-1 (-> event param 0))
+             (v1-1 (-> block param 0))
              )
          (cond
            ((t9-0 (rtype-of v1-1) string)
             (let ((v1-8 (lookup-art
                           (-> (the-as process-taskable (-> self hand process 0)) draw jgeo)
-                          (the-as string (-> event param 0))
+                          (the-as string (-> block param 0))
                           (the-as type #f)
                           )
                         )
@@ -1201,8 +1152,8 @@
                 )
               )
             )
-           ((not (logtest? (-> event param 0) 7))
-            (set! v0-0 (-> event param 0))
+           ((not (logtest? (-> block param 0) 7))
+            (set! v0-0 (-> block param 0))
             (set! (-> self cam-joint-index) (the-as int v0-0))
             v0-0
             )
@@ -1210,7 +1161,7 @@
          )
        )
       (('mask)
-       (set! v0-0 (-> event param 0))
+       (set! v0-0 (-> block param 0))
        (set! (-> self mask-to-clear) (the-as process-mask v0-0))
        v0-0
        )
@@ -1240,12 +1191,10 @@
         )
       )
     (apply-settings *setting-control*)
-    (none)
     )
   :exit (behavior ()
     (remove-setting! 'process-mask)
     (apply-settings *setting-control*)
-    (none)
     )
   :code (behavior ()
     (loop
@@ -1254,7 +1203,7 @@
           (format #t "ERROR<GMJ>: othercam parent invalid~%")
           (deactivate self)
           )
-        (set! (-> *camera-other-root* quad) (-> (the-as process-taskable s2-0) root-override trans quad))
+        (set! (-> *camera-other-root* quad) (-> (the-as process-taskable s2-0) root trans quad))
         (let ((s4-0 (-> (the-as process-taskable s2-0) node-list data (-> self cam-joint-index) bone transform))
               (s3-0 (-> (the-as process-taskable s2-0) node-list data (-> self cam-joint-index) bone scale))
               (gp-0 (new 'stack-no-clear 'vector))
@@ -1296,8 +1245,8 @@
       (suspend)
       (let ((a0-25 (-> self hand process 0)))
         (when (or (-> self die?) (and (not (-> self survive-anim-end?)) (ja-anim-done? a0-25)))
-          (let ((gp-1 (-> *display* base-frame-counter)))
-            (while (and (< (- (-> *display* base-frame-counter) gp-1) (seconds 60))
+          (let ((gp-1 (current-time)))
+            (while (and (not (time-elapsed? gp-1 (seconds 60)))
                         (or (and (-> self entity) (not (is-object-visible? (-> self entity extra level) (-> self entity extra vis-id))))
                             (< 81920.0 (vector-vector-distance (camera-pos) (-> *math-camera* trans)))
                             )
@@ -1309,7 +1258,6 @@
           )
         )
       )
-    (none)
     )
   )
 
@@ -1338,14 +1286,15 @@
   )
 
 ;; definition for method 48 of type process-taskable
-(defmethod draw-npc-shadow process-taskable ((obj process-taskable))
-  (let ((gp-0 (-> obj draw shadow-ctrl)))
+;; INFO: Return type mismatch object vs none.
+(defmethod draw-npc-shadow ((this process-taskable))
+  (let ((gp-0 (-> this draw shadow-ctrl)))
     (cond
-      ((and (-> obj draw shadow)
-            (zero? (-> obj draw cur-lod))
-            (logtest? (-> obj draw status) (draw-status was-drawn))
+      ((and (-> this draw shadow)
+            (zero? (-> this draw cur-lod))
+            (logtest? (-> this draw status) (draw-status was-drawn))
             )
-       (collide-to-find-planes gp-0 (-> obj draw origin) -4096.0 4096.0 32768.0)
+       (collide-to-find-planes gp-0 (-> this draw origin) -4096.0 4096.0 32768.0)
        (update-direction-from-time-of-day gp-0)
        )
       (else

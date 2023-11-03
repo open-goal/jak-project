@@ -9,7 +9,7 @@
 
 using json = nlohmann::json;
 
-std::optional<json> document_symbols_handler(Workspace& workspace, int id, json params) {
+std::optional<json> document_symbols_handler(Workspace& workspace, int /*id*/, json params) {
   auto converted_params = params.get<LSPSpec::DocumentSymbolParams>();
   auto tracked_file = workspace.get_tracked_ir_file(converted_params.m_textDocument.m_uri);
 

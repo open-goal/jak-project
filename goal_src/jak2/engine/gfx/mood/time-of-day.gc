@@ -9,35 +9,29 @@
 
 ;; DECOMP BEGINS
 
-;; definition for method 5 of type time-of-day-palette
 ;; WARN: Return type mismatch uint vs int.
-(defmethod asize-of time-of-day-palette ((obj time-of-day-palette))
-  (the-as int (+ (-> obj type size) (* (* (-> obj height) (-> obj width)) 4)))
+(defmethod asize-of ((this time-of-day-palette))
+  (the-as int (+ (-> this type size) (* (* (-> this height) (-> this width)) 4)))
   )
 
-;; definition for method 10 of type time-of-day-proc
-(defmethod deactivate time-of-day-proc ((obj time-of-day-proc))
-  (if (nonzero? (-> obj sun))
-      (kill-and-free-particles (-> obj sun))
+(defmethod deactivate ((this time-of-day-proc))
+  (if (nonzero? (-> this sun))
+      (kill-and-free-particles (-> this sun))
       )
-  (if (nonzero? (-> obj green-sun))
-      (kill-and-free-particles (-> obj green-sun))
+  (if (nonzero? (-> this green-sun))
+      (kill-and-free-particles (-> this green-sun))
       )
-  (if (nonzero? (-> obj moon))
-      (kill-and-free-particles (-> obj moon))
+  (if (nonzero? (-> this moon))
+      (kill-and-free-particles (-> this moon))
       )
-  ((method-of-type process deactivate) obj)
+  ((method-of-type process deactivate) this)
   (none)
   )
 
-;; failed to figure out what this is:
 (if (zero? time-of-day-effect)
     (set! time-of-day-effect nothing)
     )
 
-;; definition for function time-of-day-update
-;; INFO: Used lq/sq
-;; WARN: Return type mismatch int vs none.
 (defbehavior time-of-day-update time-of-day-proc ()
   (time-of-day-effect)
   (let ((gp-0 #t))
@@ -124,8 +118,6 @@
   (none)
   )
 
-
-;; definition for function update-counters
 (defbehavior update-counters time-of-day-proc ()
   (let ((v1-2 (-> *display* bg-clock frame-counter)))
     0
@@ -151,84 +143,81 @@
   )
 
 (defstate time-of-day-tick (time-of-day-proc)
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (the-as
-      object
-      (case event-type
-        (('change)
-         (case (-> event param 0)
-           (('ratio)
-            (let ((a0-5 (-> *display* bg-clock))
-                  (f0-0 (the-as float (-> event param 1)))
-                  )
-              (set! (-> self time-ratio) f0-0)
-              (set! (-> self dest-time-ratio) f0-0)
-              (update-rates! a0-5 f0-0)
-              )
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
+      (('change)
+       (case (-> block param 0)
+         (('ratio)
+          (let ((a0-5 (-> *display* bg-clock))
+                (f0-0 (the-as float (-> block param 1)))
+                )
+            (set! (-> self time-ratio) f0-0)
+            (set! (-> self dest-time-ratio) f0-0)
+            (update-rates! a0-5 f0-0)
             )
-           (('hour)
-            (update-counters)
-            (let ((v1-7 (-> *display* bg-clock frame-counter))
-                  (a0-7 #x69780)
-                  (a1-5 (/ (the int (* 1080000.0 (the float (-> event param 1)))) 60))
-                  )
-              (set! (-> *display* bg-clock frame-counter) (+ (- v1-7 (the-as time-frame (mod v1-7 a0-7))) a0-7 a1-5))
-              )
-            (update-counters)
-            (-> self hours)
-            (kill-and-free-particles (-> self sun))
-            (spawn (-> self sun) (math-camera-pos))
-            (set! (-> self sun-count) 1)
-            (kill-and-free-particles (-> self green-sun))
-            (spawn (-> self green-sun) (math-camera-pos))
-            (set! (-> self green-sun-count) 1)
-            (kill-and-free-particles (-> self moon))
-            (spawn (-> self moon) (math-camera-pos))
-            (let ((v0-0 (the-as number 1)))
-              (set! (-> self moon-count) (the-as int v0-0))
-              v0-0
-              )
+          )
+         (('hour)
+          (update-counters)
+          (let ((v1-7 (-> *display* bg-clock frame-counter))
+                (a0-7 #x69780)
+                (a1-5 (/ (the int (* 1080000.0 (the float (-> block param 1)))) 60))
+                )
+            (set! (-> *display* bg-clock frame-counter) (+ (- v1-7 (the-as time-frame (mod v1-7 a0-7))) a0-7 a1-5))
             )
+          (update-counters)
+          (-> self hours)
+          (kill-and-free-particles (-> self sun))
+          (spawn (-> self sun) (math-camera-pos))
+          (set! (-> self sun-count) 1)
+          (kill-and-free-particles (-> self green-sun))
+          (spawn (-> self green-sun) (math-camera-pos))
+          (set! (-> self green-sun-count) 1)
+          (kill-and-free-particles (-> self moon))
+          (spawn (-> self moon) (math-camera-pos))
+          (let ((v0-0 (the-as number 1)))
+            (set! (-> self moon-count) (the-as int v0-0))
+            v0-0
+            )
+          )
+         )
+       )
+      (('ratio)
+       (-> self time-ratio)
+       )
+      (('day-length)
+       (if (= (-> self time-ratio) 0.0)
+           0
+           (/ 25920000.0 (-> self time-ratio))
            )
-         )
-        (('ratio)
-         (-> self time-ratio)
-         )
-        (('day-length)
-         (if (= (-> self time-ratio) 0.0)
-             0
-             (/ 25920000.0 (-> self time-ratio))
+       )
+      (('time-frame)
+       (-> self frames)
+       )
+      (('time-of-day)
+       (-> self time-of-day)
+       )
+      (('time-of-day-norm)
+       (* 0.041666668 (-> self time-of-day))
+       )
+      (('hour)
+       (-> self hours)
+       )
+      (('minute)
+       (-> self minutes)
+       )
+      (('second)
+       (-> self seconds)
+       )
+      (('dest-clock-ratio-set)
+       (set! (-> self dest-time-ratio) (the-as float (-> block param 0)))
+       (let ((f0-12 (-> self time-ratio))
+             (f1-5 (-> self dest-time-ratio))
+             (f2-1 (/ 300.0 (the float (-> block param 1))))
              )
+         (set! (-> self dest-time-delta) (* (fabs (- f0-12 f1-5)) f2-1 (-> *display* real-clock seconds-per-frame)))
          )
-        (('time-frame)
-         (-> self frames)
-         )
-        (('time-of-day)
-         (-> self time-of-day)
-         )
-        (('time-of-day-norm)
-         (* 0.041666668 (-> self time-of-day))
-         )
-        (('hour)
-         (-> self hours)
-         )
-        (('minute)
-         (-> self minutes)
-         )
-        (('second)
-         (-> self seconds)
-         )
-        (('dest-clock-ratio-set)
-         (set! (-> self dest-time-ratio) (the-as float (-> event param 0)))
-         (let ((f0-12 (-> self time-ratio))
-               (f1-5 (-> self dest-time-ratio))
-               (f2-1 (/ 300.0 (the float (-> event param 1))))
-               )
-           (set! (-> self dest-time-delta) (* (fabs (- f0-12 f1-5)) f2-1 (-> *display* real-clock seconds-per-frame)))
-           )
-         (-> self dest-time-ratio)
-         )
-        )
+       (-> self dest-time-ratio)
+       )
       )
     )
   :code (behavior ()
@@ -244,12 +233,10 @@
       (suspend)
       )
     #f
-    (none)
     )
   :post time-of-day-update
   )
 
-;; definition for function init-time-of-day
 (defbehavior init-time-of-day time-of-day-proc ()
   (stack-size-set! (-> self main-thread) 128)
   (set! (-> self hours) 0)
@@ -275,7 +262,6 @@
   (go time-of-day-tick)
   )
 
-;; definition for function start-time-of-day
 ;; WARN: Return type mismatch (pointer time-of-day-proc) vs (pointer process).
 (defun start-time-of-day ()
   (kill-by-name "time-of-day-proc" *active-pool*)
@@ -283,7 +269,6 @@
   (the-as (pointer process) *time-of-day*)
   )
 
-;; definition for function time-of-day-setup
 (defun time-of-day-setup ((arg0 symbol))
   (when arg0
     (when (= (-> *time-of-day* 0 time-ratio) 0.0)
@@ -298,13 +283,10 @@
   (!= (-> *time-of-day* 0 time-ratio) 0.0)
   )
 
-;; definition for function time-of-day-interp-colors
 ;; ERROR: function was not converted to expressions. Cannot decompile.
 
-;; definition for function time-of-day-interp-colors-scratch
 ;; ERROR: function was not converted to expressions. Cannot decompile.
 
-;; definition for function init-time-of-day-context
 (defun init-time-of-day-context ((arg0 time-of-day-context))
   (set-vector! (-> arg0 title-light-group dir0 color) 0.82 0.82 0.82 1.0)
   (set-vector! (-> arg0 title-light-group dir1 color) 2.0 2.0 2.0 1.0)
@@ -333,15 +315,12 @@
     )
   )
 
-;; definition for function set-filter-color!
-;; WARN: Return type mismatch int vs none.
 (defun set-filter-color! ((arg0 float) (arg1 float) (arg2 float))
   (set-vector! (-> *time-of-day-context* filter-color) arg0 arg1 arg2 1.0)
   0
   (none)
   )
 
-;; definition for function tod-madd!
 (defun tod-madd! ((arg0 vector) (arg1 vector) (arg2 vector))
   (local-vars (v0-0 float))
   (rlet ((acc :class vf)
@@ -362,7 +341,6 @@
     )
   )
 
-;; definition for function update-environment-colors
 (defun update-environment-colors ((arg0 time-of-day-context))
   (let* ((v1-0 (-> arg0 light-group))
          (s4-0 (-> v1-0 0 ambi color))
@@ -399,9 +377,6 @@
     )
   )
 
-;; definition for function update-time-of-day
-;; INFO: Used lq/sq
-;; WARN: Return type mismatch int vs none.
 (defun update-time-of-day ((arg0 time-of-day-context))
   (with-pp
     (set! (-> arg0 exterior-level) #f)
@@ -479,6 +454,7 @@
       (set-fog-height! f0-16)
       )
     (if (-> arg0 sky)
+        ;; og:preserve-this
         (set! (-> (&-> *level* default-level texture-anim-array 9) 0) (#if PC_PORT  (if *hires-sky* *sky-hires-texture-anim-array* *sky-texture-anim-array*)
                                                                                     *sky-texture-anim-array*))
         (set! (-> (&-> *level* default-level texture-anim-array 9) 0) #f)
@@ -649,7 +625,6 @@
     )
   )
 
-;; definition for function calc-fade-from-fog
 (defun calc-fade-from-fog ((arg0 vector))
   (let* ((f0-0 (vector-vector-distance (math-camera-pos) arg0))
          (v1-1 (-> *time-of-day-context* current-fog))
@@ -662,12 +637,10 @@
     )
   )
 
-;; definition for method 10 of type palette-fade-controls
-;; INFO: Used lq/sq
-(defmethod set-fade! palette-fade-controls ((obj palette-fade-controls) (arg0 int) (arg1 float) (arg2 float) (arg3 vector))
+(defmethod set-fade! ((this palette-fade-controls) (arg0 int) (arg1 float) (arg2 float) (arg3 vector))
   (cond
     ((and (>= arg0 0) (< arg0 8))
-     (let ((v1-3 (-> obj control arg0)))
+     (let ((v1-3 (-> this control arg0)))
        (when (< arg2 (-> v1-3 actor-dist))
          (if arg3
              (set! (-> v1-3 trans quad) (-> arg3 quad))
@@ -683,11 +656,9 @@
     )
   )
 
-;; definition for method 9 of type palette-fade-controls
-;; WARN: Return type mismatch int vs none.
-(defmethod reset! palette-fade-controls ((obj palette-fade-controls))
+(defmethod reset! ((this palette-fade-controls))
   (countdown (v1-0 8)
-    (let ((a1-2 (-> obj control v1-0)))
+    (let ((a1-2 (-> this control v1-0)))
       (set! (-> a1-2 fade) 0.0)
       (set! (-> a1-2 actor-dist) 4096000000.0)
       )
@@ -696,5 +667,4 @@
   (none)
   )
 
-;; failed to figure out what this is:
 (start-time-of-day)

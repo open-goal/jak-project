@@ -3,19 +3,15 @@
 
 ;; definition of type snow-bumper
 (deftype snow-bumper (process-drawable)
-  ((bumper-id               int32                     :offset-assert 176)
-   (base-shove-ry           float                     :offset-assert 180)
-   (max-shove-diff-ry       float                     :offset-assert 184)
-   (part2                   sparticle-launch-control  :offset-assert 188)
-   (last-shoved-player-time time-frame                :offset-assert 192)
+  ((bumper-id                int32)
+   (base-shove-ry            float)
+   (max-shove-diff-ry        float)
+   (part2                    sparticle-launch-control)
+   (last-shoved-player-time  time-frame)
    )
-  :heap-base #x60
-  :method-count-assert 22
-  :size-assert         #xc8
-  :flag-assert         #x16006000c8
   (:methods
-    (snow-bumper-method-20 (_type_) none 20)
-    (shove-player (_type_ process-drawable) none 21)
+    (snow-bumper-method-20 (_type_) none)
+    (shove-player (_type_ process-drawable) none)
     )
   (:states
     snow-bumper-active-close-idle
@@ -27,16 +23,16 @@
   )
 
 ;; definition for method 3 of type snow-bumper
-(defmethod inspect snow-bumper ((obj snow-bumper))
+(defmethod inspect ((this snow-bumper))
   (let ((t9-0 (method-of-type process-drawable inspect)))
-    (t9-0 obj)
+    (t9-0 this)
     )
-  (format #t "~T~Tbumper-id: ~D~%" (-> obj bumper-id))
-  (format #t "~T~Tbase-shove-ry: ~f~%" (-> obj base-shove-ry))
-  (format #t "~T~Tmax-shove-diff-ry: ~f~%" (-> obj max-shove-diff-ry))
-  (format #t "~T~Tpart2: ~A~%" (-> obj part2))
-  (format #t "~T~Tlast-shoved-player-time: ~D~%" (-> obj last-shoved-player-time))
-  obj
+  (format #t "~T~Tbumper-id: ~D~%" (-> this bumper-id))
+  (format #t "~T~Tbase-shove-ry: ~f~%" (-> this base-shove-ry))
+  (format #t "~T~Tmax-shove-diff-ry: ~f~%" (-> this max-shove-diff-ry))
+  (format #t "~T~Tpart2: ~A~%" (-> this part2))
+  (format #t "~T~Tlast-shoved-player-time: ~D~%" (-> this last-shoved-player-time))
+  this
   )
 
 ;; failed to figure out what this is:
@@ -113,14 +109,14 @@
 ;; definition for method 21 of type snow-bumper
 ;; INFO: Used lq/sq
 ;; INFO: Return type mismatch time-frame vs none.
-(defmethod shove-player snow-bumper ((obj snow-bumper) (arg0 process-drawable))
+(defmethod shove-player ((this snow-bumper) (arg0 process-drawable))
   (let ((s5-0 (new 'stack-no-clear 'vector)))
-    (vector-! s5-0 (-> arg0 root trans) (-> obj root trans))
+    (vector-! s5-0 (-> arg0 root trans) (-> this root trans))
     (set! (-> s5-0 y) 0.0)
     (vector-normalize! s5-0 1.0)
     (let* ((f0-3 (atan (-> s5-0 x) (-> s5-0 z)))
-           (f30-0 (-> obj base-shove-ry))
-           (f28-0 (-> obj max-shove-diff-ry))
+           (f30-0 (-> this base-shove-ry))
+           (f28-0 (-> this max-shove-diff-ry))
            (f0-4 (deg- f0-3 f30-0))
            )
       (when (< f28-0 (fabs f0-4))
@@ -137,16 +133,16 @@
     (let ((f0-12 (+ -16384.0 (atan (-> s5-0 x) (-> s5-0 z)))))
       (set! (-> *part-id-table* 1895 init-specs 17 initial-valuef) (+ -4096.0 f0-12))
       )
-    (spawn (-> obj part2) (-> obj root trans))
+    (spawn (-> this part2) (-> this root trans))
     (let ((s3-1 (new 'stack-no-clear 'vector)))
       (vector-normalize-copy! s3-1 s5-0 32768.0)
-      (vector+! s3-1 s3-1 (-> obj root trans))
+      (vector+! s3-1 s3-1 (-> this root trans))
       (vector-! s5-0 s3-1 (-> arg0 root trans))
       )
     (let ((f30-3 (vector-xz-length s5-0)))
       (vector-normalize! s5-0 1.0)
       (if (send-event *target* 'shove #f (static-attack-info ((vector s5-0) (shove-up (meters 1)) (shove-back f30-3))))
-          (set! (-> obj last-shoved-player-time) (-> *display* base-frame-counter))
+          (set-time! (-> this last-shoved-player-time))
           )
       )
     )
@@ -160,7 +156,6 @@
         (go snow-bumper-active-close-idle)
         )
     0
-    (none)
     )
   :code (behavior ()
     (transform-post)
@@ -169,17 +164,16 @@
       (logior! (-> self mask) (process-mask sleep-code))
       (suspend)
       )
-    (none)
     )
   )
 
 ;; failed to figure out what this is:
 (defstate snow-bumper-active-close-idle (snow-bumper)
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('touch 'attack 'bonk)
        (when (= (-> proc type) target)
-         (let ((gp-0 (-> event param 0)))
+         (let ((gp-0 (-> block param 0)))
            (when (and (>= 6144.0 (vector-vector-xz-distance (-> self root trans) (target-pos 0)))
                       ((method-of-type touching-shapes-entry prims-touching?)
                        (the-as touching-shapes-entry gp-0)
@@ -205,7 +199,7 @@
           (if (< 368640.0 f30-0)
               (go snow-bumper-active-far-idle)
               )
-          (if (and (>= (- (-> *display* base-frame-counter) (-> self last-shoved-player-time)) (seconds 0.5))
+          (if (and (time-elapsed? (-> self last-shoved-player-time) (seconds 0.5))
                    (>= 20480.0 f30-0)
                    (>= f28-0 -4096.0)
                    (>= 11059.2 f28-0)
@@ -220,7 +214,6 @@
       )
     (spawn (-> self part) (-> self root trans))
     (update! (-> self sound))
-    (none)
     )
   :code (behavior ()
     (transform-post)
@@ -229,7 +222,6 @@
       (logior! (-> self mask) (process-mask sleep-code))
       (suspend)
       )
-    (none)
     )
   )
 
@@ -238,9 +230,8 @@
   :exit (behavior ()
     (stop! (-> self sound))
     (logior! (-> self mask) (process-mask actor-pause))
-    (none)
     )
-  :trans (the-as (function none :behavior snow-bumper) rider-trans)
+  :trans rider-trans
   :code (behavior ()
     (local-vars (sv-16 symbol))
     (logclear! (-> self mask) (process-mask actor-pause))
@@ -253,8 +244,8 @@
       (ja :num! (seek! max 0.05))
       )
     (stop! (-> self sound))
-    (set! (-> self state-time) (-> *display* base-frame-counter))
-    (until (>= (- (-> *display* base-frame-counter) (-> self state-time)) (seconds 0.5))
+    (set-time! (-> self state-time))
+    (until (time-elapsed? (-> self state-time) (seconds 0.5))
       (suspend)
       )
     (ja-no-eval :group! snow-bumper-collapse-ja :num! (seek! max 0.02) :frame-num 0.0)
@@ -270,9 +261,8 @@
       (go snow-bumper-spawn-fuel-cell)
       )
     (go snow-bumper-inactive-idle)
-    (none)
     )
-  :post (the-as (function none :behavior snow-bumper) rider-post)
+  :post rider-post
   )
 
 ;; failed to figure out what this is:
@@ -295,7 +285,6 @@
       (suspend)
       )
     (go snow-bumper-inactive-idle)
-    (none)
     )
   )
 
@@ -310,38 +299,33 @@
     (logior! (-> self mask) (process-mask sleep-code))
     (suspend)
     0
-    (none)
     )
   )
 
 ;; definition for method 10 of type snow-bumper
-(defmethod deactivate snow-bumper ((obj snow-bumper))
-  (if (nonzero? (-> obj part2))
-      (kill-and-free-particles (-> obj part2))
+(defmethod deactivate ((this snow-bumper))
+  (if (nonzero? (-> this part2))
+      (kill-and-free-particles (-> this part2))
       )
-  ((method-of-type process-drawable deactivate) obj)
+  ((method-of-type process-drawable deactivate) this)
   (none)
   )
 
 ;; definition for method 7 of type snow-bumper
-;; INFO: Return type mismatch process-drawable vs snow-bumper.
-(defmethod relocate snow-bumper ((obj snow-bumper) (arg0 int))
-  (if (nonzero? (-> obj part2))
-      (&+! (-> obj part2) arg0)
+(defmethod relocate ((this snow-bumper) (arg0 int))
+  (if (nonzero? (-> this part2))
+      (&+! (-> this part2) arg0)
       )
-  (the-as
-    snow-bumper
-    ((the-as (function process-drawable int process-drawable) (find-parent-method snow-bumper 7)) obj arg0)
-    )
+  (call-parent-method this arg0)
   )
 
 ;; definition for method 11 of type snow-bumper
 ;; INFO: Used lq/sq
 ;; INFO: Return type mismatch object vs none.
-(defmethod init-from-entity! snow-bumper ((obj snow-bumper) (arg0 entity-actor))
+(defmethod init-from-entity! ((this snow-bumper) (arg0 entity-actor))
   (local-vars (sv-16 res-tag))
-  (set! (-> obj last-shoved-player-time) 0)
-  (let ((s4-0 (new 'process 'collide-shape-moving obj (collide-list-enum hit-by-player))))
+  (set! (-> this last-shoved-player-time) 0)
+  (let ((s4-0 (new 'process 'collide-shape-moving this (collide-list-enum hit-by-player))))
     (set! (-> s4-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s4-0 reaction) default-collision-reaction)
     (set! (-> s4-0 no-reaction)
@@ -374,41 +358,41 @@
       )
     (set! (-> s4-0 nav-radius) 20480.0)
     (backup-collide-with-as s4-0)
-    (set! (-> obj root) s4-0)
+    (set! (-> this root) s4-0)
     )
-  (process-drawable-from-entity! obj arg0)
-  (initialize-skeleton obj *snow-bumper-sg* '())
-  (set! (-> obj part) (create-launch-control (-> *part-group-id-table* 519) obj))
-  (set! (-> obj part2) (create-launch-control (-> *part-group-id-table* 520) obj))
-  (nav-mesh-connect obj (-> obj root) (the-as nav-control #f))
-  (set! (-> obj link) (new 'process 'actor-link-info obj))
-  (set! (-> obj bumper-id) (+ (actor-count-before (-> obj link)) 1))
-  (set! (-> obj sound)
-        (new 'process 'ambient-sound (static-sound-spec "snow-bumper" :fo-max 40) (-> obj root trans))
+  (process-drawable-from-entity! this arg0)
+  (initialize-skeleton this *snow-bumper-sg* '())
+  (set! (-> this part) (create-launch-control (-> *part-group-id-table* 519) this))
+  (set! (-> this part2) (create-launch-control (-> *part-group-id-table* 520) this))
+  (nav-mesh-connect this (-> this root) (the-as nav-control #f))
+  (set! (-> this link) (new 'process 'actor-link-info this))
+  (set! (-> this bumper-id) (+ (actor-count-before (-> this link)) 1))
+  (set! (-> this sound)
+        (new 'process 'ambient-sound (static-sound-spec "snow-bumper" :fo-max 40) (-> this root trans))
         )
   (ja-channel-set! 1)
-  (let ((s5-1 (-> obj skel root-channel 0)))
+  (let ((s5-1 (-> this skel root-channel 0)))
     (joint-control-channel-group-eval!
       s5-1
-      (the-as art-joint-anim (-> obj draw art-group data 3))
+      (the-as art-joint-anim (-> this draw art-group data 3))
       num-func-identity
       )
     (set! (-> s5-1 frame-num) 0.0)
     )
   (transform-post)
-  (set! (-> obj base-shove-ry) 0.0)
-  (set! (-> obj max-shove-diff-ry) 32768.0)
+  (set! (-> this base-shove-ry) 0.0)
+  (set! (-> this max-shove-diff-ry) 32768.0)
   (set! sv-16 (new 'static 'res-tag))
-  (let ((v1-52 (res-lump-data (-> obj entity) 'rotmin (pointer float) :tag-ptr (& sv-16))))
+  (let ((v1-52 (res-lump-data (-> this entity) 'rotmin (pointer float) :tag-ptr (& sv-16))))
     (when v1-52
-      (set! (-> obj base-shove-ry) (-> v1-52 0))
-      (set! (-> obj max-shove-diff-ry) (-> v1-52 1))
+      (set! (-> this base-shove-ry) (-> v1-52 0))
+      (set! (-> this max-shove-diff-ry) (-> v1-52 1))
       )
     )
   (cond
-    ((and (-> obj entity) (logtest? (-> obj entity extra perm status) (entity-perm-status complete)))
-     (if (and (= (get-reminder (get-task-control (game-task snow-bumpers)) 0) (-> obj bumper-id))
-              (not (task-complete? *game-info* (-> obj entity extra perm task)))
+    ((and (-> this entity) (logtest? (-> this entity extra perm status) (entity-perm-status complete)))
+     (if (and (= (get-reminder (get-task-control (game-task snow-bumpers)) 0) (-> this bumper-id))
+              (not (task-complete? *game-info* (-> this entity extra perm task)))
               )
          (go snow-bumper-spawn-fuel-cell)
          (go snow-bumper-inactive-idle)

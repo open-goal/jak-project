@@ -1,7 +1,7 @@
 ;;-*-Lisp-*-
 (in-package goal)
 
-(define *autosplit-info-jak2* (new 'static 'autosplit-info-jak2))
+(define *autosplit-info-jak2* (new 'static 'autosplit-info))
 (pc-init-autosplitter-struct)
 ;; Setup Version
 (set! (-> *autosplit-info-jak2* version-major) 0)
@@ -14,16 +14,14 @@
 
 (defmacro autosplit-flag-task-complete! (field-name task-name)
   "Given a field name in the autosplitter struct, and a [[game-task]] name to check, sets either a 0 or a 1"
-  `(set! (-> *autosplit-info-jak2* ,field-name) (if (task-complete? *game-info* (game-task ,task-name)) 1 0)))
+  `(set! (-> this ,field-name) (if (task-complete? *game-info* (game-task ,task-name)) 1 0)))
 
-(defun update-autosplit-info-jak2 ()
+(defmethod update! ((this autosplit-info))
   ;; general statistics
-  (set! (-> *autosplit-info-jak2* num-orbs) (the int (-> *game-info* skill-total)))
-  (set! (-> *autosplit-info-jak2* num-skullgems) (the int (-> *game-info* gem-total)))
-
+  (set! (-> this num-orbs) (the int (-> *game-info* skill-total)))
+  (set! (-> this num-skullgems) (the int (-> *game-info* gem-total)))
   ;; loading/cutscene related flags
-  (set! (-> *autosplit-info-jak2* in-cutscene?) (if (movie?) 1 0))
-
+  (set! (-> this in-cutscene?) (if (movie?) 1 0))
   ;; need resolution flags
   (autosplit-flag-task-complete! res-fortress-escape fortress-escape)
   (autosplit-flag-task-complete! res-city-help-kid city-help-kid)
@@ -129,10 +127,9 @@
   (autosplit-flag-task-complete! res-stadium-burning-bush-race-class3-r stadium-burning-bush-race-class3-r)
   (autosplit-flag-task-complete! res-stadium-burning-bush-race-class2-r stadium-burning-bush-race-class2-r)
   (autosplit-flag-task-complete! res-stadium-burning-bush-race-class1-r stadium-burning-bush-race-class1-r)
-
   (none))
 
 
-(defun update-autosplit-jak2-new-game ()
-  (set! (-> *autosplit-info-jak2* game-hash) (pc-get-unix-timestamp))
+(defmethod reset! ((this autosplit-info))
+  (set! (-> this game-hash) (pc-get-unix-timestamp))
   (none))

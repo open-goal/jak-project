@@ -48,68 +48,62 @@
 ;; definition of type camera-remote
 (deftype camera-remote (camera-slave)
   ()
-  :heap-base #xa20
-  :method-count-assert 14
-  :size-assert         #xa94
-  :flag-assert         #xe0a200a94
   )
 
 ;; definition for method 3 of type camera-remote
-(defmethod inspect camera-remote ((obj camera-remote))
-  (when (not obj)
-    (set! obj obj)
+(defmethod inspect ((this camera-remote))
+  (when (not this)
+    (set! this this)
     (goto cfg-4)
     )
   (let ((t9-0 (method-of-type camera-slave inspect)))
-    (t9-0 obj)
+    (t9-0 this)
     )
   (label cfg-4)
-  obj
+  this
   )
 
 ;; definition of type remote
 (deftype remote (process-drawable)
-  ((parent        (pointer camera-slave)         :override)
-   (base-trans    vector                 :inline :offset-assert 208)
-   (focus         focus                  :inline :offset-assert 224)
-   (seeker        cam-float-seeker       :inline :offset-assert 236)
-   (start-time    time-frame                     :offset-assert 264)
-   (blend         float                          :offset-assert 272)
-   (twist         float                          :offset-assert 276)
-   (speak-effect? basic                          :offset-assert 280)
+  ((parent         (pointer camera-slave) :override)
+   (base-trans     vector                  :inline)
+   (focus          focus                   :inline)
+   (seeker         cam-float-seeker        :inline)
+   (start-time     time-frame)
+   (blend          float)
+   (twist          float)
+   (speak-effect?  basic)
    )
-  :heap-base #xa0
-  :method-count-assert 26
-  :size-assert         #x11c
-  :flag-assert         #x1a00a0011c
+  (:state-methods
+    enter
+    idle
+    exit
+    )
   (:methods
-    (enter () _type_ :state 20)
-    (idle () _type_ :state 21)
-    (exit () _type_ :state 22)
-    (init (_type_) none 23)
-    (get-track-pt-and-scale (_type_ vector) float 24)
-    (post-common (_type_) none 25)
+    (init (_type_) none)
+    (get-track-pt-and-scale (_type_ vector) float)
+    (post-common (_type_) none)
     )
   )
 
 ;; definition for method 3 of type remote
-(defmethod inspect remote ((obj remote))
-  (when (not obj)
-    (set! obj obj)
+(defmethod inspect ((this remote))
+  (when (not this)
+    (set! this this)
     (goto cfg-4)
     )
   (let ((t9-0 (method-of-type process-drawable inspect)))
-    (t9-0 obj)
+    (t9-0 this)
     )
-  (format #t "~2Tbase-trans: ~`vector`P~%" (-> obj base-trans))
-  (format #t "~2Tfocus: #<focus @ #x~X>~%" (-> obj focus))
-  (format #t "~2Tseeker: #<cam-float-seeker @ #x~X>~%" (-> obj seeker))
-  (format #t "~2Tstart-time: ~D~%" (-> obj start-time))
-  (format #t "~2Tblend: ~f~%" (-> obj blend))
-  (format #t "~2Ttwist: ~f~%" (-> obj twist))
-  (format #t "~2Tspeak-effect?: ~A~%" (-> obj speak-effect?))
+  (format #t "~2Tbase-trans: ~`vector`P~%" (-> this base-trans))
+  (format #t "~2Tfocus: #<focus @ #x~X>~%" (-> this focus))
+  (format #t "~2Tseeker: #<cam-float-seeker @ #x~X>~%" (-> this seeker))
+  (format #t "~2Tstart-time: ~D~%" (-> this start-time))
+  (format #t "~2Tblend: ~f~%" (-> this blend))
+  (format #t "~2Ttwist: ~f~%" (-> this twist))
+  (format #t "~2Tspeak-effect?: ~A~%" (-> this speak-effect?))
   (label cfg-4)
-  obj
+  this
   )
 
 ;; failed to figure out what this is:
@@ -122,21 +116,21 @@
 
 ;; definition for method 24 of type remote
 ;; INFO: Used lq/sq
-(defmethod get-track-pt-and-scale remote ((obj remote) (arg0 vector))
-  (let ((s4-0 (handle->process (-> obj focus handle))))
+(defmethod get-track-pt-and-scale ((this remote) (arg0 vector))
+  (let ((s4-0 (handle->process (-> this focus handle))))
     (when s4-0
       (set! (-> arg0 quad) (-> (get-trans (the-as process-focusable s4-0) 3) quad))
       (let ((a0-7 (vector-z-quaternion! (new 'stack-no-clear 'vector) (get-quat (the-as process-focusable s4-0) 0))))
-        (vector+float*! arg0 arg0 a0-7 (* -16384.0 (- 1.0 (-> obj blend))))
+        (vector+float*! arg0 arg0 a0-7 (* -16384.0 (- 1.0 (-> this blend))))
         )
       )
     )
-  (lerp-scale 1.0 0.0 (-> obj blend) 0.8 1.0)
+  (lerp-scale 1.0 0.0 (-> this blend) 0.8 1.0)
   )
 
 ;; definition for method 25 of type remote
 ;; WARN: Return type mismatch int vs none.
-(defmethod post-common remote ((obj remote))
+(defmethod post-common ((this remote))
   (with-pp
     (rlet ((acc :class vf)
            (vf0 :class vf)
@@ -147,21 +141,21 @@
            )
       (init-vf0-vector)
       (ja-post)
-      (if (type? (-> obj root) collide-shape)
-          (update-transforms (the-as collide-shape (-> obj root)))
+      (if (type? (-> this root) collide-shape)
+          (update-transforms (the-as collide-shape (-> this root)))
           )
-      (when (and (nonzero? (-> obj part)) (and (or (and (-> obj next-state) (= (-> obj next-state name) 'idle))
-                                                   (and (-> obj next-state) (= (-> obj next-state name) 'enter))
-                                                   )
-                                               (-> obj speak-effect?)
-                                               )
+      (when (and (nonzero? (-> this part)) (and (or (and (-> this next-state) (= (-> this next-state name) 'idle))
+                                                    (and (-> this next-state) (= (-> this next-state name) 'enter))
+                                                    )
+                                                (-> this speak-effect?)
+                                                )
                  )
         (let ((v1-15
-                (vector-float*! (new 'stack-no-clear 'vector) (-> obj parent 0 velocity) (-> pp clock frames-per-second))
+                (vector-float*! (new 'stack-no-clear 'vector) (-> this parent 0 velocity) (-> pp clock frames-per-second))
                 )
               (a0-8 *particle-vel*)
               )
-          (let ((a1-4 (-> obj node-list data 3 bone transform vector 2)))
+          (let ((a1-4 (-> this node-list data 3 bone transform vector 2)))
             (let ((a2-1 20480.0))
               (.mov vf7 a2-1)
               )
@@ -179,7 +173,7 @@
               )
           (vector-float*! v1-16 a0-9 (/ 1.0 f0-2))
           )
-        (spawn-with-cspace (-> obj part) (-> obj node-list data 3))
+        (spawn-with-cspace (-> this part) (-> this node-list data 3))
         )
       0
       (none)
@@ -217,8 +211,8 @@
                  )
                )
           (if (< 0.0 f0-6)
-              (seek! (-> self twist) -0.4 (* 0.3 (-> self clock seconds-per-frame)))
-              (seek! (-> self twist) 0.4 (* 0.3 (-> self clock seconds-per-frame)))
+              (seek! (-> self twist) -0.4 (* 0.3 (seconds-per-frame)))
+              (seek! (-> self twist) 0.4 (* 0.3 (seconds-per-frame)))
               )
           )
         (let ((a1-9 (new 'stack-no-clear 'event-message-block)))
@@ -251,13 +245,13 @@
 ;; failed to figure out what this is:
 (defstate enter (remote)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('die)
        (go-virtual exit)
        )
       (('speak-effect)
-       (let ((v0-0 (the-as object (-> event param 0))))
+       (let ((v0-0 (the-as object (-> block param 0))))
          (set! (-> self speak-effect?) (the-as basic v0-0))
          v0-0
          )
@@ -276,7 +270,6 @@
           (try-update-focus (-> self focus) (the-as process-focusable a1-1))
           )
       )
-    (none)
     )
   :trans (behavior ()
     (remote-track)
@@ -285,7 +278,6 @@
           (point-toward-point-clear-roll-pitch! (-> self root) (get-trans (the-as process-focusable a0-1) 0))
           )
       )
-    (none)
     )
   :code (behavior ()
     (let* ((gp-0 (ppointer->process (-> self parent 0 parent)))
@@ -318,11 +310,9 @@
       )
     (set! (-> self blend) 0.0)
     (go-virtual idle)
-    (none)
     )
   :post (behavior ()
     (post-common self)
-    (none)
     )
   )
 
@@ -337,7 +327,6 @@
       (ja :num! (loop!))
       )
     (go-virtual exit)
-    (none)
     )
   :post (-> (method-of-type remote enter) post)
   )
@@ -351,24 +340,23 @@
     (send-event (ppointer->process (-> self parent)) 'change-state empty-state)
     (suspend)
     0
-    (none)
     )
   :post (-> (method-of-type remote enter) post)
   )
 
 ;; definition for method 23 of type remote
 ;; WARN: Return type mismatch remote vs none.
-(defmethod init remote ((obj remote))
-  (reset-to-collide-spec (-> obj focus) (collide-spec jak player-list))
+(defmethod init ((this remote))
+  (reset-to-collide-spec (-> this focus) (collide-spec jak player-list))
   (initialize-skeleton
-    obj
+    this
     (the-as skeleton-group (art-group-get-by-name *level* "skel-voicebox" (the-as (pointer uint32) #f)))
     (the-as pair 0)
     )
-  (set! (-> obj blend) 1.0)
-  (set! (-> obj draw light-index) (the-as uint 30))
-  (set! (-> obj speak-effect?) #f)
-  (set! (-> obj part) (create-launch-control (-> *part-group-id-table* 77) obj))
+  (set! (-> this blend) 1.0)
+  (set! (-> this draw light-index) (the-as uint 30))
+  (set! (-> this speak-effect?) #f)
+  (set! (-> this part) (create-launch-control (-> *part-group-id-table* 77) this))
   (none)
   )
 
@@ -383,33 +371,28 @@
             )
         (deactivate self)
         )
-    (none)
     )
   :code (-> cam-string code)
   )
 
 ;; definition of type voicebox
 (deftype voicebox (remote)
-  ((hint handle  :offset-assert 288)
+  ((hint  handle)
    )
-  :heap-base #xb0
-  :method-count-assert 26
-  :size-assert         #x128
-  :flag-assert         #x1a00b00128
   )
 
 ;; definition for method 3 of type voicebox
-(defmethod inspect voicebox ((obj voicebox))
-  (when (not obj)
-    (set! obj obj)
+(defmethod inspect ((this voicebox))
+  (when (not this)
+    (set! this this)
     (goto cfg-4)
     )
   (let ((t9-0 (method-of-type remote inspect)))
-    (t9-0 obj)
+    (t9-0 this)
     )
-  (format #t "~2Thint: ~D~%" (-> obj hint))
+  (format #t "~2Thint: ~D~%" (-> this hint))
   (label cfg-4)
-  obj
+  this
   )
 
 ;; failed to figure out what this is:
@@ -417,10 +400,10 @@
   :virtual #t
   :code (behavior ()
     (remove-setting! 'sound-flava)
-    (set! (-> self state-time) (current-time))
+    (set-time! (-> self state-time))
     (set! (-> self seeker target) 1.0)
     (while (and (< (-> self blend) 0.9999) (not (and (not (handle->process (-> self hint)))
-                                                     (>= (- (current-time) (-> self state-time)) (seconds 0.05))
+                                                     (time-elapsed? (-> self state-time) (seconds 0.05))
                                                      (-> *setting-control* user-current hint)
                                                      )
                                                 )
@@ -433,7 +416,6 @@
     (send-event (ppointer->process (-> self parent)) 'change-state empty-state)
     (suspend)
     (cleanup-for-death self)
-    (none)
     )
   )
 
@@ -466,60 +448,59 @@
 
 ;; definition of type judge
 (deftype judge (remote)
-  ((total-time time-frame  :offset-assert 288)
-   (beep-time  time-frame  :offset-assert 296)
-   (hud-timer  handle      :offset-assert 304)
-   (score      uint8       :offset-assert 312)
+  ((total-time  time-frame)
+   (beep-time   time-frame)
+   (hud-timer   handle)
+   (score       uint8)
    )
-  :heap-base #xc0
-  :method-count-assert 28
-  :size-assert         #x139
-  :flag-assert         #x1c00c00139
+  (:state-methods
+    wait
+    )
   (:methods
-    (wait () _type_ :state 26)
-    (setup-collision (_type_) none 27)
+    (setup-collision (_type_) none)
     )
   )
 
 ;; definition for method 3 of type judge
-(defmethod inspect judge ((obj judge))
-  (when (not obj)
-    (set! obj obj)
+(defmethod inspect ((this judge))
+  (when (not this)
+    (set! this this)
     (goto cfg-4)
     )
   (let ((t9-0 (method-of-type remote inspect)))
-    (t9-0 obj)
+    (t9-0 this)
     )
-  (format #t "~2Ttotal-time: ~D~%" (-> obj total-time))
-  (format #t "~2Tbeep-time: ~D~%" (-> obj beep-time))
-  (format #t "~2Thud-timer: ~D~%" (-> obj hud-timer))
-  (format #t "~2Tscore: ~D~%" (-> obj score))
+  (format #t "~2Ttotal-time: ~D~%" (-> this total-time))
+  (format #t "~2Tbeep-time: ~D~%" (-> this beep-time))
+  (format #t "~2Thud-timer: ~D~%" (-> this hud-timer))
+  (format #t "~2Tscore: ~D~%" (-> this score))
   (label cfg-4)
-  obj
+  this
   )
 
 ;; definition for method 24 of type judge
 ;; INFO: Used lq/sq
-(defmethod get-track-pt-and-scale judge ((obj judge) (arg0 vector))
-  (set! (-> arg0 quad) (-> obj base-trans quad))
+(defmethod get-track-pt-and-scale ((this judge) (arg0 vector))
+  (set! (-> arg0 quad) (-> this base-trans quad))
   1.0
   )
 
 ;; definition for method 25 of type judge
 ;; WARN: Return type mismatch int vs none.
-(defmethod post-common judge ((obj judge))
+(defmethod post-common ((this judge))
   (ja-post)
-  (if (type? (-> obj root) collide-shape)
-      (update-transforms (the-as collide-shape (-> obj root)))
+  (if (type? (-> this root) collide-shape)
+      (update-transforms (the-as collide-shape (-> this root)))
       )
-  (when (and (-> obj next-state) (let ((v1-6 (-> obj next-state name)))
-                                   (or (= v1-6 'idle) (= v1-6 'enter))
-                                   )
+  (when (and (-> this next-state) (let ((v1-6 (-> this next-state name)))
+                                    (or (= v1-6 'idle) (= v1-6 'enter))
+                                    )
              )
     (if *target*
         (set! (-> *game-info* score) (-> *target* fact trick-point))
         )
-    (let ((v1-15 (the-as int (- (-> obj total-time) (- (-> *display* game-clock frame-counter) (-> obj start-time))))))
+    (let ((v1-15 (the-as int (- (-> this total-time) (- (-> *display* game-clock frame-counter) (-> this start-time)))))
+          )
       (if (< (the-as time-frame v1-15) 0)
           (set! v1-15 0)
           )
@@ -533,8 +514,8 @@
 ;; failed to figure out what this is:
 (defstate wait (judge)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('die)
        (sound-play "judge-stop")
        (go-virtual exit)
@@ -563,7 +544,6 @@
     (logior! (-> self mask) (process-mask sleep))
     (suspend)
     0
-    (none)
     )
   )
 
@@ -575,15 +555,14 @@
     (send-event *target* 'get-pickup (pickup-type trick-judge) (the float (-> self total-time)))
     (sound-play "judge-start")
     (set! (-> self hud-timer) (ppointer->handle (process-spawn hud-timer :init hud-init-by-other :to self)))
-    (none)
     )
   )
 
 ;; failed to figure out what this is:
 (defstate idle (judge)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('die)
        (sound-play "judge-stop")
        (go-virtual exit)
@@ -599,14 +578,13 @@
       )
     (send-event (handle->process (-> self hud-timer)) 'hide-and-die)
     (go-virtual exit)
-    (none)
     )
   )
 
 ;; definition for method 27 of type judge
 ;; WARN: Return type mismatch int vs none.
-(defmethod setup-collision judge ((obj judge))
-  (let ((s5-0 (new 'process 'collide-shape obj (collide-list-enum hit-by-player))))
+(defmethod setup-collision ((this judge))
+  (let ((s5-0 (new 'process 'collide-shape this (collide-list-enum hit-by-player))))
     (let ((v1-2 (new 'process 'collide-shape-prim-sphere s5-0 (the-as uint 0))))
       (set! (-> v1-2 prim-core collide-as) (collide-spec collectable))
       (set! (-> v1-2 prim-core collide-with) (collide-spec jak player-list tobot))
@@ -619,7 +597,7 @@
       (set! (-> s5-0 backup-collide-as) (-> v1-5 prim-core collide-as))
       (set! (-> s5-0 backup-collide-with) (-> v1-5 prim-core collide-with))
       )
-    (set! (-> obj root) s5-0)
+    (set! (-> this root) s5-0)
     )
   0
   (none)
@@ -628,20 +606,20 @@
 ;; definition for method 11 of type judge
 ;; INFO: Used lq/sq
 ;; WARN: Return type mismatch object vs none.
-(defmethod init-from-entity! judge ((obj judge) (arg0 entity-actor))
+(defmethod init-from-entity! ((this judge) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
 - stack size
 - collision information
 - loading the skeleton group / bones
 - sounds"
-  (setup-collision obj)
-  (init obj)
-  (process-drawable-from-entity! obj arg0)
-  (+! (-> obj root trans y) 4096.0)
-  (set! (-> obj base-trans quad) (-> obj root trans quad))
-  (set! (-> obj total-time) (seconds 90))
-  (go (method-of-object obj wait))
+  (setup-collision this)
+  (init this)
+  (process-drawable-from-entity! this arg0)
+  (+! (-> this root trans y) 4096.0)
+  (set! (-> this base-trans quad) (-> this root trans quad))
+  (set! (-> this total-time) (seconds 90))
+  (go (method-of-object this wait))
   (none)
   )
 

@@ -229,6 +229,141 @@
   (none)
   )
 
+
+(defun add-pc-tfrag3-data ((dma-buf dma-buffer) (lev level))
+  "Add PC-port specific tfrag data"
+  (let ((packet (the-as dma-packet (-> dma-buf base))))
+    (set! (-> packet dma) (new 'static 'dma-tag :id (dma-tag-id cnt) :qwc 24))
+    (set! (-> packet vif0) (new 'static 'vif-tag))
+    (set! (-> packet vif1) (new 'static 'vif-tag :cmd (vif-cmd pc-port)))
+    (set! (-> dma-buf base) (the pointer (&+ packet 16)))
+    )
+
+  ;; first 4 quadwords are planes, then itimes
+  (let ((data-ptr (the-as (pointer uint128) (-> dma-buf base))))
+    ;; the "use-camera-other" flag is set to "move" entire levels,
+    ;; like the rotating city below in the throne room.
+    (cond
+      ((-> lev info use-camera-other)
+        (set! (-> data-ptr 0) (-> *math-camera* plane-other 0 quad))
+        (set! (-> data-ptr 1) (-> *math-camera* plane-other 1 quad))
+        (set! (-> data-ptr 2) (-> *math-camera* plane-other 2 quad))
+        (set! (-> data-ptr 3) (-> *math-camera* plane-other 3 quad))
+        (set! (-> data-ptr 4) (-> lev mood-context itimes 0 quad))
+        (set! (-> data-ptr 5) (-> lev mood-context itimes 1 quad))
+        (set! (-> data-ptr 6) (-> lev mood-context itimes 2 quad))
+        (set! (-> data-ptr 7) (-> lev mood-context itimes 3 quad))
+        (set! (-> data-ptr 8) (-> *math-camera* camera-temp-other vector 0 quad))
+        (set! (-> data-ptr 9) (-> *math-camera* camera-temp-other vector 1 quad))
+        (set! (-> data-ptr 10) (-> *math-camera* camera-temp-other vector 2 quad))
+        (set! (-> data-ptr 11) (-> *math-camera* camera-temp-other vector 3 quad))
+        (set! (-> data-ptr 12) (-> *math-camera* hvdf-off quad))
+        (let ((vec (-> (the (inline-array vector) data-ptr) 13)))
+          (set! (-> vec x) (-> *math-camera* pfog0))
+          (set! (-> vec y) (-> *math-camera* fog-min))
+          (set! (-> vec z) (-> *math-camera* fog-max))
+          )
+        (set! (-> data-ptr 14) (-> *math-camera* trans-other quad))
+
+        (set! (-> data-ptr 15) (-> *math-camera* camera-rot-other vector 0 quad))
+        (set! (-> data-ptr 16) (-> *math-camera* camera-rot-other vector 1 quad))
+        (set! (-> data-ptr 17) (-> *math-camera* camera-rot-other vector 2 quad))
+        (set! (-> data-ptr 18) (-> *math-camera* camera-rot-other vector 3 quad))
+
+        (set! (-> data-ptr 19) (-> *math-camera* perspective vector 0 quad))
+        (set! (-> data-ptr 20) (-> *math-camera* perspective vector 1 quad))
+        (set! (-> data-ptr 21) (-> *math-camera* perspective vector 2 quad))
+        (set! (-> data-ptr 22) (-> *math-camera* perspective vector 3 quad))
+
+       )
+      (else
+        (set! (-> data-ptr 0) (-> *math-camera* plane 0 quad))
+        (set! (-> data-ptr 1) (-> *math-camera* plane 1 quad))
+        (set! (-> data-ptr 2) (-> *math-camera* plane 2 quad))
+        (set! (-> data-ptr 3) (-> *math-camera* plane 3 quad))
+        (set! (-> data-ptr 4) (-> lev mood-context itimes 0 quad))
+        (set! (-> data-ptr 5) (-> lev mood-context itimes 1 quad))
+        (set! (-> data-ptr 6) (-> lev mood-context itimes 2 quad))
+        (set! (-> data-ptr 7) (-> lev mood-context itimes 3 quad))
+        (set! (-> data-ptr 8) (-> *math-camera* camera-temp vector 0 quad))
+        (set! (-> data-ptr 9) (-> *math-camera* camera-temp vector 1 quad))
+        (set! (-> data-ptr 10) (-> *math-camera* camera-temp vector 2 quad))
+        (set! (-> data-ptr 11) (-> *math-camera* camera-temp vector 3 quad))
+        (set! (-> data-ptr 12) (-> *math-camera* hvdf-off quad))
+        (let ((vec (-> (the (inline-array vector) data-ptr) 13)))
+          (set! (-> vec x) (-> *math-camera* pfog0))
+          (set! (-> vec y) (-> *math-camera* fog-min))
+          (set! (-> vec z) (-> *math-camera* fog-max))
+          )
+        (set! (-> data-ptr 14) (-> *math-camera* trans quad))
+
+        (set! (-> data-ptr 15) (-> *math-camera* camera-rot vector 0 quad))
+        (set! (-> data-ptr 16) (-> *math-camera* camera-rot vector 1 quad))
+        (set! (-> data-ptr 17) (-> *math-camera* camera-rot vector 2 quad))
+        (set! (-> data-ptr 18) (-> *math-camera* camera-rot vector 3 quad))
+
+        (set! (-> data-ptr 19) (-> *math-camera* perspective vector 0 quad))
+        (set! (-> data-ptr 20) (-> *math-camera* perspective vector 1 quad))
+        (set! (-> data-ptr 21) (-> *math-camera* perspective vector 2 quad))
+        (set! (-> data-ptr 22) (-> *math-camera* perspective vector 3 quad))
+        )
+      )
+
+    (charp<-string (the (pointer uint8) (&-> data-ptr 23)) (symbol->string (-> lev nickname)))
+    )
+  (&+! (-> dma-buf base) (* 16 24))
+  )
+
+(defun add-pc-camera-data ((dma-buf dma-buffer))
+  "Add PC-port specific camera data. used as fallback for collide mesh renderer.
+   Same as add-pc-trag3-data but level-specific data is left undefined."
+  (let ((packet (the-as dma-packet (-> dma-buf base))))
+    (set! (-> packet dma) (new 'static 'dma-tag :id (dma-tag-id cnt) :qwc 24))
+    (set! (-> packet vif0) (new 'static 'vif-tag))
+    (set! (-> packet vif1) (new 'static 'vif-tag :cmd (vif-cmd pc-port)))
+    (set! (-> dma-buf base) (the pointer (&+ packet 16)))
+    )
+
+  ;; first 4 quadwords are planes, then itimes
+  (let ((data-ptr (the-as (pointer uint128) (-> dma-buf base))))
+    ;; the "use-camera-other" flag is set to "move" entire levels,
+    ;; like the rotating city below in the throne room.
+    (set! (-> data-ptr 0) (-> *math-camera* plane 0 quad))
+    (set! (-> data-ptr 1) (-> *math-camera* plane 1 quad))
+    (set! (-> data-ptr 2) (-> *math-camera* plane 2 quad))
+    (set! (-> data-ptr 3) (-> *math-camera* plane 3 quad))
+    ;; (set! (-> data-ptr 4) (-> lev mood-context itimes 0 quad))
+    ;; (set! (-> data-ptr 5) (-> lev mood-context itimes 1 quad))
+    ;; (set! (-> data-ptr 6) (-> lev mood-context itimes 2 quad))
+    ;; (set! (-> data-ptr 7) (-> lev mood-context itimes 3 quad))
+    (set! (-> data-ptr 8) (-> *math-camera* camera-temp vector 0 quad))
+    (set! (-> data-ptr 9) (-> *math-camera* camera-temp vector 1 quad))
+    (set! (-> data-ptr 10) (-> *math-camera* camera-temp vector 2 quad))
+    (set! (-> data-ptr 11) (-> *math-camera* camera-temp vector 3 quad))
+    (set! (-> data-ptr 12) (-> *math-camera* hvdf-off quad))
+    (let ((vec (-> (the (inline-array vector) data-ptr) 13)))
+      (set! (-> vec x) (-> *math-camera* pfog0))
+      (set! (-> vec y) (-> *math-camera* fog-min))
+      (set! (-> vec z) (-> *math-camera* fog-max))
+      )
+    (set! (-> data-ptr 14) (-> *math-camera* trans quad))
+
+    (set! (-> data-ptr 15) (-> *math-camera* camera-rot vector 0 quad))
+    (set! (-> data-ptr 16) (-> *math-camera* camera-rot vector 1 quad))
+    (set! (-> data-ptr 17) (-> *math-camera* camera-rot vector 2 quad))
+    (set! (-> data-ptr 18) (-> *math-camera* camera-rot vector 3 quad))
+
+    (set! (-> data-ptr 19) (-> *math-camera* perspective vector 0 quad))
+    (set! (-> data-ptr 20) (-> *math-camera* perspective vector 1 quad))
+    (set! (-> data-ptr 21) (-> *math-camera* perspective vector 2 quad))
+    (set! (-> data-ptr 22) (-> *math-camera* perspective vector 3 quad))
+
+    (charp<-string (the (pointer uint8) (&-> data-ptr 23)) (symbol->string #f))
+    )
+  (&+! (-> dma-buf base) (* 16 24))
+  )
+
+
 (defun add-pc-port-background-data ((dma-buf dma-buffer))
   "PC Port added"
   ;; loop over levels
@@ -272,6 +407,24 @@
                                dma-start
                                (the-as (pointer dma-tag) a3-3)
                                )
+        )
+      )
+    )
+  (let* ((dma-buff (-> *display* frames (-> *display* on-screen) global-buf))
+         (dma-start (-> dma-buff base)))
+    (add-pc-camera-data dma-buff)
+    (let ((a3-22 (-> dma-buff base)))
+      (let ((v1-57 (the-as object (-> dma-buff base))))
+        (set! (-> (the-as dma-packet v1-57) dma) (new 'static 'dma-tag :id (dma-tag-id next)))
+        (set! (-> (the-as dma-packet v1-57) vif0) (new 'static 'vif-tag))
+        (set! (-> (the-as dma-packet v1-57) vif1) (new 'static 'vif-tag))
+        (set! (-> dma-buff base) (&+ (the-as pointer v1-57) 16))
+        )
+      (dma-bucket-insert-tag
+        (-> *display* frames (-> *display* on-screen) bucket-group)
+        (bucket-id bucket-2)
+        dma-start
+        (the-as (pointer dma-tag) a3-22)
         )
       )
     )
@@ -601,89 +754,4 @@
     )
   0
   (none)
-  )
-
-
-(defun add-pc-tfrag3-data ((dma-buf dma-buffer) (lev level))
-  "Add PC-port specific tfrag data"
-  (let ((packet (the-as dma-packet (-> dma-buf base))))
-    (set! (-> packet dma) (new 'static 'dma-tag :id (dma-tag-id cnt) :qwc 24))
-    (set! (-> packet vif0) (new 'static 'vif-tag))
-    (set! (-> packet vif1) (new 'static 'vif-tag :cmd (vif-cmd pc-port)))
-    (set! (-> dma-buf base) (the pointer (&+ packet 16)))
-    )
-
-  ;; first 4 quadwords are planes, then itimes
-  (let ((data-ptr (the-as (pointer uint128) (-> dma-buf base))))
-    ;; the "use-camera-other" flag is set to "move" entire levels,
-    ;; like the rotating city below in the throne room.
-    (cond
-      ((-> lev info use-camera-other)
-        (set! (-> data-ptr 0) (-> *math-camera* plane-other 0 quad))
-        (set! (-> data-ptr 1) (-> *math-camera* plane-other 1 quad))
-        (set! (-> data-ptr 2) (-> *math-camera* plane-other 2 quad))
-        (set! (-> data-ptr 3) (-> *math-camera* plane-other 3 quad))
-        (set! (-> data-ptr 4) (-> lev mood-context itimes 0 quad))
-        (set! (-> data-ptr 5) (-> lev mood-context itimes 1 quad))
-        (set! (-> data-ptr 6) (-> lev mood-context itimes 2 quad))
-        (set! (-> data-ptr 7) (-> lev mood-context itimes 3 quad))
-        (set! (-> data-ptr 8) (-> *math-camera* camera-temp-other vector 0 quad))
-        (set! (-> data-ptr 9) (-> *math-camera* camera-temp-other vector 1 quad))
-        (set! (-> data-ptr 10) (-> *math-camera* camera-temp-other vector 2 quad))
-        (set! (-> data-ptr 11) (-> *math-camera* camera-temp-other vector 3 quad))
-        (set! (-> data-ptr 12) (-> *math-camera* hvdf-off quad))
-        (let ((vec (-> (the (inline-array vector) data-ptr) 13)))
-          (set! (-> vec x) (-> *math-camera* pfog0))
-          (set! (-> vec y) (-> *math-camera* fog-min))
-          (set! (-> vec z) (-> *math-camera* fog-max))
-          )
-        (set! (-> data-ptr 14) (-> *math-camera* trans-other quad))
-
-        (set! (-> data-ptr 15) (-> *math-camera* camera-rot-other vector 0 quad))
-        (set! (-> data-ptr 16) (-> *math-camera* camera-rot-other vector 1 quad))
-        (set! (-> data-ptr 17) (-> *math-camera* camera-rot-other vector 2 quad))
-        (set! (-> data-ptr 18) (-> *math-camera* camera-rot-other vector 3 quad))
-
-        (set! (-> data-ptr 19) (-> *math-camera* perspective vector 0 quad))
-        (set! (-> data-ptr 20) (-> *math-camera* perspective vector 1 quad))
-        (set! (-> data-ptr 21) (-> *math-camera* perspective vector 2 quad))
-        (set! (-> data-ptr 22) (-> *math-camera* perspective vector 3 quad))
-
-       )
-      (else
-        (set! (-> data-ptr 0) (-> *math-camera* plane 0 quad))
-        (set! (-> data-ptr 1) (-> *math-camera* plane 1 quad))
-        (set! (-> data-ptr 2) (-> *math-camera* plane 2 quad))
-        (set! (-> data-ptr 3) (-> *math-camera* plane 3 quad))
-        (set! (-> data-ptr 4) (-> lev mood-context itimes 0 quad))
-        (set! (-> data-ptr 5) (-> lev mood-context itimes 1 quad))
-        (set! (-> data-ptr 6) (-> lev mood-context itimes 2 quad))
-        (set! (-> data-ptr 7) (-> lev mood-context itimes 3 quad))
-        (set! (-> data-ptr 8) (-> *math-camera* camera-temp vector 0 quad))
-        (set! (-> data-ptr 9) (-> *math-camera* camera-temp vector 1 quad))
-        (set! (-> data-ptr 10) (-> *math-camera* camera-temp vector 2 quad))
-        (set! (-> data-ptr 11) (-> *math-camera* camera-temp vector 3 quad))
-        (set! (-> data-ptr 12) (-> *math-camera* hvdf-off quad))
-        (let ((vec (-> (the (inline-array vector) data-ptr) 13)))
-          (set! (-> vec x) (-> *math-camera* pfog0))
-          (set! (-> vec y) (-> *math-camera* fog-min))
-          (set! (-> vec z) (-> *math-camera* fog-max))
-          )
-        (set! (-> data-ptr 14) (-> *math-camera* trans quad))
-
-        (set! (-> data-ptr 15) (-> *math-camera* camera-rot vector 0 quad))
-        (set! (-> data-ptr 16) (-> *math-camera* camera-rot vector 1 quad))
-        (set! (-> data-ptr 17) (-> *math-camera* camera-rot vector 2 quad))
-        (set! (-> data-ptr 18) (-> *math-camera* camera-rot vector 3 quad))
-
-        (set! (-> data-ptr 19) (-> *math-camera* perspective vector 0 quad))
-        (set! (-> data-ptr 20) (-> *math-camera* perspective vector 1 quad))
-        (set! (-> data-ptr 21) (-> *math-camera* perspective vector 2 quad))
-        (set! (-> data-ptr 22) (-> *math-camera* perspective vector 3 quad))
-        )
-      )
-
-    (charp<-string (the (pointer uint8) (&-> data-ptr 23)) (symbol->string (-> lev nickname)))
-    )
-  (&+! (-> dma-buf base) (* 16 24))
   )

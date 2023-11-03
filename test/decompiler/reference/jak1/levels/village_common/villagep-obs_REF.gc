@@ -4,41 +4,38 @@
 ;; definition of type warpgate
 (deftype warpgate (process-hidden)
   ()
-  :method-count-assert 15
-  :size-assert         #x70
-  :flag-assert         #xf00000070
   )
 
 ;; definition for method 3 of type warpgate
-(defmethod inspect warpgate ((obj warpgate))
-  (format #t "[~8x] ~A~%" obj (-> obj type))
-  (format #t "~Tname: ~A~%" (-> obj name))
-  (format #t "~Tmask: ~D~%" (-> obj mask))
-  (format #t "~Tparent: #x~X~%" (-> obj parent))
-  (format #t "~Tbrother: #x~X~%" (-> obj brother))
-  (format #t "~Tchild: #x~X~%" (-> obj child))
-  (format #t "~Tppointer: #x~X~%" (-> obj ppointer))
-  (format #t "~Tself: ~A~%" (-> obj self))
-  (format #t "~Tpool: ~A~%" (-> obj pool))
-  (format #t "~Tstatus: ~A~%" (-> obj status))
-  (format #t "~Tpid: ~D~%" (-> obj pid))
-  (format #t "~Tmain-thread: ~A~%" (-> obj main-thread))
-  (format #t "~Ttop-thread: ~A~%" (-> obj top-thread))
-  (format #t "~Tentity: ~A~%" (-> obj entity))
-  (format #t "~Tstate: ~A~%" (-> obj state))
-  (format #t "~Ttrans-hook: ~A~%" (-> obj trans-hook))
-  (format #t "~Tpost-hook: ~A~%" (-> obj post-hook))
-  (format #t "~Tevent-hook: ~A~%" (-> obj event-hook))
-  (format #t "~Tallocated-length: ~D~%" (-> obj allocated-length))
-  (format #t "~Tnext-state: ~A~%" (-> obj next-state))
-  (format #t "~Theap-base: #x~X~%" (-> obj heap-base))
-  (format #t "~Theap-top: #x~X~%" (-> obj heap-top))
-  (format #t "~Theap-cur: #x~X~%" (-> obj heap-cur))
-  (format #t "~Tstack-frame-top: ~A~%" (-> obj stack-frame-top))
-  (format #t "~Theap: #<kheap @ #x~X>~%" (&-> obj heap-base))
-  (format #t "~Tconnection-list: ~`'connectable`P~%" (-> obj connection-list))
-  (format #t "~Tstack[0] @ #x~X~%" (-> obj stack))
-  obj
+(defmethod inspect ((this warpgate))
+  (format #t "[~8x] ~A~%" this (-> this type))
+  (format #t "~Tname: ~A~%" (-> this name))
+  (format #t "~Tmask: ~D~%" (-> this mask))
+  (format #t "~Tparent: #x~X~%" (-> this parent))
+  (format #t "~Tbrother: #x~X~%" (-> this brother))
+  (format #t "~Tchild: #x~X~%" (-> this child))
+  (format #t "~Tppointer: #x~X~%" (-> this ppointer))
+  (format #t "~Tself: ~A~%" (-> this self))
+  (format #t "~Tpool: ~A~%" (-> this pool))
+  (format #t "~Tstatus: ~A~%" (-> this status))
+  (format #t "~Tpid: ~D~%" (-> this pid))
+  (format #t "~Tmain-thread: ~A~%" (-> this main-thread))
+  (format #t "~Ttop-thread: ~A~%" (-> this top-thread))
+  (format #t "~Tentity: ~A~%" (-> this entity))
+  (format #t "~Tstate: ~A~%" (-> this state))
+  (format #t "~Ttrans-hook: ~A~%" (-> this trans-hook))
+  (format #t "~Tpost-hook: ~A~%" (-> this post-hook))
+  (format #t "~Tevent-hook: ~A~%" (-> this event-hook))
+  (format #t "~Tallocated-length: ~D~%" (-> this allocated-length))
+  (format #t "~Tnext-state: ~A~%" (-> this next-state))
+  (format #t "~Theap-base: #x~X~%" (-> this heap-base))
+  (format #t "~Theap-top: #x~X~%" (-> this heap-top))
+  (format #t "~Theap-cur: #x~X~%" (-> this heap-cur))
+  (format #t "~Tstack-frame-top: ~A~%" (-> this stack-frame-top))
+  (format #t "~Theap: #<kheap @ #x~X>~%" (&-> this heap-base))
+  (format #t "~Tconnection-list: ~`'connectable`P~%" (-> this connection-list))
+  (format #t "~Tstack[0] @ #x~X~%" (-> this stack))
+  this
   )
 
 ;; failed to figure out what this is:
@@ -57,15 +54,14 @@
     (if (logtest? (-> self control status) (cshape-moving-flags onsurf))
         (go target-hit-ground #f)
         )
-    (none)
     )
   :code (behavior ((arg0 vector) (arg1 vector))
     (clear-collide-with-as (-> self control))
     (ja-channel-set! 0)
     (vector-reset! (-> self control transv))
     (move-to-point! (-> self control) (-> self control unknown-vector102))
-    (let ((gp-0 (-> *display* base-frame-counter)))
-      (until (>= (- (-> *display* base-frame-counter) gp-0) (seconds 1))
+    (let ((gp-0 (current-time)))
+      (until (time-elapsed? gp-0 (seconds 1))
         (suspend)
         )
       )
@@ -91,27 +87,23 @@
       )
     (set-heading-vec! (-> self control) (-> self control transv))
     (rot->dir-targ! (-> self control))
-    (set! (-> self state-time) (-> *display* base-frame-counter))
+    (set-time! (-> self state-time))
     (set! (-> self post-hook) target-no-stick-post)
     (ja-channel-set! 1)
     (send-event self 'do-effect 'death-warp-in -1.0)
     (sound-play "warpgate-tele")
-    (ja-no-eval :group! (-> self draw art-group data 41)
-                :num! (seek! (ja-aframe 50.0 0))
-                :frame-num (ja-aframe 40.0 0)
-                )
+    (ja-no-eval :group! eichar-duck-high-jump-ja :num! (seek! (ja-aframe 50.0 0)) :frame-num (ja-aframe 40.0 0))
     (until (ja-done? 0)
       (suspend)
       (ja :num! (seek! (ja-aframe 50.0 0)))
       )
     (restore-collide-with-as (-> self control))
-    (ja-no-eval :group! (-> self draw art-group data 41) :num! (seek!) :frame-num (ja-aframe 50.0 0))
+    (ja-no-eval :group! eichar-duck-high-jump-ja :num! (seek!) :frame-num (ja-aframe 50.0 0))
     (until (ja-done? 0)
       (suspend)
       (ja :num! (seek!))
       )
     (target-falling-anim -1 (seconds 0.33))
-    (none)
     )
   :post target-no-move-post
   )
@@ -119,8 +111,8 @@
 ;; failed to figure out what this is:
 (defstate idle (warp-gate)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('hide)
        (go-virtual hidden)
        )
@@ -128,7 +120,7 @@
     )
   :code (behavior ()
     (remove-setting! 'allow-progress)
-    (set! (-> self state-time) (-> *display* base-frame-counter))
+    (set-time! (-> self state-time))
     (loop
       (when (and (and *target* (>= 20480.0 (vector-vector-distance (-> self root trans) (-> *target* control trans))))
                  (and (>= (-> self level-slot) 0)
@@ -153,14 +145,14 @@
                    (can-grab-display? self)
                    (cond
                      ((or (= (-> *target* next-state name) 'target-warp-in) (= (-> *target* next-state name) 'target-warp-out))
-                      (set! (-> self state-time) (-> *display* base-frame-counter))
+                      (set-time! (-> self state-time))
                       #f
                       )
                      (else
                        #t
                        )
                      )
-                   (>= (- (-> *display* base-frame-counter) (-> self state-time)) (seconds 0.1))
+                   (time-elapsed? (-> self state-time) (seconds 0.1))
                    )
           (if (and (cpad-pressed? 0 circle) (process-grab? *target*))
               (go-virtual active)
@@ -188,7 +180,6 @@
         )
       (suspend)
       )
-    (none)
     )
   )
 
@@ -254,12 +245,11 @@
     (set-setting! 'allow-progress #f 0.0 0)
     (apply-settings *setting-control*)
     (sound-play "start-options")
-    (set! (-> self state-time) (-> *display* base-frame-counter))
-    (none)
+    (set-time! (-> self state-time))
     )
   :trans (behavior ()
     (when (or (and (cpad-pressed? 0 triangle)
-                   (>= (- (-> *display* base-frame-counter) (-> self state-time)) (seconds 0.1))
+                   (time-elapsed? (-> self state-time) (seconds 0.1))
                    (process-release? *target*)
                    )
               (not *target*)
@@ -280,12 +270,11 @@
             (send-event
               *target*
               'rotate-y-angle
-              (fmax (fmin f0-0 (* 65536.0 (-> *display* seconds-per-frame))) (* -65536.0 (-> *display* seconds-per-frame)))
+              (fmax (fmin f0-0 (* 65536.0 (seconds-per-frame))) (* -65536.0 (seconds-per-frame)))
               )
             )
         )
       )
-    (none)
     )
   :code (behavior ()
     (local-vars (sv-112 int) (sv-128 int) (sv-144 int))
@@ -325,7 +314,7 @@
           (hide-hud)
           (let ((s1-2 (get-continue-by-name *game-info* (-> *warp-info* gp-0))))
             (lookup-level-info (-> s1-2 level))
-            (when (and (>= (- (-> *display* base-frame-counter) (-> self state-time)) (seconds 0.05)) (cpad-pressed? 0 circle))
+            (when (and (time-elapsed? (-> self state-time) (seconds 0.05)) (cpad-pressed? 0 circle))
               (logclear! (-> *cpad-list* cpads 0 button0-abs 0) (pad-buttons circle))
               (logclear! (-> *cpad-list* cpads 0 button0-rel 0) (pad-buttons circle))
               (go-virtual use gp-0 (the-as level s1-2))
@@ -344,7 +333,7 @@
             (let ((v1-40 s1-3))
               (set! (-> v1-40 height) (the float 55))
               )
-            (set! (-> s1-3 flags) (font-flags shadow kerning middle left large))
+            (set! (-> s1-3 flags) (font-flags shadow kerning middle middle-vert large))
             (print-game-text (lookup-text! *common-text* (text-id warp-gate-use-dpad) #f) s1-3 #f 128 22)
             (+! (-> s1-3 origin y) 35.0)
             (let ((v1-43 s1-3))
@@ -422,14 +411,13 @@
           )
         )
       )
-    (none)
     )
   )
 
 ;; failed to figure out what this is:
 (defstate hidden (warp-gate)
   :virtual #t
-  :code (the-as (function none :behavior warp-gate) anim-loop)
+  :code anim-loop
   )
 
 ;; definition for function warp-gate-init-by-other
@@ -486,24 +474,20 @@
 
 ;; definition of type warp-gate-switch
 (deftype warp-gate-switch (basebutton)
-  ((warp handle  :offset-assert 256)
+  ((warp  handle)
    )
-  :heap-base #xa0
-  :method-count-assert 33
-  :size-assert         #x108
-  :flag-assert         #x2100a00108
   (:methods
-    (pressable? (_type_) symbol 32)
+    (pressable? (_type_) symbol)
     )
   )
 
 ;; definition for method 3 of type warp-gate-switch
-(defmethod inspect warp-gate-switch ((obj warp-gate-switch))
+(defmethod inspect ((this warp-gate-switch))
   (let ((t9-0 (method-of-type basebutton inspect)))
-    (t9-0 obj)
+    (t9-0 this)
     )
-  (format #t "~T~Twarp: ~D~%" (-> obj warp))
-  obj
+  (format #t "~T~Twarp: ~D~%" (-> this warp))
+  this
   )
 
 ;; failed to figure out what this is:
@@ -513,8 +497,8 @@
               )
 
 ;; definition for method 27 of type warp-gate-switch
-(defmethod basebutton-method-27 warp-gate-switch ((obj warp-gate-switch))
-  (let ((s5-0 (new 'process 'collide-shape-moving obj (collide-list-enum hit-by-player))))
+(defmethod basebutton-method-27 ((this warp-gate-switch))
+  (let ((s5-0 (new 'process 'collide-shape-moving this (collide-list-enum hit-by-player))))
     (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s5-0 reaction) default-collision-reaction)
     (set! (-> s5-0 no-reaction)
@@ -539,14 +523,14 @@
       )
     (set! (-> s5-0 nav-radius) (* 0.75 (-> s5-0 root-prim local-sphere w)))
     (backup-collide-with-as s5-0)
-    (set! (-> obj root-override) s5-0)
+    (set! (-> this root) s5-0)
     s5-0
     )
   )
 
 ;; definition for method 32 of type warp-gate-switch
-(defmethod pressable? warp-gate-switch ((obj warp-gate-switch))
-  (let ((v1-2 (-> obj entity extra perm task)))
+(defmethod pressable? ((this warp-gate-switch))
+  (let ((v1-2 (-> this entity extra perm task)))
     (cond
       ((logtest? (-> *target* control root-prim prim-core action)
                  (collide-action edgegrab-cam swingpole-active racer snowball tube flut)
@@ -582,64 +566,63 @@
   )
 
 ;; definition for method 26 of type warp-gate-switch
-(defmethod basebutton-method-26 warp-gate-switch ((obj warp-gate-switch))
-  (set! (-> obj warp) (the-as handle #f))
-  (let ((v1-2 (-> obj entity extra perm task)))
+(defmethod basebutton-method-26 ((this warp-gate-switch))
+  (set! (-> this warp) (the-as handle #f))
+  (let ((v1-2 (-> this entity extra perm task)))
     (cond
       ((= v1-2 (game-task training-door))
-       (set! (-> obj down?)
+       (set! (-> this down?)
              (the-as
                symbol
-               (and (-> obj entity) (logtest? (-> obj entity extra perm status) (entity-perm-status complete)))
+               (and (-> this entity) (logtest? (-> this entity extra perm status) (entity-perm-status complete)))
                )
              )
        )
       (else
-        (if (or (= v1-2 (game-task none)) (task-closed? (-> obj entity extra perm task) (task-status need-hint)))
-            (set! (-> obj down?) #t)
+        (if (or (= v1-2 (game-task none)) (task-closed? (-> this entity extra perm task) (task-status need-hint)))
+            (set! (-> this down?) #t)
             )
         )
       )
     )
-  (initialize-skeleton obj *warp-gate-switch-sg* '())
-  (logior! (-> obj skel status) (janim-status inited))
+  (initialize-skeleton this *warp-gate-switch-sg* '())
+  (logior! (-> this skel status) (janim-status inited))
   (ja-channel-set! 1)
   (cond
-    ((-> obj down?)
-     (let ((s5-0 (-> obj skel root-channel 0)))
+    ((-> this down?)
+     (let ((s5-0 (-> this skel root-channel 0)))
        (joint-control-channel-group-eval!
          s5-0
-         (the-as art-joint-anim (-> obj draw art-group data 2))
+         (the-as art-joint-anim (-> this draw art-group data 2))
          num-func-identity
          )
        (set! (-> s5-0 frame-num)
-             (the float (+ (-> (the-as art-joint-anim (-> obj draw art-group data 2)) data 0 length) -1))
+             (the float (+ (-> (the-as art-joint-anim (-> this draw art-group data 2)) data 0 length) -1))
              )
        )
      )
     (else
-      (let ((s5-1 (-> obj skel root-channel 0)))
+      (let ((s5-1 (-> this skel root-channel 0)))
         (joint-control-channel-group-eval!
           s5-1
-          (the-as art-joint-anim (-> obj draw art-group data 2))
+          (the-as art-joint-anim (-> this draw art-group data 2))
           num-func-identity
           )
         (set! (-> s5-1 frame-num) 0.0)
         )
       )
     )
-  (set! (-> obj anim-speed) 2.0)
-  (update-transforms! (-> obj root-override))
+  (set! (-> this anim-speed) 2.0)
+  (update-transforms! (-> this root))
   (ja-post)
   (none)
   )
 
 ;; definition for method 31 of type warp-gate-switch
-;; INFO: Return type mismatch none vs int.
-(defmethod press! warp-gate-switch ((obj warp-gate-switch) (arg0 symbol))
+(defmethod press! ((this warp-gate-switch) (arg0 symbol))
   (with-pp
     (when arg0
-      (let ((s4-0 (-> obj entity extra perm task)))
+      (let ((s4-0 (-> this entity extra perm task)))
         (when (nonzero? s4-0)
           (close-specific-task! s4-0 (task-status need-hint))
           (when (= s4-0 (game-task village3-button))
@@ -659,7 +642,7 @@
         (set! (-> a1-5 num-params) 0)
         (set! (-> a1-5 message) 'start)
         (let ((t9-5 send-event-function)
-              (v1-14 (-> obj notify-actor))
+              (v1-14 (-> this notify-actor))
               )
           (t9-5
             (if v1-14
@@ -670,19 +653,15 @@
           )
         )
       )
-    (the-as int ((the-as (function basebutton symbol none) (find-parent-method warp-gate-switch 31))
-                 (the-as basebutton arg0)
-                 arg0
-                 )
-            )
+    (call-parent-method (the-as warp-gate-switch arg0) arg0)
     )
   )
 
 ;; failed to figure out what this is:
 (defstate basebutton-up-idle (warp-gate-switch)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('touch 'attack)
        (when (pressable? self)
          (basebutton-method-29 self (-> self event-going-down) (-> self notify-actor))
@@ -690,21 +669,20 @@
          )
        )
       (('hide)
-       (send-event (handle->process (-> self warp)) event-type)
+       (send-event (handle->process (-> self warp)) message)
        )
       (else
-        ((-> (method-of-type basebutton basebutton-up-idle) event) proc arg1 event-type event)
+        ((-> (method-of-type basebutton basebutton-up-idle) event) proc argc message block)
         )
       )
     )
   :enter (behavior ()
-    (set! (-> self state-time) (-> *display* base-frame-counter))
+    (set-time! (-> self state-time))
     (let ((t9-0 (-> (method-of-type basebutton basebutton-up-idle) enter)))
       (if t9-0
           (t9-0)
           )
       )
-    (none)
     )
   :trans (behavior ()
     (let ((a1-0 (new 'stack-no-clear 'event-message-block)))
@@ -722,7 +700,7 @@
           )
         )
       )
-    (when (>= (- (-> *display* base-frame-counter) (-> self state-time)) (seconds 60))
+    (when (time-elapsed? (-> self state-time) (seconds 60))
       (case (-> self entity extra perm task)
         (((game-task training-door))
          (when (and (task-complete? *game-info* (game-task training-door))
@@ -787,32 +765,31 @@
            )
          )
         )
-      (set! (-> self state-time) (-> *display* base-frame-counter))
+      (set-time! (-> self state-time))
       )
     (let ((t9-13 (-> (method-of-type basebutton basebutton-up-idle) trans)))
       (if t9-13
           (t9-13)
           )
       )
-    (none)
     )
   )
 
 ;; failed to figure out what this is:
 (defstate basebutton-down-idle (warp-gate-switch)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('hide)
-       (send-event (handle->process (-> self warp)) event-type)
+       (send-event (handle->process (-> self warp)) message)
        )
       (else
-        ((-> (method-of-type basebutton basebutton-down-idle) event) proc arg1 event-type event)
+        ((-> (method-of-type basebutton basebutton-down-idle) event) proc argc message block)
         )
       )
     )
   :enter (behavior ()
-    (set! (-> self state-time) (-> *display* base-frame-counter))
+    (set-time! (-> self state-time))
     (set! (-> self warp) (ppointer->handle (process-spawn warp-gate (-> self notify-actor extra trans) :to self)))
     (process-entity-status! self (entity-perm-status complete) #t)
     (let ((t9-4 (-> (method-of-type basebutton basebutton-down-idle) enter)))
@@ -820,7 +797,6 @@
           (t9-4)
           )
       )
-    (none)
     )
   :exit (behavior ()
     (let ((a0-1 (handle->process (-> self warp))))
@@ -833,10 +809,9 @@
           (t9-1)
           )
       )
-    (none)
     )
   :trans (behavior ()
-    (when (>= (- (-> *display* base-frame-counter) (-> self state-time)) (seconds 60))
+    (when (time-elapsed? (-> self state-time) (seconds 60))
       (case (-> self entity extra perm task)
         (((game-task training-door))
          (when (not (task-closed? (game-task beach-ecorocks) (task-status need-introduction)))
@@ -851,14 +826,13 @@
            )
          )
         )
-      (set! (-> self state-time) (-> *display* base-frame-counter))
+      (set-time! (-> self state-time))
       )
     (let ((t9-3 (-> (method-of-type basebutton basebutton-down-idle) trans)))
       (if t9-3
           (t9-3)
           )
       )
-    (none)
     )
   )
 
@@ -899,12 +873,11 @@
           )
         )
       )
-    (let ((t9-10 (-> (the-as (state basebutton) (find-parent-method warp-gate-switch 21)) code)))
+    (let ((t9-10 (-> (the-as (state basebutton) (find-parent-state)) code)))
       (if t9-10
           ((the-as (function none :behavior basebutton) t9-10))
           )
       )
-    (none)
     )
   )
 
@@ -916,39 +889,35 @@
 
 ;; definition of type village-cam
 (deftype village-cam (process)
-  ((root-override trsq        :offset-assert 112)
-   (range         meters      :offset-assert 116)
-   (index         int32       :offset-assert 120)
-   (state-time    time-frame  :offset-assert 128)
+  ((root-override  trsq)
+   (range          meters)
+   (index          int32)
+   (state-time     time-frame)
    )
-  :heap-base #x20
-  :method-count-assert 15
-  :size-assert         #x88
-  :flag-assert         #xf00200088
-  (:methods
-    (idle () _type_ :state 14)
+  (:state-methods
+    idle
     )
   )
 
 ;; definition for method 3 of type village-cam
-(defmethod inspect village-cam ((obj village-cam))
+(defmethod inspect ((this village-cam))
   (let ((t9-0 (method-of-type process inspect)))
-    (t9-0 obj)
+    (t9-0 this)
     )
-  (format #t "~T~Troot: ~A~%" (-> obj root-override))
-  (format #t "~T~Trange: (meters ~m)~%" (-> obj range))
-  (format #t "~T~Tindex: ~D~%" (-> obj index))
-  (format #t "~T~Tstate-time: ~D~%" (-> obj state-time))
-  obj
+  (format #t "~T~Troot: ~A~%" (-> this root-override))
+  (format #t "~T~Trange: (meters ~m)~%" (-> this range))
+  (format #t "~T~Tindex: ~D~%" (-> this index))
+  (format #t "~T~Tstate-time: ~D~%" (-> this state-time))
+  this
   )
 
 ;; definition for method 7 of type village-cam
 ;; INFO: Return type mismatch process vs village-cam.
-(defmethod relocate village-cam ((obj village-cam) (arg0 int))
-  (if (nonzero? (-> obj root-override))
-      (&+! (-> obj root-override) arg0)
+(defmethod relocate ((this village-cam) (arg0 int))
+  (if (nonzero? (-> this root-override))
+      (&+! (-> this root-override) arg0)
       )
-  (the-as village-cam ((method-of-type process relocate) obj arg0))
+  (the-as village-cam ((method-of-type process relocate) this arg0))
   )
 
 ;; failed to figure out what this is:
@@ -1021,7 +990,7 @@
                       )
             (suspend)
             )
-          (set! (-> self state-time) (-> *display* base-frame-counter))
+          (set-time! (-> self state-time))
           (process-grab? *target*)
           (process-entity-status! self (entity-perm-status bit-3) #t)
           (kill-current-level-hint '(ambient) '() 'exit)
@@ -1053,7 +1022,7 @@
                        )
               (suspend)
               )
-            (while (< (- (-> *display* base-frame-counter) (-> self state-time)) (seconds 1))
+            (while (not (time-elapsed? (-> self state-time) (seconds 1)))
               (suspend)
               )
             (kill-current-level-hint '() '() 'die)
@@ -1181,8 +1150,8 @@
             (let ((a0-70 (-> self entity extra perm)))
               (when (= (-> a0-70 user-uint8 0) 1)
                 (remove-setting! 'allow-progress)
-                (let ((gp-3 (-> *display* base-frame-counter)))
-                  (until (>= (- (-> *display* base-frame-counter) gp-3) (seconds 300))
+                (let ((gp-3 (current-time)))
+                  (until (time-elapsed? gp-3 (seconds 300))
                     (suspend)
                     )
                   )
@@ -1197,22 +1166,21 @@
         )
       (suspend)
       )
-    (none)
     )
   )
 
 ;; definition for method 11 of type village-cam
 ;; INFO: Used lq/sq
 ;; INFO: Return type mismatch object vs none.
-(defmethod init-from-entity! village-cam ((obj village-cam) (arg0 entity-actor))
+(defmethod init-from-entity! ((this village-cam) (arg0 entity-actor))
   "Copy defaults from the entity."
-  (logior! (-> obj mask) (process-mask actor-pause))
-  (set! (-> obj root-override) (new 'process 'trsq))
-  (set! (-> obj root-override trans quad) (-> arg0 extra trans quad))
-  (quaternion-copy! (-> obj root-override quat) (-> arg0 quat))
-  (vector-identity! (-> obj root-override scale))
-  (set! (-> obj range) (res-lump-float arg0 'cam-notice-dist :default 81920.0))
-  (set! (-> obj index) (res-lump-value arg0 'index int))
-  (go (method-of-object obj idle))
+  (logior! (-> this mask) (process-mask actor-pause))
+  (set! (-> this root-override) (new 'process 'trsq))
+  (set! (-> this root-override trans quad) (-> arg0 extra trans quad))
+  (quaternion-copy! (-> this root-override quat) (-> arg0 quat))
+  (vector-identity! (-> this root-override scale))
+  (set! (-> this range) (res-lump-float arg0 'cam-notice-dist :default 81920.0))
+  (set! (-> this index) (res-lump-value arg0 'index int))
+  (go (method-of-object this idle))
   (none)
   )

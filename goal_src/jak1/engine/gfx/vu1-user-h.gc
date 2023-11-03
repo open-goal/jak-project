@@ -31,6 +31,8 @@
   (twenty 20)
   )
 
+;; DECOMP BEGINS
+
 (define *vu1-enable-user-menu*
         (vu1-renderer-mask
           sky
@@ -65,45 +67,33 @@
 
 ;; a dma "sink" is somewhere where a renderer can put stuff.
 (deftype dma-foreground-sink (basic)
-  ((bucket                   bucket-id  :offset-assert 4) ;; the DMA bucket
-   (foreground-texture-page  int8       :offset-assert 8)     ;; the tpage we need (in the level)
-   (foreground-texture-level int8       :offset-assert 9)     ;; the level we belong to
-   (foreground-output-bucket int8       :offset-assert 10)    ;; ?
+  ((bucket                    bucket-id)
+   (foreground-texture-page   int8)
+   (foreground-texture-level  int8)
+   (foreground-output-bucket  int8)
    )
-  :method-count-assert 9
-  :size-assert         #xb
-  :flag-assert         #x90000000b
   )
 
 ;; additional info for the generic renderer
 (deftype generic-bucket-state (structure)
-  ((gifbuf-adr uint32  :offset-assert 0)
-   (inbuf-adr  uint32  :offset-assert 4)
+  ((gifbuf-adr  uint32)
+   (inbuf-adr   uint32)
    )
   :pack-me
-  :method-count-assert 9
-  :size-assert         #x8
-  :flag-assert         #x900000008
   )
 
 ;; sink for the generic renderer, a normal sink + extra data.
 (deftype generic-dma-foreground-sink (dma-foreground-sink)
-  ((state                    generic-bucket-state :inline :offset-assert 12)
+  ((state  generic-bucket-state  :inline)
    )
-  :method-count-assert 9
-  :size-assert         #x14
-  :flag-assert         #x900000014
   )
 
 ;; group of sinks used for the foreground renderers.
 (declare-type level basic)
 (deftype dma-foreground-sink-group (basic)
-  ((sink         dma-foreground-sink       3 :offset-assert 4)
-   (merc-sink    dma-foreground-sink         :offset 4)
-   (generic-sink generic-dma-foreground-sink :offset 8)
-   (level        level                       :offset-assert 16)
+  ((sink          dma-foreground-sink          3)
+   (merc-sink     dma-foreground-sink          :overlay-at (-> sink 0))
+   (generic-sink  generic-dma-foreground-sink  :overlay-at (-> sink 1))
+   (level         level)
    )
-  :method-count-assert 9
-  :size-assert         #x14
-  :flag-assert         #x900000014
   )

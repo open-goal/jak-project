@@ -763,34 +763,30 @@
 
 ;; definition of type drill-wall
 (deftype drill-wall (process-focusable)
-  ((anim      spool-anim   :offset-assert 204)
-   (art-name  string       :offset-assert 208)
-   (egg-group actor-group  :offset-assert 212)
+  ((anim       spool-anim)
+   (art-name   string)
+   (egg-group  actor-group)
    )
-  :heap-base #x60
-  :method-count-assert 29
-  :size-assert         #xd8
-  :flag-assert         #x1d006000d8
-  (:methods
-    (idle () _type_ :state 27)
-    (hit (symbol) _type_ :state 28)
+  (:state-methods
+    idle
+    (hit symbol)
     )
   )
 
 ;; definition for method 3 of type drill-wall
-(defmethod inspect drill-wall ((obj drill-wall))
-  (when (not obj)
-    (set! obj obj)
+(defmethod inspect ((this drill-wall))
+  (when (not this)
+    (set! this this)
     (goto cfg-4)
     )
   (let ((t9-0 (method-of-type process-focusable inspect)))
-    (t9-0 obj)
+    (t9-0 this)
     )
-  (format #t "~2Tanim: ~A~%" (-> obj anim))
-  (format #t "~2Tart-name: ~A~%" (-> obj art-name))
-  (format #t "~2Tegg-group: ~A~%" (-> obj egg-group))
+  (format #t "~2Tanim: ~A~%" (-> this anim))
+  (format #t "~2Tart-name: ~A~%" (-> this art-name))
+  (format #t "~2Tegg-group: ~A~%" (-> this egg-group))
   (label cfg-4)
-  obj
+  this
   )
 
 ;; failed to figure out what this is:
@@ -803,9 +799,9 @@
 ;; failed to figure out what this is:
 (defstate idle (drill-wall)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
     (local-vars (v1-2 symbol))
-    (case event-type
+    (case message
       (('trigger)
        (let ((v1-1 (-> self egg-group)))
          (when v1-1
@@ -822,8 +818,8 @@
        (label cfg-10)
        (when v1-2
          (logclear! (-> self mask) (process-mask actor-pause))
-         (go-virtual hit (the-as symbol (if (>= arg1 1)
-                                            (-> event param 0)
+         (go-virtual hit (the-as symbol (if (>= argc 1)
+                                            (-> block param 0)
                                             (the-as uint #f)
                                             )
                                  )
@@ -840,7 +836,6 @@
       (suspend)
       )
     #f
-    (none)
     )
   )
 
@@ -849,16 +844,15 @@
   :virtual #t
   :exit (behavior ()
     (ja-abort-spooled-anim (-> self anim) (the-as art-joint-anim #f) -1)
-    (none)
     )
   :trans (-> (method-of-type drill-wall idle) trans)
-  :post (the-as (function none :behavior drill-wall) transform-post)
+  :post transform-post
   )
 
 ;; definition for method 11 of type drill-wall
 ;; INFO: Used lq/sq
 ;; WARN: Return type mismatch object vs none.
-(defmethod init-from-entity! drill-wall ((obj drill-wall) (arg0 entity-actor))
+(defmethod init-from-entity! ((this drill-wall) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
 - stack size
@@ -866,10 +860,10 @@ This commonly includes things such as:
 - loading the skeleton group / bones
 - sounds"
   (local-vars (sv-16 res-tag))
-  (stack-size-set! (-> obj main-thread) 512)
-  (logior! (-> obj mask) (process-mask collectable))
+  (stack-size-set! (-> this main-thread) 512)
+  (logior! (-> this mask) (process-mask collectable))
   (let ((s3-0 ((method-of-type res-lump get-property-struct)
-               (-> obj entity)
+               (-> this entity)
                'art-name
                'interp
                -1000000000.0
@@ -880,8 +874,8 @@ This commonly includes things such as:
               )
         (s4-0 (art-group-get-by-name *level* "skel-drill-wall" (the-as (pointer uint32) #f)))
         )
-    (set! (-> obj art-name) (the-as string s3-0))
-    (let ((s2-0 (new 'process 'collide-shape-moving obj (collide-list-enum usually-hit-by-player))))
+    (set! (-> this art-name) (the-as string s3-0))
+    (let ((s2-0 (new 'process 'collide-shape-moving this (collide-list-enum usually-hit-by-player))))
       (set! (-> s2-0 dynam) (copy *standard-dynamics* 'process))
       (set! (-> s2-0 reaction) cshape-reaction-default)
       (set! (-> s2-0 no-reaction)
@@ -902,42 +896,42 @@ This commonly includes things such as:
         (set! (-> s2-0 backup-collide-as) (-> v1-22 prim-core collide-as))
         (set! (-> s2-0 backup-collide-with) (-> v1-22 prim-core collide-with))
         )
-      (set! (-> obj root) s2-0)
+      (set! (-> this root) s2-0)
       )
-    (if (string= (-> obj art-name) "drill-wall-1")
-        (set! (-> obj anim)
+    (if (string= (-> this art-name) "drill-wall-1")
+        (set! (-> this anim)
               (new 'static 'spool-anim :name "drill-wall-1" :anim-name "1-break" :parts 1 :command-list '())
               )
         (go process-drawable-art-error (the-as string s3-0))
         )
-    (process-drawable-from-entity! obj arg0)
-    (initialize-skeleton obj (the-as skeleton-group s4-0) (the-as pair 0))
+    (process-drawable-from-entity! this arg0)
+    (initialize-skeleton this (the-as skeleton-group s4-0) (the-as pair 0))
     )
   (ja-channel-set! 1)
-  (let* ((s5-1 (-> obj skel root-channel 0))
-         (s4-1 (-> obj draw art-group))
+  (let* ((s5-1 (-> this skel root-channel 0))
+         (s4-1 (-> this draw art-group))
          (s3-1 (method-of-object s4-1 get-art-by-name-method))
          )
-    (format (clear *temp-string*) "~S-idle" (-> obj art-name))
+    (format (clear *temp-string*) "~S-idle" (-> this art-name))
     (set! (-> s5-1 frame-group) (the-as art-joint-anim (s3-1 s4-1 *temp-string* (the-as type #f))))
     )
   (set! sv-16 (new 'static 'res-tag))
-  (let ((v1-35 (res-lump-data (-> obj entity) 'actor-groups (pointer actor-group) :tag-ptr (& sv-16))))
+  (let ((v1-35 (res-lump-data (-> this entity) 'actor-groups (pointer actor-group) :tag-ptr (& sv-16))))
     (cond
       ((and v1-35 (nonzero? (-> sv-16 elt-count)))
-       (set! (-> obj egg-group) (-> v1-35 0))
+       (set! (-> this egg-group) (-> v1-35 0))
        )
       (else
         )
       )
     )
   (cond
-    ((and (-> obj entity) (logtest? (-> obj entity extra perm status) (entity-perm-status subtask-complete)))
-     (logclear! (-> obj mask) (process-mask actor-pause))
-     (go (method-of-object obj hit) #t)
+    ((and (-> this entity) (logtest? (-> this entity extra perm status) (entity-perm-status subtask-complete)))
+     (logclear! (-> this mask) (process-mask actor-pause))
+     (go (method-of-object this hit) #t)
      )
     (else
-      (go (method-of-object obj idle))
+      (go (method-of-object this idle))
       )
     )
   (none)
@@ -945,34 +939,30 @@ This commonly includes things such as:
 
 ;; definition of type drill-crane
 (deftype drill-crane (process-focusable)
-  ((anim      spool-anim   :offset-assert 204)
-   (art-name  string       :offset-assert 208)
-   (egg-group actor-group  :offset-assert 212)
+  ((anim       spool-anim)
+   (art-name   string)
+   (egg-group  actor-group)
    )
-  :heap-base #x60
-  :method-count-assert 29
-  :size-assert         #xd8
-  :flag-assert         #x1d006000d8
-  (:methods
-    (idle () _type_ :state 27)
-    (hit (symbol) _type_ :state 28)
+  (:state-methods
+    idle
+    (hit symbol)
     )
   )
 
 ;; definition for method 3 of type drill-crane
-(defmethod inspect drill-crane ((obj drill-crane))
-  (when (not obj)
-    (set! obj obj)
+(defmethod inspect ((this drill-crane))
+  (when (not this)
+    (set! this this)
     (goto cfg-4)
     )
   (let ((t9-0 (method-of-type process-focusable inspect)))
-    (t9-0 obj)
+    (t9-0 this)
     )
-  (format #t "~2Tanim: ~A~%" (-> obj anim))
-  (format #t "~2Tart-name: ~A~%" (-> obj art-name))
-  (format #t "~2Tegg-group: ~A~%" (-> obj egg-group))
+  (format #t "~2Tanim: ~A~%" (-> this anim))
+  (format #t "~2Tart-name: ~A~%" (-> this art-name))
+  (format #t "~2Tegg-group: ~A~%" (-> this egg-group))
   (label cfg-4)
-  obj
+  this
   )
 
 ;; failed to figure out what this is:
@@ -1013,9 +1003,9 @@ This commonly includes things such as:
 ;; failed to figure out what this is:
 (defstate idle (drill-crane)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
     (local-vars (v1-2 symbol))
-    (case event-type
+    (case message
       (('trigger)
        (let ((v1-1 (-> self egg-group)))
          (when v1-1
@@ -1049,7 +1039,6 @@ This commonly includes things such as:
       (suspend)
       )
     #f
-    (none)
     )
   )
 
@@ -1058,16 +1047,15 @@ This commonly includes things such as:
   :virtual #t
   :exit (behavior ()
     (ja-abort-spooled-anim (-> self anim) (the-as art-joint-anim #f) -1)
-    (none)
     )
   :trans (-> (method-of-type drill-crane idle) trans)
-  :post (the-as (function none :behavior drill-crane) transform-post)
+  :post transform-post
   )
 
 ;; definition for method 11 of type drill-crane
 ;; INFO: Used lq/sq
 ;; WARN: Return type mismatch object vs none.
-(defmethod init-from-entity! drill-crane ((obj drill-crane) (arg0 entity-actor))
+(defmethod init-from-entity! ((this drill-crane) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
 - stack size
@@ -1075,13 +1063,13 @@ This commonly includes things such as:
 - loading the skeleton group / bones
 - sounds"
   (local-vars (sv-16 res-tag) (sv-32 res-tag))
-  (stack-size-set! (-> obj main-thread) 512)
-  (logior! (-> obj mask) (process-mask collectable))
+  (stack-size-set! (-> this main-thread) 512)
+  (logior! (-> this mask) (process-mask collectable))
   (let ((s3-0 "drill-crane-break")
         (s4-0 (art-group-get-by-name *level* "skel-drill-crane" (the-as (pointer uint32) #f)))
         )
-    (set! (-> obj art-name) s3-0)
-    (let ((s3-1 (new 'process 'collide-shape-moving obj (collide-list-enum usually-hit-by-player))))
+    (set! (-> this art-name) s3-0)
+    (let ((s3-1 (new 'process 'collide-shape-moving this (collide-list-enum usually-hit-by-player))))
       (set! (-> s3-1 dynam) (copy *standard-dynamics* 'process))
       (set! (-> s3-1 reaction) cshape-reaction-default)
       (set! (-> s3-1 no-reaction)
@@ -1102,16 +1090,16 @@ This commonly includes things such as:
         (set! (-> s3-1 backup-collide-as) (-> v1-21 prim-core collide-as))
         (set! (-> s3-1 backup-collide-with) (-> v1-21 prim-core collide-with))
         )
-      (set! (-> obj root) s3-1)
+      (set! (-> this root) s3-1)
       )
-    (set! (-> obj anim)
+    (set! (-> this anim)
           (new 'static 'spool-anim :name "drill-crane-break" :anim-name "break" :parts 3 :command-list '())
           )
-    (process-drawable-from-entity! obj arg0)
-    (initialize-skeleton obj (the-as skeleton-group s4-0) (the-as pair 0))
+    (process-drawable-from-entity! this arg0)
+    (initialize-skeleton this (the-as skeleton-group s4-0) (the-as pair 0))
     )
-  (set! (-> obj draw force-lod) 1)
-  (let ((s4-1 (-> obj root)))
+  (set! (-> this draw force-lod) 1)
+  (let ((s4-1 (-> this root)))
     (set! sv-16 (new 'static 'res-tag))
     (let ((v1-28 (res-lump-data arg0 'scale-mult (pointer float) :tag-ptr (& sv-16))))
       (when v1-28
@@ -1122,24 +1110,24 @@ This commonly includes things such as:
       )
     )
   (set! sv-32 (new 'static 'res-tag))
-  (let ((v1-30 (res-lump-data (-> obj entity) 'actor-groups pointer :tag-ptr (& sv-32))))
+  (let ((v1-30 (res-lump-data (-> this entity) 'actor-groups pointer :tag-ptr (& sv-32))))
     (cond
       ((and v1-30 (nonzero? (-> sv-32 elt-count)))
-       (set! (-> obj egg-group) (the-as actor-group (-> (the-as (pointer uint32) v1-30))))
+       (set! (-> this egg-group) (the-as actor-group (-> (the-as (pointer uint32) v1-30))))
        )
       (else
         )
       )
     )
   (cond
-    ((or (and (-> obj entity) (logtest? (-> obj entity extra perm status) (entity-perm-status subtask-complete)))
+    ((or (and (-> this entity) (logtest? (-> this entity extra perm status) (entity-perm-status subtask-complete)))
          (task-node-closed? (game-task-node drill-eggs-resolution))
          )
-     (logclear! (-> obj mask) (process-mask actor-pause))
-     (go (method-of-object obj hit) #t)
+     (logclear! (-> this mask) (process-mask actor-pause))
+     (go (method-of-object this hit) #t)
      )
     (else
-      (go (method-of-object obj idle))
+      (go (method-of-object this idle))
       )
     )
   (none)

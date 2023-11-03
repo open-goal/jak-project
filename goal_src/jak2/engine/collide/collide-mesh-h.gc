@@ -11,98 +11,80 @@
 ;; DECOMP BEGINS
 
 (deftype collide-tri-result (structure)
-  ((vertex      vector      3 :inline :offset-assert   0)
-   (intersect   vector      :inline   :offset-assert  48)
-   (normal      vector      :inline   :offset-assert  64)
-   (pat         pat-surface           :offset-assert  80)
-   (collide-ptr basic                 :offset-assert  84)
+  ((vertex       vector  3 :inline)
+   (intersect    vector  :inline)
+   (normal       vector  :inline)
+   (pat          pat-surface)
+   (collide-ptr  basic)
    )
-  :method-count-assert 9
-  :size-assert         #x58
-  :flag-assert         #x900000058
   )
 
 
 (deftype collide-mesh-tri (structure)
-  ((vertex-index uint8       3 :offset-assert   0)
-   (unused       uint8         :offset-assert   3)
-   (pat          pat-surface   :offset-assert   4)
+  ((vertex-index  uint8  3)
+   (unused        uint8)
+   (pat           pat-surface)
    )
   :pack-me
-  :method-count-assert 9
-  :size-assert         #x8
-  :flag-assert         #x900000008
   )
 
 
 (deftype collide-mesh (basic)
-  ((joint-id    int32                           :offset-assert   4)
-   (num-tris    uint32                          :offset-assert   8)
-   (num-verts   uint32                          :offset-assert  12)
-   (vertex-data (inline-array vector)           :offset-assert  16)
-   (tris        collide-mesh-tri      1 :inline :offset         32)
+  ((joint-id     int32)
+   (num-tris     uint32)
+   (num-verts    uint32)
+   (vertex-data  (inline-array vector))
+   (tris         collide-mesh-tri  1 :inline :offset  32)
    )
-  :method-count-assert 16
-  :size-assert         #x28
-  :flag-assert         #x1000000028
   (:methods
-    (debug-draw-tris (_type_ process-drawable int) none 9)
-    (overlap-test (_type_ collide-mesh-cache-tri vector) symbol 10)
-    (should-push-away-test (_type_ collide-mesh-cache-tri collide-tri-result vector float) float 11)
-    (sphere-on-platform-test (_type_ collide-mesh-cache-tri collide-tri-result vector float) float 12)
-    (unpack-mesh-to-cache! (_type_ (inline-array collide-mesh-cache-tri) matrix) none 13)
-    (collide-mesh-math-1 (_type_ object object) none 14)
-    (collide-mesh-math-2 (_type_ object object object) none 15)
+    (debug-draw-tris (_type_ process-drawable int) none)
+    (overlap-test (_type_ collide-mesh-cache-tri vector) symbol)
+    (should-push-away-test (_type_ collide-mesh-cache-tri collide-tri-result vector float) float)
+    (sphere-on-platform-test (_type_ collide-mesh-cache-tri collide-tri-result vector float) float)
+    (unpack-mesh-to-cache! (_type_ (inline-array collide-mesh-cache-tri) matrix) none)
+    (collide-mesh-math-1 (_type_ object object) none)
+    (collide-mesh-math-2 (_type_ object object object) none)
     )
   )
 
 
 (deftype collide-mesh-cache-tri (structure)
-  ((vertex vector         3 :inline :offset-assert   0)
-   (normal vector         :inline   :offset-assert  48)
-   (bbox4w bounding-box4w :inline   :offset-assert  64)
-   (pat    pat-surface              :offset         60)
+  ((vertex  vector          3 :inline)
+   (normal  vector          :inline)
+   (bbox4w  bounding-box4w  :inline)
+   (pat     pat-surface     :overlay-at (-> normal data 3))
    )
-  :method-count-assert 9
-  :size-assert         #x60
-  :flag-assert         #x900000060
   )
 
 
 (deftype collide-mesh-cache-entry (structure)
-  ((mat  matrix                 :inline          :offset-assert   0)
-   (tris collide-mesh-cache-tri :inline :dynamic :offset-assert  64)
+  ((mat   matrix                  :inline)
+   (tris  collide-mesh-cache-tri  :inline :dynamic)
    )
-  :method-count-assert 9
-  :size-assert         #x40
-  :flag-assert         #x900000040
   )
 
 
 (deftype collide-mesh-cache (basic)
-  ((used-size uint32       :offset-assert   4)
-   (max-size  uint32       :offset-assert   8)
-   (id        uint32       :offset-assert  12)
-   (data      uint8  48000 :offset-assert  16)
+  ((used-size  uint32)
+   (max-size   uint32)
+   (id         uint32)
+   (data       uint8  48000)
    )
-  :method-count-assert 13
-  :size-assert         #xbb90
-  :flag-assert         #xd0000bb90
   (:methods
-    (populate-for-prim-mesh (_type_ collide-shape-prim-mesh) collide-mesh-cache-entry 9)
-    (is-id? (_type_ int) symbol 10)
-    (next-id! (_type_) uint 11)
-    (allocate! (_type_ int) collide-mesh-cache-entry 12)
+    (populate-for-prim-mesh (_type_ collide-shape-prim-mesh) collide-mesh-cache-entry)
+    (is-id? (_type_ int) symbol)
+    (next-id! (_type_) uint)
+    (allocate! (_type_ int) collide-mesh-cache-entry)
     )
   )
 
-(defmethod next-id! collide-mesh-cache ((obj collide-mesh-cache))
+(defmethod next-id! ((this collide-mesh-cache))
   "Reset all used entries in the cache and increment the id.
    If the id is zero, set it to 1"
   ;;     ld v1, 12(a0)
-  (let ((v1 (-> obj id)))
+  (let ((v1 (-> this id)))
     ;;     sw r0, 0(a0)
-    (set! (-> obj used-size) 0)
+    (set! (-> this used-size) 0)
     ;;     daddiu v0, v1, 1
     (let ((v0 (+ v1 1)))
       ;;     beql v0, r0, L3
@@ -112,14 +94,14 @@
           )
       ;; L3:
       ;;     sd v0, 12(a0)
-      (set! (-> obj id) v0)
+      (set! (-> this id) v0)
       v0
       )
     )
   )
 
-(defmethod is-id? collide-mesh-cache ((obj collide-mesh-cache) (arg0 int))
-  (= (-> obj id) arg0)
+(defmethod is-id? ((this collide-mesh-cache) (arg0 int))
+  (= (-> this id) arg0)
   )
 
 (kmemopen global "collide-mesh-cache")

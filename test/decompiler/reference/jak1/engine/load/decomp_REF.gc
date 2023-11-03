@@ -42,20 +42,17 @@
 
 ;; definition of type huf-dictionary-node
 (deftype huf-dictionary-node (structure)
-  ((zero uint16  :offset-assert   0)
-   (one  uint16  :offset-assert   2)
+  ((zero  uint16)
+   (one   uint16)
    )
-  :method-count-assert 9
-  :size-assert         #x4
-  :flag-assert         #x900000004
   )
 
 ;; definition for method 3 of type huf-dictionary-node
-(defmethod inspect huf-dictionary-node ((obj huf-dictionary-node))
-  (format #t "[~8x] ~A~%" obj 'huf-dictionary-node)
-  (format #t "~Tzero: ~D~%" (-> obj zero))
-  (format #t "~Tone: ~D~%" (-> obj one))
-  obj
+(defmethod inspect ((this huf-dictionary-node))
+  (format #t "[~8x] ~A~%" this 'huf-dictionary-node)
+  (format #t "~Tzero: ~D~%" (-> this zero))
+  (format #t "~Tone: ~D~%" (-> this one))
+  this
   )
 
 ;; definition for function unpack-comp-huf
@@ -108,7 +105,7 @@
 
 ;; definition for method 16 of type level
 ;; INFO: Used lq/sq
-(defmethod update-vis! level ((obj level) (vis-info level-vis-info) (arg1 uint) (arg2 uint))
+(defmethod update-vis! ((this level) (vis-info level-vis-info) (arg1 uint) (arg2 uint))
   (local-vars (t0-3 uint128) (vis-buffer object))
   (let* ((cam-leaf-idx (-> vis-info from-bsp current-leaf-idx))
          (curr-vis-str (-> vis-info current-vis-string))
@@ -123,7 +120,7 @@
           (return #f)
           )
       (logand! (-> vis-info flags) -1073741825)
-      (set! vis-buffer (-> obj vis-buffer))
+      (set! vis-buffer (-> this vis-buffer))
       (b! #t cfg-27 :delay (nop!))
       (label cfg-6)
       (return #t)
@@ -139,11 +136,11 @@
     (set! vis-buffer (+ arg2 desired-vis-str))
     (b! #t cfg-27 :delay (nop!))
     (label cfg-15)
-    (let ((vis-load-result (vis-load obj)))
+    (let ((vis-load-result (vis-load this)))
       (b! (nonzero? vis-load-result) cfg-21 :delay (empty-form))
       (let* ((dest-bits (-> vis-info vis-bits))
-             (len (-> obj bsp visible-list-length))
-             (bsp-bits (the-as (pointer uinteger) (-> obj bsp all-visible-list)))
+             (len (-> this bsp visible-list-length))
+             (bsp-bits (the-as (pointer uinteger) (-> this bsp all-visible-list)))
              (len-qw (/ (+ len 15) 16))
              )
         (dotimes (a2-1 len-qw)
@@ -158,21 +155,21 @@
         (label cfg-21)
         (when (check-busy *ramdisk-rpc*)
           (set! (-> vis-info current-vis-string) (the-as uint -1))
-          (set! (-> obj all-visible?) 'loading)
+          (set! (-> this all-visible?) 'loading)
           (if (= *cheat-mode* 'debug)
               (format *stdcon* "Ramdisk loading~%")
               )
           (return #f)
           )
         (logior! (-> vis-info flags) #x40000000)
-        (ramdisk-load (the-as int vis-load-result) desired-vis-str (the-as uint 2048) (-> obj vis-buffer))
+        (ramdisk-load (the-as int vis-load-result) desired-vis-str (the-as uint 2048) (-> this vis-buffer))
         (set! result #f)
         (b! #t cfg-55 :delay (nop!))
         (label cfg-27)
         (let ((lower-flag-bits (the-as int (logand #x1fffffff (-> vis-info flags))))
               (spad-start (the-as object (+ 16 #x70000000)))
               (spad-end (+ 2064 #x70000000))
-              (list-len (-> obj bsp visible-list-length))
+              (list-len (-> this bsp visible-list-length))
               )
           (when (zero? (the-as uint lower-flag-bits))
             (let ((list-qwc (/ (+ list-len 15) 16)))
@@ -190,7 +187,11 @@
                    (set! (-> (the-as (pointer uint128) spad-start) a0-32) (the-as uint128 0))
                    )
                  )
-               (unpack-vis (-> obj bsp drawable-trees) (the-as (pointer int8) spad-start) (the-as (pointer int8) vis-buffer))
+               (unpack-vis
+                 (-> this bsp drawable-trees)
+                 (the-as (pointer int8) spad-start)
+                 (the-as (pointer int8) vis-buffer)
+                 )
                )
               ((2)
                (unpack-comp-rle (the-as (pointer int8) spad-start) (the-as (pointer int8) vis-buffer))
@@ -210,7 +211,7 @@
             (shift-arith-right-32 lower-flag-bits lower-flag-bits 3)
             )
           (let ((s2-1 vis-buffer)
-                (s1-1 (the-as (pointer uinteger) (-> obj bsp all-visible-list)))
+                (s1-1 (the-as (pointer uinteger) (-> this bsp all-visible-list)))
                 (v1-67 #f)
                 )
             (dotimes (s0-1 list-len)
@@ -244,7 +245,7 @@
             )
           (let ((v1-71 vis-buffer)
                 (a0-47 (-> vis-info vis-bits))
-                (a1-22 (the-as (pointer uinteger) (-> obj bsp all-visible-list)))
+                (a1-22 (the-as (pointer uinteger) (-> this bsp all-visible-list)))
                 (a2-11 (/ (+ list-len 15) 16))
                 )
             (dotimes (a3-8 a2-11)

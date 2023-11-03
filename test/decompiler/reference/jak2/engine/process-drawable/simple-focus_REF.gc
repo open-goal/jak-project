@@ -3,41 +3,37 @@
 
 ;; definition of type simple-focus
 (deftype simple-focus (process-focusable)
-  ((first-time? symbol  :offset-assert 204)
+  ((first-time?  symbol)
    )
-  :heap-base #x50
-  :method-count-assert 28
-  :size-assert         #xd0
-  :flag-assert         #x1c005000d0
-  (:methods
-    (idle () _type_ :state 27)
+  (:state-methods
+    idle
     )
   )
 
 ;; definition for method 3 of type simple-focus
-(defmethod inspect simple-focus ((obj simple-focus))
-  (when (not obj)
-    (set! obj obj)
+(defmethod inspect ((this simple-focus))
+  (when (not this)
+    (set! this this)
     (goto cfg-4)
     )
   (let ((t9-0 (method-of-type process-focusable inspect)))
-    (t9-0 obj)
+    (t9-0 this)
     )
-  (format #t "~2Tfirst-time?: ~A~%" (-> obj first-time?))
+  (format #t "~2Tfirst-time?: ~A~%" (-> this first-time?))
   (label cfg-4)
-  obj
+  this
   )
 
 ;; definition for method 20 of type simple-focus
-(defmethod get-trans simple-focus ((obj simple-focus) (arg0 int))
+(defmethod get-trans ((this simple-focus) (arg0 int))
   "@returns the `trans` [[vector]] from the process's `root` (typically either a [[trsqv]] or a [[collide-shape]])"
-  (-> obj root trans)
+  (-> this root trans)
   )
 
 ;; definition for method 12 of type simple-focus
-(defmethod run-logic? simple-focus ((obj simple-focus))
-  (when (-> obj first-time?)
-    (set! (-> obj first-time?) #f)
+(defmethod run-logic? ((this simple-focus))
+  (when (-> this first-time?)
+    (set! (-> this first-time?) #f)
     #t
     )
   )
@@ -45,18 +41,17 @@
 ;; failed to figure out what this is:
 (defstate idle (simple-focus)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (the-as object (case event-type
-                     (('move-trans)
-                      (let ((v0-0 (-> self root trans)))
-                        (set! (-> v0-0 quad) (-> (the-as vector (-> event param 0)) quad))
-                        v0-0
-                        )
-                      )
-                     )
-            )
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
+      (('move-trans)
+       (let ((v0-0 (-> self root trans)))
+         (set! (-> v0-0 quad) (-> (the-as vector (-> block param 0)) quad))
+         v0-0
+         )
+       )
+      )
     )
-  :code (the-as (function none :behavior simple-focus) sleep-code)
+  :code sleep-code
   )
 
 ;; definition for function simple-focus-init-by-other

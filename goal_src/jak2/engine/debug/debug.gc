@@ -37,7 +37,7 @@ Most functions take a boolean as their first argument. If the boolean is set to 
     (init-vf0-vector)
     (.lvf vf5 (&-> in quad))
 
-    ;; PC patch: get regis from init-for-transform.
+    ;; og:preserve-this PC patch: get regis from init-for-transform.
     (.lvf vf1 (&-> *transform-regs* vf1))
     (.lvf vf2 (&-> *transform-regs* vf2))
     (.lvf vf3 (&-> *transform-regs* vf3))
@@ -477,39 +477,30 @@ Most functions take a boolean as their first argument. If the boolean is set to 
 (when *debug-segment*
 
 (deftype debug-line (structure)
-  ((flags  int32             :offset-assert   0)
-   (bucket bucket-id         :offset-assert   4)
-   (v1     vector    :inline :offset-assert  16)
-   (v2     vector    :inline :offset-assert  32)
-   (color  rgba              :offset-assert  48)
-   (mode   symbol            :offset-assert  52)
-   (color2 rgba              :offset-assert  56)
+  ((flags   int32)
+   (bucket  bucket-id)
+   (v1      vector  :inline)
+   (v2      vector  :inline)
+   (color   rgba)
+   (mode    symbol)
+   (color2  rgba)
    )
-  :method-count-assert 9
-  :size-assert         #x3c
-  :flag-assert         #x90000003c
   )
 
 (deftype debug-text-3d (structure)
-  ((flags  int32              :offset-assert   0)
-   (bucket bucket-id          :offset-assert   4)
-   (pos    vector     :inline :offset-assert  16)
-   (color  font-color         :offset-assert  32)
-   (offset vector2h   :inline :offset-assert  36)
-   (str    string             :offset-assert  40)
+  ((flags   int32)
+   (bucket  bucket-id)
+   (pos     vector    :inline)
+   (color   font-color)
+   (offset  vector2h  :inline)
+   (str     string)
    )
-  :method-count-assert 9
-  :size-assert         #x2c
-  :flag-assert         #x90000002c
   )
 
 (deftype debug-tracking-thang (basic)
-  ((length           int32  :offset-assert   4)
-   (allocated-length int32  :offset-assert   8)
+  ((length            int32)
+   (allocated-length  int32)
    )
-  :method-count-assert 9
-  :size-assert         #xc
-  :flag-assert         #x90000000c
   )
 
 
@@ -524,7 +515,8 @@ Most functions take a boolean as their first argument. If the boolean is set to 
 (set! (-> *debug-text-3d-trk* allocated-length) 512)
 
 (dotimes (gp-0 (-> *debug-text-3d-trk* allocated-length))
-  (set! (-> *debug-text-3ds* gp-0 str) (new 'debug 'string 80 (the-as string #f)))
+  ;; og:preserve-this PC port note : allocated larger strings for 3D text
+  (set! (-> *debug-text-3ds* gp-0 str) (new 'debug 'string (#if PC_BIG_MEMORY 255 80) (the-as string #f)))
   )
 
 )
@@ -1463,13 +1455,13 @@ Most functions take a boolean as their first argument. If the boolean is set to 
     )
   )
 
-(defmethod inspect debug-vertex-stats ((obj debug-vertex-stats))
-  (format #t "[~8x] ~A~%" obj (-> obj type))
-  (format #t "~Tlength: ~D~%" (-> obj length))
-  (format #t "~Tpos-count: ~D~%" (-> obj pos-count))
-  (format #t "~Tdata[~D]: @ #x~X~%" (-> obj length) (-> obj vertex))
-  (dotimes (s5-0 (-> obj length))
-    (let ((s4-0 (-> obj vertex s5-0)))
+(defmethod inspect debug-vertex-stats ((this debug-vertex-stats))
+  (format #t "[~8x] ~A~%" this (-> this type))
+  (format #t "~Tlength: ~D~%" (-> this length))
+  (format #t "~Tpos-count: ~D~%" (-> this pos-count))
+  (format #t "~Tdata[~D]: @ #x~X~%" (-> this length) (-> this vertex))
+  (dotimes (s5-0 (-> this length))
+    (let ((s4-0 (-> this vertex s5-0)))
       (format
         #t
         "  ~D : trans: ~D ~D ~D ~D"
@@ -1490,7 +1482,7 @@ Most functions take a boolean as their first argument. If the boolean is set to 
         )
       )
     )
-  obj
+  this
   )
 
 (defun-debug history-init ((history pos-history) (num-points int))
@@ -1675,7 +1667,7 @@ Most functions take a boolean as their first argument. If the boolean is set to 
 
 (defun add-debug-bound-internal ((buf dma-buffer) (pts (inline-array vector)) (num-pts int) (color0 rgba) (color1 rgba) (flip-tex int))
   "Draw a boundary polygon using the boundary renderer. This renderer reuses components of the sky render
-   to properly clip (and subdivide) very large polgons.
+   to properly clip (and subdivide) very large polygons.
    This is intended to be called by add-debug-bound, after it has set up dma buffers for the boundary rendering."
   (rlet ((vf27 :class vf))
     (set-vector!

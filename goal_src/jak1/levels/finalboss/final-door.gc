@@ -9,25 +9,19 @@
 
 ;; DECOMP BEGINS
 
-
 (deftype fin-door (process-hidden)
   ()
-  :method-count-assert 15
-  :size-assert         #x70
-  :flag-assert         #xf00000070
   )
 
 
 (deftype final-door (process-drawable)
   ()
-  :heap-base #x40
-  :method-count-assert 23
-  :size-assert         #xb0
-  :flag-assert         #x17004000b0
+  (:state-methods
+    idle
+    )
   (:methods
-    (idle () _type_ :state 20)
-    (final-door-method-21 (_type_) none 21)
-    (open (symbol) _type_ :state 22)
+    (final-door-method-21 (_type_) none)
+    (open (symbol) _type_ :state)
     )
   )
 
@@ -49,8 +43,8 @@
 
 (defstate idle (final-door)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('open)
        (go-virtual open #f)
        )
@@ -61,30 +55,28 @@
     (logior! (-> self mask) (process-mask sleep))
     (suspend)
     0
-    (none)
     )
   )
 
 (defstate open (final-door)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (the-as object (case event-type
-                     (('brightness)
-                      (let ((f0-0 (the-as float (-> event param 0)))
-                            (f1-0 (the-as float (-> event param 1)))
-                            )
-                        (set-vector! (-> self draw color-mult) f0-0 f0-0 f0-0 f0-0)
-                        (let ((v0-0 (-> self draw color-emissive)))
-                          (set! (-> v0-0 x) f1-0)
-                          (set! (-> v0-0 y) f1-0)
-                          (set! (-> v0-0 z) f1-0)
-                          (set! (-> v0-0 w) f1-0)
-                          v0-0
-                          )
-                        )
-                      )
-                     )
-            )
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
+      (('brightness)
+       (let ((f0-0 (the-as float (-> block param 0)))
+             (f1-0 (the-as float (-> block param 1)))
+             )
+         (set-vector! (-> self draw color-mult) f0-0 f0-0 f0-0 f0-0)
+         (let ((v0-0 (-> self draw color-emissive)))
+           (set! (-> v0-0 x) f1-0)
+           (set! (-> v0-0 y) f1-0)
+           (set! (-> v0-0 z) f1-0)
+           (set! (-> v0-0 w) f1-0)
+           v0-0
+           )
+         )
+       )
+      )
     )
   :code (behavior ((arg0 symbol))
     (case (-> self type)
@@ -109,12 +101,11 @@
     (logior! (-> self mask) (process-mask sleep))
     (suspend)
     0
-    (none)
     )
   )
 
-(defmethod init-from-entity! final-door ((obj final-door) (arg0 entity-actor))
-  (let ((s4-0 (new 'process 'collide-shape-moving obj (collide-list-enum hit-by-others))))
+(defmethod init-from-entity! ((this final-door) (arg0 entity-actor))
+  (let ((s4-0 (new 'process 'collide-shape-moving this (collide-list-enum hit-by-others))))
     (set! (-> s4-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s4-0 reaction) default-collision-reaction)
     (set! (-> s4-0 no-reaction)
@@ -131,29 +122,21 @@
       )
     (set! (-> s4-0 nav-radius) (* 0.75 (-> s4-0 root-prim local-sphere w)))
     (backup-collide-with-as s4-0)
-    (set! (-> obj root) s4-0)
+    (set! (-> this root) s4-0)
     )
-  (process-drawable-from-entity! obj arg0)
-  (final-door-method-21 obj)
-  (go (method-of-object obj idle))
+  (process-drawable-from-entity! this arg0)
+  (final-door-method-21 this)
+  (go (method-of-object this idle))
   (none)
   )
 
 (deftype power-left (final-door)
   ()
-  :heap-base #x40
-  :method-count-assert 23
-  :size-assert         #xb0
-  :flag-assert         #x17004000b0
   )
 
 
 (deftype power-right (final-door)
   ()
-  :heap-base #x40
-  :method-count-assert 23
-  :size-assert         #xb0
-  :flag-assert         #x17004000b0
   )
 
 
@@ -181,36 +164,31 @@
           )
       (suspend)
       )
-    (none)
     )
   )
 
-(defmethod final-door-method-21 power-left ((obj power-left))
-  (initialize-skeleton obj *power-left-sg* '())
+(defmethod final-door-method-21 ((this power-left))
+  (initialize-skeleton this *power-left-sg* '())
   0
   (none)
   )
 
-(defmethod final-door-method-21 power-right ((obj power-right))
-  (initialize-skeleton obj *power-right-sg* '())
+(defmethod final-door-method-21 ((this power-right))
+  (initialize-skeleton this *power-right-sg* '())
   0
   (none)
   )
 
 (deftype powercellalt (process-drawable)
-  ((root-override collide-shape-moving         :offset        112)
-   (jump-pos      vector               :inline :offset-assert 176)
-   (base          vector               :inline :offset-assert 192)
-   (index         int32                        :offset-assert 208)
+  ((root      collide-shape-moving :override)
+   (jump-pos  vector                :inline)
+   (base      vector                :inline)
+   (index     int32)
    )
-  :heap-base #x70
-  :method-count-assert 23
-  :size-assert         #xd4
-  :flag-assert         #x17007000d4
   (:methods
-    (powercellalt-method-20 () none 20)
-    (jump () _type_ :state 21)
-    (idle () _type_ :state 22)
+    (powercellalt-method-20 () none)
+    (jump () _type_ :state)
+    (idle () _type_ :state)
     )
   )
 
@@ -221,22 +199,22 @@
     (sound-play "cell-prize")
     (let ((gp-1 (new 'stack 'trajectory)))
       (set! (-> self base y) (-> self jump-pos y))
-      (setup-from-to-duration! gp-1 (-> self root-override trans) (-> self jump-pos) 300.0 -2.2755556)
-      (set! (-> self state-time) (-> *display* base-frame-counter))
-      (until (>= (- (-> *display* base-frame-counter) (-> self state-time)) (seconds 1))
-        (let ((f0-2 (the float (- (-> *display* base-frame-counter) (-> self state-time)))))
-          (eval-position! gp-1 f0-2 (-> self root-override trans))
+      (setup-from-to-duration! gp-1 (-> self root trans) (-> self jump-pos) 300.0 -2.2755556)
+      (set-time! (-> self state-time))
+      (until (time-elapsed? (-> self state-time) (seconds 1))
+        (let ((f0-2 (the float (- (current-time) (-> self state-time)))))
+          (eval-position! gp-1 f0-2 (-> self root trans))
           )
         (transform-post)
-        (spawn (-> self part) (the-as vector (-> self root-override root-prim prim-core)))
+        (spawn (-> self part) (the-as vector (-> self root root-prim prim-core)))
         (suspend)
         (if (nonzero? (-> self skel))
             (ja :num! (loop! 0.5))
             )
         )
       )
-    (set! (-> self root-override trans quad) (-> self jump-pos quad))
-    (set! (-> self base quad) (-> self root-override trans quad))
+    (set! (-> self root trans quad) (-> self jump-pos quad))
+    (set! (-> self base quad) (-> self root trans quad))
     (transform-post)
     (sound-play "land-pcmetal" :pitch 2)
     (process-spawn
@@ -247,11 +225,10 @@
       #f
       #f
       #f
-      (-> self root-override root-prim prim-core)
+      (-> self root root-prim prim-core)
       :to *entity-pool*
       )
     (go-virtual idle)
-    (none)
     )
   )
 
@@ -260,13 +237,12 @@
   :code (behavior ()
     (loop
       (vector<-cspace!
-        (-> self root-override trans)
+        (-> self root trans)
         (-> (the-as process-drawable (-> self parent 0)) node-list data (-> self index))
         )
       (transform-post)
       (suspend)
       )
-    (none)
     )
   )
 
@@ -286,42 +262,39 @@
       )
     (set! (-> s3-0 nav-radius) (* 0.75 (-> s3-0 root-prim local-sphere w)))
     (backup-collide-with-as s3-0)
-    (set! (-> self root-override) s3-0)
+    (set! (-> self root) s3-0)
     )
-  (set! (-> self root-override trans quad) (-> arg1 quad))
+  (set! (-> self root trans quad) (-> arg1 quad))
   (set! (-> self jump-pos quad) (-> arg2 quad))
-  (set-vector! (-> self root-override scale) 0.5 0.5 0.5 1.0)
+  (set-vector! (-> self root scale) 0.5 0.5 0.5 1.0)
   (set! (-> self index) arg3)
   (initialize-skeleton self *powercellalt-sg* '())
   (set! (-> self part) (create-launch-control (-> *part-group-id-table* 63) self))
   enter-state
-  (-> self root-override trans)
+  (-> self root trans)
   (-> self jump-pos)
   (go-virtual jump)
   (none)
   )
 
 (defstate target-final-door (target)
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    ((-> target-grab event) proc arg1 event-type event)
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    ((-> target-grab event) proc argc message block)
     )
   :enter (behavior ((arg0 basic) (arg1 handle))
     (send-event *camera* 'change-to-entity-by-name "camera-403")
     (set! (-> self control unknown-surface00) *empty-mods*)
     (logior! (-> self state-flags) (state-flags invulnerable grabbed))
     (set-setting! 'allow-progress #f 0.0 0)
-    (none)
     )
   :exit (behavior ()
     (send-event *camera* 'change-state *camera-base-mode* (seconds 0.2))
     (logclear! (-> self state-flags) (state-flags invulnerable grabbed))
     (target-exit)
     (remove-setting! 'allow-progress)
-    (none)
     )
   :trans (behavior ()
     (set-letterbox-frames (seconds 0.017))
-    (none)
     )
   :code (behavior ((arg0 basic) (arg1 handle))
     (local-vars (sv-144 process) (sv-160 vector) (sv-176 process) (sv-192 vector))
@@ -333,13 +306,13 @@
     (rot->dir-targ! (-> self control))
     (transform-post)
     (ja-channel-push! 1 (seconds 0.2))
-    (ja-no-eval :group! (-> self draw art-group data 88) :num! (seek! (ja-aframe 18.0 0)) :frame-num 0.0)
+    (ja-no-eval :group! eichar-shocked-ja :num! (seek! (ja-aframe 18.0 0)) :frame-num 0.0)
     (until (ja-done? 0)
       (suspend)
       (ja :num! (seek! (ja-aframe 18.0 0)))
       )
     (let ((s4-3 (-> (handle->process (the-as handle arg0)) entity))
-          (s3-1 (vector<-cspace! (new 'stack-no-clear 'vector) (-> self node-list data 7)))
+          (s3-1 (vector<-cspace! (new 'stack-no-clear 'vector) (joint-node eichar-lod0-jg neckB)))
           )
       (dotimes (s2-0 50)
         (when (handle->process (the-as handle arg0))
@@ -359,8 +332,8 @@
               )
             )
           )
-        (let ((s1-1 (-> *display* base-frame-counter)))
-          (until (>= (- (-> *display* base-frame-counter) s1-1) (seconds 0.1))
+        (let ((s1-1 (current-time)))
+          (until (time-elapsed? s1-1 (seconds 0.1))
             (suspend)
             )
           )
@@ -381,15 +354,15 @@
               )
             )
           )
-        (let ((s1-3 (-> *display* base-frame-counter)))
-          (until (>= (- (-> *display* base-frame-counter) s1-3) (seconds 0.1))
+        (let ((s1-3 (current-time)))
+          (until (time-elapsed? s1-3 (seconds 0.1))
             (suspend)
             )
           )
         )
       )
-    (let ((gp-1 (-> *display* base-frame-counter)))
-      (until (>= (- (-> *display* base-frame-counter) gp-1) (seconds 2))
+    (let ((gp-1 (current-time)))
+      (until (time-elapsed? gp-1 (seconds 2))
         (suspend)
         )
       )
@@ -409,7 +382,6 @@
         )
       )
     (go target-stance)
-    (none)
     )
   :post target-no-stick-post
   )

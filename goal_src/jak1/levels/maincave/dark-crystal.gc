@@ -8,24 +8,19 @@
 
 ;; DECOMP BEGINS
 
-
 (deftype dark-crystal (process-drawable)
-  ((root-override         collide-shape         :offset        112)
-   (crystal-num           int32                 :offset-assert 176)
-   (underwater?           symbol                :offset-assert 180)
-   (explode-danger-radius float                 :offset-assert 184)
-   (lit-color-mult        vector        :inline :offset-assert 192)
-   (lit-color-emissive    vector        :inline :offset-assert 208)
-   (unlit-color-mult      vector        :inline :offset-assert 224)
-   (unlit-color-emissive  vector        :inline :offset-assert 240)
+  ((root                   collide-shape :override)
+   (crystal-num            int32)
+   (underwater?            symbol)
+   (explode-danger-radius  float)
+   (lit-color-mult         vector         :inline)
+   (lit-color-emissive     vector         :inline)
+   (unlit-color-mult       vector         :inline)
+   (unlit-color-emissive   vector         :inline)
    )
-  :heap-base #x90
-  :method-count-assert 22
-  :size-assert         #x100
-  :flag-assert         #x1600900100
   (:methods
-    (dark-crystal-method-20 (_type_) none 20)
-    (dark-crystal-method-21 (_type_) symbol 21)
+    (dark-crystal-method-20 (_type_) none)
+    (dark-crystal-method-21 (_type_) symbol)
     )
   (:states
     dark-crystal-activate
@@ -415,8 +410,8 @@
   )
 
 (defstate dark-crystal-idle (dark-crystal)
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('touch 'attack)
        (if (= (-> proc type) target)
            (level-hint-spawn
@@ -437,7 +432,6 @@
       (logior! (-> self mask) (process-mask sleep-code))
       (suspend)
       )
-    (none)
     )
   )
 
@@ -448,29 +442,28 @@
       (sound-play "warning")
       (set! (-> self draw color-mult quad) (-> self lit-color-mult quad))
       (set! (-> self draw color-emissive quad) (-> self lit-color-emissive quad))
-      (set! (-> self state-time) (-> *display* base-frame-counter))
-      (until (>= (- (-> *display* base-frame-counter) (-> self state-time)) (seconds 0.1))
+      (set-time! (-> self state-time))
+      (until (time-elapsed? (-> self state-time) (seconds 0.1))
         (suspend)
         )
       (set! (-> self draw color-mult quad) (-> self unlit-color-mult quad))
       (set! (-> self draw color-emissive quad) (-> self unlit-color-emissive quad))
-      (set! (-> self state-time) (-> *display* base-frame-counter))
+      (set-time! (-> self state-time))
       (let ((s5-1 (-> *dark-crystal-flash-delays* gp-0)))
-        (until (>= (- (-> *display* base-frame-counter) (-> self state-time)) s5-1)
+        (until (time-elapsed? (-> self state-time) s5-1)
           (suspend)
           )
         )
       )
     (go dark-crystal-explode)
-    (none)
     )
   )
 
 (defstate dark-crystal-explode (dark-crystal)
   :code (behavior ()
-    (set! (-> self state-time) (-> *display* base-frame-counter))
+    (set-time! (-> self state-time))
     (logclear! (-> self mask) (process-mask actor-pause))
-    (clear-collide-with-as (-> self root-override))
+    (clear-collide-with-as (-> self root))
     (let ((gp-0 (new 'stack 'joint-exploder-tuning 0)))
       (when (-> self underwater?)
         (set! (-> gp-0 duration) (seconds 4))
@@ -503,11 +496,11 @@
         #f
         #f
         #f
-        (-> self root-override trans)
+        (-> self root trans)
         :to *entity-pool*
         )
-      (let ((s5-4 (-> *display* base-frame-counter)))
-        (until (>= (- (-> *display* base-frame-counter) s5-4) (seconds 0.25))
+      (let ((s5-4 (current-time)))
+        (until (time-elapsed? s5-4 (seconds 0.25))
           (suspend)
           )
         )
@@ -519,18 +512,14 @@
     (until (not (-> self child))
       (suspend)
       )
-    (none)
     )
   )
 
 (defstate dark-crystal-spawn-fuel-cell (dark-crystal)
-  :event (the-as
-    (function process int symbol event-message-block object :behavior dark-crystal)
-    process-drawable-fuel-cell-handler
-    )
+  :event process-drawable-fuel-cell-handler
   :code (behavior ()
     (logclear! (-> self mask) (process-mask actor-pause))
-    (clear-collide-with-as (-> self root-override))
+    (clear-collide-with-as (-> self root))
     (level-hint-spawn
       (text-id cave-dark-crystals-resolution)
       "sksp0327"
@@ -543,7 +532,7 @@
     (logior! (-> self draw status) (draw-status hidden))
     (if (not (task-complete? *game-info* (-> self entity extra perm task)))
         (birth-pickup-at-point
-          (-> self root-override trans)
+          (-> self root trans)
           (pickup-type fuel-cell)
           (the float (-> self entity extra perm task))
           #t
@@ -557,21 +546,20 @@
       )
     (aybabtu 2)
     (cleanup-for-death self)
-    (none)
     )
   )
 
-(defmethod dark-crystal-method-20 dark-crystal ((obj dark-crystal))
+(defmethod dark-crystal-method-20 ((this dark-crystal))
   (when *target*
     (let ((s5-0 (new 'stack-no-clear 'vector))
           (s3-0 (new 'stack-no-clear 'vector))
           (s4-0 (new 'stack-no-clear 'vector))
           )
-      (set! (-> s5-0 quad) (-> obj root-override trans quad))
+      (set! (-> s5-0 quad) (-> this root trans quad))
       (+! (-> s5-0 y) 6144.0)
       (set! (-> s3-0 quad) (-> (target-pos 0) quad))
       (+! (-> s3-0 y) 6144.0)
-      (when (>= (-> obj explode-danger-radius) (vector-vector-distance s5-0 s3-0))
+      (when (>= (-> this explode-danger-radius) (vector-vector-distance s5-0 s3-0))
         (vector-! s4-0 s3-0 s5-0)
         (let ((t2-0 (new 'stack-no-clear 'collide-tri-result)))
           (if (< (fill-and-probe-using-line-sphere
@@ -580,7 +568,7 @@
                    s4-0
                    819.2
                    (collide-kind background)
-                   obj
+                   this
                    t2-0
                    (new 'static 'pat-surface :noentity #x1)
                    )
@@ -595,16 +583,16 @@
   (none)
   )
 
-(defmethod dark-crystal-method-21 dark-crystal ((obj dark-crystal))
+(defmethod dark-crystal-method-21 ((this dark-crystal))
   (let ((s5-0 #f))
-    (when (nonzero? (-> obj crystal-num))
+    (when (nonzero? (-> this crystal-num))
       (let* ((s4-0 (get-task-control (game-task cave-dark-crystals)))
-             (s3-0 (logior (get-reminder s4-0 3) (ash 1 (-> obj crystal-num))))
+             (s3-0 (logior (get-reminder s4-0 3) (ash 1 (-> this crystal-num))))
              )
         (save-reminder s4-0 s3-0 3)
         (when (= s3-0 62)
           (set! s5-0 #t)
-          (process-entity-status! obj (entity-perm-status complete) #t)
+          (process-entity-status! this (entity-perm-status complete) #t)
           )
         )
       )
@@ -612,13 +600,13 @@
     )
   )
 
-(defmethod init-from-entity! dark-crystal ((obj dark-crystal) (arg0 entity-actor))
-  (set-vector! (-> obj unlit-color-mult) 0.5 0.5 0.5 1.0)
-  (set-vector! (-> obj unlit-color-emissive) 0.0 0.0 0.0 0.0)
-  (set-vector! (-> obj lit-color-mult) 1.0 1.0 1.0 1.0)
-  (set-vector! (-> obj lit-color-emissive) 1.0 1.0 1.0 0.0)
-  (logior! (-> obj mask) (process-mask enemy))
-  (let ((s4-0 (new 'process 'collide-shape obj (collide-list-enum usually-hit-by-player))))
+(defmethod init-from-entity! ((this dark-crystal) (arg0 entity-actor))
+  (set-vector! (-> this unlit-color-mult) 0.5 0.5 0.5 1.0)
+  (set-vector! (-> this unlit-color-emissive) 0.0 0.0 0.0 0.0)
+  (set-vector! (-> this lit-color-mult) 1.0 1.0 1.0 1.0)
+  (set-vector! (-> this lit-color-emissive) 1.0 1.0 1.0 0.0)
+  (logior! (-> this mask) (process-mask enemy))
+  (let ((s4-0 (new 'process 'collide-shape this (collide-list-enum usually-hit-by-player))))
     (let ((s3-0 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 0) (the-as uint 0))))
       (set! (-> s3-0 prim-core collide-as) (collide-kind wall-object))
       (set! (-> s3-0 collide-with) (collide-kind target))
@@ -630,29 +618,29 @@
       )
     (set! (-> s4-0 nav-radius) (* 0.75 (-> s4-0 root-prim local-sphere w)))
     (backup-collide-with-as s4-0)
-    (set! (-> obj root-override) s4-0)
+    (set! (-> this root) s4-0)
     )
-  (process-drawable-from-entity! obj arg0)
-  (initialize-skeleton obj *dark-crystal-sg* '())
-  (logior! (-> obj mask) (process-mask attackable))
-  (set! (-> obj draw color-mult quad) (-> obj unlit-color-mult quad))
-  (set! (-> obj draw color-emissive quad) (-> obj unlit-color-emissive quad))
-  (set! (-> obj underwater?) (= (res-lump-value arg0 'mode uint128) 1))
-  (set! (-> obj explode-danger-radius) (res-lump-float arg0 'extra-radius :default 28672.0))
-  (set! (-> obj crystal-num) (res-lump-value arg0 'extra-id int))
-  (set-vector! (-> obj root-override scale) 2.0 2.0 2.0 1.0)
+  (process-drawable-from-entity! this arg0)
+  (initialize-skeleton this *dark-crystal-sg* '())
+  (logior! (-> this mask) (process-mask attackable))
+  (set! (-> this draw color-mult quad) (-> this unlit-color-mult quad))
+  (set! (-> this draw color-emissive quad) (-> this unlit-color-emissive quad))
+  (set! (-> this underwater?) (= (res-lump-value arg0 'mode uint128) 1))
+  (set! (-> this explode-danger-radius) (res-lump-float arg0 'extra-radius :default 28672.0))
+  (set! (-> this crystal-num) (res-lump-value arg0 'extra-id int))
+  (set-vector! (-> this root scale) 2.0 2.0 2.0 1.0)
   (ja-channel-push! 1 0)
-  (let ((s5-1 (-> obj skel root-channel 0)))
+  (let ((s5-1 (-> this skel root-channel 0)))
     (joint-control-channel-group-eval!
       s5-1
-      (the-as art-joint-anim (-> obj draw art-group data 2))
+      (the-as art-joint-anim (-> this draw art-group data 2))
       num-func-identity
       )
     (set! (-> s5-1 frame-num) 0.0)
     )
   (ja-post)
-  (update-transforms! (-> obj root-override))
-  (if (and (-> obj entity) (logtest? (-> obj entity extra perm status) (entity-perm-status complete)))
+  (update-transforms! (-> this root))
+  (if (and (-> this entity) (logtest? (-> this entity extra perm status) (entity-perm-status complete)))
       (go dark-crystal-spawn-fuel-cell)
       (go dark-crystal-idle)
       )

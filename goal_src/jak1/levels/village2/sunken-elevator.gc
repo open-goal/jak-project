@@ -7,16 +7,11 @@
 
 ;; DECOMP BEGINS
 
-
 (deftype sunken-elevator (plat-button)
-  ((play-at-top-going-up-camera? symbol  :offset-assert 240)
-   (teleport-if-below-y          float   :offset-assert 244)
-   (teleport-if-above-y          float   :offset-assert 248)
+  ((play-at-top-going-up-camera?  symbol)
+   (teleport-if-below-y           float)
+   (teleport-if-above-y           float)
    )
-  :heap-base #x90
-  :method-count-assert 33
-  :size-assert         #xfc
-  :flag-assert         #x21009000fc
   )
 
 
@@ -25,16 +20,16 @@
               :bounds (static-spherem 0 -1 0 6.6)
               )
 
-(defmethod should-teleport? sunken-elevator ((obj sunken-elevator))
+(defmethod should-teleport? ((this sunken-elevator))
   (let ((f0-0 (-> (camera-pos) y)))
-    (case (-> obj path-pos)
+    (case (-> this path-pos)
       ((0.0)
-       (if (< f0-0 (-> obj teleport-if-below-y))
+       (if (< f0-0 (-> this teleport-if-below-y))
            (return #t)
            )
        )
       ((1.0)
-       (if (< (-> obj teleport-if-above-y) f0-0)
+       (if (< (-> this teleport-if-above-y) f0-0)
            (return #t)
            )
        )
@@ -99,7 +94,6 @@
          )
        )
       )
-    (none)
     )
   )
 
@@ -112,7 +106,6 @@
           )
       )
     (set! (-> self play-at-top-going-up-camera?) #t)
-    (none)
     )
   :trans (behavior ()
     (let ((t9-0 (-> (method-of-type plat-button plat-button-move-upward) trans)))
@@ -140,7 +133,6 @@
         (set! (-> (the-as village2cam (-> v1-8 0)) seq) (the-as uint 2))
         )
       )
-    (none)
     )
   )
 
@@ -151,66 +143,65 @@
           (gp-0 (new 'stack-no-clear 'vector))
           )
       (set! *teleport* #t)
-      (set! (-> s5-0 quad) (-> self root-override trans quad))
-      (let ((t9-1 (-> (the-as (state sunken-elevator) (find-parent-method sunken-elevator 23)) trans)))
+      (set! (-> s5-0 quad) (-> self root trans quad))
+      (let ((t9-1 (-> (find-parent-state) trans)))
         (if t9-1
             (t9-1)
             )
         )
-      (vector-! gp-0 (-> self root-override trans) s5-0)
+      (vector-! gp-0 (-> self root trans) s5-0)
       (when (< (-> self path-pos) 0.9)
         (move-by-vector! (-> *target* control) gp-0)
         (send-event *target* 'reset-height)
         )
       )
-    (none)
     )
   )
 
-(defmethod can-target-move? sunken-elevator ((obj sunken-elevator))
-  (set! (-> obj play-at-top-going-up-camera?) #f)
+(defmethod can-target-move? ((this sunken-elevator))
+  (set! (-> this play-at-top-going-up-camera?) #f)
   (let ((s5-0 (new 'stack-no-clear 'vector)))
-    (eval-path-curve! (-> obj path) s5-0 0.4 'interp)
-    (set! (-> obj teleport-if-above-y) (-> s5-0 y))
-    (eval-path-curve! (-> obj path) s5-0 0.6 'interp)
-    (set! (-> obj teleport-if-below-y) (-> s5-0 y))
+    (eval-path-curve! (-> this path) s5-0 0.4 'interp)
+    (set! (-> this teleport-if-above-y) (-> s5-0 y))
+    (eval-path-curve! (-> this path) s5-0 0.6 'interp)
+    (set! (-> this teleport-if-below-y) (-> s5-0 y))
     )
   (none)
   )
 
-(defmethod plat-button-method-27 sunken-elevator ((obj sunken-elevator))
+(defmethod plat-button-method-27 ((this sunken-elevator))
   (ja-channel-set! 1)
   (cond
-    ((can-activate? obj)
-     (let ((s5-0 (-> obj skel root-channel 0)))
+    ((can-activate? this)
+     (let ((s5-0 (-> this skel root-channel 0)))
        (joint-control-channel-group-eval!
          s5-0
-         (the-as art-joint-anim (-> obj draw art-group data 2))
+         (the-as art-joint-anim (-> this draw art-group data 2))
          num-func-identity
          )
        (set! (-> s5-0 frame-num) 0.0)
        )
      )
     (else
-      (let ((s5-1 (-> obj skel root-channel 0)))
+      (let ((s5-1 (-> this skel root-channel 0)))
         (joint-control-channel-group-eval!
           s5-1
-          (the-as art-joint-anim (-> obj draw art-group data 2))
+          (the-as art-joint-anim (-> this draw art-group data 2))
           num-func-identity
           )
         (set! (-> s5-1 frame-num)
-              (the float (+ (-> (the-as art-joint-anim (-> obj draw art-group data 2)) data 0 length) -1))
+              (the float (+ (-> (the-as art-joint-anim (-> this draw art-group data 2)) data 0 length) -1))
               )
         )
       )
     )
   (ja-post)
-  (update-transforms! (-> obj root-override))
+  (update-transforms! (-> this root))
   (none)
   )
 
-(defmethod plat-button-method-31 sunken-elevator ((obj sunken-elevator))
-  (initialize-skeleton obj *sunken-elevator-sg* '())
+(defmethod plat-button-method-31 ((this sunken-elevator))
+  (initialize-skeleton this *sunken-elevator-sg* '())
   0
   (none)
   )

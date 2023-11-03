@@ -2,45 +2,45 @@
 (in-package goal)
 
 ;; definition for method 2 of type texture-page
-(defmethod print texture-page ((obj texture-page))
+(defmethod print ((this texture-page))
   (format
     #t
     "#<texture-page ~S :length ~D :dest #x~X :size ~DK @ #x~X>"
-    (-> obj name)
-    (-> obj length)
-    (shr (-> obj segment 0 dest) 6)
-    (shr (-> obj size) 8)
-    obj
+    (-> this name)
+    (-> this length)
+    (shr (-> this segment 0 dest) 6)
+    (shr (-> this size) 8)
+    this
     )
-  obj
+  this
   )
 
 ;; definition for method 4 of type texture-page
-(defmethod length texture-page ((obj texture-page))
-  (-> obj length)
+(defmethod length ((this texture-page))
+  (-> this length)
   )
 
 ;; definition for method 5 of type texture-page
 ;; INFO: Return type mismatch uint vs int.
-(defmethod asize-of texture-page ((obj texture-page))
-  (the-as int (+ (-> obj type size) (* (-> obj length) 4)))
+(defmethod asize-of ((this texture-page))
+  (the-as int (+ (-> this type size) (* (-> this length) 4)))
   )
 
 ;; definition for method 8 of type texture-page
-(defmethod mem-usage texture-page ((obj texture-page) (arg0 memory-usage-block) (arg1 int))
+(defmethod mem-usage ((this texture-page) (arg0 memory-usage-block) (arg1 int))
   (set! (-> arg0 length) (max 80 (-> arg0 length)))
   (set! (-> arg0 data 79 name) "texture")
-  (+! (-> arg0 data 79 count) (-> obj length))
-  (let ((v1-7 (- (asize-of obj) (the-as int (* (-> obj size) 4)))))
-    (dotimes (a0-6 (-> obj length))
-      (if (-> obj data a0-6)
+  (+! (-> arg0 data 79 count) (-> this length))
+  (let ((v1-7 (- (asize-of this) (the-as int (* (-> this size) 4)))))
+    (dotimes (a0-6 (-> this length))
+      (if (-> this data a0-6)
           (+! v1-7 64)
           )
       )
     (+! (-> arg0 data 79 used) v1-7)
     (+! (-> arg0 data 79 total) (logand -16 (+ v1-7 15)))
     )
-  obj
+  this
   )
 
 ;; definition for function texture-bpp
@@ -122,25 +122,25 @@
   )
 
 ;; definition for method 2 of type texture
-(defmethod print texture ((obj texture))
+(defmethod print ((this texture))
   (format
     #t
     "#<texture ~20S psm: ~6S  ~4D x ~4D  num-mips: ~D :size ~4DK "
-    (-> obj name)
-    (psm->string (-> obj psm))
-    (-> obj w)
-    (-> obj h)
-    (-> obj num-mips)
-    (shr (-> obj size) 8)
+    (-> this name)
+    (psm->string (-> this psm))
+    (-> this w)
+    (-> this h)
+    (-> this num-mips)
+    (shr (-> this size) 8)
     )
-  (dotimes (s5-1 (the-as int (-> obj num-mips)))
-    (format #t " #x~X/~X" (-> obj dest s5-1) (-> obj width s5-1))
+  (dotimes (s5-1 (the-as int (-> this num-mips)))
+    (format #t " #x~X/~X" (-> this dest s5-1) (-> this width s5-1))
     )
-  (if (< (texture-bpp (-> obj psm)) 16)
-      (format #t " :clut #x~X/1" (-> obj clutdest))
+  (if (< (texture-bpp (-> this psm)) 16)
+      (format #t " :clut #x~X/1" (-> this clutdest))
       )
-  (format #t " @ #x~X>" obj)
-  obj
+  (format #t " @ #x~X>" this)
+  this
   )
 
 ;; definition for symbol ct32-24-block-table, type (array int32)
@@ -594,15 +594,15 @@
   )
 
 ;; definition for method 15 of type texture-pool
-(defmethod allocate-vram-words! texture-pool ((obj texture-pool) (word-count int))
-  (let ((v0-0 (-> obj cur)))
-    (+! (-> obj cur) word-count)
+(defmethod allocate-vram-words! ((this texture-pool) (word-count int))
+  (let ((v0-0 (-> this cur)))
+    (+! (-> this cur) word-count)
     v0-0
     )
   )
 
 ;; definition for method 22 of type texture-pool
-(defmethod lookup-boot-common-id texture-pool ((obj texture-pool) (tpage-id int))
+(defmethod lookup-boot-common-id ((this texture-pool) (tpage-id int))
   (case tpage-id
     ((1032)
      0
@@ -671,60 +671,60 @@
   )
 
 ;; definition for method 9 of type texture-pool
-(defmethod initialize! texture-pool ((obj texture-pool))
-  (set! (-> obj cur) 0)
-  (set! (-> obj top) (-> obj cur))
-  (set! (-> obj allocate-func) texture-page-default-allocate)
-  (allocate-defaults! obj)
-  (set! (-> obj font-palette) (allocate-vram-words! obj 64))
+(defmethod initialize! ((this texture-pool))
+  (set! (-> this cur) 0)
+  (set! (-> this top) (-> this cur))
+  (set! (-> this allocate-func) texture-page-default-allocate)
+  (allocate-defaults! this)
+  (set! (-> this font-palette) (allocate-vram-words! this 64))
   (dotimes (v1-6 32)
-    (set! (-> obj common-page v1-6) (the-as texture-page 0))
+    (set! (-> this common-page v1-6) (the-as texture-page 0))
     )
-  (set! (-> obj common-page-mask) 0)
+  (set! (-> this common-page-mask) 0)
   (dotimes (v1-9 160)
-    (set! (-> obj ids v1-9) (the-as uint 0))
+    (set! (-> this ids v1-9) (the-as uint 0))
     )
-  obj
+  this
   )
 
 ;; definition for method 10 of type texture-page
-(defmethod get-leftover-block-count texture-page ((obj texture-page) (segment-count int) (additional-size int))
+(defmethod get-leftover-block-count ((this texture-page) (segment-count int) (additional-size int))
   (let ((v1-0 additional-size))
     (dotimes (a2-1 segment-count)
-      (+! v1-0 (-> obj segment a2-1 size))
+      (+! v1-0 (-> this segment a2-1 size))
       )
     (logand (/ v1-0 64) 63)
     )
   )
 
 ;; definition for method 10 of type texture-pool
-(defmethod print-usage texture-pool ((obj texture-pool))
+(defmethod print-usage ((this texture-pool))
   (format #t "--------------------~%")
   (format
     #t
     "texture pool ~DK - ~DK (~DK used, ~DK free)~%"
-    (/ (-> obj top) 256)
-    (/ (-> obj cur) 256)
-    (/ (- (-> obj cur) (-> obj top)) 256)
-    (/ (- #xfa000 (-> obj cur)) 256)
+    (/ (-> this top) 256)
+    (/ (-> this cur) 256)
+    (/ (- (-> this cur) (-> this top)) 256)
+    (/ (- #xfa000 (-> this cur)) 256)
     )
   (format #t "--------------------~%")
-  obj
+  this
   )
 
 ;; definition for method 16 of type texture-pool
-(defmethod allocate-segment! texture-pool ((obj texture-pool) (segment texture-pool-segment) (size int))
+(defmethod allocate-segment! ((this texture-pool) (segment texture-pool-segment) (size int))
   (set! (-> segment size) (the-as uint size))
-  (set! (-> segment dest) (the-as uint (allocate-vram-words! obj size)))
+  (set! (-> segment dest) (the-as uint (allocate-vram-words! this size)))
   segment
   )
 
 ;; definition for method 12 of type texture-pool
 ;; INFO: Return type mismatch int vs none.
-(defmethod allocate-defaults! texture-pool ((obj texture-pool))
-  (allocate-segment! obj (-> obj segment-common) #x1c000)
-  (allocate-segment! obj (-> obj segment-near) #x62000)
-  (set! *sky-base-vram-word* (allocate-vram-words! obj #x7000))
+(defmethod allocate-defaults! ((this texture-pool))
+  (allocate-segment! this (-> this segment-common) #x1c000)
+  (allocate-segment! this (the-as texture-pool-segment (-> this segment)) #x62000)
+  (set! *sky-base-vram-word* (allocate-vram-words! this #x7000))
   (set! *sky-base-block* (/ *sky-base-vram-word* 64))
   (set! *sky-base-page* (sar *sky-base-vram-word* 11))
   (set! *eyes-base-vram-word* (+ *sky-base-vram-word* 6144))
@@ -741,9 +741,9 @@
   )
 
 ;; definition for method 9 of type texture-page
-(defmethod remove-from-heap texture-page ((obj texture-page) (seg kheap))
-  (set! (-> seg current) (-> obj segment 0 block-data))
-  obj
+(defmethod remove-from-heap ((this texture-page) (seg kheap))
+  (set! (-> seg current) (-> this segment 0 block-data))
+  this
   )
 
 ;; definition for function texture-page-default-allocate
@@ -1116,7 +1116,7 @@
       )
     )
   (upload-now! page 2)
-  (update-vram-pages pool (-> pool segment-near) page 2)
+  (update-vram-pages pool (the-as texture-pool-segment (-> pool segment)) page 2)
   (let ((page-seg-2-size (logand -4096 (+ (-> page segment 2 size) 4095))))
     (cond
       ((< (the-as uint #x24000) page-seg-2-size)
@@ -1156,7 +1156,7 @@
         )
       )
     (upload-now! page 2)
-    (update-vram-pages pool (-> pool segment-near) page 2)
+    (update-vram-pages pool (the-as texture-pool-segment (-> pool segment)) page 2)
     (cond
       ((< (the-as uint #x24000) seg2-size)
        (set! (-> page segment 2 size) (+ -147456 seg2-size))
@@ -1305,7 +1305,7 @@
 
 ;; definition for method 13 of type texture-pool
 ;; INFO: Return type mismatch int vs none.
-(defmethod login-level-textures texture-pool ((obj texture-pool) (level level) (max-page-kind int) (id-array (pointer texture-id)))
+(defmethod login-level-textures ((this texture-pool) (level level) (max-page-kind int) (id-array (pointer texture-id)))
   (dotimes (page-idx 9)
     (set! (-> level texture-page page-idx) #f)
     )
@@ -1353,10 +1353,10 @@
           )
       )
     )
-  (let ((overflow-bits (texture-page-size-check obj level #t)))
+  (let ((overflow-bits (texture-page-size-check this level #t)))
     (when (nonzero? overflow-bits)
       (format #t "--------------------  tpage overflow error #x~X~%" overflow-bits)
-      (texture-page-size-check obj level #f)
+      (texture-page-size-check this level #f)
       (format #t "--------------------~%")
       )
     )
@@ -1366,7 +1366,7 @@
 
 ;; definition for method 14 of type texture-pool
 ;; INFO: Return type mismatch int vs none.
-(defmethod add-tex-to-dma! texture-pool ((obj texture-pool) (level level) (tex-page-kind int))
+(defmethod add-tex-to-dma! ((this texture-pool) (level level) (tex-page-kind int))
   (when (zero? tex-page-kind)
     (let ((tfrag-page (-> level texture-page 0))
           (tfrag-bucket (if (zero? (-> level index))
@@ -1390,8 +1390,13 @@
       (when tfrag-page
         (set! (-> level upload-size 0) 0)
         (if (< distance 81920.0)
-            (+! (-> level upload-size 0)
-                (upload-vram-pages obj (-> obj segment-near) tfrag-page 2 (the-as bucket-id tfrag-bucket))
+            (+! (-> level upload-size 0) (upload-vram-pages
+                                           this
+                                           (the-as texture-pool-segment (-> this segment))
+                                           tfrag-page
+                                           2
+                                           (the-as bucket-id tfrag-bucket)
+                                           )
                 )
             )
         (cond
@@ -1399,12 +1404,12 @@
            )
           ((< 102400.0 distance)
            (+! (-> level upload-size 0)
-               (upload-vram-pages obj (-> obj segment-common) tfrag-page 0 (the-as bucket-id tfrag-bucket))
+               (upload-vram-pages this (-> this segment-common) tfrag-page 0 (the-as bucket-id tfrag-bucket))
                )
            )
           (else
             (+! (-> level upload-size 0)
-                (upload-vram-pages obj (-> obj segment-common) tfrag-page -2 (the-as bucket-id tfrag-bucket))
+                (upload-vram-pages this (-> this segment-common) tfrag-page -2 (the-as bucket-id tfrag-bucket))
                 )
             )
           )
@@ -1422,8 +1427,8 @@
                            )
               )
           (set! (-> level upload-size 1) (upload-vram-pages-pris
-                                           obj
-                                           (-> obj segment-common)
+                                           this
+                                           (-> this segment-common)
                                            pris-page
                                            (the-as bucket-id pris-bucket)
                                            (the-as int (-> level texture-mask 7))
@@ -1460,7 +1465,7 @@
                           )
               )
           (set! (-> level upload-size 2)
-                (upload-vram-pages obj (-> obj segment-common) shrub-page shrub-mode (the-as bucket-id shrub-bucket))
+                (upload-vram-pages this (-> this segment-common) shrub-page shrub-mode (the-as bucket-id shrub-bucket))
                 )
           )
         )
@@ -1491,13 +1496,13 @@
               )
           (let ((alpha-dest-chunk (shr (-> alpha-page segment 0 dest) 12)))
             (when (movie?)
-              (set! (-> obj ids alpha-dest-chunk) (the-as uint 0))
-              (set! (-> obj ids (+ alpha-dest-chunk 1)) (the-as uint 0))
+              (set! (-> this ids alpha-dest-chunk) (the-as uint 0))
+              (set! (-> this ids (+ alpha-dest-chunk 1)) (the-as uint 0))
               0
               )
             )
           (set! (-> level upload-size 3)
-                (upload-vram-pages obj (-> obj segment-common) alpha-page alpha-mode (the-as bucket-id alpha-bucket))
+                (upload-vram-pages this (-> this segment-common) alpha-page alpha-mode (the-as bucket-id alpha-bucket))
                 )
           )
         )
@@ -1513,8 +1518,8 @@
                             )
               )
           (set! (-> level upload-size 4) (upload-vram-pages-pris
-                                           obj
-                                           (-> obj segment-common)
+                                           this
+                                           (-> this segment-common)
                                            water-page
                                            (the-as bucket-id water-bucket)
                                            (the-as int (-> level texture-mask 8))
@@ -1529,11 +1534,11 @@
   )
 
 ;; definition for method 21 of type texture-pool
-(defmethod upload-one-common! texture-pool ((obj texture-pool) (arg0 level))
+(defmethod upload-one-common! ((this texture-pool) (arg0 level))
   (dotimes (v1-0 32)
-    (let ((a2-0 (-> obj common-page v1-0)))
-      (when (and (nonzero? a2-0) (logtest? (-> obj common-page-mask) (ash 1 v1-0)))
-        (upload-vram-pages obj (-> obj segment-common) a2-0 -2 (bucket-id common-page-tex))
+    (let ((a2-0 (-> this common-page v1-0)))
+      (when (and (nonzero? a2-0) (logtest? (-> this common-page-mask) (ash 1 v1-0)))
+        (upload-vram-pages this (-> this segment-common) a2-0 -2 (bucket-id common-page-tex))
         (return #f)
         )
       )
@@ -1543,9 +1548,9 @@
 
 ;; definition for method 11 of type level
 ;; INFO: Return type mismatch int vs none.
-(defmethod add-irq-to-tex-buckets! level ((obj level))
+(defmethod add-irq-to-tex-buckets! ((this level))
   (cond
-    ((zero? (-> obj index))
+    ((zero? (-> this index))
      (let* ((v1-4 (-> *display* frames (-> *display* on-screen) frame global-buf))
             (a2-0 (-> v1-4 base))
             )
@@ -1767,13 +1772,13 @@
 
 ;; definition for method 14 of type texture-page
 ;; INFO: Return type mismatch int vs none.
-(defmethod upload-now! texture-page ((obj texture-page) (arg0 int))
+(defmethod upload-now! ((this texture-page) (arg0 int))
   (let ((gp-0 *txt-dma-list*))
     (let ((v1-0 gp-0))
       (set! (-> v1-0 base) (-> v1-0 data))
       (set! (-> v1-0 end) (&-> v1-0 data-buffer (-> v1-0 allocated-length)))
       )
-    (add-to-dma-buffer obj gp-0 arg0)
+    (add-to-dma-buffer this gp-0 arg0)
     (let* ((v1-3 gp-0)
            (a0-1 (the-as object (-> v1-3 base)))
            )
@@ -1810,7 +1815,7 @@
   )
 
 ;; definition for method 13 of type texture-page
-(defmethod add-to-dma-buffer texture-page ((obj texture-page) (dma-buff dma-buffer) (mode int))
+(defmethod add-to-dma-buffer ((this texture-page) (dma-buff dma-buffer) (mode int))
   (local-vars (total-size int))
   (let ((v1-0 mode))
     (set! total-size (cond
@@ -1818,21 +1823,21 @@
                         0
                         )
                        ((= v1-0 -2)
-                        (the-as int (+ (-> obj segment 0 size) (-> obj segment 1 size)))
+                        (the-as int (+ (-> this segment 0 size) (-> this segment 1 size)))
                         )
                        ((= v1-0 -1)
-                        (the-as int (-> obj size))
+                        (the-as int (-> this size))
                         )
                        (else
-                         (the-as int (-> obj segment mode size))
+                         (the-as int (-> this segment mode size))
                          )
                        )
           )
     )
   (let* ((start-segment (max 0 mode))
          (chunk-count (* (/ (+ (/ total-size 64) 63) 64) 32))
-         (current-dest (shr (-> obj segment start-segment dest) 6))
-         (current-data (-> obj segment start-segment block-data))
+         (current-dest (shr (-> this segment start-segment dest) 6))
+         (current-data (-> this segment start-segment block-data))
          )
     (while (> chunk-count 0)
       (let ((chunks-now (min 2048 chunk-count)))
@@ -2019,10 +2024,10 @@
 ;; WARN: Stack slot offset 16 signed mismatch
 ;; WARN: Stack slot offset 16 signed mismatch
 ;; INFO: Return type mismatch int vs none.
-(defmethod setup-font-texture! texture-pool ((obj texture-pool))
+(defmethod setup-font-texture! ((this texture-pool))
   (local-vars (heap-before-font-tex int) (clut-dest-addr int))
-  (let ((font-clut (-> obj font-palette)))
-    (set! heap-before-font-tex (-> obj cur))
+  (let ((font-clut (-> this font-palette)))
+    (set! heap-before-font-tex (-> this cur))
     (set! clut-dest-addr (/ font-clut 64))
     (set! *font-texture* (lookup-texture-by-id (new 'static 'texture-id :index #x1 :page #x4fe)))
     (let ((main-font-tx
@@ -2123,9 +2128,9 @@
       (dma-sync (the-as pointer #x10009000) 0 0)
       (if (and main-font-tx
                (-> main-font-tx page)
-               (= (-> obj cur) (+ heap-before-font-tex (-> main-font-tx page size)))
+               (= (-> this cur) (+ heap-before-font-tex (-> main-font-tx page size)))
                )
-          (set! (-> obj cur) heap-before-font-tex)
+          (set! (-> this cur) heap-before-font-tex)
           (format 0 "ERROR: could not resize heap to remove gamefont.~%")
           )
       )
@@ -2136,32 +2141,32 @@
 
 ;; definition for method 5 of type texture-page-dir
 ;; INFO: Return type mismatch uint vs int.
-(defmethod asize-of texture-page-dir ((obj texture-page-dir))
-  (the-as int (+ (-> texture-page-dir size) (* 12 (+ (-> obj length) -1))))
+(defmethod asize-of ((this texture-page-dir))
+  (the-as int (+ (-> texture-page-dir size) (* 12 (+ (-> this length) -1))))
   )
 
 ;; definition for method 4 of type texture-page-dir
-(defmethod length texture-page-dir ((obj texture-page-dir))
-  (-> obj length)
+(defmethod length ((this texture-page-dir))
+  (-> this length)
   )
 
 ;; definition for method 7 of type texture-page-dir
 ;; INFO: Return type mismatch texture-page-dir vs none.
-(defmethod relocate texture-page-dir ((obj texture-page-dir) (arg0 kheap) (arg1 (pointer uint8)))
-  (set! *texture-page-dir* obj)
+(defmethod relocate ((this texture-page-dir) (arg0 kheap) (arg1 (pointer uint8)))
+  (set! *texture-page-dir* this)
   (none)
   )
 
 ;; definition for method 12 of type texture-page
 ;; INFO: Return type mismatch texture-page vs none.
-(defmethod relocate-dests! texture-page ((obj texture-page) (new-dest int) (seg-id int))
+(defmethod relocate-dests! ((this texture-page) (new-dest int) (seg-id int))
   (let ((v1-0 (shr new-dest 6))
-        (dst-block (shr (-> obj segment seg-id dest) 6))
+        (dst-block (shr (-> this segment seg-id dest) 6))
         )
     (when (!= v1-0 dst-block)
-      (dotimes (tex-id (-> obj length))
-        (when (-> obj data tex-id)
-          (let* ((tex (-> obj data tex-id))
+      (dotimes (tex-id (-> this length))
+        (when (-> this data tex-id)
+          (let* ((tex (-> this data tex-id))
                  (num-mips (-> tex num-mips))
                  )
             (if (zero? seg-id)
@@ -2183,7 +2188,7 @@
             )
           )
         )
-      (set! (-> obj segment seg-id dest) (the-as uint new-dest))
+      (set! (-> this segment seg-id dest) (the-as uint new-dest))
       )
     )
   (none)
@@ -2191,39 +2196,39 @@
 
 ;; definition for method 7 of type texture-page
 ;; INFO: Return type mismatch texture-page vs none.
-(defmethod relocate texture-page ((obj texture-page) (arg0 kheap) (arg1 (pointer uint8)))
+(defmethod relocate ((this texture-page) (arg0 kheap) (arg1 (pointer uint8)))
   (local-vars (s4-0 texture-page-dir-entry))
   (cond
-    ((or (not obj) (not (file-info-correct-version? (-> obj info) (file-kind tpage) 0)))
-     (set! obj (the-as texture-page #f))
+    ((or (not this) (not (file-info-correct-version? (-> this info) (file-kind tpage) 0)))
+     (set! this (the-as texture-page #f))
      )
     ((begin
        (let ((v1-2 (-> *level* loading-level)))
          (when v1-2
-           (set! (-> v1-2 loaded-texture-page (-> v1-2 loaded-texture-page-count)) obj)
+           (set! (-> v1-2 loaded-texture-page (-> v1-2 loaded-texture-page-count)) this)
            (+! (-> v1-2 loaded-texture-page-count) 1)
            )
          )
-       (set! (-> obj segment 1 dest) (-> obj segment 0 size))
-       (set! (-> obj segment 2 dest) (+ (-> obj segment 0 size) (-> obj segment 1 size)))
-       (let ((a3-0 (-> obj id)))
+       (set! (-> this segment 1 dest) (-> this segment 0 size))
+       (set! (-> this segment 2 dest) (+ (-> this segment 0 size) (-> this segment 1 size)))
+       (let ((a3-0 (-> this id)))
          (set! s4-0 (-> *texture-page-dir* entries a3-0))
          (set! (-> *texture-relocate-later* memcpy) #f)
-         ((-> *texture-pool* allocate-func) *texture-pool* obj arg0 (the-as int a3-0))
+         ((-> *texture-pool* allocate-func) *texture-pool* this arg0 (the-as int a3-0))
          )
        (not (-> *texture-relocate-later* memcpy))
        )
-     (set! (-> s4-0 page) obj)
+     (set! (-> s4-0 page) this)
      (if (not (-> s4-0 link))
          (set! (-> s4-0 link)
-               (the-as texture-link (malloc 'loading-level (* (max (-> s4-0 length) (-> obj length)) 4)))
+               (the-as texture-link (malloc 'loading-level (* (max (-> s4-0 length) (-> this length)) 4)))
                )
          )
      )
     (else
       (let ((v1-19 *texture-relocate-later*))
         (set! (-> v1-19 entry) s4-0)
-        (set! (-> v1-19 page) obj)
+        (set! (-> v1-19 page) this)
         )
       )
     )
@@ -2281,7 +2286,7 @@
   )
 
 ;; definition for method 20 of type texture-pool
-(defmethod unload! texture-pool ((obj texture-pool) (arg0 texture-page))
+(defmethod unload! ((this texture-pool) (arg0 texture-page))
   (local-vars (a0-2 int))
   (let ((v1-0 *texture-page-dir*))
     (dotimes (a0-1 (-> v1-0 length))
@@ -2323,13 +2328,13 @@
   )
 
 ;; definition for method 9 of type texture-page-dir
-(defmethod unlink-textures-in-heap! texture-page-dir ((obj texture-page-dir) (heap kheap))
+(defmethod unlink-textures-in-heap! ((this texture-page-dir) (heap kheap))
   (local-vars (dist-past-end uint))
   (let ((mem-start (-> heap base))
         (mem-end (-> heap top-base))
         )
-    (dotimes (entry-idx (-> obj length))
-      (let* ((entry (-> obj entries entry-idx))
+    (dotimes (entry-idx (-> this length))
+      (let* ((entry (-> this entries entry-idx))
              (tex-page (-> entry page))
              (link-arr (-> entry link next))
              (tex-count (min (-> tex-page length) (-> entry length)))
@@ -2592,9 +2597,9 @@
   )
 
 ;; definition for method 3 of type texture-page-dir
-(defmethod inspect texture-page-dir ((obj texture-page-dir))
-  (texture-page-dir-inspect obj #f)
-  obj
+(defmethod inspect ((this texture-page-dir))
+  (texture-page-dir-inspect this #f)
+  this
   )
 
 ;; definition for symbol *texture-pool*, type texture-pool

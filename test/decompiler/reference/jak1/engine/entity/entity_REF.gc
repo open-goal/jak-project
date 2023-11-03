@@ -12,21 +12,21 @@
 
 ;; definition for method 8 of type drawable-actor
 ;; INFO: Return type mismatch int vs drawable-actor.
-(defmethod mem-usage drawable-actor ((obj drawable-actor) (arg0 memory-usage-block) (arg1 int))
+(defmethod mem-usage ((this drawable-actor) (arg0 memory-usage-block) (arg1 int))
   (set! (-> arg0 length) (max 44 (-> arg0 length)))
   (set! (-> arg0 data 43 name) "entity")
   (+! (-> arg0 data 43 count) 1)
-  (let ((v1-6 (asize-of obj)))
+  (let ((v1-6 (asize-of this)))
     (+! (-> arg0 data 43 used) v1-6)
     (+! (-> arg0 data 43 total) (logand -16 (+ v1-6 15)))
     )
-  (mem-usage (-> obj actor) arg0 (logior arg1 64))
+  (mem-usage (-> this actor) arg0 (logior arg1 64))
   (the-as drawable-actor 0)
   )
 
 ;; definition for method 8 of type drawable-inline-array-actor
 ;; INFO: Return type mismatch int vs drawable-inline-array-actor.
-(defmethod mem-usage drawable-inline-array-actor ((obj drawable-inline-array-actor) (arg0 memory-usage-block) (arg1 int))
+(defmethod mem-usage ((this drawable-inline-array-actor) (arg0 memory-usage-block) (arg1 int))
   (set! (-> arg0 length) (max 1 (-> arg0 length)))
   (set! (-> arg0 data 0 name) (symbol->string 'drawable-group))
   (+! (-> arg0 data 0 count) 1)
@@ -34,57 +34,57 @@
     (+! (-> arg0 data 0 used) v1-7)
     (+! (-> arg0 data 0 total) (logand -16 (+ v1-7 15)))
     )
-  (dotimes (s3-0 (-> obj length))
-    (mem-usage (-> obj data s3-0) arg0 arg1)
+  (dotimes (s3-0 (-> this length))
+    (mem-usage (-> this data s3-0) arg0 arg1)
     )
   (the-as drawable-inline-array-actor 0)
   )
 
 ;; definition for method 2 of type entity-links
-(defmethod print entity-links ((obj entity-links))
-  (format #t "#<entity-links :process ~A @ #x~X>" (-> obj process) obj)
-  obj
+(defmethod print ((this entity-links))
+  (format #t "#<entity-links :process ~A @ #x~X>" (-> this process) this)
+  this
   )
 
 ;; definition for method 2 of type entity-perm
-(defmethod print entity-perm ((obj entity-perm))
+(defmethod print ((this entity-perm))
   (format
     #t
     "#<entity-perm :aid ~D :task ~D :status #x~X :data #x~X @ #x~X>"
-    (-> obj aid)
-    (-> obj task)
-    (-> obj status)
-    (-> obj user-uint64)
-    obj
+    (-> this aid)
+    (-> this task)
+    (-> this status)
+    (-> this user-uint64)
+    this
     )
-  obj
+  this
   )
 
 ;; definition for method 22 of type entity
-(defmethod birth! entity ((obj entity))
-  (format #t "birth ~A~%" obj)
-  obj
+(defmethod birth! ((this entity))
+  (format #t "birth ~A~%" this)
+  this
   )
 
 ;; definition for method 23 of type entity
-(defmethod kill! entity ((obj entity))
-  (format #t "kill ~A~%" obj)
-  obj
+(defmethod kill! ((this entity))
+  (format #t "kill ~A~%" this)
+  this
   )
 
 ;; definition for method 2 of type entity
-(defmethod print entity ((obj entity))
-  (format #t "#<~A :name ~S @ #x~X>" (-> obj type) (res-lump-struct obj 'name structure) obj)
-  obj
+(defmethod print ((this entity))
+  (format #t "#<~A :name ~S @ #x~X>" (-> this type) (res-lump-struct this 'name structure) this)
+  this
   )
 
 ;; definition for method 26 of type entity
-(defmethod get-level entity ((obj entity))
+(defmethod get-level ((this entity))
   (dotimes (v1-0 (-> *level* length))
     (let ((a1-3 (-> *level* level v1-0)))
       (when (= (-> a1-3 status) 'active)
-        (if (and (>= (the-as int obj) (the-as int (-> a1-3 heap base)))
-                 (< (the-as int obj) (the-as int (-> a1-3 heap top-base)))
+        (if (and (>= (the-as int this) (the-as int (-> a1-3 heap base)))
+                 (< (the-as int this) (the-as int (-> a1-3 heap top-base)))
                  )
             (return a1-3)
             )
@@ -373,55 +373,62 @@
   )
 
 ;; definition for method 2 of type process
-(defmethod print process ((obj process))
-  (format #t "#<~A ~S ~A :state ~S :flags " (-> obj type) (-> obj name) (-> obj status) (if (-> obj state)
-                                                                                            (-> obj state name)
-                                                                                            )
-          )
-  (process-status-bits obj #t)
+;; INFO: this function exists in multiple non-identical object files
+(defmethod print ((this process))
+  (format
+    #t
+    "#<~A ~S ~A :state ~S :flags "
+    (-> this type)
+    (-> this name)
+    (-> this status)
+    (if (-> this state)
+        (-> this state name)
+        )
+    )
+  (process-status-bits this #t)
   (format
     #t
     " :stack ~D/~D :heap ~D/~D @ #x~X>"
-    (&- (-> obj top-thread stack-top) (the-as uint (-> obj top-thread sp)))
-    (-> obj main-thread stack-size)
-    (- (-> obj allocated-length) (&- (-> obj heap-top) (the-as uint (-> obj heap-cur))))
-    (-> obj allocated-length)
-    obj
+    (&- (-> this top-thread stack-top) (the-as uint (-> this top-thread sp)))
+    (-> this main-thread stack-size)
+    (- (-> this allocated-length) (&- (-> this heap-top) (the-as uint (-> this heap-cur))))
+    (-> this allocated-length)
+    this
     )
-  obj
+  this
   )
 
 ;; definition for method 3 of type entity
-(defmethod inspect entity ((obj entity))
-  ((the-as (function entity entity) (find-parent-method entity 3)) obj)
-  (format #t "~Ttrans: ~`vector`P~%" (-> obj trans))
-  (format #t "~Taid:   ~A~%" (-> obj aid))
-  obj
+(defmethod inspect ((this entity))
+  ((the-as (function entity entity) (find-parent-method entity 3)) this)
+  (format #t "~Ttrans: ~`vector`P~%" (-> this trans))
+  (format #t "~Taid:   ~A~%" (-> this aid))
+  this
   )
 
 ;; definition for method 3 of type entity-actor
-(defmethod inspect entity-actor ((obj entity-actor))
-  ((the-as (function entity-actor entity-actor) (find-parent-method entity-actor 3)) obj)
-  (format #t "~Tnav-mesh: ~A~%" (-> obj nav-mesh))
-  (format #t "~Tetype:    ~A~%" (-> obj etype))
-  (format #t "~Ttask:     ~d~%" (-> obj task))
-  (format #t "~Tvis-id:   ~d~%" (-> obj vis-id-signed))
-  (format #t "~Tquat:     ~`vector`P~%" (-> obj quat))
-  obj
+(defmethod inspect ((this entity-actor))
+  ((the-as (function entity-actor entity-actor) (find-parent-method entity-actor 3)) this)
+  (format #t "~Tnav-mesh: ~A~%" (-> this nav-mesh))
+  (format #t "~Tetype:    ~A~%" (-> this etype))
+  (format #t "~Ttask:     ~d~%" (-> this task))
+  (format #t "~Tvis-id:   ~d~%" (-> this vis-id-signed))
+  (format #t "~Tquat:     ~`vector`P~%" (-> this quat))
+  this
   )
 
 ;; definition for method 29 of type entity-actor
 ;; INFO: Return type mismatch entity-actor vs none.
-(defmethod debug-print entity-actor ((obj entity-actor) (mode symbol) (expected-type type))
-  (let ((s4-0 (-> obj etype)))
+(defmethod debug-print ((this entity-actor) (mode symbol) (expected-type type))
+  (let ((s4-0 (-> this etype)))
     (when (or (not expected-type) (and s4-0 (valid? s4-0 type #f #f 0) (type-type? s4-0 expected-type)))
-      (format #t "~5D  #x~8X  ~-21S" (-> obj extra vis-id) obj (res-lump-struct obj 'name structure))
+      (format #t "~5D  #x~8X  ~-21S" (-> this extra vis-id) this (res-lump-struct this 'name structure))
       (let ((t9-4 format)
             (a0-5 #t)
             (a1-5 "~8D ~3D ~-4S #x~4X")
-            (a2-4 (-> obj extra perm aid))
-            (a3-3 (-> obj extra perm task))
-            (t0-3 (-> obj extra level nickname))
+            (a2-4 (-> this extra perm aid))
+            (a3-3 (-> this extra perm task))
+            (t0-3 (-> this extra level nickname))
             )
         (set! t0-3 (cond
                      (t0-3
@@ -429,17 +436,17 @@
                        t0-3
                        )
                      (else
-                       (-> obj extra level name)
+                       (-> this extra level name)
                        )
                      )
               )
-        (t9-4 a0-5 a1-5 a2-4 a3-3 t0-3 (-> obj extra perm status))
+        (t9-4 a0-5 a1-5 a2-4 a3-3 t0-3 (-> this extra perm status))
         )
       (if (= mode 'entity-meters)
-          (format #t " :trans ~14m ~14m ~14m  " (-> obj extra trans x) (-> obj extra trans y) (-> obj extra trans z))
-          (format #t " :trans ~14f ~14f ~14f  " (-> obj extra trans x) (-> obj extra trans y) (-> obj extra trans z))
+          (format #t " :trans ~14m ~14m ~14m  " (-> this extra trans x) (-> this extra trans y) (-> this extra trans z))
+          (format #t " :trans ~14f ~14f ~14f  " (-> this extra trans x) (-> this extra trans y) (-> this extra trans z))
           )
-      (let* ((s3-2 (-> obj extra process))
+      (let* ((s3-2 (-> this extra process))
              (s4-2 (if (and (nonzero? s3-2) (type-type? (-> s3-2 type) process-drawable))
                        s3-2
                        )
@@ -448,28 +455,28 @@
         (format
           #t
           ":pr #x~8X ~-12S ~-21S ~-5S/~-5S "
-          (if (-> obj extra process)
-              (-> obj extra process)
+          (if (-> this extra process)
+              (-> this extra process)
               0
               )
-          (if (-> obj extra process)
-              (-> obj extra process name)
+          (if (-> this extra process)
+              (-> this extra process name)
               ""
               )
-          (if (and (-> obj extra process) (-> obj extra process state))
-              (-> obj extra process state name)
+          (if (and (-> this extra process) (-> this extra process state))
+              (-> this extra process state name)
               ""
               )
-          (if (-> obj extra process)
-              (* (- (-> obj extra process allocated-length)
-                    (&- (-> obj extra process heap-top) (the-as uint (-> obj extra process heap-cur)))
+          (if (-> this extra process)
+              (* (- (-> this extra process allocated-length)
+                    (&- (-> this extra process heap-top) (the-as uint (-> this extra process heap-cur)))
                     )
                  8
                  )
               ""
               )
-          (if (-> obj extra process)
-              (* (-> obj extra process allocated-length) 8)
+          (if (-> this extra process)
+              (* (-> this extra process allocated-length) 8)
               ""
               )
           )
@@ -477,7 +484,7 @@
         )
       (format #t "~%")
       (if (= mode 'entity-perm)
-          (format #t "     ~`entity-perm`P~%" (-> obj extra perm))
+          (format #t "     ~`entity-perm`P~%" (-> this extra perm))
           )
       )
     )
@@ -486,7 +493,7 @@
 
 ;; definition for method 13 of type level-group
 ;; INFO: Return type mismatch int vs none.
-(defmethod debug-print-entities level-group ((obj level-group) (mode symbol) (expected-type type))
+(defmethod debug-print-entities ((this level-group) (mode symbol) (expected-type type))
   (format
     #t
     "   id     address  name                      aid tsk lev  status              x              y              z             address    name         state                 heap         flags~%"
@@ -494,8 +501,8 @@
     0
     0
     )
-  (dotimes (s3-0 (-> obj length))
-    (let ((s2-0 (-> obj level s3-0)))
+  (dotimes (s3-0 (-> this length))
+    (let ((s2-0 (-> this level s3-0)))
       (when (= (-> s2-0 status) 'active)
         (case mode
           (('art-group)
@@ -522,12 +529,12 @@
 ;; definition for method 24 of type entity
 ;; INFO: Used lq/sq
 ;; INFO: Return type mismatch entity vs none.
-(defmethod add-to-level! entity ((obj entity) (lev-group level-group) (lev level) (aid actor-id))
+(defmethod add-to-level! ((this entity) (lev-group level-group) (lev level) (aid actor-id))
   (let ((level-link (-> lev entity data (-> lev entity length))))
     (+! (-> lev entity length) 1)
     (set! (-> level-link process) #f)
-    (set! (-> level-link entity) obj)
-    (set! (-> obj extra) level-link)
+    (set! (-> level-link entity) this)
+    (set! (-> this extra) level-link)
     (cond
       ((-> lev-group entity-link)
        (let* ((other-prev (-> lev-group entity-link))
@@ -545,18 +552,18 @@
         )
       )
     (set! (-> lev-group entity-link) level-link)
-    (set! (-> level-link trans quad) (-> obj trans quad))
+    (set! (-> level-link trans quad) (-> this trans quad))
     )
-  (set! (-> obj extra perm aid) aid)
-  (set! (-> obj extra level) lev)
+  (set! (-> this extra perm aid) aid)
+  (set! (-> this extra level) lev)
   (cond
-    ((= (-> obj type) entity-actor)
-     (set! (-> (the-as entity-actor obj) extra perm task) (-> (the-as entity-actor obj) task))
-     (set! (-> (the-as entity-actor obj) extra vis-id) (-> (the-as entity-actor obj) vis-id-signed))
+    ((= (-> this type) entity-actor)
+     (set! (-> (the-as entity-actor this) extra perm task) (-> (the-as entity-actor this) task))
+     (set! (-> (the-as entity-actor this) extra vis-id) (-> (the-as entity-actor this) vis-id-signed))
      )
     (else
-      (set! (-> obj extra perm task) (game-task none))
-      (set! (-> obj extra vis-id) 0)
+      (set! (-> this extra perm task) (game-task none))
+      (set! (-> this extra vis-id) 0)
       0
       )
     )
@@ -564,8 +571,8 @@
   )
 
 ;; definition for method 25 of type entity
-(defmethod remove-from-level! entity ((obj entity) (arg0 level-group))
-  (let ((v1-0 (-> obj extra)))
+(defmethod remove-from-level! ((this entity) (arg0 level-group))
+  (let ((v1-0 (-> this extra)))
     (cond
       ((= (-> v1-0 next-link) v1-0)
        (set! (-> arg0 entity-link) #f)
@@ -579,7 +586,7 @@
         )
       )
     )
-  obj
+  this
   )
 
 ;; definition for function update-actor-vis-box
@@ -604,15 +611,15 @@
 ;; definition for method 22 of type level-group
 ;; INFO: Used lq/sq
 ;; INFO: Return type mismatch int vs none.
-(defmethod update-vis-volumes level-group ((obj level-group))
+(defmethod update-vis-volumes ((this level-group))
   (local-vars
     (v1-10 symbol)
     (sv-16 process)
     (sv-32 (function process-drawable vector vector none))
     (sv-48 process-tree)
     )
-  (dotimes (s5-0 (-> obj length))
-    (let ((v1-3 (-> obj level s5-0)))
+  (dotimes (s5-0 (-> this length))
+    (let ((v1-3 (-> this level s5-0)))
       (when (= (-> v1-3 status) 'active)
         (let ((s4-0 (-> v1-3 bsp level entity)))
           (dotimes (s3-0 (-> s4-0 length))
@@ -661,10 +668,10 @@
 ;; definition for method 23 of type level-group
 ;; INFO: Used lq/sq
 ;; INFO: Return type mismatch int vs none.
-(defmethod update-vis-volumes-from-nav-mesh level-group ((obj level-group))
+(defmethod update-vis-volumes-from-nav-mesh ((this level-group))
   (local-vars (sv-16 entity) (sv-32 entity))
-  (dotimes (s5-0 (-> obj length))
-    (let ((v1-3 (-> obj level s5-0)))
+  (dotimes (s5-0 (-> this length))
+    (let ((v1-3 (-> this level s5-0)))
       (when (= (-> v1-3 status) 'active)
         (let ((s4-0 (-> v1-3 bsp level entity)))
           (dotimes (s3-0 (-> s4-0 length))
@@ -718,10 +725,10 @@
 ;; definition for method 24 of type level-group
 ;; INFO: Used lq/sq
 ;; INFO: Return type mismatch int vs none.
-(defmethod print-volume-sizes level-group ((obj level-group))
+(defmethod print-volume-sizes ((this level-group))
   (local-vars (sv-16 type) (sv-32 (function _varargs_ object)) (sv-48 symbol) (sv-64 string) (sv-80 entity))
-  (dotimes (s5-0 (-> obj length))
-    (let ((v1-3 (-> obj level s5-0)))
+  (dotimes (s5-0 (-> this length))
+    (let ((v1-3 (-> this level s5-0)))
       (when (= (-> v1-3 status) 'active)
         (let ((s4-0 (-> v1-3 bsp level entity)))
           (dotimes (s3-0 (-> s4-0 length))
@@ -806,7 +813,7 @@
 ;; definition for method 14 of type level-group
 ;; INFO: Used lq/sq
 ;; INFO: Return type mismatch int vs none.
-(defmethod debug-draw-actors level-group ((obj level-group) (arg0 symbol))
+(defmethod debug-draw-actors ((this level-group) (arg0 symbol))
   (local-vars
     (sv-48 (function symbol bucket-id string vector font-color vector2h symbol))
     (sv-64 symbol)
@@ -827,8 +834,8 @@
     (sv-304 pointer)
     )
   (when (and arg0 (not (or (= *master-mode* 'menu) (= *master-mode* 'progress))))
-    (dotimes (s4-0 (-> obj length))
-      (let ((v1-8 (-> obj level s4-0)))
+    (dotimes (s4-0 (-> this length))
+      (let ((v1-8 (-> this level s4-0)))
         (when (= (-> v1-8 status) 'active)
           (let ((s3-0 (-> v1-8 bsp level entity)))
             (dotimes (s2-0 (-> s3-0 length))
@@ -928,8 +935,8 @@
     )
   (when (and *display-actor-vis* (not (or *display-actor-anim* *display-process-anim*)))
     (let ((s5-1 *display-actor-vis*))
-      (dotimes (s4-1 (-> obj length))
-        (let ((s3-1 (-> obj level s4-1)))
+      (dotimes (s4-1 (-> this length))
+        (let ((s3-1 (-> this level s4-1)))
           (when (= (-> s3-1 status) 'active)
             (let ((s2-1 (-> s3-1 bsp level entity)))
               (dotimes (s1-2 (-> s2-1 length))
@@ -987,7 +994,7 @@
       )
     )
   (if *generate-actor-vis*
-      (update-vis-volumes obj)
+      (update-vis-volumes this)
       )
   (when (or *display-actor-anim* *display-process-anim*)
     (let ((s5-2 (ppointer->process *display-process-anim*)))
@@ -1084,27 +1091,26 @@
            )
       (iterate-process-tree
         *active-pool*
-        (the-as (function object object) (lambda ((arg0 process-drawable))
-                                           (when (type-type? (-> arg0 type) process-drawable)
-                                             (if (nonzero? (-> arg0 nav))
-                                                 (debug-draw (-> arg0 nav))
-                                                 )
-                                             (if (nonzero? (-> arg0 path))
-                                                 (debug-draw (-> arg0 path))
-                                                 )
-                                             (if (nonzero? (-> arg0 vol))
-                                                 (init! (-> arg0 vol))
-                                                 )
-                                             )
-                                           (none)
-                                           )
+        (lambda ((arg0 process-drawable))
+          (when (type-type? (-> arg0 type) process-drawable)
+            (if (nonzero? (-> arg0 nav))
+                (debug-draw (-> arg0 nav))
                 )
+            (if (nonzero? (-> arg0 path))
+                (debug-draw (-> arg0 path))
+                )
+            (if (nonzero? (-> arg0 vol))
+                (init! (-> arg0 vol))
+                )
+            )
+          (none)
+          )
         *null-kernel-context*
         )
       )
   (when (and *display-actor-graph* (not (or (= *master-mode* 'menu) (= *master-mode* 'progress))))
     (if (not (paused?))
-        (float-save-timeplot (if (< (the int (the float (mod (-> *display* base-frame-counter) 600))) 300)
+        (float-save-timeplot (if (< (the int (the float (mod (current-time) 600))) 300)
                                  1.0
                                  0.0
                                  )
@@ -1152,8 +1158,8 @@
       )
     )
   (when *display-split-boxes*
-    (dotimes (s5-4 (-> obj length))
-      (let ((s4-4 (-> obj level s5-4)))
+    (dotimes (s5-4 (-> this length))
+      (let ((s4-4 (-> this level s5-4)))
         (when (= (-> s4-4 status) 'active)
           (when (nonzero? (-> s4-4 bsp boxes))
             (let ((s3-4 (-> s4-4 bsp boxes)))
@@ -1185,8 +1191,8 @@
             *display-ambient-ocean-near-off-marks*
             *display-ambient-music-marks*
             )
-    (dotimes (s5-5 (-> obj length))
-      (let ((v1-214 (-> obj level s5-5)))
+    (dotimes (s5-5 (-> this length))
+      (let ((v1-214 (-> this level s5-5)))
         (when (= (-> v1-214 status) 'active)
           (let ((s4-5 (-> v1-214 bsp ambients)))
             (when (nonzero? s4-5)
@@ -1204,15 +1210,15 @@
   )
 
 ;; definition for method 22 of type entity-camera
-(defmethod birth! entity-camera ((obj entity-camera))
-  (add-connection *camera-engine* *camera* nothing obj #f #f)
-  obj
+(defmethod birth! ((this entity-camera))
+  (add-connection *camera-engine* *camera* nothing this #f #f)
+  this
   )
 
 ;; definition for method 23 of type entity-camera
-(defmethod kill! entity-camera ((obj entity-camera))
-  (remove-by-param1 *camera-engine* obj)
-  obj
+(defmethod kill! ((this entity-camera))
+  (remove-by-param1 *camera-engine* this)
+  this
   )
 
 ;; definition for function init-entity
@@ -1231,8 +1237,8 @@
   )
 
 ;; definition for method 22 of type entity-actor
-(defmethod birth! entity-actor ((obj entity-actor))
-  (let* ((entity-type (-> obj etype))
+(defmethod birth! ((this entity-actor))
+  (let* ((entity-type (-> this etype))
          (info (entity-info-lookup entity-type))
          (entity-process (get-process *default-dead-pool* entity-type (if info
                                                                           (-> info heap-size)
@@ -1251,17 +1257,17 @@
               (valid? (method-of-object entity-process init-from-entity!) function #f #f 0)
               )
          )
-       (init-entity entity-process obj)
+       (init-entity entity-process this)
        )
       (else
-        (when (not (birth-viewer entity-process obj))
-          (format 0 "ERROR: no proper process type named ~A exists in the code, could not start ~A~%" entity-type obj)
-          (logior! (-> obj extra perm status) (entity-perm-status bit-0))
+        (when (not (birth-viewer entity-process this))
+          (format 0 "ERROR: no proper process type named ~A exists in the code, could not start ~A~%" entity-type this)
+          (logior! (-> this extra perm status) (entity-perm-status bit-0))
           )
         )
       )
     )
-  obj
+  this
   )
 
 ;; definition for function entity-deactivate-handler
@@ -1275,80 +1281,80 @@
   )
 
 ;; definition for method 23 of type entity-actor
-(defmethod kill! entity-actor ((obj entity-actor))
-  (let ((a0-1 (-> obj extra process)))
+(defmethod kill! ((this entity-actor))
+  (let ((a0-1 (-> this extra process)))
     (if a0-1
         (deactivate a0-1)
-        (entity-deactivate-handler a0-1 obj)
+        (entity-deactivate-handler a0-1 this)
         )
     )
-  obj
+  this
   )
 
 ;; definition for method 18 of type bsp-header
 ;; INFO: Return type mismatch bsp-header vs none.
 ;; ERROR: Unsupported inline assembly instruction kind - [mfc0 s5, Count]
 ;; ERROR: Unsupported inline assembly instruction kind - [mfc0 v1, Count]
-(defmethod birth bsp-header ((obj bsp-header))
+(defmethod birth ((this bsp-header))
   (local-vars (v1-71 int) (s5-0 int))
   (.mfc0 s5-0 Count)
-  (let ((actor-count (if (nonzero? (-> obj actors))
-                         (-> obj actors length)
+  (let ((actor-count (if (nonzero? (-> this actors))
+                         (-> this actors length)
                          0
                          )
                      )
         )
     (cond
-      ((not (-> obj level entity))
-       (set! (-> obj level entity) (new 'loading-level 'entity-links-array actor-count))
+      ((not (-> this level entity))
+       (set! (-> this level entity) (new 'loading-level 'entity-links-array actor-count))
        )
-      ((< (-> obj level entity allocated-length) actor-count)
+      ((< (-> this level entity allocated-length) actor-count)
        (format
          0
          "ERROR: Attempting to rebirth level ~A with incorrect entity table size ~D/~D~%"
-         (-> obj level)
+         (-> this level)
          actor-count
-         (-> obj level entity allocated-length)
+         (-> this level entity allocated-length)
          )
        )
       )
     )
-  (set! (-> obj level entity length) 0)
+  (set! (-> this level entity length) 0)
   0
-  (when (nonzero? (-> obj actors))
-    (dotimes (birth-idx (-> obj actors length))
-      (let* ((idx-to-birth (-> obj actor-birth-order birth-idx))
-             (actor-to-birth (-> obj actors data (logand idx-to-birth #xffff) actor))
+  (when (nonzero? (-> this actors))
+    (dotimes (birth-idx (-> this actors length))
+      (let* ((idx-to-birth (-> this actor-birth-order birth-idx))
+             (actor-to-birth (-> this actors data (logand idx-to-birth #xffff) actor))
              )
-        (add-to-level! actor-to-birth *level* (-> obj level) (the-as actor-id (-> actor-to-birth aid)))
+        (add-to-level! actor-to-birth *level* (-> this level) (the-as actor-id (-> actor-to-birth aid)))
         )
       )
     )
-  (let ((existing-amb-count (if (nonzero? (-> obj ambients))
-                                (-> obj ambients length)
+  (let ((existing-amb-count (if (nonzero? (-> this ambients))
+                                (-> this ambients length)
                                 0
                                 )
                             )
         )
     (cond
-      ((not (-> obj level ambient))
-       (set! (-> obj level ambient) (new 'loading-level 'entity-ambient-data-array existing-amb-count))
+      ((not (-> this level ambient))
+       (set! (-> this level ambient) (new 'loading-level 'entity-ambient-data-array existing-amb-count))
        )
-      ((< (-> obj level ambient allocated-length) existing-amb-count)
+      ((< (-> this level ambient allocated-length) existing-amb-count)
        (format
          0
          "ERROR: Attempting to rebirth level ~A with incorrect ambient table size ~D/~D~%"
-         (-> obj level)
+         (-> this level)
          existing-amb-count
-         (-> obj level ambient allocated-length)
+         (-> this level ambient allocated-length)
          )
        )
       )
     )
-  (set! (-> obj level ambient length) 0)
+  (set! (-> this level ambient length) 0)
   0
-  (let ((amb-array (-> obj level ambient))
-        (bsp-ambs (-> obj ambients))
+  (let ((amb-array (-> this level ambient))
+        (bsp-ambs (-> this ambients))
         )
     (when (nonzero? bsp-ambs)
       (dotimes (s2-0 (-> bsp-ambs length))
@@ -1360,7 +1366,7 @@
         )
       )
     )
-  (let ((cams (-> obj cameras)))
+  (let ((cams (-> this cameras)))
     (when (nonzero? cams)
       (dotimes (s3-1 (-> cams length))
         (birth! (-> cams s3-1))
@@ -1376,8 +1382,8 @@
 
 ;; definition for method 19 of type bsp-header
 ;; INFO: Return type mismatch bsp-header vs none.
-(defmethod deactivate-entities bsp-header ((obj bsp-header))
-  (let ((s5-0 (-> obj actors)))
+(defmethod deactivate-entities ((this bsp-header))
+  (let ((s5-0 (-> this actors)))
     (when (nonzero? s5-0)
       (dotimes (s4-0 (-> s5-0 length))
         (let ((s3-0 (-> s5-0 data s4-0 actor)))
@@ -1387,7 +1393,7 @@
         )
       )
     )
-  (let ((s5-1 (-> obj cameras)))
+  (let ((s5-1 (-> this cameras)))
     (when (nonzero? s5-1)
       (dotimes (s4-1 (-> s5-1 length))
         (kill! (-> s5-1 s4-1))
@@ -1395,15 +1401,15 @@
       )
     )
   (let ((s5-2 (-> *entity-pool* child))
-        (s4-2 (-> obj level heap base))
-        (s3-1 (-> obj level heap top-base))
+        (s4-2 (-> this level heap base))
+        (s3-1 (-> this level heap top-base))
         )
     (while s5-2
       (let ((s2-0 (ppointer->process s5-2)))
         (set! s5-2 (-> s5-2 0 brother))
         (cond
           ((-> (the-as process s2-0) entity)
-           (when (= (-> (the-as process s2-0) entity extra level) (-> obj level))
+           (when (= (-> (the-as process s2-0) entity extra level) (-> this level))
              (format #t "NOTICE: rogue level entity ~A~% still alive~%" s2-0)
              (deactivate s2-0)
              )
@@ -1474,34 +1480,34 @@
   )
 
 ;; definition for method 9 of type entity-perm
-(defmethod update-perm! entity-perm ((obj entity-perm) (arg0 symbol) (arg1 entity-perm-status))
+(defmethod update-perm! ((this entity-perm) (arg0 symbol) (arg1 entity-perm-status))
   (cond
     ((= arg0 'game)
-     (logclear! (-> obj status) arg1)
+     (logclear! (-> this status) arg1)
      )
-    ((nonzero? (-> obj task))
-     (logclear! (-> obj status) (logior (if (logtest? (-> obj status) (entity-perm-status bit-4))
-                                            524
-                                            0
-                                            )
-                                        515
-                                        )
+    ((nonzero? (-> this task))
+     (logclear! (-> this status) (logior (if (logtest? (-> this status) (entity-perm-status bit-4))
+                                             524
+                                             0
+                                             )
+                                         515
+                                         )
                 )
      )
     (else
-      (logclear! (-> obj status) (logior arg1 (if (logtest? (-> obj status) (entity-perm-status bit-4))
-                                                  524
-                                                  0
-                                                  )
-                                         )
+      (logclear! (-> this status) (logior arg1 (if (logtest? (-> this status) (entity-perm-status bit-4))
+                                                   524
+                                                   0
+                                                   )
+                                          )
                  )
       )
     )
-  (when (not (logtest? (-> obj status) (entity-perm-status user-set-from-cstage)))
-    (set! (-> obj user-uint64) (the-as uint 0))
+  (when (not (logtest? (-> this status) (entity-perm-status user-set-from-cstage)))
+    (set! (-> this user-uint64) (the-as uint 0))
     0
     )
-  obj
+  this
   )
 
 ;; definition for function reset-actors
@@ -1554,7 +1560,7 @@
     )
   (iterate-process-tree
     *entity-pool*
-    (the-as (function object object) (lambda ((arg0 process-drawable)) (deactivate arg0) (none)))
+    (lambda ((arg0 process-drawable)) (deactivate arg0) (none))
     *null-kernel-context*
     )
   (if (= arg0 'game)
@@ -1587,28 +1593,28 @@
   )
 
 ;; definition for method 12 of type process-drawable
-(defmethod run-logic? process-drawable ((obj process-drawable))
-  (or (not (logtest? (-> obj mask) (process-mask actor-pause)))
-      (or (>= (+ (-> *ACTOR-bank* pause-dist) (-> obj root pause-adjust-distance))
-              (vector-vector-distance (-> obj root trans) (math-camera-pos))
+(defmethod run-logic? ((this process-drawable))
+  (or (not (logtest? (-> this mask) (process-mask actor-pause)))
+      (or (>= (+ (-> *ACTOR-bank* pause-dist) (-> this root pause-adjust-distance))
+              (vector-vector-distance (-> this root trans) (math-camera-pos))
               )
-          (and (nonzero? (-> obj skel)) (!= (-> obj skel root-channel 0) (-> obj skel channel)))
-          (and (nonzero? (-> obj draw)) (logtest? (-> obj draw status) (draw-status no-skeleton-update)))
+          (and (nonzero? (-> this skel)) (!= (-> this skel root-channel 0) (-> this skel channel)))
+          (and (nonzero? (-> this draw)) (logtest? (-> this draw status) (draw-status no-skeleton-update)))
           )
       )
   )
 
 ;; definition for method 9 of type entity-links
-(defmethod birth? entity-links ((obj entity-links) (arg0 vector))
-  (and (not (logtest? (-> obj perm status) (entity-perm-status bit-0 dead)))
-       (< (vector-vector-distance (-> obj trans) arg0) (-> *ACTOR-bank* birth-dist))
+(defmethod birth? ((this entity-links) (arg0 vector))
+  (and (not (logtest? (-> this perm status) (entity-perm-status bit-0 dead)))
+       (< (vector-vector-distance (-> this trans) arg0) (-> *ACTOR-bank* birth-dist))
        )
   )
 
 ;; definition for method 15 of type level-group
 ;; INFO: Used lq/sq
 ;; INFO: Return type mismatch int vs object.
-(defmethod actors-update level-group ((obj level-group))
+(defmethod actors-update ((this level-group))
   (local-vars (sv-16 vector) (sv-24 int) (sv-32 entity-links) (sv-48 int) (sv-64 string) (sv-80 int))
   (when *compact-actors*
     (if (and (= *compact-actors* 'debug) (= (-> *nk-dead-pool* alive-list prev) (-> *nk-dead-pool* first-gap)))
@@ -1627,7 +1633,7 @@
   (when (not (paused?))
     (let ((s5-1 (-> *display* frames (-> *display* last-screen) frame run-time)))
       (let ((f0-5 (fmax 327680.0 (fmin (+ 327680.0 (* 204.8 (the float (- 7000 s5-1)))) (-> *ACTOR-bank* birth-dist)))))
-        (seek! (-> *ACTOR-bank* pause-dist) f0-5 (* 81920.0 (-> *display* seconds-per-frame)))
+        (seek! (-> *ACTOR-bank* pause-dist) f0-5 (* 81920.0 (seconds-per-frame)))
         )
       (seekl! (-> *ACTOR-bank* birth-max) (the int (lerp-scale 25.0 1.0 (the float s5-1) 2000.0 7000.0)) 10)
       )
@@ -1638,8 +1644,8 @@
   (when *spawn-actors*
     (set! sv-16 (camera-pos))
     (set! sv-24 0)
-    (dotimes (s5-2 (-> obj length))
-      (let ((s4-2 (-> obj level s5-2)))
+    (dotimes (s5-2 (-> this length))
+      (let ((s4-2 (-> this level s5-2)))
         (when (= (-> s4-2 status) 'active)
           (cond
             ((= (-> s4-2 display?) 'special)
@@ -1838,8 +1844,8 @@
 
 ;; definition for method 30 of type entity-actor
 ;; INFO: Return type mismatch entity-perm-status vs none.
-(defmethod set-or-clear-status! entity-actor ((obj entity-actor) (arg0 entity-perm-status) (arg1 symbol))
-  (let ((v1-0 (-> obj extra)))
+(defmethod set-or-clear-status! ((this entity-actor) (arg0 entity-perm-status) (arg1 symbol))
+  (let ((v1-0 (-> this extra)))
     (if arg1
         (logior! (-> v1-0 perm status) arg0)
         (logclear! (-> v1-0 perm status) arg0)

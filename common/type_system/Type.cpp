@@ -344,7 +344,7 @@ std::string Type::common_type_info_diff(const Type& other) const {
  * parents.
  */
 bool Type::has_parent() const {
-  return m_name != "object" && !m_parent.empty();
+  return m_name != "object";
 }
 
 /*!
@@ -421,10 +421,12 @@ int Type::get_num_methods() const {
  * Add a method defined specifically for this type.
  */
 const MethodInfo& Type::add_method(const MethodInfo& info) {
-  for (auto it = m_methods.rbegin(); it != m_methods.rend(); it++) {
-    if (!it->overrides_parent && !it->only_overrides_docstring) {
-      ASSERT(it->id + 1 == info.id);
-      break;
+  if (!info.overrides_parent) {
+    for (auto it = m_methods.rbegin(); it != m_methods.rend(); it++) {
+      if (!it->overrides_parent && !it->only_overrides_docstring) {
+        ASSERT(it->id + 1 == info.id);
+        break;
+      }
     }
   }
 
@@ -485,7 +487,7 @@ std::string Type::diff(const Type& other) const {
 // Special Type for both "none" and "_type_" types
 // it's an error to try to do anything with Null.
 
-NullType::NullType(std::string name) : Type("", std::move(name), false, 0) {}
+NullType::NullType(std::string name) : Type("object", std::move(name), false, 0) {}
 
 bool NullType::is_reference() const {
   throw std::runtime_error("is_reference called on NullType");
@@ -496,7 +498,7 @@ int NullType::get_load_size() const {
 }
 
 bool NullType::get_load_signed() const {
-  throw std::runtime_error("get_load_size called on NullType");
+  throw std::runtime_error("get_load_signed called on NullType");
 }
 
 int NullType::get_size_in_memory() const {

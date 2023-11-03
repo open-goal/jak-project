@@ -5,6 +5,8 @@
 ;; name in dgo: collide-frag-h
 ;; dgos: GAME, ENGINE
 
+;; DECOMP BEGINS
+
 ;;;;;;;;;;;;;;;;;
 ;; Collide Frag
 ;;;;;;;;;;;;;;;;;
@@ -20,47 +22,37 @@
 
 (deftype collide-frag-vertex (vector)
   ()
-  :method-count-assert 9
-  :size-assert         #x10
-  :flag-assert         #x900000010
   )
+
 
 (deftype collide-frag-mesh (basic)
-  ((packed-data     uint32             :offset-assert 4)
-   (pat-array       uint32             :offset-assert 8)
-   (strip-data-len  uint16             :offset-assert 12)
-   (poly-count      uint16             :offset-assert 14)
-   (base-trans      vector :inline     :offset-assert 16)
-   (vertex-count    uint8  :offset  28)
-   (vertex-data-qwc uint8  :offset  29)
-   (total-qwc       uint8  :offset  30)
-   (unused          uint8  :offset  31)
+  ((packed-data      uint32)
+   (pat-array        uint32)
+   (strip-data-len   uint16)
+   (poly-count       uint16)
+   (base-trans       vector  :inline)
+   (vertex-count     uint8   :overlay-at (-> base-trans w))
+   (vertex-data-qwc  uint8   :offset  29)
+   (total-qwc        uint8   :offset  30)
+   (unused           uint8   :offset  31)
    )
-  :method-count-assert 9
-  :size-assert         #x20
-  :flag-assert         #x900000020
   )
+
 
 (deftype collide-fragment (drawable)
-  ((mesh collide-frag-mesh :offset   8)
+  ((mesh  collide-frag-mesh  :offset   8)
    )
-  :method-count-assert 18
-  :size-assert         #x20
-  :flag-assert         #x1200000020
   )
+
 
 (deftype drawable-inline-array-collide-fragment (drawable-inline-array)
-  ((data collide-fragment 1 :inline :offset-assert 32)
-   (pad  uint32                     :offset-assert 64)
+  ((data  collide-fragment  1 :inline)
+   (pad   uint32)
    )
-  :method-count-assert 18
-  :size-assert         #x44
-  :flag-assert         #x1200000044
   )
 
+
 (deftype drawable-tree-collide-fragment (drawable-tree)
-  ((data-override drawable-inline-array :offset 32))
-  :method-count-assert #x12
-  :size-assert #x24
-  :flag-assert #x1200000024
+  ((data-override  drawable-inline-array  :overlay-at (-> data 0))
+   )
   )

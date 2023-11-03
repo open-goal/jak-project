@@ -5,9 +5,11 @@
 ;; name in dgo: time-of-day
 ;; dgos: GAME, ENGINE
 
-(defmethod asize-of time-of-day-palette ((obj time-of-day-palette))
+;; DECOMP BEGINS
+
+(defmethod asize-of ((this time-of-day-palette))
   "Compute the size in memory of a time-of-day-palette"
-  (the-as int (+ (-> obj type size) (* (* (-> obj height) (-> obj width)) 4)))
+  (the-as int (+ (-> this type size) (* (* (-> this height) (-> this width)) 4)))
   )
 
 ;; The time-of-day-effect function is a callback used before doing a time-of-day-update.
@@ -25,9 +27,9 @@
   ;; spawn or kill stars, if needed.
   (cond
     ;; should have stars in the sky
-    ((and (or (>= (-> self hour) 19) (>= 5 (-> self hour))) ;; night time
-          (and (< 45.0 (-> *time-of-day-context* num-stars)) (-> *time-of-day-context* sky)) ;; sky + stars desired
-          )
+    ((and (or (>= (-> self hour) 19) (>= 5 (-> self hour)))
+          (and (< 45.0 (-> *time-of-day-context* num-stars)) (-> *time-of-day-context* sky))
+          ) ;; sky + stars desired
 
      ;; see if we need more
      (when (and *dproc* (< (-> self star-count) (the int (-> *time-of-day-context* num-stars))))
@@ -100,10 +102,8 @@
 
 ;; State for just ticking time forward.
 (defstate time-of-day-tick (time-of-day-proc)
-  :code
-  (behavior ()
-    (while #t
-      ;; tick!
+  :code (behavior ()
+    (loop
       (+! (-> self frame) (the int (* (-> self time-ratio) (-> *display* time-adjust-ratio))))
 
       ;; now update time...
@@ -156,7 +156,6 @@
             )
           )
         )
-
       ;; set the time of day float. This is in hours (0-24)
       (let* ((f0-4 (the float (-> self frame)))
              (f0-6 (+ (* 0.0033333334 f0-4) (the float (-> self second))))
@@ -168,7 +167,6 @@
         )
       (suspend)
       )
-    (none)
     )
   :post time-of-day-update
   )
@@ -252,8 +250,8 @@
 ;   ;; TODO
 ;   (none)
 ;   )
-(def-mips2c time-of-day-interp-colors-scratch (function (pointer rgba) time-of-day-palette mood-context none))
 
+(def-mips2c time-of-day-interp-colors-scratch (function (pointer rgba) time-of-day-palette mood-context none))
 
 (defun init-time-of-day-context ((arg0 time-of-day-context))
   "Set up the title-light-group."
@@ -263,7 +261,8 @@
   (set! (-> arg0 title-light-group dir0 levels x) 1.0)
   (set! (-> arg0 title-light-group dir1 levels x) 1.0)
   (set! (-> arg0 title-light-group ambi levels x) 1.0)
-  (none))
+  (none)
+  )
 
 (defun update-time-of-day ((arg0 time-of-day-context))
   "Update the time of day context"
@@ -276,6 +275,7 @@
     (set! (-> *target* draw light-index) (the-as uint 0))
     (when (-> *target* sidekick)
       (set! (-> *target* sidekick 0 draw light-index) (the-as uint 0))
+      0
       )
     )
 
@@ -296,7 +296,6 @@
     (set! (-> s4-0 0) 0.0)
     (set! (-> s4-0 1) 0.0)
     0.0
-
     (let ((s5-0 0)
           (f30-0 (-> arg0 current-interp))
           )
@@ -337,7 +336,7 @@
                        0.0
                        )
                       ((= f0-6 4095996000.0)
-                       ;; first level is no good, just use second.
+                       ;; first level is no good, just use second
                        1.0
                        )
                       ((= f0-6 f1-0)
@@ -350,13 +349,13 @@
                             (= (-> *level* level0 name) 'village2)
                             (= (-> *level* level1 name) 'sunken)
                             )
-                       0.0 ;; picks 0 = village2
+                       0.0  ;; picks 0 = village2
                        )
                       ((and (< 0.0 (-> *math-camera* trans y))
                             (= (-> *level* level0 name) 'sunken)
                             (= (-> *level* level1 name) 'village2)
                             )
-                       1.0 ;; picks 1 = village 2
+                       1.0  ;; picks 1 = village2
                        )
                       (else
                         ;; interplate between them.
@@ -434,7 +433,11 @@
            (set! (-> arg0 current-shadow quad) (-> arg0 moods 0 current-shadow quad))
            (set! (-> arg0 current-shadow-color quad) (-> arg0 moods 0 current-shadow-color quad))
            (dotimes (s4-1 8)
-             (quad-copy! (the-as pointer (-> arg0 light-group s4-1)) (the-as pointer (-> arg0 moods 0 light-group s4-1)) 12)
+             (quad-copy!
+               (the-as pointer (-> arg0 light-group s4-1))
+               (the-as pointer (-> arg0 moods 0 light-group s4-1))
+               12
+               )
              )
            (set! (-> arg0 num-stars) (-> arg0 moods 0 num-stars))
            (set! (-> arg0 sun-fade) (-> *level* level0 info sun-fade))
@@ -452,7 +455,11 @@
            (set! (-> arg0 current-shadow quad) (-> arg0 moods 1 current-shadow quad))
            (set! (-> arg0 current-shadow-color quad) (-> arg0 moods 1 current-shadow-color quad))
            (dotimes (s4-2 8)
-             (quad-copy! (the-as pointer (-> arg0 light-group s4-2)) (the-as pointer (-> arg0 moods 1 light-group s4-2)) 12)
+             (quad-copy!
+               (the-as pointer (-> arg0 light-group s4-2))
+               (the-as pointer (-> arg0 moods 1 light-group s4-2))
+               12
+               )
              )
            (set! (-> arg0 num-stars) (-> arg0 moods 1 num-stars))
            (set! (-> arg0 sun-fade) (-> *level* level1 info sun-fade))
@@ -468,16 +475,36 @@
               (vector4-lerp! (-> s5-1 fog-dists) (-> s4-3 fog-dists) (-> s3-1 fog-dists) f30-0)
               (vector4-lerp! (-> s5-1 erase-color) (-> s4-3 erase-color) (-> s3-1 erase-color) f30-0)
               )
-            (vector4-lerp! (-> arg0 current-prt-color) (-> arg0 moods 0 current-prt-color) (-> arg0 moods 1 current-prt-color) f30-0)
+            (vector4-lerp!
+              (-> arg0 current-prt-color)
+              (-> arg0 moods 0 current-prt-color)
+              (-> arg0 moods 1 current-prt-color)
+              f30-0
+              )
             (vector4-lerp!
               (the-as vector (-> arg0 current-sun))
               (the-as vector (-> arg0 moods 0 current-sun))
               (the-as vector (-> arg0 moods 1 current-sun))
               f30-0
               )
-            (vector4-lerp! (-> arg0 current-sun env-color) (-> arg0 moods 0 current-sun env-color) (-> arg0 moods 1 current-sun env-color) f30-0)
-            (vector4-lerp! (-> arg0 current-shadow) (-> arg0 moods 0 current-shadow) (-> arg0 moods 1 current-shadow) f30-0)
-            (vector4-lerp! (-> arg0 current-shadow-color) (-> arg0 moods 0 current-shadow-color) (-> arg0 moods 1 current-shadow-color) f30-0)
+            (vector4-lerp!
+              (-> arg0 current-sun env-color)
+              (-> arg0 moods 0 current-sun env-color)
+              (-> arg0 moods 1 current-sun env-color)
+              f30-0
+              )
+            (vector4-lerp!
+              (-> arg0 current-shadow)
+              (-> arg0 moods 0 current-shadow)
+              (-> arg0 moods 1 current-shadow)
+              f30-0
+              )
+            (vector4-lerp!
+              (-> arg0 current-shadow-color)
+              (-> arg0 moods 0 current-shadow-color)
+              (-> arg0 moods 1 current-shadow-color)
+              f30-0
+              )
             (dotimes (s4-4 8)
               (dotimes (s3-2 3)
                 (let ((s2-1 (+ (+ (* 48 s3-2) 156 (* 192 s4-4)) (the-as int arg0))))
@@ -500,13 +527,15 @@
                 (vector4-lerp! (the-as vector (+ s3-3 32)) (the-as vector (+ s2-2 32)) (the-as vector (+ s1-1 32)) f30-0)
                 )
               )
-            (set! (-> arg0 num-stars) (+ (-> arg0 moods 0 num-stars) (* (- (-> arg0 moods 1 num-stars) (-> arg0 moods 0 num-stars)) f30-0)))
+            (set! (-> arg0 num-stars)
+                  (+ (-> arg0 moods 0 num-stars) (* (- (-> arg0 moods 1 num-stars) (-> arg0 moods 0 num-stars)) f30-0))
+                  )
             (let ((f0-20 (-> *level* level0 info sun-fade)))
               (set! (-> arg0 sun-fade) (+ f0-20 (* f30-0 (- (-> *level* level1 info sun-fade) f0-20))))
               )
             )
           )
-
+          
         ;; setup sky stuff
         (dotimes (s4-5 2)
           (make-sky-textures arg0 s4-5)
@@ -530,7 +559,6 @@
   (set! (-> arg0 current-sun env-color y) (* 0.5019608 (-> arg0 current-sun env-color y)))
   (set! (-> arg0 current-sun env-color z) (* 0.5019608 (-> arg0 current-sun env-color z)))
   (set! (-> arg0 current-sun env-color w) (* 0.5019608 (-> arg0 current-sun env-color w)))
-
   (let ((v1-179 (-> arg0 current-fog)))
     (set! *fog-color* (new 'static 'rgba
                         :r (the int (-> v1-179 fog-color x))
@@ -541,19 +569,13 @@
     )
   (let ((v1-184 (-> arg0 current-fog erase-color)))
     (set! (-> arg0 erase-color)
-          (new 'static 'rgba
-               :a #x80
-               :b (the int (-> v1-184 z))
-               :g (the int (-> v1-184 y))
-               :r (the int (-> v1-184 x))
-               )
+          (new 'static 'rgba :a #x80 :b (the int (-> v1-184 z)) :g (the int (-> v1-184 y)) :r (the int (-> v1-184 x)))
           )
     )
   (set! (-> *math-camera* fog-start) (-> arg0 current-fog fog-dists x))
   (set! (-> *math-camera* fog-end) (-> arg0 current-fog fog-dists y))
   (set! (-> *math-camera* fog-max) (-> arg0 current-fog fog-dists z))
   (set! (-> *math-camera* fog-min) (-> arg0 current-fog fog-dists w))
-
   ;; interp target lights. (note: added check here.)
   (let* ((v1-195 (if *target* (-> *target* draw light-index) 0))
          (f30-1 (-> arg0 target-interp))
@@ -614,25 +636,21 @@
       (vector-normalize! (-> arg0 current-shadow) 1.0)
       )
     )
-
   (reset! *palette-fade-controls*)
   0
   (none)
   )
 
-(defmethod set-fade! palette-fade-controls ((obj palette-fade-controls) (arg0 int) (arg1 float) (arg2 float) (arg3 vector))
+(defmethod set-fade! ((this palette-fade-controls) (arg0 int) (arg1 float) (arg2 float) (arg3 vector))
   (cond
     ((and (>= arg0 0) (< arg0 8))
-     (let ((v1-3 (-> obj control arg0)))
+     (let ((v1-3 (-> this control arg0)))
        (when (< arg2 (-> v1-3 actor-dist))
          (if arg3
              (set! (-> v1-3 trans quad) (-> arg3 quad))
              )
          (set! (-> v1-3 fade) (fmax 0.0 (fmin 1.993 arg1)))
-         (let ((f0-3 arg2))
-           (set! (-> v1-3 actor-dist) f0-3)
-           f0-3
-           )
+         (set! (-> v1-3 actor-dist) arg2)
          )
        )
      )
@@ -642,13 +660,13 @@
     )
   )
 
-(defmethod reset! palette-fade-controls ((obj palette-fade-controls))
+(defmethod reset! ((this palette-fade-controls))
   (countdown (v1-0 8)
-   (let ((a1-2 (-> obj control v1-0)))
-    (set! (-> a1-2 fade) 0.0)
-    (set! (-> a1-2 actor-dist) 4096000000.0)
+    (let ((a1-2 (-> this control v1-0)))
+      (set! (-> a1-2 fade) 0.0)
+      (set! (-> a1-2 actor-dist) 4096000000.0)
+      )
     )
-   )
   #f
   )
 

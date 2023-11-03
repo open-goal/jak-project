@@ -3,47 +3,43 @@
 
 ;; definition of type ruins-pillar-collapse
 (deftype ruins-pillar-collapse (process-drawable)
-  ((root             collide-shape-moving   :override)
-   (player-attack-id int32                  :offset-assert 200)
-   (fall-anim-index  int32                  :offset-assert 204)
-   (hit-points       int8                   :offset-assert 208)
-   (mesh-trans       uint8                3 :offset-assert 209)
-   (mesh-joint       joint                2 :offset-assert 212)
-   (deadly?          symbol                 :offset        216)
-   (art-name         string                 :offset        220)
-   (anim             spool-anim             :offset        224)
+  ((root              collide-shape-moving :override)
+   (player-attack-id  int32)
+   (fall-anim-index   int32)
+   (hit-points        int8)
+   (mesh-trans        uint8                 3)
+   (mesh-joint        joint                 2)
+   (deadly?           symbol                :overlay-at (-> mesh-joint 1))
+   (art-name          string                :offset 220)
+   (anim              spool-anim            :offset 224)
    )
-  :heap-base #x70
-  :method-count-assert 24
-  :size-assert         #xe4
-  :flag-assert         #x18007000e4
-  (:methods
-    (idle () _type_ :state 20)
-    (bump () _type_ :state 21)
-    (hit () _type_ :state 22)
-    (fall (symbol) _type_ :state 23)
+  (:state-methods
+    idle
+    bump
+    hit
+    (fall symbol)
     )
   )
 
 ;; definition for method 3 of type ruins-pillar-collapse
-(defmethod inspect ruins-pillar-collapse ((obj ruins-pillar-collapse))
-  (when (not obj)
-    (set! obj obj)
+(defmethod inspect ((this ruins-pillar-collapse))
+  (when (not this)
+    (set! this this)
     (goto cfg-4)
     )
   (let ((t9-0 (method-of-type process-drawable inspect)))
-    (t9-0 obj)
+    (t9-0 this)
     )
-  (format #t "~2Tplayer-attack-id: ~D~%" (-> obj player-attack-id))
-  (format #t "~2Tfall-anim-index: ~D~%" (-> obj fall-anim-index))
-  (format #t "~2Thit-points: ~D~%" (-> obj hit-points))
-  (format #t "~2Tmesh-trans[3] @ #x~X~%" (-> obj mesh-trans))
-  (format #t "~2Tmesh-joint[2] @ #x~X~%" (-> obj mesh-joint))
-  (format #t "~2Tdeadly?: ~A~%" (-> obj deadly?))
-  (format #t "~2Tart-name: ~A~%" (-> obj art-name))
-  (format #t "~2Tanim: ~A~%" (-> obj anim))
+  (format #t "~2Tplayer-attack-id: ~D~%" (-> this player-attack-id))
+  (format #t "~2Tfall-anim-index: ~D~%" (-> this fall-anim-index))
+  (format #t "~2Thit-points: ~D~%" (-> this hit-points))
+  (format #t "~2Tmesh-trans[3] @ #x~X~%" (-> this mesh-trans))
+  (format #t "~2Tmesh-joint[2] @ #x~X~%" (-> this mesh-joint))
+  (format #t "~2Tdeadly?: ~A~%" (-> this deadly?))
+  (format #t "~2Tart-name: ~A~%" (-> this art-name))
+  (format #t "~2Tanim: ~A~%" (-> this anim))
   (label cfg-4)
-  obj
+  this
   )
 
 ;; failed to figure out what this is:
@@ -67,11 +63,11 @@
 ;; failed to figure out what this is:
 (defstate idle (ruins-pillar-collapse)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('attack)
        (when (task-node-closed? (game-task-node ruins-mech-introduction))
-         (let* ((gp-1 (the-as attack-info (-> event param 1)))
+         (let* ((gp-1 (the-as attack-info (-> block param 1)))
                 (s4-0 (-> gp-1 id))
                 (s5-0 (vector-x-quaternion! (new-stack-vector0) (-> self root quat)))
                 (a0-6 (vector-z-quaternion! (new-stack-vector0) (-> self root quat)))
@@ -136,13 +132,11 @@
             )
           )
       )
-    (none)
     )
   :exit (behavior ()
     (while (-> self child)
       (deactivate (-> self child 0))
       )
-    (none)
     )
   :code (behavior ()
     (if (task-node-closed? (game-task-node ruins-mech-introduction))
@@ -152,46 +146,43 @@
     (logior! (-> self mask) (process-mask sleep))
     (suspend)
     0
-    (none)
     )
-  :post (the-as (function none :behavior ruins-pillar-collapse) transform-post)
+  :post transform-post
   )
 
 ;; failed to figure out what this is:
 (defstate bump (ruins-pillar-collapse)
   :virtual #t
   :event (-> (method-of-type ruins-pillar-collapse idle) event)
-  :trans (the-as (function none :behavior ruins-pillar-collapse) rider-trans)
+  :trans rider-trans
   :code (behavior ()
     (go-virtual idle)
-    (none)
     )
-  :post (the-as (function none :behavior ruins-pillar-collapse) rider-post)
+  :post rider-post
   )
 
 ;; failed to figure out what this is:
 (defstate hit (ruins-pillar-collapse)
   :virtual #t
   :event (-> (method-of-type ruins-pillar-collapse idle) event)
-  :trans (the-as (function none :behavior ruins-pillar-collapse) rider-trans)
+  :trans rider-trans
   :code (behavior ()
     (+! (-> self hit-points) -1)
     (if (zero? (-> self hit-points))
         (go-virtual fall #f)
         )
     (go-virtual idle)
-    (none)
     )
-  :post (the-as (function none :behavior ruins-pillar-collapse) rider-post)
+  :post rider-post
   )
 
 ;; failed to figure out what this is:
 (defstate fall (ruins-pillar-collapse)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('touch 'attack)
-       (let* ((s5-0 (-> event param 0))
+       (let* ((s5-0 (-> block param 0))
               (s4-0 proc)
               (gp-0 (if (type? s4-0 process-focusable)
                         s4-0
@@ -211,41 +202,25 @@
                    (get-intersect-point (new 'stack-no-clear 'vector) a1-4 (-> self root) (the-as touching-shapes-entry s5-0))
                    )
                  )
-             (when (and (< (-> (get-trans (the-as process-focusable gp-0) 3) y) (-> s4-1 y))
-                        (< 40960.0 (vector-vector-distance s4-1 (-> self root trans)))
-                        )
-               (let ((a1-8 (new 'stack-no-clear 'event-message-block)))
-                 (set! (-> a1-8 from) (process->ppointer self))
-                 (set! (-> a1-8 num-params) 2)
-                 (set! (-> a1-8 message) 'attack)
-                 (set! (-> a1-8 param 0) s5-0)
-                 (let ((v1-13 (new 'static 'attack-info :mask (attack-info-mask mode id))))
-                   (let* ((a0-7 *game-info*)
-                          (a2-5 (+ (-> a0-7 attack-id) 1))
-                          )
-                     (set! (-> a0-7 attack-id) a2-5)
-                     (set! (-> v1-13 id) a2-5)
-                     )
-                   (set! (-> v1-13 mode) 'crush)
-                   (set! (-> a1-8 param 1) (the-as uint v1-13))
-                   )
-                 (send-event-function gp-0 a1-8)
+             (if (and (< (-> (get-trans (the-as process-focusable gp-0) 3) y) (-> s4-1 y))
+                      (< 40960.0 (vector-vector-distance s4-1 (-> self root trans)))
+                      )
+                 (send-event gp-0 'attack s5-0 (static-attack-info ((id (new-attack-id)) (mode 'crush))))
                  )
-               )
              )
            )
          )
        )
       )
     )
-  :trans (the-as (function none :behavior ruins-pillar-collapse) rider-trans)
-  :post (the-as (function none :behavior ruins-pillar-collapse) rider-post)
+  :trans rider-trans
+  :post rider-post
   )
 
 ;; definition for method 11 of type ruins-pillar-collapse
 ;; INFO: Used lq/sq
 ;; WARN: Return type mismatch object vs none.
-(defmethod init-from-entity! ruins-pillar-collapse ((obj ruins-pillar-collapse) (arg0 entity-actor))
+(defmethod init-from-entity! ((this ruins-pillar-collapse) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
 - stack size
@@ -253,12 +228,12 @@ This commonly includes things such as:
 - loading the skeleton group / bones
 - sounds"
   (local-vars (sv-16 collide-shape-prim-mesh) (sv-32 symbol) (sv-48 type) (sv-64 collide-shape-moving))
-  (stack-size-set! (-> obj main-thread) 512)
-  (logior! (-> obj mask) (process-mask collectable))
+  (stack-size-set! (-> this main-thread) 512)
+  (logior! (-> this mask) (process-mask collectable))
   (dotimes (v1-3 3)
-    (set! (-> obj mesh-trans v1-3) (the-as uint v1-3))
+    (set! (-> this mesh-trans v1-3) (the-as uint v1-3))
     )
-  (let ((s4-0 (new 'process 'collide-shape-moving obj (collide-list-enum usually-hit-by-player))))
+  (let ((s4-0 (new 'process 'collide-shape-moving this (collide-list-enum usually-hit-by-player))))
     (set! (-> s4-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s4-0 reaction) cshape-reaction-default)
     (set! (-> s4-0 no-reaction)
@@ -344,57 +319,57 @@ This commonly includes things such as:
       (set! (-> s4-0 backup-collide-as) (-> v1-30 prim-core collide-as))
       (set! (-> s4-0 backup-collide-with) (-> v1-30 prim-core collide-with))
       )
-    (set! (-> obj root) s4-0)
+    (set! (-> this root) s4-0)
     )
-  (process-drawable-from-entity! obj arg0)
-  (set! (-> obj mesh-trans 0) (the-as uint 1))
-  (set! (-> obj mesh-trans 1) (the-as uint 2))
-  (set! (-> obj mesh-trans 2) (the-as uint 0))
-  (let ((s5-1 (res-lump-struct (-> obj entity) 'art-name structure)))
-    (set! (-> obj art-name) (the-as string s5-1))
+  (process-drawable-from-entity! this arg0)
+  (set! (-> this mesh-trans 0) (the-as uint 1))
+  (set! (-> this mesh-trans 1) (the-as uint 2))
+  (set! (-> this mesh-trans 2) (the-as uint 0))
+  (let ((s5-1 (res-lump-struct (-> this entity) 'art-name structure)))
+    (set! (-> this art-name) (the-as string s5-1))
     (cond
       ((string= (the-as string s5-1) "ruins-pillar-collapse-1")
-       (let ((v1-38 (-> obj root root-prim local-sphere)))
+       (let ((v1-38 (-> this root root-prim local-sphere)))
          (set! (-> v1-38 y) 49152.0)
          (set! (-> v1-38 z) 65536.0)
          (set! (-> v1-38 w) 122880.0)
          )
-       (set! (-> obj anim) (new 'static 'spool-anim
-                             :name "ruins-pillar-collapse-1"
-                             :anim-name "1-break-center"
-                             :parts 2
-                             :command-list '()
-                             )
+       (set! (-> this anim) (new 'static 'spool-anim
+                              :name "ruins-pillar-collapse-1"
+                              :anim-name "1-break-center"
+                              :parts 2
+                              :command-list '()
+                              )
              )
        )
       ((string= (the-as string s5-1) "ruins-pillar-collapse-2")
-       (set! (-> obj anim) (new 'static 'spool-anim
-                             :name "ruins-pillar-collapse-2"
-                             :anim-name "2-break-center"
-                             :parts 2
-                             :command-list '()
-                             )
+       (set! (-> this anim) (new 'static 'spool-anim
+                              :name "ruins-pillar-collapse-2"
+                              :anim-name "2-break-center"
+                              :parts 2
+                              :command-list '()
+                              )
              )
-       (set-yaw-angle-clear-roll-pitch! (-> obj root) (+ 32768.0 (y-angle (-> obj root))))
+       (set-yaw-angle-clear-roll-pitch! (-> this root) (+ 32768.0 (y-angle (-> this root))))
        )
       ((string= (the-as string s5-1) "ruins-pillar-collapse-3")
-       (set! (-> obj anim) (new 'static 'spool-anim
-                             :name "ruins-pillar-collapse-3"
-                             :anim-name "3-break-center"
-                             :parts 2
-                             :command-list '()
-                             )
+       (set! (-> this anim) (new 'static 'spool-anim
+                              :name "ruins-pillar-collapse-3"
+                              :anim-name "3-break-center"
+                              :parts 2
+                              :command-list '()
+                              )
              )
-       (set-yaw-angle-clear-roll-pitch! (-> obj root) (+ 32768.0 (y-angle (-> obj root))))
+       (set-yaw-angle-clear-roll-pitch! (-> this root) (+ 32768.0 (y-angle (-> this root))))
        )
       )
-    (initialize-skeleton-by-name obj (the-as string s5-1))
+    (initialize-skeleton-by-name this (the-as string s5-1))
     )
-  (set! (-> obj hit-points) 1)
-  (set! (-> obj deadly?) #f)
-  (if (and (-> obj entity) (logtest? (-> obj entity extra perm status) (entity-perm-status subtask-complete)))
-      (go (method-of-object obj fall) #t)
-      (go (method-of-object obj idle))
+  (set! (-> this hit-points) 1)
+  (set! (-> this deadly?) #f)
+  (if (and (-> this entity) (logtest? (-> this entity extra perm status) (entity-perm-status subtask-complete)))
+      (go (method-of-object this fall) #t)
+      (go (method-of-object this idle))
       )
   (none)
   )

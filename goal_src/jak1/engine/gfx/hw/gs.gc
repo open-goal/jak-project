@@ -9,26 +9,47 @@
 ;; These are used when creating GS packets to be sent to the GIF
 ;; or for directly interfacing with the memory-mapped GS control registers.
 
+(defconstant GIF_REGS_ALL_AD
+  (new 'static 'gif-tag-regs
+       :regs0 (gif-reg-id a+d)
+       :regs1 (gif-reg-id a+d)
+       :regs2 (gif-reg-id a+d)
+       :regs3 (gif-reg-id a+d)
+       :regs4 (gif-reg-id a+d)
+       :regs5 (gif-reg-id a+d)
+       :regs6 (gif-reg-id a+d)
+       :regs7 (gif-reg-id a+d)
+       :regs8 (gif-reg-id a+d)
+       :regs9 (gif-reg-id a+d)
+       :regs10 (gif-reg-id a+d)
+       :regs11 (gif-reg-id a+d)
+       :regs12 (gif-reg-id a+d)
+       :regs13 (gif-reg-id a+d)
+       :regs14 (gif-reg-id a+d)
+       :regs15 (gif-reg-id a+d)
+       )
+  )
+
+;; DECOMP BEGINS
+
 ;; the GS's PMODE register makes various settings for the PCRTC.
 (deftype gs-pmode (uint64)
-  ((en1    uint8 :offset 0 :size 1)
-   (en2    uint8 :offset 1 :size 1)
-   (crtmd  uint8 :offset 2 :size 3)
-   (mmod   uint8 :offset 5 :size 1)
-   (amod   uint8 :offset 6 :size 1)
-   (slbg   uint8 :offset 7 :size 1)
-   (alp    uint8 :offset 8 :size 8)
+  ((en1   uint8 :offset   0 :size   1)
+   (en2   uint8 :offset   1 :size   1)
+   (crtmd uint8 :offset   2 :size   3)
+   (mmod  uint8 :offset   5 :size   1)
+   (amod  uint8 :offset   6 :size   1)
+   (slbg  uint8 :offset   7 :size   1)
+   (alp   uint8 :offset   8 :size   8)
    )
-  :flag-assert #x900000008
   )
 
 ;; the GS's SMODE2 register makes settings related to PCRTC video synchronization.
 (deftype gs-smode2 (uint64)
-  ((int   uint8 :offset 0 :size 1)
-   (ffmd  uint8 :offset 1 :size 1)
-   (dpms  uint8 :offset 2 :size 2)
+  ((int  uint8 :offset   0 :size   1)
+   (ffmd uint8 :offset   1 :size   1)
+   (dpms uint8 :offset   2 :size   2)
    )
-  :flag-assert #x900000008
   )
 
 ;; texture formats
@@ -53,47 +74,37 @@
 (defun psm-size ((arg0 gs-psm))
   "Convert texture format to some type of size."
   (cond
-   ((= arg0 (gs-psm mt8))
-    64
-    )
-   ((= arg0 (gs-psm mt4))
-    32
-    )
-   ((or
-     (= arg0 (gs-psm ct16))
-     (= arg0 (gs-psm ct16s))
-     (= arg0 (gs-psm mz16))
-     (= arg0 (gs-psm mz16s))
+    ((= arg0 (gs-psm mt8))
+     64
      )
-    128
+    ((= arg0 (gs-psm mt4))
+     32
+     )
+    ((or (= arg0 (gs-psm ct16)) (= arg0 (gs-psm ct16s)) (= arg0 (gs-psm mz16)) (= arg0 (gs-psm mz16s)))
+     128
+     )
+    (else
+      256
+      )
     )
-   (else
-    256
-    )
-   )
   )
 
 (defun psm-page-height ((arg0 gs-psm))
   "Convert texture format to some type of page height"
   (cond
-   ((= arg0 (gs-psm mt8))
-    64
-    )
-   ((= arg0 (gs-psm mt4))
-    128
-    )
-   ((or
-     (= arg0 (gs-psm ct16))
-     (= arg0 (gs-psm ct16s))
-     (= arg0 (gs-psm mz16))
-     (= arg0 (gs-psm mz16s))
+    ((= arg0 (gs-psm mt8))
+     64
      )
-    64
+    ((= arg0 (gs-psm mt4))
+     128
+     )
+    ((or (= arg0 (gs-psm ct16)) (= arg0 (gs-psm ct16s)) (= arg0 (gs-psm mz16)) (= arg0 (gs-psm mz16s)))
+     64
+     )
+    (else
+      32
+      )
     )
-   (else
-    32
-    )
-   )
   )
 
 (defun psm->string ((arg0 gs-psm))
@@ -169,37 +180,34 @@
 ;; Rectangular Area Read Output Circuit n for the PCRTC.
 ;; write-only
 (deftype gs-display-fb (uint64)
-  ((fbp  uint16 :offset 0  :size 9)
-   (fbw  uint8  :offset 9  :size 6)
-   (psm  gs-psm :offset 15 :size 5)
-   (dbx  uint16 :offset 32 :size 11)
-   (dby  uint16 :offset 43 :size 11)
+  ((fbp uint16 :offset   0 :size   9)
+   (fbw uint8  :offset   9 :size   6)
+   (psm gs-psm :offset  15 :size   5)
+   (dbx uint16 :offset  32 :size  11)
+   (dby uint16 :offset  43 :size  11)
    )
-  :flag-assert #x900000008
   )
 
 ;; the GS's DISPLAY registers make settings for the display position on the screen regarding
 ;; information on Rectangular Area Read Output Circuit n for the PCRTC.
 ;; write-only
 (deftype gs-display (uint64)
-  ((dx    uint16 :offset 0  :size 12)
-   (dy    uint16 :offset 12 :size 11)
-   (magh  uint8  :offset 23 :size 4)
-   (magv  uint8  :offset 27 :size 2)
-   (dw    uint16 :offset 32 :size 12)
-   (dh    uint16 :offset 44 :size 11)
+  ((dx   uint16 :offset   0 :size  12)
+   (dy   uint16 :offset  12 :size  11)
+   (magh uint8  :offset  23 :size   4)
+   (magv uint8  :offset  27 :size   2)
+   (dw   uint16 :offset  32 :size  12)
+   (dh   uint16 :offset  44 :size  11)
    )
-  :flag-assert #x900000008
   )
 
 ;; the GS's BGCOLOR register sets the background color of the PCRTC with RGB value.
 ;; write-only
 (deftype gs-bgcolor (uint64)
-  ((r  uint8 :offset 0)
-   (g  uint8 :offset 8)
-   (b  uint8 :offset 16)
+  ((r uint8 :offset   0 :size   8)
+   (g uint8 :offset   8 :size   8)
+   (b uint8 :offset  16 :size   8)
    )
-  :flag-assert #x900000008
   )
 
 ;; the GS's CSR register sets and obtains various GS statuses.
@@ -207,97 +215,95 @@
 ;; or written to.
 ;; bits 5 and 6 (0x20 and 0x40) should be zero
 (deftype gs-csr (uint64)
-  ((signal  uint8 :offset 0  :size 1)
-   (finish  uint8 :offset 1  :size 1)
-   (hsint   uint8 :offset 2  :size 1)
-   (vsint   uint8 :offset 3  :size 1)
-   (edwint  uint8 :offset 4  :size 1)
-   (flush   uint8 :offset 8  :size 1)
-   (reset   uint8 :offset 9  :size 1)
-   (nfield  uint8 :offset 12 :size 1)
-   (field   uint8 :offset 13 :size 1)
-   (fifo    uint8 :offset 14 :size 2)
-   (rev     uint8 :offset 16 :size 8)
-   (id      uint8 :offset 24 :size 8)
+  ((signal uint8 :offset   0 :size   1)
+   (finish uint8 :offset   1 :size   1)
+   (hsint  uint8 :offset   2 :size   1)
+   (vsint  uint8 :offset   3 :size   1)
+   (edwint uint8 :offset   4 :size   1)
+   (flush  uint8 :offset   8 :size   1)
+   (reset  uint8 :offset   9 :size   1)
+   (nfield uint8 :offset  12 :size   1)
+   (field  uint8 :offset  13 :size   1)
+   (fifo   uint8 :offset  14 :size   2)
+   (rev    uint8 :offset  16 :size   8)
+   (id     uint8 :offset  24 :size   8)
    )
-  :flag-assert #x900000008
   )
 
 ;; memory layout of the GS's privileged registers (mapped to EE memory)
 ;; it is missing the SIGLBLID/LABELID register at 4224 (useless anyway?)
 (deftype gs-bank (structure)
-  ((pmode    gs-pmode  :offset-assert 0)
-   (smode2   gs-smode2  :offset 32)
-   (dspfb1   gs-display-fb  :offset 112)
-   (display1 gs-display  :offset 128)
-   (dspfb2   gs-display-fb  :offset 144)
-   (display2 gs-display  :offset 160)
-   (extbuf   uint64  :offset 176)
-   (extdata  uint64  :offset 192)
-   (extwrite uint64  :offset 208)
-   (bgcolor  gs-bgcolor  :offset 224)
-   (csr      gs-csr   :offset 4096)
-   (imr      uint64  :offset 4112)
-   (busdir   uint64  :offset 4160)
+  ((pmode     gs-pmode)
+   (smode2    gs-smode2      :offset  32)
+   (dspfb1    gs-display-fb  :offset 112)
+   (display1  gs-display     :offset 128)
+   (dspfb2    gs-display-fb  :offset 144)
+   (display2  gs-display     :offset 160)
+   (extbuf    uint64         :offset 176)
+   (extdata   uint64         :offset 192)
+   (extwrite  uint64         :offset 208)
+   (bgcolor   gs-bgcolor     :offset 224)
+   (csr       gs-csr         :offset 4096)
+   (imr       uint64         :offset 4112)
+   (busdir    uint64         :offset 4160)
    )
-  :method-count-assert 9
-  :size-assert         #x1048
-  :flag-assert         #x900001048
   )
+
 
 ;; the GS's FRAME registers store various settings related to the frame buffer.
 (deftype gs-frame (uint64)
-  ((fbp    uint16 :offset 0  :size 9)
-   (fbw    uint8  :offset 16 :size 6)
-   (psm    gs-psm :offset 24 :size 6)
-   (fbmsk  uint32 :offset 32 :size 32)
+  ((fbp   uint16 :offset   0 :size   9)
+   (fbw   uint8  :offset  16 :size   6)
+   (psm   gs-psm :offset  24 :size   6)
+   (fbmsk uint32 :offset  32 :size  32)
    )
-  :flag-assert #x900000008
   )
 
 ;; the GS's ZBUF registers make various settings regarding Z buffer.
 (deftype gs-zbuf (uint64)
-  ((zbp   uint16 :offset 0  :size 9)
-   (psm   gs-psm :offset 24 :size 4)
-   (zmsk  uint8  :offset 32 :size 1)
+  ((zbp  uint16 :offset   0 :size   9)
+   (psm  gs-psm :offset  24 :size   4)
+   (zmsk uint8  :offset  32 :size   1)
    )
-  :flag-assert #x900000008
   )
+
 ;; the GS's XYOFFSET registers set the offset value for converting from the primitive coordinate
 ;; system to the window coordinate system.
 (deftype gs-xy-offset (uint64)
-  ((ofx  uint16 :offset 0  :size 16)
-   (ofy  uint16 :offset 32 :size 16)
+  ((ofx uint16 :offset   0 :size  16)
+   (ofy uint16 :offset  32 :size  16)
    )
-  :flag-assert #x900000008
   )
+
 ;; the GS's SCISSOR registers specify the scissoring area.  The coordinate values for
 ;; the upper-left/lower-right points of the enabled drawing area are specified by the window
 ;; coordinate system.
 (deftype gs-scissor (uint64)
-  ((scax0  uint16 :offset 0  :size 11)
-   (scax1  uint16 :offset 16 :size 11)
-   (scay0  uint16 :offset 32 :size 11)
-   (scay1  uint16 :offset 48 :size 11)
+  ((scax0 uint16 :offset   0 :size  11)
+   (scax1 uint16 :offset  16 :size  11)
+   (scay0 uint16 :offset  32 :size  11)
+   (scay1 uint16 :offset  48 :size  11)
    )
-  :flag-assert #x900000008
   )
+
 ;; the GS's PRMODECONT register sets whether to use primitive attributes (IIP, TME, FGE, ABE,
 ;; AA1, FST, CTXT, FIX) specified by the PRMODE register or the PRIM register.
 (deftype gs-prmode-cont (uint64)
-  ((ac  uint8 :offset 0 :size 1))
-  :flag-assert #x900000008
+  ((ac uint8 :offset   0 :size   1)
+   )
   )
+
 ;; the GS's COLCLAMP register stores settings as to whether clamping for the RGB value of the
 ;; pixel is performed.
 (deftype gs-color-clamp (uint64)
-  ((clamp  uint8 :offset 0 :size 1))
-  :flag-assert #x900000008
+  ((clamp uint8 :offset   0 :size   1)
+   )
   )
+
 ;; the GS's DTHE register stores settings for dithering (performed/not performed).
 (deftype gs-dthe (uint64)
-  ((dthe  uint8 :offset 0 :size 1))
-  :flag-assert #x900000008
+  ((dthe uint8 :offset   0 :size   1)
+   )
   )
 
 (defenum gs-atest
@@ -320,16 +326,15 @@
   )
 ;; the GS's TEST register performs settings related to the pixel test.
 (deftype gs-test (uint64)
-  ((ate    uint8 :offset 0  :size 1) ;; alpha test enable
-   (atst   gs-atest :offset 1  :size 3) ;; alpha test method
-   (aref   uint8 :offset 4  :size 8) ;; alpha val reference
-   (afail  uint8 :offset 12 :size 2) ;; processing method on alpha test fail
-   (date   uint8 :offset 14 :size 1) ;; dest alpha test enable
-   (datm   uint8 :offset 15 :size 1) ;; dest alpha test mode
-   (zte    uint8 :offset 16 :size 1) ;; depth test enable
-   (ztst   gs-ztest :offset 17 :size 2) ;; depth test method
+  ((ate   uint8    :offset   0 :size   1)
+   (atst  gs-atest :offset   1 :size   3)
+   (aref  uint8    :offset   4 :size   8)
+   (afail uint8    :offset  12 :size   2)
+   (date  uint8    :offset  14 :size   1)
+   (datm  uint8    :offset  15 :size   1)
+   (zte   uint8    :offset  16 :size   1)
+   (ztst  gs-ztest :offset  17 :size   2)
    )
-  :flag-assert #x900000008
   )
 
 (defenum gs-prim-type
@@ -345,171 +350,172 @@
 ;; the GS's PRIM register specifies the types of drawing primitives and various attributes, and
 ;; initializes the contents of the vertex queue.
 (deftype gs-prim (uint64)
-  ((prim  gs-prim-type :offset 0  :size 3)
-   (iip   uint8 :offset 3  :size 1)
-   (tme   uint8 :offset 4  :size 1)
-   (fge   uint8 :offset 5  :size 1)
-   (abe   uint8 :offset 6  :size 1)
-   (aa1   uint8 :offset 7  :size 1)
-   (fst   uint8 :offset 8  :size 1)
-   (ctxt  uint8 :offset 9  :size 1)
-   (fix   uint8 :offset 10 :size 1)
+  ((prim gs-prim-type :offset   0 :size   3)
+   (iip  uint8        :offset   3 :size   1)
+   (tme  uint8        :offset   4 :size   1)
+   (fge  uint8        :offset   5 :size   1)
+   (abe  uint8        :offset   6 :size   1)
+   (aa1  uint8        :offset   7 :size   1)
+   (fst  uint8        :offset   8 :size   1)
+   (ctxt uint8        :offset   9 :size   1)
+   (fix  uint8        :offset  10 :size   1)
    )
-  :flag-assert #x900000008
   )
+
 ;; the GS's RGBAQ register sets the RGBA value of the vertex and the Q value of the normalized
 ;; texture coordinates.
 (deftype gs-rgbaq (uint64)
-  ((r  uint8 :offset 0  :size 8)
-   (g  uint8 :offset 8  :size 8)
-   (b  uint8 :offset 16 :size 8)
-   (a  uint8 :offset 24 :size 8) ;; 0x80 --> 1.0
-   (q  float :offset 32 :size 32) ;; affects some LOD behavior apparently?
+  ((r uint8 :offset   0 :size   8)
+   (g uint8 :offset   8 :size   8)
+   (b uint8 :offset  16 :size   8)
+   (a uint8 :offset  24 :size   8)
+   (q float :offset  32 :size  32)
    )
-  :flag-assert #x900000008
   )
+
 ;; GS XYZ registers
 (deftype gs-xyz (uint64)
-  ((x  uint16 :offset 0  :size 16) ;; Q4 fixed point
-   (y  uint16 :offset 16 :size 16) ;; Q4 fixed point
-   (z  uint32 :offset 32 :size 32)
+  ((x uint16 :offset   0 :size  16)
+   (y uint16 :offset  16 :size  16)
+   (z uint32 :offset  32 :size  32)
    )
-  :flag-assert #x900000008
   )
+
 ;; the GS's UV register specifies the texel coordinate (UV) values of the vertex.
 (deftype gs-uv (uint64)
-  ((u  uint16 :offset 0  :size 14) ;; Q4 fixed point
-   (v  uint16 :offset 16 :size 14) ;; Q4 fixed point
+  ((u uint16 :offset   0 :size  14)
+   (v uint16 :offset  16 :size  14)
    )
-  :flag-assert #x900000008
   )
+
 ;; the GS's ST register sets the S and T values of the vertex texture coordinates.
 ;; The value Q is specified by the RGBAQ register.
 (deftype gs-st (uint64)
-  ((s  float :offset 0  :size 32)
-   (t  float :offset 32 :size 32)
+  ((s float :offset   0 :size  32)
+   (t float :offset  32 :size  32)
    )
-  :flag-assert #x900000008
   )
+
 ;; GS XYZF registers
 (deftype gs-xyzf (uint64)
-  ((x  uint16 :offset 0  :size 16) ;; Q4 fixed point
-   (y  uint16 :offset 16 :size 16) ;; Q4 fixed point
-   (z  uint32 :offset 32 :size 24)
-   (f  uint8  :offset 56 :size 8) ;; fog coeff
+  ((x uint16 :offset   0 :size  16)
+   (y uint16 :offset  16 :size  16)
+   (z uint32 :offset  32 :size  24)
+   (f uint8  :offset  56 :size   8)
    )
-  :flag-assert #x900000008
   )
+
 ;; the GS's TRXPOS register specifies the position and scanning direction of the rectangular area
 ;; in each buffer where buffer transmission is performed.
 (deftype gs-trxpos (uint64)
-  ((ssax  uint16 :offset 0  :size 11)
-   (ssay  uint16 :offset 16 :size 11)
-   (dsax  uint16 :offset 32 :size 11)
-   (dsay  uint16 :offset 48 :size 11)
-   (dir   uint8 :offset 59 :size 2)
+  ((ssax uint16 :offset   0 :size  11)
+   (ssay uint16 :offset  16 :size  11)
+   (dsax uint16 :offset  32 :size  11)
+   (dsay uint16 :offset  48 :size  11)
+   (dir  uint8  :offset  59 :size   2)
    )
-  :flag-assert #x900000008
   )
+
 ;; the GS's TRXREG register specifies the size of the rectangular area, where the transmission
 ;; between buffers is implemented, in units of pixels.
 ;; The pixel mode must be the one set by the BITBLTBUF register.
 (deftype gs-trxreg (uint64)
-  ((rrw  uint16 :offset 0  :size 12)
-   (rrh  uint16 :offset 32 :size 12)
+  ((rrw uint16 :offset   0 :size  12)
+   (rrh uint16 :offset  32 :size  12)
    )
-  :flag-assert #x900000008
   )
+
 ;; the GS's TRXDIR register specifies the transmission direction in the transmission between
 ;; buffers, and activates transmission.
 ;; Appropriate settings must be made by the BITBLTBUF/TRXPOS/TRXREG before activating
 ;; the transmission.
 (deftype gs-trxdir (uint64)
-  ((xdir  uint8 :offset 0 :size 2))
-  :flag-assert #x900000008
+  ((xdir uint8 :offset   0 :size   2)
+   )
   )
+
 ;; the GS's BITBLTBUF register stores buffer-related settings for transmission source and
 ;; destination during transmission between buffers.
 (deftype gs-bitbltbuf (uint64)
-  ((sbp   uint16 :offset 0  :size 14)
-   (sbw   uint8  :offset 16 :size 6)
-   (spsm  uint8  :offset 24 :size 6)
-   (dbp   uint16 :offset 32 :size 14)
-   (dbw   uint8  :offset 48 :size 6)
-   (dpsm  uint8  :offset 56 :size 6)
+  ((sbp  uint16 :offset   0 :size  14)
+   (sbw  uint8  :offset  16 :size   6)
+   (spsm uint8  :offset  24 :size   6)
+   (dbp  uint16 :offset  32 :size  14)
+   (dbw  uint8  :offset  48 :size   6)
+   (dpsm uint8  :offset  56 :size   6)
    )
-  :flag-assert #x900000008
   )
+
 ;; the GS's TEX0 registers set various kinds of information regarding the textures to be used.
 (deftype gs-tex0 (uint64)
-  ((tbp0  uint16 :offset 0 :size 14)
-   (tbw   uint8  :offset 14 :size 6)
-   (psm   uint8  :offset 20 :size 6)
-   (tw    uint8  :offset 26 :size 4)
-   (th    uint8  :offset 30 :size 4)
-   (tcc   uint8  :offset 34 :size 1)
-   (tfx   uint8  :offset 35 :size 2)
-   (cbp   uint16 :offset 37 :size 14)
-   (cpsm  uint8  :offset 51 :size 4)
-   (csm   uint8  :offset 55 :size 1)
-   (csa   uint8  :offset 56 :size 5)
-   (cld   uint8  :offset 61 :size 3)
+  ((tbp0 uint16 :offset   0 :size  14)
+   (tbw  uint8  :offset  14 :size   6)
+   (psm  uint8  :offset  20 :size   6)
+   (tw   uint8  :offset  26 :size   4)
+   (th   uint8  :offset  30 :size   4)
+   (tcc  uint8  :offset  34 :size   1)
+   (tfx  uint8  :offset  35 :size   2)
+   (cbp  uint16 :offset  37 :size  14)
+   (cpsm uint8  :offset  51 :size   4)
+   (csm  uint8  :offset  55 :size   1)
+   (csa  uint8  :offset  56 :size   5)
+   (cld  uint8  :offset  61 :size   3)
    )
-  :flag-assert #x900000008
   )
+
 ;; the GS's TEX1 registers set information on the sampling method of the textures.
 (deftype gs-tex1 (uint64)
-  ((lcm   uint8 :offset 0  :size 1)
-   (mxl   uint8 :offset 2  :size 3)
-   (mmag  uint8 :offset 5  :size 1)
-   (mmin  uint8 :offset 6  :size 3)
-   (mtba  uint8 :offset 9  :size 1)
-   (l     uint8 :offset 19 :size 2)
-   (k     int16 :offset 32 :size 12)
+  ((lcm  uint8 :offset   0 :size   1)
+   (mxl  uint8 :offset   2 :size   3)
+   (mmag uint8 :offset   5 :size   1)
+   (mmin uint8 :offset   6 :size   3)
+   (mtba uint8 :offset   9 :size   1)
+   (l    uint8 :offset  19 :size   2)
+   (k    int16 :offset  32 :size  12)
    )
-  :flag-assert #x900000008
   )
+
 ;; the GS's TEXA register sets the Alpha value to be referred to when the Alpha value of the
 ;; texture is not an 8-bit value.
 (deftype gs-texa (uint64)
-  ((ta0  uint8 :offset 0  :size 8)
-   (aem  uint8 :offset 15 :size 1)
-   (ta1  uint8 :offset 32 :size 8)
+  ((ta0 uint8 :offset   0 :size   8)
+   (aem uint8 :offset  15 :size   1)
+   (ta1 uint8 :offset  32 :size   8)
    )
-  :flag-assert #x900000008
   )
+
 ;; the GS's TEXCLUT register specifies the CLUT position in the buffer when the CLUT storage mode
 ;; is CSM=1 (CSM2 mode).
 (deftype gs-texclut (uint64)
-  ((cbw  uint8  :offset 0  :size 6)
-   (cou  uint8  :offset 6  :size 6)
-   (cov  uint16 :offset 12 :size 10)
+  ((cbw uint8  :offset   0 :size   6)
+   (cou uint8  :offset   6 :size   6)
+   (cov uint16 :offset  12 :size  10)
    )
-  :flag-assert #x900000008
   )
+
 ;; the GS's MIPTBP registers set the buffer pointer and buffer width of textures when performing
 ;; MIPMAP.
 ;; MIPTBP1 sets levels 1 to 3, MIPTBP2 sets levels 4 to 6.
 (deftype gs-miptbp (uint64)
-  ((tbp1  uint16 :offset 0  :size 14)
-   (tbw1  uint8  :offset 14 :size 6)
-   (tbp2  uint16 :offset 20 :size 14)
-   (tbw2  uint8  :offset 34 :size 6)
-   (tbp3  uint16 :offset 40 :size 14)
-   (tbw3  uint8  :offset 54 :size 6)
+  ((tbp1 uint16 :offset   0 :size  14)
+   (tbw1 uint8  :offset  14 :size   6)
+   (tbp2 uint16 :offset  20 :size  14)
+   (tbw2 uint8  :offset  34 :size   6)
+   (tbp3 uint16 :offset  40 :size  14)
+   (tbw3 uint8  :offset  54 :size   6)
    )
-  :flag-assert #x900000008
   )
+
 ;; the GS's ALPHA registers define the blend function of alpha blending
 (deftype gs-alpha (uint64)
-  ((a    uint8 :offset 0  :size 2)
-   (b    uint8 :offset 2  :size 2)
-   (c    uint8 :offset 4  :size 2)
-   (d    uint8 :offset 6  :size 2)
-   (fix  uint8 :offset 32 :size 8)
+  ((a   uint8 :offset   0 :size   2)
+   (b   uint8 :offset   2 :size   2)
+   (c   uint8 :offset   4 :size   2)
+   (d   uint8 :offset   6 :size   2)
+   (fix uint8 :offset  32 :size   8)
    )
-  :flag-assert #x900000008
   )
+
 ;; the GS's CLAMP registers set the texture's wrap mode (repeating or clamping) for both S and T.
 (defenum gs-tex-wrap-mode
   :type uint8
@@ -519,97 +525,96 @@
   (region-repeat 3)
   )
 
+
 (deftype gs-clamp (uint64)
-  ((wms   gs-tex-wrap-mode  :offset 0  :size 2)
-   (wmt   gs-tex-wrap-mode  :offset 2  :size 2)
-   (minu  uint16 :offset 4  :size 10)
-   (maxu  uint16 :offset 14 :size 10)
-   (minv  uint16 :offset 24 :size 10)
-   (maxv  uint16 :offset 34 :size 10)
+  ((wms  gs-tex-wrap-mode :offset   0 :size   2)
+   (wmt  gs-tex-wrap-mode :offset   2 :size   2)
+   (minu uint16           :offset   4 :size  10)
+   (maxu uint16           :offset  14 :size  10)
+   (minv uint16           :offset  24 :size  10)
+   (maxv uint16           :offset  34 :size  10)
    )
-  :flag-assert #x900000008
   )
 
 (deftype gs-fog (uint64)
-  ((f  uint8 :offset 56 :size 8))
-  :flag-assert #x900000008
+  ((f uint8 :offset  56 :size   8)
+   )
   )
+
 
 (deftype gs-fogcol (uint64)
-  ((fcr  uint8 :offset 0  :size 8)
-   (fcg  uint8 :offset 8  :size 8)
-   (fcb  uint8 :offset 16 :size 8)
+  ((fcr uint8 :offset   0 :size   8)
+   (fcg uint8 :offset   8 :size   8)
+   (fcb uint8 :offset  16 :size   8)
    )
-  :flag-assert #x900000008
   )
 
+
 (deftype gif-ctrl (uint32)
-  ((rst  uint8 :offset 0 :size 1)
-   (pse  uint8 :offset 3 :size 1)
+  ((rst uint8 :offset   0 :size   1)
+   (pse uint8 :offset   3 :size   1)
    )
-  :flag-assert #x900000004
   )
+
 (deftype gif-mode (uint32)
-  ((m3r  uint8 :offset 0 :size 1)
-   (imt  uint8 :offset 2 :size 1)
+  ((m3r uint8 :offset   0 :size   1)
+   (imt uint8 :offset   2 :size   1)
    )
-  :flag-assert #x900000004
   )
+
 (deftype gif-stat (uint32)
-  ((m3r    uint8 :offset 0  :size 1)
-   (m3p    uint8 :offset 1  :size 1)
-   (imt    uint8 :offset 2  :size 1)
-   (pse    uint8 :offset 3  :size 1)
-   (ip3    uint8 :offset 5  :size 1)
-   (p3q    uint8 :offset 6  :size 1)
-   (p2q    uint8 :offset 7  :size 1)
-   (p1q    uint8 :offset 8  :size 1)
-   (oph    uint8 :offset 9  :size 1)
-   (apath  uint8 :offset 10 :size 2)
-   (dir    uint8 :offset 12 :size 1)
-   (fqc    uint8 :offset 24 :size 5)
+  ((m3r   uint8 :offset   0 :size   1)
+   (m3p   uint8 :offset   1 :size   1)
+   (imt   uint8 :offset   2 :size   1)
+   (pse   uint8 :offset   3 :size   1)
+   (ip3   uint8 :offset   5 :size   1)
+   (p3q   uint8 :offset   6 :size   1)
+   (p2q   uint8 :offset   7 :size   1)
+   (p1q   uint8 :offset   8 :size   1)
+   (oph   uint8 :offset   9 :size   1)
+   (apath uint8 :offset  10 :size   2)
+   (dir   uint8 :offset  12 :size   1)
+   (fqc   uint8 :offset  24 :size   5)
    )
-  :flag-assert #x900000004
   )
+
 (deftype gif-cnt (uint32)
-  ((loopcnt  uint16 :offset 0  :size 15)
-   (regcnt   uint8  :offset 16 :size 4)
-   (vuaddr   uint16 :offset 20 :size 10)
+  ((loopcnt uint16 :offset   0 :size  15)
+   (regcnt  uint8  :offset  16 :size   4)
+   (vuaddr  uint16 :offset  20 :size  10)
    )
-  :flag-assert #x900000004
   )
+
 (deftype gif-p3cnt (uint32)
-  ((p3cnt  uint16 :offset 0 :size 15))
-  :flag-assert #x900000004
-  )
-(deftype gif-p3tag (uint32)
-  ((loopcnt  uint16 :offset 0  :size 15)
-   (eop      uint8  :offset 15 :size 1)
+  ((p3cnt uint16 :offset   0 :size  15)
    )
-  :flag-assert #x900000004
+  )
+
+(deftype gif-p3tag (uint32)
+  ((loopcnt uint16 :offset   0 :size  15)
+   (eop     uint8  :offset  15 :size   1)
+   )
   )
 
 (deftype gif-bank (structure)
-  ((ctrl  gif-ctrl  :offset 0)
-   (mode  gif-mode  :offset 16)
-   (stat  gif-stat  :offset 32)
-   (tag0  uint32  :offset 64)
-   (tag1  uint32  :offset 80)
-   (tag2  uint32  :offset 96)
-   (tag3  uint32  :offset 112)
-   (cnt   gif-cnt  :offset 128)
-   (p3cnt gif-p3cnt  :offset 144)
-   (p3tag gif-p3tag  :offset 160)
+  ((ctrl   gif-ctrl   :offset   0)
+   (mode   gif-mode   :offset  16)
+   (stat   gif-stat   :offset  32)
+   (tag0   uint32     :offset  64)
+   (tag1   uint32     :offset  80)
+   (tag2   uint32     :offset  96)
+   (tag3   uint32     :offset 112)
+   (cnt    gif-cnt    :offset 128)
+   (p3cnt  gif-p3cnt  :offset 144)
+   (p3tag  gif-p3tag  :offset 160)
    )
-  :method-count-assert 9
-  :size-assert         #xa4
-  :flag-assert         #x9000000a4
   )
+
 
 (deftype gif-tag-prim (uint32)
   ()
-  :flag-assert #x900000004
   )
+
 (deftype gif-tag-count (uint32)
   ()
   :flag-assert #x900000004
@@ -643,14 +648,14 @@
   )
 
 (deftype gif-tag64 (uint64)
-  ((nloop   uint16  :offset 0   :size 15)
-   (eop     uint8   :offset 15  :size 1)
-   (id      uint16  :offset 32  :size 14)
-   (pre     uint8   :offset 46  :size 1)
-   (prim    gs-prim :offset 47  :size 11)
-   (flg     gif-flag   :offset 58  :size 2)
-   (nreg    uint8   :offset 60  :size 4))
-  :flag-assert #x900000008
+  ((nloop uint16   :offset   0 :size  15)
+   (eop   uint8    :offset  15 :size   1)
+   (id    uint16   :offset  32 :size  14)
+   (pre   uint8    :offset  46 :size   1)
+   (prim  gs-prim  :offset  47 :size  11)
+   (flg   gif-flag :offset  58 :size   2)
+   (nreg  uint8    :offset  60 :size   4)
+   )
   )
 
 (deftype gif-tag (uint128)
@@ -758,33 +763,33 @@
   :flag-assert         #x900000010
   )
 
-(defmethod inspect gif-tag ((obj gif-tag))
-  (format #t "[~8x] gif-tag~%" obj)
-  (format #t "~Tnloop: ~4d~%" (-> obj nloop))
-  (format #t "~Teop  : ~4d~%" (-> obj eop))
-  (format #t "~Tid   : ~4d~%" (-> obj id))
-  (format #t "~Tpre  : ~4d~%" (-> obj pre))
-  (format #t "~Tprim : ~4d~%" (-> obj prim))
-  (format #t "~Tflg  : ~4d~%" (-> obj flg))
-  (format #t "~Tnreg : ~4d~%" (-> obj nreg))
-  (format #t "~Tregs0 : ~4d~%" (-> obj regs0))
-  (format #t "~Tregs1 : ~4d~%" (-> obj regs1))
-  (format #t "~Tregs2 : ~4d~%" (-> obj regs2))
-  (format #t "~Tregs3 : ~4d~%" (-> obj regs3))
-  (format #t "~Tregs4 : ~4d~%" (-> obj regs4))
-  (format #t "~Tregs5 : ~4d~%" (-> obj regs5))
-  (format #t "~Tregs6 : ~4d~%" (-> obj regs6))
-  (format #t "~Tregs7 : ~4d~%" (-> obj regs7))
-  (format #t "~Tregs8 : ~4d~%" (-> obj regs8))
-  (format #t "~Tregs9 : ~4d~%" (-> obj regs9))
-  (format #t "~Tregs10: ~4d~%" (-> obj regs10))
-  (format #t "~Tregs11: ~4d~%" (-> obj regs11))
-  (format #t "~Tregs12: ~4d~%" (-> obj regs12))
-  (format #t "~Tregs13: ~4d~%" (-> obj regs13))
-  (format #t "~Tregs14: ~4d~%" (-> obj regs14))
-  (format #t "~Tregs15: ~4d~%" (-> obj regs15))
+(defmethod inspect gif-tag ((this gif-tag))
+  (format #t "[~8x] gif-tag~%" this)
+  (format #t "~Tnloop: ~4d~%" (-> this nloop))
+  (format #t "~Teop  : ~4d~%" (-> this eop))
+  (format #t "~Tid   : ~4d~%" (-> this id))
+  (format #t "~Tpre  : ~4d~%" (-> this pre))
+  (format #t "~Tprim : ~4d~%" (-> this prim))
+  (format #t "~Tflg  : ~4d~%" (-> this flg))
+  (format #t "~Tnreg : ~4d~%" (-> this nreg))
+  (format #t "~Tregs0 : ~4d~%" (-> this regs0))
+  (format #t "~Tregs1 : ~4d~%" (-> this regs1))
+  (format #t "~Tregs2 : ~4d~%" (-> this regs2))
+  (format #t "~Tregs3 : ~4d~%" (-> this regs3))
+  (format #t "~Tregs4 : ~4d~%" (-> this regs4))
+  (format #t "~Tregs5 : ~4d~%" (-> this regs5))
+  (format #t "~Tregs6 : ~4d~%" (-> this regs6))
+  (format #t "~Tregs7 : ~4d~%" (-> this regs7))
+  (format #t "~Tregs8 : ~4d~%" (-> this regs8))
+  (format #t "~Tregs9 : ~4d~%" (-> this regs9))
+  (format #t "~Tregs10: ~4d~%" (-> this regs10))
+  (format #t "~Tregs11: ~4d~%" (-> this regs11))
+  (format #t "~Tregs12: ~4d~%" (-> this regs12))
+  (format #t "~Tregs13: ~4d~%" (-> this regs13))
+  (format #t "~Tregs14: ~4d~%" (-> this regs14))
+  (format #t "~Tregs15: ~4d~%" (-> this regs15))
   ;; original function failed to return this.
-  obj
+  this
   )
 
 ;; some nice blue. probably the same as the fog color for geyser/sandover/etc.
@@ -843,24 +848,20 @@
 ;; now you have a reglist gs packet.
 
 (deftype gif-packet (basic)
-  ((reg-count int32     :offset-assert 4)
-   (gif-tag gs-gif-tag :inline :offset-assert 16)
-   (gif-tag0  uint128   :offset 16)
-   (args      uint64 1 :offset-assert 32) ;; there's one here already.
+  ((reg-count  int32)
+   (gif-tag    gs-gif-tag  :inline)
+   (gif-tag0   uint128     :overlay-at (-> gif-tag qword))
+   (args       uint64      1)
    )
   (:methods
-   (new (symbol type int) _type_ 0)
-   )
-  :method-count-assert 9
-  :size-assert         #x28
-  :flag-assert         #x900000028
+    (new (symbol type int) _type_)
+    )
   )
+
 
 (defmethod new gif-packet ((allocation symbol) (type-to-make type) (arg0 int))
   "Make a new gif packet with enough room for arg0 64-bit args"
-  (object-new allocation type-to-make
-   (the-as int (+ (-> type-to-make size) (shl (+ arg0 -1) 3)))
-   )
+  (object-new allocation type-to-make (the-as int (+ (-> type-to-make size) (* (+ arg0 -1) 8))))
   )
 
 (defun open-gif-packet ((arg0 gif-packet))
@@ -874,76 +875,57 @@
   "Add a register to the packet"
   (let ((tag (-> packet gif-tag)))
     ;; shift the register index into the right slot
-    (logior!
-     (-> tag regs)
-     (the-as uint (ash reg-idx (* (-> packet reg-count) 4)))
-     )
+    (logior! (-> tag regs) (ash reg-idx (* (-> packet reg-count) 4)))
     )
   ;; set register value and increment count.
   (set! (-> packet args (-> packet reg-count)) (the-as uint reg-val))
-  (set! (-> packet reg-count) (+ (-> packet reg-count) 1))
+  (+! (-> packet reg-count) 1)
   (none)
   )
 
-(defun close-gif-packet ((arg0 gif-packet) (eop int))
-  "Finish adding registers."
+(defun close-gif-packet ((arg0 gif-packet) (arg1 int))
   (set! (-> arg0 gif-tag tag)
-        (new 'static 'gif-tag64
-             :nloop #x1
-             :flg (gif-flag reg-list)
-             :eop eop
-             :nreg (-> arg0 reg-count)
-             )
+        (new 'static 'gif-tag64 :nloop #x1 :flg (gif-flag reg-list) :eop arg1 :nreg (-> arg0 reg-count))
         )
   arg0
   )
 
-
 (deftype draw-context (basic)
-  ((orgx   int32   :offset-assert 4)
-   (orgy   int32   :offset-assert 8)
-   (orgz   int32   :offset-assert 12)
-   (width  int32   :offset-assert 16)
-   (height int32   :offset-assert 20)
-   (color  rgba  4 :offset-assert 24)
+  ((orgx    int32)
+   (orgy    int32)
+   (orgz    int32)
+   (width   int32)
+   (height  int32)
+   (color   rgba  4)
    )
   (:methods
-   (new (symbol type int int int int rgba) _type_ 0)
-   )
-  :method-count-assert 9
-  :size-assert         #x28
-  :flag-assert         #x900000028
-  )
-
-(defmethod new draw-context ((allocation symbol)
-                             (type-to-make type)
-                             (org-x int)
-                             (org-y int)
-                             (width int)
-                             (height int)
-                             (color-0 rgba)
-                             )
-  "Allocate and initialize a draw-context"
-  (let ((obj (object-new allocation type-to-make (the-as int (-> type-to-make size)))))
-    (let ((v1-3 (the int (* (the float org-y) (-> *video-parms* relative-y-scale))))
-          (a0-2 (the int (* (the float height) (-> *video-parms* relative-y-scale))))
-          )
-      (set! (-> obj orgx) org-x)
-      (set! (-> obj orgy) v1-3)
-      (set! (-> obj orgz) #xffffff)
-      (set! (-> obj width) width)
-      (set! (-> obj height) a0-2)
-      )
-    (set! (-> obj color 0) color-0)
-    obj
+    (new (symbol type int int int int rgba) _type_)
     )
   )
 
-(defun draw-context-set-xy ((arg0 draw-context) (x int) (y int))
+
+(defmethod new draw-context ((allocation symbol) (type-to-make type) (org-x int) (org-y int) (width int) (height int) (color-0 rgba))
+  "Allocate and initialize a draw-context"
+  (let ((this (object-new allocation type-to-make (the-as int (-> type-to-make size)))))
+    (let ((v1-3 (the int (* (the float org-y) (-> *video-parms* relative-y-scale))))
+          (a0-2 (the int (* (the float height) (-> *video-parms* relative-y-scale))))
+          )
+      (set! (-> this orgx) org-x)
+      (set! (-> this orgy) v1-3)
+      (set! (-> this orgz) #xffffff)
+      (set! (-> this width) width)
+      (set! (-> this height) a0-2)
+      )
+    (set! (-> this color 0) color-0)
+    this
+    )
+  )
+
+(defun draw-context-set-xy ((ctxt draw-context) (x int) (y int))
   "Set the origin of the draw context, scaling by relative-y-scale as needed."
-  (local-vars (v0-0 int))
-  (set! v0-0 (the int (* (the float y) (-> *video-parms* relative-y-scale))))
-  (set! (-> arg0 orgx) x)
-  (set! (-> arg0 orgy) v0-0)
+  (let ((v0-0 (the int (* (the float y) (-> *video-parms* relative-y-scale)))))
+    (set! (-> ctxt orgx) x)
+    (set! (-> ctxt orgy) v0-0)
+    )
   (none)
   )

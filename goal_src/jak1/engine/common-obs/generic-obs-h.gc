@@ -16,7 +16,8 @@
 
 (define-extern birth-pickup-at-point (function vector pickup-type float symbol process-tree fact-info (pointer process) :behavior process))
 
-(declare-type collide-shape-moving basic)
+(declare-type collide-shape trsqv)
+(declare-type collide-shape-moving collide-shape)
 (declare-type sparticle-launch-group basic)
 (declare-type part-tracker process)
 (declare-type collide-prim-core structure)
@@ -36,44 +37,36 @@
 ;; A manipy is a way to draw and move something. More complicated objects that want to draw multiple
 ;; things may create a child manipy and then send it commands.
 (deftype manipy (process-drawable)
-  ((new-trans-hook       (function none)         :offset-assert 176)
-   (cur-trans-hook       (function none)         :offset-assert 180)
-   (cur-event-hook       (function none)         :offset-assert 184)
-   (new-joint-anim       art-joint-anim          :offset-assert 188)
-   (new-joint-anim-blend uint64                  :offset-assert 192)
-   (anim-mode            symbol                  :offset-assert 200)
-   (cur-grab-handle      handle                  :offset-assert 208)
-   (cur-target-handle    handle                  :offset-assert 216)
-   (old-grab-pos         vector          :inline :offset-assert 224)
-   (joint                joint-mod       4       :offset-assert 240)
-   (new-post-hook        (function none)         :offset-assert 256)
-   (cur-post-hook        (function none)         :offset-assert 260)
-   (clone-copy-trans     symbol                  :offset-assert 264)
-   (shadow-backup        basic                   :offset-assert 268)
-   (draw?                symbol                  :offset-assert 272)
+  ((new-trans-hook        (function none))
+   (cur-trans-hook        (function none))
+   (cur-event-hook        (function none))
+   (new-joint-anim        art-joint-anim)
+   (new-joint-anim-blend  uint64)
+   (anim-mode             symbol)
+   (cur-grab-handle       handle)
+   (cur-target-handle     handle)
+   (old-grab-pos          vector     :inline)
+   (joint                 joint-mod  4)
+   (new-post-hook         (function none))
+   (cur-post-hook         (function none))
+   (clone-copy-trans      symbol)
+   (shadow-backup         basic)
+   (draw?                 symbol)
    )
-  :heap-base #xb0
-  :method-count-assert 20
-  :size-assert         #x114
-  :flag-assert         #x1400b00114
   (:states
     manipy-idle
     )
   )
 
-;; A part-spawner simply spawns particles.
+
 (deftype part-spawner (process-drawable)
-  ((mode         (pointer sparticle-launch-group)         :offset-assert 176)
-   (enable       symbol                                   :offset-assert 180)
-   (radius       meters                                   :offset-assert 184)
-   (world-sphere sphere                           :inline :offset-assert 192)
+  ((mode          (pointer sparticle-launch-group))
+   (enable        symbol)
+   (radius        meters)
+   (world-sphere  sphere  :inline)
    )
-  :heap-base #x60
-  :method-count-assert 21
-  :size-assert         #xd0
-  :flag-assert         #x15006000d0
   (:methods
-    (is-visible? (_type_) symbol 20)
+    (is-visible? (_type_) symbol)
     )
   (:states
     part-spawner-active
@@ -83,24 +76,20 @@
 ;; a part-tracker will spawn particles, then linger for a bit, and then finally die.
 ;; a more complicated object can use this to manage particles that do something interesting (like follow you)
 (deftype part-tracker (process)
-  ((root            trsqv                                    :offset-assert 112)
-   (part            sparticle-launch-control                 :offset-assert 116)
-   (target          handle                                   :offset-assert 120)
-   (callback        (function part-tracker vector)           :offset-assert 128)
-   (linger-callback (function part-tracker vector)           :offset-assert 132)
-   (duration        time-frame                               :offset-assert 136)
-   (linger-duration time-frame                               :offset-assert 144)
-   (start-time      time-frame                               :offset-assert 152)
-   (offset          vector                         :inline   :offset-assert 160)
-   (userdata        uint64                                   :offset-assert 176)
-   (user-time       time-frame                     2         :offset-assert 184)
-   (user-vector     vector                         2 :inline :offset-assert 208)
-   (user-handle     uint32                         2         :offset-assert 240)
+  ((root             trsqv)
+   (part             sparticle-launch-control)
+   (target           handle)
+   (callback         (function part-tracker vector))
+   (linger-callback  (function part-tracker vector))
+   (duration         time-frame)
+   (linger-duration  time-frame)
+   (start-time       time-frame)
+   (offset           vector      :inline)
+   (userdata         uint64)
+   (user-time        time-frame  2)
+   (user-vector      vector      2 :inline)
+   (user-handle      uint32      2)
    )
-  :heap-base #x90
-  :method-count-assert 14
-  :size-assert         #xf8
-  :flag-assert         #xe009000f8
   (:states
     part-tracker-process
     )
@@ -108,32 +97,28 @@
 
 ;; a camera-tracker can control the camera.
 (deftype camera-tracker (process)
-  ((grab-target     handle           :offset        120)
-   (grab-event      symbol           :offset-assert 128)
-   (release-event   symbol           :offset-assert 132)
-   (old-global-mask process-mask     :offset-assert 136)
-   (old-self-mask   process-mask     :offset-assert 140)
-   (old-parent-mask process-mask     :offset-assert 144)
-   (look-at-target  handle           :offset-assert 152)
-   (pov-target      handle           :offset-assert 160)
-   (work-process    handle           :offset-assert 168)
-   (anim-process    handle           :offset-assert 176)
-   (start-time      time-frame       :offset-assert 184)
-   (callback        basic            :offset-assert 192)
-   (userdata        basic            :offset-assert 196)
-   (message         basic            :offset-assert 200)
-   (border-value    basic            :offset-assert 204)
-   (mask-to-clear   process-mask     :offset-assert 208)
-   (script          pair             :offset-assert 212)
-   (script-line     pair             :offset-assert 216)
-   (script-func     (function none)  :offset-assert 220)
+  ((grab-target      handle  :offset 120)
+   (grab-event       symbol)
+   (release-event    symbol)
+   (old-global-mask  process-mask)
+   (old-self-mask    process-mask)
+   (old-parent-mask  process-mask)
+   (look-at-target   handle)
+   (pov-target       handle)
+   (work-process     handle)
+   (anim-process     handle)
+   (start-time       time-frame)
+   (callback         basic)
+   (userdata         basic)
+   (message          basic)
+   (border-value     basic)
+   (mask-to-clear    process-mask)
+   (script           pair)
+   (script-line      pair)
+   (script-func      (function none))
    )
-  :heap-base #x70
-  :method-count-assert 15
-  :size-assert         #xe0
-  :flag-assert         #xf007000e0
   (:methods
-    (eval (_type_ pair) process 14)
+    (eval (_type_ pair) process)
     )
   (:states
     camera-tracker-process
@@ -142,18 +127,14 @@
 
 ;; a touch tracker waits to be touched, then calls some callback function.
 (deftype touch-tracker (process-drawable)
-  ((root-override collide-shape-moving           :offset        112)
-   (duration      time-frame                     :offset-assert 176)
-   (target        handle                         :offset-assert 184)
-   (event         symbol                         :offset-assert 192)
-   (run-function  (function object)              :offset-assert 196)
-   (callback      (function touch-tracker none)  :offset-assert 200)
-   (event-mode    basic                          :offset-assert 204)
+  ((root          collide-shape-moving :override)
+   (duration      time-frame)
+   (target        handle)
+   (event         symbol)
+   (run-function  (function object))
+   (callback      (function touch-tracker none))
+   (event-mode    basic)
    )
-  :heap-base #x60
-  :method-count-assert 20
-  :size-assert         #xd0
-  :flag-assert         #x14006000d0
   (:states
     touch-tracker-idle
     )
@@ -161,15 +142,11 @@
 
 ;; the classic pole
 (deftype swingpole (process)
-  ((root        trsq           :offset-assert 112)
-   (dir         vector :inline :offset-assert 128)
-   (range       meters         :offset-assert 144)
-   (edge-length meters         :offset-assert 148)
+  ((root         trsq)
+   (dir          vector  :inline)
+   (range        meters)
+   (edge-length  meters)
    )
-  :heap-base #x30
-  :method-count-assert 14
-  :size-assert         #x98
-  :flag-assert         #xe00300098
   (:states
     swingpole-active
     swingpole-stance
@@ -178,42 +155,35 @@
 
 ;; do you want to fish?
 (deftype gui-query (structure)
-  ((x-position        int32   :offset-assert   0)
-   (y-position        int32   :offset-assert   4)
-   (message           string  :offset-assert   8)
-   (decision          symbol  :offset-assert  12)
-   (only-allow-cancel symbol  :offset-assert  16)
-   (no-msg            string  :offset-assert  20)
-   (message-space     int32   :offset-assert  24)
+  ((x-position         int32)
+   (y-position         int32)
+   (message            string)
+   (decision           symbol)
+   (only-allow-cancel  symbol)
+   (no-msg             string)
+   (message-space      int32)
    )
   :pack-me
-  :method-count-assert 11
-  :size-assert         #x1c
-  :flag-assert         #xb0000001c
   (:methods
-    (init! (_type_ string int int int symbol string) none 9)
-    (get-response (_type_) symbol 10)
+    (init! (_type_ string int int int symbol string) none)
+    (get-response (_type_) symbol)
     )
   )
 
 ;; control the camera from something else (an animation)
 (deftype othercam (process)
-  ((hand              handle               :offset-assert 112)
-   (old-global-mask   process-mask         :offset-assert 120)
-   (mask-to-clear     process-mask         :offset-assert 124)
-   (cam-joint-index   int32                :offset-assert 128)
-   (old-pos           vector       :inline :offset-assert 144)
-   (old-mat-z         vector       :inline :offset-assert 160)
-   (had-valid-frame   basic                :offset-assert 176)
-   (border-value      basic                :offset-assert 180)
-   (die?              symbol               :offset-assert 184)
-   (survive-anim-end? symbol               :offset-assert 188)
-   (spooling?         symbol               :offset-assert 192)
+  ((hand               handle)
+   (old-global-mask    process-mask)
+   (mask-to-clear      process-mask)
+   (cam-joint-index    int32)
+   (old-pos            vector  :inline)
+   (old-mat-z          vector  :inline)
+   (had-valid-frame    basic)
+   (border-value       basic)
+   (die?               symbol)
+   (survive-anim-end?  symbol)
+   (spooling?          symbol)
    )
-  :heap-base #x60
-  :method-count-assert 14
-  :size-assert         #xc4
-  :flag-assert         #xe006000c4
   (:states
     othercam-running
     )
@@ -223,17 +193,7 @@
 ;; don't draw it! I guess used to disable things during development.
 (deftype process-hidden (process)
   ()
-  :method-count-assert 15
-  :size-assert         #x70
-  :flag-assert         #xf00000070
-  (:methods
-    (die () _type_ :state 14)
+  (:state-methods
+    die
     )
   )
-
-
-0
-
-
-
-

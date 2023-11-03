@@ -3,24 +3,20 @@
 
 ;; definition of type bonelurker
 (deftype bonelurker (nav-enemy)
-  ((bump-player-time time-frame  :offset-assert 400)
+  ((bump-player-time  time-frame)
    )
-  :heap-base #x130
-  :method-count-assert 76
-  :size-assert         #x198
-  :flag-assert         #x4c01300198
   (:states
     bonelurker-stun
     )
   )
 
 ;; definition for method 3 of type bonelurker
-(defmethod inspect bonelurker ((obj bonelurker))
+(defmethod inspect ((this bonelurker))
   (let ((t9-0 (method-of-type nav-enemy inspect)))
-    (t9-0 obj)
+    (t9-0 this)
     )
-  (format #t "~T~Tbump-player-time: ~D~%" (-> obj bump-player-time))
-  obj
+  (format #t "~T~Tbump-player-time: ~D~%" (-> this bump-player-time))
+  this
   )
 
 ;; failed to figure out what this is:
@@ -48,72 +44,68 @@
 
 ;; definition for method 44 of type bonelurker
 ;; INFO: Return type mismatch symbol vs object.
-(defmethod touch-handler bonelurker ((obj bonelurker) (arg0 process) (arg1 event-message-block))
-  (the-as object (when (and (logtest? (-> obj nav-enemy-flags) (nav-enemy-flags navenmf6))
-                            ((method-of-type touching-shapes-entry prims-touching?)
-                             (the-as touching-shapes-entry (-> arg1 param 0))
-                             (-> obj collide-info)
-                             (the-as uint 1)
-                             )
-                            )
-                   (when (nav-enemy-send-attack arg0 (the-as touching-shapes-entry (-> arg1 param 0)) 'generic)
-                     (set! (-> obj speed-scale) 0.5)
-                     #t
-                     )
-                   )
-          )
+(defmethod touch-handler ((this bonelurker) (arg0 process) (arg1 event-message-block))
+  (when (and (logtest? (-> this nav-enemy-flags) (nav-enemy-flags navenmf6))
+             ((method-of-type touching-shapes-entry prims-touching?)
+              (the-as touching-shapes-entry (-> arg1 param 0))
+              (-> this collide-info)
+              (the-as uint 1)
+              )
+             )
+    (when (nav-enemy-send-attack arg0 (the-as touching-shapes-entry (-> arg1 param 0)) 'generic)
+      (set! (-> this speed-scale) 0.5)
+      #t
+      )
+    )
   )
 
 ;; definition for method 43 of type bonelurker
 ;; INFO: Return type mismatch symbol vs object.
-(defmethod attack-handler bonelurker ((obj bonelurker) (arg0 process) (arg1 event-message-block))
+(defmethod attack-handler ((this bonelurker) (arg0 process) (arg1 event-message-block))
   (with-pp
-    (set! (-> obj state-time) (-> *display* base-frame-counter))
+    (set-time! (-> this state-time))
     (let ((a1-1 (new 'stack-no-clear 'event-message-block)))
       (set! (-> a1-1 from) pp)
       (set! (-> a1-1 num-params) 2)
       (set! (-> a1-1 message) 'query)
       (set! (-> a1-1 param 0) (the-as uint 'powerup))
       (set! (-> a1-1 param 1) (the-as uint 2))
-      (the-as
-        object
-        (cond
-          ((or (send-event-function *target* a1-1) (= (-> arg1 param 1) 'explode))
-           (logclear! (-> obj mask) (process-mask actor-pause))
-           (go (method-of-object obj nav-enemy-die))
-           'die
-           )
-          (else
-            (cond
-              (((method-of-type touching-shapes-entry prims-touching?)
-                (the-as touching-shapes-entry (-> arg1 param 0))
-                (-> obj collide-info)
-                (the-as uint 2)
-                )
-               (send-event arg0 'shove (-> arg1 param 0) (static-attack-info ((shove-back (meters 4)))))
-               (go bonelurker-stun)
-               #t
-               )
-              ((and ((method-of-type touching-shapes-entry prims-touching?)
-                     (the-as touching-shapes-entry (-> arg1 param 0))
-                     (-> obj collide-info)
-                     (the-as uint 1)
-                     )
-                    (= (-> obj skel root-channel 0) (-> obj skel channel))
-                    (let ((v1-30 (if (> (-> obj skel active-channels) 0)
-                                     (-> obj skel root-channel 0 frame-group)
-                                     )
-                                 )
-                          )
-                      (or (= v1-30 (-> obj draw art-group data 9)) (= v1-30 (-> obj draw art-group data 10)))
-                      )
-                    )
-               (send-event arg0 'shove (-> arg1 param 0) (static-attack-info ((shove-back (meters 4)))))
-               (set! (-> obj bump-player-time) (-> *display* base-frame-counter))
-               (logclear! (-> obj nav-enemy-flags) (nav-enemy-flags navenmf6))
-               'push
-               )
+      (cond
+        ((or (send-event-function *target* a1-1) (= (-> arg1 param 1) 'explode))
+         (logclear! (-> this mask) (process-mask actor-pause))
+         (go (method-of-object this nav-enemy-die))
+         'die
+         )
+        (else
+          (cond
+            (((method-of-type touching-shapes-entry prims-touching?)
+              (the-as touching-shapes-entry (-> arg1 param 0))
+              (-> this collide-info)
+              (the-as uint 2)
               )
+             (send-event arg0 'shove (-> arg1 param 0) (static-attack-info ((shove-back (meters 4)))))
+             (go bonelurker-stun)
+             #t
+             )
+            ((and ((method-of-type touching-shapes-entry prims-touching?)
+                   (the-as touching-shapes-entry (-> arg1 param 0))
+                   (-> this collide-info)
+                   (the-as uint 1)
+                   )
+                  (= (-> this skel root-channel 0) (-> this skel channel))
+                  (let ((v1-30 (if (> (-> this skel active-channels) 0)
+                                   (-> this skel root-channel 0 frame-group)
+                                   )
+                               )
+                        )
+                    (or (= v1-30 (-> this draw art-group data 9)) (= v1-30 (-> this draw art-group data 10)))
+                    )
+                  )
+             (send-event arg0 'shove (-> arg1 param 0) (static-attack-info ((shove-back (meters 4)))))
+             (set-time! (-> this bump-player-time))
+             (logclear! (-> this nav-enemy-flags) (nav-enemy-flags navenmf6))
+             'push
+             )
             )
           )
         )
@@ -124,18 +116,17 @@
 ;; definition for function bonelurker-stunned-event-handler
 ;; INFO: Return type mismatch symbol vs object.
 (defbehavior bonelurker-stunned-event-handler bonelurker ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-  (the-as object (case arg2
-                   (('attack)
-                    (when (>= (- (-> *display* base-frame-counter) (-> self state-time)) (seconds 0.5))
-                      (nav-enemy-set-hit-from-direction arg0)
-                      (send-event arg0 'get-attack-count 1)
-                      (logclear! (-> self mask) (process-mask actor-pause))
-                      (go-virtual nav-enemy-die)
-                      'die
-                      )
-                    )
-                   )
-          )
+  (case arg2
+    (('attack)
+     (when (time-elapsed? (-> self state-time) (seconds 0.5))
+       (nav-enemy-set-hit-from-direction arg0)
+       (send-event arg0 'get-attack-count 1)
+       (logclear! (-> self mask) (process-mask actor-pause))
+       (go-virtual nav-enemy-die)
+       'die
+       )
+     )
+    )
   )
 
 ;; failed to figure out what this is:
@@ -175,60 +166,44 @@ nav-enemy-default-event-handler
 ;; failed to figure out what this is:
 (defstate nav-enemy-idle (bonelurker)
   :virtual #t
-  :event (the-as
-    (function process int symbol event-message-block object :behavior bonelurker)
-    nav-enemy-default-event-handler
-    )
+  :event nav-enemy-default-event-handler
   :exit (behavior ()
     (bonelurker-set-large-bounds-sphere)
-    (none)
     )
   :code (behavior ()
     (bonelurker-set-small-bounds-sphere)
     ((the-as (function none :behavior bonelurker) (-> (method-of-type nav-enemy nav-enemy-idle) code)))
-    (none)
     )
   )
 
 ;; failed to figure out what this is:
 (defstate nav-enemy-patrol (bonelurker)
   :virtual #t
-  :event (the-as
-    (function process int symbol event-message-block object :behavior bonelurker)
-    nav-enemy-default-event-handler
-    )
+  :event nav-enemy-default-event-handler
   :code (behavior ()
     (ja-channel-push! 1 (seconds 0.2))
     ((the-as (function none :behavior bonelurker) (-> (method-of-type nav-enemy nav-enemy-patrol) code)))
-    (none)
     )
   )
 
 ;; failed to figure out what this is:
 (defstate nav-enemy-notice (bonelurker)
   :virtual #t
-  :event (the-as
-    (function process int symbol event-message-block object :behavior bonelurker)
-    nav-enemy-default-event-handler
-    )
+  :event nav-enemy-default-event-handler
   :code (-> (method-of-type nav-enemy nav-enemy-notice) code)
   )
 
 ;; failed to figure out what this is:
 (defstate nav-enemy-chase (bonelurker)
   :virtual #t
-  :event (the-as
-    (function process int symbol event-message-block object :behavior bonelurker)
-    nav-enemy-default-event-handler
-    )
+  :event nav-enemy-default-event-handler
   :trans (behavior ()
     ((-> (method-of-type nav-enemy nav-enemy-chase) trans))
     (if (and (not (logtest? (-> self nav-enemy-flags) (nav-enemy-flags navenmf6)))
-             (>= (- (-> *display* base-frame-counter) (-> self bump-player-time)) (seconds 0.5))
+             (time-elapsed? (-> self bump-player-time) (seconds 0.5))
              )
         (logior! (-> self nav-enemy-flags) (nav-enemy-flags navenmf6))
         )
-    (none)
     )
   :code (behavior ()
     (set! (-> self rotate-speed) 524288.0)
@@ -293,27 +268,20 @@ nav-enemy-default-event-handler
           )
         )
       )
-    (none)
     )
   )
 
 ;; failed to figure out what this is:
 (defstate nav-enemy-stop-chase (bonelurker)
   :virtual #t
-  :event (the-as
-    (function process int symbol event-message-block object :behavior bonelurker)
-    nav-enemy-default-event-handler
-    )
+  :event nav-enemy-default-event-handler
   :code (-> (method-of-type nav-enemy nav-enemy-stop-chase) code)
   )
 
 ;; failed to figure out what this is:
 (defstate nav-enemy-stare (bonelurker)
   :virtual #t
-  :event (the-as
-    (function process int symbol event-message-block object :behavior bonelurker)
-    nav-enemy-default-event-handler
-    )
+  :event nav-enemy-default-event-handler
   :code (behavior ()
     (set! (-> self rotate-speed) 524288.0)
     (set! (-> self turn-time) (seconds 0.2))
@@ -356,17 +324,13 @@ nav-enemy-default-event-handler
           )
         )
       )
-    (none)
     )
   )
 
 ;; failed to figure out what this is:
 (defstate nav-enemy-give-up (bonelurker)
   :virtual #t
-  :event (the-as
-    (function process int symbol event-message-block object :behavior bonelurker)
-    nav-enemy-default-event-handler
-    )
+  :event nav-enemy-default-event-handler
   :code (behavior ()
     (set! (-> self rotate-speed) 524288.0)
     (set! (-> self turn-time) (seconds 0.1))
@@ -410,17 +374,13 @@ nav-enemy-default-event-handler
       (ja :num! (seek!))
       )
     (go-virtual nav-enemy-patrol)
-    (none)
     )
   )
 
 ;; failed to figure out what this is:
 (defstate nav-enemy-victory (bonelurker)
   :virtual #t
-  :event (the-as
-    (function process int symbol event-message-block object :behavior bonelurker)
-    nav-enemy-default-event-handler
-    )
+  :event nav-enemy-default-event-handler
   :code (-> (method-of-type nav-enemy nav-enemy-victory) code)
   )
 
@@ -429,11 +389,9 @@ nav-enemy-default-event-handler
   :event bonelurker-stunned-event-handler
   :enter (behavior ()
     (nav-enemy-neck-control-inactive)
-    (none)
     )
   :exit (behavior ()
     (nav-enemy-neck-control-look-at)
-    (none)
     )
   :code (behavior ()
     (let ((gp-0 (new 'stack-no-clear 'vector)))
@@ -448,7 +406,6 @@ nav-enemy-default-event-handler
       (ja :num! (seek!))
       )
     (go-virtual nav-enemy-chase)
-    (none)
     )
   :post bonelurker-push-post
   )
@@ -510,8 +467,8 @@ nav-enemy-default-event-handler
 
 ;; definition for method 47 of type bonelurker
 ;; INFO: Return type mismatch int vs none.
-(defmethod initialize-collision bonelurker ((obj bonelurker))
-  (let ((s5-0 (new 'process 'collide-shape-moving obj (collide-list-enum usually-hit-by-player))))
+(defmethod initialize-collision ((this bonelurker))
+  (let ((s5-0 (new 'process 'collide-shape-moving this (collide-list-enum usually-hit-by-player))))
     (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s5-0 reaction) default-collision-reaction)
     (set! (-> s5-0 no-reaction)
@@ -551,7 +508,7 @@ nav-enemy-default-event-handler
     (set! (-> s5-0 nav-radius) 8192.0)
     (backup-collide-with-as s5-0)
     (set! (-> s5-0 max-iteration-count) (the-as uint 1))
-    (set! (-> obj collide-info) s5-0)
+    (set! (-> this collide-info) s5-0)
     )
   0
   (none)
@@ -559,12 +516,12 @@ nav-enemy-default-event-handler
 
 ;; definition for method 48 of type bonelurker
 ;; INFO: Return type mismatch int vs none.
-(defmethod nav-enemy-method-48 bonelurker ((obj bonelurker))
-  (initialize-skeleton obj *bonelurker-sg* '())
-  (init-defaults! obj *bonelurker-nav-enemy-info*)
-  (set! (-> obj neck up) (the-as uint 0))
-  (set! (-> obj neck nose) (the-as uint 1))
-  (set! (-> obj neck ear) (the-as uint 2))
+(defmethod nav-enemy-method-48 ((this bonelurker))
+  (initialize-skeleton this *bonelurker-sg* '())
+  (init-defaults! this *bonelurker-nav-enemy-info*)
+  (set! (-> this neck up) (the-as uint 0))
+  (set! (-> this neck nose) (the-as uint 1))
+  (set! (-> this neck ear) (the-as uint 2))
   0
   (none)
   )

@@ -8,45 +8,37 @@
 ;; TODO - for anim-tester
 (define-extern *debug-menu-context* debug-menu-context)
 
-;; circular buffer of positions to draw.
-(deftype pos-history (structure)
-  ((points     (inline-array vector)  :offset-assert 0)
-   (num-points int32   :offset-assert 4)
-   (h-first    int32   :offset-assert 8)
-   (h-last     int32   :offset-assert 12)
-   )
-  :method-count-assert 9
-  :size-assert         #x10
-  :flag-assert         #x900000010
-  )
-
-;; unused vertex type?
-(deftype debug-vertex (structure)
-  ((trans  vector4w :inline :offset-assert 0)
-   (normal vector3h :inline :offset-assert 16)
-   (st     vector2h :inline :offset-assert 22)
-   (color  uint32           :offset-assert 28)
-   )
-  :method-count-assert 9
-  :size-assert         #x20
-  :flag-assert         #x900000020
-  )
-
-;; buffer of debug vertices (unused?)
-(deftype debug-vertex-stats (basic)
-  ((length    int32                    :offset-assert 4)
-   (pos-count int32                    :offset-assert 8)
-   (vertex    debug-vertex 600 :inline :offset-assert 16)
-   )
-  :method-count-assert 9
-  :size-assert         #x4b10
-  :flag-assert         #x900004b10
-  )
-
-
 (define-extern add-debug-matrix (function symbol bucket-id matrix matrix))
 (define-extern add-debug-text-sphere (function symbol bucket-id vector float string rgba symbol))
 ;; TODO - for trajectory.gc
 (define-extern add-debug-line (function symbol bucket-id vector vector rgba symbol rgba symbol))
 
 (defun-extern add-debug-sphere symbol bucket-id vector float rgba symbol)
+
+;; DECOMP BEGINS
+
+;; circular buffer of positions to draw.
+(deftype pos-history (structure)
+  ((points      (inline-array vector))
+   (num-points  int32)
+   (h-first     int32)
+   (h-last      int32)
+   )
+  )
+
+;; unused vertex type?
+(deftype debug-vertex (structure)
+  ((trans   vector4w  :inline)
+   (normal  vector3h  :inline)
+   (st      vector2h  :inline)
+   (color   uint32)
+   )
+  )
+
+;; buffer of debug vertices (unused?)
+(deftype debug-vertex-stats (basic)
+  ((length     int32)
+   (pos-count  int32)
+   (vertex     debug-vertex  600 :inline)
+   )
+  )

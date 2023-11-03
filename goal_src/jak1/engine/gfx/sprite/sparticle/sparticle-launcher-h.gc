@@ -132,38 +132,43 @@
   (launcher 6) ;; launcher from id
   )
 
+(defenum sp-group-flag
+  :bitfield #t
+  :type uint16
+  (use-local-clock 0)
+  (always-draw 1)
+  (screen-space 2)
+  (unknown-bit-01 3) ;; beach-part
+  )
+
+;; DECOMP BEGINS
+
 ;; This describes the initial value and some more info for a single field
 ;; Note that there are overlays here and some values only make sense in some
 ;; cases.
 (deftype sp-field-init-spec (structure)
-  ((field          sp-field-id  :offset-assert 0)
-   (flags          sp-flag  :offset-assert 2)
-   (initial-valuef float   :offset-assert 4)
-   (random-rangef  float   :offset-assert 8)
-   (random-multf   float   :offset-assert 12)
-   (initial-value  int32   :offset 4)
-   (random-range   int32   :offset 8)
-   (random-mult    int32   :offset 12)
-   (func           symbol      :offset 4)
-   (tex            texture-id  :offset 4)
-   (pntr           pointer     :offset 4)
-   (sym            symbol      :offset 4)
-   (sound          sound-spec  :offset 4)
+  ((field           sp-field-id)
+   (flags           sp-flag)
+   (initial-valuef  float)
+   (random-rangef   float)
+   (random-multf    float)
+   (initial-value   int32       :overlay-at initial-valuef)
+   (random-range    int32       :overlay-at random-rangef)
+   (random-mult     int32       :overlay-at random-multf)
+   (func            symbol      :overlay-at initial-valuef)
+   (tex             texture-id  :overlay-at initial-valuef)
+   (pntr            pointer     :overlay-at initial-valuef)
+   (sym             symbol      :overlay-at initial-valuef)
+   (sound           sound-spec  :overlay-at initial-valuef)
    )
-  :method-count-assert 9
-  :size-assert         #x10
-  :flag-assert         #x900000010
   )
 
 
 (deftype sparticle-launcher (basic)
-  ((birthaccum float                              :offset-assert   4)
-   (soundaccum float                              :offset-assert   8)
-   (init-specs (inline-array sp-field-init-spec)  :offset-assert  12)
+  ((birthaccum  float)
+   (soundaccum  float)
+   (init-specs  (inline-array sp-field-init-spec))
    )
-  :method-count-assert 9
-  :size-assert         #x10
-  :flag-assert         #x900000010
   )
 
 (defenum sp-group-item-flag
@@ -177,19 +182,16 @@
   )
 
 (deftype sparticle-group-item (structure)
-  ((launcher   uint32  :offset-assert 0)
-   (fade-after meters  :offset-assert 4)
-   (falloff-to meters  :offset-assert 8)
-   (flags      sp-group-item-flag  :offset-assert 12)
-   (period     uint16  :offset-assert 14)
-   (length     uint16  :offset-assert 16)
-   (offset     uint16  :offset-assert 18)
-   (hour-mask  uint32  :offset-assert 20)
-   (binding    uint32  :offset-assert 24)
+  ((launcher    uint32)
+   (fade-after  meters)
+   (falloff-to  meters)
+   (flags       sp-group-item-flag)
+   (period      uint16)
+   (length      uint16)
+   (offset      uint16)
+   (hour-mask   uint32)
+   (binding     uint32)
    )
-  :method-count-assert 9
-  :size-assert         #x1c
-  :flag-assert         #x90000001c
   )
 
 (defmacro sp-item (launcher
@@ -226,73 +228,56 @@
 (declare-type sparticle-cpuinfo structure)
 
 (deftype sparticle-launch-state (structure)
-  ((group-item sparticle-group-item  :offset-assert 0)
-   (flags      sp-launch-state-flags :offset-assert 4)
-   (randomize  uint16                :offset-assert 6)
-   (origin     vector                :offset-assert 8)
-   (sprite3d   sprite-vec-data-3d    :offset-assert 12)
-   (sprite     sparticle-cpuinfo     :offset-assert 16)
-   (offset     uint32                :offset-assert 20)
-   (accum      float                 :offset-assert 24)
-   (spawn-time uint32                :offset-assert 28)
-   (swarm      basic                 :offset 20)
-   (seed       uint32                :offset 24)
-   (time       uint32                :offset 28)
-   (spec       basic                 :offset 16)
-   (id         uint32                :offset 12)
+  ((group-item  sparticle-group-item)
+   (flags       sp-launch-state-flags)
+   (randomize   uint16)
+   (origin      vector)
+   (sprite3d    sprite-vec-data-3d)
+   (sprite      sparticle-cpuinfo)
+   (offset      uint32)
+   (accum       float)
+   (spawn-time  uint32)
+   (swarm       basic   :overlay-at offset)
+   (seed        uint32  :overlay-at accum)
+   (time        uint32  :overlay-at spawn-time)
+   (spec        basic   :overlay-at sprite)
+   (id          uint32  :overlay-at sprite3d)
    )
-  :method-count-assert 9
-  :size-assert         #x20
-  :flag-assert         #x900000020
   )
 
-(defenum sp-group-flag
-  :bitfield #t
-  :type uint16
-  (use-local-clock 0)
-  (always-draw 1)
-  (screen-space 2)
-  (unknown-bit-01 3) ;; beach-part
-  )
 
 (deftype sparticle-launch-group (basic)
-  ((length          int16          :offset-assert 4)
-   (duration        uint16         :offset-assert 6)
-   (linger-duration uint16         :offset-assert 8)
-   (flags           sp-group-flag  :offset-assert 10)
-   (name            string         :offset-assert 12)
-   (launcher        (inline-array sparticle-group-item)         :offset-assert 16)
-   (bounds          sphere :inline :offset-assert 32)
+  ((length           int16)
+   (duration         uint16)
+   (linger-duration  uint16)
+   (flags            sp-group-flag)
+   (name             string)
+   (launcher         (inline-array sparticle-group-item))
+   (bounds           sphere  :inline)
    )
-  :method-count-assert 10
-  :size-assert         #x30
-  :flag-assert         #xa00000030
   (:methods
-    (create-launch-control (_type_ process) sparticle-launch-control 9)
+    (create-launch-control (_type_ process) sparticle-launch-control)
     )
   )
 
 
 (deftype sparticle-launch-control (inline-array-class)
-  ((group            sparticle-launch-group                  :offset-assert  16)
-   (proc             process                                 :offset-assert  20)
-   (local-clock      int32                                   :offset-assert  24)
-   (fade             float                                   :offset-assert  28)
-   (matrix           int32                                   :offset-assert  32)
-   (last-spawn-frame int32                                   :offset-assert  36)
-   (last-spawn-time  int32                                   :offset-assert  40)
-   (center           vector                 :inline          :offset-assert  48)
-   (data             sparticle-launch-state :inline :dynamic :offset-assert  64)
+  ((group             sparticle-launch-group)
+   (proc              process)
+   (local-clock       int32)
+   (fade              float)
+   (matrix            int32)
+   (last-spawn-frame  int32)
+   (last-spawn-time   int32)
+   (center            vector                  :inline)
+   (data              sparticle-launch-state  :inline :dynamic)
    )
-  :method-count-assert 14
-  :size-assert         #x40
-  :flag-assert         #xe00000040
   (:methods
-    (initialize (_type_ sparticle-launch-group process) none 9)
-    (is-visible? (_type_ vector) symbol 10)
-    (spawn (_type_ vector) object 11)
-    (kill-and-free-particles (_type_) none 12)
-    (kill-particles (_type_) none 13)
+    (initialize (_type_ sparticle-launch-group process) none)
+    (is-visible? (_type_ vector) symbol)
+    (spawn (_type_ vector) object)
+    (kill-and-free-particles (_type_) none)
+    (kill-particles (_type_) none)
     )
   )
 

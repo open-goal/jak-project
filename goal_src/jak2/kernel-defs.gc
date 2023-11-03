@@ -142,7 +142,8 @@
   (mode     1)
   (event    2)
   (material 3)
-  (skip     4))
+  (skip     4)
+  (skiphide 5))
 
 (defenum pc-gfx-hack
   (no-tex 0))
@@ -155,18 +156,20 @@
 (define-extern __pc-texture-relocate (function object object object none))
 (define-extern __pc-get-mips2c (function string function))
 (define-extern __pc-set-levels (function (pointer string) none))
+(define-extern __pc-set-active-levels (function (pointer string) none))
 (define-extern __pc-get-tex-remap (function int int int))
 
 ;; Input Related Functions
+;; TODO - add get current controller index
 (define-extern pc-get-controller-count (function int))
-(define-extern pc-get-controller-name (function int string))
+(define-extern pc-get-controller-name (function int string string))
 (deftype bind-assignment-info (structure)
   ((port int32)
    (device-type int32)
    (for-buttons? symbol)
    (input-idx int32)
    (analog-min-range? symbol)))
-(define-extern pc-get-current-bind (function bind-assignment-info string))
+(define-extern pc-get-current-bind (function bind-assignment-info string symbol))
 (define-extern pc-waiting-for-bind? (function symbol))
 (define-extern pc-set-waiting-for-bind! (function int symbol symbol int none))
 (define-extern pc-stop-waiting-for-bind! (function none))
@@ -175,6 +178,7 @@
 (define-extern pc-set-mouse-options! (function symbol symbol symbol none))
 (define-extern pc-set-mouse-camera-sens! (function float float none))
 (define-extern pc-current-controller-has-led? (function symbol))
+(define-extern pc-current-controller-has-rumble? (function symbol))
 (define-extern pc-set-controller-led! (function int int int int none))
 (define-extern pc-ignore-background-controller-events! (function symbol none))
 (define-extern pc-reset-bindings-to-defaults! (function int int none))
@@ -216,7 +220,25 @@
 (define-extern pc-set-gfx-hack (function pc-gfx-hack symbol none))
 (define-extern pc-get-unix-timestamp (function int))
 (define-extern pc-filter-debug-string? (function string float symbol))
+(define-extern pc-treat-pad0-as-pad1 (function symbol none))
+(define-extern pc-is-imgui-visible? (function symbol))
 (define-extern pc-rand (function int))
+
+(define-extern pc-encode-utf8-string (function string string none))
+
+;; Jak 2 Specific Kernel Definitions
+(define *pc-waiting-on-rpc?* symbol)
+(define *pc-rpc-error?* symbol)
+(define-extern pc-get-last-rpc-error (function string none))
+(define-extern pc-fetch-external-race-times (function string none))
+(define-extern pc-fetch-external-speedrun-times (function string none))
+(define-extern pc-fetch-external-highscores (function string none))
+(define-extern pc-get-external-race-time (function string int string (pointer float) none)) ;; returns the score and the name in the given string ptr
+(define-extern pc-get-external-speedrun-time (function string int string (pointer float) none)) ;; returns the score and the name in the given string ptr
+(define-extern pc-get-external-highscore (function string int string (pointer float) none)) ;; returns the score and the name in the given string ptr
+(define-extern pc-get-num-external-race-times (function string int))
+(define-extern pc-get-num-external-speedrun-times (function string int))
+(define-extern pc-get-num-external-highscores (function string int))
 
 (define-extern file-stream-open (function file-stream string symbol file-stream))
 (define-extern file-stream-close (function file-stream file-stream))

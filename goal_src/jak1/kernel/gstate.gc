@@ -144,6 +144,11 @@ It type checks the arguments for the entry function.
   (set! *defstate-type-stack* '())
   `(none)
   )
+
+;; set when inside a defstate.
+(seval (define *defstate-current-type* #f))
+(seval (define *defstate-current-state-name* #f))
+
 ;; *no-state* is just used for the compiler to know whether a handler was actually set or not
 (defmacro defstate (state-name parents
                                &key (virtual #f)
@@ -163,6 +168,10 @@ It type checks the arguments for the entry function.
                  *defstate-type-stack*)
         )
       (set! *defstate-type-stack* '())
+      (when virtual
+        (set! *defstate-current-type* defstate-type)
+        (set! *defstate-current-state-name* state-name)
+        )
       ;; check for default handlers
       (let ((default-handlers (assoc defstate-type *default-state-handlers*)))
           (when default-handlers
@@ -225,6 +234,19 @@ It type checks the arguments for the entry function.
     )
   )
 
+(defmacro find-parent-state ()
+  "Find the first different implementation of the current virtual state above this one."
+  (when (or (not *defstate-current-type*)
+            (not *defstate-current-state-name*))
+    (error "use of find-parent-state outside of a defstate.")
+    )
+  `(cast-to-method-type
+     ,*defstate-current-type*
+     ,*defstate-current-state-name*
+     (find-parent-method ,*defstate-current-type* (method-id-of-type ,*defstate-current-type* ,*defstate-current-state-name*))
+    )
+  )
+
 (defmacro behavior (bindings &rest body)
   "Define an anonymous behavior for a process state. This may only be used inside a defstate!"
 
@@ -257,27 +279,29 @@ It type checks the arguments for the entry function.
   `(none)
   )
 
+;; DECOMP BEGINS
+
 (defmethod new state
   ((allocation symbol)
    (type-to-make type)
    (name symbol)
    (code function)
-   (trans (function none))
+   (trans (function object))
    (enter function)
-   (exit (function none))
+   (exit (function object))
    (event (function process int symbol event-message-block object)))
   "Allocate a new state. It seems like this isn't really used much and most states are
    statically allocated and as a result don't have the constructor called."
-  (let ((obj (object-new allocation type-to-make (the-as int (-> type-to-make size)))))
-    (set! (-> obj name) name)
-    (set! (-> obj next) #f)
-    (set! (-> obj exit) exit)
-    (set! (-> obj code) code)
-    (set! (-> obj trans) trans)
-    (set! (-> obj post) #f)
-    (set! (-> obj enter) enter)
-    (set! (-> obj event) event)
-    obj
+  (let ((this (object-new allocation type-to-make (the-as int (-> type-to-make size)))))
+    (set! (-> this name) name)
+    (set! (-> this next) #f)
+    (set! (-> this exit) exit)
+    (set! (-> this code) code)
+    (set! (-> this trans) trans)
+    (set! (-> this post) #f)
+    (set! (-> this enter) enter)
+    (set! (-> this event) event)
+    this
     )
   )
 
@@ -302,10 +326,10 @@ It type checks the arguments for the entry function.
   child
   )
 
-(defmethod print state ((obj state))
+(defmethod print ((this state))
   "Print a state."
-  (format '#t "#<~A ~A @ #x~X>" (-> obj type) (-> obj name) obj)
-  obj
+  (format '#t "#<~A ~A @ #x~X>" (-> this type) (-> this name) this)
+  this
   )
 
 (define-extern enter-state (function object object object object object object object))

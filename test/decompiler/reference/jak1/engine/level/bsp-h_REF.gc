@@ -3,126 +3,114 @@
 
 ;; definition of type bsp-node
 (deftype bsp-node (structure)
-  ((front       int32          :offset-assert   0)
-   (back        int32          :offset-assert   4)
-   (front-flags uint32         :offset-assert   8)
-   (back-flags  uint32         :offset-assert  12)
-   (plane       vector :inline :offset-assert  16)
+  ((front        int32)
+   (back         int32)
+   (front-flags  uint32)
+   (back-flags   uint32)
+   (plane        vector  :inline)
    )
-  :method-count-assert 9
-  :size-assert         #x20
-  :flag-assert         #x900000020
   )
 
 ;; definition for method 3 of type bsp-node
-(defmethod inspect bsp-node ((obj bsp-node))
-  (format #t "[~8x] ~A~%" obj 'bsp-node)
-  (format #t "~Tfront: ~D~%" (-> obj front))
-  (format #t "~Tback: ~D~%" (-> obj back))
-  (format #t "~Tfront-flags: ~D~%" (-> obj front-flags))
-  (format #t "~Tback-flags: ~D~%" (-> obj back-flags))
-  (format #t "~Tplane: #<vector @ #x~X>~%" (-> obj plane))
-  obj
+(defmethod inspect ((this bsp-node))
+  (format #t "[~8x] ~A~%" this 'bsp-node)
+  (format #t "~Tfront: ~D~%" (-> this front))
+  (format #t "~Tback: ~D~%" (-> this back))
+  (format #t "~Tfront-flags: ~D~%" (-> this front-flags))
+  (format #t "~Tback-flags: ~D~%" (-> this back-flags))
+  (format #t "~Tplane: #<vector @ #x~X>~%" (-> this plane))
+  this
   )
 
 ;; definition of type bsp-header
 (deftype bsp-header (drawable)
-  ((info                    file-info                        :offset          4)
-   (all-visible-list        (pointer uint16)                 :offset-assert  32)
-   (visible-list-length     int32                            :offset-assert  36)
-   (drawable-trees          drawable-tree-array              :offset-assert  40)
-   (pat                     pointer                          :offset-assert  44)
-   (pat-length              int32                            :offset-assert  48)
-   (texture-remap-table     (pointer uint64)                 :offset-assert  52)
-   (texture-remap-table-len int32                            :offset-assert  56)
-   (texture-ids             (pointer texture-id)             :offset-assert  60)
-   (texture-page-count      int32                            :offset-assert  64)
-   (unk-zero-0              basic                            :offset-assert  68)
-   (name                    symbol                           :offset-assert  72)
-   (nickname                symbol                           :offset-assert  76)
-   (vis-info                level-vis-info                8  :offset-assert  80)
-   (actors                  drawable-inline-array-actor      :offset-assert 112)
-   (cameras                 (array entity-camera)            :offset-assert 116)
-   (nodes                   (inline-array bsp-node)          :offset-assert 120)
-   (level                   level                            :offset-assert 124)
-   (current-leaf-idx        uint16                           :offset-assert 128)
-   (unk-data-2              uint16                        9  :offset-assert 130)
-   (boxes                   box8s-array                      :offset-assert 148)
-   (current-bsp-back-flags  uint32                           :offset-assert 152)
-   (ambients                drawable-inline-array-ambient    :offset-assert 156)
-   (unk-data-4              float                            :offset-assert 160)
-   (unk-data-5              float                            :offset-assert 164)
-   (adgifs                  adgif-shader-array               :offset-assert 168)
-   (actor-birth-order       (pointer uint32)                 :offset-assert 172)
-   (split-box-indices       (pointer uint16)                 :offset-assert 176)
-   (unk-data-8              uint32                        55 :offset-assert 180)
+  ((info                     file-info       :overlay-at id)
+   (all-visible-list         (pointer uint16))
+   (visible-list-length      int32)
+   (drawable-trees           drawable-tree-array)
+   (pat                      pointer)
+   (pat-length               int32)
+   (texture-remap-table      (pointer uint64))
+   (texture-remap-table-len  int32)
+   (texture-ids              (pointer texture-id))
+   (texture-page-count       int32)
+   (unk-zero-0               basic)
+   (name                     symbol)
+   (nickname                 symbol)
+   (vis-info                 level-vis-info  8)
+   (actors                   drawable-inline-array-actor)
+   (cameras                  (array entity-camera))
+   (nodes                    (inline-array bsp-node))
+   (level                    level)
+   (current-leaf-idx         uint16)
+   (unk-data-2               uint16          9)
+   (boxes                    box8s-array)
+   (current-bsp-back-flags   uint32)
+   (ambients                 drawable-inline-array-ambient)
+   (unk-data-4               float)
+   (unk-data-5               float)
+   (adgifs                   adgif-shader-array)
+   (actor-birth-order        (pointer uint32))
+   (split-box-indices        (pointer uint16))
+   (unk-data-8               uint32          55)
    )
-  :method-count-assert 20
-  :size-assert         #x190
-  :flag-assert         #x1400000190
   (:methods
-    (relocate (_type_ kheap (pointer uint8)) none :replace 7)
-    (birth (_type_) none 18)
-    (deactivate-entities (_type_) none 19)
+    (relocate (_type_ kheap (pointer uint8)) none :replace)
+    (birth (_type_) none)
+    (deactivate-entities (_type_) none)
     )
   )
 
 ;; definition of type game-level
 (deftype game-level (basic)
-  ((master-bsp basic  :offset-assert   4)
+  ((master-bsp  basic)
    )
-  :method-count-assert 9
-  :size-assert         #x8
-  :flag-assert         #x900000008
   )
 
 ;; definition for method 3 of type game-level
-(defmethod inspect game-level ((obj game-level))
-  (format #t "[~8x] ~A~%" obj (-> obj type))
-  (format #t "~Tmaster-bsp: ~A~%" (-> obj master-bsp))
-  obj
+(defmethod inspect ((this game-level))
+  (format #t "[~8x] ~A~%" this (-> this type))
+  (format #t "~Tmaster-bsp: ~A~%" (-> this master-bsp))
+  this
   )
 
 ;; definition of type view-frustum
 (deftype view-frustum (structure)
-  ((hither-top-left     vector :inline :offset-assert   0)
-   (hither-top-right    vector :inline :offset-assert  16)
-   (hither-bottom-left  vector :inline :offset-assert  32)
-   (hither-bottom-right vector :inline :offset-assert  48)
-   (yon-top-left        vector :inline :offset-assert  64)
-   (yon-top-right       vector :inline :offset-assert  80)
-   (yon-bottom-left     vector :inline :offset-assert  96)
-   (yon-bottom-right    vector :inline :offset-assert 112)
+  ((hither-top-left      vector  :inline)
+   (hither-top-right     vector  :inline)
+   (hither-bottom-left   vector  :inline)
+   (hither-bottom-right  vector  :inline)
+   (yon-top-left         vector  :inline)
+   (yon-top-right        vector  :inline)
+   (yon-bottom-left      vector  :inline)
+   (yon-bottom-right     vector  :inline)
    )
-  :method-count-assert 9
-  :size-assert         #x80
-  :flag-assert         #x900000080
   )
 
 ;; definition for method 3 of type view-frustum
-(defmethod inspect view-frustum ((obj view-frustum))
-  (format #t "[~8x] ~A~%" obj 'view-frustum)
-  (format #t "~Thither-top-left: #<vector @ #x~X>~%" (-> obj hither-top-left))
-  (format #t "~Thither-top-right: #<vector @ #x~X>~%" (-> obj hither-top-right))
-  (format #t "~Thither-bottom-left: #<vector @ #x~X>~%" (-> obj hither-bottom-left))
-  (format #t "~Thither-bottom-right: #<vector @ #x~X>~%" (-> obj hither-bottom-right))
-  (format #t "~Tyon-top-left: #<vector @ #x~X>~%" (-> obj yon-top-left))
-  (format #t "~Tyon-top-right: #<vector @ #x~X>~%" (-> obj yon-top-right))
-  (format #t "~Tyon-bottom-left: #<vector @ #x~X>~%" (-> obj yon-bottom-left))
-  (format #t "~Tyon-bottom-right: #<vector @ #x~X>~%" (-> obj yon-bottom-right))
-  obj
+(defmethod inspect ((this view-frustum))
+  (format #t "[~8x] ~A~%" this 'view-frustum)
+  (format #t "~Thither-top-left: #<vector @ #x~X>~%" (-> this hither-top-left))
+  (format #t "~Thither-top-right: #<vector @ #x~X>~%" (-> this hither-top-right))
+  (format #t "~Thither-bottom-left: #<vector @ #x~X>~%" (-> this hither-bottom-left))
+  (format #t "~Thither-bottom-right: #<vector @ #x~X>~%" (-> this hither-bottom-right))
+  (format #t "~Tyon-top-left: #<vector @ #x~X>~%" (-> this yon-top-left))
+  (format #t "~Tyon-top-right: #<vector @ #x~X>~%" (-> this yon-top-right))
+  (format #t "~Tyon-bottom-left: #<vector @ #x~X>~%" (-> this yon-bottom-left))
+  (format #t "~Tyon-bottom-right: #<vector @ #x~X>~%" (-> this yon-bottom-right))
+  this
   )
 
 ;; definition for method 3 of type bsp-header
-(defmethod inspect bsp-header ((obj bsp-header))
-  (format #t "[~8x] ~A~%" obj (-> obj type))
-  (format #t "~Tall-visible-list: #x~X~%" (-> obj all-visible-list))
-  (format #t "~Tvisible-list-length: ~D~%" (-> obj visible-list-length))
-  (format #t "~Tdrawable-trees: ~A~%" (-> obj drawable-trees))
-  (format #t "~Tpat: #x~X~%" (-> obj pat))
-  (format #t "~Tpat-length: ~D~%" (-> obj pat-length))
-  (inspect-bsp-tree obj (the-as bsp-node (-> obj nodes)))
-  obj
+(defmethod inspect ((this bsp-header))
+  (format #t "[~8x] ~A~%" this (-> this type))
+  (format #t "~Tall-visible-list: #x~X~%" (-> this all-visible-list))
+  (format #t "~Tvisible-list-length: ~D~%" (-> this visible-list-length))
+  (format #t "~Tdrawable-trees: ~A~%" (-> this drawable-trees))
+  (format #t "~Tpat: #x~X~%" (-> this pat))
+  (format #t "~Tpat-length: ~D~%" (-> this pat-length))
+  (inspect-bsp-tree this (the-as bsp-node (-> this nodes)))
+  this
   )
 
 ;; definition (debug) for function inspect-bsp-tree
@@ -173,52 +161,46 @@
 
 ;; definition of type cl-stat
 (deftype cl-stat (structure)
-  ((fragments uint32  :offset-assert   0)
-   (tris      uint32  :offset-assert   4)
-   (output    uint32  :offset-assert   8)
+  ((fragments  uint32)
+   (tris       uint32)
+   (output     uint32)
    )
   :pack-me
-  :method-count-assert 9
-  :size-assert         #xc
-  :flag-assert         #x90000000c
   )
 
 ;; definition for method 3 of type cl-stat
-(defmethod inspect cl-stat ((obj cl-stat))
-  (format #t "[~8x] ~A~%" obj 'cl-stat)
-  (format #t "~Tfragments: ~D~%" (-> obj fragments))
-  (format #t "~Ttris: ~D~%" (-> obj tris))
-  (format #t "~Toutput: ~D~%" (-> obj output))
-  obj
+(defmethod inspect ((this cl-stat))
+  (format #t "[~8x] ~A~%" this 'cl-stat)
+  (format #t "~Tfragments: ~D~%" (-> this fragments))
+  (format #t "~Ttris: ~D~%" (-> this tris))
+  (format #t "~Toutput: ~D~%" (-> this output))
+  this
   )
 
 ;; definition of type collide-stats
 (deftype collide-stats (structure)
-  ((other             cl-stat   :inline :offset-assert   0)
-   (total             cl-stat   :inline :offset-assert  12)
-   (nodes             uint32            :offset-assert  24)
-   (calls             uint32            :offset-assert  28)
-   (total-target      stopwatch :inline :offset-assert  32)
-   (target-cache-fill stopwatch :inline :offset-assert  64)
-   (target-ray-poly   stopwatch :inline :offset-assert  96)
-   (pad               uint32            :offset-assert 124)
+  ((other              cl-stat    :inline)
+   (total              cl-stat    :inline)
+   (nodes              uint32)
+   (calls              uint32)
+   (total-target       stopwatch  :inline)
+   (target-cache-fill  stopwatch  :inline)
+   (target-ray-poly    stopwatch  :inline)
+   (pad                uint32)
    )
-  :method-count-assert 9
-  :size-assert         #x80
-  :flag-assert         #x900000080
   )
 
 ;; definition for method 3 of type collide-stats
-(defmethod inspect collide-stats ((obj collide-stats))
-  (format #t "[~8x] ~A~%" obj 'collide-stats)
-  (format #t "~Tother: #<cl-stat @ #x~X>~%" (-> obj other))
-  (format #t "~Ttotal: #<cl-stat @ #x~X>~%" (-> obj total))
-  (format #t "~Tnodes: ~D~%" (-> obj nodes))
-  (format #t "~Tcalls: ~D~%" (-> obj calls))
-  (format #t "~Ttotal-target: #<stopwatch @ #x~X>~%" (-> obj total-target))
-  (format #t "~Ttarget-cache-fill: #<stopwatch @ #x~X>~%" (-> obj target-cache-fill))
-  (format #t "~Ttarget-ray-poly: #<stopwatch @ #x~X>~%" (-> obj target-ray-poly))
-  obj
+(defmethod inspect ((this collide-stats))
+  (format #t "[~8x] ~A~%" this 'collide-stats)
+  (format #t "~Tother: #<cl-stat @ #x~X>~%" (-> this other))
+  (format #t "~Ttotal: #<cl-stat @ #x~X>~%" (-> this total))
+  (format #t "~Tnodes: ~D~%" (-> this nodes))
+  (format #t "~Tcalls: ~D~%" (-> this calls))
+  (format #t "~Ttotal-target: #<stopwatch @ #x~X>~%" (-> this total-target))
+  (format #t "~Ttarget-cache-fill: #<stopwatch @ #x~X>~%" (-> this target-cache-fill))
+  (format #t "~Ttarget-ray-poly: #<stopwatch @ #x~X>~%" (-> this target-ray-poly))
+  this
   )
 
 ;; failed to figure out what this is:

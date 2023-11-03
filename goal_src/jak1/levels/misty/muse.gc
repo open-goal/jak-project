@@ -7,24 +7,19 @@
 
 ;; DECOMP BEGINS
 
-
 (deftype muse (nav-enemy)
-  ((root-override      collide-shape-moving         :offset        112)
-   (current-path-index float                        :offset-assert 400)
-   (prev-path-index    float                        :offset-assert 404)
-   (dest-path-index    float                        :offset-assert 408)
-   (player-path-index  float                        :offset-assert 412)
-   (max-path-index     float                        :offset-assert 416)
-   (sprint-distance    float                        :offset-assert 420)
-   (dest-point         vector               :inline :offset-assert 432)
-   (anim               spool-anim                   :offset-assert 448)
-   (victory-anim       spool-anim                   :offset-assert 452)
-   (old-target-pos     transformq           :inline :offset-assert 464)
+  ((root                collide-shape-moving :override)
+   (current-path-index  float)
+   (prev-path-index     float)
+   (dest-path-index     float)
+   (player-path-index   float)
+   (max-path-index      float)
+   (sprint-distance     float)
+   (dest-point          vector                :inline)
+   (anim                spool-anim)
+   (victory-anim        spool-anim)
+   (old-target-pos      transformq            :inline)
    )
-  :heap-base #x190
-  :method-count-assert 76
-  :size-assert         #x200
-  :flag-assert         #x4c01900200
   (:states
     muse-caught
     muse-idle
@@ -33,17 +28,14 @@
 
 
 (deftype point-on-path-segment-info (structure)
-  ((point               vector :inline   :offset-assert   0)
-   (segment             vector 2 :inline :offset-assert  16)
-   (dir                 vector :inline   :offset-assert  48)
-   (nearest-point       vector :inline   :offset-assert  64)
-   (segment-length      float            :offset-assert  80)
-   (distance-to-segment float            :offset-assert  84)
-   (parametric-index    float            :offset-assert  88)
+  ((point                vector  :inline)
+   (segment              vector  2 :inline)
+   (dir                  vector  :inline)
+   (nearest-point        vector  :inline)
+   (segment-length       float)
+   (distance-to-segment  float)
+   (parametric-index     float)
    )
-  :method-count-assert 9
-  :size-assert         #x5c
-  :flag-assert         #x90000005c
   )
 
 
@@ -140,20 +132,23 @@
   (none)
   )
 
-(defmethod nav-enemy-method-51 muse ((obj muse))
+(defmethod nav-enemy-method-51 ((this muse))
   (dotimes (s5-0 2)
-    (let ((v1-2 (rand-vu-int-range 3 (+ (-> obj node-list length) -1))))
-      (launch-particles (-> *part-id-table* 271) (vector<-cspace! (new 'stack-no-clear 'vector) (-> obj node-list data v1-2)))
+    (let ((v1-2 (rand-vu-int-range 3 (+ (-> this node-list length) -1))))
+      (launch-particles
+        (-> *part-id-table* 271)
+        (vector<-cspace! (new 'stack-no-clear 'vector) (-> this node-list data v1-2))
+        )
       )
     )
   0
   (none)
   )
 
-(defmethod common-post muse ((obj muse))
-  (spool-push *art-control* (-> obj anim name) 0 obj -99.0)
-  (nav-enemy-method-51 obj)
-  ((method-of-type nav-enemy common-post) obj)
+(defmethod common-post ((this muse))
+  (spool-push *art-control* (-> this anim name) 0 this -99.0)
+  (nav-enemy-method-51 this)
+  ((method-of-type nav-enemy common-post) this)
   (none)
   )
 
@@ -163,30 +158,26 @@
               :shadow muse-shadow-mg
               )
 
-(defmethod touch-handler muse ((obj muse) (arg0 process) (arg1 event-message-block))
+(defmethod touch-handler ((this muse) (arg0 process) (arg1 event-message-block))
   (go muse-caught)
   )
 
-(defmethod attack-handler muse ((obj muse) (arg0 process) (arg1 event-message-block))
+(defmethod attack-handler ((this muse) (arg0 process) (arg1 event-message-block))
   (go muse-caught)
   )
 
 nav-enemy-default-event-handler
 
 (defstate muse-idle (muse)
-  :event (the-as
-    (function process int symbol event-message-block object :behavior muse)
-    nav-enemy-default-event-handler
-    )
+  :event nav-enemy-default-event-handler
   :trans (behavior ()
-    (seek! (-> self sprint-distance) 61440.0 (* 8192.0 (-> *display* seconds-per-frame)))
+    (seek! (-> self sprint-distance) 61440.0 (* 8192.0 (seconds-per-frame)))
     (if (and *target* (>= 102400.0 (vector-vector-distance (-> self collide-info trans) (-> *target* control trans))))
         (level-hint-spawn (text-id zero) (the-as string #f) (-> self entity) *entity-pool* (game-task none))
         )
     (if (and *target* (>= 81920.0 (vector-vector-distance (-> self collide-info trans) (-> *target* control trans))))
         (go-virtual nav-enemy-chase)
         )
-    (none)
     )
   :code (behavior ()
     (when (ja-group? muse-run-ja)
@@ -208,20 +199,15 @@ nav-enemy-default-event-handler
         (ja :num! (seek!))
         )
       )
-    (none)
     )
-  :post (the-as (function none :behavior muse) ja-post)
+  :post ja-post
   )
 
 (defstate nav-enemy-chase (muse)
   :virtual #t
-  :event (the-as
-    (function process int symbol event-message-block object :behavior muse)
-    nav-enemy-default-event-handler
-    )
+  :event nav-enemy-default-event-handler
   :enter (behavior ()
-    (set! (-> self state-time) (-> *display* base-frame-counter))
-    (none)
+    (set-time! (-> self state-time))
     )
   :trans (behavior ()
     (cond
@@ -243,9 +229,8 @@ nav-enemy-default-event-handler
         (set! (-> self target-speed) 61440.0)
         )
       )
-    (seek! (-> self sprint-distance) 0.0 (* 4096.0 (-> *display* seconds-per-frame)))
+    (seek! (-> self sprint-distance) 0.0 (* 4096.0 (seconds-per-frame)))
     (muse-check-dest-point)
-    (none)
     )
   :code (behavior ()
     (cond
@@ -268,7 +253,6 @@ nav-enemy-default-event-handler
       (suspend)
       (ja :num! (loop! (* 0.000016276043 (-> self momentum-speed))))
       )
-    (none)
     )
   :post (behavior ()
     (set! (-> self nav destination-pos quad) (-> self dest-point quad))
@@ -283,30 +267,22 @@ nav-enemy-default-event-handler
         (logclear! (-> self nav flags) (nav-control-flags navcf10))
         )
     (nav-enemy-travel-post)
-    (none)
     )
   )
 
 (defstate nav-enemy-jump (muse)
   :virtual #t
-  :event (the-as
-    (function process int symbol event-message-block object :behavior muse)
-    nav-enemy-default-event-handler
-    )
+  :event nav-enemy-default-event-handler
   :enter (behavior ()
     ((-> (method-of-type nav-enemy nav-enemy-jump) enter))
     (logclear! (-> self nav-enemy-flags) (nav-enemy-flags standing-jump))
-    (none)
     )
   :code (-> (method-of-type nav-enemy nav-enemy-jump) code)
   )
 
 (defstate nav-enemy-jump-land (muse)
   :virtual #t
-  :event (the-as
-    (function process int symbol event-message-block object :behavior muse)
-    nav-enemy-default-event-handler
-    )
+  :event nav-enemy-default-event-handler
   :code (behavior ()
     (ja-no-eval :num! (seek!))
     (ja-channel-push! 1 (seconds 0.075))
@@ -317,15 +293,13 @@ nav-enemy-default-event-handler
       (ja :num! (seek! max 0.8))
       )
     (go-virtual nav-enemy-chase)
-    (none)
     )
   )
 
 (defstate muse-caught (muse)
-  :event (the-as (function process int symbol event-message-block object :behavior muse) #f)
+  :event #f
   :trans (behavior ()
     (spool-push *art-control* (-> self anim name) 0 self -1.0)
-    (none)
     )
   :code (behavior ()
     (sound-play "money-pickup")
@@ -402,14 +376,12 @@ nav-enemy-default-event-handler
           )
         )
       )
-    (none)
     )
   :post (behavior ()
     (nav-enemy-method-51 self)
     (level-hint-surpress!)
     (kill-current-level-hint '() '() 'exit)
     (ja-post)
-    (none)
     )
   )
 
@@ -467,10 +439,10 @@ nav-enemy-default-event-handler
                                 )
         )
 
-(defmethod init-from-entity! muse ((obj muse) (arg0 entity-actor))
-  (stack-size-set! (-> obj main-thread) 512)
-  (logior! (-> obj mask) (process-mask enemy))
-  (let ((s4-0 (new 'process 'collide-shape-moving obj (collide-list-enum hit-by-player))))
+(defmethod init-from-entity! ((this muse) (arg0 entity-actor))
+  (stack-size-set! (-> this main-thread) 512)
+  (logior! (-> this mask) (process-mask enemy))
+  (let ((s4-0 (new 'process 'collide-shape-moving this (collide-list-enum hit-by-player))))
     (set! (-> s4-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s4-0 reaction) default-collision-reaction)
     (set! (-> s4-0 no-reaction)
@@ -486,34 +458,34 @@ nav-enemy-default-event-handler
       )
     (set! (-> s4-0 nav-radius) (* 0.75 (-> s4-0 root-prim local-sphere w)))
     (backup-collide-with-as s4-0)
-    (set! (-> obj collide-info) s4-0)
+    (set! (-> this collide-info) s4-0)
     )
-  (process-drawable-from-entity! obj arg0)
-  (initialize-skeleton obj *muse-sg* '())
-  (logclear! (-> obj mask) (process-mask actor-pause))
-  (init-defaults! obj *muse-nav-enemy-info*)
-  (set! (-> obj max-path-index) (the float (+ (-> obj path curve num-cverts) -1)))
-  (set! (-> obj current-path-index) 7.0)
-  (set! (-> obj prev-path-index) 7.0)
-  (set! (-> obj dest-path-index) 7.0)
-  (set! (-> obj player-path-index) 0.0)
-  (eval-path-curve-div! (-> obj path) (-> obj dest-point) (-> obj current-path-index) 'interp)
-  (set! (-> obj collide-info trans quad) (-> obj dest-point quad))
-  (set! (-> obj nav nearest-y-threshold) 20480.0)
-  (set-vector! (-> obj neck twist-max) 8192.0 8192.0 0.0 1.0)
-  (set! (-> obj neck up) (the-as uint 0))
-  (set! (-> obj neck nose) (the-as uint 1))
-  (set! (-> obj neck ear) (the-as uint 2))
-  (set! (-> obj neck max-dist) 102400.0)
-  (set! (-> obj neck ignore-angle) 16384.0)
-  (set! (-> obj anim) (new 'static 'spool-anim
-                        :name "muse-victory"
-                        :index 9
-                        :parts 2
-                        :command-list '((1 blackout 0) (219 blackout 60))
-                        )
+  (process-drawable-from-entity! this arg0)
+  (initialize-skeleton this *muse-sg* '())
+  (logclear! (-> this mask) (process-mask actor-pause))
+  (init-defaults! this *muse-nav-enemy-info*)
+  (set! (-> this max-path-index) (the float (+ (-> this path curve num-cverts) -1)))
+  (set! (-> this current-path-index) 7.0)
+  (set! (-> this prev-path-index) 7.0)
+  (set! (-> this dest-path-index) 7.0)
+  (set! (-> this player-path-index) 0.0)
+  (eval-path-curve-div! (-> this path) (-> this dest-point) (-> this current-path-index) 'interp)
+  (set! (-> this collide-info trans quad) (-> this dest-point quad))
+  (set! (-> this nav nearest-y-threshold) 20480.0)
+  (set-vector! (-> this neck twist-max) 8192.0 8192.0 0.0 1.0)
+  (set! (-> this neck up) (the-as uint 0))
+  (set! (-> this neck nose) (the-as uint 1))
+  (set! (-> this neck ear) (the-as uint 2))
+  (set! (-> this neck max-dist) 102400.0)
+  (set! (-> this neck ignore-angle) 16384.0)
+  (set! (-> this anim) (new 'static 'spool-anim
+                         :name "muse-victory"
+                         :index 9
+                         :parts 2
+                         :command-list '((1 blackout 0) (219 blackout 60))
+                         )
         )
-  (set! (-> obj victory-anim) (fuel-cell-pick-anim obj))
+  (set! (-> this victory-anim) (fuel-cell-pick-anim this))
   (go muse-idle)
   (none)
   )

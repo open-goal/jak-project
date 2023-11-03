@@ -113,7 +113,7 @@ Function* LinkedObjectFile::try_get_function_at_label(int label_id) {
 
 Function* LinkedObjectFile::try_get_function_at_label(const DecompilerLabel& label) {
   for (auto& func : functions_by_seg.at(label.target_segment)) {
-    // + 4 to skip past type tag to the first word, which is were the label points.
+    // + 4 to skip past type tag to the first word, which is where the label points.
     if (func.start_word * 4 + 4 == label.offset) {
       return &func;
     }
@@ -128,7 +128,7 @@ const Function* LinkedObjectFile::try_get_function_at_label(int label_id) const 
 
 const Function* LinkedObjectFile::try_get_function_at_label(const DecompilerLabel& label) const {
   for (auto& func : functions_by_seg.at(label.target_segment)) {
-    // + 4 to skip past type tag to the first word, which is were the label points.
+    // + 4 to skip past type tag to the first word, which is where the label points.
     if (func.start_word * 4 + 4 == label.offset) {
       return &func;
     }
@@ -156,7 +156,8 @@ bool LinkedObjectFile::pointer_link_word(int source_segment,
   ASSERT(word.kind() == LinkedWord::PLAIN_DATA);
 
   if (dest_offset / 4 > (int)words_by_seg.at(dest_segment).size()) {
-    //    printf("HACK bad link ignored!\n");
+    //    printf("HACK bad link ignored src %d, %d vs %d!\n", source_offset, dest_offset / 4,
+    //           int(words_by_seg.at(dest_segment).size()));
     return false;
   }
   ASSERT(dest_offset / 4 <= (int)words_by_seg.at(dest_segment).size());
@@ -827,7 +828,7 @@ std::string LinkedObjectFile::print_scripts() {
         if ((label.offset & 7) == 2) {
           // result += to_form_script(seg, word_idx, already_printed)->toStringPretty(0, 100) +
           // "\n";
-          result += pretty_print::to_string(to_form_script(seg, word_idx, already_printed)) + "\n";
+          result += pretty_print::to_string(to_form_script(seg, word_idx, &already_printed)) + "\n";
         }
       }
     }
@@ -838,7 +839,7 @@ std::string LinkedObjectFile::print_scripts() {
 /*!
  * Is the object pointed to the empty list?
  */
-bool LinkedObjectFile::is_empty_list(int seg, int byte_idx) {
+bool LinkedObjectFile::is_empty_list(int seg, int byte_idx) const {
   ASSERT((byte_idx % 4) == 0);
   auto& word = words_by_seg.at(seg).at(byte_idx / 4);
   return word.kind() == LinkedWord::EMPTY_PTR;
@@ -849,7 +850,9 @@ bool LinkedObjectFile::is_empty_list(int seg, int byte_idx) {
  * Note : this takes the address of the car of the pair. which is perhaps a bit confusing
  * (in GOAL, this would be (&-> obj car))
  */
-goos::Object LinkedObjectFile::to_form_script(int seg, int word_idx, std::vector<bool>& seen) {
+goos::Object LinkedObjectFile::to_form_script(int seg,
+                                              int word_idx,
+                                              std::vector<bool>* seen) const {
   // the object to currently print. to start off, create pair from the car address we've been given.
   int goal_print_obj = word_idx * 4 + 2;
 
@@ -863,11 +866,13 @@ goos::Object LinkedObjectFile::to_form_script(int seg, int word_idx, std::vector
 
   // loop until we run out of things to add
   for (;;) {
-    // check the thing to print is a a pair.
+    // check the thing to print is a pair.
     if ((goal_print_obj & 7) == 2) {
       // first convert the car (again, with (&-> obj car))
       fill.as_pair()->car = to_form_script_object(seg, goal_print_obj - 2, seen);
-      seen.at(goal_print_obj / 4) = true;
+      if (seen) {
+        seen->at(goal_print_obj / 4) = true;
+      }
 
       auto cdr_addr = goal_print_obj + 2;
 
@@ -940,7 +945,7 @@ bool LinkedObjectFile::is_string(int seg, int byte_idx) const {
  */
 goos::Object LinkedObjectFile::to_form_script_object(int seg,
                                                      int byte_idx,
-                                                     std::vector<bool>& seen) {
+                                                     std::vector<bool>* seen) const {
   goos::Object result;
 
   switch (byte_idx & 7) {

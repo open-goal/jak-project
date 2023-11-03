@@ -8,16 +8,15 @@
 ;; These "wind" types are used in the tie/shrub renderers to make things sway in the breeze.
 ;; It generates vectors that are applied as shear to the instance matrices.
 
+;; DECOMP BEGINS
+
 (deftype wind-vector (structure)
-  ((wind-pos vector2w :inline :offset-assert 0)
-   (wind-vel vector2w :inline :offset-assert 8)
+  ((wind-pos  vector2w  :inline)
+   (wind-vel  vector2w  :inline)
    )
-  :method-count-assert 9
-  :size-assert         #x10
-  :flag-assert         #x900000010
   )
 
- (define *wind-scales* (new 'static 'boxed-array :type uint8 :length 32
+ (define *wind-scales* (new 'static 'boxed-array :type uint8
                             #x2 #x5 #x2 #x3
                             #x2 #x2 #x3 #x10
                             #xa #x2 #x4 #x2
@@ -30,15 +29,12 @@
    )
 
 (deftype wind-work (basic)
-  ((wind-array  vector  64 :inline      :offset-assert 16)
-   (wind-normal vector  :inline :offset-assert 1040)
-   (wind-temp   vector  :inline :offset-assert 1056)
-   (wind-force  float 64      :offset-assert 1072)
-   (wind-time   uint32          :offset-assert 1328)
+  ((wind-array   vector  64 :inline)
+   (wind-normal  vector  :inline)
+   (wind-temp    vector  :inline)
+   (wind-force   float   64)
+   (wind-time    uint32)
    )
-  :method-count-assert 9
-  :size-assert         #x534
-  :flag-assert         #x900000534
   )
 
 ; This was likely originally defined inside `wind-h`
@@ -46,10 +42,5 @@
 (define-extern *wind-work* wind-work)
 
 (defun wind-get-hashed-index ((arg0 vector))
-  (logand (+ (the int (-> arg0 data 0))
-             (the int (-> arg0 data 2))
-             (the-as int (-> *wind-work* wind-time))
-             )
-          #x3f
-          )
+  (logand (+ (the int (-> arg0 x)) (the int (-> arg0 z)) (-> *wind-work* wind-time)) 63)
   )

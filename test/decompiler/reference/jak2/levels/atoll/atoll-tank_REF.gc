@@ -1650,62 +1650,58 @@
 
 ;; definition of type atoll-tank
 (deftype atoll-tank (process-focusable)
-  ((is-master?     symbol                    :offset-assert 204)
-   (aftermath-part sparticle-launch-control  :offset-assert 208)
+  ((is-master?      symbol)
+   (aftermath-part  sparticle-launch-control)
    )
-  :heap-base #x60
-  :method-count-assert 29
-  :size-assert         #xd4
-  :flag-assert         #x1d006000d4
-  (:methods
-    (dormant () _type_ :state 27)
-    (idle () _type_ :state 28)
+  (:state-methods
+    dormant
+    idle
     )
   )
 
 ;; definition for method 3 of type atoll-tank
-(defmethod inspect atoll-tank ((obj atoll-tank))
-  (when (not obj)
-    (set! obj obj)
+(defmethod inspect ((this atoll-tank))
+  (when (not this)
+    (set! this this)
     (goto cfg-4)
     )
   (let ((t9-0 (method-of-type process-focusable inspect)))
-    (t9-0 obj)
+    (t9-0 this)
     )
-  (format #t "~2Tis-master?: ~A~%" (-> obj is-master?))
-  (format #t "~2Taftermath-part: ~A~%" (-> obj aftermath-part))
+  (format #t "~2Tis-master?: ~A~%" (-> this is-master?))
+  (format #t "~2Taftermath-part: ~A~%" (-> this aftermath-part))
   (label cfg-4)
-  obj
+  this
   )
 
 ;; definition for method 10 of type atoll-tank
-(defmethod deactivate atoll-tank ((obj atoll-tank))
-  (if (nonzero? (-> obj aftermath-part))
-      (kill-and-free-particles (-> obj aftermath-part))
+(defmethod deactivate ((this atoll-tank))
+  (if (nonzero? (-> this aftermath-part))
+      (kill-and-free-particles (-> this aftermath-part))
       )
-  ((method-of-type process-focusable deactivate) obj)
+  ((method-of-type process-focusable deactivate) this)
   (none)
   )
 
 ;; definition for method 7 of type atoll-tank
 ;; WARN: Return type mismatch process-focusable vs atoll-tank.
-(defmethod relocate atoll-tank ((obj atoll-tank) (arg0 int))
-  (if (nonzero? (-> obj aftermath-part))
-      (&+! (-> obj aftermath-part) arg0)
+(defmethod relocate ((this atoll-tank) (arg0 int))
+  (if (nonzero? (-> this aftermath-part))
+      (&+! (-> this aftermath-part) arg0)
       )
-  (the-as atoll-tank ((method-of-type process-focusable relocate) obj arg0))
+  (the-as atoll-tank ((method-of-type process-focusable relocate) this arg0))
   )
 
 ;; definition for method 12 of type atoll-tank
-(defmethod run-logic? atoll-tank ((obj atoll-tank))
+(defmethod run-logic? ((this atoll-tank))
   #t
   )
 
 ;; definition for method 20 of type atoll-tank
 ;; INFO: Used lq/sq
-(defmethod get-trans atoll-tank ((obj atoll-tank) (arg0 int))
+(defmethod get-trans ((this atoll-tank) (arg0 int))
   "@returns the `trans` [[vector]] from the process's `root` (typically either a [[trsqv]] or a [[collide-shape]])"
-  (let ((v1-0 (-> obj root)))
+  (let ((v1-0 (-> this root)))
     (case arg0
       ((3 2)
        (let ((v0-0 (new 'static 'vector :w 1.0)))
@@ -1769,7 +1765,7 @@
 ;; failed to figure out what this is:
 (defstate dormant (atoll-tank)
   :virtual #t
-  :code (the-as (function none :behavior atoll-tank) sleep-code)
+  :code sleep-code
   )
 
 ;; failed to figure out what this is:
@@ -1779,7 +1775,6 @@
     (if (-> self is-master?)
         (spawn (-> self aftermath-part) (-> self root trans))
         )
-    (none)
     )
   :code (behavior ()
     (when (-> self is-master?)
@@ -1787,21 +1782,20 @@
       (process-spawn atoll-tank self 2 :to self)
       )
     (sleep-code)
-    (none)
     )
   )
 
 ;; definition for method 11 of type atoll-tank
 ;; WARN: Return type mismatch object vs none.
-(defmethod init-from-entity! atoll-tank ((obj atoll-tank) (arg0 entity-actor))
+(defmethod init-from-entity! ((this atoll-tank) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
 - stack size
 - collision information
 - loading the skeleton group / bones
 - sounds"
-  (set! (-> obj is-master?) #t)
-  (let ((s4-0 (new 'process 'collide-shape obj (collide-list-enum usually-hit-by-player))))
+  (set! (-> this is-master?) #t)
+  (let ((s4-0 (new 'process 'collide-shape this (collide-list-enum usually-hit-by-player))))
     (let ((s3-0 (new 'process 'collide-shape-prim-group s4-0 (the-as uint 9) 0)))
       (set! (-> s4-0 total-prims) (the-as uint 10))
       (set! (-> s3-0 prim-core collide-as) (collide-spec obstacle))
@@ -1869,45 +1863,45 @@ This commonly includes things such as:
       (set! (-> s4-0 backup-collide-as) (-> v1-28 prim-core collide-as))
       (set! (-> s4-0 backup-collide-with) (-> v1-28 prim-core collide-with))
       )
-    (set! (-> obj root) s4-0)
+    (set! (-> this root) s4-0)
     )
-  (process-drawable-from-entity! obj arg0)
+  (process-drawable-from-entity! this arg0)
   (initialize-skeleton
-    obj
+    this
     (the-as
       skeleton-group
       (art-group-get-by-name *level* "skel-atoll-tank-a-debris" (the-as (pointer uint32) #f))
       )
     (the-as pair 0)
     )
-  (logior! (-> obj focus-status) (focus-status ignore))
+  (logior! (-> this focus-status) (focus-status ignore))
   (ja-channel-set! 1)
-  (let ((s5-2 (-> obj skel root-channel 0)))
+  (let ((s5-2 (-> this skel root-channel 0)))
     (joint-control-channel-group-eval!
       s5-2
-      (the-as art-joint-anim (-> obj draw art-group data 2))
+      (the-as art-joint-anim (-> this draw art-group data 2))
       num-func-identity
       )
     (set! (-> s5-2 frame-num) 0.0)
     )
   (transform-post)
-  (setup-masks (-> obj draw) 0 2)
-  (set! (-> obj part) (create-launch-control (-> *part-group-id-table* 321) obj))
-  (set! (-> obj aftermath-part) (create-launch-control (-> *part-group-id-table* 322) obj))
+  (setup-masks (-> this draw) 0 2)
+  (set! (-> this part) (create-launch-control (-> *part-group-id-table* 321) this))
+  (set! (-> this aftermath-part) (create-launch-control (-> *part-group-id-table* 322) this))
   (cond
     ((task-node-closed? (game-task-node atoll-sig-tank))
-     (go (method-of-object obj idle))
+     (go (method-of-object this idle))
      )
     (else
-      (logior! (-> obj draw status) (draw-control-status no-draw))
-      (let ((v1-54 (-> obj root root-prim)))
+      (logior! (-> this draw status) (draw-control-status no-draw))
+      (let ((v1-54 (-> this root root-prim)))
         (set! (-> v1-54 prim-core collide-as) (collide-spec))
         (set! (-> v1-54 prim-core collide-with) (collide-spec))
         )
-      (set! (-> obj root backup-collide-as) (collide-spec))
-      (set! (-> obj root backup-collide-with) (collide-spec))
+      (set! (-> this root backup-collide-as) (collide-spec))
+      (set! (-> this root backup-collide-with) (collide-spec))
       0
-      (go (method-of-object obj dormant))
+      (go (method-of-object this dormant))
       )
     )
   (none)

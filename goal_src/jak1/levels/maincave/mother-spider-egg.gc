@@ -8,26 +8,21 @@
 
 ;; DECOMP BEGINS
 
-
 (deftype mother-spider-egg (process-drawable)
-  ((parent-override    (pointer mother-spider)          :offset         12)
-   (root-override      collide-shape-moving             :offset        112)
-   (anim-speed         float                            :offset-assert 176)
-   (part2              sparticle-launch-control         :offset-assert 180)
-   (falling-start-time time-frame                       :offset-assert 184)
-   (fall-dest          vector                   :inline :offset-assert 192)
-   (fall-dest-normal   vector                   :inline :offset-assert 208)
-   (broken-look        lod-set                  :inline :offset-assert 224)
-   (traj               trajectory               :inline :offset-assert 272)
-   (shadow-pos         vector                   :inline :offset-assert 320)
+  ((root                collide-shape-moving    :override)
+   (parent-override     (pointer mother-spider)  :overlay-at parent)
+   (anim-speed          float)
+   (part2               sparticle-launch-control)
+   (falling-start-time  time-frame)
+   (fall-dest           vector                   :inline)
+   (fall-dest-normal    vector                   :inline)
+   (broken-look         lod-set                  :inline)
+   (traj                trajectory               :inline)
+   (shadow-pos          vector                   :inline)
    )
-  :heap-base #xe0
-  :method-count-assert 22
-  :size-assert         #x150
-  :flag-assert         #x1600e00150
   (:methods
-    (mother-spider-egg-method-20 (_type_) none 20)
-    (draw-egg-shadow (_type_ vector symbol) symbol 21)
+    (mother-spider-egg-method-20 (_type_) none)
+    (draw-egg-shadow (_type_ vector symbol) symbol)
     )
   (:states
     mother-spider-egg-die
@@ -156,17 +151,17 @@
     )
   )
 
-(defmethod draw-egg-shadow mother-spider-egg ((obj mother-spider-egg) (arg0 vector) (arg1 symbol))
+(defmethod draw-egg-shadow ((this mother-spider-egg) (arg0 vector) (arg1 symbol))
   (cond
-    ((and (-> obj draw shadow)
-          (zero? (-> obj draw cur-lod))
-          (logtest? (-> obj draw status) (draw-status was-drawn))
+    ((and (-> this draw shadow)
+          (zero? (-> this draw cur-lod))
+          (logtest? (-> this draw status) (draw-status was-drawn))
           )
      (let ((s5-0 (new 'stack-no-clear 'collide-tri-result))
            (a1-1 (new 'stack-no-clear 'vector))
            (a2-1 (new 'stack-no-clear 'vector))
            )
-       (set! (-> a1-1 quad) (-> obj root-override trans quad))
+       (set! (-> a1-1 quad) (-> this root trans quad))
        (+! (-> a1-1 y) 1228.8)
        (set-vector! a2-1 0.0 -61440.0 0.0 1.0)
        (cond
@@ -176,28 +171,28 @@
                 a2-1
                 7372.8
                 (collide-kind background)
-                obj
+                this
                 s5-0
                 (new 'static 'pat-surface :noentity #x1)
                 )
               0.0
               )
-          (let ((v1-11 (-> obj draw shadow-ctrl)))
+          (let ((v1-11 (-> this draw shadow-ctrl)))
             (logclear! (-> v1-11 settings flags) (shadow-flags disable-draw))
             )
           0
-          (let ((v1-14 (-> obj draw shadow-ctrl)))
+          (let ((v1-14 (-> this draw shadow-ctrl)))
             (set! (-> v1-14 settings bot-plane w) (- (+ -4096.0 (-> s5-0 intersect y))))
             )
           0
-          (let ((v1-17 (-> obj draw shadow-ctrl)))
+          (let ((v1-17 (-> this draw shadow-ctrl)))
             (set! (-> v1-17 settings top-plane w) (- (+ 6144.0 (-> s5-0 intersect y))))
             )
           0
           (return #t)
           )
          (else
-           (let ((v1-22 (-> obj draw shadow-ctrl)))
+           (let ((v1-22 (-> this draw shadow-ctrl)))
              (logior! (-> v1-22 settings flags) (shadow-flags disable-draw))
              )
            0
@@ -206,7 +201,7 @@
        )
      )
     (else
-      (let ((v1-25 (-> obj draw shadow-ctrl)))
+      (let ((v1-25 (-> this draw shadow-ctrl)))
         (logior! (-> v1-25 settings flags) (shadow-flags disable-draw))
         )
       0
@@ -216,26 +211,22 @@
   )
 
 (defstate mother-spider-egg-falling (mother-spider-egg)
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('touch 'attack)
        (go mother-spider-egg-die-while-falling)
        )
       )
     )
   :enter (behavior ()
-    (set! (-> self falling-start-time) (-> *display* base-frame-counter))
-    (none)
+    (set-time! (-> self falling-start-time))
     )
   :trans (behavior ()
-    (let ((f30-0
-            (fmin (the float (- (-> *display* base-frame-counter) (-> self falling-start-time))) (-> self traj time))
-            )
-          )
+    (let ((f30-0 (fmin (the float (- (current-time) (-> self falling-start-time))) (-> self traj time))))
       (let ((f28-0 (/ f30-0 (-> self traj time))))
-        (eval-position! (-> self traj) f30-0 (-> self root-override trans))
+        (eval-position! (-> self traj) f30-0 (-> self root trans))
         (let ((f0-3 (lerp 0.3 0.4 f28-0)))
-          (set-vector! (-> self root-override scale) f0-3 f0-3 f0-3 1.0)
+          (set-vector! (-> self root scale) f0-3 f0-3 f0-3 1.0)
           )
         )
       (when (= f30-0 (-> self traj time))
@@ -244,55 +235,42 @@
         )
       )
     (draw-egg-shadow self (-> self shadow-pos) #t)
-    (none)
     )
   :code (behavior ()
     (ja-channel-push! 1 0)
     (loop
-      (ja-no-eval :group! (-> self draw art-group data 9) :num! (seek! max (-> self anim-speed)) :frame-num 0.0)
+      (ja-no-eval :group! spider-egg-idle-ja :num! (seek! max (-> self anim-speed)) :frame-num 0.0)
       (until (ja-done? 0)
         (suspend)
         (ja :num! (seek! max (-> self anim-speed)))
         )
       )
-    (none)
     )
-  :post (the-as (function none :behavior mother-spider-egg) transform-post)
+  :post transform-post
   )
 
 (defstate mother-spider-egg-on-ground (mother-spider-egg)
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (the-as object (case event-type
-                     (('touch)
-                      (the-as object (send-shove-back
-                                       (-> self root-override)
-                                       proc
-                                       (the-as touching-shapes-entry (-> event param 0))
-                                       0.7
-                                       6144.0
-                                       16384.0
-                                       )
-                              )
-                      )
-                     (('attack)
-                      (go mother-spider-egg-die)
-                      )
-                     )
-            )
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
+      (('touch)
+       (send-shove-back (-> self root) proc (the-as touching-shapes-entry (-> block param 0)) 0.7 6144.0 16384.0)
+       )
+      (('attack)
+       (go mother-spider-egg-die)
+       )
+      )
     )
   :enter (behavior ()
-    (set! (-> self state-time) (-> *display* base-frame-counter))
+    (set-time! (-> self state-time))
     (if (not (draw-egg-shadow self (-> self shadow-pos) #t))
         (set! (-> self shadow-pos quad) (-> self fall-dest quad))
         )
-    (none)
     )
   :trans (behavior ()
-    (if (>= (- (-> *display* base-frame-counter) (-> self state-time)) (seconds 2))
+    (if (time-elapsed? (-> self state-time) (seconds 2))
         (go mother-spider-egg-hatch)
         )
     (draw-egg-shadow self (-> self shadow-pos) #f)
-    (none)
     )
   :code (behavior ()
     (ja-channel-push! 1 (seconds 0.1))
@@ -302,35 +280,34 @@
       (let ((s3-0 (new 'stack-no-clear 'vector))
             (s4-0 (new 'stack-no-clear 'vector))
             )
-        (quaternion-copy! gp-0 (-> self root-override quat))
+        (quaternion-copy! gp-0 (-> self root quat))
         (set-vector! s4-0 0.0 1.0 0.0 1.0)
         (set! (-> s3-0 quad) (-> self fall-dest-normal quad))
         (vector-normalize! s3-0 1.0)
         (quaternion-from-two-vectors! s5-0 s4-0 s3-0)
         )
       (quaternion*! s5-0 s5-0 gp-0)
-      (ja-no-eval :group! (-> self draw art-group data 11) :num! (seek! max 1.3) :frame-num 0.0)
+      (ja-no-eval :group! spider-egg-bounce-ja :num! (seek! max 1.3) :frame-num 0.0)
       (until (ja-done? 0)
         (let* ((f0-8 (ja-frame-num 0))
                (v1-19 (ja-group))
                (f0-9 (/ f0-8 (the float (+ (-> v1-19 data 0 length) -1))))
                )
-          (quaternion-slerp! (-> self root-override quat) gp-0 s5-0 f0-9)
+          (quaternion-slerp! (-> self root quat) gp-0 s5-0 f0-9)
           )
         (suspend)
         (ja :num! (seek! max 1.3))
         )
       )
     (loop
-      (ja-no-eval :group! (-> self draw art-group data 9) :num! (seek! max (-> self anim-speed)) :frame-num 0.0)
+      (ja-no-eval :group! spider-egg-idle-ja :num! (seek! max (-> self anim-speed)) :frame-num 0.0)
       (until (ja-done? 0)
         (suspend)
         (ja :num! (seek! max (-> self anim-speed)))
         )
       )
-    (none)
     )
-  :post (the-as (function none :behavior mother-spider-egg) transform-post)
+  :post transform-post
   )
 
 (defstate mother-spider-egg-hatch (mother-spider-egg)
@@ -339,7 +316,7 @@
       (let ((a1-0 (new 'stack-no-clear 'vector)))
         (set! (-> a1-0 quad) (-> self fall-dest quad))
         (compute-and-draw-shadow
-          (-> self root-override trans)
+          (-> self root trans)
           a1-0
           (-> self fall-dest-normal)
           (the-as vector 7372.8)
@@ -348,11 +325,10 @@
           )
         )
       )
-    (none)
     )
   :code (behavior ()
     (send-event (ppointer->process (-> self parent-override)) 'trigger)
-    (clear-collide-with-as (-> self root-override))
+    (clear-collide-with-as (-> self root))
     (process-spawn
       part-tracker
       :init part-tracker-init
@@ -361,12 +337,12 @@
       #f
       #f
       #f
-      (-> self root-override trans)
+      (-> self root trans)
       :to *entity-pool*
       )
     (lods-assign! (-> self draw) (-> self broken-look))
     (ja-channel-push! 1 (seconds 0.2))
-    (ja-no-eval :group! (-> self draw art-group data 10) :num! (seek!) :frame-num 0.0)
+    (ja-no-eval :group! spider-egg-crack-ja :num! (seek!) :frame-num 0.0)
     (until (ja-done? 0)
       (suspend)
       (ja :num! (seek!))
@@ -376,9 +352,8 @@
       )
     0
     (go mother-spider-egg-die-exit)
-    (none)
     )
-  :post (the-as (function none :behavior mother-spider-egg) transform-post)
+  :post transform-post
   )
 
 (defstate mother-spider-egg-die (mother-spider-egg)
@@ -390,7 +365,7 @@
     0
     (lods-assign! (-> self draw) (-> self broken-look))
     (ja-channel-push! 1 (seconds 0.1))
-    (clear-collide-with-as (-> self root-override))
+    (clear-collide-with-as (-> self root))
     (process-spawn
       part-tracker
       :init part-tracker-init
@@ -399,33 +374,28 @@
       #f
       #f
       #f
-      (-> self root-override trans)
+      (-> self root trans)
       :to *entity-pool*
       )
-    (ja-no-eval :group! (-> self draw art-group data 12) :num! (seek!) :frame-num 0.0)
+    (ja-no-eval :group! spider-egg-die-ja :num! (seek!) :frame-num 0.0)
     (until (ja-done? 0)
       (suspend)
       (ja :num! (seek!))
       )
     (go mother-spider-egg-die-exit)
-    (none)
     )
-  :post (the-as (function none :behavior mother-spider-egg) ja-post)
+  :post ja-post
   )
 
 (defstate mother-spider-egg-die-while-falling (mother-spider-egg)
   :trans (behavior ()
-    (let ((f0-2
-            (fmin (the float (- (-> *display* base-frame-counter) (-> self falling-start-time))) (-> self traj time))
-            )
-          )
-      (eval-position! (-> self traj) f0-2 (-> self root-override trans))
+    (let ((f0-2 (fmin (the float (- (current-time) (-> self falling-start-time))) (-> self traj time))))
+      (eval-position! (-> self traj) f0-2 (-> self root trans))
       )
-    (none)
     )
   :code (behavior ()
     (logclear! (-> self mask) (process-mask actor-pause))
-    (clear-collide-with-as (-> self root-override))
+    (clear-collide-with-as (-> self root))
     (let ((v1-5 (-> self draw shadow-ctrl)))
       (logior! (-> v1-5 settings flags) (shadow-flags disable-draw))
       )
@@ -438,20 +408,19 @@
       #f
       #f
       #f
-      (-> self root-override trans)
+      (-> self root trans)
       :to *entity-pool*
       )
     (lods-assign! (-> self draw) (-> self broken-look))
     (ja-channel-push! 1 (seconds 0.1))
-    (ja-no-eval :group! (-> self draw art-group data 12) :num! (seek!) :frame-num 0.0)
+    (ja-no-eval :group! spider-egg-die-ja :num! (seek!) :frame-num 0.0)
     (until (ja-done? 0)
       (suspend)
       (ja :num! (seek!))
       )
     (go mother-spider-egg-die-exit)
-    (none)
     )
-  :post (the-as (function none :behavior mother-spider-egg) ja-post)
+  :post ja-post
   )
 
 (defstate mother-spider-egg-die-exit (mother-spider-egg)
@@ -462,20 +431,19 @@
       (logior! (-> v1-8 settings flags) (shadow-flags disable-draw))
       )
     0
-    (logclear! (-> self root-override nav-flags) (nav-flags navf0))
-    (logclear! (-> self root-override nav-flags) (nav-flags navf1))
-    (clear-collide-with-as (-> self root-override))
+    (logclear! (-> self root nav-flags) (nav-flags navf0))
+    (logclear! (-> self root nav-flags) (nav-flags navf1))
+    (clear-collide-with-as (-> self root))
     (until (not (-> self child))
       (suspend)
       )
-    (none)
     )
   )
 
 (defbehavior mother-spider-egg-init-by-other mother-spider-egg ((arg0 entity-actor) (arg1 vector) (arg2 vector) (arg3 vector))
   (set! (-> self entity) arg0)
   (set! (-> self anim-speed) (rand-vu-float-range 0.8 1.2))
-  (set! (-> self falling-start-time) (-> *display* base-frame-counter))
+  (set-time! (-> self falling-start-time))
   (set! (-> self fall-dest quad) (-> arg2 quad))
   (set! (-> self fall-dest-normal quad) (-> arg3 quad))
   (let ((s4-1 (new 'process 'collide-shape-moving self (collide-list-enum usually-hit-by-player))))
@@ -494,24 +462,24 @@
       )
     (set! (-> s4-1 nav-radius) 4096.0)
     (backup-collide-with-as s4-1)
-    (set! (-> self root-override) s4-1)
+    (set! (-> self root) s4-1)
     )
-  (set! (-> self root-override trans quad) (-> arg1 quad))
-  (set-vector! (-> self root-override scale) 0.3 0.3 0.3 1.0)
-  (quaternion-copy! (-> self root-override quat) (-> self parent-override 0 root-override quat))
+  (set! (-> self root trans quad) (-> arg1 quad))
+  (set-vector! (-> self root scale) 0.3 0.3 0.3 1.0)
+  (quaternion-copy! (-> self root quat) (-> self parent-override 0 root quat))
   (logior! (-> self mask) (process-mask actor-pause))
   (logior! (-> self mask) (process-mask enemy))
   (logior! (-> self mask) (process-mask attackable))
   (initialize-skeleton self *mother-spider-egg-unbroken-sg* '())
   (setup-lods! (-> self broken-look) *mother-spider-egg-broken-sg* (-> self draw art-group) (-> self entity))
   (set! (-> self draw shadow-ctrl) (new 'process 'shadow-control 0.0 0.0 614400.0 (the-as float 60) 245760.0))
-  (set! (-> self nav) (new 'process 'nav-control (-> self root-override) 16 40960.0))
+  (set! (-> self nav) (new 'process 'nav-control (-> self root) 16 40960.0))
   (logior! (-> self nav flags) (nav-control-flags display-marks navcf3 navcf5 navcf6 navcf7))
-  (logclear! (-> self root-override nav-flags) (nav-flags navf0))
-  (logior! (-> self root-override nav-flags) (nav-flags navf1))
+  (logclear! (-> self root nav-flags) (nav-flags navf0))
+  (logior! (-> self root nav-flags) (nav-flags navf1))
   (set! (-> self nav extra-nav-sphere quad) (-> self fall-dest quad))
   (set! (-> self nav extra-nav-sphere w) 4096.0)
-  (setup-from-to-height! (-> self traj) (-> self root-override trans) arg2 4096.0 -4.551111)
+  (setup-from-to-height! (-> self traj) (-> self root trans) arg2 4096.0 -4.551111)
   (create-connection!
     *cavecrystal-light-control*
     self

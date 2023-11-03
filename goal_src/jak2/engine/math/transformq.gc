@@ -7,72 +7,65 @@
 
 ;; DECOMP BEGINS
 
-(defmethod print transformq ((obj transformq))
-  "Print a transformq"
-  (format #t "#<transformq @ #x~X~%" obj)
-  (format #t "~T~Ttrans:~F ~F ~F ~F ~%" (-> obj trans x) (-> obj trans y) (-> obj trans z) (-> obj trans w))
-  (format #t "~T~Tquat:  ~F ~F ~F ~F ~%" (-> obj quat x) (-> obj quat y) (-> obj quat z) (-> obj quat w))
-  (format #t "~T~Tscale:~F ~F ~F ~F>" (-> obj scale x) (-> obj scale y) (-> obj scale z) (-> obj scale w))
-  obj
+(defmethod print ((this transformq))
+  (format #t "#<transformq @ #x~X~%" this)
+  (format #t "~T~Ttrans:~F ~F ~F ~F ~%" (-> this trans x) (-> this trans y) (-> this trans z) (-> this trans w))
+  (format #t "~T~Tquat:  ~F ~F ~F ~F ~%" (-> this quat x) (-> this quat y) (-> this quat z) (-> this quat w))
+  (format #t "~T~Tscale:~F ~F ~F ~F>" (-> this scale x) (-> this scale y) (-> this scale z) (-> this scale w))
+  this
   )
 
-(defmethod get-quaternion trsqv ((obj trsqv))
-  "Get the rotation as a quaternion."
-  (-> obj quat)
+(defmethod get-quaternion ((this trsqv))
+  (-> this quat)
   )
 
-(defmethod set-quaternion! trsqv ((obj trsqv) (arg0 quaternion))
-  "Set the rotation as a quaternion"
-  (quaternion-copy! (get-quaternion obj) arg0)
+(defmethod set-quaternion! ((this trsqv) (arg0 quaternion))
+  (quaternion-copy! (get-quaternion this) arg0)
   )
 
-(defmethod rot->dir-targ! trsqv ((obj trsqv))
-  "Set the dir-targ to our current orientation"
-  (quaternion-copy! (-> obj dir-targ) (get-quaternion obj))
+(defmethod rot->dir-targ! ((this trsqv))
+  (quaternion-copy! (-> this dir-targ) (get-quaternion this))
   )
 
-(defmethod y-angle trsqv ((obj trsqv))
-  "Get our current y-angle (y is up, so yaw)"
-  (quaternion-y-angle (get-quaternion obj))
+(defmethod y-angle ((this trsqv))
+  (quaternion-y-angle (get-quaternion this))
   )
 
-(defmethod seek-toward-heading-vec! trsqv ((obj trsqv) (arg0 vector) (arg1 float) (arg2 time-frame))
+(defmethod seek-toward-heading-vec! ((this trsqv) (arg0 vector) (arg1 float) (arg2 time-frame))
   "Adjust the orientation to point along dir, only changing our yaw.
   The vel is a maximum velocity limit.
   The frame count is the time constant (first order).
   There's some logic to avoid rapidly changing directions"
-  (with-pp
-    (let* ((f0-0 (deg-diff (quaternion-y-angle (-> obj quat)) (vector-y-angle arg0)))
-           (f1-2 (fmin (* arg1 (-> pp clock seconds-per-frame)) (/ (* 5.0 (fabs f0-0)) (the float arg2))))
-           (f30-0 (fmax (fmin f0-0 f1-2) (- f1-2)))
-           )
-      (let ((f0-2 (-> obj old-y-angle-diff)))
-        (set! f30-0
-              (cond
-                ((or (= f0-2 0.0)
-                     (and (< 0.0 f30-0) (< 0.0 f0-2))
-                     (or (and (< f30-0 0.0) (< f0-2 0.0)) (>= (- (current-time) (-> obj angle-change-time)) (seconds 0.2)))
-                     )
-                 (set! (-> obj angle-change-time) (current-time))
-                 f30-0
-                 )
-                (else
-                  (* 0.000000001 f30-0)
-                  )
+  (let* ((f0-0 (deg-diff (quaternion-y-angle (-> this quat)) (vector-y-angle arg0)))
+         (f1-2 (fmin (* arg1 (seconds-per-frame)) (/ (* 5.0 (fabs f0-0)) (the float arg2))))
+         (f30-0 (fmax (fmin f0-0 f1-2) (- f1-2)))
+         )
+    (let ((f0-2 (-> this old-y-angle-diff)))
+      (set! f30-0
+            (cond
+              ((or (= f0-2 0.0)
+                   (and (< 0.0 f30-0) (< 0.0 f0-2))
+                   (or (and (< f30-0 0.0) (< f0-2 0.0)) (time-elapsed? (-> this angle-change-time) (seconds 0.2)))
+                   )
+               (set-time! (-> this angle-change-time))
+               f30-0
+               )
+              (else
+                (* 0.000000001 f30-0)
                 )
               )
-        )
-      (set! (-> obj old-y-angle-diff) f30-0)
-      (let ((a1-2 (get-quaternion obj)))
-        (quaternion-rotate-y! a1-2 a1-2 f30-0)
-        )
+            )
+      )
+    (set! (-> this old-y-angle-diff) f30-0)
+    (let ((a1-2 (get-quaternion this)))
+      (quaternion-rotate-y! a1-2 a1-2 f30-0)
       )
     )
   )
 
-(defmethod set-heading-vec! trsqv ((obj trsqv) (arg0 vector))
+(defmethod set-heading-vec! ((this trsqv) (arg0 vector))
   "Makes us look in the arg0 direction immediately.  Pitch will be unchanged."
-  (let ((s3-0 (get-quaternion obj)))
+  (let ((s3-0 (get-quaternion this)))
     (forward-up-nopitch->quaternion
       s3-0
       (vector-normalize-copy! (new 'stack-no-clear 'vector) arg0 1.0)
@@ -81,56 +74,56 @@
     )
   )
 
-(defmethod seek-to-point-toward-point! trsqv ((obj trsqv) (arg0 vector) (arg1 float) (arg2 time-frame))
+(defmethod seek-to-point-toward-point! ((this trsqv) (arg0 vector) (arg1 float) (arg2 time-frame))
   "Seek toward pointing toward arg0 from our current location."
-  (seek-toward-heading-vec! obj (vector-! (new 'stack-no-clear 'vector) arg0 (-> obj trans)) arg1 arg2)
+  (seek-toward-heading-vec! this (vector-! (new 'stack-no-clear 'vector) arg0 (-> this trans)) arg1 arg2)
   )
 
-(defmethod point-toward-point! trsqv ((obj trsqv) (arg0 vector))
+(defmethod point-toward-point! ((this trsqv) (arg0 vector))
   "Immediately point toward arg0"
-  (let ((s3-0 (get-quaternion obj)))
+  (let ((s3-0 (get-quaternion this)))
     (forward-up-nopitch->quaternion
       s3-0
-      (vector-normalize! (vector-! (new 'stack-no-clear 'vector) arg0 (-> obj trans)) 1.0)
+      (vector-normalize! (vector-! (new 'stack-no-clear 'vector) arg0 (-> this trans)) 1.0)
       (vector-y-quaternion! (new 'stack-no-clear 'vector) s3-0)
       )
     )
   )
 
-(defmethod seek-toward-yaw-angle! trsqv ((obj trsqv) (arg0 float) (arg1 float) (arg2 time-frame))
+(defmethod seek-toward-yaw-angle! ((this trsqv) (arg0 float) (arg1 float) (arg2 time-frame))
   "Seek toward the given yaw angle."
-  (let ((s3-0 (method-of-object obj seek-toward-heading-vec!))
+  (let ((s3-0 (method-of-object this seek-toward-heading-vec!))
         (s2-0 (new 'stack-no-clear 'vector))
         )
     (set! (-> s2-0 x) (sin arg0))
     (set! (-> s2-0 y) 0.0)
     (set! (-> s2-0 z) (cos arg0))
     (set! (-> s2-0 w) 1.0)
-    (s3-0 obj s2-0 arg1 arg2)
+    (s3-0 this s2-0 arg1 arg2)
     )
   )
 
-(defmethod set-yaw-angle-clear-roll-pitch! trsqv ((obj trsqv) (arg0 float))
+(defmethod set-yaw-angle-clear-roll-pitch! ((this trsqv) (arg0 float))
   "Immediately clear our roll and pitch and set yaw to the given angle"
-  (let ((s5-0 (method-of-object obj set-heading-vec-clear-roll-pitch!))
+  (let ((s5-0 (method-of-object this set-heading-vec-clear-roll-pitch!))
         (s4-0 (new 'stack-no-clear 'vector))
         )
     (set! (-> s4-0 x) (sin arg0))
     (set! (-> s4-0 y) 0.0)
     (set! (-> s4-0 z) (cos arg0))
     (set! (-> s4-0 w) 1.0)
-    (s5-0 obj s4-0)
+    (s5-0 this s4-0)
     )
   )
 
-(defmethod set-roll-to-grav! trsqv ((obj trsqv) (arg0 float))
+(defmethod set-roll-to-grav! ((this trsqv) (arg0 float))
   "Set our roll so that our local down aligns with standard gravity"
-  (set-roll-to-grav-2! obj arg0)
+  (set-roll-to-grav-2! this arg0)
   )
 
-(defmethod set-roll-to-grav-2! trsqv ((obj trsqv) (arg0 float))
+(defmethod set-roll-to-grav-2! ((this trsqv) (arg0 float))
   "Set our roll so that our local down aligns with standard gravity"
-  (let* ((s5-0 (get-quaternion obj))
+  (let* ((s5-0 (get-quaternion this))
          (s1-0 (-> *standard-dynamics* gravity-normal))
          (s3-0 (quaternion->matrix (new 'stack-no-clear 'matrix) s5-0))
          )
@@ -145,9 +138,9 @@
     )
   )
 
-(defmethod roll-relative-to-gravity trsqv ((obj trsqv))
+(defmethod roll-relative-to-gravity trsqv ((this trsqv))
   "Get our roll, relative to 'down' from gravity"
-  (let* ((s5-0 (get-quaternion obj))
+  (let* ((s5-0 (get-quaternion this))
          (gp-0 (vector-z-quaternion! (new 'stack-no-clear 'vector) s5-0))
          (s5-1 (vector-y-quaternion! (new 'stack-no-clear 'vector) s5-0))
          (a1-2 (-> *standard-dynamics* gravity-normal))
@@ -161,7 +154,7 @@
     )
   )
 
-(defmethod rotate-toward-orientation! trsqv ((obj trsqv) (arg0 quaternion) (arg1 float) (arg2 float) (arg3 int) (arg4 int) (arg5 float))
+(defmethod rotate-toward-orientation! ((this trsqv) (arg0 quaternion) (arg1 float) (arg2 float) (arg3 int) (arg4 int) (arg5 float))
   "Adjust our orientation toward target, subject to some rate limits.
    For jak 1, I said:
     I don't think this is a very robust function and probably doesn't work right in cases
@@ -179,7 +172,7 @@
     )
   (set! sv-240 arg4)
   (let ((s2-0 arg5)
-        (s5-0 (get-quaternion obj))
+        (s5-0 (get-quaternion this))
         )
     (let ((gp-0 (new 'stack-no-clear 'quaternion)))
       (when (< 0.0 arg2)
@@ -203,6 +196,7 @@
             (cond
               ((!= s2-0 0.0)
                (let* ((v1-5 (vector-cross! (new 'stack-no-clear 'vector) s1-2 sv-272))
+                      ;; og:preserve-this inlined vector-dot
                       ; (f0-3 (-> sv-256 x))
                       ; (f1-3 (-> sv-256 y))
                       ; (f2-0 (-> sv-256 z))
@@ -234,20 +228,20 @@
     )
   )
 
-(defmethod set-heading-vec-clear-roll-pitch! trsqv ((obj trsqv) (arg0 vector))
+(defmethod set-heading-vec-clear-roll-pitch! ((this trsqv) (arg0 vector))
   "Set our rotation to point along the given heading, with no roll or pitch."
   (forward-up->quaternion
-    (get-quaternion obj)
+    (get-quaternion this)
     (vector-normalize-copy! (new 'stack-no-clear 'vector) arg0 1.0)
     (new 'static 'vector :y 1.0 :w 1.0)
     )
   )
 
-(defmethod point-toward-point-clear-roll-pitch! trsqv ((obj trsqv) (arg0 vector))
+(defmethod point-toward-point-clear-roll-pitch! ((this trsqv) (arg0 vector))
   "Set our orientation to point toward arg0, clearing roll and pitch"
   (forward-up->quaternion
-    (get-quaternion obj)
-    (vector-normalize! (vector-! (new 'stack-no-clear 'vector) arg0 (-> obj trans)) 1.0)
+    (get-quaternion this)
+    (vector-normalize! (vector-! (new 'stack-no-clear 'vector) arg0 (-> this trans)) 1.0)
     (new 'static 'vector :y 1.0 :w 1.0)
     )
   )

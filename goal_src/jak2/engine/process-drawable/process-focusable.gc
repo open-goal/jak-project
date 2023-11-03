@@ -45,29 +45,25 @@
 ;; DECOMP BEGINS
 
 (deftype process-focusable (process-drawable)
-  ((root         collide-shape  :override)
-   (focus-status focus-status   :offset-assert 200)
+  ((root          collide-shape :override)
+   (focus-status  focus-status)
    )
-  :heap-base #x50
-  :method-count-assert 27
-  :size-assert         #xcc
-  :flag-assert         #x1b005000cc
   (:methods
-    (get-trans (_type_ int) vector 20)
-    (get-quat (_type_ int) quaternion 21)
-    (get-transv (_type_) vector 22)
-    (time-to-apex-or-ground (_type_ int) int 23)
-    (get-water-height (_type_) meters 24)
-    (get-notice-time (_type_) time-frame 25)
-    (get-inv-mass (_type_) float 26)
+    (get-trans (_type_ int) vector)
+    (get-quat (_type_ int) quaternion)
+    (get-transv (_type_) vector)
+    (time-to-apex-or-ground (_type_ int) int)
+    (get-water-height (_type_) meters)
+    (get-notice-time (_type_) time-frame)
+    (get-inv-mass (_type_) float)
     )
   )
 
 
 ;; WARN: Return type mismatch structure vs vector.
-(defmethod get-trans process-focusable ((obj process-focusable) (arg0 int))
+(defmethod get-trans ((this process-focusable) (arg0 int))
   "@returns the `trans` [[vector]] from the process's `root` (typically either a [[trsqv]] or a [[collide-shape]])"
-  (let ((gp-0 (-> obj root)))
+  (let ((gp-0 (-> this root)))
     (the-as vector (cond
                      ((zero? arg0)
                       (-> gp-0 trans)
@@ -76,8 +72,8 @@
                       (-> (the-as collide-shape-moving gp-0) gspot-pos)
                       )
                      ((and (or (= arg0 2) (= arg0 3)) (type? gp-0 collide-shape))
-                      ;; PC PORT NOTE : added check here so we don't use invalid bones
-                      (if (logtest? (-> obj draw status) (draw-control-status uninited))
+                      ;; og:preserve-this added check here so we don't use invalid bones
+                      (if (logtest? (-> this draw status) (draw-control-status uninited))
                           (-> gp-0 trans)
                           (-> gp-0 root-prim prim-core))
                       )
@@ -89,29 +85,29 @@
     )
   )
 
-(defmethod get-transv process-focusable ((obj process-focusable))
-  (-> obj root transv)
+(defmethod get-transv ((this process-focusable))
+  (-> this root transv)
   )
 
-(defmethod get-quat process-focusable ((obj process-focusable) (arg0 int))
-  (-> obj root quat)
+(defmethod get-quat ((this process-focusable) (arg0 int))
+  (-> this root quat)
   )
 
-(defmethod time-to-apex-or-ground process-focusable ((obj process-focusable) (arg0 int))
+(defmethod time-to-apex-or-ground ((this process-focusable) (arg0 int))
   0
   )
 
 ;; WARN: Return type mismatch int vs meters.
-(defmethod get-water-height process-focusable ((obj process-focusable))
+(defmethod get-water-height ((this process-focusable))
   (the-as meters 0)
   )
 
-(defmethod get-inv-mass process-focusable ((obj process-focusable))
+(defmethod get-inv-mass ((this process-focusable))
   0.0
   )
 
 ;; WARN: Return type mismatch int vs time-frame.
-(defmethod get-notice-time process-focusable ((obj process-focusable))
+(defmethod get-notice-time ((this process-focusable))
   (the-as time-frame 0)
   )
 

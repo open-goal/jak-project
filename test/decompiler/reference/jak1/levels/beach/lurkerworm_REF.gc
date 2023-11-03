@@ -3,21 +3,17 @@
 
 ;; definition of type lurkerworm
 (deftype lurkerworm (process-drawable)
-  ((root-override collide-shape-moving      :offset        112)
-   (twister       twister                   :offset-assert 176)
-   (head-tilt     float                     :offset-assert 180)
-   (strike-count  int32                     :offset-assert 184)
-   (angle         float                     :offset-assert 188)
-   (vulnerable    symbol                    :offset-assert 192)
-   (part2         sparticle-launch-control  :offset-assert 196)
+  ((root          collide-shape-moving :override)
+   (twister       twister)
+   (head-tilt     float)
+   (strike-count  int32)
+   (angle         float)
+   (vulnerable    symbol)
+   (part2         sparticle-launch-control)
    )
-  :heap-base #x60
-  :method-count-assert 22
-  :size-assert         #xc8
-  :flag-assert         #x16006000c8
   (:methods
-    (lurkerworm-method-20 (_type_) none 20)
-    (particle-effect (_type_) none 21)
+    (lurkerworm-method-20 (_type_) none)
+    (particle-effect (_type_) none)
     )
   (:states
     lurkerworm-die
@@ -31,37 +27,37 @@
   )
 
 ;; definition for method 3 of type lurkerworm
-(defmethod inspect lurkerworm ((obj lurkerworm))
+(defmethod inspect ((this lurkerworm))
   (let ((t9-0 (method-of-type process-drawable inspect)))
-    (t9-0 obj)
+    (t9-0 this)
     )
-  (format #t "~T~Ttwister: ~A~%" (-> obj twister))
-  (format #t "~T~Thead-tilt: ~f~%" (-> obj head-tilt))
-  (format #t "~T~Tstrike-count: ~D~%" (-> obj strike-count))
-  (format #t "~T~Tangle: ~f~%" (-> obj angle))
-  (format #t "~T~Tvulnerable: ~A~%" (-> obj vulnerable))
-  (format #t "~T~Tpart2: ~A~%" (-> obj part2))
-  obj
+  (format #t "~T~Ttwister: ~A~%" (-> this twister))
+  (format #t "~T~Thead-tilt: ~f~%" (-> this head-tilt))
+  (format #t "~T~Tstrike-count: ~D~%" (-> this strike-count))
+  (format #t "~T~Tangle: ~f~%" (-> this angle))
+  (format #t "~T~Tvulnerable: ~A~%" (-> this vulnerable))
+  (format #t "~T~Tpart2: ~A~%" (-> this part2))
+  this
   )
 
 ;; definition for method 7 of type lurkerworm
 ;; INFO: Return type mismatch process-drawable vs lurkerworm.
-(defmethod relocate lurkerworm ((obj lurkerworm) (arg0 int))
-  (if (nonzero? (-> obj part2))
-      (&+! (-> obj part2) arg0)
+(defmethod relocate ((this lurkerworm) (arg0 int))
+  (if (nonzero? (-> this part2))
+      (&+! (-> this part2) arg0)
       )
-  (if (nonzero? (-> obj twister))
-      (&+! (-> obj twister) arg0)
+  (if (nonzero? (-> this twister))
+      (&+! (-> this twister) arg0)
       )
-  (the-as lurkerworm ((method-of-type process-drawable relocate) obj arg0))
+  (the-as lurkerworm ((method-of-type process-drawable relocate) this arg0))
   )
 
 ;; definition for method 10 of type lurkerworm
-(defmethod deactivate lurkerworm ((obj lurkerworm))
-  (if (nonzero? (-> obj part2))
-      (kill-and-free-particles (-> obj part2))
+(defmethod deactivate ((this lurkerworm))
+  (if (nonzero? (-> this part2))
+      (kill-and-free-particles (-> this part2))
       )
-  ((method-of-type process-drawable deactivate) obj)
+  ((method-of-type process-drawable deactivate) this)
   (none)
   )
 
@@ -224,18 +220,18 @@
 
 ;; definition for method 20 of type lurkerworm
 ;; INFO: Return type mismatch int vs none.
-(defmethod lurkerworm-method-20 lurkerworm ((obj lurkerworm))
+(defmethod lurkerworm-method-20 ((this lurkerworm))
   (let ((s5-0 (new 'stack-no-clear 'vector)))
-    (vector-! s5-0 (target-pos 0) (-> obj root-override trans))
-    (set-target! (-> obj twister) (atan (-> s5-0 x) (-> s5-0 z)))
-    (twister-method-11 (-> obj twister))
+    (vector-! s5-0 (target-pos 0) (-> this root trans))
+    (set-target! (-> this twister) (atan (-> s5-0 x) (-> s5-0 z)))
+    (twister-method-11 (-> this twister))
     (let* ((f0-5 (sqrtf (+ (* (-> s5-0 x) (-> s5-0 x)) (* (-> s5-0 z) (-> s5-0 z)))))
            (f0-6 (atan (-> s5-0 y) f0-5))
            )
-      (seek! (-> obj head-tilt) f0-6 (* 5461.3335 (-> *display* seconds-per-frame)))
+      (seek! (-> this head-tilt) f0-6 (* 5461.3335 (seconds-per-frame)))
       )
     )
-  (set! (-> obj head-tilt) (fmin 8192.0 (fmax -5461.3335 (-> obj head-tilt))))
+  (set! (-> this head-tilt) (fmin 8192.0 (fmax -5461.3335 (-> this head-tilt))))
   0
   (none)
   )
@@ -266,46 +262,18 @@
 
 ;; definition for method 21 of type lurkerworm
 ;; INFO: Return type mismatch int vs none.
-(defmethod particle-effect lurkerworm ((obj lurkerworm))
-  (let ((a2-0 (vector<-cspace! (new 'stack-no-clear 'vector) (-> obj node-list data 5))))
-    (sp-launch-particles-var
-      *sp-particle-system-2d*
-      (-> *part-id-table* 661)
-      a2-0
-      (the-as sparticle-launch-state #f)
-      (the-as sparticle-launch-control #f)
-      1.0
-      )
+(defmethod particle-effect ((this lurkerworm))
+  (let ((a2-0 (vector<-cspace! (new 'stack-no-clear 'vector) (-> this node-list data 5))))
+    (launch-particles (-> *part-id-table* 661) a2-0)
     )
-  (let ((a2-1 (vector<-cspace! (new 'stack-no-clear 'vector) (-> obj node-list data 6))))
-    (sp-launch-particles-var
-      *sp-particle-system-2d*
-      (-> *part-id-table* 661)
-      a2-1
-      (the-as sparticle-launch-state #f)
-      (the-as sparticle-launch-control #f)
-      1.0
-      )
+  (let ((a2-1 (vector<-cspace! (new 'stack-no-clear 'vector) (-> this node-list data 6))))
+    (launch-particles (-> *part-id-table* 661) a2-1)
     )
-  (let ((a2-2 (vector<-cspace! (new 'stack-no-clear 'vector) (-> obj node-list data 7))))
-    (sp-launch-particles-var
-      *sp-particle-system-2d*
-      (-> *part-id-table* 661)
-      a2-2
-      (the-as sparticle-launch-state #f)
-      (the-as sparticle-launch-control #f)
-      1.0
-      )
+  (let ((a2-2 (vector<-cspace! (new 'stack-no-clear 'vector) (-> this node-list data 7))))
+    (launch-particles (-> *part-id-table* 661) a2-2)
     )
-  (let ((a2-3 (vector<-cspace! (new 'stack-no-clear 'vector) (-> obj node-list data 8))))
-    (sp-launch-particles-var
-      *sp-particle-system-2d*
-      (-> *part-id-table* 661)
-      a2-3
-      (the-as sparticle-launch-state #f)
-      (the-as sparticle-launch-control #f)
-      1.0
-      )
+  (let ((a2-3 (vector<-cspace! (new 'stack-no-clear 'vector) (-> this node-list data 8))))
+    (launch-particles (-> *part-id-table* 661) a2-3)
     )
   0
   (none)
@@ -321,7 +289,7 @@
     (('touch)
      (if ((method-of-type touching-shapes-entry prims-touching?)
           (the-as touching-shapes-entry (-> arg3 param 0))
-          (-> self root-override)
+          (-> self root)
           (the-as uint 1)
           )
          (send-event arg0 'attack (-> arg3 param 0) (new 'static 'attack-info))
@@ -350,20 +318,18 @@ lurkerworm-default-post-behavior
   :event lurkerworm-default-event-handler
   :enter (behavior ()
     (ja-channel-set! 0)
-    (set! (-> self state-time) (-> *display* base-frame-counter))
-    (none)
+    (set-time! (-> self state-time))
     )
   :code (behavior ()
     (loop
-      (if (and (>= (- (-> *display* base-frame-counter) (-> self state-time)) (seconds 1))
+      (if (and (time-elapsed? (-> self state-time) (seconds 1))
                *target*
-               (>= 81920.0 (vector-vector-distance (-> self root-override trans) (-> *target* control trans)))
+               (>= 81920.0 (vector-vector-distance (-> self root trans) (-> *target* control trans)))
                )
           (go lurkerworm-spot)
           )
       (suspend)
       )
-    (none)
     )
   :post lurkerworm-default-post-behavior
   )
@@ -372,24 +338,22 @@ lurkerworm-default-post-behavior
 (defstate lurkerworm-spot (lurkerworm)
   :event lurkerworm-default-event-handler
   :enter (behavior ()
-    (set! (-> self state-time) (-> *display* base-frame-counter))
+    (set-time! (-> self state-time))
     (sound-play "worm-rise1")
-    (none)
     )
   :code (behavior ()
     (set! (-> self part local-clock) 0)
     (loop
-      (spawn (-> self part) (-> self root-override trans))
+      (spawn (-> self part) (-> self root trans))
       (particle-effect self)
-      (when (>= (- (-> *display* base-frame-counter) (-> self state-time)) (seconds 1))
-        (if (and *target* (>= 81920.0 (vector-vector-distance (-> self root-override trans) (-> *target* control trans))))
+      (when (time-elapsed? (-> self state-time) (seconds 1))
+        (if (and *target* (>= 81920.0 (vector-vector-distance (-> self root trans) (-> *target* control trans))))
             (go lurkerworm-rise)
             (go lurkerworm-idle)
             )
         )
       (suspend)
       )
-    (none)
     )
   :post lurkerworm-default-post-behavior
   )
@@ -398,21 +362,19 @@ lurkerworm-default-post-behavior
 (defstate lurkerworm-rise (lurkerworm)
   :event lurkerworm-default-event-handler
   :enter (behavior ()
-    (set! (-> self state-time) (-> *display* base-frame-counter))
-    (none)
+    (set-time! (-> self state-time))
     )
   :code (behavior ()
     (ja-channel-set! 1)
     (ja-no-eval :group! lurkerworm-rise-ja :num! (seek!) :frame-num 0.0)
     (until (ja-done? 0)
-      (spawn (-> self part) (-> self root-override trans))
+      (spawn (-> self part) (-> self root trans))
       (particle-effect self)
       (suspend)
       (ja :num! (seek!))
       )
     (set! (-> self strike-count) 3)
     (go lurkerworm-rest)
-    (none)
     )
   :post lurkerworm-default-post-behavior
   )
@@ -421,13 +383,11 @@ lurkerworm-default-post-behavior
 (defstate lurkerworm-rest (lurkerworm)
   :event lurkerworm-default-event-handler
   :enter (behavior ()
-    (set! (-> self state-time) (-> *display* base-frame-counter))
+    (set-time! (-> self state-time))
     (set! (-> self vulnerable) #t)
-    (none)
     )
   :exit (behavior ()
     (set! (-> self vulnerable) #f)
-    (none)
     )
   :code (behavior ()
     (let* ((f30-0 10.0)
@@ -446,13 +406,13 @@ lurkerworm-default-post-behavior
         (particle-effect self)
         (when gp-1
           (let* ((f0-13
-                   (- 1.0 (* 0.00009765625
-                             (+ -16384.0 (if *target*
-                                             (vector-vector-distance (-> self root-override trans) (-> *target* control trans))
-                                             4096000.0
-                                             )
-                                )
-                             )
+                   (- 1.0
+                      (* 0.00009765625 (+ -16384.0 (if *target*
+                                                       (vector-vector-distance (-> self root trans) (-> *target* control trans))
+                                                       4096000.0
+                                                       )
+                                          )
+                         )
                       )
                    )
                  (f30-2 (* 0.2 f0-13))
@@ -477,7 +437,6 @@ lurkerworm-default-post-behavior
           (go lurkerworm-sink)
           )
       )
-    (none)
     )
   :post lurkerworm-default-post-behavior
   )
@@ -498,7 +457,6 @@ lurkerworm-default-post-behavior
     (ja-no-eval :num! (seek!))
     (ja-channel-push! 1 (seconds 0.135))
     (go lurkerworm-rest)
-    (none)
     )
   :post lurkerworm-default-post-behavior
   )
@@ -507,32 +465,27 @@ lurkerworm-default-post-behavior
 (defstate lurkerworm-sink (lurkerworm)
   :event lurkerworm-default-event-handler
   :enter (behavior ()
-    (set! (-> self state-time) (-> *display* base-frame-counter))
-    (none)
+    (set-time! (-> self state-time))
     )
   :code (behavior ()
     (ja-no-eval :group! lurkerworm-sink-ja :num! (seek!) :frame-num 0.0)
     (until (ja-done? 0)
-      (spawn (-> self part2) (-> self root-override trans))
+      (spawn (-> self part2) (-> self root trans))
       (particle-effect self)
       (suspend)
       (ja :num! (seek!))
       )
     (go lurkerworm-idle)
-    (none)
     )
   :post lurkerworm-default-post-behavior
   )
 
 ;; failed to figure out what this is:
 (defstate lurkerworm-die (lurkerworm)
-  :event (the-as
-    (function process int symbol event-message-block object :behavior lurkerworm)
-    process-drawable-death-event-handler
-    )
+  :event process-drawable-death-event-handler
   :code (behavior ()
     (logclear! (-> self mask) (process-mask actor-pause))
-    (let ((v1-3 (-> self root-override root-prim)))
+    (let ((v1-3 (-> self root root-prim)))
       (set! (-> v1-3 collide-with) (collide-kind))
       (set! (-> v1-3 prim-core collide-as) (collide-kind))
       )
@@ -543,16 +496,15 @@ lurkerworm-default-post-behavior
       (ja :num! (seek!))
       )
     (cleanup-for-death self)
-    (none)
     )
   :post lurkerworm-default-post-behavior
   )
 
 ;; definition for method 11 of type lurkerworm
 ;; INFO: Return type mismatch object vs none.
-(defmethod init-from-entity! lurkerworm ((obj lurkerworm) (arg0 entity-actor))
-  (logior! (-> obj mask) (process-mask enemy))
-  (let ((s4-0 (new 'process 'collide-shape-moving obj (collide-list-enum usually-hit-by-player))))
+(defmethod init-from-entity! ((this lurkerworm) (arg0 entity-actor))
+  (logior! (-> this mask) (process-mask enemy))
+  (let ((s4-0 (new 'process 'collide-shape-moving this (collide-list-enum usually-hit-by-player))))
     (set! (-> s4-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s4-0 reaction) default-collision-reaction)
     (set! (-> s4-0 no-reaction)
@@ -620,24 +572,24 @@ lurkerworm-default-post-behavior
       )
     (set! (-> s4-0 nav-radius) (* 0.75 (-> s4-0 root-prim local-sphere w)))
     (backup-collide-with-as s4-0)
-    (set! (-> obj root-override) s4-0)
+    (set! (-> this root) s4-0)
     )
-  (process-drawable-from-entity! obj arg0)
-  (initialize-skeleton obj *lurkerworm-sg* '())
-  (set! (-> obj fact)
-        (new 'process 'fact-info-enemy obj (pickup-type eco-pill-random) (-> *FACT-bank* default-pill-inc))
+  (process-drawable-from-entity! this arg0)
+  (initialize-skeleton this *lurkerworm-sg* '())
+  (set! (-> this fact)
+        (new 'process 'fact-info-enemy this (pickup-type eco-pill-random) (-> *FACT-bank* default-pill-inc))
         )
-  (set! (-> obj angle) 0.0)
-  (set! (-> obj vulnerable) #f)
-  (set! (-> obj part) (create-launch-control (-> *part-group-id-table* 157) obj))
-  (set! (-> obj part2) (create-launch-control (-> *part-group-id-table* 158) obj))
-  (set! (-> obj twister) (new 'process 'twister 3 15 1092.2667 72.81778 0.25 0.001))
-  (twister-method-9 (-> obj twister) 3 9 910.2222)
-  (set! (-> obj head-tilt) 0.0)
-  (set! (-> obj skel prebind-function) lurkerworm-prebind-function)
-  (set! (-> obj skel postbind-function) lurkerworm-joint-callback)
-  (set! (-> obj root-override nav-radius) 12288.0)
-  (nav-mesh-connect obj (-> obj root-override) (the-as nav-control #f))
+  (set! (-> this angle) 0.0)
+  (set! (-> this vulnerable) #f)
+  (set! (-> this part) (create-launch-control (-> *part-group-id-table* 157) this))
+  (set! (-> this part2) (create-launch-control (-> *part-group-id-table* 158) this))
+  (set! (-> this twister) (new 'process 'twister 3 15 1092.2667 72.81778 0.25 0.001))
+  (twister-method-9 (-> this twister) 3 9 910.2222)
+  (set! (-> this head-tilt) 0.0)
+  (set! (-> this skel prebind-function) lurkerworm-prebind-function)
+  (set! (-> this skel postbind-function) lurkerworm-joint-callback)
+  (set! (-> this root nav-radius) 12288.0)
+  (nav-mesh-connect this (-> this root) (the-as nav-control #f))
   (go lurkerworm-idle)
   (none)
   )

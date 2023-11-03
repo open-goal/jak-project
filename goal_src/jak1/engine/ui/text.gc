@@ -14,91 +14,84 @@
 ;; It seems like there it would be possible to have multiple "groups" of text,
 ;; but in practice, only the COMMON group is used.
 
+;; DECOMP BEGINS
+
 ;; State of text drawing.
 (define *game-text-word* (new 'global 'string 128 (the string '#f)))
 (define *game-text-line* (new 'global 'string 256 (the string '#f)))
 (define *level-text-file-load-flag* #t)
 
 ;; allocate the game text heap if it isn't already allocated.
-(when (= 0 (-> *common-text-heap* base))
-  (let ((heap *common-text-heap*))
-    (set! (-> heap base) (malloc 'global 64000))
-    (set! (-> heap current) (-> heap base))
-    (set! (-> heap top-base) (&+ (-> heap base) 64000))
-    (set! (-> heap top) (-> heap top-base))
-    )
+(when (zero? (-> *common-text-heap* base))
+  (kheap-alloc *common-text-heap* (* 64 1024)) ;; changed from 34K -> 64K
   )
 
 ;; The game-text-info stores records for each string in the loaded text on the text heap.
 
-(defmethod length game-text-info ((obj game-text-info))
+(defmethod length ((this game-text-info))
   "Get the length (number of strings) in a game-text-info."
-  (-> obj length)
+  (-> this length)
   )
 
-(defmethod asize-of game-text-info ((obj game-text-info))
+(defmethod asize-of ((this game-text-info))
   "Get the size in memory of the game-text-info"
   ;; each record is 8 bytes
-  (the int (+ (-> obj type size) (* 8 (-> obj length))))
+  (the-as int (+ (-> this type size) (* (-> this length) 8)))
   )
 
-(defmethod inspect game-text-info ((obj game-text-info))
+(defmethod inspect ((this game-text-info))
   "Print a game text info, including all strings"
-  (format '#t "[~8x] ~A~%" obj (-> obj type))
-  (format '#t "~Tlength: ~D~%" (-> obj length))
-  (format '#t "~Tdata[~D]: @ #x~X~%" (-> obj length) (-> obj data))
+  (format '#t "[~8x] ~A~%" this (-> this type))
+  (format '#t "~Tlength: ~D~%" (-> this length))
+  (format '#t "~Tdata[~D]: @ #x~X~%" (-> this length) (-> this data))
   
   (let ((i 0))
-    (while (< i (-> obj length))
-      (format '#t "~T  [~D] #x~X ~A~%" i (-> obj data i id) (-> obj data i text))
+    (while (< i (-> this length))
+      (format '#t "~T  [~D] #x~X ~A~%" i (-> this data i id) (-> this data i text))
       (+! i 1)
       )
     )
-  obj
+  this
   )
 
-(defmethod mem-usage game-text-info ((obj game-text-info) (arg0 memory-usage-block) (arg1 int))
+(defmethod mem-usage ((this game-text-info) (arg0 memory-usage-block) (arg1 int))
   "Get the memory usage."
   (set! (-> arg0 length) (max 81 (-> arg0 length)))
   (set! (-> arg0 data 80 name) "string")
-  (set! (-> arg0 data 80 count) (+ (-> arg0 data 80 count) 1))
+  (+! (-> arg0 data 80 count) 1)
 
   ;; get the size of this structure
-  (let ((v1-6 (asize-of obj)))
-    (set! (-> arg0 data 80 used) (+ (-> arg0 data 80 used) v1-6))
-    (set! (-> arg0 data 80 total)
-          (+ (-> arg0 data 80 total) (logand -16 (+ v1-6 15)))
-          )
+  (let ((v1-6 (asize-of this)))
+    (+! (-> arg0 data 80 used) v1-6)
+    (+! (-> arg0 data 80 total) (logand -16 (+ v1-6 15)))
     )
 
   ;; get the size of all the strings
-  (dotimes (s4-0 (-> obj length))
+  (dotimes (s4-0 (-> this length))
     (set! (-> arg0 length) (max 81 (-> arg0 length)))
     (set! (-> arg0 data 80 name) "string")
-    (set! (-> arg0 data 80 count) (+ (-> arg0 data 80 count) 1))
-    (let ((v1-18 (asize-of (-> obj data s4-0 text))))
-      (set! (-> arg0 data 80 used) (+ (-> arg0 data 80 used) v1-18))
-      (set! (-> arg0 data 80 total)
-            (+ (-> arg0 data 80 total) (logand -16 (+ v1-18 15)))
-            )
+    (+! (-> arg0 data 80 count) 1)
+    (let ((v1-18 (asize-of (-> this data s4-0 text))))
+      (+! (-> arg0 data 80 used) v1-18)
+      (+! (-> arg0 data 80 total) (logand -16 (+ v1-18 15)))
       )
     )
-  obj
+  this
   )
 
-(defmethod lookup-text! game-text-info ((obj game-text-info) (arg0 text-id) (arg1 symbol))
+(defmethod lookup-text! ((this game-text-info) (arg0 text-id) (arg1 symbol))
   "Look up text by ID.  Will return the string.
    If the ID can't be found, and arg1 is #t, it will return #f,
    otherwise the temp string UNKNOWN ID <id number>"
 
   ;; binary search for it
   (let* ((a1-1 0)                     ;; min
-         (a3-0 (+ (-> obj length) 1)) ;; max
+         (a3-0 (+ (-> this length) 1)) ;; max
          (v1-2 (/ (+ a1-1 a3-0) 2))   ;; mid
          )
     (let ((t0-0 -1)) ;; last time's lookup
-      (while (and (!= (-> obj data v1-2 id) arg0) (!= v1-2 t0-0)) ;; while we haven't found it/not the same as last time
-        (if (< arg0 (-> obj data v1-2 id))
+      (while (and (!= (-> this data v1-2 id) arg0) (!= v1-2 t0-0)) ;; while we haven't found it/not the same as last time
+        (if (< arg0 (-> this data v1-2 id))
             (set! a3-0 v1-2) ;; bisect, right
             (set! a1-1 v1-2) ;; bisect, left
             )
@@ -107,27 +100,27 @@
         )
       )
     (cond
-      ((!= (-> obj data v1-2 id) arg0) ;; didn't find it :(
-       (cond
-         (arg1
-          (the-as string #f)
-          )
-         (else
-          ;; First, look up the id in the fallback
-          (#if PC_PORT
-            (if *fallback-text-lookup?*
-              (let ((fallback-result (lookup-text! *fallback-text* arg0 #t)))
-               (if (!= fallback-result #f)
-                 fallback-result
-                 (string-format "UNKNOWN ID ~D" arg0)))
+      ((!= (-> this data v1-2 id) arg0) ;; didn't find it :(
+        (cond
+          (arg1
+            (the-as string #f)
+            )
+          (else
+            ;; First, look up the id in the fallback
+            (#if PC_PORT
+              (if *fallback-text-lookup?*
+                (let ((fallback-result (lookup-text! *fallback-text* arg0 #t)))
+                  (if (!= fallback-result #f)
+                    fallback-result
+                    (string-format "UNKNOWN ID ~D" arg0)))
+                (string-format "UNKNOWN ID ~D" arg0))
               (string-format "UNKNOWN ID ~D" arg0))
-            (string-format "UNKNOWN ID ~D" arg0))
+            )
           )
-         )
-       )
+        )
       (else
-       (-> obj data v1-2 text) ;; found it!
-       )
+        (-> this data v1-2 text) ;; found it!
+        )
       )
     )
   )
@@ -141,16 +134,11 @@
 ;; loading is complete once load-game-text-info returns
 (define text-is-loading #f)
 
+;; WARN: Found some very strange gotos. Check result carefully, this is not well tested.
 (defun load-game-text-info ((txt-name string) (curr-text symbol) (heap kheap))
   "Load text, if needed. txt-name is the group name, curr-text is the _symbol_ for
    the game-text-info, and heap is the heap to load to. The heap will be cleared."
-  (local-vars
-   (v0-2 int)
-   (heap-sym-heap game-text-info)
-   (lang language-enum)
-   (load-status int)
-   (heap-free int)
-   )
+  (local-vars (v0-2 int) (heap-sym-heap game-text-info) (lang language-enum) (load-status int) (heap-free int))
   (set! heap-sym-heap (the-as game-text-info (-> curr-text value)))
               ;; split languages in PC port
   (set! lang (#if PC_PORT (the language-enum (-> *pc-settings* text-language))
@@ -158,7 +146,7 @@
   (set! load-status 0)
   (set! heap-free (&- (-> heap top) (the-as uint (-> heap base))))
   ;; english -> UK english in PAL
-  ;; PC port note : no longer necessary.
+  ;; og:preserve-this no longer necessary.
   (#unless PC_PORT
     (if (and (= (scf-get-territory) GAME_TERRITORY_SCEE) (= lang (language-enum english)))
         (set! lang (language-enum uk-english))
@@ -345,9 +333,9 @@
    in a single text group and file."
 
   (when (or *level-text-file-load-flag* (>= arg0 0))
-   (load-game-text-info "common" '*common-text* *common-text-heap*)
-   (#when PC_PORT
-    (load-fallback-game-text-info "common" '*fallback-text* *fallback-text-heap*))
+    (load-game-text-info "common" '*common-text* *common-text-heap*)
+    (#when PC_PORT
+      (load-fallback-game-text-info "common" '*fallback-text* *fallback-text-heap*))
     )
   (none)
   )
@@ -358,6 +346,9 @@
   (let ((s5-0 (new 'static 'vector4w))
         (gp-0 (new 'static 'matrix))
         )
+    (#when PC_PORT
+      (if (logtest? (-> arg0 flags) (font-flags right))
+          (set! (-> arg0 width) (- (-> arg0 width)))))
     (let ((s4-0 (new 'static 'vector)))
       (set-vector! s4-0 (-> arg0 origin x) (-> arg0 origin y) 0.0 1.0)
       (set! (-> s4-0 x) (* (-> s4-0 x) (-> *video-parms* relative-x-scale-reciprical)))
@@ -417,6 +408,9 @@
       (the-as vector (-> gp-0 vector))
       (the-as vector s5-0)
       )
+    (#when PC_PORT
+      (if (logtest? (-> arg0 flags) (font-flags right))
+          (set! (-> arg0 width) (- (-> arg0 width)))))
     )
   0
   (none)
@@ -429,6 +423,7 @@
   (set! (-> *font-work* color-table idx color 2 a) alpha)
   (set! (-> *font-work* color-table idx color 3 a) alpha)
   (set! (-> *font-work* color-shadow w) alpha)
+  0
   (none)
   )
 
@@ -446,7 +441,7 @@
       (if (logtest? (-> font-ctxt flags) (font-flags middle))
           (+! (-> font-ctxt origin x) (* 0.5 (- orig-width scaled-width)))
           )
-      (if (logtest? (-> font-ctxt flags) (font-flags left))
+      (if (logtest? (-> font-ctxt flags) (font-flags middle-vert))
           ;; this code is really weird. it does the divide with an int, but fails
           ;; to convert it back to a float before adding??
           (+! (-> font-ctxt origin y) (the-as float (/ (the int (- orig-height scaled-height)) 2)))
@@ -462,34 +457,35 @@
     (set! (-> font-ctxt height) orig-height)
     (set! (-> font-ctxt scale) orig-scale)
     )
+  0
   (none)
   )
 
 (defun print-game-text ((str string) (font-ctxt font-context) (no-draw symbol) (alpha int) (line-height int))
   "Print text. Not worth commenting until we get stack variables in lets, I think"
   (local-vars
-   (sv-112 float)
-   (sv-116 float)
-   (sv-120 float)
-   (sv-124 float)
-   (sv-128 float)
-   (sv-132 float)
-   (sv-136 float)
-   (sv-140 (pointer uint8))
-   (sv-144 float)
-   (sv-148 float)
-   (sv-152 float)
-   (sv-156 float)
-   (sv-160 float)
-   (sv-164 float)
-   (sv-168 int)
-   (sv-176 int)
-   (sv-184 int)
-   (sv-192 int)
-   (sv-200 int)
-   (sv-208 symbol)
-   (sv-212 symbol)
-   )
+    (sv-112 float)
+    (sv-116 float)
+    (sv-120 float)
+    (sv-124 float)
+    (sv-128 float)
+    (sv-132 float)
+    (sv-136 float)
+    (sv-140 (pointer uint8))
+    (sv-144 float)
+    (sv-148 float)
+    (sv-152 float)
+    (sv-156 float)
+    (sv-160 float)
+    (sv-164 float)
+    (sv-168 int)
+    (sv-176 int)
+    (sv-184 int)
+    (sv-192 int)
+    (sv-200 int)
+    (sv-208 symbol)
+    (sv-212 symbol)
+    )
   (let ((gp-0 (new
                 'stack
                 'font-context
@@ -514,8 +510,8 @@
       (set! (-> gp-0 flags) (-> font-ctxt flags))
       (set! (-> gp-0 color) (-> font-ctxt color))
       (set! (-> gp-0 scale) sv-136)
-      (when (logtest? (-> gp-0 flags) (font-flags left))
-        (logclear! (-> gp-0 flags) (font-flags left))
+      (when (logtest? (-> gp-0 flags) (font-flags middle-vert))
+        (logclear! (-> gp-0 flags) (font-flags middle-vert))
         (let ((f30-0 (-> gp-0 width))
               (f28-0 (-> gp-0 height))
               )
@@ -572,7 +568,7 @@
                )
            )
           (else
-            ;; PAL patch here
+            ;; og:preserve-this PAL patch here
             (if (= sv-176 3)
                 (set! sv-176 32)
                 )
@@ -681,11 +677,12 @@
 
 (defun disable-level-text-file-loading ()
   (set! *level-text-file-load-flag* #f)
+  0
   (none)
   )
 
 (defun enable-level-text-file-loading ()
   (set! *level-text-file-load-flag* #t)
+  0
   (none)
   )
-

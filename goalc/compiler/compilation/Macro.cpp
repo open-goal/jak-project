@@ -17,7 +17,7 @@ bool Compiler::try_getting_macro_from_goos(const goos::Object& macro_name, goos:
     got_macro = true;
   }
 
-  if (got_macro) {
+  if (got_macro && dest) {
     *dest = macro_obj;
   }
   return got_macro;
@@ -151,7 +151,7 @@ Val* Compiler::compile_quote(const goos::Object& form, const goos::Object& rest,
   auto& thing = args.unnamed.front();
   switch (thing.type) {
     case goos::ObjectType::SYMBOL:
-      return compile_get_sym_obj(thing.as_symbol()->name, env);
+      return compile_get_sym_obj(thing.as_symbol().name_ptr, env);
     case goos::ObjectType::EMPTY_LIST: {
       auto empty_pair = compile_get_sym_obj("_empty_", env);
       empty_pair->set_type(m_ts.make_typespec("pair"));
@@ -196,16 +196,16 @@ Val* Compiler::compile_define_constant(const goos::Object& form,
 
   // GOAL constant
   if (goal) {
-    if (m_symbol_types.find(sym->name) != m_symbol_types.end()) {
+    if (m_symbol_types.find(sym) != m_symbol_types.end()) {
       throw_compiler_error(form,
                            "Cannot define {} as a constant because "
                            "it is already the name of a symbol of type {}",
-                           sym->name, m_symbol_types.at(sym->name).print());
+                           sym.name_ptr, m_symbol_types.at(sym).print());
     }
 
     auto existing = m_global_constants.find(sym);
     if (existing != m_global_constants.end() && existing->second != value) {
-      print_compiler_warning("Constant {} has been redefined {} -> {}", sym->print(),
+      print_compiler_warning("Constant {} has been redefined {} -> {}", sym.name_ptr,
                              existing->second.print(), value.print());
     }
     m_global_constants[sym] = value;
@@ -213,12 +213,12 @@ Val* Compiler::compile_define_constant(const goos::Object& form,
 
   // GOOS constant
   if (goos) {
-    m_goos.global_environment.as_env()->vars[sym] = value;
+    m_goos.global_environment.as_env()->vars.set(sym, value);
   }
 
   // TODO - eventually, it'd be nice if global constants were properly typed
   // and this information was propagated
-  m_symbol_info.add_constant(sym->name, form, sym_meta);
+  m_symbol_info.add_constant(sym.name_ptr, form, sym_meta);
 
   return get_none();
 }
@@ -265,13 +265,29 @@ Val* Compiler::compile_mlet(const goos::Object& form, const goos::Object& rest, 
   return result;
 }
 
+Val* Compiler::compile_macro_expand(const goos::Object& form, const goos::Object& rest, Env* env) {
+  auto& macro = pair_car(rest);
+  auto& macro_name = pair_car(macro);
+  if (!try_getting_macro_from_goos(macro_name, nullptr)) {
+    throw_compiler_error(form, "invalid argument to `macro-expand`: {} does not exist as a macro",
+                         macro_name.print());
+  }
+  if (!pair_cdr(rest).is_empty_list()) {
+    throw_compiler_error(form, "too many arguments to `macro-expand`");
+  }
+  auto result = expand_macro_completely(macro, env);
+  auto code = pretty_print::to_string(result);
+  lg::print("{}\n", code);
+  return get_none();
+}
+
 bool Compiler::expand_macro_once(const goos::Object& src, goos::Object* out, Env*) {
   if (!src.is_pair()) {
     return false;
   }
 
-  auto first = src.as_pair()->car;
-  auto rest = src.as_pair()->cdr;
+  auto& first = src.as_pair()->car;
+  auto& rest = src.as_pair()->cdr;
   if (!first.is_symbol()) {
     return false;
   }

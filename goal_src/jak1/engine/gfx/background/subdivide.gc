@@ -8,6 +8,8 @@
 ;; This file mainly contains statistics stuff for the background renderers.
 ;; And the mysterious "gomi stats hack", abbreviated GSH.
 
+;; DECOMP BEGINS
+
 (define *merc-global-stats* (new 'global 'merc-global-stats))
 
 (defun clear-tr-stat ((arg0 tr-stat))
@@ -28,18 +30,9 @@
 (defun-debug print-tr-stat ((stat tr-stat) (name string) (dest string))
   "Print the statistics for stat to dest and to the screen. Also add them to the total stats"
   (clear dest)
-  (when (nonzero? (+ (+ (+ (+ (-> stat groups) (-> stat fragments)) (-> stat tris)) (-> stat dverts)) (-> stat instances)))
-    (format dest "~0k~4d  ~5d   ~6d   ~6d"
-     (-> stat groups)
-     (-> stat fragments)
-     (-> stat tris)
-     (-> stat dverts)
-     )
-    (format dest "~0k   ~7f ~5d  ~s"
-            (/ (* 2.0 (the float (-> stat tris))) (the float (- (-> stat dverts) (-> stat tris))))
-            (-> stat instances)
-            name
-            )
+  (when (nonzero? (+ (-> stat groups) (-> stat fragments) (-> stat tris) (-> stat dverts) (-> stat instances)))
+    (format dest "~0k~4d  ~5d   ~6d   ~6d" (-> stat groups) (-> stat fragments) (-> stat tris) (-> stat dverts))
+    (format dest "~0k   ~7f ~5d  ~s" (/ (* 2.0 (the float (-> stat tris))) (the float (- (-> stat dverts) (-> stat tris)))) (-> stat instances) name)
     ;; print to the screen
     (format *stdcon* "~S~%" dest)
     ;; update total
@@ -57,22 +50,23 @@
 
   ;; make our own profile thing.
   (if *debug-segment*
-      (add-frame (-> *display* frames (-> *display* on-screen) frame profile-bar 0)
-                 'draw
-                 (new 'static 'rgba :r #x40 :b #x40 :a #x80)
-                 )
+      (add-frame
+        (-> *display* frames (-> *display* on-screen) frame profile-bar 0)
+        'draw
+        (new 'static 'rgba :r #x40 :b #x40 :a #x80)
+        )
       )
-
-  ;; print level memory stats
   (dotimes (gp-0 (-> *level* length))
     (let ((s5-0 (-> *level* level gp-0)))
       (when (= (-> s5-0 status) 'active)
         (compute-memory-usage s5-0 #f)
-        (format *stdcon* "~0k~D ~A ~,,2fK + textures~%"
-                (-> s5-0 index)
-                (-> s5-0 name)
-                (* 0.0009765625 (the float (-> s5-0 mem-usage)))
-                )
+        (format
+          *stdcon*
+          "~0k~D ~A ~,,2fK + textures~%"
+          (-> s5-0 index)
+          (-> s5-0 name)
+          (* 0.0009765625 (the float (-> s5-0 mem-usage)))
+          )
         )
       )
     )
@@ -119,10 +113,10 @@
   (clear-tr-stat (-> *terrain-stats* total))
   (if *debug-segment*
       (add-frame
-       (-> *display* frames (-> *display* on-screen) frame profile-bar 0)
-       'draw
-       (new 'static 'rgba :b #xff :a #x80)
-       )
+        (-> *display* frames (-> *display* on-screen) frame profile-bar 0)
+        'draw
+        (new 'static 'rgba :b #xff :a #x80)
+        )
       )
   0
   (none)
@@ -150,7 +144,7 @@
   (none)
   )
 
-(define *subdivide-settings* (new 'global 'subdivide-settings (meters 30.0) (meters 70.0)))
+(define *subdivide-settings* (new 'global 'subdivide-settings (meters 30) (meters 70)))
 
 (defun set-tfrag-dists! ((arg0 tfrag-dists))
   (let ((f2-0 (-> *subdivide-settings* dist 0))
@@ -184,21 +178,19 @@
 ;; oops, this runs even when not debugging and ends up on global.
 (define *perf-stats* (new 'debug 'perf-stat-array 17))
 
-(defmethod print-to-stream perf-stat ((obj perf-stat) (arg0 string) (arg1 basic))
+(defmethod print-to-stream ((this perf-stat) (arg0 string) (arg1 basic))
   "Print performance info to a stream. But the stream is ignored and it is
    printed to the screen."
-  (format *stdcon* "~3d  ~8d  ~8d  ~6d ~6d"
-          (-> obj count)
-          (-> obj cycles)
-          (-> obj instructions)
-          0 ;; (-> obj icache) removed, doesn't work on pc
-          0 ;; (-> obj dcache) removed, doesn't work on pc
-          )
-  (format *stdcon* "  ~2d ~2d ~2d"
-          (-> obj to-vu0-waits)
-          (-> obj to-spr-waits)
-          (-> obj from-spr-waits)
-          )
+  (format
+    *stdcon*
+    "~3d  ~8d  ~8d  ~6d ~6d"
+    (-> this count)
+    (-> this cycles)
+    (-> this instructions)
+    (-> this icache)
+    (-> this dcache)
+    )
+  (format *stdcon* "  ~2d ~2d ~2d" (-> this to-vu0-waits) (-> this to-spr-waits) (-> this from-spr-waits))
   (format *stdcon* "   ~s~%" arg0)
   (none)
   )
@@ -229,7 +221,7 @@
 
 ;; Set up for the GOMI STATS HACK
 (define GSH_ENABLE #f)
-(define GSH_BUCKET (the-as bucket-id 3))
+(define GSH_BUCKET (bucket-id sky-draw))
 (define GSH_WHICH_STAT 1)
 (define GSH_MAX_DISPLAY (the-as basic #f))
 (define GSH_TIME 64)
@@ -243,22 +235,14 @@
       (when GSH_ENABLE
         (let ((bucket GSH_BUCKET))
           (let ((which-stat GSH_WHICH_STAT))
-            (set! gp-0 (the-as uint (+ (* bucket 2) (the-as uint which-stat))))
+            (set! gp-0 (+ (* (the-as uint bucket) 2) which-stat))
             )
           (when GSH_MAX_DISPLAY
             (let ((stat-idx (logand (-> *perf-stats* data 0 frame-number) (+ GSH_TIME -1))))
-              (set! (-> *gomi-stats-hack* stat-idx cycles)
-               (-> *perf-stats* data (the-as int bucket) cycles)
-               )
-              (set! (-> *gomi-stats-hack* stat-idx instructions)
-               (-> *perf-stats* data (the-as int bucket) instructions)
-               )
-              (set! (-> *gomi-stats-hack* stat-idx icache)
-               (-> *perf-stats* data (the-as int bucket) icache)
-               )
-              (set! (-> *gomi-stats-hack* stat-idx dcache)
-               (-> *perf-stats* data (the-as int bucket) dcache)
-               )
+              (set! (-> *gomi-stats-hack* stat-idx cycles) (-> *perf-stats* data (the-as int bucket) cycles))
+              (set! (-> *gomi-stats-hack* stat-idx instructions) (-> *perf-stats* data (the-as int bucket) instructions))
+              (set! (-> *gomi-stats-hack* stat-idx icache) (-> *perf-stats* data (the-as int bucket) icache))
+              (set! (-> *gomi-stats-hack* stat-idx dcache) (-> *perf-stats* data (the-as int bucket) dcache))
               (when (zero? stat-idx)
                 (set! (-> *gomi-stats-hack* GSH_TIME cycles) (the-as uint 0))
                 (set! (-> *gomi-stats-hack* GSH_TIME instructions) (the-as uint 0))
@@ -266,25 +250,17 @@
                 (set! (-> *gomi-stats-hack* GSH_TIME dcache) (the-as uint 0))
                 (dotimes (v1-22 GSH_TIME)
                   (if (< (-> *gomi-stats-hack* GSH_TIME cycles) (-> *gomi-stats-hack* v1-22 cycles))
-                   (set! (-> *gomi-stats-hack* GSH_TIME cycles)
-                    (-> *gomi-stats-hack* v1-22 cycles)
-                    )
-                   )
+                      (set! (-> *gomi-stats-hack* GSH_TIME cycles) (-> *gomi-stats-hack* v1-22 cycles))
+                      )
                   (if (< (-> *gomi-stats-hack* GSH_TIME instructions) (-> *gomi-stats-hack* v1-22 instructions))
-                   (set! (-> *gomi-stats-hack* GSH_TIME instructions)
-                    (-> *gomi-stats-hack* v1-22 instructions)
-                    )
-                   )
+                      (set! (-> *gomi-stats-hack* GSH_TIME instructions) (-> *gomi-stats-hack* v1-22 instructions))
+                      )
                   (if (< (-> *gomi-stats-hack* GSH_TIME icache) (-> *gomi-stats-hack* v1-22 icache))
-                   (set! (-> *gomi-stats-hack* GSH_TIME icache)
-                    (-> *gomi-stats-hack* v1-22 icache)
-                    )
-                   )
+                      (set! (-> *gomi-stats-hack* GSH_TIME icache) (-> *gomi-stats-hack* v1-22 icache))
+                      )
                   (if (< (-> *gomi-stats-hack* GSH_TIME dcache) (-> *gomi-stats-hack* v1-22 dcache))
-                   (set! (-> *gomi-stats-hack* GSH_TIME dcache)
-                    (-> *gomi-stats-hack* v1-22 dcache)
-                    )
-                   )
+                      (set! (-> *gomi-stats-hack* GSH_TIME dcache) (-> *gomi-stats-hack* v1-22 dcache))
+                      )
                   )
                 )
               )
@@ -301,27 +277,27 @@
            0
            )
           (else
-           (let ((a1-63 (logand gp-0 1))
-                 (a0-64 (the-as uint #x80004010))
+            (let ((a1-63 (logand gp-0 1))
+                  (a0-64 (the-as uint #x80004010))
+                  )
+              (cond
+                ((zero? a1-63)
+                 (set! a0-64 (the-as uint (+ #x60020 a0-64)))
                  )
-             (cond
-               ((zero? a1-63)
-                (set! a0-64 (the-as uint (+ #x60020 (the-as int a0-64))))
+                ((= a1-63 1)
+                 (set! a0-64 (the-as uint (+ #x300c0 a0-64)))
+                 )
                 )
-               ((= a1-63 1)
-                (set! a0-64 (the-as uint (+ #x300c0 (the-as int a0-64))))
-                )
-               )
-             (set! (-> *perf-stats* data v1-27 select) a1-63)
-             (set! (-> *perf-stats* data v1-27 ctrl) a0-64)
-             )
-           (set! (-> *perf-stats* data v1-27 accum0) (the-as uint 0))
-           (set! (-> *perf-stats* data v1-27 accum1) (the-as uint 0))
-           (set! (-> *perf-stats* data v1-27 to-vu0-waits) (the-as uint 0))
-           (set! (-> *perf-stats* data v1-27 to-spr-waits) (the-as uint 0))
-           (set! (-> *perf-stats* data v1-27 from-spr-waits) (the-as uint 0))
-           0
-           )
+              (set! (-> *perf-stats* data v1-27 select) a1-63)
+              (set! (-> *perf-stats* data v1-27 ctrl) a0-64)
+              )
+            (set! (-> *perf-stats* data v1-27 accum0) (the-as uint 0))
+            (set! (-> *perf-stats* data v1-27 accum1) (the-as uint 0))
+            (set! (-> *perf-stats* data v1-27 to-vu0-waits) (the-as uint 0))
+            (set! (-> *perf-stats* data v1-27 to-spr-waits) (the-as uint 0))
+            (set! (-> *perf-stats* data v1-27 from-spr-waits) (the-as uint 0))
+            0
+            )
           )
         )
       )
@@ -330,15 +306,15 @@
          (a0-76 (-> v1-31 0 ctrl))
          )
     (+! (-> v1-31 0 count) 1)
-    (b! (zero? a0-76) cfg-28)
+    (b! (zero? a0-76) cfg-28 :delay (nop!))
     (set! *pc-perf-stat-counter* (get-cpu-clock)) ;; patched
 
     #|
-    (.mtc0 Perf r0-0)
+    (.mtc0 Perf 0)
     (.sync.l)
     (.sync.p)
-    (.mtpc pcr0 r0-0)
-    (.mtpc pcr1 r0-0)
+    (.mtpc pcr0 0)
+    (.mtpc pcr1 0)
     (.sync.l)
     (.sync.p)
     (.mtc0 Perf a0-76)
@@ -353,7 +329,7 @@
   )
 
 (defun-debug end-perf-stat-collection ()
-  (local-vars (r0-0 none) (a0-1 int) (a0-3 int))
+  (local-vars (a0-1 int) (a0-3 int))
   (let ((v1-1 (-> *perf-stats* data)))
     (b! (zero? (-> v1-1 0 ctrl)) cfg-2)
     ;;(.mtc0 Perf r0-0)
@@ -398,10 +374,10 @@
   (dotimes (gp-0 17)
     (if (nonzero? (-> *perf-stats* data gp-0 count))
         (print-to-stream
-         (-> *perf-stats* data gp-0)
-         (perf-stat-bucket->string (the-as perf-stat-bucket gp-0))
-         *stdcon*
-         )
+          (-> *perf-stats* data gp-0)
+          (perf-stat-bucket->string (the-as perf-stat-bucket gp-0))
+          *stdcon*
+          )
         )
     )
   0

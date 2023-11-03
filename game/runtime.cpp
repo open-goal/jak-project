@@ -85,6 +85,7 @@
 u8* g_ee_main_mem = nullptr;
 std::thread::id g_main_thread_id = std::thread::id();
 GameVersion g_game_version = GameVersion::Jak1;
+BackgroundWorker g_background_worker;
 int g_server_port = DECI2_PORT;
 
 namespace {
@@ -116,7 +117,7 @@ void deci2_runner(SystemThreadInterface& iface) {
   // then allow the server to accept connections
   bool server_ok = server.init_server();
   if (!server_ok) {
-    lg::error("[DECI2] failed to initialize, REPL will not work.\n");
+    lg::error("[DECI2] failed to initialize, REPL will not work.");
   }
 
   lg::debug("[DECI2] Waiting for listener...");
@@ -225,6 +226,20 @@ void ee_runner(SystemThreadInterface& iface) {
 
   // after main returns, trigger a shutdown.
   iface.trigger_shutdown();
+}
+
+/*!
+ * SystemThread Function for the EE Worker Thread (general purpose background tasks from the EE to
+ * be non-blocking)
+ */
+void ee_worker_runner(SystemThreadInterface& iface) {
+  iface.initialization_complete();
+  while (!iface.get_want_exit()) {
+    const auto queues_weres_empty = g_background_worker.process_queues();
+    if (queues_weres_empty) {
+      std::this_thread::sleep_for(std::chrono::milliseconds(50));
+    }
+  }
 }
 
 /*!
@@ -407,6 +422,9 @@ RuntimeExitStatus exec_runtime(GameLaunchOptions game_options, int argc, const c
   auto& deci_thread = tm.create_thread("DMP");
   auto& iop_thread = tm.create_thread("IOP");
   auto& ee_thread = tm.create_thread("EE");
+  // a general worker thread to perform background operations from the EE thread (to not block the
+  // game)
+  auto& ee_worker_thread = tm.create_thread("EE-Worker");
   auto& vm_dmac_thread = tm.create_thread("VM-DMAC");
   prof().end_event();
 
@@ -418,6 +436,10 @@ RuntimeExitStatus exec_runtime(GameLaunchOptions game_options, int argc, const c
   {
     auto p = scoped_prof("startup::exec_runtime::deci-start");
     deci_thread.start(deci2_runner);
+  }
+  {
+    auto p = scoped_prof("startup::exec_runtime::ee-worker-start");
+    ee_worker_thread.start(ee_worker_runner);
   }
   {
     auto p = scoped_prof("startup::exec_runtime::ee-start");
@@ -434,8 +456,8 @@ RuntimeExitStatus exec_runtime(GameLaunchOptions game_options, int argc, const c
     try {
       Gfx::Loop([]() { return MasterExit == RuntimeExitStatus::RUNNING; });
     } catch (std::exception& e) {
-      lg::error("Exception thrown from graphics loop: {}\n", e.what());
-      lg::error("Everything will crash now. good luck\n");
+      lg::error("Exception thrown from graphics loop: {}", e.what());
+      lg::error("Everything will crash now. good luck");
       throw;
     }
   }

@@ -4,23 +4,19 @@
 ;; definition of type ctyport-part
 (deftype ctyport-part (part-spawner)
   ()
-  :heap-base #x30
-  :method-count-assert 16
-  :size-assert         #xb0
-  :flag-assert         #x10003000b0
   )
 
 ;; definition for method 3 of type ctyport-part
-(defmethod inspect ctyport-part ((obj ctyport-part))
-  (when (not obj)
-    (set! obj obj)
+(defmethod inspect ((this ctyport-part))
+  (when (not this)
+    (set! this this)
     (goto cfg-4)
     )
   (let ((t9-0 (method-of-type part-spawner inspect)))
-    (t9-0 obj)
+    (t9-0 this)
     )
   (label cfg-4)
-  obj
+  this
   )
 
 ;; failed to figure out what this is:
@@ -241,30 +237,9 @@
     (let ((s3-0 (new 'stack-no-clear 'vector)))
       (sp-kill-particle arg0 arg1)
       (set-vector! s3-0 (-> arg2 vector 0 x) (-> arg1 user-float) (-> arg2 vector 0 z) 1.0)
-      (let ((t9-1 sp-launch-particles-var)
-            (a0-3 *sp-particle-system-2d*)
-            (a1-2 (-> *part-id-table* 4159))
-            (a2-1 *launch-matrix*)
-            )
-        (set! (-> a2-1 trans quad) (-> s3-0 quad))
-        (t9-1 a0-3 a1-2 a2-1 (the-as sparticle-launch-state #f) (the-as sparticle-launch-control #f) 1.0)
-        )
-      (let ((t9-2 sp-launch-particles-var)
-            (a0-4 *sp-particle-system-2d*)
-            (a1-3 (-> *part-id-table* 4160))
-            (a2-2 *launch-matrix*)
-            )
-        (set! (-> a2-2 trans quad) (-> s3-0 quad))
-        (t9-2 a0-4 a1-3 a2-2 (the-as sparticle-launch-state #f) (the-as sparticle-launch-control #f) 1.0)
-        )
-      (let ((t9-3 sp-launch-particles-var)
-            (a0-5 *sp-particle-system-3d*)
-            (a1-4 (-> *part-id-table* 4161))
-            (a2-3 *launch-matrix*)
-            )
-        (set! (-> a2-3 trans quad) (-> s3-0 quad))
-        (t9-3 a0-5 a1-4 a2-3 (the-as sparticle-launch-state #f) (the-as sparticle-launch-control #f) 1.0)
-        )
+      (launch-particles (-> *part-id-table* 4159) s3-0)
+      (launch-particles (-> *part-id-table* 4160) s3-0)
+      (launch-particles :system *sp-particle-system-3d* (-> *part-id-table* 4161) s3-0)
       )
     )
   (sparticle-motion-blur arg0 arg1 (the-as vector arg2))
@@ -3559,79 +3534,77 @@
 
 ;; definition of type hiphog-exterior-marquee
 (deftype hiphog-exterior-marquee (process-drawable)
-  ((rot           vector                   :inline :offset-assert 208)
-   (master-enable uint32                           :offset-assert 224)
-   (pad-ih12nb312 uint32                   3       :offset-assert 228)
-   (mode          uint32                           :offset-assert 240)
-   (counter       int32                            :offset-assert 244)
-   (parts         sparticle-launch-control 1       :offset-assert 248)
+  ((rot            vector                    :inline)
+   (master-enable  uint32)
+   (pad-ih12nb312  uint32                    3)
+   (mode           uint32)
+   (counter        int32)
+   (parts          sparticle-launch-control  1)
    )
-  :heap-base #x80
-  :method-count-assert 22
-  :size-assert         #xfc
-  :flag-assert         #x16008000fc
+  (:state-methods
+    idle
+    )
   (:methods
-    (idle () _type_ :state 20)
-    (hiphog-exterior-marquee-method-21 (_type_) none 21)
+    (hiphog-exterior-marquee-method-21 (_type_) none)
     )
   )
 
 ;; definition for method 3 of type hiphog-exterior-marquee
-(defmethod inspect hiphog-exterior-marquee ((obj hiphog-exterior-marquee))
-  (when (not obj)
-    (set! obj obj)
+(defmethod inspect ((this hiphog-exterior-marquee))
+  (when (not this)
+    (set! this this)
     (goto cfg-4)
     )
   (let ((t9-0 (method-of-type process-drawable inspect)))
-    (t9-0 obj)
+    (t9-0 this)
     )
-  (format #t "~2Trot: ~`vector`P~%" (-> obj rot))
-  (format #t "~2Tmaster-enable: ~D~%" (-> obj master-enable))
-  (format #t "~2Tstate-time: ~D~%" (-> obj state-time))
-  (format #t "~2Tmode: ~D~%" (-> obj mode))
-  (format #t "~2Tcounter: ~D~%" (-> obj counter))
-  (format #t "~2Tparts[1] @ #x~X~%" (-> obj parts))
+  (format #t "~2Trot: ~`vector`P~%" (-> this rot))
+  (format #t "~2Tmaster-enable: ~D~%" (-> this master-enable))
+  (format #t "~2Tstate-time: ~D~%" (-> this state-time))
+  (format #t "~2Tmode: ~D~%" (-> this mode))
+  (format #t "~2Tcounter: ~D~%" (-> this counter))
+  (format #t "~2Tparts[1] @ #x~X~%" (-> this parts))
   (label cfg-4)
-  obj
+  this
   )
 
 ;; definition for method 10 of type hiphog-exterior-marquee
-(defmethod deactivate hiphog-exterior-marquee ((obj hiphog-exterior-marquee))
+(defmethod deactivate ((this hiphog-exterior-marquee))
   (dotimes (s5-0 1)
-    (let ((a0-1 (-> obj parts s5-0)))
+    (let ((a0-1 (-> this parts s5-0)))
       (if (nonzero? a0-1)
           (kill-and-free-particles a0-1)
           )
       )
     )
-  ((method-of-type process-drawable deactivate) obj)
+  ((method-of-type process-drawable deactivate) this)
   (none)
   )
 
 ;; definition for method 7 of type hiphog-exterior-marquee
 ;; WARN: Return type mismatch process-drawable vs hiphog-exterior-marquee.
-(defmethod relocate hiphog-exterior-marquee ((obj hiphog-exterior-marquee) (arg0 int))
+(defmethod relocate ((this hiphog-exterior-marquee) (arg0 int))
   (dotimes (v1-0 1)
-    (if (nonzero? (-> obj parts v1-0))
-        (&+! (-> obj parts v1-0) arg0)
+    (if (nonzero? (-> this parts v1-0))
+        (&+! (-> this parts v1-0) arg0)
         )
     )
-  (the-as hiphog-exterior-marquee ((method-of-type process-drawable relocate) obj arg0))
+  (the-as hiphog-exterior-marquee ((method-of-type process-drawable relocate) this arg0))
   )
 
 ;; definition for method 21 of type hiphog-exterior-marquee
 ;; WARN: Return type mismatch symbol vs none.
-(defmethod hiphog-exterior-marquee-method-21 hiphog-exterior-marquee ((obj hiphog-exterior-marquee))
-  (+! (-> obj parts 0 state-counter) 1)
-  (when (!= (-> obj parts 0 state-mode 0) (-> obj mode))
-    (set! (-> obj parts 0 state-mode 0) (-> obj mode))
-    (set! (-> obj parts 0 state-counter) (the-as uint 0))
+(defmethod hiphog-exterior-marquee-method-21 ((this hiphog-exterior-marquee))
+  (+! (-> this parts 0 state-counter) 1)
+  (when (!= (-> this parts 0 state-mode 0) (-> this mode))
+    (set! (-> this parts 0 state-mode 0) (-> this mode))
+    (set! (-> this parts 0 state-counter) (the-as uint 0))
     0
     )
-  (let ((s5-0 (-> obj master-enable)))
+  (let ((s5-0 (-> this master-enable)))
     (dotimes (s4-0 1)
       (if (logtest? s5-0 1)
-          (spawn (-> obj parts s4-0) (-> obj root trans))
+          (spawn (-> this parts s4-0) (-> this root trans))
           )
       (set! s5-0 (shr s5-0 1))
       )
@@ -3664,26 +3637,25 @@
       (suspend)
       )
     #f
-    (none)
     )
-  :post (the-as (function none :behavior hiphog-exterior-marquee) ja-post)
+  :post ja-post
   )
 
 ;; definition for method 11 of type hiphog-exterior-marquee
 ;; WARN: Return type mismatch object vs none.
-(defmethod init-from-entity! hiphog-exterior-marquee ((obj hiphog-exterior-marquee) (arg0 entity-actor))
+(defmethod init-from-entity! ((this hiphog-exterior-marquee) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
 - stack size
 - collision information
 - loading the skeleton group / bones
 - sounds"
-  (set! (-> obj root) (new 'process 'trsqv))
-  (process-drawable-from-entity! obj arg0)
-  (logclear! (-> obj mask) (process-mask actor-pause enemy))
-  (logior! (-> obj mask) (process-mask ambient))
-  (set! (-> obj master-enable) (the-as uint -1))
-  (set! (-> obj mode) (the-as uint (rand-vu-int-count 8)))
+  (set! (-> this root) (new 'process 'trsqv))
+  (process-drawable-from-entity! this arg0)
+  (logclear! (-> this mask) (process-mask actor-pause enemy))
+  (logior! (-> this mask) (process-mask ambient))
+  (set! (-> this master-enable) (the-as uint -1))
+  (set! (-> this mode) (the-as uint (rand-vu-int-count 8)))
   (let ((s5-1 (if (task-node-closed? (game-task-node nest-boss-resolution))
                   *hiphog-exterior-marquee-daxter-group-ids*
                   *hiphog-exterior-marquee-group-ids*
@@ -3691,10 +3663,10 @@ This commonly includes things such as:
               )
         )
     (dotimes (s4-0 1)
-      (set! (-> obj parts s4-0) (create-launch-control (-> *part-group-id-table* (-> s5-1 s4-0)) obj))
+      (set! (-> this parts s4-0) (create-launch-control (-> *part-group-id-table* (-> s5-1 s4-0)) this))
       )
     )
-  (go (method-of-object obj idle))
+  (go (method-of-object this idle))
   (none)
   )
 
@@ -3750,26 +3722,22 @@ This commonly includes things such as:
 ;; definition of type farthy
 (deftype farthy (process-drawable)
   ()
-  :heap-base #x50
-  :method-count-assert 21
-  :size-assert         #xc8
-  :flag-assert         #x15005000c8
-  (:methods
-    (idle () _type_ :state 20)
+  (:state-methods
+    idle
     )
   )
 
 ;; definition for method 3 of type farthy
-(defmethod inspect farthy ((obj farthy))
-  (when (not obj)
-    (set! obj obj)
+(defmethod inspect ((this farthy))
+  (when (not this)
+    (set! this this)
     (goto cfg-4)
     )
   (let ((t9-0 (method-of-type process-drawable inspect)))
-    (t9-0 obj)
+    (t9-0 this)
     )
   (label cfg-4)
-  obj
+  this
   )
 
 ;; failed to figure out what this is:
@@ -3790,57 +3758,52 @@ This commonly includes things such as:
   :virtual #t
   :code (behavior ()
     (until #f
-      (ja-no-eval :group! (ja-group)
-                  :num! (seek! (the float (+ (-> (ja-group) frames num-frames) -1)))
-                  :frame-num 0.0
-                  )
+      (ja-no-eval :group! (ja-group) :num! (seek!) :frame-num 0.0)
       (until (ja-done? 0)
         (suspend)
         (ja :num! (seek!))
         )
       )
     #f
-    (none)
     )
   :post (behavior ()
     (ja-post)
     (if (nonzero? (-> self part))
-        (spawn-with-cspace (-> self part) (-> self node-list data 5))
+        (spawn-with-cspace (-> self part) (joint-node farthy-lod0-jg halo))
         )
-    (none)
     )
   )
 
 ;; definition for method 11 of type farthy
 ;; WARN: Return type mismatch object vs none.
-(defmethod init-from-entity! farthy ((obj farthy) (arg0 entity-actor))
+(defmethod init-from-entity! ((this farthy) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
 - stack size
 - collision information
 - loading the skeleton group / bones
 - sounds"
-  (set! (-> obj root) (new 'process 'trsqv))
-  (process-drawable-from-entity! obj arg0)
-  (set! (-> obj root pause-adjust-distance) 1228800.0)
+  (set! (-> this root) (new 'process 'trsqv))
+  (process-drawable-from-entity! this arg0)
+  (set! (-> this root pause-adjust-distance) 1228800.0)
   (cond
     ((task-node-closed? (game-task-node nest-boss-resolution))
      (initialize-skeleton
-       obj
+       this
        (the-as skeleton-group (art-group-get-by-name *level* "skel-mecha-daxter" (the-as (pointer uint32) #f)))
        (the-as pair 0)
        )
      )
     (else
       (initialize-skeleton
-        obj
+        this
         (the-as skeleton-group (art-group-get-by-name *level* "skel-farthy" (the-as (pointer uint32) #f)))
         (the-as pair 0)
         )
-      (set! (-> obj part) (create-launch-control (-> *part-group-id-table* 969) obj))
+      (set! (-> this part) (create-launch-control (-> *part-group-id-table* 969) this))
       )
     )
-  (set! (-> obj draw light-index) (the-as uint 10))
-  (go (method-of-object obj idle))
+  (set! (-> this draw light-index) (the-as uint 10))
+  (go (method-of-object this idle))
   (none)
   )

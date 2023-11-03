@@ -2,36 +2,32 @@
 (in-package goal)
 
 ;; definition for function vehicle-event-handler
-;; WARN: Return type mismatch object vs none.
 (defbehavior vehicle-event-handler vehicle ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
   (rigid-body-object-method-46 self (the-as process-drawable arg0) arg1 arg2 arg3)
-  (none)
   )
 
 ;; failed to figure out what this is:
 (defstate idle (vehicle)
   :virtual #t
-  :event (the-as (function process int symbol event-message-block object :behavior vehicle) vehicle-event-handler)
+  :event vehicle-event-handler
   :enter (behavior ()
-    (set! (-> self state-time) (current-time))
+    (set-time! (-> self state-time))
     (rigid-body-object-method-39 self)
     (go-virtual waiting)
-    (none)
     )
-  :code (the-as (function none :behavior vehicle) sleep-code)
+  :code sleep-code
   :post (behavior ()
     (ja-post)
-    (none)
     )
   )
 
 ;; failed to figure out what this is:
 (defstate inactive (vehicle)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('nav-mesh-kill 'traffic-activate 'traffic-off-force 'traffic-off 'rider-on 'rider-off)
-       (rigid-body-object-method-46 self (the-as process-drawable proc) arg1 event-type event)
+       (rigid-body-object-method-46 self (the-as process-drawable proc) argc message block)
        )
       )
     )
@@ -41,48 +37,43 @@
     (rigid-body-object-method-41 self)
     (vehicle-method-88 self)
     (logior! (-> self draw status) (draw-control-status no-draw))
-    (none)
     )
   :exit (behavior ()
     (rigid-body-object-method-40 self)
     (logclear! (-> self focus-status) (focus-status disable inactive))
     (logclear! (-> self draw status) (draw-control-status no-draw))
-    (none)
     )
-  :code (the-as (function none :behavior vehicle) sleep-code)
+  :code sleep-code
   )
 
 ;; failed to figure out what this is:
 (defstate active (vehicle)
   :virtual #t
-  :event (the-as (function process int symbol event-message-block object :behavior vehicle) vehicle-event-handler)
+  :event vehicle-event-handler
   :enter (behavior ()
-    (set! (-> self state-time) (current-time))
+    (set-time! (-> self state-time))
     (vehicle-method-139 self)
     (logior! (-> self flags) (rigid-body-object-flag riding ai-driving))
     (vehicle-method-142 self)
     (set! (-> self flight-level-index) 1)
-    (none)
     )
   :exit (behavior ()
     '()
-    (none)
     )
-  :trans (the-as (function none :behavior vehicle) #f)
-  :code (the-as (function none :behavior vehicle) sleep-code)
+  :trans #f
+  :code sleep-code
   :post (behavior ()
     (check-player-get-on self)
     (vehicle-method-122 self)
-    (none)
     )
   )
 
 ;; failed to figure out what this is:
 (defstate waiting (vehicle)
   :virtual #t
-  :event (the-as (function process int symbol event-message-block object :behavior vehicle) vehicle-event-handler)
+  :event vehicle-event-handler
   :enter (behavior ()
-    (set! (-> self state-time) (current-time))
+    (set-time! (-> self state-time))
     (vehicle-method-140 self)
     (set! (-> self flags) (the-as
                             rigid-body-object-flag
@@ -103,7 +94,6 @@
         0
         )
       )
-    (none)
     )
   :exit (behavior ()
     (logclear! (-> self flags) (rigid-body-object-flag waiting-for-player))
@@ -125,23 +115,21 @@
         (set! (-> v1-3 prim-core collide-as) (collide-spec vehicle-sphere))
         )
       )
-    (none)
     )
-  :trans (the-as (function none :behavior vehicle) #f)
-  :code (the-as (function none :behavior vehicle) sleep-code)
+  :trans #f
+  :code sleep-code
   :post (behavior ()
     (vehicle-method-123 self)
-    (none)
     )
   )
 
 ;; failed to figure out what this is:
 (defstate player-control (vehicle)
   :virtual #t
-  :event (the-as (function process int symbol event-message-block object :behavior vehicle) vehicle-event-handler)
+  :event vehicle-event-handler
   :enter (behavior ()
     (set-setting! 'sound-flava #f 31.0 5)
-    (set! (-> self state-time) (current-time))
+    (set-time! (-> self state-time))
     (iterate-prims (-> self root) (lambda ((arg0 collide-shape-prim))
                                     (when (!= (-> arg0 prim-core prim-type) (prim-type mesh))
                                       (logior! (-> arg0 prim-core collide-as) (collide-spec jak))
@@ -163,7 +151,6 @@
     (logior! (-> self root penetrated-by) (penetrate jak-yellow-shot jak-red-shot jak-blue-shot jak-dark-shot))
     (set! (-> self damage-factor) (* 0.7518797 (-> self damage-factor)))
     0
-    (none)
     )
   :exit (behavior ()
     (logclear! (-> self root penetrated-by) (penetrate jak-yellow-shot jak-red-shot jak-blue-shot jak-dark-shot))
@@ -191,10 +178,9 @@
     (rigid-body-object-method-42 self)
     (logclear! (-> self flags) (rigid-body-object-flag player-driving))
     (remove-setting! 'sound-flava)
-    (none)
     )
   :trans (behavior ()
-    (when (>= (- (current-time) (-> self state-time)) (seconds 0.1))
+    (when (time-elapsed? (-> self state-time) (seconds 0.1))
       (if (not *target*)
           (go-virtual waiting)
           )
@@ -209,9 +195,8 @@
             )
         )
       )
-    (none)
     )
-  :code (the-as (function none :behavior vehicle) sleep-code)
+  :code sleep-code
   :post (behavior ()
     (local-vars (a0-3 int) (a0-5 int))
     (let* ((v1-1 (-> *perf-stats* data 18))
@@ -245,36 +230,32 @@
       )
     (label cfg-4)
     0
-    (none)
     )
   )
 
 ;; failed to figure out what this is:
 (defstate crash (vehicle)
   :virtual #t
-  :event (the-as (function process int symbol event-message-block object :behavior vehicle) vehicle-event-handler)
+  :event vehicle-event-handler
   :enter (behavior ()
     (logclear! (-> self flags) (rigid-body-object-flag player-driving))
-    (set! (-> self state-time) (current-time))
+    (set-time! (-> self state-time))
     (vehicle-method-129 self)
     (set! (-> self crash-level) 3)
     (vehicle-method-88 self)
     (dotimes (gp-0 (-> self info seat-count))
       (send-event (handle->process (-> self rider-array gp-0)) 'vehicle-crash)
       )
-    (none)
     )
   :trans (behavior ()
-    (set! (-> self hit-points) (- (-> self hit-points) (* 0.5 (-> self clock seconds-per-frame))))
-    (if (and (>= (- (current-time) (-> self state-time)) 1) (< (-> self hit-points) -0.25))
+    (set! (-> self hit-points) (- (-> self hit-points) (* 0.5 (seconds-per-frame))))
+    (if (and (time-elapsed? (-> self state-time) 1) (< (-> self hit-points) -0.25))
         (go-virtual explode)
         )
-    (none)
     )
-  :code (the-as (function none :behavior vehicle) sleep-code)
+  :code sleep-code
   :post (behavior ()
     (vehicle-method-121 self)
-    (none)
     )
   )
 
@@ -293,12 +274,12 @@
     (set! (-> self player-dist2) (vector-vector-distance-squared (-> self root trans) (target-pos 0)))
     (cond
       ((logtest? (-> self draw status) (draw-control-status on-screen))
-       (set! (-> self state-time) (current-time))
+       (set-time! (-> self state-time))
        )
       (else
-        (if (or (>= (- (current-time) (-> self state-time)) (seconds 5)) (let ((f0-2 409600.0))
-                                                                           (< (* f0-2 f0-2) (-> self camera-dist2))
-                                                                           )
+        (if (or (time-elapsed? (-> self state-time) (seconds 5)) (let ((f0-2 409600.0))
+                                                                   (< (* f0-2 f0-2) (-> self camera-dist2))
+                                                                   )
                 )
             (go-virtual die)
             )
@@ -383,7 +364,7 @@
 ;; failed to figure out what this is:
 (defstate explode (vehicle)
   :virtual #t
-  :event (the-as (function process int symbol event-message-block object :behavior vehicle) vehicle-event-handler)
+  :event vehicle-event-handler
   :enter (behavior ()
     (rlet ((vf0 :class vf))
       (init-vf0-vector)
@@ -397,22 +378,11 @@
           )
         )
       (dotimes (gp-1 (-> self info seat-count))
-        (let ((a1-2 (new 'stack-no-clear 'event-message-block)))
-          (set! (-> a1-2 from) (process->ppointer self))
-          (set! (-> a1-2 num-params) 2)
-          (set! (-> a1-2 message) 'attack-invinc)
-          (set! (-> a1-2 param 0) (the-as uint #f))
-          (let ((v1-14 (new 'static 'attack-info :mask (attack-info-mask mode id))))
-            (let* ((a0-4 *game-info*)
-                   (a2-1 (+ (-> a0-4 attack-id) 1))
-                   )
-              (set! (-> a0-4 attack-id) a2-1)
-              (set! (-> v1-14 id) a2-1)
-              )
-            (set! (-> v1-14 mode) 'big-explosion)
-            (set! (-> a1-2 param 1) (the-as uint v1-14))
-            )
-          (send-event-function (handle->process (-> self rider-array gp-1)) a1-2)
+        (send-event
+          (handle->process (-> self rider-array gp-1))
+          'attack-invinc
+          #f
+          (static-attack-info ((id (new-attack-id)) (mode 'big-explosion)))
           )
         (put-rider-in-seat self gp-1 (the-as process-focusable #f))
         )
@@ -477,14 +447,12 @@
             )
           )
         )
-      (set! (-> self state-time) (current-time))
-      (none)
+      (set-time! (-> self state-time))
       )
     )
-  :code (the-as (function none :behavior vehicle) sleep-code)
+  :code sleep-code
   :post (behavior ()
     (vehicle-explode-post)
-    (none)
     )
   )
 
@@ -501,7 +469,6 @@
         (cleanup-for-death self)
         )
       )
-    (none)
     )
   )
 
@@ -510,26 +477,21 @@
   :virtual #t
   :enter (behavior ()
     '()
-    (none)
     )
   :exit (behavior ()
     (set! (-> self flags)
           (the-as rigid-body-object-flag (logclear (-> self flags) (rigid-body-object-flag measure-control-parameters)))
           )
-    (none)
     )
   :trans (behavior ()
     (if (cpad-pressed? 1 square)
         (vehicle-method-138 self)
         )
-    (none)
     )
   :code (behavior ()
     (vehicle-method-138 self)
-    (none)
     )
   :post (behavior ()
     (vehicle-method-121 self)
-    (none)
     )
   )

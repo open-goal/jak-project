@@ -3,67 +3,61 @@
 
 ;; definition of type sig-plasma
 (deftype sig-plasma (structure)
-  ((flags            plasma-flags  :offset-assert   0)
-   (level            float         :offset-assert   4)
-   (min-level        float         :offset-assert   8)
-   (charge-speed     float         :offset-assert  12)
-   (powerup-sound-id sound-id      :offset-assert  16)
-   (plasma-sound-id  sound-id      :offset-assert  20)
+  ((flags             plasma-flags)
+   (level             float)
+   (min-level         float)
+   (charge-speed      float)
+   (powerup-sound-id  sound-id)
+   (plasma-sound-id   sound-id)
    )
   :pack-me
-  :method-count-assert 15
-  :size-assert         #x18
-  :flag-assert         #xf00000018
   (:methods
-    (sig-plasma-method-9 (_type_) none 9)
-    (sig-plasma-method-10 (_type_) symbol 10)
-    (sig-plasma-method-11 (_type_ symbol) none 11)
-    (sig-plasma-method-12 (_type_) none 12)
-    (sig-plasma-method-13 (_type_) symbol 13)
-    (sig-plasma-method-14 (_type_ process-focusable) none 14)
+    (sig-plasma-method-9 (_type_) none)
+    (sig-plasma-method-10 (_type_) symbol)
+    (sig-plasma-method-11 (_type_ symbol) none)
+    (sig-plasma-method-12 (_type_) none)
+    (sig-plasma-method-13 (_type_) symbol)
+    (sig-plasma-method-14 (_type_ process-focusable) none)
     )
   )
 
 ;; definition for method 3 of type sig-plasma
-(defmethod inspect sig-plasma ((obj sig-plasma))
-  (when (not obj)
-    (set! obj obj)
+(defmethod inspect ((this sig-plasma))
+  (when (not this)
+    (set! this this)
     (goto cfg-4)
     )
-  (format #t "[~8x] ~A~%" obj 'sig-plasma)
-  (format #t "~1Tflags: ~D~%" (-> obj flags))
-  (format #t "~1Tlevel: ~f~%" (-> obj level))
-  (format #t "~1Tmin-level: ~f~%" (-> obj min-level))
-  (format #t "~1Tcharge-speed: ~f~%" (-> obj charge-speed))
-  (format #t "~1Tpowerup-sound-id: ~D~%" (-> obj powerup-sound-id))
-  (format #t "~1Tplasma-sound-id: ~D~%" (-> obj plasma-sound-id))
+  (format #t "[~8x] ~A~%" this 'sig-plasma)
+  (format #t "~1Tflags: ~D~%" (-> this flags))
+  (format #t "~1Tlevel: ~f~%" (-> this level))
+  (format #t "~1Tmin-level: ~f~%" (-> this min-level))
+  (format #t "~1Tcharge-speed: ~f~%" (-> this charge-speed))
+  (format #t "~1Tpowerup-sound-id: ~D~%" (-> this powerup-sound-id))
+  (format #t "~1Tplasma-sound-id: ~D~%" (-> this plasma-sound-id))
   (label cfg-4)
-  obj
+  this
   )
 
 ;; definition of type sig-path-sample
 (deftype sig-path-sample (structure)
-  ((bytes  uint8      32      :offset-assert   0)
-   (pos    vector     :inline :offset-assert  32)
-   (quat   quaternion :inline :offset-assert  48)
-   (flags  uint8              :offset         12)
-   (pos-x  float              :offset         32)
-   (pos-y  float              :offset         36)
-   (pos-z  float              :offset         40)
-   (quat-x float              :offset         48)
-   (quat-y float              :offset         52)
-   (quat-z float              :offset         56)
-   (quat-w float              :offset         60)
+  ((bytes   uint8       32)
+   (pos     vector      :inline)
+   (quat    quaternion  :inline)
+   (flags   uint8       :overlay-at (-> bytes 12))
+   (pos-x   float       :overlay-at (-> pos data 0))
+   (pos-y   float       :overlay-at (-> pos data 1))
+   (pos-z   float       :overlay-at (-> pos data 2))
+   (quat-x  float       :overlay-at (-> quat data 0))
+   (quat-y  float       :overlay-at (-> quat data 1))
+   (quat-z  float       :overlay-at (-> quat data 2))
+   (quat-w  float       :overlay-at (-> quat data 3))
    )
-  :method-count-assert 9
-  :size-assert         #x40
-  :flag-assert         #x900000040
   )
 
 ;; definition for method 3 of type sig-path-sample
 ;; ERROR: failed type prop at 14: add failed: sig-path-sample <integer 0>
 
-(defmethod inspect sig-path-sample ((a0-0 sig-path-sample))
+(defmethod inspect ((a0-0 sig-path-sample))
   (local-vars
     (v0-0 object)
     (v0-1 none)
@@ -206,105 +200,100 @@
 
 ;; definition of type sig-path
 (deftype sig-path (basic)
-  ((sample-count int32                           :offset-assert   4)
-   (samples      (inline-array sig-path-sample)  :offset-assert   8)
+  ((sample-count  int32)
+   (samples       (inline-array sig-path-sample))
    )
-  :method-count-assert 9
-  :size-assert         #xc
-  :flag-assert         #x90000000c
   )
 
 ;; definition for method 3 of type sig-path
-(defmethod inspect sig-path ((obj sig-path))
-  (when (not obj)
-    (set! obj obj)
+(defmethod inspect ((this sig-path))
+  (when (not this)
+    (set! this this)
     (goto cfg-4)
     )
-  (format #t "[~8x] ~A~%" obj (-> obj type))
-  (format #t "~1Tsample-count: ~D~%" (-> obj sample-count))
-  (format #t "~1Tsamples: #x~X~%" (-> obj samples))
+  (format #t "[~8x] ~A~%" this (-> this type))
+  (format #t "~1Tsample-count: ~D~%" (-> this sample-count))
+  (format #t "~1Tsamples: #x~X~%" (-> this samples))
   (label cfg-4)
-  obj
+  this
   )
 
 ;; definition of type sig
 (deftype sig (bot)
-  ((fired-gun-count     uint32             :offset-assert 992)
-   (sig-path            sig-path           :offset-assert 996)
-   (sig-path-clock      clock              :offset-assert 1000)
-   (travel-anim-interp  float              :offset-assert 1004)
-   (platform-index      uint8              :offset-assert 1008)
-   (played-unjam-time   time-frame         :offset-assert 1016)
-   (sig-path-start-time time-frame         :offset-assert 1024)
-   (sig-path-cur-time   time-frame         :offset-assert 1032)
-   (sig-path-prev-time  time-frame         :offset-assert 1040)
-   (plasma              sig-plasma :inline :offset        1048)
-   (sig-path-prev-pos   vector     :inline :offset        368)
+  ((fired-gun-count      uint32)
+   (sig-path             sig-path)
+   (sig-path-clock       clock)
+   (travel-anim-interp   float)
+   (platform-index       uint8)
+   (played-unjam-time    time-frame)
+   (sig-path-start-time  time-frame)
+   (sig-path-cur-time    time-frame)
+   (sig-path-prev-time   time-frame)
+   (plasma               sig-plasma  :inline :offset 1048)
+   (sig-path-prev-pos    vector      :inline :overlay-at event-param-point)
    )
-  :heap-base #x3b0
-  :method-count-assert 259
-  :size-assert         #x430
-  :flag-assert         #x10303b00430
+  (:state-methods
+    whip
+    blast
+    chase
+    chase-attack
+    traveling
+    traveling-blocked
+    waiting-far
+    waiting-close
+    waiting-turn
+    waiting-crouched
+    charge-plasma
+    gun-jam
+    repair-gun
+    clean-gun
+    sig-path-run
+    sig-path-jump
+    sig-path-jump-land
+    sig-path-shoot-jump
+    sig-path-shoot-jump-land
+    sig-path-idle
+    )
   (:methods
-    (whip () _type_ :state 225)
-    (blast () _type_ :state 226)
-    (chase () _type_ :state 227)
-    (chase-attack () _type_ :state 228)
-    (traveling () _type_ :state 229)
-    (traveling-blocked () _type_ :state 230)
-    (waiting-far () _type_ :state 231)
-    (waiting-close () _type_ :state 232)
-    (waiting-turn () _type_ :state 233)
-    (waiting-crouched () _type_ :state 234)
-    (charge-plasma () _type_ :state 235)
-    (gun-jam () _type_ :state 236)
-    (repair-gun () _type_ :state 237)
-    (clean-gun () _type_ :state 238)
-    (sig-path-run () _type_ :state 239)
-    (sig-path-jump () _type_ :state 240)
-    (sig-path-jump-land () _type_ :state 241)
-    (sig-path-shoot-jump () _type_ :state 242)
-    (sig-path-shoot-jump-land () _type_ :state 243)
-    (sig-path-idle () _type_ :state 244)
-    (sig-method-245 (_type_) symbol 245)
-    (sig-method-246 (_type_) symbol 246)
-    (fire-gun (_type_ vector) (pointer process) 247)
-    (sig-method-248 (_type_ sig-path-sample) none 248)
-    (sig-method-249 (_type_ sig-path) none 249)
-    (sig-method-250 (_type_) symbol 250)
-    (sig-method-251 (_type_) symbol 251)
-    (sig-method-252 (_type_) symbol 252)
-    (sig-method-253 (_type_) none 253)
-    (sig-method-254 (_type_) symbol 254)
-    (sig-method-255 (_type_) symbol 255)
-    (sig-method-256 (_type_) none 256)
-    (sig-method-257 (_type_) symbol 257)
-    (sig-method-258 (_type_) none 258)
+    (sig-method-245 (_type_) symbol)
+    (sig-method-246 (_type_) symbol)
+    (fire-gun (_type_ vector) (pointer process))
+    (sig-method-248 (_type_ sig-path-sample) none)
+    (sig-method-249 (_type_ sig-path) none)
+    (sig-method-250 (_type_) symbol)
+    (sig-method-251 (_type_) symbol)
+    (sig-method-252 (_type_) symbol)
+    (sig-method-253 (_type_) none)
+    (sig-method-254 (_type_) symbol)
+    (sig-method-255 (_type_) symbol)
+    (sig-method-256 (_type_) none)
+    (sig-method-257 (_type_) symbol)
+    (sig-method-258 (_type_) none)
     )
   )
 
 ;; definition for method 3 of type sig
-(defmethod inspect sig ((obj sig))
-  (when (not obj)
-    (set! obj obj)
+(defmethod inspect ((this sig))
+  (when (not this)
+    (set! this this)
     (goto cfg-4)
     )
   (let ((t9-0 (method-of-type bot inspect)))
-    (t9-0 obj)
+    (t9-0 this)
     )
-  (format #t "~2Tfired-gun-count: ~D~%" (-> obj fired-gun-count))
-  (format #t "~2Tsig-path: ~A~%" (-> obj sig-path))
-  (format #t "~2Tsig-path-clock: ~A~%" (-> obj sig-path-clock))
-  (format #t "~2Ttravel-anim-interp: ~f~%" (-> obj travel-anim-interp))
-  (format #t "~2Tplatform-index: ~D~%" (-> obj platform-index))
-  (format #t "~2Tplayed-unjam-time: ~D~%" (-> obj played-unjam-time))
-  (format #t "~2Tsig-path-start-time: ~D~%" (-> obj sig-path-start-time))
-  (format #t "~2Tsig-path-cur-time: ~D~%" (-> obj sig-path-cur-time))
-  (format #t "~2Tsig-path-prev-time: ~D~%" (-> obj sig-path-prev-time))
-  (format #t "~2Tplasma: #<sig-plasma @ #x~X>~%" (-> obj plasma))
-  (format #t "~2Tsig-path-prev-pos: ~`vector`P~%" (-> obj event-param-point))
+  (format #t "~2Tfired-gun-count: ~D~%" (-> this fired-gun-count))
+  (format #t "~2Tsig-path: ~A~%" (-> this sig-path))
+  (format #t "~2Tsig-path-clock: ~A~%" (-> this sig-path-clock))
+  (format #t "~2Ttravel-anim-interp: ~f~%" (-> this travel-anim-interp))
+  (format #t "~2Tplatform-index: ~D~%" (-> this platform-index))
+  (format #t "~2Tplayed-unjam-time: ~D~%" (-> this played-unjam-time))
+  (format #t "~2Tsig-path-start-time: ~D~%" (-> this sig-path-start-time))
+  (format #t "~2Tsig-path-cur-time: ~D~%" (-> this sig-path-cur-time))
+  (format #t "~2Tsig-path-prev-time: ~D~%" (-> this sig-path-prev-time))
+  (format #t "~2Tplasma: #<sig-plasma @ #x~X>~%" (-> this plasma))
+  (format #t "~2Tsig-path-prev-pos: ~`vector`P~%" (-> this event-param-point))
   (label cfg-4)
-  obj
+  this
   )
 
 ;; failed to figure out what this is:
@@ -317,190 +306,172 @@
 
 ;; definition of type sigt-wait-spot
 (deftype sigt-wait-spot (ai-task)
-  ((check-done   (function sigt-wait-spot sig symbol)   :offset  32)
-   (which-spot   int8                                   :offset  36)
-   (num-spots    uint8                                  :offset  37)
-   (spot-indexes uint8                                6 :offset  38)
+  ((check-done    (function sigt-wait-spot sig symbol)    :overlay-at (-> bytes 0))
+   (which-spot    int8                                    :overlay-at (-> bytes 4))
+   (num-spots     uint8                                   :overlay-at (-> bytes 5))
+   (spot-indexes  uint8                                 6 :overlay-at (-> bytes 6))
    )
-  :method-count-assert 12
-  :size-assert         #x30
-  :flag-assert         #xc00000030
   )
 
 ;; definition for method 3 of type sigt-wait-spot
-(defmethod inspect sigt-wait-spot ((obj sigt-wait-spot))
-  (when (not obj)
-    (set! obj obj)
+(defmethod inspect ((this sigt-wait-spot))
+  (when (not this)
+    (set! this this)
     (goto cfg-4)
     )
-  (format #t "[~8x] ~A~%" obj (-> obj type))
-  (format #t "~1Tnext: ~A~%" (-> obj next))
-  (format #t "~1Tprev: ~A~%" (-> obj prev))
-  (format #t "~1Tpool: ~A~%" (-> obj pool))
-  (format #t "~1Tunique-id: ~D~%" (-> obj unique-id))
-  (format #t "~1Tbytes[16] @ #x~X~%" (-> obj bytes))
-  (format #t "~1Tcheck-done: ~A~%" (-> obj check-done))
-  (format #t "~1Twhich-spot: ~D~%" (-> obj which-spot))
-  (format #t "~1Tnum-spots: ~D~%" (-> obj num-spots))
-  (format #t "~1Tspot-indexes[6] @ #x~X~%" (-> obj spot-indexes))
+  (format #t "[~8x] ~A~%" this (-> this type))
+  (format #t "~1Tnext: ~A~%" (-> this next))
+  (format #t "~1Tprev: ~A~%" (-> this prev))
+  (format #t "~1Tpool: ~A~%" (-> this pool))
+  (format #t "~1Tunique-id: ~D~%" (-> this unique-id))
+  (format #t "~1Tbytes[16] @ #x~X~%" (-> this bytes))
+  (format #t "~1Tcheck-done: ~A~%" (-> this check-done))
+  (format #t "~1Twhich-spot: ~D~%" (-> this which-spot))
+  (format #t "~1Tnum-spots: ~D~%" (-> this num-spots))
+  (format #t "~1Tspot-indexes[6] @ #x~X~%" (-> this spot-indexes))
   (label cfg-4)
-  obj
+  this
   )
 
 ;; definition of type sigt-choose-piston
 (deftype sigt-choose-piston (ai-task)
-  ((check-done    (function sigt-choose-piston sig symbol)   :offset  32)
-   (which-spot    int8                                       :offset  36)
-   (num-spots     uint8                                      :offset  37)
-   (spot-indexes  uint8                                    4 :offset  38)
-   (actor-indexes uint8                                    4 :offset  42)
+  ((check-done     (function sigt-choose-piston sig symbol)    :overlay-at (-> bytes 0))
+   (which-spot     int8                                        :overlay-at (-> bytes 4))
+   (num-spots      uint8                                       :overlay-at (-> bytes 5))
+   (spot-indexes   uint8                                     4 :overlay-at (-> bytes 6))
+   (actor-indexes  uint8                                     4 :overlay-at (-> bytes 10))
    )
-  :method-count-assert 15
-  :size-assert         #x30
-  :flag-assert         #xf00000030
   (:methods
-    (sigt-choose-piston-method-12 (_type_ sig) symbol 12)
-    (sigt-choose-piston-method-13 (_type_ sig) none 13)
-    (sigt-choose-piston-method-14 (_type_ sig int) symbol 14)
+    (sigt-choose-piston-method-12 (_type_ sig) symbol)
+    (sigt-choose-piston-method-13 (_type_ sig) none)
+    (sigt-choose-piston-method-14 (_type_ sig int) symbol)
     )
   )
 
 ;; definition for method 3 of type sigt-choose-piston
-(defmethod inspect sigt-choose-piston ((obj sigt-choose-piston))
-  (when (not obj)
-    (set! obj obj)
+(defmethod inspect ((this sigt-choose-piston))
+  (when (not this)
+    (set! this this)
     (goto cfg-4)
     )
-  (format #t "[~8x] ~A~%" obj (-> obj type))
-  (format #t "~1Tnext: ~A~%" (-> obj next))
-  (format #t "~1Tprev: ~A~%" (-> obj prev))
-  (format #t "~1Tpool: ~A~%" (-> obj pool))
-  (format #t "~1Tunique-id: ~D~%" (-> obj unique-id))
-  (format #t "~1Tbytes[16] @ #x~X~%" (-> obj bytes))
-  (format #t "~1Tcheck-done: ~A~%" (-> obj check-done))
-  (format #t "~1Twhich-spot: ~D~%" (-> obj which-spot))
-  (format #t "~1Tnum-spots: ~D~%" (-> obj num-spots))
-  (format #t "~1Tspot-indexes[4] @ #x~X~%" (-> obj spot-indexes))
-  (format #t "~1Tactor-indexes[4] @ #x~X~%" (-> obj actor-indexes))
+  (format #t "[~8x] ~A~%" this (-> this type))
+  (format #t "~1Tnext: ~A~%" (-> this next))
+  (format #t "~1Tprev: ~A~%" (-> this prev))
+  (format #t "~1Tpool: ~A~%" (-> this pool))
+  (format #t "~1Tunique-id: ~D~%" (-> this unique-id))
+  (format #t "~1Tbytes[16] @ #x~X~%" (-> this bytes))
+  (format #t "~1Tcheck-done: ~A~%" (-> this check-done))
+  (format #t "~1Twhich-spot: ~D~%" (-> this which-spot))
+  (format #t "~1Tnum-spots: ~D~%" (-> this num-spots))
+  (format #t "~1Tspot-indexes[4] @ #x~X~%" (-> this spot-indexes))
+  (format #t "~1Tactor-indexes[4] @ #x~X~%" (-> this actor-indexes))
   (label cfg-4)
-  obj
+  this
   )
 
 ;; definition of type sigt-riding-piston
 (deftype sigt-riding-piston (ai-task)
-  ((check-done   (function sigt-riding-piston sig symbol)   :offset  32)
-   (which-spot   int8                                       :offset  36)
-   (num-spots    uint8                                      :offset  37)
-   (spot-indexes uint8                                    4 :offset  38)
+  ((check-done    (function sigt-riding-piston sig symbol)    :overlay-at (-> bytes 0))
+   (which-spot    int8                                        :overlay-at (-> bytes 4))
+   (num-spots     uint8                                       :overlay-at (-> bytes 5))
+   (spot-indexes  uint8                                     4 :overlay-at (-> bytes 6))
    )
-  :method-count-assert 13
-  :size-assert         #x30
-  :flag-assert         #xd00000030
   (:methods
-    (sigt-riding-piston-method-12 (_type_ sig) symbol 12)
+    (sigt-riding-piston-method-12 (_type_ sig) symbol)
     )
   )
 
 ;; definition for method 3 of type sigt-riding-piston
-(defmethod inspect sigt-riding-piston ((obj sigt-riding-piston))
-  (when (not obj)
-    (set! obj obj)
+(defmethod inspect ((this sigt-riding-piston))
+  (when (not this)
+    (set! this this)
     (goto cfg-4)
     )
-  (format #t "[~8x] ~A~%" obj (-> obj type))
-  (format #t "~1Tnext: ~A~%" (-> obj next))
-  (format #t "~1Tprev: ~A~%" (-> obj prev))
-  (format #t "~1Tpool: ~A~%" (-> obj pool))
-  (format #t "~1Tunique-id: ~D~%" (-> obj unique-id))
-  (format #t "~1Tbytes[16] @ #x~X~%" (-> obj bytes))
-  (format #t "~1Tcheck-done: ~A~%" (-> obj check-done))
-  (format #t "~1Twhich-spot: ~D~%" (-> obj which-spot))
-  (format #t "~1Tnum-spots: ~D~%" (-> obj num-spots))
-  (format #t "~1Tspot-indexes[4] @ #x~X~%" (-> obj spot-indexes))
+  (format #t "[~8x] ~A~%" this (-> this type))
+  (format #t "~1Tnext: ~A~%" (-> this next))
+  (format #t "~1Tprev: ~A~%" (-> this prev))
+  (format #t "~1Tpool: ~A~%" (-> this pool))
+  (format #t "~1Tunique-id: ~D~%" (-> this unique-id))
+  (format #t "~1Tbytes[16] @ #x~X~%" (-> this bytes))
+  (format #t "~1Tcheck-done: ~A~%" (-> this check-done))
+  (format #t "~1Twhich-spot: ~D~%" (-> this which-spot))
+  (format #t "~1Tnum-spots: ~D~%" (-> this num-spots))
+  (format #t "~1Tspot-indexes[4] @ #x~X~%" (-> this spot-indexes))
   (label cfg-4)
-  obj
+  this
   )
 
 ;; definition of type sigt-charge-plasma
 (deftype sigt-charge-plasma (ai-task)
-  ((check-done   (function sigt-charge-plasma sig symbol)   :offset  32)
-   (which-spot   int8                                       :offset  36)
-   (num-spots    uint8                                      :offset  37)
-   (spot-indexes uint8                                    4 :offset  38)
-   (actor-index  uint8                                      :offset  42)
+  ((check-done    (function sigt-charge-plasma sig symbol)    :overlay-at (-> bytes 0))
+   (which-spot    int8                                        :overlay-at (-> bytes 4))
+   (num-spots     uint8                                       :overlay-at (-> bytes 5))
+   (spot-indexes  uint8                                     4 :overlay-at (-> bytes 6))
+   (actor-index   uint8                                       :overlay-at (-> bytes 10))
    )
-  :method-count-assert 12
-  :size-assert         #x30
-  :flag-assert         #xc00000030
   )
 
 ;; definition for method 3 of type sigt-charge-plasma
-(defmethod inspect sigt-charge-plasma ((obj sigt-charge-plasma))
-  (when (not obj)
-    (set! obj obj)
+(defmethod inspect ((this sigt-charge-plasma))
+  (when (not this)
+    (set! this this)
     (goto cfg-4)
     )
-  (format #t "[~8x] ~A~%" obj (-> obj type))
-  (format #t "~1Tnext: ~A~%" (-> obj next))
-  (format #t "~1Tprev: ~A~%" (-> obj prev))
-  (format #t "~1Tpool: ~A~%" (-> obj pool))
-  (format #t "~1Tunique-id: ~D~%" (-> obj unique-id))
-  (format #t "~1Tbytes[16] @ #x~X~%" (-> obj bytes))
-  (format #t "~1Tcheck-done: ~A~%" (-> obj check-done))
-  (format #t "~1Twhich-spot: ~D~%" (-> obj which-spot))
-  (format #t "~1Tnum-spots: ~D~%" (-> obj num-spots))
-  (format #t "~1Tspot-indexes[4] @ #x~X~%" (-> obj spot-indexes))
-  (format #t "~1Tactor-index: ~D~%" (-> obj actor-index))
+  (format #t "[~8x] ~A~%" this (-> this type))
+  (format #t "~1Tnext: ~A~%" (-> this next))
+  (format #t "~1Tprev: ~A~%" (-> this prev))
+  (format #t "~1Tpool: ~A~%" (-> this pool))
+  (format #t "~1Tunique-id: ~D~%" (-> this unique-id))
+  (format #t "~1Tbytes[16] @ #x~X~%" (-> this bytes))
+  (format #t "~1Tcheck-done: ~A~%" (-> this check-done))
+  (format #t "~1Twhich-spot: ~D~%" (-> this which-spot))
+  (format #t "~1Tnum-spots: ~D~%" (-> this num-spots))
+  (format #t "~1Tspot-indexes[4] @ #x~X~%" (-> this spot-indexes))
+  (format #t "~1Tactor-index: ~D~%" (-> this actor-index))
   (label cfg-4)
-  obj
+  this
   )
 
 ;; definition of type sigt-fight-focus
 (deftype sigt-fight-focus (ai-task)
   ()
-  :method-count-assert 12
-  :size-assert         #x30
-  :flag-assert         #xc00000030
   )
 
 ;; definition for method 3 of type sigt-fight-focus
-(defmethod inspect sigt-fight-focus ((obj sigt-fight-focus))
-  (when (not obj)
-    (set! obj obj)
+(defmethod inspect ((this sigt-fight-focus))
+  (when (not this)
+    (set! this this)
     (goto cfg-4)
     )
-  (format #t "[~8x] ~A~%" obj (-> obj type))
-  (format #t "~1Tnext: ~A~%" (-> obj next))
-  (format #t "~1Tprev: ~A~%" (-> obj prev))
-  (format #t "~1Tpool: ~A~%" (-> obj pool))
-  (format #t "~1Tunique-id: ~D~%" (-> obj unique-id))
-  (format #t "~1Tbytes[16] @ #x~X~%" (-> obj bytes))
+  (format #t "[~8x] ~A~%" this (-> this type))
+  (format #t "~1Tnext: ~A~%" (-> this next))
+  (format #t "~1Tprev: ~A~%" (-> this prev))
+  (format #t "~1Tpool: ~A~%" (-> this pool))
+  (format #t "~1Tunique-id: ~D~%" (-> this unique-id))
+  (format #t "~1Tbytes[16] @ #x~X~%" (-> this bytes))
   (label cfg-4)
-  obj
+  this
   )
 
 ;; definition of type sigt-repair-gun
 (deftype sigt-repair-gun (ai-task)
   ()
-  :method-count-assert 12
-  :size-assert         #x30
-  :flag-assert         #xc00000030
   )
 
 ;; definition for method 3 of type sigt-repair-gun
-(defmethod inspect sigt-repair-gun ((obj sigt-repair-gun))
-  (when (not obj)
-    (set! obj obj)
+(defmethod inspect ((this sigt-repair-gun))
+  (when (not this)
+    (set! this this)
     (goto cfg-4)
     )
-  (format #t "[~8x] ~A~%" obj (-> obj type))
-  (format #t "~1Tnext: ~A~%" (-> obj next))
-  (format #t "~1Tprev: ~A~%" (-> obj prev))
-  (format #t "~1Tpool: ~A~%" (-> obj pool))
-  (format #t "~1Tunique-id: ~D~%" (-> obj unique-id))
-  (format #t "~1Tbytes[16] @ #x~X~%" (-> obj bytes))
+  (format #t "[~8x] ~A~%" this (-> this type))
+  (format #t "~1Tnext: ~A~%" (-> this next))
+  (format #t "~1Tprev: ~A~%" (-> this prev))
+  (format #t "~1Tpool: ~A~%" (-> this pool))
+  (format #t "~1Tunique-id: ~D~%" (-> this unique-id))
+  (format #t "~1Tbytes[16] @ #x~X~%" (-> this bytes))
   (label cfg-4)
-  obj
+  this
   )
 
 ;; failed to figure out what this is:

@@ -2,47 +2,47 @@
 (in-package goal)
 
 ;; definition for method 2 of type res-tag
-(defmethod print res-tag ((obj res-tag))
-  (if (zero? (-> obj inlined?))
+(defmethod print ((this res-tag))
+  (if (zero? (-> this inlined?))
       (format
         #t
         "#<res-tag :name ~A :key-frame ~f :elt-type ~A :elt-count ~D>"
-        (-> obj name)
-        (-> obj key-frame)
-        (-> obj elt-type)
-        (-> obj elt-count)
+        (-> this name)
+        (-> this key-frame)
+        (-> this elt-type)
+        (-> this elt-count)
         )
       (format
         #t
         "#<res-tag (i) :name ~A :key-frame ~f :elt-type ~A :elt-count ~D>"
-        (-> obj name)
-        (-> obj key-frame)
-        (-> obj elt-type)
-        (-> obj elt-count)
+        (-> this name)
+        (-> this key-frame)
+        (-> this elt-type)
+        (-> this elt-count)
         )
       )
-  obj
+  this
   )
 
 ;; definition for method 4 of type res-tag
 ;; WARN: Return type mismatch uint vs int.
-(defmethod length res-tag ((obj res-tag))
-  (the-as int (if (zero? (-> obj inlined?))
-                  (* (-> obj elt-count) 4)
-                  (* (-> obj elt-count) (-> obj elt-type size))
+(defmethod length ((this res-tag))
+  (the-as int (if (zero? (-> this inlined?))
+                  (* (-> this elt-count) 4)
+                  (* (-> this elt-count) (-> this elt-type size))
                   )
           )
   )
 
 ;; definition for method 13 of type res-lump
 ;; INFO: Used lq/sq
-(defmethod get-tag-index-data res-lump ((obj res-lump) (arg0 int))
-  (&+ (-> obj data-base) (-> obj tag arg0 data-offset))
+(defmethod get-tag-index-data ((this res-lump) (arg0 int))
+  (&+ (-> this data-base) (-> this tag arg0 data-offset))
   )
 
 ;; definition for method 14 of type res-lump
-(defmethod get-tag-data res-lump ((obj res-lump) (arg0 res-tag))
-  (&+ (-> obj data-base) (-> arg0 data-offset))
+(defmethod get-tag-data ((this res-lump) (arg0 res-tag))
+  (&+ (-> this data-base) (-> arg0 data-offset))
   )
 
 ;; definition for method 0 of type res-lump
@@ -58,45 +58,45 @@
   )
 
 ;; definition for method 4 of type res-lump
-(defmethod length res-lump ((obj res-lump))
-  (-> obj length)
+(defmethod length ((this res-lump))
+  (-> this length)
   )
 
 ;; definition for method 5 of type res-lump
 ;; WARN: Return type mismatch uint vs int.
-(defmethod asize-of res-lump ((obj res-lump))
-  (the-as int (+ (-> obj type psize) (* (-> obj allocated-length) 16) (-> obj data-size)))
+(defmethod asize-of ((this res-lump))
+  (the-as int (+ (-> this type psize) (* (-> this allocated-length) 16) (-> this data-size)))
   )
 
 ;; definition for method 3 of type res-lump
 ;; INFO: this function exists in multiple non-identical object files
 ;; INFO: Used lq/sq
-(defmethod inspect res-lump ((obj res-lump))
-  (format #t "[~8x] ~A~%" obj (-> obj type))
-  (format #t "~Textra: ~A~%" (-> obj extra))
-  (format #t "~Tallocated-length: ~D~%" (-> obj allocated-length))
-  (format #t "~Tlength: ~D~%" (-> obj length))
-  (format #t "~Tdata-base: #x~X~%" (-> obj data-base))
-  (format #t "~Tdata-top: #x~X~%" (-> obj data-top))
-  (format #t "~Tdata-size: #x~X~%" (-> obj data-size))
-  (format #t "~Ttag[~D]: @ #x~X~%" (-> obj allocated-length) (-> obj tag))
-  (dotimes (s5-0 (-> obj length))
+(defmethod inspect ((this res-lump))
+  (format #t "[~8x] ~A~%" this (-> this type))
+  (format #t "~Textra: ~A~%" (-> this extra))
+  (format #t "~Tallocated-length: ~D~%" (-> this allocated-length))
+  (format #t "~Tlength: ~D~%" (-> this length))
+  (format #t "~Tdata-base: #x~X~%" (-> this data-base))
+  (format #t "~Tdata-top: #x~X~%" (-> this data-top))
+  (format #t "~Tdata-size: #x~X~%" (-> this data-size))
+  (format #t "~Ttag[~D]: @ #x~X~%" (-> this allocated-length) (-> this tag))
+  (dotimes (s5-0 (-> this length))
     (format #t "~T  [~D] " s5-0)
-    (print (-> obj tag s5-0))
+    (print (-> this tag s5-0))
     (let ((t9-10 format)
           (a0-12 #t)
           (a1-9 " @ #x~X")
-          (a3-2 obj)
+          (a3-2 this)
           (a2-9 s5-0)
           )
       (t9-10 a0-12 a1-9 (&+ (-> a3-2 data-base) (-> a3-2 tag a2-9 data-offset)))
       )
     (cond
-      ((zero? (-> obj tag s5-0 inlined?))
+      ((zero? (-> this tag s5-0 inlined?))
        (let ((t9-11 format)
              (a0-14 #t)
              (a1-10 " = ~A~%")
-             (a3-4 obj)
+             (a3-4 this)
              (a2-17 s5-0)
              )
          (t9-11 a0-14 a1-10 (-> (the-as (pointer uint32) (&+ (-> a3-4 data-base) (-> a3-4 tag a2-17 data-offset)))))
@@ -107,13 +107,13 @@
         )
       )
     )
-  obj
+  this
   )
 
 ;; definition for method 19 of type res-lump
 ;; INFO: Used lq/sq
 ;; WARN: Return type mismatch int vs res-tag-pair.
-(defmethod lookup-tag-idx res-lump ((obj res-lump) (arg0 symbol) (arg1 symbol) (arg2 float))
+(defmethod lookup-tag-idx ((this res-lump) (arg0 symbol) (arg1 symbol) (arg2 float))
   (local-vars (t4-1 int))
   (when (or (= arg0 'id)
             (= arg0 'aid)
@@ -126,7 +126,7 @@
     (crash!)
     0
     )
-  (if (or (not obj) (zero? obj) (<= (-> obj length) 0))
+  (if (or (not this) (zero? this) (<= (-> this length) 0))
       (return (new 'static 'res-tag-pair :lo #xffffffff :hi #xffffffff))
       )
   (let ((v1-14 -1)
@@ -135,12 +135,12 @@
     (let ((t1-0 -1)
           (t2-4 (-> (the-as (pointer uint64) (-> (symbol->string arg0) data)) 0))
           )
-      (let ((t3-1 (+ (-> obj length) -1))
+      (let ((t3-1 (+ (-> this length) -1))
             (t4-0 0)
             )
         (while (>= t3-1 t4-0)
           (let* ((t5-2 (+ t4-0 (/ (- t3-1 t4-0) 2)))
-                 (t6-5 (- t2-4 (-> (the-as (pointer uint64) (-> (symbol->string (-> obj tag t5-2 name)) data)) 0)))
+                 (t6-5 (- t2-4 (-> (the-as (pointer uint64) (-> (symbol->string (-> this tag t5-2 name)) data)) 0)))
                  )
             (cond
               ((zero? t6-5)
@@ -163,7 +163,7 @@
           (return (the-as res-tag-pair t4-1))
           )
       (while (and (> t4-1 0)
-                  (= t2-4 (-> (the-as (pointer uint64) (-> (symbol->string (-> obj tag (+ t4-1 -1) name)) data)) 0))
+                  (= t2-4 (-> (the-as (pointer uint64) (-> (symbol->string (-> this tag (+ t4-1 -1) name)) data)) 0))
                   )
         (+! t4-1 -1)
         )
@@ -173,9 +173,9 @@
         (goto cfg-73)
         )
       (let ((t3-13 t4-1)
-            (t4-4 (&-> (-> obj tag) t4-1))
+            (t4-4 (&-> (-> this tag) t4-1))
             )
-        (while (not (or (>= t3-13 (-> obj length))
+        (while (not (or (>= t3-13 (-> this length))
                         (< t2-4 (-> (&+ (the-as (pointer uint64) (symbol->string (-> t4-4 0 name))) 4) 0))
                         )
                     )
@@ -213,19 +213,19 @@
 
 ;; definition for method 20 of type res-lump
 ;; INFO: Used lq/sq
-(defmethod make-property-data res-lump ((obj res-lump) (arg0 float) (arg1 res-tag-pair) (arg2 pointer))
+(defmethod make-property-data ((this res-lump) (arg0 float) (arg1 res-tag-pair) (arg2 pointer))
   (rlet ((vf1 :class vf)
          (vf2 :class vf)
          (vf3 :class vf)
          (vf4 :class vf)
          )
-    (let* ((t0-2 (-> obj tag (-> arg1 lo)))
-           (t1-2 (-> obj tag (-> arg1 hi)))
+    (let* ((t0-2 (-> this tag (-> arg1 lo)))
+           (t1-2 (-> this tag (-> arg1 hi)))
            (v1-6 (-> t0-2 elt-count))
            )
       (cond
         ((zero? (-> t0-2 inlined?))
-         (&+ (-> obj data-base) (-> t0-2 data-offset))
+         (&+ (-> this data-base) (-> t0-2 data-offset))
          )
         ((or (not arg2)
              (= (-> arg1 lo) (-> arg1 hi))
@@ -233,15 +233,15 @@
              (!= (-> t0-2 elt-type) (-> t1-2 elt-type))
              )
          (let ((a0-4 t0-2))
-           (&+ (-> obj data-base) (-> a0-4 data-offset))
+           (&+ (-> this data-base) (-> a0-4 data-offset))
            )
          )
         (else
           (let* ((f0-2 (/ (- arg0 (-> t0-2 key-frame)) (- (-> t1-2 key-frame) (-> t0-2 key-frame))))
-                 (a1-4 obj)
+                 (a1-4 this)
                  (a2-7 t0-2)
                  (a1-6 (&+ (-> a1-4 data-base) (-> a2-7 data-offset)))
-                 (a2-13 (&+ (-> obj data-base) (-> t1-2 data-offset)))
+                 (a2-13 (&+ (-> this data-base) (-> t1-2 data-offset)))
                  )
             (case (-> t0-2 elt-type symbol)
               (('float)
@@ -382,7 +382,7 @@
                )
               (else
                 (let ((a0-27 t0-2))
-                  (&+ (-> obj data-base) (-> a0-27 data-offset))
+                  (&+ (-> this data-base) (-> a0-27 data-offset))
                   )
                 )
               )
@@ -395,23 +395,23 @@
 
 ;; definition for method 9 of type res-lump
 ;; INFO: Used lq/sq
-(defmethod get-property-data res-lump ((obj res-lump)
-                                     (arg0 symbol)
-                                     (arg1 symbol)
-                                     (arg2 float)
-                                     (arg3 pointer)
-                                     (arg4 (pointer res-tag))
-                                     (arg5 pointer)
-                                     )
-  (let ((s3-0 (lookup-tag-idx obj arg0 arg1 arg2)))
+(defmethod get-property-data ((this res-lump)
+                             (arg0 symbol)
+                             (arg1 symbol)
+                             (arg2 float)
+                             (arg3 pointer)
+                             (arg4 (pointer res-tag))
+                             (arg5 pointer)
+                             )
+  (let ((s3-0 (lookup-tag-idx this arg0 arg1 arg2)))
     (cond
       ((< (the-as int s3-0) 0)
        (empty)
        )
       (else
-        (set! arg3 (make-property-data obj arg2 s3-0 arg5))
+        (set! arg3 (make-property-data this arg2 s3-0 arg5))
         (if arg4
-            (set! (-> arg4 0) (-> obj tag (-> s3-0 lo)))
+            (set! (-> arg4 0) (-> this tag (-> s3-0 lo)))
             )
         )
       )
@@ -422,22 +422,22 @@
 ;; definition for method 10 of type res-lump
 ;; INFO: Used lq/sq
 ;; WARN: Return type mismatch object vs structure.
-(defmethod get-property-struct res-lump ((obj res-lump)
-                                       (arg0 symbol)
-                                       (arg1 symbol)
-                                       (arg2 float)
-                                       (arg3 structure)
-                                       (arg4 (pointer res-tag))
-                                       (arg5 pointer)
-                                       )
-  (let ((s3-0 (lookup-tag-idx obj arg0 arg1 arg2)))
+(defmethod get-property-struct ((this res-lump)
+                               (arg0 symbol)
+                               (arg1 symbol)
+                               (arg2 float)
+                               (arg3 structure)
+                               (arg4 (pointer res-tag))
+                               (arg5 pointer)
+                               )
+  (let ((s3-0 (lookup-tag-idx this arg0 arg1 arg2)))
     (cond
       ((< (the-as int s3-0) 0)
        (empty)
        )
       (else
-        (set! arg3 (the-as structure (make-property-data obj arg2 s3-0 arg5)))
-        (let ((v1-4 (-> obj tag (-> s3-0 lo))))
+        (set! arg3 (the-as structure (make-property-data this arg2 s3-0 arg5)))
+        (let ((v1-4 (-> this tag (-> s3-0 lo))))
           (if arg4
               (set! (-> arg4 0) v1-4)
               )
@@ -455,24 +455,24 @@
 ;; definition for method 11 of type res-lump
 ;; INFO: Used lq/sq
 ;; WARN: Return type mismatch int vs uint128.
-(defmethod get-property-value res-lump ((obj res-lump)
-                                      (arg0 symbol)
-                                      (arg1 symbol)
-                                      (arg2 float)
-                                      (arg3 uint128)
-                                      (arg4 (pointer res-tag))
-                                      (arg5 pointer)
-                                      )
-  (let ((a2-1 (lookup-tag-idx obj arg0 arg1 arg2)))
+(defmethod get-property-value ((this res-lump)
+                              (arg0 symbol)
+                              (arg1 symbol)
+                              (arg2 float)
+                              (arg3 uint128)
+                              (arg4 (pointer res-tag))
+                              (arg5 pointer)
+                              )
+  (let ((a2-1 (lookup-tag-idx this arg0 arg1 arg2)))
     (cond
       ((< (the-as int a2-1) 0)
        (empty)
        )
       (else
         (let* ((a0-2 (-> a2-1 lo))
-               (s1-0 (-> obj tag a0-2))
+               (s1-0 (-> this tag a0-2))
                (s0-0 (-> s1-0 elt-type))
-               (gp-1 (make-property-data obj arg2 a2-1 arg5))
+               (gp-1 (make-property-data this arg2 a2-1 arg5))
                )
           (if arg4
               (set! (-> arg4 0) s1-0)
@@ -532,18 +532,25 @@
 
 ;; definition for method 12 of type res-lump
 ;; INFO: Used lq/sq
-(defmethod get-property-value-float res-lump ((obj res-lump) (arg0 symbol) (arg1 symbol) (arg2 float) (arg3 float) (arg4 (pointer res-tag)) (arg5 pointer))
+(defmethod get-property-value-float ((this res-lump)
+                                    (arg0 symbol)
+                                    (arg1 symbol)
+                                    (arg2 float)
+                                    (arg3 float)
+                                    (arg4 (pointer res-tag))
+                                    (arg5 pointer)
+                                    )
   (local-vars (v1-8 uint) (v1-11 int))
-  (let ((a2-1 (lookup-tag-idx obj arg0 arg1 arg2)))
+  (let ((a2-1 (lookup-tag-idx this arg0 arg1 arg2)))
     (cond
       ((< (the-as int a2-1) 0)
        (empty)
        )
       (else
         (let* ((a0-2 (-> a2-1 lo))
-               (s1-0 (-> obj tag a0-2))
+               (s1-0 (-> this tag a0-2))
                (s0-0 (-> s1-0 elt-type))
-               (gp-1 (make-property-data obj arg2 a2-1 arg5))
+               (gp-1 (make-property-data this arg2 a2-1 arg5))
                )
           (if arg4
               (set! (-> arg4 0) s1-0)
@@ -605,23 +612,23 @@
 
 ;; definition for method 16 of type res-lump
 ;; INFO: Used lq/sq
-(defmethod sort! res-lump ((obj res-lump))
+(defmethod sort! ((this res-lump))
   (let ((v1-0 -1))
     (while (nonzero? v1-0)
       (set! v1-0 0)
       (let ((a1-0 0)
-            (a2-1 (+ (-> obj length) -2))
+            (a2-1 (+ (-> this length) -2))
             )
         (while (>= a2-1 a1-0)
-          (let* ((a3-2 (-> obj tag a1-0))
-                 (t0-3 (-> obj tag (+ a1-0 1)))
+          (let* ((a3-2 (-> this tag a1-0))
+                 (t0-3 (-> this tag (+ a1-0 1)))
                  (t1-6 (-> (the-as (pointer uint64) (-> (symbol->string (-> a3-2 name)) data)) 0))
                  (t2-6 (-> (the-as (pointer uint64) (-> (symbol->string (-> t0-3 name)) data)) 0))
                  )
             (when (or (< t2-6 t1-6) (and (= t1-6 t2-6) (< (-> t0-3 key-frame) (-> a3-2 key-frame))))
               (+! v1-0 1)
-              (set! (-> obj tag a1-0) t0-3)
-              (set! (-> obj tag (+ a1-0 1)) a3-2)
+              (set! (-> this tag a1-0) t0-3)
+              (set! (-> this tag (+ a1-0 1)) a3-2)
               )
             )
           (+! a1-0 1)
@@ -629,15 +636,15 @@
         )
       )
     )
-  obj
+  this
   )
 
 ;; definition for method 15 of type res-lump
 ;; INFO: Used lq/sq
-(defmethod allocate-data-memory-for-tag! res-lump ((obj res-lump) (arg0 res-tag))
+(defmethod allocate-data-memory-for-tag! ((this res-lump) (arg0 res-tag))
   (local-vars (resource-mem pointer))
-  (let* ((tag-pair (lookup-tag-idx obj (-> arg0 name) 'exact (-> arg0 key-frame)))
-         (existing-tag (-> obj tag (-> tag-pair lo)))
+  (let* ((tag-pair (lookup-tag-idx this (-> arg0 name) 'exact (-> arg0 key-frame)))
+         (existing-tag (-> this tag (-> tag-pair lo)))
          )
     0
     (if (and (>= (the-as int tag-pair) 0) (!= (-> arg0 key-frame) (-> arg0 key-frame)))
@@ -649,46 +656,46 @@
     (let ((data-size (length arg0)))
       (cond
         ((and (>= (the-as int tag-pair) 0) (>= (length existing-tag) data-size))
-         (set! resource-mem (&+ (-> obj data-base) (-> existing-tag data-offset)))
+         (set! resource-mem (&+ (-> this data-base) (-> existing-tag data-offset)))
          (when (logtest? (the-as int resource-mem) 7)
-           (set! resource-mem (logand -16 (&+ (-> obj data-top) 15)))
-           (set! (-> obj data-top) (&+ resource-mem data-size))
+           (set! resource-mem (logand -16 (&+ (-> this data-top) 15)))
+           (set! (-> this data-top) (&+ resource-mem data-size))
            )
          )
         (else
-          (set! resource-mem (logand -16 (&+ (-> obj data-top) 15)))
-          (set! (-> obj data-top) (&+ resource-mem data-size))
+          (set! resource-mem (logand -16 (&+ (-> this data-top) 15)))
+          (set! (-> this data-top) (&+ resource-mem data-size))
           )
         )
       (let* ((a0-22 arg0)
-             (s4-1 (copy-and-set-field a0-22 data-offset (&- resource-mem (the-as uint (-> obj data-base)))))
+             (s4-1 (copy-and-set-field a0-22 data-offset (&- resource-mem (the-as uint (-> this data-base)))))
              )
-        (when (>= (the-as int (&+ resource-mem data-size)) (the-as int (&+ (-> obj data-base) (-> obj data-size))))
+        (when (>= (the-as int (&+ resource-mem data-size)) (the-as int (&+ (-> this data-base) (-> this data-size))))
           (format
             0
             "ERROR: attempting to a new tag ~`res-tag`P data of #x~X bytes to ~A, but data memory is full.~%"
             s4-1
             data-size
-            obj
+            this
             )
           (return (the-as res-tag #f))
           )
         (cond
           ((< (the-as int tag-pair) 0)
            (cond
-             ((>= (-> obj length) (-> obj allocated-length))
-              (format 0 "ERROR: attempting to a new tag ~`res-tag`P to ~A, but tag memory is full.~%" s4-1 obj)
+             ((>= (-> this length) (-> this allocated-length))
+              (format 0 "ERROR: attempting to a new tag ~`res-tag`P to ~A, but tag memory is full.~%" s4-1 this)
               (return (the-as res-tag #f))
               )
              (else
-               (set! (-> obj tag (-> obj length)) s4-1)
-               (+! (-> obj length) 1)
-               (sort! obj)
+               (set! (-> this tag (-> this length)) s4-1)
+               (+! (-> this length) 1)
+               (sort! this)
                )
              )
            )
           (else
-            (set! (-> obj tag (-> tag-pair lo)) s4-1)
+            (set! (-> this tag (-> tag-pair lo)) s4-1)
             )
           )
         s4-1
@@ -698,10 +705,10 @@
   )
 
 ;; definition for method 17 of type res-lump
-(defmethod add-data! res-lump ((obj res-lump) (arg0 res-tag) (arg1 pointer))
-  (let ((a0-2 (allocate-data-memory-for-tag! obj arg0)))
+(defmethod add-data! ((this res-lump) (arg0 res-tag) (arg1 pointer))
+  (let ((a0-2 (allocate-data-memory-for-tag! this arg0)))
     (when a0-2
-      (let* ((v1-2 obj)
+      (let* ((v1-2 this)
              (a1-1 a0-2)
              (s4-0 (&+ (-> v1-2 data-base) (-> a1-1 data-offset)))
              )
@@ -719,29 +726,36 @@
         )
       )
     )
-  obj
+  this
   )
 
 ;; definition for method 18 of type res-lump
-(defmethod add-32bit-data! res-lump ((obj res-lump) (arg0 res-tag) (arg1 object))
+(defmethod add-32bit-data! ((this res-lump) (arg0 res-tag) (arg1 object))
   (local-vars (sv-16 object))
   (set! sv-16 arg1)
   (let* ((v1-0 arg0)
          (a1-4 (copy-and-set-field v1-0 inlined? 1))
          )
-    (add-data! obj a1-4 (& sv-16))
+    (add-data! this a1-4 (& sv-16))
     )
   )
 
 ;; definition for method 21 of type res-lump
 ;; INFO: Used lq/sq
-(defmethod get-curve-data! res-lump ((obj res-lump) (arg0 curve) (arg1 symbol) (arg2 symbol) (arg3 float))
+(defmethod get-curve-data! ((this res-lump) (arg0 curve) (arg1 symbol) (arg2 symbol) (arg3 float))
   (local-vars (sv-16 res-tag) (sv-32 res-tag))
   (let ((s5-0 #f))
     (set! sv-16 (new 'static 'res-tag))
-    (let ((a0-2
-            ((method-of-object obj get-property-data) obj arg1 'exact arg3 (the-as pointer #f) (& sv-16) *res-static-buf*)
-            )
+    (let ((a0-2 ((method-of-object this get-property-data)
+                 this
+                 arg1
+                 'exact
+                 arg3
+                 (the-as pointer #f)
+                 (& sv-16)
+                 *res-static-buf*
+                 )
+                )
           )
       (when a0-2
         (set! (-> arg0 cverts) (the-as (inline-array vector) a0-2))
@@ -756,9 +770,16 @@
           (set! (-> arg0 num-cverts) 256)
           )
         (set! sv-32 (new 'static 'res-tag))
-        (let ((a0-6
-                ((method-of-object obj get-property-data) obj arg2 'exact arg3 (the-as pointer #f) (& sv-32) *res-static-buf*)
-                )
+        (let ((a0-6 ((method-of-object this get-property-data)
+                     this
+                     arg2
+                     'exact
+                     arg3
+                     (the-as pointer #f)
+                     (& sv-32)
+                     *res-static-buf*
+                     )
+                    )
               )
           (when a0-6
             (set! (-> arg0 knots) (the-as (pointer float) a0-6))
@@ -781,7 +802,7 @@
 ;; WARN: Using new Jak 2 rtype-of
 ;; WARN: Using new Jak 2 rtype-of
 ;; WARN: Using new Jak 2 rtype-of
-(defmethod mem-usage res-lump ((obj res-lump) (arg0 memory-usage-block) (arg1 int))
+(defmethod mem-usage ((this res-lump) (arg0 memory-usage-block) (arg1 int))
   (local-vars (sv-16 int))
   (let ((s3-0 48)
         (s2-0 "res")
@@ -803,13 +824,13 @@
     (set! (-> arg0 length) (max (-> arg0 length) (+ s3-0 1)))
     (set! (-> arg0 data s3-0 name) s2-0)
     (+! (-> arg0 data s3-0 count) 1)
-    (let ((v1-19 (asize-of obj)))
+    (let ((v1-19 (asize-of this)))
       (+! (-> arg0 data s3-0 used) v1-19)
       (+! (-> arg0 data s3-0 total) (logand -16 (+ v1-19 15)))
       )
-    (dotimes (s1-0 (-> obj length))
-      (when (zero? (-> obj tag s1-0 inlined?))
-        (let* ((a1-4 obj)
+    (dotimes (s1-0 (-> this length))
+      (when (zero? (-> this tag s1-0 inlined?))
+        (let* ((a1-4 this)
                (a0-15 s1-0)
                (s0-0 (the-as object (-> (the-as (pointer int32) (&+ (-> a1-4 data-base) (-> a1-4 tag a0-15 data-offset))))))
                )

@@ -7,13 +7,8 @@
 
 ;; DECOMP BEGINS
 
-
 (deftype camera-voicebox (camera-slave)
   ()
-  :heap-base #x9a0
-  :method-count-assert 14
-  :size-assert         #xa04
-  :flag-assert         #xe09a00a04
   (:states
     cam-voicebox
     )
@@ -21,27 +16,23 @@
 
 
 (deftype voicebox (process-drawable)
-  ((parent-override (pointer camera-voicebox)         :offset         12)
-   (base-trans      vector                    :inline :offset-assert 176)
-   (seeker          cam-float-seeker          :inline :offset-assert 192)
-   (blend           float                             :offset-assert 216)
-   (twist           float                             :offset-assert 220)
-   (hint            handle                            :offset-assert 224)
+  ((parent-override  (pointer camera-voicebox)  :overlay-at parent)
+   (base-trans       vector                     :inline)
+   (seeker           cam-float-seeker           :inline)
+   (blend            float)
+   (twist            float)
+   (hint             handle)
    )
-  :heap-base #x80
-  :method-count-assert 23
-  :size-assert         #xe8
-  :flag-assert         #x17008000e8
-  (:methods
-    (enter () _type_ :state 20)
-    (idle () _type_ :state 21)
-    (exit () _type_ :state 22)
+  (:state-methods
+    enter
+    idle
+    exit
     )
   )
 
 
 (defstate empty-state (process)
-  :code (the-as (function none :behavior process) nothing)
+  :code nothing
   )
 
 (defskelgroup *voicebox-sg* speaker speaker-lod0-jg speaker-idle-ja
@@ -62,9 +53,7 @@
       )
     (vector-lerp! (-> self root trans) gp-0 s5-0 (-> self blend))
     )
-  (+! (-> self root trans y)
-      (* 1638.4 (sin (* 54.613335 (the float (mod (-> *display* base-frame-counter) 1200)))))
-      )
+  (+! (-> self root trans y) (* 1638.4 (sin (* 54.613335 (the float (mod (current-time) 1200))))))
   (let ((gp-1 (new 'stack-no-clear 'quaternion)))
     (forward-up->quaternion
       gp-1
@@ -81,8 +70,8 @@
              )
            )
       (if (< 0.0 f0-8)
-          (seek! (-> self twist) -0.4 (* 0.3 (-> *display* seconds-per-frame)))
-          (seek! (-> self twist) 0.4 (* 0.3 (-> *display* seconds-per-frame)))
+          (seek! (-> self twist) -0.4 (* 0.3 (seconds-per-frame)))
+          (seek! (-> self twist) 0.4 (* 0.3 (seconds-per-frame)))
           )
       )
     (let ((a1-9 (new 'stack-no-clear 'event-message-block)))
@@ -112,8 +101,8 @@
 
 (defstate enter (voicebox)
   :virtual #t
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-    (case arg2
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('die)
        (go-virtual exit)
        )
@@ -124,7 +113,6 @@
     (if (< 0.1 (-> self blend))
         (point-toward-point-clear-roll-pitch! (-> self root) (target-pos 0))
         )
-    (none)
     )
   :code (behavior ()
     (set-setting! 'sound-flava #f 20.0 (music-flava assistant))
@@ -151,9 +139,8 @@
       )
     (set! (-> self blend) 0.0)
     (go-virtual idle)
-    (none)
     )
-  :post (the-as (function none :behavior voicebox) ja-post)
+  :post ja-post
   )
 
 (defstate idle (voicebox)
@@ -165,9 +152,8 @@
       (suspend)
       (ja :num! (loop!))
       )
-    (none)
     )
-  :post (the-as (function none :behavior voicebox) ja-post)
+  :post ja-post
   )
 
 (defstate exit (voicebox)
@@ -175,14 +161,13 @@
   :trans voicebox-track
   :code (behavior ()
     (remove-setting! 'sound-flava)
-    (set! (-> self state-time) (-> *display* base-frame-counter))
+    (set-time! (-> self state-time))
     (set! (-> self seeker target) 1.0)
-    (while (and (< (-> self blend) 0.9999)
-                (not (and (not (handle->process (-> self hint)))
-                          (>= (- (-> *display* base-frame-counter) (-> self state-time)) (seconds 0.05))
-                          (-> *setting-control* current hint)
-                          )
-                     )
+    (while (and (< (-> self blend) 0.9999) (not (and (not (handle->process (-> self hint)))
+                                                     (time-elapsed? (-> self state-time) (seconds 0.05))
+                                                     (-> *setting-control* current hint)
+                                                     )
+                                                )
                 )
       (update! (-> self seeker) 0.0)
       (set! (-> self blend) (-> self seeker value))
@@ -192,9 +177,8 @@
     (send-event (ppointer->process (-> self parent-override)) 'go empty-state)
     (suspend)
     0
-    (none)
     )
-  :post (the-as (function none :behavior voicebox) ja-post)
+  :post ja-post
   )
 
 (defbehavior voicebox-init-by-other voicebox ((arg0 vector) (arg1 handle))
@@ -212,10 +196,9 @@
   :event (-> cam-string event)
   :enter (-> cam-string enter)
   :trans (behavior ()
-    (if (zero? (logand (-> *camera* master-options) 2))
+    (if (not (logtest? (-> *camera* master-options) 2))
         (deactivate self)
         )
-    (none)
     )
   :code (-> cam-string code)
   )
@@ -230,7 +213,3 @@
       )
     )
   )
-
-
-
-

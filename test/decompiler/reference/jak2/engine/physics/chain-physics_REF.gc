@@ -3,18 +3,18 @@
 
 ;; definition for method 12 of type chain-physics
 ;; WARN: Return type mismatch int vs none.
-(defmethod gravity-update chain-physics ((obj chain-physics) (arg0 process-drawable))
-  (vector-seek-3d-smooth! (-> obj gravity) (-> obj gravity-target) 0.05 0.1)
+(defmethod gravity-update ((this chain-physics) (arg0 process-drawable))
+  (vector-seek-3d-smooth! (-> this gravity) (-> this gravity-target) 0.05 0.1)
   0
   (none)
   )
 
 ;; definition for method 13 of type chain-physics
 ;; WARN: Return type mismatch int vs none.
-(defmethod apply-gravity chain-physics ((obj chain-physics) (arg0 vector) (arg1 int) (arg2 process-drawable))
+(defmethod apply-gravity ((this chain-physics) (arg0 vector) (arg1 int) (arg2 process-drawable))
   (vector-float*!
     arg0
-    (-> obj gravity)
+    (-> this gravity)
     (* 4096.0 (-> self clock time-adjust-ratio) (fmax 0.2 (lerp-scale 0.38 0.18 (the float arg1) 0.0 5.0)))
     )
   0
@@ -23,10 +23,10 @@
 
 ;; definition for method 14 of type chain-physics
 ;; WARN: Return type mismatch int vs none.
-(defmethod chain-physics-method-14 chain-physics ((obj chain-physics) (arg0 vector) (arg1 int))
+(defmethod chain-physics-method-14 ((this chain-physics) (arg0 vector) (arg1 int))
   (vector-float*!
     arg0
-    (the-as vector (+ (the-as uint (-> obj chain-joints 0 velocity)) (* (+ arg1 1) 64)))
+    (the-as vector (+ (the-as uint (-> this chain-joints 0 velocity)) (* (+ arg1 1) 64)))
     (fmin 0.9 (lerp-scale 0.2 1.0 (the float arg1) 0.0 4.0))
     )
   0
@@ -34,31 +34,31 @@
   )
 
 ;; definition for method 15 of type chain-physics
-(defmethod clamp-length chain-physics ((obj chain-physics) (arg0 vector) (arg1 vector) (arg2 object) (arg3 process-drawable))
+(defmethod clamp-length ((this chain-physics) (arg0 vector) (arg1 vector) (arg2 object) (arg3 process-drawable))
   (let ((gp-0 (new 'stack-no-clear 'vector)))
     (vector-! gp-0 arg0 arg1)
-    (vector-normalize! gp-0 (-> obj joint-length))
+    (vector-normalize! gp-0 (-> this joint-length))
     (vector+! arg0 gp-0 arg1)
     )
   )
 
 ;; definition for method 16 of type chain-physics
-(defmethod chain-physics-method-16 chain-physics ((obj chain-physics) (arg0 int))
+(defmethod chain-physics-method-16 ((this chain-physics) (arg0 int))
   (lerp-scale 5461.3335 10922.667 (the float arg0) 0.0 8.0)
   )
 
 ;; definition for method 17 of type chain-physics
 ;; WARN: Return type mismatch int vs none.
-(defmethod chain-physics-method-17 chain-physics ((obj chain-physics) (arg0 vector) (arg1 int))
+(defmethod chain-physics-method-17 ((this chain-physics) (arg0 vector) (arg1 int))
   0
   (none)
   )
 
 ;; definition for method 9 of type chain-physics
-(defmethod initialize-chain-joints chain-physics ((obj chain-physics))
-  (set! (-> obj turn-off-start) 0)
-  (dotimes (s5-0 (the-as int (-> obj num-joints)))
-    (let ((s4-0 (-> obj chain-joints s5-0)))
+(defmethod initialize-chain-joints ((this chain-physics))
+  (set! (-> this turn-off-start) 0)
+  (dotimes (s5-0 (the-as int (-> this num-joints)))
+    (let ((s4-0 (-> this chain-joints s5-0)))
       (vector<-cspace! (-> s4-0 position) (-> s4-0 joint-mod joint))
       (vector-reset! (-> s4-0 velocity))
       (mode-set! (-> s4-0 joint-mod) (joint-mod-mode joint-set-world))
@@ -69,9 +69,9 @@
 
 ;; definition for method 10 of type chain-physics
 ;; WARN: Return type mismatch int vs none.
-(defmethod turn-off chain-physics ((obj chain-physics) (arg0 time-frame))
-  (set! (-> obj turn-off-start) (current-time))
-  (set! (-> obj turn-off-duration) arg0)
+(defmethod turn-off ((this chain-physics) (arg0 time-frame))
+  (set-time! (-> this turn-off-start))
+  (set! (-> this turn-off-duration) arg0)
   0
   (none)
   )
@@ -79,7 +79,7 @@
 ;; definition for method 11 of type chain-physics
 ;; INFO: Used lq/sq
 ;; WARN: Return type mismatch int vs none.
-(defmethod update chain-physics ((obj chain-physics) (arg0 process-drawable))
+(defmethod update ((this chain-physics) (arg0 process-drawable))
   (local-vars
     (v1-78 float)
     (f0-11 float)
@@ -111,49 +111,49 @@
          (vf6 :class vf)
          )
     (init-vf0-vector)
-    (gravity-update obj arg0)
+    (gravity-update this arg0)
     (let ((s4-0 (new 'stack-no-clear 'matrix))
-          (s3-0 (vector<-cspace! (new 'stack-no-clear 'vector) (-> arg0 node-list data (-> obj root-joint-index))))
+          (s3-0 (vector<-cspace! (new 'stack-no-clear 'vector) (-> arg0 node-list data (-> this root-joint-index))))
           (s2-0 (vector-normalize-copy!
                   (new 'stack-no-clear 'vector)
-                  (-> arg0 node-list data (-> obj root-joint-index) bone transform vector 2)
+                  (-> arg0 node-list data (-> this root-joint-index) bone transform vector 2)
                   1.0
                   )
                 )
           (s1-0 (vector-normalize-copy!
                   (new 'stack-no-clear 'vector)
-                  (-> arg0 node-list data (-> obj root-joint-index) bone transform vector 1)
+                  (-> arg0 node-list data (-> this root-joint-index) bone transform vector 1)
                   1.0
                   )
                 )
           )
       (new 'stack-no-clear 'vector)
       (let ((f30-0 1.0))
-        (if (nonzero? (-> obj turn-off-start))
+        (if (nonzero? (-> this turn-off-start))
             (set! f30-0
                   (fmax
                     0.0
                     (fmin
                       1.0
                       (parameter-ease-sin-clamp
-                        (- 1.0 (/ (the float (- (current-time) (-> obj turn-off-start))) (the float (-> obj turn-off-duration))))
+                        (- 1.0 (/ (the float (- (current-time) (-> this turn-off-start))) (the float (-> this turn-off-duration))))
                         )
                       )
                     )
                   )
             )
-        (dotimes (s0-0 (the-as int (-> obj num-joints)))
-          (set! sv-272 (-> obj chain-joints s0-0))
+        (dotimes (s0-0 (the-as int (-> this num-joints)))
+          (set! sv-272 (-> this chain-joints s0-0))
           (set! sv-528 (new 'stack-no-clear 'vector))
           (let ((v1-27 (-> sv-272 position quad)))
             (set! (-> sv-528 quad) v1-27)
             )
           (set! (-> sv-272 joint-mod flex-blend) f30-0)
-          (if (-> obj negate-y)
+          (if (-> this negate-y)
               (vector-negate! s1-0 s1-0)
               )
           (set! sv-288 (new 'stack-no-clear 'vector))
-          (apply-gravity obj sv-288 s0-0 arg0)
+          (apply-gravity this sv-288 s0-0 arg0)
           (let ((v1-34 sv-528))
             (let ((a0-10 sv-528))
               (.mov.vf vf6 vf0 :mask #b1000)
@@ -163,9 +163,9 @@
             (.add.vf vf6 vf4 vf5 :mask #b111)
             (.svf (&-> v1-34 quad) vf6)
             )
-          (when (< s0-0 (the-as int (+ (-> obj root-joint-index) -1)))
+          (when (< s0-0 (the-as int (+ (-> this root-joint-index) -1)))
             (set! sv-304 (new 'stack-no-clear 'vector))
-            (chain-physics-method-14 obj sv-304 s0-0)
+            (chain-physics-method-14 this sv-304 s0-0)
             (let ((v1-40 sv-528))
               (let ((a0-13 sv-528))
                 (.mov.vf vf6 vf0 :mask #b1000)
@@ -176,7 +176,7 @@
               (.svf (&-> v1-40 quad) vf6)
               )
             )
-          (clamp-length obj sv-528 s3-0 s0-0 arg0)
+          (clamp-length this sv-528 s3-0 s0-0 arg0)
           (set! sv-400 (new 'stack-no-clear 'vector))
           (let ((v1-43 sv-528)
                 (a0-16 s3-0)
@@ -189,7 +189,7 @@
           (.svf (&-> sv-400 quad) vf6)
           (let ((f28-1 (vector-normalize-ret-len! sv-400 1.0))
                 (f24-0 (vector-dot sv-400 s1-0))
-                (f26-0 (chain-physics-method-16 obj s0-0))
+                (f26-0 (chain-physics-method-16 this s0-0))
                 )
             (when (< f24-0 (cos f26-0))
               (vector--float*! sv-400 sv-400 s1-0 f24-0)
@@ -215,7 +215,7 @@
               (vector+float*! sv-528 s3-0 sv-400 f28-1)
               )
             )
-          (chain-physics-method-17 obj sv-528 s0-0)
+          (chain-physics-method-17 this sv-528 s0-0)
           (set! sv-432 (new 'stack-no-clear 'vector))
           (let ((v1-61 s3-0)
                 (a0-27 sv-528)
@@ -241,12 +241,12 @@
             (vector--float*! sv-416 sv-416 sv-432 f28-2)
             (cond
               ((< f28-2 0.0)
-               (set! f0-11 (* f28-2 (-> obj compress-vel-parallel)))
-               (vector-float*! sv-416 sv-416 (-> obj compress-vel))
+               (set! f0-11 (* f28-2 (-> this compress-vel-parallel)))
+               (vector-float*! sv-416 sv-416 (-> this compress-vel))
                )
               (else
-                (set! f0-11 (* f28-2 (-> obj stretch-vel-parallel)))
-                (vector-float*! sv-416 sv-416 (-> obj stretch-vel))
+                (set! f0-11 (* f28-2 (-> this stretch-vel-parallel)))
+                (vector-float*! sv-416 sv-416 (-> this stretch-vel))
                 )
               )
             )
@@ -271,7 +271,7 @@
             (.add.mul.z.vf vf1 vf2 vf1 acc :mask #b1)
             (.mov v1-78 vf1)
             (let* ((f0-13 v1-78)
-                   (f1-6 (* (-> obj maximum-stretch) (-> obj joint-length)))
+                   (f1-6 (* (-> this maximum-stretch) (-> this joint-length)))
                    (f2-3 f1-6)
                    )
               (if (< (* f2-3 f2-3) f0-13)
@@ -283,10 +283,10 @@
           (if (-> sv-272 joint-mod)
               (set! (-> sv-272 joint-mod trans quad) (-> sv-528 quad))
               )
-          (when (< s0-0 (the-as int (-> obj num-joints)))
+          (when (< s0-0 (the-as int (-> this num-joints)))
             (vector-! (-> s4-0 vector 1) sv-528 s3-0)
             (vector-normalize! (-> s4-0 vector 1) 1.0)
-            (if (-> obj negate-y)
+            (if (-> this negate-y)
                 (vector-negate! (-> s4-0 vector 1) (-> s4-0 vector 1))
                 )
             (vector-cross! (the-as vector (-> s4-0 vector)) (-> s4-0 vector 1) s2-0)
@@ -304,13 +304,13 @@
             (vector-flatten! sv-496 (-> sv-272 old-x) (-> s4-0 vector 1))
             (vector-normalize! sv-496 1.0)
             (cond
-              ((< (vector-dot (the-as vector (-> s4-0 vector)) sv-496) (cos (-> obj axial-slop)))
+              ((< (vector-dot (the-as vector (-> s4-0 vector)) sv-496) (cos (-> this axial-slop)))
                (vector-cross! sv-496 sv-496 (the-as vector (-> s4-0 vector)))
                (vector-cross! sv-496 (the-as vector (-> s4-0 vector)) sv-496)
                (vector-normalize! sv-496 1.0)
                (set! sv-464 (-> s4-0 vector))
                (set! sv-448 (-> s4-0 vector))
-               (let ((f0-20 (cos (-> obj axial-slop))))
+               (let ((f0-20 (cos (-> this axial-slop))))
                  (.lvf vf1 (&-> sv-448 0 quad))
                  (let ((v1-107 f0-20))
                    (.mov vf2 v1-107)
@@ -321,7 +321,7 @@
                (.svf (&-> sv-464 0 quad) vf1)
                (set! sv-512 (-> s4-0 vector))
                (set! sv-480 (-> s4-0 vector))
-               (let ((f0-22 (sin (-> obj axial-slop))))
+               (let ((f0-22 (sin (-> this axial-slop))))
                  (.lvf vf2 (&-> sv-496 quad))
                  (.lvf vf1 (&-> sv-480 0 quad))
                  (let ((v1-113 f0-22))
@@ -356,13 +356,13 @@
   )
 
 ;; definition for method 7 of type chain-physics
-(defmethod relocate chain-physics ((obj chain-physics) (arg0 int))
-  (dotimes (v1-0 (the-as int (-> obj num-joints)))
-    (if (nonzero? (-> obj chain-joints v1-0 joint-mod))
-        (&+! (-> obj chain-joints v1-0 joint-mod) arg0)
+(defmethod relocate ((this chain-physics) (arg0 int))
+  (dotimes (v1-0 (the-as int (-> this num-joints)))
+    (if (nonzero? (-> this chain-joints v1-0 joint-mod))
+        (&+! (-> this chain-joints v1-0 joint-mod) arg0)
         )
     )
-  obj
+  this
   )
 
 ;; definition for function chain-physics-initialize

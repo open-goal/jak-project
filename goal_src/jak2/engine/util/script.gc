@@ -157,13 +157,9 @@
              *target*
              )
             ((= arg0 'sidekick)
-             (when *target*
-               (let ((v1-11 (-> *target* sidekick)))
-                 (if v1-11
-                     (the-as process (-> v1-11 0 self))
-                     )
+             (if *target*
+                 (ppointer->process (-> *target* sidekick))
                  )
-               )
              )
             ((= arg0 'parent)
              (let ((v1-14 (-> pp parent)))
@@ -1330,16 +1326,9 @@
                            (set! (-> a1-1 num-params) 2)
                            (set! (-> a1-1 message) (the-as symbol (-> arg0 param 4)))
                            (set! (-> a1-1 param 0) (the-as uint #f))
-                           (let ((v1-6 (new 'static 'attack-info :mask (attack-info-mask mode id))))
-                             (let* ((a0-4 *game-info*)
-                                    (a2-1 (+ (-> a0-4 attack-id) 1))
-                                    )
-                               (set! (-> a0-4 attack-id) a2-1)
-                               (set! (-> v1-6 id) a2-1)
-                               )
-                             (set! (-> v1-6 mode) (the-as symbol (-> arg0 param 3)))
-                             (set! (-> a1-1 param 1) (the-as uint v1-6))
-                             )
+                           (set! (-> a1-1 param 1)
+                                 (the-as uint (static-attack-info ((id (new-attack-id)) (mode (the-as symbol (-> arg0 param 3))))))
+                                 )
                            (let ((t9-1 send-event-function)
                                  (v1-10 (the-as object (-> (the-as (pointer uint32) (+ (+ (* s4-0 8) 12) (the-as int s5-0))))))
                                  )
@@ -1360,16 +1349,9 @@
                           (set! (-> a1-2 num-params) 2)
                           (set! (-> a1-2 message) (the-as symbol (-> arg0 param 4)))
                           (set! (-> a1-2 param 0) (the-as uint #f))
-                          (let ((v1-18 (new 'static 'attack-info :mask (attack-info-mask mode id))))
-                            (let* ((a0-8 *game-info*)
-                                   (a2-3 (+ (-> a0-8 attack-id) 1))
-                                   )
-                              (set! (-> a0-8 attack-id) a2-3)
-                              (set! (-> v1-18 id) a2-3)
-                              )
-                            (set! (-> v1-18 mode) (the-as symbol (-> arg0 param 3)))
-                            (set! (-> a1-2 param 1) (the-as uint v1-18))
-                            )
+                          (set! (-> a1-2 param 1)
+                                (the-as uint (static-attack-info ((id (new-attack-id)) (mode (the-as symbol (-> arg0 param 3))))))
+                                )
                           (set! v0-0 (send-event-function s5-0 a1-2))
                           )
                         )
@@ -1411,37 +1393,37 @@
                     ((logtest? (the-as int v1-0) 1)
                      (cond
                        ((= v1-0 'board)
-                        (if (logtest? (focus-status board) (-> gp-0 focus-status))
+                        (if (focus-test? gp-0 board)
                             (return #t)
                             )
                         )
                        ((= v1-0 'gun)
-                        (if (logtest? (focus-status gun) (-> gp-0 focus-status))
+                        (if (focus-test? gp-0 gun)
                             (return #t)
                             )
                         )
                        ((= v1-0 'mech)
-                        (if (logtest? (focus-status mech) (-> gp-0 focus-status))
+                        (if (focus-test? gp-0 mech)
                             (return #t)
                             )
                         )
                        ((= v1-0 'pilot)
-                        (if (logtest? (focus-status pilot) (-> gp-0 focus-status))
+                        (if (focus-test? gp-0 pilot)
                             (return #t)
                             )
                         )
                        ((= v1-0 'grabbed)
-                        (if (logtest? (-> gp-0 focus-status) (focus-status grabbed))
+                        (if (focus-test? gp-0 grabbed)
                             (return #t)
                             )
                         )
                        ((= v1-0 'indax)
-                        (if (logtest? (focus-status indax) (-> gp-0 focus-status))
+                        (if (focus-test? gp-0 indax)
                             (return #t)
                             )
                         )
                        ((= v1-0 'dark)
-                        (if (logtest? (focus-status dark) (-> gp-0 focus-status))
+                        (if (focus-test? gp-0 dark)
                             (return #t)
                             )
                         )
@@ -1894,11 +1876,11 @@
                              (let ((v1-1 (command-get-int (-> arg0 param 1) 0)))
                                (cond
                                  ((< v1-1 0)
-                                  (send-event (ppointer->process *time-of-day*) 'change 'ratio #x3f800000)
+                                  (send-event (ppointer->process *time-of-day*) 'change 'ratio 1.0)
                                   )
                                  (else
                                    (send-event (ppointer->process *time-of-day*) 'change 'hour v1-1)
-                                   (send-event (ppointer->process *time-of-day*) 'change 'ratio 0)
+                                   (send-event (ppointer->process *time-of-day*) 'change 'ratio 0.0)
                                    )
                                  )
                                )
@@ -1949,11 +1931,10 @@
   (set! (-> v1-109 spec)
         '((return macro (drawable-region-prim)) (function macro (symbol)) (id eval (binteger)))
         )
-  (set! (-> v1-109 func)
-        (lambda ((arg0 script-context))
-          "lookup a region by number and return the region-prim."
-          (region-prim-lookup-by-id (command-get-int (-> arg0 param 1) 0) #f (the-as symbol 0))
-          )
+  (set! (-> v1-109 func) (lambda ((arg0 script-context))
+                           "lookup a region by number and return the region-prim."
+                           (region-prim-lookup-by-id (command-get-int (-> arg0 param 1) 0) #f 0)
+                           )
         )
   )
 
@@ -2126,10 +2107,10 @@
                                       (else
                                         (set! a1-14 (ppointer->process (-> *setting-control* user-current movie)))
                                         (cond
-                                          (a1-14
-                                            (empty)
-                                            a1-14
-                                            )
+                                          ((the-as process a1-14)
+                                           (empty)
+                                           a1-14
+                                           )
                                           (else
                                             *entity-pool*
                                             )
@@ -2479,7 +2460,7 @@
                            (if (and (-> arg0 side-effect?)
                                     *target*
                                     (not *scene-player*)
-                                    (zero? (logand (-> *target* focus-status) (focus-status dead)))
+                                    (not (logtest? (-> *target* focus-status) (focus-status dead)))
                                     )
                                (process-spawn scene-player :init scene-player-init (-> arg0 param 1) #t #f)
                                )
@@ -2972,22 +2953,23 @@
   (set! (-> v1-157 name) 'talker-spawn)
   (set! (-> v1-157 spec) '((return macro (binteger)) (function macro (symbol)) (message eval (string))))
   (set! (-> v1-157 func)
-        (the-as (function script-context object) (lambda :behavior process
-                                                   ((arg0 script-context))
-                                                   (if (-> arg0 side-effect?)
-                                                       (* (talker-spawn-func
-                                                            (string->talker-speech (the-as string (-> arg0 param 1)))
-                                                            *entity-pool*
-                                                            (target-pos 0)
-                                                            (the-as region (-> arg0 key))
-                                                            )
-                                                          8
-                                                          )
-                                                       0
-                                                       )
-                                                   (none)
-                                                   )
+        (the-as
+          (function script-context object)
+          (lambda :behavior process
+            ((arg0 script-context))
+            (if (-> arg0 side-effect?)
+                (* (talker-spawn-func
+                     (string->talker-speech (the-as string (-> arg0 param 1)))
+                     *entity-pool*
+                     (target-pos 0)
+                     (the-as region (-> arg0 key))
+                     )
+                   8)
+                0
                 )
+            (none)
+            )
+          )
         )
   )
 
@@ -3065,23 +3047,13 @@
 (let ((v1-165 (-> *script-form* 77)))
   (set! (-> v1-165 name) 'endlessfall)
   (set! (-> v1-165 spec) '((return macro (object)) (function macro (symbol))))
-  (set! (-> v1-165 func) (lambda :behavior process
-                           ((arg0 script-context))
-                           (when (-> arg0 side-effect?)
-                             (let ((a1-0 (new 'stack-no-clear 'event-message-block)))
-                               (set! (-> a1-0 from) (process->ppointer self))
-                               (set! (-> a1-0 num-params) 2)
-                               (set! (-> a1-0 message) 'attack-invinc)
-                               (set! (-> a1-0 param 0) (the-as uint #f))
-                               (let ((v1-4 (new 'static 'attack-info :mask (attack-info-mask mode id))))
-                                 (set! (-> v1-4 id) (the-as uint 2))
-                                 (set! (-> v1-4 mode) 'endlessfall)
-                                 (set! (-> a1-0 param 1) (the-as uint v1-4))
-                                 )
-                               (send-event-function *target* a1-0)
-                               )
-                             )
-                           )
+  (set! (-> v1-165 func)
+        (lambda :behavior process
+          ((arg0 script-context))
+          (if (-> arg0 side-effect?)
+              (send-event *target* 'attack-invinc #f (static-attack-info ((id (the-as uint 2)) (mode 'endlessfall))))
+              )
+          )
         )
   )
 
@@ -3158,16 +3130,16 @@
 (let ((v1-169 (-> *script-form* 79)))
   (set! (-> v1-169 name) 'test-pickup)
   (set! (-> v1-169 spec) '((return macro (binteger)) (function macro (symbol)) (pickup macro (symbol))))
-  (set! (-> v1-169 func)
-        (lambda ((arg0 script-context)) (case (-> arg0 param 1)
-                                          (('gem)
-                                           (* (the int (the float (send-event *target* 'test-pickup 21))) 8)
-                                           )
-                                          (else
-                                            0
-                                            )
-                                          )
-                )
+  (set! (-> v1-169 func) (lambda ((arg0 script-context))
+                           (case (-> arg0 param 1)
+                             (('gem)
+                              (* (the int (the float (send-event *target* 'test-pickup (pickup-type gem)))) 8)
+                              )
+                             (else
+                               0
+                               )
+                             )
+                           )
         )
   )
 
@@ -3325,10 +3297,10 @@
                                  (else
                                    (set! a1-7 (ppointer->process (-> *setting-control* user-current movie)))
                                    (cond
-                                     (a1-7
-                                       (empty)
-                                       a1-7
-                                       )
+                                     ((the-as process a1-7)
+                                      (empty)
+                                      a1-7
+                                      )
                                      (else
                                        *entity-pool*
                                        )
@@ -3350,13 +3322,11 @@
         )
   )
 
-(let ((v1-182 (new 'global 'script-context (the-as basic (process->ppointer pp)) pp (the-as vector #f))))
+(let ((v1-182 (new 'global 'script-context (process->ppointer pp) pp (the-as vector #f))))
   (set! (-> v1-182 side-effect?) #f)
   (set! *syntax-context* v1-182)
   )
 
-(define *script-context*
-  (new 'global 'script-context (the-as basic (process->ppointer pp)) pp (the-as vector #f))
-  )
+(define *script-context* (new 'global 'script-context (process->ppointer pp) pp (the-as vector #f)))
 
 )

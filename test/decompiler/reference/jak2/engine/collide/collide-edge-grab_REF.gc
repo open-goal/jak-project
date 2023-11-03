@@ -5,7 +5,7 @@
 ;; INFO: Used lq/sq
 ;; WARN: Return type mismatch int vs none.
 ;; WARN: Function (method 27 target) has a return type of none, but the expression builder found a return statement.
-(defmethod do-edge-grabs target ((obj target) (arg0 collide-cache) (arg1 collide-edge-spec))
+(defmethod do-edge-grabs ((this target) (arg0 collide-cache) (arg1 collide-edge-spec))
   (rlet ((vf1 :class vf)
          (vf2 :class vf)
          (vf3 :class vf)
@@ -17,11 +17,11 @@
     (set! (-> *edge-grab-info* found-edge?) #f)
     (mem-copy! (the-as pointer (-> *collide-edge-work* spec)) (the-as pointer arg1) 320)
     (let ((s5-0 *collide-edge-work*))
-      (set! (-> s5-0 process) (the-as (pointer process-drawable) (process->ppointer obj)))
+      (set! (-> s5-0 process) (the-as (pointer process-drawable) (process->ppointer this)))
       (set! (-> s5-0 num-verts) (the-as uint 0))
       (set! (-> s5-0 num-edges) (the-as uint 0))
       (set! (-> s5-0 num-tris) (the-as uint 0))
-      (let ((v1-3 (-> obj control)))
+      (let ((v1-3 (-> this control)))
         (set! (-> s5-0 ccache) arg0)
         (.lvf vf1 (&-> s5-0 spec local-cache-fill-box min quad))
         (.lvf vf2 (&-> s5-0 spec local-cache-fill-box max quad))
@@ -43,8 +43,8 @@
       (.svf (&-> s5-0 within-reach-box4w min quad) vf6)
       (.svf (&-> s5-0 within-reach-box4w max quad) vf7)
       (let ((s3-0 (new 'stack-no-clear 'collide-query)))
-        (set! (-> s3-0 collide-with) (-> obj control root-prim prim-core collide-with))
-        (set! (-> s3-0 ignore-process0) obj)
+        (set! (-> s3-0 collide-with) (-> this control root-prim prim-core collide-with))
+        (set! (-> s3-0 ignore-process0) this)
         (set! (-> s3-0 ignore-process1) #f)
         (set! (-> s3-0 ignore-pat) (-> s5-0 spec ignore-pat))
         (set! (-> s3-0 action-mask) (collide-action solid))
@@ -55,24 +55,24 @@
       (when (nonzero? (-> s5-0 num-tris))
         (find-grabbable-edges s5-0)
         (when (nonzero? (-> s5-0 num-edges))
-          (set! (-> s5-0 search-pt quad) (-> obj control midpoint-of-hands quad))
-          (when (!= (-> *cpad-list* cpads (-> obj control cpad number) stick0-speed) 0.0)
-            (set! (-> s5-0 search-dir-vec quad) (-> obj control to-target-pt-xz quad))
+          (set! (-> s5-0 search-pt quad) (-> this control midpoint-of-hands quad))
+          (when (!= (-> *cpad-list* cpads (-> this control cpad number) stick0-speed) 0.0)
+            (set! (-> s5-0 search-dir-vec quad) (-> this control to-target-pt-xz quad))
             (search-for-edges s5-0 (-> s5-0 hold-list))
             (when (find-best-grab! s5-0 (-> s5-0 hold-list) *edge-grab-info*)
               (set! (-> *edge-grab-info* found-edge?) #t)
               (if (logtest? (-> s5-0 spec flags) (collide-edge-spec-flags send-event))
-                  (send-event obj 'edge-grab)
+                  (send-event this 'edge-grab)
                   )
               (return #f)
               )
             )
-          (vector-z-quaternion! (-> s5-0 search-dir-vec) (-> obj control quat-for-control))
+          (vector-z-quaternion! (-> s5-0 search-dir-vec) (-> this control quat-for-control))
           (search-for-edges s5-0 (-> s5-0 hold-list))
           (when (find-best-grab! s5-0 (-> s5-0 hold-list) *edge-grab-info*)
             (set! (-> *edge-grab-info* found-edge?) #t)
             (if (logtest? (-> s5-0 spec flags) (collide-edge-spec-flags send-event))
-                (send-event obj 'edge-grab)
+                (send-event this 'edge-grab)
                 )
             )
           0
@@ -87,17 +87,17 @@
 ;; definition for method 9 of type collide-edge-work
 ;; WARN: Return type mismatch int vs none.
 ;; WARN: Function (method 9 collide-edge-work) has a return type of none, but the expression builder found a return statement.
-(defmethod search-for-edges collide-edge-work ((obj collide-edge-work) (arg0 collide-edge-hold-list))
+(defmethod search-for-edges ((this collide-edge-work) (arg0 collide-edge-hold-list))
   (set! (-> arg0 num-allocs) (the-as uint 0))
   (set! (-> arg0 num-attempts) (the-as uint 0))
   (set! (-> arg0 head) #f)
   (let ((s4-0 (the-as collide-edge-hold-item (-> arg0 items)))
-        (s3-0 (the-as collide-edge-edge (-> obj edges)))
+        (s3-0 (the-as collide-edge-edge (-> this edges)))
         )
-    (countdown (s2-0 (-> obj num-edges))
+    (countdown (s2-0 (-> this num-edges))
       (when (not (-> s3-0 ignore))
-        (compute-center-point! obj s3-0 (-> s4-0 center-pt))
-        (when (should-add-to-list? obj s4-0 s3-0)
+        (compute-center-point! this s3-0 (-> s4-0 center-pt))
+        (when (should-add-to-list? this s4-0 s3-0)
           (add-to-list! arg0 s4-0)
           (+! (-> arg0 num-allocs) 1)
           (when (= (-> arg0 num-allocs) 32)
@@ -120,29 +120,26 @@
 
 ;; definition of type pbhp-stack-vars
 (deftype pbhp-stack-vars (structure)
-  ((edge        collide-edge-edge         :offset-assert   0)
-   (allocated   basic                     :offset-assert   4)
-   (neg-hold-pt vector            :inline :offset-assert  16)
-   (split-vec   vector            :inline :offset-assert  32)
+  ((edge         collide-edge-edge)
+   (allocated    basic)
+   (neg-hold-pt  vector  :inline)
+   (split-vec    vector  :inline)
    )
-  :method-count-assert 9
-  :size-assert         #x30
-  :flag-assert         #x900000030
   )
 
 ;; definition for method 3 of type pbhp-stack-vars
-(defmethod inspect pbhp-stack-vars ((obj pbhp-stack-vars))
-  (when (not obj)
-    (set! obj obj)
+(defmethod inspect ((this pbhp-stack-vars))
+  (when (not this)
+    (set! this this)
     (goto cfg-4)
     )
-  (format #t "[~8x] ~A~%" obj 'pbhp-stack-vars)
-  (format #t "~1Tedge: #<collide-edge-edge @ #x~X>~%" (-> obj edge))
-  (format #t "~1Tallocated: ~A~%" (-> obj allocated))
-  (format #t "~1Tneg-hold-pt: #<vector @ #x~X>~%" (-> obj neg-hold-pt))
-  (format #t "~1Tsplit-vec: #<vector @ #x~X>~%" (-> obj split-vec))
+  (format #t "[~8x] ~A~%" this 'pbhp-stack-vars)
+  (format #t "~1Tedge: #<collide-edge-edge @ #x~X>~%" (-> this edge))
+  (format #t "~1Tallocated: ~A~%" (-> this allocated))
+  (format #t "~1Tneg-hold-pt: #<vector @ #x~X>~%" (-> this neg-hold-pt))
+  (format #t "~1Tsplit-vec: #<vector @ #x~X>~%" (-> this split-vec))
   (label cfg-4)
-  obj
+  this
   )
 
 ;; definition for method 19 of type collide-edge-work
@@ -152,7 +149,7 @@
 ;; definition for method 20 of type collide-edge-work
 ;; INFO: Used lq/sq
 ;; WARN: Return type mismatch int vs symbol.
-(defmethod check-grab-for-collisions collide-edge-work ((obj collide-edge-work) (arg0 collide-edge-hold-item) (arg1 edge-grab-info))
+(defmethod check-grab-for-collisions ((this collide-edge-work) (arg0 collide-edge-hold-item) (arg1 edge-grab-info))
   (local-vars (sv-656 vector) (sv-672 vector))
   (rlet ((acc :class vf)
          (vf0 :class vf)
@@ -182,7 +179,7 @@
           (.add.mul.w.vf vf6 vf4 vf0 acc :mask #b111)
           (.svf (&-> a1-1 quad) vf6)
           )
-        (let ((f0-1 (get-best-hand-point obj (-> arg1 right-hand-hold) s0-0 (the-as int s4-0))))
+        (let ((f0-1 (get-best-hand-point this (-> arg1 right-hand-hold) s0-0 (the-as int s4-0))))
           (if (< 491.52 f0-1)
               (return (the-as symbol #f))
               )
@@ -200,7 +197,7 @@
         (.mul.x.vf acc vf5 vf7 :mask #b111)
         (.add.mul.w.vf vf6 vf4 vf0 acc :mask #b111)
         (.svf (&-> sv-672 quad) vf6)
-        (let ((f0-3 (get-best-hand-point obj (-> arg1 left-hand-hold) s0-0 (the-as int s4-0))))
+        (let ((f0-3 (get-best-hand-point this (-> arg1 left-hand-hold) s0-0 (the-as int s4-0))))
           (if (< 491.52 f0-3)
               (return (the-as symbol #f))
               )
@@ -214,7 +211,7 @@
       (set! (-> arg1 world-vertex 0 quad) (-> s2-0 vertex-ptr 0 0 quad))
       (set! (-> arg1 world-vertex 1 quad) (-> s2-0 vertex-ptr 1 0 quad))
       (set! (-> arg1 hanging-matrix vector 1 quad)
-            (-> (the-as collide-shape-moving (-> obj process 0 root)) dynam gravity-normal quad)
+            (-> (the-as collide-shape-moving (-> this process 0 root)) dynam gravity-normal quad)
             )
       (vector-normalize!
         (vector-! (-> arg1 hanging-matrix vector 2) (-> arg1 world-vertex 1) (the-as vector (-> arg1 world-vertex)))
@@ -236,30 +233,30 @@
       (set! (-> arg1 hanging-matrix trans quad) (-> arg1 center-hold quad))
       (transform-vectors!
         (-> arg1 hanging-matrix)
-        (-> obj world-player-spheres)
-        (-> obj spec local-player-spheres)
+        (-> this world-player-spheres)
+        (-> this spec local-player-spheres)
         12
         )
       (let ((a1-12 (new 'stack-no-clear 'collide-query)))
         (let ((v1-28 a1-12))
-          (set! (-> v1-28 best-dist) (the-as float (-> obj world-player-spheres)))
+          (set! (-> v1-28 best-dist) (the-as float (-> this world-player-spheres)))
           (set! (-> v1-28 num-spheres) (the-as uint 12))
-          (set! (-> v1-28 collide-with) (-> obj cshape root-prim prim-core collide-with))
+          (set! (-> v1-28 collide-with) (-> this cshape root-prim prim-core collide-with))
           (set! (-> v1-28 ignore-process0) #f)
           (set! (-> v1-28 ignore-process1) #f)
           (set! (-> v1-28 ignore-pat) (new 'static 'pat-surface :noentity #x1 :nojak #x1 :probe #x1 :noendlessfall #x1))
           (set! (-> v1-28 best-my-prim) (the-as collide-shape-prim #t))
           (set! (-> v1-28 action-mask) (collide-action solid))
           )
-        (if (probe-using-spheres (-> obj ccache) a1-12)
+        (if (probe-using-spheres (-> this ccache) a1-12)
             (return (the-as symbol #f))
             )
         )
       (set! (-> arg1 status) (the-as uint 0))
-      (if (logtest? (-> obj spec flags) (collide-edge-spec-flags find-adjacent-edge))
-          (find-adjacent-edge obj arg0 arg1)
+      (if (logtest? (-> this spec flags) (collide-edge-spec-flags find-adjacent-edge))
+          (find-adjacent-edge this arg0 arg1)
           )
-      (let* ((v1-41 (the-as object (-> obj ccache prims s4-0 prim)))
+      (let* ((v1-41 (the-as object (-> this ccache prims s4-0 prim)))
              (a0-44 (-> (the-as collide-shape-prim v1-41) cshape))
              )
         (cond
@@ -290,38 +287,35 @@
 
 ;; definition of type faei-stack-vars
 (deftype faei-stack-vars (structure)
-  ((hold-edge-vec-norm vector :inline :offset-assert   0)
-   (adj-edge-vec-norm  vector :inline :offset-assert  16)
-   (found-left?        symbol         :offset-assert  32)
-   (left-dot           float          :offset-assert  36)
-   (found-right?       symbol         :offset-assert  40)
-   (right-dot          float          :offset-assert  44)
+  ((hold-edge-vec-norm  vector  :inline)
+   (adj-edge-vec-norm   vector  :inline)
+   (found-left?         symbol)
+   (left-dot            float)
+   (found-right?        symbol)
+   (right-dot           float)
    )
-  :method-count-assert 9
-  :size-assert         #x30
-  :flag-assert         #x900000030
   )
 
 ;; definition for method 3 of type faei-stack-vars
-(defmethod inspect faei-stack-vars ((obj faei-stack-vars))
-  (when (not obj)
-    (set! obj obj)
+(defmethod inspect ((this faei-stack-vars))
+  (when (not this)
+    (set! this this)
     (goto cfg-4)
     )
-  (format #t "[~8x] ~A~%" obj 'faei-stack-vars)
-  (format #t "~1Thold-edge-vec-norm: #<vector @ #x~X>~%" (-> obj hold-edge-vec-norm))
-  (format #t "~1Tadj-edge-vec-norm: #<vector @ #x~X>~%" (-> obj adj-edge-vec-norm))
-  (format #t "~1Tfound-left?: ~A~%" (-> obj found-left?))
-  (format #t "~1Tleft-dot: ~f~%" (-> obj left-dot))
-  (format #t "~1Tfound-right?: ~A~%" (-> obj found-right?))
-  (format #t "~1Tright-dot: ~f~%" (-> obj right-dot))
+  (format #t "[~8x] ~A~%" this 'faei-stack-vars)
+  (format #t "~1Thold-edge-vec-norm: #<vector @ #x~X>~%" (-> this hold-edge-vec-norm))
+  (format #t "~1Tadj-edge-vec-norm: #<vector @ #x~X>~%" (-> this adj-edge-vec-norm))
+  (format #t "~1Tfound-left?: ~A~%" (-> this found-left?))
+  (format #t "~1Tleft-dot: ~f~%" (-> this left-dot))
+  (format #t "~1Tfound-right?: ~A~%" (-> this found-right?))
+  (format #t "~1Tright-dot: ~f~%" (-> this right-dot))
   (label cfg-4)
-  obj
+  this
   )
 
 ;; definition for method 9 of type collide-edge-edge
 ;; INFO: Used lq/sq
-(defmethod no-collision-at-edge collide-edge-edge ((obj collide-edge-edge) (arg0 collide-edge-work) (arg1 edge-grab-info))
+(defmethod no-collision-at-edge ((this collide-edge-edge) (arg0 collide-edge-work) (arg1 edge-grab-info))
   (let ((s4-0 (new 'stack-no-clear 'matrix))
         (s5-0 (new 'stack-no-clear 'inline-array 'sphere 6))
         )
@@ -331,10 +325,10 @@
     (set! (-> s4-0 vector 1 quad)
           (-> (the-as collide-shape-moving (-> arg0 process 0 root)) dynam gravity-normal quad)
           )
-    (vector-normalize! (vector-! (-> s4-0 vector 2) (-> obj vertex-ptr 1 0) (-> obj vertex-ptr 0 0)) 1.0)
+    (vector-normalize! (vector-! (-> s4-0 vector 2) (-> this vertex-ptr 1 0) (-> this vertex-ptr 0 0)) 1.0)
     (vector-normalize! (vector-cross! (the-as vector (-> s4-0 vector)) (-> s4-0 vector 2) (-> s4-0 vector 1)) 1.0)
     (vector-cross! (-> s4-0 vector 2) (the-as vector (-> s4-0 vector)) (-> s4-0 vector 1))
-    (vector-average! (-> s4-0 trans) (-> obj vertex-ptr 1 0) (-> obj vertex-ptr 0 0))
+    (vector-average! (-> s4-0 trans) (-> this vertex-ptr 1 0) (-> this vertex-ptr 0 0))
     (transform-vectors! s4-0 s5-0 (-> arg0 spec local-player-spheres) 6)
     (let ((a1-11 (new 'stack-no-clear 'collide-query)))
       (let ((v1-13 a1-11))
@@ -355,18 +349,18 @@
 ;; definition for method 13 of type collide-edge-work
 ;; INFO: Used lq/sq
 ;; WARN: Return type mismatch int vs none.
-(defmethod find-adjacent-edge collide-edge-work ((obj collide-edge-work) (arg0 collide-edge-hold-item) (arg1 edge-grab-info))
+(defmethod find-adjacent-edge ((this collide-edge-work) (arg0 collide-edge-hold-item) (arg1 edge-grab-info))
   (let ((s5-0 (new 'stack-no-clear 'faei-stack-vars)))
     (let* ((v1-0 (-> arg0 edge))
            (s3-0 (-> v1-0 vertex-ptr 0 0))
            (s2-0 (-> v1-0 vertex-ptr 1 0))
-           (s1-0 (the-as collide-edge-edge (-> obj edges)))
+           (s1-0 (the-as collide-edge-edge (-> this edges)))
            )
       (set! (-> s5-0 found-left?) #f)
       (set! (-> s5-0 found-right?) #f)
       (vector-! (-> s5-0 hold-edge-vec-norm) s2-0 s3-0)
       (vector-normalize! (-> s5-0 hold-edge-vec-norm) 1.0)
-      (countdown (s0-0 (-> obj num-edges))
+      (countdown (s0-0 (-> this num-edges))
         (when (not (-> s1-0 ignore))
           (let ((v1-6 (-> s1-0 vertex-ptr 1 0)))
             (when (= v1-6 s3-0)
@@ -374,7 +368,7 @@
               (vector-normalize! (-> s5-0 adj-edge-vec-norm) 1.0)
               (let ((f30-0 (vector-dot (-> s5-0 adj-edge-vec-norm) (-> s5-0 hold-edge-vec-norm))))
                 (when (and (or (not (-> s5-0 found-left?)) (< (-> s5-0 left-dot) f30-0) (< -0.7 f30-0))
-                           (no-collision-at-edge s1-0 obj arg1)
+                           (no-collision-at-edge s1-0 this arg1)
                            )
                   (set! (-> s5-0 left-dot) f30-0)
                   (set! (-> s5-0 found-left?) #t)
@@ -390,7 +384,7 @@
               (vector-normalize! (-> s5-0 adj-edge-vec-norm) 1.0)
               (let ((f30-1 (vector-dot (-> s5-0 adj-edge-vec-norm) (-> s5-0 hold-edge-vec-norm))))
                 (when (and (or (not (-> s5-0 found-right?)) (< (-> s5-0 right-dot) f30-1) (< -0.7 f30-1))
-                           (no-collision-at-edge s1-0 obj arg1)
+                           (no-collision-at-edge s1-0 this arg1)
                            )
                   (set! (-> s5-0 right-dot) f30-1)
                   (set! (-> s5-0 found-right?) #t)
@@ -432,11 +426,11 @@
 
 ;; definition for method 15 of type collide-edge-work
 ;; INFO: Used lq/sq
-(defmethod get-best-hand-point collide-edge-work ((obj collide-edge-work) (arg0 vector) (arg1 vector) (arg2 int))
+(defmethod get-best-hand-point ((this collide-edge-work) (arg0 vector) (arg1 vector) (arg2 int))
   (let ((f30-0 -1.0))
     (let ((s2-0 (new 'stack-no-clear 'vector)))
-      (dotimes (s1-0 (the-as int (-> obj num-edges)))
-        (let ((v1-4 (-> obj edges s1-0)))
+      (dotimes (s1-0 (the-as int (-> this num-edges)))
+        (let ((v1-4 (-> this edges s1-0)))
           (when (not (-> v1-4 ignore))
             (when (= (-> v1-4 etri ctri prim-index) arg2)
               (let ((f0-0 (vector-segment-distance-point! arg1 (-> v1-4 vertex-ptr 0 0) (-> v1-4 vertex-ptr 1 0) s2-0)))
@@ -459,7 +453,7 @@
 (defmethod-mips2c "(method 18 collide-edge-work)" 18 collide-edge-work)
 
 ;; definition for method 14 of type collide-edge-work
-(defmethod compute-center-point! collide-edge-work ((obj collide-edge-work) (arg0 collide-edge-edge) (arg1 vector))
+(defmethod compute-center-point! ((this collide-edge-work) (arg0 collide-edge-edge) (arg1 vector))
   (local-vars (v1-1 float) (v1-2 float) (v1-3 float))
   (rlet ((Q :class vf)
          (vf0 :class vf)
@@ -477,7 +471,7 @@
          )
     (init-vf0-vector)
     (.mov.vf vf7 vf0)
-    (.lvf vf1 (&-> obj search-pt quad))
+    (.lvf vf1 (&-> this search-pt quad))
     (let ((f0-0 0.0))
       (let ((v1-0 (-> arg0 vertex-ptr 0))
             (a0-1 (-> arg0 vertex-ptr 1))
@@ -527,12 +521,12 @@
 
 ;; definition for method 10 of type edge-grab-info
 ;; WARN: Return type mismatch object vs none.
-(defmethod debug-draw edge-grab-info ((obj edge-grab-info))
+(defmethod debug-draw ((this edge-grab-info))
   (add-debug-line
     #t
     (bucket-id debug-no-zbuf1)
-    (the-as vector (-> obj world-vertex))
-    (-> obj world-vertex 1)
+    (the-as vector (-> this world-vertex))
+    (-> this world-vertex 1)
     (new 'static 'rgba :r #xff :a #x60)
     #f
     (the-as rgba -1)
@@ -540,41 +534,41 @@
   (add-debug-sphere
     #t
     (bucket-id debug-no-zbuf1)
-    (-> obj center-hold)
+    (-> this center-hold)
     (meters 0.05)
     (new 'static 'rgba :r #xff :g #xff :a #x80)
     )
   (add-debug-sphere
     #t
     (bucket-id debug-no-zbuf1)
-    (-> obj left-hand-hold)
+    (-> this left-hand-hold)
     (meters 0.05)
     (new 'static 'rgba :r #xff :g #xff :a #x60)
     )
   (add-debug-sphere
     #t
     (bucket-id debug-no-zbuf1)
-    (-> obj right-hand-hold)
+    (-> this right-hand-hold)
     (meters 0.05)
     (new 'static 'rgba :r #xff :g #xff :a #x60)
     )
-  (if (logtest? (-> obj status) 1)
+  (if (logtest? (-> this status) 1)
       (add-debug-line
         #t
         (bucket-id debug-no-zbuf1)
-        (-> obj adjacent-edge-left-vertex)
-        (the-as vector (-> obj world-vertex))
+        (-> this adjacent-edge-left-vertex)
+        (the-as vector (-> this world-vertex))
         (new 'static 'rgba :r #x80 :a #x60)
         #f
         (the-as rgba -1)
         )
       )
-  (if (logtest? (-> obj status) 2)
+  (if (logtest? (-> this status) 2)
       (add-debug-line
         #t
         (bucket-id debug-no-zbuf1)
-        (-> obj world-vertex 1)
-        (-> obj adjacent-edge-right-vertex)
+        (-> this world-vertex 1)
+        (-> this adjacent-edge-right-vertex)
         (new 'static 'rgba :r #x80 :a #x60)
         #f
         (the-as rgba -1)
@@ -583,15 +577,15 @@
   (add-debug-outline-triangle
     #t
     (bucket-id debug-no-zbuf1)
-    (the-as vector (-> obj tri-vertex))
-    (-> obj world-vertex 4)
-    (-> obj world-vertex 5)
+    (the-as vector (-> this tri-vertex))
+    (-> this world-vertex 4)
+    (-> this world-vertex 5)
     (new 'static 'rgba :r #xff :a #x30)
     )
   (cond
-    ((nonzero? (-> obj actor-cshape-prim-offset))
-     (if (handle->process (-> obj actor-handle))
-         (format *stdcon* "grab: ~A~%" (-> obj actor-handle process 0 name))
+    ((nonzero? (-> this actor-cshape-prim-offset))
+     (if (handle->process (-> this actor-handle))
+         (format *stdcon* "grab: ~A~%" (-> this actor-handle process 0 name))
          (format *stdcon* "grab: invalid handle~%")
          )
      )
@@ -604,11 +598,11 @@
 
 ;; definition for method 10 of type collide-edge-work
 ;; INFO: Used lq/sq
-(defmethod debug-draw-edges collide-edge-work ((obj collide-edge-work))
+(defmethod debug-draw-edges ((this collide-edge-work))
   (local-vars (sv-32 (function _varargs_ object)))
   (let ((gp-0 0))
-    (dotimes (s4-0 (the-as int (-> obj num-edges)))
-      (let* ((v1-3 (-> obj edges s4-0))
+    (dotimes (s4-0 (the-as int (-> this num-edges)))
+      (let* ((v1-3 (-> this edges s4-0))
              (a2-0 (-> v1-3 vertex-ptr 0 0))
              (a3-0 (-> v1-3 vertex-ptr 1 0))
              (s3-0 (new 'stack-no-clear 'vector))
@@ -655,15 +649,15 @@
           )
         )
       )
-    (format *stdcon* "found ~D edges (and ~D ignored)~%" (- (-> obj num-edges) (the-as uint gp-0)) gp-0)
+    (format *stdcon* "found ~D edges (and ~D ignored)~%" (- (-> this num-edges) (the-as uint gp-0)) gp-0)
     )
   )
 
 ;; definition for method 12 of type collide-edge-work
 ;; WARN: Return type mismatch int vs none.
-(defmethod debug-draw-sphere collide-edge-work ((obj collide-edge-work))
-  (dotimes (s5-0 (the-as int (-> obj num-verts)))
-    (let ((a2-0 (-> obj verts s5-0)))
+(defmethod debug-draw-sphere ((this collide-edge-work))
+  (dotimes (s5-0 (the-as int (-> this num-verts)))
+    (let ((a2-0 (-> this verts s5-0)))
       (add-debug-sphere #t (bucket-id debug-no-zbuf1) a2-0 (meters 0.2) (new 'static 'rgba :r #xff :g #xff :a #x80))
       )
     )
@@ -673,8 +667,8 @@
 
 ;; definition for method 9 of type collide-edge-hold-list
 ;; INFO: Used lq/sq
-(defmethod debug-draw collide-edge-hold-list ((obj collide-edge-hold-list))
-  (let ((s4-0 (-> obj head))
+(defmethod debug-draw ((this collide-edge-hold-list))
+  (let ((s4-0 (-> this head))
         (s5-0 0)
         )
     (let ((s3-0 (new 'stack-no-clear 'vector))
@@ -725,23 +719,23 @@
       )
     (format *stdcon* "hold list has ~D item(s)~%" s5-0)
     )
-  (dotimes (s5-1 (the-as int (-> obj num-attempts)))
+  (dotimes (s5-1 (the-as int (-> this num-attempts)))
     (add-debug-sphere
       #t
       (bucket-id debug-no-zbuf1)
-      (the-as vector (-> obj attempts s5-1))
+      (the-as vector (-> this attempts s5-1))
       (meters 0.1)
       (new 'static 'rgba :a #x40)
       )
     )
-  (format *stdcon* "hold list has ~D attempt(s)~%" (-> obj num-attempts))
+  (format *stdcon* "hold list has ~D attempt(s)~%" (-> this num-attempts))
   )
 
 ;; definition for method 11 of type collide-edge-work
 ;; WARN: Return type mismatch int vs none.
-(defmethod debug-draw-tris collide-edge-work ((obj collide-edge-work))
-  (dotimes (s5-0 (the-as int (-> obj num-tris)))
-    (let* ((v1-3 (-> obj tris s5-0 ctri))
+(defmethod debug-draw-tris ((this collide-edge-work))
+  (dotimes (s5-0 (the-as int (-> this num-tris)))
+    (let* ((v1-3 (-> this tris s5-0 ctri))
            (t1-0 (copy-and-set-field (-> *pat-mode-info* (-> v1-3 pat mode) color) a 64))
            )
       (add-debug-outline-triangle

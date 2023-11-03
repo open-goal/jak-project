@@ -17,6 +17,25 @@
 (declare-type water-control basic)
 (declare-type collide-shape basic)
 
+(defenum attack-mask
+  :bitfield #t
+  :type uint32
+  (trans)
+  (vector)
+  (intersection)
+  (attacker)
+  (invinc-time)
+  (mode)
+  (shove-back)
+  (shove-up)
+  (speed)
+  (dist)
+  (control)
+  (angle)
+  (rotate-to)
+  (atki13)
+  )
+
 ;; These flags are a bit of a hack and are mostly only meaningful on *target*
 ;; except for "fade-out-particles" which is meaninful for eco only.
 (defenum state-flags
@@ -45,23 +64,18 @@
   (flop-hit-ground)          ;; set when ground pound hit ground
   )
 
-(defmacro static-attack-info (&key (mask ()) &rest args)
-  (when (!= (length args) 1)
-      (error "static-attack-info can only have 1 arg"))
-  (let ((mask-actual mask)
-        (arg (car args))
+(defmacro static-attack-info (&key (mask ()) args)
+  (let ((mask-actual mask))
+    (dolist (it args)
+      (when (not (member (caar it) mask-actual))
+        (cons! mask-actual (caar it))
         )
-    (when (assoc 'shove-up arg) (cons! mask-actual 'shove-up))
-    (when (assoc 'shove-back arg) (cons! mask-actual 'shove-back))
-    (when (assoc 'mode arg) (cons! mask-actual 'mode))
-    (when (assoc 'vector arg) (cons! mask-actual 'vector))
-    (when (assoc 'angle arg) (cons! mask-actual 'angle))
-    (when (assoc 'control arg) (cons! mask-actual 'control))
+      )
     `(let ((atk (new 'static 'attack-info :mask (attack-mask ,@mask-actual))))
         ,@(apply (lambda (x) (if (eq? (car x) 'vector)
                                  `(vector-copy! (-> atk ,(car x)) ,(cadr x))
                                  `(set! (-> atk ,(car x)) ,(cadr x))
-                                )) arg)
+                                )) args)
         atk)
     )
   )
@@ -73,62 +87,58 @@
 (deftype process-drawable (process)
   ;; The "root" is the location of the process-drawable.
   ;; It may be a more specific type, and often contains the collision geometry.
-  ((root        trsqv                     :offset-assert 112)
-
+  ((root         trsqv)
    ;; The node-list is a list of all the joints and bones, and how
    ;; joints update bones.
-   (node-list   cspace-array              :offset-assert 116)
+
+   (node-list    cspace-array)
 
    ;; the draw-control contains references to all data required for drawing
-   (draw        draw-control              :offset-assert 120)
+   (draw         draw-control)
 
    ;; The skel is a joint-control which combines animations to control joints
-   (skel        joint-control             :offset-assert 124)
+   (skel         joint-control)
 
    ;; The nav-control allows enemies to navigate on a nav mesh.
-   (nav         nav-control               :offset-assert 128)
+   (nav          nav-control)
 
    ;; alignment of animation to our position
-   (align       align-control             :offset-assert 132)
+   (align        align-control)
 
    ;; our path (like if we are a platform or enemy that moves along a fixed path)
-   (path        path-control              :offset-assert 136)
+   (path         path-control)
 
    ;; associated volumes (for water)
-   (vol         vol-control               :offset-assert 140)
+   (vol          vol-control)
 
    ;; our settings
-   (fact        fact-info                 :offset-assert 144)
+   (fact         fact-info)
 
    ;; reference to our entity
-   (link        actor-link-info           :offset-assert 148)
+   (link         actor-link-info)
 
    ;; our particles
-   (part        sparticle-launch-control  :offset-assert 152)
+   (part         sparticle-launch-control)
 
    ;; state related to entering and being in water
-   (water       water-control             :offset-assert 156)
+   (water        water-control)
 
    ;; any sound that we're playing
-   (sound       ambient-sound             :offset-assert 160)
+   (sound        ambient-sound)
 
    ;; seems to only be used in target?
-   (state-flags state-flags               :offset-assert 164)
+   (state-flags  state-flags)
 
    ;; the time when we last did something. Used for different things in different objects
-   (state-time  time-frame                :offset-assert 168)
+   (state-time   time-frame)
    )
-  :heap-base #x40
-  :method-count-assert 20
-  :size-assert         #xb0
-  :flag-assert         #x14004000b0
   (:methods
-    (initialize-skeleton (_type_ skeleton-group pair) none 14)
-    (initialize-skeleton-by-name (_type_ string object) _type_ 15)
-    (apply-alignment (_type_ align-opts transformq vector) collide-shape 16)
-    (do-joint-math! (_type_) none 17)
-    (cleanup-for-death (_type_) none 18)
-    (evaluate-joint-control (_type_) none 19)
+    (initialize-skeleton (_type_ skeleton-group pair) none)
+    (initialize-skeleton-by-name (_type_ string object) _type_)
+    (apply-alignment (_type_ align-opts transformq vector) collide-shape)
+    (do-joint-math! (_type_) none)
+    (cleanup-for-death (_type_) none)
+    (evaluate-joint-control (_type_) none)
     )
   (:states
     (process-drawable-art-error string)
@@ -140,100 +150,73 @@
 ;; methods to a type?
 (deftype process-drawable-reserved (process-drawable)
   ()
-  :heap-base #x40
-  :method-count-assert 63
-  :size-assert         #xb0
-  :flag-assert         #x3f004000b0
   (:methods
-    (process-drawable-reserved-method-20 () none 20)
-    (process-drawable-reserved-method-21 () none 21)
-    (process-drawable-reserved-method-22 () none 22)
-    (process-drawable-reserved-method-23 () none 23)
-    (process-drawable-reserved-method-24 () none 24)
-    (process-drawable-reserved-method-25 () none 25)
-    (process-drawable-reserved-method-26 () none 26)
-    (process-drawable-reserved-method-27 () none 27)
-    (process-drawable-reserved-method-28 () none 28)
-    (process-drawable-reserved-method-29 () none 29)
-    (process-drawable-reserved-method-30 () none 30)
-    (process-drawable-reserved-method-31 () none 31)
-    (process-drawable-reserved-method-32 () none 32)
-    (process-drawable-reserved-method-33 () none 33)
-    (process-drawable-reserved-method-34 () none 34)
-    (process-drawable-reserved-method-35 () none 35)
-    (process-drawable-reserved-method-36 () none 36)
-    (process-drawable-reserved-method-37 () none 37)
-    (process-drawable-reserved-method-38 () none 38)
-    (process-drawable-reserved-method-39 () none 39)
-    (process-drawable-reserved-method-40 () none 40)
-    (process-drawable-reserved-method-41 () none 41)
-    (process-drawable-reserved-method-42 () none 42)
-    (process-drawable-reserved-method-43 () none 43)
-    (process-drawable-reserved-method-44 () none 44)
-    (process-drawable-reserved-method-45 () none 45)
-    (process-drawable-reserved-method-46 () none 46)
-    (process-drawable-reserved-method-47 () none 47)
-    (process-drawable-reserved-method-48 () none 48)
-    (process-drawable-reserved-method-49 () none 49)
-    (process-drawable-reserved-method-50 () none 50)
-    (process-drawable-reserved-method-51 () none 51)
-    (process-drawable-reserved-method-52 () none 52)
-    (process-drawable-reserved-method-53 () none 53)
-    (process-drawable-reserved-method-54 () none 54)
-    (process-drawable-reserved-method-55 () none 55)
-    (process-drawable-reserved-method-56 () none 56)
-    (process-drawable-reserved-method-57 () none 57)
-    (process-drawable-reserved-method-58 () none 58)
-    (process-drawable-reserved-method-59 () none 59)
-    (process-drawable-reserved-method-60 () none 60)
-    (process-drawable-reserved-method-61 () none 61)
-    (process-drawable-reserved-method-62 () none 62)
+    (process-drawable-reserved-method-20 () none)
+    (process-drawable-reserved-method-21 () none)
+    (process-drawable-reserved-method-22 () none)
+    (process-drawable-reserved-method-23 () none)
+    (process-drawable-reserved-method-24 () none)
+    (process-drawable-reserved-method-25 () none)
+    (process-drawable-reserved-method-26 () none)
+    (process-drawable-reserved-method-27 () none)
+    (process-drawable-reserved-method-28 () none)
+    (process-drawable-reserved-method-29 () none)
+    (process-drawable-reserved-method-30 () none)
+    (process-drawable-reserved-method-31 () none)
+    (process-drawable-reserved-method-32 () none)
+    (process-drawable-reserved-method-33 () none)
+    (process-drawable-reserved-method-34 () none)
+    (process-drawable-reserved-method-35 () none)
+    (process-drawable-reserved-method-36 () none)
+    (process-drawable-reserved-method-37 () none)
+    (process-drawable-reserved-method-38 () none)
+    (process-drawable-reserved-method-39 () none)
+    (process-drawable-reserved-method-40 () none)
+    (process-drawable-reserved-method-41 () none)
+    (process-drawable-reserved-method-42 () none)
+    (process-drawable-reserved-method-43 () none)
+    (process-drawable-reserved-method-44 () none)
+    (process-drawable-reserved-method-45 () none)
+    (process-drawable-reserved-method-46 () none)
+    (process-drawable-reserved-method-47 () none)
+    (process-drawable-reserved-method-48 () none)
+    (process-drawable-reserved-method-49 () none)
+    (process-drawable-reserved-method-50 () none)
+    (process-drawable-reserved-method-51 () none)
+    (process-drawable-reserved-method-52 () none)
+    (process-drawable-reserved-method-53 () none)
+    (process-drawable-reserved-method-54 () none)
+    (process-drawable-reserved-method-55 () none)
+    (process-drawable-reserved-method-56 () none)
+    (process-drawable-reserved-method-57 () none)
+    (process-drawable-reserved-method-58 () none)
+    (process-drawable-reserved-method-59 () none)
+    (process-drawable-reserved-method-60 () none)
+    (process-drawable-reserved-method-61 () none)
+    (process-drawable-reserved-method-62 () none)
     )
-  )
-
-
-(defenum attack-mask
-  :bitfield #t
-  :type uint32
-  (trans)
-  (vector)
-  (intersection)
-  (attacker)
-  (invinc-time)
-  (mode)
-  (shove-back)
-  (shove-up)
-  (speed)
-  (dist)
-  (control)
-  (angle)
-  (rotate-to)
-  (atki13)
   )
 
 ;; The attack-info is generated by attackers and sent to target.
 (deftype attack-info (structure)
-  ((trans        vector      :inline :offset-assert   0)
-   (vector       vector      :inline :offset-assert  16)
-   (intersection vector      :inline :offset-assert  32)
-   (attacker     handle              :offset-assert  48)
-   (invinc-time  time-frame          :offset-assert  56)
-   (mask         attack-mask         :offset-assert  64)
-   (mode         symbol              :offset-assert  68)
-   (shove-back   meters              :offset-assert  72)
-   (shove-up     meters              :offset-assert  76)
-   (speed        meters              :offset-assert  80)
-   (dist         meters              :offset-assert  84)
-   (control      float               :offset-assert  88)
-   (angle        symbol              :offset-assert  92)
-   (rotate-to    degrees             :offset-assert  96)
-   (prev-state   state               :offset-assert 100)
+  ((trans         vector  :inline)
+   (vector        vector  :inline)
+   (intersection  vector  :inline)
+   (attacker      handle)
+   (invinc-time   time-frame)
+   (mask          attack-mask)
+   (mode          symbol)
+   (shove-back    meters)
+   (shove-up      meters)
+   (speed         meters)
+   (dist          meters)
+   (control       float)
+   (angle         symbol)
+   (rotate-to     degrees)
+   (prev-state    state)
    )
-  :method-count-assert 10
-  :size-assert         #x68
-  :flag-assert         #xa00000068
   (:methods
-    (combine! (_type_ attack-info) none 9)
+    (combine! (_type_ attack-info) none)
     )
   )
 
@@ -241,11 +224,8 @@
 (define *global-attack-id* 0)
 
 (deftype ground-tween-info (structure)
-  ((chan  uint8  3 :offset-assert   0)
-   (blend float  3 :offset-assert   4)
-   (group uint32 5 :offset-assert  16)
+  ((chan   uint8   3)
+   (blend  float   3)
+   (group  uint32  5)
    )
-  :method-count-assert 9
-  :size-assert         #x24
-  :flag-assert         #x900000024
   )
