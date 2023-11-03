@@ -11,6 +11,39 @@ This gives us more freedom to write code how we want.
 ;; in jak 2, the options dont have to be all-caps anymore!
 ;; encode controller/display names - current bug waiting to happen
 
+(define *title-pc*
+  (new 'static 'menu-option-list
+    :y-center #xc6
+    :y-space 30
+    :scale 0.82
+    :options (new 'static 'boxed-array :type menu-option
+      (new 'static 'menu-sub-menu-option
+        :name (text-id progress-title-new-game)
+        :scale #t
+        :next-state 'select-save-title
+        )
+      (new 'static 'menu-sub-menu-option :name (text-id progress-load-game) :scale #t :next-state 'select-load)
+      (new 'static 'menu-sub-menu-option
+        :name (text-id progress-title-options)
+        :scale #t
+        :next-state 'title-options
+        )
+      (new 'static 'menu-sub-menu-option
+        :name (text-id progress-root-secrets)
+        :scale #t
+        :next-state 'unlocked-secrets
+        )
+      ;; (new 'static 'menu-generic-boolean-option
+      ;;   :name (text-id progress-quit)
+      ;;   :truthy-text (text-id progress-yes)
+      ;;   :falsey-text (text-id progress-no)
+      ;;   :get-value-fn (lambda () #f)
+      ;;   :on-confirm (lambda ((val symbol)) (if val (kernel-shutdown (runtime-exit-status exit))))
+      ;;   )
+      )
+    )
+  )
+
 (define *game-options-pc*
   (progress-new-generic-scrolling-page (text-id progress-root-game-options)
     (progress-new-generic-link-to-scrolling-page (text-id progress-menu-input-options)
@@ -328,6 +361,10 @@ This gives us more freedom to write code how we want.
 ;;     particle culling
 ;;     force env mapping
 ;;     actor culling
+
+(define *msaa-options* (new 'static 'boxed-array :type string "Off" "2x" "4x" "8x" "16x"))
+(define *frame-rate-options* (new 'static 'boxed-array :type int16 60 75 120 144 165 240))
+
 (define *graphic-options-pc*
   (new 'static 'menu-option-list
     :y-center 198
@@ -338,11 +375,56 @@ This gives us more freedom to write code how we want.
       (new 'static 'menu-aspect-ratio-pc-option :name (text-id progress-aspect-ratio))
       (new 'static 'menu-frame-rate-option :name (text-id progress-frame-rate))
       (new 'static 'menu-on-off-vsync-option :name (text-id progress-vsync))
+      (progress-new-generic-link-to-scrolling-page (text-id progress-misc-game-options)
+        (progress-new-generic-link-to-scrolling-page (text-id progress-graphics-ps2)
+          (new 'static 'menu-generic-boolean-option
+            :name (text-id progress-graphics-actor-culling)
+            :truthy-text (text-id progress-yes)
+            :falsey-text (text-id progress-no)
+            :get-value-fn (lambda () (-> *pc-settings* ps2-actor-vis?))
+            :should-disable? (lambda () (-> *pc-settings* speedrunner-mode?))
+            :on-confirm (lambda ((val symbol))
+              (set! (-> *pc-settings* ps2-actor-vis?) val)
+              (commit-to-file *pc-settings*)))
+          (new 'static 'menu-generic-boolean-option
+            :name (text-id progress-ps2-parts)
+            :truthy-text (text-id progress-yes)
+            :falsey-text (text-id progress-no)
+            :get-value-fn (lambda () (-> *pc-settings* ps2-parts?))
+            :on-confirm (lambda ((val symbol))
+              (set! (-> *pc-settings* ps2-parts?) val)
+              (commit-to-file *pc-settings*)))
+          )
+        (new 'static 'menu-generic-carousel-option
+          :name (text-id progress-msaa)
+          :get-item-index-fn (lambda ()
+            (case (-> *pc-settings* gfx-msaa)
+              ((1) 0)
+              ((2) 1)
+              ((4) 2)
+              ((8) 3)
+              ((16) 4)
+              )
+            )
+          :get-max-size-fn (lambda () (-> *msaa-options* length))
+          :get-item-label-fn (lambda ((index int)) (-> *msaa-options* index))
+          :on-confirm (lambda ((index int))
+            (set! (-> *pc-settings* gfx-msaa) (the int (pow 2.0 (the float index))))
+            (commit-to-file *pc-settings*)
+            )
+          )
+        (new 'static 'menu-generic-boolean-option
+          :name (text-id progress-graphics-hires-clouds)
+          :truthy-text (text-id progress-yes)
+          :falsey-text (text-id progress-no)
+          :get-value-fn (lambda () (-> *pc-settings* hires-clouds?))
+          :on-confirm (lambda ((val symbol))
+            (set! (-> *pc-settings* hires-clouds?) val)
+            (commit-to-file *pc-settings*)))
+        )
       )
     )
   )
-
-(define *frame-rate-options* (new 'static 'boxed-array :type int16 60 75 120 144 165 240))
 
 (define *frame-rate-disclaimer-options*
   (new 'static 'menu-option-list
