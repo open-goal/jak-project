@@ -1170,33 +1170,7 @@
   (none)
   )
 
-(deftype best-track (structure)
-  ((dist float)
-   (obj process-drawable)
-   )
-  )
-
-(declare-type enemy basic)
-
-(deftype enemy-hack (basic)
-  ((hit-points int32 :offset 220))
-  )
-
-(defun is-dead-enemy? ((proc process))
-  (and (type-type? (-> proc type) enemy) (<= (-> (the enemy-hack proc) hit-points) 0))
-  )
-
-(defun get-trans-for-aim ((vec vector) (proc process-drawable))
-  ;(if (type-type? (-> proc type) process-focusable)
-   ;   (vector-copy! vec (get-trans (the process-focusable proc) 3))
-      (vector+! vec (get-trans (the process-focusable proc) 3) (new 'static 'vector :y (meters 0.15)))
-    ;  )
-  vec
-  )
-
-
 (defbehavior target-gun-find-track target ()
-  
   (if (logtest? (-> self gun upper-body track-mode) (track-mode lock-on))
       (logior! (-> self gun track?) (gun-track-flags gutflags-3))
       (logclear! (-> self gun track?) (gun-track-flags gutflags-3))
@@ -1798,7 +1772,6 @@
        ((and (logtest? (-> self gun track?) (gun-track-flags gutflags-0))
              (logtest? (process-mask enemy guard) (-> (handle->process (-> self gun track-target 0 handle)) mask))
              )
-        #|(if #t (and (< (- (-> self clock frame-counter) (-> self gun track-press-start-time)) (seconds 0.5))
         (if (and (not (time-elapsed? (-> self gun track-press-start-time) (seconds 0.5)))
                  (< (-> self control time-between-zero-inputs) (seconds 0.5))
                  (and (= (-> self control turn-to-magnitude) 0.0)
