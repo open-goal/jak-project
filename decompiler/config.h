@@ -171,6 +171,8 @@ struct Config {
   DecompileHacks hacks;
 
   std::unordered_map<std::string, std::string> art_group_type_remap;
+  std::unordered_map<std::string, std::unordered_map<std::string, std::string>>
+      art_group_file_override;
   std::unordered_map<std::string, std::unordered_map<int, std::string>> art_group_info_dump;
   std::unordered_map<std::string, std::unordered_map<int, std::string>> jg_info_dump;
   std::unordered_map<std::string, std::string> joint_node_hacks;
