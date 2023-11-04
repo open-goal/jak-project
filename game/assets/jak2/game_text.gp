@@ -12,6 +12,7 @@
   ;; add custom files down here
   (file-json 0 jak2 "common" '("game/assets/jak2/text/game_custom_text_en-US.json"))
   (file-json 1 jak2 "common" '("game/assets/jak2/text/game_custom_text_fr-FR.json"))
+  (file-json 3 jak2 "common" '("game/assets/jak2/text/game_custom_text_es-ES.json"))
   (file-json 5 jak2 "common" '("game/assets/jak2/text/game_custom_text_ja-JP.json"))
   (file-json 7 jak2 "common" '("game/assets/jak2/text/game_custom_text_en-GB.json"))
   )

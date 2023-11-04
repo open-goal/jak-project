@@ -195,8 +195,16 @@
                (the-as string #f)
                )
              (else
-               (format (clear *temp-string*) "UNKNOWN ID ~X" arg0)
-               *temp-string*
+             ;; og:preserve-this Added fallback to english is string is not found.
+                (#if PC_PORT
+                  (if *fallback-text-lookup?*
+                    (let ((fallback-result (lookup-text! *fallback-text* arg0 #t)))
+                    (if (!= fallback-result #f)
+                      fallback-result
+                      (string-format "UNKNOWN ID ~D" arg0)))
+                  )
+                  (string-format "UNKNOWN ID ~D" arg0)
+                )
                )
              )
            )
@@ -306,9 +314,15 @@ the game-text-info, and heap is the heap to load to. The heap will be cleared."
   "Load the text files needed for level idx.
 This function made more sense back when text files were split up, but in the end they put everything
 in a single text group and file."
-  (if (or *level-text-file-load-flag* (>= arg0 0))
+;; og:preserve-this Load in english file to use as a fallback
+  (when (or *level-text-file-load-flag* (>= arg0 0))
       (load-game-text-info "common" (&-> '*common-text* value) *common-text-heap*)
+      (#when PC_PORT
+        (protect ((-> *setting-control* user-current language))
+        (set! (-> *setting-control* user-current language) (language-enum english))
+        (load-game-text-info "common" (&-> '*fallback-text* value) *fallback-text-heap*))
       )
+  )
   0
   (none)
   )
