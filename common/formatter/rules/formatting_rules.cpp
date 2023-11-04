@@ -39,7 +39,7 @@ bool should_insert_blank_line(const FormatterTreeNode& containing_node,
     return false;
   }
   // If the next form is a comment and is inline, don't insert a comment
-  if ((index + 1) < containing_node.refs.size() &&
+  if ((index + 1) < (int)containing_node.refs.size() &&
       containing_node.refs.at(index + 1).metadata.is_comment &&
       containing_node.refs.at(index + 1).metadata.is_inline) {
     return false;

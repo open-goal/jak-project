@@ -5,6 +5,7 @@
 #include "common/util/FileUtil.h"
 #include "common/util/Timer.h"
 
+#include "game/graphics/opengl_renderer/slime_lut.h"
 #include "game/graphics/texture/TexturePool.h"
 
 #include "third-party/imgui/imgui.h"
@@ -426,6 +427,19 @@ TextureAnimator::TextureAnimator(ShaderLibrary& shaders, const tfrag3::Level* co
   glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 16, 16, 0, GL_RGBA, GL_UNSIGNED_INT_8_8_8_8_REV,
                data.data());
   glGenerateMipmap(GL_TEXTURE_2D);
+  glBindTexture(GL_TEXTURE_2D, 0);
+
+  // create the slime LUT texture
+  glGenTextures(1, &m_slime_lut_texture);
+  glBindTexture(GL_TEXTURE_1D, m_slime_lut_texture);
+  std::vector<u8> slime_data;
+  for (auto x : kSlimeLutData) {
+    slime_data.push_back(x * 255);
+  }
+  glTexImage1D(GL_TEXTURE_1D, 0, GL_RGBA, 256, 0, GL_RGBA, GL_UNSIGNED_INT_8_8_8_8_REV,
+               slime_data.data());
+  glTexParameteri(GL_TEXTURE_1D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+  glTexParameteri(GL_TEXTURE_1D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
   glBindTexture(GL_TEXTURE_2D, 0);
 
   shader.activate();
@@ -2750,6 +2764,10 @@ void TextureAnimator::run_slime(const SlimeInput& input) {
     glUniform3fv(m_uniforms.positions, 4, positions);
     float uv[2 * 4] = {0, 0, 1, 0, 1, 1, 0, 1};
     glUniform2fv(m_uniforms.uvs, 4, uv);
+
+    glActiveTexture(GL_TEXTURE10);
+    glBindTexture(GL_TEXTURE_1D, m_slime_lut_texture);
+    glActiveTexture(GL_TEXTURE0);
 
     // Anim 1:
     // noise (16x16)

@@ -348,6 +348,7 @@ class TextureAnimator {
 
   GLuint m_shader_id;
   GLuint m_dummy_texture;
+  GLuint m_slime_lut_texture;
 
   u8 m_index_to_clut_addr[256];
   OpenGLTexturePool m_opengl_texture_pool;

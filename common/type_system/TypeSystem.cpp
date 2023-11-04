@@ -544,8 +544,15 @@ MethodInfo TypeSystem::override_method(Type* type,
     throw_typesystem_error("Trying to override a method that has no parent declaration");
   }
   // use the existing ID.
-  return type->add_method({existing_info.id, existing_info.name, existing_info.type,
-                           type->get_name(), existing_info.no_virtual, false, true, docstring});
+  return type->add_method({existing_info.id,
+                           existing_info.name,
+                           existing_info.type,
+                           type->get_name(),
+                           existing_info.no_virtual,
+                           false,
+                           true,
+                           docstring,
+                           {}});
 }
 
 MethodInfo TypeSystem::declare_method(const std::string& type_name,
@@ -596,8 +603,15 @@ MethodInfo TypeSystem::declare_method(Type* type,
     }
 
     // use the existing ID.
-    return type->add_method(
-        {existing_info.id, method_name, ts, type->get_name(), no_virtual, true, false, docstring});
+    return type->add_method({existing_info.id,
+                             method_name,
+                             ts,
+                             type->get_name(),
+                             no_virtual,
+                             true,
+                             false,
+                             docstring,
+                             {}});
   } else {
     if (got_existing) {
       // make sure we aren't changing anything.
@@ -627,8 +641,15 @@ MethodInfo TypeSystem::declare_method(Type* type,
       return existing_info;
     } else {
       // add a new method!
-      return type->add_method({get_next_method_id(type), method_name, ts, type->get_name(),
-                               no_virtual, false, false, docstring});
+      return type->add_method({get_next_method_id(type),
+                               method_name,
+                               ts,
+                               type->get_name(),
+                               no_virtual,
+                               false,
+                               false,
+                               docstring,
+                               {}});
     }
   }
 }
@@ -736,7 +757,8 @@ MethodInfo TypeSystem::add_new_method(Type* type,
 
     return existing;
   } else {
-    return type->add_new_method({0, "new", ts, type->get_name(), false, false, false, docstring});
+    return type->add_new_method(
+        {0, "new", ts, type->get_name(), false, false, false, docstring, {}});
   }
 }
 
@@ -2089,7 +2111,7 @@ std::optional<std::string> find_best_field_in_structure(const TypeSystem& ts,
   if (end_field == -1) {
     end_field = st->fields().size();
   }
-  for (size_t i = start_field; i < end_field; ++i) {
+  for (size_t i = start_field; i < (size_t)end_field; ++i) {
     const auto& field = st->fields().at(i);
     auto type = ts.lookup_type(field.type());
     if (field.is_dynamic() || field.offset() > offset || field.user_placed() != want_fixed) {

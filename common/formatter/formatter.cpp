@@ -86,7 +86,7 @@ void apply_formatting_config(
       // circumstance, we do NOT do this sort of thing when formatting normal forms (cond/case pairs
       // are another similar situation)
       if (curr_node.formatting_config.has_constant_pairs) {
-        for (int i = 0; i < curr_node.refs.size(); i++) {
+        for (int i = 0; i < (int)curr_node.refs.size(); i++) {
           auto& child_ref = curr_node.refs.at(i);
           const auto type = child_ref.metadata.node_type;
           if (constant_types.find(type) == constant_types.end() &&
@@ -107,7 +107,7 @@ void apply_formatting_config(
     curr_node.formatting_config.indentation_width = hang_indentation_width(curr_node);
   }
   // iterate through the refs
-  for (int i = 0; i < curr_node.refs.size(); i++) {
+  for (int i = 0; i < (int)curr_node.refs.size(); i++) {
     auto& ref = curr_node.refs.at(i);
     if (!ref.token) {
       // If the child has a pre-defined configuration at that index, we pass it along
@@ -211,7 +211,7 @@ std::vector<std::string> apply_formatting(const FormatterTreeNode& curr_node,
   //
   // This means we may combine elements onto the same line in this step.
   std::vector<std::string> form_lines = {};
-  for (int i = 0; i < curr_node.refs.size(); i++) {
+  for (int i = 0; i < (int)curr_node.refs.size(); i++) {
     const auto& ref = curr_node.refs.at(i);
     // Add new line entry
     if (ref.token) {
@@ -227,7 +227,7 @@ std::vector<std::string> apply_formatting(const FormatterTreeNode& curr_node,
       // If it's not a token, we have to recursively build up the form
       // TODO - add the cursor_pos here
       const auto& lines = apply_formatting(ref, {}, cursor_pos);
-      for (int i = 0; i < lines.size(); i++) {
+      for (int i = 0; i < (int)lines.size(); i++) {
         const auto& line = lines.at(i);
         form_lines.push_back(fmt::format(
             "{}{}", str_util::repeat(ref.formatting_config.parent_mutable_extra_indent, " "),
@@ -235,12 +235,12 @@ std::vector<std::string> apply_formatting(const FormatterTreeNode& curr_node,
       }
     }
     // If we are hanging forms, combine the first two forms onto the same line
-    if (i == curr_node.refs.size() - 1 && form_lines.size() > 1 &&
+    if (i == (int)curr_node.refs.size() - 1 && form_lines.size() > 1 &&
         (curr_node.formatting_config.hang_forms ||
          curr_node.formatting_config.combine_first_two_lines)) {
       form_lines.at(0) += fmt::format(" {}", form_lines.at(1));
       form_lines.erase(form_lines.begin() + 1);
-    } else if ((i + 1) < curr_node.refs.size()) {
+    } else if ((i + 1) < (int)curr_node.refs.size()) {
       const auto& next_ref = curr_node.refs.at(i + 1);
       // combine the next inline comment or constant pair
       if ((next_ref.metadata.node_type == "comment" && next_ref.metadata.is_inline) ||
@@ -267,7 +267,7 @@ std::vector<std::string> apply_formatting(const FormatterTreeNode& curr_node,
   // Consolidate any lines if the configuration requires it
   if (curr_node.formatting_config.inline_until_index != -1) {
     std::vector<std::string> new_form_lines = {};
-    for (int i = 0; i < form_lines.size(); i++) {
+    for (int i = 0; i < (int)form_lines.size(); i++) {
       if (i < curr_node.formatting_config.inline_until_index) {
         if (new_form_lines.empty()) {
           new_form_lines.push_back(form_lines.at(i));
@@ -296,7 +296,7 @@ std::vector<std::string> apply_formatting(const FormatterTreeNode& curr_node,
   if (inline_form) {
     form_lines = {fmt::format("{}", fmt::join(form_lines, " "))};
   } else {
-    for (int i = 0; i < form_lines.size(); i++) {
+    for (int i = 0; i < (int)form_lines.size(); i++) {
       if (i > 0) {
         auto& line = form_lines.at(i);
         line = fmt::format("{}{}",
