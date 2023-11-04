@@ -919,6 +919,28 @@ static std::vector<ReplaceInfo> s_replace_info_jak2 = {
     {"N~Y~-6Hº~Z~+10H", "Nº"},
     {"~+4Vç~-4V", ",c"},
 
+    // added for translations TODO - check these for jak 2
+    {"O~Y~-16H~-1V/~Z", "Ø"},
+    {"o~Y~-16H~-1V/~Z", "ø"},
+    {"A~Y~-6H~+3V,~Z", "Ą"},
+    {"a~Y~-6H~+3V,~Z", "ą"},
+    {"E~Y~-6H~+2V,~Z", "Ę"},
+    {"e~Y~-6H~+2V,~Z", "ę"},
+    {"L~Y~-16H~+0V/~Z", "Ł"},
+    {"l~Y~-16H~+0V/~Z", "ł"},
+    {"Z~Y~-21H~-5Vº~Z", "Ż"},
+    {"z~Y~-21H~-5Vº~Z", "ż"},
+    {"a~Y~-25H~-5Vº~Z", "å"},
+    {"S~Y~-21H~-5V'~Z", "Ś"},
+    {"s~Y~-25H~-5V'~Z", "ś"},
+    {"n~Y~-25H~-5V'~Z", "ń"},
+    {"c~Y~-25H~-5V'~Z", "ć"},
+    {"o~Y~-24H~-4V<TIL>~Z", "õ"},
+    {"a~Y~-24H~-4V<TIL>~Z", "ã"},
+    {"O~Y~-28H~-4V'~-9H'~Z", "Ő"},
+    {"U~Y~-27H~-4V'~-12H'~Z", "Ű"},
+    {"o~Y~-28H~-4V'~-9H'~Z", "ő"},
+
     // tildes
     {"N~Y~-22H~-4V<TIL>~Z", "Ñ"},
     {"n~Y~-24H~-4V<TIL>~Z", "ñ"},
@@ -1077,7 +1099,7 @@ static std::vector<ReplaceInfo> s_replace_info_jak2 = {
      "<PAD_ANALOG_UP_DOWN>"},
 
     // icons
-    {"~Y~6L<~Z~Y~1L>~Z~Y~23L[~Z~+26H", "<ICON_MISSION_COMPLETE>"},
+    {"~Y~6L<~Z~Y~1L>~Z~Y~23L[~Z~+26H", "<ICON_MISSION_COMPLETE>"}, 
     {"~Y~3L<~Z~Y~1L>~Z~Y~23L[~Z~+26H", "<ICON_MISSION_TODO>"},
 
     // flags
