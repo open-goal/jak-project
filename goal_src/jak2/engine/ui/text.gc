@@ -195,17 +195,14 @@
                (the-as string #f)
                )
              (else
-             ;; og:preserve-this Added fallback to english is string is not found.
-                (#if PC_PORT
-                  (if *fallback-text-lookup?*
-                    (let ((fallback-result (lookup-text! *fallback-text* arg0 #t)))
-                    (if (!= fallback-result #f)
-                      fallback-result
+              ;; og:preserve-this Added fallback to english is string is not found.
+              (#if PC_PORT
+                (if *fallback-text-lookup?*
+                  (aif (lookup-text! *fallback-text* arg0 #t)
+                      it
                       (string-format "UNKNOWN ID ~D" arg0)))
-                  )
-                  (string-format "UNKNOWN ID ~D" arg0)
-                )
-               )
+                (string-format "UNKNOWN ID ~D" arg0))
+              )
              )
            )
           ((= (-> this language-id) 6)
@@ -242,9 +239,13 @@ the game-text-info, and heap is the heap to load to. The heap will be cleared."
   (set! sv-24 (the-as int (-> *setting-control* user-current language)))
   (set! sv-32 0)
   (set! sv-40 (&- (-> arg2 top) (the-as uint (-> arg2 base))))
-  (if (and (= (scf-get-territory) 1) (= sv-24 (language-enum english)) (not (demo?)))
-      (set! sv-24 7)
-      )
+  ;; english -> UK english in PAL
+  ;; og:preserve-this no longer necessary.
+  (#unless PC_PORT
+    (if (and (= (scf-get-territory) GAME_TERRITORY_SCEE) (= sv-24 (language-enum english)) (not (demo?)))
+        (set! sv-24 (language-enum uk-english))
+        )
+    )
   (when (or (= sv-16 #f) (!= (-> sv-16 language-id) sv-24) (not (string= (-> sv-16 group-name) arg0)))
     (let ((v1-16 arg2))
       (set! (-> v1-16 current) (-> v1-16 base))
@@ -319,10 +320,9 @@ in a single text group and file."
       (load-game-text-info "common" (&-> '*common-text* value) *common-text-heap*)
       (#when PC_PORT
         (protect ((-> *setting-control* user-current language))
-        (set! (-> *setting-control* user-current language) (language-enum english))
-        (load-game-text-info "common" (&-> '*fallback-text* value) *fallback-text-heap*))
-      )
-  )
+          ;; todo - split text language
+          (set! (-> *setting-control* user-current language) (language-enum english))
+          (load-game-text-info "common" (&-> '*fallback-text* value) *fallback-text-heap*))))
   0
   (none)
   )
