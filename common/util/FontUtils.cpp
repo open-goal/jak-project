@@ -1099,7 +1099,7 @@ static std::vector<ReplaceInfo> s_replace_info_jak2 = {
      "<PAD_ANALOG_UP_DOWN>"},
 
     // icons
-    {"~Y~6L<~Z~Y~1L>~Z~Y~23L[~Z~+26H", "<ICON_MISSION_COMPLETE>"}, 
+    {"~Y~6L<~Z~Y~1L>~Z~Y~23L[~Z~+26H", "<ICON_MISSION_COMPLETE>"},
     {"~Y~3L<~Z~Y~1L>~Z~Y~23L[~Z~+26H", "<ICON_MISSION_TODO>"},
 
     // flags
