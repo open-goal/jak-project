@@ -995,6 +995,26 @@
     )
   )
 
+;; og:preserve-this High FPS fix
+(defun rotate-quat-y-high-fps-fix ((quat quaternion) (rate float))
+  "This function does: (quaternion-rotate-y! quat quat (* rate (seconds-per-frame)))
+   But fixes an issue where a small rate will cause no change to the quaternion."
+  (let* ((new-Q-old (new-stack-quaternion0))
+         (delta-angle (* rate (seconds-per-frame)))
+         (delta-angle-unwrapped (unwrap-angle-small-angle-fix delta-angle))
+         (delta-angle-rad (* delta-angle-unwrapped ROT_TO_RAD))
+         (sincos-out (new-stack-vector0))
+         )
+    (sincos-rad! sincos-out delta-angle-rad)
+
+    (set! (-> new-Q-old x) 0.0)
+    (set! (-> new-Q-old y) (-> sincos-out x)) ;; sin
+    (set! (-> new-Q-old z) 0.0)
+    (set! (-> new-Q-old w) (-> sincos-out y)) ;; cos
+    (quaternion-normalize! (quaternion*! quat new-Q-old quat))
+    )
+  )
+
 (defbehavior update-mood-drillmnt time-of-day-proc ((arg0 mood-context) (arg1 float) (arg2 int))
   (copy-mood-exterior-ambi arg0 #t)
   (update-drill-lights arg0)
@@ -1004,7 +1024,9 @@
     (let ((s5-1 *math-camera*))
       (set! (-> arg0 times 5 w) 1.0)
       (if (not (paused?))
-          (quaternion-rotate-y! (-> s5-1 quat-other) (-> s5-1 quat-other) (* 273.06668 (seconds-per-frame)))
+          ;; og:preserve-this High FPS fix
+          ;; (quaternion-rotate-y! (-> s5-1 quat-other) (-> s5-1 quat-other) (* 273.06668 (seconds-per-frame)))
+          (rotate-quat-y-high-fps-fix (-> s5-1 quat-other) 273.06668)
           )
       )
     )
@@ -1206,7 +1228,9 @@
     (update-mood-flames arg0 6 2 8 0.5 0.0009765625 1.5)
     (let ((gp-1 *math-camera*))
       (if (not (paused?))
-          (quaternion-rotate-y! (-> gp-1 quat-other) (-> gp-1 quat-other) (* 273.06668 (seconds-per-frame)))
+          ;; og:preserve-this High FPS fix
+          (rotate-quat-y-high-fps-fix (-> gp-1 quat-other) 273.06668)
+          ;(quaternion-rotate-y! (-> gp-1 quat-other) (-> gp-1 quat-other) (* 273.06668 (seconds-per-frame)))
           )
       )
     )
