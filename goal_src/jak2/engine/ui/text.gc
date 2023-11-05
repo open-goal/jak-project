@@ -195,9 +195,14 @@
                (the-as string #f)
                )
              (else
-               (format (clear *temp-string*) "UNKNOWN ID ~X" arg0)
-               *temp-string*
-               )
+              ;; og:preserve-this Added fallback to english is string is not found.
+              (#if PC_PORT
+                (if *fallback-text-lookup?*
+                  (aif (lookup-text! *fallback-text* arg0 #t)
+                      it
+                      (string-format "UNKNOWN ID ~D" arg0)))
+                (string-format "UNKNOWN ID ~D" arg0))
+              )
              )
            )
           ((= (-> this language-id) 6)
@@ -234,9 +239,13 @@ the game-text-info, and heap is the heap to load to. The heap will be cleared."
   (set! sv-24 (the-as int (-> *setting-control* user-current language)))
   (set! sv-32 0)
   (set! sv-40 (&- (-> arg2 top) (the-as uint (-> arg2 base))))
-  (if (and (= (scf-get-territory) 1) (= sv-24 (language-enum english)) (not (demo?)))
-      (set! sv-24 7)
-      )
+  ;; english -> UK english in PAL
+  ;; og:preserve-this no longer necessary.
+  (#unless PC_PORT
+    (if (and (= (scf-get-territory) GAME_TERRITORY_SCEE) (= sv-24 (language-enum english)) (not (demo?)))
+        (set! sv-24 (language-enum uk-english))
+        )
+    )
   (when (or (= sv-16 #f) (!= (-> sv-16 language-id) sv-24) (not (string= (-> sv-16 group-name) arg0)))
     (let ((v1-16 arg2))
       (set! (-> v1-16 current) (-> v1-16 base))
@@ -306,9 +315,14 @@ the game-text-info, and heap is the heap to load to. The heap will be cleared."
   "Load the text files needed for level idx.
 This function made more sense back when text files were split up, but in the end they put everything
 in a single text group and file."
-  (if (or *level-text-file-load-flag* (>= arg0 0))
+;; og:preserve-this Load in english file to use as a fallback
+  (when (or *level-text-file-load-flag* (>= arg0 0))
       (load-game-text-info "common" (&-> '*common-text* value) *common-text-heap*)
-      )
+      (#when PC_PORT
+        (protect ((-> *setting-control* user-current language))
+          ;; todo - split text language
+          (set! (-> *setting-control* user-current language) (language-enum english))
+          (load-game-text-info "common" (&-> '*fallback-text* value) *fallback-text-heap*))))
   0
   (none)
   )

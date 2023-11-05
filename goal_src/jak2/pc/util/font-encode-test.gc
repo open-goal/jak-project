@@ -36,26 +36,26 @@
 
 (defun font-encode-test-stop ()
   "stop the encode test proc"
-  
+
   (kill-by-name "font-encode" *active-pool*)
   )
 
 (defun font-encode-test-start ()
   "start the encode test proc"
-  
+
   (font-encode-test-stop)
   (process-spawn-function process :name "font-encode"
       (lambda :behavior process ()
           (let ((fnt (new 'stack 'font-context *font-default-matrix* FONT_ENCODE_TEXT_LEFT FONT_ENCODE_TEXT_Y 0.0
                                   (font-color red) (font-flags shadow kerning large middle)))
                 )
-              
+
               (set-width! fnt (get-screen-x 0.8))
               (set-height! fnt (get-screen-y 0.1))
-              
+
               (loop
                 (suspend)
-                
+
                 (set-setting! 'music *music-to-be-less-annoying* 0.0 0)
                 (cond
                   ((not (cpad-hold? 0 r3))
@@ -72,13 +72,13 @@
                     )
                   )
                 (minmax! *font-string-val* 1 #xfff)
-                
+
                 (let ((chars (1+ (/ (log2 *font-string-val*) 8))))
                   (dotimes (i chars)
                     (set! (-> *font-string* data (- chars i 1)) (ash *font-string-val* (* i -8))))
                   (set! (-> *font-string* data (1+ (/ (log2 *font-string-val*) 8))) 0)
                   )
-                
+
                 (with-dma-buffer-add-bucket ((buf (-> (current-frame) debug-buf))
                                              (bucket-id debug-no-zbuf2))
                     (set-scale! fnt 1.0)
@@ -101,7 +101,7 @@
                     )
                 )
               )
-          
+
           )
       )
   )

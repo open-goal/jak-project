@@ -229,6 +229,7 @@ s32 format_impl_jak2(uint64_t* args) {
         case 'w':
         case 'y':
         case 'z':
+        case 1:  // jak 2 japanese encoding
           while (arg_start < format_ptr + 1) {
             *output_ptr = *arg_start;
             arg_start++;

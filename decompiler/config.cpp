@@ -297,6 +297,11 @@ Config make_config_via_json(nlohmann::json& json) {
   auto art_info_json = read_json_file_from_config(json, "art_info_file");
   config.art_group_type_remap =
       art_info_json.at("type_remap").get<std::unordered_map<std::string, std::string>>();
+  if (art_info_json.contains("file_override")) {
+    config.art_group_file_override =
+        art_info_json.at("file_override")
+            .get<std::unordered_map<std::string, std::unordered_map<std::string, std::string>>>();
+  }
   config.joint_node_hacks =
       art_info_json.at("joint_node_hacks").get<std::unordered_map<std::string, std::string>>();
 

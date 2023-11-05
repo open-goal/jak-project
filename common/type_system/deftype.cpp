@@ -457,7 +457,7 @@ void declare_method(Type* type,
 void declare_state_methods(Type* type,
                            TypeSystem* type_system,
                            const goos::Object& def,
-                           StructureDefResult& struct_def) {
+                           StructureDefResult& /*struct_def*/) {
   for_each_in_list(def, [&](const goos::Object& _obj) {
     auto obj = &_obj;
     // either state-name or (state-name args...) or (state-name "docstring" args...)

@@ -233,100 +233,6 @@
   v0-2
   )
 
-(defun load-fallback-game-text-info ((txt-name string) (curr-text symbol) (heap kheap))
-  "Largely duplication of `load-game-text-info` but is hardcoded to load english (language 0)"
-  (local-vars
-   (v0-2 int)
-   (heap-sym-heap game-text-info)
-   (lang language-enum)
-   (load-status int)
-   (heap-free int)
-   )
-  (set! heap-sym-heap (the-as game-text-info (-> curr-text value)))
-  (set! lang (language-enum english))
-  (set! load-status 0)
-  (set! heap-free (&- (-> heap top) (the-as uint (-> heap base))))
-
-  ;; only load if we actually need to
-  (when (or (= heap-sym-heap #f) ;; nothing loaded
-            (!= (-> heap-sym-heap language-id) (the-as uint lang)) ;; loaded, but wrong lang
-            (not (string= (-> heap-sym-heap group-name) txt-name)) ;; loaded, but wrong group
-            )
-
-    ;; clear the heap!
-    (let ((v1-16 heap))
-      (set! (-> v1-16 current) (-> v1-16 base))
-      )
-    (b! #t cfg-14)
-    (label cfg-13)
-    (load-dbg "Strange error during text load.~%")
-    (set! v0-2 0)
-    (b! #t cfg-27)
-    (label cfg-14)
-
-    ;; call str-load to start loading the TXT file to the heap
-    (let ((s3-0 str-load))
-      (format (clear *temp-string*) "~D~S.TXT" lang txt-name)
-      ;; this branch is super weird.
-      (b! (not (s3-0
-                *temp-string*
-                -1
-                (logand -64 (&+ (-> heap current) 63))
-                (&- (-> heap top) (the-as uint (-> heap current)))
-                )
-               )
-          cfg-13
-          )
-      )
-
-    ;; loop to wait until loading is complete
-    (label cfg-16)
-    (let ((v1-20 (str-load-status (the-as (pointer int32) (& load-status)))))
-      (cond
-        ((= v1-20 'error)
-         (format 0 "Error loading text~%")
-         (return 0)
-         )
-        ((>= load-status (+ heap-free -300))
-         (format 0 "Game text heap overrun!~%")
-         (return 0)
-         )
-        ((= v1-20 'busy)
-         (begin
-          (nop!)
-          (nop!)
-          (nop!)
-          (nop!)
-          (nop!)
-          (nop!)
-          (goto cfg-16)
-          )
-         )
-        )
-      )
-
-    ;; loading is done. now we link.
-    (let ((s2-1 (logand -64 (&+ (-> heap current) 63))))
-      (flush-cache 0)
-      (let ((s3-1 link))
-        (format (clear *temp-string*) "~D~S.TXT" lang txt-name)
-        (set! (-> curr-text value)
-         (s3-1 s2-1 (-> *temp-string* data) load-status heap 0)
-         )
-        )
-      )
-
-    ;; linking error occured?
-    (if (<= (the-as int (-> curr-text value)) 0)
-        (set! (-> curr-text value) (the-as object #f))
-        )
-    )
-  (set! v0-2 0)
-  (label cfg-27)
-
-  v0-2
-  )
-
 (defun load-level-text-files ((arg0 int))
   "Load the text files needed for level idx.
    This function made more sense back when text files were split up, but in the end they put everything
@@ -335,8 +241,9 @@
   (when (or *level-text-file-load-flag* (>= arg0 0))
     (load-game-text-info "common" '*common-text* *common-text-heap*)
     (#when PC_PORT
-      (load-fallback-game-text-info "common" '*fallback-text* *fallback-text-heap*))
-    )
+      (protect ((-> *pc-settings* text-language))
+        (set! (-> *pc-settings* text-language)  (pc-language english))
+        (load-game-text-info "common" '*fallback-text* *fallback-text-heap*))))
   (none)
   )
 

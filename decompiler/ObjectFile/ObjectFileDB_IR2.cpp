@@ -510,6 +510,20 @@ Value try_lookup(const std::unordered_map<Key, Value>& map, const Key& key) {
   }
 }
 
+const std::string* find_file_override_for_art_group(const Config& config,
+                                                    const std::string& obj_name,
+                                                    const std::string& type_name) {
+  // find file override for this type
+  auto it_file = config.art_group_file_override.find(obj_name);
+  if (it_file != config.art_group_file_override.end()) {
+    auto it_type = it_file->second.find(type_name);
+    if (it_type != it_file->second.end()) {
+      return &it_type->second;
+    }
+  }
+  return nullptr;
+}
+
 /*!
  * Analyze registers and determine the type in each register at each instruction.
  * - Figure out the type of each function, from configs.
@@ -550,7 +564,11 @@ void ObjectFileDB::ir2_type_analysis_pass(int seg, const Config& config, ObjectF
         if (func.guessed_name.kind == FunctionName::FunctionKind::V_STATE) {
           if (config.art_group_type_remap.find(func.guessed_name.type_name) !=
               config.art_group_type_remap.end()) {
-            func.ir2.env.set_art_group(config.art_group_type_remap.at(func.guessed_name.type_name));
+            auto ag_override =
+                find_file_override_for_art_group(config, obj_name, func.guessed_name.type_name);
+            func.ir2.env.set_art_group(
+                ag_override ? *ag_override
+                            : config.art_group_type_remap.at(func.guessed_name.type_name));
           } else {
             func.ir2.env.set_art_group(func.guessed_name.type_name + "-ag");
           }
@@ -558,7 +576,9 @@ void ObjectFileDB::ir2_type_analysis_pass(int seg, const Config& config, ObjectF
                    func.type.try_get_tag("behavior").has_value()) {
           std::string type = func.type.get_tag("behavior");
           if (config.art_group_type_remap.find(type) != config.art_group_type_remap.end()) {
-            func.ir2.env.set_art_group(config.art_group_type_remap.at(type));
+            auto ag_override = find_file_override_for_art_group(config, obj_name, type);
+            func.ir2.env.set_art_group(ag_override ? *ag_override
+                                                   : config.art_group_type_remap.at(type));
           } else {
             func.ir2.env.set_art_group(type + "-ag");
           }

@@ -22,13 +22,13 @@ FormFormattingConfig new_binding_rule() {
   auto binding_list_config = std::make_shared<FormFormattingConfig>();
   binding_list_config->hang_forms = false;
   binding_list_config->indentation_width = 1;
-  binding_list_config->indentation_width_for_index = [](FormFormattingConfig cfg, int index) {
+  binding_list_config->indentation_width_for_index = [](FormFormattingConfig /*cfg*/, int index) {
     if (index == 0) {
       return 0;
     }
     return 4;
   };
-  binding_list_config->should_prevent_inlining = [](FormFormattingConfig config, int num_refs) {
+  binding_list_config->should_prevent_inlining = [](FormFormattingConfig /*config*/, int num_refs) {
     // Only prevent inlining a binding list, if there are more than 1 bindings
     if (num_refs > 1) {
       return true;
