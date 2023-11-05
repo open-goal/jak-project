@@ -20,6 +20,14 @@
   ;; general statistics
   (set! (-> this num-orbs) (the int (-> *game-info* skill-total)))
   (set! (-> this num-skullgems) (the int (-> *game-info* gem-total)))
+  ;; ending conditions
+  ;; all collectables
+  ;; - check for all orbs (which require all missions conveniently)
+  ;; - also check for all darkjak powers
+  (set! (-> this all-collectables-acquired?)
+        (if (and (logtest? (-> *game-info* features) (game-feature darkjak-giant))
+                 (>= (-> this num-orbs) 286))
+          1 0))
   ;; loading/cutscene related flags
   (set! (-> this in-cutscene?) (if (movie?) 1 0))
   ;; need resolution flags
@@ -127,9 +135,26 @@
   (autosplit-flag-task-complete! res-stadium-burning-bush-race-class3-r stadium-burning-bush-race-class3-r)
   (autosplit-flag-task-complete! res-stadium-burning-bush-race-class2-r stadium-burning-bush-race-class2-r)
   (autosplit-flag-task-complete! res-stadium-burning-bush-race-class1-r stadium-burning-bush-race-class1-r)
+
+  ;; debug only, draw stuff to the screen so i don't have to stare at a memory editor
+  ;; (debug-draw this)
   (none))
 
 
 (defmethod reset! ((this autosplit-info))
   (set! (-> this game-hash) (pc-get-unix-timestamp))
+  (set! (-> this kor-dead?) 0)
+  (none))
+
+(defmethod debug-draw ((this autosplit-info))
+  (clear *temp-string*)
+  (format *temp-string* "kor-dead?: ~D~%" (-> this kor-dead?))
+  (format *temp-string* "all-collectables-acquired?: ~D~%" (-> this all-collectables-acquired?))
+  (with-dma-buffer-add-bucket ((buf (-> (current-frame) global-buf)) (bucket-id debug-no-zbuf1))
+      ;; reset bucket settings prior to drawing - font won't do this for us, and
+      ;; draw-raw-image can sometimes mess them up. (intro sequence)
+      (dma-buffer-add-gs-set-flusha buf (alpha-1 (new 'static 'gs-alpha :b #x1 :d #x1)) (tex1-1 (new 'static 'gs-tex1 :mmag #x1 :mmin #x1)))
+      (let ((font-ctx (new 'stack 'font-context *font-default-matrix* 10 50 0.0 (font-color default) (font-flags shadow kerning large))))
+        (set! (-> font-ctx scale) 0.325)
+        (draw-string-adv *temp-string* buf font-ctx)))
   (none))
