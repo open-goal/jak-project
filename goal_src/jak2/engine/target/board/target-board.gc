@@ -57,49 +57,49 @@
   "TODO - make a prefix removal function instead"
   (cond
     ((= trick (board-tricks board-rail-jump))
-    "rail-jump"
+    "Rail-jump"
     )
     ((= trick (board-tricks board-nosegrab))
-    "nosegrab"
+    "Nosegrab"
     )
     ((= trick (board-tricks board-board-spin))
-    "board-spin"
+    "Board-spin"
     )
     ((= trick (board-tricks board-kickflip))
-    "kickflip"
+    "Kickflip"
     )
     ((= trick (board-tricks board-method))
-    "method"
+    "Method"
     )
     ((= trick (board-tricks board-spin))
-    "spin"
+    "Spin"
     )
     ((= trick (board-tricks board-boost))
-    "boost"
+    "Boost"
     )
     ((= trick (board-tricks board-duck-jump))
-    "duck-jump"
+    "Duck-jump"
     )
     ((= trick (board-tricks board-board-flip))
-    "board-flip"
+    "Board-flip"
     )
     ((= trick (board-tricks board-rail))
-    "rail"
+    "Grind"
     )
     ((= trick (board-tricks none))
     "none"
     )
     ((= trick (board-tricks board-quick-jump))
-    "quick-jump"
+    "Quick-jump"
     )
     ((= trick (board-tricks board-noseflip))
-    "noseflip"
+    "Noseflip"
     )
     ((= trick (board-tricks board-jump))
-    "jump"
+    "Jump"
     )
     ((= trick (board-tricks board-flip))
-    "flip"
+    "Flip"
     )
     (else
       "*unknown*"
@@ -108,7 +108,7 @@
 (defmethod render-combo board-trick-tracker ((this board-trick-tracker))
   (when (not (-> *pc-settings* jetboard-trick-text?))
     (return 0))
-  (clear *temp-string*)
+  (clear *pc-encoded-temp-string*)
   ;; Also only print each trick type once
   (let ((freq (new 'stack-no-clear 'array 'uint32 19))
         (printed (new 'stack-no-clear 'array 'symbol 19))
@@ -131,30 +131,34 @@
              (skip? (-> printed trick))
              (color (case trick
                       (((board-tricks board-boost) (board-tricks board-jump) (board-tricks board-duck-jump) (board-tricks board-quick-jump))
-                       "~[~9L")
+                       "<COLOR_PINK>")
                       (((board-tricks board-rail) (board-tricks board-rail-jump))
-                       "~[~3L")
+                       "<COLOR_RED>")
                       (((board-tricks board-spin) (board-tricks board-flip) (board-tricks board-board-flip) (board-tricks board-nosegrab))
-                       "~[~26L")
+                       "<COLOR_PAD-TRIANGLE>")
                       (((board-tricks board-board-spin) (board-tricks board-method) (board-tricks board-noseflip) (board-tricks board-kickflip))
-                       "~[~15L")))
+                       "<COLOR_MENU-FLAG-ON>")))
              (padding (if (= idx 0) "" " ")))
         (when (not skip?)
           (if (> times 0)
-            (format *temp-string* "~S~S~S~S x ~D" padding color (board-trick->string trick) "~[~0L" times)
-            (format *temp-string* "~S~S~S~S" padding color (board-trick->string trick) "~[~0L"))
+            (format *pc-encoded-temp-string* "~S~S~S<COLOR_DEFAULT> x ~D" padding color (board-trick->string trick) times)
+            (format *pc-encoded-temp-string* "~S~S~S<COLOR_DEFAULT>" padding color (board-trick->string trick)))
           (set! (-> printed trick) #t)
           (set! text-entries (inc text-entries))
+          ;; TODO - creates an extra space, fix later
           (when (= (mod text-entries 4) 0)
-            (format *temp-string* "~%"))
+            (format *pc-encoded-temp-string* "~%"))
           ))
       (set! idx (inc idx))))
   ;; Add points
   (when (> (-> this points-in-combo) 0.0)
-    (format *temp-string* "~%~S~D" "~[~38L" (the int (-> this points-in-combo))))
+    (format *pc-encoded-temp-string* "~%~%<COLOR_CREDITS-STAFF-TITLE-2>~D" (the int (-> this points-in-combo))))
   ;; Print it finally
-  (let ((font-ctx (new 'stack 'font-context *font-default-matrix* 0 325 0.0 (font-color default) (font-flags shadow kerning middle))))
-    (print-game-text-scaled *temp-string* 1.0 font-ctx (bucket-id progress)))
+  (pc-encode-utf8-string *pc-encoded-temp-string* *pc-encoded-temp-string*)
+  (with-dma-buffer-add-bucket ((buf (-> (current-frame) global-buf)) (bucket-id debug-no-zbuf1))
+    (let ((font-ctx (new 'stack 'font-context *font-default-matrix* 255 325 0.0 (font-color default) (font-flags large shadow kerning middle))))
+      (set! (-> font-ctx scale) 0.325)
+      (draw-string-adv *pc-encoded-temp-string* buf font-ctx)))
   (none))
 
 (defmethod end-combo! board-trick-tracker ((this board-trick-tracker))
