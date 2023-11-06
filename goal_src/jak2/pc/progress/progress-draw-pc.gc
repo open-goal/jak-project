@@ -2180,7 +2180,7 @@
   (none)
   )
 
-(defmethod draw-option menu-frame-rate-disclaimer-option ((obj menu-frame-rate-disclaimer-option) (arg0 progress) (arg1 font-context) (arg2 int) (arg3 symbol))
+(defmethod draw-option ((obj menu-frame-rate-disclaimer-option) (arg0 progress) (arg1 font-context) (arg2 int) (arg3 symbol))
   (set! (-> arg1 alpha) (- 1.0 (-> arg0 menu-transition)))
   (set-color! arg1 (font-color red))
   (set-scale! arg1 0.8)
@@ -2218,6 +2218,83 @@
   (none)
   )
 
+(defmethod draw-option ((this menu-exit-game-option) (progress progress) (fnt font-context) (arg2 int) (selected symbol))
+  (let ((alpha (* 2.0 (- 0.5 (-> progress menu-transition))))
+        (y (the int (+ -1.0 (-> fnt origin y))))
+        (height 22)
+        )
+    (if (< alpha 0.0)
+        (set! alpha 0.0)
+        )
+    (set! (-> fnt alpha) alpha)
+    (set-scale! fnt 0.85)
+    (set! (-> fnt height) 40.0)
+    (set! height 36)
+    (when (not (memcard-unlocked-secrets? #f))
+      (-! (-> fnt origin y) 15.0)
+      (-! y 18)
+      )
+    (when (memcard-unlocked-secrets? #f)
+      (-! (-> fnt origin y) 10.0)
+      (-! y 15)
+      )
+    (when (nonzero? (-> this name))
+      (set-color! fnt (if (= arg2 (-> progress option-index))
+                                (the font-color (the int (progress-selected 0)))
+                                (font-color progress)
+                                )
+            )
+      (cond
+        ((= arg2 (-> progress option-index))
+         (set-color! fnt (progress-selected 0))
+         (draw-highlight y height alpha)
+         )
+        (else
+          (set-color! fnt (font-color progress))
+          )
+        )
+      (print-game-text (lookup-text! *common-text* (-> this name) #f) fnt #f 44 (bucket-id progress))
+      (let ((choice (&-> *progress-state* yes-no-choice)) (str (the string #f)))
+        (set! str
+              (cond
+                (selected
+                  (set-color! fnt (font-color progress-force-selected))
+                  (print-game-text (lookup-text! *common-text* (-> this name) #f) fnt #f 44 (bucket-id progress))
+                  (+! (-> fnt origin y) 32.0)
+                  (cond
+                    ((-> choice 0)
+                    (format
+                      (clear *temp-string*)
+                      "~33L~S~32L ~S"
+                      (lookup-text! *common-text* (text-id progress-yes) #f)
+                      (lookup-text! *common-text* (text-id progress-no) #f)
+                      )
+                    (set! str *temp-string*)
+                    )
+                    (else
+                      (format
+                        (clear *temp-string*)
+                        "~32L~S ~33L~S~1L"
+                        (lookup-text! *common-text* (text-id progress-yes) #f)
+                        (lookup-text! *common-text* (text-id progress-no) #f)
+                        )
+                      (set! str *temp-string*)
+                      )
+                    )
+                  str
+                  )
+                (else
+                  (string-format "~S" (lookup-text! *common-text* (-> this name) #f))
+                  )
+                )
+              )
+        (print-game-text str fnt #f 44 (bucket-id progress))
+        )
+      )
+    )
+  0
+  (none)
+  )
 
 
 (defun begin-scissor-music-player ((box hud-box))
