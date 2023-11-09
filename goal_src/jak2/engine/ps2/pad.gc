@@ -276,13 +276,40 @@ The cpad-set-buzz! function can be used for vibration.
 ;; the two controllers
 (define *cpad-list* (new 'global 'cpad-list))
 
-;; changed to support more input history
+;; Used to calculate how many frames represents 50ms of time
+(seval (define *fps* 165))  
+
+;; I was too dumb to get the calculated version working
+(defsmacro get-recent-frames-for-fps (frame-rate)
+  (cond 
+    ((= frame-rate 60) 3)
+    ((= frame-rate 75) 4)
+    ((= frame-rate 120) 7)
+    ((= frame-rate 144) 8)
+    ((= frame-rate 165) 9)
+    ((= frame-rate 240) 13)
+    ((= frame-rate 300) 16)
+  )
+)
+
+;; Allocates enough input frames to support counting 50ms of time at 300fps. Is there a way to set it at compile time?
 (deftype cpad-history (basic)
-  ((button0-abs         pad-buttons  9) ;; bitmask of buttons, pressed or not, with history
-   (button0-rel         pad-buttons  9) ;; bitmask of if button going down.
+  ((button0-abs         pad-buttons  16) ;; bitmask of buttons, pressed or not, with history
+   (button0-rel         pad-buttons  16) ;; bitmask of if button going down.
   )
 )
 (define *cpad-history* (new 'global 'cpad-history))
+
+(desfun generate-frame-checks (button frames)
+  (if (= frames 0)
+      0
+      `(logior (-> *cpad-history* button0-rel ,(- frames 1))
+               ,(generate-frame-checks button (- frames 1)))))
+
+(defmacro recently-pressed? (&rest buttons)
+  (let* ((frames (get-recent-frames-for-fps 165))
+         (frame-checks (generate-frame-checks button frames)))
+    `(logtest? ,frame-checks (pad-buttons ,button))))
 
 ;; weird leftover debug thing, enabling overrides the x position of both sticks on both controllers.
 (define *cpad-debug* #f)
@@ -346,6 +373,13 @@ The cpad-set-buzz! function can be used for vibration.
 
 
           (when (= i 0)
+           (set! (-> *cpad-history* button0-abs 15) (-> *cpad-history* button0-abs 14))
+           (set! (-> *cpad-history* button0-abs 14) (-> *cpad-history* button0-abs 13))
+           (set! (-> *cpad-history* button0-abs 13) (-> *cpad-history* button0-abs 12))
+           (set! (-> *cpad-history* button0-abs 12) (-> *cpad-history* button0-abs 11))
+           (set! (-> *cpad-history* button0-abs 11) (-> *cpad-history* button0-abs 10))
+           (set! (-> *cpad-history* button0-abs 10) (-> *cpad-history* button0-abs 9))
+           (set! (-> *cpad-history* button0-abs 9) (-> *cpad-history* button0-abs 8))
            (set! (-> *cpad-history* button0-abs 8) (-> *cpad-history* button0-abs 7))
            (set! (-> *cpad-history* button0-abs 7) (-> *cpad-history* button0-abs 6))
            (set! (-> *cpad-history* button0-abs 6) (-> *cpad-history* button0-abs 5))
@@ -354,6 +388,13 @@ The cpad-set-buzz! function can be used for vibration.
            (set! (-> *cpad-history* button0-abs 3) (-> *cpad-history* button0-abs 2))
            (set! (-> *cpad-history* button0-abs 2) (-> *cpad-history* button0-abs 1))
            (set! (-> *cpad-history* button0-abs 1) (-> pad button0-shadow-abs 0))
+           (set! (-> *cpad-history* button0-rel 15) (-> *cpad-history* button0-rel 14))
+           (set! (-> *cpad-history* button0-rel 14) (-> *cpad-history* button0-rel 13))
+           (set! (-> *cpad-history* button0-rel 13) (-> *cpad-history* button0-rel 12))
+           (set! (-> *cpad-history* button0-rel 12) (-> *cpad-history* button0-rel 11))
+           (set! (-> *cpad-history* button0-rel 11) (-> *cpad-history* button0-rel 10))
+           (set! (-> *cpad-history* button0-rel 10) (-> *cpad-history* button0-rel 9))
+           (set! (-> *cpad-history* button0-rel 9) (-> *cpad-history* button0-rel 8))
            (set! (-> *cpad-history* button0-rel 8) (-> *cpad-history* button0-rel 7))
            (set! (-> *cpad-history* button0-rel 7) (-> *cpad-history* button0-rel 6))
            (set! (-> *cpad-history* button0-rel 6) (-> *cpad-history* button0-rel 5))
