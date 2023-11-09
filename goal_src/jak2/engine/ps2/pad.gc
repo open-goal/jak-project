@@ -300,16 +300,16 @@ The cpad-set-buzz! function can be used for vibration.
 )
 (define *cpad-history* (new 'global 'cpad-history))
 
-(desfun generate-frame-checks (button frames)
+(desfun generate-frame-checks (frames)
   (if (= frames 0)
       0
       `(logior (-> *cpad-history* button0-rel ,(- frames 1))
-               ,(generate-frame-checks button (- frames 1)))))
+               ,(generate-frame-checks (- frames 1)))))
 
 (defmacro recently-pressed? (&rest buttons)
   (let* ((frames (get-recent-frames-for-fps 165))
-         (frame-checks (generate-frame-checks button frames)))
-    `(logtest? ,frame-checks (pad-buttons ,button))))
+         (frame-checks (generate-frame-checks frames)))
+    `(logtest? ,frame-checks (pad-buttons ,@buttons))))
 
 ;; weird leftover debug thing, enabling overrides the x position of both sticks on both controllers.
 (define *cpad-debug* #f)
