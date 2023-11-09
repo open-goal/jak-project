@@ -229,7 +229,6 @@ s32 format_impl_jak2(uint64_t* args) {
         case 'w':
         case 'y':
         case 'z':
-        case 1:  // jak 2 japanese encoding
           while (arg_start < format_ptr + 1) {
             *output_ptr = *arg_start;
             arg_start++;
@@ -517,12 +516,15 @@ s32 format_impl_jak2(uint64_t* args) {
         default:
           MsgErr("format: unknown code 0x%02x\n", format_ptr[1]);
           MsgErr("input was %s\n", format_cstring);
-          ASSERT(false);
+          // ASSERT(false);
+          goto copy_char_hack;
           break;
       }
       format_ptr++;
     } else {
-      // got normal char, just copy it
+    // got normal char, just copy it
+    copy_char_hack:  // we goto here if we get a bad code for ~, which sort of backtracks and falls
+                     // back to regular character copying
       *output_ptr = *format_ptr;
       output_ptr++;
     }

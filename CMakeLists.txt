@@ -195,6 +195,9 @@ if(WIN32)
 elseif(APPLE)
     set(CURL_USE_SECTRANSP ON) # native macOS SSL support
 else()
+    if(STATICALLY_LINK)
+        set(OPENSSL_USE_STATIC_LIBS TRUE)
+    endif()
     set(CURL_USE_OPENSSL ON) # not native, but seems to be the best choice for linux
 endif()
 include_directories(third-party/curl/include)
