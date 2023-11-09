@@ -21,6 +21,10 @@
       (initialize! *game-info* 'game (the-as game-save #f) "game-start"))
     (((speedrun-category newgame-heromode))
       (initialize! *game-info* 'game (the-as game-save #f) "game-start-hero")))
+
+  (if (!= -1 (-> *game-info* auto-save-which))
+      (set! (-> *setting-control* user-default auto-save) #t))
+
   (none))
 
 (defmethod enforce-settings! ((this speedrun-info))
@@ -142,19 +146,14 @@
       ((= *master-mode* 'menu)
        (set-master-mode 'game)
        (set! (-> this draw-menu?) #f)))
-    (logclear! (-> *cpad-list* cpads 0 button0-abs 0) (pad-buttons l1))
-    (logclear! (-> *cpad-list* cpads 0 button0-rel 0) (pad-buttons l1))
-    (logclear! (-> *cpad-list* cpads 0 button0-abs 0) (pad-buttons r1))
-    (logclear! (-> *cpad-list* cpads 0 button0-rel 0) (pad-buttons r1))
+    (cpad-clear! 0 l1 r1)
     ;; Track whether or not the menu was opened with start or select...
     (cond
       ((cpad-hold? 0 select)
-       (logclear! (-> *cpad-list* cpads 0 button0-abs 0) (pad-buttons select))
-       (logclear! (-> *cpad-list* cpads 0 button0-rel 0) (pad-buttons select))
+       (cpad-clear! 0 select)
        (set! (-> this opened-with-start?) #f))
       ((cpad-hold? 0 start)
-       (logclear! (-> *cpad-list* cpads 0 button0-abs 0) (pad-buttons start))
-       (logclear! (-> *cpad-list* cpads 0 button0-rel 0) (pad-buttons start))
+       (cpad-clear! 0 start)
        (set! (-> this opened-with-start?) #t)))
     (set! (-> this ignore-menu-toggle?) #t))
   (when (-> this draw-menu?)
