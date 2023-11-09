@@ -254,6 +254,43 @@ The cpad-set-buzz! function can be used for vibration.
     )
   )
 
+;; og:preserve-this macros
+(defmacro analog-input-horizontal-first (in offset center-val max-val out-range)
+  "Same as analog-input but respects First-Person Horizontal camera control setting."
+  `(#if PC_PORT ;; first-person horizontal is NOT inverted in original game
+        (* (if (-> *pc-settings* first-camera-h-inverted?) -1.0 1.0)
+           (analog-input ,in ,offset ,center-val ,max-val ,out-range))
+        (analog-input ,in ,offset ,center-val ,max-val ,out-range)
+        )
+  )
+
+(defmacro analog-input-vertical-first (in offset center-val max-val out-range)
+  "Same as analog-input but respects First-Person Vertical camera control setting."
+  `(#if PC_PORT ;; first-person vertical is already inverted in original game
+        (* (if (-> *pc-settings* first-camera-v-inverted?) 1.0 -1.0)
+           (analog-input ,in ,offset ,center-val ,max-val ,out-range))
+        (analog-input ,in ,offset ,center-val ,max-val ,out-range)
+        )
+  )
+
+(defmacro analog-input-horizontal-third (in offset center-val max-val out-range)
+  "Same as analog-input but respects Third-Person Horizontal camera control setting."
+  `(#if PC_PORT ;; third-person horizontal is already inverted in original game
+        (* (if (-> *pc-settings* third-camera-h-inverted?) 1.0 -1.0)
+           (analog-input ,in ,offset ,center-val ,max-val ,out-range))
+        (analog-input ,in ,offset ,center-val ,max-val ,out-range)
+        )
+  )
+
+(defmacro analog-input-vertical-third (in offset center-val max-val out-range)
+  "Same as analog-input but respects Third-Person Vertical camera control setting."
+  `(#if PC_PORT ;; third-person vertical is already inverted in original game
+        (* (if (-> *pc-settings* third-camera-v-inverted?) 1.0 -1.0)
+           (analog-input ,in ,offset ,center-val ,max-val ,out-range))
+        (analog-input ,in ,offset ,center-val ,max-val ,out-range)
+        )
+  )
+
 (defun cpad-set-buzz! ((arg0 cpad-info) (arg1 int) (arg2 int) (arg3 time-frame))
   "Turn on vibration motor 'buzz-idx' for duration, at magnitude buzz-amount."
   (cond

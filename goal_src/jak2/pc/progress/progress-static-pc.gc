@@ -11,6 +11,60 @@ This gives us more freedom to write code how we want.
 ;; in jak 2, the options dont have to be all-caps anymore!
 ;; encode controller/display names - current bug waiting to happen
 
+(define *title-pc*
+  (new 'static 'menu-option-list
+    :y-center #xc6
+    :y-space 30
+    :scale 0.82
+    :options (new 'static 'boxed-array :type menu-option
+      (new 'static 'menu-sub-menu-option
+        :name (text-id progress-title-new-game)
+        :scale #t
+        :next-state 'select-save-title
+        )
+      (new 'static 'menu-sub-menu-option :name (text-id progress-load-game) :scale #t :next-state 'select-load)
+      (new 'static 'menu-sub-menu-option
+        :name (text-id progress-title-options)
+        :scale #t
+        :next-state 'title-options
+        )
+      (new 'static 'menu-sub-menu-option
+        :name (text-id progress-root-secrets)
+        :scale #t
+        :next-state 'unlocked-secrets
+        )
+      (new 'static 'menu-exit-game-option
+        :name (text-id progress-quit)
+        :scale #f
+        )
+      )
+    )
+  )
+
+(define *options-pc* (new 'static 'menu-option-list
+                    :y-center #xc6
+                    :y-space 30
+                    :scale 0.82
+                    :options (new 'static 'boxed-array :type menu-option
+                      (new 'static 'menu-sub-menu-option
+                        :name (text-id progress-root-game-options)
+                        :scale #t
+                        :next-state 'game-options-title
+                        )
+                      (new 'static 'menu-sub-menu-option
+                        :name (text-id progress-root-graphic-options)
+                        :scale #t
+                        :next-state 'graphic-options
+                        )
+                      (new 'static 'menu-sub-menu-option
+                        :name (text-id progress-root-sound-options)
+                        :scale #t
+                        :next-state 'sound-options
+                        )
+                      )
+                    )
+        )
+
 (define *game-options-pc*
   (progress-new-generic-scrolling-page (text-id progress-root-game-options)
     (progress-new-generic-link-to-scrolling-page (text-id progress-menu-input-options)
@@ -310,39 +364,558 @@ This gives us more freedom to write code how we want.
         :get-value-fn (lambda () (-> *pc-settings* speedrunner-mode?))
         :on-confirm (lambda ((val symbol))
           (set! (-> *pc-settings* speedrunner-mode?) val)
-          (commit-to-file *pc-settings*))))))
+          (commit-to-file *pc-settings*)))
+        (new 'static 'menu-generic-boolean-option
+          :name (text-id progress-fast-progress)
+          :truthy-text (text-id progress-on)
+          :falsey-text (text-id progress-off)
+          :get-value-fn (lambda () (-> *pc-settings* fast-progress?))
+          :on-confirm (lambda ((val symbol))
+            (set! (-> *pc-settings* fast-progress?) val)
+            (commit-to-file *pc-settings*))))))
+
+(define *game-options-title-pc*
+  (progress-new-generic-scrolling-page (text-id progress-root-game-options)
+    (progress-new-generic-link-to-scrolling-page (text-id progress-menu-input-options)
+      (progress-new-generic-link-to-scrolling-page (text-id progress-camera-options)
+        (new 'static 'menu-generic-boolean-option
+          :name (text-id progress-camera-options-first-horz)
+          :truthy-text (text-id progress-normal)
+          :falsey-text (text-id progress-inverted)
+          :get-value-fn (lambda () (-> *pc-settings* first-camera-h-inverted?))
+          :on-confirm (lambda ((val symbol))
+            (set! (-> *pc-settings* first-camera-h-inverted?) val)
+            (commit-to-file *pc-settings*)))
+        (new 'static 'menu-generic-boolean-option
+          :name (text-id progress-camera-options-first-vert)
+          :truthy-text (text-id progress-normal)
+          :falsey-text (text-id progress-inverted)
+          :get-value-fn (lambda () (-> *pc-settings* first-camera-v-inverted?))
+          :on-confirm (lambda ((val symbol))
+            (set! (-> *pc-settings* first-camera-v-inverted?) val)
+            (commit-to-file *pc-settings*)))
+        (new 'static 'menu-generic-boolean-option
+          :name (text-id progress-camera-options-third-horz)
+          :truthy-text (text-id progress-normal)
+          :falsey-text (text-id progress-inverted)
+          :get-value-fn (lambda () (-> *pc-settings* third-camera-h-inverted?))
+          :on-confirm (lambda ((val symbol))
+            (set! (-> *pc-settings* third-camera-h-inverted?) val)
+            (commit-to-file *pc-settings*)))
+        (new 'static 'menu-generic-boolean-option
+          :name (text-id progress-camera-options-third-vert)
+          :truthy-text (text-id progress-normal)
+          :falsey-text (text-id progress-inverted)
+          :get-value-fn (lambda () (-> *pc-settings* third-camera-v-inverted?))
+          :on-confirm (lambda ((val symbol))
+            (set! (-> *pc-settings* third-camera-v-inverted?) val)
+            (commit-to-file *pc-settings*)))
+        (new 'static 'menu-generic-confirm-option
+          :name (text-id progress-restore-defaults)
+          :on-confirm (lambda ((val symbol))
+            (reset-camera *pc-settings* #t)
+            (commit-to-file *pc-settings*))))
+      (progress-new-generic-link-to-scrolling-page (text-id progress-menu-controller-options) :should-disable? (lambda () (<= (pc-get-controller-count) 0))
+        (new 'static 'menu-generic-carousel-option
+          :name (text-id progress-controller-options-select-controller)
+          :get-max-size-fn (lambda () (pc-get-controller-count))
+          :get-item-label-fn (lambda ((index int))
+            (pc-get-controller-name index *pc-cpp-temp-string*)
+            *pc-cpp-temp-string*)
+          :get-item-index-fn (lambda () 0)
+          :on-confirm (lambda ((index int)) (pc-set-controller! 0 index)))
+        (new 'static 'menu-generic-boolean-option
+          :name (text-id progress-vibration)
+          :should-disable? (lambda () (not (pc-current-controller-has-rumble?)))
+          :truthy-text (text-id progress-on)
+          :falsey-text (text-id progress-off)
+          :get-value-fn (lambda () (-> *setting-control* user-default vibration))
+          :on-confirm (lambda ((val symbol)) (set! (-> *setting-control* user-default vibration) val)))
+        (new 'static 'menu-generic-slider-option
+          :name (text-id progress-controller-options-analog-deadzone)
+          :min-value 0.0
+          :max-value 1.0
+          :step 0.01
+          :show-decimal? #t
+          :get-value-fn (lambda () (-> *pc-settings* stick-deadzone))
+          :on-confirm (lambda ((val float))
+            (set! (-> *pc-settings* stick-deadzone) val)
+            (commit-to-file *pc-settings*)))
+        (new 'static 'menu-generic-boolean-option
+          :name (text-id progress-controller-options-ignore-if-unfocused)
+          :truthy-text (text-id progress-on)
+          :falsey-text (text-id progress-off)
+          :get-value-fn (lambda () (-> *pc-settings* ignore-controller-win-unfocused?))
+          :on-confirm (lambda ((val symbol))
+            (set! (-> *pc-settings* ignore-controller-win-unfocused?) val)
+            (commit-to-file *pc-settings*)))
+        (new 'static 'menu-generic-boolean-option
+          :name (text-id progress-controller-options-led-hp)
+          :should-disable? (lambda () (not (pc-current-controller-has-led?)))
+          :truthy-text (text-id progress-on)
+          :falsey-text (text-id progress-off)
+          :get-value-fn (lambda () (-> *pc-settings* controller-led-hp?))
+          :on-confirm (lambda ((val symbol))
+            (set! (-> *pc-settings* controller-led-hp?) val)
+            (commit-to-file *pc-settings*)))
+        (new 'static 'menu-generic-boolean-option
+          :name (text-id progress-controller-options-led-state)
+          :should-disable? (lambda () (not (pc-current-controller-has-led?)))
+          :truthy-text (text-id progress-on)
+          :falsey-text (text-id progress-off)
+          :get-value-fn (lambda () (-> *pc-settings* controller-led-eco?))
+          :on-confirm (lambda ((val symbol))
+            (set! (-> *pc-settings* controller-led-eco?) val)
+            (commit-to-file *pc-settings*)))
+        (new 'static 'menu-generic-confirm-option
+          :name (text-id progress-restore-defaults)
+          :on-confirm (lambda ((val symbol))
+            (reset-input *pc-settings* 'controller #t)
+            (set-ignore-controller-in-bg! *pc-settings* (-> *pc-settings* ignore-controller-win-unfocused?))
+            (commit-to-file *pc-settings*))))
+      (new 'static 'menu-generic-boolean-option
+        :name (text-id progress-input-options-enable-keyboard)
+        :truthy-text (text-id progress-on)
+        :falsey-text (text-id progress-off)
+        :get-value-fn (lambda () (-> *pc-settings* keyboard-enabled?))
+        :on-confirm (lambda ((val symbol))
+          (set! (-> *pc-settings* keyboard-enabled?) val)
+          (commit-to-file *pc-settings*)))
+      (new 'static 'menu-generic-boolean-option
+        :name (text-id progress-input-options-enable-mouse)
+        :truthy-text (text-id progress-on)
+        :falsey-text (text-id progress-off)
+        :get-value-fn (lambda () (-> *pc-settings* mouse-enabled?))
+        :on-confirm (lambda ((val symbol))
+          (set! (-> *pc-settings* mouse-enabled?) val)
+          (commit-to-file *pc-settings*)))
+      (progress-new-generic-link-to-scrolling-page (text-id progress-menu-mouse-options) :should-disable? (lambda () (not (-> *pc-settings* mouse-enabled?)))
+        (new 'static 'menu-generic-boolean-option
+          :name (text-id progress-mouse-options-track-camera)
+          :truthy-text (text-id progress-on)
+          :falsey-text (text-id progress-off)
+          :get-value-fn (lambda () (-> *pc-settings* mouse-camera?))
+          :on-confirm (lambda ((val symbol))
+            (set! (-> *pc-settings* mouse-camera?) val)
+            (commit-to-file *pc-settings*)))
+        (new 'static 'menu-generic-slider-option
+          :name (text-id progress-mouse-options-horz-sens)
+          :should-disable? (lambda () (not (-> *pc-settings* mouse-camera?)))
+          :min-value -30.0
+          :max-value 30.0
+          :step 0.10
+          :show-decimal? #t
+          :get-value-fn (lambda () (-> *pc-settings* mouse-xsens))
+          :on-confirm (lambda ((val float))
+            (set! (-> *pc-settings* mouse-xsens) val)
+            (commit-to-file *pc-settings*)))
+        (new 'static 'menu-generic-slider-option
+          :name (text-id progress-mouse-options-vert-sens)
+          :should-disable? (lambda () (not (-> *pc-settings* mouse-camera?)))
+          :min-value -30.0
+          :max-value 30.0
+          :step 0.10
+          :show-decimal? #t
+          :get-value-fn (lambda () (-> *pc-settings* mouse-ysens))
+          :on-confirm (lambda ((val float))
+            (set! (-> *pc-settings* mouse-ysens) val)
+            (commit-to-file *pc-settings*)))
+        (new 'static 'menu-generic-boolean-option
+          :name (text-id progress-mouse-options-player-movement)
+          :truthy-text (text-id progress-on)
+          :falsey-text (text-id progress-off)
+          :get-value-fn (lambda () (-> *pc-settings* mouse-movement?))
+          :on-confirm (lambda ((val symbol))
+            (set! (-> *pc-settings* mouse-movement?) val)
+            (commit-to-file *pc-settings*)))
+        (new 'static 'menu-generic-confirm-option
+          :name (text-id progress-restore-defaults)
+          :on-confirm (lambda ((val symbol))
+            (reset-input *pc-settings* 'mouse #t)
+            (update-mouse-controls! *pc-settings*)
+            (commit-to-file *pc-settings*))))
+      (new 'static 'menu-generic-boolean-option
+        :name (text-id progress-input-options-auto-hide-cursor)
+        :truthy-text (text-id progress-on)
+        :falsey-text (text-id progress-off)
+        :get-value-fn (lambda () (-> *pc-settings* auto-hide-cursor?))
+        :on-confirm (lambda ((val symbol))
+          (set! (-> *pc-settings* auto-hide-cursor?) val)
+          (update-mouse-controls! *pc-settings*)
+          (commit-to-file *pc-settings*)))
+      ;; TODO - there is a bug where if you restore default binds and that changes your `X` bind,
+      ;; the next X input is ignored, figure this out eventually / make an issue for it.
+      (progress-new-generic-link-to-scrolling-page (text-id progress-menu-reassign-binds)
+        (progress-new-generic-link-to-details-page (text-id progress-reassign-binds-controller) :should-disable? (lambda () (<= (pc-get-controller-count) 0))
+          (new 'static 'menu-generic-details-keybind-entry :keybind (controller-keybind select) :device-type (input-device-type controller))
+          (new 'static 'menu-generic-details-keybind-entry :keybind (controller-keybind l3) :device-type (input-device-type controller))
+          (new 'static 'menu-generic-details-keybind-entry :keybind (controller-keybind r3) :device-type (input-device-type controller))
+          (new 'static 'menu-generic-details-keybind-entry :keybind (controller-keybind start) :device-type (input-device-type controller))
+          (new 'static 'menu-generic-details-keybind-entry :keybind (controller-keybind dpad-up) :device-type (input-device-type controller))
+          (new 'static 'menu-generic-details-keybind-entry :keybind (controller-keybind dpad-right) :device-type (input-device-type controller))
+          (new 'static 'menu-generic-details-keybind-entry :keybind (controller-keybind dpad-down) :device-type (input-device-type controller))
+          (new 'static 'menu-generic-details-keybind-entry :keybind (controller-keybind dpad-left) :device-type (input-device-type controller))
+          (new 'static 'menu-generic-details-keybind-entry :keybind (controller-keybind l2) :device-type (input-device-type controller))
+          (new 'static 'menu-generic-details-keybind-entry :keybind (controller-keybind r2) :device-type (input-device-type controller))
+          (new 'static 'menu-generic-details-keybind-entry :keybind (controller-keybind l1) :device-type (input-device-type controller))
+          (new 'static 'menu-generic-details-keybind-entry :keybind (controller-keybind r1) :device-type (input-device-type controller))
+          (new 'static 'menu-generic-details-keybind-entry :keybind (controller-keybind triangle) :device-type (input-device-type controller))
+          (new 'static 'menu-generic-details-keybind-entry :keybind (controller-keybind circle) :device-type (input-device-type controller))
+          (new 'static 'menu-generic-details-keybind-entry :keybind (controller-keybind cross) :device-type (input-device-type controller))
+          (new 'static 'menu-generic-details-keybind-entry :keybind (controller-keybind square) :device-type (input-device-type controller))
+          (new 'static 'menu-generic-details-confirm-entry
+            :name (text-id progress-restore-defaults)
+            :on-confirm (lambda () (pc-reset-bindings-to-defaults! 0 0))))
+        (progress-new-generic-link-to-details-page (text-id progress-reassign-binds-keyboard) :should-disable? (lambda () (not (-> *pc-settings* keyboard-enabled?)))
+          (new 'static 'menu-generic-details-keybind-entry :keybind (controller-keybind l-analog-up) :device-type (input-device-type keyboard))
+          (new 'static 'menu-generic-details-keybind-entry :keybind (controller-keybind l-analog-down) :device-type (input-device-type keyboard))
+          (new 'static 'menu-generic-details-keybind-entry :keybind (controller-keybind l-analog-left) :device-type (input-device-type keyboard))
+          (new 'static 'menu-generic-details-keybind-entry :keybind (controller-keybind l-analog-right) :device-type (input-device-type keyboard))
+          (new 'static 'menu-generic-details-keybind-entry :keybind (controller-keybind r-analog-up) :device-type (input-device-type keyboard))
+          (new 'static 'menu-generic-details-keybind-entry :keybind (controller-keybind r-analog-down) :device-type (input-device-type keyboard))
+          (new 'static 'menu-generic-details-keybind-entry :keybind (controller-keybind r-analog-left) :device-type (input-device-type keyboard))
+          (new 'static 'menu-generic-details-keybind-entry :keybind (controller-keybind r-analog-right) :device-type (input-device-type keyboard))
+          (new 'static 'menu-generic-details-keybind-entry :keybind (controller-keybind select) :device-type (input-device-type keyboard))
+          (new 'static 'menu-generic-details-keybind-entry :keybind (controller-keybind l3) :device-type (input-device-type keyboard))
+          (new 'static 'menu-generic-details-keybind-entry :keybind (controller-keybind r3) :device-type (input-device-type keyboard))
+          (new 'static 'menu-generic-details-keybind-entry :keybind (controller-keybind start) :device-type (input-device-type keyboard))
+          (new 'static 'menu-generic-details-keybind-entry :keybind (controller-keybind dpad-up) :device-type (input-device-type keyboard))
+          (new 'static 'menu-generic-details-keybind-entry :keybind (controller-keybind dpad-right) :device-type (input-device-type keyboard))
+          (new 'static 'menu-generic-details-keybind-entry :keybind (controller-keybind dpad-down) :device-type (input-device-type keyboard))
+          (new 'static 'menu-generic-details-keybind-entry :keybind (controller-keybind dpad-left) :device-type (input-device-type keyboard))
+          (new 'static 'menu-generic-details-keybind-entry :keybind (controller-keybind l2) :device-type (input-device-type keyboard))
+          (new 'static 'menu-generic-details-keybind-entry :keybind (controller-keybind r2) :device-type (input-device-type keyboard))
+          (new 'static 'menu-generic-details-keybind-entry :keybind (controller-keybind l1) :device-type (input-device-type keyboard))
+          (new 'static 'menu-generic-details-keybind-entry :keybind (controller-keybind r1) :device-type (input-device-type keyboard))
+          (new 'static 'menu-generic-details-keybind-entry :keybind (controller-keybind triangle) :device-type (input-device-type keyboard))
+          (new 'static 'menu-generic-details-keybind-entry :keybind (controller-keybind circle) :device-type (input-device-type keyboard))
+          (new 'static 'menu-generic-details-keybind-entry :keybind (controller-keybind cross) :device-type (input-device-type keyboard))
+          (new 'static 'menu-generic-details-keybind-entry :keybind (controller-keybind square) :device-type (input-device-type keyboard))
+          (new 'static 'menu-generic-details-confirm-entry
+            :name (text-id progress-restore-defaults)
+            :on-confirm (lambda () (pc-reset-bindings-to-defaults! 0 1))))
+        (progress-new-generic-link-to-details-page (text-id progress-reassign-binds-mouse) :should-disable? (lambda () (not (-> *pc-settings* mouse-enabled?)))
+          (new 'static 'menu-generic-details-keybind-entry :keybind (controller-keybind select) :device-type (input-device-type mouse))
+          (new 'static 'menu-generic-details-keybind-entry :keybind (controller-keybind l3) :device-type (input-device-type mouse))
+          (new 'static 'menu-generic-details-keybind-entry :keybind (controller-keybind r3) :device-type (input-device-type mouse))
+          (new 'static 'menu-generic-details-keybind-entry :keybind (controller-keybind start) :device-type (input-device-type mouse))
+          (new 'static 'menu-generic-details-keybind-entry :keybind (controller-keybind dpad-up) :device-type (input-device-type mouse))
+          (new 'static 'menu-generic-details-keybind-entry :keybind (controller-keybind dpad-right) :device-type (input-device-type mouse))
+          (new 'static 'menu-generic-details-keybind-entry :keybind (controller-keybind dpad-down) :device-type (input-device-type mouse))
+          (new 'static 'menu-generic-details-keybind-entry :keybind (controller-keybind dpad-left) :device-type (input-device-type mouse))
+          (new 'static 'menu-generic-details-keybind-entry :keybind (controller-keybind l2) :device-type (input-device-type mouse))
+          (new 'static 'menu-generic-details-keybind-entry :keybind (controller-keybind r2) :device-type (input-device-type mouse))
+          (new 'static 'menu-generic-details-keybind-entry :keybind (controller-keybind l1) :device-type (input-device-type mouse))
+          (new 'static 'menu-generic-details-keybind-entry :keybind (controller-keybind r1) :device-type (input-device-type mouse))
+          (new 'static 'menu-generic-details-keybind-entry :keybind (controller-keybind triangle) :device-type (input-device-type mouse))
+          (new 'static 'menu-generic-details-keybind-entry :keybind (controller-keybind circle) :device-type (input-device-type mouse))
+          (new 'static 'menu-generic-details-keybind-entry :keybind (controller-keybind cross) :device-type (input-device-type mouse))
+          (new 'static 'menu-generic-details-keybind-entry :keybind (controller-keybind square) :device-type (input-device-type mouse))
+          (new 'static 'menu-generic-details-confirm-entry
+            :name (text-id progress-restore-defaults)
+            :on-confirm (lambda () (pc-reset-bindings-to-defaults! 0 2)))))
+      (new 'static 'menu-generic-confirm-option
+        :name (text-id progress-restore-defaults)
+        :on-confirm (lambda ((val symbol))
+          (reset-input *pc-settings* 'input #t)
+          (set-enable-keyboard! *pc-settings* (-> *pc-settings* keyboard-enabled?))
+          (update-mouse-controls! *pc-settings*)
+          (commit-to-file *pc-settings*))))
+    (new 'static 'menu-generic-boolean-option
+      :name (text-id progress-subtitles)
+      :truthy-text (text-id progress-on)
+      :falsey-text (text-id progress-off)
+      :get-value-fn (lambda () (-> *setting-control* user-default subtitle))
+      :on-confirm (lambda ((val symbol)) (set! (-> *setting-control* user-default subtitle) val)))
+    (new 'static 'menu-generic-carousel-option
+      :name (text-id progress-sound-subtitle-language)
+      :items (new 'static 'boxed-array :type text-id
+                  (text-id language-name-english)
+                  (text-id language-name-french)
+                  (text-id language-name-german)
+                  (text-id language-name-spanish)
+                  (text-id language-name-italian)
+                  (text-id language-name-japanese)
+                  (text-id language-name-korean)
+                  (text-id language-name-english-uk))
+      :get-item-index-fn (lambda () (-> *setting-control* user-default subtitle-language))
+      :on-confirm (lambda ((index int)) (set! (-> *setting-control* user-default subtitle-language)
+                                              (the-as language-enum index))))
+    (new 'static 'menu-generic-carousel-option
+      :name (text-id progress-sound-language)
+      :items (new 'static 'boxed-array :type text-id
+                  (text-id language-name-english)
+                  (text-id language-name-french)
+                  (text-id language-name-german)
+                  (text-id language-name-spanish)
+                  (text-id language-name-italian)
+                  (text-id language-name-japanese)
+                  (text-id language-name-korean)
+                  (text-id language-name-english-uk))
+      :get-item-index-fn (lambda () (-> *setting-control* user-default language))
+      :on-confirm (lambda ((index int)) (set! (-> *setting-control* user-default language) (the-as language-enum index))
+                                        ;; NOTE - this doesn't actually work (naughty dog tried it too in their progress code)
+                                        ;; fix it eventually
+                                        (load-level-text-files (the-as int (-> *setting-control* user-default language)))))
+    (progress-new-generic-link-to-scrolling-page (text-id progress-misc-game-options)
+      (new 'static 'menu-generic-boolean-option
+        :name (text-id progress-discord-rpc)
+        :truthy-text (text-id progress-on)
+        :falsey-text (text-id progress-off)
+        :get-value-fn (lambda () (-> *pc-settings* discord-rpc?))
+        :on-confirm (lambda ((val symbol))
+          (set! (-> *pc-settings* discord-rpc?) val)
+          (commit-to-file *pc-settings*)))
+      (new 'static 'menu-generic-boolean-option
+        :name (text-id progress-speedrunner-mode)
+        :truthy-text (text-id progress-on)
+        :falsey-text (text-id progress-off)
+        :get-value-fn (lambda () (-> *pc-settings* speedrunner-mode?))
+        :on-confirm (lambda ((val symbol))
+          (set! (-> *pc-settings* speedrunner-mode?) val)
+          (commit-to-file *pc-settings*)))
+        (new 'static 'menu-generic-boolean-option
+          :name (text-id progress-fast-airlock)
+          :truthy-text (text-id progress-on)
+          :falsey-text (text-id progress-off)
+          :get-value-fn (lambda () (-> *pc-settings* fast-airlock?))
+          :on-confirm (lambda ((val symbol))
+            (set! (-> *pc-settings* fast-airlock?) val)
+            (commit-to-file *pc-settings*)))
+        (new 'static 'menu-generic-boolean-option
+          :name (text-id progress-fast-elevator)
+          :truthy-text (text-id progress-on)
+          :falsey-text (text-id progress-off)
+          :get-value-fn (lambda () (-> *pc-settings* fast-elevator?))
+          :on-confirm (lambda ((val symbol))
+            (set! (-> *pc-settings* fast-elevator?) val)
+            (commit-to-file *pc-settings*)))
+        (new 'static 'menu-generic-boolean-option
+          :name (text-id progress-fast-progress)
+          :truthy-text (text-id progress-on)
+          :falsey-text (text-id progress-off)
+          :get-value-fn (lambda () (-> *pc-settings* fast-progress?))
+          :on-confirm (lambda ((val symbol))
+            (set! (-> *pc-settings* fast-progress?) val)
+            (commit-to-file *pc-settings*))))))
 
 
 ;; TODO - migrate this menu as well
 ;; graphic options
 ;;   resolution
-;;   display mode
-;;   display select (disable if windowed)
-;;   vsync
-;;   aspect ratio
-;;   msaa
-;;   frame rate (dont go beyond refresh rate) (disable if SRMode)
-;;   ps2 options
-;;     lod bg
-;;     lod fg
-;;     particle culling
-;;     force env mapping
-;;     actor culling
+
+(define *msaa-options* (new 'static 'boxed-array :type int16 1 2 4 8 16))
+(define *frame-rate-options* (new 'static 'boxed-array :type int16 60 75 120 144 165 240))
+(define *frame-rate-disclaimer-seen?* #f)
+
 (define *graphic-options-pc*
-  (new 'static 'menu-option-list
-    :y-center 198
-    :y-space 34
-    :scale 0.82
-    :options (new 'static 'boxed-array :type menu-option
-      (new 'static 'menu-display-mode-option :name (text-id progress-display-mode))
-      (new 'static 'menu-aspect-ratio-pc-option :name (text-id progress-aspect-ratio))
-      (new 'static 'menu-frame-rate-option :name (text-id progress-frame-rate))
-      (new 'static 'menu-on-off-vsync-option :name (text-id progress-vsync))
+  (progress-new-generic-scrolling-page (text-id progress-root-graphic-options)
+    (progress-new-generic-link-to-scrolling-page (text-id progress-graphics-ps2)
+      (new 'static 'menu-generic-carousel-option
+        :name (text-id progress-lod-bg)
+        :items (new 'static 'boxed-array :type text-id
+          (text-id progress-lod-high)
+          (text-id progress-lod-default)
+          (text-id progress-lod-low)
+          )
+        :get-item-index-fn (lambda () (-> *pc-settings* lod-force-tfrag))
+        :on-confirm (lambda ((index int))
+          (set! (-> *pc-settings* lod-force-tfrag) index)
+          (set! (-> *pc-settings* lod-force-tie) index)
+          (commit-to-file *pc-settings*)
+          )
+        )
+      (new 'static 'menu-generic-carousel-option
+        :name (text-id progress-lod-fg)
+        :items (new 'static 'boxed-array :type text-id
+          (text-id progress-lod-high)
+          (text-id progress-lod-default)
+          (text-id progress-lod-low)
+          )
+        :get-item-index-fn (lambda () (-> *pc-settings* lod-force-actor))
+        :on-confirm (lambda ((index int))
+          (set! (-> *pc-settings* lod-force-actor) index)
+          (commit-to-file *pc-settings*)
+          )
+        )
+      (new 'static 'menu-generic-boolean-option
+        :name (text-id progress-graphics-ps2-lod-dist)
+        :truthy-text (text-id progress-on)
+        :falsey-text (text-id progress-off)
+        :get-value-fn (lambda () (-> *pc-settings* ps2-lod-dist?))
+        :on-confirm (lambda ((val symbol))
+          (set! (-> *pc-settings* ps2-lod-dist?) val)
+          (commit-to-file *pc-settings*)))
+      (new 'static 'menu-generic-boolean-option
+        :name (text-id progress-ps2-parts)
+        :truthy-text (text-id progress-on)
+        :falsey-text (text-id progress-off)
+        :get-value-fn (lambda () (-> *pc-settings* ps2-parts?))
+        :on-confirm (lambda ((val symbol))
+          (set! (-> *pc-settings* ps2-parts?) val)
+          (commit-to-file *pc-settings*)))
+      (new 'static 'menu-generic-boolean-option
+        :name (text-id progress-hires-sky)
+        :truthy-text (text-id progress-on)
+        :falsey-text (text-id progress-off)
+        :get-value-fn (lambda () (-> *pc-settings* hires-clouds?))
+        :on-confirm (lambda ((val symbol))
+          (set! (-> *pc-settings* hires-clouds?) val)
+          (commit-to-file *pc-settings*)))
+      )
+    (new 'static 'menu-generic-carousel-option
+      :name (text-id progress-graphics-display)
+      :get-item-index-fn (lambda () (-> *pc-settings* monitor))
+      :get-max-size-fn (lambda () (pc-get-display-count))
+      :get-item-label-fn (lambda ((index int))
+        (let ((name (pc-get-display-name index *pc-cpp-temp-string*)))
+          (if name
+            (string-format "(~D) ~S" index *pc-cpp-temp-string*)
+            (string-format "Display ~D" index)
+            )
+          )
+        )
+      :on-confirm (lambda ((index int))
+        (set-monitor! *pc-settings* index)
+        (commit-to-file *pc-settings*)
+        )
+      :should-disable? (lambda () (nmember (the basic (-> *pc-settings* display-mode)) '(windowed #f)))
+      )
+    (new 'static 'menu-generic-carousel-option
+      :name (text-id progress-display-mode)
+      :items (new 'static 'boxed-array :type text-id
+        (text-id progress-windowed)
+        (text-id progress-fullscreen)
+        (text-id progress-borderless)
+        )
+      :get-item-index-fn (lambda ()
+        (case (-> *pc-settings* display-mode)
+          (('windowed #f) 0)
+          (('fullscreen) 1)
+          (('borderless) 2)
+          )
+        )
+      :on-confirm (lambda ((index int))
+        (case index
+          ((0) (set-display-mode! *pc-settings* 'windowed #t))
+          ((1) (set-display-mode! *pc-settings* 'fullscreen #t))
+          ((2) (set-display-mode! *pc-settings* 'borderless #t))
+          )
+        (commit-to-file *pc-settings*)
+        )
+      )
+    (new 'static 'menu-generic-carousel-option
+      :name (text-id progress-aspect-ratio)
+      :items (new 'static 'boxed-array :type text-id
+        (text-id progress-aspect-ratio-4x3)
+        (text-id progress-aspect-ratio-16x9)
+        (text-id progress-aspect-ratio-auto)
+        (text-id progress-aspect-ratio-custom)
+        )
+      :get-item-index-fn (lambda ()
+        (cond
+          ((not (-> *pc-settings* use-vis?))
+            (if (-> *pc-settings* aspect-ratio-auto?) 2 3)
+            )
+          (else
+            (case (get-aspect-ratio)
+              (('aspect16x9) 1)
+              (else 0)
+              )
+            )
+          )
+        )
+      :on-confirm (lambda ((index int))
+        (case index
+          ((0)
+            (if (not (-> *pc-settings* use-vis?))
+              (false! (-> *setting-control* user-current aspect-ratio))
+              )
+            (set! (-> *setting-control* user-default aspect-ratio) 'aspect4x3)
+            (true! (-> *pc-settings* use-vis?))
+            (commit-to-file *pc-settings*)
+            )
+          ((1)
+            (if (not (-> *pc-settings* use-vis?))
+              (false! (-> *setting-control* user-current aspect-ratio))
+              )
+            (set! (-> *setting-control* user-default aspect-ratio) 'aspect16x9)
+            (true! (-> *pc-settings* use-vis?))
+            (commit-to-file *pc-settings*)
+            )
+          ((2)
+            (set! (-> *setting-control* user-default aspect-ratio) 'aspect4x3)
+            (true! (-> *pc-settings* aspect-ratio-auto?))
+            (false! (-> *pc-settings* use-vis?))
+            (commit-to-file *pc-settings*)
+            )
+          ((3)
+            (push-and-set-state (-> *progress-process* 0) 'aspect-ratio-custom)
+            )
+          )
+        )
+      )
+    (new 'static 'menu-generic-carousel-option
+      :name (text-id progress-frame-rate)
+      :get-item-index-fn (lambda ()
+        (case (-> *pc-settings* target-fps)
+          ((60) 0)
+          ((75) 1)
+          ((120) 2)
+          ((144) 3)
+          ((165) 4)
+          ((240) 5)
+          )
+      )
+      :get-max-size-fn (lambda () (-> *frame-rate-options* length))
+      :get-item-label-fn (lambda ((index int)) (string-format "~D" (-> *frame-rate-options* index)))
+      :on-confirm (lambda ((index int))
+        (cond
+          ((or (zero? index) (= (-> *frame-rate-options* index) (-> *pc-settings* target-fps)) *frame-rate-disclaimer-seen?*)
+            (set-frame-rate! *pc-settings* (-> *frame-rate-options* index) #t)
+            (commit-to-file *pc-settings*)
+            )
+          (else
+            (defun-extern set-progress-frame-rate-index int int)
+            (set-progress-frame-rate-index index)
+            (push-and-set-state (-> *progress-process* 0) 'fps-disclaimer)
+            )
+          )
+        )
+      )
+    (new 'static 'menu-generic-boolean-option
+      :name (text-id progress-vsync)
+      :truthy-text (text-id progress-on)
+      :falsey-text (text-id progress-off)
+      :get-value-fn (lambda () (-> *pc-settings* vsync?))
+      :on-confirm (lambda ((val symbol))
+        (set! (-> *pc-settings* vsync?) val)
+        (commit-to-file *pc-settings*)))
+    (new 'static 'menu-generic-carousel-option
+      :name (text-id progress-msaa)
+      :get-item-index-fn (lambda ()
+        (case (-> *pc-settings* gfx-msaa)
+          ((1) 0)
+          ((2) 1)
+          ((4) 2)
+          ((8) 3)
+          ((16) 4)
+          )
+        )
+      :get-max-size-fn (lambda () (-> *msaa-options* length))
+      :get-item-label-fn (lambda ((index int))
+        (if (zero? index)
+          (lookup-text! *common-text* (text-id progress-graphics-msaa-off) #f)
+          (string-format (lookup-text! *common-text* (text-id progress-msaa-x) #f) (-> *msaa-options* index))
+          )
+        )
+      :on-confirm (lambda ((index int))
+        (set! (-> *pc-settings* gfx-msaa) (the int (pow 2.0 (the float index))))
+        (commit-to-file *pc-settings*)
+        )
       )
     )
   )
-
-(define *frame-rate-options* (new 'static 'boxed-array :type int16 60 75 120 144 165 240))
 
 (define *frame-rate-disclaimer-options*
   (new 'static 'menu-option-list

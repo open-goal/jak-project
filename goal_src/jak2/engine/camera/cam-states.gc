@@ -500,7 +500,8 @@
                 (s5-0 (new-stack-matrix0))
                 )
             (when (not (logtest? (-> *camera* settings master-options) (cam-master-options IGNORE_ANALOG)))
-              (let ((f30-0 (analog-input
+              ;; og:preserve-this
+              (let ((f30-0 (analog-input-horizontal-first
                              (the-as int (+ (-> *cpad-list* cpads 0 rightx) -256 (-> *cpad-list* cpads 0 leftx)))
                              0.0
                              48.0
@@ -508,7 +509,7 @@
                              -1.0
                              )
                            )
-                    (f0-0 (analog-input
+                    (f0-0 (analog-input-vertical-first
                             (the-as int (+ (-> *cpad-list* cpads 0 righty) -256 (-> *cpad-list* cpads 0 lefty)))
                             0.0
                             48.0
@@ -517,24 +518,27 @@
                             )
                           )
                     )
-                (set! (-> s4-0 y) (- (-> s4-0 y) (* (- f30-0) (-> *CAM_EYE-bank* rot-speed))))
-                (set! (-> s4-0 x) (- (-> s4-0 x) (* (- f0-0) (-> *CAM_EYE-bank* rot-speed))))
+                ;; og:preserve-this changed for high fps
+                (set! (-> s4-0 y) (- (-> s4-0 y) (* (- f30-0) (* (-> *display* base-clock time-adjust-ratio) (-> *CAM_EYE-bank* rot-speed)))))
+                (set! (-> s4-0 x) (- (-> s4-0 x) (* (- f0-0) (* (-> *display* base-clock time-adjust-ratio) (-> *CAM_EYE-bank* rot-speed)))))
                 )
               )
+            ;; og:preserve-this changed for high fps
             (cond
-              ((< (-> *CAM_EYE-bank* rot-speed) (-> s4-0 x))
-               (set! (-> s4-0 x) (-> *CAM_EYE-bank* rot-speed))
+              ((< (* (-> *display* base-clock time-adjust-ratio) (-> *CAM_EYE-bank* rot-speed)) (-> s4-0 x))
+               (set! (-> s4-0 x) (* (-> *display* base-clock time-adjust-ratio) (-> *CAM_EYE-bank* rot-speed)))
                )
-              ((< (-> s4-0 x) (- (-> *CAM_EYE-bank* rot-speed)))
-               (set! (-> s4-0 x) (- (-> *CAM_EYE-bank* rot-speed)))
+              ((< (-> s4-0 x) (- (* (-> *display* base-clock time-adjust-ratio) (-> *CAM_EYE-bank* rot-speed))))
+               (set! (-> s4-0 x) (- (* (-> *display* base-clock time-adjust-ratio) (-> *CAM_EYE-bank* rot-speed))))
                )
               )
+            ;; og:preserve-this changed for high fps
             (cond
-              ((< (-> *CAM_EYE-bank* rot-speed) (-> s4-0 y))
-               (set! (-> s4-0 y) (-> *CAM_EYE-bank* rot-speed))
+              ((< (* (-> *display* base-clock time-adjust-ratio) (-> *CAM_EYE-bank* rot-speed)) (-> s4-0 y))
+               (set! (-> s4-0 y) (* (-> *display* base-clock time-adjust-ratio) (-> *CAM_EYE-bank* rot-speed)))
                )
-              ((< (-> s4-0 y) (- (-> *CAM_EYE-bank* rot-speed)))
-               (set! (-> s4-0 y) (- (-> *CAM_EYE-bank* rot-speed)))
+              ((< (-> s4-0 y) (- (* (-> *display* base-clock time-adjust-ratio) (-> *CAM_EYE-bank* rot-speed))))
+               (set! (-> s4-0 y) (- (* (-> *display* base-clock time-adjust-ratio) (-> *CAM_EYE-bank* rot-speed))))
                )
               )
             (cond
@@ -821,11 +825,12 @@
          (s4-0 (new 'stack-no-clear 'matrix))
          )
     (when (not (logtest? (-> *camera* settings master-options) (cam-master-options IGNORE_ANALOG)))
+      ;; og:preserve-this
       (let ((f24-0
-              (analog-input (the-as int (-> *cpad-list* cpads 0 rightx)) 128.0 32.0 110.0 (* 8192.0 (seconds-per-frame)))
+              (analog-input-horizontal-third (the-as int (-> *cpad-list* cpads 0 rightx)) 128.0 32.0 110.0 (* 8192.0 (seconds-per-frame)))
               )
             (f1-2
-              (analog-input (the-as int (-> *cpad-list* cpads 0 righty)) 128.0 32.0 110.0 (* 8192.0 (seconds-per-frame)))
+              (analog-input-vertical-third (the-as int (-> *cpad-list* cpads 0 righty)) 128.0 32.0 110.0 (* 8192.0 (seconds-per-frame)))
               )
             (s2-0 (new-stack-matrix0))
             )
@@ -2221,7 +2226,8 @@
   )
 
 (defun cam-dist-analog-input ((arg0 int) (arg1 float))
-  (let ((f0-0 (the-as number 0.0)))
+  ;; og:preserve-this
+  (let ((f0-0 0.0))
     (cond
       ((< arg0 28)
        (set! f0-0 (- (fmin arg1 (* 0.083333336 (- 28.0 (the float arg0)) arg1))))
@@ -2230,7 +2236,11 @@
        (set! f0-0 (fmin arg1 (* 0.0125 (+ -160.0 (the float arg0)) arg1)))
        )
       )
-    (the-as float f0-0)
+    ;; og:preserve-this
+    (#if PC_PORT
+      (* (if (-> *pc-settings* third-camera-v-inverted?) 1.0 -1.0) f0-0)
+      f0-0
+      )
     )
   )
 
@@ -2411,7 +2421,8 @@
         )
     )
   (when (not (logtest? (-> *camera* settings master-options) (cam-master-options IGNORE_ANALOG)))
-    (let ((f30-2 (analog-input
+    ;; og:preserve-this
+    (let ((f30-2 (analog-input-horizontal-third
                    (the-as int (-> *cpad-list* cpads 0 rightx))
                    128.0
                    32.0
@@ -3317,7 +3328,8 @@
         )
     (when (not (paused?))
       (when (not (logtest? (-> *camera* settings master-options) (cam-master-options IGNORE_ANALOG)))
-        (let ((f0-0 (analog-input (the-as int (-> *cpad-list* cpads 0 righty)) 128.0 32.0 110.0 0.05)))
+        ;; og:preserve-this
+        (let ((f0-0 (analog-input-vertical-third (the-as int (-> *cpad-list* cpads 0 righty)) 128.0 32.0 110.0 0.05)))
           (cond
             ((< (* 0.05 (- 1.0 (-> self view-off-param))) f0-0)
              (+! (-> self view-off-param) (* 0.05 (- 1.0 (-> self view-off-param))))
@@ -3338,8 +3350,9 @@
             (lerp (-> *CAM_STICK-bank* min-z) (-> *CAM_STICK-bank* max-z) (-> self view-off-param))
             )
       (when (not (logtest? (-> *camera* settings master-options) (cam-master-options IGNORE_ANALOG)))
+        ;; og:preserve-this
         (let ((f0-16
-                (analog-input (the-as int (-> *cpad-list* cpads 0 rightx)) 128.0 32.0 110.0 (* 21845.334 (seconds-per-frame)))
+                (analog-input-horizontal-third (the-as int (-> *cpad-list* cpads 0 rightx)) 128.0 32.0 110.0 (* 21845.334 (seconds-per-frame)))
                 )
               (gp-0 (new-stack-matrix0))
               (s3-0 (new-stack-vector0))

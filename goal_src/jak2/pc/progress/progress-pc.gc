@@ -13,14 +13,10 @@
 (deftype progress-global-state-pc (basic)
   ((decoration-draw-time  uint64)
 
-   (display-mode-choice-index   int8)
-
-   (aspect-ratio-choice-index   int8)
    (aspect-ratio-ratio-index    int8)
 
    (frame-rate-choice-index     int8)
    (frame-rate-disclaimer-time  time-frame)
-   (frame-rate-disclaimer-seen? symbol)
 
    (music-player-track      music-player-track-info)
    (music-player-flava      int8)
@@ -31,41 +27,17 @@
 
 (define *progress-state-pc* (new 'static 'progress-global-state-pc :music-player-track #f))
 
-
 (defmacro when-not-drawn-decoration (&rest body)
   `(when (> (-> *display* real-clock integral-frame-counter) (-> *progress-state-pc* decoration-draw-time))
       ,@body
       (set! (-> *progress-state-pc* decoration-draw-time) (-> *display* real-clock integral-frame-counter))))
 
-
-
-(defun set-progress-aspect-ratio-pc-index ()
-  "set the progress aspect ratio option index accordingly"
-  (cond
-    ((not (-> *pc-settings* use-vis?))
-      (if (-> *pc-settings* aspect-ratio-auto?)
-          (set! (-> *progress-state-pc* aspect-ratio-choice-index) 2)
-          (set! (-> *progress-state-pc* aspect-ratio-choice-index) 3))
-      )
-    (else
-      (case (get-aspect-ratio)
-        (('aspect16x9)
-          (set! (-> *progress-state-pc* aspect-ratio-choice-index) 1))
-        (else
-          (set! (-> *progress-state-pc* aspect-ratio-choice-index) 0)))
-      )
-    ))
-
-(defun set-progress-display-mode-index ()
-  "set the progress display mode option index accordingly"
-  (case (-> *pc-settings* display-mode)
-    (('windowed #f) (set! (-> *progress-state-pc* display-mode-choice-index) 0))
-    (('fullscreen) (set! (-> *progress-state-pc* display-mode-choice-index) 1))
-    (('borderless) (set! (-> *progress-state-pc* display-mode-choice-index) 2))
-    ))
-
-(defun set-progress-frame-rate-index ()
+(defun set-progress-frame-rate-index ((idx int))
   "Set the frame rate option index accordingly."
+  (when idx
+    (set! (-> *progress-state-pc* frame-rate-choice-index) idx)
+    (return 0)
+    )
   ;; default to 60 fps
   (set! (-> *progress-state-pc* frame-rate-choice-index) 0)
   ;; lookup entry that matches
@@ -147,14 +119,7 @@
   ;; PC STATE BEGIN
   ;; --------------
   (init! *progress-pc-generic-store*)
-
-  ;; set aspect ratio options
-  (set-progress-aspect-ratio-pc-index)
-  (set-progress-display-mode-index)
-  (set-progress-frame-rate-index)
-  (set! (-> (the menu-on-off-option (-> *graphic-options-pc* options 3)) value-to-modify) (&-> *pc-settings* vsync?))
   (set! (-> *progress-state-pc* music-player-track) #f)
-  (false! (-> *progress-state-pc* frame-rate-disclaimer-seen?))
   )
 
 (defun progress-pc-fetch-external-times ((highscore-index int))
@@ -209,6 +174,10 @@
     (('game-options)
      (set! (-> obj current-options)
            (if (demo?) *game-options-demo* *game-options-pc*))
+     )
+    (('game-options-title)
+     (set! (-> obj current-options)
+           (if (demo?) *game-options-demo* *game-options-title-pc*))
      )
     (('graphic-options)
      (set! (-> obj current-options) *graphic-options-pc*)
@@ -282,10 +251,10 @@
      (set! (-> obj current-options) *quit-options*)
      )
     (('title)
-     (set! (-> obj current-options) *title*)
+     (set! (-> obj current-options) *title-pc*)
      )
     (('title-options)
-     (set! (-> obj current-options) *options*)
+     (set! (-> obj current-options) *options-pc*)
      )
     (('select-start 'select-pre-start 'select-kiosk-start)
      (set! (-> obj current-options) *select-start-options*)
@@ -375,6 +344,7 @@
      (set! (-> obj current-options) *music-player-options*)
      )
     (('fps-disclaimer)
+     (set-time! (-> *progress-state-pc* frame-rate-disclaimer-time))
      (set! (-> obj current-options) *frame-rate-disclaimer-options*)
      )
     (('generic-menu)
@@ -411,92 +381,6 @@
 
 (defmacro min-max-wrap-around+! (var inc minimum maximum)
   `(set! ,var (min-max-wrap-around (+ ,var ,inc) ,minimum ,maximum)))
-
-
-
-(defmethod respond-progress ((obj menu-aspect-ratio-pc-option) (arg0 progress) (arg1 symbol))
-  "Handle progress menu navigation logic."
-
-  (when arg1
-    (cond
-      ((cpad-pressed? 0 triangle)
-        (set-progress-aspect-ratio-pc-index))
-      ((cpad-pressed? 0 confirm)
-        (sound-play "generic-beep")
-        (case (-> *progress-state-pc* aspect-ratio-choice-index)
-          ((0)
-            (if (not (-> *pc-settings* use-vis?))
-                (set! (-> *setting-control* user-current aspect-ratio) #f))
-            (set! (-> *setting-control* user-default aspect-ratio) 'aspect4x3)
-            (true! (-> *pc-settings* use-vis?))
-            )
-          ((1)
-            (if (not (-> *pc-settings* use-vis?))
-                (set! (-> *setting-control* user-current aspect-ratio) #f))
-            (set! (-> *setting-control* user-default aspect-ratio) 'aspect16x9)
-            (true! (-> *pc-settings* use-vis?))
-            )
-          ((2)
-            (set! (-> *setting-control* user-default aspect-ratio) 'aspect4x3)
-            (true! (-> *pc-settings* aspect-ratio-auto?))
-            (false! (-> *pc-settings* use-vis?))
-            )
-          ((3)
-            (cpad-clear! 0 confirm)
-            (push-and-set-state arg0 'aspect-ratio-custom)
-            )
-          )
-        )
-      (else
-        (let ((sound-beep? #f))
-        (when (cpad-pressed? 0 left l-analog-left)
-          (true! sound-beep?)
-          (min-max-wrap-around+! (-> *progress-state-pc* aspect-ratio-choice-index) -1 0 3))
-        (when (cpad-pressed? 0 right l-analog-right)
-          (true! sound-beep?)
-          (min-max-wrap-around+! (-> *progress-state-pc* aspect-ratio-choice-index) 1 0 3))
-
-        (if sound-beep?
-            (sound-play "generic-beep")))
-        )
-      )
-    )
-  0
-  )
-
-
-(defmethod respond-progress ((obj menu-display-mode-option) (arg0 progress) (arg1 symbol))
-  "Handle progress menu navigation logic."
-
-  (when arg1
-    (cond
-      ((cpad-pressed? 0 triangle)
-        (set-progress-display-mode-index))
-      ((cpad-pressed? 0 confirm)
-        (sound-play "generic-beep")
-        (case (-> *progress-state-pc* display-mode-choice-index)
-          ((0) (set-display-mode! *pc-settings* 'windowed #t))
-          ((1) (set-display-mode! *pc-settings* 'fullscreen #t))
-          ((2) (set-display-mode! *pc-settings* 'borderless #t))
-          )
-        )
-      (else
-        (let ((sound-beep? #f))
-        (when (cpad-pressed? 0 left l-analog-left)
-          (true! sound-beep?)
-          (min-max-wrap-around+! (-> *progress-state-pc* display-mode-choice-index) -1 0 2))
-        (when (cpad-pressed? 0 right l-analog-right)
-          (true! sound-beep?)
-          (min-max-wrap-around+! (-> *progress-state-pc* display-mode-choice-index) 1 0 2))
-
-        (if sound-beep?
-            (sound-play "generic-beep")))
-        )
-      )
-    )
-  0
-  )
-
 
 (defmethod respond-progress ((obj menu-aspect-ratio-custom-option) (arg0 progress) (arg1 symbol))
   "Handle progress menu navigation logic."
@@ -552,45 +436,6 @@
   0
   )
 
-(defmethod respond-progress ((obj menu-frame-rate-option) (arg0 progress) (arg1 symbol))
-  "Handle progress menu navigation logic."
-
-  (when arg1
-    (cond
-      ((cpad-pressed? 0 triangle)
-        (set-progress-frame-rate-index))
-      ((cpad-pressed? 0 confirm)
-        (sound-play "generic-beep")
-        (cond
-          ((not (-> *progress-state-pc* frame-rate-disclaimer-seen?))
-            (set-time! (-> *progress-state-pc* frame-rate-disclaimer-time))
-            (push-and-set-state arg0 'fps-disclaimer)
-            )
-          (else
-            (set-frame-rate! *pc-settings* (-> *frame-rate-options* (-> *progress-state-pc* frame-rate-choice-index)) #t)
-            (commit-to-file *pc-settings*)
-            ))
-        )
-      (else
-        (let ((sound-beep? #f))
-          (when (cpad-pressed? 0 left l-analog-left)
-            (true! sound-beep?)
-            (min-max-wrap-around+! (-> *progress-state-pc* frame-rate-choice-index) -1 0 (1- (-> *frame-rate-options* length)))
-            )
-          (when (cpad-pressed? 0 right l-analog-right)
-            (true! sound-beep?)
-            (min-max-wrap-around+! (-> *progress-state-pc* frame-rate-choice-index) 1 0 (1- (-> *frame-rate-options* length)))
-            )
-          (if sound-beep?
-            (sound-play "generic-beep")
-            )
-          )
-        )
-      )
-    )
-  0
-  )
-
 (defmethod respond-progress menu-frame-rate-disclaimer-option ((this menu-frame-rate-disclaimer-option) (arg0 progress) (arg1 symbol))
   "Handle progress menu navigation logic."
   (when (time-elapsed? (-> *progress-state-pc* frame-rate-disclaimer-time) (seconds 3))
@@ -610,7 +455,7 @@
           (cpad-clear! 0 confirm)
           (cond
             ((-> *progress-state* yes-no-choice)
-              (true! (-> *progress-state-pc* frame-rate-disclaimer-seen?))
+              (true! *frame-rate-disclaimer-seen?*)
               (sound-play "generic-beep")
               (set-frame-rate! *pc-settings* (-> *frame-rate-options* (-> *progress-state-pc* frame-rate-choice-index)) #t)
               (commit-to-file *pc-settings*)
@@ -618,7 +463,7 @@
               )
             (else
               (sound-play "generic-beep")
-              (set-progress-frame-rate-index)
+              (set-progress-frame-rate-index (the int #f))
               (pop-state arg0)
               )
             )
@@ -944,3 +789,93 @@
       (when play-sound?
         (sound-play "score-slide"))))
   0)
+
+(defmethod respond-progress ((this menu-sub-menu-option) (arg0 progress) (arg1 symbol))
+  "Handle progress menu navigation logic."
+  (when (and (-> *progress-state* secrets-unlocked)
+             (not (memcard-unlocked-secrets? #f))
+             (or (= (-> arg0 current-options) *title-pc*)
+                 (= (-> arg0 current-options) *unlocked-secrets*)
+                 (= (-> arg0 current-options) *select-scene-options*)
+                 (= (-> arg0 current-options) *select-start-options*)
+                 (= (-> arg0 current-options) *save-options-title*)
+                 )
+             )
+    (set! (-> *progress-state* secrets-unlocked) #f)
+    (set! (-> arg0 state-pos) 0)
+    (set-next-state arg0 'secrets-insufficient-space 0)
+    )
+  (when (= (-> this name) (text-id progress-continue-without-saving))
+    (let ((a1-3 (get-state-check-card arg0 (-> arg0 current))))
+      (set-next-state arg0 a1-3 0)
+      )
+    )
+  (when (and (= (-> this name) (text-id progress-root-secrets))
+             (= *title-pc* (-> arg0 current-options))
+             (not (memcard-unlocked-secrets? #f))
+             (= (-> arg0 option-index) 4)
+             )
+    (set! (-> arg0 option-index) 0)
+    0
+    )
+  (when (cpad-pressed? 0 confirm)
+    (cpad-clear! 0 confirm)
+    (cond
+      ((= (-> this name) (text-id progress-demo-exit))
+       (case *kernel-boot-message*
+         (('demo-shared)
+          (set! *master-exit* 'force)
+          (set-master-mode 'game)
+          )
+         (('demo)
+          (set! (-> *game-info* mode) 'play)
+          (initialize! *game-info* 'game (the-as game-save #f) "demo-restart")
+          )
+         )
+       )
+      ((= (-> this name) (text-id progress-continue-without-saving))
+       (progress-intro-start (logtest? (-> *game-info* purchase-secrets) (game-secrets hero-mode)))
+       )
+      ((= (-> this next-state) 'back)
+       (pop-state arg0)
+       )
+      (else
+        (sound-play "generic-beep")
+        (push-state arg0)
+        (set-next-state arg0 (-> this next-state) 0)
+        )
+      )
+    )
+  0
+  )
+
+(defmethod respond-progress ((this menu-exit-game-option) (arg0 progress) (selected? symbol))
+  "Handle progress menu navigation logic."
+  (let ((choice (&-> *progress-state* yes-no-choice))
+        (gp-0 #f)
+        )
+    (when selected?
+      (cond
+        ((cpad-pressed? 0 left l-analog-left)
+         (when (not (-> choice 0))
+           (set! gp-0 #t)
+           (set! (-> choice 0) #t)
+           )
+         )
+        ((cpad-pressed? 0 right l-analog-right)
+         (set! gp-0 (-> choice 0))
+         (set! (-> choice 0) #f)
+         )
+        ((cpad-pressed? 0 confirm)
+         (if (-> choice 0)
+           (kernel-shutdown (runtime-exit-status exit))
+           )
+         )
+        )
+      )
+    (if gp-0
+        (sound-play "generic-beep")
+        )
+    )
+  0
+  )
