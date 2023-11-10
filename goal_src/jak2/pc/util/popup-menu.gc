@@ -2,9 +2,6 @@
 (in-package goal)
 
 (defmethod draw! ((this popup-menu-entry) (font-ctx font-context) (dma-buf dma-buffer))
-  (none))
-
-(defmethod draw! ((this popup-menu-button) (font-ctx font-context) (dma-buf dma-buffer))
   (let ((old-x (-> font-ctx origin x))
         (old-y (-> font-ctx origin y)))
     (pc-encode-utf8-string (-> this label) *pc-encoded-temp-string*)
@@ -31,20 +28,37 @@
         (new 'static 'rgba :r 0 :g 0 :b 0 :a 255))
       ;; menu contents
       (dotimes (i (-> this entries length))
-        (if (= i (-> this curr-entry-index))
-          (set! (-> font-ctx color) (font-color cyan))
-          (set! (-> font-ctx color) (font-color default)))
+        (cond
+          ;; TODO - probably just handle this in the draw methods
+          ((type? (-> this entries i) popup-menu-label)
+           (set! (-> font-ctx color) (font-color progress-option-off)))
+          ((type? (-> this entries i) popup-menu-flag)
+           (set! (-> font-ctx color)
+                 (if (or ((-> (the-as popup-menu-flag (-> this entries i)) is-toggled?))
+                         (= i (-> this curr-entry-index)))
+                    (font-color cyan)
+                    (font-color default))))
+          (else
+           (set! (-> font-ctx color)
+                 (if (= i (-> this curr-entry-index))
+                    (font-color cyan)
+                    (font-color default)))))
         (draw! (-> this entries i) font-ctx buf)
-        (set! (-> font-ctx origin y) (+ 15.0 (-> font-ctx origin y)))))
-    )
+        (set! (-> font-ctx origin y) (+ 15.0 (-> font-ctx origin y))))))
   (none))
 
 (defmethod move-up! ((this popup-menu))
   (set! (-> this curr-entry-index) (max 0 (dec (-> this curr-entry-index))))
+  ;; skip labels
+  (when (type? (-> this entries (-> this curr-entry-index)) popup-menu-label)
+    (set! (-> this curr-entry-index) (max 0 (dec (-> this curr-entry-index)))))
   (none))
 
 (defmethod move-down! ((this popup-menu))
   (set! (-> this curr-entry-index) (min (dec (-> this entries length)) (inc (-> this curr-entry-index))))
+  ;; skip labels
+  (when (type?  (-> this entries (-> this curr-entry-index)) popup-menu-label)
+    (set! (-> this curr-entry-index) (min (dec (-> this entries length)) (inc (-> this curr-entry-index)))))
   (none))
 
 (defmethod press! ((this popup-menu))
