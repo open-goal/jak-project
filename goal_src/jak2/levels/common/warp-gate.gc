@@ -538,11 +538,19 @@
                  (and (-> self continue)
                       (not (focus-test? *target* in-head edge-grab pole flut tube board pilot mech indax))
                       (-> *setting-control* user-current airlock)
-                      (not (-> *setting-control* user-current hint))
+                      ;; og:preserve-this
+                      ;; For speedrunner mode, always allow warp-gates to be used
+                      ;; even when dialogues are playing
+                      (or (-> *pc-settings* speedrunner-mode?)
+                          (not (-> *setting-control* user-current hint)))
                       )
                  )
         (talker-surpress!)
-        (when (and (can-display-query? self (the-as string #f) -99.0)
+        ;; og:preserve-this
+        ;; For speedrunner mode, always allow warp-gates to be used
+        ;; even when dialogues are playing
+        (when (and (or (-> *pc-settings* speedrunner-mode?)
+                       (can-display-query? self (the-as string #f) -99.0))
                    (cond
                      ((and (-> *target* next-state) (let ((v1-30 (-> *target* next-state name)))
                                                       (or (= v1-30 'target-warp-in) (= v1-30 'target-warp-out))

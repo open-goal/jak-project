@@ -13,14 +13,15 @@
   ;; turn on speedrun verification display
   (set! (-> this display-run-info?) #t)
   ;; ensure any required settings are enabled
-  (set! (-> *setting-control* user-default dialog-volume) 0.0) ;; disable dialog volume
   (enforce-settings! this)
   ;; finalize any category specific setup code
   (case (-> this category)
     (((speedrun-category newgame-normal))
       (initialize! *game-info* 'game (the-as game-save #f) "game-start"))
     (((speedrun-category newgame-heromode))
-      (initialize! *game-info* 'game (the-as game-save #f) "game-start-hero")))
+      (initialize! *game-info* 'game (the-as game-save #f) "game-start-hero"))
+    (((speedrun-category all-cheats-allowed))
+      (initialize! *game-info* 'game (the-as game-save #f) "game-start")))
 
   (if (!= -1 (-> *game-info* auto-save-which))
       (set! (-> *setting-control* user-default auto-save) #t))
@@ -30,7 +31,16 @@
 (defmethod enforce-settings! ((this speedrun-info))
   (set! (-> *pc-settings* ps2-actor-vis?) #t) ;; force PS2 actor visibility
   (set-frame-rate! *pc-settings* 60 #t) ;; force FPS to `60`
-  (set! (-> *pc-settings* cheats) (the-as pc-cheats #x0)) ;; disable any active cheats
+  ;; For posterity, the main reason why changing the cheats is useful is for two main reasons:
+  ;; - If you are playing a category that requires cheats (ie. a turbo jetboard one) you'd
+  ;;   probably like the game to automatically set the appropriate ones for you
+  ;; - If you are playing a category that forbids cheats, you wouldn't want your run invalidated because you forgot
+  ;;
+  ;; However, the pc-settings stores a backup of your cheats whenever you manually modify them (NYI - no menus yet)
+  ;; and when speedrunner mode is first enabled.  They are restored when speedrunner mode is disabled.
+  (when (!= (-> this category) (speedrun-category all-cheats-allowed))
+    ;; disable any active cheats
+    (set! (-> *pc-settings* cheats) (the-as pc-cheats #x0)))
   (none))
 
 (defmethod hide-run-info! ((this speedrun-info))
@@ -66,7 +76,8 @@
              (-> this display-run-info?))
     (clear *temp-string*)
     (clear *pc-encoded-temp-string*)
-    (format *temp-string* "<COLOR_WHITE>PC Cheats: <COLOR_GREEN>~D~%<COLOR_WHITE>Frame Rate: <COLOR_GREEN>~D~%<COLOR_WHITE>PS2 Actor Vis?: <COLOR_GREEN>~S~%<COLOR_WHITE>Version: <COLOR_GREEN>~S~%"
+    (format *temp-string* "<COLOR_WHITE>Category: <COLOR_GREEN>~S~%<COLOR_WHITE>PC Cheats: <COLOR_GREEN>~D~%<COLOR_WHITE>Frame Rate: <COLOR_GREEN>~D~%<COLOR_WHITE>PS2 Actor Vis?: <COLOR_GREEN>~S~%<COLOR_WHITE>Version: <COLOR_GREEN>~S~%"
+            (enum->string speedrun-category (-> this category))
             (the-as int (-> *pc-settings* cheats))
             (-> *pc-settings* target-fps)
             (if (-> *pc-settings* ps2-actor-vis?) "true" "false")
@@ -76,7 +87,7 @@
       ;; reset bucket settings prior to drawing - font won't do this for us, and
       ;; draw-raw-image can sometimes mess them up. (intro sequence)
       (dma-buffer-add-gs-set-flusha buf (alpha-1 (new 'static 'gs-alpha :b #x1 :d #x1)) (tex1-1 (new 'static 'gs-tex1 :mmag #x1 :mmin #x1)))
-      (let ((font-ctx (new 'stack 'font-context *font-default-matrix* 510 375 0.0 (font-color default) (font-flags right shadow kerning large))))
+      (let ((font-ctx (new 'stack 'font-context *font-default-matrix* 510 365 0.0 (font-color default) (font-flags right shadow kerning large))))
         (set! (-> font-ctx scale) 0.325)
         (draw-string-adv *pc-encoded-temp-string* buf font-ctx))))
   (none))
@@ -87,6 +98,16 @@
   (new 'static 'popup-menu
     :entries (new 'static 'boxed-array :type popup-menu-entry
       (new 'static 'popup-menu-button :label "Reset" :on-press (lambda () (send-event (ppointer->process *speedrun-menu*) 'invoke (speedrun-menu-command reset))))
+      (new 'static 'popup-menu-label :label "Categories")
+      (new 'static 'popup-menu-flag :label "Normal"
+        :on-press (lambda () (set-category! *speedrun-info* (speedrun-category newgame-normal)))
+        :is-toggled? (lambda () (= (-> *speedrun-info* category) (speedrun-category newgame-normal))))
+      (new 'static 'popup-menu-flag :label "Hero Mode"
+        :on-press (lambda () (set-category! *speedrun-info* (speedrun-category newgame-heromode)))
+        :is-toggled? (lambda () (= (-> *speedrun-info* category) (speedrun-category newgame-heromode))))
+      (new 'static 'popup-menu-flag :label "All Cheats Allowed"
+        :on-press (lambda () (set-category! *speedrun-info* (speedrun-category all-cheats-allowed)))
+        :is-toggled? (lambda () (= (-> *speedrun-info* category) (speedrun-category all-cheats-allowed))))
       (new 'static 'popup-menu-button :label "Exit" :on-press (lambda () (send-event (ppointer->process *speedrun-menu*) 'invoke (speedrun-menu-command exit))))
       )
     )
@@ -159,7 +180,7 @@
   (when (-> this draw-menu?)
     ;; handle any inputs for within the menu
     (cond
-      ((cpad-pressed? 0 triangle select)
+      ((cpad-pressed? 0 triangle select circle)
        (set! (-> this draw-menu?) #f))
       ((cpad-pressed? 0 up)
        (move-up! (-> this popup-menu)))
