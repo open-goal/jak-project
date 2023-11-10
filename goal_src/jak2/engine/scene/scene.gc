@@ -921,19 +921,25 @@
           )
         )
       (process-entity-status! self (entity-perm-status no-kill) #t)
-      (until (not (or (-> *setting-control* user-current talking)
-                      (-> *setting-control* user-current spooling)
-                      (-> *setting-control* user-current hint)
-                      (-> *setting-control* user-current ambient)
-                      )
-                  )
+      ;; og:preserve-this
+      ;; NOTE - for speedrunner mode, allows the game to continue
+      ;; even if there is a dialogue in progress
+      (until (not (or (-> *setting-control* user-current spooling)
+                      (when (not (-> *pc-settings* speedrunner-mode?))
+                        (or (-> *setting-control* user-current talking)
+                            (-> *setting-control* user-current hint)
+                            (-> *setting-control* user-current ambient)))))
         (set-setting! 'allow-progress #f 0.0 0)
         (apply-settings *setting-control*)
         (dotimes (s4-0 2)
-          (while (or (-> *setting-control* user-current talking)
-                     (-> *setting-control* user-current spooling)
-                     (-> *setting-control* user-current hint)
-                     (-> *setting-control* user-current ambient)
+          ;; og:preserve-this
+          ;; NOTE - for speedrunner mode, allows the game to continue
+          ;; even if there is a dialogue in progress
+          (while (or (-> *setting-control* user-current spooling)
+                     (when (not (-> *pc-settings* speedrunner-mode?))
+                        (or (-> *setting-control* user-current talking)
+                            (-> *setting-control* user-current hint)
+                            (-> *setting-control* user-current ambient)))
                      (or (and (-> *setting-control* user-current movie)
                               (!= (-> *setting-control* user-current movie) (process->ppointer self))
                               )
