@@ -76,13 +76,14 @@ FormFormattingConfig new_pair_rule(bool combine_first_two_expr) {
 }
 
 const std::unordered_map<std::string, FormFormattingConfig> opengoal_form_config = {
-    {"defun", new_flow_rule(3)},
+    {"case", new_pair_rule(true)},
+    {"cond", new_pair_rule(false)},
     {"defmethod", new_flow_rule(3)},
     {"deftype", new_flow_rule_prevent_inlining_indexes(3, {3, 4, 5})},
+    {"defun", new_flow_rule(3)},
+    {"dotimes", new_flow_rule(2)},
+    {"let", new_binding_rule()},
     {"when", new_flow_rule(2)},
-    {"with-dma-buffer-add-bucket", new_flow_rule(2)},
-    {"cond", new_pair_rule(false)},
-    {"case", new_pair_rule(true)},
-    {"let", new_binding_rule()}};
+    {"with-dma-buffer-add-bucket", new_flow_rule(2)}};
 }  // namespace config
 }  // namespace formatter_rules
