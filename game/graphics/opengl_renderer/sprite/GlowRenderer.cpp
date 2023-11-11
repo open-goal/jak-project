@@ -267,6 +267,10 @@ void copy_to_vertex(GlowRenderer::Vertex* vtx, const Vector4f& xyzw) {
 }
 }  // namespace
 
+bool GlowRenderer::at_max_capacity() {
+  return m_next_sprite == m_sprite_data_buffer.size();
+}
+
 SpriteGlowOutput* GlowRenderer::alloc_sprite() {
   ASSERT(m_next_sprite < m_sprite_data_buffer.size());
   return &m_sprite_data_buffer[m_next_sprite++];
