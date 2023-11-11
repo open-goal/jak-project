@@ -5,13 +5,27 @@
 namespace formatter_rules {
 namespace config {
 
-// TODO - populate these more
-
 // TODO - this could be greatly simplified with C++20's designated initialization
 FormFormattingConfig new_flow_rule(int start_index) {
   FormFormattingConfig cfg;
   cfg.hang_forms = false;
   cfg.inline_until_index = start_index;
+  return cfg;
+}
+
+FormFormattingConfig new_flow_rule_prevent_inlining_indexes(
+    int start_index,
+    std::vector<int> inlining_preventation_indices) {
+  FormFormattingConfig cfg;
+  cfg.hang_forms = false;
+  cfg.inline_until_index = start_index;
+  for (const auto& index : inlining_preventation_indices) {
+    auto temp_config = std::make_shared<FormFormattingConfig>();
+    temp_config->prevent_inlining = true;
+    temp_config->hang_forms = false;
+    temp_config->indentation_width = 1;
+    cfg.index_configs.emplace(index, temp_config);
+  }
   return cfg;
 }
 
@@ -43,7 +57,10 @@ FormFormattingConfig new_binding_rule() {
 
 const std::unordered_map<std::string, FormFormattingConfig> opengoal_form_config = {
     {"defun", new_flow_rule(3)},
-    {"defmethod", new_flow_rule(4)},
+    {"defmethod", new_flow_rule(3)},
+    {"deftype", new_flow_rule_prevent_inlining_indexes(3, {3, 4, 5})},
+    {"when", new_flow_rule(2)},
+    {"with-dma-buffer-add-bucket", new_flow_rule(2)},
     {"let", new_binding_rule()}};
 }  // namespace config
 }  // namespace formatter_rules

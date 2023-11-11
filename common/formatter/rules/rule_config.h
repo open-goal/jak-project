@@ -22,7 +22,7 @@ struct FormFormattingConfig {
       false;  // NOTE - basically hang, but will probably stick around after hang is gone
   int inline_until_index = -1;
   bool has_constant_pairs = false;
-  bool prevent_inlining = false;
+  bool prevent_inlining = false; // TODO - duplicate of below
   std::function<bool(FormFormattingConfig, int num_refs)> should_prevent_inlining =
       [](FormFormattingConfig config, int /*num_refs*/) { return config.prevent_inlining; };
   int parent_mutable_extra_indent = 0;

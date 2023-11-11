@@ -193,7 +193,8 @@ std::vector<std::string> apply_formatting(const FormatterTreeNode& curr_node,
                                           int cursor_pos = 0) {
   using namespace formatter_rules;
   if (!curr_node.token && curr_node.refs.empty()) {
-    return output;
+    // special case to handle an empty list
+    return {"()"};
   }
 
   // If its a token, just print the token and move on
@@ -211,6 +212,7 @@ std::vector<std::string> apply_formatting(const FormatterTreeNode& curr_node,
   //
   // This means we may combine elements onto the same line in this step.
   std::vector<std::string> form_lines = {};
+
   for (int i = 0; i < (int)curr_node.refs.size(); i++) {
     const auto& ref = curr_node.refs.at(i);
     // Add new line entry
@@ -265,6 +267,7 @@ std::vector<std::string> apply_formatting(const FormatterTreeNode& curr_node,
   }
 
   // Consolidate any lines if the configuration requires it
+  // TODO - also consider "should inline by index" function (add one)
   if (curr_node.formatting_config.inline_until_index != -1) {
     std::vector<std::string> new_form_lines = {};
     for (int i = 0; i < (int)form_lines.size(); i++) {
@@ -311,7 +314,7 @@ std::vector<std::string> apply_formatting(const FormatterTreeNode& curr_node,
 }
 
 std::string join_formatted_lines(const std::vector<std::string> lines) {
-  // TODO - respect original file line endings?
+  // TODO - respect original file line endings
   return fmt::format("{}", fmt::join(lines, "\n"));
 }
 

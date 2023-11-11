@@ -47,13 +47,16 @@ int main(int argc, char** argv) {
   // TODO - support recursing directories
   // Read in source code
   const auto source_code = file_util::read_text_file(file_path);
-
   const auto result = formatter::format_code(source_code);
 
-  if (write_newfile && result) {
+  if (result) {
     // TODO - i don't like this implementation, return a new string instead
-    if (str_util::replace(file_path, ".gc", ".new.gc")) {
+    if (write_inplace) {
       file_util::write_text_file(file_path, result.value());
+    } else if (write_newfile) {
+      if (str_util::replace(file_path, ".gc", ".new.gc")) {
+        file_util::write_text_file(file_path, result.value());
+      }
     }
   }
 
