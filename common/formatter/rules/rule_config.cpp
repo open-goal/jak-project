@@ -9,7 +9,7 @@ namespace config {
 FormFormattingConfig new_flow_rule(int start_index) {
   FormFormattingConfig cfg;
   cfg.hang_forms = false;
-  cfg.inline_until_index = [start_index](std::vector<std::string> curr_lines) {
+  cfg.inline_until_index = [start_index](const std::vector<std::string>& curr_lines) {
     return start_index;
   };
   return cfg;
@@ -17,7 +17,7 @@ FormFormattingConfig new_flow_rule(int start_index) {
 
 FormFormattingConfig new_flow_rule_prevent_inlining_indexes(
     int start_index,
-    std::vector<int> inlining_preventation_indices) {
+    const std::vector<int>& inlining_preventation_indices) {
   FormFormattingConfig cfg;
   cfg.hang_forms = false;
   cfg.inline_until_index = [start_index](std::vector<std::string> curr_lines) {
@@ -65,7 +65,6 @@ FormFormattingConfig new_binding_rule() {
 FormFormattingConfig new_pair_rule(bool combine_first_two_expr) {
   FormFormattingConfig cfg;
   cfg.hang_forms = false;
-  cfg.combine_first_two_lines = false;
   cfg.prevent_inlining = true;
   cfg.combine_first_two_lines = combine_first_two_expr;
   auto pair_config = std::make_shared<FormFormattingConfig>();
