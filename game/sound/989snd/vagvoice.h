@@ -4,8 +4,6 @@
 #include <list>
 #include <memory>
 
-#include "locator.h"
-
 #include "common/common_types.h"
 
 #include "game/sound/common/synth.h"
@@ -19,20 +17,19 @@ enum class toneflag : u16 {
 };
 
 struct Tone {
-  /*   0 */ s8 Priority;
-  /*   1 */ s8 Vol;
-  /*   2 */ s8 CenterNote;
-  /*   3 */ s8 CenterFine;
-  /*   4 */ s16 Pan;
-  /*   6 */ s8 MapLow;
-  /*   7 */ s8 MapHigh;
-  /*   8 */ s8 PBLow;
-  /*   9 */ s8 PBHigh;
-  /*   a */ s16 ADSR1;
-  /*   c */ s16 ADSR2;
-  /*   e */ s16 Flags;
-  /*  10 */ /*void**/ u32 VAGInSR;
-  /*  14 */ u32 reserved1;
+  s8 Priority;
+  s8 Vol;
+  s8 CenterNote;
+  s8 CenterFine;
+  s16 Pan;
+  s8 MapLow;
+  s8 MapHigh;
+  s8 PBLow;
+  s8 PBHigh;
+  u16 ADSR1;
+  u16 ADSR2;
+  u16 Flags;
+  u8* Sample;
 };
 
 class vag_voice : public voice {
@@ -50,8 +47,8 @@ class vag_voice : public voice {
 
 class voice_manager {
  public:
-  voice_manager(synth& synth, locator& loc);
-  void start_tone(std::shared_ptr<vag_voice> voice, u32 bank);
+  voice_manager(synth& synth);
+  void start_tone(std::shared_ptr<vag_voice> voice);
   void pause(std::shared_ptr<vag_voice> voice);
   void unpause(std::shared_ptr<vag_voice> voice);
   void set_pan_table(vol_pair* table) { m_pan_table = table; };
@@ -73,7 +70,6 @@ class voice_manager {
 
  private:
   synth& m_synth;
-  locator& m_locator;
 
   std::list<std::weak_ptr<vag_voice>> m_voices;
   void clean_voices() {

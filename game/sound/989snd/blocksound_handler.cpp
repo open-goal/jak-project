@@ -106,7 +106,7 @@ void blocksound_handler::set_vol_pan(s32 vol, s32 pan) {
   }
 
   if (pan == PAN_RESET) {
-    m_app_pan = m_sfx.d.Pan;
+    m_app_pan = m_sfx.Pan;
   } else if (pan != PAN_DONT_CHANGE) {
     m_app_pan = pan;
   }
@@ -180,9 +180,9 @@ void blocksound_handler::set_pbend(s32 bend) {
 }
 
 void blocksound_handler::do_grain() {
-  auto& grain = m_sfx.grains[m_next_grain];
+  auto& grain = m_sfx.Grains[m_next_grain];
 
-  s32 ret = grain->execute(*this);
+  s32 ret = grain(*this);
 
   if (m_skip_grains) {
     m_grains_to_play--;
@@ -193,12 +193,12 @@ void blocksound_handler::do_grain() {
   }
 
   m_next_grain++;
-  if (m_next_grain >= m_sfx.grains.size()) {
+  if (m_next_grain >= m_sfx.Grains.size()) {
     m_done = true;
     return;
   }
 
-  m_countdown = m_sfx.grains[m_next_grain]->delay() + ret;
+  m_countdown = m_sfx.Grains[m_next_grain].Delay + ret;
 }
 
 }  // namespace snd

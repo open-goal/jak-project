@@ -5,7 +5,7 @@
 #include "common/common_types.h"
 
 #include "game/sound/989snd/lfo.h"
-#include "sfxblock2.h"
+#include "game/sound/989snd/sfxblock.h"
 
 namespace snd {
 
@@ -21,18 +21,18 @@ class blocksound_voice : public vag_voice {
 class blocksound_handler : public sound_handler {
  public:
   blocksound_handler(SoundBank& bank,
-                     SFX2& sfx,
+                     SFXBlock::SFX& sfx,
                      voice_manager& vm,
                      s32 sfx_vol,
                      s32 sfx_pan,
                      SndPlayParams& params)
-      : m_group(sfx.d.VolGroup), m_sfx(sfx), m_vm(vm), m_bank(bank) {
+      : m_group(sfx.VolGroup), m_sfx(sfx), m_vm(vm), m_bank(bank) {
     s32 vol, pan, pitch_mod, pitch_bend;
     if (sfx_vol == -1) {
-      sfx_vol = sfx.d.Vol;
+      sfx_vol = sfx.Vol;
     }
     if (sfx_pan == -1) {
-      sfx_pan = sfx.d.Pan;
+      sfx_pan = sfx.Pan;
     }
 
     if (params.vol.has_value()) {
@@ -101,7 +101,7 @@ class blocksound_handler : public sound_handler {
     // }
 
     m_next_grain = 0;
-    m_countdown = m_sfx.grains[0]->delay();
+    m_countdown = m_sfx.Grains[0].Delay;
     while (m_countdown <= 0 && !m_done) {
       do_grain();
     }
@@ -141,7 +141,7 @@ class blocksound_handler : public sound_handler {
   u32 m_grains_to_skip{0};
   bool m_skip_grains{false};
 
-  SFX2& m_sfx;
+  SFXBlock::SFX& m_sfx;
   voice_manager& m_vm;
 
   std::list<std::weak_ptr<blocksound_voice>> m_voices;

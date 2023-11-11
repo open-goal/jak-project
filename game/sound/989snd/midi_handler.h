@@ -17,44 +17,30 @@
 
 namespace snd {
 
-struct ProgData {
-  /*   0 */ s8 NumTones;
-  /*   1 */ s8 Vol;
-  /*   2 */ s16 Pan;
-  /*   4 */ /*Tone**/ u32 FirstTone;
-};
-
-struct Prog {
-  ProgData d;
-  std::vector<Tone> tones;
-};
-
 class midi_voice : public vag_voice {
  public:
-  midi_voice(Tone& t, ProgData& prog) : vag_voice(t), prog(prog) {}
+  midi_voice(Tone& t, MusicBank::Prog& _prog) : vag_voice(t), prog(_prog) {}
   u8 note{0};
   u8 channel{0};
   u8 velocity{0};
-  ProgData& prog;
+  MusicBank::Prog& prog;
 };
 
 class ame_handler;
 class midi_handler : public sound_handler {
  public:
-  midi_handler(MIDIBlockHeader* block,
+  midi_handler(Midi* block,
                voice_manager& vm,
-               MIDISound& sound,
+               MusicBank::MIDISound& sound,
                s32 vol,
                s32 pan,
-               locator& loc,
                SoundBank& bank);
 
-  midi_handler(MIDIBlockHeader* block,
+  midi_handler(Midi* block,
                voice_manager& vm,
-               MIDISound& sound,
+               MusicBank::MIDISound& sound,
                s32 vol,
                s32 pan,
-               locator& loc,
                SoundBank& bank,
                std::optional<ame_handler*> parent);
 
@@ -96,8 +82,7 @@ class midi_handler : public sound_handler {
 
   std::list<std::weak_ptr<midi_voice>> m_voices;
 
-  MIDISound& m_sound;
-  locator& m_locator;
+  MusicBank::MIDISound& m_sound;
   s32 m_vol{0x7f};
   s32 m_pan{0};
   s32 m_cur_pm{0};
@@ -106,7 +91,7 @@ class midi_handler : public sound_handler {
 
   bool m_paused{false};
 
-  MIDIBlockHeader* m_header{nullptr};
+  Midi* m_header{nullptr};
 
   std::array<bool, 16> m_mute_state{};
   std::array<s8, 16> m_chanvol{};

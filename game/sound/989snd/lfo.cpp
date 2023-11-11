@@ -19,7 +19,7 @@ void LFOTracker::init() {
 
 void LFOTracker::calc_depth() {
   if (m_target == lfo_target::VOLUME) {
-    m_range = (m_handler.m_sfx.d.Vol * m_depth) >> 10;
+    m_range = (m_handler.m_sfx.Vol * m_depth) >> 10;
   }
   if (m_target == lfo_target::PAN) {
     m_range = (180 * m_depth) >> 10;

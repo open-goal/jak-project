@@ -9,13 +9,13 @@
 #include "../common/voice.h"
 
 namespace snd {
-voice_manager::voice_manager(synth& synth, locator& loc) : m_synth(synth), m_locator(loc) {
+voice_manager::voice_manager(synth& synth) : m_synth(synth) {
   m_pan_table = normalPanTable;
   m_master_vol.fill(0x400);
   m_group_duck.fill(0x10000);
 }
 
-void voice_manager::start_tone(std::shared_ptr<vag_voice> voice, u32 bank) {
+void voice_manager::start_tone(std::shared_ptr<vag_voice> voice) {
   s16 left = adjust_vol_to_group(voice->basevol.left, voice->group);
   s16 right = adjust_vol_to_group(voice->basevol.right, voice->group);
 
@@ -35,8 +35,7 @@ void voice_manager::start_tone(std::shared_ptr<vag_voice> voice, u32 bank) {
   voice->set_asdr1(voice->tone.ADSR1);
   voice->set_asdr2(voice->tone.ADSR2);
 
-  u8* sbuf = m_locator.get_bank_samples(bank);
-  voice->set_sample((u16*)(sbuf + voice->tone.VAGInSR));
+  voice->set_sample((u16*)(voice->tone.Sample));
 
   voice->key_on();
 

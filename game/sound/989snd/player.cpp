@@ -16,7 +16,7 @@ namespace snd {
 
 u8 g_global_excite = 0;
 
-player::player() : m_vmanager(m_synth, m_loader) {
+player::player() : m_vmanager(m_synth) {
   init_cubeb();
 }
 
@@ -229,12 +229,9 @@ void player::set_master_volume(u32 group, s32 volume) {
   }
 }
 
-u32 player::load_bank(fs::path& filepath, size_t offset) {
+u32 player::load_bank(nonstd::span<u8> bank) {
   std::scoped_lock lock(m_ticklock);
-  std::fstream in(filepath, std::fstream::binary | std::fstream::in);
-  in.seekg(offset, std::fstream::beg);
-
-  return m_loader.read_bank(in);
+  return m_loader.BankLoad(bank);
 }
 
 void player::unload_bank(u32 bank_handle) {

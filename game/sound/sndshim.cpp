@@ -201,8 +201,9 @@ void snd_AutoPitchBend(s32 sound_handle, s32 pitch, s32 delta_time, s32 delta_fr
 s32 snd_BankLoadEx(const char* filename, s32 offset, u32 spu_mem_loc, u32 spu_mem_size) {
   // printf("snd_BankLoadEx\n");
   if (player) {
-    fs::path path = filename;
-    return player->load_bank(path, offset);
+    // TODO put the load on the thread pool?
+    auto file_buf = file_util::read_binary_file(std::string(filename));
+    return player->load_bank(nonstd::span(file_buf).subspan(offset));
   } else {
     return 0;
   }

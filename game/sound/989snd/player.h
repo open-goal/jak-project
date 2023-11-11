@@ -20,6 +20,7 @@
 #include "game/sound/989snd/vagvoice.h"
 
 #include "third-party/cubeb/cubeb/include/cubeb/cubeb.h"
+#include "third-party/span.hpp"
 
 namespace snd {
 
@@ -33,7 +34,7 @@ class player {
   // player(player&& other) noexcept = default;
   // player& operator=(player&& other) noexcept = default;
 
-  u32 load_bank(fs::path& path, size_t offset);
+  u32 load_bank(nonstd::span<u8> bank);
 
   u32 play_sound(u32 bank, u32 sound, s32 vol, s32 pan, s32 pm, s32 pb);
   u32 play_sound_by_name(u32 bank,
@@ -79,7 +80,7 @@ class player {
   bool m_coinitialized = false;
 #endif
 
-  loader m_loader;
+  Loader m_loader;
   synth m_synth;
   voice_manager m_vmanager;
   s32 m_tick{0};

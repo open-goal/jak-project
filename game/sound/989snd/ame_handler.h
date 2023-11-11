@@ -22,12 +22,11 @@ class ame_handler : public sound_handler {
   friend class midi_handler;
 
  public:
-  ame_handler(MultiMIDIBlockHeader* block,
+  ame_handler(MultiMidi* block,
               voice_manager& vm,
-              MIDISound& sound,
+              MusicBank::MIDISound& sound,
               s32 vol,
               s32 pan,
-              locator& loc,
               SoundBank& bank);
   bool tick() override;
   SoundBank& bank() override { return m_bank; };
@@ -62,11 +61,10 @@ class ame_handler : public sound_handler {
   void stop_segment(u32 id);
   std::pair<bool, u8*> run_ame(midi_handler&, u8* stream);
 
-  MIDISound& m_sound;
+  MusicBank::MIDISound& m_sound;
   SoundBank& m_bank;
 
-  MultiMIDIBlockHeader* m_header{nullptr};
-  locator& m_locator;
+  MultiMidi* m_header{nullptr};
   voice_manager& m_vm;
   s32 m_vol{0};
   s32 m_pan{0};

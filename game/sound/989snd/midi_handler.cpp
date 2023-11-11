@@ -22,19 +22,13 @@ namespace snd {
 **
 */
 
-midi_handler::midi_handler(MIDIBlockHeader* block,
+midi_handler::midi_handler(Midi* block,
                            voice_manager& vm,
-                           MIDISound& sound,
+                           MusicBank::MIDISound& sound,
                            s32 vol,
                            s32 pan,
-                           locator& loc,
                            SoundBank& bank)
-    : m_sound(sound),
-      m_locator(loc),
-      m_repeats(sound.Repeats),
-      m_bank(bank),
-      m_header(block),
-      m_vm(vm) {
+    : m_sound(sound), m_repeats(sound.Repeats), m_bank(bank), m_header(block), m_vm(vm) {
   if (vol == VOLUME_DONT_CHANGE) {
     vol = 1024;
   }
@@ -53,17 +47,15 @@ midi_handler::midi_handler(MIDIBlockHeader* block,
   init_midi();
 }
 
-midi_handler::midi_handler(MIDIBlockHeader* block,
+midi_handler::midi_handler(Midi* block,
                            voice_manager& vm,
-                           MIDISound& sound,
+                           MusicBank::MIDISound& sound,
                            s32 vol,
                            s32 pan,
-                           locator& loc,
                            SoundBank& bank,
                            std::optional<ame_handler*> parent)
     : m_parent(parent),
       m_sound(sound),
-      m_locator(loc),
       m_vol(vol),
       m_pan(pan),
       m_repeats(sound.Repeats),
@@ -74,7 +66,7 @@ midi_handler::midi_handler(MIDIBlockHeader* block,
 }
 
 void midi_handler::init_midi() {
-  m_seq_data_start = (u8*)((uintptr_t)m_header + (uintptr_t)m_header->DataStart);
+  m_seq_data_start = m_header->DataStart;
   m_seq_ptr = m_seq_data_start;
   m_tempo = m_header->Tempo;
   m_ppq = m_header->PPQ;
@@ -226,19 +218,21 @@ void midi_handler::note_on() {
   //            velocity);
 
   // Key on all the applicable tones for the program
-  auto bank = dynamic_cast<MusicBank*>(m_locator.get_bank_by_id(m_header->BankID));
-  auto& program = bank->m_programs[m_programs[channel]];
+  // FIXME bank from midi
+  // auto bank = dynamic_cast<MusicBank*>(m_locator.get_bank_by_id(m_header->BankID));
+  auto bank = static_cast<MusicBank*>(&m_bank);
+  auto& program = bank->Progs[m_programs[channel]];
 
-  for (auto& t : program.tones) {
+  for (auto& t : program.Tones) {
     if (note >= t.MapLow && note <= t.MapHigh) {
       s16 pan = m_chanpan[channel] + m_pan;
       if (pan >= 360) {
         pan -= 360;
       }
 
-      auto voice = std::make_shared<midi_voice>(t, program.d);
+      auto voice = std::make_shared<midi_voice>(t, program);
       voice->basevol = m_vm.make_volume_b(m_vol, (velocity * m_chanvol[channel]) / 0x7f, pan,
-                                          program.d.Vol, program.d.Pan, t.Vol, t.Pan);
+                                          program.Vol, program.Pan, t.Vol, t.Pan);
 
       voice->note = note;
       voice->channel = channel;
@@ -251,7 +245,7 @@ void midi_handler::note_on() {
       voice->current_pb = m_cur_pm;
 
       voice->group = m_sound.VolGroup;
-      m_vm.start_tone(voice, m_bank.bank_id);
+      m_vm.start_tone(voice);
       m_voices.emplace_front(voice);
     }
   }

@@ -12,19 +12,13 @@ namespace snd {
 u64 SoundFlavaHack = 0;
 u8 GlobalExcite = 0;
 
-ame_handler::ame_handler(MultiMIDIBlockHeader* block,
+ame_handler::ame_handler(MultiMidi* block,
                          voice_manager& vm,
-                         MIDISound& sound,
+                         MusicBank::MIDISound& sound,
                          s32 vol,
                          s32 pan,
-                         locator& loc,
                          SoundBank& bank)
-    : m_sound(sound),
-      m_bank(bank),
-      m_header(block),
-      m_locator(loc),
-      m_vm(vm),
-      m_repeats(sound.Repeats) {
+    : m_sound(sound), m_bank(bank), m_header(block), m_vm(vm), m_repeats(sound.Repeats) {
   if (vol == VOLUME_DONT_CHANGE) {
     vol = 1024;
   }
@@ -59,14 +53,13 @@ bool ame_handler::tick() {
 
 void ame_handler::start_segment(u32 id) {
   if (m_midis.find(id) == m_midis.end()) {
-    auto midiblock = (MIDIBlockHeader*)(m_header->BlockPtr[id] + (uintptr_t)m_header);
-    auto sound_handler = (MIDISoundHandler*)((uintptr_t)midiblock + sizeof(MIDIBlockHeader));
+    auto& midi = m_header->midi[id];
 
     // Skip adding if not midi type
-    u32 type = (sound_handler->OwnerID >> 24) & 0xf;
+    u32 type = (midi.SoundHandle >> 24) & 0xf;
     if (type == 1 || type == 3) {
-      m_midis.emplace(id, std::make_unique<midi_handler>(midiblock, m_vm, m_sound, m_vol, m_pan,
-                                                         m_locator, m_bank, this));
+      m_midis.emplace(id, std::make_unique<midi_handler>(static_cast<Midi*>(&midi), m_vm, m_sound,
+                                                         m_vol, m_pan, m_bank, this));
     }
   }
 }

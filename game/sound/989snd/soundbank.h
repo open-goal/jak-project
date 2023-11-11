@@ -2,7 +2,6 @@
 #include <memory>
 #include <optional>
 
-#include "locator.h"
 #include "sound_handler.h"
 #include "vagvoice.h"
 
@@ -35,8 +34,24 @@ enum class BankType {
 struct SFXUserData;
 class SoundBank {
  public:
-  SoundBank(u32 id, BankType type) : type(type), bank_id(id){};
+  struct BlockFlags {
+    u32 flags;
+
+    static constexpr u32 BLOCK_HAS_NAMES = 0x100;
+    static constexpr u32 BLOCK_HAS_USERDATA = 0x200;
+
+    bool has_names() { return flags & BLOCK_HAS_NAMES; }
+    bool has_userdata() { return flags & BLOCK_HAS_USERDATA; }
+  };
+
   virtual ~SoundBank() = default;
+
+  u32 DataID;
+  u32 Version;
+  BlockFlags Flags;
+  u32 BankID;
+  s8 BankNum;
+  u32 bank_id;  // FIXME TEMP
 
   virtual std::optional<std::unique_ptr<sound_handler>> make_handler(voice_manager& vm,
                                                                      u32 sound_id,
@@ -64,11 +79,6 @@ class SoundBank {
   virtual std::optional<const SFXUserData*> get_sound_user_data(u32 /*sound_id*/) {
     return std::nullopt;
   };
-
-  BankType type;
-  u32 bank_id;
-  u32 bank_name;
-  std::unique_ptr<u8[]> sampleBuf;
 };
 
 }  // namespace snd

@@ -16,7 +16,8 @@ int main(int argc, char* argv[]) {
   unsigned bankid = 0;
 
   fs::path file = argv[1];
-  bankid = player.load_bank(file, 0);
+  auto file_buf = file_util::read_binary_file(file);
+  bankid = player.load_bank(file_buf);
 
   if (argc > 2) {
     unsigned sound = player.play_sound(bankid, atoi(argv[2]), 0x400, 0, 0, 0);
