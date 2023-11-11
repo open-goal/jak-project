@@ -226,14 +226,14 @@ The cpad-set-buzz! function can be used for vibration.
     )
   )
 
-  ;; Allocates enough input frames to support counting 50ms of time at 300fps. Is there a way to set it at compile time?
+  ;; Allocates enough input frames to support counting 50ms of time at 300fps.
 (deftype cpad-history (basic)
-  ((button0-abs pad-buttons 16) ;; bitmask of buttons, pressed or not, with history
-   (button0-rel pad-buttons 16) ;; bitmask of if button going down.
+  ((button0-abs pad-buttons 15) ;; bitmask of buttons, pressed or not, with history
+   (button0-rel pad-buttons 15) ;; bitmask of if button going down.
   )
 )
 
-;; List of extended history for controllers. It always has 4 controllers.
+;; List of extended history for controllers at high fps. It always has 4 controllers.
 (deftype cpad-history-list (basic)
   ((num-cpads  int32)
    (cpads cpad-history 4)  ;; modified from 2->4 for PC 4-pad support
@@ -246,13 +246,13 @@ The cpad-set-buzz! function can be used for vibration.
 (defmethod new cpad-history-list ((allocation symbol) (type-to-make type))
   "Create a cpad-history-list for 4 controllers. It's fine to do this even if controllers
    aren't connected yet. "
-  (let ((gp-0 (object-new allocation type-to-make (the-as int (-> type-to-make size)))))
-    (set! (-> gp-0 num-cpads) 4)
-    (set! (-> gp-0 cpads 0) (new 'global 'cpad-history))
-    (set! (-> gp-0 cpads 1) (new 'global 'cpad-history))
-    (set! (-> gp-0 cpads 2) (new 'global 'cpad-history))
-    (set! (-> gp-0 cpads 3) (new 'global 'cpad-history))
-    gp-0
+  (let ((this (object-new allocation type-to-make (the-as int (-> type-to-make size)))))
+    (set! (-> this num-cpads) 4)
+    (set! (-> this cpads 0) (new 'global 'cpad-history))
+    (set! (-> this cpads 1) (new 'global 'cpad-history))
+    (set! (-> this cpads 2) (new 'global 'cpad-history))
+    (set! (-> this cpads 3) (new 'global 'cpad-history))
+    this
     )
   )
 
@@ -303,7 +303,7 @@ The cpad-set-buzz! function can be used for vibration.
 
 ;; the two controllers
 (define *cpad-list* (new 'global 'cpad-list))
-;; the cpad-history for each contgroller
+;; the cpad-history for each controller
 (define *cpad-history-list* (new 'global 'cpad-history-list))
 
 (desfun generate-frame-checks (pad-idx frames)
@@ -379,21 +379,18 @@ The cpad-set-buzz! function can be used for vibration.
 
            ;; og:preserve-this high fps fix
            (when (>= (-> *pc-settings* target-fps) 300)
-              (set! (-> history button0-abs 15) (-> history button0-abs 14))
               (set! (-> history button0-abs 14) (-> history button0-abs 13))
               (set! (-> history button0-abs 13) (-> history button0-abs 12))
+              (set! (-> history button0-abs 12) (-> history button0-abs 11))
 
-              (set! (-> history button0-rel 15) (-> history button0-rel 14))
               (set! (-> history button0-rel 14) (-> history button0-rel 13))
               (set! (-> history button0-rel 13) (-> history button0-rel 12))
+              (set! (-> history button0-rel 12) (-> history button0-rel 11))
             )
            (when (>= (-> *pc-settings* target-fps) 240)
-              (set! (-> history button0-abs 12) (-> history button0-abs 11))
               (set! (-> history button0-abs 11) (-> history button0-abs 10))
               (set! (-> history button0-abs 10) (-> history button0-abs 9))
               (set! (-> history button0-abs  9) (-> history button0-abs 8))
-
-              (set! (-> history button0-rel 12) (-> history button0-rel 11))
               (set! (-> history button0-rel 11) (-> history button0-rel 10))
               (set! (-> history button0-rel 10) (-> history button0-rel 9))
               (set! (-> history button0-rel  9) (-> history button0-rel 8))
@@ -401,22 +398,19 @@ The cpad-set-buzz! function can be used for vibration.
            (when (>= (-> *pc-settings* target-fps) 165)
               (set! (-> history button0-abs 8) (-> history button0-abs 7))
               (set! (-> history button0-abs 7) (-> history button0-abs 6))
-
+              (set! (-> history button0-abs 6) (-> history button0-abs 5))
               (set! (-> history button0-rel 8) (-> history button0-rel 7))
               (set! (-> history button0-rel 7) (-> history button0-rel 6))
+              (set! (-> history button0-rel 6) (-> history button0-rel 5))
             )
            (when (>= (-> *pc-settings* target-fps) 120)
-              (set! (-> history button0-abs 6) (-> history button0-abs 5))
               (set! (-> history button0-abs 5) (-> history button0-abs 4))
               (set! (-> history button0-abs 4) (-> history button0-abs 3))
-
-              (set! (-> history button0-rel 6) (-> history button0-rel 5))
               (set! (-> history button0-rel 5) (-> history button0-rel 4))
               (set! (-> history button0-rel 4) (-> history button0-rel 3))
             )
-           (when (>= (-> *pc-settings* target-fps)  75)
+           (when (>= (-> *pc-settings* target-fps) 75)
               (set! (-> history button0-abs 3) (-> history button0-abs 2))
-
               (set! (-> history button0-rel 3) (-> history button0-rel 2))
             )
            (set! (-> history button0-abs 2) (-> history button0-abs 1))
@@ -631,7 +625,7 @@ The cpad-set-buzz! function can be used for vibration.
   `(logtest? (cpad-pressed ,pad-idx) (pad-buttons ,@buttons))
   )
 
-(defmacro recently-pressed? (&key (pad-idx (-> self control cpad number)) &key (frames 16) &rest buttons)
+(defmacro recently-pressed? (&key (pad-idx (-> self control cpad number)) &key (frames 15) &rest buttons)
   "Checks if a (pad-button) was pressed within the last 50ms, based on frames"
   `(logtest? ,(generate-frame-checks pad-idx frames) (pad-buttons ,@buttons))
 )
