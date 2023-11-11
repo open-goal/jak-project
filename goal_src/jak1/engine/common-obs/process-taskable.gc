@@ -420,7 +420,7 @@
      (if (-> self blend-on-exit)
          (set! (-> self blend-on-exit) arg0)
          )
-     ;; og:preserve-this allow cutscene skipping on pc port
+     ;; og:preserve-this allow cutscene skipping and automatic cutscene skipping on pc port 
      ;; save a sort of timestamp just so we know if it took at least 1 frame
      (#when PC_PORT
         (define *play-anim-time* (current-time)))
@@ -431,7 +431,11 @@
            (the-as spool-anim arg1)
            arg0
            (-> self blend-on-exit)
-           (lambda ((arg0 process-taskable)) (= (get-response (-> arg0 query)) 'no))
+           (if (-> *pc-settings* autoskip-movies?)
+            (lambda ((arg0 process-taskable)) #t)
+            (lambda ((arg0 process-taskable)) (= (get-response (-> arg0 query)) 'no))
+           )
+          
            )
          (ja-play-spooled-anim
            (the-as spool-anim arg1)
