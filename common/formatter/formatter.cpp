@@ -114,6 +114,8 @@ void apply_formatting_config(
       if (predefined_config &&
           predefined_config->index_configs.find(i) != predefined_config->index_configs.end()) {
         apply_formatting_config(ref, predefined_config->index_configs.at(i));
+      } else if (predefined_config && predefined_config->default_index_config) {
+        apply_formatting_config(ref, predefined_config->default_index_config);
       } else {
         apply_formatting_config(ref);
       }

@@ -19,7 +19,7 @@ struct FormFormattingConfig {
   std::function<int(FormFormattingConfig, int)> indentation_width_for_index =
       [](FormFormattingConfig config, int /*index*/) { return config.indentation_width; };
   bool combine_first_two_lines =
-      false;  // NOTE - basically hang, but will probably stick around after hang is gone
+      false;  // NOTE - basically hang, but will probably stick around after hang is gone, may be redundant (inline_until_index!)
   std::function<std::optional<int>(std::vector<std::string> curr_lines)> inline_until_index =
       [](std::vector<std::string> curr_lines) { return std::nullopt; };
   bool has_constant_pairs = false;
@@ -27,6 +27,7 @@ struct FormFormattingConfig {
   std::function<bool(FormFormattingConfig, int num_refs)> should_prevent_inlining =
       [](FormFormattingConfig config, int /*num_refs*/) { return config.prevent_inlining; };
   int parent_mutable_extra_indent = 0;
+  std::optional<std::shared_ptr<FormFormattingConfig>> default_index_config;
   std::unordered_map<int, std::shared_ptr<FormFormattingConfig>> index_configs = {};
 };
 

@@ -62,12 +62,27 @@ FormFormattingConfig new_binding_rule() {
   return cfg;
 }
 
+FormFormattingConfig new_pair_rule(bool combine_first_two_expr) {
+  FormFormattingConfig cfg;
+  cfg.hang_forms = false;
+  cfg.combine_first_two_lines = false;
+  cfg.prevent_inlining = true;
+  cfg.combine_first_two_lines = combine_first_two_expr;
+  auto pair_config = std::make_shared<FormFormattingConfig>();
+  pair_config->hang_forms = false;
+  pair_config->indentation_width = 1;
+  cfg.default_index_config = pair_config;
+  return cfg;
+}
+
 const std::unordered_map<std::string, FormFormattingConfig> opengoal_form_config = {
     {"defun", new_flow_rule(3)},
     {"defmethod", new_flow_rule(3)},
     {"deftype", new_flow_rule_prevent_inlining_indexes(3, {3, 4, 5})},
     {"when", new_flow_rule(2)},
     {"with-dma-buffer-add-bucket", new_flow_rule(2)},
+    {"cond", new_pair_rule(false)},
+    {"case", new_pair_rule(true)},
     {"let", new_binding_rule()}};
 }  // namespace config
 }  // namespace formatter_rules
