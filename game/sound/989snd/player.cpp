@@ -310,6 +310,7 @@ void player::set_sound_vol_pan(s32 sound_id, s32 vol, s32 pan) {
 }
 
 void player::set_sound_pmod(s32 sound_handle, s32 mod) {
+  std::scoped_lock lock(m_ticklock);
   auto handler = m_handlers.find(sound_handle);
   if (handler == m_handlers.end())
     return;
@@ -318,6 +319,7 @@ void player::set_sound_pmod(s32 sound_handle, s32 mod) {
 }
 
 void player::stop_all_sounds() {
+  std::scoped_lock lock(m_ticklock);
   for (auto it = m_handlers.begin(); it != m_handlers.end();) {
     m_handle_allocator.free_id(it->first);
     it = m_handlers.erase(it);
