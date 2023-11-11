@@ -150,7 +150,7 @@ class Trie {
 };
 
 template <typename T>
-Trie<T>::~Trie<T>() {
+Trie<T>::~Trie() {
   m_root.delete_children();
   m_size = 0;
 }
