@@ -39,7 +39,6 @@ if(CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
         -fcxx-exceptions \
         -fexceptions \
         -fdiagnostics-color=always \
-        -std=c++17 \
         -mavx \
         -Wall \
         -Wno-c++11-narrowing \
