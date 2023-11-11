@@ -9,7 +9,9 @@ namespace config {
 FormFormattingConfig new_flow_rule(int start_index) {
   FormFormattingConfig cfg;
   cfg.hang_forms = false;
-  cfg.inline_until_index = start_index;
+  cfg.inline_until_index = [start_index](std::vector<std::string> curr_lines) {
+    return start_index;
+  };
   return cfg;
 }
 
@@ -18,7 +20,12 @@ FormFormattingConfig new_flow_rule_prevent_inlining_indexes(
     std::vector<int> inlining_preventation_indices) {
   FormFormattingConfig cfg;
   cfg.hang_forms = false;
-  cfg.inline_until_index = start_index;
+  cfg.inline_until_index = [start_index](std::vector<std::string> curr_lines) {
+    if (curr_lines.size() >= 4 && curr_lines.at(3) == "()") {
+      return 4;
+    }
+    return start_index;
+  };
   for (const auto& index : inlining_preventation_indices) {
     auto temp_config = std::make_shared<FormFormattingConfig>();
     temp_config->prevent_inlining = true;

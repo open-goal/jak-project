@@ -179,7 +179,7 @@ bool can_node_be_inlined(const FormatterTreeNode& curr_node, int cursor_pos) {
     return false;
   }
   // If this is set in the config, then the form is intended to be partially inlined
-  if (curr_node.formatting_config.inline_until_index != -1) {
+  if (curr_node.formatting_config.inline_until_index({})) {
     return false;
   }
   // let's see if we can inline the form all on one line to do that, we recursively explore
@@ -267,11 +267,10 @@ std::vector<std::string> apply_formatting(const FormatterTreeNode& curr_node,
   }
 
   // Consolidate any lines if the configuration requires it
-  // TODO - also consider "should inline by index" function (add one)
-  if (curr_node.formatting_config.inline_until_index != -1) {
+  if (curr_node.formatting_config.inline_until_index(form_lines)) {
     std::vector<std::string> new_form_lines = {};
     for (int i = 0; i < (int)form_lines.size(); i++) {
-      if (i < curr_node.formatting_config.inline_until_index) {
+      if (i < curr_node.formatting_config.inline_until_index(form_lines)) {
         if (new_form_lines.empty()) {
           new_form_lines.push_back(form_lines.at(i));
         } else {
