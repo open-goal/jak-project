@@ -266,7 +266,7 @@ void process_streamed_audio(const decompiler::Config& config,
   for (size_t lang_id = 0; lang_id < audio_files.size(); lang_id++) {
     auto& file = audio_files[lang_id];
     auto wad_data = file_util::read_binary_file(input_dir / "VAG" / file);
-    auto suffix = fs::path(file).extension().u8string().substr(1);
+    auto suffix = fs::path(file).extension().string().substr(1);
     bool int_bank_p = suffix.compare("INT") == 0;
     langs.push_back(suffix);
     for (int i = 0; i < dir_data.entry_count(); i++) {
