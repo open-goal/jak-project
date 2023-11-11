@@ -36,7 +36,8 @@
 
 void setup_logging(bool verbose, std::string log_file, bool disable_ansi_colors) {
   if (!log_file.empty()) {
-    lg::set_file(log_file, false, true, fs::path(log_file).parent_path().string());
+    lg::set_file(fs::path(log_file).filename().string(), false, true,
+                 fs::path(log_file).parent_path().string());
   }
   if (verbose) {
     lg::set_file_level(lg::level::debug);

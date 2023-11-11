@@ -114,6 +114,8 @@ void apply_formatting_config(
       if (predefined_config &&
           predefined_config->index_configs.find(i) != predefined_config->index_configs.end()) {
         apply_formatting_config(ref, predefined_config->index_configs.at(i));
+      } else if (predefined_config && predefined_config->default_index_config) {
+        apply_formatting_config(ref, predefined_config->default_index_config);
       } else {
         apply_formatting_config(ref);
       }
@@ -179,7 +181,7 @@ bool can_node_be_inlined(const FormatterTreeNode& curr_node, int cursor_pos) {
     return false;
   }
   // If this is set in the config, then the form is intended to be partially inlined
-  if (curr_node.formatting_config.inline_until_index != -1) {
+  if (curr_node.formatting_config.inline_until_index({})) {
     return false;
   }
   // let's see if we can inline the form all on one line to do that, we recursively explore
@@ -193,7 +195,8 @@ std::vector<std::string> apply_formatting(const FormatterTreeNode& curr_node,
                                           int cursor_pos = 0) {
   using namespace formatter_rules;
   if (!curr_node.token && curr_node.refs.empty()) {
-    return output;
+    // special case to handle an empty list
+    return {"()"};
   }
 
   // If its a token, just print the token and move on
@@ -211,6 +214,7 @@ std::vector<std::string> apply_formatting(const FormatterTreeNode& curr_node,
   //
   // This means we may combine elements onto the same line in this step.
   std::vector<std::string> form_lines = {};
+
   for (int i = 0; i < (int)curr_node.refs.size(); i++) {
     const auto& ref = curr_node.refs.at(i);
     // Add new line entry
@@ -265,10 +269,10 @@ std::vector<std::string> apply_formatting(const FormatterTreeNode& curr_node,
   }
 
   // Consolidate any lines if the configuration requires it
-  if (curr_node.formatting_config.inline_until_index != -1) {
+  if (curr_node.formatting_config.inline_until_index(form_lines)) {
     std::vector<std::string> new_form_lines = {};
     for (int i = 0; i < (int)form_lines.size(); i++) {
-      if (i < curr_node.formatting_config.inline_until_index) {
+      if (i < curr_node.formatting_config.inline_until_index(form_lines)) {
         if (new_form_lines.empty()) {
           new_form_lines.push_back(form_lines.at(i));
         } else {
@@ -311,7 +315,7 @@ std::vector<std::string> apply_formatting(const FormatterTreeNode& curr_node,
 }
 
 std::string join_formatted_lines(const std::vector<std::string> lines) {
-  // TODO - respect original file line endings?
+  // TODO - respect original file line endings
   return fmt::format("{}", fmt::join(lines, "\n"));
 }
 
