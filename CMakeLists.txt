@@ -219,7 +219,6 @@ build_third_party_lib(sqlite3 sqlite3)
 
 # build tree-sitter parser
 include_directories(third-party/tree-sitter/tree-sitter/lib/include)
-include_directories(third-party/tree-sitter/tree-sitter-opengoal/include)
 build_third_party_lib(tree-sitter tree-sitter)
 
 # native OS dialogs for error messages
