@@ -8,6 +8,7 @@
 #include "common/common_types.h"
 
 #include "../common/synth.h"
+#include "game/sound/989snd/loader.h"
 
 namespace snd {
 
@@ -51,7 +52,6 @@ class SoundBank {
   BlockFlags Flags;
   u32 BankID;
   s8 BankNum;
-  u32 bank_id;  // FIXME TEMP
 
   virtual std::optional<std::unique_ptr<sound_handler>> make_handler(voice_manager& vm,
                                                                      u32 sound_id,

@@ -5,15 +5,17 @@
 #include <fstream>
 #include <optional>
 
-#include "midi_handler.h"
 #include "sfxblock.h"
 
 #include "common/log/log.h"
 #include "common/util/BinaryReader.h"
 
+#include "game/sound/989snd/musicbank.h"
+
 #include "third-party/fmt/core.h"
 
 namespace snd {
+
 enum chunk : u32 { bank, samples, midi };
 
 inline static constexpr u32 fourcc(std::string_view p) {
@@ -403,14 +405,14 @@ MusicBank* MusicBank::ReadBank(nonstd::span<u8> bank_data,
   return bank;
 }
 
-u32 Loader::BankLoad(nonstd::span<u8> bank) {
+BankHandle Loader::BankLoad(nonstd::span<u8> bank) {
   BinaryReader reader(bank);
   FileAttributes fa;
   fa.Read(reader);
 
   if (fa.type != 1 && fa.type != 3) {
     fmt::print("bad file type\n");
-    return 0;
+    return nullptr;
   }
 
   reader.set_seek(fa.where[0].offset);
@@ -428,37 +430,35 @@ u32 Loader::BankLoad(nonstd::span<u8> bank) {
         nonstd::span<u8>(bank).subspan(fa.where[2].offset, fa.where[2].size));
 
     auto bank = MusicBank::ReadBank(bank_data, sample_data, midi_data);
-    auto bank_id = m_id_allocator.get_id();
-    bank->bank_id = bank_id;  // FIXME remove
-    m_soundbanks.emplace(bank_id, bank);
+    mBanks.emplace_back(bank);
 
-    return bank_id;
+    return bank;
   } else if (fourcc == snd::fourcc("SBlk")) {
     auto block = SFXBlock::ReadBlock(bank_data, sample_data);
-    auto bank_id = m_id_allocator.get_id();
-    block->bank_id = bank_id;  // FIXME remove
-    m_soundbanks.emplace(bank_id, block);
+    mBanks.emplace_back(block);
 
-    return bank_id;
+    return block;
   }
 
-  return 0;
+  return nullptr;
 }
 
-SoundBank* Loader::get_bank_by_handle(u32 id) {
-  if (m_soundbanks.find(id) == m_soundbanks.end()) {
+SoundBank* Loader::get_bank_by_handle(BankHandle handle) {
+  auto bank = std::find_if(mBanks.begin(), mBanks.end(),
+                           [handle](auto& bank) { return bank.get() == handle; });
+  if (bank == mBanks.end()) {
     return nullptr;
   }
 
-  return m_soundbanks[id].get();
+  return bank->get();
 }
 
 SoundBank* Loader::get_bank_by_name(const char* name) {
-  for (auto& b : m_soundbanks) {
-    auto bankname = b.second->get_name();
+  for (auto& b : mBanks) {
+    auto bankname = b->get_name();
     if (bankname.has_value()) {
       if (bankname->compare(name) == 0) {
-        return b.second.get();
+        return b.get();
       }
     }
   }
@@ -467,19 +467,22 @@ SoundBank* Loader::get_bank_by_name(const char* name) {
 }
 
 SoundBank* Loader::get_bank_with_sound(const char* name) {
-  for (auto& b : m_soundbanks) {
-    auto sound = b.second->get_sound_by_name(name);
+  for (auto& b : mBanks) {
+    auto sound = b->get_sound_by_name(name);
     if (sound.has_value()) {
-      return b.second.get();
+      return b.get();
     }
   }
 
   return nullptr;
 }
 
-void Loader::unload_bank(u32 id) {
-  m_soundbanks.erase(id);
-  m_id_allocator.free_id(id);
+void Loader::unload_bank(BankHandle handle) {
+  auto bank = std::find_if(mBanks.begin(), mBanks.end(),
+                           [handle](auto& bank) { return bank.get() == handle; });
+  if (bank != mBanks.end()) {
+    mBanks.erase(bank);
+  }
 }
 
 }  // namespace snd

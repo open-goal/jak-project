@@ -4,6 +4,8 @@
 
 #include <fstream>
 
+#include "sfxblock.h"
+
 #include "third-party/fmt/core.h"
 
 #ifdef _WIN32
@@ -126,11 +128,11 @@ void player::tick(s16_output* stream, int samples) {
   }
 }
 
-u32 player::play_sound(u32 bank_id, u32 sound_id, s32 vol, s32 pan, s32 pm, s32 pb) {
+u32 player::play_sound(BankHandle bank_id, u32 sound_id, s32 vol, s32 pan, s32 pm, s32 pb) {
   std::scoped_lock lock(m_ticklock);
   auto bank = m_loader.get_bank_by_handle(bank_id);
   if (bank == nullptr) {
-    lg::error("play_sound: Bank {} does not exist", bank_id);
+    lg::error("play_sound: Bank {} does not exist", static_cast<void*>(bank_id));
     return 0;
   }
 
@@ -146,7 +148,7 @@ u32 player::play_sound(u32 bank_id, u32 sound_id, s32 vol, s32 pan, s32 pm, s32 
   return handle;
 }
 
-u32 player::play_sound_by_name(u32 bank_id,
+u32 player::play_sound_by_name(BankHandle bank_id,
                                char* bank_name,
                                char* sound_name,
                                s32 vol,
@@ -170,7 +172,7 @@ u32 player::play_sound_by_name(u32 bank_id,
 
   auto sound = bank->get_sound_by_name(sound_name);
   if (sound.has_value()) {
-    return play_sound(bank->bank_id, sound.value(), vol, pan, pm, pb);
+    return play_sound(bank, sound.value(), vol, pan, pm, pb);
   }
 
   // lg::error("play_sound_by_name: failed to find sound {}", sound_name);
@@ -230,19 +232,19 @@ void player::set_master_volume(u32 group, s32 volume) {
   }
 }
 
-u32 player::load_bank(nonstd::span<u8> bank) {
+BankHandle player::load_bank(nonstd::span<u8> bank) {
   std::scoped_lock lock(m_ticklock);
   return m_loader.BankLoad(bank);
 }
 
-void player::unload_bank(u32 bank_handle) {
+void player::unload_bank(BankHandle bank_handle) {
   std::scoped_lock lock(m_ticklock);
   auto* bank = m_loader.get_bank_by_handle(bank_handle);
   if (bank == nullptr)
     return;
 
   for (auto it = m_handlers.begin(); it != m_handlers.end();) {
-    if (it->second->bank().bank_id == bank_handle) {
+    if (&it->second->bank() == bank_handle) {
       m_handle_allocator.free_id(it->first);
       it = m_handlers.erase(it);
     } else {
@@ -327,16 +329,16 @@ void player::stop_all_sounds() {
   }
 }
 
-s32 player::get_sound_user_data(s32 block_handle,
+s32 player::get_sound_user_data(BankHandle block_handle,
                                 char* block_name,
                                 s32 sound_id,
                                 char* sound_name,
                                 SFXUserData* dst) {
   std::scoped_lock lock(m_ticklock);
   SoundBank* bank = nullptr;
-  if (block_handle == 0 && block_name != nullptr) {
+  if (block_handle == nullptr && block_name != nullptr) {
     bank = m_loader.get_bank_by_name(block_name);
-  } else if (block_handle != 0) {
+  } else if (block_handle != nullptr) {
     bank = m_loader.get_bank_by_handle(block_handle);
   } else {
     bank = m_loader.get_bank_with_sound(sound_name);

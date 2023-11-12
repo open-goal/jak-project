@@ -9,7 +9,7 @@
 #include <utility>
 
 #include "ame_handler.h"
-#include "loader.h"
+#include "musicbank.h"
 #include "sound_handler.h"
 #include "vagvoice.h"
 

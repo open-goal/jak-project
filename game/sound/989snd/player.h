@@ -10,11 +10,9 @@
 #include "ame_handler.h"
 #include "handle_allocator.h"
 #include "loader.h"
-#include "midi_handler.h"
 #include "sound_handler.h"
 
 #include "common/common_types.h"
-#include "common/util/FileUtil.h"
 
 #include "../common/synth.h"
 #include "game/sound/989snd/vagvoice.h"
@@ -34,10 +32,10 @@ class player {
   // player(player&& other) noexcept = default;
   // player& operator=(player&& other) noexcept = default;
 
-  u32 load_bank(nonstd::span<u8> bank);
+  BankHandle load_bank(nonstd::span<u8> bank);
 
-  u32 play_sound(u32 bank, u32 sound, s32 vol, s32 pan, s32 pm, s32 pb);
-  u32 play_sound_by_name(u32 bank,
+  u32 play_sound(BankHandle bank, u32 sound, s32 vol, s32 pan, s32 pm, s32 pb);
+  u32 play_sound_by_name(BankHandle bank,
                          char* bank_name,
                          char* sound_name,
                          s32 vol,
@@ -48,7 +46,7 @@ class player {
   void set_global_excite(u8 value) { GlobalExcite = value; };
   bool sound_still_active(u32 sound_id);
   void set_master_volume(u32 group, s32 volume);
-  void unload_bank(u32 bank_handle);
+  void unload_bank(BankHandle bank_handle);
   void stop_sound(u32 sound_handle);
   void set_pan_table(vol_pair* pantable);
   void set_playback_mode(s32 mode);
@@ -63,7 +61,7 @@ class player {
   void destroy_cubeb();
   s32 get_tick() { return m_tick; };
   void stop_all_sounds();
-  s32 get_sound_user_data(s32 block_handle,
+  s32 get_sound_user_data(BankHandle block_handle,
                           char* block_name,
                           s32 sound_id,
                           char* sound_name,

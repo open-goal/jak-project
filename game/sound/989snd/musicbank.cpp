@@ -3,7 +3,7 @@
 #include "ame_handler.h"
 #include "midi_handler.h"
 
-#include "../common/synth.h"
+#include "common/log/log.h"
 
 namespace snd {
 

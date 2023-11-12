@@ -7,6 +7,7 @@
 #include "midi_handler.h"
 #include "sound_handler.h"
 #include "vagvoice.h"
+#include "musicbank.h"
 
 #include "common/common_types.h"
 

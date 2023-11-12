@@ -19,7 +19,7 @@ LoadStackEntry* FS_OpenWad(FileRecord* fr, int32_t offset);
 uint32_t FS_LoadSoundBank(char* name, SoundBank* bank);
 void FS_PollDrive();
 uint32_t FS_SyncRead();
-uint32_t FS_LoadMusic(char* name, s32* bank_handle);
+uint32_t FS_LoadMusic(char* name, snd::BankHandle* bank_handle);
 void FS_Close(LoadStackEntry* fd);
 static LoadStackEntry sLoadStack[MAX_OPEN_FILES];  //! List of all files that are "open"
 static LoadStackEntry* sReadInfo;                  // LoadStackEntry for currently reading file
@@ -201,7 +201,7 @@ uint32_t FS_SyncRead() {
  */
 void FS_PollDrive() {}
 
-uint32_t FS_LoadMusic(char* name, s32* bank_handle) {
+uint32_t FS_LoadMusic(char* name, snd::BankHandle* bank_handle) {
   char namebuf[16];
   strcpy(namebuf, name);
   namebuf[8] = 0;
@@ -220,7 +220,10 @@ uint32_t FS_LoadMusic(char* name, s32* bank_handle) {
 // lets use BinaryReader instead
 static void parseSoundBank(BinaryReader data, SoundBank& bank) {
   bank.name = data.read<std::array<char, 16>>();
-  bank.bank_handle = data.read<u32>();
+
+  data.read<u32>();
+  bank.bank_handle = nullptr;
+
   bank.sound_count = data.read<u32>();
   bank.sound.resize(bank.sound_count);
 
@@ -257,7 +260,7 @@ uint32_t FS_LoadSoundBank(char* name, SoundBank* bank) {
   auto data = file_util::read_binary_file(fs::path(get_file_path(file)));
   parseSoundBank(BinaryReader(data), *bank);
 
-  s32 handle = snd_BankLoadEx(get_file_path(file), offset, 0, 0);
+  snd::BankHandle handle = snd_BankLoadEx(get_file_path(file), offset, 0, 0);
   snd_ResolveBankXREFS();
   PrintBankInfo(bank);
   bank->bank_handle = handle;

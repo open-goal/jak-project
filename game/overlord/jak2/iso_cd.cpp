@@ -77,7 +77,7 @@ LoadStackEntry* FS_OpenWad(FileRecord* fr, int offset);
 void FS_Close(LoadStackEntry* lse);
 int FS_PageBeginRead(LoadStackEntry* lse, Buffer* buffer);
 uint32_t FS_LoadSoundBank(char* name, SoundBank* buffer);
-uint32_t FS_LoadMusic(char* name, s32* buffer);
+uint32_t FS_LoadMusic(char* name, snd::BankHandle* buffer);
 u32 FS_SyncRead();
 
 void iso_cd_init_globals() {
@@ -661,7 +661,7 @@ uint32_t FS_LoadSoundBank(char* name, SoundBank* buffer) {
   FileRecord* file = nullptr;
   char namebuf[16];
   char isoname[16];
-  u32 handle;
+  snd::BankHandle handle;
 
   strncpy(namebuf, name, 12);
   namebuf[8] = 0;
@@ -680,11 +680,11 @@ uint32_t FS_LoadSoundBank(char* name, SoundBank* buffer) {
   return CMD_STATUS_DONE;
 }
 
-uint32_t FS_LoadMusic(char* name, s32* bank_handle) {
+uint32_t FS_LoadMusic(char* name, snd::BankHandle* bank_handle) {
   FileRecord* file = nullptr;
   char namebuf[16];
   char isoname[16];
-  u32 handle;
+  snd::BankHandle handle;
 
   strncpy(namebuf, name, 12);
   namebuf[8] = 0;

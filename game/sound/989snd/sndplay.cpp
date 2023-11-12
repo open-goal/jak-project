@@ -2,6 +2,8 @@
 #include <iostream>
 #include <sstream>
 
+#include "common/util/FileUtil.h"
+
 #ifdef _WIN32
 #include <windows.h>
 #define sleep(n) Sleep(n * 1000)
@@ -13,11 +15,10 @@
 
 int main(int argc, char* argv[]) {
   snd::player player;
-  unsigned bankid = 0;
 
   fs::path file = argv[1];
   auto file_buf = file_util::read_binary_file(file);
-  bankid = player.load_bank(file_buf);
+  auto bankid = player.load_bank(file_buf);
 
   if (argc > 2) {
     unsigned sound = player.play_sound(bankid, atoi(argv[2]), 0x400, 0, 0, 0);

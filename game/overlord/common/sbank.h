@@ -6,6 +6,8 @@
 
 #include "common/common_types.h"
 
+#include "game/sound/sndshim.h"
+
 struct SoundRecord {
   std::array<char, 16> name;
   u32 fallof_params;
@@ -13,7 +15,7 @@ struct SoundRecord {
 
 struct SoundBank {
   std::array<char, 16> name;
-  u32 bank_handle;
+  snd::BankHandle bank_handle;
   u32 sound_count;
 
   // name list, only for jak1

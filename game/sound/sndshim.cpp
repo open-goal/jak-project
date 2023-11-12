@@ -4,6 +4,9 @@
 
 #include "sdshim.h"
 
+#include "common/log/log.h"
+#include "common/util/FileUtil.h"
+
 #include "989snd/player.h"
 
 std::unique_ptr<snd::player> player;
@@ -114,7 +117,7 @@ void snd_SetMasterVolume(s32 which, s32 volume) {
   }
 }
 
-void snd_UnloadBank(s32 bank_handle) {
+void snd_UnloadBank(snd::BankHandle bank_handle) {
   if (player) {
     player->unload_bank(bank_handle);
   }
@@ -142,7 +145,12 @@ void snd_SetMIDIRegister(s32 sound_handle, u8 reg, u8 value) {
   }
 }
 
-s32 snd_PlaySoundVolPanPMPB(s32 bank, s32 sound, s32 vol, s32 pan, s32 pitch_mod, s32 pitch_bend) {
+s32 snd_PlaySoundVolPanPMPB(snd::BankHandle bank,
+                            s32 sound,
+                            s32 vol,
+                            s32 pan,
+                            s32 pitch_mod,
+                            s32 pitch_bend) {
   if (player) {
     return player->play_sound(bank, sound, vol, pan, pitch_mod, pitch_bend);
   } else {
@@ -150,7 +158,7 @@ s32 snd_PlaySoundVolPanPMPB(s32 bank, s32 sound, s32 vol, s32 pan, s32 pitch_mod
   }
 }
 
-s32 snd_PlaySoundByNameVolPanPMPB(s32 bank_handle,
+s32 snd_PlaySoundByNameVolPanPMPB(snd::BankHandle bank_handle,
                                   char* bank_name,
                                   char* sound_name,
                                   s32 vol,
@@ -198,7 +206,10 @@ void snd_AutoPitchBend(s32 sound_handle, s32 pitch, s32 delta_time, s32 delta_fr
   lg::warn("Unimplemented snd_AutoPitchBend\n");
 }
 
-s32 snd_BankLoadEx(const char* filename, s32 offset, u32 spu_mem_loc, u32 spu_mem_size) {
+snd::BankHandle snd_BankLoadEx(const char* filename,
+                               s32 offset,
+                               u32 spu_mem_loc,
+                               u32 spu_mem_size) {
   // printf("snd_BankLoadEx\n");
   if (player) {
     // TODO put the load on the thread pool?
@@ -230,7 +241,7 @@ void snd_keyOffVoiceRaw(u32 core, u32 voice_id) {
   }
 }
 
-s32 snd_GetSoundUserData(s32 block_handle,
+s32 snd_GetSoundUserData(snd::BankHandle block_handle,
                          char* block_name,
                          s32 sound_id,
                          char* sound_name,
