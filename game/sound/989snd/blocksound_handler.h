@@ -25,97 +25,9 @@ class blocksound_handler : public sound_handler {
                      voice_manager& vm,
                      s32 sfx_vol,
                      s32 sfx_pan,
-                     SndPlayParams& params)
-      : m_group(sfx.VolGroup), m_sfx(sfx), m_vm(vm), m_bank(bank) {
-    s32 vol, pan, pitch_mod, pitch_bend;
-    if (sfx_vol == -1) {
-      sfx_vol = sfx.Vol;
-    }
-    if (sfx_pan == -1) {
-      sfx_pan = sfx.Pan;
-    }
+                     SndPlayParams& params);
 
-    if (params.vol.has_value()) {
-      vol = params.vol.value();
-    } else {
-      vol = 1024;
-    }
-
-    if (params.pan.has_value()) {
-      pan = params.pan.value();
-    } else {
-      pan = -1;
-    }
-
-    if (params.pitch_mod.has_value()) {
-      pitch_mod = params.pitch_mod.value();
-    } else {
-      pitch_mod = 0;
-    }
-
-    if (params.pitch_bend.has_value()) {
-      pitch_bend = params.pitch_bend.value();
-    } else {
-      pitch_bend = 0;
-    }
-
-    if (vol == VOLUME_DONT_CHANGE) {
-      vol = 1024;
-    }
-    s32 play_vol = (sfx_vol * vol) >> 10;
-    if (play_vol >= 128) {
-      play_vol = 127;
-    }
-
-    if (pan == PAN_RESET || pan == PAN_DONT_CHANGE) {
-      pan = sfx_pan;
-    }
-
-    m_orig_volume = sfx_vol;
-    m_orig_pan = sfx_pan;
-
-    m_cur_volume = play_vol;
-    m_cur_pan = pan;
-    m_cur_pb = pitch_bend;
-    m_cur_pm = pitch_mod;
-
-    m_app_volume = vol;
-    m_app_pan = pan;
-    m_app_pb = pitch_bend;
-    m_app_pm = pitch_mod;
-
-    m_lfo_volume = 0;
-    m_lfo_pan = 0;
-    m_lfo_pb = 0;
-    m_lfo_pm = 0;
-
-    if (params.registers.has_value()) {
-      m_registers = params.registers.value();
-    }
-
-    // Figure this stuff out properly someday
-    // if (m_sfx.d.Flags & 2) {
-    //   fmt::print("solo flag\n");
-    //   m_done = true;
-    //   return;
-    // }
-
-    m_next_grain = 0;
-    m_countdown = m_sfx.Grains[0].Delay;
-    while (m_countdown <= 0 && !m_done) {
-      do_grain();
-    }
-  }
-
-  ~blocksound_handler() override {
-    for (auto& p : m_voices) {
-      auto v = p.lock();
-      if (v != nullptr) {
-        v->stop();
-      }
-    }
-  }
-
+  ~blocksound_handler() override;
   bool tick() override;
   SoundBank& bank() override { return m_bank; };
 

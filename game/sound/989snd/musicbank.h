@@ -7,21 +7,6 @@
 #include "third-party/span.hpp"
 
 namespace snd {
-struct SoundBankData : BankTag {
-  /*  10 */ s8 BankNum;
-  /*  11 */ s8 pad1;
-  /*  12 */ s16 pad2;
-  /*  14 */ s16 NumSounds;
-  /*  16 */ s16 NumProgs;
-  /*  18 */ s16 NumTones;
-  /*  1a */ s16 NumVAGs;
-  /*  1c */ /*Sound**/ u32 FirstSound;
-  /*  20 */ /*Prog**/ u32 FirstProg;
-  /*  24 */ /*Tone**/ u32 FirstTone;
-  /*  28 */ /*void**/ u32 VagsInSR;
-  /*  2c */ u32 VagDataSize;
-  /*  30 */ /*SoundBank**/ u32 NextBank;
-};
 
 struct Midi {
   u32 DataID;
