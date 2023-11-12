@@ -1677,9 +1677,7 @@ std::vector<TFragDraw> emulate_tfrag_execution(const level_tools::TFragment& fra
   }
 
 end:
-  [[maybe_unused]] int total_dvert = 0;
   for (auto& draw : all_draws) {
-    total_dvert += draw.verts.size();
     draw.tfrag_id = frag.id;
   }
 
