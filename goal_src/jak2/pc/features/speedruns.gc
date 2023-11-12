@@ -1,6 +1,5 @@
 ;;-*-Lisp-*-
 (in-package goal)
-
 (define *speedrun-info* (new 'static 'speedrun-info))
 
 (defmethod set-category! ((this speedrun-info) (category speedrun-category))
@@ -20,6 +19,15 @@
       (initialize! *game-info* 'game (the-as game-save #f) "game-start"))
     (((speedrun-category newgame-heromode))
       (initialize! *game-info* 'game (the-as game-save #f) "game-start-hero"))
+    (((speedrun-category newgame-allopenorbs))
+      (set! (-> *speedrun-menu* 0 draw-menu?) #f)
+      (set-master-mode 'game)
+      (process-spawn-function process (lambda :behavior process ()
+        (initialize! *game-info* 'game (the-as game-save #f) "nest-start")
+        (until (and *target* (= (-> *target* next-state name) 'target-stance))
+          (suspend)
+          )
+        (task-node-close! (game-task-node nest-get-to-gun-introduction)))))
     (((speedrun-category all-cheats-allowed))
       (initialize! *game-info* 'game (the-as game-save #f) "game-start")))
 
@@ -105,6 +113,9 @@
       (new 'static 'popup-menu-flag :label "Hero Mode"
         :on-press (lambda () (set-category! *speedrun-info* (speedrun-category newgame-heromode)))
         :is-toggled? (lambda () (= (-> *speedrun-info* category) (speedrun-category newgame-heromode))))
+      (new 'static 'popup-menu-flag :label "All Open Orbs"
+        :on-press (lambda () (set-category! *speedrun-info* (speedrun-category newgame-allopenorbs)))
+        :is-toggled? (lambda () (= (-> *speedrun-info* category) (speedrun-category newgame-allopenorbs))))
       (new 'static 'popup-menu-flag :label "All Cheats Allowed"
         :on-press (lambda () (set-category! *speedrun-info* (speedrun-category all-cheats-allowed)))
         :is-toggled? (lambda () (= (-> *speedrun-info* category) (speedrun-category all-cheats-allowed))))
