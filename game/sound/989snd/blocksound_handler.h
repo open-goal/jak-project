@@ -84,8 +84,6 @@ class blocksound_handler : public sound_handler {
   std::array<s8, 4> m_registers{};
   std::array<LFOTracker, 4> m_lfo{{*this, *this, *this, *this}};
 
-  // TODO LFO
-
   s32 m_countdown{0};
   u32 m_next_grain{0};
 };
