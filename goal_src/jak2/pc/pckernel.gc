@@ -344,7 +344,7 @@
         ((set! simon-plat (search-process-tree *active-pool*
                   (lambda ((proc process)) (and (= (-> proc type symbol) 'tomb-plat-simon)
                                                 (-> proc next-state)
-                                                (eq-any? (-> proc next-state name) 'appear 'show-sequence 'idle)))))
+                                                (symbol-member? (-> proc next-state name) '(appear show-sequence idle))))))
           (set! disable-fader? #f)
           (case (-> simon-plat next-state name)
             (('appear)
@@ -441,6 +441,17 @@
   `(-> *pc-settings* flava-unlocked ,flava))
 
 
+(defun inside-city? ()
+  "are we inside haven city?"
+  (symbol-member? (-> *game-info* current-continue vis-nick) ;; TODO get actual level we're in?
+                  '(ctysluma  ctyslumb  ctyslumc
+                    ctygena   ctygenb   ctygenc
+                    ctymarka  ctymarkb
+                    ctyfarma  ctyfarmb
+                    ctyinda   ctyindb
+                    ctypal    ctyport   stadium)))
+
+
 (defmethod update-cheats ((obj pc-settings-jak2))
   "run cheats."
 
@@ -467,13 +478,7 @@
     ((and (pc-cheats? (-> *pc-settings* cheats) turbo-board)
           *target*
           (focus-test? *target* board)
-          (case (-> *game-info* current-continue vis-nick)
-            (('ctysluma 'ctyslumb 'ctyslumc 'ctypal
-              'ctygena 'ctygenb 'ctygenc 'ctyport
-              'ctymarka 'ctymarkb 'ctyfarma 'ctyfarmb
-              'ctyinda 'ctyindb 'stadium) #t)
-            ;; also allow in forest
-            (('forest) #t #|(not (task-node-open? (game-task-node forest-scouts-pegasus)))|#)))
+          (inside-city?))
       (set-setting! 'string-spline-max-move 'abs (* (-> *pc-cheat-state* turbo-board-speed) (meters 2)) 0)
       (set-setting! 'string-spline-accel 'abs (* (-> *pc-cheat-state* turbo-board-speed) (meters 0.045)) 0)
       (set-setting! 'string-spline-max-move-player 'abs (* (-> *pc-cheat-state* turbo-board-speed) (meters 1.5)) 0)
