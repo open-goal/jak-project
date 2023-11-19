@@ -212,7 +212,7 @@
        :menu-options (new 'static 'boxed-array :type menu-option
        ,@options))))))
 
-(defmacro progress-new-generic-link-to-details-page (title &key (should-disable? #f) &rest entries)
+(defmacro progress-new-generic-link-to-keybind-details-page (title &key (should-disable? #f) &key device-type &key entries &key confirm)
   `(new 'static 'menu-generic-link-option
     :name ,title
     :should-disable? ,should-disable?
@@ -221,6 +221,37 @@
       (new 'static 'menu-generic-details-page
        :name ,title
        :entries (new 'static 'boxed-array :type menu-generic-details-entry
-       ,@entries))))))
+       ,@(apply (lambda (x) `(new 'static 'menu-generic-details-keybind-entry :keybind (controller-keybind ,x) :device-type (input-device-type ,device-type))) entries)
+       (new 'static 'menu-generic-details-confirm-entry :name ,(first confirm) :on-confirm ,(second confirm))))))))
+
+(defmacro static-progress-generic-pc-settings-lod-default-high-boolean (name field)
+  `(new 'static 'menu-generic-boolean-option
+        :name ,name
+        :truthy-text (text-id progress-lod-default)
+        :falsey-text (text-id progress-lod-high)
+        :get-value-fn (lambda () ,field)
+        :on-confirm (lambda ((val symbol))
+          (set! ,field val)
+          (commit-to-file *pc-settings*))))
+
+(defmacro static-progress-generic-pc-settings-on-off-boolean (name field)
+  `(new 'static 'menu-generic-boolean-option
+        :name ,name
+        :truthy-text (text-id progress-on)
+        :falsey-text (text-id progress-off)
+        :get-value-fn (lambda () ,field)
+        :on-confirm (lambda ((val symbol))
+          (set! ,field val)
+          (commit-to-file *pc-settings*))))
+
+(defmacro static-progress-generic-pc-settings-shadows-normal-extended-boolean (name field)
+  `(new 'static 'menu-generic-boolean-option
+        :name ,name
+        :truthy-text (text-id progress-shadows-normal)
+        :falsey-text (text-id progress-shadows-extended)
+        :get-value-fn (lambda () ,field)
+        :on-confirm (lambda ((val symbol))
+          (set! ,field val)
+          (commit-to-file *pc-settings*))))
 
 (define *progress-generic-temp-string* (new 'global 'string 512 (the string #f)))
