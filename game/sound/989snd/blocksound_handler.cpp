@@ -10,7 +10,7 @@
 namespace snd {
 std::array<s8, 32> g_block_reg{};
 
-blocksound_handler::blocksound_handler(SoundBank& bank,
+BlockSoundHandler::BlockSoundHandler(SoundBank& bank,
                                        SFXBlock::SFX& sfx,
                                        VoiceManager& vm,
                                        s32 sfx_vol,
@@ -93,11 +93,11 @@ blocksound_handler::blocksound_handler(SoundBank& bank,
   m_next_grain = 0;
   m_countdown = m_sfx.Grains[0].Delay;
   while (m_countdown <= 0 && !m_done) {
-    do_grain();
+    DoGrain();
   }
 }
 
-blocksound_handler::~blocksound_handler() {
+BlockSoundHandler::~BlockSoundHandler() {
   for (auto& p : m_voices) {
     auto v = p.lock();
     if (v != nullptr) {
@@ -106,8 +106,8 @@ blocksound_handler::~blocksound_handler() {
   }
 }
 
-bool blocksound_handler::Tick() {
-  m_voices.remove_if([](std::weak_ptr<blocksound_voice>& p) { return p.expired(); });
+bool BlockSoundHandler::Tick() {
+  m_voices.remove_if([](std::weak_ptr<BlockSoundVoice>& p) { return p.expired(); });
 
   for (auto& lfo : m_lfo) {
     lfo.Tick();
@@ -135,13 +135,13 @@ bool blocksound_handler::Tick() {
 
   m_countdown--;
   while (m_countdown <= 0 && !m_done) {
-    do_grain();
+    DoGrain();
   }
 
   return false;
 };
 
-void blocksound_handler::Pause() {
+void BlockSoundHandler::Pause() {
   m_paused = true;
 
   for (auto& c : m_children) {
@@ -158,7 +158,7 @@ void blocksound_handler::Pause() {
   }
 }
 
-void blocksound_handler::Unpause() {
+void BlockSoundHandler::Unpause() {
   m_paused = false;
 
   for (auto& c : m_children) {
@@ -175,7 +175,7 @@ void blocksound_handler::Unpause() {
   }
 }
 
-void blocksound_handler::Stop() {
+void BlockSoundHandler::Stop() {
   m_done = true;
 
   for (auto& c : m_children) {
@@ -192,7 +192,7 @@ void blocksound_handler::Stop() {
   }
 }
 
-void blocksound_handler::SetVolPan(s32 vol, s32 pan) {
+void BlockSoundHandler::SetVolPan(s32 vol, s32 pan) {
   if (vol >= 0) {
     if (vol != VOLUME_DONT_CHANGE) {
       m_app_volume = vol;
@@ -241,7 +241,7 @@ void blocksound_handler::SetVolPan(s32 vol, s32 pan) {
   }
 }
 
-void blocksound_handler::update_pitch() {
+void BlockSoundHandler::UpdatePitch() {
   m_cur_pm = m_app_pm + m_lfo_pm;
   m_cur_pb = std::clamp<s32>(m_app_pb + m_lfo_pb, INT16_MIN, INT16_MAX);
 
@@ -259,23 +259,23 @@ void blocksound_handler::update_pitch() {
   }
 }
 
-void blocksound_handler::SetPMod(s32 mod) {
+void BlockSoundHandler::SetPMod(s32 mod) {
   for (auto& c : m_children) {
     c->SetPMod(mod);
   }
   m_app_pm = mod;
-  update_pitch();
+  UpdatePitch();
 }
 
-void blocksound_handler::SetPBend(s32 bend) {
+void BlockSoundHandler::SetPBend(s32 bend) {
   for (auto& c : m_children) {
     c->SetPBend(bend);
   }
   m_app_pb = bend;
-  update_pitch();
+  UpdatePitch();
 }
 
-void blocksound_handler::do_grain() {
+void BlockSoundHandler::DoGrain() {
   auto& grain = m_sfx.Grains[m_next_grain];
 
   s32 ret = grain(*this);

@@ -11,23 +11,23 @@ namespace snd {
 
 extern std::array<s8, 32> g_block_reg;
 
-class blocksound_voice : public VagVoice {
+class BlockSoundVoice : public VagVoice {
  public:
-  blocksound_voice(Tone& t) : VagVoice(t) {}
+  BlockSoundVoice(Tone& t) : VagVoice(t) {}
   s32 g_vol;
   s32 g_pan;
 };
 
-class blocksound_handler : public SoundHandler {
+class BlockSoundHandler : public SoundHandler {
  public:
-  blocksound_handler(SoundBank& bank,
-                     SFXBlock::SFX& sfx,
-                     VoiceManager& vm,
-                     s32 sfx_vol,
-                     s32 sfx_pan,
-                     SndPlayParams& params);
+  BlockSoundHandler(SoundBank& bank,
+                    SFXBlock::SFX& sfx,
+                    VoiceManager& vm,
+                    s32 sfx_vol,
+                    s32 sfx_pan,
+                    SndPlayParams& params);
 
-  ~blocksound_handler() override;
+  ~BlockSoundHandler() override;
   bool Tick() override;
   SoundBank& Bank() override { return m_bank; };
 
@@ -40,9 +40,9 @@ class blocksound_handler : public SoundHandler {
   void SetRegister(u8 reg, u8 value) override { m_registers.at(reg) = value; };
   void SetPBend(s32 bend) override;
 
-  void do_grain();
+  void DoGrain();
 
-  void update_pitch();
+  void UpdatePitch();
 
   bool m_paused{false};
 
@@ -56,7 +56,7 @@ class blocksound_handler : public SoundHandler {
   SFXBlock::SFX& m_sfx;
   VoiceManager& m_vm;
 
-  std::list<std::weak_ptr<blocksound_voice>> m_voices;
+  std::list<std::weak_ptr<BlockSoundVoice>> m_voices;
 
   std::list<std::unique_ptr<SoundHandler>> m_children;
 

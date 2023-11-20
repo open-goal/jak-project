@@ -89,52 +89,52 @@ enum class GrainType : u32 {
   COPY_REGISTER = 44,
 };
 
-class blocksound_handler;
+class BlockSoundHandler;
 
 struct Grain {
   GrainType Type;
   s32 Delay;
   std::variant<Tone, RandDelayParams, ControlParams, LFOParams, PlaySoundParams, PluginParams> data;
-  s32 operator()(blocksound_handler& handler) { return (this->*func[(u32)Type])(handler); }
+  s32 operator()(BlockSoundHandler& handler) { return (this->*func[(u32)Type])(handler); }
 
  private:
-  s32 snd_SFX_GRAIN_TYPE_NULL(blocksound_handler& handler);
-  s32 snd_SFX_GRAIN_TYPE_TONE(blocksound_handler& handler);
-  s32 snd_SFX_GRAIN_TYPE_XREF_ID(blocksound_handler& handler);
-  s32 snd_SFX_GRAIN_TYPE_XREF_NUM(blocksound_handler& handler);
-  s32 snd_SFX_GRAIN_TYPE_LFO_SETTINGS(blocksound_handler& handler);
-  s32 snd_SFX_GRAIN_TYPE_STARTCHILDSOUND(blocksound_handler& handler);
-  s32 snd_SFX_GRAIN_TYPE_STOPCHILDSOUND(blocksound_handler& handler);
-  s32 snd_SFX_GRAIN_TYPE_PLUGIN_MESSAGE(blocksound_handler& handler);
-  s32 snd_SFX_GRAIN_TYPE_BRANCH(blocksound_handler& handler);
-  s32 snd_SFX_UNKNOWN_GRAIN_TYPE(blocksound_handler& handler);
-  s32 snd_SFX_GRAIN_TYPE_CONTROL_NULL(blocksound_handler& handler);
-  s32 snd_SFX_GRAIN_TYPE_LOOP_START(blocksound_handler& handler);
-  s32 snd_SFX_GRAIN_TYPE_LOOP_END(blocksound_handler& handler);
-  s32 snd_SFX_GRAIN_TYPE_LOOP_CONTINUE(blocksound_handler& handler);
-  s32 snd_SFX_GRAIN_TYPE_STOP(blocksound_handler& handler);
-  s32 snd_SFX_GRAIN_TYPE_RAND_PLAY(blocksound_handler& handler);
-  s32 snd_SFX_GRAIN_TYPE_RAND_DELAY(blocksound_handler& handler);
-  s32 snd_SFX_GRAIN_TYPE_RAND_PB(blocksound_handler& handler);
-  s32 snd_SFX_GRAIN_TYPE_ADD_PB(blocksound_handler& handler);
-  s32 snd_SFX_GRAIN_TYPE_PB(blocksound_handler& handler);
-  s32 snd_SFX_GRAIN_TYPE_SET_REGISTER(blocksound_handler& handler);
-  s32 snd_SFX_GRAIN_TYPE_SET_REGISTER_RAND(blocksound_handler& handler);
-  s32 snd_SFX_GRAIN_TYPE_INC_REGISTER(blocksound_handler& handler);
-  s32 snd_SFX_GRAIN_TYPE_DEC_REGISTER(blocksound_handler& handler);
-  s32 snd_SFX_GRAIN_TYPE_TEST_REGISTER(blocksound_handler& handler);
-  s32 snd_SFX_GRAIN_TYPE_MARKER(blocksound_handler& handler);
-  s32 snd_SFX_GRAIN_TYPE_GOTO_MARKER(blocksound_handler& handler);
-  s32 snd_SFX_GRAIN_TYPE_GOTO_RANDOM_MARKER(blocksound_handler& handler);
-  s32 snd_SFX_GRAIN_TYPE_WAIT_FOR_ALL_VOICES(blocksound_handler& handler);
-  s32 snd_SFX_GRAIN_TYPE_PLAY_CYCLE(blocksound_handler& handler);
-  s32 snd_SFX_GRAIN_TYPE_ADD_REGISTER(blocksound_handler& handler);
-  s32 snd_SFX_GRAIN_TYPE_KEY_OFF_VOICES(blocksound_handler& handler);
-  s32 snd_SFX_GRAIN_TYPE_KILL_VOICES(blocksound_handler& handler);
-  s32 snd_SFX_GRAIN_TYPE_ON_STOP_MARKER(blocksound_handler& handler);
-  s32 snd_SFX_GRAIN_TYPE_COPY_REGISTER(blocksound_handler& handler);
+  s32 snd_SFX_GRAIN_TYPE_NULL(BlockSoundHandler& handler);
+  s32 snd_SFX_GRAIN_TYPE_TONE(BlockSoundHandler& handler);
+  s32 snd_SFX_GRAIN_TYPE_XREF_ID(BlockSoundHandler& handler);
+  s32 snd_SFX_GRAIN_TYPE_XREF_NUM(BlockSoundHandler& handler);
+  s32 snd_SFX_GRAIN_TYPE_LFO_SETTINGS(BlockSoundHandler& handler);
+  s32 snd_SFX_GRAIN_TYPE_STARTCHILDSOUND(BlockSoundHandler& handler);
+  s32 snd_SFX_GRAIN_TYPE_STOPCHILDSOUND(BlockSoundHandler& handler);
+  s32 snd_SFX_GRAIN_TYPE_PLUGIN_MESSAGE(BlockSoundHandler& handler);
+  s32 snd_SFX_GRAIN_TYPE_BRANCH(BlockSoundHandler& handler);
+  s32 snd_SFX_UNKNOWN_GRAIN_TYPE(BlockSoundHandler& handler);
+  s32 snd_SFX_GRAIN_TYPE_CONTROL_NULL(BlockSoundHandler& handler);
+  s32 snd_SFX_GRAIN_TYPE_LOOP_START(BlockSoundHandler& handler);
+  s32 snd_SFX_GRAIN_TYPE_LOOP_END(BlockSoundHandler& handler);
+  s32 snd_SFX_GRAIN_TYPE_LOOP_CONTINUE(BlockSoundHandler& handler);
+  s32 snd_SFX_GRAIN_TYPE_STOP(BlockSoundHandler& handler);
+  s32 snd_SFX_GRAIN_TYPE_RAND_PLAY(BlockSoundHandler& handler);
+  s32 snd_SFX_GRAIN_TYPE_RAND_DELAY(BlockSoundHandler& handler);
+  s32 snd_SFX_GRAIN_TYPE_RAND_PB(BlockSoundHandler& handler);
+  s32 snd_SFX_GRAIN_TYPE_ADD_PB(BlockSoundHandler& handler);
+  s32 snd_SFX_GRAIN_TYPE_PB(BlockSoundHandler& handler);
+  s32 snd_SFX_GRAIN_TYPE_SET_REGISTER(BlockSoundHandler& handler);
+  s32 snd_SFX_GRAIN_TYPE_SET_REGISTER_RAND(BlockSoundHandler& handler);
+  s32 snd_SFX_GRAIN_TYPE_INC_REGISTER(BlockSoundHandler& handler);
+  s32 snd_SFX_GRAIN_TYPE_DEC_REGISTER(BlockSoundHandler& handler);
+  s32 snd_SFX_GRAIN_TYPE_TEST_REGISTER(BlockSoundHandler& handler);
+  s32 snd_SFX_GRAIN_TYPE_MARKER(BlockSoundHandler& handler);
+  s32 snd_SFX_GRAIN_TYPE_GOTO_MARKER(BlockSoundHandler& handler);
+  s32 snd_SFX_GRAIN_TYPE_GOTO_RANDOM_MARKER(BlockSoundHandler& handler);
+  s32 snd_SFX_GRAIN_TYPE_WAIT_FOR_ALL_VOICES(BlockSoundHandler& handler);
+  s32 snd_SFX_GRAIN_TYPE_PLAY_CYCLE(BlockSoundHandler& handler);
+  s32 snd_SFX_GRAIN_TYPE_ADD_REGISTER(BlockSoundHandler& handler);
+  s32 snd_SFX_GRAIN_TYPE_KEY_OFF_VOICES(BlockSoundHandler& handler);
+  s32 snd_SFX_GRAIN_TYPE_KILL_VOICES(BlockSoundHandler& handler);
+  s32 snd_SFX_GRAIN_TYPE_ON_STOP_MARKER(BlockSoundHandler& handler);
+  s32 snd_SFX_GRAIN_TYPE_COPY_REGISTER(BlockSoundHandler& handler);
 
-  using GrainFunc = s32 (Grain::*)(blocksound_handler& handler);
+  using GrainFunc = s32 (Grain::*)(BlockSoundHandler& handler);
 
   static constexpr std::array<GrainFunc, 45> func = {
       &Grain::snd_SFX_GRAIN_TYPE_NULL,

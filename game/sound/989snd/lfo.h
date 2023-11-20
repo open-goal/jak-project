@@ -8,11 +8,11 @@ namespace snd {
 enum class LFOType { OFF, SINE, SQUARE, TRIANGLE, SAW, RAND };
 enum class LFOTarget { NONE, VOLUME, PAN, PMOD, PBEND, UNK1, UNK2 };
 
-class blocksound_handler;
+class BlockSoundHandler;
 
 class LFOTracker {
  public:
-  LFOTracker(blocksound_handler& handler) : m_handler(handler) {}
+  LFOTracker(BlockSoundHandler& handler) : m_handler(handler) {}
   LFOType m_type{LFOType::OFF};
   LFOTarget m_target{0};
   u8 m_target_extra{0};
@@ -35,7 +35,7 @@ class LFOTracker {
   void Tick();
   s32 GetLFO(s32 step_mult);
 
-  blocksound_handler& m_handler;
+  BlockSoundHandler& m_handler;
 };
 
 }  // namespace snd

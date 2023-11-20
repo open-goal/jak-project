@@ -7,11 +7,11 @@
 
 namespace snd {
 
-s32 Grain::snd_SFX_GRAIN_TYPE_NULL(blocksound_handler& handler) {
+s32 Grain::snd_SFX_GRAIN_TYPE_NULL(BlockSoundHandler& handler) {
   return 0;
 }
 
-s32 Grain::snd_SFX_GRAIN_TYPE_TONE(blocksound_handler& handler) {
+s32 Grain::snd_SFX_GRAIN_TYPE_TONE(BlockSoundHandler& handler) {
   auto& tone = std::get<Tone>(data);
 
   handler.m_cur_volume =
@@ -29,7 +29,7 @@ s32 Grain::snd_SFX_GRAIN_TYPE_TONE(blocksound_handler& handler) {
     return 0;
   }
 
-  auto voice = std::make_shared<blocksound_voice>(tone);
+  auto voice = std::make_shared<BlockSoundVoice>(tone);
 
   s32 vol = tone.Vol;
 
@@ -78,14 +78,14 @@ s32 Grain::snd_SFX_GRAIN_TYPE_TONE(blocksound_handler& handler) {
   return 0;
 }
 
-s32 Grain::snd_SFX_GRAIN_TYPE_XREF_ID(blocksound_handler& handler) {
+s32 Grain::snd_SFX_GRAIN_TYPE_XREF_ID(BlockSoundHandler& handler) {
   return 0;
 }
-s32 Grain::snd_SFX_GRAIN_TYPE_XREF_NUM(blocksound_handler& handler) {
+s32 Grain::snd_SFX_GRAIN_TYPE_XREF_NUM(BlockSoundHandler& handler) {
   return 0;
 }
 
-s32 Grain::snd_SFX_GRAIN_TYPE_LFO_SETTINGS(blocksound_handler& handler) {
+s32 Grain::snd_SFX_GRAIN_TYPE_LFO_SETTINGS(BlockSoundHandler& handler) {
   auto lfop = std::get<LFOParams>(data);
   auto& lfo = handler.m_lfo.at(lfop.which_lfo);
 
@@ -120,7 +120,7 @@ s32 Grain::snd_SFX_GRAIN_TYPE_LFO_SETTINGS(blocksound_handler& handler) {
   return 0;
 }
 
-s32 Grain::snd_SFX_GRAIN_TYPE_STARTCHILDSOUND(blocksound_handler& handler) {
+s32 Grain::snd_SFX_GRAIN_TYPE_STARTCHILDSOUND(BlockSoundHandler& handler) {
   auto psp = std::get<PlaySoundParams>(data);
 
   s32 vol = psp.vol;
@@ -171,13 +171,13 @@ s32 Grain::snd_SFX_GRAIN_TYPE_STARTCHILDSOUND(blocksound_handler& handler) {
   return 0;
 }
 
-s32 Grain::snd_SFX_GRAIN_TYPE_STOPCHILDSOUND(blocksound_handler& handler) {
+s32 Grain::snd_SFX_GRAIN_TYPE_STOPCHILDSOUND(BlockSoundHandler& handler) {
   auto psp = std::get<PlaySoundParams>(data);
   auto& block = static_cast<SFXBlock&>(handler.m_bank);
 
   if (psp.sound_id >= 0) {
     for (auto it = handler.m_children.begin(); it != handler.m_children.end();) {
-      auto* sound = static_cast<blocksound_handler*>(it->get());
+      auto* sound = static_cast<BlockSoundHandler*>(it->get());
       // TODO VERIFY that this works
       if (&sound->m_sfx == &block.Sounds[psp.sound_id]) {
         it = handler.m_children.erase(it);
@@ -193,29 +193,29 @@ s32 Grain::snd_SFX_GRAIN_TYPE_STOPCHILDSOUND(blocksound_handler& handler) {
   return 0;
 }
 
-s32 Grain::snd_SFX_GRAIN_TYPE_PLUGIN_MESSAGE(blocksound_handler& handler) {
+s32 Grain::snd_SFX_GRAIN_TYPE_PLUGIN_MESSAGE(BlockSoundHandler& handler) {
   // lg::warn("plugin message");
   //  TODO probably used
   return 0;
 }
 
-s32 Grain::snd_SFX_GRAIN_TYPE_BRANCH(blocksound_handler& handler) {
+s32 Grain::snd_SFX_GRAIN_TYPE_BRANCH(BlockSoundHandler& handler) {
   return 0;
 }
 
-s32 Grain::snd_SFX_UNKNOWN_GRAIN_TYPE(blocksound_handler& handler) {
+s32 Grain::snd_SFX_UNKNOWN_GRAIN_TYPE(BlockSoundHandler& handler) {
   return 0;
 }
 
-s32 Grain::snd_SFX_GRAIN_TYPE_CONTROL_NULL(blocksound_handler& handler) {
+s32 Grain::snd_SFX_GRAIN_TYPE_CONTROL_NULL(BlockSoundHandler& handler) {
   return 0;
 }
 
-s32 Grain::snd_SFX_GRAIN_TYPE_LOOP_START(blocksound_handler& handler) {
+s32 Grain::snd_SFX_GRAIN_TYPE_LOOP_START(BlockSoundHandler& handler) {
   return 0;
 }
 
-s32 Grain::snd_SFX_GRAIN_TYPE_LOOP_END(blocksound_handler& handler) {
+s32 Grain::snd_SFX_GRAIN_TYPE_LOOP_END(BlockSoundHandler& handler) {
   bool found = false;
   for (int i = handler.m_next_grain - 1; i >= 0 && !found; i--) {
     if (handler.m_sfx.Grains[i].Type == GrainType::LOOP_START) {
@@ -231,7 +231,7 @@ s32 Grain::snd_SFX_GRAIN_TYPE_LOOP_END(blocksound_handler& handler) {
   return 0;
 }
 
-s32 Grain::snd_SFX_GRAIN_TYPE_LOOP_CONTINUE(blocksound_handler& handler) {
+s32 Grain::snd_SFX_GRAIN_TYPE_LOOP_CONTINUE(BlockSoundHandler& handler) {
   bool found = false;
   for (int i = handler.m_next_grain + 1; i < (int)handler.m_sfx.Grains.size() && !found; i++) {
     if (handler.m_sfx.Grains[i].Type == GrainType::LOOP_END) {
@@ -247,13 +247,13 @@ s32 Grain::snd_SFX_GRAIN_TYPE_LOOP_CONTINUE(blocksound_handler& handler) {
   return 0;
 }
 
-s32 Grain::snd_SFX_GRAIN_TYPE_STOP(blocksound_handler& handler) {
+s32 Grain::snd_SFX_GRAIN_TYPE_STOP(BlockSoundHandler& handler) {
   handler.m_done = true;
 
   return 0;
 }
 
-s32 Grain::snd_SFX_GRAIN_TYPE_RAND_PLAY(blocksound_handler& handler) {
+s32 Grain::snd_SFX_GRAIN_TYPE_RAND_PLAY(BlockSoundHandler& handler) {
   auto cp = std::get<ControlParams>(data);
   auto options = cp.param[0];
   auto count = cp.param[1];
@@ -275,12 +275,12 @@ s32 Grain::snd_SFX_GRAIN_TYPE_RAND_PLAY(blocksound_handler& handler) {
   return 0;
 }
 
-s32 Grain::snd_SFX_GRAIN_TYPE_RAND_DELAY(blocksound_handler& handler) {
+s32 Grain::snd_SFX_GRAIN_TYPE_RAND_DELAY(BlockSoundHandler& handler) {
   auto max = std::get<RandDelayParams>(data);
   return rand() % max.Amount;
 }
 
-s32 Grain::snd_SFX_GRAIN_TYPE_RAND_PB(blocksound_handler& handler) {
+s32 Grain::snd_SFX_GRAIN_TYPE_RAND_PB(BlockSoundHandler& handler) {
   auto cp = std::get<ControlParams>(data);
   auto pb = cp.param[0];
 
@@ -290,7 +290,7 @@ s32 Grain::snd_SFX_GRAIN_TYPE_RAND_PB(blocksound_handler& handler) {
   return 0;
 }
 
-s32 Grain::snd_SFX_GRAIN_TYPE_ADD_PB(blocksound_handler& handler) {
+s32 Grain::snd_SFX_GRAIN_TYPE_ADD_PB(BlockSoundHandler& handler) {
   auto cp = std::get<ControlParams>(data);
   auto pb = cp.param[0];
 
@@ -302,7 +302,7 @@ s32 Grain::snd_SFX_GRAIN_TYPE_ADD_PB(blocksound_handler& handler) {
   return 0;
 }
 
-s32 Grain::snd_SFX_GRAIN_TYPE_PB(blocksound_handler& handler) {
+s32 Grain::snd_SFX_GRAIN_TYPE_PB(BlockSoundHandler& handler) {
   auto cp = std::get<ControlParams>(data);
   auto pb = cp.param[0];
 
@@ -315,7 +315,7 @@ s32 Grain::snd_SFX_GRAIN_TYPE_PB(blocksound_handler& handler) {
   return 0;
 }
 
-s32 Grain::snd_SFX_GRAIN_TYPE_SET_REGISTER(blocksound_handler& handler) {
+s32 Grain::snd_SFX_GRAIN_TYPE_SET_REGISTER(BlockSoundHandler& handler) {
   auto cp = std::get<ControlParams>(data);
   auto reg = cp.param[0];
   auto value = cp.param[1];
@@ -329,7 +329,7 @@ s32 Grain::snd_SFX_GRAIN_TYPE_SET_REGISTER(blocksound_handler& handler) {
   return 0;
 }
 
-s32 Grain::snd_SFX_GRAIN_TYPE_SET_REGISTER_RAND(blocksound_handler& handler) {
+s32 Grain::snd_SFX_GRAIN_TYPE_SET_REGISTER_RAND(BlockSoundHandler& handler) {
   auto cp = std::get<ControlParams>(data);
   auto reg = cp.param[0];
   auto lower_bound = cp.param[1];
@@ -346,7 +346,7 @@ s32 Grain::snd_SFX_GRAIN_TYPE_SET_REGISTER_RAND(blocksound_handler& handler) {
   return 0;
 }
 
-s32 Grain::snd_SFX_GRAIN_TYPE_INC_REGISTER(blocksound_handler& handler) {
+s32 Grain::snd_SFX_GRAIN_TYPE_INC_REGISTER(BlockSoundHandler& handler) {
   auto cp = std::get<ControlParams>(data);
   auto reg = cp.param[0];
 
@@ -361,7 +361,7 @@ s32 Grain::snd_SFX_GRAIN_TYPE_INC_REGISTER(blocksound_handler& handler) {
   return 0;
 }
 
-s32 Grain::snd_SFX_GRAIN_TYPE_DEC_REGISTER(blocksound_handler& handler) {
+s32 Grain::snd_SFX_GRAIN_TYPE_DEC_REGISTER(BlockSoundHandler& handler) {
   auto cp = std::get<ControlParams>(data);
   auto reg = cp.param[0];
 
@@ -377,7 +377,7 @@ s32 Grain::snd_SFX_GRAIN_TYPE_DEC_REGISTER(blocksound_handler& handler) {
   return 0;
 }
 
-s32 Grain::snd_SFX_GRAIN_TYPE_TEST_REGISTER(blocksound_handler& handler) {
+s32 Grain::snd_SFX_GRAIN_TYPE_TEST_REGISTER(BlockSoundHandler& handler) {
   auto cp = std::get<ControlParams>(data);
   auto reg = cp.param[0];
   auto action = cp.param[1];
@@ -406,11 +406,11 @@ s32 Grain::snd_SFX_GRAIN_TYPE_TEST_REGISTER(blocksound_handler& handler) {
   return 0;
 }
 
-s32 Grain::snd_SFX_GRAIN_TYPE_MARKER(blocksound_handler& handler) {
+s32 Grain::snd_SFX_GRAIN_TYPE_MARKER(BlockSoundHandler& handler) {
   return 0;
 }
 
-s32 Grain::snd_SFX_GRAIN_TYPE_GOTO_MARKER(blocksound_handler& handler) {
+s32 Grain::snd_SFX_GRAIN_TYPE_GOTO_MARKER(BlockSoundHandler& handler) {
   auto cp = std::get<ControlParams>(data);
   auto target_mark = cp.param[0];
   bool found = false;
@@ -434,7 +434,7 @@ s32 Grain::snd_SFX_GRAIN_TYPE_GOTO_MARKER(blocksound_handler& handler) {
   return 0;
 }
 
-s32 Grain::snd_SFX_GRAIN_TYPE_GOTO_RANDOM_MARKER(blocksound_handler& handler) {
+s32 Grain::snd_SFX_GRAIN_TYPE_GOTO_RANDOM_MARKER(BlockSoundHandler& handler) {
   auto cp = std::get<ControlParams>(data);
   auto lower_bound = cp.param[0];
   auto upper_bound = cp.param[1];
@@ -462,7 +462,7 @@ s32 Grain::snd_SFX_GRAIN_TYPE_GOTO_RANDOM_MARKER(blocksound_handler& handler) {
   return 0;
 }
 
-s32 Grain::snd_SFX_GRAIN_TYPE_WAIT_FOR_ALL_VOICES(blocksound_handler& handler) {
+s32 Grain::snd_SFX_GRAIN_TYPE_WAIT_FOR_ALL_VOICES(BlockSoundHandler& handler) {
   if (!handler.m_voices.empty()) {
     handler.m_next_grain--;
     return 1;
@@ -471,7 +471,7 @@ s32 Grain::snd_SFX_GRAIN_TYPE_WAIT_FOR_ALL_VOICES(blocksound_handler& handler) {
   return 0;
 }
 
-s32 Grain::snd_SFX_GRAIN_TYPE_PLAY_CYCLE(blocksound_handler& handler) {
+s32 Grain::snd_SFX_GRAIN_TYPE_PLAY_CYCLE(BlockSoundHandler& handler) {
   auto& cp = std::get<ControlParams>(data);
   auto group_size = cp.param[0];
   auto group_count = cp.param[1];
@@ -490,7 +490,7 @@ s32 Grain::snd_SFX_GRAIN_TYPE_PLAY_CYCLE(blocksound_handler& handler) {
   return 0;
 }
 
-s32 Grain::snd_SFX_GRAIN_TYPE_ADD_REGISTER(blocksound_handler& handler) {
+s32 Grain::snd_SFX_GRAIN_TYPE_ADD_REGISTER(BlockSoundHandler& handler) {
   auto cp = std::get<ControlParams>(data);
   auto val = cp.param[0];
   auto reg = cp.param[1];
@@ -505,7 +505,7 @@ s32 Grain::snd_SFX_GRAIN_TYPE_ADD_REGISTER(blocksound_handler& handler) {
   return 0;
 }
 
-s32 Grain::snd_SFX_GRAIN_TYPE_KEY_OFF_VOICES(blocksound_handler& handler) {
+s32 Grain::snd_SFX_GRAIN_TYPE_KEY_OFF_VOICES(BlockSoundHandler& handler) {
   for (auto& p : handler.m_voices) {
     auto v = p.lock();
     if (v == nullptr) {
@@ -517,7 +517,7 @@ s32 Grain::snd_SFX_GRAIN_TYPE_KEY_OFF_VOICES(blocksound_handler& handler) {
   return 0;
 }
 
-s32 Grain::snd_SFX_GRAIN_TYPE_KILL_VOICES(blocksound_handler& handler) {
+s32 Grain::snd_SFX_GRAIN_TYPE_KILL_VOICES(BlockSoundHandler& handler) {
   for (auto& p : handler.m_voices) {
     auto v = p.lock();
     if (v == nullptr) {
@@ -532,12 +532,12 @@ s32 Grain::snd_SFX_GRAIN_TYPE_KILL_VOICES(blocksound_handler& handler) {
   return 0;
 }
 
-s32 Grain::snd_SFX_GRAIN_TYPE_ON_STOP_MARKER(blocksound_handler& handler) {
+s32 Grain::snd_SFX_GRAIN_TYPE_ON_STOP_MARKER(BlockSoundHandler& handler) {
   handler.m_next_grain = handler.m_sfx.Grains.size() - 1;
   return 0;
 }
 
-s32 Grain::snd_SFX_GRAIN_TYPE_COPY_REGISTER(blocksound_handler& handler) {
+s32 Grain::snd_SFX_GRAIN_TYPE_COPY_REGISTER(BlockSoundHandler& handler) {
   auto cp = std::get<ControlParams>(data);
   auto src = cp.param[0];
   auto dst = cp.param[1];

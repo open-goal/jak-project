@@ -60,14 +60,14 @@ void LFOTracker::Tick() {
       s32 pm = (GetLFO(2) * m_range) >> 15;
       if (m_handler.m_lfo_pm != pm) {
         m_handler.m_lfo_pm = pm;
-        m_handler.update_pitch();
+        m_handler.UpdatePitch();
       }
     } break;
     case LFOTarget::PBEND: {
       s32 pb = (GetLFO(2) * m_range) >> 15;
       if (m_handler.m_lfo_pb != pb) {
         m_handler.m_lfo_pb = pb;
-        m_handler.update_pitch();
+        m_handler.UpdatePitch();
       }
     } break;
     case LFOTarget::UNK1: {
