@@ -20,7 +20,7 @@ class voice {
   };
 
   voice(AllocationType alloc = AllocationType::managed) : m_Alloc(alloc) {}
-  s16_output run();
+  s16Output run();
 
   void key_on();
 

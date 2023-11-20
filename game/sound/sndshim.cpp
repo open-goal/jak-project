@@ -79,7 +79,7 @@ void snd_SetReverbType(s32 core, s32 type) {}
 
 void snd_SetPanTable(s16* table) {
   if (player) {
-    player->SetPanTable((snd::vol_pair*)table);
+    player->SetPanTable((snd::VolPair*)table);
   }
 }
 

@@ -43,7 +43,7 @@ void VoiceManager::StartTone(std::shared_ptr<VagVoice> voice) {
   mVoices.emplace_front(voice);
   mSynth.AddVoice(voice);
 }
-vol_pair VoiceManager::MakeVolume(int vol1, int pan1, int vol2, int pan2, int vol3, int pan3) {
+VolPair VoiceManager::MakeVolume(int vol1, int pan1, int vol2, int pan2, int vol3, int pan3) {
   // Scale up as close as we can to max positive 16bit volume
   // I'd have just used shifting but I guess this does get closer
 
@@ -97,7 +97,7 @@ vol_pair VoiceManager::MakeVolume(int vol1, int pan1, int vol2, int pan2, int vo
   return {lvol, rvol};
 }
 
-vol_pair VoiceManager::MakeVolumeB(int sound_vol,
+VolPair VoiceManager::MakeVolumeB(int sound_vol,
                                       int velocity_volume,
                                       int pan,
                                       int prog_vol,

@@ -37,7 +37,7 @@ class VagVoice : public voice {
   VagVoice(Tone& t) : tone(t) {}
   Tone& tone;
   u8 group{0};
-  vol_pair basevol{};
+  VolPair basevol{};
   s32 current_pm{0};
   s32 current_pb{0};
   s32 start_note{0};
@@ -51,12 +51,12 @@ class VoiceManager {
   void StartTone(std::shared_ptr<VagVoice> voice);
   void Pause(std::shared_ptr<VagVoice> voice);
   void Unpause(std::shared_ptr<VagVoice> voice);
-  void SetPanTable(vol_pair* table) { mPanTable = table; };
+  void SetPanTable(VolPair* table) { mPanTable = table; };
 
-  vol_pair MakeVolume(int vol1, int pan1, int vol2, int pan2, int vol3, int pan3);
+  VolPair MakeVolume(int vol1, int pan1, int vol2, int pan2, int vol3, int pan3);
 
   // This is super silly, but it's what 989snd does
-  vol_pair MakeVolumeB(int sound_vol,
+  VolPair MakeVolumeB(int sound_vol,
                        int velocity_volume,
                        int pan,
                        int prog_vol,
@@ -81,7 +81,7 @@ class VoiceManager {
   std::array<s32, 32> mMasterVol;
   std::array<s32, 32> mGroupDuck;
 
-  const vol_pair* mPanTable{nullptr};
+  const VolPair* mPanTable{nullptr};
 };
 
 }  // namespace snd

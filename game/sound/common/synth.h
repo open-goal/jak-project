@@ -25,7 +25,7 @@ class Synth {
     mVolume.right.Set(0x3FFF);
   }
 
-  s16_output Tick();
+  s16Output Tick();
   void AddVoice(std::shared_ptr<voice> voice);
   void SetMasterVol(u32 volume);
 

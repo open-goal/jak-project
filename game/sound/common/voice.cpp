@@ -104,7 +104,7 @@ void voice::key_off() {
   // fmt::print("Key Off\n");
 }
 
-s16_output voice::run() {
+s16Output voice::run() {
   DecodeSamples();
 
   u32 index = (m_Counter & 0x0FF0) >> 4;
@@ -134,6 +134,6 @@ s16_output voice::run() {
   m_ADSR.Run();
   m_Volume.Run();
 
-  return s16_output{left, right};
+  return s16Output{left, right};
 }
 }  // namespace snd

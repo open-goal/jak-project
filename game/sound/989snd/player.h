@@ -48,7 +48,7 @@ class Player {
   void SetMasterVolume(u32 group, s32 volume);
   void UnloadBank(BankHandle bank_handle);
   void StopSound(u32 sound_handle);
-  void SetPanTable(vol_pair* pantable);
+  void SetPanTable(VolPair* pantable);
   void SetPlaybackMode(s32 mode);
   void PauseSound(s32 sound_handle);
   void ContinueSound(s32 sound_handle);
@@ -72,7 +72,7 @@ class Player {
   IdAllocator mHandleAllocator;
   std::unordered_map<u32, std::unique_ptr<sound_handler>> mHandlers;
 
-  void Tick(s16_output* stream, int samples);
+  void Tick(s16Output* stream, int samples);
 
 #ifdef _WIN32
   bool m_coinitialized = false;

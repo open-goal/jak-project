@@ -85,7 +85,7 @@ long Player::sound_callback([[maybe_unused]] cubeb_stream* stream,
                             [[maybe_unused]] const void* input,
                             void* output_buffer,
                             long nframes) {
-  ((Player*)user)->Tick((s16_output*)output_buffer, nframes);
+  ((Player*)user)->Tick((s16Output*)output_buffer, nframes);
   return nframes;
 }
 
@@ -93,7 +93,7 @@ void Player::state_callback([[maybe_unused]] cubeb_stream* stream,
                             [[maybe_unused]] void* user,
                             [[maybe_unused]] cubeb_state state) {}
 
-void Player::Tick(s16_output* stream, int samples) {
+void Player::Tick(s16Output* stream, int samples) {
   std::scoped_lock lock(mTickLock);
   static int htick = 200;
   static int stick = 48000;
@@ -255,7 +255,7 @@ void Player::UnloadBank(BankHandle bank_handle) {
   mLoader.unload_bank(bank_handle);
 }
 
-void Player::SetPanTable(vol_pair* pantable) {
+void Player::SetPanTable(VolPair* pantable) {
   std::scoped_lock lock(mTickLock);
   mVmanager.SetPanTable(pantable);
 }

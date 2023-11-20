@@ -10,8 +10,8 @@ static s16 ApplyVolume(s16 sample, s32 volume) {
   return (sample * volume) >> 15;
 }
 
-s16_output Synth::Tick() {
-  s16_output out{};
+s16Output Synth::Tick() {
+  s16Output out{};
 
   mVoices.remove_if([](std::shared_ptr<voice>& v) { return v->dead(); });
   for (auto& v : mVoices) {
