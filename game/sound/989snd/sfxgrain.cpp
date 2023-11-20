@@ -89,9 +89,9 @@ s32 Grain::snd_SFX_GRAIN_TYPE_LFO_SETTINGS(blocksound_handler& handler) {
   auto lfop = std::get<LFOParams>(data);
   auto& lfo = handler.m_lfo.at(lfop.which_lfo);
 
-  lfo.m_target = static_cast<lfo_target>(lfop.target);
-  if (lfo.m_target != lfo_target::NONE) {
-    lfo.m_type = static_cast<lfo_type>(lfop.shape);
+  lfo.m_target = static_cast<LFOTarget>(lfop.target);
+  if (lfo.m_target != LFOTarget::NONE) {
+    lfo.m_type = static_cast<LFOType>(lfop.shape);
     lfo.m_target_extra = lfop.target_extra;
     lfo.m_setup_flags = lfop.flags;
     lfo.m_depth = lfop.depth;
@@ -100,7 +100,7 @@ s32 Grain::snd_SFX_GRAIN_TYPE_LFO_SETTINGS(blocksound_handler& handler) {
     lfo.m_orig_step_size = lfop.step_size;
     lfo.m_state_hold1 = 0;
     lfo.m_last_lfo = 0;
-    if (lfo.m_type == lfo_type::SQUARE) {
+    if (lfo.m_type == LFOType::SQUARE) {
       lfo.m_state_hold1 = lfop.duty_cycle;
     }
     lfo.m_state_hold2 = 0;
@@ -112,9 +112,9 @@ s32 Grain::snd_SFX_GRAIN_TYPE_LFO_SETTINGS(blocksound_handler& handler) {
 
     // lg::info("starting LFO type {} for {}", magic_enum::enum_name(lfo.m_type),
     //          magic_enum::enum_name(lfo.m_target));
-    lfo.init();
+    lfo.Init();
   } else {
-    lfo.m_type = lfo_type::OFF;
+    lfo.m_type = LFOType::OFF;
   }
 
   return 0;

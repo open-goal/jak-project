@@ -110,7 +110,7 @@ bool blocksound_handler::tick() {
   m_voices.remove_if([](std::weak_ptr<blocksound_voice>& p) { return p.expired(); });
 
   for (auto& lfo : m_lfo) {
-    lfo.tick();
+    lfo.Tick();
   }
 
   for (auto it = m_children.begin(); it != m_children.end();) {
