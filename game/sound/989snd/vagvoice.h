@@ -32,7 +32,7 @@ struct Tone {
   u8* Sample;
 };
 
-class VagVoice : public voice {
+class VagVoice : public Voice {
  public:
   VagVoice(Tone& t) : tone(t) {}
   Tone& tone;

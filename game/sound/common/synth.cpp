@@ -13,9 +13,9 @@ static s16 ApplyVolume(s16 sample, s32 volume) {
 s16Output Synth::Tick() {
   s16Output out{};
 
-  mVoices.remove_if([](std::shared_ptr<voice>& v) { return v->dead(); });
+  mVoices.remove_if([](std::shared_ptr<Voice>& v) { return v->Dead(); });
   for (auto& v : mVoices) {
-    out += v->run();
+    out += v->Run();
   }
 
   out.left = ApplyVolume(out.left, mVolume.left.Get());
@@ -26,7 +26,7 @@ s16Output Synth::Tick() {
   return out;
 }
 
-void Synth::AddVoice(std::shared_ptr<voice> voice) {
+void Synth::AddVoice(std::shared_ptr<Voice> voice) {
   mVoices.emplace_front(voice);
 }
 

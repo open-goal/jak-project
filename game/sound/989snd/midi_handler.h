@@ -48,7 +48,7 @@ class midi_handler : public sound_handler {
     for (auto& p : m_voices) {
       auto v = p.lock();
       if (v != nullptr) {
-        v->stop();
+        v->Stop();
       }
     }
   }

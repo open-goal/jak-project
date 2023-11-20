@@ -55,7 +55,7 @@ class Player {
   void PauseAllSoundsInGroup(u8 group);
   void ContinueAllSoundsInGroup(u8 group);
   void SetSoundVolPan(s32 sound_handle, s32 vol, s32 pan);
-  void SubmitVoice(std::shared_ptr<voice>& voice) { mSynth.AddVoice(voice); };
+  void SubmitVoice(std::shared_ptr<Voice>& voice) { mSynth.AddVoice(voice); };
   void SetSoundPmod(s32 sound_handle, s32 mod);
   void InitCubeb();
   void DestroyCubeb();

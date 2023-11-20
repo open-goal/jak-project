@@ -19,7 +19,7 @@ void VoiceManager::StartTone(std::shared_ptr<VagVoice> voice) {
   s16 left = AdjustVolToGroup(voice->basevol.left, voice->group);
   s16 right = AdjustVolToGroup(voice->basevol.right, voice->group);
 
-  voice->set_volume(left >> 1, right >> 1);
+  voice->SetVolume(left >> 1, right >> 1);
 
   if ((voice->tone.Flags & 0x10) != 0x0) {
     throw std::runtime_error("reverb only voice not handler");
@@ -31,13 +31,13 @@ void VoiceManager::StartTone(std::shared_ptr<VagVoice> voice) {
   auto pitch =
       PS1Note2Pitch(voice->tone.CenterNote, voice->tone.CenterFine, note.first, note.second);
 
-  voice->set_pitch(pitch);
-  voice->set_asdr1(voice->tone.ADSR1);
-  voice->set_asdr2(voice->tone.ADSR2);
+  voice->SetPitch(pitch);
+  voice->SetAsdr1(voice->tone.ADSR1);
+  voice->SetAsdr2(voice->tone.ADSR2);
 
-  voice->set_sample((u16*)(voice->tone.Sample));
+  voice->SetSample((u16*)(voice->tone.Sample));
 
-  voice->key_on();
+  voice->KeyOn();
 
   CleanVoices();
   mVoices.emplace_front(voice);
@@ -193,14 +193,14 @@ void VoiceManager::SetMasterVol(u8 group, s32 volume) {
       s16 left = AdjustVolToGroup(voice->basevol.left, voice->group);
       s16 right = AdjustVolToGroup(voice->basevol.right, voice->group);
 
-      voice->set_volume(left >> 1, right >> 1);
+      voice->SetVolume(left >> 1, right >> 1);
     }
   }
 }
 
 void VoiceManager::Pause(std::shared_ptr<VagVoice> voice) {
-  voice->set_volume(0, 0);
-  voice->set_pitch(0);
+  voice->SetVolume(0, 0);
+  voice->SetPitch(0);
   voice->paused = true;
 }
 
@@ -208,7 +208,7 @@ void VoiceManager::Unpause(std::shared_ptr<VagVoice> voice) {
   s16 left = AdjustVolToGroup(voice->basevol.left, voice->group);
   s16 right = AdjustVolToGroup(voice->basevol.right, voice->group);
 
-  voice->set_volume(left >> 1, right >> 1);
+  voice->SetVolume(left >> 1, right >> 1);
 
   std::pair<s16, s16> note = pitchbend(voice->tone, voice->current_pb, voice->current_pm,
                                        voice->start_note, voice->start_fine);
@@ -216,7 +216,7 @@ void VoiceManager::Unpause(std::shared_ptr<VagVoice> voice) {
   auto pitch =
       PS1Note2Pitch(voice->tone.CenterNote, voice->tone.CenterFine, note.first, note.second);
 
-  voice->set_pitch(pitch);
+  voice->SetPitch(pitch);
   voice->paused = false;
 }
 

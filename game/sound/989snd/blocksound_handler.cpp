@@ -101,7 +101,7 @@ blocksound_handler::~blocksound_handler() {
   for (auto& p : m_voices) {
     auto v = p.lock();
     if (v != nullptr) {
-      v->stop();
+      v->Stop();
     }
   }
 }
@@ -188,7 +188,7 @@ void blocksound_handler::stop() {
       continue;
     }
 
-    voice->key_off();
+    voice->KeyOff();
   }
 }
 
@@ -236,7 +236,7 @@ void blocksound_handler::set_vol_pan(s32 vol, s32 pan) {
       auto left = m_vm.AdjustVolToGroup(volume.left, m_group);
       auto right = m_vm.AdjustVolToGroup(volume.right, m_group);
 
-      voice->set_volume(left >> 1, right >> 1);
+      voice->SetVolume(left >> 1, right >> 1);
     }
   }
 }
@@ -255,7 +255,7 @@ void blocksound_handler::update_pitch() {
     auto pitch =
         PS1Note2Pitch(voice->tone.CenterNote, voice->tone.CenterFine, note.first, note.second);
 
-    voice->set_pitch(pitch);
+    voice->SetPitch(pitch);
   }
 }
 

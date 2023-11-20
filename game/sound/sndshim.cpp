@@ -15,8 +15,8 @@ void snd_StartSoundSystem() {
   player = std::make_unique<snd::Player>();
 
   for (auto& voice : voices) {
-    voice = std::make_shared<snd::voice>(snd::voice::AllocationType::permanent);
-    voice->set_sample((u16*)spu_memory);
+    voice = std::make_shared<snd::Voice>(snd::Voice::AllocationType::Permanent);
+    voice->SetSample((u16*)spu_memory);
     player->SubmitVoice(voice);
   }
 }
@@ -231,13 +231,13 @@ s32 snd_GetVoiceStatus(s32 voice) {
 
 void snd_keyOnVoiceRaw(u32 core, u32 voice_id) {
   if (voices[0]) {
-    voices[0]->key_on();
+    voices[0]->KeyOn();
   }
 }
 
 void snd_keyOffVoiceRaw(u32 core, u32 voice_id) {
   if (voices[0]) {
-    voices[0]->key_off();
+    voices[0]->KeyOff();
   }
 }
 

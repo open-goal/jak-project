@@ -26,11 +26,11 @@ class Synth {
   }
 
   s16Output Tick();
-  void AddVoice(std::shared_ptr<voice> voice);
+  void AddVoice(std::shared_ptr<Voice> voice);
   void SetMasterVol(u32 volume);
 
  private:
-  std::forward_list<std::shared_ptr<voice>> mVoices;
+  std::forward_list<std::shared_ptr<Voice>> mVoices;
 
   VolumePair mVolume{};
 };

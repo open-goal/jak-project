@@ -512,7 +512,7 @@ s32 Grain::snd_SFX_GRAIN_TYPE_KEY_OFF_VOICES(blocksound_handler& handler) {
       continue;
     }
 
-    v->key_off();
+    v->KeyOff();
   }
   return 0;
 }
@@ -524,9 +524,9 @@ s32 Grain::snd_SFX_GRAIN_TYPE_KILL_VOICES(blocksound_handler& handler) {
       continue;
     }
 
-    v->key_off();
-    v->set_volume_l(0);
-    v->set_volume_r(0);
+    v->KeyOff();
+    v->SetVolumeL(0);
+    v->SetVolumeR(0);
   }
 
   return 0;

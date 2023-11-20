@@ -125,7 +125,7 @@ void midi_handler::stop() {
       continue;
     }
 
-    voice->key_off();
+    voice->KeyOff();
   }
 }
 
@@ -167,7 +167,7 @@ void midi_handler::set_vol_pan(s32 vol, s32 pan) {
 
     auto left = m_vm.AdjustVolToGroup(voice->basevol.left, voice->group);
     auto right = m_vm.AdjustVolToGroup(voice->basevol.right, voice->group);
-    voice->set_volume(left >> 1, right >> 1);
+    voice->SetVolume(left >> 1, right >> 1);
   }
 }
 
@@ -185,7 +185,7 @@ void midi_handler::set_pmod(s32 mod) {
                           voice->start_fine);
     auto pitch =
         PS1Note2Pitch(voice->tone.CenterNote, voice->tone.CenterFine, note.first, note.second);
-    voice->set_pitch(pitch);
+    voice->SetPitch(pitch);
   }
 }
 
@@ -269,7 +269,7 @@ void midi_handler::note_off() {
     }
 
     if (voice->channel == channel && voice->note == note) {
-      voice->key_off();
+      voice->KeyOff();
     }
   }
 
@@ -299,7 +299,7 @@ void midi_handler::channel_pressure() {
     }
 
     if (voice->channel == channel && voice->note == note) {
-      voice->key_off();
+      voice->KeyOff();
     }
   }
 
@@ -324,7 +324,7 @@ void midi_handler::channel_pitch() {
                             voice->start_fine);
       auto pitch =
           PS1Note2Pitch(voice->tone.CenterNote, voice->tone.CenterFine, note.first, note.second);
-      voice->set_pitch(pitch);
+      voice->SetPitch(pitch);
     }
   }
 
