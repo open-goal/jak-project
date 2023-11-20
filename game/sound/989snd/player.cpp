@@ -136,7 +136,7 @@ u32 Player::PlaySound(BankHandle bank_id, u32 sound_id, s32 vol, s32 pan, s32 pm
     return 0;
   }
 
-  auto handler = bank->make_handler(mVmanager, sound_id, vol, pan, pm, pb);
+  auto handler = bank->MakeHandler(mVmanager, sound_id, vol, pan, pm, pb);
   if (!handler.has_value()) {
     return 0;
   }
@@ -170,7 +170,7 @@ u32 Player::PlaySoundByName(BankHandle bank_id,
     return 0;
   }
 
-  auto sound = bank->get_sound_by_name(sound_name);
+  auto sound = bank->GetSoundByName(sound_name);
   if (sound.has_value()) {
     return PlaySound(bank, sound.value(), vol, pan, pm, pb);
   }
@@ -349,7 +349,7 @@ s32 Player::GetSoundUserData(BankHandle block_handle,
   }
 
   if (sound_id == -1) {
-    auto sound = bank->get_sound_by_name(sound_name);
+    auto sound = bank->GetSoundByName(sound_name);
     if (sound.has_value()) {
       sound_id = sound.value();
     } else {
@@ -357,7 +357,7 @@ s32 Player::GetSoundUserData(BankHandle block_handle,
     }
   }
 
-  auto ud = bank->get_sound_user_data(sound_id);
+  auto ud = bank->GetSoundUserData(sound_id);
   if (ud.has_value()) {
     dst->data[0] = ud.value()->data[0];
     dst->data[1] = ud.value()->data[1];

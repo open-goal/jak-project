@@ -7,7 +7,7 @@
 
 namespace snd {
 
-std::optional<std::unique_ptr<sound_handler>> SFXBlock::make_handler(VoiceManager& vm,
+std::optional<std::unique_ptr<sound_handler>> SFXBlock::MakeHandler(VoiceManager& vm,
                                                                      u32 sound_id,
                                                                      s32 vol,
                                                                      s32 pan,
@@ -22,7 +22,7 @@ std::optional<std::unique_ptr<sound_handler>> SFXBlock::make_handler(VoiceManage
   return handler;
 }
 
-std::optional<u32> SFXBlock::get_sound_by_name(const char* name) {
+std::optional<u32> SFXBlock::GetSoundByName(const char* name) {
   auto sound = Names.find(name);
   if (sound != Names.end()) {
     return sound->second;

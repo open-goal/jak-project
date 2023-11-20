@@ -48,15 +48,15 @@ class SFXBlock : public SoundBank {
 
   static SFXBlock* ReadBlock(nonstd::span<u8> bank_data, nonstd::span<u8> samples);
 
-  std::optional<std::unique_ptr<sound_handler>> make_handler(VoiceManager& vm,
+  std::optional<std::unique_ptr<sound_handler>> MakeHandler(VoiceManager& vm,
                                                              u32 sound_id,
                                                              s32 vol,
                                                              s32 pan,
                                                              SndPlayParams& params) override;
 
-  std::optional<std::string_view> get_name() override { return Name; };
-  std::optional<u32> get_sound_by_name(const char* name) override;
-  std::optional<const SFXUserData*> get_sound_user_data(u32 sound_id) override {
+  std::optional<std::string_view> GetName() override { return Name; };
+  std::optional<u32> GetSoundByName(const char* name) override;
+  std::optional<const SFXUserData*> GetSoundUserData(u32 sound_id) override {
     return &Sounds.at(sound_id).UserData;
   };
 };

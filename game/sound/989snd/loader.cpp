@@ -256,7 +256,7 @@ SFXBlock* SFXBlock::ReadBlock(nonstd::span<u8> bank_data, nonstd::span<u8> sampl
     }
   }
 
-  if (block->Flags.has_names()) {
+  if (block->Flags.hasNames()) {
     struct SFXBlockNames {  // 0x98
       /* 0x00 */ u32 BlockName[2];
       /* 0x08 */ u32 SFXNameTableOffset;
@@ -298,7 +298,7 @@ SFXBlock* SFXBlock::ReadBlock(nonstd::span<u8> bank_data, nonstd::span<u8> sampl
     }
   }
 
-  if (block->Flags.has_userdata()) {
+  if (block->Flags.hasUserdata()) {
     data.set_seek(SFXUD);
     for (auto& sfx : block->Sounds) {
       sfx.UserData.data[0] = data.read<u32>();
@@ -455,7 +455,7 @@ SoundBank* Loader::GetBankByHandle(BankHandle handle) {
 
 SoundBank* Loader::GetBankByName(const char* name) {
   for (auto& b : mBanks) {
-    auto bankname = b->get_name();
+    auto bankname = b->GetName();
     if (bankname.has_value()) {
       if (bankname->compare(name) == 0) {
         return b.get();
@@ -468,7 +468,7 @@ SoundBank* Loader::GetBankByName(const char* name) {
 
 SoundBank* Loader::GetBankWithSound(const char* name) {
   for (auto& b : mBanks) {
-    auto sound = b->get_sound_by_name(name);
+    auto sound = b->GetSoundByName(name);
     if (sound.has_value()) {
       return b.get();
     }

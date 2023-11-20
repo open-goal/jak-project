@@ -41,8 +41,8 @@ class SoundBank {
     static constexpr u32 BLOCK_HAS_NAMES = 0x100;
     static constexpr u32 BLOCK_HAS_USERDATA = 0x200;
 
-    bool has_names() { return flags & BLOCK_HAS_NAMES; }
-    bool has_userdata() { return flags & BLOCK_HAS_USERDATA; }
+    bool hasNames() { return flags & BLOCK_HAS_NAMES; }
+    bool hasUserdata() { return flags & BLOCK_HAS_USERDATA; }
   };
 
   virtual ~SoundBank() = default;
@@ -53,7 +53,7 @@ class SoundBank {
   u32 BankID;
   s8 BankNum;
 
-  virtual std::optional<std::unique_ptr<sound_handler>> make_handler(VoiceManager& vm,
+  virtual std::optional<std::unique_ptr<sound_handler>> MakeHandler(VoiceManager& vm,
                                                                      u32 sound_id,
                                                                      s32 vol,
                                                                      s32 pan,
@@ -65,18 +65,18 @@ class SoundBank {
     params.pitch_mod = pm;
     params.pitch_bend = pb;
 
-    return make_handler(vm, sound_id, -1, -1, params);
+    return MakeHandler(vm, sound_id, -1, -1, params);
   };
 
-  virtual std::optional<std::unique_ptr<sound_handler>> make_handler(VoiceManager& vm,
+  virtual std::optional<std::unique_ptr<sound_handler>> MakeHandler(VoiceManager& vm,
                                                                      u32 sound_id,
                                                                      s32 vol,
                                                                      s32 pan,
                                                                      SndPlayParams& params) = 0;
 
-  virtual std::optional<std::string_view> get_name() { return std::nullopt; };
-  virtual std::optional<u32> get_sound_by_name(const char* /*name*/) { return std::nullopt; };
-  virtual std::optional<const SFXUserData*> get_sound_user_data(u32 /*sound_id*/) {
+  virtual std::optional<std::string_view> GetName() { return std::nullopt; };
+  virtual std::optional<u32> GetSoundByName(const char* /*name*/) { return std::nullopt; };
+  virtual std::optional<const SFXUserData*> GetSoundUserData(u32 /*sound_id*/) {
     return std::nullopt;
   };
 };
