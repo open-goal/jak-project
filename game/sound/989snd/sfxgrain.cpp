@@ -154,7 +154,7 @@ s32 Grain::snd_SFX_GRAIN_TYPE_STARTCHILDSOUND(blocksound_handler& handler) {
   params.pitch_bend = handler.m_app_pb;
   params.registers = handler.m_registers;
 
-  auto& block = static_cast<SoundBank&>(handler.bank());
+  auto& block = static_cast<SoundBank&>(handler.Bank());
   s32 index = psp.sound_id;
 
   if (index >= 0) {
@@ -285,7 +285,7 @@ s32 Grain::snd_SFX_GRAIN_TYPE_RAND_PB(blocksound_handler& handler) {
   auto pb = cp.param[0];
 
   s32 rnd = rand();
-  handler.set_pbend(pb * ((0xffff * (rnd % 0x7fff)) / 0x7fff - 0x8000) / 100);
+  handler.SetPBend(pb * ((0xffff * (rnd % 0x7fff)) / 0x7fff - 0x8000) / 100);
 
   return 0;
 }
@@ -297,7 +297,7 @@ s32 Grain::snd_SFX_GRAIN_TYPE_ADD_PB(blocksound_handler& handler) {
   s32 new_pb = handler.m_cur_pb + 0x7fff * pb / 127;
   new_pb = std::clamp<s32>(new_pb, INT16_MIN, INT16_MAX);
 
-  handler.set_pbend(new_pb);
+  handler.SetPBend(new_pb);
 
   return 0;
 }
@@ -307,9 +307,9 @@ s32 Grain::snd_SFX_GRAIN_TYPE_PB(blocksound_handler& handler) {
   auto pb = cp.param[0];
 
   if (pb >= 0) {
-    handler.set_pbend(0x7fff * pb / 127);
+    handler.SetPBend(0x7fff * pb / 127);
   } else {
-    handler.set_pbend(-0x8000 * pb / -128);
+    handler.SetPBend(-0x8000 * pb / -128);
   }
 
   return 0;

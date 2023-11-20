@@ -104,7 +104,7 @@ void Player::Tick(s16Output* stream, int samples) {
       mTick++;
 
       for (auto it = mHandlers.begin(); it != mHandlers.end();) {
-        bool done = it->second->tick();
+        bool done = it->second->Tick();
         if (done) {
           // fmt::print("erasing handler\n");
           mHandleAllocator.FreeId(it->first);
@@ -186,7 +186,7 @@ void Player::StopSound(u32 sound_id) {
   if (handler == mHandlers.end())
     return;
 
-  handler->second->stop();
+  handler->second->Stop();
 
   // m_handle_allocator.free_id(sound_id);
   // m_handlers.erase(sound_id);
@@ -200,7 +200,7 @@ void Player::SetSoundReg(u32 sound_id, u8 reg, u8 value) {
   }
 
   auto* handler = mHandlers.at(sound_id).get();
-  handler->set_register(reg, value);
+  handler->SetRegister(reg, value);
 }
 
 bool Player::SoundStillActive(u32 sound_id) {
@@ -244,7 +244,7 @@ void Player::UnloadBank(BankHandle bank_handle) {
     return;
 
   for (auto it = mHandlers.begin(); it != mHandlers.end();) {
-    if (&it->second->bank() == bank_handle) {
+    if (&it->second->Bank() == bank_handle) {
       mHandleAllocator.FreeId(it->first);
       it = mHandlers.erase(it);
     } else {
@@ -271,7 +271,7 @@ void Player::PauseSound(s32 sound_id) {
   if (handler == mHandlers.end())
     return;
 
-  handler->second->pause();
+  handler->second->Pause();
 }
 
 void Player::ContinueSound(s32 sound_id) {
@@ -280,15 +280,15 @@ void Player::ContinueSound(s32 sound_id) {
   if (handler == mHandlers.end())
     return;
 
-  handler->second->unpause();
+  handler->second->Unpause();
 }
 
 void Player::PauseAllSoundsInGroup(u8 group) {
   std::scoped_lock lock(mTickLock);
 
   for (auto& h : mHandlers) {
-    if ((1 << h.second->group()) & group) {
-      h.second->pause();
+    if ((1 << h.second->Group()) & group) {
+      h.second->Pause();
     }
   }
 }
@@ -297,8 +297,8 @@ void Player::ContinueAllSoundsInGroup(u8 group) {
   std::scoped_lock lock(mTickLock);
 
   for (auto& h : mHandlers) {
-    if ((1 << h.second->group()) & group) {
-      h.second->unpause();
+    if ((1 << h.second->Group()) & group) {
+      h.second->Unpause();
     }
   }
 }
@@ -309,7 +309,7 @@ void Player::SetSoundVolPan(s32 sound_id, s32 vol, s32 pan) {
   if (handler == mHandlers.end())
     return;
 
-  handler->second->set_vol_pan(vol, pan);
+  handler->second->SetVolPan(vol, pan);
 }
 
 void Player::SetSoundPmod(s32 sound_handle, s32 mod) {
@@ -318,7 +318,7 @@ void Player::SetSoundPmod(s32 sound_handle, s32 mod) {
   if (handler == mHandlers.end())
     return;
 
-  handler->second->set_pmod(mod);
+  handler->second->SetPMod(mod);
 }
 
 void Player::StopAllSounds() {

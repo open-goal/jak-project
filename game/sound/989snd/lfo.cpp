@@ -46,14 +46,14 @@ void LFOTracker::Tick() {
       s32 vol = (m_range * (GetLFO(2) - 0x7fff)) >> 16;
       if (m_handler.m_lfo_volume != vol) {
         m_handler.m_lfo_volume = vol;
-        m_handler.set_vol_pan(VOLUME_DONT_CHANGE, PAN_DONT_CHANGE);
+        m_handler.SetVolPan(VOLUME_DONT_CHANGE, PAN_DONT_CHANGE);
       }
     } break;
     case LFOTarget::PAN: {
       s32 pan = (m_range * GetLFO(2)) >> 15;
       if (m_handler.m_lfo_pan != pan) {
         m_handler.m_lfo_pan = pan;
-        m_handler.set_vol_pan(VOLUME_DONT_CHANGE, PAN_DONT_CHANGE);
+        m_handler.SetVolPan(VOLUME_DONT_CHANGE, PAN_DONT_CHANGE);
       }
     } break;
     case LFOTarget::PMOD: {

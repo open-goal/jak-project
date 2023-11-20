@@ -38,9 +38,9 @@ ame_handler::ame_handler(MultiMidi* block,
   start_segment(0);
 };
 
-bool ame_handler::tick() {
+bool ame_handler::Tick() {
   for (auto it = m_midis.begin(); it != m_midis.end();) {
-    bool done = it->second->tick();
+    bool done = it->second->Tick();
     if (done) {
       it = m_midis.erase(it);
     } else {
@@ -64,9 +64,9 @@ void ame_handler::start_segment(u32 id) {
   }
 }
 
-void ame_handler::stop() {
+void ame_handler::Stop() {
   for (auto it = m_midis.begin(); it != m_midis.end();) {
-    it->second->stop();
+    it->second->Stop();
     it = m_midis.erase(it);
   }
 }
@@ -76,22 +76,22 @@ void ame_handler::stop_segment(u32 id) {
   if (m == m_midis.end())
     return;
 
-  m->second->stop();
+  m->second->Stop();
 }
 
-void ame_handler::pause() {
+void ame_handler::Pause() {
   for (auto& m : m_midis) {
-    m.second->pause();
+    m.second->Pause();
   }
 }
 
-void ame_handler::unpause() {
+void ame_handler::Unpause() {
   for (auto& m : m_midis) {
-    m.second->unpause();
+    m.second->Unpause();
   }
 }
 
-void ame_handler::set_vol_pan(s32 vol, s32 pan) {
+void ame_handler::SetVolPan(s32 vol, s32 pan) {
   if (vol >= 0) {
     if (vol != VOLUME_DONT_CHANGE) {
       m_vol = (m_sound.Vol * vol) >> 10;
@@ -111,13 +111,13 @@ void ame_handler::set_vol_pan(s32 vol, s32 pan) {
   }
 
   for (auto& m : m_midis) {
-    m.second->set_vol_pan(vol, pan);
+    m.second->SetVolPan(vol, pan);
   }
 }
 
-void ame_handler::set_pmod(s32 mod) {
+void ame_handler::SetPMod(s32 mod) {
   for (auto& m : m_midis) {
-    m.second->set_pmod(mod);
+    m.second->SetPMod(mod);
   }
 }
 

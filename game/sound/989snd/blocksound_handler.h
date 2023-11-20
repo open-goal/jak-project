@@ -18,7 +18,7 @@ class blocksound_voice : public VagVoice {
   s32 g_pan;
 };
 
-class blocksound_handler : public sound_handler {
+class blocksound_handler : public SoundHandler {
  public:
   blocksound_handler(SoundBank& bank,
                      SFXBlock::SFX& sfx,
@@ -28,17 +28,17 @@ class blocksound_handler : public sound_handler {
                      SndPlayParams& params);
 
   ~blocksound_handler() override;
-  bool tick() override;
-  SoundBank& bank() override { return m_bank; };
+  bool Tick() override;
+  SoundBank& Bank() override { return m_bank; };
 
-  void pause() override;
-  void unpause() override;
-  void stop() override;
-  u8 group() override { return m_group; };
-  void set_vol_pan(s32 vol, s32 pan) override;
-  void set_pmod(s32 mod) override;
-  void set_register(u8 reg, u8 value) override { m_registers.at(reg) = value; };
-  void set_pbend(s32 bend) override;
+  void Pause() override;
+  void Unpause() override;
+  void Stop() override;
+  u8 Group() override { return m_group; };
+  void SetVolPan(s32 vol, s32 pan) override;
+  void SetPMod(s32 mod) override;
+  void SetRegister(u8 reg, u8 value) override { m_registers.at(reg) = value; };
+  void SetPBend(s32 bend) override;
 
   void do_grain();
 
@@ -58,7 +58,7 @@ class blocksound_handler : public sound_handler {
 
   std::list<std::weak_ptr<blocksound_voice>> m_voices;
 
-  std::list<std::unique_ptr<sound_handler>> m_children;
+  std::list<std::unique_ptr<SoundHandler>> m_children;
 
   s32 m_orig_volume{0};
   s32 m_orig_pan{0};

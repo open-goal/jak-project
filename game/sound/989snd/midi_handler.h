@@ -27,7 +27,7 @@ class midi_voice : public VagVoice {
 };
 
 class ame_handler;
-class midi_handler : public sound_handler {
+class midi_handler : public SoundHandler {
  public:
   midi_handler(Midi* block,
                VoiceManager& vm,
@@ -54,19 +54,19 @@ class midi_handler : public sound_handler {
   }
   void init_midi();
   void start();
-  bool tick() override;
+  bool Tick() override;
   void mute_channel(u8 channel);
   void unmute_channel(u8 channel);
-  SoundBank& bank() override { return m_bank; };
+  SoundBank& Bank() override { return m_bank; };
 
-  void pause() override;
-  void stop() override;
-  void unpause() override;
-  u8 group() override { return m_sound.VolGroup; }
-  void set_vol_pan(s32 vol, s32 pan) override;
+  void Pause() override;
+  void Stop() override;
+  void Unpause() override;
+  u8 Group() override { return m_sound.VolGroup; }
+  void SetVolPan(s32 vol, s32 pan) override;
 
   bool complete() { return m_track_complete; };
-  void set_pmod(s32 mod) override;
+  void SetPMod(s32 mod) override;
 
  private:
   static constexpr int tickrate = 240;

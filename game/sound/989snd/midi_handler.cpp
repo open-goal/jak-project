@@ -90,7 +90,7 @@ std::pair<size_t, u32> midi_handler::read_vlq(u8* value) {
   return {len, out};
 }
 
-void midi_handler::pause() {
+void midi_handler::Pause() {
   m_paused = true;
 
   for (auto& p : m_voices) {
@@ -103,7 +103,7 @@ void midi_handler::pause() {
   }
 }
 
-void midi_handler::unpause() {
+void midi_handler::Unpause() {
   m_paused = false;
 
   for (auto& p : m_voices) {
@@ -116,7 +116,7 @@ void midi_handler::unpause() {
   }
 }
 
-void midi_handler::stop() {
+void midi_handler::Stop() {
   m_track_complete = true;
 
   for (auto& p : m_voices) {
@@ -129,7 +129,7 @@ void midi_handler::stop() {
   }
 }
 
-void midi_handler::set_vol_pan(s32 vol, s32 pan) {
+void midi_handler::SetVolPan(s32 vol, s32 pan) {
   if (vol != VOLUME_DONT_CHANGE) {
     if (vol >= 0) {
       m_vol = (m_sound.Vol * vol) >> 10;
@@ -171,7 +171,7 @@ void midi_handler::set_vol_pan(s32 vol, s32 pan) {
   }
 }
 
-void midi_handler::set_pmod(s32 mod) {
+void midi_handler::SetPMod(s32 mod) {
   m_cur_pm = mod;
 
   for (auto& v : m_voices) {
@@ -412,7 +412,7 @@ void midi_handler::system_event() {
   }
 }
 
-bool midi_handler::tick() {
+bool midi_handler::Tick() {
   if (m_paused) {
     return m_track_complete;
   }

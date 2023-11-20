@@ -106,7 +106,7 @@ blocksound_handler::~blocksound_handler() {
   }
 }
 
-bool blocksound_handler::tick() {
+bool blocksound_handler::Tick() {
   m_voices.remove_if([](std::weak_ptr<blocksound_voice>& p) { return p.expired(); });
 
   for (auto& lfo : m_lfo) {
@@ -114,7 +114,7 @@ bool blocksound_handler::tick() {
   }
 
   for (auto it = m_children.begin(); it != m_children.end();) {
-    bool done = it->get()->tick();
+    bool done = it->get()->Tick();
     if (done) {
       it = m_children.erase(it);
     } else {
@@ -141,11 +141,11 @@ bool blocksound_handler::tick() {
   return false;
 };
 
-void blocksound_handler::pause() {
+void blocksound_handler::Pause() {
   m_paused = true;
 
   for (auto& c : m_children) {
-    c->pause();
+    c->Pause();
   }
 
   for (auto& p : m_voices) {
@@ -158,11 +158,11 @@ void blocksound_handler::pause() {
   }
 }
 
-void blocksound_handler::unpause() {
+void blocksound_handler::Unpause() {
   m_paused = false;
 
   for (auto& c : m_children) {
-    c->unpause();
+    c->Unpause();
   }
 
   for (auto& p : m_voices) {
@@ -175,11 +175,11 @@ void blocksound_handler::unpause() {
   }
 }
 
-void blocksound_handler::stop() {
+void blocksound_handler::Stop() {
   m_done = true;
 
   for (auto& c : m_children) {
-    c->stop();
+    c->Stop();
   }
 
   for (auto& p : m_voices) {
@@ -192,7 +192,7 @@ void blocksound_handler::stop() {
   }
 }
 
-void blocksound_handler::set_vol_pan(s32 vol, s32 pan) {
+void blocksound_handler::SetVolPan(s32 vol, s32 pan) {
   if (vol >= 0) {
     if (vol != VOLUME_DONT_CHANGE) {
       m_app_volume = vol;
@@ -223,7 +223,7 @@ void blocksound_handler::set_vol_pan(s32 vol, s32 pan) {
     m_cur_pan = new_pan;
 
     for (auto& c : m_children) {
-      c->set_vol_pan(m_app_volume * m_orig_volume / 127, pan);
+      c->SetVolPan(m_app_volume * m_orig_volume / 127, pan);
     }
 
     for (auto& p : m_voices) {
@@ -259,17 +259,17 @@ void blocksound_handler::update_pitch() {
   }
 }
 
-void blocksound_handler::set_pmod(s32 mod) {
+void blocksound_handler::SetPMod(s32 mod) {
   for (auto& c : m_children) {
-    c->set_pmod(mod);
+    c->SetPMod(mod);
   }
   m_app_pm = mod;
   update_pitch();
 }
 
-void blocksound_handler::set_pbend(s32 bend) {
+void blocksound_handler::SetPBend(s32 bend) {
   for (auto& c : m_children) {
-    c->set_pbend(bend);
+    c->SetPBend(bend);
   }
   m_app_pb = bend;
   update_pitch();

@@ -48,7 +48,7 @@ class SFXBlock : public SoundBank {
 
   static SFXBlock* ReadBlock(nonstd::span<u8> bank_data, nonstd::span<u8> samples);
 
-  std::optional<std::unique_ptr<sound_handler>> MakeHandler(VoiceManager& vm,
+  std::optional<std::unique_ptr<SoundHandler>> MakeHandler(VoiceManager& vm,
                                                              u32 sound_id,
                                                              s32 vol,
                                                              s32 pan,

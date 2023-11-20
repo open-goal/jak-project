@@ -7,7 +7,7 @@
 
 namespace snd {
 
-std::optional<std::unique_ptr<sound_handler>> SFXBlock::MakeHandler(VoiceManager& vm,
+std::optional<std::unique_ptr<SoundHandler>> SFXBlock::MakeHandler(VoiceManager& vm,
                                                                      u32 sound_id,
                                                                      s32 vol,
                                                                      s32 pan,

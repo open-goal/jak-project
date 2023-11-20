@@ -19,7 +19,7 @@ extern u64 SoundFlavaHack;
 extern u8 GlobalExcite;
 
 class midi_handler;
-class ame_handler : public sound_handler {
+class ame_handler : public SoundHandler {
   friend class midi_handler;
 
  public:
@@ -29,17 +29,17 @@ class ame_handler : public sound_handler {
               s32 vol,
               s32 pan,
               SoundBank& bank);
-  bool tick() override;
-  SoundBank& bank() override { return m_bank; };
+  bool Tick() override;
+  SoundBank& Bank() override { return m_bank; };
 
-  void pause() override;
-  void unpause() override;
-  void stop() override;
-  u8 group() override { return m_sound.VolGroup; };
-  void set_vol_pan(s32 vol, s32 pan) override;
+  void Pause() override;
+  void Unpause() override;
+  void Stop() override;
+  u8 Group() override { return m_sound.VolGroup; };
+  void SetVolPan(s32 vol, s32 pan) override;
 
-  void set_register(u8 reg, u8 value) override { m_register[reg] = value; }
-  void set_pmod(s32 mod) override;
+  void SetRegister(u8 reg, u8 value) override { m_register[reg] = value; }
+  void SetPMod(s32 mod) override;
 
  private:
   struct ame_error : public std::exception {
