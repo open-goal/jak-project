@@ -9,7 +9,7 @@
 #include "../common/voice.h"
 
 namespace snd {
-voice_manager::voice_manager(synth& synth) : m_synth(synth) {
+voice_manager::voice_manager(Synth& synth) : m_synth(synth) {
   m_pan_table = normalPanTable;
   m_master_vol.fill(0x400);
   m_group_duck.fill(0x10000);
@@ -41,7 +41,7 @@ void voice_manager::start_tone(std::shared_ptr<vag_voice> voice) {
 
   clean_voices();
   m_voices.emplace_front(voice);
-  m_synth.add_voice(voice);
+  m_synth.AddVoice(voice);
 }
 vol_pair voice_manager::make_volume(int vol1, int pan1, int vol2, int pan2, int vol3, int pan3) {
   // Scale up as close as we can to max positive 16bit volume

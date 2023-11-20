@@ -47,7 +47,7 @@ class vag_voice : public voice {
 
 class voice_manager {
  public:
-  voice_manager(synth& synth);
+  voice_manager(Synth& synth);
   void start_tone(std::shared_ptr<vag_voice> voice);
   void pause(std::shared_ptr<vag_voice> voice);
   void unpause(std::shared_ptr<vag_voice> voice);
@@ -69,7 +69,7 @@ class voice_manager {
   s16 adjust_vol_to_group(s16 involume, int group);
 
  private:
-  synth& m_synth;
+  Synth& m_synth;
 
   std::list<std::weak_ptr<vag_voice>> m_voices;
   void clean_voices() {

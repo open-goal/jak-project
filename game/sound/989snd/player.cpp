@@ -124,7 +124,7 @@ void Player::Tick(s16_output* stream, int samples) {
 
     stick++;
     htick++;
-    *stream++ = mSynth.tick();
+    *stream++ = mSynth.Tick();
   }
 }
 
@@ -228,7 +228,7 @@ void Player::SetMasterVolume(u32 group, s32 volume) {
 
   // Master volume
   if (group == 16) {
-    mSynth.set_master_vol(0x3ffff * volume / 0x400);
+    mSynth.SetMasterVol(0x3ffff * volume / 0x400);
   }
 }
 
