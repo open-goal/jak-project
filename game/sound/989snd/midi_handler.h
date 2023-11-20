@@ -17,9 +17,9 @@
 
 namespace snd {
 
-class midi_voice : public vag_voice {
+class midi_voice : public VagVoice {
  public:
-  midi_voice(Tone& t, MusicBank::Prog& _prog) : vag_voice(t), prog(_prog) {}
+  midi_voice(Tone& t, MusicBank::Prog& _prog) : VagVoice(t), prog(_prog) {}
   u8 note{0};
   u8 channel{0};
   u8 velocity{0};
@@ -30,14 +30,14 @@ class ame_handler;
 class midi_handler : public sound_handler {
  public:
   midi_handler(Midi* block,
-               voice_manager& vm,
+               VoiceManager& vm,
                MusicBank::MIDISound& sound,
                s32 vol,
                s32 pan,
                SoundBank& bank);
 
   midi_handler(Midi* block,
-               voice_manager& vm,
+               VoiceManager& vm,
                MusicBank::MIDISound& sound,
                s32 vol,
                s32 pan,
@@ -115,7 +115,7 @@ class midi_handler : public sound_handler {
 
   std::array<u8, 16> m_programs{};
 
-  voice_manager& m_vm;
+  VoiceManager& m_vm;
 
   void step();
   void new_delta();

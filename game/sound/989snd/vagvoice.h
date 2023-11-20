@@ -32,9 +32,9 @@ struct Tone {
   u8* Sample;
 };
 
-class vag_voice : public voice {
+class VagVoice : public voice {
  public:
-  vag_voice(Tone& t) : tone(t) {}
+  VagVoice(Tone& t) : tone(t) {}
   Tone& tone;
   u8 group{0};
   vol_pair basevol{};
@@ -45,43 +45,43 @@ class vag_voice : public voice {
   bool paused{false};
 };
 
-class voice_manager {
+class VoiceManager {
  public:
-  voice_manager(Synth& synth);
-  void start_tone(std::shared_ptr<vag_voice> voice);
-  void pause(std::shared_ptr<vag_voice> voice);
-  void unpause(std::shared_ptr<vag_voice> voice);
-  void set_pan_table(vol_pair* table) { m_pan_table = table; };
+  VoiceManager(Synth& synth);
+  void StartTone(std::shared_ptr<VagVoice> voice);
+  void Pause(std::shared_ptr<VagVoice> voice);
+  void Unpause(std::shared_ptr<VagVoice> voice);
+  void SetPanTable(vol_pair* table) { mPanTable = table; };
 
-  vol_pair make_volume(int vol1, int pan1, int vol2, int pan2, int vol3, int pan3);
+  vol_pair MakeVolume(int vol1, int pan1, int vol2, int pan2, int vol3, int pan3);
 
   // This is super silly, but it's what 989snd does
-  vol_pair make_volume_b(int sound_vol,
-                         int velocity_volume,
-                         int pan,
-                         int prog_vol,
-                         int prog_pan,
-                         int tone_vol,
-                         int tone_pan);
+  vol_pair MakeVolumeB(int sound_vol,
+                       int velocity_volume,
+                       int pan,
+                       int prog_vol,
+                       int prog_pan,
+                       int tone_vol,
+                       int tone_pan);
 
-  void set_master_vol(u8 group, s32 volume);
-  void set_playback_mode(s32 mode) { m_stereo_or_mono = mode; }
-  s16 adjust_vol_to_group(s16 involume, int group);
+  void SetMasterVol(u8 group, s32 volume);
+  void SetPlaybackMode(s32 mode) { mStereoOrMono = mode; }
+  s16 AdjustVolToGroup(s16 involume, int group);
 
  private:
-  Synth& m_synth;
+  Synth& mSynth;
 
-  std::list<std::weak_ptr<vag_voice>> m_voices;
-  void clean_voices() {
-    m_voices.remove_if([](auto& v) { return v.expired(); });
+  std::list<std::weak_ptr<VagVoice>> mVoices;
+  void CleanVoices() {
+    mVoices.remove_if([](auto& v) { return v.expired(); });
   }
 
-  s32 m_stereo_or_mono{0};
+  s32 mStereoOrMono{0};
 
-  std::array<s32, 32> m_master_vol;
-  std::array<s32, 32> m_group_duck;
+  std::array<s32, 32> mMasterVol;
+  std::array<s32, 32> mGroupDuck;
 
-  const vol_pair* m_pan_table{nullptr};
+  const vol_pair* mPanTable{nullptr};
 };
 
 }  // namespace snd

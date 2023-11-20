@@ -12,7 +12,7 @@ std::array<s8, 32> g_block_reg{};
 
 blocksound_handler::blocksound_handler(SoundBank& bank,
                                        SFXBlock::SFX& sfx,
-                                       voice_manager& vm,
+                                       VoiceManager& vm,
                                        s32 sfx_vol,
                                        s32 sfx_pan,
                                        SndPlayParams& params)
@@ -154,7 +154,7 @@ void blocksound_handler::pause() {
       continue;
     }
 
-    m_vm.pause(voice);
+    m_vm.Pause(voice);
   }
 }
 
@@ -171,7 +171,7 @@ void blocksound_handler::unpause() {
       continue;
     }
 
-    m_vm.unpause(voice);
+    m_vm.Unpause(voice);
   }
 }
 
@@ -232,9 +232,9 @@ void blocksound_handler::set_vol_pan(s32 vol, s32 pan) {
         continue;
       }
 
-      auto volume = m_vm.make_volume(127, 0, m_cur_volume, m_cur_pan, voice->g_vol, voice->g_pan);
-      auto left = m_vm.adjust_vol_to_group(volume.left, m_group);
-      auto right = m_vm.adjust_vol_to_group(volume.right, m_group);
+      auto volume = m_vm.MakeVolume(127, 0, m_cur_volume, m_cur_pan, voice->g_vol, voice->g_pan);
+      auto left = m_vm.AdjustVolToGroup(volume.left, m_group);
+      auto right = m_vm.AdjustVolToGroup(volume.right, m_group);
 
       voice->set_volume(left >> 1, right >> 1);
     }

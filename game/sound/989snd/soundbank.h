@@ -53,7 +53,7 @@ class SoundBank {
   u32 BankID;
   s8 BankNum;
 
-  virtual std::optional<std::unique_ptr<sound_handler>> make_handler(voice_manager& vm,
+  virtual std::optional<std::unique_ptr<sound_handler>> make_handler(VoiceManager& vm,
                                                                      u32 sound_id,
                                                                      s32 vol,
                                                                      s32 pan,
@@ -68,7 +68,7 @@ class SoundBank {
     return make_handler(vm, sound_id, -1, -1, params);
   };
 
-  virtual std::optional<std::unique_ptr<sound_handler>> make_handler(voice_manager& vm,
+  virtual std::optional<std::unique_ptr<sound_handler>> make_handler(VoiceManager& vm,
                                                                      u32 sound_id,
                                                                      s32 vol,
                                                                      s32 pan,

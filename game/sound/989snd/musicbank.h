@@ -67,14 +67,14 @@ class MusicBank : public SoundBank {
                              nonstd::span<u8> samples,
                              nonstd::span<u8> midi_data);
 
-  std::optional<std::unique_ptr<sound_handler>> make_handler(voice_manager& vm,
+  std::optional<std::unique_ptr<sound_handler>> make_handler(VoiceManager& vm,
                                                              u32 sound_id,
                                                              s32 vol,
                                                              s32 pan,
                                                              s32 pm,
                                                              s32 pb) override;
 
-  std::optional<std::unique_ptr<sound_handler>> make_handler(voice_manager& vm,
+  std::optional<std::unique_ptr<sound_handler>> make_handler(VoiceManager& vm,
                                                              u32 sound_id,
                                                              s32 vol,
                                                              s32 pan,

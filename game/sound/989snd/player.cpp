@@ -224,7 +224,7 @@ void Player::SetMasterVolume(u32 group, s32 volume) {
   if (group == 15)
     return;
 
-  mVmanager.set_master_vol(group, volume);
+  mVmanager.SetMasterVol(group, volume);
 
   // Master volume
   if (group == 16) {
@@ -257,12 +257,12 @@ void Player::UnloadBank(BankHandle bank_handle) {
 
 void Player::SetPanTable(vol_pair* pantable) {
   std::scoped_lock lock(mTickLock);
-  mVmanager.set_pan_table(pantable);
+  mVmanager.SetPanTable(pantable);
 }
 
 void Player::SetPlaybackMode(s32 mode) {
   std::scoped_lock lock(mTickLock);
-  mVmanager.set_playback_mode(mode);
+  mVmanager.SetPlaybackMode(mode);
 }
 
 void Player::PauseSound(s32 sound_id) {

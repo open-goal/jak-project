@@ -24,7 +24,7 @@ class ame_handler : public sound_handler {
 
  public:
   ame_handler(MultiMidi* block,
-              voice_manager& vm,
+              VoiceManager& vm,
               MusicBank::MIDISound& sound,
               s32 vol,
               s32 pan,
@@ -66,7 +66,7 @@ class ame_handler : public sound_handler {
   SoundBank& m_bank;
 
   MultiMidi* m_header{nullptr};
-  voice_manager& m_vm;
+  VoiceManager& m_vm;
   s32 m_vol{0};
   s32 m_pan{0};
   s8 m_repeats{0};

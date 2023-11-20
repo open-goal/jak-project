@@ -11,9 +11,9 @@ namespace snd {
 
 extern std::array<s8, 32> g_block_reg;
 
-class blocksound_voice : public vag_voice {
+class blocksound_voice : public VagVoice {
  public:
-  blocksound_voice(Tone& t) : vag_voice(t) {}
+  blocksound_voice(Tone& t) : VagVoice(t) {}
   s32 g_vol;
   s32 g_pan;
 };
@@ -22,7 +22,7 @@ class blocksound_handler : public sound_handler {
  public:
   blocksound_handler(SoundBank& bank,
                      SFXBlock::SFX& sfx,
-                     voice_manager& vm,
+                     VoiceManager& vm,
                      s32 sfx_vol,
                      s32 sfx_pan,
                      SndPlayParams& params);
@@ -54,7 +54,7 @@ class blocksound_handler : public sound_handler {
   bool m_skip_grains{false};
 
   SFXBlock::SFX& m_sfx;
-  voice_manager& m_vm;
+  VoiceManager& m_vm;
 
   std::list<std::weak_ptr<blocksound_voice>> m_voices;
 

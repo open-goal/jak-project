@@ -7,7 +7,7 @@
 
 namespace snd {
 
-std::optional<std::unique_ptr<sound_handler>> MusicBank::make_handler(voice_manager& vm,
+std::optional<std::unique_ptr<sound_handler>> MusicBank::make_handler(VoiceManager& vm,
                                                                       u32 sound_id,
                                                                       s32 vol,
                                                                       s32 pan,
@@ -38,7 +38,7 @@ std::optional<std::unique_ptr<sound_handler>> MusicBank::make_handler(voice_mana
   }
 }
 
-std::optional<std::unique_ptr<sound_handler>> MusicBank::make_handler(voice_manager& vm,
+std::optional<std::unique_ptr<sound_handler>> MusicBank::make_handler(VoiceManager& vm,
                                                                       u32 sound_id,
                                                                       s32 vol,
                                                                       s32 pan,

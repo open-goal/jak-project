@@ -23,7 +23,7 @@ namespace snd {
 */
 
 midi_handler::midi_handler(Midi* block,
-                           voice_manager& vm,
+                           VoiceManager& vm,
                            MusicBank::MIDISound& sound,
                            s32 vol,
                            s32 pan,
@@ -48,7 +48,7 @@ midi_handler::midi_handler(Midi* block,
 }
 
 midi_handler::midi_handler(Midi* block,
-                           voice_manager& vm,
+                           VoiceManager& vm,
                            MusicBank::MIDISound& sound,
                            s32 vol,
                            s32 pan,
@@ -99,7 +99,7 @@ void midi_handler::pause() {
       continue;
     }
 
-    m_vm.pause(voice);
+    m_vm.Pause(voice);
   }
 }
 
@@ -112,7 +112,7 @@ void midi_handler::unpause() {
       continue;
     }
 
-    m_vm.unpause(voice);
+    m_vm.Unpause(voice);
   }
 }
 
@@ -162,11 +162,11 @@ void midi_handler::set_vol_pan(s32 vol, s32 pan) {
     }
 
     voice->basevol =
-        m_vm.make_volume_b(m_vol, voice->velocity * m_chanvol[voice->channel] / 127, pan,
+        m_vm.MakeVolumeB(m_vol, voice->velocity * m_chanvol[voice->channel] / 127, pan,
                            voice->prog.Vol, voice->prog.Pan, voice->tone.Vol, voice->tone.Pan);
 
-    auto left = m_vm.adjust_vol_to_group(voice->basevol.left, voice->group);
-    auto right = m_vm.adjust_vol_to_group(voice->basevol.right, voice->group);
+    auto left = m_vm.AdjustVolToGroup(voice->basevol.left, voice->group);
+    auto right = m_vm.AdjustVolToGroup(voice->basevol.right, voice->group);
     voice->set_volume(left >> 1, right >> 1);
   }
 }
@@ -231,7 +231,7 @@ void midi_handler::note_on() {
       }
 
       auto voice = std::make_shared<midi_voice>(t, program);
-      voice->basevol = m_vm.make_volume_b(m_vol, (velocity * m_chanvol[channel]) / 0x7f, pan,
+      voice->basevol = m_vm.MakeVolumeB(m_vol, (velocity * m_chanvol[channel]) / 0x7f, pan,
                                           program.Vol, program.Pan, t.Vol, t.Pan);
 
       voice->note = note;
@@ -245,7 +245,7 @@ void midi_handler::note_on() {
       voice->current_pb = m_cur_pm;
 
       voice->group = m_sound.VolGroup;
-      m_vm.start_tone(voice);
+      m_vm.StartTone(voice);
       m_voices.emplace_front(voice);
     }
   }

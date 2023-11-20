@@ -80,7 +80,7 @@ class Player {
 
   Loader mLoader;
   Synth mSynth;
-  voice_manager mVmanager;
+  VoiceManager mVmanager;
   s32 mTick{0};
 
   cubeb* mCtx{nullptr};

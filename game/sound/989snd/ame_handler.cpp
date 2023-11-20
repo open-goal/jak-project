@@ -13,7 +13,7 @@ u64 SoundFlavaHack = 0;
 u8 GlobalExcite = 0;
 
 ame_handler::ame_handler(MultiMidi* block,
-                         voice_manager& vm,
+                         VoiceManager& vm,
                          MusicBank::MIDISound& sound,
                          s32 vol,
                          s32 pan,
