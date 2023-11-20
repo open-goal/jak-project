@@ -53,7 +53,7 @@ MidiHandler::MidiHandler(Midi* block,
                            s32 vol,
                            s32 pan,
                            SoundBank& bank,
-                           std::optional<ame_handler*> parent)
+                           std::optional<AmeHandler*> parent)
     : m_parent(parent),
       m_sound(sound),
       m_vol(vol),
@@ -396,7 +396,7 @@ void MidiHandler::SystemEvent() {
     case 0x75:
       m_seq_ptr++;
       if (m_parent.has_value()) {
-        auto [cont, ptr] = m_parent.value()->run_ame(*this, m_seq_ptr);
+        auto [cont, ptr] = m_parent.value()->RunAME(*this, m_seq_ptr);
         m_seq_ptr = ptr;
 
         if (!cont) {

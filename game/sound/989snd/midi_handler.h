@@ -26,7 +26,7 @@ class midi_voice : public VagVoice {
   MusicBank::Prog& prog;
 };
 
-class ame_handler;
+class AmeHandler;
 class MidiHandler : public SoundHandler {
  public:
   MidiHandler(Midi* block,
@@ -42,7 +42,7 @@ class MidiHandler : public SoundHandler {
                s32 vol,
                s32 pan,
                SoundBank& bank,
-               std::optional<ame_handler*> parent);
+               std::optional<AmeHandler*> parent);
 
   ~MidiHandler() override {
     for (auto& p : m_voices) {
@@ -78,7 +78,7 @@ class MidiHandler : public SoundHandler {
     const char* what() const noexcept override { return msg.c_str(); }
   };
 
-  std::optional<ame_handler*> m_parent;
+  std::optional<AmeHandler*> m_parent;
 
   std::list<std::weak_ptr<midi_voice>> m_voices;
 

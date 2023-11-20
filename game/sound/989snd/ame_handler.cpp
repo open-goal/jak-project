@@ -12,7 +12,7 @@ namespace snd {
 u64 SoundFlavaHack = 0;
 u8 GlobalExcite = 0;
 
-ame_handler::ame_handler(MultiMidi* block,
+AmeHandler::AmeHandler(MultiMidi* block,
                          VoiceManager& vm,
                          MusicBank::MIDISound& sound,
                          s32 vol,
@@ -35,10 +35,10 @@ ame_handler::ame_handler(MultiMidi* block,
     m_pan = pan;
   }
 
-  start_segment(0);
+  StartSegment(0);
 };
 
-bool ame_handler::Tick() {
+bool AmeHandler::Tick() {
   for (auto it = m_midis.begin(); it != m_midis.end();) {
     bool done = it->second->Tick();
     if (done) {
@@ -51,7 +51,7 @@ bool ame_handler::Tick() {
   return m_midis.empty();
 };
 
-void ame_handler::start_segment(u32 id) {
+void AmeHandler::StartSegment(u32 id) {
   if (m_midis.find(id) == m_midis.end()) {
     auto& midi = m_header->midi[id];
 
@@ -64,14 +64,14 @@ void ame_handler::start_segment(u32 id) {
   }
 }
 
-void ame_handler::Stop() {
+void AmeHandler::Stop() {
   for (auto it = m_midis.begin(); it != m_midis.end();) {
     it->second->Stop();
     it = m_midis.erase(it);
   }
 }
 
-void ame_handler::stop_segment(u32 id) {
+void AmeHandler::StopSegment(u32 id) {
   auto m = m_midis.find(id);
   if (m == m_midis.end())
     return;
@@ -79,19 +79,19 @@ void ame_handler::stop_segment(u32 id) {
   m->second->Stop();
 }
 
-void ame_handler::Pause() {
+void AmeHandler::Pause() {
   for (auto& m : m_midis) {
     m.second->Pause();
   }
 }
 
-void ame_handler::Unpause() {
+void AmeHandler::Unpause() {
   for (auto& m : m_midis) {
     m.second->Unpause();
   }
 }
 
-void ame_handler::SetVolPan(s32 vol, s32 pan) {
+void AmeHandler::SetVolPan(s32 vol, s32 pan) {
   if (vol >= 0) {
     if (vol != VOLUME_DONT_CHANGE) {
       m_vol = (m_sound.Vol * vol) >> 10;
@@ -115,7 +115,7 @@ void ame_handler::SetVolPan(s32 vol, s32 pan) {
   }
 }
 
-void ame_handler::SetPMod(s32 mod) {
+void AmeHandler::SetPMod(s32 mod) {
   for (auto& m : m_midis) {
     m.second->SetPMod(mod);
   }
@@ -134,7 +134,7 @@ void ame_handler::SetPMod(s32 mod) {
     ;              \
   stream += (x);
 
-std::pair<bool, u8*> ame_handler::run_ame(MidiHandler& midi, u8* stream) {
+std::pair<bool, u8*> AmeHandler::RunAME(MidiHandler& midi, u8* stream) {
   int skip = 0;
   bool done = false;
   bool cont = true;
@@ -179,7 +179,7 @@ std::pair<bool, u8*> ame_handler::run_ame(MidiHandler& midi, u8* stream) {
       } break;
       case 0x3: {
         AME_BEGIN(op)
-        stop_segment(stream[0]);
+        StopSegment(stream[0]);
         AME_END(1)
       } break;
       case 0x4: {
@@ -218,7 +218,7 @@ std::pair<bool, u8*> ame_handler::run_ame(MidiHandler& midi, u8* stream) {
       } break;
       case 0xc: {
         AME_BEGIN(op)
-        auto [sub_cont, ptr] = run_ame(midi, m_macro[stream[0]]);
+        auto [sub_cont, ptr] = RunAME(midi, m_macro[stream[0]]);
         if (!sub_cont) {
           cont = false;
           done = true;
@@ -229,12 +229,12 @@ std::pair<bool, u8*> ame_handler::run_ame(MidiHandler& midi, u8* stream) {
         AME_BEGIN(op)
         cont = false;
         done = true;
-        start_segment(m_register[stream[0]] - 1);
+        StartSegment(m_register[stream[0]] - 1);
         AME_END(1)
       } break;
       case 0xe: {
         AME_BEGIN(op)
-        start_segment(m_register[stream[0]] - 1);
+        StartSegment(m_register[stream[0]] - 1);
         AME_END(1)
       } break;
       case 0xf: {
@@ -289,12 +289,12 @@ std::pair<bool, u8*> ame_handler::run_ame(MidiHandler& midi, u8* stream) {
         AME_BEGIN(op)
         done = true;
         cont = false;
-        start_segment(stream[0]);
+        StartSegment(stream[0]);
         AME_END(1)
       } break;
       case 0x12: {
         AME_BEGIN(op)
-        start_segment(stream[0]);
+        StartSegment(stream[0]);
         AME_END(1)
       } break;
       case 0x13: {
@@ -327,7 +327,7 @@ std::pair<bool, u8*> ame_handler::run_ame(MidiHandler& midi, u8* stream) {
         AME_END(2)
       } break;
       default: {
-        throw ame_error(fmt::format("Unhandled AME event {:02x}", (u8)op));
+        throw AMEError(fmt::format("Unhandled AME event {:02x}", (u8)op));
       } break;
     }
 

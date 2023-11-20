@@ -19,11 +19,11 @@ extern u64 SoundFlavaHack;
 extern u8 GlobalExcite;
 
 class MidiHandler;
-class ame_handler : public SoundHandler {
+class AmeHandler : public SoundHandler {
   friend class MidiHandler;
 
  public:
-  ame_handler(MultiMidi* block,
+  AmeHandler(MultiMidi* block,
               VoiceManager& vm,
               MusicBank::MIDISound& sound,
               s32 vol,
@@ -42,9 +42,9 @@ class ame_handler : public SoundHandler {
   void SetPMod(s32 mod) override;
 
  private:
-  struct ame_error : public std::exception {
-    ame_error(std::string text) : msg(std::move(text)) {}
-    ame_error() : msg("Unknown AME error") {}
+  struct AMEError : public std::exception {
+    AMEError(std::string text) : msg(std::move(text)) {}
+    AMEError() : msg("Unknown AME error") {}
     std::string msg;
     const char* what() const noexcept override { return msg.c_str(); }
   };
@@ -58,9 +58,9 @@ class ame_handler : public SoundHandler {
     /*  24 */ s8 excite_max[16];
   };
 
-  void start_segment(u32 id);
-  void stop_segment(u32 id);
-  std::pair<bool, u8*> run_ame(MidiHandler&, u8* stream);
+  void StartSegment(u32 id);
+  void StopSegment(u32 id);
+  std::pair<bool, u8*> RunAME(MidiHandler&, u8* stream);
 
   MusicBank::MIDISound& m_sound;
   SoundBank& m_bank;
