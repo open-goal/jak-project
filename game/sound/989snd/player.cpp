@@ -107,7 +107,7 @@ void Player::Tick(s16_output* stream, int samples) {
         bool done = it->second->tick();
         if (done) {
           // fmt::print("erasing handler\n");
-          mHandleAllocator.free_id(it->first);
+          mHandleAllocator.FreeId(it->first);
           it = mHandlers.erase(it);
         } else {
           ++it;
@@ -141,7 +141,7 @@ u32 Player::PlaySound(BankHandle bank_id, u32 sound_id, s32 vol, s32 pan, s32 pm
     return 0;
   }
 
-  u32 handle = mHandleAllocator.get_id();
+  u32 handle = mHandleAllocator.GetId();
   mHandlers.emplace(handle, std::move(handler.value()));
   // fmt::print("play_sound {}:{} - {}\n", bank_id, sound_id, handle);
 
@@ -245,7 +245,7 @@ void Player::UnloadBank(BankHandle bank_handle) {
 
   for (auto it = mHandlers.begin(); it != mHandlers.end();) {
     if (&it->second->bank() == bank_handle) {
-      mHandleAllocator.free_id(it->first);
+      mHandleAllocator.FreeId(it->first);
       it = mHandlers.erase(it);
     } else {
       ++it;
@@ -324,7 +324,7 @@ void Player::SetSoundPmod(s32 sound_handle, s32 mod) {
 void Player::StopAllSounds() {
   std::scoped_lock lock(mTickLock);
   for (auto it = mHandlers.begin(); it != mHandlers.end();) {
-    mHandleAllocator.free_id(it->first);
+    mHandleAllocator.FreeId(it->first);
     it = mHandlers.erase(it);
   }
 }

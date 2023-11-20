@@ -69,7 +69,7 @@ class Player {
 
  private:
   std::recursive_mutex mTickLock;  // TODO does not need to recursive with some light restructuring
-  id_allocator mHandleAllocator;
+  IdAllocator mHandleAllocator;
   std::unordered_map<u32, std::unique_ptr<sound_handler>> mHandlers;
 
   void Tick(s16_output* stream, int samples);
