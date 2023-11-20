@@ -124,7 +124,7 @@ u16 PS1Note2Pitch(s8 center_note, s8 center_fine, short note, short fine) {
   return pitch;
 }
 
-std::pair<s16, s16> pitchbend(Tone& tone,
+std::pair<s16, s16> PitchBend(Tone& tone,
                               int current_pb,
                               int current_pm,
                               int start_note,

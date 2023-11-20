@@ -443,7 +443,7 @@ BankHandle Loader::BankLoad(nonstd::span<u8> bank) {
   return nullptr;
 }
 
-SoundBank* Loader::get_bank_by_handle(BankHandle handle) {
+SoundBank* Loader::GetBankByHandle(BankHandle handle) {
   auto bank = std::find_if(mBanks.begin(), mBanks.end(),
                            [handle](auto& bank) { return bank.get() == handle; });
   if (bank == mBanks.end()) {
@@ -453,7 +453,7 @@ SoundBank* Loader::get_bank_by_handle(BankHandle handle) {
   return bank->get();
 }
 
-SoundBank* Loader::get_bank_by_name(const char* name) {
+SoundBank* Loader::GetBankByName(const char* name) {
   for (auto& b : mBanks) {
     auto bankname = b->get_name();
     if (bankname.has_value()) {
@@ -466,7 +466,7 @@ SoundBank* Loader::get_bank_by_name(const char* name) {
   return nullptr;
 }
 
-SoundBank* Loader::get_bank_with_sound(const char* name) {
+SoundBank* Loader::GetBankWithSound(const char* name) {
   for (auto& b : mBanks) {
     auto sound = b->get_sound_by_name(name);
     if (sound.has_value()) {
@@ -477,7 +477,7 @@ SoundBank* Loader::get_bank_with_sound(const char* name) {
   return nullptr;
 }
 
-void Loader::unload_bank(BankHandle handle) {
+void Loader::UnloadBank(BankHandle handle) {
   auto bank = std::find_if(mBanks.begin(), mBanks.end(),
                            [handle](auto& bank) { return bank.get() == handle; });
   if (bank != mBanks.end()) {

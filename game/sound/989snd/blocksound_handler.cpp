@@ -251,7 +251,7 @@ void blocksound_handler::update_pitch() {
       continue;
     }
 
-    auto note = pitchbend(voice->tone, m_cur_pb, m_cur_pm, m_note, m_fine);
+    auto note = PitchBend(voice->tone, m_cur_pb, m_cur_pm, m_note, m_fine);
     auto pitch =
         PS1Note2Pitch(voice->tone.CenterNote, voice->tone.CenterFine, note.first, note.second);
 

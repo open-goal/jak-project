@@ -130,7 +130,7 @@ void Player::Tick(s16Output* stream, int samples) {
 
 u32 Player::PlaySound(BankHandle bank_id, u32 sound_id, s32 vol, s32 pan, s32 pm, s32 pb) {
   std::scoped_lock lock(mTickLock);
-  auto bank = mLoader.get_bank_by_handle(bank_id);
+  auto bank = mLoader.GetBankByHandle(bank_id);
   if (bank == nullptr) {
     lg::error("play_sound: Bank {} does not exist", static_cast<void*>(bank_id));
     return 0;
@@ -158,11 +158,11 @@ u32 Player::PlaySoundByName(BankHandle bank_id,
   std::scoped_lock lock(mTickLock);
   SoundBank* bank = nullptr;
   if (bank_id == 0 && bank_name != nullptr) {
-    bank = mLoader.get_bank_by_name(bank_name);
+    bank = mLoader.GetBankByName(bank_name);
   } else if (bank_id != 0) {
-    bank = mLoader.get_bank_by_handle(bank_id);
+    bank = mLoader.GetBankByHandle(bank_id);
   } else {
-    bank = mLoader.get_bank_with_sound(sound_name);
+    bank = mLoader.GetBankWithSound(sound_name);
   }
 
   if (bank == nullptr) {
@@ -239,7 +239,7 @@ BankHandle Player::LoadBank(nonstd::span<u8> bank) {
 
 void Player::UnloadBank(BankHandle bank_handle) {
   std::scoped_lock lock(mTickLock);
-  auto* bank = mLoader.get_bank_by_handle(bank_handle);
+  auto* bank = mLoader.GetBankByHandle(bank_handle);
   if (bank == nullptr)
     return;
 
@@ -252,7 +252,7 @@ void Player::UnloadBank(BankHandle bank_handle) {
     }
   }
 
-  mLoader.unload_bank(bank_handle);
+  mLoader.UnloadBank(bank_handle);
 }
 
 void Player::SetPanTable(VolPair* pantable) {
@@ -337,11 +337,11 @@ s32 Player::GetSoundUserData(BankHandle block_handle,
   std::scoped_lock lock(mTickLock);
   SoundBank* bank = nullptr;
   if (block_handle == nullptr && block_name != nullptr) {
-    bank = mLoader.get_bank_by_name(block_name);
+    bank = mLoader.GetBankByName(block_name);
   } else if (block_handle != nullptr) {
-    bank = mLoader.get_bank_by_handle(block_handle);
+    bank = mLoader.GetBankByHandle(block_handle);
   } else {
-    bank = mLoader.get_bank_with_sound(sound_name);
+    bank = mLoader.GetBankWithSound(sound_name);
   }
 
   if (bank == nullptr) {

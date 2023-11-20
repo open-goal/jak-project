@@ -25,7 +25,7 @@ void VoiceManager::StartTone(std::shared_ptr<VagVoice> voice) {
     throw std::runtime_error("reverb only voice not handler");
   }
 
-  std::pair<s16, s16> note = pitchbend(voice->tone, voice->current_pb, voice->current_pm,
+  std::pair<s16, s16> note = PitchBend(voice->tone, voice->current_pb, voice->current_pm,
                                        voice->start_note, voice->start_fine);
 
   auto pitch =
@@ -210,7 +210,7 @@ void VoiceManager::Unpause(std::shared_ptr<VagVoice> voice) {
 
   voice->SetVolume(left >> 1, right >> 1);
 
-  std::pair<s16, s16> note = pitchbend(voice->tone, voice->current_pb, voice->current_pm,
+  std::pair<s16, s16> note = PitchBend(voice->tone, voice->current_pb, voice->current_pm,
                                        voice->start_note, voice->start_fine);
 
   auto pitch =

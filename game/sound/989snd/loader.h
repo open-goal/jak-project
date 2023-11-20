@@ -31,16 +31,13 @@ class FileAttributes {
 
 class Loader {
  public:
-  SoundBank* get_bank_by_handle(BankHandle id);
-  SoundBank* get_bank_by_name(const char* name);
-  SoundBank* get_bank_with_sound(const char* name);
+  SoundBank* GetBankByHandle(BankHandle id);
+  SoundBank* GetBankByName(const char* name);
+  SoundBank* GetBankWithSound(const char* name);
 
-  void unload_bank(BankHandle id);
+  void UnloadBank(BankHandle id);
 
   BankHandle BankLoad(nonstd::span<u8> bank);
-  void load_midi(std::fstream& in);
-
-  bool read_midi();
 
  private:
   std::vector<std::unique_ptr<SoundBank>> mBanks;

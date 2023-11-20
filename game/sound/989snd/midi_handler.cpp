@@ -181,7 +181,7 @@ void midi_handler::set_pmod(s32 mod) {
     }
 
     voice->current_pm = m_cur_pm;
-    auto note = pitchbend(voice->tone, voice->current_pb, voice->current_pm, voice->start_note,
+    auto note = PitchBend(voice->tone, voice->current_pb, voice->current_pm, voice->start_note,
                           voice->start_fine);
     auto pitch =
         PS1Note2Pitch(voice->tone.CenterNote, voice->tone.CenterFine, note.first, note.second);
@@ -320,7 +320,7 @@ void midi_handler::channel_pitch() {
 
     if (voice->channel == channel) {
       voice->current_pb = m_pitch_bend[channel];
-      auto note = pitchbend(voice->tone, voice->current_pb, voice->current_pm, voice->start_note,
+      auto note = PitchBend(voice->tone, voice->current_pb, voice->current_pm, voice->start_note,
                             voice->start_fine);
       auto pitch =
           PS1Note2Pitch(voice->tone.CenterNote, voice->tone.CenterFine, note.first, note.second);
