@@ -22,7 +22,7 @@ std::optional<std::unique_ptr<SoundHandler>> MusicBank::MakeHandler(VoiceManager
   if (sound.Type == 4) {
     auto& midi = std::get<Midi>(MidiData);
     if (sound.MIDIID == midi.ID) {
-      return std::make_unique<midi_handler>(&midi, vm, sound, vol, pan, *this);
+      return std::make_unique<MidiHandler>(&midi, vm, sound, vol, pan, *this);
     }
     return std::nullopt;
   } else if (sound.Type == 5) {

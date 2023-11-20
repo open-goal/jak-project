@@ -58,7 +58,7 @@ void ame_handler::start_segment(u32 id) {
     // Skip adding if not midi type
     u32 type = (midi.SoundHandle >> 24) & 0xf;
     if (type == 1 || type == 3) {
-      m_midis.emplace(id, std::make_unique<midi_handler>(static_cast<Midi*>(&midi), m_vm, m_sound,
+      m_midis.emplace(id, std::make_unique<MidiHandler>(static_cast<Midi*>(&midi), m_vm, m_sound,
                                                          m_vol, m_pan, m_bank, this));
     }
   }
@@ -134,7 +134,7 @@ void ame_handler::SetPMod(s32 mod) {
     ;              \
   stream += (x);
 
-std::pair<bool, u8*> ame_handler::run_ame(midi_handler& midi, u8* stream) {
+std::pair<bool, u8*> ame_handler::run_ame(MidiHandler& midi, u8* stream) {
   int skip = 0;
   bool done = false;
   bool cont = true;
@@ -278,9 +278,9 @@ std::pair<bool, u8*> ame_handler::run_ame(midi_handler& midi, u8* stream) {
           // note : added hack here! :-)
           if (!SoundFlavaHack &&
               (comp < m_groups[group].excite_min[i] || comp > m_groups[group].excite_max[i])) {
-            midi.mute_channel(m_groups[group].channel[i]);
+            midi.MuteChannel(m_groups[group].channel[i]);
           } else {
-            midi.unmute_channel(m_groups[group].channel[i]);
+            midi.UnmuteChannel(m_groups[group].channel[i]);
           }
         }
         AME_END(1)

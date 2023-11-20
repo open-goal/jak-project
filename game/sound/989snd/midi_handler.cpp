@@ -22,7 +22,7 @@ namespace snd {
 **
 */
 
-midi_handler::midi_handler(Midi* block,
+MidiHandler::MidiHandler(Midi* block,
                            VoiceManager& vm,
                            MusicBank::MIDISound& sound,
                            s32 vol,
@@ -44,10 +44,10 @@ midi_handler::midi_handler(Midi* block,
     m_pan = pan;
   }
 
-  init_midi();
+  InitMidi();
 }
 
-midi_handler::midi_handler(Midi* block,
+MidiHandler::MidiHandler(Midi* block,
                            VoiceManager& vm,
                            MusicBank::MIDISound& sound,
                            s32 vol,
@@ -62,10 +62,10 @@ midi_handler::midi_handler(Midi* block,
       m_bank(bank),
       m_header(block),
       m_vm(vm) {
-  init_midi();
+  InitMidi();
 }
 
-void midi_handler::init_midi() {
+void MidiHandler::InitMidi() {
   m_seq_data_start = m_header->DataStart;
   m_seq_ptr = m_seq_data_start;
   m_tempo = m_header->Tempo;
@@ -74,7 +74,7 @@ void midi_handler::init_midi() {
   m_chanpan.fill(0);
 }
 
-std::pair<size_t, u32> midi_handler::read_vlq(u8* value) {
+std::pair<size_t, u32> MidiHandler::ReadVLQ(u8* value) {
   size_t len = 1;
   u32 out = *value & 0x7f;
   // fmt::print("starting with {:x}\n", *value);
@@ -90,7 +90,7 @@ std::pair<size_t, u32> midi_handler::read_vlq(u8* value) {
   return {len, out};
 }
 
-void midi_handler::Pause() {
+void MidiHandler::Pause() {
   m_paused = true;
 
   for (auto& p : m_voices) {
@@ -103,7 +103,7 @@ void midi_handler::Pause() {
   }
 }
 
-void midi_handler::Unpause() {
+void MidiHandler::Unpause() {
   m_paused = false;
 
   for (auto& p : m_voices) {
@@ -116,7 +116,7 @@ void midi_handler::Unpause() {
   }
 }
 
-void midi_handler::Stop() {
+void MidiHandler::Stop() {
   m_track_complete = true;
 
   for (auto& p : m_voices) {
@@ -129,7 +129,7 @@ void midi_handler::Stop() {
   }
 }
 
-void midi_handler::SetVolPan(s32 vol, s32 pan) {
+void MidiHandler::SetVolPan(s32 vol, s32 pan) {
   if (vol != VOLUME_DONT_CHANGE) {
     if (vol >= 0) {
       m_vol = (m_sound.Vol * vol) >> 10;
@@ -171,7 +171,7 @@ void midi_handler::SetVolPan(s32 vol, s32 pan) {
   }
 }
 
-void midi_handler::SetPMod(s32 mod) {
+void MidiHandler::SetPMod(s32 mod) {
   m_cur_pm = mod;
 
   for (auto& v : m_voices) {
@@ -189,23 +189,23 @@ void midi_handler::SetPMod(s32 mod) {
   }
 }
 
-void midi_handler::mute_channel(u8 channel) {
+void MidiHandler::MuteChannel(u8 channel) {
   // fmt::print("{:x} ame muting channel {}\n", (u64)this, channel);
   m_mute_state[channel] = true;
 }
 
-void midi_handler::unmute_channel(u8 channel) {
+void MidiHandler::UnmuteChannel(u8 channel) {
   // fmt::print("{:x} ame unmuting channel {}\n", (u64)this, channel);
   m_mute_state[channel] = false;
 }
 
-void midi_handler::note_on() {
+void MidiHandler::NoteOn() {
   u8 channel = m_status & 0xf;
   u8 note = m_seq_ptr[0];
   u8 velocity = m_seq_ptr[1];
 
   if (velocity == 0) {
-    note_off();
+    NoteOff();
     return;
   }
 
@@ -253,7 +253,7 @@ void midi_handler::note_on() {
   m_seq_ptr += 2;
 }
 
-void midi_handler::note_off() {
+void MidiHandler::NoteOff() {
   u8 channel = m_status & 0xf;
   u8 note = m_seq_ptr[0];
   // Yep, no velocity for note-offs
@@ -276,7 +276,7 @@ void midi_handler::note_off() {
   m_seq_ptr += 2;
 }
 
-void midi_handler::program_change() {
+void MidiHandler::ProgramChange() {
   u8 channel = m_status & 0xf;
   u8 program = m_seq_ptr[0];
 
@@ -287,7 +287,7 @@ void midi_handler::program_change() {
   m_seq_ptr += 1;
 }
 
-void midi_handler::channel_pressure() {
+void MidiHandler::ChannelPressure() {
   u8 channel = m_status & 0xf;
   u8 note = m_seq_ptr[0];
   // fmt::print("{}: channel pressure {:02x} {:02x}\n", m_time, m_status, m_seq_ptr[0]);
@@ -306,7 +306,7 @@ void midi_handler::channel_pressure() {
   m_seq_ptr += 1;
 }
 
-void midi_handler::channel_pitch() {
+void MidiHandler::ChannelPitch() {
   u8 channel = m_status & 0xF;
   s32 pitch = 0xFFFF * ((m_seq_ptr[0] & 0x7f) | ((m_seq_ptr[1] & 0x7f) << 7)) / 0x3FFF;
   // lg::debug("{}: pitch ch{:01x} {:04x}", m_time, channel, pitch);
@@ -331,7 +331,7 @@ void midi_handler::channel_pitch() {
   m_seq_ptr += 2;
 }
 
-void midi_handler::meta_event() {
+void MidiHandler::MetaEvent() {
   // fmt::print("{}: meta event {:02x}\n", m_time, *m_seq_ptr);
   size_t len = m_seq_ptr[1];
 
@@ -367,7 +367,7 @@ static s16 midiTo360Pan(u8 pan) {
   }
 }
 
-void midi_handler::controller_change() {
+void MidiHandler::ControllerChange() {
   u8 channel = m_status & 0xf;
   u8 controller = m_seq_ptr[0];
   u8 value = m_seq_ptr[1];
@@ -382,14 +382,14 @@ void midi_handler::controller_change() {
     } break;
     // case 0x40: {} break; // TODO damper
     default:
-      throw midi_error(fmt::format("invalid midi controller change {}", controller));
+      throw MidiError(fmt::format("invalid midi controller change {}", controller));
       break;
   }
 
   m_seq_ptr += 2;
 }
 
-void midi_handler::system_event() {
+void MidiHandler::SystemEvent() {
   // fmt::print("{}: system event {:02x}\n", m_time, *m_seq_ptr);
 
   switch (*m_seq_ptr) {
@@ -404,23 +404,23 @@ void midi_handler::system_event() {
           m_track_complete = true;
         }
       } else {
-        throw midi_error("MIDI tried to run AME without an AME handler");
+        throw MidiError("MIDI tried to run AME without an AME handler");
       }
       break;
     default:
-      throw midi_error(fmt::format("Unknown system message {:02x}", *m_seq_ptr));
+      throw MidiError(fmt::format("Unknown system message {:02x}", *m_seq_ptr));
   }
 }
 
-bool midi_handler::Tick() {
+bool MidiHandler::Tick() {
   if (m_paused) {
     return m_track_complete;
   }
 
   try {
     m_voices.remove_if([](auto& v) { return v.expired(); });
-    step();
-  } catch (midi_error& e) {
+    Step();
+  } catch (MidiError& e) {
     m_track_complete = true;
     lg::error("MIDI Error: {}", e.what());
     fmt::print("Sequence following: ");
@@ -433,8 +433,8 @@ bool midi_handler::Tick() {
   return m_track_complete;
 }
 
-void midi_handler::new_delta() {
-  auto [len, delta] = read_vlq(m_seq_ptr);
+void MidiHandler::NewDelta() {
+  auto [len, delta] = ReadVLQ(m_seq_ptr);
 
   m_seq_ptr += len;
   m_time += delta;
@@ -451,9 +451,9 @@ void midi_handler::new_delta() {
   }
 }
 
-void midi_handler::step() {
+void MidiHandler::Step() {
   if (m_get_delta) {
-    new_delta();
+    NewDelta();
     m_get_delta = false;
   } else {
     m_tick_countdown--;
@@ -468,40 +468,40 @@ void midi_handler::step() {
 
     switch (m_status >> 4) {
       case 0x8:
-        note_off();
+        NoteOff();
         break;
       case 0x9:
-        note_on();
+        NoteOn();
         break;
       case 0xB:
-        controller_change();
+        ControllerChange();
         break;
       case 0xD:
-        channel_pressure();
+        ChannelPressure();
         break;
       case 0xC:
-        program_change();
+        ProgramChange();
         break;
       case 0xE:
-        channel_pitch();
+        ChannelPitch();
         break;
       case 0xF:
         // normal meta-event
         if (m_status == 0xFF) {
-          meta_event();
+          MetaEvent();
           break;
         }
         if (m_status == 0xF0) {
-          system_event();
+          SystemEvent();
           break;
         }
         [[fallthrough]];
       default:
-        throw midi_error(fmt::format("invalid status {}", m_status));
+        throw MidiError(fmt::format("invalid status {}", m_status));
         return;
     }
 
-    new_delta();
+    NewDelta();
   }
 }
 

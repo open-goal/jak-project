@@ -27,16 +27,16 @@ class midi_voice : public VagVoice {
 };
 
 class ame_handler;
-class midi_handler : public SoundHandler {
+class MidiHandler : public SoundHandler {
  public:
-  midi_handler(Midi* block,
+  MidiHandler(Midi* block,
                VoiceManager& vm,
                MusicBank::MIDISound& sound,
                s32 vol,
                s32 pan,
                SoundBank& bank);
 
-  midi_handler(Midi* block,
+  MidiHandler(Midi* block,
                VoiceManager& vm,
                MusicBank::MIDISound& sound,
                s32 vol,
@@ -44,7 +44,7 @@ class midi_handler : public SoundHandler {
                SoundBank& bank,
                std::optional<ame_handler*> parent);
 
-  ~midi_handler() override {
+  ~MidiHandler() override {
     for (auto& p : m_voices) {
       auto v = p.lock();
       if (v != nullptr) {
@@ -52,11 +52,11 @@ class midi_handler : public SoundHandler {
       }
     }
   }
-  void init_midi();
-  void start();
+  void InitMidi();
+  void Start();
   bool Tick() override;
-  void mute_channel(u8 channel);
-  void unmute_channel(u8 channel);
+  void MuteChannel(u8 channel);
+  void UnmuteChannel(u8 channel);
   SoundBank& Bank() override { return m_bank; };
 
   void Pause() override;
@@ -65,15 +65,15 @@ class midi_handler : public SoundHandler {
   u8 Group() override { return m_sound.VolGroup; }
   void SetVolPan(s32 vol, s32 pan) override;
 
-  bool complete() { return m_track_complete; };
+  bool Complete() { return m_track_complete; };
   void SetPMod(s32 mod) override;
 
  private:
   static constexpr int tickrate = 240;
   static constexpr int mics_per_tick = 1000000 / tickrate;
-  struct midi_error : public std::exception {
-    midi_error(std::string text) : msg(std::move(text)) {}
-    midi_error() : msg("Unknown MIDI error") {}
+  struct MidiError : public std::exception {
+    MidiError(std::string text) : msg(std::move(text)) {}
+    MidiError() : msg("Unknown MIDI error") {}
     std::string msg;
     const char* what() const noexcept override { return msg.c_str(); }
   };
@@ -117,18 +117,18 @@ class midi_handler : public SoundHandler {
 
   VoiceManager& m_vm;
 
-  void step();
-  void new_delta();
+  void Step();
+  void NewDelta();
 
-  void note_on();
-  void note_off();
-  void controller_change();
-  void channel_pressure();
-  void program_change();
-  void meta_event();
-  void system_event();
-  void channel_pitch();
+  void NoteOn();
+  void NoteOff();
+  void ControllerChange();
+  void ChannelPressure();
+  void ProgramChange();
+  void MetaEvent();
+  void SystemEvent();
+  void ChannelPitch();
 
-  static std::pair<size_t, u32> read_vlq(u8* value);
+  static std::pair<size_t, u32> ReadVLQ(u8* value);
 };
 }  // namespace snd

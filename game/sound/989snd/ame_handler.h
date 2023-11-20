@@ -18,9 +18,9 @@ extern u64 SoundFlavaHack;
 
 extern u8 GlobalExcite;
 
-class midi_handler;
+class MidiHandler;
 class ame_handler : public SoundHandler {
-  friend class midi_handler;
+  friend class MidiHandler;
 
  public:
   ame_handler(MultiMidi* block,
@@ -60,7 +60,7 @@ class ame_handler : public SoundHandler {
 
   void start_segment(u32 id);
   void stop_segment(u32 id);
-  std::pair<bool, u8*> run_ame(midi_handler&, u8* stream);
+  std::pair<bool, u8*> run_ame(MidiHandler&, u8* stream);
 
   MusicBank::MIDISound& m_sound;
   SoundBank& m_bank;
@@ -71,7 +71,7 @@ class ame_handler : public SoundHandler {
   s32 m_pan{0};
   s8 m_repeats{0};
 
-  std::unordered_map<u32, std::unique_ptr<midi_handler>> m_midis;
+  std::unordered_map<u32, std::unique_ptr<MidiHandler>> m_midis;
 
   std::array<GroupDescription, 16> m_groups{};
   std::array<u8, 16> m_register{};
