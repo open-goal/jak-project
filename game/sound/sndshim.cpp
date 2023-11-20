@@ -9,15 +9,15 @@
 
 #include "989snd/player.h"
 
-std::unique_ptr<snd::player> player;
+std::unique_ptr<snd::Player> player;
 
 void snd_StartSoundSystem() {
-  player = std::make_unique<snd::player>();
+  player = std::make_unique<snd::Player>();
 
   for (auto& voice : voices) {
     voice = std::make_shared<snd::voice>(snd::voice::AllocationType::permanent);
     voice->set_sample((u16*)spu_memory);
-    player->submit_voice(voice);
+    player->SubmitVoice(voice);
   }
 }
 
@@ -36,7 +36,7 @@ void snd_FreeSPUDMA([[maybe_unused]] s32 channel) {}
 
 s32 snd_GetTick() {
   if (player) {
-    return player->get_tick();
+    return player->GetTick();
   } else {
     return 0;
   }
@@ -79,19 +79,19 @@ void snd_SetReverbType(s32 core, s32 type) {}
 
 void snd_SetPanTable(s16* table) {
   if (player) {
-    player->set_pan_table((snd::vol_pair*)table);
+    player->SetPanTable((snd::vol_pair*)table);
   }
 }
 
 void snd_SetPlayBackMode(s32 mode) {
   if (player) {
-    player->set_playback_mode(mode);
+    player->SetPlaybackMode(mode);
   }
 }
 
 s32 snd_SoundIsStillPlaying(s32 sound_handle) {
   if (player) {
-    if (player->sound_still_active(sound_handle)) {
+    if (player->SoundStillActive(sound_handle)) {
       return sound_handle;
     }
   }
@@ -101,25 +101,25 @@ s32 snd_SoundIsStillPlaying(s32 sound_handle) {
 
 void snd_StopSound(s32 sound_handle) {
   if (player) {
-    player->stop_sound(sound_handle);
+    player->StopSound(sound_handle);
   }
 }
 
 void snd_SetSoundVolPan(s32 sound_handle, s32 vol, s32 pan) {
   if (player) {
-    player->set_sound_vol_pan(sound_handle, vol, pan);
+    player->SetSoundVolPan(sound_handle, vol, pan);
   }
 }
 
 void snd_SetMasterVolume(s32 which, s32 volume) {
   if (player) {
-    player->set_master_volume(which, volume);
+    player->SetMasterVolume(which, volume);
   }
 }
 
 void snd_UnloadBank(snd::BankHandle bank_handle) {
   if (player) {
-    player->unload_bank(bank_handle);
+    player->UnloadBank(bank_handle);
   }
 }
 
@@ -129,19 +129,19 @@ void snd_ResolveBankXREFS() {
 
 void snd_ContinueAllSoundsInGroup(u8 groups) {
   if (player) {
-    player->continue_all_sounds_in_group(groups);
+    player->ContinueAllSoundsInGroup(groups);
   }
 }
 
 void snd_PauseAllSoundsInGroup(u8 groups) {
   if (player) {
-    player->pause_all_sounds_in_group(groups);
+    player->PauseAllSoundsInGroup(groups);
   }
 }
 
 void snd_SetMIDIRegister(s32 sound_handle, u8 reg, u8 value) {
   if (player) {
-    player->set_sound_reg(sound_handle, reg, value);
+    player->SetSoundReg(sound_handle, reg, value);
   }
 }
 
@@ -152,7 +152,7 @@ s32 snd_PlaySoundVolPanPMPB(snd::BankHandle bank,
                             s32 pitch_mod,
                             s32 pitch_bend) {
   if (player) {
-    return player->play_sound(bank, sound, vol, pan, pitch_mod, pitch_bend);
+    return player->PlaySound(bank, sound, vol, pan, pitch_mod, pitch_bend);
   } else {
     return 0;
   }
@@ -166,7 +166,7 @@ s32 snd_PlaySoundByNameVolPanPMPB(snd::BankHandle bank_handle,
                                   s32 pitch_mod,
                                   s32 pitch_bend) {
   if (player) {
-    return player->play_sound_by_name(bank_handle, bank_name, sound_name, vol, pan, pitch_mod,
+    return player->PlaySoundByName(bank_handle, bank_name, sound_name, vol, pan, pitch_mod,
                                       pitch_bend);
   } else {
     return 0;
@@ -175,7 +175,7 @@ s32 snd_PlaySoundByNameVolPanPMPB(snd::BankHandle bank_handle,
 
 void snd_SetSoundPitchModifier(s32 sound_handle, s32 pitch_mod) {
   if (player) {
-    player->set_sound_pmod(sound_handle, pitch_mod);
+    player->SetSoundPmod(sound_handle, pitch_mod);
   }
 }
 
@@ -187,13 +187,13 @@ void snd_SetSoundPitchBend(s32 sound_handle, s32 bend) {
 
 void snd_PauseSound(s32 sound_handle) {
   if (player) {
-    player->pause_sound(sound_handle);
+    player->PauseSound(sound_handle);
   }
 }
 
 void snd_ContinueSound(s32 sound_handle) {
   if (player) {
-    player->continue_sound(sound_handle);
+    player->ContinueSound(sound_handle);
   }
 }
 
@@ -214,7 +214,7 @@ snd::BankHandle snd_BankLoadEx(const char* filename,
   if (player) {
     // TODO put the load on the thread pool?
     auto file_buf = file_util::read_binary_file(std::string(filename));
-    return player->load_bank(nonstd::span(file_buf).subspan(offset));
+    return player->LoadBank(nonstd::span(file_buf).subspan(offset));
   } else {
     return 0;
   }
@@ -247,7 +247,7 @@ s32 snd_GetSoundUserData(snd::BankHandle block_handle,
                          char* sound_name,
                          SFXUserData* dst) {
   if (player) {
-    return player->get_sound_user_data(block_handle, block_name, sound_id, sound_name,
+    return player->GetSoundUserData(block_handle, block_name, sound_id, sound_name,
                                        (snd::SFXUserData*)dst);
   }
   return 0;
@@ -255,12 +255,12 @@ s32 snd_GetSoundUserData(snd::BankHandle block_handle,
 
 void snd_SetSoundReg(s32 sound_handle, s32 which, u8 val) {
   if (player) {
-    player->set_sound_reg(sound_handle, which, val);
+    player->SetSoundReg(sound_handle, which, val);
   }
 }
 
 void snd_SetGlobalExcite(u8 value) {
   if (player) {
-    player->set_global_excite(value);
+    player->SetGlobalExcite(value);
   }
 }
