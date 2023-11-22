@@ -29,20 +29,14 @@ class midi_voice : public VagVoice {
 class AmeHandler;
 class MidiHandler : public SoundHandler {
  public:
-  MidiHandler(Midi* block,
-               VoiceManager& vm,
-               MusicBank::MIDISound& sound,
-               s32 vol,
-               s32 pan,
-               SoundBank& bank);
+  MidiHandler(Midi* block, MusicBank::MIDISound& sound, s32 vol, s32 pan, SoundBank& bank);
 
   MidiHandler(Midi* block,
-               VoiceManager& vm,
-               MusicBank::MIDISound& sound,
-               s32 vol,
-               s32 pan,
-               SoundBank& bank,
-               std::optional<AmeHandler*> parent);
+              MusicBank::MIDISound& sound,
+              s32 vol,
+              s32 pan,
+              SoundBank& bank,
+              std::optional<AmeHandler*> parent);
 
   ~MidiHandler() override {
     for (auto& p : m_voices) {
@@ -114,8 +108,6 @@ class MidiHandler : public SoundHandler {
   u32 m_muted_channels{0};
 
   std::array<u8, 16> m_programs{};
-
-  VoiceManager& m_vm;
 
   void Step();
   void NewDelta();

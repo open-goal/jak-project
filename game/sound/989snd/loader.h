@@ -29,17 +29,10 @@ class FileAttributes {
   void Read(BinaryReader& data);
 };
 
-class Loader {
- public:
-  SoundBank* GetBankByHandle(BankHandle id);
-  SoundBank* GetBankByName(const char* name);
-  SoundBank* GetBankWithSound(const char* name);
+SoundBank* GetBankByHandle(BankHandle id);
+SoundBank* GetBankByName(const char* name);
+SoundBank* GetBankWithSound(const char* name);
+void BankLoad(BankHandle id);
+BankHandle BankLoad(nonstd::span<u8> bank);
 
-  void UnloadBank(BankHandle id);
-
-  BankHandle BankLoad(nonstd::span<u8> bank);
-
- private:
-  std::vector<std::unique_ptr<SoundBank>> mBanks;
-};
 }  // namespace snd

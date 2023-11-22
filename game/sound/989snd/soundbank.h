@@ -53,26 +53,24 @@ class SoundBank {
   u32 BankID;
   s8 BankNum;
 
-  virtual std::optional<std::unique_ptr<SoundHandler>> MakeHandler(VoiceManager& vm,
-                                                                     u32 sound_id,
-                                                                     s32 vol,
-                                                                     s32 pan,
-                                                                     s32 pm,
-                                                                     s32 pb) {
+  virtual std::optional<std::unique_ptr<SoundHandler>> MakeHandler(u32 sound_id,
+                                                                   s32 vol,
+                                                                   s32 pan,
+                                                                   s32 pm,
+                                                                   s32 pb) {
     SndPlayParams params{};
     params.vol = vol;
     params.pan = pan;
     params.pitch_mod = pm;
     params.pitch_bend = pb;
 
-    return MakeHandler(vm, sound_id, -1, -1, params);
+    return MakeHandler(sound_id, -1, -1, params);
   };
 
-  virtual std::optional<std::unique_ptr<SoundHandler>> MakeHandler(VoiceManager& vm,
-                                                                     u32 sound_id,
-                                                                     s32 vol,
-                                                                     s32 pan,
-                                                                     SndPlayParams& params) = 0;
+  virtual std::optional<std::unique_ptr<SoundHandler>> MakeHandler(u32 sound_id,
+                                                                   s32 vol,
+                                                                   s32 pan,
+                                                                   SndPlayParams& params) = 0;
 
   virtual std::optional<std::string_view> GetName() { return std::nullopt; };
   virtual std::optional<u32> GetSoundByName(const char* /*name*/) { return std::nullopt; };

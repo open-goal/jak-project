@@ -22,7 +22,6 @@ class BlockSoundHandler : public SoundHandler {
  public:
   BlockSoundHandler(SoundBank& bank,
                     SFXBlock::SFX& sfx,
-                    VoiceManager& vm,
                     s32 sfx_vol,
                     s32 sfx_pan,
                     SndPlayParams& params);
@@ -54,7 +53,6 @@ class BlockSoundHandler : public SoundHandler {
   bool m_skip_grains{false};
 
   SFXBlock::SFX& m_sfx;
-  VoiceManager& m_vm;
 
   std::list<std::weak_ptr<BlockSoundVoice>> m_voices;
 

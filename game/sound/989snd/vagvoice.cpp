@@ -4,18 +4,44 @@
 
 #include <stdexcept>
 
+#include "player.h"
 #include "util.h"
 
 #include "../common/voice.h"
 
 namespace snd {
-VoiceManager::VoiceManager(Synth& synth) : mSynth(synth) {
-  mPanTable = normalPanTable;
-  mMasterVol.fill(0x400);
-  mGroupDuck.fill(0x10000);
+
+std::list<std::weak_ptr<VagVoice>> gVoices;
+std::array<s32, 32> gMasterVol;
+std::array<s32, 32> gGroupDuck;
+const VolPair* gPanTable{nullptr};
+s32 gStereoOrMono{0};
+
+// TODO remove
+Synth* mSynth;
+
+void VoiceManagerInit(Synth& synth) {
+  mSynth = &synth;
+  gPanTable = normalPanTable;
+  gMasterVol.fill(0x400);
+  gGroupDuck.fill(0x10000);
 }
 
-void VoiceManager::StartTone(std::shared_ptr<VagVoice> voice) {
+void SetPanTable(VolPair* table) {
+  std::scoped_lock lock(gTickLock);
+  gPanTable = table;
+};
+
+void CleanVoices() {
+  gVoices.remove_if([](auto& v) { return v.expired(); });
+}
+
+void SetPlaybackMode(s32 mode) {
+  std::scoped_lock lock(gTickLock);
+  gStereoOrMono = mode;
+}
+
+void StartTone(std::shared_ptr<VagVoice> voice) {
   s16 left = AdjustVolToGroup(voice->basevol.left, voice->group);
   s16 right = AdjustVolToGroup(voice->basevol.right, voice->group);
 
@@ -40,10 +66,10 @@ void VoiceManager::StartTone(std::shared_ptr<VagVoice> voice) {
   voice->KeyOn();
 
   CleanVoices();
-  mVoices.emplace_front(voice);
-  mSynth.AddVoice(voice);
+  gVoices.emplace_front(voice);
+  mSynth->AddVoice(voice);
 }
-VolPair VoiceManager::MakeVolume(int vol1, int pan1, int vol2, int pan2, int vol3, int pan3) {
+VolPair MakeVolume(int vol1, int pan1, int vol2, int pan2, int vol3, int pan3) {
   // Scale up as close as we can to max positive 16bit volume
   // I'd have just used shifting but I guess this does get closer
 
@@ -56,7 +82,7 @@ VolPair VoiceManager::MakeVolume(int vol1, int pan1, int vol2, int pan2, int vol
     return {0, 0};
   }
 
-  if (mStereoOrMono == 1) {
+  if (gStereoOrMono == 1) {
     return {(s16)vol, (s16)vol};
   }
 
@@ -84,11 +110,11 @@ VolPair VoiceManager::MakeVolume(int vol1, int pan1, int vol2, int pan2, int vol
   // it. (For surround audio positioning?)
 
   if (total_pan < 180) {
-    lvol = (mPanTable[total_pan].left * vol) / 0x3fff;
-    rvol = (mPanTable[total_pan].right * vol) / 0x3fff;
+    lvol = (gPanTable[total_pan].left * vol) / 0x3fff;
+    rvol = (gPanTable[total_pan].right * vol) / 0x3fff;
   } else {
-    rvol = (mPanTable[total_pan - 180].left * vol) / 0x3fff;
-    lvol = (mPanTable[total_pan - 180].right * vol) / 0x3fff;
+    rvol = (gPanTable[total_pan - 180].left * vol) / 0x3fff;
+    lvol = (gPanTable[total_pan - 180].right * vol) / 0x3fff;
   }
 
   // TODO rest of this function
@@ -97,13 +123,13 @@ VolPair VoiceManager::MakeVolume(int vol1, int pan1, int vol2, int pan2, int vol
   return {lvol, rvol};
 }
 
-VolPair VoiceManager::MakeVolumeB(int sound_vol,
-                                      int velocity_volume,
-                                      int pan,
-                                      int prog_vol,
-                                      int prog_pan,
-                                      int tone_vol,
-                                      int tone_pan) {
+VolPair MakeVolumeB(int sound_vol,
+                    int velocity_volume,
+                    int pan,
+                    int prog_vol,
+                    int prog_pan,
+                    int tone_vol,
+                    int tone_pan) {
   // Scale up as close as we can to max positive 16bit volume
   // I'd have just used shifting but I guess this does get closer
 
@@ -117,7 +143,7 @@ VolPair VoiceManager::MakeVolumeB(int sound_vol,
     return {0, 0};
   }
 
-  if (mStereoOrMono == 1) {
+  if (gStereoOrMono == 1) {
     return {(s16)vol, (s16)vol};
   }
 
@@ -145,11 +171,11 @@ VolPair VoiceManager::MakeVolumeB(int sound_vol,
   // it. (For surround audio positioning?)
 
   if (total_pan < 180) {
-    lvol = (mPanTable[total_pan].left * vol) / 0x3fff;
-    rvol = (mPanTable[total_pan].right * vol) / 0x3fff;
+    lvol = (gPanTable[total_pan].left * vol) / 0x3fff;
+    rvol = (gPanTable[total_pan].right * vol) / 0x3fff;
   } else {
-    rvol = (mPanTable[total_pan - 180].left * vol) / 0x3fff;
-    lvol = (mPanTable[total_pan - 180].right * vol) / 0x3fff;
+    rvol = (gPanTable[total_pan - 180].left * vol) / 0x3fff;
+    lvol = (gPanTable[total_pan - 180].right * vol) / 0x3fff;
   }
 
   // TODO rest of this function
@@ -158,7 +184,7 @@ VolPair VoiceManager::MakeVolumeB(int sound_vol,
   return {lvol, rvol};
 }
 
-s16 VoiceManager::AdjustVolToGroup(s16 involume, int group) {
+s16 AdjustVolToGroup(s16 involume, int group) {
   s32 volume = involume;
   // NOTE grou >= 7 in version 2
   if (group >= 15)
@@ -168,7 +194,7 @@ s16 VoiceManager::AdjustVolToGroup(s16 involume, int group) {
     volume = 0x7ffe;
 
   // NOTE no duckers in version 2
-  s32 modifier = (mMasterVol[group] * mGroupDuck[group]) / 0x10000;
+  s32 modifier = (gMasterVol[group] * gGroupDuck[group]) / 0x10000;
   volume = (volume * modifier) / 0x400;
   int sign = 1;
   if (volume < 0) {
@@ -180,10 +206,10 @@ s16 VoiceManager::AdjustVolToGroup(s16 involume, int group) {
   return retval;
 }
 
-void VoiceManager::SetMasterVol(u8 group, s32 volume) {
-  mMasterVol[group] = volume;
+void SetMasterVol(u8 group, s32 volume) {
+  gMasterVol[group] = volume;
 
-  for (auto& p : mVoices) {
+  for (auto& p : gVoices) {
     auto voice = p.lock();
     if (voice == nullptr || voice->paused) {
       continue;
@@ -198,13 +224,13 @@ void VoiceManager::SetMasterVol(u8 group, s32 volume) {
   }
 }
 
-void VoiceManager::Pause(std::shared_ptr<VagVoice> voice) {
+void PauseTone(std::shared_ptr<VagVoice> voice) {
   voice->SetVolume(0, 0);
   voice->SetPitch(0);
   voice->paused = true;
 }
 
-void VoiceManager::Unpause(std::shared_ptr<VagVoice> voice) {
+void UnpauseTone(std::shared_ptr<VagVoice> voice) {
   s16 left = AdjustVolToGroup(voice->basevol.left, voice->group);
   s16 right = AdjustVolToGroup(voice->basevol.right, voice->group);
 

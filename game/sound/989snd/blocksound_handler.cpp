@@ -11,12 +11,11 @@ namespace snd {
 std::array<s8, 32> g_block_reg{};
 
 BlockSoundHandler::BlockSoundHandler(SoundBank& bank,
-                                       SFXBlock::SFX& sfx,
-                                       VoiceManager& vm,
-                                       s32 sfx_vol,
-                                       s32 sfx_pan,
-                                       SndPlayParams& params)
-    : m_group(sfx.VolGroup), m_sfx(sfx), m_vm(vm), m_bank(bank) {
+                                     SFXBlock::SFX& sfx,
+                                     s32 sfx_vol,
+                                     s32 sfx_pan,
+                                     SndPlayParams& params)
+    : m_group(sfx.VolGroup), m_sfx(sfx), m_bank(bank) {
   s32 vol, pan, pitch_mod, pitch_bend;
   if (sfx_vol == -1) {
     sfx_vol = sfx.Vol;
@@ -154,7 +153,7 @@ void BlockSoundHandler::Pause() {
       continue;
     }
 
-    m_vm.Pause(voice);
+    PauseTone(voice);
   }
 }
 
@@ -171,7 +170,7 @@ void BlockSoundHandler::Unpause() {
       continue;
     }
 
-    m_vm.Unpause(voice);
+    UnpauseTone(voice);
   }
 }
 
@@ -232,9 +231,9 @@ void BlockSoundHandler::SetVolPan(s32 vol, s32 pan) {
         continue;
       }
 
-      auto volume = m_vm.MakeVolume(127, 0, m_cur_volume, m_cur_pan, voice->g_vol, voice->g_pan);
-      auto left = m_vm.AdjustVolToGroup(volume.left, m_group);
-      auto right = m_vm.AdjustVolToGroup(volume.right, m_group);
+      auto volume = MakeVolume(127, 0, m_cur_volume, m_cur_pan, voice->g_vol, voice->g_pan);
+      auto left = AdjustVolToGroup(volume.left, m_group);
+      auto right = AdjustVolToGroup(volume.right, m_group);
 
       voice->SetVolume(left >> 1, right >> 1);
     }

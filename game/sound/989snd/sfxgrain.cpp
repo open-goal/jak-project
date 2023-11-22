@@ -69,10 +69,9 @@ s32 Grain::snd_SFX_GRAIN_TYPE_TONE(BlockSoundHandler& handler) {
   voice->g_vol = vol;
   voice->g_pan = pan;
 
-  voice->basevol =
-      handler.m_vm.MakeVolume(127, 0, handler.m_cur_volume, handler.m_cur_pan, vol, pan);
+  voice->basevol = MakeVolume(127, 0, handler.m_cur_volume, handler.m_cur_pan, vol, pan);
 
-  handler.m_vm.StartTone(voice);
+  StartTone(voice);
   handler.m_voices.emplace_front(voice);
 
   return 0;
@@ -158,7 +157,7 @@ s32 Grain::snd_SFX_GRAIN_TYPE_STARTCHILDSOUND(BlockSoundHandler& handler) {
   s32 index = psp.sound_id;
 
   if (index >= 0) {
-    auto child_handler = block.MakeHandler(handler.m_vm, index, vol, pan, params);
+    auto child_handler = block.MakeHandler(index, vol, pan, params);
     if (child_handler.has_value()) {
       handler.m_children.emplace_front(std::move(child_handler.value()));
     }

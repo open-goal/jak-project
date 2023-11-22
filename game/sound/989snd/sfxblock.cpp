@@ -7,18 +7,17 @@
 
 namespace snd {
 
-std::optional<std::unique_ptr<SoundHandler>> SFXBlock::MakeHandler(VoiceManager& vm,
-                                                                     u32 sound_id,
-                                                                     s32 vol,
-                                                                     s32 pan,
-                                                                     SndPlayParams& params) {
+std::optional<std::unique_ptr<SoundHandler>> SFXBlock::MakeHandler(u32 sound_id,
+                                                                   s32 vol,
+                                                                   s32 pan,
+                                                                   SndPlayParams& params) {
   auto& SFX = Sounds[sound_id];
 
   if (SFX.Grains.empty()) {
     return std::nullopt;
   }
 
-  auto handler = std::make_unique<BlockSoundHandler>(*this, SFX, vm, vol, pan, params);
+  auto handler = std::make_unique<BlockSoundHandler>(*this, SFX, vol, pan, params);
   return handler;
 }
 
