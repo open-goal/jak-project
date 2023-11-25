@@ -12,12 +12,13 @@ namespace snd {
 u64 SoundFlavaHack = 0;
 u8 GlobalExcite = 0;
 
-AmeHandler::AmeHandler(MultiMidi* block,
+AmeHandler::AmeHandler(SoundHandle oid,
+                       MultiMidi* block,
                        MusicBank::MIDISound& sound,
                        s32 vol,
                        s32 pan,
                        SoundBank& bank)
-    : m_sound(sound), m_bank(bank), m_header(block), m_repeats(sound.Repeats) {
+    : SoundHandler(oid), m_sound(sound), m_bank(bank), m_header(block), m_repeats(sound.Repeats) {
   if (vol == VOLUME_DONT_CHANGE) {
     vol = 1024;
   }
@@ -57,8 +58,8 @@ void AmeHandler::StartSegment(u32 id) {
     // Skip adding if not midi type
     u32 type = (midi.SoundHandle >> 24) & 0xf;
     if (type == 1 || type == 3) {
-      m_midis.emplace(id, std::make_unique<MidiHandler>(static_cast<Midi*>(&midi), m_sound, m_vol,
-                                                        m_pan, m_bank, this));
+      m_midis.emplace(id, std::make_unique<MidiHandler>(0, static_cast<Midi*>(&midi), m_sound,
+                                                        m_vol, m_pan, m_bank, this));
     }
   }
 }

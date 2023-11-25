@@ -6,6 +6,7 @@
 
 #include "loader.h"
 #include "sfxblock.h"
+#include "sound_handler.h"
 #include "vagvoice.h"
 
 #include "third-party/fmt/core.h"
@@ -21,8 +22,7 @@ namespace snd {
 
 u8 g_global_excite = 0;
 std::recursive_mutex gTickLock;  // TODO does not need to recursive with some light restructuring
-IdAllocator gHandleAllocator;
-std::unordered_map<u32, std::unique_ptr<SoundHandler>> gHandlers;
+std::vector<SoundHandler*> gHandlers;
 Synth gSynth;
 s32 gTick{0};
 
@@ -135,10 +135,10 @@ void Tick(s16Output* stream, int samples) {
       gTick++;
 
       for (auto it = gHandlers.begin(); it != gHandlers.end();) {
-        bool done = it->second->Tick();
+        bool done = (*it)->Tick();
         if (done) {
           // fmt::print("erasing handler\n");
-          gHandleAllocator.FreeId(it->first);
+          FreeSound(*it);
           it = gHandlers.erase(it);
         } else {
           ++it;
@@ -168,15 +168,12 @@ u32 PlaySound(BankHandle bank_id, u32 sound_id, s32 vol, s32 pan, s32 pm, s32 pb
   }
 
   auto handler = bank->MakeHandler(sound_id, vol, pan, pm, pb);
-  if (!handler.has_value()) {
+  if (!handler) {
     return 0;
   }
 
-  u32 handle = gHandleAllocator.GetId();
-  gHandlers.emplace(handle, std::move(handler.value()));
-  // fmt::print("play_sound {}:{} - {}\n", bank_id, sound_id, handle);
-
-  return handle;
+  gHandlers.push_back(handler);
+  return handler->Handle();
 }
 
 u32 PlaySoundByName(BankHandle bank_id,
@@ -203,6 +200,7 @@ u32 PlaySoundByName(BankHandle bank_id,
 
   auto sound = bank->GetSoundByName(sound_name);
   if (sound.has_value()) {
+    // lg::error("play_sound_by_name: playing {}", sound_name);
     return PlaySound(bank, sound.value(), vol, pan, pm, pb);
   }
 
@@ -213,35 +211,32 @@ u32 PlaySoundByName(BankHandle bank_id,
 
 void StopSound(u32 sound_id) {
   std::scoped_lock lock(gTickLock);
-  auto handler = gHandlers.find(sound_id);
-  if (handler == gHandlers.end())
+  auto s = GetSound(sound_id);
+  if (s == nullptr)
     return;
 
-  handler->second->Stop();
-
-  // m_handle_allocator.free_id(sound_id);
-  // m_handlers.erase(sound_id);
+  s->Stop();
 }
 
 void SetSoundReg(u32 sound_id, u8 reg, u8 value) {
   std::scoped_lock lock(gTickLock);
-  if (gHandlers.find(sound_id) == gHandlers.end()) {
+  auto s = GetSound(sound_id);
+  if (s == nullptr) {
     // fmt::print("set_midi_reg: Handler {} does not exist\n", sound_id);
     return;
   }
 
-  auto* handler = gHandlers.at(sound_id).get();
-  handler->SetRegister(reg, value);
+  s->SetRegister(reg, value);
 }
 
-bool SoundStillActive(u32 sound_id) {
+u32 SoundStillActive(u32 sound_id) {
   std::scoped_lock lock(gTickLock);
-  auto handler = gHandlers.find(sound_id);
-  if (handler == gHandlers.end())
-    return false;
+  auto s = GetSound(sound_id);
+  if (s == nullptr) {
+    return 0;
+  }
 
-  // fmt::print("sound_still_active {}\n", sound_id);
-  return true;
+  return s->Handle();
 }
 
 void SetMasterVolume(u32 group, s32 volume) {
@@ -275,8 +270,8 @@ void UnloadBank(BankHandle bank_handle) {
     return;
 
   for (auto it = gHandlers.begin(); it != gHandlers.end();) {
-    if (&it->second->Bank() == bank_handle) {
-      gHandleAllocator.FreeId(it->first);
+    if (&((*it)->Bank()) == bank) {
+      FreeSound(*it);
       it = gHandlers.erase(it);
     } else {
       ++it;
@@ -288,28 +283,28 @@ void UnloadBank(BankHandle bank_handle) {
 
 void PauseSound(s32 sound_id) {
   std::scoped_lock lock(gTickLock);
-  auto handler = gHandlers.find(sound_id);
-  if (handler == gHandlers.end())
+  auto s = GetSound(sound_id);
+  if (s == nullptr)
     return;
 
-  handler->second->Pause();
+  s->Pause();
 }
 
 void ContinueSound(s32 sound_id) {
   std::scoped_lock lock(gTickLock);
-  auto handler = gHandlers.find(sound_id);
-  if (handler == gHandlers.end())
+  auto s = GetSound(sound_id);
+  if (s == nullptr)
     return;
 
-  handler->second->Unpause();
+  s->Unpause();
 }
 
 void PauseAllSoundsInGroup(u8 group) {
   std::scoped_lock lock(gTickLock);
 
   for (auto& h : gHandlers) {
-    if ((1 << h.second->Group()) & group) {
-      h.second->Pause();
+    if ((1 << h->Group()) & group) {
+      h->Pause();
     }
   }
 }
@@ -318,34 +313,34 @@ void ContinueAllSoundsInGroup(u8 group) {
   std::scoped_lock lock(gTickLock);
 
   for (auto& h : gHandlers) {
-    if ((1 << h.second->Group()) & group) {
-      h.second->Unpause();
+    if ((1 << h->Group()) & group) {
+      h->Unpause();
     }
   }
 }
 
 void SetSoundVolPan(s32 sound_id, s32 vol, s32 pan) {
   std::scoped_lock lock(gTickLock);
-  auto handler = gHandlers.find(sound_id);
-  if (handler == gHandlers.end())
+  auto s = GetSound(sound_id);
+  if (s == nullptr)
     return;
 
-  handler->second->SetVolPan(vol, pan);
+  s->SetVolPan(vol, pan);
 }
 
 void SetSoundPmod(s32 sound_handle, s32 mod) {
   std::scoped_lock lock(gTickLock);
-  auto handler = gHandlers.find(sound_handle);
-  if (handler == gHandlers.end())
+  auto s = GetSound(sound_handle);
+  if (s == nullptr)
     return;
 
-  handler->second->SetPMod(mod);
+  s->SetPMod(mod);
 }
 
 void StopAllSounds() {
   std::scoped_lock lock(gTickLock);
   for (auto it = gHandlers.begin(); it != gHandlers.end();) {
-    gHandleAllocator.FreeId(it->first);
+    FreeSound(*it);
     it = gHandlers.erase(it);
   }
 }

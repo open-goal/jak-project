@@ -29,9 +29,15 @@ class midi_voice : public VagVoice {
 class AmeHandler;
 class MidiHandler : public SoundHandler {
  public:
-  MidiHandler(Midi* block, MusicBank::MIDISound& sound, s32 vol, s32 pan, SoundBank& bank);
+  MidiHandler(SoundHandle oid,
+              Midi* block,
+              MusicBank::MIDISound& sound,
+              s32 vol,
+              s32 pan,
+              SoundBank& bank);
 
-  MidiHandler(Midi* block,
+  MidiHandler(SoundHandle oid,
+              Midi* block,
               MusicBank::MIDISound& sound,
               s32 vol,
               s32 pan,
@@ -123,4 +129,11 @@ class MidiHandler : public SoundHandler {
 
   static std::pair<size_t, u32> ReadVLQ(u8* value);
 };
+
+MidiHandler* AllocMidiSound(Midi* block,
+                            MusicBank::MIDISound& sound,
+                            s32 vol,
+                            s32 pan,
+                            SoundBank& bank);
+
 }  // namespace snd

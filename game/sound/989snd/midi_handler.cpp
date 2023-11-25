@@ -22,12 +22,13 @@ namespace snd {
 **
 */
 
-MidiHandler::MidiHandler(Midi* block,
+MidiHandler::MidiHandler(SoundHandle oid,
+                         Midi* block,
                          MusicBank::MIDISound& sound,
                          s32 vol,
                          s32 pan,
                          SoundBank& bank)
-    : m_sound(sound), m_repeats(sound.Repeats), m_bank(bank), m_header(block) {
+    : SoundHandler(oid), m_sound(sound), m_repeats(sound.Repeats), m_bank(bank), m_header(block) {
   if (vol == VOLUME_DONT_CHANGE) {
     vol = 1024;
   }
@@ -46,13 +47,15 @@ MidiHandler::MidiHandler(Midi* block,
   InitMidi();
 }
 
-MidiHandler::MidiHandler(Midi* block,
+MidiHandler::MidiHandler(SoundHandle oid,
+                         Midi* block,
                          MusicBank::MIDISound& sound,
                          s32 vol,
                          s32 pan,
                          SoundBank& bank,
                          std::optional<AmeHandler*> parent)
-    : m_parent(parent),
+    : SoundHandler(oid),
+      m_parent(parent),
       m_sound(sound),
       m_vol(vol),
       m_pan(pan),

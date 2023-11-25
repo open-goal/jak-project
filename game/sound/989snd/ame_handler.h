@@ -23,7 +23,12 @@ class AmeHandler : public SoundHandler {
   friend class MidiHandler;
 
  public:
-  AmeHandler(MultiMidi* block, MusicBank::MIDISound& sound, s32 vol, s32 pan, SoundBank& bank);
+  AmeHandler(SoundHandle oid,
+             MultiMidi* block,
+             MusicBank::MIDISound& sound,
+             s32 vol,
+             s32 pan,
+             SoundBank& bank);
   bool Tick() override;
   SoundBank& Bank() override { return m_bank; };
 
@@ -71,4 +76,10 @@ class AmeHandler : public SoundHandler {
   std::array<u8, 16> m_register{};
   std::array<u8*, 16> m_macro{};
 };
+
+AmeHandler* AllocAmeSound(MultiMidi* block,
+                          MusicBank::MIDISound& sound,
+                          s32 vol,
+                          s32 pan,
+                          SoundBank& bank);
 }  // namespace snd

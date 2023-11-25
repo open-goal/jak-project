@@ -78,11 +78,7 @@ void snd_SetPlayBackMode(s32 mode) {
 }
 
 s32 snd_SoundIsStillPlaying(s32 sound_handle) {
-  if (snd::SoundStillActive(sound_handle)) {
-    return sound_handle;
-  }
-
-  return 0;
+  return snd::SoundStillActive(sound_handle);
 }
 
 void snd_StopSound(s32 sound_handle) {
@@ -141,7 +137,7 @@ void snd_SetSoundPitchModifier(s32 sound_handle, s32 pitch_mod) {
 }
 
 void snd_SetSoundPitchBend(s32 sound_handle, s32 bend) {
-  lg::warn("unimplemented snd_SetSoundPitchBend");
+  // lg::warn("unimplemented snd_SetSoundPitchBend({:x}, {})", sound_handle, bend);
 }
 
 void snd_PauseSound(s32 sound_handle) {

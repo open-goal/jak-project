@@ -34,7 +34,7 @@ u32 PlaySoundByName(BankHandle bank,
                     s32 pb);
 void SetSoundReg(u32 sound_id, u8 reg, u8 value);
 void SetGlobalExcite(u8 value);
-bool SoundStillActive(u32 sound_id);
+u32 SoundStillActive(u32 sound_id);
 void SetMasterVolume(u32 group, s32 volume);
 void UnloadBank(BankHandle bank_handle);
 void StopSound(u32 sound_handle);

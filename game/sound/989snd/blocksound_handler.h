@@ -20,11 +20,13 @@ class BlockSoundVoice : public VagVoice {
 
 class BlockSoundHandler : public SoundHandler {
  public:
-  BlockSoundHandler(SoundBank& bank,
-                    SFXBlock::SFX& sfx,
-                    s32 sfx_vol,
-                    s32 sfx_pan,
-                    SndPlayParams& params);
+  static BlockSoundHandler* MakeBlockSound(SoundBank& bank,
+                                           SFXBlock::SFX& sfx,
+                                           s32 sfx_vol,
+                                           s32 sfx_pan,
+                                           SndPlayParams& params);
+
+  BlockSoundHandler(SoundHandle oid, SoundBank& bank, SFXBlock::SFX& sfx);
 
   ~BlockSoundHandler() override;
   bool Tick() override;
@@ -55,8 +57,7 @@ class BlockSoundHandler : public SoundHandler {
   SFXBlock::SFX& m_sfx;
 
   std::list<std::weak_ptr<BlockSoundVoice>> m_voices;
-
-  std::list<std::unique_ptr<SoundHandler>> m_children;
+  std::vector<SoundHandler*> m_children;
 
   s32 m_orig_volume{0};
   s32 m_orig_pan{0};
@@ -85,4 +86,7 @@ class BlockSoundHandler : public SoundHandler {
   s32 m_countdown{0};
   u32 m_next_grain{0};
 };
+
+BlockSoundHandler* AllocBlockSound(SoundBank& bank, SFXBlock::SFX& sfx, s32 sfx_vol);
+
 }  // namespace snd
