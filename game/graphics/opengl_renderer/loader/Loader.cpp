@@ -483,7 +483,6 @@ void Loader::update(TexturePool& texture_pool) {
             m_garbage_buffers.push_back(tie_tree.vertex_buffer);
             if (tie_tree.has_wind) {
               m_garbage_buffers.push_back(tie_tree.wind_indices);
-
             }
             m_garbage_buffers.push_back(tie_tree.index_buffer);
           }
@@ -517,16 +516,14 @@ void Loader::update(TexturePool& texture_pool) {
 
     if (!m_garbage_buffers.empty()) {
       did_gpu_stuff = true;
-      int i;
-      for (i = 0; i < 5 && !m_garbage_buffers.empty(); i++) {
+      for (int i = 0; i < 5 && !m_garbage_buffers.empty(); i++) {
         glDeleteBuffers(1, &m_garbage_buffers.back());
         m_garbage_buffers.pop_back();
       }
     }
 
     if (!did_gpu_stuff && !m_garbage_textures.empty()) {
-      int i;
-      for (i = 0; i < 20 && !m_garbage_textures.empty(); i++) {
+      for (int i = 0; i < 20 && !m_garbage_textures.empty(); i++) {
         glDeleteTextures(1, &m_garbage_textures.back());
         m_garbage_textures.pop_back();
       }
