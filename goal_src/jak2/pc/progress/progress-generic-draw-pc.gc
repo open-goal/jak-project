@@ -172,19 +172,35 @@
     (draw-page-background font-alpha)
     (begin-scissor-scrolling-page hud-bounds)
     (if (= (get-aspect-ratio) 'aspect16x9)
-      (set! (-> font-ctx origin y) (+ 86.0 margin-top-bottom))
-      (set! (-> font-ctx origin y) (+ 112.0 margin-top-bottom)))
+        (set! (-> font-ctx origin y) (+ 86.0 margin-top-bottom))
+        (set! (-> font-ctx origin y) (+ 112.0 margin-top-bottom)))
+    
+    ;; do scrolling. if we notice we need to scroll too much, we just snap immediately instead of smoothly stepping.
+    (cond
+      ((> (-> *progress-pc-generic-store* current-menu-scroll-index) (-> *progress-pc-generic-store* current-menu-hover-index))
+        (if (>= (abs (- (-> *progress-pc-generic-store* current-menu-scroll-index) (the float (-> *progress-pc-generic-store* current-menu-hover-index)))) 2.0)
+            (set! (-> *progress-pc-generic-store* current-menu-scroll-index) (the float (-> *progress-pc-generic-store* current-menu-hover-index)))
+            (seek-ease! (-> *progress-pc-generic-store* current-menu-scroll-index) (the float (-> *progress-pc-generic-store* current-menu-hover-index)) (* 0.125 (-> PP clock time-adjust-ratio)) 0.3 (* 0.00125 (-> PP clock time-adjust-ratio)))))
+      ((< (+ (-> *progress-pc-generic-store* current-menu-scroll-index) (1- max-page-size)) (-> *progress-pc-generic-store* current-menu-hover-index))
+        (if (>= (abs (- (-> *progress-pc-generic-store* current-menu-scroll-index) (the float (- (-> *progress-pc-generic-store* current-menu-hover-index) (1- max-page-size))))) 2.0)
+            (set! (-> *progress-pc-generic-store* current-menu-scroll-index) (the float (- (-> *progress-pc-generic-store* current-menu-hover-index) (1- max-page-size))))
+            (seek-ease! (-> *progress-pc-generic-store* current-menu-scroll-index) (the float (- (-> *progress-pc-generic-store* current-menu-hover-index) (1- max-page-size))) (* 0.125 (-> PP clock time-adjust-ratio)) 0.3 (* 0.00125 (-> PP clock time-adjust-ratio)))))
+      )
+    
     ;; render items
-    (let* ((menu-option-index (max 0 (* (/ (-> *progress-pc-generic-store* current-menu-hover-index) max-page-size) max-page-size)))
-           (end-index (min (-> obj menu-options length) (+ menu-option-index max-page-size))))
-      (while (< menu-option-index end-index)
-        (let ((menu-option (-> obj menu-options menu-option-index)))
+    (let* ((start-index (the int (-> *progress-pc-generic-store* current-menu-scroll-index)))
+            ;; we add 1 because the scroll effect will reveal 1 extra
+           (end-index (min (-> obj menu-options length) (+ start-index max-page-size 1))))
+      ;; scroll adjust
+      (-! (-> font-ctx origin y) (* line-height (abs (- (-> *progress-pc-generic-store* current-menu-scroll-index) start-index))))
+      (while (< start-index end-index)
+        (let ((menu-option (-> obj menu-options start-index)))
           (when (nonzero? menu-option)
             ;; save the y,x position as who knows where it will end up after the component finishes rendering
             (let ((old-y-pos (-> font-ctx origin y))
                   (old-x-pos (-> font-ctx origin x)))
-              (draw-option menu-option progress font-ctx menu-option-index
-                           (= (-> obj selected-option-index) menu-option-index))
+              (draw-option menu-option progress font-ctx start-index
+                           (= (-> obj selected-option-index) start-index))
               ;; move to the next line
               (set! (-> font-ctx origin y) (+ old-y-pos line-height))
               ;; - debugging, draw the dividing lines to make centering new items easier
@@ -192,7 +208,7 @@
               (set! (-> font-ctx origin x) old-x-pos)
               ;; reset the font color
               (set-color! font-ctx (font-color progress)))))
-        (+! menu-option-index 1)))
+        (+! start-index 1)))
     ;; end
     (end-scissor-scrolling-page hud-bounds 1.0)
     (set-flags! font-ctx (font-flags kerning large))
