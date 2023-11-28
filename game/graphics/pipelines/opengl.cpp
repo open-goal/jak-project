@@ -336,6 +336,13 @@ GLDisplay::GLDisplay(SDL_Window* window, SDL_GLContext gl_context, bool is_main)
   m_input_manager->register_command(
       CommandBinding::Source::KEYBOARD,
       CommandBinding(SDLK_F2, [&]() { m_take_screenshot_next_frame = true; }));
+    m_input_manager->register_command(CommandBinding::Source::KEYBOARD,
+                                      CommandBinding(Gfx::g_debug_settings.toggle_fullscreen_key, [&]() { 
+                                        if (Display::GetMainDisplay()->get_display_manager()->get_window_display_mode() == WindowDisplayMode::Fullscreen) {
+                                             Display::GetMainDisplay()->get_display_manager()->enqueue_set_window_display_mode(WindowDisplayMode::Windowed);}
+                                        else {
+                                          Display::GetMainDisplay()->get_display_manager()->enqueue_set_window_display_mode(WindowDisplayMode::Fullscreen);
+                                        }}));
 }
 
 GLDisplay::~GLDisplay() {
