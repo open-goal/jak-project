@@ -18,7 +18,7 @@ namespace tfrag3 {
 // - if changing any large things (vertices, vis, bvh, colors, textures) update get_memory_usage
 // - if adding a new category to the memory usage, update extract_level to print it.
 
-constexpr int TFRAG3_VERSION = 38;
+constexpr int TFRAG3_VERSION = 39;
 
 enum MemoryUsageCategory {
   TEXTURE,
@@ -219,6 +219,8 @@ struct ShrubDraw {
 
   // for debug counting.
   u32 num_triangles = 0;
+
+  u16 proto_idx = 0;
   void serialize(Serializer& ser);
 };
 
@@ -429,6 +431,10 @@ struct ShrubTree {
   struct {
     std::vector<ShrubGpuVertex> vertices;  // mesh vertices
   } unpacked;
+
+  // jak 2 and later can toggle on and off visibility per proto by name
+  bool has_per_proto_visibility_toggle = false;
+  std::vector<std::string> proto_names;
 
   void serialize(Serializer& ser);
   void memory_usage(MemoryUsageTracker* tracker) const;
