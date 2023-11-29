@@ -103,6 +103,7 @@ class OpenGLRenderer {
   }
 
   SharedRenderState m_render_state;
+  std::vector<bool> m_skip_multi_buckets;
   Profiler m_profiler;
   SmallProfiler m_small_profiler;
   SubtitleEditor* m_subtitle_editor = nullptr;

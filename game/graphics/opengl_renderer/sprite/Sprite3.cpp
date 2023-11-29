@@ -232,8 +232,12 @@ void Sprite3::render_2d_group0(DmaFollower& dma,
   // glUniform4fv(glGetUniformLocation(shid, "hmge_scale"), 1, m_frame_data.hmge_scale.data());
   glUniform1f(glGetUniformLocation(shid, "deg_to_rad"), m_frame_data.deg_to_rad);
   glUniform1f(glGetUniformLocation(shid, "inv_area"), m_frame_data.inv_area);
+  auto& this_cam = render_state->cameras[render_state->camera_idx];
+
   glUniformMatrix4fv(glGetUniformLocation(shid, "camera"), 1, GL_FALSE,
-                     m_3d_matrix_data.camera.data());
+                     // m_3d_matrix_data.camera
+                     (m_3d_matrix_data.camera * this_cam.w_T_wprime)
+                         .data());
   glUniform4fv(glGetUniformLocation(shid, "xy_array"), 8, m_frame_data.xy_array[0].data());
   glUniform4fv(glGetUniformLocation(shid, "xyz_array"), 4, m_frame_data.xyz_array[0].data());
   glUniform4fv(glGetUniformLocation(shid, "st_array"), 4, m_frame_data.st_array[0].data());

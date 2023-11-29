@@ -40,7 +40,7 @@ struct SharedRenderState {
   u32 offset_of_s7;
 
   bool use_sky_cpu = true;
-  bool use_occlusion_culling = true;
+  bool use_occlusion_culling = false; // bad for multi
   math::Vector<u8, 4> fog_color = math::Vector<u8, 4>{0, 0, 0, 0};
   float fog_intensity = 1.f;
   bool no_multidraw = false;
@@ -87,6 +87,23 @@ struct SharedRenderState {
   u64 frame_idx = 0;
 
   bool stencil_dirty = false;
+
+  // camera matrices from GOAL:
+  struct MultiCameraGoalMatrices {
+    // the inv-rot matrix from GOAL. (pose of the primary camera in the world)
+    math::Matrix4f w_T_cpri;
+    // the inv-rot matrix of extra cameras from GOAL. (pose of extra camera in the world)
+    math::Matrix4f w_T_cextra[3];
+  } multi_camera_goal;
+
+  // per-camera info for multi-camera rendering.
+  struct Cam {
+    math::Matrix4f w_T_wprime; // for non merc
+    math::Matrix4f pri_cam_T_cam;
+  };
+
+  Cam cameras[4];
+  int camera_idx = 0;
 };
 
 /*!

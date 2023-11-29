@@ -2,6 +2,8 @@
 
 #include <cfloat>
 
+#include "common/math/geometry.h"
+
 #include "third-party/imgui/imgui.h"
 
 ShadowRenderer::ShadowRenderer(const std::string& name, int my_id) : BucketRenderer(name, my_id) {
@@ -237,7 +239,15 @@ void ShadowRenderer::render(DmaFollower& dma,
     ASSERT(v1.kind == VifCode::Kind::UNPACK_V4_32);
     ASSERT(v1.immediate == Vu1Data::MATRIX);
     ASSERT(v1.num == 4);
-    memcpy(m_vu_data + v1.immediate, constants.data, v1.num * 16);
+
+    // such disgusting hacks
+    math::Matrix4f p;
+    memcpy(p.data(), constants.data, v1.num * 16);
+    auto& this_cam = render_state->cameras[render_state->camera_idx];
+    auto new_cam = (p * inverse(this_cam.pri_cam_T_cam));
+    memcpy(m_vu_data + v1.immediate, new_cam.data(), 16 * 4);
+
+    // memcpy(m_vu_data + v1.immediate, constants.data, v1.num * 16);
   }
 
   {

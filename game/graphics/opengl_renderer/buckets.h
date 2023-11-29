@@ -6,7 +6,7 @@ namespace jak1 {
 enum class BucketId {
   BUCKET0 = 0,
   BUCKET1 = 1,
-  // 2
+  BUCKET2 = 2,
   SKY_DRAW = 3,
   OCEAN_MID_AND_FAR = 4,
   TFRAG_TEX_LEVEL0 = 5,

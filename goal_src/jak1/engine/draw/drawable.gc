@@ -904,6 +904,16 @@
 
 (define *generic-effect-mode* 0)
 
+
+;; This contains the camera matrices. There must be one "primary camera" that matches *math-camera*. But the rest of the cameras are up to you.
+(deftype multi-camera (structure)
+  ((primary-camera matrix :inline)
+   (extra-cameras matrix 3 :inline)
+   )
+  )
+
+(define *multi-camera* (new 'global 'multi-camera))
+
 (defun real-main-draw-hook ()
   "The main drawing function. This dispatches all renderers and is called directly from the display-loop
   in main.gc"
@@ -936,6 +946,60 @@
       )
     (reset! *dma-mem-usage*)
     )
+
+  ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+  ;; Multi-camera mode: camera placement.
+  ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+  ;; set primary camera to the normal camera.
+  (matrix-copy! (-> *multi-camera* primary-camera)
+                (-> *math-camera* inv-camera-rot)
+                )
+
+  ;; set secondary camera to some example different camera. This puts a camera 10 meters above the default, and
+  ;; point it at jak directly:
+  (let ((cam-pos (vector-copy! (new-stack-vector0) (-> *math-camera* inv-camera-rot vector 3))))
+    ;; shift up by 10 meters
+    (+! (-> cam-pos y) (meters 5))
+    ;; dir from camera to jak
+    (let* ((jak-dir (vector-! (new-stack-vector0)
+                              (if *target* (-> *target* root trans)
+                                  (new-stack-vector0))
+                              cam-pos
+                              ))
+           (mat (-> *multi-camera* extra-cameras 0))
+           )
+      ;; create rotation matrix to point camera at jak
+      (forward-down->inv-matrix
+        mat
+        jak-dir
+        (new 'static 'vector :y -1.))
+      ;; set position.
+      (vector-copy! (-> mat vector 3) cam-pos)
+      )
+    )
+
+  ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+  ;; Multi-camera mode: send data to C++
+  ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+  (with-dma-buffer-add-bucket ((buf (-> (current-frame) global-buf))
+                               (the bucket-id 2))
+    (dma-buffer-add-cnt-vif2
+      buf
+      (/ (size-of multi-camera) 16)
+      (the vif-tag 0)
+      (the vif-tag 0)
+      )
+    ;(&+! (-> buf base) 16)
+
+      (mem-copy! (-> buf base)
+                 (the pointer *multi-camera*)
+                 (size-of multi-camera)
+                 )
+      (&+! (-> buf base) (size-of multi-camera))
+    )
+
 
   ;; todo shrub matrix
 

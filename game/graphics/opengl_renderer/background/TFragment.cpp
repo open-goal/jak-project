@@ -447,8 +447,11 @@ void TFragment::render_tree(int geom,
   glEnable(GL_PRIMITIVE_RESTART);
   glPrimitiveRestartIndex(UINT32_MAX);
 
-  cull_check_all_slow(settings.camera.planes, tree.vis->vis_nodes, settings.occlusion_culling,
-                      m_cache.vis_temp.data());
+  // cull_check_all_slow(settings.camera.planes, tree.vis->vis_nodes, settings.occlusion_culling,
+  //                    m_cache.vis_temp.data());
+  for (size_t i = 0; i < tree.vis->vis_nodes.size(); i++) {
+    m_cache.vis_temp.data()[i] = 1;
+  }
 
   u32 total_tris;
   if (render_state->no_multidraw) {

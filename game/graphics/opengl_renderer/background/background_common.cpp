@@ -1,6 +1,7 @@
 
 
 #include "background_common.h"
+#include "common/math/geometry.h"
 
 #ifdef __aarch64__
 #include "third-party/sse2neon/sse2neon.h"
@@ -171,6 +172,18 @@ DoubleDraw setup_tfrag_shader(SharedRenderState* render_state, DrawMode mode, Sh
   return draw_settings;
 }
 
+namespace {
+math::Matrix4f matrix_from_col_vectors(const math::Vector4f* vectors) {
+  math::Matrix4f ret;
+  for (int c = 0; c < 4; c++) {
+    for (int r = 0; r < 4; r++) {
+      ret(r, c) = vectors[c][r];
+    }
+  }
+  return ret;
+}
+}
+
 void first_tfrag_draw_setup(const TfragRenderSettings& settings,
                             SharedRenderState* render_state,
                             ShaderId shader) {
@@ -180,8 +193,10 @@ void first_tfrag_draw_setup(const TfragRenderSettings& settings,
   glUniform1i(glGetUniformLocation(id, "gfx_hack_no_tex"), Gfx::g_global_settings.hack_no_tex);
   glUniform1i(glGetUniformLocation(id, "decal"), false);
   glUniform1i(glGetUniformLocation(id, "tex_T0"), 0);
+  auto& this_cam = render_state->cameras[render_state->camera_idx];
+  math::Matrix4f s_T_w = matrix_from_col_vectors(settings.camera.camera);
   glUniformMatrix4fv(glGetUniformLocation(id, "camera"), 1, GL_FALSE,
-                     settings.camera.camera[0].data());
+                     (s_T_w * this_cam.w_T_wprime).data());
   glUniform4f(glGetUniformLocation(id, "hvdf_offset"), settings.camera.hvdf_off[0],
               settings.camera.hvdf_off[1], settings.camera.hvdf_off[2],
               settings.camera.hvdf_off[3]);

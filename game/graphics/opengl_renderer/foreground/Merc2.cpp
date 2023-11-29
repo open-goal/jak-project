@@ -1,5 +1,8 @@
 #include "Merc2.h"
 
+#include "common/math/geometry.h"
+
+
 #ifdef __aarch64__
 #include "third-party/sse2neon/sse2neon.h"
 #else
@@ -840,6 +843,18 @@ void set_uniform(GLuint uniform, const math::Vector4f& val) {
 }
 }  // namespace
 
+namespace {
+math::Matrix4f matrix_from_col_vectors(const math::Vector4f* vectors) {
+  math::Matrix4f ret;
+  for (int c = 0; c < 4; c++) {
+    for (int r = 0; r < 4; r++) {
+      ret(r, c) = vectors[c][r];
+    }
+  }
+  return ret;
+}
+}  // namespace
+
 void Merc2::handle_setup_dma(DmaFollower& dma, SharedRenderState* render_state) {
   auto first = dma.read_and_advance();
 
@@ -882,16 +897,18 @@ void Merc2::handle_setup_dma(DmaFollower& dma, SharedRenderState* render_state) 
   // 8 qw's of low memory data
   memcpy(&m_low_memory, first.data + 16, sizeof(LowMemory));
 
+  auto& this_cam = render_state->cameras[render_state->camera_idx];
+  math::Matrix4f p = matrix_from_col_vectors(m_low_memory.perspective);
+  auto new_cam = (p * inverse(this_cam.pri_cam_T_cam));
+
   switch_to_merc2(render_state);
   set_uniform(m_merc_uniforms.hvdf_offset, m_low_memory.hvdf_offset);
   set_uniform(m_merc_uniforms.fog, m_low_memory.fog);
-  glUniformMatrix4fv(m_merc_uniforms.perspective_matrix, 1, GL_FALSE,
-                     &m_low_memory.perspective[0].x());
+  glUniformMatrix4fv(m_merc_uniforms.perspective_matrix, 1, GL_FALSE, new_cam.data());
   switch_to_emerc(render_state);
   set_uniform(m_emerc_uniforms.hvdf_offset, m_low_memory.hvdf_offset);
   set_uniform(m_emerc_uniforms.fog, m_low_memory.fog);
-  glUniformMatrix4fv(m_emerc_uniforms.perspective_matrix, 1, GL_FALSE,
-                     &m_low_memory.perspective[0].x());
+  glUniformMatrix4fv(m_emerc_uniforms.perspective_matrix, 1, GL_FALSE, new_cam.data());
 
   // 1 qw with another 4 vifcodes.
   u32 vifcode_final_data[4];
