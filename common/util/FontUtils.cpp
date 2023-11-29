@@ -947,6 +947,7 @@ static std::vector<ReplaceInfo> s_replace_info_jak2 = {
     {"O~Y~-28H~-4V'~-9H'~Z", "Ő"},
     {"U~Y~-27H~-4V'~-12H'~Z", "Ű"},
     {"o~Y~-28H~-4V'~-9H'~Z", "ő"},
+    {"u~Y~-28H~-4V'~-9H'~Z", "ű"},
     {"E~Y~-22H~-11Vº~Z", "Ė"},
     {"e~Y~-25H~-5Vº~Z", "ė"},
     {"C~Y~-27H~-10Vˇ~Z", "Č"},
