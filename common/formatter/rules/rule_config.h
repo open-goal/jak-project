@@ -21,8 +21,8 @@ struct FormFormattingConfig {
   bool combine_first_two_lines =
       false;  // NOTE - basically hang, but will probably stick around after hang is gone, may be
               // redundant (inline_until_index!)
-  std::function<std::optional<int>(const std::vector<std::string>& curr_lines)> inline_until_index =
-      [](std::vector<std::string> curr_lines) { return std::nullopt; };
+  std::function<std::optional<int>(const std::vector<std::string>& /*curr_lines*/)>
+      inline_until_index = [](std::vector<std::string> /*curr_lines*/) { return std::nullopt; };
   bool has_constant_pairs = false;
   bool prevent_inlining = false;  // TODO - duplicate of below
   std::function<bool(FormFormattingConfig, int num_refs)> should_prevent_inlining =

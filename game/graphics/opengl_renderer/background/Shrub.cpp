@@ -45,6 +45,13 @@ void Shrub::render(DmaFollower& dma, SharedRenderState* render_state, ScopedProf
   memcpy(&m_pc_port_data, pc_port_data.data, sizeof(TfragPcPortData));
   m_pc_port_data.level_name[11] = '\0';
 
+  if (render_state->version == GameVersion::Jak2) {
+    // jak 2 proto visibility
+    auto proto_mask_data = dma.read_and_advance();
+    m_proto_vis_data = proto_mask_data.data;
+    m_proto_vis_data_size = proto_mask_data.size_bytes;
+  }
+
   while (dma.current_tag_offset() != render_state->next_bucket) {
     dma.read_and_advance();
   }
@@ -91,6 +98,13 @@ void Shrub::update_load(const LevelData* loader_data) {
     m_trees[l_tree].vertex_buffer = loader_data->shrub_vertex_data[l_tree];
     m_trees[l_tree].vert_count = verts;
     m_trees[l_tree].draws = &tree.static_draws;
+    m_trees[l_tree].proto_vis_mask.clear();
+    m_trees[l_tree].proto_vis_mask.resize(tree.proto_names.size(), true);
+    m_trees[l_tree].proto_name_to_idx.clear();
+    size_t i = 0;
+    for (auto& name : tree.proto_names) {
+      m_trees[l_tree].proto_name_to_idx[name].push_back(i++);
+    }
     m_trees[l_tree].colors = &tree.time_of_day_colors;
     m_trees[l_tree].index_data = tree.indices.data();
     m_trees[l_tree].tod_cache = swizzle_time_of_day(tree.time_of_day_colors);
@@ -216,6 +230,45 @@ void Shrub::render_all_trees(const TfragRenderSettings& settings,
   }
 }
 
+namespace {
+void update_vis_mask(std::vector<bool>& vis_mask,
+                     const u8* data,
+                     u32 data_size,
+                     const std::unordered_map<std::string, std::vector<u32>>& name_to_idx) {
+  char name_buffer[256];  // ??
+
+  for (u32 i = 0; i < vis_mask.size(); i++) {
+    vis_mask[i] = true;
+  }
+
+  const u8* end = data + data_size;
+  while (true) {
+    int name_idx = 0;
+    while (*data) {
+      name_buffer[name_idx++] = *data;
+      data++;
+    }
+    if (name_idx) {
+      ASSERT(name_idx < 254);
+      name_buffer[name_idx] = '\0';
+      const auto& it = name_to_idx.find(name_buffer);
+      if (it != name_to_idx.end()) {
+        for (auto x : name_to_idx.at(name_buffer)) {
+          vis_mask[x] = 0;
+        }
+      }
+    }
+
+    while (*data == 0) {
+      if (data >= end) {
+        return;
+      }
+      data++;
+    }
+  }
+}
+}  // namespace
+
 void Shrub::render_tree(int idx,
                         const TfragRenderSettings& settings,
                         SharedRenderState* render_state,
@@ -259,6 +312,10 @@ void Shrub::render_tree(int idx,
   glActiveTexture(GL_TEXTURE0);
   glEnable(GL_PRIMITIVE_RESTART);
   glPrimitiveRestartIndex(UINT32_MAX);
+  if (m_proto_vis_data) {
+    update_vis_mask(tree.proto_vis_mask, m_proto_vis_data, m_proto_vis_data_size,
+                    tree.proto_name_to_idx);
+  }
   tree.perf.tod_time.add(setup_timer.getSeconds());
 
   int last_texture = -1;
@@ -282,6 +339,9 @@ void Shrub::render_tree(int idx,
 
   for (size_t draw_idx = 0; draw_idx < tree.draws->size(); draw_idx++) {
     const auto& draw = tree.draws->operator[](draw_idx);
+    if (!tree.proto_vis_mask.at(draw.proto_idx)) {
+      continue;
+    }
     const auto& multidraw_indices = m_cache.multidraw_offset_per_stripdraw[draw_idx];
     const auto& singledraw_indices = m_cache.draw_idx_temp[draw_idx];
 
