@@ -349,6 +349,12 @@
   (draw-generic-simple-string-option obj progress font-ctx option-index (lookup-text! *common-text* (-> obj name) #f))
   (none))
 
+(defmethod draw-option ((obj menu-generic-button-option) (progress progress) (font-ctx font-context) (option-index int) (selected? symbol))
+  (when (not (-> obj mounted?))
+    (on-mount! obj))
+  (draw-generic-simple-string-option obj progress font-ctx option-index (lookup-text! *common-text* (-> obj name) #f))
+  (none))
+
 (defmethod draw-option ((obj menu-generic-confirm-option) (progress progress) (font-ctx font-context) (option-index int) (selected? symbol))
   (when (not (-> obj mounted?))
     (on-mount! obj))
@@ -613,3 +619,15 @@
         (format *progress-generic-temp-string* "~35L~S ~33L~S~1L" (lookup-text! *common-text* (text-id progress-yes) #f) (lookup-text! *common-text* (text-id progress-no) #f)))
       (print-game-text *progress-generic-temp-string* font-ctx #f 44 (bucket-id progress))))
   (none))
+
+
+(defmethod draw-option ((obj menu-generic-to-resolutions-option) (progress progress) (font-ctx font-context) (option-index int) (selected? symbol))
+  ;; change the name depending on whether we're fullscreen or not
+  (cond
+    ((and (= (-> obj name) (text-id progress-window-size)) (fullscreen?))
+      (set! (-> obj name) (text-id progress-game-res)))
+    ((and (= (-> obj name) (text-id progress-game-res)) (not (fullscreen?)))
+      (set! (-> obj name) (text-id progress-window-size)))
+    )
+  (call-parent-method obj progress font-ctx option-index selected?))
+

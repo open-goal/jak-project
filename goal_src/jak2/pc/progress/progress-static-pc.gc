@@ -615,38 +615,16 @@ This gives us more freedom to write code how we want.
             (commit-to-file *pc-settings*))))))
 
 
-;; TODO - migrate this menu as well
-;; graphic options
-;;   resolution
-
 (define *msaa-options* (new 'static 'boxed-array :type int16 1 2 4 8 16))
 (define *frame-rate-options* (new 'static 'boxed-array :type int16 60 75 120 144 165 240))
 (define *frame-rate-disclaimer-seen?* #f)
 
 (define *graphic-options-pc*
   (progress-new-generic-scrolling-page (text-id progress-root-graphic-options)
-    (progress-new-generic-link-to-scrolling-page (text-id progress-graphics-ps2)
-      (new 'static 'menu-generic-boolean-option
-        :name (text-id progress-lod-bg)
-        :truthy-text (text-id progress-lod-low)
-        :falsey-text (text-id progress-lod-high)
-        :get-value-fn (lambda () (> (-> *pc-settings* lod-force-tfrag) 0))
-        :on-confirm (lambda ((val symbol))
-          (cond
-            (val
-              (set! (-> *pc-settings* lod-force-tfrag) 2)
-              (set! (-> *pc-settings* lod-force-tie) 2)
-              )
-            (else
-              (set! (-> *pc-settings* lod-force-tfrag) 0)
-              (set! (-> *pc-settings* lod-force-tie) 0)
-              ))
-          (commit-to-file *pc-settings*)))
-      (static-progress-generic-pc-settings-lod-default-high-boolean (text-id progress-lod-fg) (-> *pc-settings* ps2-lod-dist?))
-      (static-progress-generic-pc-settings-on-off-boolean (text-id progress-ps2-parts) (-> *pc-settings* ps2-parts?))
-      (static-progress-generic-pc-settings-shadows-normal-extended-boolean (text-id progress-shadows) (-> *pc-settings* ps2-shadow?))
-      (static-progress-generic-pc-settings-on-off-boolean (text-id progress-hires-sky) (-> *pc-settings* hires-clouds?))
-      )
+    (new 'static 'menu-generic-to-resolutions-option
+      :name (text-id progress-window-size)
+      :on-confirm (lambda ((the-progress progress))
+        (push-and-set-state the-progress 'resolutions)))
     (new 'static 'menu-generic-carousel-option
       :name (text-id progress-graphics-display)
       :get-item-index-fn (lambda () (-> *pc-settings* monitor))
@@ -654,9 +632,8 @@ This gives us more freedom to write code how we want.
       :get-item-label-fn (lambda ((index int))
         (let ((name (pc-get-display-name index *pc-cpp-temp-string*)))
           (if name
-            (string-format "(~D) ~S" index *pc-cpp-temp-string*)
-            (string-format "Display ~D" index)
-            )
+              (string-format "(~D) ~S" index *pc-cpp-temp-string*)
+              (string-format "Display ~D" index))
           )
         )
       :on-confirm (lambda ((index int) (the-progress progress))
@@ -796,6 +773,28 @@ This gives us more freedom to write code how we want.
         (commit-to-file *pc-settings*)
         )
       )
+    (progress-new-generic-link-to-scrolling-page (text-id progress-graphics-ps2)
+      (new 'static 'menu-generic-boolean-option
+        :name (text-id progress-lod-bg)
+        :truthy-text (text-id progress-lod-low)
+        :falsey-text (text-id progress-lod-high)
+        :get-value-fn (lambda () (> (-> *pc-settings* lod-force-tfrag) 0))
+        :on-confirm (lambda ((val symbol))
+          (cond
+            (val
+              (set! (-> *pc-settings* lod-force-tfrag) 2)
+              (set! (-> *pc-settings* lod-force-tie) 2)
+              )
+            (else
+              (set! (-> *pc-settings* lod-force-tfrag) 0)
+              (set! (-> *pc-settings* lod-force-tie) 0)
+              ))
+          (commit-to-file *pc-settings*)))
+      (static-progress-generic-pc-settings-lod-default-high-boolean (text-id progress-lod-fg) (-> *pc-settings* ps2-lod-dist?))
+      (static-progress-generic-pc-settings-on-off-boolean (text-id progress-ps2-parts) (-> *pc-settings* ps2-parts?))
+      (static-progress-generic-pc-settings-shadows-normal-extended-boolean (text-id progress-shadows) (-> *pc-settings* ps2-shadow?))
+      (static-progress-generic-pc-settings-on-off-boolean (text-id progress-hires-sky) (-> *pc-settings* hires-clouds?))
+      )
     )
   )
 
@@ -827,6 +826,18 @@ This gives us more freedom to write code how we want.
     :scale 0.82
     :options (new 'static 'boxed-array :type menu-option
       (new 'static 'menu-music-player-option :name (text-id progress-music-player))
+      )
+    )
+  )
+
+
+(define *resolutions-options*
+  (new 'static 'menu-option-list
+    :y-center 198
+    :y-space 34
+    :scale 0.82
+    :options (new 'static 'boxed-array :type menu-option
+      (new 'static 'menu-resolution-option :name (text-id progress-window-size))
       )
     )
   )

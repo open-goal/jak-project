@@ -589,18 +589,21 @@
           ;; Ignore those that aren't relevant to the current window's aspect ratio
           ;; we only do this when we aren't in windowed mode, because in windowed mode
           ;; you are using the resolution menu to change it...so it doesn't make sense to base it on the size
-          ;;
-          ;; Additionally, always show the PS2 resolutions or else they are never going to be seen due to the aspect ratio difference
           (when (or (= (pc-get-display-mode) 'windowed)
-                    (and (= res-width 512) (or (= res-height 448) (= res-height 224)))
-                    (< (fabs (- window-aspect-ratio res-aspect-ratio)) 0.1))
+                    (< (fabs (- window-aspect-ratio res-aspect-ratio)) 0.05))
             (add-resolution-option res-width res-height)
             (1+! num-resolutions-added)))))
-    ;; If all we displayed was the 2 PS2 resolutions, inform them they have a weird aspect ratio
-    (when (< num-resolutions-added 3)
-      (add-message-option (text-id progress-no-other-resolution-options)))
+    ;; if we didn't add any options, inform them they have a weird aspect ratio
+    (cond
+      ((zero? num-resolutions-added)
+        (add-message-option (text-id progress-no-other-resolution-options)))
+      ((fullscreen?)
+        ;; for the weird people that want a more "PS2-like" experience
+        (add-resolution-option 512 448)
+        (add-resolution-option 512 224)
+        )
       )
-    (add-back-option))
+    (add-back-option)))
 
 (defun build-flava-player-options ((mus-idx int))
 
