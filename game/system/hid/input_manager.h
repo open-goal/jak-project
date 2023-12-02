@@ -86,6 +86,7 @@ class InputManager {
                                const bool buttons,
                                const int input_idx,
                                const bool analog_for_minimum);
+  int get_controller_index(const int port);
   void set_controller_for_port(const int controller_id, const int port);
   bool controller_has_led(const int port);
   bool controller_has_rumble(const int port);

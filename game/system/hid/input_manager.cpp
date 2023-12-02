@@ -323,6 +323,13 @@ std::string InputManager::get_current_bind(const int port,
   return binding_info.front().host_name;
 }
 
+int InputManager::get_controller_index(const int port) {
+  if (m_controller_port_mapping.find(port) == m_controller_port_mapping.end()) {
+    return 0;
+  }
+  return m_controller_port_mapping.at(port);
+}
+
 void InputManager::set_controller_for_port(const int controller_id, const int port) {
   if (controller_id < (int)m_available_controllers.size()) {
     // Reset inputs as this device won't be able to be read from again!
