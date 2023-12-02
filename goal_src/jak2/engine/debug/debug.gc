@@ -1579,27 +1579,43 @@ Most functions take a boolean as their first argument. If the boolean is set to 
                                  bucket
                                  )
       (set! (-> (new 'stack-no-clear 'vector) quad) (the-as uint128 0))
-      (let ((v1-7 arg4))
-        (draw-string-xy
-          "X"
-          buf
-          (+ x -5)
-          (+ y -4)
-          (cond
-            ((= v1-7 (mouse-buttons left))
-             (font-color red)
-             )
-            ((= v1-7 (mouse-buttons right))
-             (font-color yellow)
-             )
-            ((= v1-7 (mouse-buttons middle))
-             (font-color green)
-             )
-            (else
-              (font-color default)
+      (#cond
+        (PC_PORT
+          ;; just draw a + with lines at the position
+          (let ((color (case arg4
+                            (((mouse-buttons left)) (static-rgba #xff #x00 #x00 #x80))
+                            (((mouse-buttons right)) (static-rgba #xff #xff #x00 #x80))
+                            (((mouse-buttons middle)) (static-rgba #x00 #xff #x00 #x80))
+                            (else (static-rgba #xff #xff #xff #x80))
+                        )))
+            (draw-sprite2d-xy buf (- x 3) (- y 1) 5 1 color)
+            (draw-sprite2d-xy buf (- x 1) ( - y 3) 1 5 color)
+            ))
+        (#t
+          ;; print an X at the position (roughly)
+          (let ((v1-7 arg4))
+            (draw-string-xy
+              "X"
+              buf
+              (+ x -5)
+              (+ y -4)
+              (cond
+                ((= v1-7 (mouse-buttons left))
+                (font-color red)
+                )
+                ((= v1-7 (mouse-buttons right))
+                (font-color yellow)
+                )
+                ((= v1-7 (mouse-buttons middle))
+                (font-color green)
+                )
+                (else
+                  (font-color default)
+                  )
+                )
+              (font-flags shadow)
               )
             )
-          (font-flags shadow)
           )
         )
       )

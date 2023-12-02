@@ -475,30 +475,28 @@ void Loader::update(TexturePool& texture_pool) {
               }
             }
           }
-
-          glBindTexture(GL_TEXTURE_2D, tex);
-          glDeleteTextures(1, &tex);
+          m_garbage_textures.push_back(tex);
         }
 
         for (auto& tie_geo : lev->tie_data) {
           for (auto& tie_tree : tie_geo) {
-            glDeleteBuffers(1, &tie_tree.vertex_buffer);
+            m_garbage_buffers.push_back(tie_tree.vertex_buffer);
             if (tie_tree.has_wind) {
-              glDeleteBuffers(1, &tie_tree.wind_indices);
+              m_garbage_buffers.push_back(tie_tree.wind_indices);
             }
-            glDeleteBuffers(1, &tie_tree.index_buffer);
+            m_garbage_buffers.push_back(tie_tree.index_buffer);
           }
         }
 
         for (auto& tfrag_geo : lev->tfrag_vertex_data) {
           for (auto& tfrag_buff : tfrag_geo) {
-            glDeleteBuffers(1, &tfrag_buff);
+            m_garbage_buffers.push_back(tfrag_buff);
           }
         }
 
-        glDeleteBuffers(1, &lev->collide_vertices);
-        glDeleteBuffers(1, &lev->merc_vertices);
-        glDeleteBuffers(1, &lev->merc_indices);
+        m_garbage_buffers.push_back(lev->collide_vertices);
+        m_garbage_buffers.push_back(lev->merc_vertices);
+        m_garbage_buffers.push_back(lev->merc_indices);
 
         for (auto& model : lev->level->merc_data.models) {
           auto& mercs = m_all_merc_models.at(model.name);
@@ -514,6 +512,21 @@ void Loader::update(TexturePool& texture_pool) {
 
     if (unload_timer.getMs() > 5.f) {
       fmt::print("Unload took {:.2f}\n", unload_timer.getMs());
+    }
+
+    if (!m_garbage_buffers.empty()) {
+      did_gpu_stuff = true;
+      for (int i = 0; i < 5 && !m_garbage_buffers.empty(); i++) {
+        glDeleteBuffers(1, &m_garbage_buffers.back());
+        m_garbage_buffers.pop_back();
+      }
+    }
+
+    if (!did_gpu_stuff && !m_garbage_textures.empty()) {
+      for (int i = 0; i < 20 && !m_garbage_textures.empty(); i++) {
+        glDeleteTextures(1, &m_garbage_textures.back());
+        m_garbage_textures.pop_back();
+      }
     }
   }
 

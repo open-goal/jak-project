@@ -1,6 +1,21 @@
 ;;-*-Lisp-*-
 (in-package goal)
 
+
+;;
+
+(defglobalconstant DEBUG_PAGE_ROWS #f)
+
+(defconstant FONT_SIZE_HEADER 0.6) ;; font size for the decoration text
+(defconstant FONT_SIZE_OPTION 0.5) ;; font size for regular options
+(defconstant FONT_SIZE_OPTION_EXTRA 0.35) ;; font size for option sub-text
+(defconstant HIGHLIGHT_SIZE 18) ;; default highlight size for options
+(defconstant HIGHLIGHT_SIZE_LARGE 33)
+
+
+;;
+
+
 (defun draw-page-border ((hud-bounds hud-box) (alpha float))
   (let ((x-pos 70)
         (y-pos 112)
@@ -58,13 +73,13 @@
 
 (defun draw-page-header ((font-ctx font-context) (text text-id))
   (let ((x-pos 70)
-        (y-pos 80)
+        (y-pos 82)
         (width 375))
     (when (= (get-aspect-ratio) 'aspect16x9)
       (set! x-pos 79)
       (set! y-pos 55)
       (set! width 356))
-    (set-scale! font-ctx 0.55)
+    (set-scale! font-ctx FONT_SIZE_HEADER)
     (set! (-> font-ctx origin y) (the float y-pos))
     (set-color! font-ctx (font-color progress))
     (print-game-text (lookup-text! *common-text* text #f) font-ctx #f 44 (bucket-id progress)))
@@ -129,9 +144,11 @@
   (none))
 
 (defun-debug draw-generic-page-row-line ((y-coord int))
-  (with-dma-buffer-add-bucket ((buf (-> *display* frames (-> *display* on-screen) global-buf))
-                               (bucket-id debug-no-zbuf2))
-    (draw-sprite2d-xy buf 0 y-coord 512 1 (static-rgba #xff #xff #xff #x40))))
+  (#when DEBUG_PAGE_ROWS
+    (with-dma-buffer-add-bucket ((buf (-> *display* frames (-> *display* on-screen) global-buf))
+                                (bucket-id debug-no-zbuf2))
+      (draw-sprite2d-xy buf 0 y-coord 512 1 (static-rgba #xff #xff #xff #x40))))
+  0)
 
 (defmethod draw-option ((obj menu-generic-scrolling-page) (progress progress) (font-ctx font-context) (arg3 int) (arg4 symbol))
   (when (or (zero? (-> obj mounted?)) (not (-> obj mounted?)))
@@ -155,19 +172,35 @@
     (draw-page-background font-alpha)
     (begin-scissor-scrolling-page hud-bounds)
     (if (= (get-aspect-ratio) 'aspect16x9)
-      (set! (-> font-ctx origin y) (+ 86.0 margin-top-bottom))
-      (set! (-> font-ctx origin y) (+ 112.0 margin-top-bottom)))
+        (set! (-> font-ctx origin y) (+ 86.0 margin-top-bottom))
+        (set! (-> font-ctx origin y) (+ 112.0 margin-top-bottom)))
+    
+    ;; do scrolling. if we notice we need to scroll too much, we just snap immediately instead of smoothly stepping.
+    (cond
+      ((> (-> *progress-pc-generic-store* current-menu-scroll-index) (-> *progress-pc-generic-store* current-menu-hover-index))
+        (if (>= (abs (- (-> *progress-pc-generic-store* current-menu-scroll-index) (the float (-> *progress-pc-generic-store* current-menu-hover-index)))) 2.0)
+            (set! (-> *progress-pc-generic-store* current-menu-scroll-index) (the float (-> *progress-pc-generic-store* current-menu-hover-index)))
+            (seek-ease! (-> *progress-pc-generic-store* current-menu-scroll-index) (the float (-> *progress-pc-generic-store* current-menu-hover-index)) (* 0.125 (-> PP clock time-adjust-ratio)) 0.3 (* 0.00125 (-> PP clock time-adjust-ratio)))))
+      ((< (+ (-> *progress-pc-generic-store* current-menu-scroll-index) (1- max-page-size)) (-> *progress-pc-generic-store* current-menu-hover-index))
+        (if (>= (abs (- (-> *progress-pc-generic-store* current-menu-scroll-index) (the float (- (-> *progress-pc-generic-store* current-menu-hover-index) (1- max-page-size))))) 2.0)
+            (set! (-> *progress-pc-generic-store* current-menu-scroll-index) (the float (- (-> *progress-pc-generic-store* current-menu-hover-index) (1- max-page-size))))
+            (seek-ease! (-> *progress-pc-generic-store* current-menu-scroll-index) (the float (- (-> *progress-pc-generic-store* current-menu-hover-index) (1- max-page-size))) (* 0.125 (-> PP clock time-adjust-ratio)) 0.3 (* 0.00125 (-> PP clock time-adjust-ratio)))))
+      )
+    
     ;; render items
-    (let* ((menu-option-index (max 0 (* (/ (-> *progress-pc-generic-store* current-menu-hover-index) max-page-size) max-page-size)))
-           (end-index (min (-> obj menu-options length) (+ menu-option-index max-page-size))))
-      (while (< menu-option-index end-index)
-        (let ((menu-option (-> obj menu-options menu-option-index)))
+    (let* ((start-index (the int (-> *progress-pc-generic-store* current-menu-scroll-index)))
+            ;; we add 1 because the scroll effect will reveal 1 extra
+           (end-index (min (-> obj menu-options length) (+ start-index max-page-size 1))))
+      ;; scroll adjust
+      (-! (-> font-ctx origin y) (* line-height (abs (- (-> *progress-pc-generic-store* current-menu-scroll-index) start-index))))
+      (while (< start-index end-index)
+        (let ((menu-option (-> obj menu-options start-index)))
           (when (nonzero? menu-option)
             ;; save the y,x position as who knows where it will end up after the component finishes rendering
             (let ((old-y-pos (-> font-ctx origin y))
                   (old-x-pos (-> font-ctx origin x)))
-              (draw-option menu-option progress font-ctx menu-option-index
-                           (= (-> obj selected-option-index) menu-option-index))
+              (draw-option menu-option progress font-ctx start-index
+                           (= (-> obj selected-option-index) start-index))
               ;; move to the next line
               (set! (-> font-ctx origin y) (+ old-y-pos line-height))
               ;; - debugging, draw the dividing lines to make centering new items easier
@@ -175,18 +208,12 @@
               (set! (-> font-ctx origin x) old-x-pos)
               ;; reset the font color
               (set-color! font-ctx (font-color progress)))))
-        (+! menu-option-index 1)))
+        (+! start-index 1)))
     ;; end
     (end-scissor-scrolling-page hud-bounds 1.0)
     (set-flags! font-ctx (font-flags kerning large))
-    (let* ((draw-up-arrow? (and (not (zero? (-> *progress-pc-generic-store* current-menu-hover-index)))
-                                (>= (-> *progress-pc-generic-store* current-menu-hover-index) max-page-size)))
-           (last-page-remainder (mod (-> obj menu-options length) max-page-size))
-           (last-page-starting-index (if (zero? last-page-remainder)
-                                         (- (-> obj menu-options length) max-page-size)
-                                         (- (-> obj menu-options length) last-page-remainder)))
-           (draw-down-arrow? (and (> (-> obj menu-options length) max-page-size)
-                                  (< (-> *progress-pc-generic-store* current-menu-hover-index) last-page-starting-index))))
+    (let ((draw-up-arrow? (< 0 (-> *progress-pc-generic-store* current-menu-hover-index)))
+          (draw-down-arrow? (< (-> *progress-pc-generic-store* current-menu-hover-index) (1- (-> obj menu-options length)))))
       (draw-scrolling-page-up-down-arrows font-ctx draw-up-arrow? draw-down-arrow?))))
   (none))
 
@@ -214,18 +241,18 @@
     (max! alpha 0.0)
     (set! (-> font-ctx alpha) alpha)
     (set-flags! font-ctx (font-flags kerning middle large))
-    (set-scale! font-ctx 0.45)
+    (set-scale! font-ctx FONT_SIZE_OPTION)
     (+! (-> font-ctx origin y) (if (= (get-aspect-ratio) 'aspect4x3) 7.0 5.0))
     (cond
       (selected?
         (set-color! font-ctx (font-color progress-force-selected))
-        (draw-generic-highlight (the int (- (-> font-ctx origin y) 2.0)) 32 alpha)
+        (draw-generic-highlight (the int (- (-> font-ctx origin y) 2.0)) HIGHLIGHT_SIZE_LARGE alpha)
         (print-game-text (lookup-text! *common-text* (-> obj name) #f) font-ctx #f 44 (bucket-id progress))
         (+! (-> font-ctx origin y) line-height)
         (set! *progress-generic-temp-string* (clear *progress-generic-temp-string*))
         (if (-> obj value)
-          (format *progress-generic-temp-string* "~33L~S~35L ~S" (lookup-text! *common-text* (-> obj truthy-text) #f) (lookup-text! *common-text* (-> obj falsey-text) #f))
-          (format *progress-generic-temp-string* "~35L~S ~33L~S~1L" (lookup-text! *common-text* (-> obj truthy-text) #f) (lookup-text! *common-text* (-> obj falsey-text) #f))))
+            (format *progress-generic-temp-string* "~33L~S~35L ~S" (lookup-text! *common-text* (-> obj truthy-text) #f) (lookup-text! *common-text* (-> obj falsey-text) #f))
+            (format *progress-generic-temp-string* "~35L~S ~33L~S~1L" (lookup-text! *common-text* (-> obj truthy-text) #f) (lookup-text! *common-text* (-> obj falsey-text) #f))))
       ;; hover case
       (else
         (cond
@@ -234,10 +261,10 @@
                 ((-> obj should-disable?)))
            (set-color! font-ctx (font-color progress-option-off))
            (when (= option-index (-> *progress-pc-generic-store* current-menu-hover-index))
-            (draw-generic-highlight (the int (+ -1.0 (-> font-ctx origin y))) 15 0.5)))
+            (draw-generic-highlight (the int (+ -2.0 (-> font-ctx origin y))) HIGHLIGHT_SIZE (* 0.5 alpha))))
           ((= option-index (-> *progress-pc-generic-store* current-menu-hover-index))
             (set-color! font-ctx (progress-selected 0))
-            (draw-generic-highlight (the int (+ -1.0 (-> font-ctx origin y))) 15 alpha))
+            (draw-generic-highlight (the int (+ -2.0 (-> font-ctx origin y))) HIGHLIGHT_SIZE alpha))
           (else
             (set-color! font-ctx (font-color progress))))
         (print-game-text (lookup-text! *common-text* (-> obj name) #f) font-ctx #f 44 (bucket-id progress))
@@ -247,15 +274,15 @@
           (if actual-value
             (format *progress-generic-temp-string* "~1L~S~35L ~S" (lookup-text! *common-text* (-> obj truthy-text) #f) (lookup-text! *common-text* (-> obj falsey-text) #f))
             (format *progress-generic-temp-string* "~35L~S ~1L~S~1L" (lookup-text! *common-text* (-> obj truthy-text) #f) (lookup-text! *common-text* (-> obj falsey-text) #f))))))
-    (set-scale! font-ctx 0.35)
+    (set-scale! font-ctx FONT_SIZE_OPTION_EXTRA)
     (print-game-text *progress-generic-temp-string* font-ctx #f 44 (bucket-id progress)))
   (none))
 
 (defmethod draw-option ((obj menu-generic-carousel-option)
-                                                     (progress progress)
-                                                     (font-ctx font-context)
-                                                     (option-index int)
-                                                     (selected? symbol))
+                        (progress progress)
+                        (font-ctx font-context)
+                        (option-index int)
+                        (selected? symbol))
   (when (not (-> obj mounted?))
     (on-mount! obj))
   (let ((alpha (fmax (* 2.0 (- 0.5 (-> progress menu-transition))) 0.0)))
@@ -267,16 +294,16 @@
     (cond
       (selected?
        (set! (-> font-ctx color) (font-color progress-force-selected))
-       (draw-generic-highlight (the int (- (-> font-ctx origin y) 1.0)) 30 alpha))
+       (draw-generic-highlight (the int (- (-> font-ctx origin y) 2.0)) HIGHLIGHT_SIZE_LARGE alpha))
       ((and (nonzero? (-> obj should-disable?))
             (!= (-> obj should-disable?) #f)
             ((-> obj should-disable?)))
        (set-color! font-ctx (font-color progress-option-off))
        (when (= option-index (-> *progress-pc-generic-store* current-menu-hover-index))
-         (draw-generic-highlight (the int (+ -1.0 (-> font-ctx origin y))) 15 0.5)))
+         (draw-generic-highlight (the int (+ -2.0 (-> font-ctx origin y))) HIGHLIGHT_SIZE (* 0.5 alpha))))
       ((= option-index (-> *progress-pc-generic-store* current-menu-hover-index))
        (set! (-> font-ctx color) (progress-selected 0))
-       (draw-generic-highlight (the int (- (-> font-ctx origin y) 1.0)) 16 alpha)))
+       (draw-generic-highlight (the int (- (-> font-ctx origin y) 2.0)) HIGHLIGHT_SIZE alpha)))
     (print-game-text (lookup-text! *common-text* (-> obj name) #f) font-ctx #f 44 (bucket-id progress))
     (+! (-> font-ctx origin y) 18.0)
     (set! (-> font-ctx scale) 0.35)
@@ -299,7 +326,7 @@
     (max! alpha 0.0)
     (set! (-> font-ctx alpha) alpha)
     (set-flags! font-ctx (font-flags kerning middle large))
-    (set-scale! font-ctx 0.45)
+    (set-scale! font-ctx FONT_SIZE_OPTION)
     (+! (-> font-ctx origin y) (if (= (get-aspect-ratio) 'aspect4x3) 14.0 11.0))
     (cond
       ((and (nonzero? (-> option should-disable?))
@@ -307,10 +334,10 @@
             ((-> option should-disable?)))
       (set-color! font-ctx (font-color progress-option-off))
       (when (= option-index (-> *progress-pc-generic-store* current-menu-hover-index))
-        (draw-generic-highlight (the int (+ -1.0 (-> font-ctx origin y))) 15 0.5)))
+        (draw-generic-highlight (the int (+ -2.0 (-> font-ctx origin y))) HIGHLIGHT_SIZE (* 0.5 alpha))))
       ((= option-index (-> *progress-pc-generic-store* current-menu-hover-index))
         (set-color! font-ctx (progress-selected 0))
-        (draw-generic-highlight (the int (+ -1.0 (-> font-ctx origin y))) 17 alpha))
+        (draw-generic-highlight (the int (+ -2.0 (-> font-ctx origin y))) HIGHLIGHT_SIZE alpha))
       (else
         (set-color! font-ctx (font-color progress))))
     (print-game-text str font-ctx #f 44 (bucket-id progress)))
@@ -334,18 +361,18 @@
        (max! alpha 0.0)
        (set! (-> font-ctx alpha) alpha)
        (set-flags! font-ctx (font-flags kerning middle large))
-       (set-scale! font-ctx 0.45)
+       (set-scale! font-ctx FONT_SIZE_OPTION)
        (+! (-> font-ctx origin y) (if (= (get-aspect-ratio) 'aspect4x3) 7.0 5.0))
        (cond
          (selected?
            (set-color! font-ctx (font-color progress-force-selected))
-           (draw-generic-highlight (the int (- (-> font-ctx origin y) 2.0)) 32 alpha)
+           (draw-generic-highlight (the int (- (-> font-ctx origin y) 2.0)) HIGHLIGHT_SIZE_LARGE alpha)
            (print-game-text (lookup-text! *common-text* (-> obj name) #f) font-ctx #f 44 (bucket-id progress))
            (+! (-> font-ctx origin y) line-height)
            (set! *progress-generic-temp-string* (clear *progress-generic-temp-string*))
            (if (-> obj confirmed?)
-             (format *progress-generic-temp-string* "~33L~S~35L ~S" (lookup-text! *common-text* (text-id progress-yes) #f) (lookup-text! *common-text* (text-id progress-no) #f))
-             (format *progress-generic-temp-string* "~35L~S ~33L~S~1L" (lookup-text! *common-text* (text-id progress-yes) #f) (lookup-text! *common-text* (text-id progress-no) #f))))
+               (format *progress-generic-temp-string* "~33L~S~35L ~S" (lookup-text! *common-text* (text-id progress-yes) #f) (lookup-text! *common-text* (text-id progress-no) #f))
+               (format *progress-generic-temp-string* "~35L~S ~33L~S~1L" (lookup-text! *common-text* (text-id progress-yes) #f) (lookup-text! *common-text* (text-id progress-no) #f))))
          ;; hover case
          (else
            (cond
@@ -354,19 +381,19 @@
                    ((-> obj should-disable?)))
               (set-color! font-ctx (font-color progress-option-off))
               (when (= option-index (-> *progress-pc-generic-store* current-menu-hover-index))
-                (draw-generic-highlight (the int (+ -1.0 (-> font-ctx origin y))) 15 0.5)))
+                (draw-generic-highlight (the int (+ -1.0 (-> font-ctx origin y))) HIGHLIGHT_SIZE (* 0.5 alpha))))
              ((= option-index (-> *progress-pc-generic-store* current-menu-hover-index))
                (set-color! font-ctx (progress-selected 0))
-               (draw-generic-highlight (the int (+ -1.0 (-> font-ctx origin y))) 15 alpha))
+               (draw-generic-highlight (the int (+ -1.0 (-> font-ctx origin y))) HIGHLIGHT_SIZE alpha))
              (else
                (set-color! font-ctx (font-color progress))))
            (print-game-text (lookup-text! *common-text* (-> obj name) #f) font-ctx #f 44 (bucket-id progress))
            (+! (-> font-ctx origin y) line-height)
            (set! *progress-generic-temp-string* (clear *progress-generic-temp-string*))
            (if (-> obj confirmed?)
-             (format *progress-generic-temp-string* "~1L~S~35L ~S" (lookup-text! *common-text* (text-id progress-yes) #f) (lookup-text! *common-text* (text-id progress-no) #f))
-             (format *progress-generic-temp-string* "~35L~S ~1L~S~1L" (lookup-text! *common-text* (text-id progress-yes) #f) (lookup-text! *common-text* (text-id progress-no) #f)))))
-       (set-scale! font-ctx 0.35)
+               (format *progress-generic-temp-string* "~1L~S~35L ~S" (lookup-text! *common-text* (text-id progress-yes) #f) (lookup-text! *common-text* (text-id progress-no) #f))
+               (format *progress-generic-temp-string* "~35L~S ~1L~S~1L" (lookup-text! *common-text* (text-id progress-yes) #f) (lookup-text! *common-text* (text-id progress-no) #f)))))
+       (set-scale! font-ctx FONT_SIZE_OPTION_EXTRA)
        (print-game-text *progress-generic-temp-string* font-ctx #f 44 (bucket-id progress))))
     (else
      (draw-generic-simple-string-option obj progress font-ctx option-index (lookup-text! *common-text* (-> obj name) #f))))
@@ -378,7 +405,7 @@
   (let ((alpha (max 0.0 (* 2.0 (- 0.5 (-> arg0 menu-transition)))))
         (slider-value (if selected? (-> obj value) (call-get-value-fn obj))))
     (set! (-> font-ctx alpha) alpha)
-    (set-scale! font-ctx 0.45)
+    (set-scale! font-ctx FONT_SIZE_OPTION)
     (+! (-> font-ctx origin y) 20.0)
     (case (get-aspect-ratio)
       (('aspect4x3))
@@ -386,10 +413,10 @@
     (set-flags! font-ctx (font-flags kerning middle large))
     (cond
       (selected?
-        (set-scale! font-ctx 0.35)
+        (set-scale! font-ctx FONT_SIZE_OPTION_EXTRA)
         (+! (-> font-ctx origin y) (if (= (get-aspect-ratio) 'aspect4x3) -15.0 -15.0))
         (set-color! font-ctx (font-color progress-force-selected))
-        (draw-generic-highlight (the int (+ -2.0 (-> font-ctx origin y))) 35 alpha)
+        (draw-generic-highlight (the int (+ -2.0 (-> font-ctx origin y))) HIGHLIGHT_SIZE_LARGE alpha)
         (if (= (-> obj show-decimal?) #t)
           (print-game-text (string-format "~S: ~,,2f" (lookup-text! *common-text* (-> obj name) #f) slider-value) font-ctx #f 44 (bucket-id progress))
           (print-game-text (string-format "~S: ~D" (lookup-text! *common-text* (-> obj name) #f) slider-value) font-ctx #f 44 (bucket-id progress)))
@@ -446,10 +473,10 @@
                 ((-> obj should-disable?)))
           (set-color! font-ctx (font-color progress-option-off))
           (when (= option-index (-> *progress-pc-generic-store* current-menu-hover-index))
-            (draw-generic-highlight (the int (+ -1.0 (-> font-ctx origin y))) 15 0.5)))
+            (draw-generic-highlight (the int (+ -1.0 (-> font-ctx origin y))) HIGHLIGHT_SIZE (* 0.5 alpha))))
           ((= option-index (-> *progress-pc-generic-store* current-menu-hover-index))
             (set-color! font-ctx (progress-selected 0))
-            (draw-generic-highlight (the int (+ -2.0 (-> font-ctx origin y))) 18 alpha))
+            (draw-generic-highlight (the int (+ -2.0 (-> font-ctx origin y))) HIGHLIGHT_SIZE alpha))
           (else
             (set-color! font-ctx (font-color progress))))
         (if (= (-> obj show-decimal?) #t)

@@ -10,6 +10,58 @@
 
 ;; DECOMP BEGINS
 
+(defun pc-add-shrub-vis-mask ((dma-buf dma-buffer) (lev level))
+  "Add data so Proto.cpp can disable drawing for disabled protos."
+  (let ((packet (the-as dma-packet (-> dma-buf base))))
+    (set! (-> packet vif0) (new 'static 'vif-tag))
+    (set! (-> packet vif1) (new 'static 'vif-tag :cmd (vif-cmd pc-port)))
+    (set! (-> dma-buf base) (the pointer (&+ packet 16)))
+
+    (let ((lev-trees (-> lev bsp drawable-trees))
+          (data-ptr (the (pointer uint8) (-> dma-buf base)))
+          )
+      (dotimes (tree-idx (-> lev-trees length))
+        (let ((tree (-> lev-trees data tree-idx)))
+          (when (= (-> tree type) drawable-tree-instance-shrub)
+            (let* ((shrub-tree (the drawable-tree-instance-shrub tree))
+                   (protos (-> shrub-tree info prototype-inline-array-shrub))
+                   )
+              (dotimes (i (-> protos length))
+                (let ((proto (-> protos data i)))
+                  (when (logtest? (-> proto flags) (prototype-flags visible))
+                    ;; invisible!
+                    ;; (format 0 "invis: ~A~%" (-> proto name))
+                    (let ((src (-> proto name data)))
+                      (while (nonzero? (-> src))
+                        (set! (-> data-ptr) (-> src))
+                        (&+! src 1)
+                        (&+! data-ptr 1)
+                        )
+                      (set! (-> data-ptr) 0)
+                      (&+! data-ptr 1)
+                      )
+                    )
+                  )
+                )
+              )
+            )
+          )
+        )
+      ;; align
+      (while (nonzero? (logand data-ptr #xf))
+        (set! (-> data-ptr) 0)
+        (&+! data-ptr 1)
+        )
+      (set! (-> packet dma) (new 'static 'dma-tag
+                                 :id (dma-tag-id cnt)
+                                 :qwc (/ (&- data-ptr (-> dma-buf base)) 16))
+            )
+      (set! (-> dma-buf base) data-ptr)
+      #f
+      )
+    )
+  )
+
 (defmethod login ((this billboard))
   "Set up the billboard adgif shader"
   (adgif-shader-login (-> this flat))
@@ -481,6 +533,7 @@
               (let* ((shrub-dma-buff (-> *display* frames (-> *display* on-screen) global-buf))
                      (dma-start (-> shrub-dma-buff base)))
                 (add-pc-tfrag3-data shrub-dma-buff (-> *level* draw-level *draw-index*))
+                (pc-add-shrub-vis-mask shrub-dma-buff (-> *level* draw-level *draw-index*))
                 (let ((a3-22 (-> shrub-dma-buff base)))
                   (let ((v1-57 (the-as object (-> shrub-dma-buff base))))
                     (set! (-> (the-as dma-packet v1-57) dma) (new 'static 'dma-tag :id (dma-tag-id next)))
