@@ -12,6 +12,19 @@
    )
   )
 
+;; added for hijack lines cheat
+(define *jak-hijack-speeches* (new 'static 'boxed-array :type string
+    "jak040" "jak041" "jak042" "jak044" "jak045" "jak046"
+    "jak047" "jak048" "jak049" "jak050" "jak051" "jak052"
+    "jak053" "jak054" "jak055"
+    )
+  )
+
+(define *civ-hijack-speeches* (new 'static 'boxed-array :type string
+    "cit051" "cit053" "cit055" "cit056" "cit057" "cit058"
+    )
+  )
+
 ;; DECOMP BEGINS
 
 (define *pilot-mods* (new 'static 'surface :name 'empty :seek0 1.0 :seek90 1.0 :seek180 1.0 :fric 1.0))
@@ -214,6 +227,20 @@
         (let ((s3-0 (get-seat-count (the-as vehicle s4-1))))
           (dotimes (s2-0 s3-0)
             (let ((a0-20 (get-rider-in-seat (the-as vehicle s4-1) s2-0)))
+              ;; og:preserve-this added for hijack lines cheat
+              (when (and a0-20 (or (type-type? (-> a0-20 type) citizen-norm-rider) (type-type? (-> a0-20 type) crimson-guard-rider)))
+                (let ((cheat? (pc-cheats? (-> *pc-settings* cheats) hijack-lines)) 
+                      (chance? (rand-vu-percent? (-> *pc-cheat-state* hijack-speech-chance))))
+                  (when (and cheat? chance?)
+                    (add-process *gui-control* self (gui-channel jak) (gui-action play)
+                      (-> *jak-hijack-speeches* (rand-vu-int-range 0 (1- (-> *jak-hijack-speeches* length)))) -99.0 0)
+                    (if (type-type? (-> a0-20 type) citizen-norm-rider)
+                      (add-process *gui-control* self (gui-channel jak) (gui-action play)
+                        (-> *civ-hijack-speeches* (rand-vu-int-range 0 (1- (-> *civ-hijack-speeches* length)))) -99.0 0)
+                      )
+                    )
+                  )
+                )
               (if (and a0-20 (send-event a0-20 'knocked-off))
                   (put-rider-in-seat (the-as vehicle s4-1) s2-0 (the-as process-focusable #f))
                   )
