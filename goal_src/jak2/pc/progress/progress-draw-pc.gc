@@ -2664,6 +2664,191 @@
 
 
 
+(defun draw-decoration-resolution ((arg0 menu-option) (arg1 font-context) (arg2 float) (arg3 text-id) (arg5 float))
+  (let ((gp-0 70)
+        (s5-0 120)
+        (sv-48 87)
+        (s3-0 375)
+        (s2-0 210)
+        (sv-64 0)
+        )
+    (case (get-aspect-ratio)
+      (('aspect4x3)
+        (set! gp-0 70)
+        (set! s5-0 116)
+        (set! sv-48 84)
+        (set! s3-0 375)
+        (set! s2-0 179)
+        )
+      (('aspect16x9)
+        (set! gp-0 79)
+        (set! s5-0 108)
+        (set! sv-48 58)
+        (set! s3-0 356)
+        (set! s2-0 185)
+        (set! sv-64 20)
+        )
+      )
+    (#when PC_PORT
+      ;; added for better widescreen handling
+      (when (not (-> *pc-settings* use-vis?))
+        (set! gp-0 (the int (adjust-game-x (the float gp-0))))
+        (set! s3-0 (the int (* (-> *pc-settings* aspect-ratio-reciprocal) s3-0)))
+        )
+      )
+    (set-scale! arg1 arg5)
+    (set! (-> arg1 origin y) (the float sv-48))
+    (set! (-> arg1 height) 50.0)
+    (set-color! arg1 (font-color progress))
+    (set-flags! arg1 (font-flags kerning middle large))
+    (print-game-text (lookup-text! *common-text* arg3 #f) arg1 #f 44 (bucket-id progress))
+    (set-vector! (-> arg0 box 0 color) 64 128 128 (the int (* 128.0 arg2)))
+    (draw-savegame-box arg0 (the float gp-0) (the float (+ gp-0 s3-0)) (the float s5-0) (the float s5-0))
+    (+! (-> arg1 origin y) (the float sv-64))
+    (draw-savegame-box
+      arg0
+      (the float gp-0)
+      (the float (+ gp-0 s3-0))
+      (the float (+ s5-0 s2-0))
+      (the float (+ s5-0 s2-0))
+      )
+    (with-dma-buffer-add-bucket ((s0-1 (-> *display* frames (-> *display* on-screen) global-buf))
+                                  (bucket-id particles)
+                                  )
+      (draw-sprite2d-xy s0-1 gp-0 s5-0 s3-0 s2-0
+        (new 'static 'rgba :r #x40 :g #x40 :b #x40 :a (the int (* 64.0 arg2)))
+        )
+      )
+    )
+  )
+
+
+(defun begin-scissor-resolution ((arg0 hud-box))
+  (cond
+    ((= (get-aspect-ratio) 'aspect16x9)
+     (set! (-> arg0 min x) 79.0)
+     (set! (-> arg0 min y) 108.0)
+     (set! (-> arg0 max x) 434.0)
+     (set! (-> arg0 max y) 293.0)
+     )
+    (else
+      (set! (-> arg0 min x) 70.0)
+      (set! (-> arg0 min y) 116.0)
+      (set! (-> arg0 max x) 444.0)
+      (set! (-> arg0 max y) 295.0)
+      )
+    )
+  (with-dma-buffer-add-bucket ((s4-0 (-> *display* frames (-> *display* on-screen) global-buf))
+                               (bucket-id progress)
+                               )
+    (setup-scissor arg0 s4-0)
+    )
+  0
+  )
+
+(defun end-scissor-resolution ((arg0 hud-box) (arg1 float))
+  (with-dma-buffer-add-bucket ((s5-0 (-> *display* frames (-> *display* on-screen) global-buf))
+                               (bucket-id progress)
+                               )
+    (restore-scissor arg0 s5-0)
+    )
+  0
+  )
+
+(defmethod draw-option ((this menu-resolution-option) (the-progress progress) (font font-context) (arg2 int) (arg3 symbol))
+
+  (let* ((alpha (* 2.0 (- 0.5 (-> the-progress menu-transition))))
+        (box (new 'stack 'hud-box))
+        (height 22)
+        (text-pad 1)
+        (text-height (+ height (* text-pad 2))))
+    (max! alpha 0.0)
+    (set! (-> font alpha) alpha)
+
+    (draw-decoration-resolution this font alpha (if (fullscreen?) (text-id progress-game-res-decoration) (text-id progress-window-size-decoration)) 0.65)
+    (begin-scissor-resolution box)
+
+    (set-flags! font (font-flags kerning large middle))
+    (cond
+      ((< (-> this selected-index) 0)
+        ;; not sure.
+        )
+      ((-> this valid?)
+        (set-scale! font 0.6)
+        (set-color! font (font-color progress))
+        (set! (-> font origin x) (+ (-> box min x) 16))
+        (set! (-> font width) (- (-> box max x) (-> box min x) (* 16 2)))
+        (set-height! font 60)
+
+        ;; draw the highlight first
+        (draw-highlight 193 (- height 1) alpha)
+
+        ;; now scroll and offset the list
+        (if (> (abs (- (-> this scroll-index) (the float (-> this selected-index)))) 2.0)
+            (set! (-> this scroll-index) (the float (-> this selected-index)))
+            (seek-ease! (-> this scroll-index) (the float (-> this selected-index)) (* 0.15 (-> PP clock time-adjust-ratio)) 0.3 (* 0.0015 (-> PP clock time-adjust-ratio))))
+        (set! (-> font origin y) (- 194.0 (* (-> this scroll-index) text-height) (- text-pad)))
+        
+        ;; now draw the list!
+        (let ((valid-index 0))
+        (dotimes (i (-> this num-resolutions))
+
+          ;; count "valid" resolutions
+          (let ((this-w 0) (this-h 0) (this-aspect 0.0))
+          (pc-get-resolution i (& this-w) (& this-h))
+          (set! this-aspect (/ (the float this-w) (the float this-h)))
+          
+          (when (or (= (pc-get-display-mode) 'windowed)
+                    (< (fabs (- (-> this win-aspect) this-aspect)) 0.05))
+              (if (= valid-index (-> this selected-index))
+                  (set-color! font (progress-selected 0))
+                  (set-color! font (font-color progress)))
+              (print-game-text (string-format "~D x ~D" this-w this-h) font #f 44 (bucket-id progress))
+
+              (+! (-> font origin y) text-height)
+              (1+! valid-index)
+              ))
+          )
+        
+        (when (fullscreen?)
+          ;; draw extra hardcoded cases
+          (if (= valid-index (-> this selected-index))
+              (set-color! font (progress-selected 0))
+              (set-color! font (font-color progress)))
+          (print-game-text (string-format "~D x ~D" 512 416) font #f 44 (bucket-id progress))
+          (+! (-> font origin y) text-height)
+          (1+! valid-index)
+
+          (if (= valid-index (-> this selected-index))
+              (set-color! font (progress-selected 0))
+              (set-color! font (font-color progress)))
+          (print-game-text (string-format "~D x ~D" 512 208) font #f 44 (bucket-id progress))
+          (+! (-> font origin y) text-height)
+          (1+! valid-index)
+          ))
+        
+        )
+      (else
+        ;; wtf?? just print an ominous warning.
+        (set-scale! font 0.6)
+        (set-color! font (font-color red))
+
+        (set! (-> font origin x) (+ (-> box min x) 16))
+        (set! (-> font origin y) (+ (-> box min y) 120))
+        (set! (-> font width) (- (-> box max x) (-> box min x) (* 16 2)))
+        (set-height! font 60)
+        (print-game-text (lookup-text! *common-text* (text-id progress-error-no-resolutions) #f) font #f 44 (bucket-id progress))
+        )
+      )
+    
+    (end-scissor-resolution box 1.0)
+    )
+
+  0
+  (none))
+
+
+
 
 (#when PC_PORT
 (defun-debug draw-mouse ()

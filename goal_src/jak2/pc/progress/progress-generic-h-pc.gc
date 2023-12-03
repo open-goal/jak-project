@@ -46,6 +46,13 @@
     (on-mount! "Called when the menu item is first drawn as a means to initialize defaults, etc" (_type_) none)
     (should-disable? (_type_) symbol)))
 
+(deftype menu-generic-button-option (menu-generic-option)
+  "A button option that run its action when selected"
+  (;; props
+   (on-confirm (function progress none)))
+  (:methods
+    (call-on-confirm (_type_ progress) none)))
+
 (deftype menu-generic-scrolling-page (menu-generic-option)
   "A menu option that holds menu options"
   (;; props
@@ -89,12 +96,12 @@
    (item-index int32)
    ;; lambdas
    (get-item-index-fn (function int))
-   (on-confirm (function int none)))
+   (on-confirm (function int progress none)))
   (:methods
     (num-items (_type_) int)
     (get-item-label (_type_ int) string)
     (call-get-item-index-fn (_type_) int)
-    (call-on-confirm (_type_ int) none)))
+    (call-on-confirm (_type_ int progress) none)))
 
 (deftype menu-generic-confirm-option (menu-generic-option)
   "A button option that confirms before triggering it's action"
@@ -126,6 +133,10 @@
 
 (deftype menu-generic-details-entry (menu-generic-option)
   "A generic details list entry"
+  ())
+
+(deftype menu-generic-to-resolutions-option (menu-generic-button-option)
+  "Specialization of a generic button option"
   ())
 
 (defenum controller-keybind
@@ -202,6 +213,14 @@
     :name ,text
     :should-disable? ,should-disable?
     :target ,target))
+
+(defmacro progress-new-generic-link-to-page (title &key (should-disable? #f) &rest options)
+  `(new 'static 'menu-generic-link-option
+    :name ,title
+    :should-disable? ,should-disable?
+    :target (new 'static 'menu-option-list
+      :options (new 'static 'boxed-array :type menu-option
+        ,@options))))
 
 (defmacro progress-new-generic-link-to-scrolling-page (title &key (should-disable? #f) &rest options)
   `(new 'static 'menu-generic-link-option

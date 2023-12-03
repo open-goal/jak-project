@@ -21,9 +21,14 @@
     ((-> this get-item-index-fn))
     0))
 
-(defmethod call-on-confirm ((this menu-generic-carousel-option) (val int))
-  (when (and (nonzero? (-> this on-confirm)) (!= (-> this on-confirm) #f))
-    ((-> this on-confirm) val))
+(defmethod call-on-confirm ((this menu-generic-carousel-option) (val int) (the-progress progress))
+  (when (and (nonzero? (-> this on-confirm)) (-> this on-confirm))
+    ((-> this on-confirm) val the-progress))
+  (none))
+
+(defmethod call-on-confirm ((this menu-generic-button-option) (the-progress progress))
+  (when (and (nonzero? (-> this on-confirm)) (-> this on-confirm))
+    ((-> this on-confirm) the-progress))
   (none))
 
 (defmethod call-on-confirm ((this menu-generic-confirm-option))
@@ -292,15 +297,15 @@
            (let ((menu-option (-> this menu-options (-> *progress-pc-generic-store* current-menu-hover-index))))
              ;; if the option is disabled, return early
              (when (and (type? menu-option menu-generic-option)
-                       (nonzero? (-> (the-as menu-generic-option menu-option) should-disable?))
-                       (!= (-> (the-as menu-generic-option menu-option) should-disable?) #f)
-                       ((-> (the-as menu-generic-option menu-option) should-disable?)))
+                        (nonzero? (-> (the-as menu-generic-option menu-option) should-disable?))
+                        (!= (-> (the-as menu-generic-option menu-option) should-disable?) #f)
+                        ((-> (the-as menu-generic-option menu-option) should-disable?)))
                (sound-play "roll-over")
                (cpad-clear! 0 confirm)
                (return 0))
              ;; ignore confirm if it's a link
              (cond
-               ((type? menu-option menu-generic-link-option)
+               ((or (type? menu-option menu-generic-link-option) (type? menu-option menu-generic-to-resolutions-option))
                 (set! selected-item? #t))
                (else
                 (set! (-> this selected-option-index) (-> *progress-pc-generic-store* current-menu-hover-index))
@@ -353,7 +358,7 @@
         (set! (-> this item-index) 0))
        (sound-play "generic-beep"))
       ((cpad-pressed? 0 confirm)
-       (call-on-confirm this (-> this item-index))
+       (call-on-confirm this (-> this item-index) progress)
        (sound-play "generic-beep")))
     (cond
       ((cpad-pressed? 0 confirm)
@@ -367,6 +372,14 @@
     (navigate! *progress-pc-generic-store* progress (-> this target) (-> this on-load))
     (set! (-> progress selected-option) #f)
     (sound-play "generic-beep"))
+  0)
+
+(defmethod respond-progress ((this menu-generic-button-option) (progress progress) (selected? symbol))
+  (cond
+    ((cpad-pressed? 0 confirm)
+      (cpad-clear! 0 confirm)
+      (call-on-confirm this progress)
+      (sound-play "generic-beep")))
   0)
 
 (defmethod respond-progress ((this menu-generic-confirm-option) (progress progress) (selected? symbol))
