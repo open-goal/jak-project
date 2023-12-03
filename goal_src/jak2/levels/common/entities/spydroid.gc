@@ -914,9 +914,11 @@
   :exit (behavior ()
     (logclear! (-> self enemy-flags) (enemy-flag actor-pause-backup))
     (nav-enemy-method-168 self)
-    (let ((v1-4 (-> self nav)))
-      (set! (-> v1-4 target-speed) (-> self enemy-info run-travel-speed))
-      )
+    ;; og:preserve-this fix potential use-after-free bug
+    (if (-> self nav)
+      (let ((v1-4 (-> self nav)))
+        (set! (-> v1-4 target-speed) (-> self enemy-info run-travel-speed))
+        ))
     0
     (if (logtest? (-> self enemy-flags) (enemy-flag check-water))
         (logior! (-> self focus-status) (focus-status dangerous))
