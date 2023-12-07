@@ -1,3 +1,5 @@
+#pragma once
+
 #include "DataObjectGenerator.h"
 
 #include "decompiler/level_extractor/common_formats.h"
@@ -30,8 +32,16 @@ struct ArtElement : Art {
   u8 pad[12];
 };
 
+struct ArtJointGeo : ArtElement {};
+
+struct ArtJointAnim : ArtElement {};
+
 struct ArtGroup {
   FileInfo info;
 
+  ArtGroup() {
+    info.tool_debug = "Created by OpenGOAL buildactor";
+    info.file_type = "art-group";
+  }
   size_t generate(DataObjectGenerator& gen);
 };
