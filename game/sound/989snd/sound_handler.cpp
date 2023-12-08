@@ -164,6 +164,10 @@ bool CheckInstanceLimit(SFXBlock::SFX& sfx, s32 sfx_vol, BlockSoundHandler** wea
       return false;
     }
 
+    if (sfx.Flags.instlimit_vol() && weakest->m_app_volume >= sfx_vol) {
+      return false;
+    }
+
     *weakest_out = weakest;
   }
 
