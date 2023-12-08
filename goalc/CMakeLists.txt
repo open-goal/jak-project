@@ -51,7 +51,7 @@ add_library(compiler
         data_compiler/dir_tpages.cpp
         data_compiler/game_count.cpp
         data_compiler/DataObjectGenerator.cpp
-        data_compiler/build_actor.cpp
+        build_actor/jak1/build_actor.cpp
         debugger/Debugger.cpp
         debugger/DebugInfo.cpp
         listener/Listener.cpp
@@ -75,8 +75,9 @@ add_executable(goalc main.cpp)
 add_executable(goalc-simple simple_main.cpp)
 
 add_executable(build_level build_level/main.cpp)
+add_executable(build_actor build_actor/main.cpp)
 
 target_link_libraries(goalc common Zydis compiler)
 target_link_libraries(goalc-simple common Zydis compiler)
 target_link_libraries(build_level common Zydis compiler)
-
+target_link_libraries(build_actor common Zydis compiler)

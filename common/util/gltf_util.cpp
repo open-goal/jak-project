@@ -407,4 +407,39 @@ void dedup_vertices(const std::vector<tfrag3::PreloadedVertex>& vertices_in,
     }
   }
 }
+
+DrawMode draw_mode_from_sampler(const tinygltf::Sampler& sampler) {
+  DrawMode mode = make_default_draw_mode();
+  if (sampler.magFilter == TINYGLTF_TEXTURE_FILTER_NEAREST) {
+    ASSERT(sampler.minFilter == TINYGLTF_TEXTURE_FILTER_NEAREST);
+    mode.set_filt_enable(false);
+  } else {
+    ASSERT(sampler.minFilter != TINYGLTF_TEXTURE_FILTER_NEAREST);
+    mode.set_filt_enable(true);
+  }
+
+  switch (sampler.wrapS) {
+    case TINYGLTF_TEXTURE_WRAP_CLAMP_TO_EDGE:
+      mode.set_clamp_s_enable(true);
+      break;
+    case TINYGLTF_TEXTURE_WRAP_REPEAT:
+      mode.set_clamp_s_enable(false);
+      break;
+    default:
+      ASSERT(false);
+  }
+
+  switch (sampler.wrapT) {
+    case TINYGLTF_TEXTURE_WRAP_CLAMP_TO_EDGE:
+      mode.set_clamp_t_enable(true);
+      break;
+    case TINYGLTF_TEXTURE_WRAP_REPEAT:
+      mode.set_clamp_t_enable(false);
+      break;
+    default:
+      ASSERT(false);
+  }
+
+  return mode;
+}
 }  // namespace gltf_util
