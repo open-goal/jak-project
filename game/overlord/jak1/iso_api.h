@@ -7,7 +7,7 @@ struct SoundBank;
 namespace jak1 {
 struct VagDirEntry;
 void LoadSoundBank(const char* bank_name, SoundBank* bank);
-void LoadMusic(const char* music_name, s32* bank);
+void LoadMusic(const char* music_name, snd::BankHandle* bank);
 
 void QueueVAGStream(FileRecord* file, VagDirEntry* vag, u32 sound_id, u32 unk);
 void PlayVAGStream(FileRecord* file,
