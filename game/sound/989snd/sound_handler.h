@@ -2,6 +2,8 @@
 // SPDX-License-Identifier: ISC
 #pragma once
 
+#include "sfxblock.h"
+
 #include "common/common_types.h"
 
 namespace snd {
@@ -34,5 +36,6 @@ class SoundHandler {
 
 SoundHandler* GetSound(SoundHandle handle);
 void FreeSound(SoundHandler* handler);
+void StopAllHandlersForSound(SFXBlock::SFX& sfx);
 
 }  // namespace snd

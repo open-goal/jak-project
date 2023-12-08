@@ -116,6 +116,19 @@ void SoundInit() {
   // TODO reset?
 }
 
+void StopAllHandlersForSound(SFXBlock::SFX& sfx) {
+  for (int i = 0; i < 64; i++) {
+    auto* s = gBlockSounds.Idx(i);
+    if (s == nullptr) {
+      continue;
+    }
+
+    if (&s->m_sfx == &sfx) {
+      s->Stop();
+    }
+  }
+}
+
 bool CheckInstanceLimit(SFXBlock::SFX& sfx, s32 sfx_vol, BlockSoundHandler** weakest_out) {
   s32 instances = 0;
   BlockSoundHandler* weakest = nullptr;

@@ -60,7 +60,7 @@ BlockSoundHandler* BlockSoundHandler::MakeBlockSound(SoundBank& bank,
   }
 
   if (sfx.Flags.solo()) {
-    lg::warn("989snd: Unsupported solo sound flag");
+    StopAllHandlersForSound(sfx);
   }
 
   auto* hnd = AllocBlockSound(bank, sfx, vol);

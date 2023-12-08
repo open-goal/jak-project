@@ -5,8 +5,6 @@
 #include <memory>
 #include <vector>
 
-#include "soundbank.h"
-
 #include "common/common_types.h"
 #include "common/util/BinaryReader.h"
 
@@ -14,6 +12,7 @@
 
 namespace snd {
 
+class SoundBank;
 using BankHandle = SoundBank*;
 
 class FileAttributes {

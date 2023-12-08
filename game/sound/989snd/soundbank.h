@@ -2,7 +2,6 @@
 #include <memory>
 #include <optional>
 
-#include "sound_handler.h"
 #include "vagvoice.h"
 
 #include "common/common_types.h"
@@ -32,7 +31,9 @@ enum class BankType {
   SFX,
 };
 
+class SoundHandler;
 struct SFXUserData;
+
 class SoundBank {
  public:
   struct BlockFlags {
