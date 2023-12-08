@@ -22,13 +22,13 @@ namespace snd {
 **
 */
 
-MidiHandler::MidiHandler(Midi* block,
-                           VoiceManager& vm,
-                           MusicBank::MIDISound& sound,
-                           s32 vol,
-                           s32 pan,
-                           SoundBank& bank)
-    : m_sound(sound), m_repeats(sound.Repeats), m_bank(bank), m_header(block), m_vm(vm) {
+MidiHandler::MidiHandler(SoundHandle oid,
+                         Midi* block,
+                         MusicBank::MIDISound& sound,
+                         s32 vol,
+                         s32 pan,
+                         SoundBank& bank)
+    : SoundHandler(oid), m_sound(sound), m_repeats(sound.Repeats), m_bank(bank), m_header(block) {
   if (vol == VOLUME_DONT_CHANGE) {
     vol = 1024;
   }
@@ -47,21 +47,21 @@ MidiHandler::MidiHandler(Midi* block,
   InitMidi();
 }
 
-MidiHandler::MidiHandler(Midi* block,
-                           VoiceManager& vm,
-                           MusicBank::MIDISound& sound,
-                           s32 vol,
-                           s32 pan,
-                           SoundBank& bank,
-                           std::optional<AmeHandler*> parent)
-    : m_parent(parent),
+MidiHandler::MidiHandler(SoundHandle oid,
+                         Midi* block,
+                         MusicBank::MIDISound& sound,
+                         s32 vol,
+                         s32 pan,
+                         SoundBank& bank,
+                         std::optional<AmeHandler*> parent)
+    : SoundHandler(oid),
+      m_parent(parent),
       m_sound(sound),
       m_vol(vol),
       m_pan(pan),
       m_repeats(sound.Repeats),
       m_bank(bank),
-      m_header(block),
-      m_vm(vm) {
+      m_header(block) {
   InitMidi();
 }
 
@@ -99,7 +99,7 @@ void MidiHandler::Pause() {
       continue;
     }
 
-    m_vm.Pause(voice);
+    PauseTone(voice);
   }
 }
 
@@ -112,7 +112,7 @@ void MidiHandler::Unpause() {
       continue;
     }
 
-    m_vm.Unpause(voice);
+    UnpauseTone(voice);
   }
 }
 
@@ -162,11 +162,11 @@ void MidiHandler::SetVolPan(s32 vol, s32 pan) {
     }
 
     voice->basevol =
-        m_vm.MakeVolumeB(m_vol, voice->velocity * m_chanvol[voice->channel] / 127, pan,
-                           voice->prog.Vol, voice->prog.Pan, voice->tone.Vol, voice->tone.Pan);
+        MakeVolumeB(m_vol, voice->velocity * m_chanvol[voice->channel] / 127, pan, voice->prog.Vol,
+                    voice->prog.Pan, voice->tone.Vol, voice->tone.Pan);
 
-    auto left = m_vm.AdjustVolToGroup(voice->basevol.left, voice->group);
-    auto right = m_vm.AdjustVolToGroup(voice->basevol.right, voice->group);
+    auto left = AdjustVolToGroup(voice->basevol.left, voice->group);
+    auto right = AdjustVolToGroup(voice->basevol.right, voice->group);
     voice->SetVolume(left >> 1, right >> 1);
   }
 }
@@ -231,8 +231,8 @@ void MidiHandler::NoteOn() {
       }
 
       auto voice = std::make_shared<midi_voice>(t, program);
-      voice->basevol = m_vm.MakeVolumeB(m_vol, (velocity * m_chanvol[channel]) / 0x7f, pan,
-                                          program.Vol, program.Pan, t.Vol, t.Pan);
+      voice->basevol = MakeVolumeB(m_vol, (velocity * m_chanvol[channel]) / 0x7f, pan, program.Vol,
+                                   program.Pan, t.Vol, t.Pan);
 
       voice->note = note;
       voice->channel = channel;
@@ -245,7 +245,7 @@ void MidiHandler::NoteOn() {
       voice->current_pb = m_cur_pm;
 
       voice->group = m_sound.VolGroup;
-      m_vm.StartTone(voice);
+      StartTone(voice);
       m_voices.emplace_front(voice);
     }
   }

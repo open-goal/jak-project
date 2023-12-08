@@ -148,9 +148,9 @@ void* RPC_Player(unsigned int /*fno*/, void* data, int size) {
           }
           // lg::warn("RPC: PLAY {} v:{}, p:{}", sound->name, GetVolume(sound), GetPan(sound));
 
-          s32 handle = snd_PlaySoundByNameVolPanPMPB(0, nullptr, sound->name, GetVolume(sound),
-                                                     GetPan(sound), sound->params.pitch_mod,
-                                                     sound->params.bend);
+          s32 handle = snd_PlaySoundByNameVolPanPMPB(nullptr, nullptr, sound->name,
+                                                     GetVolume(sound), GetPan(sound),
+                                                     sound->params.pitch_mod, sound->params.bend);
           sound->sound_handle = handle;
           if (handle != 0) {
             sound->id = cmd->play.sound_id;

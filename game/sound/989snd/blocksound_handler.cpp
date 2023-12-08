@@ -5,18 +5,16 @@
 
 #include "util.h"
 
-#include "common/log/log.h"
+#include "game/sound/989snd/player.h"
 
 namespace snd {
 std::array<s8, 32> g_block_reg{};
 
-BlockSoundHandler::BlockSoundHandler(SoundBank& bank,
-                                       SFXBlock::SFX& sfx,
-                                       VoiceManager& vm,
-                                       s32 sfx_vol,
-                                       s32 sfx_pan,
-                                       SndPlayParams& params)
-    : m_group(sfx.VolGroup), m_sfx(sfx), m_vm(vm), m_bank(bank) {
+BlockSoundHandler* BlockSoundHandler::MakeBlockSound(SoundBank& bank,
+                                                     SFXBlock::SFX& sfx,
+                                                     s32 sfx_vol,
+                                                     s32 sfx_pan,
+                                                     SndPlayParams& params) {
   s32 vol, pan, pitch_mod, pitch_bend;
   if (sfx_vol == -1) {
     sfx_vol = sfx.Vol;
@@ -61,41 +59,51 @@ BlockSoundHandler::BlockSoundHandler(SoundBank& bank,
     pan = sfx_pan;
   }
 
-  m_orig_volume = sfx_vol;
-  m_orig_pan = sfx_pan;
+  if (sfx.Flags.solo()) {
+    StopAllHandlersForSound(sfx);
+  }
 
-  m_cur_volume = play_vol;
-  m_cur_pan = pan;
-  m_cur_pb = pitch_bend;
-  m_cur_pm = pitch_mod;
+  auto* hnd = AllocBlockSound(bank, sfx, vol);
+  if (hnd == nullptr) {
+    return nullptr;
+  }
 
-  m_app_volume = vol;
-  m_app_pan = pan;
-  m_app_pb = pitch_bend;
-  m_app_pm = pitch_mod;
+  hnd->m_orig_volume = sfx_vol;
+  hnd->m_orig_pan = sfx_pan;
 
-  m_lfo_volume = 0;
-  m_lfo_pan = 0;
-  m_lfo_pb = 0;
-  m_lfo_pm = 0;
+  hnd->m_cur_volume = play_vol;
+  hnd->m_cur_pan = pan;
+  hnd->m_cur_pb = pitch_bend;
+  hnd->m_cur_pm = pitch_mod;
+
+  hnd->m_app_volume = vol;
+  hnd->m_app_pan = pan;
+  hnd->m_app_pb = pitch_bend;
+  hnd->m_app_pm = pitch_mod;
+
+  hnd->m_lfo_volume = 0;
+  hnd->m_lfo_pan = 0;
+  hnd->m_lfo_pb = 0;
+  hnd->m_lfo_pm = 0;
 
   if (params.registers.has_value()) {
-    m_registers = params.registers.value();
+    hnd->m_registers = params.registers.value();
   }
 
-  // Figure this stuff out properly someday
-  // if (m_sfx.d.Flags & 2) {
-  //   fmt::print("solo flag\n");
-  //   m_done = true;
-  //   return;
-  // }
+  // Bug from PS2, this was never set
+  hnd->m_start_tick = GetTick();
 
-  m_next_grain = 0;
-  m_countdown = m_sfx.Grains[0].Delay;
-  while (m_countdown <= 0 && !m_done) {
-    DoGrain();
+  hnd->m_next_grain = 0;
+  hnd->m_countdown = hnd->m_sfx.Grains[0].Delay;
+  while (hnd->m_countdown <= 0 && !hnd->m_done) {
+    hnd->DoGrain();
   }
+
+  return hnd;
 }
+
+BlockSoundHandler::BlockSoundHandler(SoundHandle oid, SoundBank& bank, SFXBlock::SFX& sfx)
+    : SoundHandler(oid), m_group(sfx.VolGroup), m_sfx(sfx), m_bank(bank) {}
 
 BlockSoundHandler::~BlockSoundHandler() {
   for (auto& p : m_voices) {
@@ -114,8 +122,9 @@ bool BlockSoundHandler::Tick() {
   }
 
   for (auto it = m_children.begin(); it != m_children.end();) {
-    bool done = it->get()->Tick();
+    bool done = (*it)->Tick();
     if (done) {
+      FreeSound(*it);
       it = m_children.erase(it);
     } else {
       ++it;
@@ -154,7 +163,7 @@ void BlockSoundHandler::Pause() {
       continue;
     }
 
-    m_vm.Pause(voice);
+    PauseTone(voice);
   }
 }
 
@@ -171,7 +180,7 @@ void BlockSoundHandler::Unpause() {
       continue;
     }
 
-    m_vm.Unpause(voice);
+    UnpauseTone(voice);
   }
 }
 
@@ -232,9 +241,9 @@ void BlockSoundHandler::SetVolPan(s32 vol, s32 pan) {
         continue;
       }
 
-      auto volume = m_vm.MakeVolume(127, 0, m_cur_volume, m_cur_pan, voice->g_vol, voice->g_pan);
-      auto left = m_vm.AdjustVolToGroup(volume.left, m_group);
-      auto right = m_vm.AdjustVolToGroup(volume.right, m_group);
+      auto volume = MakeVolume(127, 0, m_cur_volume, m_cur_pan, voice->g_vol, voice->g_pan);
+      auto left = AdjustVolToGroup(volume.left, m_group);
+      auto right = AdjustVolToGroup(volume.right, m_group);
 
       voice->SetVolume(left >> 1, right >> 1);
     }

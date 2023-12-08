@@ -4,9 +4,13 @@
 
 #include <fstream>
 
+#include "ame_handler.h"
+#include "loader.h"
 #include "sfxblock.h"
+#include "sound_handler.h"
+#include "vagvoice.h"
 
-#include "third-party/fmt/core.h"
+#include "third-party/cubeb/cubeb/include/cubeb/cubeb.h"
 
 #ifdef _WIN32
 #define WIN32_LEAN_AND_MEAN
@@ -18,16 +22,44 @@
 namespace snd {
 
 u8 g_global_excite = 0;
+std::recursive_mutex gTickLock;  // TODO does not need to recursive with some light restructuring
+std::vector<SoundHandler*> gHandlers;
+Synth gSynth;
+s32 gTick{0};
 
-Player::Player() : mVmanager(mSynth) {
+cubeb* gCtx{nullptr};
+cubeb_stream* gStream{nullptr};
+
+#ifdef _WIN32
+bool m_coinitialized = false;
+#endif
+
+void InitCubeb();
+void Tick(s16Output* stream, int samples);
+
+void StartSoundSystem() {
   InitCubeb();
+  VoiceManagerInit(gSynth);
 }
 
-Player::~Player() {
+void StopSoundSystem() {
   DestroyCubeb();
 }
 
-void Player::InitCubeb() {
+static long sound_callback([[maybe_unused]] cubeb_stream* stream,
+                           void* user,
+                           [[maybe_unused]] const void* input,
+                           void* output_buffer,
+                           long nframes) {
+  Tick((s16Output*)output_buffer, nframes);
+  return nframes;
+}
+
+static void state_callback([[maybe_unused]] cubeb_stream* stream,
+                           [[maybe_unused]] void* user,
+                           [[maybe_unused]] cubeb_state state) {}
+
+void InitCubeb() {
 #ifdef _WIN32
   HRESULT hr = CoInitializeEx(nullptr, COINIT_MULTITHREADED);
   m_coinitialized = SUCCEEDED(hr);
@@ -38,7 +70,7 @@ void Player::InitCubeb() {
   }
 #endif
 
-  cubeb_init(&mCtx, "OpenGOAL", nullptr);
+  cubeb_init(&gCtx, "OpenGOAL", nullptr);
 
   cubeb_stream_params outparam = {};
   outparam.channels = 2;
@@ -49,30 +81,30 @@ void Player::InitCubeb() {
 
   s32 err = 0;
   u32 latency = 0;
-  err = cubeb_get_min_latency(mCtx, &outparam, &latency);
+  err = cubeb_get_min_latency(gCtx, &outparam, &latency);
   if (err != CUBEB_OK) {
     lg::error("Cubeb init failed");
     return;
   }
 
-  err = cubeb_stream_init(mCtx, &mStream, "OpenGOAL", nullptr, nullptr, nullptr, &outparam,
-                          latency, &sound_callback, &state_callback, this);
+  err = cubeb_stream_init(gCtx, &gStream, "OpenGOAL", nullptr, nullptr, nullptr, &outparam, latency,
+                          &sound_callback, &state_callback, NULL);
   if (err != CUBEB_OK) {
     lg::error("Cubeb init failed");
     return;
   }
 
-  err = cubeb_stream_start(mStream);
+  err = cubeb_stream_start(gStream);
   if (err != CUBEB_OK) {
     lg::error("Cubeb init failed");
     return;
   }
 }
 
-void Player::DestroyCubeb() {
-  cubeb_stream_stop(mStream);
-  cubeb_stream_destroy(mStream);
-  cubeb_destroy(mCtx);
+void DestroyCubeb() {
+  cubeb_stream_stop(gStream);
+  cubeb_stream_destroy(gStream);
+  cubeb_destroy(gCtx);
 #ifdef _WIN32
   if (m_coinitialized) {
     CoUninitialize();
@@ -81,35 +113,34 @@ void Player::DestroyCubeb() {
 #endif
 }
 
-long Player::sound_callback([[maybe_unused]] cubeb_stream* stream,
-                            void* user,
-                            [[maybe_unused]] const void* input,
-                            void* output_buffer,
-                            long nframes) {
-  ((Player*)user)->Tick((s16Output*)output_buffer, nframes);
-  return nframes;
-}
+void SubmitVoice(std::shared_ptr<Voice>& voice) {
+  gSynth.AddVoice(voice);
+};
 
-void Player::state_callback([[maybe_unused]] cubeb_stream* stream,
-                            [[maybe_unused]] void* user,
-                            [[maybe_unused]] cubeb_state state) {}
+s32 GetTick() {
+  return gTick;
+};
 
-void Player::Tick(s16Output* stream, int samples) {
-  std::scoped_lock lock(mTickLock);
+void SetGlobalExcite(u8 value) {
+  GlobalExcite = value;
+};
+
+void Tick(s16Output* stream, int samples) {
+  std::scoped_lock lock(gTickLock);
   static int htick = 200;
   static int stick = 48000;
   for (int i = 0; i < samples; i++) {
     // The handlers expect to tick at 240hz
     // 48000/240 = 200
     if (htick == 200) {
-      mTick++;
+      gTick++;
 
-      for (auto it = mHandlers.begin(); it != mHandlers.end();) {
-        bool done = it->second->Tick();
+      for (auto it = gHandlers.begin(); it != gHandlers.end();) {
+        bool done = (*it)->Tick();
         if (done) {
           // fmt::print("erasing handler\n");
-          mHandleAllocator.FreeId(it->first);
-          it = mHandlers.erase(it);
+          FreeSound(*it);
+          it = gHandlers.erase(it);
         } else {
           ++it;
         }
@@ -125,45 +156,42 @@ void Player::Tick(s16Output* stream, int samples) {
 
     stick++;
     htick++;
-    *stream++ = mSynth.Tick();
+    *stream++ = gSynth.Tick();
   }
 }
 
-u32 Player::PlaySound(BankHandle bank_id, u32 sound_id, s32 vol, s32 pan, s32 pm, s32 pb) {
-  std::scoped_lock lock(mTickLock);
-  auto bank = mLoader.GetBankByHandle(bank_id);
+u32 PlaySound(BankHandle bank_id, u32 sound_id, s32 vol, s32 pan, s32 pm, s32 pb) {
+  std::scoped_lock lock(gTickLock);
+  auto bank = GetBankByHandle(bank_id);
   if (bank == nullptr) {
     lg::error("play_sound: Bank {} does not exist", static_cast<void*>(bank_id));
     return 0;
   }
 
-  auto handler = bank->MakeHandler(mVmanager, sound_id, vol, pan, pm, pb);
-  if (!handler.has_value()) {
+  auto handler = bank->MakeHandler(sound_id, vol, pan, pm, pb);
+  if (!handler) {
     return 0;
   }
 
-  u32 handle = mHandleAllocator.GetId();
-  mHandlers.emplace(handle, std::move(handler.value()));
-  // fmt::print("play_sound {}:{} - {}\n", bank_id, sound_id, handle);
-
-  return handle;
+  gHandlers.push_back(handler);
+  return handler->Handle();
 }
 
-u32 Player::PlaySoundByName(BankHandle bank_id,
-                               char* bank_name,
-                               char* sound_name,
-                               s32 vol,
-                               s32 pan,
-                               s32 pm,
-                               s32 pb) {
-  std::scoped_lock lock(mTickLock);
+u32 PlaySoundByName(BankHandle bank_id,
+                    char* bank_name,
+                    char* sound_name,
+                    s32 vol,
+                    s32 pan,
+                    s32 pm,
+                    s32 pb) {
+  std::scoped_lock lock(gTickLock);
   SoundBank* bank = nullptr;
   if (bank_id == 0 && bank_name != nullptr) {
-    bank = mLoader.GetBankByName(bank_name);
+    bank = GetBankByName(bank_name);
   } else if (bank_id != 0) {
-    bank = mLoader.GetBankByHandle(bank_id);
+    bank = GetBankByHandle(bank_id);
   } else {
-    bank = mLoader.GetBankWithSound(sound_name);
+    bank = GetBankWithSound(sound_name);
   }
 
   if (bank == nullptr) {
@@ -173,6 +201,7 @@ u32 Player::PlaySoundByName(BankHandle bank_id,
 
   auto sound = bank->GetSoundByName(sound_name);
   if (sound.has_value()) {
+    // lg::error("play_sound_by_name: playing {}", sound_name);
     return PlaySound(bank, sound.value(), vol, pan, pm, pb);
   }
 
@@ -181,41 +210,38 @@ u32 Player::PlaySoundByName(BankHandle bank_id,
   return 0;
 }
 
-void Player::StopSound(u32 sound_id) {
-  std::scoped_lock lock(mTickLock);
-  auto handler = mHandlers.find(sound_id);
-  if (handler == mHandlers.end())
+void StopSound(u32 sound_id) {
+  std::scoped_lock lock(gTickLock);
+  auto s = GetSound(sound_id);
+  if (s == nullptr)
     return;
 
-  handler->second->Stop();
-
-  // m_handle_allocator.free_id(sound_id);
-  // m_handlers.erase(sound_id);
+  s->Stop();
 }
 
-void Player::SetSoundReg(u32 sound_id, u8 reg, u8 value) {
-  std::scoped_lock lock(mTickLock);
-  if (mHandlers.find(sound_id) == mHandlers.end()) {
+void SetSoundReg(u32 sound_id, u8 reg, u8 value) {
+  std::scoped_lock lock(gTickLock);
+  auto s = GetSound(sound_id);
+  if (s == nullptr) {
     // fmt::print("set_midi_reg: Handler {} does not exist\n", sound_id);
     return;
   }
 
-  auto* handler = mHandlers.at(sound_id).get();
-  handler->SetRegister(reg, value);
+  s->SetRegister(reg, value);
 }
 
-bool Player::SoundStillActive(u32 sound_id) {
-  std::scoped_lock lock(mTickLock);
-  auto handler = mHandlers.find(sound_id);
-  if (handler == mHandlers.end())
-    return false;
+u32 SoundStillActive(u32 sound_id) {
+  std::scoped_lock lock(gTickLock);
+  auto s = GetSound(sound_id);
+  if (s == nullptr) {
+    return 0;
+  }
 
-  // fmt::print("sound_still_active {}\n", sound_id);
-  return true;
+  return s->Handle();
 }
 
-void Player::SetMasterVolume(u32 group, s32 volume) {
-  std::scoped_lock lock(mTickLock);
+void SetMasterVolume(u32 group, s32 volume) {
+  std::scoped_lock lock(gTickLock);
   if (volume > 0x400)
     volume = 0x400;
 
@@ -225,124 +251,114 @@ void Player::SetMasterVolume(u32 group, s32 volume) {
   if (group == 15)
     return;
 
-  mVmanager.SetMasterVol(group, volume);
+  snd::SetMasterVol(group, volume);
 
   // Master volume
   if (group == 16) {
-    mSynth.SetMasterVol(0x3ffff * volume / 0x400);
+    gSynth.SetMasterVol(0x3ffff * volume / 0x400);
   }
 }
 
-BankHandle Player::LoadBank(nonstd::span<u8> bank) {
-  std::scoped_lock lock(mTickLock);
-  return mLoader.BankLoad(bank);
+BankHandle LoadBank(nonstd::span<u8> bank) {
+  std::scoped_lock lock(gTickLock);
+  return BankLoad(bank);
 }
 
-void Player::UnloadBank(BankHandle bank_handle) {
-  std::scoped_lock lock(mTickLock);
-  auto* bank = mLoader.GetBankByHandle(bank_handle);
+void UnloadBank(BankHandle bank_handle) {
+  std::scoped_lock lock(gTickLock);
+  auto* bank = GetBankByHandle(bank_handle);
   if (bank == nullptr)
     return;
 
-  for (auto it = mHandlers.begin(); it != mHandlers.end();) {
-    if (&it->second->Bank() == bank_handle) {
-      mHandleAllocator.FreeId(it->first);
-      it = mHandlers.erase(it);
+  for (auto it = gHandlers.begin(); it != gHandlers.end();) {
+    if (&((*it)->Bank()) == bank) {
+      FreeSound(*it);
+      it = gHandlers.erase(it);
     } else {
       ++it;
     }
   }
 
-  mLoader.UnloadBank(bank_handle);
+  BankLoad(bank_handle);
 }
 
-void Player::SetPanTable(VolPair* pantable) {
-  std::scoped_lock lock(mTickLock);
-  mVmanager.SetPanTable(pantable);
-}
-
-void Player::SetPlaybackMode(s32 mode) {
-  std::scoped_lock lock(mTickLock);
-  mVmanager.SetPlaybackMode(mode);
-}
-
-void Player::PauseSound(s32 sound_id) {
-  std::scoped_lock lock(mTickLock);
-  auto handler = mHandlers.find(sound_id);
-  if (handler == mHandlers.end())
+void PauseSound(s32 sound_id) {
+  std::scoped_lock lock(gTickLock);
+  auto s = GetSound(sound_id);
+  if (s == nullptr)
     return;
 
-  handler->second->Pause();
+  s->Pause();
 }
 
-void Player::ContinueSound(s32 sound_id) {
-  std::scoped_lock lock(mTickLock);
-  auto handler = mHandlers.find(sound_id);
-  if (handler == mHandlers.end())
+void ContinueSound(s32 sound_id) {
+  std::scoped_lock lock(gTickLock);
+  auto s = GetSound(sound_id);
+  if (s == nullptr)
     return;
 
-  handler->second->Unpause();
+  s->Unpause();
 }
 
-void Player::PauseAllSoundsInGroup(u8 group) {
-  std::scoped_lock lock(mTickLock);
+void PauseAllSoundsInGroup(u8 group) {
+  std::scoped_lock lock(gTickLock);
 
-  for (auto& h : mHandlers) {
-    if ((1 << h.second->Group()) & group) {
-      h.second->Pause();
+  for (auto& h : gHandlers) {
+    if ((1 << h->Group()) & group) {
+      h->Pause();
     }
   }
 }
 
-void Player::ContinueAllSoundsInGroup(u8 group) {
-  std::scoped_lock lock(mTickLock);
+void ContinueAllSoundsInGroup(u8 group) {
+  std::scoped_lock lock(gTickLock);
 
-  for (auto& h : mHandlers) {
-    if ((1 << h.second->Group()) & group) {
-      h.second->Unpause();
+  for (auto& h : gHandlers) {
+    if ((1 << h->Group()) & group) {
+      h->Unpause();
     }
   }
 }
 
-void Player::SetSoundVolPan(s32 sound_id, s32 vol, s32 pan) {
-  std::scoped_lock lock(mTickLock);
-  auto handler = mHandlers.find(sound_id);
-  if (handler == mHandlers.end())
+void SetSoundVolPan(s32 sound_id, s32 vol, s32 pan) {
+  std::scoped_lock lock(gTickLock);
+  auto s = GetSound(sound_id);
+  if (s == nullptr)
     return;
 
-  handler->second->SetVolPan(vol, pan);
+  s->SetVolPan(vol, pan);
 }
 
-void Player::SetSoundPmod(s32 sound_handle, s32 mod) {
-  std::scoped_lock lock(mTickLock);
-  auto handler = mHandlers.find(sound_handle);
-  if (handler == mHandlers.end())
+void SetSoundPmod(s32 sound_handle, s32 mod) {
+  std::scoped_lock lock(gTickLock);
+  auto s = GetSound(sound_handle);
+  if (s == nullptr)
     return;
 
-  handler->second->SetPMod(mod);
+  s->SetPMod(mod);
 }
 
-void Player::StopAllSounds() {
-  std::scoped_lock lock(mTickLock);
-  for (auto it = mHandlers.begin(); it != mHandlers.end();) {
-    mHandleAllocator.FreeId(it->first);
-    it = mHandlers.erase(it);
+void StopAllSounds() {
+  std::scoped_lock lock(gTickLock);
+  for (auto it = gHandlers.begin(); it != gHandlers.end();) {
+    FreeSound(*it);
+    it = gHandlers.erase(it);
   }
 }
 
-s32 Player::GetSoundUserData(BankHandle block_handle,
-                                char* block_name,
-                                s32 sound_id,
-                                char* sound_name,
-                                SFXUserData* dst) {
-  std::scoped_lock lock(mTickLock);
+s32 GetSoundUserData(BankHandle block_handle,
+                     char* block_name,
+                     s32 sound_id,
+                     char* sound_name,
+                     SFXUserData* dst) {
+  std::scoped_lock lock(gTickLock);
   SoundBank* bank = nullptr;
   if (block_handle == nullptr && block_name != nullptr) {
-    bank = mLoader.GetBankByName(block_name);
+    bank = GetBankByName(block_name);
   } else if (block_handle != nullptr) {
-    bank = mLoader.GetBankByHandle(block_handle);
+    bank = GetBankByHandle(block_handle);
   } else {
-    bank = mLoader.GetBankWithSound(sound_name);
+    bank = GetBankWithSound(sound_name);
   }
 
   if (bank == nullptr) {
@@ -360,10 +376,7 @@ s32 Player::GetSoundUserData(BankHandle block_handle,
 
   auto ud = bank->GetSoundUserData(sound_id);
   if (ud.has_value()) {
-    dst->data[0] = ud.value()->data[0];
-    dst->data[1] = ud.value()->data[1];
-    dst->data[2] = ud.value()->data[2];
-    dst->data[3] = ud.value()->data[3];
+    *dst = *ud.value();
     return 1;
   } else {
     return 0;

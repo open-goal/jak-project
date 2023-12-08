@@ -45,43 +45,26 @@ class VagVoice : public Voice {
   bool paused{false};
 };
 
-class VoiceManager {
- public:
-  VoiceManager(Synth& synth);
-  void StartTone(std::shared_ptr<VagVoice> voice);
-  void Pause(std::shared_ptr<VagVoice> voice);
-  void Unpause(std::shared_ptr<VagVoice> voice);
-  void SetPanTable(VolPair* table) { mPanTable = table; };
+void VoiceManagerInit(Synth& synth);
+void StartTone(std::shared_ptr<VagVoice> voice);
+void PauseTone(std::shared_ptr<VagVoice> voice);
+void UnpauseTone(std::shared_ptr<VagVoice> voice);
+void SetPanTable(VolPair* table);
 
-  VolPair MakeVolume(int vol1, int pan1, int vol2, int pan2, int vol3, int pan3);
+VolPair MakeVolume(int vol1, int pan1, int vol2, int pan2, int vol3, int pan3);
 
-  // This is super silly, but it's what 989snd does
-  VolPair MakeVolumeB(int sound_vol,
-                       int velocity_volume,
-                       int pan,
-                       int prog_vol,
-                       int prog_pan,
-                       int tone_vol,
-                       int tone_pan);
+// This is super silly, but it's what 989snd does
+VolPair MakeVolumeB(int sound_vol,
+                    int velocity_volume,
+                    int pan,
+                    int prog_vol,
+                    int prog_pan,
+                    int tone_vol,
+                    int tone_pan);
 
-  void SetMasterVol(u8 group, s32 volume);
-  void SetPlaybackMode(s32 mode) { mStereoOrMono = mode; }
-  s16 AdjustVolToGroup(s16 involume, int group);
-
- private:
-  Synth& mSynth;
-
-  std::list<std::weak_ptr<VagVoice>> mVoices;
-  void CleanVoices() {
-    mVoices.remove_if([](auto& v) { return v.expired(); });
-  }
-
-  s32 mStereoOrMono{0};
-
-  std::array<s32, 32> mMasterVol;
-  std::array<s32, 32> mGroupDuck;
-
-  const VolPair* mPanTable{nullptr};
-};
+void SetMasterVol(u8 group, s32 volume);
+void SetPlaybackMode(s32 mode);
+s16 AdjustVolToGroup(s16 involume, int group);
+void CleanVoices();
 
 }  // namespace snd

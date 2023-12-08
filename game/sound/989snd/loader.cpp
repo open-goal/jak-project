@@ -16,6 +16,8 @@
 
 namespace snd {
 
+std::vector<std::unique_ptr<SoundBank>> gBanks;
+
 enum chunk : u32 { bank, samples, midi };
 
 inline static constexpr u32 fourcc(std::string_view p) {
@@ -405,7 +407,7 @@ MusicBank* MusicBank::ReadBank(nonstd::span<u8> bank_data,
   return bank;
 }
 
-BankHandle Loader::BankLoad(nonstd::span<u8> bank) {
+BankHandle BankLoad(nonstd::span<u8> bank) {
   BinaryReader reader(bank);
   FileAttributes fa;
   fa.Read(reader);
@@ -430,12 +432,12 @@ BankHandle Loader::BankLoad(nonstd::span<u8> bank) {
         nonstd::span<u8>(bank).subspan(fa.where[2].offset, fa.where[2].size));
 
     auto bank = MusicBank::ReadBank(bank_data, sample_data, midi_data);
-    mBanks.emplace_back(bank);
+    gBanks.emplace_back(bank);
 
     return bank;
   } else if (fourcc == snd::fourcc("SBlk")) {
     auto block = SFXBlock::ReadBlock(bank_data, sample_data);
-    mBanks.emplace_back(block);
+    gBanks.emplace_back(block);
 
     return block;
   }
@@ -443,18 +445,18 @@ BankHandle Loader::BankLoad(nonstd::span<u8> bank) {
   return nullptr;
 }
 
-SoundBank* Loader::GetBankByHandle(BankHandle handle) {
-  auto bank = std::find_if(mBanks.begin(), mBanks.end(),
+SoundBank* GetBankByHandle(BankHandle handle) {
+  auto bank = std::find_if(gBanks.begin(), gBanks.end(),
                            [handle](auto& bank) { return bank.get() == handle; });
-  if (bank == mBanks.end()) {
+  if (bank == gBanks.end()) {
     return nullptr;
   }
 
   return bank->get();
 }
 
-SoundBank* Loader::GetBankByName(const char* name) {
-  for (auto& b : mBanks) {
+SoundBank* GetBankByName(const char* name) {
+  for (auto& b : gBanks) {
     auto bankname = b->GetName();
     if (bankname.has_value()) {
       if (bankname->compare(name) == 0) {
@@ -466,8 +468,8 @@ SoundBank* Loader::GetBankByName(const char* name) {
   return nullptr;
 }
 
-SoundBank* Loader::GetBankWithSound(const char* name) {
-  for (auto& b : mBanks) {
+SoundBank* GetBankWithSound(const char* name) {
+  for (auto& b : gBanks) {
     auto sound = b->GetSoundByName(name);
     if (sound.has_value()) {
       return b.get();
@@ -477,11 +479,11 @@ SoundBank* Loader::GetBankWithSound(const char* name) {
   return nullptr;
 }
 
-void Loader::UnloadBank(BankHandle handle) {
-  auto bank = std::find_if(mBanks.begin(), mBanks.end(),
+void BankLoad(BankHandle handle) {
+  auto bank = std::find_if(gBanks.begin(), gBanks.end(),
                            [handle](auto& bank) { return bank.get() == handle; });
-  if (bank != mBanks.end()) {
-    mBanks.erase(bank);
+  if (bank != gBanks.end()) {
+    gBanks.erase(bank);
   }
 }
 

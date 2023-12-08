@@ -7,12 +7,7 @@
 
 namespace snd {
 
-std::optional<std::unique_ptr<SoundHandler>> MusicBank::MakeHandler(VoiceManager& vm,
-                                                                      u32 sound_id,
-                                                                      s32 vol,
-                                                                      s32 pan,
-                                                                      s32 pm,
-                                                                      s32 pb) {
+SoundHandler* MusicBank::MakeHandler(u32 sound_id, s32 vol, s32 pan, s32 pm, s32 pb) {
   auto& sound = Sounds[sound_id];
 
   // FIXME: global midi list
@@ -22,28 +17,24 @@ std::optional<std::unique_ptr<SoundHandler>> MusicBank::MakeHandler(VoiceManager
   if (sound.Type == 4) {
     auto& midi = std::get<Midi>(MidiData);
     if (sound.MIDIID == midi.ID) {
-      return std::make_unique<MidiHandler>(&midi, vm, sound, vol, pan, *this);
+      return AllocMidiSound(&midi, sound, vol, pan, *this);
     }
-    return std::nullopt;
+    return nullptr;
   } else if (sound.Type == 5) {
     auto& midi = std::get<MultiMidi>(MidiData);
     if (sound.MIDIID == midi.ID) {
-      return std::make_unique<AmeHandler>(&midi, vm, sound, vol, pan, *this);
+      return AllocAmeSound(&midi, sound, vol, pan, *this);
     }
-    return std::nullopt;
+    return nullptr;
   } else {
     lg::error("Invalid music sound type");
-    return std::nullopt;
+    return nullptr;
     // error
   }
 }
 
-std::optional<std::unique_ptr<SoundHandler>> MusicBank::MakeHandler(VoiceManager& vm,
-                                                                      u32 sound_id,
-                                                                      s32 vol,
-                                                                      s32 pan,
-                                                                      SndPlayParams& params) {
-  return std::nullopt;
+SoundHandler* MusicBank::MakeHandler(u32 sound_id, s32 vol, s32 pan, SndPlayParams& params) {
+  return nullptr;
 }
 
 }  // namespace snd
