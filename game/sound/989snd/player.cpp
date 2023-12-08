@@ -4,12 +4,13 @@
 
 #include <fstream>
 
+#include "ame_handler.h"
 #include "loader.h"
 #include "sfxblock.h"
 #include "sound_handler.h"
 #include "vagvoice.h"
 
-#include "third-party/fmt/core.h"
+#include "third-party/cubeb/cubeb/include/cubeb/cubeb.h"
 
 #ifdef _WIN32
 #define WIN32_LEAN_AND_MEAN

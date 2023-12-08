@@ -137,10 +137,6 @@ bool CheckInstanceLimit(SFXBlock::SFX& sfx, s32 sfx_vol, BlockSoundHandler** wea
     return false;
   }
 
-  if (sfx.Flags.instlimit_tick()) {
-    lg::warn("unhandled tick instlimit");
-  }
-
   for (int i = 0; i < 64; i++) {
     auto* s = gBlockSounds.Idx(i);
     if (s == nullptr) {
@@ -157,30 +153,18 @@ bool CheckInstanceLimit(SFXBlock::SFX& sfx, s32 sfx_vol, BlockSoundHandler** wea
         weakest = s;
       }
 
-      // if (sfx.Flags.instlimit_tick() && s->m_start_tick < weakest->m_start_tick) {
-      //   weakest = s;
-      // }
+      if (sfx.Flags.instlimit_tick() && s->m_start_tick < weakest->m_start_tick) {
+        weakest = s;
+      }
     }
   }
 
   if (instances > sfx.InstanceLimit) {
-    lg::warn("instance limit exceeded {}", sfx.InstanceLimit);
     if (!weakest) {
-      lg::warn("no weakest");
       return false;
     }
 
-    if (sfx.Flags.instlimit_vol() && weakest->m_app_volume < sfx_vol) {
-      *weakest_out = weakest;
-      lg::warn("found weaker handler {} < {}", weakest->m_app_volume, sfx_vol);
-      return true;
-    }
-
-    if (sfx.Flags.instlimit_vol()) {
-      lg::warn("failed to find weaker handler {} < {}", weakest->m_app_volume, sfx_vol);
-    }
-
-    return false;
+    *weakest_out = weakest;
   }
 
   return true;

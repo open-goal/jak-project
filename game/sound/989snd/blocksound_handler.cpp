@@ -5,7 +5,7 @@
 
 #include "util.h"
 
-#include "common/log/log.h"
+#include "game/sound/989snd/player.h"
 
 namespace snd {
 std::array<s8, 32> g_block_reg{};
@@ -89,6 +89,9 @@ BlockSoundHandler* BlockSoundHandler::MakeBlockSound(SoundBank& bank,
   if (params.registers.has_value()) {
     hnd->m_registers = params.registers.value();
   }
+
+  // Bug from PS2, this was never set
+  hnd->m_start_tick = GetTick();
 
   hnd->m_next_grain = 0;
   hnd->m_countdown = hnd->m_sfx.Grains[0].Delay;

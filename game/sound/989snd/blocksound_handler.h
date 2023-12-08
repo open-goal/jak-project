@@ -85,6 +85,7 @@ class BlockSoundHandler : public SoundHandler {
 
   s32 m_countdown{0};
   u32 m_next_grain{0};
+  u32 m_start_tick{0};
 };
 
 BlockSoundHandler* AllocBlockSound(SoundBank& bank, SFXBlock::SFX& sfx, s32 sfx_vol);
