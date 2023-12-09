@@ -17,6 +17,7 @@ struct kheapinfo {
 // Kernel heaps
 extern Ptr<kheapinfo> kglobalheap;
 extern Ptr<kheapinfo> kdebugheap;
+extern bool kheaplogging;
 
 // flags for kmalloc/ksmalloc
 constexpr u32 KMALLOC_TOP = 0x2000;     //! Flag to allocate temporary memory from heap top

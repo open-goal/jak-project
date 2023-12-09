@@ -43,11 +43,16 @@
 #include "game/kernel/common/kprint.h"
 #include "game/kernel/common/kscheme.h"
 #include "game/kernel/jak1/kboot.h"
+#include "game/kernel/jak1/kdgo.h"
 #include "game/kernel/jak1/klisten.h"
 #include "game/kernel/jak1/kscheme.h"
 #include "game/kernel/jak2/kboot.h"
+#include "game/kernel/jak2/kdgo.h"
 #include "game/kernel/jak2/klisten.h"
 #include "game/kernel/jak2/kscheme.h"
+#include "game/kernel/jak3/kdgo.h"
+#include "game/kernel/jak3/kscheme.h"
+#include "game/kernel/jak3/klisten.h"
 #include "game/overlord/common/fake_iso.h"
 #include "game/overlord/common/iso.h"
 #include "game/overlord/common/sbank.h"
@@ -186,18 +191,24 @@ void ee_runner(SystemThreadInterface& iface) {
 
   kboot_init_globals_common();
   kdgo_init_globals();
+  jak1::kdgo_init_globals();
+  jak2::kdgo_init_globals();
+  jak3::kdgo_init_globals();
+
   kdsnetm_init_globals_common();
   klink_init_globals();
 
   kmachine_init_globals_common();
   jak1::kscheme_init_globals();
   jak2::kscheme_init_globals();
+  jak3::kscheme_init_globals();
   kscheme_init_globals_common();
   kmalloc_init_globals_common();
 
   klisten_init_globals();
   jak1::klisten_init_globals();
   jak2::klisten_init_globals();
+  jak3::klisten_init_globals();
 
   jak2::vag_init_globals();
 

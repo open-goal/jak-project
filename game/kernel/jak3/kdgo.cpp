@@ -1,26 +1,24 @@
 #include "kdgo.h"
 
 #include "common/global_profiler/GlobalProfiler.h"
-#include "common/link_types.h"
 #include "common/log/log.h"
-#include "common/util/BitUtils.h"
-#include "common/util/FileUtil.h"
 #include "common/util/Timer.h"
 
-#include "game/kernel/common/Ptr.h"
 #include "game/kernel/common/fileio.h"
 #include "game/kernel/common/kdgo.h"
 #include "game/kernel/common/kmalloc.h"
-#include "game/kernel/jak2/klink.h"
+#include "game/kernel/jak3/klink.h"
 
-namespace jak2 {
+namespace jak3 {
 
-RPC_Dgo_Cmd* sLastMsg;  //! Last DGO command sent to IOP
-RPC_Dgo_Cmd sMsg[2];    //! DGO message buffers
+jak3::RPC_Dgo_Cmd* sLastMsg;  //! Last DGO command sent to IOP
+jak3::RPC_Dgo_Cmd sMsg[2];    //! DGO message buffers
+uint16_t cgo_id = 10;
 
 void kdgo_init_globals() {
   sLastMsg = nullptr;
   memset(sMsg, 0, sizeof(sMsg));
+  cgo_id = 10;
 }
 
 /*!
@@ -50,6 +48,10 @@ void BeginLoadingDGO(const char* name, Ptr<u8> buffer1, Ptr<u8> buffer2, Ptr<u8>
   // also give a heap pointer so it can load the last object file directly into the heap to save the
   // precious time.
   sMsg[msgID].buffer_heap_top = currentHeap.offset;
+
+  // new for Jak 3: a unique ID.
+  sMsg[msgID].cgo_id = cgo_id;
+  cgo_id++;
 
   // file name
   strcpy(sMsg[msgID].name, name);
@@ -107,19 +109,18 @@ Ptr<u8> GetNextDGO(u32* lastObjectFlag) {
  */
 void ContinueLoadingDGO(Ptr<u8> b1, Ptr<u8> b2, Ptr<u8> heapPtr) {
   u32 msgID = sMsgNum;
-  RPC_Dgo_Cmd* sendBuff = sMsg + sMsgNum;
+  jak3::RPC_Dgo_Cmd* sendBuff = sMsg + sMsgNum;
   sMsgNum = sMsgNum ^ 1;
   sendBuff->result = DGO_RPC_RESULT_INIT;
   sMsg[msgID].buffer1 = b1.offset;
   sMsg[msgID].buffer2 = b2.offset;
   sMsg[msgID].buffer_heap_top = heapPtr.offset;
   // the IOP will wait for this RpcCall to continue the DGO state machine.
-  RpcCall(DGO_RPC_CHANNEL, DGO_RPC_LOAD_NEXT_FNO, true, sendBuff, sizeof(RPC_Dgo_Cmd), sendBuff,
-          sizeof(RPC_Dgo_Cmd));
+  RpcCall(DGO_RPC_CHANNEL, DGO_RPC_LOAD_NEXT_FNO, true, sendBuff, sizeof(jak3::RPC_Dgo_Cmd),
+          sendBuff, sizeof(jak3::RPC_Dgo_Cmd));
   // this async RPC call will complete when the next object is fully loaded.
   sLastMsg = sendBuff;
 }
-
 /*!
  * Load and link a DGO file.
  * This does not use the mutli-threaded linker and will block until the entire file is done.
@@ -128,76 +129,6 @@ void load_and_link_dgo(u64 name_gstr, u64 heap_info, u64 flag, u64 buffer_size) 
   auto name = Ptr<char>(name_gstr + 4).c();
   auto heap = Ptr<kheapinfo>(heap_info);
   load_and_link_dgo_from_c(name, heap, flag, buffer_size, false);
-}
-
-/*!
- * Faster version of load_and_link_dgo_from_c that skips the IOP and reads the file directly
- * to GOAL memory.
- */
-void load_and_link_dgo_from_c_fast(const char* name,
-                                   Ptr<kheapinfo> heap,
-                                   u32 linkFlag,
-                                   s32 bufferSize) {
-  Timer timer;
-  lg::debug("[Load and Link DGO From C (fast)] {}", name);
-
-  // append CGO if needed
-  char name_on_cd[16];
-  kstrcpyup(name_on_cd, name);
-  if (name_on_cd[strlen(name_on_cd) - 4] != '.') {
-    strcat(name_on_cd, ".CGO");
-  }
-
-  // open the DGO file:
-  auto file_path = file_util::get_jak_project_dir() / "out" / game_version_names[g_game_version] /
-                   "iso" / name_on_cd;
-  auto fp = fopen(file_path.string().c_str(), "rb");
-  if (!fp) {
-    lg::die("Failed to open DGO: {}, path {}\n", name, file_path.string());
-  }
-
-  // allocate temporary buffers for linking:
-  auto old_heap_top = heap->top;
-  auto buffer1 = kmalloc(heap, bufferSize, KMALLOC_TOP | KMALLOC_ALIGN_64, "dgo-buffer-1");
-
-  // read the header
-  DgoHeader header;
-  if (fread(&header, sizeof(DgoHeader), 1, fp) != 1) {
-    lg::die("failed to read dgo header");
-  }
-  lg::info("got {} objects, name {}\n", header.object_count, header.name);
-
-  // load all but the final
-  for (int i = 0; i < (int)header.object_count - 1; i++) {
-    if (fread(buffer1.c(), sizeof(ObjectHeader), 1, fp) != 1) {
-      lg::die("failed to read object header");
-    }
-    auto* obj_header = (ObjectHeader*)buffer1.c();
-    u32 aligned_size = align16(obj_header->size);
-    auto* obj_dest = buffer1.c() + sizeof(ObjectHeader);
-    if (fread(obj_dest, aligned_size, 1, fp) != 1) {
-      lg::die("Failed to read object data");
-    }
-    link_and_exec(buffer1 + sizeof(ObjectHeader), obj_header->name, obj_header->size, heap,
-                  linkFlag, true);
-  }
-
-  auto final_object_dest = Ptr<u8>((heap->current + 0x3f).offset & 0xffffffc0);
-  if (fread(final_object_dest.c(), sizeof(ObjectHeader), 1, fp) != 1) {
-    lg::die("failed to read final object header");
-  }
-  auto* obj_header = (ObjectHeader*)final_object_dest.c();
-  u32 aligned_size = align16(obj_header->size);
-  auto* obj_dest = (final_object_dest + sizeof(ObjectHeader)).c();
-  if (fread(obj_dest, aligned_size, 1, fp) != 1) {
-    lg::die("Failed to read object data");
-  }
-  link_and_exec(final_object_dest + sizeof(ObjectHeader), obj_header->name, obj_header->size, heap,
-                linkFlag, true);
-
-  heap->top = old_heap_top;
-  fclose(fp);
-  lg::info("load_and_link_dgo_from_c_fast took {:.3f} s\n", timer.getSeconds());
 }
 
 /*!
@@ -276,4 +207,4 @@ void load_and_link_dgo_from_c(const char* name,
   sShowStallMsg = oldShowStall;
 }
 
-}  // namespace jak2
+}  // namespace jak3

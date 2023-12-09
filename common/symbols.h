@@ -150,6 +150,37 @@ constexpr int FIX_FIXED_SYM_END_OFFSET = 0xec;
 
 }  // namespace jak2_symbols
 
+namespace jak3_symbols {
+
+constexpr int FIX_SYM_EMPTY_CAR = -0x8;
+constexpr int S7_OFF_FIX_SYM_EMPTY_PAIR = -0x6 - 1;
+constexpr int FIX_SYM_EMPTY_CDR = -0x4;
+constexpr int FIX_SYM_FALSE = 0x0;  // GOAL boolean #f (note that this is equal to the $s7 register)
+constexpr int FIX_SYM_TRUE = 0x4;   // GOAL boolean #t
+
+constexpr int FIX_SYM_STRING_TYPE = 0x10;
+
+constexpr int FIX_SYM_TYPE_TYPE = 0x18;
+constexpr int FIX_SYM_OBJECT_TYPE = 0x1c;
+
+constexpr int FIX_SYM_PAIR_TYPE = 0x70;
+
+constexpr int FIX_SYM_GLOBAL_HEAP = 0xa0;
+
+constexpr int FIX_SYM_LOADING_LEVEL = 0xa8;
+
+constexpr int FIX_SYM_ZERO_FUNC = 0xc0;
+
+constexpr int FIX_SYM_QUOTE = 0xe8;
+
+constexpr int FIX_SYM_SYMLINK2 = 0x27c;
+constexpr int FIX_SYM_SYMLINK3 = 0x280;
+constexpr int FIX_SYM_ULTIMATE_MEMCPY = 0x284;
+
+constexpr int FIX_SYM_KERNEL_SYMBOL_WARNINGS = 0x290;
+
+}  // namespace jak3_symbols
+
 constexpr int false_symbol_offset() {
   return jak1_symbols::FIX_SYM_FALSE;
 }
