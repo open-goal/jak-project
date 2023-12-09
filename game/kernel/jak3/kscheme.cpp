@@ -21,6 +21,8 @@
 #include "game/kernel/jak3/kmalloc.h"
 #include "game/kernel/jak3/kprint.h"
 
+#define JAK3_HASH_TABLE
+
 namespace jak3 {
 
 using namespace jak3_symbols;
@@ -33,6 +35,10 @@ bool DebugSymbols = false;
 Ptr<u32> KernelDebug;
 Ptr<Symbol4<u32>> SqlResult;
 
+#ifdef JAK3_HASH_TABLE
+std::unordered_map<std::string, int> g_symbol_hash_table;
+#endif
+
 void kscheme_init_globals() {
   LevelTypeList.offset = 0;
   SymbolString.offset = 0;
@@ -41,6 +47,9 @@ void kscheme_init_globals() {
   DebugSymbols = false;
   KernelDebug.offset = 0;
   SqlResult.offset = 0;
+#ifdef JAK3_HASH_TABLE
+  g_symbol_hash_table.clear();
+#endif
 }
 
 namespace {
@@ -575,6 +584,16 @@ Ptr<Symbol4<u32>> set_fixed_symbol(int offset, const char* name, u32 value) {
   ASSERT((sym.offset & 3) == 1);  //
   sym->value() = value;
 
+  if (sym_to_string_ptr(sym).c()->offset) {
+    printf("setting %s\n", name);
+    ASSERT_NOT_REACHED();  // duplicate def
+  }
+
+#ifdef JAK3_HASH_TABLE
+  ASSERT((offset % 4) == 0);
+  g_symbol_hash_table.insert(std::make_pair(name, offset / 4));
+#endif
+
   kheaplogging = true;
   *sym_to_string_ptr(sym).c() = Ptr<String>(make_string_from_c(name));
   NumSymbols = NumSymbols + 1;
@@ -585,7 +604,8 @@ Ptr<Symbol4<u32>> set_fixed_symbol(int offset, const char* name, u32 value) {
 Ptr<Symbol4<u32>> find_symbol_in_area(const char* name, u32 start, u32 end) {
   for (u32 i = start; i < end; i += 4) {
     auto sym = Ptr<Symbol4<u32>>(i);
-    if (!strcmp(sym_to_string(sym)->data(), name)) {
+    auto str = sym_to_string(sym);
+    if (str.offset && !strcmp(str->data(), name)) {
       return sym;
     }
   }
@@ -594,13 +614,57 @@ Ptr<Symbol4<u32>> find_symbol_in_area(const char* name, u32 start, u32 end) {
   return Ptr<Symbol4<u32>>(0);
 }
 
+#ifdef JAK3_HASH_TABLE
+Ptr<Symbol4<u32>> find_symbol_from_c_ht(const char* name) {
+  const auto& it = g_symbol_hash_table.find(name);
+  if (it == g_symbol_hash_table.end()) {
+    return Ptr<Symbol4<u32>>(0);
+  } else {
+    return Ptr<Symbol4<u32>>(s7.offset + it->second * 4);
+  }
+}
+
+Ptr<Symbol4<u32>> find_slot_in_area(u32 start, u32 end) {
+  for (u32 i = start; i < end; i += 4) {
+    auto sym = Ptr<Symbol4<u32>>(i);
+    auto str = sym_to_string(sym);
+    if (!str.offset) {
+      return sym;
+    }
+  }
+
+  // failed
+  return Ptr<Symbol4<u32>>(0);
+}
+
+Ptr<Symbol4<u32>> intern_from_c_ht(const char* name) {
+  auto existing = find_symbol_from_c_ht(name);
+  if (existing.offset) {
+    return existing;
+  }
+
+  auto slot = find_slot_in_area(s7.offset, LastSymbol.offset);
+  if (!slot.offset) {
+    slot = find_slot_in_area(SymbolTable2.offset, s7.offset - 0x10);
+  }
+  ASSERT(slot.offset);  // out of symbols!!
+
+  NumSymbols++;
+  *sym_to_string_ptr(slot) = Ptr<String>(make_string_from_c(name));
+  return slot;
+}
+
+#endif
+
 /*!
  * Get a pointer to a symbol. Can provide the symbol id, the name, or both.
  */
 Ptr<Symbol4<u32>> find_symbol_from_c(uint16_t sym_id, const char* name) {
+#ifdef JAK3_HASH_TABLE
+  return find_symbol_from_c_ht(name);
+#endif
   // sign extend
   int extended_sym_id = (int16_t)sym_id;
-
   if (sym_id == 0xffff) {
     // the ID wasn't provided, so we have to use the name
     if (!name) {
@@ -665,6 +729,9 @@ Ptr<Symbol4<u32>> find_symbol_from_c(uint16_t sym_id, const char* name) {
  *
  */
 Ptr<Symbol4<u32>> intern_from_c(int sym_id, int flags, const char* name) {
+#ifdef JAK3_HASH_TABLE
+  return intern_from_c_ht(name);
+#endif
   // first, look up the symbol.
   Ptr<Symbol4<u32>> symbol = find_symbol_from_c(sym_id, name);
   kheaplogging = true;
@@ -1573,7 +1640,7 @@ int InitHeapAndSymbol() {
   set_fixed_symbol(FIX_SYM_FILE_STREAM_SEEK, "file-stream-seek", 0x0);
   set_fixed_symbol(FIX_SYM_FILE_STREAM_READ, "file-stream-read", 0x0);
   set_fixed_symbol(FIX_SYM_FILE_STREAM_WRITE, "file-stream-write", 0x0);
-  set_fixed_symbol(FIX_SYM_FILE_STREAM_WRITE, "file-stream-write", 0x0);
+  // set_fixed_symbol(FIX_SYM_FILE_STREAM_WRITE, "file-stream-write", 0x0);
   set_fixed_symbol(FIX_SYM_SCF_GET_LANGUAGE, "scf-get-language", 0x0);
   set_fixed_symbol(FIX_SYM_SCF_GET_TIME, "scf-get-time", 0x0);
   set_fixed_symbol(FIX_SYM_SCF_GET_ASPECT, "scf-get-aspect", 0x0);

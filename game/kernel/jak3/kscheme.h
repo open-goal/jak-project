@@ -55,6 +55,7 @@ u64 make_string_from_c(const char* c_str);
 u64 call_method_of_type(u32 arg, Ptr<Type> type, u32 method_id);
 u64 new_pair(u32 heap, u32 type, u32 car, u32 cdr);
 u64 call_goal_function_by_name(const char* name);
+Ptr<Type> intern_type_from_c(int a, int b, const char* name, u64 methods);
 int InitHeapAndSymbol();
 template <typename T>
 Ptr<Ptr<String>> sym_to_string_ptr(Ptr<Symbol4<T>> in) {
