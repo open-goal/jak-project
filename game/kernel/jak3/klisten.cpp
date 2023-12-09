@@ -10,6 +10,7 @@
 #include "game/kernel/common/kmalloc.h"
 #include "game/kernel/common/kprint.h"
 #include "game/kernel/common/kscheme.h"
+#include "game/kernel/jak3/klink.h"
 #include "game/kernel/jak3/kscheme.h"
 
 namespace jak3 {

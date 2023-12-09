@@ -13,6 +13,7 @@ enum class Language {
   Japanese = 5,
   UK_English = 6,
   // uk english?
+  Portuguese = 9
 };
 
 struct GameLaunchOptions {

@@ -1,6 +1,5 @@
 #pragma once
 
-#include "game/kernel/common/kmalloc.h"
 #include "game/kernel/common/Ptr.h"
 #include "game/kernel/common/Symbol4.h"
 #include "game/kernel/common/kmalloc.h"
@@ -9,6 +8,8 @@
 namespace jak3 {
 void kscheme_init_globals();
 constexpr s32 SYMBOL_OFFSET = 1;
+extern Ptr<u32> SymbolString;
+extern bool DebugSymbols;
 
 /*!
  * GOAL Type
@@ -39,4 +40,32 @@ struct Type {
 };
 
 s64 load_and_link(const char* filename, char* decode_name, kheapinfo* heap, u32 flags);
+Ptr<Symbol4<u32>> intern_from_c(int sym_id, int flags, const char* name);
+u64 load(u32 /*file_name_in*/, u32 /*heap_in*/);
+u64 loadb(u32 /*file_name_in*/, u32 /*heap_in*/, u32 /*param3*/);
+u64 loadc(const char* /*file_name*/, kheapinfo* /*heap*/, u32 /*flags*/);
+u64 loado(u32 file_name_in, u32 heap_in);
+u64 unload(u32 name);
+Ptr<Function> make_function_symbol_from_c(const char* name, void* f);
+u64 print_object(u32 obj);
+u64 inspect_object(u32 obj);
+Ptr<Symbol4<u32>> find_symbol_from_c(uint16_t sym_id, const char* name);
+u64 make_string_from_c(const char* c_str);
+u64 call_method_of_type(u32 arg, Ptr<Type> type, u32 method_id);
+u64 new_pair(u32 heap, u32 type, u32 car, u32 cdr);
+int InitHeapAndSymbol();
+template <typename T>
+Ptr<Ptr<String>> sym_to_string_ptr(Ptr<Symbol4<T>> in) {
+  return Ptr<Ptr<String>>(SymbolString.offset + in.offset - s7.offset);
 }
+template <typename T>
+Ptr<String> sym_to_string(Ptr<Symbol4<T>> in) {
+  return *sym_to_string_ptr(in);
+}
+
+template <typename T>
+const char* sym_to_cstring(Ptr<Symbol4<T>> in) {
+  return sym_to_string(in)->data();
+}
+
+}  // namespace jak3

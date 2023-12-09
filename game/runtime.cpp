@@ -50,9 +50,10 @@
 #include "game/kernel/jak2/kdgo.h"
 #include "game/kernel/jak2/klisten.h"
 #include "game/kernel/jak2/kscheme.h"
+#include "game/kernel/jak3/kboot.h"
 #include "game/kernel/jak3/kdgo.h"
-#include "game/kernel/jak3/kscheme.h"
 #include "game/kernel/jak3/klisten.h"
+#include "game/kernel/jak3/kscheme.h"
 #include "game/overlord/common/fake_iso.h"
 #include "game/overlord/common/iso.h"
 #include "game/overlord/common/sbank.h"
@@ -188,6 +189,7 @@ void ee_runner(SystemThreadInterface& iface) {
   fileio_init_globals();
   jak1::kboot_init_globals();
   jak2::kboot_init_globals();
+  jak3::kboot_init_globals();
 
   kboot_init_globals_common();
   kdgo_init_globals();

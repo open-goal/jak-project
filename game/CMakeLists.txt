@@ -247,8 +247,6 @@ set(RUNTIME_SOURCE
         system/IOP_Kernel.cpp
         system/iop_thread.cpp
         system/SystemThread.cpp
-        system/vm/dmac.cpp
-        system/vm/vm.cpp
         tools/filter_menu/filter_menu.cpp
         tools/subtitle_editor/subtitle_editor_db.cpp
         tools/subtitle_editor/subtitle_editor_repl_client.cpp

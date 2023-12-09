@@ -42,7 +42,6 @@
 #include "game/sce/libgraph.h"
 #include "game/sce/sif_ee.h"
 #include "game/sce/stubs.h"
-#include "game/system/vm/vm.h"
 
 using namespace ee;
 
@@ -434,10 +433,6 @@ int ShutdownMachine() {
 
   ShutdownGoalProto();
 
-  // OpenGOAL only - kill ps2 VM
-  if (VM::use) {
-    VM::vm_kill();
-  }
   return 0;
 }
 
@@ -514,10 +509,10 @@ u64 kopen(u64 fs, u64 name, u64 mode) {
   char buffer[128];
   // sprintf(buffer, "host:%s", Ptr<String>(name)->data());
   sprintf(buffer, "%s", Ptr<String>(name)->data());
-  if (!strcmp(Ptr<Symbol4<u8>>(mode)->name_cstr(), "read")) {
+  if (!strcmp(symbol_name_cstr(*Ptr<Symbol4<u8>>(mode)), "read")) {
     // 0x1
     file_stream->file = sceOpen(buffer, SCE_RDONLY);
-  } else if (!strcmp(Ptr<Symbol4<u8>>(mode)->name_cstr(), "append")) {
+  } else if (!strcmp(symbol_name_cstr(*Ptr<Symbol4<u8>>(mode)), "append")) {
     // new in jak 2!
     // 0x202
     file_stream->file = sceOpen(buffer, SCE_CREAT | SCE_WRONLY);

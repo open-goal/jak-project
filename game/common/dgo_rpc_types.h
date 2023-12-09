@@ -40,4 +40,4 @@ struct RPC_Dgo_Cmd {
   uint8_t pad[30];
 };
 static_assert(sizeof(RPC_Dgo_Cmd) == 0x40);
-}
+}  // namespace jak3
