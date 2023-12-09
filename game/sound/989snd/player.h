@@ -36,12 +36,12 @@ class Player {
 
   u32 PlaySound(BankHandle bank, u32 sound, s32 vol, s32 pan, s32 pm, s32 pb);
   u32 PlaySoundByName(BankHandle bank,
-                         char* bank_name,
-                         char* sound_name,
-                         s32 vol,
-                         s32 pan,
-                         s32 pm,
-                         s32 pb);
+                      char* bank_name,
+                      char* sound_name,
+                      s32 vol,
+                      s32 pan,
+                      s32 pm,
+                      s32 pb);
   void SetSoundReg(u32 sound_id, u8 reg, u8 value);
   void SetGlobalExcite(u8 value) { GlobalExcite = value; };
   bool SoundStillActive(u32 sound_id);
@@ -62,10 +62,10 @@ class Player {
   s32 GetTick() { return mTick; };
   void StopAllSounds();
   s32 GetSoundUserData(BankHandle block_handle,
-                          char* block_name,
-                          s32 sound_id,
-                          char* sound_name,
-                          SFXUserData* dst);
+                       char* block_name,
+                       s32 sound_id,
+                       char* sound_name,
+                       SFXUserData* dst);
 
  private:
   std::recursive_mutex mTickLock;  // TODO does not need to recursive with some light restructuring

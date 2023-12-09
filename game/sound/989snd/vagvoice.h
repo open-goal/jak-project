@@ -57,12 +57,12 @@ class VoiceManager {
 
   // This is super silly, but it's what 989snd does
   VolPair MakeVolumeB(int sound_vol,
-                       int velocity_volume,
-                       int pan,
-                       int prog_vol,
-                       int prog_pan,
-                       int tone_vol,
-                       int tone_pan);
+                      int velocity_volume,
+                      int pan,
+                      int prog_vol,
+                      int prog_pan,
+                      int tone_vol,
+                      int tone_pan);
 
   void SetMasterVol(u8 group, s32 volume);
   void SetPlaybackMode(s32 mode) { mStereoOrMono = mode; }

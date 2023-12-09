@@ -167,7 +167,7 @@ s32 snd_PlaySoundByNameVolPanPMPB(snd::BankHandle bank_handle,
                                   s32 pitch_bend) {
   if (player) {
     return player->PlaySoundByName(bank_handle, bank_name, sound_name, vol, pan, pitch_mod,
-                                      pitch_bend);
+                                   pitch_bend);
   } else {
     return 0;
   }
@@ -248,7 +248,7 @@ s32 snd_GetSoundUserData(snd::BankHandle block_handle,
                          SFXUserData* dst) {
   if (player) {
     return player->GetSoundUserData(block_handle, block_name, sound_id, sound_name,
-                                       (snd::SFXUserData*)dst);
+                                    (snd::SFXUserData*)dst);
   }
   return 0;
 }

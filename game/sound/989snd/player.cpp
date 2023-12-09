@@ -55,8 +55,8 @@ void Player::InitCubeb() {
     return;
   }
 
-  err = cubeb_stream_init(mCtx, &mStream, "OpenGOAL", nullptr, nullptr, nullptr, &outparam,
-                          latency, &sound_callback, &state_callback, this);
+  err = cubeb_stream_init(mCtx, &mStream, "OpenGOAL", nullptr, nullptr, nullptr, &outparam, latency,
+                          &sound_callback, &state_callback, this);
   if (err != CUBEB_OK) {
     lg::error("Cubeb init failed");
     return;
@@ -150,12 +150,12 @@ u32 Player::PlaySound(BankHandle bank_id, u32 sound_id, s32 vol, s32 pan, s32 pm
 }
 
 u32 Player::PlaySoundByName(BankHandle bank_id,
-                               char* bank_name,
-                               char* sound_name,
-                               s32 vol,
-                               s32 pan,
-                               s32 pm,
-                               s32 pb) {
+                            char* bank_name,
+                            char* sound_name,
+                            s32 vol,
+                            s32 pan,
+                            s32 pm,
+                            s32 pb) {
   std::scoped_lock lock(mTickLock);
   SoundBank* bank = nullptr;
   if (bank_id == 0 && bank_name != nullptr) {
@@ -331,10 +331,10 @@ void Player::StopAllSounds() {
 }
 
 s32 Player::GetSoundUserData(BankHandle block_handle,
-                                char* block_name,
-                                s32 sound_id,
-                                char* sound_name,
-                                SFXUserData* dst) {
+                             char* block_name,
+                             s32 sound_id,
+                             char* sound_name,
+                             SFXUserData* dst) {
   std::scoped_lock lock(mTickLock);
   SoundBank* bank = nullptr;
   if (block_handle == nullptr && block_name != nullptr) {
