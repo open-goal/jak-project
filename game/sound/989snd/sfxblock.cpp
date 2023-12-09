@@ -8,10 +8,10 @@
 namespace snd {
 
 std::optional<std::unique_ptr<SoundHandler>> SFXBlock::MakeHandler(VoiceManager& vm,
-                                                                     u32 sound_id,
-                                                                     s32 vol,
-                                                                     s32 pan,
-                                                                     SndPlayParams& params) {
+                                                                   u32 sound_id,
+                                                                   s32 vol,
+                                                                   s32 pan,
+                                                                   SndPlayParams& params) {
   auto& SFX = Sounds[sound_id];
 
   if (SFX.Grains.empty()) {

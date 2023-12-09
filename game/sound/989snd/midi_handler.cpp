@@ -23,11 +23,11 @@ namespace snd {
 */
 
 MidiHandler::MidiHandler(Midi* block,
-                           VoiceManager& vm,
-                           MusicBank::MIDISound& sound,
-                           s32 vol,
-                           s32 pan,
-                           SoundBank& bank)
+                         VoiceManager& vm,
+                         MusicBank::MIDISound& sound,
+                         s32 vol,
+                         s32 pan,
+                         SoundBank& bank)
     : m_sound(sound), m_repeats(sound.Repeats), m_bank(bank), m_header(block), m_vm(vm) {
   if (vol == VOLUME_DONT_CHANGE) {
     vol = 1024;
@@ -48,12 +48,12 @@ MidiHandler::MidiHandler(Midi* block,
 }
 
 MidiHandler::MidiHandler(Midi* block,
-                           VoiceManager& vm,
-                           MusicBank::MIDISound& sound,
-                           s32 vol,
-                           s32 pan,
-                           SoundBank& bank,
-                           std::optional<AmeHandler*> parent)
+                         VoiceManager& vm,
+                         MusicBank::MIDISound& sound,
+                         s32 vol,
+                         s32 pan,
+                         SoundBank& bank,
+                         std::optional<AmeHandler*> parent)
     : m_parent(parent),
       m_sound(sound),
       m_vol(vol),
@@ -163,7 +163,7 @@ void MidiHandler::SetVolPan(s32 vol, s32 pan) {
 
     voice->basevol =
         m_vm.MakeVolumeB(m_vol, voice->velocity * m_chanvol[voice->channel] / 127, pan,
-                           voice->prog.Vol, voice->prog.Pan, voice->tone.Vol, voice->tone.Pan);
+                         voice->prog.Vol, voice->prog.Pan, voice->tone.Vol, voice->tone.Pan);
 
     auto left = m_vm.AdjustVolToGroup(voice->basevol.left, voice->group);
     auto right = m_vm.AdjustVolToGroup(voice->basevol.right, voice->group);
@@ -232,7 +232,7 @@ void MidiHandler::NoteOn() {
 
       auto voice = std::make_shared<midi_voice>(t, program);
       voice->basevol = m_vm.MakeVolumeB(m_vol, (velocity * m_chanvol[channel]) / 0x7f, pan,
-                                          program.Vol, program.Pan, t.Vol, t.Pan);
+                                        program.Vol, program.Pan, t.Vol, t.Pan);
 
       voice->note = note;
       voice->channel = channel;

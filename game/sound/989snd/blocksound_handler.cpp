@@ -11,11 +11,11 @@ namespace snd {
 std::array<s8, 32> g_block_reg{};
 
 BlockSoundHandler::BlockSoundHandler(SoundBank& bank,
-                                       SFXBlock::SFX& sfx,
-                                       VoiceManager& vm,
-                                       s32 sfx_vol,
-                                       s32 sfx_pan,
-                                       SndPlayParams& params)
+                                     SFXBlock::SFX& sfx,
+                                     VoiceManager& vm,
+                                     s32 sfx_vol,
+                                     s32 sfx_pan,
+                                     SndPlayParams& params)
     : m_group(sfx.VolGroup), m_sfx(sfx), m_vm(vm), m_bank(bank) {
   s32 vol, pan, pitch_mod, pitch_bend;
   if (sfx_vol == -1) {

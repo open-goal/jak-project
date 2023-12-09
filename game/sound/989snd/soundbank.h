@@ -54,11 +54,11 @@ class SoundBank {
   s8 BankNum;
 
   virtual std::optional<std::unique_ptr<SoundHandler>> MakeHandler(VoiceManager& vm,
-                                                                     u32 sound_id,
-                                                                     s32 vol,
-                                                                     s32 pan,
-                                                                     s32 pm,
-                                                                     s32 pb) {
+                                                                   u32 sound_id,
+                                                                   s32 vol,
+                                                                   s32 pan,
+                                                                   s32 pm,
+                                                                   s32 pb) {
     SndPlayParams params{};
     params.vol = vol;
     params.pan = pan;
@@ -69,10 +69,10 @@ class SoundBank {
   };
 
   virtual std::optional<std::unique_ptr<SoundHandler>> MakeHandler(VoiceManager& vm,
-                                                                     u32 sound_id,
-                                                                     s32 vol,
-                                                                     s32 pan,
-                                                                     SndPlayParams& params) = 0;
+                                                                   u32 sound_id,
+                                                                   s32 vol,
+                                                                   s32 pan,
+                                                                   SndPlayParams& params) = 0;
 
   virtual std::optional<std::string_view> GetName() { return std::nullopt; };
   virtual std::optional<u32> GetSoundByName(const char* /*name*/) { return std::nullopt; };
