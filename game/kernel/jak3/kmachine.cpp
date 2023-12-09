@@ -10,6 +10,7 @@
 #include "game/kernel/common/kdgo.h"
 #include "game/kernel/common/kdsnetm.h"
 #include "game/kernel/common/kernel_types.h"
+#include "game/kernel/common/klink.h"
 #include "game/kernel/common/kmachine.h"
 #include "game/kernel/common/kmalloc.h"
 #include "game/kernel/common/kprint.h"
@@ -17,8 +18,11 @@
 #include "game/kernel/common/ksound.h"
 #include "game/kernel/common/memory_layout.h"
 #include "game/kernel/jak3/kboot.h"
+#include "game/kernel/jak3/kdgo.h"
+#include "game/kernel/jak3/klisten.h"
 #include "game/kernel/jak3/kmalloc.h"
 #include "game/kernel/jak3/kscheme.h"
+#include "game/kernel/jak3/ksound.h"
 #include "game/sce/deci2.h"
 #include "game/sce/libdma.h"
 #include "game/sce/libgraph.h"
@@ -344,6 +348,93 @@ void PutDisplayEnv(u32 alp) {
 
 void aybabtu() {}
 
+void pc_set_levels(u32 lev_list) {
+  if (!Gfx::GetCurrentRenderer()) {
+    return;
+  }
+  std::vector<std::string> levels;
+  for (int i = 0; i < LEVEL_MAX; i++) {
+    u32 lev = *Ptr<u32>(lev_list + i * 4);
+    std::string ls = Ptr<String>(lev).c()->data();
+    if (ls != "none" && ls != "#f" && ls != "") {
+      levels.push_back(ls);
+    }
+  }
+
+  Gfx::GetCurrentRenderer()->set_levels(levels);
+}
+
+void pc_set_active_levels(u32 lev_list) {
+  if (!Gfx::GetCurrentRenderer()) {
+    return;
+  }
+  std::vector<std::string> levels;
+  for (int i = 0; i < LEVEL_MAX; i++) {
+    u32 lev = *Ptr<u32>(lev_list + i * 4);
+    std::string ls = Ptr<String>(lev).c()->data();
+    if (ls != "none" && ls != "#f" && ls != "") {
+      levels.push_back(ls);
+    }
+  }
+
+  Gfx::GetCurrentRenderer()->set_active_levels(levels);
+}
+
+//// PC Stuff
+void InitMachine_PCPort() {
+  // PC Port added functions
+  init_common_pc_port_functions(
+      make_function_symbol_from_c,
+      [](const char* name) {
+        const auto result = intern_from_c(-1, 0, name);
+        InternFromCInfo info{};
+        info.offset = result.offset;
+        return info;
+      },
+      make_string_from_c);
+
+  make_function_symbol_from_c("__pc-set-levels", (void*)pc_set_levels);
+  make_function_symbol_from_c("__pc-set-active-levels", (void*)pc_set_active_levels);
+  // make_function_symbol_from_c("__pc-get-tex-remap", (void*)lookup_jak2_texture_dest_offset);
+  // make_function_symbol_from_c("pc-init-autosplitter-struct", (void*)init_autosplit_struct);
+  // make_function_symbol_from_c("pc-encode-utf8-string", (void*)encode_utf8_string);
+
+  // discord rich presence
+  // make_function_symbol_from_c("pc-discord-rpc-update", (void*)update_discord_rpc);
+
+  // debugging tools
+  // make_function_symbol_from_c("alloc-vagdir-names", (void*)alloc_vagdir_names);
+
+  // external RPCs
+  /*
+  make_function_symbol_from_c("pc-fetch-external-speedrun-times",
+                              (void*)pc_fetch_external_speedrun_times);
+  make_function_symbol_from_c("pc-fetch-external-race-times", (void*)pc_fetch_external_race_times);
+  make_function_symbol_from_c("pc-fetch-external-highscores", (void*)pc_fetch_external_highscores);
+  make_function_symbol_from_c("pc-get-external-speedrun-time",
+                              (void*)pc_get_external_speedrun_time);
+  make_function_symbol_from_c("pc-get-external-race-time", (void*)pc_get_external_race_time);
+  make_function_symbol_from_c("pc-get-external-highscore", (void*)pc_get_external_highscore);
+  make_function_symbol_from_c("pc-get-num-external-speedrun-times",
+                              (void*)pc_get_num_external_speedrun_times);
+  make_function_symbol_from_c("pc-get-num-external-race-times",
+                              (void*)pc_get_num_external_race_times);
+  make_function_symbol_from_c("pc-get-num-external-highscores",
+                              (void*)pc_get_num_external_highscores);
+ */
+
+  // setup string constants
+  auto user_dir_path = file_util::get_user_config_dir();
+  intern_from_c(-1, 0, "*pc-user-dir-base-path*")->value() =
+      make_string_from_c(user_dir_path.string().c_str());
+  auto settings_path = file_util::get_user_settings_dir(g_game_version);
+  intern_from_c(-1, 0, "*pc-settings-folder*")->value() =
+      make_string_from_c(settings_path.string().c_str());
+  intern_from_c(-1, 0, "*pc-settings-built-sha*")->value() =
+      make_string_from_c(build_revision().c_str());
+}
+// End PC Stuff
+
 void InitMachineScheme() {
   make_function_symbol_from_c("put-display-env", (void*)PutDisplayEnv);
   make_function_symbol_from_c("syncv", (void*)sceGsSyncV);
@@ -415,7 +506,6 @@ void InitMachineScheme() {
         new_pair(s7.offset + FIX_SYM_GLOBAL_HEAP, *((s7 + FIX_SYM_PAIR_TYPE - 1).cast<u32>()),
                  make_string_from_c("common"), kernel_packages->value());
     printf("calling play-boot!\n");
-    auto p = scoped_prof("play-boot-func");
     call_goal_function_by_name("play-boot");  // new function for jak2!
   }
 }

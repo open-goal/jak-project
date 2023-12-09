@@ -47,12 +47,14 @@ u64 loadc(const char* /*file_name*/, kheapinfo* /*heap*/, u32 /*flags*/);
 u64 loado(u32 file_name_in, u32 heap_in);
 u64 unload(u32 name);
 Ptr<Function> make_function_symbol_from_c(const char* name, void* f);
+Ptr<Function> make_stack_arg_function_symbol_from_c(const char* name, void* f);
 u64 print_object(u32 obj);
 u64 inspect_object(u32 obj);
 Ptr<Symbol4<u32>> find_symbol_from_c(uint16_t sym_id, const char* name);
 u64 make_string_from_c(const char* c_str);
 u64 call_method_of_type(u32 arg, Ptr<Type> type, u32 method_id);
 u64 new_pair(u32 heap, u32 type, u32 car, u32 cdr);
+u64 call_goal_function_by_name(const char* name);
 int InitHeapAndSymbol();
 template <typename T>
 Ptr<Ptr<String>> sym_to_string_ptr(Ptr<Symbol4<T>> in) {

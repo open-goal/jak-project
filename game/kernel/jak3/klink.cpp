@@ -16,6 +16,23 @@ Ptr<uint8_t> link_and_exec(Ptr<uint8_t> data,
   ASSERT_NOT_REACHED();
 }
 
+u64 link_and_exec_wrapper(u64* args) {
+  ASSERT_NOT_REACHED();
+}
+
+u32 link_busy() {
+  ASSERT_NOT_REACHED();
+}
+void link_reset() {
+  ASSERT_NOT_REACHED();
+}
+uint64_t link_begin(u64* args) {
+  ASSERT_NOT_REACHED();
+}
+uint64_t link_resume() {
+  ASSERT_NOT_REACHED();
+}
+
 // Note: update_goal_fns changed to skip the hashtable lookup since symlink2/symlink3 are now fixed
 // symbols.
 

@@ -25,6 +25,9 @@
 namespace jak3 {
 void KernelCheckAndDispatch();
 
+char DebugBootUser[64];
+char DebugBootArtGroup[64];
+
 void kboot_init_globals() {
   memset(DebugBootUser, 0, sizeof(DebugBootUser));
   memset(DebugBootArtGroup, 0, sizeof(DebugBootArtGroup));

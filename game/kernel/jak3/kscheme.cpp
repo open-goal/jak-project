@@ -2,17 +2,24 @@
 
 #include "common/common_types.h"
 #include "common/goal_constants.h"
+#include "common/log/log.h"
 #include "common/symbols.h"
 
 #include "game/kernel/common/Symbol4.h"
 #include "game/kernel/common/fileio.h"
+#include "game/kernel/common/kdsnetm.h"
 #include "game/kernel/common/klink.h"
 #include "game/kernel/common/kmalloc.h"
+#include "game/kernel/common/kmemcard.h"
 #include "game/kernel/common/kprint.h"
 #include "game/kernel/common/kscheme.h"
 #include "game/kernel/jak3/fileio.h"
+#include "game/kernel/jak3/kdgo.h"
 #include "game/kernel/jak3/klink.h"
+#include "game/kernel/jak3/klisten.h"
+#include "game/kernel/jak3/kmachine.h"
 #include "game/kernel/jak3/kmalloc.h"
+#include "game/kernel/jak3/kprint.h"
 
 namespace jak3 {
 
@@ -1837,7 +1844,7 @@ int InitHeapAndSymbol() {
     if (!kernel_version || ((kernel_version >> 0x13) != KERNEL_VERSION_MAJOR)) {
       lg::error(
           "Kernel version mismatch! Compiled C kernel version is {}.{} but"
-          "the goal kernel is {}.{}",
+          " the goal kernel is {}.{}",
           KERNEL_VERSION_MAJOR, KERNEL_VERSION_MINOR, kernel_version >> 0x13,
           (kernel_version >> 3) & 0xffff);
       return -1;
