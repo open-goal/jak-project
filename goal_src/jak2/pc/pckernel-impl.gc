@@ -11,8 +11,8 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 
-                                            ;; version: 0.1.6.2
-(defconstant PC_KERNEL_VERSION (static-pckernel-version 0 1 6 2))
+                                            ;; version: 0.1.7.0
+(defconstant PC_KERNEL_VERSION (static-pckernel-version 0 1 7 0))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;; types and enums
@@ -20,7 +20,7 @@
 
 
 ;; cheats
-(defconstant PC_CHEAT_MAX 19) ;; number of cheats
+(defconstant PC_CHEAT_MAX 20) ;; number of cheats
 (defenum pc-cheats
   :bitfield #t
   :type uint64
@@ -43,6 +43,7 @@
   (board-tricks)
   (weather-bad)
   (weather-good)
+  (hijack-lines)
   )
 
 ;; pc enum for languages. this is the game's languages + custom ones.
@@ -189,12 +190,21 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 
+
 (define *hires-sky* #t)
 (define *debug-region-color-alt* #t)
 (define *debug-region-show-bsphere* #f)
 (define *debug-region-hide-water* #t)
 (define *debug-region-hide-empty* #t)
 (define *fallback-text-lookup?* #t)
+
+
+(defun pc-settings-save ()
+  (commit-to-file *pc-settings*)
+  )
+
+(defun get-video-params () *video-params*)
+
 
 
 ;; for debugging
@@ -217,8 +227,8 @@
   )
 
 
-(defun get-video-params () *video-params*)
 
+;; cheat stuff
 
 (defenum pc-cheat-state-flag
   :bitfield #t
@@ -232,6 +242,7 @@
    (airlock-speed         float)
    (airlock-close-speed   float)
    (turbo-board-speed     float)
+   (hijack-speech-chance  float)
    (flags   pc-cheat-state-flag)
    )
   )
@@ -241,6 +252,7 @@
                               :airlock-speed 1.75
                               :airlock-close-speed 1.75
                               :turbo-board-speed 1.5
+                              :hijack-speech-chance 0.45
                               ))
 
 (defmacro cheat-state-flag? (&rest flags)

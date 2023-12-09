@@ -18,20 +18,20 @@ struct SpuVolume {
   /*   2 */ s16 right;
 };
 
-class synth {
+class Synth {
  public:
-  synth() {
-    m_Volume.left.Set(0x3FFF);
-    m_Volume.right.Set(0x3FFF);
+  Synth() {
+    mVolume.left.Set(0x3FFF);
+    mVolume.right.Set(0x3FFF);
   }
 
-  s16_output tick();
-  void add_voice(std::shared_ptr<voice> voice);
-  void set_master_vol(u32 volume);
+  s16Output Tick();
+  void AddVoice(std::shared_ptr<Voice> voice);
+  void SetMasterVol(u32 volume);
 
  private:
-  std::forward_list<std::shared_ptr<voice>> m_voices;
+  std::forward_list<std::shared_ptr<Voice>> mVoices;
 
-  VolumePair m_Volume{};
+  VolumePair mVolume{};
 };
 }  // namespace snd

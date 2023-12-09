@@ -343,6 +343,10 @@
      (set! (-> (the-as menu-music-player-option (-> *music-player-options* options 0)) excitement) 0)
      (set! (-> obj current-options) *music-player-options*)
      )
+    (('resolutions)
+     (set! (-> (the-as menu-resolution-option (-> *resolutions-options* options 0)) selected-index) -1)
+     (set! (-> obj current-options) *resolutions-options*)
+     )
     (('fps-disclaimer)
      (set-time! (-> *progress-state-pc* frame-rate-disclaimer-time))
      (set! (-> obj current-options) *frame-rate-disclaimer-options*)
@@ -660,7 +664,199 @@
         )
       )
     (when scroll-sound?
-      (sound-play "secrets-scroll"))
+      (sound-play "roll-over"))
+    )
+  0
+  )
+
+
+
+(defun calculate-current-resolution-index ((want-aspect float) (want-w int) (want-h int))
+  (let ((res-w 0)
+        (res-h 0)
+        (res-aspect 0.0)
+        (res-valid 0))
+      (dotimes (i (pc-get-num-resolutions))
+        (pc-get-resolution i (& res-w) (& res-h))
+        (set! res-aspect (/ (the float res-w) (the float res-h)))
+        (when (or (= (pc-get-display-mode) 'windowed)
+                  (< (fabs (- want-aspect res-aspect)) 0.05))
+            (if (and (= res-h want-h) (= res-w want-w))
+                (return res-valid))
+            (1+! res-valid))
+        )
+      (cond
+        ;; 512x416
+        ((and (= want-w 512) (= want-h 416))
+          res-valid)
+        ;; 512x208
+        ((and (= want-w 512) (= want-h 208))
+          (1+ res-valid))
+        ;; nothing found
+        (else
+          -1)
+        ))
+  )
+
+
+(defglobalconstant DEBUG_RESOLUTION_OPTION #f)
+(defmethod respond-progress ((this menu-resolution-option) (arg0 progress) (arg1 symbol))
+  "Handle progress menu navigation logic."
+
+  ;; control logic
+  (let ((scroll-sound? #f)
+        (resolutions-valid 0)
+        (resolution-found #f)
+        (cur-w 0)
+        (cur-h 0)
+        (select-w -1)
+        (select-h -1)
+        )
+
+    (set! (-> this num-resolutions) (pc-get-num-resolutions))
+    (cond
+      ;; valid state
+      ((> (-> this num-resolutions) 0)
+        (true! (-> this valid?))
+        
+        ;; this code isnt the greatest...
+        ;; the logic here is that, unlike jak 1, we don't build a list of resolutions and then scroll through that.
+        ;; we calculate the list every frame, keeping track of the index that is highlighted.
+        ;; this allows for infinite resolutions and for it to update live according to monitor changes.
+
+        (cond
+          ((fullscreen?)
+            ;; grab current window sizes for aspect ratio purposes (only relevant for fullscreen)
+            (pc-get-window-size (&-> this win-w) (&-> this win-h))
+            
+            (set! cur-w (-> *pc-settings* width))
+            (set! cur-h (-> *pc-settings* height))
+            (set! (-> this win-aspect) (/ (the float (-> this win-w)) (the float (-> this win-h))))
+            (#when DEBUG_RESOLUTION_OPTION (format *stdcon* "fullscreen mode~%"))
+            )
+          (else
+            (set! cur-w (-> *pc-settings* window-width))
+            (set! cur-h (-> *pc-settings* window-height))
+            (set! (-> this win-aspect) (/ (the float cur-w) (the float cur-h)))
+            (#when DEBUG_RESOLUTION_OPTION (format *stdcon* "windowed mode~%"))
+            )
+          )
+
+        ;; check if we want to automatically pick something already
+        (when (= -1 (-> this selected-index))
+          (set! (-> this selected-index) (calculate-current-resolution-index (-> this win-aspect) cur-w cur-h))
+          (#when DEBUG_RESOLUTION_OPTION (format #t "recalc index got ~D~%" (-> this selected-index)))
+          ;; update if not invalid?
+          (cond
+            ((= (-> this selected-index) -1)
+              (set! (-> this selected-index) 0) ;; give up, just select the first one by default.
+              )
+            (else
+              (set! select-w cur-w)
+              (set! select-h cur-h)
+              (true! resolution-found)
+              (set! (-> this scroll-index) (the float (-> this selected-index)))
+              )
+            )
+          )
+
+        ;; if we haven't automatically picked a resolution, iterate and find the one highlighted
+        (when (not resolution-found)
+          (#when DEBUG_RESOLUTION_OPTION (format *stdcon* "finding resolution ~D~%" (-> this selected-index)))
+          (dotimes (i (-> this num-resolutions))
+
+            ;; count "valid" resolutions
+            (let ((this-w 0) (this-h 0) (this-aspect 0.0))
+            (pc-get-resolution i (& this-w) (& this-h))
+            (set! this-aspect (/ (the float this-w) (the float this-h)))
+            
+            (when (or (= (pc-get-display-mode) 'windowed)
+                      (< (fabs (- (-> this win-aspect) this-aspect)) 0.05))
+                ;; this is the highlighted option - save it
+                (when (= resolutions-valid (-> this selected-index))
+                  (set! select-w this-w) (set! select-h this-h)
+                  (true! resolution-found)
+                  ;;(set! i (-> this num-resolutions)) ;; abandon loop
+                  )
+                (1+! resolutions-valid)
+                ))
+            )
+          )
+        
+        ;; if still didn't find it, it must be one of the hardcoded cases
+        (cond
+          (resolution-found
+            ;; yay
+            )
+          ;; 512x416
+          ((and (fullscreen?) (= resolutions-valid (-> this selected-index)))
+            (set! select-w 512)
+            (set! select-h 416)
+            )
+          ;; 512x208
+          ((and (fullscreen?) (= (1+ resolutions-valid) (-> this selected-index)))
+            (set! select-w 512)
+            (set! select-h 208)
+            )
+          ;; STILL nothing? I don't know how this happens, just don't even try then.
+          (else
+            (false! (-> this valid?))
+            )
+          )
+        
+        ;; hardcoded cases
+        (when (fullscreen?)
+          (+! resolutions-valid 2))
+        )
+      ;; not sure what happened, but there's not even any resolutions
+      (else
+        (false! (-> this valid?))
+        )
+      )
+    
+    (cond
+      ((-> this valid?)
+        (#when DEBUG_RESOLUTION_OPTION
+          (format *stdcon* "selected: ~D (~D x ~D)~%" (-> this selected-index) select-w select-h)
+          (format *stdcon* "current: ~D x ~D~%" cur-w cur-h)
+          (format *stdcon* "resolution: ~D valid (out of ~D)~%" resolutions-valid (-> this num-resolutions))
+          )
+        (cond
+          ;; navigate up
+          ((or (cpad-pressed? 0 up l-analog-up)
+               (and (cpad-hold? 0 up l-analog-up) (time-elapsed? (-> this last-move) (seconds 0.2))))
+            (set-time! (-> this last-move))
+            (true! scroll-sound?)
+            (min-max-wrap-around+! (-> this selected-index) -1 0 (1- resolutions-valid))
+            )
+          ;; navigate down
+          ((or (cpad-pressed? 0 down l-analog-down)
+               (and (cpad-hold? 0 down l-analog-down) (time-elapsed? (-> this last-move) (seconds 0.2))))
+            (set-time! (-> this last-move))
+            (true! scroll-sound?)
+            (min-max-wrap-around+! (-> this selected-index) 1 0 (1- resolutions-valid))
+            )
+          ;; select
+          ((cpad-pressed? 0 confirm)
+            (cpad-clear! 0 confirm)
+            (set-size! *pc-settings* select-w select-h #t)
+            (pop-state arg0))
+          ;; exit
+          ((cpad-pressed? 0 triangle)
+            (cpad-clear! 0 triangle)
+            (pop-state arg0))
+          )
+        )
+      (else
+        ;; just triangle to exit
+        (when (cpad-pressed? 0 triangle)
+          (cpad-clear! 0 triangle)
+          (pop-state arg0))
+        )
+      )
+
+    (when scroll-sound?
+      (sound-play "roll-over"))
     )
   0
   )

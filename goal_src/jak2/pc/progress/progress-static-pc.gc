@@ -6,6 +6,7 @@ Additional PC port specific file for overriding/expanding the progress menu
 This gives us more freedom to write code how we want.
 |#
 
+;; temporary
 (set! (-> *main-options-debug* options 9) (new 'static 'menu-main-menu-option :name (text-id progress-music-player) :scale #t :next-state 'music-player))
 
 ;; in jak 2, the options dont have to be all-caps anymore!
@@ -97,7 +98,7 @@ This gives us more freedom to write code how we want.
           :get-value-fn (lambda () (-> *pc-settings* first-camera-h-inverted?))
           :on-confirm (lambda ((val symbol))
             (set! (-> *pc-settings* first-camera-h-inverted?) val)
-            (commit-to-file *pc-settings*)))
+            (pc-settings-save)))
         (new 'static 'menu-generic-boolean-option
           :name (text-id progress-camera-options-first-vert)
           :truthy-text (text-id progress-normal)
@@ -105,7 +106,7 @@ This gives us more freedom to write code how we want.
           :get-value-fn (lambda () (-> *pc-settings* first-camera-v-inverted?))
           :on-confirm (lambda ((val symbol))
             (set! (-> *pc-settings* first-camera-v-inverted?) val)
-            (commit-to-file *pc-settings*)))
+            (pc-settings-save)))
         (new 'static 'menu-generic-boolean-option
           :name (text-id progress-camera-options-third-horz)
           :truthy-text (text-id progress-normal)
@@ -113,7 +114,7 @@ This gives us more freedom to write code how we want.
           :get-value-fn (lambda () (-> *pc-settings* third-camera-h-inverted?))
           :on-confirm (lambda ((val symbol))
             (set! (-> *pc-settings* third-camera-h-inverted?) val)
-            (commit-to-file *pc-settings*)))
+            (pc-settings-save)))
         (new 'static 'menu-generic-boolean-option
           :name (text-id progress-camera-options-third-vert)
           :truthy-text (text-id progress-normal)
@@ -121,12 +122,12 @@ This gives us more freedom to write code how we want.
           :get-value-fn (lambda () (-> *pc-settings* third-camera-v-inverted?))
           :on-confirm (lambda ((val symbol))
             (set! (-> *pc-settings* third-camera-v-inverted?) val)
-            (commit-to-file *pc-settings*)))
+            (pc-settings-save)))
         (new 'static 'menu-generic-confirm-option
           :name (text-id progress-restore-defaults)
           :on-confirm (lambda ((val symbol))
             (reset-camera *pc-settings* #t)
-            (commit-to-file *pc-settings*))))
+            (pc-settings-save))))
       (progress-new-generic-link-to-scrolling-page (text-id progress-menu-controller-options) :should-disable? (lambda () (<= (pc-get-controller-count) 0))
         (new 'static 'menu-generic-carousel-option
           :name (text-id progress-controller-options-select-controller)
@@ -134,8 +135,8 @@ This gives us more freedom to write code how we want.
           :get-item-label-fn (lambda ((index int))
             (pc-get-controller-name index *pc-cpp-temp-string*)
             *pc-cpp-temp-string*)
-          :get-item-index-fn (lambda () 0)
-          :on-confirm (lambda ((index int)) (pc-set-controller! 0 index)))
+          :get-item-index-fn (lambda () (pc-get-controller-index 0))
+          :on-confirm (lambda ((index int) (the-progress progress)) (pc-set-controller! index 0)))
         (new 'static 'menu-generic-boolean-option
           :name (text-id progress-vibration)
           :should-disable? (lambda () (not (pc-current-controller-has-rumble?)))
@@ -152,7 +153,7 @@ This gives us more freedom to write code how we want.
           :get-value-fn (lambda () (-> *pc-settings* stick-deadzone))
           :on-confirm (lambda ((val float))
             (set! (-> *pc-settings* stick-deadzone) val)
-            (commit-to-file *pc-settings*)))
+            (pc-settings-save)))
         (new 'static 'menu-generic-boolean-option
           :name (text-id progress-controller-options-ignore-if-unfocused)
           :truthy-text (text-id progress-on)
@@ -160,7 +161,7 @@ This gives us more freedom to write code how we want.
           :get-value-fn (lambda () (-> *pc-settings* ignore-controller-win-unfocused?))
           :on-confirm (lambda ((val symbol))
             (set! (-> *pc-settings* ignore-controller-win-unfocused?) val)
-            (commit-to-file *pc-settings*)))
+            (pc-settings-save)))
         (new 'static 'menu-generic-boolean-option
           :name (text-id progress-controller-options-led-hp)
           :should-disable? (lambda () (not (pc-current-controller-has-led?)))
@@ -169,7 +170,7 @@ This gives us more freedom to write code how we want.
           :get-value-fn (lambda () (-> *pc-settings* controller-led-hp?))
           :on-confirm (lambda ((val symbol))
             (set! (-> *pc-settings* controller-led-hp?) val)
-            (commit-to-file *pc-settings*)))
+            (pc-settings-save)))
         (new 'static 'menu-generic-boolean-option
           :name (text-id progress-controller-options-led-state)
           :should-disable? (lambda () (not (pc-current-controller-has-led?)))
@@ -178,13 +179,13 @@ This gives us more freedom to write code how we want.
           :get-value-fn (lambda () (-> *pc-settings* controller-led-eco?))
           :on-confirm (lambda ((val symbol))
             (set! (-> *pc-settings* controller-led-eco?) val)
-            (commit-to-file *pc-settings*)))
+            (pc-settings-save)))
         (new 'static 'menu-generic-confirm-option
           :name (text-id progress-restore-defaults)
           :on-confirm (lambda ((val symbol))
             (reset-input *pc-settings* 'controller #t)
             (set-ignore-controller-in-bg! *pc-settings* (-> *pc-settings* ignore-controller-win-unfocused?))
-            (commit-to-file *pc-settings*))))
+            (pc-settings-save))))
       (new 'static 'menu-generic-boolean-option
         :name (text-id progress-input-options-enable-keyboard)
         :truthy-text (text-id progress-on)
@@ -192,7 +193,7 @@ This gives us more freedom to write code how we want.
         :get-value-fn (lambda () (-> *pc-settings* keyboard-enabled?))
         :on-confirm (lambda ((val symbol))
           (set! (-> *pc-settings* keyboard-enabled?) val)
-          (commit-to-file *pc-settings*)))
+          (pc-settings-save)))
       (new 'static 'menu-generic-boolean-option
         :name (text-id progress-input-options-enable-mouse)
         :truthy-text (text-id progress-on)
@@ -200,7 +201,7 @@ This gives us more freedom to write code how we want.
         :get-value-fn (lambda () (-> *pc-settings* mouse-enabled?))
         :on-confirm (lambda ((val symbol))
           (set! (-> *pc-settings* mouse-enabled?) val)
-          (commit-to-file *pc-settings*)))
+          (pc-settings-save)))
       (progress-new-generic-link-to-scrolling-page (text-id progress-menu-mouse-options) :should-disable? (lambda () (not (-> *pc-settings* mouse-enabled?)))
         (new 'static 'menu-generic-boolean-option
           :name (text-id progress-mouse-options-track-camera)
@@ -209,7 +210,7 @@ This gives us more freedom to write code how we want.
           :get-value-fn (lambda () (-> *pc-settings* mouse-camera?))
           :on-confirm (lambda ((val symbol))
             (set! (-> *pc-settings* mouse-camera?) val)
-            (commit-to-file *pc-settings*)))
+            (pc-settings-save)))
         (new 'static 'menu-generic-slider-option
           :name (text-id progress-mouse-options-horz-sens)
           :should-disable? (lambda () (not (-> *pc-settings* mouse-camera?)))
@@ -220,7 +221,7 @@ This gives us more freedom to write code how we want.
           :get-value-fn (lambda () (-> *pc-settings* mouse-xsens))
           :on-confirm (lambda ((val float))
             (set! (-> *pc-settings* mouse-xsens) val)
-            (commit-to-file *pc-settings*)))
+            (pc-settings-save)))
         (new 'static 'menu-generic-slider-option
           :name (text-id progress-mouse-options-vert-sens)
           :should-disable? (lambda () (not (-> *pc-settings* mouse-camera?)))
@@ -231,7 +232,7 @@ This gives us more freedom to write code how we want.
           :get-value-fn (lambda () (-> *pc-settings* mouse-ysens))
           :on-confirm (lambda ((val float))
             (set! (-> *pc-settings* mouse-ysens) val)
-            (commit-to-file *pc-settings*)))
+            (pc-settings-save)))
         (new 'static 'menu-generic-boolean-option
           :name (text-id progress-mouse-options-player-movement)
           :truthy-text (text-id progress-on)
@@ -239,13 +240,13 @@ This gives us more freedom to write code how we want.
           :get-value-fn (lambda () (-> *pc-settings* mouse-movement?))
           :on-confirm (lambda ((val symbol))
             (set! (-> *pc-settings* mouse-movement?) val)
-            (commit-to-file *pc-settings*)))
+            (pc-settings-save)))
         (new 'static 'menu-generic-confirm-option
           :name (text-id progress-restore-defaults)
           :on-confirm (lambda ((val symbol))
             (reset-input *pc-settings* 'mouse #t)
             (update-mouse-controls! *pc-settings*)
-            (commit-to-file *pc-settings*))))
+            (pc-settings-save))))
       (new 'static 'menu-generic-boolean-option
         :name (text-id progress-input-options-auto-hide-cursor)
         :truthy-text (text-id progress-on)
@@ -254,7 +255,7 @@ This gives us more freedom to write code how we want.
         :on-confirm (lambda ((val symbol))
           (set! (-> *pc-settings* auto-hide-cursor?) val)
           (update-mouse-controls! *pc-settings*)
-          (commit-to-file *pc-settings*)))
+          (pc-settings-save)))
       (progress-new-generic-keybinds-page-link)
       (new 'static 'menu-generic-confirm-option
         :name (text-id progress-restore-defaults)
@@ -262,7 +263,7 @@ This gives us more freedom to write code how we want.
           (reset-input *pc-settings* 'input #t)
           (set-enable-keyboard! *pc-settings* (-> *pc-settings* keyboard-enabled?))
           (update-mouse-controls! *pc-settings*)
-          (commit-to-file *pc-settings*))))
+          (pc-settings-save))))
     (new 'static 'menu-generic-boolean-option
       :name (text-id progress-subtitles)
       :truthy-text (text-id progress-on)
@@ -281,8 +282,8 @@ This gives us more freedom to write code how we want.
                   (text-id language-name-korean)
                   (text-id language-name-english-uk))
       :get-item-index-fn (lambda () (-> *setting-control* user-default subtitle-language))
-      :on-confirm (lambda ((index int)) (set! (-> *setting-control* user-default subtitle-language)
-                                              (the-as language-enum index))))
+      :on-confirm (lambda ((index int) (the-progress progress))
+          (set! (-> *setting-control* user-default subtitle-language) (the-as language-enum index))))
     (new 'static 'menu-generic-carousel-option
       :name (text-id progress-sound-language)
       :items (new 'static 'boxed-array :type text-id
@@ -294,7 +295,8 @@ This gives us more freedom to write code how we want.
                   (text-id language-name-japanese)
                   (text-id language-name-korean))
       :get-item-index-fn (lambda () (-> *setting-control* user-default language))
-      :on-confirm (lambda ((index int)) (set! (-> *setting-control* user-default language) (the-as language-enum index))))
+      :on-confirm (lambda ((index int) (the-progress progress))
+          (set! (-> *setting-control* user-default language) (the-as language-enum index))))
     (new 'static 'menu-generic-carousel-option
       :name (text-id progress-text-language)
       :items (new 'static 'boxed-array :type text-id
@@ -307,11 +309,12 @@ This gives us more freedom to write code how we want.
                   (text-id language-name-korean)
                   (text-id language-name-english-uk))
       :get-item-index-fn (lambda () (-> *pc-settings* text-language))
-      :on-confirm (lambda ((index int)) (set! (-> *pc-settings* text-language)
-                                              (the-as pc-language index))
-                                        ;; NOTE - this doesn't actually work (naughty dog tried it too in their progress code)
-                                        ;; fix it eventually
-                                        (load-level-text-files (the-as int (-> *setting-control* user-default language)))))
+      :on-confirm (lambda ((index int) (the-progress progress))
+          (set! (-> *pc-settings* text-language) (the-as pc-language index))
+          ;; NOTE - this doesn't actually work (naughty dog tried it too in their progress code)
+          ;; fix it eventually
+          (load-level-text-files (the-as int (-> *pc-settings* text-language)))
+          (pc-settings-save)))
     (progress-new-generic-link-to-scrolling-page (text-id progress-misc-game-options)
       (new 'static 'menu-generic-boolean-option
         :name (text-id progress-discord-rpc)
@@ -320,7 +323,7 @@ This gives us more freedom to write code how we want.
         :get-value-fn (lambda () (-> *pc-settings* discord-rpc?))
         :on-confirm (lambda ((val symbol))
           (set! (-> *pc-settings* discord-rpc?) val)
-          (commit-to-file *pc-settings*)))
+          (pc-settings-save)))
       (new 'static 'menu-generic-boolean-option
         :name (text-id progress-speedrunner-mode)
         :truthy-text (text-id progress-on)
@@ -331,9 +334,9 @@ This gives us more freedom to write code how we want.
           ;; store and restore pc-settings cheats
           ;; TODO - when cheats menus are actually added, update the backup whenever one is changed
           (if (-> *pc-settings* speedrunner-mode?)
-            (set! (-> *pc-settings* cheats-backup) (-> *pc-settings* cheats))
-            (set! (-> *pc-settings* cheats) (-> *pc-settings* cheats-backup)))
-          (commit-to-file *pc-settings*)))
+              (set! (-> *pc-settings* cheats-backup) (-> *pc-settings* cheats))
+              (set! (-> *pc-settings* cheats) (-> *pc-settings* cheats-backup)))
+          (pc-settings-save)))
         (new 'static 'menu-generic-boolean-option
           :name (text-id progress-fast-progress)
           :truthy-text (text-id progress-on)
@@ -341,7 +344,7 @@ This gives us more freedom to write code how we want.
           :get-value-fn (lambda () (-> *pc-settings* fast-progress?))
           :on-confirm (lambda ((val symbol))
             (set! (-> *pc-settings* fast-progress?) val)
-            (commit-to-file *pc-settings*))))))
+            (pc-settings-save))))))
 
 (define *game-options-title-pc*
   (progress-new-generic-scrolling-page (text-id progress-root-game-options)
@@ -354,7 +357,7 @@ This gives us more freedom to write code how we want.
           :get-value-fn (lambda () (-> *pc-settings* first-camera-h-inverted?))
           :on-confirm (lambda ((val symbol))
             (set! (-> *pc-settings* first-camera-h-inverted?) val)
-            (commit-to-file *pc-settings*)))
+            (pc-settings-save)))
         (new 'static 'menu-generic-boolean-option
           :name (text-id progress-camera-options-first-vert)
           :truthy-text (text-id progress-normal)
@@ -362,7 +365,7 @@ This gives us more freedom to write code how we want.
           :get-value-fn (lambda () (-> *pc-settings* first-camera-v-inverted?))
           :on-confirm (lambda ((val symbol))
             (set! (-> *pc-settings* first-camera-v-inverted?) val)
-            (commit-to-file *pc-settings*)))
+            (pc-settings-save)))
         (new 'static 'menu-generic-boolean-option
           :name (text-id progress-camera-options-third-horz)
           :truthy-text (text-id progress-normal)
@@ -370,7 +373,7 @@ This gives us more freedom to write code how we want.
           :get-value-fn (lambda () (-> *pc-settings* third-camera-h-inverted?))
           :on-confirm (lambda ((val symbol))
             (set! (-> *pc-settings* third-camera-h-inverted?) val)
-            (commit-to-file *pc-settings*)))
+            (pc-settings-save)))
         (new 'static 'menu-generic-boolean-option
           :name (text-id progress-camera-options-third-vert)
           :truthy-text (text-id progress-normal)
@@ -378,12 +381,12 @@ This gives us more freedom to write code how we want.
           :get-value-fn (lambda () (-> *pc-settings* third-camera-v-inverted?))
           :on-confirm (lambda ((val symbol))
             (set! (-> *pc-settings* third-camera-v-inverted?) val)
-            (commit-to-file *pc-settings*)))
+            (pc-settings-save)))
         (new 'static 'menu-generic-confirm-option
           :name (text-id progress-restore-defaults)
           :on-confirm (lambda ((val symbol))
             (reset-camera *pc-settings* #t)
-            (commit-to-file *pc-settings*))))
+            (pc-settings-save))))
       (progress-new-generic-link-to-scrolling-page (text-id progress-menu-controller-options) :should-disable? (lambda () (<= (pc-get-controller-count) 0))
         (new 'static 'menu-generic-carousel-option
           :name (text-id progress-controller-options-select-controller)
@@ -391,8 +394,8 @@ This gives us more freedom to write code how we want.
           :get-item-label-fn (lambda ((index int))
             (pc-get-controller-name index *pc-cpp-temp-string*)
             *pc-cpp-temp-string*)
-          :get-item-index-fn (lambda () 0)
-          :on-confirm (lambda ((index int)) (pc-set-controller! 0 index)))
+          :get-item-index-fn (lambda () (pc-get-controller-index 0))
+          :on-confirm (lambda ((index int) (the-progress progress)) (pc-set-controller! index 0)))
         (new 'static 'menu-generic-boolean-option
           :name (text-id progress-vibration)
           :should-disable? (lambda () (not (pc-current-controller-has-rumble?)))
@@ -409,7 +412,7 @@ This gives us more freedom to write code how we want.
           :get-value-fn (lambda () (-> *pc-settings* stick-deadzone))
           :on-confirm (lambda ((val float))
             (set! (-> *pc-settings* stick-deadzone) val)
-            (commit-to-file *pc-settings*)))
+            (pc-settings-save)))
         (new 'static 'menu-generic-boolean-option
           :name (text-id progress-controller-options-ignore-if-unfocused)
           :truthy-text (text-id progress-on)
@@ -417,7 +420,7 @@ This gives us more freedom to write code how we want.
           :get-value-fn (lambda () (-> *pc-settings* ignore-controller-win-unfocused?))
           :on-confirm (lambda ((val symbol))
             (set! (-> *pc-settings* ignore-controller-win-unfocused?) val)
-            (commit-to-file *pc-settings*)))
+            (pc-settings-save)))
         (new 'static 'menu-generic-boolean-option
           :name (text-id progress-controller-options-led-hp)
           :should-disable? (lambda () (not (pc-current-controller-has-led?)))
@@ -426,7 +429,7 @@ This gives us more freedom to write code how we want.
           :get-value-fn (lambda () (-> *pc-settings* controller-led-hp?))
           :on-confirm (lambda ((val symbol))
             (set! (-> *pc-settings* controller-led-hp?) val)
-            (commit-to-file *pc-settings*)))
+            (pc-settings-save)))
         (new 'static 'menu-generic-boolean-option
           :name (text-id progress-controller-options-led-state)
           :should-disable? (lambda () (not (pc-current-controller-has-led?)))
@@ -435,13 +438,13 @@ This gives us more freedom to write code how we want.
           :get-value-fn (lambda () (-> *pc-settings* controller-led-eco?))
           :on-confirm (lambda ((val symbol))
             (set! (-> *pc-settings* controller-led-eco?) val)
-            (commit-to-file *pc-settings*)))
+            (pc-settings-save)))
         (new 'static 'menu-generic-confirm-option
           :name (text-id progress-restore-defaults)
           :on-confirm (lambda ((val symbol))
             (reset-input *pc-settings* 'controller #t)
             (set-ignore-controller-in-bg! *pc-settings* (-> *pc-settings* ignore-controller-win-unfocused?))
-            (commit-to-file *pc-settings*))))
+            (pc-settings-save))))
       (new 'static 'menu-generic-boolean-option
         :name (text-id progress-input-options-enable-keyboard)
         :truthy-text (text-id progress-on)
@@ -449,7 +452,7 @@ This gives us more freedom to write code how we want.
         :get-value-fn (lambda () (-> *pc-settings* keyboard-enabled?))
         :on-confirm (lambda ((val symbol))
           (set! (-> *pc-settings* keyboard-enabled?) val)
-          (commit-to-file *pc-settings*)))
+          (pc-settings-save)))
       (new 'static 'menu-generic-boolean-option
         :name (text-id progress-input-options-enable-mouse)
         :truthy-text (text-id progress-on)
@@ -457,7 +460,7 @@ This gives us more freedom to write code how we want.
         :get-value-fn (lambda () (-> *pc-settings* mouse-enabled?))
         :on-confirm (lambda ((val symbol))
           (set! (-> *pc-settings* mouse-enabled?) val)
-          (commit-to-file *pc-settings*)))
+          (pc-settings-save)))
       (progress-new-generic-link-to-scrolling-page (text-id progress-menu-mouse-options) :should-disable? (lambda () (not (-> *pc-settings* mouse-enabled?)))
         (new 'static 'menu-generic-boolean-option
           :name (text-id progress-mouse-options-track-camera)
@@ -466,7 +469,7 @@ This gives us more freedom to write code how we want.
           :get-value-fn (lambda () (-> *pc-settings* mouse-camera?))
           :on-confirm (lambda ((val symbol))
             (set! (-> *pc-settings* mouse-camera?) val)
-            (commit-to-file *pc-settings*)))
+            (pc-settings-save)))
         (new 'static 'menu-generic-slider-option
           :name (text-id progress-mouse-options-horz-sens)
           :should-disable? (lambda () (not (-> *pc-settings* mouse-camera?)))
@@ -477,7 +480,7 @@ This gives us more freedom to write code how we want.
           :get-value-fn (lambda () (-> *pc-settings* mouse-xsens))
           :on-confirm (lambda ((val float))
             (set! (-> *pc-settings* mouse-xsens) val)
-            (commit-to-file *pc-settings*)))
+            (pc-settings-save)))
         (new 'static 'menu-generic-slider-option
           :name (text-id progress-mouse-options-vert-sens)
           :should-disable? (lambda () (not (-> *pc-settings* mouse-camera?)))
@@ -488,7 +491,7 @@ This gives us more freedom to write code how we want.
           :get-value-fn (lambda () (-> *pc-settings* mouse-ysens))
           :on-confirm (lambda ((val float))
             (set! (-> *pc-settings* mouse-ysens) val)
-            (commit-to-file *pc-settings*)))
+            (pc-settings-save)))
         (new 'static 'menu-generic-boolean-option
           :name (text-id progress-mouse-options-player-movement)
           :truthy-text (text-id progress-on)
@@ -496,13 +499,13 @@ This gives us more freedom to write code how we want.
           :get-value-fn (lambda () (-> *pc-settings* mouse-movement?))
           :on-confirm (lambda ((val symbol))
             (set! (-> *pc-settings* mouse-movement?) val)
-            (commit-to-file *pc-settings*)))
+            (pc-settings-save)))
         (new 'static 'menu-generic-confirm-option
           :name (text-id progress-restore-defaults)
           :on-confirm (lambda ((val symbol))
             (reset-input *pc-settings* 'mouse #t)
             (update-mouse-controls! *pc-settings*)
-            (commit-to-file *pc-settings*))))
+            (pc-settings-save))))
       (new 'static 'menu-generic-boolean-option
         :name (text-id progress-input-options-auto-hide-cursor)
         :truthy-text (text-id progress-on)
@@ -511,7 +514,7 @@ This gives us more freedom to write code how we want.
         :on-confirm (lambda ((val symbol))
           (set! (-> *pc-settings* auto-hide-cursor?) val)
           (update-mouse-controls! *pc-settings*)
-          (commit-to-file *pc-settings*)))
+          (pc-settings-save)))
       (progress-new-generic-keybinds-page-link)
       (new 'static 'menu-generic-confirm-option
         :name (text-id progress-restore-defaults)
@@ -519,7 +522,7 @@ This gives us more freedom to write code how we want.
           (reset-input *pc-settings* 'input #t)
           (set-enable-keyboard! *pc-settings* (-> *pc-settings* keyboard-enabled?))
           (update-mouse-controls! *pc-settings*)
-          (commit-to-file *pc-settings*))))
+          (pc-settings-save))))
     (new 'static 'menu-generic-boolean-option
       :name (text-id progress-subtitles)
       :truthy-text (text-id progress-on)
@@ -538,8 +541,8 @@ This gives us more freedom to write code how we want.
                   (text-id language-name-korean)
                   (text-id language-name-english-uk))
       :get-item-index-fn (lambda () (-> *setting-control* user-default subtitle-language))
-      :on-confirm (lambda ((index int)) (set! (-> *setting-control* user-default subtitle-language)
-                                              (the-as language-enum index))))
+      :on-confirm (lambda ((index int) (the-progress progress))
+          (set! (-> *setting-control* user-default subtitle-language) (the-as language-enum index))))
     (new 'static 'menu-generic-carousel-option
       :name (text-id progress-sound-language)
       :items (new 'static 'boxed-array :type text-id
@@ -549,13 +552,38 @@ This gives us more freedom to write code how we want.
                   (text-id language-name-spanish)
                   (text-id language-name-italian)
                   (text-id language-name-japanese)
+                  (text-id language-name-korean))
+      :get-item-index-fn (lambda () (-> *setting-control* user-default language))
+      :on-confirm (lambda ((index int) (the-progress progress))
+          (set! (-> *setting-control* user-default language) (the-as language-enum index))))
+    (new 'static 'menu-generic-carousel-option
+      :name (text-id progress-text-language)
+      :items (new 'static 'boxed-array :type text-id
+                  (text-id language-name-english)
+                  (text-id language-name-french)
+                  (text-id language-name-german)
+                  (text-id language-name-spanish)
+                  (text-id language-name-italian)
+                  (text-id language-name-japanese)
                   (text-id language-name-korean)
                   (text-id language-name-english-uk))
-      :get-item-index-fn (lambda () (-> *setting-control* user-default language))
-      :on-confirm (lambda ((index int)) (set! (-> *setting-control* user-default language) (the-as language-enum index))
-                                        ;; NOTE - this doesn't actually work (naughty dog tried it too in their progress code)
-                                        ;; fix it eventually
-                                        (load-level-text-files (the-as int (-> *setting-control* user-default language)))))
+      :get-item-index-fn (lambda () (-> *pc-settings* text-language))
+      :on-confirm (lambda ((index int) (the-progress progress))
+          (set! (-> *pc-settings* text-language) (the-as pc-language index))
+          ;; NOTE - this doesn't actually work (naughty dog tried it too in their progress code)
+          ;; fix it eventually
+          (load-level-text-files (the-as int (-> *pc-settings* text-language)))
+          (pc-settings-save)))
+    (new 'static 'menu-generic-carousel-option
+      :name (text-id progress-territory)
+      :items (new 'static 'boxed-array :type text-id
+                  (text-id progress-territory-auto)
+                  (text-id progress-territory-scea)
+                  (text-id progress-territory-scee)
+                  (text-id progress-territory-scei)
+                  (text-id progress-territory-scek))
+      :get-item-index-fn (lambda () (1+ (-> *pc-settings* territory)))
+      :on-confirm (lambda ((index int) (the-progress progress)) (set! (-> *pc-settings* territory) (1- index)) (pc-settings-save)))
     (progress-new-generic-link-to-scrolling-page (text-id progress-misc-game-options)
       (new 'static 'menu-generic-boolean-option
         :name (text-id progress-discord-rpc)
@@ -564,7 +592,7 @@ This gives us more freedom to write code how we want.
         :get-value-fn (lambda () (-> *pc-settings* discord-rpc?))
         :on-confirm (lambda ((val symbol))
           (set! (-> *pc-settings* discord-rpc?) val)
-          (commit-to-file *pc-settings*)))
+          (pc-settings-save)))
       (new 'static 'menu-generic-boolean-option
         :name (text-id progress-speedrunner-mode)
         :truthy-text (text-id progress-on)
@@ -572,7 +600,7 @@ This gives us more freedom to write code how we want.
         :get-value-fn (lambda () (-> *pc-settings* speedrunner-mode?))
         :on-confirm (lambda ((val symbol))
           (set! (-> *pc-settings* speedrunner-mode?) val)
-          (commit-to-file *pc-settings*)))
+          (pc-settings-save)))
         (new 'static 'menu-generic-boolean-option
           :name (text-id progress-fast-airlock)
           :truthy-text (text-id progress-on)
@@ -580,7 +608,7 @@ This gives us more freedom to write code how we want.
           :get-value-fn (lambda () (-> *pc-settings* fast-airlock?))
           :on-confirm (lambda ((val symbol))
             (set! (-> *pc-settings* fast-airlock?) val)
-            (commit-to-file *pc-settings*)))
+            (pc-settings-save)))
         (new 'static 'menu-generic-boolean-option
           :name (text-id progress-fast-elevator)
           :truthy-text (text-id progress-on)
@@ -588,7 +616,7 @@ This gives us more freedom to write code how we want.
           :get-value-fn (lambda () (-> *pc-settings* fast-elevator?))
           :on-confirm (lambda ((val symbol))
             (set! (-> *pc-settings* fast-elevator?) val)
-            (commit-to-file *pc-settings*)))
+            (pc-settings-save)))
         (new 'static 'menu-generic-boolean-option
           :name (text-id progress-fast-progress)
           :truthy-text (text-id progress-on)
@@ -596,41 +624,19 @@ This gives us more freedom to write code how we want.
           :get-value-fn (lambda () (-> *pc-settings* fast-progress?))
           :on-confirm (lambda ((val symbol))
             (set! (-> *pc-settings* fast-progress?) val)
-            (commit-to-file *pc-settings*))))))
+            (pc-settings-save))))))
 
-
-;; TODO - migrate this menu as well
-;; graphic options
-;;   resolution
 
 (define *msaa-options* (new 'static 'boxed-array :type int16 1 2 4 8 16))
-(define *frame-rate-options* (new 'static 'boxed-array :type int16 60 75 120 144 165 240))
+(define *frame-rate-options* (new 'static 'boxed-array :type int16 60 75 90 120 144 165 240))
 (define *frame-rate-disclaimer-seen?* #f)
 
 (define *graphic-options-pc*
   (progress-new-generic-scrolling-page (text-id progress-root-graphic-options)
-    (progress-new-generic-link-to-scrolling-page (text-id progress-graphics-ps2)
-      (new 'static 'menu-generic-boolean-option
-        :name (text-id progress-lod-bg)
-        :truthy-text (text-id progress-lod-low)
-        :falsey-text (text-id progress-lod-high)
-        :get-value-fn (lambda () (> (-> *pc-settings* lod-force-tfrag) 0))
-        :on-confirm (lambda ((val symbol))
-          (cond
-            (val
-              (set! (-> *pc-settings* lod-force-tfrag) 2)
-              (set! (-> *pc-settings* lod-force-tie) 2)
-              )
-            (else
-              (set! (-> *pc-settings* lod-force-tfrag) 0)
-              (set! (-> *pc-settings* lod-force-tie) 0)
-              ))
-          (commit-to-file *pc-settings*)))
-      (static-progress-generic-pc-settings-lod-default-high-boolean (text-id progress-lod-fg) (-> *pc-settings* ps2-lod-dist?))
-      (static-progress-generic-pc-settings-on-off-boolean (text-id progress-ps2-parts) (-> *pc-settings* ps2-parts?))
-      (static-progress-generic-pc-settings-shadows-normal-extended-boolean (text-id progress-shadows) (-> *pc-settings* ps2-shadow?))
-      (static-progress-generic-pc-settings-on-off-boolean (text-id progress-hires-sky) (-> *pc-settings* hires-clouds?))
-      )
+    (new 'static 'menu-generic-to-resolutions-option
+      :name (text-id progress-window-size)
+      :on-confirm (lambda ((the-progress progress))
+        (push-and-set-state the-progress 'resolutions)))
     (new 'static 'menu-generic-carousel-option
       :name (text-id progress-graphics-display)
       :get-item-index-fn (lambda () (-> *pc-settings* monitor))
@@ -638,14 +644,13 @@ This gives us more freedom to write code how we want.
       :get-item-label-fn (lambda ((index int))
         (let ((name (pc-get-display-name index *pc-cpp-temp-string*)))
           (if name
-            (string-format "(~D) ~S" index *pc-cpp-temp-string*)
-            (string-format "Display ~D" index)
-            )
+              (string-format "(~D) ~S" index *pc-cpp-temp-string*)
+              (string-format "Display ~D" index))
           )
         )
-      :on-confirm (lambda ((index int))
+      :on-confirm (lambda ((index int) (the-progress progress))
         (set-monitor! *pc-settings* index)
-        (commit-to-file *pc-settings*)
+        (pc-settings-save)
         )
       :should-disable? (lambda () (nmember (the basic (-> *pc-settings* display-mode)) '(windowed #f)))
       )
@@ -663,13 +668,13 @@ This gives us more freedom to write code how we want.
           (('borderless) 2)
           )
         )
-      :on-confirm (lambda ((index int))
+      :on-confirm (lambda ((index int) (the-progress progress))
         (case index
           ((0) (set-display-mode! *pc-settings* 'windowed #t))
           ((1) (set-display-mode! *pc-settings* 'fullscreen #t))
           ((2) (set-display-mode! *pc-settings* 'borderless #t))
           )
-        (commit-to-file *pc-settings*)
+        (pc-settings-save)
         )
       )
     (new 'static 'menu-generic-carousel-option
@@ -693,15 +698,14 @@ This gives us more freedom to write code how we want.
             )
           )
         )
-      :on-confirm (lambda ((index int))
+      :on-confirm (lambda ((index int) (the-progress progress))
         (case index
           ((0)
             (if (not (-> *pc-settings* use-vis?))
-              (false! (-> *setting-control* user-current aspect-ratio))
-              )
+                (false! (-> *setting-control* user-current aspect-ratio)))
             (set! (-> *setting-control* user-default aspect-ratio) 'aspect4x3)
             (true! (-> *pc-settings* use-vis?))
-            (commit-to-file *pc-settings*)
+            (pc-settings-save)
             )
           ((1)
             (if (not (-> *pc-settings* use-vis?))
@@ -709,16 +713,16 @@ This gives us more freedom to write code how we want.
               )
             (set! (-> *setting-control* user-default aspect-ratio) 'aspect16x9)
             (true! (-> *pc-settings* use-vis?))
-            (commit-to-file *pc-settings*)
+            (pc-settings-save)
             )
           ((2)
             (set! (-> *setting-control* user-default aspect-ratio) 'aspect4x3)
             (true! (-> *pc-settings* aspect-ratio-auto?))
             (false! (-> *pc-settings* use-vis?))
-            (commit-to-file *pc-settings*)
+            (pc-settings-save)
             )
           ((3)
-            (push-and-set-state (-> *progress-process* 0) 'aspect-ratio-custom)
+            (push-and-set-state the-progress 'aspect-ratio-custom)
             )
           )
         )
@@ -729,24 +733,25 @@ This gives us more freedom to write code how we want.
         (case (-> *pc-settings* target-fps)
           ((60) 0)
           ((75) 1)
-          ((120) 2)
-          ((144) 3)
-          ((165) 4)
-          ((240) 5)
+          ((90) 2)
+          ((120) 3)
+          ((144) 4)
+          ((165) 5)
+          ((240) 6)
           )
       )
       :get-max-size-fn (lambda () (-> *frame-rate-options* length))
       :get-item-label-fn (lambda ((index int)) (string-format "~D" (-> *frame-rate-options* index)))
-      :on-confirm (lambda ((index int))
+      :on-confirm (lambda ((index int) (the-progress progress))
         (cond
           ((or (zero? index) (= (-> *frame-rate-options* index) (-> *pc-settings* target-fps)) *frame-rate-disclaimer-seen?*)
             (set-frame-rate! *pc-settings* (-> *frame-rate-options* index) #t)
-            (commit-to-file *pc-settings*)
+            (pc-settings-save)
             )
           (else
             (defun-extern set-progress-frame-rate-index int int)
             (set-progress-frame-rate-index index)
-            (push-and-set-state (-> *progress-process* 0) 'fps-disclaimer)
+            (push-and-set-state the-progress 'fps-disclaimer)
             )
           )
         )
@@ -758,7 +763,7 @@ This gives us more freedom to write code how we want.
       :get-value-fn (lambda () (-> *pc-settings* vsync?))
       :on-confirm (lambda ((val symbol))
         (set! (-> *pc-settings* vsync?) val)
-        (commit-to-file *pc-settings*)))
+        (pc-settings-save)))
     (new 'static 'menu-generic-carousel-option
       :name (text-id progress-msaa)
       :get-item-index-fn (lambda ()
@@ -776,10 +781,32 @@ This gives us more freedom to write code how we want.
             (lookup-text! *common-text* (text-id progress-graphics-msaa-off) #f)
             (string-format (lookup-text! *common-text* (text-id progress-msaa-x) #f) (-> *msaa-options* index)))
         )
-      :on-confirm (lambda ((index int))
-        (set! (-> *pc-settings* gfx-msaa) (the int (pow 2.0 (the float index))))
-        (commit-to-file *pc-settings*)
+      :on-confirm (lambda ((index int) (the-progress progress))
+        (set! (-> *pc-settings* gfx-msaa) (ash 1 index))
+        (pc-settings-save)
         )
+      )
+    (progress-new-generic-link-to-scrolling-page (text-id progress-graphics-ps2)
+      (new 'static 'menu-generic-boolean-option
+        :name (text-id progress-lod-bg)
+        :truthy-text (text-id progress-lod-low)
+        :falsey-text (text-id progress-lod-high)
+        :get-value-fn (lambda () (> (-> *pc-settings* lod-force-tfrag) 0))
+        :on-confirm (lambda ((val symbol))
+          (cond
+            (val
+              (set! (-> *pc-settings* lod-force-tfrag) 2)
+              (set! (-> *pc-settings* lod-force-tie) 2)
+              )
+            (else
+              (set! (-> *pc-settings* lod-force-tfrag) 0)
+              (set! (-> *pc-settings* lod-force-tie) 0)
+              ))
+          (pc-settings-save)))
+      (static-progress-generic-pc-settings-lod-default-high-boolean (text-id progress-lod-fg) (-> *pc-settings* ps2-lod-dist?))
+      (static-progress-generic-pc-settings-on-off-boolean (text-id progress-ps2-parts) (-> *pc-settings* ps2-parts?))
+      (static-progress-generic-pc-settings-shadows-normal-extended-boolean (text-id progress-shadows) (-> *pc-settings* ps2-shadow?))
+      (static-progress-generic-pc-settings-on-off-boolean (text-id progress-hires-sky) (-> *pc-settings* hires-clouds?))
       )
     )
   )
@@ -812,6 +839,18 @@ This gives us more freedom to write code how we want.
     :scale 0.82
     :options (new 'static 'boxed-array :type menu-option
       (new 'static 'menu-music-player-option :name (text-id progress-music-player))
+      )
+    )
+  )
+
+
+(define *resolutions-options*
+  (new 'static 'menu-option-list
+    :y-center 198
+    :y-space 34
+    :scale 0.82
+    :options (new 'static 'boxed-array :type menu-option
+      (new 'static 'menu-resolution-option :name (text-id progress-window-size))
       )
     )
   )

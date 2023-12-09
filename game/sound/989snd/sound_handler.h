@@ -11,18 +11,18 @@ static constexpr int VOLUME_DONT_CHANGE = 0x7fffffff;
 
 class SoundBank;
 
-class sound_handler {
+class SoundHandler {
  public:
-  virtual ~sound_handler() = default;
-  virtual bool tick() = 0;
-  virtual SoundBank& bank() = 0;
-  virtual void pause() = 0;
-  virtual void unpause() = 0;
-  virtual u8 group() = 0;
-  virtual void stop() = 0;
-  virtual void set_vol_pan(s32 vol, s32 pan) = 0;
-  virtual void set_pmod(s32 mod) = 0;
-  virtual void set_pbend(s32 /*mod*/){};
-  virtual void set_register(u8 /*reg*/, u8 /*value*/) {}
+  virtual ~SoundHandler() = default;
+  virtual bool Tick() = 0;
+  virtual SoundBank& Bank() = 0;
+  virtual void Pause() = 0;
+  virtual void Unpause() = 0;
+  virtual u8 Group() = 0;
+  virtual void Stop() = 0;
+  virtual void SetVolPan(s32 vol, s32 pan) = 0;
+  virtual void SetPMod(s32 mod) = 0;
+  virtual void SetPBend(s32 /*mod*/){};
+  virtual void SetRegister(u8 /*reg*/, u8 /*value*/) {}
 };
 }  // namespace snd
