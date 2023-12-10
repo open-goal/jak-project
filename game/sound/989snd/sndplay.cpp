@@ -69,7 +69,7 @@ int main(int argc, char* argv[]) {
         printf("invalid args\n");
       } else {
         player.SetSoundReg(std::atoi(parts[1].c_str()), std::atoi(parts[2].c_str()),
-                             std::atoi(parts[3].c_str()));
+                           std::atoi(parts[3].c_str()));
       }
     }
 

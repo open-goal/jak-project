@@ -98,12 +98,12 @@ VolPair VoiceManager::MakeVolume(int vol1, int pan1, int vol2, int pan2, int vol
 }
 
 VolPair VoiceManager::MakeVolumeB(int sound_vol,
-                                      int velocity_volume,
-                                      int pan,
-                                      int prog_vol,
-                                      int prog_pan,
-                                      int tone_vol,
-                                      int tone_pan) {
+                                  int velocity_volume,
+                                  int pan,
+                                  int prog_vol,
+                                  int prog_pan,
+                                  int tone_vol,
+                                  int tone_pan) {
   // Scale up as close as we can to max positive 16bit volume
   // I'd have just used shifting but I guess this does get closer
 

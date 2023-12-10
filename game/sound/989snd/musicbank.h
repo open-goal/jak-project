@@ -68,16 +68,16 @@ class MusicBank : public SoundBank {
                              nonstd::span<u8> midi_data);
 
   std::optional<std::unique_ptr<SoundHandler>> MakeHandler(VoiceManager& vm,
-                                                             u32 sound_id,
-                                                             s32 vol,
-                                                             s32 pan,
-                                                             s32 pm,
-                                                             s32 pb) override;
+                                                           u32 sound_id,
+                                                           s32 vol,
+                                                           s32 pan,
+                                                           s32 pm,
+                                                           s32 pb) override;
 
   std::optional<std::unique_ptr<SoundHandler>> MakeHandler(VoiceManager& vm,
-                                                             u32 sound_id,
-                                                             s32 vol,
-                                                             s32 pan,
-                                                             SndPlayParams& params) override;
+                                                           u32 sound_id,
+                                                           s32 vol,
+                                                           s32 pan,
+                                                           SndPlayParams& params) override;
 };
 }  // namespace snd

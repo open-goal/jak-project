@@ -30,19 +30,19 @@ class AmeHandler;
 class MidiHandler : public SoundHandler {
  public:
   MidiHandler(Midi* block,
-               VoiceManager& vm,
-               MusicBank::MIDISound& sound,
-               s32 vol,
-               s32 pan,
-               SoundBank& bank);
+              VoiceManager& vm,
+              MusicBank::MIDISound& sound,
+              s32 vol,
+              s32 pan,
+              SoundBank& bank);
 
   MidiHandler(Midi* block,
-               VoiceManager& vm,
-               MusicBank::MIDISound& sound,
-               s32 vol,
-               s32 pan,
-               SoundBank& bank,
-               std::optional<AmeHandler*> parent);
+              VoiceManager& vm,
+              MusicBank::MIDISound& sound,
+              s32 vol,
+              s32 pan,
+              SoundBank& bank,
+              std::optional<AmeHandler*> parent);
 
   ~MidiHandler() override {
     for (auto& p : m_voices) {
