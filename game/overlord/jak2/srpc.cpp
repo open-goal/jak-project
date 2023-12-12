@@ -383,7 +383,7 @@ void* RPC_Loader(unsigned int /*fno*/, void* data, int size) {
           break;
         }
 
-        strncpy(bank->name, cmd->load_bank.bank_name, 16);
+        strncpy(bank->name.data(), cmd->load_bank.bank_name, 16);
         bank->in_use = true;
         bank->unk4 = 0;
         LoadSoundBank(cmd->load_bank.bank_name, bank);

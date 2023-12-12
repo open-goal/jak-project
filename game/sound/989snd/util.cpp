@@ -69,7 +69,7 @@ u16 sceSdNote2Pitch(u16 center_note, u16 center_fine, u16 note, short fine) {
   return (u16)ret;
 }
 
-const vol_pair normalPanTable[181] = {
+const VolPair normalPanTable[181] = {
     {0x3fff, 0x0000}, {0x3ffe, 0x008e}, {0x3ffc, 0x011d}, {0x3ff9, 0x01ac}, {0x3ff5, 0x023b},
     {0x3fef, 0x02ca}, {0x3fe8, 0x0359}, {0x3fe0, 0x03e8}, {0x3fd7, 0x0476}, {0x3fcc, 0x0505},
     {0x3fc0, 0x0593}, {0x3fb3, 0x0622}, {0x3fa5, 0x06b0}, {0x3f95, 0x073e}, {0x3f84, 0x07cc},
@@ -124,7 +124,7 @@ u16 PS1Note2Pitch(s8 center_note, s8 center_fine, short note, short fine) {
   return pitch;
 }
 
-std::pair<s16, s16> pitchbend(Tone& tone,
+std::pair<s16, s16> PitchBend(Tone& tone,
                               int current_pb,
                               int current_pm,
                               int start_note,

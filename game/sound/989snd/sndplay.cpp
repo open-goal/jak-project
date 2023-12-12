@@ -2,6 +2,8 @@
 #include <iostream>
 #include <sstream>
 
+#include "common/util/FileUtil.h"
+
 #ifdef _WIN32
 #include <windows.h>
 #define sleep(n) Sleep(n * 1000)
@@ -12,14 +14,14 @@
 #include "common/log/log.h"
 
 int main(int argc, char* argv[]) {
-  snd::player player;
-  unsigned bankid = 0;
+  snd::Player player;
 
   fs::path file = argv[1];
-  bankid = player.load_bank(file, 0);
+  auto file_buf = file_util::read_binary_file(file);
+  auto bankid = player.LoadBank(file_buf);
 
   if (argc > 2) {
-    unsigned sound = player.play_sound(bankid, atoi(argv[2]), 0x400, 0, 0, 0);
+    unsigned sound = player.PlaySound(bankid, atoi(argv[2]), 0x400, 0, 0, 0);
     lg::info("sound {} started", sound);
   }
 
@@ -44,20 +46,20 @@ int main(int argc, char* argv[]) {
       if (parts.size() < 2) {
         printf("invalid args\n");
       } else {
-        auto id = player.play_sound(bankid, std::atoi(parts[1].c_str()), 0x400, 0, 0, 0);
+        auto id = player.PlaySound(bankid, std::atoi(parts[1].c_str()), 0x400, 0, 0, 0);
         printf("sound handle %d started\n", id);
       }
     }
 
     if (parts[0] == "playall") {
       auto idx = 0;
-      auto id = player.play_sound(bankid, idx, 0x400, 0, 0, 0);
+      auto id = player.PlaySound(bankid, idx, 0x400, 0, 0, 0);
       while (true) {
-        if (player.sound_still_active(id)) {
+        if (player.SoundStillActive(id)) {
           sleep(1);
         } else {
           idx++;
-          id = player.play_sound(bankid, idx, 0x400, 0, 0, 0);
+          id = player.PlaySound(bankid, idx, 0x400, 0, 0, 0);
         }
       }
     }
@@ -66,14 +68,14 @@ int main(int argc, char* argv[]) {
       if (parts.size() < 3) {
         printf("invalid args\n");
       } else {
-        player.set_sound_reg(std::atoi(parts[1].c_str()), std::atoi(parts[2].c_str()),
-                             std::atoi(parts[3].c_str()));
+        player.SetSoundReg(std::atoi(parts[1].c_str()), std::atoi(parts[2].c_str()),
+                           std::atoi(parts[3].c_str()));
       }
     }
 
     if (parts[0] == "stop") {
       printf("stopping all sounds\n");
-      player.stop_all_sounds();
+      player.StopAllSounds();
     }
   }
 

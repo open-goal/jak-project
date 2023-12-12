@@ -9,7 +9,7 @@
 
 #include "third-party/fmt/core.h"
 
-std::shared_ptr<snd::voice> voices[4];
+std::shared_ptr<snd::Voice> voices[4];
 u8 spu_memory[0x15160 * 10];
 
 static sceSdTransIntrHandler trans_handler[2] = {nullptr, nullptr};
@@ -20,7 +20,7 @@ u32 sceSdGetSwitch(u32 entry) {
   return 0;
 }
 
-snd::voice* voice_from_entry(u32 entry) {
+snd::Voice* voice_from_entry(u32 entry) {
   u32 it = entry & 3;
   return voices[it].get();
 }
@@ -35,7 +35,7 @@ u32 sceSdGetAddr(u32 entry) {
   // u32 reg = entry & ~0x3f;
 
   // Only ever used for getting NAX
-  return voice->get_nax() << 1;
+  return voice->GetNax() << 1;
 }
 
 void sceSdSetSwitch(u32 entry, u32 /*value*/) {
@@ -43,21 +43,21 @@ void sceSdSetSwitch(u32 entry, u32 /*value*/) {
   u32 reg = entry & ~0x3f;
   switch (reg) {
     case 0x1500:
-      voice_from_entry(entry)->key_on();
-      voice_from_entry(entry + 1)->key_on();
+      voice_from_entry(entry)->KeyOn();
+      voice_from_entry(entry + 1)->KeyOn();
       break;
     case 0x1600:
-      voice_from_entry(entry)->key_off();
+      voice_from_entry(entry)->KeyOff();
       break;
   }
 }
 
 void sceSdkey_on_jak2_voice(int id) {
-  voice_from_entry(id)->key_on();
+  voice_from_entry(id)->KeyOn();
 }
 
 void sceSdkey_off_jak2_voice(int id) {
-  voice_from_entry(id)->key_off();
+  voice_from_entry(id)->KeyOff();
 }
 
 void sceSdSetAddr(u32 entry, u32 value) {
@@ -71,10 +71,10 @@ void sceSdSetAddr(u32 entry, u32 value) {
 
   switch (reg) {
     case SD_VA_SSA: {
-      voice->set_ssa(value >> 1);
+      voice->SetSsa(value >> 1);
     } break;
     case SD_VA_LSAX: {
-      voice->set_lsa(value >> 1);
+      voice->SetLsa(value >> 1);
     } break;
     default:
       printf("unknown 0x%x\n", reg);
@@ -94,19 +94,19 @@ void sceSdSetParam(u32 entry, u32 value) {
 
   switch (reg) {
     case SD_VP_VOLL: {
-      voice->set_volume_l(value);
+      voice->SetVolumeL(value);
     } break;
     case SD_VP_VOLR: {
-      voice->set_volume_r(value);
+      voice->SetVolumeR(value);
     } break;
     case SD_VP_PITCH: {
-      voice->set_pitch(value);
+      voice->SetPitch(value);
     } break;
     case SD_VP_ADSR1: {
-      voice->set_asdr1(value);
+      voice->SetAsdr1(value);
     } break;
     case SD_VP_ADSR2: {
-      voice->set_asdr2(value);
+      voice->SetAsdr2(value);
     } break;
     default: {
     } break;
