@@ -153,6 +153,17 @@
     )
   )
 
+(defun custom-actor-cgo (output-name desc-file-name)
+  "Add a CGO with the given output name (in $OUT/iso) and input name (in custom_assets/jak1/models/)"
+  (let ((out-name (string-append "$OUT/iso/" output-name)))
+    (defstep :in (string-append "custom_assets/jak1/models/" desc-file-name)
+      :tool 'dgo
+      :out `(,out-name)
+      )
+    (set! *all-cgos* (cons out-name *all-cgos*))
+    )
+  )
+
 (defun custom-level-cgo (output-name desc-file-name)
   "Add a CGO with the given output name (in $OUT/iso) and input name (in custom_assets/jak1/levels/)"
   (let ((out-name (string-append "$OUT/iso/" output-name)))
@@ -213,6 +224,11 @@
               :tool 'build-level
               :out '(,(string-append "$OUT/obj/" name ".go")))))
 
+(defmacro build-actor (name)
+  (let* ((path (string-append "custom_assets/jak1/models/" name ".glb")))
+    `(defstep :in ,path
+              :tool 'build-actor
+              :out '(,(string-append "$OUT/obj/" name "-ag.go")))))
 
 (defun copy-iso-file (name subdir ext)
   (let* ((path (string-append "$ISO/" subdir name ext))

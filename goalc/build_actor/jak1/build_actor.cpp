@@ -1,21 +1,11 @@
 #include "build_actor.h"
 
 #include "common/log/log.h"
-#include "common/util/gltf_util.h"
 
 #include "third-party/tiny_gltf/tiny_gltf.h"
 
 using namespace gltf_util;
 namespace jak1 {
-
-struct MercExtractData {
-  TexturePool tex_pool;
-  std::vector<u32> new_indices;
-  std::vector<tfrag3::PreloadedVertex> new_vertices;
-  std::vector<math::Vector<u8, 4>> new_colors;
-
-  tfrag3::MercModel new_model;
-};
 
 void extract(MercExtractData& out,
              const tinygltf::Model& model,
@@ -109,11 +99,73 @@ void extract(MercExtractData& out,
            out.new_vertices.size());
 }
 
-MercSwapData load_replacement_merc_model(u32 current_idx_count,
-                                         u32 current_vtx_count,
-                                         u32 current_tex_count,
-                                         const std::string& path,
-                                         const std::vector<tfrag3::MercVertex>& old_verts) {
+const tfrag3::MercVertex& find_closest(const std::vector<tfrag3::MercVertex>& old,
+                                       float x,
+                                       float y,
+                                       float z) {
+  float best_dist = 1e10;
+  int best_idx = 0;
+
+  for (int i = 0; i < old.size(); i++) {
+    auto& v = old[i];
+    float dx = v.pos[0] - x;
+    float dy = v.pos[1] - y;
+    float dz = v.pos[2] - z;
+    float dist = (dx * dx) + (dy * dy) + (dz * dz);
+    if (dist < best_dist) {
+      best_dist = dist;
+      best_idx = i;
+    }
+  }
+
+  return old[best_idx];
+}
+
+void merc_convert(MercSwapData& out,
+                  const MercExtractData& in,
+                  const std::vector<tfrag3::MercVertex>& old_verts) {
+  /*
+   *   std::vector<u32> new_indices;
+  std::vector<tfrag3::MercVertex> new_vertices;
+  std::vector<decompiler::TextureDB::TextureData> new_textures;
+  tfrag3::MercModel new_model;
+   */
+
+  // easy
+  out.new_model = in.new_model;
+  out.new_indices = in.new_indices;
+  out.new_textures = in.tex_pool.textures_by_idx;
+
+  // convert vertices
+  for (size_t i = 0; i < in.new_vertices.size(); i++) {
+    const auto& y = in.new_vertices[i];
+    const auto& copy_from = find_closest(old_verts, y.x, y.y, y.z);
+    auto& x = out.new_vertices.emplace_back();
+    x.pos[0] = y.x;
+    x.pos[1] = y.y;
+    x.pos[2] = y.z;
+    x.normal[0] = copy_from.normal[0];
+    x.normal[1] = copy_from.normal[1];
+    x.normal[2] = copy_from.normal[2];
+    x.weights[0] = copy_from.weights[0];
+    x.weights[1] = copy_from.weights[1];
+    x.weights[2] = copy_from.weights[2];
+    x.st[0] = y.s;
+    x.st[1] = y.t;
+    x.rgba[0] = in.new_colors[i][0];
+    x.rgba[1] = in.new_colors[i][1];
+    x.rgba[2] = in.new_colors[i][2];
+    x.rgba[3] = in.new_colors[i][3];
+    x.mats[0] = copy_from.mats[0];
+    x.mats[1] = copy_from.mats[1];
+    x.mats[2] = copy_from.mats[2];
+  }
+}
+
+MercSwapData load_merc_model(u32 current_idx_count,
+                             u32 current_vtx_count,
+                             u32 current_tex_count,
+                             const std::string& path) {
   MercSwapData result;
   lg::info("Reading gltf mesh: {}", path);
   tinygltf::TinyGLTF loader;
@@ -132,7 +184,168 @@ MercSwapData load_replacement_merc_model(u32 current_idx_count,
   return result;
 }
 
-void run_build_actor(const std::string& input_model,
+size_t Joint::generate(DataObjectGenerator& gen) const {
+  gen.align_to_basic();
+  gen.add_type_tag("joint");
+  size_t result = gen.current_offset_bytes();
+  gen.add_ref_to_string_in_pool(name);
+  gen.add_word(number);
+  if (parent == -1) {
+    gen.add_symbol_link("#f");
+  }
+  for (int i = 0; i < 4; i++) {
+    for (int j = 0; j < 4; j++) {
+      gen.add_word_float(bind_pose(i, j));
+    }
+  }
+  return result;
+}
+
+size_t JointAnimCompressedHDR::generate(DataObjectGenerator& gen) const {
+  size_t result = gen.current_offset_bytes();
+  for (auto& bit : control_bits) {
+    gen.add_word(bit);
+  }
+  gen.add_word(num_joints);
+  gen.add_word(matrix_bits);
+  return result;
+}
+
+size_t JointAnimCompressedFixed::generate(DataObjectGenerator& gen) const {
+  size_t result = gen.current_offset_bytes();
+  hdr.generate(gen);  // 0-64 (inline)
+  gen.add_word(offset_64);
+  gen.add_word(offset_32);
+  gen.add_word(offset_16);
+  gen.add_word(reserved);
+  return result;
+}
+
+size_t JointAnimCompressedControl::generate(DataObjectGenerator& gen) const {
+  size_t result = gen.current_offset_bytes();
+  gen.add_word(num_frames);  // 0
+  gen.add_word(fixed_qwc);   // 4
+  gen.add_word(frame_qwc);   // 8
+  // gen.link_word_to_byte(gen.add_word(0), fixed.generate(gen));
+  // gen.link_word_to_byte(gen.add_word(0), frame.generate(gen));
+  gen.align(4);
+  return result;
+}
+
+size_t ArtJointGeo::generate(DataObjectGenerator& gen) const {
+  gen.align_to_basic();
+  gen.add_type_tag("art-joint-geo");
+  size_t result = gen.current_offset_bytes();
+  gen.add_word(0);                      // 4
+  gen.add_ref_to_string_in_pool(name);  // 8
+  gen.add_word(length);                 // 12
+  gen.add_symbol_link("#f");            // 16
+  gen.add_word(0);                      // 20
+  gen.add_word(0);
+  gen.add_word(0);
+  for (auto& joint : data) {
+    gen.link_word_to_byte(gen.add_word(0), joint.generate(gen));
+  }
+  gen.align(4);
+  return result;
+}
+
+size_t ArtJointAnim::generate(DataObjectGenerator& gen) const {
+  gen.align_to_basic();
+  gen.add_type_tag("art-joint-anim");
+  size_t result = gen.current_offset_bytes();
+  gen.add_symbol_link("#f");                             // 4 (eye block)
+  gen.add_ref_to_string_in_pool(name);                   // 8
+  gen.add_word(length);                                  // 12
+  gen.add_symbol_link("#f");                             // 16 (res-lump)
+  gen.add_word_float(speed);                             // 20
+  gen.add_word_float(artist_base);                       // 24
+  gen.add_word_float(artist_step);                       // 28
+  gen.add_ref_to_string_in_pool(master_art_group_name);  // 32
+  gen.add_word(master_art_group_index);                  // 36
+  gen.add_symbol_link("#f");                             // 40 (blerc)
+  gen.link_word_to_byte(gen.add_word(0), frames.generate(gen));
+  // for (size_t i = 0; i < length; i++) {
+  //   gen.link_word_to_byte(gen.add_word(0), data[i].generate(gen));
+  // }
+  return result;
+}
+
+size_t generate_dummy_merc_ctrl(DataObjectGenerator& gen, const std::string& name) {
+  gen.align_to_basic();
+  gen.add_type_tag("merc-ctrl");
+  size_t result = gen.current_offset_bytes();
+  gen.add_word(0);
+  gen.add_ref_to_string_in_pool(name + "-lod0");
+  gen.add_word(0);
+  gen.add_symbol_link("#f");
+  for (int i = 0; i < 31; i++) {
+    gen.add_word(0);
+  }
+  return result;
+}
+
+std::vector<u8> ArtGroup::save_object_file() const {
+  DataObjectGenerator gen;
+  gen.add_type_tag("art-group");
+  auto ag_words = 8 + length;
+  while (gen.words() < ag_words) {
+    gen.add_word(0);
+  }
+  auto file_info_slot = info.add_to_object_file(gen);
+  gen.link_word_to_byte(4 / 4, file_info_slot);  // 4 (file-info)
+  gen.link_word_to_string_in_pool(name, 8 / 4);  // 8 (name)
+  gen.set_word(12 / 4, length);                  // 12 (ag length)
+  gen.link_word_to_symbol("#f", 16 / 4);         // 16 (res-lump)
+  gen.set_word(20 / 4, 0);                       // 20 (pad)
+  gen.set_word(24 / 4, 0);
+  gen.set_word(28 / 4, 0);
+  if (!elts.empty()) {
+    if (elts.at(0)) {
+      auto jgeo = (ArtJointGeo*)elts.at(0);
+      gen.link_word_to_byte(32 / 4, jgeo->generate(gen));
+    }
+    if (!elts.at(1)) {
+      gen.link_word_to_byte(36 / 4, generate_dummy_merc_ctrl(gen, name));
+    }
+    if (elts.at(2)) {
+      auto ja = (ArtJointAnim*)elts.at(2);
+      gen.link_word_to_byte(40 / 4, ja->generate(gen));
+    }
+  }
+
+  return gen.generate_v4();
+}
+
+bool run_build_actor(const std::string& input_model,
                      const std::string& ag_out,
-                     const std::string& output_prefix) {}
+                     const std::string& output_prefix) {
+  std::string ag_name;
+  // ag_name = fs::path(input_model).stem().string();
+  if (fs::exists(file_util::get_jak_project_dir() / input_model)) {
+    ag_name = fs::path(input_model).stem().string();
+  } else {
+    ASSERT_MSG(false, "Model file not found: " + input_model);
+  }
+
+  ArtGroup ag(ag_name, GameVersion::Jak1);
+  ArtJointGeo jgeo(ag.name);
+  ArtJointAnim ja(ag.name);
+
+  ag.elts.emplace_back(&jgeo);
+  // dummy merc-ctrl
+  ag.elts.emplace_back(nullptr);
+  ag.elts.emplace_back(&ja);
+
+  ag.length = ag.elts.size();
+
+  auto ag_file = ag.save_object_file();
+  lg::print("ag file size {} bytes\n", ag_file.size());
+  auto save_path = fs::path(ag_out);
+  file_util::create_dir_if_needed_for_file(ag_out);
+  lg::print("Saving to {}\n", save_path.string());
+  file_util::write_binary_file(file_util::get_jak_project_dir() / save_path, ag_file.data(),
+                               ag_file.size());
+  return true;
+}
 }  // namespace jak1

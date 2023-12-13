@@ -30,7 +30,7 @@ int main(int argc, char** argv) {
   app.add_option("output-file", output_file,
                  "Output *-ag.go file (for example: out/jak1/obj/test-ag.go)")
       ->required();
-  app.add_option("-g,--game", game, "Game version (jak1 only for now)")->required();
+  app.add_option("-g,--game", game, "Game version (only jak1 for now)")->required();
   app.add_option("--proj-path", project_path_override,
                  "Specify the location of the 'data/' folder");
   app.validate_positionals();
