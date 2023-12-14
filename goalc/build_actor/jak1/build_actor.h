@@ -55,21 +55,19 @@ struct JointAnim {
     number = 0;
     length = 1;
   }
-
-  // size_t generate(DataObjectGenerator& gen) const;
 };
 
 // basic
 struct JointAnimCompressed : JointAnim {
   std::vector<u32> data;
-  // size_t generate(DataObjectGenerator& gen) const;
+  size_t generate(DataObjectGenerator& gen) const;
 };
 
 struct JointAnimFrame {
   math::Matrix4f matrices[2];
   std::vector<math::Matrix4f> data;
 
-  // size_t generate(DataObjectGenerator& gen) const;
+  size_t generate(DataObjectGenerator& gen) const;
 };
 
 struct JointAnimCompressedHDR {
@@ -108,8 +106,6 @@ struct JointAnimCompressedFixed {
     data[5] = math::Vector4f(0.0f, 1.0f, 0.0f, 0.0f);
     data[6] = math::Vector4f(0.0f, 0.0f, 1.0f, 0.0f);
     data[7] = math::Vector4f(0.0f, 0.0f, 0.0f, 1.0f);
-    data[8] = math::Vector4f(0.0f, 7.0f, 0.0f, 1.0f);
-    data[9] = math::Vector4f(1.0f, 0.0f, 0.0f, 0.0f);
   }
   size_t generate(DataObjectGenerator& gen) const;
 };
@@ -143,6 +139,7 @@ struct JointAnimCompressedControl {
     fixed_qwc = 3;
     frame_qwc = 1;
     fixed = JointAnimCompressedFixed();
+    frame[0] = JointAnimCompressedFrame();
   }
 
   size_t generate(DataObjectGenerator& gen) const;
@@ -174,6 +171,7 @@ struct ArtJointAnim : ArtElement {
 
   explicit ArtJointAnim(const std::string& name) {
     this->name = name + "-idle";
+    length = 1;
     speed = 1.0f;
     artist_base = 0.0f;
     artist_step = 1.0f;

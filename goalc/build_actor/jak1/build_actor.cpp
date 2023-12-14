@@ -201,6 +201,27 @@ size_t Joint::generate(DataObjectGenerator& gen) const {
   return result;
 }
 
+size_t JointAnimCompressed::generate(DataObjectGenerator& gen) const {
+  gen.align_to_basic();
+  gen.add_type_tag("joint-anim-compressed");
+  size_t result = gen.current_offset_bytes();
+  gen.add_ref_to_string_in_pool(name);
+  gen.add_word((length << 16) + number);
+  for (auto& word : data) {
+    gen.add_word(word);
+  }
+  return result;
+}
+
+size_t JointAnimCompressedFrame::generate(DataObjectGenerator& gen) const {
+  size_t result = gen.current_offset_bytes();
+  gen.add_word(offset_64);  // 0
+  gen.add_word(offset_32);  // 4
+  gen.add_word(offset_16);  // 8
+  gen.add_word(reserved);   // 12
+  return result;
+}
+
 size_t JointAnimCompressedHDR::generate(DataObjectGenerator& gen) const {
   size_t result = gen.current_offset_bytes();
   for (auto& bit : control_bits) {
@@ -213,11 +234,26 @@ size_t JointAnimCompressedHDR::generate(DataObjectGenerator& gen) const {
 
 size_t JointAnimCompressedFixed::generate(DataObjectGenerator& gen) const {
   size_t result = gen.current_offset_bytes();
-  hdr.generate(gen);  // 0-64 (inline)
-  gen.add_word(offset_64);
-  gen.add_word(offset_32);
-  gen.add_word(offset_16);
-  gen.add_word(reserved);
+  hdr.generate(gen);        // 0-64 (inline)
+  gen.add_word(offset_64);  // 64
+  gen.add_word(offset_32);  // 68
+  gen.add_word(offset_16);  // 72
+  gen.add_word(reserved);   // 76
+  // default joint poses
+  for (size_t i = 0; i < 8; i++) {
+    gen.add_word_float(data[i].x());
+    gen.add_word_float(data[i].y());
+    gen.add_word_float(data[i].z());
+    gen.add_word_float(data[i].w());
+  }
+  gen.add_word(0);
+  gen.add_word(0x7fff0000);
+  gen.add_word(0);
+  gen.add_word(0x10001000);
+  gen.add_word(0x10000000);
+  gen.add_word(0);
+  gen.add_word(0);
+  gen.add_word(0);
   return result;
 }
 
@@ -226,8 +262,8 @@ size_t JointAnimCompressedControl::generate(DataObjectGenerator& gen) const {
   gen.add_word(num_frames);  // 0
   gen.add_word(fixed_qwc);   // 4
   gen.add_word(frame_qwc);   // 8
-  // gen.link_word_to_byte(gen.add_word(0), fixed.generate(gen));
-  // gen.link_word_to_byte(gen.add_word(0), frame.generate(gen));
+  gen.link_word_to_byte(gen.add_word(0), fixed.generate(gen));
+  gen.link_word_to_byte(gen.add_word(0), frame[0].generate(gen));
   gen.align(4);
   return result;
 }
