@@ -207,9 +207,9 @@ size_t JointAnimCompressed::generate(DataObjectGenerator& gen) const {
   size_t result = gen.current_offset_bytes();
   gen.add_ref_to_string_in_pool(name);
   gen.add_word((length << 16) + number);
-  for (auto& word : data) {
-    gen.add_word(word);
-  }
+  // for (auto& word : data) {
+  //   gen.add_word(word);
+  // }
   return result;
 }
 
@@ -219,6 +219,7 @@ size_t JointAnimCompressedFrame::generate(DataObjectGenerator& gen) const {
   gen.add_word(offset_32);  // 4
   gen.add_word(offset_16);  // 8
   gen.add_word(reserved);   // 12
+  gen.align(4);
   return result;
 }
 
@@ -229,6 +230,7 @@ size_t JointAnimCompressedHDR::generate(DataObjectGenerator& gen) const {
   }
   gen.add_word(num_joints);
   gen.add_word(matrix_bits);
+  gen.align(4);
   return result;
 }
 
@@ -254,6 +256,7 @@ size_t JointAnimCompressedFixed::generate(DataObjectGenerator& gen) const {
   gen.add_word(0);
   gen.add_word(0);
   gen.add_word(0);
+  gen.align(4);
   return result;
 }
 
@@ -262,9 +265,12 @@ size_t JointAnimCompressedControl::generate(DataObjectGenerator& gen) const {
   gen.add_word(num_frames);  // 0
   gen.add_word(fixed_qwc);   // 4
   gen.add_word(frame_qwc);   // 8
-  gen.link_word_to_byte(gen.add_word(0), fixed.generate(gen));
-  gen.link_word_to_byte(gen.add_word(0), frame[0].generate(gen));
-  gen.align(4);
+
+  auto ja_fixed_slot = gen.add_word(0);
+  auto ja_frame_slot = gen.add_word(0);
+  gen.link_word_to_byte(ja_fixed_slot, fixed.generate(gen));
+  gen.link_word_to_byte(ja_frame_slot, frame[0].generate(gen));
+  // gen.align(4);
   return result;
 }
 
@@ -301,9 +307,9 @@ size_t ArtJointAnim::generate(DataObjectGenerator& gen) const {
   gen.add_word(master_art_group_index);                  // 36
   gen.add_symbol_link("#f");                             // 40 (blerc)
   gen.link_word_to_byte(gen.add_word(0), frames.generate(gen));
-  // for (size_t i = 0; i < length; i++) {
-  //   gen.link_word_to_byte(gen.add_word(0), data[i].generate(gen));
-  // }
+  for (size_t i = 0; i < length; i++) {
+    gen.link_word_to_byte(gen.add_word(0), data[i].generate(gen));
+  }
   return result;
 }
 

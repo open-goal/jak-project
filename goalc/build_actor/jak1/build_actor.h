@@ -60,6 +60,7 @@ struct JointAnim {
 // basic
 struct JointAnimCompressed : JointAnim {
   std::vector<u32> data;
+  explicit JointAnimCompressed(const std::string& name) : JointAnim(name) {}
   size_t generate(DataObjectGenerator& gen) const;
 };
 
@@ -178,6 +179,7 @@ struct ArtJointAnim : ArtElement {
     master_art_group_name = name;
     master_art_group_index = 2;
     frames = JointAnimCompressedControl();
+    data.emplace_back("align");
   }
   size_t generate(DataObjectGenerator& gen) const;
 };
