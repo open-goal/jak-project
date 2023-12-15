@@ -345,9 +345,37 @@ size_t generate_dummy_merc_ctrl(DataObjectGenerator& gen, const std::string& nam
   gen.add_ref_to_string_in_pool(name + "-lod0");
   gen.add_word(0);
   gen.add_symbol_link("#f");
-  for (int i = 0; i < 31; i++) {
-    gen.add_word(0);
-  }
+  gen.add_word(1);  // num-joints
+  gen.add_word(0x0);
+  gen.add_word(0x0);
+  gen.add_word(0x4188ee86);
+  gen.add_word(0xc780ff80);
+  gen.add_word(0x40798000);
+  gen.add_word(0x40eb4000);
+  gen.add_word(0x4780ff80);
+  gen.add_word(0x50000);
+  gen.add_word(0x1);
+  gen.add_word(0x0);
+  gen.add_word(0xe00005);
+  gen.add_word(0x860101);
+  gen.add_word(0x86011b);
+  gen.add_word(0x0);
+  gen.add_word(0x0);
+  gen.add_word(0x120101);
+  gen.add_word(0x83002c);
+  gen.add_word(0x3e780184);
+  gen.add_word(0x0);
+  gen.add_word(0x0);
+  gen.add_word(0x0);
+  gen.add_word(0x0);
+  gen.add_symbol_link("#f");
+  gen.add_symbol_link("#f");
+  gen.add_word(0x0);
+  gen.add_word(0x0);
+  gen.add_word(0x50000);
+  gen.add_word(0xe00000);
+  gen.add_word(0x100011b);
+  gen.add_symbol_link("#f");
   return result;
 }
 
