@@ -184,6 +184,8 @@ MercSwapData load_merc_model(u32 current_idx_count,
   return result;
 }
 
+std::map<int, size_t> joint_map;
+
 size_t Joint::generate(DataObjectGenerator& gen) const {
   gen.align_to_basic();
   gen.add_type_tag("joint");
@@ -192,6 +194,8 @@ size_t Joint::generate(DataObjectGenerator& gen) const {
   gen.add_word(number);
   if (parent == -1) {
     gen.add_symbol_link("#f");
+  } else {
+    gen.link_word_to_byte(gen.add_word(0), joint_map[parent]);
   }
   for (int i = 0; i < 4; i++) {
     for (int j = 0; j < 4; j++) {
@@ -250,7 +254,7 @@ size_t JointAnimCompressedFixed::generate(DataObjectGenerator& gen) const {
   }
   gen.add_word(0);
   gen.add_word(0x7fff0000);
-  gen.add_word(0);
+  gen.add_word(0x2250000);
   gen.add_word(0x10001000);
   gen.add_word(0x10000000);
   gen.add_word(0);
@@ -268,9 +272,16 @@ size_t JointAnimCompressedControl::generate(DataObjectGenerator& gen) const {
 
   auto ja_fixed_slot = gen.add_word(0);
   auto ja_frame_slot = gen.add_word(0);
+  gen.align(4);
   gen.link_word_to_byte(ja_fixed_slot, fixed.generate(gen));
   gen.link_word_to_byte(ja_frame_slot, frame[0].generate(gen));
-  // gen.align(4);
+  return result;
+}
+
+size_t ArtJointGeo::generate_res_lump(DataObjectGenerator& gen) const {
+  gen.align_to_basic();
+  gen.add_type_tag("res-lump");
+  size_t result = gen.current_offset_bytes();
   return result;
 }
 
@@ -282,13 +293,20 @@ size_t ArtJointGeo::generate(DataObjectGenerator& gen) const {
   gen.add_ref_to_string_in_pool(name);  // 8
   gen.add_word(length);                 // 12
   gen.add_symbol_link("#f");            // 16
-  gen.add_word(0);                      // 20
+  // gen.link_word_to_byte(gen.add_word(0), generate_res_lump(gen));
+  gen.add_word(0);  // 20
   gen.add_word(0);
   gen.add_word(0);
-  for (auto& joint : data) {
-    gen.link_word_to_byte(gen.add_word(0), joint.generate(gen));
+  std::vector<size_t> joint_slots;
+  for (size_t i = 0; i < length; i++) {
+    joint_slots.push_back(gen.add_word(0));
   }
   gen.align(4);
+  for (size_t i = 0; i < length; i++) {
+    auto joint = data.at(i).generate(gen);
+    gen.link_word_to_byte(joint_slots.at(i), joint);
+    joint_map[data.at(i).number] = joint;
+  }
   return result;
 }
 
@@ -306,9 +324,15 @@ size_t ArtJointAnim::generate(DataObjectGenerator& gen) const {
   gen.add_ref_to_string_in_pool(master_art_group_name);  // 32
   gen.add_word(master_art_group_index);                  // 36
   gen.add_symbol_link("#f");                             // 40 (blerc)
-  gen.link_word_to_byte(gen.add_word(0), frames.generate(gen));
+  auto ctrl_slot = gen.add_word(0);
+  std::vector<size_t> frame_slots;
   for (size_t i = 0; i < length; i++) {
-    gen.link_word_to_byte(gen.add_word(0), data[i].generate(gen));
+    frame_slots.push_back(gen.add_word(0));
+  }
+  gen.align(4);
+  gen.link_word_to_byte(ctrl_slot, frames.generate(gen));
+  for (size_t i = 0; i < length; i++) {
+    gen.link_word_to_byte(frame_slots.at(i), data.at(i).generate(gen));
   }
   return result;
 }
@@ -371,8 +395,31 @@ bool run_build_actor(const std::string& input_model,
   }
 
   ArtGroup ag(ag_name, GameVersion::Jak1);
-  ArtJointGeo jgeo(ag.name);
-  ArtJointAnim ja(ag.name);
+  std::vector<Joint> joints;
+  auto identity = math::Matrix4f::identity();
+  joints.emplace_back("align", 0, -1, identity);
+  joints.emplace_back("prejoint", 1, -1, identity);
+  auto main_pose = math::Matrix4f::zero();
+  main_pose(0, 0) = 1.0f;
+  main_pose(0, 1) = -0.0f;
+  main_pose(0, 2) = 0.0f;
+  main_pose(0, 3) = -0.0f;
+  main_pose(1, 0) = -0.0f;
+  main_pose(1, 1) = 1.0f;
+  main_pose(1, 2) = -0.0f;
+  main_pose(1, 3) = 0.0f;
+  main_pose(2, 0) = 0.0f;
+  main_pose(2, 1) = -0.0f;
+  main_pose(2, 2) = 1.0f;
+  main_pose(2, 3) = -0.0f;
+  main_pose(3, 0) = -0.0f;
+  main_pose(3, 1) = -2194.1628418f;
+  main_pose(3, 2) = -0.0f;
+  main_pose(3, 3) = 1.0f;
+  Joint main("main", 2, 1, main_pose);
+  joints.emplace_back(main);
+  ArtJointGeo jgeo(ag.name, joints);
+  ArtJointAnim ja(ag.name, joints);
 
   ag.elts.emplace_back(&jgeo);
   // dummy merc-ctrl

@@ -3,6 +3,7 @@
 #include "common/util/gltf_util.h"
 
 #include "goalc/build_actor/common/art_types.h"
+#include "goalc/build_level/collide/common/collide_common.h"
 
 namespace jak1 {
 
@@ -37,9 +38,16 @@ MercSwapData load_merc_model(u32 current_idx_count,
 
 struct Joint {
   std::string name;
-  s32 number = 0;
-  int parent = -1;
-  math::Matrix4f bind_pose = math::Matrix4f::identity();
+  s32 number;
+  int parent;
+  math::Matrix4f bind_pose{};
+
+  Joint(const std::string& name, int number, int parent, math::Matrix4f bind_pose) {
+      this->name = name;
+      this->number = number;
+      this->parent = parent;
+      this->bind_pose = bind_pose;
+  }
 
   size_t generate(DataObjectGenerator& gen) const;
 };
@@ -60,7 +68,10 @@ struct JointAnim {
 // basic
 struct JointAnimCompressed : JointAnim {
   std::vector<u32> data;
-  explicit JointAnimCompressed(const std::string& name) : JointAnim(name) {}
+  explicit JointAnimCompressed(Joint joint) : JointAnim(joint.name) {
+      number = joint.number;
+      length = 1;
+  }
   size_t generate(DataObjectGenerator& gen) const;
 };
 
@@ -146,17 +157,33 @@ struct JointAnimCompressedControl {
   size_t generate(DataObjectGenerator& gen) const;
 };
 
+struct CollideMeshTri {
+    u8 vert_idx[3];
+    u8 unused;
+    PatSurface pat;
+};
+
+struct CollideMesh {
+    s32 joint_id;
+    u32 num_tris;
+    u32 num_verts;
+    std::vector<math::Vector4f> vertices;
+    CollideMeshTri tris;
+};
+
 struct ArtJointGeo : ArtElement {
   std::vector<Joint> data;
+  CollideMesh mesh;
 
-  explicit ArtJointGeo(const std::string& name) {
+  explicit ArtJointGeo(const std::string& name, std::vector<Joint> joints) {
     this->name = name + "-lod0";
-    length = 1;
-    Joint align;
-    align.name = "align";
-    data.push_back(align);
+    length = joints.size();
+    for (auto& joint : joints) {
+        data.push_back(joint);
+    }
   }
   size_t generate(DataObjectGenerator& gen) const;
+  size_t generate_res_lump(DataObjectGenerator& gen) const;
 };
 
 struct ArtJointAnim : ArtElement {
@@ -170,7 +197,7 @@ struct ArtJointAnim : ArtElement {
   JointAnimCompressedControl frames;
   std::vector<JointAnimCompressed> data;
 
-  explicit ArtJointAnim(const std::string& name) {
+  explicit ArtJointAnim(const std::string& name, std::vector<Joint> joints) {
     this->name = name + "-idle";
     length = 1;
     speed = 1.0f;
@@ -179,7 +206,9 @@ struct ArtJointAnim : ArtElement {
     master_art_group_name = name;
     master_art_group_index = 2;
     frames = JointAnimCompressedControl();
-    data.emplace_back("align");
+    for (auto& joint : joints) {
+        data.emplace_back(joint);
+    }
   }
   size_t generate(DataObjectGenerator& gen) const;
 };
@@ -188,6 +217,7 @@ struct ArtGroup : Art {
   GameVersion version;
   FileInfo info;
   std::vector<ArtElement*> elts;
+  std::map<int, size_t> joint_map;
 
   ArtGroup(const std::string& file_name, GameVersion version) {
     this->version = version;
