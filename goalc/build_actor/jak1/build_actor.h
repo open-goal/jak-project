@@ -43,10 +43,10 @@ struct Joint {
   math::Matrix4f bind_pose{};
 
   Joint(const std::string& name, int number, int parent, math::Matrix4f bind_pose) {
-      this->name = name;
-      this->number = number;
-      this->parent = parent;
-      this->bind_pose = bind_pose;
+    this->name = name;
+    this->number = number;
+    this->parent = parent;
+    this->bind_pose = bind_pose;
   }
 
   size_t generate(DataObjectGenerator& gen) const;
@@ -58,9 +58,9 @@ struct JointAnim {
   s16 number;
   s16 length;
 
-  explicit JointAnim(const std::string& name) {
-    this->name = name;
-    number = 0;
+  explicit JointAnim(const Joint& joint) {
+    this->name = joint.name;
+    number = joint.number;
     length = 1;
   }
 };
@@ -68,9 +68,9 @@ struct JointAnim {
 // basic
 struct JointAnimCompressed : JointAnim {
   std::vector<u32> data;
-  explicit JointAnimCompressed(Joint joint) : JointAnim(joint.name) {
-      number = joint.number;
-      length = 1;
+  explicit JointAnimCompressed(const Joint& joint) : JointAnim(joint) {
+    number = joint.number;
+    length = 1;
   }
   size_t generate(DataObjectGenerator& gen) const;
 };
@@ -148,7 +148,7 @@ struct JointAnimCompressedControl {
 
   JointAnimCompressedControl() {
     num_frames = 1;
-    fixed_qwc = 3;
+    fixed_qwc = 0xf;
     frame_qwc = 1;
     fixed = JointAnimCompressedFixed();
     frame[0] = JointAnimCompressedFrame();
@@ -158,32 +158,33 @@ struct JointAnimCompressedControl {
 };
 
 struct CollideMeshTri {
-    u8 vert_idx[3];
-    u8 unused;
-    PatSurface pat;
+  u8 vert_idx[3];
+  u8 unused;
+  PatSurface pat;
 };
 
 struct CollideMesh {
-    s32 joint_id;
-    u32 num_tris;
-    u32 num_verts;
-    std::vector<math::Vector4f> vertices;
-    CollideMeshTri tris;
+  s32 joint_id;
+  u32 num_tris;
+  u32 num_verts;
+  std::vector<math::Vector4f> vertices;
+  CollideMeshTri tris;
 };
 
 struct ArtJointGeo : ArtElement {
   std::vector<Joint> data;
   CollideMesh mesh;
 
-  explicit ArtJointGeo(const std::string& name, std::vector<Joint> joints) {
+  explicit ArtJointGeo(const std::string& name, const std::vector<Joint>& joints) {
     this->name = name + "-lod0";
     length = joints.size();
     for (auto& joint : joints) {
-        data.push_back(joint);
+      data.push_back(joint);
     }
   }
   size_t generate(DataObjectGenerator& gen) const;
   size_t generate_res_lump(DataObjectGenerator& gen) const;
+  size_t generate_mesh(DataObjectGenerator& gen) const;
 };
 
 struct ArtJointAnim : ArtElement {
@@ -197,9 +198,9 @@ struct ArtJointAnim : ArtElement {
   JointAnimCompressedControl frames;
   std::vector<JointAnimCompressed> data;
 
-  explicit ArtJointAnim(const std::string& name, std::vector<Joint> joints) {
+  explicit ArtJointAnim(const std::string& name, const std::vector<Joint>& joints) {
     this->name = name + "-idle";
-    length = 1;
+    length = joints.size();
     speed = 1.0f;
     artist_base = 0.0f;
     artist_step = 1.0f;
@@ -207,7 +208,7 @@ struct ArtJointAnim : ArtElement {
     master_art_group_index = 2;
     frames = JointAnimCompressedControl();
     for (auto& joint : joints) {
-        data.emplace_back(joint);
+      data.emplace_back(joint);
     }
   }
   size_t generate(DataObjectGenerator& gen) const;

@@ -427,6 +427,7 @@ bool run_build_actor(const std::string& input_model,
   auto identity = math::Matrix4f::identity();
   joints.emplace_back("align", 0, -1, identity);
   joints.emplace_back("prejoint", 1, -1, identity);
+  // matrix stolen from "egg" joint from "money" art group
   auto main_pose = math::Matrix4f::zero();
   main_pose(0, 0) = 1.0f;
   main_pose(0, 1) = -0.0f;
