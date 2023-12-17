@@ -198,7 +198,7 @@ struct ArtJointAnim : ArtElement {
   JointAnimCompressedControl frames;
   std::vector<JointAnimCompressed> data;
 
-  explicit ArtJointAnim(const std::string& name, const std::vector<Joint>& joints) {
+  ArtJointAnim(const std::string& name, const std::vector<Joint>& joints) {
     this->name = name + "-idle";
     length = joints.size();
     speed = 1.0f;
@@ -215,13 +215,11 @@ struct ArtJointAnim : ArtElement {
 };
 
 struct ArtGroup : Art {
-  GameVersion version;
   FileInfo info;
   std::vector<ArtElement*> elts;
   std::map<int, size_t> joint_map;
 
-  ArtGroup(const std::string& file_name, GameVersion version) {
-    this->version = version;
+  explicit ArtGroup(const std::string& file_name) {
     info.file_type = "art-group";
     info.file_name = "/src/next/data/art-group6/" + file_name + "-ag.go";
     name = file_name;

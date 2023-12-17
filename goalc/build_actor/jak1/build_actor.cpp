@@ -293,6 +293,7 @@ size_t ArtJointGeo::generate(DataObjectGenerator& gen) const {
   gen.add_ref_to_string_in_pool(name);  // 8
   gen.add_word(length);                 // 12
   gen.add_symbol_link("#f");            // 16
+  // TODO might need this in the future
   // gen.link_word_to_byte(gen.add_word(0), generate_res_lump(gen));
   gen.add_word(0);  // 20
   gen.add_word(0);
@@ -559,7 +560,7 @@ bool run_build_actor(const std::string& input_model,
     ASSERT_MSG(false, "Model file not found: " + input_model);
   }
 
-  ArtGroup ag(ag_name, GameVersion::Jak1);
+  ArtGroup ag(ag_name);
   std::vector<Joint> joints;
   auto identity = math::Matrix4f::identity();
   joints.emplace_back("align", 0, -1, identity);
