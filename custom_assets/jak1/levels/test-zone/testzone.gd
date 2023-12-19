@@ -6,6 +6,6 @@
  ("static-screen.o"
   "test-zone-obs.o"
   "plat-ag.go"
-  "lowreskui-ag.go"
+  "test-actor-ag.go"
   "test-zone.go"
  ))
