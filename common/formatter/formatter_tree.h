@@ -18,8 +18,9 @@
 // we really care about is:
 // - getting all the text tokens for the source code
 // - having them in a proper, nested format
-// The treesitter format is complicated and highly nested, leading to some very hard to understand
-// code. So my solution is a 2-pass format.
+// 
+// TLDR - The treesitter format is complicated and highly nested, leading to some very hard to understand
+// code. So my solution is atleast a 2-pass format.
 //
 // Pass 1 - convert the AST into a simplified FormatterTree
 // Pass 2 - use the simplified tree to output the final code
@@ -37,7 +38,7 @@ class FormatterTreeNode {
   std::vector<FormatterTreeNode> refs;
   Metadata metadata;
   // The token is optional because list nodes do not contain a token, they just contain a bunch of
-  // eventually token node refs
+  // eventually-containing token node refs
   std::optional<std::string> token;
 
   formatter_rules::config::FormFormattingConfig formatting_config;

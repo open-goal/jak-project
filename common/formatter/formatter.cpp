@@ -67,8 +67,8 @@ void apply_formatting_config(
   //
   // Otherwise, we always default to a hang.
   //
-  // NOTE - any modifications here to child elements could be superseeded later in the recursion
-  // in order to maintain your sanity, only modify things here that _arent_ touched by default
+  // NOTE - any modifications here to child elements could be superseeded later in the recursion!
+  // In order to maintain your sanity, only modify things here that _arent_ touched by default
   // configurations.  These are explicitly prepended with `parent_mutable_`
   if (!predefined_config) {
     if (curr_node.metadata.is_top_level) {
@@ -227,6 +227,12 @@ std::vector<std::string> apply_formatting(const FormatterTreeNode& curr_node,
         val = comments::format_block_comment(ref.token.value());
       }
       form_lines.push_back(val);
+      if (!curr_node.metadata.is_top_level && i == curr_node.refs.size() - 1 &&
+          (ref.metadata.is_comment)) {
+        // if there's an inline comment at the end of a form, we have to force the paren to the next
+        // line and do a new-line paren this is ugly, but we have no choice!
+        form_lines.push_back("");
+      }
     } else {
       // If it's not a token, we have to recursively build up the form
       // TODO - add the cursor_pos here
@@ -250,6 +256,9 @@ std::vector<std::string> apply_formatting(const FormatterTreeNode& curr_node,
       if ((next_ref.metadata.node_type == "comment" && next_ref.metadata.is_inline) ||
           (curr_node.formatting_config.has_constant_pairs &&
            constant_pairs::is_element_second_in_constant_pair(curr_node, next_ref, i + 1))) {
+        // TODO
+        // has issues with not consolidating first lines, this should probably just be moved to
+        // outside this loop for simplicity, do it later
         if (next_ref.token) {
           form_lines.at(form_lines.size() - 1) += fmt::format(" {}", next_ref.token.value());
           i++;
@@ -259,6 +268,10 @@ std::vector<std::string> apply_formatting(const FormatterTreeNode& curr_node,
             form_lines.at(form_lines.size() - 1) += fmt::format(" {}", line);
           }
           i++;
+        }
+        if (!curr_node.metadata.is_top_level && next_ref.metadata.node_type == "comment" &&
+            (i + 1) == (int)curr_node.refs.size()) {
+          form_lines.push_back("");
         }
       }
     }
