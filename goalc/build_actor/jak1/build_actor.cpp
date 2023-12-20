@@ -350,7 +350,7 @@ std::vector<u8> ArtGroup::save_object_file() const {
     gen.add_word(0);
   }
   auto file_info_slot = info.add_to_object_file(gen);
-  gen.link_word_to_byte(4 / 4, file_info_slot);  // 4 (file-info)
+  gen.link_word_to_byte(1, file_info_slot);      // 4 (file-info)
   gen.link_word_to_string_in_pool(name, 8 / 4);  // 8 (name)
   gen.set_word(12 / 4, length);                  // 12 (ag length)
   gen.link_word_to_symbol("#f", 16 / 4);         // 16 (res-lump)
