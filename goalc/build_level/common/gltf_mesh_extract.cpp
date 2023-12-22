@@ -70,10 +70,10 @@ std::vector<math::Vector<u8, 4>> extract_color_from_vec4_float(const u8* data,
     memcpy(&temp, data, sizeof(math::Vector<float, 4>));
     data += stride;
     result.emplace_back(
-      temp.x() * 256,
-      temp.y() * 256,
-      temp.z() * 256,
-      temp.w() * 256
+      temp.x() * 255,
+      temp.y() * 255,
+      temp.z() * 255,
+      temp.w() * 255
     );
   }
   return result;
