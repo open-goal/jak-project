@@ -61,20 +61,15 @@ std::vector<math::Vector2f> extract_vec2f(const u8* data, u32 count, u32 stride)
  * Convert a GLTF color buffer (float format) to u8 colors.
  */
 std::vector<math::Vector<u8, 4>> extract_color_from_vec4_float(const u8* data,
-                                                             u32 count,
-                                                             u32 stride) {
+                                                               u32 count,
+                                                               u32 stride) {
   std::vector<math::Vector<u8, 4>> result;
   result.reserve(count);
   for (u32 i = 0; i < count; i++) {
     math::Vector<float, 4> temp;
     memcpy(&temp, data, sizeof(math::Vector<float, 4>));
     data += stride;
-    result.emplace_back(
-      temp.x() * 255,
-      temp.y() * 255,
-      temp.z() * 255,
-      temp.w() * 255
-    );
+    result.emplace_back(temp.x() * 255, temp.y() * 255, temp.z() * 255, temp.w() * 255);
   }
   return result;
 }
