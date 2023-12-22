@@ -2,6 +2,7 @@
 (in-package goal)
 
 (define *speedrun-info* (new 'static 'speedrun-info))
+(set! (-> *speedrun-info* active-practice-objective) #f)
 
 (defmethod set-category! ((this speedrun-info) (category speedrun-category))
   (set! (-> this category) category)
@@ -47,6 +48,62 @@
   (set! (-> this display-run-info?) #f)
   (none))
 
+(defmethod draw-zone ((this objective-zone))
+  (let ((min-point-x (fmin (-> this v1 x) (-> this v2 x)))
+        (min-point-y (fmin (-> this v1 y) (-> this v2 y)))
+        (min-point-z (fmin (-> this v1 z) (-> this v2 z)))
+        (max-point-x (fmax (-> this v1 x) (-> this v2 x)))
+        (max-point-y (fmax (-> this v1 y) (-> this v2 y)))
+        (max-point-z (fmax (-> this v1 z) (-> this v2 z)))
+        (pos (target-pos 0)))
+    (when (and (and (<= min-point-x (-> pos x))
+                    (<= (-> pos x) max-point-x))
+               (and (<= min-point-y (-> pos y))
+                    (<= (-> pos y) max-point-y))
+               (and (<= min-point-z (-> pos z))
+                    (<= (-> pos z) max-point-z)))
+      (format #t "you're in!~%")))
+  (add-debug-box
+    #t
+    (bucket-id debug2)
+    (-> this v1)
+    (-> this v2)
+    (the-as rgba (the-as uint #x8000c000)))
+  (none))
+
+(defstate idle (objective-zone)
+  :virtual #t
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (the-as object 0))
+  :trans (behavior ()
+    (none))
+  :code (behavior ()
+    (until #f
+      (draw-zone self)
+      (suspend))
+    (none))
+  :post (behavior ()
+    (none)))
+
+(defbehavior objective-zone-init objective-zone ((start? symbol) (v1 vector) (v2 vector))
+  (set! (-> self start?) start?)
+  (set! (-> self v1 quad) (-> v1 quad))
+  (set! (-> self v2 quad) (-> v2 quad))
+  (go-virtual idle)
+  (none))
+
+    ;;  (if (and (not (handle->process (-> this hud-dist))) *target*)
+    ;;      (set! (-> this hud-dist) (ppointer->handle (process-spawn hud-progress :init hud-init-by-other :to *target*)))
+    ;;      )
+    ;; (else
+    ;;   (let ((a0-16 (handle->process (-> this hud-dist))))
+    ;;     (when a0-16
+    ;;       (send-event a0-16 'hide-and-die)
+    ;;       (set! (-> this hud-dist) (the-as handle #f))
+    ;;       )
+    ;;     )
+    ;;   )
+
 (defmethod update! ((this speedrun-info))
   "A per frame update for speedrunning related stuff"
   ;; Ensure the speedrunner menu process is enabled or destroyed
@@ -67,7 +124,15 @@
        ;; Draw info to the screen
        (draw-run-info! this))
     ;; enforce settings even if they've changed them
-    (enforce-settings! this))
+    (enforce-settings! this)
+    ;; draw objective zones if we are practicing
+    (when ;; TODO - care about this later (-> *pc-settings* practice-mode?)
+          (not (-> this active-practice-objective))
+      (set! (-> this active-practice-objective) *test-speedrun-practice-objective*)
+      (set! (-> this active-practice-objective start-zone)
+            (ppointer->handle (process-spawn objective-zone :init objective-zone-init #t *test-start-objective-zone-v1* *test-start-objective-zone-v2*)))
+      (set! (-> this active-practice-objective end-zone)
+            (ppointer->handle (process-spawn objective-zone :init objective-zone-init #t *test-end-objective-zone-v1* *test-end-objective-zone-v2*)))))
   (none))
 
 (defmethod draw-run-info! ((this speedrun-info))
@@ -121,15 +186,16 @@
   (set! (-> *speedrun-menu* 0 draw-menu?) #f)
   (set! (-> *speedrun-menu* 0 ignore-menu-toggle?) #f)
   (set! (-> *speedrun-menu* 0 opened-with-start?) #f)
-  (go idle)
+  (go-virtual idle)
   (none))
 
 (defmethod deactivate ((this speedrun-menu))
   (set! *speedrun-menu* (the-as (pointer speedrun-menu) #f))
-  ((method-of-type process-drawable deactivate) this)
+  ((method-of-type process deactivate) this)
   (none))
 
 (defstate idle (speedrun-menu)
+  :virtual #t
   :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
     (case event-type
       (('invoke)

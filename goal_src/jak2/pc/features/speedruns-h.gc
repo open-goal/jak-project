@@ -1,6 +1,61 @@
 ;;-*-Lisp-*-
 (in-package goal)
 
+;; TODO - put in util
+;; TODO - play sound on entering exit zone
+(deftype objective-zone (process)
+  ((start? symbol)
+   (v1 vector :inline)
+   (v2 vector :inline)
+   (on-enter (function none))
+   (on-exit (function none)))
+  (:methods
+    (draw-zone (_type_) none))
+  (:state-methods
+    idle
+    player-entered
+    player-exited))
+
+(define *test-end-objective-zone-v1* (static-vector (meters 22.27) (meters -50.50) (meters 99.82) (meters 1.0)))
+(define *test-end-objective-zone-v2* (static-vector (meters -15.74) (meters -42.12) (meters 76.90) (meters 1.0)))
+
+(define *test-start-objective-zone-v1* (static-vector (meters 11.29) (meters -42.00) (meters -49.99) (meters 1.0)))
+(define *test-start-objective-zone-v2* (static-vector (meters -7.29) (meters -35.00) (meters -65.29) (meters 1.0)))
+
+;; TODO - starting camera position as well
+;; reset method
+(deftype speedrun-practice-objective (structure)
+  ((name string)
+   (level-name string)
+   (continue-point-name string)
+   (completed-task game-task)
+   (features game-feature)
+   (secrets game-secrets)
+   (starting-position vector :inline)
+   (end-task game-task)
+   (start-zone handle)
+   (end-zone handle))
+  (:methods
+   (get-num-attempts (_type_) uint64)
+   (get-num-completions (_type_) uint64)
+   (get-num-fails (_type_) uint64)
+   (get-longest-streak (_type_) uint64)
+   (get-fastest-time-milliseconds (_type_) uint64)
+   (get-average-time-milliseconds (_type_) uint64)
+   (record-attempt! (_type_ symbol uint64) none)))
+
+
+(define *test-speedrun-practice-objective* (new 'static 'speedrun-practice-objective))
+(define *test-speedrun-practice-objective-start* (static-vector (meters 2.47) (meters -42.00) (meters -55.41) (meters 1.0)))
+(set! (-> *test-speedrun-practice-objective* name) "Test Objective")
+(set! (-> *test-speedrun-practice-objective* level-name) "halfpipe")
+(set! (-> *test-speedrun-practice-objective* continue-point-name) "halfpipe")
+(set! (-> *test-speedrun-practice-objective* completed-task) (game-task none))
+(set! (-> *test-speedrun-practice-objective* features) (the-as game-feature 0))
+(set! (-> *test-speedrun-practice-objective* secrets) (the-as game-secrets 0))
+(set! (-> *test-speedrun-practice-objective* starting-position quad) (-> *test-speedrun-practice-objective-start* quad))
+(set! (-> *test-speedrun-practice-objective* end-task) (game-task none))
+
 
 (defenum speedrun-category
   :type uint32
@@ -17,7 +72,9 @@
 
 (deftype speedrun-info (structure)
   ((category speedrun-category)
-   (display-run-info? symbol))
+   (display-run-info? symbol)
+   (practicing? symbol)
+   (active-practice-objective speedrun-practice-objective))
   (:methods
     (set-category! (_type_ speedrun-category) none)
     (start-run! (_type_) none)
@@ -33,14 +90,14 @@
   (reset 0)
   (exit 1))
 
-(deftype speedrun-menu (process-drawable)
+(deftype speedrun-menu (process)
   ((popup-menu popup-menu)
    (draw-menu? symbol)
    (ignore-menu-toggle? symbol)
    (opened-with-start? symbol))
   (:methods
     (draw! (_type_) none))
-  (:states
+  (:state-methods
     idle))
 
 (define-extern *speedrun-popup-menu* popup-menu)
