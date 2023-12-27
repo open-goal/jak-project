@@ -5,6 +5,7 @@
 #include "game/overlord/common/isocommon.h"
 #include "game/overlord/jak2/pages.h"
 #include "game/sce/iop.h"
+#include "game/sound/sndshim.h"
 
 namespace jak2 {
 void iso_init_globals();
@@ -48,7 +49,7 @@ struct IsoFs {
   int (*page_begin_read)(LoadStackEntry*, Buffer*);     // 1c
   uint32_t (*sync_read)();                              // 20
   uint32_t (*load_sound_bank)(char*, SoundBank*);       // 24
-  uint32_t (*load_music)(char*, s32*);
+  uint32_t (*load_music)(char*, snd::BankHandle*);
   // void (*poll_drive)();
 };
 
@@ -147,7 +148,7 @@ struct CmdLoadSoundBank {
 struct CmdLoadMusic {
   CmdHeader header;
   char name[16];
-  s32* handle;
+  snd::BankHandle* handle;
 };
 
 struct VagDirEntry {

@@ -9,24 +9,24 @@
 
 namespace snd {
 
-class id_allocator {
+class IdAllocator {
  public:
-  u32 get_id() {
+  u32 GetId() {
     u32 id = 0;
-    if (m_free_ids.empty()) {
-      id = next_id++;
+    if (mFreeIds.empty()) {
+      id = mNextId++;
     } else {
-      id = m_free_ids.front();
-      m_free_ids.pop();
+      id = mFreeIds.front();
+      mFreeIds.pop();
     }
     return id;
   }
 
-  void free_id(u32 id) { m_free_ids.push(id); }
+  void FreeId(u32 id) { mFreeIds.push(id); }
 
  private:
-  u32 next_id{1};
-  std::queue<u32> m_free_ids;
+  u32 mNextId{1};
+  std::queue<u32> mFreeIds;
 };
 
 }  // namespace snd

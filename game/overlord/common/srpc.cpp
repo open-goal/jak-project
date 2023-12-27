@@ -2,12 +2,14 @@
 
 #include <cstring>
 
+#include "game/sound/sndshim.h"
+
 // added
 u32 gMusicFadeHack = 0;
 MusicTweaks gMusicTweakInfo;
 s32 gMusicTweak = 0x80;
 int32_t gSoundEnable = 1;
-s32 gMusic = 0;
+snd::BankHandle gMusic = nullptr;
 s32 gMusicPause = 0;
 s32 gSoundInUse = 0;
 u8 gFPS = 60;

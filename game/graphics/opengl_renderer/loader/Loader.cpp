@@ -511,7 +511,7 @@ void Loader::update(TexturePool& texture_pool) {
     }
 
     if (unload_timer.getMs() > 5.f) {
-      fmt::print("Unload took {:.2f}\n", unload_timer.getMs());
+      fmt::print("Unload took {:.2f}ms\n", unload_timer.getMs());
     }
 
     if (!m_garbage_buffers.empty()) {

@@ -220,7 +220,8 @@
 (defmethod lookup-text ((this level) (arg0 text-id) (arg1 symbol))
   (let ((v1-0 *common-text*))
     (dotimes (a3-0 (-> this loaded-text-info-count))
-      (if (= (-> this loaded-text-info a3-0 language-id) (-> *setting-control* user-current language))
+      (if (= (-> this loaded-text-info a3-0 language-id) (#if PC_PORT (the language-enum (-> *pc-settings* text-language))
+                                                                      (-> *setting-control* user-current language)))
           (set! v1-0 (-> this loaded-text-info a3-0))
           )
       )
@@ -234,9 +235,10 @@
 (defun load-game-text-info ((arg0 string) (arg1 (pointer object)) (arg2 kheap))
   "Load text, if needed. txt-name is the group name, curr-text is the _symbol_ for
 the game-text-info, and heap is the heap to load to. The heap will be cleared."
-  (local-vars (v0-3 int) (sv-16 game-text-info) (sv-24 int) (sv-32 int) (sv-40 int))
+  (local-vars (v0-3 int) (sv-16 game-text-info) (sv-24 language-enum) (sv-32 int) (sv-40 int))
   (set! sv-16 (the-as game-text-info (-> arg1 0)))
-  (set! sv-24 (the-as int (-> *setting-control* user-current language)))
+  (set! sv-24 (#if PC_PORT (the language-enum (-> *pc-settings* text-language))
+                           (-> *setting-control* user-current language)))
   (set! sv-32 0)
   (set! sv-40 (&- (-> arg2 top) (the-as uint (-> arg2 base))))
   ;; english -> UK english in PAL
@@ -319,9 +321,8 @@ in a single text group and file."
   (when (or *level-text-file-load-flag* (>= arg0 0))
       (load-game-text-info "common" (&-> '*common-text* value) *common-text-heap*)
       (#when PC_PORT
-        (protect ((-> *setting-control* user-current language))
-          ;; todo - split text language
-          (set! (-> *setting-control* user-current language) (language-enum english))
+        (protect ((-> *pc-settings* text-language))
+          (set! (-> *pc-settings* text-language) (pc-language english))
           (load-game-text-info "common" (&-> '*fallback-text* value) *fallback-text-heap*))))
   0
   (none)

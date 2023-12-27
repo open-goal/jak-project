@@ -218,7 +218,7 @@ void LoadSoundBank(char* param_1, SoundBank* param_2) {
   SleepThread();
 }
 
-void LoadMusic(char* param_1, s32* param_2) {
+void LoadMusic(char* param_1, snd::BankHandle* param_2) {
   CmdLoadMusic auStack88;
 
   auStack88.header.cmd_kind = 0x380;
@@ -239,7 +239,7 @@ void LoadMusic(char* param_1, s32* param_2) {
   gMusicTweak = 0x80;
 }
 
-void UnLoadMusic(s32* param_1) {
+void UnLoadMusic(snd::BankHandle* param_1) {
   gMusicFadeDir = -1;
   if (gMusicFade != 0) {
     do {

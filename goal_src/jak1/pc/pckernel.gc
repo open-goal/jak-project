@@ -443,8 +443,40 @@
     (if (-> *pc-settings* secrets music i name)
         (format out "music log ~D: ~A (f #x~x)~%" i (-> *pc-settings* secrets music i name) (-> *pc-settings* secrets music i flava-mask)))
     )
-
   0)
+
+(defun-debug unlock-music-log ()
+  "fills the music log with every track and flava"
+
+  (dotimes (i PC_MUSIC_LOG_LENGTH)
+    (set! (-> *pc-settings* secrets music i name) #f)
+    (set! (-> *pc-settings* secrets music i flava-mask) 0)
+    )
+  (set! (-> *pc-settings* secrets music 0 name) 'fishgame)
+  (set! (-> *pc-settings* secrets music 1 name) 'danger)
+  (set! (-> *pc-settings* secrets music 2 name) 'village1)
+  (set! (-> *pc-settings* secrets music 3 name) 'beach)
+  (set! (-> *pc-settings* secrets music 4 name) 'jungle)
+  (set! (-> *pc-settings* secrets music 5 name) 'jungleb)
+  (set! (-> *pc-settings* secrets music 6 name) 'misty)
+  (set! (-> *pc-settings* secrets music 7 name) 'firecanyon)
+  (set! (-> *pc-settings* secrets music 8 name) 'village2)
+  (set! (-> *pc-settings* secrets music 9 name) 'swamp)
+  (set! (-> *pc-settings* secrets music 10 name) 'sunken)
+  (set! (-> *pc-settings* secrets music 11 name) 'rolling)
+  (set! (-> *pc-settings* secrets music 12 name) 'ogre)
+  (set! (-> *pc-settings* secrets music 13 name) 'ogreboss)
+  (set! (-> *pc-settings* secrets music 14 name) 'village3)
+  (set! (-> *pc-settings* secrets music 15 name) 'snow)
+  (set! (-> *pc-settings* secrets music 16 name) 'maincave)
+  (set! (-> *pc-settings* secrets music 17 name) 'lavatube)
+  (set! (-> *pc-settings* secrets music 18 name) 'citadel)
+  (set! (-> *pc-settings* secrets music 19 name) 'finalboss)
+  (set! (-> *pc-settings* secrets music 20 name) 'credits)
+  (dotimes (i PC_MUSIC_LOG_LENGTH)
+    (set! (-> *pc-settings* secrets music i flava-mask) -1)
+    )
+  )
 
 (defmethod add-to-music-log pc-settings-jak1 ((obj pc-settings-jak1) (music symbol) (flava int))
   "add music and flava information to the music log.
@@ -454,7 +486,7 @@
   (dotimes (i PC_MUSIC_LOG_LENGTH)
     (cond
       ;; an empty log entry! place the currently playing music there, and fill flava.
-      ((not (-> obj secrets music i name))
+      ((or (not (-> obj secrets music i name)) (zero? (not (-> obj secrets music i name))))
        (set! (-> obj secrets music i name) music)
        (set! (-> obj secrets music i flava-mask) (ash 1 flava))
        (return 0)
@@ -563,9 +595,7 @@
 
   (format file "    (music~%")
   (dotimes (i PC_MUSIC_LOG_LENGTH)
-    (if (-> obj secrets music i name)
   (format file "      (~A #x~X)~%" (-> obj secrets music i name) (-> obj secrets music i flava-mask))
-  )
     )
 
   (format file "      )~%")
