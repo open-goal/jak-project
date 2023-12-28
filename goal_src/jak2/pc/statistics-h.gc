@@ -1,0 +1,137 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+#|
+  Header file for the statistics code.
+ |#
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;; constants
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+
+(defconstant KILL_STATS_MAX_ENEMY_TYPES 200)
+(defconstant KILL_STATS_MAX_SOURCE 40)
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;; types and enums
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+
+(defenum kill-stats-source
+  :type uint8
+  (unknown)
+  
+  (gun-yellow)
+  (gun-red)
+  (gun-blue)
+  (gun-dark)
+  (board)
+  (mech)
+  (punch)
+  (flop)
+  (uppercut)
+  (spin)
+  (roll)
+
+  (darkjak-punch)
+  (darkjak-flop)
+  (darkjak-uppercut)
+  (darkjak-spin)
+  (darkjak-roll)
+  (darkjak-bomb0)
+  (darkjak-bomb1)
+  
+  (guard)
+
+  (max)
+  )
+
+
+(deftype kill-statistics-source-entry (structure)
+  ((name    symbol)
+   (amount  int32)
+   )
+  )
+
+(deftype kill-statistics-enemy-entry (structure)
+  ((name      symbol)
+   (sources   kill-stats-source KILL_STATS_MAX_SOURCE)
+   )
+  )
+
+
+(deftype kill-statistics (structure)
+  ((enemies    kill-statistics-enemy-entry KILL_STATS_MAX_ENEMY_TYPES   :inline)
+   )
+
+  (:methods
+    (initialize (_type_) int)
+
+    (get-total-count (_type_) int)
+    (get-enemy-stats (_type_ symbol) kill-statistics-enemy-entry)
+    (get-count-for-enemy (_type_ symbol) int)
+    (get-count-for-source (_type_ kill-stats-source) int)
+    (get-count (_type_ symbol kill-stats-source) int)
+
+    (add (_type_ symbol kill-stats-source) int)
+    )
+  )
+
+
+(deftype statistics (structure)
+  ((kill-stats  kill-statistics :inline)
+   )
+  )
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;; methods
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+
+(defmethod new statistics ((allocation symbol) (type-to-make type))
+  "make a new statistics"
+  (let ((obj (object-new allocation type-to-make (the-as int (-> type-to-make size)))))
+    (initialize (-> obj kill-stats))
+    obj))
+
+
+(defmethod initialize ((this kill-statistics))
+  "initialize a kill-statistics to the default values"
+  
+  (dotimes (i KILL_STATS_MAX_ENEMY_TYPES)
+    (set! (-> this enemies i name) #f)
+    (dotimes (ii KILL_STATS_MAX_SOURCE)
+      (set! (-> this enemies i sources ii) 0)
+      )
+    )
+  
+  0)
+
+
+(defmethod get-total-kill-count ((this kill-statistics))
+  "return the total kill count for every thing tracked in the stats"
+
+  (let ((amount 0))
+  (dotimes (i KILL_STATS_MAX_ENEMY_TYPES)
+    (dotimes (ii KILL_STATS_MAX_SOURCE)
+      (+! amount (-> this enemies i sources ii))
+      )
+    )
+  amount)
+  )
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;; global variables
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+
+(define *statistics* (new 'global 'statistics))
+

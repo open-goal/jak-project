@@ -29,6 +29,7 @@
   "dma-buffer.o"
   "dma-bucket.o"
   "dma-disasm.o"
+  "statistics-h.o" ;; added
   "pckernel-h.o" ;; added
   "pckernel-impl.o" ;; added
   "pc-debug-common.o" ;; added
@@ -113,6 +114,7 @@
   "aligner-h.o"
   "penetrate-h.o"
   "game-h.o"
+  "statistics.o" ;; added
   "script-h.o"
   "scene-h.o"
   "sync-info-h.o"
