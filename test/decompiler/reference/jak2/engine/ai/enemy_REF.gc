@@ -30,13 +30,13 @@
   )
 
 ;; definition for method 117 of type enemy
-(defmethod get-rand-float ((this enemy))
+(defmethod rnd-float ((this enemy))
   "@returns the result of calling [[rand-vu]]"
   (rand-vu)
   )
 
 ;; definition for method 118 of type enemy
-(defmethod get-rand-float-range ((this enemy) (low float) (high float))
+(defmethod rnd-float-range ((this enemy) (low float) (high float))
   "@param low The lower bound of the range (inclusive)
 @param high The upper bound of the range (exclusive)
 @returns A random float in the specified range"
@@ -44,7 +44,7 @@
   )
 
 ;; definition for method 119 of type enemy
-(defmethod get-rand-int ((this enemy) (high int))
+(defmethod rnd-int-count ((this enemy) (high int))
   "@param high The upper bound of the range (exclusive)
 @returns a random integer in the range 0 to `high`
 @see [[rand-vu]]"
@@ -52,7 +52,7 @@
   )
 
 ;; definition for method 121 of type enemy
-(defmethod get-rand-int-range ((this enemy) (low int) (high int))
+(defmethod rnd-int-range ((this enemy) (low int) (high int))
   "@param low The lower bound of the range (inclusive)
 @param high The upper bound of the range (exclusive)
 @returns A random integer in the specified range"
@@ -60,16 +60,15 @@
   )
 
 ;; definition for method 122 of type enemy
-(defmethod rng-hit? ((this enemy) (chance float))
-  "TODO - not the best name
-@param chance The value to compare ([[>=]]) with the result from [[rand-vu]].
+(defmethod rnd-percent? ((this enemy) (chance float))
+  "@param chance The value to compare ([[>=]]) with the result from [[rand-vu]].
 @returns If `chance` is greater than the random draw"
   (>= chance (rand-vu))
   )
 
 ;; definition for method 120 of type enemy
 ;; WARN: new jak 2 until loop case, check carefully
-(defmethod enemy-method-120 ((this enemy) (arg0 int) (arg1 int))
+(defmethod rnd-bit ((this enemy) (arg0 int) (arg1 int))
   "TODO"
   (let ((v1-0 0)
         (s5-0 0)
@@ -84,7 +83,7 @@
         )
       )
     (when (> v1-0 0)
-      (let ((v1-1 (get-rand-int this v1-0))
+      (let ((v1-1 (rnd-int-count this v1-0))
             (a0-1 1)
             )
         (until #f
@@ -110,7 +109,7 @@
   )
 
 ;; definition for method 123 of type enemy
-(defmethod enemy-method-123 ((this enemy) (arg0 float))
+(defmethod rnd-go-idle? ((this enemy) (arg0 float))
   "TODO"
   (let* ((v1-5 (-> *display* frames (-> *display* last-screen) run-time))
          (f1-2 (fmax 0.0 (fmin 1.0 (* 0.001 (+ -7000.0 (the float v1-5))))))
@@ -122,7 +121,7 @@
 ;; definition for method 60 of type enemy
 (defmethod coin-flip? ((this enemy))
   "@returns The result of a 50/50 RNG roll"
-  (zero? (get-rand-int this 2))
+  (zero? (rnd-int-count this 2))
   )
 
 ;; definition for method 12 of type enemy
@@ -301,7 +300,7 @@
 
 ;; definition for method 55 of type enemy
 ;; WARN: Return type mismatch int vs none.
-(defmethod track-target! ((self enemy))
+(defmethod common-post ((self enemy))
   "Does a lot of various things relating to interacting with the target
 - tracks when the enemy was last drawn
 - looks at the target and handles attacking
@@ -456,8 +455,8 @@
 (defmethod enemy-method-108 ((this enemy) (arg0 enemy) (arg1 event-message-block))
   (let ((s4-0 (the-as touching-shapes-entry (-> arg1 param 0))))
     (when (and s4-0
-               (and (logtest? (-> this incoming penetrate-using) 4096)
-                    (not (logtest? (-> this incoming penetrate-using) 32))
+               (and (logtest? (-> this incoming penetrate-using) (penetrate board))
+                    (not (logtest? (-> this incoming penetrate-using) (penetrate spin)))
                     )
                (begin
                  (let ((s3-0 (-> s4-0 head)))
@@ -491,8 +490,7 @@
   )
 
 ;; definition for method 64 of type enemy
-;; WARN: Return type mismatch object vs none.
-(defmethod enemy-method-64 ((this enemy))
+(defmethod go-dormant ((this enemy))
   (let ((v1-1 (-> this root root-prim)))
     (set! (-> v1-1 prim-core collide-as) (collide-spec))
     (set! (-> v1-1 prim-core collide-with) (collide-spec))
@@ -501,12 +499,10 @@
   (logior! (-> this draw status) (draw-control-status no-draw))
   (logior! (-> this focus-status) (focus-status disable))
   (go (method-of-object this dormant))
-  (none)
   )
 
 ;; definition for method 65 of type enemy
-;; WARN: Return type mismatch object vs none.
-(defmethod enemy-method-65 ((this enemy))
+(defmethod go-dormant-aware ((this enemy))
   (let ((v1-1 (-> this root root-prim)))
     (set! (-> v1-1 prim-core collide-as) (collide-spec))
     (set! (-> v1-1 prim-core collide-with) (collide-spec))
@@ -515,7 +511,6 @@
   (logior! (-> this draw status) (draw-control-status no-draw))
   (logior! (-> this focus-status) (focus-status disable))
   (go (method-of-object this dormant-aware))
-  (none)
   )
 
 ;; definition for method 67 of type enemy
@@ -663,7 +658,7 @@
                                                              (shove-up (-> this enemy-info attack-shove-up))
                                                              (mode (-> this enemy-info attack-mode))
                                                              (damage (the float v1-1))
-                                                             (knock (the-as uint 8))
+                                                             (knock (knocked-type knocked-type-8))
                                                              )
                                                             )
                       )
@@ -726,53 +721,53 @@
   )
 
 ;; definition for method 131 of type enemy
-;; WARN: Return type mismatch int vs uint.
-(defmethod enemy-method-131 ((this enemy) (arg0 int))
-  (the-as uint (cond
-                 ((logtest? arg0 1024)
-                  7
-                  )
-                 ((logtest? #x1000000 arg0)
-                  6
-                  )
-                 ((logtest? #x4400000 arg0)
-                  4
-                  )
-                 ((logtest? #x800000 arg0)
-                  5
-                  )
-                 ((logtest? #xc0000 arg0)
-                  3
-                  )
-                 ((logtest? #xa200000 arg0)
-                  2
-                  )
-                 ((logtest? arg0 #x4000)
-                  1
-                  )
-                 (else
-                   0
-                   )
-                 )
+;; WARN: Return type mismatch int vs knocked-type.
+(defmethod pu->knocked-type ((this enemy) (arg0 penetrate))
+  (the-as knocked-type (cond
+                         ((logtest? arg0 (penetrate vehicle))
+                          7
+                          )
+                         ((logtest? (penetrate jak-blue-shot) arg0)
+                          6
+                          )
+                         ((logtest? (penetrate jak-yellow-shot enemy-yellow-shot) arg0)
+                          4
+                          )
+                         ((logtest? (penetrate jak-red-shot) arg0)
+                          5
+                          )
+                         ((logtest? (penetrate dark-bomb dark-giant) arg0)
+                          3
+                          )
+                         ((logtest? (penetrate explode jak-dark-shot enemy-dark-shot) arg0)
+                          2
+                          )
+                         ((logtest? arg0 (penetrate mech-punch))
+                          1
+                          )
+                         (else
+                           0
+                           )
+                         )
           )
   )
 
 ;; definition for method 106 of type enemy
 ;; INFO: Used lq/sq
 ;; WARN: Return type mismatch int vs none.
-(defmethod enemy-method-106 ((this enemy) (arg0 process) (arg1 object) (arg2 int) (arg3 attack-info))
-  (set! (-> this incoming penetrate-using) (the-as uint arg2))
+(defmethod set-incoming-attack-info ((this enemy) (arg0 process) (arg1 object) (arg2 penetrate) (arg3 attack-info))
+  (set! (-> this incoming penetrate-using) arg2)
   (set! (-> this incoming attack-id) (-> arg3 id))
   (let ((v1-3 (if (logtest? (attack-mask knock) (-> arg3 mask))
                   (-> arg3 knock)
-                  (enemy-method-131 this arg2)
+                  (pu->knocked-type this arg2)
                   )
               )
         )
-    (set! (-> this incoming knocked-type) (the-as knocked-type v1-3))
+    (set! (-> this incoming knocked-type) v1-3)
     (let ((a0-4 (current-time)))
       (cond
-        ((!= v1-3 6)
+        ((!= v1-3 (knocked-type knocked-type-6))
          (set! (-> this incoming blue-juggle-count) (the-as uint 0))
          0
          )
@@ -786,7 +781,7 @@
       (set! (-> this incoming attack-time) a0-4)
       )
     (cond
-      ((= v1-3 7)
+      ((= v1-3 (knocked-type knocked-type-7))
        (set! (-> this incoming attack-direction quad) (-> arg3 vector quad))
        )
       (else
@@ -798,7 +793,7 @@
         )
       )
     )
-  (set! (-> this incoming attacker-handle) (process->handle (enemy-method-134 this arg0 arg3)))
+  (set! (-> this incoming attacker-handle) (process->handle (get-attacker this arg0 arg3)))
   0
   (none)
   )
@@ -838,7 +833,7 @@
   )
 
 ;; definition for method 125 of type enemy
-(defmethod enemy-method-125 ((this enemy) (arg0 collide-query) (arg1 collide-spec) (arg2 float) (arg3 float) (arg4 float))
+(defmethod ground-pat-set! ((this enemy) (arg0 collide-query) (arg1 collide-spec) (arg2 float) (arg3 float) (arg4 float))
   (when (find-ground (-> this root) arg0 arg1 arg2 arg3 arg4)
     (let ((v0-1 (-> arg0 best-other-tri pat)))
       (set! (-> this root ground-pat) v0-1)
@@ -859,7 +854,7 @@
 (defmethod enemy-method-127 ((this enemy) (arg0 float) (arg1 float) (arg2 symbol) (arg3 collide-spec))
   (let ((s4-0 (new 'stack-no-clear 'collide-query)))
     (cond
-      ((enemy-method-125 this s4-0 arg3 arg0 arg1 1024.0)
+      ((ground-pat-set! this s4-0 arg3 arg0 arg1 1024.0)
        (let ((s5-1 (-> this root)))
          (let ((s3-0 (new 'stack-no-clear 'vector)))
            (set! (-> s3-0 quad) (-> this root trans quad))
@@ -937,7 +932,7 @@
     (set! (-> arg1 new-pos quad) (-> gp-0 trans quad))
     (let ((s2-0 (new 'stack-no-clear 'collide-query)))
       (cond
-        ((enemy-method-125 this s2-0 (-> arg1 gnd-collide-with) (-> arg1 popup) 81920.0 1024.0)
+        ((ground-pat-set! this s2-0 (-> arg1 gnd-collide-with) (-> arg1 popup) 81920.0 1024.0)
          (when (>= (-> gp-0 gspot-pos y) (-> arg1 new-pos y))
            (set! (-> arg1 on-ground?) #t)
            (set! (-> arg1 pat) (-> s2-0 best-other-tri pat))
@@ -1187,7 +1182,7 @@
     )
   (set! (-> this penetrated-flinch) (-> arg0 penetrate-flinch))
   (set! (-> this penetrated-knocked) (-> arg0 penetrate-knocked))
-  (set! (-> this reaction-time) (the-as time-frame (get-rand-int-range this 30 180)))
+  (set! (-> this reaction-time) (the-as time-frame (rnd-int-range this 30 180)))
   (let* ((v1-79 (-> this enemy-flags))
          (a0-28 (-> this fact enemy-options))
          (v1-80 (logior (enemy-flag
@@ -1276,13 +1271,13 @@
         (go-virtual view-anims)
         )
       ((logtest? (enemy-option dormant) v1-43)
-       (enemy-method-64 self)
+       (go-dormant self)
        )
       ((logtest? (enemy-flag alert) (-> self enemy-flags))
        (go-directed self)
        )
       ((logtest? (enemy-option dormant-aware) v1-43)
-       (enemy-method-65 self)
+       (go-dormant-aware self)
        )
       ((logtest? (enemy-option ambush) (-> self fact enemy-options))
        (go-ambush self)
@@ -1343,10 +1338,10 @@ This commonly includes things such as:
         (go (method-of-object this view-anims))
         )
       ((logtest? (enemy-option dormant) v1-28)
-       (enemy-method-64 this)
+       (go-dormant this)
        )
       ((logtest? (enemy-option dormant-aware) v1-28)
-       (enemy-method-65 this)
+       (go-dormant-aware this)
        )
       (else
         (go-idle this)
@@ -1754,12 +1749,12 @@ This commonly includes things such as:
                  (not (logtest? (-> this focus-status) (focus-status grabbed)))
                  )
             (let* ((s1-0 this)
-                   (s0-0 (method-of-object s1-0 enemy-method-106))
+                   (s0-0 (method-of-object s1-0 set-incoming-attack-info))
                    )
               (set! sv-432 arg0)
               (set! sv-448 arg3)
               (let ((a3-3 (get-penetrate-using-from-attack-event (the-as process-drawable arg0) arg3)))
-                (s0-0 s1-0 sv-432 sv-448 (the-as int a3-3) (the-as attack-info s2-0))
+                (s0-0 s1-0 sv-432 sv-448 a3-3 (the-as attack-info s2-0))
                 )
               )
             (send-event (ppointer->process (-> this parent)) 'child-hit)
@@ -1767,14 +1762,14 @@ This commonly includes things such as:
             (if (not *debug-unkillable*)
                 (take-damage-from-attack this arg0 arg3)
                 )
-            (let ((s2-1 (the-as attack-info (enemy-method-58 this arg0 arg3))))
+            (let ((s2-1 (enemy-method-58 this arg0 arg3)))
               (when s2-1
                 (logclear! (-> this enemy-flags) (enemy-flag called-dying))
                 (enemy-method-108 this (the-as enemy arg0) arg3)
                 (let ((a1-13 (new 'stack-no-clear 'event-message-block)))
                   (set! (-> a1-13 from) (process->ppointer arg0))
                   (set! (-> a1-13 num-params) arg1)
-                  (set! (-> a1-13 message) (the-as symbol s2-1))
+                  (set! (-> a1-13 message) s2-1)
                   (set! (-> a1-13 param 0) (-> arg3 param 0))
                   (set! (-> a1-13 param 1) (-> arg3 param 1))
                   (set! (-> a1-13 param 2) (-> arg3 param 2))
@@ -2031,7 +2026,7 @@ This commonly includes things such as:
   (let ((v1-0 (the-as attack-info (-> arg1 param 1))))
     (if (logtest? (attack-mask damage) (-> v1-0 mask))
         (the int (-> v1-0 damage))
-        (penetrate-using->damage (the-as penetrate (-> this incoming penetrate-using)))
+        (penetrate-using->damage (-> this incoming penetrate-using))
         )
     )
   )
@@ -2040,10 +2035,10 @@ This commonly includes things such as:
 (defmethod enemy-method-58 ((this enemy) (arg0 process) (arg1 event-message-block))
   (let ((v1-0 (-> this incoming penetrate-using)))
     (cond
-      ((logtest? (the-as penetrate v1-0) (-> this penetrated-flinch))
+      ((logtest? v1-0 (-> this penetrated-flinch))
        'hit-flinch
        )
-      ((logtest? (the-as penetrate v1-0) (-> this penetrated-knocked))
+      ((logtest? v1-0 (-> this penetrated-knocked))
        'hit-knocked
        )
       (else
@@ -2081,7 +2076,7 @@ This commonly includes things such as:
   )
 
 ;; definition for method 134 of type enemy
-(defmethod enemy-method-134 ((this enemy) (arg0 process) (arg1 attack-info))
+(defmethod get-attacker ((this enemy) (arg0 process) (arg1 attack-info))
   (find-offending-process-focusable arg0 arg1)
   )
 
@@ -2180,7 +2175,7 @@ This commonly includes things such as:
 ;; definition for function enemy-simple-post
 ;; WARN: Return type mismatch int vs none.
 (defbehavior enemy-simple-post enemy ()
-  (track-target! self)
+  (common-post self)
   (update-transforms (-> self root))
   0
   (none)
@@ -2211,7 +2206,7 @@ This commonly includes things such as:
       )
     )
   (enemy-method-111 self)
-  (track-target! self)
+  (common-post self)
   (none)
   )
 
@@ -2249,7 +2244,7 @@ This commonly includes things such as:
       (move-to-point! gp-0 s5-1)
       )
     )
-  (track-target! self)
+  (common-post self)
   0
   (none)
   )
@@ -2450,7 +2445,7 @@ This commonly includes things such as:
     )
   :code (behavior ()
     (ja-channel-push! 1 (seconds 0.075))
-    (let ((f30-0 (get-rand-float-range self 0.8 1.2))
+    (let ((f30-0 (rnd-float-range self 0.8 1.2))
           (gp-0 (new 'stack-no-clear 'vector))
           )
       (ja-no-eval :group! (-> self draw art-group data (-> self enemy-info notice-anim))
@@ -2509,7 +2504,7 @@ This commonly includes things such as:
     (ja-channel-push! 1 (seconds 0.2))
     (ja :group! (-> self draw art-group data (-> self enemy-info hostile-anim)))
     (ja :num-func num-func-identity :frame-num 0.0)
-    (let ((f30-0 (get-rand-float-range self 0.9 1.1)))
+    (let ((f30-0 (rnd-float-range self 0.9 1.1)))
       (until #f
         (suspend)
         (ja :num! (loop! f30-0))
@@ -2548,7 +2543,7 @@ This commonly includes things such as:
     )
   :code (behavior ()
     (ja-channel-push! 1 (seconds 0.1))
-    (let ((f30-0 (get-rand-float-range self 0.9 1.1))
+    (let ((f30-0 (rnd-float-range self 0.9 1.1))
           (gp-0 (-> self draw art-group data (-> self enemy-info idle-anim)))
           )
       (until #f
@@ -2574,7 +2569,7 @@ This commonly includes things such as:
     )
   :code (behavior ()
     (ja-channel-push! 1 (seconds 0.075))
-    (let ((f30-0 (get-rand-float-range self 0.8 1.2)))
+    (let ((f30-0 (rnd-float-range self 0.8 1.2)))
       (ja-no-eval :group! (-> self draw art-group data (-> self enemy-info victory-anim))
                   :num! (seek! max f30-0)
                   :frame-num 0.0
@@ -2610,7 +2605,7 @@ This commonly includes things such as:
     (ja-channel-push! 1 (seconds 0.2))
     (ja :group! (-> self draw art-group data (-> self enemy-info hostile-anim)))
     (ja :num-func num-func-identity :frame-num 0.0)
-    (let ((f30-0 (get-rand-float-range self 0.9 1.1)))
+    (let ((f30-0 (rnd-float-range self 0.9 1.1)))
       (until #f
         (suspend)
         (ja :num! (loop! f30-0))
@@ -2630,8 +2625,8 @@ This commonly includes things such as:
 ;; definition for method 83 of type enemy
 ;; INFO: Used lq/sq
 (defmethod enemy-method-83 ((this enemy) (arg0 enemy-jump-info))
-  (set! (-> arg0 flags) (the-as uint 1))
-  (set! (-> arg0 anim-speed) (get-rand-float-range this 0.9 1.1))
+  (set! (-> arg0 flags) (enemy-jump-flags enjflag-0))
+  (set! (-> arg0 anim-speed) (rnd-float-range this 0.9 1.1))
   (set! (-> arg0 hang-time) 0)
   (set! (-> arg0 dest-pos quad) (-> this event-param-point quad))
   (set! (-> arg0 start-pos quad) (-> this root trans quad))
@@ -2688,9 +2683,8 @@ This commonly includes things such as:
 
 ;; definition for method 92 of type enemy
 ;; WARN: Return type mismatch int vs none.
-(defmethod enemy-method-92 ((this enemy) (arg0 int) (arg1 nav-poly))
-  "TODO - nav-poly is a guess
-@abstract"
+(defmethod enemy-method-92 ((this enemy) (arg0 int) (arg1 enemy-jump-info))
+  "@abstract"
   0
   (none)
   )
@@ -2870,13 +2864,13 @@ This commonly includes things such as:
                  )
             (go-virtual jump-blocked)
             )
-        (when (logtest? (-> gp-0 flags) 1)
+        (when (logtest? (-> gp-0 flags) (enemy-jump-flags enjflag-0))
           (until #f
             (if (enemy-method-90 self s5-0 gp-0)
                 (goto cfg-12)
                 )
             (enemy-method-91 self s5-0 gp-0)
-            (enemy-method-92 self s5-0 (the-as nav-poly gp-0))
+            (enemy-method-92 self s5-0 gp-0)
             (suspend)
             (set! s5-0 1)
             )
@@ -2891,7 +2885,7 @@ This commonly includes things such as:
           (+! (-> gp-0 hang-time) (- (current-time) (-> self clock old-frame-counter)))
           (enemy-method-90 self s5-1 gp-0)
           (enemy-method-91 self s5-1 gp-0)
-          (enemy-method-92 self s5-1 (the-as nav-poly gp-0))
+          (enemy-method-92 self s5-1 gp-0)
           (suspend)
           (set! s5-1 3)
           )
@@ -2904,7 +2898,7 @@ This commonly includes things such as:
               (goto cfg-19)
               )
           (enemy-method-91 self s5-2 gp-0)
-          (enemy-method-92 self s5-2 (the-as nav-poly gp-0))
+          (enemy-method-92 self s5-2 gp-0)
           (suspend)
           (set! s5-2 5)
           )
@@ -2959,7 +2953,7 @@ This commonly includes things such as:
             )
         )
       )
-    (let ((f30-0 (get-rand-float-range self 0.75 1.25)))
+    (let ((f30-0 (rnd-float-range self 0.75 1.25)))
       (until #f
         (suspend)
         (ja :num! (loop! f30-0))
@@ -2982,7 +2976,7 @@ This commonly includes things such as:
   :code (behavior ()
     (local-vars (v1-37 enemy-flag) (v1-45 enemy-flag))
     (ja-channel-push! 1 (seconds 0.2))
-    (let ((f30-0 (get-rand-float-range self 0.9 1.1)))
+    (let ((f30-0 (rnd-float-range self 0.9 1.1)))
       (ja-no-eval :group! (-> self draw art-group data (-> self enemy-info hit-anim))
                   :num! (seek! max f30-0)
                   :frame-num 0.0
@@ -3123,19 +3117,19 @@ This commonly includes things such as:
   (let ((s5-0 (-> this enemy-info)))
     (case (-> this incoming knocked-type)
       (((knocked-type knocked-type-2))
-       (let ((f30-0 (get-rand-float-range this 0.0 1.0)))
+       (let ((f30-0 (rnd-float-range this 0.0 1.0)))
          (vector-float*! arg0 arg0 (lerp (-> s5-0 knocked-hard-vxz-lo) (-> s5-0 knocked-hard-vxz-hi) f30-0))
          (set! (-> arg0 y) (lerp (-> s5-0 knocked-hard-vy-lo) (-> s5-0 knocked-hard-vy-hi) f30-0))
          )
        )
       (((knocked-type knocked-type-1))
-       (let ((f30-1 (get-rand-float-range this 0.0 1.0)))
+       (let ((f30-1 (rnd-float-range this 0.0 1.0)))
          (vector-float*! arg0 arg0 (lerp (-> s5-0 knocked-medium-vxz-lo) (-> s5-0 knocked-medium-vxz-hi) f30-1))
          (set! (-> arg0 y) (lerp (-> s5-0 knocked-medium-vy-lo) (-> s5-0 knocked-medium-vy-hi) f30-1))
          )
        )
       (((knocked-type knocked-type-3))
-       (let ((f30-2 (get-rand-float-range this 0.0 1.0)))
+       (let ((f30-2 (rnd-float-range this 0.0 1.0)))
          (vector-float*! arg0 arg0 (lerp (-> s5-0 knocked-huge-vxz-lo) (-> s5-0 knocked-huge-vxz-hi) f30-2))
          (set! (-> arg0 y) (lerp (-> s5-0 knocked-huge-vy-lo) (-> s5-0 knocked-huge-vy-hi) f30-2))
          )
@@ -3149,7 +3143,7 @@ This commonly includes things such as:
              (vector-negate! arg0 arg0)
              )
          )
-       (let ((f30-3 (get-rand-float-range this 0.0 1.0)))
+       (let ((f30-3 (rnd-float-range this 0.0 1.0)))
          (vector-float*! arg0 arg0 (lerp (-> s5-0 knocked-yellow-vxz-lo) (-> s5-0 knocked-yellow-vxz-hi) f30-3))
          (set! (-> arg0 y) (lerp (-> s5-0 knocked-yellow-vy-lo) (-> s5-0 knocked-yellow-vy-hi) f30-3))
          )
@@ -3160,7 +3154,7 @@ This commonly includes things such as:
               (f2-0 61440.0)
               (f1-3 (fmin f1-2 (* f2-0 f2-0)))
               (f2-3 61440.0)
-              (f30-5 (* (- f0-26 (/ f1-3 (* f2-3 f2-3))) (get-rand-float-range this 0.8 1.0)))
+              (f30-5 (* (- f0-26 (/ f1-3 (* f2-3 f2-3))) (rnd-float-range this 0.8 1.0)))
               )
          (vector-float*! arg0 arg0 (lerp (-> s5-0 knocked-red-vxz-lo) (-> s5-0 knocked-red-vxz-hi) f30-5))
          (set! (-> arg0 y) (lerp (-> s5-0 knocked-red-vy-lo) (-> s5-0 knocked-red-vy-hi) f30-5))
@@ -3172,7 +3166,7 @@ This commonly includes things such as:
               (f2-6 122880.0)
               (f1-6 (fmin f1-5 (* f2-6 f2-6)))
               (f2-9 122880.0)
-              (f30-7 (* (- f0-34 (/ f1-6 (* f2-9 f2-9))) (get-rand-float-range this 0.8 1.0)))
+              (f30-7 (* (- f0-34 (/ f1-6 (* f2-9 f2-9))) (rnd-float-range this 0.8 1.0)))
               )
          (vector-float*! arg0 arg0 (lerp (-> s5-0 knocked-blue-vxz-lo) (-> s5-0 knocked-blue-vxz-hi) f30-7))
          (cond
@@ -3180,7 +3174,7 @@ This commonly includes things such as:
             (set! (-> arg0 y) (lerp (-> s5-0 knocked-blue-vy-lo) (-> s5-0 knocked-blue-vy-hi) f30-7))
             )
            (else
-             (if (zero? (get-rand-int this 3))
+             (if (zero? (rnd-int-count this 3))
                  (set! (-> arg0 y) 40960.0)
                  )
              )
@@ -3191,7 +3185,7 @@ This commonly includes things such as:
        (set! (-> arg0 quad) (-> this incoming attack-direction quad))
        )
       (else
-        (let ((f30-8 (get-rand-float-range this 0.0 1.0)))
+        (let ((f30-8 (rnd-float-range this 0.0 1.0)))
           (vector-float*! arg0 arg0 (lerp (-> s5-0 knocked-soft-vxz-lo) (-> s5-0 knocked-soft-vxz-hi) f30-8))
           (set! (-> arg0 y) (lerp (-> s5-0 knocked-soft-vy-lo) (-> s5-0 knocked-soft-vy-hi) f30-8))
           )
@@ -3251,14 +3245,14 @@ This commonly includes things such as:
   )
 
 ;; definition for method 77 of type enemy
-(defmethod enemy-method-77 ((this enemy) (arg0 (pointer float)))
+(defmethod enemy-method-77 ((this enemy) (arg0 enemy-knocked-info))
   (ja-channel-push! 1 0)
   (let ((a1-2 (-> this draw art-group data (-> this enemy-info knocked-anim)))
         (a0-4 (-> this skel root-channel 0))
         )
     (set! (-> a0-4 frame-group) (the-as art-joint-anim a1-2))
     (set! (-> a0-4 param 0) (the float (+ (-> (the-as art-joint-anim a1-2) frames num-frames) -1)))
-    (set! (-> a0-4 param 1) (-> arg0 0))
+    (set! (-> a0-4 param 1) (-> arg0 anim-speed))
     (set! (-> a0-4 frame-num) 0.0)
     (joint-control-channel-group! a0-4 (the-as art-joint-anim a1-2) num-func-seek!)
     )
@@ -3266,13 +3260,13 @@ This commonly includes things such as:
   )
 
 ;; definition for method 78 of type enemy
-(defmethod enemy-method-78 ((this enemy) (arg0 (pointer float)))
+(defmethod enemy-method-78 ((this enemy) (arg0 enemy-knocked-info))
   (let ((v1-4 (-> this draw art-group data (-> this enemy-info knocked-land-anim)))
         (a0-3 (-> this skel root-channel 0))
         )
     (set! (-> a0-3 frame-group) (the-as art-joint-anim v1-4))
     (set! (-> a0-3 param 0) (the float (+ (-> (the-as art-joint-anim v1-4) frames num-frames) -1)))
-    (set! (-> a0-3 param 1) (-> arg0 0))
+    (set! (-> a0-3 param 1) (-> arg0 anim-speed))
     (set! (-> a0-3 frame-num) 0.0)
     (joint-control-channel-group! a0-3 (the-as art-joint-anim v1-4) num-func-seek!)
     )
@@ -3319,7 +3313,7 @@ This commonly includes things such as:
   (let ((v1-0 arg0))
     (cond
       ((zero? v1-0)
-       (enemy-method-77 this (the-as (pointer float) arg1))
+       (enemy-method-77 this arg1)
        (set! s5-0 #f)
        )
       ((= v1-0 1)
@@ -3331,7 +3325,7 @@ This commonly includes things such as:
          )
        )
       ((= v1-0 2)
-       (set! s5-0 (not (enemy-method-78 this (the-as (pointer float) arg1))))
+       (set! s5-0 (not (enemy-method-78 this arg1)))
        (set! (-> this incoming blue-juggle-count) (the-as uint 0))
        )
       ((= v1-0 3)
@@ -3465,7 +3459,7 @@ This commonly includes things such as:
   :code (behavior ()
     (let ((gp-0 (new 'stack-no-clear 'enemy-knocked-info)))
       (let ((s5-0 0))
-        (set! (-> gp-0 anim-speed) (get-rand-float-range self 0.9 1.1))
+        (set! (-> gp-0 anim-speed) (rnd-float-range self 0.9 1.1))
         (set! (-> gp-0 on-surface-count) 0)
         (set! (-> gp-0 move-count) 0)
         (until (enemy-method-80 self gp-0)
@@ -3604,7 +3598,7 @@ This commonly includes things such as:
     )
   :code (behavior ()
     (ja-channel-push! 1 (seconds 0.075))
-    (let ((f30-0 (get-rand-float-range self 0.8 1.2)))
+    (let ((f30-0 (rnd-float-range self 0.8 1.2)))
       (ja-no-eval :group! (-> self draw art-group data (-> self enemy-info die-anim))
                   :num! (seek! max f30-0)
                   :frame-num 0.0
@@ -3673,7 +3667,7 @@ This commonly includes things such as:
                                                  )
                     )
                 )
-          (f30-0 (get-rand-float-range self 0.8 1.2))
+          (f30-0 (rnd-float-range self 0.8 1.2))
           )
       (ja-no-eval :group! gp-0 :num! (seek! max f30-0) :frame-num 0.0)
       (until (ja-done? 0)

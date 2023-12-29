@@ -427,7 +427,7 @@
   )
 
 ;; WARN: Using new Jak 2 rtype-of
-(defmethod enemy-method-77 ((this spyder) (arg0 (pointer float)))
+(defmethod enemy-method-77 ((this spyder) (arg0 enemy-knocked-info))
   (case (-> this incoming knocked-type)
     (((knocked-type knocked-type-4))
      (let ((a0-2 (-> this skel root-channel 0)))
@@ -435,7 +435,7 @@
        (set! (-> a0-2 param 0)
              (the float (+ (-> (the-as art-joint-anim (-> this draw art-group data 15)) frames num-frames) -1))
              )
-       (set! (-> a0-2 param 1) (-> arg0 0))
+       (set! (-> a0-2 param 1) (-> arg0 anim-speed))
        (set! (-> a0-2 frame-num) 0.0)
        (joint-control-channel-group! a0-2 (the-as art-joint-anim (-> this draw art-group data 15)) num-func-seek!)
        )
@@ -447,7 +447,7 @@
             (s5-0 (new 'static 'array uint64 3 #x11 #x12 #x13))
             (s4-0 (new 'static 'array int32 4 0 0 0 0))
             (a2-1 (ash 1 (-> s4-0 0)))
-            (v1-20 (enemy-method-120 this a1-4 a2-1))
+            (v1-20 (rnd-bit this a1-4 a2-1))
             (s5-1 (-> this draw art-group data (-> (the-as (pointer int32) (+ (* v1-20 8) (the-as int s5-0))))))
             )
        (set! (-> s4-0 0) v1-20)
@@ -479,7 +479,7 @@
           (set! (-> a0-20 param 0)
                 (the float (+ (-> (the-as art-joint-anim (-> this draw art-group data 13)) frames num-frames) -1))
                 )
-          (set! (-> a0-20 param 1) (-> arg0 0))
+          (set! (-> a0-20 param 1) (-> arg0 anim-speed))
           (set! (-> a0-20 frame-num) 0.0)
           (joint-control-channel-group! a0-20 (the-as art-joint-anim (-> this draw art-group data 13)) num-func-seek!)
           )
@@ -496,7 +496,7 @@
     )
   )
 
-(defmethod enemy-method-78 ((this spyder) (arg0 (pointer float)))
+(defmethod enemy-method-78 ((this spyder) (arg0 enemy-knocked-info))
   (case (-> this incoming knocked-type)
     (((knocked-type knocked-type-4))
      (cond
@@ -659,7 +659,7 @@
   (none)
   )
 
-(defmethod track-target! ((this spyder))
+(defmethod common-post ((this spyder))
   "Does a lot of various things relating to interacting with the target
 - tracks when the enemy was last drawn
 - looks at the target and handles attacking
@@ -669,7 +669,7 @@
   (update-trans! (-> this sound) (-> this root trans))
   (update! (-> this sound))
   (spyder-method-182 this)
-  (let ((t9-6 (method-of-type nav-enemy track-target!)))
+  (let ((t9-6 (method-of-type nav-enemy common-post)))
     (t9-6 this)
     )
   (logclear! (-> this status-flags) (spyder-flags spflags-0))

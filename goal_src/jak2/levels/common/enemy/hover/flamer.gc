@@ -548,14 +548,14 @@
     )
   )
 
-(defmethod track-target! ((this flamer))
+(defmethod common-post ((this flamer))
   "Does a lot of various things relating to interacting with the target
 - tracks when the enemy was last drawn
 - looks at the target and handles attacking
 @TODO Not extremely well understood yet"
   (update-vol! (-> this sound) (-> this sound-volume))
   (flamer-method-191 this)
-  ((method-of-type nav-enemy track-target!) this)
+  ((method-of-type nav-enemy common-post) this)
   (none)
   )
 
@@ -678,7 +678,7 @@
       ((zero? v1-0)
        (let ((a1-1 (new 'stack-no-clear 'collide-query)))
          (cond
-           ((enemy-method-125 this a1-1 (collide-spec backgnd) 8192.0 26624.0 1024.0)
+           ((ground-pat-set! this a1-1 (collide-spec backgnd) 8192.0 26624.0 1024.0)
             (set! (-> this base-pos y) (+ 22528.0 (-> this root gspot-pos y)))
             )
            (else
@@ -1155,7 +1155,7 @@
 
 ;; WARN: Return type mismatch object vs symbol.
 ;; WARN: Using new Jak 2 rtype-of
-(defmethod enemy-method-77 ((this flamer) (arg0 (pointer float)))
+(defmethod enemy-method-77 ((this flamer) (arg0 enemy-knocked-info))
   (let ((v1-0 (-> this incoming knocked-type)))
     (the-as
       symbol
@@ -1166,7 +1166,7 @@
                 (s4-0 (new 'static 'array uint64 3 #x12 #x13 #x14))
                 (s3-0 (new 'static 'array int32 4 0 0 0 0))
                 (a2-0 (ash 1 (-> s3-0 0)))
-                (v1-6 (enemy-method-120 this a1-3 a2-0))
+                (v1-6 (rnd-bit this a1-3 a2-0))
                 (s4-1 (-> this draw art-group data (-> (the-as (pointer int32) (+ (* v1-6 8) (the-as int s4-0))))))
                 )
            (set! (-> s3-0 0) v1-6)
@@ -1183,7 +1183,7 @@
            (let ((a0-17 (-> this skel root-channel 0)))
              (set! (-> a0-17 frame-group) (the-as art-joint-anim s4-1))
              (set! (-> a0-17 param 0) (the float (+ (-> (the-as art-joint-anim s4-1) frames num-frames) -1)))
-             (set! (-> a0-17 param 1) (-> arg0 0))
+             (set! (-> a0-17 param 1) (-> arg0 anim-speed))
              (set! (-> a0-17 frame-num) 0.0)
              (joint-control-channel-group! a0-17 (the-as art-joint-anim s4-1) num-func-seek!)
              )
@@ -1196,7 +1196,7 @@
                 )
             (set! (-> a0-21 frame-group) (the-as art-joint-anim a1-10))
             (set! (-> a0-21 param 0) (the float (+ (-> (the-as art-joint-anim a1-10) frames num-frames) -1)))
-            (set! (-> a0-21 param 1) (-> arg0 0))
+            (set! (-> a0-21 param 1) (-> arg0 anim-speed))
             (set! (-> a0-21 frame-num) 0.0)
             (joint-control-channel-group! a0-21 (the-as art-joint-anim a1-10) num-func-seek!)
             )
@@ -1410,7 +1410,7 @@
   (set! (-> this scale) 1.6)
   (flamer-method-186 this 1.0)
   (logclear! (-> this nav flags) (nav-control-flag limit-rotation-rate))
-  (set! (-> this sync-off) (the-as uint (get-rand-int this 600)))
+  (set! (-> this sync-off) (the-as uint (rnd-int-count this 600)))
   (set! (-> this flit-angle) 0.0)
   (set! (-> this flit-timer) 0)
   (set! (-> this root dynam gravity y) 225280.0)

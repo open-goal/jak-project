@@ -524,7 +524,7 @@
                 )
              (vector-negate! gp-1 gp-1)
              )
-         (let ((f30-1 (get-rand-float-range this 0.0 1.0))
+         (let ((f30-1 (rnd-float-range this 0.0 1.0))
                (s5-1 (-> this enemy-info))
                )
            (vector-float*! gp-1 gp-1 (lerp (-> s5-1 knocked-hard-vxz-lo) (-> s5-1 knocked-hard-vxz-hi) f30-1))
@@ -580,13 +580,13 @@
   )
 
 ;; definition for method 55 of type wasp
-(defmethod track-target! ((this wasp))
+(defmethod common-post ((this wasp))
   "Does a lot of various things relating to interacting with the target
 - tracks when the enemy was last drawn
 - looks at the target and handles attacking
 @TODO Not extremely well understood yet"
   (seek! (-> this gun-x-angle) (-> this gun-x-angle-final) (* 21845.334 (seconds-per-frame)))
-  ((method-of-type hover-enemy track-target!) this)
+  ((method-of-type hover-enemy common-post) this)
   (none)
   )
 
@@ -1152,9 +1152,9 @@
   )
 
 ;; definition for method 77 of type wasp
-(defmethod enemy-method-77 ((this wasp) (arg0 (pointer float)))
+(defmethod enemy-method-77 ((this wasp) (arg0 enemy-knocked-info))
   (cond
-    ((rng-hit? this 0.5)
+    ((rnd-percent? this 0.5)
      (set! (-> this knocked-anim) 10)
      (set! (-> this knocked-recover-anim) 11)
      )
@@ -1169,7 +1169,7 @@
         )
     (set! (-> a0-5 frame-group) (the-as art-joint-anim a1-3))
     (set! (-> a0-5 param 0) (the float (+ (-> (the-as art-joint-anim a1-3) frames num-frames) -1)))
-    (set! (-> a0-5 param 1) (-> arg0 0))
+    (set! (-> a0-5 param 1) (-> arg0 anim-speed))
     (set! (-> a0-5 frame-num) 0.0)
     (joint-control-channel-group! a0-5 (the-as art-joint-anim a1-3) num-func-seek!)
     )
@@ -1177,13 +1177,13 @@
   )
 
 ;; definition for method 78 of type wasp
-(defmethod enemy-method-78 ((this wasp) (arg0 (pointer float)))
+(defmethod enemy-method-78 ((this wasp) (arg0 enemy-knocked-info))
   (let ((v1-4 (-> this draw art-group data (-> this enemy-info knocked-land-anim)))
         (a0-3 (-> this skel root-channel 0))
         )
     (set! (-> a0-3 frame-group) (the-as art-joint-anim v1-4))
     (set! (-> a0-3 param 0) (the float (+ (-> (the-as art-joint-anim v1-4) frames num-frames) -1)))
-    (set! (-> a0-3 param 1) (-> arg0 0))
+    (set! (-> a0-3 param 1) (-> arg0 anim-speed))
     (set! (-> a0-3 frame-num) 0.0)
     (joint-control-channel-group! a0-3 (the-as art-joint-anim v1-4) num-func-seek!)
     )
@@ -1549,7 +1549,7 @@
   (set! (-> this neck up) (the-as uint 1))
   (set! (-> this neck nose) (the-as uint 2))
   (set! (-> this neck ear) (the-as uint 0))
-  (set! (-> this scale) (get-rand-float-range this 0.9 1.3))
+  (set! (-> this scale) (rnd-float-range this 0.9 1.3))
   (set! (-> this sound-id) (new-sound-id))
   (set! (-> this root dynam gravity y) 327680.0)
   (set! (-> this root dynam gravity-length) 327680.0)

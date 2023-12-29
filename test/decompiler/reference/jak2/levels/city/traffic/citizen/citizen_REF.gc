@@ -384,7 +384,7 @@
 ;; definition for method 55 of type citizen
 ;; INFO: Used lq/sq
 ;; WARN: Return type mismatch int vs none.
-(defmethod track-target! ((this citizen))
+(defmethod common-post ((this citizen))
   "Does a lot of various things relating to interacting with the target
 - tracks when the enemy was last drawn
 - looks at the target and handles attacking
@@ -407,9 +407,9 @@
         )
       (when (< (-> this stop-time-look-at) (current-time))
         (shut-down (-> this neck))
-        (set! (-> this next-time-look-at) (+ (current-time) (the int (* 300.0 (get-rand-float-range this 0.0 20.0)))))
+        (set! (-> this next-time-look-at) (+ (current-time) (the int (* 300.0 (rnd-float-range this 0.0 20.0)))))
         (set! (-> this stop-time-look-at)
-              (+ (-> this next-time-look-at) (the int (* 300.0 (get-rand-float-range this 5.0 10.0))))
+              (+ (-> this next-time-look-at) (the int (* 300.0 (rnd-float-range this 5.0 10.0))))
               )
         )
       )
@@ -646,7 +646,7 @@
         )
       )
     )
-  (track-target! this)
+  (common-post this)
   (update-transforms (-> this root))
   0
   (none)
@@ -668,7 +668,7 @@
   (let ((t9-0 (method-of-type nav-enemy init-enemy-behaviour-and-stats!)))
     (t9-0 this arg0)
     )
-  (set! (-> this speed-scale) (get-rand-float-range this 0.9 1.1))
+  (set! (-> this speed-scale) (rnd-float-range this 0.9 1.1))
   (logclear! (-> this mask) (process-mask actor-pause))
   (logclear! (-> this enemy-flags) (enemy-flag notice))
   (vehicle-controller-method-9 (-> this controller))
@@ -1316,7 +1316,12 @@ This commonly includes things such as:
         (vector-normalize! s5-1 32768.0)
         (set! (-> s5-1 y) 71680.0)
         (vector+! s5-1 s5-1 (-> (the-as vehicle s4-0) root transv))
-        (send-event this 'attack #f (static-attack-info ((id (new-attack-id)) (vector s5-1) (knock (the-as uint 7)))))
+        (send-event
+          this
+          'attack
+          #f
+          (static-attack-info ((id (new-attack-id)) (vector s5-1) (knock (knocked-type knocked-type-7))))
+          )
         )
       )
     )
@@ -1339,7 +1344,7 @@ This commonly includes things such as:
       (set! (-> v1-5 enemy-flags) (the-as enemy-flag (logclear (-> v1-5 enemy-flags) (enemy-flag enemy-flag37))))
       )
     0
-    (set! (-> self wait-time) (the-as time-frame (get-rand-int-range self 300 1500)))
+    (set! (-> self wait-time) (the-as time-frame (rnd-int-range self 300 1500)))
     (if (= (-> self water-anim) -1)
         (go-inactive self)
         )
@@ -1476,7 +1481,7 @@ This commonly includes things such as:
       (set! (-> v1-16 target-speed) (* (-> self speed-scale) (-> self speed-walk)))
       )
     0
-    (set! (-> self wait-time) (the-as time-frame (get-rand-int-range self 1200 9000)))
+    (set! (-> self wait-time) (the-as time-frame (rnd-int-range self 1200 9000)))
     (when (zero? (-> self controller branch))
       (format 0 "citizen has no branch in active enter state~%")
       (citizen-method-195 self (vector-z-quaternion! (new 'stack-no-clear 'vector) (-> self root quat)))
@@ -1499,7 +1504,7 @@ This commonly includes things such as:
       0
       (when (= (-> self nav state speed) 0.0)
         (set! (-> self wait-return-state) (the-as (state citizen) (-> self state)))
-        (set! (-> self wait-time) (the-as time-frame (get-rand-int-range self 300 1500)))
+        (set! (-> self wait-time) (the-as time-frame (rnd-int-range self 300 1500)))
         (go-virtual wait)
         )
       )

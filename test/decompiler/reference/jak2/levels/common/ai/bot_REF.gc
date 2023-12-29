@@ -139,7 +139,7 @@
   (let ((gp-0 #f))
     (let ((v1-0 (-> this incoming penetrate-using)))
       (cond
-        ((logtest? #x800000 v1-0)
+        ((logtest? (penetrate jak-red-shot) v1-0)
          (when *target*
            (let ((s5-0 (new 'stack-no-clear 'vector))
                  (s3-0 (-> *target* gun fire-dir-out))
@@ -157,7 +157,7 @@
              )
            )
          )
-        ((and (logtest? #x10000 v1-0) (not (logtest? #x20000 v1-0)))
+        ((and (logtest? (penetrate dark-skin) v1-0) (not (logtest? (penetrate dark-punch) v1-0)))
          (set! gp-0 #t)
          )
         )
@@ -303,8 +303,8 @@
 
 ;; definition for method 106 of type bot
 ;; WARN: Return type mismatch int vs none.
-(defmethod enemy-method-106 ((this bot) (arg0 process) (arg1 object) (arg2 int) (arg3 attack-info))
-  (let ((t9-0 (method-of-type nav-enemy enemy-method-106)))
+(defmethod set-incoming-attack-info ((this bot) (arg0 process) (arg1 object) (arg2 penetrate) (arg3 attack-info))
+  (let ((t9-0 (method-of-type nav-enemy set-incoming-attack-info)))
     (t9-0 this arg0 arg1 arg2 arg3)
     )
   (logclear! (-> this bot-flags) (bot-flags bf03 bf04))
@@ -1114,7 +1114,7 @@ If the player is too far, play a warning speech."
             (if (and (>= (current-time) (-> this next-too-far-warn-time)) (play-too-far-warn-speech this))
                 (set! (-> this next-too-far-warn-time)
                       (+ (current-time)
-                         (get-rand-int-range this (the-as int (-> this warn-min-delay)) (the-as int (-> this warn-max-delay)))
+                         (rnd-int-range this (the-as int (-> this warn-min-delay)) (the-as int (-> this warn-max-delay)))
                          )
                       )
                 )
@@ -1137,14 +1137,14 @@ If the player is too far, play a warning speech."
   (set! (-> this started-warning-time) 0)
   (set! (-> this next-too-far-warn-time)
         (+ (current-time)
-           (get-rand-int-range this (the-as int (-> this warn-min-delay)) (the-as int (-> this warn-max-delay)))
+           (rnd-int-range this (the-as int (-> this warn-min-delay)) (the-as int (-> this warn-max-delay)))
            )
         )
   (none)
   )
 
 ;; definition for method 55 of type bot
-(defmethod track-target! ((this bot))
+(defmethod common-post ((this bot))
   "Does a lot of various things relating to interacting with the target
 - tracks when the enemy was last drawn
 - looks at the target and handles attacking
@@ -1177,7 +1177,7 @@ If the player is too far, play a warning speech."
         )
       )
     )
-  (let ((t9-4 (method-of-type nav-enemy track-target!)))
+  (let ((t9-4 (method-of-type nav-enemy common-post)))
     (t9-4 this)
     )
   (when (not (logtest? (-> this bot-flags) (bot-flags bf09)))

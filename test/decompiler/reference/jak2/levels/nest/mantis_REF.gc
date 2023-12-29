@@ -455,7 +455,7 @@
   :code (behavior ()
     (ja-channel-push! 1 (seconds 0.2))
     (until #f
-      (let ((gp-0 (get-rand-int-range self 3 5)))
+      (let ((gp-0 (rnd-int-range self 3 5)))
         (dotimes (s5-0 gp-0)
           (ja-no-eval :group! mantis-idle0-ja :num! (seek!) :frame-num 0.0)
           (until (ja-done? 0)
@@ -469,7 +469,7 @@
         (suspend)
         (ja :num! (seek!))
         )
-      (let ((gp-1 (get-rand-int self 3)))
+      (let ((gp-1 (rnd-int-count self 3)))
         (dotimes (s5-1 gp-1)
           (ja-no-eval :group! mantis-idle1-ja :num! (seek!) :frame-num 0.0)
           (until (ja-done? 0)
@@ -575,12 +575,12 @@
       )
     (logior! (-> self draw status) (draw-control-status no-draw))
     (let ((gp-2 (current-time)))
-      (until (time-elapsed? gp-2 (the int (* 300.0 (get-rand-float-range self 0.0 0.6))))
+      (until (time-elapsed? gp-2 (the int (* 300.0 (rnd-float-range self 0.0 0.6))))
         (suspend)
         )
       )
     (logclear! (-> self draw status) (draw-control-status no-draw))
-    (if (rng-hit? self 0.5)
+    (if (rnd-percent? self 0.5)
         (go-virtual ambush-jumping)
         (go-virtual ambush-crawling)
         )
@@ -635,7 +635,7 @@
         (set! (-> v1-11 y) 0.0)
         )
       (vector-reset! (-> gp-0 transv))
-      (set! (-> gp-0 transv y) (* 4096.0 (get-rand-float-range self 28.0 32.0)))
+      (set! (-> gp-0 transv y) (* 4096.0 (rnd-float-range self 28.0 32.0)))
       )
     )
   :code (behavior ()
@@ -816,7 +816,7 @@
         (set! (-> v1-0 nav callback-info) *nav-enemy-null-callback-info*)
         )
       0
-      (dotimes (gp-0 (get-rand-int-range self 1 2))
+      (dotimes (gp-0 (rnd-int-range self 1 2))
         (ja-no-eval :group! mantis-idle0-ja :num! (seek!) :frame-num 0.0)
         (until (ja-done? 0)
           (suspend)
@@ -835,7 +835,7 @@
                    (s2-0 (new 'stack-no-clear 'vector))
                    (s3-0 (new 'stack-no-clear 'vector))
                    )
-              (let ((f30-1 (* 4096.0 (get-rand-float-range self 8.0 12.0)))
+              (let ((f30-1 (* 4096.0 (rnd-float-range self 8.0 12.0)))
                     (s1-0 (cloest-point-on-mesh (-> self nav) s5-0 s5-0 (the-as nav-poly #f)))
                     )
                 (vector-normalize-copy! s2-0 s4-1 1.0)
@@ -892,7 +892,7 @@
         (set! (-> v1-73 nav callback-info) (-> v1-73 enemy-info callback-info))
         )
       0
-      (dotimes (gp-2 (get-rand-int-range self 3 5))
+      (dotimes (gp-2 (rnd-int-range self 3 5))
         (ja-no-eval :group! mantis-run0-ja :num! (seek!) :frame-num 0.0)
         (until (ja-done? 0)
           (suspend)
@@ -1224,7 +1224,7 @@
                 )
             )
           )
-        (dotimes (gp-1 (get-rand-int-range self 2 4))
+        (dotimes (gp-1 (rnd-int-range self 2 4))
           (ja-no-eval :group! mantis-idle0-ja :num! (seek!) :frame-num 0.0)
           (until (ja-done? 0)
             (suspend)
@@ -1280,7 +1280,7 @@
                                                    )
                             )
                        )
-                  (zero? (get-rand-int this 3))
+                  (zero? (rnd-int-count this 3))
                   (let ((f0-0 (vector-vector-distance-squared (-> this root trans) (target-pos 0)))
                         (f1-0 32768.0)
                         )
@@ -1312,7 +1312,7 @@
   )
 
 ;; definition for method 77 of type mantis
-(defmethod enemy-method-77 ((this mantis) (arg0 (pointer float)))
+(defmethod enemy-method-77 ((this mantis) (arg0 enemy-knocked-info))
   (case (-> this incoming knocked-type)
     (((knocked-type knocked-type-6))
      (ja-channel-push! 1 (seconds 0.02))
@@ -1321,7 +1321,7 @@
        (set! (-> a0-3 param 0)
              (the float (+ (-> (the-as art-joint-anim (-> this draw art-group data 27)) frames num-frames) -1))
              )
-       (set! (-> a0-3 param 1) (-> arg0 0))
+       (set! (-> a0-3 param 1) (-> arg0 anim-speed))
        (set! (-> a0-3 frame-num) 0.0)
        (joint-control-channel-group! a0-3 (the-as art-joint-anim (-> this draw art-group data 27)) num-func-seek!)
        )
@@ -1334,7 +1334,7 @@
         (set! (-> a0-5 param 0)
               (the float (+ (-> (the-as art-joint-anim (-> this draw art-group data 10)) frames num-frames) -1))
               )
-        (set! (-> a0-5 param 1) (-> arg0 0))
+        (set! (-> a0-5 param 1) (-> arg0 anim-speed))
         (set! (-> a0-5 frame-num) 0.0)
         (joint-control-channel-group! a0-5 (the-as art-joint-anim (-> this draw art-group data 10)) num-func-seek!)
         )
@@ -1344,7 +1344,7 @@
   )
 
 ;; definition for method 78 of type mantis
-(defmethod enemy-method-78 ((this mantis) (arg0 (pointer float)))
+(defmethod enemy-method-78 ((this mantis) (arg0 enemy-knocked-info))
   (cond
     ((zero? (-> this hit-points))
      (ja-channel-push! 1 (seconds 0.1))
@@ -1353,7 +1353,7 @@
        (set! (-> a0-2 param 0)
              (the float (+ (-> (the-as art-joint-anim (-> this draw art-group data 26)) frames num-frames) -1))
              )
-       (set! (-> a0-2 param 1) (-> arg0 0))
+       (set! (-> a0-2 param 1) (-> arg0 anim-speed))
        (set! (-> a0-2 frame-num) 0.0)
        (joint-control-channel-group! a0-2 (the-as art-joint-anim (-> this draw art-group data 26)) num-func-seek!)
        )
@@ -1367,7 +1367,7 @@
        (set! (-> a0-4 param 0)
              (the float (+ (-> (the-as art-joint-anim (-> this draw art-group data 28)) frames num-frames) -1))
              )
-       (set! (-> a0-4 param 1) (-> arg0 0))
+       (set! (-> a0-4 param 1) (-> arg0 anim-speed))
        (set! (-> a0-4 frame-num) 0.0)
        (joint-control-channel-group! a0-4 (the-as art-joint-anim (-> this draw art-group data 28)) num-func-seek!)
        )
@@ -1380,7 +1380,7 @@
         (set! (-> a0-6 param 0)
               (the float (+ (-> (the-as art-joint-anim (-> this draw art-group data 11)) frames num-frames) -1))
               )
-        (set! (-> a0-6 param 1) (-> arg0 0))
+        (set! (-> a0-6 param 1) (-> arg0 anim-speed))
         (set! (-> a0-6 frame-num) 0.0)
         (joint-control-channel-group! a0-6 (the-as art-joint-anim (-> this draw art-group data 11)) num-func-seek!)
         )
@@ -1392,7 +1392,7 @@
 ;; definition for method 125 of type mantis
 ;; INFO: Used lq/sq
 ;; WARN: Return type mismatch symbol vs pat-surface.
-(defmethod enemy-method-125 ((this mantis) (arg0 collide-query) (arg1 collide-spec) (arg2 float) (arg3 float) (arg4 float))
+(defmethod ground-pat-set! ((this mantis) (arg0 collide-query) (arg1 collide-spec) (arg2 float) (arg3 float) (arg4 float))
   (the-as
     pat-surface
     (when (find-ground (-> this root) arg0 arg1 arg2 arg3 arg4)
@@ -1501,13 +1501,13 @@
 ;; definition for method 55 of type mantis
 ;; INFO: Used lq/sq
 ;; WARN: Return type mismatch vector vs none.
-(defmethod track-target! ((this mantis))
+(defmethod common-post ((this mantis))
   "Does a lot of various things relating to interacting with the target
 - tracks when the enemy was last drawn
 - looks at the target and handles attacking
 @TODO Not extremely well understood yet"
   (local-vars (s5-0 vector))
-  (let ((t9-0 (method-of-type nav-enemy track-target!)))
+  (let ((t9-0 (method-of-type nav-enemy common-post)))
     (t9-0 this)
     )
   (logclear! (-> this flags) (mantis-flag tracked))
@@ -1671,10 +1671,8 @@
   (let ((s5-0 (-> this jump)))
     (vector-length arg1)
     (vector-normalize! arg1 1.0)
-    (vector-rotate-y! arg1 arg1 (* 182.04445 (get-rand-float-range this -45.0 45.0)))
-    (let ((a2-5
-            (vector-normalize-copy! (new 'stack-no-clear 'vector) arg1 (* 4096.0 (get-rand-float-range this -4.0 -6.0)))
-            )
+    (vector-rotate-y! arg1 arg1 (* 182.04445 (rnd-float-range this -45.0 45.0)))
+    (let ((a2-5 (vector-normalize-copy! (new 'stack-no-clear 'vector) arg1 (* 4096.0 (rnd-float-range this -4.0 -6.0))))
           )
       (when (mantis-method-189 this (-> s5-0 destination) a2-5)
         (set! (-> s5-0 direction) (the-as uint 1))
@@ -1695,9 +1693,9 @@
   (let ((s5-0 (-> this jump)))
     (vector-length arg1)
     (vector-normalize! arg1 1.0)
-    (vector-rotate-y! arg1 arg1 (* 182.04445 (get-rand-float-range this -45.0 45.0)))
+    (vector-rotate-y! arg1 arg1 (* 182.04445 (rnd-float-range this -45.0 45.0)))
     (let ((a2-5
-            (vector-normalize-copy! (new 'stack-no-clear 'vector) arg1 (* 4096.0 (get-rand-float-range this -15.0 -22.0)))
+            (vector-normalize-copy! (new 'stack-no-clear 'vector) arg1 (* 4096.0 (rnd-float-range this -15.0 -22.0)))
             )
           )
       (when (mantis-method-189 this (-> s5-0 destination) a2-5)
@@ -1816,14 +1814,13 @@
 
 ;; definition for method 92 of type mantis
 ;; WARN: Return type mismatch quaternion vs none.
-(defmethod enemy-method-92 ((this mantis) (arg0 int) (arg1 nav-poly))
-  "TODO - nav-poly is a guess
-@abstract"
+(defmethod enemy-method-92 ((this mantis) (arg0 int) (arg1 enemy-jump-info))
+  "@abstract"
   (let ((v1-0 arg0))
     (when (or (zero? v1-0) (= v1-0 1) (= v1-0 2) (= v1-0 3))
       (let ((a0-4 this))
         (when (logtest? (enemy-flag enemy-flag37) (-> a0-4 enemy-flags))
-          (let ((s5-1 (vector-! (new 'stack-no-clear 'vector) (-> arg1 vertex2) (-> this root trans))))
+          (let ((s5-1 (vector-! (new 'stack-no-clear 'vector) (-> arg1 dest-pos) (-> this root trans))))
             (vector-normalize! s5-1 1.0)
             (let ((v1-5 (-> this jump direction)))
               (cond

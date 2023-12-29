@@ -134,7 +134,7 @@
     charge
     )
   (:methods
-    (rhino-method-182 (_type_ process event-message-block) symbol)
+    (hit-stomach? (_type_ process event-message-block) symbol)
     )
   )
 
@@ -320,7 +320,7 @@
 
 (set! (-> *rhino-nav-enemy-info* fact-defaults) *fact-info-enemy-defaults*)
 
-(defmethod rhino-method-182 ((this rhino) (arg0 process) (arg1 event-message-block))
+(defmethod hit-stomach? ((this rhino) (arg0 process) (arg1 event-message-block))
   (let* ((gp-0 (-> arg1 param 0))
          (s5-0 arg0)
          (s2-0 (if (type? s5-0 process-drawable)
@@ -359,7 +359,7 @@
   (let ((t9-0 (method-of-type nav-enemy enemy-method-58)))
     (t9-0 this arg0 arg1)
     )
-  (if (rhino-method-182 this arg0 arg1)
+  (if (hit-stomach? this arg0 arg1)
       'hit
       'hit-flinch
       )
@@ -624,7 +624,7 @@
   :code (behavior ()
     (set! (-> self smush-target) (the-as smush-control #t))
     (ja-channel-push! 1 (seconds 0.075))
-    (let ((f30-0 (get-rand-float-range self 0.8 1.2))
+    (let ((f30-0 (rnd-float-range self 0.8 1.2))
           (gp-0 #t)
           )
       (ja-no-eval :group! (-> self draw art-group data (-> self enemy-info die-anim))
@@ -654,7 +654,7 @@
   :code (behavior ()
     (local-vars (v1-67 enemy-flag) (v1-75 enemy-flag))
     (ja-channel-push! 1 (seconds 0.2))
-    (let ((f30-0 (get-rand-float-range self 0.9 1.1)))
+    (let ((f30-0 (rnd-float-range self 0.9 1.1)))
       (ja-no-eval :group! (-> self draw art-group data (-> self enemy-info hit-anim))
                   :num! (seek! max f30-0)
                   :frame-num 0.0
@@ -708,21 +708,21 @@
 (defmethod damage-amount-from-attack ((this rhino) (arg0 process) (arg1 event-message-block))
   "@returns the amount of damage taken from an attack.  This can come straight off the [[attack-info]] or via [[penetrate-using->damage]]"
   (-> arg1 param 1)
-  (let ((f30-0 (the float (penetrate-using->damage (the-as penetrate (-> this incoming penetrate-using))))))
+  (let ((f30-0 (the float (penetrate-using->damage (-> this incoming penetrate-using)))))
     (cond
-      ((rhino-method-182 this arg0 arg1)
+      ((hit-stomach? this arg0 arg1)
        (set! (-> this stomach-touched-once?) #t)
        (the int (* 4.0 f30-0))
        )
-      ((logtest? #xc0000 (-> this incoming penetrate-using))
-       (if (and (logtest? #x40000 (-> this incoming penetrate-using))
-                (logtest? #x80000 (-> this incoming penetrate-using))
+      ((logtest? (penetrate dark-bomb dark-giant) (-> this incoming penetrate-using))
+       (if (and (logtest? (penetrate dark-bomb) (-> this incoming penetrate-using))
+                (logtest? (penetrate dark-giant) (-> this incoming penetrate-using))
                 )
            #x420c0000
            (the int (* 1.8 f30-0))
            )
        )
-      ((logtest? #x20000 (-> this incoming penetrate-using))
+      ((logtest? (penetrate dark-punch) (-> this incoming penetrate-using))
        (the int (* 2.0 f30-0))
        )
       (else
@@ -1138,7 +1138,7 @@
     (ja-channel-push! 1 (seconds 0.2))
     (ja :group! (-> self draw art-group data (-> self enemy-info hostile-anim)))
     (ja :num-func num-func-identity :frame-num 0.0)
-    (let ((f30-0 (get-rand-float-range self 0.9 1.1)))
+    (let ((f30-0 (rnd-float-range self 0.9 1.1)))
       (until #f
         (suspend)
         (ja :num! (loop! f30-0))
@@ -1504,8 +1504,8 @@
               (ja-channel-push! 1 (seconds 0.1))
               )
           )
-        (let ((s5-0 (get-rand-int self 8))
-              (f30-0 (get-rand-float-range self 0.9 1.1))
+        (let ((s5-0 (rnd-int-count self 8))
+              (f30-0 (rnd-float-range self 0.9 1.1))
               )
           (while (nonzero? s5-0)
             (+! s5-0 -1)
@@ -1533,7 +1533,7 @@
               (ja-channel-push! 1 (seconds 0.1))
               )
           )
-        (let ((f30-2 (get-rand-float-range self 0.9 1.1)))
+        (let ((f30-2 (rnd-float-range self 0.9 1.1)))
           (ja-no-eval :group! (-> self draw art-group data (-> self enemy-info victory-anim))
                       :num! (seek! max f30-2)
                       :frame-num 0.0
