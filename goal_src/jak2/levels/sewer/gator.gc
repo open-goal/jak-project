@@ -366,7 +366,7 @@
   :virtual #t
   :event enemy-event-handler
   :enter (behavior ()
-    (logior! (-> self enemy-flags) (enemy-flag actor-pause-backup))
+    (logior! (-> self enemy-flags) (enemy-flag lock-focus))
     (let ((_self self))
       (if (not (logtest? (enemy-flag enemy-flag36) (-> _self enemy-flags)))
           (set! (-> _self enemy-flags) (the-as enemy-flag (logior (enemy-flag enemy-flag38) (-> _self enemy-flags))))
@@ -393,8 +393,8 @@
       )
     )
   :exit (behavior ()
-    (logclear! (-> self enemy-flags) (enemy-flag actor-pause-backup))
-    (if (logtest? (-> self enemy-flags) (enemy-flag check-water))
+    (logclear! (-> self enemy-flags) (enemy-flag lock-focus))
+    (if (logtest? (-> self enemy-flags) (enemy-flag dangerous-backup))
         (logior! (-> self focus-status) (focus-status dangerous))
         (logclear! (-> self focus-status) (focus-status dangerous))
         )
@@ -409,7 +409,7 @@
     (cond
       ((-> self lock-nav-target)
        )
-      ((or (logtest? (-> self enemy-flags) (enemy-flag look-at-focus))
+      ((or (logtest? (-> self enemy-flags) (enemy-flag victory))
            (logtest? (-> self nav state flags) (nav-state-flag at-target))
            )
        (set! (-> self lock-nav-target) #t)

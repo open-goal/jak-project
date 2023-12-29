@@ -263,8 +263,8 @@
 (defstate ambush (monster-frog)
   :virtual #t
   :enter (behavior ()
-    (when (logtest? (-> self enemy-flags) (enemy-flag auto-reset-penetrate))
-      (logclear! (-> self enemy-flags) (enemy-flag auto-reset-penetrate))
+    (when (logtest? (-> self enemy-flags) (enemy-flag enable-on-notice))
+      (logclear! (-> self enemy-flags) (enemy-flag enable-on-notice))
       (let ((gp-0 (-> self on-notice)))
         (if gp-0
             (script-eval gp-0 :vector (-> self root trans))
@@ -447,7 +447,7 @@
 (defstate hostile (monster-frog)
   :virtual #t
   :enter (behavior ()
-    (logclear! (-> self enemy-flags) (enemy-flag chase-startup))
+    (logclear! (-> self enemy-flags) (enemy-flag alert))
     (let ((t9-0 (-> (method-of-type nav-enemy hostile) enter)))
       (if t9-0
           (t9-0)
@@ -460,7 +460,7 @@
     )
   :trans (behavior ()
     (nav-enemy-method-160 self)
-    (if (and (logtest? (-> self enemy-flags) (enemy-flag look-at-focus)) (-> self enemy-info use-victory))
+    (if (and (logtest? (-> self enemy-flags) (enemy-flag victory)) (-> self enemy-info use-victory))
         (go-virtual victory)
         )
     (when (time-elapsed? (-> self state-time) (-> self reaction-time))
@@ -670,7 +670,7 @@
     0
     )
   :exit (behavior ()
-    (if (logtest? (-> self enemy-flags) (enemy-flag check-water))
+    (if (logtest? (-> self enemy-flags) (enemy-flag dangerous-backup))
         (logior! (-> self focus-status) (focus-status dangerous))
         (logclear! (-> self focus-status) (focus-status dangerous))
         )
@@ -684,7 +684,7 @@
       (ja :num! (seek!))
       )
     (nav-enemy-method-167 self)
-    (if (logtest? (-> self enemy-flags) (enemy-flag check-water))
+    (if (logtest? (-> self enemy-flags) (enemy-flag dangerous-backup))
         (logior! (-> self focus-status) (focus-status dangerous))
         (logclear! (-> self focus-status) (focus-status dangerous))
         )

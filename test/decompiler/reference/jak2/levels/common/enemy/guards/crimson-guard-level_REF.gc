@@ -1486,7 +1486,7 @@
           (vector-z-quaternion! (new 'stack-no-clear 'vector) (-> this root quat))
           (set! (-> s0-0 quad) (-> this root trans quad))
           (cond
-            ((logtest? (enemy-flag dislike-combo) (-> this enemy-flags))
+            ((logtest? (enemy-flag drawn-mirrored) (-> this enemy-flags))
              (let ((a1-6 s0-0))
                (let ((v1-14 s0-0))
                  (let ((a0-9 s4-0))
@@ -1669,13 +1669,13 @@
   :enter (behavior ()
     (talker-spawn-func (-> *talker-speech* 10) *entity-pool* (target-pos 0) (the-as region #f))
     (set-time! (-> self state-time))
-    (let ((v1-4 (logior (-> self enemy-flags) (enemy-flag use-notice-distance))))
-      (set! (-> self enemy-flags) (logclear v1-4 (enemy-flag called-dying)))
+    (let ((v1-4 (logior (-> self enemy-flags) (enemy-flag cam-attack-mode))))
+      (set! (-> self enemy-flags) (logclear v1-4 (enemy-flag use-trigger)))
       )
     (logclear! (-> self mask) (process-mask actor-pause))
-    (look-at-target! self (enemy-flag lock-focus))
-    (when (logtest? (-> self enemy-flags) (enemy-flag auto-reset-penetrate))
-      (logclear! (-> self enemy-flags) (enemy-flag auto-reset-penetrate))
+    (look-at-target! self (enemy-flag look-at-focus))
+    (when (logtest? (-> self enemy-flags) (enemy-flag enable-on-notice))
+      (logclear! (-> self enemy-flags) (enemy-flag enable-on-notice))
       (let ((gp-1 (-> self on-notice)))
         (if gp-1
             (script-eval gp-1 :vector (-> self root trans))
@@ -1683,7 +1683,7 @@
         )
       )
     (let ((gp-2 (-> self focus aware)))
-      (when (logtest? (-> self enemy-flags) (enemy-flag chase-startup))
+      (when (logtest? (-> self enemy-flags) (enemy-flag alert))
         (cond
           ((and (= gp-2 (enemy-aware enemy-aware-3)) (get-enemy-target self))
            (go-hostile self)
@@ -1701,7 +1701,7 @@
         )
       )
     (speech-control-method-12 *speech-control* self (speech-type speech-type-3))
-    (logior! (-> self enemy-flags) (enemy-flag chase-startup))
+    (logior! (-> self enemy-flags) (enemy-flag alert))
     )
   :code (behavior ()
     (ja-channel-push! 1 (seconds 0.075))
@@ -2039,7 +2039,7 @@
   :virtual #t
   :event enemy-event-handler
   :enter (behavior ()
-    (logior! (-> self enemy-flags) (enemy-flag actor-pause-backup))
+    (logior! (-> self enemy-flags) (enemy-flag lock-focus))
     (nav-enemy-method-167 self)
     (let ((v1-4 self))
       (set! (-> v1-4 enemy-flags) (the-as enemy-flag (logclear (-> v1-4 enemy-flags) (enemy-flag enemy-flag36))))
@@ -2066,7 +2066,7 @@
     )
   :exit (behavior ()
     (set! (-> self joint-enable) #f)
-    (logclear! (-> self enemy-flags) (enemy-flag actor-pause-backup))
+    (logclear! (-> self enemy-flags) (enemy-flag lock-focus))
     )
   :trans (behavior ()
     (crimson-guard-level-method-200 self)
@@ -2708,7 +2708,7 @@
     (let ((v1-3 (-> (the-as collide-shape-prim-group (-> self root root-prim)) child 3)))
       (logior! (-> v1-3 prim-core action) (collide-action deadly))
       )
-    (logior! (-> self enemy-flags) (enemy-flag actor-pause-backup))
+    (logior! (-> self enemy-flags) (enemy-flag lock-focus))
     (logior! (-> self focus-status) (focus-status dangerous))
     (let* ((v1-8 *game-info*)
            (a0-4 (+ (-> v1-8 attack-id) 1))
@@ -2725,8 +2725,8 @@
     (let ((v1-3 (-> (the-as collide-shape-prim-group (-> self root root-prim)) child 3)))
       (logclear! (-> v1-3 prim-core action) (collide-action deadly))
       )
-    (logclear! (-> self enemy-flags) (enemy-flag actor-pause-backup))
-    (if (logtest? (-> self enemy-flags) (enemy-flag check-water))
+    (logclear! (-> self enemy-flags) (enemy-flag lock-focus))
+    (if (logtest? (-> self enemy-flags) (enemy-flag dangerous-backup))
         (logior! (-> self focus-status) (focus-status dangerous))
         (logclear! (-> self focus-status) (focus-status dangerous))
         )
@@ -2807,7 +2807,7 @@
   :virtual #t
   :event enemy-event-handler
   :enter (behavior ()
-    (logior! (-> self enemy-flags) (enemy-flag actor-pause-backup))
+    (logior! (-> self enemy-flags) (enemy-flag lock-focus))
     (logior! (-> self focus-status) (focus-status dangerous))
     (let ((v1-4 self))
       (set! (-> v1-4 enemy-flags) (the-as enemy-flag (logclear (-> v1-4 enemy-flags) (enemy-flag enemy-flag37))))
@@ -2824,8 +2824,8 @@
     0
     )
   :exit (behavior ()
-    (logclear! (-> self enemy-flags) (enemy-flag actor-pause-backup))
-    (if (logtest? (-> self enemy-flags) (enemy-flag check-water))
+    (logclear! (-> self enemy-flags) (enemy-flag lock-focus))
+    (if (logtest? (-> self enemy-flags) (enemy-flag dangerous-backup))
         (logior! (-> self focus-status) (focus-status dangerous))
         (logclear! (-> self focus-status) (focus-status dangerous))
         )
@@ -2891,7 +2891,7 @@
   :event enemy-event-handler
   :enter (behavior ()
     (set! (-> self joint-enable) #t)
-    (logior! (-> self enemy-flags) (enemy-flag actor-pause-backup))
+    (logior! (-> self enemy-flags) (enemy-flag lock-focus))
     (logior! (-> self focus-status) (focus-status dangerous))
     (let* ((v1-5 *game-info*)
            (a0-2 (+ (-> v1-5 attack-id) 1))
@@ -2943,8 +2943,8 @@
       (set! (-> v1-11 state mode) (the-as lightning-mode a0-5))
       )
     (set! (-> self joint-enable) #f)
-    (logclear! (-> self enemy-flags) (enemy-flag actor-pause-backup))
-    (if (logtest? (-> self enemy-flags) (enemy-flag check-water))
+    (logclear! (-> self enemy-flags) (enemy-flag lock-focus))
+    (if (logtest? (-> self enemy-flags) (enemy-flag dangerous-backup))
         (logior! (-> self focus-status) (focus-status dangerous))
         (logclear! (-> self focus-status) (focus-status dangerous))
         )
@@ -3294,7 +3294,7 @@
     0
     (ja-channel-push! 1 (seconds 0.1))
     (cond
-      ((logtest? (enemy-flag dislike-combo) (-> self enemy-flags))
+      ((logtest? (enemy-flag drawn-mirrored) (-> self enemy-flags))
        (ja-no-eval :group! crimson-guard-jump-right-ja :num! (seek! (ja-aframe 6.0 0)) :frame-num (ja-aframe 0.0 0))
        (until (ja-done? 0)
          (let ((a0-20 (handle->process (-> self focus handle))))
@@ -3335,7 +3335,7 @@
       )
     0
     (cond
-      ((logtest? (enemy-flag dislike-combo) (-> self enemy-flags))
+      ((logtest? (enemy-flag drawn-mirrored) (-> self enemy-flags))
        (ja-no-eval :group! crimson-guard-jump-right-ja :num! (seek! (ja-aframe 11.0 0)) :frame-num (ja-aframe 6.0 0))
        (until (ja-done? 0)
          (suspend)
@@ -3394,7 +3394,7 @@
     0
     (ja-channel-push! 1 (seconds 0.1))
     (cond
-      ((logtest? (enemy-flag dislike-combo) (-> self enemy-flags))
+      ((logtest? (enemy-flag drawn-mirrored) (-> self enemy-flags))
        (ja-no-eval :group! crimson-guard-jump-left-ja :num! (seek! (ja-aframe 9.0 0)) :frame-num (ja-aframe 0.0 0))
        (until (ja-done? 0)
          (let ((a0-20 (handle->process (-> self focus handle))))
@@ -3435,7 +3435,7 @@
       )
     0
     (cond
-      ((logtest? (enemy-flag dislike-combo) (-> self enemy-flags))
+      ((logtest? (enemy-flag drawn-mirrored) (-> self enemy-flags))
        (ja-no-eval :group! crimson-guard-jump-left-ja :num! (seek! (ja-aframe 11.0 0)) :frame-num (ja-aframe 9.0 0))
        (until (ja-done? 0)
          (suspend)
@@ -4185,7 +4185,9 @@
         (ja :num! (loop! f30-0))
         )
       )
-    (set! (-> self enemy-flags) (the-as enemy-flag (logclear (-> self enemy-flags) (enemy-flag vulnerable))))
+    (set! (-> self enemy-flags)
+          (the-as enemy-flag (logclear (-> self enemy-flags) (enemy-flag jump-check-blocked)))
+          )
     (send-event self 'jump 0 (-> self event-param-point))
     (until #f
       (suspend)

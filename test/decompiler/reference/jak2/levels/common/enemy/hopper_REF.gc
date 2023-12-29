@@ -783,8 +783,8 @@
 (defstate ambush (hopper)
   :virtual #t
   :enter (behavior ()
-    (when (logtest? (-> self enemy-flags) (enemy-flag auto-reset-penetrate))
-      (logclear! (-> self enemy-flags) (enemy-flag auto-reset-penetrate))
+    (when (logtest? (-> self enemy-flags) (enemy-flag enable-on-notice))
+      (logclear! (-> self enemy-flags) (enemy-flag enable-on-notice))
       (let ((gp-0 (-> self on-notice)))
         (if gp-0
             (script-eval gp-0 :vector (-> self root trans))
@@ -840,7 +840,9 @@
             (set! (-> gp-0 y) (-> s5-0 best-other-tri intersect y))
             )
         )
-      (set! (-> self enemy-flags) (the-as enemy-flag (logclear (-> self enemy-flags) (enemy-flag vulnerable))))
+      (set! (-> self enemy-flags)
+            (the-as enemy-flag (logclear (-> self enemy-flags) (enemy-flag jump-check-blocked)))
+            )
       (send-event self 'jump 2 gp-0)
       )
     (go-virtual hostile)
@@ -848,7 +850,7 @@
   )
 
 ;; definition for method 132 of type hopper
-(defmethod dispose! ((this hopper))
+(defmethod dying ((this hopper))
   "Cleans-up the enemy and any associated resources. Potentially spawns skull gems"
   (when (-> this minimap)
     (logior! (-> this minimap flags) (minimap-flag fade-out))

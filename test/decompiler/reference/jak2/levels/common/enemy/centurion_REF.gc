@@ -847,7 +847,7 @@
     (set! (-> self can-take-damage?) #f)
     (set! (-> self root root-prim specific 0) (-> self root root-prim specific 1))
     (centurion-shield-big)
-    (if (logtest? (-> self enemy-flags) (enemy-flag check-water))
+    (if (logtest? (-> self enemy-flags) (enemy-flag dangerous-backup))
         (logior! (-> self focus-status) (focus-status dangerous))
         (logclear! (-> self focus-status) (focus-status dangerous))
         )
@@ -950,7 +950,7 @@
           (collide-action solid)
           )
     (set! (-> (the-as collide-shape-prim-group (-> self root root-prim)) child 3 local-sphere w) 5120.0)
-    (if (logtest? (-> self enemy-flags) (enemy-flag check-water))
+    (if (logtest? (-> self enemy-flags) (enemy-flag dangerous-backup))
         (logior! (-> self focus-status) (focus-status dangerous))
         (logclear! (-> self focus-status) (focus-status dangerous))
         )
@@ -968,7 +968,7 @@
   )
 
 ;; definition for method 132 of type centurion
-(defmethod dispose! ((this centurion))
+(defmethod dying ((this centurion))
   "Cleans-up the enemy and any associated resources. Potentially spawns skull gems"
   (play-communicator-speech! (-> *talker-speech* 58))
   (call-parent-method this)
@@ -1085,16 +1085,16 @@
           (set! (-> s5-1 trans quad) a2-11)
           )
         (let ((s4-1 (new 'stack-no-clear 'matrix)))
-          (if (logtest? (enemy-flag dislike-combo) (-> this enemy-flags))
+          (if (logtest? (enemy-flag drawn-mirrored) (-> this enemy-flags))
               (vector-negate-in-place! (the-as vector (-> s5-1 vector)))
               )
-          (matrix-rotate-y! s4-1 (if (logtest? (enemy-flag dislike-combo) (-> this enemy-flags))
+          (matrix-rotate-y! s4-1 (if (logtest? (enemy-flag drawn-mirrored) (-> this enemy-flags))
                                      2548.6223
                                      -2548.6223
                                      )
                             )
           (matrix*! s5-1 s4-1 s5-1)
-          (matrix-rotate-z! s4-1 (if (logtest? (enemy-flag dislike-combo) (-> this enemy-flags))
+          (matrix-rotate-z! s4-1 (if (logtest? (enemy-flag drawn-mirrored) (-> this enemy-flags))
                                      691.76886
                                      -691.76886
                                      )
@@ -1104,7 +1104,7 @@
         (let ((a1-20 (-> s5-1 trans)))
           (let ((v1-143 (-> s5-1 trans)))
             (let ((a0-25 (-> s5-1 vector)))
-              (let ((a2-18 (the-as float (if (logtest? (enemy-flag dislike-combo) (-> this enemy-flags))
+              (let ((a2-18 (the-as float (if (logtest? (enemy-flag drawn-mirrored) (-> this enemy-flags))
                                              -997237719
                                              #x43a3d70a
                                              )

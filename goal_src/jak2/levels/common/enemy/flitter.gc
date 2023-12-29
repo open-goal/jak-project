@@ -620,8 +620,8 @@
 (defstate ambush (flitter)
   :virtual #t
   :enter (behavior ()
-    (when (logtest? (-> self enemy-flags) (enemy-flag auto-reset-penetrate))
-      (logclear! (-> self enemy-flags) (enemy-flag auto-reset-penetrate))
+    (when (logtest? (-> self enemy-flags) (enemy-flag enable-on-notice))
+      (logclear! (-> self enemy-flags) (enemy-flag enable-on-notice))
       (let ((gp-0 (-> self on-notice)))
         (if gp-0
             (script-eval gp-0 :vector (-> self root trans))
@@ -720,7 +720,7 @@
       (set! (-> v1-3 enemy-flags) (the-as enemy-flag (logior (enemy-flag enemy-flag37) (-> v1-3 enemy-flags))))
       )
     0
-    (look-at-target! self (enemy-flag lock-focus))
+    (look-at-target! self (enemy-flag look-at-focus))
     (set-time! (-> self state-time))
     (let ((gp-0 (-> self root)))
       (vector-reset! (-> gp-0 transv))
@@ -1148,7 +1148,7 @@
       )
     )
   :exit (behavior ()
-    (if (logtest? (-> self enemy-flags) (enemy-flag check-water))
+    (if (logtest? (-> self enemy-flags) (enemy-flag dangerous-backup))
         (logior! (-> self focus-status) (focus-status dangerous))
         (logclear! (-> self focus-status) (focus-status dangerous))
         )
@@ -1216,7 +1216,7 @@
       )
     0
     (ja-channel-push! 1 (seconds 0.1))
-    (if (logtest? (-> self enemy-flags) (enemy-flag check-water))
+    (if (logtest? (-> self enemy-flags) (enemy-flag dangerous-backup))
         (logior! (-> self focus-status) (focus-status dangerous))
         (logclear! (-> self focus-status) (focus-status dangerous))
         )
@@ -1240,7 +1240,7 @@
     )
   )
 
-(defmethod dispose! ((this flitter))
+(defmethod dying ((this flitter))
   "Cleans-up the enemy and any associated resources. Potentially spawns skull gems"
   (when (-> this minimap)
     (logior! (-> this minimap flags) (minimap-flag fade-out))
