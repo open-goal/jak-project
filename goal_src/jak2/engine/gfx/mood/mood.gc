@@ -1169,6 +1169,20 @@ Returns the current value of `lightning-id`"
               (-> this target-interp fog)
               (* (/ 1.0 (-> this speed-interp fog)) (seconds-per-frame))
               )
+            (#when PC_PORT ;; og:preserve-this
+              (cond
+                ((pc-cheats? (-> *pc-settings* cheats) weather-good)
+                  (set! (-> this current-interp cloud) 0.0)
+                  (set! (-> this current-interp fog) 0.0)
+                  (logclear! (-> *pc-settings* cheats) (pc-cheats weather-bad))
+                  )
+                ((pc-cheats? (-> *pc-settings* cheats) weather-bad)
+                  (set! (-> this current-interp cloud) 1.0)
+                  (set! (-> this current-interp fog) 1.0)
+                  (logclear! (-> *pc-settings* cheats) (pc-cheats weather-good))
+                  )
+                )
+              )
             (when (!= (-> this time-until-random cloud) -99.0)
               (set! (-> this time-until-random cloud) (- (-> this time-until-random cloud) (* 300.0 (seconds-per-frame))))
               (when (< (-> this time-until-random cloud) 0.0)
@@ -1232,12 +1246,23 @@ Returns the current value of `lightning-id`"
             (let* ((f0-114 (fmax 0.0 (fmin (* 4.0 (fmax 0.0 (+ -0.5 f26-2)) (fmax 0.0 (+ -0.5 f30-2))) f28-2)))
                    (f30-3 (fmin 0.75 f0-114))
                    )
+              (#when PC_PORT ;; og:preserve-this
+                (cond
+                  ((pc-cheats? (-> *pc-settings* cheats) weather-good)
+                    (set! f30-3 0.0)
+                    )
+                  ((pc-cheats? (-> *pc-settings* cheats) weather-bad)
+                    (set! f30-3 f0-114)
+                    )
+                  )
+                )
               (set! (-> *setting-control* user-default rain) f30-3)
               (cond
                 ((and (or (and (level-get-target-inside *level*) (= (-> (level-get-target-inside *level*) name) 'nest))
                           (< 0.0 (-> *setting-control* user-current rain))
                           )
                       (!= *master-mode* 'progress)
+                      (#if PC_PORT (not (pc-cheats? (-> *pc-settings* cheats) weather-good)) #t) ;; og:preserve-this
                       )
                  (gen-lightning-and-thunder! this)
                  (cond

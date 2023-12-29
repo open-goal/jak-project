@@ -6,9 +6,6 @@ Additional PC port specific file for overriding/expanding the progress menu
 This gives us more freedom to write code how we want.
 |#
 
-;; temporary
-(set! (-> *main-options-debug* options 9) (new 'static 'menu-main-menu-option :name (text-id progress-music-player) :scale #t :next-state 'music-player))
-
 ;; in jak 2, the options dont have to be all-caps anymore!
 ;; encode controller/display names - current bug waiting to happen
 
@@ -65,6 +62,24 @@ This gives us more freedom to write code how we want.
                       )
                     )
         )
+
+(define *unlocked-secrets-pc*
+  (new 'static 'menu-option-list
+    :y-center 170
+    :y-space 23
+    :scale 0.82
+    :options (new 'static 'boxed-array :type menu-option
+      (new 'static 'menu-unlocked-menu-option :name (text-id progress-main-secrets-scrapbook) :scale #f)
+      (new 'static 'menu-unlocked-menu-option :name (text-id progress-main-secrets-mega-scrapbook) :scale #f)
+      (new 'static 'menu-unlocked-menu-option :name (text-id progress-main-secrets-sceneplayer-1) :scale #f)
+      (new 'static 'menu-unlocked-menu-option :name (text-id progress-main-secrets-sceneplayer-2) :scale #f)
+      (new 'static 'menu-unlocked-menu-option :name (text-id progress-main-secrets-sceneplayer-3) :scale #f)
+      (new 'static 'menu-unlocked-menu-option :name (text-id progress-main-secrets-hero-mode) :scale #f :next-state 'select-save-title)
+      (new 'static 'menu-unlocked-menu-option :name (text-id progress-main-secrets-levelselect) :scale #f :next-state 'select-start)
+      (new 'static 'menu-unlocked-menu-option :name (text-id progress-music-player) :scale #f)
+      )
+    )
+  )
 
 ;; TODO - there is a bug where if you restore default binds and that changes your `X` bind,
 ;; the next X input is ignored, figure this out eventually / make an issue for it.
@@ -633,6 +648,9 @@ This gives us more freedom to write code how we want.
 
 (define *graphic-options-pc*
   (progress-new-generic-scrolling-page (text-id progress-root-graphic-options)
+    ;; NOTE/TODO - this doesn't following the established generic menu pattern
+    ;; a generic scrolling list menu component should be created (similar to menu-generic-details-page)
+    ;; so the code can be localized to functions instead of scattered around in a bunch of switch statements
     (new 'static 'menu-generic-to-resolutions-option
       :name (text-id progress-window-size)
       :on-confirm (lambda ((the-progress progress))
@@ -646,90 +664,66 @@ This gives us more freedom to write code how we want.
           (if name
               (string-format "(~D) ~S" index *pc-cpp-temp-string*)
               (string-format "Display ~D" index))
-          )
-        )
+          ))
       :on-confirm (lambda ((index int) (the-progress progress))
         (set-monitor! *pc-settings* index)
-        (pc-settings-save)
-        )
-      :should-disable? (lambda () (nmember (the basic (-> *pc-settings* display-mode)) '(windowed #f)))
-      )
+        (pc-settings-save))
+      :should-disable? (lambda () (nmember (the basic (-> *pc-settings* display-mode)) '(windowed #f))))
     (new 'static 'menu-generic-carousel-option
       :name (text-id progress-display-mode)
       :items (new 'static 'boxed-array :type text-id
         (text-id progress-windowed)
         (text-id progress-fullscreen)
-        (text-id progress-borderless)
-        )
+        (text-id progress-borderless))
       :get-item-index-fn (lambda ()
         (case (-> *pc-settings* display-mode)
           (('windowed #f) 0)
           (('fullscreen) 1)
-          (('borderless) 2)
-          )
-        )
+          (('borderless) 2)) )
       :on-confirm (lambda ((index int) (the-progress progress))
         (case index
           ((0) (set-display-mode! *pc-settings* 'windowed #t))
           ((1) (set-display-mode! *pc-settings* 'fullscreen #t))
-          ((2) (set-display-mode! *pc-settings* 'borderless #t))
-          )
-        (pc-settings-save)
-        )
-      )
+          ((2) (set-display-mode! *pc-settings* 'borderless #t)))
+        (pc-settings-save)))
     (new 'static 'menu-generic-carousel-option
       :name (text-id progress-aspect-ratio)
       :items (new 'static 'boxed-array :type text-id
         (text-id progress-aspect-ratio-4x3)
         (text-id progress-aspect-ratio-16x9)
         (text-id progress-aspect-ratio-auto)
-        (text-id progress-aspect-ratio-custom)
-        )
+        (text-id progress-aspect-ratio-custom))
       :get-item-index-fn (lambda ()
         (cond
           ((not (-> *pc-settings* use-vis?))
-            (if (-> *pc-settings* aspect-ratio-auto?) 2 3)
-            )
+            (if (-> *pc-settings* aspect-ratio-auto?) 2 3))
           (else
             (case (get-aspect-ratio)
               (('aspect16x9) 1)
-              (else 0)
-              )
-            )
-          )
-        )
+              (else 0)))))
       :on-confirm (lambda ((index int) (the-progress progress))
         (case index
           ((0)
             (if (not (-> *pc-settings* use-vis?))
                 (false! (-> *setting-control* user-current aspect-ratio)))
             (set! (-> *setting-control* user-default aspect-ratio) 'aspect4x3)
-            (true! (-> *pc-settings* use-vis?))
-            (pc-settings-save)
-            )
+            (true! (-> *pc-settings* use-vis?)))
           ((1)
             (if (not (-> *pc-settings* use-vis?))
-              (false! (-> *setting-control* user-current aspect-ratio))
-              )
+              (false! (-> *setting-control* user-current aspect-ratio)))
             (set! (-> *setting-control* user-default aspect-ratio) 'aspect16x9)
-            (true! (-> *pc-settings* use-vis?))
-            (pc-settings-save)
-            )
+            (true! (-> *pc-settings* use-vis?)))
           ((2)
             (set! (-> *setting-control* user-default aspect-ratio) 'aspect4x3)
             (true! (-> *pc-settings* aspect-ratio-auto?))
-            (false! (-> *pc-settings* use-vis?))
-            (pc-settings-save)
-            )
+            (false! (-> *pc-settings* use-vis?)))
           ((3)
-            (push-and-set-state the-progress 'aspect-ratio-custom)
-            )
-          )
-        )
-      )
+            (push-and-set-state the-progress 'aspect-ratio-custom)))
+        (pc-settings-save)))
     (new 'static 'menu-generic-carousel-option
       :name (text-id progress-frame-rate)
       :get-item-index-fn (lambda ()
+        ;; TODO - use an array
         (case (-> *pc-settings* target-fps)
           ((60) 0)
           ((75) 1)
@@ -737,25 +731,18 @@ This gives us more freedom to write code how we want.
           ((120) 3)
           ((144) 4)
           ((165) 5)
-          ((240) 6)
-          )
-      )
+          ((240) 6)))
       :get-max-size-fn (lambda () (-> *frame-rate-options* length))
       :get-item-label-fn (lambda ((index int)) (string-format "~D" (-> *frame-rate-options* index)))
       :on-confirm (lambda ((index int) (the-progress progress))
         (cond
           ((or (zero? index) (= (-> *frame-rate-options* index) (-> *pc-settings* target-fps)) *frame-rate-disclaimer-seen?*)
             (set-frame-rate! *pc-settings* (-> *frame-rate-options* index) #t)
-            (pc-settings-save)
-            )
+            (pc-settings-save))
           (else
             (defun-extern set-progress-frame-rate-index int int)
             (set-progress-frame-rate-index index)
-            (push-and-set-state the-progress 'fps-disclaimer)
-            )
-          )
-        )
-      )
+            (push-and-set-state the-progress 'fps-disclaimer)))))
     (new 'static 'menu-generic-boolean-option
       :name (text-id progress-vsync)
       :truthy-text (text-id progress-on)
@@ -767,25 +754,21 @@ This gives us more freedom to write code how we want.
     (new 'static 'menu-generic-carousel-option
       :name (text-id progress-msaa)
       :get-item-index-fn (lambda ()
+        ;; TODO - use an array
         (case (-> *pc-settings* gfx-msaa)
           ((1) 0)
           ((2) 1)
           ((4) 2)
           ((8) 3)
-          ((16) 4)
-          )
-        )
+          ((16) 4)))
       :get-max-size-fn (lambda () (-> *msaa-options* length))
       :get-item-label-fn (lambda ((index int))
         (if (zero? index)
             (lookup-text! *common-text* (text-id progress-graphics-msaa-off) #f)
-            (string-format (lookup-text! *common-text* (text-id progress-msaa-x) #f) (-> *msaa-options* index)))
-        )
+            (string-format (lookup-text! *common-text* (text-id progress-msaa-x) #f) (-> *msaa-options* index))))
       :on-confirm (lambda ((index int) (the-progress progress))
         (set! (-> *pc-settings* gfx-msaa) (ash 1 index))
-        (pc-settings-save)
-        )
-      )
+        (pc-settings-save)))
     (progress-new-generic-link-to-scrolling-page (text-id progress-graphics-ps2)
       (new 'static 'menu-generic-boolean-option
         :name (text-id progress-lod-bg)
@@ -796,20 +779,16 @@ This gives us more freedom to write code how we want.
           (cond
             (val
               (set! (-> *pc-settings* lod-force-tfrag) 2)
-              (set! (-> *pc-settings* lod-force-tie) 2)
-              )
+              (set! (-> *pc-settings* lod-force-tie) 2))
             (else
               (set! (-> *pc-settings* lod-force-tfrag) 0)
-              (set! (-> *pc-settings* lod-force-tie) 0)
-              ))
+              (set! (-> *pc-settings* lod-force-tie) 0)))
           (pc-settings-save)))
       (static-progress-generic-pc-settings-lod-default-high-boolean (text-id progress-lod-fg) (-> *pc-settings* ps2-lod-dist?))
       (static-progress-generic-pc-settings-on-off-boolean (text-id progress-ps2-parts) (-> *pc-settings* ps2-parts?))
       (static-progress-generic-pc-settings-shadows-normal-extended-boolean (text-id progress-shadows) (-> *pc-settings* ps2-shadow?))
-      (static-progress-generic-pc-settings-on-off-boolean (text-id progress-hires-sky) (-> *pc-settings* hires-clouds?))
-      )
-    )
-  )
+      (static-progress-generic-pc-settings-on-off-boolean (text-id progress-hires-sky) (-> *pc-settings* hires-clouds?)))
+    ))
 
 (define *frame-rate-disclaimer-options*
   (new 'static 'menu-option-list

@@ -730,22 +730,23 @@ std::unordered_map<std::string, std::vector<std::pair<std::string, float>>>
     external_highscores_cache = {};
 
 // clang-format off
+// TODO - eventually don't depend on SRC
 const std::unordered_map<std::string, std::string> external_speedrun_lookup_urls = {
-    {"any", "https://www.speedrun.com/api/v1/leaderboards/ok6qlo1g/category/wdmze42q?embed=players&max=200"},
-    {"anyhoverless", "https://www.speedrun.com/api/v1/leaderboards/ok6qlo1g/category/xd1rxxrk?embed=players&max=200"},
-    {"allmissions", "https://www.speedrun.com/api/v1/leaderboards/ok6qlo1g/category/mkeon9d6?embed=players&max=200"},
-    {"100", "https://www.speedrun.com/api/v1/leaderboards/ok6qlo1g/category/7dg8q424?embed=players&max=200"},
-    {"anyorbs", "https://www.speedrun.com/api/v1/leaderboards/ok6qlo1g/category/wkpj7vkr?embed=players&max=200"},
-    {"anyhero", "https://www.speedrun.com/api/v1/leaderboards/ok6qlo1g/category/vdo0jodp?embed=players&max=200"}};
+    {"any", "https://www.speedrun.com/api/v1/leaderboards/3dxk47y1/category/n2y6y4ed?embed=players&max=200"},
+    {"anyhoverless", "https://www.speedrun.com/api/v1/leaderboards/3dxk47y1/category/7kjyn5gk?embed=players&max=200"},
+    {"allmissions", "https://www.speedrun.com/api/v1/leaderboards/3dxk47y1/category/xk96myxk?embed=players&max=200"},
+    {"100", "https://www.speedrun.com/api/v1/leaderboards/3dxk47y1/category/z27exp5k?embed=players&max=200"},
+    {"anyorbs", "https://www.speedrun.com/api/v1/leaderboards/3dxk47y1/category/zdn3vm72?embed=players&max=200"},
+    {"anyhero", "https://www.speedrun.com/api/v1/leaderboards/3dxk47y1/category/q25pv0wd?embed=players&max=200"}};
 const std::unordered_map<std::string, std::string> external_race_lookup_urls = {
-    {"class3", "https://www.speedrun.com/api/v1/leaderboards/ok6qlo1g/level/rw6vp697/xd1738d8?embed=players&max=200"},
-    {"class2", "https://www.speedrun.com/api/v1/leaderboards/ok6qlo1g/level/n9305r90/xd1738d8?embed=players&max=200"},
-    {"class1", "https://www.speedrun.com/api/v1/leaderboards/ok6qlo1g/level/z98jv1wl/xd1738d8?embed=players&max=200"},
-    {"class3rev", "https://www.speedrun.com/api/v1/leaderboards/ok6qlo1g/level/rdn5j6dm/xd1738d8?embed=players&max=200"},
-    {"class2rev", "https://www.speedrun.com/api/v1/leaderboards/ok6qlo1g/level/ldye77w3/xd1738d8?embed=players&max=200"},
-    {"class1rev", "https://www.speedrun.com/api/v1/leaderboards/ok6qlo1g/level/gdrqkk9z/xd1738d8?embed=players&max=200"},
-    {"erol", "https://www.speedrun.com/api/v1/leaderboards/ok6qlo1g/level/nwl7kg9v/xd1738d8?embed=players&max=200"},
-    {"port", "https://www.speedrun.com/api/v1/leaderboards/ok6qlo1g/level/ywe8z4wl/xd1738d8?embed=players&max=200"}};
+    {"class3", "https://www.speedrun.com/api/v1/leaderboards/3dxk47y1/level/y9m7qmx9/jdr0mg0d?embed=players&max=200"},
+    {"class2", "https://www.speedrun.com/api/v1/leaderboards/3dxk47y1/level/5wk5zmpw/jdr0mg0d?embed=players&max=200"},
+    {"class1", "https://www.speedrun.com/api/v1/leaderboards/3dxk47y1/level/5922g639/jdr0mg0d?embed=players&max=200"},
+    {"class3rev", "https://www.speedrun.com/api/v1/leaderboards/3dxk47y1/level/29v4e8l9/jdr0mg0d?embed=players&max=200"},
+    {"class2rev", "https://www.speedrun.com/api/v1/leaderboards/3dxk47y1/level/xd4475rd/jdr0mg0d?embed=players&max=200"},
+    {"class1rev", "https://www.speedrun.com/api/v1/leaderboards/3dxk47y1/level/xd0mre4w/jdr0mg0d?embed=players&max=200"},
+    {"erol", "https://www.speedrun.com/api/v1/leaderboards/3dxk47y1/level/rw68p7gd/jdr0mg0d?embed=players&max=200"},
+    {"port", "https://www.speedrun.com/api/v1/leaderboards/3dxk47y1/level/n93v5xzd/jdr0mg0d?embed=players&max=200"}};
 const std::unordered_map<std::string, std::string> external_highscores_lookup_urls = {
     {"scatter", "https://api.jakspeedruns.workers.dev/v1/highscores/2"},
     {"blaster", "https://api.jakspeedruns.workers.dev/v1/highscores/3"},
