@@ -17,32 +17,30 @@
     (set! (-> font-ctx origin y) 75.0)
     (with-dma-buffer-add-bucket ((buf (-> (current-frame) global-buf)) (bucket-id debug-no-zbuf1))
       ;; background border
-      (draw-sprite2d-xy buf 6 64
-        (+ 17 (the int (get-widest-label this font-ctx))) ;; width
-        (+ 17 (* 15 (-> this entries length))) ;; height
-        (new 'static 'rgba :r 255 :g 255 :b 255 :a 75))
+      (draw-sprite2d-xy buf
+                        6
+                        64
+                        (+ 17 (the int (get-widest-label this font-ctx))) ;; width
+                        (+ 17 (* 15 (-> this entries length))) ;; height
+                        (new 'static 'rgba :r 255 :g 255 :b 255 :a 75))
       ;; background
-      (draw-sprite2d-xy buf 7 65
-        (+ 15 (the int (get-widest-label this font-ctx))) ;; width
-        (+ 15 (* 15 (-> this entries length))) ;; height
-        (new 'static 'rgba :r 0 :g 0 :b 0 :a 255))
+      (draw-sprite2d-xy buf
+                        7
+                        65
+                        (+ 15 (the int (get-widest-label this font-ctx))) ;; width
+                        (+ 15 (* 15 (-> this entries length))) ;; height
+                        (new 'static 'rgba :r 0 :g 0 :b 0 :a 255))
       ;; menu contents
       (dotimes (i (-> this entries length))
         (cond
           ;; TODO - probably just handle this in the draw methods
-          ((type? (-> this entries i) popup-menu-label)
-           (set! (-> font-ctx color) (font-color progress-option-off)))
+          ((type? (-> this entries i) popup-menu-label) (set! (-> font-ctx color) (font-color progress-option-off)))
           ((type? (-> this entries i) popup-menu-flag)
            (set! (-> font-ctx color)
-                 (if (or ((-> (the-as popup-menu-flag (-> this entries i)) is-toggled?))
-                         (= i (-> this curr-entry-index)))
-                    (font-color cyan)
-                    (font-color default))))
-          (else
-           (set! (-> font-ctx color)
-                 (if (= i (-> this curr-entry-index))
-                    (font-color cyan)
-                    (font-color default)))))
+                 (if (or ((-> (the-as popup-menu-flag (-> this entries i)) is-toggled?)) (= i (-> this curr-entry-index)))
+                     (font-color cyan)
+                     (font-color default))))
+          (else (set! (-> font-ctx color) (if (= i (-> this curr-entry-index)) (font-color cyan) (font-color default)))))
         (draw! (-> this entries i) font-ctx buf)
         (set! (-> font-ctx origin y) (+ 15.0 (-> font-ctx origin y))))))
   (none))
@@ -57,13 +55,12 @@
 (defmethod move-down! ((this popup-menu))
   (set! (-> this curr-entry-index) (min (dec (-> this entries length)) (inc (-> this curr-entry-index))))
   ;; skip labels
-  (when (type?  (-> this entries (-> this curr-entry-index)) popup-menu-label)
+  (when (type? (-> this entries (-> this curr-entry-index)) popup-menu-label)
     (set! (-> this curr-entry-index) (min (dec (-> this entries length)) (inc (-> this curr-entry-index)))))
   (none))
 
 (defmethod press! ((this popup-menu))
-  (let ((entry (-> this entries (-> this curr-entry-index))))
-    ((-> entry on-press)))
+  (let ((entry (-> this entries (-> this curr-entry-index)))) ((-> entry on-press)))
   (none))
 
 (defmethod get-widest-label ((this popup-menu) (font-ctx font-context))

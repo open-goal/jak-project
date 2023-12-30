@@ -338,9 +338,6 @@ void DisplayManager::update_resolutions() {
                           static_cast<float>(curr_mode.w) / static_cast<float>(curr_mode.h)};
     m_available_resolutions.push_back(new_res);
   }
-  // Add original NTSC/PAL options for weird people that want to act like they are on a PS2?
-  m_available_resolutions.push_back({512, 448, static_cast<float>(512) / static_cast<float>(448)});
-  m_available_resolutions.push_back({512, 224, static_cast<float>(512) / static_cast<float>(224)});
 
   // Sort by area
   std::sort(m_available_resolutions.begin(), m_available_resolutions.end(),

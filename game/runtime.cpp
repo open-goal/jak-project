@@ -235,7 +235,7 @@ void ee_runner(SystemThreadInterface& iface) {
 void ee_worker_runner(SystemThreadInterface& iface) {
   iface.initialization_complete();
   while (!iface.get_want_exit()) {
-    const auto queues_weres_empty = g_background_worker.process_queues();
+    const auto queues_weres_empty = !g_background_worker.process_queues();
     if (queues_weres_empty) {
       std::this_thread::sleep_for(std::chrono::milliseconds(50));
     }

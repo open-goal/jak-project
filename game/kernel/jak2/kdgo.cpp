@@ -70,7 +70,7 @@ void load_and_link_dgo_from_c_fast(const char* name,
   // open the DGO file:
   auto file_path = file_util::get_jak_project_dir() / "out" / game_version_names[g_game_version] /
                    "iso" / name_on_cd;
-  auto fp = fopen(file_path.string().c_str(), "rb");
+  auto fp = file_util::open_file(file_path, "rb");
   if (!fp) {
     lg::die("Failed to open DGO: {}, path {}\n", name, file_path.string());
   }
