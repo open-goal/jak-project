@@ -11,8 +11,8 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 
-(defconstant KILL_STATS_MAX_ENEMY_TYPES 200)
-(defconstant KILL_STATS_MAX_SOURCE 40)
+(defconstant KILL_STATS_MAX_ENEMY_TYPES 127)
+(defconstant KILL_STATS_MAX_SOURCE 30)
 
 
 
@@ -30,6 +30,7 @@
   (gun-blue)
   (gun-dark)
   (board)
+  (board-trick)
   (mech)
   (punch)
   (flop)
@@ -44,8 +45,14 @@
   (darkjak-roll)
   (darkjak-bomb0)
   (darkjak-bomb1)
+
+  (indax-punch)
+  (indax-spin)
   
   (guard)
+  (bot)
+  (metalhead)
+  (enemy)
 
   (max)
   )
@@ -70,6 +77,7 @@
 
   (:methods
     (initialize (_type_) int)
+    (alloc-slot (_type_ symbol) kill-statistics-enemy-entry)
 
     (get-total-count (_type_) int)
     (get-enemy-stats (_type_ symbol) kill-statistics-enemy-entry)
@@ -77,7 +85,9 @@
     (get-count-for-source (_type_ kill-stats-source) int)
     (get-count (_type_ symbol kill-stats-source) int)
 
-    (add (_type_ symbol kill-stats-source) int)
+    (increment (_type_ symbol kill-stats-source) int)
+
+    (print-stats (_type_ object) object)
     )
   )
 
@@ -92,6 +102,14 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;; methods
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+
+
+(defmethod new statistics ((allocation symbol) (type-to-make type))
+  "make a new pc-settings"
+  (let ((obj (object-new allocation type-to-make (the-as int (-> type-to-make size)))))
+    (initialize (-> obj kill-stats))
+    obj))
 
 
 
@@ -118,6 +136,76 @@
       )
     )
   amount)
+  )
+
+
+(defmethod get-enemy-stats ((this kill-statistics) (name symbol))
+  "return the enemy entry with that name. #f = not found"
+
+  (dotimes (i KILL_STATS_MAX_ENEMY_TYPES)
+    (when (= (-> this enemies i name) name)
+        (return (-> this enemies i))))
+  (the kill-statistics-enemy-entry #f))
+
+(defmethod alloc-slot ((this kill-statistics) (name symbol))
+  "allocates an enemy stats entry for that name and returns it. #f = out of memory"
+  (dotimes (i KILL_STATS_MAX_ENEMY_TYPES)
+    (when (not (-> this enemies i name))
+        (set! (-> this enemies i name) name)
+        (dotimes (ii KILL_STATS_MAX_SOURCE)
+          (set! (-> this enemies i sources ii) 0))
+        (return (-> this enemies i)))
+    )
+  (the kill-statistics-enemy-entry #f))
+
+(defmethod increment ((this kill-statistics) (name symbol) (source kill-stats-source))
+  "adds one kill to the kill statistics"
+
+  (let ((kill-stats (get-enemy-stats this name)))
+    (if (not kill-stats)
+        (set! kill-stats (alloc-slot this name)))
+    (when (not kill-stats)
+        (format 0 "out of stats memory!~%")
+        (return 0))
+    
+    (+! (-> kill-stats sources source) 1))
+  )
+
+
+
+(defmethod get-count ((this kill-statistics) (name symbol) (source kill-stats-source))
+  "return number of kills for that enemy with that cause of death"
+
+  (let ((kill-stats (get-enemy-stats this name)))
+    (if (not kill-stats)
+        (return 0))
+    
+    (-> kill-stats sources source))
+  )
+
+(defmethod get-count-for-enemy ((this kill-statistics) (name symbol))
+  "return number of kills for that enemy"
+
+  (let ((kill-stats (get-enemy-stats this name))
+        (kills 0))
+    (if (not kill-stats)
+        (return 0))
+    
+    (dotimes (i KILL_STATS_MAX_SOURCE)
+      (+! kills (-> kill-stats sources i)))
+    kills)
+  )
+
+(defmethod get-count-for-source ((this kill-statistics) (source kill-stats-source))
+  "return number of kills for that source"
+
+  (let ((kills 0))
+    (dotimes (i KILL_STATS_MAX_ENEMY_TYPES)
+      (when (-> this enemies i name)
+        (+! kills (-> this enemies i sources source))
+        )
+      )
+    kills)
   )
 
 

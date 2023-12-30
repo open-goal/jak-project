@@ -114,7 +114,6 @@
   "aligner-h.o"
   "penetrate-h.o"
   "game-h.o"
-  "statistics.o" ;; added
   "script-h.o"
   "scene-h.o"
   "sync-info-h.o"
@@ -436,6 +435,7 @@
   "nav-enemy-h.o"
   "rigid-body-h.o"
   "damage-number.o" ;; added
+  "statistics.o" ;; added
   "enemy.o"
   "nav-enemy.o"
   "base-plat.o"
