@@ -1,72 +1,200 @@
 ;;-*-Lisp-*-
 (in-package goal)
 
-(defmethod draw! ((this popup-menu-entry) (font-ctx font-context) (dma-buf dma-buffer))
+(defun get-widest-entry ((entries (array popup-menu-entry)) (title string) (font-ctx font-context))
+  (let ((max-len 0.0))
+    (dotimes (i (-> entries length))
+      (let ((label-len (-> (get-string-length (-> entries i label) font-ctx) length)))
+        (when (> label-len max-len)
+          (set! max-len label-len))))
+    (let ((title-len (-> (get-string-length title font-ctx) length)))
+      (when (> title-len max-len)
+        (set! max-len title-len)))
+    (the int max-len)))
+
+(defmethod draw-entry ((this popup-menu-entry) (font-ctx font-context) (dma-buf dma-buffer) (hovering? symbol))
   (let ((old-x (-> font-ctx origin x))
-        (old-y (-> font-ctx origin y)))
+        (old-y (-> font-ctx origin y))
+        (old-color (-> font-ctx color)))
     (pc-encode-utf8-string (-> this label) *pc-encoded-temp-string*)
+    (when hovering?
+      (set! (-> font-ctx color) (font-color progress-selected)))
     (draw-string-adv *pc-encoded-temp-string* dma-buf font-ctx)
     (set! (-> font-ctx origin x) old-x)
-    (set! (-> font-ctx origin y) old-y))
+    (set! (-> font-ctx origin y) old-y)
+    (set! (-> font-ctx color) old-color))
   (none))
 
-(defmethod draw! ((this popup-menu))
-  (let ((font-ctx (new 'debug 'font-context *font-default-matrix* 0 0 0.0 (font-color default) (font-flags shadow kerning large))))
-    (set! (-> font-ctx scale) 0.35)
+(defmethod draw-entry ((this popup-menu-flag) (font-ctx font-context) (dma-buf dma-buffer) (hovering? symbol))
+  (let ((old-x (-> font-ctx origin x))
+        (old-y (-> font-ctx origin y))
+        (old-color (-> font-ctx color)))
+    (when ((-> this is-toggled?))
+      (set! (-> font-ctx color) (font-color green))
+      (set! (-> font-ctx origin x) (- old-x 6.0))
+      (draw-string-adv "\c86" dma-buf font-ctx)
+      (set! (-> font-ctx origin x) old-x)
+      (set! (-> font-ctx origin y) old-y)
+      (set! (-> font-ctx color) old-color))
+    (pc-encode-utf8-string (-> this label) *pc-encoded-temp-string*)
+    (when hovering?
+      (set! (-> font-ctx color) (font-color progress-selected)))
+    (draw-string-adv *pc-encoded-temp-string* dma-buf font-ctx)
+    (set! (-> font-ctx origin x) old-x)
+    (set! (-> font-ctx origin y) old-y)
+    (set! (-> font-ctx color) old-color))
+  (none))
+
+(defmethod draw-menu ((this popup-menu))
+  (let ((font-ctx (new 'debug 'font-context *font-default-matrix* 0 0 0.0 (font-color default) (font-flags shadow kerning large)))
+        (entries (-> this menu-states (-> this curr-state-index) entries))
+        (page-title (-> this menu-states (-> this curr-state-index) title)))
+    (set! (-> font-ctx scale) 0.25)
     (set! (-> font-ctx origin x) 15.0)
     (set! (-> font-ctx origin y) 75.0)
-    (with-dma-buffer-add-bucket ((buf (-> (current-frame) global-buf)) (bucket-id debug-no-zbuf1))
-      ;; background border
-      (draw-sprite2d-xy buf
-                        6
-                        64
-                        (+ 17 (the int (get-widest-label this font-ctx))) ;; width
-                        (+ 17 (* 15 (-> this entries length))) ;; height
-                        (new 'static 'rgba :r 255 :g 255 :b 255 :a 75))
-      ;; background
-      (draw-sprite2d-xy buf
-                        7
-                        65
-                        (+ 15 (the int (get-widest-label this font-ctx))) ;; width
-                        (+ 15 (* 15 (-> this entries length))) ;; height
-                        (new 'static 'rgba :r 0 :g 0 :b 0 :a 255))
-      ;; menu contents
-      (dotimes (i (-> this entries length))
-        (cond
-          ;; TODO - probably just handle this in the draw methods
-          ((type? (-> this entries i) popup-menu-label) (set! (-> font-ctx color) (font-color progress-option-off)))
-          ((type? (-> this entries i) popup-menu-flag)
-           (set! (-> font-ctx color)
-                 (if (or ((-> (the-as popup-menu-flag (-> this entries i)) is-toggled?)) (= i (-> this curr-entry-index)))
-                     (font-color cyan)
-                     (font-color default))))
-          (else (set! (-> font-ctx color) (if (= i (-> this curr-entry-index)) (font-color cyan) (font-color default)))))
-        (draw! (-> this entries i) font-ctx buf)
-        (set! (-> font-ctx origin y) (+ 15.0 (-> font-ctx origin y))))))
+    (let ((widest-entry (get-widest-entry entries page-title font-ctx)))
+      (with-dma-buffer-add-bucket ((buf (-> (current-frame) global-buf)) (bucket-id debug-no-zbuf2))
+        ;; background border
+        (draw-sprite2d-xy buf
+                          6
+                          64
+                          (+ 17 widest-entry) ;; width
+                          (+ 17 (* 15 (inc (-> entries length)))) ;; height
+                          (new 'static 'rgba :r 255 :g 255 :b 255 :a 75))
+        ;; background
+        (draw-sprite2d-xy buf
+                          7
+                          65
+                          (+ 15 widest-entry) ;; width
+                          (+ 15 (* 15 (inc (-> entries length)))) ;; height
+                          (new 'static 'rgba :r 0 :g 0 :b 0 :a 255))
+        ;; title
+        ;; TODO - function
+        (pc-encode-utf8-string page-title *pc-encoded-temp-string*)
+        (set! (-> font-ctx color) (font-color menu-parent))
+        (let ((old-x (-> font-ctx origin x))
+              (old-y (-> font-ctx origin y)))
+          (draw-string-adv *pc-encoded-temp-string* buf font-ctx)
+          (set! (-> font-ctx origin x) old-x)
+          (set! (-> font-ctx origin y) old-y))
+        (set! (-> font-ctx color) (font-color default))
+        (set! (-> font-ctx origin y) (+ 15.0 (-> font-ctx origin y)))
+        ;; menu contents
+        (dotimes (i (-> entries length))
+          (draw-entry (-> entries i) font-ctx buf (= i (-> this menu-states (-> this curr-state-index) entry-index)))
+          (set! (-> font-ctx origin y) (+ 15.0 (-> font-ctx origin y))))
+        ;; button prompts
+        (if (= (-> this curr-state-index) 0)
+          (pc-encode-utf8-string "<PAD_TRIANGLE> Exit" *pc-encoded-temp-string*)
+          (pc-encode-utf8-string "<PAD_TRIANGLE> Back" *pc-encoded-temp-string*))
+        (set! (-> font-ctx origin x) (- 25.0 (-> font-ctx origin x)))
+        (set! (-> font-ctx origin y) (+ 10.0 (-> font-ctx origin y)))
+        (let ((old-x (-> font-ctx origin x))
+              (old-y (-> font-ctx origin y)))
+          (draw-string-adv *pc-encoded-temp-string* buf font-ctx)
+          (set! (-> font-ctx origin x) old-x)
+          (set! (-> font-ctx origin y) old-y))
+        )))
   (none))
 
 (defmethod move-up! ((this popup-menu))
-  (set! (-> this curr-entry-index) (max 0 (dec (-> this curr-entry-index))))
+  (set! (-> this menu-states (-> this curr-state-index) entry-index)
+        (max 0 (dec (-> this menu-states (-> this curr-state-index) entry-index))))
   ;; skip labels
-  (when (type? (-> this entries (-> this curr-entry-index)) popup-menu-label)
-    (set! (-> this curr-entry-index) (max 0 (dec (-> this curr-entry-index)))))
+  ;; (when (type? (-> this entries (-> this curr-entry-index)) popup-menu-label)
+  ;;   (set! (-> this curr-entry-index) (max 0 (dec (-> this curr-entry-index)))))
   (none))
 
 (defmethod move-down! ((this popup-menu))
-  (set! (-> this curr-entry-index) (min (dec (-> this entries length)) (inc (-> this curr-entry-index))))
+  (set! (-> this menu-states (-> this curr-state-index) entry-index)
+        (min (dec (-> this menu-states (-> this curr-state-index) entries length))
+             (inc (-> this menu-states (-> this curr-state-index) entry-index))))
   ;; skip labels
-  (when (type? (-> this entries (-> this curr-entry-index)) popup-menu-label)
-    (set! (-> this curr-entry-index) (min (dec (-> this entries length)) (inc (-> this curr-entry-index)))))
+  ;; (when (type? (-> this entries (-> this curr-entry-index)) popup-menu-label)
+  ;;   (set! (-> this curr-entry-index) (min (dec (-> this entries length)) (inc (-> this curr-entry-index)))))
   (none))
 
-(defmethod press! ((this popup-menu))
-  (let ((entry (-> this entries (-> this curr-entry-index)))) ((-> entry on-press)))
+(defmethod confirm! ((this popup-menu))
+  (let* ((menu-state (-> this menu-states (-> this curr-state-index)))
+         (entry (-> menu-state entries (-> menu-state entry-index))))
+    (cond
+      ((type? entry popup-menu-submenu)
+       ;; TODO - dont allow more than 10 nested menus
+       (inc! (-> this curr-state-index))
+       (set! (-> this menu-states (-> this curr-state-index) entry-index) 0)
+       (set! (-> this menu-states (-> this curr-state-index) title) (-> entry label))
+       (set! (-> this menu-states (-> this curr-state-index) entries) (-> (the-as popup-menu-submenu entry) entries)))
+      (else
+       ((-> entry on-confirm)))))
   (none))
 
-(defmethod get-widest-label ((this popup-menu) (font-ctx font-context))
-  (let ((max-len 0.0))
-    (dotimes (i (-> this entries length))
-      (let ((label-len (-> (get-string-length (-> this entries i label) font-ctx) length)))
-        (when (> label-len max-len)
-          (set! max-len label-len))))
-    max-len))
+(defmethod back! ((this popup-menu))
+  (cond
+    ((<= (-> this curr-state-index) 0)
+     #t)
+    (else
+     (dec! (-> this curr-state-index))
+     #f)))
+
+(defbehavior popup-menu-init popup-menu ((title string) (entries (array popup-menu-entry)))
+  (set! (-> self curr-state-index) 0)
+  (set! (-> self menu-states 0 title) title)
+  (set! (-> self menu-states 0 entries) entries)
+  (set! (-> self menu-states 0 entry-index) 0)
+  (set! (-> self draw?) #f)
+  (go-virtual closed)
+  (none))
+
+(defbehavior popup-menu-event-handler popup-menu ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+  (case event-type
+    (('open-menu)
+      (set! (-> self draw?) #t)
+      (set! *popup-menu-open* #t)
+      (go-virtual opened))
+    (('close-menu)
+      (set! (-> self draw?) #f)
+      (set! *popup-menu-open* #f)
+      (go-virtual closed)))
+    (the-as object 0))
+
+(defmethod update-menu! ((this popup-menu))
+  "This can't be done inside a state because the popup-menu is used when the game is paused
+   during which time, processes are not executed."
+  (when (-> this draw?)
+    ;; handle input
+    (cond
+      ((cpad-pressed? 0 select)
+       (send-event this 'close-menu))
+      ((cpad-pressed? 0 up)
+       (move-up! this))
+      ((cpad-pressed? 0 down)
+       (move-down! this))
+      ((cpad-pressed? 0 x)
+       (confirm! this))
+      ((cpad-pressed? 0 triangle)
+       (when (back! this)
+         (send-event this 'close-menu))))
+    (draw-menu this))
+  (none))
+
+(defstate closed (popup-menu)
+  :virtual #t
+  :event popup-menu-event-handler
+  :trans (behavior ()
+    (none))
+  :code (behavior ()
+    (until #f (suspend))
+    (none))
+  :post (behavior ()
+    (none)))
+
+(defstate opened (popup-menu)
+  :virtual #t
+  :event popup-menu-event-handler
+  :trans (behavior ()
+    (none))
+  :code (behavior ()
+    (until #f (suspend))
+    (none))
+  :post (behavior ()
+    (none)))

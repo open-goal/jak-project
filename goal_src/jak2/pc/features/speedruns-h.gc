@@ -26,29 +26,23 @@
 ;; reset method
 (deftype speedrun-practice-objective (structure)
   ((name string)
-   (level-name string)
    (continue-point-name string)
    (completed-task game-task)
    (features game-feature)
    (secrets game-secrets)
    (starting-position vector :inline)
    (end-task game-task)
-   (start-zone handle)
+   (start-zone handle) ;; TODO - change to pointer objective-zone
    (end-zone handle))
   (:methods
-   (get-num-attempts (_type_) uint64)
-   (get-num-completions (_type_) uint64)
-   (get-num-fails (_type_) uint64)
-   (get-longest-streak (_type_) uint64)
-   (get-fastest-time-milliseconds (_type_) uint64)
-   (get-average-time-milliseconds (_type_) uint64)
-   (record-attempt! (_type_ symbol uint64) none)))
+   (draw-info (_type_) none)
+   (record-attempt! (_type_ symbol uint64) none)
+   (reset! (_type_) none)))
 
 
 (define *test-speedrun-practice-objective* (new 'static 'speedrun-practice-objective))
 (define *test-speedrun-practice-objective-start* (static-vector (meters 2.47) (meters -42.00) (meters -55.41) (meters 1.0)))
 (set! (-> *test-speedrun-practice-objective* name) "Test Objective")
-(set! (-> *test-speedrun-practice-objective* level-name) "halfpipe")
 (set! (-> *test-speedrun-practice-objective* continue-point-name) "halfpipe")
 (set! (-> *test-speedrun-practice-objective* completed-task) (game-task none))
 (set! (-> *test-speedrun-practice-objective* features) (the-as game-feature 0))
@@ -91,8 +85,7 @@
   (exit 1))
 
 (deftype speedrun-menu (process)
-  ((popup-menu popup-menu)
-   (draw-menu? symbol)
+  ((popup-menu (pointer popup-menu))
    (ignore-menu-toggle? symbol)
    (opened-with-start? symbol))
   (:methods
@@ -100,6 +93,4 @@
   (:state-methods
     idle))
 
-(define-extern *speedrun-popup-menu* popup-menu)
 (define-extern *speedrun-menu* (pointer speedrun-menu))
-(define-extern speedrun-menu-init (function none :behavior speedrun-menu))
