@@ -1669,8 +1669,24 @@ This commonly includes things such as:
               )
             (send-event (ppointer->process (-> this parent)) 'child-hit)
             0
-            (if (not *debug-unkillable*)
-                (take-damage-from-attack this arg0 arg3)
+            (when (not *debug-unkillable*)
+              ;; og:preserve-this for damage numbers cheat
+              (#cond
+                (PC_PORT
+                  (let ((old-hp (-> this hit-points))
+                        (dmg-taken (take-damage-from-attack this arg0 arg3)))
+                    (when (> dmg-taken 0)
+                      (process-spawn damage-number (damage-amount-from-attack this arg0 arg3) (-> this root trans) (-> this mask))
+                      (send-damage-to-bar *health-bar-manager* this dmg-taken old-hp))
+                    (when (nonzero? (-> this fated-time))
+                      (aif (get-bar-for-process *health-bar-manager* this)
+                          (send-event (ppointer->process it) 'set-hit-points 0)
+                          (send-damage-to-bar *health-bar-manager* this 1 1))
+                      )
+                    )
+                  )
+                (#t
+                  (take-damage-from-attack this arg0 arg3)))
                 )
             (let ((s2-1 (enemy-method-58 this arg0 arg3)))
               (when s2-1
