@@ -90,6 +90,8 @@
           (kill-stats-source unknown)))
       )
 
+    ((is-metalhead? attacker) (kill-stats-source metalhead))
+    
     ((type? attacker sig) (kill-stats-source sig))
     ((type? attacker ashelin) (kill-stats-source ashelin))
     ((type? attacker mog) (kill-stats-source mog)) ;; note that mog and grim are subtypes of jinx
@@ -103,45 +105,6 @@
       (format #t "unknown attacker ~A~%" attacker)
       (kill-stats-source unknown))
     )
-  )
-
-
-(define-extern civilian type)
-(define-extern stad-samos type)
-(define-extern juicer type)
-(define-extern grunt type)
-(define-extern flitter type)
-(define-extern wasp type)
-(define-extern spyder type)
-(define-extern metalhead-predator type)
-(define-extern metalhead-grunt type)
-(define-extern metalhead-flitter type)
-(define-extern crimson-guard-hover type)
-(define-extern crimson-guard-level type)
-(define-extern roboguard-level type)
-(defun remap-enemy-type-name ((en-type type))
-  "returns the appropriate type name (symbol) for the stats tracker"
-
-  (cond
-    ((symbol-member? (-> en-type symbol) '(kid kid-escort)) 'kid)
-    
-    ((= en-type metalhead-predator) 'predator)
-    ((= en-type metalhead-grunt) 'grunt)
-    ((= en-type metalhead-flitter) 'flitter)
-    ((= en-type crimson-guard-level) 'crimson-guard)
-    ((= en-type crimson-guard-hover) 'crimson-guard)
-    ((= en-type roboguard-level) 'roboguard)
-
-    ((type-type? en-type civilian) 'civilian)
-    ((type-type? en-type sig) 'sig)
-    ((type-type? en-type ashelin) 'ashelin)
-    ((type-type? en-type stad-samos) 'stad-samos)
-    ((type-type? en-type juicer) 'juicer)
-    ((type-type? en-type grunt) 'grunt)
-    ((type-type? en-type flitter) 'flitter)
-    ((type-type? en-type wasp) 'wasp)
-    ((type-type? en-type spyder) 'spyder)
-    (else (-> en-type symbol)))
   )
 
 
@@ -172,19 +135,4 @@
   (initialize (-> *statistics* kill-stats)))
 
 
-
-(defmethod print-stats ((this kill-statistics) out)
-  "print the stats as a table to out"
-
-  (format out "----! kill stats (total: ~D) !----~%" (get-total-count this))
-  (dotimes (i KILL_STATS_MAX_ENEMY_TYPES)
-    (when (-> this enemies i name)
-      (format out "~S: ~D total~%" (-> this enemies i name) (get-count-for-enemy this (-> this enemies i name)))
-      (dotimes (ii KILL_STATS_MAX_SOURCE)
-        (if (nonzero? (-> this enemies i sources ii))
-            (format out "  ~3D ~S~%" (-> this enemies i sources ii) (kill-source->string (the kill-stats-source ii))))
-        )
-      )
-    )
-  out)
 
