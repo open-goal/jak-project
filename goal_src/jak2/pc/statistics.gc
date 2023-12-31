@@ -39,6 +39,7 @@
 
 (define-extern bot type)
 (define-extern crimson-guard type)
+(define-extern turret type)
 (defun pu&attacker->kill-source ((pu penetrate) (attacker process))
   "returns the appropriate kill source based on penetrate-using and attacker"
 
@@ -46,6 +47,9 @@
     ((not attacker)
       (format #t "got null attacker~%")
       (kill-stats-source unknown))
+    ((type? attacker turret)
+      (kill-stats-source turret)
+      )
     ((type? attacker target)
       (case pu
         (((penetrate spin touch)) (if (focus-test? (the target attacker) indax) (kill-stats-source indax-spin) (kill-stats-source spin)))
@@ -105,6 +109,7 @@
 (define-extern metalhead-flitter type)
 (define-extern crimson-guard-hover type)
 (define-extern crimson-guard-level type)
+(define-extern roboguard-level type)
 (defun remap-enemy-type-name ((en-type type))
   "returns the appropriate type name (symbol) for the stats tracker"
 
@@ -116,6 +121,7 @@
     ((= en-type metalhead-flitter) 'flitter)
     ((= en-type crimson-guard-level) 'crimson-guard)
     ((= en-type crimson-guard-hover) 'crimson-guard)
+    ((= en-type roboguard-level) 'roboguard)
 
     ((type-type? en-type civilian) 'civilian)
     ((type-type? en-type sig) 'sig)
@@ -134,7 +140,7 @@
 (defun add-to-kill-stats ((enemy enemy) (attack enemy-attack-info))
   "adds a kill to the statistics tracker"
   
-  ;; (format #t "enemy ~A killed~%" (-> enemy name))
+  ;; (format #t "enemy ~A killed (incoming ~e sec ago)~%" (-> enemy name) (- (-> PP clock old-frame-counter) (-> attack attack-time)))
   ;; (format #t "~Tattacker: ~A~%" (handle->process (-> attack attacker-handle)))
   ;; (format #t "~Tpu: ")
   ;; (pu->string #t (-> attack penetrate-using))
@@ -145,7 +151,7 @@
 
     (when *debug-segment*
         (format #t "STATS : enemy ~S(~S) killed by ~S~%" enemy-name (-> enemy type symbol) (kill-source->string source)))
-        
+
     (increment (-> *statistics* kill-stats) enemy-name source)
     )
   )
