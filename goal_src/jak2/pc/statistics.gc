@@ -38,6 +38,11 @@
   )
 
 (define-extern bot type)
+(define-extern sig type)
+(define-extern ashelin type)
+(define-extern jinx type)
+(define-extern mog type)
+(define-extern grim type)
 (define-extern crimson-guard type)
 (define-extern turret type)
 (defun pu&attacker->kill-source ((pu penetrate) (attacker process))
@@ -47,9 +52,10 @@
     ((not attacker)
       (format #t "got null attacker~%")
       (kill-stats-source unknown))
+
     ((type? attacker turret)
-      (kill-stats-source turret)
-      )
+      (kill-stats-source turret))
+
     ((type? attacker target)
       (case pu
         (((penetrate spin touch)) (if (focus-test? (the target attacker) indax) (kill-stats-source indax-spin) (kill-stats-source spin)))
@@ -57,18 +63,22 @@
         (((penetrate uppercut touch)) (kill-stats-source uppercut))
         (((penetrate punch touch)) (if (focus-test? (the target attacker) indax) (kill-stats-source indax-punch) (kill-stats-source punch)))
 
+        (((penetrate mech-punch mech punch touch)) (kill-stats-source mech))
+        (((penetrate mech-bonk bonk touch)) (kill-stats-source mech-bonk))
+
         (((penetrate board spin touch)) (kill-stats-source board-trick))
         (((penetrate board touch)) (kill-stats-source board))
 
-        (((penetrate dark-skin spin touch)) (kill-stats-source darkjak-spin))
-        (((penetrate dark-skin flop touch)) (kill-stats-source darkjak-flop))
-        (((penetrate dark-skin uppercut touch)) (kill-stats-source darkjak-uppercut))
-        (((penetrate dark-punch dark-skin punch touch)) (kill-stats-source darkjak-punch))
-        (((penetrate dark-bomb dark-skin touch)) (case (-> attacker state)
-                                                    ((target-darkjak-bomb0) (kill-stats-source darkjak-bomb0))
-                                                    ((target-darkjak-bomb1) (kill-stats-source darkjak-bomb1))
-                                                    (else (kill-stats-source unknown))))
-        (((penetrate dark-skin touch)) (kill-stats-source unknown))
+        (((penetrate dark-skin spin touch) (penetrate dark-giant dark-skin spin touch)) (kill-stats-source darkjak-spin))
+        (((penetrate dark-skin flop touch) (penetrate dark-giant dark-skin flop touch)) (kill-stats-source darkjak-flop))
+        (((penetrate dark-skin uppercut touch) (penetrate dark-giant dark-skin uppercut touch)) (kill-stats-source darkjak-uppercut))
+        (((penetrate dark-punch dark-skin punch touch) (penetrate dark-giant dark-punch dark-skin punch touch)) (kill-stats-source darkjak-punch))
+        (((penetrate dark-bomb dark-skin touch) (penetrate dark-giant dark-bomb dark-skin touch))
+          (case (-> attacker state)
+              ((target-darkjak-bomb0) (kill-stats-source darkjak-bomb0))
+              ((target-darkjak-bomb1) (kill-stats-source darkjak-bomb1))
+              (else (kill-stats-source unknown))))
+        (((penetrate dark-skin touch) (penetrate dark-giant dark-skin touch)) (kill-stats-source unknown))
         
         (((penetrate jak-yellow-shot generic-attack)) (kill-stats-source gun-yellow))
         (((penetrate jak-red-shot generic-attack)) (kill-stats-source gun-red))
@@ -79,15 +89,16 @@
           (format #t "unhandled target penetrate-using #x~x for kill-source~%" pu)
           (kill-stats-source unknown)))
       )
-    ((type? attacker bot)
-      (kill-stats-source bot)
-      )
-    ((type? attacker crimson-guard)
-      (kill-stats-source guard)
-      )
-    ((type? attacker enemy)
-      (kill-stats-source enemy)
-      )
+
+    ((type? attacker sig) (kill-stats-source sig))
+    ((type? attacker ashelin) (kill-stats-source ashelin))
+    ((type? attacker mog) (kill-stats-source mog)) ;; note that mog and grim are subtypes of jinx
+    ((type? attacker grim) (kill-stats-source grim))
+    ((type? attacker jinx) (kill-stats-source jinx))
+    ((type? attacker bot) (kill-stats-source bot))
+    ((type? attacker crimson-guard) (kill-stats-source guard))
+    ((type? attacker enemy) (kill-stats-source enemy))
+
     (else
       (format #t "unknown attacker ~A~%" attacker)
       (kill-stats-source unknown))
@@ -96,8 +107,6 @@
 
 
 (define-extern civilian type)
-(define-extern sig type)
-(define-extern ashelin type)
 (define-extern stad-samos type)
 (define-extern juicer type)
 (define-extern grunt type)
@@ -152,7 +161,8 @@
     (when *debug-segment*
         (format #t "STATS : enemy ~S(~S) killed by ~S~%" enemy-name (-> enemy type symbol) (kill-source->string source)))
 
-    (increment (-> *statistics* kill-stats) enemy-name source)
+    (if (or (!= source (kill-stats-source unknown)) (-> *statistics* kill-stats allow-unknown?))
+        (increment (-> *statistics* kill-stats) enemy-name source))
     )
   )
 
