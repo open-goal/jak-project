@@ -402,18 +402,6 @@ void RestartVag(VagCmd* param_1, int param_2, int /*param_3*/) {
   //}
 }
 
-struct sceSdBatch {
-  u32 entry;
-  u32 value;
-  u32 func;
-};
-
-void sceSdProcBatch(sceSdBatch* b, int, int n) {
-  for (int i = 0; i < n; i++) {
-    sceSdSetParam(b[i].entry, b[i].value);
-  }
-}
-
 void SetVAGVol(VagCmd* cmd, int param_2) {
   VagCmd* stereo_cmd;
   u32 lvol, rvol;
