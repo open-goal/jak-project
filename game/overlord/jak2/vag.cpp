@@ -604,7 +604,7 @@ void SetVAGVol(VagCmd* cmd, int param_2) {
       }
       goto LAB_0000a258;
     }
-    iVar4 = CalculateFallofVolume(&cmd->vec3, (u32)(cmd->vol_multiplier * MasterVolume[2]) >> 10,
+    iVar4 = CalculateFalloffVolume(&cmd->vec3, (u32)(cmd->vol_multiplier * MasterVolume[2]) >> 10,
                                   cmd->fo_curve, cmd->fo_min, cmd->fo_max);
     iVar5 = CalculateAngle(&cmd->vec3);
     uVar3 = 0x276 - iVar5;
@@ -1061,7 +1061,7 @@ void CalculateVAGVolumes(VagCmd* cmd, int* l_out, int* r_out) {
     *r_out = vol;
   } else {
     int fo_vol =
-        CalculateFallofVolume(&cmd->vec3, (u32)(cmd->vol_multiplier * MasterVolume[2]) >> 10,
+        CalculateFalloffVolume(&cmd->vec3, (u32)(cmd->vol_multiplier * MasterVolume[2]) >> 10,
                               cmd->fo_curve, cmd->fo_min, cmd->fo_max);
     int angle = CalculateAngle(&cmd->vec3);
     int uVar4 = 0x276 - angle;
