@@ -25,6 +25,7 @@ int VagCmdsPriCounter[11];
 int ActiveVagStreams;
 
 void CalculateVAGVolumes(VagCmd* cmd, u32* l_out, u32* r_out);
+void StopVAG(VagCmd* cmd, int /*param_2*/);
 
 enum VolumeCategory {
   DIALOGUE = 2,  // VAG streams. Copied "dialogue" name from jak 1.
@@ -189,188 +190,33 @@ VagCmd* SmartAllocVagCmd(VagCmd* cmd) {
 }
 
 void TerminateVAG(VagCmd* cmd, int param_2) {
-  [[maybe_unused]] int* piVar1;
-  int iVar2;
-  u32 uVar3;
-  VagCmd* pRVar4;
-  VagCmd* pRVar5;
   VagStrListNode vag_node;
   LfoListNode lfo_node;
   // undefined4 auStack32 [2];
 
-  if (param_2 == 1) {
-    // CpuSuspendIntr(auStack32);
-  }
-  pRVar4 = cmd->stereo_sibling;
+  // if (param_2 == 1) {
+  //  CpuSuspendIntr(auStack32);
+  //}
+
+  auto* sibling = cmd->stereo_sibling;
   strncpy(vag_node.name, cmd->name, 0x30);
   vag_node.id = cmd->id;
   cmd->sb_scanned = '\0';
+
   if (cmd->status_bytes[BYTE5] != '\0') {
-    pRVar5 = cmd->stereo_sibling;
-    PauseVAG(cmd, 0);
-    if (cmd->status_bytes[BYTE5] != '\0') {
-      uVar3 = 1 << (cmd->voice >> 1 & 0x1fU);
-      if (pRVar5 != 0x0) {
-        uVar3 = uVar3 | 1 << (pRVar5->voice >> 1 & 0x1fU);
-      }
-      // sceSdSetSwitch(*(u16*)&cmd->voice & 1 | 0x1600, uVar3);
-      sceSdkey_off_jak2_voice(cmd->voice);
-      if (cmd->stereo_sibling) {
-        sceSdkey_off_jak2_voice(cmd->stereo_sibling->voice);
-      }
-    }
-    //    iVar2 = 0x18;
-    //    piVar1 = &(cmd->header).unk_24;
-    //    do {
-    //      *(undefined *)(piVar1 + 0x34) = 0;
-    //      iVar2 = iVar2 + -1;
-    //      piVar1 = (int *)((int)piVar1 + -1);
-    //    } while (-1 < iVar2);
-    for (auto& x : cmd->status_bytes) {
-      x = 0;
-    }
-    cmd->vol_multiplier = 0;
-    cmd->unk_256_pitch2 = 0;
-    cmd->id = 0;
-    cmd->plugin_id = 0;
-    (cmd->header).ready_for_data = 0;
-    cmd->unk_136 = 0;
-    cmd->unk_140 = 0;
-    cmd->pitch1 = 0;
-    (cmd->header).callback = NullCallback;
-    cmd->unk_180 = 0;
-    cmd->unk_184 = 0;
-    cmd->unk_188 = 0;
-    cmd->unk_192 = 0;
+    StopVAG(cmd, 0);
   }
+
   ReleaseMessage(&cmd->header, 0);
-  VagCmdsPriList[cmd->priority].cmds[cmd->idx_in_cmd_arr] = 0x0;
-  if (VagCmdsPriCounter[cmd->priority] < 1) {
-    printf("IOP: ======================================================================\n");
-    printf("IOP: vag RemoveVagCmd: VagCmdsPriCounter[%d] is zero\n", cmd->priority);
-    printf("IOP: ======================================================================\n");
-  } else {
-    VagCmdsPriCounter[cmd->priority] = VagCmdsPriCounter[cmd->priority] + -1;
+  RemoveVagCmd(cmd, 0);
+  FreeVagCmd(cmd, 0);
+
+  if (sibling != nullptr) {
+    sibling->sb_scanned = '\0';
+    RemoveVagCmd(sibling, 0);
+    FreeVagCmd(sibling, 0);
   }
-  //  iVar2 = 0x18;
-  //  piVar1 = &(cmd->header).unk_24;
-  VagCmdsPriCounter[0] = VagCmdsPriCounter[0] + 1;
-  for (auto& x : cmd->status_bytes) {
-    x = 0;
-  }
-  //  do {
-  //    *(undefined*)(piVar1 + 0x34) = 0;
-  //    iVar2 = iVar2 + -1;
-  //    piVar1 = (int*)((int)piVar1 + -1);
-  //  } while (-1 < iVar2);
-  cmd->sb_playing = '\0';
-  cmd->sb_paused = '\x01';
-  cmd->sb_scanned = '\0';
-  cmd->unk_180 = 0;
-  cmd->unk_184 = 0;
-  cmd->unk_188 = 0;
-  cmd->unk_192 = 0;
-  SetVagStreamName(cmd, 0, 0);
-  cmd->name[0] = '\0';
-  iVar2 = ActiveVagStreams;
-  cmd->safe_to_change_dma_fields = 1;
-  cmd->unk_264 = 0x4000;
-  (cmd->header).callback = NullCallback;
-  cmd->unk_140 = 0;
-  cmd->pitch1 = 0;
-  cmd->file_record = nullptr;
-  cmd->vag_dir_entry = nullptr;
-  cmd->unk_196 = 0;
-  cmd->unk_200 = 0;
-  cmd->unk_204 = 0;
-  cmd->num_processed_chunks = 0;
-  cmd->xfer_size = 0;
-  cmd->sample_rate = 0;
-  cmd->unk_260 = 0;
-  cmd->unk_268 = 0;
-  cmd->vol_multiplier = 0;
-  cmd->unk_256_pitch2 = 0;
-  cmd->id = 0;
-  cmd->plugin_id = 0;
-  cmd->unk_136 = 0;
-  cmd->priority = 0;
-  cmd->unk_288 = 0;
-  cmd->unk_292 = 0;
-  cmd->unk_296 = 0;
-  (cmd->header).callback_buffer = (Buffer*)0x0;
-  (cmd->header).ready_for_data = 0;
-  (cmd->header).lse = (LoadStackEntry*)0x0;
-  cmd->dma_iop_mem_ptr = (uint8_t*)0x0;
-  cmd->dma_chan = -1;
-  cmd->unk_236 = 0;
-  if (0 < iVar2) {
-    ActiveVagStreams = iVar2 + -1;
-  }
-  if (pRVar4 != 0x0) {
-    pRVar4->sb_scanned = '\0';
-    VagCmdsPriList[pRVar4->priority].cmds[pRVar4->idx_in_cmd_arr] = 0x0;
-    if (VagCmdsPriCounter[pRVar4->priority] < 1) {
-      printf("IOP: ======================================================================\n");
-      printf("IOP: vag RemoveVagCmd: VagCmdsPriCounter[%d] is zero\n", pRVar4->priority);
-      printf("IOP: ======================================================================\n");
-    } else {
-      VagCmdsPriCounter[pRVar4->priority] = VagCmdsPriCounter[pRVar4->priority] + -1;
-    }
-    iVar2 = 0x18;
-    piVar1 = &(pRVar4->header).ready_for_data;
-    VagCmdsPriCounter[0] = VagCmdsPriCounter[0] + 1;
-    for (auto& x : cmd->status_bytes) {
-      x = 0;
-    }
-    //    do {
-    //      *(undefined*)(piVar1 + 0x34) = 0;
-    //      iVar2 = iVar2 + -1;
-    //      piVar1 = (int*)((int)piVar1 + -1);
-    //    } while (-1 < iVar2);
-    pRVar4->sb_playing = '\0';
-    pRVar4->sb_paused = '\x01';
-    pRVar4->sb_scanned = '\0';
-    pRVar4->unk_180 = 0;
-    pRVar4->unk_184 = 0;
-    pRVar4->unk_188 = 0;
-    pRVar4->unk_192 = 0;
-    SetVagStreamName(pRVar4, 0, 0);
-    pRVar4->name[0] = '\0';
-    iVar2 = ActiveVagStreams;
-    pRVar4->safe_to_change_dma_fields = 1;
-    pRVar4->unk_264 = 0x4000;
-    (pRVar4->header).callback = NullCallback;
-    pRVar4->unk_140 = 0;
-    pRVar4->pitch1 = 0;
-    pRVar4->file_record = nullptr;
-    pRVar4->vag_dir_entry = nullptr;
-    pRVar4->unk_196 = 0;
-    pRVar4->unk_200 = 0;
-    pRVar4->unk_204 = 0;
-    pRVar4->num_processed_chunks = 0;
-    pRVar4->xfer_size = 0;
-    pRVar4->sample_rate = 0;
-    pRVar4->unk_260 = 0;
-    pRVar4->unk_268 = 0;
-    pRVar4->vol_multiplier = 0;
-    pRVar4->unk_256_pitch2 = 0;
-    pRVar4->id = 0;
-    pRVar4->plugin_id = 0;
-    pRVar4->unk_136 = 0;
-    pRVar4->priority = 0;
-    pRVar4->unk_288 = 0;
-    pRVar4->unk_292 = 0;
-    pRVar4->unk_296 = 0;
-    (pRVar4->header).callback_buffer = (Buffer*)0x0;
-    (pRVar4->header).ready_for_data = 0;
-    (pRVar4->header).lse = (LoadStackEntry*)0x0;
-    pRVar4->dma_iop_mem_ptr = (uint8_t*)0x0;
-    pRVar4->dma_chan = -1;
-    pRVar4->unk_236 = 0;
-    if (0 < iVar2) {
-      ActiveVagStreams = iVar2 + -1;
-    }
-  }
+
   if (cmd->unk_136) {
     RemoveVagStreamFromList(&vag_node, &PluginStreamsList);
     lfo_node.id = cmd->id;
@@ -380,10 +226,9 @@ void TerminateVAG(VagCmd* cmd, int param_2) {
   // printf("termina removing %s (2)\n", vag_node.name);
 
   RemoveVagStreamFromList(&vag_node, &EEPlayList);
-  if (param_2 == 1) {
-    // CpuResumeIntr(auStack32[0]);
-  }
-  // return;
+  // if (param_2 == 1) {
+  //  CpuResumeIntr(auStack32[0]);
+  //}
 }
 
 void PauseVAG(VagCmd* cmd, int /*param_2*/) {
@@ -866,6 +711,7 @@ void FreeVagCmd(VagCmd* cmd, int /*param_2*/) {
   cmd->unk_188 = 0;
   cmd->unk_192 = 0;
   SetVagStreamName(cmd, 0, 0);
+
   cmd->name[0] = '\0';
   cmd->unk_264 = 0x4000;
   (cmd->header).callback = NullCallback;
