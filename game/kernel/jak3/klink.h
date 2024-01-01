@@ -17,4 +17,4 @@ u32 link_busy();
 void link_reset();
 uint64_t link_begin(u64* args);
 uint64_t link_resume();
-}
+}  // namespace jak3
