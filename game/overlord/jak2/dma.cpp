@@ -1,5 +1,6 @@
 #include "dma.h"
 
+#include "game/overlord/jak2/ssound.h"
 #include "game/overlord/jak2/vag.h"
 #include "game/sound/sdshim.h"
 #include "game/sound/sndshim.h"
@@ -90,30 +91,29 @@ int SpuDmaIntr(int, void*) {
     int pitch = CalculateVAGPitch(DmaVagCmd->pitch1, DmaVagCmd->unk_256_pitch2);
     if (!DmaStereoVagCmd) {
       DmaVagCmd->spu_addr_to_start_playing = 0;
-      sceSdSetAddr(((s16)DmaVagCmd->voice) | 0x2040, DmaVagCmd->spu_stream_dma_mem_addr + 0x30);
-      sceSdSetParam((u16)DmaVagCmd->voice | 0x300, 0xf);
-      sceSdSetParam((u16)DmaVagCmd->voice | 0x400, 0x1fc0);
-      sceSdSetParam((u16)DmaVagCmd->voice | 0x200, pitch);
+      sceSdSetAddr(SD_VA_SSA | DmaVagCmd->voice, DmaVagCmd->spu_stream_dma_mem_addr + 0x30);
+      sceSdSetParam(SD_VP_ADSR1 | DmaVagCmd->voice, 0xf);
+      sceSdSetParam(SD_VP_ADSR2 | DmaVagCmd->voice, 0x1fc0);
+      sceSdSetParam(SD_VP_PITCH | DmaVagCmd->voice, pitch);
 
-      // start playback!
-      sceSdkey_on_jak2_voice(DmaVagCmd->voice);
+      sceSdSetSwitch(SD_S_KON | (DmaVagCmd->voice & 1), VOICE_BIT(DmaVagCmd->voice));
     } else {
       // same for stereo, but we start both voices.
       DmaVagCmd->spu_addr_to_start_playing = 0;
       DmaStereoVagCmd->spu_addr_to_start_playing = 0;
 
-      sceSdSetAddr((u16)DmaVagCmd->voice | 0x2040, DmaVagCmd->spu_stream_dma_mem_addr + 0x30);
-      sceSdSetAddr((u16)DmaStereoVagCmd->voice | 0x2040,
+      sceSdSetAddr(SD_VA_SSA | DmaVagCmd->voice, DmaVagCmd->spu_stream_dma_mem_addr + 0x30);
+      sceSdSetAddr(SD_VA_SSA | DmaStereoVagCmd->voice,
                    DmaStereoVagCmd->spu_stream_dma_mem_addr + 0x30);
-      sceSdSetParam((u16)DmaVagCmd->voice | 0x300, 0xf);
-      sceSdSetParam((u16)DmaStereoVagCmd->voice | 0x300, 0xf);
-      sceSdSetParam((u16)DmaVagCmd->voice | 0x400, 0x1fc0);
-      sceSdSetParam((u16)DmaStereoVagCmd->voice | 0x400, 0x1fc0);
-      sceSdSetParam((u16)DmaVagCmd->voice | 0x200, pitch);
-      sceSdSetParam((u16)DmaStereoVagCmd->voice | 0x200, pitch);
+      sceSdSetParam(SD_VP_ADSR1 | DmaVagCmd->voice, 0xf);
+      sceSdSetParam(SD_VP_ADSR1 | DmaStereoVagCmd->voice, 0xf);
+      sceSdSetParam(SD_VP_ADSR2 | DmaVagCmd->voice, 0x1fc0);
+      sceSdSetParam(SD_VP_ADSR2 | DmaStereoVagCmd->voice, 0x1fc0);
+      sceSdSetParam(SD_VP_PITCH | DmaVagCmd->voice, pitch);
+      sceSdSetParam(SD_VP_PITCH | DmaStereoVagCmd->voice, pitch);
 
-      sceSdkey_on_jak2_voice(DmaVagCmd->voice);
-      sceSdkey_on_jak2_voice(DmaStereoVagCmd->voice);
+      sceSdSetSwitch(SD_S_KON | (DmaVagCmd->voice & 1),
+                     VOICE_BIT(DmaVagCmd->voice) | VOICE_BIT(DmaStereoVagCmd->voice));
     }
   } else if (DmaVagCmd->num_processed_chunks == 2) {
     // on the second chunk's DMA finish, start playing by unpausing.
@@ -127,13 +127,13 @@ int SpuDmaIntr(int, void*) {
     // if we paused since the first, kill the voice.
     if (DmaVagCmd->sb_paused) {
       if (!DmaStereoVagCmd) {
-        sceSdSetParam((u16)DmaVagCmd->voice | 0x200, 0);
+        sceSdSetParam(SD_VP_PITCH | DmaVagCmd->voice, 0);
       } else {
-        sceSdSetParam((u16)DmaStereoVagCmd->voice | 0x200, 0);
-        sceSdSetParam((u16)DmaVagCmd->voice | 0x200, 0);
-        sceSdkey_off_jak2_voice(DmaStereoVagCmd->voice);
+        sceSdSetParam(SD_VP_PITCH | DmaStereoVagCmd->voice, 0);
+        sceSdSetParam(SD_VP_PITCH | DmaVagCmd->voice, 0);
+        sceSdSetSwitch(SD_S_KOFF | (DmaVagCmd->voice & 1), VOICE_BIT(DmaStereoVagCmd->voice));
       }
-      sceSdkey_off_jak2_voice(DmaVagCmd->voice);
+      sceSdSetSwitch(SD_S_KOFF | (DmaVagCmd->voice & 1), VOICE_BIT(DmaVagCmd->voice));
       goto hack;
     }
 

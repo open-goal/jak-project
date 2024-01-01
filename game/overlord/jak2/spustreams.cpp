@@ -892,7 +892,7 @@ u32 GetSpuRamAddress(VagCmd* param_1) {
   // if the overlord thread isn't keeping up.
   // as far as I can tell, it's totally fine to discard these checks because our sceSdGetAddr
   // works perfectly.
-  return sceSdGetAddr((param_1->voice & 0xffffU) | 0x2240);
+  return sceSdGetAddr(SD_VA_NAX | param_1->voice);
 }
 
 u32 bswap(u32 param_1) {

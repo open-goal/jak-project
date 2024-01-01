@@ -54,13 +54,13 @@ void InitSound_Overlord() {
   snd_StartSoundSystem();
   snd_RegisterIOPMemAllocator(SndMemAlloc, SndMemFree);
   snd_LockVoiceAllocator(1);
-  u32 voice = snd_ExternVoiceAlloc(2, 0x7f);
+  s32 voice = snd_ExternVoiceAlloc(2, 0x7f);
   snd_UnlockVoiceAllocator();
 
   // The voice allocator returns a number in the range 0-47 where voices
   // 0-23 are on SPU Core 0 and 24-47 are on core 2.
   // For some reason we convert it to this format where 0-47 alternate core every step.
-  voice = voice / 24 + ((voice % 24) * 2);
+  gVoice = voice / 24 + ((voice % 24) * 2);
 
   // Allocate SPU RAM for our streams.
   // (Which we don't need on PC)

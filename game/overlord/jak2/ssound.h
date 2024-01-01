@@ -2,6 +2,8 @@
 #include "game/overlord/common/ssound.h"
 
 namespace jak2 {
+#define VOICE_BIT(voice) (1 << ((voice) >> 1))
+#define CORE_BIT(voice) ((voice)&1)
 void ssound_init_globals();
 void SetBufferMem(void*, int);
 void ReleaseBufferMem();

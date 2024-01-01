@@ -8,6 +8,7 @@
 #include "game/overlord/jak2/streamlist.h"
 #include "game/overlord/jak2/vag.h"
 #include "game/sce/iop.h"
+#include "game/sound/sdshim.h"
 #include "game/sound/sndshim.h"
 
 using namespace iop;
@@ -42,11 +43,10 @@ void InitSound_overlord() {
   // need this one for PC sound to start up
   snd_StartSoundSystem();
 
-  // there's a bunch of stuff that we don't use.
-  StreamVoice[0] = 0;
-  StreamVoice[1] = 1;
-  StreamVoice[2] = 2;
-  StreamVoice[3] = 3;  // TODO idk what im doing.
+  StreamVoice[0] = SD_VOICE(0, 0);
+  StreamVoice[1] = SD_VOICE(0, 1);
+  StreamVoice[2] = SD_VOICE(0, 2);
+  StreamVoice[3] = SD_VOICE(0, 3);
 
   for (int i = 0; i < 91; i++) {
     s16 opposing_front = static_cast<s16>(((i * 0x33ff) / 0x5a) + 0xc00);

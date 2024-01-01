@@ -240,13 +240,11 @@ void PauseVAG(VagCmd* cmd, int /*param_2*/) {
       auto* stereo_cmd = cmd->stereo_sibling;
       if (!stereo_cmd) {
         if (cmd->sb_playing != '\0') {
-          sceSdSetParam((u16)cmd->voice | SD_VP_VOLL, 0);
-          sceSdSetParam(((u16)cmd->voice) | SD_VP_VOLR, 0);
+          sceSdSetParam(SD_VP_VOLL | cmd->voice, 0);
+          sceSdSetParam(SD_VP_VOLR | cmd->voice, 0);
         }
-        sceSdSetParam(((u16)cmd->voice) | SD_VP_PITCH, 0);
-        // TODO: ignored, whatever this is
-        // sceSdSetSwitch((((s16)cmd->voice) & 1) | 0x1600, 1 << (cmd->voice >> 1 & 0x1fU));
-        sceSdkey_off_jak2_voice(cmd->voice);
+        sceSdSetParam(SD_VP_PITCH | cmd->voice, 0);
+        sceSdSetSwitch(SD_S_KOFF | CORE_BIT(cmd->voice), VOICE_BIT(cmd->voice));
         if (cmd->status_bytes[BYTE5] == '\0') {
           cmd->spu_addr_to_start_playing = 0;
         } else {
@@ -255,23 +253,21 @@ void PauseVAG(VagCmd* cmd, int /*param_2*/) {
         cmd->sb_paused = 1;
       } else {
         if (cmd->sb_playing != '\0') {
-          sceSdSetParam(((u16)cmd->voice) | SD_VP_VOLL, 0);
-          sceSdSetParam(((u16)cmd->voice) | SD_VP_VOLR, 0);
-          sceSdSetParam(((u16)stereo_cmd->voice) | SD_VP_VOLL, 0);
-          sceSdSetParam(((u16)stereo_cmd->voice) | SD_VP_VOLR, 0);
+          sceSdSetParam(SD_VP_VOLL | cmd->voice, 0);
+          sceSdSetParam(SD_VP_VOLR | cmd->voice, 0);
+          sceSdSetParam(SD_VP_VOLL | stereo_cmd->voice, 0);
+          sceSdSetParam(SD_VP_VOLR | stereo_cmd->voice, 0);
         }
-        sceSdSetParam(((u16)stereo_cmd->voice) | SD_VP_PITCH, 0);
-        sceSdSetParam(((u16)cmd->voice) | SD_VP_PITCH, 0);
-        // sceSdSetSwitch(((u16)cmd->voice & 1) | 0x1600,
-        //            1 << (cmd->voice >> 1 & 0x1fU) | 1 << (stereo_cmd->voice >> 1 & 0x1fU));
-        sceSdkey_off_jak2_voice(cmd->voice);
-        sceSdkey_off_jak2_voice(stereo_cmd->voice);
+        sceSdSetParam(SD_VP_PITCH | stereo_cmd->voice, 0);
+        sceSdSetParam(SD_VP_PITCH | cmd->voice, 0);
+        sceSdSetSwitch(SD_S_KOFF | CORE_BIT(cmd->voice),
+                       VOICE_BIT(cmd->voice) | VOICE_BIT(stereo_cmd->voice));
 
         if (cmd->status_bytes[BYTE5] == '\0') {
           cmd->spu_addr_to_start_playing = 0;
           stereo_cmd->spu_addr_to_start_playing = 0;
         } else {
-          int ram_addr = GetSpuRamAddress(cmd);
+          u32 ram_addr = GetSpuRamAddress(cmd);
           cmd->spu_addr_to_start_playing = ram_addr & 0xfffffff8;
           stereo_cmd->spu_addr_to_start_playing =
               ((ram_addr & 0xfffffff8) - cmd->spu_stream_dma_mem_addr) +
@@ -294,38 +290,35 @@ void UnPauseVAG(VagCmd* param_1, int /*param_2*/) {
     //}
     if (param_1->status_bytes[BYTE11] == '\0') {
       auto* stereo_cmd = param_1->stereo_sibling;
-      int pitch_reuslt = CalculateVAGPitch(param_1->pitch1, param_1->unk_256_pitch2);
+      int pitch = CalculateVAGPitch(param_1->pitch1, param_1->unk_256_pitch2);
       u32 vol_l, vol_r;
       CalculateVAGVolumes(param_1, &vol_l, &vol_r);
       if (!stereo_cmd) {
         if (param_1->sb_playing != '\0') {
-          sceSdSetParam(((u16)param_1->voice) | 0x200, pitch_reuslt);
+          sceSdSetParam(SD_VP_PITCH | param_1->voice, pitch);
           if (param_1->spu_addr_to_start_playing != 0) {
-            sceSdSetAddr(((u16)param_1->voice) | 0x2040, param_1->spu_addr_to_start_playing);
+            sceSdSetAddr(SD_VA_SSA | param_1->voice, param_1->spu_addr_to_start_playing);
           }
-          // sceSdSetSwitch(((u16)param_1->voice & 1) | 0x1500, 1 << (voice >> 1 & 0x1fU));
-          sceSdkey_on_jak2_voice(param_1->voice);
-          sceSdSetParam(((u16)param_1->voice), vol_l);
-          sceSdSetParam(((u16)param_1->voice) | 0x100, vol_r);
+          sceSdSetSwitch(SD_S_KON | CORE_BIT(param_1->voice), VOICE_BIT(param_1->voice));
+          sceSdSetParam(SD_VP_VOLL | param_1->voice, vol_l);
+          sceSdSetParam(SD_VP_VOLR | param_1->voice, vol_r);
         }
         param_1->sb_paused = 0;
       } else {
         if (param_1->sb_playing != '\0') {
-          sceSdSetParam(((u16)param_1->voice) | 0x200, pitch_reuslt);
-          sceSdSetParam(((u16)stereo_cmd->voice) | 0x200, pitch_reuslt);
+          sceSdSetParam(SD_VP_PITCH | param_1->voice, pitch);
+          sceSdSetParam(SD_VP_PITCH | stereo_cmd->voice, pitch);
           if (param_1->spu_addr_to_start_playing != 0) {
-            sceSdSetAddr(((u16)param_1->voice) | 0x2040, param_1->spu_addr_to_start_playing);
-            sceSdSetAddr(((u16)stereo_cmd->voice) | 0x2040, stereo_cmd->spu_addr_to_start_playing);
+            sceSdSetAddr(SD_VA_SSA | param_1->voice, param_1->spu_addr_to_start_playing);
+            sceSdSetAddr(SD_VA_SSA | stereo_cmd->voice, stereo_cmd->spu_addr_to_start_playing);
           }
-          sceSdkey_on_jak2_voice(param_1->voice);
-          sceSdkey_on_jak2_voice(stereo_cmd->voice);
 
-          //          sceSdSetSwitch(((u16)param_1->voice & 1) | 0x1500,
-          //                         1 << (voice >> 1 & 0x1fU) | 1 << (stereo_voice >> 1 & 0x1fU));
-          sceSdSetParam(((u16)param_1->voice), vol_l);
-          sceSdSetParam(((u16)stereo_cmd->voice), 0);
-          sceSdSetParam(((u16)param_1->voice) | 0x100, 0);
-          sceSdSetParam(((u16)stereo_cmd->voice) | 0x100, vol_r);
+          sceSdSetSwitch(SD_S_KON | CORE_BIT(param_1->voice),
+                         VOICE_BIT(param_1->voice) | VOICE_BIT(stereo_cmd->voice));
+          sceSdSetParam(SD_VP_VOLL | param_1->voice, vol_l);
+          sceSdSetParam(SD_VP_VOLL | stereo_cmd->voice, 0);
+          sceSdSetParam(SD_VP_VOLR | param_1->voice, 0);
+          sceSdSetParam(SD_VP_VOLR | stereo_cmd->voice, vol_r);
         }
         param_1->sb_paused = 0;
         stereo_cmd->sb_paused = 0;
@@ -353,49 +346,40 @@ void RestartVag(VagCmd* param_1, int param_2, int /*param_3*/) {
   u32 vol_l, vol_r;
   CalculateVAGVolumes(param_1, &vol_l, &vol_r);
   if (param_1->status_bytes[BYTE11] == '\0') {
-    int voice = 1 << (param_1->voice >> 1 & 0x1fU);
     auto* stereo_sibling = param_1->stereo_sibling;
     int sram_offset = param_2 ? 0x2000 : 0;
-    if (stereo_sibling) {
-      voice = voice | 1 << (stereo_sibling->voice >> 1 & 0x1fU);
-    }
-    // sceSdSetSwitch(((u16)param_1->voice & 1) | 0x1600, voice);
-    sceSdkey_off_jak2_voice(param_1->voice);
-    if (stereo_sibling) {
-      sceSdkey_off_jak2_voice(stereo_sibling->voice);
-    }
-    sceSdSetParam(((u16)param_1->voice), 0);
-    sceSdSetParam(((u16)param_1->voice) | 0x100, 0);
 
-    int other_voice;
-    int sram_addr;
-    if (!stereo_sibling) {
-      other_voice = *(u16*)&param_1->voice;
-      sram_addr = param_1->spu_stream_dma_mem_addr;
-    } else {
-      sceSdSetParam(((u16)stereo_sibling->voice), 0);
-      sceSdSetParam(((u16)stereo_sibling->voice) | 0x100, 0);
-      sceSdSetAddr(((u16)param_1->voice) | 0x2040, param_1->spu_stream_dma_mem_addr + sram_offset);
-      other_voice = ((u16)stereo_sibling->voice);
-      sram_addr = stereo_sibling->spu_stream_dma_mem_addr;
-    }
-    sceSdSetAddr(other_voice | 0x2040, sram_addr + sram_offset);
-    // sceSdSetSwitch(((u16)param_1->voice & 1) | 0x1500, voice);
-    sceSdkey_on_jak2_voice(param_1->voice);
+    int voices = VOICE_BIT(param_1->voice);
     if (stereo_sibling) {
-      sceSdkey_on_jak2_voice(stereo_sibling->voice);
+      voices |= VOICE_BIT(stereo_sibling->voice);
     }
 
-    if (!stereo_sibling) {
-      sceSdSetParam(((u16)param_1->voice), vol_l);
-      other_voice = ((u16)param_1->voice);
-    } else {
-      sceSdSetParam(((u16)param_1->voice), vol_l);
-      sceSdSetParam(((u16)stereo_sibling->voice), 0);
-      sceSdSetParam(((u16)param_1->voice) | 0x100, 0);
-      other_voice = ((u16)stereo_sibling->voice);
+    sceSdSetSwitch(SD_S_KOFF | CORE_BIT(param_1->voice), voices);
+
+    sceSdSetParam(SD_VP_VOLL | param_1->voice, 0);
+    sceSdSetParam(SD_VP_VOLR | param_1->voice, 0);
+    if (stereo_sibling) {
+      sceSdSetParam(SD_VP_VOLL | stereo_sibling->voice, 0);
+      sceSdSetParam(SD_VP_VOLR | stereo_sibling->voice, 0);
     }
-    sceSdSetParam(other_voice | 0x100, vol_r);
+
+    sceSdSetAddr(SD_VA_SSA | param_1->voice, param_1->spu_stream_dma_mem_addr + sram_offset);
+    if (stereo_sibling) {
+      sceSdSetAddr(SD_VA_SSA | stereo_sibling->voice,
+                   stereo_sibling->spu_stream_dma_mem_addr + sram_offset);
+    }
+
+    sceSdSetSwitch(SD_S_KON | CORE_BIT(param_1->voice), voices);
+
+    if (!stereo_sibling) {
+      sceSdSetParam(SD_VP_VOLL | param_1->voice, vol_l);
+      sceSdSetParam(SD_VP_VOLR | param_1->voice, vol_r);
+    } else {
+      sceSdSetParam(SD_VP_VOLL | param_1->voice, vol_l);
+      sceSdSetParam(SD_VP_VOLL | stereo_sibling->voice, 0);
+      sceSdSetParam(SD_VP_VOLR | param_1->voice, 0);
+      sceSdSetParam(SD_VP_VOLR | stereo_sibling->voice, vol_r);
+    }
   }
   // if (param_3 == 1) {
   // CpuResumeIntr(local_30);
@@ -713,15 +697,11 @@ void StopVAG(VagCmd* cmd, int /*param_2*/) {
   auto& sibling = cmd->stereo_sibling;
   PauseVAG(cmd, 0);
   if (cmd->status_bytes[BYTE5] != '\0') {
-    int val = 1 << (cmd->voice >> 1 & 0x1fU);
+    int val = VOICE_BIT(cmd->voice);
     if (sibling) {
-      val = val | 1 << (sibling->voice >> 1 & 0x1fU);
+      val = val | VOICE_BIT(sibling->voice);
     }
-    // sceSdSetSwitch(u16(cmd->voice) & 1 | 0x1600, val);
-    sceSdkey_off_jak2_voice(cmd->voice);
-    if (sibling) {
-      sceSdkey_off_jak2_voice(sibling->voice);
-    }
+    sceSdSetSwitch(SD_S_KOFF | CORE_BIT(cmd->voice), val);
   }
   for (auto& x : cmd->status_bytes) {
     x = 0;
