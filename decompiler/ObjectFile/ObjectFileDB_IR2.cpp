@@ -594,7 +594,7 @@ void ObjectFileDB::ir2_type_analysis_pass(int seg, const Config& config, ObjectF
         }
 
         constexpr bool kForceNewTypes = false;
-        if (config.game_version == GameVersion::Jak2 || kForceNewTypes) {
+        if (config.game_version >= GameVersion::Jak2 || kForceNewTypes) {
           // use new types for jak 2 always
           types2::Input in;
           types2::Output out;
