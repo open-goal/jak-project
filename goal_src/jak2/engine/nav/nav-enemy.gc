@@ -213,16 +213,11 @@
         )
     )
   (when *target*
-    (if *target*
-        (look-at!
-          (-> *target* neck)
-          (the-as vector (-> self root root-prim prim-core))
-          (if (logtest? (-> self enemy-flags) (enemy-flag cam-attack-mode))
-              'attacking
-              )
-          self
-          )
-        )
+    ;; og:preserve-this target-look-at-me! macro
+    (target-look-at-me! :trans (the-as vector (-> self root root-prim prim-core))
+                        :message (if (logtest? (-> self enemy-flags) (enemy-flag use-notice-distance))
+                                      'attacking
+                                      ))
     )
   (when (nonzero? (-> self neck))
     (cond
@@ -537,7 +532,9 @@
       )
     (set! (-> s5-0 y) 0.0)
     (vector-normalize! s5-0 1.0)
-    (quaternion-set! (-> this root quat) 0.0 (-> s5-0 x) 0.0 (+ 1.0 (-> s5-0 z)))
+
+    ;; og:preserve-this modified for PC, see comment near definition in collide-shape-h.gc
+    (normalized-heading-to-quaternion! (-> this root quat) s5-0)
     )
   (quaternion-normalize! (-> this root quat))
   0
@@ -2596,9 +2593,11 @@ This commonly includes things such as:
           (t9-0)
           )
       )
-    (let ((v1-4 (-> self nav)))
-      (logclear! (-> v1-4 shape nav-flags) (nav-flags has-extra-sphere))
-      )
+    ;; og:preserve-this fix potential use-after-free bug
+    (if (-> self nav)
+      (let ((v1-4 (-> self nav)))
+        (logclear! (-> v1-4 shape nav-flags) (nav-flags has-extra-sphere))
+        ))
     0
     )
   :code (behavior ()
