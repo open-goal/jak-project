@@ -68,7 +68,6 @@ s32 CalculateFallofVolume(Vec3w* pos, s32 volume, s32 fo_curve, s32 fo_min, s32 
 s32 GetPan(Sound* sound);
 s32 CalculateAngle(Vec3w* trans);
 void KillSoundsInGroup(u8 group);
-void UpdateLocation(Sound* sound);
 void UpdateAutoVol(Sound* sound, s32 ticks);
 void PrintActiveSounds();
 void SetCurve(s32 curve, s32 fallof, s32 ease);

@@ -322,32 +322,6 @@ void KillSoundsInGroup(u8 group) {
   }
 }
 
-void UpdateLocation(Sound* sound) {
-  if (sound->id == 0) {
-    return;
-  }
-
-  if (g_game_version == GameVersion::Jak1) {
-    if ((sound->bank_entry->fallof_params >> 28) == 0) {
-      return;
-    }
-  }
-
-  s32 id = snd_SoundIsStillPlaying(sound->sound_handle);
-  if (id == 0) {
-    sound->id = 0;
-    return;
-  }
-
-  s32 volume = GetVolume(sound);
-  if (volume == 0) {
-    snd_StopSound(sound->sound_handle);
-  } else {
-    s32 pan = GetPan(sound);
-    snd_SetSoundVolPan(id, volume, pan);
-  }
-}
-
 void UpdateAutoVol(Sound* sound, s32 ticks) {
   if (ticks < sound->auto_time) {
     s32 nvol = sound->new_volume;

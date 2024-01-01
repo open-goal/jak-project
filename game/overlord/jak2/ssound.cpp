@@ -110,6 +110,32 @@ void SetMusicVol() {
   snd_SetMasterVolume(2, vol);
 }
 
+void UpdateLocation(Sound* sound) {
+  if (sound->id == 0) {
+    return;
+  }
+
+  s32 id = snd_SoundIsStillPlaying(sound->sound_handle);
+  if (id == 0) {
+    sound->id = 0;
+    return;
+  }
+
+  s32 volume = GetVolume(sound);
+  if (volume == 0) {
+    snd_StopSound(sound->sound_handle);
+    return;
+  }
+
+  if (sound->params.fo_curve == 1 || sound->params.fo_curve == 10) {
+    snd_SetSoundVolPan(id, volume, 0);
+    return;
+  }
+
+  s32 pan = GetPan(sound);
+  snd_SetSoundVolPan(id, volume, pan);
+}
+
 void SetEarTrans(Vec3w* ear_trans0, Vec3w* ear_trans1, Vec3w* cam_trans, s32 cam_angle) {
   // some assuming that this is the same in jak2...
   s32 tick = snd_GetTick();

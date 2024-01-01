@@ -115,6 +115,30 @@ void InitSound_Overlord() {
   }
 }
 
+void UpdateLocation(Sound* sound) {
+  if (sound->id == 0) {
+    return;
+  }
+
+  if ((sound->bank_entry->fallof_params >> 28) == 0) {
+    return;
+  }
+
+  s32 id = snd_SoundIsStillPlaying(sound->sound_handle);
+  if (id == 0) {
+    sound->id = 0;
+    return;
+  }
+
+  s32 volume = GetVolume(sound);
+  if (volume == 0) {
+    snd_StopSound(sound->sound_handle);
+  } else {
+    s32 pan = GetPan(sound);
+    snd_SetSoundVolPan(id, volume, pan);
+  }
+}
+
 void SetEarTrans(Vec3w* ear_trans0, Vec3w* ear_trans1, Vec3w* cam_trans, s32 cam_angle) {
   s32 tick = snd_GetTick();
   u32 delta = tick - sLastTick;
