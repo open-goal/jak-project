@@ -842,7 +842,7 @@ void StopVagStream(VagCmd* param_1, int param_2) {
   if (cmd != 0x0) {
     cmd->sb_playing = '\0';
   }
-  if (param_1->unk_136 == 0) {
+  if (param_1->sound_handler == 0) {
     PauseVAG(param_1, 0);
     param_1->byte9 = '\x01';
     if (cmd != 0x0) {

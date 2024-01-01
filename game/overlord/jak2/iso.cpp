@@ -241,7 +241,7 @@ void IsoQueueVagStream(VagCmd* cmd, int param_2) {
     new_cmd->id = cmd->id;
 
     new_cmd->plugin_id = cmd->plugin_id;
-    new_cmd->unk_136 = cmd->unk_136;
+    new_cmd->sound_handler = cmd->sound_handler;
     new_cmd->unk_176 = cmd->unk_176;
     new_cmd->unk_288 = cmd->unk_288;
     new_cmd->unk_292 = cmd->unk_292;
@@ -689,7 +689,7 @@ u32 ISOThread() {
     do {
       if ((((cmd_iter->byte11 == false) && (cmd_iter->sb_scanned == false)) &&
            (cmd_iter->id != 0)) ||
-          ((StopPluginStreams == 1 && (cmd_iter->unk_136) != 0))) {
+          ((StopPluginStreams == 1 && (cmd_iter->sound_handler) != 0))) {
         // CpuSuspendIntr(&local_2c);
         bVar1 = false;
         if (cmd_iter->id == 0) {

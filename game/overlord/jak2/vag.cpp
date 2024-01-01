@@ -102,7 +102,7 @@ void InitVagCmds() {
     cmd.unk_256_pitch2 = 0;       // puVar5[-9] = 0;
     cmd.id = 0;                   // puVar5[-4] = 0;
     cmd.plugin_id = 0;            // puVar5[-3] = 0;
-    cmd.unk_136 = 0;              // puVar5[-0x27] = 0;
+    cmd.sound_handler = 0;        // puVar5[-0x27] = 0;
     cmd.unk_176 = 0;              // puVar5[-0x1d] = 0;
     cmd.priority = 0;             // puVar5[-2] = 0;
     cmd.unk_288 = 0;              // puVar5[-1] = 0;
@@ -217,7 +217,7 @@ void TerminateVAG(VagCmd* cmd, int param_2) {
     FreeVagCmd(sibling, 0);
   }
 
-  if (cmd->unk_136) {
+  if (cmd->sound_handler) {
     RemoveVagStreamFromList(&vag_node, &PluginStreamsList);
     lfo_node.id = cmd->id;
     lfo_node.plugin_id = cmd->plugin_id;
@@ -437,7 +437,7 @@ void SetVAGVol(VagCmd* cmd, int param_2) {
   if (cmd->byte11 != '\0') {
     return;
   }
-  auto pvVar2 = cmd->unk_136;
+  auto pvVar2 = cmd->sound_handler;
   stereo_cmd = cmd->stereo_sibling;
   if (pvVar2 == 0) {
     if (cmd->unk_296 == 0) {
@@ -732,7 +732,7 @@ void FreeVagCmd(VagCmd* cmd, int /*param_2*/) {
   cmd->unk_256_pitch2 = 0;
   cmd->id = 0;
   cmd->plugin_id = 0;
-  cmd->unk_136 = 0;
+  cmd->sound_handler = 0;
   cmd->priority = 0;
   cmd->unk_288 = 0;
   cmd->unk_292 = 0;
@@ -813,7 +813,7 @@ void StopVAG(VagCmd* cmd, int /*param_2*/) {
   cmd->id = 0;
   cmd->plugin_id = 0;
   (cmd->header).ready_for_data = 0;
-  cmd->unk_136 = 0;
+  cmd->sound_handler = 0;
   cmd->unk_140 = 0;
   cmd->pitch1 = 0;
   cmd->unk_180 = 0;
@@ -865,7 +865,7 @@ void UnPauseVagStreams() {
 void SetAllVagsVol(int param_1) {
   if (param_1 >= 0) {
     for (auto& VagCmd : VagCmds) {
-      if (VagCmd.unk_136 /* && *(char*)(VagCmd.unk_136 + 23) == param_1 */) {
+      if (VagCmd.sound_handler /* && VagCmd.sound_handler->VolGroup == param_1 */) {
         ASSERT_NOT_REACHED();
         SetVAGVol(&VagCmd, 1);
       }

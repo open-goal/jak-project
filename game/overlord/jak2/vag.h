@@ -40,7 +40,7 @@ struct VagCmd {
   int spu_trap_mem_addr;          // 124
   int voice;                      // 128
   int idx_in_cmd_arr;             // 132 (index in VagCmds)
-  int unk_136;                    // 136
+  int sound_handler;              // 136 (989snd sound that played this stream)
   int unk_140;                    // 140
   int unk_176;                    // 176
   int unk_180;                    // 180
