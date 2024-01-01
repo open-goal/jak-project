@@ -78,7 +78,7 @@
                       (<= (-> pos y) max-point-y))
                  (and (<= min-point-z (-> pos z))
                       (<= (-> pos z) max-point-z)))
-        (format #t "you're in!~%")))
+        (sound-play "skill-pickup")))
     ;; TODO - transition from idle
     (none))
   :code (behavior ()
@@ -96,40 +96,27 @@
   (go-virtual idle)
   (none))
 
-    ;;  (if (and (not (handle->process (-> this hud-dist))) *target*)
-    ;;      (set! (-> this hud-dist) (ppointer->handle (process-spawn hud-progress :init hud-init-by-other :to *target*)))
-    ;;      )
-    ;; (else
-    ;;   (let ((a0-16 (handle->process (-> this hud-dist))))
-    ;;     (when a0-16
-    ;;       (send-event a0-16 'hide-and-die)
-    ;;       (set! (-> this hud-dist) (the-as handle #f))
-    ;;       )
-    ;;     )
-    ;;   )
-
-
 (defmethod draw-info ((this speedrun-practice-objective))
-  (clear *temp-string*)
-  (clear *pc-encoded-temp-string*)
-  (format *temp-string* "<COLOR_WHITE>Practicing: <COLOR_GREEN>~S~%<COLOR_WHITE>History: <COLOR_GREEN>~D/<COLOR_RED>~D(~,,2f%)~%<COLOR_WHITE>"
-          (-> this name)
-          10
-          50
-          50.5)
-  (format *temp-string* "Session: <COLOR_GREEN>~D/<COLOR_RED>~D(~,,2f%)~%<COLOR_WHITE>Average Time: <COLOR_GREEN>~,,2fs~%<COLOR_WHITE>Fastest Time: <COLOR_GREEN>~,,2fs~%"
-          1
-          5
-          40.5
-          10.5 22.25)
-  (pc-encode-utf8-string *temp-string* *pc-encoded-temp-string*)
-  (with-dma-buffer-add-bucket ((buf (-> (current-frame) global-buf)) (bucket-id debug-no-zbuf1))
-    ;; reset bucket settings prior to drawing - font won't do this for us, and
-    ;; draw-raw-image can sometimes mess them up. (intro sequence)
-    (dma-buffer-add-gs-set-flusha buf (alpha-1 (new 'static 'gs-alpha :b #x1 :d #x1)) (tex1-1 (new 'static 'gs-tex1 :mmag #x1 :mmin #x1)))
-    (let ((font-ctx (new 'stack 'font-context *font-default-matrix* 510 20 0.0 (font-color default) (font-flags right shadow kerning large))))
-      (set! (-> font-ctx scale) 0.325)
-      (draw-string-adv *pc-encoded-temp-string* buf font-ctx)))
+  ;; (clear *temp-string*)
+  ;; (clear *pc-encoded-temp-string*)
+  ;; (format *temp-string* "<COLOR_WHITE>Practicing: <COLOR_GREEN>~S~%<COLOR_WHITE>History: <COLOR_GREEN>~D/<COLOR_RED>~D(~,,2f%)~%<COLOR_WHITE>"
+  ;;         (-> this name)
+  ;;         10
+  ;;         50
+  ;;         50.5)
+  ;; (format *temp-string* "Session: <COLOR_GREEN>~D/<COLOR_RED>~D(~,,2f%)~%<COLOR_WHITE>Average Time: <COLOR_GREEN>~,,2fs~%<COLOR_WHITE>Fastest Time: <COLOR_GREEN>~,,2fs~%"
+  ;;         1
+  ;;         5
+  ;;         40.5
+  ;;         10.5 22.25)
+  ;; (pc-encode-utf8-string *temp-string* *pc-encoded-temp-string*)
+  ;; (with-dma-buffer-add-bucket ((buf (-> (current-frame) global-buf)) (bucket-id debug-no-zbuf1))
+  ;;   ;; reset bucket settings prior to drawing - font won't do this for us, and
+  ;;   ;; draw-raw-image can sometimes mess them up. (intro sequence)
+  ;;   (dma-buffer-add-gs-set-flusha buf (alpha-1 (new 'static 'gs-alpha :b #x1 :d #x1)) (tex1-1 (new 'static 'gs-tex1 :mmag #x1 :mmin #x1)))
+  ;;   (let ((font-ctx (new 'stack 'font-context *font-default-matrix* 510 20 0.0 (font-color default) (font-flags right shadow kerning large))))
+  ;;     (set! (-> font-ctx scale) 0.325)
+  ;;     (draw-string-adv *pc-encoded-temp-string* buf font-ctx)))
   (none))
 
 (define *speedrun-popup-menu-entries*
@@ -147,8 +134,9 @@
           (new 'static 'popup-menu-flag :label "All Cheats Allowed"
             :on-confirm (lambda () (set-category! *speedrun-info* (speedrun-category all-cheats-allowed)))
             :is-toggled? (lambda () (= (-> *speedrun-info* category) (speedrun-category all-cheats-allowed))))))
-      (new 'static 'popup-menu-submenu :label "Practice Select"
-        :entries (new 'static 'boxed-array :type popup-menu-entry))
+      (new 'static 'popup-menu-dynamic-submenu :label "Practice Select"
+        :get-length (lambda () (pc-sr-mode-get-practice-entries-amount))
+        :get-entry-label (lambda ((index int) (str-dest string)) (pc-sr-mode-get-practice-entry-name index str-dest)))
       (new 'static 'popup-menu-button :label "Exit"
         :on-confirm (lambda () (send-event (ppointer->process *speedrun-menu*) 'invoke (speedrun-menu-command exit))))
   ))

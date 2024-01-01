@@ -12,6 +12,18 @@
         (set! max-len title-len)))
     (the int max-len)))
 
+(defun get-widest-dynamic-entry ((get-entry-label (function int string none)) (entry-count int) (title string) (font-ctx font-context))
+  (let ((max-len 0.0))
+    (dotimes (i entry-count)
+      (get-entry-label i *pc-encoded-temp-string*)
+      (let ((label-len (-> (get-string-length *pc-encoded-temp-string* font-ctx) length)))
+        (when (> label-len max-len)
+          (set! max-len label-len))))
+    (let ((title-len (-> (get-string-length title font-ctx) length)))
+      (when (> title-len max-len)
+        (set! max-len title-len)))
+    (the int max-len)))
+
 (defmethod draw-entry ((this popup-menu-entry) (font-ctx font-context) (dma-buf dma-buffer) (hovering? symbol))
   (let ((old-x (-> font-ctx origin x))
         (old-y (-> font-ctx origin y))
@@ -45,28 +57,47 @@
     (set! (-> font-ctx color) old-color))
   (none))
 
+(defun draw-dynamic-entry ((entry-id int) (get-label (function int string none)) (font-ctx font-context) (dma-buf dma-buffer) (hovering? symbol))
+  (let ((old-x (-> font-ctx origin x))
+        (old-y (-> font-ctx origin y))
+        (old-color (-> font-ctx color)))
+    (get-label entry-id *pc-encoded-temp-string*)
+    (pc-encode-utf8-string *pc-encoded-temp-string* *pc-encoded-temp-string*)
+    (when hovering?
+      (set! (-> font-ctx color) (font-color progress-selected)))
+    (draw-string-adv *pc-encoded-temp-string* dma-buf font-ctx)
+    (set! (-> font-ctx origin x) old-x)
+    (set! (-> font-ctx origin y) old-y)
+    (set! (-> font-ctx color) old-color))
+  (none))
+
 (defmethod draw-menu ((this popup-menu))
   (let ((font-ctx (new 'debug 'font-context *font-default-matrix* 0 0 0.0 (font-color default) (font-flags shadow kerning large)))
-        (entries (-> this menu-states (-> this curr-state-index) entries))
-        (page-title (-> this menu-states (-> this curr-state-index) title)))
+        (page-title (-> this menu-states (-> this curr-state-index) title))
+        (dynamic-menu? (-> this menu-states (-> this curr-state-index) dynamic-menu?)))
     (set! (-> font-ctx scale) 0.25)
     (set! (-> font-ctx origin x) 15.0)
     (set! (-> font-ctx origin y) 75.0)
-    (let ((widest-entry (get-widest-entry entries page-title font-ctx)))
+    (let* ((entry-count (if dynamic-menu?
+                            ((-> this menu-states (-> this curr-state-index) get-dynamic-menu-length))
+                            (-> this menu-states (-> this curr-state-index) entries length)))
+           (widest-entry (if dynamic-menu?
+                             (get-widest-dynamic-entry (-> this menu-states (-> this curr-state-index) get-dynamic-menu-entry-label) entry-count page-title font-ctx)
+                             (get-widest-entry (-> this menu-states (-> this curr-state-index) entries) page-title font-ctx))))
       (with-dma-buffer-add-bucket ((buf (-> (current-frame) global-buf)) (bucket-id debug-no-zbuf2))
         ;; background border
         (draw-sprite2d-xy buf
                           6
                           64
                           (+ 17 widest-entry) ;; width
-                          (+ 17 (* 15 (inc (-> entries length)))) ;; height
+                          (+ 17 (* 15 (inc entry-count))) ;; height
                           (new 'static 'rgba :r 255 :g 255 :b 255 :a 75))
         ;; background
         (draw-sprite2d-xy buf
                           7
                           65
                           (+ 15 widest-entry) ;; width
-                          (+ 15 (* 15 (inc (-> entries length)))) ;; height
+                          (+ 15 (* 15 (inc entry-count))) ;; height
                           (new 'static 'rgba :r 0 :g 0 :b 0 :a 255))
         ;; title
         ;; TODO - function
@@ -80,8 +111,16 @@
         (set! (-> font-ctx color) (font-color default))
         (set! (-> font-ctx origin y) (+ 15.0 (-> font-ctx origin y)))
         ;; menu contents
-        (dotimes (i (-> entries length))
-          (draw-entry (-> entries i) font-ctx buf (= i (-> this menu-states (-> this curr-state-index) entry-index)))
+        (when dynamic-menu?
+          (format 0 "~D~%" entry-count))
+        (dotimes (i entry-count)
+          (if dynamic-menu?
+            (draw-dynamic-entry i
+                                (-> this menu-states (-> this curr-state-index) get-dynamic-menu-entry-label)
+                                font-ctx
+                                buf
+                                (= i (-> this menu-states (-> this curr-state-index) entry-index)))
+            (draw-entry (-> (-> this menu-states (-> this curr-state-index) entries) i) font-ctx buf (= i (-> this menu-states (-> this curr-state-index) entry-index))))
           (set! (-> font-ctx origin y) (+ 15.0 (-> font-ctx origin y))))
         ;; button prompts
         (if (= (-> this curr-state-index) 0)
@@ -118,17 +157,29 @@
   (let* ((menu-state (-> this menu-states (-> this curr-state-index)))
          (entry (-> menu-state entries (-> menu-state entry-index))))
     (cond
-      ((type? entry popup-menu-submenu)
+      ((type? entry popup-menu-dynamic-submenu)
        ;; TODO - dont allow more than 10 nested menus
        (inc! (-> this curr-state-index))
        (set! (-> this menu-states (-> this curr-state-index) entry-index) 0)
        (set! (-> this menu-states (-> this curr-state-index) title) (-> entry label))
+       (set! (-> this menu-states (-> this curr-state-index) dynamic-menu?) #t)
+       (set! (-> this menu-states (-> this curr-state-index) get-dynamic-menu-length) (-> (the-as popup-menu-dynamic-submenu entry) get-length))
+       (set! (-> this menu-states (-> this curr-state-index) get-dynamic-menu-entry-label) (-> (the-as popup-menu-dynamic-submenu entry) get-entry-label))
+       (set! (-> this menu-states (-> this curr-state-index) on-dynamic-menu-entry-confirm) (-> (the-as popup-menu-dynamic-submenu entry) on-entry-confirm)))
+      ((type? entry popup-menu-submenu)
+       ;; TODO - dont allow more than 10 nested menus
+       (inc! (-> this curr-state-index))
+       (set! (-> this menu-states (-> this curr-state-index) entry-index) 0)
+       (set! (-> this menu-states (-> this curr-state-index) dynamic-menu?) #f)
+       (set! (-> this menu-states (-> this curr-state-index) title) (-> entry label))
        (set! (-> this menu-states (-> this curr-state-index) entries) (-> (the-as popup-menu-submenu entry) entries)))
       (else
        ((-> entry on-confirm)))))
+  (sound-play "menu-pick")
   (none))
 
 (defmethod back! ((this popup-menu))
+  (sound-play "menu-pick")
   (cond
     ((<= (-> this curr-state-index) 0)
      #t)
@@ -141,6 +192,7 @@
   (set! (-> self menu-states 0 title) title)
   (set! (-> self menu-states 0 entries) entries)
   (set! (-> self menu-states 0 entry-index) 0)
+  (set! (-> self menu-states 0 dynamic-menu?) #f)
   (set! (-> self draw?) #f)
   (go-virtual closed)
   (none))

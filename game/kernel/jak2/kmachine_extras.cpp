@@ -543,4 +543,144 @@ s32 pc_get_num_external_highscores(u32 highscore_id_ptr) {
   return 0;
 }
 
+void to_json(json& j, const SpeedrunPracticeEntryHistoryAttempt& obj) {
+  json_serialize_optional(time);
+}
+
+void from_json(const json& j, SpeedrunPracticeEntryHistoryAttempt& obj) {
+  json_deserialize_optional_if_exists(time);
+}
+
+void to_json(json& j, const SpeedrunPracticeEntry& obj) {
+  json_serialize(name);
+  json_serialize(continue_point_name);
+  json_serialize(flags);
+  json_serialize(completed_task);
+  json_serialize(features);
+  json_serialize(secrets);
+  json_serialize(starting_position);
+  json_serialize(start_zone_v1);
+  json_serialize(start_zone_v2);
+  json_serialize(end_zone_v1);
+  json_serialize(end_zone_v2);
+  json_serialize(end_task);
+  json_serialize(history);
+}
+
+void from_json(const json& j, SpeedrunPracticeEntry& obj) {
+  json_deserialize_if_exists(name);
+  json_deserialize_if_exists(continue_point_name);
+  json_deserialize_if_exists(flags);
+  json_deserialize_if_exists(completed_task);
+  json_deserialize_if_exists(features);
+  json_deserialize_if_exists(secrets);
+  json_deserialize_if_exists(starting_position);
+  json_deserialize_if_exists(start_zone_v1);
+  json_deserialize_if_exists(start_zone_v2);
+  json_deserialize_if_exists(end_zone_v1);
+  json_deserialize_if_exists(end_zone_v2);
+  json_deserialize_if_exists(end_task);
+  json_deserialize_if_exists(history);
+}
+
+std::vector<SpeedrunPracticeEntry> g_speedrun_practice_entries;
+std::unordered_map<int, SpeedrunPracticeState> g_speedrun_practice_state;
+
+s32 pc_sr_mode_get_practice_entries_amount() {
+  // load practice entries from the file
+  const auto file_path =
+      file_util::get_user_features_dir(g_game_version) / "speedrun-practice.json";
+  if (!file_util::file_exists(file_path.string())) {
+    lg::info("speedrun-practice.json not found, no entries to return!");
+    return 0;
+  }
+  const auto file_contents = safe_parse_json(file_util::read_text_file(file_path));
+  if (!file_contents) {
+    lg::error("speedrun-practice.json could not be parsed!");
+    return 0;
+  }
+
+  g_speedrun_practice_entries = *file_contents;
+
+  for (int i = 0; i < g_speedrun_practice_entries.size(); i++) {
+    const auto& entry = g_speedrun_practice_entries.at(i);
+    s32 last_session_id = -1;
+    s32 total_attempts = 0;
+    s32 total_successes = 0;
+    s32 session_attempts = 0;
+    s32 session_successes = 0;
+    double total_time = 0;
+    float average_time = 0;
+    float fastest_time = 0;
+    for (const auto& [history_session, times] : entry.history) {
+      s32 session_id = stoi(history_session);
+      if (session_id > last_session_id) {
+        last_session_id = session_id;
+      }
+      for (const auto& time : times) {
+        total_attempts++;
+        if (time.time) {
+          total_successes++;
+          total_time += *time.time;
+          if (fastest_time == 0 || *time.time < fastest_time) {
+            fastest_time = *time.time;
+          }
+        }
+      }
+    }
+    if (total_successes != 0) {
+      average_time = total_time / total_successes;
+    }
+    g_speedrun_practice_state[i] = {last_session_id,  total_attempts,    total_successes,
+                                    session_attempts, session_successes, total_time,
+                                    average_time,     fastest_time};
+  }
+
+  return g_speedrun_practice_entries.size();
+}
+
+void pc_sr_mode_get_practice_entry_name(s32 entry_index, u32 name_str_ptr) {
+  std::string name = "";
+  if (!g_speedrun_practice_entries.size() <= entry_index) {
+    name = g_speedrun_practice_entries.at(entry_index).name;
+  }
+  strcpy(Ptr<String>(name_str_ptr).c()->data(), name.c_str());
+}
+
+void pc_sr_mode_get_practice_entry_continue_point(s32 entry_index, u32 name_str_ptr) {
+  std::string name = "";
+  if (!g_speedrun_practice_entries.size() <= entry_index) {
+    name = g_speedrun_practice_entries.at(entry_index).continue_point_name;
+  }
+  strcpy(Ptr<String>(name_str_ptr).c()->data(), name.c_str());
+}
+
+s32 pc_sr_mode_get_active_practice_entry_history_success(s32 entry_index) {
+  return g_speedrun_practice_state.at(entry_index).total_successes;
+}
+
+s32 pc_sr_mode_get_active_practice_entry_history_attempts(s32 entry_index) {
+  return g_speedrun_practice_state.at(entry_index).total_attempts;
+}
+
+s32 pc_sr_mode_get_active_practice_entry_session_success(s32 entry_index) {
+  return g_speedrun_practice_state.at(entry_index).session_successes;
+}
+
+s32 pc_sr_mode_get_active_practice_entry_session_attempts(s32 entry_index) {
+  return g_speedrun_practice_state.at(entry_index).session_attempts;
+}
+
+float pc_sr_mode_get_active_practice_entry_avg_time(s32 entry_index) {
+  return g_speedrun_practice_state.at(entry_index).average_time;
+}
+
+float pc_sr_mode_get_active_practice_entry_fastest_time(s32 entry_index) {
+  return g_speedrun_practice_state.at(entry_index).fastest_time;
+}
+
+void pc_sr_mode_record_practice_entry_attempt(s32 entry_index, u32 success_bool, float time) {
+  // TODO
+}
+
 }  // namespace kmachine_extras

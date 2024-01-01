@@ -2,6 +2,7 @@
 #include <optional>
 #include <string>
 
+#include "common/util/json_util.h"
 #include <common/common_types.h>
 
 namespace kmachine_extras {
@@ -37,6 +38,16 @@ void pc_get_external_highscore(u32 highscore_id_ptr,
 s32 pc_get_num_external_speedrun_times(u32 speedrun_id_ptr);
 s32 pc_get_num_external_race_times(u32 race_id_ptr);
 s32 pc_get_num_external_highscores(u32 highscore_id_ptr);
+s32 pc_sr_mode_get_practice_entries_amount();
+void pc_sr_mode_get_practice_entry_name(s32 entry_index, u32 name_str_ptr);
+void pc_sr_mode_get_practice_entry_continue_point(s32 entry_index, u32 name_str_ptr);
+s32 pc_sr_mode_get_active_practice_entry_history_success(s32 entry_index);
+s32 pc_sr_mode_get_active_practice_entry_history_attempts(s32 entry_index);
+s32 pc_sr_mode_get_active_practice_entry_session_success(s32 entry_index);
+s32 pc_sr_mode_get_active_practice_entry_session_attempts(s32 entry_index);
+float pc_sr_mode_get_active_practice_entry_avg_time(s32 entry_index);
+float pc_sr_mode_get_active_practice_entry_fastest_time(s32 entry_index);
+void pc_sr_mode_record_practice_entry_attempt(s32 entry_index, u32 success_bool, float time);
 
 struct DiscordInfo {
   float orb_count;          // float
@@ -98,5 +109,40 @@ struct AutoSplitterBlock {
 };
 
 extern AutoSplitterBlock g_auto_splitter_block_jak2;
+
+struct SpeedrunPracticeEntryHistoryAttempt {
+  std::optional<float> time;
+};
+void to_json(json& j, const SpeedrunPracticeEntryHistoryAttempt& obj);
+void from_json(const json& j, SpeedrunPracticeEntryHistoryAttempt& obj);
+
+struct SpeedrunPracticeEntry {
+  std::string name;
+  std::string continue_point_name;
+  u64 flags;
+  u64 completed_task;
+  u64 features;
+  u64 secrets;
+  std::vector<float> starting_position;
+  std::vector<float> start_zone_v1;
+  std::vector<float> start_zone_v2;
+  std::vector<float> end_zone_v1;
+  std::vector<float> end_zone_v2;
+  u64 end_task;
+  std::map<std::string, std::vector<SpeedrunPracticeEntryHistoryAttempt>> history;
+};
+void to_json(json& j, const SpeedrunPracticeEntry& obj);
+void from_json(const json& j, SpeedrunPracticeEntry& obj);
+
+struct SpeedrunPracticeState {
+  s32 last_session_id;
+  s32 total_attempts;
+  s32 total_successes;
+  s32 session_attempts;
+  s32 session_successes;
+  double total_time;
+  float average_time;
+  float fastest_time;
+};
 
 }  // namespace kmachine_extras
