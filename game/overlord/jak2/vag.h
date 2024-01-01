@@ -95,7 +95,7 @@ struct VagCmd {
   int priority;              // 284
   int unk_288;               // 288
   int unk_292;               // 292
-  int unk_296;               // 296
+  int unk_296;               // 296 (audio has world positioning)
   Vec3w vec3;                // 300
   int fo_min;                // 312 (init to 5)
   int fo_max;                // 316 (init to 316)

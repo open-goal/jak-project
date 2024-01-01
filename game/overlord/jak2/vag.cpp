@@ -24,7 +24,7 @@ VagCmdPriListEntry VagCmdsPriList[11];
 int VagCmdsPriCounter[11];
 int ActiveVagStreams;
 
-void CalculateVAGVolumes(VagCmd* cmd, int* l_out, int* r_out);
+void CalculateVAGVolumes(VagCmd* cmd, u32* l_out, u32* r_out);
 
 enum VolumeCategory {
   DIALOGUE = 2,  // VAG streams. Copied "dialogue" name from jak 1.
@@ -450,7 +450,7 @@ void UnPauseVAG(VagCmd* param_1, int /*param_2*/) {
     if (param_1->status_bytes[BYTE11] == '\0') {
       auto* stereo_cmd = param_1->stereo_sibling;
       int pitch_reuslt = CalculateVAGPitch(param_1->pitch1, param_1->unk_256_pitch2);
-      int vol_l, vol_r;
+      u32 vol_l, vol_r;
       CalculateVAGVolumes(param_1, &vol_l, &vol_r);
       if (!stereo_cmd) {
         if (param_1->sb_playing != '\0') {
@@ -505,7 +505,7 @@ void RestartVag(VagCmd* param_1, int param_2, int /*param_3*/) {
   // if (param_3 == 1) {
   // CpuSuspendIntr(&local_30);
   //}
-  int vol_l, vol_r;
+  u32 vol_l, vol_r;
   CalculateVAGVolumes(param_1, &vol_l, &vol_r);
   if (param_1->status_bytes[BYTE11] == '\0') {
     int voice = 1 << (param_1->voice >> 1 & 0x1fU);
@@ -989,16 +989,14 @@ void VAG_MarkLoopStart(int8_t* param_1) {
 }
 
 int CalculateVAGPitch(int param_1, int param_2) {
-  if (param_2 != 0) {
-    if (param_2 < 1) {
-      param_1 = (param_1 * 0x5f4) / (0x5f4U - param_2);
-      if (0x5f4U - param_2 == 0) {
-        ASSERT_NOT_REACHED();
-      }
+  if (param_2) {
+    if (param_2 <= 0) {
+      return 0x5f4 * param_1 / (0x5f4 - param_2);
     } else {
-      param_1 = (param_1 * (param_2 + 0x5f4)) / 0x5f4;
+      return param_1 * (param_2 + 0x5f4) / 0x5f4;
     }
   }
+
   return param_1;
 }
 
@@ -1018,43 +1016,25 @@ void UnPauseVagStreams() {
   }
 }
 
-void SetAllVagsVol(int param_1)
-
-{
-  int iVar1;
-  VagCmd* cmd;
-
-  cmd = VagCmds;
-  if (param_1 < 0) {
-    iVar1 = 0;
-    do {
-      SetVAGVol(cmd, 1);
-      iVar1 = iVar1 + 1;
-      cmd = cmd + 1;
-    } while (iVar1 < 4);
-  } else {
-    iVar1 = 0;
-    do {
-      if (cmd->unk_136) {
+void SetAllVagsVol(int param_1) {
+  if (param_1 >= 0) {
+    for (auto& VagCmd : VagCmds) {
+      if (VagCmd.unk_136 /* && *(char*)(VagCmd.unk_136 + 23) == param_1 */) {
         ASSERT_NOT_REACHED();
-        //        if (*(char *)((int)cmd->unk_136 + 0x17) == param_1) {
-        //          SetVAGVol(cmd,1);
-        //        }
-        cmd = cmd + 1;
+        SetVAGVol(&VagCmd, 1);
       }
-      iVar1 = iVar1 + 1;
-    } while (iVar1 < 4);
+    }
+  } else {
+    for (auto& VagCmd : VagCmds) {
+      SetVAGVol(&VagCmd, 1);
+    }
   }
 }
 
-void CalculateVAGVolumes(VagCmd* cmd, int* l_out, int* r_out) {
-  // int iVar1;
-  //  int iVar2;
-  // u32 uVar3;
-
+void CalculateVAGVolumes(VagCmd* cmd, u32* l_out, u32* r_out) {
   if (cmd->unk_296 == 0) {
     u32 vol = (u32)(cmd->vol_multiplier * MasterVolume[VolumeCategory::DIALOGUE]) >> 6;
-    if (0x3fff < vol) {
+    if (vol >= 0x4000) {
       vol = 0x3fff;
     }
     *l_out = vol;
@@ -1063,16 +1043,15 @@ void CalculateVAGVolumes(VagCmd* cmd, int* l_out, int* r_out) {
     int fo_vol =
         CalculateFallofVolume(&cmd->vec3, (u32)(cmd->vol_multiplier * MasterVolume[2]) >> 10,
                               cmd->fo_curve, cmd->fo_min, cmd->fo_max);
-    int angle = CalculateAngle(&cmd->vec3);
-    int uVar4 = 0x276 - angle;
-    int uVar3 = (uVar4 >> 3) / 0x2d;
-    auto* pan = (s16*)gPanTable;
-    *l_out = (u32)(pan[uVar3 * -0x2d0 + uVar4 * 2] * fo_vol) >> 10;
-    *r_out = (u32)(pan[uVar3 * -0x2d0 + uVar4 * 2 + 1] * fo_vol) >> 10;
-    if (0x3fff < *l_out) {
+
+    auto* pan = &gPanTable[(630 - CalculateAngle(&cmd->vec3)) % 360];
+    *l_out = (pan->left * fo_vol) >> 10;
+    *r_out = (pan->right * fo_vol) >> 10;
+
+    if (*l_out >= 0x4000) {
       *l_out = 0x3fff;
     }
-    if (0x3fff < *r_out) {
+    if (*r_out >= 0x4000) {
       *r_out = 0x3fff;
     }
   }
