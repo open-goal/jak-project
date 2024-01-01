@@ -1251,7 +1251,7 @@ If the player is too far, play a warning speech."
              (add-process
                *gui-control*
                this
-               (the-as gui-channel (-> this channel))
+               (-> this channel)
                (gui-action play)
                (-> speech name)
                -99.0
@@ -1277,15 +1277,7 @@ If the player is too far, play a warning speech."
 ;; WARN: Return type mismatch sound-id vs none.
 (defmethod play-death-sound ((this bot) (sound string))
   "Play one of our death sounds."
-  (add-process
-    *gui-control*
-    this
-    (the-as gui-channel (-> this channel))
-    (gui-action play)
-    sound
-    -99.0
-    (seconds 0.3)
-    )
+  (add-process *gui-control* this (-> this channel) (gui-action play) sound -99.0 (seconds 0.3))
   (none)
   )
 
@@ -1314,11 +1306,11 @@ If the player is too far, play a warning speech."
 (defmethod channel-active? ((this bot) (channel gui-channel))
   "Is the given [[gui-channel]] active?"
   (if (= channel (gui-channel none))
-      (set! channel (the-as gui-channel (-> this channel)))
+      (set! channel (-> this channel))
       )
   (nonzero? (get-status
               *gui-control*
-              (lookup-gui-connection-id *gui-control* (the-as string #f) (the-as gui-channel channel) (gui-action none))
+              (lookup-gui-connection-id *gui-control* (the-as string #f) channel (gui-action none))
               )
             )
   )
@@ -1327,7 +1319,7 @@ If the player is too far, play a warning speech."
 ;; WARN: Return type mismatch int vs none.
 (defmethod stop-speech ((this bot) (channel uint) (arg1 symbol))
   (if (zero? channel)
-      (set! channel (-> this channel))
+      (set! channel (the-as uint (-> this channel)))
       )
   (if arg1
       (set-action!
@@ -1410,7 +1402,6 @@ If the player is too far, play a warning speech."
   )
 
 ;; definition for method 215 of type bot
-;; WARN: Return type mismatch object vs none.
 (defmethod skip-waypoint ((this bot))
   (let ((skip-id (-> this waypoint skip-to)))
     (when (>= skip-id 0)
@@ -1419,7 +1410,6 @@ If the player is too far, play a warning speech."
       (go-to-waypoint! this skip-id #t)
       )
     )
-  (none)
   )
 
 ;; definition for method 7 of type bot
