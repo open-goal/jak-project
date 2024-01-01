@@ -415,17 +415,10 @@ void sceSdProcBatch(sceSdBatch* b, int, int n) {
 }
 
 void SetVAGVol(VagCmd* cmd, int param_2) {
-  u32 uVar1;
-  u32 uVar3;
-  int iVar4;
-  int iVar5;
   VagCmd* stereo_cmd;
-  sceSdBatch batch[6];
-  u32 local_28;
-  u32 local_24;
-  // undefined4 local_20 [2];
+  u32 lvol, rvol;
 
-  if (cmd == 0x0) {
+  if (cmd == nullptr) {
     return;
   }
   if (cmd->byte4 == '\0') {
@@ -437,105 +430,43 @@ void SetVAGVol(VagCmd* cmd, int param_2) {
   if (cmd->byte11 != '\0') {
     return;
   }
-  auto pvVar2 = cmd->sound_handler;
-  stereo_cmd = cmd->stereo_sibling;
-  if (pvVar2 == 0) {
-    if (cmd->unk_296 == 0) {
-      local_28 = (u32)(cmd->vol_multiplier * MasterVolume[2]) >> 6;
-      local_24 = local_28;
-      if (0x3fff < local_28) {
-        local_28 = 0x3fff;
-        local_24 = local_28;
-      }
-      goto LAB_0000a258;
-    }
-    iVar4 = CalculateFallofVolume(&cmd->vec3, (u32)(cmd->vol_multiplier * MasterVolume[2]) >> 10,
-                                  cmd->fo_curve, cmd->fo_min, cmd->fo_max);
-    iVar5 = CalculateAngle(&cmd->vec3);
-    uVar3 = 0x276 - iVar5;
-    uVar1 = (uVar3 >> 3) / 0x2d;
-    local_28 = ((s16*)gPanTable)[uVar1 * -0x2d0 + uVar3 * 2] * iVar4;
-    local_24 = ((s16*)gPanTable)[uVar1 * -0x2d0 + uVar3 * 2 + 1] * iVar4;
+
+  if (!cmd->sound_handler) {
+    CalculateVAGVolumes(cmd, &lvol, &rvol);
   } else {
     ASSERT_NOT_REACHED();
-    //    uVar3 = cmd->unk_176 + 0x5a;
-    //    uVar1 = (uVar3 >> 3) / 0x2d;
-    //    local_24 = (((u32)(cmd->vol_multiplier * MasterVolume[*(char *)((int)pvVar2 + 0x17)]) >>
-    //    10) *
-    //                (int)*(short *)((int)pvVar2 + 0x10) >> 10) * 0x3fff >> 10;
-    //    local_28 = (int)gPanTable[uVar1 * -0x2d0 + uVar3 * 2] * local_24;
-    //    local_24 = (int)gPanTable[uVar1 * -0x2d0 + uVar3 * 2 + 1] * local_24;
+    // TODO vag 989snd plugin
+    // SoundHandler* hnd = cmd->sound_handler;
+    // u32 vol =
+    //    0x3fff *
+    //    ((((cmd->vol_multiplier * MasterVolume[hnd->VolGroup]) >> 10) * hnd->Current_Vol) >> 10)
+    //    >> 10;
+    // lvol = (vol * gPanTable[(cmd->unk_176 + 90) % 360].left) >> 10;
+    // lvol = (vol * gPanTable[(cmd->unk_176 + 90) % 360].right) >> 10;
+    // if (lvol >= 0x4000) {
+    //  lvol = 0x3fff;
+    //}
+    // if (rvol >= 0x4000) {
+    //  rvol = 0x3fff;
+    //}
   }
-  local_28 = local_28 >> 10;
-  local_24 = local_24 >> 10;
-  if (0x3fff < local_28) {
-    local_28 = 0x3fff;
-  }
-  if (0x3fff < local_24) {
-    local_24 = 0x3fff;
-  }
-LAB_0000a258:
-  if (stereo_cmd == (VagCmd*)0x0) {
-    batch[0].entry = *(uint16_t*)&cmd->voice;
-    iVar4 = 2;
-    batch[1].entry = *(u16*)&cmd->voice | 0x100;
-    batch[2].entry = *(u16*)&cmd->voice | 0x200;
-    iVar5 = cmd->unk_256_pitch2;
-    uVar1 = cmd->pitch1;
-    // printf("cmd's pitch is %d, %d\n", cmd->pitch1, cmd->unk_256_pitch2);
-    batch[1].value = local_24;
+
+  // Originally used ProcBatch, buts this is easier to read.
+  stereo_cmd = cmd->stereo_sibling;
+  if (stereo_cmd) {
+    sceSdSetParam(SD_VP_VOLL | cmd->voice, lvol);
+    sceSdSetParam(SD_VP_VOLR | cmd->voice, 0);
+
+    sceSdSetParam(SD_VP_VOLL | stereo_cmd->voice, 0);
+    sceSdSetParam(SD_VP_VOLR | stereo_cmd->voice, rvol);
+
+    sceSdSetParam(SD_VP_PITCH | cmd->voice, CalculateVAGPitch(cmd->pitch1, cmd->unk_256_pitch2));
+    sceSdSetParam(SD_VP_PITCH | stereo_cmd->voice,
+                  CalculateVAGPitch(cmd->pitch1, cmd->unk_256_pitch2));
   } else {
-    batch[0].entry = *(uint16_t*)&cmd->voice;
-    batch[1].entry = *(uint16_t*)&stereo_cmd->voice;
-    batch[1].value = 0;
-    batch[2].value = 0;
-    batch[2].entry = *(u16*)&cmd->voice | 0x100;
-    batch[3].func = 1;
-    batch[3].entry = *(u16*)&stereo_cmd->voice | 0x100;
-    batch[4].func = 1;
-    batch[4].entry = *(u16*)&cmd->voice | 0x200;
-    iVar4 = cmd->unk_256_pitch2;
-    batch[4].value = cmd->pitch1;
-    if (iVar4 != 0) {
-      if (iVar4 < 1) {
-        batch[4].value = (u32)(batch[4].value * 0x5f4) / (0x5f4U - iVar4);
-        if (0x5f4U - iVar4 == 0) {
-          ASSERT_NOT_REACHED();
-          // trap(0x1c00);
-        }
-      } else {
-        batch[4].value = (u32)(batch[4].value * (iVar4 + 0x5f4)) / 0x5f4;
-      }
-    }
-    iVar4 = 5;
-    batch[5].func = 1;
-    batch[5].entry = *(u16*)&stereo_cmd->voice | 0x200;
-    iVar5 = cmd->unk_256_pitch2;
-    uVar1 = cmd->pitch1;
-    batch[3].value = local_24;
-  }
-  if (iVar5 != 0) {
-    if (iVar5 < 1) {
-      uVar1 = (uVar1 * 0x5f4) / (0x5f4U - iVar5);
-      if (0x5f4U - iVar5 == 0) {
-        ASSERT_NOT_REACHED();
-        // trap(0x1c00);
-      }
-    } else {
-      uVar1 = (uVar1 * (iVar5 + 0x5f4)) / 0x5f4;
-    }
-  }
-  batch[2].func = 1;
-  batch[1].func = 1;
-  batch[0].value = local_28;
-  batch[0].func = 1;
-  batch[iVar4].value = uVar1;
-  if (param_2 == 1) {
-    // CpuSuspendIntr(local_20);
-    sceSdProcBatch(batch, 0, iVar4 + 1);
-    // CpuResumeIntr(local_20[0]);
-  } else {
-    sceSdProcBatch(batch, 0, iVar4 + 1);
+    sceSdSetParam(SD_VP_VOLL | cmd->voice, lvol);
+    sceSdSetParam(SD_VP_VOLR | cmd->voice, rvol);
+    sceSdSetParam(SD_VP_PITCH | cmd->voice, CalculateVAGPitch(cmd->pitch1, cmd->unk_256_pitch2));
   }
 }
 
