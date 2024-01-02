@@ -74,9 +74,9 @@ VagStrListNode* InsertVagStreamInList(VagStrListNode* param_1, List* param_2) {
           pVVar5->unk_76 = param_1->unk_76;
           pVVar5->unk_80 = param_1->unk_80;
           pVVar5->prio = param_1->prio;
-          iVar1 = param_1->unk_72;
+          iVar1 = param_1->sound_handler;
           pVVar5->unk_92 = 0;
-          pVVar5->unk_72 = iVar1;
+          pVVar5->sound_handler = iVar1;
           pVVar5->vol_multiplier = param_1->vol_multiplier;
           pVVar5->unk_100 = param_1->unk_100;
           if (pVVar6 == (VagStrListNode*)0x0) {
@@ -132,7 +132,7 @@ void QueueNewStreamsFromList(List* list) {
       // puVar4[0xe] = 0;
       pvVar6->id = 0;
       // puVar4[0x10] = 0;
-      pvVar6->unk_72 = 0;
+      pvVar6->sound_handler = 0;
       // puVar4[0x13] = 0;
       pvVar6->prio = 0;
       // puVar4[0x11] = 0;
@@ -264,7 +264,7 @@ code_r0x0000f058:
       (pVVar4->list).in_use = 0;
       strncpy(pVVar4->name, "free", 0x30);
       pVVar4->id = 0;
-      pVVar4->unk_72 = 0;
+      pVVar4->sound_handler = 0;
       pVVar4->prio = 0;
       pVVar4->unk_76 = 0;
       pVVar4->unk_80 = 0;
@@ -306,7 +306,7 @@ u32 StreamListThread() {
         // puVar4[0xe] = 0;
         pvVar6->id = 0;
         // puVar4[0x10] = 0;
-        pvVar6->unk_72 = 0;
+        pvVar6->sound_handler = 0;
         // puVar4[0x13] = 0;
         pvVar6->prio = 0;
         // puVar4[0x11] = 0;
@@ -438,7 +438,7 @@ bool InitVagStreamList(List* param_1, u32 param_2, const char* param_3) {
       // *(undefined4*)(piVar1 + -0x24) = 0;
       pLVar3->id = 0;
       // *(undefined4*)(piVar1 + -0x1c) = 0;
-      pLVar3->unk_72 = 0;
+      pLVar3->sound_handler = 0;
       // *(undefined4*)(piVar1 + -0x10) = 0;
       pLVar3->prio = 0;
       // *(undefined4*)(piVar1 + -0x18) = 0;
@@ -525,7 +525,7 @@ void RemoveVagStreamFromList(VagStrListNode* param_1, List* param_2) {
     (pVVar2->list).in_use = 0;
     strncpy(pVVar2->name, "free", 0x30);
     pVVar2->id = 0;
-    pVVar2->unk_72 = 0;
+    pVVar2->sound_handler = 0;
     pVVar2->prio = 0;
     pVVar2->unk_76 = 0;
     pVVar2->unk_80 = 0;
@@ -563,7 +563,7 @@ void EmptyVagStreamList(List* param_1) {
       // puVar1 = puVar1 + 0x1a;
 
       pvVar2->id = 0;
-      pvVar2->unk_72 = 0;
+      pvVar2->sound_handler = 0;
       pvVar2->prio = 0;
       pvVar2->unk_76 = 0;
       pvVar2->unk_80 = 0;
