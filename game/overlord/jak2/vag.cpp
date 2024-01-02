@@ -786,8 +786,8 @@ void CalculateVAGVolumes(VagCmd* cmd, u32* l_out, u32* r_out) {
     *r_out = vol;
   } else {
     int fo_vol =
-        CalculateFallofVolume(&cmd->vec3, (u32)(cmd->vol_multiplier * MasterVolume[2]) >> 10,
-                              cmd->fo_curve, cmd->fo_min, cmd->fo_max);
+        CalculateFalloffVolume(&cmd->vec3, (u32)(cmd->vol_multiplier * MasterVolume[2]) >> 10,
+                               cmd->fo_curve, cmd->fo_min, cmd->fo_max);
 
     auto* pan = &gPanTable[(630 - CalculateAngle(&cmd->vec3)) % 360];
     *l_out = (pan->left * fo_vol) >> 10;
