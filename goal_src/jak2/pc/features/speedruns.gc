@@ -2,7 +2,35 @@
 (in-package goal)
 
 (define *speedrun-info* (new 'static 'speedrun-info))
-(set! (-> *speedrun-info* active-practice-objective) #f)
+(set! (-> *speedrun-info* active-practice-objective) (new 'static 'speedrun-practice-objective))
+(set! (-> *speedrun-info* active-practice-objective starting-position) (new 'static 'vector))
+(set! (-> *speedrun-info* active-practice-objective starting-rotation) (new 'static 'vector))
+(set! (-> *speedrun-info* active-practice-objective starting-camera-position) (new 'static 'vector))
+(set! (-> *speedrun-info* active-practice-objective starting-camera-rotation) (new 'static 'matrix))
+(set! (-> *speedrun-info* active-practice-objective start-zone-init-params) (new 'static 'objective-zone-init-params))
+(set! (-> *speedrun-info* active-practice-objective end-zone-init-params) (new 'static 'objective-zone-init-params))
+
+(defmethod draw-timer ((this speedrun-timer))
+  (clear *temp-string*)
+  (clear *pc-encoded-temp-string*)
+  (cond
+   ((-> this started?)
+    (format *temp-string* "~,,2fs~%" (* (the float (- (current-time) (-> this start-time))) 0.0033333334)))
+   ((and (!= 0 (-> this end-time)))
+    (format *temp-string* "~,,2fs~%" (* (the float (- (-> this end-time) (-> this start-time))) 0.0033333334)))
+   (else
+    (format *temp-string* "0.0s~%")))
+  (when *target*
+    (format *temp-string* "~,,2M~%" (-> *target* control ctrl-xz-vel)))
+  (pc-encode-utf8-string *temp-string* *pc-encoded-temp-string*)
+  (with-dma-buffer-add-bucket ((buf (-> (current-frame) global-buf)) (bucket-id debug-no-zbuf1))
+    ;; reset bucket settings prior to drawing - font won't do this for us, and
+    ;; draw-raw-image can sometimes mess them up. (intro sequence)
+    (dma-buffer-add-gs-set-flusha buf (alpha-1 (new 'static 'gs-alpha :b #x1 :d #x1)) (tex1-1 (new 'static 'gs-tex1 :mmag #x1 :mmin #x1)))
+    (let ((font-ctx (new 'stack 'font-context *font-default-matrix* 256 350 0.0 (font-color default) (font-flags middle shadow kerning large))))
+      (set! (-> font-ctx scale) 0.325)
+      (draw-string-adv *pc-encoded-temp-string* buf font-ctx)))
+  (none))
 
 (defmethod set-category! ((this speedrun-info) (category speedrun-category))
   (set! (-> this category) category)
@@ -59,7 +87,7 @@
         (new 'static 'rgba :r #xff :g #x00 :b #xff :a #x80)))
   (none))
 
-(defstate idle (objective-zone)
+(defstate waiting-for-player (objective-zone)
   :virtual #t
   :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
     (the-as object 0))
@@ -78,8 +106,9 @@
                       (<= (-> pos y) max-point-y))
                  (and (<= min-point-z (-> pos z))
                       (<= (-> pos z) max-point-z)))
-        (sound-play "skill-pickup")))
-    ;; TODO - transition from idle
+        (when (nonzero? (-> self on-enter))
+          ((-> self on-enter)))
+        (go-virtual player-inside)))
     (none))
   :code (behavior ()
     (until #f
@@ -89,34 +118,82 @@
   :post (behavior ()
     (none)))
 
-(defbehavior objective-zone-init objective-zone ((start? symbol) (v1 vector) (v2 vector))
+(defstate player-inside (objective-zone)
+  :virtual #t
+  :trans (behavior ()
+    ;; Check to see if we have entered the zone
+    (let ((min-point-x (fmin (-> self v1 x) (-> self v2 x)))
+          (min-point-y (fmin (-> self v1 y) (-> self v2 y)))
+          (min-point-z (fmin (-> self v1 z) (-> self v2 z)))
+          (max-point-x (fmax (-> self v1 x) (-> self v2 x)))
+          (max-point-y (fmax (-> self v1 y) (-> self v2 y)))
+          (max-point-z (fmax (-> self v1 z) (-> self v2 z)))
+          (pos (target-pos 0)))
+      (when (not (and (and (<= min-point-x (-> pos x))
+                           (<= (-> pos x) max-point-x))
+                      (and (<= min-point-y (-> pos y))
+                           (<= (-> pos y) max-point-y))
+                      (and (<= min-point-z (-> pos z))
+                           (<= (-> pos z) max-point-z))))
+        (when (nonzero? (-> self on-exit))
+          ((-> self on-exit)))
+        (go-virtual waiting-for-player)))
+    (none))
+  :code (behavior ()
+    (until #f
+      (draw-zone self)
+      (suspend))
+    (none)))
+
+(defbehavior objective-zone-init objective-zone ((start? symbol) (params objective-zone-init-params))
   (set! (-> self start?) start?)
-  (set! (-> self v1 quad) (-> v1 quad))
-  (set! (-> self v2 quad) (-> v2 quad))
-  (go-virtual idle)
+  (set! (-> self v1 quad) (-> params v1 quad))
+  (set! (-> self v2 quad) (-> params v2 quad))
+  (go-virtual waiting-for-player)
   (none))
 
 (defmethod draw-info ((this speedrun-practice-objective))
-  ;; (clear *temp-string*)
-  ;; (clear *pc-encoded-temp-string*)
-  ;; (format *temp-string* "<COLOR_WHITE>Practicing: <COLOR_GREEN>~S~%<COLOR_WHITE>History: <COLOR_GREEN>~D/<COLOR_RED>~D(~,,2f%)~%<COLOR_WHITE>"
-  ;;         (-> this name)
-  ;;         10
-  ;;         50
-  ;;         50.5)
-  ;; (format *temp-string* "Session: <COLOR_GREEN>~D/<COLOR_RED>~D(~,,2f%)~%<COLOR_WHITE>Average Time: <COLOR_GREEN>~,,2fs~%<COLOR_WHITE>Fastest Time: <COLOR_GREEN>~,,2fs~%"
-  ;;         1
-  ;;         5
-  ;;         40.5
-  ;;         10.5 22.25)
-  ;; (pc-encode-utf8-string *temp-string* *pc-encoded-temp-string*)
-  ;; (with-dma-buffer-add-bucket ((buf (-> (current-frame) global-buf)) (bucket-id debug-no-zbuf1))
-  ;;   ;; reset bucket settings prior to drawing - font won't do this for us, and
-  ;;   ;; draw-raw-image can sometimes mess them up. (intro sequence)
-  ;;   (dma-buffer-add-gs-set-flusha buf (alpha-1 (new 'static 'gs-alpha :b #x1 :d #x1)) (tex1-1 (new 'static 'gs-tex1 :mmag #x1 :mmin #x1)))
-  ;;   (let ((font-ctx (new 'stack 'font-context *font-default-matrix* 510 20 0.0 (font-color default) (font-flags right shadow kerning large))))
-  ;;     (set! (-> font-ctx scale) 0.325)
-  ;;     (draw-string-adv *pc-encoded-temp-string* buf font-ctx)))
+  (clear *temp-string*)
+  (clear *pc-encoded-temp-string*)
+  (pc-sr-mode-get-practice-entry-name (-> this index) *pc-encoded-temp-string*)
+  (format *temp-string* "<COLOR_WHITE>Practicing: <COLOR_GREEN>~S~%" *pc-encoded-temp-string*)
+  (format *temp-string* "<COLOR_WHITE>History: <COLOR_GREEN>~D<COLOR_WHITE>/~D(~,,2f%)~%"
+                        (pc-sr-mode-get-practice-entry-history-success (-> this index))
+                        (pc-sr-mode-get-practice-entry-history-attempts (-> this index))
+                        (* 100.0 (/ (the float (pc-sr-mode-get-practice-entry-history-success (-> this index)))
+                                    (the float (pc-sr-mode-get-practice-entry-history-attempts (-> this index))))))
+  (format *temp-string* "<COLOR_WHITE>Session: <COLOR_GREEN>~D<COLOR_WHITE>/~D(~,,2f%)~%"
+                        (pc-sr-mode-get-practice-entry-session-success (-> this index))
+                        (pc-sr-mode-get-practice-entry-session-attempts (-> this index))
+                        (* 100.0 (/ (the float (pc-sr-mode-get-practice-entry-session-success (-> this index)))
+                                    (the float (pc-sr-mode-get-practice-entry-session-attempts (-> this index))))))
+  (pc-sr-mode-get-practice-entry-avg-time (-> this index) *pc-encoded-temp-string*)
+  (format *temp-string* "<COLOR_WHITE>Average Time: <COLOR_GREEN>~Ss~%" *pc-encoded-temp-string*)
+  (pc-sr-mode-get-practice-entry-fastest-time (-> this index) *pc-encoded-temp-string*)
+  (format *temp-string* "<COLOR_WHITE>Fastest Time: <COLOR_GREEN>~Ss~%" *pc-encoded-temp-string*)
+  (format *temp-string* "<COLOR_WHITE>\c91 L3: Reset~%")
+  (pc-encode-utf8-string *temp-string* *pc-encoded-temp-string*)
+  (with-dma-buffer-add-bucket ((buf (-> (current-frame) global-buf)) (bucket-id debug-no-zbuf1))
+    ;; reset bucket settings prior to drawing - font won't do this for us, and
+    ;; draw-raw-image can sometimes mess them up. (intro sequence)
+    (dma-buffer-add-gs-set-flusha buf (alpha-1 (new 'static 'gs-alpha :b #x1 :d #x1)) (tex1-1 (new 'static 'gs-tex1 :mmag #x1 :mmin #x1)))
+    (let ((font-ctx (new 'stack 'font-context *font-default-matrix* 510 20 0.0 (font-color default) (font-flags right shadow kerning large))))
+      (set! (-> font-ctx scale) 0.325)
+      (draw-string-adv *pc-encoded-temp-string* buf font-ctx)))
+  (none))
+
+(defmethod reset! ((this speedrun-practice-objective))
+  ;; TODO - load checkpoint if not already in that checkpoint
+  ;; TODO - set features / cheats / completed-task / etc
+  ;; Update player position
+  (vector-copy! (-> *target* root trans) (-> this starting-position))
+  (vector-copy! (-> *target* root quat) (-> this starting-rotation))
+  ;; Update camera position and rotation
+  (vector-copy! (-> *camera-combiner* trans) (-> this starting-camera-position))
+  (matrix-identity! (-> *camera-combiner* inv-camera-rot))
+  (matrix-copy! (-> *camera-combiner* inv-camera-rot) (-> this starting-camera-rotation))
+  (send-event *camera* 'change-target *target*)
+  (cam-master-activate-slave #t)
   (none))
 
 (define *speedrun-popup-menu-entries*
@@ -136,7 +213,54 @@
             :is-toggled? (lambda () (= (-> *speedrun-info* category) (speedrun-category all-cheats-allowed))))))
       (new 'static 'popup-menu-dynamic-submenu :label "Practice Select"
         :get-length (lambda () (pc-sr-mode-get-practice-entries-amount))
-        :get-entry-label (lambda ((index int) (str-dest string)) (pc-sr-mode-get-practice-entry-name index str-dest)))
+        :get-entry-label (lambda ((index int) (str-dest string)) (pc-sr-mode-get-practice-entry-name index str-dest))
+        :on-entry-confirm (lambda ((index int))
+          ;; tear down old processes
+          (when (nonzero? (-> *speedrun-info* active-practice-objective start-zone))
+            (deactivate (-> *speedrun-info* active-practice-objective start-zone 0)))
+          (when (nonzero? (-> *speedrun-info* active-practice-objective end-zone))
+            (deactivate (-> *speedrun-info* active-practice-objective end-zone 0)))
+          ;; init from cpp
+          (pc-sr-mode-init-practice-info! index (-> *speedrun-info* active-practice-objective))
+          ;; startup new processes
+          (set! (-> *speedrun-info* active-practice-objective start-zone)
+            (the-as (pointer objective-zone) (process-spawn objective-zone :init objective-zone-init #t (-> *speedrun-info* active-practice-objective start-zone-init-params))))
+          (set! (-> *speedrun-info* active-practice-objective start-zone 0 on-exit)
+                (lambda ()
+                  (send-event (ppointer->process (-> *speedrun-menu* 0 timer)) 'start-timer)
+                  (set! (-> *speedrun-info* waiting-to-record-practice-attempt?) #t)
+                  (none)))
+          (set! (-> *speedrun-info* active-practice-objective start-zone 0 on-enter)
+                (lambda ()
+                  (when (and *target* (>= (-> *target* control ctrl-xz-vel) (meters 30.0)))
+                    (process-grab? *target* #f)
+                    (set! (-> *speedrun-menu* 0 grabbed-target?) #t))
+                  (send-event (ppointer->process (-> *speedrun-menu* 0 timer)) 'reset-timer)
+                  (none)))
+
+          (when (= 0 (-> *speedrun-info* active-practice-objective end-task))
+            (set! (-> *speedrun-info* active-practice-objective end-zone)
+              (the-as (pointer objective-zone) (process-spawn objective-zone :init objective-zone-init #f (-> *speedrun-info* active-practice-objective end-zone-init-params))))
+            (set! (-> *speedrun-info* active-practice-objective end-zone 0 on-enter)
+                  (lambda ()
+                    (send-event (ppointer->process (-> *speedrun-menu* 0 timer)) 'stop-timer)
+                    ;; TODO - play only if faster
+                    ;; (when (and (-> *speedrun-info* waiting-to-record-practice-attempt?)
+                    ;;            (not (-> self start?)))
+                    ;;   (set! (-> *speedrun-info* waiting-to-record-practice-attempt?) #f)
+                    ;;   (sound-play "skill-pickup"))
+                    (none))))
+          (set! (-> *speedrun-info* practicing?) #t)
+          (reset! (-> *speedrun-info* active-practice-objective)))
+        :entry-selected? (lambda ((index int)) (= index (-> *speedrun-info* active-practice-objective index))))
+      (new 'static 'popup-menu-button :label "Stop Practicing"
+        :on-confirm (lambda ()
+          (when (-> *speedrun-info* practicing?)
+            (when (nonzero? (-> *speedrun-info* active-practice-objective start-zone))
+              (deactivate (-> *speedrun-info* active-practice-objective start-zone 0)))
+            (when (nonzero? (-> *speedrun-info* active-practice-objective end-zone))
+              (deactivate (-> *speedrun-info* active-practice-objective end-zone 0))))
+            (set! (-> *speedrun-info* practicing?) #f)))
       (new 'static 'popup-menu-button :label "Exit"
         :on-confirm (lambda () (send-event (ppointer->process *speedrun-menu*) 'invoke (speedrun-menu-command exit))))
   ))
@@ -147,8 +271,13 @@
   (set! *speedrun-menu* (the-as (pointer speedrun-menu) (process->ppointer self)))
   (set! (-> *speedrun-menu* 0 popup-menu)
         (the-as (pointer popup-menu) (process-spawn popup-menu :init popup-menu-init "Speedrun Menu" *speedrun-popup-menu-entries*)))
+  (set! (-> *speedrun-menu* 0 timer)
+        (the-as (pointer speedrun-timer) (process-spawn speedrun-timer :init speedrun-timer-init)))
   (set! (-> *speedrun-menu* 0 ignore-menu-toggle?) #f)
   (set! (-> *speedrun-menu* 0 opened-with-start?) #f)
+  (set! (-> *speedrun-menu* 0 grabbed-target?) #f)
+  (set! (-> *speedrun-info* practicing?) #f)
+  (set! (-> *speedrun-info* waiting-to-record-practice-attempt?) #f)
   (go-virtual idle)
   (none))
 
@@ -168,25 +297,17 @@
     ;; see if we should stop drawing the run info (when you escape the fortress!)
     (when (task-complete? *game-info* (game-task fortress-escape))
       (set! (-> this display-run-info?) #f))
-    ;; (when (-> this display-run-info?)
-    ;;    ;; Draw info to the screen
-    ;;    (draw-run-info! this))
+    ;; Draw info to the screen
+    (when (and (not (-> *speedrun-info* practicing?)) (-> this display-run-info?))
+      (draw-run-info this))
     ;; enforce settings even if they've changed them
     (enforce-settings! this)
-    ;; draw objective zones if we are practicing
-    (when ;; TODO - care about this later (-> *pc-settings* practice-mode?)
-          (not (-> this active-practice-objective))
-      (set! (-> this active-practice-objective) *test-speedrun-practice-objective*)
-      (set! (-> this active-practice-objective start-zone)
-            (ppointer->handle (process-spawn objective-zone :init objective-zone-init #t *test-start-objective-zone-v1* *test-start-objective-zone-v2*)))
-      (set! (-> this active-practice-objective end-zone)
-            (ppointer->handle (process-spawn objective-zone :init objective-zone-init #f *test-end-objective-zone-v1* *test-end-objective-zone-v2*))))
-    (when (-> this active-practice-objective)
-      (draw-info (-> this active-practice-objective)))
-            )
+    ;; draw objective info if practicing
+    (when (-> *speedrun-info* practicing?)
+      (draw-info (-> this active-practice-objective))))
   (none))
 
-(defmethod draw-run-info! ((this speedrun-info))
+(defmethod draw-run-info ((this speedrun-info))
   "Draw speedrun related settings in the bottom left corner"
   (when (and (-> *pc-settings* speedrunner-mode?)
              (-> this display-run-info?))
@@ -232,12 +353,17 @@
   :trans (behavior ()
     (none))
   :code (behavior ()
-    (until #f (suspend))
+    (until #f
+      (when (and *target* (-> self grabbed-target?))
+        (process-release? *target*))
+      (when (and (-> *speedrun-info* practicing?) (cpad-pressed? 0 l3))
+        (reset! (-> *speedrun-info* active-practice-objective)))
+      (suspend))
     (none))
   :post (behavior ()
     (none)))
 
-(defmethod draw! ((this speedrun-menu))
+(defmethod draw-menu ((this speedrun-menu))
   ;; handle opening and closing the menu
   ;; allow the menu to be toggled again once one of the current buttons are released
   (when (and (-> this ignore-menu-toggle?)

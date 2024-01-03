@@ -1,6 +1,87 @@
 ;;-*-Lisp-*-
 (in-package goal)
 
+(deftype speedrun-timer (process)
+  ((started? symbol)
+   (stopped? symbol)
+   (start-time time-frame)
+   (end-time time-frame))
+  (:methods
+    (draw-timer (_type_) none :behavior speedrun-timer))
+  (:state-methods
+    idle
+    started
+    stopped))
+
+(defbehavior speedrun-timer-init speedrun-timer ()
+  (set! (-> self started?) #f)
+  (set! (-> self start-time) 0)
+  (set! (-> self end-time) 0)
+  (go-virtual idle)
+  (none))
+
+(defbehavior speedrun-timer-event-handler speedrun-timer ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+  (case event-type
+    (('reset-timer)
+     (set! (-> self started?) #f)
+     (set! (-> self stopped?) #f)
+     (set! (-> self start-time) 0)
+     (set! (-> self end-time) 0)
+     (go-virtual idle))
+    (('start-timer)
+     (set! (-> self started?) #t)
+     (set! (-> self stopped?) #f)
+     (set! (-> self start-time) (current-time))
+     (set! (-> self end-time) 0)
+     (go-virtual started))
+    (('stop-timer)
+     (when (not (-> self stopped?))
+      (set! (-> self started?) #f)
+      (set! (-> self stopped?) #t)
+      (set! (-> self end-time) (current-time))
+      (go-virtual stopped))))
+    (the-as object 0))
+
+(defstate idle (speedrun-timer)
+  :virtual #t
+  :event speedrun-timer-event-handler
+  :trans (behavior ()
+    (none))
+  :code (behavior ()
+    (until #f
+      (draw-timer self)
+      (suspend))
+    (none))
+  :post (behavior ()
+    (none)))
+
+(defstate started (speedrun-timer)
+  :virtual #t
+  :event speedrun-timer-event-handler
+  :trans (behavior ()
+    (none))
+  :code (behavior ()
+    (until #f
+      (draw-timer self)
+      (suspend))
+    (none))
+  :post (behavior ()
+    (none)))
+
+(defstate stopped (speedrun-timer)
+  :virtual #t
+  :event speedrun-timer-event-handler
+  :trans (behavior ()
+    (none))
+  :code (behavior ()
+    (until #f
+      (draw-timer self)
+      (suspend))
+    (none))
+  :post (behavior ()
+    (none)))
+
+
 ;; TODO - put in util
 (deftype objective-zone (process)
   ((start? symbol)
@@ -11,47 +92,37 @@
   (:methods
     (draw-zone (_type_) none))
   (:state-methods
-    idle
-    player-entered
-    player-exited))
+    waiting-for-player
+    player-inside))
 
-(define *test-end-objective-zone-v1* (static-vector (meters 22.27) (meters -50.50) (meters 99.82) (meters 1.0)))
-(define *test-end-objective-zone-v2* (static-vector (meters -15.74) (meters -42.12) (meters 76.90) (meters 1.0)))
-
-(define *test-start-objective-zone-v1* (static-vector (meters 11.29) (meters -42.00) (meters -49.99) (meters 1.0)))
-(define *test-start-objective-zone-v2* (static-vector (meters -7.29) (meters -35.00) (meters -65.29) (meters 1.0)))
+(deftype objective-zone-init-params (structure)
+  ((v1 vector :inline)
+   (v2 vector :inline)))
 
 (defenum speedrun-practice-flags
   :type uint64
   (none 0))
 
-;; TODO - starting camera position as well
+;; TODO - starting camera position / rotation as well
 ;; reset method
 (deftype speedrun-practice-objective (structure)
-  ((index int32)
-   (flags speedrun-practice-flags)
-   (completed-task game-task)
-   (features game-feature)
-   (secrets game-secrets)
-   (starting-position vector :inline)
-   (end-task game-task)
-   (start-zone handle) ;; TODO - change to pointer objective-zone
-   (end-zone handle))
+  ((index int32 :offset-assert 0)
+   (flags speedrun-practice-flags :offset-assert 8)
+   (completed-task game-task :offset-assert 16)
+   (features game-feature :offset-assert 24)
+   (secrets game-secrets :offset-assert 32)
+   (starting-position vector :offset-assert 36)
+   (starting-rotation vector :offset-assert 40)
+   (starting-camera-position vector :offset-assert 44)
+   (starting-camera-rotation matrix :offset-assert 48)
+   (end-task game-task :offset-assert 52)
+   (start-zone-init-params objective-zone-init-params :offset-assert 56)
+   (start-zone (pointer objective-zone) :offset-assert 60)
+   (end-zone-init-params objective-zone-init-params :offset-assert 64)
+   (end-zone (pointer objective-zone) :offset-assert 68))
   (:methods
    (draw-info (_type_) none)
-   (record-attempt! (_type_ symbol uint64) none)
    (reset! (_type_) none)))
-
-
-(define *test-speedrun-practice-objective* (new 'static 'speedrun-practice-objective))
-(define *test-speedrun-practice-objective-start* (static-vector (meters 2.47) (meters -42.00) (meters -55.41) (meters 1.0)))
-;; (set! (-> *test-speedrun-practice-objective* name) "Test Objective")
-;; (set! (-> *test-speedrun-practice-objective* continue-point-name) "halfpipe")
-(set! (-> *test-speedrun-practice-objective* completed-task) (game-task none))
-(set! (-> *test-speedrun-practice-objective* features) (the-as game-feature 0))
-(set! (-> *test-speedrun-practice-objective* secrets) (the-as game-secrets 0))
-(set! (-> *test-speedrun-practice-objective* starting-position quad) (-> *test-speedrun-practice-objective-start* quad))
-(set! (-> *test-speedrun-practice-objective* end-task) (game-task none))
 
 
 (defenum speedrun-category
@@ -64,21 +135,21 @@
   ;; because we aren't going to modify the code to make that possible
   ;; ie. removing mars tomb skip if you pick "all missions"
   ;; Random one for experimentation
-  (all-cheats-allowed 999)
-  )
+  (all-cheats-allowed 999))
 
 (deftype speedrun-info (structure)
   ((category speedrun-category)
    (display-run-info? symbol)
    (practicing? symbol)
-   (active-practice-objective speedrun-practice-objective))
+   (active-practice-objective speedrun-practice-objective)
+   (waiting-to-record-practice-attempt? symbol))
   (:methods
     (set-category! (_type_ speedrun-category) none)
     (start-run! (_type_) none)
     (enforce-settings! (_type_) none)
     (hide-run-info! (_type_) none)
     (update! (_type_) none)
-    (draw-run-info! (_type_) none)))
+    (draw-run-info (_type_) none)))
 
 (define-extern *speedrun-info* speedrun-info)
 
@@ -87,12 +158,15 @@
   (reset 0)
   (exit 1))
 
+;; TODO - rename this into speedrun-manager
 (deftype speedrun-menu (process)
   ((popup-menu (pointer popup-menu))
    (ignore-menu-toggle? symbol)
-   (opened-with-start? symbol))
+   (opened-with-start? symbol)
+   (timer (pointer speedrun-timer))
+   (grabbed-target? symbol))
   (:methods
-    (draw! (_type_) none))
+    (draw-menu (_type_) none))
   (:state-methods
     idle))
 

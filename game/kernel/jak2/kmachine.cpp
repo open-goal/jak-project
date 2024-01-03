@@ -581,20 +581,26 @@ void InitMachine_PCPort() {
                               (void*)kmachine_extras::pc_sr_mode_get_practice_entry_name);
   make_function_symbol_from_c("pc-sr-mode-get-practice-entry-continue-point",
                               (void*)kmachine_extras::pc_sr_mode_get_practice_entry_continue_point);
-  make_function_symbol_from_c("pc-sr-mode-get-active-practice-entry-history-success",
-                              (void*)kmachine_extras::pc_sr_mode_get_active_practice_entry_history_success);
-  make_function_symbol_from_c("pc-sr-mode-get-active-practice-entry-history-attempts",
-                              (void*)kmachine_extras::pc_sr_mode_get_active_practice_entry_history_attempts);
-  make_function_symbol_from_c("pc-sr-mode-get-active-practice-entry-session-success",
-                              (void*)kmachine_extras::pc_sr_mode_get_active_practice_entry_session_success);
-  make_function_symbol_from_c("pc-sr-mode-get-active-practice-entry-session-attempts",
-                              (void*)kmachine_extras::pc_sr_mode_get_active_practice_entry_session_attempts);
-  make_function_symbol_from_c("pc-sr-mode-get-active-practice-entry-avg-time",
-                              (void*)kmachine_extras::pc_sr_mode_get_active_practice_entry_avg_time);
-  make_function_symbol_from_c("pc-sr-mode-get-active-practice-entry-fastest-time",
-                              (void*)kmachine_extras::pc_sr_mode_get_active_practice_entry_fastest_time);
+  make_function_symbol_from_c(
+      "pc-sr-mode-get-practice-entry-history-success",
+      (void*)kmachine_extras::pc_sr_mode_get_practice_entry_history_success);
+  make_function_symbol_from_c(
+      "pc-sr-mode-get-practice-entry-history-attempts",
+      (void*)kmachine_extras::pc_sr_mode_get_practice_entry_history_attempts);
+  make_function_symbol_from_c(
+      "pc-sr-mode-get-practice-entry-session-success",
+      (void*)kmachine_extras::pc_sr_mode_get_practice_entry_session_success);
+  make_function_symbol_from_c(
+      "pc-sr-mode-get-practice-entry-session-attempts",
+      (void*)kmachine_extras::pc_sr_mode_get_practice_entry_session_attempts);
+  make_function_symbol_from_c("pc-sr-mode-get-practice-entry-avg-time",
+                              (void*)kmachine_extras::pc_sr_mode_get_practice_entry_avg_time);
+  make_function_symbol_from_c("pc-sr-mode-get-practice-entry-fastest-time",
+                              (void*)kmachine_extras::pc_sr_mode_get_practice_entry_fastest_time);
   make_function_symbol_from_c("pc-sr-mode-record-practice-entry-attempt!",
                               (void*)kmachine_extras::pc_sr_mode_record_practice_entry_attempt);
+  make_function_symbol_from_c("pc-sr-mode-init-practice-info!",
+                              (void*)kmachine_extras::pc_sr_mode_init_practice_info);
 
   // setup string constants
   auto user_dir_path = file_util::get_user_config_dir();

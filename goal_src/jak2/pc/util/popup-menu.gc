@@ -57,10 +57,17 @@
     (set! (-> font-ctx color) old-color))
   (none))
 
-(defun draw-dynamic-entry ((entry-id int) (get-label (function int string none)) (font-ctx font-context) (dma-buf dma-buffer) (hovering? symbol))
+(defun draw-dynamic-entry ((entry-id int) (get-label (function int string none)) (entry-selected? (function int symbol)) (font-ctx font-context) (dma-buf dma-buffer) (hovering? symbol))
   (let ((old-x (-> font-ctx origin x))
         (old-y (-> font-ctx origin y))
         (old-color (-> font-ctx color)))
+    (when (entry-selected? entry-id)
+      (set! (-> font-ctx color) (font-color green))
+      (set! (-> font-ctx origin x) (- old-x 6.0))
+      (draw-string-adv "\c86" dma-buf font-ctx)
+      (set! (-> font-ctx origin x) old-x)
+      (set! (-> font-ctx origin y) old-y)
+      (set! (-> font-ctx color) old-color))
     (get-label entry-id *pc-encoded-temp-string*)
     (pc-encode-utf8-string *pc-encoded-temp-string* *pc-encoded-temp-string*)
     (when hovering?
@@ -111,12 +118,11 @@
         (set! (-> font-ctx color) (font-color default))
         (set! (-> font-ctx origin y) (+ 15.0 (-> font-ctx origin y)))
         ;; menu contents
-        (when dynamic-menu?
-          (format 0 "~D~%" entry-count))
         (dotimes (i entry-count)
           (if dynamic-menu?
             (draw-dynamic-entry i
                                 (-> this menu-states (-> this curr-state-index) get-dynamic-menu-entry-label)
+                                (-> this menu-states (-> this curr-state-index) dynamic-menu-entry-selected?)
                                 font-ctx
                                 buf
                                 (= i (-> this menu-states (-> this curr-state-index) entry-index)))
@@ -124,8 +130,8 @@
           (set! (-> font-ctx origin y) (+ 15.0 (-> font-ctx origin y))))
         ;; button prompts
         (if (= (-> this curr-state-index) 0)
-          (pc-encode-utf8-string "<PAD_TRIANGLE> Exit" *pc-encoded-temp-string*)
-          (pc-encode-utf8-string "<PAD_TRIANGLE> Back" *pc-encoded-temp-string*))
+          (pc-encode-utf8-string "<PAD_CIRCLE> Exit" *pc-encoded-temp-string*)
+          (pc-encode-utf8-string "<PAD_CIRCLE> Back" *pc-encoded-temp-string*))
         (set! (-> font-ctx origin x) (- 25.0 (-> font-ctx origin x)))
         (set! (-> font-ctx origin y) (+ 10.0 (-> font-ctx origin y)))
         (let ((old-x (-> font-ctx origin x))
@@ -145,9 +151,12 @@
   (none))
 
 (defmethod move-down! ((this popup-menu))
-  (set! (-> this menu-states (-> this curr-state-index) entry-index)
-        (min (dec (-> this menu-states (-> this curr-state-index) entries length))
-             (inc (-> this menu-states (-> this curr-state-index) entry-index))))
+  (let ((max-entries (if (-> this menu-states (-> this curr-state-index) dynamic-menu?)
+                         ((-> this menu-states (-> this curr-state-index) get-dynamic-menu-length))
+                         (-> this menu-states (-> this curr-state-index) entries length))))
+    (set! (-> this menu-states (-> this curr-state-index) entry-index)
+          (min (dec max-entries)
+              (inc (-> this menu-states (-> this curr-state-index) entry-index)))))
   ;; skip labels
   ;; (when (type? (-> this entries (-> this curr-entry-index)) popup-menu-label)
   ;;   (set! (-> this curr-entry-index) (min (dec (-> this entries length)) (inc (-> this curr-entry-index)))))
@@ -155,26 +164,30 @@
 
 (defmethod confirm! ((this popup-menu))
   (let* ((menu-state (-> this menu-states (-> this curr-state-index)))
-         (entry (-> menu-state entries (-> menu-state entry-index))))
-    (cond
-      ((type? entry popup-menu-dynamic-submenu)
-       ;; TODO - dont allow more than 10 nested menus
-       (inc! (-> this curr-state-index))
-       (set! (-> this menu-states (-> this curr-state-index) entry-index) 0)
-       (set! (-> this menu-states (-> this curr-state-index) title) (-> entry label))
-       (set! (-> this menu-states (-> this curr-state-index) dynamic-menu?) #t)
-       (set! (-> this menu-states (-> this curr-state-index) get-dynamic-menu-length) (-> (the-as popup-menu-dynamic-submenu entry) get-length))
-       (set! (-> this menu-states (-> this curr-state-index) get-dynamic-menu-entry-label) (-> (the-as popup-menu-dynamic-submenu entry) get-entry-label))
-       (set! (-> this menu-states (-> this curr-state-index) on-dynamic-menu-entry-confirm) (-> (the-as popup-menu-dynamic-submenu entry) on-entry-confirm)))
-      ((type? entry popup-menu-submenu)
-       ;; TODO - dont allow more than 10 nested menus
-       (inc! (-> this curr-state-index))
-       (set! (-> this menu-states (-> this curr-state-index) entry-index) 0)
-       (set! (-> this menu-states (-> this curr-state-index) dynamic-menu?) #f)
-       (set! (-> this menu-states (-> this curr-state-index) title) (-> entry label))
-       (set! (-> this menu-states (-> this curr-state-index) entries) (-> (the-as popup-menu-submenu entry) entries)))
-      (else
-       ((-> entry on-confirm)))))
+         (dynamic-menu? (-> menu-state dynamic-menu?)))
+    (if dynamic-menu?
+      ((-> menu-state on-dynamic-menu-entry-confirm) (-> menu-state entry-index))
+      (let ((entry (-> menu-state entries (-> menu-state entry-index))))
+        (cond
+          ((type? entry popup-menu-dynamic-submenu)
+           ;; TODO - dont allow more than 10 nested menus
+           (inc! (-> this curr-state-index))
+           (set! (-> this menu-states (-> this curr-state-index) entry-index) 0)
+           (set! (-> this menu-states (-> this curr-state-index) title) (-> entry label))
+           (set! (-> this menu-states (-> this curr-state-index) dynamic-menu?) #t)
+           (set! (-> this menu-states (-> this curr-state-index) get-dynamic-menu-length) (-> (the-as popup-menu-dynamic-submenu entry) get-length))
+           (set! (-> this menu-states (-> this curr-state-index) get-dynamic-menu-entry-label) (-> (the-as popup-menu-dynamic-submenu entry) get-entry-label))
+           (set! (-> this menu-states (-> this curr-state-index) on-dynamic-menu-entry-confirm) (-> (the-as popup-menu-dynamic-submenu entry) on-entry-confirm))
+           (set! (-> this menu-states (-> this curr-state-index) dynamic-menu-entry-selected?) (-> (the-as popup-menu-dynamic-submenu entry) entry-selected?)))
+          ((type? entry popup-menu-submenu)
+           ;; TODO - dont allow more than 10 nested menus
+           (inc! (-> this curr-state-index))
+           (set! (-> this menu-states (-> this curr-state-index) entry-index) 0)
+           (set! (-> this menu-states (-> this curr-state-index) dynamic-menu?) #f)
+           (set! (-> this menu-states (-> this curr-state-index) title) (-> entry label))
+           (set! (-> this menu-states (-> this curr-state-index) entries) (-> (the-as popup-menu-submenu entry) entries)))
+          (else
+           ((-> entry on-confirm)))))))
   (sound-play "menu-pick")
   (none))
 
@@ -202,6 +215,7 @@
     (('open-menu)
       (set! (-> self draw?) #t)
       (set! *popup-menu-open* #t)
+      (sound-play "menu-pick")
       (go-virtual opened))
     (('close-menu)
       (set! (-> self draw?) #f)
@@ -223,7 +237,7 @@
        (move-down! this))
       ((cpad-pressed? 0 x)
        (confirm! this))
-      ((cpad-pressed? 0 triangle)
+      ((cpad-pressed? 0 triangle circle)
        (when (back! this)
          (send-event this 'close-menu))))
     (draw-menu this))

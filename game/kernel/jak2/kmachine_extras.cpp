@@ -559,11 +559,14 @@ void to_json(json& j, const SpeedrunPracticeEntry& obj) {
   json_serialize(features);
   json_serialize(secrets);
   json_serialize(starting_position);
+  json_serialize(starting_rotation);
+  json_serialize(starting_camera_position);
+  json_serialize(starting_camera_rotation);
   json_serialize(start_zone_v1);
   json_serialize(start_zone_v2);
-  json_serialize(end_zone_v1);
-  json_serialize(end_zone_v2);
-  json_serialize(end_task);
+  json_serialize_optional(end_zone_v1);
+  json_serialize_optional(end_zone_v2);
+  json_serialize_optional(end_task);
   json_serialize(history);
 }
 
@@ -575,11 +578,14 @@ void from_json(const json& j, SpeedrunPracticeEntry& obj) {
   json_deserialize_if_exists(features);
   json_deserialize_if_exists(secrets);
   json_deserialize_if_exists(starting_position);
+  json_deserialize_if_exists(starting_rotation);
+  json_deserialize_if_exists(starting_camera_position);
+  json_deserialize_if_exists(starting_camera_rotation);
   json_deserialize_if_exists(start_zone_v1);
   json_deserialize_if_exists(start_zone_v2);
-  json_deserialize_if_exists(end_zone_v1);
-  json_deserialize_if_exists(end_zone_v2);
-  json_deserialize_if_exists(end_task);
+  json_deserialize_optional_if_exists(end_zone_v1);
+  json_deserialize_optional_if_exists(end_zone_v2);
+  json_deserialize_optional_if_exists(end_task);
   json_deserialize_if_exists(history);
 }
 
@@ -655,32 +661,122 @@ void pc_sr_mode_get_practice_entry_continue_point(s32 entry_index, u32 name_str_
   strcpy(Ptr<String>(name_str_ptr).c()->data(), name.c_str());
 }
 
-s32 pc_sr_mode_get_active_practice_entry_history_success(s32 entry_index) {
+s32 pc_sr_mode_get_practice_entry_history_success(s32 entry_index) {
   return g_speedrun_practice_state.at(entry_index).total_successes;
 }
 
-s32 pc_sr_mode_get_active_practice_entry_history_attempts(s32 entry_index) {
+s32 pc_sr_mode_get_practice_entry_history_attempts(s32 entry_index) {
   return g_speedrun_practice_state.at(entry_index).total_attempts;
 }
 
-s32 pc_sr_mode_get_active_practice_entry_session_success(s32 entry_index) {
+s32 pc_sr_mode_get_practice_entry_session_success(s32 entry_index) {
   return g_speedrun_practice_state.at(entry_index).session_successes;
 }
 
-s32 pc_sr_mode_get_active_practice_entry_session_attempts(s32 entry_index) {
+s32 pc_sr_mode_get_practice_entry_session_attempts(s32 entry_index) {
   return g_speedrun_practice_state.at(entry_index).session_attempts;
 }
 
-float pc_sr_mode_get_active_practice_entry_avg_time(s32 entry_index) {
-  return g_speedrun_practice_state.at(entry_index).average_time;
+void pc_sr_mode_get_practice_entry_avg_time(s32 entry_index, u32 time_str_ptr) {
+  const auto time = fmt::format("{:.2f}", g_speedrun_practice_state.at(entry_index).average_time);
+  strcpy(Ptr<String>(time_str_ptr).c()->data(), time.c_str());
 }
 
-float pc_sr_mode_get_active_practice_entry_fastest_time(s32 entry_index) {
-  return g_speedrun_practice_state.at(entry_index).fastest_time;
+void pc_sr_mode_get_practice_entry_fastest_time(s32 entry_index, u32 time_str_ptr) {
+  const auto time = fmt::format("{:.2f}", g_speedrun_practice_state.at(entry_index).fastest_time);
+  strcpy(Ptr<String>(time_str_ptr).c()->data(), time.c_str());
 }
 
 void pc_sr_mode_record_practice_entry_attempt(s32 entry_index, u32 success_bool, float time) {
   // TODO
+}
+
+// TODO - figure out how to not pass these ptr's in manually and instead
+// get them from `speedrun_practice_obj_ptr`
+// They are all 0'd for some reason despite being initialized to something in GOAL?
+void pc_sr_mode_init_practice_info(s32 entry_index, u32 speedrun_practice_obj_ptr) {
+  if (entry_index >= g_speedrun_practice_entries.size()) {
+    return;
+  }
+
+  auto objective = speedrun_practice_obj_ptr
+                       ? Ptr<SpeedrunPracticeObjective>(speedrun_practice_obj_ptr).c()
+                       : NULL;
+  if (objective) {
+    const auto& json_info = g_speedrun_practice_entries.at(entry_index);
+
+    objective->index = entry_index;
+    objective->flags = json_info.flags;
+    objective->completed_task = json_info.completed_task;
+    objective->features = json_info.features;
+    objective->secrets = json_info.secrets;
+    auto starting_position =
+        objective->starting_position ? Ptr<Vector>(objective->starting_position).c() : NULL;
+    if (starting_position) {
+      for (int i = 0; i < 4; i++) {
+        starting_position->data[i] = json_info.starting_position.at(i) * 4096.0;
+      }
+    }
+    auto starting_rotation =
+        objective->starting_rotation ? Ptr<Vector>(objective->starting_rotation).c() : NULL;
+    if (starting_rotation) {
+      for (int i = 0; i < 4; i++) {
+        starting_rotation->data[i] = json_info.starting_rotation.at(i);
+      }
+    }
+    auto starting_camera_position = objective->starting_camera_position
+                                        ? Ptr<Vector>(objective->starting_camera_position).c()
+                                        : NULL;
+    if (starting_camera_position) {
+      for (int i = 0; i < 4; i++) {
+        starting_camera_position->data[i] = json_info.starting_camera_position.at(i) * 4096.0;
+      }
+    }
+    auto starting_camera_rotation = objective->starting_camera_rotation
+                                        ? Ptr<Vector>(objective->starting_camera_rotation).c()
+                                        : NULL;
+    if (starting_camera_rotation) {
+      for (int i = 0; i < 16; i++) {
+        starting_camera_rotation->data[i] = json_info.starting_camera_rotation.at(i);
+      }
+    }
+
+    if (json_info.end_task) {
+      objective->end_task = *json_info.end_task;
+    } else {
+      objective->end_task = 0;
+    }
+
+    auto starting_zone = objective->start_zone_init_params
+                             ? Ptr<ObjectiveZoneInitParams>(objective->start_zone_init_params).c()
+                             : NULL;
+    if (starting_zone) {
+      starting_zone->v1[0] = json_info.start_zone_v1.at(0) * 4096.0;
+      starting_zone->v1[1] = json_info.start_zone_v1.at(1) * 4096.0;
+      starting_zone->v1[2] = json_info.start_zone_v1.at(2) * 4096.0;
+      starting_zone->v1[3] = json_info.start_zone_v1.at(3) * 4096.0;
+      starting_zone->v2[0] = json_info.start_zone_v2.at(0) * 4096.0;
+      starting_zone->v2[1] = json_info.start_zone_v2.at(1) * 4096.0;
+      starting_zone->v2[2] = json_info.start_zone_v2.at(2) * 4096.0;
+      starting_zone->v2[3] = json_info.start_zone_v2.at(3) * 4096.0;
+    }
+
+    if (json_info.end_zone_v1 && json_info.end_zone_v2) {
+      auto ending_zone = objective->end_zone_init_params
+                             ? Ptr<ObjectiveZoneInitParams>(objective->end_zone_init_params).c()
+                             : NULL;
+      if (ending_zone) {
+        ending_zone->v1[0] = json_info.end_zone_v1->at(0) * 4096.0;
+        ending_zone->v1[1] = json_info.end_zone_v1->at(1) * 4096.0;
+        ending_zone->v1[2] = json_info.end_zone_v1->at(2) * 4096.0;
+        ending_zone->v1[3] = json_info.end_zone_v1->at(3) * 4096.0;
+        ending_zone->v2[0] = json_info.end_zone_v2->at(0) * 4096.0;
+        ending_zone->v2[1] = json_info.end_zone_v2->at(1) * 4096.0;
+        ending_zone->v2[2] = json_info.end_zone_v2->at(2) * 4096.0;
+        ending_zone->v2[3] = json_info.end_zone_v2->at(3) * 4096.0;
+      }
+    }
+  }
 }
 
 }  // namespace kmachine_extras

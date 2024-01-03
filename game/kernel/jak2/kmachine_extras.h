@@ -41,13 +41,14 @@ s32 pc_get_num_external_highscores(u32 highscore_id_ptr);
 s32 pc_sr_mode_get_practice_entries_amount();
 void pc_sr_mode_get_practice_entry_name(s32 entry_index, u32 name_str_ptr);
 void pc_sr_mode_get_practice_entry_continue_point(s32 entry_index, u32 name_str_ptr);
-s32 pc_sr_mode_get_active_practice_entry_history_success(s32 entry_index);
-s32 pc_sr_mode_get_active_practice_entry_history_attempts(s32 entry_index);
-s32 pc_sr_mode_get_active_practice_entry_session_success(s32 entry_index);
-s32 pc_sr_mode_get_active_practice_entry_session_attempts(s32 entry_index);
-float pc_sr_mode_get_active_practice_entry_avg_time(s32 entry_index);
-float pc_sr_mode_get_active_practice_entry_fastest_time(s32 entry_index);
+s32 pc_sr_mode_get_practice_entry_history_success(s32 entry_index);
+s32 pc_sr_mode_get_practice_entry_history_attempts(s32 entry_index);
+s32 pc_sr_mode_get_practice_entry_session_success(s32 entry_index);
+s32 pc_sr_mode_get_practice_entry_session_attempts(s32 entry_index);
+void pc_sr_mode_get_practice_entry_avg_time(s32 entry_index, u32 time_str_ptr);
+void pc_sr_mode_get_practice_entry_fastest_time(s32 entry_index, u32 time_str_ptr);
 void pc_sr_mode_record_practice_entry_attempt(s32 entry_index, u32 success_bool, float time);
+void pc_sr_mode_init_practice_info(s32 entry_index, u32 speedrun_practice_obj_ptr);
 
 struct DiscordInfo {
   float orb_count;          // float
@@ -124,11 +125,14 @@ struct SpeedrunPracticeEntry {
   u64 features;
   u64 secrets;
   std::vector<float> starting_position;
+  std::vector<float> starting_rotation;
+  std::vector<float> starting_camera_position;
+  std::vector<float> starting_camera_rotation;
   std::vector<float> start_zone_v1;
   std::vector<float> start_zone_v2;
-  std::vector<float> end_zone_v1;
-  std::vector<float> end_zone_v2;
-  u64 end_task;
+  std::optional<std::vector<float>> end_zone_v1;
+  std::optional<std::vector<float>> end_zone_v2;
+  std::optional<u64> end_task;
   std::map<std::string, std::vector<SpeedrunPracticeEntryHistoryAttempt>> history;
 };
 void to_json(json& j, const SpeedrunPracticeEntry& obj);
@@ -143,6 +147,38 @@ struct SpeedrunPracticeState {
   double total_time;
   float average_time;
   float fastest_time;
+};
+
+struct ObjectiveZoneInitParams {
+  float v1[4];
+  float v2[4];
+};
+
+struct Vector {
+  float data[4];
+};
+
+struct Matrix {
+  float data[16];
+};
+
+struct SpeedrunPracticeObjective {
+  s32 index;
+  u8 pad1[4];
+  u64 flags;
+  u8 completed_task;
+  u8 pad2[7];
+  u64 features;
+  u32 secrets;
+  u32 starting_position;         // Vector
+  u32 starting_rotation;         // Vector
+  u32 starting_camera_position;  // Vector
+  u32 starting_camera_rotation;  // Matrix
+  u8 end_task;
+  u32 start_zone_init_params;  // ObjectiveZoneInitParams
+  u32 start_zone;              // irrelevant for cpp
+  u32 end_zone_init_params;    // ObjectiveZoneInitParams
+  u32 end_zone;                // irrelevant for cpp
 };
 
 }  // namespace kmachine_extras
