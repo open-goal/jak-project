@@ -363,17 +363,7 @@ Instruction load_reg_offset_xmm32(Register xmm_dest, Register base, s64 offset) 
 //   LOADS n' STORES - SIMD (128-bit, QWORDS)
 //;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-Instruction store128_gpr64_simd_reg(Register gpr_addr, Register simd_reg) {
-  // STR Qs, [Xd]
-  // ASSERT(gpr_addr.is_gpr());
-  // ASSERT(simd_reg.is_128bit_simd());
-  // return Instruction(0b11111001);
-  // InstructionX86 instr(0x66);
-  // instr.set_op2(0x0f);
-  // instr.set_op3(0x7f);
-  // instr.set_modrm_and_rex_for_reg_addr(xmm_value.hw_id(), gpr_addr.hw_id(), false);
-  // instr.swap_op0_rex();
-  // return instr;
+Instruction store128_gpr64_xmm128(Register gpr_addr, Register xmm_value) {
   return Instruction(0b0);
 }
 
