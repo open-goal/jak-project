@@ -1,16 +1,13 @@
 #ifndef __aarch64__
 
 #include "IGen.h"
-#include "goalc/emitter/InstructionX86.h"
 
 namespace emitter {
 namespace IGen {
 //;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 //   MOVES
 //;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-/*!
- * Move data from src to dst. Moves all 64-bits of the GPR.
- */
+
 Instruction mov_gpr64_gpr64(Register dst, Register src) {
   ASSERT(dst.is_gpr());
   ASSERT(src.is_gpr());
@@ -19,9 +16,6 @@ Instruction mov_gpr64_gpr64(Register dst, Register src) {
   return instr;
 }
 
-/*!
- * Move a 64-bit constant into a register.
- */
 Instruction mov_gpr64_u64(Register dst, uint64_t val) {
   ASSERT(dst.is_gpr());
   bool rex_b = false;
@@ -36,9 +30,6 @@ Instruction mov_gpr64_u64(Register dst, uint64_t val) {
   return instr;
 }
 
-/*!
- * Move a 32-bit constant into a register. Zeros the upper 32 bits.
- */
 Instruction mov_gpr64_u32(Register dst, uint64_t val) {
   ASSERT(val <= UINT32_MAX);
   ASSERT(dst.is_gpr());
@@ -57,11 +48,6 @@ Instruction mov_gpr64_u32(Register dst, uint64_t val) {
   return instr;
 }
 
-/*!
- * Move a signed 32-bit constant into a register. Sign extends for the upper 32 bits.
- * When possible prefer mov_gpr64_u32. (use this only for negative values...)
- * This is always bigger than mov_gpr64_u32, but smaller than a mov_gpr_u64.
- */
 Instruction mov_gpr64_s32(Register dst, int64_t val) {
   ASSERT(val >= INT32_MIN && val <= INT32_MAX);
   ASSERT(dst.is_gpr());
@@ -71,12 +57,9 @@ Instruction mov_gpr64_s32(Register dst, int64_t val) {
   return instr;
 }
 
-/*!
- * Move 32-bits of xmm to 32 bits of gpr (no sign extension).
- */
 Instruction movd_gpr32_xmm32(Register dst, Register src) {
   ASSERT(dst.is_gpr());
-  ASSERT(src.is_xmm());
+  ASSERT(src.is_128bit_simd());
   InstructionX86 instr(0x66);
   instr.set_op2(0x0f);
   instr.set_op3(0x7e);
@@ -85,11 +68,8 @@ Instruction movd_gpr32_xmm32(Register dst, Register src) {
   return instr;
 }
 
-/*!
- * Move 32-bits of gpr to 32-bits of xmm (no sign extension)
- */
 Instruction movd_xmm32_gpr32(Register dst, Register src) {
-  ASSERT(dst.is_xmm());
+  ASSERT(dst.is_128bit_simd());
   ASSERT(src.is_gpr());
   InstructionX86 instr(0x66);
   instr.set_op2(0x0f);
@@ -99,12 +79,9 @@ Instruction movd_xmm32_gpr32(Register dst, Register src) {
   return instr;
 }
 
-/*!
- * Move 64-bits of xmm to 64 bits of gpr (no sign extension).
- */
 Instruction movq_gpr64_xmm64(Register dst, Register src) {
   ASSERT(dst.is_gpr());
-  ASSERT(src.is_xmm());
+  ASSERT(src.is_128bit_simd());
   InstructionX86 instr(0x66);
   instr.set_op2(0x0f);
   instr.set_op3(0x7e);
@@ -113,11 +90,8 @@ Instruction movq_gpr64_xmm64(Register dst, Register src) {
   return instr;
 }
 
-/*!
- * Move 64-bits of gpr to 64-bits of xmm (no sign extension)
- */
 Instruction movq_xmm64_gpr64(Register dst, Register src) {
-  ASSERT(dst.is_xmm());
+  ASSERT(dst.is_128bit_simd());
   ASSERT(src.is_gpr());
   InstructionX86 instr(0x66);
   instr.set_op2(0x0f);
@@ -127,12 +101,9 @@ Instruction movq_xmm64_gpr64(Register dst, Register src) {
   return instr;
 }
 
-/*!
- * Move 32-bits between xmm's
- */
 Instruction mov_xmm32_xmm32(Register dst, Register src) {
-  ASSERT(dst.is_xmm());
-  ASSERT(src.is_xmm());
+  ASSERT(dst.is_128bit_simd());
+  ASSERT(src.is_128bit_simd());
   InstructionX86 instr(0xf3);
   instr.set_op2(0x0f);
   instr.set_op3(0x10);
@@ -148,11 +119,6 @@ Instruction mov_xmm32_xmm32(Register dst, Register src) {
 //   GOAL Loads and Stores
 //;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-/*!
- * movsx dst, BYTE PTR [addr1 + addr2]
- * addr1 and addr2 have to be different registers.
- * Cannot use rsp.
- */
 Instruction load8s_gpr64_gpr64_plus_gpr64(Register dst, Register addr1, Register addr2) {
   ASSERT(dst.is_gpr());
   ASSERT(addr1.is_gpr());
@@ -258,11 +224,6 @@ Instruction store8_gpr64_gpr64_plus_gpr64_plus_s32(Register addr1,
   return instr;
 }
 
-/*!
- * movzx dst, BYTE PTR [addr1 + addr2]
- * addr1 and addr2 have to be different registers.
- * Cannot use rsp.
- */
 Instruction load8u_gpr64_gpr64_plus_gpr64(Register dst, Register addr1, Register addr2) {
   ASSERT(dst.is_gpr());
   ASSERT(addr1.is_gpr());
@@ -313,11 +274,6 @@ Instruction load8u_gpr64_gpr64_plus_gpr64_plus_s32(Register dst,
   return instr;
 }
 
-/*!
- * movsx dst, WORD PTR [addr1 + addr2]
- * addr1 and addr2 have to be different registers.
- * Cannot use rsp.
- */
 Instruction load16s_gpr64_gpr64_plus_gpr64(Register dst, Register addr1, Register addr2) {
   ASSERT(dst.is_gpr());
   ASSERT(addr1.is_gpr());
@@ -420,11 +376,6 @@ Instruction load16s_gpr64_gpr64_plus_gpr64_plus_s32(Register dst,
   return instr;
 }
 
-/*!
- * movzx dst, WORD PTR [addr1 + addr2]
- * addr1 and addr2 have to be different registers.
- * Cannot use rsp.
- */
 Instruction load16u_gpr64_gpr64_plus_gpr64(Register dst, Register addr1, Register addr2) {
   ASSERT(dst.is_gpr());
   ASSERT(addr1.is_gpr());
@@ -475,11 +426,6 @@ Instruction load16u_gpr64_gpr64_plus_gpr64_plus_s32(Register dst,
   return instr;
 }
 
-/*!
- * movsxd dst, DWORD PTR [addr1 + addr2]
- * addr1 and addr2 have to be different registers.
- * Cannot use rsp.
- */
 Instruction load32s_gpr64_gpr64_plus_gpr64(Register dst, Register addr1, Register addr2) {
   ASSERT(dst.is_gpr());
   ASSERT(addr1.is_gpr());
@@ -572,11 +518,6 @@ Instruction store32_gpr64_gpr64_plus_gpr64_plus_s32(Register addr1,
   return instr;
 }
 
-/*!
- * movzxd dst, DWORD PTR [addr1 + addr2]
- * addr1 and addr2 have to be different registers.
- * Cannot use rsp.
- */
 Instruction load32u_gpr64_gpr64_plus_gpr64(Register dst, Register addr1, Register addr2) {
   ASSERT(dst.is_gpr());
   ASSERT(addr1.is_gpr());
@@ -623,11 +564,6 @@ Instruction load32u_gpr64_gpr64_plus_gpr64_plus_s32(Register dst,
   return instr;
 }
 
-/*!
- * mov dst, QWORD PTR [addr1 + addr2]
- * addr1 and addr2 have to be different registers.
- * Cannot use rsp.
- */
 Instruction load64_gpr64_gpr64_plus_gpr64(Register dst, Register addr1, Register addr2) {
   ASSERT(dst.is_gpr());
   ASSERT(addr1.is_gpr());
@@ -793,10 +729,6 @@ Instruction load_goal_xmm128(Register dst, Register addr, Register off, int offs
   }
 }
 
-/*!
- * Load memory at addr + offset, where addr is a GOAL pointer and off is the offset register.
- * This will pick the appropriate fancy addressing mode instruction.
- */
 Instruction load_goal_gpr(Register dst,
                           Register addr,
                           Register off,
@@ -893,7 +825,7 @@ Instruction load_goal_gpr(Register dst,
 //   LOADS n' STORES - XMM32
 //;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 Instruction store32_xmm32_gpr64_plus_gpr64(Register addr1, Register addr2, Register xmm_value) {
-  ASSERT(xmm_value.is_xmm());
+  ASSERT(xmm_value.is_128bit_simd());
   ASSERT(addr1.is_gpr());
   ASSERT(addr2.is_gpr());
 
@@ -907,7 +839,7 @@ Instruction store32_xmm32_gpr64_plus_gpr64(Register addr1, Register addr2, Regis
 }
 
 Instruction load32_xmm32_gpr64_plus_gpr64(Register xmm_dest, Register addr1, Register addr2) {
-  ASSERT(xmm_dest.is_xmm());
+  ASSERT(xmm_dest.is_128bit_simd());
   ASSERT(addr1.is_gpr());
   ASSERT(addr2.is_gpr());
 
@@ -924,7 +856,7 @@ Instruction store32_xmm32_gpr64_plus_gpr64_plus_s8(Register addr1,
                                                    Register addr2,
                                                    Register xmm_value,
                                                    s64 offset) {
-  ASSERT(xmm_value.is_xmm());
+  ASSERT(xmm_value.is_128bit_simd());
   ASSERT(addr1.is_gpr());
   ASSERT(addr2.is_gpr());
   ASSERT(offset >= INT8_MIN && offset <= INT8_MAX);
@@ -943,7 +875,7 @@ Instruction load32_xmm32_gpr64_plus_gpr64_plus_s8(Register xmm_dest,
                                                   Register addr1,
                                                   Register addr2,
                                                   s64 offset) {
-  ASSERT(xmm_dest.is_xmm());
+  ASSERT(xmm_dest.is_128bit_simd());
   ASSERT(addr1.is_gpr());
   ASSERT(addr2.is_gpr());
   ASSERT(offset >= INT8_MIN && offset <= INT8_MAX);
@@ -962,7 +894,7 @@ Instruction store32_xmm32_gpr64_plus_gpr64_plus_s32(Register addr1,
                                                     Register addr2,
                                                     Register xmm_value,
                                                     s64 offset) {
-  ASSERT(xmm_value.is_xmm());
+  ASSERT(xmm_value.is_128bit_simd());
   ASSERT(addr1.is_gpr());
   ASSERT(addr2.is_gpr());
   ASSERT(offset >= INT32_MIN && offset <= INT32_MAX);
@@ -1009,7 +941,7 @@ Instruction lea_reg_plus_off(Register dest, Register base, s64 offset) {
 }
 
 Instruction store32_xmm32_gpr64_plus_s32(Register base, Register xmm_value, s64 offset) {
-  ASSERT(xmm_value.is_xmm());
+  ASSERT(xmm_value.is_128bit_simd());
   ASSERT(base.is_gpr());
   ASSERT(offset >= INT32_MIN && offset <= INT32_MAX);
   InstructionX86 instr(0xf3);
@@ -1022,7 +954,7 @@ Instruction store32_xmm32_gpr64_plus_s32(Register base, Register xmm_value, s64 
 }
 
 Instruction store32_xmm32_gpr64_plus_s8(Register base, Register xmm_value, s64 offset) {
-  ASSERT(xmm_value.is_xmm());
+  ASSERT(xmm_value.is_128bit_simd());
   ASSERT(base.is_gpr());
   ASSERT(offset >= INT8_MIN && offset <= INT8_MAX);
   InstructionX86 instr(0xf3);
@@ -1038,7 +970,7 @@ Instruction load32_xmm32_gpr64_plus_gpr64_plus_s32(Register xmm_dest,
                                                    Register addr1,
                                                    Register addr2,
                                                    s64 offset) {
-  ASSERT(xmm_dest.is_xmm());
+  ASSERT(xmm_dest.is_128bit_simd());
   ASSERT(addr1.is_gpr());
   ASSERT(addr2.is_gpr());
   ASSERT(offset >= INT32_MIN && offset <= INT32_MAX);
@@ -1054,7 +986,7 @@ Instruction load32_xmm32_gpr64_plus_gpr64_plus_s32(Register xmm_dest,
 }
 
 Instruction load32_xmm32_gpr64_plus_s32(Register xmm_dest, Register base, s64 offset) {
-  ASSERT(xmm_dest.is_xmm());
+  ASSERT(xmm_dest.is_128bit_simd());
   ASSERT(base.is_gpr());
   ASSERT(offset >= INT32_MIN && offset <= INT32_MAX);
   InstructionX86 instr(0xf3);
@@ -1067,7 +999,7 @@ Instruction load32_xmm32_gpr64_plus_s32(Register xmm_dest, Register base, s64 of
 }
 
 Instruction load32_xmm32_gpr64_plus_s8(Register xmm_dest, Register base, s64 offset) {
-  ASSERT(xmm_dest.is_xmm());
+  ASSERT(xmm_dest.is_128bit_simd());
   ASSERT(base.is_gpr());
   ASSERT(offset >= INT8_MIN && offset <= INT8_MAX);
   InstructionX86 instr(0xf3);
@@ -1107,7 +1039,7 @@ Instruction store_goal_xmm32(Register addr, Register xmm_value, Register off, s6
 
 Instruction store_reg_offset_xmm32(Register base, Register xmm_value, s64 offset) {
   ASSERT(base.is_gpr());
-  ASSERT(xmm_value.is_xmm());
+  ASSERT(xmm_value.is_128bit_simd());
   if (offset >= INT8_MIN && offset <= INT8_MAX) {
     return store32_xmm32_gpr64_plus_s8(base, xmm_value, offset);
   } else if (offset >= INT32_MIN && offset <= INT32_MAX) {
@@ -1120,7 +1052,7 @@ Instruction store_reg_offset_xmm32(Register base, Register xmm_value, s64 offset
 
 Instruction load_reg_offset_xmm32(Register xmm_dest, Register base, s64 offset) {
   ASSERT(base.is_gpr());
-  ASSERT(xmm_dest.is_xmm());
+  ASSERT(xmm_dest.is_128bit_simd());
   if (offset >= INT8_MIN && offset <= INT8_MAX) {
     return load32_xmm32_gpr64_plus_s8(xmm_dest, base, offset);
   } else if (offset >= INT32_MIN && offset <= INT32_MAX) {
@@ -1135,12 +1067,9 @@ Instruction load_reg_offset_xmm32(Register xmm_dest, Register base, s64 offset) 
 //   LOADS n' STORES - XMM128
 //;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-/*!
- * Store a 128-bit xmm into an address stored in a register, no offset
- */
 Instruction store128_gpr64_xmm128(Register gpr_addr, Register xmm_value) {
   ASSERT(gpr_addr.is_gpr());
-  ASSERT(xmm_value.is_xmm());
+  ASSERT(xmm_value.is_128bit_simd());
   InstructionX86 instr(0x66);
   //    InstructionX86 instr(0xf3);
   instr.set_op2(0x0f);
@@ -1152,7 +1081,7 @@ Instruction store128_gpr64_xmm128(Register gpr_addr, Register xmm_value) {
 
 Instruction store128_gpr64_xmm128_s32(Register gpr_addr, Register xmm_value, s64 offset) {
   ASSERT(gpr_addr.is_gpr());
-  ASSERT(xmm_value.is_xmm());
+  ASSERT(xmm_value.is_128bit_simd());
   ASSERT(offset >= INT32_MIN && offset <= INT32_MAX);
   InstructionX86 instr(0x66);
   //    InstructionX86 instr(0xf3);
@@ -1166,7 +1095,7 @@ Instruction store128_gpr64_xmm128_s32(Register gpr_addr, Register xmm_value, s64
 
 Instruction store128_gpr64_xmm128_s8(Register gpr_addr, Register xmm_value, s64 offset) {
   ASSERT(gpr_addr.is_gpr());
-  ASSERT(xmm_value.is_xmm());
+  ASSERT(xmm_value.is_128bit_simd());
   ASSERT(offset >= INT8_MIN && offset <= INT8_MAX);
   InstructionX86 instr(0x66);
   //    InstructionX86 instr(0xf3);
@@ -1180,7 +1109,7 @@ Instruction store128_gpr64_xmm128_s8(Register gpr_addr, Register xmm_value, s64 
 
 Instruction load128_xmm128_gpr64(Register xmm_dest, Register gpr_addr) {
   ASSERT(gpr_addr.is_gpr());
-  ASSERT(xmm_dest.is_xmm());
+  ASSERT(xmm_dest.is_128bit_simd());
   InstructionX86 instr(0x66);
   //    InstructionX86 instr(0xf3);
   instr.set_op2(0x0f);
@@ -1192,7 +1121,7 @@ Instruction load128_xmm128_gpr64(Register xmm_dest, Register gpr_addr) {
 
 Instruction load128_xmm128_gpr64_s32(Register xmm_dest, Register gpr_addr, s64 offset) {
   ASSERT(gpr_addr.is_gpr());
-  ASSERT(xmm_dest.is_xmm());
+  ASSERT(xmm_dest.is_128bit_simd());
   ASSERT(offset >= INT32_MIN && offset <= INT32_MAX);
   InstructionX86 instr(0x66);
   //    InstructionX86 instr(0xf3);
@@ -1206,7 +1135,7 @@ Instruction load128_xmm128_gpr64_s32(Register xmm_dest, Register gpr_addr, s64 o
 
 Instruction load128_xmm128_gpr64_s8(Register xmm_dest, Register gpr_addr, s64 offset) {
   ASSERT(gpr_addr.is_gpr());
-  ASSERT(xmm_dest.is_xmm());
+  ASSERT(xmm_dest.is_128bit_simd());
   ASSERT(offset >= INT8_MIN && offset <= INT8_MAX);
   InstructionX86 instr(0x66);
   //    InstructionX86 instr(0xf3);
@@ -1403,7 +1332,7 @@ Instruction static_addr(Register dst, s64 offset) {
 }
 
 Instruction static_load_xmm32(Register xmm_dest, s64 offset) {
-  ASSERT(xmm_dest.is_xmm());
+  ASSERT(xmm_dest.is_128bit_simd());
   ASSERT(offset >= INT32_MIN && offset <= INT32_MAX);
 
   InstructionX86 instr(0xf3);
@@ -1416,7 +1345,7 @@ Instruction static_load_xmm32(Register xmm_dest, s64 offset) {
 }
 
 Instruction static_store_xmm32(Register xmm_value, s64 offset) {
-  ASSERT(xmm_value.is_xmm());
+  ASSERT(xmm_value.is_128bit_simd());
   ASSERT(offset >= INT32_MIN && offset <= INT32_MAX);
 
   InstructionX86 instr(0xf3);
@@ -1440,9 +1369,6 @@ Instruction load64_gpr64_plus_s32(Register dst_reg, int32_t offset, Register src
   return instr;
 }
 
-/*!
- * Store 64-bits from gpr into memory located at 64-bit reg + 32-bit signed offset.
- */
 Instruction store64_gpr64_plus_s32(Register addr, int32_t offset, Register value) {
   ASSERT(addr.is_gpr());
   ASSERT(value.is_gpr());
@@ -1455,16 +1381,11 @@ Instruction store64_gpr64_plus_s32(Register addr, int32_t offset, Register value
 //;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 //   FUNCTION STUFF
 //;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-/*!
- * Function return. Pops the 64-bit return address (real) off the stack and jumps to it.
- */
+
 Instruction ret() {
   return InstructionX86(0xc3);
 }
 
-/*!
- * Instruction to push gpr (64-bits) onto the stack
- */
 Instruction push_gpr64(Register reg) {
   ASSERT(reg.is_gpr());
   if (reg.hw_id() >= 8) {
@@ -1475,9 +1396,6 @@ Instruction push_gpr64(Register reg) {
   return InstructionX86(0x50 + reg.hw_id());
 }
 
-/*!
- * Instruction to pop 64 bit gpr from the stack
- */
 Instruction pop_gpr64(Register reg) {
   ASSERT(reg.is_gpr());
   if (reg.hw_id() >= 8) {
@@ -1488,9 +1406,6 @@ Instruction pop_gpr64(Register reg) {
   return InstructionX86(0x58 + reg.hw_id());
 }
 
-/*!
- * Call a function stored in a 64-bit gpr
- */
 Instruction call_r64(Register reg_) {
   ASSERT(reg_.is_gpr());
   auto reg = reg_.hw_id();
@@ -1508,9 +1423,6 @@ Instruction call_r64(Register reg_) {
   return instr;
 }
 
-/*!
- * Jump to an x86-64 address stored in a 64-bit gpr.
- */
 Instruction jmp_r64(Register reg_) {
   ASSERT(reg_.is_gpr());
   auto reg = reg_.hw_id();
@@ -1604,10 +1516,6 @@ Instruction sub_gpr64_gpr64(Register dst, Register src) {
   return instr;
 }
 
-/*!
- * Multiply gprs (32-bit, signed).
- * (Note - probably worth doing imul on gpr64's to implement the EE's unsigned multiply)
- */
 Instruction imul_gpr32_gpr32(Register dst, Register src) {
   InstructionX86 instr(0xf);
   instr.set_op2(0xaf);
@@ -1617,10 +1525,6 @@ Instruction imul_gpr32_gpr32(Register dst, Register src) {
   return instr;
 }
 
-/*!
- * Multiply gprs (64-bit, signed).
- * DANGER - this treats all operands as 64-bit. This is not like the EE.
- */
 Instruction imul_gpr64_gpr64(Register dst, Register src) {
   InstructionX86 instr(0xf);
   instr.set_op2(0xaf);
@@ -1630,9 +1534,6 @@ Instruction imul_gpr64_gpr64(Register dst, Register src) {
   return instr;
 }
 
-/*!
- * Divide (idiv, 32 bit)
- */
 Instruction idiv_gpr32(Register reg) {
   InstructionX86 instr(0xf7);
   ASSERT(reg.is_gpr());
@@ -1647,18 +1548,11 @@ Instruction unsigned_div_gpr32(Register reg) {
   return instr;
 }
 
-/*!
- * Convert doubleword to quadword for division.
- */
 Instruction cdq() {
   InstructionX86 instr(0x99);
   return instr;
 }
 
-/*!
- * Move from gpr32 to gpr64, with sign extension.
- * Needed for multiplication/divsion madness.
- */
 Instruction movsx_r64_r32(Register dst, Register src) {
   InstructionX86 instr(0x63);
   ASSERT(dst.is_gpr());
@@ -1667,10 +1561,6 @@ Instruction movsx_r64_r32(Register dst, Register src) {
   return instr;
 }
 
-/*!
- * Compare gpr64.  This sets the flags for the jumps.
- * todo UNTESTED
- */
 Instruction cmp_gpr64_gpr64(Register a, Register b) {
   InstructionX86 instr(0x3b);
   ASSERT(a.is_gpr());
@@ -1683,9 +1573,6 @@ Instruction cmp_gpr64_gpr64(Register a, Register b) {
 //   BIT STUFF
 //;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-/*!
- * Or of two gprs
- */
 Instruction or_gpr64_gpr64(Register dst, Register src) {
   InstructionX86 instr(0x0b);
   ASSERT(dst.is_gpr());
@@ -1694,9 +1581,6 @@ Instruction or_gpr64_gpr64(Register dst, Register src) {
   return instr;
 }
 
-/*!
- * And of two gprs
- */
 Instruction and_gpr64_gpr64(Register dst, Register src) {
   InstructionX86 instr(0x23);
   ASSERT(dst.is_gpr());
@@ -1705,9 +1589,6 @@ Instruction and_gpr64_gpr64(Register dst, Register src) {
   return instr;
 }
 
-/*!
- * Xor of two gprs
- */
 Instruction xor_gpr64_gpr64(Register dst, Register src) {
   InstructionX86 instr(0x33);
   ASSERT(dst.is_gpr());
@@ -1716,9 +1597,6 @@ Instruction xor_gpr64_gpr64(Register dst, Register src) {
   return instr;
 }
 
-/*!
- * Bitwise not a gpr
- */
 Instruction not_gpr64(Register reg) {
   InstructionX86 instr(0xf7);
   ASSERT(reg.is_gpr());
@@ -1730,9 +1608,6 @@ Instruction not_gpr64(Register reg) {
 //   SHIFTS
 //;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-/*!
- * Shift 64-bit gpr left by CL register
- */
 Instruction shl_gpr64_cl(Register reg) {
   ASSERT(reg.is_gpr());
   InstructionX86 instr(0xd3);
@@ -1740,9 +1615,6 @@ Instruction shl_gpr64_cl(Register reg) {
   return instr;
 }
 
-/*!
- * Shift 64-bit gpr right (logical) by CL register
- */
 Instruction shr_gpr64_cl(Register reg) {
   ASSERT(reg.is_gpr());
   InstructionX86 instr(0xd3);
@@ -1750,9 +1622,6 @@ Instruction shr_gpr64_cl(Register reg) {
   return instr;
 }
 
-/*!
- * Shift 64-bit gpr right (arithmetic) by CL register
- */
 Instruction sar_gpr64_cl(Register reg) {
   ASSERT(reg.is_gpr());
   InstructionX86 instr(0xd3);
@@ -1760,9 +1629,6 @@ Instruction sar_gpr64_cl(Register reg) {
   return instr;
 }
 
-/*!
- * Shift 64-ptr left (logical) by the constant shift amount "sa".
- */
 Instruction shl_gpr64_u8(Register reg, uint8_t sa) {
   ASSERT(reg.is_gpr());
   InstructionX86 instr(0xc1);
@@ -1771,9 +1637,6 @@ Instruction shl_gpr64_u8(Register reg, uint8_t sa) {
   return instr;
 }
 
-/*!
- * Shift 64-ptr right (logical) by the constant shift amount "sa".
- */
 Instruction shr_gpr64_u8(Register reg, uint8_t sa) {
   ASSERT(reg.is_gpr());
   InstructionX86 instr(0xc1);
@@ -1782,9 +1645,6 @@ Instruction shr_gpr64_u8(Register reg, uint8_t sa) {
   return instr;
 }
 
-/*!
- * Shift 64-ptr right (arithmetic) by the constant shift amount "sa".
- */
 Instruction sar_gpr64_u8(Register reg, uint8_t sa) {
   ASSERT(reg.is_gpr());
   InstructionX86 instr(0xc1);
@@ -1797,18 +1657,12 @@ Instruction sar_gpr64_u8(Register reg, uint8_t sa) {
 //   CONTROL FLOW
 //;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-/*!
- * Jump, 32-bit constant offset.  The offset is by default 0 and must be patched later.
- */
 Instruction jmp_32() {
   InstructionX86 instr(0xe9);
   instr.set(Imm(4, 0));
   return instr;
 }
 
-/*!
- * Jump if equal.
- */
 Instruction je_32() {
   InstructionX86 instr(0x0f);
   instr.set_op2(0x84);
@@ -1816,9 +1670,6 @@ Instruction je_32() {
   return instr;
 }
 
-/*!
- * Jump not equal.
- */
 Instruction jne_32() {
   InstructionX86 instr(0x0f);
   instr.set_op2(0x85);
@@ -1826,9 +1677,6 @@ Instruction jne_32() {
   return instr;
 }
 
-/*!
- * Jump less than or equal.
- */
 Instruction jle_32() {
   InstructionX86 instr(0x0f);
   instr.set_op2(0x8e);
@@ -1836,9 +1684,6 @@ Instruction jle_32() {
   return instr;
 }
 
-/*!
- * Jump greater than or equal.
- */
 Instruction jge_32() {
   InstructionX86 instr(0x0f);
   instr.set_op2(0x8d);
@@ -1846,9 +1691,6 @@ Instruction jge_32() {
   return instr;
 }
 
-/*!
- * Jump less than
- */
 Instruction jl_32() {
   InstructionX86 instr(0x0f);
   instr.set_op2(0x8c);
@@ -1856,9 +1698,6 @@ Instruction jl_32() {
   return instr;
 }
 
-/*!
- * Jump greater than
- */
 Instruction jg_32() {
   InstructionX86 instr(0x0f);
   instr.set_op2(0x8f);
@@ -1866,9 +1705,6 @@ Instruction jg_32() {
   return instr;
 }
 
-/*!
- * Jump below or equal
- */
 Instruction jbe_32() {
   InstructionX86 instr(0x0f);
   instr.set_op2(0x86);
@@ -1876,9 +1712,6 @@ Instruction jbe_32() {
   return instr;
 }
 
-/*!
- * Jump above or equal
- */
 Instruction jae_32() {
   InstructionX86 instr(0x0f);
   instr.set_op2(0x83);
@@ -1886,9 +1719,6 @@ Instruction jae_32() {
   return instr;
 }
 
-/*!
- * Jump below
- */
 Instruction jb_32() {
   InstructionX86 instr(0x0f);
   instr.set_op2(0x82);
@@ -1896,9 +1726,6 @@ Instruction jb_32() {
   return instr;
 }
 
-/*!
- * Jump above
- */
 Instruction ja_32() {
   InstructionX86 instr(0x0f);
   instr.set_op2(0x87);
@@ -1910,12 +1737,9 @@ Instruction ja_32() {
 //   FLOAT MATH
 //;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-/*!
- * Compare two floats and set flag register for jump (ucomiss)
- */
 Instruction cmp_flt_flt(Register a, Register b) {
-  ASSERT(a.is_xmm());
-  ASSERT(b.is_xmm());
+  ASSERT(a.is_128bit_simd());
+  ASSERT(b.is_128bit_simd());
   InstructionX86 instr(0x0f);
   instr.set_op2(0x2e);
   instr.set_modrm_and_rex(a.hw_id(), b.hw_id(), 3, false);
@@ -1923,8 +1747,8 @@ Instruction cmp_flt_flt(Register a, Register b) {
 }
 
 Instruction sqrts_xmm(Register dst, Register src) {
-  ASSERT(dst.is_xmm());
-  ASSERT(src.is_xmm());
+  ASSERT(dst.is_128bit_simd());
+  ASSERT(src.is_128bit_simd());
   InstructionX86 instr(0xf3);
   instr.set_op2(0x0f);
   instr.set_op3(0x51);
@@ -1933,12 +1757,9 @@ Instruction sqrts_xmm(Register dst, Register src) {
   return instr;
 }
 
-/*!
- * Multiply two floats in xmm's
- */
 Instruction mulss_xmm_xmm(Register dst, Register src) {
-  ASSERT(dst.is_xmm());
-  ASSERT(src.is_xmm());
+  ASSERT(dst.is_128bit_simd());
+  ASSERT(src.is_128bit_simd());
   InstructionX86 instr(0xf3);
   instr.set_op2(0x0f);
   instr.set_op3(0x59);
@@ -1947,12 +1768,9 @@ Instruction mulss_xmm_xmm(Register dst, Register src) {
   return instr;
 }
 
-/*!
- * Divide two floats in xmm's
- */
 Instruction divss_xmm_xmm(Register dst, Register src) {
-  ASSERT(dst.is_xmm());
-  ASSERT(src.is_xmm());
+  ASSERT(dst.is_128bit_simd());
+  ASSERT(src.is_128bit_simd());
   InstructionX86 instr(0xf3);
   instr.set_op2(0x0f);
   instr.set_op3(0x5e);
@@ -1961,12 +1779,9 @@ Instruction divss_xmm_xmm(Register dst, Register src) {
   return instr;
 }
 
-/*!
- * Subtract two floats in xmm's
- */
 Instruction subss_xmm_xmm(Register dst, Register src) {
-  ASSERT(dst.is_xmm());
-  ASSERT(src.is_xmm());
+  ASSERT(dst.is_128bit_simd());
+  ASSERT(src.is_128bit_simd());
   InstructionX86 instr(0xf3);
   instr.set_op2(0x0f);
   instr.set_op3(0x5c);
@@ -1975,12 +1790,9 @@ Instruction subss_xmm_xmm(Register dst, Register src) {
   return instr;
 }
 
-/*!
- * Add two floats in xmm's
- */
 Instruction addss_xmm_xmm(Register dst, Register src) {
-  ASSERT(dst.is_xmm());
-  ASSERT(src.is_xmm());
+  ASSERT(dst.is_128bit_simd());
+  ASSERT(src.is_128bit_simd());
   InstructionX86 instr(0xf3);
   instr.set_op2(0x0f);
   instr.set_op3(0x58);
@@ -1989,12 +1801,9 @@ Instruction addss_xmm_xmm(Register dst, Register src) {
   return instr;
 }
 
-/*!
- * Floating point minimum.
- */
 Instruction minss_xmm_xmm(Register dst, Register src) {
-  ASSERT(dst.is_xmm());
-  ASSERT(src.is_xmm());
+  ASSERT(dst.is_128bit_simd());
+  ASSERT(src.is_128bit_simd());
   InstructionX86 instr(0xf3);
   instr.set_op2(0x0f);
   instr.set_op3(0x5d);
@@ -2003,12 +1812,9 @@ Instruction minss_xmm_xmm(Register dst, Register src) {
   return instr;
 }
 
-/*!
- * Floating point maximum.
- */
 Instruction maxss_xmm_xmm(Register dst, Register src) {
-  ASSERT(dst.is_xmm());
-  ASSERT(src.is_xmm());
+  ASSERT(dst.is_128bit_simd());
+  ASSERT(src.is_128bit_simd());
   InstructionX86 instr(0xf3);
   instr.set_op2(0x0f);
   instr.set_op3(0x5f);
@@ -2017,11 +1823,8 @@ Instruction maxss_xmm_xmm(Register dst, Register src) {
   return instr;
 }
 
-/*!
- * Convert GPR int32 to XMM float (single precision)
- */
 Instruction int32_to_float(Register dst, Register src) {
-  ASSERT(dst.is_xmm());
+  ASSERT(dst.is_128bit_simd());
   ASSERT(src.is_gpr());
   InstructionX86 instr(0xf3);
   instr.set_op2(0x0f);
@@ -2031,12 +1834,9 @@ Instruction int32_to_float(Register dst, Register src) {
   return instr;
 }
 
-/*!
- * Convert XMM float to GPR int32(single precision) (truncate)
- */
 Instruction float_to_int32(Register dst, Register src) {
   ASSERT(dst.is_gpr());
-  ASSERT(src.is_xmm());
+  ASSERT(src.is_128bit_simd());
   InstructionX86 instr(0xf3);
   instr.set_op2(0x0f);
   instr.set_op3(0x2c);
@@ -2057,11 +1857,6 @@ Instruction nop() {
 //   UTILITIES
 //;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-/*!
- * A "null" instruction.  This instruction does not generate any bytes
- * but can be referred to by a label.  Useful to insert in place of a real instruction
- * if the real instruction has been optimized out.
- */
 Instruction null() {
   InstructionX86 i(0);
   i.m_flags |= InstructionX86::kIsNull;
@@ -2084,8 +1879,8 @@ Instruction wait_vf() {
 }
 
 Instruction mov_vf_vf(Register dst, Register src) {
-  ASSERT(dst.is_xmm());
-  ASSERT(src.is_xmm());
+  ASSERT(dst.is_128bit_simd());
+  ASSERT(src.is_128bit_simd());
 
   if (src.hw_id() >= 8 && dst.hw_id() < 8) {
     // in this case, we can use the 0x29 encoding, which swaps src and dst, in order to use the
@@ -2102,7 +1897,7 @@ Instruction mov_vf_vf(Register dst, Register src) {
 }
 
 Instruction loadvf_gpr64_plus_gpr64(Register dst, Register addr1, Register addr2) {
-  ASSERT(dst.is_xmm());
+  ASSERT(dst.is_128bit_simd());
   ASSERT(addr1.is_gpr());
   ASSERT(addr2.is_gpr());
   ASSERT(addr1 != addr2);
@@ -2118,7 +1913,7 @@ Instruction loadvf_gpr64_plus_gpr64_plus_s8(Register dst,
                                             Register addr1,
                                             Register addr2,
                                             s64 offset) {
-  ASSERT(dst.is_xmm());
+  ASSERT(dst.is_128bit_simd());
   ASSERT(addr1.is_gpr());
   ASSERT(addr2.is_gpr());
   ASSERT(addr1 != addr2);
@@ -2135,7 +1930,7 @@ Instruction loadvf_gpr64_plus_gpr64_plus_s32(Register dst,
                                              Register addr1,
                                              Register addr2,
                                              s64 offset) {
-  ASSERT(dst.is_xmm());
+  ASSERT(dst.is_128bit_simd());
   ASSERT(addr1.is_gpr());
   ASSERT(addr2.is_gpr());
   ASSERT(addr1 != addr2);
@@ -2149,7 +1944,7 @@ Instruction loadvf_gpr64_plus_gpr64_plus_s32(Register dst,
 }
 
 Instruction storevf_gpr64_plus_gpr64(Register value, Register addr1, Register addr2) {
-  ASSERT(value.is_xmm());
+  ASSERT(value.is_128bit_simd());
   ASSERT(addr1.is_gpr());
   ASSERT(addr2.is_gpr());
   ASSERT(addr1 != addr2);
@@ -2165,7 +1960,7 @@ Instruction storevf_gpr64_plus_gpr64_plus_s8(Register value,
                                              Register addr1,
                                              Register addr2,
                                              s64 offset) {
-  ASSERT(value.is_xmm());
+  ASSERT(value.is_128bit_simd());
   ASSERT(addr1.is_gpr());
   ASSERT(addr2.is_gpr());
   ASSERT(addr1 != addr2);
@@ -2182,7 +1977,7 @@ Instruction storevf_gpr64_plus_gpr64_plus_s32(Register value,
                                               Register addr1,
                                               Register addr2,
                                               s64 offset) {
-  ASSERT(value.is_xmm());
+  ASSERT(value.is_128bit_simd());
   ASSERT(addr1.is_gpr());
   ASSERT(addr2.is_gpr());
   ASSERT(addr1 != addr2);
@@ -2196,7 +1991,7 @@ Instruction storevf_gpr64_plus_gpr64_plus_s32(Register value,
 }
 
 Instruction loadvf_rip_plus_s32(Register dest, s64 offset) {
-  ASSERT(dest.is_xmm());
+  ASSERT(dest.is_128bit_simd());
   ASSERT(offset >= INT32_MIN);
   ASSERT(offset <= INT32_MAX);
   InstructionX86 instr(0x28);
@@ -2208,9 +2003,9 @@ Instruction loadvf_rip_plus_s32(Register dest, s64 offset) {
 
 Instruction blend_vf(Register dst, Register src1, Register src2, u8 mask) {
   ASSERT(!(mask & 0b11110000));
-  ASSERT(dst.is_xmm());
-  ASSERT(src1.is_xmm());
-  ASSERT(src2.is_xmm());
+  ASSERT(dst.is_128bit_simd());
+  ASSERT(src1.is_128bit_simd());
+  ASSERT(src2.is_128bit_simd());
   InstructionX86 instr(0x0c);  // VBLENDPS
   instr.set_vex_modrm_and_rex(dst.hw_id(), src2.hw_id(), VEX3::LeadingBytes::P_0F_3A, src1.hw_id(),
                               false, VexPrefix::P_66);
@@ -2219,8 +2014,8 @@ Instruction blend_vf(Register dst, Register src1, Register src2, u8 mask) {
 }
 
 Instruction shuffle_vf(Register dst, Register src, u8 dx, u8 dy, u8 dz, u8 dw) {
-  ASSERT(dst.is_xmm());
-  ASSERT(src.is_xmm());
+  ASSERT(dst.is_128bit_simd());
+  ASSERT(src.is_128bit_simd());
   ASSERT(dx < 4);
   ASSERT(dy < 4);
   ASSERT(dz < 4);
@@ -2236,27 +2031,9 @@ Instruction shuffle_vf(Register dst, Register src, u8 dx, u8 dy, u8 dz, u8 dw) {
   //    return instr;
 }
 
-/*
-  Generic Swizzle (re-arrangment of packed FPs) operation, the control bytes are quite involved.
-  Here's a brief run-down:
-  - 8-bits / 4 groups of 2 bits
-  - Right-to-left, each group is used to determine which element in `src` gets copied into
-  `dst`'s element (W->X).
-  - GROUP OPTIONS
-  - 00b - Copy the least-significant element (X)
-  - 01b - Copy the second element (from the right) (Y)
-  - 10b - Copy the third element (from the right) (Z)
-  - 11b - Copy the most significant element (W)
-  Examples
-  ; xmm1 = (1.5, 2.5, 3.5, 4.5) (W,Z,Y,X in x86 land)
-  SHUFPS xmm1, xmm1, 0xff ; Copy the most significant element to all positions
-  > (1.5, 1.5, 1.5, 1.5)
-  SHUFPS xmm1, xmm1, 0x39 ; Rotate right
-  > (4.5, 1.5, 2.5, 3.5)
-  */
 Instruction swizzle_vf(Register dst, Register src, u8 controlBytes) {
-  ASSERT(dst.is_xmm());
-  ASSERT(src.is_xmm());
+  ASSERT(dst.is_128bit_simd());
+  ASSERT(src.is_128bit_simd());
   InstructionX86 instr(0xC6);  // VSHUFPS
 
   // we use the AVX "VEX" encoding here. This is a three-operand form,
@@ -2267,14 +2044,6 @@ Instruction swizzle_vf(Register dst, Register src, u8 controlBytes) {
   return instr;
 }
 
-/*
-  Splats a single element in 'src' to all elements in 'dst'
-  For example (pseudocode):
-  xmm1 = (1.5, 2.5, 3.5, 4.5)
-  xmm2 = (1, 2, 3, 4)
-  splat_vf(xmm1, xmm2, XMM_ELEMENT::X);
-  xmm1 = (4, 4, 4, 4)
-  */
 Instruction splat_vf(Register dst, Register src, Register::VF_ELEMENT element) {
   switch (element) {
     case Register::VF_ELEMENT::X:  // Least significant element
@@ -2296,87 +2065,87 @@ Instruction splat_vf(Register dst, Register src, Register::VF_ELEMENT element) {
 }
 
 Instruction xor_vf(Register dst, Register src1, Register src2) {
-  ASSERT(dst.is_xmm());
-  ASSERT(src1.is_xmm());
-  ASSERT(src2.is_xmm());
+  ASSERT(dst.is_128bit_simd());
+  ASSERT(src1.is_128bit_simd());
+  ASSERT(src2.is_128bit_simd());
   InstructionX86 instr(0x57);  // VXORPS
   instr.set_vex_modrm_and_rex(dst.hw_id(), src2.hw_id(), VEX3::LeadingBytes::P_0F, src1.hw_id());
   return instr;
 }
 
 Instruction sub_vf(Register dst, Register src1, Register src2) {
-  ASSERT(dst.is_xmm());
-  ASSERT(src1.is_xmm());
-  ASSERT(src2.is_xmm());
+  ASSERT(dst.is_128bit_simd());
+  ASSERT(src1.is_128bit_simd());
+  ASSERT(src2.is_128bit_simd());
   InstructionX86 instr(0x5c);  // VSUBPS
   instr.set_vex_modrm_and_rex(dst.hw_id(), src2.hw_id(), VEX3::LeadingBytes::P_0F, src1.hw_id());
   return instr;
 }
 
 Instruction add_vf(Register dst, Register src1, Register src2) {
-  ASSERT(dst.is_xmm());
-  ASSERT(src1.is_xmm());
-  ASSERT(src2.is_xmm());
+  ASSERT(dst.is_128bit_simd());
+  ASSERT(src1.is_128bit_simd());
+  ASSERT(src2.is_128bit_simd());
   InstructionX86 instr(0x58);  // VADDPS
   instr.set_vex_modrm_and_rex(dst.hw_id(), src2.hw_id(), VEX3::LeadingBytes::P_0F, src1.hw_id());
   return instr;
 }
 
 Instruction mul_vf(Register dst, Register src1, Register src2) {
-  ASSERT(dst.is_xmm());
-  ASSERT(src1.is_xmm());
-  ASSERT(src2.is_xmm());
+  ASSERT(dst.is_128bit_simd());
+  ASSERT(src1.is_128bit_simd());
+  ASSERT(src2.is_128bit_simd());
   InstructionX86 instr(0x59);  // VMULPS
   instr.set_vex_modrm_and_rex(dst.hw_id(), src2.hw_id(), VEX3::LeadingBytes::P_0F, src1.hw_id());
   return instr;
 }
 
 Instruction max_vf(Register dst, Register src1, Register src2) {
-  ASSERT(dst.is_xmm());
-  ASSERT(src1.is_xmm());
-  ASSERT(src2.is_xmm());
+  ASSERT(dst.is_128bit_simd());
+  ASSERT(src1.is_128bit_simd());
+  ASSERT(src2.is_128bit_simd());
   InstructionX86 instr(0x5F);  // VMAXPS
   instr.set_vex_modrm_and_rex(dst.hw_id(), src2.hw_id(), VEX3::LeadingBytes::P_0F, src1.hw_id());
   return instr;
 }
 
 Instruction min_vf(Register dst, Register src1, Register src2) {
-  ASSERT(dst.is_xmm());
-  ASSERT(src1.is_xmm());
-  ASSERT(src2.is_xmm());
+  ASSERT(dst.is_128bit_simd());
+  ASSERT(src1.is_128bit_simd());
+  ASSERT(src2.is_128bit_simd());
   InstructionX86 instr(0x5D);  // VMINPS
   instr.set_vex_modrm_and_rex(dst.hw_id(), src2.hw_id(), VEX3::LeadingBytes::P_0F, src1.hw_id());
   return instr;
 }
 
 Instruction div_vf(Register dst, Register src1, Register src2) {
-  ASSERT(dst.is_xmm());
-  ASSERT(src1.is_xmm());
-  ASSERT(src2.is_xmm());
+  ASSERT(dst.is_128bit_simd());
+  ASSERT(src1.is_128bit_simd());
+  ASSERT(src2.is_128bit_simd());
   InstructionX86 instr(0x5E);  // VDIVPS
   instr.set_vex_modrm_and_rex(dst.hw_id(), src2.hw_id(), VEX3::LeadingBytes::P_0F, src1.hw_id());
   return instr;
 }
 
 Instruction sqrt_vf(Register dst, Register src) {
-  ASSERT(dst.is_xmm());
-  ASSERT(src.is_xmm());
+  ASSERT(dst.is_128bit_simd());
+  ASSERT(src.is_128bit_simd());
   InstructionX86 instr(0x51);  // VSQRTPS
   instr.set_vex_modrm_and_rex(dst.hw_id(), src.hw_id(), VEX3::LeadingBytes::P_0F, 0b0);
   return instr;
 }
 
 Instruction itof_vf(Register dst, Register src) {
-  ASSERT(dst.is_xmm());
-  ASSERT(src.is_xmm());
+  ASSERT(dst.is_128bit_simd());
+  ASSERT(src.is_128bit_simd());
   InstructionX86 instr(0x5b);  // VCVTDQ2PS
   instr.set_vex_modrm_and_rex(dst.hw_id(), src.hw_id(), VEX3::LeadingBytes::P_0F, 0);
   return instr;
 }
 
 Instruction ftoi_vf(Register dst, Register src) {
-  ASSERT(dst.is_xmm());
-  ASSERT(src.is_xmm());
+  ASSERT(dst.is_128bit_simd());
+  ASSERT(src.is_128bit_simd());
   // VEX.128.F3.0F.WIG 5B /r VCVTTPS2DQ xmm1, xmm2/m128
   InstructionX86 instr(0x5b);  // VCVTTPS2DQ
   instr.set_vex_modrm_and_rex(dst.hw_id(), src.hw_id(), VEX3::LeadingBytes::P_0F, 0, false,
@@ -2385,8 +2154,8 @@ Instruction ftoi_vf(Register dst, Register src) {
 }
 
 Instruction pw_sra(Register dst, Register src, u8 imm) {
-  ASSERT(dst.is_xmm());
-  ASSERT(src.is_xmm());
+  ASSERT(dst.is_128bit_simd());
+  ASSERT(src.is_128bit_simd());
   // VEX.128.66.0F.WIG 72 /4 ib VPSRAD xmm1, xmm2, imm8
   InstructionX86 instr(0x72);
   instr.set_vex_modrm_and_rex(4, src.hw_id(), VEX3::LeadingBytes::P_0F, dst.hw_id(), false,
@@ -2396,8 +2165,8 @@ Instruction pw_sra(Register dst, Register src, u8 imm) {
 }
 
 Instruction pw_srl(Register dst, Register src, u8 imm) {
-  ASSERT(dst.is_xmm());
-  ASSERT(src.is_xmm());
+  ASSERT(dst.is_128bit_simd());
+  ASSERT(src.is_128bit_simd());
   // VEX.128.66.0F.WIG 72 /2 ib VPSRLD xmm1, xmm2, imm8
   InstructionX86 instr(0x72);
   instr.set_vex_modrm_and_rex(2, src.hw_id(), VEX3::LeadingBytes::P_0F, dst.hw_id(), false,
@@ -2407,8 +2176,8 @@ Instruction pw_srl(Register dst, Register src, u8 imm) {
 }
 
 Instruction ph_srl(Register dst, Register src, u8 imm) {
-  ASSERT(dst.is_xmm());
-  ASSERT(src.is_xmm());
+  ASSERT(dst.is_128bit_simd());
+  ASSERT(src.is_128bit_simd());
   // VEX.128.66.0F.WIG 71 /2 ib VPSRLW
   InstructionX86 instr(0x71);
   instr.set_vex_modrm_and_rex(2, src.hw_id(), VEX3::LeadingBytes::P_0F, dst.hw_id(), false,
@@ -2418,8 +2187,8 @@ Instruction ph_srl(Register dst, Register src, u8 imm) {
 }
 
 Instruction pw_sll(Register dst, Register src, u8 imm) {
-  ASSERT(dst.is_xmm());
-  ASSERT(src.is_xmm());
+  ASSERT(dst.is_128bit_simd());
+  ASSERT(src.is_128bit_simd());
   // VEX.128.66.0F.WIG 72 /6 ib VPSLLD xmm1, xmm2, imm8
   InstructionX86 instr(0x72);
   instr.set_vex_modrm_and_rex(6, src.hw_id(), VEX3::LeadingBytes::P_0F, dst.hw_id(), false,
@@ -2428,8 +2197,8 @@ Instruction pw_sll(Register dst, Register src, u8 imm) {
   return instr;
 }
 Instruction ph_sll(Register dst, Register src, u8 imm) {
-  ASSERT(dst.is_xmm());
-  ASSERT(src.is_xmm());
+  ASSERT(dst.is_128bit_simd());
+  ASSERT(src.is_128bit_simd());
   // VEX.128.66.0F.WIG 71 /6 ib VPSLLW xmm1, xmm2, imm8
   InstructionX86 instr(0x71);
   instr.set_vex_modrm_and_rex(6, src.hw_id(), VEX3::LeadingBytes::P_0F, dst.hw_id(), false,
@@ -2439,9 +2208,9 @@ Instruction ph_sll(Register dst, Register src, u8 imm) {
 }
 
 Instruction parallel_add_byte(Register dst, Register src0, Register src1) {
-  ASSERT(dst.is_xmm());
-  ASSERT(src0.is_xmm());
-  ASSERT(src1.is_xmm());
+  ASSERT(dst.is_128bit_simd());
+  ASSERT(src0.is_128bit_simd());
+  ASSERT(src1.is_128bit_simd());
   // VEX.128.66.0F.WIG FC /r VPADDB xmm1, xmm2, xmm3/m128
   // reg, vex, r/m
   InstructionX86 instr(0xFC);
@@ -2451,9 +2220,9 @@ Instruction parallel_add_byte(Register dst, Register src0, Register src1) {
 }
 
 Instruction parallel_bitwise_or(Register dst, Register src0, Register src1) {
-  ASSERT(dst.is_xmm());
-  ASSERT(src0.is_xmm());
-  ASSERT(src1.is_xmm());
+  ASSERT(dst.is_128bit_simd());
+  ASSERT(src0.is_128bit_simd());
+  ASSERT(src1.is_128bit_simd());
   // VEX.128.66.0F.WIG EB /r VPOR xmm1, xmm2, xmm3/m128
   // reg, vex, r/m
   InstructionX86 instr(0xEB);
@@ -2463,9 +2232,9 @@ Instruction parallel_bitwise_or(Register dst, Register src0, Register src1) {
 }
 
 Instruction parallel_bitwise_xor(Register dst, Register src0, Register src1) {
-  ASSERT(dst.is_xmm());
-  ASSERT(src0.is_xmm());
-  ASSERT(src1.is_xmm());
+  ASSERT(dst.is_128bit_simd());
+  ASSERT(src0.is_128bit_simd());
+  ASSERT(src1.is_128bit_simd());
   // VEX.128.66.0F.WIG EF /r VPXOR xmm1, xmm2, xmm3/m128
   // reg, vex, r/m
   InstructionX86 instr(0xEF);
@@ -2475,9 +2244,9 @@ Instruction parallel_bitwise_xor(Register dst, Register src0, Register src1) {
 }
 
 Instruction parallel_bitwise_and(Register dst, Register src0, Register src1) {
-  ASSERT(dst.is_xmm());
-  ASSERT(src0.is_xmm());
-  ASSERT(src1.is_xmm());
+  ASSERT(dst.is_128bit_simd());
+  ASSERT(src0.is_128bit_simd());
+  ASSERT(src1.is_128bit_simd());
   // VEX.128.66.0F.WIG DB /r VPAND xmm1, xmm2, xmm3/m128
   // reg, vex, r/m
   InstructionX86 instr(0xDB);
@@ -2486,19 +2255,10 @@ Instruction parallel_bitwise_and(Register dst, Register src0, Register src1) {
   return instr;
 }
 
-// Reminder - a word in MIPS = 32bits = a DWORD in x86
-//     MIPS   ||   x86
-// -----------------------
-// byte       || byte
-// halfword   || word
-// word       || dword
-// doubleword || quadword
-
-// -- Unpack High Data Instructions
 Instruction pextub_swapped(Register dst, Register src0, Register src1) {
-  ASSERT(dst.is_xmm());
-  ASSERT(src0.is_xmm());
-  ASSERT(src1.is_xmm());
+  ASSERT(dst.is_128bit_simd());
+  ASSERT(src0.is_128bit_simd());
+  ASSERT(src1.is_128bit_simd());
   // VEX.128.66.0F.WIG 68/r VPUNPCKHBW xmm1,xmm2, xmm3/m128
   // reg, vex, r/m
   InstructionX86 instr(0x68);
@@ -2508,9 +2268,9 @@ Instruction pextub_swapped(Register dst, Register src0, Register src1) {
 }
 
 Instruction pextuh_swapped(Register dst, Register src0, Register src1) {
-  ASSERT(dst.is_xmm());
-  ASSERT(src0.is_xmm());
-  ASSERT(src1.is_xmm());
+  ASSERT(dst.is_128bit_simd());
+  ASSERT(src0.is_128bit_simd());
+  ASSERT(src1.is_128bit_simd());
   // VEX.128.66.0F.WIG 69/r VPUNPCKHWD xmm1,xmm2, xmm3/m128
   // reg, vex, r/m
   InstructionX86 instr(0x69);
@@ -2520,9 +2280,9 @@ Instruction pextuh_swapped(Register dst, Register src0, Register src1) {
 }
 
 Instruction pextuw_swapped(Register dst, Register src0, Register src1) {
-  ASSERT(dst.is_xmm());
-  ASSERT(src0.is_xmm());
-  ASSERT(src1.is_xmm());
+  ASSERT(dst.is_128bit_simd());
+  ASSERT(src0.is_128bit_simd());
+  ASSERT(src1.is_128bit_simd());
   // VEX.128.66.0F.WIG 6A/r VPUNPCKHDQ xmm1, xmm2, xmm3/m128
   // reg, vex, r/m
   InstructionX86 instr(0x6a);
@@ -2531,11 +2291,10 @@ Instruction pextuw_swapped(Register dst, Register src0, Register src1) {
   return instr;
 }
 
-// -- Unpack Low Data Instructions
 Instruction pextlb_swapped(Register dst, Register src0, Register src1) {
-  ASSERT(dst.is_xmm());
-  ASSERT(src0.is_xmm());
-  ASSERT(src1.is_xmm());
+  ASSERT(dst.is_128bit_simd());
+  ASSERT(src0.is_128bit_simd());
+  ASSERT(src1.is_128bit_simd());
   // VEX.128.66.0F.WIG 60/r VPUNPCKLBW xmm1,xmm2, xmm3/m128
   // reg, vex, r/m
   InstructionX86 instr(0x60);
@@ -2545,9 +2304,9 @@ Instruction pextlb_swapped(Register dst, Register src0, Register src1) {
 }
 
 Instruction pextlh_swapped(Register dst, Register src0, Register src1) {
-  ASSERT(dst.is_xmm());
-  ASSERT(src0.is_xmm());
-  ASSERT(src1.is_xmm());
+  ASSERT(dst.is_128bit_simd());
+  ASSERT(src0.is_128bit_simd());
+  ASSERT(src1.is_128bit_simd());
   // VEX.128.66.0F.WIG 61/r VPUNPCKLWD xmm1,xmm2, xmm3/m128
   // reg, vex, r/m
   InstructionX86 instr(0x61);
@@ -2557,9 +2316,9 @@ Instruction pextlh_swapped(Register dst, Register src0, Register src1) {
 }
 
 Instruction pextlw_swapped(Register dst, Register src0, Register src1) {
-  ASSERT(dst.is_xmm());
-  ASSERT(src0.is_xmm());
-  ASSERT(src1.is_xmm());
+  ASSERT(dst.is_128bit_simd());
+  ASSERT(src0.is_128bit_simd());
+  ASSERT(src1.is_128bit_simd());
   // VEX.128.66.0F.WIG 62/r VPUNPCKLDQ xmm1, xmm2, xmm3/m128
   // reg, vex, r/m
   InstructionX86 instr(0x62);
@@ -2568,11 +2327,10 @@ Instruction pextlw_swapped(Register dst, Register src0, Register src1) {
   return instr;
 }
 
-// Equal to than comparison as 16 bytes (8 bits)
 Instruction parallel_compare_e_b(Register dst, Register src0, Register src1) {
-  ASSERT(dst.is_xmm());
-  ASSERT(src0.is_xmm());
-  ASSERT(src1.is_xmm());
+  ASSERT(dst.is_128bit_simd());
+  ASSERT(src0.is_128bit_simd());
+  ASSERT(src1.is_128bit_simd());
   // VEX.128.66.0F.WIG 74 /r VPCMPEQB xmm1, xmm2, xmm3/m128
   // reg, vex, r/m
   InstructionX86 instr(0x74);
@@ -2581,11 +2339,10 @@ Instruction parallel_compare_e_b(Register dst, Register src0, Register src1) {
   return instr;
 }
 
-// Equal to than comparison as 8 halfwords (16 bits)
 Instruction parallel_compare_e_h(Register dst, Register src0, Register src1) {
-  ASSERT(dst.is_xmm());
-  ASSERT(src0.is_xmm());
-  ASSERT(src1.is_xmm());
+  ASSERT(dst.is_128bit_simd());
+  ASSERT(src0.is_128bit_simd());
+  ASSERT(src1.is_128bit_simd());
   // VEX.128.66.0F.WIG 75 /r VPCMPEQW xmm1, xmm2, xmm3/m128
   // reg, vex, r/m
   InstructionX86 instr(0x75);
@@ -2594,11 +2351,10 @@ Instruction parallel_compare_e_h(Register dst, Register src0, Register src1) {
   return instr;
 }
 
-// Equal to than comparison as 4 words (32 bits)
 Instruction parallel_compare_e_w(Register dst, Register src0, Register src1) {
-  ASSERT(dst.is_xmm());
-  ASSERT(src0.is_xmm());
-  ASSERT(src1.is_xmm());
+  ASSERT(dst.is_128bit_simd());
+  ASSERT(src0.is_128bit_simd());
+  ASSERT(src1.is_128bit_simd());
   // VEX.128.66.0F.WIG 76 /r VPCMPEQD xmm1, xmm2, xmm3/m128
   // reg, vex, r/m
   InstructionX86 instr(0x76);
@@ -2607,11 +2363,10 @@ Instruction parallel_compare_e_w(Register dst, Register src0, Register src1) {
   return instr;
 }
 
-// Greater than comparison as 16 bytes (8 bits)
 Instruction parallel_compare_gt_b(Register dst, Register src0, Register src1) {
-  ASSERT(dst.is_xmm());
-  ASSERT(src0.is_xmm());
-  ASSERT(src1.is_xmm());
+  ASSERT(dst.is_128bit_simd());
+  ASSERT(src0.is_128bit_simd());
+  ASSERT(src1.is_128bit_simd());
   // VEX.128.66.0F.WIG 64 /r VPCMPGTB xmm1, xmm2, xmm3/m128
   // reg, vex, r/m
   InstructionX86 instr(0x64);
@@ -2620,11 +2375,10 @@ Instruction parallel_compare_gt_b(Register dst, Register src0, Register src1) {
   return instr;
 }
 
-// Greater than comparison as 8 halfwords (16 bits)
 Instruction parallel_compare_gt_h(Register dst, Register src0, Register src1) {
-  ASSERT(dst.is_xmm());
-  ASSERT(src0.is_xmm());
-  ASSERT(src1.is_xmm());
+  ASSERT(dst.is_128bit_simd());
+  ASSERT(src0.is_128bit_simd());
+  ASSERT(src1.is_128bit_simd());
   // VEX.128.66.0F.WIG 65 /r VPCMPGTW xmm1, xmm2, xmm3/m128
   // reg, vex, r/m
   InstructionX86 instr(0x65);
@@ -2633,11 +2387,10 @@ Instruction parallel_compare_gt_h(Register dst, Register src0, Register src1) {
   return instr;
 }
 
-// Greater than comparison as 4 words (32 bits)
 Instruction parallel_compare_gt_w(Register dst, Register src0, Register src1) {
-  ASSERT(dst.is_xmm());
-  ASSERT(src0.is_xmm());
-  ASSERT(src1.is_xmm());
+  ASSERT(dst.is_128bit_simd());
+  ASSERT(src0.is_128bit_simd());
+  ASSERT(src1.is_128bit_simd());
   // VEX.128.66.0F.WIG 66 /r VPCMPGTD xmm1, xmm2, xmm3/m128
   // reg, vex, r/m
   InstructionX86 instr(0x66);
@@ -2647,9 +2400,9 @@ Instruction parallel_compare_gt_w(Register dst, Register src0, Register src1) {
 }
 
 Instruction vpunpcklqdq(Register dst, Register src0, Register src1) {
-  ASSERT(dst.is_xmm());
-  ASSERT(src0.is_xmm());
-  ASSERT(src1.is_xmm());
+  ASSERT(dst.is_128bit_simd());
+  ASSERT(src0.is_128bit_simd());
+  ASSERT(src1.is_128bit_simd());
   // VEX.128.66.0F.WIG 6C/r VPUNPCKLQDQ xmm1, xmm2, xmm3/m128
   // reg, vex, r/m
   InstructionX86 instr(0x6c);
@@ -2663,9 +2416,9 @@ Instruction pcpyld_swapped(Register dst, Register src0, Register src1) {
 }
 
 Instruction pcpyud(Register dst, Register src0, Register src1) {
-  ASSERT(dst.is_xmm());
-  ASSERT(src0.is_xmm());
-  ASSERT(src1.is_xmm());
+  ASSERT(dst.is_128bit_simd());
+  ASSERT(src0.is_128bit_simd());
+  ASSERT(src1.is_128bit_simd());
   // VEX.128.66.0F.WIG 6D/r VPUNPCKHQDQ xmm1, xmm2, xmm3/m128
   // reg, vex, r/m
   InstructionX86 instr(0x6d);
@@ -2675,9 +2428,9 @@ Instruction pcpyud(Register dst, Register src0, Register src1) {
 }
 
 Instruction vpsubd(Register dst, Register src0, Register src1) {
-  ASSERT(dst.is_xmm());
-  ASSERT(src0.is_xmm());
-  ASSERT(src1.is_xmm());
+  ASSERT(dst.is_128bit_simd());
+  ASSERT(src0.is_128bit_simd());
+  ASSERT(src1.is_128bit_simd());
   // VEX.128.66.0F.WIG FA /r VPSUBD xmm1, xmm2, xmm3/m128
   // reg, vec, r/m
   InstructionX86 instr(0xfa);
@@ -2687,8 +2440,8 @@ Instruction vpsubd(Register dst, Register src0, Register src1) {
 }
 
 Instruction vpsrldq(Register dst, Register src, u8 imm) {
-  ASSERT(dst.is_xmm());
-  ASSERT(src.is_xmm());
+  ASSERT(dst.is_128bit_simd());
+  ASSERT(src.is_128bit_simd());
   // VEX.128.66.0F.WIG 73 /3 ib VPSRLDQ xmm1, xmm2, imm8
   InstructionX86 instr(0x73);
   instr.set_vex_modrm_and_rex(3, src.hw_id(), VEX3::LeadingBytes::P_0F, dst.hw_id(), false,
@@ -2698,8 +2451,8 @@ Instruction vpsrldq(Register dst, Register src, u8 imm) {
 }
 
 Instruction vpslldq(Register dst, Register src, u8 imm) {
-  ASSERT(dst.is_xmm());
-  ASSERT(src.is_xmm());
+  ASSERT(dst.is_128bit_simd());
+  ASSERT(src.is_128bit_simd());
   // VEX.128.66.0F.WIG 73 /7 ib VPSLLDQ xmm1, xmm2, imm8
   InstructionX86 instr(0x73);
   instr.set_vex_modrm_and_rex(7, src.hw_id(), VEX3::LeadingBytes::P_0F, dst.hw_id(), false,
@@ -2709,8 +2462,8 @@ Instruction vpslldq(Register dst, Register src, u8 imm) {
 }
 
 Instruction vpshuflw(Register dst, Register src, u8 imm) {
-  ASSERT(dst.is_xmm());
-  ASSERT(src.is_xmm());
+  ASSERT(dst.is_128bit_simd());
+  ASSERT(src.is_128bit_simd());
   // VEX.128.F2.0F.WIG 70 /r ib VPSHUFLW xmm1, xmm2/m128, imm8
   InstructionX86 instr(0x70);
   instr.set_vex_modrm_and_rex(dst.hw_id(), src.hw_id(), VEX3::LeadingBytes::P_0F, 0, false,
@@ -2720,8 +2473,8 @@ Instruction vpshuflw(Register dst, Register src, u8 imm) {
 }
 
 Instruction vpshufhw(Register dst, Register src, u8 imm) {
-  ASSERT(dst.is_xmm());
-  ASSERT(src.is_xmm());
+  ASSERT(dst.is_128bit_simd());
+  ASSERT(src.is_128bit_simd());
   // VEX.128.F3.0F.WIG 70 /r ib VPSHUFHW xmm1, xmm2/m128, imm8
   InstructionX86 instr(0x70);
   instr.set_vex_modrm_and_rex(dst.hw_id(), src.hw_id(), VEX3::LeadingBytes::P_0F, 0, false,
@@ -2731,9 +2484,9 @@ Instruction vpshufhw(Register dst, Register src, u8 imm) {
 }
 
 Instruction vpackuswb(Register dst, Register src0, Register src1) {
-  ASSERT(dst.is_xmm());
-  ASSERT(src0.is_xmm());
-  ASSERT(src1.is_xmm());
+  ASSERT(dst.is_128bit_simd());
+  ASSERT(src0.is_128bit_simd());
+  ASSERT(src1.is_128bit_simd());
   // VEX.128.66.0F.WIG 67 /r VPACKUSWB xmm1, xmm2, xmm3/m128
   // reg, vex, r/m
 

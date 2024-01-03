@@ -67,11 +67,18 @@ void CodeTester::emit_return() {
  * Pops RSP always, which is weird, but doesn't cause issues.
  */
 void CodeTester::emit_pop_all_gprs(bool exclude_rax) {
+#ifndef __aarch64__
   for (int i = 16; i-- > 0;) {
     if (i != RAX || !exclude_rax) {
       emit(IGen::pop_gpr64(i));
     }
   }
+#else
+  // TODO find uses for excluding RAX
+  for (int i = 0; i < 32; i++) {
+    emit(IGen::pop_gpr64(i));
+  }
+#endif
 }
 
 /*!
@@ -79,11 +86,18 @@ void CodeTester::emit_pop_all_gprs(bool exclude_rax) {
  * Pushes RSP always, which is weird, but doesn't cause issues.
  */
 void CodeTester::emit_push_all_gprs(bool exclude_rax) {
+#ifndef __aarch64__
   for (int i = 0; i < 16; i++) {
     if (i != RAX || !exclude_rax) {
       emit(IGen::push_gpr64(i));
     }
   }
+#else
+  // TODO find uses for excluding RAX
+  for (int i = 0; i < 32; i++) {
+    emit(IGen::push_gpr64(i));
+  }
+#endif
 }
 
 /*!

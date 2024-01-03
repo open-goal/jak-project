@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstring>
+
 #include "common/common_types.h"
 #include "common/util/Assert.h"
 
@@ -10,35 +11,31 @@ namespace emitter {
  */
 template <typename InstructionType>
 struct InstructionImpl {
-    /*!
-     * Emit into a buffer and return how many bytes written (can be zero)
-     */
-    u8 emit(u8* buffer) const {
-        return static_cast<const InstructionType*>(this)->emit(buffer);
-    }
+  /*!
+   * Emit into a buffer and return how many bytes written (can be zero)
+   */
+  u8 emit(u8* buffer) const { return static_cast<const InstructionType*>(this)->emit(buffer); }
 
-    u8 length() const {
-        return static_cast<const InstructionType*>(this)->length();
-    }
+  u8 length() const { return static_cast<const InstructionType*>(this)->length(); }
 };
 
+// TODO probably separate these because x86 has a ton
+
 struct InstructionARM64 : InstructionImpl<InstructionARM64> {
-    // The ARM instruction stream is a sequence of word-aligned words. Each ARM instruction is a single 32-bit word in that stream. 
-    // The encoding of an ARM instruction is:
-    // TODO
-    // https://iitd-plos.github.io/col718/ref/arm-instructionset.pdf
-    u32 instruction_encoding;
+  // The ARM instruction stream is a sequence of word-aligned words. Each ARM instruction is a
+  // single 32-bit word in that stream. The encoding of an ARM instruction is:
+  // TODO
+  // https://iitd-plos.github.io/col718/ref/arm-instructionset.pdf
+  u32 instruction_encoding;
 
-    InstructionARM64(u32 encoding) : instruction_encoding(encoding) {}
+  InstructionARM64(u32 encoding) : instruction_encoding(encoding) {}
 
-    uint8_t emit(uint8_t* buffer) const {
-        memcpy(buffer, &instruction_encoding, 4);
-        return 4;
-    }
+  uint8_t emit(uint8_t* buffer) const {
+    memcpy(buffer, &instruction_encoding, 4);
+    return 4;
+  }
 
-    uint8_t length() const {
-        return 4;
-    }
+  uint8_t length() const { return 4; }
 };
 
 /*!
@@ -168,7 +165,7 @@ struct VEX2 {
 };
 
 struct InstructionX86 : InstructionImpl<InstructionX86> {
-    enum Flags {
+  enum Flags {
     kOp2Set = (1 << 0),
     kOp3Set = (1 << 1),
     kIsNull = (1 << 2),

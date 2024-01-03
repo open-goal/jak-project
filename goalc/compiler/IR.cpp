@@ -240,7 +240,7 @@ void IR_LoadSymbolPointer::do_codegen(emitter::ObjectGenerator* gen,
   auto dest_reg = get_reg(m_dest, allocs, irec);
   if (m_name == "#f") {
     static_assert(false_symbol_offset() == 0, "false symbol location");
-    if (dest_reg.is_xmm()) {
+    if (dest_reg.is_128bit_simd()) {
       gen->add_instr(IGen::movq_xmm64_gpr64(dest_reg, gRegInfo.get_st_reg()), irec);
     } else {
       gen->add_instr(IGen::mov_gpr64_gpr64(dest_reg, gRegInfo.get_st_reg()), irec);
@@ -862,7 +862,7 @@ RegAllocInstr IR_ConditionalBranch::to_rai() {
 void IR_ConditionalBranch::do_codegen(emitter::ObjectGenerator* gen,
                                       const AllocationResult& allocs,
                                       emitter::IR_Record irec) {
-  #ifndef __aarch64__
+#ifndef __aarch64__
   Instruction jump_instr;
   jump_instr = InstructionX86(0);
   ASSERT(m_resolved);
@@ -918,9 +918,9 @@ void IR_ConditionalBranch::do_codegen(emitter::ObjectGenerator* gen,
 
   auto jump_rec = gen->add_instr(jump_instr, irec);
   gen->link_instruction_jump(jump_rec, gen->get_future_ir_record_in_same_func(irec, label.idx));
-  #else
-  // TODO - ARM64
-  #endif
+#else
+// TODO - ARM64
+#endif
 }
 
 /////////////////////

@@ -627,7 +627,8 @@
 //   std::vector<u64> u64_constants = {0, UINT64_MAX, INT64_MAX, 7, 12};
 
 //   // test we can load a 64-bit constant into all gprs, move it to any other gpr, and return it.
-//   // rsp is skipping because that's the stack pointer and would prevent us from popping gprs after
+//   // rsp is skipping because that's the stack pointer and would prevent us from popping gprs
+//   after
 
 //   CodeTester tester;
 //   tester.init_code_buffer(256);
@@ -3216,10 +3217,11 @@
 //         float memory[8] = {0, 0, 1.23f, 3.45f, 5.67f, 0, 0, 0};
 
 //         // run!
-//         EXPECT_FLOAT_EQ(tester.execute_ret<float>((u64)memory, 3 * sizeof(float) + 3, 0, 0), 3.45f);
-//         EXPECT_FLOAT_EQ(tester.execute_ret<float>((u64)memory, 2 * sizeof(float) + 3, 0, 0), 1.23f);
-//         EXPECT_FLOAT_EQ(tester.execute_ret<float>((u64)memory, 4 * sizeof(float) + 3, 0, 0), 5.67f);
-//         EXPECT_FLOAT_EQ(tester.execute_ret<float>((u64)memory, 5 * sizeof(float) + 3, 0, 0), 0);
+//         EXPECT_FLOAT_EQ(tester.execute_ret<float>((u64)memory, 3 * sizeof(float) + 3, 0,
+//         0), 3.45f); EXPECT_FLOAT_EQ(tester.execute_ret<float>((u64)memory, 2 * sizeof(float) + 3,
+//         0, 0), 1.23f); EXPECT_FLOAT_EQ(tester.execute_ret<float>((u64)memory, 4 * sizeof(float) +
+//         3, 0, 0), 5.67f); EXPECT_FLOAT_EQ(tester.execute_ret<float>((u64)memory, 5 *
+//         sizeof(float) + 3, 0, 0), 0);
 
 //         iter++;
 //       }
