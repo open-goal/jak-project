@@ -17,27 +17,25 @@
 
 ;; definition of type drill-control-panel
 (deftype drill-control-panel (process-focusable)
-  ((id             int8                      :offset-assert 204)
-   (idle-sound-id  sound-id                  :offset-assert 208)
-   (debris-part    sparticle-launch-control  :offset-assert 212)
-   (next-warn-time time-frame                :offset        224)
+  ((id              int8)
+   (idle-sound-id   sound-id)
+   (debris-part     sparticle-launch-control)
+   (next-warn-time  time-frame  :offset 224)
    )
-  :heap-base #x70
-  :method-count-assert 33
-  :size-assert         #xe8
-  :flag-assert         #x21007000e8
+  (:state-methods
+    idle
+    (hit symbol)
+    )
   (:methods
-    (idle () _type_ :state 27)
-    (hit (symbol) _type_ :state 28)
-    (init-collision! (_type_) none 29)
-    (init-panel (_type_) none 30)
-    (spawn-shock-part (_type_) none 31)
-    (spawn-explode-part (_type_) none 32)
+    (init-collision! (_type_) none)
+    (init-panel (_type_) none)
+    (spawn-shock-part (_type_) none)
+    (spawn-explode-part (_type_) none)
     )
   )
 
 ;; definition for method 3 of type drill-control-panel
-(defmethod inspect drill-control-panel ((this drill-control-panel))
+(defmethod inspect ((this drill-control-panel))
   (when (not this)
     (set! this this)
     (goto cfg-4)
@@ -56,7 +54,7 @@
 
 ;; definition for method 7 of type drill-control-panel
 ;; WARN: Return type mismatch process-drawable vs drill-control-panel.
-(defmethod relocate drill-control-panel ((this drill-control-panel) (arg0 int))
+(defmethod relocate ((this drill-control-panel) (arg0 int))
   (if (nonzero? (-> this debris-part))
       (&+! (-> this debris-part) arg0)
       )
@@ -64,7 +62,7 @@
   )
 
 ;; definition for method 10 of type drill-control-panel
-(defmethod deactivate drill-control-panel ((this drill-control-panel))
+(defmethod deactivate ((this drill-control-panel))
   (sound-stop (-> this idle-sound-id))
   (if (nonzero? (-> this debris-part))
       (kill-and-free-particles (-> this debris-part))
@@ -517,7 +515,7 @@
   )
 
 ;; definition for method 32 of type drill-control-panel
-(defmethod spawn-explode-part drill-control-panel ((this drill-control-panel))
+(defmethod spawn-explode-part ((this drill-control-panel))
   "Spawn explosion particles."
   (let ((v1-0 (-> this id)))
     (if (or (zero? v1-0) (= v1-0 1))
@@ -529,7 +527,7 @@
   )
 
 ;; definition for method 31 of type drill-control-panel
-(defmethod spawn-shock-part drill-control-panel ((this drill-control-panel))
+(defmethod spawn-shock-part ((this drill-control-panel))
   "Spawn shock particles."
   (let ((v1-0 (-> this id)))
     (cond
@@ -698,7 +696,7 @@
 
 ;; definition for method 29 of type drill-control-panel
 ;; WARN: Return type mismatch int vs none.
-(defmethod init-collision! drill-control-panel ((this drill-control-panel))
+(defmethod init-collision! ((this drill-control-panel))
   "Define the collision for the panel."
   (let ((s5-0 (new 'process 'collide-shape-moving this (collide-list-enum usually-hit-by-player))))
     (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
@@ -728,7 +726,7 @@
 
 ;; definition for method 30 of type drill-control-panel
 ;; WARN: Return type mismatch int vs none.
-(defmethod init-panel drill-control-panel ((this drill-control-panel))
+(defmethod init-panel ((this drill-control-panel))
   "Init some parameters for the panel."
   (set! (-> this idle-sound-id) (new-sound-id))
   (logior! (-> this mask) (process-mask crate))
@@ -739,7 +737,7 @@
 
 ;; definition for method 11 of type drill-control-panel
 ;; WARN: Return type mismatch object vs none.
-(defmethod init-from-entity! drill-control-panel ((this drill-control-panel) (arg0 entity-actor))
+(defmethod init-from-entity! ((this drill-control-panel) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
 - stack size
@@ -776,14 +774,10 @@ This commonly includes things such as:
 ;; definition of type drill-control-panel-a
 (deftype drill-control-panel-a (drill-control-panel)
   ()
-  :heap-base #x70
-  :method-count-assert 33
-  :size-assert         #xe8
-  :flag-assert         #x21007000e8
   )
 
 ;; definition for method 3 of type drill-control-panel-a
-(defmethod inspect drill-control-panel-a ((this drill-control-panel-a))
+(defmethod inspect ((this drill-control-panel-a))
   (when (not this)
     (set! this this)
     (goto cfg-4)
@@ -797,7 +791,7 @@ This commonly includes things such as:
 
 ;; definition for method 11 of type drill-control-panel-a
 ;; WARN: Return type mismatch object vs none.
-(defmethod init-from-entity! drill-control-panel-a ((this drill-control-panel-a) (arg0 entity-actor))
+(defmethod init-from-entity! ((this drill-control-panel-a) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
 - stack size
@@ -865,14 +859,10 @@ This commonly includes things such as:
 ;; definition of type drill-control-panel-b
 (deftype drill-control-panel-b (drill-control-panel-a)
   ()
-  :heap-base #x70
-  :method-count-assert 33
-  :size-assert         #xe8
-  :flag-assert         #x21007000e8
   )
 
 ;; definition for method 3 of type drill-control-panel-b
-(defmethod inspect drill-control-panel-b ((this drill-control-panel-b))
+(defmethod inspect ((this drill-control-panel-b))
   (when (not this)
     (set! this this)
     (goto cfg-4)

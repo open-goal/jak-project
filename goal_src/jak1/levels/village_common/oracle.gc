@@ -8,15 +8,11 @@
 ;; DECOMP BEGINS
 
 (deftype oracle (process-taskable)
-  ((first-task     uint8   :offset-assert 380)
-   (second-task    uint8   :offset-assert 381)
-   (left-eye-cell  handle  :offset-assert 384)
-   (right-eye-cell handle  :offset-assert 392)
+  ((first-task      uint8)
+   (second-task     uint8)
+   (left-eye-cell   handle)
+   (right-eye-cell  handle)
    )
-  :heap-base #x120
-  :method-count-assert 53
-  :size-assert         #x190
-  :flag-assert         #x3501200190
   )
 
 
@@ -25,7 +21,7 @@
               :bounds (static-spherem 0 0 0 4)
               )
 
-(defmethod play-anim! oracle ((this oracle) (arg0 symbol))
+(defmethod play-anim! ((this oracle) (arg0 symbol))
   (set! (-> this talk-message) (text-id press-to-talk))
   (case (current-status (-> this tasks))
     (((task-status need-hint) (task-status need-introduction))
@@ -217,7 +213,7 @@
     )
   )
 
-(defmethod get-art-elem oracle ((this oracle))
+(defmethod get-art-elem ((this oracle))
   (-> this draw art-group data 2)
   )
 
@@ -233,10 +229,10 @@
     )
   )
 
-(defmethod init-from-entity! oracle ((this oracle) (arg0 entity-actor))
+(defmethod init-from-entity! ((this oracle) (arg0 entity-actor))
   (process-taskable-method-40 this arg0 *oracle-sg* 3 4 (new 'static 'vector :y -4096.0 :w 4096.0) -1)
   (set! (-> this sound)
-        (new 'process 'ambient-sound (static-sound-spec "oracle-sleep" :fo-max 50) (-> this root-override trans))
+        (new 'process 'ambient-sound (static-sound-spec "oracle-sleep" :fo-max 50) (-> this root trans))
         )
   (set! (-> this first-task) (the-as uint (-> arg0 extra perm task)))
   (set! (-> this second-task) (res-lump-value arg0 'alt-task uint))
@@ -247,14 +243,14 @@
   (let ((s4-0 (new 'stack-no-clear 'vector))
         (s5-1 (lambda :behavior oracle
                 ()
-                (let* ((gp-0 (-> self root-override))
+                (let* ((gp-0 (-> self root))
                        (v1-1 (if (and (nonzero? gp-0) (type-type? (-> gp-0 type) collide-shape))
                                  gp-0
                                  )
                              )
                        (a1-1 (if v1-1
                                  (-> v1-1 root-prim prim-core)
-                                 (-> self root-override trans)
+                                 (-> self root trans)
                                  )
                              )
                        )

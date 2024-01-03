@@ -1500,73 +1500,65 @@
   )
 
 (deftype tpath-control-frame (structure)
-  ((time      float          :offset-assert   0)
-   (path-pos  uint8          :offset-assert   4)
-   (command   tpath-command  :offset-assert   5)
-   (move-type uint8          :offset-assert   6)
-   (path-num  uint8          :offset-assert   7)
+  ((time       float)
+   (path-pos   uint8)
+   (command    tpath-command)
+   (move-type  uint8)
+   (path-num   uint8)
    )
-  :method-count-assert 9
-  :size-assert         #x8
-  :flag-assert         #x900000008
   )
 
 
 (deftype tpath-info (structure)
-  ((s-time       float                                :offset-assert   0)
-   (num          uint16                               :offset-assert   4)
-   (ref-time-num int16                                :offset-assert   6)
-   (score        int16                                :offset-assert   8)
-   (flags        tpath-flags                          :offset-assert  10)
-   (num-anims    uint8                                :offset-assert  11)
-   (bonus-time   float                                :offset-assert  12)
-   (list         (array int32)                        :offset-assert  16)
-   (anims        (inline-array tpath-control-frame) 3 :offset-assert  20)
-   (anim1        (inline-array tpath-control-frame)   :offset         20)
-   (anim2        (inline-array tpath-control-frame)   :offset         24)
-   (anim3        (inline-array tpath-control-frame)   :offset         28)
+  ((s-time        float)
+   (num           uint16)
+   (ref-time-num  int16)
+   (score         int16)
+   (flags         tpath-flags)
+   (num-anims     uint8)
+   (bonus-time    float)
+   (list          (array int32))
+   (anims         (inline-array tpath-control-frame)  3)
+   (anim1         (inline-array tpath-control-frame)  :overlay-at (-> anims 0))
+   (anim2         (inline-array tpath-control-frame)  :overlay-at (-> anims 1))
+   (anim3         (inline-array tpath-control-frame)  :overlay-at (-> anims 2))
    )
-  :method-count-assert 9
-  :size-assert         #x20
-  :flag-assert         #x900000020
   )
 
 
 (deftype gun-dummy (process-focusable)
-  ((incoming-attack-id uint32                                     :offset-assert 204)
-   (train-man          handle                                     :offset-assert 208)
-   (info               tpath-info                                 :offset-assert 216)
-   (y-offset           float                                      :offset-assert 220)
-   (rot-y-offset       float                                      :offset-assert 224)
-   (quat               quaternion                         :inline :offset-assert 240)
-   (hit-points         int32                                      :offset-assert 256)
-   (score              float                                      :offset-assert 260)
-   (path-num           uint32                                     :offset-assert 264)
-   (next-spark         int64                                      :offset-assert 272)
-   (inout-percent      float                                      :offset-assert 280)
-   (quat-ground        quaternion                         :inline :offset-assert 288)
-   (path-pos           float                                      :offset-assert 304)
-   (score-speed        float                                      :offset-assert 308)
-   (first-time-command symbol                                     :offset-assert 312)
-   (current            (inline-array tpath-control-frame)         :offset-assert 316)
-   (impact             vector                             :inline :offset-assert 320)
-   (done?              symbol                             :inline :offset-assert 336)
-   (move-sound         sound-id                                   :offset-assert 340)
-   (turn-sound         sound-id                                   :offset-assert 344)
-   (spin-sound         sound-id                                   :offset-assert 348)
-   (last-combo-time    time-frame                                 :offset-assert 352)
+  ((incoming-attack-id  uint32)
+   (train-man           handle)
+   (info                tpath-info)
+   (y-offset            float)
+   (rot-y-offset        float)
+   (quat                quaternion  :inline)
+   (hit-points          int32)
+   (score               float)
+   (path-num            uint32)
+   (next-spark          int64)
+   (inout-percent       float)
+   (quat-ground         quaternion  :inline)
+   (path-pos            float)
+   (score-speed         float)
+   (first-time-command  symbol)
+   (current             (inline-array tpath-control-frame))
+   (impact              vector      :inline)
+   (done?               symbol      :inline)
+   (move-sound          sound-id)
+   (turn-sound          sound-id)
+   (spin-sound          sound-id)
+   (last-combo-time     time-frame)
    )
-  :heap-base #xf0
-  :method-count-assert 33
-  :size-assert         #x168
-  :flag-assert         #x2100f00168
+  (:state-methods
+    idle
+    )
   (:methods
-    (idle () _type_ :state 27)
-    (init-dummy-collison! (_type_) none 28)
-    (path-playing? (_type_) symbol 29)
-    (path-time-elapsed (_type_) float 30)
-    (init-tpath-info! (_type_ tpath-info) none 31)
-    (break-dummy (_type_) none 32)
+    (init-dummy-collison! (_type_) none)
+    (path-playing? (_type_) symbol)
+    (path-time-elapsed (_type_) float)
+    (init-tpath-info! (_type_ tpath-info) none)
+    (break-dummy (_type_) none)
     )
   )
 
@@ -1890,13 +1882,13 @@
     )
   )
 
-(defmethod break-dummy gun-dummy ((this gun-dummy))
+(defmethod break-dummy ((this gun-dummy))
   "Does what you'd expect, sets up the [[joint-exploder-tuning]] to break the dummy into pieces, plays sounds, etc"
   0
   (none)
   )
 
-(defmethod path-time-elapsed gun-dummy ((this gun-dummy))
+(defmethod path-time-elapsed ((this gun-dummy))
   "@returns Calculates the combined total time across all control frames in the path"
   (let ((total-time 0.0))
     (let ((curr-frame (the-as tpath-control-frame (-> this current))))
@@ -1935,7 +1927,7 @@
     )
   )
 
-(defmethod path-playing? gun-dummy ((this gun-dummy))
+(defmethod path-playing? ((this gun-dummy))
   "Core functionality for playing back the dummy's path.  Does things like:
 - calculates the score in case the dummy is hit based on the time elapsed
 - moves around the dummy
@@ -2159,7 +2151,7 @@
     )
   )
 
-(defmethod get-trans gun-dummy ((this gun-dummy) (arg0 int))
+(defmethod get-trans ((this gun-dummy) (arg0 int))
   "@returns the `trans` [[vector]] from the process's `root` (typically either a [[trsqv]] or a [[collide-shape]])"
   (let ((root (-> this root)))
     (case arg0
@@ -2313,7 +2305,7 @@
     )
   )
 
-(defmethod init-dummy-collison! gun-dummy ((this gun-dummy))
+(defmethod init-dummy-collison! ((this gun-dummy))
   "Initializes the collision related stuff for the dummy"
   (let ((cshape-moving (new 'process 'collide-shape-moving this (collide-list-enum usually-hit-by-player))))
     (set! (-> cshape-moving dynam) (copy *standard-dynamics* 'process))
@@ -2342,12 +2334,12 @@
   )
 
 ;; WARN: Return type mismatch process-focusable vs gun-dummy.
-(defmethod relocate gun-dummy ((this gun-dummy) (arg0 int))
+(defmethod relocate ((this gun-dummy) (arg0 int))
   (the-as gun-dummy ((method-of-type process-focusable relocate) this arg0))
   )
 
 ;; WARN: Return type mismatch object vs none.
-(defmethod init-from-entity! gun-dummy ((this gun-dummy) (arg0 entity-actor))
+(defmethod init-from-entity! ((this gun-dummy) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
 - stack size
@@ -2367,7 +2359,7 @@ This commonly includes things such as:
   (none)
   )
 
-(defmethod init-tpath-info! gun-dummy ((this gun-dummy) (arg0 tpath-info))
+(defmethod init-tpath-info! ((this gun-dummy) (arg0 tpath-info))
   "Given a [[tpath-info]] use it to initialize the dummy with any relevant data or flags"
   (logior! (-> this mask) (process-mask enemy))
   (logior! (-> this mask) (process-mask collectable))
@@ -2408,95 +2400,55 @@ This commonly includes things such as:
 
 (deftype gun-dummy-a (gun-dummy)
   ()
-  :heap-base #xf0
-  :method-count-assert 33
-  :size-assert         #x168
-  :flag-assert         #x2100f00168
   )
 
 
 (deftype gun-dummy-b (gun-dummy)
   ()
-  :heap-base #xf0
-  :method-count-assert 33
-  :size-assert         #x168
-  :flag-assert         #x2100f00168
   )
 
 
 (deftype gun-dummy-c (gun-dummy)
   ()
-  :heap-base #xf0
-  :method-count-assert 33
-  :size-assert         #x168
-  :flag-assert         #x2100f00168
   )
 
 
 (deftype gun-dummy-big (gun-dummy)
   ()
-  :heap-base #xf0
-  :method-count-assert 33
-  :size-assert         #x168
-  :flag-assert         #x2100f00168
   )
 
 
 (deftype gun-dummy-gold (gun-dummy)
   ()
-  :heap-base #xf0
-  :method-count-assert 33
-  :size-assert         #x168
-  :flag-assert         #x2100f00168
   )
 
 
 (deftype gun-dummy-peace (gun-dummy)
   ()
-  :heap-base #xf0
-  :method-count-assert 33
-  :size-assert         #x168
-  :flag-assert         #x2100f00168
   )
 
 
 (deftype gun-cit-a (gun-dummy)
   ()
-  :heap-base #xf0
-  :method-count-assert 33
-  :size-assert         #x168
-  :flag-assert         #x2100f00168
   )
 
 
 (deftype gun-cit-b (gun-dummy)
   ()
-  :heap-base #xf0
-  :method-count-assert 33
-  :size-assert         #x168
-  :flag-assert         #x2100f00168
   )
 
 
 (deftype gun-cit-c (gun-dummy)
   ()
-  :heap-base #xf0
-  :method-count-assert 33
-  :size-assert         #x168
-  :flag-assert         #x2100f00168
   )
 
 
 (deftype gun-cit-d (gun-dummy)
   ()
-  :heap-base #xf0
-  :method-count-assert 33
-  :size-assert         #x168
-  :flag-assert         #x2100f00168
   )
 
 
-(defmethod break-dummy gun-dummy-a ((this gun-dummy-a))
+(defmethod break-dummy ((this gun-dummy-a))
   "Does what you'd expect, sets up the [[joint-exploder-tuning]] to break the dummy into pieces, plays sounds, etc"
   (let ((root-prim (-> this root root-prim)))
     (set! (-> root-prim prim-core collide-as) (collide-spec))
@@ -2534,7 +2486,7 @@ This commonly includes things such as:
   (none)
   )
 
-(defmethod break-dummy gun-dummy-b ((this gun-dummy-b))
+(defmethod break-dummy ((this gun-dummy-b))
   "Does what you'd expect, sets up the [[joint-exploder-tuning]] to break the dummy into pieces, plays sounds, etc"
   (let ((root-prim (-> this root root-prim)))
     (set! (-> root-prim prim-core collide-as) (collide-spec))
@@ -2570,7 +2522,7 @@ This commonly includes things such as:
   (none)
   )
 
-(defmethod break-dummy gun-dummy-c ((this gun-dummy-c))
+(defmethod break-dummy ((this gun-dummy-c))
   "Does what you'd expect, sets up the [[joint-exploder-tuning]] to break the dummy into pieces, plays sounds, etc"
   (let ((root-prim (-> this root root-prim)))
     (set! (-> root-prim prim-core collide-as) (collide-spec))
@@ -2606,7 +2558,7 @@ This commonly includes things such as:
   (none)
   )
 
-(defmethod break-dummy gun-dummy-big ((this gun-dummy-big))
+(defmethod break-dummy ((this gun-dummy-big))
   "Does what you'd expect, sets up the [[joint-exploder-tuning]] to break the dummy into pieces, plays sounds, etc"
   (let ((root-prim (-> this root root-prim)))
     (set! (-> root-prim prim-core collide-as) (collide-spec))
@@ -2642,7 +2594,7 @@ This commonly includes things such as:
   (none)
   )
 
-(defmethod break-dummy gun-dummy-gold ((this gun-dummy-gold))
+(defmethod break-dummy ((this gun-dummy-gold))
   "Does what you'd expect, sets up the [[joint-exploder-tuning]] to break the dummy into pieces, plays sounds, etc"
   (let ((root-prim (-> this root root-prim)))
     (set! (-> root-prim prim-core collide-as) (collide-spec))
@@ -2678,7 +2630,7 @@ This commonly includes things such as:
   (none)
   )
 
-(defmethod break-dummy gun-dummy-peace ((this gun-dummy-peace))
+(defmethod break-dummy ((this gun-dummy-peace))
   "Does what you'd expect, sets up the [[joint-exploder-tuning]] to break the dummy into pieces, plays sounds, etc"
   (let ((root-prim (-> this root root-prim)))
     (set! (-> root-prim prim-core collide-as) (collide-spec))
@@ -2714,7 +2666,7 @@ This commonly includes things such as:
   (none)
   )
 
-(defmethod break-dummy gun-cit-a ((this gun-cit-a))
+(defmethod break-dummy ((this gun-cit-a))
   "Does what you'd expect, sets up the [[joint-exploder-tuning]] to break the dummy into pieces, plays sounds, etc"
   (let ((root-prim (-> this root root-prim)))
     (set! (-> root-prim prim-core collide-as) (collide-spec))
@@ -2752,7 +2704,7 @@ This commonly includes things such as:
   (none)
   )
 
-(defmethod break-dummy gun-cit-b ((this gun-cit-b))
+(defmethod break-dummy ((this gun-cit-b))
   "Does what you'd expect, sets up the [[joint-exploder-tuning]] to break the dummy into pieces, plays sounds, etc"
   (let ((root-prim (-> this root root-prim)))
     (set! (-> root-prim prim-core collide-as) (collide-spec))
@@ -2790,7 +2742,7 @@ This commonly includes things such as:
   (none)
   )
 
-(defmethod break-dummy gun-cit-c ((this gun-cit-c))
+(defmethod break-dummy ((this gun-cit-c))
   "Does what you'd expect, sets up the [[joint-exploder-tuning]] to break the dummy into pieces, plays sounds, etc"
   (let ((root-prim (-> this root root-prim)))
     (set! (-> root-prim prim-core collide-as) (collide-spec))
@@ -2828,7 +2780,7 @@ This commonly includes things such as:
   (none)
   )
 
-(defmethod break-dummy gun-cit-d ((this gun-cit-d))
+(defmethod break-dummy ((this gun-cit-d))
   "Does what you'd expect, sets up the [[joint-exploder-tuning]] to break the dummy into pieces, plays sounds, etc"
   (let ((root-prim (-> this root root-prim)))
     (set! (-> root-prim prim-core collide-as) (collide-spec))

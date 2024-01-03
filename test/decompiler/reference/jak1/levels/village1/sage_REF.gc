@@ -3,17 +3,13 @@
 
 ;; definition of type sage
 (deftype sage (process-taskable)
-  ((reminder-played basic   :offset-assert 380)
-   (assistant       handle  :offset-assert 384)
+  ((reminder-played  basic)
+   (assistant        handle)
    )
-  :heap-base #x120
-  :method-count-assert 53
-  :size-assert         #x188
-  :flag-assert         #x3501200188
   )
 
 ;; definition for method 3 of type sage
-(defmethod inspect sage ((this sage))
+(defmethod inspect ((this sage))
   (let ((t9-0 (method-of-type process-taskable inspect)))
     (t9-0 this)
     )
@@ -30,7 +26,7 @@
               )
 
 ;; definition for method 32 of type sage
-(defmethod play-anim! sage ((this sage) (arg0 symbol))
+(defmethod play-anim! ((this sage) (arg0 symbol))
   (when (!= *kernel-boot-message* 'play)
     (close-specific-task! (game-task intro) (task-status need-resolution))
     (return (new 'static 'spool-anim
@@ -237,7 +233,7 @@
        (apply-settings *setting-control*)
        (close-status! (-> this tasks) (task-status need-reward-speech))
        (set! (-> this assistant)
-             (ppointer->handle (manipy-spawn (-> this root-override trans) (-> this entity) *assistant-sg* #f :to this))
+             (ppointer->handle (manipy-spawn (-> this root trans) (-> this entity) *assistant-sg* #f :to this))
              )
        (send-event (handle->process (-> this assistant)) 'anim-mode 'clone-anim)
        (send-event (handle->process (-> this assistant)) 'blend-shape #t)
@@ -340,7 +336,7 @@
   )
 
 ;; definition for method 45 of type sage
-(defmethod process-taskable-method-45 sage ((this sage))
+(defmethod process-taskable-method-45 ((this sage))
   (cond
     ((and (closed? (-> this tasks) (game-task beach-ecorocks) (task-status need-reminder))
           (= (get-reminder (-> this tasks) 0) 0)
@@ -352,9 +348,7 @@
           )
      #t
      )
-    ((and (-> this reminder-played)
-          (< 81920.0 (vector-vector-distance (-> this root-override trans) (camera-pos)))
-          )
+    ((and (-> this reminder-played) (< 81920.0 (vector-vector-distance (-> this root trans) (camera-pos))))
      #t
      )
     (else
@@ -364,7 +358,7 @@
   )
 
 ;; definition for method 31 of type sage
-(defmethod get-art-elem sage ((this sage))
+(defmethod get-art-elem ((this sage))
   (cond
     ((and (= (current-task (-> this tasks)) (game-task beach-ecorocks))
           (or (= (current-status (-> this tasks)) (task-status need-hint))
@@ -427,7 +421,7 @@
   )
 
 ;; definition for method 43 of type sage
-(defmethod process-taskable-method-43 sage ((this sage))
+(defmethod process-taskable-method-43 ((this sage))
   (let ((s5-0 (ambient-control-method-10 (-> this ambient) (new 'stack-no-clear 'vector) (seconds 30) 122880.0 this))
         )
     (when s5-0
@@ -437,19 +431,19 @@
            #f
            )
           ((< 0.8 f0-2)
-           (play-ambient (-> this ambient) "SAGELP03" #f (-> this root-override trans))
+           (play-ambient (-> this ambient) "SAGELP03" #f (-> this root trans))
            )
           ((< 0.6 f0-2)
-           (play-ambient (-> this ambient) "SAGELP04" #f (-> this root-override trans))
+           (play-ambient (-> this ambient) "SAGELP04" #f (-> this root trans))
            )
           ((< 0.4 f0-2)
-           (play-ambient (-> this ambient) "SAGELP05" #f (-> this root-override trans))
+           (play-ambient (-> this ambient) "SAGELP05" #f (-> this root trans))
            )
           ((< 0.2 f0-2)
-           (play-ambient (-> this ambient) "SAGELP06" #f (-> this root-override trans))
+           (play-ambient (-> this ambient) "SAGELP06" #f (-> this root trans))
            )
           (else
-            (play-ambient (-> this ambient) "SAGELP11" #f (-> this root-override trans))
+            (play-ambient (-> this ambient) "SAGELP11" #f (-> this root trans))
             )
           )
         )
@@ -484,9 +478,7 @@
           (process-taskable-method-43 self)
           (ja-no-eval :group! (ja-group) :num! (seek!) :frame-num 0.0)
           (until (ja-done? 0)
-            (if (and (-> self reminder-played)
-                     (< 81920.0 (vector-vector-distance (-> self root-override trans) (camera-pos)))
-                     )
+            (if (and (-> self reminder-played) (< 81920.0 (vector-vector-distance (-> self root trans) (camera-pos))))
                 (go-virtual idle)
                 )
             (suspend)
@@ -535,13 +527,13 @@
   )
 
 ;; definition for method 39 of type sage
-(defmethod should-display? sage ((this sage))
+(defmethod should-display? ((this sage))
   (not (sages-kidnapped?))
   )
 
 ;; definition for method 41 of type sage
 ;; INFO: Return type mismatch int vs none.
-(defmethod initialize-collision sage ((this sage) (arg0 int) (arg1 vector))
+(defmethod initialize-collision ((this sage) (arg0 int) (arg1 vector))
   (let ((s5-0 (new 'process 'collide-shape this (collide-list-enum hit-by-player))))
     (let ((s4-0 (new 'process 'collide-shape-prim-group s5-0 (the-as uint 2) 0)))
       (set! (-> s4-0 prim-core collide-as) (collide-kind enemy))
@@ -572,14 +564,14 @@
       )
     (set! (-> s5-0 nav-radius) (* 0.75 (-> s5-0 root-prim local-sphere w)))
     (backup-collide-with-as s5-0)
-    (set! (-> this root-override) s5-0)
+    (set! (-> this root) s5-0)
     )
   0
   (none)
   )
 
 ;; definition for method 11 of type sage
-(defmethod init-from-entity! sage ((this sage) (arg0 entity-actor))
+(defmethod init-from-entity! ((this sage) (arg0 entity-actor))
   (process-taskable-method-40 this arg0 *sage-sg* 3 40 (new 'static 'vector :w 4096.0) 5)
   (set! (-> this tasks) (get-task-control (game-task misty-cannon)))
   (set! (-> this reminder-played) #f)

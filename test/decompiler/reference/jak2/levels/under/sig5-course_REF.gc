@@ -3,15 +3,12 @@
 
 ;; definition of type sig5-course
 (deftype sig5-course (bot-course)
-  ((chase-speeches bot-speech-list-shuffle  :offset-assert  48)
+  ((chase-speeches  bot-speech-list-shuffle)
    )
-  :method-count-assert 9
-  :size-assert         #x34
-  :flag-assert         #x900000034
   )
 
 ;; definition for method 3 of type sig5-course
-(defmethod inspect sig5-course ((this sig5-course))
+(defmethod inspect ((this sig5-course))
   (when (not this)
     (set! this this)
     (goto cfg-4)
@@ -37,29 +34,27 @@
 
 ;; definition of type sig-under
 (deftype sig-under (sig)
-  ((sig5-course          sig5-course         :offset        652)
-   (shot-at-growls-index int8                :offset-assert 1072)
-   (growls               handle      2       :offset-assert 1080)
-   (next-chase-play-time time-frame          :offset        1096)
-   (grating-broken-time  time-frame          :offset        1096)
-   (test-plane           plane       :inline :offset-assert 1104)
+  ((sig5-course           sig5-course  :overlay-at course)
+   (shot-at-growls-index  int8)
+   (growls                handle       2)
+   (next-chase-play-time  time-frame   :offset 1096)
+   (grating-broken-time   time-frame   :overlay-at next-chase-play-time)
+   (test-plane            plane        :inline)
    )
-  :heap-base #x3e0
-  :method-count-assert 265
-  :size-assert         #x460
-  :flag-assert         #x10903e00460
+  (:state-methods
+    intro-shooting
+    )
   (:methods
-    (intro-shooting () _type_ :state 259)
-    (sig-under-method-260 (_type_) symbol 260)
-    (sig-under-method-261 (_type_ vector vector symbol) symbol 261)
-    (sig-under-method-262 (_type_ symbol) symbol 262)
-    (sig-under-method-263 (_type_) none 263)
-    (sig-under-method-264 (_type_) symbol 264)
+    (sig-under-method-260 (_type_) symbol)
+    (sig-under-method-261 (_type_ vector vector symbol) symbol)
+    (sig-under-method-262 (_type_ symbol) symbol)
+    (sig-under-method-263 (_type_) none)
+    (sig-under-method-264 (_type_) symbol)
     )
   )
 
 ;; definition for method 3 of type sig-under
-(defmethod inspect sig-under ((this sig-under))
+(defmethod inspect ((this sig-under))
   (when (not this)
     (set! this this)
     (goto cfg-4)
@@ -78,7 +73,7 @@
 
 ;; definition for method 263 of type sig-under
 ;; WARN: Return type mismatch time-frame vs none.
-(defmethod sig-under-method-263 sig-under ((this sig-under))
+(defmethod sig-under-method-263 ((this sig-under))
   (let ((s5-0 (current-time)))
     (when (and (>= s5-0 (-> this next-chase-play-time))
                (not (channel-active? this (the-as uint 0)))
@@ -104,7 +99,7 @@
 
 ;; definition for method 195 of type sig-under
 ;; WARN: Return type mismatch object vs symbol.
-(defmethod attacked-by-player? sig-under ((this sig-under) (arg0 process-focusable))
+(defmethod attacked-by-player? ((this sig-under) (arg0 process-focusable))
   "Were we attacked by the player?"
   (the-as
     symbol
@@ -117,7 +112,7 @@
   )
 
 ;; definition for method 86 of type sig-under
-(defmethod enemy-method-86 sig-under ((this sig-under))
+(defmethod enemy-method-86 ((this sig-under))
   (let ((gp-0 (-> this root)))
     (when (< (-> gp-0 transv y) 0.0)
       (let ((a1-0 (new 'stack-no-clear 'collide-query)))
@@ -130,7 +125,7 @@
 
 ;; definition for method 76 of type sig-under
 ;; WARN: Return type mismatch object vs symbol.
-(defmethod enemy-method-76 sig-under ((this sig-under) (arg0 process) (arg1 event-message-block))
+(defmethod enemy-method-76 ((this sig-under) (arg0 process) (arg1 event-message-block))
   (the-as
     symbol
     (cond
@@ -147,7 +142,7 @@
   )
 
 ;; definition for method 74 of type sig-under
-(defmethod general-event-handler sig-under ((this sig-under) (arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+(defmethod general-event-handler ((this sig-under) (arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
   "Handles various events for the enemy
 @TODO - unsure if there is a pattern for the events and this should have a more specific name"
   (with-pp
@@ -204,7 +199,7 @@
 
 ;; definition for method 262 of type sig-under
 ;; WARN: disable def twice: 39. This may happen when a cond (no else) is nested inside of another conditional, but it should be rare.
-(defmethod sig-under-method-262 sig-under ((this sig-under) (arg0 symbol))
+(defmethod sig-under-method-262 ((this sig-under) (arg0 symbol))
   (when (or (logtest? (-> this bot-task-bits) (bot-task-bits botbits-1))
             (and arg0 (let ((f0-0 81920.0))
                         (>= (* f0-0 f0-0) (vector-vector-xz-distance-squared (target-pos 0) (-> this root trans)))
@@ -225,7 +220,7 @@
   )
 
 ;; definition for method 264 of type sig-under
-(defmethod sig-under-method-264 sig-under ((this sig-under))
+(defmethod sig-under-method-264 ((this sig-under))
   (and (logtest? (-> this bot-task-bits) (bot-task-bits botbits-3))
        (not (channel-active? this (the-as uint 0)))
        (scene-play this "under-get-sig-out-res" #f)
@@ -234,7 +229,7 @@
 
 ;; definition for method 260 of type sig-under
 ;; INFO: Used lq/sq
-(defmethod sig-under-method-260 sig-under ((this sig-under))
+(defmethod sig-under-method-260 ((this sig-under))
   (local-vars (a2-5 float) (a2-12 float))
   (rlet ((vf1 :class vf)
          (vf2 :class vf)
@@ -347,7 +342,7 @@
 
 ;; definition for method 261 of type sig-under
 ;; INFO: Used lq/sq
-(defmethod sig-under-method-261 sig-under ((this sig-under) (arg0 vector) (arg1 vector) (arg2 symbol))
+(defmethod sig-under-method-261 ((this sig-under) (arg0 vector) (arg1 vector) (arg2 symbol))
   (set! (-> arg0 w) (- (+ (* (-> arg0 x) (-> this root trans x)) (* (-> arg0 z) (-> this root trans z)))))
   (let ((v1-2 (new 'stack-no-clear 'vector)))
     (set! (-> v1-2 quad) (-> arg1 quad))
@@ -470,13 +465,13 @@
   )
 
 ;; definition for method 183 of type sig-under
-(defmethod alive? sig-under ((this sig-under))
+(defmethod alive? ((this sig-under))
   ((method-of-type bot alive?) this)
   )
 
 ;; definition for method 210 of type sig-under
 ;; WARN: Return type mismatch symbol vs none.
-(defmethod init! sig-under ((this sig-under))
+(defmethod init! ((this sig-under))
   "Set defaults for various fields."
   (let ((t9-0 (method-of-type sig init!)))
     (t9-0 this)
@@ -491,7 +486,7 @@
 
 ;; definition for method 116 of type sig-under
 ;; WARN: Return type mismatch object vs none.
-(defmethod go-idle sig-under ((this sig-under))
+(defmethod go-idle ((this sig-under))
   (cond
     ((task-node-closed? (game-task-node under-sig-resolution))
      (cleanup-for-death this)

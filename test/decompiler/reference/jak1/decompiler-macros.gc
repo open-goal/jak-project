@@ -951,7 +951,7 @@
   )
 
 ;; art-h
-(desfun art-elt->index (ag-name elt-name)
+(desfun art-elt-index (ag-name elt-name)
   (if (number? elt-name)
       elt-name
       (let ((ag-info (hash-table-try-ref *art-info* (symbol->string ag-name))))
@@ -967,7 +967,7 @@
       )
   )
 
-(defmacro joint-name->index (jg-name name)
+(defmacro joint-node-index (jg-name name)
   (let ((jg-info (hash-table-try-ref *jg-info* (symbol->string jg-name))))
       (if (not (car jg-info))
           -1
@@ -980,8 +980,8 @@
       )
   )
 
-(defmacro joint-node-index (jg name)
-  `(-> self node-list data (joint-name->index ,jg ,name))
+(defmacro joint-node (jg name)
+  `(-> self node-list data (joint-node-index ,jg ,name))
   )
 
 (defmacro defskelgroup (name art-name joint-geom joint-anim lods
@@ -1001,18 +1001,18 @@
                         :longest-edge ,longest-edge
                         :version ,version
                         :max-lod ,(- (length lods) 1)
-                        :shadow ,(art-elt->index (string->symbol-format "{}-ag" art-name) shadow)
+                        :shadow ,(art-elt-index (string->symbol-format "{}-ag" art-name) shadow)
                         :texture-level ,texture-level
                         :sort ,sort
                         )))
         ;; set joint geometry and joint bones
-        (set! (-> skel jgeo) ,(art-elt->index (string->symbol-format "{}-ag" art-name) joint-geom))
-        (set! (-> skel janim) ,(art-elt->index (string->symbol-format "{}-ag" art-name) joint-anim))
+        (set! (-> skel jgeo) ,(art-elt-index (string->symbol-format "{}-ag" art-name) joint-geom))
+        (set! (-> skel janim) ,(art-elt-index (string->symbol-format "{}-ag" art-name) joint-anim))
 
         ;; set lods
         ,@(apply-i (lambda (x i)
                       `(begin
-                          (set! (-> skel mgeo ,i) ,(art-elt->index (string->symbol-format "{}-ag" art-name) (car x)))
+                          (set! (-> skel mgeo ,i) ,(art-elt-index (string->symbol-format "{}-ag" art-name) (car x)))
                           (set! (-> skel lod-dist ,i) ,(cadr x))
                           )
                       ) lods)

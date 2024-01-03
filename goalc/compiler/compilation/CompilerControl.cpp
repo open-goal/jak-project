@@ -161,6 +161,8 @@ Val* Compiler::compile_asm_file(const goos::Object& form, const goos::Object& re
       } else if (setting == ":disassemble") {
         options.disassemble = true;
         last_was_disasm = true;
+      } else if (setting == ":disasm-code-only") {
+        options.disasm_code_only = true;
       } else {
         throw_compiler_error(form, "The option {} was not recognized for asm-file.", setting);
       }

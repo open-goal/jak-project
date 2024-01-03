@@ -13,15 +13,11 @@
               )
 
 (deftype yakow (nav-enemy)
-  ((incoming-attack-id uint32  :offset-assert 604)
-   (grazing            basic   :offset-assert 608)
+  ((incoming-attack-id  uint32)
+   (grazing             basic)
    )
-  :heap-base #x1f0
-  :method-count-assert 179
-  :size-assert         #x264
-  :flag-assert         #xb301f00264
-  (:methods
-    (kicked () _type_ :state 178)
+  (:state-methods
+    kicked
     )
   )
 
@@ -202,12 +198,12 @@
 
 (set! (-> *yakow-nav-enemy-info* fact-defaults) *fact-info-enemy-defaults*)
 
-(defmethod damage-amount-from-attack yakow ((this yakow) (arg0 process) (arg1 event-message-block))
+(defmethod damage-amount-from-attack ((this yakow) (arg0 process) (arg1 event-message-block))
   "@returns the amount of damage taken from an attack.  This can come straight off the [[attack-info]] or via [[penetrate-using->damage]]"
   0
   )
 
-(defmethod general-event-handler yakow ((this yakow) (arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+(defmethod general-event-handler ((this yakow) (arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
   "Handles various events for the enemy
 @TODO - unsure if there is a pattern for the events and this should have a more specific name"
   (case arg2
@@ -225,13 +221,13 @@
     )
   )
 
-(defmethod enemy-method-123 yakow ((this yakow) (arg0 float))
+(defmethod enemy-method-123 ((this yakow) (arg0 float))
   "TODO"
   (>= arg0 (rand-vu))
   )
 
 ;; WARN: Function (method 156 yakow) has a return type of none, but the expression builder found a return statement.
-(defmethod nav-enemy-method-156 yakow ((this yakow))
+(defmethod nav-enemy-method-156 ((this yakow))
   (dotimes (s5-0 16)
     (let ((f30-1 (* 4096.0 (get-rand-float-range this -10.0 10.0)))
           (f0-2 (* 4096.0 (get-rand-float-range this -10.0 10.0)))
@@ -415,7 +411,7 @@
   :post ja-post
   )
 
-(defmethod init-enemy-collision! yakow ((this yakow))
+(defmethod init-enemy-collision! ((this yakow))
   "Initializes the [[collide-shape-moving]] and any ancillary tasks to make the enemy collide properly"
   (let ((s5-0 (new 'process 'collide-shape-moving this (collide-list-enum usually-hit-by-player))))
     (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
@@ -461,7 +457,7 @@
   (none)
   )
 
-(defmethod init-enemy! yakow ((this yakow))
+(defmethod init-enemy! ((this yakow))
   "Common method called to initialize the enemy, typically sets up default field values and calls ancillary helper methods"
   (initialize-skeleton
     this

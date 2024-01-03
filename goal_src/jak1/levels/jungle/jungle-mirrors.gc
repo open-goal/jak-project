@@ -488,36 +488,32 @@
   )
 
 (deftype periscope (process-drawable)
-  ((root-override          collide-shape                    :offset        112)
-   (y-offset               meters                           :offset-assert 176)
-   (y-offset-grips         meters                           :offset-assert 180)
-   (height                 meters                           :offset-assert 184)
-   (turn                   degrees                          :offset-assert 188)
-   (tilt                   degrees                          :offset-assert 192)
-   (target-turn            degrees                          :offset-assert 196)
-   (target-tilt            degrees                          :offset-assert 200)
-   (base                   vector                   :inline :offset-assert 208)
-   (reflector-trans        vector                   :inline :offset-assert 224)
-   (next-reflector-trans   vector                   :inline :offset-assert 240)
-   (prev-reflector-trans   vector                   :inline :offset-assert 256)
-   (old-camera-matrix      matrix                   :inline :offset-assert 272)
-   (reflector              (pointer reflector)              :offset-assert 336)
-   (gauge-rot              degrees                          :offset-assert 340)
-   (lock-time              time-frame                       :offset-assert 344)
-   (aligned?               symbol                           :offset-assert 352)
-   (raised?                symbol                           :offset-assert 356)
-   (player-touching-grips? symbol                           :offset-assert 360)
-   (grips-moving?          symbol                           :offset-assert 364)
-   (sound-id               sound-id                         :offset-assert 368)
-   (rise-sound-id          sound-id                         :offset-assert 372)
-   (grips-sound-id         sound-id                         :offset-assert 376)
-   (grips                  joint-mod-set-world              :offset-assert 380)
-   (part-aligned           sparticle-launch-control         :offset-assert 384)
+  ((root                    collide-shape :override)
+   (y-offset                meters)
+   (y-offset-grips          meters)
+   (height                  meters)
+   (turn                    degrees)
+   (tilt                    degrees)
+   (target-turn             degrees)
+   (target-tilt             degrees)
+   (base                    vector         :inline)
+   (reflector-trans         vector         :inline)
+   (next-reflector-trans    vector         :inline)
+   (prev-reflector-trans    vector         :inline)
+   (old-camera-matrix       matrix         :inline)
+   (reflector               (pointer reflector))
+   (gauge-rot               degrees)
+   (lock-time               time-frame)
+   (aligned?                symbol)
+   (raised?                 symbol)
+   (player-touching-grips?  symbol)
+   (grips-moving?           symbol)
+   (sound-id                sound-id)
+   (rise-sound-id           sound-id)
+   (grips-sound-id          sound-id)
+   (grips                   joint-mod-set-world)
+   (part-aligned            sparticle-launch-control)
    )
-  :heap-base #x120
-  :method-count-assert 20
-  :size-assert         #x184
-  :flag-assert         #x1401200184
   (:states
     periscope-activate
     periscope-idle
@@ -529,7 +525,7 @@
   )
 
 
-(defmethod relocate periscope ((this periscope) (arg0 int))
+(defmethod relocate ((this periscope) (arg0 int))
   (if (nonzero? (-> this grips))
       (&+! (-> this grips) arg0)
       )
@@ -539,7 +535,7 @@
   (the-as periscope ((method-of-type process-drawable relocate) this arg0))
   )
 
-(defmethod deactivate periscope ((this periscope))
+(defmethod deactivate ((this periscope))
   (if (nonzero? (-> this part-aligned))
       (kill-and-free-particles (-> this part-aligned))
       )
@@ -548,13 +544,9 @@
   )
 
 (deftype reflector (process-drawable)
-  ((parent-override (pointer periscope)  :offset  12)
-   (root-override   collide-shape        :offset 112)
+  ((root             collide-shape       :override)
+   (parent-override  (pointer periscope)  :overlay-at parent)
    )
-  :heap-base #x40
-  :method-count-assert 20
-  :size-assert         #xb0
-  :flag-assert         #x14004000b0
   (:states
     reflector-idle
     )
@@ -562,16 +554,12 @@
 
 
 (deftype reflector-origin (process-drawable)
-  ((reflector-trans      vector       :inline :offset-assert 176)
-   (next-reflector-trans vector       :inline :offset-assert 192)
-   (reflector            uint32               :offset-assert 208)
-   (next                 basic                :offset-assert 212)
-   (blocker              entity-actor         :offset-assert 216)
+  ((reflector-trans       vector  :inline)
+   (next-reflector-trans  vector  :inline)
+   (reflector             uint32)
+   (next                  basic)
+   (blocker               entity-actor)
    )
-  :heap-base #x70
-  :method-count-assert 20
-  :size-assert         #xdc
-  :flag-assert         #x14007000dc
   (:states
     reflector-origin-idle
     )
@@ -579,13 +567,9 @@
 
 
 (deftype reflector-mirror (process-drawable)
-  ((root-override collide-shape         :offset        112)
-   (beam-end      vector        :inline :offset-assert 176)
+  ((root      collide-shape :override)
+   (beam-end  vector         :inline)
    )
-  :heap-base #x50
-  :method-count-assert 20
-  :size-assert         #xc0
-  :flag-assert         #x14005000c0
   (:states
     (reflector-mirror-broken symbol)
     reflector-mirror-idle
@@ -727,12 +711,10 @@
         (set! (-> gp-0 y) (-> self parent-override 0 turn))
         (set! (-> gp-0 z) 0.0)
         (set! (-> gp-0 w) 1.0)
-        (quaternion-zxy! (-> self root-override quat) gp-0)
-        (set! (-> self root-override trans quad)
-              (-> self parent-override 0 node-list data 6 bone transform vector 3 quad)
-              )
+        (quaternion-zxy! (-> self root quat) gp-0)
+        (set! (-> self root trans quad) (-> self parent-override 0 node-list data 6 bone transform vector 3 quad))
         (ja-post)
-        (update-transforms! (-> self root-override))
+        (update-transforms! (-> self root))
         (suspend)
         )
       )
@@ -753,9 +735,9 @@
       )
     (set! (-> s5-0 nav-radius) (* 0.75 (-> s5-0 root-prim local-sphere w)))
     (backup-collide-with-as s5-0)
-    (set! (-> self root-override) s5-0)
+    (set! (-> self root) s5-0)
     )
-  (set! (-> self root-override trans quad) (-> arg0 quad))
+  (set! (-> self root trans quad) (-> arg0 quad))
   (initialize-skeleton self *periscope-mirror-sg* '())
   (logclear! (-> self mask) (process-mask actor-pause))
   (go reflector-idle)
@@ -1013,9 +995,9 @@
     (set! (-> a1-0 from) (the-as process (-> self turn)))
     (set! (-> a1-0 num-params) (the-as int 0.0))
     (set! (-> a1-0 message) (the-as symbol 1.0))
-    (quaternion-zxy! (-> self root-override quat) (the-as vector a1-0))
+    (quaternion-zxy! (-> self root quat) (the-as vector a1-0))
     )
-  (set! (-> self root-override trans y) (+ -184320.0 (-> self y-offset) (-> self base y)))
+  (set! (-> self root trans y) (+ -184320.0 (-> self y-offset) (-> self base y)))
   (set! (-> self grips transform trans y)
         (+ (- (+ (-> self base y) (-> self y-offset)) (-> self height)) (-> self y-offset-grips))
         )
@@ -1027,7 +1009,7 @@
   (periscope-draw-beam-impact)
   (periscope-update-joints)
   (ja-post)
-  (update-transforms! (-> self root-override))
+  (update-transforms! (-> self root))
   0
   (none)
   )
@@ -1159,10 +1141,10 @@
       )
     )
   :enter (behavior ()
-    (clear-collide-with-as (-> self root-override))
+    (clear-collide-with-as (-> self root))
     )
   :exit (behavior ()
-    (restore-collide-with-as (-> self root-override))
+    (restore-collide-with-as (-> self root))
     (logclear! (-> self draw status) (draw-status hidden))
     )
   :trans periscope-debug-trans
@@ -1176,7 +1158,7 @@
     (periscope-update-joints)
     (ja-post)
     (suspend)
-    (update-transforms! (-> self root-override))
+    (update-transforms! (-> self root))
     (logior! (-> self draw status) (draw-status hidden))
     (loop
       (suspend)
@@ -1228,7 +1210,7 @@
         (suspend)
         )
       )
-    (update-transforms! (-> self root-override))
+    (update-transforms! (-> self root))
     (set! (-> self y-offset) (-> self height))
     (loop
       (if (periscope-has-power-input?)
@@ -1255,7 +1237,7 @@
                   )
          (when ((method-of-type touching-shapes-entry prims-touching?)
                 (the-as touching-shapes-entry (-> block param 0))
-                (the-as collide-shape-moving (-> self root-override))
+                (the-as collide-shape-moving (-> self root))
                 (the-as uint 1)
                 )
            (let ((v0-0 (the-as object #t)))
@@ -1327,7 +1309,7 @@
             (vector-z-quaternion! s3-0 (-> self grips transform quat))
             (set! (-> self grips-moving?) (< (vector-dot s4-0 s3-0) (cos 182.04445)))
             (periscope-update-joints)
-            (update-transforms! (-> self root-override))
+            (update-transforms! (-> self root))
             (when (and (-> self player-touching-grips?) (not (level-hint-displayed?)))
               (set! (-> self player-touching-grips?) #f)
               (hide-hud)
@@ -1620,7 +1602,7 @@
   :post periscope-post
   )
 
-(defmethod init-from-entity! periscope ((this periscope) (arg0 entity-actor))
+(defmethod init-from-entity! ((this periscope) (arg0 entity-actor))
   (stack-size-set! (-> this main-thread) 512)
   (let ((s4-0 (new 'process 'collide-shape this (collide-list-enum hit-by-others))))
     (let ((s3-0 (new 'process 'collide-shape-prim-group s4-0 (the-as uint 3) 0)))
@@ -1659,13 +1641,13 @@
       )
     (set! (-> s4-0 nav-radius) (* 0.75 (-> s4-0 root-prim local-sphere w)))
     (backup-collide-with-as s4-0)
-    (set! (-> this root-override) s4-0)
+    (set! (-> this root) s4-0)
     )
   (process-drawable-from-entity! this arg0)
   (set! (-> this height) (res-lump-float (-> this entity) 'height-info))
   (set! (-> this y-offset) (-> this height))
   (set! (-> this y-offset-grips) (+ -20480.0 (-> this height)))
-  (set! (-> this base quad) (-> this root-override trans quad))
+  (set! (-> this base quad) (-> this root trans quad))
   (set! (-> this reflector-trans quad) (-> this base quad))
   (+! (-> this reflector-trans y) (-> this height))
   (set! (-> this reflector) (process-spawn reflector (-> this reflector-trans) :to this))
@@ -1675,7 +1657,7 @@
   (set! (-> this part) (create-launch-control (-> *part-group-id-table* 176) this))
   (set! (-> this part-aligned) (create-launch-control (-> *part-group-id-table* 689) this))
   (set! (-> this grips) (new 'process 'joint-mod-set-world this 4 #t))
-  (transformq-copy! (-> this grips transform) (the-as transformq (-> this root-override trans)))
+  (transformq-copy! (-> this grips transform) (the-as transformq (-> this root trans)))
   (periscope-find-reflection-angles)
   (set! (-> this turn) (-> this target-turn))
   (set! (-> this tilt) (-> this target-tilt))
@@ -1687,8 +1669,8 @@
         )
   (set! (-> this rise-sound-id) (new-sound-id))
   (set! (-> this grips-sound-id) (new-sound-id))
-  (set! (-> this root-override nav-radius) 8192.0)
-  (nav-mesh-connect this (-> this root-override) (the-as nav-control #f))
+  (set! (-> this root nav-radius) 8192.0)
+  (nav-mesh-connect this (-> this root) (the-as nav-control #f))
   (cond
     ((and (-> this entity) (logtest? (-> this entity extra perm status) (entity-perm-status complete)))
      (go periscope-power-on)
@@ -1762,7 +1744,7 @@
     )
   )
 
-(defmethod init-from-entity! reflector-origin ((this reflector-origin) (arg0 entity-actor))
+(defmethod init-from-entity! ((this reflector-origin) (arg0 entity-actor))
   (set! (-> this root) (new 'process 'trsqv))
   (process-drawable-from-entity! this arg0)
   (logclear! (-> this mask) (process-mask actor-pause))
@@ -1787,14 +1769,14 @@
     )
   :code (behavior ()
     (let ((gp-0 (new-stack-vector0)))
-      (set! (-> gp-0 quad) (-> self root-override trans quad))
+      (set! (-> gp-0 quad) (-> self root trans quad))
       (+! (-> gp-0 y) 49152.0)
       (loop
         (draw-power-beam gp-0 (-> self beam-end))
         (update! (-> self sound))
         (when (logtest? (-> self draw status) (draw-status was-drawn))
           (launch-particles (-> *part-id-table* 825) (-> self beam-end))
-          (when (and *target* (>= 24576.0 (vector-vector-distance (-> self root-override trans) (-> *target* control trans))))
+          (when (and *target* (>= 24576.0 (vector-vector-distance (-> self root trans) (-> *target* control trans))))
             (start-hint-timer (text-id sidekick-hint-reflector-mirror))
             (level-hint-spawn
               (text-id sidekick-hint-reflector-mirror)
@@ -1815,7 +1797,7 @@
 (defstate reflector-mirror-broken (reflector-mirror)
   :code (behavior ((arg0 symbol))
     (ja-channel-set! 0)
-    (clear-collide-with-as (-> self root-override))
+    (clear-collide-with-as (-> self root))
     (ja-post)
     (let ((s5-0 (entity-actor-count (-> self entity) 'alt-actor)))
       (dotimes (s4-0 s5-0)
@@ -1841,8 +1823,7 @@
       )
     (when (not arg0)
       (ambient-hint-spawn "gamcam21" (the-as vector #f) *entity-pool* 'camera)
-      (let ((v1-11 (manipy-spawn (-> self root-override trans) (-> self entity) *reflector-mirror-break-sg* #f :to self))
-            )
+      (let ((v1-11 (manipy-spawn (-> self root trans) (-> self entity) *reflector-mirror-break-sg* #f :to self)))
         (send-event (ppointer->process v1-11) 'anim-mode 'play1)
         )
       (let ((gp-2 (current-time)))
@@ -1869,7 +1850,7 @@
     )
   )
 
-(defmethod init-from-entity! reflector-mirror ((this reflector-mirror) (arg0 entity-actor))
+(defmethod init-from-entity! ((this reflector-mirror) (arg0 entity-actor))
   (let ((s4-0 (new 'process 'collide-shape this (collide-list-enum hit-by-player))))
     (let ((s3-0 (new 'process 'collide-shape-prim-group s4-0 (the-as uint 3) 0)))
       (set! (-> s3-0 prim-core collide-as) (collide-kind enemy))
@@ -1905,7 +1886,7 @@
       )
     (set! (-> s4-0 nav-radius) (* 0.75 (-> s4-0 root-prim local-sphere w)))
     (backup-collide-with-as s4-0)
-    (set! (-> this root-override) s4-0)
+    (set! (-> this root) s4-0)
     )
   (process-drawable-from-entity! this arg0)
   (logclear! (-> this mask) (process-mask actor-pause))

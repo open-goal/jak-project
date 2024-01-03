@@ -10,7 +10,7 @@
 
 ;; DECOMP BEGINS
 
-(defmethod print level-buffer-state ((this level-buffer-state))
+(defmethod print ((this level-buffer-state))
   (format
     #t
     "#<level-buffer-state ~A ~A ~A ~A @ #x~X>"
@@ -23,7 +23,7 @@
   this
   )
 
-(defmethod reset! load-state ((this load-state))
+(defmethod reset! ((this load-state))
   (dotimes (v1-0 (-> *level* length))
     (set! (-> this want v1-0 name) #f)
     (set! (-> this want v1-0 display?) #f)
@@ -41,7 +41,7 @@
   this
   )
 
-(defmethod want-levels load-state ((this load-state) (arg0 (pointer symbol)))
+(defmethod want-levels ((this load-state) (arg0 (pointer symbol)))
   (dotimes (v1-0 LEVEL_MAX)
     (dotimes (a2-0 6)
       (when (= (-> this want v1-0 name) (-> arg0 a2-0))
@@ -70,7 +70,7 @@
   0
   )
 
-(defmethod want-sound-banks load-state ((this load-state) (arg0 (pointer symbol)))
+(defmethod want-sound-banks ((this load-state) (arg0 (pointer symbol)))
   (dotimes (v1-0 3)
     (dotimes (a2-0 3)
       (when (= (-> this want-sound v1-0) (-> arg0 a2-0))
@@ -96,7 +96,7 @@
   (none)
   )
 
-(defmethod want-display-level load-state ((this load-state) (arg0 symbol) (arg1 symbol))
+(defmethod want-display-level ((this load-state) (arg0 symbol) (arg1 symbol))
   (dotimes (v1-0 LEVEL_MAX)
     (when (= (-> this want v1-0 name) arg0)
       (set! (-> this want v1-0 display?) arg1)
@@ -110,7 +110,7 @@
   0
   )
 
-(defmethod want-vis-level load-state ((this load-state) (arg0 symbol))
+(defmethod want-vis-level ((this load-state) (arg0 symbol))
   (let ((v1-0 (lookup-level-info arg0)))
     (if v1-0
         (set! arg0 (-> v1-0 name))
@@ -121,7 +121,7 @@
   (none)
   )
 
-(defmethod want-force-vis load-state ((this load-state) (arg0 symbol) (arg1 symbol))
+(defmethod want-force-vis ((this load-state) (arg0 symbol) (arg1 symbol))
   (dotimes (v1-0 LEVEL_MAX)
     (when (= (-> this want v1-0 name) arg0)
       (set! (-> this want v1-0 force-vis?) arg1)
@@ -133,7 +133,7 @@
   )
 
 ;; WARN: Function (method 16 load-state) has a return type of none, but the expression builder found a return statement.
-(defmethod want-force-inside load-state ((this load-state) (arg0 symbol) (arg1 symbol))
+(defmethod want-force-inside ((this load-state) (arg0 symbol) (arg1 symbol))
   (dotimes (v1-0 LEVEL_MAX)
     (when (= (-> this want v1-0 name) arg0)
       (set! (-> this want v1-0 force-inside?) arg1)
@@ -145,7 +145,7 @@
   (none)
   )
 
-(defmethod add-borrow-levels load-state ((this load-state))
+(defmethod add-borrow-levels ((this load-state))
   "Update the load state so it includes the 'borrow' levels associated with the desired levels.
    This will also remove borrow levels that are no longer needed."
 
@@ -221,7 +221,7 @@
 
 (define *display-load-commands* #f)
 
-(defmethod backup-load-state-and-set-cmds load-state ((this load-state) (arg0 pair))
+(defmethod backup-load-state-and-set-cmds ((this load-state) (arg0 pair))
   (dotimes (s4-0 256)
     (when (-> this object-name s4-0)
       (format 0 "WARNING: load state somehow aquired object command ~A~%" (-> this object-name s4-0))
@@ -234,7 +234,7 @@
   0
   )
 
-(defmethod restore-load-state-and-cleanup load-state ((this load-state))
+(defmethod restore-load-state-and-cleanup ((this load-state))
   (with-pp
     (execute-commands-up-to this 100000.0)
     (dotimes (s5-0 256)
@@ -267,7 +267,7 @@
     )
   )
 
-(defmethod restore-load-state load-state ((this load-state))
+(defmethod restore-load-state ((this load-state))
   (dotimes (v1-0 256)
     (if (-> this object-name v1-0)
         (set! (-> this object-name v1-0) #f)
@@ -278,7 +278,7 @@
   )
 
 ;; WARN: Function (method 17 load-state) has a return type of none, but the expression builder found a return statement.
-(defmethod execute-commands-up-to load-state ((this load-state) (arg0 float))
+(defmethod execute-commands-up-to ((this load-state) (arg0 float))
   (with-pp
     (let ((s4-0 (new 'stack 'script-context (process->ppointer pp) pp (the-as vector #f))))
       (set! (-> s4-0 load-state) this)

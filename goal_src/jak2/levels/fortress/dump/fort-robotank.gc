@@ -72,123 +72,103 @@
   )
 
 (deftype fort-robotank-segment-event (structure)
-  ((source     handle                         :offset-assert   0)
-   (event-type symbol                         :offset-assert   8)
-   (actor      string                         :offset-assert  12)
-   (pos-norm   float                          :offset-assert  16)
-   (param-obj  object                         :offset-assert  20)
-   (param-func (function fort-robotank none)  :offset         20)
-   (param-sym  symbol                         :offset         20)
+  ((source      handle)
+   (event-type  symbol)
+   (actor       string)
+   (pos-norm    float)
+   (param-obj   object)
+   (param-func  (function fort-robotank none)  :overlay-at param-obj)
+   (param-sym   symbol                         :overlay-at param-obj)
    )
-  :method-count-assert 9
-  :size-assert         #x18
-  :flag-assert         #x900000018
   )
 
 
 (deftype fort-robotank-segment (structure)
-  ((flags              uint16                                      :offset-assert   0)
-   (max-speed          float                                       :offset-assert   4)
-   (next-segment       int32                                       :offset-assert   8)
-   (next-segment-start float                                       :offset-assert  12)
-   (event-count        int32                                       :offset-assert  16)
-   (event-tbl          (inline-array fort-robotank-segment-event)  :offset-assert  20)
+  ((flags               uint16)
+   (max-speed           float)
+   (next-segment        int32)
+   (next-segment-start  float)
+   (event-count         int32)
+   (event-tbl           (inline-array fort-robotank-segment-event))
    )
-  :method-count-assert 9
-  :size-assert         #x18
-  :flag-assert         #x900000018
   )
 
 
 (deftype fort-robotank-path-info (structure)
-  ((path          path-control         :offset-assert   0)
-   (dir           vector       :inline :offset-assert  16)
-   (u             float                :offset-assert  32)
-   (du            float                :offset-assert  36)
-   (du-final      float                :offset-assert  40)
-   (prev-u        float                :offset-assert  44)
-   (max-speed     float                :offset-assert  48)
-   (dist          float                :offset-assert  52)
-   (dir-y-angle   float                :offset-assert  56)
-   (start-y-angle float                :offset-assert  60)
+  ((path           path-control)
+   (dir            vector  :inline)
+   (u              float)
+   (du             float)
+   (du-final       float)
+   (prev-u         float)
+   (max-speed      float)
+   (dist           float)
+   (dir-y-angle    float)
+   (start-y-angle  float)
    )
-  :method-count-assert 9
-  :size-assert         #x40
-  :flag-assert         #x900000040
   )
 
 
 (deftype fort-robotank-path-info-array (inline-array-class)
-  ((data fort-robotank-path-info :inline :dynamic :offset-assert  16)
+  ((data  fort-robotank-path-info  :inline :dynamic)
    )
-  :method-count-assert 9
-  :size-assert         #x10
-  :flag-assert         #x900000010
   )
 
 
 (set! (-> fort-robotank-path-info-array heap-base) (the-as uint 64))
 
 (deftype fort-robotank-wheel-info (structure)
-  ((jmod   joint-mod-spinner  :offset-assert   0)
-   (radius float              :offset-assert   4)
+  ((jmod    joint-mod-spinner)
+   (radius  float)
    )
-  :method-count-assert 9
-  :size-assert         #x8
-  :flag-assert         #x900000008
   )
 
 
 (deftype fort-robotank-tread-info (structure)
-  ((wheel         fort-robotank-wheel-info 7 :inline :offset-assert   0)
-   (texture       texture-anim                       :offset-assert 112)
-   (locator-joint int32                              :offset-assert 116)
-   (pos           vector                   :inline   :offset-assert 128)
+  ((wheel          fort-robotank-wheel-info  7 :inline)
+   (texture        texture-anim)
+   (locator-joint  int32)
+   (pos            vector                    :inline)
    )
-  :method-count-assert 9
-  :size-assert         #x90
-  :flag-assert         #x900000090
   )
 
 
 (deftype fort-robotank (process-drawable)
-  ((root               collide-shape-moving                           :override)
-   (barrel-part        sparticle-launch-control                       :offset-assert 200)
-   (roller-jmod        joint-mod                                      :offset-assert 204)
-   (vibe-jmod          joint-mod                                      :offset-assert 208)
-   (tread              fort-robotank-tread-info             2 :inline :offset-assert 224)
-   (path-info          fort-robotank-path-info-array                  :offset-assert 512)
-   (segment-table      (inline-array fort-robotank-segment)           :offset-assert 516)
-   (flags              robotank-flags                                 :offset-assert 520)
-   (pov-cam-offset     vector                               2 :inline :offset-assert 528)
-   (turret             handle                                         :offset-assert 560)
-   (no-collision-timer time-frame                                     :offset-assert 568)
-   (buzz-timer         time-frame                                     :offset-assert 576)
-   (player-u           float                                          :offset-assert 584)
-   (player-prev-u      float                                          :offset-assert 588)
-   (roller-spin-rate   float                                          :offset-assert 592)
-   (engine-vibe-rate   float                                          :offset-assert 596)
-   (engine-vibe-amp    float                                          :offset-assert 600)
-   (attack-id          uint32                                         :offset-assert 604)
-   (path-index         int32                                          :offset-assert 608)
-   (path-count         int32                                          :offset-assert 612)
-   (continue-index     int32                                          :offset-assert 616)
-   (idle-sound         ambient-sound                                  :offset-assert 620)
-   (barrel-sound       ambient-sound                                  :offset-assert 624)
+  ((root                collide-shape-moving     :override)
+   (barrel-part         sparticle-launch-control)
+   (roller-jmod         joint-mod)
+   (vibe-jmod           joint-mod)
+   (tread               fort-robotank-tread-info  2 :inline)
+   (path-info           fort-robotank-path-info-array)
+   (segment-table       (inline-array fort-robotank-segment))
+   (flags               robotank-flags)
+   (pov-cam-offset      vector                    2 :inline)
+   (turret              handle)
+   (no-collision-timer  time-frame)
+   (buzz-timer          time-frame)
+   (player-u            float)
+   (player-prev-u       float)
+   (roller-spin-rate    float)
+   (engine-vibe-rate    float)
+   (engine-vibe-amp     float)
+   (attack-id           uint32)
+   (path-index          int32)
+   (path-count          int32)
+   (continue-index      int32)
+   (idle-sound          ambient-sound)
+   (barrel-sound        ambient-sound)
    )
-  :heap-base #x200
-  :method-count-assert 28
-  :size-assert         #x274
-  :flag-assert         #x1c02000274
+  (:state-methods
+    idle
+    turning
+    moving
+    pause
+    die
+    )
   (:methods
-    (idle () _type_ :state 20)
-    (turning () _type_ :state 21)
-    (moving () _type_ :state 22)
-    (pause () _type_ :state 23)
-    (die () _type_ :state 24)
-    (fort-robotank-method-25 (_type_) event-message-block 25)
-    (fort-robotank-method-26 (_type_ int float float) symbol 26)
-    (fort-robotank-method-27 (_type_) none 27)
+    (fort-robotank-method-25 (_type_) event-message-block)
+    (fort-robotank-method-26 (_type_ int float float) symbol)
+    (fort-robotank-method-27 (_type_) none)
     )
   )
 
@@ -289,7 +269,7 @@
               :origin-joint-index 3
               )
 
-(defmethod fort-robotank-method-25 fort-robotank ((this fort-robotank))
+(defmethod fort-robotank-method-25 ((this fort-robotank))
   (with-pp
     (let ((v1-0 (-> this root)))
       (when (< (-> *event-queue* length) (-> *event-queue* allocated-length))
@@ -323,7 +303,7 @@
     )
   (fort-robotank-method-25 self)
   (seek! (-> self roller-jmod twist y) (-> self roller-spin-rate) (* 16384.0 (seconds-per-frame)))
-  (let ((gp-0 (vector<-cspace! (new 'stack-no-clear 'vector) (joint-node-index fort-robotank-lod0-jg rollerrot)))
+  (let ((gp-0 (vector<-cspace! (new 'stack-no-clear 'vector) (joint-node fort-robotank-lod0-jg rollerrot)))
         (s4-0 (get-field-spec-by-id (-> *part-id-table* 2474) (sp-field-id spt-num)))
         (s5-0 (new 'stack-no-clear 'matrix))
         )
@@ -555,7 +535,7 @@
     )
   )
 
-(defmethod fort-robotank-method-26 fort-robotank ((this fort-robotank) (arg0 int) (arg1 float) (arg2 float))
+(defmethod fort-robotank-method-26 ((this fort-robotank) (arg0 int) (arg1 float) (arg2 float))
   (local-vars
     (sv-96 fort-robotank-segment-event)
     (sv-112 (function process-tree event-message-block object))
@@ -643,7 +623,7 @@
   )
 
 ;; WARN: Return type mismatch object vs none.
-(defmethod fort-robotank-method-27 fort-robotank ((this fort-robotank))
+(defmethod fort-robotank-method-27 ((this fort-robotank))
   (let ((s5-0 (-> this segment-table (-> this path-index) flags)))
     (send-event (handle->process (-> this turret)) 'use-los (if (logtest? s5-0 16)
                                                                 #t
@@ -933,14 +913,14 @@
   :post pusher-post
   )
 
-(defmethod deactivate fort-robotank ((this fort-robotank))
+(defmethod deactivate ((this fort-robotank))
   (stop! (-> this idle-sound))
   (stop! (-> this barrel-sound))
   ((method-of-type process-drawable deactivate) this)
   (none)
   )
 
-(defmethod relocate fort-robotank ((this fort-robotank) (arg0 int))
+(defmethod relocate ((this fort-robotank) (arg0 int))
   (if (nonzero? (-> this barrel-part))
       (&+! (-> this barrel-part) arg0)
       )
@@ -992,7 +972,7 @@
   )
 
 ;; WARN: Return type mismatch object vs none.
-(defmethod init-from-entity! fort-robotank ((this fort-robotank) (arg0 entity-actor))
+(defmethod init-from-entity! ((this fort-robotank) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
 - stack size

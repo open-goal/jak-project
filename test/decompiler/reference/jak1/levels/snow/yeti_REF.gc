@@ -3,13 +3,9 @@
 
 ;; definition of type yeti-slave
 (deftype yeti-slave (nav-enemy)
-  ((ground-y float                     :offset-assert 400)
-   (part2    sparticle-launch-control  :offset-assert 404)
+  ((ground-y  float)
+   (part2     sparticle-launch-control)
    )
-  :heap-base #x130
-  :method-count-assert 76
-  :size-assert         #x198
-  :flag-assert         #x4c01300198
   (:states
     yeti-slave-appear-jump-up
     yeti-slave-appear-land
@@ -18,7 +14,7 @@
   )
 
 ;; definition for method 3 of type yeti-slave
-(defmethod inspect yeti-slave ((this yeti-slave))
+(defmethod inspect ((this yeti-slave))
   (let ((t9-0 (method-of-type nav-enemy inspect)))
     (t9-0 this)
     )
@@ -29,21 +25,17 @@
 
 ;; definition of type yeti
 (deftype yeti (process-drawable)
-  ((child-process         (pointer yeti-slave)  :offset         20)
-   (desired-num-children  int32                 :offset-assert 176)
-   (spawn-delay           int32                 :offset-assert 180)
-   (first-time-spawn-dist float                 :offset-assert 184)
-   (unknown               basic                 :offset-assert 188)
-   (unknown1              basic                 :offset-assert 192)
-   (unknown2              basic                 :offset-assert 196)
+  ((child-process          (pointer yeti-slave)  :overlay-at child)
+   (desired-num-children   int32)
+   (spawn-delay            int32)
+   (first-time-spawn-dist  float)
+   (unknown                basic)
+   (unknown1               basic)
+   (unknown2               basic)
    )
-  :heap-base #x60
-  :method-count-assert 22
-  :size-assert         #xc8
-  :flag-assert         #x16006000c8
   (:methods
-    (yeti-method-20 (_type_ vector vector) symbol 20)
-    (aggro? (_type_ vector) symbol 21)
+    (yeti-method-20 (_type_ vector vector) symbol)
+    (aggro? (_type_ vector) symbol)
     )
   (:states
     yeti-first-time-start
@@ -53,7 +45,7 @@
   )
 
 ;; definition for method 3 of type yeti
-(defmethod inspect yeti ((this yeti))
+(defmethod inspect ((this yeti))
   (let ((t9-0 (method-of-type process-drawable inspect)))
     (t9-0 this)
     )
@@ -502,7 +494,7 @@
 
 ;; definition for method 47 of type yeti-slave
 ;; INFO: Return type mismatch int vs none.
-(defmethod initialize-collision yeti-slave ((this yeti-slave))
+(defmethod initialize-collision ((this yeti-slave))
   (let ((s5-0 (new 'process 'collide-shape-moving this (collide-list-enum usually-hit-by-player))))
     (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s5-0 reaction) default-collision-reaction)
@@ -551,7 +543,7 @@
 
 ;; definition for method 48 of type yeti-slave
 ;; INFO: Return type mismatch int vs none.
-(defmethod nav-enemy-method-48 yeti-slave ((this yeti-slave))
+(defmethod nav-enemy-method-48 ((this yeti-slave))
   (initialize-skeleton this *yeti-sg* '())
   (set! (-> this draw origin-joint-index) (the-as uint 3))
   (init-defaults! this *yeti-nav-enemy-info*)
@@ -563,7 +555,7 @@
   )
 
 ;; definition for method 10 of type yeti-slave
-(defmethod deactivate yeti-slave ((this yeti-slave))
+(defmethod deactivate ((this yeti-slave))
   (if (nonzero? (-> this part2))
       (kill-and-free-particles (-> this part2))
       )
@@ -572,7 +564,7 @@
   )
 
 ;; definition for method 7 of type yeti-slave
-(defmethod relocate yeti-slave ((this yeti-slave) (arg0 int))
+(defmethod relocate ((this yeti-slave) (arg0 int))
   (if (nonzero? (-> this part2))
       (&+! (-> this part2) arg0)
       )
@@ -599,7 +591,7 @@
   )
 
 ;; definition for method 21 of type yeti
-(defmethod aggro? yeti ((this yeti) (arg0 vector))
+(defmethod aggro? ((this yeti) (arg0 vector))
   (let ((s5-0 (the-as (pointer process-tree) (-> this child-process))))
     (while s5-0
       (if (< (vector-vector-xz-distance-squared arg0 (-> (the-as (pointer yeti-slave) s5-0) 0 collide-info trans))
@@ -619,7 +611,7 @@
   )
 
 ;; definition for method 20 of type yeti
-(defmethod yeti-method-20 yeti ((this yeti) (arg0 vector) (arg1 vector))
+(defmethod yeti-method-20 ((this yeti) (arg0 vector) (arg1 vector))
   (let ((s3-0 (-> this path curve num-cverts)))
     (if (<= s3-0 0)
         (return #f)
@@ -736,7 +728,7 @@
 
 ;; definition for method 11 of type yeti
 ;; INFO: Return type mismatch object vs none.
-(defmethod init-from-entity! yeti ((this yeti) (arg0 entity-actor))
+(defmethod init-from-entity! ((this yeti) (arg0 entity-actor))
   (set! (-> this spawn-delay) 0)
   (set! (-> this root) (new 'process 'trsqv))
   (set! (-> this path) (new 'process 'path-control this 'path 0.0))

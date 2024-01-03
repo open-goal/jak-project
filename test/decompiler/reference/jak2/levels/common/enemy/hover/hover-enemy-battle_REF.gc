@@ -3,18 +3,15 @@
 
 ;; definition of type hover-enemy-battle-command
 (deftype hover-enemy-battle-command (structure)
-  ((command     symbol      :offset-assert   0)
-   (wave        uint16      :offset-assert   4)
-   (time        time-frame  :offset-assert   8)
-   (alive-count int32       :offset-assert  16)
+  ((command      symbol)
+   (wave         uint16)
+   (time         time-frame)
+   (alive-count  int32)
    )
-  :method-count-assert 9
-  :size-assert         #x14
-  :flag-assert         #x900000014
   )
 
 ;; definition for method 3 of type hover-enemy-battle-command
-(defmethod inspect hover-enemy-battle-command ((this hover-enemy-battle-command))
+(defmethod inspect ((this hover-enemy-battle-command))
   (when (not this)
     (set! this this)
     (goto cfg-4)
@@ -30,31 +27,29 @@
 
 ;; definition of type hover-enemy-manager
 (deftype hover-enemy-manager (process)
-  ((command-table     (array hover-enemy-battle-command)  :offset-assert 128)
-   (path              path-control                        :offset-assert 132)
-   (formation         hover-formation-control             :offset-assert 136)
-   (actor-group       (pointer actor-group)               :offset-assert 140)
-   (actor-group-count int32                               :offset-assert 144)
-   (total-to-spawn    int32                               :offset-assert 148)
-   (num-spawned       int32                               :offset-assert 152)
-   (alive-count       int32                               :offset-assert 156)
-   (formation-timer   time-frame                          :offset-assert 160)
+  ((command-table      (array hover-enemy-battle-command))
+   (path               path-control)
+   (formation          hover-formation-control)
+   (actor-group        (pointer actor-group))
+   (actor-group-count  int32)
+   (total-to-spawn     int32)
+   (num-spawned        int32)
+   (alive-count        int32)
+   (formation-timer    time-frame)
    )
-  :heap-base #x30
-  :method-count-assert 19
-  :size-assert         #xa8
-  :flag-assert         #x13003000a8
+  (:state-methods
+    idle
+    spawning
+    die
+    )
   (:methods
-    (idle () _type_ :state 14)
-    (spawning () _type_ :state 15)
-    (die () _type_ :state 16)
-    (hover-enemy-manager-init! (_type_ (array hover-enemy-battle-command)) none 17)
-    (spawn-enemy (_type_ uint) none 18)
+    (hover-enemy-manager-init! (_type_ (array hover-enemy-battle-command)) none)
+    (spawn-enemy (_type_ uint) none)
     )
   )
 
 ;; definition for method 3 of type hover-enemy-manager
-(defmethod inspect hover-enemy-manager ((this hover-enemy-manager))
+(defmethod inspect ((this hover-enemy-manager))
   (when (not this)
     (set! this this)
     (goto cfg-7)
@@ -255,7 +250,7 @@
 ;; definition for method 18 of type hover-enemy-manager
 ;; INFO: Used lq/sq
 ;; WARN: Return type mismatch int vs none.
-(defmethod spawn-enemy hover-enemy-manager ((this hover-enemy-manager) (arg0 uint))
+(defmethod spawn-enemy ((this hover-enemy-manager) (arg0 uint))
   (when (< arg0 (the-as uint (-> this actor-group-count)))
     (dotimes (s4-0 (-> this actor-group arg0 length))
       (let* ((s1-0 (-> this actor-group arg0 data s4-0 actor))
@@ -287,7 +282,7 @@
   )
 
 ;; definition for method 7 of type hover-enemy-manager
-(defmethod relocate hover-enemy-manager ((this hover-enemy-manager) (arg0 int))
+(defmethod relocate ((this hover-enemy-manager) (arg0 int))
   (when (-> this formation)
     (if (nonzero? (-> this formation))
         (&+! (-> this formation) arg0)
@@ -302,7 +297,7 @@
 ;; definition for method 17 of type hover-enemy-manager
 ;; INFO: Used lq/sq
 ;; WARN: Return type mismatch int vs none.
-(defmethod hover-enemy-manager-init! hover-enemy-manager ((this hover-enemy-manager) (arg0 (array hover-enemy-battle-command)))
+(defmethod hover-enemy-manager-init! ((this hover-enemy-manager) (arg0 (array hover-enemy-battle-command)))
   "Initialize this [[hover-enemy-manager]]."
   (local-vars (sv-16 res-tag))
   (set! (-> this command-table) arg0)

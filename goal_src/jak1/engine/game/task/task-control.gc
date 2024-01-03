@@ -11,31 +11,31 @@
   (enum->string task-status arg0)
   )
 
-(defmethod get-task task-cstage ((this task-cstage))
+(defmethod get-task ((this task-cstage))
   "Get the game task for this cstage"
   (-> this game-task)
   )
 
-(defmethod get-status task-cstage ((this task-cstage))
+(defmethod get-status ((this task-cstage))
   "Get the status for this cstage"
   (-> this status)
   )
 
-(defmethod closed? task-cstage ((this task-cstage))
+(defmethod closed? ((this task-cstage))
   "Is the closed flag set?"
   (declare (inline))
 
   (logtest? (-> this flags) (task-flags closed))
   )
 
-(defmethod closed-by-default? task-cstage ((this task-cstage))
+(defmethod closed-by-default? ((this task-cstage))
   "Is the closed-by-default flag set?"
   (declare (inline))
 
   (logtest? (-> this flags) (task-flags closed-by-default))
   )
 
-(defmethod task-available? task-cstage ((this task-cstage) (arg0 task-control))
+(defmethod task-available? ((this task-cstage) (arg0 task-control))
   "Is this task available to be the current task?"
   (cond
     ((closed? this)
@@ -63,7 +63,7 @@
     )
   )
 
-(defmethod close-task! task-cstage ((this task-cstage))
+(defmethod close-task! ((this task-cstage))
   "Close this task!"
   (if (= (-> this game-task) (game-task none))
       ;; invalid task.
@@ -88,21 +88,18 @@
   0
   )
 
-(defmethod open-task! task-cstage ((this task-cstage))
+(defmethod open-task! ((this task-cstage))
   "Clear the closed flag."
   (logclear! (-> this flags) (task-flags closed))
   0
   )
 
 ;; a task-control containing no cstages
-(define *null-task-control* (new 'static 'task-control
-                              :current-stage -1
-                              :stage
-                              (new 'static 'boxed-array :type task-cstage :length 0 :allocated-length 0)
-                              )
-        )
+(define *null-task-control*
+  (new 'static 'task-control :current-stage -1 :stage (new 'static 'boxed-array :type task-cstage))
+  )
 
-(defmethod current-task task-control ((this task-control))
+(defmethod current-task ((this task-control))
   "Get the current task that is being played. If unknown returns the none task"
   (cond
     ((= this *null-task-control*)
@@ -120,7 +117,7 @@
     )
   )
 
-(defmethod current-status task-control ((this task-control))
+(defmethod current-status ((this task-control))
   "Get the status of the cstage that is being played.
    Will return invalid if not possible"
   (cond
@@ -137,7 +134,7 @@
     )
   )
 
-(defmethod close-current! task-control ((this task-control))
+(defmethod close-current! ((this task-control))
   (cond
     ((= this *null-task-control*)
      (format 0 "ERROR<GMJ>: close-current! received self of *null-task-control*~%~%")
@@ -153,7 +150,7 @@
   (first-any this #t)
   )
 
-(defmethod close-status! task-control ((this task-control) (arg0 task-status))
+(defmethod close-status! ((this task-control) (arg0 task-status))
   "Close the cstage that:
     - is associated with the task for the current cstage
     - is for the given status
@@ -176,7 +173,7 @@
   (game-task none)
   )
 
-(defmethod first-any task-control ((this task-control) (arg0 symbol))
+(defmethod first-any ((this task-control) (arg0 symbol))
   "Iterate through tasks, finding an unclosed one to mark as current
    If arg0 is #t, warn on receiving null-task-control"
 
@@ -201,7 +198,7 @@
   (game-task none)
   )
 
-(defmethod reset! task-control ((this task-control) (reset-mode symbol) (arg1 symbol))
+(defmethod reset! ((this task-control) (reset-mode symbol) (arg1 symbol))
   "Reset a task control. arg1 to warn on null, reset-mode 'game for a game reset"
 
   (when (= this *null-task-control*)
@@ -227,7 +224,7 @@
   )
 
 
-(defmethod closed? task-control ((this task-control) (arg0 game-task) (arg1 task-status))
+(defmethod closed? ((this task-control) (arg0 game-task) (arg1 task-status))
   "Is the given task/status cstage closed?"
 
   (when (= this *null-task-control*)
@@ -249,7 +246,7 @@
   #t
   )
 
-(defmethod exists? task-control ((this task-control) (arg0 game-task) (arg1 task-status))
+(defmethod exists? ((this task-control) (arg0 game-task) (arg1 task-status))
   "Is there a cstage for the given task and status?"
   (when (= this *null-task-control*)
     (format 0 "ERROR<GMJ>: exists? received self of *null-task-control*~%~%")
@@ -263,7 +260,7 @@
   #f
   )
 
-(defmethod get-reminder task-control ((this task-control) (arg0 int))
+(defmethod get-reminder ((this task-control) (arg0 int))
   "Get the arg0th reminder. "
   (when (= this *null-task-control*)
     (format 0 "ERROR<GMJ>: get-reminder received self of *null-task-control*~%~%")
@@ -274,7 +271,7 @@
     )
   )
 
-(defmethod save-reminder task-control ((this task-control) (arg0 int) (arg1 int))
+(defmethod save-reminder ((this task-control) (arg0 int) (arg1 int))
   "Set the arg1th reminder to arg0"
   (when (= this *null-task-control*)
     (format 0 "ERROR<GMJ>: save-reminder received self of *null-task-control*~%~%")

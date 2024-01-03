@@ -180,31 +180,27 @@
   )
 
 (deftype windmill-sail (process-drawable)
-  ((root-override trsq                             :offset        112)
-   (sync          sync-info                :inline :offset-assert 176)
-   (blade-normal  vector                   :inline :offset-assert 192)
-   (orig-quat     quaternion               :inline :offset-assert 208)
-   (alt-actor     entity-actor                     :offset-assert 224)
-   (part2         sparticle-launch-control         :offset-assert 228)
+  ((root-override  trsq        :overlay-at root)
+   (sync           sync-info   :inline)
+   (blade-normal   vector      :inline)
+   (orig-quat      quaternion  :inline)
+   (alt-actor      entity-actor)
+   (part2          sparticle-launch-control)
    )
-  :heap-base #x80
-  :method-count-assert 20
-  :size-assert         #xe8
-  :flag-assert         #x14008000e8
   (:states
     windmill-sail-idle
     )
   )
 
 
-(defmethod relocate windmill-sail ((this windmill-sail) (arg0 int))
+(defmethod relocate ((this windmill-sail) (arg0 int))
   (if (nonzero? (-> this part2))
       (&+! (-> this part2) arg0)
       )
   (the-as windmill-sail ((method-of-type process-drawable relocate) this arg0))
   )
 
-(defmethod deactivate windmill-sail ((this windmill-sail))
+(defmethod deactivate ((this windmill-sail))
   (if (nonzero? (-> this part2))
       (kill-and-free-particles (-> this part2))
       )
@@ -292,7 +288,7 @@
   :post ja-post
   )
 
-(defmethod init-from-entity! windmill-sail ((this windmill-sail) (arg0 entity-actor))
+(defmethod init-from-entity! ((this windmill-sail) (arg0 entity-actor))
   (logior! (-> this mask) (process-mask ambient))
   (load-params! (-> this sync) this (the-as uint 4800) 0.0 0.15 0.15)
   (set! (-> this root-override) (new 'process 'trsq))
@@ -310,15 +306,11 @@
   )
 
 (deftype sagesail (process-drawable)
-  ((root-override trsq               :offset        112)
-   (sync          sync-info  :inline :offset-assert 176)
-   (blade-normal  vector     :inline :offset-assert 192)
-   (orig-quat     quaternion :inline :offset-assert 208)
+  ((root-override  trsq        :overlay-at root)
+   (sync           sync-info   :inline)
+   (blade-normal   vector      :inline)
+   (orig-quat      quaternion  :inline)
    )
-  :heap-base #x70
-  :method-count-assert 20
-  :size-assert         #xe0
-  :flag-assert         #x14007000e0
   (:states
     sagesail-idle
     )
@@ -349,7 +341,7 @@
   :post ja-post
   )
 
-(defmethod init-from-entity! sagesail ((this sagesail) (arg0 entity-actor))
+(defmethod init-from-entity! ((this sagesail) (arg0 entity-actor))
   (logior! (-> this mask) (process-mask ambient))
   (load-params! (-> this sync) this (the-as uint 3000) 0.0 0.15 0.15)
   (set! (-> this root-override) (new 'process 'trsq))
@@ -364,22 +356,18 @@
   )
 
 (deftype windspinner (process-drawable)
-  ((blade-normal vector     :inline :offset-assert 176)
-   (orig-quat    quaternion :inline :offset-assert 192)
-   (angle        float              :offset-assert 208)
-   (angle-vel    float              :offset-assert 212)
+  ((blade-normal  vector      :inline)
+   (orig-quat     quaternion  :inline)
+   (angle         float)
+   (angle-vel     float)
    )
-  :heap-base #x70
-  :method-count-assert 20
-  :size-assert         #xd8
-  :flag-assert         #x14007000d8
   (:states
     windspinner-idle
     )
   )
 
 
-(defmethod run-logic? windspinner ((this windspinner))
+(defmethod run-logic? ((this windspinner))
   (or (not (logtest? (-> this mask) (process-mask actor-pause)))
       (or (and (nonzero? (-> this draw))
                (logtest? (-> this draw status) (draw-status was-drawn))
@@ -438,7 +426,7 @@
   :post ja-post
   )
 
-(defmethod init-from-entity! windspinner ((this windspinner) (arg0 entity-actor))
+(defmethod init-from-entity! ((this windspinner) (arg0 entity-actor))
   (logior! (-> this mask) (process-mask ambient))
   (set! (-> this angle) 0.0)
   (set! (-> this angle-vel) 145.63556)
@@ -454,12 +442,8 @@
   )
 
 (deftype mayorgears (process-drawable)
-  ((alt-actor entity-actor  :offset-assert 176)
+  ((alt-actor  entity-actor)
    )
-  :heap-base #x50
-  :method-count-assert 20
-  :size-assert         #xb4
-  :flag-assert         #x14005000b4
   (:states
     mayorgears-idle
     )
@@ -484,7 +468,7 @@
   :post ja-post
   )
 
-(defmethod init-from-entity! mayorgears ((this mayorgears) (arg0 entity-actor))
+(defmethod init-from-entity! ((this mayorgears) (arg0 entity-actor))
   (logior! (-> this mask) (process-mask ambient))
   (set! (-> this root) (new 'process 'trsqv))
   (process-drawable-from-entity! this arg0)
@@ -497,12 +481,8 @@
 ;; og:preserve-this PAL patch here
 (deftype evilplant (process-drawable)
   ()
-  :heap-base #x40
-  :method-count-assert 21
-  :size-assert         #xb0
-  :flag-assert         #x15004000b0
-  (:methods
-    (idle () _type_ :state 20)
+  (:state-methods
+    idle
     )
   )
 
@@ -529,7 +509,7 @@
         )
       )
     )
-  :post (the-as (function none :behavior evilplant) ja-post)
+  :post ja-post
   )
 
 (defmethod init-from-entity! evilplant ((obj evilplant) (arg0 entity-actor))
@@ -541,13 +521,9 @@
   )
 
 (deftype reflector-middle (process-drawable)
-  ((reflector-trans      vector :inline :offset-assert 176)
-   (next-reflector-trans vector :inline :offset-assert 192)
+  ((reflector-trans       vector  :inline)
+   (next-reflector-trans  vector  :inline)
    )
-  :heap-base #x60
-  :method-count-assert 20
-  :size-assert         #xd0
-  :flag-assert         #x14006000d0
   (:states
     reflector-middle-idle
     )
@@ -570,7 +546,7 @@
   :post ja-post
   )
 
-(defmethod init-from-entity! reflector-middle ((this reflector-middle) (arg0 entity-actor))
+(defmethod init-from-entity! ((this reflector-middle) (arg0 entity-actor))
   (set! (-> this root) (new 'process 'trsqv))
   (process-drawable-from-entity! this arg0)
   (initialize-skeleton this *reflector-middle-sg* '())
@@ -591,10 +567,6 @@
 
 (deftype reflector-end (process-drawable)
   ()
-  :heap-base #x40
-  :method-count-assert 20
-  :size-assert         #xb0
-  :flag-assert         #x14004000b0
   (:states
     reflector-end-idle
     )
@@ -605,7 +577,7 @@
   :code anim-loop
   )
 
-(defmethod init-from-entity! reflector-end ((this reflector-end) (arg0 entity-actor))
+(defmethod init-from-entity! ((this reflector-end) (arg0 entity-actor))
   (set! (-> this root) (new 'process 'trsqv))
   (process-drawable-from-entity! this arg0)
   (go reflector-end-idle)
@@ -613,12 +585,8 @@
   )
 
 (deftype villa-starfish (process-drawable)
-  ((child-count int8  :offset-assert 176)
+  ((child-count  int8)
    )
-  :heap-base #x50
-  :method-count-assert 20
-  :size-assert         #xb1
-  :flag-assert         #x14005000b1
   (:states
     villa-starfish-idle
     )
@@ -632,10 +600,6 @@
 
 (deftype starfish (nav-enemy)
   ()
-  :heap-base #x120
-  :method-count-assert 76
-  :size-assert         #x190
-  :flag-assert         #x4c01200190
   (:states
     starfish-idle
     starfish-patrol
@@ -746,7 +710,7 @@
                                     )
         )
 
-(defmethod initialize-collision starfish ((this starfish))
+(defmethod initialize-collision ((this starfish))
   (logior! (-> this mask) (process-mask enemy))
   (let ((s5-0 (new 'process 'collide-shape-moving this (collide-list-enum usually-hit-by-player))))
     (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
@@ -767,7 +731,7 @@
   (none)
   )
 
-(defmethod nav-enemy-method-48 starfish ((this starfish))
+(defmethod nav-enemy-method-48 ((this starfish))
   (initialize-skeleton this *starfish-sg* '())
   (init-defaults! this *starfish-nav-enemy-info*)
   0
@@ -825,7 +789,7 @@
   :post #f
   )
 
-(defmethod init-from-entity! villa-starfish ((this villa-starfish) (arg0 entity-actor))
+(defmethod init-from-entity! ((this villa-starfish) (arg0 entity-actor))
   (set! (-> this root) (new 'process 'trsqv))
   (process-drawable-from-entity! this arg0)
   (let ((a1-4 (res-lump-value arg0 'num-lurkers uint128 :default (the-as uint128 3))))
@@ -837,12 +801,8 @@
   )
 
 (deftype village-fish (process-drawable)
-  ((child-count int8  :offset-assert 176)
+  ((child-count  int8)
    )
-  :heap-base #x50
-  :method-count-assert 20
-  :size-assert         #xb1
-  :flag-assert         #x14005000b1
   (:states
     village-fish-idle
     )
@@ -859,7 +819,7 @@
   :post #f
   )
 
-(defmethod init-from-entity! village-fish ((this village-fish) (arg0 entity-actor))
+(defmethod init-from-entity! ((this village-fish) (arg0 entity-actor))
   (set! (-> this root) (new 'process 'trsqv))
   (process-drawable-from-entity! this arg0)
   (go village-fish-idle)
@@ -868,30 +828,19 @@
 
 (deftype villa-fisha (village-fish)
   ()
-  :heap-base #x50
-  :method-count-assert 20
-  :size-assert         #xb1
-  :flag-assert         #x14005000b1
   )
 
 
 (deftype villa-fishb (village-fish)
   ()
-  :heap-base #x50
-  :method-count-assert 20
-  :size-assert         #xb1
-  :flag-assert         #x14005000b1
   )
 
 
 (deftype cyclegen (structure)
-  ((output float  :offset-assert   0)
-   (inc    float  :offset-assert   4)
+  ((output  float)
+   (inc     float)
    )
   :pack-me
-  :method-count-assert 9
-  :size-assert         #x8
-  :flag-assert         #x900000008
   )
 
 
@@ -907,20 +856,16 @@
   )
 
 (deftype hutlamp (process-drawable)
-  ((pivot joint-mod-set-local         :offset-assert 176)
-   (clock cyclegen            :inline :offset-assert 180)
+  ((pivot  joint-mod-set-local)
+   (clock  cyclegen  :inline)
    )
-  :heap-base #x50
-  :method-count-assert 20
-  :size-assert         #xbc
-  :flag-assert         #x14005000bc
   (:states
     hutlamp-idle
     )
   )
 
 
-(defmethod relocate hutlamp ((this hutlamp) (arg0 int))
+(defmethod relocate ((this hutlamp) (arg0 int))
   (if (nonzero? (-> this pivot))
       (&+! (-> this pivot) arg0)
       )
@@ -945,7 +890,7 @@
   :post ja-post
   )
 
-(defmethod init-from-entity! hutlamp ((this hutlamp) (arg0 entity-actor))
+(defmethod init-from-entity! ((this hutlamp) (arg0 entity-actor))
   (set! (-> this root) (new 'process 'trsqv))
   (process-drawable-from-entity! this arg0)
   (initialize-skeleton this *hutlamp-sg* '())
@@ -958,12 +903,8 @@
 
 (deftype revcycleprop (process-drawable)
   ()
-  :heap-base #x40
-  :method-count-assert 21
-  :size-assert         #xb0
-  :flag-assert         #x15004000b0
-  (:methods
-    (idle () _type_ :state 20)
+  (:state-methods
+    idle
     )
   )
 
@@ -979,7 +920,7 @@
   :post ja-post
   )
 
-(defmethod init-from-entity! revcycleprop ((this revcycleprop) (arg0 entity-actor))
+(defmethod init-from-entity! ((this revcycleprop) (arg0 entity-actor))
   (set! (-> this root) (new 'process 'trsqv))
   (process-drawable-from-entity! this arg0)
   (initialize-skeleton this *revcycleprop-sg* '())
@@ -990,12 +931,8 @@
 
 (deftype revcycle (process-drawable)
   ()
-  :heap-base #x40
-  :method-count-assert 21
-  :size-assert         #xb0
-  :flag-assert         #x15004000b0
-  (:methods
-    (idle () _type_ :state 20)
+  (:state-methods
+    idle
     )
   )
 
@@ -1011,7 +948,7 @@
   :post ja-post
   )
 
-(defmethod init-from-entity! revcycle ((this revcycle) (arg0 entity-actor))
+(defmethod init-from-entity! ((this revcycle) (arg0 entity-actor))
   (set! (-> this root) (new 'process 'trsqv))
   (process-drawable-from-entity! this arg0)
   (initialize-skeleton this *revcycle-sg* '())
@@ -1022,10 +959,6 @@
 
 (deftype villagea-water (water-anim)
   ()
-  :heap-base #x70
-  :method-count-assert 30
-  :size-assert         #xdc
-  :flag-assert         #x1e007000dc
   )
 
 
@@ -1042,7 +975,7 @@
                                     )
         )
 
-(defmethod water-vol-method-22 villagea-water ((this villagea-water))
+(defmethod water-vol-method-22 ((this villagea-water))
   (let ((t9-0 (method-of-type water-anim water-vol-method-22)))
     (t9-0 this)
     )

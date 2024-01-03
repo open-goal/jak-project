@@ -79,17 +79,14 @@
 
 ;; definition of type ecoclaw-part-info
 (deftype ecoclaw-part-info (structure)
-  ((tracker handle         :offset-assert   0)
-   (kind    basic          :offset-assert   8)
-   (trans   vector :inline :offset-assert  16)
+  ((tracker  handle)
+   (kind     basic)
+   (trans    vector  :inline)
    )
-  :method-count-assert 9
-  :size-assert         #x20
-  :flag-assert         #x900000020
   )
 
 ;; definition for method 3 of type ecoclaw-part-info
-(defmethod inspect ecoclaw-part-info ((this ecoclaw-part-info))
+(defmethod inspect ((this ecoclaw-part-info))
   (format #t "[~8x] ~A~%" this 'ecoclaw-part-info)
   (format #t "~Ttracker: ~D~%" (-> this tracker))
   (format #t "~Tkind: ~A~%" (-> this kind))
@@ -99,12 +96,8 @@
 
 ;; definition of type ecoclaw
 (deftype ecoclaw (process-drawable)
-  ((particles ecoclaw-part-info 3 :inline :offset-assert 176)
+  ((particles  ecoclaw-part-info  3 :inline)
    )
-  :heap-base #xa0
-  :method-count-assert 20
-  :size-assert         #x110
-  :flag-assert         #x1400a00110
   (:states
     ecoclaw-activate
     ecoclaw-idle
@@ -112,7 +105,7 @@
   )
 
 ;; definition for method 3 of type ecoclaw
-(defmethod inspect ecoclaw ((this ecoclaw))
+(defmethod inspect ((this ecoclaw))
   (let ((t9-0 (method-of-type process-drawable inspect)))
     (t9-0 this)
     )
@@ -280,7 +273,7 @@
 
 ;; definition for method 11 of type ecoclaw
 ;; INFO: Return type mismatch object vs none.
-(defmethod init-from-entity! ecoclaw ((this ecoclaw) (arg0 entity-actor))
+(defmethod init-from-entity! ((this ecoclaw) (arg0 entity-actor))
   (set! (-> this root) (new 'process 'trsqv))
   (process-drawable-from-entity! this arg0)
   (initialize-skeleton this *ecoclaw-sg* '())
@@ -295,20 +288,16 @@
 
 ;; definition of type silodoor
 (deftype silodoor (process-drawable)
-  ((part-opened float  :offset-assert 176)
+  ((part-opened  float)
    )
-  :heap-base #x50
-  :method-count-assert 22
-  :size-assert         #xb4
-  :flag-assert         #x16005000b4
-  (:methods
-    (idle () _type_ :state 20)
-    (hidden () _type_ :state 21)
+  (:state-methods
+    idle
+    hidden
     )
   )
 
 ;; definition for method 3 of type silodoor
-(defmethod inspect silodoor ((this silodoor))
+(defmethod inspect ((this silodoor))
   (let ((t9-0 (method-of-type process-drawable inspect)))
     (t9-0 this)
     )
@@ -383,7 +372,7 @@
 
 ;; definition for method 11 of type silodoor
 ;; INFO: Return type mismatch object vs none.
-(defmethod init-from-entity! silodoor ((this silodoor) (arg0 entity-actor))
+(defmethod init-from-entity! ((this silodoor) (arg0 entity-actor))
   (let ((s4-0 (new 'process 'collide-shape-moving this (collide-list-enum usually-hit-by-player))))
     (set! (-> s4-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s4-0 reaction) default-collision-reaction)
@@ -454,16 +443,12 @@
 
 ;; definition of type finalbosscam
 (deftype finalbosscam (process-taskable)
-  ((robotboss handle  :offset-assert 384)
+  ((robotboss  handle)
    )
-  :heap-base #x120
-  :method-count-assert 53
-  :size-assert         #x188
-  :flag-assert         #x3501200188
   )
 
 ;; definition for method 3 of type finalbosscam
-(defmethod inspect finalbosscam ((this finalbosscam))
+(defmethod inspect ((this finalbosscam))
   (let ((t9-0 (method-of-type process-taskable inspect)))
     (t9-0 this)
     )
@@ -481,7 +466,7 @@
 ;; INFO: Return type mismatch int vs none.
 (defbehavior robotboss-manipy-trans-hook robotboss ()
   (let ((gp-0 (new 'stack-no-clear 'vector)))
-    (vector<-cspace! gp-0 (joint-node-index robotboss-basic-lod0-jg blue_eco_piece))
+    (vector<-cspace! gp-0 (joint-node robotboss-basic-lod0-jg blue_eco_piece))
     (spawn (-> self part) gp-0)
     )
   0
@@ -490,10 +475,10 @@
 
 ;; definition for method 32 of type finalbosscam
 ;; INFO: Return type mismatch spool-anim vs basic.
-(defmethod play-anim! finalbosscam ((this finalbosscam) (arg0 symbol))
+(defmethod play-anim! ((this finalbosscam) (arg0 symbol))
   (when arg0
     (set! (-> this robotboss)
-          (ppointer->handle (manipy-spawn (-> this root-override trans) (-> this entity) *robotboss-sg* #f :to this))
+          (ppointer->handle (manipy-spawn (-> this root trans) (-> this entity) *robotboss-sg* #f :to this))
           )
     (send-event (handle->process (-> this robotboss)) 'anim-mode 'clone-anim)
     (send-event (handle->process (-> this robotboss)) 'center-joint 3)
@@ -518,12 +503,12 @@
   )
 
 ;; definition for method 31 of type finalbosscam
-(defmethod get-art-elem finalbosscam ((this finalbosscam))
+(defmethod get-art-elem ((this finalbosscam))
   (-> this draw art-group data 2)
   )
 
 ;; definition for method 39 of type finalbosscam
-(defmethod should-display? finalbosscam ((this finalbosscam))
+(defmethod should-display? ((this finalbosscam))
   #f
   )
 

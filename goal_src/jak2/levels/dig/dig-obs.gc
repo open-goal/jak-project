@@ -8,19 +8,15 @@
 ;; DECOMP BEGINS
 
 (deftype dig-sinking-plat (rigid-body-platform)
-  ((anchor-point      vector      :inline :offset-assert 384)
-   (sync              sync-linear :inline :offset-assert 400)
-   (last-ridden-time  time-frame          :offset-assert 416)
-   (prev-pos          float               :offset-assert 424)
-   (path-pos          float               :offset-assert 428)
-   (surface-height    float               :offset-assert 432)
-   (once              basic               :offset-assert 436)
-   (bubbling-sound-id sound-id            :offset-assert 440)
+  ((anchor-point       vector       :inline)
+   (sync               sync-linear  :inline)
+   (last-ridden-time   time-frame)
+   (prev-pos           float)
+   (path-pos           float)
+   (surface-height     float)
+   (once               basic)
+   (bubbling-sound-id  sound-id)
    )
-  :heap-base #x140
-  :method-count-assert 57
-  :size-assert         #x1bc
-  :flag-assert         #x39014001bc
   )
 
 
@@ -29,14 +25,14 @@
               :bounds (static-spherem 0 -2 0 5.25)
               )
 
-(defmethod rigid-body-object-method-29 dig-sinking-plat ((this dig-sinking-plat) (arg0 float))
+(defmethod rigid-body-object-method-29 ((this dig-sinking-plat) (arg0 float))
   (call-parent-method this arg0)
   (rigid-body-platform-method-56 this (-> this anchor-point))
   0
   (none)
   )
 
-(defmethod allocate-and-init-cshape dig-sinking-plat ((this dig-sinking-plat))
+(defmethod allocate-and-init-cshape ((this dig-sinking-plat))
   (let ((s5-0 (new 'process 'collide-shape-moving this (collide-list-enum usually-hit-by-player))))
     (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s5-0 reaction) cshape-reaction-default)
@@ -98,11 +94,11 @@
                                            )
         )
 
-(defmethod rigid-body-platform-method-53 dig-sinking-plat ((this dig-sinking-plat) (arg0 vector))
+(defmethod rigid-body-platform-method-53 ((this dig-sinking-plat) (arg0 vector))
   (-> this surface-height)
   )
 
-(defmethod rigid-body-object-method-37 dig-sinking-plat ((this dig-sinking-plat))
+(defmethod rigid-body-object-method-37 ((this dig-sinking-plat))
   (when (not (logtest? (-> this path flags) (path-control-flag not-found)))
     (set! (-> this prev-pos) (-> this path-pos))
     (set! (-> this path-pos) (get-norm! (-> this sync) 0))
@@ -195,7 +191,7 @@
   (none)
   )
 
-(defmethod rigid-body-platform-method-56 dig-sinking-plat ((this dig-sinking-plat) (arg0 vector))
+(defmethod rigid-body-platform-method-56 ((this dig-sinking-plat) (arg0 vector))
   (when (not (logtest? (-> this path flags) (path-control-flag not-found)))
     (let ((v1-4 (new 'stack-no-clear 'vector)))
       (cond
@@ -247,7 +243,7 @@
   :event (-> (method-of-type dig-sinking-plat idle) event)
   )
 
-(defmethod init-skel-and-rigid-body dig-sinking-plat ((this dig-sinking-plat))
+(defmethod init-skel-and-rigid-body ((this dig-sinking-plat))
   (initialize-skeleton
     this
     (the-as skeleton-group (art-group-get-by-name *level* "skel-dig-sinking-plat" (the-as (pointer uint32) #f)))
@@ -422,12 +418,9 @@
   )
 
 (deftype dig-log-button-info (basic)
-  ((cam-ret-mode symbol         :offset-assert   4)
-   (cam-ret-dir  vector :inline :offset-assert  16)
+  ((cam-ret-mode  symbol)
+   (cam-ret-dir   vector  :inline)
    )
-  :method-count-assert 9
-  :size-assert         #x20
-  :flag-assert         #x900000020
   )
 
 
@@ -462,21 +455,19 @@
         )
 
 (deftype dig-log (process-drawable)
-  ((pressed-count    int8     :offset-assert 200)
-   (total-buttons    int8     :offset-assert 201)
-   (last-button-id   int8     :offset-assert 202)
-   (base-y           float    :offset-assert 204)
-   (hud-handle       handle   :offset-assert 208)
-   (pad-ihj1bn234i1b int32  2 :offset-assert 216)
+  ((pressed-count     int8)
+   (total-buttons     int8)
+   (last-button-id    int8)
+   (base-y            float)
+   (hud-handle        handle)
+   (pad-ihj1bn234i1b  int32  2)
    )
-  :heap-base #x60
-  :method-count-assert 23
-  :size-assert         #xe0
-  :flag-assert         #x17006000e0
+  (:state-methods
+    idle
+    moving
+    )
   (:methods
-    (idle () _type_ :state 20)
-    (moving () _type_ :state 21)
-    (dig-log-method-22 (_type_ symbol) symbol 22)
+    (dig-log-method-22 (_type_ symbol) symbol)
     )
   )
 
@@ -510,13 +501,13 @@
     )
   )
 
-(defmethod run-logic? dig-log ((this dig-log))
+(defmethod run-logic? ((this dig-log))
   #t
   )
 
 ;; WARN: Return type mismatch int vs symbol.
 ;; WARN: disable def twice: 16. This may happen when a cond (no else) is nested inside of another conditional, but it should be rare.
-(defmethod dig-log-method-22 dig-log ((this dig-log) (arg0 symbol))
+(defmethod dig-log-method-22 ((this dig-log) (arg0 symbol))
   (the-as
     symbol
     (cond
@@ -657,7 +648,7 @@
   )
 
 ;; WARN: Return type mismatch object vs none.
-(defmethod init-from-entity! dig-log ((this dig-log) (arg0 entity-actor))
+(defmethod init-from-entity! ((this dig-log) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
 - stack size
@@ -731,16 +722,12 @@ This commonly includes things such as:
   )
 
 (deftype dig-button (process-drawable)
-  ((down-y float  :offset-assert 200)
+  ((down-y  float)
    )
-  :heap-base #x50
-  :method-count-assert 23
-  :size-assert         #xcc
-  :flag-assert         #x17005000cc
-  (:methods
-    (idle-up () _type_ :state 20)
-    (going-down () _type_ :state 21)
-    (idle-down () _type_ :state 22)
+  (:state-methods
+    idle-up
+    going-down
+    idle-down
     )
   )
 
@@ -750,7 +737,7 @@ This commonly includes things such as:
               :bounds (static-spherem 0 0 0 3)
               )
 
-(defmethod run-logic? dig-button ((this dig-button))
+(defmethod run-logic? ((this dig-button))
   #t
   )
 
@@ -807,7 +794,7 @@ This commonly includes things such as:
   )
 
 ;; WARN: Return type mismatch object vs none.
-(defmethod init-from-entity! dig-button ((this dig-button) (arg0 entity-actor))
+(defmethod init-from-entity! ((this dig-button) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
 - stack size
@@ -848,7 +835,7 @@ This commonly includes things such as:
   (none)
   )
 
-(defmethod draw hud-dig-button ((this hud-dig-button))
+(defmethod draw ((this hud-dig-button))
   (set-hud-piece-position!
     (the-as hud-sprite (-> this sprites))
     (the int (+ 487.0 (* 130.0 (-> this offset))))
@@ -861,14 +848,14 @@ This commonly includes things such as:
   (none)
   )
 
-(defmethod update-values hud-dig-button ((this hud-dig-button))
+(defmethod update-values ((this hud-dig-button))
   (set! (-> this values 0 target) (the int (-> *game-info* counter)))
   ((method-of-type hud update-values) this)
   0
   (none)
   )
 
-(defmethod init-callback hud-dig-button ((this hud-dig-button))
+(defmethod init-callback ((this hud-dig-button))
   (set! (-> this level) (level-get *level* 'dig3a))
   (set! (-> this sprites 0 tex) (lookup-texture-by-id (new 'static 'texture-id :page #xd21)))
   (set! (-> this gui-id)

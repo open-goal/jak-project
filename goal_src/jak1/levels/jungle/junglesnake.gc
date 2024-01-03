@@ -44,53 +44,43 @@
   )
 
 (deftype junglesnake-twist-joint (structure)
-  ((joint-index   int32  :offset-assert   0)
-   (ry            float  :offset-assert   4)
-   (drag-delta-ry float  :offset-assert   8)
+  ((joint-index    int32)
+   (ry             float)
+   (drag-delta-ry  float)
    )
   :allow-misaligned
-  :method-count-assert 9
-  :size-assert         #xc
-  :flag-assert         #x90000000c
   )
 
 
 (deftype junglesnake-tilt-joint (structure)
-  ((joint-index int32   :offset-assert   0)
-   (flip-it     symbol  :offset-assert   4)
+  ((joint-index  int32)
+   (flip-it      symbol)
    )
   :allow-misaligned
-  :method-count-assert 9
-  :size-assert         #x8
-  :flag-assert         #x900000008
   )
 
 
 (deftype junglesnake (process-drawable)
-  ((root-override     collide-shape                      :offset        112)
-   (state-time2       time-frame                         :offset-assert 176)
-   (hit-player        symbol                             :offset        184)
-   (is-lethal?        symbol                             :offset-assert 188)
-   (refractory-delay  int32                              :offset-assert 192)
-   (ry                float                              :offset-assert 196)
-   (des-ry            float                              :offset-assert 200)
-   (tilt              float                              :offset-assert 204)
-   (des-tilt          float                              :offset-assert 208)
-   (track-player-ry   symbol                             :offset-assert 212)
-   (track-player-tilt symbol                             :offset-assert 216)
-   (twist-joints      junglesnake-twist-joint 24 :inline :offset        220)
-   (tilt-joints       junglesnake-tilt-joint  3 :inline  :offset        604)
+  ((root               collide-shape           :override)
+   (state-time2        time-frame)
+   (hit-player         symbol                              :offset 184)
+   (is-lethal?         symbol)
+   (refractory-delay   int32)
+   (ry                 float)
+   (des-ry             float)
+   (tilt               float)
+   (des-tilt           float)
+   (track-player-ry    symbol)
+   (track-player-tilt  symbol)
+   (twist-joints       junglesnake-twist-joint  24 :inline :offset 220)
+   (tilt-joints        junglesnake-tilt-joint   3 :inline  :offset 604)
    )
-  :heap-base #x220
-  :method-count-assert 25
-  :size-assert         #x28c
-  :flag-assert         #x190220028c
   (:methods
-    (junglesnake-method-20 (_type_) symbol 20)
-    (junglesnake-method-21 (_type_) symbol 21)
-    (junglesnake-method-22 (_type_ float) symbol 22)
-    (junglesnake-method-23 (_type_) none 23)
-    (junglesnake-method-24 (_type_) none 24)
+    (junglesnake-method-20 (_type_) symbol)
+    (junglesnake-method-21 (_type_) symbol)
+    (junglesnake-method-22 (_type_ float) symbol)
+    (junglesnake-method-23 (_type_) none)
+    (junglesnake-method-24 (_type_) none)
     )
   (:states
     junglesnake-attack
@@ -109,7 +99,7 @@
     (('touch)
      (when (and *target* ((method-of-type touching-shapes-entry prims-touching?)
                           (the-as touching-shapes-entry (-> arg3 param 0))
-                          (the-as collide-shape-moving (-> self root-override))
+                          (the-as collide-shape-moving (-> self root))
                           (the-as uint 1)
                           )
                 )
@@ -128,7 +118,7 @@
             )
           )
          (else
-           (do-push-aways! (-> self root-override))
+           (do-push-aways! (-> self root))
            (send-event
              arg0
              'shove
@@ -147,12 +137,10 @@
 
 junglesnake-default-event-handler
 
-(defmethod junglesnake-method-20 junglesnake ((this junglesnake))
+(defmethod junglesnake-method-20 ((this junglesnake))
   (when (and *target* (-> this track-player-ry))
     (let ((v1-3 (target-pos 0)))
-      (set! (-> this des-ry)
-            (atan (- (-> v1-3 x) (-> this root-override trans x)) (- (-> v1-3 z) (-> this root-override trans z)))
-            )
+      (set! (-> this des-ry) (atan (- (-> v1-3 x) (-> this root trans x)) (- (-> v1-3 z) (-> this root trans z))))
       )
     )
   (let ((f0-7 (deg-diff (-> this ry) (-> this des-ry))))
@@ -198,13 +186,7 @@ junglesnake-default-event-handler
           (s2-0 (new 'stack-no-clear 'matrix))
           )
       (let ((s1-0 (new 'stack-no-clear 'vector)))
-        (set-vector!
-          s1-0
-          (-> arg0 root-override trans x)
-          (-> arg0 root-override trans y)
-          (-> arg0 root-override trans z)
-          1.0
-          )
+        (set-vector! s1-0 (-> arg0 root trans x) (-> arg0 root trans y) (-> arg0 root trans z) 1.0)
         (matrix-translate! s2-0 s1-0)
         (vector-negate! s1-0 s1-0)
         (matrix-translate! s3-0 s1-0)
@@ -336,9 +318,9 @@ junglesnake-default-event-handler
   :trans (behavior ()
     (when *target*
       (let* ((a0-1 (target-pos 0))
-             (f0-1 (- (-> a0-1 y) (-> self root-override trans y)))
+             (f0-1 (- (-> a0-1 y) (-> self root trans y)))
              )
-        (if (and (>= 40960.0 f0-1) (>= 143360.0 (vector-vector-xz-distance a0-1 (-> self root-override trans))))
+        (if (and (>= 40960.0 f0-1) (>= 143360.0 (vector-vector-xz-distance a0-1 (-> self root trans))))
             (go junglesnake-wake)
             )
         )
@@ -367,7 +349,7 @@ junglesnake-default-event-handler
       (if *target*
           (look-at-enemy!
             (-> *target* neck)
-            (the-as vector (-> (the-as collide-shape-prim-group (-> self root-override root-prim)) prims 0 prim-core))
+            (the-as vector (-> (the-as collide-shape-prim-group (-> self root root-prim)) prims 0 prim-core))
             'attacking
             self
             )
@@ -393,7 +375,7 @@ junglesnake-default-event-handler
     (set! (-> self track-player-tilt) #t)
     )
   :trans (behavior ()
-    (if (and (and *target* (>= 24576.0 (vector-vector-distance (-> self root-override trans) (-> *target* control trans))))
+    (if (and (and *target* (>= 24576.0 (vector-vector-distance (-> self root trans) (-> *target* control trans))))
              (time-elapsed? (-> self state-time) (-> self refractory-delay))
              (not (logtest? (-> *target* state-flags)
                             (state-flags being-attacked invulnerable timed-invulnerable invuln-powerup do-not-notice dying)
@@ -404,8 +386,8 @@ junglesnake-default-event-handler
         )
     (when *target*
       (let ((a0-8 (target-pos 0)))
-        (if (or (>= (- (-> a0-8 y) (-> self root-override trans y)) 57344.0)
-                (>= (vector-vector-xz-distance a0-8 (-> self root-override trans)) 163840.0)
+        (if (or (>= (- (-> a0-8 y) (-> self root trans y)) 57344.0)
+                (>= (vector-vector-xz-distance a0-8 (-> self root trans)) 163840.0)
                 )
             (go junglesnake-give-up)
             )
@@ -416,7 +398,7 @@ junglesnake-default-event-handler
       (if *target*
           (look-at-enemy!
             (-> *target* neck)
-            (the-as vector (-> (the-as collide-shape-prim-group (-> self root-override root-prim)) prims 0 prim-core))
+            (the-as vector (-> (the-as collide-shape-prim-group (-> self root root-prim)) prims 0 prim-core))
             'attacking
             self
             )
@@ -460,7 +442,7 @@ junglesnake-default-event-handler
       (if *target*
           (look-at-enemy!
             (-> *target* neck)
-            (the-as vector (-> (the-as collide-shape-prim-group (-> self root-override root-prim)) prims 0 prim-core))
+            (the-as vector (-> (the-as collide-shape-prim-group (-> self root root-prim)) prims 0 prim-core))
             'attacking
             self
             )
@@ -472,18 +454,16 @@ junglesnake-default-event-handler
     (set! (-> self track-player-tilt) #t)
     (ja-channel-push! 2 (seconds 0.15))
     (junglesnake-method-23 self)
-    (let ((f30-0 (lerp-scale 0.0 1.0 (vector-vector-distance (target-pos 0) (-> self root-override trans)) 0.0 24576.0))
-          )
+    (let ((f30-0 (lerp-scale 0.0 1.0 (vector-vector-distance (target-pos 0) (-> self root trans)) 0.0 24576.0)))
       (ja-no-eval :group! junglesnake-strike-close-ja :num! (seek! max 1.25) :frame-num 0.0)
       (ja-no-eval :chan 1 :group! junglesnake-strike-far-ja :num! (chan 0) :frame-interp f30-0 :frame-num 0.0)
       (until (ja-done? 0)
         (suspend)
-        (set! f30-0
-              (seek
-                f30-0
-                (lerp-scale 0.0 1.0 (vector-vector-distance (target-pos 0) (-> self root-override trans)) 0.0 24576.0)
-                (* 2.0 (seconds-per-frame))
-                )
+        (set! f30-0 (seek
+                      f30-0
+                      (lerp-scale 0.0 1.0 (vector-vector-distance (target-pos 0) (-> self root trans)) 0.0 24576.0)
+                      (* 2.0 (seconds-per-frame))
+                      )
               )
         (ja :num! (seek! max 1.25))
         (ja :chan 1 :num! (chan 0) :frame-interp f30-0)
@@ -528,7 +508,7 @@ junglesnake-default-event-handler
     (ja-channel-push! 1 (seconds 0.1))
     (let ((gp-0 (new 'stack-no-clear 'vector)))
       (let ((s5-0 (new 'stack-no-clear 'vector)))
-        (set! (-> gp-0 quad) (-> self root-override trans quad))
+        (set! (-> gp-0 quad) (-> self root trans quad))
         (set! (-> s5-0 quad) (-> gp-0 quad))
         (+! (-> s5-0 y) 131072.0)
         (ja-no-eval :group! junglesnake-give-up-ja :num! (seek! max 0.5) :frame-num 0.0)
@@ -538,17 +518,17 @@ junglesnake-default-event-handler
                  (f0-7 (/ f0-6 (the float (+ (-> v1-18 data 0 length) -1))))
                  (s4-0 (new 'stack-no-clear 'vector))
                  )
-            (set-vector! (-> self root-override scale) 1.0 (- 1.0 f0-7) 1.0 1.0)
+            (set-vector! (-> self root scale) 1.0 (- 1.0 f0-7) 1.0 1.0)
             (vector-lerp! s4-0 gp-0 s5-0 f0-7)
-            (move-to-point! (-> self root-override) s4-0)
+            (move-to-point! (-> self root) s4-0)
             )
           (suspend)
           (ja :num! (seek! max 0.5))
           )
         )
-      (move-to-point! (-> self root-override) gp-0)
+      (move-to-point! (-> self root) gp-0)
       )
-    (set-vector! (-> self root-override scale) 1.0 1.0 1.0 1.0)
+    (set-vector! (-> self root scale) 1.0 1.0 1.0 1.0)
     (go junglesnake-sleeping)
     )
   :post transform-post
@@ -558,7 +538,7 @@ junglesnake-default-event-handler
   :event process-drawable-death-event-handler
   :code (behavior ()
     (logclear! (-> self mask) (process-mask actor-pause))
-    (clear-collide-with-as (-> self root-override))
+    (clear-collide-with-as (-> self root))
     (ja-channel-push! 1 (seconds 0.15))
     (ja-no-eval :group! junglesnake-death-ja :num! (seek!) :frame-num 0.0)
     (until (ja-done? 0)
@@ -570,10 +550,10 @@ junglesnake-default-event-handler
   :post ja-post
   )
 
-(defmethod junglesnake-method-23 junglesnake ((this junglesnake))
+(defmethod junglesnake-method-23 ((this junglesnake))
   (when (not (-> this is-lethal?))
     (set! (-> this is-lethal?) #t)
-    (let ((v1-5 (-> (the-as collide-shape-prim-group (-> this root-override root-prim)) prims 0)))
+    (let ((v1-5 (-> (the-as collide-shape-prim-group (-> this root root-prim)) prims 0)))
       (logclear! (-> v1-5 prim-core action) (collide-action solid))
       )
     )
@@ -581,13 +561,13 @@ junglesnake-default-event-handler
   (none)
   )
 
-(defmethod junglesnake-method-24 junglesnake ((this junglesnake))
+(defmethod junglesnake-method-24 ((this junglesnake))
   (when (-> this is-lethal?)
     (set! (-> this is-lethal?) #f)
-    (let ((v1-4 (-> (the-as collide-shape-prim-group (-> this root-override root-prim)) prims 0)))
+    (let ((v1-4 (-> (the-as collide-shape-prim-group (-> this root root-prim)) prims 0)))
       (logior! (-> v1-4 prim-core action) (collide-action solid))
       )
-    (do-push-aways! (-> this root-override))
+    (do-push-aways! (-> this root))
     )
   0
   (none)
@@ -625,7 +605,7 @@ junglesnake-default-event-handler
                                          )
         )
 
-(defmethod junglesnake-method-22 junglesnake ((this junglesnake) (arg0 float))
+(defmethod junglesnake-method-22 ((this junglesnake) (arg0 float))
   (let ((f0-0 0.0))
     (dotimes (v1-0 24)
       (let ((a2-2 (-> this twist-joints v1-0)))
@@ -641,7 +621,7 @@ junglesnake-default-event-handler
   #f
   )
 
-(defmethod junglesnake-method-21 junglesnake ((this junglesnake))
+(defmethod junglesnake-method-21 ((this junglesnake))
   (dotimes (v1-0 3)
     (let ((a1-2 (-> this tilt-joints v1-0)))
       (set! (-> a1-2 joint-index) (+ v1-0 23))
@@ -659,7 +639,7 @@ junglesnake-default-event-handler
     )
   )
 
-(defmethod init-from-entity! junglesnake ((this junglesnake) (arg0 entity-actor))
+(defmethod init-from-entity! ((this junglesnake) (arg0 entity-actor))
   (logior! (-> this mask) (process-mask enemy))
   (let ((s4-0 (new 'process 'collide-shape this (collide-list-enum hit-by-player))))
     (let ((s3-0 (new 'process 'collide-shape-prim-group s4-0 (the-as uint 9) 0)))
@@ -752,7 +732,7 @@ junglesnake-default-event-handler
       )
     (set! (-> s4-0 nav-radius) (* 0.75 (-> s4-0 root-prim local-sphere w)))
     (backup-collide-with-as s4-0)
-    (set! (-> this root-override) s4-0)
+    (set! (-> this root) s4-0)
     )
   (process-drawable-from-entity! this arg0)
   (initialize-skeleton this *junglesnake-sg* '())
@@ -761,13 +741,13 @@ junglesnake-default-event-handler
         )
   (set! (-> this part) (create-launch-control (-> *part-group-id-table* 173) this))
   (set! (-> this is-lethal?) #f)
-  (set! (-> this ry) (y-angle (-> this root-override)))
+  (set! (-> this ry) (y-angle (-> this root)))
   (set! (-> this des-ry) (-> this ry))
   (set! (-> this tilt) 0.0)
   (set! (-> this des-tilt) (-> this tilt))
   (set! (-> this track-player-ry) #f)
   (set! (-> this track-player-tilt) #f)
-  (quaternion-identity! (-> this root-override quat))
+  (quaternion-identity! (-> this root quat))
   (junglesnake-method-22 this (-> this ry))
   (junglesnake-method-21 this)
   (logior! (-> this skel status) (janim-status inited))

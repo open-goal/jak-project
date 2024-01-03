@@ -8,53 +8,48 @@
 ;; DECOMP BEGINS
 
 (deftype centipede-cam (structure)
-  ((init?            symbol         :offset-assert   0)
-   (trans            vector :inline :offset-assert  16)
-   (dir              vector :inline :offset-assert  32)
-   (track-focus-tilt float          :offset-assert  48)
+  ((init?             symbol)
+   (trans             vector  :inline)
+   (dir               vector  :inline)
+   (track-focus-tilt  float)
    )
-  :method-count-assert 9
-  :size-assert         #x34
-  :flag-assert         #x900000034
   )
 
 
 (deftype centipede (nav-enemy)
-  ((id                     int8                     :offset-assert 604)
-   (anim-ctr               int8                     :offset-assert 605)
-   (focus-pos-hist-count   int8                     :offset-assert 606)
-   (legs-sound             ambient-sound            :offset-assert 608)
-   (grabbed-focus?         symbol                   :offset-assert 612)
-   (using-chan1-effects?   symbol                   :offset-assert 616)
-   (set-camera-mode?       symbol                   :offset-assert 620)
-   (talking-volume         float                    :offset-assert 624)
-   (desired-talking-volume float                    :offset-assert 628)
-   (legs-volume            float                    :offset-assert 632)
-   (focus-gnd-height       float                    :offset-assert 636)
-   (track-focus-tilt       float                    :offset-assert 640)
-   (bobbing-intensity      float                    :offset-assert 644)
-   (bobbing                trsqv                    :offset-assert 648)
-   (src-quat               quaternion    :inline    :offset-assert 656)
-   (dest-quat              quaternion    :inline    :offset-assert 672)
-   (cam                    centipede-cam :inline    :offset-assert 688)
-   (focus-pos-hist         vector        15 :inline :offset-assert 752)
+  ((id                      int8)
+   (anim-ctr                int8)
+   (focus-pos-hist-count    int8)
+   (legs-sound              ambient-sound)
+   (grabbed-focus?          symbol)
+   (using-chan1-effects?    symbol)
+   (set-camera-mode?        symbol)
+   (talking-volume          float)
+   (desired-talking-volume  float)
+   (legs-volume             float)
+   (focus-gnd-height        float)
+   (track-focus-tilt        float)
+   (bobbing-intensity       float)
+   (bobbing                 trsqv)
+   (src-quat                quaternion     :inline)
+   (dest-quat               quaternion     :inline)
+   (cam                     centipede-cam  :inline)
+   (focus-pos-hist          vector         15 :inline)
    )
-  :heap-base #x360
-  :method-count-assert 189
-  :size-assert         #x3e0
-  :flag-assert         #xbd036003e0
+  (:state-methods
+    attack
+    attack-failed
+    hidden
+    grab-cam
+    thru-grating
+    )
   (:methods
-    (attack () _type_ :state 178)
-    (attack-failed () _type_ :state 179)
-    (hidden () _type_ :state 180)
-    (grab-cam () _type_ :state 181)
-    (thru-grating () _type_ :state 182)
-    (centipede-method-183 (_type_) none 183)
-    (set-chan1-effects (_type_) none 184)
-    (target-close? (_type_) symbol 185)
-    (centipede-method-186 (_type_) none 186)
-    (centipede-method-187 (_type_) none 187)
-    (centipede-method-188 (_type_) none 188)
+    (centipede-method-183 (_type_) none)
+    (set-chan1-effects (_type_) none)
+    (target-close? (_type_) symbol)
+    (centipede-method-186 (_type_) none)
+    (centipede-method-187 (_type_) none)
+    (centipede-method-188 (_type_) none)
     )
   )
 
@@ -176,7 +171,7 @@
 
 (set! (-> *centipede-nav-enemy-info* fact-defaults) *fact-info-enemy-defaults*)
 
-(defmethod general-event-handler centipede ((this centipede) (arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+(defmethod general-event-handler ((this centipede) (arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
   "Handles various events for the enemy
 @TODO - unsure if there is a pattern for the events and this should have a more specific name"
   (case arg2
@@ -190,7 +185,7 @@
   )
 
 ;; WARN: Return type mismatch nav-enemy vs centipede.
-(defmethod relocate centipede ((this centipede) (arg0 int))
+(defmethod relocate ((this centipede) (arg0 int))
   (if (nonzero? (-> this bobbing))
       (&+! (-> this bobbing) arg0)
       )
@@ -200,7 +195,7 @@
   (the-as centipede ((method-of-type nav-enemy relocate) this arg0))
   )
 
-(defmethod deactivate centipede ((this centipede))
+(defmethod deactivate ((this centipede))
   (when (-> this set-camera-mode?)
     (set! (-> this set-camera-mode?) #f)
     (remove-setting-by-arg0 *setting-control* 'mode-name)
@@ -213,7 +208,7 @@
   )
 
 ;; WARN: Return type mismatch float vs none.
-(defmethod centipede-method-187 centipede ((this centipede))
+(defmethod centipede-method-187 ((this centipede))
   (let ((centipede-cam (-> this cam)))
     (let ((cam-dir (new 'stack-no-clear 'vector)))
       (set! (-> cam-dir quad) (-> centipede-cam dir quad))
@@ -313,7 +308,7 @@
   (none)
   )
 
-(defmethod centipede-method-188 centipede ((this centipede))
+(defmethod centipede-method-188 ((this centipede))
   (local-vars (s5-0 art-element))
   (let ((janim (if (> (-> this skel active-channels) 0)
                    (-> this skel root-channel 0 frame-group)
@@ -431,7 +426,7 @@
   (none)
   )
 
-(defmethod set-chan1-effects centipede ((this centipede))
+(defmethod set-chan1-effects ((this centipede))
   (when (-> this using-chan1-effects?)
     (set! (-> this using-chan1-effects?) #f)
     (let ((v1-2 (-> this skel effect)))
@@ -443,7 +438,7 @@
   )
 
 ;; WARN: Return type mismatch quaternion vs none.
-(defmethod nav-enemy-method-142 centipede ((this centipede) (arg0 nav-control))
+(defmethod nav-enemy-method-142 ((this centipede) (arg0 nav-control))
   (let ((t9-0 (method-of-type nav-enemy nav-enemy-method-142)))
     (t9-0 this arg0)
     )
@@ -507,12 +502,12 @@
   (none)
   )
 
-(defmethod coin-flip? centipede ((this centipede))
+(defmethod coin-flip? ((this centipede))
   "@returns The result of a 50/50 RNG roll"
   #f
   )
 
-(defmethod in-aggro-range? centipede ((this centipede) (arg0 process-focusable) (arg1 vector))
+(defmethod in-aggro-range? ((this centipede) (arg0 process-focusable) (arg1 vector))
   "Should the enemy activate.
 - if `activate-distance` is `0.0`, always true
 - otherwise, check if the provided process is close enough
@@ -543,7 +538,7 @@
   )
 
 ;; WARN: Return type mismatch process vs process-focusable.
-(defmethod get-enemy-target centipede ((this centipede))
+(defmethod get-enemy-target ((this centipede))
   "@returns the [[process-focusable]] that the enemy is currently focusing on, or [[#f]] otherwise"
   (let ((v0-0 (handle->process (-> this focus handle))))
     (if (and v0-0 (focus-test? (the-as process-focusable v0-0) disable dead grabbed))
@@ -553,7 +548,7 @@
     )
   )
 
-(defmethod target-close? centipede ((this centipede))
+(defmethod target-close? ((this centipede))
   "Is the target close enough to attack?"
   (let ((targ (get-enemy-target this)))
     (when targ
@@ -569,7 +564,7 @@
     )
   )
 
-(defmethod centipede-method-183 centipede ((this centipede))
+(defmethod centipede-method-183 ((this centipede))
   (when (not (and (-> this next-state) (= (-> this next-state name) 'thru-grating)))
     (centipede-method-187 this)
     (when (= (-> this id) 2)
@@ -614,7 +609,7 @@
   (none)
   )
 
-(defmethod track-target! centipede ((this centipede))
+(defmethod track-target! ((this centipede))
   "Does a lot of various things relating to interacting with the target
 - tracks when the enemy was last drawn
 - looks at the target and handles attacking
@@ -694,7 +689,7 @@
   )
 
 ;; WARN: Return type mismatch object vs none.
-(defmethod go-idle centipede ((this centipede))
+(defmethod go-idle ((this centipede))
   (case (-> this id)
     ((1)
      (cond
@@ -982,7 +977,7 @@
   )
 
 ;; WARN: Return type mismatch quaternion vs none.
-(defmethod centipede-method-186 centipede ((this centipede))
+(defmethod centipede-method-186 ((this centipede))
   (let ((proc (handle->process (-> this focus handle))))
     (when proc
       (set! (-> this focus-pos quad) (-> (get-trans (the-as process-focusable proc) 0) quad))
@@ -1171,7 +1166,7 @@
   )
 
 ;; WARN: Return type mismatch collide-shape-moving vs none.
-(defmethod init-enemy-collision! centipede ((this centipede))
+(defmethod init-enemy-collision! ((this centipede))
   "Initializes the [[collide-shape-moving]] and any ancillary tasks to make the enemy collide properly"
   (let ((s5-0 (new 'process 'collide-shape-moving this (collide-list-enum usually-hit-by-player))))
     (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
@@ -1262,7 +1257,7 @@
   (none)
   )
 
-(defmethod init-enemy! centipede ((this centipede))
+(defmethod init-enemy! ((this centipede))
   "Common method called to initialize the enemy, typically sets up default field values and calls ancillary helper methods"
   (set! (-> this id) (res-lump-value (-> this entity) 'extra-id int :time -1000000000.0))
   (set! (-> this cam init?) #t)

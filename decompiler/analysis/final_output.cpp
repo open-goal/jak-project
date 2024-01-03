@@ -178,7 +178,9 @@ std::string final_defun_out(const Function& func,
     auto method_info =
         dts.ts.lookup_method(func.guessed_name.type_name, func.guessed_name.method_id);
     top.push_back(pretty_print::to_symbol(method_info.name));
-    top.push_back(pretty_print::to_symbol(func.guessed_name.type_name));
+    if (method_info.name == "new") {
+      top.push_back(pretty_print::to_symbol(func.guessed_name.type_name));
+    }
     top.push_back(arguments);
     auto top_form = pretty_print::build_list(top);
 

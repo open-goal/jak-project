@@ -205,22 +205,20 @@
 
 ;; definition of type strip-game-crate
 (deftype strip-game-crate (process-drawable)
-  ((local-offset vector :inline :offset-assert 208)
-   (swing-angle  vector :inline :offset-assert 224)
+  ((local-offset  vector  :inline)
+   (swing-angle   vector  :inline)
    )
-  :heap-base #x70
-  :method-count-assert 23
-  :size-assert         #xf0
-  :flag-assert         #x17007000f0
+  (:state-methods
+    idle
+    final-position
+    )
   (:methods
-    (idle () _type_ :state 20)
-    (final-position () _type_ :state 21)
-    (strip-game-crate-method-22 (_type_ vector quaternion) none 22)
+    (strip-game-crate-method-22 (_type_ vector quaternion) none)
     )
   )
 
 ;; definition for method 3 of type strip-game-crate
-(defmethod inspect strip-game-crate ((this strip-game-crate))
+(defmethod inspect ((this strip-game-crate))
   (when (not this)
     (set! this this)
     (goto cfg-4)
@@ -282,7 +280,7 @@
 ;; definition for method 22 of type strip-game-crate
 ;; INFO: Used lq/sq
 ;; WARN: Return type mismatch vector vs none.
-(defmethod strip-game-crate-method-22 strip-game-crate ((this strip-game-crate) (arg0 vector) (arg1 quaternion))
+(defmethod strip-game-crate-method-22 ((this strip-game-crate) (arg0 vector) (arg1 quaternion))
   (set! (-> this root trans quad) (-> arg0 quad))
   (let ((s4-0 (new 'stack-no-clear 'quaternion)))
     (quaternion-rotate-z! s4-0 arg1 (-> this swing-angle z))
@@ -337,25 +335,21 @@
 
 ;; definition of type crane
 (deftype crane (process-drawable)
-  ((angle-vel  float                              :offset-assert 200)
-   (angle      float                              :offset-assert 204)
-   (init-quat  quaternion                 :inline :offset-assert 208)
-   (final-quat quaternion                 :inline :offset-assert 224)
-   (crate      (pointer strip-game-crate)         :offset-assert 240)
+  ((angle-vel   float)
+   (angle       float)
+   (init-quat   quaternion  :inline)
+   (final-quat  quaternion  :inline)
+   (crate       (pointer strip-game-crate))
    )
-  :heap-base #x80
-  :method-count-assert 23
-  :size-assert         #xf4
-  :flag-assert         #x17008000f4
-  (:methods
-    (idle () _type_ :state 20)
-    (swinging () _type_ :state 21)
-    (final-position () _type_ :state 22)
+  (:state-methods
+    idle
+    swinging
+    final-position
     )
   )
 
 ;; definition for method 3 of type crane
-(defmethod inspect crane ((this crane))
+(defmethod inspect ((this crane))
   (when (not this)
     (set! this this)
     (goto cfg-4)
@@ -373,7 +367,7 @@
   )
 
 ;; definition for method 10 of type crane
-(defmethod deactivate crane ((this crane))
+(defmethod deactivate ((this crane))
   (if (-> this crate)
       (deactivate (-> this crate 0))
       )
@@ -443,7 +437,7 @@
       (quaternion-rotate-y! (-> self root quat) (-> self init-quat) f0-5)
       )
     (ja-post)
-    (let ((a1-2 (vector<-cspace! (new 'stack-no-clear 'vector) (joint-node-index crane-lod0-jg gamecrate))))
+    (let ((a1-2 (vector<-cspace! (new 'stack-no-clear 'vector) (joint-node crane-lod0-jg gamecrate))))
       (strip-game-crate-method-22 (-> self crate 0) a1-2 (-> self root quat))
       )
     )
@@ -457,7 +451,7 @@
     (quaternion-copy! (-> self root quat) (-> self final-quat))
     (when (-> self crate)
       (send-event (ppointer->process (-> self crate)) 'go-final)
-      (let ((a1-3 (vector<-cspace! (new 'stack-no-clear 'vector) (joint-node-index crane-lod0-jg gamecrate))))
+      (let ((a1-3 (vector<-cspace! (new 'stack-no-clear 'vector) (joint-node crane-lod0-jg gamecrate))))
         (strip-game-crate-method-22 (-> self crate 0) a1-3 (-> self root quat))
         )
       )
@@ -468,7 +462,7 @@
 
 ;; definition for method 11 of type crane
 ;; WARN: Return type mismatch object vs none.
-(defmethod init-from-entity! crane ((this crane) (arg0 entity-actor))
+(defmethod init-from-entity! ((this crane) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
 - stack size
@@ -499,21 +493,17 @@ This commonly includes things such as:
 
 ;; definition of type cranecrate
 (deftype cranecrate (process-drawable)
-  ((root                     collide-shape    :override)
-   (unknown-pad-n12jn3123123 int32         52 :offset-assert 200)
+  ((root                      collide-shape :override)
+   (unknown-pad-n12jn3123123  int32          52)
    )
-  :heap-base #x120
-  :method-count-assert 22
-  :size-assert         #x198
-  :flag-assert         #x1601200198
-  (:methods
-    (idle () _type_ :state 20)
-    (hidden () _type_ :state 21)
+  (:state-methods
+    idle
+    hidden
     )
   )
 
 ;; definition for method 3 of type cranecrate
-(defmethod inspect cranecrate ((this cranecrate))
+(defmethod inspect ((this cranecrate))
   (when (not this)
     (set! this this)
     (goto cfg-4)
@@ -563,7 +553,7 @@ This commonly includes things such as:
 ;; definition for method 11 of type cranecrate
 ;; INFO: Used lq/sq
 ;; WARN: Return type mismatch object vs none.
-(defmethod init-from-entity! cranecrate ((this cranecrate) (arg0 entity-actor))
+(defmethod init-from-entity! ((this cranecrate) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
 - stack size
@@ -615,23 +605,21 @@ This commonly includes things such as:
 
 ;; definition of type grunt-egg
 (deftype grunt-egg (process-drawable)
-  ((idle-anim-player idle-control :inline :offset-assert 208)
-   (attack-id        uint32               :offset-assert 224)
+  ((idle-anim-player  idle-control  :inline)
+   (attack-id         uint32)
    )
-  :heap-base #x70
-  :method-count-assert 24
-  :size-assert         #xe4
-  :flag-assert         #x18007000e4
+  (:state-methods
+    idle
+    die
+    )
   (:methods
-    (idle () _type_ :state 20)
-    (die () _type_ :state 21)
-    (grunt-egg-method-22 (_type_) none 22)
-    (grunt-egg-method-23 (_type_) vector4w-2 23)
+    (grunt-egg-method-22 (_type_) none)
+    (grunt-egg-method-23 (_type_) vector4w-2)
     )
   )
 
 ;; definition for method 3 of type grunt-egg
-(defmethod inspect grunt-egg ((this grunt-egg))
+(defmethod inspect ((this grunt-egg))
   (when (not this)
     (set! this this)
     (goto cfg-4)
@@ -759,7 +747,7 @@ This commonly includes things such as:
 
 ;; definition for method 11 of type grunt-egg
 ;; WARN: Return type mismatch object vs none.
-(defmethod init-from-entity! grunt-egg ((this grunt-egg) (arg0 entity-actor))
+(defmethod init-from-entity! ((this grunt-egg) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
 - stack size
@@ -818,14 +806,10 @@ This commonly includes things such as:
 ;; definition of type grunt-egg-a
 (deftype grunt-egg-a (grunt-egg)
   ()
-  :heap-base #x70
-  :method-count-assert 24
-  :size-assert         #xe4
-  :flag-assert         #x18007000e4
   )
 
 ;; definition for method 3 of type grunt-egg-a
-(defmethod inspect grunt-egg-a ((this grunt-egg-a))
+(defmethod inspect ((this grunt-egg-a))
   (when (not this)
     (set! this this)
     (goto cfg-4)
@@ -840,14 +824,10 @@ This commonly includes things such as:
 ;; definition of type grunt-egg-b
 (deftype grunt-egg-b (grunt-egg)
   ()
-  :heap-base #x70
-  :method-count-assert 24
-  :size-assert         #xe4
-  :flag-assert         #x18007000e4
   )
 
 ;; definition for method 3 of type grunt-egg-b
-(defmethod inspect grunt-egg-b ((this grunt-egg-b))
+(defmethod inspect ((this grunt-egg-b))
   (when (not this)
     (set! this this)
     (goto cfg-4)
@@ -862,14 +842,10 @@ This commonly includes things such as:
 ;; definition of type grunt-egg-c
 (deftype grunt-egg-c (grunt-egg)
   ()
-  :heap-base #x70
-  :method-count-assert 24
-  :size-assert         #xe4
-  :flag-assert         #x18007000e4
   )
 
 ;; definition for method 3 of type grunt-egg-c
-(defmethod inspect grunt-egg-c ((this grunt-egg-c))
+(defmethod inspect ((this grunt-egg-c))
   (when (not this)
     (set! this this)
     (goto cfg-4)
@@ -884,14 +860,10 @@ This commonly includes things such as:
 ;; definition of type grunt-egg-d
 (deftype grunt-egg-d (grunt-egg)
   ()
-  :heap-base #x70
-  :method-count-assert 24
-  :size-assert         #xe4
-  :flag-assert         #x18007000e4
   )
 
 ;; definition for method 3 of type grunt-egg-d
-(defmethod inspect grunt-egg-d ((this grunt-egg-d))
+(defmethod inspect ((this grunt-egg-d))
   (when (not this)
     (set! this this)
     (goto cfg-4)
@@ -905,7 +877,7 @@ This commonly includes things such as:
 
 ;; definition for method 22 of type grunt-egg-a
 ;; WARN: Return type mismatch draw-control vs none.
-(defmethod grunt-egg-method-22 grunt-egg-a ((this grunt-egg-a))
+(defmethod grunt-egg-method-22 ((this grunt-egg-a))
   (initialize-skeleton
     this
     (the-as skeleton-group (art-group-get-by-name *level* "skel-grunt-egg-a" (the-as (pointer uint32) #f)))
@@ -915,13 +887,13 @@ This commonly includes things such as:
   )
 
 ;; definition for method 23 of type grunt-egg-a
-(defmethod grunt-egg-method-23 grunt-egg-a ((this grunt-egg-a))
+(defmethod grunt-egg-method-23 ((this grunt-egg-a))
   *grunt-egg-a-script*
   )
 
 ;; definition for method 22 of type grunt-egg-b
 ;; WARN: Return type mismatch connection vs none.
-(defmethod grunt-egg-method-22 grunt-egg-b ((this grunt-egg-b))
+(defmethod grunt-egg-method-22 ((this grunt-egg-b))
   (initialize-skeleton
     this
     (the-as skeleton-group (art-group-get-by-name *level* "skel-grunt-egg-b" (the-as (pointer uint32) #f)))
@@ -933,13 +905,13 @@ This commonly includes things such as:
   )
 
 ;; definition for method 23 of type grunt-egg-b
-(defmethod grunt-egg-method-23 grunt-egg-b ((this grunt-egg-b))
+(defmethod grunt-egg-method-23 ((this grunt-egg-b))
   *grunt-egg-b-script*
   )
 
 ;; definition for method 22 of type grunt-egg-c
 ;; WARN: Return type mismatch connection vs none.
-(defmethod grunt-egg-method-22 grunt-egg-c ((this grunt-egg-c))
+(defmethod grunt-egg-method-22 ((this grunt-egg-c))
   (initialize-skeleton
     this
     (the-as skeleton-group (art-group-get-by-name *level* "skel-grunt-egg-c" (the-as (pointer uint32) #f)))
@@ -950,13 +922,13 @@ This commonly includes things such as:
   )
 
 ;; definition for method 23 of type grunt-egg-c
-(defmethod grunt-egg-method-23 grunt-egg-c ((this grunt-egg-c))
+(defmethod grunt-egg-method-23 ((this grunt-egg-c))
   *grunt-egg-c-script*
   )
 
 ;; definition for method 22 of type grunt-egg-d
 ;; WARN: Return type mismatch connection vs none.
-(defmethod grunt-egg-method-22 grunt-egg-d ((this grunt-egg-d))
+(defmethod grunt-egg-method-22 ((this grunt-egg-d))
   (initialize-skeleton
     this
     (the-as skeleton-group (art-group-get-by-name *level* "skel-grunt-egg-d" (the-as (pointer uint32) #f)))
@@ -967,6 +939,6 @@ This commonly includes things such as:
   )
 
 ;; definition for method 23 of type grunt-egg-d
-(defmethod grunt-egg-method-23 grunt-egg-d ((this grunt-egg-d))
+(defmethod grunt-egg-method-23 ((this grunt-egg-d))
   *grunt-egg-d-script*
   )

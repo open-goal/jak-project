@@ -3,13 +3,9 @@
 
 ;; definition of type double-lurker-top
 (deftype double-lurker-top (nav-enemy)
-  ((parent-process (pointer double-lurker)         :offset         12)
-   (fall-dest      vector                  :inline :offset-assert 400)
+  ((parent-process  (pointer double-lurker)  :overlay-at parent)
+   (fall-dest       vector                   :inline)
    )
-  :heap-base #x130
-  :method-count-assert 76
-  :size-assert         #x1a0
-  :flag-assert         #x4c013001a0
   (:states
     (double-lurker-top-knocked-down object vector vector)
     double-lurker-top-on-shoulders
@@ -19,7 +15,7 @@
   )
 
 ;; definition for method 3 of type double-lurker-top
-(defmethod inspect double-lurker-top ((this double-lurker-top))
+(defmethod inspect ((this double-lurker-top))
   (let ((t9-0 (method-of-type nav-enemy inspect)))
     (t9-0 this)
     )
@@ -29,19 +25,15 @@
 
 ;; definition of type double-lurker
 (deftype double-lurker (nav-enemy)
-  ((knocked-back-speed  float   :offset-assert 400)
-   (buddy-on-shoulders? symbol  :offset-assert 404)
-   (dead?               symbol  :offset-assert 408)
-   (buddy-dead?         symbol  :offset-assert 412)
-   (buddy-handle        handle  :offset-assert 416)
+  ((knocked-back-speed   float)
+   (buddy-on-shoulders?  symbol)
+   (dead?                symbol)
+   (buddy-dead?          symbol)
+   (buddy-handle         handle)
    )
-  :heap-base #x140
-  :method-count-assert 76
-  :size-assert         #x1a8
-  :flag-assert         #x4c014001a8
   (:methods
-    (initialize-collision (_type_) collide-shape-moving :replace 47)
-    (double-lurker-method-53 (_type_ vector) symbol :replace 53)
+    (initialize-collision (_type_) collide-shape-moving :replace)
+    (double-lurker-method-53 (_type_ vector) symbol :overlay-at nav-enemy-method-53)
     )
   (:states
     double-lurker-both-knocked-back
@@ -55,7 +47,7 @@
   )
 
 ;; definition for method 3 of type double-lurker
-(defmethod inspect double-lurker ((this double-lurker))
+(defmethod inspect ((this double-lurker))
   (let ((t9-0 (method-of-type nav-enemy inspect)))
     (t9-0 this)
     )
@@ -413,7 +405,7 @@
   )
 
 ;; definition for method 51 of type double-lurker-top
-(defmethod nav-enemy-method-51 double-lurker-top ((this double-lurker-top))
+(defmethod nav-enemy-method-51 ((this double-lurker-top))
   (restore-collide-with-as (-> this collide-info))
   (logior! (-> this collide-info nav-flags) (nav-flags navf0))
   (nav-control-method-27 (-> this nav))
@@ -421,7 +413,7 @@
   )
 
 ;; definition for method 47 of type double-lurker-top
-(defmethod initialize-collision double-lurker-top ((this double-lurker-top))
+(defmethod initialize-collision ((this double-lurker-top))
   (let ((s5-0 (new 'process 'collide-shape-moving this (collide-list-enum hit-by-player))))
     (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s5-0 reaction) default-collision-reaction)
@@ -494,7 +486,7 @@
 ;; definition for method 48 of type double-lurker-top
 ;; INFO: Used lq/sq
 ;; INFO: Return type mismatch nav-flags vs none.
-(defmethod nav-enemy-method-48 double-lurker-top ((this double-lurker-top))
+(defmethod nav-enemy-method-48 ((this double-lurker-top))
   (initialize-skeleton this *double-lurker-top-sg* '())
   (set! (-> this draw origin-joint-index) (the-as uint 3))
   (init-defaults! this *double-lurker-top-nav-enemy-info*)
@@ -800,7 +792,7 @@
 
 ;; definition for method 52 of type double-lurker
 ;; INFO: Used lq/sq
-(defmethod nav-enemy-method-52 double-lurker ((this double-lurker) (arg0 vector))
+(defmethod nav-enemy-method-52 ((this double-lurker) (arg0 vector))
   (nav-control-method-28 (-> this nav) (the-as collide-kind -1))
   (let ((a1-2 (new 'stack-no-clear 'vector)))
     (vector-float*! a1-2 (-> this hit-from-dir) 22937.602)
@@ -955,7 +947,7 @@
   )
 
 ;; definition for method 53 of type double-lurker
-(defmethod double-lurker-method-53 double-lurker ((this double-lurker) (arg0 vector))
+(defmethod double-lurker-method-53 ((this double-lurker) (arg0 vector))
   (let* ((s3-0 (-> this path curve num-cverts))
          (s4-0 (rand-vu-int-count s3-0))
          )
@@ -971,7 +963,7 @@
   )
 
 ;; definition for method 47 of type double-lurker
-(defmethod initialize-collision double-lurker ((this double-lurker))
+(defmethod initialize-collision ((this double-lurker))
   (let ((s5-0 (new 'process 'collide-shape-moving this (collide-list-enum hit-by-player))))
     (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s5-0 reaction) default-collision-reaction)
@@ -1066,7 +1058,7 @@
 
 ;; definition for method 51 of type double-lurker
 ;; INFO: Return type mismatch symbol vs none.
-(defmethod nav-enemy-method-51 double-lurker ((this double-lurker))
+(defmethod nav-enemy-method-51 ((this double-lurker))
   (let ((v1-1 (-> this collide-info root-prim)))
     (let ((a0-1 0))
       (dotimes (a1-0 3)
@@ -1094,7 +1086,7 @@
 ;; definition for method 48 of type double-lurker
 ;; INFO: Used lq/sq
 ;; INFO: Return type mismatch float vs none.
-(defmethod nav-enemy-method-48 double-lurker ((this double-lurker))
+(defmethod nav-enemy-method-48 ((this double-lurker))
   (set! (-> this buddy-handle) (the-as handle #f))
   (process-drawable-from-entity! this (-> this entity))
   (set! (-> this align) (new 'process 'align-control this))
@@ -1152,7 +1144,7 @@
 
 ;; definition for method 11 of type double-lurker
 ;; INFO: Return type mismatch object vs none.
-(defmethod init-from-entity! double-lurker ((this double-lurker) (arg0 entity-actor))
+(defmethod init-from-entity! ((this double-lurker) (arg0 entity-actor))
   (initialize-collision this)
   (nav-enemy-method-48 this)
   (if (-> this dead?)

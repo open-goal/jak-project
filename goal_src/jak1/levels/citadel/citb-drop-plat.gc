@@ -33,22 +33,18 @@
               )
 
 (deftype drop-plat (process-drawable)
-  ((root-override collide-shape-moving         :offset        112)
-   (spin-axis     vector               :inline :offset-assert 176)
-   (spin-angle    float                        :offset-assert 192)
-   (spin-speed    float                        :offset-assert 196)
-   (interp        float                        :offset-assert 200)
-   (duration      time-frame                   :offset-assert 208)
-   (delay         time-frame                   :offset-assert 216)
-   (color         int8                         :offset-assert 224)
+  ((root        collide-shape-moving :override)
+   (spin-axis   vector                :inline)
+   (spin-angle  float)
+   (spin-speed  float)
+   (interp      float)
+   (duration    time-frame)
+   (delay       time-frame)
+   (color       int8)
    )
-  :heap-base #x80
-  :method-count-assert 22
-  :size-assert         #xe1
-  :flag-assert         #x16008000e1
   (:methods
-    (drop-plat-method-20 (_type_) none 20)
-    (drop-plat-method-21 (_type_) none 21)
+    (drop-plat-method-20 (_type_) none)
+    (drop-plat-method-21 (_type_) none)
     )
   (:states
     drop-plat-die
@@ -76,7 +72,7 @@
     )
   :code (behavior ()
     (suspend)
-    (update-transforms! (-> self root-override))
+    (update-transforms! (-> self root))
     (set-time! (-> self state-time))
     (logior! (-> self mask) (process-mask actor-pause))
     (loop
@@ -91,11 +87,12 @@
 
 (defbehavior drop-plat-set-fade drop-plat ()
   (let ((f0-1
-          (fmin 1.0 (* 0.000012207031 (- (-> self root-override trans y)
-                                         (+ -204800.0 (-> (the-as process-drawable (-> self parent 0)) root trans y))
-                                         )
-                       )
-                )
+          (fmin
+            1.0
+            (* 0.000012207031
+               (- (-> self root trans y) (+ -204800.0 (-> (the-as process-drawable (-> self parent 0)) root trans y)))
+               )
+            )
           )
         )
     (set-vector! (-> self draw color-mult) f0-1 f0-1 f0-1 1.0)
@@ -113,9 +110,7 @@
       )
     )
   :code (behavior ()
-    (set! (-> self root-override trans y)
-          (+ -204800.0 (-> (the-as process-drawable (-> self parent 0)) root trans y))
-          )
+    (set! (-> self root trans y) (+ -204800.0 (-> (the-as process-drawable (-> self parent 0)) root trans y)))
     (logior! (-> self draw status) (draw-status hidden))
     (ja-post)
     (set-time! (-> self state-time))
@@ -145,19 +140,17 @@
     (set! (-> self interp) 1.0)
     (set-time! (-> self state-time))
     (set! (-> self spin-angle) 0.0)
-    (set! (-> self root-override trans y)
-          (+ -204800.0 (-> (the-as process-drawable (-> self parent 0)) root trans y))
-          )
+    (set! (-> self root trans y) (+ -204800.0 (-> (the-as process-drawable (-> self parent 0)) root trans y)))
     (let ((gp-0 (new 'stack-no-clear 'vector))
           (s5-0 #f)
           )
-      (set! (-> gp-0 quad) (-> self root-override trans quad))
+      (set! (-> gp-0 quad) (-> self root trans quad))
       (set! (-> gp-0 y) (-> (the-as process-drawable (-> self parent 0)) root trans y))
       (loop
         (let ((f0-6 (fmax 0.0 (- 1.0 (* 0.0033333334 (the float (- (current-time) (-> self state-time))))))))
           (set! (-> self interp) (* f0-6 f0-6))
           )
-        (set! (-> self root-override trans y)
+        (set! (-> self root trans y)
               (- (-> (the-as process-drawable (-> self parent 0)) root trans y) (* 204800.0 (-> self interp)))
               )
         (when (and (not s5-0) (< (-> self interp) 0.05))
@@ -165,7 +158,7 @@
           (sound-play "bridge-piece-up" :position (the-as symbol gp-0))
           )
         (set! (-> self spin-angle) (* 10.0 (-> self spin-speed) (-> self interp)))
-        (if (= (-> (the-as process-drawable (-> self parent 0)) root trans y) (-> self root-override trans y))
+        (if (= (-> (the-as process-drawable (-> self parent 0)) root trans y) (-> self root trans y))
             (go drop-plat-idle)
             )
         (suspend)
@@ -175,7 +168,7 @@
   :post (behavior ()
     (let ((gp-0 (new 'stack-no-clear 'quaternion)))
       (quaternion-vector-angle! gp-0 (-> self spin-axis) (-> self spin-angle))
-      (quaternion*! (-> self root-override quat) (-> (the-as process-drawable (-> self parent 0)) root quat) gp-0)
+      (quaternion*! (-> self root quat) (-> (the-as process-drawable (-> self parent 0)) root quat) gp-0)
       )
     (drop-plat-set-fade)
     (transform-post)
@@ -184,7 +177,7 @@
 
 (defstate drop-plat-drop (drop-plat)
   :code (behavior ()
-    (when (= (-> (the-as process-drawable (-> self parent 0)) root trans y) (-> self root-override trans y))
+    (when (= (-> (the-as process-drawable (-> self parent 0)) root trans y) (-> self root trans y))
       (set-time! (-> self state-time))
       (sound-play "bridge-piece-dn")
       (let ((gp-1 (the int (* 300.0 (rand-vu-float-range 0.2 0.3)))))
@@ -196,14 +189,9 @@
         )
       )
     (loop
-      (vector-v++!
-        (-> self root-override transv)
-        (compute-acc-due-to-gravity (-> self root-override) (new-stack-vector0) 0.0)
-        )
-      (vector-v++! (-> self root-override trans) (-> self root-override transv))
-      (if (< 204800.0
-             (- (-> (the-as process-drawable (-> self parent 0)) root trans y) (-> self root-override trans y))
-             )
+      (vector-v++! (-> self root transv) (compute-acc-due-to-gravity (-> self root) (new-stack-vector0) 0.0))
+      (vector-v++! (-> self root trans) (-> self root transv))
+      (if (< 204800.0 (- (-> (the-as process-drawable (-> self parent 0)) root trans y) (-> self root trans y)))
           (go drop-plat-die)
           )
       (+! (-> self spin-angle) (* (-> self spin-speed) (seconds-per-frame)))
@@ -213,7 +201,7 @@
   :post (behavior ()
     (let ((gp-0 (new 'stack-no-clear 'quaternion)))
       (quaternion-vector-angle! gp-0 (-> self spin-axis) (-> self spin-angle))
-      (quaternion*! (-> self root-override quat) (-> (the-as process-drawable (-> self parent 0)) root quat) gp-0)
+      (quaternion*! (-> self root quat) (-> (the-as process-drawable (-> self parent 0)) root quat) gp-0)
       )
     (drop-plat-set-fade)
     (transform-post)
@@ -226,7 +214,7 @@
     )
   )
 
-(defmethod drop-plat-method-20 drop-plat ((this drop-plat))
+(defmethod drop-plat-method-20 ((this drop-plat))
   (let ((s5-0 (new 'process 'collide-shape-moving this (collide-list-enum hit-by-player))))
     (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s5-0 reaction) default-collision-reaction)
@@ -245,13 +233,13 @@
       )
     (set! (-> s5-0 nav-radius) (* 0.75 (-> s5-0 root-prim local-sphere w)))
     (backup-collide-with-as s5-0)
-    (set! (-> this root-override) s5-0)
+    (set! (-> this root) s5-0)
     )
   0
   (none)
   )
 
-(defmethod drop-plat-method-21 drop-plat ((this drop-plat))
+(defmethod drop-plat-method-21 ((this drop-plat))
   (case (-> this color)
     ((1)
      (initialize-skeleton this *citb-drop-plat-red-sg* '())
@@ -297,44 +285,37 @@
   (set! (-> self delay) arg1)
   (set! (-> self duration) arg2)
   (drop-plat-method-20 self)
-  (set! (-> self root-override trans quad) (-> arg0 quad))
-  (vector-identity! (-> self root-override scale))
-  (quaternion-copy! (-> self root-override quat) (-> (the-as process-drawable (-> self parent 0)) root quat))
+  (set! (-> self root trans quad) (-> arg0 quad))
+  (vector-identity! (-> self root scale))
+  (quaternion-copy! (-> self root quat) (-> (the-as process-drawable (-> self parent 0)) root quat))
   (drop-plat-method-21 self)
   (go drop-plat-spawn)
   (none)
   )
 
 (deftype handle-inline-array (inline-array-class)
-  ((data handle :dynamic :offset-assert  16)
+  ((data  handle  :dynamic)
    )
-  :method-count-assert 9
-  :size-assert         #x10
-  :flag-assert         #x900000010
   )
 
 
 (set! (-> handle-inline-array heap-base) (the-as uint 8))
 
 (deftype citb-drop-plat (process-drawable)
-  ((x-count           int32                       :offset-assert 176)
-   (z-count           int32                       :offset-assert 180)
-   (child-count       int32                       :offset-assert 184)
-   (child-array       handle-inline-array         :offset-assert 188)
-   (child-color-array (pointer int8)              :offset-assert 192)
-   (x-dir             vector              :inline :offset-assert 208)
-   (z-dir             vector              :inline :offset-assert 224)
-   (origin            vector              :inline :offset-assert 240)
-   (x-spacing         float                       :offset-assert 256)
-   (z-spacing         float                       :offset-assert 260)
-   (idle-distance     float                       :offset-assert 264)
-   (duration          time-frame                  :offset-assert 272)
-   (drop-time         time-frame                  :offset-assert 280)
+  ((x-count            int32)
+   (z-count            int32)
+   (child-count        int32)
+   (child-array        handle-inline-array)
+   (child-color-array  (pointer int8))
+   (x-dir              vector  :inline)
+   (z-dir              vector  :inline)
+   (origin             vector  :inline)
+   (x-spacing          float)
+   (z-spacing          float)
+   (idle-distance      float)
+   (duration           time-frame)
+   (drop-time          time-frame)
    )
-  :heap-base #xb0
-  :method-count-assert 20
-  :size-assert         #x120
-  :flag-assert         #x1400b00120
   (:states
     citb-drop-plat-active
     citb-drop-plat-idle
@@ -342,7 +323,7 @@
   )
 
 
-(defmethod relocate citb-drop-plat ((this citb-drop-plat) (arg0 int))
+(defmethod relocate ((this citb-drop-plat) (arg0 int))
   (if (nonzero? (-> this child-array))
       (&+! (-> this child-array) arg0)
       )
@@ -491,7 +472,7 @@
     )
   )
 
-(defmethod init-from-entity! citb-drop-plat ((this citb-drop-plat) (arg0 entity-actor))
+(defmethod init-from-entity! ((this citb-drop-plat) (arg0 entity-actor))
   (set! (-> this root) (new 'process 'trsqv))
   (process-drawable-from-entity! this arg0)
   (let ((v1-2 (res-lump-data arg0 'count pointer)))

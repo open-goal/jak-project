@@ -8,23 +8,20 @@
 ;; DECOMP BEGINS
 
 (deftype ticky (structure)
-  ((delay-til-ramp    time-frame  :offset-assert   0)
-   (delay-til-timeout time-frame  :offset-assert   8)
-   (starting-time     time-frame  :offset-assert  16)
-   (last-tick-time    time-frame  :offset-assert  24)
+  ((delay-til-ramp     time-frame)
+   (delay-til-timeout  time-frame)
+   (starting-time      time-frame)
+   (last-tick-time     time-frame)
    )
-  :method-count-assert 12
-  :size-assert         #x20
-  :flag-assert         #xc00000020
   (:methods
-    (sleep (_type_ time-frame) none 9)
-    (reached-delay? (_type_ time-frame) symbol 10)
-    (completed? (_type_) symbol 11)
+    (sleep (_type_ time-frame) none)
+    (reached-delay? (_type_ time-frame) symbol)
+    (completed? (_type_) symbol)
     )
   )
 
 
-(defmethod sleep ticky ((this ticky) (arg0 time-frame))
+(defmethod sleep ((this ticky) (arg0 time-frame))
   (set-time! (-> this starting-time))
   (set! (-> this delay-til-timeout) arg0)
   (set! (-> this delay-til-ramp) (max 0 (+ arg0 (seconds -4))))
@@ -33,7 +30,7 @@
   (none)
   )
 
-(defmethod completed? ticky ((this ticky))
+(defmethod completed? ((this ticky))
   (let ((gp-0 #f))
     (let ((v1-2 (- (current-time) (-> this starting-time))))
       (cond
@@ -60,6 +57,6 @@
     )
   )
 
-(defmethod reached-delay? ticky ((this ticky) (arg0 time-frame))
+(defmethod reached-delay? ((this ticky) (arg0 time-frame))
   (time-elapsed? (-> this starting-time) arg0)
   )

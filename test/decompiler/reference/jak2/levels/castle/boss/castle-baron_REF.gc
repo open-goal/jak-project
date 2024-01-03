@@ -4,17 +4,13 @@
 ;; definition of type cboss-tractor
 (deftype cboss-tractor (process-drawable)
   ()
-  :heap-base #x50
-  :method-count-assert 21
-  :size-assert         #xc8
-  :flag-assert         #x15005000c8
-  (:methods
-    (idle () _type_ :state 20)
+  (:state-methods
+    idle
     )
   )
 
 ;; definition for method 3 of type cboss-tractor
-(defmethod inspect cboss-tractor ((this cboss-tractor))
+(defmethod inspect ((this cboss-tractor))
   (when (not this)
     (set! this this)
     (goto cfg-4)
@@ -50,7 +46,7 @@
 
 ;; definition for method 11 of type cboss-tractor
 ;; WARN: Return type mismatch object vs none.
-(defmethod init-from-entity! cboss-tractor ((this cboss-tractor) (arg0 entity-actor))
+(defmethod init-from-entity! ((this cboss-tractor) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
 - stack size
@@ -76,16 +72,12 @@ This commonly includes things such as:
 
 ;; definition of type cboss-elevator
 (deftype cboss-elevator (elevator)
-  ((sound-id sound-id  :offset-assert 368)
+  ((sound-id  sound-id)
    )
-  :heap-base #x100
-  :method-count-assert 49
-  :size-assert         #x174
-  :flag-assert         #x3101000174
   )
 
 ;; definition for method 3 of type cboss-elevator
-(defmethod inspect cboss-elevator ((this cboss-elevator))
+(defmethod inspect ((this cboss-elevator))
   (when (not this)
     (set! this this)
     (goto cfg-4)
@@ -130,13 +122,13 @@ This commonly includes things such as:
   )
 
 ;; definition for method 30 of type cboss-elevator
-(defmethod get-art-group cboss-elevator ((this cboss-elevator))
+(defmethod get-art-group ((this cboss-elevator))
   "@returns The associated [[art-group]]"
   (art-group-get-by-name *level* "skel-cboss-elevator" (the-as (pointer uint32) #f))
   )
 
 ;; definition for method 10 of type cboss-elevator
-(defmethod deactivate cboss-elevator ((this cboss-elevator))
+(defmethod deactivate ((this cboss-elevator))
   (sound-stop (-> this sound-id))
   (call-parent-method this)
   (none)
@@ -144,7 +136,7 @@ This commonly includes things such as:
 
 ;; definition for method 33 of type cboss-elevator
 ;; WARN: Return type mismatch int vs none.
-(defmethod init-plat! cboss-elevator ((this cboss-elevator))
+(defmethod init-plat! ((this cboss-elevator))
   "Does any necessary initial platform setup.
 For example for an elevator pre-compute the distance between the first and last points (both ways) and clear the sound."
   (set! (-> this sound-id) (new-sound-id))
@@ -153,7 +145,7 @@ For example for an elevator pre-compute the distance between the first and last 
   )
 
 ;; definition for method 43 of type cboss-elevator
-(defmethod move-between-points cboss-elevator ((this cboss-elevator) (arg0 vector) (arg1 float) (arg2 float))
+(defmethod move-between-points ((this cboss-elevator) (arg0 vector) (arg1 float) (arg2 float))
   "Move between two points on the elevator's path
 @param vec TODO not sure
 @param point-a The first point fetched from the elevator's path
@@ -173,7 +165,7 @@ For example for an elevator pre-compute the distance between the first and last 
   )
 
 ;; definition for method 45 of type cboss-elevator
-(defmethod commited-to-ride? cboss-elevator ((this cboss-elevator))
+(defmethod commited-to-ride? ((this cboss-elevator))
   "@returns if the target is considered within the elevator area enough to begin descending/ascending"
   (let* ((gp-0 *target*)
          (a0-2 (if (type? gp-0 process-focusable)
@@ -194,7 +186,7 @@ For example for an elevator pre-compute the distance between the first and last 
 
 ;; definition for method 31 of type cboss-elevator
 ;; WARN: Return type mismatch collide-shape-moving vs none.
-(defmethod init-plat-collision! cboss-elevator ((this cboss-elevator))
+(defmethod init-plat-collision! ((this cboss-elevator))
   "TODO - collision stuff for setting up the platform"
   (let ((s5-0 (new 'process 'collide-shape-moving this (collide-list-enum usually-hit-by-player))))
     (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
@@ -231,29 +223,27 @@ For example for an elevator pre-compute the distance between the first and last 
 
 ;; definition of type krew-boss-clone
 (deftype krew-boss-clone (nav-enemy)
-  ((old-y-deg          float               :offset-assert 604)
-   (diff-angle         degrees             :offset-assert 608)
-   (hit-target         symbol              :offset-assert 612)
-   (lightning          lightning-control 4 :offset-assert 616)
-   (wiggle-time        time-frame          :offset-assert 632)
-   (wiggle-angle       degrees             :offset-assert 640)
-   (delta-wiggle-angle degrees             :offset-assert 644)
-   (wiggle-factor      float               :offset-assert 648)
-   (id                 sound-id            :offset-assert 652)
+  ((old-y-deg           float)
+   (diff-angle          degrees)
+   (hit-target          symbol)
+   (lightning           lightning-control  4)
+   (wiggle-time         time-frame)
+   (wiggle-angle        degrees)
+   (delta-wiggle-angle  degrees)
+   (wiggle-factor       float)
+   (id                  sound-id)
    )
-  :heap-base #x210
-  :method-count-assert 181
-  :size-assert         #x290
-  :flag-assert         #xb502100290
+  (:state-methods
+    spawning
+    )
   (:methods
-    (spawning () _type_ :state 178)
-    (krew-boss-clone-method-179 (_type_ vector) none 179)
-    (krew-boss-clone-method-180 (_type_) none 180)
+    (krew-boss-clone-method-179 (_type_ vector) none)
+    (krew-boss-clone-method-180 (_type_) none)
     )
   )
 
 ;; definition for method 3 of type krew-boss-clone
-(defmethod inspect krew-boss-clone ((this krew-boss-clone))
+(defmethod inspect ((this krew-boss-clone))
   (when (not this)
     (set! this this)
     (goto cfg-4)
@@ -276,38 +266,34 @@ For example for an elevator pre-compute the distance between the first and last 
 
 ;; definition of type krew-boss
 (deftype krew-boss (nav-enemy)
-  ((task-timeout           time-frame   :offset-assert 608)
-   (movie-handle           handle       :offset-assert 616)
-   (clones                 handle     8 :offset-assert 624)
-   (last-closest-spawn     int32        :offset-assert 688)
-   (next-clone-side        int32        :offset-assert 692)
-   (next-shooting-frame    int32        :offset-assert 696)
-   (old-y-deg              float        :offset-assert 700)
-   (diff-angle             degrees      :offset-assert 704)
-   (hit-target             symbol       :offset-assert 708)
-   (floating               symbol       :offset-assert 712)
-   (next-path-point        int32        :offset-assert 716)
-   (num-clones-to-spawn    int32        :offset-assert 720)
-   (gameplay-pass          int32        :offset-assert 724)
-   (hud-handle             handle       :offset-assert 728)
-   (channel                uint8        :offset-assert 736)
-   (id                     sound-id     :offset-assert 740)
-   (play-clone-wave-speech symbol       :offset-assert 744)
-   (last-damage-time       time-frame   :offset-assert 752)
-   (spawn-charge           symbol       :offset-assert 760)
+  ((task-timeout            time-frame)
+   (movie-handle            handle)
+   (clones                  handle  8)
+   (last-closest-spawn      int32)
+   (next-clone-side         int32)
+   (next-shooting-frame     int32)
+   (old-y-deg               float)
+   (diff-angle              degrees)
+   (hit-target              symbol)
+   (floating                symbol)
+   (next-path-point         int32)
+   (num-clones-to-spawn     int32)
+   (gameplay-pass           int32)
+   (hud-handle              handle)
+   (channel                 uint8)
+   (id                      sound-id)
+   (play-clone-wave-speech  symbol)
+   (last-damage-time        time-frame)
+   (spawn-charge            symbol)
    )
-  :heap-base #x280
-  :method-count-assert 180
-  :size-assert         #x2fc
-  :flag-assert         #xb4028002fc
-  (:methods
-    (hidden () _type_ :state 178)
-    (play-intro () _type_ :state 179)
+  (:state-methods
+    hidden
+    play-intro
     )
   )
 
 ;; definition for method 3 of type krew-boss
-(defmethod inspect krew-boss ((this krew-boss))
+(defmethod inspect ((this krew-boss))
   (when (not this)
     (set! this this)
     (goto cfg-4)
@@ -817,7 +803,7 @@ For example for an elevator pre-compute the distance between the first and last 
 ;; definition for method 55 of type krew-boss-clone
 ;; INFO: Used lq/sq
 ;; WARN: Return type mismatch int vs none.
-(defmethod track-target! krew-boss-clone ((this krew-boss-clone))
+(defmethod track-target! ((this krew-boss-clone))
   "Does a lot of various things relating to interacting with the target
 - tracks when the enemy was last drawn
 - looks at the target and handles attacking
@@ -894,7 +880,7 @@ For example for an elevator pre-compute the distance between the first and last 
   )
 
 ;; definition for method 74 of type krew-boss-clone
-(defmethod general-event-handler krew-boss-clone ((this krew-boss-clone) (arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+(defmethod general-event-handler ((this krew-boss-clone) (arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
   "Handles various events for the enemy
 @TODO - unsure if there is a pattern for the events and this should have a more specific name"
   (with-pp
@@ -1023,7 +1009,7 @@ For example for an elevator pre-compute the distance between the first and last 
   )
 
 ;; definition for method 77 of type krew-boss-clone
-(defmethod enemy-method-77 krew-boss-clone ((this krew-boss-clone) (arg0 (pointer float)))
+(defmethod enemy-method-77 ((this krew-boss-clone) (arg0 (pointer float)))
   (with-pp
     (ja-channel-push! 1 0)
     (cond
@@ -1075,7 +1061,7 @@ For example for an elevator pre-compute the distance between the first and last 
   )
 
 ;; definition for method 78 of type krew-boss-clone
-(defmethod enemy-method-78 krew-boss-clone ((this krew-boss-clone) (arg0 (pointer float)))
+(defmethod enemy-method-78 ((this krew-boss-clone) (arg0 (pointer float)))
   (when (> (-> this hit-points) 0)
     (ja-channel-push! 1 (seconds 0.1))
     (let ((a0-2 (-> this skel root-channel 0)))
@@ -1105,7 +1091,7 @@ For example for an elevator pre-compute the distance between the first and last 
   )
 
 ;; definition for method 79 of type krew-boss-clone
-(defmethod enemy-method-79 krew-boss-clone ((this krew-boss-clone) (arg0 int) (arg1 enemy-knocked-info))
+(defmethod enemy-method-79 ((this krew-boss-clone) (arg0 int) (arg1 enemy-knocked-info))
   (local-vars (s5-0 symbol))
   (let ((v1-0 arg0))
     (cond
@@ -1141,7 +1127,7 @@ For example for an elevator pre-compute the distance between the first and last 
 
 ;; definition for method 180 of type krew-boss-clone
 ;; WARN: Return type mismatch int vs none.
-(defmethod krew-boss-clone-method-180 krew-boss-clone ((this krew-boss-clone))
+(defmethod krew-boss-clone-method-180 ((this krew-boss-clone))
   (let* ((f0-0 (rand-vu-float-range 0.0 1.0))
          (f1-1 (+ 1.0 (* 2.0 f0-0)))
          (f2-2 f1-1)
@@ -1158,7 +1144,7 @@ For example for an elevator pre-compute the distance between the first and last 
 ;; definition for method 179 of type krew-boss-clone
 ;; INFO: Used lq/sq
 ;; WARN: Return type mismatch int vs none.
-(defmethod krew-boss-clone-method-179 krew-boss-clone ((this krew-boss-clone) (arg0 vector))
+(defmethod krew-boss-clone-method-179 ((this krew-boss-clone) (arg0 vector))
   (rlet ((acc :class vf)
          (vf0 :class vf)
          (vf4 :class vf)
@@ -1198,7 +1184,7 @@ For example for an elevator pre-compute the distance between the first and last 
   )
 
 ;; definition for method 68 of type krew-boss-clone
-(defmethod go-stare2 krew-boss-clone ((this krew-boss-clone))
+(defmethod go-stare2 ((this krew-boss-clone))
   (go (method-of-object this hostile))
   )
 
@@ -1293,7 +1279,7 @@ For example for an elevator pre-compute the distance between the first and last 
 
 ;; definition for method 114 of type krew-boss-clone
 ;; WARN: Return type mismatch int vs none.
-(defmethod init-enemy-collision! krew-boss-clone ((this krew-boss-clone))
+(defmethod init-enemy-collision! ((this krew-boss-clone))
   "Initializes the [[collide-shape-moving]] and any ancillary tasks to make the enemy collide properly"
   (let ((s5-0 (new 'process 'collide-shape-moving this (collide-list-enum usually-hit-by-player))))
     (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
@@ -1359,14 +1345,14 @@ For example for an elevator pre-compute the distance between the first and last 
   )
 
 ;; definition for method 60 of type krew-boss-clone
-(defmethod coin-flip? krew-boss-clone ((this krew-boss-clone))
+(defmethod coin-flip? ((this krew-boss-clone))
   "@returns The result of a 50/50 RNG roll"
   #f
   )
 
 ;; definition for method 7 of type krew-boss-clone
 ;; WARN: Return type mismatch nav-enemy vs krew-boss-clone.
-(defmethod relocate krew-boss-clone ((this krew-boss-clone) (arg0 int))
+(defmethod relocate ((this krew-boss-clone) (arg0 int))
   (dotimes (v1-0 4)
     (if (nonzero? (-> this lightning v1-0))
         (&+! (-> this lightning v1-0) arg0)
@@ -1377,7 +1363,7 @@ For example for an elevator pre-compute the distance between the first and last 
 
 ;; definition for method 115 of type krew-boss-clone
 ;; WARN: Return type mismatch object vs none.
-(defmethod init-enemy! krew-boss-clone ((this krew-boss-clone))
+(defmethod init-enemy! ((this krew-boss-clone))
   "Common method called to initialize the enemy, typically sets up default field values and calls ancillary helper methods"
   (initialize-skeleton
     this
@@ -1462,14 +1448,10 @@ For example for an elevator pre-compute the distance between the first and last 
 ;; definition of type krew-boss-shot
 (deftype krew-boss-shot (guard-shot)
   ()
-  :heap-base #x170
-  :method-count-assert 40
-  :size-assert         #x1f0
-  :flag-assert         #x28017001f0
   )
 
 ;; definition for method 3 of type krew-boss-shot
-(defmethod inspect krew-boss-shot ((this krew-boss-shot))
+(defmethod inspect ((this krew-boss-shot))
   (when (not this)
     (set! this this)
     (goto cfg-4)
@@ -1491,7 +1473,7 @@ For example for an elevator pre-compute the distance between the first and last 
 
 ;; definition for method 31 of type krew-boss-shot
 ;; WARN: Return type mismatch int vs none.
-(defmethod init-proj-settings! krew-boss-shot ((this krew-boss-shot))
+(defmethod init-proj-settings! ((this krew-boss-shot))
   "Init relevant settings for the [[projectile]] such as gravity, speed, timeout, etc"
   (call-parent-method this)
   (set! (-> this move) krew-boss-shot-move)
@@ -1502,7 +1484,7 @@ For example for an elevator pre-compute the distance between the first and last 
 
 ;; definition for method 28 of type krew-boss-shot
 ;; WARN: Return type mismatch int vs none.
-(defmethod play-impact-sound krew-boss-shot ((this krew-boss-shot) (arg0 projectile-options))
+(defmethod play-impact-sound ((this krew-boss-shot) (arg0 projectile-options))
   (let ((v1-0 arg0))
     (cond
       ((zero? v1-0)
@@ -1520,14 +1502,10 @@ For example for an elevator pre-compute the distance between the first and last 
 ;; definition of type hud-krew-boss
 (deftype hud-krew-boss (hud)
   ()
-  :heap-base #xb30
-  :method-count-assert 27
-  :size-assert         #xba4
-  :flag-assert         #x1b0b300ba4
   )
 
 ;; definition for method 3 of type hud-krew-boss
-(defmethod inspect hud-krew-boss ((this hud-krew-boss))
+(defmethod inspect ((this hud-krew-boss))
   (when (not this)
     (set! this this)
     (goto cfg-4)
@@ -1541,7 +1519,7 @@ For example for an elevator pre-compute the distance between the first and last 
 
 ;; definition for method 15 of type hud-krew-boss
 ;; WARN: Return type mismatch int vs none.
-(defmethod draw hud-krew-boss ((this hud-krew-boss))
+(defmethod draw ((this hud-krew-boss))
   (set-hud-piece-position! (-> this sprites 1) (the int (+ 462.0 (* 130.0 (-> this offset)))) 350)
   (set-as-offset-from! (the-as hud-sprite (-> this sprites)) (the-as vector4w (-> this sprites 1)) -32 0)
   (set-as-offset-from! (-> this sprites 2) (the-as vector4w (-> this sprites 1)) -96 0)
@@ -1590,7 +1568,7 @@ For example for an elevator pre-compute the distance between the first and last 
 
 ;; definition for method 16 of type hud-krew-boss
 ;; WARN: Return type mismatch int vs none.
-(defmethod update-values hud-krew-boss ((this hud-krew-boss))
+(defmethod update-values ((this hud-krew-boss))
   (set! (-> this values 0 target) (+ (-> (the-as krew-boss (-> this parent 0)) gameplay-pass) -1))
   (let ((v1-7 (/ (-> (the-as krew-boss (-> this parent 0)) hit-points)
                  (if (logtest? (-> *game-info* secrets) (game-secrets hero-mode))
@@ -1623,7 +1601,7 @@ For example for an elevator pre-compute the distance between the first and last 
 
 ;; definition for method 17 of type hud-krew-boss
 ;; WARN: Return type mismatch int vs none.
-(defmethod init-callback hud-krew-boss ((this hud-krew-boss))
+(defmethod init-callback ((this hud-krew-boss))
   (set! (-> this gui-id)
         (add-process *gui-control* this (gui-channel hud-middle-right) (gui-action hidden) (-> this name) 81920.0 0)
         )
@@ -2011,7 +1989,7 @@ For example for an elevator pre-compute the distance between the first and last 
 ;; definition for method 115 of type krew-boss
 ;; INFO: Used lq/sq
 ;; WARN: Return type mismatch int vs none.
-(defmethod init-enemy! krew-boss ((this krew-boss))
+(defmethod init-enemy! ((this krew-boss))
   "Common method called to initialize the enemy, typically sets up default field values and calls ancillary helper methods"
   (initialize-skeleton
     this
@@ -2066,7 +2044,7 @@ For example for an elevator pre-compute the distance between the first and last 
 
 ;; definition for method 116 of type krew-boss
 ;; WARN: Return type mismatch object vs none.
-(defmethod go-idle krew-boss ((this krew-boss))
+(defmethod go-idle ((this krew-boss))
   (cond
     ((task-node-closed? (game-task-node castle-boss-resolution))
      (cleanup-for-death this)
@@ -2134,7 +2112,7 @@ For example for an elevator pre-compute the distance between the first and last 
 
 ;; definition for method 74 of type krew-boss
 ;; WARN: disable def twice: 22. This may happen when a cond (no else) is nested inside of another conditional, but it should be rare.
-(defmethod general-event-handler krew-boss ((this krew-boss) (arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+(defmethod general-event-handler ((this krew-boss) (arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
   "Handles various events for the enemy
 @TODO - unsure if there is a pattern for the events and this should have a more specific name"
   (case arg2
@@ -2171,12 +2149,12 @@ For example for an elevator pre-compute the distance between the first and last 
   )
 
 ;; definition for method 102 of type krew-boss
-(defmethod enemy-method-102 krew-boss ((this krew-boss))
+(defmethod enemy-method-102 ((this krew-boss))
   #f
   )
 
 ;; definition for method 77 of type krew-boss
-(defmethod enemy-method-77 krew-boss ((this krew-boss) (arg0 (pointer float)))
+(defmethod enemy-method-77 ((this krew-boss) (arg0 (pointer float)))
   (with-pp
     (ja-channel-push! 1 0)
     (cond
@@ -2215,7 +2193,7 @@ For example for an elevator pre-compute the distance between the first and last 
   )
 
 ;; definition for method 78 of type krew-boss
-(defmethod enemy-method-78 krew-boss ((this krew-boss) (arg0 (pointer float)))
+(defmethod enemy-method-78 ((this krew-boss) (arg0 (pointer float)))
   (cond
     ((<= (-> this hit-points) 0)
      #f
@@ -2250,7 +2228,7 @@ For example for an elevator pre-compute the distance between the first and last 
   )
 
 ;; definition for method 81 of type krew-boss
-(defmethod enemy-method-81 krew-boss ((this krew-boss))
+(defmethod enemy-method-81 ((this krew-boss))
   #f
   )
 
@@ -2322,7 +2300,7 @@ For example for an elevator pre-compute the distance between the first and last 
 
 ;; definition for method 114 of type krew-boss
 ;; WARN: Return type mismatch int vs none.
-(defmethod init-enemy-collision! krew-boss ((this krew-boss))
+(defmethod init-enemy-collision! ((this krew-boss))
   "Initializes the [[collide-shape-moving]] and any ancillary tasks to make the enemy collide properly"
   (let ((s5-0 (new 'process 'collide-shape-moving this (collide-list-enum usually-hit-by-player))))
     (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
@@ -2381,7 +2359,7 @@ For example for an elevator pre-compute the distance between the first and last 
   )
 
 ;; definition for method 60 of type krew-boss
-(defmethod coin-flip? krew-boss ((this krew-boss))
+(defmethod coin-flip? ((this krew-boss))
   "@returns The result of a 50/50 RNG roll"
   #f
   )
@@ -2466,7 +2444,7 @@ For example for an elevator pre-compute the distance between the first and last 
   )
 
 ;; definition for method 56 of type krew-boss
-(defmethod damage-amount-from-attack krew-boss ((this krew-boss) (arg0 process) (arg1 event-message-block))
+(defmethod damage-amount-from-attack ((this krew-boss) (arg0 process) (arg1 event-message-block))
   "@returns the amount of damage taken from an attack.  This can come straight off the [[attack-info]] or via [[penetrate-using->damage]]"
   (let ((v1-0 (get-penetrate-using-from-attack-event (the-as process-drawable arg0) arg1)))
     (cond
@@ -2494,7 +2472,7 @@ For example for an elevator pre-compute the distance between the first and last 
 ;; definition for method 142 of type krew-boss
 ;; INFO: Used lq/sq
 ;; WARN: Return type mismatch int vs none.
-(defmethod nav-enemy-method-142 krew-boss ((this krew-boss) (arg0 nav-control))
+(defmethod nav-enemy-method-142 ((this krew-boss) (arg0 nav-control))
   (with-pp
     (cond
       ((not (logtest? (-> this nav flags) (nav-control-flag update-heading-from-facing)))
@@ -2801,8 +2779,8 @@ For example for an elevator pre-compute the distance between the first and last 
           (let ((gp-6 (new 'stack-no-clear 'projectile-init-by-other-params)))
             (let ((s4-0 (new 'stack-no-clear 'vector)))
               (set! (-> s4-0 quad) (-> (get-trans a0-40 0) quad))
-              (let ((s2-0 (vector<-cspace! (new 'stack-no-clear 'vector) (joint-node-index krew-lowres-lod0-jg lightC)))
-                    (s5-2 (vector<-cspace! (new 'stack-no-clear 'vector) (joint-node-index krew-lowres-lod0-jg lightEnd)))
+              (let ((s2-0 (vector<-cspace! (new 'stack-no-clear 'vector) (joint-node krew-lowres-lod0-jg lightC)))
+                    (s5-2 (vector<-cspace! (new 'stack-no-clear 'vector) (joint-node krew-lowres-lod0-jg lightEnd)))
                     )
                 (let ((s3-0 (new 'stack-no-clear 'vector)))
                   0.0
@@ -2842,7 +2820,7 @@ For example for an elevator pre-compute the distance between the first and last 
   )
 
 ;; definition for method 73 of type krew-boss
-(defmethod kill-prefer-falling krew-boss ((this krew-boss))
+(defmethod kill-prefer-falling ((this krew-boss))
   "If available in `enemy-info`, [[go]] to the [[die-falling]] state, if not, [[die]]"
   (when (handle->process (-> this hud-handle))
     (send-event (-> this hud-handle process 0) 'hide-and-die)

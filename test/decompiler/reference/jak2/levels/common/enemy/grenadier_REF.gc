@@ -46,18 +46,15 @@
 
 ;; definition of type bank-info
 (deftype bank-info (structure)
-  ((circle      sphere :inline :offset-assert   0)
-   (tangent-pos vector :inline :offset-assert  16)
-   (final-pos   vector :inline :offset-assert  32)
-   (final-dir   vector :inline :offset-assert  48)
+  ((circle       sphere  :inline)
+   (tangent-pos  vector  :inline)
+   (final-pos    vector  :inline)
+   (final-dir    vector  :inline)
    )
-  :method-count-assert 9
-  :size-assert         #x40
-  :flag-assert         #x900000040
   )
 
 ;; definition for method 3 of type bank-info
-(defmethod inspect bank-info ((this bank-info))
+(defmethod inspect ((this bank-info))
   (when (not this)
     (set! this this)
     (goto cfg-4)
@@ -73,32 +70,30 @@
 
 ;; definition of type grenadier
 (deftype grenadier (nav-enemy)
-  ((shot-trajectory           trajectory            :inline :offset-assert 608)
-   (hostile-path              path-control                  :offset-assert 648)
-   (bank                      bank-info             :inline :offset-assert 656)
-   (joint                     joint-mod-blend-world         :offset-assert 720)
-   (heading                   symbol                        :offset-assert 724)
-   (move-pos                  vector                :inline :offset-assert 736)
-   (move-angle                float                         :offset-assert 752)
-   (status-flags              grenadier-flags               :offset-assert 760)
-   (suppress-knockaside-timer time-frame                    :offset-assert 768)
+  ((shot-trajectory            trajectory  :inline)
+   (hostile-path               path-control)
+   (bank                       bank-info   :inline)
+   (joint                      joint-mod-blend-world)
+   (heading                    symbol)
+   (move-pos                   vector      :inline)
+   (move-angle                 float)
+   (status-flags               grenadier-flags)
+   (suppress-knockaside-timer  time-frame)
    )
-  :heap-base #x290
-  :method-count-assert 184
-  :size-assert         #x308
-  :flag-assert         #xb802900308
+  (:state-methods
+    attack
+    backup
+    spin-kick
+    )
   (:methods
-    (attack () _type_ :state 178)
-    (backup () _type_ :state 179)
-    (spin-kick () _type_ :state 180)
-    (grenadier-method-181 (_type_) none 181)
-    (grenadier-method-182 (_type_ vector) none 182)
-    (grenadier-method-183 (_type_) none 183)
+    (grenadier-method-181 (_type_) none)
+    (grenadier-method-182 (_type_ vector) none)
+    (grenadier-method-183 (_type_) none)
     )
   )
 
 ;; definition for method 3 of type grenadier
-(defmethod inspect grenadier ((this grenadier))
+(defmethod inspect ((this grenadier))
   (when (not this)
     (set! this this)
     (goto cfg-4)
@@ -317,7 +312,7 @@
 (set! (-> *grenadier-nav-enemy-info* fact-defaults) *fact-info-enemy-defaults*)
 
 ;; definition for method 74 of type grenadier
-(defmethod general-event-handler grenadier ((this grenadier) (arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+(defmethod general-event-handler ((this grenadier) (arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
   "Handles various events for the enemy
 @TODO - unsure if there is a pattern for the events and this should have a more specific name"
   (case arg2
@@ -374,7 +369,7 @@
 ;; definition for method 182 of type grenadier
 ;; INFO: Used lq/sq
 ;; WARN: Return type mismatch vector vs none.
-(defmethod grenadier-method-182 grenadier ((this grenadier) (arg0 vector))
+(defmethod grenadier-method-182 ((this grenadier) (arg0 vector))
   (cloest-point-on-mesh (-> this nav) arg0 arg0 (the-as nav-poly #f))
   (set! (-> this bank final-pos quad) (-> arg0 quad))
   (set! (-> this bank tangent-pos quad) (-> arg0 quad))
@@ -384,7 +379,7 @@
 
 ;; definition for method 181 of type grenadier
 ;; WARN: Return type mismatch int vs none.
-(defmethod grenadier-method-181 grenadier ((this grenadier))
+(defmethod grenadier-method-181 ((this grenadier))
   (let ((s5-0 (handle->process (-> this focus handle))))
     (when s5-0
       (cond
@@ -744,7 +739,7 @@
 ;; ERROR: function was not converted to expressions. Cannot decompile.
 
 ;; definition for method 78 of type grenadier
-(defmethod enemy-method-78 grenadier ((this grenadier) (arg0 (pointer float)))
+(defmethod enemy-method-78 ((this grenadier) (arg0 (pointer float)))
   (cond
     ((= (-> this incoming knocked-type) (knocked-type knocked-type-6))
      (when (>= (-> this incoming blue-juggle-count) (the-as uint 2))
@@ -801,7 +796,7 @@
       (('event-attack)
        (let ((s4-0 (handle->process (-> self focus handle))))
          (when s4-0
-           (let ((gp-0 (vector<-cspace! (new 'stack-no-clear 'vector) (joint-node-index grenadier-lod0-jg bomb))))
+           (let ((gp-0 (vector<-cspace! (new 'stack-no-clear 'vector) (joint-node grenadier-lod0-jg bomb))))
              (let ((s5-1 (vector-! (new 'stack-no-clear 'vector) (get-trans (the-as process-focusable s4-0) 0) gp-0)))
                (let ((s4-1 (new 'stack-no-clear 'vector)))
                  (let ((f0-0 (vector-length s5-1)))
@@ -1095,7 +1090,7 @@
   )
 
 ;; definition for method 70 of type grenadier
-(defmethod go-hostile grenadier ((this grenadier))
+(defmethod go-hostile ((this grenadier))
   (if (and (and (-> this next-state) (= (-> this next-state name) 'knocked))
            (and (logtest? (-> this status-flags) (grenadier-flags grflags-0))
                 (handle->process (-> this focus handle))
@@ -1140,7 +1135,7 @@
 ;; definition for method 142 of type grenadier
 ;; INFO: Used lq/sq
 ;; WARN: Return type mismatch int vs none.
-(defmethod nav-enemy-method-142 grenadier ((this grenadier) (arg0 nav-control))
+(defmethod nav-enemy-method-142 ((this grenadier) (arg0 nav-control))
   (local-vars (a0-4 int) (a0-6 int))
   (b! (logtest? (-> this status-flags) (grenadier-flags grflags-1)) cfg-6 :delay (empty-form))
   (let ((v1-3 (new 'stack-no-clear 'vector))
@@ -1189,7 +1184,7 @@
   )
 
 ;; definition for method 55 of type grenadier
-(defmethod track-target! grenadier ((this grenadier))
+(defmethod track-target! ((this grenadier))
   "Does a lot of various things relating to interacting with the target
 - tracks when the enemy was last drawn
 - looks at the target and handles attacking
@@ -1205,7 +1200,7 @@
 
 ;; definition for method 114 of type grenadier
 ;; WARN: Return type mismatch int vs none.
-(defmethod init-enemy-collision! grenadier ((this grenadier))
+(defmethod init-enemy-collision! ((this grenadier))
   "Initializes the [[collide-shape-moving]] and any ancillary tasks to make the enemy collide properly"
   (let ((s5-0 (new 'process 'collide-shape-moving this (collide-list-enum usually-hit-by-player))))
     (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
@@ -1293,7 +1288,7 @@
   )
 
 ;; definition for method 7 of type grenadier
-(defmethod relocate grenadier ((this grenadier) (arg0 int))
+(defmethod relocate ((this grenadier) (arg0 int))
   (if (nonzero? (-> this joint))
       (&+! (-> this joint) arg0)
       )
@@ -1307,7 +1302,7 @@
 
 ;; definition for method 115 of type grenadier
 ;; WARN: Return type mismatch int vs none.
-(defmethod init-enemy! grenadier ((this grenadier))
+(defmethod init-enemy! ((this grenadier))
   "Common method called to initialize the enemy, typically sets up default field values and calls ancillary helper methods"
   (initialize-skeleton
     this

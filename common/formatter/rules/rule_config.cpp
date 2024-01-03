@@ -5,13 +5,34 @@
 namespace formatter_rules {
 namespace config {
 
-// TODO - populate these more
-
 // TODO - this could be greatly simplified with C++20's designated initialization
 FormFormattingConfig new_flow_rule(int start_index) {
   FormFormattingConfig cfg;
   cfg.hang_forms = false;
-  cfg.inline_until_index = start_index;
+  cfg.inline_until_index = [start_index](const std::vector<std::string>& curr_lines) {
+    return start_index;
+  };
+  return cfg;
+}
+
+FormFormattingConfig new_flow_rule_prevent_inlining_indexes(
+    int start_index,
+    const std::vector<int>& inlining_preventation_indices) {
+  FormFormattingConfig cfg;
+  cfg.hang_forms = false;
+  cfg.inline_until_index = [start_index](std::vector<std::string> curr_lines) {
+    if (curr_lines.size() >= 4 && curr_lines.at(3) == "()") {
+      return 4;
+    }
+    return start_index;
+  };
+  for (const auto& index : inlining_preventation_indices) {
+    auto temp_config = std::make_shared<FormFormattingConfig>();
+    temp_config->prevent_inlining = true;
+    temp_config->hang_forms = false;
+    temp_config->indentation_width = 1;
+    cfg.index_configs.emplace(index, temp_config);
+  }
   return cfg;
 }
 
@@ -22,13 +43,13 @@ FormFormattingConfig new_binding_rule() {
   auto binding_list_config = std::make_shared<FormFormattingConfig>();
   binding_list_config->hang_forms = false;
   binding_list_config->indentation_width = 1;
-  binding_list_config->indentation_width_for_index = [](FormFormattingConfig cfg, int index) {
+  binding_list_config->indentation_width_for_index = [](FormFormattingConfig /*cfg*/, int index) {
     if (index == 0) {
       return 0;
     }
     return 4;
   };
-  binding_list_config->should_prevent_inlining = [](FormFormattingConfig config, int num_refs) {
+  binding_list_config->should_prevent_inlining = [](FormFormattingConfig /*config*/, int num_refs) {
     // Only prevent inlining a binding list, if there are more than 1 bindings
     if (num_refs > 1) {
       return true;
@@ -41,9 +62,27 @@ FormFormattingConfig new_binding_rule() {
   return cfg;
 }
 
+FormFormattingConfig new_pair_rule(bool combine_first_two_expr) {
+  FormFormattingConfig cfg;
+  cfg.hang_forms = false;
+  cfg.prevent_inlining = true;
+  cfg.combine_first_two_lines = combine_first_two_expr;
+  auto pair_config = std::make_shared<FormFormattingConfig>();
+  pair_config->hang_forms = false;
+  pair_config->indentation_width = 1;
+  cfg.default_index_config = pair_config;
+  return cfg;
+}
+
 const std::unordered_map<std::string, FormFormattingConfig> opengoal_form_config = {
+    {"case", new_pair_rule(true)},
+    {"cond", new_pair_rule(false)},
+    {"defmethod", new_flow_rule(3)},
+    {"deftype", new_flow_rule_prevent_inlining_indexes(3, {3, 4, 5})},
     {"defun", new_flow_rule(3)},
-    {"defmethod", new_flow_rule(4)},
-    {"let", new_binding_rule()}};
+    {"dotimes", new_flow_rule(2)},
+    {"let", new_binding_rule()},
+    {"when", new_flow_rule(2)},
+    {"with-dma-buffer-add-bucket", new_flow_rule(2)}};
 }  // namespace config
 }  // namespace formatter_rules

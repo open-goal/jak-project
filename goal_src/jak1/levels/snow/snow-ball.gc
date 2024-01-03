@@ -9,10 +9,6 @@
 
 (deftype snow-ball-shadow (process-drawable)
   ()
-  :heap-base #x40
-  :method-count-assert 20
-  :size-assert         #xb0
-  :flag-assert         #x14004000b0
   (:states
     snow-ball-shadow-idle
     )
@@ -20,50 +16,40 @@
 
 
 (deftype snow-ball-junction (structure)
-  ((enter-time time-frame  :offset-assert   0)
-   (exit-time  time-frame  :offset-assert   8)
+  ((enter-time  time-frame)
+   (exit-time   time-frame)
    )
-  :method-count-assert 9
-  :size-assert         #x10
-  :flag-assert         #x900000010
   )
 
 
 (deftype snow-ball-path-info (structure)
-  ((hug-path? symbol         :offset-assert   0)
-   (path-pos  vector :inline :offset-assert  16)
+  ((hug-path?  symbol)
+   (path-pos   vector  :inline)
    )
-  :method-count-assert 9
-  :size-assert         #x20
-  :flag-assert         #x900000020
   )
 
 
 (deftype snow-ball-roller (process-drawable)
-  ((root-override          collide-shape-moving           :offset        112)
-   (which-path             int32                          :offset-assert 176)
-   (path-u                 float                          :offset-assert 180)
-   (path-speed             float                          :offset-assert 184)
-   (path-length            float                          :offset-assert 188)
-   (path-fall-u            float                          :offset-assert 192)
-   (path-coming-out-u      float                          :offset-assert 196)
-   (path-faded-up-u        float                          :offset-assert 200)
-   (delay-til-bounce       int32                          :offset-assert 204)
-   (rolling-sound-id       sound-id                       :offset-assert 208)
-   (rolling-sound-enabled? symbol                         :offset-assert 212)
-   (last-bounce-time       time-frame                     :offset-assert 216)
-   (hit-player-time        time-frame                     :offset-assert 224)
-   (path-info              snow-ball-path-info  :inline   :offset-assert 240)
-   (junctions              snow-ball-junction   4 :inline :offset-assert 272)
+  ((root                    collide-shape-moving :override)
+   (which-path              int32)
+   (path-u                  float)
+   (path-speed              float)
+   (path-length             float)
+   (path-fall-u             float)
+   (path-coming-out-u       float)
+   (path-faded-up-u         float)
+   (delay-til-bounce        int32)
+   (rolling-sound-id        sound-id)
+   (rolling-sound-enabled?  symbol)
+   (last-bounce-time        time-frame)
+   (hit-player-time         time-frame)
+   (path-info               snow-ball-path-info   :inline)
+   (junctions               snow-ball-junction    4 :inline)
    )
-  :heap-base #xe0
-  :method-count-assert 23
-  :size-assert         #x150
-  :flag-assert         #x1700e00150
   (:methods
-    (follow-path (_type_) none 20)
-    (play-landing-sound (_type_ float) sound-id 21)
-    (snow-ball-roller-method-22 (_type_ process-drawable) none 22)
+    (follow-path (_type_) none)
+    (play-landing-sound (_type_ float) sound-id)
+    (snow-ball-roller-method-22 (_type_ process-drawable) none)
     )
   (:states
     snow-ball-roller-idle
@@ -72,20 +58,16 @@
 
 
 (deftype snow-ball (process)
-  ((child-override         (pointer snow-ball-roller)   :offset         20)
-   (state-time             time-frame                   :offset-assert 112)
-   (last-path-picked       int32                        :offset-assert 120)
-   (same-path-picked-count int32                        :offset-assert 124)
-   (delay-til-next         int32                        :offset-assert 128)
-   (path                   curve-control              2 :offset-assert 132)
+  ((child-override          (pointer snow-ball-roller)  :overlay-at child)
+   (state-time              time-frame)
+   (last-path-picked        int32)
+   (same-path-picked-count  int32)
+   (delay-til-next          int32)
+   (path                    curve-control               2)
    )
-  :heap-base #x20
-  :method-count-assert 16
-  :size-assert         #x8c
-  :flag-assert         #x100020008c
   (:methods
-    (snow-ball-method-14 (_type_ (inline-array snow-ball-junction) float int) symbol 14)
-    (snow-ball-method-15 (_type_ (inline-array snow-ball-junction) int) symbol 15)
+    (snow-ball-method-14 (_type_ (inline-array snow-ball-junction) float int) symbol)
+    (snow-ball-method-15 (_type_ (inline-array snow-ball-junction) int) symbol)
     )
   (:states
     snow-ball-idle
@@ -151,7 +133,7 @@
   (none)
   )
 
-(defmethod follow-path snow-ball-roller ((this snow-ball-roller))
+(defmethod follow-path ((this snow-ball-roller))
   (let ((s5-0 (-> this path-info)))
     (set! (-> s5-0 hug-path?) #f)
     (let ((s4-0 (new 'stack-no-clear 'vector)))
@@ -180,13 +162,13 @@
       (cond
         ((>= (-> this path-u) (-> this path-fall-u))
          (set! (-> s5-0 path-pos y) -409600.0)
-         (set! (-> s5-0 path-pos x) (+ (-> s4-0 x) (-> this root-override transv x)))
-         (set! (-> s5-0 path-pos z) (+ (-> s4-0 z) (-> this root-override transv z)))
+         (set! (-> s5-0 path-pos x) (+ (-> s4-0 x) (-> this root transv x)))
+         (set! (-> s5-0 path-pos z) (+ (-> s4-0 z) (-> this root transv z)))
          (set! (-> this rolling-sound-enabled?) #f)
          )
         (else
-          (set! (-> this root-override transv x) (- (-> s5-0 path-pos x) (-> s4-0 x)))
-          (set! (-> this root-override transv z) (- (-> s5-0 path-pos z) (-> s4-0 z)))
+          (set! (-> this root transv x) (- (-> s5-0 path-pos x) (-> s4-0 x)))
+          (set! (-> this root transv z) (- (-> s5-0 path-pos z) (-> s4-0 z)))
           )
         )
       )
@@ -194,7 +176,7 @@
   (none)
   )
 
-(defmethod play-landing-sound snow-ball-roller ((this snow-ball-roller) (arg0 float))
+(defmethod play-landing-sound ((this snow-ball-roller) (arg0 float))
   (let ((f30-0 (* 0.0018780049 (fmin 53248.0 (fmax 0.0 (+ -4096.0 (fabs arg0)))))))
     (sound-play "snowball-land" :vol f30-0)
     )
@@ -202,9 +184,9 @@
 
 (defbehavior snow-ball-roller-path-update snow-ball-roller ()
   (local-vars (f0-5 float))
-  (let ((f0-0 (-> self root-override trans y)))
-    (+! (-> self root-override transv y) (* -491520.0 (seconds-per-frame)))
-    (let ((f30-0 (+ f0-0 (* (-> self root-override transv y) (seconds-per-frame)))))
+  (let ((f0-0 (-> self root trans y)))
+    (+! (-> self root transv y) (* -491520.0 (seconds-per-frame)))
+    (let ((f30-0 (+ f0-0 (* (-> self root transv y) (seconds-per-frame)))))
       (follow-path self)
       (let ((a1-0 (new 'stack-no-clear 'vector)))
         (let ((a0-1 (-> self path-info)))
@@ -213,30 +195,30 @@
         (+! (-> a1-0 y) 9216.0)
         (cond
           ((-> self path-info hug-path?)
-           (move-to-point! (-> self root-override) a1-0)
-           (set! (-> self root-override transv y) 0.0)
+           (move-to-point! (-> self root) a1-0)
+           (set! (-> self root transv y) 0.0)
            )
           ((begin (set! f0-5 (- f30-0 (-> a1-0 y))) (< 0.0 f0-5))
            (+! (-> a1-0 y) f0-5)
-           (move-to-point! (-> self root-override) a1-0)
+           (move-to-point! (-> self root) a1-0)
            )
           (else
-            (move-to-point! (-> self root-override) a1-0)
-            (let ((f0-7 (-> self root-override transv y)))
+            (move-to-point! (-> self root) a1-0)
+            (let ((f0-7 (-> self root transv y)))
               (cond
                 ((>= -40960.0 f0-7)
-                 (set! (-> self root-override transv y) (* 0.4 (- f0-7)))
-                 (play-landing-sound self (-> self root-override transv y))
+                 (set! (-> self root transv y) (* 0.4 (- f0-7)))
+                 (play-landing-sound self (-> self root transv y))
                  )
                 (else
-                  (set! (-> self root-override transv y) 0.0)
+                  (set! (-> self root transv y) 0.0)
                   )
                 )
               )
             (when (< (-> self path-u) (-> self path-fall-u))
               (when (time-elapsed? (-> self last-bounce-time) (-> self delay-til-bounce))
                 (let ((f0-13 (rand-vu-float-range 8192.0 20480.0)))
-                  (+! (-> self root-override transv y) f0-13)
+                  (+! (-> self root transv y) f0-13)
                   (play-landing-sound self f0-13)
                   )
                 (set-time! (-> self last-bounce-time))
@@ -259,14 +241,14 @@
         (matrix-rotate-x! s5-0 (* 1.1317686 (-> self path-u) (-> self path-length)))
         (matrix*! gp-0 s5-0 gp-0)
         )
-      (matrix->quaternion (-> self root-override quat) gp-0)
+      (matrix->quaternion (-> self root quat) gp-0)
       )
     )
   (+! (-> self path-u) (* (-> self path-speed) (seconds-per-frame)))
   (if (< 1.0 (-> self path-u))
       (set! (-> self path-u) 1.0)
       )
-  (let ((f0-23 (- 819200.0 (-> self root-override trans y))))
+  (let ((f0-23 (- 819200.0 (-> self root trans y))))
     (when (>= f0-23 0.0)
       (cond
         ((>= f0-23 245760.0)
@@ -274,29 +256,23 @@
          )
         (else
           (let ((f0-25 (- 1.0 (* 0.0000040690106 f0-23))))
-            (set! (-> self root-override scale x) f0-25)
-            (set! (-> self root-override scale y) f0-25)
-            (set! (-> self root-override scale z) f0-25)
+            (set! (-> self root scale x) f0-25)
+            (set! (-> self root scale y) f0-25)
+            (set! (-> self root scale z) f0-25)
             )
           )
         )
       )
     )
-  (let ((v1-54 (< (vector-vector-distance (-> self root-override trans) (math-camera-pos)) 163840.0)))
+  (let ((v1-54 (< (vector-vector-distance (-> self root trans) (math-camera-pos)) 163840.0)))
     (cond
       ((zero? (-> self rolling-sound-id))
        (if (and v1-54 (-> self rolling-sound-enabled?))
-           (set! (-> self rolling-sound-id)
-                 (sound-play "snowball-roll" :position (the-as symbol (-> self root-override trans)))
-                 )
+           (set! (-> self rolling-sound-id) (sound-play "snowball-roll" :position (the-as symbol (-> self root trans))))
            )
        )
       ((and v1-54 (-> self rolling-sound-enabled?))
-       (sound-play
-         "snowball-roll"
-         :id (-> self rolling-sound-id)
-         :position (the-as symbol (-> self root-override trans))
-         )
+       (sound-play "snowball-roll" :id (-> self rolling-sound-id) :position (the-as symbol (-> self root trans)))
        )
       (else
         (sound-stop (-> self rolling-sound-id))
@@ -308,24 +284,24 @@
   (none)
   )
 
-(defmethod snow-ball-roller-method-22 snow-ball-roller ((this snow-ball-roller) (arg0 process-drawable))
+(defmethod snow-ball-roller-method-22 ((this snow-ball-roller) (arg0 process-drawable))
   (cond
-    ((< (+ 4096.0 (-> arg0 root trans y)) (-> this root-override trans y))
+    ((< (+ 4096.0 (-> arg0 root trans y)) (-> this root trans y))
      (let ((f0-2 81920.0))
-       (+! (-> this root-override transv y) f0-2)
+       (+! (-> this root transv y) f0-2)
        (play-landing-sound this f0-2)
        )
      )
     (else
       (let ((f0-3 24576.0))
-        (+! (-> this root-override transv y) f0-3)
+        (+! (-> this root transv y) f0-3)
         (play-landing-sound this f0-3)
         )
       )
     )
   (let ((s4-0 (new 'stack-no-clear 'vector)))
     (let ((s3-0 (new 'stack-no-clear 'vector)))
-      (vector-! s4-0 (-> arg0 root trans) (-> this root-override trans))
+      (vector-! s4-0 (-> arg0 root trans) (-> this root trans))
       (set! (-> s4-0 y) 0.0)
       (vector-normalize! s4-0 1.0)
       (path-control-method-14 (-> this path) s3-0 (-> this path-u))
@@ -349,7 +325,7 @@
         )
       )
     (vector-normalize! s4-0 25600.0)
-    (vector+! s4-0 s4-0 (-> this root-override trans))
+    (vector+! s4-0 s4-0 (-> this root trans))
     (vector-! s4-0 s4-0 (-> arg0 root trans))
     (set! (-> s4-0 y) 0.0)
     (let ((f30-2 (vector-length s4-0)))
@@ -365,7 +341,7 @@
     (case message
       (('touch 'attack)
        (when (= (-> proc type) target)
-         (do-push-aways! (-> self root-override))
+         (do-push-aways! (-> self root))
          (when (time-elapsed? (-> self hit-player-time) (seconds 0.5))
            (set-time! (-> self hit-player-time))
            (snow-ball-roller-method-22 self *target*)
@@ -424,9 +400,9 @@
       )
     (set! (-> s4-1 nav-radius) (* 0.75 (-> s4-1 root-prim local-sphere w)))
     (backup-collide-with-as s4-1)
-    (set! (-> self root-override) s4-1)
+    (set! (-> self root) s4-1)
     )
-  (set-vector! (-> self root-override transv) 0.0 0.0 0.0 1.0)
+  (set-vector! (-> self root transv) 0.0 0.0 0.0 1.0)
   (process-drawable-from-entity! self arg0)
   (initialize-skeleton self *snow-ball-sg* '())
   (logclear! (-> self mask) (process-mask actor-pause))
@@ -452,7 +428,7 @@
   (none)
   )
 
-(defmethod snow-ball-method-14 snow-ball ((this snow-ball) (arg0 (inline-array snow-ball-junction)) (arg1 float) (arg2 int))
+(defmethod snow-ball-method-14 ((this snow-ball) (arg0 (inline-array snow-ball-junction)) (arg1 float) (arg2 int))
   (local-vars (v1-0 (pointer float)))
   (if (zero? arg2)
       (set! v1-0 (new 'static 'array float 8 0.3309 0.36 0.4691 0.5061 0.6904 0.7264 0.864 0.8667))
@@ -472,7 +448,7 @@
   #f
   )
 
-(defmethod snow-ball-method-15 snow-ball ((this snow-ball) (arg0 (inline-array snow-ball-junction)) (arg1 int))
+(defmethod snow-ball-method-15 ((this snow-ball) (arg0 (inline-array snow-ball-junction)) (arg1 int))
   (local-vars (v0-0 symbol))
   (let ((v1-0 (-> this child-override)))
     (while v1-0
@@ -554,7 +530,7 @@
     )
   )
 
-(defmethod relocate snow-ball ((this snow-ball) (arg0 int))
+(defmethod relocate ((this snow-ball) (arg0 int))
   (dotimes (v1-0 2)
     (if (nonzero? (-> this path v1-0))
         (&+! (-> this path v1-0) arg0)
@@ -563,7 +539,7 @@
   (call-parent-method this arg0)
   )
 
-(defmethod init-from-entity! snow-ball ((this snow-ball) (arg0 entity-actor))
+(defmethod init-from-entity! ((this snow-ball) (arg0 entity-actor))
   (set! (-> this last-path-picked) 1)
   (set! (-> this same-path-picked-count) 1)
   (dotimes (s5-0 2)

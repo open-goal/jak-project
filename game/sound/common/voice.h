@@ -12,68 +12,68 @@
 
 namespace snd {
 
-class voice {
+class Voice {
  public:
   enum class AllocationType {
-    managed,
-    permanent,
+    Managed,
+    Permanent,
   };
 
-  voice(AllocationType alloc = AllocationType::managed) : m_Alloc(alloc) {}
-  s16_output run();
+  Voice(AllocationType alloc = AllocationType::Managed) : mAlloc(alloc) {}
+  s16Output Run();
 
-  void key_on();
+  void KeyOn();
 
-  void key_off();
+  void KeyOff();
 
-  bool dead() {
-    if (m_Alloc == AllocationType::permanent) {
+  bool Dead() {
+    if (mAlloc == AllocationType::Permanent) {
       return false;
     }
 
-    return m_ADSR.GetPhase() == ADSR::Phase::Stopped;
+    return mADSR.GetPhase() == ADSR::Phase::Stopped;
   }
 
-  void set_pitch(u16 reg) {
+  void SetPitch(u16 reg) {
     // fmt::print("VOICE[{}] PITCH WRITE {:x}\n", m_channel, reg);
-    m_Pitch = reg;
+    mPitch = reg;
   }
-  void set_asdr1(u16 reg) {
+  void SetAsdr1(u16 reg) {
     // fmt::print("VOICE[{}] ADSR1 WRITE {:x}\n", m_channel, reg);
-    m_ADSR.m_Reg.lo.set(reg);
+    mADSR.m_Reg.lo.set(reg);
   }
-  void set_asdr2(u16 reg) {
+  void SetAsdr2(u16 reg) {
     // fmt::print("VOICE[{}] ADSR2 WRITE {:x}\n", m_channel, reg);
-    m_ADSR.m_Reg.hi.set(reg);
+    mADSR.m_Reg.hi.set(reg);
   }
-  void set_volume(u16 left, u16 right) {
+  void SetVolume(u16 left, u16 right) {
     // fmt::print("VOICE[{}] VOLL WRITE {:x}\n", m_channel, left);
     // fmt::print("VOICE[{}] VOLR WRITE {:x}\n", m_channel, right);
-    m_Volume.left.Set(left);
-    m_Volume.right.Set(right);
+    mVolume.left.Set(left);
+    mVolume.right.Set(right);
   }
 
-  void set_volume_l(u16 vol) { m_Volume.left.Set(vol); }
+  void SetVolumeL(u16 vol) { mVolume.left.Set(vol); }
 
-  void set_volume_r(u16 vol) { m_Volume.right.Set(vol); }
+  void SetVolumeR(u16 vol) { mVolume.right.Set(vol); }
 
-  s16 get_envx() { return m_ADSR.Level(); }
+  s16 GetEnvx() { return mADSR.Level(); }
 
-  void set_sample(u16* sample) {
-    m_sample = sample;
-    m_SSA = 0;
+  void SetSample(u16* sample) {
+    mSample = sample;
+    mSSA = 0;
   }
 
-  u32 get_nax() { return m_NAX; }
+  u32 GetNax() { return mNAX; }
 
-  void set_ssa(u32 addr) { m_SSA = addr; }
+  void SetSsa(u32 addr) { mSSA = addr; }
 
-  void set_lsa(u32 addr) {
-    m_LSA = addr;
-    m_CustomLoop = true;
+  void SetLsa(u32 addr) {
+    mLSA = addr;
+    mCustomLoop = true;
   }
 
-  void stop() { m_ADSR.Stop(); }
+  void Stop() { mADSR.Stop(); }
 
  private:
   union ADPCMHeader {
@@ -85,33 +85,29 @@ class voice {
     bitfield<u16, u8, 0, 4> Shift;
   };
 
-  AllocationType m_Alloc;
-  bool m_Noise{false};
-  [[maybe_unused]] bool m_PitchMod{false};
-  [[maybe_unused]] bool m_KeyOn{false};
-  [[maybe_unused]] bool m_KeyOff{false};
-  bool m_ENDX{false};
+  AllocationType mAlloc;
+  bool mNoise{false};
+  bool mENDX{false};
 
   void DecodeSamples();
   void UpdateBlockHeader();
 
-  fifo<s16, 0x20> m_DecodeBuf{};
-  s16 m_DecodeHist1{0};
-  s16 m_DecodeHist2{0};
-  u32 m_Counter{0};
+  fifo<s16, 0x20> mDecodeBuf{};
+  s16 mDecodeHist1{0};
+  s16 mDecodeHist2{0};
+  u32 mCounter{0};
 
-  u16 m_Pitch{0};
-  [[maybe_unused]] s16 m_Out{0};
+  u16 mPitch{0};
 
-  u16* m_sample{nullptr};
-  u32 m_SSA{0};
-  u32 m_NAX{0};
-  u32 m_LSA{0};
-  bool m_CustomLoop{false};
+  u16* mSample{nullptr};
+  u32 mSSA{0};
+  u32 mNAX{0};
+  u32 mLSA{0};
+  bool mCustomLoop{false};
 
-  ADPCMHeader m_CurHeader{};
+  ADPCMHeader mCurHeader{};
 
-  ADSR m_ADSR{};
-  VolumePair m_Volume{};
+  ADSR mADSR{};
+  VolumePair mVolume{};
 };
 }  // namespace snd

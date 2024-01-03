@@ -3,16 +3,13 @@
 
 ;; definition of type turret-barrel-info
 (deftype turret-barrel-info (structure)
-  ((local-pos vector :inline :offset-assert   0)
-   (local-dir vector :inline :offset-assert  16)
+  ((local-pos  vector  :inline)
+   (local-dir  vector  :inline)
    )
-  :method-count-assert 9
-  :size-assert         #x20
-  :flag-assert         #x900000020
   )
 
 ;; definition for method 3 of type turret-barrel-info
-(defmethod inspect turret-barrel-info ((this turret-barrel-info))
+(defmethod inspect ((this turret-barrel-info))
   (when (not this)
     (set! this this)
     (goto cfg-4)
@@ -26,27 +23,24 @@
 
 ;; definition of type turret-control-info
 (deftype turret-control-info (structure)
-  ((joint-index  int8                         :offset-assert   0)
-   (barrel-count int8                         :offset-assert   1)
-   (shot-speed   float                        :offset-assert   4)
-   (attack-range float                        :offset-assert   8)
-   (rot-min      float              2         :offset-assert  12)
-   (rot-max      float              2         :offset-assert  20)
-   (rot-x-min    float                        :offset         12)
-   (rot-x-max    float                        :offset         20)
-   (rot-y-min    float                        :offset         16)
-   (rot-y-max    float                        :offset         24)
-   (local-pos    vector             :inline   :offset-assert  32)
-   (local-dir    vector             :inline   :offset-assert  48)
-   (barrel-array turret-barrel-info 4 :inline :offset-assert  64)
+  ((joint-index   int8)
+   (barrel-count  int8)
+   (shot-speed    float)
+   (attack-range  float)
+   (rot-min       float               2)
+   (rot-max       float               2)
+   (rot-x-min     float               :overlay-at (-> rot-min 0))
+   (rot-x-max     float               :overlay-at (-> rot-max 0))
+   (rot-y-min     float               :overlay-at (-> rot-min 1))
+   (rot-y-max     float               :overlay-at (-> rot-max 1))
+   (local-pos     vector              :inline)
+   (local-dir     vector              :inline)
+   (barrel-array  turret-barrel-info  4 :inline)
    )
-  :method-count-assert 9
-  :size-assert         #xc0
-  :flag-assert         #x9000000c0
   )
 
 ;; definition for method 3 of type turret-control-info
-(defmethod inspect turret-control-info ((this turret-control-info))
+(defmethod inspect ((this turret-control-info))
   (when (not this)
     (set! this this)
     (goto cfg-4)
@@ -71,45 +65,42 @@
 
 ;; definition of type turret-control
 (deftype turret-control (structure)
-  ((info                 turret-control-info           :offset-assert   0)
-   (guard-settings       traffic-guard-type-settings   :offset-assert   4)
-   (flags                turret-flag                   :offset-assert   8)
-   (shot-count           int8                          :offset-assert   9)
-   (burst-count          int16                         :offset-assert  10)
-   (target-dist          float                         :offset-assert  12)
-   (inaccuracy           float                         :offset-assert  16)
-   (aim-offset-angle     degrees                       :offset-assert  20)
-   (aim-rot              float                       2 :offset-assert  24)
-   (aim-rot-vel          float                       2 :offset-assert  32)
-   (aim-rot-offset       float                       2 :offset-assert  40)
-   (aim-rot-x            float                         :offset         24)
-   (aim-rot-y            float                         :offset         28)
-   (aim-rot-vel-x        float                         :offset         32)
-   (aim-rot-vel-y        float                         :offset         36)
-   (target-in-sight-time time-frame                    :offset-assert  48)
-   (aim-acquire-time     time-frame                    :offset-assert  56)
-   (shoot-time           time-frame                    :offset-assert  64)
-   (owner-handle         handle                        :offset-assert  72)
+  ((info                  turret-control-info)
+   (guard-settings        traffic-guard-type-settings)
+   (flags                 turret-flag)
+   (shot-count            int8)
+   (burst-count           int16)
+   (target-dist           float)
+   (inaccuracy            float)
+   (aim-offset-angle      degrees)
+   (aim-rot               float  2)
+   (aim-rot-vel           float  2)
+   (aim-rot-offset        float  2)
+   (aim-rot-x             float  :overlay-at (-> aim-rot 0))
+   (aim-rot-y             float  :overlay-at (-> aim-rot 1))
+   (aim-rot-vel-x         float  :overlay-at (-> aim-rot-vel 0))
+   (aim-rot-vel-y         float  :overlay-at (-> aim-rot-vel 1))
+   (target-in-sight-time  time-frame)
+   (aim-acquire-time      time-frame)
+   (shoot-time            time-frame)
+   (owner-handle          handle)
    )
   :pack-me
-  :method-count-assert 18
-  :size-assert         #x50
-  :flag-assert         #x1200000050
   (:methods
-    (turret-control-method-9 (_type_ vehicle vector vector) none 9)
-    (turret-control-method-10 (_type_ vehicle) none 10)
-    (turret-control-method-11 (_type_ object object vector) none 11)
-    (update-joint-mod (_type_ joint-mod-rotate-local) none 12)
-    (turret-control-method-13 (_type_) none 13)
-    (turret-control-method-14 (_type_) none 14)
-    (set-info (_type_ turret-control-info) none 15)
-    (turret-control-method-16 (_type_ float float) none 16)
-    (turret-control-method-17 (_type_ vehicle) none 17)
+    (turret-control-method-9 (_type_ vehicle vector vector) none)
+    (turret-control-method-10 (_type_ vehicle) none)
+    (turret-control-method-11 (_type_ object object vector) none)
+    (update-joint-mod (_type_ joint-mod-rotate-local) none)
+    (turret-control-method-13 (_type_) none)
+    (turret-control-method-14 (_type_) none)
+    (set-info (_type_ turret-control-info) none)
+    (turret-control-method-16 (_type_ float float) none)
+    (turret-control-method-17 (_type_ vehicle) none)
     )
   )
 
 ;; definition for method 3 of type turret-control
-(defmethod inspect turret-control ((this turret-control))
+(defmethod inspect ((this turret-control))
   (when (not this)
     (set! this this)
     (goto cfg-16)
@@ -161,7 +152,7 @@
 
 ;; definition for method 15 of type turret-control
 ;; WARN: Return type mismatch int vs none.
-(defmethod set-info turret-control ((this turret-control) (arg0 turret-control-info))
+(defmethod set-info ((this turret-control) (arg0 turret-control-info))
   (set! (-> this info) arg0)
   (set! (-> this owner-handle) (the-as handle #f))
   0
@@ -170,7 +161,7 @@
 
 ;; definition for method 12 of type turret-control
 ;; WARN: Return type mismatch int vs none.
-(defmethod update-joint-mod turret-control ((this turret-control) (arg0 joint-mod-rotate-local))
+(defmethod update-joint-mod ((this turret-control) (arg0 joint-mod-rotate-local))
   (let ((v1-0 (new 'stack-no-clear 'vector)))
     (set! (-> v1-0 x) (- (-> this aim-rot-x)))
     (set! (-> v1-0 y) (-> this aim-rot-y))
@@ -183,7 +174,7 @@
 
 ;; definition for method 13 of type turret-control
 ;; WARN: Return type mismatch int vs none.
-(defmethod turret-control-method-13 turret-control ((this turret-control))
+(defmethod turret-control-method-13 ((this turret-control))
   (let ((f30-0 (/ (* 298261630.0 (-> this inaccuracy) (-> this guard-settings inaccuracy))
                   (fmax 40960.0 (-> this target-dist))
                   )
@@ -199,7 +190,7 @@
 
 ;; definition for method 14 of type turret-control
 ;; WARN: Return type mismatch int vs none.
-(defmethod turret-control-method-14 turret-control ((this turret-control))
+(defmethod turret-control-method-14 ((this turret-control))
   (logclear! (-> this flags) (turret-flag firing aiming))
   (set! (-> this burst-count) 0)
   (set! (-> this aim-offset-angle) (* 65536.0 (rand-vu)))
@@ -337,7 +328,7 @@
 ;; definition for method 9 of type turret-control
 ;; INFO: Used lq/sq
 ;; WARN: Return type mismatch int vs none.
-(defmethod turret-control-method-9 turret-control ((this turret-control) (arg0 vehicle) (arg1 vector) (arg2 vector))
+(defmethod turret-control-method-9 ((this turret-control) (arg0 vehicle) (arg1 vector) (arg2 vector))
   (let ((gp-0 (new 'stack-no-clear 'turret-unknown-stack-structure)))
     (set! (-> gp-0 vec-12 x) (seconds-per-frame))
     (let* ((v1-1 (-> gp-0 mat-1))
@@ -489,7 +480,7 @@
 
 ;; definition for method 10 of type turret-control
 ;; WARN: Return type mismatch int vs none.
-(defmethod turret-control-method-10 turret-control ((this turret-control) (arg0 vehicle))
+(defmethod turret-control-method-10 ((this turret-control) (arg0 vehicle))
   (cond
     ((logtest? (-> this flags) (turret-flag should-shoot))
      (cond
@@ -530,7 +521,7 @@
 
 ;; definition for method 11 of type turret-control
 ;; WARN: Return type mismatch int vs none.
-(defmethod turret-control-method-11 turret-control ((this turret-control) (arg0 object) (arg1 object) (arg2 vector))
+(defmethod turret-control-method-11 ((this turret-control) (arg0 object) (arg1 object) (arg2 vector))
   (when (nonzero? (-> this info))
     (set! (-> this inaccuracy) (* 0.000012207031 (+ 20480.0 (vector-length arg2))))
     (turret-control-method-9 this (the-as vehicle arg0) (the-as vector arg1) arg2)
@@ -543,7 +534,7 @@
 ;; definition for method 17 of type turret-control
 ;; INFO: Used lq/sq
 ;; WARN: Return type mismatch int vs none.
-(defmethod turret-control-method-17 turret-control ((this turret-control) (arg0 vehicle))
+(defmethod turret-control-method-17 ((this turret-control) (arg0 vehicle))
   (let ((s4-0 (new 'stack-no-clear 'turret-unknown-stack-structure2)))
     (set! (-> s4-0 proj-params ent) (-> arg0 entity))
     (set! (-> s4-0 proj-params charge) 1.0)
@@ -586,7 +577,7 @@
 
 ;; definition for method 16 of type turret-control
 ;; WARN: Return type mismatch int vs none.
-(defmethod turret-control-method-16 turret-control ((this turret-control) (arg0 float) (arg1 float))
+(defmethod turret-control-method-16 ((this turret-control) (arg0 float) (arg1 float))
   (let ((f0-0 (seconds-per-frame)))
     (set! (-> this aim-rot-vel-x) arg1)
     (set! (-> this aim-rot-vel-y) arg0)
@@ -612,27 +603,24 @@
 
 ;; definition of type vehicle-guard-target-data
 (deftype vehicle-guard-target-data (structure)
-  ((tpos          vector :inline :offset-assert   0)
-   (spos          vector :inline :offset-assert  16)
-   (tvel          vector :inline :offset-assert  32)
-   (svel          vector :inline :offset-assert  48)
-   (tdir          vector :inline :offset-assert  64)
-   (sdir          vector :inline :offset-assert  80)
-   (to-target     vector :inline :offset-assert  96)
-   (to-target-dir vector :inline :offset-assert 112)
-   (temp          vector :inline :offset-assert 128)
-   (target        target         :offset-assert 144)
-   (dist          float          :offset-assert 148)
-   (inv-dist      float          :offset-assert 152)
-   (attack-range  float          :offset-assert 156)
+  ((tpos           vector  :inline)
+   (spos           vector  :inline)
+   (tvel           vector  :inline)
+   (svel           vector  :inline)
+   (tdir           vector  :inline)
+   (sdir           vector  :inline)
+   (to-target      vector  :inline)
+   (to-target-dir  vector  :inline)
+   (temp           vector  :inline)
+   (target         target)
+   (dist           float)
+   (inv-dist       float)
+   (attack-range   float)
    )
-  :method-count-assert 9
-  :size-assert         #xa0
-  :flag-assert         #x9000000a0
   )
 
 ;; definition for method 3 of type vehicle-guard-target-data
-(defmethod inspect vehicle-guard-target-data ((this vehicle-guard-target-data))
+(defmethod inspect ((this vehicle-guard-target-data))
   (when (not this)
     (set! this this)
     (goto cfg-4)
@@ -657,42 +645,40 @@
 
 ;; definition of type vehicle-guard
 (deftype vehicle-guard (vehicle)
-  ((ai-hook                      (function vehicle-guard none)         :offset-assert 880)
-   (turret                       turret-control                :inline :offset-assert 888)
-   (target-flags                 turret-flag                           :offset-assert 968)
-   (target-in-sight-time         time-frame                            :offset-assert 976)
-   (minimap                      connection-minimap                    :offset-assert 984)
-   (vehicle-guard-pad-k1jn23k1   uint32                                :offset-assert 988)
-   (traffic-target-status        traffic-target-status                 :offset-assert 992)
-   (pursuit-target               handle                                :offset-assert 1000)
-   (vehicle-guard-pad-1kjh2nb3k1 uint32                        16      :offset-assert 1008)
-   (lod2                         symbol                                :offset-assert 1072)
+  ((ai-hook                       (function vehicle-guard none))
+   (turret                        turret-control  :inline)
+   (target-flags                  turret-flag)
+   (target-in-sight-time          time-frame)
+   (minimap                       connection-minimap)
+   (vehicle-guard-pad-k1jn23k1    uint32)
+   (traffic-target-status         traffic-target-status)
+   (pursuit-target                handle)
+   (vehicle-guard-pad-1kjh2nb3k1  uint32          16)
+   (lod2                          symbol)
    )
-  :heap-base #x3c0
-  :method-count-assert 159
-  :size-assert         #x434
-  :flag-assert         #x9f03c00434
+  (:state-methods
+    hostile
+    stop-and-shoot
+    slow-pursuit
+    vehicle-guard-state-147
+    vehicle-guard-state-148
+    waiting-ambush
+    )
   (:methods
-    (hostile () _type_ :state 144)
-    (stop-and-shoot () _type_ :state 145)
-    (slow-pursuit () _type_ :state 146)
-    (vehicle-guard-method-147 () none 147)
-    (vehicle-guard-method-148 () none 148)
-    (waiting-ambush () _type_ :state 149)
-    (vehicle-guard-method-150 (_type_) none 150)
-    (vehicle-guard-method-151 (_type_ vehicle-guard-target-data) none 151)
-    (vehicle-guard-method-152 (_type_ vehicle-guard-target-data) none 152)
-    (vehicle-guard-method-153 (_type_ target) none 153)
-    (vehicle-guard-method-154 (_type_) none 154)
-    (vehicle-guard-method-155 (_type_ vector vector) none 155)
-    (vehicle-guard-method-156 (_type_) none 156)
-    (vehicle-guard-method-157 (_type_ vehicle-guard-target-data) symbol 157)
-    (vehicle-guard-method-158 (_type_) none 158)
+    (vehicle-guard-method-150 (_type_) none)
+    (vehicle-guard-method-151 (_type_ vehicle-guard-target-data) none)
+    (vehicle-guard-method-152 (_type_ vehicle-guard-target-data) none)
+    (vehicle-guard-method-153 (_type_ target) none)
+    (vehicle-guard-method-154 (_type_) none)
+    (vehicle-guard-method-155 (_type_ vector vector) none)
+    (vehicle-guard-method-156 (_type_) none)
+    (vehicle-guard-method-157 (_type_ vehicle-guard-target-data) symbol)
+    (vehicle-guard-method-158 (_type_) none)
     )
   )
 
 ;; definition for method 3 of type vehicle-guard
-(defmethod inspect vehicle-guard ((this vehicle-guard))
+(defmethod inspect ((this vehicle-guard))
   (when (not this)
     (set! this this)
     (goto cfg-14)
@@ -733,7 +719,7 @@
 ;; definition for method 153 of type vehicle-guard
 ;; INFO: Used lq/sq
 ;; WARN: Return type mismatch int vs none.
-(defmethod vehicle-guard-method-153 vehicle-guard ((this vehicle-guard) (arg0 target))
+(defmethod vehicle-guard-method-153 ((this vehicle-guard) (arg0 target))
   (let ((s5-0 (new 'stack-no-clear 'vector)))
     (set! (-> s5-0 quad) (-> (get-trans arg0 3) quad))
     (turret-control-method-11 (-> this turret) this s5-0 (-> arg0 control transv))
@@ -745,7 +731,7 @@
 ;; definition for method 151 of type vehicle-guard
 ;; INFO: Used lq/sq
 ;; WARN: Return type mismatch int vs none.
-(defmethod vehicle-guard-method-151 vehicle-guard ((this vehicle-guard) (arg0 vehicle-guard-target-data))
+(defmethod vehicle-guard-method-151 ((this vehicle-guard) (arg0 vehicle-guard-target-data))
   (let ((s5-0 (handle->process (-> this pursuit-target))))
     (set! (-> arg0 target) (the-as target s5-0))
     (when s5-0
@@ -779,7 +765,7 @@
 ;; definition for method 152 of type vehicle-guard
 ;; INFO: Used lq/sq
 ;; WARN: Return type mismatch int vs none.
-(defmethod vehicle-guard-method-152 vehicle-guard ((this vehicle-guard) (arg0 vehicle-guard-target-data))
+(defmethod vehicle-guard-method-152 ((this vehicle-guard) (arg0 vehicle-guard-target-data))
   (let ((s4-0 (handle->process (-> this pursuit-target))))
     (cond
       ((logtest? (rigid-body-object-flag target-in-sight) (-> this flags))
@@ -835,7 +821,7 @@
 ;; definition for method 150 of type vehicle-guard
 ;; INFO: Used lq/sq
 ;; WARN: Return type mismatch int vs none.
-(defmethod vehicle-guard-method-150 vehicle-guard ((this vehicle-guard))
+(defmethod vehicle-guard-method-150 ((this vehicle-guard))
   (cond
     ((handle->process (-> this pursuit-target))
      (let ((v1-3 (new 'stack-no-clear 'vehicle-control-point)))
@@ -891,7 +877,7 @@
 ;; definition for method 155 of type vehicle-guard
 ;; INFO: Used lq/sq
 ;; WARN: Return type mismatch int vs none.
-(defmethod vehicle-guard-method-155 vehicle-guard ((this vehicle-guard) (arg0 vector) (arg1 vector))
+(defmethod vehicle-guard-method-155 ((this vehicle-guard) (arg0 vector) (arg1 vector))
   (cond
     (#f
       (let ((s5-0 (new 'stack-no-clear 'traj3d-params)))
@@ -965,7 +951,7 @@
 
 ;; definition for method 134 of type vehicle-guard
 ;; WARN: Return type mismatch int vs none.
-(defmethod vehicle-method-134 vehicle-guard ((this vehicle-guard) (arg0 process))
+(defmethod vehicle-method-134 ((this vehicle-guard) (arg0 process))
   "Stubbed"
   (set! (-> this pursuit-target) (process->handle arg0))
   (logior! (-> this flags) (rigid-body-object-flag alert))
@@ -976,7 +962,7 @@
 
 ;; definition for method 46 of type vehicle-guard
 ;; WARN: disable def twice: 112. This may happen when a cond (no else) is nested inside of another conditional, but it should be rare.
-(defmethod rigid-body-object-method-46 vehicle-guard ((this vehicle-guard) (arg0 process-drawable) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+(defmethod rigid-body-object-method-46 ((this vehicle-guard) (arg0 process-drawable) (arg1 int) (arg2 symbol) (arg3 event-message-block))
   (case arg2
     (('impact-impulse)
      (let ((s5-1 (the-as matrix (-> arg3 param 0))))
@@ -1058,7 +1044,7 @@
 
 ;; definition for method 137 of type vehicle-guard
 ;; WARN: Return type mismatch int vs none.
-(defmethod vehicle-method-137 vehicle-guard ((this vehicle-guard) (arg0 traffic-object-spawn-params))
+(defmethod vehicle-method-137 ((this vehicle-guard) (arg0 traffic-object-spawn-params))
   (vehicle-rider-spawn this crimson-guard-rider arg0)
   0
   (none)
@@ -1109,7 +1095,7 @@
 
 ;; definition for method 31 of type vehicle-guard
 ;; WARN: Return type mismatch int vs none.
-(defmethod alloc-and-init-rigid-body-control vehicle-guard ((this vehicle-guard) (arg0 rigid-body-vehicle-constants))
+(defmethod alloc-and-init-rigid-body-control ((this vehicle-guard) (arg0 rigid-body-vehicle-constants))
   (let ((t9-0 (method-of-type vehicle alloc-and-init-rigid-body-control)))
     (t9-0 this arg0)
     )
@@ -1124,7 +1110,7 @@
 
 ;; definition for method 82 of type vehicle-guard
 ;; WARN: Return type mismatch traffic-guard-type-settings vs none.
-(defmethod vehicle-method-82 vehicle-guard ((this vehicle-guard))
+(defmethod vehicle-method-82 ((this vehicle-guard))
   (let ((t9-0 (method-of-type vehicle vehicle-method-82)))
     (t9-0 this)
     )
@@ -1135,7 +1121,7 @@
   )
 
 ;; definition for method 128 of type vehicle-guard
-(defmethod vehicle-method-128 vehicle-guard ((this vehicle-guard))
+(defmethod vehicle-method-128 ((this vehicle-guard))
   (if (not (-> this minimap))
       (set! (-> this minimap) (add-icon! *minimap* this (the-as uint 14) (the-as int #f) (the-as vector #t) 0))
       )
@@ -1144,7 +1130,7 @@
   )
 
 ;; definition for method 127 of type vehicle-guard
-(defmethod vehicle-method-127 vehicle-guard ((this vehicle-guard))
+(defmethod vehicle-method-127 ((this vehicle-guard))
   (when (-> this minimap)
     (logior! (-> this minimap flags) (minimap-flag fade-out))
     (set! (-> this minimap) #f)
@@ -1154,7 +1140,7 @@
   )
 
 ;; definition for method 129 of type vehicle-guard
-(defmethod vehicle-method-129 vehicle-guard ((this vehicle-guard))
+(defmethod vehicle-method-129 ((this vehicle-guard))
   (when (-> this minimap)
     (logior! (-> this minimap flags) (minimap-flag fade-out))
     (set! (-> this minimap) #f)
@@ -1165,7 +1151,7 @@
 
 ;; definition for method 130 of type vehicle-guard
 ;; WARN: Return type mismatch object vs none.
-(defmethod vehicle-method-130 vehicle-guard ((this vehicle-guard) (arg0 traffic-object-spawn-params))
+(defmethod vehicle-method-130 ((this vehicle-guard) (arg0 traffic-object-spawn-params))
   (case (-> arg0 behavior)
     ((9)
      (vehicle-method-128 this)
@@ -1181,7 +1167,7 @@
   )
 
 ;; definition for method 157 of type vehicle-guard
-(defmethod vehicle-guard-method-157 vehicle-guard ((this vehicle-guard) (arg0 vehicle-guard-target-data))
+(defmethod vehicle-guard-method-157 ((this vehicle-guard) (arg0 vehicle-guard-target-data))
   (local-vars (v1-11 float))
   (rlet ((acc :class vf)
          (vf0 :class vf)
@@ -1215,7 +1201,7 @@
 
 ;; definition for method 156 of type vehicle-guard
 ;; WARN: Return type mismatch int vs none.
-(defmethod vehicle-guard-method-156 vehicle-guard ((this vehicle-guard))
+(defmethod vehicle-guard-method-156 ((this vehicle-guard))
   (let ((f30-0 (seconds-per-frame)))
     (seek! (-> this controls throttle) 0.0 (* 4.0 f30-0))
     (+! (-> this controls brake) (* (- 1.0 (-> this controls brake)) (fmin 1.0 (* 8.0 f30-0))))
@@ -1250,7 +1236,7 @@
 
 ;; definition for method 154 of type vehicle-guard
 ;; WARN: Return type mismatch int vs none.
-(defmethod vehicle-guard-method-154 vehicle-guard ((this vehicle-guard))
+(defmethod vehicle-guard-method-154 ((this vehicle-guard))
   (if (not (logtest? (-> this rbody state flags) (rigid-body-flag enable-physics)))
       (rigid-body-object-method-38 this)
       )
@@ -1278,7 +1264,7 @@
 
 ;; definition for method 158 of type vehicle-guard
 ;; WARN: Return type mismatch int vs none.
-(defmethod vehicle-guard-method-158 vehicle-guard ((this vehicle-guard))
+(defmethod vehicle-guard-method-158 ((this vehicle-guard))
   (vehicle-guard-method-150 this)
   (let ((s5-0 (new 'stack-no-clear 'vehicle-guard-target-data)))
     (vehicle-guard-method-151 this s5-0)
@@ -1310,7 +1296,7 @@
 ;; definition for method 94 of type vehicle-guard
 ;; INFO: Used lq/sq
 ;; WARN: Return type mismatch int vs none.
-(defmethod vehicle-method-94 vehicle-guard ((this vehicle-guard))
+(defmethod vehicle-method-94 ((this vehicle-guard))
   (rlet ((acc :class vf)
          (vf0 :class vf)
          (vf4 :class vf)

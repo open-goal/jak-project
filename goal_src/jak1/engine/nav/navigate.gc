@@ -131,11 +131,11 @@
   (none)
   )
 
-(defmethod length nav-control ((this nav-control))
+(defmethod length ((this nav-control))
   (-> this num-spheres)
   )
 
-(defmethod asize-of nav-control ((this nav-control))
+(defmethod asize-of ((this nav-control))
   (the-as int (+ (-> nav-control size) (* (-> this max-spheres) 16)))
   )
 
@@ -176,11 +176,11 @@
       )
   )
 
-(defmethod length nav-mesh ((this nav-mesh))
+(defmethod length ((this nav-mesh))
   (-> this poly-count)
   )
 
-(defmethod debug-draw-poly nav-mesh ((this nav-mesh) (arg0 nav-poly) (arg1 rgba))
+(defmethod debug-draw-poly ((this nav-mesh) (arg0 nav-poly) (arg1 rgba))
   (let ((s5-0 (-> this origin))
         (s2-0 (-> this vertex))
         (gp-0 (new 'stack-no-clear 'vector))
@@ -222,14 +222,14 @@
 
 (set! (-> *nav-one-third* x) 0.33333334)
 
-(defmethod tri-centroid-local nav-mesh ((this nav-mesh) (arg0 nav-poly) (arg1 vector))
+(defmethod tri-centroid-local ((this nav-mesh) (arg0 nav-poly) (arg1 vector))
   (set! (-> arg1 quad) (-> this vertex (-> arg0 vertex 0) quad))
   (vector+! arg1 arg1 (the-as vector (-> this vertex (-> arg0 vertex 1))))
   (vector+! arg1 arg1 (the-as vector (-> this vertex (-> arg0 vertex 2))))
   (vector-float*! arg1 arg1 0.333333)
   )
 
-(defmethod tri-centroid-world nav-mesh ((this nav-mesh) (arg0 nav-poly) (arg1 vector))
+(defmethod tri-centroid-world ((this nav-mesh) (arg0 nav-poly) (arg1 vector))
   (tri-centroid-local this arg0 arg1)
   (vector+! arg1 arg1 (-> this origin))
   )
@@ -314,7 +314,7 @@
     )
   )
 
-(defmethod point-in-poly? nav-mesh ((this nav-mesh) (arg0 nav-poly) (arg1 vector))
+(defmethod point-in-poly? ((this nav-mesh) (arg0 nav-poly) (arg1 vector))
   (vu-point-triangle-intersection?
     arg1
     (-> this vertex (-> arg0 vertex 0))
@@ -323,7 +323,7 @@
     )
   )
 
-(defmethod closest-point-on-boundary nav-mesh ((this nav-mesh) (arg0 nav-poly) (arg1 vector) (arg2 vector))
+(defmethod closest-point-on-boundary ((this nav-mesh) (arg0 nav-poly) (arg1 vector) (arg2 vector))
   (let ((s2-0 (-> this vertex))
         (s1-0 (new 'stack-no-clear 'vector))
         (s5-0 (new 'stack-no-clear 'vector))
@@ -345,7 +345,7 @@
   arg1
   )
 
-(defmethod project-point-into-tri-2d nav-mesh ((this nav-mesh) (arg0 nav-poly) (arg1 vector) (arg2 vector))
+(defmethod project-point-into-tri-2d ((this nav-mesh) (arg0 nav-poly) (arg1 vector) (arg2 vector))
   (if (point-in-poly? this arg0 arg2)
       (set! (-> arg1 quad) (-> arg2 quad))
       (closest-point-on-boundary this arg0 arg1 arg2)
@@ -484,11 +484,11 @@
   -1
   )
 
-(defmethod find-poly-fast nav-mesh ((this nav-mesh) (arg0 vector) (arg1 meters))
+(defmethod find-poly-fast ((this nav-mesh) (arg0 vector) (arg1 meters))
   (local-vars (a0-6 symbol) (a2-3 uint128) (a2-4 uint128))
   -1
   (let ((s2-0 -1)
-        (s3-0 (-> *display* base-frame-counter))
+        (s3-0 (current-time))
         (f0-0 (-> this bounds w))
         )
     (when (>= (* f0-0 f0-0) (vector-length-squared arg0))
@@ -741,7 +741,7 @@
   )
 
 ;; ERROR: Failed load: (set! vf3 (l.vf a0-4)) at op 42
-(defmethod is-in-mesh? nav-mesh ((this nav-mesh) (arg0 vector) (arg1 float) (arg2 meters))
+(defmethod is-in-mesh? ((this nav-mesh) (arg0 vector) (arg1 float) (arg2 meters))
   (local-vars (v1-10 int))
   (rlet ((vf1 :class vf)
          (vf2 :class vf)
@@ -820,7 +820,7 @@
     )
   )
 
-(defmethod move-along-nav-ray! nav-mesh ((this nav-mesh) (arg0 nav-ray))
+(defmethod move-along-nav-ray! ((this nav-mesh) (arg0 nav-ray))
   (local-vars (a2-7 int) (a3-3 int))
   (let ((v1-0 -1)
         (f0-1 (- (-> arg0 dest-pos x) (-> arg0 current-pos x)))
@@ -919,7 +919,7 @@
   (init-ray arg0)
   )
 
-(defmethod try-move-along-ray nav-mesh ((this nav-mesh) (arg0 nav-poly) (arg1 vector) (arg2 vector) (arg3 float))
+(defmethod try-move-along-ray ((this nav-mesh) (arg0 nav-poly) (arg1 vector) (arg2 vector) (arg3 float))
   (local-vars (v1-2 symbol))
   (let ((gp-0 (new 'stack-no-clear 'nav-ray)))
     (let ((s4-0 0))
@@ -984,7 +984,7 @@
 
 (define *nav-update-route-table-route-count* 0)
 
-(defmethod nav-mesh-method-18 nav-mesh ((this nav-mesh) (arg0 int) (arg1 vector) (arg2 int) (arg3 (pointer int8)) (arg4 int))
+(defmethod nav-mesh-method-18 ((this nav-mesh) (arg0 int) (arg1 vector) (arg2 int) (arg3 (pointer int8)) (arg4 int))
   (local-vars (sv-32 int) (sv-48 uint))
   (set! (-> arg3 arg2) 1)
   (nav-mesh-update-route-table this arg0 arg2 (the-as uint 3))
@@ -1028,7 +1028,7 @@
   (none)
   )
 
-(defmethod update-route-table nav-mesh ((this nav-mesh))
+(defmethod update-route-table ((this nav-mesh))
   (when *nav-patch-route-table*
     (stopwatch-init *nav-timer*)
     (stopwatch-begin *nav-timer*)
@@ -1162,7 +1162,7 @@
     )
   )
 
-(defmethod find-poly nav-mesh ((this nav-mesh) (arg0 vector) (arg1 meters) (arg2 (pointer nav-control-flags)))
+(defmethod find-poly ((this nav-mesh) (arg0 vector) (arg1 meters) (arg2 (pointer nav-control-flags)))
   (local-vars (s3-1 nav-poly))
   (let ((v1-1 (find-poly-fast this arg0 arg1)))
     (when v1-1
@@ -1204,7 +1204,7 @@
   s3-1
   )
 
-(defmethod setup-portal nav-mesh ((this nav-mesh) (arg0 nav-poly) (arg1 nav-poly) (arg2 nav-route-portal))
+(defmethod setup-portal ((this nav-mesh) (arg0 nav-poly) (arg1 nav-poly) (arg2 nav-route-portal))
   (local-vars (t0-6 int) (t1-1 int))
   (set! (-> arg2 next-poly) #f)
   (cond
@@ -1244,7 +1244,7 @@
     )
   )
 
-(defmethod get-adj-poly nav-mesh ((this nav-mesh) (arg0 nav-poly) (arg1 nav-poly) (arg2 symbol))
+(defmethod get-adj-poly ((this nav-mesh) (arg0 nav-poly) (arg1 nav-poly) (arg2 symbol))
   (local-vars (v1-12 uint) (t0-6 int) (t1-1 int))
   (cond
     ((and arg0 arg1)
@@ -1286,7 +1286,7 @@
     )
   )
 
-(defmethod compute-bounding-box nav-mesh ((this nav-mesh) (arg0 vector) (arg1 vector))
+(defmethod compute-bounding-box ((this nav-mesh) (arg0 vector) (arg1 vector))
   (let ((f0-0 10000000000000000000000000000000000000.0)
         (f1-0 -10000000000000000000000000000000000000.0)
         )
@@ -1313,7 +1313,7 @@
   (none)
   )
 
-(defmethod initialize-mesh! nav-mesh ((this nav-mesh))
+(defmethod initialize-mesh! ((this nav-mesh))
   (local-vars (sv-32 vector) (sv-48 int))
   (with-pp
     (set! sv-32 (new 'stack-no-clear 'vector))
@@ -1386,7 +1386,7 @@
     )
   )
 
-(defmethod find-opposite-vertices nav-mesh ((this nav-mesh) (arg0 nav-poly) (arg1 nav-poly))
+(defmethod find-opposite-vertices ((this nav-mesh) (arg0 nav-poly) (arg1 nav-poly))
   (when (!= arg0 arg1)
     (dotimes (v1-1 3)
       (dotimes (a0-1 3)
@@ -1463,7 +1463,7 @@
     )
   )
 
-(defmethod nav-mesh-method-23 nav-mesh ((this nav-mesh) (arg0 nav-poly) (arg1 vector) (arg2 vector) (arg3 vector) (arg4 nav-route-portal))
+(defmethod nav-mesh-method-23 ((this nav-mesh) (arg0 nav-poly) (arg1 vector) (arg2 vector) (arg3 vector) (arg4 nav-route-portal))
   (local-vars (v1-32 int) (a0-14 int) (a0-17 int) (a1-10 int) (sv-16 nav-vertex))
   (let ((s1-0 (-> this vertex))
         (s0-0 -1)
@@ -1535,7 +1535,7 @@
   arg2
   )
 
-(defmethod project-point-into-tri-3d nav-mesh ((this nav-mesh) (arg0 nav-poly) (arg1 vector) (arg2 vector))
+(defmethod project-point-into-tri-3d ((this nav-mesh) (arg0 nav-poly) (arg1 vector) (arg2 vector))
   (let ((s3-0 (new 'stack-no-clear 'vector))
         (s4-0 (new 'stack-no-clear 'matrix))
         )
@@ -1551,7 +1551,7 @@
   (none)
   )
 
-(defmethod project-onto-nav-mesh nav-control ((this nav-control) (arg0 vector) (arg1 vector))
+(defmethod project-onto-nav-mesh ((this nav-control) (arg0 vector) (arg1 vector))
   (local-vars (sv-32 int))
   (let ((s5-0 (-> this mesh))
         (s3-1 (vector-! (new 'stack-no-clear 'vector) arg1 (-> this mesh origin)))
@@ -1572,7 +1572,7 @@
   arg0
   )
 
-(defmethod find-poly nav-control ((this nav-control) (arg0 vector))
+(defmethod find-poly ((this nav-control) (arg0 vector))
   (find-poly
     (-> this mesh)
     (vector-! (new 'stack-no-clear 'vector) arg0 (-> this mesh origin))
@@ -1581,7 +1581,7 @@
     )
   )
 
-(defmethod project-point-into-tri-3d nav-control ((this nav-control) (arg0 nav-poly) (arg1 vector) (arg2 vector))
+(defmethod project-point-into-tri-3d ((this nav-control) (arg0 nav-poly) (arg1 vector) (arg2 vector))
   (project-point-into-tri-3d
     (-> this mesh)
     arg0
@@ -1592,7 +1592,7 @@
   arg1
   )
 
-(defmethod is-in-mesh? nav-control ((this nav-control) (arg0 vector) (arg1 float))
+(defmethod is-in-mesh? ((this nav-control) (arg0 vector) (arg1 float))
   (let ((v1-1 (vector-! (new 'stack-no-clear 'vector) arg0 (-> this mesh origin)))
         (a1-1 (-> this mesh))
         )
@@ -1600,7 +1600,7 @@
     )
   )
 
-(defmethod debug-draw nav-control ((this nav-control))
+(defmethod debug-draw ((this nav-control))
   (local-vars
     (sv-192 vector)
     (sv-208 uint)
@@ -1842,7 +1842,7 @@
   (none)
   )
 
-(defmethod mem-usage nav-mesh ((this nav-mesh) (arg0 memory-usage-block) (arg1 int))
+(defmethod mem-usage ((this nav-mesh) (arg0 memory-usage-block) (arg1 int))
   (set! (-> arg0 length) (max 46 (-> arg0 length)))
   (set! (-> arg0 data 45 name) "nav-mesh")
   (+! (-> arg0 data 45 count) 1)
@@ -1874,14 +1874,14 @@
   (the-as nav-mesh 0)
   )
 
-(defmethod set-current-poly! nav-control ((this nav-control) (arg0 nav-poly))
+(defmethod set-current-poly! ((this nav-control) (arg0 nav-poly))
   (set! (-> this current-poly) arg0)
   (logior! (-> this flags) (nav-control-flags navcf9))
   0
   (none)
   )
 
-(defmethod nav-control-method-30 nav-control ((this nav-control) (arg0 vector) (arg1 vector) (arg2 vector))
+(defmethod nav-control-method-30 ((this nav-control) (arg0 vector) (arg1 vector) (arg2 vector))
   (let ((s5-0 (the-as sphere #f)))
     (let ((f30-0 -0.000001))
       (countdown (s1-0 (-> this num-spheres))
@@ -1900,7 +1900,7 @@
     )
   )
 
-(defmethod intersect-ray-line-segment? nav-control ((this nav-control) (arg0 vector) (arg1 vector) (arg2 vector) (arg3 vector))
+(defmethod intersect-ray-line-segment? ((this nav-control) (arg0 vector) (arg1 vector) (arg2 vector) (arg3 vector))
   (ray-line-segment-intersection? arg0 arg1 arg2 arg3)
   )
 
@@ -1966,7 +1966,7 @@
   (none)
   )
 
-(defmethod nav-control-method-28 nav-control ((this nav-control) (arg0 collide-kind))
+(defmethod nav-control-method-28 ((this nav-control) (arg0 collide-kind))
   (local-vars
     (sv-32 nav-control)
     (sv-48 sphere)
@@ -2116,7 +2116,7 @@
   (none)
   )
 
-(defmethod nav-control-method-35 nav-control ((this nav-control) (arg0 vector) (arg1 vector) (arg2 vector) (arg3 vector) (arg4 float))
+(defmethod nav-control-method-35 ((this nav-control) (arg0 vector) (arg1 vector) (arg2 vector) (arg3 vector) (arg4 float))
   (let ((v1-0 (new 'stack-no-clear 'vector)))
     (vector-! v1-0 arg1 (-> this mesh origin))
     (nav-control-method-32 this arg0 v1-0 arg2 arg3 arg4)
@@ -2125,60 +2125,51 @@
   )
 
 (deftype cfs-travel-vec (structure)
-  ((dir         vector :inline :offset-assert   0)
-   (delta-angle float          :offset-assert  16)
+  ((dir          vector  :inline)
+   (delta-angle  float)
    )
-  :method-count-assert 9
-  :size-assert         #x14
-  :flag-assert         #x900000014
   )
 
 
 (deftype cfs-work (structure)
-  ((desired-travel-dist float                    :offset-assert   0)
-   (desired-angle       float                    :offset-assert   4)
-   (max-dist            float                    :offset-assert   8)
-   (old-angle           float                    :offset-assert  12)
-   (modified            int32                    :offset-assert  16)
-   (blocked-mask        uint64                   :offset-assert  24)
-   (travel              vector         :inline   :offset-assert  32)
-   (current             vector         :inline   :offset-assert  48)
-   (new-travel          cfs-travel-vec 2 :inline :offset-assert  64)
-   (temp-travel         cfs-travel-vec 2 :inline :offset-assert 128)
-   (prev-dir            vector         :inline   :offset-assert 192)
-   (attempt-dir         vector         :inline   :offset-assert 208)
-   (tangent             vector         2 :inline :offset-assert 224)
+  ((desired-travel-dist  float)
+   (desired-angle        float)
+   (max-dist             float)
+   (old-angle            float)
+   (modified             int32)
+   (blocked-mask         uint64)
+   (travel               vector          :inline)
+   (current              vector          :inline)
+   (new-travel           cfs-travel-vec  2 :inline)
+   (temp-travel          cfs-travel-vec  2 :inline)
+   (prev-dir             vector          :inline)
+   (attempt-dir          vector          :inline)
+   (tangent              vector          2 :inline)
    )
-  :method-count-assert 9
-  :size-assert         #x100
-  :flag-assert         #x900000100
   )
 
 
 (deftype nav-control-cfs-work (structure)
-  ((in-dir              vector  :inline   :offset-assert   0)
-   (right-dir           vector  :inline   :offset-assert  16)
-   (best-dir            vector  2 :inline :offset-assert  32)
-   (temp-dir            vector  2 :inline :offset-assert  64)
-   (away-dir            vector  :inline   :offset-assert  96)
-   (best-dir-angle      degrees 2         :offset-assert 112)
-   (ignore-mask         uint64            :offset-assert 120)
-   (initial-ignore-mask uint64            :offset-assert 128)
-   (i-sphere            int32             :offset-assert 136)
-   (i-first-sphere      int32             :offset-assert 140)
-   (i-inside-sphere     int32             :offset-assert 144)
-   (inside-sphere-dist  float             :offset-assert 148)
-   (sign                float             :offset-assert 152)
-   (travel-len          float             :offset-assert 156)
-   (dist2               float             :offset-assert 160)
-   (inside-dist         float             :offset-assert 164)
-   (rand-angle          float             :offset-assert 168)
-   (dir-update          basic             :offset-assert 172)
-   (debug-offset        vector  :inline   :offset-assert 176)
+  ((in-dir               vector   :inline)
+   (right-dir            vector   :inline)
+   (best-dir             vector   2 :inline)
+   (temp-dir             vector   2 :inline)
+   (away-dir             vector   :inline)
+   (best-dir-angle       degrees  2)
+   (ignore-mask          uint64)
+   (initial-ignore-mask  uint64)
+   (i-sphere             int32)
+   (i-first-sphere       int32)
+   (i-inside-sphere      int32)
+   (inside-sphere-dist   float)
+   (sign                 float)
+   (travel-len           float)
+   (dist2                float)
+   (inside-dist          float)
+   (rand-angle           float)
+   (dir-update           basic)
+   (debug-offset         vector   :inline)
    )
-  :method-count-assert 9
-  :size-assert         #xc0
-  :flag-assert         #x9000000c0
   )
 
 
@@ -2257,7 +2248,7 @@
     )
   )
 
-(defmethod nav-control-method-32 nav-control ((this nav-control) (arg0 vector) (arg1 vector) (arg2 vector) (arg3 vector) (arg4 float))
+(defmethod nav-control-method-32 ((this nav-control) (arg0 vector) (arg1 vector) (arg2 vector) (arg3 vector) (arg4 float))
   (local-vars (v0-3 symbol) (v1-38 int) (a0-29 int) (a3-7 int) (sv-208 sphere))
   (let ((gp-0 (new 'stack-no-clear 'nav-control-cfs-work)))
     (set! (-> gp-0 in-dir quad) (-> arg2 quad))
@@ -2333,7 +2324,12 @@
       (b! #t cfg-31 :delay (nop!))
       (label cfg-22)
       (+! (-> gp-0 ignore-mask) (ash 1 v1-38))
-      (circle-tangent-directions arg1 (-> this sphere v1-38) (the-as vector (-> gp-0 temp-dir)) (-> gp-0 temp-dir 1))
+      (circle-tangent-directions
+        arg1
+        (-> this sphere v1-38)
+        (the-as vector (-> gp-0 temp-dir))
+        (-> gp-0 temp-dir 1)
+        )
       (set! (-> gp-0 dir-update) #f)
       (dotimes (v1-40 2)
         (let ((f0-23 (-> gp-0 sign))
@@ -2411,7 +2407,7 @@
   v0-3
   )
 
-(defmethod nav-control-method-23 nav-control ((this nav-control) (arg0 vector) (arg1 check-vector-collision-with-nav-spheres-info))
+(defmethod nav-control-method-23 ((this nav-control) (arg0 vector) (arg1 check-vector-collision-with-nav-spheres-info))
   (let ((s2-1 (vector-! (new 'stack-no-clear 'vector) (-> this shape trans) (-> this mesh origin)))
         (f30-0 -1.0)
         )
@@ -2452,14 +2448,14 @@
     )
   )
 
-(defmethod nav-control-method-33 nav-control ((this nav-control) (arg0 vector) (arg1 vector) (arg2 vector) (arg3 vector) (arg4 float))
+(defmethod nav-control-method-33 ((this nav-control) (arg0 vector) (arg1 vector) (arg2 vector) (arg3 vector) (arg4 float))
   (let ((f30-0 (vector-xz-length (-> this travel))))
     (when (nav-control-method-32 this arg0 arg1 arg2 arg3 f30-0)
       (set! (-> this blocked-travel quad) (-> this travel quad))
       (let ((f0-0 (vector-xz-length (-> this travel))))
         (when (and (>= f30-0 f0-0) (< f0-0 204.8))
           (logior! (-> this flags) (nav-control-flags navcf17))
-          (set! (-> this block-time) (-> *display* base-frame-counter))
+          (set-time! (-> this block-time))
           (+! (-> this block-count) 1.0)
           (if (-> this block-event)
               (send-event (the-as process-tree (-> this process)) (the-as symbol (-> this block-event)) this)
@@ -2483,9 +2479,9 @@
 
 (define *test-ray-dest-pos* (new 'static 'vector :x -722887.7 :y 9532.475 :z -958862.25 :w 1.0))
 
-(defmethod nav-control-method-19 nav-control ((this nav-control) (arg0 vector) (arg1 collide-shape-moving) (arg2 vector) (arg3 float))
+(defmethod nav-control-method-19 ((this nav-control) (arg0 vector) (arg1 collide-shape-moving) (arg2 vector) (arg3 float))
   (local-vars (sv-48 float))
-  (let ((f30-0 (* arg3 (-> *display* seconds-per-frame)))
+  (let ((f30-0 (* arg3 (seconds-per-frame)))
         (s0-0 arg1)
         (s1-0 arg2)
         (s2-0 deg-diff)
@@ -2521,7 +2517,7 @@
   (none)
   )
 
-(defmethod nav-control-method-16 nav-control ((this nav-control) (arg0 vector))
+(defmethod nav-control-method-16 ((this nav-control) (arg0 vector))
   (find-poly-fast
     (-> this mesh)
     (vector-! (new 'stack-no-clear 'vector) arg0 (-> this mesh origin))
@@ -2529,7 +2525,7 @@
     )
   )
 
-(defmethod nav-control-method-21 nav-control ((this nav-control) (arg0 vector))
+(defmethod nav-control-method-21 ((this nav-control) (arg0 vector))
   (find-poly-fast
     (-> this mesh)
     (vector-! (new 'stack-no-clear 'vector) arg0 (-> this mesh origin))
@@ -2537,7 +2533,7 @@
     )
   )
 
-(defmethod nav-control-method-22 nav-control ((this nav-control) (arg0 vector) (arg1 float))
+(defmethod nav-control-method-22 ((this nav-control) (arg0 vector) (arg1 float))
   (the-as symbol (and (find-poly-fast
                         (-> this mesh)
                         (vector-! (new 'stack-no-clear 'vector) arg0 (-> this mesh origin))
@@ -2558,12 +2554,12 @@
     )
   )
 
-(defmethod nav-control-method-26 nav-control ((this nav-control))
+(defmethod nav-control-method-26 ((this nav-control))
   0
   (none)
   )
 
-(defmethod nav-control-method-27 nav-control ((this nav-control))
+(defmethod nav-control-method-27 ((this nav-control))
   (local-vars (v1-7 symbol))
   (cond
     ((-> this current-poly)
@@ -2609,14 +2605,14 @@
   (none)
   )
 
-(defmethod nav-mesh-method-16 nav-mesh ((this nav-mesh)
-                                      (arg0 vector)
-                                      (arg1 nav-poly)
-                                      (arg2 vector)
-                                      (arg3 symbol)
-                                      (arg4 float)
-                                      (arg5 clip-travel-vector-to-mesh-return-info)
-                                      )
+(defmethod nav-mesh-method-16 ((this nav-mesh)
+                              (arg0 vector)
+                              (arg1 nav-poly)
+                              (arg2 vector)
+                              (arg3 symbol)
+                              (arg4 float)
+                              (arg5 clip-travel-vector-to-mesh-return-info)
+                              )
   (local-vars (v1-10 symbol) (sv-96 symbol) (sv-112 int) (sv-128 int))
   (when arg5
     (set! (-> arg5 found-boundary) #f)
@@ -2702,7 +2698,7 @@
   (none)
   )
 
-(defmethod nav-control-method-24 nav-control ((this nav-control) (arg0 float) (arg1 clip-travel-vector-to-mesh-return-info))
+(defmethod nav-control-method-24 ((this nav-control) (arg0 float) (arg1 clip-travel-vector-to-mesh-return-info))
   (let ((v1-0 (new 'stack-no-clear 'vector)))
     (vector-! v1-0 (-> this shape trans) (-> this mesh origin))
     (nav-mesh-method-16
@@ -2823,7 +2819,7 @@
     )
   )
 
-(defmethod nav-control-method-13 nav-control ((this nav-control) (arg0 vector) (arg1 vector))
+(defmethod nav-control-method-13 ((this nav-control) (arg0 vector) (arg1 vector))
   (local-vars
     (sv-80 vector)
     (sv-84 vector)
@@ -2933,7 +2929,7 @@
   (-> this travel)
   )
 
-(defmethod nav-control-method-12 nav-control ((this nav-control) (arg0 nav-gap-info))
+(defmethod nav-control-method-12 ((this nav-control) (arg0 nav-gap-info))
   (when (and (-> this next-poly) (logtest? (-> this next-poly pat) 1))
     (let ((s4-0 (-> this next-poly))
           (s3-1 (vector-! (new 'stack-no-clear 'vector) (-> this shape trans) (-> this mesh origin)))
@@ -2954,7 +2950,7 @@
     )
   )
 
-(defmethod nav-control-method-11 nav-control ((this nav-control) (arg0 vector))
+(defmethod nav-control-method-11 ((this nav-control) (arg0 vector))
   (set! (-> this old-travel quad) (-> this travel quad))
   (-> this block-count)
   (seek! (-> this block-count) 0.0 0.016666668)

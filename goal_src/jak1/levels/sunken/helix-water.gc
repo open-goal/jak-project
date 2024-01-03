@@ -15,12 +15,8 @@
 ;; DECOMP BEGINS
 
 (deftype helix-slide-door (process-drawable)
-  ((root-override collide-shape  :offset 112)
+  ((root  collide-shape :override)
    )
-  :heap-base #x40
-  :method-count-assert 20
-  :size-assert         #xb0
-  :flag-assert         #x14004000b0
   (:states
     helix-slide-door-close
     helix-slide-door-idle-closed
@@ -35,17 +31,13 @@
               )
 
 (deftype helix-button (process-drawable)
-  ((root-override collide-shape-moving         :offset        112)
-   (my-water      entity-actor                 :offset-assert 176)
-   (my-door       entity-actor                 :offset-assert 180)
-   (fcell-handle  handle                       :offset-assert 184)
-   (down-y        float                        :offset-assert 192)
-   (spawn-trans   vector               :inline :offset-assert 208)
+  ((root          collide-shape-moving :override)
+   (my-water      entity-actor)
+   (my-door       entity-actor)
+   (fcell-handle  handle)
+   (down-y        float)
+   (spawn-trans   vector                :inline)
    )
-  :heap-base #x70
-  :method-count-assert 20
-  :size-assert         #xe0
-  :flag-assert         #x14007000e0
   (:states
     helix-button-activate
     helix-button-idle-down
@@ -63,28 +55,20 @@
 
 (deftype helix-dark-eco (dark-eco-pool)
   ()
-  :heap-base #x70
-  :method-count-assert 30
-  :size-assert         #xdc
-  :flag-assert         #x1e007000dc
   )
 
 
 (deftype helix-water (process-drawable)
-  ((last-alt-actor-consumed int32                     :offset-assert 176)
-   (alt-actors              (array entity-actor)      :offset-assert 180)
-   (transv-y                float                     :offset-assert 184)
-   (start-y                 float                     :offset-assert 188)
-   (end-y                   float                     :offset-assert 192)
-   (dark-eco                (pointer helix-dark-eco)  :offset-assert 196)
+  ((last-alt-actor-consumed  int32)
+   (alt-actors               (array entity-actor))
+   (transv-y                 float)
+   (start-y                  float)
+   (end-y                    float)
+   (dark-eco                 (pointer helix-dark-eco))
    )
-  :heap-base #x60
-  :method-count-assert 22
-  :size-assert         #xc8
-  :flag-assert         #x16006000c8
   (:methods
-    (helix-water-method-20 (_type_) none 20)
-    (helix-water-method-21 (_type_) object 21)
+    (helix-water-method-20 (_type_) none)
+    (helix-water-method-21 (_type_) object)
     )
   (:states
     helix-water-activated
@@ -174,7 +158,7 @@
     )
   )
 
-(defmethod init-from-entity! helix-slide-door ((this helix-slide-door) (arg0 entity-actor))
+(defmethod init-from-entity! ((this helix-slide-door) (arg0 entity-actor))
   (let ((s4-0 (new 'process 'collide-shape this (collide-list-enum hit-by-others))))
     (let ((s3-0 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 0) (the-as uint 0))))
       (set! (-> s3-0 prim-core collide-as) (collide-kind wall-object))
@@ -187,7 +171,7 @@
       )
     (set! (-> s4-0 nav-radius) (* 0.75 (-> s4-0 root-prim local-sphere w)))
     (backup-collide-with-as s4-0)
-    (set! (-> this root-override) s4-0)
+    (set! (-> this root) s4-0)
     )
   (process-drawable-from-entity! this arg0)
   (initialize-skeleton this *helix-slide-door-sg* '())
@@ -202,7 +186,7 @@
     (set! (-> s5-1 frame-num) 0.0)
     )
   (ja-post)
-  (update-transforms! (-> this root-override))
+  (update-transforms! (-> this root))
   (set! *helix-slide-door* this)
   (go helix-slide-door-idle-open)
   (none)
@@ -212,7 +196,7 @@
   :code (behavior ()
     (when (not (task-complete? *game-info* (game-task sunken-slide)))
       (let ((a0-1 (new 'stack-no-clear 'vector)))
-        (set! (-> a0-1 quad) (-> self root-override trans quad))
+        (set! (-> a0-1 quad) (-> self root trans quad))
         (+! (-> a0-1 y) 30720.0)
         (let ((v1-7 (birth-pickup-at-point
                       a0-1
@@ -226,7 +210,7 @@
               )
           (set! (-> self fcell-handle) (ppointer->handle v1-7))
           (if v1-7
-              (clear-collide-with-as (-> (the-as collectable (-> v1-7 0)) root-override))
+              (clear-collide-with-as (-> (the-as collectable (-> v1-7 0)) root))
               )
           )
         )
@@ -312,13 +296,13 @@
     (set-time! (-> self state-time))
     (when *target*
       (let ((gp-1 (new 'stack-no-clear 'vector)))
-        (vector-! gp-1 (-> self root-override trans) (target-pos 0))
+        (vector-! gp-1 (-> self root trans) (target-pos 0))
         (when (< 12288.0 (vector-xz-length gp-1))
           (set! (-> gp-1 y) 0.0)
           (vector-normalize! gp-1 4096.0)
           (move-by-vector! (-> *target* control) gp-1)
-          (do-push-aways! (-> self root-override))
-          (detect-riders! (-> self root-override))
+          (do-push-aways! (-> self root))
+          (detect-riders! (-> self root))
           )
         )
       )
@@ -328,11 +312,11 @@
     (level-hint-spawn (text-id sunken-helix-hint) "sksp0124" (the-as entity #f) *entity-pool* (game-task none))
     (send-event *target* 'play-anim 'shock-in)
     (sound-play "prec-button8")
-    (set! (-> self root-override transv quad) (the-as uint128 0))
+    (set! (-> self root transv quad) (the-as uint128 0))
     (let ((gp-3 5))
       (until (<= gp-3 0)
-        (let ((f1-0 (-> self root-override transv y))
-              (f0-2 (-> self root-override trans y))
+        (let ((f1-0 (-> self root transv y))
+              (f0-2 (-> self root trans y))
               (a1-11 (new 'stack-no-clear 'vector))
               )
           (let* ((f1-1 (+ f1-0 (* -737280.0 (seconds-per-frame))))
@@ -343,11 +327,11 @@
               (set! f1-1 (* 0.65 (- f1-1)))
               (+! gp-3 -1)
               )
-            (set! (-> self root-override transv y) f1-1)
-            (set! (-> a1-11 quad) (-> self root-override trans quad))
+            (set! (-> self root transv y) f1-1)
+            (set! (-> a1-11 quad) (-> self root trans quad))
             (set! (-> a1-11 y) f0-3)
             )
-          (move-to-point! (-> self root-override) a1-11)
+          (move-to-point! (-> self root) a1-11)
           )
         (suspend)
         )
@@ -463,11 +447,11 @@
           )
         )
       )
-    (set! (-> self root-override transv quad) (the-as uint128 0))
+    (set! (-> self root transv quad) (the-as uint128 0))
     (let ((gp-2 5))
       (until (<= gp-2 0)
-        (let ((f1-0 (-> self root-override transv y))
-              (f0-0 (-> self root-override trans y))
+        (let ((f1-0 (-> self root transv y))
+              (f0-0 (-> self root trans y))
               (a1-5 (new 'stack-no-clear 'vector))
               )
           (let* ((f1-1 (+ f1-0 (* -737280.0 (seconds-per-frame))))
@@ -478,11 +462,11 @@
               (set! f1-1 (* 0.65 (- f1-1)))
               (+! gp-2 -1)
               )
-            (set! (-> self root-override transv y) f1-1)
-            (set! (-> a1-5 quad) (-> self root-override trans quad))
+            (set! (-> self root transv y) f1-1)
+            (set! (-> a1-5 quad) (-> self root trans quad))
             (set! (-> a1-5 y) f0-1)
             )
-          (move-to-point! (-> self root-override) a1-5)
+          (move-to-point! (-> self root) a1-5)
           )
         (suspend)
         )
@@ -500,7 +484,7 @@
     )
   )
 
-(defmethod init-from-entity! helix-button ((this helix-button) (arg0 entity-actor))
+(defmethod init-from-entity! ((this helix-button) (arg0 entity-actor))
   (set! (-> this fcell-handle) (the-as handle #f))
   (set! (-> this my-water) (entity-actor-lookup arg0 'alt-actor 0))
   (set! (-> this my-door) (entity-actor-lookup arg0 'alt-actor 1))
@@ -522,7 +506,7 @@
       )
     (set! (-> s4-0 nav-radius) (* 0.75 (-> s4-0 root-prim local-sphere w)))
     (backup-collide-with-as s4-0)
-    (set! (-> this root-override) s4-0)
+    (set! (-> this root) s4-0)
     )
   (process-drawable-from-entity! this arg0)
   (initialize-skeleton this *helix-button-sg* '())
@@ -536,20 +520,20 @@
       )
     (set! (-> s5-1 frame-num) 0.0)
     )
-  (set! (-> this spawn-trans quad) (-> this root-override trans quad))
-  (+! (-> this root-override trans y) -26624.0)
-  (set! (-> this down-y) (+ -6553.6 (-> this root-override trans y)))
+  (set! (-> this spawn-trans quad) (-> this root trans quad))
+  (+! (-> this root trans y) -26624.0)
+  (set! (-> this down-y) (+ -6553.6 (-> this root trans y)))
   (set! (-> this fact)
         (new 'process 'fact-info this (pickup-type eco-pill-random) (-> *FACT-bank* default-pill-inc))
         )
   (ja-post)
-  (update-transforms! (-> this root-override))
+  (update-transforms! (-> this root))
   (set! *helix-button* this)
   (go helix-button-startup)
   (none)
   )
 
-(defmethod helix-water-method-21 helix-water ((this helix-water))
+(defmethod helix-water-method-21 ((this helix-water))
   (let ((s5-0 (+ (-> this last-alt-actor-consumed) 1)))
     (when (< s5-0 (-> this alt-actors length))
       (let* ((v1-5 (-> this alt-actors s5-0))
@@ -665,14 +649,14 @@
   :post ja-post
   )
 
-(defmethod relocate helix-water ((this helix-water) (arg0 int))
+(defmethod relocate ((this helix-water) (arg0 int))
   (if (nonzero? (-> this alt-actors))
       (&+! (-> this alt-actors) arg0)
       )
   (call-parent-method this arg0)
   )
 
-(defmethod init-from-entity! helix-water ((this helix-water) (arg0 entity-actor))
+(defmethod init-from-entity! ((this helix-water) (arg0 entity-actor))
   (set! (-> this last-alt-actor-consumed) -1)
   (set! (-> this transv-y) 9216.0)
   (set! (-> this root) (new 'process 'trsqv))

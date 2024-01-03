@@ -3,20 +3,17 @@
 
 ;; definition of type flut-info
 (deftype flut-info (basic)
-  ((entity        entity-actor         :offset-assert   4)
-   (flut-trans    vector       :inline :offset-assert  16)
-   (flut-quat     vector       :inline :offset-assert  32)
-   (flut-scale    vector       :inline :offset-assert  48)
-   (stick-lock    basic                :offset-assert  64)
-   (flap-sound-id sound-id             :offset-assert  68)
+  ((entity         entity-actor)
+   (flut-trans     vector  :inline)
+   (flut-quat      vector  :inline)
+   (flut-scale     vector  :inline)
+   (stick-lock     basic)
+   (flap-sound-id  sound-id)
    )
-  :method-count-assert 9
-  :size-assert         #x48
-  :flag-assert         #x900000048
   )
 
 ;; definition for method 3 of type flut-info
-(defmethod inspect flut-info ((this flut-info))
+(defmethod inspect ((this flut-info))
   (format #t "[~8x] ~A~%" this (-> this type))
   (format #t "~Tentity: ~A~%" (-> this entity))
   (format #t "~Tflut-trans: ~`vector`P~%" (-> this flut-trans))
@@ -29,20 +26,17 @@
 
 ;; definition of type flut-bank
 (deftype flut-bank (basic)
-  ((jump-height-min        meters      :offset-assert   4)
-   (jump-height-max        meters      :offset-assert   8)
-   (double-jump-height-min meters      :offset-assert  12)
-   (double-jump-height-max meters      :offset-assert  16)
-   (air-attack-speed       meters      :offset-assert  20)
-   (ground-timeout         time-frame  :offset-assert  24)
+  ((jump-height-min         meters)
+   (jump-height-max         meters)
+   (double-jump-height-min  meters)
+   (double-jump-height-max  meters)
+   (air-attack-speed        meters)
+   (ground-timeout          time-frame)
    )
-  :method-count-assert 9
-  :size-assert         #x20
-  :flag-assert         #x900000020
   )
 
 ;; definition for method 3 of type flut-bank
-(defmethod inspect flut-bank ((this flut-bank))
+(defmethod inspect ((this flut-bank))
   (format #t "[~8x] ~A~%" this (-> this type))
   (format #t "~Tjump-height-min: (meters ~m)~%" (-> this jump-height-min))
   (format #t "~Tjump-height-max: (meters ~m)~%" (-> this jump-height-max))
@@ -493,12 +487,12 @@
                            )
                        )
                  )
-            (set! (-> self root-override trans quad) (-> v1-0 flut flut-trans quad))
+            (set! (-> self root trans quad) (-> v1-0 flut flut-trans quad))
             (let ((a0-4 (-> v1-0 flut flut-quat quad)))
-              (set! (-> self root-override quat vec quad) a0-4)
+              (set! (-> self root quat vec quad) a0-4)
               )
-            (set! (-> self root-override scale quad) (-> v1-0 flut flut-scale quad))
-            (set! (-> self root-override ground-pat material) (the-as int (-> v1-0 control ground-pat material)))
+            (set! (-> self root scale quad) (-> v1-0 flut flut-scale quad))
+            (set! (-> self root ground-pat material) (the-as int (-> v1-0 control ground-pat material)))
             (set! (-> self draw light-index) (the-as uint 255))
             (let ((a0-13 (-> v1-0 draw color-mult quad)))
               (set! (-> self draw color-mult quad) a0-13)
@@ -1226,9 +1220,7 @@
     (set! (-> *run-attack-mods* turnvv) 655360.0)
     (target-start-attack)
     (target-danger-set! 'flut-attack #f)
-    (when (and (and (= (-> self fact-info-target eco-type) (pickup-type eco-yellow))
-                    (>= (-> self fact-info-target eco-level) 1.0)
-                    )
+    (when (and (and (= (-> self fact eco-type) (pickup-type eco-yellow)) (>= (-> self fact eco-level) 1.0))
                (time-elapsed? (-> self control unknown-dword82) (seconds 0.25))
                )
       (let ((gp-0 (vector-z-quaternion! (new 'stack-no-clear 'vector) (-> self control quat)))
@@ -1243,7 +1235,7 @@
           (-> self entity)
           s5-0
           gp-0
-          (if (>= (-> self fact-info-target eco-level) (-> *FACT-bank* eco-level-max))
+          (if (>= (-> self fact eco-level) (-> *FACT-bank* eco-level-max))
               281
               265
               )
@@ -1303,7 +1295,7 @@
           (create-splash
             (-> self water)
             (the-as float 0.6)
-            (vector<-cspace! (new 'stack-no-clear 'vector) (joint-node-index eichar-lod0-jg mouth))
+            (vector<-cspace! (new 'stack-no-clear 'vector) (joint-node eichar-lod0-jg mouth))
             0
             (-> self control transv)
             )
@@ -1610,7 +1602,7 @@
   :trans (behavior ()
     (when (= *cheat-mode* 'debug)
       (when (and (not *pause-lock*) (cpad-hold? (-> self control unknown-cpad-info00 number) r2))
-        (pickup-collectable! (-> self fact-info-target) (pickup-type eco-green) (the-as float 1.0) (the-as handle #f))
+        (pickup-collectable! (-> self fact) (pickup-type eco-green) (the-as float 1.0) (the-as handle #f))
         (go target-flut-stance)
         )
       )
@@ -1681,38 +1673,23 @@
                 (go target-flut-stance)
                 )
                (else
-                 (pickup-collectable!
-                   (-> self fact-info-target)
-                   (pickup-type eco-green)
-                   (the-as float -1000.0)
-                   (the-as handle #f)
-                   )
+                 (pickup-collectable! (-> self fact) (pickup-type eco-green) (the-as float -1000.0) (the-as handle #f))
                  (go target-flut-death (-> gp-0 mode))
                  )
                )
              )
             (('water-vol 'sharkey)
-             (pickup-collectable!
-               (-> self fact-info-target)
-               (pickup-type eco-green)
-               (the-as float -1000.0)
-               (the-as handle #f)
-               )
+             (pickup-collectable! (-> self fact) (pickup-type eco-green) (the-as float -1000.0) (the-as handle #f))
              (if (= (-> self game mode) 'play)
                  (go target-flut-death (-> gp-0 mode))
                  )
              )
             (('death)
-             (pickup-collectable!
-               (-> self fact-info-target)
-               (pickup-type eco-green)
-               (the-as float -1000.0)
-               (the-as handle #f)
-               )
+             (pickup-collectable! (-> self fact) (pickup-type eco-green) (the-as float -1000.0) (the-as handle #f))
              )
             (else
               (pickup-collectable!
-                (-> self fact-info-target)
+                (-> self fact)
                 (pickup-type eco-green)
                 (- (-> *FACT-bank* health-single-inc))
                 (the-as handle #f)
@@ -1743,7 +1720,7 @@
           (target-hit-move gp-0 (target-hit-orient gp-0 s5-0) target-flut-falling-anim-trans f30-0)
           )
         )
-      (if (and (= (-> self game mode) 'play) (>= 0.0 (-> self fact-info-target health)))
+      (if (and (= (-> self game mode) 'play) (>= 0.0 (-> self fact health)))
           (go target-flut-death (-> gp-0 mode))
           )
       )
@@ -2009,7 +1986,7 @@
         )
       (rot->dir-targ! (-> self control))
       (ja-post)
-      (vector<-cspace! gp-0 (joint-node-index eichar-lod0-jg main))
+      (vector<-cspace! gp-0 (joint-node eichar-lod0-jg main))
       (+! (-> gp-0 y) -5896.192)
       (move-to-point! (-> self control) gp-0)
       )

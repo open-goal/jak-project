@@ -110,7 +110,7 @@ void DecompilerTypeSystem::parse_type_defs(const std::vector<std::string>& file_
     } catch (std::exception& e) {
       auto info = m_reader.db.get_info_for(o);
       lg::error("{} when parsing decompiler type file:{}", e.what(), info);
-      throw e;
+      throw;
     }
   });
 }

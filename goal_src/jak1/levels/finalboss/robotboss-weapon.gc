@@ -8,24 +8,21 @@
 ;; DECOMP BEGINS
 
 (deftype torus (structure)
-  ((origin           vector :inline :offset-assert   0)
-   (axis             vector :inline :offset-assert  16)
-   (radius-primary   float          :offset-assert  32)
-   (radius-secondary float          :offset-assert  36)
+  ((origin            vector  :inline)
+   (axis              vector  :inline)
+   (radius-primary    float)
+   (radius-secondary  float)
    )
-  :method-count-assert 13
-  :size-assert         #x28
-  :flag-assert         #xd00000028
   (:methods
-    (torus-method-9 (_type_ vector) none 9)
-    (torus-method-10 (_type_ collide-prim-core vector) symbol 10)
-    (torus-method-11 (_type_ vector) symbol 11)
-    (torus-method-12 (_type_ vector) vector 12)
+    (torus-method-9 (_type_ vector) none)
+    (torus-method-10 (_type_ collide-prim-core vector) symbol)
+    (torus-method-11 (_type_ vector) symbol)
+    (torus-method-12 (_type_ vector) vector)
     )
   )
 
 
-(defmethod torus-method-10 torus ((this torus) (arg0 collide-prim-core) (arg1 vector))
+(defmethod torus-method-10 ((this torus) (arg0 collide-prim-core) (arg1 vector))
   (let ((gp-0 (new 'stack-no-clear 'vector))
         (s5-0 (new 'stack-no-clear 'vector))
         (f30-0 (+ (-> this radius-secondary) (-> arg0 world-sphere w)))
@@ -38,7 +35,7 @@
     )
   )
 
-(defmethod torus-method-11 torus ((this torus) (arg0 vector))
+(defmethod torus-method-11 ((this torus) (arg0 vector))
   (let ((s4-0 (the-as collide-shape-prim-group (-> *target* control root-prim))))
     (when (and (logtest? (-> s4-0 prim-core collide-as) (collide-kind target))
                (torus-method-10 this (-> s4-0 prim-core) arg0)
@@ -59,15 +56,12 @@
   )
 
 (deftype torus-verts (structure)
-  ((vert vector 8 :inline :offset-assert   0)
+  ((vert  vector  8 :inline)
    )
-  :method-count-assert 9
-  :size-assert         #x80
-  :flag-assert         #x900000080
   )
 
 
-(defmethod torus-method-9 torus ((this torus) (arg0 vector))
+(defmethod torus-method-9 ((this torus) (arg0 vector))
   (local-vars (sv-256 int) (sv-272 int) (sv-288 int))
   (let ((s0-0 (new 'stack-no-clear 'vector))
         (s4-0 (new 'stack-no-clear 'vector))
@@ -117,7 +111,7 @@
   (none)
   )
 
-(defmethod torus-method-12 torus ((this torus) (arg0 vector))
+(defmethod torus-method-12 ((this torus) (arg0 vector))
   (let* ((f30-0 65536.0)
          (v1-1 (/ (the-as int (rand-uint31-gen *random-generator*)) 256))
          (v1-2 (the-as number (logior #x3f800000 v1-1)))
@@ -147,16 +141,12 @@
   )
 
 (deftype arcing-shot (process-drawable)
-  ((root-override collide-shape-moving         :offset        112)
-   (y-vel         float                        :offset-assert 176)
-   (grav          float                        :offset-assert 180)
-   (from          vector               :inline :offset-assert 192)
-   (to            vector               :inline :offset-assert 208)
+  ((root   collide-shape-moving :override)
+   (y-vel  float)
+   (grav   float)
+   (from   vector                :inline)
+   (to     vector                :inline)
    )
-  :heap-base #x70
-  :method-count-assert 20
-  :size-assert         #xe0
-  :flag-assert         #x14007000e0
   (:states
     arcing-shot-debug-trajectory
     )
@@ -216,15 +206,11 @@
   )
 
 (deftype darkecobomb (arcing-shot)
-  ((flight-time    time-frame  :offset-assert 224)
-   (countdown-time float       :offset-assert 232)
-   (anim-speed     float       :offset-assert 236)
-   (next-tick      float       :offset-assert 240)
+  ((flight-time     time-frame)
+   (countdown-time  float)
+   (anim-speed      float)
+   (next-tick       float)
    )
-  :heap-base #x90
-  :method-count-assert 20
-  :size-assert         #xf4
-  :flag-assert         #x14009000f4
   (:states
     darkecobomb-countdown
     (darkecobomb-explode symbol)
@@ -253,7 +239,7 @@
       #f
       #f
       #f
-      (-> self root-override trans)
+      (-> self root trans)
       :to *entity-pool*
       )
     (logior! (-> self draw status) (draw-status hidden))
@@ -332,7 +318,7 @@
           #f
           #f
           #f
-          (-> self root-override trans)
+          (-> self root trans)
           :to *entity-pool*
           )
         (+! (-> self next-tick) -0.06)
@@ -344,7 +330,7 @@
         )
     (when (ja-group? darkecobomb-spin-cycle-ja)
       (let ((gp-2 (new 'stack-no-clear 'vector)))
-        (vector<-cspace! gp-2 (joint-node-index darkecobomb-lod0-jg particles))
+        (vector<-cspace! gp-2 (joint-node darkecobomb-lod0-jg particles))
         (spawn (-> self part) gp-2)
         )
       )
@@ -403,7 +389,7 @@
     )
   :trans (behavior ()
     (arcing-shot-calculate
-      (-> self root-override trans)
+      (-> self root trans)
       (/ (the float (- (-> *display* game-frame-counter) (-> self state-time))) (the float (-> self flight-time)))
       )
     (if (>= (- (-> *display* game-frame-counter) (-> self state-time)) (-> self flight-time))
@@ -445,9 +431,9 @@
       )
     (set! (-> s1-0 nav-radius) (* 0.75 (-> s1-0 root-prim local-sphere w)))
     (backup-collide-with-as s1-0)
-    (set! (-> self root-override) s1-0)
+    (set! (-> self root) s1-0)
     )
-  (set! (-> self root-override trans quad) (-> arg0 quad))
+  (set! (-> self root trans quad) (-> arg0 quad))
   (initialize-skeleton self *darkecobomb-sg* '())
   (logclear! (-> self mask) (process-mask actor-pause))
   (set! (-> self part) (create-launch-control (-> *part-group-id-table* 639) self))
@@ -460,12 +446,8 @@
   )
 
 (deftype greenshot (arcing-shot)
-  ((flight-time time-frame  :offset-assert 224)
+  ((flight-time  time-frame)
    )
-  :heap-base #x80
-  :method-count-assert 20
-  :size-assert         #xe8
-  :flag-assert         #x14008000e8
   (:states
     greenshot-idle
     )
@@ -483,13 +465,13 @@
     )
   :trans (behavior ()
     (arcing-shot-calculate
-      (-> self root-override trans)
+      (-> self root trans)
       (/ (the float (- (-> *display* game-frame-counter) (-> self state-time))) (the float (-> self flight-time)))
       )
     (if (>= (- (-> *display* game-frame-counter) (-> self state-time)) (-> self flight-time))
         (deactivate self)
         )
-    (spawn (-> self part) (-> self root-override trans))
+    (spawn (-> self part) (-> self root trans))
     )
   :code (behavior ()
     (loop
@@ -519,9 +501,9 @@
       )
     (set! (-> s2-0 nav-radius) (* 0.75 (-> s2-0 root-prim local-sphere w)))
     (backup-collide-with-as s2-0)
-    (set! (-> self root-override) s2-0)
+    (set! (-> self root) s2-0)
     )
-  (set! (-> self root-override trans quad) (-> arg0 quad))
+  (set! (-> self root trans quad) (-> arg0 quad))
   (initialize-skeleton self *greenshot-sg* '())
   (logclear! (-> self mask) (process-mask actor-pause))
   (arcing-shot-setup arg0 arg1 arg2)
@@ -533,18 +515,14 @@
   )
 
 (deftype redshot (arcing-shot)
-  ((flight-time     time-frame                       :offset-assert 224)
-   (stall-time      time-frame                       :offset-assert 232)
-   (ring            torus                    :inline :offset-assert 240)
-   (rotation-offset int64                            :offset-assert 280)
-   (part-track      handle                           :offset-assert 288)
-   (shot-particle   sparticle-launch-control         :offset-assert 296)
-   (test-particle   sparticle-launch-control         :offset-assert 300)
+  ((flight-time      time-frame)
+   (stall-time       time-frame)
+   (ring             torus  :inline)
+   (rotation-offset  int64)
+   (part-track       handle)
+   (shot-particle    sparticle-launch-control)
+   (test-particle    sparticle-launch-control)
    )
-  :heap-base #xc0
-  :method-count-assert 20
-  :size-assert         #x130
-  :flag-assert         #x1400c00130
   (:states
     redshot-explode
     redshot-idle
@@ -553,7 +531,7 @@
   )
 
 
-(defmethod relocate redshot ((this redshot) (arg0 int))
+(defmethod relocate ((this redshot) (arg0 int))
   (if (nonzero? (-> this shot-particle))
       (&+! (-> this shot-particle) arg0)
       )
@@ -563,7 +541,7 @@
   (the-as redshot ((method-of-type arcing-shot relocate) this arg0))
   )
 
-(defmethod deactivate redshot ((this redshot))
+(defmethod deactivate ((this redshot))
   (if (nonzero? (-> this shot-particle))
       (kill-and-free-particles (-> this shot-particle))
       )
@@ -597,10 +575,10 @@
       (* 436.90668 (the float (+ (-> self rotation-offset) (-> *display* game-frame-counter))))
       (* 291.27112 (the float (+ (-> self rotation-offset) (-> *display* game-frame-counter))))
       )
-    (matrix->quaternion (-> self root-override quat) s5-0)
+    (matrix->quaternion (-> self root quat) s5-0)
     )
   (if (< (* 0.006666667 (the float (min 150 arg0))) 1.0)
-      (spawn (-> self part) (-> self root-override trans))
+      (spawn (-> self part) (-> self root trans))
       )
   (none)
   )
@@ -610,9 +588,9 @@
     (set! (-> self state-time) (-> *display* game-frame-counter))
     (sound-play "red-explode")
     (logclear! (-> self draw status) (draw-status hidden))
-    (quaternion-identity! (-> self root-override quat))
+    (quaternion-identity! (-> self root quat))
     (set! (-> self ring radius-secondary) 3072.0)
-    (set! (-> self ring origin quad) (-> self root-override trans quad))
+    (set! (-> self ring origin quad) (-> self root trans quad))
     (+! (-> self ring origin y) (-> self ring radius-secondary))
     (set-vector! (-> self ring axis) 0.0 1.0 0.0 1.0)
     (set! (-> self part-track) (ppointer->handle (process-spawn
@@ -623,7 +601,7 @@
                                                    redshot-particle-callback
                                                    (-> self ppointer)
                                                    #f
-                                                   (-> self root-override trans)
+                                                   (-> self root trans)
                                                    :to self
                                                    )
                                                  )
@@ -687,7 +665,7 @@
     (if (>= (- (-> *display* game-frame-counter) (-> self state-time)) (-> self stall-time))
         (go redshot-explode)
         )
-    (spawn (-> self shot-particle) (-> self root-override trans))
+    (spawn (-> self shot-particle) (-> self root trans))
     )
   :code (behavior ()
     (loop
@@ -705,13 +683,13 @@
   :trans (behavior ()
     (redshot-trans (seconds 5))
     (arcing-shot-calculate
-      (-> self root-override trans)
+      (-> self root trans)
       (/ (the float (- (-> *display* game-frame-counter) (-> self state-time))) (the float (-> self flight-time)))
       )
     (if (>= (- (-> *display* game-frame-counter) (-> self state-time)) (-> self flight-time))
         (go redshot-wait)
         )
-    (spawn (-> self shot-particle) (-> self root-override trans))
+    (spawn (-> self shot-particle) (-> self root trans))
     )
   :code (behavior ()
     (loop
@@ -739,9 +717,9 @@
     (set-root-prim! s0-0 sv-16)
     (set! (-> s0-0 nav-radius) (* 0.75 (-> s0-0 root-prim local-sphere w)))
     (backup-collide-with-as s0-0)
-    (set! (-> self root-override) s0-0)
+    (set! (-> self root) s0-0)
     )
-  (set! (-> self root-override trans quad) (-> arg0 quad))
+  (set! (-> self root trans quad) (-> arg0 quad))
   (initialize-skeleton self *redring-sg* '())
   (logclear! (-> self mask) (process-mask actor-pause))
   (arcing-shot-setup arg0 arg1 arg2)
@@ -753,19 +731,15 @@
   (set! (-> self test-particle) (create-launch-control (-> *part-group-id-table* 679) self))
   (logior! (-> self draw status) (draw-status hidden))
   (set! (-> self sound)
-        (new 'process 'ambient-sound (static-sound-spec "red-fireball" :fo-max 80) (-> self root-override trans))
+        (new 'process 'ambient-sound (static-sound-spec "red-fireball" :fo-max 80) (-> self root trans))
         )
   (go redshot-idle)
   (none)
   )
 
 (deftype yellowshot (arcing-shot)
-  ((flight-time time-frame  :offset-assert 224)
+  ((flight-time  time-frame)
    )
-  :heap-base #x80
-  :method-count-assert 20
-  :size-assert         #xe8
-  :flag-assert         #x14008000e8
   (:states
     yellowshot-idle
     )
@@ -788,10 +762,10 @@
     )
   :trans (behavior ()
     (arcing-shot-calculate
-      (-> self root-override trans)
+      (-> self root trans)
       (/ (the float (- (-> *display* game-frame-counter) (-> self state-time))) (the float (-> self flight-time)))
       )
-    (spawn (-> self part) (-> self root-override trans))
+    (spawn (-> self part) (-> self root trans))
     (when (>= (- (-> *display* game-frame-counter) (-> self state-time)) (-> self flight-time))
       (send-event (ppointer->process (-> self parent)) 'missed-jak)
       (deactivate self)
@@ -822,9 +796,9 @@
       )
     (set! (-> s2-0 nav-radius) (* 0.75 (-> s2-0 root-prim local-sphere w)))
     (backup-collide-with-as s2-0)
-    (set! (-> self root-override) s2-0)
+    (set! (-> self root) s2-0)
     )
-  (set! (-> self root-override trans quad) (-> arg0 quad))
+  (set! (-> self root trans quad) (-> arg0 quad))
   (initialize-skeleton self *redring-sg* '())
   (logior! (-> self draw status) (draw-status hidden))
   (arcing-shot-setup arg0 arg1 arg2)

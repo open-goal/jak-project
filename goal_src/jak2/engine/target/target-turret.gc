@@ -257,16 +257,12 @@
   )
 
 (deftype hud-turret-health (hud)
-  ((fade-interp float  :offset-assert 2980)
+  ((fade-interp  float)
    )
-  :heap-base #xb30
-  :method-count-assert 27
-  :size-assert         #xba8
-  :flag-assert         #x1b0b300ba8
   )
 
 
-(defmethod draw hud-turret-health ((this hud-turret-health))
+(defmethod draw ((this hud-turret-health))
   (with-pp
     (seek!
       (-> this fade-interp)
@@ -404,14 +400,14 @@
     )
   )
 
-(defmethod update-values hud-turret-health ((this hud-turret-health))
+(defmethod update-values ((this hud-turret-health))
   (set! (-> this values 0 target) (the int (-> *game-info* score)))
   ((method-of-type hud update-values) this)
   0
   (none)
   )
 
-(defmethod event-callback hud-turret-health ((this hud-turret-health) (arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+(defmethod event-callback ((this hud-turret-health) (arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
   (case arg2
     (('set-heat)
      (set! (-> this values 1 target) (the int (* 100.0 (the-as float (-> arg3 param 0)))))
@@ -552,14 +548,10 @@
 
 (deftype hud-drill-turret-health (hud-turret-health)
   ()
-  :heap-base #xb30
-  :method-count-assert 27
-  :size-assert         #xba8
-  :flag-assert         #x1b0b300ba8
   )
 
 
-(defmethod init-callback hud-drill-turret-health ((this hud-drill-turret-health))
+(defmethod init-callback ((this hud-drill-turret-health))
   (set! (-> this level) (level-get *level* 'drillmid))
   (init-turret-hud this "drillmid-minimap")
   ((method-of-type hud init-callback) this)
@@ -569,14 +561,10 @@
 
 (deftype hud-port-turret-health (hud-turret-health)
   ()
-  :heap-base #xb30
-  :method-count-assert 27
-  :size-assert         #xba8
-  :flag-assert         #x1b0b300ba8
   )
 
 
-(defmethod init-callback hud-port-turret-health ((this hud-port-turret-health))
+(defmethod init-callback ((this hud-port-turret-health))
   (set! (-> this level) (level-get *level* 'portblmp))
   (init-turret-hud this "portblmp-minimap")
   ((method-of-type hud init-callback) this)
@@ -585,16 +573,13 @@
   )
 
 (deftype turret-info (basic)
-  ((process  (pointer process)             :offset-assert   4)
-   (handle   handle                        :offset-assert   8)
-   (turret   (pointer base-turret)         :offset-assert  16)
-   (grabbed? symbol                        :offset-assert  20)
-   (quat     quaternion            :inline :offset-assert  32)
-   (trans    vector                :inline :offset-assert  48)
+  ((process   (pointer process))
+   (handle    handle)
+   (turret    (pointer base-turret))
+   (grabbed?  symbol)
+   (quat      quaternion  :inline)
+   (trans     vector      :inline)
    )
-  :method-count-assert 9
-  :size-assert         #x40
-  :flag-assert         #x900000040
   )
 
 
@@ -634,110 +619,102 @@
   )
 
 (deftype turret-path-event (structure)
-  ((pos        float   :offset-assert   0)
-   (event-type symbol  :offset-assert   4)
-   (param      object  :offset-assert   8)
+  ((pos         float)
+   (event-type  symbol)
+   (param       object)
    )
-  :method-count-assert 9
-  :size-assert         #xc
-  :flag-assert         #x90000000c
   )
 
 
 (deftype turret-path (structure)
-  ((event-count int32                             :offset-assert   0)
-   (event-tbl   (inline-array turret-path-event)  :offset-assert   4)
+  ((event-count  int32)
+   (event-tbl    (inline-array turret-path-event))
    )
-  :method-count-assert 9
-  :size-assert         #x8
-  :flag-assert         #x900000008
   )
 
 
 (deftype base-turret (process-focusable)
-  ((hud                   handle                                :offset-assert 208)
-   (condition             int32                                 :offset-assert 216)
-   (shadow-backup         symbol                                :offset-assert 220)
-   (rider                 handle                                :offset-assert 224)
-   (actor-group           (pointer actor-group)                 :offset-assert 232)
-   (actor-group-count     int32                                 :offset-assert 236)
-   (alt-actor             symbol                                :offset-assert 240)
-   (smush-control         smush-control                 :inline :offset-assert 248)
-   (sound-id              sound-id                      3       :offset-assert 280)
-   (sound-playing         symbol                        3       :offset-assert 292)
-   (cam-string-vector     vector                        :inline :offset-assert 304)
-   (path-event            turret-path                           :offset-assert 320)
-   (path-u                float                                 :offset-assert 324)
-   (path-u-prev           float                                 :offset-assert 328)
-   (path-mode             uint16                                :offset-assert 332)
-   (path-speed            float                                 :offset-assert 336)
-   (path-speed-mult       float                                 :offset-assert 340)
-   (path-speed-mult-final float                                 :offset-assert 344)
-   (path-old-pos          vector                        :inline :offset-assert 352)
-   (path-direction        symbol                                :offset-assert 368)
-   (pause-proc            (function base-turret symbol)         :offset-assert 372)
-   (gun-recoil-jmod       joint-mod-add-local           4       :offset-assert 376)
-   (gun-index             int32                                 :offset-assert 392)
-   (shot-timeout          time-frame                            :offset-assert 400)
-   (fire-time             time-frame                            :offset-assert 408)
-   (fire-time-interval    time-frame                            :offset-assert 416)
-   (enable-controls       symbol                                :offset-assert 424)
-   (available-for-pickup  symbol                                :offset-assert 428)
-   (roty                  degrees                               :offset-assert 432)
-   (rotyv                 degrees                               :offset-assert 436)
-   (rotyvv                degrees                               :offset-assert 440)
-   (roty-min              degrees                               :offset-assert 444)
-   (roty-max              degrees                               :offset-assert 448)
-   (rotx                  degrees                               :offset-assert 452)
-   (rotxv                 degrees                               :offset-assert 456)
-   (rotxvv                degrees                               :offset-assert 460)
-   (rotx-min              degrees                               :offset-assert 464)
-   (rotx-max              degrees                               :offset-assert 468)
-   (target-quat           quaternion                    :inline :offset-assert 480)
-   (init-quat             quaternion                    :inline :offset-assert 496)
-   (health                float                                 :offset-assert 512)
-   (track-handle          handle                                :offset-assert 520)
-   (heat                  float                                 :offset-assert 528)
-   (heat-target           float                                 :offset-assert 532)
-   (arrow-angle           degrees                               :offset-assert 536)
-   (arrow-alpha           float                                 :offset-assert 540)
-   (arrow-red             float                                 :offset-assert 544)
-   (red-filter-timer      time-frame                            :offset-assert 552)
-   (ride-height           float                                 :offset-assert 560)
+  ((hud                    handle)
+   (condition              int32)
+   (shadow-backup          symbol)
+   (rider                  handle)
+   (actor-group            (pointer actor-group))
+   (actor-group-count      int32)
+   (alt-actor              symbol)
+   (smush-control          smush-control        :inline)
+   (sound-id               sound-id             3)
+   (sound-playing          symbol               3)
+   (cam-string-vector      vector               :inline)
+   (path-event             turret-path)
+   (path-u                 float)
+   (path-u-prev            float)
+   (path-mode              uint16)
+   (path-speed             float)
+   (path-speed-mult        float)
+   (path-speed-mult-final  float)
+   (path-old-pos           vector               :inline)
+   (path-direction         symbol)
+   (pause-proc             (function base-turret symbol))
+   (gun-recoil-jmod        joint-mod-add-local  4)
+   (gun-index              int32)
+   (shot-timeout           time-frame)
+   (fire-time              time-frame)
+   (fire-time-interval     time-frame)
+   (enable-controls        symbol)
+   (available-for-pickup   symbol)
+   (roty                   degrees)
+   (rotyv                  degrees)
+   (rotyvv                 degrees)
+   (roty-min               degrees)
+   (roty-max               degrees)
+   (rotx                   degrees)
+   (rotxv                  degrees)
+   (rotxvv                 degrees)
+   (rotx-min               degrees)
+   (rotx-max               degrees)
+   (target-quat            quaternion           :inline)
+   (init-quat              quaternion           :inline)
+   (health                 float)
+   (track-handle           handle)
+   (heat                   float)
+   (heat-target            float)
+   (arrow-angle            degrees)
+   (arrow-alpha            float)
+   (arrow-red              float)
+   (red-filter-timer       time-frame)
+   (ride-height            float)
    )
-  :heap-base #x1c0
-  :method-count-assert 49
-  :size-assert         #x234
-  :flag-assert         #x3101c00234
+  (:state-methods
+    idle
+    setup
+    active
+    shutdown
+    dormant
+    die
+    )
   (:methods
-    (idle () _type_ :state 27)
-    (setup () _type_ :state 28)
-    (active () _type_ :state 29)
-    (shutdown () _type_ :state 30)
-    (dormant () _type_ :state 31)
-    (die () _type_ :state 32)
-    (turret-init! (_type_ entity-actor matrix) none 33)
-    (base-turret-method-34 (_type_ process) none 34)
-    (base-turret-method-35 (_type_) none 35)
-    (base-turret-method-36 (_type_) none 36)
-    (base-turret-method-37 (_type_) none 37)
-    (base-turret-method-38 (_type_) none 38)
-    (base-turret-method-39 (_type_ turret-path-event) none 39)
-    (base-turret-method-40 (_type_) none 40)
-    (base-turret-method-41 (_type_ vector) symbol 41)
-    (base-turret-method-42 (_type_ vector vector float) float 42)
-    (base-turret-method-43 (_type_) none 43)
-    (base-turret-method-44 (_type_ vector vector) none 44)
-    (base-turret-method-45 (_type_ object symbol) none 45)
-    (base-turret-method-46 (_type_ process) process 46)
-    (base-turret-method-47 (_type_) none 47)
-    (turret-event-handler (_type_ process int symbol event-message-block) object 48)
+    (turret-init! (_type_ entity-actor matrix) none)
+    (base-turret-method-34 (_type_ process) none)
+    (base-turret-method-35 (_type_) none)
+    (base-turret-method-36 (_type_) none)
+    (base-turret-method-37 (_type_) none)
+    (base-turret-method-38 (_type_) none)
+    (base-turret-method-39 (_type_ turret-path-event) none)
+    (base-turret-method-40 (_type_) none)
+    (base-turret-method-41 (_type_ vector) symbol)
+    (base-turret-method-42 (_type_ vector vector float) float)
+    (base-turret-method-43 (_type_) none)
+    (base-turret-method-44 (_type_ vector vector) none)
+    (base-turret-method-45 (_type_ object symbol) none)
+    (base-turret-method-46 (_type_ process) process)
+    (base-turret-method-47 (_type_) none)
+    (turret-event-handler (_type_ process int symbol event-message-block) object)
     )
   )
 
 
 ;; WARN: Return type mismatch process-drawable vs base-turret.
-(defmethod relocate base-turret ((this base-turret) (arg0 int))
+(defmethod relocate ((this base-turret) (arg0 int))
   (countdown (v1-0 4)
     (if (-> this gun-recoil-jmod v1-0)
         (&+! (-> this gun-recoil-jmod v1-0) arg0)
@@ -746,18 +723,18 @@
   (the-as base-turret ((method-of-type process-drawable relocate) this arg0))
   )
 
-(defmethod base-turret-method-34 base-turret ((this base-turret) (arg0 process))
+(defmethod base-turret-method-34 ((this base-turret) (arg0 process))
   0
   (none)
   )
 
-(defmethod base-turret-method-35 base-turret ((this base-turret))
+(defmethod base-turret-method-35 ((this base-turret))
   (send-event (handle->process (-> this hud)) 'force-show)
   0
   (none)
   )
 
-(defmethod base-turret-method-36 base-turret ((this base-turret))
+(defmethod base-turret-method-36 ((this base-turret))
   (if (nonzero? (-> this part))
       (spawn (-> this part) (-> this root trans))
       )
@@ -765,7 +742,7 @@
   (none)
   )
 
-(defmethod base-turret-method-40 base-turret ((this base-turret))
+(defmethod base-turret-method-40 ((this base-turret))
   (let ((s3-0 (new 'stack-no-clear 'matrix))
         (s4-0 (new 'stack-no-clear 'matrix))
         (gp-0 (new 'stack-no-clear 'quaternion))
@@ -783,7 +760,7 @@
   (none)
   )
 
-(defmethod base-turret-method-37 base-turret ((this base-turret))
+(defmethod base-turret-method-37 ((this base-turret))
   (let ((f30-0 (fabs (* 0.00006866455 (-> this rotyv))))
         (f28-0 (fabs (* 0.00010986328 (-> this rotxv))))
         (f26-0 0.33333334)
@@ -839,7 +816,7 @@
   (none)
   )
 
-(defmethod turret-event-handler base-turret ((this base-turret) (arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+(defmethod turret-event-handler ((this base-turret) (arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
   (local-vars (v0-0 object))
   (case arg2
     (('trans)
@@ -876,7 +853,7 @@
   (turret-event-handler self arg0 arg1 arg2 arg3)
   )
 
-(defmethod get-trans base-turret ((this base-turret) (arg0 int))
+(defmethod get-trans ((this base-turret) (arg0 int))
   "@returns the `trans` [[vector]] from the process's `root` (typically either a [[trsqv]] or a [[collide-shape]])"
   (if (= arg0 1)
       (-> this root trans)
@@ -1549,11 +1526,11 @@
   )
 
 ;; WARN: Return type mismatch symbol vs process.
-(defmethod base-turret-method-46 base-turret ((this base-turret) (arg0 process))
+(defmethod base-turret-method-46 ((this base-turret) (arg0 process))
   (the-as process #t)
   )
 
-(defmethod base-turret-method-47 base-turret ((this base-turret))
+(defmethod base-turret-method-47 ((this base-turret))
   (let ((a0-1 (-> this root trans))
         (f30-0 0.0)
         (s4-0 (the-as process-drawable #f))
@@ -1649,7 +1626,7 @@
   (none)
   )
 
-(defmethod base-turret-method-43 base-turret ((this base-turret))
+(defmethod base-turret-method-43 ((this base-turret))
   (set! (-> this roty) (y-angle (-> this root)))
   (set! (-> this rotyv) 0.0)
   (set! (-> this rotyvv) 0.0)
@@ -1660,7 +1637,7 @@
   (none)
   )
 
-(defmethod turret-init! base-turret ((this base-turret) (arg0 entity-actor) (arg1 matrix))
+(defmethod turret-init! ((this base-turret) (arg0 entity-actor) (arg1 matrix))
   (local-vars (sv-16 res-tag))
   ;; og:preserve-this changed from 512
   (stack-size-set! (-> this main-thread) 1024)
@@ -1792,7 +1769,7 @@
   (none)
   )
 
-(defmethod base-turret-method-41 base-turret ((this base-turret) (arg0 vector))
+(defmethod base-turret-method-41 ((this base-turret) (arg0 vector))
   (local-vars (sv-592 int))
   (let* ((s3-0 (vector-z-quaternion! (new 'stack-no-clear 'vector) (-> this init-quat)))
          (s1-0 (-> this root trans))
@@ -1829,7 +1806,7 @@
   #f
   )
 
-(defmethod base-turret-method-44 base-turret ((this base-turret) (arg0 vector) (arg1 vector))
+(defmethod base-turret-method-44 ((this base-turret) (arg0 vector) (arg1 vector))
   (let ((gp-0 (new 'stack-no-clear 'projectile-init-by-other-params)))
     (set! (-> gp-0 ent) (-> this entity))
     (set! (-> gp-0 charge) 1.0)
@@ -1852,7 +1829,7 @@
   (none)
   )
 
-(defmethod base-turret-method-42 base-turret ((this base-turret) (arg0 vector) (arg1 vector) (arg2 float))
+(defmethod base-turret-method-42 ((this base-turret) (arg0 vector) (arg1 vector) (arg2 float))
   (let ((s5-0 (new 'stack-no-clear 'collide-query)))
     (set! (-> s5-0 start-pos quad) (-> arg0 quad))
     (vector-normalize-copy! (-> s5-0 move-dist) arg1 819200.0)
@@ -1878,7 +1855,7 @@
     )
   )
 
-(defmethod base-turret-method-45 base-turret ((this base-turret) (arg0 object) (arg1 symbol))
+(defmethod base-turret-method-45 ((this base-turret) (arg0 object) (arg1 symbol))
   (local-vars (sv-112 vector) (sv-128 vector) (sv-144 vector))
   (rlet ((acc :class vf)
          (vf0 :class vf)
@@ -1933,7 +1910,7 @@
     )
   )
 
-(defmethod base-turret-method-39 base-turret ((this base-turret) (arg0 turret-path-event))
+(defmethod base-turret-method-39 ((this base-turret) (arg0 turret-path-event))
   (case (-> arg0 event-type)
     (('script)
      (script-eval (the-as pair (-> arg0 param)))
@@ -1979,7 +1956,7 @@
   (none)
   )
 
-(defmethod base-turret-method-38 base-turret ((this base-turret))
+(defmethod base-turret-method-38 ((this base-turret))
   (when (nonzero? (-> this path-event))
     (let* ((s5-0 (-> this path-event))
            (f0-0 (get-num-segments (-> this path)))
@@ -1999,7 +1976,7 @@
   (none)
   )
 
-(defmethod deactivate base-turret ((this base-turret))
+(defmethod deactivate ((this base-turret))
   (if (valid? (-> this hud) (the-as type #f) "" #t 0)
       (send-event (handle->process (-> this hud)) 'hide-and-die)
       )
@@ -2011,7 +1988,7 @@
   )
 
 ;; WARN: Return type mismatch object vs none.
-(defmethod init-from-entity! base-turret ((this base-turret) (arg0 entity-actor))
+(defmethod init-from-entity! ((this base-turret) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
 - stack size
@@ -2400,7 +2377,7 @@ This commonly includes things such as:
         )
       (rot->dir-targ! (-> self control))
       (if (< 86.0 (ja-aframe-num 0))
-          (vector<-cspace! (-> self alt-cam-pos) (joint-node-index jakb-lod0-jg Rankle))
+          (vector<-cspace! (-> self alt-cam-pos) (joint-node jakb-lod0-jg Rankle))
           )
       (suspend)
       (ja :num! (seek!))
@@ -2408,7 +2385,7 @@ This commonly includes things such as:
     (rot->dir-targ! (-> self control))
     (ja-post)
     (let ((gp-4 (new 'stack-no-clear 'vector)))
-      (vector<-cspace! gp-4 (joint-node-index jakb-lod0-jg main))
+      (vector<-cspace! gp-4 (joint-node jakb-lod0-jg main))
       (+! (-> gp-4 y) -9011.2)
       (move-to-point! (-> self control) gp-4)
       )

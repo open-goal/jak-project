@@ -21,7 +21,7 @@
 
 ;; definition for method 21 of type level-group
 ;; INFO: Return type mismatch object vs pair.
-(defmethod load-command-get-index level-group ((this level-group) (name symbol) (cmd-idx int))
+(defmethod load-command-get-index ((this level-group) (name symbol) (cmd-idx int))
   (let ((cmd-lst (-> (lookup-level-info name) alt-load-commands)))
     (while (nonzero? cmd-idx)
       (+! cmd-idx -1)
@@ -43,7 +43,7 @@
   )
 
 ;; definition for method 28 of type level
-(defmethod art-group-get-by-name level ((this level) (arg0 string))
+(defmethod art-group-get-by-name ((this level) (arg0 string))
   (countdown (s4-0 (-> this art-group art-group-array length))
     (if (name= (-> this art-group art-group-array s4-0 name) arg0)
         (return (-> this art-group art-group-array s4-0))
@@ -53,7 +53,7 @@
   )
 
 ;; definition for method 13 of type level
-(defmethod bsp-name level ((this level))
+(defmethod bsp-name ((this level))
   (if (and (!= (-> this status) 'inactive) (-> this bsp) (nonzero? (-> this bsp name)))
       (-> this bsp name)
       (-> this name)
@@ -70,14 +70,14 @@
   )
 
 ;; definition for method 2 of type level
-(defmethod print level ((this level))
+(defmethod print ((this level))
   (format #t "#<~A ~A ~S @ #x~X>" (-> this type) (-> this status) (-> this name) this)
   this
   )
 
 ;; definition for method 7 of type bsp-header
 ;; INFO: Return type mismatch bsp-header vs none.
-(defmethod relocate bsp-header ((this bsp-header) (arg0 kheap) (arg1 (pointer uint8)))
+(defmethod relocate ((this bsp-header) (arg0 kheap) (arg1 (pointer uint8)))
   (let ((s5-0 (-> *level* loading-level)))
     (if s5-0
         (set! this (cond
@@ -118,7 +118,7 @@
   )
 
 ;; definition for method 24 of type level
-(defmethod load-required-packages level ((this level))
+(defmethod load-required-packages ((this level))
   (when (not (or (not (-> this bsp)) (= *kernel-boot-mode* 'debug-boot)))
     (if (not (null? (-> this info packages)))
         (load-package "common" global)
@@ -129,7 +129,7 @@
 
 ;; definition for method 26 of type level
 ;; INFO: Used lq/sq
-(defmethod vis-clear level ((this level))
+(defmethod vis-clear ((this level))
   (countdown (v1-0 8)
     (nop!)
     (set! (-> this vis-info v1-0) #f)
@@ -143,7 +143,7 @@
 
 ;; definition for method 20 of type level
 ;; INFO: Used lq/sq
-(defmethod vis-load level ((this level))
+(defmethod vis-load ((this level))
   (when (zero? (-> this vis-info (-> this vis-self-index) ramdisk))
     (let ((v1-10 (-> this other vis-info (-> this other vis-self-index))))
       (when (and v1-10 (nonzero? (-> v1-10 ramdisk)))
@@ -182,7 +182,7 @@
   )
 
 ;; definition for method 25 of type level
-(defmethod init-vis level ((this level))
+(defmethod init-vis ((this level))
   (when (not (or (= (-> this status) 'inactive) (not (-> this bsp))))
     (set! (-> this all-visible?) 'loading)
     (let ((s5-0 (-> this bsp vis-info 0)))
@@ -227,7 +227,7 @@
   )
 
 ;; definition for method 11 of type level-group
-(defmethod level-get-for-use level-group ((this level-group) (arg0 symbol) (arg1 symbol))
+(defmethod level-get-for-use ((this level-group) (arg0 symbol) (arg1 symbol))
   (local-vars (s5-1 level))
   (alloc-levels! this #f)
   (let* ((s3-0 (lookup-level-info arg0))
@@ -268,7 +268,7 @@
   )
 
 ;; definition for method 25 of type level-group
-(defmethod level-status level-group ((this level-group) (arg0 symbol))
+(defmethod level-status ((this level-group) (arg0 symbol))
   (let ((v1-1 (level-get *level* arg0)))
     (if v1-1
         (-> v1-1 status)
@@ -277,7 +277,7 @@
   )
 
 ;; definition for method 23 of type level
-(defmethod level-status-set! level ((this level) (arg0 symbol))
+(defmethod level-status-set! ((this level) (arg0 symbol))
   (case arg0
     (('inactive)
      (-> this status)
@@ -348,7 +348,7 @@
 (define *print-login* #t)
 
 ;; definition for method 17 of type level
-(defmethod load-continue level ((this level))
+(defmethod load-continue ((this level))
   (local-vars (sv-16 symbol))
   (when (-> this linking)
     (when (nonzero? (link-resume))
@@ -422,7 +422,7 @@
   )
 
 ;; definition for method 18 of type level
-(defmethod load-begin level ((this level))
+(defmethod load-begin ((this level))
   (set! loading-level (-> this heap))
   (set! (-> *level* loading-level) this)
   (set! (-> *level* log-in-level-bsp) #f)
@@ -452,7 +452,7 @@
   )
 
 ;; definition for method 19 of type level
-(defmethod login-begin level ((this level))
+(defmethod login-begin ((this level))
   (set! (-> *texture-pool* allocate-func) texture-page-default-allocate)
   (cond
     ((-> this bsp)
@@ -669,7 +669,7 @@
   )
 
 ;; definition for method 22 of type level
-(defmethod birth level ((this level))
+(defmethod birth ((this level))
   (case (-> this status)
     (('loaded)
      (let ((s5-0 loading-level)
@@ -695,7 +695,7 @@
 
 ;; definition for method 9 of type level
 ;; INFO: Used lq/sq
-(defmethod deactivate level ((this level))
+(defmethod deactivate ((this level))
   (case (-> this status)
     (('active 'alive)
      (format 0 "----------- kill ~A (status ~A)~%" this (-> this status))
@@ -731,7 +731,7 @@
 
 ;; definition for method 12 of type level
 ;; ERROR: Failed load: (set! v1-52 (l.wu (+ a0-29 -4))) at op 146
-(defmethod unload! level ((this level))
+(defmethod unload! ((this level))
   (deactivate this)
   (when (!= (-> this status) 'inactive)
     (when (or (= (-> this status) 'loaded)
@@ -807,7 +807,7 @@
 
 ;; definition for method 10 of type level
 ;; ERROR: Unsupported inline assembly instruction kind - [addiu a0, a0, 56]
-(defmethod is-object-visible? level ((this level) (arg0 int))
+(defmethod is-object-visible? ((this level) (arg0 int))
   (local-vars (a0-1 int) (a0-3 int))
   (let ((v1-0 (-> this vis-bits)))
     (shift-arith-right-32 a0-1 arg0 3)
@@ -822,7 +822,7 @@
 
 ;; definition for method 15 of type level
 ;; INFO: Return type mismatch object vs symbol.
-(defmethod point-in-boxes? level ((this level) (arg0 vector))
+(defmethod point-in-boxes? ((this level) (arg0 vector))
   (the-as symbol (cond
                    ((or (not (-> this bsp)) (zero? (-> this bsp boxes)))
                     #f
@@ -855,7 +855,7 @@
 
 ;; definition for method 27 of type level
 ;; INFO: Return type mismatch int vs none.
-(defmethod debug-print-splitbox level ((this level) (arg0 vector) (arg1 string))
+(defmethod debug-print-splitbox ((this level) (arg0 vector) (arg1 string))
   (cond
     ((or (not (-> this bsp)) (zero? (-> this bsp boxes)) (zero? (-> this bsp split-box-indices)))
      )
@@ -883,7 +883,7 @@
   )
 
 ;; definition for method 8 of type level
-(defmethod mem-usage level ((this level) (arg0 memory-usage-block) (arg1 int))
+(defmethod mem-usage ((this level) (arg0 memory-usage-block) (arg1 int))
   (when (= (-> this status) 'active)
     (set! (-> arg0 length) (max 65 (-> arg0 length)))
     (set! (-> arg0 data 64 name) "entity-links")
@@ -942,7 +942,7 @@
   )
 
 ;; definition for method 18 of type level-group
-(defmethod alloc-levels! level-group ((this level-group) (arg0 symbol))
+(defmethod alloc-levels! ((this level-group) (arg0 symbol))
   (when (zero? (-> *level* level0 heap base))
     (when (nmember "game" *kernel-packages*)
       (set! *kernel-packages* (cons "art" *kernel-packages*))
@@ -972,7 +972,7 @@
   )
 
 ;; definition for method 10 of type level-group
-(defmethod level-get-with-status level-group ((this level-group) (arg0 symbol))
+(defmethod level-get-with-status ((this level-group) (arg0 symbol))
   (dotimes (v1-0 (-> this length))
     (if (= (-> this level v1-0 status) arg0)
         (return (-> this level v1-0))
@@ -982,7 +982,7 @@
   )
 
 ;; definition for method 26 of type level-group
-(defmethod level-get-most-disposable level-group ((this level-group))
+(defmethod level-get-most-disposable ((this level-group))
   (dotimes (v1-0 (-> this length))
     (case (-> this level v1-0 status)
       (('inactive)
@@ -1021,7 +1021,7 @@
   )
 
 ;; definition for method 9 of type level-group
-(defmethod level-get level-group ((this level-group) (arg0 symbol))
+(defmethod level-get ((this level-group) (arg0 symbol))
   (dotimes (v1-0 (-> this length))
     (if (and (!= (-> this level v1-0 status) 'inactive)
              (or (= (-> this level v1-0 name) arg0) (= (-> this level v1-0 load-name) arg0))
@@ -1033,7 +1033,7 @@
   )
 
 ;; definition for method 20 of type level-group
-(defmethod art-group-get-by-name level-group ((this level-group) (arg0 string))
+(defmethod art-group-get-by-name ((this level-group) (arg0 string))
   (countdown (s4-0 3)
     (let ((s3-0 (-> this level s4-0)))
       (countdown (s2-0 (-> s3-0 art-group art-group-array length))
@@ -1047,7 +1047,7 @@
   )
 
 ;; definition for method 12 of type level-group
-(defmethod activate-levels! level-group ((this level-group))
+(defmethod activate-levels! ((this level-group))
   (dotimes (s5-0 (-> this length))
     (level-status-set! (-> this level s5-0) 'active)
     )
@@ -1055,7 +1055,7 @@
   )
 
 ;; definition for method 17 of type level-group
-(defmethod level-get-target-inside level-group ((this level-group))
+(defmethod level-get-target-inside ((this level-group))
   (let ((s5-0 (target-pos 0)))
     (let ((v1-2 (-> *game-info* current-continue level)))
       (dotimes (a0-2 (-> this length))
@@ -1113,13 +1113,13 @@
   )
 
 ;; definition for method 19 of type level-group
-(defmethod load-commands-set! level-group ((this level-group) (arg0 pair))
+(defmethod load-commands-set! ((this level-group) (arg0 pair))
   (set! (-> this load-commands) arg0)
   arg0
   )
 
 ;; definition for method 8 of type level-group
-(defmethod mem-usage level-group ((this level-group) (arg0 memory-usage-block) (arg1 int))
+(defmethod mem-usage ((this level-group) (arg0 memory-usage-block) (arg1 int))
   (dotimes (s3-0 (-> this length))
     (mem-usage (-> this level s3-0) arg0 arg1)
     )
@@ -1341,7 +1341,7 @@
   )
 
 ;; definition for method 10 of type load-state
-(defmethod update! load-state ((this load-state))
+(defmethod update! ((this load-state))
   (update-sound-banks)
   (let ((v1-0 #f))
     (dotimes (s5-0 2)
@@ -1502,7 +1502,7 @@
   )
 
 ;; definition for method 16 of type level-group
-(defmethod level-update level-group ((this level-group))
+(defmethod level-update ((this level-group))
   (camera-pos)
   (new 'static 'boxed-array :type symbol :length 0 :allocated-length 2)
   (update *setting-control*)

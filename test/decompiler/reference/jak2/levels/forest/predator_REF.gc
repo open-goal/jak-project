@@ -3,7 +3,7 @@
 
 ;; definition for method 15 of type hud-predator
 ;; WARN: Return type mismatch int vs none.
-(defmethod draw hud-predator ((this hud-predator))
+(defmethod draw ((this hud-predator))
   (set-hud-piece-position! (-> this sprites 1) (the int (+ 480.0 (* 130.0 (-> this offset)))) 205)
   (set-as-offset-from! (the-as hud-sprite (-> this sprites)) (the-as vector4w (-> this sprites 1)) -44 0)
   (format (clear (-> this strings 0 text)) "~D" (-> this values 0 current))
@@ -15,7 +15,7 @@
 
 ;; definition for method 16 of type hud-predator
 ;; WARN: Return type mismatch int vs none.
-(defmethod update-values hud-predator ((this hud-predator))
+(defmethod update-values ((this hud-predator))
   (set! (-> this values 0 target) (the int (-> *game-info* counter)))
   ((method-of-type hud update-values) this)
   0
@@ -24,7 +24,7 @@
 
 ;; definition for method 17 of type hud-predator
 ;; WARN: Return type mismatch int vs none.
-(defmethod init-callback hud-predator ((this hud-predator))
+(defmethod init-callback ((this hud-predator))
   (set! (-> this level) (level-get *level* 'forest))
   (set! (-> this gui-id)
         (add-process *gui-control* this (gui-channel hud-middle-right) (gui-action hidden) (-> this name) 81920.0 0)
@@ -47,7 +47,7 @@
 
 ;; definition for method 15 of type hud-pegasus
 ;; WARN: Return type mismatch int vs none.
-(defmethod draw hud-pegasus ((this hud-pegasus))
+(defmethod draw ((this hud-pegasus))
   (set-hud-piece-position!
     (the-as hud-sprite (-> this sprites))
     (the int (+ 472.0 (* 130.0 (-> this offset))))
@@ -63,7 +63,7 @@
 
 ;; definition for method 16 of type hud-pegasus
 ;; WARN: Return type mismatch int vs none.
-(defmethod update-values hud-pegasus ((this hud-pegasus))
+(defmethod update-values ((this hud-pegasus))
   (set! (-> this values 0 target) (the int (-> *game-info* counter)))
   ((method-of-type hud update-values) this)
   0
@@ -72,7 +72,7 @@
 
 ;; definition for method 17 of type hud-pegasus
 ;; WARN: Return type mismatch int vs none.
-(defmethod init-callback hud-pegasus ((this hud-pegasus))
+(defmethod init-callback ((this hud-pegasus))
   (set! (-> this level) (level-get *level* 'forest))
   (set! (-> this gui-id)
         (add-process *gui-control* this (gui-channel hud-middle-right) (gui-action hidden) (-> this name) 81920.0 0)
@@ -110,14 +110,10 @@
 ;; definition of type predator-shot
 (deftype predator-shot (metalhead-shot)
   ()
-  :heap-base #x170
-  :method-count-assert 40
-  :size-assert         #x1f0
-  :flag-assert         #x28017001f0
   )
 
 ;; definition for method 3 of type predator-shot
-(defmethod inspect predator-shot ((this predator-shot))
+(defmethod inspect ((this predator-shot))
   (when (not this)
     (set! this this)
     (goto cfg-4)
@@ -131,7 +127,7 @@
 
 ;; definition for method 28 of type predator-shot
 ;; WARN: Return type mismatch sound-id vs none.
-(defmethod play-impact-sound predator-shot ((this predator-shot) (arg0 projectile-options))
+(defmethod play-impact-sound ((this predator-shot) (arg0 projectile-options))
   (case arg0
     (((projectile-options lose-altitude))
      (sound-play "pred-shot-hit")
@@ -151,7 +147,7 @@
 
 ;; definition for method 30 of type predator-shot
 ;; WARN: Return type mismatch int vs none.
-(defmethod init-proj-collision! predator-shot ((this predator-shot))
+(defmethod init-proj-collision! ((this predator-shot))
   "Init the [[projectile]]'s [[collide-shape]]"
   (let ((s5-0 (new 'process 'collide-shape-moving this (collide-list-enum hit-by-player))))
     (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
@@ -205,7 +201,7 @@
 
 ;; definition for method 31 of type predator-shot
 ;; INFO: Used lq/sq
-(defmethod init-proj-settings! predator-shot ((this predator-shot))
+(defmethod init-proj-settings! ((this predator-shot))
   "Init relevant settings for the [[projectile]] such as gravity, speed, timeout, etc"
   (set! (-> this tail-pos quad) (-> this root trans quad))
   (set! (-> this attack-mode) 'predator-shot)
@@ -226,41 +222,39 @@
 
 ;; definition of type predator
 (deftype predator (nav-enemy)
-  ((los               los-control :inline :offset-assert 608)
-   (want-stop         symbol              :offset-assert 756)
-   (target-pos        vector      :inline :offset-assert 768)
-   (curr-node         int32               :offset-assert 784)
-   (hide-pos          vector      :inline :offset-assert 800)
-   (next-change       uint64              :offset-assert 816)
-   (shoot-angle       float               :offset-assert 824)
-   (miss-amount       float               :offset-assert 828)
-   (ambient-sound-id  sound-id            :offset-assert 832)
-   (shock-effect-time time-frame          :offset-assert 840)
-   (shock-effect-end  uint64              :offset-assert 848)
-   (fade              float               :offset-assert 856)
-   (dest-fade         float               :offset-assert 860)
+  ((los                los-control  :inline)
+   (want-stop          symbol)
+   (target-pos         vector       :inline)
+   (curr-node          int32)
+   (hide-pos           vector       :inline)
+   (next-change        uint64)
+   (shoot-angle        float)
+   (miss-amount        float)
+   (ambient-sound-id   sound-id)
+   (shock-effect-time  time-frame)
+   (shock-effect-end   uint64)
+   (fade               float)
+   (dest-fade          float)
    )
-  :heap-base #x2e0
-  :method-count-assert 189
-  :size-assert         #x360
-  :flag-assert         #xbd02e00360
+  (:state-methods
+    close-attack
+    fire
+    hide
+    hidden
+    )
   (:methods
-    (close-attack () _type_ :state 178)
-    (fire () _type_ :state 179)
-    (hide () _type_ :state 180)
-    (hidden () _type_ :state 181)
-    (set-dangerous! (_type_ symbol) symbol 182)
-    (predator-method-183 (_type_) none 183)
-    (predator-method-184 (_type_ int float) none 184)
-    (predator-method-185 (_type_) none 185)
-    (predator-method-186 (_type_) none 186)
-    (predator-method-187 (_type_) symbol 187)
-    (predator-method-188 (_type_ vector vector vector) none 188)
+    (set-dangerous! (_type_ symbol) symbol)
+    (predator-method-183 (_type_) none)
+    (predator-method-184 (_type_ int float) none)
+    (predator-method-185 (_type_) none)
+    (predator-method-186 (_type_) none)
+    (predator-method-187 (_type_) symbol)
+    (predator-method-188 (_type_ vector vector vector) none)
     )
   )
 
 ;; definition for method 3 of type predator
-(defmethod inspect predator ((this predator))
+(defmethod inspect ((this predator))
   (when (not this)
     (set! this this)
     (goto cfg-4)
@@ -465,7 +459,7 @@
 (set! (-> *predator-nav-enemy-info* fact-defaults) *fact-info-enemy-defaults*)
 
 ;; definition for method 74 of type predator
-(defmethod general-event-handler predator ((this predator) (arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+(defmethod general-event-handler ((this predator) (arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
   "Handles various events for the enemy
 @TODO - unsure if there is a pattern for the events and this should have a more specific name"
   (case arg2
@@ -488,7 +482,7 @@
   )
 
 ;; definition for method 77 of type predator
-(defmethod enemy-method-77 predator ((this predator) (arg0 (pointer float)))
+(defmethod enemy-method-77 ((this predator) (arg0 (pointer float)))
   (cond
     ((zero? (-> this hit-points))
      (case (-> this incoming knocked-type)
@@ -581,7 +575,7 @@
   )
 
 ;; definition for method 78 of type predator
-(defmethod enemy-method-78 predator ((this predator) (arg0 (pointer float)))
+(defmethod enemy-method-78 ((this predator) (arg0 (pointer float)))
   (cond
     ((zero? (-> this hit-points))
      (case (-> this incoming knocked-type)
@@ -659,7 +653,7 @@
 ;; definition for method 188 of type predator
 ;; INFO: Used lq/sq
 ;; WARN: Return type mismatch symbol vs none.
-(defmethod predator-method-188 predator ((this predator) (arg0 vector) (arg1 vector) (arg2 vector))
+(defmethod predator-method-188 ((this predator) (arg0 vector) (arg1 vector) (arg2 vector))
   (let ((s5-0 (new 'stack-no-clear 'collide-query)))
     (let ((f0-0 1228.8)
           (f30-0 6144.0)
@@ -732,7 +726,7 @@
 ;; definition for method 184 of type predator
 ;; INFO: Used lq/sq
 ;; WARN: Return type mismatch int vs none.
-(defmethod predator-method-184 predator ((this predator) (arg0 int) (arg1 float))
+(defmethod predator-method-184 ((this predator) (arg0 int) (arg1 float))
   (local-vars (sv-224 vector) (sv-240 vector))
   (rlet ((acc :class vf)
          (vf0 :class vf)
@@ -874,7 +868,7 @@
 
 ;; definition for method 183 of type predator
 ;; WARN: Return type mismatch int vs none.
-(defmethod predator-method-183 predator ((this predator))
+(defmethod predator-method-183 ((this predator))
   (cond
     ((< (-> this hit-points) 2)
      (when (!= (-> this dest-fade) 128.0)
@@ -1293,7 +1287,7 @@
 ;; definition for method 186 of type predator
 ;; INFO: Used lq/sq
 ;; WARN: Return type mismatch symbol vs none.
-(defmethod predator-method-186 predator ((this predator))
+(defmethod predator-method-186 ((this predator))
   (rlet ((acc :class vf)
          (vf0 :class vf)
          (vf4 :class vf)
@@ -1341,7 +1335,7 @@
   )
 
 ;; definition for method 185 of type predator
-(defmethod predator-method-185 predator ((this predator))
+(defmethod predator-method-185 ((this predator))
   (let ((f30-0 0.0)
         (s5-0 -1)
         )
@@ -1364,7 +1358,7 @@
   )
 
 ;; definition for method 187 of type predator
-(defmethod predator-method-187 predator ((this predator))
+(defmethod predator-method-187 ((this predator))
   (let* ((s5-0 (-> *predator-graph* node (-> this curr-node)))
          (s4-0 (rand-vu-int-count (-> s5-0 edge-count)))
          )
@@ -1394,7 +1388,7 @@
 
 ;; definition for method 55 of type predator
 ;; WARN: Return type mismatch int vs none.
-(defmethod track-target! predator ((this predator))
+(defmethod track-target! ((this predator))
   "Does a lot of various things relating to interacting with the target
 - tracks when the enemy was last drawn
 - looks at the target and handles attacking
@@ -1412,7 +1406,7 @@
   )
 
 ;; definition for method 182 of type predator
-(defmethod set-dangerous! predator ((this predator) (arg0 symbol))
+(defmethod set-dangerous! ((this predator) (arg0 symbol))
   (let ((v1-1 (-> this root root-prim)))
     (dotimes (a0-1 (the-as int (-> v1-1 specific 0)))
       (let ((a2-1 (-> (the-as collide-shape-prim-group v1-1) child a0-1)))
@@ -1428,7 +1422,7 @@
 
 ;; definition for method 114 of type predator
 ;; WARN: Return type mismatch int vs none.
-(defmethod init-enemy-collision! predator ((this predator))
+(defmethod init-enemy-collision! ((this predator))
   "Initializes the [[collide-shape-moving]] and any ancillary tasks to make the enemy collide properly"
   (let ((s5-0 (new 'process 'collide-shape-moving this (collide-list-enum usually-hit-by-player))))
     (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
@@ -1506,13 +1500,13 @@
   )
 
 ;; definition for method 7 of type predator
-(defmethod relocate predator ((this predator) (arg0 int))
+(defmethod relocate ((this predator) (arg0 int))
   (call-parent-method this arg0)
   )
 
 ;; definition for method 167 of type predator
 ;; WARN: Return type mismatch int vs none.
-(defmethod nav-enemy-method-167 predator ((this predator))
+(defmethod nav-enemy-method-167 ((this predator))
   (let ((v1-0 (-> this nav)))
     (set! (-> v1-0 target-speed) 0.0)
     )
@@ -1526,13 +1520,13 @@
   )
 
 ;; definition for method 12 of type predator
-(defmethod run-logic? predator ((this predator))
+(defmethod run-logic? ((this predator))
   #t
   )
 
 ;; definition for method 63 of type predator
 ;; WARN: Return type mismatch none vs symbol.
-(defmethod enemy-method-63 predator ((this predator) (arg0 process-focusable) (arg1 enemy-aware))
+(defmethod enemy-method-63 ((this predator) (arg0 process-focusable) (arg1 enemy-aware))
   (let ((t9-0 (method-of-type nav-enemy enemy-method-63)))
     (the-as symbol (if (t9-0 this arg0 arg1)
                        (set-dst-proc! (-> this los) (-> this focus handle))
@@ -1543,7 +1537,7 @@
 
 ;; definition for method 11 of type predator
 ;; WARN: Return type mismatch entity-perm-status vs none.
-(defmethod init-from-entity! predator ((this predator) (arg0 entity-actor))
+(defmethod init-from-entity! ((this predator) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
 - stack size
@@ -1556,7 +1550,7 @@ This commonly includes things such as:
 
 ;; definition for method 113 of type predator
 ;; WARN: Return type mismatch int vs none.
-(defmethod init-enemy-behaviour-and-stats! predator ((this predator) (arg0 nav-enemy-info))
+(defmethod init-enemy-behaviour-and-stats! ((this predator) (arg0 nav-enemy-info))
   "Initializes a bunch of enemy fields related to how they should react, how many hitpoints they should have, etc"
   (set! (-> arg0 nav-mesh) *default-nav-mesh*)
   (let ((t9-0 (method-of-type nav-enemy init-enemy-behaviour-and-stats!)))
@@ -1570,7 +1564,7 @@ This commonly includes things such as:
 
 ;; definition for method 115 of type predator
 ;; WARN: Return type mismatch int vs none.
-(defmethod init-enemy! predator ((this predator))
+(defmethod init-enemy! ((this predator))
   "Common method called to initialize the enemy, typically sets up default field values and calls ancillary helper methods"
   (initialize-skeleton
     this
@@ -1615,25 +1609,23 @@ This commonly includes things such as:
 
 ;; definition of type predator-manager
 (deftype predator-manager (process)
-  ((predator-count    uint32                   :offset-assert 128)
-   (predator-h        handle                32 :offset-assert 136)
-   (hud-counter       handle                   :offset-assert 392)
-   (actor-group       (pointer actor-group)    :offset-assert 400)
-   (actor-group-count int32                    :offset-assert 404)
+  ((predator-count     uint32)
+   (predator-h         handle  32)
+   (hud-counter        handle)
+   (actor-group        (pointer actor-group))
+   (actor-group-count  int32)
    )
-  :heap-base #x120
-  :method-count-assert 17
-  :size-assert         #x198
-  :flag-assert         #x1101200198
+  (:state-methods
+    idle
+    closed
+    )
   (:methods
-    (idle () _type_ :state 14)
-    (closed () _type_ :state 15)
-    (predator-manager-method-16 (_type_) none 16)
+    (predator-manager-method-16 (_type_) none)
     )
   )
 
 ;; definition for method 3 of type predator-manager
-(defmethod inspect predator-manager ((this predator-manager))
+(defmethod inspect ((this predator-manager))
   (when (not this)
     (set! this this)
     (goto cfg-7)
@@ -1658,7 +1650,7 @@ This commonly includes things such as:
 
 ;; definition for method 7 of type predator-manager
 ;; WARN: Return type mismatch process vs predator-manager.
-(defmethod relocate predator-manager ((this predator-manager) (arg0 int))
+(defmethod relocate ((this predator-manager) (arg0 int))
   (set! *predator-manager* this)
   (if *predator-manager*
       (set! *predator-manager* (&+ *predator-manager* arg0))
@@ -1668,7 +1660,7 @@ This commonly includes things such as:
 
 ;; definition for method 16 of type predator-manager
 ;; WARN: Return type mismatch int vs none.
-(defmethod predator-manager-method-16 predator-manager ((this predator-manager))
+(defmethod predator-manager-method-16 ((this predator-manager))
   0
   (none)
   )
@@ -1722,7 +1714,7 @@ This commonly includes things such as:
 ;; INFO: Used lq/sq
 ;; WARN: Return type mismatch object vs none.
 ;; WARN: new jak 2 until loop case, check carefully
-(defmethod init-from-entity! predator-manager ((this predator-manager) (arg0 entity-actor))
+(defmethod init-from-entity! ((this predator-manager) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
 - stack size

@@ -38,7 +38,7 @@ This is updated from the entity system used in Crash 2, which had most of these 
 
 ;; DECOMP BEGINS
 
-(defmethod print res-tag ((this res-tag))
+(defmethod print ((this res-tag))
   "print a res-tag."
 
     (if (res-ref? this)
@@ -61,7 +61,7 @@ This is updated from the entity system used in Crash 2, which had most of these 
     this
   )
 
-(defmethod length res-tag ((this res-tag))
+(defmethod length ((this res-tag))
   "get the length in bytes of this tag's resource."
 
   (the int
@@ -74,7 +74,7 @@ This is updated from the entity system used in Crash 2, which had most of these 
     )
   )
 
-(defmethod get-tag-index-data res-lump ((this res-lump) (n int))
+(defmethod get-tag-index-data ((this res-lump) (n int))
   "get the data address of the n'th tag."
   (declare (inline))
 
@@ -82,7 +82,7 @@ This is updated from the entity system used in Crash 2, which had most of these 
       (-> this tag n data-offset))
   )
 
-(defmethod get-tag-data res-lump ((this res-lump) (tag res-tag))
+(defmethod get-tag-data ((this res-lump) (tag res-tag))
   "get the data address of the specified tag."
   (declare (inline))
 
@@ -105,13 +105,13 @@ This is updated from the entity system used in Crash 2, which had most of these 
         )
   )
 
-(defmethod length res-lump ((this res-lump))
+(defmethod length ((this res-lump))
   "get the amount of resources in a res-lump."
 
   (-> this length)
   )
 
-(defmethod asize-of res-lump ((this res-lump))
+(defmethod asize-of ((this res-lump))
   "get the allocated size of a res-lump."
 
   (the int (+ (-> this type psize) ;; psize is used here, but size is used in the allocation?
@@ -119,7 +119,7 @@ This is updated from the entity system used in Crash 2, which had most of these 
               (-> this data-size)))
   )
 
-(defmethod inspect res-lump ((this res-lump))
+(defmethod inspect ((this res-lump))
   (format #t "[~8x] ~A~%" this (-> this type))
   (format #t "~Textra: ~A~%" (-> this extra))
   (format #t "~Tallocated-length: ~D~%" (-> this allocated-length))
@@ -144,7 +144,7 @@ This is updated from the entity system used in Crash 2, which had most of these 
   this
   )
 
-(defmethod lookup-tag-idx res-lump ((this res-lump) (name-sym symbol) (mode symbol) (time float))
+(defmethod lookup-tag-idx ((this res-lump) (name-sym symbol) (mode symbol) (time float))
   "Look up the index of the tag containing with the given name and timestamp.
    Correct lookups return a res-tag-pair, which contains one tag index in the lower 32 bits and one in the upper 32 bits.
    Depending on the mode, they may be the same, or they may be two tags that you should interpolate
@@ -332,7 +332,7 @@ This is updated from the entity system used in Crash 2, which had most of these 
     )
   )
 
-(defmethod make-property-data res-lump ((this res-lump) (time float) (tag-pair res-tag-pair) (buf pointer))
+(defmethod make-property-data ((this res-lump) (time float) (tag-pair res-tag-pair) (buf pointer))
   "Returns (a pointer to) the value data of a property with the tag-pair.
    If tag-pair does not represent an exact point in the timeline, then the data is interpolated based on time
    with the result written into buf. buf must have enough space to copy all of the data.
@@ -417,7 +417,7 @@ This is updated from the entity system used in Crash 2, which had most of these 
     )
   )
 
-(defmethod get-property-data res-lump ((this res-lump) (name symbol) (mode symbol) (time float) (default pointer) (tag-addr (pointer res-tag)) (buf-addr pointer))
+(defmethod get-property-data ((this res-lump) (name symbol) (mode symbol) (time float) (default pointer) (tag-addr (pointer res-tag)) (buf-addr pointer))
   "Returns an address to a given property's data at a specific time stamp, or default on error.
    name is the name of the property you want, mode is its lookup mode ('interp 'base 'exact), time is the timestamp.
    default is the default result returned in the case of an error.
@@ -442,7 +442,7 @@ This is updated from the entity system used in Crash 2, which had most of these 
 
 
 
-(defmethod get-property-struct res-lump ((this res-lump) (name symbol) (mode symbol) (time float) (default structure) (tag-addr (pointer res-tag)) (buf-addr pointer))
+(defmethod get-property-struct ((this res-lump) (name symbol) (mode symbol) (time float) (default structure) (tag-addr (pointer res-tag)) (buf-addr pointer))
   "Returns a given struct property's value at a specific time stamp, or default on error.
    name is the name of the property you want, mode is its lookup mode ('interp 'base 'exact), time is the timestamp.
    default is the default result returned in the case of an error.
@@ -473,7 +473,7 @@ This is updated from the entity system used in Crash 2, which had most of these 
 
 
 
-(defmethod get-property-value res-lump ((this res-lump) (name symbol) (mode symbol) (time float) (default uint128) (tag-addr (pointer res-tag)) (buf-addr pointer))
+(defmethod get-property-value ((this res-lump) (name symbol) (mode symbol) (time float) (default uint128) (tag-addr (pointer res-tag)) (buf-addr pointer))
   "Returns a given value property's value at a specific time stamp, or default on error.
    name is the name of the property you want, mode is its lookup mode ('interp 'base 'exact), time is the timestamp.
    default is the default result returned in the case of an error.
@@ -525,7 +525,7 @@ This is updated from the entity system used in Crash 2, which had most of these 
   )
 
 
-(defmethod get-property-value-float res-lump ((this res-lump) (name symbol) (mode symbol) (time float) (default float) (tag-addr (pointer res-tag)) (buf-addr pointer))
+(defmethod get-property-value-float ((this res-lump) (name symbol) (mode symbol) (time float) (default float) (tag-addr (pointer res-tag)) (buf-addr pointer))
   "same as get-property-value but float type is checked first?"
 
   (let ((tag-pair (lookup-tag-idx this name mode time)))
@@ -574,7 +574,7 @@ This is updated from the entity system used in Crash 2, which had most of these 
   default
   )
 
-(defmethod sort! res-lump ((this res-lump))
+(defmethod sort! ((this res-lump))
   "Sort all tags based on name, then key-frame."
 
   (let ((tags-sorted -1))
@@ -605,7 +605,7 @@ This is updated from the entity system used in Crash 2, which had most of these 
   this
   )
 
-(defmethod allocate-data-memory-for-tag! res-lump ((this res-lump) (arg0 res-tag))
+(defmethod allocate-data-memory-for-tag! ((this res-lump) (arg0 res-tag))
   "Find space for the data described by arg0 in `this`.
    Returns a tag with data-offset set correctly for this res-lump.
    If the lump already contains memory for the given tag, and it is big enough,
@@ -700,7 +700,7 @@ This is updated from the entity system used in Crash 2, which had most of these 
   arg0
   )
 
-(defmethod add-data! res-lump ((this res-lump) (arg0 res-tag) (arg1 pointer))
+(defmethod add-data! ((this res-lump) (arg0 res-tag) (arg1 pointer))
   "Given a tag and a pointer to its data, copy it to this res-lump.
    This doesn't seem to do the right thing if the given tag is a non-inline tag
    with > 1 element."
@@ -732,7 +732,7 @@ This is updated from the entity system used in Crash 2, which had most of these 
   this
   )
 
-(defmethod add-32bit-data! res-lump ((this res-lump) (arg0 res-tag) (arg1 object))
+(defmethod add-32bit-data! ((this res-lump) (arg0 res-tag) (arg1 object))
   "Add a single 32-bit value using add-data."
   (set! (-> arg0 inlined?) 1)
   (add-data! this arg0 (& arg1)) ;; note, only 32-bits are spilled to the stack here.
@@ -747,7 +747,7 @@ This is updated from the entity system used in Crash 2, which had most of these 
    |#
   )
 
-(defmethod get-curve-data! res-lump ((this res-lump) (curve-target curve) (points-name symbol) (knots-name symbol) (time float))
+(defmethod get-curve-data! ((this res-lump) (curve-target curve) (points-name symbol) (knots-name symbol) (time float))
   "Read curve data and write it to curve-target. Return #t if both control points and knots data was succesfully read, #f otherwise."
 
   (let ((result #f))
@@ -785,7 +785,7 @@ This is updated from the entity system used in Crash 2, which had most of these 
 (define-extern part-group-pointer? (function pointer symbol))
 (declare-type nav-mesh basic)
 (declare-type collide-mesh basic)
-(defmethod mem-usage res-lump ((this res-lump) (block memory-usage-block) (flags int))
+(defmethod mem-usage ((this res-lump) (block memory-usage-block) (flags int))
   "Get the memory usage of this lump and its data"
   (local-vars (sv-16 int))
 

@@ -3,46 +3,43 @@
 
 ;; definition of type carry-info
 (deftype carry-info (basic)
-  ((process          (pointer target)         :offset-assert   4)
-   (pickup-time      time-frame               :offset-assert   8)
-   (other-value      float                    :offset-assert  16)
-   (other            handle                   :offset-assert  24)
-   (point            vector           :inline :offset-assert  32)
-   (normal           vector           :inline :offset-assert  48)
-   (max-angle        degrees                  :offset-assert  64)
-   (max-distance     meters                   :offset-assert  68)
-   (max-pull         meters                   :offset-assert  72)
-   (min-pull         meters                   :offset-assert  76)
-   (grab-trans-blend float                    :offset-assert  80)
-   (carry-radius     meters                   :offset-assert  84)
-   (backup-radius    meters                   :offset-assert  88)
-   (joint            int8                     :offset-assert  92)
-   (mode             carry-mode               :offset-assert  93)
-   (face-dir         int8                     :offset-assert  94)
-   (local-point      vector           :inline :offset-assert  96)
-   (local-normal     vector           :inline :offset-assert 112)
-   (grab-quat        quaternion       :inline :offset-assert 128)
-   (grab-trans       vector           :inline :offset-assert 144)
-   (hold-trans       vector           :inline :offset-assert 160)
+  ((process           (pointer target))
+   (pickup-time       time-frame)
+   (other-value       float)
+   (other             handle)
+   (point             vector      :inline)
+   (normal            vector      :inline)
+   (max-angle         degrees)
+   (max-distance      meters)
+   (max-pull          meters)
+   (min-pull          meters)
+   (grab-trans-blend  float)
+   (carry-radius      meters)
+   (backup-radius     meters)
+   (joint             int8)
+   (mode              carry-mode)
+   (face-dir          int8)
+   (local-point       vector      :inline)
+   (local-normal      vector      :inline)
+   (grab-quat         quaternion  :inline)
+   (grab-trans        vector      :inline)
+   (hold-trans        vector      :inline)
    )
-  :method-count-assert 17
-  :size-assert         #xb0
-  :flag-assert         #x11000000b0
   (:methods
-    (new (symbol type process-drawable int vector vector float) _type_ 0)
-    (carry-info-method-9 (_type_) none 9)
-    (distance-from-destination (_type_ carry-info) float 10)
-    (drag! (_type_ carry-info) none 11)
-    (drop-impl! (_type_ carry-info) none 12)
-    (carry-info-method-13 (_type_) symbol :behavior process-drawable 13)
-    (carry! (_type_ carry-info vector vector) none 14)
-    (drop! (_type_ carry-info) none 15)
-    (translate! (_type_) symbol :behavior process-drawable 16)
+    (new (symbol type process-drawable int vector vector float) _type_)
+    (carry-info-method-9 (_type_) none)
+    (distance-from-destination (_type_ carry-info) float)
+    (drag! (_type_ carry-info) none)
+    (drop-impl! (_type_ carry-info) none)
+    (carry-info-method-13 (_type_) symbol :behavior process-drawable)
+    (carry! (_type_ carry-info vector vector) none)
+    (drop! (_type_ carry-info) none)
+    (translate! (_type_) symbol :behavior process-drawable)
     )
   )
 
 ;; definition for method 3 of type carry-info
-(defmethod inspect carry-info ((this carry-info))
+(defmethod inspect ((this carry-info))
   (when (not this)
     (set! this this)
     (goto cfg-10)
@@ -131,7 +128,7 @@
 
 ;; definition for method 9 of type carry-info
 ;; WARN: Return type mismatch int vs none.
-(defmethod carry-info-method-9 carry-info ((this carry-info))
+(defmethod carry-info-method-9 ((this carry-info))
   (let ((s5-0 (-> this process 0 node-list data (-> this joint) bone transform)))
     (vector-rotate*! (-> this normal) (-> this local-normal) s5-0)
     (vector-matrix*! (-> this point) (-> this local-point) s5-0)
@@ -141,7 +138,7 @@
   )
 
 ;; definition for method 10 of type carry-info
-(defmethod distance-from-destination carry-info ((this carry-info) (arg0 carry-info))
+(defmethod distance-from-destination ((this carry-info) (arg0 carry-info))
   "Returns the distance from the current `point` and the provided [[carry-info]]'s `point`.
 Returns `-1.0` if it exceeds the maximum allowed"
   (let* ((f28-0 (vector-y-angle (vector-! (new 'stack-no-clear 'vector) (-> arg0 point) (-> this point))))
@@ -217,7 +214,7 @@ Returns `-1.0` if it exceeds the maximum allowed"
 ;; definition for method 11 of type carry-info
 ;; INFO: Used lq/sq
 ;; WARN: Return type mismatch int vs none.
-(defmethod drag! carry-info ((this carry-info) (arg0 carry-info))
+(defmethod drag! ((this carry-info) (arg0 carry-info))
   (let ((v1-0 (-> arg0 process)))
     (set! (-> this other) (the-as handle (logior (if v1-0
                                                      (new 'static 'handle :pid (-> v1-0 0 pid))
@@ -318,7 +315,7 @@ Returns `-1.0` if it exceeds the maximum allowed"
 
 ;; definition for method 12 of type carry-info
 ;; WARN: Return type mismatch int vs none.
-(defmethod drop-impl! carry-info ((this carry-info) (arg0 carry-info))
+(defmethod drop-impl! ((this carry-info) (arg0 carry-info))
   (let ((a1-2 (vector-z-quaternion! (new 'stack-no-clear 'vector) (-> arg0 process 0 control quat))))
     (set! (-> a1-2 y) 0.0)
     (set-heading-vec-clear-roll-pitch! (-> arg0 process 0 control) a1-2)
@@ -359,7 +356,7 @@ Returns `-1.0` if it exceeds the maximum allowed"
 
 ;; definition for method 13 of type carry-info
 ;; INFO: Used lq/sq
-(defmethod carry-info-method-13 carry-info ((this carry-info))
+(defmethod carry-info-method-13 ((this carry-info))
   (let ((a1-0 (new 'stack-no-clear 'event-message-block)))
     (set! (-> a1-0 from) (process->ppointer self))
     (set! (-> a1-0 num-params) 0)
@@ -432,7 +429,7 @@ Returns `-1.0` if it exceeds the maximum allowed"
 ;; definition for method 14 of type carry-info
 ;; INFO: Used lq/sq
 ;; WARN: Return type mismatch vector vs none.
-(defmethod carry! carry-info ((this carry-info) (arg0 carry-info) (arg1 vector) (arg2 vector))
+(defmethod carry! ((this carry-info) (arg0 carry-info) (arg1 vector) (arg2 vector))
   (let ((v1-0 (-> arg0 process)))
     (set! (-> this other) (the-as handle (logior (if v1-0
                                                      (new 'static 'handle :pid (-> v1-0 0 pid))
@@ -512,7 +509,7 @@ Returns `-1.0` if it exceeds the maximum allowed"
   )
 
 ;; definition for method 16 of type carry-info
-(defmethod translate! carry-info ((this carry-info))
+(defmethod translate! ((this carry-info))
   (let ((a1-0 (new 'stack-no-clear 'event-message-block)))
     (set! (-> a1-0 from) (process->ppointer self))
     (set! (-> a1-0 num-params) 0)
@@ -529,7 +526,7 @@ Returns `-1.0` if it exceeds the maximum allowed"
   )
 
 ;; definition for method 15 of type carry-info
-(defmethod drop! carry-info ((this carry-info) (arg0 carry-info))
+(defmethod drop! ((this carry-info) (arg0 carry-info))
   (drop-impl! this arg0)
   (none)
   )

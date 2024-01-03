@@ -10,9 +10,6 @@
 
 (deftype warpgate (process-hidden)
   ()
-  :method-count-assert 15
-  :size-assert         #x70
-  :flag-assert         #xf00000070
   )
 
 
@@ -441,14 +438,10 @@
   )
 
 (deftype warp-gate-switch (basebutton)
-  ((warp handle  :offset-assert 256)
+  ((warp  handle)
    )
-  :heap-base #xa0
-  :method-count-assert 33
-  :size-assert         #x108
-  :flag-assert         #x2100a00108
   (:methods
-    (pressable? (_type_) symbol 32)
+    (pressable? (_type_) symbol)
     )
   )
 
@@ -458,7 +451,7 @@
               :bounds (static-spherem 0 0 0 1.5)
               )
 
-(defmethod basebutton-method-27 warp-gate-switch ((this warp-gate-switch))
+(defmethod basebutton-method-27 ((this warp-gate-switch))
   (let ((s5-0 (new 'process 'collide-shape-moving this (collide-list-enum hit-by-player))))
     (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s5-0 reaction) default-collision-reaction)
@@ -484,12 +477,12 @@
       )
     (set! (-> s5-0 nav-radius) (* 0.75 (-> s5-0 root-prim local-sphere w)))
     (backup-collide-with-as s5-0)
-    (set! (-> this root-override) s5-0)
+    (set! (-> this root) s5-0)
     s5-0
     )
   )
 
-(defmethod pressable? warp-gate-switch ((this warp-gate-switch))
+(defmethod pressable? ((this warp-gate-switch))
   (let ((v1-2 (-> this entity extra perm task)))
     (cond
       ((logtest? (-> *target* control root-prim prim-core action)
@@ -525,7 +518,7 @@
     )
   )
 
-(defmethod basebutton-method-26 warp-gate-switch ((this warp-gate-switch))
+(defmethod basebutton-method-26 ((this warp-gate-switch))
   (set! (-> this warp) (the-as handle #f))
   (let ((v1-2 (-> this entity extra perm task)))
     (cond
@@ -572,12 +565,12 @@
       )
     )
   (set! (-> this anim-speed) 2.0)
-  (update-transforms! (-> this root-override))
+  (update-transforms! (-> this root))
   (ja-post)
   (none)
   )
 
-(defmethod press! warp-gate-switch ((this warp-gate-switch) (arg0 symbol))
+(defmethod press! ((this warp-gate-switch) (arg0 symbol))
   (with-pp
     (when arg0
       (let ((s4-0 (-> this entity extra perm task)))
@@ -849,22 +842,18 @@
               )
 
 (deftype village-cam (process)
-  ((root-override trsq        :offset-assert 112)
-   (range         meters      :offset-assert 116)
-   (index         int32       :offset-assert 120)
-   (state-time    time-frame  :offset-assert 128)
+  ((root-override  trsq)
+   (range          meters)
+   (index          int32)
+   (state-time     time-frame)
    )
-  :heap-base #x20
-  :method-count-assert 15
-  :size-assert         #x88
-  :flag-assert         #xf00200088
-  (:methods
-    (idle () _type_ :state 14)
+  (:state-methods
+    idle
     )
   )
 
 
-(defmethod relocate village-cam ((this village-cam) (arg0 int))
+(defmethod relocate ((this village-cam) (arg0 int))
   (if (nonzero? (-> this root-override))
       (&+! (-> this root-override) arg0)
       )
@@ -1119,7 +1108,7 @@
     )
   )
 
-(defmethod init-from-entity! village-cam ((this village-cam) (arg0 entity-actor))
+(defmethod init-from-entity! ((this village-cam) (arg0 entity-actor))
   "Copy defaults from the entity."
   (logior! (-> this mask) (process-mask actor-pause))
   (set! (-> this root-override) (new 'process 'trsq))

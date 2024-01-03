@@ -8,17 +8,13 @@
 ;; DECOMP BEGINS
 
 (deftype green-eco-lurker (nav-enemy)
-  ((played-sound? symbol             :offset-assert 400)
-   (sound-delay   int32              :offset-assert 404)
-   (appear-dest   vector     :inline :offset-assert 416)
-   (traj          trajectory :inline :offset-assert 432)
+  ((played-sound?  symbol)
+   (sound-delay    int32)
+   (appear-dest    vector      :inline)
+   (traj           trajectory  :inline)
    )
-  :heap-base #x170
-  :method-count-assert 76
-  :size-assert         #x1d8
-  :flag-assert         #x4c017001d8
   (:methods
-    (green-eco-lurker-method-51 (_type_ vector) symbol :replace 51)
+    (nav-enemy-method-51 (_type_ vector) symbol :replace)
     )
   (:states
     green-eco-lurker-appear
@@ -30,14 +26,10 @@
 
 
 (deftype green-eco-lurker-gen (process-drawable)
-  ((num-to-spawn int32  :offset-assert 176)
-   (num-spawned  int32  :offset-assert 180)
-   (num-alive    int32  :offset-assert 184)
+  ((num-to-spawn  int32)
+   (num-spawned   int32)
+   (num-alive     int32)
    )
-  :heap-base #x50
-  :method-count-assert 20
-  :size-assert         #xbc
-  :flag-assert         #x14005000bc
   (:states
     spawn-minions
     )
@@ -294,7 +286,7 @@
     )
   )
 
-(defmethod attack-handler green-eco-lurker ((this green-eco-lurker) (arg0 process) (arg1 event-message-block))
+(defmethod attack-handler ((this green-eco-lurker) (arg0 process) (arg1 event-message-block))
   (cond
     ((= (-> arg0 type) target)
      (if (nav-enemy-send-attack arg0 (the-as touching-shapes-entry (-> arg1 param 0)) 'generic)
@@ -309,7 +301,7 @@
     )
   )
 
-(defmethod nav-enemy-attack-handler green-eco-lurker ((this green-eco-lurker) (arg0 process) (arg1 event-message-block))
+(defmethod nav-enemy-attack-handler ((this green-eco-lurker) (arg0 process) (arg1 event-message-block))
   (cond
     ((= (-> arg0 type) target)
      (if (nav-enemy-send-attack arg0 (the-as touching-shapes-entry (-> arg1 param 0)) 'generic)
@@ -323,7 +315,7 @@
     )
   )
 
-(defmethod touch-handler green-eco-lurker ((this green-eco-lurker) (arg0 process) (arg1 event-message-block))
+(defmethod touch-handler ((this green-eco-lurker) (arg0 process) (arg1 event-message-block))
   (when (and (logtest? (-> this nav-enemy-flags) (nav-enemy-flags navenmf6))
              ((method-of-type touching-shapes-entry prims-touching?)
               (the-as touching-shapes-entry (-> arg1 param 0))
@@ -337,7 +329,7 @@
     )
   )
 
-(defmethod nav-enemy-touch-handler green-eco-lurker ((this green-eco-lurker) (arg0 process) (arg1 event-message-block))
+(defmethod nav-enemy-touch-handler ((this green-eco-lurker) (arg0 process) (arg1 event-message-block))
   (when (and (logtest? (-> this nav-enemy-flags) (nav-enemy-flags navenmf6))
              ((method-of-type touching-shapes-entry prims-touching?)
               (the-as touching-shapes-entry (-> arg1 param 0))
@@ -351,7 +343,7 @@
     )
   )
 
-(defmethod green-eco-lurker-method-51 green-eco-lurker ((this green-eco-lurker) (arg0 vector))
+(defmethod nav-enemy-method-51 ((this green-eco-lurker) (arg0 vector))
   (when (or (not *target*) (>= (vector-vector-xz-distance arg0 (target-pos 0)) 36864.0))
     (let ((v1-3 (new 'stack-no-clear 'vector)))
       (set! (-> v1-3 quad) (-> arg0 quad))
@@ -364,7 +356,7 @@
   #f
   )
 
-(defmethod nav-enemy-method-52 green-eco-lurker ((this green-eco-lurker) (arg0 vector))
+(defmethod nav-enemy-method-52 ((this green-eco-lurker) (arg0 vector))
   (let ((s4-0 (-> this path curve num-cverts)))
     (when (> s4-0 0)
       (let ((s2-0 (nav-enemy-rnd-int-count s4-0))
@@ -372,7 +364,7 @@
             )
         (while (> s3-0 0)
           (eval-path-curve-div! (-> this path) arg0 (the float s2-0) 'interp)
-          (if (green-eco-lurker-method-51 this arg0)
+          (if (nav-enemy-method-51 this arg0)
               (return #t)
               )
           (set! s2-0 (mod (+ s2-0 1) s4-0))
@@ -416,7 +408,7 @@
     )
   )
 
-(defmethod nav-enemy-method-53 green-eco-lurker ((this green-eco-lurker))
+(defmethod nav-enemy-method-53 ((this green-eco-lurker))
   (the-as symbol (cond
                    ((and (-> this draw shadow)
                          (zero? (-> this draw cur-lod))
@@ -648,7 +640,7 @@
     )
   )
 
-(defmethod initialize-collision green-eco-lurker ((this green-eco-lurker))
+(defmethod initialize-collision ((this green-eco-lurker))
   (let ((s5-0 (new 'process 'collide-shape-moving this (collide-list-enum usually-hit-by-player))))
     (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s5-0 reaction) default-collision-reaction)
@@ -728,7 +720,7 @@
   (none)
   )
 
-(defmethod nav-enemy-method-48 green-eco-lurker ((this green-eco-lurker))
+(defmethod nav-enemy-method-48 ((this green-eco-lurker))
   (initialize-skeleton this *green-eco-lurker-sg* '())
   (set! (-> this draw origin-joint-index) (the-as uint 3))
   (logclear! (-> this collide-info nav-flags) (nav-flags navf0))

@@ -13,30 +13,26 @@
               )
 
 (deftype ice-cube (nav-enemy)
-  ((part2                  sparticle-launch-control         :offset-assert 400)
-   (part3                  sparticle-launch-control         :offset-assert 404)
-   (part4                  sparticle-launch-control         :offset-assert 408)
-   (track-target?          symbol                           :offset-assert 412)
-   (slow-down?             symbol                           :offset-assert 416)
-   (tracking-player?       symbol                           :offset-assert 420)
-   (force-spawn-pt         int32                            :offset-assert 424)
-   (speed                  float                            :offset-assert 428)
-   (anim-blend             float                            :offset-assert 432)
-   (prev-charge-angle-diff float                            :offset-assert 436)
-   (charge-angle           float                            :offset-assert 440)
-   (ground-y               float                            :offset-assert 444)
-   (cprims-type            uint64                           :offset-assert 448)
-   (next-skid-sound-time   time-frame                       :offset-assert 456)
-   (starting-pos           vector                   :inline :offset-assert 464)
-   (target-pt              vector                   :inline :offset-assert 480)
+  ((part2                   sparticle-launch-control)
+   (part3                   sparticle-launch-control)
+   (part4                   sparticle-launch-control)
+   (track-target?           symbol)
+   (slow-down?              symbol)
+   (tracking-player?        symbol)
+   (force-spawn-pt          int32)
+   (speed                   float)
+   (anim-blend              float)
+   (prev-charge-angle-diff  float)
+   (charge-angle            float)
+   (ground-y                float)
+   (cprims-type             uint64)
+   (next-skid-sound-time    time-frame)
+   (starting-pos            vector  :inline)
+   (target-pt               vector  :inline)
    )
-  :heap-base #x180
-  :method-count-assert 76
-  :size-assert         #x1f0
-  :flag-assert         #x4c018001f0
   (:methods
-    (ice-cube-method-51 (_type_ vector vector) symbol :replace 51)
-    (ice-cube-method-53 (_type_ vector vector) symbol :replace 53)
+    (ice-cube-method-51 (_type_ vector vector) symbol :overlay-at nav-enemy-method-51)
+    (ice-cube-method-53 (_type_ vector vector) symbol :overlay-at nav-enemy-method-53)
     )
   (:states
     ice-cube-appear
@@ -462,7 +458,7 @@
     )
   )
 
-(defmethod initialize-collision ice-cube ((this ice-cube))
+(defmethod initialize-collision ((this ice-cube))
   (let ((s5-0 (new 'process 'collide-shape-moving this (collide-list-enum usually-hit-by-player))))
     (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s5-0 reaction) default-collision-reaction)
@@ -529,7 +525,7 @@
   (none)
   )
 
-(defmethod nav-enemy-method-57 ice-cube ((this ice-cube))
+(defmethod nav-enemy-method-57 ((this ice-cube))
   (when (!= (-> this cprims-type) 1)
     (set! (-> this cprims-type) (the-as uint 1))
     (let ((v1-3 (-> this collide-info root-prim)))
@@ -541,7 +537,7 @@
   (none)
   )
 
-(defmethod nav-enemy-method-58 ice-cube ((this ice-cube))
+(defmethod nav-enemy-method-58 ((this ice-cube))
   (when (!= (-> this cprims-type) 2)
     (set! (-> this cprims-type) (the-as uint 2))
     (let ((v1-3 (-> this collide-info root-prim)))
@@ -553,7 +549,7 @@
   (none)
   )
 
-(defmethod nav-enemy-method-48 ice-cube ((this ice-cube))
+(defmethod nav-enemy-method-48 ((this ice-cube))
   (process-drawable-from-entity! this (-> this entity))
   (initialize-skeleton this *ice-cube-sg* '())
   (init-defaults! this *ice-cube-nav-enemy-info*)
@@ -564,7 +560,7 @@
   (none)
   )
 
-(defmethod deactivate ice-cube ((this ice-cube))
+(defmethod deactivate ((this ice-cube))
   (if (nonzero? (-> this part2))
       (kill-and-free-particles (-> this part2))
       )
@@ -578,7 +574,7 @@
   (none)
   )
 
-(defmethod relocate ice-cube ((this ice-cube) (arg0 int))
+(defmethod relocate ((this ice-cube) (arg0 int))
   (if (nonzero? (-> this part2))
       (&+! (-> this part2) arg0)
       )
@@ -591,7 +587,7 @@
   (call-parent-method this arg0)
   )
 
-(defmethod init-from-entity! ice-cube ((this ice-cube) (arg0 entity-actor))
+(defmethod init-from-entity! ((this ice-cube) (arg0 entity-actor))
   (set! (-> this part) (create-launch-control (-> *part-group-id-table* 507) this))
   (set! (-> this part2) (create-launch-control (-> *part-group-id-table* 508) this))
   (set! (-> this part3) (create-launch-control (-> *part-group-id-table* 509) this))
@@ -613,7 +609,7 @@
   (none)
   )
 
-(defmethod nav-enemy-method-60 ice-cube ((this ice-cube) (arg0 symbol))
+(defmethod nav-enemy-method-60 ((this ice-cube) (arg0 symbol))
   (let ((gp-0 (new 'stack-no-clear 'vector)))
     (when (-> this tracking-player?)
       (if (and *target* arg0)
@@ -632,7 +628,7 @@
     )
   )
 
-(defmethod ice-cube-method-51 ice-cube ((this ice-cube) (arg0 vector) (arg1 vector))
+(defmethod ice-cube-method-51 ((this ice-cube) (arg0 vector) (arg1 vector))
   (let ((s5-0 (new 'stack-no-clear 'vector)))
     (let* ((s4-0 (new 'stack-no-clear 'collide-tri-result))
            (f0-0 40960.0)
@@ -663,7 +659,7 @@
   #t
   )
 
-(defmethod nav-enemy-method-52 ice-cube ((this ice-cube) (arg0 vector))
+(defmethod nav-enemy-method-52 ((this ice-cube) (arg0 vector))
   (when *target*
     (let ((f0-0 (vector-vector-xz-distance arg0 (target-pos 0))))
       (when (and (>= f0-0 40960.0) (>= 81920.0 f0-0) (not (nav-enemy-method-50 this arg0)))
@@ -680,7 +676,7 @@
   #f
   )
 
-(defmethod ice-cube-method-53 ice-cube ((this ice-cube) (arg0 vector) (arg1 vector))
+(defmethod ice-cube-method-53 ((this ice-cube) (arg0 vector) (arg1 vector))
   (local-vars (s1-0 int) (s2-0 int))
   (let ((s3-0 (-> this path curve num-cverts)))
     (if (<= s3-0 0)
@@ -814,9 +810,9 @@
   :event ice-cube-default-event-handler
   :code (behavior ()
     (let ((gp-0 (new 'stack-no-clear 'vector)))
-      (vector<-cspace! gp-0 (joint-node-index ice-cube-lod0-jg Rball))
+      (vector<-cspace! gp-0 (joint-node ice-cube-lod0-jg Rball))
       (spawn (-> self part4) gp-0)
-      (vector<-cspace! gp-0 (joint-node-index ice-cube-lod0-jg Lball))
+      (vector<-cspace! gp-0 (joint-node ice-cube-lod0-jg Lball))
       (spawn (-> self part4) gp-0)
       )
     (ja-channel-push! 1 (seconds 0.1))
@@ -958,9 +954,9 @@
       )
     (label cfg-26)
     (let ((gp-1 (new 'stack-no-clear 'vector)))
-      (vector<-cspace! gp-1 (joint-node-index ice-cube-lod0-jg Rball))
+      (vector<-cspace! gp-1 (joint-node ice-cube-lod0-jg Rball))
       (spawn (-> self part4) gp-1)
-      (vector<-cspace! gp-1 (joint-node-index ice-cube-lod0-jg Lball))
+      (vector<-cspace! gp-1 (joint-node ice-cube-lod0-jg Lball))
       (spawn (-> self part4) gp-1)
       )
     (ja-no-eval :group! ice-cube-appear-land-ja :num! (seek!) :frame-num 0.0)
@@ -998,7 +994,7 @@
   :post nav-enemy-simple-post
   )
 
-(defmethod nav-enemy-method-54 ice-cube ((this ice-cube) (arg0 vector))
+(defmethod nav-enemy-method-54 ((this ice-cube) (arg0 vector))
   (let* ((s4-0 (-> this path curve num-cverts))
          (s2-0 (nav-enemy-rnd-int-count s4-0))
          (s5-0 (new 'stack-no-clear 'vector))
@@ -1091,9 +1087,9 @@
       )
     (label cfg-26)
     (let ((gp-1 (new 'stack-no-clear 'vector)))
-      (vector<-cspace! gp-1 (joint-node-index ice-cube-lod0-jg Rball))
+      (vector<-cspace! gp-1 (joint-node ice-cube-lod0-jg Rball))
       (spawn (-> self part4) gp-1)
-      (vector<-cspace! gp-1 (joint-node-index ice-cube-lod0-jg Lball))
+      (vector<-cspace! gp-1 (joint-node ice-cube-lod0-jg Lball))
       (spawn (-> self part4) gp-1)
       )
     (ja-no-eval :group! ice-cube-turn-on-player-land-ja :num! (seek!) :frame-num 0.0)
@@ -1203,9 +1199,9 @@
           )
       (when (zero? (nav-enemy-rnd-int-count 45))
         (let ((gp-3 (new 'stack-no-clear 'vector)))
-          (vector<-cspace! gp-3 (joint-node-index ice-cube-lod0-jg Rball))
+          (vector<-cspace! gp-3 (joint-node ice-cube-lod0-jg Rball))
           (spawn (-> self part4) gp-3)
-          (vector<-cspace! gp-3 (joint-node-index ice-cube-lod0-jg Lball))
+          (vector<-cspace! gp-3 (joint-node ice-cube-lod0-jg Lball))
           (spawn (-> self part4) gp-3)
           )
         )
@@ -1338,7 +1334,7 @@
   :code (behavior ()
     (logclear! (-> self mask) (process-mask actor-pause))
     (let ((gp-0 (new 'stack-no-clear 'vector)))
-      (vector<-cspace! gp-0 (joint-node-index ice-cube-lod0-jg main))
+      (vector<-cspace! gp-0 (joint-node ice-cube-lod0-jg main))
       (spawn (-> self part3) gp-0)
       )
     (drop-pickup (-> self enemy-info) #t *entity-pool* (-> self enemy-info) 0)

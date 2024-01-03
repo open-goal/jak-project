@@ -104,44 +104,42 @@
 
 ;; definition of type rhino
 (deftype rhino (nav-enemy)
-  ((wall                  rhino-wall            :offset-assert 604)
-   (path-intro            path-control          :offset-assert 608)
-   (charge-aware          uint64                :offset-assert 616)
-   (anim-skid-left        int32                 :offset-assert 624)
-   (anim-skid-right       int32                 :offset-assert 628)
-   (anim-victory-hit      int32                 :offset-assert 632)
-   (circle-backward?      symbol                :offset-assert 636)
-   (skid-speed            float                 :offset        672)
-   (angle                 float                 :offset-assert 676)
-   (angle-speed           float                 :offset-assert 680)
-   (dest                  vector        :inline :offset-assert 688)
-   (charge-straight       symbol                :offset-assert 704)
-   (in-stop-run           symbol                :offset-assert 708)
-   (smush-target          smush-control         :offset-assert 712)
-   (num-hit-flinch        int32                 :offset-assert 716)
-   (frame-die-smush       float                 :offset-assert 720)
-   (quat                  quaternion    :inline :offset-assert 736)
-   (can-hit?              symbol                :offset-assert 752)
-   (interest              int32                 :offset-assert 756)
-   (victory-count         uint32                :offset-assert 760)
-   (stomach-touched-once? symbol                :offset-assert 764)
+  ((wall                   rhino-wall)
+   (path-intro             path-control)
+   (charge-aware           uint64)
+   (anim-skid-left         int32)
+   (anim-skid-right        int32)
+   (anim-victory-hit       int32)
+   (circle-backward?       symbol)
+   (skid-speed             float       :offset 672)
+   (angle                  float)
+   (angle-speed            float)
+   (dest                   vector      :inline)
+   (charge-straight        symbol)
+   (in-stop-run            symbol)
+   (smush-target           smush-control)
+   (num-hit-flinch         int32)
+   (frame-die-smush        float)
+   (quat                   quaternion  :inline)
+   (can-hit?               symbol)
+   (interest               int32)
+   (victory-count          uint32)
+   (stomach-touched-once?  symbol)
    )
-  :heap-base #x280
-  :method-count-assert 183
-  :size-assert         #x300
-  :flag-assert         #xb702800300
+  (:state-methods
+    attack
+    stop-run
+    run-away
+    charge
+    )
   (:methods
-    (attack () _type_ :state 178)
-    (stop-run () _type_ :state 179)
-    (run-away () _type_ :state 180)
-    (charge () _type_ :state 181)
-    (rhino-method-182 (_type_ process event-message-block) symbol 182)
+    (rhino-method-182 (_type_ process event-message-block) symbol)
     )
   )
 
 ;; definition for method 3 of type rhino
 ;; ERROR: failed type prop at 48: Could not figure out load: (set! a2 (l.wu (+ gp 636)))
-(defmethod inspect rhino ((a0-0 rhino))
+(defmethod inspect ((a0-0 rhino))
   (local-vars
     (v0-0 nav-enemy)
     (v0-1 object)
@@ -580,7 +578,7 @@
 (set! (-> *rhino-nav-enemy-info* fact-defaults) *fact-info-enemy-defaults*)
 
 ;; definition for method 182 of type rhino
-(defmethod rhino-method-182 rhino ((this rhino) (arg0 process) (arg1 event-message-block))
+(defmethod rhino-method-182 ((this rhino) (arg0 process) (arg1 event-message-block))
   (let* ((gp-0 (-> arg1 param 0))
          (s5-0 arg0)
          (s2-0 (if (type? s5-0 process-drawable)
@@ -616,7 +614,7 @@
   )
 
 ;; definition for method 58 of type rhino
-(defmethod enemy-method-58 rhino ((this rhino) (arg0 process) (arg1 event-message-block))
+(defmethod enemy-method-58 ((this rhino) (arg0 process) (arg1 event-message-block))
   (let ((t9-0 (method-of-type nav-enemy enemy-method-58)))
     (t9-0 this arg0 arg1)
     )
@@ -628,7 +626,7 @@
 
 ;; definition for method 74 of type rhino
 ;; INFO: Used lq/sq
-(defmethod general-event-handler rhino ((this rhino) (arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+(defmethod general-event-handler ((this rhino) (arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
   "Handles various events for the enemy
 @TODO - unsure if there is a pattern for the events and this should have a more specific name"
   (local-vars
@@ -972,7 +970,7 @@
   )
 
 ;; definition for method 56 of type rhino
-(defmethod damage-amount-from-attack rhino ((this rhino) (arg0 process) (arg1 event-message-block))
+(defmethod damage-amount-from-attack ((this rhino) (arg0 process) (arg1 event-message-block))
   "@returns the amount of damage taken from an attack.  This can come straight off the [[attack-info]] or via [[penetrate-using->damage]]"
   (-> arg1 param 1)
   (let ((f30-0 (the float (penetrate-using->damage (the-as penetrate (-> this incoming penetrate-using))))))
@@ -1001,7 +999,7 @@
 
 ;; definition for method 75 of type rhino
 ;; WARN: Return type mismatch symbol vs object.
-(defmethod enemy-method-75 rhino ((this rhino) (arg0 process) (arg1 event-message-block))
+(defmethod enemy-method-75 ((this rhino) (arg0 process) (arg1 event-message-block))
   (let* ((touch-entry (the-as touching-shapes-entry (-> arg1 param 0)))
          (s3-0 arg0)
          (v1-0 (if (type? s3-0 process-focusable)
@@ -1047,7 +1045,7 @@
 
 ;; definition for method 104 of type rhino
 ;; INFO: Used lq/sq
-(defmethod enemy-method-104 rhino ((this rhino) (arg0 process) (arg1 touching-shapes-entry) (arg2 uint))
+(defmethod enemy-method-104 ((this rhino) (arg0 process) (arg1 touching-shapes-entry) (arg2 uint))
   (if (and (-> this next-state) (= (-> this next-state name) 'victory))
       'attack-or-shove
       'attack
@@ -1497,7 +1495,7 @@
 
 ;; definition for method 142 of type rhino
 ;; WARN: Return type mismatch int vs none.
-(defmethod nav-enemy-method-142 rhino ((this rhino) (arg0 nav-control))
+(defmethod nav-enemy-method-142 ((this rhino) (arg0 nav-control))
   (if (-> this in-stop-run)
       (quaternion*!
         (-> this root quat)
@@ -1831,7 +1829,7 @@
 
 ;; definition for method 114 of type rhino
 ;; WARN: Return type mismatch int vs none.
-(defmethod init-enemy-collision! rhino ((this rhino))
+(defmethod init-enemy-collision! ((this rhino))
   "Initializes the [[collide-shape-moving]] and any ancillary tasks to make the enemy collide properly"
   (let ((s5-0 (new 'process 'collide-shape-moving this (collide-list-enum usually-hit-by-player))))
     (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
@@ -1904,7 +1902,7 @@
   )
 
 ;; definition for method 7 of type rhino
-(defmethod relocate rhino ((this rhino) (arg0 int))
+(defmethod relocate ((this rhino) (arg0 int))
   (if (nonzero? (-> this path-intro))
       (&+! (-> this path-intro) arg0)
       )
@@ -1913,7 +1911,7 @@
 
 ;; definition for method 115 of type rhino
 ;; WARN: Return type mismatch int vs none.
-(defmethod init-enemy! rhino ((this rhino))
+(defmethod init-enemy! ((this rhino))
   "Common method called to initialize the enemy, typically sets up default field values and calls ancillary helper methods"
   (stack-size-set! (-> this main-thread) 256)
   (initialize-skeleton

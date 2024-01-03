@@ -3,22 +3,19 @@
 
 ;; definition of type grunt-mech-hold
 (deftype grunt-mech-hold (structure)
-  ((reserve-mask uint8          :offset-assert   0)
-   (lower-hold   int8           :offset-assert   1)
-   (grunt-handle handle         :offset-assert   8)
-   (timeout      uint64         :offset-assert  16)
-   (local-pos    vector :inline :offset-assert  32)
-   (local-rot    vector :inline :offset-assert  48)
-   (local-mat    matrix :inline :offset-assert  64)
-   (world-mat    matrix :inline :offset-assert 128)
+  ((reserve-mask  uint8)
+   (lower-hold    int8)
+   (grunt-handle  handle)
+   (timeout       uint64)
+   (local-pos     vector  :inline)
+   (local-rot     vector  :inline)
+   (local-mat     matrix  :inline)
+   (world-mat     matrix  :inline)
    )
-  :method-count-assert 9
-  :size-assert         #xc0
-  :flag-assert         #x9000000c0
   )
 
 ;; definition for method 3 of type grunt-mech-hold
-(defmethod inspect grunt-mech-hold ((this grunt-mech-hold))
+(defmethod inspect ((this grunt-mech-hold))
   (when (not this)
     (set! this this)
     (goto cfg-4)
@@ -38,21 +35,18 @@
 
 ;; definition of type grunt-mech-info
 (deftype grunt-mech-info (basic)
-  ((reserved-mask    uint8                     :offset-assert   4)
-   (last-update-time time-frame                :offset-assert   8)
-   (holds            grunt-mech-hold 6 :inline :offset-assert  16)
+  ((reserved-mask     uint8)
+   (last-update-time  time-frame)
+   (holds             grunt-mech-hold  6 :inline)
    )
-  :method-count-assert 11
-  :size-assert         #x490
-  :flag-assert         #xb00000490
   (:methods
-    (grunt-mech-info-method-9 (_type_ int process symbol) symbol 9)
-    (grunt-mech-info-method-10 (_type_) none 10)
+    (grunt-mech-info-method-9 (_type_ int process symbol) symbol)
+    (grunt-mech-info-method-10 (_type_) none)
     )
   )
 
 ;; definition for method 3 of type grunt-mech-info
-(defmethod inspect grunt-mech-info ((this grunt-mech-info))
+(defmethod inspect ((this grunt-mech-info))
   (when (not this)
     (set! this this)
     (goto cfg-4)
@@ -124,7 +118,7 @@
 
 ;; definition for method 10 of type grunt-mech-info
 ;; WARN: Return type mismatch int vs none.
-(defmethod grunt-mech-info-method-10 grunt-mech-info ((this grunt-mech-info))
+(defmethod grunt-mech-info-method-10 ((this grunt-mech-info))
   (let ((s5-0 (current-time)))
     (when (!= (-> this last-update-time) s5-0)
       (when (< s5-0 (-> this last-update-time))
@@ -174,7 +168,7 @@
   )
 
 ;; definition for method 9 of type grunt-mech-info
-(defmethod grunt-mech-info-method-9 grunt-mech-info ((this grunt-mech-info) (arg0 int) (arg1 process) (arg2 symbol))
+(defmethod grunt-mech-info-method-9 ((this grunt-mech-info) (arg0 int) (arg1 process) (arg2 symbol))
   (grunt-mech-info-method-10 this)
   (let ((v1-2 *target*))
     (when (and v1-2 (focus-test? v1-2 mech) (not (logtest? (-> v1-2 focus-status) (focus-status dead ignore))))
@@ -198,29 +192,27 @@
 
 ;; definition of type grunt-mech
 (deftype grunt-mech (grunt)
-  ((hold-id       int8           :offset-assert 692)
-   (dismount-dest vector :inline :offset-assert 704)
+  ((hold-id        int8)
+   (dismount-dest  vector  :inline)
    )
-  :heap-base #x250
-  :method-count-assert 196
-  :size-assert         #x2d0
-  :flag-assert         #xc4025002d0
+  (:state-methods
+    mech-lunge
+    mech-hold
+    mech-dismount
+    mech-post-circling
+    mech-pre-circling
+    )
   (:methods
-    (mech-lunge () _type_ :state 186)
-    (mech-hold () _type_ :state 187)
-    (mech-dismount () _type_ :state 188)
-    (mech-post-circling () _type_ :state 189)
-    (mech-pre-circling () _type_ :state 190)
-    (grunt-mech-method-191 (_type_) none 191)
-    (grunt-mech-method-192 (_type_) symbol 192)
-    (grunt-mech-method-193 (_type_) int 193)
-    (grunt-mech-method-194 (_type_) none 194)
-    (grunt-mech-method-195 (_type_ vector vector vector) symbol 195)
+    (grunt-mech-method-191 (_type_) none)
+    (grunt-mech-method-192 (_type_) symbol)
+    (grunt-mech-method-193 (_type_) int)
+    (grunt-mech-method-194 (_type_) none)
+    (grunt-mech-method-195 (_type_ vector vector vector) symbol)
     )
   )
 
 ;; definition for method 3 of type grunt-mech
-(defmethod inspect grunt-mech ((this grunt-mech))
+(defmethod inspect ((this grunt-mech))
   (when (not this)
     (set! this this)
     (goto cfg-4)
@@ -236,7 +228,7 @@
 
 ;; definition for method 55 of type grunt-mech
 ;; WARN: Return type mismatch int vs none.
-(defmethod track-target! grunt-mech ((this grunt-mech))
+(defmethod track-target! ((this grunt-mech))
   "Does a lot of various things relating to interacting with the target
 - tracks when the enemy was last drawn
 - looks at the target and handles attacking
@@ -251,7 +243,7 @@
 ;; ERROR: Unsupported inline assembly instruction kind - [mula.s f0, f3]
 ;; ERROR: Unsupported inline assembly instruction kind - [madda.s f1, f4]
 ;; ERROR: Unsupported inline assembly instruction kind - [madd.s f0, f2, f5]
-(defmethod grunt-mech-method-193 grunt-mech ((this grunt-mech))
+(defmethod grunt-mech-method-193 ((this grunt-mech))
   (local-vars (f0-3 float) (sv-592 vector))
   (let ((s4-0 *grunt-mech-info*))
     (grunt-mech-info-method-10 s4-0)
@@ -333,7 +325,7 @@
   )
 
 ;; definition for method 184 of type grunt-mech
-(defmethod grunt-method-184 grunt-mech ((this grunt-mech) (arg0 float))
+(defmethod grunt-method-184 ((this grunt-mech) (arg0 float))
   (local-vars (v1-5 float))
   (rlet ((acc :class vf)
          (vf0 :class vf)
@@ -461,7 +453,7 @@
 
 ;; definition for method 195 of type grunt-mech
 ;; INFO: Used lq/sq
-(defmethod grunt-mech-method-195 grunt-mech ((this grunt-mech) (arg0 vector) (arg1 vector) (arg2 vector))
+(defmethod grunt-mech-method-195 ((this grunt-mech) (arg0 vector) (arg1 vector) (arg2 vector))
   (local-vars (v1-13 float))
   (rlet ((acc :class vf)
          (vf0 :class vf)
@@ -519,7 +511,7 @@
   )
 
 ;; definition for method 192 of type grunt-mech
-(defmethod grunt-mech-method-192 grunt-mech ((this grunt-mech))
+(defmethod grunt-mech-method-192 ((this grunt-mech))
   (do-navigation-to-destination (-> this nav state) (-> this root trans))
   (let ((a1-1 *target*))
     (if (or (not a1-1) (not (logtest? (focus-status mech) (-> a1-1 focus-status))))
@@ -579,14 +571,14 @@
 
 ;; definition for method 194 of type grunt-mech
 ;; WARN: Return type mismatch object vs none.
-(defmethod grunt-mech-method-194 grunt-mech ((this grunt-mech))
+(defmethod grunt-mech-method-194 ((this grunt-mech))
   (send-event *target* 'attack #f (static-attack-info ((id (new-attack-id)) (mode 'grunt))))
   (none)
   )
 
 ;; definition for method 191 of type grunt-mech
 ;; WARN: Return type mismatch object vs none.
-(defmethod grunt-mech-method-191 grunt-mech ((this grunt-mech))
+(defmethod grunt-mech-method-191 ((this grunt-mech))
   (if (>= (current-time) (-> this state-timeout))
       (go (method-of-object this mech-dismount))
       )

@@ -104,7 +104,7 @@ into 7 sections, which might explain the weird sizes in the center.
   default-level
   )
 
-(defmethod alt-load-command-get-index level-group ((this level-group) (arg0 symbol) (arg1 int))
+(defmethod alt-load-command-get-index ((this level-group) (arg0 symbol) (arg1 int))
   "Get the n-th alt-load-command for the given level.
    This is likely unused in jak 2 because no levels have alt-load-commands."
   (let ((v1-1 (-> (lookup-level-info arg0) alt-load-commands)))
@@ -119,12 +119,12 @@ into 7 sections, which might explain the weird sizes in the center.
     )
   )
 
-(defmethod load-in-progress? level-group ((this level-group))
+(defmethod load-in-progress? ((this level-group))
   "Is a level being loaded right now?"
   (!= (-> *level* loading-level) (-> *level* default-level))
   )
 
-(defmethod get-level-by-heap-ptr-and-status level-group ((this level-group) (arg0 pointer) (arg1 symbol))
+(defmethod get-level-by-heap-ptr-and-status ((this level-group) (arg0 pointer) (arg1 symbol))
   "Get a level by a heap pointer and status.
    If no matching level is found, return #f.
    The purpose of the status check is possibly to prevent bugs with getting stuff
@@ -168,7 +168,7 @@ into 7 sections, which might explain the weird sizes in the center.
       )
   )
 
-(defmethod get-art-group-by-name level ((this level) (arg0 string))
+(defmethod get-art-group-by-name ((this level) (arg0 string))
   "As the name implies, look through the art-groups of this level and get the one
    with the given name. Return #f if not found."
   (countdown (s4-0 (-> this art-group art-group-array length))
@@ -179,7 +179,7 @@ into 7 sections, which might explain the weird sizes in the center.
   (the-as art-group #f)
   )
 
-(defmethod bsp-name level ((this level))
+(defmethod bsp-name ((this level))
   "Get the name of the bsp. If this can't be done, get the name of the level."
   (if (and (!= (-> this status) 'inactive) (-> this bsp) (nonzero? (-> this bsp name)))
       (-> this bsp name)
@@ -199,12 +199,12 @@ into 7 sections, which might explain the weird sizes in the center.
   (none)
   )
 
-(defmethod print level ((this level))
+(defmethod print ((this level))
   (format #t "#<~A ~A ~S @ #x~X>" (-> this type) (-> this status) (-> this name) this)
   this
   )
 
-(defmethod relocate bsp-header ((this bsp-header) (arg0 int))
+(defmethod relocate ((this bsp-header) (arg0 int))
   "Handle the load of a new bsp-header. The linker calls this function
    when the bsp-header is linked.
    Do some sanity checks and link the bsp-header and level to each other."
@@ -245,7 +245,7 @@ into 7 sections, which might explain the weird sizes in the center.
     )
   )
 
-(defmethod load-required-packages level ((this level))
+(defmethod load-required-packages ((this level))
   "Load packages for a level.
    This just loads common, and this feature is not really useful.
    Packages were only used during development, and seem only partially used in Jak 2
@@ -258,7 +258,7 @@ into 7 sections, which might explain the weird sizes in the center.
   this
   )
 
-(defmethod vis-clear level ((this level))
+(defmethod vis-clear ((this level))
   "Completely invalide all visibility data, vis-info, and set all-visible? to loading."
   (countdown (v1-0 8)
     (nop!)
@@ -272,7 +272,7 @@ into 7 sections, which might explain the weird sizes in the center.
   (none)
   )
 
-(defmethod init-vis-from-bsp level ((this level))
+(defmethod init-vis-from-bsp ((this level))
   "Set up a level's vis-infos from a bsp."
   (when (not (or (= (-> this status) 'inactive) (not (-> this bsp))))
     ;; mark our visibility as 'loading.
@@ -314,7 +314,7 @@ into 7 sections, which might explain the weird sizes in the center.
   (none)
   )
 
-(defmethod level-get-for-use level-group ((this level-group) (arg0 symbol) (arg1 symbol))
+(defmethod level-get-for-use ((this level-group) (arg0 symbol) (arg1 symbol))
   "Request a level by name in the given state.
    Will return quickly (non-blocking) and might not be able to get a level in the desired state,
    though it will ofborrow do some small amount of work to make progress on loading.
@@ -398,7 +398,7 @@ into 7 sections, which might explain the weird sizes in the center.
   s5-1
   )
 
-(defmethod level-status level-group ((this level-group) (arg0 symbol))
+(defmethod level-status ((this level-group) (arg0 symbol))
   "Get the status of a level by name, return #f if no level is found."
   (let ((v1-1 (level-get *level* arg0)))
     (if v1-1
@@ -407,7 +407,7 @@ into 7 sections, which might explain the weird sizes in the center.
     )
   )
 
-(defmethod level-status-update! level ((this level) (arg0 symbol))
+(defmethod level-status-update! ((this level) (arg0 symbol))
   "Try to update the level to the given status, calling whatever is needed
    to make it happen.
    This can do both loading, linking, login, and activation.
@@ -561,7 +561,7 @@ into 7 sections, which might explain the weird sizes in the center.
 ;; a case in the DGO loader here. If the objects come in totally corrupted, we're likely missing
 ;; some additional syncronization.
 
-(defmethod load-continue level ((this level))
+(defmethod load-continue ((this level))
   "Run the loading/login state machine.
    This will only make progress on loading, linking, and login for loads that have already started.
    No 'scary' state transitions (like birth, alive, deactivate) are made here."
@@ -717,7 +717,7 @@ into 7 sections, which might explain the weird sizes in the center.
   this
   )
 
-(defmethod load-begin level ((this level))
+(defmethod load-begin ((this level))
   "Begin loading a level.
    This assigns memory to a level and is somewhat confusing."
   (local-vars (bits-to-use int) (borrow-from-lev level) (found-borrow symbol))
@@ -1045,7 +1045,7 @@ into 7 sections, which might explain the weird sizes in the center.
   this
   )
 
-(defmethod login-begin level ((this level))
+(defmethod login-begin ((this level))
   "Begin login of a level after linking.
    The login is spread over multiple frames."
 
@@ -1423,7 +1423,7 @@ into 7 sections, which might explain the weird sizes in the center.
   lev
   )
 
-(defmethod birth level ((this level))
+(defmethod birth ((this level))
   "Start running code for a level that has been loaded."
   (local-vars (sv-96 int))
   (case (-> this status)
@@ -1497,7 +1497,7 @@ into 7 sections, which might explain the weird sizes in the center.
   this
   )
 
-(defmethod deactivate level ((this level))
+(defmethod deactivate ((this level))
   "Take a level out of active/alive"
   (case (-> this status)
     (('active 'alive)
@@ -1558,7 +1558,7 @@ into 7 sections, which might explain the weird sizes in the center.
   this
   )
 
-(defmethod unload! level ((this level))
+(defmethod unload! ((this level))
   "Unload a level."
 
   ;; make sure it's not alive/active
@@ -1731,7 +1731,7 @@ into 7 sections, which might explain the weird sizes in the center.
   this
   )
 
-(defmethod is-object-visible? level ((this level) (arg0 int))
+(defmethod is-object-visible? ((this level) (arg0 int))
   "Is drawable arg0 visible? Note that this will return #f if the visibility data is not loaded."
 
   ;; check the vis bits!
@@ -1757,7 +1757,7 @@ into 7 sections, which might explain the weird sizes in the center.
     )
   )
 
-(defmethod inside-boxes-check level ((this level) (arg0 vector))
+(defmethod inside-boxes-check ((this level) (arg0 vector))
   "NOTE: this function used to check if we were in boxes - here it just checks
    a flag. However, it is still used to set the inside-boxes field, so it keeps
    the name we gave it in Jak 1.
@@ -1778,7 +1778,7 @@ into 7 sections, which might explain the weird sizes in the center.
     )
   )
 
-(defmethod debug-print-region-splitbox level ((this level) (arg0 vector) (arg1 object))
+(defmethod debug-print-region-splitbox ((this level) (arg0 vector) (arg1 object))
   "Display debug info about the regions of a level."
   (cond
     ((or (not (-> this bsp)) (zero? (-> this bsp region-tree)))
@@ -1791,7 +1791,7 @@ into 7 sections, which might explain the weird sizes in the center.
   (none)
   )
 
-(defmethod mem-usage level ((this level) (arg0 memory-usage-block) (arg1 int))
+(defmethod mem-usage ((this level) (arg0 memory-usage-block) (arg1 int))
   "Compute the memory usage of a level."
   (when (= (-> this status) 'active)
     (set! (-> arg0 length) (max 67 (-> arg0 length)))
@@ -1848,7 +1848,7 @@ into 7 sections, which might explain the weird sizes in the center.
   )
 
 
-(defmethod alloc-levels-if-needed level-group ((this level-group) (arg0 symbol))
+(defmethod alloc-levels-if-needed ((this level-group) (arg0 symbol))
   "Setup for playing levels by loading the required base packages (art, common)
    and allocating the level heap."
   (when (zero? (-> *level* heap base))
@@ -1882,7 +1882,7 @@ into 7 sections, which might explain the weird sizes in the center.
   (none)
   )
 
-(defmethod level-get-with-status level-group ((this level-group) (arg0 symbol))
+(defmethod level-get-with-status ((this level-group) (arg0 symbol))
   "Get a level with the given status."
   (dotimes (v1-0 (-> this length))
     (if (= (-> this level v1-0 status) arg0)
@@ -1892,7 +1892,7 @@ into 7 sections, which might explain the weird sizes in the center.
   (the-as level #f)
   )
 
-(defmethod level-get-most-disposable level-group ((this level-group))
+(defmethod level-get-most-disposable ((this level-group))
   "Get the level that's least useful."
   (dotimes (v1-0 (-> this length))
     (case (-> this level v1-0 status)
@@ -1931,7 +1931,7 @@ into 7 sections, which might explain the weird sizes in the center.
     )
   )
 
-(defmethod level-get level-group ((this level-group) (arg0 symbol))
+(defmethod level-get ((this level-group) (arg0 symbol))
   "Get a level by name or load-name"
   (dotimes (v1-0 (-> this length))
     (if (and (!= (-> this level v1-0 status) 'inactive)
@@ -1943,7 +1943,7 @@ into 7 sections, which might explain the weird sizes in the center.
   (the-as level #f)
   )
 
-(defmethod art-group-get-by-name level-group ((this level-group) (arg0 string) (arg1 (pointer uint32)))
+(defmethod art-group-get-by-name ((this level-group) (arg0 string) (arg1 (pointer uint32)))
   "Search all levels for an art-group. Return the art group, or #f. Optionally return the level index."
   (countdown (s4-0 LEVEL_TOTAL)
     (let ((s3-0 (-> *level* level s4-0)))
@@ -1962,7 +1962,7 @@ into 7 sections, which might explain the weird sizes in the center.
   (the-as art-group #f)
   )
 
-(defmethod activate-levels! level-group ((this level-group))
+(defmethod activate-levels! ((this level-group))
   "Set all levels to active."
   (dotimes (s5-0 (-> this length))
     (level-status-update! (-> this level s5-0) 'active)
@@ -1970,7 +1970,7 @@ into 7 sections, which might explain the weird sizes in the center.
   0
   )
 
-(defmethod level-get-target-inside level-group ((this level-group))
+(defmethod level-get-target-inside ((this level-group))
   "Get the level that target is 'in'. With a bunch of tricks for what 'in' really means."
 
   (let ((s5-0 (target-pos 0)))
@@ -2054,13 +2054,13 @@ into 7 sections, which might explain the weird sizes in the center.
   )
 
 
-(defmethod load-commands-set! level-group ((this level-group) (arg0 pair))
+(defmethod load-commands-set! ((this level-group) (arg0 pair))
   "Set the load-commands of a level."
   (set! (-> this load-commands) arg0)
   (none)
   )
 
-(defmethod mem-usage level-group ((this level-group) (arg0 memory-usage-block) (arg1 int))
+(defmethod mem-usage ((this level-group) (arg0 memory-usage-block) (arg1 int))
   "Compute mem-usage for an entire level-group."
   (dotimes (s3-0 (-> this length))
     (mem-usage (-> this level s3-0) arg0 arg1)
@@ -2389,7 +2389,7 @@ into 7 sections, which might explain the weird sizes in the center.
   0
   )
 
-(defmethod update! load-state ((this load-state))
+(defmethod update! ((this load-state))
   "Update level stuff based on load state.
    This does scary transitions."
 
@@ -2625,7 +2625,7 @@ into 7 sections, which might explain the weird sizes in the center.
 ;; the draw-level array of level-group stores levels in the order they should be drawn.
 ;; eg: level3 of the DMA bucket array is actually (-> *level* draw-level 3), not (-> *level* level 3).
 
-(defmethod assign-draw-indices level-group ((this level-group))
+(defmethod assign-draw-indices ((this level-group))
   "Sort the levels by draw priority."
   (local-vars (t0-3 symbol))
   (set! (-> this draw-level-count) 0)
@@ -2679,7 +2679,7 @@ into 7 sections, which might explain the weird sizes in the center.
   (none)
   )
 
-(defmethod level-update level-group ((this level-group))
+(defmethod level-update ((this level-group))
 
   (local-vars (v1-101 symbol))
   (camera-pos)

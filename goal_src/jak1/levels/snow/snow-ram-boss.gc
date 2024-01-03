@@ -10,18 +10,14 @@
 ;; DECOMP BEGINS
 
 (deftype ram-boss-proj (projectile)
-  ((parent-override (pointer ram-boss)               :offset         12)
-   (part2           sparticle-launch-control         :offset-assert 412)
-   (launched?       symbol                           :offset-assert 416)
-   (growth          float                            :offset-assert 420)
-   (charge-sound-id sound-id                         :offset-assert 424)
-   (launch-time     time-frame                       :offset-assert 432)
-   (facing-dir      vector                   :inline :offset-assert 448)
+  ((parent-override  (pointer ram-boss)  :overlay-at parent)
+   (part2            sparticle-launch-control)
+   (launched?        symbol)
+   (growth           float)
+   (charge-sound-id  sound-id)
+   (launch-time      time-frame)
+   (facing-dir       vector              :inline)
    )
-  :heap-base #x160
-  :method-count-assert 29
-  :size-assert         #x1d0
-  :flag-assert         #x1d016001d0
   (:states
     ram-boss-proj-growing
     ram-boss-proj-launch
@@ -30,30 +26,26 @@
 
 
 (deftype ram-boss (nav-enemy)
-  ((parent-override          (pointer ram)                    :offset         12)
-   (facing-y                 float                            :offset-assert 400)
-   (player-dir-y             float                            :offset-assert 404)
-   (last-turn-speed          float                            :offset-assert 408)
-   (frustration              int32                            :offset-assert 412)
-   (dead?                    symbol                           :offset-assert 416)
-   (has-shield?              symbol                           :offset-assert 420)
-   (proj-stoked              basic                            :offset-assert 424)
-   (proj-status              uint64                           :offset-assert 432)
-   (part2                    sparticle-launch-control         :offset-assert 440)
-   (proj-last-thrown-time    time-frame                       :offset-assert 448)
-   (nav-enemy-patrol-timeout time-frame                       :offset-assert 456)
-   (proj-launch-vec          vector                   :inline :offset-assert 464)
-   (local-throw-point        vector                   :inline :offset-assert 480)
-   (shield-jmod              joint-mod-set-local              :offset-assert 496)
+  ((parent-override           (pointer ram)  :overlay-at parent)
+   (facing-y                  float)
+   (player-dir-y              float)
+   (last-turn-speed           float)
+   (frustration               int32)
+   (dead?                     symbol)
+   (has-shield?               symbol)
+   (proj-stoked               basic)
+   (proj-status               uint64)
+   (part2                     sparticle-launch-control)
+   (proj-last-thrown-time     time-frame)
+   (nav-enemy-patrol-timeout  time-frame)
+   (proj-launch-vec           vector         :inline)
+   (local-throw-point         vector         :inline)
+   (shield-jmod               joint-mod-set-local)
    )
-  :heap-base #x190
-  :method-count-assert 76
-  :size-assert         #x1f4
-  :flag-assert         #x4c019001f4
   (:methods
-    (ram-boss-method-51 (_type_ vector) symbol :replace 51)
-    (ram-boss-method-52 (_type_) symbol :replace 52)
-    (ram-boss-method-57 (_type_ float) float :replace 57)
+    (ram-boss-method-51 (_type_ vector) symbol :overlay-at nav-enemy-method-51)
+    (ram-boss-method-52 (_type_) symbol :overlay-at nav-enemy-method-52)
+    (ram-boss-method-57 (_type_ float) float :overlay-at nav-enemy-method-57)
     )
   (:states
     (ram-boss-already-down basic)
@@ -456,21 +448,13 @@
   :parts ((sp-item 1914))
   )
 
-(defmethod projectile-method-24 ram-boss-proj ((this ram-boss-proj))
+(defmethod projectile-method-24 ((this ram-boss-proj))
   (with-pp
-    (quaternion-rotate-local-x!
-      (-> this root-override quat)
-      (-> this root-override quat)
-      (* 65718.05 (seconds-per-frame))
-      )
-    (quaternion-rotate-local-y!
-      (-> this root-override quat)
-      (-> this root-override quat)
-      (* 32221.867 (seconds-per-frame))
-      )
+    (quaternion-rotate-local-x! (-> this root quat) (-> this root quat) (* 65718.05 (seconds-per-frame)))
+    (quaternion-rotate-local-y! (-> this root quat) (-> this root quat) (* 32221.867 (seconds-per-frame)))
     (let ((f0-9 (* 5120.0 (+ 0.9 (* 0.1 (cos (* 873.81335 (the float (mod (current-time) 75)))))))))
       (find-ground-and-draw-shadow
-        (-> this root-override trans)
+        (-> this root trans)
         (the-as vector #f)
         f0-9
         (collide-kind background)
@@ -480,12 +464,12 @@
         )
       )
     (if (-> this launched?)
-        (spawn (-> this part2) (the-as vector (-> this root-override root-prim prim-core)))
+        (spawn (-> this part2) (the-as vector (-> this root root-prim prim-core)))
         )
     (let ((s5-0 (the-as sound-rpc-set-param (get-sound-buffer-entry))))
       (set! (-> s5-0 command) (sound-command set-param))
       (set! (-> s5-0 id) (-> this sound-id))
-      (let ((a1-4 (-> this root-override trans)))
+      (let ((a1-4 (-> this root trans)))
         (let ((gp-1 pp))
           (when (= a1-4 #t)
             (if (and gp-1 (type-type? (-> gp-1 type) process-drawable) (nonzero? (-> (the-as process-drawable gp-1) root)))
@@ -505,14 +489,14 @@
 
 (defun snow-ram-proj-update-velocity ((arg0 ram-boss-proj))
   (when (>= (vector-vector-distance (-> arg0 parent-override 0 collide-info trans) (-> arg0 target))
-            (vector-vector-distance (-> arg0 parent-override 0 collide-info trans) (-> arg0 root-override trans))
+            (vector-vector-distance (-> arg0 parent-override 0 collide-info trans) (-> arg0 root trans))
             )
-    (let ((s3-1 (vector-! (new 'stack-no-clear 'vector) (-> arg0 target) (-> arg0 root-override trans)))
+    (let ((s3-1 (vector-! (new 'stack-no-clear 'vector) (-> arg0 target) (-> arg0 root trans)))
           (s4-0 (new 'stack-no-clear 'vector))
-          (s5-0 (vector-normalize-copy! (new 'stack-no-clear 'vector) (-> arg0 root-override transv) 1.0))
+          (s5-0 (vector-normalize-copy! (new 'stack-no-clear 'vector) (-> arg0 root transv) 1.0))
           )
-      (if (logtest? (-> arg0 root-override status) (cshape-moving-flags tsurf))
-          (vector-flatten! s3-1 s3-1 (-> arg0 root-override local-normal))
+      (if (logtest? (-> arg0 root status) (cshape-moving-flags tsurf))
+          (vector-flatten! s3-1 s3-1 (-> arg0 root local-normal))
           )
       (vector-normalize-copy! s4-0 s3-1 1.0)
       (let ((s3-2 (new 'stack-no-clear 'matrix)))
@@ -526,20 +510,20 @@
         (vector-matrix*! s5-0 s5-0 s3-2)
         )
       (vector-normalize! s5-0 1.0)
-      (vector-float*! (-> arg0 root-override transv) s5-0 (-> arg0 max-speed))
+      (vector-float*! (-> arg0 root transv) s5-0 (-> arg0 max-speed))
       )
     )
   0
   (none)
   )
 
-(defmethod projectile-method-25 ram-boss-proj ((this ram-boss-proj))
+(defmethod projectile-method-25 ((this ram-boss-proj))
   (go ram-boss-proj-growing)
   0
   (none)
   )
 
-(defmethod projectile-method-26 ram-boss-proj ((this ram-boss-proj))
+(defmethod projectile-method-26 ((this ram-boss-proj))
   (let ((s5-0 (new 'process 'collide-shape-moving this (collide-list-enum hit-by-player))))
     (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s5-0 reaction) projectile-collision-reaction)
@@ -559,13 +543,13 @@
     (backup-collide-with-as s5-0)
     (set! (-> s5-0 max-iteration-count) (the-as uint 2))
     (set! (-> s5-0 event-self) 'touched)
-    (set! (-> this root-override) s5-0)
+    (set! (-> this root) s5-0)
     )
   0
   (none)
   )
 
-(defmethod projectile-method-27 ram-boss-proj ((this ram-boss-proj))
+(defmethod projectile-method-27 ((this ram-boss-proj))
   (set! (-> this charge-sound-id) (new 'static 'sound-id))
   (set! (-> this part) (create-launch-control (-> *part-group-id-table* 521) this))
   (set! (-> this part2) (create-launch-control (-> *part-group-id-table* 522) this))
@@ -586,7 +570,7 @@
   (none)
   )
 
-(defmethod deactivate ram-boss-proj ((this ram-boss-proj))
+(defmethod deactivate ((this ram-boss-proj))
   (if (nonzero? (-> this part2))
       (kill-and-free-particles (-> this part2))
       )
@@ -594,14 +578,14 @@
   (none)
   )
 
-(defmethod relocate ram-boss-proj ((this ram-boss-proj) (arg0 int))
+(defmethod relocate ((this ram-boss-proj) (arg0 int))
   (if (nonzero? (-> this part2))
       (&+! (-> this part2) arg0)
       )
   (the-as ram-boss-proj ((method-of-type projectile relocate) this arg0))
   )
 
-(defmethod projectile-method-28 ram-boss-proj ((this ram-boss-proj))
+(defmethod projectile-method-28 ((this ram-boss-proj))
   (when (and *target*
              (not (logtest? (-> *target* state-flags)
                             (state-flags being-attacked invulnerable timed-invulnerable invuln-powerup do-not-notice dying)
@@ -611,7 +595,7 @@
     (let ((gp-0 (-> this target)))
       (set! (-> gp-0 quad) (-> (target-pos 0) quad))
       (+! (-> gp-0 y) 4915.2)
-      (let ((f0-2 (vector-vector-distance gp-0 (-> this root-override trans)))
+      (let ((f0-2 (vector-vector-distance gp-0 (-> this root trans)))
             (a2-0 (new 'stack-no-clear 'vector))
             )
         (if (>= 0.0 f0-2)
@@ -651,8 +635,8 @@
           (sound-stop (-> self charge-sound-id))
           (go-virtual projectile-dissipate)
           )
-        (nav-enemy-method-54 (-> gp-1 0) (-> self root-override trans))
-        (update-transforms! (-> self root-override))
+        (nav-enemy-method-54 (-> gp-1 0) (-> self root trans))
+        (update-transforms! (-> self root))
         (cond
           ((-> gp-1 0 proj-stoked)
            (set! (-> gp-1 0 proj-stoked) #f)
@@ -672,9 +656,9 @@
           )
         )
       (let ((f0-6 (-> self growth)))
-        (set-vector! (-> self root-override scale) f0-6 f0-6 f0-6 1.0)
+        (set-vector! (-> self root scale) f0-6 f0-6 f0-6 1.0)
         )
-      (spawn (-> self part) (-> self root-override trans))
+      (spawn (-> self part) (-> self root trans))
       (suspend)
       )
     )
@@ -685,9 +669,9 @@
     (sound-play "ramboss-fire")
     (set! (-> self launched?) #t)
     (set! (-> self growth) 1.0)
-    (logior! (-> self root-override root-prim prim-core action) (collide-action solid))
+    (logior! (-> self root root-prim prim-core action) (collide-action solid))
     (set-time! (-> self launch-time))
-    (vector-float*! (-> self root-override transv) (-> self parent-override 0 proj-launch-vec) 40960.0)
+    (vector-float*! (-> self root transv) (-> self parent-override 0 proj-launch-vec) 40960.0)
     (set! (-> self target quad) (-> (target-pos 0) quad))
     (+! (-> self target y) 4915.2)
     (set! (-> self target-base quad) (-> self target quad))
@@ -706,7 +690,7 @@
       #f
       #f
       #f
-      (-> self root-override trans)
+      (-> self root trans)
       :to *entity-pool*
       )
     (if (nonzero? (-> self sound-id))
@@ -729,7 +713,7 @@
       #f
       #f
       #f
-      (-> self root-override trans)
+      (-> self root trans)
       :to *entity-pool*
       )
     (if (nonzero? (-> self sound-id))
@@ -974,7 +958,7 @@
     )
   )
 
-(defmethod deactivate ram-boss ((this ram-boss))
+(defmethod deactivate ((this ram-boss))
   (if (nonzero? (-> this part2))
       (kill-and-free-particles (-> this part2))
       )
@@ -982,7 +966,7 @@
   (none)
   )
 
-(defmethod relocate ram-boss ((this ram-boss) (arg0 int))
+(defmethod relocate ((this ram-boss) (arg0 int))
   (if (nonzero? (-> this shield-jmod))
       (&+! (-> this shield-jmod) arg0)
       )
@@ -992,7 +976,7 @@
   (the-as ram-boss ((method-of-type nav-enemy relocate) this arg0))
   )
 
-(defmethod initialize-collision ram-boss ((this ram-boss))
+(defmethod initialize-collision ((this ram-boss))
   (let ((s5-0 (new 'process 'collide-shape-moving this (collide-list-enum hit-by-player))))
     (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s5-0 reaction) default-collision-reaction)
@@ -1045,7 +1029,7 @@
   (none)
   )
 
-(defmethod ram-boss-method-52 ram-boss ((this ram-boss))
+(defmethod ram-boss-method-52 ((this ram-boss))
   (let ((v1-1 (the-as basic (-> this collide-info root-prim))))
     (set-vector! (-> (the-as collide-shape-prim v1-1) local-sphere) 0.0 8192.0 0.0 13516.8)
     (set-vector! (-> (the-as (array collide-shape-prim) v1-1) 16 local-sphere) 0.0 4096.0 0.0 4505.6)
@@ -1066,7 +1050,7 @@
     )
   )
 
-(defmethod nav-enemy-method-53 ram-boss ((this ram-boss))
+(defmethod nav-enemy-method-53 ((this ram-boss))
   (let ((v1-1 (the-as (array collide-shape-prim) (-> this collide-info root-prim))))
     (let ((a0-1 (-> v1-1 16)))
       (set! (-> a0-1 prim-core offense) (collide-offense touch))
@@ -1087,7 +1071,7 @@
   (the-as symbol 0)
   )
 
-(defmethod nav-enemy-method-48 ram-boss ((this ram-boss))
+(defmethod nav-enemy-method-48 ((this ram-boss))
   (initialize-skeleton this *ram-boss-sg* '())
   (set! (-> this draw origin-joint-index) (the-as uint 3))
   (init-defaults! this *ram-boss-nav-enemy-info*)
@@ -1143,7 +1127,7 @@
   (none)
   )
 
-(defmethod nav-enemy-method-54 ram-boss ((this ram-boss) (arg0 vector))
+(defmethod nav-enemy-method-54 ((this ram-boss) (arg0 vector))
   (let ((a2-0 (-> this node-list data 18 bone transform)))
     (set-vector! arg0 0.0 0.0 -2457.6 1.0)
     (vector-matrix*! arg0 arg0 a2-0)
@@ -1151,7 +1135,7 @@
   (the-as symbol (vector-float*! arg0 arg0 (/ 1.0 (-> arg0 w))))
   )
 
-(defmethod nav-enemy-method-55 ram-boss ((this ram-boss))
+(defmethod nav-enemy-method-55 ((this ram-boss))
   (if (not *target*)
       (return #f)
       )
@@ -1187,7 +1171,7 @@
     )
   )
 
-(defmethod ram-boss-method-51 ram-boss ((this ram-boss) (arg0 vector))
+(defmethod ram-boss-method-51 ((this ram-boss) (arg0 vector))
   (let* ((f30-0 (quaternion-y-angle (-> this collide-info quat)))
          (f0-2 (atan (-> arg0 x) (-> arg0 z)))
          (f0-3 (deg- f30-0 f0-2))
@@ -1202,7 +1186,7 @@
   #t
   )
 
-(defmethod set-jump-height-factor! ram-boss ((this ram-boss) (arg0 int))
+(defmethod set-jump-height-factor! ((this ram-boss) (arg0 int))
   (cond
     ((zero? (-> this proj-status))
      (when (and *target* (time-elapsed? (-> this proj-last-thrown-time) (seconds 2)))
@@ -1503,7 +1487,7 @@
     )
   )
 
-(defmethod ram-boss-method-57 ram-boss ((this ram-boss) (arg0 float))
+(defmethod ram-boss-method-57 ((this ram-boss) (arg0 float))
   (let ((f0-0 0.0))
     (when *target*
       (let ((s3-0 (new 'stack-no-clear 'vector)))
@@ -1803,7 +1787,7 @@
     (ja-no-eval :group! ram-boss-lose-shield-ja :num! (seek!) :frame-num 0.0)
     (until (ja-done? 0)
       (let ((gp-1 (new 'stack-no-clear 'vector)))
-        (vector<-cspace! gp-1 (joint-node-index ram-boss-lod0-jg shield))
+        (vector<-cspace! gp-1 (joint-node ram-boss-lod0-jg shield))
         (spawn (-> self part) gp-1)
         )
       (suspend)

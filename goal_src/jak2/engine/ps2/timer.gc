@@ -180,7 +180,7 @@
   (cpu-ticks-to-seconds (stopwatch-elapsed-ticks this))
   )
 
-(defmethod update-rates! clock ((this clock) (arg0 float))
+(defmethod update-rates! ((this clock) (arg0 float))
   "Recompute all clock values for the given clock ratio (arg0)."
 
   ;; remember our ratio
@@ -217,7 +217,7 @@
   arg0
   )
 
-(defmethod advance-by! clock ((this clock) (arg0 float))
+(defmethod advance-by! ((this clock) (arg0 float))
   "Advance the clock by arg0 timeframes (as a float).
    Both counters keep a separate fractional and integer counter."
   (the int (+ arg0 (-> this accum))) ;; unused
@@ -247,7 +247,7 @@
   this
   )
 
-(defmethod tick! clock ((this clock))
+(defmethod tick! ((this clock))
   "Per-game-frame clock tick forward."
   (if (zero? (logand (-> this mask) (-> *kernel-context* prevent-from-run)))
       ;; include: ntsc/pal scale, lag, and clock ratio.
@@ -257,7 +257,7 @@
   this
   )
 
-(defmethod reset! clock ((this clock))
+(defmethod reset! ((this clock))
   "Reset a clock to 1000s, rate of 1."
   (set! (-> this frame-counter) (seconds 1000))
   (set! (-> this integral-frame-counter) (the-as uint #x493e0))
@@ -269,14 +269,14 @@
   (none)
   )
 
-(defmethod save! clock ((this clock) (arg0 (pointer uint64)))
+(defmethod save! ((this clock) (arg0 (pointer uint64)))
   "Save a clock's state to a buffer, return bytes used."
   (set! (-> arg0 0) (the-as uint (-> this frame-counter)))
   (set! (-> arg0 1) (-> this integral-frame-counter))
   16
   )
 
-(defmethod load! clock ((this clock) (arg0 (pointer uint64)))
+(defmethod load! ((this clock) (arg0 (pointer uint64)))
   "Load a clock's state from a buffer, return bytes used."
   (set! (-> this frame-counter) (the-as time-frame (-> arg0 0)))
   (set! (-> this integral-frame-counter) (-> arg0 1))

@@ -56,28 +56,22 @@
               )
 
 (deftype rbw-side (basic)
-  ((break-anim             string         :offset-assert   4)
-   (end-anim               string         :offset-assert   8)
-   (break-prim-mask        uint8          :offset-assert  12)
-   (break-root-prim-joint  int16          :offset-assert  14)
-   (break-bounds-joint     int16          :offset-assert  16)
-   (break-root-prim-sphere sphere :inline :offset-assert  32)
-   (break-bounds-sphere    sphere :inline :offset-assert  48)
+  ((break-anim              string)
+   (end-anim                string)
+   (break-prim-mask         uint8)
+   (break-root-prim-joint   int16)
+   (break-bounds-joint      int16)
+   (break-root-prim-sphere  sphere  :inline)
+   (break-bounds-sphere     sphere  :inline)
    )
-  :method-count-assert 9
-  :size-assert         #x40
-  :flag-assert         #x900000040
   )
 
 
 (deftype rbw-info (basic)
-  ((skel-group string            :offset-assert   4)
-   (anim       spool-anim        :offset-assert   8)
-   (sides      (array rbw-side)  :offset-assert  12)
+  ((skel-group  string)
+   (anim        spool-anim)
+   (sides       (array rbw-side))
    )
-  :method-count-assert 9
-  :size-assert         #x10
-  :flag-assert         #x900000010
   )
 
 
@@ -203,25 +197,23 @@
   )
 
 (deftype ruins-breakable-wall (process-focusable)
-  ((info     rbw-info  :offset-assert 204)
-   (side     rbw-side  :offset-assert 208)
-   (nav-mesh nav-mesh  :offset-assert 212)
+  ((info      rbw-info)
+   (side      rbw-side)
+   (nav-mesh  nav-mesh)
    )
-  :heap-base #x60
-  :method-count-assert 31
-  :size-assert         #xd8
-  :flag-assert         #x1f006000d8
+  (:state-methods
+    unbroken
+    hit
+    broken
+    )
   (:methods
-    (unbroken () _type_ :state 27)
-    (hit () _type_ :state 28)
-    (broken () _type_ :state 29)
-    (ruins-breakable-wall-method-30 (_type_ symbol) none 30)
+    (ruins-breakable-wall-method-30 (_type_ symbol) none)
     )
   )
 
 
 ;; WARN: Return type mismatch float vs none.
-(defmethod ruins-breakable-wall-method-30 ruins-breakable-wall ((this ruins-breakable-wall) (arg0 symbol))
+(defmethod ruins-breakable-wall-method-30 ((this ruins-breakable-wall) (arg0 symbol))
   (case arg0
     (('hit)
      (-> this draw bounds w)
@@ -415,7 +407,7 @@
   )
 
 ;; WARN: Return type mismatch object vs none.
-(defmethod init-from-entity! ruins-breakable-wall ((this ruins-breakable-wall) (arg0 entity-actor))
+(defmethod init-from-entity! ((this ruins-breakable-wall) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
 - stack size

@@ -8,20 +8,16 @@
 ;; DECOMP BEGINS
 
 (deftype assistant-levitator (process-taskable)
-  ((boulder  entity-actor               :offset-assert 380)
-   (particle sparticle-launch-control 4 :offset-assert 384)
+  ((boulder   entity-actor)
+   (particle  sparticle-launch-control  4)
    )
-  :heap-base #x120
-  :method-count-assert 53
-  :size-assert         #x190
-  :flag-assert         #x3501200190
   (:states
     just-particles
     )
   )
 
 
-(defmethod relocate assistant-levitator ((this assistant-levitator) (arg0 int))
+(defmethod relocate ((this assistant-levitator) (arg0 int))
   (dotimes (v1-0 4)
     (if (nonzero? (-> this particle v1-0))
         (&+! (-> this particle v1-0) arg0)
@@ -30,7 +26,7 @@
   (the-as assistant-levitator ((method-of-type process-taskable relocate) this arg0))
   )
 
-(defmethod deactivate assistant-levitator ((this assistant-levitator))
+(defmethod deactivate ((this assistant-levitator))
   (dotimes (s5-0 4)
     (let ((a0-1 (-> this particle s5-0)))
       (if (nonzero? a0-1)
@@ -56,10 +52,10 @@
               :bounds (static-spherem 0 0 0 0.25)
               )
 
-(defmethod process-taskable-method-52 assistant-levitator ((this assistant-levitator))
+(defmethod process-taskable-method-52 ((this assistant-levitator))
   (let ((v1-1 (-> this draw shadow-ctrl)))
     (when v1-1
-      (let ((f0-0 (-> this root-override trans y)))
+      (let ((f0-0 (-> this root trans y)))
         (let ((a0-2 v1-1))
           (set! (-> a0-2 settings bot-plane w) (- (+ -409.6 f0-0)))
           )
@@ -75,7 +71,7 @@
   (none)
   )
 
-(defmethod draw-npc-shadow assistant-levitator ((this assistant-levitator))
+(defmethod draw-npc-shadow ((this assistant-levitator))
   (-> this draw shadow-ctrl)
   (cond
     ((and (-> this draw shadow)
@@ -98,7 +94,7 @@
   (none)
   )
 
-(defmethod play-anim! assistant-bluehut ((this assistant-bluehut) (arg0 symbol))
+(defmethod play-anim! ((this assistant-bluehut) (arg0 symbol))
   (set! (-> this talk-message) (text-id press-to-talk-to-assistant))
   (case (current-status (-> this tasks))
     (((task-status unknown) (task-status need-hint) (task-status need-introduction))
@@ -280,7 +276,7 @@
             )
           (close-status! (-> this tasks) (task-status need-introduction))
           (set! (-> this jaws)
-                (ppointer->handle (manipy-spawn (-> this root-override trans) (-> this entity) *jaws-sg* #f :to this))
+                (ppointer->handle (manipy-spawn (-> this root trans) (-> this entity) *jaws-sg* #f :to this))
                 )
           (let ((v1-42 (handle->process (-> this jaws))))
             (if v1-42
@@ -393,11 +389,11 @@
     )
   )
 
-(defmethod get-art-elem assistant-bluehut ((this assistant-bluehut))
+(defmethod get-art-elem ((this assistant-bluehut))
   (-> this draw art-group data 10)
   )
 
-(defmethod play-reminder assistant-bluehut ((this assistant-bluehut))
+(defmethod play-reminder ((this assistant-bluehut))
   (cond
     ((and (-> this will-talk) *target*)
      (let* ((f30-1 (+ -1552384.0 (-> (target-pos 0) x)))
@@ -412,7 +408,7 @@
     )
   )
 
-(defmethod target-above-threshold? assistant-bluehut ((this assistant-bluehut))
+(defmethod target-above-threshold? ((this assistant-bluehut))
   (when (not (play-reminder this))
     (set! (-> this im-talking) #f)
     (return #f)
@@ -462,7 +458,7 @@
   (the-as symbol 0)
   )
 
-(defmethod process-taskable-method-43 assistant-bluehut ((this assistant-bluehut))
+(defmethod process-taskable-method-43 ((this assistant-bluehut))
   (when (ambient-control-method-10 (-> this ambient) (new 'stack-no-clear 'vector) (seconds 30) 122880.0 this)
     (let ((f30-0 (rand-float-gen)))
       (cond
@@ -470,10 +466,10 @@
          #f
          )
         ((< 0.5 f30-0)
-         (play-ambient (-> this ambient) "ASSTLP23" #f (-> this root-override trans))
+         (play-ambient (-> this ambient) "ASSTLP23" #f (-> this root trans))
          )
         (else
-          (play-ambient (-> this ambient) "ASSTLP24" #f (-> this root-override trans))
+          (play-ambient (-> this ambient) "ASSTLP24" #f (-> this root trans))
           )
         )
       )
@@ -543,7 +539,7 @@
                (until (ja-done? 0)
                  (spawn
                    (-> self part)
-                   (vector<-cspace! (new 'stack-no-clear 'vector) (joint-node-index assistant-village2-lod0-jg torchTIP))
+                   (vector<-cspace! (new 'stack-no-clear 'vector) (joint-node assistant-village2-lod0-jg torchTIP))
                    )
                  (suspend)
                  (ja :num! (seek!))
@@ -552,7 +548,7 @@
                (until (ja-done? 0)
                  (spawn
                    (-> self part)
-                   (vector<-cspace! (new 'stack-no-clear 'vector) (joint-node-index assistant-village2-lod0-jg torchTIP))
+                   (vector<-cspace! (new 'stack-no-clear 'vector) (joint-node assistant-village2-lod0-jg torchTIP))
                    )
                  (suspend)
                  (ja :num! (seek! 0.0))
@@ -563,7 +559,7 @@
            (until (ja-done? 0)
              (spawn
                (-> self part)
-               (vector<-cspace! (new 'stack-no-clear 'vector) (joint-node-index assistant-village2-lod0-jg torchTIP))
+               (vector<-cspace! (new 'stack-no-clear 'vector) (joint-node assistant-village2-lod0-jg torchTIP))
                )
              (suspend)
              (ja :num! (seek!))
@@ -599,7 +595,7 @@
     )
   )
 
-(defmethod should-display? assistant-bluehut ((this assistant-bluehut))
+(defmethod should-display? ((this assistant-bluehut))
   (cond
     ((not (closed? (-> this tasks) (game-task village2-levitator) (task-status unknown)))
      (process-taskable-method-33 this)
@@ -695,7 +691,7 @@
   (none)
   )
 
-(defmethod init-from-entity! assistant-bluehut ((this assistant-bluehut) (arg0 entity-actor))
+(defmethod init-from-entity! ((this assistant-bluehut) (arg0 entity-actor))
   (process-taskable-method-40 this arg0 *assistant-village2-sg* 3 31 (new 'static 'vector :w 4096.0) 5)
   (set! (-> this part) (create-launch-control (-> *part-group-id-table* 288) this))
   (set! (-> this tasks) (get-task-control (game-task village2-levitator)))
@@ -1220,7 +1216,7 @@
   (none)
   )
 
-(defmethod play-anim! assistant-levitator ((this assistant-levitator) (arg0 symbol))
+(defmethod play-anim! ((this assistant-levitator) (arg0 symbol))
   (with-pp
     (case (current-status (-> this tasks))
       (((task-status need-reward-speech))
@@ -1273,7 +1269,7 @@
     )
   )
 
-(defmethod get-art-elem assistant-levitator ((this assistant-levitator))
+(defmethod get-art-elem ((this assistant-levitator))
   (if (= (get-task-status (game-task village2-levitator)) (task-status invalid))
       (-> this draw art-group data 9)
       (-> this draw art-group data 5)
@@ -1314,7 +1310,7 @@
   :trans (behavior ()
     ((-> (method-of-type process-taskable hidden) trans))
     (when (and (cond
-                 ((and *target* (>= 61440.0 (vector-vector-distance (-> self root-override trans) (-> *target* control trans))))
+                 ((and *target* (>= 61440.0 (vector-vector-distance (-> self root trans) (-> *target* control trans))))
                   #t
                   )
                  (else
@@ -1365,7 +1361,7 @@
     )
   )
 
-(defmethod target-above-threshold? assistant-levitator ((this assistant-levitator))
+(defmethod target-above-threshold? ((this assistant-levitator))
   (= (get-task-status (game-task village2-levitator)) (task-status need-reward-speech))
   )
 
@@ -1437,7 +1433,7 @@
     )
   )
 
-(defmethod should-display? assistant-levitator ((this assistant-levitator))
+(defmethod should-display? ((this assistant-levitator))
   (or (= (get-task-status (game-task village2-levitator)) (task-status need-reward-speech))
       (zero? (get-task-status (game-task village2-levitator)))
       )
@@ -1455,7 +1451,7 @@
     )
   )
 
-(defmethod init-from-entity! assistant-levitator ((this assistant-levitator) (arg0 entity-actor))
+(defmethod init-from-entity! ((this assistant-levitator) (arg0 entity-actor))
   (process-taskable-method-40 this arg0 *assistant-village2-sg* 3 31 (new 'static 'vector :w 4096.0) 5)
   (set! (-> this tasks) (get-task-control (game-task village2-levitator)))
   (set! (-> this boulder) (entity-actor-lookup arg0 'alt-actor 0))
@@ -1464,7 +1460,7 @@
   (set! (-> this particle 2) (create-launch-control (-> *part-group-id-table* 660) this))
   (set! (-> this particle 3) (create-launch-control (-> *part-group-id-table* 661) this))
   (set! (-> this sound)
-        (new 'process 'ambient-sound (static-sound-spec "lev-mach-idle" :fo-max 30) (-> this root-override trans))
+        (new 'process 'ambient-sound (static-sound-spec "lev-mach-idle" :fo-max 30) (-> this root trans))
         )
   (if (= (get-task-status (game-task village2-levitator)) (task-status invalid))
       (go just-particles)

@@ -437,30 +437,39 @@ Val* Compiler::compile_defmethod(const goos::Object& form, const goos::Object& _
   auto fe = env->function_env();
   auto* rest = &_rest;
 
-  auto& method_name = pair_car(*rest);
+  auto& method_name_obj = pair_car(*rest);
   rest = &pair_cdr(*rest);
-  auto& type_name = pair_car(*rest);
-  rest = &pair_cdr(*rest);
+  if (!method_name_obj.is_symbol()) {
+    throw_compiler_error(form, "Method name must be a symbol, got {}", method_name_obj.print());
+  }
+  auto method_name = symbol_string(method_name_obj);
+
+  std::string type_name;
+  if (!pair_car(*rest).is_pair()) {
+    auto& type_name_obj = pair_car(*rest);
+    rest = &pair_cdr(*rest);
+    if (!type_name_obj.is_symbol()) {
+      throw_compiler_error(form, "Method type must be a symbol, got {}", type_name_obj.print());
+    }
+    type_name = symbol_string(type_name_obj);
+  }
+
   auto& arg_list = pair_car(*rest);
   auto body = &pair_cdr(*rest);
-
-  if (!method_name.is_symbol()) {
-    throw_compiler_error(form, "Method name must be a symbol, got {}", method_name.print());
-  }
-  if (!type_name.is_symbol()) {
-    throw_compiler_error(form, "Method type must be a symbol, got {}", method_name.print());
-  }
 
   auto place = fe->alloc_val<LambdaVal>(get_none()->type(), false);
   auto& lambda = place->lambda;
   auto lambda_ts = m_ts.make_typespec("function");
 
-  // parse the argument list. todo, we could check the type of the first argument here?
+  // parse the argument list. type of first argument determines the type the method belongs to.
   for_each_in_list(arg_list, [&](const goos::Object& o) {
     if (o.is_symbol()) {
       // if it has no type, assume object.
       lambda.params.push_back({symbol_string(o), m_ts.make_typespec("object")});
       lambda_ts.add_arg(m_ts.make_typespec("object"));
+      if (type_name.empty()) {
+        throw_compiler_error(form, "Method type could not be inferred");
+      }
     } else {
       // type of argument is specified
       auto param_args = get_va(o, o);
@@ -472,14 +481,21 @@ Val* Compiler::compile_defmethod(const goos::Object& form, const goos::Object& _
       // before substituting _type_
       lambda_ts.add_arg(parm.type);
 
+      if (type_name.empty() && method_name != "new") {
+        type_name = parm.type.print();
+      }
+
       // replace _type_ as needed for inside this function.
-      parm.type = parm.type.substitute_for_method_call(symbol_string(type_name));
+      parm.type = parm.type.substitute_for_method_call(type_name);
       lambda.params.push_back(parm);
     }
   });
+  if (type_name.empty()) {
+    throw_compiler_error(form, "Method type could not be inferred");
+  }
   ASSERT(lambda.params.size() == lambda_ts.arg_count());
   // todo, verify argument list types (check that first arg is _type_ for methods that aren't "new")
-  lambda.debug_name = fmt::format("(method {} {})", method_name.print(), type_name.print());
+  lambda.debug_name = fmt::format("(method {} {})", method_name, type_name);
 
   std::optional<std::string> docstring;
   if (body->as_pair()->car.is_string() && !body->as_pair()->cdr.is_empty_list()) {
@@ -492,8 +508,8 @@ Val* Compiler::compile_defmethod(const goos::Object& form, const goos::Object& _
 
   auto new_func_env = std::make_unique<FunctionEnv>(env, lambda.debug_name, &m_goos.reader);
   new_func_env->set_segment(env->function_env()->segment_for_static_data());
-  new_func_env->method_of_type_name = symbol_string(type_name);
-  auto method_info = m_ts.lookup_method(symbol_string(type_name), symbol_string(method_name));
+  new_func_env->method_of_type_name = type_name;
+  auto method_info = m_ts.lookup_method(type_name, method_name);
   new_func_env->method_id = method_info.id;
   new_func_env->method_function_type = method_info.type;
 
@@ -618,14 +634,13 @@ Val* Compiler::compile_defmethod(const goos::Object& form, const goos::Object& _
   }
   place->set_type(lambda_ts);
 
-  auto info = m_ts.define_method(symbol_string(type_name), symbol_string(method_name), lambda_ts,
-                                 docstring);
-  auto type_obj = compile_get_symbol_value(form, symbol_string(type_name), env)->to_gpr(form, env);
+  auto info = m_ts.define_method(type_name, method_name, lambda_ts, docstring);
+  auto type_obj = compile_get_symbol_value(form, type_name, env)->to_gpr(form, env);
   auto id_val = compile_integer(info.id, env)->to_gpr(form, env);
   auto method_val = place->to_gpr(form, env);
   auto method_set_val = compile_get_symbol_value(form, "method-set!", env)->to_gpr(form, env);
 
-  m_symbol_info.add_method(symbol_string(method_name), lambda.params, info, form);
+  m_symbol_info.add_method(method_name, lambda.params, info, form);
   return compile_real_function_call(form, method_set_val, {type_obj, id_val, method_val}, env);
 }
 

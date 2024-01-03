@@ -14,21 +14,19 @@
 
 (deftype gator (nav-enemy)
   "Cannot take damage due to it overriding [[enemy::56]]"
-  ((ocean-y         float              :offset-assert 604)
-   (lock-nav-target symbol             :offset-assert 608)
-   (new-facing      vector     :inline :offset-assert 624)
-   (old-facing      vector     :inline :offset-assert 640)
-   (turn-time       time-frame         :offset-assert 656)
+  ((ocean-y          float)
+   (lock-nav-target  symbol)
+   (new-facing       vector  :inline)
+   (old-facing       vector  :inline)
+   (turn-time        time-frame)
    )
-  :heap-base #x220
-  :method-count-assert 182
-  :size-assert         #x298
-  :flag-assert         #xb602200298
+  (:state-methods
+    attack-forward
+    )
   (:methods
-    (attack-forward () _type_ :state 178)
-    (adjust-depth! (_type_) float 179)
-    (update-facing! (_type_ vector) vector 180)
-    (encircle-target! (_type_ float float symbol) time-frame 181)
+    (adjust-depth! (_type_) float)
+    (update-facing! (_type_ vector) vector)
+    (encircle-target! (_type_ float float symbol) time-frame)
     )
   )
 
@@ -144,7 +142,7 @@
 
 (set! (-> *gator-nav-enemy-info* fact-defaults) *fact-info-enemy-defaults*)
 
-(defmethod general-event-handler gator ((this gator) (proc process) (arg2 int) (event-type symbol) (event event-message-block))
+(defmethod general-event-handler ((this gator) (proc process) (arg2 int) (event-type symbol) (event event-message-block))
   "Handles various events for the enemy
 @TODO - unsure if there is a pattern for the events and this should have a more specific name"
   (case event-type
@@ -164,14 +162,14 @@
     )
   )
 
-(defmethod adjust-depth! gator ((this gator))
+(defmethod adjust-depth! ((this gator))
   "Changes the height based on the ocean depth
 @see [[get-height]]"
   (set! (-> this ocean-y) (get-height *ocean* (-> this root trans) #t))
   (set! (-> this root trans y) (+ -10240.0 (-> this ocean-y)))
   )
 
-(defmethod update-facing! gator ((this gator) (arg0 vector))
+(defmethod update-facing! ((this gator) (arg0 vector))
   "Updates the `new-facing` vector"
   (let ((matrix (quaternion->matrix (new 'stack-no-clear 'matrix) (-> this root quat))))
     (set! (-> arg0 quad) (-> matrix vector 2 quad))
@@ -179,7 +177,7 @@
   arg0
   )
 
-(defmethod encircle-target! gator ((this gator) (arg0 float) (arg1 float) (arg2 symbol))
+(defmethod encircle-target! ((this gator) (arg0 float) (arg1 float) (arg2 symbol))
   "Core movement for the [[gator]], circles the target, charges at the target, etc
 @params TODO - not sure, they all dont seem to do very much and this method is a mess"
   (local-vars (v1-17 object) (a0-5 object))
@@ -276,7 +274,7 @@
   )
 
 ;; WARN: Return type mismatch vector vs none.
-(defmethod track-target! gator ((this gator))
+(defmethod track-target! ((this gator))
   "Does a lot of various things relating to interacting with the target
 - tracks when the enemy was last drawn
 - looks at the target and handles attacking
@@ -290,16 +288,16 @@
   (none)
   )
 
-(defmethod damage-amount-from-attack gator ((this gator) (arg0 process) (arg1 event-message-block))
+(defmethod damage-amount-from-attack ((this gator) (arg0 process) (arg1 event-message-block))
   "@returns the amount of damage taken from an attack.  This can come straight off the [[attack-info]] or via [[penetrate-using->damage]]"
   0
   )
 
-(defmethod go-hostile gator ((this gator))
+(defmethod go-hostile ((this gator))
   (go (method-of-object this hostile))
   )
 
-(defmethod get-enemy-target gator ((this gator))
+(defmethod get-enemy-target ((this gator))
   "@returns the [[process-focusable]] that the enemy is currently focusing on, or [[#f]] otherwise"
   (let ((enemy-target ((method-of-type nav-enemy get-enemy-target) this)))
     (if (and enemy-target
@@ -311,7 +309,7 @@
     )
   )
 
-(defmethod in-aggro-range? gator ((this gator) (arg0 process-focusable) (arg1 vector))
+(defmethod in-aggro-range? ((this gator) (arg0 process-focusable) (arg1 vector))
   "Should the enemy activate.
 - if `activate-distance` is `0.0`, always true
 - otherwise, check if the provided process is close enough
@@ -511,12 +509,12 @@
     )
   )
 
-(defmethod coin-flip? gator ((this gator))
+(defmethod coin-flip? ((this gator))
   "@returns The result of a 50/50 RNG roll"
   #f
   )
 
-(defmethod init-enemy-collision! gator ((this gator))
+(defmethod init-enemy-collision! ((this gator))
   "Initializes the [[collide-shape-moving]] and any ancillary tasks to make the enemy collide properly"
   (let ((cshape (new 'process 'collide-shape-moving this (collide-list-enum usually-hit-by-player))))
     (set! (-> cshape dynam) (copy *standard-dynamics* 'process))
@@ -589,7 +587,7 @@
   (none)
   )
 
-(defmethod init-enemy! gator ((this gator))
+(defmethod init-enemy! ((this gator))
   "Common method called to initialize the enemy, typically sets up default field values and calls ancillary helper methods"
   (initialize-skeleton
     this

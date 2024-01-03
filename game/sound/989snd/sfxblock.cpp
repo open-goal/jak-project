@@ -7,40 +7,28 @@
 
 namespace snd {
 
-SFXBlock::SFXBlock(locator& loc, u32 id, BankTag* tag)
-    : SoundBank(id, BankType::SFX), m_locator(loc) {
-  auto data = (SFXBlockData*)tag;
+std::optional<std::unique_ptr<SoundHandler>> SFXBlock::MakeHandler(VoiceManager& vm,
+                                                                   u32 sound_id,
+                                                                   s32 vol,
+                                                                   s32 pan,
+                                                                   SndPlayParams& params) {
+  auto& SFX = Sounds[sound_id];
 
-  auto sounddata = (SFX2Data*)((uintptr_t)data + data->FirstSound);
-  for (int i = 0; i < data->NumSounds; i++) {
-    SFX2 sound;
-    sound.index = i;
-    sound.d = sounddata[i];
-    m_sounds.push_back(std::move(sound));
-  }
-
-  for (auto& sound : m_sounds) {
-    auto graindata = (SFXGrain*)((uintptr_t)data + data->FirstGrain + sound.d.FirstGrain);
-    for (int i = 0; i < sound.d.NumGrains; i++) {
-      SFXGrain& grain = graindata[i];
-      sound.grains.push_back(new_grain((grain_type)grain.Type, grain));
-    }
-  }
-}
-
-std::optional<std::unique_ptr<sound_handler>> SFXBlock::make_handler(voice_manager& vm,
-                                                                     u32 sound_id,
-                                                                     s32 vol,
-                                                                     s32 pan,
-                                                                     SndPlayParams& params) {
-  auto& SFX = m_sounds[sound_id];
-
-  if (SFX.grains.empty()) {
+  if (SFX.Grains.empty()) {
     return std::nullopt;
   }
 
-  auto handler =
-      std::make_unique<blocksound_handler>(*this, m_sounds[sound_id], vm, vol, pan, params);
+  auto handler = std::make_unique<BlockSoundHandler>(*this, SFX, vm, vol, pan, params);
   return handler;
 }
+
+std::optional<u32> SFXBlock::GetSoundByName(const char* name) {
+  auto sound = Names.find(name);
+  if (sound != Names.end()) {
+    return sound->second;
+  }
+
+  return std::nullopt;
+}
+
 }  // namespace snd

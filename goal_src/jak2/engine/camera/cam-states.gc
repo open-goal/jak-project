@@ -442,14 +442,11 @@
   )
 
 (deftype cam-eye-bank (basic)
-  ((rot-speed   float  :offset-assert   4)
-   (max-degrees float  :offset-assert   8)
-   (max-fov     float  :offset-assert  12)
-   (min-fov     float  :offset-assert  16)
+  ((rot-speed    float)
+   (max-degrees  float)
+   (max-fov      float)
+   (min-fov      float)
    )
-  :method-count-assert 9
-  :size-assert         #x14
-  :flag-assert         #x900000014
   )
 
 
@@ -503,7 +500,8 @@
                 (s5-0 (new-stack-matrix0))
                 )
             (when (not (logtest? (-> *camera* settings master-options) (cam-master-options IGNORE_ANALOG)))
-              (let ((f30-0 (analog-input
+              ;; og:preserve-this
+              (let ((f30-0 (analog-input-horizontal-first
                              (the-as int (+ (-> *cpad-list* cpads 0 rightx) -256 (-> *cpad-list* cpads 0 leftx)))
                              0.0
                              48.0
@@ -511,7 +509,7 @@
                              -1.0
                              )
                            )
-                    (f0-0 (analog-input
+                    (f0-0 (analog-input-vertical-first
                             (the-as int (+ (-> *cpad-list* cpads 0 righty) -256 (-> *cpad-list* cpads 0 lefty)))
                             0.0
                             48.0
@@ -520,24 +518,27 @@
                             )
                           )
                     )
-                (set! (-> s4-0 y) (- (-> s4-0 y) (* (- f30-0) (-> *CAM_EYE-bank* rot-speed))))
-                (set! (-> s4-0 x) (- (-> s4-0 x) (* (- f0-0) (-> *CAM_EYE-bank* rot-speed))))
+                ;; og:preserve-this changed for high fps
+                (set! (-> s4-0 y) (- (-> s4-0 y) (* (- f30-0) (* (-> *display* base-clock time-adjust-ratio) (-> *CAM_EYE-bank* rot-speed)))))
+                (set! (-> s4-0 x) (- (-> s4-0 x) (* (- f0-0) (* (-> *display* base-clock time-adjust-ratio) (-> *CAM_EYE-bank* rot-speed)))))
                 )
               )
+            ;; og:preserve-this changed for high fps
             (cond
-              ((< (-> *CAM_EYE-bank* rot-speed) (-> s4-0 x))
-               (set! (-> s4-0 x) (-> *CAM_EYE-bank* rot-speed))
+              ((< (* (-> *display* base-clock time-adjust-ratio) (-> *CAM_EYE-bank* rot-speed)) (-> s4-0 x))
+               (set! (-> s4-0 x) (* (-> *display* base-clock time-adjust-ratio) (-> *CAM_EYE-bank* rot-speed)))
                )
-              ((< (-> s4-0 x) (- (-> *CAM_EYE-bank* rot-speed)))
-               (set! (-> s4-0 x) (- (-> *CAM_EYE-bank* rot-speed)))
+              ((< (-> s4-0 x) (- (* (-> *display* base-clock time-adjust-ratio) (-> *CAM_EYE-bank* rot-speed))))
+               (set! (-> s4-0 x) (- (* (-> *display* base-clock time-adjust-ratio) (-> *CAM_EYE-bank* rot-speed))))
                )
               )
+            ;; og:preserve-this changed for high fps
             (cond
-              ((< (-> *CAM_EYE-bank* rot-speed) (-> s4-0 y))
-               (set! (-> s4-0 y) (-> *CAM_EYE-bank* rot-speed))
+              ((< (* (-> *display* base-clock time-adjust-ratio) (-> *CAM_EYE-bank* rot-speed)) (-> s4-0 y))
+               (set! (-> s4-0 y) (* (-> *display* base-clock time-adjust-ratio) (-> *CAM_EYE-bank* rot-speed)))
                )
-              ((< (-> s4-0 y) (- (-> *CAM_EYE-bank* rot-speed)))
-               (set! (-> s4-0 y) (- (-> *CAM_EYE-bank* rot-speed)))
+              ((< (-> s4-0 y) (- (* (-> *display* base-clock time-adjust-ratio) (-> *CAM_EYE-bank* rot-speed))))
+               (set! (-> s4-0 y) (- (* (-> *display* base-clock time-adjust-ratio) (-> *CAM_EYE-bank* rot-speed))))
                )
               )
             (cond
@@ -824,11 +825,12 @@
          (s4-0 (new 'stack-no-clear 'matrix))
          )
     (when (not (logtest? (-> *camera* settings master-options) (cam-master-options IGNORE_ANALOG)))
+      ;; og:preserve-this
       (let ((f24-0
-              (analog-input (the-as int (-> *cpad-list* cpads 0 rightx)) 128.0 32.0 110.0 (* 8192.0 (seconds-per-frame)))
+              (analog-input-horizontal-third (the-as int (-> *cpad-list* cpads 0 rightx)) 128.0 32.0 110.0 (* 8192.0 (seconds-per-frame)))
               )
             (f1-2
-              (analog-input (the-as int (-> *cpad-list* cpads 0 righty)) 128.0 32.0 110.0 (* 8192.0 (seconds-per-frame)))
+              (analog-input-vertical-third (the-as int (-> *cpad-list* cpads 0 righty)) 128.0 32.0 110.0 (* 8192.0 (seconds-per-frame)))
               )
             (s2-0 (new-stack-matrix0))
             )
@@ -1163,12 +1165,9 @@
   )
 
 (deftype cam-string-bank (basic)
-  ((los-coll-rad  meters  :offset-assert   4)
-   (los-coll-rad2 meters  :offset-assert   8)
+  ((los-coll-rad   meters)
+   (los-coll-rad2  meters)
    )
-  :method-count-assert 9
-  :size-assert         #xc
-  :flag-assert         #x90000000c
   )
 
 
@@ -1264,30 +1263,24 @@
   )
 
 (deftype los-dist (structure)
-  ((par-dist  float  :offset-assert   0)
-   (lat-dist  float  :offset-assert   4)
-   (vert-dist float  :offset-assert   8)
+  ((par-dist   float)
+   (lat-dist   float)
+   (vert-dist  float)
    )
-  :method-count-assert 9
-  :size-assert         #xc
-  :flag-assert         #x90000000c
   )
 
 
 (deftype collide-los-dist-info (structure)
-  ((min-par float  :offset-assert   0)
-   (max-par float  :offset-assert   4)
-   (min-lat float  :offset-assert   8)
-   (max-lat float  :offset-assert  12)
-   (min-vp  float  :offset-assert  16)
-   (max-vp  float  :offset-assert  20)
-   (min-vn  float  :offset-assert  24)
-   (max-vn  float  :offset-assert  28)
-   (count   int32  :offset-assert  32)
+  ((min-par  float)
+   (max-par  float)
+   (min-lat  float)
+   (max-lat  float)
+   (min-vp   float)
+   (max-vp   float)
+   (min-vn   float)
+   (max-vn   float)
+   (count    int32)
    )
-  :method-count-assert 9
-  :size-assert         #x24
-  :flag-assert         #x900000024
   )
 
 
@@ -1391,15 +1384,12 @@
   )
 
 (deftype collide-los-result (structure)
-  ((lateral       vector                :inline :offset-assert   0)
-   (cw            collide-los-dist-info :inline :offset-assert  16)
-   (ccw           collide-los-dist-info :inline :offset-assert  64)
-   (straddle      collide-los-dist-info :inline :offset-assert 112)
-   (lateral-valid symbol                        :offset-assert 148)
+  ((lateral        vector                 :inline)
+   (cw             collide-los-dist-info  :inline)
+   (ccw            collide-los-dist-info  :inline)
+   (straddle       collide-los-dist-info  :inline)
+   (lateral-valid  symbol)
    )
-  :method-count-assert 9
-  :size-assert         #x98
-  :flag-assert         #x900000098
   )
 
 
@@ -2236,7 +2226,8 @@
   )
 
 (defun cam-dist-analog-input ((arg0 int) (arg1 float))
-  (let ((f0-0 (the-as number 0.0)))
+  ;; og:preserve-this
+  (let ((f0-0 0.0))
     (cond
       ((< arg0 28)
        (set! f0-0 (- (fmin arg1 (* 0.083333336 (- 28.0 (the float arg0)) arg1))))
@@ -2245,7 +2236,11 @@
        (set! f0-0 (fmin arg1 (* 0.0125 (+ -160.0 (the float arg0)) arg1)))
        )
       )
-    (the-as float f0-0)
+    ;; og:preserve-this
+    (#if PC_PORT
+      (* (if (-> *pc-settings* third-camera-v-inverted?) 1.0 -1.0) f0-0)
+      f0-0
+      )
     )
   )
 
@@ -2426,7 +2421,8 @@
         )
     )
   (when (not (logtest? (-> *camera* settings master-options) (cam-master-options IGNORE_ANALOG)))
-    (let ((f30-2 (analog-input
+    ;; og:preserve-this
+    (let ((f30-2 (analog-input-horizontal-third
                    (the-as int (-> *cpad-list* cpads 0 rightx))
                    128.0
                    32.0
@@ -3186,14 +3182,11 @@
   )
 
 (deftype cam-stick-bank (basic)
-  ((max-z meters  :offset-assert   4)
-   (min-z meters  :offset-assert   8)
-   (max-y meters  :offset-assert  12)
-   (min-y meters  :offset-assert  16)
+  ((max-z  meters)
+   (min-z  meters)
+   (max-y  meters)
+   (min-y  meters)
    )
-  :method-count-assert 9
-  :size-assert         #x14
-  :flag-assert         #x900000014
   )
 
 
@@ -3335,7 +3328,8 @@
         )
     (when (not (paused?))
       (when (not (logtest? (-> *camera* settings master-options) (cam-master-options IGNORE_ANALOG)))
-        (let ((f0-0 (analog-input (the-as int (-> *cpad-list* cpads 0 righty)) 128.0 32.0 110.0 0.05)))
+        ;; og:preserve-this
+        (let ((f0-0 (analog-input-vertical-third (the-as int (-> *cpad-list* cpads 0 righty)) 128.0 32.0 110.0 0.05)))
           (cond
             ((< (* 0.05 (- 1.0 (-> self view-off-param))) f0-0)
              (+! (-> self view-off-param) (* 0.05 (- 1.0 (-> self view-off-param))))
@@ -3356,8 +3350,9 @@
             (lerp (-> *CAM_STICK-bank* min-z) (-> *CAM_STICK-bank* max-z) (-> self view-off-param))
             )
       (when (not (logtest? (-> *camera* settings master-options) (cam-master-options IGNORE_ANALOG)))
+        ;; og:preserve-this
         (let ((f0-16
-                (analog-input (the-as int (-> *cpad-list* cpads 0 rightx)) 128.0 32.0 110.0 (* 21845.334 (seconds-per-frame)))
+                (analog-input-horizontal-third (the-as int (-> *cpad-list* cpads 0 rightx)) 128.0 32.0 110.0 (* 21845.334 (seconds-per-frame)))
                 )
               (gp-0 (new-stack-matrix0))
               (s3-0 (new-stack-vector0))
@@ -3397,14 +3392,11 @@
   )
 
 (deftype cam-bike-bank (basic)
-  ((max-z meters  :offset-assert   4)
-   (min-z meters  :offset-assert   8)
-   (max-y meters  :offset-assert  12)
-   (min-y meters  :offset-assert  16)
+  ((max-z  meters)
+   (min-z  meters)
+   (max-y  meters)
+   (min-y  meters)
    )
-  :method-count-assert 9
-  :size-assert         #x14
-  :flag-assert         #x900000014
   )
 
 

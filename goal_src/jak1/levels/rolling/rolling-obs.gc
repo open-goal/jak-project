@@ -8,20 +8,12 @@
 ;; DECOMP BEGINS
 
 (deftype rolling-part (part-spawner)
-  ((root-override basic  :offset 112)
-   )
-  :heap-base #x60
-  :method-count-assert 21
-  :size-assert         #xd0
-  :flag-assert         #x15006000d0
+  ()
   )
 
 
 (deftype rollingcam (process-hidden)
   ()
-  :method-count-assert 15
-  :size-assert         #x70
-  :flag-assert         #xf00000070
   )
 
 
@@ -31,24 +23,16 @@
               )
 
 (deftype pusher-base (process-drawable)
-  ((root-override collide-shape-moving  :offset        112)
-   (max-frame     float                 :offset-assert 176)
+  ((root       collide-shape-moving :override)
+   (max-frame  float)
    )
-  :heap-base #x50
-  :method-count-assert 20
-  :size-assert         #xb4
-  :flag-assert         #x14005000b4
   )
 
 
 (deftype pusher (pusher-base)
-  ((sync sync-info-paused :inline :offset-assert 180)
-   (cyl  cylinder         :inline :offset-assert 208)
+  ((sync  sync-info-paused  :inline)
+   (cyl   cylinder          :inline)
    )
-  :heap-base #x90
-  :method-count-assert 20
-  :size-assert         #xf8
-  :flag-assert         #x14009000f8
   (:states
     pusher-idle
     )
@@ -56,12 +40,8 @@
 
 
 (deftype gorge-pusher (pusher-base)
-  ((min-frame float  :offset-assert 180)
+  ((min-frame  float)
    )
-  :heap-base #x50
-  :method-count-assert 20
-  :size-assert         #xb8
-  :flag-assert         #x14005000b8
   (:states
     gorge-pusher-idle
     )
@@ -100,7 +80,7 @@
       )
     (set! (-> gp-0 nav-radius) (* 0.75 (-> gp-0 root-prim local-sphere w)))
     (backup-collide-with-as gp-0)
-    (set! (-> self root-override) gp-0)
+    (set! (-> self root) gp-0)
     gp-0
     )
   )
@@ -127,14 +107,14 @@
   :post rider-post
   )
 
-(defmethod init-from-entity! pusher ((this pusher) (arg0 entity-actor))
+(defmethod init-from-entity! ((this pusher) (arg0 entity-actor))
   (pusher-base-init)
   (process-drawable-from-entity! this arg0)
   (initialize-skeleton this *pusher-sg* '())
   (load-params! (-> this sync) this (the-as uint 1500) 0.0 0.15 0.15)
   (set! (-> this max-frame) (res-lump-float arg0 'max-frame :default (the float (ja-num-frames 0))))
-  (set! (-> this cyl origin quad) (-> this root-override trans quad))
-  (vector-x-quaternion! (-> this cyl axis) (-> this root-override quat))
+  (set! (-> this cyl origin quad) (-> this root trans quad))
+  (vector-x-quaternion! (-> this cyl axis) (-> this root quat))
   (vector-negate! (-> this cyl axis) (-> this cyl axis))
   (set! (-> this cyl length) 36864.0)
   (set! (-> this cyl radius) 20480.0)
@@ -156,7 +136,7 @@
   :post rider-post
   )
 
-(defmethod init-from-entity! gorge-pusher ((this gorge-pusher) (arg0 entity-actor))
+(defmethod init-from-entity! ((this gorge-pusher) (arg0 entity-actor))
   (pusher-base-init)
   (process-drawable-from-entity! this arg0)
   (initialize-skeleton this *pusher-sg* '())
@@ -183,13 +163,9 @@
   )
 
 (deftype dark-plant (process-drawable)
-  ((num-alts int32          :offset-assert 176)
-   (alts     entity-actor 4 :offset-assert 180)
+  ((num-alts  int32)
+   (alts      entity-actor  4)
    )
-  :heap-base #x60
-  :method-count-assert 20
-  :size-assert         #xc4
-  :flag-assert         #x14006000c4
   (:states
     dark-plant-death
     dark-plant-gone
@@ -446,7 +422,7 @@
     )
   )
 
-(defmethod init-from-entity! dark-plant ((this dark-plant) (arg0 entity-actor))
+(defmethod init-from-entity! ((this dark-plant) (arg0 entity-actor))
   (set! (-> this root) (new 'process 'trsqv))
   (process-drawable-from-entity! this arg0)
   (initialize-skeleton this *dark-plant-sg* '())
@@ -471,13 +447,9 @@
   )
 
 (deftype happy-plant (process-drawable)
-  ((root-override collide-shape  :offset        112)
-   (alt-actor     entity-actor   :offset-assert 176)
+  ((root       collide-shape :override)
+   (alt-actor  entity-actor)
    )
-  :heap-base #x50
-  :method-count-assert 20
-  :size-assert         #xb4
-  :flag-assert         #x14005000b4
   (:states
     happy-plant-init
     happy-plant-opened
@@ -516,7 +488,7 @@
     (close-specific-task! (game-task rolling-plants) (task-status need-reminder))
     (process-entity-status! self (entity-perm-status bit-3) #t)
     (logclear! (-> self mask) (process-mask actor-pause))
-    (while (and *target* (< (vector-vector-distance (-> self root-override trans) (target-pos 0)) 24576.0))
+    (while (and *target* (< (vector-vector-distance (-> self root trans) (target-pos 0)) 24576.0))
       (suspend)
       )
     (let ((gp-2
@@ -561,14 +533,14 @@
           (when gp-3
             (send-event gp-3 'stop-cloning)
             (let ((s5-4 (new-stack-vector0)))
-              (vector<-cspace! s5-4 (joint-node-index happy-plant-lod0-jg fuelcell))
+              (vector<-cspace! s5-4 (joint-node happy-plant-lod0-jg fuelcell))
               (send-event gp-3 'trans s5-4)
               )
             )
           )
         )
       )
-    (restore-collide-with-as (-> self root-override))
+    (restore-collide-with-as (-> self root))
     (go happy-plant-opened)
     )
   :post transform-post
@@ -593,7 +565,7 @@
       )
     )
   :code (behavior ()
-    (clear-collide-with-as (-> self root-override))
+    (clear-collide-with-as (-> self root))
     (loop
       (ja-no-eval :group! (ja-group) :num! (seek!) :frame-num 0.0)
       (until (ja-done? 0)
@@ -605,7 +577,7 @@
   :post ja-post
   )
 
-(defmethod init-from-entity! happy-plant ((this happy-plant) (arg0 entity-actor))
+(defmethod init-from-entity! ((this happy-plant) (arg0 entity-actor))
   (stack-size-set! (-> this main-thread) 512)
   (let ((s4-0 (new 'process 'collide-shape this (collide-list-enum hit-by-player))))
     (let ((s3-0 (new 'process 'collide-shape-prim-sphere s4-0 (the-as uint 0))))
@@ -618,7 +590,7 @@
       )
     (set! (-> s4-0 nav-radius) (* 0.75 (-> s4-0 root-prim local-sphere w)))
     (backup-collide-with-as s4-0)
-    (set! (-> this root-override) s4-0)
+    (set! (-> this root) s4-0)
     )
   (process-drawable-from-entity! this arg0)
   (initialize-skeleton this *happy-plant-sg* '())
@@ -651,12 +623,9 @@
   )
 
 (deftype race-time (structure)
-  ((digit int8 5 :offset-assert   0)
+  ((digit  int8  5)
    )
   :pack-me
-  :method-count-assert 9
-  :size-assert         #x5
-  :flag-assert         #x900000005
   )
 
 
@@ -746,13 +715,9 @@
               )
 
 (deftype rolling-start (process-drawable)
-  ((whole-look  lod-set :inline :offset-assert 176)
-   (broken-look lod-set :inline :offset-assert 212)
+  ((whole-look   lod-set  :inline)
+   (broken-look  lod-set  :inline)
    )
-  :heap-base #x90
-  :method-count-assert 20
-  :size-assert         #xf5
-  :flag-assert         #x14009000f5
   (:states
     (rolling-start-break symbol)
     rolling-start-whole
@@ -834,15 +799,11 @@
   )
 
 (deftype gorge (process-drawable)
-  ((root-override collide-shape-moving         :offset        112)
-   (coord         matrix               :inline :offset-assert 176)
-   (radius        float                        :offset-assert 240)
-   (thickness     float                        :offset-assert 244)
+  ((root       collide-shape-moving :override)
+   (coord      matrix                :inline)
+   (radius     float)
+   (thickness  float)
    )
-  :heap-base #x90
-  :method-count-assert 20
-  :size-assert         #xf8
-  :flag-assert         #x14009000f8
   )
 
 
@@ -859,18 +820,14 @@
   )
 
 (deftype gorge-start (gorge)
-  ((tasks            task-control         :offset-assert 248)
-   (record-time      race-time    :inline :offset-assert 252)
-   (this-time        race-time    :inline :offset-assert 257)
-   (start-banner     handle               :offset-assert 264)
-   (end-banner       handle               :offset-assert 272)
-   (timer-pos-offset int32                :offset-assert 280)
-   (ticker           ticky        :inline :offset-assert 288)
+  ((tasks             task-control)
+   (record-time       race-time  :inline)
+   (this-time         race-time  :inline)
+   (start-banner      handle)
+   (end-banner        handle)
+   (timer-pos-offset  int32)
+   (ticker            ticky      :inline)
    )
-  :heap-base #xd0
-  :method-count-assert 20
-  :size-assert         #x140
-  :flag-assert         #x1400d00140
   (:states
     gorge-start-idle
     gorge-start-race-aborted
@@ -882,12 +839,8 @@
 
 
 (deftype gorge-finish (gorge)
-  ((alt-actor entity-actor  :offset-assert 248)
+  ((alt-actor  entity-actor)
    )
-  :heap-base #x90
-  :method-count-assert 20
-  :size-assert         #xfc
-  :flag-assert         #x14009000fc
   (:states
     gorge-finish-idle
     )
@@ -896,10 +849,6 @@
 
 (deftype gorge-abort (gorge)
   ()
-  :heap-base #x90
-  :method-count-assert 20
-  :size-assert         #xf8
-  :flag-assert         #x14009000f8
   (:states
     gorge-abort-idle
     )
@@ -952,8 +901,8 @@
   )
 
 (defbehavior gorge-abort-init-by-other gorge-abort ((arg0 vector) (arg1 vector) (arg2 float))
-  (set! (-> self root-override) (the-as collide-shape-moving (new 'process 'trsqv)))
-  (set! (-> self root-override trans quad) (-> arg0 quad))
+  (set! (-> self root) (the-as collide-shape-moving (new 'process 'trsqv)))
+  (set! (-> self root trans quad) (-> arg0 quad))
   (gorge-init arg0 arg1 arg2 8192.0)
   (go gorge-abort-idle)
   (none)
@@ -972,8 +921,8 @@
   )
 
 (defbehavior gorge-finish-init-by-other gorge-finish ((arg0 vector) (arg1 vector) (arg2 float))
-  (set! (-> self root-override) (the-as collide-shape-moving (new 'process 'trsqv)))
-  (set! (-> self root-override trans quad) (-> arg0 quad))
+  (set! (-> self root) (the-as collide-shape-moving (new 'process 'trsqv)))
+  (set! (-> self root trans quad) (-> arg0 quad))
   (gorge-init arg0 arg1 arg2 20480.0)
   (go gorge-finish-idle)
   (none)
@@ -1097,7 +1046,7 @@
   (the-as handle (when (task-closed? (game-task rolling-race) (task-status need-introduction))
                    (when (not (handle->process (-> self start-banner)))
                      (let ((gp-0 (new 'stack-no-clear 'vector)))
-                       (set! (-> gp-0 quad) (-> self root-override trans quad))
+                       (set! (-> gp-0 quad) (-> self root trans quad))
                        (let ((v0-1 (ppointer->handle (process-spawn rolling-start gp-0 0.0 :to self))))
                          (set! (-> self start-banner) (the-as handle v0-1))
                          v0-1
@@ -1316,11 +1265,11 @@
     )
   )
 
-(defmethod init-from-entity! gorge-start ((this gorge-start) (arg0 entity-actor))
-  (set! (-> this root-override) (the-as collide-shape-moving (new 'process 'trsqv)))
+(defmethod init-from-entity! ((this gorge-start) (arg0 entity-actor))
+  (set! (-> this root) (the-as collide-shape-moving (new 'process 'trsqv)))
   (process-drawable-from-entity! this arg0)
   (let ((a0-3 (new 'stack-no-clear 'vector)))
-    (set! (-> a0-3 quad) (-> this root-override trans quad))
+    (set! (-> a0-3 quad) (-> this root trans quad))
     (+! (-> a0-3 y) -8192.0)
     (gorge-init a0-3 (new 'static 'vector :z 1.0) 102400.0 40960.0)
     )
@@ -1334,10 +1283,6 @@
 
 (deftype rolling-water (water-anim)
   ()
-  :heap-base #x70
-  :method-count-assert 30
-  :size-assert         #xdc
-  :flag-assert         #x1e007000dc
   )
 
 
@@ -1356,7 +1301,7 @@
                  )
   )
 
-(defmethod water-vol-method-22 rolling-water ((this rolling-water))
+(defmethod water-vol-method-22 ((this rolling-water))
   (let ((t9-0 (method-of-type water-anim water-vol-method-22)))
     (t9-0 this)
     )

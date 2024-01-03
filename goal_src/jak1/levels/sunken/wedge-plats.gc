@@ -12,15 +12,11 @@
 ;; DECOMP BEGINS
 
 (deftype wedge-plat-master (process)
-  ((center       vector :inline :offset-assert 112)
-   (rotspeed     float          :offset-assert 128)
-   (rotate-inner float          :offset-assert 132)
-   (rotate-outer float          :offset-assert 136)
+  ((center        vector  :inline)
+   (rotspeed      float)
+   (rotate-inner  float)
+   (rotate-outer  float)
    )
-  :heap-base #x20
-  :method-count-assert 14
-  :size-assert         #x8c
-  :flag-assert         #xe0020008c
   (:states
     wedge-plat-master-idle
     )
@@ -41,7 +37,7 @@
     )
   )
 
-(defmethod init-from-entity! wedge-plat-master ((this wedge-plat-master) (arg0 entity-actor))
+(defmethod init-from-entity! ((this wedge-plat-master) (arg0 entity-actor))
   (logior! (-> this mask) (process-mask platform))
   (set! (-> this center quad) (-> arg0 extra trans quad))
   (+! (-> this center y) 819.2)
@@ -54,16 +50,12 @@
   )
 
 (deftype wedge-plat (baseplat)
-  ((master   wedge-plat-master  :offset-assert 228)
-   (distance float              :offset-assert 232)
-   (offset   float              :offset-assert 236)
+  ((master    wedge-plat-master)
+   (distance  float)
+   (offset    float)
    )
-  :heap-base #x80
-  :method-count-assert 28
-  :size-assert         #xf0
-  :flag-assert         #x1c008000f0
   (:methods
-    (wedge-plat-method-27 (_type_) symbol 27)
+    (wedge-plat-method-27 (_type_) symbol)
     )
   (:states
     wedge-plat-idle
@@ -77,7 +69,7 @@
               :bounds (static-spherem 0 0 0 6)
               )
 
-(defmethod wedge-plat-method-27 wedge-plat ((this wedge-plat))
+(defmethod wedge-plat-method-27 ((this wedge-plat))
   (let* ((a0-1 (-> this master))
          (v1-0 (if a0-1
                    (-> (the-as process-drawable (-> a0-1 ppointer)) brother)
@@ -91,7 +83,7 @@
             (s5-0 #f)
             )
         (quaternion-axis-angle!
-          (-> this root-override quat)
+          (-> this root quat)
           0.0
           1.0
           0.0
@@ -175,7 +167,7 @@
   :post plat-post
   )
 
-(defmethod init-from-entity! wedge-plat ((this wedge-plat) (arg0 entity-actor))
+(defmethod init-from-entity! ((this wedge-plat) (arg0 entity-actor))
   (logior! (-> this mask) (process-mask platform))
   (let ((s4-0 (new 'process 'collide-shape-moving this (collide-list-enum hit-by-player))))
     (set! (-> s4-0 dynam) (copy *standard-dynamics* 'process))
@@ -195,12 +187,12 @@
       )
     (set! (-> s4-0 nav-radius) (* 0.75 (-> s4-0 root-prim local-sphere w)))
     (backup-collide-with-as s4-0)
-    (set! (-> this root-override) s4-0)
+    (set! (-> this root) s4-0)
     )
   (process-drawable-from-entity! this arg0)
   (initialize-skeleton this *wedge-plat-sg* '())
   (logior! (-> this skel status) (janim-status inited))
-  (update-transforms! (-> this root-override))
+  (update-transforms! (-> this root))
   (baseplat-method-21 this)
   (set! (-> this master) (the-as wedge-plat-master (entity-actor-lookup arg0 'alt-actor 0)))
   (set! (-> this offset) (res-lump-float arg0 'rotoffset))
@@ -212,10 +204,6 @@
 
 (deftype wedge-plat-outer (wedge-plat)
   ()
-  :heap-base #x80
-  :method-count-assert 28
-  :size-assert         #xf0
-  :flag-assert         #x1c008000f0
   (:states
     wedge-plat-outer-idle
     wedge-plat-outer-tip
@@ -228,7 +216,7 @@
               :bounds (static-spherem 0 0 0 8)
               )
 
-(defmethod wedge-plat-method-27 wedge-plat-outer ((this wedge-plat-outer))
+(defmethod wedge-plat-method-27 ((this wedge-plat-outer))
   (let* ((a0-1 (-> this master))
          (v1-0 (if a0-1
                    (-> (the-as process-drawable (-> a0-1 ppointer)) brother)
@@ -242,7 +230,7 @@
             (s5-0 #f)
             )
         (quaternion-axis-angle!
-          (-> this root-override quat)
+          (-> this root quat)
           0.0
           1.0
           0.0
@@ -325,7 +313,7 @@
   :post plat-post
   )
 
-(defmethod init-from-entity! wedge-plat-outer ((this wedge-plat-outer) (arg0 entity-actor))
+(defmethod init-from-entity! ((this wedge-plat-outer) (arg0 entity-actor))
   (logior! (-> this mask) (process-mask platform))
   (let ((s4-0 (new 'process 'collide-shape-moving this (collide-list-enum hit-by-player))))
     (set! (-> s4-0 dynam) (copy *standard-dynamics* 'process))
@@ -345,12 +333,12 @@
       )
     (set! (-> s4-0 nav-radius) (* 0.75 (-> s4-0 root-prim local-sphere w)))
     (backup-collide-with-as s4-0)
-    (set! (-> this root-override) s4-0)
+    (set! (-> this root) s4-0)
     )
   (process-drawable-from-entity! this arg0)
   (initialize-skeleton this *wedge-plat-sg* '())
   (logior! (-> this skel status) (janim-status inited))
-  (update-transforms! (-> this root-override))
+  (update-transforms! (-> this root))
   (baseplat-method-21 this)
   (set! (-> this master) (the-as wedge-plat-master (entity-actor-lookup arg0 'alt-actor 0)))
   (set! (-> this offset) (res-lump-float arg0 'rotoffset))

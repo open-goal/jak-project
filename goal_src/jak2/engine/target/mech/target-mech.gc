@@ -7,46 +7,46 @@
 
 ;; DECOMP BEGINS
 
-(defmethod draw hud-heatmeter ((obj hud-heatmeter))
+(defmethod draw ((this hud-heatmeter))
   (set-hud-piece-position!
-    (the-as hud-sprite (-> obj sprites))
+    (the-as hud-sprite (-> this sprites))
     256
-    (the int (+ 25.0 (* -100.0 (-> obj offset))))
+    (the int (+ 25.0 (* -100.0 (-> this offset))))
     )
-  (set! (-> obj sprites 0 pos z) #xfffff0)
+  (set! (-> this sprites 0 pos z) #xfffff0)
   (set-as-offset-from!
-    (-> obj sprites 1)
-    (the-as vector4w (-> obj sprites))
-    (+ (the int (* 0.128 (the float (-> obj values 0 current)))) -63)
+    (-> this sprites 1)
+    (the-as vector4w (-> this sprites))
+    (+ (the int (* 0.128 (the float (-> this values 0 current)))) -63)
     1
     )
-  (set! (-> obj sprites 1 pos z) #xfffff0)
-  ((method-of-type hud draw) obj)
+  (set! (-> this sprites 1 pos z) #xfffff0)
+  ((method-of-type hud draw) this)
   0
   (none)
   )
 
-(defmethod update-values hud-heatmeter ((obj hud-heatmeter))
-  (set! (-> obj values 0 target) (the int (* 1000.0 (-> *game-info* distance))))
-  (logclear! (-> obj flags) (hud-flags disable))
-  ((method-of-type hud update-values) obj)
+(defmethod update-values ((this hud-heatmeter))
+  (set! (-> this values 0 target) (the int (* 1000.0 (-> *game-info* distance))))
+  (logclear! (-> this flags) (hud-flags disable))
+  ((method-of-type hud update-values) this)
   0
   (none)
   )
 
-(defmethod init-callback hud-heatmeter ((obj hud-heatmeter))
-  (set! (-> obj gui-id)
-        (add-process *gui-control* obj (gui-channel hud-upper-center-2) (gui-action hidden) (-> obj name) 81920.0 0)
+(defmethod init-callback ((this hud-heatmeter))
+  (set! (-> this gui-id)
+        (add-process *gui-control* this (gui-channel hud-upper-center-2) (gui-action hidden) (-> this name) 81920.0 0)
         )
-  (logior! (-> obj flags) (hud-flags show))
-  (set! (-> obj sprites 0 tex) (lookup-texture-by-id (new 'static 'texture-id :index #x43 :page #x67a)))
-  (set! (-> obj sprites 0 flags) (the-as uint 8))
-  (set! (-> obj sprites 0 scale-x) 1.2)
-  (set! (-> obj sprites 0 scale-y) 1.2)
-  (set! (-> obj sprites 1 tex) (lookup-texture-by-id (new 'static 'texture-id :index #x34 :page #x67a)))
-  (set! (-> obj sprites 1 flags) (the-as uint 8))
-  (set! (-> obj sprites 1 scale-x) 1.8)
-  (set! (-> obj sprites 1 scale-y) 1.8)
+  (logior! (-> this flags) (hud-flags show))
+  (set! (-> this sprites 0 tex) (lookup-texture-by-id (new 'static 'texture-id :index #x43 :page #x67a)))
+  (set! (-> this sprites 0 flags) (the-as uint 8))
+  (set! (-> this sprites 0 scale-x) 1.2)
+  (set! (-> this sprites 0 scale-y) 1.2)
+  (set! (-> this sprites 1 tex) (lookup-texture-by-id (new 'static 'texture-id :index #x34 :page #x67a)))
+  (set! (-> this sprites 1 flags) (the-as uint 8))
+  (set! (-> this sprites 1 scale-x) 1.8)
+  (set! (-> this sprites 1 scale-y) 1.8)
   0
   (none)
   )
@@ -710,69 +710,66 @@
 ;; WARN: Return type mismatch symbol vs object.
 (defbehavior target-mech-bonk-event-handler target ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
   (let ((s4-0 (new 'stack-no-clear 'vector)))
-    (the-as
-      object
-      (when (and (= arg2 'touched)
-                 ((method-of-type touching-shapes-entry prims-touching?)
-                  (the-as touching-shapes-entry (-> arg3 param 0))
-                  (-> self control)
-                  (the-as uint 6)
-                  )
-                 (>= 409.6 (vector-dot (-> self control dynam gravity-normal) (-> self control transv)))
-                 (begin
-                   (vector-normalize!
-                     (vector-!
-                       s4-0
-                       (the-as vector (-> self control collision-spheres 0 prim-core))
-                       (-> self control actor-contact-pt)
-                       )
-                     1.0
-                     )
-                   (< 0.01 (-> s4-0 y))
-                   )
-                 )
-        (if (< 0.75 (-> s4-0 y))
-            (send-event
-              arg0
-              'bonk
-              (-> arg3 param 0)
-              (fmax
-                (-> self control ground-impact-vel)
-                (- (vector-dot (-> self control transv) (-> self control dynam gravity-normal)))
+    (when (and (= arg2 'touched)
+               ((method-of-type touching-shapes-entry prims-touching?)
+                (the-as touching-shapes-entry (-> arg3 param 0))
+                (-> self control)
+                (the-as uint 6)
                 )
+               (>= 409.6 (vector-dot (-> self control dynam gravity-normal) (-> self control transv)))
+               (begin
+                 (vector-normalize!
+                   (vector-!
+                     s4-0
+                     (the-as vector (-> self control collision-spheres 0 prim-core))
+                     (-> self control actor-contact-pt)
+                     )
+                   1.0
+                   )
+                 (< 0.01 (-> s4-0 y))
+                 )
+               )
+      (if (< 0.75 (-> s4-0 y))
+          (send-event
+            arg0
+            'bonk
+            (-> arg3 param 0)
+            (fmax
+              (-> self control ground-impact-vel)
+              (- (vector-dot (-> self control transv) (-> self control dynam gravity-normal)))
               )
             )
-        (when (and (= (target-send-attack
-                        arg0
-                        'bonk
-                        (the-as touching-shapes-entry (-> arg3 param 0))
-                        (the-as int (-> self control target-attack-id))
-                        (the-as int (-> self control attack-count))
-                        (penetrate touch bonk mech-bonk)
-                        )
-                      'bounce
-                      )
-                   (not (logtest? (-> self focus-status) (focus-status dead hit)))
-                   )
-          (set! (-> self control last-trans-any-surf quad) (-> self control trans quad))
-          (target-timed-invulnerable (seconds 0.1) self 1)
-          (if (focus-test? self carry)
-              (go
-                target-mech-carry-jump
-                (-> *TARGET-bank* mech-carry-jump-height-min)
-                (-> *TARGET-bank* mech-carry-jump-height-max)
-                #f
-                )
-              (go
-                target-mech-jump
-                (-> *TARGET-bank* mech-jump-height-min)
-                (-> *TARGET-bank* mech-jump-height-max)
-                (the-as surface #f)
-                )
-              )
           )
-        #f
+      (when (and (= (target-send-attack
+                      arg0
+                      'bonk
+                      (the-as touching-shapes-entry (-> arg3 param 0))
+                      (the-as int (-> self control target-attack-id))
+                      (the-as int (-> self control attack-count))
+                      (penetrate touch bonk mech-bonk)
+                      )
+                    'bounce
+                    )
+                 (not (logtest? (-> self focus-status) (focus-status dead hit)))
+                 )
+        (set! (-> self control last-trans-any-surf quad) (-> self control trans quad))
+        (target-timed-invulnerable (seconds 0.1) self 1)
+        (if (focus-test? self carry)
+            (go
+              target-mech-carry-jump
+              (-> *TARGET-bank* mech-carry-jump-height-min)
+              (-> *TARGET-bank* mech-carry-jump-height-max)
+              #f
+              )
+            (go
+              target-mech-jump
+              (-> *TARGET-bank* mech-jump-height-min)
+              (-> *TARGET-bank* mech-jump-height-max)
+              (the-as surface #f)
+              )
+            )
         )
+      #f
       )
     )
   )
@@ -866,7 +863,7 @@
             )
           )
         )
-      (the-as object (handle-copy! arg0 s5-0))
+      (handle-copy! arg0 s5-0)
       )
     )
   )
@@ -1041,9 +1038,9 @@
   (set! (-> self board latch?) #f)
   (set! (-> self mech stick-lock) #f)
   (set! (-> self mech stick-off) #f)
-  (set! (-> self mech unstuck-time) (current-time))
+  (set-time! (-> self mech unstuck-time))
   (set! (-> self mech stuck-count) 0)
-  (set! (-> self mech mech-start-time) (current-time))
+  (set-time! (-> self mech mech-start-time))
   (set! (-> self mech jump-thrust) 0.0)
   (set! (-> self mech jump-thrust-fuel) (-> *TARGET-bank* mech-jump-thrust-fuel))
   (set! (-> self mech state-impact? 0) #f)
@@ -1186,18 +1183,18 @@
     (send-event
       (ppointer->process (-> self manipy))
       'eval
-      (lambda :behavior target
+      (lambda :behavior manipy
         ()
-        (set! (-> self state-hook) #f)
+        (set! (-> self clone-copy-trans) #f)
         (set! (-> self draw shadow-ctrl) *mech-shadow-control*)
-        (set! (-> self mech-ik 0) (new 'process 'joint-mod-ik self 27 5283.84))
-        (set! (-> self mech-ik 1) (new 'process 'joint-mod-ik self 33 5283.84))
+        (set! (-> self joint 0) (the-as joint-mod (new 'process 'joint-mod-ik self 27 5283.84)))
+        (set! (-> self joint 1) (the-as joint-mod (new 'process 'joint-mod-ik self 33 5283.84)))
         (dotimes (v1-3 2)
-          (let ((a0-5 (-> (the-as (array joint-mod-ik) (+ (* v1-3 4) (the-as int self))) 64)))
-            (set! (-> a0-5 elbow-pole-vector-axis) (the-as uint 2))
-            (set! (-> a0-5 elbow-rotation-axis) (the-as uint 0))
-            (set! (-> a0-5 callback) mech-leg-ik-callback)
-            (logior! (-> a0-5 flags) (joint-mod-ik-flags elbow-trans-neg))
+          (let ((a0-5 (-> self joint v1-3)))
+            (set! (-> a0-5 twist x) (the-as float #x2))
+            (set! (-> a0-5 twist y) 0.0)
+            (set! (-> a0-5 trans z) (the-as float mech-leg-ik-callback))
+            (logior! (-> a0-5 mode) (joint-mod-mode look-at))
             )
           )
         (none)
@@ -1540,7 +1537,7 @@
     (let ((v1-98 (vector-! (new 'stack-no-clear 'vector) (-> self control wall-contact-pt) (-> self control trans))))
       (set! (-> v1-98 y) 0.0)
       (when (< (vector-dot v1-98 (-> self control c-R-w vector 2)) 0.0)
-        (set! (-> self mech back-touch-time) (current-time))
+        (set-time! (-> self mech back-touch-time))
         (set! (-> self mech back-touch-point quad) (-> self control wall-contact-pt quad))
         (set! (-> self mech back-touch-trans quad) (-> self control trans quad))
         )
@@ -1675,7 +1672,7 @@
   (quaternion-copy! (the-as quaternion (-> self mech mech-quat)) (-> self control quat))
   (set! (-> self mech mech-scale quad) (-> self control scale quad))
   (vector+! (-> self alt-cam-pos) (-> self control camera-pos) (new 'static 'vector :y 4096.0 :w 1.0))
-  (set! (-> self mech mech-time) (current-time))
+  (set-time! (-> self mech mech-time))
   (target-mech-effect)
   0
   (none)

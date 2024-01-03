@@ -3,19 +3,15 @@
 
 ;; definition of type sew-elevator
 (deftype sew-elevator (elevator)
-  ((sound-id sound-id  :offset-assert 368)
+  ((sound-id  sound-id)
    )
-  :heap-base #x100
-  :method-count-assert 50
-  :size-assert         #x174
-  :flag-assert         #x3201000174
   (:methods
-    (configure-collision (_type_ symbol) none 49)
+    (configure-collision (_type_ symbol) none)
     )
   )
 
 ;; definition for method 3 of type sew-elevator
-(defmethod inspect sew-elevator ((this sew-elevator))
+(defmethod inspect ((this sew-elevator))
   (when (not this)
     (set! this this)
     (goto cfg-4)
@@ -35,13 +31,13 @@
               )
 
 ;; definition for method 30 of type sew-elevator
-(defmethod get-art-group sew-elevator ((this sew-elevator))
+(defmethod get-art-group ((this sew-elevator))
   "@returns The associated [[art-group]]"
   (art-group-get-by-name *level* "skel-sew-elevator" (the-as (pointer uint32) #f))
   )
 
 ;; definition for method 43 of type sew-elevator
-(defmethod move-between-points sew-elevator ((this sew-elevator) (arg1 vector) (point-a float) (point-b float))
+(defmethod move-between-points ((this sew-elevator) (arg1 vector) (point-a float) (point-b float))
   "Move between two points on the elevator's path
 @param vec TODO not sure
 @param point-a The first point fetched from the elevator's path
@@ -61,7 +57,7 @@
   )
 
 ;; definition for method 45 of type sew-elevator
-(defmethod commited-to-ride? sew-elevator ((this sew-elevator))
+(defmethod commited-to-ride? ((this sew-elevator))
   "@returns if the target is considered within the elevator area enough to begin descending/ascending"
   (let* ((target *target*)
          (target-proc (if (type? target process-focusable)
@@ -85,7 +81,7 @@
 
 ;; definition for method 49 of type sew-elevator
 ;; WARN: Return type mismatch int vs none.
-(defmethod configure-collision sew-elevator ((this sew-elevator) (collide-with-jak? symbol))
+(defmethod configure-collision ((this sew-elevator) (collide-with-jak? symbol))
   "Appropriately sets the collision on the elevator
 @param collide-with-jak? If set, the elevator will collide with Jak"
   (let ((prim-group (-> (the-as collide-shape-prim-group (-> this root root-prim)) child 1)))
@@ -151,7 +147,7 @@
   )
 
 ;; definition for method 10 of type sew-elevator
-(defmethod deactivate sew-elevator ((this sew-elevator))
+(defmethod deactivate ((this sew-elevator))
   (sound-stop (-> this sound-id))
   (call-parent-method this)
   (none)
@@ -159,7 +155,7 @@
 
 ;; definition for method 33 of type sew-elevator
 ;; WARN: Return type mismatch int vs none.
-(defmethod init-plat! sew-elevator ((this sew-elevator))
+(defmethod init-plat! ((this sew-elevator))
   "Does any necessary initial platform setup.
 For example for an elevator pre-compute the distance between the first and last points (both ways) and clear the sound."
   (set! (-> this sound-id) (new-sound-id))
@@ -169,7 +165,7 @@ For example for an elevator pre-compute the distance between the first and last 
 
 ;; definition for method 41 of type sew-elevator
 ;; WARN: Return type mismatch int vs none.
-(defmethod init-defaults! sew-elevator ((this sew-elevator))
+(defmethod init-defaults! ((this sew-elevator))
   "Initializes default settings related to the [[elevator]]:
 - `elevator-xz-threshold`
 - `elevator-y-threshold`
@@ -196,7 +192,7 @@ For example for an elevator pre-compute the distance between the first and last 
   )
 
 ;; definition for method 31 of type sew-elevator
-(defmethod init-plat-collision! sew-elevator ((this sew-elevator))
+(defmethod init-plat-collision! ((this sew-elevator))
   "TODO - collision stuff for setting up the platform"
   (let ((cshape (new 'process 'collide-shape-moving this (collide-list-enum usually-hit-by-player))))
     (set! (-> cshape dynam) (copy *standard-dynamics* 'process))
@@ -239,25 +235,21 @@ For example for an elevator pre-compute the distance between the first and last 
 
 ;; definition of type sew-valve
 (deftype sew-valve (process-drawable)
-  ((joint             joint-mod-rotate-local  :offset-assert 200)
-   (actor-group       (pointer actor-group)   :offset-assert 204)
-   (actor-group-count int32                   :offset-assert 208)
-   (water-height      float                   :offset-assert 212)
-   (spin              float                   :offset-assert 216)
-   (spin-rate         float                   :offset-assert 220)
+  ((joint              joint-mod-rotate-local)
+   (actor-group        (pointer actor-group))
+   (actor-group-count  int32)
+   (water-height       float)
+   (spin               float)
+   (spin-rate          float)
    )
-  :heap-base #x60
-  :method-count-assert 22
-  :size-assert         #xe0
-  :flag-assert         #x16006000e0
-  (:methods
-    (idle () _type_ :state 20)
-    (turn () _type_ :state 21)
+  (:state-methods
+    idle
+    turn
     )
   )
 
 ;; definition for method 3 of type sew-valve
-(defmethod inspect sew-valve ((this sew-valve))
+(defmethod inspect ((this sew-valve))
   (when (not this)
     (set! this this)
     (goto cfg-7)
@@ -361,7 +353,7 @@ For example for an elevator pre-compute the distance between the first and last 
   )
 
 ;; definition for method 7 of type sew-valve
-(defmethod relocate sew-valve ((this sew-valve) (arg0 int))
+(defmethod relocate ((this sew-valve) (arg0 int))
   (if (nonzero? (-> this joint))
       (&+! (-> this joint) arg0)
       )
@@ -371,7 +363,7 @@ For example for an elevator pre-compute the distance between the first and last 
 ;; definition for method 11 of type sew-valve
 ;; INFO: Used lq/sq
 ;; WARN: Return type mismatch object vs none.
-(defmethod init-from-entity! sew-valve ((this sew-valve) (entity entity-actor))
+(defmethod init-from-entity! ((this sew-valve) (entity entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
 - stack size
@@ -431,17 +423,13 @@ This commonly includes things such as:
 ;; definition of type sew-mar-statue-debris
 (deftype sew-mar-statue-debris (process-drawable)
   ()
-  :heap-base #x50
-  :method-count-assert 21
-  :size-assert         #xc8
-  :flag-assert         #x15005000c8
-  (:methods
-    (idle () _type_ :state 20)
+  (:state-methods
+    idle
     )
   )
 
 ;; definition for method 3 of type sew-mar-statue-debris
-(defmethod inspect sew-mar-statue-debris ((this sew-mar-statue-debris))
+(defmethod inspect ((this sew-mar-statue-debris))
   (when (not this)
     (set! this this)
     (goto cfg-4)
@@ -456,17 +444,13 @@ This commonly includes things such as:
 ;; definition of type sew-mar-statue-debris-b
 (deftype sew-mar-statue-debris-b (process-drawable)
   ()
-  :heap-base #x50
-  :method-count-assert 21
-  :size-assert         #xc8
-  :flag-assert         #x15005000c8
-  (:methods
-    (idle () _type_ :state 20)
+  (:state-methods
+    idle
     )
   )
 
 ;; definition for method 3 of type sew-mar-statue-debris-b
-(defmethod inspect sew-mar-statue-debris-b ((this sew-mar-statue-debris-b))
+(defmethod inspect ((this sew-mar-statue-debris-b))
   (when (not this)
     (set! this this)
     (goto cfg-4)
@@ -480,21 +464,17 @@ This commonly includes things such as:
 
 ;; definition of type sew-mar-statue
 (deftype sew-mar-statue (process-drawable)
-  ((root            collide-shape  :override)
-   (spawned-debris? symbol         :offset-assert 200)
+  ((root             collide-shape :override)
+   (spawned-debris?  symbol)
    )
-  :heap-base #x50
-  :method-count-assert 22
-  :size-assert         #xcc
-  :flag-assert         #x16005000cc
-  (:methods
-    (idle () _type_ :state 20)
-    (hidden () _type_ :state 21)
+  (:state-methods
+    idle
+    hidden
     )
   )
 
 ;; definition for method 3 of type sew-mar-statue
-(defmethod inspect sew-mar-statue ((this sew-mar-statue))
+(defmethod inspect ((this sew-mar-statue))
   (when (not this)
     (set! this this)
     (goto cfg-4)
@@ -646,7 +626,7 @@ This commonly includes things such as:
   )
 
 ;; definition for method 12 of type sew-mar-statue
-(defmethod run-logic? sew-mar-statue ((this sew-mar-statue))
+(defmethod run-logic? ((this sew-mar-statue))
   #t
   )
 
@@ -680,7 +660,7 @@ This commonly includes things such as:
 
 ;; definition for method 11 of type sew-mar-statue
 ;; WARN: Return type mismatch object vs none.
-(defmethod init-from-entity! sew-mar-statue ((this sew-mar-statue) (entity entity-actor))
+(defmethod init-from-entity! ((this sew-mar-statue) (entity entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
 - stack size
@@ -730,14 +710,10 @@ This commonly includes things such as:
 ;; definition of type sew-catwalk
 (deftype sew-catwalk (drop-plat)
   ()
-  :heap-base #xc0
-  :method-count-assert 36
-  :size-assert         #x140
-  :flag-assert         #x2400c00140
   )
 
 ;; definition for method 3 of type sew-catwalk
-(defmethod inspect sew-catwalk ((this sew-catwalk))
+(defmethod inspect ((this sew-catwalk))
   (when (not this)
     (set! this this)
     (goto cfg-4)
@@ -758,7 +734,7 @@ This commonly includes things such as:
 
 ;; definition for method 29 of type sew-catwalk
 ;; WARN: Return type mismatch int vs none.
-(defmethod start-bouncing! sew-catwalk ((this sew-catwalk))
+(defmethod start-bouncing! ((this sew-catwalk))
   "Sets `bouncing` to [[#t]] and sets up the clock to periodically bounce
 and translate the platform via the `smush`
 @see [[smush-control]]"
@@ -805,7 +781,7 @@ and translate the platform via the `smush`
 ;; definition for method 11 of type sew-catwalk
 ;; INFO: Used lq/sq
 ;; WARN: Return type mismatch object vs none.
-(defmethod init-from-entity! sew-catwalk ((this sew-catwalk) (entity entity-actor))
+(defmethod init-from-entity! ((this sew-catwalk) (entity entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
 - stack size
@@ -898,22 +874,20 @@ This commonly includes things such as:
 
 ;; definition of type sew-mine
 (deftype sew-mine (process-drawable)
-  ((root      collide-shape-moving  :override)
-   (last-time time-frame            :offset-assert 200)
+  ((root       collide-shape-moving :override)
+   (last-time  time-frame)
    )
-  :heap-base #x50
-  :method-count-assert 23
-  :size-assert         #xd0
-  :flag-assert         #x17005000d0
+  (:state-methods
+    idle
+    die
+    )
   (:methods
-    (idle () _type_ :state 20)
-    (die () _type_ :state 21)
-    (init-mine! (_type_) none 22)
+    (init-mine! (_type_) none)
     )
   )
 
 ;; definition for method 3 of type sew-mine
-(defmethod inspect sew-mine ((this sew-mine))
+(defmethod inspect ((this sew-mine))
   (when (not this)
     (set! this this)
     (goto cfg-4)
@@ -1034,7 +1008,7 @@ This commonly includes things such as:
 
 ;; definition for method 22 of type sew-mine
 ;; WARN: Return type mismatch int vs none.
-(defmethod init-mine! sew-mine ((this sew-mine))
+(defmethod init-mine! ((this sew-mine))
   "Initializes the mine's particles and sets `last-time` to `0`"
   (set! (-> this part) (create-launch-control (-> *part-group-id-table* 345) this))
   (set! (-> this last-time) 0)
@@ -1045,14 +1019,10 @@ This commonly includes things such as:
 ;; definition of type sew-mine-a
 (deftype sew-mine-a (sew-mine)
   ()
-  :heap-base #x50
-  :method-count-assert 23
-  :size-assert         #xd0
-  :flag-assert         #x17005000d0
   )
 
 ;; definition for method 3 of type sew-mine-a
-(defmethod inspect sew-mine-a ((this sew-mine-a))
+(defmethod inspect ((this sew-mine-a))
   (when (not this)
     (set! this this)
     (goto cfg-4)
@@ -1072,7 +1042,7 @@ This commonly includes things such as:
 
 ;; definition for method 11 of type sew-mine-a
 ;; WARN: Return type mismatch object vs none.
-(defmethod init-from-entity! sew-mine-a ((this sew-mine-a) (entity entity-actor))
+(defmethod init-from-entity! ((this sew-mine-a) (entity entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
 - stack size
@@ -1110,19 +1080,15 @@ This commonly includes things such as:
 
 ;; definition of type sew-mine-b
 (deftype sew-mine-b (sew-mine)
-  ((base-height float          :offset-assert 208)
-   (center      vector :inline :offset-assert 224)
-   (time-skew   uint64         :offset-assert 240)
-   (period      float          :offset-assert 248)
+  ((base-height  float)
+   (center       vector  :inline)
+   (time-skew    uint64)
+   (period       float)
    )
-  :heap-base #x80
-  :method-count-assert 23
-  :size-assert         #xfc
-  :flag-assert         #x17008000fc
   )
 
 ;; definition for method 3 of type sew-mine-b
-(defmethod inspect sew-mine-b ((this sew-mine-b))
+(defmethod inspect ((this sew-mine-b))
   (when (not this)
     (set! this this)
     (goto cfg-4)
@@ -1177,7 +1143,7 @@ This commonly includes things such as:
 ;; definition for method 11 of type sew-mine-b
 ;; INFO: Used lq/sq
 ;; WARN: Return type mismatch object vs none.
-(defmethod init-from-entity! sew-mine-b ((this sew-mine-b) (entity entity-actor))
+(defmethod init-from-entity! ((this sew-mine-b) (entity entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
 - stack size
@@ -1232,26 +1198,24 @@ This commonly includes things such as:
 
 ;; definition of type sew-wall
 (deftype sew-wall (process-focusable)
-  ((deadly-radius      float       :offset-assert 204)
-   (prev-deadly-radius float       :offset-assert 208)
-   (attack-id          uint32      :offset-assert 212)
-   (first-wall?        symbol      :offset-assert 216)
-   (anim               spool-anim  :offset-assert 220)
-   (art-name           string      :offset-assert 224)
+  ((deadly-radius       float)
+   (prev-deadly-radius  float)
+   (attack-id           uint32)
+   (first-wall?         symbol)
+   (anim                spool-anim)
+   (art-name            string)
    )
-  :heap-base #x70
-  :method-count-assert 30
-  :size-assert         #xe4
-  :flag-assert         #x1e007000e4
+  (:state-methods
+    idle
+    (hit symbol)
+    )
   (:methods
-    (idle () _type_ :state 27)
-    (hit (symbol) _type_ :state 28)
-    (attack-target! (_type_) none 29)
+    (attack-target! (_type_) none)
     )
   )
 
 ;; definition for method 3 of type sew-wall
-(defmethod inspect sew-wall ((this sew-wall))
+(defmethod inspect ((this sew-wall))
   (when (not this)
     (set! this this)
     (goto cfg-4)
@@ -1279,7 +1243,7 @@ This commonly includes things such as:
 ;; definition for method 29 of type sew-wall
 ;; INFO: Used lq/sq
 ;; WARN: Return type mismatch float vs none.
-(defmethod attack-target! sew-wall ((this sew-wall))
+(defmethod attack-target! ((this sew-wall))
   "If the target is close enough to the wall, hit it!"
   (let ((target *target*))
     (when target
@@ -1428,7 +1392,7 @@ This commonly includes things such as:
 
 ;; definition for method 11 of type sew-wall
 ;; WARN: Return type mismatch object vs none.
-(defmethod init-from-entity! sew-wall ((this sew-wall) (entity entity-actor))
+(defmethod init-from-entity! ((this sew-wall) (entity entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
 - stack size
@@ -1546,17 +1510,13 @@ This commonly includes things such as:
 ;; definition of type sew-grill
 (deftype sew-grill (process-drawable)
   ()
-  :heap-base #x50
-  :method-count-assert 21
-  :size-assert         #xc8
-  :flag-assert         #x15005000c8
-  (:methods
-    (idle () _type_ :state 20)
+  (:state-methods
+    idle
     )
   )
 
 ;; definition for method 3 of type sew-grill
-(defmethod inspect sew-grill ((this sew-grill))
+(defmethod inspect ((this sew-grill))
   (when (not this)
     (set! this this)
     (goto cfg-4)
@@ -1592,7 +1552,7 @@ This commonly includes things such as:
 
 ;; definition for method 11 of type sew-grill
 ;; WARN: Return type mismatch object vs none.
-(defmethod init-from-entity! sew-grill ((this sew-grill) (entity entity-actor))
+(defmethod init-from-entity! ((this sew-grill) (entity entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
 - stack size
@@ -1612,23 +1572,19 @@ This commonly includes things such as:
 
 ;; definition of type sew-scare-grunt
 (deftype sew-scare-grunt (grunt)
-  ((anim             spool-anim        :offset-assert 692)
-   (manipy           (pointer manipy)  :offset-assert 696)
-   (spooled-sound-id sound-id          :offset-assert 700)
-   (grill-actor      entity-actor      :offset-assert 704)
+  ((anim              spool-anim)
+   (manipy            (pointer manipy))
+   (spooled-sound-id  sound-id)
+   (grill-actor       entity-actor)
    )
-  :heap-base #x250
-  :method-count-assert 188
-  :size-assert         #x2c4
-  :flag-assert         #xbc025002c4
-  (:methods
-    (waiting () _type_ :state 186)
-    (scare () _type_ :state 187)
+  (:state-methods
+    waiting
+    scare
     )
   )
 
 ;; definition for method 3 of type sew-scare-grunt
-(defmethod inspect sew-scare-grunt ((this sew-scare-grunt))
+(defmethod inspect ((this sew-scare-grunt))
   (when (not this)
     (set! this this)
     (goto cfg-4)
@@ -1880,7 +1836,7 @@ This commonly includes things such as:
     0
     )
   :post (behavior ()
-    (let* ((a1-1 (vector<-cspace! (new 'stack-no-clear 'vector) (joint-node-index grunt-lod0-jg main)))
+    (let* ((a1-1 (vector<-cspace! (new 'stack-no-clear 'vector) (joint-node grunt-lod0-jg main)))
            (f1-0 (vector-vector-xz-distance (-> self root trans) a1-1))
            )
       (vector-lerp!
@@ -1918,14 +1874,14 @@ This commonly includes things such as:
 
 ;; definition for method 116 of type sew-scare-grunt
 ;; WARN: Return type mismatch object vs none.
-(defmethod go-idle sew-scare-grunt ((this sew-scare-grunt))
+(defmethod go-idle ((this sew-scare-grunt))
   (go (method-of-object this waiting))
   (none)
   )
 
 ;; definition for method 114 of type sew-scare-grunt
 ;; WARN: Return type mismatch int vs none.
-(defmethod init-enemy-collision! sew-scare-grunt ((this sew-scare-grunt))
+(defmethod init-enemy-collision! ((this sew-scare-grunt))
   "Initializes the [[collide-shape-moving]] and any ancillary tasks to make the enemy collide properly"
   (stack-size-set! (-> this main-thread) 512)
   (let ((cshape (new 'process 'collide-shape-moving this (collide-list-enum usually-hit-by-player))))
@@ -2014,14 +1970,14 @@ This commonly includes things such as:
   )
 
 ;; definition for method 185 of type sew-scare-grunt
-(defmethod get-enemy-info sew-scare-grunt ((this sew-scare-grunt))
+(defmethod get-enemy-info ((this sew-scare-grunt))
   "@returns the [[nav-enemy-info]] associated with this type of grunt"
   *sew-scare-grunt-nav-enemy-info*
   )
 
 ;; definition for method 115 of type sew-scare-grunt
 ;; WARN: Return type mismatch float vs none.
-(defmethod init-enemy! sew-scare-grunt ((this sew-scare-grunt))
+(defmethod init-enemy! ((this sew-scare-grunt))
   "Common method called to initialize the enemy, typically sets up default field values and calls ancillary helper methods"
   (set! (-> this anim)
         (new 'static 'spool-anim :name "sew-scare-grunt" :anim-name "sew-scare-grunt" :parts 2 :command-list '())

@@ -8,30 +8,28 @@
 
 ;; definition of type mech
 (deftype mech (process-drawable)
-  ((root              collide-shape-moving         :override)
-   (extra-trans       vector               :inline :offset-assert 208)
-   (condition         int32                        :offset-assert 224)
-   (shadow-backup     basic                        :offset-assert 228)
-   (rider             uint64                       :offset-assert 232)
-   (shield-value      float                        :offset-assert 240)
-   (nav-sphere-handle uint64                       :offset-assert 248)
-   (probe-time        time-frame                   :offset-assert 256)
+  ((root               collide-shape-moving :override)
+   (extra-trans        vector                :inline)
+   (condition          int32)
+   (shadow-backup      basic)
+   (rider              uint64)
+   (shield-value       float)
+   (nav-sphere-handle  uint64)
+   (probe-time         time-frame)
    )
-  :heap-base #x90
-  :method-count-assert 25
-  :size-assert         #x108
-  :flag-assert         #x1900900108
+  (:state-methods
+    wait-for-start
+    idle
+    (pickup (state mech))
+    wait-for-return
+    )
   (:methods
-    (wait-for-start () _type_ :state 20)
-    (idle () _type_ :state 21)
-    (pickup ((state mech)) _type_ :state 22)
-    (wait-for-return () _type_ :state 23)
-    (mech-method-24 (_type_) none 24)
+    (mech-method-24 (_type_) none)
     )
   )
 
 ;; definition for method 3 of type mech
-(defmethod inspect mech ((this mech))
+(defmethod inspect ((this mech))
   (when (not this)
     (set! this this)
     (goto cfg-4)
@@ -52,7 +50,7 @@
 
 ;; definition for method 24 of type mech
 ;; WARN: Return type mismatch int vs none.
-(defmethod mech-method-24 mech ((this mech))
+(defmethod mech-method-24 ((this mech))
   (if (nonzero? (-> this part))
       (spawn (-> this part) (-> this root trans))
       )
@@ -382,7 +380,7 @@
   )
 
 ;; definition for method 11 of type mech
-(defmethod init-from-entity! mech ((this mech) (arg0 entity-actor))
+(defmethod init-from-entity! ((this mech) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
 - stack size
@@ -396,18 +394,14 @@ This commonly includes things such as:
 ;; definition of type mech-target
 (deftype mech-target (process-drawable)
   ()
-  :heap-base #x50
-  :method-count-assert 22
-  :size-assert         #xc8
-  :flag-assert         #x16005000c8
-  (:methods
-    (idle () _type_ :state 20)
-    (active () _type_ :state 21)
+  (:state-methods
+    idle
+    active
     )
   )
 
 ;; definition for method 3 of type mech-target
-(defmethod inspect mech-target ((this mech-target))
+(defmethod inspect ((this mech-target))
   (when (not this)
     (set! this this)
     (goto cfg-4)

@@ -452,6 +452,25 @@ Type* TypeSystem::lookup_type(const TypeSpec& ts) const {
 }
 
 /*!
+ * Same as lookup_type, but returns null instead of throwing.
+ */
+Type* TypeSystem::lookup_type_no_throw(const std::string& name) const {
+  auto kv = m_types.find(name);
+  if (kv != m_types.end()) {
+    return kv->second.get();
+  }
+
+  return nullptr;
+}
+
+/*!
+ * Same as lookup_type, but returns null instead of throwing.
+ */
+Type* TypeSystem::lookup_type_no_throw(const TypeSpec& ts) const {
+  return lookup_type_no_throw(ts.base_type());
+}
+
+/*!
  * Get type info. If the type is not fully defined (ie, we are parsing its deftype now) and its
  * forward defined as a basic or structure, just get basic/structure.
  */
@@ -516,18 +535,24 @@ int TypeSystem::get_load_size_allow_partial_def(const TypeSpec& ts) const {
 }
 
 MethodInfo TypeSystem::override_method(Type* type,
-                                       const std::string& /*type_name*/,
-                                       const int method_id,
+                                       const std::string& method_name,
                                        const std::optional<std::string>& docstring) {
   // Lookup the method from the parent type
   MethodInfo existing_info;
-  bool exists = try_lookup_method(type->get_parent(), method_id, &existing_info);
+  bool exists = try_lookup_method(type->get_parent(), method_name, &existing_info);
   if (!exists) {
-    throw_typesystem_error("Trying to use override a method that has no parent declaration");
+    throw_typesystem_error("Trying to override a method that has no parent declaration");
   }
   // use the existing ID.
-  return type->add_method({existing_info.id, existing_info.name, existing_info.type,
-                           type->get_name(), existing_info.no_virtual, false, true, docstring});
+  return type->add_method({existing_info.id,
+                           existing_info.name,
+                           existing_info.type,
+                           type->get_name(),
+                           existing_info.no_virtual,
+                           false,
+                           true,
+                           docstring,
+                           {}});
 }
 
 MethodInfo TypeSystem::declare_method(const std::string& type_name,
@@ -554,8 +579,7 @@ MethodInfo TypeSystem::declare_method(Type* type,
                                       const std::optional<std::string>& docstring,
                                       bool no_virtual,
                                       const TypeSpec& ts,
-                                      bool override_type,
-                                      int id) {
+                                      bool override_type) {
   if (method_name == "new") {
     if (override_type) {
       throw_typesystem_error("Cannot use :replace option with a new method.");
@@ -569,7 +593,7 @@ MethodInfo TypeSystem::declare_method(Type* type,
 
   if (override_type) {
     if (!got_existing) {
-      if (id != -1 && try_lookup_method(type->get_parent(), id, &existing_info)) {
+      if (try_lookup_method(type->get_parent(), method_name, &existing_info)) {
       } else {
         throw_typesystem_error(
             "Cannot use :replace on method {} of {} because this method was not previously "
@@ -579,8 +603,15 @@ MethodInfo TypeSystem::declare_method(Type* type,
     }
 
     // use the existing ID.
-    return type->add_method(
-        {existing_info.id, method_name, ts, type->get_name(), no_virtual, true, false, docstring});
+    return type->add_method({existing_info.id,
+                             method_name,
+                             ts,
+                             type->get_name(),
+                             no_virtual,
+                             true,
+                             false,
+                             docstring,
+                             {}});
   } else {
     if (got_existing) {
       // make sure we aren't changing anything.
@@ -610,10 +641,45 @@ MethodInfo TypeSystem::declare_method(Type* type,
       return existing_info;
     } else {
       // add a new method!
-      return type->add_method({get_next_method_id(type), method_name, ts, type->get_name(),
-                               no_virtual, false, false, docstring});
+      return type->add_method({get_next_method_id(type),
+                               method_name,
+                               ts,
+                               type->get_name(),
+                               no_virtual,
+                               false,
+                               false,
+                               docstring,
+                               {}});
     }
   }
+}
+
+/*!
+ * Adds a new method that is overlayed on top of a different, existing method.
+ * This should be used basically never (happens once in Jak 1).
+ */
+MethodInfo TypeSystem::overlay_method(Type* type,
+                                      const std::string& method_name,
+                                      const std::string& method_overlay_name,
+                                      const std::optional<std::string>& docstring,
+                                      const TypeSpec& ts) {
+  // look up the method
+  MethodInfo existing_info;
+  bool got_existing = try_lookup_method(type, method_overlay_name, &existing_info);
+
+  if (!got_existing) {
+    if (try_lookup_method(type->get_parent(), method_overlay_name, &existing_info)) {
+    } else {
+      throw_typesystem_error(
+          "Cannot use :overlay-at on method {} of {} because this method was not previously "
+          "declared in a parent.",
+          method_overlay_name, type->get_name());
+    }
+  }
+
+  // use the existing ID.
+  return type->add_method({existing_info.id, method_name, ts, type->get_name(), false, true, false,
+                           docstring, std::make_optional(method_overlay_name)});
 }
 
 MethodInfo TypeSystem::define_method(const std::string& type_name,
@@ -691,7 +757,8 @@ MethodInfo TypeSystem::add_new_method(Type* type,
 
     return existing;
   } else {
-    return type->add_new_method({0, "new", ts, type->get_name(), false, false, false, docstring});
+    return type->add_new_method(
+        {0, "new", ts, type->get_name(), false, false, false, docstring, {}});
   }
 }
 
@@ -1885,30 +1952,36 @@ std::string TypeSystem::generate_deftype_footer(const Type* type) const {
     }
   }
 
-  if (type->heap_base()) {
+  if (type->heap_base() &&
+      type->heap_base() !=
+          ((type->get_size_in_memory() - get_type_of_type<BasicType>("process")->size() + 0xf) &
+           ~0xf)) {
+    // don't print if auto heap-base does the job
     result.append(fmt::format("  :heap-base #x{:x}\n", type->heap_base()));
   }
 
   auto method_count = get_next_method_id(type);
-  result.append(fmt::format("  :method-count-assert {}\n", get_next_method_id(type)));
-  result.append(fmt::format("  :size-assert         #x{:x}\n", type->get_size_in_memory()));
+  // result.append(fmt::format("  :method-count-assert {}\n", get_next_method_id(type)));
+  // result.append(fmt::format("  :size-assert         #x{:x}\n", type->get_size_in_memory()));
   TypeFlags flags;
   flags.heap_base = type->heap_base();
   flags.size = type->get_size_in_memory();
   flags.pad = 0;
   flags.methods = method_count;
 
-  result.append(fmt::format("  :flag-assert         #x{:x}\n  ", flags.flag));
+  // result.append(fmt::format("  :flag-assert         #x{:x}\n", flags.flag));
   if (!type->gen_inspect()) {
-    result.append(":no-inspect\n  ");
+    result.append("  :no-inspect\n  ");
   }
 
   std::string methods_string;
+  std::string state_methods_string;
+  std::string states_string;
 
   // New Method
   auto new_info = type->get_new_method_defined_for_type();
   if (new_info) {
-    methods_string.append("(new (");
+    methods_string.append("    (new (");
     for (size_t i = 0; i < new_info->type.arg_count() - 1; i++) {
       methods_string.append(new_info->type.get_arg(i).print());
       if (i != new_info->type.arg_count() - 2) {
@@ -1916,24 +1989,41 @@ std::string TypeSystem::generate_deftype_footer(const Type* type) const {
       }
     }
     methods_string.append(
-        fmt::format(") {} ", new_info->type.get_arg(new_info->type.arg_count() - 1).print(), 0));
+        fmt::format(") {}", new_info->type.get_arg(new_info->type.arg_count() - 1).print(), 0));
 
     auto behavior = new_info->type.try_get_tag("behavior");
     if (behavior) {
-      methods_string.append(fmt::format(":behavior {} ", *behavior));
+      methods_string.append(fmt::format(" :behavior {}", *behavior));
     }
 
-    methods_string.append("0)\n    ");
+    methods_string.append(")\n");
   }
 
   // Rest of methods
+  bool done_with_state_methods = false;  // TODO fix this... this depends on the order of m_methods
   for (auto& info : type->get_methods_defined_for_type()) {
+    if (!done_with_state_methods && info.type.base_type() == "state" && !info.overrides_parent) {
+      if (info.type.arg_count() > 1) {
+        state_methods_string.append(fmt::format("    ({}", info.name));
+        for (size_t i = 0; i < info.type.arg_count() - 1; ++i) {
+          state_methods_string.push_back(' ');
+          state_methods_string.append(info.type.get_arg(i).print());
+        }
+        state_methods_string.append(")\n");
+      } else {
+        state_methods_string.append(fmt::format("    {}\n", info.name));
+      }
+      continue;
+    } else {
+      done_with_state_methods = true;
+    }
+
     // check if we only override the docstring
     if (info.only_overrides_docstring) {
       continue;
     }
 
-    methods_string.append(fmt::format("({} (", info.name));
+    methods_string.append(fmt::format("    ({} (", info.name));
     for (size_t i = 0; i < info.type.arg_count() - 1; i++) {
       methods_string.append(info.type.get_arg(i).print());
       if (i != info.type.arg_count() - 2) {
@@ -1941,35 +2031,32 @@ std::string TypeSystem::generate_deftype_footer(const Type* type) const {
       }
     }
     methods_string.append(
-        fmt::format(") {} ", info.type.get_arg(info.type.arg_count() - 1).print()));
-
-    if (info.no_virtual) {
-      methods_string.append(":no-virtual ");
-    }
-
-    if (info.overrides_parent) {
-      methods_string.append(":replace ");
-    }
+        fmt::format(") {}", info.type.get_arg(info.type.arg_count() - 1).print()));
 
     auto behavior = info.type.try_get_tag("behavior");
     if (behavior) {
-      methods_string.append(fmt::format(":behavior {} ", *behavior));
+      methods_string.append(fmt::format(" :behavior {}", *behavior));
     }
 
     if (info.type.base_type() == "state") {
-      methods_string.append(":state ");
+      methods_string.append(" :state");
     }
 
-    methods_string.append(fmt::format("{})\n    ", info.id));
+    if (info.no_virtual) {
+      methods_string.append(" :no-virtual");
+    }
+
+    if (info.overrides_parent) {
+      if (info.overlay_name.has_value()) {
+        methods_string.append(fmt::format(" :overlay-at {}", *info.overlay_name));
+      } else {
+        methods_string.append(" :replace");
+      }
+    }
+
+    methods_string.append(fmt::format(")\n", info.id));
   }
 
-  if (!methods_string.empty()) {
-    result.append("(:methods\n    ");
-    result.append(methods_string);
-    result.append(")\n  ");
-  }
-
-  std::string states_string;
   for (auto& info : type->get_states_declared_for_type()) {
     if (info.second.arg_count() > 1) {
       states_string.append(fmt::format("    ({}", info.first));
@@ -1983,14 +2070,155 @@ std::string TypeSystem::generate_deftype_footer(const Type* type) const {
     }
   }
 
-  if (!states_string.empty()) {
-    result.append("(:states\n");
-    result.append(states_string);
-    result.append("    )\n  ");
+  if (!state_methods_string.empty()) {
+    result.append("  (:state-methods\n");
+    result.append(state_methods_string);
+    result.append("    )\n");
   }
 
-  result.append(")\n");
+  if (!methods_string.empty()) {
+    result.append("  (:methods\n");
+    result.append(methods_string);
+    result.append("    )\n");
+  }
+
+  if (!states_string.empty()) {
+    result.append("  (:states\n");
+    result.append(states_string);
+    result.append("    )\n");
+  }
+
+  result.append("  )\n");
   return result;
+}
+
+std::optional<std::string> find_best_field_in_structure(const TypeSystem& ts,
+                                                        const StructureType* st,
+                                                        int offset,
+                                                        const Field& requesting_field,
+                                                        bool want_fixed,
+                                                        int start_field,
+                                                        int end_field = -1) {
+  // performs best field lookup within a structure, at an offset.
+  const Field* best_val = nullptr;
+  const Field* best_exact = nullptr;
+  const Field* best_struct = nullptr;
+  std::pair<const Field*, int> best_val_arr = {nullptr, -1};
+  std::pair<const Field*, int> best_exact_arr = {nullptr, -1};
+  std::pair<const Field*, int> best_struct_arr = {nullptr, -1};
+  std::optional<std::string> best_struct_field_deref;
+  const Field* best = nullptr;
+  if (end_field == -1) {
+    end_field = st->fields().size();
+  }
+  for (size_t i = start_field; i < (size_t)end_field; ++i) {
+    const auto& field = st->fields().at(i);
+    auto type = ts.lookup_type(field.type());
+    if (field.is_dynamic() || field.offset() > offset || field.user_placed() != want_fixed) {
+      continue;
+    }
+    if (!field.is_array()) {
+      if (!field.is_inline() && field.offset() + type->get_load_size() > offset) {
+        if (field.offset() == offset) {
+          // not array, not inline - can fit in register, only check exact offset.
+          if (!best_val ||
+              type->get_load_size() == ts.lookup_type(requesting_field.type())->get_load_size()) {
+            best_val = &field;
+          }
+        }
+      } else if (field.is_inline() && field.offset() + type->get_size_in_memory() > offset) {
+        if (field.type() == requesting_field.type() && field.offset() == offset) {
+          // not array, inlined and exact same as this field, just overlay directly on top
+          best_exact = &field;
+        } else {
+          auto f_type = dynamic_cast<StructureType*>(type);
+          if (f_type) {
+            // struct that encompasses this field
+            // simply search that structure for the field we want, offset by the field's offset
+            auto best_field_in_struct = find_best_field_in_structure(
+                ts, f_type, offset - field.offset(), requesting_field, want_fixed, 0);
+            if (best_field_in_struct) {
+              best_struct_field_deref = best_field_in_struct;
+              best_struct = &field;
+            }
+          }
+        }
+      }
+    } else {
+      int rel_offset = offset - field.offset();
+      // array case (and array encompasses what we want)
+      int array_idx = rel_offset / type->get_size_in_memory();
+      if (!field.is_inline() &&
+          field.offset() + field.array_size() * type->get_load_size() > offset) {
+        if (rel_offset % type->get_load_size() == 0) {
+          // found exact match for array index
+          if (!best_val_arr.first ||
+              type->get_load_size() == ts.lookup_type(requesting_field.type())->get_load_size()) {
+            best_val_arr.first = &field;
+            best_val_arr.second = rel_offset / type->get_load_size();
+          }
+        }
+      } else if (field.is_inline() &&
+                 field.offset() + field.array_size() * type->get_size_in_memory() > offset) {
+        if (field.type() == requesting_field.type() &&
+            rel_offset % type->get_size_in_memory() == 0) {
+          // same type
+          best_exact_arr.first = &field;
+          best_exact_arr.second = array_idx;
+        } else if (requesting_field.is_array() && rel_offset % type->get_size_in_memory() == 0 &&
+                   array_idx == 0) {
+          // starts at the same offset as another array. just use the field with nothing extra
+          best_exact = &field;
+        } else {
+          auto f_type = dynamic_cast<StructureType*>(type);
+          if (f_type && field.offset() + f_type->get_size_in_memory() > offset) {
+            // struct that encompasses this field
+            // simply search that structure for the field we want, offset by the field's offset
+            auto best_field_in_struct =
+                find_best_field_in_structure(ts, f_type, rel_offset % type->get_size_in_memory(),
+                                             requesting_field, want_fixed, 0);
+            if (best_field_in_struct) {
+              best_struct_field_deref = best_field_in_struct;
+              best_struct_arr.first = &field;
+              best_struct_arr.second = array_idx;
+            }
+          }
+        }
+      }
+    }
+  }
+
+  int best_array_idx = -1;
+  if (best_exact) {
+    best = best_exact;
+  } else if (best_exact_arr.first) {
+    best = best_exact_arr.first;
+    best_array_idx = best_exact_arr.second;
+  } else if (best_val) {
+    best = best_val;
+  } else if (best_val_arr.first) {
+    best = best_val_arr.first;
+    best_array_idx = best_val_arr.second;
+  } else if (best_struct) {
+    best = best_struct;
+  } else if (best_struct_arr.first) {
+    best = best_struct_arr.first;
+    best_array_idx = best_struct_arr.second;
+  }
+  if (best) {
+    auto ret =
+        best_array_idx == -1 ? best->name() : fmt::format("{} {}", best->name(), best_array_idx);
+    if (best == best_struct || best == best_struct_arr.first) {
+      return ret + " " + *best_struct_field_deref;
+    } else {
+      return ret;
+    }
+  } else if (!want_fixed) {
+    // try again but with a user-placed offset
+    return find_best_field_in_structure(ts, st, offset, requesting_field, true, start_field,
+                                        end_field);
+  }
+  return {};
 }
 
 std::string TypeSystem::generate_deftype_for_structure(const StructureType* st) const {
@@ -2004,10 +2232,10 @@ std::string TypeSystem::generate_deftype_for_structure(const StructureType* st) 
   int longest_field_name = 0;
   int longest_type_name = 0;
   int longest_mods = 0;
+  int longest_mods_with_user_placed = 0;
 
   const std::string inline_string = ":inline";
   const std::string dynamic_string = ":dynamic";
-  bool has_offset_assert = false;
 
   // calculate longest strings needed, for basic linting
 
@@ -2021,33 +2249,33 @@ std::string TypeSystem::generate_deftype_for_structure(const StructureType* st) 
   // normal fields
   for (size_t i = st->first_unique_field_idx(); i < st->fields().size(); i++) {
     const auto& field = st->fields().at(i);
-    longest_field_name = std::max(longest_field_name, int(field.name().size()));
-    longest_type_name = std::max(longest_type_name, int(field.type().print().size()));
 
     int mods = 0;
     // mods are array size, :inline, :dynamic
     if (field.is_array() && !field.is_dynamic()) {
+      mods++;
       mods += std::to_string(field.array_size()).size();
     }
 
     if (field.is_inline()) {
-      if (mods) {
-        mods++;  // space
-      }
+      mods++;  // space
       mods += inline_string.size();
     }
 
     if (field.is_dynamic()) {
-      if (mods) {
-        mods++;  // space
-      }
+      mods++;  // space
       mods += dynamic_string.size();
     }
 
-    if (!field.user_placed()) {
-      has_offset_assert = true;
+    longest_field_name = std::max(longest_field_name, int(field.name().size()));
+    if (mods > 0 || field.user_placed()) {
+      // this is only relevant for fields that have mods
+      longest_type_name = std::max(longest_type_name, int(field.type().print().size()));
     }
     longest_mods = std::max(longest_mods, mods);
+    if (field.user_placed()) {
+      longest_mods_with_user_placed = std::max(longest_mods_with_user_placed, mods);
+    }
   }
 
   // now actually write out the fields
@@ -2057,10 +2285,9 @@ std::string TypeSystem::generate_deftype_for_structure(const StructureType* st) 
     const auto& field = st->fields().at(i);
     result += "(";
     result += field.name();
-    result.append(1 + (longest_field_name - int(field.name().size())), ' ');
+    result.append(2 + (longest_field_name - int(field.name().size())), ' ');
     result += field.type().print();
     result.append(1 + (longest_type_name - int(field.type().print().size())), ' ');
-    result.append(1 + longest_mods, ' ');
     result.append(":override)\n   ");
   }
 
@@ -2069,40 +2296,51 @@ std::string TypeSystem::generate_deftype_for_structure(const StructureType* st) 
     const auto& field = st->fields().at(i);
     result += "(";
     result += field.name();
-    result.append(1 + (longest_field_name - int(field.name().size())), ' ');
+    result.append(2 + (longest_field_name - int(field.name().size())), ' ');
     result += field.type().print();
-    result.append(1 + (longest_type_name - int(field.type().print().size())), ' ');
 
     std::string mods;
     if (field.is_array() && !field.is_dynamic()) {
-      mods += std::to_string(field.array_size());
       mods += " ";
+      mods += std::to_string(field.array_size());
     }
 
     if (field.is_inline()) {
-      mods += inline_string;
       mods += " ";
+      mods += inline_string;
     }
 
     if (field.is_dynamic()) {
-      mods += dynamic_string;
       mods += " ";
+      mods += dynamic_string;
     }
 
+    if (!mods.empty()) {
+      result.append(1 + longest_type_name - int(field.type().print().size()), ' ');
+    }
     result.append(mods);
-    result.append(longest_mods - int(mods.size() - 1), ' ');
 
-    if (!field.user_placed()) {
-      result.append(":offset-assert ");
-    } else {
-      if (has_offset_assert) {
-        result.append(":offset        ");
+    if (field.user_placed()) {
+      result.append(longest_mods_with_user_placed - int(mods.size()), ' ');
+      if (mods.empty()) {
+        result.append(1 + longest_type_name - int(field.type().print().size()), ' ');
+      }
+      // find best field for :overlay-at
+      // we find the first field that does not come after the current one
+      // and either use it, or check if one of its fields (recursively) is appropriate
+      // we also check for array offsets. we ALSO do bounds-checking!
+      // non-fixed offset fields get priority! dynamic fields are IGNORED.
+      // if all else fails, print as fixed offset.
+      auto best_match = find_best_field_in_structure(*this, st, field.offset(), field, false, 0, i);
+      if (!best_match) {
+        result.append(fmt::format(" :offset {:3d}", field.offset()));
+      } else if (best_match->find(' ') == std::string::npos) {
+        result.append(fmt::format(" :overlay-at {}", *best_match));
       } else {
-        result.append(":offset ");
+        result.append(fmt::format(" :overlay-at (-> {})", *best_match));
       }
     }
 
-    result.append(fmt::format("{:3d}", field.offset()));
     result.append(")\n   ");
   }
 

@@ -32,16 +32,13 @@
 
 ;; definition of type boat-stabilizer
 (deftype boat-stabilizer (structure)
-  ((local-pos vector :inline :offset-assert   0)
-   (normal    vector :inline :offset-assert  16)
+  ((local-pos  vector  :inline)
+   (normal     vector  :inline)
    )
-  :method-count-assert 9
-  :size-assert         #x20
-  :flag-assert         #x900000020
   )
 
 ;; definition for method 3 of type boat-stabilizer
-(defmethod inspect boat-stabilizer ((this boat-stabilizer))
+(defmethod inspect ((this boat-stabilizer))
   (format #t "[~8x] ~A~%" this 'boat-stabilizer)
   (format #t "~Tlocal-pos: #<vector @ #x~X>~%" (-> this local-pos))
   (format #t "~Tnormal: #<vector @ #x~X>~%" (-> this normal))
@@ -50,23 +47,20 @@
 
 ;; definition of type vehicle-path
 (deftype vehicle-path (structure)
-  ((point-array vector 10 :inline :offset-assert   0)
-   (point-count int32             :offset-assert 160)
+  ((point-array  vector  10 :inline)
+   (point-count  int32)
    )
-  :method-count-assert 14
-  :size-assert         #xa4
-  :flag-assert         #xe000000a4
   (:methods
-    (get-point-count (_type_) int 9)
-    (nth-point (_type_ int vector) vector 10)
-    (distance-to-next-point (_type_ int vector) vector 11)
-    (add-point! (_type_ float float float float) none 12)
-    (debug-draw (_type_) symbol 13)
+    (get-point-count (_type_) int)
+    (nth-point (_type_ int vector) vector)
+    (distance-to-next-point (_type_ int vector) vector)
+    (add-point! (_type_ float float float float) none)
+    (debug-draw (_type_) symbol)
     )
   )
 
 ;; definition for method 3 of type vehicle-path
-(defmethod inspect vehicle-path ((this vehicle-path))
+(defmethod inspect ((this vehicle-path))
   (format #t "[~8x] ~A~%" this 'vehicle-path)
   (format #t "~Tpoint-array[10] @ #x~X~%" (-> this point-array))
   (format #t "~Tpoint-count: ~D~%" (-> this point-count))
@@ -74,19 +68,19 @@
   )
 
 ;; definition for method 9 of type vehicle-path
-(defmethod get-point-count vehicle-path ((this vehicle-path))
+(defmethod get-point-count ((this vehicle-path))
   (-> this point-count)
   )
 
 ;; definition for method 10 of type vehicle-path
 ;; INFO: Used lq/sq
-(defmethod nth-point vehicle-path ((this vehicle-path) (arg0 int) (arg1 vector))
+(defmethod nth-point ((this vehicle-path) (arg0 int) (arg1 vector))
   (set! (-> arg1 quad) (-> this point-array arg0 quad))
   arg1
   )
 
 ;; definition for method 11 of type vehicle-path
-(defmethod distance-to-next-point vehicle-path ((this vehicle-path) (arg0 int) (arg1 vector))
+(defmethod distance-to-next-point ((this vehicle-path) (arg0 int) (arg1 vector))
   (let ((a2-1 (+ arg0 1)))
     (if (>= a2-1 (-> this point-count))
         (set! a2-1 0)
@@ -100,7 +94,7 @@
 
 ;; definition for method 12 of type vehicle-path
 ;; INFO: Return type mismatch int vs none.
-(defmethod add-point! vehicle-path ((this vehicle-path) (arg0 float) (arg1 float) (arg2 float) (arg3 float))
+(defmethod add-point! ((this vehicle-path) (arg0 float) (arg1 float) (arg2 float) (arg3 float))
   (let ((v1-0 (-> this point-count)))
     (when (< v1-0 10)
       (set-vector! (-> this point-array v1-0) arg0 arg1 arg2 arg3)
@@ -113,7 +107,7 @@
 
 ;; definition for method 13 of type vehicle-path
 ;; INFO: Used lq/sq
-(defmethod debug-draw vehicle-path ((this vehicle-path))
+(defmethod debug-draw ((this vehicle-path))
   (local-vars (sv-64 int) (sv-80 (function _varargs_ object)))
   (let ((s5-0 (new 'stack-no-clear 'vector))
         (s4-0 (new 'stack-no-clear 'vector))
@@ -253,41 +247,38 @@
 
 ;; definition of type vehicle-controller
 (deftype vehicle-controller (structure)
-  ((path                   vehicle-path            :offset-assert   0)
-   (turning-radius-table   (pointer float)         :offset-assert   4)
-   (throttle-control-table (pointer float)         :offset-assert   8)
-   (table-step             float                   :offset-assert  12)
-   (table-length           int32                   :offset-assert  16)
-   (circle-radius          float                   :offset-assert  20)
-   (throttle               float                   :offset-assert  24)
-   (steering               float                   :offset-assert  28)
-   (path-dest-index        int8                    :offset-assert  32)
-   (left-circle            int8                    :offset-assert  33)
-   (path-dest-point        vector          :inline :offset-assert  48)
-   (path-dest-velocity     vector          :inline :offset-assert  64)
-   (dest-circle            vector          :inline :offset-assert  80)
-   (target-point           vector          :inline :offset-assert  96)
-   (sample-dir             vector          :inline :offset-assert 112)
-   (sample-time            time-frame              :offset-assert 128)
-   (sample-index           int32                   :offset-assert 136)
+  ((path                    vehicle-path)
+   (turning-radius-table    (pointer float))
+   (throttle-control-table  (pointer float))
+   (table-step              float)
+   (table-length            int32)
+   (circle-radius           float)
+   (throttle                float)
+   (steering                float)
+   (path-dest-index         int8)
+   (left-circle             int8)
+   (path-dest-point         vector  :inline)
+   (path-dest-velocity      vector  :inline)
+   (dest-circle             vector  :inline)
+   (target-point            vector  :inline)
+   (sample-dir              vector  :inline)
+   (sample-time             time-frame)
+   (sample-index            int32)
    )
-  :method-count-assert 17
-  :size-assert         #x8c
-  :flag-assert         #x110000008c
   (:methods
-    (init! (_type_ vehicle-path (pointer float) (pointer float) int float) none 9)
-    (vehicle-controller-method-10 (_type_ vector float int) none 10)
-    (vehicle-controller-method-11 (_type_) none 11)
-    (vehicle-controller-method-12 (_type_ int vector) none 12)
-    (move-to-next-point (_type_ vector) none 13)
-    (vehicle-controller-method-14 (_type_ vector vector) none 14)
-    (vehicle-controller-method-15 (_type_ collide-shape-moving) none 15)
-    (vehicle-controller-method-16 (_type_) none 16)
+    (init! (_type_ vehicle-path (pointer float) (pointer float) int float) none)
+    (vehicle-controller-method-10 (_type_ vector float int) none)
+    (vehicle-controller-method-11 (_type_) none)
+    (vehicle-controller-method-12 (_type_ int vector) none)
+    (move-to-next-point (_type_ vector) none)
+    (vehicle-controller-method-14 (_type_ vector vector) none)
+    (vehicle-controller-method-15 (_type_ collide-shape-moving) none)
+    (vehicle-controller-method-16 (_type_) none)
     )
   )
 
 ;; definition for method 3 of type vehicle-controller
-(defmethod inspect vehicle-controller ((this vehicle-controller))
+(defmethod inspect ((this vehicle-controller))
   (format #t "[~8x] ~A~%" this 'vehicle-controller)
   (format #t "~Tpath: #<vehicle-path @ #x~X>~%" (-> this path))
   (format #t "~Tturning-radius-table: #x~X~%" (-> this turning-radius-table))
@@ -311,7 +302,7 @@
 
 ;; definition for method 7 of type vehicle-controller
 ;; INFO: Return type mismatch int vs vehicle-controller.
-(defmethod relocate vehicle-controller ((this vehicle-controller) (arg0 int))
+(defmethod relocate ((this vehicle-controller) (arg0 int))
   (if (nonzero? (-> this path))
       (&+! (-> this path) arg0)
       )
@@ -321,7 +312,7 @@
 ;; definition for method 12 of type vehicle-controller
 ;; INFO: Used lq/sq
 ;; INFO: Return type mismatch int vs none.
-(defmethod vehicle-controller-method-12 vehicle-controller ((this vehicle-controller) (arg0 int) (arg1 vector))
+(defmethod vehicle-controller-method-12 ((this vehicle-controller) (arg0 int) (arg1 vector))
   (when (< arg0 (get-point-count (-> this path)))
     (set! (-> this path-dest-index) arg0)
     (nth-point (-> this path) arg0 (-> this path-dest-point))
@@ -358,7 +349,7 @@
 
 ;; definition for method 13 of type vehicle-controller
 ;; INFO: Return type mismatch int vs none.
-(defmethod move-to-next-point vehicle-controller ((this vehicle-controller) (arg0 vector))
+(defmethod move-to-next-point ((this vehicle-controller) (arg0 vector))
   (let ((s4-0 (+ (-> this path-dest-index) 1)))
     (if (>= s4-0 (get-point-count (-> this path)))
         (set! s4-0 0)
@@ -372,7 +363,7 @@
 ;; definition for method 14 of type vehicle-controller
 ;; INFO: Used lq/sq
 ;; INFO: Return type mismatch int vs none.
-(defmethod vehicle-controller-method-14 vehicle-controller ((this vehicle-controller) (arg0 vector) (arg1 vector))
+(defmethod vehicle-controller-method-14 ((this vehicle-controller) (arg0 vector) (arg1 vector))
   (let ((s5-0 (new 'stack-no-clear 'vector))
         (s3-0 (new 'stack-no-clear 'vector))
         )
@@ -410,7 +401,7 @@
 ;; definition for method 15 of type vehicle-controller
 ;; INFO: Used lq/sq
 ;; INFO: Return type mismatch int vs none.
-(defmethod vehicle-controller-method-15 vehicle-controller ((this vehicle-controller) (arg0 collide-shape-moving))
+(defmethod vehicle-controller-method-15 ((this vehicle-controller) (arg0 collide-shape-moving))
   (vehicle-controller-method-14 this (-> arg0 trans) (-> this target-point))
   (let ((s3-0 (new 'stack-no-clear 'vector))
         (s4-0 (new 'stack-no-clear 'vector))
@@ -452,7 +443,7 @@
 
 ;; definition for method 11 of type vehicle-controller
 ;; INFO: Return type mismatch int vs none.
-(defmethod vehicle-controller-method-11 vehicle-controller ((this vehicle-controller))
+(defmethod vehicle-controller-method-11 ((this vehicle-controller))
   (format #t "(define *turning-radius-table* (new 'static 'inline-array 'float 0~%")
   (dotimes (s5-0 (-> this table-length))
     (format #t "					     (meters ~4,,2M)~%" (-> this turning-radius-table s5-0))
@@ -472,7 +463,7 @@
 ;; definition for method 10 of type vehicle-controller
 ;; INFO: Used lq/sq
 ;; INFO: Return type mismatch int vs none.
-(defmethod vehicle-controller-method-10 vehicle-controller ((this vehicle-controller) (arg0 vector) (arg1 float) (arg2 int))
+(defmethod vehicle-controller-method-10 ((this vehicle-controller) (arg0 vector) (arg1 float) (arg2 int))
   (let ((s3-0 (new 'stack-no-clear 'vector)))
     (set! (-> s3-0 quad) (-> arg0 quad))
     (set! (-> s3-0 y) 0.0)
@@ -505,7 +496,7 @@
 
 ;; definition for method 16 of type vehicle-controller
 ;; INFO: Return type mismatch int vs none.
-(defmethod vehicle-controller-method-16 vehicle-controller ((this vehicle-controller))
+(defmethod vehicle-controller-method-16 ((this vehicle-controller))
   (debug-draw (-> this path))
   (add-debug-sphere
     #t
@@ -526,13 +517,13 @@
 
 ;; definition for method 9 of type vehicle-controller
 ;; INFO: Return type mismatch int vs none.
-(defmethod init! vehicle-controller ((this vehicle-controller)
-                                   (arg0 vehicle-path)
-                                   (arg1 (pointer float))
-                                   (arg2 (pointer float))
-                                   (arg3 int)
-                                   (arg4 float)
-                                   )
+(defmethod init! ((this vehicle-controller)
+                 (arg0 vehicle-path)
+                 (arg1 (pointer float))
+                 (arg2 (pointer float))
+                 (arg3 int)
+                 (arg4 float)
+                 )
   (set! (-> this path) arg0)
   (set! (-> this turning-radius-table) arg1)
   (set! (-> this throttle-control-table) arg2)
@@ -545,37 +536,33 @@
 
 ;; definition of type fishermans-boat
 (deftype fishermans-boat (rigid-body-platform)
-  ((stabilizer-array        boat-stabilizer    2 :inline :offset-assert 736)
-   (engine-thrust-local-pos vector             :inline   :offset-assert 800)
-   (ignition                symbol                       :offset-assert 816)
-   (engine-thrust           float                        :offset-assert 820)
-   (propeller               joint-mod-spinner            :offset-assert 824)
-   (dock-point              vector             :inline   :offset-assert 832)
-   (dest-dir                vector             :inline   :offset-assert 848)
-   (dock-point-index        int8                         :offset-assert 864)
-   (auto-pilot              symbol                       :offset-assert 868)
-   (anchored                symbol                       :offset-assert 872)
-   (waiting-for-player      symbol                       :offset-assert 876)
-   (player-riding           symbol                       :offset-assert 880)
-   (boat-path               vehicle-path       :inline   :offset-assert 896)
-   (cam-tracker             handle                       :offset-assert 1064)
-   (kill-player             symbol                       :offset        1076)
-   (engine-sound-id         sound-id                     :offset        1080)
-   (engine-sound-envelope   float                        :offset        1084)
-   (debug-draw              basic                        :offset        1088)
-   (debug-path-record       basic                        :offset        1092)
-   (debug-path-playback     basic                        :offset        1096)
-   (measure-parameters      basic                        :offset        1100)
-   (controller              vehicle-controller :inline   :offset        1104)
-   (anim                    spool-anim                   :offset        1244)
-   (old-target-pos          transformq         :inline   :offset        1248)
-   (evilbro                 handle                       :offset        1296)
-   (evilsis                 handle                       :offset        1304)
+  ((stabilizer-array         boat-stabilizer     2 :inline)
+   (engine-thrust-local-pos  vector              :inline)
+   (ignition                 symbol)
+   (engine-thrust            float)
+   (propeller                joint-mod-spinner)
+   (dock-point               vector              :inline)
+   (dest-dir                 vector              :inline)
+   (dock-point-index         int8)
+   (auto-pilot               symbol)
+   (anchored                 symbol)
+   (waiting-for-player       symbol)
+   (player-riding            symbol)
+   (boat-path                vehicle-path        :inline)
+   (cam-tracker              handle)
+   (kill-player              symbol                      :offset 1076)
+   (engine-sound-id          sound-id                    :offset 1080)
+   (engine-sound-envelope    float                       :offset 1084)
+   (debug-draw               basic                       :offset 1088)
+   (debug-path-record        basic                       :offset 1092)
+   (debug-path-playback      basic                       :offset 1096)
+   (measure-parameters       basic                       :offset 1100)
+   (controller               vehicle-controller  :inline :offset 1104)
+   (anim                     spool-anim                  :offset 1244)
+   (old-target-pos           transformq          :inline :offset 1248)
+   (evilbro                  handle                      :offset 1296)
+   (evilsis                  handle                      :offset 1304)
    )
-  :heap-base #x4b0
-  :method-count-assert 35
-  :size-assert         #x520
-  :flag-assert         #x2304b00520
   (:states
     fishermans-boat-docked-misty
     fishermans-boat-docked-village
@@ -591,7 +578,7 @@
   )
 
 ;; definition for method 3 of type fishermans-boat
-(defmethod inspect fishermans-boat ((this fishermans-boat))
+(defmethod inspect ((this fishermans-boat))
   (let ((t9-0 (method-of-type rigid-body-platform inspect)))
     (t9-0 this)
     )
@@ -647,7 +634,7 @@
 ;; definition for method 23 of type fishermans-boat
 ;; INFO: Used lq/sq
 ;; INFO: Return type mismatch int vs none.
-(defmethod rigid-body-platform-method-23 fishermans-boat ((this fishermans-boat) (arg0 float))
+(defmethod rigid-body-platform-method-23 ((this fishermans-boat) (arg0 float))
   (local-vars (sv-128 int) (sv-144 rigid-body-control-point) (sv-160 int) (sv-176 vector))
   (let ((s4-0 (new 'stack-no-clear 'vector))
         (s1-0 (new 'stack-no-clear 'vector))
@@ -840,7 +827,7 @@
            (f28-0 (+ -1.0 (* 2.0 (-> self engine-sound-envelope))))
            (gp-0 (new 'stack-no-clear 'vector))
            )
-       (vector<-cspace! gp-0 (joint-node-index fishermans-boat-lod0-jg prop))
+       (vector<-cspace! gp-0 (joint-node fishermans-boat-lod0-jg prop))
        (sound-play
          "boat-engine"
          :id (-> self engine-sound-id)
@@ -1347,7 +1334,7 @@
   )
 
 ;; definition for method 7 of type fishermans-boat
-(defmethod relocate fishermans-boat ((this fishermans-boat) (arg0 int))
+(defmethod relocate ((this fishermans-boat) (arg0 int))
   (relocate (-> this controller) arg0)
   (if (nonzero? (-> this propeller))
       (&+! (-> this propeller) arg0)
@@ -1357,7 +1344,7 @@
 
 ;; definition for method 30 of type fishermans-boat
 ;; INFO: Return type mismatch int vs none.
-(defmethod rigid-body-platform-method-30 fishermans-boat ((this fishermans-boat))
+(defmethod rigid-body-platform-method-30 ((this fishermans-boat))
   (let ((s5-0 (new 'process 'collide-shape-moving this (collide-list-enum hit-by-others))))
     (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s5-0 reaction) default-collision-reaction)
@@ -1393,7 +1380,7 @@
 ;; definition for method 31 of type fishermans-boat
 ;; INFO: Used lq/sq
 ;; INFO: Return type mismatch int vs none.
-(defmethod rigid-body-platform-method-31 fishermans-boat ((this fishermans-boat))
+(defmethod rigid-body-platform-method-31 ((this fishermans-boat))
   (initialize-skeleton this *fishermans-boat-sg* '())
   (logclear! (-> this mask) (process-mask actor-pause movie))
   (logior! (-> this skel status) (janim-status inited))
@@ -1504,7 +1491,7 @@
 
 ;; definition for method 11 of type fishermans-boat
 ;; INFO: Return type mismatch object vs none.
-(defmethod init-from-entity! fishermans-boat ((this fishermans-boat) (arg0 entity-actor))
+(defmethod init-from-entity! ((this fishermans-boat) (arg0 entity-actor))
   (stack-size-set! (-> this main-thread) 512)
   (logior! (-> this mask) (process-mask platform))
   (rigid-body-platform-method-30 this)
@@ -1559,7 +1546,7 @@
       (send-event *target* 'blend-shape #f)
       (ja-channel-set! 1)
       (ja :group! fishermans-boat-idle-ja)
-      (vector<-cspace! (-> self root-overlay trans) (joint-node-index fishermans-boat-lod0-jg main))
+      (vector<-cspace! (-> self root-overlay trans) (joint-node fishermans-boat-lod0-jg main))
       (matrix->quaternion (-> self root-overlay quat) (-> self node-list data 3 bone transform))
       (fishermans-boat-reset-physics)
       (transform-post)
@@ -1678,7 +1665,7 @@
       (send-event *target* 'blend-shape #f)
       (ja-channel-set! 1)
       (ja :group! fishermans-boat-idle-ja)
-      (vector<-cspace! (-> self root-overlay trans) (joint-node-index fishermans-boat-lod0-jg main))
+      (vector<-cspace! (-> self root-overlay trans) (joint-node fishermans-boat-lod0-jg main))
       (matrix->quaternion (-> self root-overlay quat) (-> self node-list data 3 bone transform))
       (fishermans-boat-reset-physics)
       (transform-post)

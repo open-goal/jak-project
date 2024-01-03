@@ -34,19 +34,17 @@
               )
 
 (deftype citb-base-plat (process-drawable)
-  ((root-override collide-shape-moving  :offset        112)
-   (idle-distance float                 :offset-assert 176)
+  ((root           collide-shape-moving :override)
+   (idle-distance  float)
    )
-  :heap-base #x50
-  :method-count-assert 25
-  :size-assert         #xb4
-  :flag-assert         #x19005000b4
+  (:state-methods
+    citb-base-plat-idle
+    )
   (:methods
-    (citb-base-plat-idle () _type_ :state 20)
-    (citb-base-plat-method-21 (_type_) none 21)
-    (citb-base-plat-method-22 (_type_) none 22)
-    (citb-base-plat-active () _type_ :state 23)
-    (citb-base-plat-method-24 (_type_) none 24)
+    (citb-base-plat-method-21 (_type_) none)
+    (citb-base-plat-method-22 (_type_) none)
+    (citb-base-plat-active () _type_ :state)
+    (citb-base-plat-method-24 (_type_) none)
     )
   )
 
@@ -54,9 +52,8 @@
 (defstate citb-base-plat-idle (citb-base-plat)
   :virtual #t
   :trans (behavior ()
-    (if (and *target* (>= (-> self idle-distance)
-                          (vector-vector-distance (-> self root-override trans) (-> *target* control trans))
-                          )
+    (if (and *target*
+             (>= (-> self idle-distance) (vector-vector-distance (-> self root trans) (-> *target* control trans)))
              )
         (go-virtual citb-base-plat-active)
         )
@@ -69,7 +66,7 @@
   :virtual #t
   :trans (behavior ()
     (if (or (not *target*) (< (+ 8192.0 (-> self idle-distance))
-                              (vector-vector-distance (-> self root-override trans) (-> *target* control trans))
+                              (vector-vector-distance (-> self root trans) (-> *target* control trans))
                               )
             )
         (go-virtual citb-base-plat-idle)
@@ -80,7 +77,7 @@
   :post rider-post
   )
 
-(defmethod citb-base-plat-method-21 citb-base-plat ((this citb-base-plat))
+(defmethod citb-base-plat-method-21 ((this citb-base-plat))
   (let ((s5-0 (new 'process 'collide-shape-moving this (collide-list-enum hit-by-others))))
     (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s5-0 reaction) default-collision-reaction)
@@ -99,25 +96,25 @@
       )
     (set! (-> s5-0 nav-radius) (* 0.75 (-> s5-0 root-prim local-sphere w)))
     (backup-collide-with-as s5-0)
-    (set! (-> this root-override) s5-0)
+    (set! (-> this root) s5-0)
     )
   0
   (none)
   )
 
-(defmethod citb-base-plat-method-22 citb-base-plat ((this citb-base-plat))
+(defmethod citb-base-plat-method-22 ((this citb-base-plat))
   (initialize-skeleton this *plat-citb-sg* '())
   0
   (none)
   )
 
-(defmethod citb-base-plat-method-24 citb-base-plat ((this citb-base-plat))
+(defmethod citb-base-plat-method-24 ((this citb-base-plat))
   (go (method-of-object this citb-base-plat-idle))
   0
   (none)
   )
 
-(defmethod init-from-entity! citb-base-plat ((this citb-base-plat) (arg0 entity-actor))
+(defmethod init-from-entity! ((this citb-base-plat) (arg0 entity-actor))
   (citb-base-plat-method-21 this)
   (process-drawable-from-entity! this arg0)
   (set! (-> this idle-distance) 245760.0)
@@ -129,14 +126,10 @@
 
 (deftype citb-plat-eco (plat-eco)
   ()
-  :heap-base #x100
-  :method-count-assert 33
-  :size-assert         #x165
-  :flag-assert         #x2101000165
   )
 
 
-(defmethod baseplat-method-24 citb-plat-eco ((this citb-plat-eco))
+(defmethod baseplat-method-24 ((this citb-plat-eco))
   (let ((s5-0 (new 'process 'collide-shape-moving this (collide-list-enum hit-by-others))))
     (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s5-0 reaction) default-collision-reaction)
@@ -155,33 +148,29 @@
       )
     (set! (-> s5-0 nav-radius) (* 0.75 (-> s5-0 root-prim local-sphere w)))
     (backup-collide-with-as s5-0)
-    (set! (-> this root-override) s5-0)
+    (set! (-> this root) s5-0)
     )
   0
   (none)
   )
 
-(defmethod baseplat-method-26 citb-plat-eco ((this citb-plat-eco))
+(defmethod baseplat-method-26 ((this citb-plat-eco))
   (logclear! (-> this mask) (process-mask actor-pause))
   (set! (-> this notice-dist) 8192.0)
   (none)
   )
 
-(defmethod get-unlit-skel citb-plat-eco ((this citb-plat-eco))
+(defmethod get-unlit-skel ((this citb-plat-eco))
   *plat-eco-citb-unlit-sg*
   )
 
-(defmethod get-lit-skel citb-plat-eco ((this citb-plat-eco))
+(defmethod get-lit-skel ((this citb-plat-eco))
   *plat-eco-citb-lit-sg*
   )
 
 (deftype citb-plat (plat)
-  ((trans-offset vector :inline :offset-assert 272)
+  ((trans-offset  vector  :inline)
    )
-  :heap-base #xb0
-  :method-count-assert 33
-  :size-assert         #x120
-  :flag-assert         #x2100b00120
   )
 
 
@@ -195,18 +184,18 @@
           )
     (eval-path-curve! (-> self path) (-> self basetrans) (-> self path-pos) 'interp)
     (vector+! (-> self basetrans) (-> self basetrans) (-> self trans-offset))
-    (if (< (vector-vector-distance (-> self root-override trans) (ear-trans)) 81920.0)
-        (sound-play "eco-plat-hover" :id (-> self sound-id) :position (the-as symbol (-> self root-override trans)))
+    (if (< (vector-vector-distance (-> self root trans) (ear-trans)) 81920.0)
+        (sound-play "eco-plat-hover" :id (-> self sound-id) :position (the-as symbol (-> self root trans)))
         )
     (plat-trans)
     )
   )
 
-(defmethod get-unlit-skel citb-plat ((this citb-plat))
+(defmethod get-unlit-skel ((this citb-plat))
   *plat-citb-sg*
   )
 
-(defmethod baseplat-method-24 citb-plat ((this citb-plat))
+(defmethod baseplat-method-24 ((this citb-plat))
   (let ((s5-0 (new 'process 'collide-shape-moving this (collide-list-enum hit-by-others))))
     (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s5-0 reaction) default-collision-reaction)
@@ -225,19 +214,17 @@
       )
     (set! (-> s5-0 nav-radius) (* 0.75 (-> s5-0 root-prim local-sphere w)))
     (backup-collide-with-as s5-0)
-    (set! (-> this root-override) s5-0)
+    (set! (-> this root) s5-0)
     )
   0
   (none)
   )
 
-(defmethod baseplat-method-26 citb-plat ((this citb-plat))
+(defmethod baseplat-method-26 ((this citb-plat))
   (logclear! (-> this mask) (process-mask actor-pause))
-  (set! (-> this root-override scale quad) (-> (res-lump-struct (-> this entity) 'scale vector) quad))
-  (let ((f0-0 (-> this root-override scale x)))
-    (set! (-> this root-override root-prim local-sphere w)
-          (* (-> this root-override root-prim local-sphere w) f0-0)
-          )
+  (set! (-> this root scale quad) (-> (res-lump-struct (-> this entity) 'scale vector) quad))
+  (let ((f0-0 (-> this root scale x)))
+    (set! (-> this root root-prim local-sphere w) (* (-> this root root-prim local-sphere w) f0-0))
     (set! (-> this draw bounds w) (* (-> this draw bounds w) f0-0))
     )
   (set! (-> this trans-offset quad) (-> (the-as vector ((method-of-type res-lump get-property-struct)
@@ -258,15 +245,11 @@
   )
 
 (deftype citb-stair-plat (citb-base-plat)
-  ((idle-height float       :offset-assert 180)
-   (rise-height float       :offset-assert 184)
-   (delay       time-frame  :offset-assert 192)
-   (rise        symbol      :offset-assert 200)
+  ((idle-height  float)
+   (rise-height  float)
+   (delay        time-frame)
+   (rise         symbol)
    )
-  :heap-base #x60
-  :method-count-assert 25
-  :size-assert         #xcc
-  :flag-assert         #x19006000cc
   )
 
 
@@ -300,12 +283,12 @@
     (loop
       (let ((f30-0 (- 1.0 (* 0.0011111111 (the float (- (current-time) (-> self state-time)))))))
         (when (< f30-0 0.0)
-          (set! (-> self root-override trans y) (-> self rise-height))
+          (set! (-> self root trans y) (-> self rise-height))
           (go-virtual citb-base-plat-active)
           )
-        (set! (-> self root-override trans y) (lerp (-> self rise-height) (-> self idle-height) (* f30-0 f30-0)))
+        (set! (-> self root trans y) (lerp (-> self rise-height) (-> self idle-height) (* f30-0 f30-0)))
         )
-      (let ((f0-12 (fmax 0.0 (fmin 1.0 (* 0.000012207031 (+ 409600.0 (-> self root-override trans y)))))))
+      (let ((f0-12 (fmax 0.0 (fmin 1.0 (* 0.000012207031 (+ 409600.0 (-> self root trans y)))))))
         (set! (-> self draw color-mult x) f0-12)
         (set! (-> self draw color-mult y) f0-12)
         (set! (-> self draw color-mult z) f0-12)
@@ -321,36 +304,34 @@
   :virtual #t
   :trans #f
   :code (behavior ()
-    (set! (-> self root-override trans y) (-> self rise-height))
+    (set! (-> self root trans y) (-> self rise-height))
     (suspend)
-    (update-transforms! (-> self root-override))
+    (update-transforms! (-> self root))
     (logior! (-> self mask) (process-mask actor-pause))
     (anim-loop)
     )
   :post ja-post
   )
 
-(defmethod citb-base-plat-method-22 citb-stair-plat ((this citb-stair-plat))
+(defmethod citb-base-plat-method-22 ((this citb-stair-plat))
   (initialize-skeleton this *plat-citb-sg* '())
-  (set! (-> this rise-height) (-> this root-override trans y))
+  (set! (-> this rise-height) (-> this root trans y))
   (set! (-> this idle-height) (+ -409600.0 (-> this rise-height)))
-  (set! (-> this root-override trans y) (-> this idle-height))
+  (set! (-> this root trans y) (-> this idle-height))
   (set! (-> this rise) #f)
   (set! (-> this delay)
         (the-as time-frame (the int (* 300.0 (res-lump-float (-> this entity) 'delay :default 1.0))))
         )
   (let ((f0-7 1.5))
-    (set-vector! (-> this root-override scale) f0-7 f0-7 f0-7 1.0)
-    (set! (-> this root-override root-prim local-sphere w)
-          (* (-> this root-override root-prim local-sphere w) f0-7)
-          )
+    (set-vector! (-> this root scale) f0-7 f0-7 f0-7 1.0)
+    (set! (-> this root root-prim local-sphere w) (* (-> this root root-prim local-sphere w) f0-7))
     (set! (-> this draw bounds w) (* (-> this draw bounds w) f0-7))
     )
   0
   (none)
   )
 
-(defmethod citb-base-plat-method-24 citb-stair-plat ((this citb-stair-plat))
+(defmethod citb-base-plat-method-24 ((this citb-stair-plat))
   (if (and (task-complete? *game-info* (game-task citadel-sage-blue))
            (task-complete? *game-info* (game-task citadel-sage-red))
            (task-complete? *game-info* (game-task citadel-sage-yellow))
@@ -389,23 +370,19 @@
         )
 
 (deftype citb-chain-plat (rigid-body-platform)
-  ((orig-trans   vector     :inline :offset-assert 736)
-   (orig-quat    quaternion :inline :offset-assert 752)
-   (beam-end     vector     :inline :offset-assert 768)
-   (float-offset float              :offset-assert 784)
-   (idle-offset  float              :offset-assert 788)
+  ((orig-trans    vector      :inline)
+   (orig-quat     quaternion  :inline)
+   (beam-end      vector      :inline)
+   (float-offset  float)
+   (idle-offset   float)
    )
-  :heap-base #x2b0
-  :method-count-assert 35
-  :size-assert         #x318
-  :flag-assert         #x2302b00318
   (:states
     citb-chain-plat-settle
     )
   )
 
 
-(defmethod rigid-body-platform-method-22 citb-chain-plat ((this citb-chain-plat) (arg0 vector) (arg1 float))
+(defmethod rigid-body-platform-method-22 ((this citb-chain-plat) (arg0 vector) (arg1 float))
   (+ 12288.0
      (* 2048.0
         (fmax 0.0 (fmin 1.0 (* 0.000024414063 (-> this float-height-offset))))
@@ -416,7 +393,7 @@
      )
   )
 
-(defmethod rigid-body-platform-method-27 citb-chain-plat ((this citb-chain-plat) (arg0 vector))
+(defmethod rigid-body-platform-method-27 ((this citb-chain-plat) (arg0 vector))
   (let ((gp-0 (new 'stack-no-clear 'vector)))
     (vector-! gp-0 arg0 (-> this rbody position))
     (set! (-> gp-0 y) 0.0)
@@ -433,7 +410,7 @@
   (none)
   )
 
-(defmethod rigid-body-platform-method-23 citb-chain-plat ((this citb-chain-plat) (arg0 float))
+(defmethod rigid-body-platform-method-23 ((this citb-chain-plat) (arg0 float))
   (call-parent-method this arg0)
   (rigid-body-platform-method-27 this (-> this orig-trans))
   0
@@ -535,7 +512,7 @@
   :post rider-post
   )
 
-(defmethod rigid-body-platform-method-30 citb-chain-plat ((this citb-chain-plat))
+(defmethod rigid-body-platform-method-30 ((this citb-chain-plat))
   (let ((s5-0 (new 'process 'collide-shape-moving this (collide-list-enum hit-by-player))))
     (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s5-0 reaction) default-collision-reaction)
@@ -560,7 +537,7 @@
   (none)
   )
 
-(defmethod rigid-body-platform-method-31 citb-chain-plat ((this citb-chain-plat))
+(defmethod rigid-body-platform-method-31 ((this citb-chain-plat))
   (initialize-skeleton this *citb-chain-plat-sg* '())
   (set! (-> this orig-trans quad) (-> this root-overlay trans quad))
   (quaternion-copy! (-> this orig-quat) (-> this root-overlay quat))
@@ -596,10 +573,6 @@
 
 (deftype citb-rotatebox (citb-base-plat)
   ()
-  :heap-base #x50
-  :method-count-assert 25
-  :size-assert         #xb4
-  :flag-assert         #x19005000b4
   )
 
 
@@ -614,7 +587,7 @@
         (ja :num! (seek!))
         )
       (if (or (not *target*) (< (+ 8192.0 (-> self idle-distance))
-                                (vector-vector-distance (-> self root-override trans) (-> *target* control trans))
+                                (vector-vector-distance (-> self root trans) (-> *target* control trans))
                                 )
               )
           (go-virtual citb-base-plat-idle)
@@ -623,7 +596,7 @@
     )
   )
 
-(defmethod citb-base-plat-method-21 citb-rotatebox ((this citb-rotatebox))
+(defmethod citb-base-plat-method-21 ((this citb-rotatebox))
   (let ((s5-0 (new 'process 'collide-shape-moving this (collide-list-enum hit-by-others))))
     (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s5-0 reaction) default-collision-reaction)
@@ -642,13 +615,13 @@
       )
     (set! (-> s5-0 nav-radius) (* 0.75 (-> s5-0 root-prim local-sphere w)))
     (backup-collide-with-as s5-0)
-    (set! (-> this root-override) s5-0)
+    (set! (-> this root) s5-0)
     )
   0
   (none)
   )
 
-(defmethod citb-base-plat-method-22 citb-rotatebox ((this citb-rotatebox))
+(defmethod citb-base-plat-method-22 ((this citb-rotatebox))
   (initialize-skeleton this *citb-rotatebox-sg* '())
   0
   (none)
@@ -660,12 +633,8 @@
               )
 
 (deftype citb-donut (citb-base-plat)
-  ((sync sync-info :inline :offset-assert 180)
+  ((sync  sync-info  :inline)
    )
-  :heap-base #x50
-  :method-count-assert 25
-  :size-assert         #xbc
-  :flag-assert         #x19005000bc
   )
 
 
@@ -673,18 +642,12 @@
   :virtual #t
   :post (behavior ()
     (update! (-> self sound))
-    (quaternion-axis-angle!
-      (-> self root-override quat)
-      0.0
-      1.0
-      0.0
-      (* 65536.0 (get-current-phase (-> self sync)))
-      )
+    (quaternion-axis-angle! (-> self root quat) 0.0 1.0 0.0 (* 65536.0 (get-current-phase (-> self sync))))
     (rider-post)
     )
   )
 
-(defmethod citb-base-plat-method-21 citb-donut ((this citb-donut))
+(defmethod citb-base-plat-method-21 ((this citb-donut))
   (let ((s5-0 (new 'process 'collide-shape-moving this (collide-list-enum hit-by-others))))
     (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s5-0 reaction) default-collision-reaction)
@@ -703,17 +666,17 @@
       )
     (set! (-> s5-0 nav-radius) (* 0.75 (-> s5-0 root-prim local-sphere w)))
     (backup-collide-with-as s5-0)
-    (set! (-> this root-override) s5-0)
+    (set! (-> this root) s5-0)
     )
   0
   (none)
   )
 
-(defmethod citb-base-plat-method-22 citb-donut ((this citb-donut))
+(defmethod citb-base-plat-method-22 ((this citb-donut))
   (initialize-skeleton this *citb-donut-sg* '())
   (setup-params! (-> this sync) (the-as uint 9000) 0.0 0.15 0.15)
   (set! (-> this sound)
-        (new 'process 'ambient-sound (static-sound-spec "rotate-plat" :fo-max 20) (-> this root-override trans))
+        (new 'process 'ambient-sound (static-sound-spec "rotate-plat" :fo-max 20) (-> this root trans))
         )
   (logclear! (-> this mask) (process-mask actor-pause))
   0
@@ -727,10 +690,6 @@
 
 (deftype citb-stopbox (plat)
   ()
-  :heap-base #xa0
-  :method-count-assert 33
-  :size-assert         #x108
-  :flag-assert         #x2100a00108
   )
 
 
@@ -739,18 +698,18 @@
   :trans (behavior ()
     (set! (-> self path-pos) (get-current-phase (-> self sync)))
     (eval-path-curve! (-> self path) (-> self basetrans) (-> self path-pos) 'interp)
-    (if (< (vector-vector-distance (-> self root-override trans) (ear-trans)) 81920.0)
-        (sound-play "eco-plat-hover" :id (-> self sound-id) :position (the-as symbol (-> self root-override trans)))
+    (if (< (vector-vector-distance (-> self root trans) (ear-trans)) 81920.0)
+        (sound-play "eco-plat-hover" :id (-> self sound-id) :position (the-as symbol (-> self root trans)))
         )
     (plat-trans)
     )
   )
 
-(defmethod get-unlit-skel citb-stopbox ((this citb-stopbox))
+(defmethod get-unlit-skel ((this citb-stopbox))
   *citb-stopbox-sg*
   )
 
-(defmethod baseplat-method-24 citb-stopbox ((this citb-stopbox))
+(defmethod baseplat-method-24 ((this citb-stopbox))
   (let ((s5-0 (new 'process 'collide-shape-moving this (collide-list-enum hit-by-others))))
     (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s5-0 reaction) default-collision-reaction)
@@ -769,13 +728,13 @@
       )
     (set! (-> s5-0 nav-radius) (* 0.75 (-> s5-0 root-prim local-sphere w)))
     (backup-collide-with-as s5-0)
-    (set! (-> this root-override) s5-0)
+    (set! (-> this root) s5-0)
     )
   0
   (none)
   )
 
-(defmethod baseplat-method-26 citb-stopbox ((this citb-stopbox))
+(defmethod baseplat-method-26 ((this citb-stopbox))
   (logior! (-> this fact options) (fact-options wrap-phase))
   (logclear! (-> this mask) (process-mask actor-pause))
   0
@@ -783,16 +742,12 @@
   )
 
 (deftype citb-firehose (process-drawable)
-  ((root-override collide-shape         :offset        112)
-   (idle-distance float                 :offset-assert 176)
-   (sync          sync-info     :inline :offset-assert 180)
-   (last-sync     float                 :offset-assert 188)
-   (blast-pos     vector        :inline :offset-assert 192)
+  ((root           collide-shape :override)
+   (idle-distance  float)
+   (sync           sync-info      :inline)
+   (last-sync      float)
+   (blast-pos      vector         :inline)
    )
-  :heap-base #x60
-  :method-count-assert 20
-  :size-assert         #xd0
-  :flag-assert         #x14006000d0
   (:states
     citb-firehose-active
     citb-firehose-blast
@@ -808,9 +763,8 @@
 
 (defstate citb-firehose-idle (citb-firehose)
   :trans (behavior ()
-    (if (and *target* (>= (-> self idle-distance)
-                          (vector-vector-distance (-> self root-override trans) (-> *target* control trans))
-                          )
+    (if (and *target*
+             (>= (-> self idle-distance) (vector-vector-distance (-> self root trans) (-> *target* control trans)))
              )
         (go citb-firehose-active)
         )
@@ -826,7 +780,7 @@
 (defstate citb-firehose-active (citb-firehose)
   :trans (behavior ()
     (if (or (not *target*) (< (+ 8192.0 (-> self idle-distance))
-                              (vector-vector-distance (-> self root-override trans) (-> *target* control trans))
+                              (vector-vector-distance (-> self root trans) (-> *target* control trans))
                               )
             )
         (go citb-firehose-idle)
@@ -881,7 +835,7 @@
       (ja :num! (seek!))
       )
     (ja-channel-push! 1 (seconds 0.1))
-    (restore-collide-with-as (-> self root-override))
+    (restore-collide-with-as (-> self root))
     (sound-play "eco-torch" :position (the-as symbol (-> self blast-pos)))
     (dotimes (gp-1 2)
       (ja-no-eval :group! citb-firehose-loopflame-ja :num! (seek!) :frame-num 0.0)
@@ -892,7 +846,7 @@
         (ja :num! (seek!))
         )
       )
-    (clear-collide-with-as (-> self root-override))
+    (clear-collide-with-as (-> self root))
     (ja-channel-push! 1 (seconds 0.1))
     (ja-no-eval :group! citb-firehose-end-ja :num! (seek!) :frame-num 0.0)
     (until (ja-done? 0)
@@ -904,7 +858,7 @@
   :post transform-post
   )
 
-(defmethod init-from-entity! citb-firehose ((this citb-firehose) (arg0 entity-actor))
+(defmethod init-from-entity! ((this citb-firehose) (arg0 entity-actor))
   (let ((s4-0 (new 'process 'collide-shape this (collide-list-enum hit-by-player))))
     (let ((s3-0 (new 'process 'collide-shape-prim-group s4-0 (the-as uint 3) 0)))
       (set! (-> s3-0 prim-core collide-as) (collide-kind enemy))
@@ -936,14 +890,14 @@
       )
     (set! (-> s4-0 nav-radius) (* 0.75 (-> s4-0 root-prim local-sphere w)))
     (backup-collide-with-as s4-0)
-    (set! (-> this root-override) s4-0)
+    (set! (-> this root) s4-0)
     )
   (process-drawable-from-entity! this arg0)
   (initialize-skeleton this *citb-firehose-sg* '())
   (load-params! (-> this sync) this (the-as uint 900) 0.0 0.15 0.15)
   (set! (-> this idle-distance) 286720.0)
   (set! (-> this part) (create-launch-control (-> *part-group-id-table* 685) this))
-  (clear-collide-with-as (-> this root-override))
+  (clear-collide-with-as (-> this root))
   (go citb-firehose-idle)
   (none)
   )
@@ -954,14 +908,10 @@
               )
 
 (deftype citb-exit-plat (plat-button)
-  ((idle-height float   :offset-assert 240)
-   (rise-height float   :offset-assert 244)
-   (activated   symbol  :offset-assert 248)
+  ((idle-height  float)
+   (rise-height  float)
+   (activated    symbol)
    )
-  :heap-base #x90
-  :method-count-assert 33
-  :size-assert         #xfc
-  :flag-assert         #x21009000fc
   (:states
     citb-exit-plat-idle
     citb-exit-plat-rise
@@ -983,7 +933,7 @@
     )
   :code (behavior ()
     (logior! (-> self draw status) (draw-status hidden))
-    (clear-collide-with-as (-> self root-override))
+    (clear-collide-with-as (-> self root))
     (loop
       (suspend)
       )
@@ -994,15 +944,15 @@
   :trans rider-trans
   :code (behavior ()
     (logclear! (-> self draw status) (draw-status hidden))
-    (restore-collide-with-as (-> self root-override))
+    (restore-collide-with-as (-> self root))
     (set-time! (-> self state-time))
     (loop
       (let ((f30-0 (- 1.0 (* 0.0016666667 (the float (- (current-time) (-> self state-time)))))))
         (when (< f30-0 0.0)
-          (set! (-> self root-override trans y) (-> self rise-height))
+          (set! (-> self root trans y) (-> self rise-height))
           (go-virtual plat-button-idle)
           )
-        (set! (-> self root-override trans y) (lerp (-> self rise-height) (-> self idle-height) (* f30-0 f30-0)))
+        (set! (-> self root trans y) (lerp (-> self rise-height) (-> self idle-height) (* f30-0 f30-0)))
         )
       (suspend)
       )
@@ -1013,8 +963,8 @@
 (defbehavior citb-exit-plat-move-player citb-exit-plat ((arg0 vector))
   (let ((gp-0 (new 'stack-no-clear 'vector)))
     (let ((s5-0 (new 'stack-no-clear 'vector)))
-      (vector-! gp-0 (-> self root-override trans) arg0)
-      (vector-! s5-0 (-> *target* control trans) (-> self root-override trans))
+      (vector-! gp-0 (-> self root trans) arg0)
+      (vector-! s5-0 (-> *target* control trans) (-> self root trans))
       (set! (-> s5-0 y) 0.0)
       (let ((f30-0 (vector-length s5-0)))
         (when (< 122880.0 f30-0)
@@ -1034,7 +984,7 @@
   :virtual #t
   :trans (behavior ()
     (let ((gp-0 (new 'stack-no-clear 'vector)))
-      (set! (-> gp-0 quad) (-> self root-override trans quad))
+      (set! (-> gp-0 quad) (-> self root trans quad))
       (let ((t9-1 (-> (the-as (state plat-button) (find-parent-state)) trans)))
         (if t9-1
             (t9-1)
@@ -1050,7 +1000,7 @@
   :virtual #t
   :trans (behavior ()
     (let ((gp-0 (new 'stack-no-clear 'vector)))
-      (set! (-> gp-0 quad) (-> self root-override trans quad))
+      (set! (-> gp-0 quad) (-> self root trans quad))
       (let ((t9-1 (-> (the-as (state plat-button) (find-parent-state)) trans)))
         (if t9-1
             (t9-1)
@@ -1062,16 +1012,16 @@
   :post transform-post
   )
 
-(defmethod can-activate? citb-exit-plat ((this citb-exit-plat))
+(defmethod can-activate? ((this citb-exit-plat))
   (not (movie?))
   )
 
-(defmethod plat-button-method-31 citb-exit-plat ((this citb-exit-plat))
+(defmethod plat-button-method-31 ((this citb-exit-plat))
   (initialize-skeleton this *citb-exit-plat-sg* '())
   (none)
   )
 
-(defmethod plat-button-method-32 citb-exit-plat ((this citb-exit-plat))
+(defmethod plat-button-method-32 ((this citb-exit-plat))
   (if (-> this activated)
       (go (method-of-object this plat-button-idle))
       (go citb-exit-plat-idle)
@@ -1080,7 +1030,7 @@
   (none)
   )
 
-(defmethod plat-button-method-28 citb-exit-plat ((this citb-exit-plat))
+(defmethod plat-button-method-28 ((this citb-exit-plat))
   (let ((s5-0 (new 'process 'collide-shape-moving this (collide-list-enum hit-by-others))))
     (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s5-0 reaction) default-collision-reaction)
@@ -1116,12 +1066,12 @@
       )
     (set! (-> s5-0 nav-radius) (* 0.75 (-> s5-0 root-prim local-sphere w)))
     (backup-collide-with-as s5-0)
-    (set! (-> this root-override) s5-0)
+    (set! (-> this root) s5-0)
     s5-0
     )
   )
 
-(defmethod can-target-move? citb-exit-plat ((this citb-exit-plat))
+(defmethod can-target-move? ((this citb-exit-plat))
   (process-entity-status! this (entity-perm-status bit-7) #t)
   (logclear! (-> this mask) (process-mask actor-pause))
   (set! (-> this draw light-index) (the-as uint 255))
@@ -1141,15 +1091,15 @@
       (set! (-> this path-pos) 1.0)
       )
     )
-  (let ((s5-0 (-> this root-override trans)))
+  (let ((s5-0 (-> this root trans)))
     (eval-path-curve! (-> this path) s5-0 (-> this path-pos) 'interp)
     (vector+! s5-0 s5-0 (-> this trans-off))
     )
-  (set! (-> this rise-height) (-> this root-override trans y))
+  (set! (-> this rise-height) (-> this root trans y))
   (set! (-> this idle-height) (+ -286720.0 (-> this rise-height)))
   (if (-> this activated)
-      (set! (-> this root-override trans y) (-> this rise-height))
-      (set! (-> this root-override trans y) (-> this idle-height))
+      (set! (-> this root trans y) (-> this rise-height))
+      (set! (-> this root trans y) (-> this idle-height))
       )
   (set! (-> this allow-auto-kill) #f)
   (process-entity-status! this (entity-perm-status bit-3) #t)

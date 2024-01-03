@@ -10,13 +10,10 @@
 
 ;; DMA templates for profile drawing
 (deftype profile-work (structure)
-  ((sprite-tmpl dma-gif-packet :inline :offset-assert   0)
-   (line-tmpl   dma-gif-packet :inline :offset-assert  32)
-   (last-index  int32                  :offset-assert  64)
+  ((sprite-tmpl  dma-gif-packet  :inline)
+   (line-tmpl    dma-gif-packet  :inline)
+   (last-index   int32)
    )
-  :method-count-assert 9
-  :size-assert         #x44
-  :flag-assert         #x900000044
   )
 
 ;; dma templates
@@ -55,12 +52,16 @@
 
 ;; profile setting
 (define *profile-x* 1808)
+
 (define *profile-y* 1848)
+
 (define *profile-w* 416)
+
 (define *profile-h* 8)
+
 (define *profile-ticks* #f)
 
-(defmethod start-frame! profile-segment-array ((this profile-segment-array))
+(defmethod start-frame! ((this profile-segment-array))
   "Start a frame."
   (set! (-> this count) 0)
   (set! (-> this depth) 0)
@@ -71,7 +72,7 @@
   (none)
   )
 
-(defmethod start-segment! profile-segment-array ((this profile-segment-array) (arg0 symbol) (arg1 rgba))
+(defmethod start-segment! ((this profile-segment-array) (arg0 symbol) (arg1 rgba))
   "Push a new segment onto the profiling stack."
   (when (and *dproc* *debug-segment*)
     (let ((s4-0 (-> this data (-> this count))))
@@ -91,7 +92,7 @@
   (none)
   )
 
-(defmethod end-segment! profile-segment-array ((this profile-segment-array))
+(defmethod end-segment! ((this profile-segment-array))
   "Pop the last pushed segment."
   (when (and *dproc* *debug-segment*)
     (let* ((v1-4 (+ (-> this depth) -1))
@@ -381,7 +382,7 @@
       )
   )
 
-(defmethod setup-categories! profile-array ((this profile-array))
+(defmethod setup-categories! ((this profile-array))
   "Summarize data collected."
 
   ;; loop over both EE and VU profilers
@@ -550,7 +551,7 @@
   (none)
   )
 
-(defmethod draw-bars! profile-array ((this profile-array) (arg0 dma-buffer) (arg1 int))
+(defmethod draw-bars! ((this profile-array) (arg0 dma-buffer) (arg1 int))
   "Draw the two bars at the top."
   (local-vars (sv-16 (function _varargs_ object)) (sv-32 (function _varargs_ object)))
   (dma-buffer-add-gs-set arg0
@@ -728,7 +729,7 @@
   )
 
 
-(defmethod draw-text! profile-array ((this profile-array))
+(defmethod draw-text! ((this profile-array))
   "Draw the table of times."
   (let ((gp-0 *profile-collapse*))
     (dotimes (s5-0 (-> gp-0 count))

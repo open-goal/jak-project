@@ -10,12 +10,8 @@
 ;; DECOMP BEGINS
 
 (deftype bonelurker (nav-enemy)
-  ((bump-player-time time-frame  :offset-assert 400)
+  ((bump-player-time  time-frame)
    )
-  :heap-base #x130
-  :method-count-assert 76
-  :size-assert         #x198
-  :flag-assert         #x4c01300198
   (:states
     bonelurker-stun
     )
@@ -40,7 +36,7 @@
   (none)
   )
 
-(defmethod touch-handler bonelurker ((this bonelurker) (arg0 process) (arg1 event-message-block))
+(defmethod touch-handler ((this bonelurker) (arg0 process) (arg1 event-message-block))
   (when (and (logtest? (-> this nav-enemy-flags) (nav-enemy-flags navenmf6))
              ((method-of-type touching-shapes-entry prims-touching?)
               (the-as touching-shapes-entry (-> arg1 param 0))
@@ -55,7 +51,7 @@
     )
   )
 
-(defmethod attack-handler bonelurker ((this bonelurker) (arg0 process) (arg1 event-message-block))
+(defmethod attack-handler ((this bonelurker) (arg0 process) (arg1 event-message-block))
   (with-pp
     (set-time! (-> this state-time))
     (let ((a1-1 (new 'stack-no-clear 'event-message-block)))
@@ -444,7 +440,7 @@ nav-enemy-default-event-handler
                                       )
         )
 
-(defmethod initialize-collision bonelurker ((this bonelurker))
+(defmethod initialize-collision ((this bonelurker))
   (let ((s5-0 (new 'process 'collide-shape-moving this (collide-list-enum usually-hit-by-player))))
     (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s5-0 reaction) default-collision-reaction)
@@ -491,7 +487,7 @@ nav-enemy-default-event-handler
   (none)
   )
 
-(defmethod nav-enemy-method-48 bonelurker ((this bonelurker))
+(defmethod nav-enemy-method-48 ((this bonelurker))
   (initialize-skeleton this *bonelurker-sg* '())
   (init-defaults! this *bonelurker-nav-enemy-info*)
   (set! (-> this neck up) (the-as uint 0))

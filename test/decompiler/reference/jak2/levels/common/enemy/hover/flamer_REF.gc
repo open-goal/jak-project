@@ -4,14 +4,10 @@
 ;; definition of type flying-formation
 (deftype flying-formation (hover-formation)
   ()
-  :heap-base #x10
-  :method-count-assert 16
-  :size-assert         #x90
-  :flag-assert         #x1000100090
   )
 
 ;; definition for method 3 of type flying-formation
-(defmethod inspect flying-formation ((this flying-formation))
+(defmethod inspect ((this flying-formation))
   (when (not this)
     (set! this this)
     (goto cfg-4)
@@ -25,56 +21,54 @@
 
 ;; definition of type flamer
 (deftype flamer (nav-enemy)
-  ((shot-trajectory   trajectory   :inline :offset-assert 608)
-   (last-fire-time    time-frame           :offset-assert 648)
-   (sync-off          uint32               :offset-assert 656)
-   (base-pos          vector       :inline :offset-assert 672)
-   (idle-pos          vector       :inline :offset-assert 688)
-   (offset            vector       :inline :offset-assert 704)
-   (dest-pos          vector       :inline :offset-assert 720)
-   (zone-to-world     matrix       :inline :offset-assert 736)
-   (world-to-zone     matrix       :inline :offset-assert 800)
-   (formation-entity  entity-actor         :offset-assert 864)
-   (flit-joint        joint-mod            :offset-assert 868)
-   (flit-angle        float                :offset-assert 872)
-   (flit-timer        time-frame           :offset-assert 880)
-   (path-pos          float                :offset-assert 888)
-   (sound-volume      float                :offset-assert 892)
-   (scale             float                :offset-assert 896)
-   (hit-surface?      symbol               :offset-assert 900)
-   (ground-mode       int8                 :offset-assert 904)
-   (init-quat         quaternion   :inline :offset-assert 912)
-   (surface-normal    vector       :inline :offset-assert 928)
-   (main-joint-pos    vector       :inline :offset-assert 944)
-   (main-joint-vel    vector       :inline :offset-assert 960)
-   (main-joint-acc    vector       :inline :offset-assert 976)
-   (main-acceleration float                :offset-assert 992)
-   (fly-dir           vector       :inline :offset-assert 1008)
+  ((shot-trajectory    trajectory  :inline)
+   (last-fire-time     time-frame)
+   (sync-off           uint32)
+   (base-pos           vector      :inline)
+   (idle-pos           vector      :inline)
+   (offset             vector      :inline)
+   (dest-pos           vector      :inline)
+   (zone-to-world      matrix      :inline)
+   (world-to-zone      matrix      :inline)
+   (formation-entity   entity-actor)
+   (flit-joint         joint-mod)
+   (flit-angle         float)
+   (flit-timer         time-frame)
+   (path-pos           float)
+   (sound-volume       float)
+   (scale              float)
+   (hit-surface?       symbol)
+   (ground-mode        int8)
+   (init-quat          quaternion  :inline)
+   (surface-normal     vector      :inline)
+   (main-joint-pos     vector      :inline)
+   (main-joint-vel     vector      :inline)
+   (main-joint-acc     vector      :inline)
+   (main-acceleration  float)
+   (fly-dir            vector      :inline)
    )
-  :heap-base #x380
-  :method-count-assert 192
-  :size-assert         #x400
-  :flag-assert         #xc003800400
+  (:state-methods
+    attack
+    wait-for-formation
+    exit-ambush
+    exit-ambush-path
+    )
   (:methods
-    (attack () _type_ :state 178)
-    (wait-for-formation () _type_ :state 179)
-    (exit-ambush () _type_ :state 180)
-    (exit-ambush-path () _type_ :state 181)
-    (flamer-method-182 (_type_ vector process-focusable) none 182)
-    (flamer-method-183 (_type_) symbol 183)
-    (flamer-method-184 (_type_) none 184)
-    (flamer-method-185 (_type_) none 185)
-    (flamer-method-186 (_type_ float) vector 186)
-    (flamer-method-187 (_type_) none 187)
-    (flamer-method-188 (_type_ int float int int) none 188)
-    (flamer-method-189 (_type_) none 189)
-    (flamer-method-190 (_type_) none 190)
-    (flamer-method-191 (_type_) none 191)
+    (flamer-method-182 (_type_ vector process-focusable) none)
+    (flamer-method-183 (_type_) symbol)
+    (flamer-method-184 (_type_) none)
+    (flamer-method-185 (_type_) none)
+    (flamer-method-186 (_type_ float) vector)
+    (flamer-method-187 (_type_) none)
+    (flamer-method-188 (_type_ int float int int) none)
+    (flamer-method-189 (_type_) none)
+    (flamer-method-190 (_type_) none)
+    (flamer-method-191 (_type_) none)
     )
   )
 
 ;; definition for method 3 of type flamer
-(defmethod inspect flamer ((this flamer))
+(defmethod inspect ((this flamer))
   (when (not this)
     (set! this this)
     (goto cfg-4)
@@ -269,7 +263,7 @@
 
 ;; definition for method 74 of type flamer
 ;; INFO: Used lq/sq
-(defmethod general-event-handler flamer ((this flamer) (arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+(defmethod general-event-handler ((this flamer) (arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
   "Handles various events for the enemy
 @TODO - unsure if there is a pattern for the events and this should have a more specific name"
   (case arg2
@@ -303,7 +297,7 @@
 
 ;; definition for method 189 of type flamer
 ;; WARN: Return type mismatch int vs none.
-(defmethod flamer-method-189 flamer ((this flamer))
+(defmethod flamer-method-189 ((this flamer))
   (with-pp
     (let ((v1-0 (-> this formation-entity)))
       (when (if v1-0
@@ -333,7 +327,7 @@
 
 ;; definition for method 190 of type flamer
 ;; WARN: Return type mismatch int vs none.
-(defmethod flamer-method-190 flamer ((this flamer))
+(defmethod flamer-method-190 ((this flamer))
   (with-pp
     (let ((v1-0 (-> this formation-entity)))
       (when (if v1-0
@@ -363,7 +357,7 @@
 
 ;; definition for method 142 of type flamer
 ;; WARN: Return type mismatch int vs none.
-(defmethod nav-enemy-method-142 flamer ((this flamer) (arg0 nav-control))
+(defmethod nav-enemy-method-142 ((this flamer) (arg0 nav-control))
   (let ((gp-0 (new 'stack-no-clear 'vector)))
     (vector-! gp-0 (target-pos 0) (-> this root trans))
     (seek-toward-heading-vec! (-> this root) gp-0 131072.0 (seconds 0.5))
@@ -375,7 +369,7 @@
 ;; definition for method 182 of type flamer
 ;; INFO: Used lq/sq
 ;; WARN: Return type mismatch object vs none.
-(defmethod flamer-method-182 flamer ((this flamer) (arg0 vector) (arg1 process-focusable))
+(defmethod flamer-method-182 ((this flamer) (arg0 vector) (arg1 process-focusable))
   (with-pp
     (set! arg0 (cond
                  ((and *target* (-> this next-state) (let ((v1-4 (-> this next-state name)))
@@ -504,7 +498,7 @@
 ;; WARN: Return type mismatch object vs symbol.
 ;; WARN: disable def twice: 22. This may happen when a cond (no else) is nested inside of another conditional, but it should be rare.
 ;; WARN: disable def twice: 45. This may happen when a cond (no else) is nested inside of another conditional, but it should be rare.
-(defmethod flamer-method-183 flamer ((this flamer))
+(defmethod flamer-method-183 ((this flamer))
   (with-pp
     (let ((a1-0 (new 'stack-no-clear 'event-message-block)))
       (set! (-> a1-0 from) (process->ppointer pp))
@@ -548,7 +542,7 @@
 
 ;; definition for method 188 of type flamer
 ;; WARN: Return type mismatch int vs none.
-(defmethod flamer-method-188 flamer ((this flamer) (arg0 int) (arg1 float) (arg2 int) (arg3 int))
+(defmethod flamer-method-188 ((this flamer) (arg0 int) (arg1 float) (arg2 int) (arg3 int))
   (local-vars (v1-1 int))
   0
   (if (< 0.0 arg1)
@@ -571,7 +565,7 @@
 ;; definition for method 187 of type flamer
 ;; INFO: Used lq/sq
 ;; WARN: Return type mismatch int vs none.
-(defmethod flamer-method-187 flamer ((this flamer))
+(defmethod flamer-method-187 ((this flamer))
   (local-vars (at-0 int) (at-1 int))
   (with-pp
     (rlet ((vf0 :class vf)
@@ -625,7 +619,7 @@
   )
 
 ;; definition for method 55 of type flamer
-(defmethod track-target! flamer ((this flamer))
+(defmethod track-target! ((this flamer))
   "Does a lot of various things relating to interacting with the target
 - tracks when the enemy was last drawn
 - looks at the target and handles attacking
@@ -639,7 +633,7 @@
 ;; definition for method 191 of type flamer
 ;; INFO: Used lq/sq
 ;; WARN: Return type mismatch object vs none.
-(defmethod flamer-method-191 flamer ((this flamer))
+(defmethod flamer-method-191 ((this flamer))
   (cond
     ((and (-> this draw shadow)
           (zero? (-> this draw cur-lod))
@@ -752,7 +746,7 @@
 ;; definition for method 184 of type flamer
 ;; INFO: Used lq/sq
 ;; WARN: Return type mismatch int vs none.
-(defmethod flamer-method-184 flamer ((this flamer))
+(defmethod flamer-method-184 ((this flamer))
   (let ((v1-0 (-> this ground-mode)))
     (cond
       ((= v1-0 1)
@@ -805,7 +799,7 @@
   )
 
 ;; definition for method 67 of type flamer
-(defmethod go-stare flamer ((this flamer))
+(defmethod go-stare ((this flamer))
   (go-hostile this)
   )
 
@@ -934,7 +928,7 @@
     0
     (set! (-> self flit-joint twist-min-y) (the-as float #f))
     (vector-reset! (-> self flit-joint target))
-    (vector<-cspace! (-> self main-joint-pos) (joint-node-index flamer-lod0-jg main))
+    (vector<-cspace! (-> self main-joint-pos) (joint-node flamer-lod0-jg main))
     (vector-reset! (-> self main-joint-vel))
     (vector-reset! (-> self main-joint-acc))
     (set! (-> self main-acceleration) 0.0)
@@ -1152,7 +1146,7 @@
       (('event-attack)
        (let ((s5-0 (handle->process (-> self focus handle))))
          (when s5-0
-           (let ((gp-0 (vector<-cspace! (new 'stack-no-clear 'vector) (joint-node-index flamer-lod0-jg tailF))))
+           (let ((gp-0 (vector<-cspace! (new 'stack-no-clear 'vector) (joint-node flamer-lod0-jg tailF))))
              (let ((a2-1 (get-trans (the-as process-focusable s5-0) 3))
                    (s5-1 (new 'stack-no-clear 'vector))
                    )
@@ -1217,7 +1211,7 @@
 
 ;; definition for method 46 of type flamer
 ;; WARN: Return type mismatch int vs none.
-(defmethod enemy-method-46 flamer ((this flamer) (arg0 int))
+(defmethod enemy-method-46 ((this flamer) (arg0 int))
   "@abstract"
   (let ((v1-0 arg0))
     (cond
@@ -1254,7 +1248,7 @@
 ;; definition for method 77 of type flamer
 ;; WARN: Return type mismatch object vs symbol.
 ;; WARN: Using new Jak 2 rtype-of
-(defmethod enemy-method-77 flamer ((this flamer) (arg0 (pointer float)))
+(defmethod enemy-method-77 ((this flamer) (arg0 (pointer float)))
   (let ((v1-0 (-> this incoming knocked-type)))
     (the-as
       symbol
@@ -1386,7 +1380,7 @@
   )
 
 ;; definition for method 132 of type flamer
-(defmethod dispose! flamer ((this flamer))
+(defmethod dispose! ((this flamer))
   "Cleans-up the enemy and any associated resources. Potentially spawns skull gems"
   (let ((s5-1 (logtest? (enemy-flag recover-applied-velocity) (-> this enemy-flags))))
     (let ((t9-0 (method-of-type nav-enemy dispose!)))
@@ -1400,7 +1394,7 @@
   )
 
 ;; definition for method 186 of type flamer
-(defmethod flamer-method-186 flamer ((this flamer) (arg0 float))
+(defmethod flamer-method-186 ((this flamer) (arg0 float))
   (let ((f0-1 (* (-> this scale) arg0))
         (v0-0 (-> this root scale))
         )
@@ -1413,14 +1407,14 @@
   )
 
 ;; definition for method 60 of type flamer
-(defmethod coin-flip? flamer ((this flamer))
+(defmethod coin-flip? ((this flamer))
   "@returns The result of a 50/50 RNG roll"
   #f
   )
 
 ;; definition for method 114 of type flamer
 ;; WARN: Return type mismatch int vs none.
-(defmethod init-enemy-collision! flamer ((this flamer))
+(defmethod init-enemy-collision! ((this flamer))
   "Initializes the [[collide-shape-moving]] and any ancillary tasks to make the enemy collide properly"
   (let ((s5-0 (new 'process 'collide-shape-moving this (collide-list-enum usually-hit-by-player))))
     (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
@@ -1496,7 +1490,7 @@
   )
 
 ;; definition for method 7 of type flamer
-(defmethod relocate flamer ((this flamer) (arg0 int))
+(defmethod relocate ((this flamer) (arg0 int))
   (if (nonzero? (-> this flit-joint))
       (&+! (-> this flit-joint) arg0)
       )
@@ -1506,7 +1500,7 @@
 ;; definition for method 115 of type flamer
 ;; INFO: Used lq/sq
 ;; WARN: Return type mismatch int vs none.
-(defmethod init-enemy! flamer ((this flamer))
+(defmethod init-enemy! ((this flamer))
   "Common method called to initialize the enemy, typically sets up default field values and calls ancillary helper methods"
   (initialize-skeleton
     this
@@ -1584,7 +1578,7 @@
 
 ;; definition for method 116 of type flamer
 ;; WARN: Return type mismatch int vs none.
-(defmethod go-idle flamer ((this flamer))
+(defmethod go-idle ((this flamer))
   (if (-> this formation-entity)
       (go (method-of-object this wait-for-formation))
       (go (method-of-object this idle))

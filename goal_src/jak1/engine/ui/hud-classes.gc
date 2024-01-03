@@ -8,7 +8,6 @@
 
 ;; DECOMP BEGINS
 
-
 (defpartgroup group-part-hud-pickup
   :id 75
   :flags (screen-space)
@@ -127,14 +126,10 @@
 
 (deftype hud-pickups (hud)
   ()
-  :heap-base #xb0
-  :method-count-assert 27
-  :size-assert         #x118
-  :flag-assert         #x1b00b00118
   )
 
 
-(defmethod draw-hud hud-pickups ((this hud-pickups))
+(defmethod draw-hud ((this hud-pickups))
   (let ((t9-0 (method-of-type hud draw-hud)))
     (t9-0 this)
     )
@@ -175,15 +170,15 @@
   (none)
   )
 
-(defmethod hud-update hud-pickups ((this hud-pickups))
+(defmethod hud-update ((this hud-pickups))
   (if *target*
-      (tally-value this (the int (+ 0.5 (-> *target* fact-info-target eco-pill))) 0)
+      (tally-value this (the int (+ 0.5 (-> *target* fact eco-pill))) 0)
       )
   0
   (none)
   )
 
-(defmethod init-particles! hud-pickups ((this hud-pickups) (arg0 int))
+(defmethod init-particles! ((this hud-pickups) (arg0 int))
   (when (< (-> this nb-of-particles) (-> this max-nb-of-particles))
     (let ((s5-0 (-> this nb-of-particles)))
       (set! (-> this particles s5-0) (new 'static 'hud-particle))
@@ -276,12 +271,8 @@
   )
 
 (deftype hud-health (hud)
-  ((scale float  :offset-assert 280)
+  ((scale  float)
    )
-  :heap-base #xb0
-  :method-count-assert 27
-  :size-assert         #x11c
-  :flag-assert         #x1b00b0011c
   )
 
 
@@ -291,14 +282,14 @@
     (set! (-> arg2 pos x) f0-0)
     )
   (cond
-    ((and *target* (< (-> *target* fact-info-target health) 1.0))
+    ((and *target* (< (-> *target* fact health) 1.0))
      (set! (-> arg2 prev-pos x) 32.0)
      )
     (else
       (let ((f0-3 128.0))
         ;; low health flashing
         ;; og:preserve-this modified to support high fps
-        (when (and *target* (= (-> *target* fact-info-target health) 1.0))
+        (when (and *target* (= (-> *target* fact health) 1.0))
           (let* ((scaled-frame-counter (the int (* DISPLAY_FPS_RATIO (-> *display* integral-frame-counter))))
                  (v1-16 (logand scaled-frame-counter 7)))
             (set! f0-3 (if (zero? (logand scaled-frame-counter 8))
@@ -324,7 +315,7 @@
     (set! (-> arg2 init-pos x) f0-0)
     (set! (-> arg2 pos x) f0-0)
     )
-  (if (and *target* (< (-> *target* fact-info-target health) 2.0))
+  (if (and *target* (< (-> *target* fact health) 2.0))
       (set! (-> arg2 prev-pos x) 32.0)
       (set! (-> arg2 prev-pos x) 128.0)
       )
@@ -337,7 +328,7 @@
     (set! (-> arg2 init-pos x) f0-0)
     (set! (-> arg2 pos x) f0-0)
     )
-  (if (and *target* (< (-> *target* fact-info-target health) 3.0))
+  (if (and *target* (< (-> *target* fact health) 3.0))
       (set! (-> arg2 prev-pos x) 32.0)
       (set! (-> arg2 prev-pos x) 128.0)
       )
@@ -345,25 +336,21 @@
   (none)
   )
 
-(defmethod draw-hud hud-health ((this hud-health))
+(defmethod draw-hud ((this hud-health))
   ((method-of-type hud draw-hud) this)
   0
   (none)
   )
 
-(defmethod hud-update hud-health ((this hud-health))
+(defmethod hud-update ((this hud-health))
   (if *target*
-      (tally-value
-        this
-        (the int (-> *target* fact-info-target health))
-        (the-as int (-> *target* fact-info-target health-pickup-time))
-        )
+      (tally-value this (the int (-> *target* fact health)) (the-as int (-> *target* fact health-pickup-time)))
       )
   0
   (none)
   )
 
-(defmethod init-particles! hud-health ((this hud-health) (arg0 int))
+(defmethod init-particles! ((this hud-health) (arg0 int))
   (when (< (-> this nb-of-particles) (-> this max-nb-of-particles))
     (let ((s5-0 (-> this nb-of-particles)))
       (set! (-> this particles s5-0) (new 'static 'hud-particle))
@@ -410,7 +397,7 @@
   (none)
   )
 
-(defmethod set-pos-and-scale hud-health ((this hud-health) (arg0 symbol) (arg1 symbol))
+(defmethod set-pos-and-scale ((this hud-health) (arg0 symbol) (arg1 symbol))
   (cond
     (arg0
       (set! (-> this particles 0 init-pos x) 65.0)
@@ -465,21 +452,17 @@
   )
 
 (deftype hud-money-all (hud)
-  ((x-scale     float       :offset-assert 280)
-   (y-scale     float       :offset-assert 284)
-   (y-pos       int32       :offset-assert 288)
-   (total-orbs  int32       :offset-assert 292)
-   (level-index int32       :offset-assert 296)
-   (start-time  time-frame  :offset-assert 304)
+  ((x-scale      float)
+   (y-scale      float)
+   (y-pos        int32)
+   (total-orbs   int32)
+   (level-index  int32)
+   (start-time   time-frame)
    )
-  :heap-base #xd0
-  :method-count-assert 27
-  :size-assert         #x138
-  :flag-assert         #x1b00d00138
   )
 
 
-(defmethod draw-hud hud-money-all ((this hud-money-all))
+(defmethod draw-hud ((this hud-money-all))
   (let ((t9-0 (method-of-type hud draw-hud)))
     (t9-0 this)
     )
@@ -566,7 +549,7 @@
   (none)
   )
 
-(defmethod hud-update hud-money-all ((this hud-money-all))
+(defmethod hud-update ((this hud-money-all))
   (when *target*
     (hide-bottom-hud)
     (when (!= *master-mode* 'pause)
@@ -582,16 +565,16 @@
           )
         )
       )
-    (if (>= (+ (-> *display* base-frame-counter) (seconds -5)) (-> this start-time))
+    (if (>= (+ (current-time) (seconds -5)) (-> this start-time))
         (set! (-> this deactivate-when-hidden) #t)
-        (tally-value this (the-as int (-> *display* base-frame-counter)) 0)
+        (tally-value this (the-as int (current-time)) 0)
         )
     )
   0
   (none)
   )
 
-(defmethod init-particles! hud-money-all ((this hud-money-all) (arg0 int))
+(defmethod init-particles! ((this hud-money-all) (arg0 int))
   (when (< (-> this nb-of-icons) 6)
     (let ((s4-0 (-> this nb-of-icons)))
       (set! (-> this icons s4-0) (new 'static 'hud-icon))
@@ -672,21 +655,21 @@
         )
       )
     )
-  (set! (-> this start-time) (-> *display* base-frame-counter))
+  (set-time! (-> this start-time))
   (sound-play "get-all-orbs")
   0
   (none)
   )
 
-(defmethod set-pos-and-scale hud-money-all ((this hud-money-all) (arg0 symbol) (arg1 symbol))
+(defmethod set-pos-and-scale ((this hud-money-all) (arg0 symbol) (arg1 symbol))
   (cond
     (arg0
       (set! (-> this x-scale) 0.01845)
       (set! (-> this y-scale) -0.02175)
       (set! (-> this y-pos) (if arg1
-                               374
-                               373
-                               )
+                                374
+                                373
+                                )
             )
       )
     (else
@@ -726,18 +709,14 @@
   )
 
 (deftype hud-money (hud)
-  ((x-scale float  :offset-assert 280)
-   (y-scale float  :offset-assert 284)
-   (y-pos   int32  :offset-assert 288)
+  ((x-scale  float)
+   (y-scale  float)
+   (y-pos    int32)
    )
-  :heap-base #xc0
-  :method-count-assert 27
-  :size-assert         #x124
-  :flag-assert         #x1b00c00124
   )
 
 (define-extern *game-counts* game-count-info)
-(defmethod draw-hud hud-money ((this hud-money))
+(defmethod draw-hud ((this hud-money))
   (let ((t9-0 (method-of-type hud draw-hud)))
     (t9-0 this)
     )
@@ -799,7 +778,7 @@
   (none)
   )
 
-(defmethod hud-update hud-money ((this hud-money))
+(defmethod hud-update ((this hud-money))
   (when *target*
     (when (!= *master-mode* 'pause)
       (when (and (!= (-> this icons 0) 0) (-> this icons 0 icon))
@@ -820,7 +799,7 @@
   (none)
   )
 
-(defmethod init-particles! hud-money ((this hud-money) (arg0 int))
+(defmethod init-particles! ((this hud-money) (arg0 int))
   (when (< (-> this nb-of-icons) 6)
     (let ((s5-0 (-> this nb-of-icons)))
       (set! (-> this icons s5-0) (new 'static 'hud-icon))
@@ -874,7 +853,7 @@
   (none)
   )
 
-(defmethod set-pos-and-scale hud-money ((this hud-money) (arg0 symbol) (arg1 symbol))
+(defmethod set-pos-and-scale ((this hud-money) (arg0 symbol) (arg1 symbol))
   (cond
     (arg0
       (set! (-> this x-scale) 0.0123)
@@ -891,30 +870,30 @@
     (set! (-> this x-scale) (* 1.1 (-> this x-scale)))
     (set! (-> this y-scale) (* 1.2 (-> this y-scale)))
     (set! (-> this y-pos) (the int (* (the float (-> this y-pos)) (if arg0
-                                                                    0.95
-                                                                    0.9
-                                                                    )
-                                     )
-                              )
+                                                                      0.95
+                                                                      0.9
+                                                                      )
+                                      )
+                               )
           )
     )
   0
   (none)
   )
 
-(defmethod get-icon-pos-x hud-money ((this hud-money))
+(defmethod get-icon-pos-x ((this hud-money))
   (-> this icons 0 icon-x)
   )
 
-(defmethod get-icon-pos-y hud-money ((this hud-money))
+(defmethod get-icon-pos-y ((this hud-money))
   (-> this icons 0 icon-y)
   )
 
-(defmethod get-icon-scale-x hud-money ((this hud-money))
+(defmethod get-icon-scale-x ((this hud-money))
   0.01
   )
 
-(defmethod get-icon-scale-y hud-money ((this hud-money))
+(defmethod get-icon-scale-y ((this hud-money))
   -0.011
   )
 
@@ -1122,22 +1101,18 @@
   )
 
 (deftype hud-fuel-cell (hud)
-  ((scale-starburst-3-x float  :offset-assert 280)
-   (scale-starburst-3-y float  :offset-assert 284)
-   (scale-starburst-4-x float  :offset-assert 288)
-   (scale-starburst-4-y float  :offset-assert 292)
-   (scale-icon          float  :offset-assert 296)
-   (scale-center        float  :offset-assert 300)
-   (icon-pos-y          int32  :offset-assert 304)
+  ((scale-starburst-3-x  float)
+   (scale-starburst-3-y  float)
+   (scale-starburst-4-x  float)
+   (scale-starburst-4-y  float)
+   (scale-icon           float)
+   (scale-center         float)
+   (icon-pos-y           int32)
    )
-  :heap-base #xd0
-  :method-count-assert 27
-  :size-assert         #x134
-  :flag-assert         #x1b00d00134
   )
 
 
-(defmethod draw-hud hud-fuel-cell ((this hud-fuel-cell))
+(defmethod draw-hud ((this hud-fuel-cell))
   (let ((t9-0 (method-of-type hud draw-hud)))
     (t9-0 this)
   )
@@ -1251,7 +1226,7 @@
   (none)
   )
 
-(defmethod hud-update hud-fuel-cell ((this hud-fuel-cell))
+(defmethod hud-update ((this hud-fuel-cell))
   (when *target*
     (when (!= *master-mode* 'pause)
       (let ((a0-2 (-> this icons 0 icon 0 root)))
@@ -1274,7 +1249,7 @@
   (none)
   )
 
-(defmethod init-particles! hud-fuel-cell ((this hud-fuel-cell) (arg0 int))
+(defmethod init-particles! ((this hud-fuel-cell) (arg0 int))
   (when (< (-> this nb-of-particles) (-> this max-nb-of-particles))
     (let ((s5-0 (-> this nb-of-particles)))
       (set! (-> this particles s5-0) (new 'static 'hud-particle))
@@ -1333,7 +1308,7 @@
   (none)
   )
 
-(defmethod set-pos-and-scale hud-fuel-cell ((this hud-fuel-cell) (arg0 symbol) (arg1 symbol))
+(defmethod set-pos-and-scale ((this hud-fuel-cell) (arg0 symbol) (arg1 symbol))
   (cond
     (arg0
       (set! (-> this scale-starburst-3-x) 10240.0)
@@ -1356,11 +1331,11 @@
     )
   (if arg1
       (set! (-> this icon-pos-y) (the int (* (the float (-> this icon-pos-y)) (if arg0
-                                                                                1.1
-                                                                                1.14
-                                                                                )
-                                            )
-                                     )
+                                                                                  1.1
+                                                                                  1.14
+                                                                                  )
+                                             )
+                                      )
             )
       )
   0
@@ -1410,13 +1385,9 @@
   )
 
 (deftype hud-buzzers (hud)
-  ((scale         float  :offset-assert 280)
-   (text-y-offset int32  :offset-assert 284)
+  ((scale          float)
+   (text-y-offset  int32)
    )
-  :heap-base #xb0
-  :method-count-assert 27
-  :size-assert         #x120
-  :flag-assert         #x1b00b00120
   )
 
 
@@ -1428,16 +1399,16 @@
   (none)
   )
 
-(defmethod draw-hud hud-buzzers ((this hud-buzzers))
+(defmethod draw-hud ((this hud-buzzers))
   (let ((t9-0 (method-of-type hud draw-hud)))
     (t9-0 this)
     )
   (set! (-> this text-y) (+ (if (nonzero? (-> this next-y-offset))
-                               (-> this text-y-offset)
-                               0
-                               )
-                           362
-                           )
+                                (-> this text-y-offset)
+                                0
+                                )
+                            362
+                            )
         )
   (with-dma-buffer-add-bucket ((buf (-> (current-frame) global-buf))
                                (bucket-id debug))
@@ -1497,15 +1468,15 @@
   (none)
   )
 
-(defmethod hud-update hud-buzzers ((this hud-buzzers))
+(defmethod hud-update ((this hud-buzzers))
   (if *target*
-      (tally-value this (the int (+ 0.5 (-> *target* fact-info-target buzzer))) 0)
+      (tally-value this (the int (+ 0.5 (-> *target* fact buzzer))) 0)
       )
   0
   (none)
   )
 
-(defmethod init-particles! hud-buzzers ((this hud-buzzers) (arg0 int))
+(defmethod init-particles! ((this hud-buzzers) (arg0 int))
   (when (< (-> this nb-of-particles) (-> this max-nb-of-particles))
     (let ((s5-0 (-> this nb-of-particles)))
       (set! (-> this particles s5-0) (new 'static 'hud-particle))
@@ -1533,11 +1504,11 @@
   (none)
   )
 
-(defmethod get-icon-pos-x hud-buzzers ((this hud-buzzers))
+(defmethod get-icon-pos-x ((this hud-buzzers))
   (-> this text-x)
   )
 
-(defmethod get-icon-pos-y hud-buzzers ((this hud-buzzers))
+(defmethod get-icon-pos-y ((this hud-buzzers))
   (+ (if (= (-> *setting-control* current video-mode) 'pal)
          (+ (-> this text-y) 120)
          (+ (-> this text-y) 50)
@@ -1546,15 +1517,15 @@
      )
   )
 
-(defmethod get-icon-scale-x hud-buzzers ((this hud-buzzers))
+(defmethod get-icon-scale-x ((this hud-buzzers))
   0.008
   )
 
-(defmethod get-icon-scale-y hud-buzzers ((this hud-buzzers))
+(defmethod get-icon-scale-y ((this hud-buzzers))
   -0.008
   )
 
-(defmethod set-pos-and-scale hud-buzzers ((this hud-buzzers) (arg0 symbol) (arg1 symbol))
+(defmethod set-pos-and-scale ((this hud-buzzers) (arg0 symbol) (arg1 symbol))
   (cond
     (arg0
       (set! (-> this scale) 6553.6)
@@ -1667,14 +1638,10 @@
   )
 
 (deftype hud-power (hud)
-  ((scale-timer   float  :offset-assert 280)
-   (scale-backing float  :offset-assert 284)
-   (scale-blue    float  :offset-assert 288)
+  ((scale-timer    float)
+   (scale-backing  float)
+   (scale-blue     float)
    )
-  :heap-base #xc0
-  :method-count-assert 27
-  :size-assert         #x124
-  :flag-assert         #x1b00c00124
   )
 
 
@@ -1723,12 +1690,10 @@
 (defun part-hud-eco-timer-01-func ((arg0 basic) (arg1 basic) (arg2 hud-particle))
   (let ((f0-2
           (/ (the float
-                  (the-as
-                    uint
-                    (- (-> *target* fact-info-target eco-timeout)
-                       (the-as uint (- (-> *display* game-frame-counter) (-> *target* fact-info-target eco-pickup-time)))
-                       )
-                    )
+                  (the-as uint (- (-> *target* fact eco-timeout)
+                                  (the-as uint (- (-> *display* game-frame-counter) (-> *target* fact eco-pickup-time)))
+                                  )
+                          )
                   )
              (the float (the-as uint (-> *FACT-bank* eco-full-timeout)))
              )
@@ -1737,7 +1702,7 @@
         (a3-0 64)
         (t0-0 128)
         )
-    (case (-> *target* fact-info-target eco-type)
+    (case (-> *target* fact eco-type)
       (((pickup-type eco-yellow))
        (set! a2-1 128)
        (set! a3-0 96)
@@ -1767,12 +1732,10 @@
 (defun part-hud-eco-timer-02-func ((arg0 basic) (arg1 basic) (arg2 hud-particle))
   (let ((f0-2
           (/ (the float
-                  (the-as
-                    uint
-                    (- (-> *target* fact-info-target eco-timeout)
-                       (the-as uint (- (-> *display* game-frame-counter) (-> *target* fact-info-target eco-pickup-time)))
-                       )
-                    )
+                  (the-as uint (- (-> *target* fact eco-timeout)
+                                  (the-as uint (- (-> *display* game-frame-counter) (-> *target* fact eco-pickup-time)))
+                                  )
+                          )
                   )
              (the float (the-as uint (-> *FACT-bank* eco-full-timeout)))
              )
@@ -1781,7 +1744,7 @@
         (a3-0 64)
         (t0-0 128)
         )
-    (case (-> *target* fact-info-target eco-type)
+    (case (-> *target* fact eco-type)
       (((pickup-type eco-yellow))
        (set! a2-1 128)
        (set! a3-0 96)
@@ -1811,12 +1774,10 @@
 (defun part-hud-eco-timer-03-func ((arg0 basic) (arg1 basic) (arg2 hud-particle))
   (let ((f0-2
           (/ (the float
-                  (the-as
-                    uint
-                    (- (-> *target* fact-info-target eco-timeout)
-                       (the-as uint (- (-> *display* game-frame-counter) (-> *target* fact-info-target eco-pickup-time)))
-                       )
-                    )
+                  (the-as uint (- (-> *target* fact eco-timeout)
+                                  (the-as uint (- (-> *display* game-frame-counter) (-> *target* fact eco-pickup-time)))
+                                  )
+                          )
                   )
              (the float (the-as uint (-> *FACT-bank* eco-full-timeout)))
              )
@@ -1825,7 +1786,7 @@
         (a3-0 64)
         (t0-0 128)
         )
-    (case (-> *target* fact-info-target eco-type)
+    (case (-> *target* fact eco-type)
       (((pickup-type eco-yellow))
        (set! a2-1 128)
        (set! a3-0 96)
@@ -1870,30 +1831,28 @@
   (none)
   )
 
-(defmethod hud-update hud-power ((this hud-power))
+(defmethod hud-update ((this hud-power))
   (if *target*
       (tally-value
         this
         (max
           0
           (min
-            (the-as
-              int
-              (- (-> *target* fact-info-target eco-timeout)
-                 (the-as uint (- (-> *display* game-frame-counter) (-> *target* fact-info-target eco-pickup-time)))
-                 )
-              )
-            (the-as int (-> *target* fact-info-target eco-timeout))
+            (the-as int (- (-> *target* fact eco-timeout)
+                           (the-as uint (- (-> *display* game-frame-counter) (-> *target* fact eco-pickup-time)))
+                           )
+                    )
+            (the-as int (-> *target* fact eco-timeout))
             )
           )
-        (the-as int (-> *target* fact-info-target eco-timeout))
+        (the-as int (-> *target* fact eco-timeout))
         )
       )
   0
   (none)
   )
 
-(defmethod init-particles! hud-power ((this hud-power) (arg0 int))
+(defmethod init-particles! ((this hud-power) (arg0 int))
   (when (< (-> this nb-of-particles) (-> this max-nb-of-particles))
     (let ((s5-0 (-> this nb-of-particles)))
       (set! (-> this particles s5-0) (new 'static 'hud-particle))
@@ -1939,7 +1898,7 @@
   (none)
   )
 
-(defmethod set-pos-and-scale hud-power ((this hud-power) (arg0 symbol) (arg1 symbol))
+(defmethod set-pos-and-scale ((this hud-power) (arg0 symbol) (arg1 symbol))
   (cond
     (arg0
       (set! (-> this scale-blue) 7168.0)

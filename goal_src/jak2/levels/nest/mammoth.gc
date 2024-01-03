@@ -8,49 +8,47 @@
 ;; DECOMP BEGINS
 
 (deftype mammoth (nav-enemy)
-  ((joint-ik               joint-mod-ik 4         :offset-assert 604)
-   (ik-handle-pos          vector       4 :inline :offset-assert 624)
-   (ik-handle-y            float        4         :offset-assert 688)
-   (heel-lerp              float        4         :offset-assert 704)
-   (foot-flags             uint16                 :offset-assert 720)
-   (old-foot-flags         uint16                 :offset-assert 722)
-   (y-level                float                  :offset-assert 724)
-   (foot-pos               vector       4 :inline :offset-assert 736)
-   (my-up-vector           vector       :inline   :offset-assert 800)
-   (my-up-quat             quaternion   :inline   :offset-assert 816)
-   (move-pos               vector       2 :inline :offset-assert 832)
-   (travel-dest            vector       :inline   :offset-assert 864)
-   (tilt-quat              quaternion   :inline   :offset-assert 880)
-   (path-index             int32                  :offset-assert 896)
-   (path-index-dir         int32                  :offset-assert 900)
-   (path-pos               float                  :offset-assert 904)
-   (turn-angle             float                  :offset-assert 908)
-   (gspot-timer            time-frame             :offset-assert 912)
-   (gspot-normal           vector       :inline   :offset-assert 928)
-   (attack-timer           time-frame             :offset-assert 944)
-   (lightning-timer        time-frame             :offset-assert 952)
-   (lightning-attack-timer time-frame             :offset-assert 960)
-   (spawn-timer            time-frame             :offset-assert 968)
-   (turn-anim-start        int32                  :offset-assert 976)
-   (turn-anim              int32                  :offset-assert 980)
-   (turn-anim-end          int32                  :offset-assert 984)
-   (turn-move-start        float                  :offset-assert 988)
-   (turn-move-end          float                  :offset-assert 992)
-   (feet-ik-init-timer     time-frame             :offset-assert 1000)
+  ((joint-ik                joint-mod-ik  4)
+   (ik-handle-pos           vector        4 :inline)
+   (ik-handle-y             float         4)
+   (heel-lerp               float         4)
+   (foot-flags              uint16)
+   (old-foot-flags          uint16)
+   (y-level                 float)
+   (foot-pos                vector        4 :inline)
+   (my-up-vector            vector        :inline)
+   (my-up-quat              quaternion    :inline)
+   (move-pos                vector        2 :inline)
+   (travel-dest             vector        :inline)
+   (tilt-quat               quaternion    :inline)
+   (path-index              int32)
+   (path-index-dir          int32)
+   (path-pos                float)
+   (turn-angle              float)
+   (gspot-timer             time-frame)
+   (gspot-normal            vector        :inline)
+   (attack-timer            time-frame)
+   (lightning-timer         time-frame)
+   (lightning-attack-timer  time-frame)
+   (spawn-timer             time-frame)
+   (turn-anim-start         int32)
+   (turn-anim               int32)
+   (turn-anim-end           int32)
+   (turn-move-start         float)
+   (turn-move-end           float)
+   (feet-ik-init-timer      time-frame)
    )
-  :heap-base #x370
-  :method-count-assert 186
-  :size-assert         #x3f0
-  :flag-assert         #xba037003f0
+  (:state-methods
+    waiting
+    wait-to-walk
+    walking
+    walking-attack
+    turning
+    )
   (:methods
-    (waiting () _type_ :state 178)
-    (wait-to-walk () _type_ :state 179)
-    (walking () _type_ :state 180)
-    (walking-attack () _type_ :state 181)
-    (turning () _type_ :state 182)
-    (mammoth-method-183 (_type_) none 183)
-    (mammoth-method-184 (_type_) none 184)
-    (mammoth-method-185 (_type_ vector int) none 185)
+    (mammoth-method-183 (_type_) none)
+    (mammoth-method-184 (_type_) none)
+    (mammoth-method-185 (_type_ vector int) none)
     )
   )
 
@@ -172,14 +170,11 @@
 (define *mammoth-lightning-joint-tbl* (new 'static 'boxed-array :type int32 50 51 52 53 54 55))
 
 (deftype mammoth-ik-setup (structure)
-  ((elbow-index int32   :offset-assert   0)
-   (hand-dist   float   :offset-assert   4)
-   (ground-dist float   :offset-assert   8)
-   (foot-flag   uint16  :offset-assert  12)
+  ((elbow-index  int32)
+   (hand-dist    float)
+   (ground-dist  float)
+   (foot-flag    uint16)
    )
-  :method-count-assert 9
-  :size-assert         #xe
-  :flag-assert         #x90000000e
   )
 
 
@@ -686,7 +681,7 @@
   :post mammoth-walk-post
   )
 
-(defmethod general-event-handler mammoth ((this mammoth) (arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+(defmethod general-event-handler ((this mammoth) (arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
   "Handles various events for the enemy
 @TODO - unsure if there is a pattern for the events and this should have a more specific name"
   (case arg2
@@ -711,7 +706,7 @@
     )
   )
 
-(defmethod mammoth-method-185 mammoth ((this mammoth) (arg0 vector) (arg1 int))
+(defmethod mammoth-method-185 ((this mammoth) (arg0 vector) (arg1 int))
   (rlet ((acc :class vf)
          (vf0 :class vf)
          (vf4 :class vf)
@@ -781,22 +776,22 @@
     )
   )
 
-(defmethod go-stare mammoth ((this mammoth))
+(defmethod go-stare ((this mammoth))
   (go (method-of-object this walking))
   )
 
-(defmethod go-hostile mammoth ((this mammoth))
+(defmethod go-hostile ((this mammoth))
   (go (method-of-object this walking))
   )
 
 ;; WARN: Return type mismatch object vs none.
-(defmethod go-idle mammoth ((this mammoth))
+(defmethod go-idle ((this mammoth))
   (go (method-of-object this waiting))
   (none)
   )
 
 ;; WARN: Return type mismatch symbol vs pat-surface.
-(defmethod enemy-method-125 mammoth ((this mammoth) (arg0 collide-query) (arg1 collide-spec) (arg2 float) (arg3 float) (arg4 float))
+(defmethod enemy-method-125 ((this mammoth) (arg0 collide-query) (arg1 collide-spec) (arg2 float) (arg3 float) (arg4 float))
   (the-as
     pat-surface
     (when (find-ground (-> this root) arg0 arg1 arg2 arg3 arg4)
@@ -848,7 +843,7 @@
     )
   )
 
-(defmethod mammoth-method-183 mammoth ((this mammoth))
+(defmethod mammoth-method-183 ((this mammoth))
   (cond
     ((= (-> this root gspot-pos y) -40959590.0)
      (quaternion-copy! (-> this tilt-quat) *unity-quaternion*)
@@ -1215,7 +1210,7 @@
     )
   )
 
-(defmethod mammoth-method-184 mammoth ((this mammoth))
+(defmethod mammoth-method-184 ((this mammoth))
   (rlet ((acc :class vf)
          (vf0 :class vf)
          (vf4 :class vf)
@@ -1336,7 +1331,7 @@
     )
   )
 
-(defmethod track-target! mammoth ((this mammoth))
+(defmethod track-target! ((this mammoth))
   "Does a lot of various things relating to interacting with the target
 - tracks when the enemy was last drawn
 - looks at the target and handles attacking
@@ -1485,12 +1480,12 @@
   (none)
   )
 
-(defmethod coin-flip? mammoth ((this mammoth))
+(defmethod coin-flip? ((this mammoth))
   "@returns The result of a 50/50 RNG roll"
   #f
   )
 
-(defmethod relocate mammoth ((this mammoth) (arg0 int))
+(defmethod relocate ((this mammoth) (arg0 int))
   (dotimes (v1-0 4)
     (if (nonzero? (-> this joint-ik v1-0))
         (&+! (-> this joint-ik v1-0) arg0)
@@ -1499,7 +1494,7 @@
   (call-parent-method this arg0)
   )
 
-(defmethod init-enemy-collision! mammoth ((this mammoth))
+(defmethod init-enemy-collision! ((this mammoth))
   "Initializes the [[collide-shape-moving]] and any ancillary tasks to make the enemy collide properly"
   (let ((s5-0 (new 'process 'collide-shape-moving this (collide-list-enum usually-hit-by-player))))
     (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
@@ -1594,7 +1589,7 @@
   (none)
   )
 
-(defmethod init-enemy! mammoth ((this mammoth))
+(defmethod init-enemy! ((this mammoth))
   "Common method called to initialize the enemy, typically sets up default field values and calls ancillary helper methods"
   (initialize-skeleton
     this

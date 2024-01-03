@@ -13,171 +13,136 @@
 ;; DECOMP BEGINS
 
 (deftype texture-anim-layer (structure)
-  ((interpolated-color     vector :inline) ;; added
-   (interpolated-scale-offset vector :inline)
-   (interpolated-st-scale-offset vector :inline)
-   (interpolated-qs vector :inline)
-   (interpolated-rot vector :inline)
-   (extra           vector  :inline :offset 240)
-   (func            (function dma-buffer uint int int texture-anim-layer float int) :offset 256)
-   (func-id         symbol          :offset 256)
-   (init-func       (function texture-anim-layer int) :offset 260)
-   (init-func-id    symbol          :offset 260)
-   (tex             texture         :offset 264)
-   (start-time      float           :offset 268)
-   (end-time        float           :offset 272)
-   (tex-name        string          :offset 276)
-   (test            gs-test         :offset 280)
-   (alpha           gs-alpha        :offset 288)
-   (clamp           gs-clamp        :offset 296)
-
-   (start-vectors   vector 5 :inline :offset 80) ;; added
-
-   (start-color     vector  :inline :offset 80)
-   (start-scale     vector2 :inline :offset 96)
-   (start-offset    vector2 :inline :offset 104)
-   (start-st-scale  vector2 :inline :offset 112)
-   (start-st-offset vector2 :inline :offset 120)
-   (start-qs        vector  :inline :offset 128)
-   (start-rot       degrees         :offset 144)
-   (start-st-rot    degrees         :offset 148)
-
-   (end-vectors     vector 5 :inline :offset 160) ;; added
-
-   (end-color       vector  :inline :offset 160)
-   (end-scale       vector2 :inline :offset 176)
-   (end-offset      vector2 :inline :offset 184)
-   (end-scale-offset vector :inline :offset 176)
-   (end-st-scale    vector2 :inline :offset 192)
-   (end-st-offset   vector2 :inline :offset 200)
-   (end-qs          vector  :inline :offset 208)
-   (end-rot         degrees         :offset 224)
-   (end-st-rot      degrees         :offset 228)
+  ((interpolated-color            vector                                                           :inline) ;; added
+   (interpolated-scale-offset     vector                                                           :inline)
+   (interpolated-st-scale-offset  vector                                                           :inline)
+   (interpolated-qs               vector                                                           :inline)
+   (interpolated-rot              vector                                                           :inline)
+   (extra                         vector                                                           :inline   :offset 240)
+   (func                          (function dma-buffer uint int int texture-anim-layer float int)            :offset 256)
+   (func-id                       symbol                                                                     :overlay-at func)
+   (init-func                     (function texture-anim-layer int)                                          :offset 260)
+   (init-func-id                  symbol                                                                     :overlay-at init-func)
+   (tex                           texture                                                                    :offset 264)
+   (start-time                    float                                                                      :offset 268)
+   (end-time                      float                                                                      :offset 272)
+   (tex-name                      string                                                                     :offset 276)
+   (test                          gs-test                                                                    :offset 280)
+   (alpha                         gs-alpha                                                                   :offset 288)
+   (clamp                         gs-clamp                                                                   :offset 296)
+   (start-vectors                 vector                                                           5 :inline :offset  80) ;; added
+   (start-color                   vector                                                           :inline   :overlay-at (-> start-vectors 0))
+   (start-scale                   vector2                                                          :inline   :offset  96)
+   (start-offset                  vector2                                                          :inline   :offset 104)
+   (start-st-scale                vector2                                                          :inline   :offset 112)
+   (start-st-offset               vector2                                                          :inline   :offset 120)
+   (start-qs                      vector                                                           :inline   :overlay-at (-> start-vectors 3))
+   (start-rot                     degrees                                                                    :offset 144)
+   (start-st-rot                  degrees                                                                    :offset 148)
+   (end-vectors                   vector                                                           5 :inline :offset 160) ;; added
+   (end-color                     vector                                                           :inline   :overlay-at (-> end-vectors 0))
+   (end-scale                     vector2                                                          :inline   :offset 176)
+   (end-offset                    vector2                                                          :inline   :offset 184)
+   (end-scale-offset              vector                                                           :inline   :overlay-at (-> end-vectors 1))
+   (end-st-scale                  vector2                                                          :inline   :offset 192)
+   (end-st-offset                 vector2                                                          :inline   :offset 200)
+   (end-qs                        vector                                                           :inline   :overlay-at (-> end-vectors 3))
+   (end-rot                       degrees                                                                    :offset 224)
+   (end-st-rot                    degrees                                                                    :offset 228)
    )
-  :method-count-assert 11
-  :size-assert         #x130
-  :flag-assert         #xb00000130
   (:methods
-    (initialize-texture! (_type_) _type_ 9)
-    (clear-texture! (_type_) _type_ 10)
+    (initialize-texture! (_type_) _type_)
+    (clear-texture! (_type_) _type_)
     )
   )
 
 
 (deftype texture-anim (structure)
-  ((num-layers   uint32                               :offset-assert   0)
-   (func         (function dma-buffer texture-anim int)          :offset-assert   4)
-   (func-id      symbol                               :offset          4)
-   (init-func    (function texture-anim int)          :offset-assert   8)
-   (init-func-id symbol                               :offset          8)
-   (tex          texture                              :offset-assert  12)
-   (tex-name     string                               :offset-assert  16)
-   (extra        vector                      :inline  :offset-assert  32)
-   (color        rgba                                 :offset-assert  48)
-   (frame-time   float                                :offset-assert  52)
-   (frame-delta  float                                :offset-assert  56)
-   (frame-mod    float                                :offset-assert  60)
-   (test         gs-test                              :offset-assert  64)
-   (alpha        gs-alpha                             :offset-assert  72)
-   (clamp        gs-clamp                             :offset-assert  80)
-   (data         texture-anim-layer          :dynamic :offset-assert  88)
+  ((num-layers    uint32)
+   (func          (function dma-buffer texture-anim int))
+   (func-id       symbol              :overlay-at func)
+   (init-func     (function texture-anim int))
+   (init-func-id  symbol              :overlay-at init-func)
+   (tex           texture)
+   (tex-name      string)
+   (extra         vector              :inline)
+   (color         rgba)
+   (frame-time    float)
+   (frame-delta   float)
+   (frame-mod     float)
+   (test          gs-test)
+   (alpha         gs-alpha)
+   (clamp         gs-clamp)
+   (data          texture-anim-layer  :dynamic)
    )
-  :method-count-assert 11
-  :size-assert         #x58
-  :flag-assert         #xb00000058
   (:methods
-    (init-textures! (_type_) _type_ 9)
-    (clear-textures! (_type_) _type_ 10)
+    (init-textures! (_type_) _type_)
+    (clear-textures! (_type_) _type_)
     )
   )
 
 
 (deftype texture-anim-array (array)
-  ((array-data texture-anim :dynamic :offset-assert  16)
+  ((array-data  texture-anim  :dynamic)
    )
-  :method-count-assert 11
-  :size-assert         #x10
-  :flag-assert         #xb00000010
   (:methods
-    (init! (_type_) _type_ 9)
-    (clear! (_type_) _type_ 10)
+    (init! (_type_) _type_)
+    (clear! (_type_) _type_)
     )
   )
 
 
 (deftype texture-anim-work (structure)
-  ((erase-tmpl   dma-gif-packet :inline   :offset-assert   0)
-   (draw-tmpl    dma-gif-packet :inline   :offset-assert  32)
-   (draw2-tmpl   dma-gif-packet :inline   :offset-assert  64)
-   (fill-tmpl    dma-gif-packet :inline   :offset-assert  96)
-   (adgif-tmpl   dma-gif-packet :inline   :offset-assert 128)
-   (corner0      vector         :inline   :offset-assert 160)
-   (corner1      vector         :inline   :offset-assert 176)
-   (corner2      vector         :inline   :offset-assert 192)
-   (corner3      vector         :inline   :offset-assert 208)
-   (const        vector         :inline   :offset-assert 224)
-   (random       vector4w       8 :inline :offset-assert 240)
-   (random-index uint8                    :offset-assert 368)
+  ((erase-tmpl    dma-gif-packet  :inline)
+   (draw-tmpl     dma-gif-packet  :inline)
+   (draw2-tmpl    dma-gif-packet  :inline)
+   (fill-tmpl     dma-gif-packet  :inline)
+   (adgif-tmpl    dma-gif-packet  :inline)
+   (corner0       vector          :inline)
+   (corner1       vector          :inline)
+   (corner2       vector          :inline)
+   (corner3       vector          :inline)
+   (const         vector          :inline)
+   (random        vector4w        8 :inline)
+   (random-index  uint8)
    )
-  :method-count-assert 9
-  :size-assert         #x171
-  :flag-assert         #x900000171
   )
 
 
 (deftype clut16x16 (structure)
-  ((clut rgba 256 :offset-assert   0)
+  ((clut  rgba  256)
    )
-  :method-count-assert 9
-  :size-assert         #x400
-  :flag-assert         #x900000400
   )
 
 
 (deftype noise8x8 (structure)
-  ((image uint8 64 :offset-assert   0)
+  ((image  uint8  64)
    )
-  :method-count-assert 9
-  :size-assert         #x40
-  :flag-assert         #x900000040
   )
 
 
 (deftype noise16x16 (structure)
-  ((image uint8 256 :offset-assert   0)
+  ((image  uint8  256)
    )
-  :method-count-assert 9
-  :size-assert         #x100
-  :flag-assert         #x900000100
   )
 
 
 (deftype noise32x32 (structure)
-  ((image uint8 1024 :offset-assert   0)
+  ((image  uint8  1024)
    )
-  :method-count-assert 9
-  :size-assert         #x400
-  :flag-assert         #x900000400
   )
 
 
 (deftype noise64x64 (structure)
-  ((image uint8 4096 :offset-assert   0)
+  ((image  uint8  4096)
    )
-  :method-count-assert 9
-  :size-assert         #x1000
-  :flag-assert         #x900001000
   )
 
 
 (deftype noise128x128 (structure)
-  ((image uint8 16384 :offset-assert   0)
+  ((image  uint8  16384)
    )
-  :method-count-assert 9
-  :size-assert         #x4000
-  :flag-assert         #x900004000
   )
-
 
 (#when PC_PORT
 (deftype noise256x256 (structure)
@@ -194,30 +159,24 @@
 
 
 (deftype fog8x256 (structure)
-  ((image uint8 256 :offset-assert   0)
+  ((image  uint8  256)
    )
-  :method-count-assert 9
-  :size-assert         #x100
-  :flag-assert         #x900000100
   )
 
 
 (deftype fog-texture-work (structure)
-  ((corner      vector 4 :inline :offset-assert   0)
-   (const       vector :inline   :offset-assert  64)
-   (min-corner  vector :inline   :offset-assert  80)
-   (max-corner  vector :inline   :offset-assert  96)
-   (fog-near    float            :offset-assert 112)
-   (fog-far     float            :offset-assert 116)
-   (fog-delta   float            :offset-assert 120)
-   (alpha-near  float            :offset-assert 124)
-   (alpha-far   float            :offset-assert 128)
-   (alpha-delta float            :offset-assert 132)
-   (color       uint32           :offset-assert 136)
+  ((corner       vector  4 :inline)
+   (const        vector  :inline)
+   (min-corner   vector  :inline)
+   (max-corner   vector  :inline)
+   (fog-near     float)
+   (fog-far      float)
+   (fog-delta    float)
+   (alpha-near   float)
+   (alpha-far    float)
+   (alpha-delta  float)
+   (color        uint32)
    )
-  :method-count-assert 9
-  :size-assert         #x8c
-  :flag-assert         #x90000008c
   )
 
 

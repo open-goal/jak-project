@@ -8,60 +8,58 @@
 ;; DECOMP BEGINS
 
 (deftype hoverboard-training-manager (process)
-  ((actor-group       (pointer actor-group)  :offset-assert 128)
-   (actor-group-count int32                  :offset-assert 132)
-   (trick-type        board-tricks           :offset-assert 136)
-   (board-picked-up   symbol                 :offset-assert 140)
-   (boost             symbol                 :offset-assert 144)
-   (grind             symbol                 :offset-assert 148)
-   (text              symbol                 :offset-assert 152)
-   (score             float                  :offset-assert 156)
-   (challenge-done    symbol                 :offset-assert 160)
-   (arrow             handle                 :offset-assert 168)
-   (minimap           connection-minimap     :offset-assert 176)
-   (hud-score         handle                 :offset-assert 184)
-   (hud-goal          handle                 :offset-assert 192)
-   (voicebox          handle                 :offset-assert 200)
-   (last-sound-id     sound-id               :offset-assert 208)
-   (combo-done?       symbol                 :offset-assert 212)
-   (task-gold         uint16                 :offset-assert 216)
-   (task-silver       uint16                 :offset-assert 218)
-   (task-bronze       uint16                 :offset-assert 220)
-   (game-score        uint8                  :offset-assert 222)
-   (training?         symbol                 :offset-assert 224)
-   (training-goal     float                  :offset-assert 228)
-   (egg-count         int32                  :offset-assert 232)
-   (medal             int32                  :offset-assert 236)
-   (gui-id            sound-id               :offset-assert 240)
-   (hint-time         time-frame             :offset-assert 248)
+  ((actor-group        (pointer actor-group))
+   (actor-group-count  int32)
+   (trick-type         board-tricks)
+   (board-picked-up    symbol)
+   (boost              symbol)
+   (grind              symbol)
+   (text               symbol)
+   (score              float)
+   (challenge-done     symbol)
+   (arrow              handle)
+   (minimap            connection-minimap)
+   (hud-score          handle)
+   (hud-goal           handle)
+   (voicebox           handle)
+   (last-sound-id      sound-id)
+   (combo-done?        symbol)
+   (task-gold          uint16)
+   (task-silver        uint16)
+   (task-bronze        uint16)
+   (game-score         uint8)
+   (training?          symbol)
+   (training-goal      float)
+   (egg-count          int32)
+   (medal              int32)
+   (gui-id             sound-id)
+   (hint-time          time-frame)
    )
-  :heap-base #x80
-  :method-count-assert 31
-  :size-assert         #x100
-  :flag-assert         #x1f00800100
+  (:state-methods
+    wait-for-pickup
+    wait-for-pickup-training
+    wait-for-board
+    wait
+    jump
+    duck-jump
+    boost-jump
+    grind
+    spin
+    flip
+    trick
+    game
+    idle
+    idle-training
+    )
   (:methods
-    (wait-for-pickup () _type_ :state 14)
-    (wait-for-pickup-training () _type_ :state 15)
-    (wait-for-board () _type_ :state 16)
-    (wait () _type_ :state 17)
-    (jump () _type_ :state 18)
-    (duck-jump () _type_ :state 19)
-    (boost-jump () _type_ :state 20)
-    (grind () _type_ :state 21)
-    (spin () _type_ :state 22)
-    (flip () _type_ :state 23)
-    (trick () _type_ :state 24)
-    (game () _type_ :state 25)
-    (idle () _type_ :state 26)
-    (idle-training () _type_ :state 27)
-    (render-text (_type_ text-id) float 28)
-    (hoverboard-training-manager-method-29 (_type_) none 29)
-    (hoverboard-training-manager-method-30 (_type_) none 30)
+    (render-text (_type_ text-id) float)
+    (hoverboard-training-manager-method-29 (_type_) none)
+    (hoverboard-training-manager-method-30 (_type_) none)
     )
   )
 
 
-(defmethod render-text hoverboard-training-manager ((this hoverboard-training-manager) (arg0 text-id))
+(defmethod render-text ((this hoverboard-training-manager) (arg0 text-id))
   (when (= (get-status *gui-control* (-> this gui-id)) (gui-status active))
     (let ((s5-1
             (new 'stack 'font-context *font-default-matrix* 32 280 0.0 (font-color default) (font-flags shadow kerning))
@@ -661,7 +659,7 @@
     )
   )
 
-(defmethod hoverboard-training-manager-method-29 hoverboard-training-manager ((this hoverboard-training-manager))
+(defmethod hoverboard-training-manager-method-29 ((this hoverboard-training-manager))
   (let ((s5-0 (get-game-score-ref *game-info* (the-as int (-> this game-score))))
         (gp-0 (handle->process (-> this hud-goal)))
         )
@@ -830,7 +828,7 @@
   (none)
   )
 
-(defmethod hoverboard-training-manager-method-30 hoverboard-training-manager ((this hoverboard-training-manager))
+(defmethod hoverboard-training-manager-method-30 ((this hoverboard-training-manager))
   (set! (-> this egg-count) 0)
   (set! (-> this medal) 0)
   (let ((s5-0 (get-game-score-ref *game-info* (the-as int (-> this game-score)))))
@@ -1311,14 +1309,14 @@
     )
   )
 
-(defmethod deactivate hoverboard-training-manager ((this hoverboard-training-manager))
+(defmethod deactivate ((this hoverboard-training-manager))
   (send-event *traffic-manager* 'restore-default-settings)
   (call-parent-method this)
   (none)
   )
 
 ;; WARN: Return type mismatch object vs none.
-(defmethod init-from-entity! hoverboard-training-manager ((this hoverboard-training-manager) (arg0 entity-actor))
+(defmethod init-from-entity! ((this hoverboard-training-manager) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
 - stack size
@@ -1398,15 +1396,13 @@ This commonly includes things such as:
   )
 
 (deftype skate-training-ramp (process-focusable)
-  ((onoff symbol  :offset-assert 204)
+  ((onoff  symbol)
    )
-  :heap-base #x50
-  :method-count-assert 29
-  :size-assert         #xd0
-  :flag-assert         #x1d005000d0
+  (:state-methods
+    idle
+    )
   (:methods
-    (idle () _type_ :state 27)
-    (skate-training-ramp-method-28 (_type_) collide-shape-moving 28)
+    (skate-training-ramp-method-28 (_type_) collide-shape-moving)
     )
   )
 
@@ -1450,7 +1446,7 @@ This commonly includes things such as:
     )
   )
 
-(defmethod skate-training-ramp-method-28 skate-training-ramp ((this skate-training-ramp))
+(defmethod skate-training-ramp-method-28 ((this skate-training-ramp))
   (let ((s5-0 (new 'process 'collide-shape-moving this (collide-list-enum usually-hit-by-player))))
     (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s5-0 reaction) cshape-reaction-default)
@@ -1492,7 +1488,7 @@ This commonly includes things such as:
   )
 
 ;; WARN: Return type mismatch object vs none.
-(defmethod init-from-entity! skate-training-ramp ((this skate-training-ramp) (arg0 entity-actor))
+(defmethod init-from-entity! ((this skate-training-ramp) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
 - stack size
@@ -1523,16 +1519,14 @@ This commonly includes things such as:
   )
 
 (deftype skate-gate (process-focusable)
-  ((onoff symbol  :offset-assert 204)
+  ((onoff  symbol)
    )
-  :heap-base #x50
-  :method-count-assert 30
-  :size-assert         #xd0
-  :flag-assert         #x1e005000d0
+  (:state-methods
+    idle
+    open
+    )
   (:methods
-    (idle () _type_ :state 27)
-    (open () _type_ :state 28)
-    (skate-gate-method-29 (_type_) collide-shape-moving 29)
+    (skate-gate-method-29 (_type_) collide-shape-moving)
     )
   )
 
@@ -1587,7 +1581,7 @@ This commonly includes things such as:
   :code sleep-code
   )
 
-(defmethod skate-gate-method-29 skate-gate ((this skate-gate))
+(defmethod skate-gate-method-29 ((this skate-gate))
   (let ((s5-0 (new 'process 'collide-shape-moving this (collide-list-enum usually-hit-by-player))))
     (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s5-0 reaction) cshape-reaction-default)
@@ -1615,7 +1609,7 @@ This commonly includes things such as:
   )
 
 ;; WARN: Return type mismatch object vs none.
-(defmethod init-from-entity! skate-gate ((this skate-gate) (arg0 entity-actor))
+(defmethod init-from-entity! ((this skate-gate) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
 - stack size
@@ -1666,14 +1660,10 @@ This commonly includes things such as:
 
 (deftype skatea-jump-pad (bouncer)
   ()
-  :heap-base #x60
-  :method-count-assert 25
-  :size-assert         #xd4
-  :flag-assert         #x19006000d4
   )
 
 
-(defmethod init-skeleton! skatea-jump-pad ((this skatea-jump-pad))
+(defmethod init-skeleton! ((this skatea-jump-pad))
   (initialize-skeleton
     this
     (the-as skeleton-group (art-group-get-by-name *level* "skel-skatea-jump-pad" (the-as (pointer uint32) #f)))
@@ -1683,7 +1673,7 @@ This commonly includes things such as:
   (none)
   )
 
-(defmethod bouncer-method-24 skatea-jump-pad ((this skatea-jump-pad))
+(defmethod bouncer-method-24 ((this skatea-jump-pad))
   "TODO - collision stuff"
   (let ((s5-0 (new 'process 'collide-shape this (collide-list-enum hit-by-player))))
     (let ((s4-0 (new 'process 'collide-shape-prim-group s5-0 (the-as uint 2) 0)))
@@ -1723,7 +1713,7 @@ This commonly includes things such as:
   :virtual #t
   :code (behavior ()
     (sound-play "dig-air-lifter")
-    (let ((s5-1 (vector<-cspace! (new 'stack-no-clear 'vector) (joint-node-index skatea-jump-pad-lod0-jg main)))
+    (let ((s5-1 (vector<-cspace! (new 'stack-no-clear 'vector) (joint-node skatea-jump-pad-lod0-jg main)))
           (gp-1 (get-process *default-dead-pool* part-tracker #x4000))
           )
       (when gp-1
@@ -1774,16 +1764,14 @@ This commonly includes things such as:
               )
 
 (deftype skatea-floating-ring (process-focusable)
-  ((pos-y  float  :offset-assert 204)
-   (offset float  :offset-assert 208)
+  ((pos-y   float)
+   (offset  float)
    )
-  :heap-base #x60
-  :method-count-assert 29
-  :size-assert         #xd4
-  :flag-assert         #x1d006000d4
+  (:state-methods
+    idle
+    )
   (:methods
-    (idle () _type_ :state 27)
-    (skatea-floating-ring-method-28 (_type_) none 28)
+    (skatea-floating-ring-method-28 (_type_) none)
     )
   )
 
@@ -1835,7 +1823,7 @@ This commonly includes things such as:
     )
   )
 
-(defmethod skatea-floating-ring-method-28 skatea-floating-ring ((this skatea-floating-ring))
+(defmethod skatea-floating-ring-method-28 ((this skatea-floating-ring))
   (let ((s5-0 (new 'process 'collide-shape-moving this (collide-list-enum usually-hit-by-player))))
     (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s5-0 reaction) cshape-reaction-default)
@@ -1863,7 +1851,7 @@ This commonly includes things such as:
   )
 
 ;; WARN: Return type mismatch object vs none.
-(defmethod init-from-entity! skatea-floating-ring ((this skatea-floating-ring) (arg0 entity-actor))
+(defmethod init-from-entity! ((this skatea-floating-ring) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
 - stack size

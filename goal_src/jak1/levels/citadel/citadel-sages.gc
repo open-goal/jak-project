@@ -18,20 +18,16 @@
               )
 
 (deftype citb-sagecage (process-drawable)
-  ((parent-override (pointer citb-sage)             :offset         12)
-   (root-override   collide-shape-moving            :offset        112)
-   (bar-array       vector               12 :inline :offset-assert 176)
-   (angle-offset    float                           :offset-assert 368)
-   (bars-on         symbol                          :offset-assert 372)
-   (cloning         symbol                          :offset-assert 376)
+  ((root             collide-shape-moving :override)
+   (parent-override  (pointer citb-sage)   :overlay-at parent)
+   (bar-array        vector                12 :inline)
+   (angle-offset     float)
+   (bars-on          symbol)
+   (cloning          symbol)
    )
-  :heap-base #x110
-  :method-count-assert 22
-  :size-assert         #x17c
-  :flag-assert         #x160110017c
   (:methods
-    (citb-sagecage-method-20 (_type_) none 20)
-    (citb-sagecage-method-21 (_type_) none 21)
+    (citb-sagecage-method-20 (_type_) none)
+    (citb-sagecage-method-21 (_type_) none)
     )
   (:states
     citb-sagecage-idle
@@ -47,7 +43,7 @@
       (let ((s4-0 (new 'stack-no-clear 'quaternion)))
         (let ((s3-0 (new 'stack-no-clear 'vector)))
           (matrix->quaternion s4-0 gp-0)
-          (vector-! s3-0 (camera-pos) (-> self root-override trans))
+          (vector-! s3-0 (camera-pos) (-> self root trans))
           (let ((v1-7 (-> gp-0 vector 2)))
             (set! (-> self angle-offset) (- (atan (-> v1-7 x) (-> v1-7 z))))
             )
@@ -73,10 +69,10 @@
   )
 
 (defbehavior citb-sagecage-update-collision citb-sagecage ()
-  (change-mesh (the-as collide-shape-prim-mesh (-> self root-override root-prim)) (if (-> self bars-on)
-                                                                                      0
-                                                                                      1
-                                                                                      )
+  (change-mesh (the-as collide-shape-prim-mesh (-> self root root-prim)) (if (-> self bars-on)
+                                                                             0
+                                                                             1
+                                                                             )
                )
   0
   (none)
@@ -146,7 +142,7 @@
     )
   )
 
-(defmethod citb-sagecage-method-20 citb-sagecage ((this citb-sagecage))
+(defmethod citb-sagecage-method-20 ((this citb-sagecage))
   (let ((s5-0 (new 'process 'collide-shape-moving this (collide-list-enum hit-by-player))))
     (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s5-0 reaction) default-collision-reaction)
@@ -165,16 +161,16 @@
       )
     (set! (-> s5-0 nav-radius) (* 0.75 (-> s5-0 root-prim local-sphere w)))
     (backup-collide-with-as s5-0)
-    (set! (-> this root-override) s5-0)
+    (set! (-> this root) s5-0)
     )
   0
   (none)
   )
 
-(defmethod citb-sagecage-method-21 citb-sagecage ((this citb-sagecage))
+(defmethod citb-sagecage-method-21 ((this citb-sagecage))
   (initialize-skeleton this *citb-sagecage-sg* '())
   (logior! (-> this skel status) (janim-status inited))
-  (set! (-> this root-override pause-adjust-distance) 409600.0)
+  (set! (-> this root pause-adjust-distance) 409600.0)
   (let ((f0-1 20766.72)
         (f4-0 14745.6)
         (f1-0 -14745.6)
@@ -196,7 +192,7 @@
     (set-vector! (-> this bar-array 11) f2-0 f0-1 f1-0 1.0)
     )
   (set! (-> this sound)
-        (new 'process 'ambient-sound (static-sound-spec "sagecage-gen" :fo-max 20) (-> this root-override trans))
+        (new 'process 'ambient-sound (static-sound-spec "sagecage-gen" :fo-max 20) (-> this root trans))
         )
   (set! (-> this bars-on) (not (task-complete? *game-info* (-> this entity extra perm task))))
   (citb-sagecage-update-collision)
@@ -208,9 +204,9 @@
 
 (defbehavior citb-sagecage-init-by-other citb-sagecage ((arg0 citb-sage))
   (citb-sagecage-method-20 self)
-  (mem-copy! (the-as pointer (-> self root-override trans)) (the-as pointer (-> arg0 root-override trans)) 16)
-  (mem-copy! (the-as pointer (-> self root-override quat)) (the-as pointer (-> arg0 root-override quat)) 16)
-  (mem-copy! (the-as pointer (-> self root-override scale)) (the-as pointer (-> arg0 root-override scale)) 16)
+  (mem-copy! (the-as pointer (-> self root trans)) (the-as pointer (-> arg0 root trans)) 16)
+  (mem-copy! (the-as pointer (-> self root quat)) (the-as pointer (-> arg0 root quat)) 16)
+  (mem-copy! (the-as pointer (-> self root scale)) (the-as pointer (-> arg0 root scale)) 16)
   (citb-sagecage-method-21 self)
   (go citb-sagecage-idle)
   (none)
@@ -253,38 +249,34 @@
               )
 
 (deftype citb-sage (process-taskable)
-  ((spawn-pos         vector                   :inline :offset-assert 384)
-   (target-pos        vector                   :inline :offset-assert 400)
-   (dir               vector                   :inline :offset-assert 416)
-   (rot-y             float                            :offset-assert 432)
-   (rot-x             float                            :offset-assert 436)
-   (idle-anim         int32                            :offset-assert 440)
-   (attack-start-anim int32                            :offset-assert 444)
-   (attack-anim       int32                            :offset-assert 448)
-   (beam-joint        int32                            :offset-assert 452)
-   (cage              handle                           :offset-assert 456)
-   (part-impact       sparticle-launch-control         :offset-assert 464)
-   (beam-on           symbol                           :offset-assert 468)
-   (resolution-anim   spool-anim                       :offset-assert 472)
-   (sound-name        string                           :offset-assert 476)
-   (sound-id          sound-id                         :offset-assert 480)
-   (alt-actor         entity-actor                     :offset-assert 484)
+  ((spawn-pos          vector  :inline)
+   (target-pos         vector  :inline)
+   (dir                vector  :inline)
+   (rot-y              float)
+   (rot-x              float)
+   (idle-anim          int32)
+   (attack-start-anim  int32)
+   (attack-anim        int32)
+   (beam-joint         int32)
+   (cage               handle)
+   (part-impact        sparticle-launch-control)
+   (beam-on            symbol)
+   (resolution-anim    spool-anim)
+   (sound-name         string)
+   (sound-id           sound-id)
+   (alt-actor          entity-actor)
    )
-  :heap-base #x180
-  :method-count-assert 53
-  :size-assert         #x1e8
-  :flag-assert         #x35018001e8
   )
 
 
-(defmethod relocate citb-sage ((this citb-sage) (arg0 int))
+(defmethod relocate ((this citb-sage) (arg0 int))
   (if (nonzero? (-> this part-impact))
       (&+! (-> this part-impact) arg0)
       )
   (the-as citb-sage ((method-of-type process-taskable relocate) this arg0))
   )
 
-(defmethod deactivate citb-sage ((this citb-sage))
+(defmethod deactivate ((this citb-sage))
   (if (nonzero? (-> this part-impact))
       (kill-and-free-particles (-> this part-impact))
       )
@@ -293,8 +285,8 @@
   (none)
   )
 
-(defmethod play-reminder citb-sage ((this citb-sage))
-  (set! (-> this root-override pause-adjust-distance) 409600.0)
+(defmethod play-reminder ((this citb-sage))
+  (set! (-> this root pause-adjust-distance) 409600.0)
   (set! (-> this cage) (ppointer->handle (process-spawn citb-sagecage this :to this)))
   (set! (-> this beam-on) #f)
   (set! (-> this sound-id) (new-sound-id))
@@ -309,7 +301,7 @@
           (set! v1-9 (entity-by-name "citb-robotboss-1"))
           )
       (set! (-> this alt-actor) (the-as entity-actor v1-9))
-      (set! (-> this spawn-pos quad) (-> this root-override trans quad))
+      (set! (-> this spawn-pos quad) (-> this root trans quad))
       (set! (-> s5-1 quad) (-> v1-9 extra trans quad))
       (+! (-> s5-1 y) 81920.0)
       (vector-! s4-0 (-> this spawn-pos) s5-1)
@@ -326,12 +318,12 @@
   (the-as symbol 0)
   )
 
-(defmethod process-taskable-method-45 citb-sage ((this citb-sage))
-  (set! (-> this spawn-pos quad) (-> this root-override trans quad))
+(defmethod process-taskable-method-45 ((this citb-sage))
+  (set! (-> this spawn-pos quad) (-> this root trans quad))
   (the-as symbol 0)
   )
 
-(defmethod process-taskable-method-42 citb-sage ((this citb-sage))
+(defmethod process-taskable-method-42 ((this citb-sage))
   (if (not (should-display? this))
       (go (method-of-object this hidden))
       (go (method-of-object this idle))
@@ -339,11 +331,11 @@
   (none)
   )
 
-(defmethod play-anim! citb-sage ((this citb-sage) (arg0 symbol))
+(defmethod play-anim! ((this citb-sage) (arg0 symbol))
   (the-as basic (-> this resolution-anim))
   )
 
-(defmethod get-art-elem citb-sage ((this citb-sage))
+(defmethod get-art-elem ((this citb-sage))
   (cond
     ((= (current-status (-> this tasks)) (task-status invalid))
      (set! (-> this beam-on) #t)
@@ -355,7 +347,7 @@
     )
   )
 
-(defmethod should-display? citb-sage ((this citb-sage))
+(defmethod should-display? ((this citb-sage))
   (!= (get-task-status (game-task citadel-sage-green)) (task-status invalid))
   )
 
@@ -438,14 +430,10 @@
 
 (deftype red-sagecage (citb-sage)
   ()
-  :heap-base #x180
-  :method-count-assert 53
-  :size-assert         #x1e8
-  :flag-assert         #x35018001e8
   )
 
 
-(defmethod process-taskable-method-52 red-sagecage ((this red-sagecage))
+(defmethod process-taskable-method-52 ((this red-sagecage))
   (let ((v1-1 (-> this draw shadow-ctrl)))
     (when v1-1
       (let ((a0-1 v1-1))
@@ -462,7 +450,7 @@
   (none)
   )
 
-(defmethod draw-npc-shadow red-sagecage ((this red-sagecage))
+(defmethod draw-npc-shadow ((this red-sagecage))
   (-> this draw shadow-ctrl)
   (cond
     ((and (-> this draw shadow)
@@ -485,7 +473,7 @@
   (none)
   )
 
-(defmethod process-taskable-method-45 red-sagecage ((this red-sagecage))
+(defmethod process-taskable-method-45 ((this red-sagecage))
   (set! (-> *part-id-table* 2455 init-specs 14 initial-valuef) (-> this rot-y))
   (set! (-> *part-id-table* 2455 init-specs 13 initial-valuef) (-> this rot-x))
   (set! (-> *part-id-table* 2457 init-specs 14 initial-valuef) (-> this rot-y))
@@ -495,7 +483,7 @@
   (the-as symbol 0)
   )
 
-(defmethod play-reminder red-sagecage ((this red-sagecage))
+(defmethod play-reminder ((this red-sagecage))
   (set! (-> this idle-anim) 4)
   (set! (-> this attack-start-anim) 5)
   (set! (-> this attack-anim) 6)
@@ -519,7 +507,7 @@
   (the-as symbol 0)
   )
 
-(defmethod process-taskable-method-43 red-sagecage ((this red-sagecage))
+(defmethod process-taskable-method-43 ((this red-sagecage))
   (if (-> this beam-on)
       (return #f)
       )
@@ -527,20 +515,20 @@
     (let ((f0-2 (rand-float-gen)))
       (cond
         ((< 0.6666667 f0-2)
-         (play-ambient (-> this ambient) "RED-AM01" #f (-> this root-override trans))
+         (play-ambient (-> this ambient) "RED-AM01" #f (-> this root trans))
          )
         ((< 0.33333334 f0-2)
-         (play-ambient (-> this ambient) "RED-AM02" #f (-> this root-override trans))
+         (play-ambient (-> this ambient) "RED-AM02" #f (-> this root trans))
          )
         (else
-          (play-ambient (-> this ambient) "RED-AM03" #f (-> this root-override trans))
+          (play-ambient (-> this ambient) "RED-AM03" #f (-> this root trans))
           )
         )
       )
     )
   )
 
-(defmethod init-from-entity! red-sagecage ((this red-sagecage) (arg0 entity-actor))
+(defmethod init-from-entity! ((this red-sagecage) (arg0 entity-actor))
   (process-taskable-method-40 this arg0 *redsage-sg* 3 33 (new 'static 'vector :w 8192.0) 5)
   (set! (-> this tasks) (get-task-control (-> this entity extra perm task)))
   (play-reminder this)
@@ -551,14 +539,10 @@
 
 (deftype blue-sagecage (citb-sage)
   ()
-  :heap-base #x180
-  :method-count-assert 53
-  :size-assert         #x1e8
-  :flag-assert         #x35018001e8
   )
 
 
-(defmethod process-taskable-method-52 blue-sagecage ((this blue-sagecage))
+(defmethod process-taskable-method-52 ((this blue-sagecage))
   (let ((v1-1 (-> this draw shadow-ctrl)))
     (when v1-1
       (let ((a0-1 v1-1))
@@ -575,7 +559,7 @@
   (none)
   )
 
-(defmethod draw-npc-shadow blue-sagecage ((this blue-sagecage))
+(defmethod draw-npc-shadow ((this blue-sagecage))
   (-> this draw shadow-ctrl)
   (cond
     ((and (-> this draw shadow)
@@ -598,7 +582,7 @@
   (none)
   )
 
-(defmethod process-taskable-method-45 blue-sagecage ((this blue-sagecage))
+(defmethod process-taskable-method-45 ((this blue-sagecage))
   (set! (-> *part-id-table* 2448 init-specs 14 initial-valuef) (-> this rot-y))
   (set! (-> *part-id-table* 2448 init-specs 13 initial-valuef) (-> this rot-x))
   (set! (-> *part-id-table* 2450 init-specs 14 initial-valuef) (-> this rot-y))
@@ -608,7 +592,7 @@
   (the-as symbol 0)
   )
 
-(defmethod play-reminder blue-sagecage ((this blue-sagecage))
+(defmethod play-reminder ((this blue-sagecage))
   (set! (-> this idle-anim) 4)
   (set! (-> this attack-start-anim) 5)
   (set! (-> this attack-anim) 6)
@@ -637,7 +621,7 @@
   (the-as symbol 0)
   )
 
-(defmethod process-taskable-method-43 blue-sagecage ((this blue-sagecage))
+(defmethod process-taskable-method-43 ((this blue-sagecage))
   (if (-> this beam-on)
       (return #f)
       )
@@ -645,20 +629,20 @@
     (let ((f0-2 (rand-float-gen)))
       (cond
         ((< 0.6666667 f0-2)
-         (play-ambient (-> this ambient) "BLU-AM01" #f (-> this root-override trans))
+         (play-ambient (-> this ambient) "BLU-AM01" #f (-> this root trans))
          )
         ((< 0.33333334 f0-2)
-         (play-ambient (-> this ambient) "BLU-AM02" #f (-> this root-override trans))
+         (play-ambient (-> this ambient) "BLU-AM02" #f (-> this root trans))
          )
         (else
-          (play-ambient (-> this ambient) "BLU-AM03" #f (-> this root-override trans))
+          (play-ambient (-> this ambient) "BLU-AM03" #f (-> this root trans))
           )
         )
       )
     )
   )
 
-(defmethod init-from-entity! blue-sagecage ((this blue-sagecage) (arg0 entity-actor))
+(defmethod init-from-entity! ((this blue-sagecage) (arg0 entity-actor))
   (process-taskable-method-40 this arg0 *bluesage-sg* 3 54 (new 'static 'vector :w 8192.0) 5)
   (set! (-> this tasks) (get-task-control (-> this entity extra perm task)))
   (play-reminder this)
@@ -669,14 +653,10 @@
 
 (deftype yellow-sagecage (citb-sage)
   ()
-  :heap-base #x180
-  :method-count-assert 53
-  :size-assert         #x1e8
-  :flag-assert         #x35018001e8
   )
 
 
-(defmethod process-taskable-method-52 yellow-sagecage ((this yellow-sagecage))
+(defmethod process-taskable-method-52 ((this yellow-sagecage))
   (let ((v1-1 (-> this draw shadow-ctrl)))
     (when v1-1
       (let ((a0-1 v1-1))
@@ -693,7 +673,7 @@
   (none)
   )
 
-(defmethod draw-npc-shadow yellow-sagecage ((this yellow-sagecage))
+(defmethod draw-npc-shadow ((this yellow-sagecage))
   (-> this draw shadow-ctrl)
   (cond
     ((and (-> this draw shadow)
@@ -716,7 +696,7 @@
   (none)
   )
 
-(defmethod process-taskable-method-45 yellow-sagecage ((this yellow-sagecage))
+(defmethod process-taskable-method-45 ((this yellow-sagecage))
   (set! (-> *part-id-table* 2462 init-specs 14 initial-valuef) (-> this rot-y))
   (set! (-> *part-id-table* 2462 init-specs 13 initial-valuef) (-> this rot-x))
   (set! (-> *part-id-table* 2464 init-specs 14 initial-valuef) (-> this rot-y))
@@ -726,7 +706,7 @@
   (the-as symbol 0)
   )
 
-(defmethod play-reminder yellow-sagecage ((this yellow-sagecage))
+(defmethod play-reminder ((this yellow-sagecage))
   (set! (-> this idle-anim) 4)
   (set! (-> this attack-start-anim) 5)
   (set! (-> this attack-anim) 6)
@@ -750,7 +730,7 @@
   (the-as symbol 0)
   )
 
-(defmethod process-taskable-method-43 yellow-sagecage ((this yellow-sagecage))
+(defmethod process-taskable-method-43 ((this yellow-sagecage))
   (if (-> this beam-on)
       (return #f)
       )
@@ -758,20 +738,20 @@
     (let ((f0-2 (rand-float-gen)))
       (cond
         ((< 0.6666667 f0-2)
-         (play-ambient (-> this ambient) "YEL-AM01" #f (-> this root-override trans))
+         (play-ambient (-> this ambient) "YEL-AM01" #f (-> this root trans))
          )
         ((< 0.33333334 f0-2)
-         (play-ambient (-> this ambient) "YEL-AM02" #f (-> this root-override trans))
+         (play-ambient (-> this ambient) "YEL-AM02" #f (-> this root trans))
          )
         (else
-          (play-ambient (-> this ambient) "YEL-AM03" #f (-> this root-override trans))
+          (play-ambient (-> this ambient) "YEL-AM03" #f (-> this root trans))
           )
         )
       )
     )
   )
 
-(defmethod init-from-entity! yellow-sagecage ((this yellow-sagecage) (arg0 entity-actor))
+(defmethod init-from-entity! ((this yellow-sagecage) (arg0 entity-actor))
   (process-taskable-method-40 this arg0 *yellowsage-sg* 3 50 (new 'static 'vector :w 8192.0) 5)
   (set! (-> this tasks) (get-task-control (-> this entity extra perm task)))
   (play-reminder this)
@@ -781,20 +761,16 @@
   )
 
 (deftype green-sagecage (citb-sage)
-  ((which-movie int32   :offset-assert 488)
-   (evilbro     handle  :offset-assert 496)
-   (evilsis     handle  :offset-assert 504)
-   (robotboss   handle  :offset-assert 512)
-   (exitplat    handle  :offset-assert 520)
+  ((which-movie  int32)
+   (evilbro      handle)
+   (evilsis      handle)
+   (robotboss    handle)
+   (exitplat     handle)
    )
-  :heap-base #x1a0
-  :method-count-assert 53
-  :size-assert         #x210
-  :flag-assert         #x3501a00210
   )
 
 
-(defmethod process-taskable-method-45 green-sagecage ((this green-sagecage))
+(defmethod process-taskable-method-45 ((this green-sagecage))
   (set! (-> *part-id-table* 2469 init-specs 14 initial-valuef) (-> this rot-y))
   (set! (-> *part-id-table* 2469 init-specs 13 initial-valuef) (-> this rot-x))
   (set! (-> *part-id-table* 2471 init-specs 14 initial-valuef) (-> this rot-y))
@@ -804,7 +780,7 @@
   (the-as symbol 0)
   )
 
-(defmethod play-reminder green-sagecage ((this green-sagecage))
+(defmethod play-reminder ((this green-sagecage))
   (set! (-> this idle-anim) 4)
   (set! (-> this attack-start-anim) 4)
   (set! (-> this attack-anim) 4)
@@ -830,7 +806,7 @@
   (the-as symbol 0)
   )
 
-(defmethod play-anim! green-sagecage ((this green-sagecage) (arg0 symbol))
+(defmethod play-anim! ((this green-sagecage) (arg0 symbol))
   (local-vars (v1-7 int))
   (let ((v1-1 (current-status (-> this tasks))))
     (cond
@@ -868,17 +844,13 @@
          (+! (-> this which-movie) 1)
          (set! (-> this draw bounds w) 40960.0)
          (set! (-> this evilbro)
-               (ppointer->handle
-                 (manipy-spawn (-> this root-override trans) (-> this entity) *evilbro-citadel-sg* #f :to this)
-                 )
+               (ppointer->handle (manipy-spawn (-> this root trans) (-> this entity) *evilbro-citadel-sg* #f :to this))
                )
          (send-event (handle->process (-> this evilbro)) 'anim-mode 'clone-anim)
          (send-event (handle->process (-> this evilbro)) 'blend-shape #t)
          (send-event (handle->process (-> this evilbro)) 'center-joint 3)
          (set! (-> this evilsis)
-               (ppointer->handle
-                 (manipy-spawn (-> this root-override trans) (-> this entity) *evilsis-citadel-sg* #f :to this)
-                 )
+               (ppointer->handle (manipy-spawn (-> this root trans) (-> this entity) *evilsis-citadel-sg* #f :to this))
                )
          (send-event (handle->process (-> this evilsis)) 'anim-mode 'clone-anim)
          (send-event (handle->process (-> this evilsis)) 'blend-shape #t)
@@ -994,7 +966,7 @@
          (format 0 "robotboss ent ~A~%" gp-0)
          (when gp-0
            (set! (-> self robotboss)
-                 (ppointer->handle (manipy-spawn (-> self root-override trans) gp-0 *robotboss-sg* #f :to self))
+                 (ppointer->handle (manipy-spawn (-> self root trans) gp-0 *robotboss-sg* #f :to self))
                  )
            (send-event (handle->process (-> self robotboss)) 'anim-mode 'clone-anim)
            (send-event (handle->process (-> self robotboss)) 'center-joint 3)
@@ -1103,7 +1075,7 @@
     )
   )
 
-(defmethod should-display? green-sagecage ((this green-sagecage))
+(defmethod should-display? ((this green-sagecage))
   (< (-> this which-movie) 2)
   )
 
@@ -1124,7 +1096,7 @@
     )
   )
 
-(defmethod init-from-entity! green-sagecage ((this green-sagecage) (arg0 entity-actor))
+(defmethod init-from-entity! ((this green-sagecage) (arg0 entity-actor))
   (process-taskable-method-40 this arg0 *green-sagecage-sg* 3 40 (new 'static 'vector :w 4096.0) 5)
   (set! (-> this tasks) (get-task-control (-> this entity extra perm task)))
   (play-reminder this)

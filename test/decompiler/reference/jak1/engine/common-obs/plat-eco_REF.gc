@@ -3,25 +3,21 @@
 
 ;; definition of type plat-eco
 (deftype plat-eco (plat)
-  ((notice-dist      float           :offset-assert 264)
-   (sync-offset-dest float           :offset-assert 268)
-   (sync-offset-faux float           :offset-assert 272)
-   (sync-linear-val  float           :offset-assert 276)
-   (target           handle          :offset-assert 280)
-   (unlit-look       lod-set :inline :offset-assert 288)
-   (lit-look         lod-set :inline :offset-assert 324)
+  ((notice-dist       float)
+   (sync-offset-dest  float)
+   (sync-offset-faux  float)
+   (sync-linear-val   float)
+   (target            handle)
+   (unlit-look        lod-set  :inline)
+   (lit-look          lod-set  :inline)
    )
-  :heap-base #x100
-  :method-count-assert 33
-  :size-assert         #x165
-  :flag-assert         #x2101000165
   (:methods
-    (notice-blue (handle) _type_ :replace :state 29)
+    (notice-blue (handle) _type_ :state :overlay-at wad)
     )
   )
 
 ;; definition for method 3 of type plat-eco
-(defmethod inspect plat-eco ((this plat-eco))
+(defmethod inspect ((this plat-eco))
   (let ((t9-0 (method-of-type plat inspect)))
     (t9-0 this)
     )
@@ -71,7 +67,7 @@
     )
   :trans (behavior ()
     (when (and (and *target*
-                    (>= (-> self notice-dist) (vector-vector-distance (-> self root-override trans) (-> *target* control trans)))
+                    (>= (-> self notice-dist) (vector-vector-distance (-> self root trans) (-> *target* control trans)))
                     )
                (send-event *target* 'query 'powerup (pickup-type eco-blue))
                )
@@ -79,14 +75,14 @@
       (go-virtual plat-path-active (the-as plat #f))
       )
     (if (and *target*
-             (>= (-> self notice-dist) (vector-vector-distance (-> self root-override trans) (-> *target* control trans)))
+             (>= (-> self notice-dist) (vector-vector-distance (-> self root trans) (-> *target* control trans)))
              )
         (level-hint-spawn (text-id misty-eco-plat) "sksp0073" (the-as entity #f) *entity-pool* (game-task none))
         )
     )
   :code (behavior ()
     (ja-post)
-    (update-transforms! (-> self root-override))
+    (update-transforms! (-> self root))
     (anim-loop)
     )
   :post ja-post
@@ -98,7 +94,7 @@
   :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
     (case message
       (('wake)
-       (sound-play "blue-eco-on" :position (the-as symbol (-> self root-override trans)))
+       (sound-play "blue-eco-on" :position (the-as symbol (-> self root trans)))
        (go-virtual plat-path-active (the-as plat #f))
        )
       (('ridden 'edge-grabbed)
@@ -141,7 +137,7 @@
                        )
                  )
             (when v1-6
-              (let* ((s5-0 (-> self root-override root-prim prim-core))
+              (let* ((s5-0 (-> self root root-prim prim-core))
                      (a1-3 (-> (the-as collide-shape v1-6) root-prim prim-core))
                      (f30-0 (vector-vector-distance (the-as vector s5-0) (the-as vector a1-3)))
                      )
@@ -230,7 +226,7 @@
 
 ;; definition for method 24 of type plat-eco
 ;; INFO: Return type mismatch int vs none.
-(defmethod baseplat-method-24 plat-eco ((this plat-eco))
+(defmethod baseplat-method-24 ((this plat-eco))
   (let ((s5-0 (new 'process 'collide-shape-moving this (collide-list-enum hit-by-player))))
     (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s5-0 reaction) default-collision-reaction)
@@ -249,25 +245,25 @@
       )
     (set! (-> s5-0 nav-radius) (* 0.75 (-> s5-0 root-prim local-sphere w)))
     (backup-collide-with-as s5-0)
-    (set! (-> this root-override) s5-0)
+    (set! (-> this root) s5-0)
     )
   0
   (none)
   )
 
 ;; definition for method 23 of type plat-eco
-(defmethod get-unlit-skel plat-eco ((this plat-eco))
+(defmethod get-unlit-skel ((this plat-eco))
   *plat-eco-unlit-sg*
   )
 
 ;; definition for method 27 of type plat-eco
-(defmethod get-lit-skel plat-eco ((this plat-eco))
+(defmethod get-lit-skel ((this plat-eco))
   *plat-eco-lit-sg*
   )
 
 ;; definition for method 11 of type plat-eco
 ;; INFO: Return type mismatch object vs none.
-(defmethod init-from-entity! plat-eco ((this plat-eco) (arg0 entity-actor))
+(defmethod init-from-entity! ((this plat-eco) (arg0 entity-actor))
   (logior! (-> this mask) (process-mask platform))
   (set! (-> this notice-dist) (res-lump-float arg0 'notice-dist :default -1.0))
   (set! (-> this link) (new 'process 'actor-link-info this))
@@ -281,7 +277,7 @@
     (setup-lods! (-> this lit-look) s5-1 (-> this draw art-group) (-> this entity))
     )
   (logclear! (-> this mask) (process-mask actor-pause))
-  (update-transforms! (-> this root-override))
+  (update-transforms! (-> this root))
   (set! (-> this part) (create-launch-control (-> *part-group-id-table* 107) this))
   (set! (-> this path) (new 'process 'curve-control this 'path -1000000000.0))
   (logior! (-> this path flags) (path-control-flag display draw-line draw-point draw-text))
@@ -294,7 +290,7 @@
   (sync-now! (-> this sync) (-> this sync-linear-val))
   (set! (-> this sync-offset-faux) (-> this sync offset))
   (set! (-> this path-pos) (get-current-phase-with-mirror (-> this sync)))
-  (eval-path-curve! (-> this path) (-> this root-override trans) (-> this path-pos) 'interp)
+  (eval-path-curve! (-> this path) (-> this root trans) (-> this path-pos) 'interp)
   (set! (-> this sound-id) (new-sound-id))
   (baseplat-method-26 this)
   (baseplat-method-21 this)

@@ -287,12 +287,8 @@
   )
 
 (deftype quicksandlurker-missile (process-drawable)
-  ((root-override collide-shape-moving  :offset 112)
+  ((root  collide-shape-moving :override)
    )
-  :heap-base #x40
-  :method-count-assert 20
-  :size-assert         #xb0
-  :flag-assert         #x14004000b0
   (:states
     quicksandlurker-missile-idle
     quicksandlurker-missile-impact
@@ -335,21 +331,15 @@
     )
   :code (behavior ()
     (while (not (time-elapsed? (-> self state-time) (seconds 4)))
-      (fill-cache-integrate-and-collide!
-        (-> self root-override)
-        (-> self root-override transv)
-        (-> self root-override root-prim collide-with)
-        )
-      (if (or (logtest? (-> self root-override status) (cshape-moving-flags twall))
-              (< (vector-vector-distance (-> self root-override trans) (the-as vector (-> self root-override trans-old)))
-                 40.96
-                 )
+      (fill-cache-integrate-and-collide! (-> self root) (-> self root transv) (-> self root root-prim collide-with))
+      (if (or (logtest? (-> self root status) (cshape-moving-flags twall))
+              (< (vector-vector-distance (-> self root trans) (the-as vector (-> self root trans-old))) 40.96)
               )
           (go quicksandlurker-missile-impact)
           )
-      (spawn (-> self part) (-> self root-override trans))
+      (spawn (-> self part) (-> self root trans))
       (find-ground-and-draw-shadow
-        (-> self root-override trans)
+        (-> self root trans)
         (the-as vector #f)
         8192.0
         (collide-kind background)
@@ -362,13 +352,13 @@
     (cleanup-for-death self)
     )
   :post (behavior ()
-    (update-transforms! (-> self root-override))
+    (update-transforms! (-> self root))
     )
   )
 
 (defstate quicksandlurker-missile-impact (quicksandlurker-missile)
   :code (behavior ()
-    (sound-play "sack-land" :position (the-as symbol (-> self root-override trans)))
+    (sound-play "sack-land" :position (the-as symbol (-> self root trans)))
     (process-spawn
       part-tracker
       :init part-tracker-init
@@ -377,7 +367,7 @@
       #f
       #f
       #f
-      (-> self root-override trans)
+      (-> self root trans)
       :to *entity-pool*
       )
     (set-time! (-> self state-time))
@@ -389,12 +379,9 @@
   )
 
 (deftype quicksandlurker-missile-init-data (structure)
-  ((position vector  :offset-assert   0)
-   (velocity vector  :offset-assert   4)
+  ((position  vector)
+   (velocity  vector)
    )
-  :method-count-assert 9
-  :size-assert         #x8
-  :flag-assert         #x900000008
   )
 
 
@@ -420,14 +407,12 @@
     (backup-collide-with-as s5-0)
     (set! (-> s5-0 max-iteration-count) (the-as uint 1))
     (set! (-> s5-0 event-self) 'touched)
-    (set! (-> self root-override) s5-0)
+    (set! (-> self root) s5-0)
     )
-  (set! (-> self root-override trans quad) (-> arg0 position quad))
-  (set! (-> self root-override quat vec quad)
-        (-> (the-as process-drawable (-> self parent 0)) root quat vec quad)
-        )
-  (vector-identity! (-> self root-override scale))
-  (set! (-> self root-override transv quad) (-> arg0 velocity quad))
+  (set! (-> self root trans quad) (-> arg0 position quad))
+  (set! (-> self root quat vec quad) (-> (the-as process-drawable (-> self parent 0)) root quat vec quad))
+  (vector-identity! (-> self root scale))
+  (set! (-> self root transv quad) (-> arg0 velocity quad))
   (set! (-> self part) (create-launch-control (-> *part-group-id-table* 198) self))
   (go quicksandlurker-missile-idle)
   (none)
@@ -444,18 +429,14 @@
   )
 
 (deftype quicksandlurker (process-drawable)
-  ((root-override     collide-shape         :offset        112)
-   (original-position vector        :inline :offset-assert 176)
-   (y-offset          float                 :offset-assert 192)
-   (theta-angle       float                 :offset-assert 196)
-   (radial-offset     float                 :offset-assert 200)
-   (bob-angle         float                 :offset-assert 204)
-   (mud-entity        entity-actor          :offset-assert 208)
+  ((root               collide-shape :override)
+   (original-position  vector         :inline)
+   (y-offset           float)
+   (theta-angle        float)
+   (radial-offset      float)
+   (bob-angle          float)
+   (mud-entity         entity-actor)
    )
-  :heap-base #x70
-  :method-count-assert 20
-  :size-assert         #xd4
-  :flag-assert         #x14007000d4
   (:states
     quicksandlurker-attack
     quicksandlurker-die
@@ -477,7 +458,7 @@
 
 (defbehavior orient-to-face-target quicksandlurker ()
   (if *target*
-      (seek-to-point-toward-point! (-> self root-override) (-> *target* control trans) 65536.0 (seconds 0.2))
+      (seek-to-point-toward-point! (-> self root) (-> *target* control trans) 65536.0 (seconds 0.2))
       )
   )
 
@@ -515,8 +496,8 @@
         (f30-2 (* 0.0 (sin (-> self theta-angle))))
         )
     (let ((f0-10 (* (-> self radial-offset) (sin (-> self theta-angle)))))
-      (set! (-> self root-override trans x) (+ (-> self original-position x) f28-0))
-      (set! (-> self root-override trans z) (+ (-> self original-position z) f0-10))
+      (set! (-> self root trans x) (+ (-> self original-position x) f28-0))
+      (set! (-> self root trans z) (+ (-> self original-position z) f0-10))
       )
     (let* ((v1-4 (-> self mud-entity))
            (a0-5 (if v1-4
@@ -525,10 +506,10 @@
                  )
            )
       (if a0-5
-          (set! (-> self root-override trans y)
-                (+ (get-ripple-height (the-as water-anim a0-5) (-> self root-override trans)) f30-2 (-> self y-offset))
+          (set! (-> self root trans y)
+                (+ (get-ripple-height (the-as water-anim a0-5) (-> self root trans)) f30-2 (-> self y-offset))
                 )
-          (set! (-> self root-override trans y) (+ (-> self original-position y) f30-2 (-> self y-offset)))
+          (set! (-> self root trans y) (+ (-> self original-position y) f30-2 (-> self y-offset)))
           )
       )
     )
@@ -538,7 +519,7 @@
 
 (defbehavior quicksandlurker-check-hide-transition quicksandlurker ()
   (when *target*
-    (if (and (and *target* (>= 20480.0 (vector-vector-distance (-> self root-override trans) (-> *target* control trans))))
+    (if (and (and *target* (>= 20480.0 (vector-vector-distance (-> self root trans) (-> *target* control trans))))
              (!= (-> *target* next-state name) 'target-flop)
              )
         (go quicksandlurker-hide)
@@ -568,9 +549,7 @@
     (logclear! (-> self draw status) (draw-status hidden))
     )
   :trans (behavior ()
-    (if (and *target*
-             (>= 163840.0 (vector-vector-distance (-> self root-override trans) (-> *target* control trans)))
-             )
+    (if (and *target* (>= 163840.0 (vector-vector-distance (-> self root trans) (-> *target* control trans))))
         (go quicksandlurker-wait)
         )
     )
@@ -586,13 +565,11 @@
   :event quicksandlurker-default-event-handler
   :trans (behavior ()
     (cond
-      ((and *target* (>= 81920.0 (vector-vector-distance (-> self root-override trans) (-> *target* control trans))))
+      ((and *target* (>= 81920.0 (vector-vector-distance (-> self root trans) (-> *target* control trans))))
        (set! (-> self y-offset) 1228.8)
        (go quicksandlurker-track)
        )
-      ((or (not *target*)
-           (< 163840.0 (vector-vector-distance (-> self root-override trans) (-> *target* control trans)))
-           )
+      ((or (not *target*) (< 163840.0 (vector-vector-distance (-> self root trans) (-> *target* control trans))))
        (seek! (-> self y-offset) -6553.6 (* 20480.0 (seconds-per-frame)))
        (if (= (-> self y-offset) -6553.6)
            (go quicksandlurker-idle)
@@ -654,9 +631,7 @@
 (defstate quicksandlurker-track (quicksandlurker)
   :event quicksandlurker-default-event-handler
   :trans (behavior ()
-    (if (or (not *target*)
-            (< 81920.0 (vector-vector-distance (-> self root-override trans) (-> *target* control trans)))
-            )
+    (if (or (not *target*) (< 81920.0 (vector-vector-distance (-> self root trans) (-> *target* control trans))))
         (go quicksandlurker-wait)
         )
     (quicksandlurker-check-hide-transition)
@@ -696,7 +671,7 @@
   (let ((gp-0 (new-stack-vector0)))
     (let ((s5-0 (new-stack-vector0)))
       (set! (-> gp-0 quad)
-            (-> (vector<-cspace! (new 'stack-no-clear 'vector) (joint-node-index quicksandlurker-lod0-jg jawEND)) quad)
+            (-> (vector<-cspace! (new 'stack-no-clear 'vector) (joint-node quicksandlurker-lod0-jg jawEND)) quad)
             )
       (vector-! s5-0 (target-pos 5) gp-0)
       (let ((f1-0 (vector-xz-length s5-0)))
@@ -774,7 +749,7 @@
     (set-time! (-> self state-time))
     )
   :exit (behavior ()
-    (restore-collide-with-as (-> self root-override))
+    (restore-collide-with-as (-> self root))
     )
   :trans (behavior ()
     (if (not *target*)
@@ -787,7 +762,7 @@
         ((or (if (nav-control-method-16 a0-0 a1-0)
                  #t
                  )
-             (and *target* (>= 16384.0 (vector-vector-distance (-> self root-override trans) (-> *target* control trans))))
+             (and *target* (>= 16384.0 (vector-vector-distance (-> self root trans) (-> *target* control trans))))
              )
          (set-time! (-> self state-time))
          )
@@ -814,10 +789,10 @@
       #f
       #f
       #f
-      (-> self root-override trans)
+      (-> self root trans)
       :to *entity-pool*
       )
-    (clear-collide-with-as (-> self root-override))
+    (clear-collide-with-as (-> self root))
     (loop
       (orient-to-face-target)
       (suspend)
@@ -837,7 +812,7 @@
       #f
       #f
       #f
-      (-> self root-override trans)
+      (-> self root trans)
       :to *entity-pool*
       )
     (ja-no-eval :group! quicksandlurker-popup-ja :num! (seek!) :frame-num 0.0)
@@ -866,7 +841,7 @@
   :post quicksandlurker-post
   )
 
-(defmethod init-from-entity! quicksandlurker ((this quicksandlurker) (arg0 entity-actor))
+(defmethod init-from-entity! ((this quicksandlurker) (arg0 entity-actor))
   (logior! (-> this mask) (process-mask enemy))
   (let ((s4-0 (new 'process 'collide-shape this (collide-list-enum usually-hit-by-player))))
     (let ((s3-0 (new 'process 'collide-shape-prim-group s4-0 (the-as uint 3) 0)))
@@ -902,18 +877,18 @@
       )
     (set! (-> s4-0 nav-radius) (* 0.75 (-> s4-0 root-prim local-sphere w)))
     (backup-collide-with-as s4-0)
-    (set! (-> this root-override) s4-0)
+    (set! (-> this root) s4-0)
     )
   (process-drawable-from-entity! this arg0)
-  (+! (-> this root-override trans y) -2048.0)
-  (set! (-> this original-position quad) (-> this root-override trans quad))
+  (+! (-> this root trans y) -2048.0)
+  (set! (-> this original-position quad) (-> this root trans quad))
   (set! (-> this theta-angle) (rand-vu-float-range 0.0 65536.0))
   (set! (-> this bob-angle) (rand-vu-float-range 0.0 65536.0))
   (set! (-> this radial-offset) 4096.0)
   (set! (-> this y-offset) -6553.6)
-  (set-yaw-angle-clear-roll-pitch! (-> this root-override) (rand-vu-float-range 0.0 65536.0))
+  (set-yaw-angle-clear-roll-pitch! (-> this root) (rand-vu-float-range 0.0 65536.0))
   (initialize-skeleton this *quicksandlurker-sg* '())
-  (set! (-> this nav) (new 'process 'nav-control (-> this root-override) 16 40960.0))
+  (set! (-> this nav) (new 'process 'nav-control (-> this root) 16 40960.0))
   (logior! (-> this nav flags) (nav-control-flags display-marks navcf3 navcf5 navcf6 navcf7))
   (set! (-> this fact)
         (new 'process 'fact-info-enemy this (pickup-type eco-pill-random) (-> *FACT-bank* default-pill-inc))

@@ -10,21 +10,17 @@
 (define *cas-conveyor-room-id* 0)
 
 (deftype cas-conveyor (conveyor)
-  ((actor-group        (pointer actor-group)  :offset-assert 256)
-   (actor-group-count  int32                  :offset-assert 260)
-   (texture-anim-index uint32                 :offset-assert 264)
-   (my-id              int32                  :offset-assert 268)
-   (sound-id           sound-id               :offset-assert 272)
-   (target-speed       float                  :offset-assert 276)
+  ((actor-group         (pointer actor-group))
+   (actor-group-count   int32)
+   (texture-anim-index  uint32)
+   (my-id               int32)
+   (sound-id            sound-id)
+   (target-speed        float)
    )
-  :heap-base #xa0
-  :method-count-assert 28
-  :size-assert         #x118
-  :flag-assert         #x1c00a00118
   )
 
 
-(defmethod init! cas-conveyor ((this cas-conveyor))
+(defmethod init! ((this cas-conveyor))
   "Initializes defaults for things like the `speed` and `belt-radius`"
   (let ((t9-0 (method-of-type conveyor init!)))
     (t9-0 this)
@@ -41,7 +37,7 @@
   )
 
 ;; WARN: Return type mismatch object vs none.
-(defmethod init-from-entity! cas-conveyor ((this cas-conveyor) (arg0 entity-actor))
+(defmethod init-from-entity! ((this cas-conveyor) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
 - stack size
@@ -77,7 +73,7 @@ This commonly includes things such as:
   (none)
   )
 
-(defmethod deactivate cas-conveyor ((this cas-conveyor))
+(defmethod deactivate ((this cas-conveyor))
   (sound-stop (-> this sound-id))
   (call-parent-method this)
   (none)
@@ -147,24 +143,20 @@ This commonly includes things such as:
   )
 
 (deftype cas-conveyor-switch (process-focusable)
-  ((actor-group        (pointer actor-group)         :offset-assert 204)
-   (actor-group-count  int32                         :offset-assert 208)
-   (incoming-attack-id uint32                        :offset-assert 212)
-   (quat0              quaternion            :inline :offset-assert 224)
-   (quat180            quaternion            :inline :offset-assert 240)
-   (red-pos            vector                :inline :offset-assert 256)
-   (blue-pos           vector                :inline :offset-assert 272)
-   (track-flag         symbol                        :offset-assert 288)
-   (lightning-timer    time-frame                    :offset-assert 296)
-   (speed              float                         :offset-assert 304)
-   (target-speed       float                         :offset-assert 308)
+  ((actor-group         (pointer actor-group))
+   (actor-group-count   int32)
+   (incoming-attack-id  uint32)
+   (quat0               quaternion  :inline)
+   (quat180             quaternion  :inline)
+   (red-pos             vector      :inline)
+   (blue-pos            vector      :inline)
+   (track-flag          symbol)
+   (lightning-timer     time-frame)
+   (speed               float)
+   (target-speed        float)
    )
-  :heap-base #xc0
-  :method-count-assert 28
-  :size-assert         #x138
-  :flag-assert         #x1c00c00138
-  (:methods
-    (idle () _type_ :state 27)
+  (:state-methods
+    idle
     )
   )
 
@@ -350,7 +342,7 @@ This commonly includes things such as:
   )
 
 ;; WARN: Return type mismatch object vs none.
-(defmethod init-from-entity! cas-conveyor-switch ((this cas-conveyor-switch) (arg0 entity-actor))
+(defmethod init-from-entity! ((this cas-conveyor-switch) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
 - stack size
@@ -419,16 +411,12 @@ This commonly includes things such as:
   )
 
 (deftype cas-electric-fence (process-focusable)
-  ((next-spawn-time time-frame  :offset-assert 208)
-   (stop            symbol      :offset-assert 216)
+  ((next-spawn-time  time-frame)
+   (stop             symbol)
    )
-  :heap-base #x60
-  :method-count-assert 29
-  :size-assert         #xdc
-  :flag-assert         #x1d006000dc
-  (:methods
-    (idle () _type_ :state 27)
-    (die () _type_ :state 28)
+  (:state-methods
+    idle
+    die
     )
   )
 
@@ -634,7 +622,7 @@ This commonly includes things such as:
   )
 
 ;; WARN: Return type mismatch object vs none.
-(defmethod init-from-entity! cas-electric-fence ((this cas-electric-fence) (arg0 entity-actor))
+(defmethod init-from-entity! ((this cas-electric-fence) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
 - stack size
@@ -680,12 +668,8 @@ This commonly includes things such as:
 
 (deftype cas-button (basebutton)
   ()
-  :heap-base #xa0
-  :method-count-assert 40
-  :size-assert         #x120
-  :flag-assert         #x2800a00120
   (:methods
-    (cas-button-method-39 (_type_) none 39)
+    (cas-button-method-39 (_type_) none)
     )
   )
 
@@ -695,7 +679,7 @@ This commonly includes things such as:
               :bounds (static-spherem 0 0 0 2.25)
               )
 
-(defmethod basebutton-method-34 cas-button ((this cas-button))
+(defmethod basebutton-method-34 ((this cas-button))
   "TODO - collision stuff"
   (let ((s5-0 (new 'process 'collide-shape this (collide-list-enum usually-hit-by-player))))
     (let ((s4-0 (new 'process 'collide-shape-prim-mesh s5-0 (the-as uint 0) (the-as uint 0))))
@@ -719,7 +703,7 @@ This commonly includes things such as:
   (none)
   )
 
-(defmethod prepare-trigger-event! cas-button ((this cas-button))
+(defmethod prepare-trigger-event! ((this cas-button))
   "Sets `event-going-down` to `'trigger`"
   (set! (-> this event-down) 'shutdown)
   0
@@ -749,7 +733,7 @@ This commonly includes things such as:
     )
   )
 
-(defmethod basebutton-method-33 cas-button ((this cas-button))
+(defmethod basebutton-method-33 ((this cas-button))
   "TODO - joint stuff"
   (initialize-skeleton
     this
@@ -787,14 +771,10 @@ This commonly includes things such as:
   )
 
 (deftype cas-elevator (elevator)
-  ((sound-id sound-id  :offset-assert 368)
+  ((sound-id  sound-id)
    )
-  :heap-base #x100
-  :method-count-assert 50
-  :size-assert         #x174
-  :flag-assert         #x3201000174
   (:methods
-    (cas-elevator-method-49 (_type_) none 49)
+    (cas-elevator-method-49 (_type_) none)
     )
   )
 
@@ -804,13 +784,13 @@ This commonly includes things such as:
               :bounds (static-spherem 0 0 0 9)
               )
 
-(defmethod get-art-group cas-elevator ((this cas-elevator))
+(defmethod get-art-group ((this cas-elevator))
   "@returns The associated [[art-group]]"
   (art-group-get-by-name *level* "skel-cas-elevator" (the-as (pointer uint32) #f))
   )
 
 ;; WARN: Return type mismatch float vs none.
-(defmethod cas-elevator-method-49 cas-elevator ((this cas-elevator))
+(defmethod cas-elevator-method-49 ((this cas-elevator))
   (let* ((f0-1 (fmax 0.0 (- (-> this root trans y) (-> this bottom-top 0))))
          (f0-3 (* 0.001171875 (- f0-1 (* (the float (the int (/ f0-1 30720.0))) 30720.0))))
          (v1-6 (-> this skel root-channel 0))
@@ -821,7 +801,7 @@ This commonly includes things such as:
   (none)
   )
 
-(defmethod move-between-points cas-elevator ((this cas-elevator) (arg0 vector) (arg1 float) (arg2 float))
+(defmethod move-between-points ((this cas-elevator) (arg0 vector) (arg1 float) (arg2 float))
   "Move between two points on the elevator's path
 @param vec TODO not sure
 @param point-a The first point fetched from the elevator's path
@@ -839,7 +819,7 @@ This commonly includes things such as:
     )
   )
 
-(defmethod commited-to-ride? cas-elevator ((this cas-elevator))
+(defmethod commited-to-ride? ((this cas-elevator))
   "@returns if the target is considered within the elevator area enough to begin descending/ascending"
   (let* ((s5-0 *target*)
          (a0-2 (if (type? s5-0 process-focusable)
@@ -933,13 +913,13 @@ This commonly includes things such as:
     )
   )
 
-(defmethod deactivate cas-elevator ((this cas-elevator))
+(defmethod deactivate ((this cas-elevator))
   (sound-stop (-> this sound-id))
   (call-parent-method this)
   (none)
   )
 
-(defmethod init-plat! cas-elevator ((this cas-elevator))
+(defmethod init-plat! ((this cas-elevator))
   "Does any necessary initial platform setup.
 For example for an elevator pre-compute the distance between the first and last points (both ways) and clear the sound."
   (set! (-> this sound-id) (new-sound-id))
@@ -947,7 +927,7 @@ For example for an elevator pre-compute the distance between the first and last 
   (none)
   )
 
-(defmethod init-plat-collision! cas-elevator ((this cas-elevator))
+(defmethod init-plat-collision! ((this cas-elevator))
   "TODO - collision stuff for setting up the platform"
   (let ((s5-0 (new 'process 'collide-shape-moving this (collide-list-enum usually-hit-by-player))))
     (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
@@ -977,20 +957,16 @@ For example for an elevator pre-compute the distance between the first and last 
   )
 
 (deftype cas-rot-bridge (process-drawable)
-  ((index      uint32    :offset-assert 200)
-   (anim-index uint32    :offset-assert 204)
-   (test-index uint32    :offset-assert 208)
-   (pos        float     :offset-assert 212)
-   (pos-old    float     :offset-assert 216)
-   (sound-id   sound-id  :offset-assert 220)
-   (sound-flag symbol    :offset-assert 224)
+  ((index       uint32)
+   (anim-index  uint32)
+   (test-index  uint32)
+   (pos         float)
+   (pos-old     float)
+   (sound-id    sound-id)
+   (sound-flag  symbol)
    )
-  :heap-base #x70
-  :method-count-assert 21
-  :size-assert         #xe4
-  :flag-assert         #x15007000e4
-  (:methods
-    (idle () _type_ :state 20)
+  (:state-methods
+    idle
     )
   )
 
@@ -1209,14 +1185,14 @@ For example for an elevator pre-compute the distance between the first and last 
               (sound-play
                 "track-plat-loop"
                 :id (-> self sound-id)
-                :position (vector<-cspace! (new 'stack-no-clear 'vector) (joint-node-index cas-rot-bridge-lod0-jg b))
+                :position (vector<-cspace! (new 'stack-no-clear 'vector) (joint-node cas-rot-bridge-lod0-jg b))
                 )
               (set! (-> self sound-flag) #t)
               )
              ((-> self sound-flag)
               (sound-play
                 "track-plat-stop"
-                :position (vector<-cspace! (new 'stack-no-clear 'vector) (joint-node-index cas-rot-bridge-lod0-jg b))
+                :position (vector<-cspace! (new 'stack-no-clear 'vector) (joint-node cas-rot-bridge-lod0-jg b))
                 )
               (sound-stop (-> self sound-id))
               (set! (-> self sound-flag) #f)
@@ -1229,14 +1205,14 @@ For example for an elevator pre-compute the distance between the first and last 
                (sound-play
                  "track-plat-loop"
                  :id (-> self sound-id)
-                 :position (vector<-cspace! (new 'stack-no-clear 'vector) (joint-node-index cas-rot-bridge-lod0-jg b))
+                 :position (vector<-cspace! (new 'stack-no-clear 'vector) (joint-node cas-rot-bridge-lod0-jg b))
                  )
                (set! (-> self sound-flag) #t)
                )
               ((-> self sound-flag)
                (sound-play
                  "track-plat-stop"
-                 :position (vector<-cspace! (new 'stack-no-clear 'vector) (joint-node-index cas-rot-bridge-lod0-jg b))
+                 :position (vector<-cspace! (new 'stack-no-clear 'vector) (joint-node cas-rot-bridge-lod0-jg b))
                  )
                (sound-stop (-> self sound-id))
                (set! (-> self sound-flag) #f)
@@ -1251,7 +1227,7 @@ For example for an elevator pre-compute the distance between the first and last 
   )
 
 ;; WARN: Return type mismatch object vs none.
-(defmethod init-from-entity! cas-rot-bridge ((this cas-rot-bridge) (arg0 entity-actor))
+(defmethod init-from-entity! ((this cas-rot-bridge) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
 - stack size
@@ -1345,23 +1321,19 @@ This commonly includes things such as:
   )
 
 (deftype cas-switch (process-drawable)
-  ((actor-group        (pointer actor-group)  :offset-assert 200)
-   (actor-group-count  int32                  :offset-assert 204)
-   (incoming-attack-id uint32                 :offset-assert 208)
-   (anim-index         uint32                 :offset-assert 212)
-   (direction          uint32                 :offset-assert 216)
-   (pos-old            float                  :offset-assert 220)
-   (y-start            float                  :offset-assert 224)
-   (y-delta            float                  :offset-assert 228)
-   (sound-id           sound-id               :offset-assert 232)
-   (sound-flag         symbol                 :offset-assert 236)
+  ((actor-group         (pointer actor-group))
+   (actor-group-count   int32)
+   (incoming-attack-id  uint32)
+   (anim-index          uint32)
+   (direction           uint32)
+   (pos-old             float)
+   (y-start             float)
+   (y-delta             float)
+   (sound-id            sound-id)
+   (sound-flag          symbol)
    )
-  :heap-base #x70
-  :method-count-assert 21
-  :size-assert         #xf0
-  :flag-assert         #x15007000f0
-  (:methods
-    (idle () _type_ :state 20)
+  (:state-methods
+    idle
     )
   )
 
@@ -1482,7 +1454,7 @@ This commonly includes things such as:
   )
 
 ;; WARN: Return type mismatch object vs none.
-(defmethod init-from-entity! cas-switch ((this cas-switch) (arg0 entity-actor))
+(defmethod init-from-entity! ((this cas-switch) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
 - stack size
@@ -1575,15 +1547,11 @@ This commonly includes things such as:
   )
 
 (deftype cas-trapdoor (process-drawable)
-  ((root collide-shape  :override)
+  ((root  collide-shape :override)
    )
-  :heap-base #x50
-  :method-count-assert 22
-  :size-assert         #xc8
-  :flag-assert         #x16005000c8
-  (:methods
-    (idle () _type_ :state 20)
-    (die () _type_ :state 21)
+  (:state-methods
+    idle
+    die
     )
   )
 
@@ -1696,7 +1664,7 @@ This commonly includes things such as:
   )
 
 ;; WARN: Return type mismatch object vs none.
-(defmethod init-from-entity! cas-trapdoor ((this cas-trapdoor) (arg0 entity-actor))
+(defmethod init-from-entity! ((this cas-trapdoor) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
 - stack size
@@ -1741,14 +1709,10 @@ This commonly includes things such as:
 
 (deftype cas-chain-plat (process-focusable)
   ()
-  :heap-base #x50
-  :method-count-assert 30
-  :size-assert         #xcc
-  :flag-assert         #x1e005000cc
-  (:methods
-    (idle () _type_ :state 27)
-    (drop () _type_ :state 28)
-    (down () _type_ :state 29)
+  (:state-methods
+    idle
+    drop
+    down
     )
   )
 
@@ -1795,7 +1759,7 @@ This commonly includes things such as:
   )
 
 ;; WARN: Return type mismatch object vs none.
-(defmethod init-from-entity! cas-chain-plat ((this cas-chain-plat) (arg0 entity-actor))
+(defmethod init-from-entity! ((this cas-chain-plat) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
 - stack size
@@ -1831,17 +1795,13 @@ This commonly includes things such as:
   )
 
 (deftype cas-rot-blade (process-drawable)
-  ((sync      sync-eased :inline :offset-assert 200)
-   (rot       float              :offset-assert 244)
-   (attack-id uint32             :offset-assert 248)
-   (sound-id  sound-id           :offset-assert 252)
+  ((sync       sync-eased  :inline)
+   (rot        float)
+   (attack-id  uint32)
+   (sound-id   sound-id)
    )
-  :heap-base #x80
-  :method-count-assert 21
-  :size-assert         #x100
-  :flag-assert         #x1500800100
-  (:methods
-    (idle () _type_ :state 20)
+  (:state-methods
+    idle
     )
   )
 
@@ -1896,7 +1856,7 @@ This commonly includes things such as:
     (sound-play
       "cas-arm-blade"
       :id (-> self sound-id)
-      :position (vector<-cspace! (new 'stack-no-clear 'vector) (joint-node-index cas-rot-blade-lod0-jg blade))
+      :position (vector<-cspace! (new 'stack-no-clear 'vector) (joint-node cas-rot-blade-lod0-jg blade))
       )
     )
   :code (behavior ()
@@ -1913,7 +1873,7 @@ This commonly includes things such as:
   )
 
 ;; WARN: Return type mismatch object vs none.
-(defmethod init-from-entity! cas-rot-blade ((this cas-rot-blade) (arg0 entity-actor))
+(defmethod init-from-entity! ((this cas-rot-blade) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
 - stack size
@@ -1985,7 +1945,7 @@ This commonly includes things such as:
   (none)
   )
 
-(defmethod deactivate cas-rot-blade ((this cas-rot-blade))
+(defmethod deactivate ((this cas-rot-blade))
   (sound-stop (-> this sound-id))
   (call-parent-method this)
   (none)
@@ -1993,12 +1953,8 @@ This commonly includes things such as:
 
 (deftype cas-flag-a (process-drawable)
   ()
-  :heap-base #x50
-  :method-count-assert 21
-  :size-assert         #xc8
-  :flag-assert         #x15005000c8
-  (:methods
-    (idle () _type_ :state 20)
+  (:state-methods
+    idle
     )
   )
 
@@ -2024,7 +1980,7 @@ This commonly includes things such as:
   )
 
 ;; WARN: Return type mismatch object vs none.
-(defmethod init-from-entity! cas-flag-a ((this cas-flag-a) (arg0 entity-actor))
+(defmethod init-from-entity! ((this cas-flag-a) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
 - stack size
@@ -2044,12 +2000,8 @@ This commonly includes things such as:
 
 (deftype cas-flag-b (process-drawable)
   ()
-  :heap-base #x50
-  :method-count-assert 21
-  :size-assert         #xc8
-  :flag-assert         #x15005000c8
-  (:methods
-    (idle () _type_ :state 20)
+  (:state-methods
+    idle
     )
   )
 
@@ -2075,7 +2027,7 @@ This commonly includes things such as:
   )
 
 ;; WARN: Return type mismatch object vs none.
-(defmethod init-from-entity! cas-flag-b ((this cas-flag-b) (arg0 entity-actor))
+(defmethod init-from-entity! ((this cas-flag-b) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
 - stack size
@@ -2094,27 +2046,23 @@ This commonly includes things such as:
   )
 
 (deftype cas-robot-door (process-drawable)
-  ((spawner-actor     symbol                  :offset-assert 200)
-   (door-actor        entity-actor          2 :offset-assert 204)
-   (spawn-count       int32                   :offset-assert 212)
-   (spawn-count-total int32                   :offset-assert 216)
-   (spawn-max         int32                   :offset-assert 220)
-   (spawn-total       int32                   :offset-assert 224)
-   (notice-dist       float                   :offset-assert 228)
-   (player-dist       float                   :offset-assert 232)
-   (anim-index        int32                   :offset-assert 236)
-   (last-guard        handle                  :offset-assert 240)
-   (actor-group       (pointer actor-group)   :offset-assert 248)
-   (actor-group-count int32                   :offset-assert 252)
+  ((spawner-actor      symbol)
+   (door-actor         entity-actor  2)
+   (spawn-count        int32)
+   (spawn-count-total  int32)
+   (spawn-max          int32)
+   (spawn-total        int32)
+   (notice-dist        float)
+   (player-dist        float)
+   (anim-index         int32)
+   (last-guard         handle)
+   (actor-group        (pointer actor-group))
+   (actor-group-count  int32)
    )
-  :heap-base #x80
-  :method-count-assert 23
-  :size-assert         #x100
-  :flag-assert         #x1700800100
-  (:methods
-    (idle () _type_ :state 20)
-    (spawning () _type_ :state 21)
-    (castle-wait-end () _type_ :state 22)
+  (:state-methods
+    idle
+    spawning
+    castle-wait-end
     )
   )
 
@@ -2433,7 +2381,7 @@ This commonly includes things such as:
   )
 
 ;; WARN: Return type mismatch object vs none.
-(defmethod init-from-entity! cas-robot-door ((this cas-robot-door) (arg0 entity-actor))
+(defmethod init-from-entity! ((this cas-robot-door) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
 - stack size
@@ -2510,15 +2458,11 @@ This commonly includes things such as:
   )
 
 (deftype lightning-ball (process-drawable)
-  ((root  collide-shape  :override)
-   (timer time-frame     :offset-assert 200)
+  ((root   collide-shape :override)
+   (timer  time-frame)
    )
-  :heap-base #x50
-  :method-count-assert 21
-  :size-assert         #xd0
-  :flag-assert         #x15005000d0
-  (:methods
-    (idle () _type_ :state 20)
+  (:state-methods
+    idle
     )
   )
 
@@ -2589,7 +2533,7 @@ This commonly includes things such as:
   )
 
 ;; WARN: Return type mismatch object vs none.
-(defmethod init-from-entity! lightning-ball ((this lightning-ball) (arg0 entity-actor))
+(defmethod init-from-entity! ((this lightning-ball) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
 - stack size
