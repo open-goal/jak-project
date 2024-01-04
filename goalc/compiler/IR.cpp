@@ -863,8 +863,7 @@ void IR_ConditionalBranch::do_codegen(emitter::ObjectGenerator* gen,
                                       const AllocationResult& allocs,
                                       emitter::IR_Record irec) {
 #ifndef __aarch64__
-  Instruction jump_instr;
-  jump_instr = InstructionX86(0);
+  Instruction jump_instr = InstructionX86(0);
   ASSERT(m_resolved);
   switch (condition.kind) {
     case ConditionKind::EQUAL:
