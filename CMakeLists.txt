@@ -103,7 +103,6 @@ elseif(CMAKE_CXX_COMPILER_ID STREQUAL "AppleClang")
     message(STATUS "AppleClang detected - Setting Defaults")
     set(CMAKE_CXX_FLAGS
         "${CMAKE_CXX_FLAGS} \
-        -march=native \
         -Wall \
         -Winit-self \
         -ggdb \
@@ -120,6 +119,11 @@ elseif(CMAKE_CXX_COMPILER_ID STREQUAL "AppleClang")
         -Wsign-promo \
         -fdiagnostics-color=always"
         )
+
+    # TODO - make a proper flag for arm compiling
+    if(NOT CMAKE_CXX_COMPILER_TARGET STREQUAL "arm64-apple-darwin")
+        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -march=native")
+    endif()
 
     # additional c++ flags for release mode for our projects
     if(CMAKE_BUILD_TYPE MATCHES "Release")
