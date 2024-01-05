@@ -231,6 +231,7 @@ void set_vertices_for_tri(tfrag3::CollisionMesh::Vertex* out, const math::Vector
 
 void extract_collide_frags(const level_tools::DrawableTreeCollideFragment* tree,
                            const std::vector<const level_tools::DrawableTreeInstanceTie*>& ties,
+                           const Config& config,
                            const std::string& debug_name,
                            tfrag3::Level& out,
                            bool dump_level) {
@@ -262,7 +263,7 @@ void extract_collide_frags(const level_tools::DrawableTreeCollideFragment* tree,
   if (dump_level) {
     auto debug_out = debug_dump_to_obj(all_frags);
     auto file_path =
-        file_util::get_file_path({"debug_out", fmt::format("collide-{}.obj", debug_name)});
+        file_util::get_file_path({fmt::format("debug_out/{}" , config.game_name), fmt::format("collide-{}.obj", debug_name)});
     file_util::create_dir_if_needed_for_file(file_path);
     file_util::write_text_file(file_path, debug_out);
   }
@@ -438,6 +439,7 @@ std::string debug_dump_to_obj(const std::vector<tfrag3::CollisionMesh::Vertex> v
 
 void extract_collide_frags(const level_tools::CollideHash& chash,
                            const std::vector<const level_tools::DrawableTreeInstanceTie*>& ties,
+                           const Config& config,
                            const std::string& debug_name,
                            const decompiler::DecompilerTypeSystem& dts,
                            tfrag3::Level& out,
@@ -510,7 +512,7 @@ void extract_collide_frags(const level_tools::CollideHash& chash,
     // for now debug_dump_to_obj isn't smart and doesn't hash these to save space or anything
     auto debug_out = debug_dump_to_obj(out.collision.vertices);
     auto file_path =
-        file_util::get_file_path({"debug_out", fmt::format("collide-{}.obj", debug_name)});
+        file_util::get_file_path({fmt::format("debug_out/{}" , config.game_name), fmt::format("collide-{}.obj", debug_name)});
     file_util::create_dir_if_needed_for_file(file_path);
     file_util::write_text_file(file_path, debug_out);
   }
