@@ -14,7 +14,9 @@ void extract_collide_frags(const level_tools::DrawableTreeCollideFragment* tree,
 
 void extract_collide_frags(const level_tools::CollideHash& chash,
                            const std::vector<const level_tools::DrawableTreeInstanceTie*>& ties,
+                           const std::string& debug_name,
                            const decompiler::DecompilerTypeSystem& dts,
-                           tfrag3::Level& out);
+                           tfrag3::Level& out,
+                           bool dump_level);
 
 }  // namespace decompiler
