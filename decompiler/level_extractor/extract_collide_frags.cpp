@@ -1,5 +1,4 @@
 #include "extract_collide_frags.h"
-#include "common/log/log.h"
 
 #include "common/log/log.h"
 #include "common/util/FileUtil.h"
