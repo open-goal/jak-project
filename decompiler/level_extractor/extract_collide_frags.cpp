@@ -410,12 +410,12 @@ void handle_collide_fragment(const TypedRef& collide_fragment,
   }
 }
 
-std::string debug_dump_to_obj(const std::vector<tfrag3::CollisionMesh::Vertex> verts_in) {
+std::string debug_dump_to_obj(const std::vector<tfrag3::CollisionMesh::Vertex>& verts_in) {
   std::vector<math::Vector4f> verts;
   std::vector<math::Vector<u32, 3>> faces;
 
   for (auto& v : verts_in) {
-    verts.emplace_back(v.x / 65536.0, v.y / 65536.0, v.z / 65536.0, 1.0);
+    verts.emplace_back(v.x / 4096.0, v.y / 4096.0, v.z / 4096.0, 1.0);
 
     u32 v_len = verts.size();
     if (v_len % 3 == 0) {
