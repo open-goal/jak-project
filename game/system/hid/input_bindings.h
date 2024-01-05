@@ -219,7 +219,7 @@ struct InputBindingInfo {
   InputModifiers modifiers;
 
   InputBindingInfo() = default;
-  InputBindingInfo(const InputBinding bind, const InputDeviceType device_type, const s32 sdl_code);
+  InputBindingInfo(const InputBinding bind, const InputDeviceType device_type, const s32 sdl_code, const bool analog_button);
 };
 
 // Contains all info related to the current binding we are waiting for
