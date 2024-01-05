@@ -1,6 +1,6 @@
 #include "extract_collide_frags.h"
-#include "common/log/log.h"
 
+#include "common/log/log.h"
 #include "common/util/FileUtil.h"
 
 namespace decompiler {
@@ -262,8 +262,8 @@ void extract_collide_frags(const level_tools::DrawableTreeCollideFragment* tree,
 
   if (dump_level) {
     auto debug_out = debug_dump_to_obj(all_frags);
-    auto file_path =
-        file_util::get_file_path({fmt::format("debug_out/{}" , config.game_name), fmt::format("collide-{}.obj", debug_name)});
+    auto file_path = file_util::get_file_path(
+        {fmt::format("debug_out/{}", config.game_name), fmt::format("collide-{}.obj", debug_name)});
     file_util::create_dir_if_needed_for_file(file_path);
     file_util::write_text_file(file_path, debug_out);
   }
@@ -420,7 +420,7 @@ std::string debug_dump_to_obj(const std::vector<tfrag3::CollisionMesh::Vertex> v
     u32 v_len = verts.size();
     if (v_len % 3 == 0) {
       // add face from last 3 vertices
-      faces.emplace_back(v_len-2, v_len-1, v_len);
+      faces.emplace_back(v_len - 2, v_len - 1, v_len);
     }
   }
 
@@ -511,8 +511,8 @@ void extract_collide_frags(const level_tools::CollideHash& chash,
     // out.collision.vertices every 3 vertices make a face, so it duplicates vertices in many cases
     // for now debug_dump_to_obj isn't smart and doesn't hash these to save space or anything
     auto debug_out = debug_dump_to_obj(out.collision.vertices);
-    auto file_path =
-        file_util::get_file_path({fmt::format("debug_out/{}" , config.game_name), fmt::format("collide-{}.obj", debug_name)});
+    auto file_path = file_util::get_file_path(
+        {fmt::format("debug_out/{}", config.game_name), fmt::format("collide-{}.obj", debug_name)});
     file_util::create_dir_if_needed_for_file(file_path);
     file_util::write_text_file(file_path, debug_out);
   }
