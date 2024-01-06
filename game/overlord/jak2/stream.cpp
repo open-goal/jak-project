@@ -178,7 +178,7 @@ void* RPC_PLAY([[maybe_unused]] unsigned int fno, void* _cmd, int size) {
             strncpy(list_node.name, cmd_iter->names[s].chars, 0x30);
             list_node.id = cmd_iter->id[s];
             list_node.unk_76 = cmd_iter->address & 1 << (s & 0x1f) & 0xf;
-            list_node.unk_72 = 0;
+            list_node.sound_handler = 0;
             list_node.unk_80 = cmd_iter->address & 0x10 << (s & 0x1f) & 0xf0;
             list_node.prio = iVar5;
             pRVar2 = FindThisVagStream(list_node.name, list_node.id);
@@ -247,7 +247,7 @@ void* RPC_PLAY([[maybe_unused]] unsigned int fno, void* _cmd, int size) {
             strncpy(list_node.name, cmd_iter->names[s].chars, 0x30);
             list_node.id = cmd_iter->id[s];
             list_node.unk_68 = 0;
-            list_node.unk_72 = 0;
+            list_node.sound_handler = 0;
             list_node.prio = iVar5;
             pRVar2 = FindThisVagStream(cmd_iter->names[s].chars, cmd_iter->id[s]);
             if ((pRVar2 == 0x0) || (pRVar2->byte4 == '\0')) {
@@ -260,7 +260,7 @@ void* RPC_PLAY([[maybe_unused]] unsigned int fno, void* _cmd, int size) {
 
                 iVar4->id = list_node.id;
                 iVar4->prio = list_node.prio;
-                iVar4->unk_72 = list_node.unk_72;
+                iVar4->sound_handler = list_node.sound_handler;
                 iVar4->unk_76 = 0;
                 iVar4->unk_80 = 0;
                 iVar4->unk_92 = 0;

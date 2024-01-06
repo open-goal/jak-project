@@ -312,7 +312,7 @@ void* RPC_Player(unsigned int /*fno*/, void* data, int size) {
           local_178.header.thread_id = 0;
           local_178.vag_dir_entry = nullptr;
           local_178.name[0] = '\0';
-          local_178.unk_136 = 0;
+          local_178.sound_handler = 0;
           local_178.id = 0;
           local_178.priority = 0;
           StopVagStream(&local_178, 1);

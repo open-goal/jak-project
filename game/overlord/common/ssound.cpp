@@ -11,7 +11,7 @@ Sound gSounds[64];
 Vec3w gEarTrans[2];
 Vec3w gCamTrans;
 s32 gMusicFadeDir = 0;
-Curve gCurve[16];
+Curve gCurves[16];
 s32 gCamAngle;
 u8 gMirrorMode = 0;
 u32 sLastTick = 0;
@@ -154,7 +154,7 @@ s32 GetPan(Sound* sound) {
   return CalculateAngle(&sound->params.trans);
 }
 
-s32 CalculateFallofVolume(Vec3w* pos, s32 volume, s32 fo_curve, s32 fo_min, s32 fo_max) {
+s32 CalculateFalloffVolume(Vec3w* pos, s32 volume, s32 fo_curve, s32 fo_min, s32 fo_max) {
   s32 xdiff = 0;
   s32 ydiff = 0;
   s32 zdiff = 0;
@@ -256,9 +256,9 @@ s32 CalculateFallofVolume(Vec3w* pos, s32 volume, s32 fo_curve, s32 fo_min, s32 
     return volume;
   }
 
-  s32 factor = ((gCurve[fo_curve].unk4 << 16) + gCurve[fo_curve].unk3 * v13 +
-                gCurve[fo_curve].unk2 * ((v13 * v13) >> 16) +
-                gCurve[fo_curve].unk1 * (((((v13 * v13) >> 16) * v13) >> 16) >> 16)) >>
+  s32 factor = ((gCurves[fo_curve].unk4 << 16) + gCurves[fo_curve].unk3 * v13 +
+                gCurves[fo_curve].unk2 * ((v13 * v13) >> 16) +
+                gCurves[fo_curve].unk1 * (((((v13 * v13) >> 16) * v13) >> 16) >> 16)) >>
                12;
 
   if (factor > 0x10000) {
@@ -274,8 +274,8 @@ s32 CalculateFallofVolume(Vec3w* pos, s32 volume, s32 fo_curve, s32 fo_min, s32 
 }
 
 s32 GetVolume(Sound* sound) {
-  return CalculateFallofVolume(&sound->params.trans, sound->params.volume, sound->params.fo_curve,
-                               sound->params.fo_min, sound->params.fo_max);
+  return CalculateFalloffVolume(&sound->params.trans, sound->params.volume, sound->params.fo_curve,
+                                sound->params.fo_min, sound->params.fo_max);
 }
 
 void UpdateVolume(Sound* sound) {
@@ -319,32 +319,6 @@ void KillSoundsInGroup(u8 group) {
         s.id = 0;
       }
     }
-  }
-}
-
-void UpdateLocation(Sound* sound) {
-  if (sound->id == 0) {
-    return;
-  }
-
-  if (g_game_version == GameVersion::Jak1) {
-    if ((sound->bank_entry->fallof_params >> 28) == 0) {
-      return;
-    }
-  }
-
-  s32 id = snd_SoundIsStillPlaying(sound->sound_handle);
-  if (id == 0) {
-    sound->id = 0;
-    return;
-  }
-
-  s32 volume = GetVolume(sound);
-  if (volume == 0) {
-    snd_StopSound(sound->sound_handle);
-  } else {
-    s32 pan = GetPan(sound);
-    snd_SetSoundVolPan(id, volume, pan);
   }
 }
 
@@ -417,8 +391,8 @@ void PrintActiveSounds() {
 }
 
 void SetCurve(s32 curve, s32 falloff, s32 ease) {
-  gCurve[curve].unk1 = ease * 2;
-  gCurve[curve].unk2 = falloff - 3 * ease;
-  gCurve[curve].unk3 = ease - falloff - 0x1000;
-  gCurve[curve].unk4 = 0x1000;
+  gCurves[curve].unk1 = ease * 2;
+  gCurves[curve].unk2 = falloff - 3 * ease;
+  gCurves[curve].unk3 = ease - falloff - 0x1000;
+  gCurves[curve].unk4 = 0x1000;
 }
