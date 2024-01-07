@@ -309,8 +309,24 @@ void InputBindingGroups::assign_button_bind(u32 sdl_idx,
   // unmapped
   const auto current_button_binds = lookup_button_binds((PadData::ButtonIndex)bind_meta.pad_idx);
   const auto current_analog_bind = find_analog_bind_from_sdl_idx(sdl_idx, modifiers);
-  if (buttons.find(sdl_idx) != buttons.end()) {
+  if (!analog_button && buttons.find(sdl_idx) != buttons.end()) {
     const auto existing_binds = buttons.at(sdl_idx);
+    if (analog_button) {
+      button_axii[sdl_idx] = {InputBinding((PadData::ButtonIndex)bind_meta.pad_idx, modifiers)};
+    } else {
+      buttons[sdl_idx] = {InputBinding((PadData::ButtonIndex)bind_meta.pad_idx, modifiers)};
+    }
+    // there already a bind, so swap (as long as it's not the same key)
+    if (!current_button_binds.empty() && current_button_binds.front().sdl_idx != (s32)sdl_idx) {
+      if (current_button_binds.front().analog_button) {
+        button_axii[current_button_binds.front().sdl_idx] = existing_binds;
+      } else {
+        buttons[current_button_binds.front().sdl_idx] = existing_binds;
+      }
+    }
+  } else if (analog_button && button_axii.find(sdl_idx) != button_axii.end()) {
+    // TODO - cleanup this duplication
+    const auto existing_binds = button_axii.at(sdl_idx);
     if (analog_button) {
       button_axii[sdl_idx] = {InputBinding((PadData::ButtonIndex)bind_meta.pad_idx, modifiers)};
     } else {
