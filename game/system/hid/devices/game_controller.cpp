@@ -94,7 +94,7 @@ void GameController::process_event(const SDL_Event& event,
         // In the event that the user binds an analog input to the confirm binds
         // (ie. a trigger on X) we wait until it hits a neutral position (0)
         // before proceeding to rebind.
-        // 
+        //
         // TODO - this still isn't perfect as the data mutation below will trigger it after the bind
         // assignment has been set but atleast it's in a mostly working state right now
         if (!bind_assignment->seen_controller_confirm_neutral) {
