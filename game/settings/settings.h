@@ -56,6 +56,7 @@ struct InputSettings {
   std::unordered_map<std::string, InputBindingGroups> controller_binds;
   InputBindingGroups keyboard_binds;
   InputBindingGroups mouse_binds;
+  bool keyboard_enabled = false;
 
   void save_settings();
 };
