@@ -71,12 +71,11 @@ The cpad-set-buzz! function can be used for vibration.
 (#when PC_PORT
 
 ;; redefined from C kernel
-(define *debug-territory* GAME_TERRITORY_SCEA)
 (defun scf-get-territory ()
   "redefined from C kernel for convenience"
-  (if *debug-segment*
-      *debug-territory*
-      *default-territory*)
+  (if (= (-> *pc-settings* territory) -1)
+      *default-territory*
+      (-> *pc-settings* territory))
   )
 )
 
@@ -316,6 +315,11 @@ The cpad-set-buzz! function can be used for vibration.
 ;; weird leftover debug thing, enabling overrides the x position of both sticks on both controllers.
 (define *cpad-debug* #f)
 
+(#if PC_PORT
+    (defconstant STICK_DEADZONE (-> *pc-settings* stick-deadzone))
+    (defconstant STICK_DEADZONE 0.3)
+    )
+
 (defun service-cpads ()
   "Read from cpads and update vibration"
   (let ((pads *cpad-list*))
@@ -526,7 +530,7 @@ The cpad-set-buzz! function can be used for vibration.
                 (set! (-> pad stick0-dir) (atan (- f30-0) f28-0))
                 (set! (-> pad stick0-speed) (fmin 1.0 (sqrtf (+ (* f30-0 f30-0) (* f28-0 f28-0)))))
                 )
-              (if (< (-> pad stick0-speed) 0.3)
+              (if (< (-> pad stick0-speed) STICK_DEADZONE)
                   (set! (-> pad stick0-speed) 0.0)
                   )
               )
@@ -540,7 +544,7 @@ The cpad-set-buzz! function can be used for vibration.
                )
              )
            (if (or (!= (-> pad button0-abs 0) (-> pad button0-abs 1))
-                   (or (< 0.3 (-> pad stick0-speed)) (zero? (-> pad change-time)))
+                   (or (< STICK_DEADZONE (-> pad stick0-speed)) (zero? (-> pad change-time)))
                    )
                (set! (-> pad change-time) (get-current-time))
                )

@@ -374,7 +374,7 @@ void* RPC_Loader(unsigned int /*fno*/, void* data, int size) {
         case Jak1SoundCommand::UNLOAD_BANK: {
           SoundBank* bank = LookupBank(cmd->load_bank.bank_name);
           if (bank != nullptr) {
-            s32 id = bank->bank_handle;
+            snd::BankHandle id = bank->bank_handle;
             bank->bank_handle = 0;
             snd_UnloadBank(id);
             snd_ResolveBankXREFS();
@@ -403,7 +403,7 @@ void* RPC_Loader(unsigned int /*fno*/, void* data, int size) {
             }
             snd_UnloadBank(gMusic);
             snd_ResolveBankXREFS();
-            gMusic = 0;
+            gMusic = nullptr;
           }
           LoadMusic(cmd->load_bank.bank_name, &gMusic);
           SignalSema(gSema);

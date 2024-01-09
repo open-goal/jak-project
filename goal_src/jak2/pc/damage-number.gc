@@ -174,30 +174,32 @@
 
 
 
-(defun draw-health-bar ((x int) (y int) (width int) (height int) (percentage float) (bucket bucket-id))
+(defun draw-health-bar ((x int) (y int) (width int) (height int) (hit-points float) (hit-points-max float) (bucket bucket-id))
   "Draw a rectangular health bar at the given location. color fades from green to yellow to red."
   
   (let* ((color (static-rgba 0 0 0 #x80))
-        (bar-w (the int (* percentage (max 0 (+ width -4)))))
+        (bar-w (the int (* (/ hit-points hit-points-max) (max 0 (+ width -4)))))
         (x2 (+ x width))
-        (bx2 (+ x 2 bar-w)))
+        (bx2 (+ x 2 bar-w))
+        (color-fade (if (<= hit-points-max 1.0)
+                        (/ hit-points hit-points-max)
+                        (/ (1- hit-points) (1- hit-points-max)))))
     (cond
-      ((>= percentage 0.6)
+      ((>= color-fade 0.5)
         ;; fade from green -> yellow
-        (set! (-> color r) (the int (lerp-scale (the float (-> *color-green* r)) (the float (-> *color-yellow* r)) percentage 1.0 0.55)))
-        (set! (-> color g) (the int (lerp-scale (the float (-> *color-green* g)) (the float (-> *color-yellow* g)) percentage 1.0 0.55)))
-        (set! (-> color b) (the int (lerp-scale (the float (-> *color-green* b)) (the float (-> *color-yellow* b)) percentage 1.0 0.55)))
+        (set! (-> color r) (the int (lerp-scale (the float (-> *color-green* r)) (the float (-> *color-yellow* r)) color-fade 1.0 0.5)))
+        (set! (-> color g) (the int (lerp-scale (the float (-> *color-green* g)) (the float (-> *color-yellow* g)) color-fade 1.0 0.5)))
+        (set! (-> color b) (the int (lerp-scale (the float (-> *color-green* b)) (the float (-> *color-yellow* b)) color-fade 1.0 0.5)))
         )
       (else
         ;; fade from yellow -> red
-        (set! (-> color r) (the int (lerp-scale (the float (-> *color-yellow* r)) (the float (-> *color-red* r)) percentage 0.55 0.1)))
-        (set! (-> color g) (the int (lerp-scale (the float (-> *color-yellow* g)) (the float (-> *color-red* g)) percentage 0.55 0.1)))
-        (set! (-> color b) (the int (lerp-scale (the float (-> *color-yellow* b)) (the float (-> *color-red* b)) percentage 0.55 0.1)))
+        (set! (-> color r) (the int (lerp-scale (the float (-> *color-yellow* r)) (the float (-> *color-red* r)) color-fade 0.5 0.0)))
+        (set! (-> color g) (the int (lerp-scale (the float (-> *color-yellow* g)) (the float (-> *color-red* g)) color-fade 0.5 0.0)))
+        (set! (-> color b) (the int (lerp-scale (the float (-> *color-yellow* b)) (the float (-> *color-red* b)) color-fade 0.5 0.0)))
         )
       )
     (with-dma-buffer-add-bucket ((buf (-> *display* frames (-> *display* on-screen) global-buf))
-                                  bucket
-                                  )
+                                  bucket)
       (cond
         ((< x -2)
           (+! width x)
@@ -369,7 +371,7 @@
                (> (meters 160) (vector-vector-distance (-> (the process-drawable (handle->process (-> self owner))) root trans) (math-camera-pos))))
       (draw-health-bar (the int (-> self font origin x)) (the int (-> self font origin y))
                        (the int (-> self width)) (the int (-> self height))
-                       (/ (-> self hit-points) (-> self hit-points-max))
+                       (-> self hit-points) (-> self hit-points-max)
                        (bucket-id debug-no-zbuf1))
       ;(print-game-text (string-format "~,,0f/~,,0f" (-> self hit-points) (-> self hit-points-max)) (-> self font) #f 44 (bucket-id debug-no-zbuf1))
       )

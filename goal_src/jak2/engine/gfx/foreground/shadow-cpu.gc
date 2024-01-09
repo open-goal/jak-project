@@ -585,43 +585,34 @@
   )
 
 ;; WARN: Return type mismatch symbol vs none.
-(defun debug-draw-settings ((arg0 matrix))
-  (let ((v1-0 (-> arg0 vector 1))
-        (a2-0 (-> arg0 vector))
-        (s5-0 (-> arg0 trans))
-        (s4-0 (-> arg0 vector 2))
+(defun debug-draw-settings ((arg0 shadow-settings))
+  (let ((v1-0 (-> arg0 shadow-dir))
+        (a2-0 (-> arg0 center))
+        (s5-0 (-> arg0 top-plane))
+        (s4-0 (-> arg0 bot-plane))
         (s3-0 (new 'stack-no-clear 'vector))
         (s2-0 (new 'stack-no-clear 'vector))
         )
     (cond
-      ((logtest? (the-as int (-> arg0 vector 0 w)) 4)
-       (vector+float*! s3-0 (the-as vector a2-0) v1-0 (- (vector-dot s5-0 (the-as vector a2-0)) (-> s5-0 w)))
-       (vector+float*! s2-0 (the-as vector a2-0) v1-0 (- (vector-dot s4-0 (the-as vector a2-0)) (-> s4-0 w)))
+      ((logtest? (-> arg0 flags) (shadow-flags shdf02))
+       (vector+float*! s3-0 a2-0 v1-0 (- (vector-dot (the-as vector s5-0) a2-0) (-> s5-0 w)))
+       (vector+float*! s2-0 a2-0 v1-0 (- (vector-dot (the-as vector s4-0) a2-0) (-> s4-0 w)))
        )
       (else
-        (let ((a0-8 (vector+float*! (new 'stack-no-clear 'vector) (the-as vector a2-0) v1-0 (-> v1-0 w))))
-          (vector+float*! s3-0 a0-8 v1-0 (- (vector-dot s5-0 a0-8) (-> s5-0 w)))
-          (vector+float*! s2-0 a0-8 v1-0 (- (vector-dot s4-0 a0-8) (-> s4-0 w)))
+        (let ((a0-8 (vector+float*! (new 'stack-no-clear 'vector) a2-0 v1-0 (-> v1-0 w))))
+          (vector+float*! s3-0 a0-8 v1-0 (- (vector-dot (the-as vector s5-0) a0-8) (-> s5-0 w)))
+          (vector+float*! s2-0 a0-8 v1-0 (- (vector-dot (the-as vector s4-0) a0-8) (-> s4-0 w)))
           )
         )
       )
-    (add-debug-sphere #t (bucket-id debug-no-zbuf1) (the-as vector a2-0) (meters 0.8) *color-magenta*)
+    (add-debug-sphere #t (bucket-id debug-no-zbuf1) a2-0 (meters 0.8) *color-magenta*)
     (add-debug-x #t (bucket-id debug-no-zbuf1) s3-0 *color-blue*)
     (add-debug-vector #t (bucket-id debug-no-zbuf1) s3-0 s5-0 (meters 2) *color-blue*)
-    (add-debug-line
-      #t
-      (bucket-id debug-no-zbuf1)
-      (the-as vector (-> arg0 vector))
-      s3-0
-      *color-magenta*
-      #f
-      (the-as rgba -1)
-      )
+    (add-debug-line #t (bucket-id debug-no-zbuf1) (-> arg0 center) s3-0 *color-magenta* #f (the-as rgba -1))
     (add-debug-x #t (bucket-id debug-no-zbuf1) s2-0 *color-green*)
     (add-debug-vector #t (bucket-id debug-no-zbuf1) s2-0 s4-0 (meters 2) *color-green*)
     (add-debug-line #t (bucket-id debug-no-zbuf1) s3-0 s2-0 *color-green* #f (the-as rgba -1))
     )
-  (none)
   )
 
 (def-mips2c shadow-execute (function shadow-dma-packet pointer pointer))
@@ -786,7 +777,7 @@
   (none)
   )
 
-(defmethod shadow-control-method-13 ((this shadow-control) (arg0 vector) (arg1 float) (arg2 float) (arg3 float))
+(defmethod probe-line-for-shadow ((this shadow-control) (arg0 vector) (arg1 float) (arg2 float) (arg3 float))
   (with-pp
     (let ((s4-0 (new 'stack-no-clear 'collide-query)))
       (let ((v1-0 pp))

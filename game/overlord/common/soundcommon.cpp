@@ -33,10 +33,10 @@ void PrintBankInfo(SoundBank* bank) {
   // we dont need this and it spams the console too much
   return;
 
-  printf("Bank %s\n\n", bank->name);
+  printf("Bank %s\n\n", bank->name.data());
   for (u32 i = 0; i < bank->sound_count; i++) {
     // Some characters use the full 16 characters (bonelurker-grunt) and dont have a null terminator
-    std::string name = std::string(bank->sound[i].name, 16);
+    std::string name = std::string(bank->sound[i].name.data(), 16);
     printf("%d : %16s : min %d max %d curve %d\n", i, name.c_str(),
            bank->sound[i].fallof_params & 0x3fff, (bank->sound[i].fallof_params >> 14) & 0x3fff,
            bank->sound[i].fallof_params >> 28);
