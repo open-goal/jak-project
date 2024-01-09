@@ -378,6 +378,7 @@ void ObjectFileDB::ir2_analyze_all_types(const fs::path& output_file,
           if (per_object.find(longest_match_object_name) != per_object.end()) {
             per_object.at(longest_match_object_name).non_virtual_state_guesses[sym_name] =
                 longest_match;
+            obj_info.already_seen_symbols.insert(sym_name);
           }
         }
       }

@@ -1941,9 +1941,7 @@ std::string inspect_top_level_symbol_defines(Function& top_level,
       auto& sym_name = as_store->addr().get_arg(0).get_str();
       const auto sym_already_seen = object_file_meta.already_seen_symbols.find(sym_name) !=
                                     object_file_meta.already_seen_symbols.end();
-      const auto state_guessed = object_file_meta.non_virtual_state_guesses.find(sym_name) !=
-                                 object_file_meta.non_virtual_state_guesses.end();
-      if (!sym_already_seen && !state_guessed) {
+      if (!sym_already_seen) {
         object_file_meta.already_seen_symbols.insert(sym_name);
         if (dts.ts.partially_defined_type_exists(sym_name)) {
           continue;
