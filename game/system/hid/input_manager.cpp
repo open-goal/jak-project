@@ -439,13 +439,38 @@ void InputManager::set_wait_for_bind(const InputDeviceType device_type,
   m_waiting_for_bind->pad_idx = input_idx;
   m_waiting_for_bind->for_analog = for_analog;
   m_waiting_for_bind->for_analog_minimum = for_minimum_analog;
+  m_waiting_for_bind->seen_keyboard_confirm_up = false;
   m_waiting_for_bind->keyboard_confirmation_binds =
       m_settings->keyboard_binds.lookup_button_binds(PadData::CROSS);
+  m_waiting_for_bind->seen_controller_confirm_neutral = false;
+  if (m_controller_port_mapping.find(0) != m_controller_port_mapping.end() &&
+      m_controller_port_mapping.at(0) < (int)m_available_controllers.size() &&
+      m_settings->controller_binds.find(
+          m_available_controllers.at(m_controller_port_mapping.at(0))->get_guid()) !=
+          m_settings->controller_binds.end()) {
+    m_waiting_for_bind->controller_confirmation_binds =
+        m_settings->controller_binds
+            .at(m_available_controllers.at(m_controller_port_mapping.at(0))->get_guid())
+            .lookup_button_binds(PadData::CROSS);
+  }
   if (g_game_version == GameVersion::Jak1) {
-    auto circle_binds = m_settings->keyboard_binds.lookup_button_binds(PadData::CIRCLE);
+    auto keyboard_circle_binds = m_settings->keyboard_binds.lookup_button_binds(PadData::CIRCLE);
     m_waiting_for_bind->keyboard_confirmation_binds.insert(
-        m_waiting_for_bind->keyboard_confirmation_binds.end(), circle_binds.begin(),
-        circle_binds.end());
+        m_waiting_for_bind->keyboard_confirmation_binds.end(), keyboard_circle_binds.begin(),
+        keyboard_circle_binds.end());
+    if (m_controller_port_mapping.find(0) != m_controller_port_mapping.end() &&
+        m_controller_port_mapping.at(0) < (int)m_available_controllers.size() &&
+        m_settings->controller_binds.find(
+            m_available_controllers.at(m_controller_port_mapping.at(0))->get_guid()) !=
+            m_settings->controller_binds.end()) {
+      auto controller_circle_binds =
+          m_settings->controller_binds
+              .at(m_available_controllers.at(m_controller_port_mapping.at(0))->get_guid())
+              .lookup_button_binds(PadData::CIRCLE);
+      m_waiting_for_bind->controller_confirmation_binds.insert(
+          m_waiting_for_bind->controller_confirmation_binds.end(), controller_circle_binds.begin(),
+          controller_circle_binds.end());
+    }
   }
 }
 
