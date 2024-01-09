@@ -1651,7 +1651,7 @@ std::string TypeInspectorResult::print_as_deftype(
     method_states = object_file_meta.state_methods.at(type_name);
     for (const auto& [method_id, state_name] : method_states) {
       MethodInfo info;
-      state_methods_list += fmt::format("    ({}) ;; {}", state_name, method_id);
+      state_methods_list += fmt::format("    {} ;; {}", state_name, method_id);
       if (old_game_type && old_game_type->get_my_method(method_id, &info)) {
         state_methods_list += ", old:" + old_method_string(info, true);
       }
@@ -1689,7 +1689,7 @@ std::string TypeInspectorResult::print_as_deftype(
   for (const auto& [state_name, guessed_type_name] : object_file_meta.non_virtual_state_guesses) {
     if (type_name == guessed_type_name) {
       std::string line;
-      line += fmt::format("    ({})", state_name);
+      line += fmt::format("    {}", state_name);
       auto it = previous_game_ts.symbol_types.find(state_name);
       if (it != previous_game_ts.symbol_types.end()) {
         line += fmt::format(" ;; associated process guessed by decompiler, old: {}",
