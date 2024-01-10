@@ -245,13 +245,14 @@ SFXBlock* SFXBlock::ReadBlock(nonstd::span<u8> bank_data, nonstd::span<u8> sampl
     sfx.Flags.flags = data.read<u16>();
 
     u32 FirstSFXGrain = data.read<u32>();
-
-    auto grains = data.at(FirstGrain + FirstSFXGrain);
-    for (auto& grain : sfx.Grains) {
-      if (block->Version < 2) {
-        grain = ReadGrainV1(grains, block->SampleData.get());
-      } else {
-        grain = ReadGrainV2(grains, data.at(GrainData), block->SampleData.get());
+    if (NumGrains) {
+      auto grains = data.at(FirstGrain + FirstSFXGrain);
+      for (auto& grain : sfx.Grains) {
+        if (block->Version < 2) {
+          grain = ReadGrainV1(grains, block->SampleData.get());
+        } else {
+          grain = ReadGrainV2(grains, data.at(GrainData), block->SampleData.get());
+        }
       }
     }
   }
@@ -276,7 +277,8 @@ SFXBlock* SFXBlock::ReadBlock(nonstd::span<u8> bank_data, nonstd::span<u8> sampl
     data.set_seek(BlockNames);
     auto names = data.read<SFXBlockNames>();
 
-    char buf[16];
+    char buf[17];
+    buf[16] = 0;
     strncpy(buf, (char*)names.BlockName, 8);
     block->Name = buf;
 
