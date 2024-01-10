@@ -49,6 +49,10 @@ void pc_sr_mode_get_practice_entry_avg_time(s32 entry_index, u32 time_str_ptr);
 void pc_sr_mode_get_practice_entry_fastest_time(s32 entry_index, u32 time_str_ptr);
 u64 pc_sr_mode_record_practice_entry_attempt(s32 entry_index, u32 success_bool, u32 time);
 void pc_sr_mode_init_practice_info(s32 entry_index, u32 speedrun_practice_obj_ptr);
+s32 pc_sr_mode_get_custom_category_amount();
+void pc_sr_mode_get_custom_category_name(s32 entry_index, u32 name_str_ptr);
+void pc_sr_mode_get_custom_category_continue_point(s32 entry_index, u32 name_str_ptr);
+void pc_sr_mode_init_custom_category_info(s32 entry_index, u32 speedrun_custom_category_ptr);
 
 struct DiscordInfo {
   float orb_count;          // float
@@ -179,6 +183,25 @@ struct SpeedrunPracticeObjective {
   u32 start_zone;              // irrelevant for cpp
   u32 end_zone_init_params;    // ObjectiveZoneInitParams
   u32 end_zone;                // irrelevant for cpp
+};
+
+struct SpeedrunCustomCategoryEntry {
+  std::string name;
+  u32 secrets;
+  u64 features;
+  u64 cheats;
+  std::string continue_point_name;
+  u64 completed_task;
+};
+void to_json(json& j, const SpeedrunCustomCategoryEntry& obj);
+void from_json(const json& j, SpeedrunCustomCategoryEntry& obj);
+
+struct SpeedrunCustomCategory {
+  s32 index;
+  u32 secrets;
+  u64 features;
+  u64 cheats;
+  u8 completed_task;
 };
 
 }  // namespace kmachine_extras

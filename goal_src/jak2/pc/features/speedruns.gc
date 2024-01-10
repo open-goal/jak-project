@@ -2,6 +2,7 @@
 (in-package goal)
 
 (define *speedrun-info* (new 'static 'speedrun-info))
+(set! (-> *speedrun-info* active-custom-category) (new 'static 'speedrun-custom-category))
 (set! (-> *speedrun-info* active-practice-objective) (new 'static 'speedrun-practice-objective))
 (set! (-> *speedrun-info* active-practice-objective starting-position) (new 'static 'vector))
 (set! (-> *speedrun-info* active-practice-objective starting-rotation) (new 'static 'vector))
@@ -236,7 +237,7 @@
   (new 'static 'boxed-array :type popup-menu-entry
       (new 'static 'popup-menu-button :label "Reset"
         :on-confirm (lambda () (send-event (ppointer->process *speedrun-manager*) 'invoke (speedrun-menu-command reset))))
-      (new 'static 'popup-menu-submenu :label "Category Select"
+      (new 'static 'popup-menu-submenu :label "Built-in Category Select"
         :entries (new 'static 'boxed-array :type popup-menu-entry
           (new 'static 'popup-menu-flag :label "Normal"
             :on-confirm (lambda () (set-category! *speedrun-info* (speedrun-category newgame-normal)))
@@ -247,6 +248,16 @@
           (new 'static 'popup-menu-flag :label "All Cheats Allowed"
             :on-confirm (lambda () (set-category! *speedrun-info* (speedrun-category all-cheats-allowed)))
             :is-toggled? (lambda () (= (-> *speedrun-info* category) (speedrun-category all-cheats-allowed))))))
+      (new 'static 'popup-menu-dynamic-submenu :label "Custom Category Select"
+        :get-length (lambda () (pc-sr-mode-get-custom-category-amount))
+        :get-entry-label (lambda ((index int) (str-dest string)) (pc-sr-mode-get-custom-category-name index str-dest))
+        :on-entry-confirm (lambda ((index int))
+          ;; hydrate from cpp
+          (pc-sr-mode-init-custom-category-info! index (-> *speedrun-info* active-custom-category))
+          (set-category! *speedrun-info* (speedrun-category custom)))
+        :entry-selected? (lambda ((index int))
+          (and (= (-> *speedrun-info* category) (speedrun-category custom))
+               (= index (-> *speedrun-info* active-custom-category index)))))
       (new 'static 'popup-menu-dynamic-submenu :label "Practice Select"
         :get-length (lambda () (pc-sr-mode-get-practice-entries-amount))
         :get-entry-label (lambda ((index int) (str-dest string)) (pc-sr-mode-get-practice-entry-name index str-dest))

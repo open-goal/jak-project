@@ -601,6 +601,24 @@ void from_json(const json& j, SpeedrunPracticeEntry& obj) {
   json_deserialize_if_exists(history);
 }
 
+void to_json(json& j, const SpeedrunCustomCategoryEntry& obj) {
+  json_serialize(name);
+  json_serialize(secrets);
+  json_serialize(features);
+  json_serialize(cheats);
+  json_serialize(continue_point_name);
+  json_serialize(completed_task);
+}
+
+void from_json(const json& j, SpeedrunCustomCategoryEntry& obj) {
+  json_deserialize_if_exists(name);
+  json_deserialize_if_exists(secrets);
+  json_deserialize_if_exists(features);
+  json_deserialize_if_exists(cheats);
+  json_deserialize_if_exists(continue_point_name);
+  json_deserialize_if_exists(completed_task);
+}
+
 std::vector<SpeedrunPracticeEntry> g_speedrun_practice_entries;
 std::unordered_map<int, SpeedrunPracticeState> g_speedrun_practice_state;
 
@@ -736,9 +754,6 @@ u64 pc_sr_mode_record_practice_entry_attempt(s32 entry_index, u32 success_bool, 
   return bool_to_symbol(ret);
 }
 
-// TODO - figure out how to not pass these ptr's in manually and instead
-// get them from `speedrun_practice_obj_ptr`
-// They are all 0'd for some reason despite being initialized to something in GOAL?
 void pc_sr_mode_init_practice_info(s32 entry_index, u32 speedrun_practice_obj_ptr) {
   if (entry_index >= g_speedrun_practice_entries.size()) {
     return;
@@ -821,6 +836,61 @@ void pc_sr_mode_init_practice_info(s32 entry_index, u32 speedrun_practice_obj_pt
         ending_zone->v2[3] = json_info.end_zone_v2->at(3) * 4096.0;
       }
     }
+  }
+}
+
+std::vector<SpeedrunCustomCategoryEntry> g_speedrun_custom_categories;
+
+s32 pc_sr_mode_get_custom_category_amount() {
+  // load practice entries from the file
+  const auto file_path =
+      file_util::get_user_features_dir(g_game_version) / "speedrun-categories.json";
+  if (!file_util::file_exists(file_path.string())) {
+    lg::info("speedrun-categories.json not found, no entries to return!");
+    return 0;
+  }
+  const auto file_contents = safe_parse_json(file_util::read_text_file(file_path));
+  if (!file_contents) {
+    lg::error("speedrun-categories.json could not be parsed!");
+    return 0;
+  }
+
+  g_speedrun_custom_categories = *file_contents;
+
+  return g_speedrun_custom_categories.size();
+}
+
+void pc_sr_mode_get_custom_category_name(s32 entry_index, u32 name_str_ptr) {
+  std::string name = "";
+  if (!g_speedrun_custom_categories.size() <= entry_index) {
+    name = g_speedrun_custom_categories.at(entry_index).name;
+  }
+  strcpy(Ptr<String>(name_str_ptr).c()->data(), name.c_str());
+}
+
+void pc_sr_mode_get_custom_category_continue_point(s32 entry_index, u32 name_str_ptr) {
+  std::string name = "";
+  if (!g_speedrun_custom_categories.size() <= entry_index) {
+    name = g_speedrun_custom_categories.at(entry_index).continue_point_name;
+  }
+  strcpy(Ptr<String>(name_str_ptr).c()->data(), name.c_str());
+}
+
+void pc_sr_mode_init_custom_category_info(s32 entry_index, u32 speedrun_custom_category_ptr) {
+  if (entry_index >= g_speedrun_custom_categories.size()) {
+    return;
+  }
+
+  auto category = speedrun_custom_category_ptr
+                      ? Ptr<SpeedrunCustomCategory>(speedrun_custom_category_ptr).c()
+                      : NULL;
+  if (category) {
+    const auto& json_info = g_speedrun_custom_categories.at(entry_index);
+    category->index = entry_index;
+    category->secrets = json_info.secrets;
+    category->features = json_info.features;
+    category->cheats = json_info.cheats;
+    category->completed_task = json_info.completed_task;
   }
 }
 

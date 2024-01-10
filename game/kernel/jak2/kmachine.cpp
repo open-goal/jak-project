@@ -601,6 +601,15 @@ void InitMachine_PCPort() {
                               (void*)kmachine_extras::pc_sr_mode_record_practice_entry_attempt);
   make_function_symbol_from_c("pc-sr-mode-init-practice-info!",
                               (void*)kmachine_extras::pc_sr_mode_init_practice_info);
+  make_function_symbol_from_c("pc-sr-mode-get-custom-category-amount",
+                              (void*)kmachine_extras::pc_sr_mode_get_custom_category_amount);
+  make_function_symbol_from_c("pc-sr-mode-get-custom-category-name",
+                              (void*)kmachine_extras::pc_sr_mode_get_custom_category_name);
+  make_function_symbol_from_c(
+      "pc-sr-mode-get-custom-category-continue-point",
+      (void*)kmachine_extras::pc_sr_mode_get_custom_category_continue_point);
+  make_function_symbol_from_c("pc-sr-mode-init-custom-category-info!",
+                              (void*)kmachine_extras::pc_sr_mode_init_custom_category_info);
 
   // setup string constants
   auto user_dir_path = file_util::get_user_config_dir();
