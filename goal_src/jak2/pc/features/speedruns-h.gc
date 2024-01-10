@@ -1,86 +1,39 @@
 ;;-*-Lisp-*-
 (in-package goal)
 
+;; TEST - safe with malformed entries
+
 (deftype speedrun-timer (process)
-  ((started? symbol)
+  ((draw? symbol)
+   (started? symbol)
    (stopped? symbol)
    (start-time time-frame)
-   (end-time time-frame))
+   (end-time time-frame)
+   (recorded-time float))
   (:methods
-    (draw-timer (_type_) none :behavior speedrun-timer))
+    (draw-timer (_type_) none :behavior speedrun-timer)
+    (start! (_type_) none :behavior speedrun-timer)
+    (reset! (_type_) none :behavior speedrun-timer)
+    (stop! (_type_) float :behavior speedrun-timer))
   (:state-methods
-    idle
-    started
-    stopped))
+    idle))
 
 (defbehavior speedrun-timer-init speedrun-timer ()
+  (set! (-> self draw?) #f)
   (set! (-> self started?) #f)
   (set! (-> self start-time) 0)
   (set! (-> self end-time) 0)
+  (set! (-> self recorded-time) 0.0)
   (go-virtual idle)
   (none))
 
-(defbehavior speedrun-timer-event-handler speedrun-timer ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-  (case event-type
-    (('reset-timer)
-     (set! (-> self started?) #f)
-     (set! (-> self stopped?) #f)
-     (set! (-> self start-time) 0)
-     (set! (-> self end-time) 0)
-     (go-virtual idle))
-    (('start-timer)
-     (set! (-> self started?) #t)
-     (set! (-> self stopped?) #f)
-     (set! (-> self start-time) (current-time))
-     (set! (-> self end-time) 0)
-     (go-virtual started))
-    (('stop-timer)
-     (when (not (-> self stopped?))
-      (set! (-> self started?) #f)
-      (set! (-> self stopped?) #t)
-      (set! (-> self end-time) (current-time))
-      (go-virtual stopped))))
-    (the-as object 0))
-
 (defstate idle (speedrun-timer)
   :virtual #t
-  :event speedrun-timer-event-handler
-  :trans (behavior ()
-    (none))
   :code (behavior ()
     (until #f
-      (draw-timer self)
+      (when (-> self draw?) (draw-timer self))
       (suspend))
-    (none))
-  :post (behavior ()
     (none)))
-
-(defstate started (speedrun-timer)
-  :virtual #t
-  :event speedrun-timer-event-handler
-  :trans (behavior ()
-    (none))
-  :code (behavior ()
-    (until #f
-      (draw-timer self)
-      (suspend))
-    (none))
-  :post (behavior ()
-    (none)))
-
-(defstate stopped (speedrun-timer)
-  :virtual #t
-  :event speedrun-timer-event-handler
-  :trans (behavior ()
-    (none))
-  :code (behavior ()
-    (until #f
-      (draw-timer self)
-      (suspend))
-    (none))
-  :post (behavior ()
-    (none)))
-
 
 ;; TODO - put in util
 (deftype objective-zone (process)
@@ -103,7 +56,6 @@
   :type uint64
   (none 0))
 
-;; TODO - starting camera position / rotation as well
 ;; reset method
 (deftype speedrun-practice-objective (structure)
   ((index int32 :offset-assert 0)
@@ -158,16 +110,14 @@
   (reset 0)
   (exit 1))
 
-;; TODO - rename this into speedrun-manager
-(deftype speedrun-menu (process)
+(deftype speedrun-manager (process)
   ((popup-menu (pointer popup-menu))
    (ignore-menu-toggle? symbol)
    (opened-with-start? symbol)
-   (timer (pointer speedrun-timer))
-   (grabbed-target? symbol))
+   (timer (pointer speedrun-timer)))
   (:methods
     (draw-menu (_type_) none))
   (:state-methods
     idle))
 
-(define-extern *speedrun-menu* (pointer speedrun-menu))
+(define-extern *speedrun-manager* (pointer speedrun-manager))

@@ -32,6 +32,28 @@
       (draw-string-adv *pc-encoded-temp-string* buf font-ctx)))
   (none))
 
+(defmethod start! ((this speedrun-timer))
+  (set! (-> this started?) #t)
+  (set! (-> this stopped?) #f)
+  (set! (-> this start-time) (current-time))
+  (set! (-> this end-time) 0)
+  (none))
+
+(defmethod reset! ((this speedrun-timer))
+  (set! (-> this started?) #f)
+  (set! (-> this stopped?) #f)
+  (set! (-> this start-time) 0)
+  (set! (-> this end-time) 0)
+  (none))
+
+(defmethod stop! ((this speedrun-timer))
+  (when (not (-> this stopped?))
+    (set! (-> this started?) #f)
+    (set! (-> this stopped?) #t)
+    (set! (-> this end-time) (current-time))
+    (set! (-> this recorded-time) (* (the float (- (-> this end-time) (-> this start-time))) 0.0033333334)))
+  (-> this recorded-time))
+
 (defmethod set-category! ((this speedrun-info) (category speedrun-category))
   (set! (-> this category) category)
   (none))
@@ -157,16 +179,20 @@
   (clear *pc-encoded-temp-string*)
   (pc-sr-mode-get-practice-entry-name (-> this index) *pc-encoded-temp-string*)
   (format *temp-string* "<COLOR_WHITE>Practicing: <COLOR_GREEN>~S~%" *pc-encoded-temp-string*)
-  (format *temp-string* "<COLOR_WHITE>History: <COLOR_GREEN>~D<COLOR_WHITE>/~D(~,,2f%)~%"
-                        (pc-sr-mode-get-practice-entry-history-success (-> this index))
-                        (pc-sr-mode-get-practice-entry-history-attempts (-> this index))
-                        (* 100.0 (/ (the float (pc-sr-mode-get-practice-entry-history-success (-> this index)))
-                                    (the float (pc-sr-mode-get-practice-entry-history-attempts (-> this index))))))
-  (format *temp-string* "<COLOR_WHITE>Session: <COLOR_GREEN>~D<COLOR_WHITE>/~D(~,,2f%)~%"
-                        (pc-sr-mode-get-practice-entry-session-success (-> this index))
-                        (pc-sr-mode-get-practice-entry-session-attempts (-> this index))
-                        (* 100.0 (/ (the float (pc-sr-mode-get-practice-entry-session-success (-> this index)))
-                                    (the float (pc-sr-mode-get-practice-entry-session-attempts (-> this index))))))
+  (if (> (pc-sr-mode-get-practice-entry-history-attempts (-> this index)) 0)
+    (format *temp-string* "<COLOR_WHITE>History: <COLOR_GREEN>~D<COLOR_WHITE>/~D (~,,2f%)~%"
+                          (pc-sr-mode-get-practice-entry-history-success (-> this index))
+                          (pc-sr-mode-get-practice-entry-history-attempts (-> this index))
+                          (* 100.0 (/ (the float (pc-sr-mode-get-practice-entry-history-success (-> this index)))
+                                      (the float (pc-sr-mode-get-practice-entry-history-attempts (-> this index))))))
+    (format *temp-string* "<COLOR_WHITE>History: --~%"))
+  (if (> (pc-sr-mode-get-practice-entry-session-attempts (-> this index)) 0)
+    (format *temp-string* "<COLOR_WHITE>Session: <COLOR_GREEN>~D<COLOR_WHITE>/~D (~,,2f%)~%"
+                          (pc-sr-mode-get-practice-entry-session-success (-> this index))
+                          (pc-sr-mode-get-practice-entry-session-attempts (-> this index))
+                          (* 100.0 (/ (the float (pc-sr-mode-get-practice-entry-session-success (-> this index)))
+                                      (the float (pc-sr-mode-get-practice-entry-session-attempts (-> this index))))))
+    (format *temp-string* "<COLOR_WHITE>Session: --~%"))
   (pc-sr-mode-get-practice-entry-avg-time (-> this index) *pc-encoded-temp-string*)
   (format *temp-string* "<COLOR_WHITE>Average Time: <COLOR_GREEN>~Ss~%" *pc-encoded-temp-string*)
   (pc-sr-mode-get-practice-entry-fastest-time (-> this index) *pc-encoded-temp-string*)
@@ -183,23 +209,33 @@
   (none))
 
 (defmethod reset! ((this speedrun-practice-objective))
+  ;; record attempt if attempt was started
+  (when (-> *speedrun-info* waiting-to-record-practice-attempt?)
+    (pc-sr-mode-record-practice-entry-attempt! (-> this index) #f (&-> (the-as speedrun-timer (ppointer->process (-> *speedrun-manager* 0 timer))) recorded-time)))
   ;; TODO - load checkpoint if not already in that checkpoint
   ;; TODO - set features / cheats / completed-task / etc
   ;; Update player position
   (vector-copy! (-> *target* root trans) (-> this starting-position))
   (vector-copy! (-> *target* root quat) (-> this starting-rotation))
+  ;; - get off jetboard and reset speed
+  (vector-copy! (-> *target* control transv) *zero-vector*)
+  (send-event *target* 'change-mode 'normal)
   ;; Update camera position and rotation
   (vector-copy! (-> *camera-combiner* trans) (-> this starting-camera-position))
   (matrix-identity! (-> *camera-combiner* inv-camera-rot))
   (matrix-copy! (-> *camera-combiner* inv-camera-rot) (-> this starting-camera-rotation))
-  (send-event *camera* 'change-target *target*)
-  (cam-master-activate-slave #t)
+  (process-spawn-function process
+    (lambda :behavior process ()
+      (suspend)
+      (send-event *camera* 'teleport)
+      (deactivate self)))
+  (cam-master-activate-slave #f)
   (none))
 
 (define *speedrun-popup-menu-entries*
   (new 'static 'boxed-array :type popup-menu-entry
       (new 'static 'popup-menu-button :label "Reset"
-        :on-confirm (lambda () (send-event (ppointer->process *speedrun-menu*) 'invoke (speedrun-menu-command reset))))
+        :on-confirm (lambda () (send-event (ppointer->process *speedrun-manager*) 'invoke (speedrun-menu-command reset))))
       (new 'static 'popup-menu-submenu :label "Category Select"
         :entries (new 'static 'boxed-array :type popup-menu-entry
           (new 'static 'popup-menu-flag :label "Normal"
@@ -215,6 +251,8 @@
         :get-length (lambda () (pc-sr-mode-get-practice-entries-amount))
         :get-entry-label (lambda ((index int) (str-dest string)) (pc-sr-mode-get-practice-entry-name index str-dest))
         :on-entry-confirm (lambda ((index int))
+          ;; turn on timer
+          (set! (-> (the-as speedrun-timer (ppointer->process (-> *speedrun-manager* 0 timer))) draw?) #t)
           ;; tear down old processes
           (when (nonzero? (-> *speedrun-info* active-practice-objective start-zone))
             (deactivate (-> *speedrun-info* active-practice-objective start-zone 0)))
@@ -227,15 +265,15 @@
             (the-as (pointer objective-zone) (process-spawn objective-zone :init objective-zone-init #t (-> *speedrun-info* active-practice-objective start-zone-init-params))))
           (set! (-> *speedrun-info* active-practice-objective start-zone 0 on-exit)
                 (lambda ()
-                  (send-event (ppointer->process (-> *speedrun-menu* 0 timer)) 'start-timer)
+                  (start! (the-as speedrun-timer (ppointer->process (-> *speedrun-manager* 0 timer))))
                   (set! (-> *speedrun-info* waiting-to-record-practice-attempt?) #t)
                   (none)))
           (set! (-> *speedrun-info* active-practice-objective start-zone 0 on-enter)
                 (lambda ()
                   (when (and *target* (>= (-> *target* control ctrl-xz-vel) (meters 30.0)))
-                    (process-grab? *target* #f)
-                    (set! (-> *speedrun-menu* 0 grabbed-target?) #t))
-                  (send-event (ppointer->process (-> *speedrun-menu* 0 timer)) 'reset-timer)
+                    (vector-copy! (-> *target* control transv) *zero-vector*))
+                  (set! (-> *speedrun-info* waiting-to-record-practice-attempt?) #f)
+                  (reset! (the-as speedrun-timer (ppointer->process (-> *speedrun-manager* 0 timer))))
                   (none)))
 
           (when (= 0 (-> *speedrun-info* active-practice-objective end-task))
@@ -243,16 +281,20 @@
               (the-as (pointer objective-zone) (process-spawn objective-zone :init objective-zone-init #f (-> *speedrun-info* active-practice-objective end-zone-init-params))))
             (set! (-> *speedrun-info* active-practice-objective end-zone 0 on-enter)
                   (lambda ()
-                    (send-event (ppointer->process (-> *speedrun-menu* 0 timer)) 'stop-timer)
-                    ;; TODO - play only if faster
-                    ;; (when (and (-> *speedrun-info* waiting-to-record-practice-attempt?)
-                    ;;            (not (-> self start?)))
-                    ;;   (set! (-> *speedrun-info* waiting-to-record-practice-attempt?) #f)
-                    ;;   (sound-play "skill-pickup"))
+                    (when (-> *speedrun-info* waiting-to-record-practice-attempt?)
+                      (stop! (the-as speedrun-timer (ppointer->process (-> *speedrun-manager* 0 timer))))
+                      (if (pc-sr-mode-record-practice-entry-attempt! (-> *speedrun-info* active-practice-objective index)
+                                                                       #t
+                                                                       (&-> (the-as speedrun-timer (ppointer->process (-> *speedrun-manager* 0 timer))) recorded-time))
+                        (sound-play "skill-pickup")
+                        (sound-play "menu-pick"))
+                      (set! (-> *speedrun-info* waiting-to-record-practice-attempt?) #f))
                     (none))))
           (set! (-> *speedrun-info* practicing?) #t)
-          (reset! (-> *speedrun-info* active-practice-objective)))
-        :entry-selected? (lambda ((index int)) (= index (-> *speedrun-info* active-practice-objective index))))
+          (reset! (-> *speedrun-info* active-practice-objective))
+          (set-master-mode 'game)
+          (send-event (ppointer->process (-> *speedrun-manager* 0 popup-menu)) 'close-menu))
+        :entry-selected? (lambda ((index int)) (and (-> *speedrun-info* practicing?) (= index (-> *speedrun-info* active-practice-objective index)))))
       (new 'static 'popup-menu-button :label "Stop Practicing"
         :on-confirm (lambda ()
           (when (-> *speedrun-info* practicing?)
@@ -260,22 +302,22 @@
               (deactivate (-> *speedrun-info* active-practice-objective start-zone 0)))
             (when (nonzero? (-> *speedrun-info* active-practice-objective end-zone))
               (deactivate (-> *speedrun-info* active-practice-objective end-zone 0))))
-            (set! (-> *speedrun-info* practicing?) #f)))
+            (set! (-> *speedrun-info* practicing?) #f)
+            (set! (-> (the-as speedrun-timer (ppointer->process (-> *speedrun-manager* 0 timer))) draw?) #f)))
       (new 'static 'popup-menu-button :label "Exit"
-        :on-confirm (lambda () (send-event (ppointer->process *speedrun-menu*) 'invoke (speedrun-menu-command exit))))
+        :on-confirm (lambda () (send-event (ppointer->process *speedrun-manager*) 'invoke (speedrun-menu-command exit))))
   ))
 
-(define *speedrun-menu* (the-as (pointer speedrun-menu) #f))
+(define *speedrun-manager* (the-as (pointer speedrun-manager) #f))
 
-(defbehavior speedrun-menu-init speedrun-menu ()
-  (set! *speedrun-menu* (the-as (pointer speedrun-menu) (process->ppointer self)))
-  (set! (-> *speedrun-menu* 0 popup-menu)
+(defbehavior speedrun-manager-init speedrun-manager ()
+  (set! *speedrun-manager* (the-as (pointer speedrun-manager) (process->ppointer self)))
+  (set! (-> *speedrun-manager* 0 popup-menu)
         (the-as (pointer popup-menu) (process-spawn popup-menu :init popup-menu-init "Speedrun Menu" *speedrun-popup-menu-entries*)))
-  (set! (-> *speedrun-menu* 0 timer)
+  (set! (-> *speedrun-manager* 0 timer)
         (the-as (pointer speedrun-timer) (process-spawn speedrun-timer :init speedrun-timer-init)))
-  (set! (-> *speedrun-menu* 0 ignore-menu-toggle?) #f)
-  (set! (-> *speedrun-menu* 0 opened-with-start?) #f)
-  (set! (-> *speedrun-menu* 0 grabbed-target?) #f)
+  (set! (-> *speedrun-manager* 0 ignore-menu-toggle?) #f)
+  (set! (-> *speedrun-manager* 0 opened-with-start?) #f)
   (set! (-> *speedrun-info* practicing?) #f)
   (set! (-> *speedrun-info* waiting-to-record-practice-attempt?) #f)
   (go-virtual idle)
@@ -285,11 +327,11 @@
   "A per frame update for speedrunning related stuff"
   ;; Ensure the speedrunner menu process is enabled or destroyed
   (when (and (-> *pc-settings* speedrunner-mode?)
-             (not *speedrun-menu*))
-    (process-spawn speedrun-menu :init speedrun-menu-init #f :to *entity-pool*))
+             (not *speedrun-manager*))
+    (process-spawn speedrun-manager :init speedrun-manager-init #f :to *entity-pool*))
   (when (and (not (-> *pc-settings* speedrunner-mode?))
-             *speedrun-menu*)
-    (deactivate (-> *speedrun-menu* 0)))
+             *speedrun-manager*)
+    (deactivate (-> *speedrun-manager* 0)))
   ;; do speedrunner mode things
   (when (-> *pc-settings* speedrunner-mode?)
     ;; Update auto-splitter struct
@@ -331,12 +373,12 @@
 
 ;; Speedrun Menu
 
-(defmethod deactivate ((this speedrun-menu))
-  (set! *speedrun-menu* (the-as (pointer speedrun-menu) #f))
+(defmethod deactivate ((this speedrun-manager))
+  (set! *speedrun-manager* (the-as (pointer speedrun-manager) #f))
   ((method-of-type process deactivate) this)
   (none))
 
-(defstate idle (speedrun-menu)
+(defstate idle (speedrun-manager)
   :virtual #t
   :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
     (case event-type
@@ -354,8 +396,6 @@
     (none))
   :code (behavior ()
     (until #f
-      (when (and *target* (-> self grabbed-target?))
-        (process-release? *target*))
       (when (and (-> *speedrun-info* practicing?) (cpad-pressed? 0 l3))
         (reset! (-> *speedrun-info* active-practice-objective)))
       (suspend))
@@ -363,7 +403,7 @@
   :post (behavior ()
     (none)))
 
-(defmethod draw-menu ((this speedrun-menu))
+(defmethod draw-menu ((this speedrun-manager))
   ;; handle opening and closing the menu
   ;; allow the menu to be toggled again once one of the current buttons are released
   (when (and (-> this ignore-menu-toggle?)

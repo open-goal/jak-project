@@ -192,6 +192,10 @@ inline u64 bool_to_symbol(const bool val) {
   return val ? static_cast<u64>(s7.offset) + true_symbol_offset(g_game_version) : s7.offset;
 }
 
+inline bool symbol_to_bool(const u32 symptr) {
+  return symptr != s7.offset;
+}
+
 // TODO - move to common
 void encode_utf8_string(u32 src_str_ptr, u32 str_dest_ptr) {
   auto str = std::string(Ptr<String>(src_str_ptr).c()->data());
@@ -544,11 +548,19 @@ s32 pc_get_num_external_highscores(u32 highscore_id_ptr) {
 }
 
 void to_json(json& j, const SpeedrunPracticeEntryHistoryAttempt& obj) {
-  json_serialize_optional(time);
+  if (obj.time) {
+    j["time"] = obj.time.value();
+  } else {
+    j["time"] = nullptr;
+  }
 }
 
 void from_json(const json& j, SpeedrunPracticeEntryHistoryAttempt& obj) {
-  json_deserialize_optional_if_exists(time);
+  if (j["time"].is_null()) {
+    obj.time = {};
+  } else {
+    obj.time = j["time"];
+  }
 }
 
 void to_json(json& j, const SpeedrunPracticeEntry& obj) {
@@ -637,9 +649,9 @@ s32 pc_sr_mode_get_practice_entries_amount() {
     if (total_successes != 0) {
       average_time = total_time / total_successes;
     }
-    g_speedrun_practice_state[i] = {last_session_id,  total_attempts,    total_successes,
-                                    session_attempts, session_successes, total_time,
-                                    average_time,     fastest_time};
+    g_speedrun_practice_state[i] = {last_session_id + 1, total_attempts,    total_successes,
+                                    session_attempts,    session_successes, total_time,
+                                    average_time,        fastest_time};
   }
 
   return g_speedrun_practice_entries.size();
@@ -687,8 +699,41 @@ void pc_sr_mode_get_practice_entry_fastest_time(s32 entry_index, u32 time_str_pt
   strcpy(Ptr<String>(time_str_ptr).c()->data(), time.c_str());
 }
 
-void pc_sr_mode_record_practice_entry_attempt(s32 entry_index, u32 success_bool, float time) {
-  // TODO
+u64 pc_sr_mode_record_practice_entry_attempt(s32 entry_index, u32 success_bool, u32 time_ptr) {
+  auto& state = g_speedrun_practice_state.at(entry_index);
+  const auto was_successful = symbol_to_bool(success_bool);
+  state.total_attempts++;
+  state.session_attempts++;
+  bool ret = false;
+  SpeedrunPracticeEntryHistoryAttempt new_history_entry;
+  if (was_successful) {
+    auto time = Ptr<float>(time_ptr).c();
+    new_history_entry.time = *time;
+    state.total_successes++;
+    state.session_successes++;
+    state.total_time += *time;
+    state.average_time = state.total_time / state.total_successes;
+    if (*time < state.fastest_time) {
+      state.fastest_time = *time;
+      ret = true;
+    }
+  }
+  // persist to file
+  const auto file_path =
+      file_util::get_user_features_dir(g_game_version) / "speedrun-practice.json";
+  if (!file_util::file_exists(file_path.string())) {
+    lg::info("speedrun-practice.json not found, not persisting!");
+  } else {
+    auto& history = g_speedrun_practice_entries.at(entry_index).history;
+    if (history.find(fmt::format("{}", state.current_session_id)) == history.end()) {
+      history[fmt::format("{}", state.current_session_id)] = {};
+    }
+    history[fmt::format("{}", state.current_session_id)].push_back(new_history_entry);
+    json data = g_speedrun_practice_entries;
+    file_util::write_text_file(file_path, data.dump(2));
+  }
+  // return
+  return bool_to_symbol(ret);
 }
 
 // TODO - figure out how to not pass these ptr's in manually and instead

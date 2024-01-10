@@ -47,7 +47,7 @@ s32 pc_sr_mode_get_practice_entry_session_success(s32 entry_index);
 s32 pc_sr_mode_get_practice_entry_session_attempts(s32 entry_index);
 void pc_sr_mode_get_practice_entry_avg_time(s32 entry_index, u32 time_str_ptr);
 void pc_sr_mode_get_practice_entry_fastest_time(s32 entry_index, u32 time_str_ptr);
-void pc_sr_mode_record_practice_entry_attempt(s32 entry_index, u32 success_bool, float time);
+u64 pc_sr_mode_record_practice_entry_attempt(s32 entry_index, u32 success_bool, u32 time);
 void pc_sr_mode_init_practice_info(s32 entry_index, u32 speedrun_practice_obj_ptr);
 
 struct DiscordInfo {
@@ -139,7 +139,7 @@ void to_json(json& j, const SpeedrunPracticeEntry& obj);
 void from_json(const json& j, SpeedrunPracticeEntry& obj);
 
 struct SpeedrunPracticeState {
-  s32 last_session_id;
+  s32 current_session_id;
   s32 total_attempts;
   s32 total_successes;
   s32 session_attempts;
