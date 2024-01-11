@@ -1,10 +1,10 @@
 ;;-*-Lisp-*-
 (in-package goal)
 
-(defun get-widest-entry ((entries (array popup-menu-entry)) (title string) (font-ctx font-context))
+(defun get-widest-entry ((entries (array popup-menu-entry)) (title string) (font-ctx font-context) (start-index int) (end-index int))
   (let ((max-len 0.0))
-    (dotimes (i (-> entries length))
-      (let ((label-len (-> (get-string-length (-> entries i label) font-ctx) length)))
+    (dotimes (i (- end-index start-index))
+      (let ((label-len (-> (get-string-length (-> entries (+ start-index i) label) font-ctx) length)))
         (when (> label-len max-len)
           (set! max-len label-len))))
     (let ((title-len (-> (get-string-length title font-ctx) length)))
@@ -12,10 +12,10 @@
         (set! max-len title-len)))
     (the int max-len)))
 
-(defun get-widest-dynamic-entry ((get-entry-label (function int string none)) (entry-count int) (title string) (font-ctx font-context))
+(defun get-widest-dynamic-entry ((get-entry-label (function int string none)) (title string) (font-ctx font-context) (start-index int) (end-index int))
   (let ((max-len 0.0))
-    (dotimes (i entry-count)
-      (get-entry-label i *pc-encoded-temp-string*)
+    (dotimes (i (- end-index start-index))
+      (get-entry-label (+ start-index i) *pc-encoded-temp-string*)
       (let ((label-len (-> (get-string-length *pc-encoded-temp-string* font-ctx) length)))
         (when (> label-len max-len)
           (set! max-len label-len))))
@@ -68,6 +68,7 @@
       (set! (-> font-ctx origin x) old-x)
       (set! (-> font-ctx origin y) old-y)
       (set! (-> font-ctx color) old-color))
+    (clear *pc-encoded-temp-string*)
     (get-label entry-id *pc-encoded-temp-string*)
     (pc-encode-utf8-string *pc-encoded-temp-string* *pc-encoded-temp-string*)
     (when hovering?
@@ -88,23 +89,28 @@
     (let* ((entry-count (if dynamic-menu?
                             ((-> this menu-states (-> this curr-state-index) get-dynamic-menu-length))
                             (-> this menu-states (-> this curr-state-index) entries length)))
+           (current-index (-> this menu-states (-> this curr-state-index) entry-index))
+           (start-index (* (/ current-index 15) 15))
+           (end-index (min (+ start-index 15) entry-count))
+           (entry-count-to-render (- end-index start-index))
+           (menu-rows (if (< end-index entry-count) (inc entry-count-to-render) entry-count-to-render))
            (widest-entry (if dynamic-menu?
-                             (get-widest-dynamic-entry (-> this menu-states (-> this curr-state-index) get-dynamic-menu-entry-label) entry-count page-title font-ctx)
-                             (get-widest-entry (-> this menu-states (-> this curr-state-index) entries) page-title font-ctx))))
+                             (get-widest-dynamic-entry (-> this menu-states (-> this curr-state-index) get-dynamic-menu-entry-label) page-title font-ctx start-index end-index)
+                             (get-widest-entry (-> this menu-states (-> this curr-state-index) entries) page-title font-ctx start-index end-index))))
       (with-dma-buffer-add-bucket ((buf (-> (current-frame) global-buf)) (bucket-id debug-no-zbuf2))
         ;; background border
         (draw-sprite2d-xy buf
                           6
                           64
                           (+ 17 widest-entry) ;; width
-                          (+ 17 (* 15 (inc entry-count))) ;; height
+                          (+ 17 (* 15 (inc menu-rows))) ;; height
                           (new 'static 'rgba :r 255 :g 255 :b 255 :a 75))
         ;; background
         (draw-sprite2d-xy buf
                           7
                           65
                           (+ 15 widest-entry) ;; width
-                          (+ 15 (* 15 (inc entry-count))) ;; height
+                          (+ 15 (* 15 (inc menu-rows))) ;; height
                           (new 'static 'rgba :r 0 :g 0 :b 0 :a 255))
         ;; title
         ;; TODO - function
@@ -118,15 +124,27 @@
         (set! (-> font-ctx color) (font-color default))
         (set! (-> font-ctx origin y) (+ 15.0 (-> font-ctx origin y)))
         ;; menu contents
-        (dotimes (i entry-count)
+        (dotimes (i entry-count-to-render)
           (if dynamic-menu?
-            (draw-dynamic-entry i
+            (draw-dynamic-entry (+ i start-index)
                                 (-> this menu-states (-> this curr-state-index) get-dynamic-menu-entry-label)
                                 (-> this menu-states (-> this curr-state-index) dynamic-menu-entry-selected?)
                                 font-ctx
                                 buf
-                                (= i (-> this menu-states (-> this curr-state-index) entry-index)))
-            (draw-entry (-> (-> this menu-states (-> this curr-state-index) entries) i) font-ctx buf (= i (-> this menu-states (-> this curr-state-index) entry-index))))
+                                (= (+ i start-index) current-index))
+            (draw-entry (-> (-> this menu-states (-> this curr-state-index) entries) i) font-ctx buf (= (+ i start-index) current-index)))
+          (set! (-> font-ctx origin y) (+ 15.0 (-> font-ctx origin y))))
+        (when (< end-index entry-count)
+          (clear *pc-encoded-temp-string*)
+          (format *pc-encoded-temp-string* "~D more..." (- entry-count end-index))
+          (pc-encode-utf8-string *pc-encoded-temp-string* *pc-encoded-temp-string*)
+          (set! (-> font-ctx color) (font-color menu-parent))
+          (let ((old-x (-> font-ctx origin x))
+                (old-y (-> font-ctx origin y)))
+            (draw-string-adv *pc-encoded-temp-string* buf font-ctx)
+            (set! (-> font-ctx origin x) old-x)
+            (set! (-> font-ctx origin y) old-y))
+          (set! (-> font-ctx color) (font-color default))
           (set! (-> font-ctx origin y) (+ 15.0 (-> font-ctx origin y))))
         ;; button prompts
         (if (= (-> this curr-state-index) 0)
