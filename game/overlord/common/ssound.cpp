@@ -214,24 +214,24 @@ s32 CalculateFalloffVolume(Vec3w* pos, s32 volume, s32 fo_curve, s32 fo_min, s32
       zdiff >>= 1;
     }
     s32 dist_squared = xdiff * xdiff + ydiff * ydiff + zdiff * zdiff;
-    s32 uVar1 = 0;
+    s32 dist_steps = 0;
     if (dist_squared != 0) {
       while ((dist_squared & 0xc0000000) == 0) {
-        uVar1 = uVar1 + 1;
+        dist_steps = dist_steps + 1;
         dist_squared <<= 2;
       }
-      uVar1 = sqrt_table[dist_squared >> 24] >> (uVar1 & 0x1f);
+      dist_steps = sqrt_table[dist_squared >> 24] >> (dist_steps & 0x1f);
     }
     new_vol = volume;
-    if (min < uVar1) {
-      s32 voldiff = uVar1 - min;
-      if (uVar1 < max) {
-        uVar1 = max - min;
+    if (min < dist_steps) {
+      s32 voldiff = dist_steps - min;
+      if (dist_steps < max) {
+        dist_steps = max - min;
         while (0xffff < voldiff) {
-          uVar1 >>= 1;
+          dist_steps >>= 1;
           voldiff >>= 1;
         }
-        voldiff = (voldiff << 0x10) / uVar1;
+        voldiff = (voldiff << 0x10) / dist_steps;
         if (voldiff != 0x10000) {
           new_vol = voldiff * voldiff >> 0x10;
           new_vol = gCurves[fo_curve].unk4 * 0x10000 + gCurves[fo_curve].unk3 * voldiff +
@@ -304,32 +304,6 @@ void KillSoundsInGroup(u8 group) {
         s.id = 0;
       }
     }
-  }
-}
-
-void UpdateLocation(Sound* sound) {
-  if (sound->id == 0) {
-    return;
-  }
-
-  if (g_game_version == GameVersion::Jak1) {
-    if ((sound->bank_entry->fallof_params >> 28) == 0) {
-      return;
-    }
-  }
-
-  s32 id = snd_SoundIsStillPlaying(sound->sound_handle);
-  if (id == 0) {
-    sound->id = 0;
-    return;
-  }
-
-  s32 volume = GetVolume(sound);
-  if (volume == 0) {
-    snd_StopSound(sound->sound_handle);
-  } else {
-    s32 pan = GetPan(sound);
-    snd_SetSoundVolPan(id, volume, pan);
   }
 }
 

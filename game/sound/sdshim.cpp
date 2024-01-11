@@ -26,7 +26,10 @@ snd::Voice* voice_from_entry(u32 entry) {
 }
 
 u32 sceSdGetAddr(u32 entry) {
-  auto* voice = voice_from_entry(entry);
+  [[maybe_unused]] u32 core = entry & 1;
+  [[maybe_unused]] u32 voice_id = (entry >> 1) & 0x1f;
+
+  auto* voice = voice_from_entry(voice_id);
   if (!voice) {
     return 0;
   }
@@ -38,35 +41,36 @@ u32 sceSdGetAddr(u32 entry) {
   return voice->GetNax() << 1;
 }
 
-void sceSdSetSwitch(u32 entry, u32 /*value*/) {
-  // we can ignore this, only used for vmix
+void sceSdSetSwitch(u32 entry, u32 value) {
   u32 reg = entry & ~0x3f;
-  switch (reg) {
-    case 0x1500:
-      voice_from_entry(entry)->KeyOn();
-      voice_from_entry(entry + 1)->KeyOn();
-      break;
-    case 0x1600:
-      voice_from_entry(entry)->KeyOff();
-      break;
+  u8 voice = 0;
+  while (value) {
+    u8 bit = value & 1;
+
+    if (bit) {
+      switch (reg) {
+        case SD_S_KON:
+          voice_from_entry(voice)->KeyOn();
+          break;
+        case SD_S_KOFF:
+          voice_from_entry(voice)->KeyOff();
+          break;
+      }
+    }
+
+    voice++;
+    value >>= 1;
   }
-}
-
-void sceSdkey_on_jak2_voice(int id) {
-  voice_from_entry(id)->KeyOn();
-}
-
-void sceSdkey_off_jak2_voice(int id) {
-  voice_from_entry(id)->KeyOff();
 }
 
 void sceSdSetAddr(u32 entry, u32 value) {
-  auto* voice = voice_from_entry(entry);
+  [[maybe_unused]] u32 core = entry & 1;
+  [[maybe_unused]] u32 voice_id = (entry >> 1) & 0x1f;
+
+  auto* voice = voice_from_entry(voice_id);
   if (!voice) {
     return;
   }
-  [[maybe_unused]] u32 core = entry & 1;
-  [[maybe_unused]] u32 voice_id = (entry >> 1) & 0x1f;
   u32 reg = entry & ~0x3f;
 
   switch (reg) {
@@ -84,12 +88,13 @@ void sceSdSetAddr(u32 entry, u32 value) {
 }
 
 void sceSdSetParam(u32 entry, u32 value) {
-  auto* voice = voice_from_entry(entry);
+  [[maybe_unused]] u32 core = entry & 1;
+  [[maybe_unused]] u32 voice_id = (entry >> 1) & 0x1f;
+
+  auto* voice = voice_from_entry(voice_id);
   if (!voice) {
     return;
   }
-  [[maybe_unused]] u32 core = entry & 1;
-  [[maybe_unused]] u32 voice_id = (entry >> 1) & 0x1f;
   u32 reg = entry & ~0x3f;
 
   switch (reg) {
