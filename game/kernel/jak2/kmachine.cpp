@@ -610,6 +610,8 @@ void InitMachine_PCPort() {
       (void*)kmachine_extras::pc_sr_mode_get_custom_category_continue_point);
   make_function_symbol_from_c("pc-sr-mode-init-custom-category-info!",
                               (void*)kmachine_extras::pc_sr_mode_init_custom_category_info);
+  make_function_symbol_from_c("pc-sr-mode-dump-new-custom-category",
+                              (void*)kmachine_extras::pc_sr_mode_dump_new_custom_category);
 
   // setup string constants
   auto user_dir_path = file_util::get_user_config_dir();

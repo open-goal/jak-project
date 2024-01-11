@@ -3,6 +3,7 @@
 
 (define *speedrun-info* (new 'static 'speedrun-info))
 (set! (-> *speedrun-info* active-custom-category) (new 'static 'speedrun-custom-category))
+(set! (-> *speedrun-info* dump-custom-category) (new 'static 'speedrun-custom-category))
 (set! (-> *speedrun-info* active-practice-objective) (new 'static 'speedrun-practice-objective))
 (set! (-> *speedrun-info* active-practice-objective starting-position) (new 'static 'vector))
 (set! (-> *speedrun-info* active-practice-objective starting-rotation) (new 'static 'vector))
@@ -237,18 +238,18 @@
   (new 'static 'boxed-array :type popup-menu-entry
       (new 'static 'popup-menu-button :label "Reset"
         :on-confirm (lambda () (send-event (ppointer->process *speedrun-manager*) 'invoke (speedrun-menu-command reset))))
-      (new 'static 'popup-menu-submenu :label "Built-in Category Select"
+      (new 'static 'popup-menu-submenu :label "Built-in category select"
         :entries (new 'static 'boxed-array :type popup-menu-entry
           (new 'static 'popup-menu-flag :label "Normal"
             :on-confirm (lambda () (set-category! *speedrun-info* (speedrun-category newgame-normal)))
             :is-toggled? (lambda () (= (-> *speedrun-info* category) (speedrun-category newgame-normal))))
-          (new 'static 'popup-menu-flag :label "Hero Mode"
+          (new 'static 'popup-menu-flag :label "Hero mode"
             :on-confirm (lambda () (set-category! *speedrun-info* (speedrun-category newgame-heromode)))
             :is-toggled? (lambda () (= (-> *speedrun-info* category) (speedrun-category newgame-heromode))))
-          (new 'static 'popup-menu-flag :label "All Cheats Allowed"
+          (new 'static 'popup-menu-flag :label "All cheats allowed"
             :on-confirm (lambda () (set-category! *speedrun-info* (speedrun-category all-cheats-allowed)))
             :is-toggled? (lambda () (= (-> *speedrun-info* category) (speedrun-category all-cheats-allowed))))))
-      (new 'static 'popup-menu-dynamic-submenu :label "Custom Category Select"
+      (new 'static 'popup-menu-dynamic-submenu :label "Custom category select"
         :get-length (lambda () (pc-sr-mode-get-custom-category-amount))
         :get-entry-label (lambda ((index int) (str-dest string)) (pc-sr-mode-get-custom-category-name index str-dest))
         :on-entry-confirm (lambda ((index int))
@@ -258,7 +259,7 @@
         :entry-selected? (lambda ((index int))
           (and (= (-> *speedrun-info* category) (speedrun-category custom))
                (= index (-> *speedrun-info* active-custom-category index)))))
-      (new 'static 'popup-menu-dynamic-submenu :label "Practice Select"
+      (new 'static 'popup-menu-dynamic-submenu :label "Practice select"
         :get-length (lambda () (pc-sr-mode-get-practice-entries-amount))
         :get-entry-label (lambda ((index int) (str-dest string)) (pc-sr-mode-get-practice-entry-name index str-dest))
         :on-entry-confirm (lambda ((index int))
@@ -306,7 +307,8 @@
           (set-master-mode 'game)
           (send-event (ppointer->process (-> *speedrun-manager* 0 popup-menu)) 'close-menu))
         :entry-selected? (lambda ((index int)) (and (-> *speedrun-info* practicing?) (= index (-> *speedrun-info* active-practice-objective index)))))
-      (new 'static 'popup-menu-button :label "Stop Practicing"
+      ;; TODO - is-enabled? lambda
+      (new 'static 'popup-menu-button :label "Stop practicing"
         :on-confirm (lambda ()
           (when (-> *speedrun-info* practicing?)
             (when (nonzero? (-> *speedrun-info* active-practice-objective start-zone))
@@ -315,6 +317,35 @@
               (deactivate (-> *speedrun-info* active-practice-objective end-zone 0))))
             (set! (-> *speedrun-info* practicing?) #f)
             (set! (-> (the-as speedrun-timer (ppointer->process (-> *speedrun-manager* 0 timer))) draw?) #f)))
+      (new 'static 'popup-menu-submenu :label "Tools"
+        :entries (new 'static 'boxed-array :type popup-menu-entry
+          (new 'static 'popup-menu-submenu :label "Create custom category"
+            :entries (new 'static 'boxed-array :type popup-menu-entry
+              (new 'static 'popup-menu-dynamic-submenu :label "Select secrets"
+                :get-length (lambda () 18)
+                :get-entry-label (lambda ((index int) (str-dest string)) (copy-string<-string str-dest (bitfield->string game-secrets index)))
+                :on-entry-confirm (lambda ((index int)) (logior! (-> *speedrun-info* dump-custom-category secrets) (shl 2 index)))
+                :entry-selected? (lambda ((index int)) (logtest? (-> *speedrun-info* dump-custom-category secrets) (shl 2 index))))
+              (new 'static 'popup-menu-dynamic-submenu :label "Select features"
+                :get-length (lambda () 27)
+                :get-entry-label (lambda ((index int) (str-dest string)) (copy-string<-string str-dest (bitfield->string game-feature index)))
+                :on-entry-confirm (lambda ((index int)) (logior! (-> *speedrun-info* dump-custom-category features) (shl 2 index)))
+                :entry-selected? (lambda ((index int)) (logtest? (-> *speedrun-info* dump-custom-category features) (shl 2 index))))
+              (new 'static 'popup-menu-dynamic-submenu :label "Select cheats"
+                :get-length (lambda () 20)
+                :get-entry-label (lambda ((index int) (str-dest string)) (copy-string<-string str-dest (bitfield->string pc-cheats index)))
+                :on-entry-confirm (lambda ((index int)) (logior! (-> *speedrun-info* dump-custom-category pc-cheats) (shl 2 index)))
+                :entry-selected? (lambda ((index int)) (logtest? (-> *speedrun-info* dump-custom-category pc-cheats) (shl 2 index))))
+              (new 'static 'popup-menu-dynamic-submenu :label "Select completed task"
+                :get-length (lambda () (dec (the int (game-task max))))
+                :get-entry-label (lambda ((index int) (str-dest string)) (copy-string<-string str-dest (enum->string game-task index)))
+                :on-entry-confirm (lambda ((index int)) (set! (-> *speedrun-info* dump-custom-category completed-task) (the game-task index)))
+                :entry-selected? (lambda ((index int)) (= (-> *speedrun-info* dump-custom-category completed-task) (the game-task index))))
+              (new 'static 'popup-menu-button :label "Save new category to file"
+                :on-confirm (lambda () (pc-sr-mode-dump-new-custom-category (the uint (-> *speedrun-info* dump-custom-category secrets))
+                                                                            (the uint (-> *speedrun-info* dump-custom-category features))
+                                                                            (the uint (-> *speedrun-info* dump-custom-category pc-cheats))
+                                                                            (the uint (-> *speedrun-info* dump-custom-category completed-task)))))))))
       (new 'static 'popup-menu-button :label "Exit"
         :on-confirm (lambda () (send-event (ppointer->process *speedrun-manager*) 'invoke (speedrun-menu-command exit))))
   ))

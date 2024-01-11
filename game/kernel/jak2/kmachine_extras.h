@@ -53,6 +53,10 @@ s32 pc_sr_mode_get_custom_category_amount();
 void pc_sr_mode_get_custom_category_name(s32 entry_index, u32 name_str_ptr);
 void pc_sr_mode_get_custom_category_continue_point(s32 entry_index, u32 name_str_ptr);
 void pc_sr_mode_init_custom_category_info(s32 entry_index, u32 speedrun_custom_category_ptr);
+void pc_sr_mode_dump_new_custom_category(u32 secrets,
+                                         u64 features,
+                                         u64 cheats,
+                                         u8 completed_task);
 
 struct DiscordInfo {
   float orb_count;          // float

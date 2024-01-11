@@ -894,4 +894,34 @@ void pc_sr_mode_init_custom_category_info(s32 entry_index, u32 speedrun_custom_c
   }
 }
 
+void pc_sr_mode_dump_new_custom_category(u32 secrets, u64 features, u64 cheats, u8 completed_task) {
+  const auto file_path =
+      file_util::get_user_features_dir(g_game_version) / "speedrun-categories.json";
+  if (file_util::file_exists(file_path.string())) {
+    const auto file_contents = safe_parse_json(file_util::read_text_file(file_path));
+    if (file_contents) {
+      g_speedrun_custom_categories = *file_contents;
+    }
+  }
+
+  // persist to file
+  const auto file_path =
+      file_util::get_user_features_dir(g_game_version) / "speedrun-categories.json";
+  if (!file_util::file_exists(file_path.string())) {
+    lg::info("speedrun-practice.json not found, not persisting!");
+  } else {
+    SpeedrunCustomCategoryEntry new_category;
+    new_category.name = fmt::format("custom-category-{}", g_speedrun_custom_categories.size());
+    new_category.secrets = secrets;
+    new_category.features = features;
+    new_category.cheats = cheats;
+    new_category.completed_task = completed_task;
+    new_category.continue_point_name = "";
+    g_speedrun_custom_categories.push_back(new_category);
+    json data = g_speedrun_custom_categories;
+    file_util::write_text_file(file_path, data.dump(2));
+  }
+  return;
+}
+
 }  // namespace kmachine_extras
