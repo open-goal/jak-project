@@ -176,9 +176,9 @@
       (set! (-> v1-0 nav callback-info) *nav-enemy-null-callback-info*)
       )
     0
-    (dotimes (gp-0 (get-rand-int-range self 2 3))
+    (dotimes (gp-0 (rnd-int-range self 2 3))
       (cond
-        ((zero? (get-rand-int self 4))
+        ((zero? (rnd-int-count self 4))
          (let ((v1-7 (ja-group)))
            (if (not (and v1-7 (= v1-7 monster-frog-idle0-ja)))
                (ja-channel-push! 1 (seconds 0.1))
@@ -263,8 +263,8 @@
 (defstate ambush (monster-frog)
   :virtual #t
   :enter (behavior ()
-    (when (logtest? (-> self enemy-flags) (enemy-flag auto-reset-penetrate))
-      (logclear! (-> self enemy-flags) (enemy-flag auto-reset-penetrate))
+    (when (logtest? (-> self enemy-flags) (enemy-flag enable-on-notice))
+      (logclear! (-> self enemy-flags) (enemy-flag enable-on-notice))
       (let ((gp-0 (-> self on-notice)))
         (if gp-0
             (script-eval gp-0 :vector (-> self root trans))
@@ -314,7 +314,7 @@
   :virtual #t
   :code (behavior ()
     (ja-channel-push! 1 (seconds 0.075))
-    (let ((f30-0 (get-rand-float-range self 0.8 1.2)))
+    (let ((f30-0 (rnd-float-range self 0.8 1.2)))
       (new 'stack-no-clear 'vector)
       (ja-no-eval :group! monster-frog-notice0-ja :num! (seek! max f30-0) :frame-num 0.0)
       (until (ja-done? 0)
@@ -349,7 +349,7 @@
 (defstate active (monster-frog)
   :virtual #t
   :code (behavior ()
-    (let ((f30-0 (get-rand-float-range self 0.9 1.1)))
+    (let ((f30-0 (rnd-float-range self 0.9 1.1)))
       (until #f
         (nav-enemy-method-165 self)
         (ja-channel-push! 1 (seconds 0.2))
@@ -364,7 +364,7 @@
           (suspend)
           (ja :num! (seek! max f30-0))
           )
-        (when (enemy-method-123 self 0.2)
+        (when (rnd-go-idle? self 0.2)
           (ja-no-eval :num! (loop!))
           (ja-channel-push! 1 (seconds 0.6))
           (let ((v1-57 self))
@@ -382,7 +382,7 @@
             (suspend)
             (ja :num! (seek! max f30-0))
             )
-          (until (not (enemy-method-123 self 0.2))
+          (until (not (rnd-go-idle? self 0.2))
             (ja-no-eval :group! (-> self draw art-group data (-> self enemy-info idle-anim))
                         :num! (seek! max f30-0)
                         :frame-num 0.0
@@ -447,7 +447,7 @@
 (defstate hostile (monster-frog)
   :virtual #t
   :enter (behavior ()
-    (logclear! (-> self enemy-flags) (enemy-flag chase-startup))
+    (logclear! (-> self enemy-flags) (enemy-flag alert))
     (let ((t9-0 (-> (method-of-type nav-enemy hostile) enter)))
       (if t9-0
           (t9-0)
@@ -460,7 +460,7 @@
     )
   :trans (behavior ()
     (nav-enemy-method-160 self)
-    (if (and (logtest? (-> self enemy-flags) (enemy-flag look-at-focus)) (-> self enemy-info use-victory))
+    (if (and (logtest? (-> self enemy-flags) (enemy-flag victory)) (-> self enemy-info use-victory))
         (go-virtual victory)
         )
     (when (time-elapsed? (-> self state-time) (-> self reaction-time))
@@ -670,7 +670,7 @@
     0
     )
   :exit (behavior ()
-    (if (logtest? (-> self enemy-flags) (enemy-flag check-water))
+    (if (logtest? (-> self enemy-flags) (enemy-flag dangerous-backup))
         (logior! (-> self focus-status) (focus-status dangerous))
         (logclear! (-> self focus-status) (focus-status dangerous))
         )
@@ -684,7 +684,7 @@
       (ja :num! (seek!))
       )
     (nav-enemy-method-167 self)
-    (if (logtest? (-> self enemy-flags) (enemy-flag check-water))
+    (if (logtest? (-> self enemy-flags) (enemy-flag dangerous-backup))
         (logior! (-> self focus-status) (focus-status dangerous))
         (logclear! (-> self focus-status) (focus-status dangerous))
         )
@@ -714,7 +714,7 @@
       (ja :num! (seek!))
       )
     (cond
-      ((zero? (get-rand-int self 4))
+      ((zero? (rnd-int-count self 4))
        (let ((v1-28 (ja-group)))
          (if (not (and v1-28 (= v1-28 monster-frog-idle0-ja)))
              (ja-channel-push! 1 (seconds 0.1))
@@ -744,7 +744,7 @@
   :post nav-enemy-simple-post
   )
 
-(defmethod enemy-method-77 ((this monster-frog) (arg0 (pointer float)))
+(defmethod enemy-method-77 ((this monster-frog) (arg0 enemy-knocked-info))
   (case (-> this incoming knocked-type)
     (((knocked-type knocked-type-4))
      (ja-channel-push! 1 0)
@@ -753,7 +753,7 @@
        (set! (-> a0-3 param 0)
              (the float (+ (-> (the-as art-joint-anim (-> this draw art-group data 26)) frames num-frames) -1))
              )
-       (set! (-> a0-3 param 1) (-> arg0 0))
+       (set! (-> a0-3 param 1) (-> arg0 anim-speed))
        (set! (-> a0-3 frame-num) 0.0)
        (joint-control-channel-group! a0-3 (the-as art-joint-anim (-> this draw art-group data 26)) num-func-seek!)
        )
@@ -766,7 +766,7 @@
        (set! (-> a0-6 param 0)
              (the float (+ (-> (the-as art-joint-anim (-> this draw art-group data 22)) frames num-frames) -1))
              )
-       (set! (-> a0-6 param 1) (-> arg0 0))
+       (set! (-> a0-6 param 1) (-> arg0 anim-speed))
        (set! (-> a0-6 frame-num) 0.0)
        (joint-control-channel-group! a0-6 (the-as art-joint-anim (-> this draw art-group data 22)) num-func-seek!)
        )
@@ -781,7 +781,7 @@
            (set! (-> a0-8 param 0)
                  (the float (+ (-> (the-as art-joint-anim (-> this draw art-group data 30)) frames num-frames) -1))
                  )
-           (set! (-> a0-8 param 1) (-> arg0 0))
+           (set! (-> a0-8 param 1) (-> arg0 anim-speed))
            (set! (-> a0-8 frame-num) 0.0)
            (joint-control-channel-group! a0-8 (the-as art-joint-anim (-> this draw art-group data 30)) num-func-seek!)
            )
@@ -793,7 +793,7 @@
             (set! (-> a0-10 param 0)
                   (the float (+ (-> (the-as art-joint-anim (-> this draw art-group data 32)) frames num-frames) -1))
                   )
-            (set! (-> a0-10 param 1) (-> arg0 0))
+            (set! (-> a0-10 param 1) (-> arg0 anim-speed))
             (set! (-> a0-10 frame-num) 0.0)
             (joint-control-channel-group! a0-10 (the-as art-joint-anim (-> this draw art-group data 32)) num-func-seek!)
             )
@@ -804,7 +804,7 @@
     )
   )
 
-(defmethod enemy-method-78 ((this monster-frog) (arg0 (pointer float)))
+(defmethod enemy-method-78 ((this monster-frog) (arg0 enemy-knocked-info))
   (case (-> this incoming knocked-type)
     (((knocked-type knocked-type-4))
      (ja-channel-push! 1 (seconds 0.17))
@@ -813,7 +813,7 @@
        (set! (-> a0-3 param 0)
              (the float (+ (-> (the-as art-joint-anim (-> this draw art-group data 27)) frames num-frames) -1))
              )
-       (set! (-> a0-3 param 1) (-> arg0 0))
+       (set! (-> a0-3 param 1) (-> arg0 anim-speed))
        (set! (-> a0-3 frame-num) 0.0)
        (joint-control-channel-group! a0-3 (the-as art-joint-anim (-> this draw art-group data 27)) num-func-seek!)
        )
@@ -826,7 +826,7 @@
        (set! (-> a0-6 param 0)
              (the float (+ (-> (the-as art-joint-anim (-> this draw art-group data 23)) frames num-frames) -1))
              )
-       (set! (-> a0-6 param 1) (-> arg0 0))
+       (set! (-> a0-6 param 1) (-> arg0 anim-speed))
        (set! (-> a0-6 frame-num) 0.0)
        (joint-control-channel-group! a0-6 (the-as art-joint-anim (-> this draw art-group data 23)) num-func-seek!)
        )
@@ -841,7 +841,7 @@
            (set! (-> a0-8 param 0)
                  (the float (+ (-> (the-as art-joint-anim (-> this draw art-group data 31)) frames num-frames) -1))
                  )
-           (set! (-> a0-8 param 1) (-> arg0 0))
+           (set! (-> a0-8 param 1) (-> arg0 anim-speed))
            (set! (-> a0-8 frame-num) 0.0)
            (joint-control-channel-group! a0-8 (the-as art-joint-anim (-> this draw art-group data 31)) num-func-seek!)
            )
@@ -853,7 +853,7 @@
             (set! (-> a0-10 param 0)
                   (the float (+ (-> (the-as art-joint-anim (-> this draw art-group data 33)) frames num-frames) -1))
                   )
-            (set! (-> a0-10 param 1) (-> arg0 0))
+            (set! (-> a0-10 param 1) (-> arg0 anim-speed))
             (set! (-> a0-10 frame-num) 0.0)
             (joint-control-channel-group! a0-10 (the-as art-joint-anim (-> this draw art-group data 33)) num-func-seek!)
             )
@@ -864,13 +864,13 @@
     )
   )
 
-(defmethod track-target! ((this monster-frog))
+(defmethod common-post ((this monster-frog))
   "Does a lot of various things relating to interacting with the target
 - tracks when the enemy was last drawn
 - looks at the target and handles attacking
 @TODO Not extremely well understood yet"
   (water-control-method-10 (-> this water))
-  ((method-of-type nav-enemy track-target!) this)
+  ((method-of-type nav-enemy common-post) this)
   (none)
   )
 
