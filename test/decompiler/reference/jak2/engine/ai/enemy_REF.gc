@@ -30,13 +30,13 @@
   )
 
 ;; definition for method 117 of type enemy
-(defmethod get-rand-float ((this enemy))
+(defmethod rnd-float ((this enemy))
   "@returns the result of calling [[rand-vu]]"
   (rand-vu)
   )
 
 ;; definition for method 118 of type enemy
-(defmethod get-rand-float-range ((this enemy) (low float) (high float))
+(defmethod rnd-float-range ((this enemy) (low float) (high float))
   "@param low The lower bound of the range (inclusive)
 @param high The upper bound of the range (exclusive)
 @returns A random float in the specified range"
@@ -44,7 +44,7 @@
   )
 
 ;; definition for method 119 of type enemy
-(defmethod get-rand-int ((this enemy) (high int))
+(defmethod rnd-int-count ((this enemy) (high int))
   "@param high The upper bound of the range (exclusive)
 @returns a random integer in the range 0 to `high`
 @see [[rand-vu]]"
@@ -52,7 +52,7 @@
   )
 
 ;; definition for method 121 of type enemy
-(defmethod get-rand-int-range ((this enemy) (low int) (high int))
+(defmethod rnd-int-range ((this enemy) (low int) (high int))
   "@param low The lower bound of the range (inclusive)
 @param high The upper bound of the range (exclusive)
 @returns A random integer in the specified range"
@@ -60,16 +60,15 @@
   )
 
 ;; definition for method 122 of type enemy
-(defmethod rng-hit? ((this enemy) (chance float))
-  "TODO - not the best name
-@param chance The value to compare ([[>=]]) with the result from [[rand-vu]].
+(defmethod rnd-percent? ((this enemy) (chance float))
+  "@param chance The value to compare ([[>=]]) with the result from [[rand-vu]].
 @returns If `chance` is greater than the random draw"
   (>= chance (rand-vu))
   )
 
 ;; definition for method 120 of type enemy
 ;; WARN: new jak 2 until loop case, check carefully
-(defmethod enemy-method-120 ((this enemy) (arg0 int) (arg1 int))
+(defmethod rnd-bit ((this enemy) (arg0 int) (arg1 int))
   "TODO"
   (let ((v1-0 0)
         (s5-0 0)
@@ -84,7 +83,7 @@
         )
       )
     (when (> v1-0 0)
-      (let ((v1-1 (get-rand-int this v1-0))
+      (let ((v1-1 (rnd-int-count this v1-0))
             (a0-1 1)
             )
         (until #f
@@ -110,7 +109,7 @@
   )
 
 ;; definition for method 123 of type enemy
-(defmethod enemy-method-123 ((this enemy) (arg0 float))
+(defmethod rnd-go-idle? ((this enemy) (arg0 float))
   "TODO"
   (let* ((v1-5 (-> *display* frames (-> *display* last-screen) run-time))
          (f1-2 (fmax 0.0 (fmin 1.0 (* 0.001 (+ -7000.0 (the float v1-5))))))
@@ -122,7 +121,7 @@
 ;; definition for method 60 of type enemy
 (defmethod coin-flip? ((this enemy))
   "@returns The result of a 50/50 RNG roll"
-  (zero? (get-rand-int this 2))
+  (zero? (rnd-int-count this 2))
   )
 
 ;; definition for method 12 of type enemy
@@ -188,7 +187,7 @@
 (defmethod enemy-method-124 ((this enemy))
   "TODO"
   (let* ((v1-0 (-> this enemy-info))
-         (v0-0 (if (logtest? (enemy-flag use-trigger) (-> this enemy-flags))
+         (v0-0 (if (logtest? (enemy-flag recover) (-> this enemy-flags))
                    (-> v1-0 recover-gnd-collide-with)
                    (-> v1-0 gnd-collide-with)
                    )
@@ -220,7 +219,7 @@
         (water-info-init! s4-0 s5-0 (collide-action solid semi-solid))
         (let ((s3-0 (-> s5-0 flags)))
           (when (logtest? (water-flags touch-water) s3-0)
-            (logior! (-> this enemy-flags) (enemy-flag directed-ready))
+            (logior! (-> this enemy-flags) (enemy-flag checking-water))
             (set! (-> this water-surface-height) (-> s5-0 trans y))
             (when (not (focus-test? this touch-water under-water))
               (let ((s2-0 (new 'stack-no-clear 'vector)))
@@ -291,8 +290,8 @@
       )
     )
   (logclear! (-> this focus-status) (focus-status touch-water under-water))
-  (when (not (logtest? (enemy-flag use-trigger) (-> this enemy-flags)))
-    (let ((v0-9 (logclear (-> this enemy-flags) (enemy-flag directed-ready))))
+  (when (not (logtest? (enemy-flag recover) (-> this enemy-flags)))
+    (let ((v0-9 (logclear (-> this enemy-flags) (enemy-flag checking-water))))
       (set! (-> this enemy-flags) v0-9)
       v0-9
       )
@@ -301,7 +300,7 @@
 
 ;; definition for method 55 of type enemy
 ;; WARN: Return type mismatch int vs none.
-(defmethod track-target! ((self enemy))
+(defmethod common-post ((self enemy))
   "Does a lot of various things relating to interacting with the target
 - tracks when the enemy was last drawn
 - looks at the target and handles attacking
@@ -310,7 +309,7 @@
       (set-time! (-> self last-draw-time))
       )
   (enemy-method-129 self)
-  (if (logtest? (enemy-flag use-trigger) (-> self enemy-flags))
+  (if (logtest? (enemy-flag recover) (-> self enemy-flags))
       (enemy-method-100 self)
       )
   (when *target*
@@ -318,7 +317,7 @@
         (look-at!
           (-> *target* neck)
           (the-as vector (-> self root root-prim prim-core))
-          (if (logtest? (-> self enemy-flags) (enemy-flag use-notice-distance))
+          (if (logtest? (-> self enemy-flags) (enemy-flag cam-attack-mode))
               'attacking
               )
           self
@@ -326,7 +325,7 @@
         )
     )
   (when (nonzero? (-> self neck))
-    (when (logtest? (-> self enemy-flags) (enemy-flag lock-focus))
+    (when (logtest? (-> self enemy-flags) (enemy-flag look-at-focus))
       (let ((a0-9 (handle->process (-> self focus handle))))
         (if a0-9
             (target-set! (-> self neck) (get-trans (the-as process-focusable a0-9) 2))
@@ -334,10 +333,10 @@
         )
       )
     )
-  (when (and (logtest? (-> self enemy-flags) (enemy-flag attackable-backup))
+  (when (and (logtest? (-> self enemy-flags) (enemy-flag auto-reset-penetrate))
              (time-elapsed? (-> self auto-reset-penetrate-time) (seconds 0.1))
              )
-    (logclear! (-> self enemy-flags) (enemy-flag attackable-backup))
+    (logclear! (-> self enemy-flags) (enemy-flag auto-reset-penetrate))
     (set! (-> self root penetrated-by) (get-penetrate-info self))
     (let ((v1-48 0))
       (if (logtest? (penetrate knocked) (-> self root penetrate-using))
@@ -346,10 +345,10 @@
       (set! (-> self root penetrate-using) (the-as penetrate v1-48))
       )
     )
-  (if (logtest? (-> self enemy-flags) (enemy-flag look-at-focus))
+  (if (logtest? (-> self enemy-flags) (enemy-flag victory))
       (enemy-method-136 self)
       )
-  (if (logtest? (enemy-flag trackable-backup directed-ready) (-> self enemy-flags))
+  (if (logtest? (enemy-flag check-water checking-water) (-> self enemy-flags))
       (enemy-method-54 self)
       )
   (if (and *debug-segment* (-> self enemy-info debug-draw-neck) (nonzero? (-> self neck)))
@@ -370,7 +369,7 @@
                       )
                  )
             )
-    (let ((v0-0 (logclear (-> this enemy-flags) (enemy-flag look-at-focus))))
+    (let ((v0-0 (logclear (-> this enemy-flags) (enemy-flag victory))))
       (set! (-> this enemy-flags) v0-0)
       v0-0
       )
@@ -435,7 +434,7 @@
 ;; definition for method 62 of type enemy
 ;; WARN: Return type mismatch int vs none.
 (defmethod enemy-method-62 ((this enemy))
-  (when (not (logtest? (enemy-flag actor-pause-backup) (-> this enemy-flags)))
+  (when (not (logtest? (enemy-flag lock-focus) (-> this enemy-flags)))
     (let* ((s4-0 (handle->process (-> this incoming attacker-handle)))
            (s5-0 (if (type? s4-0 process-focusable)
                      s4-0
@@ -444,7 +443,7 @@
            )
       (when (enemy-method-53 this (the-as process-focusable s5-0))
         (enemy-method-63 this (the-as process-focusable s5-0) (the-as enemy-aware #f))
-        (logior! (-> this focus flags) (enemy-flag lock-focus))
+        (logior! (-> this focus flags) (enemy-flag look-at-focus))
         )
       )
     )
@@ -453,16 +452,16 @@
   )
 
 ;; definition for method 108 of type enemy
-(defmethod enemy-method-108 ((this enemy) (arg0 enemy) (arg1 event-message-block))
+(defmethod enemy-method-108 ((this enemy) (arg0 process-drawable) (arg1 event-message-block))
   (let ((s4-0 (the-as touching-shapes-entry (-> arg1 param 0))))
     (when (and s4-0
-               (and (logtest? (-> this incoming penetrate-using) 4096)
-                    (not (logtest? (-> this incoming penetrate-using) 32))
+               (and (logtest? (-> this incoming penetrate-using) (penetrate board))
+                    (not (logtest? (-> this incoming penetrate-using) (penetrate spin)))
                     )
                (begin
                  (let ((s3-0 (-> s4-0 head)))
                    (while s3-0
-                     (let ((s2-0 (get-touched-prim s3-0 (-> arg0 root) s4-0)))
+                     (let ((s2-0 (get-touched-prim s3-0 (the-as collide-shape (-> arg0 root)) s4-0)))
                        (get-touched-prim s3-0 (-> this root) s4-0)
                        (when (logtest? (-> s2-0 prim-core action) (collide-action solid semi-solid deadly))
                          (let* ((a0-5 this)
@@ -491,8 +490,7 @@
   )
 
 ;; definition for method 64 of type enemy
-;; WARN: Return type mismatch object vs none.
-(defmethod enemy-method-64 ((this enemy))
+(defmethod go-dormant ((this enemy))
   (let ((v1-1 (-> this root root-prim)))
     (set! (-> v1-1 prim-core collide-as) (collide-spec))
     (set! (-> v1-1 prim-core collide-with) (collide-spec))
@@ -501,12 +499,10 @@
   (logior! (-> this draw status) (draw-control-status no-draw))
   (logior! (-> this focus-status) (focus-status disable))
   (go (method-of-object this dormant))
-  (none)
   )
 
 ;; definition for method 65 of type enemy
-;; WARN: Return type mismatch object vs none.
-(defmethod enemy-method-65 ((this enemy))
+(defmethod go-dormant-aware ((this enemy))
   (let ((v1-1 (-> this root root-prim)))
     (set! (-> v1-1 prim-core collide-as) (collide-spec))
     (set! (-> v1-1 prim-core collide-with) (collide-spec))
@@ -515,7 +511,6 @@
   (logior! (-> this draw status) (draw-control-status no-draw))
   (logior! (-> this focus-status) (focus-status disable))
   (go (method-of-object this dormant-aware))
-  (none)
   )
 
 ;; definition for method 67 of type enemy
@@ -575,7 +570,7 @@
 ;; definition for method 93 of type enemy
 ;; WARN: Return type mismatch object vs none.
 (defmethod enemy-method-93 ((this enemy))
-  (if (logtest? (enemy-flag alert) (-> this enemy-flags))
+  (if (logtest? (enemy-flag directed) (-> this enemy-flags))
       (go-directed this)
       (react-to-focus this)
       )
@@ -663,7 +658,7 @@
                                                              (shove-up (-> this enemy-info attack-shove-up))
                                                              (mode (-> this enemy-info attack-mode))
                                                              (damage (the float v1-1))
-                                                             (knock (the-as uint 8))
+                                                             (knock (knocked-type knocked-type-8))
                                                              )
                                                             )
                       )
@@ -686,13 +681,13 @@
         )
     (when (enemy-method-53 this (the-as process-focusable s5-0))
       (let ((v1-10 (handle->process (-> this focus handle))))
-        (when (or (= s5-0 v1-10) (and (not (logtest? (enemy-flag actor-pause-backup) (-> this enemy-flags)))
-                                      (or (not v1-10) (not (logtest? (-> this focus flags) (enemy-flag lock-focus))))
+        (when (or (= s5-0 v1-10) (and (not (logtest? (enemy-flag lock-focus) (-> this enemy-flags)))
+                                      (or (not v1-10) (not (logtest? (-> this focus flags) (enemy-flag look-at-focus))))
                                       )
                   )
           (enemy-method-63 this (the-as process-focusable s5-0) (the-as enemy-aware #f))
           (set-time! (-> this hit-focus-time))
-          (let ((v0-3 (logior (-> this enemy-flags) (enemy-flag look-at-focus))))
+          (let ((v0-3 (logior (-> this enemy-flags) (enemy-flag victory))))
             (set! (-> this enemy-flags) v0-3)
             v0-3
             )
@@ -704,7 +699,7 @@
 
 ;; definition for method 49 of type enemy
 (defmethod enemy-method-49 ((this enemy))
-  (logior! (-> this enemy-flags) (enemy-flag attackable-backup))
+  (logior! (-> this enemy-flags) (enemy-flag auto-reset-penetrate))
   (let ((v0-0 (current-time)))
     (set! (-> this auto-reset-penetrate-time) v0-0)
     v0-0
@@ -726,53 +721,53 @@
   )
 
 ;; definition for method 131 of type enemy
-;; WARN: Return type mismatch int vs uint.
-(defmethod enemy-method-131 ((this enemy) (arg0 int))
-  (the-as uint (cond
-                 ((logtest? arg0 1024)
-                  7
-                  )
-                 ((logtest? #x1000000 arg0)
-                  6
-                  )
-                 ((logtest? #x4400000 arg0)
-                  4
-                  )
-                 ((logtest? #x800000 arg0)
-                  5
-                  )
-                 ((logtest? #xc0000 arg0)
-                  3
-                  )
-                 ((logtest? #xa200000 arg0)
-                  2
-                  )
-                 ((logtest? arg0 #x4000)
-                  1
-                  )
-                 (else
-                   0
-                   )
-                 )
+;; WARN: Return type mismatch int vs knocked-type.
+(defmethod penetrate-using->knocked ((this enemy) (arg0 penetrate))
+  (the-as knocked-type (cond
+                         ((logtest? arg0 (penetrate vehicle))
+                          7
+                          )
+                         ((logtest? (penetrate jak-blue-shot) arg0)
+                          6
+                          )
+                         ((logtest? (penetrate jak-yellow-shot enemy-yellow-shot) arg0)
+                          4
+                          )
+                         ((logtest? (penetrate jak-red-shot) arg0)
+                          5
+                          )
+                         ((logtest? (penetrate dark-bomb dark-giant) arg0)
+                          3
+                          )
+                         ((logtest? (penetrate explode jak-dark-shot enemy-dark-shot) arg0)
+                          2
+                          )
+                         ((logtest? arg0 (penetrate mech-punch))
+                          1
+                          )
+                         (else
+                           0
+                           )
+                         )
           )
   )
 
 ;; definition for method 106 of type enemy
 ;; INFO: Used lq/sq
 ;; WARN: Return type mismatch int vs none.
-(defmethod enemy-method-106 ((this enemy) (arg0 process) (arg1 object) (arg2 int) (arg3 attack-info))
-  (set! (-> this incoming penetrate-using) (the-as uint arg2))
+(defmethod set-incoming-attack-info ((this enemy) (arg0 process) (arg1 object) (arg2 penetrate) (arg3 attack-info))
+  (set! (-> this incoming penetrate-using) arg2)
   (set! (-> this incoming attack-id) (-> arg3 id))
   (let ((v1-3 (if (logtest? (attack-mask knock) (-> arg3 mask))
                   (-> arg3 knock)
-                  (enemy-method-131 this arg2)
+                  (penetrate-using->knocked this arg2)
                   )
               )
         )
-    (set! (-> this incoming knocked-type) (the-as knocked-type v1-3))
+    (set! (-> this incoming knocked-type) v1-3)
     (let ((a0-4 (current-time)))
       (cond
-        ((!= v1-3 6)
+        ((!= v1-3 (knocked-type knocked-type-6))
          (set! (-> this incoming blue-juggle-count) (the-as uint 0))
          0
          )
@@ -786,7 +781,7 @@
       (set! (-> this incoming attack-time) a0-4)
       )
     (cond
-      ((= v1-3 7)
+      ((= v1-3 (knocked-type knocked-type-7))
        (set! (-> this incoming attack-direction quad) (-> arg3 vector quad))
        )
       (else
@@ -798,7 +793,7 @@
         )
       )
     )
-  (set! (-> this incoming attacker-handle) (process->handle (enemy-method-134 this arg0 arg3)))
+  (set! (-> this incoming attacker-handle) (process->handle (get-attacker this arg0 arg3)))
   0
   (none)
   )
@@ -809,13 +804,13 @@
   "Logic for looking at the target that is locked on, sets some flags and adjusts the neck to look at the target if available
 @param flag Reacts to [[enemy-flag::death-start]] and [[enemy-flag::enable-on-active]], see implementation for details"
   (case arg0
-    (((enemy-flag lock-focus))
-     (logclear! (-> this enemy-flags) (enemy-flag death-start))
-     (logior! (-> this enemy-flags) (enemy-flag lock-focus))
+    (((enemy-flag look-at-focus))
+     (logclear! (-> this enemy-flags) (enemy-flag look-at-move-dest))
+     (logior! (-> this enemy-flags) (enemy-flag look-at-focus))
      )
-    (((enemy-flag death-start))
-     (logclear! (-> this enemy-flags) (enemy-flag lock-focus))
-     (logior! (-> this enemy-flags) (enemy-flag death-start))
+    (((enemy-flag look-at-move-dest))
+     (logclear! (-> this enemy-flags) (enemy-flag look-at-focus))
+     (logior! (-> this enemy-flags) (enemy-flag look-at-move-dest))
      )
     )
   (if (nonzero? (-> this neck))
@@ -830,7 +825,7 @@
 (defmethod stop-looking-at-target! ((this enemy))
   "Will unset [[enemy-flag::death-start]] and [[enemy-flag::lock-focus]] and call [[joint-mod::shut-down]] if applicable"
   (when (nonzero? (-> this neck))
-    (logclear! (-> this enemy-flags) (enemy-flag lock-focus death-start))
+    (logclear! (-> this enemy-flags) (enemy-flag look-at-focus look-at-move-dest))
     (shut-down (-> this neck))
     )
   0
@@ -838,7 +833,7 @@
   )
 
 ;; definition for method 125 of type enemy
-(defmethod enemy-method-125 ((this enemy) (arg0 collide-query) (arg1 collide-spec) (arg2 float) (arg3 float) (arg4 float))
+(defmethod ground-pat-set! ((this enemy) (arg0 collide-query) (arg1 collide-spec) (arg2 float) (arg3 float) (arg4 float))
   (when (find-ground (-> this root) arg0 arg1 arg2 arg3 arg4)
     (let ((v0-1 (-> arg0 best-other-tri pat)))
       (set! (-> this root ground-pat) v0-1)
@@ -859,7 +854,7 @@
 (defmethod enemy-method-127 ((this enemy) (arg0 float) (arg1 float) (arg2 symbol) (arg3 collide-spec))
   (let ((s4-0 (new 'stack-no-clear 'collide-query)))
     (cond
-      ((enemy-method-125 this s4-0 arg3 arg0 arg1 1024.0)
+      ((ground-pat-set! this s4-0 arg3 arg0 arg1 1024.0)
        (let ((s5-1 (-> this root)))
          (let ((s3-0 (new 'stack-no-clear 'vector)))
            (set! (-> s3-0 quad) (-> this root trans quad))
@@ -937,7 +932,7 @@
     (set! (-> arg1 new-pos quad) (-> gp-0 trans quad))
     (let ((s2-0 (new 'stack-no-clear 'collide-query)))
       (cond
-        ((enemy-method-125 this s2-0 (-> arg1 gnd-collide-with) (-> arg1 popup) 81920.0 1024.0)
+        ((ground-pat-set! this s2-0 (-> arg1 gnd-collide-with) (-> arg1 popup) 81920.0 1024.0)
          (when (>= (-> gp-0 gspot-pos y) (-> arg1 new-pos y))
            (set! (-> arg1 on-ground?) #t)
            (set! (-> arg1 pat) (-> s2-0 best-other-tri pat))
@@ -1093,11 +1088,11 @@
       (set! (-> a0-2 param1) #f)
       (set! (-> a0-2 param2) #f)
       )
-    (set! (-> this enemy-flags) (the-as enemy-flag (logior (enemy-flag dislike-combo) (-> this enemy-flags))))
+    (set! (-> this enemy-flags) (the-as enemy-flag (logior (enemy-flag drawn-mirrored) (-> this enemy-flags))))
     )
   (logior! (-> this mask) (process-mask enemy))
   (logior! (-> this mask) (process-mask actor-pause))
-  (logior! (-> this enemy-flags) (enemy-flag notice))
+  (logior! (-> this enemy-flags) (enemy-flag actor-pause-backup))
   (set-enemy-info! this arg0)
   (let ((a1-2 (-> this enemy-info idle-anim-script)))
     (if a1-2
@@ -1172,13 +1167,13 @@
   (set! (-> this on-hostile) (res-lump-struct (-> this entity) 'on-hostile pair))
   (set! (-> this on-death) (res-lump-struct (-> this entity) 'on-death pair))
   (if (-> this on-notice)
-      (logior! (-> this enemy-flags) (enemy-flag auto-reset-penetrate))
+      (logior! (-> this enemy-flags) (enemy-flag enable-on-notice))
       )
   (if (-> this on-active)
-      (logior! (-> this enemy-flags) (enemy-flag jump-check-blocked))
+      (logior! (-> this enemy-flags) (enemy-flag enable-on-active))
       )
   (if (-> this on-hostile)
-      (logior! (-> this enemy-flags) (enemy-flag drawn-mirrored))
+      (logior! (-> this enemy-flags) (enemy-flag enable-on-hostile))
       )
   (let ((s4-0 (-> this root)))
     (set! (-> this penetrated-by-all) (-> s4-0 penetrated-by))
@@ -1187,32 +1182,26 @@
     )
   (set! (-> this penetrated-flinch) (-> arg0 penetrate-flinch))
   (set! (-> this penetrated-knocked) (-> arg0 penetrate-knocked))
-  (set! (-> this reaction-time) (the-as time-frame (get-rand-int-range this 30 180)))
+  (set! (-> this reaction-time) (the-as time-frame (rnd-int-range this 30 180)))
   (let* ((v1-79 (-> this enemy-flags))
          (a0-28 (-> this fact enemy-options))
-         (v1-80 (logior (enemy-flag
-                          enable-on-active
-                          checking-water
-                          enable-on-notice
-                          look-at-move-dest
-                          check-water-backup
-                          no-initial-move-to-ground
-                          )
-                        v1-79
-                        )
-                )
+         (v1-80
+           (logior (enemy-flag vulnerable vulnerable-backup use-notice-distance attackable-backup trackable trackable-backup)
+                   v1-79
+                   )
+           )
          )
     (if (logtest? (enemy-option multi-focus) a0-28)
-        (set! v1-80 (logior (enemy-flag trackable) v1-80))
+        (set! v1-80 (logior (enemy-flag multi-focus) v1-80))
         )
     (if (logtest? (enemy-option has-trigger) a0-28)
-        (set! v1-80 (logior (enemy-flag called-dying) v1-80))
+        (set! v1-80 (logior (enemy-flag use-trigger) v1-80))
         )
     (set! (-> this enemy-flags) v1-80)
     )
   (logior! (-> this mask) (process-mask collectable))
   (if (and (-> this enemy-info move-to-ground)
-           (not (logtest? (enemy-flag vulnerable-backup) (-> this enemy-flags)))
+           (not (logtest? (enemy-flag no-initial-move-to-ground) (-> this enemy-flags)))
            (not (logtest? (enemy-option ambush) (-> this fact enemy-options)))
            )
       (enemy-method-127 this 40960.0 40960.0 #t (the-as collide-spec (-> this gnd-collide)))
@@ -1234,10 +1223,12 @@
         )
     )
   (if (-> arg1 directed?)
-      (logior! (-> self enemy-flags) (enemy-flag alert))
+      (logior! (-> self enemy-flags) (enemy-flag directed))
       )
   (if (-> arg1 no-initial-move-to-ground?)
-      (set! (-> self enemy-flags) (the-as enemy-flag (logior (enemy-flag vulnerable-backup) (-> self enemy-flags))))
+      (set! (-> self enemy-flags)
+            (the-as enemy-flag (logior (enemy-flag no-initial-move-to-ground) (-> self enemy-flags)))
+            )
       )
   (init-enemy-collision! self)
   (set! (-> self root trans quad) (-> arg1 trans quad))
@@ -1276,13 +1267,13 @@
         (go-virtual view-anims)
         )
       ((logtest? (enemy-option dormant) v1-43)
-       (enemy-method-64 self)
+       (go-dormant self)
        )
-      ((logtest? (enemy-flag alert) (-> self enemy-flags))
+      ((logtest? (enemy-flag directed) (-> self enemy-flags))
        (go-directed self)
        )
       ((logtest? (enemy-option dormant-aware) v1-43)
-       (enemy-method-65 self)
+       (go-dormant-aware self)
        )
       ((logtest? (enemy-option ambush) (-> self fact enemy-options))
        (go-ambush self)
@@ -1343,10 +1334,10 @@ This commonly includes things such as:
         (go (method-of-object this view-anims))
         )
       ((logtest? (enemy-option dormant) v1-28)
-       (enemy-method-64 this)
+       (go-dormant this)
        )
       ((logtest? (enemy-option dormant-aware) v1-28)
-       (enemy-method-65 this)
+       (go-dormant-aware this)
        )
       (else
         (go-idle this)
@@ -1392,9 +1383,9 @@ This commonly includes things such as:
         (let ((v1-4 (-> this enemy-flags)))
           (cond
             ((and a1-0 (not (logtest? (-> (the-as process-focusable a1-0) focus-status) (focus-status disable dead))))
-             (when (and (logtest? (enemy-flag trackable) v1-4)
-                        (not (logtest? (enemy-flag actor-pause-backup) v1-4))
-                        (not (logtest? (-> gp-0 flags) (enemy-flag lock-focus)))
+             (when (and (logtest? (enemy-flag multi-focus) v1-4)
+                        (not (logtest? (enemy-flag lock-focus) v1-4))
+                        (not (logtest? (-> gp-0 flags) (enemy-flag look-at-focus)))
                         )
                (enemy-method-97 this)
                (return #f)
@@ -1408,7 +1399,7 @@ This commonly includes things such as:
                    )
                (set! (-> gp-0 aware) (the-as enemy-aware v1-14))
                (if (>= 1 v1-14)
-                   (logclear! (-> gp-0 flags) (enemy-flag lock-focus))
+                   (logclear! (-> gp-0 flags) (enemy-flag look-at-focus))
                    )
                )
              (return #f)
@@ -1424,7 +1415,7 @@ This commonly includes things such as:
         (clear-focused gp-0)
         )
     )
-  (if (not (logtest? (enemy-flag actor-pause-backup) (-> this enemy-flags)))
+  (if (not (logtest? (enemy-flag lock-focus) (-> this enemy-flags)))
       (enemy-method-97 this)
       )
   (none)
@@ -1551,7 +1542,7 @@ This commonly includes things such as:
           (if (< 1 (the-as int (-> this focus aware)))
               (set! f0-1 (+ (the-as meters f0-1) (-> this enemy-info notice-distance-delta)))
               )
-          (when (or (< f30-0 f0-1) (not (logtest? (-> this enemy-flags) (enemy-flag enable-on-notice))))
+          (when (or (< f30-0 f0-1) (not (logtest? (-> this enemy-flags) (enemy-flag use-notice-distance))))
             (set! s2-0 (in-aggro-range? this arg0 (the-as vector #f)))
             (if s2-0
                 (set! s3-1 #t)
@@ -1583,7 +1574,7 @@ This commonly includes things such as:
                   )
                 )
           )
-      (when (and (> s3-2 0) (logtest? (enemy-flag called-dying) (-> this enemy-flags)))
+      (when (and (> s3-2 0) (logtest? (enemy-flag use-trigger) (-> this enemy-flags)))
         (cond
           ((logtest? (enemy-option idle-til-trigger) (-> this fact enemy-options))
            (if (not (enemy-method-130 this f30-0))
@@ -1634,7 +1625,7 @@ This commonly includes things such as:
           )
         (label cfg-17)
         (when (zero? t1-1)
-          (logclear! (-> this enemy-flags) (enemy-flag called-dying))
+          (logclear! (-> this enemy-flags) (enemy-flag use-trigger))
           (return #t)
           )
         )
@@ -1648,18 +1639,18 @@ This commonly includes things such as:
   (let ((v1-1 (< 1 arg0)))
     (cond
       (v1-1
-        (when (not (logtest? (-> this enemy-flags) (enemy-flag spawn-gem)))
-          (logior! (-> this enemy-flags) (enemy-flag spawn-gem))
+        (when (not (logtest? (-> this enemy-flags) (enemy-flag notice)))
+          (logior! (-> this enemy-flags) (enemy-flag notice))
           (set-time! (-> this notice-time))
           )
-        (if (and (not (logtest? (-> this enemy-flags) (enemy-flag chase-startup)))
+        (if (and (not (logtest? (-> this enemy-flags) (enemy-flag alert)))
                  (not (time-elapsed? (-> this notice-time) (-> this reaction-time)))
                  )
             (set! v1-1 #f)
             )
         )
       (else
-        (logclear! (-> this enemy-flags) (enemy-flag spawn-gem))
+        (logclear! (-> this enemy-flags) (enemy-flag notice))
         )
       )
     (cond
@@ -1685,18 +1676,18 @@ This commonly includes things such as:
   (cond
     ((= arg2 'track)
      (and (nonzero? (-> this hit-points))
-          (logtest? (-> this enemy-flags) (enemy-flag enable-on-active))
-          (logtest? (enemy-flag check-water-backup) (-> this enemy-flags))
+          (logtest? (-> this enemy-flags) (enemy-flag vulnerable))
+          (logtest? (enemy-flag trackable) (-> this enemy-flags))
           )
      )
     ((= arg2 'combo)
-     (and (not (logtest? (enemy-flag multi-focus) (-> this enemy-flags))) (nonzero? (-> this hit-points)))
+     (and (not (logtest? (enemy-flag dislike-combo) (-> this enemy-flags))) (nonzero? (-> this hit-points)))
      )
     ((= arg2 'touch)
      (enemy-method-75 this arg0 arg3)
      )
     ((= arg2 'touched)
-     (when (logtest? (-> this enemy-flags) (enemy-flag attackable-backup))
+     (when (logtest? (-> this enemy-flags) (enemy-flag auto-reset-penetrate))
        (let* ((s3-1 arg0)
               (v1-20 (if (type? s3-1 process-drawable)
                          (the-as process-drawable s3-1)
@@ -1750,16 +1741,16 @@ This commonly includes things such as:
      (let ((s2-0 (the-as object (-> arg3 param 1))))
        (when (!= (-> (the-as attack-info s2-0) id) (-> this incoming attack-id))
          (cond
-           ((and (logtest? (-> this enemy-flags) (enemy-flag enable-on-active))
+           ((and (logtest? (-> this enemy-flags) (enemy-flag vulnerable))
                  (not (logtest? (-> this focus-status) (focus-status grabbed)))
                  )
             (let* ((s1-0 this)
-                   (s0-0 (method-of-object s1-0 enemy-method-106))
+                   (s0-0 (method-of-object s1-0 set-incoming-attack-info))
                    )
               (set! sv-432 arg0)
               (set! sv-448 arg3)
               (let ((a3-3 (get-penetrate-using-from-attack-event (the-as process-drawable arg0) arg3)))
-                (s0-0 s1-0 sv-432 sv-448 (the-as int a3-3) (the-as attack-info s2-0))
+                (s0-0 s1-0 sv-432 sv-448 a3-3 (the-as attack-info s2-0))
                 )
               )
             (send-event (ppointer->process (-> this parent)) 'child-hit)
@@ -1767,14 +1758,14 @@ This commonly includes things such as:
             (if (not *debug-unkillable*)
                 (take-damage-from-attack this arg0 arg3)
                 )
-            (let ((s2-1 (the-as attack-info (enemy-method-58 this arg0 arg3))))
+            (let ((s2-1 (enemy-method-58 this arg0 arg3)))
               (when s2-1
-                (logclear! (-> this enemy-flags) (enemy-flag called-dying))
-                (enemy-method-108 this (the-as enemy arg0) arg3)
+                (logclear! (-> this enemy-flags) (enemy-flag use-trigger))
+                (enemy-method-108 this (the-as process-drawable arg0) arg3)
                 (let ((a1-13 (new 'stack-no-clear 'event-message-block)))
                   (set! (-> a1-13 from) (process->ppointer arg0))
                   (set! (-> a1-13 num-params) arg1)
-                  (set! (-> a1-13 message) (the-as symbol s2-1))
+                  (set! (-> a1-13 message) s2-1)
                   (set! (-> a1-13 param 0) (-> arg3 param 0))
                   (set! (-> a1-13 param 1) (-> arg3 param 1))
                   (set! (-> a1-13 param 2) (-> arg3 param 2))
@@ -1798,15 +1789,15 @@ This commonly includes things such as:
      (when (zero? (-> this hit-points))
        (logclear! (-> this mask) (process-mask actor-pause))
        (logclear! (-> this focus-status) (focus-status dangerous))
-       (logclear! (-> this enemy-flags) (enemy-flag enable-on-notice))
-       (logior! (-> this enemy-flags) (enemy-flag chase-startup))
+       (logclear! (-> this enemy-flags) (enemy-flag use-notice-distance))
+       (logior! (-> this enemy-flags) (enemy-flag alert))
        (logior! (-> this focus-status) (focus-status hit))
        (if (zero? (-> this hit-points))
            (logior! (-> this focus-status) (focus-status dead))
            )
-       (logclear! (-> this enemy-flags) (enemy-flag actor-pause-backup))
+       (logclear! (-> this enemy-flags) (enemy-flag lock-focus))
        (enemy-method-62 this)
-       (logior! (-> this enemy-flags) (enemy-flag actor-pause-backup))
+       (logior! (-> this enemy-flags) (enemy-flag lock-focus))
        (process-contact-action arg0)
        (send-event arg0 'get-attack-count 1)
        (kill-prefer-falling this)
@@ -1816,15 +1807,15 @@ This commonly includes things such as:
     ((= arg2 'hit-knocked)
      (logclear! (-> this mask) (process-mask actor-pause))
      (logclear! (-> this focus-status) (focus-status dangerous))
-     (logclear! (-> this enemy-flags) (enemy-flag enable-on-notice))
-     (logior! (-> this enemy-flags) (enemy-flag chase-startup))
+     (logclear! (-> this enemy-flags) (enemy-flag use-notice-distance))
+     (logior! (-> this enemy-flags) (enemy-flag alert))
      (logior! (-> this focus-status) (focus-status hit))
      (if (zero? (-> this hit-points))
          (logior! (-> this focus-status) (focus-status dead))
          )
-     (logclear! (-> this enemy-flags) (enemy-flag actor-pause-backup))
+     (logclear! (-> this enemy-flags) (enemy-flag lock-focus))
      (enemy-method-62 this)
-     (logior! (-> this enemy-flags) (enemy-flag actor-pause-backup))
+     (logior! (-> this enemy-flags) (enemy-flag lock-focus))
      (process-contact-action arg0)
      (send-event arg0 'get-attack-count 1)
      (when (zero? (-> this hit-points))
@@ -1840,15 +1831,15 @@ This commonly includes things such as:
     ((= arg2 'hit)
      (logclear! (-> this mask) (process-mask actor-pause))
      (logclear! (-> this focus-status) (focus-status dangerous))
-     (logclear! (-> this enemy-flags) (enemy-flag enable-on-notice))
-     (logior! (-> this enemy-flags) (enemy-flag chase-startup))
+     (logclear! (-> this enemy-flags) (enemy-flag use-notice-distance))
+     (logior! (-> this enemy-flags) (enemy-flag alert))
      (logior! (-> this focus-status) (focus-status hit))
      (if (zero? (-> this hit-points))
          (logior! (-> this focus-status) (focus-status dead))
          )
-     (logclear! (-> this enemy-flags) (enemy-flag actor-pause-backup))
+     (logclear! (-> this enemy-flags) (enemy-flag lock-focus))
      (enemy-method-62 this)
-     (logior! (-> this enemy-flags) (enemy-flag actor-pause-backup))
+     (logior! (-> this enemy-flags) (enemy-flag lock-focus))
      (process-contact-action arg0)
      (send-event arg0 'get-attack-count 1)
      (if (zero? (-> this hit-points))
@@ -1861,9 +1852,9 @@ This commonly includes things such as:
                 (zero? (-> this fated-time))
                 (not (logtest? (-> this focus-status) (focus-status grabbed)))
                 )
-       (let ((v1-162 (logtest? (enemy-flag alert) (-> this enemy-flags))))
-         (logclear! (-> this enemy-flags) (enemy-flag enable-on-notice alert victory called-dying))
-         (logior! (-> this enemy-flags) (enemy-flag dangerous-backup))
+       (let ((v1-162 (logtest? (enemy-flag directed) (-> this enemy-flags))))
+         (logclear! (-> this enemy-flags) (enemy-flag use-notice-distance directed directed-ready use-trigger))
+         (logior! (-> this enemy-flags) (enemy-flag chase-startup))
          (logclear! (-> this mask) (process-mask actor-pause))
          (cond
            (v1-162
@@ -1891,7 +1882,7 @@ This commonly includes things such as:
                 (zero? (-> this fated-time))
                 (not (logtest? (-> this focus-status) (focus-status grabbed)))
                 )
-       (logclear! (-> this enemy-flags) (enemy-flag alert victory called-dying))
+       (logclear! (-> this enemy-flags) (enemy-flag directed directed-ready use-trigger))
        (if (logtest? (enemy-option ambush) (-> this fact enemy-options))
            (go-ambush this)
            (react-to-focus this)
@@ -1911,7 +1902,7 @@ This commonly includes things such as:
        )
      )
     ((= arg2 'death-start)
-     (set! (-> this enemy-flags) (the-as enemy-flag (logior (enemy-flag recover) (-> this enemy-flags))))
+     (set! (-> this enemy-flags) (the-as enemy-flag (logior (enemy-flag death-start) (-> this enemy-flags))))
      (send-event (ppointer->process (-> this parent)) 'child-die)
      (drop-pickup (-> this fact) #t *entity-pool* (-> this fact) 0)
      (let ((s5-1 (-> this on-death)))
@@ -1925,9 +1916,9 @@ This commonly includes things such as:
          (logior! (-> this skel effect flags) (effect-control-flag ecf2))
          )
      (logior! (-> this draw status) (draw-control-status no-draw))
-     (logclear! (-> this enemy-flags) (enemy-flag enable-on-active checking-water))
+     (logclear! (-> this enemy-flags) (enemy-flag vulnerable vulnerable-backup))
      (logclear! (-> this focus-status) (focus-status dangerous))
-     (set! (-> this enemy-flags) (logclear (-> this enemy-flags) (enemy-flag check-water)))
+     (set! (-> this enemy-flags) (logclear (-> this enemy-flags) (enemy-flag dangerous-backup)))
      )
     ((= arg2 'instant-death)
      (when (and (> (-> this hit-points) 0) (zero? (-> this fated-time)))
@@ -1940,21 +1931,21 @@ This commonly includes things such as:
          )
        (logclear! (-> this mask) (process-mask actor-pause))
        (logclear! (-> this focus-status) (focus-status dangerous))
-       (logclear! (-> this enemy-flags) (enemy-flag enable-on-notice))
-       (logior! (-> this enemy-flags) (enemy-flag chase-startup))
+       (logclear! (-> this enemy-flags) (enemy-flag use-notice-distance))
+       (logior! (-> this enemy-flags) (enemy-flag alert))
        (logior! (-> this focus-status) (focus-status hit))
        (if (zero? (-> this hit-points))
            (logior! (-> this focus-status) (focus-status dead))
            )
-       (logclear! (-> this enemy-flags) (enemy-flag actor-pause-backup))
+       (logclear! (-> this enemy-flags) (enemy-flag lock-focus))
        (enemy-method-62 this)
-       (logior! (-> this enemy-flags) (enemy-flag actor-pause-backup))
+       (logior! (-> this enemy-flags) (enemy-flag lock-focus))
        (kill-prefer-falling this)
        )
      )
     ((= arg2 'die-fast)
      (logior! (-> this draw status) (draw-control-status no-draw))
-     (dispose! this)
+     (dying this)
      (send-event (ppointer->process (-> this parent)) 'child-die)
      (let ((s5-3 (-> this on-death)))
        (if s5-3
@@ -2031,7 +2022,7 @@ This commonly includes things such as:
   (let ((v1-0 (the-as attack-info (-> arg1 param 1))))
     (if (logtest? (attack-mask damage) (-> v1-0 mask))
         (the int (-> v1-0 damage))
-        (penetrate-using->damage (the-as penetrate (-> this incoming penetrate-using)))
+        (penetrate-using->damage (-> this incoming penetrate-using))
         )
     )
   )
@@ -2040,10 +2031,10 @@ This commonly includes things such as:
 (defmethod enemy-method-58 ((this enemy) (arg0 process) (arg1 event-message-block))
   (let ((v1-0 (-> this incoming penetrate-using)))
     (cond
-      ((logtest? (the-as penetrate v1-0) (-> this penetrated-flinch))
+      ((logtest? v1-0 (-> this penetrated-flinch))
        'hit-flinch
        )
-      ((logtest? (the-as penetrate v1-0) (-> this penetrated-knocked))
+      ((logtest? v1-0 (-> this penetrated-knocked))
        'hit-knocked
        )
       (else
@@ -2073,7 +2064,7 @@ This commonly includes things such as:
         )
       )
     (set! (-> this hit-points) s4-1)
-    (if (not (logtest? (-> this enemy-flags) (enemy-flag attackable-backup)))
+    (if (not (logtest? (-> this enemy-flags) (enemy-flag auto-reset-penetrate)))
         (set! (-> this root penetrated-by) (get-penetrate-info this))
         )
     (- s5-0 s4-1)
@@ -2081,7 +2072,7 @@ This commonly includes things such as:
   )
 
 ;; definition for method 134 of type enemy
-(defmethod enemy-method-134 ((this enemy) (arg0 process) (arg1 attack-info))
+(defmethod get-attacker ((this enemy) (arg0 process) (arg1 attack-info))
   (find-offending-process-focusable arg0 arg1)
   )
 
@@ -2180,7 +2171,7 @@ This commonly includes things such as:
 ;; definition for function enemy-simple-post
 ;; WARN: Return type mismatch int vs none.
 (defbehavior enemy-simple-post enemy ()
-  (track-target! self)
+  (common-post self)
   (update-transforms (-> self root))
   0
   (none)
@@ -2189,7 +2180,7 @@ This commonly includes things such as:
 ;; definition for function enemy-falling-post
 ;; INFO: Used lq/sq
 (defbehavior enemy-falling-post enemy ()
-  (logior! (-> self enemy-flags) (enemy-flag directed))
+  (logior! (-> self enemy-flags) (enemy-flag recover-applied-velocity))
   (let ((gp-0 (-> self root)))
     (cond
       ((focus-test? self under-water)
@@ -2211,7 +2202,7 @@ This commonly includes things such as:
       )
     )
   (enemy-method-111 self)
-  (track-target! self)
+  (common-post self)
   (none)
   )
 
@@ -2229,7 +2220,7 @@ This commonly includes things such as:
 ;; INFO: Used lq/sq
 ;; WARN: Return type mismatch int vs none.
 (defbehavior enemy-die-falling-post enemy ()
-  (logior! (-> self enemy-flags) (enemy-flag directed))
+  (logior! (-> self enemy-flags) (enemy-flag recover-applied-velocity))
   (let ((gp-0 (-> self root)))
     (if (focus-test? self under-water)
         (enemy-method-47 self (-> gp-0 transv))
@@ -2249,7 +2240,7 @@ This commonly includes things such as:
       (move-to-point! gp-0 s5-1)
       )
     )
-  (track-target! self)
+  (common-post self)
   0
   (none)
   )
@@ -2261,20 +2252,20 @@ This commonly includes things such as:
   :enter (behavior ()
     (set-time! (-> self state-time))
     (stop-looking-at-target! self)
-    (logclear! (-> self enemy-flags) (enemy-flag spawn-gem chase-startup use-notice-distance))
-    (logior! (-> self enemy-flags) (enemy-flag enable-on-notice))
+    (logclear! (-> self enemy-flags) (enemy-flag notice alert cam-attack-mode))
+    (logior! (-> self enemy-flags) (enemy-flag use-notice-distance))
     (set! (-> self state-timeout) (seconds 0.5))
     (if (-> self on-notice)
-        (logior! (-> self enemy-flags) (enemy-flag auto-reset-penetrate))
+        (logior! (-> self enemy-flags) (enemy-flag enable-on-notice))
         )
     (if (-> self on-active)
-        (logior! (-> self enemy-flags) (enemy-flag jump-check-blocked))
+        (logior! (-> self enemy-flags) (enemy-flag enable-on-active))
         )
     (if (-> self on-hostile)
-        (logior! (-> self enemy-flags) (enemy-flag drawn-mirrored))
+        (logior! (-> self enemy-flags) (enemy-flag enable-on-hostile))
         )
-    (when (not (logtest? (enemy-flag dangerous-backup) (-> self enemy-flags)))
-      (if (logtest? (-> self enemy-flags) (enemy-flag notice))
+    (when (not (logtest? (enemy-flag chase-startup) (-> self enemy-flags)))
+      (if (logtest? (-> self enemy-flags) (enemy-flag actor-pause-backup))
           (logior! (-> self mask) (process-mask actor-pause))
           (logclear! (-> self mask) (process-mask actor-pause))
           )
@@ -2313,8 +2304,8 @@ This commonly includes things such as:
     0
     (logior! (-> self draw status) (draw-control-status no-draw))
     (set! (-> self draw origin quad) (-> self root trans quad))
-    (if (logtest? (enemy-flag alert) (-> self enemy-flags))
-        (logior! (-> self enemy-flags) (enemy-flag victory))
+    (if (logtest? (enemy-flag directed) (-> self enemy-flags))
+        (logior! (-> self enemy-flags) (enemy-flag directed-ready))
         )
     (logior! (-> self focus-status) (focus-status disable))
     )
@@ -2325,7 +2316,7 @@ This commonly includes things such as:
       (set! (-> v1-3 prim-core collide-with) (-> self root backup-collide-with))
       )
     (logclear! (-> self draw status) (draw-control-status no-draw))
-    (logclear! (-> self enemy-flags) (enemy-flag victory))
+    (logclear! (-> self enemy-flags) (enemy-flag directed-ready))
     (logior! (-> self root nav-flags) (nav-flags has-root-sphere))
     )
   :code sleep-code
@@ -2359,7 +2350,7 @@ This commonly includes things such as:
   :virtual #t
   :event enemy-event-handler
   :enter (behavior ()
-    (logior! (-> self enemy-flags) (enemy-flag chase-startup))
+    (logior! (-> self enemy-flags) (enemy-flag alert))
     )
   :code (behavior ()
     (go-virtual notice)
@@ -2372,17 +2363,17 @@ This commonly includes things such as:
   :event enemy-event-handler
   :enter (behavior ()
     (set-time! (-> self state-time))
-    (logclear! (-> self enemy-flags) (enemy-flag use-notice-distance))
-    (when (logtest? (-> self enemy-flags) (enemy-flag jump-check-blocked))
-      (logclear! (-> self enemy-flags) (enemy-flag jump-check-blocked))
+    (logclear! (-> self enemy-flags) (enemy-flag cam-attack-mode))
+    (when (logtest? (-> self enemy-flags) (enemy-flag enable-on-active))
+      (logclear! (-> self enemy-flags) (enemy-flag enable-on-active))
       (let ((gp-0 (-> self on-active)))
         (if gp-0
             (script-eval gp-0 :vector (-> self root trans))
             )
         )
       )
-    (when (not (logtest? (enemy-flag dangerous-backup) (-> self enemy-flags)))
-      (if (logtest? (-> self enemy-flags) (enemy-flag notice))
+    (when (not (logtest? (enemy-flag chase-startup) (-> self enemy-flags)))
+      (if (logtest? (-> self enemy-flags) (enemy-flag actor-pause-backup))
           (logior! (-> self mask) (process-mask actor-pause))
           (logclear! (-> self mask) (process-mask actor-pause))
           )
@@ -2418,13 +2409,13 @@ This commonly includes things such as:
   :event enemy-event-handler
   :enter (behavior ()
     (set-time! (-> self state-time))
-    (let ((v1-3 (logior (-> self enemy-flags) (enemy-flag use-notice-distance))))
-      (set! (-> self enemy-flags) (logclear v1-3 (enemy-flag called-dying)))
+    (let ((v1-3 (logior (-> self enemy-flags) (enemy-flag cam-attack-mode))))
+      (set! (-> self enemy-flags) (logclear v1-3 (enemy-flag use-trigger)))
       )
     (logclear! (-> self mask) (process-mask actor-pause))
-    (look-at-target! self (enemy-flag lock-focus))
-    (when (logtest? (-> self enemy-flags) (enemy-flag auto-reset-penetrate))
-      (logclear! (-> self enemy-flags) (enemy-flag auto-reset-penetrate))
+    (look-at-target! self (enemy-flag look-at-focus))
+    (when (logtest? (-> self enemy-flags) (enemy-flag enable-on-notice))
+      (logclear! (-> self enemy-flags) (enemy-flag enable-on-notice))
       (let ((gp-0 (-> self on-notice)))
         (if gp-0
             (script-eval gp-0 :vector (-> self root trans))
@@ -2432,7 +2423,7 @@ This commonly includes things such as:
         )
       )
     (let ((gp-1 (-> self focus aware)))
-      (when (logtest? (-> self enemy-flags) (enemy-flag chase-startup))
+      (when (logtest? (-> self enemy-flags) (enemy-flag alert))
         (cond
           ((and (= gp-1 (enemy-aware enemy-aware-3)) (get-enemy-target self))
            (go-hostile self)
@@ -2446,11 +2437,11 @@ This commonly includes things such as:
           )
         )
       )
-    (logior! (-> self enemy-flags) (enemy-flag chase-startup))
+    (logior! (-> self enemy-flags) (enemy-flag alert))
     )
   :code (behavior ()
     (ja-channel-push! 1 (seconds 0.075))
-    (let ((f30-0 (get-rand-float-range self 0.8 1.2))
+    (let ((f30-0 (rnd-float-range self 0.8 1.2))
           (gp-0 (new 'stack-no-clear 'vector))
           )
       (ja-no-eval :group! (-> self draw art-group data (-> self enemy-info notice-anim))
@@ -2475,12 +2466,12 @@ This commonly includes things such as:
   :event enemy-event-handler
   :enter (behavior ()
     (set-time! (-> self state-time))
-    (look-at-target! self (enemy-flag lock-focus))
-    (logior! (-> self enemy-flags) (enemy-flag use-notice-distance))
-    (logclear! (-> self enemy-flags) (enemy-flag dangerous-backup))
+    (look-at-target! self (enemy-flag look-at-focus))
+    (logior! (-> self enemy-flags) (enemy-flag cam-attack-mode))
+    (logclear! (-> self enemy-flags) (enemy-flag chase-startup))
     (logclear! (-> self mask) (process-mask actor-pause))
-    (when (logtest? (-> self enemy-flags) (enemy-flag drawn-mirrored))
-      (logclear! (-> self enemy-flags) (enemy-flag drawn-mirrored))
+    (when (logtest? (-> self enemy-flags) (enemy-flag enable-on-hostile))
+      (logclear! (-> self enemy-flags) (enemy-flag enable-on-hostile))
       (let ((gp-0 (-> self on-hostile)))
         (if gp-0
             (script-eval gp-0 :vector (-> self root trans))
@@ -2489,7 +2480,7 @@ This commonly includes things such as:
       )
     )
   :trans (behavior ()
-    (if (and (logtest? (-> self enemy-flags) (enemy-flag look-at-focus)) (-> self enemy-info use-victory))
+    (if (and (logtest? (-> self enemy-flags) (enemy-flag victory)) (-> self enemy-info use-victory))
         (go-virtual victory)
         )
     (let ((gp-0 (-> self focus aware)))
@@ -2509,7 +2500,7 @@ This commonly includes things such as:
     (ja-channel-push! 1 (seconds 0.2))
     (ja :group! (-> self draw art-group data (-> self enemy-info hostile-anim)))
     (ja :num-func num-func-identity :frame-num 0.0)
-    (let ((f30-0 (get-rand-float-range self 0.9 1.1)))
+    (let ((f30-0 (rnd-float-range self 0.9 1.1)))
       (until #f
         (suspend)
         (ja :num! (loop! f30-0))
@@ -2527,7 +2518,7 @@ This commonly includes things such as:
   :enter (behavior ()
     (set-time! (-> self state-time))
     (logclear! (-> self mask) (process-mask actor-pause))
-    (logclear! (-> self enemy-flags) (enemy-flag dangerous-backup))
+    (logclear! (-> self enemy-flags) (enemy-flag chase-startup))
     )
   :trans (behavior ()
     (when (time-elapsed? (-> self state-time) (seconds 0.1))
@@ -2548,7 +2539,7 @@ This commonly includes things such as:
     )
   :code (behavior ()
     (ja-channel-push! 1 (seconds 0.1))
-    (let ((f30-0 (get-rand-float-range self 0.9 1.1))
+    (let ((f30-0 (rnd-float-range self 0.9 1.1))
           (gp-0 (-> self draw art-group data (-> self enemy-info idle-anim)))
           )
       (until #f
@@ -2569,12 +2560,12 @@ This commonly includes things such as:
   :virtual #t
   :event enemy-event-handler
   :enter (behavior ()
-    (logclear! (-> self enemy-flags) (enemy-flag look-at-focus))
+    (logclear! (-> self enemy-flags) (enemy-flag victory))
     (logclear! (-> self mask) (process-mask actor-pause))
     )
   :code (behavior ()
     (ja-channel-push! 1 (seconds 0.075))
-    (let ((f30-0 (get-rand-float-range self 0.8 1.2)))
+    (let ((f30-0 (rnd-float-range self 0.8 1.2)))
       (ja-no-eval :group! (-> self draw art-group data (-> self enemy-info victory-anim))
                   :num! (seek! max f30-0)
                   :frame-num 0.0
@@ -2595,8 +2586,8 @@ This commonly includes things such as:
   :event enemy-event-handler
   :enter (behavior ()
     (set-time! (-> self state-time))
-    (look-at-target! self (enemy-flag lock-focus))
-    (logclear! (-> self enemy-flags) (enemy-flag dangerous-backup))
+    (look-at-target! self (enemy-flag look-at-focus))
+    (logclear! (-> self enemy-flags) (enemy-flag chase-startup))
     (logclear! (-> self mask) (process-mask actor-pause))
     )
   :trans (behavior ()
@@ -2610,7 +2601,7 @@ This commonly includes things such as:
     (ja-channel-push! 1 (seconds 0.2))
     (ja :group! (-> self draw art-group data (-> self enemy-info hostile-anim)))
     (ja :num-func num-func-identity :frame-num 0.0)
-    (let ((f30-0 (get-rand-float-range self 0.9 1.1)))
+    (let ((f30-0 (rnd-float-range self 0.9 1.1)))
       (until #f
         (suspend)
         (ja :num! (loop! f30-0))
@@ -2630,8 +2621,8 @@ This commonly includes things such as:
 ;; definition for method 83 of type enemy
 ;; INFO: Used lq/sq
 (defmethod enemy-method-83 ((this enemy) (arg0 enemy-jump-info))
-  (set! (-> arg0 flags) (the-as uint 1))
-  (set! (-> arg0 anim-speed) (get-rand-float-range this 0.9 1.1))
+  (set! (-> arg0 flags) (enemy-jump-flags enjflag-0))
+  (set! (-> arg0 anim-speed) (rnd-float-range this 0.9 1.1))
   (set! (-> arg0 hang-time) 0)
   (set! (-> arg0 dest-pos quad) (-> this event-param-point quad))
   (set! (-> arg0 start-pos quad) (-> this root trans quad))
@@ -2688,9 +2679,8 @@ This commonly includes things such as:
 
 ;; definition for method 92 of type enemy
 ;; WARN: Return type mismatch int vs none.
-(defmethod enemy-method-92 ((this enemy) (arg0 int) (arg1 nav-poly))
-  "TODO - nav-poly is a guess
-@abstract"
+(defmethod enemy-method-92 ((this enemy) (arg0 int) (arg1 enemy-jump-info))
+  "@abstract"
   0
   (none)
   )
@@ -2700,7 +2690,7 @@ This commonly includes things such as:
 (defmethod enemy-method-91 ((this enemy) (arg0 int) (arg1 enemy-jump-info))
   (case arg0
     ((2 3)
-     (logior! (-> this enemy-flags) (enemy-flag directed))
+     (logior! (-> this enemy-flags) (enemy-flag recover-applied-velocity))
      (let ((f30-0 (the float (-> arg1 hang-time))))
        (let ((a1-3 (compute-trans-at-time (-> arg1 traj) f30-0 (new 'stack-no-clear 'vector))))
          (move-to-point! (-> this root) a1-3)
@@ -2855,7 +2845,7 @@ This commonly includes things such as:
     (logclear! (-> self focus-status) (focus-status in-air))
     )
   :exit (behavior ()
-    (if (logtest? (-> self enemy-flags) (enemy-flag check-water))
+    (if (logtest? (-> self enemy-flags) (enemy-flag dangerous-backup))
         (logior! (-> self focus-status) (focus-status dangerous))
         (logclear! (-> self focus-status) (focus-status dangerous))
         )
@@ -2865,18 +2855,18 @@ This commonly includes things such as:
       (let ((s5-0 0))
         (enemy-method-83 self gp-0)
         (if (and (-> self enemy-info use-jump-blocked)
-                 (logtest? (enemy-flag vulnerable) (-> self enemy-flags))
+                 (logtest? (enemy-flag jump-check-blocked) (-> self enemy-flags))
                  (enemy-method-82 self gp-0)
                  )
             (go-virtual jump-blocked)
             )
-        (when (logtest? (-> gp-0 flags) 1)
+        (when (logtest? (-> gp-0 flags) (enemy-jump-flags enjflag-0))
           (until #f
             (if (enemy-method-90 self s5-0 gp-0)
                 (goto cfg-12)
                 )
             (enemy-method-91 self s5-0 gp-0)
-            (enemy-method-92 self s5-0 (the-as nav-poly gp-0))
+            (enemy-method-92 self s5-0 gp-0)
             (suspend)
             (set! s5-0 1)
             )
@@ -2891,7 +2881,7 @@ This commonly includes things such as:
           (+! (-> gp-0 hang-time) (- (current-time) (-> self clock old-frame-counter)))
           (enemy-method-90 self s5-1 gp-0)
           (enemy-method-91 self s5-1 gp-0)
-          (enemy-method-92 self s5-1 (the-as nav-poly gp-0))
+          (enemy-method-92 self s5-1 gp-0)
           (suspend)
           (set! s5-1 3)
           )
@@ -2904,14 +2894,14 @@ This commonly includes things such as:
               (goto cfg-19)
               )
           (enemy-method-91 self s5-2 gp-0)
-          (enemy-method-92 self s5-2 (the-as nav-poly gp-0))
+          (enemy-method-92 self s5-2 gp-0)
           (suspend)
           (set! s5-2 5)
           )
         )
       #f
       (label cfg-19)
-      (if (logtest? (enemy-flag alert) (-> self enemy-flags))
+      (if (logtest? (enemy-flag directed) (-> self enemy-flags))
           ((lambda :behavior enemy
              ((arg0 enemy-jump-info))
              (send-event (ppointer->process (-> self parent)) 'child-jumped)
@@ -2944,7 +2934,7 @@ This commonly includes things such as:
     )
   :trans (behavior ()
     (when (time-elapsed? (-> self state-time) (seconds 0.5))
-      (if (logtest? (enemy-flag alert) (-> self enemy-flags))
+      (if (logtest? (enemy-flag directed) (-> self enemy-flags))
           (go-virtual jump)
           (enemy-method-93 self)
           )
@@ -2959,7 +2949,7 @@ This commonly includes things such as:
             )
         )
       )
-    (let ((f30-0 (get-rand-float-range self 0.75 1.25)))
+    (let ((f30-0 (rnd-float-range self 0.75 1.25)))
       (until #f
         (suspend)
         (ja :num! (loop! f30-0))
@@ -2982,7 +2972,7 @@ This commonly includes things such as:
   :code (behavior ()
     (local-vars (v1-37 enemy-flag) (v1-45 enemy-flag))
     (ja-channel-push! 1 (seconds 0.2))
-    (let ((f30-0 (get-rand-float-range self 0.9 1.1)))
+    (let ((f30-0 (rnd-float-range self 0.9 1.1)))
       (ja-no-eval :group! (-> self draw art-group data (-> self enemy-info hit-anim))
                   :num! (seek! max f30-0)
                   :frame-num 0.0
@@ -2992,29 +2982,29 @@ This commonly includes things such as:
         (ja :num! (seek! max f30-0))
         )
       )
-    (if (logtest? (-> self enemy-flags) (enemy-flag check-water))
+    (if (logtest? (-> self enemy-flags) (enemy-flag dangerous-backup))
         (logior! (-> self focus-status) (focus-status dangerous))
         (logclear! (-> self focus-status) (focus-status dangerous))
         )
     (let ((v1-36 (-> self enemy-flags)))
-      (if (logtest? v1-36 (enemy-flag checking-water))
-          (set! v1-37 (logior v1-36 (enemy-flag enable-on-active)))
-          (set! v1-37 (logclear v1-36 (enemy-flag enable-on-active)))
+      (if (logtest? v1-36 (enemy-flag vulnerable-backup))
+          (set! v1-37 (logior v1-36 (enemy-flag vulnerable)))
+          (set! v1-37 (logclear v1-36 (enemy-flag vulnerable)))
           )
       )
     (set! (-> self enemy-flags) v1-37)
-    (if (logtest? (-> self enemy-flags) (enemy-flag look-at-move-dest))
+    (if (logtest? (-> self enemy-flags) (enemy-flag attackable-backup))
         (logior! (-> self mask) (process-mask collectable))
         (logclear! (-> self mask) (process-mask collectable))
         )
     (let ((v1-44 (-> self enemy-flags)))
-      (if (logtest? (enemy-flag no-initial-move-to-ground) v1-44)
-          (set! v1-45 (logior (enemy-flag check-water-backup) v1-44))
-          (set! v1-45 (logclear v1-44 (enemy-flag check-water-backup)))
+      (if (logtest? (enemy-flag trackable-backup) v1-44)
+          (set! v1-45 (logior (enemy-flag trackable) v1-44))
+          (set! v1-45 (logclear v1-44 (enemy-flag trackable)))
           )
       )
     (set! (-> self enemy-flags) v1-45)
-    (logclear! (-> self enemy-flags) (enemy-flag actor-pause-backup))
+    (logclear! (-> self enemy-flags) (enemy-flag lock-focus))
     (logclear! (-> self focus-status) (focus-status hit))
     (go-hostile self)
     )
@@ -3024,9 +3014,9 @@ This commonly includes things such as:
 ;; definition for method 101 of type enemy
 ;; WARN: Return type mismatch collide-spec vs none.
 (defmethod enemy-method-101 ((this enemy))
-  (when (not (logtest? (enemy-flag use-trigger) (-> this enemy-flags)))
-    (logior! (-> this enemy-flags) (enemy-flag use-trigger))
-    (logclear! (-> this enemy-flags) (enemy-flag directed))
+  (when (not (logtest? (enemy-flag recover) (-> this enemy-flags)))
+    (logior! (-> this enemy-flags) (enemy-flag recover))
+    (logclear! (-> this enemy-flags) (enemy-flag recover-applied-velocity))
     (enemy-method-124 this)
     )
   (none)
@@ -3034,8 +3024,8 @@ This commonly includes things such as:
 
 ;; definition for method 103 of type enemy
 (defmethod enemy-method-103 ((this enemy))
-  (when (logtest? (enemy-flag use-trigger) (-> this enemy-flags))
-    (logclear! (-> this enemy-flags) (enemy-flag use-trigger directed))
+  (when (logtest? (enemy-flag recover) (-> this enemy-flags))
+    (logclear! (-> this enemy-flags) (enemy-flag recover recover-applied-velocity))
     (enemy-method-124 this)
     )
   )
@@ -3054,7 +3044,7 @@ This commonly includes things such as:
     (enemy-method-103 this)
     (return (the-as symbol #f))
     )
-  (when (not (logtest? (enemy-flag directed) (-> this enemy-flags)))
+  (when (not (logtest? (enemy-flag recover-applied-velocity) (-> this enemy-flags)))
     (let ((s5-0 (-> this root)))
       (if (focus-test? this under-water)
           (enemy-method-47 this (-> s5-0 transv))
@@ -3075,7 +3065,7 @@ This commonly includes things such as:
         )
       )
     )
-  (logclear! (-> this enemy-flags) (enemy-flag directed))
+  (logclear! (-> this enemy-flags) (enemy-flag recover-applied-velocity))
   (if (and (enemy-method-102 this) (not (logtest? (-> this focus-status) (focus-status dead))))
       (kill-prefer-falling this)
       )
@@ -3123,19 +3113,19 @@ This commonly includes things such as:
   (let ((s5-0 (-> this enemy-info)))
     (case (-> this incoming knocked-type)
       (((knocked-type knocked-type-2))
-       (let ((f30-0 (get-rand-float-range this 0.0 1.0)))
+       (let ((f30-0 (rnd-float-range this 0.0 1.0)))
          (vector-float*! arg0 arg0 (lerp (-> s5-0 knocked-hard-vxz-lo) (-> s5-0 knocked-hard-vxz-hi) f30-0))
          (set! (-> arg0 y) (lerp (-> s5-0 knocked-hard-vy-lo) (-> s5-0 knocked-hard-vy-hi) f30-0))
          )
        )
       (((knocked-type knocked-type-1))
-       (let ((f30-1 (get-rand-float-range this 0.0 1.0)))
+       (let ((f30-1 (rnd-float-range this 0.0 1.0)))
          (vector-float*! arg0 arg0 (lerp (-> s5-0 knocked-medium-vxz-lo) (-> s5-0 knocked-medium-vxz-hi) f30-1))
          (set! (-> arg0 y) (lerp (-> s5-0 knocked-medium-vy-lo) (-> s5-0 knocked-medium-vy-hi) f30-1))
          )
        )
       (((knocked-type knocked-type-3))
-       (let ((f30-2 (get-rand-float-range this 0.0 1.0)))
+       (let ((f30-2 (rnd-float-range this 0.0 1.0)))
          (vector-float*! arg0 arg0 (lerp (-> s5-0 knocked-huge-vxz-lo) (-> s5-0 knocked-huge-vxz-hi) f30-2))
          (set! (-> arg0 y) (lerp (-> s5-0 knocked-huge-vy-lo) (-> s5-0 knocked-huge-vy-hi) f30-2))
          )
@@ -3149,7 +3139,7 @@ This commonly includes things such as:
              (vector-negate! arg0 arg0)
              )
          )
-       (let ((f30-3 (get-rand-float-range this 0.0 1.0)))
+       (let ((f30-3 (rnd-float-range this 0.0 1.0)))
          (vector-float*! arg0 arg0 (lerp (-> s5-0 knocked-yellow-vxz-lo) (-> s5-0 knocked-yellow-vxz-hi) f30-3))
          (set! (-> arg0 y) (lerp (-> s5-0 knocked-yellow-vy-lo) (-> s5-0 knocked-yellow-vy-hi) f30-3))
          )
@@ -3160,7 +3150,7 @@ This commonly includes things such as:
               (f2-0 61440.0)
               (f1-3 (fmin f1-2 (* f2-0 f2-0)))
               (f2-3 61440.0)
-              (f30-5 (* (- f0-26 (/ f1-3 (* f2-3 f2-3))) (get-rand-float-range this 0.8 1.0)))
+              (f30-5 (* (- f0-26 (/ f1-3 (* f2-3 f2-3))) (rnd-float-range this 0.8 1.0)))
               )
          (vector-float*! arg0 arg0 (lerp (-> s5-0 knocked-red-vxz-lo) (-> s5-0 knocked-red-vxz-hi) f30-5))
          (set! (-> arg0 y) (lerp (-> s5-0 knocked-red-vy-lo) (-> s5-0 knocked-red-vy-hi) f30-5))
@@ -3172,7 +3162,7 @@ This commonly includes things such as:
               (f2-6 122880.0)
               (f1-6 (fmin f1-5 (* f2-6 f2-6)))
               (f2-9 122880.0)
-              (f30-7 (* (- f0-34 (/ f1-6 (* f2-9 f2-9))) (get-rand-float-range this 0.8 1.0)))
+              (f30-7 (* (- f0-34 (/ f1-6 (* f2-9 f2-9))) (rnd-float-range this 0.8 1.0)))
               )
          (vector-float*! arg0 arg0 (lerp (-> s5-0 knocked-blue-vxz-lo) (-> s5-0 knocked-blue-vxz-hi) f30-7))
          (cond
@@ -3180,7 +3170,7 @@ This commonly includes things such as:
             (set! (-> arg0 y) (lerp (-> s5-0 knocked-blue-vy-lo) (-> s5-0 knocked-blue-vy-hi) f30-7))
             )
            (else
-             (if (zero? (get-rand-int this 3))
+             (if (zero? (rnd-int-count this 3))
                  (set! (-> arg0 y) 40960.0)
                  )
              )
@@ -3191,7 +3181,7 @@ This commonly includes things such as:
        (set! (-> arg0 quad) (-> this incoming attack-direction quad))
        )
       (else
-        (let ((f30-8 (get-rand-float-range this 0.0 1.0)))
+        (let ((f30-8 (rnd-float-range this 0.0 1.0)))
           (vector-float*! arg0 arg0 (lerp (-> s5-0 knocked-soft-vxz-lo) (-> s5-0 knocked-soft-vxz-hi) f30-8))
           (set! (-> arg0 y) (lerp (-> s5-0 knocked-soft-vy-lo) (-> s5-0 knocked-soft-vy-hi) f30-8))
           )
@@ -3251,14 +3241,14 @@ This commonly includes things such as:
   )
 
 ;; definition for method 77 of type enemy
-(defmethod enemy-method-77 ((this enemy) (arg0 (pointer float)))
+(defmethod enemy-method-77 ((this enemy) (arg0 enemy-knocked-info))
   (ja-channel-push! 1 0)
   (let ((a1-2 (-> this draw art-group data (-> this enemy-info knocked-anim)))
         (a0-4 (-> this skel root-channel 0))
         )
     (set! (-> a0-4 frame-group) (the-as art-joint-anim a1-2))
     (set! (-> a0-4 param 0) (the float (+ (-> (the-as art-joint-anim a1-2) frames num-frames) -1)))
-    (set! (-> a0-4 param 1) (-> arg0 0))
+    (set! (-> a0-4 param 1) (-> arg0 anim-speed))
     (set! (-> a0-4 frame-num) 0.0)
     (joint-control-channel-group! a0-4 (the-as art-joint-anim a1-2) num-func-seek!)
     )
@@ -3266,13 +3256,13 @@ This commonly includes things such as:
   )
 
 ;; definition for method 78 of type enemy
-(defmethod enemy-method-78 ((this enemy) (arg0 (pointer float)))
+(defmethod enemy-method-78 ((this enemy) (arg0 enemy-knocked-info))
   (let ((v1-4 (-> this draw art-group data (-> this enemy-info knocked-land-anim)))
         (a0-3 (-> this skel root-channel 0))
         )
     (set! (-> a0-3 frame-group) (the-as art-joint-anim v1-4))
     (set! (-> a0-3 param 0) (the float (+ (-> (the-as art-joint-anim v1-4) frames num-frames) -1)))
-    (set! (-> a0-3 param 1) (-> arg0 0))
+    (set! (-> a0-3 param 1) (-> arg0 anim-speed))
     (set! (-> a0-3 frame-num) 0.0)
     (joint-control-channel-group! a0-3 (the-as art-joint-anim v1-4) num-func-seek!)
     )
@@ -3319,7 +3309,7 @@ This commonly includes things such as:
   (let ((v1-0 arg0))
     (cond
       ((zero? v1-0)
-       (enemy-method-77 this (the-as (pointer float) arg1))
+       (enemy-method-77 this arg1)
        (set! s5-0 #f)
        )
       ((= v1-0 1)
@@ -3331,7 +3321,7 @@ This commonly includes things such as:
          )
        )
       ((= v1-0 2)
-       (set! s5-0 (not (enemy-method-78 this (the-as (pointer float) arg1))))
+       (set! s5-0 (not (enemy-method-78 this arg1)))
        (set! (-> this incoming blue-juggle-count) (the-as uint 0))
        )
       ((= v1-0 3)
@@ -3361,7 +3351,7 @@ This commonly includes things such as:
   :enter (behavior ()
     (set-time! (-> self state-time))
     (stop-looking-at-target! self)
-    (logior! (-> self enemy-flags) (enemy-flag actor-pause-backup))
+    (logior! (-> self enemy-flags) (enemy-flag lock-focus))
     (logclear! (-> self mask) (process-mask actor-pause))
     (let* ((v1-8 *game-info*)
            (a0-4 (+ (-> v1-8 attack-id) 1))
@@ -3371,7 +3361,7 @@ This commonly includes things such as:
       )
     (enemy-method-103 self)
     (if (logtest? (enemy-option knocked-into-water) (-> self fact enemy-options))
-        (logior! (-> self enemy-flags) (enemy-flag trackable-backup))
+        (logior! (-> self enemy-flags) (enemy-flag check-water))
         )
     (let ((v1-16 (-> self root)))
       (logclear! (-> v1-16 status) (collide-status
@@ -3406,12 +3396,12 @@ This commonly includes things such as:
         (set! (-> self desired-angle) (enemy-method-51 self))
         )
     (if (zero? (-> self hit-points))
-        (dispose! self)
+        (dying self)
         (enemy-method-135 self 0)
         )
     (logclear! (-> self focus-status) (focus-status dangerous))
     (if (= (-> self incoming knocked-type) (knocked-type knocked-type-4))
-        (logclear! (-> self enemy-flags) (enemy-flag check-water-backup))
+        (logclear! (-> self enemy-flags) (enemy-flag trackable))
         )
     (set! (-> self root penetrate-using) (penetrate lunge vehicle knocked))
     (enemy-method-49 self)
@@ -3420,9 +3410,9 @@ This commonly includes things such as:
   :exit (behavior ()
     (local-vars (v1-1 enemy-flag) (v1-15 enemy-flag) (v1-23 enemy-flag))
     (let ((v1-0 (-> self enemy-flags)))
-      (if (logtest? (enemy-flag enable-on-hostile) v1-0)
-          (set! v1-1 (logior (enemy-flag trackable-backup) v1-0))
-          (set! v1-1 (logclear v1-0 (enemy-flag trackable-backup)))
+      (if (logtest? (enemy-flag check-water-backup) v1-0)
+          (set! v1-1 (logior (enemy-flag check-water) v1-0))
+          (set! v1-1 (logclear v1-0 (enemy-flag check-water)))
           )
       )
     (set! (-> self enemy-flags) v1-1)
@@ -3431,29 +3421,29 @@ This commonly includes things such as:
             (the-as penetrate (logclear (-> self root penetrate-using) (penetrate knocked)))
             )
       (enemy-method-46 self 2)
-      (if (logtest? (-> self enemy-flags) (enemy-flag check-water))
+      (if (logtest? (-> self enemy-flags) (enemy-flag dangerous-backup))
           (logior! (-> self focus-status) (focus-status dangerous))
           (logclear! (-> self focus-status) (focus-status dangerous))
           )
       (let ((v1-14 (-> self enemy-flags)))
-        (if (logtest? v1-14 (enemy-flag checking-water))
-            (set! v1-15 (logior v1-14 (enemy-flag enable-on-active)))
-            (set! v1-15 (logclear v1-14 (enemy-flag enable-on-active)))
+        (if (logtest? v1-14 (enemy-flag vulnerable-backup))
+            (set! v1-15 (logior v1-14 (enemy-flag vulnerable)))
+            (set! v1-15 (logclear v1-14 (enemy-flag vulnerable)))
             )
         )
       (set! (-> self enemy-flags) v1-15)
-      (if (logtest? (-> self enemy-flags) (enemy-flag look-at-move-dest))
+      (if (logtest? (-> self enemy-flags) (enemy-flag attackable-backup))
           (logior! (-> self mask) (process-mask collectable))
           (logclear! (-> self mask) (process-mask collectable))
           )
       (let ((v1-22 (-> self enemy-flags)))
-        (if (logtest? (enemy-flag no-initial-move-to-ground) v1-22)
-            (set! v1-23 (logior (enemy-flag check-water-backup) v1-22))
-            (set! v1-23 (logclear v1-22 (enemy-flag check-water-backup)))
+        (if (logtest? (enemy-flag trackable-backup) v1-22)
+            (set! v1-23 (logior (enemy-flag trackable) v1-22))
+            (set! v1-23 (logclear v1-22 (enemy-flag trackable)))
             )
         )
       (set! (-> self enemy-flags) v1-23)
-      (logclear! (-> self enemy-flags) (enemy-flag actor-pause-backup))
+      (logclear! (-> self enemy-flags) (enemy-flag lock-focus))
       (logclear! (-> self focus-status) (focus-status hit))
       )
     )
@@ -3465,7 +3455,7 @@ This commonly includes things such as:
   :code (behavior ()
     (let ((gp-0 (new 'stack-no-clear 'enemy-knocked-info)))
       (let ((s5-0 0))
-        (set! (-> gp-0 anim-speed) (get-rand-float-range self 0.9 1.1))
+        (set! (-> gp-0 anim-speed) (rnd-float-range self 0.9 1.1))
         (set! (-> gp-0 on-surface-count) 0)
         (set! (-> gp-0 move-count) 0)
         (until (enemy-method-80 self gp-0)
@@ -3500,7 +3490,7 @@ This commonly includes things such as:
         )
       #f
       (label cfg-15)
-      (if (and (not (logtest? (enemy-flag recover) (-> self enemy-flags)))
+      (if (and (not (logtest? (enemy-flag death-start) (-> self enemy-flags)))
                (or (time-elapsed? (-> gp-0 land-can-land-time) (seconds 0.1)) (enemy-method-81 self) (enemy-method-102 self))
                )
           (kill-prefer-falling self)
@@ -3513,7 +3503,7 @@ This commonly includes things such as:
     (cond
       ((or (zero? (-> self hit-points)) (nonzero? (-> self fated-time)))
        (cond
-         ((logtest? (enemy-flag recover) (-> self enemy-flags))
+         ((logtest? (enemy-flag death-start) (-> self enemy-flags))
           (set! (-> self hit-points) 0)
           (let ((v1-67 (-> self root root-prim)))
             (set! (-> v1-67 prim-core collide-as) (collide-spec))
@@ -3541,15 +3531,13 @@ This commonly includes things such as:
   )
 
 ;; definition for method 132 of type enemy
-(defmethod dispose! ((this enemy))
+(defmethod dying ((this enemy))
   "Cleans-up the enemy and any associated resources. Potentially spawns skull gems"
-  (when (not (logtest? (enemy-flag recover-applied-velocity) (-> this enemy-flags)))
-    (set! (-> this enemy-flags)
-          (the-as enemy-flag (logior (enemy-flag recover-applied-velocity) (-> this enemy-flags)))
-          )
+  (when (not (logtest? (enemy-flag called-dying) (-> this enemy-flags)))
+    (set! (-> this enemy-flags) (the-as enemy-flag (logior (enemy-flag called-dying) (-> this enemy-flags))))
     (enemy-method-135 this 1)
     (when (and (>= (-> this enemy-info gem-joint) 0)
-               (not (logtest? (enemy-flag cam-attack-mode) (-> this enemy-flags)))
+               (not (logtest? (enemy-flag spawn-gem) (-> this enemy-flags)))
                (or (and (not (and (-> this entity) (logtest? (-> this entity extra perm status) (entity-perm-status save))))
                         (-> this entity)
                         )
@@ -3557,7 +3545,7 @@ This commonly includes things such as:
                    (logtest? (-> *game-info* secrets) (game-secrets hero-mode))
                    )
                )
-      (logior! (-> this enemy-flags) (enemy-flag cam-attack-mode))
+      (logior! (-> this enemy-flags) (enemy-flag spawn-gem))
       (remove-from-process *part-engine* this)
       (setup-masks
         (-> this draw)
@@ -3571,13 +3559,13 @@ This commonly includes things such as:
         (birth-pickup-at-point a0-18 (pickup-type gem) 1.0 #t *entity-pool* (-> this fact))
         )
       )
-    (logclear! (-> this enemy-flags) (enemy-flag enable-on-active checking-water))
+    (logclear! (-> this enemy-flags) (enemy-flag vulnerable vulnerable-backup))
     (logclear! (-> this focus-status) (focus-status dangerous))
-    (logclear! (-> this enemy-flags) (enemy-flag check-water))
+    (logclear! (-> this enemy-flags) (enemy-flag dangerous-backup))
     (logclear! (-> this mask) (process-mask collectable))
-    (logclear! (-> this enemy-flags) (enemy-flag look-at-move-dest))
+    (logclear! (-> this enemy-flags) (enemy-flag attackable-backup))
     (logclear! (-> this mask) (process-mask actor-pause))
-    (logclear! (-> this enemy-flags) (enemy-flag notice))
+    (logclear! (-> this enemy-flags) (enemy-flag actor-pause-backup))
     (logior! (-> this focus-status) (focus-status dead))
     (if (-> this skel effect)
         (logior! (-> this skel effect flags) (effect-control-flag ecf1))
@@ -3592,7 +3580,7 @@ This commonly includes things such as:
   :virtual #t
   :event enemy-event-handler
   :enter (behavior ()
-    (dispose! self)
+    (dying self)
     (let ((v1-3 (-> self root root-prim)))
       (set! (-> v1-3 prim-core collide-as) (collide-spec))
       (set! (-> v1-3 prim-core collide-with) (collide-spec))
@@ -3604,7 +3592,7 @@ This commonly includes things such as:
     )
   :code (behavior ()
     (ja-channel-push! 1 (seconds 0.075))
-    (let ((f30-0 (get-rand-float-range self 0.8 1.2)))
+    (let ((f30-0 (rnd-float-range self 0.8 1.2)))
       (ja-no-eval :group! (-> self draw art-group data (-> self enemy-info die-anim))
                   :num! (seek! max f30-0)
                   :frame-num 0.0
@@ -3643,7 +3631,7 @@ This commonly includes things such as:
   :virtual #t
   :event enemy-event-handler
   :enter (behavior ()
-    (dispose! self)
+    (dying self)
     (let ((v1-3 (-> self root root-prim)))
       (set! (-> v1-3 prim-core collide-as) (collide-spec))
       (set! (-> v1-3 prim-core collide-with) (collide-spec))
@@ -3651,16 +3639,16 @@ This commonly includes things such as:
     0
     (set! (-> self hit-points) 0)
     (if (logtest? (enemy-option knocked-into-water) (-> self fact enemy-options))
-        (logior! (-> self enemy-flags) (enemy-flag trackable-backup))
+        (logior! (-> self enemy-flags) (enemy-flag check-water))
         )
     (enemy-method-103 self)
     )
   :exit (behavior ()
     (local-vars (v0-0 enemy-flag))
     (let ((v1-0 (-> self enemy-flags)))
-      (if (logtest? (enemy-flag enable-on-hostile) v1-0)
-          (set! v0-0 (logior (enemy-flag trackable-backup) v1-0))
-          (set! v0-0 (logclear v1-0 (enemy-flag trackable-backup)))
+      (if (logtest? (enemy-flag check-water-backup) v1-0)
+          (set! v0-0 (logior (enemy-flag check-water) v1-0))
+          (set! v0-0 (logclear v1-0 (enemy-flag check-water)))
           )
       )
     (set! (-> self enemy-flags) v0-0)
@@ -3673,7 +3661,7 @@ This commonly includes things such as:
                                                  )
                     )
                 )
-          (f30-0 (get-rand-float-range self 0.8 1.2))
+          (f30-0 (rnd-float-range self 0.8 1.2))
           )
       (ja-no-eval :group! gp-0 :num! (seek! max f30-0) :frame-num 0.0)
       (until (ja-done? 0)
@@ -3695,11 +3683,11 @@ This commonly includes things such as:
   :virtual #t
   :event enemy-event-handler
   :enter (behavior ()
-    (logior! (-> self enemy-flags) (enemy-flag victory))
+    (logior! (-> self enemy-flags) (enemy-flag directed-ready))
     ((-> (method-of-type enemy idle) enter))
     )
   :exit (behavior ()
-    (logclear! (-> self enemy-flags) (enemy-flag victory))
+    (logclear! (-> self enemy-flags) (enemy-flag directed-ready))
     )
   :code (-> (method-of-type enemy idle) code)
   :post (-> (method-of-type enemy idle) post)

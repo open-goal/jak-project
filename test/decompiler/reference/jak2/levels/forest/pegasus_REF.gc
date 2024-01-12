@@ -261,15 +261,15 @@ For pegasus, it will call [[enemy::57]] only if the [[pegasus]] has been targett
        ((zero? (-> this hit-points))
         (logclear! (-> this mask) (process-mask actor-pause))
         (logclear! (-> this focus-status) (focus-status dangerous))
-        (logclear! (-> this enemy-flags) (enemy-flag enable-on-notice))
-        (logior! (-> this enemy-flags) (enemy-flag chase-startup))
+        (logclear! (-> this enemy-flags) (enemy-flag use-notice-distance))
+        (logior! (-> this enemy-flags) (enemy-flag alert))
         (logior! (-> this focus-status) (focus-status hit))
         (if (zero? (-> this hit-points))
             (logior! (-> this focus-status) (focus-status dead))
             )
-        (logclear! (-> this enemy-flags) (enemy-flag actor-pause-backup))
+        (logclear! (-> this enemy-flags) (enemy-flag lock-focus))
         (enemy-method-62 this)
-        (logior! (-> this enemy-flags) (enemy-flag actor-pause-backup))
+        (logior! (-> this enemy-flags) (enemy-flag lock-focus))
         (process-contact-action proc)
         (send-event proc 'get-attack-count 1)
         (kill-prefer-falling this)
@@ -754,14 +754,14 @@ The faster it's moving the fast it flaps it's wings, etc
   )
 
 ;; definition for method 55 of type pegasus
-(defmethod track-target! ((this pegasus))
+(defmethod common-post ((this pegasus))
   "Does a lot of various things relating to interacting with the target
 - tracks when the enemy was last drawn
 - looks at the target and handles attacking
 @TODO Not extremely well understood yet"
   (track-how-long-aimed-at! this)
   (pegasus-show-runs)
-  ((method-of-type enemy track-target!) this)
+  ((method-of-type enemy common-post) this)
   (none)
   )
 
@@ -1220,7 +1220,7 @@ The faster it's moving the fast it flaps it's wings, etc
     (if (pegasus-calc-speed 61440.0 122880.0 204800.0 49152.0)
         (react-to-focus self)
         )
-    (let ((anim-length (get-rand-float-range self 0.8 1.2)))
+    (let ((anim-length (rnd-float-range self 0.8 1.2)))
       (ja-channel-push! 1 (seconds 0.2))
       (ja-no-eval :group! (-> self draw art-group data (-> self enemy-info notice-anim))
                   :num! (seek! max anim-length)
@@ -1326,7 +1326,7 @@ The faster it's moving the fast it flaps it's wings, etc
   )
 
 ;; definition for method 108 of type pegasus
-(defmethod enemy-method-108 ((this pegasus) (arg0 enemy) (arg1 event-message-block))
+(defmethod enemy-method-108 ((this pegasus) (arg0 process-drawable) (arg1 event-message-block))
   0
   )
 

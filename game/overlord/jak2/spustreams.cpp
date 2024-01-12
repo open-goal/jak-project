@@ -842,7 +842,7 @@ void StopVagStream(VagCmd* param_1, int param_2) {
   if (cmd != 0x0) {
     cmd->sb_playing = '\0';
   }
-  if (param_1->unk_136 == 0) {
+  if (param_1->sound_handler == 0) {
     PauseVAG(param_1, 0);
     param_1->byte9 = '\x01';
     if (cmd != 0x0) {
@@ -892,7 +892,7 @@ u32 GetSpuRamAddress(VagCmd* param_1) {
   // if the overlord thread isn't keeping up.
   // as far as I can tell, it's totally fine to discard these checks because our sceSdGetAddr
   // works perfectly.
-  return sceSdGetAddr((param_1->voice & 0xffffU) | 0x2240);
+  return sceSdGetAddr(SD_VA_NAX | param_1->voice);
 }
 
 u32 bswap(u32 param_1) {

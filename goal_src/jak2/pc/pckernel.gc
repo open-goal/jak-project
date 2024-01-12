@@ -13,7 +13,146 @@
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;; music player stuff
+;;;; pc cheats list
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+
+
+(deftype pc-cheat-info (basic)
+  ((name    text-id)
+   (unlock  text-id)
+   (unlock-func   symbol) ;; function symbol
+   (skill   int) ;; skill points required. leave as 0 if you only want a custom unlock func
+   (flag    pc-cheats)
+   (can-toggle  symbol) ;; how it can be toggled
+
+   ;; only show after this point in the story
+   (avail-after       game-task-node)
+   (avail-after-hero  game-task-node)
+   )
+  )
+
+;;;;; pc cheat unlock functions
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defun pc-cheat-health-bars-unlock ()
+  "#t = cheat unlock requirements met. #f = locked"
+  (>= (get-count-for-enemy (-> *pc-settings* stats kill-stats) 'civilian) (-> *pc-cheat-state* kill-civvie-target)))
+
+(defun pc-cheat-vehicle-health-bars-unlock ()
+  "#t = cheat unlock requirements met. #f = locked"
+  #f)
+
+(defun pc-cheat-board-fast-unlock ()
+  "#t = cheat unlock requirements met. #f = locked"
+  (cond
+    ;; haven't reached sewer valve task yet or not in sewers or at the start of sewers
+    ((or  (not (task-node-closed? (game-task-node sewer-board-introduction)))
+          (not (aif (level-get-target-inside *level*) (= (-> it name) 'sewer)))
+          (aif (get-continue-by-name *game-info* "sewer-start") (< (vector-vector-distance (target-pos 0) (-> it trans)) (meters 20))))
+      (set! (-> *pc-cheat-state* sewer-valve-on) #b000)
+      (set! (-> *pc-cheat-state* sewer-valve-start-time) 0)
+      (set! (-> *pc-cheat-state* sewer-valve-end-time) 0)
+      #f)
+    ;; during sewer valve task
+    ((not (task-node-closed? (game-task-node sewer-board-resolution)))
+      (set! (-> *pc-cheat-state* sewer-valve-end-time) (get-current-time))
+      (when (= (get-base-height *ocean-map*) -216498.17)
+        (set! (-> *pc-cheat-state* sewer-valve-start-time) (get-current-time))
+        )
+      
+      ;; no cheating!
+      (cond
+        ((task-node-open? (game-task-node sewer-board-drain))
+          (aif  (process-by-ename "sew-valve-6")
+                (if (and (= 'turn (-> it next-state name)) (= (-> *pc-cheat-state* sewer-valve-on) #b000))
+                    (logior! (-> *pc-cheat-state* sewer-valve-on) #b001)))
+          (aif  (process-by-ename "sew-valve-7")
+                (if (and (= 'turn (-> it next-state name)) (= (-> *pc-cheat-state* sewer-valve-on) #b001))
+                    (logior! (-> *pc-cheat-state* sewer-valve-on) #b010)))
+          )
+        ((and (task-node-closed? (game-task-node sewer-board-drain)) (= (-> *pc-cheat-state* sewer-valve-on) #b011))
+          (logior! (-> *pc-cheat-state* sewer-valve-on) #b100))
+        )
+
+      (when (and (= *cheat-mode* 'debug) (!= (-> *pc-cheat-state* sewer-valve-end-time) (-> *pc-cheat-state* sewer-valve-start-time)))
+        (format *stdcon* "sewer-valve time: ~0e/~D v: ~3B~%" (- (-> *pc-cheat-state* sewer-valve-end-time) (-> *pc-cheat-state* sewer-valve-start-time))
+                                                             (-> *pc-cheat-state* sewer-valve-target-seconds)
+                                                             (-> *pc-cheat-state* sewer-valve-on))
+        )
+      #f)
+    ;; sewer valve task done!
+    (else
+      (let (
+        (time-taken (- (-> *pc-cheat-state* sewer-valve-end-time) (-> *pc-cheat-state* sewer-valve-start-time))))
+          
+          (and  (< 0 time-taken)
+                (< time-taken (seconds (-> *pc-cheat-state* sewer-valve-target-seconds)))
+                (= #b111 (-> *pc-cheat-state* sewer-valve-on)))
+          )
+      )
+    ))
+
+(defun pc-cheat-statistics-unlock ()
+  "#t = cheat unlock requirements met. #f = locked"
+  (killed-each-metalhead?))
+
+(defun pc-cheat-suck-in-all-unlock ()
+  "#t = cheat unlock requirements met. #f = locked"
+  #f)
+
+(defun pc-cheat-fast-travel-unlock ()
+  "#t = cheat unlock requirements met. #f = locked"
+  #f)
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;; pc cheat unlock functions end
+
+(defmacro static-pc-cheat-info (name flag can-toggle avail-after &key (skill 0) &key (unlock (null true-func)))
+  "helper for making a new static pc-cheat-info
+   unlock is a pair in format (unlock-text-id unlock-func) where unlock-func returns #t if the unlock requirement is met and #f otherwise
+   skill is the skill requirement. until the requirement is met (and avail-after is closed), it will show 'X required' in the menu
+   avail-after can be a single task-node or a pair of two, car is for normal game and cadr for hero mode"
+  `(new 'static 'pc-cheat-info  :name (text-id ,name)
+                                :unlock (text-id ,(car unlock))
+                                :unlock-func (quote ,(cadr unlock))
+                                :skill ,skill
+                                :flag (pc-cheats ,flag)
+                                :avail-after (game-task-node ,(if (pair? avail-after) (car avail-after) avail-after))
+                                :avail-after-hero (game-task-node ,(if (pair? avail-after) (cadr avail-after) avail-after))
+                                :can-toggle (quote ,can-toggle))
+  )
+
+(defmacro def-pc-cheat-list (name &rest items)
+  "helper for making a list of pc cheats. see static-pc-cheat-info for parameters"
+  `(define ,name (new 'static 'boxed-array :type pc-cheat-info ,@(apply (lambda (x) `(static-pc-cheat-info ,@x)) items)))
+  )
+
+;; the list of cheats
+(def-pc-cheat-list *pc-cheats-list*
+;;   name                                  cheat flag            can-toggle   avail-after
+    (progress-cheats-music-player          music-player          #f           fortress-escape-introduction)
+    (progress-cheats-real-time-of-day      real-time-of-day      #t           fortress-escape-resolution)
+    (progress-cheats-board-tricks          board-tricks          #t           stadium-board1-gold)
+    (progress-cheats-health-bars           health-bars           #t           palace-boss-resolution      :unlock (progress-cheats-health-bars-unlock pc-cheat-health-bars-unlock))
+    ;(progress-cheats-vehicle-health-bars   vehicle-health-bars   #t           palace-boss-resolution      :unlock (progress-cheats-vehicle-health-bars-unlock pc-cheat-vehicle-health-bars-unlock))
+    (progress-cheats-weather-bad           weather-bad           #t           fortress-escape-resolution  :skill 85)
+    (progress-cheats-weather-good          weather-good          #t           fortress-escape-resolution  :skill 85)
+    ;(progress-cheats-suck-in-all           suck-in-all           #t           forest-scouts-get-board     :unlock (progress-cheats-suck-in-all-unlock pc-cheat-suck-in-all-unlock))
+    (progress-cheats-turbo-board           turbo-board           #t           sewer-board-introduction    :unlock (progress-cheats-turbo-board-unlock pc-cheat-board-fast-unlock))
+    ;(progress-cheats-fast-travel           fast-travel           auto         city-defend-stadium-introduction  :unlock (progress-cheats-fast-travel-unlock pc-cheat-fast-travel-unlock))
+    ;(progress-cheats-orb-tracker           orb-tracker           auto         nest-boss-resolution)
+    (progress-cheats-no-textures           no-textures           #t           nest-boss-resolution      :skill 115)
+    (progress-cheats-vehicle-invuln        vehicle-invuln        #t           nest-boss-resolution      :skill 185)
+    ;(progress-cheats-fast-movies           fast-movies           #t           nest-boss-resolution      :skill 200)
+    ;(progress-cheats-slow-movies           slow-movies           #t           nest-boss-resolution      :skill 200)
+    ;(progress-cheats-fast-speed            fast-speed            #t           nest-boss-resolution      :skill 250)
+    ;(progress-cheats-slow-speed            slow-speed            #t           nest-boss-resolution      :skill 250)
+    ;(progress-cheats-statistics            statistics            auto         atoll-water-introduction  :unlock (progress-cheats-statistics-unlock pc-cheat-statistics-unlock))
+    )
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;; music player list
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 
@@ -475,7 +614,7 @@
 
   ;; turbo jet board cheat
   (cond
-    ((and (pc-cheats? (-> *pc-settings* cheats) turbo-board)
+    ((and (pc-cheats? (-> obj cheats) turbo-board)
           *target*
           (focus-test? *target* board)
           (inside-city?))
@@ -498,6 +637,31 @@
 
   ;; run cheats end!!!
   ;;;;;;;;;;;;;;;;;;;;
+
+  ;; check unlocked cheats
+  ;;;;;;;;;;;;;;;;;;;;;;;;
+  (dotimes (i (-> *pc-cheats-list* length))
+    
+    ;; reveals cheats if they have been purchased, purchases cheats if they have been unlocked, unlocks cheats if they have been enabled.
+    ;; the cheat process requires the steps to be filled in this order, see sequential checking below
+    (logior! (-> *pc-settings* cheats-revealed) (logior! (-> *pc-settings* cheats-purchased) (logior! (-> *pc-settings* cheats-unlocked) (-> *pc-settings* cheats))))
+
+    (let* ((cheat (-> *pc-cheats-list* i))
+          (cost (-> cheat skill))
+          (unlock-func (the (function symbol) (-> cheat unlock-func value))))
+        
+        (when (if (logtest? (-> *game-info* secrets) (game-secrets hero-mode))
+                  (task-node-closed? (-> cheat avail-after-hero))
+                  (task-node-closed? (-> cheat avail-after)))
+            (logior! (-> obj cheats-revealed) (-> cheat flag))
+
+            (when (>= (-> *game-info* skill-total) cost)
+                (logior! (-> obj cheats-purchased) (-> cheat flag))
+                
+                (when (or (zero? unlock-func)
+                          (not unlock-func)
+                          (unlock-func))
+                    (logior! (-> obj cheats-unlocked) (-> cheat flag)))))))
 
   0)
 
@@ -557,7 +721,6 @@
 
   ((method-of-type pc-settings handle-input-settings) obj file)
   (case-str *pc-temp-string*
-    (("jetboard-trick-text?") (set! (-> obj jetboard-trick-text?) (file-stream-read-symbol file)))
     (("fast-airlock?") (set! (-> obj fast-airlock?) (file-stream-read-symbol file)))
     (("fast-elevator?") (set! (-> obj fast-elevator?) (file-stream-read-symbol file)))
     (("fast-progress?") (set! (-> obj fast-progress?) (file-stream-read-symbol file)))
@@ -568,6 +731,7 @@
     (("cheats") (set! (-> obj cheats) (the-as pc-cheats (file-stream-read-int file))))
     (("cheats-revealed") (set! (-> obj cheats-revealed) (the-as pc-cheats (file-stream-read-int file))))
     (("cheats-purchased") (set! (-> obj cheats-purchased) (the-as pc-cheats (file-stream-read-int file))))
+    (("cheats-unlocked") (set! (-> obj cheats-unlocked) (the-as pc-cheats (file-stream-read-int file))))
     (("cheats-backup") (set! (-> obj cheats-backup) (the-as pc-cheats (file-stream-read-int file))))
     (("music-unlocked")
       (dotimes (i (/ (align64 (-> obj music-unlocked length)) 64))
@@ -579,6 +743,27 @@
         (set! (-> obj flava-unlocked i) (file-stream-read-symbol file))
         )
       )
+    (("stats")
+      (dosettings (file)
+        (case-str *pc-temp-string*
+          (("kill-stats")
+            (initialize (-> obj stats kill-stats))
+            (dosettings (file)
+              (let ((enemy-stats (alloc-slot (-> obj stats kill-stats) (string->symbol *pc-temp-string*))))
+                (dosettings (file)
+                  (let ((source (string->kill-source *pc-temp-string*))
+                        (amount (file-stream-read-int file)))
+                    (when (!= source (kill-stats-source unknown))
+                      (set! (-> enemy-stats sources source) amount)
+                      )
+                    )
+                  )
+                )
+              )
+            )
+          )
+        )
+      )
     )
   0)
 
@@ -586,7 +771,6 @@
   "handle the text writing output for the 'settings' group"
 
   ((method-of-type pc-settings handle-output-settings) obj file)
-  (format file "  (jetboard-trick-text? ~A)~%" (-> obj jetboard-trick-text?))
   (format file "  (fast-airlock? ~A)~%" (-> obj fast-airlock?))
   (format file "  (fast-elevator? ~A)~%" (-> obj fast-elevator?))
   (format file "  (fast-progress? ~A)~%" (-> obj fast-progress?))
@@ -597,17 +781,34 @@
   (format file "  (cheats #x~x)~%" (-> obj cheats))
   (format file "  (cheats-revealed #x~x)~%" (-> obj cheats-revealed))
   (format file "  (cheats-purchased #x~x)~%" (-> obj cheats-purchased))
+  (format file "  (cheats-unlocked #x~x)~%" (-> obj cheats-unlocked))
   (format file "  (cheats-backup #x~x)~%" (-> obj cheats-backup))
+
   (format file "  (music-unlocked")
   (dotimes (i (/ (align64 (-> obj music-unlocked length)) 64))
     (format file " #x~x" (int64<-bit-array (-> obj music-unlocked) (* i 64)))
     )
   (format file ")~%")
+
   (format file "  (flava-unlocked")
   (dotimes (i 6)
     (format file " ~A" (-> obj flava-unlocked i))
     )
   (format file ")~%")
+
+  (format file "  (stats~%")
+  (format file "    (kill-stats~%")
+  (dotimes (i KILL_STATS_MAX_ENEMY_TYPES)
+  (when (-> obj stats kill-stats enemies i name)
+  (format file "      (~A~%" (-> obj stats kill-stats enemies i name))
+  (dotimes (ii KILL_STATS_MAX_SOURCE)
+  (when (nonzero? (-> obj stats kill-stats enemies i sources ii))
+  (format file "        (~A ~D)~%" (string->symbol (kill-source->string (the kill-stats-source ii))) (-> obj stats kill-stats enemies i sources ii))
+    ))
+  (format file "        )~%")
+    ))
+  (format file "      )~%")
+  (format file "    )~%")
   0)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -616,6 +817,7 @@
 
 
 (define-once *pc-settings* (new 'global 'pc-settings-jak2))
+
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -652,6 +854,26 @@
     (format #t "~%"))
   )
 
+
+(defun-debug pc-cheat->string ((cheat pc-cheats))
+  (doenum (name val pc-cheats)
+    (if (= cheat val)
+        (return name))
+    )
+  "*unknown*")
+
+(defun-debug print-cheat-status (out)
+  (dotimes (i (-> *pc-cheats-list* length))
+  (let ((flag (-> *pc-cheats-list* i flag)))
+    (cond
+      ((logtest? (-> *pc-settings* cheats) flag)            (format out "  ~20S(#x~6x): enabled~%" (pc-cheat->string flag) flag))
+      ((logtest? (-> *pc-settings* cheats-unlocked) flag)   (format out "  ~20S(#x~6x): unlocked~%" (pc-cheat->string flag) flag))
+      ((logtest? (-> *pc-settings* cheats-purchased) flag)  (format out "  ~20S(#x~6x): purchased~%" (pc-cheat->string flag) flag))
+      ((logtest? (-> *pc-settings* cheats-revealed) flag)   (format out "  ~20S(#x~6x): revealed~%" (pc-cheat->string flag) flag))
+      (else                                                 (format out "  ~20S(#x~6x): locked~%" (pc-cheat->string flag) flag))
+      )
+    ))
+  out)
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;

@@ -58,18 +58,18 @@ std::vector<math::Vector2f> extract_vec2f(const u8* data, u32 count, u32 stride)
 }
 
 /*!
- * Convert a GLTF color buffer (u16 format) to u8 colors.
+ * Convert a GLTF color buffer (float format) to u8 colors.
  */
-std::vector<math::Vector<u8, 4>> extract_color_from_vec4_u16(const u8* data,
-                                                             u32 count,
-                                                             u32 stride) {
+std::vector<math::Vector<u8, 4>> extract_color_from_vec4_float(const u8* data,
+                                                               u32 count,
+                                                               u32 stride) {
   std::vector<math::Vector<u8, 4>> result;
   result.reserve(count);
   for (u32 i = 0; i < count; i++) {
-    math::Vector<u16, 4> temp;
-    memcpy(&temp, data, sizeof(math::Vector<u16, 4>));
+    math::Vector<float, 4> temp;
+    memcpy(&temp, data, sizeof(math::Vector<float, 4>));
     data += stride;
-    result.emplace_back(temp.x() >> 8, temp.y() >> 8, temp.z() >> 8, temp.w() >> 8);
+    result.emplace_back(temp.x() * 255, temp.y() * 255, temp.z() * 255, temp.w() * 255);
   }
   return result;
 }
@@ -170,9 +170,9 @@ ExtractedVertices gltf_vertices(const tinygltf::Model& model,
 
       ASSERT_MSG(attrib_accessor.type == TINYGLTF_TYPE_VEC4, "COLOR_0 wasn't vec4");
       ASSERT_MSG(
-          attrib_accessor.componentType == TINYGLTF_COMPONENT_TYPE_UNSIGNED_SHORT,
+          attrib_accessor.componentType == TINYGLTF_COMPONENT_TYPE_FLOAT,
           fmt::format("COLOR_0 wasn't float, got {} instead", attrib_accessor.componentType));
-      auto colors = extract_color_from_vec4_u16(data_ptr, count, byte_stride);
+      auto colors = extract_color_from_vec4_float(data_ptr, count, byte_stride);
       vtx_colors.insert(vtx_colors.end(), colors.begin(), colors.end());
     }
 

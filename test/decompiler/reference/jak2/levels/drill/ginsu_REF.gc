@@ -382,7 +382,7 @@
           (set! (-> s5-0 quad 2) a1-3)
           (set! (-> s5-0 trans quad) a2-2)
           )
-        (when (logtest? (enemy-flag dislike-combo) (-> this enemy-flags))
+        (when (logtest? (enemy-flag drawn-mirrored) (-> this enemy-flags))
           (vector-negate! (the-as vector (-> s5-0 vector)) (the-as vector (-> s5-0 vector)))
           (set! (-> s5-0 vector 0 w) 0.0)
           )
@@ -407,13 +407,13 @@
 
 ;; definition for method 55 of type ginsu
 ;; WARN: Return type mismatch symbol vs none.
-(defmethod track-target! ((this ginsu))
+(defmethod common-post ((this ginsu))
   "Does a lot of various things relating to interacting with the target
 - tracks when the enemy was last drawn
 - looks at the target and handles attacking
 @TODO Not extremely well understood yet"
   (ginsu-method-180 this)
-  (let ((t9-1 (method-of-type nav-enemy track-target!)))
+  (let ((t9-1 (method-of-type nav-enemy common-post)))
     (t9-1 this)
     )
   (cond
@@ -493,7 +493,7 @@
         )
       (quaternion->matrix s4-0 (-> this root quat))
       (let ((f0-1 (vector-dot s5-0 (the-as vector (-> s4-0 vector)))))
-        (if (logtest? (enemy-flag dislike-combo) (-> this enemy-flags))
+        (if (logtest? (enemy-flag drawn-mirrored) (-> this enemy-flags))
             (set! f0-1 (- f0-1))
             )
         (cond
@@ -726,7 +726,7 @@
   :virtual #t
   :event enemy-event-handler
   :enter (behavior ()
-    (logior! (-> self enemy-flags) (enemy-flag actor-pause-backup))
+    (logior! (-> self enemy-flags) (enemy-flag lock-focus))
     (logior! (-> self focus-status) (focus-status dangerous))
     (let ((v1-4 (-> self nav)))
       (set! (-> v1-4 target-speed) 8192.0)
@@ -737,8 +737,8 @@
     (ja :group! ginsu-idle-ja :num! min)
     )
   :exit (behavior ()
-    (logclear! (-> self enemy-flags) (enemy-flag actor-pause-backup))
-    (if (logtest? (-> self enemy-flags) (enemy-flag check-water))
+    (logclear! (-> self enemy-flags) (enemy-flag lock-focus))
+    (if (logtest? (-> self enemy-flags) (enemy-flag dangerous-backup))
         (logior! (-> self focus-status) (focus-status dangerous))
         (logclear! (-> self focus-status) (focus-status dangerous))
         )
@@ -753,7 +753,7 @@
              )
         (go-virtual circling)
         )
-    (if (logtest? (-> self enemy-flags) (enemy-flag look-at-focus))
+    (if (logtest? (-> self enemy-flags) (enemy-flag victory))
         (go-virtual circling)
         )
     (if (time-elapsed? (-> self state-time) (seconds 0.75))
@@ -788,7 +788,7 @@
   :virtual #t
   :event enemy-event-handler
   :enter (behavior ()
-    (logior! (-> self enemy-flags) (enemy-flag actor-pause-backup))
+    (logior! (-> self enemy-flags) (enemy-flag lock-focus))
     (ginsu-method-183 self #t)
     (set! (-> self root penetrate-using) (penetrate generic-attack lunge))
     (enemy-method-49 self)
@@ -807,8 +807,8 @@
     (ja :group! ginsu-attack-ja :num! min)
     )
   :exit (behavior ()
-    (logclear! (-> self enemy-flags) (enemy-flag actor-pause-backup))
-    (if (logtest? (-> self enemy-flags) (enemy-flag check-water))
+    (logclear! (-> self enemy-flags) (enemy-flag lock-focus))
+    (if (logtest? (-> self enemy-flags) (enemy-flag dangerous-backup))
         (logior! (-> self focus-status) (focus-status dangerous))
         (logclear! (-> self focus-status) (focus-status dangerous))
         )
@@ -825,7 +825,7 @@
              )
         (go-virtual circling)
         )
-    (if (logtest? (-> self enemy-flags) (enemy-flag look-at-focus))
+    (if (logtest? (-> self enemy-flags) (enemy-flag victory))
         (go-virtual circling)
         )
     (ja :num! (seek!))
@@ -847,7 +847,7 @@
           )
       )
     (logclear! (-> self mask) (process-mask actor-pause))
-    (logior! (-> self enemy-flags) (enemy-flag use-notice-distance))
+    (logior! (-> self enemy-flags) (enemy-flag cam-attack-mode))
     (ja-channel-set! 0)
     (set! (-> self root scale x) 0.01)
     (set! (-> self root scale y) 0.01)
@@ -855,7 +855,7 @@
     )
   :exit (behavior ()
     (logior! (-> self mask) (process-mask actor-pause))
-    (logior! (-> self enemy-flags) (enemy-flag notice))
+    (logior! (-> self enemy-flags) (enemy-flag actor-pause-backup))
     )
   :trans (behavior ()
     (let ((t9-0 (-> (method-of-type enemy ambush) trans)))

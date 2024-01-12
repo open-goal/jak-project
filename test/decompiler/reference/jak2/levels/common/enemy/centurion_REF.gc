@@ -689,7 +689,7 @@
     )
   :code (behavior ()
     (ja-channel-push! 1 (seconds 0.075))
-    (let ((f30-0 (get-rand-float-range self 0.8 1.2)))
+    (let ((f30-0 (rnd-float-range self 0.8 1.2)))
       (ja-no-eval :group! (-> self draw art-group data (-> self enemy-info victory-anim))
                   :num! (seek! max f30-0)
                   :frame-num 0.0
@@ -727,7 +727,7 @@
     )
   :code (behavior ()
     (ja-channel-push! 1 (seconds 0.2))
-    (let ((f30-0 (get-rand-float-range self 0.9 1.1)))
+    (let ((f30-0 (rnd-float-range self 0.9 1.1)))
       (until #f
         (ja-no-eval :group! centurion-idle-ja :num! (seek! max f30-0) :frame-num 0.0)
         (until (ja-done? 0)
@@ -847,7 +847,7 @@
     (set! (-> self can-take-damage?) #f)
     (set! (-> self root root-prim specific 0) (-> self root root-prim specific 1))
     (centurion-shield-big)
-    (if (logtest? (-> self enemy-flags) (enemy-flag check-water))
+    (if (logtest? (-> self enemy-flags) (enemy-flag dangerous-backup))
         (logior! (-> self focus-status) (focus-status dangerous))
         (logclear! (-> self focus-status) (focus-status dangerous))
         )
@@ -950,7 +950,7 @@
           (collide-action solid)
           )
     (set! (-> (the-as collide-shape-prim-group (-> self root root-prim)) child 3 local-sphere w) 5120.0)
-    (if (logtest? (-> self enemy-flags) (enemy-flag check-water))
+    (if (logtest? (-> self enemy-flags) (enemy-flag dangerous-backup))
         (logior! (-> self focus-status) (focus-status dangerous))
         (logclear! (-> self focus-status) (focus-status dangerous))
         )
@@ -968,7 +968,7 @@
   )
 
 ;; definition for method 132 of type centurion
-(defmethod dispose! ((this centurion))
+(defmethod dying ((this centurion))
   "Cleans-up the enemy and any associated resources. Potentially spawns skull gems"
   (play-communicator-speech! (-> *talker-speech* 58))
   (call-parent-method this)
@@ -977,7 +977,7 @@
 
 ;; definition for method 55 of type centurion
 ;; INFO: Used lq/sq
-(defmethod track-target! ((this centurion))
+(defmethod common-post ((this centurion))
   "Does a lot of various things relating to interacting with the target
 - tracks when the enemy was last drawn
 - looks at the target and handles attacking
@@ -1068,7 +1068,7 @@
       )
     (logior! (-> this skel status) (joint-control-status sync-math))
     (los-control-method-9 (-> this los) (the-as process-focusable #f) (the-as vector #f) 2048.0)
-    (let ((t9-12 (method-of-type nav-enemy track-target!)))
+    (let ((t9-12 (method-of-type nav-enemy common-post)))
       (t9-12 this)
       )
     (when (not (logtest? (-> this draw status) (draw-control-status no-draw)))
@@ -1085,16 +1085,16 @@
           (set! (-> s5-1 trans quad) a2-11)
           )
         (let ((s4-1 (new 'stack-no-clear 'matrix)))
-          (if (logtest? (enemy-flag dislike-combo) (-> this enemy-flags))
+          (if (logtest? (enemy-flag drawn-mirrored) (-> this enemy-flags))
               (vector-negate-in-place! (the-as vector (-> s5-1 vector)))
               )
-          (matrix-rotate-y! s4-1 (if (logtest? (enemy-flag dislike-combo) (-> this enemy-flags))
+          (matrix-rotate-y! s4-1 (if (logtest? (enemy-flag drawn-mirrored) (-> this enemy-flags))
                                      2548.6223
                                      -2548.6223
                                      )
                             )
           (matrix*! s5-1 s4-1 s5-1)
-          (matrix-rotate-z! s4-1 (if (logtest? (enemy-flag dislike-combo) (-> this enemy-flags))
+          (matrix-rotate-z! s4-1 (if (logtest? (enemy-flag drawn-mirrored) (-> this enemy-flags))
                                      691.76886
                                      -691.76886
                                      )
@@ -1104,7 +1104,7 @@
         (let ((a1-20 (-> s5-1 trans)))
           (let ((v1-143 (-> s5-1 trans)))
             (let ((a0-25 (-> s5-1 vector)))
-              (let ((a2-18 (the-as float (if (logtest? (enemy-flag dislike-combo) (-> this enemy-flags))
+              (let ((a2-18 (the-as float (if (logtest? (enemy-flag drawn-mirrored) (-> this enemy-flags))
                                              -997237719
                                              #x43a3d70a
                                              )
@@ -1260,7 +1260,7 @@
       )
     )
   :code (behavior ()
-    (get-rand-float-range self 0.9 1.1)
+    (rnd-float-range self 0.9 1.1)
     -1
     0.0
     1.0
@@ -1272,7 +1272,7 @@
               )
           (let ((f30-0 24576.0))
             (until #f
-              (set-vector! s5-0 (get-rand-float-range self -1.0 1.0) 0.0 (get-rand-float-range self -1.0 1.0) 1.0)
+              (set-vector! s5-0 (rnd-float-range self -1.0 1.0) 0.0 (rnd-float-range self -1.0 1.0) 1.0)
               (vector-normalize! s5-0 f30-0)
               (vector+! gp-0 (-> self root trans) s5-0)
               (if (centurion-method-182 self gp-0)
@@ -1367,7 +1367,7 @@
   )
 
 ;; definition for method 77 of type centurion
-(defmethod enemy-method-77 ((this centurion) (arg0 (pointer float)))
+(defmethod enemy-method-77 ((this centurion) (arg0 enemy-knocked-info))
   (cond
     ((zero? (-> this hit-points))
      (ja-channel-push! 1 (seconds 0.17))
@@ -1376,7 +1376,7 @@
        (set! (-> a0-2 param 0)
              (the float (+ (-> (the-as art-joint-anim (-> this draw art-group data 5)) frames num-frames) -1))
              )
-       (set! (-> a0-2 param 1) (-> arg0 0))
+       (set! (-> a0-2 param 1) (-> arg0 anim-speed))
        (set! (-> a0-2 frame-num) 0.0)
        (joint-control-channel-group! a0-2 (the-as art-joint-anim (-> this draw art-group data 5)) num-func-seek!)
        )
@@ -1387,14 +1387,14 @@
         (((knocked-type knocked-type-4))
          (ja-channel-push! 1 (seconds 0.1))
          (let* ((a2-1 (ash 1 (-> *centurion-global-info* prev-yellow-hit)))
-                (v1-18 (enemy-method-120 this 1 a2-1))
+                (v1-18 (rnd-bit this 1 a2-1))
                 (a1-8 (-> this draw art-group data (-> *centurion-global-info* yellow-hit-anim v1-18)))
                 )
            (set! (-> *centurion-global-info* prev-yellow-hit) v1-18)
            (let ((a0-15 (-> this skel root-channel 0)))
              (set! (-> a0-15 frame-group) (the-as art-joint-anim a1-8))
              (set! (-> a0-15 param 0) (the float (+ (-> (the-as art-joint-anim a1-8) frames num-frames) -1)))
-             (set! (-> a0-15 param 1) (-> arg0 0))
+             (set! (-> a0-15 param 1) (-> arg0 anim-speed))
              (set! (-> a0-15 frame-num) 0.0)
              (joint-control-channel-group! a0-15 (the-as art-joint-anim a1-8) num-func-seek!)
              )
@@ -1402,7 +1402,7 @@
          )
         (((knocked-type knocked-type-6))
          (let* ((a2-3 (ash 1 (-> *centurion-global-info* prev-blue-hit)))
-                (v1-27 (enemy-method-120 this 3 a2-3))
+                (v1-27 (rnd-bit this 3 a2-3))
                 (a1-13 (-> this draw art-group data (-> *centurion-global-info* blue-hit-anim v1-27)))
                 )
            (set! (-> *centurion-global-info* prev-blue-hit) v1-27)
@@ -1426,7 +1426,7 @@
             (let ((a0-30 (-> this skel root-channel 0)))
               (set! (-> a0-30 frame-group) (the-as art-joint-anim s4-0))
               (set! (-> a0-30 param 0) (the float (+ (-> (the-as art-joint-anim s4-0) frames num-frames) -1)))
-              (set! (-> a0-30 param 1) (-> arg0 0))
+              (set! (-> a0-30 param 1) (-> arg0 anim-speed))
               (set! (-> a0-30 frame-num) 0.0)
               (joint-control-channel-group! a0-30 (the-as art-joint-anim s4-0) num-func-seek!)
               )
@@ -1439,7 +1439,7 @@
   )
 
 ;; definition for method 78 of type centurion
-(defmethod enemy-method-78 ((this centurion) (arg0 (pointer float)))
+(defmethod enemy-method-78 ((this centurion) (arg0 enemy-knocked-info))
   (cond
     ((zero? (-> this hit-points))
      (ja-channel-push! 1 (seconds 0.17))
@@ -1448,7 +1448,7 @@
        (set! (-> a0-2 param 0)
              (the float (+ (-> (the-as art-joint-anim (-> this draw art-group data 33)) frames num-frames) -1))
              )
-       (set! (-> a0-2 param 1) (-> arg0 0))
+       (set! (-> a0-2 param 1) (-> arg0 anim-speed))
        (set! (-> a0-2 frame-num) 0.0)
        (joint-control-channel-group! a0-2 (the-as art-joint-anim (-> this draw art-group data 33)) num-func-seek!)
        )
@@ -1463,7 +1463,7 @@
              (let ((a0-5 (-> this skel root-channel 0)))
                (set! (-> a0-5 frame-group) (the-as art-joint-anim s4-0))
                (set! (-> a0-5 param 0) (the float (+ (-> (the-as art-joint-anim s4-0) frames num-frames) -1)))
-               (set! (-> a0-5 param 1) (-> arg0 0))
+               (set! (-> a0-5 param 1) (-> arg0 anim-speed))
                (joint-control-channel-group! a0-5 (the-as art-joint-anim s4-0) num-func-seek!)
                )
              )
@@ -1477,7 +1477,7 @@
             (set! (-> a0-7 param 0)
                   (the float (+ (-> (the-as art-joint-anim (-> this draw art-group data 22)) frames num-frames) -1))
                   )
-            (set! (-> a0-7 param 1) (-> arg0 0))
+            (set! (-> a0-7 param 1) (-> arg0 anim-speed))
             (joint-control-channel-group! a0-7 (the-as art-joint-anim (-> this draw art-group data 22)) num-func-seek!)
             )
           #t

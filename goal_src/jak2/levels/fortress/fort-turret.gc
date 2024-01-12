@@ -360,7 +360,7 @@
               :bounds (static-spherem 8 11.25 0 16.5)
               :shadow fort-turret-shadow-mg
               :origin-joint-index 3
-              :shadow-joint-index 3
+              :shadow-joint-index 10
               )
 
 (defskelgroup skel-fort-turret-explode fort-turret fort-turret-explode-lod0-jg fort-turret-explode-idle-ja
@@ -503,12 +503,12 @@
 
 (set! (-> *fort-turret-enemy-info* fact-defaults) *fact-info-enemy-defaults*)
 
-(defmethod track-target! ((this fort-turret))
+(defmethod common-post ((this fort-turret))
   "Does a lot of various things relating to interacting with the target
 - tracks when the enemy was last drawn
 - looks at the target and handles attacking
 @TODO Not extremely well understood yet"
-  (let ((t9-0 (method-of-type enemy track-target!)))
+  (let ((t9-0 (method-of-type enemy common-post)))
     (t9-0 this)
     )
   (let ((s5-0 (-> this root)))
@@ -708,7 +708,7 @@
     (set! (-> self flash-state) #f)
     )
   :trans (behavior ()
-    (if (and (logtest? (-> self enemy-flags) (enemy-flag look-at-focus)) (-> self enemy-info use-victory))
+    (if (and (logtest? (-> self enemy-flags) (enemy-flag victory)) (-> self enemy-info use-victory))
         (go-virtual victory)
         )
     (when (time-elapsed? (-> self state-time) (-> self reaction-time))
@@ -789,7 +789,7 @@
     (set-time! (-> self state-time))
     )
   :trans (behavior ()
-    (if (and (logtest? (-> self enemy-flags) (enemy-flag look-at-focus)) (-> self enemy-info use-victory))
+    (if (and (logtest? (-> self enemy-flags) (enemy-flag victory)) (-> self enemy-info use-victory))
         (go-virtual victory)
         )
     (when (time-elapsed? (-> self state-time) (-> self reaction-time))
@@ -827,7 +827,7 @@
     (ja :group! fort-turret-idle-ja)
     )
   :trans (behavior ()
-    (if (and (logtest? (-> self enemy-flags) (enemy-flag look-at-focus)) (-> self enemy-info use-victory))
+    (if (and (logtest? (-> self enemy-flags) (enemy-flag victory)) (-> self enemy-info use-victory))
         (go-virtual victory)
         )
     (when (time-elapsed? (-> self state-time) (-> self reaction-time))
@@ -892,7 +892,7 @@
 (defstate die (fort-turret)
   :virtual #t
   :enter (behavior ()
-    (dispose! self)
+    (dying self)
     (let ((v1-3 (-> self root root-prim)))
       (set! (-> v1-3 prim-core collide-as) (collide-spec))
       (set! (-> v1-3 prim-core collide-with) (collide-spec))
@@ -936,7 +936,7 @@
     (cleanup-for-death self)
     )
   :post (behavior ()
-    (track-target! self)
+    (common-post self)
     )
   )
 
@@ -1034,7 +1034,7 @@
       (set! (-> this invincible) #t)
       )
   (logclear! (-> this mask) (process-mask actor-pause))
-  (logclear! (-> this enemy-flags) (enemy-flag notice))
+  (logclear! (-> this enemy-flags) (enemy-flag actor-pause-backup))
   (set! (-> this part) (create-launch-control (-> *part-group-id-table* 685) this))
   (set! (-> this gun-tilt-jm) (new 'process 'joint-mod (joint-mod-mode joint-set*) this 4))
   (set! (-> this gun-shadow-jm) (the-as joint-mod (new 'process 'joint-mod-set-local this 10 #f #f #t)))

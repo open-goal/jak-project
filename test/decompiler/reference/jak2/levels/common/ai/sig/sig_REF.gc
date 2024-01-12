@@ -393,7 +393,7 @@
   )
 
 ;; definition for method 55 of type sig
-(defmethod track-target! ((this sig))
+(defmethod common-post ((this sig))
   "Does a lot of various things relating to interacting with the target
 - tracks when the enemy was last drawn
 - looks at the target and handles attacking
@@ -442,7 +442,7 @@
         )
       )
     )
-  (let ((t9-2 (method-of-type bot track-target!)))
+  (let ((t9-2 (method-of-type bot common-post)))
     (t9-2 this)
     )
   (when (logtest? (-> this bot-flags) (bot-flags too-far-fail))
@@ -644,7 +644,7 @@
 (defmethod init-enemy! ((this sig))
   "Common method called to initialize the enemy, typically sets up default field values and calls ancillary helper methods"
   (init! this)
-  (set! (-> this channel) (the-as uint 21))
+  (set! (-> this channel) (gui-channel sig))
   (set! (-> this notice-enemy-dist) 122880.0)
   (set! (-> this travel-anim-interp) 0.0)
   (set! (-> this plasma charge-speed) 0.125)
@@ -872,10 +872,10 @@
   )
 
 ;; definition for method 77 of type sig
-(defmethod enemy-method-77 ((this sig) (arg0 (pointer float)))
+(defmethod enemy-method-77 ((this sig) (arg0 enemy-knocked-info))
   (case (-> this incoming knocked-type)
     (((knocked-type knocked-type-6))
-     (let* ((v1-3 (enemy-method-120 this 3 (ash 1 (-> *sig-global-info* prev-blue-hit))))
+     (let* ((v1-3 (rnd-bit this 3 (ash 1 (-> *sig-global-info* prev-blue-hit))))
             (s5-1 (-> this draw art-group data (-> *sig-global-info* blue-hit-anim v1-3 anim-index)))
             )
        (set! (-> *sig-global-info* prev-blue-hit) v1-3)
@@ -942,7 +942,7 @@
             (let ((a0-25 (-> this skel root-channel 0)))
               (set! (-> a0-25 frame-group) (the-as art-joint-anim s4-1))
               (set! (-> a0-25 param 0) (the float (+ (-> (the-as art-joint-anim s4-1) frames num-frames) -1)))
-              (set! (-> a0-25 param 1) (-> arg0 0))
+              (set! (-> a0-25 param 1) (-> arg0 anim-speed))
               (set! (-> a0-25 frame-num) 0.0)
               (joint-control-channel-group! a0-25 (the-as art-joint-anim s4-1) num-func-seek!)
               )
@@ -955,7 +955,7 @@
   )
 
 ;; definition for method 78 of type sig
-(defmethod enemy-method-78 ((this sig) (arg0 (pointer float)))
+(defmethod enemy-method-78 ((this sig) (arg0 enemy-knocked-info))
   (case (-> this incoming knocked-type)
     (((knocked-type knocked-type-6))
      (when (>= (-> this incoming blue-juggle-count) (the-as uint 2))
@@ -1210,7 +1210,7 @@
   (set! (-> this sig-path-start-time) (-> this sig-path-clock frame-counter))
   (set! (-> this sig-path-cur-time) (-> this sig-path-start-time))
   (set! (-> this sig-path-prev-time) (-> this sig-path-start-time))
-  (logclear! (-> this enemy-flags) (enemy-flag enable-on-active checking-water))
+  (logclear! (-> this enemy-flags) (enemy-flag vulnerable vulnerable-backup))
   (none)
   )
 
