@@ -145,6 +145,13 @@ void deci2_runner(SystemThreadInterface& iface) {
 void ee_runner(SystemThreadInterface& iface) {
   prof().root_event();
   // Allocate Main RAM. Must have execute enabled.
+  // TODO Apple Silicone - You cannot make a page be RWX,
+  // or more specifically it can't be both writable and executable at the same time
+  //
+  // https://github.com/zherczeg/sljit/issues/99
+  //
+  // The solution to this is to flip-flop between permissions, or perhaps have two threads
+  // one that has writing permission, and another with executable permission
   if (EE_MEM_LOW_MAP) {
     g_ee_main_mem =
         (u8*)mmap((void*)0x10000000, EE_MAIN_MEM_SIZE, PROT_EXEC | PROT_READ | PROT_WRITE,

@@ -293,7 +293,7 @@ void Shrub::render_tree(int idx,
     interp_time_of_day_slow(settings.camera.itimes, *tree.colors, m_color_result.data());
   }
 #else
-  interp_time_of_day_slow(settings.itimes, *tree.colors, m_color_result.data());
+  interp_time_of_day_slow(settings.camera.itimes, *tree.colors, m_color_result.data());
 #endif
   tree.perf.tod_time.add(interp_timer.getSeconds());
 

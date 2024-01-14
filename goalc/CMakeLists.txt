@@ -53,6 +53,8 @@ add_library(compiler
         data_compiler/DataObjectGenerator.cpp
         debugger/Debugger.cpp
         debugger/DebugInfo.cpp
+        emitter/IGenX86.cpp
+        emitter/IGenARM64.cpp
         listener/Listener.cpp
         listener/MemoryMap.cpp
         make/MakeSystem.cpp

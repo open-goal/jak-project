@@ -50,7 +50,7 @@ TEST(CodeTester, execute_push_pop_gprs) {
   tester.execute();
 }
 
-TEST(CodeTester, xmm_store_128) {
+TEST(CodeTester, simd_store_128) {
   CodeTester tester;
   tester.init_code_buffer(256);
   //  movdqa [rbx], xmm3
