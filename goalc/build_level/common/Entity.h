@@ -1,6 +1,7 @@
 #pragma once
 
 #include "common/goal_constants.h"
+#include "common/goos/ParseHelpers.h"
 #include "common/goos/Printer.h"
 #include "common/util/Assert.h"
 
