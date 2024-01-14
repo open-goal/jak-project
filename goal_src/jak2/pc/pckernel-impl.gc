@@ -81,7 +81,8 @@
    (cheats-revealed   pc-cheats)
    (cheats-purchased  pc-cheats)
    (cheats-unlocked   pc-cheats)
-   (cheats-backup     pc-cheats) ;; backup for 'cheats', persisted to disk to be restored when disabling speedrunner mode
+   (cheats-mask       pc-cheats)
+   (cheats-backup     pc-cheats) ;; backup for 'cheats', persisted to disk to be restored when disabling speedrunner mode TODO use mask instead
    ;; music
    (music-unlocked  bit-array)
    (flava-unlocked  symbol 6)
@@ -90,6 +91,8 @@
    (fast-airlock?  symbol)
    (fast-elevator? symbol)
    (fast-progress? symbol)
+   
+   (stats   statistics)
 
    ;; gfx
    (smooth-minimap?   symbol)
@@ -169,6 +172,8 @@
   (clear-all! (-> obj music-unlocked))
   (dotimes (i 6)
     (set! (-> obj flava-unlocked i) #f))
+  
+  (set! (-> obj stats) *statistics*)
   0)
 
 (defmethod reset-input ((obj pc-settings-jak2) (device symbol) (call-handlers symbol))
@@ -286,9 +291,9 @@
 (defmacro lock-cheat! (&rest cheats)
   `(begin
     (logclear! (-> *pc-settings* cheats) (pc-cheats ,@cheats))
-    (logclear! (-> *pc-settings* purchased-cheats) (pc-cheats ,@cheats))
-    (logclear! (-> *pc-settings* unlocked-cheats) (pc-cheats ,@cheats))
-    (logclear! (-> *pc-settings* revealed-cheats) (pc-cheats ,@cheats))
+    (logclear! (-> *pc-settings* cheats-purchased) (pc-cheats ,@cheats))
+    (logclear! (-> *pc-settings* cheats-unlocked) (pc-cheats ,@cheats))
+    (logclear! (-> *pc-settings* cheats-revealed) (pc-cheats ,@cheats))
     )
   )
 

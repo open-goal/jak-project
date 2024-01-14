@@ -129,11 +129,11 @@
         )
 
 ;; definition for method 77 of type hopper
-(defmethod enemy-method-77 ((this hopper) (arg0 (pointer float)))
+(defmethod enemy-method-77 ((this hopper) (arg0 enemy-knocked-info))
   (case (-> this incoming knocked-type)
     (((knocked-type knocked-type-6))
      (let* ((a2-0 (ash 1 (-> *hopper-global-info* prev-blue-hit)))
-            (v1-3 (enemy-method-120 this 3 a2-0))
+            (v1-3 (rnd-bit this 3 a2-0))
             (a1-5 (-> this draw art-group data (-> *hopper-global-info* blue-hit-anim v1-3 hit-anim-index)))
             )
        (set! (-> *hopper-global-info* prev-blue-hit) v1-3)
@@ -149,7 +149,7 @@
     (else
       (ja-channel-push! 1 (seconds 0.1))
       (let* ((a2-2 (ash 1 (-> *hopper-global-info* prev-yellow-hit)))
-             (v1-13 (enemy-method-120 this 3 a2-2))
+             (v1-13 (rnd-bit this 3 a2-2))
              (a1-11 (-> this draw art-group data (-> *hopper-global-info* yellow-hit-anim v1-13 hit-anim-index)))
              )
         (set! (-> this land-anim-index) (-> *hopper-global-info* yellow-hit-anim v1-13 land-anim-index))
@@ -157,7 +157,7 @@
         (let ((a0-27 (-> this skel root-channel 0)))
           (set! (-> a0-27 frame-group) (the-as art-joint-anim a1-11))
           (set! (-> a0-27 param 0) (the float (+ (-> (the-as art-joint-anim a1-11) frames num-frames) -1)))
-          (set! (-> a0-27 param 1) (-> arg0 0))
+          (set! (-> a0-27 param 1) (-> arg0 anim-speed))
           (set! (-> a0-27 frame-num) 0.0)
           (joint-control-channel-group! a0-27 (the-as art-joint-anim a1-11) num-func-seek!)
           )
@@ -168,7 +168,7 @@
   )
 
 ;; definition for method 78 of type hopper
-(defmethod enemy-method-78 ((this hopper) (arg0 (pointer float)))
+(defmethod enemy-method-78 ((this hopper) (arg0 enemy-knocked-info))
   (cond
     ((= (-> this incoming knocked-type) (knocked-type knocked-type-6))
      (when (>= (-> this incoming blue-juggle-count) (the-as uint 2))
@@ -177,7 +177,7 @@
          (let ((a0-3 (-> this skel root-channel 0)))
            (set! (-> a0-3 frame-group) (the-as art-joint-anim s4-0))
            (set! (-> a0-3 param 0) (the float (+ (-> (the-as art-joint-anim s4-0) frames num-frames) -1)))
-           (set! (-> a0-3 param 1) (-> arg0 0))
+           (set! (-> a0-3 param 1) (-> arg0 anim-speed))
            (set! (-> a0-3 frame-num) 0.0)
            (joint-control-channel-group! a0-3 (the-as art-joint-anim s4-0) num-func-seek!)
            )
@@ -195,7 +195,7 @@
                    (+ (-> (the-as art-joint-anim (-> this draw art-group data (-> this land-anim-index))) frames num-frames) -1)
                    )
               )
-        (set! (-> a0-5 param 1) (-> arg0 0))
+        (set! (-> a0-5 param 1) (-> arg0 anim-speed))
         (set! (-> a0-5 frame-num) 0.0)
         (joint-control-channel-group!
           a0-5
@@ -713,7 +713,7 @@
     0
     (set! (-> self speed-y) 0.0)
     (set! (-> self accel-y) 0.0)
-    (set! (-> self next-jump-time) (the-as int (+ (current-time) (get-rand-int-range self 0 120))))
+    (set! (-> self next-jump-time) (the-as int (+ (current-time) (rnd-int-range self 0 120))))
     (set! (-> self step-num) 0)
     (set! (-> self best-score) -2.0)
     )
@@ -739,7 +739,7 @@
     )
   :code (behavior ()
     (ja-channel-push! 1 (seconds 0.2))
-    (let ((f30-0 (get-rand-float-range self 0.9 1.1)))
+    (let ((f30-0 (rnd-float-range self 0.9 1.1)))
       (until #f
         (ja-no-eval :group! hopper-idle-ja :num! (seek! max f30-0) :frame-num 0.0)
         (until (ja-done? 0)
@@ -758,10 +758,10 @@
   :virtual #t
   :code (behavior ()
     (ja-channel-push! 1 (seconds 0.075))
-    (let ((f30-0 (get-rand-float-range self 0.8 1.2))
+    (let ((f30-0 (rnd-float-range self 0.8 1.2))
           (gp-0 (new 'stack-no-clear 'vector))
           )
-      (if (zero? (get-rand-int self 2))
+      (if (zero? (rnd-int-count self 2))
           (ja :group! hopper-notice-ja)
           (ja :group! hopper-notice-alt-ja)
           )
@@ -783,8 +783,8 @@
 (defstate ambush (hopper)
   :virtual #t
   :enter (behavior ()
-    (when (logtest? (-> self enemy-flags) (enemy-flag auto-reset-penetrate))
-      (logclear! (-> self enemy-flags) (enemy-flag auto-reset-penetrate))
+    (when (logtest? (-> self enemy-flags) (enemy-flag enable-on-notice))
+      (logclear! (-> self enemy-flags) (enemy-flag enable-on-notice))
       (let ((gp-0 (-> self on-notice)))
         (if gp-0
             (script-eval gp-0 :vector (-> self root trans))
@@ -840,7 +840,9 @@
             (set! (-> gp-0 y) (-> s5-0 best-other-tri intersect y))
             )
         )
-      (set! (-> self enemy-flags) (the-as enemy-flag (logclear (-> self enemy-flags) (enemy-flag vulnerable))))
+      (set! (-> self enemy-flags)
+            (the-as enemy-flag (logclear (-> self enemy-flags) (enemy-flag jump-check-blocked)))
+            )
       (send-event self 'jump 2 gp-0)
       )
     (go-virtual hostile)
@@ -848,7 +850,7 @@
   )
 
 ;; definition for method 132 of type hopper
-(defmethod dispose! ((this hopper))
+(defmethod dying ((this hopper))
   "Cleans-up the enemy and any associated resources. Potentially spawns skull gems"
   (when (-> this minimap)
     (logior! (-> this minimap flags) (minimap-flag fade-out))
@@ -958,7 +960,7 @@
   (set! (-> this jump-height-min) 12288.0)
   (set! (-> this jump-anim-start-frame) 8.0)
   (set! (-> this land-anim-index) 26)
-  (set! (-> this side) (get-rand-float-range this -1.5 1.5))
+  (set! (-> this side) (rnd-float-range this -1.5 1.5))
   (when (logtest? (enemy-option ambush) (-> this fact enemy-options))
     (set! (-> this path-intro) (new 'process 'path-control this 'intro 0.0 (-> this entity) #f))
     (if (-> this path-intro)

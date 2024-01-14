@@ -219,7 +219,10 @@ struct InputBindingInfo {
   InputModifiers modifiers;
 
   InputBindingInfo() = default;
-  InputBindingInfo(const InputBinding bind, const InputDeviceType device_type, const s32 sdl_code);
+  InputBindingInfo(const InputBinding bind,
+                   const InputDeviceType device_type,
+                   const s32 sdl_code,
+                   const bool analog_button);
 };
 
 // Contains all info related to the current binding we are waiting for
@@ -230,18 +233,21 @@ struct InputBindAssignmentMeta {
   bool for_analog = false;
   bool for_analog_minimum = false;
 
-  // For only rebinding keyboards, we have to know what keys were originally bound to the
+  // For only some rebindings, we have to know what keys were originally bound to the
   // confirmation buttons this is because the user has to hit said key to initiate waiting for the
   // new assignment
   //
   // For most input sources this doesn't matter because we listen for the DOWN event, but in order
   // to allow modifiers as binds (ie. Shift for X) we have to listen to UP events as well (only for
-  // the modifiers)
+  // the modifiers).  This is also relevant for analog rebinds as the transition from fully pressed
+  // to unpressed triggers another press.
   //
   // TLDR - we ignore the first UP event if it was bound to a confirmation key.  Additionally, this
   // depends on the game as Jak 1 treats X or O as a confirm key...
   std::vector<InputBindingInfo> keyboard_confirmation_binds = {};
-  bool seen_confirm_up = false;
+  bool seen_keyboard_confirm_up = false;
+  std::vector<InputBindingInfo> controller_confirmation_binds = {};
+  bool seen_controller_confirm_neutral = false;
 
   // Indicates the binding has been received, assigned, and we can proceed.
   bool assigned = false;

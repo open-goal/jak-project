@@ -37,7 +37,7 @@
 
 (defun pc-cheat-health-bars-unlock ()
   "#t = cheat unlock requirements met. #f = locked"
-  #f)
+  (>= (get-count-for-enemy (-> *pc-settings* stats kill-stats) 'civilian) (-> *pc-cheat-state* kill-civvie-target)))
 
 (defun pc-cheat-vehicle-health-bars-unlock ()
   "#t = cheat unlock requirements met. #f = locked"
@@ -95,7 +95,7 @@
 
 (defun pc-cheat-statistics-unlock ()
   "#t = cheat unlock requirements met. #f = locked"
-  #f)
+  (killed-each-metalhead?))
 
 (defun pc-cheat-suck-in-all-unlock ()
   "#t = cheat unlock requirements met. #f = locked"
@@ -134,7 +134,7 @@
     (progress-cheats-music-player          music-player          #f           fortress-escape-introduction)
     (progress-cheats-real-time-of-day      real-time-of-day      #t           fortress-escape-resolution)
     (progress-cheats-board-tricks          board-tricks          #t           stadium-board1-gold)
-    ;(progress-cheats-health-bars           health-bars           #t           palace-boss-resolution      :unlock (progress-cheats-health-bars-unlock pc-cheat-health-bars-unlock))
+    (progress-cheats-health-bars           health-bars           #t           palace-boss-resolution      :unlock (progress-cheats-health-bars-unlock pc-cheat-health-bars-unlock))
     ;(progress-cheats-vehicle-health-bars   vehicle-health-bars   #t           palace-boss-resolution      :unlock (progress-cheats-vehicle-health-bars-unlock pc-cheat-vehicle-health-bars-unlock))
     (progress-cheats-weather-bad           weather-bad           #t           fortress-escape-resolution  :skill 85)
     (progress-cheats-weather-good          weather-good          #t           fortress-escape-resolution  :skill 85)
@@ -148,7 +148,7 @@
     ;(progress-cheats-slow-movies           slow-movies           #t           nest-boss-resolution      :skill 200)
     ;(progress-cheats-fast-speed            fast-speed            #t           nest-boss-resolution      :skill 250)
     ;(progress-cheats-slow-speed            slow-speed            #t           nest-boss-resolution      :skill 250)
-    ;(progress-cheats-statistics            statistics            auto         nest-boss-resolution      :unlock (progress-cheats-statistics-unlock pc-cheat-statistics-unlock))
+    ;(progress-cheats-statistics            statistics            auto         atoll-water-introduction  :unlock (progress-cheats-statistics-unlock pc-cheat-statistics-unlock))
     )
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -614,7 +614,7 @@
 
   ;; turbo jet board cheat
   (cond
-    ((and (pc-cheats? (-> *pc-settings* cheats) turbo-board)
+    ((and (pc-cheats? (-> obj cheats) turbo-board)
           *target*
           (focus-test? *target* board)
           (inside-city?))
@@ -743,6 +743,27 @@
         (set! (-> obj flava-unlocked i) (file-stream-read-symbol file))
         )
       )
+    (("stats")
+      (dosettings (file)
+        (case-str *pc-temp-string*
+          (("kill-stats")
+            (initialize (-> obj stats kill-stats))
+            (dosettings (file)
+              (let ((enemy-stats (alloc-slot (-> obj stats kill-stats) (string->symbol *pc-temp-string*))))
+                (dosettings (file)
+                  (let ((source (string->kill-source *pc-temp-string*))
+                        (amount (file-stream-read-int file)))
+                    (when (!= source (kill-stats-source unknown))
+                      (set! (-> enemy-stats sources source) amount)
+                      )
+                    )
+                  )
+                )
+              )
+            )
+          )
+        )
+      )
     )
   0)
 
@@ -762,16 +783,32 @@
   (format file "  (cheats-purchased #x~x)~%" (-> obj cheats-purchased))
   (format file "  (cheats-unlocked #x~x)~%" (-> obj cheats-unlocked))
   (format file "  (cheats-backup #x~x)~%" (-> obj cheats-backup))
+
   (format file "  (music-unlocked")
   (dotimes (i (/ (align64 (-> obj music-unlocked length)) 64))
     (format file " #x~x" (int64<-bit-array (-> obj music-unlocked) (* i 64)))
     )
   (format file ")~%")
+
   (format file "  (flava-unlocked")
   (dotimes (i 6)
     (format file " ~A" (-> obj flava-unlocked i))
     )
   (format file ")~%")
+
+  (format file "  (stats~%")
+  (format file "    (kill-stats~%")
+  (dotimes (i KILL_STATS_MAX_ENEMY_TYPES)
+  (when (-> obj stats kill-stats enemies i name)
+  (format file "      (~A~%" (-> obj stats kill-stats enemies i name))
+  (dotimes (ii KILL_STATS_MAX_SOURCE)
+  (when (nonzero? (-> obj stats kill-stats enemies i sources ii))
+  (format file "        (~A ~D)~%" (string->symbol (kill-source->string (the kill-stats-source ii))) (-> obj stats kill-stats enemies i sources ii))
+    ))
+  (format file "        )~%")
+    ))
+  (format file "      )~%")
+  (format file "    )~%")
   0)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -780,6 +817,7 @@
 
 
 (define-once *pc-settings* (new 'global 'pc-settings-jak2))
+
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;

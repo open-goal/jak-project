@@ -1368,7 +1368,7 @@ static void PauseVAG(VagCommand* vag) {
 
 static void CalculateVAGVolumes(s32 volume, s32 positioned, Vec3w* trans, s32* left, s32* right) {
   if (positioned) {
-    volume = CalculateFallofVolume(trans, (volume * gDialogVolume) >> 10, 1, 10, 50);
+    volume = CalculateFalloffVolume(trans, (volume * gDialogVolume) >> 10, 1, 10, 50);
     auto* pan = &gPanTable[(630 - CalculateAngle(trans)) % 360];
     *left = (pan->left * volume) >> 10;
     *right = (pan->right * volume) >> 10;

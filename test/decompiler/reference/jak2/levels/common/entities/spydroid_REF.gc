@@ -669,12 +669,12 @@
 ;; definition for method 55 of type spydroid
 ;; INFO: Used lq/sq
 ;; WARN: Return type mismatch int vs none.
-(defmethod track-target! ((this spydroid))
+(defmethod common-post ((this spydroid))
   "Does a lot of various things relating to interacting with the target
 - tracks when the enemy was last drawn
 - looks at the target and handles attacking
 @TODO Not extremely well understood yet"
-  (let ((t9-0 (method-of-type nav-enemy track-target!)))
+  (let ((t9-0 (method-of-type nav-enemy common-post)))
     (t9-0 this)
     )
   (when (< (-> this root scale x) 1.0)
@@ -939,7 +939,7 @@
   :event enemy-event-handler
   :enter (behavior ()
     (set! (-> self hit-target) #f)
-    (logior! (-> self enemy-flags) (enemy-flag actor-pause-backup))
+    (logior! (-> self enemy-flags) (enemy-flag lock-focus))
     (let ((v1-2 (-> self nav)))
       (set! (-> v1-2 target-speed) (+ 8192.0 (-> self enemy-info run-travel-speed)))
       )
@@ -965,13 +965,13 @@
     (ja :group! spydroid-attack-jump-ja :num! min)
     )
   :exit (behavior ()
-    (logclear! (-> self enemy-flags) (enemy-flag actor-pause-backup))
+    (logclear! (-> self enemy-flags) (enemy-flag lock-focus))
     (nav-enemy-method-168 self)
     (let ((v1-4 (-> self nav)))
       (set! (-> v1-4 target-speed) (-> self enemy-info run-travel-speed))
       )
     0
-    (if (logtest? (-> self enemy-flags) (enemy-flag check-water))
+    (if (logtest? (-> self enemy-flags) (enemy-flag dangerous-backup))
         (logior! (-> self focus-status) (focus-status dangerous))
         (logclear! (-> self focus-status) (focus-status dangerous))
         )
@@ -979,7 +979,7 @@
   :trans (behavior ()
     (enemy-method-49 self)
     nav-state
-    (if (logtest? (-> self enemy-flags) (enemy-flag look-at-focus))
+    (if (logtest? (-> self enemy-flags) (enemy-flag victory))
         (set! (-> self hit-target) (the-as basic #t))
         )
     (let ((v1-9 (ja-group)))
@@ -1481,7 +1481,7 @@
   (add-connection *part-engine* this 6 this 3185 (new 'static 'vector :w 163840.0))
   (add-connection *part-engine* this 6 this 3186 (new 'static 'vector :w 163840.0))
   (logclear! (-> this mask) (process-mask actor-pause))
-  (logclear! (-> this enemy-flags) (enemy-flag notice))
+  (logclear! (-> this enemy-flags) (enemy-flag actor-pause-backup))
   0
   (none)
   )

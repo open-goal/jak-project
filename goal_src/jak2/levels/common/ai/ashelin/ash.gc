@@ -230,7 +230,7 @@
   (let* ((t9-0 (method-of-type bot bot-method-193))
          (v0-0 (t9-0 this))
          )
-    (when (and (not v0-0) (logtest? #x400000 (-> this incoming penetrate-using)))
+    (when (and (not v0-0) (logtest? (penetrate jak-yellow-shot) (-> this incoming penetrate-using)))
       (if (logtest? (bot-flags bf22) (-> this bot-flags))
           (set! v0-0 #t)
           )
@@ -240,8 +240,8 @@
     )
   )
 
-(defmethod enemy-method-106 ((this ashelin) (arg0 process) (arg1 object) (arg2 int) (arg3 attack-info))
-  (let ((t9-0 (method-of-type bot enemy-method-106)))
+(defmethod set-incoming-attack-info ((this ashelin) (arg0 process) (arg1 object) (arg2 penetrate) (arg3 attack-info))
+  (let ((t9-0 (method-of-type bot set-incoming-attack-info)))
     (t9-0 this arg0 arg1 arg2 arg3)
     )
   (if (!= (-> this incoming knocked-type) (knocked-type knocked-type-6))
@@ -431,7 +431,7 @@
 (defmethod init-enemy! ((this ashelin))
   "Common method called to initialize the enemy, typically sets up default field values and calls ancillary helper methods"
   (init! this)
-  (set! (-> this channel) (the-as uint 22))
+  (set! (-> this channel) (gui-channel ashelin))
   (set! (-> this travel-anim-interp) 0.0)
   (set! (-> this focus-info max-los-dist) 204800.0)
   (set! (-> this hit-invuln-ignore-me-delay) (the-as uint 0))
@@ -541,7 +541,7 @@
          )
     (cond
       ((or (>= 8192.0 (fabs f0-5)) (>= (fabs f0-5) 24576.0))
-       (let ((s3-1 (zero? (get-rand-int this 2)))
+       (let ((s3-1 (zero? (rnd-int-count this 2)))
              (s4-0 (new 'stack-no-clear 'vector))
              )
          (countdown (s2-0 2)
@@ -582,7 +582,7 @@
 (defmethod ashelin-method-242 ((this ashelin))
   (let ((s5-0 0))
     (cond
-      ((zero? (get-rand-int this 2))
+      ((zero? (rnd-int-count this 2))
        (when (>= 16384.0 (fabs (-> this focus-info ry-diff)))
          (let ((s4-0 (new 'stack-no-clear 'vector)))
            (when (ashelin-method-236 this s4-0 (+ 16384.0 (-> this focus-info bullseye-ry)) 8192.0 40707.93 34563.93)
@@ -917,7 +917,7 @@
                  (set! v1-36 (-> this draw art-group data 7))
                  (set! f28-0 (the float (sar (shl (the int (+ 32768.0 f30-0)) 48) 48)))
                  )
-                ((zero? (get-rand-int this 3))
+                ((zero? (rnd-int-count this 3))
                  (set! v1-36 (-> this draw art-group data 10))
                  )
                 (else
@@ -935,7 +935,7 @@
     )
   )
 
-(defmethod enemy-method-77 ((this ashelin) (arg0 (pointer float)))
+(defmethod enemy-method-77 ((this ashelin) (arg0 enemy-knocked-info))
   (local-vars (a2-0 int))
   (case (-> this incoming knocked-type)
     (((knocked-type knocked-type-6))
@@ -957,7 +957,7 @@
            )
          )
        )
-     (let* ((v1-9 (enemy-method-120 this 6 a2-0))
+     (let* ((v1-9 (rnd-bit this 6 a2-0))
             (s5-2 (-> this draw art-group data (-> *ashelin-global-info* blue-hit-anim v1-9)))
             )
        (set! (-> *ashelin-global-info* prev-blue-hit) v1-9)
@@ -993,7 +993,7 @@
       (let ((a0-40 (-> this skel root-channel 0)))
         (set! (-> a0-40 frame-group) (-> this knocked-anim))
         (set! (-> a0-40 param 0) (the float (+ (-> this knocked-anim frames num-frames) -1)))
-        (set! (-> a0-40 param 1) (-> arg0 0))
+        (set! (-> a0-40 param 1) (-> arg0 anim-speed))
         (set! (-> a0-40 frame-num) 0.0)
         (joint-control-channel-group! a0-40 (-> this knocked-anim) num-func-seek!)
         )
@@ -1002,7 +1002,7 @@
     )
   )
 
-(defmethod enemy-method-78 ((this ashelin) (arg0 (pointer float)))
+(defmethod enemy-method-78 ((this ashelin) (arg0 enemy-knocked-info))
   (case (-> this incoming knocked-type)
     (((knocked-type knocked-type-6))
      (let* ((v1-1 *ashelin-global-info*)
@@ -1056,7 +1056,7 @@
                )
              )
            )
-          ((and (or (zero? (-> this hit-points)) (nonzero? (-> this fated-time))) (nonzero? (get-rand-int this 3)))
+          ((and (or (zero? (-> this hit-points)) (nonzero? (-> this fated-time))) (nonzero? (rnd-int-count this 3)))
            (ja-channel-push! 1 (seconds 0.17))
            (let ((a0-20 (-> this skel root-channel 0)))
              (set! (-> a0-20 frame-group) (the-as art-joint-anim (-> this draw art-group data 12)))
@@ -1132,7 +1132,7 @@
                   (cond
                     ((>= f0-4 22.0)
                      (when (focus-test? this dangerous)
-                       (if (logtest? (-> this enemy-flags) (enemy-flag check-water))
+                       (if (logtest? (-> this enemy-flags) (enemy-flag dangerous-backup))
                            (logior! (-> this focus-status) (focus-status dangerous))
                            (logclear! (-> this focus-status) (focus-status dangerous))
                            )
@@ -1163,7 +1163,7 @@
                   (cond
                     ((>= f0-5 32.0)
                      (when (focus-test? this dangerous)
-                       (if (logtest? (-> this enemy-flags) (enemy-flag check-water))
+                       (if (logtest? (-> this enemy-flags) (enemy-flag dangerous-backup))
                            (logior! (-> this focus-status) (focus-status dangerous))
                            (logclear! (-> this focus-status) (focus-status dangerous))
                            )
@@ -1278,9 +1278,11 @@
 
 (defmethod play-attacked-speech ((this ashelin))
   (local-vars (v1-3 int) (a3-0 int))
-  (when (not (channel-active? this (the-as uint 0)))
+  (when (not (channel-active? this (gui-channel none)))
     (let ((v1-2 0))
-      (if (logtest? #x3c00000 (-> this incoming penetrate-using))
+      (if (logtest? (penetrate jak-yellow-shot jak-red-shot jak-blue-shot jak-dark-shot)
+                    (-> this incoming penetrate-using)
+                    )
           (set! v1-3 (logior v1-2 128))
           (set! v1-3 (logior v1-2 64))
           )
@@ -1306,7 +1308,7 @@
   )
 
 (defmethod ashelin-method-244 ((this ashelin))
-  (when (not (channel-active? this (the-as uint 0)))
+  (when (not (channel-active? this (gui-channel none)))
     (let ((a1-2 (bot-speech-list-method-9
                   (-> this ash-course ouch-speeches)
                   this
@@ -1324,7 +1326,7 @@
   )
 
 (defmethod ashelin-method-245 ((this ashelin))
-  (when (and (not (channel-active? this (the-as uint 0))) (>= (current-time) (-> this victory-speech-time)))
+  (when (and (not (channel-active? this (gui-channel none))) (>= (current-time) (-> this victory-speech-time)))
     (let ((s5-0 (bot-speech-list-method-9
                   (-> this ash-course victory-speeches)
                   this
@@ -1334,9 +1336,7 @@
                 )
           )
       (when (>= s5-0 0)
-        (set! (-> this victory-speech-time)
-              (the-as time-frame (+ (get-rand-int-range this 1200 2100) (current-time)))
-              )
+        (set! (-> this victory-speech-time) (the-as time-frame (+ (rnd-int-range this 1200 2100) (current-time))))
         (play-speech this s5-0)
         )
       )
@@ -1346,7 +1346,7 @@
 
 (defmethod enemy-method-136 ((this ashelin))
   (when (time-elapsed? (-> this hit-focus-time) (seconds 2))
-    (let ((v0-0 (logclear (-> this enemy-flags) (enemy-flag look-at-focus))))
+    (let ((v0-0 (logclear (-> this enemy-flags) (enemy-flag victory))))
       (set! (-> this enemy-flags) v0-0)
       v0-0
       )
@@ -1358,7 +1358,7 @@
   (let ((t9-0 (method-of-type bot play-speech)))
     (t9-0 this arg0)
     )
-  (logclear! (-> this enemy-flags) (enemy-flag look-at-focus))
+  (logclear! (-> this enemy-flags) (enemy-flag victory))
   (none)
   )
 

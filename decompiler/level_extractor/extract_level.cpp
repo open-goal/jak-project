@@ -159,9 +159,10 @@ std::vector<level_tools::TextureRemap> extract_tex_remap(const ObjectFileDB& db,
 level_tools::BspHeader extract_bsp_from_level(const ObjectFileDB& db,
                                               const TextureDB& tex_db,
                                               const std::string& dgo_name,
-                                              const DecompileHacks& hacks,
+                                              const Config& config,
                                               bool extract_collision,
                                               tfrag3::Level& level_data) {
+  auto hacks = config.hacks;
   auto bsp_rec = get_bsp_file(db.obj_files_by_dgo.at(dgo_name), dgo_name);
   if (!bsp_rec) {
     lg::warn("Skipping extract for {} because the BSP file was not found", dgo_name);
@@ -236,8 +237,8 @@ level_tools::BspHeader extract_bsp_from_level(const ObjectFileDB& db,
       ASSERT(as_collide_frags);
       ASSERT(!got_collide);
       got_collide = true;
-      extract_collide_frags(as_collide_frags, all_ties, fmt::format("{}-{}-collide", dgo_name, i++),
-                            level_data, false);
+      extract_collide_frags(as_collide_frags, all_ties, config,
+                            fmt::format("{}-{}-collide", dgo_name, i++), level_data, false);
     } else {
       lg::print("  unsupported tree {}\n", draw_tree->my_type());
     }
@@ -245,7 +246,8 @@ level_tools::BspHeader extract_bsp_from_level(const ObjectFileDB& db,
 
   if (bsp_header.collide_hash.num_items) {
     ASSERT(!got_collide);
-    extract_collide_frags(bsp_header.collide_hash, all_ties, db.dts, level_data);
+    extract_collide_frags(bsp_header.collide_hash, all_ties, config,
+                          fmt::format("{}-{}-collide", dgo_name, i++), db.dts, level_data, false);
   }
   level_data.level_name = level_name;
 
@@ -348,7 +350,7 @@ void extract_from_level(const ObjectFileDB& db,
 
   // the bsp header file data
   auto bsp_header =
-      extract_bsp_from_level(db, tex_db, dgo_name, config.hacks, extract_collision, level_data);
+      extract_bsp_from_level(db, tex_db, dgo_name, config, extract_collision, level_data);
   extract_art_groups_from_level(db, tex_db, bsp_header.texture_remap_table, dgo_name, level_data,
                                 art_group_data);
 

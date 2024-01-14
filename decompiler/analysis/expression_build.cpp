@@ -172,7 +172,7 @@ bool convert_to_expressions(
             "statement.",
             f.name());
         f.warnings.warning(warn);
-        lg::warn(warn);
+        lg::warn("{}", warn);
       }
     }
 
