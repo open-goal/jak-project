@@ -32,7 +32,8 @@ size_t generate_inline_array_actors(DataObjectGenerator& gen,
 
 void add_actors_from_json(const nlohmann::json& json,
                           std::vector<EntityActor>& actor_list,
-                          u32 base_aid);
+                          u32 base_aid,
+                          decompiler::DecompilerTypeSystem& dts);
 
 struct EntityAmbient {
   ResLump res_lump;
@@ -47,5 +48,6 @@ size_t generate_inline_array_ambients(DataObjectGenerator& gen,
                                       const std::vector<EntityAmbient>& ambients);
 void add_ambients_from_json(const nlohmann::json& json,
                             std::vector<EntityAmbient>& ambient_list,
-                            u32 base_aid);
+                            u32 base_aid,
+                            decompiler::DecompilerTypeSystem& dts);
 }  // namespace jak1

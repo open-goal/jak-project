@@ -45,12 +45,14 @@ bool run_build_level(const std::string& input_file,
   // vis infos
   // actors
   std::vector<EntityActor> actors;
-  add_actors_from_json(level_json.at("actors"), actors, level_json.value("base_id", 1234));
+  auto dts = decompiler::DecompilerTypeSystem(GameVersion::Jak1);
+  dts.parse_enum_defs({"decompiler", "config", "jak1", "all-types.gc"});
+  add_actors_from_json(level_json.at("actors"), actors, level_json.value("base_id", 1234), dts);
   file.actors = std::move(actors);
   // ambients
   std::vector<EntityAmbient> ambients;
   jak1::add_ambients_from_json(level_json.at("ambients"), ambients,
-                               level_json.value("base_id", 12345));
+                               level_json.value("base_id", 12345), dts);
   file.ambients = std::move(ambients);
   auto& ambient_drawable_tree = file.drawable_trees.ambients.emplace_back();
   (void)ambient_drawable_tree;
