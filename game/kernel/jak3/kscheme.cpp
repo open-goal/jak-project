@@ -651,6 +651,7 @@ Ptr<Symbol4<u32>> intern_from_c_ht(const char* name) {
 
   NumSymbols++;
   *sym_to_string_ptr(slot) = Ptr<String>(make_string_from_c(name));
+  g_symbol_hash_table[name] = (slot.offset - s7.offset) / 4;
   return slot;
 }
 
@@ -908,6 +909,7 @@ Ptr<Type> intern_type_from_c(int a, int b, const char* name, u64 methods) {
 
   auto symbol = intern_from_c(a, b, name);
   u32 sym_value = symbol->value();
+  printf("intern type from c %s, %x %x\n", name, symbol.offset, sym_value);
 
   if (!sym_value) {
     // new type
@@ -965,6 +967,8 @@ Ptr<Type> set_fixed_type(u32 offset,
 
   // set the symbol's name and hash
   *sym_to_string_ptr(type_symbol) = Ptr<String>(make_string_from_c(name));
+  ASSERT(g_symbol_hash_table.count(name) == 0);
+  g_symbol_hash_table[name] = (type_symbol.offset - s7.offset) / 4;
   NumSymbols++;
 
   if (symbol_value.offset == 0) {
@@ -1005,6 +1009,7 @@ Ptr<Type> set_fixed_type(u32 offset,
 }
 
 u64 new_type(u32 symbol, u32 parent, u64 flags) {
+  printf("call to new type\n");
   u32 n_methods = (flags >> 32) & 0xffff;
   if (n_methods == 0) {
     // 12 methods used as default, if the user has not provided us with a number
@@ -1051,7 +1056,9 @@ u64 new_type(u32 symbol, u32 parent, u64 flags) {
       new_type_obj->memusage_method.offset = original_type_list_value;
     }
   }
-  return set_type_values(new_type_obj, Ptr<Type>(parent), flags).offset;
+  auto ret = set_type_values(new_type_obj, Ptr<Type>(parent), flags).offset;;
+  printf("done with new type\n");
+  return ret;
 }
 /*!
  * Is t1 a t2?
