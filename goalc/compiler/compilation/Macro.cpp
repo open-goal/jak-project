@@ -66,7 +66,7 @@ Val* Compiler::compile_goos_macro(const goos::Object& o,
       }
       std::string line(80, '-');
       line.push_back('\n');
-      lg::print(line);
+      lg::print("{}", line);
     }
 
     throw;
@@ -87,7 +87,7 @@ Val* Compiler::compile_goos_macro(const goos::Object& o,
     }
     std::string line(80, '-');
     line.push_back('\n');
-    lg::print(line);
+    lg::print("{}", line);
 
     throw;
   }

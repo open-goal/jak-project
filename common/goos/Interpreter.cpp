@@ -1888,7 +1888,7 @@ Object Interpreter::eval_format(const Object& form,
                    fmt::format_args(args2.data(), static_cast<unsigned>(args2.size())));
 
   if (truthy(dest)) {
-    lg::print(formatted.c_str());
+    lg::print("{}", formatted.c_str());
   }
 
   return StringObject::make_new(formatted);
