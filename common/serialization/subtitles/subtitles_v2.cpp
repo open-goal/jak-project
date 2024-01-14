@@ -373,7 +373,7 @@ bool GameSubtitleDB::write_subtitle_db_to_files(const GameVersion game_version) 
       file_util::write_text_file(dump_path, lines_file.dump(2));
     }
   } catch (std::exception& ex) {
-    lg::error(ex.what());
+    lg::error("{}", ex.what());
     return false;
   }
   return true;

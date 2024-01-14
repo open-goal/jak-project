@@ -87,7 +87,7 @@ bool rewrite_inline_asm_instructions(Form* top_level_form,
   } catch (std::exception& e) {
     std::string warning =
         fmt::format("ASM instruction re-writing failed in {}: {}", f.name(), e.what());
-    lg::warn(warning);
+    lg::warn("{}", warning);
     f.warnings.error(";; {}", warning);
     return false;
   }

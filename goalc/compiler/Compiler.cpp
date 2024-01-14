@@ -197,7 +197,7 @@ Val* Compiler::compile_error_guard(const goos::Object& code, Env* env) {
       auto loc_info = m_goos.reader.db.get_info_for(code, &term);
       if (term) {
         lg::print(fg(fmt::color::yellow) | fmt::emphasis::bold, "Location:\n");
-        lg::print(loc_info);
+        lg::print("{}", loc_info);
       }
 
       lg::print(fg(fmt::color::yellow) | fmt::emphasis::bold, "Code:\n");
@@ -212,7 +212,7 @@ Val* Compiler::compile_error_guard(const goos::Object& code, Env* env) {
       }
       std::string line(80, '-');
       line.push_back('\n');
-      lg::print(line);
+      lg::print("{}", line);
     }
     throw ce;
   }
@@ -224,7 +224,7 @@ Val* Compiler::compile_error_guard(const goos::Object& code, Env* env) {
     auto loc_info = m_goos.reader.db.get_info_for(code, &term);
     if (term) {
       lg::print(fg(fmt::color::yellow) | fmt::emphasis::bold, "Location:\n");
-      lg::print(loc_info);
+      lg::print("{}", loc_info);
     }
 
     lg::print(fg(fmt::color::yellow) | fmt::emphasis::bold, "Code:\n");
@@ -240,7 +240,7 @@ Val* Compiler::compile_error_guard(const goos::Object& code, Env* env) {
     }
     std::string line(80, '-');
     line.push_back('\n');
-    lg::print(line);
+    lg::print("{}", line);
     throw ce;
   }
 }

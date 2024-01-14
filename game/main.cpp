@@ -127,7 +127,7 @@ int main(int argc, char** argv) {
   CLI11_PARSE(app, argc, argv);
 
   if (show_version) {
-    lg::print(build_revision());
+    lg::print("{}", build_revision());
     return 0;
   }
 

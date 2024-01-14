@@ -802,7 +802,7 @@ void ObjectFileDB::ir2_insert_lets(int seg, ObjectFileData& data) {
             "Error while inserting lets: {}. Make sure that the return type is not "
             "none if something is actually returned.",
             e.what());
-        lg::warn(err);
+        lg::warn("{}", err);
         func.warnings.error(err);
       }
     }
