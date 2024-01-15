@@ -16,21 +16,17 @@ TEST(Zydis, Basic) {
   ZydisDecodedOperand op[ZYDIS_MAX_OPERAND_COUNT_VISIBLE];
 
   // should get first instruction
-  EXPECT_TRUE(ZYAN_SUCCESS(ZydisDecoderDecodeFull(&decoder, code, 2, &instr, op,
-                                                  ZYDIS_MAX_OPERAND_COUNT_VISIBLE,
-                                                  ZYDIS_DFLAG_VISIBLE_OPERANDS_ONLY)));
+  EXPECT_TRUE(ZYAN_SUCCESS(ZydisDecoderDecodeFull(&decoder, code, 2, &instr, op)));
   char result[256];
   ZydisFormatterFormatInstruction(&formatter, &instr, op, instr.operand_count_visible, result,
-                                  sizeof(result), 0);
+                                  sizeof(result), 0, ZYAN_NULL);
   EXPECT_EQ(std::string("int3"), result);
   EXPECT_EQ(1, instr.length);
 
   // should get second instruction
-  EXPECT_TRUE(ZYAN_SUCCESS(ZydisDecoderDecodeFull(&decoder, code + 1, 1, &instr, op,
-                                                  ZYDIS_MAX_OPERAND_COUNT_VISIBLE,
-                                                  ZYDIS_DFLAG_VISIBLE_OPERANDS_ONLY)));
+  EXPECT_TRUE(ZYAN_SUCCESS(ZydisDecoderDecodeFull(&decoder, code + 1, 1, &instr, op)));
   ZydisFormatterFormatInstruction(&formatter, &instr, op, instr.operand_count_visible, result,
-                                  sizeof(result), 0);
+                                  sizeof(result), 0, ZYAN_NULL);
   EXPECT_EQ(std::string("ret"), result);
   EXPECT_EQ(1, instr.length);
 }
