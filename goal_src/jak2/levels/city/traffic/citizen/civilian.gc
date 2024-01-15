@@ -8,107 +8,99 @@
 ;; DECOMP BEGINS
 
 (deftype civilian-anim-info (structure)
-  ((anim-index       int32 2 :offset-assert   0)
-   (anim-index-front int32   :offset          0)
-   (anim-index-back  int32   :offset          4)
+  ((anim-index        int32  2)
+   (anim-index-front  int32  :overlay-at (-> anim-index 0))
+   (anim-index-back   int32  :overlay-at (-> anim-index 1))
    )
   :pack-me
-  :method-count-assert 9
-  :size-assert         #x8
-  :flag-assert         #x900000008
   )
 
 
 (deftype civilian-global-info (basic)
-  ((prev-yellow-hit                int8                         :offset-assert   4)
-   (prev-blue-hit                  int8                         :offset-assert   5)
-   (knocked                        int32              2         :offset-assert   8)
-   (anim-knocked-front             int32                        :offset          8)
-   (anim-knocked-back              int32                        :offset         12)
-   (knocked-land                   int32              2         :offset-assert  16)
-   (anim-knocked-front-land        int32                        :offset         16)
-   (anim-knocked-back-land         int32                        :offset         20)
-   (yellow-hit-anim                civilian-anim-info 1 :inline :offset-assert  24)
-   (blue-hit-anim                  civilian-anim-info 3 :inline :offset-assert  32)
-   (anim-cover-head-start          int32                        :offset-assert  56)
-   (anim-cover-head-loop           int32                        :offset-assert  60)
-   (anim-cover-head-end            int32                        :offset-assert  64)
-   (car-stance-anim                int32                        :offset-assert  68)
-   (bike-stance-anim               int32                        :offset-assert  72)
-   (get-in-car-anim                int32                        :offset-assert  76)
-   (get-on-bike-anim               int32                        :offset-assert  80)
-   (seat-flag                      uint8                        :offset-assert  84)
-   (speech-ambient                 int8                         :offset-assert  85)
-   (speech-alert                   int8                         :offset-assert  86)
-   (speech-cower                   int8                         :offset-assert  87)
-   (speech-touched-by-player       int8                         :offset-assert  88)
-   (speech-shot-by-player          int8                         :offset-assert  89)
-   (speech-avoiding-player-vehicle int8                         :offset-assert  90)
-   (speech-hit-by-player-vehicle   int8                         :offset-assert  91)
-   (speech-player-stealing-vehicle int8                         :offset-assert  92)
+  ((prev-yellow-hit                 int8)
+   (prev-blue-hit                   int8)
+   (knocked                         int32               2)
+   (anim-knocked-front              int32               :overlay-at (-> knocked 0))
+   (anim-knocked-back               int32               :overlay-at (-> knocked 1))
+   (knocked-land                    int32               2)
+   (anim-knocked-front-land         int32               :overlay-at (-> knocked-land 0))
+   (anim-knocked-back-land          int32               :overlay-at (-> knocked-land 1))
+   (yellow-hit-anim                 civilian-anim-info  1 :inline)
+   (blue-hit-anim                   civilian-anim-info  3 :inline)
+   (anim-cover-head-start           int32)
+   (anim-cover-head-loop            int32)
+   (anim-cover-head-end             int32)
+   (car-stance-anim                 int32)
+   (bike-stance-anim                int32)
+   (get-in-car-anim                 int32)
+   (get-on-bike-anim                int32)
+   (seat-flag                       uint8)
+   (speech-ambient                  int8)
+   (speech-alert                    int8)
+   (speech-cower                    int8)
+   (speech-touched-by-player        int8)
+   (speech-shot-by-player           int8)
+   (speech-avoiding-player-vehicle  int8)
+   (speech-hit-by-player-vehicle    int8)
+   (speech-player-stealing-vehicle  int8)
    )
-  :method-count-assert 9
-  :size-assert         #x5d
-  :flag-assert         #x90000005d
   )
 
 
 (deftype civilian (citizen)
-  ((info              civilian-global-info         :offset-assert 964)
-   (anim-panic-run    int32                        :offset-assert 968)
-   (anim-on-ground    int32                        :offset-assert 972)
-   (anim-dive         int32                        :offset-assert 976)
-   (anim-get-up-front int32                        :offset-assert 980)
-   (anim-get-up-back  int32                        :offset-assert 984)
-   (last-second-pos   vector               :inline :offset-assert 992)
-   (last-distance     float                        :offset-assert 1008)
-   (next-time         time-frame                   :offset-assert 1016)
-   (dive-target-point vector               :inline :offset-assert 1024)
-   (dive-reaction     float                        :offset-assert 1040)
-   (allow-dive        symbol                       :offset-assert 1044)
-   (dive-finished?    symbol                       :offset-assert 1048)
-   (hit-face          uint32                       :offset-assert 1052)
-   (seat              int32                        :offset-assert 1056)
+  ((info               civilian-global-info)
+   (anim-panic-run     int32)
+   (anim-on-ground     int32)
+   (anim-dive          int32)
+   (anim-get-up-front  int32)
+   (anim-get-up-back   int32)
+   (last-second-pos    vector  :inline)
+   (last-distance      float)
+   (next-time          time-frame)
+   (dive-target-point  vector  :inline)
+   (dive-reaction      float)
+   (allow-dive         symbol)
+   (dive-finished?     symbol)
+   (hit-face           uint32)
+   (seat               int32)
    )
-  :heap-base #x3b0
-  :method-count-assert 218
-  :size-assert         #x424
-  :flag-assert         #xda03b00424
+  (:state-methods
+    avoid-danger
+    clear-path
+    on-ground
+    dive
+    get-up-front
+    get-up-back
+    cower-ground
+    wait-for-ride
+    move-to-vehicle
+    board-vehicle
+    ride
+    exit-vehicle
+    wait-at-dest
+    )
   (:methods
-    (avoid-danger () _type_ :state 201)
-    (clear-path () _type_ :state 202)
-    (on-ground () _type_ :state 203)
-    (dive () _type_ :state 204)
-    (get-up-front () _type_ :state 205)
-    (get-up-back () _type_ :state 206)
-    (cower-ground () _type_ :state 207)
-    (wait-for-ride () _type_ :state 208)
-    (move-to-vehicle () _type_ :state 209)
-    (board-vehicle () _type_ :state 210)
-    (ride () _type_ :state 211)
-    (exit-vehicle () _type_ :state 212)
-    (wait-at-dest () _type_ :state 213)
-    (civilian-method-214 (_type_ nav-branch int vector float) float 214)
-    (civilian-method-215 (_type_ vector) none 215)
-    (go-dive (_type_) none 216)
-    (civilian-method-217 (_type_ vector) symbol 217)
+    (civilian-method-214 (_type_ nav-branch int vector float) float)
+    (civilian-method-215 (_type_ vector) none)
+    (go-dive (_type_) none)
+    (civilian-method-217 (_type_ vector) symbol)
     )
   )
 
 
-(defmethod get-run-anim civilian ((this civilian))
+(defmethod get-run-anim ((this civilian))
   (if (and (-> this next-state) (= (-> this next-state name) 'flee))
       (-> this anim-panic-run)
       (-> this anim-run)
       )
   )
 
-(defmethod enemy-method-81 civilian ((this civilian))
+(defmethod enemy-method-81 ((this civilian))
   #f
   )
 
 ;; WARN: Return type mismatch object vs none.
-(defmethod cleanup-for-death civilian ((this civilian))
+(defmethod cleanup-for-death ((this civilian))
   (cond
     ((zero? (-> this hit-points))
      (logclear! (-> this flags) (citizen-flag persistent))
@@ -132,13 +124,13 @@
       (set! (-> this hit-points) (-> this enemy-info default-hit-points))
       (set! (-> this hit-points) (rand-vu-int-range 1 4))
       (set! (-> this fated-time) 0)
-      (logior! (-> this enemy-flags) (enemy-flag enable-on-active checking-water))
+      (logior! (-> this enemy-flags) (enemy-flag vulnerable vulnerable-backup))
       (logior! (-> this focus-status) (focus-status dangerous))
-      (logior! (-> this enemy-flags) (enemy-flag check-water))
-      (logior! (-> this enemy-flags) (enemy-flag check-water-backup no-initial-move-to-ground))
+      (logior! (-> this enemy-flags) (enemy-flag dangerous-backup))
+      (logior! (-> this enemy-flags) (enemy-flag trackable trackable-backup))
       (logclear! (-> this focus-status) (focus-status dead))
       (logior! (-> this mask) (process-mask collectable))
-      (logior! (-> this enemy-flags) (enemy-flag look-at-move-dest))
+      (logior! (-> this enemy-flags) (enemy-flag attackable-backup))
       (if (zero? (-> this hit-face))
           (go (method-of-object this get-up-front))
           (go (method-of-object this get-up-back))
@@ -148,7 +140,7 @@
   (none)
   )
 
-(defmethod damage-amount-from-attack civilian ((this civilian) (arg0 process) (arg1 event-message-block))
+(defmethod damage-amount-from-attack ((this civilian) (arg0 process) (arg1 event-message-block))
   "@returns the amount of damage taken from an attack.  This can come straight off the [[attack-info]] or via [[penetrate-using->damage]]"
   (cond
     ;; og:preserve-this constant
@@ -191,22 +183,22 @@
     )
   )
 
-(defmethod enemy-method-108 civilian ((this civilian) (arg0 enemy) (arg1 event-message-block))
+(defmethod enemy-method-108 ((this civilian) (arg0 process-drawable) (arg1 event-message-block))
   0
   )
 
 ;; WARN: Return type mismatch none vs object.
-(defmethod go-hostile civilian ((this civilian))
+(defmethod go-hostile ((this civilian))
   (cleanup-for-death this)
   )
 
 ;; WARN: Return type mismatch none vs object.
-(defmethod kill-prefer-falling civilian ((this civilian))
+(defmethod kill-prefer-falling ((this civilian))
   "If available in `enemy-info`, [[go]] to the [[die-falling]] state, if not, [[die]]"
   (cleanup-for-death this)
   )
 
-(defmethod set-behavior! civilian ((this civilian) (arg0 traffic-object-spawn-params))
+(defmethod set-behavior! ((this civilian) (arg0 traffic-object-spawn-params))
   (let ((v1-0 (-> arg0 behavior)))
     (cond
       ((zero? v1-0)
@@ -231,7 +223,7 @@
   (none)
   )
 
-(defmethod citizen-init! civilian ((this civilian))
+(defmethod citizen-init! ((this civilian))
   "Initialize [[citizen]] defaults."
   (let ((t9-0 (method-of-type citizen citizen-init!)))
     (t9-0 this)
@@ -247,7 +239,7 @@
   )
 
 ;; WARN: Return type mismatch nav-segment vs none.
-(defmethod civilian-method-215 civilian ((this civilian) (arg0 vector))
+(defmethod civilian-method-215 ((this civilian) (arg0 vector))
   (let ((v1-0 (new 'stack-no-clear 'vector)))
     (set! (-> v1-0 quad) (-> this root trans quad))
     (set! (-> v1-0 w) 81920.0)
@@ -260,7 +252,7 @@
   (none)
   )
 
-(defmethod general-event-handler civilian ((this civilian) (arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+(defmethod general-event-handler ((this civilian) (arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
   "Handles various events for the enemy
 @TODO - unsure if there is a pattern for the events and this should have a more specific name"
   (case arg2
@@ -373,7 +365,7 @@
     )
   )
 
-(defmethod civilian-method-214 civilian ((this civilian) (arg0 nav-branch) (arg1 int) (arg2 vector) (arg3 float))
+(defmethod civilian-method-214 ((this civilian) (arg0 nav-branch) (arg1 int) (arg2 vector) (arg3 float))
   (when (nonzero? arg1)
     (-> arg0 src-node)
     (let* ((s3-0 (-> arg0 dest-node))
@@ -392,7 +384,7 @@
           (+! f30-0 (civilian-method-214 this (-> s3-0 branch-array s0-0) (+ arg1 -1) arg2 s1-0))
           )
         ;; og:preserve-this changed to fix a divide by zero crash
-        (set! arg3 (+ s1-0 (the float (/-0-guard (the int f30-0) s2-0))))
+        (set! arg3 (+ s1-0 (the float (/-signed-0-guard (the int f30-0) s2-0))))
         )
       )
     )
@@ -468,7 +460,7 @@
       )
     )
   (when (< (-> self cp-next-time) (current-time))
-    (set! (-> self cp-next-time) (+ (current-time) (get-rand-int-range self 600 1200)))
+    (set! (-> self cp-next-time) (+ (current-time) (rnd-int-range self 600 1200)))
     (citizen-method-190 self (-> self cp-force))
     )
   (add-offset-to-target! (-> self nav state) (-> self cp-force))
@@ -730,7 +722,7 @@
       (set! (-> v1-9 target-speed) (* (-> self speed-scale) (-> self speed-walk)))
       )
     0
-    (set! (-> self next-time) (+ (current-time) (get-rand-int-range self 300 600)))
+    (set! (-> self next-time) (+ (current-time) (rnd-int-range self 300 600)))
     (set! (-> self last-second-pos quad) (-> self root trans quad))
     (set! (-> self last-distance)
           (vector-vector-xz-distance (-> self controller turn-exit-point) (-> self root trans))
@@ -855,7 +847,7 @@
   (citizen-method-192 self)
   (when (< (-> self cp-next-time) (current-time))
     (citizen-method-190 self (-> self cp-force))
-    (set! (-> self cp-next-time) (+ (current-time) (get-rand-int-range self 1200 2400)))
+    (set! (-> self cp-next-time) (+ (current-time) (rnd-int-range self 1200 2400)))
     )
   (let ((gp-1 (new 'stack-no-clear 'vector)))
     (citizen-method-188 self gp-1)
@@ -907,7 +899,7 @@
       (set! (-> v1-9 target-speed) (* (-> self speed-scale) (-> self speed-walk)))
       )
     0
-    (set! (-> self cp-next-time) (+ (current-time) (get-rand-int-range self 1200 2400)))
+    (set! (-> self cp-next-time) (+ (current-time) (rnd-int-range self 1200 2400)))
     (set! (-> self cp-force quad) (the-as uint128 0))
     (if *citizen-debug*
         (set-vector! (-> self draw color-mult) 0.0 1.0 0.0 1.0)
@@ -976,7 +968,7 @@
   )
 
 ;; WARN: Return type mismatch object vs none.
-(defmethod go-dive civilian ((this civilian))
+(defmethod go-dive ((this civilian))
   (if (< (-> this nav state speed) 8192.0)
       (go (method-of-object this on-ground))
       (go (method-of-object this dive))
@@ -1100,9 +1092,11 @@
       (set! (-> v1-5 prim-core collide-with) (-> self root backup-collide-with))
       )
     (logior! (-> self root nav-flags) (nav-flags has-root-sphere))
-    (let ((v1-9 (-> self nav)))
-      (set! (-> v1-9 sphere-mask) (the-as uint #x800fe))
-      )
+    ;; og:preserve-this fix potential use-after-free bug
+    (if (-> self nav)
+      (let ((v1-9 (-> self nav)))
+        (set! (-> v1-9 sphere-mask) (the-as uint #x800fe))
+        ))
     0
     )
   :trans (behavior ()
@@ -1135,7 +1129,7 @@
       )
     0
     (if (-> self dive-finished?)
-        (track-target! self)
+        (common-post self)
         (nav-enemy-method-176 self)
         )
     )
@@ -1178,9 +1172,11 @@
       (set! (-> v1-5 prim-core collide-with) (-> self root backup-collide-with))
       )
     (logior! (-> self root nav-flags) (nav-flags has-root-sphere))
-    (let ((v1-9 (-> self nav)))
-      (set! (-> v1-9 sphere-mask) (the-as uint #x800fe))
-      )
+    ;; og:preserve-this fix potential use-after-free bug
+    (if (-> self nav)
+      (let ((v1-9 (-> self nav)))
+        (set! (-> v1-9 sphere-mask) (the-as uint #x800fe))
+        ))
     0
     )
   :trans (behavior ()
@@ -1229,7 +1225,7 @@
       (set! (-> a0-0 travel quad) (-> v1-1 quad))
       )
     0
-    (track-target! self)
+    (common-post self)
     )
   )
 
@@ -1280,7 +1276,7 @@
       (set! (-> a0-1 travel quad) (-> v1-3 quad))
       )
     0
-    (track-target! self)
+    (common-post self)
     )
   )
 
@@ -1331,12 +1327,12 @@
       (set! (-> a0-1 travel quad) (-> v1-3 quad))
       )
     0
-    (track-target! self)
+    (common-post self)
     )
   )
 
 (defbehavior civilian-falling-post civilian ()
-  (logior! (-> self enemy-flags) (enemy-flag directed))
+  (logior! (-> self enemy-flags) (enemy-flag recover-applied-velocity))
   (let ((gp-0 (-> self root)))
     (cond
       ((focus-test? self under-water)
@@ -1358,7 +1354,7 @@
       )
     )
   (enemy-method-111 self)
-  (track-target! self)
+  (common-post self)
   (none)
   )
 
@@ -1478,7 +1474,7 @@
     )
   )
 
-(defmethod civilian-method-217 civilian ((this civilian) (arg0 vector))
+(defmethod civilian-method-217 ((this civilian) (arg0 vector))
   (let ((s3-0 (handle->process (-> this vehicle)))
         (s4-0 (new 'stack 'collide-query))
         )
@@ -1602,9 +1598,11 @@
     0
     )
   :exit (behavior ()
-    (let ((v1-0 (-> self nav)))
-      (set! (-> v1-0 sphere-mask) (the-as uint #x800fe))
-      )
+    ;; og:preserve-this fix potential use-after-free bug
+    (if (-> self nav)
+      (let ((v1-0 (-> self nav)))
+        (set! (-> v1-0 sphere-mask) (the-as uint #x800fe))
+        ))
     0
     (logclear! (-> self flags) (citizen-flag persistent))
     )
@@ -1805,7 +1803,7 @@
     (go-virtual ride)
     )
   :post (behavior ()
-    (track-target! self)
+    (common-post self)
     )
   )
 
@@ -1875,7 +1873,7 @@
     #f
     )
   :post (behavior ()
-    (track-target! self)
+    (common-post self)
     )
   )
 
@@ -2024,7 +2022,7 @@
     (go-virtual active)
     )
   :post (behavior ()
-    (track-target! self)
+    (common-post self)
     )
   )
 

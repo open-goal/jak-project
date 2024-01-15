@@ -8,6 +8,7 @@
 #include "game/overlord/jak2/streamlist.h"
 #include "game/overlord/jak2/vag.h"
 #include "game/sce/iop.h"
+#include "game/sound/sdshim.h"
 #include "game/sound/sndshim.h"
 
 using namespace iop;
@@ -42,17 +43,16 @@ void InitSound_overlord() {
   // need this one for PC sound to start up
   snd_StartSoundSystem();
 
-  // there's a bunch of stuff that we don't use.
-  StreamVoice[0] = 0;
-  StreamVoice[1] = 1;
-  StreamVoice[2] = 2;
-  StreamVoice[3] = 3;  // TODO idk what im doing.
+  StreamVoice[0] = SD_VOICE(0, 0);
+  StreamVoice[1] = SD_VOICE(0, 1);
+  StreamVoice[2] = SD_VOICE(0, 2);
+  StreamVoice[3] = SD_VOICE(0, 3);
 
   for (int i = 0; i < 91; i++) {
-    s16 opposing_front = static_cast<s16>(((i * 0x33ff) / 0x5a) + 0xc00);
+    s16 opposing_front = static_cast<s16>(((i * 0x33ff) / 90) + 0xc00);
 
-    s16 rear_right = static_cast<s16>(((i * -0x2800) / 0x5a) + 0x3400);
-    s16 rear_left = static_cast<s16>(((i * -0xbff) / 0x5a) + 0x3fff);
+    s16 rear_right = static_cast<s16>(((i * -0x2800) / 90) + 0x3400);
+    s16 rear_left = static_cast<s16>(((i * -0xbff) / 90) + 0x3fff);
 
     gPanTable[90 - i].left = 0x3FFF;
     gPanTable[180 - i].left = opposing_front;
@@ -110,6 +110,32 @@ void SetMusicVol() {
   snd_SetMasterVolume(2, vol);
 }
 
+void UpdateLocation(Sound* sound) {
+  if (sound->id == 0) {
+    return;
+  }
+
+  s32 id = snd_SoundIsStillPlaying(sound->sound_handle);
+  if (id == 0) {
+    sound->id = 0;
+    return;
+  }
+
+  s32 volume = GetVolume(sound);
+  if (volume == 0) {
+    snd_StopSound(sound->sound_handle);
+    return;
+  }
+
+  if (sound->params.fo_curve == 1 || sound->params.fo_curve == 10) {
+    snd_SetSoundVolPan(id, volume, 0);
+    return;
+  }
+
+  s32 pan = GetPan(sound);
+  snd_SetSoundVolPan(id, volume, pan);
+}
+
 void SetEarTrans(Vec3w* ear_trans0, Vec3w* ear_trans1, Vec3w* cam_trans, s32 cam_angle) {
   // some assuming that this is the same in jak2...
   s32 tick = snd_GetTick();
@@ -136,7 +162,7 @@ void SetEarTrans(Vec3w* ear_trans0, Vec3w* ear_trans1, Vec3w* cam_trans, s32 cam
   auto* cmd = VagCmds;
   // piVar6 = &VagCmds[0].vol_multiplier;
   do {
-    if (cmd->unk_136 == 0x0) {
+    if (cmd->sound_handler == 0x0) {
     LAB_0000c388:
       SetVAGVol(cmd, 1);
     } else if ((cmd->sb_scanned == '\0') || (cmd->byte8 != '\0')) {

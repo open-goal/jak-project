@@ -105,38 +105,36 @@
               )
 
 (deftype rhino (nav-enemy)
-  ((wall                  rhino-wall            :offset-assert 604)
-   (path-intro            path-control          :offset-assert 608)
-   (charge-aware          uint64                :offset-assert 616)
-   (anim-skid-left        int32                 :offset-assert 624)
-   (anim-skid-right       int32                 :offset-assert 628)
-   (anim-victory-hit      int32                 :offset-assert 632)
-   (circle-backward?      symbol                :offset-assert 636)
-   (skid-speed            float                 :offset        672)
-   (angle                 float                 :offset-assert 676)
-   (angle-speed           float                 :offset-assert 680)
-   (dest                  vector        :inline :offset-assert 688)
-   (charge-straight       symbol                :offset-assert 704)
-   (in-stop-run           symbol                :offset-assert 708)
-   (smush-target          smush-control         :offset-assert 712)
-   (num-hit-flinch        int32                 :offset-assert 716)
-   (frame-die-smush       float                 :offset-assert 720)
-   (quat                  quaternion    :inline :offset-assert 736)
-   (can-hit?              symbol                :offset-assert 752)
-   (interest              int32                 :offset-assert 756)
-   (victory-count         uint32                :offset-assert 760)
-   (stomach-touched-once? symbol                :offset-assert 764)
+  ((wall                   rhino-wall)
+   (path-intro             path-control)
+   (charge-aware           uint64)
+   (anim-skid-left         int32)
+   (anim-skid-right        int32)
+   (anim-victory-hit       int32)
+   (circle-backward?       symbol)
+   (skid-speed             float       :offset 672)
+   (angle                  float)
+   (angle-speed            float)
+   (dest                   vector      :inline)
+   (charge-straight        symbol)
+   (in-stop-run            symbol)
+   (smush-target           smush-control)
+   (num-hit-flinch         int32)
+   (frame-die-smush        float)
+   (quat                   quaternion  :inline)
+   (can-hit?               symbol)
+   (interest               int32)
+   (victory-count          uint32)
+   (stomach-touched-once?  symbol)
    )
-  :heap-base #x280
-  :method-count-assert 183
-  :size-assert         #x300
-  :flag-assert         #xb702800300
+  (:state-methods
+    attack
+    stop-run
+    run-away
+    charge
+    )
   (:methods
-    (attack () _type_ :state 178)
-    (stop-run () _type_ :state 179)
-    (run-away () _type_ :state 180)
-    (charge () _type_ :state 181)
-    (rhino-method-182 (_type_ process event-message-block) symbol 182)
+    (hit-stomach? (_type_ process event-message-block) symbol)
     )
   )
 
@@ -322,7 +320,7 @@
 
 (set! (-> *rhino-nav-enemy-info* fact-defaults) *fact-info-enemy-defaults*)
 
-(defmethod rhino-method-182 rhino ((this rhino) (arg0 process) (arg1 event-message-block))
+(defmethod hit-stomach? ((this rhino) (arg0 process) (arg1 event-message-block))
   (let* ((gp-0 (-> arg1 param 0))
          (s5-0 arg0)
          (s2-0 (if (type? s5-0 process-drawable)
@@ -357,17 +355,17 @@
     )
   )
 
-(defmethod enemy-method-58 rhino ((this rhino) (arg0 process) (arg1 event-message-block))
+(defmethod enemy-method-58 ((this rhino) (arg0 process) (arg1 event-message-block))
   (let ((t9-0 (method-of-type nav-enemy enemy-method-58)))
     (t9-0 this arg0 arg1)
     )
-  (if (rhino-method-182 this arg0 arg1)
+  (if (hit-stomach? this arg0 arg1)
       'hit
       'hit-flinch
       )
   )
 
-(defmethod general-event-handler rhino ((this rhino) (arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+(defmethod general-event-handler ((this rhino) (arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
   "Handles various events for the enemy
 @TODO - unsure if there is a pattern for the events and this should have a more specific name"
   (local-vars
@@ -575,7 +573,7 @@
           (t9-2)
           )
       )
-    (logclear! (-> self enemy-flags) (enemy-flag enable-on-active))
+    (logclear! (-> self enemy-flags) (enemy-flag vulnerable))
     )
   :exit (behavior ()
     (local-vars (v0-1 enemy-flag))
@@ -585,9 +583,9 @@
           )
       )
     (let ((v1-4 (-> self enemy-flags)))
-      (if (logtest? v1-4 (enemy-flag checking-water))
-          (set! v0-1 (logior v1-4 (enemy-flag enable-on-active)))
-          (set! v0-1 (logclear v1-4 (enemy-flag enable-on-active)))
+      (if (logtest? v1-4 (enemy-flag vulnerable-backup))
+          (set! v0-1 (logior v1-4 (enemy-flag vulnerable)))
+          (set! v0-1 (logclear v1-4 (enemy-flag vulnerable)))
           )
       )
     (set! (-> self enemy-flags) v0-1)
@@ -619,14 +617,14 @@
   :virtual #t
   :enter (behavior ()
     (remove-setting! 'sound-mode)
-    (dispose! self)
+    (dying self)
     (set! (-> self hit-points) 0)
     0
     )
   :code (behavior ()
     (set! (-> self smush-target) (the-as smush-control #t))
     (ja-channel-push! 1 (seconds 0.075))
-    (let ((f30-0 (get-rand-float-range self 0.8 1.2))
+    (let ((f30-0 (rnd-float-range self 0.8 1.2))
           (gp-0 #t)
           )
       (ja-no-eval :group! (-> self draw art-group data (-> self enemy-info die-anim))
@@ -656,7 +654,7 @@
   :code (behavior ()
     (local-vars (v1-67 enemy-flag) (v1-75 enemy-flag))
     (ja-channel-push! 1 (seconds 0.2))
-    (let ((f30-0 (get-rand-float-range self 0.9 1.1)))
+    (let ((f30-0 (rnd-float-range self 0.9 1.1)))
       (ja-no-eval :group! (-> self draw art-group data (-> self enemy-info hit-anim))
                   :num! (seek! max f30-0)
                   :frame-num 0.0
@@ -679,52 +677,52 @@
         )
       )
     (ja-channel-push! 1 (seconds 0.075))
-    (if (logtest? (-> self enemy-flags) (enemy-flag check-water))
+    (if (logtest? (-> self enemy-flags) (enemy-flag dangerous-backup))
         (logior! (-> self focus-status) (focus-status dangerous))
         (logclear! (-> self focus-status) (focus-status dangerous))
         )
     (let ((v1-66 (-> self enemy-flags)))
-      (if (logtest? v1-66 (enemy-flag checking-water))
-          (set! v1-67 (logior v1-66 (enemy-flag enable-on-active)))
-          (set! v1-67 (logclear v1-66 (enemy-flag enable-on-active)))
+      (if (logtest? v1-66 (enemy-flag vulnerable-backup))
+          (set! v1-67 (logior v1-66 (enemy-flag vulnerable)))
+          (set! v1-67 (logclear v1-66 (enemy-flag vulnerable)))
           )
       )
     (set! (-> self enemy-flags) v1-67)
-    (if (logtest? (-> self enemy-flags) (enemy-flag look-at-move-dest))
+    (if (logtest? (-> self enemy-flags) (enemy-flag attackable-backup))
         (logior! (-> self mask) (process-mask collectable))
         (logclear! (-> self mask) (process-mask collectable))
         )
     (let ((v1-74 (-> self enemy-flags)))
-      (if (logtest? (enemy-flag no-initial-move-to-ground) v1-74)
-          (set! v1-75 (logior (enemy-flag check-water-backup) v1-74))
-          (set! v1-75 (logclear v1-74 (enemy-flag check-water-backup)))
+      (if (logtest? (enemy-flag trackable-backup) v1-74)
+          (set! v1-75 (logior (enemy-flag trackable) v1-74))
+          (set! v1-75 (logclear v1-74 (enemy-flag trackable)))
           )
       )
     (set! (-> self enemy-flags) v1-75)
-    (logclear! (-> self enemy-flags) (enemy-flag actor-pause-backup))
+    (logclear! (-> self enemy-flags) (enemy-flag lock-focus))
     (logclear! (-> self focus-status) (focus-status hit))
     (go-hostile self)
     )
   )
 
-(defmethod damage-amount-from-attack rhino ((this rhino) (arg0 process) (arg1 event-message-block))
+(defmethod damage-amount-from-attack ((this rhino) (arg0 process) (arg1 event-message-block))
   "@returns the amount of damage taken from an attack.  This can come straight off the [[attack-info]] or via [[penetrate-using->damage]]"
   (-> arg1 param 1)
-  (let ((f30-0 (the float (penetrate-using->damage (the-as penetrate (-> this incoming penetrate-using))))))
+  (let ((f30-0 (the float (penetrate-using->damage (-> this incoming penetrate-using)))))
     (cond
-      ((rhino-method-182 this arg0 arg1)
+      ((hit-stomach? this arg0 arg1)
        (set! (-> this stomach-touched-once?) #t)
        (the int (* 4.0 f30-0))
        )
-      ((logtest? #xc0000 (-> this incoming penetrate-using))
-       (if (and (logtest? #x40000 (-> this incoming penetrate-using))
-                (logtest? #x80000 (-> this incoming penetrate-using))
+      ((logtest? (penetrate dark-bomb dark-giant) (-> this incoming penetrate-using))
+       (if (and (logtest? (penetrate dark-bomb) (-> this incoming penetrate-using))
+                (logtest? (penetrate dark-giant) (-> this incoming penetrate-using))
                 )
            #x420c0000
            (the int (* 1.8 f30-0))
            )
        )
-      ((logtest? #x20000 (-> this incoming penetrate-using))
+      ((logtest? (penetrate dark-punch) (-> this incoming penetrate-using))
        (the int (* 2.0 f30-0))
        )
       (else
@@ -735,7 +733,7 @@
   )
 
 ;; WARN: Return type mismatch symbol vs object.
-(defmethod enemy-method-75 rhino ((this rhino) (arg0 process) (arg1 event-message-block))
+(defmethod enemy-method-75 ((this rhino) (arg0 process) (arg1 event-message-block))
   (let* ((touch-entry (the-as touching-shapes-entry (-> arg1 param 0)))
          (s3-0 arg0)
          (v1-0 (if (type? s3-0 process-focusable)
@@ -779,7 +777,7 @@
     )
   )
 
-(defmethod enemy-method-104 rhino ((this rhino) (arg0 process) (arg1 touching-shapes-entry) (arg2 uint))
+(defmethod enemy-method-104 ((this rhino) (arg0 process) (arg1 touching-shapes-entry) (arg2 uint))
   (if (and (-> this next-state) (= (-> this next-state name) 'victory))
       'attack-or-shove
       'attack
@@ -871,7 +869,7 @@
     (set! (-> (the-as collide-shape-prim-group (-> self root root-prim)) child 1 prim-core collide-with)
           (collide-spec)
           )
-    (if (logtest? (-> self enemy-flags) (enemy-flag check-water))
+    (if (logtest? (-> self enemy-flags) (enemy-flag dangerous-backup))
         (logior! (-> self focus-status) (focus-status dangerous))
         (logclear! (-> self focus-status) (focus-status dangerous))
         )
@@ -1051,7 +1049,7 @@
     (set! (-> self charge-straight) #f)
     (nav-enemy-method-166 self)
     (set-time! (-> self state-time))
-    (logclear! (-> self enemy-flags) (enemy-flag look-at-focus))
+    (logclear! (-> self enemy-flags) (enemy-flag victory))
     )
   :trans (behavior ()
     (let ((t9-0 (-> (method-of-type nav-enemy hostile) trans)))
@@ -1140,7 +1138,7 @@
     (ja-channel-push! 1 (seconds 0.2))
     (ja :group! (-> self draw art-group data (-> self enemy-info hostile-anim)))
     (ja :num-func num-func-identity :frame-num 0.0)
-    (let ((f30-0 (get-rand-float-range self 0.9 1.1)))
+    (let ((f30-0 (rnd-float-range self 0.9 1.1)))
       (until #f
         (suspend)
         (ja :num! (loop! f30-0))
@@ -1165,7 +1163,7 @@
   :virtual #t
   :event enemy-event-handler
   :enter (behavior ()
-    (logior! (-> self enemy-flags) (enemy-flag actor-pause-backup))
+    (logior! (-> self enemy-flags) (enemy-flag lock-focus))
     (logior! (-> self focus-status) (focus-status dangerous))
     (let* ((v1-4 *game-info*)
            (a0-2 (+ (-> v1-4 attack-id) 1))
@@ -1192,8 +1190,8 @@
     0
     )
   :exit (behavior ()
-    (logclear! (-> self enemy-flags) (enemy-flag actor-pause-backup))
-    (if (logtest? (-> self enemy-flags) (enemy-flag check-water))
+    (logclear! (-> self enemy-flags) (enemy-flag lock-focus))
+    (if (logtest? (-> self enemy-flags) (enemy-flag dangerous-backup))
         (logior! (-> self focus-status) (focus-status dangerous))
         (logclear! (-> self focus-status) (focus-status dangerous))
         )
@@ -1206,7 +1204,7 @@
       (ja-channel-push! 1 (seconds 0.05))
       (ja-no-eval :group! rhino-attack-ja :num! (seek!) :frame-num 0.0)
       (until (ja-done? 0)
-        (if (logtest? (-> self enemy-flags) (enemy-flag look-at-focus))
+        (if (logtest? (-> self enemy-flags) (enemy-flag victory))
             (set! gp-0 #t)
             )
         (suspend)
@@ -1221,7 +1219,7 @@
   :post nav-enemy-travel-post
   )
 
-(defmethod nav-enemy-method-142 rhino ((this rhino) (arg0 nav-control))
+(defmethod nav-enemy-method-142 ((this rhino) (arg0 nav-control))
   (if (-> this in-stop-run)
       (quaternion*!
         (-> this root quat)
@@ -1284,9 +1282,11 @@
       (set! (-> v1-1 speed) 0.0)
       )
     0
-    (let ((v1-3 (-> self nav)))
-      (set! (-> v1-3 target-speed) (-> self enemy-info walk-travel-speed))
-      )
+    ;; og:preserve-this fix potential use-after-free bug
+    (if (-> self nav)
+      (let ((v1-3 (-> self nav)))
+        (set! (-> v1-3 target-speed) (-> self enemy-info walk-travel-speed))
+        ))
     0
     (set! (-> self in-stop-run) #f)
     )
@@ -1504,8 +1504,8 @@
               (ja-channel-push! 1 (seconds 0.1))
               )
           )
-        (let ((s5-0 (get-rand-int self 8))
-              (f30-0 (get-rand-float-range self 0.9 1.1))
+        (let ((s5-0 (rnd-int-count self 8))
+              (f30-0 (rnd-float-range self 0.9 1.1))
               )
           (while (nonzero? s5-0)
             (+! s5-0 -1)
@@ -1533,7 +1533,7 @@
               (ja-channel-push! 1 (seconds 0.1))
               )
           )
-        (let ((f30-2 (get-rand-float-range self 0.9 1.1)))
+        (let ((f30-2 (rnd-float-range self 0.9 1.1)))
           (ja-no-eval :group! (-> self draw art-group data (-> self enemy-info victory-anim))
                       :num! (seek! max f30-2)
                       :frame-num 0.0
@@ -1549,7 +1549,7 @@
     )
   )
 
-(defmethod init-enemy-collision! rhino ((this rhino))
+(defmethod init-enemy-collision! ((this rhino))
   "Initializes the [[collide-shape-moving]] and any ancillary tasks to make the enemy collide properly"
   (let ((s5-0 (new 'process 'collide-shape-moving this (collide-list-enum usually-hit-by-player))))
     (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
@@ -1621,14 +1621,14 @@
   (none)
   )
 
-(defmethod relocate rhino ((this rhino) (arg0 int))
+(defmethod relocate ((this rhino) (arg0 int))
   (if (nonzero? (-> this path-intro))
       (&+! (-> this path-intro) arg0)
       )
   (call-parent-method this arg0)
   )
 
-(defmethod init-enemy! rhino ((this rhino))
+(defmethod init-enemy! ((this rhino))
   "Common method called to initialize the enemy, typically sets up default field values and calls ancillary helper methods"
   (stack-size-set! (-> this main-thread) 256)
   (initialize-skeleton
@@ -1696,7 +1696,7 @@
   (set-gravity-length (-> this root dynam) 573440.0)
   (logior! (-> this nav flags) (nav-control-flag momentum-ignore-heading))
   (logior! (-> this focus-status) (focus-status dangerous))
-  (logior! (-> this enemy-flags) (enemy-flag check-water))
+  (logior! (-> this enemy-flags) (enemy-flag dangerous-backup))
   0
   (none)
   )

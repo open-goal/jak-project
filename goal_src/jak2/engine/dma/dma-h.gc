@@ -28,32 +28,23 @@ The code is organized into dma, dma-buffer, and dma-bucket
    (tte uint8 :offset 6 :size 1) ;; transfer tag (sc only)
    (tie uint8 :offset 7 :size 1) ;; tag interrupt
    (str uint8 :offset 8 :size 1) ;; start!
-   (tag uint16 :offset 16)
+   (tag uint16 :offset 16 :size 16)
    )
-  :method-count-assert 9
-  :size-assert         #x4
-  :flag-assert         #x900000004
   )
 
 ;; Each DMA Channel has a bank of registers with the following layout.
 ;; Some channels have more advanced features, but all support at least these three.
 (deftype dma-bank (structure)
-  ((chcr dma-chcr  :offset 0) ;; control register
-   (madr uint32  :offset 16)  ;; memory address
-   (qwc  uint32  :offset 32)  ;; quadword count
+  ((chcr  dma-chcr  :offset   0)
+   (madr  uint32    :offset  16)
+   (qwc   uint32    :offset  32)
    )
-  :method-count-assert 9
-  :size-assert         #x24
-  :flag-assert         #x900000024
   )
 
 ;; DMA register layout for channels supporting source-chain
 (deftype dma-bank-source (dma-bank)
   ((tadr uint32  :offset 48) ;; tag address
    )
-  :method-count-assert 9
-  :size-assert         #x34
-  :flag-assert         #x900000034
   )
 
 ;; The DMA source chain supports a two-entry "call stack" of tags.
@@ -62,9 +53,6 @@ The code is organized into dma, dma-buffer, and dma-bucket
   ((as0  uint32  :offset 64) ;; pushed tag register
    (as1  uint32  :offset 80) ;; pushed tag register
    )
-  :method-count-assert 9
-  :size-assert         #x54
-  :flag-assert         #x900000054
   )
 
 ;; The toSPR and fromSPR DMA channels require a second address in the scratchpad.
@@ -72,9 +60,6 @@ The code is organized into dma, dma-buffer, and dma-bucket
 (deftype dma-bank-spr (dma-bank-source)
   ((sadr uint32  :offset 128) ;; spad address.
    )
-  :method-count-assert 9
-  :size-assert         #x84
-  :flag-assert         #x900000084
   )
 
 ;; These addresses are the location of DMA banks for each channel.
@@ -98,18 +83,12 @@ The code is organized into dma, dma-buffer, and dma-bucket
    (std  uint8 :offset   6 :size   2)
    (rcyc uint8 :offset   8 :size   3)
    )
-  :method-count-assert 9
-  :size-assert         #x4
-  :flag-assert         #x900000004
   )
 
 ;; D_ENABLEW, D_ENABLER?
 (deftype dma-enable (uint32)
   ((cpnd uint8 :offset  16 :size   1)
    )
-  :method-count-assert 9
-  :size-assert         #x4
-  :flag-assert         #x900000004
   )
 
 ;; D_SQWC
@@ -117,46 +96,34 @@ The code is organized into dma, dma-buffer, and dma-bucket
   ((sqwc uint8 :offset   0 :size   8)
    (tqwc uint8 :offset  16 :size   8)
    )
-  :method-count-assert 9
-  :size-assert         #x4
-  :flag-assert         #x900000004
   )
 
 ;; Shared DMA control registers.
 (deftype dma-bank-control (structure)
-  ((ctrl    dma-ctrl  :offset   0)
-   (stat    uint32    :offset  16)
-   (pcr     uint32    :offset  32)
-   (sqwc    dma-sqwc  :offset  48)
-   (rbsr    uint32    :offset  64)
-   (rbor    uint32    :offset  80)
-   (stadr   uint32    :offset  96)
-   (enabler uint32    :offset 5408)
-   (enablew uint32    :offset 5520)
+  ((ctrl     dma-ctrl  :offset   0)
+   (stat     uint32    :offset  16)
+   (pcr      uint32    :offset  32)
+   (sqwc     dma-sqwc  :offset  48)
+   (rbsr     uint32    :offset  64)
+   (rbor     uint32    :offset  80)
+   (stadr    uint32    :offset  96)
+   (enabler  uint32    :offset 5408)
+   (enablew  uint32    :offset 5520)
    )
-  :method-count-assert 9
-  :size-assert         #x1594
-  :flag-assert         #x900001594
   )
 
 ;; Seems to be unused. The vu-function type is used instead.
 (deftype vu-code-block (basic)
-  ((name         basic   :offset-assert   4)
-   (code         uint32  :offset-assert   8)
-   (size         int32   :offset-assert  12)
-   (dest-address uint32  :offset-assert  16)
+  ((name          basic)
+   (code          uint32)
+   (size          int32)
+   (dest-address  uint32)
    )
-  :method-count-assert 9
-  :size-assert         #x14
-  :flag-assert         #x900000014
   )
 
 ;; ?? not sure what this is.
 (deftype vu-stat (uint64)
   ()
-  :method-count-assert 9
-  :size-assert         #x8
-  :flag-assert         #x900000008
   )
 
 (defenum dma-tag-id
@@ -176,16 +143,13 @@ The code is organized into dma, dma-buffer, and dma-bucket
 ;; sizes, and the next thing to transfer.
 ;; A tag is 8 bytes.
 (deftype dma-tag (uint64)
-  ((qwc uint16    :offset 0)           ;; quadword count
-   (pce uint8     :offset 26 :size 2)  ;; priority (source mode)
-   (id dma-tag-id :offset 28 :size 3)  ;; ID (what the tag means)
-   (irq uint8     :offset 31 :size 1)  ;; interrupt at the end?
-   (addr uint32   :offset 32 :size 31) ;; address (31 bits)
-   (spr uint8     :offset 63 :size 1)  ;; spr or not flag.
+  ((qwc  uint16     :offset   0 :size  16)
+   (pce  uint8      :offset  26 :size   2)
+   (id   dma-tag-id :offset  28 :size   3)
+   (irq  uint8      :offset  31 :size   1)
+   (addr uint32     :offset  32 :size  31)
+   (spr  uint8      :offset  63 :size   1)
    )
-  :method-count-assert 9
-  :size-assert         #x8
-  :flag-assert         #x900000008
   )
 
 
@@ -199,17 +163,14 @@ The code is organized into dma, dma-buffer, and dma-bucket
 ;; the addr field of their tag should point to the next bucket.
 ;; This is not a PS2 hardware thing
 (deftype dma-bucket (structure)
-  ((tag   dma-tag            :offset-assert   0) ;; the DMA tag to transfer the bucket's data
-   (last  (pointer dma-tag)  :offset-assert   8) ;; the last tag of this bucket.
-   (dummy uint32             :offset-assert  12) ;; empty space.
-   (next  uint32             :offset          4)
-   (clear uint64             :offset          8)
-   (vif0  uint32             :offset          8)
-   (vif1  uint32             :offset         12)
+  ((tag    dma-tag) ;; the DMA tag to transfer the bucket's data
+   (last   (pointer dma-tag)) ;; the last tag of this bucket.
+   (dummy  uint32) ;; empty space.
+   (next   uint32  :offset   4)
+   (clear  uint64  :overlay-at last)
+   (vif0   uint32  :overlay-at last)
+   (vif1   uint32  :overlay-at dummy)
    )
-  :method-count-assert 9
-  :size-assert         #x10
-  :flag-assert         #x900000010
   )
 
 ;; guess - VIF_MASK register?
@@ -231,9 +192,6 @@ The code is organized into dma, dma-buffer, and dma-bucket
    (m14 uint8 :offset  28 :size   2)
    (m15 uint8 :offset  30 :size   2)
    )
-  :method-count-assert 9
-  :size-assert         #x4
-  :flag-assert         #x900000004
   )
 
 ;; the IMM field of a VIF STCYCL instruction
@@ -241,9 +199,6 @@ The code is organized into dma, dma-buffer, and dma-bucket
   ((cl uint8 :offset   0 :size   8)
    (wl uint8 :offset   8 :size   8)
    )
-  :method-count-assert 9
-  :size-assert         #x2
-  :flag-assert         #x900000002
   )
 
 ;; the IMM field of a VIF UNPACK instruction
@@ -252,9 +207,6 @@ The code is organized into dma, dma-buffer, and dma-bucket
    (usn  uint8  :offset  14 :size   1)
    (flg  uint8  :offset  15 :size   1)
    )
-  :method-count-assert 9
-  :size-assert         #x2
-  :flag-assert         #x900000002
   )
 
 ;; all these have mask (only applies to unpacks) and interrupt not set.
@@ -317,9 +269,6 @@ The code is organized into dma, dma-buffer, and dma-bucket
    (irq uint8   :offset  31 :size   1)
    (msk uint8   :offset  28 :size   1)
    )
-  :method-count-assert 9
-  :size-assert         #x4
-  :flag-assert         #x900000004
   )
 
 ;; The dma send functions are disabled in OpenGOAL.

@@ -22,29 +22,24 @@
 (define *level-text-file-load-flag* #t)
 
 ;; allocate the game text heap if it isn't already allocated.
-(when (= 0 (-> *common-text-heap* base))
-  (let ((heap *common-text-heap*))
-    (set! (-> heap base) (malloc 'global 64000))
-    (set! (-> heap current) (-> heap base))
-    (set! (-> heap top-base) (&+ (-> heap base) 64000))
-    (set! (-> heap top) (-> heap top-base))
-    )
+(when (zero? (-> *common-text-heap* base))
+  (kheap-alloc *common-text-heap* (* 64 1024)) ;; changed from 34K -> 64K
   )
 
 ;; The game-text-info stores records for each string in the loaded text on the text heap.
 
-(defmethod length game-text-info ((this game-text-info))
+(defmethod length ((this game-text-info))
   "Get the length (number of strings) in a game-text-info."
   (-> this length)
   )
 
-(defmethod asize-of game-text-info ((this game-text-info))
+(defmethod asize-of ((this game-text-info))
   "Get the size in memory of the game-text-info"
   ;; each record is 8 bytes
-  (the int (+ (-> this type size) (* 8 (-> this length))))
+  (the-as int (+ (-> this type size) (* (-> this length) 8)))
   )
 
-(defmethod inspect game-text-info ((this game-text-info))
+(defmethod inspect ((this game-text-info))
   "Print a game text info, including all strings"
   (format '#t "[~8x] ~A~%" this (-> this type))
   (format '#t "~Tlength: ~D~%" (-> this length))
@@ -59,36 +54,32 @@
   this
   )
 
-(defmethod mem-usage game-text-info ((this game-text-info) (arg0 memory-usage-block) (arg1 int))
+(defmethod mem-usage ((this game-text-info) (arg0 memory-usage-block) (arg1 int))
   "Get the memory usage."
   (set! (-> arg0 length) (max 81 (-> arg0 length)))
   (set! (-> arg0 data 80 name) "string")
-  (set! (-> arg0 data 80 count) (+ (-> arg0 data 80 count) 1))
+  (+! (-> arg0 data 80 count) 1)
 
   ;; get the size of this structure
   (let ((v1-6 (asize-of this)))
-    (set! (-> arg0 data 80 used) (+ (-> arg0 data 80 used) v1-6))
-    (set! (-> arg0 data 80 total)
-          (+ (-> arg0 data 80 total) (logand -16 (+ v1-6 15)))
-          )
+    (+! (-> arg0 data 80 used) v1-6)
+    (+! (-> arg0 data 80 total) (logand -16 (+ v1-6 15)))
     )
 
   ;; get the size of all the strings
   (dotimes (s4-0 (-> this length))
     (set! (-> arg0 length) (max 81 (-> arg0 length)))
     (set! (-> arg0 data 80 name) "string")
-    (set! (-> arg0 data 80 count) (+ (-> arg0 data 80 count) 1))
+    (+! (-> arg0 data 80 count) 1)
     (let ((v1-18 (asize-of (-> this data s4-0 text))))
-      (set! (-> arg0 data 80 used) (+ (-> arg0 data 80 used) v1-18))
-      (set! (-> arg0 data 80 total)
-            (+ (-> arg0 data 80 total) (logand -16 (+ v1-18 15)))
-            )
+      (+! (-> arg0 data 80 used) v1-18)
+      (+! (-> arg0 data 80 total) (logand -16 (+ v1-18 15)))
       )
     )
   this
   )
 
-(defmethod lookup-text! game-text-info ((this game-text-info) (arg0 text-id) (arg1 symbol))
+(defmethod lookup-text! ((this game-text-info) (arg0 text-id) (arg1 symbol))
   "Look up text by ID.  Will return the string.
    If the ID can't be found, and arg1 is #t, it will return #f,
    otherwise the temp string UNKNOWN ID <id number>"
@@ -110,26 +101,26 @@
       )
     (cond
       ((!= (-> this data v1-2 id) arg0) ;; didn't find it :(
-       (cond
-         (arg1
-          (the-as string #f)
-          )
-         (else
-          ;; First, look up the id in the fallback
-          (#if PC_PORT
-            (if *fallback-text-lookup?*
-              (let ((fallback-result (lookup-text! *fallback-text* arg0 #t)))
-               (if (!= fallback-result #f)
-                 fallback-result
-                 (string-format "UNKNOWN ID ~D" arg0)))
+        (cond
+          (arg1
+            (the-as string #f)
+            )
+          (else
+            ;; First, look up the id in the fallback
+            (#if PC_PORT
+              (if *fallback-text-lookup?*
+                (let ((fallback-result (lookup-text! *fallback-text* arg0 #t)))
+                  (if (!= fallback-result #f)
+                    fallback-result
+                    (string-format "UNKNOWN ID ~D" arg0)))
+                (string-format "UNKNOWN ID ~D" arg0))
               (string-format "UNKNOWN ID ~D" arg0))
-            (string-format "UNKNOWN ID ~D" arg0))
+            )
           )
-         )
-       )
+        )
       (else
-       (-> this data v1-2 text) ;; found it!
-       )
+        (-> this data v1-2 text) ;; found it!
+        )
       )
     )
   )
@@ -143,16 +134,11 @@
 ;; loading is complete once load-game-text-info returns
 (define text-is-loading #f)
 
+;; WARN: Found some very strange gotos. Check result carefully, this is not well tested.
 (defun load-game-text-info ((txt-name string) (curr-text symbol) (heap kheap))
   "Load text, if needed. txt-name is the group name, curr-text is the _symbol_ for
    the game-text-info, and heap is the heap to load to. The heap will be cleared."
-  (local-vars
-   (v0-2 int)
-   (heap-sym-heap game-text-info)
-   (lang language-enum)
-   (load-status int)
-   (heap-free int)
-   )
+  (local-vars (v0-2 int) (heap-sym-heap game-text-info) (lang language-enum) (load-status int) (heap-free int))
   (set! heap-sym-heap (the-as game-text-info (-> curr-text value)))
               ;; split languages in PC port
   (set! lang (#if PC_PORT (the language-enum (-> *pc-settings* text-language))
@@ -247,110 +233,17 @@
   v0-2
   )
 
-(defun load-fallback-game-text-info ((txt-name string) (curr-text symbol) (heap kheap))
-  "Largely duplication of `load-game-text-info` but is hardcoded to load english (language 0)"
-  (local-vars
-   (v0-2 int)
-   (heap-sym-heap game-text-info)
-   (lang language-enum)
-   (load-status int)
-   (heap-free int)
-   )
-  (set! heap-sym-heap (the-as game-text-info (-> curr-text value)))
-  (set! lang (language-enum english))
-  (set! load-status 0)
-  (set! heap-free (&- (-> heap top) (the-as uint (-> heap base))))
-
-  ;; only load if we actually need to
-  (when (or (= heap-sym-heap #f) ;; nothing loaded
-            (!= (-> heap-sym-heap language-id) (the-as uint lang)) ;; loaded, but wrong lang
-            (not (string= (-> heap-sym-heap group-name) txt-name)) ;; loaded, but wrong group
-            )
-
-    ;; clear the heap!
-    (let ((v1-16 heap))
-      (set! (-> v1-16 current) (-> v1-16 base))
-      )
-    (b! #t cfg-14)
-    (label cfg-13)
-    (load-dbg "Strange error during text load.~%")
-    (set! v0-2 0)
-    (b! #t cfg-27)
-    (label cfg-14)
-
-    ;; call str-load to start loading the TXT file to the heap
-    (let ((s3-0 str-load))
-      (format (clear *temp-string*) "~D~S.TXT" lang txt-name)
-      ;; this branch is super weird.
-      (b! (not (s3-0
-                *temp-string*
-                -1
-                (logand -64 (&+ (-> heap current) 63))
-                (&- (-> heap top) (the-as uint (-> heap current)))
-                )
-               )
-          cfg-13
-          )
-      )
-
-    ;; loop to wait until loading is complete
-    (label cfg-16)
-    (let ((v1-20 (str-load-status (the-as (pointer int32) (& load-status)))))
-      (cond
-        ((= v1-20 'error)
-         (format 0 "Error loading text~%")
-         (return 0)
-         )
-        ((>= load-status (+ heap-free -300))
-         (format 0 "Game text heap overrun!~%")
-         (return 0)
-         )
-        ((= v1-20 'busy)
-         (begin
-          (nop!)
-          (nop!)
-          (nop!)
-          (nop!)
-          (nop!)
-          (nop!)
-          (goto cfg-16)
-          )
-         )
-        )
-      )
-
-    ;; loading is done. now we link.
-    (let ((s2-1 (logand -64 (&+ (-> heap current) 63))))
-      (flush-cache 0)
-      (let ((s3-1 link))
-        (format (clear *temp-string*) "~D~S.TXT" lang txt-name)
-        (set! (-> curr-text value)
-         (s3-1 s2-1 (-> *temp-string* data) load-status heap 0)
-         )
-        )
-      )
-
-    ;; linking error occured?
-    (if (<= (the-as int (-> curr-text value)) 0)
-        (set! (-> curr-text value) (the-as object #f))
-        )
-    )
-  (set! v0-2 0)
-  (label cfg-27)
-
-  v0-2
-  )
-
 (defun load-level-text-files ((arg0 int))
   "Load the text files needed for level idx.
    This function made more sense back when text files were split up, but in the end they put everything
    in a single text group and file."
 
   (when (or *level-text-file-load-flag* (>= arg0 0))
-   (load-game-text-info "common" '*common-text* *common-text-heap*)
-   (#when PC_PORT
-    (load-fallback-game-text-info "common" '*fallback-text* *fallback-text-heap*))
-    )
+    (load-game-text-info "common" '*common-text* *common-text-heap*)
+    (#when PC_PORT
+      (protect ((-> *pc-settings* text-language))
+        (set! (-> *pc-settings* text-language)  (pc-language english))
+        (load-game-text-info "common" '*fallback-text* *fallback-text-heap*))))
   (none)
   )
 
@@ -437,6 +330,7 @@
   (set! (-> *font-work* color-table idx color 2 a) alpha)
   (set! (-> *font-work* color-table idx color 3 a) alpha)
   (set! (-> *font-work* color-shadow w) alpha)
+  0
   (none)
   )
 
@@ -470,34 +364,35 @@
     (set! (-> font-ctxt height) orig-height)
     (set! (-> font-ctxt scale) orig-scale)
     )
+  0
   (none)
   )
 
 (defun print-game-text ((str string) (font-ctxt font-context) (no-draw symbol) (alpha int) (line-height int))
   "Print text. Not worth commenting until we get stack variables in lets, I think"
   (local-vars
-   (sv-112 float)
-   (sv-116 float)
-   (sv-120 float)
-   (sv-124 float)
-   (sv-128 float)
-   (sv-132 float)
-   (sv-136 float)
-   (sv-140 (pointer uint8))
-   (sv-144 float)
-   (sv-148 float)
-   (sv-152 float)
-   (sv-156 float)
-   (sv-160 float)
-   (sv-164 float)
-   (sv-168 int)
-   (sv-176 int)
-   (sv-184 int)
-   (sv-192 int)
-   (sv-200 int)
-   (sv-208 symbol)
-   (sv-212 symbol)
-   )
+    (sv-112 float)
+    (sv-116 float)
+    (sv-120 float)
+    (sv-124 float)
+    (sv-128 float)
+    (sv-132 float)
+    (sv-136 float)
+    (sv-140 (pointer uint8))
+    (sv-144 float)
+    (sv-148 float)
+    (sv-152 float)
+    (sv-156 float)
+    (sv-160 float)
+    (sv-164 float)
+    (sv-168 int)
+    (sv-176 int)
+    (sv-184 int)
+    (sv-192 int)
+    (sv-200 int)
+    (sv-208 symbol)
+    (sv-212 symbol)
+    )
   (let ((gp-0 (new
                 'stack
                 'font-context
@@ -689,10 +584,12 @@
 
 (defun disable-level-text-file-loading ()
   (set! *level-text-file-load-flag* #f)
+  0
   (none)
   )
 
 (defun enable-level-text-file-loading ()
   (set! *level-text-file-load-flag* #t)
+  0
   (none)
   )

@@ -3,18 +3,14 @@
 
 ;; definition of type jungle-elevator
 (deftype jungle-elevator (plat-button)
-  ((bottom-height       float  :offset-assert 240)
-   (teleport-if-below-y float  :offset-assert 244)
-   (teleport-if-above-y float  :offset-assert 248)
+  ((bottom-height        float)
+   (teleport-if-below-y  float)
+   (teleport-if-above-y  float)
    )
-  :heap-base #x90
-  :method-count-assert 33
-  :size-assert         #xfc
-  :flag-assert         #x21009000fc
   )
 
 ;; definition for method 3 of type jungle-elevator
-(defmethod inspect jungle-elevator ((this jungle-elevator))
+(defmethod inspect ((this jungle-elevator))
   (let ((t9-0 (method-of-type plat-button inspect)))
     (t9-0 this)
     )
@@ -25,7 +21,7 @@
   )
 
 ;; definition for method 26 of type jungle-elevator
-(defmethod can-activate? jungle-elevator ((this jungle-elevator))
+(defmethod can-activate? ((this jungle-elevator))
   (and ((method-of-type plat-button can-activate?) this) (task-complete? *game-info* (game-task jungle-tower)))
   )
 
@@ -55,13 +51,13 @@
     (let ((s5-0 (new 'stack-no-clear 'vector))
           (gp-0 (new 'stack-no-clear 'vector))
           )
-      (set! (-> s5-0 quad) (-> self root-override trans quad))
+      (set! (-> s5-0 quad) (-> self root trans quad))
       (let ((t9-1 (-> (find-parent-state) trans)))
         (if t9-1
             (t9-1)
             )
         )
-      (vector-! gp-0 (-> self root-override trans) s5-0)
+      (vector-! gp-0 (-> self root trans) s5-0)
       (when (< (-> self path-pos) 0.9)
         (move-by-vector! (-> *target* control) gp-0)
         (send-event *target* 'reset-height)
@@ -136,7 +132,7 @@
   )
 
 ;; definition for method 30 of type jungle-elevator
-(defmethod should-teleport? jungle-elevator ((this jungle-elevator))
+(defmethod should-teleport? ((this jungle-elevator))
   (let ((f0-0 (-> (camera-pos) y)))
     (case (-> this path-pos)
       ((0.0)
@@ -158,7 +154,7 @@
 
 ;; definition for method 29 of type jungle-elevator
 ;; INFO: Return type mismatch symbol vs none.
-(defmethod can-target-move? jungle-elevator ((this jungle-elevator))
+(defmethod can-target-move? ((this jungle-elevator))
   (let ((s5-0 (new 'stack-no-clear 'vector)))
     (eval-path-curve! (-> this path) s5-0 0.4 'interp)
     (set! (-> this teleport-if-above-y) (-> s5-0 y))

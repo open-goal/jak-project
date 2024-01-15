@@ -8,22 +8,18 @@
 ;; DECOMP BEGINS
 
 (deftype muse (nav-enemy)
-  ((root-override      collide-shape-moving         :offset        112)
-   (current-path-index float                        :offset-assert 400)
-   (prev-path-index    float                        :offset-assert 404)
-   (dest-path-index    float                        :offset-assert 408)
-   (player-path-index  float                        :offset-assert 412)
-   (max-path-index     float                        :offset-assert 416)
-   (sprint-distance    float                        :offset-assert 420)
-   (dest-point         vector               :inline :offset-assert 432)
-   (anim               spool-anim                   :offset-assert 448)
-   (victory-anim       spool-anim                   :offset-assert 452)
-   (old-target-pos     transformq           :inline :offset-assert 464)
+  ((root                collide-shape-moving :override)
+   (current-path-index  float)
+   (prev-path-index     float)
+   (dest-path-index     float)
+   (player-path-index   float)
+   (max-path-index      float)
+   (sprint-distance     float)
+   (dest-point          vector                :inline)
+   (anim                spool-anim)
+   (victory-anim        spool-anim)
+   (old-target-pos      transformq            :inline)
    )
-  :heap-base #x190
-  :method-count-assert 76
-  :size-assert         #x200
-  :flag-assert         #x4c01900200
   (:states
     muse-caught
     muse-idle
@@ -32,17 +28,14 @@
 
 
 (deftype point-on-path-segment-info (structure)
-  ((point               vector :inline   :offset-assert   0)
-   (segment             vector 2 :inline :offset-assert  16)
-   (dir                 vector :inline   :offset-assert  48)
-   (nearest-point       vector :inline   :offset-assert  64)
-   (segment-length      float            :offset-assert  80)
-   (distance-to-segment float            :offset-assert  84)
-   (parametric-index    float            :offset-assert  88)
+  ((point                vector  :inline)
+   (segment              vector  2 :inline)
+   (dir                  vector  :inline)
+   (nearest-point        vector  :inline)
+   (segment-length       float)
+   (distance-to-segment  float)
+   (parametric-index     float)
    )
-  :method-count-assert 9
-  :size-assert         #x5c
-  :flag-assert         #x90000005c
   )
 
 
@@ -139,7 +132,7 @@
   (none)
   )
 
-(defmethod nav-enemy-method-51 muse ((this muse))
+(defmethod nav-enemy-method-51 ((this muse))
   (dotimes (s5-0 2)
     (let ((v1-2 (rand-vu-int-range 3 (+ (-> this node-list length) -1))))
       (launch-particles
@@ -152,7 +145,7 @@
   (none)
   )
 
-(defmethod common-post muse ((this muse))
+(defmethod common-post ((this muse))
   (spool-push *art-control* (-> this anim name) 0 this -99.0)
   (nav-enemy-method-51 this)
   ((method-of-type nav-enemy common-post) this)
@@ -165,11 +158,11 @@
               :shadow muse-shadow-mg
               )
 
-(defmethod touch-handler muse ((this muse) (arg0 process) (arg1 event-message-block))
+(defmethod touch-handler ((this muse) (arg0 process) (arg1 event-message-block))
   (go muse-caught)
   )
 
-(defmethod attack-handler muse ((this muse) (arg0 process) (arg1 event-message-block))
+(defmethod attack-handler ((this muse) (arg0 process) (arg1 event-message-block))
   (go muse-caught)
   )
 
@@ -446,7 +439,7 @@ nav-enemy-default-event-handler
                                 )
         )
 
-(defmethod init-from-entity! muse ((this muse) (arg0 entity-actor))
+(defmethod init-from-entity! ((this muse) (arg0 entity-actor))
   (stack-size-set! (-> this main-thread) 512)
   (logior! (-> this mask) (process-mask enemy))
   (let ((s4-0 (new 'process 'collide-shape-moving this (collide-list-enum hit-by-player))))

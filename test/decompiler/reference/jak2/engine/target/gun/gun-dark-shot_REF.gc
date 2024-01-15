@@ -84,31 +84,27 @@
 
 ;; definition of type gun-dark-shot
 (deftype gun-dark-shot (projectile)
-  ((blast-radius  float            :offset-assert 472)
-   (core-position vector   :inline :offset-assert 480)
-   (core-velocity vector   :inline :offset-assert 496)
-   (spin-vector   vector   :inline :offset-assert 512)
-   (track-target  handle           :offset-assert 528)
-   (size-t        float            :offset-assert 536)
-   (result-array  handle   16      :offset-assert 544)
-   (charge-sound  sound-id         :offset-assert 672)
-   (fire-sound    sound-id         :offset-assert 676)
-   (trail-sound   sound-id         :offset-assert 680)
-   (explode-sound sound-id         :offset-assert 684)
-   (start-pilot?  basic            :offset-assert 688)
+  ((blast-radius   float)
+   (core-position  vector  :inline)
+   (core-velocity  vector  :inline)
+   (spin-vector    vector  :inline)
+   (track-target   handle)
+   (size-t         float)
+   (result-array   handle  16)
+   (charge-sound   sound-id)
+   (fire-sound     sound-id)
+   (trail-sound    sound-id)
+   (explode-sound  sound-id)
+   (start-pilot?   basic)
    )
-  :heap-base #x240
-  :method-count-assert 42
-  :size-assert         #x2b4
-  :flag-assert         #x2a024002b4
-  (:methods
-    (startup () _type_ :state 40)
-    (fizzle () _type_ :state 41)
+  (:state-methods
+    startup
+    fizzle
     )
   )
 
 ;; definition for method 3 of type gun-dark-shot
-(defmethod inspect gun-dark-shot ((this gun-dark-shot))
+(defmethod inspect ((this gun-dark-shot))
   (when (not this)
     (set! this this)
     (goto cfg-4)
@@ -165,7 +161,7 @@
 
 ;; definition for method 31 of type gun-dark-shot
 ;; WARN: Return type mismatch int vs none.
-(defmethod init-proj-settings! gun-dark-shot ((this gun-dark-shot))
+(defmethod init-proj-settings! ((this gun-dark-shot))
   "Init relevant settings for the [[projectile]] such as gravity, speed, timeout, etc"
   (set! (-> this attack-mode) 'eco-dark)
   (vector-normalize! (-> this root transv) (+ 225280.0 (* 225280.0 (-> this charge-level))))
@@ -186,7 +182,7 @@
   )
 
 ;; definition for method 25 of type gun-dark-shot
-(defmethod spawn-impact-particles gun-dark-shot ((this gun-dark-shot))
+(defmethod spawn-impact-particles ((this gun-dark-shot))
   "Spawns associated particles with the projectile if applicable"
   (cond
     ((and (and (-> this next-state) (= (-> this next-state name) 'startup))
@@ -211,7 +207,7 @@
 
 ;; definition for method 32 of type gun-dark-shot
 ;; WARN: Return type mismatch int vs none.
-(defmethod go-moving! gun-dark-shot ((this gun-dark-shot))
+(defmethod go-moving! ((this gun-dark-shot))
   (go (method-of-object this startup))
   0
   (none)

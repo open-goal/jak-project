@@ -477,39 +477,30 @@ Most functions take a boolean as their first argument. If the boolean is set to 
 (when *debug-segment*
 
 (deftype debug-line (structure)
-  ((flags  int32             :offset-assert   0)
-   (bucket bucket-id         :offset-assert   4)
-   (v1     vector    :inline :offset-assert  16)
-   (v2     vector    :inline :offset-assert  32)
-   (color  rgba              :offset-assert  48)
-   (mode   symbol            :offset-assert  52)
-   (color2 rgba              :offset-assert  56)
+  ((flags   int32)
+   (bucket  bucket-id)
+   (v1      vector  :inline)
+   (v2      vector  :inline)
+   (color   rgba)
+   (mode    symbol)
+   (color2  rgba)
    )
-  :method-count-assert 9
-  :size-assert         #x3c
-  :flag-assert         #x90000003c
   )
 
 (deftype debug-text-3d (structure)
-  ((flags  int32              :offset-assert   0)
-   (bucket bucket-id          :offset-assert   4)
-   (pos    vector     :inline :offset-assert  16)
-   (color  font-color         :offset-assert  32)
-   (offset vector2h   :inline :offset-assert  36)
-   (str    string             :offset-assert  40)
+  ((flags   int32)
+   (bucket  bucket-id)
+   (pos     vector    :inline)
+   (color   font-color)
+   (offset  vector2h  :inline)
+   (str     string)
    )
-  :method-count-assert 9
-  :size-assert         #x2c
-  :flag-assert         #x90000002c
   )
 
 (deftype debug-tracking-thang (basic)
-  ((length           int32  :offset-assert   4)
-   (allocated-length int32  :offset-assert   8)
+  ((length            int32)
+   (allocated-length  int32)
    )
-  :method-count-assert 9
-  :size-assert         #xc
-  :flag-assert         #x90000000c
   )
 
 
@@ -1588,27 +1579,43 @@ Most functions take a boolean as their first argument. If the boolean is set to 
                                  bucket
                                  )
       (set! (-> (new 'stack-no-clear 'vector) quad) (the-as uint128 0))
-      (let ((v1-7 arg4))
-        (draw-string-xy
-          "X"
-          buf
-          (+ x -5)
-          (+ y -4)
-          (cond
-            ((= v1-7 (mouse-buttons left))
-             (font-color red)
-             )
-            ((= v1-7 (mouse-buttons right))
-             (font-color yellow)
-             )
-            ((= v1-7 (mouse-buttons middle))
-             (font-color green)
-             )
-            (else
-              (font-color default)
+      (#cond
+        (PC_PORT
+          ;; just draw a + with lines at the position
+          (let ((color (case arg4
+                            (((mouse-buttons left)) (static-rgba #xff #x00 #x00 #x80))
+                            (((mouse-buttons right)) (static-rgba #xff #xff #x00 #x80))
+                            (((mouse-buttons middle)) (static-rgba #x00 #xff #x00 #x80))
+                            (else (static-rgba #xff #xff #xff #x80))
+                        )))
+            (draw-sprite2d-xy buf (- x 3) (- y 1) 5 1 color)
+            (draw-sprite2d-xy buf (- x 1) ( - y 3) 1 5 color)
+            ))
+        (#t
+          ;; print an X at the position (roughly)
+          (let ((v1-7 arg4))
+            (draw-string-xy
+              "X"
+              buf
+              (+ x -5)
+              (+ y -4)
+              (cond
+                ((= v1-7 (mouse-buttons left))
+                (font-color red)
+                )
+                ((= v1-7 (mouse-buttons right))
+                (font-color yellow)
+                )
+                ((= v1-7 (mouse-buttons middle))
+                (font-color green)
+                )
+                (else
+                  (font-color default)
+                  )
+                )
+              (font-flags shadow)
               )
             )
-          (font-flags shadow)
           )
         )
       )

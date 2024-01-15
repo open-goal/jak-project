@@ -12,244 +12,193 @@
 ;; DECOMP BEGINS
 
 (deftype gsf-vertex (structure)
-  ((data uint32    8       :offset-assert   0)
-   (byte uint8     32      :offset          0)
-   (quad uint128   2       :offset          0)
-   (vt   qword     :inline :offset          0)
-   (pos  vector3s  :inline :offset          0)
-   (tex  vector2uh :inline :offset         12)
-   (nrm  vector3s  :inline :offset         16)
-   (nc   qword     :inline :offset         16)
-   (clr  vector4ub :inline :offset         28)
-   (dtex vector2uh :inline :offset         16)
-   (dclr vector4ub :inline :offset         20)
+  ((data  uint32     8)
+   (byte  uint8      32      :overlay-at (-> data 0))
+   (quad  uint128    2       :overlay-at (-> data 0))
+   (vt    qword      :inline :overlay-at (-> data 0))
+   (pos   vector3s   :inline :overlay-at (-> data 0))
+   (tex   vector2uh  :inline :overlay-at (-> data 3))
+   (nrm   vector3s   :inline :overlay-at (-> data 4))
+   (nc    qword      :inline :overlay-at (-> data 4))
+   (clr   vector4ub  :inline :overlay-at (-> data 7))
+   (dtex  vector2uh  :inline :overlay-at (-> data 4))
+   (dclr  vector4ub  :inline :overlay-at (-> data 5))
    )
   :pack-me
-  :method-count-assert 9
-  :size-assert         #x20
-  :flag-assert         #x900000020
   )
 
 
 (deftype gsf-vertex-array (structure)
-  ((vtx gsf-vertex :dynamic :offset-assert   0)
+  ((vtx  gsf-vertex  :dynamic)
    )
-  :method-count-assert 9
-  :size-assert         #x0
-  :flag-assert         #x900000000
   )
 
 
 (deftype gsf-fx-vertex (structure)
-  ((clr vector4ub :inline :offset-assert   0)
-   (tex vector2uh :inline :offset-assert   4)
+  ((clr  vector4ub  :inline)
+   (tex  vector2uh  :inline)
    )
-  :method-count-assert 9
-  :size-assert         #x8
-  :flag-assert         #x900000008
   )
 
 
 (deftype gsf-fx-vertex-array (structure)
-  ((data gsf-fx-vertex :dynamic :offset-assert   0)
+  ((data  gsf-fx-vertex  :dynamic)
    )
-  :method-count-assert 9
-  :size-assert         #x0
-  :flag-assert         #x900000000
   )
 
 
 (deftype gsf-header (structure)
-  ((num-strips   uint8     :offset-assert   0)
-   (num-new-vtxs uint8     :offset-assert   1)
-   (num-dps      uint16    :offset-assert   2)
-   (num-vtxs     uint16    :offset-assert   4)
-   (strip-table  uint8  10 :offset-assert   6)
+  ((num-strips    uint8)
+   (num-new-vtxs  uint8)
+   (num-dps       uint16)
+   (num-vtxs      uint16)
+   (strip-table   uint8  10)
    )
-  :method-count-assert 9
-  :size-assert         #x10
-  :flag-assert         #x900000010
   )
 
 
 (deftype gsf-ik (structure)
-  ((index   uint8  :offset-assert   0)
-   (no-kick uint8  :offset-assert   1)
+  ((index    uint8)
+   (no-kick  uint8)
    )
-  :method-count-assert 9
-  :size-assert         #x2
-  :flag-assert         #x900000002
   )
 
 
 (deftype gsf-info (structure)
-  ((ptr-iks   uint32  :offset-assert   0)
-   (ptr-verts uint32  :offset-assert   4)
-   (ptr-fx    uint32  :offset-assert   8)
-   (dummy2    uint32  :offset-assert  12)
+  ((ptr-iks    uint32)
+   (ptr-verts  uint32)
+   (ptr-fx     uint32)
+   (dummy2     uint32)
    )
-  :method-count-assert 9
-  :size-assert         #x10
-  :flag-assert         #x900000010
   )
 
 
 (deftype gsf-buffer (structure)
-  ((data      uint8      8192     :offset-assert   0)
-   (info      gsf-info   :inline  :offset          0)
-   (header    gsf-header :inline  :offset         16)
-   (work-area uint8      :dynamic :offset         32)
+  ((data       uint8       8192)
+   (info       gsf-info    :inline  :overlay-at (-> data 0))
+   (header     gsf-header  :inline  :overlay-at (-> data 16))
+   (work-area  uint8       :dynamic :overlay-at (-> data 32))
    )
-  :method-count-assert 9
-  :size-assert         #x2000
-  :flag-assert         #x900002000
   )
 
 
 (deftype generic-frag (structure)
-  ((start-pos uint16  :offset-assert   0)
-   (end-pos   uint16  :offset-assert   2)
+  ((start-pos  uint16)
+   (end-pos    uint16)
    )
-  :method-count-assert 9
-  :size-assert         #x4
-  :flag-assert         #x900000004
   )
 
 
 (deftype generic-strip (structure)
-  ((pos uint16  :offset-assert   0)
-   (len uint16  :offset-assert   2)
+  ((pos  uint16)
+   (len  uint16)
    )
-  :method-count-assert 9
-  :size-assert         #x4
-  :flag-assert         #x900000004
   )
 
 
 (deftype generic-envmap-saves (structure)
-  ((index-mask vector4w :inline :offset-assert   0)
-   (verts      uint128  12      :offset-assert  16)
-   (kicks      uint128  4       :offset-assert 208)
+  ((index-mask  vector4w  :inline)
+   (verts       uint128   12)
+   (kicks       uint128   4)
    )
-  :method-count-assert 9
-  :size-assert         #x110
-  :flag-assert         #x900000110
   )
 
 
 (deftype generic-interp-job (structure)
-  ((job-type uint16  :offset-assert   0)
-   (num      uint16  :offset-assert   2)
-   (first    uint16  :offset-assert   4)
-   (pad      uint16  :offset-assert   6)
-   (ptr-data uint32  :offset-assert   8)
-   (morph-z  uint16  :offset-assert  12)
-   (morph-w  uint16  :offset-assert  14)
+  ((job-type  uint16)
+   (num       uint16)
+   (first     uint16)
+   (pad       uint16)
+   (ptr-data  uint32)
+   (morph-z   uint16)
+   (morph-w   uint16)
    )
   :pack-me
-  :method-count-assert 9
-  :size-assert         #x10
-  :flag-assert         #x900000010
   )
 
 
 (deftype generic-saves (structure)
-  ((ptr-dma           uint32                       :offset-assert   0)
-   (ptr-vtxs          uint32                       :offset-assert   4)
-   (ptr-clrs          uint32                       :offset-assert   8)
-   (ptr-texs          uint32                       :offset-assert  12)
-   (ptr-env-clrs      uint32                       :offset-assert  16)
-   (ptr-env-texs      uint32                       :offset-assert  20)
-   (cur-outbuf        uint32                       :offset-assert  24)
-   (ptr-fx-buf        uint32                       :offset-assert  28)
-   (xor-outbufs       uint32                       :offset-assert  32)
-   (num-dps           uint32                       :offset-assert  36)
-   (qwc               uint32                       :offset-assert  40)
-   (gsf-buf           gsf-buffer                   :offset-assert  44)
-   (ptr-shaders       uint32                       :offset-assert  48)
-   (ptr-env-shader    uint32                       :offset-assert  52)
-   (is-envmap         uint16                       :offset-assert  56)
-   (is-translucent    uint16                       :offset-assert  58)
-   (basep             uint32                       :offset-assert  60)
-   (ptr-interp-job    generic-interp-job           :offset-assert  64)
-   (gifbuf-adr        uint32                       :offset-assert  68)
-   (inbuf-adr         uint32                       :offset-assert  72)
-   (fade-val          uint32                       :offset-assert  76)
-   (time-of-day-color rgba                         :offset-assert  80)
-   (to-vu0-waits      uint32                       :offset-assert  84)
-   (to-spr-waits      uint32                       :offset-assert  88)
-   (from-spr-waits    uint32                       :offset-assert  92)
-   (envmap            generic-envmap-saves :inline :offset-assert  96)
+  ((ptr-dma            uint32)
+   (ptr-vtxs           uint32)
+   (ptr-clrs           uint32)
+   (ptr-texs           uint32)
+   (ptr-env-clrs       uint32)
+   (ptr-env-texs       uint32)
+   (cur-outbuf         uint32)
+   (ptr-fx-buf         uint32)
+   (xor-outbufs        uint32)
+   (num-dps            uint32)
+   (qwc                uint32)
+   (gsf-buf            gsf-buffer)
+   (ptr-shaders        uint32)
+   (ptr-env-shader     uint32)
+   (is-envmap          uint16)
+   (is-translucent     uint16)
+   (basep              uint32)
+   (ptr-interp-job     generic-interp-job)
+   (gifbuf-adr         uint32)
+   (inbuf-adr          uint32)
+   (fade-val           uint32)
+   (time-of-day-color  rgba)
+   (to-vu0-waits       uint32)
+   (to-spr-waits       uint32)
+   (from-spr-waits     uint32)
+   (envmap             generic-envmap-saves  :inline)
    )
-  :method-count-assert 9
-  :size-assert         #x170
-  :flag-assert         #x900000170
   )
 
 
 (deftype generic-gif-tag (structure)
-  ((data       uint32          4       :offset-assert   0)
-   (qword      qword           :inline :offset          0)
-   (fan-prim   gif-tag-prim            :offset          0)
-   (str-prim   gif-tag-prim            :offset          4)
-   (regs       gif-tag-regs-32         :offset          8)
-   (num-strips uint32                  :offset         12)
+  ((data        uint32           4)
+   (qword       qword            :inline :overlay-at (-> data 0))
+   (fan-prim    gif-tag-prim             :overlay-at (-> data 0))
+   (str-prim    gif-tag-prim             :overlay-at (-> data 1))
+   (regs        gif-tag-regs-32          :overlay-at (-> data 2))
+   (num-strips  uint32                   :overlay-at (-> data 3))
    )
-  :method-count-assert 9
-  :size-assert         #x10
-  :flag-assert         #x900000010
   )
 
 
 (deftype generic-envmap-consts (structure)
-  ((consts vector          :inline :offset-assert   0)
-   (strgif generic-gif-tag :inline :offset-assert  16)
-   (colors vector4w        :inline :offset-assert  32)
-   (shader adgif-shader    :inline :offset-assert  48)
+  ((consts  vector           :inline)
+   (strgif  generic-gif-tag  :inline)
+   (colors  vector4w         :inline)
+   (shader  adgif-shader     :inline)
    )
-  :method-count-assert 9
-  :size-assert         #x80
-  :flag-assert         #x900000080
   )
 
 
 (deftype generic-consts (structure)
-  ((dma-header        dma-packet            :inline :offset-assert   0)
-   (vif-header        uint32                4       :offset-assert  16)
-   (dma-ref-vtxs      dma-packet            :inline :offset-assert  32)
-   (dma-cnt-call      dma-packet            :inline :offset-assert  48)
-   (matrix            matrix                :inline :offset-assert  64)
-   (base-strgif       generic-gif-tag       :inline :offset-assert 128)
-   (alpha-opaque      gs-adcmd              :inline :offset-assert 144)
-   (alpha-translucent gs-adcmd              :inline :offset-assert 160)
-   (ztest-normal      gs-adcmd              :inline :offset-assert 176)
-   (ztest-opaque      gs-adcmd              :inline :offset-assert 192)
-   (adcmd-offsets     uint8                 16      :offset-assert 208)
-   (stcycle-tag       uint32                        :offset-assert 224)
-   (unpack-vtx-tag    uint32                        :offset-assert 228)
-   (unpack-clr-tag    uint32                        :offset-assert 232)
-   (unpack-tex-tag    uint32                        :offset-assert 236)
-   (mscal-tag         uint32                        :offset-assert 240)
-   (flush-tag         uint32                        :offset-assert 244)
-   (reset-cycle-tag   uint32                        :offset-assert 248)
-   (dummy0            uint32                        :offset-assert 252)
-   (dma-tag-cnt       uint64                        :offset-assert 256)
-   (envmap            generic-envmap-consts :inline :offset-assert 272)
-   (light-consts      vector                :inline :offset-assert 400)
-   (texture-offset    uint16                8       :offset-assert 416)
+  ((dma-header         dma-packet             :inline)
+   (vif-header         uint32                 4)
+   (dma-ref-vtxs       dma-packet             :inline)
+   (dma-cnt-call       dma-packet             :inline)
+   (matrix             matrix                 :inline)
+   (base-strgif        generic-gif-tag        :inline)
+   (alpha-opaque       gs-adcmd               :inline)
+   (alpha-translucent  gs-adcmd               :inline)
+   (ztest-normal       gs-adcmd               :inline)
+   (ztest-opaque       gs-adcmd               :inline)
+   (adcmd-offsets      uint8                  16)
+   (stcycle-tag        uint32)
+   (unpack-vtx-tag     uint32)
+   (unpack-clr-tag     uint32)
+   (unpack-tex-tag     uint32)
+   (mscal-tag          uint32)
+   (flush-tag          uint32)
+   (reset-cycle-tag    uint32)
+   (dummy0             uint32)
+   (dma-tag-cnt        uint64)
+   (envmap             generic-envmap-consts  :inline)
+   (light-consts       vector                 :inline)
+   (texture-offset     uint16                 8)
    )
-  :method-count-assert 9
-  :size-assert         #x1b0
-  :flag-assert         #x9000001b0
   )
 
 
 (deftype generic-storage (structure)
-  ((data uint128 16 :offset-assert   0)
+  ((data  uint128  16)
    )
-  :method-count-assert 9
-  :size-assert         #x100
-  :flag-assert         #x900000100
   )
 
 

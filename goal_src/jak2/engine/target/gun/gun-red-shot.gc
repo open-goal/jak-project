@@ -11,31 +11,29 @@
 ;; DECOMP BEGINS
 
 (deftype gun-red-shot (process-drawable)
-  ((root        collide-shape-moving            :override)
-   (probe-count int32                           :offset-assert 200)
-   (probe-mask  uint32                          :offset-assert 204)
-   (actor-count int32                           :offset-assert 208)
-   (attack-id   uint32                          :offset-assert 212)
-   (start-pos   vector               :inline    :offset-assert 224)
-   (start-dir   vector               :inline    :offset-assert 240)
-   (start-rot   vector               :inline    :offset-assert 256)
-   (probe-dir   vector               19 :inline :offset-assert 272)
+  ((root         collide-shape-moving :override)
+   (probe-count  int32)
+   (probe-mask   uint32)
+   (actor-count  int32)
+   (attack-id    uint32)
+   (start-pos    vector                :inline)
+   (start-dir    vector                :inline)
+   (start-rot    vector                :inline)
+   (probe-dir    vector                19 :inline)
    )
-  :heap-base #x1c0
-  :method-count-assert 30
-  :size-assert         #x240
-  :flag-assert         #x1e01c00240
+  (:state-methods
+    blocked
+    debug-idle
+    idle
+    )
   (:methods
-    (blocked () _type_ :state 20)
-    (debug-idle () _type_ :state 21)
-    (idle () _type_ :state 22)
-    (init-probes! (_type_ collide-shape) none 23)
-    (gun-red-shot-method-24 (_type_) symbol 24)
-    (noop (_type_) none 25)
-    (gun-red-shot-method-26 (_type_) none 26)
-    (gun-red-shot-method-27 (_type_) none 27)
-    (gun-red-shot-method-28 (_type_ vector) sound-id 28)
-    (fire! (_type_ process-drawable int) object :behavior gun-red-shot 29)
+    (init-probes! (_type_ collide-shape) none)
+    (gun-red-shot-method-24 (_type_) symbol)
+    (noop (_type_) none)
+    (gun-red-shot-method-26 (_type_) none)
+    (gun-red-shot-method-27 (_type_) none)
+    (gun-red-shot-method-28 (_type_ vector) sound-id)
+    (fire! (_type_ process-drawable int) object :behavior gun-red-shot)
     )
   )
 
@@ -131,7 +129,7 @@
     )
   )
 
-(defmethod fire! gun-red-shot ((this gun-red-shot) (arg0 process-drawable) (arg1 int))
+(defmethod fire! ((this gun-red-shot) (arg0 process-drawable) (arg1 int))
   (let* ((s5-0 arg0)
          (v1-0 (if (type? s5-0 process-drawable)
                    s5-0
@@ -180,13 +178,13 @@
     )
   )
 
-(defmethod noop gun-red-shot ((this gun-red-shot))
+(defmethod noop ((this gun-red-shot))
   "Does nothing"
   0
   (none)
   )
 
-(defmethod init-probes! gun-red-shot ((this gun-red-shot) (arg0 collide-shape))
+(defmethod init-probes! ((this gun-red-shot) (arg0 collide-shape))
   "Create all 19 probe vectors"
   (let ((s5-0 (-> this probe-count)))
     (when (< s5-0 19)
@@ -229,7 +227,7 @@
   (none)
   )
 
-(defmethod gun-red-shot-method-26 gun-red-shot ((this gun-red-shot))
+(defmethod gun-red-shot-method-26 ((this gun-red-shot))
   (local-vars (a2-5 float) (a2-12 float))
   (rlet ((vf1 :class vf)
          (vf2 :class vf)
@@ -342,7 +340,7 @@
     )
   )
 
-(defmethod gun-red-shot-method-27 gun-red-shot ((this gun-red-shot))
+(defmethod gun-red-shot-method-27 ((this gun-red-shot))
   (gun-red-shot-method-26 this)
   (let ((s5-0 (-> this probe-count)))
     (while (< s5-0 19)
@@ -362,7 +360,7 @@
   (none)
   )
 
-(defmethod gun-red-shot-method-28 gun-red-shot ((this gun-red-shot) (arg0 vector))
+(defmethod gun-red-shot-method-28 ((this gun-red-shot) (arg0 vector))
   (local-vars (at-0 int))
   (with-pp
     (rlet ((vf0 :class vf)
@@ -405,7 +403,7 @@
     )
   )
 
-(defmethod gun-red-shot-method-24 gun-red-shot ((this gun-red-shot))
+(defmethod gun-red-shot-method-24 ((this gun-red-shot))
   (let ((v1-0 (-> this root))
         (t1-0 (new 'stack-no-clear 'collide-query))
         )

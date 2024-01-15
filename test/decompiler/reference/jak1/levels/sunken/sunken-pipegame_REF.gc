@@ -4,14 +4,10 @@
 ;; definition of type sunken-pipegame-button
 (deftype sunken-pipegame-button (basebutton)
   ()
-  :heap-base #x90
-  :method-count-assert 32
-  :size-assert         #x100
-  :flag-assert         #x2000900100
   )
 
 ;; definition for method 3 of type sunken-pipegame-button
-(defmethod inspect sunken-pipegame-button ((this sunken-pipegame-button))
+(defmethod inspect ((this sunken-pipegame-button))
   (let ((t9-0 (method-of-type basebutton inspect)))
     (t9-0 this)
     )
@@ -20,26 +16,23 @@
 
 ;; definition of type sunken-pipegame-prize
 (deftype sunken-pipegame-prize (structure)
-  ((puzzle-delay            time-frame                       :offset-assert   0)
-   (pipe-travel-time-to-far time-frame                       :offset-assert   8)
-   (pipe-travel-time-to-jar time-frame                       :offset-assert  16)
-   (actor-handle            handle                           :offset-assert  24)
-   (jar-pos                 vector                   :inline :offset-assert  32)
-   (far-pos                 vector                   :inline :offset-assert  48)
-   (sucked-up-jar-part-pos  vector                   :inline :offset-assert  64)
-   (sucked-up-far-part-pos  vector                   :inline :offset-assert  80)
-   (blown-out-jar-part-pos  vector                   :inline :offset-assert  96)
-   (blown-out-far-part-pos  vector                   :inline :offset-assert 112)
-   (sucked-up-part          sparticle-launch-control         :offset-assert 128)
-   (blown-out-part          sparticle-launch-control         :offset-assert 132)
+  ((puzzle-delay             time-frame)
+   (pipe-travel-time-to-far  time-frame)
+   (pipe-travel-time-to-jar  time-frame)
+   (actor-handle             handle)
+   (jar-pos                  vector  :inline)
+   (far-pos                  vector  :inline)
+   (sucked-up-jar-part-pos   vector  :inline)
+   (sucked-up-far-part-pos   vector  :inline)
+   (blown-out-jar-part-pos   vector  :inline)
+   (blown-out-far-part-pos   vector  :inline)
+   (sucked-up-part           sparticle-launch-control)
+   (blown-out-part           sparticle-launch-control)
    )
-  :method-count-assert 9
-  :size-assert         #x88
-  :flag-assert         #x900000088
   )
 
 ;; definition for method 3 of type sunken-pipegame-prize
-(defmethod inspect sunken-pipegame-prize ((this sunken-pipegame-prize))
+(defmethod inspect ((this sunken-pipegame-prize))
   (format #t "[~8x] ~A~%" this 'sunken-pipegame-prize)
   (format #t "~Tpuzzle-delay: ~D~%" (-> this puzzle-delay))
   (format #t "~Tpipe-travel-time-to-far: ~D~%" (-> this pipe-travel-time-to-far))
@@ -58,21 +51,17 @@
 
 ;; definition of type sunken-pipegame
 (deftype sunken-pipegame (process-drawable)
-  ((abort-audio-if-beaten? symbol                                     :offset-assert 176)
-   (challenges-mask        uint32                                     :offset-assert 180)
-   (challenge              int32                                      :offset-assert 184)
-   (ticker                 ticky                            :inline   :offset-assert 192)
-   (button                 (pointer sunken-pipegame-button) 3         :offset-assert 224)
-   (prize                  sunken-pipegame-prize            3 :inline :offset-assert 240)
+  ((abort-audio-if-beaten?  symbol)
+   (challenges-mask         uint32)
+   (challenge               int32)
+   (ticker                  ticky                             :inline)
+   (button                  (pointer sunken-pipegame-button)  3)
+   (prize                   sunken-pipegame-prize             3 :inline)
    )
-  :heap-base #x230
-  :method-count-assert 23
-  :size-assert         #x2a0
-  :flag-assert         #x17023002a0
   (:methods
-    (sunken-pipegame-method-20 (_type_) uint 20)
-    (sunken-pipegame-method-21 (_type_ symbol) symbol 21)
-    (sunken-pipegame-method-22 (_type_ symbol) none 22)
+    (sunken-pipegame-method-20 (_type_) uint)
+    (sunken-pipegame-method-21 (_type_ symbol) symbol)
+    (sunken-pipegame-method-22 (_type_ symbol) none)
     )
   (:states
     sunken-pipegame-beat-challenge
@@ -84,7 +73,7 @@
   )
 
 ;; definition for method 3 of type sunken-pipegame
-(defmethod inspect sunken-pipegame ((this sunken-pipegame))
+(defmethod inspect ((this sunken-pipegame))
   (let ((t9-0 (method-of-type process-drawable inspect)))
     (t9-0 this)
     )
@@ -554,7 +543,7 @@
 
 ;; definition for method 20 of type sunken-pipegame
 ;; INFO: Return type mismatch int vs uint.
-(defmethod sunken-pipegame-method-20 sunken-pipegame ((this sunken-pipegame))
+(defmethod sunken-pipegame-method-20 ((this sunken-pipegame))
   (let ((gp-0 0))
     (if (task-complete? *game-info* (game-task sunken-pipe))
         (+! gp-0 1)
@@ -905,7 +894,7 @@
   )
 
 ;; definition for method 22 of type sunken-pipegame
-(defmethod sunken-pipegame-method-22 sunken-pipegame ((this sunken-pipegame) (arg0 symbol))
+(defmethod sunken-pipegame-method-22 ((this sunken-pipegame) (arg0 symbol))
   (let* ((v1-0 (-> this challenge))
          (a2-0 v1-0)
          )
@@ -914,8 +903,8 @@
        (let ((v1-5 (handle->process (-> this prize v1-0 actor-handle))))
          (when v1-5
            (if arg0
-               (restore-collide-with-as (-> (the-as collectable v1-5) root-override))
-               (clear-collide-with-as (-> (the-as collectable v1-5) root-override))
+               (restore-collide-with-as (-> (the-as collectable v1-5) root))
+               (clear-collide-with-as (-> (the-as collectable v1-5) root))
                )
            )
          )
@@ -924,8 +913,8 @@
        (let ((v1-13 (handle->process (-> this prize v1-0 actor-handle))))
          (when v1-13
            (if arg0
-               (restore-collide-with-as (-> (the-as collectable v1-13) root-override))
-               (clear-collide-with-as (-> (the-as collectable v1-13) root-override))
+               (restore-collide-with-as (-> (the-as collectable v1-13) root))
+               (clear-collide-with-as (-> (the-as collectable v1-13) root))
                )
            )
          )
@@ -936,7 +925,7 @@
   )
 
 ;; definition for method 21 of type sunken-pipegame
-(defmethod sunken-pipegame-method-21 sunken-pipegame ((this sunken-pipegame) (arg0 symbol))
+(defmethod sunken-pipegame-method-21 ((this sunken-pipegame) (arg0 symbol))
   (if arg0
       (logior! (-> this mask) (process-mask actor-pause))
       (logclear! (-> this mask) (process-mask actor-pause))
@@ -954,7 +943,7 @@
   )
 
 ;; definition for method 10 of type sunken-pipegame
-(defmethod deactivate sunken-pipegame ((this sunken-pipegame))
+(defmethod deactivate ((this sunken-pipegame))
   (dotimes (s5-0 3)
     (let ((s4-0 (-> this prize s5-0)))
       (if (nonzero? (-> s4-0 sucked-up-part))
@@ -970,7 +959,7 @@
   )
 
 ;; definition for method 7 of type sunken-pipegame
-(defmethod relocate sunken-pipegame ((this sunken-pipegame) (arg0 int))
+(defmethod relocate ((this sunken-pipegame) (arg0 int))
   (dotimes (v1-0 3)
     (let ((a0-4 (-> this prize v1-0)))
       (when (nonzero? (-> a0-4 sucked-up-part))
@@ -991,7 +980,7 @@
 ;; definition for method 11 of type sunken-pipegame
 ;; INFO: Used lq/sq
 ;; INFO: Return type mismatch object vs none.
-(defmethod init-from-entity! sunken-pipegame ((this sunken-pipegame) (arg0 entity-actor))
+(defmethod init-from-entity! ((this sunken-pipegame) (arg0 entity-actor))
   (set! (-> this abort-audio-if-beaten?) #f)
   (stack-size-set! (-> this main-thread) 512)
   (set! (-> this challenge) -1)
@@ -1039,7 +1028,7 @@
                      )
                (let ((a1-10 (handle->process (-> s0-0 actor-handle))))
                  (if a1-10
-                     (clear-collide-with-as (-> (the-as collectable a1-10) root-override))
+                     (clear-collide-with-as (-> (the-as collectable a1-10) root))
                      )
                  )
                )
@@ -1063,7 +1052,7 @@
                (let ((s0-1 (handle->process (-> s0-0 actor-handle))))
                  (when s0-1
                    (send-event s0-1 'movie-pos 1)
-                   (clear-collide-with-as (-> (the-as collectable s0-1) root-override))
+                   (clear-collide-with-as (-> (the-as collectable s0-1) root))
                    )
                  )
                )
@@ -1087,7 +1076,7 @@
                (let ((s0-2 (handle->process (-> s0-0 actor-handle))))
                  (when s0-2
                    (send-event s0-2 'movie-pos 2)
-                   (clear-collide-with-as (-> (the-as collectable s0-2) root-override))
+                   (clear-collide-with-as (-> (the-as collectable s0-2) root))
                    )
                  )
                )

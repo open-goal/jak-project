@@ -1,4 +1,4 @@
-name: GitHub Actions CI
+name: CI
 
 on:
   pull_request:
@@ -8,21 +8,34 @@ on:
 
 jobs:
   cmake-build-and-tests:
-    name: CMake build + tests (${{ matrix.image_name }}, ${{ matrix.no_libc }})
+    name: >-
+      CMake build + tests (${{ matrix.image_name }} ${{ matrix.cmake_flags }})
     runs-on: ${{ matrix.image_name }}
 
     strategy:
+      fail-fast: false
       matrix:
-        image_name: [macOS-latest, windows-2019, ubuntu-20.04]
-        no_libc: ["", -DZYAN_NO_LIBC=ON]
         include:
-        - image_name: ubuntu-20.04
-          no_libc: -DCMAKE_BUILD_TYPE=Release
-          dev_mode: -DZYAN_DEV_MODE=ON
-        - image_name: ubuntu-20.04
-          no_libc: ""
-          dev_mode: ""
-          minimal_mode: "-DZYDIS_MINIMAL_MODE=ON -DZYDIS_FEATURE_ENCODER=OFF"
+          # Do a regular and a no-libc build for each platform.
+          - image_name: macOS-latest
+          - image_name: macOS-latest
+            cmake_flags: -DZYAN_NO_LIBC=ON
+            skip_tests: yes
+          - image_name: windows-2022
+          - image_name: windows-2022
+            cmake_flags: -DZYAN_NO_LIBC=ON
+            skip_tests: yes
+          - image_name: ubuntu-22.04
+          - image_name: ubuntu-22.04
+            cmake_flags: -DZYAN_NO_LIBC=ON
+            skip_tests: yes
+
+          # Do a few more specialized configurations.
+          - image_name: ubuntu-22.04
+            cmake_flags: -DZYDIS_MINIMAL_MODE=ON -DZYDIS_FEATURE_ENCODER=OFF
+            skip_tests: yes
+          - image_name: windows-2022
+            cmake_flags: -TClangCL
 
     steps:
       - name: Checkout
@@ -30,38 +43,26 @@ jobs:
         with: { submodules: recursive }
       - name: Configuring
         run: |
-          mkdir build
-          cd build
-          cmake ${{ matrix.dev_mode }} ${{ matrix.no_libc }} ${{ matrix.minimal_mode }} ..
+          cmake -B build -DZYDIS_BUILD_TESTS=ON -DZYAN_DEV_MODE=ON ${{ matrix.cmake_flags }} .
       - name: Building
         run: |
-          cmake --build build --config Release
-      - name: Running regression tests (decoder)
+          cmake --build build --config Release -j2
+      - name: Running tests
+        if: "!matrix.skip_tests"
         run: |
-          cd tests
-          python3 regression.py test ../build/ZydisInfo
-        if: "!matrix.no_libc && matrix.image_name != 'windows-2019' && !matrix.minimal_mode"
-      - name: Running regression tests (encoder)
-        run: |
-          cd tests
-          python3 regression_encoder.py ../build/ZydisFuzzReEncoding ../build/ZydisFuzzEncoder
-        if: "!matrix.no_libc && matrix.image_name != 'windows-2019' && !matrix.minimal_mode"
-      - name: Running regression tests
-        run: |
-          cd tests
-          python regression.py test ..\\build\\Release\\ZydisInfo.exe
-        if: "!matrix.no_libc && matrix.image_name == 'windows-2019' && !matrix.minimal_mode"
+          cd build
+          ctest -C Release --output-on-failure
 
   msbuild-build:
-    name: MSBuild build (windows-2019)
-    runs-on: windows-2019
+    name: MSBuild build (windows-2022)
+    runs-on: windows-2022
     steps:
       - name: Checkout
         uses: actions/checkout@v2
         with: { submodules: recursive }
       - name: Add msbuild to PATH
-        uses: microsoft/setup-msbuild@v1.0.3
-        with: { vs-version: '[16.0,17)' }
+        uses: microsoft/setup-msbuild@v1.1.3
+        with: { vs-version: '[17,]' }
       - name: Build user-mode
         run: |
           cd msvc
@@ -72,8 +73,8 @@ jobs:
           msbuild.exe Zydis.sln /m /t:Rebuild '/p:Configuration="Release Kernel";Platform=X64'
 
   amalgamated:
-    name: Amalgamated build (Ubuntu 20.04)
-    runs-on: ubuntu-20.04
+    name: Amalgamated build (Ubuntu 22.04)
+    runs-on: ubuntu-22.04
     steps:
       - name: Checkout
         uses: actions/checkout@v2
@@ -87,7 +88,7 @@ jobs:
           gcc -shared -I. -fPIC -olibzydis.so Zydis.c
 
   fuzzing:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     strategy:
       fail-fast: false
       matrix:

@@ -3,17 +3,13 @@
 
 ;; definition of type launcherdoor
 (deftype launcherdoor (process-drawable)
-  ((root-override              collide-shape  :offset        112)
-   (notify-player-passed-thru? symbol         :offset-assert 176)
-   (thresh-y                   float          :offset-assert 180)
-   (open-speed                 float          :offset-assert 184)
-   (close-speed                float          :offset-assert 188)
-   (load-mode                  symbol         :offset-assert 192)
+  ((root                        collide-shape :override)
+   (notify-player-passed-thru?  symbol)
+   (thresh-y                    float)
+   (open-speed                  float)
+   (close-speed                 float)
+   (load-mode                   symbol)
    )
-  :heap-base #x60
-  :method-count-assert 20
-  :size-assert         #xc4
-  :flag-assert         #x14006000c4
   (:states
     (launcherdoor-closed symbol)
     (launcherdoor-open symbol)
@@ -21,7 +17,7 @@
   )
 
 ;; definition for method 3 of type launcherdoor
-(defmethod inspect launcherdoor ((this launcherdoor))
+(defmethod inspect ((this launcherdoor))
   (let ((t9-0 (method-of-type process-drawable inspect)))
     (t9-0 this)
     )
@@ -58,7 +54,7 @@
          )
         )
       )
-    (restore-collide-with-as (-> self root-override))
+    (restore-collide-with-as (-> self root))
     (ja-no-eval :num! (seek! 0.0))
     (when arg0
       (ja :num-func num-func-identity :frame-num 0.0)
@@ -114,7 +110,7 @@
         (sound-play "ldoor-open")
         )
     (set! (-> self draw force-lod) 0)
-    (clear-collide-with-as (-> self root-override))
+    (clear-collide-with-as (-> self root))
     (ja-no-eval :num! (seek!))
     (if arg0
         (ja :num-func num-func-identity :frame-num max)
@@ -122,7 +118,7 @@
     (loop
       (when (or (not *target*)
                 (!= (-> *target* control unknown-surface00 name) 'launch-jump)
-                (< (+ 4096.0 (-> self root-override trans y)) (-> *target* control trans y))
+                (< (+ 4096.0 (-> self root trans y)) (-> *target* control trans y))
                 )
         (when (and *target* (< (-> self thresh-y) (-> *target* control trans y)))
           (let ((a1-3 (res-lump-struct (-> self entity) 'continue-name structure)))
@@ -145,7 +141,7 @@
 
 ;; definition for method 11 of type launcherdoor
 ;; INFO: Return type mismatch object vs none.
-(defmethod init-from-entity! launcherdoor ((this launcherdoor) (arg0 entity-actor))
+(defmethod init-from-entity! ((this launcherdoor) (arg0 entity-actor))
   (set! (-> this notify-player-passed-thru?) #f)
   (set! (-> this open-speed) 4.0)
   (set! (-> this close-speed) 2.0)
@@ -161,7 +157,7 @@
       )
     (set! (-> s4-0 nav-radius) (* 0.75 (-> s4-0 root-prim local-sphere w)))
     (backup-collide-with-as s4-0)
-    (set! (-> this root-override) s4-0)
+    (set! (-> this root) s4-0)
     )
   (process-drawable-from-entity! this arg0)
   (cond
@@ -211,7 +207,7 @@
                                 name
                                 )
         )
-  (set! (-> this thresh-y) (+ -81920.0 (-> this root-override trans y)))
+  (set! (-> this thresh-y) (+ -81920.0 (-> this root trans y)))
   (if (and *target* (= (-> *target* control unknown-surface00 name) 'launch-jump))
       (go launcherdoor-open #t)
       (go launcherdoor-closed #t)

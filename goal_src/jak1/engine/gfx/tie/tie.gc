@@ -27,7 +27,7 @@
 
 ;; something is going wrong mem-usage (believed fixed)
 
-(defmethod login tie-fragment ((this tie-fragment))
+(defmethod login ((this tie-fragment))
   "Initialize the shaders for a tie-fragment"
   
   ;; the gif data is just adgif shaders, each are 5 qw's
@@ -53,12 +53,9 @@
   this
   )
 
-(defmethod asize-of drawable-inline-array-instance-tie ((this drawable-inline-array-instance-tie))
+(defmethod asize-of ((this drawable-inline-array-instance-tie))
   "Compute the size in memory of an array of instances."
-  (the-as int (+ (-> drawable-inline-array-instance-tie size)
-                 (* (+ (-> this length) -1) 64) ;; 64 bytes / instance, minus the 1 in the type.
-                 )
-          )
+  (the-as int (+ (-> drawable-inline-array-instance-tie size) (* (+ (-> this length) -1) 64)))
   )
 
 #|
@@ -68,7 +65,7 @@ this
 )
 |#
 
-(defmethod login drawable-tree-instance-tie ((this drawable-tree-instance-tie))
+(defmethod login ((this drawable-tree-instance-tie))
   "Login method for the tie instance tree."
   ;; just log in all of the drawables.
   (dotimes (s5-0 (-> this length))
@@ -89,7 +86,7 @@ this
   this
   )
 
-(defmethod login prototype-tie ((this prototype-tie))
+(defmethod login ((this prototype-tie))
   "Login each tie-fragment."
   (dotimes (s5-0 (-> this length))
     (login (-> this data s5-0))
@@ -97,7 +94,7 @@ this
   this
   )
 
-(defmethod mem-usage drawable-tree-instance-tie ((this drawable-tree-instance-tie) (arg0 memory-usage-block) (arg1 int))
+(defmethod mem-usage ((this drawable-tree-instance-tie) (arg0 memory-usage-block) (arg1 int))
   "Compute memory usage for a drawable tree of TIE instances"
   (set! (-> arg0 length) (max 1 (-> arg0 length)))
   (set! (-> arg0 data 0 name) (symbol->string 'drawable-group))
@@ -117,7 +114,7 @@ this
   this
   )
 
-(defmethod mem-usage tie-fragment ((this tie-fragment) (arg0 memory-usage-block) (arg1 int))
+(defmethod mem-usage ((this tie-fragment) (arg0 memory-usage-block) (arg1 int))
   "Compute the memory usage of a TIE prototype."
   (when (logtest? arg1 2)
     ;; count for an instance of this prototype.
@@ -181,10 +178,7 @@ this
     )
   (when (nonzero? (-> this debug-lines))
     (dotimes (s4-0 (-> this debug-lines length))
-      (+!
-        (-> arg0 data 14 count)
-        (-> (the-as (pointer int32) (-> this debug-lines s4-0)) 0)
-        )
+      (+! (-> arg0 data 14 count) (-> (the-as (pointer int32) (-> this debug-lines s4-0)) 0))
       (let ((v1-52 (asize-of (the-as basic (-> this debug-lines s4-0)))))
         (+! (-> arg0 data 12 used) v1-52)
         (+! (-> arg0 data 12 total) (logand -16 (+ v1-52 15)))
@@ -195,7 +189,7 @@ this
   this
   )
 
-(defmethod mem-usage instance-tie ((this instance-tie) (arg0 memory-usage-block) (arg1 int))
+(defmethod mem-usage ((this instance-tie) (arg0 memory-usage-block) (arg1 int))
   "Compute the memory usage of TIE instance."
   (set! (-> arg0 length) (max 19 (-> arg0 length)))
   (set! (-> arg0 data 18 name) "instance-tie")
@@ -240,7 +234,7 @@ this
   this
   )
 
-(defmethod mem-usage drawable-inline-array-instance-tie ((this drawable-inline-array-instance-tie) (arg0 memory-usage-block) (arg1 int))
+(defmethod mem-usage ((this drawable-inline-array-instance-tie) (arg0 memory-usage-block) (arg1 int))
   "Compute the memory usage of an entire array of instances"
   (set! (-> arg0 length) (max 1 (-> arg0 length)))
   (set! (-> arg0 data 0 name) (symbol->string 'drawable-group))
@@ -256,7 +250,7 @@ this
   this
   )
 
-(defmethod mem-usage prototype-tie ((this prototype-tie) (arg0 memory-usage-block) (arg1 int))
+(defmethod mem-usage ((this prototype-tie) (arg0 memory-usage-block) (arg1 int))
   "Compute the memory usage of an entire array of prototypes."
   (set! (-> arg0 length) (max 1 (-> arg0 length)))
   (set! (-> arg0 data 0 name) (symbol->string 'drawable-group))
@@ -272,7 +266,7 @@ this
   this
   )
 
-(defmethod asize-of prototype-tie ((this prototype-tie))
+(defmethod asize-of ((this prototype-tie))
   "Compute the size in memory of a prototype array"
   ;; 64 bytes/fragment, minus 1 in the type.
   (the-as int (+ (-> prototype-tie size) (* (+ (-> this length) -1) 64)))
@@ -284,23 +278,20 @@ this
 
 ;; these constants are uploaded to the VU once per frame.
 (deftype tie-consts (structure)
-  ((data      uint32  24        :offset-assert 0)
-   (vector    vector  6 :inline :offset 0)
-   (quads     uint128 6         :offset 0)
-   (adgif     gs-gif-tag     :inline :offset 0) ;; was qword
-   (strgif    gs-gif-tag     :inline :offset 16) ;; was qword
-   (extra     vector    :inline :offset 32) ;; was qword
-   (gifbufs   vector    :inline :offset 48) ;; was qword
-   (clrbufs   qword     :inline :offset 64)
-   (misc      qword     :inline :offset 80)
-   (atestgif  gs-gif-tag     :inline :offset 96)
-   (atest     ad-cmd 2  :inline :offset 112)
-   (atest-tra ad-cmd    :inline :offset 112)
-   (atest-def ad-cmd    :inline :offset 128)
+  ((data       uint32      24)
+   (vector     vector      6 :inline :overlay-at (-> data 0))
+   (quads      uint128     6         :overlay-at (-> data 0))
+   (adgif      gs-gif-tag  :inline   :overlay-at (-> data 0))
+   (strgif     gs-gif-tag  :inline   :overlay-at (-> data 4))
+   (extra      vector      :inline   :overlay-at (-> data 8))
+   (gifbufs    vector      :inline   :overlay-at (-> data 12))
+   (clrbufs    qword       :inline   :overlay-at (-> data 16))
+   (misc       qword       :inline   :overlay-at (-> data 20))
+   (atestgif   gs-gif-tag  :inline   :offset  96)
+   (atest      ad-cmd      2 :inline :offset 112)
+   (atest-tra  ad-cmd      :inline   :overlay-at (-> atest 0))
+   (atest-def  ad-cmd      :inline   :overlay-at (-> atest 1))
    )
-  :method-count-assert 9
-  :size-assert         #x90
-  :flag-assert         #x900000090
   )
 ;; definition for symbol tie-vu1-block, type vu-function
 (define tie-vu1-block (new 'static 'vu-function :length 0 :qlength 0)) ;; was 0x3e1, 0x1f1
@@ -423,26 +414,7 @@ this
            (a0-4 (the-as object (-> v1-4 base)))
            )
       (set! (-> (the-as gs-gif-tag a0-4) tag) (new 'static 'gif-tag64 :nloop #x1 :eop #x1 :nreg #x1))
-      (set! (-> (the-as gs-gif-tag a0-4) regs)
-            (new 'static 'gif-tag-regs
-              :regs0 (gif-reg-id a+d)
-              :regs1 (gif-reg-id a+d)
-              :regs2 (gif-reg-id a+d)
-              :regs3 (gif-reg-id a+d)
-              :regs4 (gif-reg-id a+d)
-              :regs5 (gif-reg-id a+d)
-              :regs6 (gif-reg-id a+d)
-              :regs7 (gif-reg-id a+d)
-              :regs8 (gif-reg-id a+d)
-              :regs9 (gif-reg-id a+d)
-              :regs10 (gif-reg-id a+d)
-              :regs11 (gif-reg-id a+d)
-              :regs12 (gif-reg-id a+d)
-              :regs13 (gif-reg-id a+d)
-              :regs14 (gif-reg-id a+d)
-              :regs15 (gif-reg-id a+d)
-              )
-            )
+      (set! (-> (the-as gs-gif-tag a0-4) regs) GIF_REGS_ALL_AD)
       (set! (-> v1-4 base) (the-as pointer (&+ (the-as gs-gif-tag a0-4) 16)))
       )
     (let* ((v1-5 arg0)
@@ -523,26 +495,7 @@ this
            (a1-2 (the-as object (-> v1-4 base)))
            )
       (set! (-> (the-as gs-gif-tag a1-2) tag) (new 'static 'gif-tag64 :nloop #x1 :eop #x1 :nreg #x1))
-      (set! (-> (the-as gs-gif-tag a1-2) regs)
-            (new 'static 'gif-tag-regs
-              :regs0 (gif-reg-id a+d)
-              :regs1 (gif-reg-id a+d)
-              :regs2 (gif-reg-id a+d)
-              :regs3 (gif-reg-id a+d)
-              :regs4 (gif-reg-id a+d)
-              :regs5 (gif-reg-id a+d)
-              :regs6 (gif-reg-id a+d)
-              :regs7 (gif-reg-id a+d)
-              :regs8 (gif-reg-id a+d)
-              :regs9 (gif-reg-id a+d)
-              :regs10 (gif-reg-id a+d)
-              :regs11 (gif-reg-id a+d)
-              :regs12 (gif-reg-id a+d)
-              :regs13 (gif-reg-id a+d)
-              :regs14 (gif-reg-id a+d)
-              :regs15 (gif-reg-id a+d)
-              )
-            )
+      (set! (-> (the-as gs-gif-tag a1-2) regs) GIF_REGS_ALL_AD)
       (set! (-> v1-4 base) (&+ (the-as pointer a1-2) 16))
       )
     (let* ((v1-5 arg0)

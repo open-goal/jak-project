@@ -15,45 +15,36 @@
               )
 
 (deftype guard-anim-info (structure)
-  ((anim-index       int32 2 :offset-assert   0)
-   (anim-index-front int32   :offset          0)
-   (anim-index-back  int32   :offset          4)
+  ((anim-index        int32  2)
+   (anim-index-front  int32  :overlay-at (-> anim-index 0))
+   (anim-index-back   int32  :overlay-at (-> anim-index 1))
    )
   :pack-me
-  :method-count-assert 9
-  :size-assert         #x8
-  :flag-assert         #x900000008
   )
 
 
 (deftype guard-global-info (basic)
-  ((prev-yellow-hit         int8                      :offset-assert   4)
-   (prev-blue-hit           int8                      :offset-assert   5)
-   (knocked                 int32           2         :offset-assert   8)
-   (knocked-land            int32           2         :offset-assert  16)
-   (anim-knocked-front      int32                     :offset          8)
-   (anim-knocked-back       int32                     :offset         12)
-   (anim-knocked-front-land int32                     :offset         16)
-   (anim-knocked-back-land  int32                     :offset         20)
-   (yellow-hit-anim         guard-anim-info 2 :inline :offset-assert  24)
-   (yellow-land-anim        guard-anim-info 2 :inline :offset-assert  40)
-   (blue-hit-anim           int32                     :offset-assert  56)
+  ((prev-yellow-hit          int8)
+   (prev-blue-hit            int8)
+   (knocked                  int32            2)
+   (knocked-land             int32            2)
+   (anim-knocked-front       int32            :overlay-at (-> knocked 0))
+   (anim-knocked-back        int32            :overlay-at (-> knocked 1))
+   (anim-knocked-front-land  int32            :overlay-at (-> knocked-land 0))
+   (anim-knocked-back-land   int32            :overlay-at (-> knocked-land 1))
+   (yellow-hit-anim          guard-anim-info  2 :inline)
+   (yellow-land-anim         guard-anim-info  2 :inline)
+   (blue-hit-anim            int32)
    )
-  :method-count-assert 9
-  :size-assert         #x3c
-  :flag-assert         #x90000003c
   )
 
 
 (deftype guard-shoot-info (structure)
-  ((anim-index int32  :offset-assert   0)
-   (start      float  :offset-assert   4)
-   (end        float  :offset-assert   8)
+  ((anim-index  int32)
+   (start       float)
+   (end         float)
    )
   :pack-me
-  :method-count-assert 9
-  :size-assert         #xc
-  :flag-assert         #x90000000c
   )
 
 
@@ -251,80 +242,78 @@
 (set! (-> *crimson-guard-nav-enemy-info* fact-defaults) *fact-info-enemy-defaults*)
 
 (deftype crimson-guard (citizen)
-  ((info                    guard-global-info                     :offset-assert 964)
-   (hit-face                uint32                                :offset-assert 968)
-   (anim-get-up-front       int32                                 :offset-assert 972)
-   (anim-get-up-back        int32                                 :offset-assert 976)
-   (small-hit               int32                                 :offset-assert 980)
-   (yellow-anim             uint32                                :offset-assert 984)
-   (guard-type              uint8                                 :offset-assert 988)
-   (settings                traffic-guard-type-settings           :offset-assert 992)
-   (next-time               time-frame                            :offset-assert 1000)
-   (last-time-see-target    time-frame                            :offset-assert 1008)
-   (joint                   joint-mod                             :offset-assert 1016)
-   (joint-enable            symbol                                :offset-assert 1020)
-   (already-shot            symbol                                :offset-assert 1024)
-   (miss-amount             float                                 :offset-assert 1028)
-   (l-control               lightning-control                     :offset-assert 1032)
-   (next-shot               int64                                 :offset-assert 1040)
-   (anim-shoot              guard-shoot-info            3 :inline :offset-assert 1048)
-   (transport               handle                                :offset-assert 1088)
-   (transport-side          uint32                                :offset-assert 1096)
-   (target-flags            uint8                                 :offset-assert 1100)
-   (target-pos              vector                      :inline   :offset-assert 1104)
-   (target-pos-predict      vector                      :inline   :offset-assert 1120)
-   (target-pos-predict-miss vector                      :inline   :offset-assert 1136)
-   (target-vel-vec          vector                      :inline   :offset-assert 1152)
-   (target-vel              float                                 :offset-assert 1168)
-   (target-self             vector                      :inline   :offset-assert 1184)
-   (target-self-xz          vector                      :inline   :offset-assert 1200)
-   (target-self-dist        float                                 :offset-assert 1216)
-   (target-self-xz-dist     float                                 :offset-assert 1220)
-   (target-y-angle          degrees                               :offset-assert 1224)
-   (last-visible-target-pos vector                      :inline   :offset-assert 1232)
-   (lazer-sound             sound-id                              :offset-assert 1248)
-   (move-position           vector                      :inline   :offset-assert 1264)
-   (move-index              int32                                 :offset-assert 1280)
-   (traffic-target-status   traffic-target-status       :inline   :offset-assert 1296)
-   (minimap                 connection-minimap                    :offset-assert 1376)
-   (other-side              symbol                                :offset-assert 1380)
+  ((info                     guard-global-info)
+   (hit-face                 uint32)
+   (anim-get-up-front        int32)
+   (anim-get-up-back         int32)
+   (small-hit                int32)
+   (yellow-anim              uint32)
+   (guard-type               uint8)
+   (settings                 traffic-guard-type-settings)
+   (next-time                time-frame)
+   (last-time-see-target     time-frame)
+   (joint                    joint-mod)
+   (joint-enable             symbol)
+   (already-shot             symbol)
+   (miss-amount              float)
+   (l-control                lightning-control)
+   (next-shot                int64)
+   (anim-shoot               guard-shoot-info       3 :inline)
+   (transport                handle)
+   (transport-side           uint32)
+   (target-flags             uint8)
+   (target-pos               vector                 :inline)
+   (target-pos-predict       vector                 :inline)
+   (target-pos-predict-miss  vector                 :inline)
+   (target-vel-vec           vector                 :inline)
+   (target-vel               float)
+   (target-self              vector                 :inline)
+   (target-self-xz           vector                 :inline)
+   (target-self-dist         float)
+   (target-self-xz-dist      float)
+   (target-y-angle           degrees)
+   (last-visible-target-pos  vector                 :inline)
+   (lazer-sound              sound-id)
+   (move-position            vector                 :inline)
+   (move-index               int32)
+   (traffic-target-status    traffic-target-status  :inline)
+   (minimap                  connection-minimap)
+   (other-side               symbol)
    )
-  :heap-base #x4f0
-  :method-count-assert 227
-  :size-assert         #x568
-  :flag-assert         #xe304f00568
+  (:state-methods
+    get-up-front
+    get-up-back
+    search
+    attack
+    arrest
+    gun-shoot
+    exit-transport
+    waiting-ambush
+    close-attack
+    knocked-off-vehicle
+    roll-right
+    roll-left
+    close-attack-active
+    )
   (:methods
-    (get-up-front () _type_ :state 201)
-    (get-up-back () _type_ :state 202)
-    (search () _type_ :state 203)
-    (attack () _type_ :state 204)
-    (arrest () _type_ :state 205)
-    (gun-shoot () _type_ :state 206)
-    (exit-transport () _type_ :state 207)
-    (waiting-ambush () _type_ :state 208)
-    (close-attack () _type_ :state 209)
-    (knocked-off-vehicle () _type_ :state 210)
-    (roll-right () _type_ :state 211)
-    (roll-left () _type_ :state 212)
-    (close-attack-active () _type_ :state 213)
-    (crimson-guard-method-214 (_type_) none 214)
-    (crimson-guard-method-215 (_type_) symbol 215)
-    (crimson-guard-method-216 (_type_) symbol 216)
-    (crimson-guard-method-217 (_type_ vector vector vector) int 217)
-    (crimson-guard-method-218 (_type_ vector) none 218)
-    (crimson-guard-method-219 (_type_) none 219)
-    (crimson-guard-method-220 (_type_) none 220)
-    (crimson-guard-method-221 (_type_) none 221)
-    (crimson-guard-method-222 (_type_) none 222)
-    (crimson-guard-method-223 (_type_ float) none 223)
-    (crimson-guard-method-224 (_type_ vector) float 224)
-    (crimson-guard-method-225 (_type_ uint symbol) none 225)
-    (crimson-guard-method-226 (_type_) none 226)
+    (crimson-guard-method-214 (_type_) none)
+    (crimson-guard-method-215 (_type_) symbol)
+    (crimson-guard-method-216 (_type_) symbol)
+    (crimson-guard-method-217 (_type_ vector vector vector) int)
+    (crimson-guard-method-218 (_type_ vector) none)
+    (crimson-guard-method-219 (_type_) none)
+    (crimson-guard-method-220 (_type_) none)
+    (crimson-guard-method-221 (_type_) none)
+    (crimson-guard-method-222 (_type_) none)
+    (crimson-guard-method-223 (_type_ float) none)
+    (crimson-guard-method-224 (_type_ vector) float)
+    (crimson-guard-method-225 (_type_ uint symbol) none)
+    (crimson-guard-method-226 (_type_) none)
     )
   )
 
 
-(defmethod crimson-guard-method-218 crimson-guard ((this crimson-guard) (arg0 vector))
+(defmethod crimson-guard-method-218 ((this crimson-guard) (arg0 vector))
   (local-vars
     (sv-240 vector)
     (sv-256 (function vector vector vector))
@@ -369,7 +358,7 @@
           (vector-z-quaternion! (new 'stack-no-clear 'vector) (-> this root quat))
           (set! (-> s0-0 quad) (-> this root trans quad))
           (cond
-            ((logtest? (enemy-flag dislike-combo) (-> this enemy-flags))
+            ((logtest? (enemy-flag drawn-mirrored) (-> this enemy-flags))
              (let ((a1-6 s0-0))
                (let ((v1-14 s0-0))
                  (let ((a0-9 s4-0))
@@ -454,7 +443,7 @@
     )
   )
 
-(defmethod crimson-guard-method-219 crimson-guard ((this crimson-guard))
+(defmethod crimson-guard-method-219 ((this crimson-guard))
   (quaternion-pseudo-seek (-> this joint quat) (-> this joint quat) *unity-quaternion* (seconds-per-frame))
   0
   (none)
@@ -462,12 +451,12 @@
 
 (define *guard-min-id-hack* 255)
 
-(defmethod track-target! crimson-guard ((this crimson-guard))
+(defmethod common-post ((this crimson-guard))
   "Does a lot of various things relating to interacting with the target
 - tracks when the enemy was last drawn
 - looks at the target and handles attacking
 @TODO Not extremely well understood yet"
-  (let ((t9-0 (method-of-type citizen track-target!)))
+  (let ((t9-0 (method-of-type citizen common-post)))
     (t9-0 this)
     )
   (update-transforms (-> this root))
@@ -481,12 +470,12 @@
   (none)
   )
 
-(defmethod kill-prefer-falling crimson-guard ((this crimson-guard))
+(defmethod kill-prefer-falling ((this crimson-guard))
   "If available in `enemy-info`, [[go]] to the [[die-falling]] state, if not, [[die]]"
   ((method-of-type nav-enemy kill-prefer-falling) this)
   )
 
-(defmethod react-to-focus crimson-guard ((this crimson-guard))
+(defmethod react-to-focus ((this crimson-guard))
   "@TODO - flesh out docs"
   (if (not (logtest? (-> this flags) (citizen-flag hostile)))
       (go (method-of-object this active))
@@ -494,7 +483,7 @@
       )
   )
 
-(defmethod damage-amount-from-attack crimson-guard ((this crimson-guard) (arg0 process) (arg1 event-message-block))
+(defmethod damage-amount-from-attack ((this crimson-guard) (arg0 process) (arg1 event-message-block))
   "@returns the amount of damage taken from an attack.  This can come straight off the [[attack-info]] or via [[penetrate-using->damage]]"
   (let ((v0-0 ((method-of-type nav-enemy damage-amount-from-attack) this arg0 arg1)))
     (-> arg1 param 1)
@@ -503,7 +492,7 @@
   )
 
 ;; WARN: disable def twice: 122. This may happen when a cond (no else) is nested inside of another conditional, but it should be rare.
-(defmethod general-event-handler crimson-guard ((this crimson-guard) (arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+(defmethod general-event-handler ((this crimson-guard) (arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
   "Handles various events for the enemy
 @TODO - unsure if there is a pattern for the events and this should have a more specific name"
   (case arg2
@@ -538,7 +527,7 @@
      )
     (('combo)
      (and (not (and (-> this next-state) (= (-> this next-state name) 'inactive)))
-          (and (not (logtest? (enemy-flag multi-focus) (-> this enemy-flags))) (nonzero? (-> this hit-points)))
+          (and (not (logtest? (enemy-flag dislike-combo) (-> this enemy-flags))) (nonzero? (-> this hit-points)))
           )
      )
     (('avoid)
@@ -691,7 +680,7 @@
     )
   )
 
-(defmethod get-inv-mass crimson-guard ((this crimson-guard))
+(defmethod get-inv-mass ((this crimson-guard))
   0.6666667
   )
 
@@ -752,7 +741,7 @@
       (set! (-> a0-1 travel quad) (-> v1-3 quad))
       )
     0
-    (track-target! self)
+    (common-post self)
     )
   )
 
@@ -813,7 +802,7 @@
       (set! (-> a0-1 travel quad) (-> v1-3 quad))
       )
     0
-    (track-target! self)
+    (common-post self)
     )
   )
 
@@ -868,7 +857,7 @@
     )
   )
 
-(defmethod enemy-method-77 crimson-guard ((this crimson-guard) (arg0 (pointer float)))
+(defmethod enemy-method-77 ((this crimson-guard) (arg0 enemy-knocked-info))
   (cond
     ((logtest? (-> this flags) (citizen-flag knocked-out-car))
      (ja-channel-push! 1 (seconds 0.1))
@@ -877,7 +866,7 @@
        (set! (-> a0-2 param 0)
              (the float (+ (-> (the-as art-joint-anim (-> this draw art-group data 42)) frames num-frames) -1))
              )
-       (set! (-> a0-2 param 1) (-> arg0 0))
+       (set! (-> a0-2 param 1) (-> arg0 anim-speed))
        (set! (-> a0-2 frame-num) 0.0)
        (joint-control-channel-group! a0-2 (the-as art-joint-anim (-> this draw art-group data 42)) num-func-seek!)
        )
@@ -890,7 +879,7 @@
        (set! (-> a0-5 param 0)
              (the float (+ (-> (the-as art-joint-anim (-> this draw art-group data 43)) frames num-frames) -1))
              )
-       (set! (-> a0-5 param 1) (-> arg0 0))
+       (set! (-> a0-5 param 1) (-> arg0 anim-speed))
        (set! (-> a0-5 frame-num) 0.0)
        (joint-control-channel-group! a0-5 (the-as art-joint-anim (-> this draw art-group data 43)) num-func-seek!)
        )
@@ -916,7 +905,7 @@
            )
        (set! (-> a0-11 frame-group) (the-as art-joint-anim a1-6))
        (set! (-> a0-11 param 0) (the float (+ (-> (the-as art-joint-anim a1-6) frames num-frames) -1)))
-       (set! (-> a0-11 param 1) (-> arg0 0))
+       (set! (-> a0-11 param 1) (-> arg0 anim-speed))
        (set! (-> a0-11 frame-num) 0.0)
        (joint-control-channel-group! a0-11 (the-as art-joint-anim a1-6) num-func-seek!)
        )
@@ -927,7 +916,7 @@
          (ja-channel-push! 1 (seconds 0.01))
          (cond
            ((= (-> this small-hit) 1)
-            (set! (-> this yellow-anim) (the-as uint (get-rand-int this 2)))
+            (set! (-> this yellow-anim) (the-as uint (rnd-int-count this 2)))
             (let ((a1-12 (-> this
                              draw
                              art-group
@@ -946,7 +935,7 @@
                   )
               (set! (-> a0-23 frame-group) (the-as art-joint-anim a1-12))
               (set! (-> a0-23 param 0) (the float (+ (-> (the-as art-joint-anim a1-12) frames num-frames) -1)))
-              (set! (-> a0-23 param 1) (-> arg0 0))
+              (set! (-> a0-23 param 1) (-> arg0 anim-speed))
               (set! (-> a0-23 frame-num) 0.0)
               (joint-control-channel-group! a0-23 (the-as art-joint-anim a1-12) num-func-seek!)
               )
@@ -957,7 +946,7 @@
                    )
                (set! (-> a0-27 frame-group) (the-as art-joint-anim a1-13))
                (set! (-> a0-27 param 0) (the float (+ (-> (the-as art-joint-anim a1-13) frames num-frames) -1)))
-               (set! (-> a0-27 param 1) (-> arg0 0))
+               (set! (-> a0-27 param 1) (-> arg0 anim-speed))
                (set! (-> a0-27 frame-num) 0.0)
                (joint-control-channel-group! a0-27 (the-as art-joint-anim a1-13) num-func-seek!)
                )
@@ -971,7 +960,7 @@
            (set! (-> a0-30 param 0)
                  (the float (+ (-> (the-as art-joint-anim (-> this draw art-group data 10)) frames num-frames) -1))
                  )
-           (set! (-> a0-30 param 1) (-> arg0 0))
+           (set! (-> a0-30 param 1) (-> arg0 anim-speed))
            (set! (-> a0-30 frame-num) 0.0)
            (joint-control-channel-group! a0-30 (the-as art-joint-anim (-> this draw art-group data 10)) num-func-seek!)
            )
@@ -979,11 +968,11 @@
         (((knocked-type knocked-type-2))
          (ja-channel-push! 1 (seconds 0.1))
          (let ((a1-17 (-> this draw art-group data (-> this info knocked (-> this hit-face)))))
-           (set! (-> arg0 0) (* 0.5 (-> arg0 0)))
+           (set! (-> arg0 anim-speed) (* 0.5 (-> arg0 anim-speed)))
            (let ((a0-36 (-> this skel root-channel 0)))
              (set! (-> a0-36 frame-group) (the-as art-joint-anim a1-17))
              (set! (-> a0-36 param 0) (the float (+ (-> (the-as art-joint-anim a1-17) frames num-frames) -1)))
-             (set! (-> a0-36 param 1) (-> arg0 0))
+             (set! (-> a0-36 param 1) (-> arg0 anim-speed))
              (set! (-> a0-36 frame-num) 0.0)
              (joint-control-channel-group! a0-36 (the-as art-joint-anim a1-17) num-func-seek!)
              )
@@ -996,7 +985,7 @@
                 )
             (set! (-> a0-41 frame-group) (the-as art-joint-anim a1-19))
             (set! (-> a0-41 param 0) (the float (+ (-> (the-as art-joint-anim a1-19) frames num-frames) -1)))
-            (set! (-> a0-41 param 1) (-> arg0 0))
+            (set! (-> a0-41 param 1) (-> arg0 anim-speed))
             (set! (-> a0-41 frame-num) 0.0)
             (joint-control-channel-group! a0-41 (the-as art-joint-anim a1-19) num-func-seek!)
             )
@@ -1007,7 +996,7 @@
   #t
   )
 
-(defmethod enemy-method-78 crimson-guard ((this crimson-guard) (arg0 (pointer float)))
+(defmethod enemy-method-78 ((this crimson-guard) (arg0 enemy-knocked-info))
   (cond
     ((<= (-> this hit-points) 0)
      (ja-channel-push! 1 (seconds 0.1))
@@ -1016,7 +1005,7 @@
            )
        (set! (-> a0-5 frame-group) (the-as art-joint-anim a1-2))
        (set! (-> a0-5 param 0) (the float (+ (-> (the-as art-joint-anim a1-2) frames num-frames) -1)))
-       (set! (-> a0-5 param 1) (-> arg0 0))
+       (set! (-> a0-5 param 1) (-> arg0 anim-speed))
        (set! (-> a0-5 frame-num) 0.0)
        (joint-control-channel-group! a0-5 (the-as art-joint-anim a1-2) num-func-seek!)
        )
@@ -1047,7 +1036,7 @@
                   )
               (set! (-> a0-16 frame-group) (the-as art-joint-anim a1-7))
               (set! (-> a0-16 param 0) (the float (+ (-> (the-as art-joint-anim a1-7) frames num-frames) -1)))
-              (set! (-> a0-16 param 1) (-> arg0 0))
+              (set! (-> a0-16 param 1) (-> arg0 anim-speed))
               (set! (-> a0-16 frame-num) 0.0)
               (joint-control-channel-group! a0-16 (the-as art-joint-anim a1-7) num-func-seek!)
               )
@@ -1060,7 +1049,7 @@
                    )
                (set! (-> a0-20 frame-group) (the-as art-joint-anim a1-8))
                (set! (-> a0-20 param 0) (the float (+ (-> (the-as art-joint-anim a1-8) frames num-frames) -1)))
-               (set! (-> a0-20 param 1) (-> arg0 0))
+               (set! (-> a0-20 param 1) (-> arg0 anim-speed))
                (set! (-> a0-20 frame-num) 0.0)
                (joint-control-channel-group! a0-20 (the-as art-joint-anim a1-8) num-func-seek!)
                )
@@ -1075,7 +1064,7 @@
            (set! (-> a0-23 param 0)
                  (the float (+ (-> (the-as art-joint-anim (-> this draw art-group data 11)) frames num-frames) -1))
                  )
-           (set! (-> a0-23 param 1) (-> arg0 0))
+           (set! (-> a0-23 param 1) (-> arg0 anim-speed))
            (set! (-> a0-23 frame-num) 0.0)
            (joint-control-channel-group! a0-23 (the-as art-joint-anim (-> this draw art-group data 11)) num-func-seek!)
            )
@@ -1085,11 +1074,11 @@
         (else
           (ja-channel-push! 1 (seconds 0.1))
           (let ((a1-12 (-> this draw art-group data (-> this info knocked-land (-> this hit-face)))))
-            (set! (-> arg0 0) 1.0)
+            (set! (-> arg0 anim-speed) 1.0)
             (let ((a0-28 (-> this skel root-channel 0)))
               (set! (-> a0-28 frame-group) (the-as art-joint-anim a1-12))
               (set! (-> a0-28 param 0) (the float (+ (-> (the-as art-joint-anim a1-12) frames num-frames) -1)))
-              (set! (-> a0-28 param 1) (-> arg0 0))
+              (set! (-> a0-28 param 1) (-> arg0 anim-speed))
               (set! (-> a0-28 frame-num) 0.0)
               (joint-control-channel-group! a0-28 (the-as art-joint-anim a1-12) num-func-seek!)
               )
@@ -1101,7 +1090,7 @@
     )
   )
 
-(defmethod set-behavior! crimson-guard ((this crimson-guard) (arg0 traffic-object-spawn-params))
+(defmethod set-behavior! ((this crimson-guard) (arg0 traffic-object-spawn-params))
   (let ((a1-1 (-> arg0 guard-type)))
     (if (or (and (!= a1-1 7) (!= a1-1 (-> this guard-type))) (= (-> arg0 behavior) 11))
         (crimson-guard-method-225 this a1-1 (= (-> arg0 behavior) 11))
@@ -1194,7 +1183,7 @@
   )
 
 ;; WARN: Return type mismatch int vs object.
-(defmethod go-hostile crimson-guard ((this crimson-guard))
+(defmethod go-hostile ((this crimson-guard))
   (cond
     ((handle->process (-> this focus handle))
      (logior! (-> this flags) (citizen-flag hostile))
@@ -1219,7 +1208,7 @@
   0
   )
 
-(defmethod crimson-guard-method-214 crimson-guard ((this crimson-guard))
+(defmethod crimson-guard-method-214 ((this crimson-guard))
   (let* ((s4-0 (-> this target-pos-predict-miss))
          (s5-0 (vector<-cspace! (new 'stack-no-clear 'vector) (-> this node-list data 14)))
          (v1-2 (vector<-cspace! (new 'stack-no-clear 'vector) (-> this node-list data 15)))
@@ -1313,7 +1302,7 @@
     (let ((v1-3 (-> (the-as collide-shape-prim-group (-> self root root-prim)) child 3)))
       (logclear! (-> v1-3 prim-core action) (collide-action deadly))
       )
-    (if (logtest? (-> self enemy-flags) (enemy-flag check-water))
+    (if (logtest? (-> self enemy-flags) (enemy-flag dangerous-backup))
         (logior! (-> self focus-status) (focus-status dangerous))
         (logclear! (-> self focus-status) (focus-status dangerous))
         )
@@ -1360,7 +1349,7 @@
     )
   )
 
-(defmethod crimson-guard-method-217 crimson-guard ((this crimson-guard) (arg0 vector) (arg1 vector) (arg2 vector))
+(defmethod crimson-guard-method-217 ((this crimson-guard) (arg0 vector) (arg1 vector) (arg2 vector))
   (rlet ((acc :class vf)
          (vf0 :class vf)
          (vf4 :class vf)
@@ -1469,7 +1458,7 @@
     )
   )
 
-(defmethod crimson-guard-method-220 crimson-guard ((this crimson-guard))
+(defmethod crimson-guard-method-220 ((this crimson-guard))
   (rlet ((acc :class vf)
          (vf0 :class vf)
          (vf4 :class vf)
@@ -1480,8 +1469,8 @@
     (init-vf0-vector)
     (cond
       ((logtest? (-> this controller traffic alert-state flags) (traffic-alert-flag guard-multi-focus))
-       (logior! (-> this enemy-flags) (enemy-flag trackable))
-       (when (not (logtest? (enemy-flag actor-pause-backup) (-> this enemy-flags)))
+       (logior! (-> this enemy-flags) (enemy-flag multi-focus))
+       (when (not (logtest? (enemy-flag lock-focus) (-> this enemy-flags)))
          (let ((a0-4 (find-closest-to-with-collide-lists (-> this controller traffic) this (-> this focus collide-with))))
            (if a0-4
                (set! (-> this traffic-target-status handle) (process->handle a0-4))
@@ -1491,8 +1480,8 @@
          )
        )
       (else
-        (when (logtest? (enemy-flag trackable) (-> this enemy-flags))
-          (logclear! (-> this enemy-flags) (enemy-flag trackable))
+        (when (logtest? (enemy-flag multi-focus) (-> this enemy-flags))
+          (logclear! (-> this enemy-flags) (enemy-flag multi-focus))
           (let* ((s5-0 (handle->process (-> this traffic-target-status handle)))
                  (v1-21 (if (type? s5-0 process-focusable)
                             s5-0
@@ -1596,7 +1585,7 @@
     )
   )
 
-(defmethod crimson-guard-method-221 crimson-guard ((this crimson-guard))
+(defmethod crimson-guard-method-221 ((this crimson-guard))
   (let ((a1-0 (new 'stack-no-clear 'traffic-danger-info)))
     (set! (-> a1-0 sphere quad) (-> this root trans quad))
     (set! (-> a1-0 sphere r) 40960.0)
@@ -1611,7 +1600,7 @@
   (none)
   )
 
-(defmethod crimson-guard-method-215 crimson-guard ((this crimson-guard))
+(defmethod crimson-guard-method-215 ((this crimson-guard))
   (let ((s5-0 (get-trans this 3))
         (s4-0 (new 'stack-no-clear 'vector))
         )
@@ -1623,7 +1612,7 @@
     )
   )
 
-(defmethod crimson-guard-method-216 crimson-guard ((this crimson-guard))
+(defmethod crimson-guard-method-216 ((this crimson-guard))
   (let ((s5-0 (new 'stack-no-clear 'vector)))
     (set! (-> s5-0 quad) (-> this target-pos-predict-miss quad))
     (let* ((s4-0 (vector<-cspace! (new 'stack-no-clear 'vector) (-> this node-list data 14)))
@@ -1883,7 +1872,7 @@
                      (when (and (< (-> self target-self-xz-dist) 163840.0)
                                 (or (< 40960.0 (-> self target-self-xz-dist)) (>= 2 (the-as int (-> self focus aware))))
                                 )
-                       (if (and (time-elapsed? (-> self state-time) (the int (* 300.0 (get-rand-float-range self 1.0 3.0))))
+                       (if (and (time-elapsed? (-> self state-time) (the int (* 300.0 (rnd-float-range self 1.0 3.0))))
                                 (logtest? (-> self flags) (citizen-flag target-in-sight))
                                 )
                            (go-virtual gun-shoot)
@@ -1983,7 +1972,7 @@
   :virtual #t
   :event enemy-event-handler
   :enter (behavior ()
-    (logior! (-> self enemy-flags) (enemy-flag actor-pause-backup))
+    (logior! (-> self enemy-flags) (enemy-flag lock-focus))
     (logior! (-> self focus-status) (focus-status dangerous))
     (let ((v1-4 self))
       (if (not (logtest? (enemy-flag enemy-flag36) (-> v1-4 enemy-flags)))
@@ -2012,8 +2001,8 @@
     (let ((v1-3 (-> (the-as collide-shape-prim-group (-> self root root-prim)) child 3)))
       (logclear! (-> v1-3 prim-core action) (collide-action deadly))
       )
-    (logclear! (-> self enemy-flags) (enemy-flag actor-pause-backup))
-    (if (logtest? (-> self enemy-flags) (enemy-flag check-water))
+    (logclear! (-> self enemy-flags) (enemy-flag lock-focus))
+    (if (logtest? (-> self enemy-flags) (enemy-flag dangerous-backup))
         (logior! (-> self focus-status) (focus-status dangerous))
         (logclear! (-> self focus-status) (focus-status dangerous))
         )
@@ -2047,7 +2036,7 @@
   :virtual #t
   :event enemy-event-handler
   :enter (behavior ()
-    (logior! (-> self enemy-flags) (enemy-flag actor-pause-backup))
+    (logior! (-> self enemy-flags) (enemy-flag lock-focus))
     (set! (-> self other-side) (if (< (rand-vu) 0.5)
                                    #t
                                    #f
@@ -2088,7 +2077,7 @@
     )
   :exit (behavior ()
     (set! (-> self joint-enable) #f)
-    (logclear! (-> self enemy-flags) (enemy-flag actor-pause-backup))
+    (logclear! (-> self enemy-flags) (enemy-flag lock-focus))
     )
   :trans (behavior ()
     (crimson-guard-method-220 self)
@@ -2124,7 +2113,7 @@
     (local-vars (v1-35 object))
     (speech-control-method-12 *speech-control* self (speech-type speech-type-9))
     (ja-channel-push! 1 (seconds 0.2))
-    (let ((f30-0 (get-rand-float-range self 0.9 1.1)))
+    (let ((f30-0 (rnd-float-range self 0.9 1.1)))
       (ja-no-eval :group! (-> self draw art-group data (-> self anim-shoot 0 anim-index))
                   :num! (seek! max f30-0)
                   :frame-num 0.0
@@ -2191,7 +2180,7 @@
       #f
       )
     (label cfg-40)
-    (let ((f30-1 (get-rand-float-range self 0.9 1.1)))
+    (let ((f30-1 (rnd-float-range self 0.9 1.1)))
       (ja-channel-push! 1 (seconds 0.2))
       (ja-no-eval :group! (-> self draw art-group data (-> self anim-shoot 2 anim-index))
                   :num! (seek! max f30-1)
@@ -2212,7 +2201,7 @@
   )
 
 ;; WARN: Return type mismatch object vs none.
-(defmethod crimson-guard-method-226 crimson-guard ((this crimson-guard))
+(defmethod crimson-guard-method-226 ((this crimson-guard))
   (let ((s4-0 (vector-x-quaternion! (new 'stack-no-clear 'vector) (-> this root quat)))
         (s5-0 (-> this root))
         (s3-0 (lambda ((arg0 crimson-guard) (arg1 collide-shape-moving) (arg2 vector))
@@ -2288,7 +2277,7 @@
     0
     (ja-channel-push! 1 (seconds 0.1))
     (cond
-      ((logtest? (enemy-flag dislike-combo) (-> self enemy-flags))
+      ((logtest? (enemy-flag drawn-mirrored) (-> self enemy-flags))
        (ja-no-eval :group! crimson-guard-jump-right-ja :num! (seek! (ja-aframe 6.0 0)) :frame-num (ja-aframe 0.0 0))
        (until (ja-done? 0)
          (let ((a0-20 (handle->process (-> self focus handle))))
@@ -2329,7 +2318,7 @@
       )
     0
     (cond
-      ((logtest? (enemy-flag dislike-combo) (-> self enemy-flags))
+      ((logtest? (enemy-flag drawn-mirrored) (-> self enemy-flags))
        (ja-no-eval :group! crimson-guard-jump-right-ja :num! (seek! (ja-aframe 11.0 0)) :frame-num (ja-aframe 6.0 0))
        (until (ja-done? 0)
          (suspend)
@@ -2387,7 +2376,7 @@
     0
     (ja-channel-push! 1 (seconds 0.1))
     (cond
-      ((logtest? (enemy-flag dislike-combo) (-> self enemy-flags))
+      ((logtest? (enemy-flag drawn-mirrored) (-> self enemy-flags))
        (ja-no-eval :group! crimson-guard-jump-left-ja :num! (seek! (ja-aframe 9.0 0)) :frame-num (ja-aframe 0.0 0))
        (until (ja-done? 0)
          (let ((a0-20 (handle->process (-> self focus handle))))
@@ -2428,7 +2417,7 @@
       )
     0
     (cond
-      ((logtest? (enemy-flag dislike-combo) (-> self enemy-flags))
+      ((logtest? (enemy-flag drawn-mirrored) (-> self enemy-flags))
        (ja-no-eval :group! crimson-guard-jump-left-ja :num! (seek! (ja-aframe 11.0 0)) :frame-num (ja-aframe 9.0 0))
        (until (ja-done? 0)
          (suspend)
@@ -2452,7 +2441,7 @@
   :virtual #t
   :event enemy-event-handler
   :enter (behavior ()
-    (logior! (-> self enemy-flags) (enemy-flag actor-pause-backup))
+    (logior! (-> self enemy-flags) (enemy-flag lock-focus))
     (nav-enemy-method-167 self)
     (let ((v1-4 self))
       (set! (-> v1-4 enemy-flags) (the-as enemy-flag (logclear (-> v1-4 enemy-flags) (enemy-flag enemy-flag36))))
@@ -2479,7 +2468,7 @@
     )
   :exit (behavior ()
     (set! (-> self joint-enable) #f)
-    (logclear! (-> self enemy-flags) (enemy-flag actor-pause-backup))
+    (logclear! (-> self enemy-flags) (enemy-flag lock-focus))
     )
   :trans (behavior ()
     (crimson-guard-method-220 self)
@@ -2488,7 +2477,7 @@
   :code (behavior ()
     (speech-control-method-12 *speech-control* self (speech-type speech-type-13))
     (ja-channel-push! 1 (seconds 0.2))
-    (let ((f30-0 (get-rand-float-range self 0.9 1.1)))
+    (let ((f30-0 (rnd-float-range self 0.9 1.1)))
       (ja-no-eval :group! crimson-guard-idle-to-stab-idle-ja :num! (seek! max f30-0) :frame-num 0.0)
       (until (ja-done? 0)
         (seek-toward-heading-vec! (-> self root) (-> self target-self-xz) 65536.0 (seconds 0.02))
@@ -2511,7 +2500,7 @@
       )
     #f
     (label cfg-17)
-    (let ((f30-1 (get-rand-float-range self 0.9 1.1)))
+    (let ((f30-1 (rnd-float-range self 0.9 1.1)))
       (ja-channel-push! 1 (seconds 0.2))
       (ja-no-eval :group! crimson-guard-stab-idle-to-idle-ja :num! (seek! max f30-1) :frame-num 0.0)
       (until (ja-done? 0)
@@ -2532,7 +2521,7 @@
   :virtual #t
   :event enemy-event-handler
   :enter (behavior ()
-    (logior! (-> self enemy-flags) (enemy-flag actor-pause-backup))
+    (logior! (-> self enemy-flags) (enemy-flag lock-focus))
     (nav-enemy-method-167 self)
     (let ((v1-4 self))
       (set! (-> v1-4 enemy-flags) (the-as enemy-flag (logclear (-> v1-4 enemy-flags) (enemy-flag enemy-flag36))))
@@ -2558,7 +2547,7 @@
     )
   :exit (behavior ()
     (set! (-> self joint-enable) #f)
-    (logclear! (-> self enemy-flags) (enemy-flag actor-pause-backup))
+    (logclear! (-> self enemy-flags) (enemy-flag lock-focus))
     )
   :trans (behavior ()
     (crimson-guard-method-220 self)
@@ -2568,7 +2557,7 @@
     )
   :code (behavior ()
     (ja-channel-push! 1 (seconds 0.2))
-    (let ((f30-0 (get-rand-float-range self 0.9 1.1)))
+    (let ((f30-0 (rnd-float-range self 0.9 1.1)))
       (ja-no-eval :group! crimson-guard-idle-to-stab-idle-ja :num! (seek! max f30-0) :frame-num 0.0)
       (until (ja-done? 0)
         (suspend)
@@ -2582,7 +2571,7 @@
         (ja :num! (seek!))
         )
       )
-    (let ((f30-1 (get-rand-float-range self 0.9 1.1)))
+    (let ((f30-1 (rnd-float-range self 0.9 1.1)))
       (ja-channel-push! 1 (seconds 0.2))
       (ja-no-eval :group! crimson-guard-stab-idle-to-idle-ja :num! (seek! max f30-1) :frame-num 0.0)
       (until (ja-done? 0)
@@ -2745,7 +2734,7 @@
   )
 
 ;; WARN: Return type mismatch object vs none.
-(defmethod crimson-guard-method-222 crimson-guard ((this crimson-guard))
+(defmethod crimson-guard-method-222 ((this crimson-guard))
   (local-vars (sv-800 vector))
   (rlet ((acc :class vf)
          (vf0 :class vf)
@@ -2991,7 +2980,7 @@
   :virtual #t
   :event enemy-event-handler
   :enter (behavior ()
-    (logior! (-> self enemy-flags) (enemy-flag actor-pause-backup))
+    (logior! (-> self enemy-flags) (enemy-flag lock-focus))
     (set! (-> self joint-enable) #t)
     (logior! (-> self focus-status) (focus-status dangerous))
     (let ((v1-5 self))
@@ -3035,8 +3024,8 @@
       (set! (-> v1-5 state mode) (the-as lightning-mode a0-2))
       )
     (set! (-> self joint-enable) #f)
-    (logclear! (-> self enemy-flags) (enemy-flag actor-pause-backup))
-    (if (logtest? (-> self enemy-flags) (enemy-flag check-water))
+    (logclear! (-> self enemy-flags) (enemy-flag lock-focus))
+    (if (logtest? (-> self enemy-flags) (enemy-flag dangerous-backup))
         (logior! (-> self focus-status) (focus-status dangerous))
         (logclear! (-> self focus-status) (focus-status dangerous))
         )
@@ -3083,7 +3072,7 @@
                  (if (< (the-as degrees f0-6) 0.0)
                      (set! f30-0 (- f30-0))
                      )
-                 (if (logtest? (enemy-flag dislike-combo) (-> self enemy-flags))
+                 (if (logtest? (enemy-flag drawn-mirrored) (-> self enemy-flags))
                      (set! f0-6 (- (the-as degrees f0-6)))
                      )
                  (cond
@@ -3238,7 +3227,7 @@
     )
   )
 
-(defmethod crimson-guard-method-223 crimson-guard ((this crimson-guard) (arg0 float))
+(defmethod crimson-guard-method-223 ((this crimson-guard) (arg0 float))
   (let* ((s3-0 (handle->process (-> this transport)))
          (s4-0 (if (type? s3-0 process-focusable)
                    (the-as process-focusable s3-0)
@@ -3272,7 +3261,7 @@
 ;; ERROR: Unsupported inline assembly instruction kind - [mula.s f0, f3]
 ;; ERROR: Unsupported inline assembly instruction kind - [madda.s f1, f4]
 ;; ERROR: Unsupported inline assembly instruction kind - [madd.s f0, f2, f5]
-(defmethod crimson-guard-method-224 crimson-guard ((this crimson-guard) (arg0 vector))
+(defmethod crimson-guard-method-224 ((this crimson-guard) (arg0 vector))
   (local-vars
     (f0-8 float)
     (sv-768 vector)
@@ -3392,7 +3381,7 @@
   )
 
 ;; WARN: Return type mismatch object vs none.
-(defmethod enemy-method-93 crimson-guard ((this crimson-guard))
+(defmethod enemy-method-93 ((this crimson-guard))
   (let ((s5-0 (-> this nav state))
         (v1-2 (vector-z-quaternion! (new 'stack-no-clear 'vector) (-> this root quat)))
         )
@@ -3418,11 +3407,11 @@
   (none)
   )
 
-(defmethod enemy-method-89 crimson-guard ((this crimson-guard) (arg0 enemy-jump-info))
+(defmethod enemy-method-89 ((this crimson-guard) (arg0 enemy-jump-info))
   #f
   )
 
-(defmethod enemy-method-87 crimson-guard ((this crimson-guard) (arg0 enemy-jump-info))
+(defmethod enemy-method-87 ((this crimson-guard) (arg0 enemy-jump-info))
   (let ((a0-1 (-> this skel root-channel 0)))
     (set! (-> a0-1 param 0) 1.0)
     (joint-control-channel-group! a0-1 (the-as art-joint-anim #f) num-func-loop!)
@@ -3438,7 +3427,7 @@
   #t
   )
 
-(defmethod enemy-method-88 crimson-guard ((this crimson-guard) (arg0 enemy-jump-info))
+(defmethod enemy-method-88 ((this crimson-guard) (arg0 enemy-jump-info))
   (let ((a0-1 (-> this skel root-channel 0)))
     (set! (-> a0-1 param 0) 1.0)
     (joint-control-channel-group! a0-1 (the-as art-joint-anim #f) num-func-loop!)
@@ -3454,7 +3443,7 @@
   #t
   )
 
-(defmethod enemy-method-90 crimson-guard ((this crimson-guard) (arg0 int) (arg1 enemy-jump-info))
+(defmethod enemy-method-90 ((this crimson-guard) (arg0 int) (arg1 enemy-jump-info))
   (local-vars (s5-0 symbol))
   (let ((v1-0 arg0))
     (cond
@@ -3597,7 +3586,9 @@
         (ja :num! (loop! f30-0))
         )
       )
-    (set! (-> self enemy-flags) (the-as enemy-flag (logclear (-> self enemy-flags) (enemy-flag vulnerable))))
+    (set! (-> self enemy-flags)
+          (the-as enemy-flag (logclear (-> self enemy-flags) (enemy-flag jump-check-blocked)))
+          )
     (send-event self 'jump 0 (-> self event-param-point))
     (until #f
       (suspend)
@@ -3609,7 +3600,7 @@
     )
   )
 
-(defmethod init-enemy-collision! crimson-guard ((this crimson-guard))
+(defmethod init-enemy-collision! ((this crimson-guard))
   "Initializes the [[collide-shape-moving]] and any ancillary tasks to make the enemy collide properly"
   (let ((s5-0 (new 'process 'collide-shape-moving this (collide-list-enum usually-hit-by-player))))
     (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
@@ -3681,7 +3672,7 @@
   (none)
   )
 
-(defmethod relocate crimson-guard ((this crimson-guard) (arg0 int))
+(defmethod relocate ((this crimson-guard) (arg0 int))
   (if (nonzero? (-> this joint))
       (&+! (-> this joint) arg0)
       )
@@ -3691,7 +3682,7 @@
   (call-parent-method this arg0)
   )
 
-(defmethod init-enemy! crimson-guard ((this crimson-guard))
+(defmethod init-enemy! ((this crimson-guard))
   "Common method called to initialize the enemy, typically sets up default field values and calls ancillary helper methods"
   (initialize-skeleton
     this
@@ -3724,7 +3715,7 @@
   (none)
   )
 
-(defmethod crimson-guard-method-225 crimson-guard ((this crimson-guard) (arg0 uint) (arg1 symbol))
+(defmethod crimson-guard-method-225 ((this crimson-guard) (arg0 uint) (arg1 symbol))
   (set! (-> this guard-type) arg0)
   (set! (-> this settings)
         (get-traffic-guard-type-settings (-> this controller traffic) (the-as int (-> this guard-type)))
@@ -3784,7 +3775,7 @@
   (none)
   )
 
-(defmethod citizen-init! crimson-guard ((this crimson-guard))
+(defmethod citizen-init! ((this crimson-guard))
   "Initialize [[citizen]] defaults."
   (let ((t9-0 (method-of-type citizen citizen-init!)))
     (t9-0 this)
@@ -3805,7 +3796,7 @@
   (set! (-> this fact pickup-amount) 10.0)
   (set! (-> this fact pickup-spawn-amount) 1.0)
   (set! (-> this traffic-target-status handle) (the-as handle #f))
-  (let ((v1-24 (get-rand-int this 2)))
+  (let ((v1-24 (rnd-int-count this 2)))
     (cond
       ((zero? v1-24)
        (set! (-> this anim-shoot 0 anim-index) 19)

@@ -7,7 +7,7 @@
 
 ;; DECOMP BEGINS
 
-(defmethod draw hud-plasmite ((this hud-plasmite))
+(defmethod draw ((this hud-plasmite))
   (set-hud-piece-position!
     (the-as hud-sprite (-> this sprites))
     (the int (+ 457.0 (* 130.0 (-> this offset))))
@@ -20,14 +20,14 @@
   (none)
   )
 
-(defmethod update-values hud-plasmite ((this hud-plasmite))
+(defmethod update-values ((this hud-plasmite))
   (set! (-> this values 0 target) (the int (-> *game-info* counter)))
   ((method-of-type hud update-values) this)
   0
   (none)
   )
 
-(defmethod init-callback hud-plasmite ((this hud-plasmite))
+(defmethod init-callback ((this hud-plasmite))
   (set! (-> this level) (level-get *level* 'strip))
   (set! (-> this gui-id)
         (add-process *gui-control* this (gui-channel hud-middle-right) (gui-action hidden) (-> this name) 81920.0 0)
@@ -45,18 +45,14 @@
   )
 
 (deftype strip-hazard (process-drawable)
-  ((root               collide-shape-moving         :override)
-   (sync               sync-linear          :inline :offset-assert 200)
-   (shove-vec          vector               :inline :offset-assert 224)
-   (no-collision-timer uint64                       :offset-assert 240)
-   (attack-id          uint32                       :offset-assert 248)
+  ((root                collide-shape-moving :override)
+   (sync                sync-linear           :inline)
+   (shove-vec           vector                :inline)
+   (no-collision-timer  uint64)
+   (attack-id           uint32)
    )
-  :heap-base #x80
-  :method-count-assert 21
-  :size-assert         #xfc
-  :flag-assert         #x15008000fc
-  (:methods
-    (idle () _type_ :state 20)
+  (:state-methods
+    idle
     )
   )
 
@@ -150,7 +146,7 @@
   :post transform-post
   )
 
-(defmethod init-from-entity! strip-hazard ((this strip-hazard) (arg0 entity-actor))
+(defmethod init-from-entity! ((this strip-hazard) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
 - stack size
@@ -194,15 +190,11 @@ This commonly includes things such as:
   )
 
 (deftype fencespikes (strip-hazard)
-  ((start-quat   quaternion :inline :offset-assert 256)
-   (spin         float              :offset-assert 272)
-   (offset       float              :offset-assert 276)
-   (sparks-group uint32             :offset-assert 280)
+  ((start-quat    quaternion  :inline)
+   (spin          float)
+   (offset        float)
+   (sparks-group  uint32)
    )
-  :heap-base #xa0
-  :method-count-assert 21
-  :size-assert         #x11c
-  :flag-assert         #x1500a0011c
   )
 
 
@@ -221,7 +213,7 @@ This commonly includes things such as:
         ((and (= gp-0 fencespikes-idle-ja) (>= f0-0 47.0) (>= 67.0 f0-0))
          (spawn
            (-> self part)
-           (vector<-cspace! (new 'stack-no-clear 'vector) (joint-node-index fencespikes-lod0-jg head))
+           (vector<-cspace! (new 'stack-no-clear 'vector) (joint-node fencespikes-lod0-jg head))
            )
          )
         ((and (= gp-0 fencespikes-idle-ja) (>= f0-0 42.0) (>= 65.0 f0-0))
@@ -238,7 +230,7 @@ This commonly includes things such as:
   )
 
 ;; WARN: Return type mismatch object vs none.
-(defmethod init-from-entity! fencespikes ((this fencespikes) (arg0 entity-actor))
+(defmethod init-from-entity! ((this fencespikes) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
 - stack size
@@ -306,12 +298,8 @@ This commonly includes things such as:
   )
 
 (deftype pitspikes (strip-hazard)
-  ((spinner basic  :offset-assert 252)
+  ((spinner  basic)
    )
-  :heap-base #x80
-  :method-count-assert 21
-  :size-assert         #x100
-  :flag-assert         #x1500800100
   )
 
 
@@ -351,7 +339,7 @@ This commonly includes things such as:
       )
     (update-trans!
       (-> self sound)
-      (vector<-cspace! (new 'static 'vector) (joint-node-index pitspikes-lod0-jg rotatnode))
+      (vector<-cspace! (new 'static 'vector) (joint-node pitspikes-lod0-jg rotatnode))
       )
     (update! (-> self sound))
     )
@@ -361,7 +349,7 @@ This commonly includes things such as:
           ((the-as (function none) t9-0))
           )
       )
-    (let ((gp-0 (vector<-cspace! (new 'stack-no-clear 'vector) (joint-node-index pitspikes-lod0-jg main))))
+    (let ((gp-0 (vector<-cspace! (new 'stack-no-clear 'vector) (joint-node pitspikes-lod0-jg main))))
       (let ((f0-0 (quaternion-y-angle (-> self root quat))))
         (set! (-> *pitspikes-rotate-pos* quad) (-> gp-0 quad))
         (set! (-> *pitspikes-rotate-pos* w) f0-0)
@@ -371,7 +359,7 @@ This commonly includes things such as:
     )
   )
 
-(defmethod relocate pitspikes ((this pitspikes) (arg0 int))
+(defmethod relocate ((this pitspikes) (arg0 int))
   (if (nonzero? (-> this spinner))
       (&+! (-> this spinner) arg0)
       )
@@ -379,7 +367,7 @@ This commonly includes things such as:
   )
 
 ;; WARN: Return type mismatch object vs none.
-(defmethod init-from-entity! pitspikes ((this pitspikes) (arg0 entity-actor))
+(defmethod init-from-entity! ((this pitspikes) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
 - stack size
@@ -432,10 +420,6 @@ This commonly includes things such as:
 
 (deftype curtainsaw (strip-hazard)
   ()
-  :heap-base #x80
-  :method-count-assert 21
-  :size-assert         #xfc
-  :flag-assert         #x15008000fc
   )
 
 
@@ -455,7 +439,7 @@ This commonly includes things such as:
       )
     (update-trans!
       (-> self sound)
-      (vector<-cspace! (new 'static 'vector) (joint-node-index curtainsaw-lod0-jg main))
+      (vector<-cspace! (new 'static 'vector) (joint-node curtainsaw-lod0-jg main))
       )
     (update! (-> self sound))
     )
@@ -470,7 +454,7 @@ This commonly includes things such as:
       (set! (-> gp-0 y) 0.0)
       (set! (-> gp-0 z) 0.0)
       (set! (-> gp-0 w) 1.0)
-      (let ((s5-0 (vector<-cspace! (new 'stack-no-clear 'vector) (joint-node-index curtainsaw-lod0-jg main))))
+      (let ((s5-0 (vector<-cspace! (new 'stack-no-clear 'vector) (joint-node curtainsaw-lod0-jg main))))
         (vector-orient-by-quat! gp-0 gp-0 (-> self root quat))
         (vector+! s5-0 s5-0 gp-0)
         (spawn (-> self part) s5-0)
@@ -480,7 +464,7 @@ This commonly includes things such as:
   )
 
 ;; WARN: Return type mismatch object vs none.
-(defmethod init-from-entity! curtainsaw ((this curtainsaw) (arg0 entity-actor))
+(defmethod init-from-entity! ((this curtainsaw) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
 - stack size
@@ -531,32 +515,28 @@ This commonly includes things such as:
   )
 
 (deftype grenade-point (process-drawable)
-  ((root               collide-shape             :override)
-   (camera-name        string                    :offset-assert 200)
-   (parented?          symbol                    :offset-assert 204)
-   (lightning-time     time-frame                :offset-assert 208)
-   (strike-table       (array vector)            :offset-assert 216)
-   (last-strike-index  int32                     :offset-assert 220)
-   (speed              meters                    :offset-assert 224)
-   (part2              sparticle-launch-control  :offset-assert 228)
-   (part3              sparticle-launch-control  :offset-assert 232)
-   (part-lightning-hit sparticle-launch-control  :offset-assert 236)
-   (enter-time         time-frame                :offset-assert 240)
-   (minimap            connection-minimap        :offset-assert 248)
+  ((root                collide-shape :override)
+   (camera-name         string)
+   (parented?           symbol)
+   (lightning-time      time-frame)
+   (strike-table        (array vector))
+   (last-strike-index   int32)
+   (speed               meters)
+   (part2               sparticle-launch-control)
+   (part3               sparticle-launch-control)
+   (part-lightning-hit  sparticle-launch-control)
+   (enter-time          time-frame)
+   (minimap             connection-minimap)
    )
-  :heap-base #x80
-  :method-count-assert 22
-  :size-assert         #xfc
-  :flag-assert         #x16008000fc
-  (:methods
-    (idle () _type_ :state 20)
-    (die (symbol) _type_ :state 21)
+  (:state-methods
+    idle
+    (die symbol)
     )
   )
 
 
 ;; WARN: Return type mismatch process-drawable vs grenade-point.
-(defmethod relocate grenade-point ((this grenade-point) (arg0 int))
+(defmethod relocate ((this grenade-point) (arg0 int))
   (if (nonzero? (-> this part2))
       (&+! (-> this part2) arg0)
       )
@@ -569,7 +549,7 @@ This commonly includes things such as:
   (the-as grenade-point ((method-of-type process-drawable relocate) this arg0))
   )
 
-(defmethod deactivate grenade-point ((this grenade-point))
+(defmethod deactivate ((this grenade-point))
   (if (nonzero? (-> this part2))
       (kill-and-free-particles (-> this part2))
       )
@@ -864,7 +844,7 @@ This commonly includes things such as:
   )
 
 ;; WARN: Return type mismatch object vs none.
-(defmethod init-from-entity! grenade-point ((this grenade-point) (arg0 entity-actor))
+(defmethod init-from-entity! ((this grenade-point) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
 - stack size
@@ -923,17 +903,13 @@ This commonly includes things such as:
   )
 
 (deftype grenade (projectile)
-  ((tumble-quat  quaternion :inline :offset-assert 480)
-   (blast-radius float              :offset-assert 496)
-   (end-target   handle             :offset-assert 504)
+  ((tumble-quat   quaternion  :inline)
+   (blast-radius  float)
+   (end-target    handle)
    )
-  :heap-base #x180
-  :method-count-assert 42
-  :size-assert         #x200
-  :flag-assert         #x2a01800200
   (:methods
-    (grenade-method-40 (_type_) none 40)
-    (grenade-method-41 (_type_) none 41)
+    (grenade-method-40 (_type_) none)
+    (grenade-method-41 (_type_) none)
     )
   )
 
@@ -1109,7 +1085,7 @@ This commonly includes things such as:
     )
   )
 
-(defmethod draw-laser-sight grenade ((this grenade))
+(defmethod draw-laser-sight ((this grenade))
   "TODO - confirm If applicable, draw the laser sight particles"
   (let ((gp-0 (get-process *default-dead-pool* part-tracker #x4000)))
     (when gp-0
@@ -1150,7 +1126,7 @@ This commonly includes things such as:
   (none)
   )
 
-(defmethod spawn-impact-particles grenade ((this grenade))
+(defmethod spawn-impact-particles ((this grenade))
   "Spawns associated particles with the projectile if applicable"
   ((method-of-type projectile spawn-impact-particles) this)
   (ja-post)
@@ -1158,7 +1134,7 @@ This commonly includes things such as:
   (none)
   )
 
-(defmethod spawn-shell-particles grenade ((this grenade))
+(defmethod spawn-shell-particles ((this grenade))
   "TODO - confirm"
   (let ((gp-0 (get-process *default-dead-pool* part-tracker #x4000)))
     (when gp-0
@@ -1199,7 +1175,7 @@ This commonly includes things such as:
   (none)
   )
 
-(defmethod play-impact-sound grenade ((this grenade) (arg0 projectile-options))
+(defmethod play-impact-sound ((this grenade) (arg0 projectile-options))
   (let ((v1-0 arg0))
     (cond
       ((zero? v1-0)
@@ -1297,7 +1273,7 @@ This commonly includes things such as:
     )
   )
 
-(defmethod grenade-method-40 grenade ((this grenade))
+(defmethod grenade-method-40 ((this grenade))
   (let ((s5-0 (the-as process-drawable (-> this end-target process 0))))
     (when s5-0
       (set! (-> this root transv x) (* 4.0 (- (-> s5-0 root trans x) (-> this root trans x))))
@@ -1319,7 +1295,7 @@ This commonly includes things such as:
   (none)
   )
 
-(defmethod grenade-method-41 grenade ((this grenade))
+(defmethod grenade-method-41 ((this grenade))
   (quaternion*! (-> this root quat) (-> this root quat) (-> this tumble-quat))
   (projectile-move-fill-all-dirs this)
   (set-setting! 'point-of-interest 'abs (-> this root trans) 0)
@@ -1328,7 +1304,7 @@ This commonly includes things such as:
   )
 
 ;; WARN: Return type mismatch collide-shape-moving vs none.
-(defmethod init-proj-collision! grenade ((this grenade))
+(defmethod init-proj-collision! ((this grenade))
   "Init the [[projectile]]'s [[collide-shape]]"
   (let ((s5-0 (new 'process 'collide-shape-moving this (collide-list-enum hit-by-player))))
     (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
@@ -1359,7 +1335,7 @@ This commonly includes things such as:
   (none)
   )
 
-(defmethod init-proj-settings! grenade ((this grenade))
+(defmethod init-proj-settings! ((this grenade))
   "Init relevant settings for the [[projectile]] such as gravity, speed, timeout, etc"
   (with-pp
     (initialize-skeleton
@@ -1554,24 +1530,20 @@ This commonly includes things such as:
   )
 
 (deftype drill-plat (strip-hazard)
-  ((plat-sound ambient-sound  :offset-assert 252)
+  ((plat-sound  ambient-sound)
    )
-  :heap-base #x80
-  :method-count-assert 21
-  :size-assert         #x100
-  :flag-assert         #x1500800100
   )
 
 
 ;; WARN: Return type mismatch process-drawable vs drill-plat.
-(defmethod relocate drill-plat ((this drill-plat) (arg0 int))
+(defmethod relocate ((this drill-plat) (arg0 int))
   (if (nonzero? (-> this plat-sound))
       (&+! (-> this plat-sound) arg0)
       )
   (the-as drill-plat ((method-of-type process-drawable relocate) this arg0))
   )
 
-(defmethod deactivate drill-plat ((this drill-plat))
+(defmethod deactivate ((this drill-plat))
   (if (nonzero? (-> this plat-sound))
       (stop! (-> this plat-sound))
       )
@@ -1633,14 +1605,14 @@ This commonly includes things such as:
     (update! (-> self sound))
     (update-trans!
       (-> self plat-sound)
-      (vector<-cspace! (new 'stack-no-clear 'vector) (joint-node-index drill-plat-lod0-jg plat))
+      (vector<-cspace! (new 'stack-no-clear 'vector) (joint-node drill-plat-lod0-jg plat))
       )
     (update! (-> self plat-sound))
     )
   )
 
 ;; WARN: Return type mismatch object vs none.
-(defmethod init-from-entity! drill-plat ((this drill-plat) (arg0 entity-actor))
+(defmethod init-from-entity! ((this drill-plat) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
 - stack size

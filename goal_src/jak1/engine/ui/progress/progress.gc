@@ -8,23 +8,20 @@
 ;; DECOMP BEGINS
 
 (deftype progress-global-state (basic)
-  ((aspect-ratio-choice symbol           :offset-assert   4)
-   (video-mode-choice   symbol           :offset-assert   8)
-   (yes-no-choice       symbol           :offset-assert  12)
-   (which               int32            :offset-assert  16)
-   (starting-state      progress-screen  :offset-assert  24)
-   (last-slot-saved     int32            :offset-assert  32)
-   (slider-backup       float            :offset-assert  36)
-   (language-backup     language-enum    :offset-assert  40)
-   (on-off-backup       symbol           :offset-assert  48)
-   (center-x-backup     int32            :offset-assert  52)
-   (center-y-backup     int32            :offset-assert  56)
-   (aspect-ratio-backup symbol           :offset-assert  60)
-   (last-slider-sound   time-frame       :offset-assert  64)
+  ((aspect-ratio-choice  symbol)
+   (video-mode-choice    symbol)
+   (yes-no-choice        symbol)
+   (which                int32)
+   (starting-state       progress-screen)
+   (last-slot-saved      int32)
+   (slider-backup        float)
+   (language-backup      language-enum)
+   (on-off-backup        symbol)
+   (center-x-backup      int32)
+   (center-y-backup      int32)
+   (aspect-ratio-backup  symbol)
+   (last-slider-sound    time-frame)
    )
-  :method-count-assert 9
-  :size-assert         #x48
-  :flag-assert         #x900000048
   )
 
 
@@ -369,7 +366,7 @@
     )
   )
 
-(defmethod initialize-icons progress ((this progress))
+(defmethod initialize-icons ((this progress))
   (progress-make-icon this :skel *fuelcell-naked-sg*
                                  :x 256 :y 77 :z (meters 0.5)
                                  :scale-x 0.006 :scale-y 0.006)
@@ -395,7 +392,7 @@
   (none)
   )
 
-(defmethod enter! progress ((this progress) (screen progress-screen) (option int))
+(defmethod enter! ((this progress) (screen progress-screen) (option int))
   (when (!= (-> this display-state) screen)
     (set! (-> *progress-state* yes-no-choice) #f)
     (set! (-> this selected-option) #f)
@@ -432,7 +429,7 @@
   (none)
   )
 
-(defmethod push! progress ((this progress))
+(defmethod push! ((this progress))
   (let ((v1-0 (-> this display-state-pos)))
     (cond
       ((< v1-0 5)
@@ -449,7 +446,7 @@
   (none)
   )
 
-(defmethod pop! progress ((this progress))
+(defmethod pop! ((this progress))
   (let ((v1-0 (-> this display-state-pos)))
     (cond
       ((> v1-0 0)
@@ -467,7 +464,7 @@
   (none)
   )
 
-(defmethod set-transition-progress! progress ((this progress) (arg0 int))
+(defmethod set-transition-progress! ((this progress) (arg0 int))
   (set! (-> this transition-offset) arg0)
   (set! (-> this transition-offset-invert) (- 512 arg0))
   (set! (-> this transition-percentage) (* (1/ 512) (the float arg0)))
@@ -476,7 +473,7 @@
   (none)
   )
 
-(defmethod set-transition-speed! progress ((this progress))
+(defmethod set-transition-speed! ((this progress))
   (case (-> this display-state)
     (((progress-screen fuel-cell)
       (progress-screen money)
@@ -679,13 +676,13 @@
   (none)
   )
 
-(defmethod relocate game-count-info ((this game-count-info) (arg0 int))
+(defmethod relocate ((this game-count-info) (arg0 int))
   "Load in the game-count-info. This is a bit of a hack."
   (set! *game-counts* this)
   this
   )
 
-(defmethod relocate progress ((this progress) (arg0 int))
+(defmethod relocate ((this progress) (arg0 int))
   (dotimes (v1-0 (-> this nb-of-particles))
     (when (-> this particles v1-0 part)
       (if (nonzero? (-> this particles v1-0 part))
@@ -698,7 +695,7 @@
   (the-as progress ((method-of-type process relocate) this arg0))
   )
 
-(defmethod adjust-sprites progress ((this progress))
+(defmethod adjust-sprites ((this progress))
   (let ((f0-1 (* (1/ METER_LENGTH) (the float (-> this in-out-position)))))
     (set! (-> this particles 2 init-pos x) (the float (+ (-> this right-x-offset) 409 (the int (* 301.5 f0-1)))))
     (set! (-> this particles 1 init-pos x) (the float (+ (-> this left-x-offset) 59)))
@@ -730,7 +727,7 @@
   (none)
   )
 
-(defmethod adjust-icons progress ((this progress))
+(defmethod adjust-icons ((this progress))
   (dotimes (v1-0 (-> this nb-of-icons))
     (when (>= v1-0 4)
       (set-vector! (-> this icons v1-0 icon 0 root scale)
@@ -753,7 +750,7 @@
   (none)
   )
 
-(defmethod adjust-ratios progress ((this progress) (aspect symbol) (video-mode symbol))
+(defmethod adjust-ratios ((this progress) (aspect symbol) (video-mode symbol))
   (case aspect
     (('aspect4x3)
      (set! (-> this sides-x-scale) 1.0)
@@ -804,7 +801,7 @@
   (none)
   )
 
-(defmethod can-go-back? progress ((this progress))
+(defmethod can-go-back? ((this progress))
   (let ((v1-2 (-> *progress-process* 0 display-state))
         (a1-1 (-> *progress-state* starting-state))
         )
@@ -865,11 +862,11 @@
     )
   )
 
-(defmethod visible? progress ((this progress))
+(defmethod visible? ((this progress))
   (the-as symbol (and *progress-process* (zero? (-> *progress-process* 0 in-out-position))))
   )
 
-(defmethod hidden? progress ((this progress))
+(defmethod hidden? ((this progress))
   (or (not *progress-process*) (= (-> *progress-process* 0 in-out-position) 4096))
   )
 
@@ -908,7 +905,7 @@
     )
   )
 
-(defmethod set-memcard-screen progress ((this progress) (arg0 progress-screen))
+(defmethod set-memcard-screen ((this progress) (arg0 progress-screen))
   (let ((s4-0 (-> this card-info))
         (gp-0 arg0)
         )
@@ -1009,7 +1006,7 @@
     )
   )
 
-(defmethod respond-memcard progress ((this progress))
+(defmethod respond-memcard ((this progress))
   (let ((s5-0 (-> this card-info)))
     (when (and s5-0 (not (-> this in-transition)))
       (when (or (cpad-pressed? 0 x) (cpad-pressed? 0 circle))
@@ -1202,7 +1199,7 @@
   (none)
   )
 
-(defmethod respond-common progress ((this progress))
+(defmethod respond-common ((this progress))
   (mc-get-slot-info 0 *progress-save-info*)
   (set! (-> this card-info) *progress-save-info*)
   (let ((s5-0 (-> *options-remap* (-> this display-state))))
@@ -1638,7 +1635,7 @@
   (none)
   )
 
-(defmethod respond-progress progress ((this progress))
+(defmethod respond-progress ((this progress))
   (when (not (-> this in-transition))
     (cond
       ((cpad-pressed? 0 up)

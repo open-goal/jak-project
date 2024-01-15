@@ -3,8 +3,13 @@
 # =============================================================================================== #
 
 function (zyan_set_common_flags target)
-    if (NOT MSVC)
-        target_compile_options("${target}" PRIVATE "-std=c99")
+    if (MSVC)
+        # MSVC support for C11 is still pretty lacking, so we instead just disable the warnings
+        # about using non-standard C extensions.
+        target_compile_options("${target}" PUBLIC "/wd4201")
+    else ()
+        # For the more civilized compilers, we go with C11.
+        set_target_properties("${target}" PROPERTIES C_STANDARD 11)
     endif ()
 
     if (ZYAN_DEV_MODE)
@@ -29,16 +34,12 @@ function (zyan_set_source_group target)
 endfunction ()
 
 function (zyan_maybe_enable_wpo target)
-    if (ZYAN_WHOLE_PROGRAM_OPTIMIZATION AND MSVC)
-        set_target_properties("${target}" PROPERTIES COMPILE_FLAGS "/GL")
-        set_target_properties("${target}" PROPERTIES LINK_FLAGS_RELEASE "/LTCG")
+    if (ZYAN_WHOLE_PROGRAM_OPTIMIZATION)
+        set_property(TARGET "${target}" PROPERTY INTERPROCEDURAL_OPTIMIZATION TRUE)
     endif ()
 endfunction ()
 
+# deprecated alias for `zyan_maybe_enable_wpo`, for backward compatibility.
 function (zyan_maybe_enable_wpo_for_lib target)
-    if (ZYAN_WHOLE_PROGRAM_OPTIMIZATION AND MSVC)
-        set_target_properties("${target}" PROPERTIES COMPILE_FLAGS "/GL")
-        set_target_properties("${target}" PROPERTIES LINK_FLAGS_RELEASE "/LTCG")
-        set_target_properties("${target}" PROPERTIES STATIC_LIBRARY_FLAGS_RELEASE "/LTCG")
-    endif ()
+    zyan_maybe_enable_wpo("${target}")
 endfunction ()

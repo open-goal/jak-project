@@ -25,49 +25,45 @@
 (define *eco-pill-count* 0)
 
 (deftype collectable (process-drawable)
-  ((root-override   collide-shape-moving         :offset        112)
-   (pickup-type     pickup-type                  :offset-assert 176)
-   (pickup-amount   float                        :offset-assert 180)
-   (notify-parent   basic                        :offset-assert 184)
-   (old-base        vector               :inline :offset-assert 192)
-   (base            vector               :inline :offset-assert 208)
-   (extra-trans     vector               :inline :offset-assert 224)
-   (jump-pos        vector               :inline :offset-assert 240)
-   (flags           collectable-flags            :offset-assert 256)
-   (birth-time      time-frame                   :offset-assert 264)
-   (collect-timeout time-frame                   :offset-assert 272)
-   (fadeout-timeout time-frame                   :offset-assert 280)
-   (bob-offset      int64                        :offset-assert 288)
-   (bob-amount      float                        :offset-assert 296)
-   (pickup-handle   handle                       :offset-assert 304)
-   (actor-pause     symbol                       :offset-assert 312)
+  ((root             collide-shape-moving :override)
+   (pickup-type      pickup-type)
+   (pickup-amount    float)
+   (notify-parent    basic)
+   (old-base         vector                :inline)
+   (base             vector                :inline)
+   (extra-trans      vector                :inline)
+   (jump-pos         vector                :inline)
+   (flags            collectable-flags)
+   (birth-time       time-frame)
+   (collect-timeout  time-frame)
+   (fadeout-timeout  time-frame)
+   (bob-offset       int64)
+   (bob-amount       float)
+   (pickup-handle    handle)
+   (actor-pause      symbol)
    )
-  :heap-base #xd0
-  :method-count-assert 22
-  :size-assert         #x13c
-  :flag-assert         #x1600d0013c
   (:methods
-    (initialize (_type_) _type_ 20)
-    (initialize-params (_type_ time-frame float) none 21)
+    (initialize (_type_) _type_)
+    (initialize-params (_type_ time-frame float) none)
     )
   )
 
 
-(defmethod initialize-params collectable ((this collectable) (arg0 time-frame) (arg1 float))
+(defmethod initialize-params ((this collectable) (arg0 time-frame) (arg1 float))
   (logclear! (-> this mask) (process-mask crate enemy platform ambient))
   (logior! (-> this mask) (process-mask collectable))
   (set! (-> this flags) (collectable-flags can-collect ignore-blue))
   (set! (-> this bob-amount) arg1)
-  (set! (-> this bob-offset) (+ (the-as int (-> this root-override trans x))
-                                (the-as int (-> this root-override trans y))
-                                (the-as int (-> this root-override trans z))
+  (set! (-> this bob-offset) (+ (the-as int (-> this root trans x))
+                                (the-as int (-> this root trans y))
+                                (the-as int (-> this root trans z))
                                 )
         )
   (cond
-    ((or (= (vector-length (-> this root-override transv)) 0.0)
+    ((or (= (vector-length (-> this root transv)) 0.0)
          (logtest? (-> this fact options) (fact-options instant-collect))
          )
-     (vector-reset! (-> this root-override transv))
+     (vector-reset! (-> this root transv))
      )
     (else
       (logior! (-> this flags) (collectable-flags trans))
@@ -82,8 +78,8 @@
     )
   (set! (-> this collect-timeout) (seconds 0.33))
   (set-time! (-> this birth-time))
-  (set! (-> this base quad) (-> this root-override trans quad))
-  (set! (-> this old-base quad) (-> this root-override trans quad))
+  (set! (-> this base quad) (-> this root trans quad))
+  (set! (-> this old-base quad) (-> this root trans quad))
   (set! (-> this pickup-handle) (the-as handle #f))
   (case (-> this fact pickup-type)
     (((pickup-type eco-pill) (pickup-type eco-green) (pickup-type money) (pickup-type eco-blue))
@@ -91,45 +87,41 @@
      )
     )
   (if (logtest? (-> this fact options) (fact-options large))
-      (set! (-> this root-override root-prim local-sphere w)
-            (* 2.5 (-> this root-override root-prim local-sphere w))
-            )
+      (set! (-> this root root-prim local-sphere w) (* 2.5 (-> this root root-prim local-sphere w)))
       )
   (none)
   )
 
 (deftype eco-collectable (collectable)
-  ((eco-effect          sparticle-launch-group         :offset-assert 316)
-   (collect-effect      sparticle-launch-group         :offset-assert 320)
-   (collect-effect2     sparticle-launch-group         :offset-assert 324)
-   (collect-effect-time time-frame                     :offset-assert 328)
-   (respawn-delay       time-frame                     :offset-assert 336)
-   (sound-name          sound-spec                     :offset-assert 344)
-   (target              handle                         :offset-assert 352)
-   (suck-time           time-frame                     :offset-assert 360)
-   (suck-y-offset       float                          :offset-assert 368)
-   (speed               vector                 :inline :offset-assert 384)
-   (movie-pos-index     int32                          :offset-assert 400)
+  ((eco-effect           sparticle-launch-group)
+   (collect-effect       sparticle-launch-group)
+   (collect-effect2      sparticle-launch-group)
+   (collect-effect-time  time-frame)
+   (respawn-delay        time-frame)
+   (sound-name           sound-spec)
+   (target               handle)
+   (suck-time            time-frame)
+   (suck-y-offset        float)
+   (speed                vector  :inline)
+   (movie-pos-index      int32)
    )
-  :heap-base #x130
-  :method-count-assert 31
-  :size-assert         #x194
-  :flag-assert         #x1f01300194
+  (:state-methods
+    wait
+    (pickup object handle)
+    die
+    jump
+    (notice-blue handle)
+    )
   (:methods
-    (wait () _type_ :state 22)
-    (pickup (object handle) _type_ :state 23)
-    (die () _type_ :state 24)
-    (jump () _type_ :state 25)
-    (notice-blue (handle) _type_ :state 26)
-    (initialize-effect (_type_ pickup-type) none 27)
-    (initialize-eco (_type_ entity-actor pickup-type float) object 28)
-    (animate (_type_) none 29)
-    (blocked () _type_ :state 30)
+    (initialize-effect (_type_ pickup-type) none)
+    (initialize-eco (_type_ entity-actor pickup-type float) object)
+    (animate (_type_) none)
+    (blocked () _type_ :state)
     )
   )
 
 
-(defmethod initialize eco-collectable ((this eco-collectable))
+(defmethod initialize ((this eco-collectable))
   (stack-size-set! (-> this main-thread) 192) ;; og:preserve-this hack increased from 128
   (logior! (-> this mask) (process-mask actor-pause))
   (set! (-> this actor-pause) #t)
@@ -148,7 +140,7 @@
       )
     (set! (-> s5-0 nav-radius) (* 0.75 (-> s5-0 root-prim local-sphere w)))
     (backup-collide-with-as s5-0)
-    (set! (-> this root-override) s5-0)
+    (set! (-> this root) s5-0)
     )
   (set! (-> this fact) (new 'process 'fact-info this (-> this pickup-type) (-> this pickup-amount)))
   (if (logtest? (fact-options respawn) (-> this fact options))
@@ -157,7 +149,7 @@
   this
   )
 
-(defmethod initialize-effect eco-collectable ((this eco-collectable) (arg0 pickup-type))
+(defmethod initialize-effect ((this eco-collectable) (arg0 pickup-type))
   (set! (-> this fact pickup-type) arg0)
   (case (-> this fact pickup-type)
     (((pickup-type eco-blue) (pickup-type eco-red) (pickup-type eco-green) (pickup-type eco-yellow))
@@ -202,7 +194,7 @@
     )
   (set! (-> this part) (create-launch-control (-> this eco-effect) this))
   (if (-> this sound-name)
-      (set! (-> this sound) (new 'process 'ambient-sound (-> this sound-name) (-> this root-override trans)))
+      (set! (-> this sound) (new 'process 'ambient-sound (-> this sound-name) (-> this root trans)))
       )
   (none)
   )
@@ -218,8 +210,8 @@
     (set! (-> self fact pickup-amount) f30-0)
     )
   (set! (-> self fact options) (-> arg2 options))
-  (set! (-> self root-override trans quad) (-> arg0 quad))
-  (set! (-> self root-override transv quad) (-> arg1 quad))
+  (set! (-> self root trans quad) (-> arg0 quad))
+  (set! (-> self root transv quad) (-> arg1 quad))
   (initialize-effect self (-> self fact pickup-type))
   (set! (-> self notify-parent) #f)
   (case (-> self fact pickup-type)
@@ -238,7 +230,7 @@
       (initialize-params self (seconds 15) (the-as float 1024.0))
       )
     )
-  (update-transforms! (-> self root-override))
+  (update-transforms! (-> self root))
   (set! (-> self event-hook) (-> (method-of-object self wait) event))
   (if (logtest? (fact-options eco-blocked) (-> self fact options))
       (go-virtual blocked)
@@ -247,21 +239,21 @@
   (none)
   )
 
-(defmethod initialize-eco eco-collectable ((this eco-collectable) (arg0 entity-actor) (arg1 pickup-type) (arg2 float))
+(defmethod initialize-eco ((this eco-collectable) (arg0 entity-actor) (arg1 pickup-type) (arg2 float))
   (set! (-> this pickup-amount) arg2)
   (set! (-> this pickup-type) arg1)
   (initialize this)
-  (set! (-> this root-override trans quad) (-> arg0 extra trans quad))
+  (set! (-> this root trans quad) (-> arg0 extra trans quad))
   (initialize-effect this (-> this fact pickup-type))
   (initialize-params this 0 (the-as float 1024.0))
-  (update-transforms! (-> this root-override))
+  (update-transforms! (-> this root))
   (if (logtest? (fact-options eco-blocked) (-> this fact options))
       (go (method-of-object this blocked))
       )
   (go (method-of-object this wait))
   )
 
-(defmethod animate eco-collectable ((this eco-collectable))
+(defmethod animate ((this eco-collectable))
   0
   (none)
   )
@@ -298,7 +290,7 @@
                    )
              )
         (when v1-3
-          (let ((a0-5 (-> self root-override root-prim prim-core))
+          (let ((a0-5 (-> self root root-prim prim-core))
                 (a1-2 (-> (the-as collide-shape v1-3) root-prim prim-core))
                 )
             (if (< (vector-vector-distance (the-as vector a0-5) (the-as vector a1-2)) (-> *FACT-bank* suck-suck-dist))
@@ -327,7 +319,7 @@
                    )
              )
         (when v1-6
-          (let ((s2-0 (-> self root-override root-prim prim-core))
+          (let ((s2-0 (-> self root root-prim prim-core))
                 (gp-2 (-> v1-6 root-prim prim-core))
                 )
             (if (and arg1 (rand-vu-percent? (the-as float 0.25)))
@@ -371,7 +363,7 @@
                  (go-virtual wait)
                  )
                 (arg1
-                  (add-blue-shake (-> self root-override trans) (the-as vector s2-0) (the-as vector gp-2))
+                  (add-blue-shake (-> self root trans) (the-as vector s2-0) (the-as vector gp-2))
                   )
                 )
               )
@@ -404,7 +396,7 @@
       (set! (-> self base y) (-> self jump-pos y))
       (setup-from-to-duration!
         gp-1
-        (-> self root-override trans)
+        (-> self root trans)
         (-> self jump-pos)
         (the-as float 300.0)
         (the-as float -2.2755556)
@@ -412,7 +404,7 @@
       (set-time! (-> self state-time))
       (until (time-elapsed? (-> self state-time) (seconds 1))
         (let ((f0-2 (the float (- (current-time) (-> self state-time)))))
-          (eval-position! gp-1 f0-2 (-> self root-override trans))
+          (eval-position! gp-1 f0-2 (-> self root trans))
           )
         (transform-post)
         (animate self)
@@ -422,10 +414,10 @@
             )
         )
       )
-    (set! (-> self root-override trans quad) (-> self jump-pos quad))
-    (set! (-> self base quad) (-> self root-override trans quad))
-    (vector-reset! (-> self root-override transv))
-    (update-transforms! (-> self root-override))
+    (set! (-> self root trans quad) (-> self jump-pos quad))
+    (set! (-> self base quad) (-> self root trans quad))
+    (vector-reset! (-> self root transv))
+    (update-transforms! (-> self root))
     (logclear! (-> self flags) (collectable-flags trans))
     (logior! (-> self flags) (collectable-flags can-collect))
     (if (-> self actor-pause)
@@ -462,8 +454,8 @@
          )
        )
       ((= message 'trans)
-       (set! (-> self root-override trans quad) (-> (the-as vector (-> block param 0)) quad))
-       (update-transforms! (-> self root-override))
+       (set! (-> self root trans quad) (-> (the-as vector (-> block param 0)) quad))
+       (update-transforms! (-> self root))
        (ja-post)
        )
       ((= message 'jump)
@@ -474,7 +466,7 @@
       ((= message 'pickup)
        (when (!= (-> self next-state name) 'pickup)
          (if (and (> argc 0) (-> block param 0))
-             (move-to-point! (-> self root-override) (the-as vector (-> block param 0)))
+             (move-to-point! (-> self root) (the-as vector (-> block param 0)))
              )
          (logclear! (-> self mask) (process-mask actor-pause))
          (go-virtual pickup #f (the-as handle #f))
@@ -526,24 +518,24 @@
     (cond
       ((logtest? (-> self flags) (collectable-flags trans))
        (vector-v++!
-         (-> self root-override transv)
-         (compute-acc-due-to-gravity (-> self root-override) (new-stack-vector0) (the-as float 0.0))
+         (-> self root transv)
+         (compute-acc-due-to-gravity (-> self root) (new-stack-vector0) (the-as float 0.0))
          )
-       (integrate-no-collide! (-> self root-override) (-> self root-override transv))
-       (when (and (>= 0.0 (-> self root-override transv y)) (>= (-> self base y) (-> self root-override trans y)))
-         (set! (-> self root-override trans y) (-> self base y))
+       (integrate-no-collide! (-> self root) (-> self root transv))
+       (when (and (>= 0.0 (-> self root transv y)) (>= (-> self base y) (-> self root trans y)))
+         (set! (-> self root trans y) (-> self base y))
          (cond
-           ((< (-> self root-override transv y) -8192.0)
-            (set! (-> self root-override transv y) (* -0.5 (-> self root-override transv y)))
+           ((< (-> self root transv y) -8192.0)
+            (set! (-> self root transv y) (* -0.5 (-> self root transv y)))
             )
            (else
-             (vector-reset! (-> self root-override transv))
+             (vector-reset! (-> self root transv))
              (logclear! (-> self flags) (collectable-flags trans))
              (logior! (-> self flags) (collectable-flags can-collect))
              (if (-> self actor-pause)
                  (logior! (-> self mask) (process-mask actor-pause))
                  )
-             (set! (-> self base quad) (-> self root-override trans quad))
+             (set! (-> self base quad) (-> self root trans quad))
              (if (and (logtest? (-> self fact options) (fact-options can-collect))
                       (not (logtest? (-> self flags) (collectable-flags ignore-blue)))
                       )
@@ -563,12 +555,12 @@
         (set! (-> self trans-hook) #f)
         )
       )
-    (update-transforms! (-> self root-override))
+    (update-transforms! (-> self root))
     )
   :code (behavior ()
     (loop
       (let ((gp-0 (-> self part))
-            (s5-0 (-> self root-override root-prim prim-core))
+            (s5-0 (-> self root root-prim prim-core))
             )
         (when (and (logtest? (-> self flags) (collectable-flags fade))
                    (time-elapsed? (-> self birth-time) (-> self fadeout-timeout))
@@ -644,14 +636,14 @@
     )
   :code (behavior ((arg0 handle))
     (loop
-      (set! (-> self root-override trans quad) (-> self base quad))
+      (set! (-> self root trans quad) (-> self base quad))
       (add-blue-motion #t #f #t #f)
-      (update-transforms! (-> self root-override))
+      (update-transforms! (-> self root))
       (if (nonzero? (-> self draw))
           (ja-post)
           )
       (let ((a0-5 (-> self part))
-            (a1-1 (-> self root-override root-prim prim-core))
+            (a1-1 (-> self root root-prim prim-core))
             )
         (if (nonzero? a0-5)
             (spawn a0-5 (the-as vector a1-1))
@@ -727,7 +719,7 @@
     (logclear! (-> self mask) (process-mask actor-pause))
     )
   :code (behavior ((arg0 object) (arg1 handle))
-    (clear-collide-with-as (-> self root-override))
+    (clear-collide-with-as (-> self root))
     (if (not (or (= (-> self fact pickup-type) (pickup-type eco-pill))
                  (logtest? (-> self fact options) (fact-options powerup))
                  )
@@ -778,7 +770,7 @@
             part-tracker-track-target
             #f
             #f
-            (-> self root-override root-prim prim-core)
+            (-> self root root-prim prim-core)
             :to gp-6
             )
           )
@@ -820,7 +812,7 @@
             )
           (process->handle self)
           #f
-          (-> self root-override root-prim prim-core)
+          (-> self root root-prim prim-core)
           :to self
           )
         )
@@ -840,16 +832,12 @@
 
 (deftype eco (eco-collectable)
   ()
-  :heap-base #x130
-  :method-count-assert 31
-  :size-assert         #x194
-  :flag-assert         #x1f01300194
   )
 
 
-(defmethod animate eco ((this eco))
+(defmethod animate ((this eco))
   (let ((a0-1 (-> this part))
-        (a1-0 (-> this root-override root-prim prim-core))
+        (a1-0 (-> this root root-prim prim-core))
         )
     (spawn a0-1 (the-as vector a1-0))
     )
@@ -903,66 +891,50 @@
         )
       )
     (set! (-> self base quad) (-> self old-base quad))
-    (set! (-> self root-override trans quad) (-> self base quad))
-    (restore-collide-with-as (-> self root-override))
+    (set! (-> self root trans quad) (-> self base quad))
+    (restore-collide-with-as (-> self root))
     (go-virtual wait)
     )
   )
 
 (deftype eco-yellow (eco)
   ()
-  :heap-base #x130
-  :method-count-assert 31
-  :size-assert         #x194
-  :flag-assert         #x1f01300194
   )
 
 
-(defmethod init-from-entity! eco-yellow ((this eco-yellow) (arg0 entity-actor))
+(defmethod init-from-entity! ((this eco-yellow) (arg0 entity-actor))
   (initialize-eco this arg0 (pickup-type eco-yellow) (-> *FACT-bank* eco-single-inc))
   (none)
   )
 
 (deftype eco-red (eco)
   ()
-  :heap-base #x130
-  :method-count-assert 31
-  :size-assert         #x194
-  :flag-assert         #x1f01300194
   )
 
 
-(defmethod init-from-entity! eco-red ((this eco-red) (arg0 entity-actor))
+(defmethod init-from-entity! ((this eco-red) (arg0 entity-actor))
   (initialize-eco this arg0 (pickup-type eco-red) (-> *FACT-bank* eco-single-inc))
   (none)
   )
 
 (deftype eco-blue (eco)
   ()
-  :heap-base #x130
-  :method-count-assert 31
-  :size-assert         #x194
-  :flag-assert         #x1f01300194
   )
 
 
-(defmethod init-from-entity! eco-blue ((this eco-blue) (arg0 entity-actor))
+(defmethod init-from-entity! ((this eco-blue) (arg0 entity-actor))
   (initialize-eco this arg0 (pickup-type eco-blue) (-> *FACT-bank* eco-single-inc))
   (none)
   )
 
 (deftype health (eco-collectable)
   ()
-  :heap-base #x130
-  :method-count-assert 31
-  :size-assert         #x194
-  :flag-assert         #x1f01300194
   )
 
 
-(defmethod animate health ((this health))
+(defmethod animate ((this health))
   (let ((a0-1 (-> this part))
-        (a1-0 (-> this root-override root-prim prim-core))
+        (a1-0 (-> this root root-prim prim-core))
         )
     (spawn a0-1 (the-as vector a1-0))
     )
@@ -973,23 +945,19 @@
   (none)
   )
 
-(defmethod init-from-entity! health ((this health) (arg0 entity-actor))
+(defmethod init-from-entity! ((this health) (arg0 entity-actor))
   (initialize-eco this arg0 (pickup-type eco-green) (-> *FACT-bank* health-single-inc))
   (none)
   )
 
 (deftype eco-pill (eco-collectable)
   ()
-  :heap-base #x130
-  :method-count-assert 31
-  :size-assert         #x194
-  :flag-assert         #x1f01300194
   )
 
 
-(defmethod animate eco-pill ((this eco-pill))
+(defmethod animate ((this eco-pill))
   (let ((a0-1 (-> this part))
-        (a1-0 (-> this root-override root-prim prim-core))
+        (a1-0 (-> this root root-prim prim-core))
         )
     (spawn a0-1 (the-as vector a1-0))
     )
@@ -1000,18 +968,18 @@
   (none)
   )
 
-(defmethod init-from-entity! eco-pill ((this eco-pill) (arg0 entity-actor))
+(defmethod init-from-entity! ((this eco-pill) (arg0 entity-actor))
   (initialize-eco this arg0 (pickup-type eco-pill) (-> *FACT-bank* health-small-inc))
   (none)
   )
 
-(defmethod deactivate eco-pill ((this eco-pill))
+(defmethod deactivate ((this eco-pill))
   (set! *eco-pill-count* (+ *eco-pill-count* -1))
   ((method-of-type eco-collectable deactivate) this)
   (none)
   )
 
-(defmethod initialize eco-pill ((this eco-pill))
+(defmethod initialize ((this eco-pill))
   (set! *eco-pill-count* (+ *eco-pill-count* 1))
   (stack-size-set! (-> this main-thread) 192) ;; og:preserve-this hack increased from 128
   (logior! (-> this mask) (process-mask actor-pause))
@@ -1031,7 +999,7 @@
       )
     (set! (-> s5-0 nav-radius) (* 0.75 (-> s5-0 root-prim local-sphere w)))
     (backup-collide-with-as s5-0)
-    (set! (-> this root-override) s5-0)
+    (set! (-> this root) s5-0)
     )
   (set! (-> this fact) (new 'process 'fact-info this (-> this pickup-type) (-> this pickup-amount)))
   this
@@ -1051,19 +1019,15 @@
 
 (deftype money (eco-collectable)
   ()
-  :heap-base #x130
-  :method-count-assert 31
-  :size-assert         #x194
-  :flag-assert         #x1f01300194
   )
 
 
-(defmethod run-logic? money ((this money))
+(defmethod run-logic? ((this money))
   (or (not (logtest? (-> this mask) (process-mask actor-pause)))
       (or (and (nonzero? (-> this draw))
                (logtest? (-> this draw status) (draw-status was-drawn))
-               (>= (+ (-> *ACTOR-bank* pause-dist) (-> this root-override pause-adjust-distance))
-                   (vector-vector-distance (-> this root-override trans) (math-camera-pos))
+               (>= (+ (-> *ACTOR-bank* pause-dist) (-> this root pause-adjust-distance))
+                   (vector-vector-distance (-> this root trans) (math-camera-pos))
                    )
                )
           (and (nonzero? (-> this skel)) (!= (-> this skel root-channel 0) (-> this skel channel)))
@@ -1072,7 +1036,7 @@
       )
   )
 
-(defmethod deactivate money ((this money))
+(defmethod deactivate ((this money))
   (when (= (-> this next-state name) 'pickup)
     (if (not (and (-> this entity) (logtest? (-> this entity extra perm status) (entity-perm-status dead))))
         (format #t "money ~A was killed in pickup~%")
@@ -1087,14 +1051,10 @@
   :virtual #t
   :code (behavior ()
     (loop
-      (quaternion-rotate-y!
-        (-> self root-override quat)
-        (-> self root-override quat)
-        (* 40049.777 (seconds-per-frame))
-        )
+      (quaternion-rotate-y! (-> self root quat) (-> self root quat) (* 40049.777 (seconds-per-frame)))
       (let ((f30-0 (-> self bob-amount)))
         (when (< 0.0 f30-0)
-          (set! (-> self root-override trans y)
+          (set! (-> self root trans y)
                 (+ (-> self base y)
                    (-> self suck-y-offset)
                    (* f30-0
@@ -1102,14 +1062,14 @@
                       )
                    )
                 )
-          (update-transforms! (-> self root-override))
+          (update-transforms! (-> self root))
           )
         )
       (ja-post)
       ;; og:preserve-this added particle!
       (with-pc
         (if (-> *pc-settings* money-starburst?)
-      (spawn (-> self part) (-> self root-override root-prim world-sphere))))
+      (spawn (-> self part) (-> self root root-prim world-sphere))))
       (suspend)
       )
     )
@@ -1119,16 +1079,12 @@
   :virtual #t
   :code (behavior ((arg0 handle))
     (loop
-      (quaternion-rotate-y!
-        (-> self root-override quat)
-        (-> self root-override quat)
-        (* 91022.22 (seconds-per-frame))
-        )
-      (set! (-> self root-override trans quad) (-> self base quad))
+      (quaternion-rotate-y! (-> self root quat) (-> self root quat) (* 91022.22 (seconds-per-frame)))
+      (set! (-> self root trans quad) (-> self base quad))
       (add-blue-motion #t #t #t #f)
       (let ((f30-0 (-> self bob-amount)))
         (if (< 0.0 f30-0)
-            (set! (-> self root-override trans y)
+            (set! (-> self root trans y)
                   (+ (-> self base y)
                      (-> self suck-y-offset)
                      (* f30-0
@@ -1142,7 +1098,7 @@
       ;; og:preserve-this added particle!
       (with-pc
         (if (-> *pc-settings* money-starburst?)
-      (spawn (-> self part) (-> self root-override root-prim world-sphere))))
+      (spawn (-> self part) (-> self root root-prim world-sphere))))
       (suspend)
       )
     )
@@ -1156,13 +1112,13 @@
         (kill-and-free-particles (-> self part))
         )
     (logclear! (-> self mask) (process-mask actor-pause))
-    (clear-collide-with-as (-> self root-override))
+    (clear-collide-with-as (-> self root))
     (process-entity-status! self (entity-perm-status dead) #t)
     (convert-to-hud-object self (the-as hud (ppointer->process (-> *hud-parts* money))))
     )
   )
 
-(defmethod initialize money ((this money))
+(defmethod initialize ((this money))
   (stack-size-set! (-> this main-thread) 192) ;; og:preserve-this hack increased from 128
   (let ((s5-0 (new 'process 'collide-shape-moving this (collide-list-enum hit-by-player))))
     (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
@@ -1178,7 +1134,7 @@
       )
     (set! (-> s5-0 nav-radius) (* 0.75 (-> s5-0 root-prim local-sphere w)))
     (backup-collide-with-as s5-0)
-    (set! (-> this root-override) s5-0)
+    (set! (-> this root) s5-0)
     )
   (logior! (-> this mask) (process-mask actor-pause))
   (set! (-> this actor-pause) #t)
@@ -1197,7 +1153,7 @@
     )
   (initialize-skeleton this *money-sg* '())
   (if (-> this entity)
-      (nav-mesh-connect this (-> this root-override) (the-as nav-control #f))
+      (nav-mesh-connect this (-> this root) (the-as nav-control #f))
       )
   (set-vector! (-> this draw color-mult) 0.8 0.8 0.8 1.0)
   (set-vector! (-> this draw color-emissive) 0.2 0.2 0.2 1.0)
@@ -1206,11 +1162,11 @@
   this
   )
 
-(defmethod init-from-entity! money ((this money) (arg0 entity-actor))
+(defmethod init-from-entity! ((this money) (arg0 entity-actor))
   (initialize this)
   (process-drawable-from-entity! this (-> this entity))
   (initialize-params this 0 (the-as float 1024.0))
-  (update-transforms! (-> this root-override))
+  (update-transforms! (-> this root))
   (go (method-of-object this wait))
   (none)
   )
@@ -1228,12 +1184,12 @@
     )
   (set! (-> self fact options) (-> arg2 options))
   (set! (-> self notify-parent) #t)
-  (set! (-> self root-override trans quad) (-> arg0 quad))
-  (quaternion-identity! (-> self root-override quat))
-  (vector-identity! (-> self root-override scale))
-  (set! (-> self root-override transv quad) (-> arg1 quad))
+  (set! (-> self root trans quad) (-> arg0 quad))
+  (quaternion-identity! (-> self root quat))
+  (vector-identity! (-> self root scale))
+  (set! (-> self root transv quad) (-> arg1 quad))
   (initialize-params self (seconds 15) (the-as float 1024.0))
-  (update-transforms! (-> self root-override))
+  (update-transforms! (-> self root))
   (set! (-> self event-hook) (-> (method-of-object self wait) event))
   (go-virtual wait)
   (none)
@@ -1247,13 +1203,13 @@
   (set! (-> self fact pickup-type) (the-as pickup-type arg2))
   (set! (-> self fact pickup-amount) arg3)
   (set! (-> self notify-parent) #t)
-  (set! (-> self root-override trans quad) (-> arg0 quad))
-  (quaternion-identity! (-> self root-override quat))
-  (vector-identity! (-> self root-override scale))
-  (set! (-> self root-override transv quad) (-> arg1 quad))
+  (set! (-> self root trans quad) (-> arg0 quad))
+  (quaternion-identity! (-> self root quat))
+  (vector-identity! (-> self root scale))
+  (set! (-> self root transv quad) (-> arg1 quad))
   (initialize-params self (seconds 15) (the-as float 0.0))
   (logior! (-> self flags) (collectable-flags ignore-blue))
-  (update-transforms! (-> self root-override))
+  (update-transforms! (-> self root))
   (set! (-> self event-hook) (-> (method-of-object self wait) event))
   (go-virtual wait)
   (none)
@@ -1262,13 +1218,9 @@
 (define *fuel-cell-tune-pos* (new 'static 'vector :w 1000000000.0))
 
 (deftype fuel-cell (eco-collectable)
-  ((victory-anim spool-anim  :offset-assert 404)
-   (state-object symbol      :offset-assert 408)
+  ((victory-anim  spool-anim)
+   (state-object  symbol)
    )
-  :heap-base #x130
-  :method-count-assert 31
-  :size-assert         #x19c
-  :flag-assert         #x1f0130019c
   (:states
     (fuel-cell-clone-anim handle)
     (fuel-cell-spline-slider handle float float)
@@ -1362,14 +1314,14 @@
            )
        )
       (else
-        (let* ((gp-1 (-> self root-override))
+        (let* ((gp-1 (-> self root))
                (v1-20 (if (and (nonzero? gp-1) (type-type? (-> gp-1 type) collide-shape))
                           gp-1
                           )
                       )
                (gp-2 (if v1-20
                          (-> v1-20 root-prim prim-core)
-                         (-> self root-override trans)
+                         (-> self root trans)
                          )
                      )
                )
@@ -1412,14 +1364,14 @@
       )
     (cond
       ((= message 'trans)
-       (set! (-> self root-override trans quad) (-> (the-as vector (-> block param 0)) quad))
-       (set! (-> self base quad) (-> self root-override trans quad))
-       (update-transforms! (-> self root-override))
+       (set! (-> self root trans quad) (-> (the-as vector (-> block param 0)) quad))
+       (set! (-> self base quad) (-> self root trans quad))
+       (update-transforms! (-> self root))
        )
       ((= message 'pickup)
        (when (!= (-> self next-state name) 'pickup)
          (if (and (> argc 0) (-> block param 0))
-             (move-to-point! (-> self root-override) (the-as vector (-> block param 0)))
+             (move-to-point! (-> self root) (the-as vector (-> block param 0)))
              )
          (logclear! (-> self mask) (process-mask actor-pause))
          (go-virtual pickup #f (process->handle *target*))
@@ -1427,8 +1379,8 @@
        )
       ((= message 'collide-shape)
        (if (-> block param 0)
-           (restore-collide-with-as (-> self root-override))
-           (clear-collide-with-as (-> self root-override))
+           (restore-collide-with-as (-> self root))
+           (clear-collide-with-as (-> self root))
            )
        )
       ((= message 'movie-pos)
@@ -1463,7 +1415,7 @@
                     (seek f28-0 (the-as float 0.0) (* 3072.0 (seconds-per-frame)))
                     )
                 )
-          (set! (-> self root-override trans y) (+ (-> self base y) (* 2867.2 (sin f28-0))))
+          (set! (-> self root trans y) (+ (-> self base y) (* 2867.2 (sin f28-0))))
           (let ((f30-1
                   (lerp-scale (the-as float 0.6) (the-as float 0.5) f30-0 (the-as float 8192.0) (-> *FACT-bank* suck-suck-dist))
                   )
@@ -1549,7 +1501,7 @@
   :code (behavior ((arg0 object) (arg1 handle))
     (local-vars (sv-96 res-tag))
     (sound-play "pu-powercell")
-    (clear-collide-with-as (-> self root-override))
+    (clear-collide-with-as (-> self root))
     (logclear! (-> self mask) (process-mask actor-pause))
     (logclear! (-> self draw status) (draw-status hidden))
     (process-entity-status! self (entity-perm-status dead) #t)
@@ -1588,25 +1540,19 @@
            )
       (cond
         ((and *debug-segment* (< (-> *fuel-cell-tune-pos* w) 1000000000.0))
-         (move-to-point! (-> self root-override) *fuel-cell-tune-pos*)
-         (set-yaw-angle-clear-roll-pitch! (-> self root-override) (-> *fuel-cell-tune-pos* w))
+         (move-to-point! (-> self root) *fuel-cell-tune-pos*)
+         (set-yaw-angle-clear-roll-pitch! (-> self root) (-> *fuel-cell-tune-pos* w))
          )
         ((= (-> self movie-pos-index) -1)
          )
         (gp-1
-          (move-to-point! (-> self root-override) gp-1)
-          (set-yaw-angle-clear-roll-pitch! (-> self root-override) (-> gp-1 w))
+          (move-to-point! (-> self root) gp-1)
+          (set-yaw-angle-clear-roll-pitch! (-> self root) (-> gp-1 w))
           )
         (else
-          (move-to-point! (-> self root-override) (-> *target* control trans))
-          (set-yaw-angle-clear-roll-pitch! (-> self root-override) (y-angle (-> *target* control)))
-          (move-to-ground
-            (-> self root-override)
-            (the-as float 40960.0)
-            (the-as float 40960.0)
-            #f
-            (collide-kind background)
-            )
+          (move-to-point! (-> self root) (-> *target* control trans))
+          (set-yaw-angle-clear-roll-pitch! (-> self root) (y-angle (-> *target* control)))
+          (move-to-ground (-> self root) (the-as float 40960.0) (the-as float 40960.0) #f (collide-kind background))
           )
         )
       )
@@ -1900,12 +1846,12 @@
   :post (behavior ()
     (transform-post)
     (if (-> self state-object)
-        (spawn (-> self part) (the-as vector (-> self root-override root-prim prim-core)))
+        (spawn (-> self part) (the-as vector (-> self root root-prim prim-core)))
         )
     )
   )
 
-(defmethod initialize fuel-cell ((this fuel-cell))
+(defmethod initialize ((this fuel-cell))
   (stack-size-set! (-> this main-thread) 512)
   (let ((s5-0 (new 'process 'collide-shape-moving this (collide-list-enum hit-by-player))))
     (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
@@ -1922,29 +1868,29 @@
       )
     (set! (-> s5-0 nav-radius) (* 0.75 (-> s5-0 root-prim local-sphere w)))
     (backup-collide-with-as s5-0)
-    (set! (-> this root-override) s5-0)
+    (set! (-> this root) s5-0)
     )
   (logior! (-> this mask) (process-mask actor-pause))
   (set! (-> this actor-pause) #t)
   (set! (-> this notify-parent) #f)
   (set! (-> this fact) (new 'process 'fact-info this (pickup-type fuel-cell) (the-as float 0.0)))
   (initialize-skeleton this *fuel-cell-sg* '())
-  (set! (-> this base quad) (-> this root-override trans quad))
-  (set! (-> this old-base quad) (-> this root-override trans quad))
+  (set! (-> this base quad) (-> this root trans quad))
+  (set! (-> this old-base quad) (-> this root trans quad))
   (set! (-> this part) (create-launch-control (-> *part-group-id-table* 63) this))
   (set! (-> this sound)
-        (new 'process 'ambient-sound (static-sound-spec "powercell-idle" :fo-max 40) (-> this root-override trans))
+        (new 'process 'ambient-sound (static-sound-spec "powercell-idle" :fo-max 40) (-> this root trans))
         )
   (set! (-> this victory-anim) (fuel-cell-pick-anim this))
   this
   )
 
-(defmethod init-from-entity! fuel-cell ((this fuel-cell) (arg0 entity-actor))
+(defmethod init-from-entity! ((this fuel-cell) (arg0 entity-actor))
   (initialize this)
   (process-drawable-from-entity! this (-> this entity))
   (initialize-params this 0 (the-as float 1024.0))
   (logclear! (-> this fact options) (fact-options can-collect))
-  (update-transforms! (-> this root-override))
+  (update-transforms! (-> this root))
   (go (method-of-object this wait))
   (none)
   )
@@ -1962,13 +1908,13 @@
     )
   (set! (-> self fact options) (-> arg2 options))
   (set! (-> self notify-parent) #t)
-  (set! (-> self root-override trans quad) (-> arg0 quad))
-  (quaternion-identity! (-> self root-override quat))
-  (vector-identity! (-> self root-override scale))
-  (set! (-> self root-override transv quad) (-> arg1 quad))
+  (set! (-> self root trans quad) (-> arg0 quad))
+  (quaternion-identity! (-> self root quat))
+  (vector-identity! (-> self root scale))
+  (set! (-> self root transv quad) (-> arg1 quad))
   (initialize-params self 0 (the-as float 1024.0))
   (logclear! (-> self fact options) (fact-options can-collect))
-  (update-transforms! (-> self root-override))
+  (update-transforms! (-> self root))
   (let ((gp-1 (res-lump-struct (-> self entity) 'movie-pos structure :time (the-as float -1000000000.0))))
     (cond
       ((and *debug-segment* (< (-> *fuel-cell-tune-pos* w) 1000000000.0))
@@ -2000,20 +1946,20 @@
       (('pickup)
        (when (!= (-> self next-state name) 'pickup)
          (if (and (> argc 0) (-> block param 0))
-             (move-to-point! (-> self root-override) (the-as vector (-> block param 0)))
+             (move-to-point! (-> self root) (the-as vector (-> block param 0)))
              )
          (logclear! (-> self mask) (process-mask actor-pause))
          (go-virtual pickup #f (the-as handle #f))
          )
        )
       (('trans)
-       (set! (-> self root-override trans quad) (-> (the-as vector (-> block param 0)) quad))
-       (set! (-> self base quad) (-> self root-override trans quad))
-       (update-transforms! (-> self root-override))
+       (set! (-> self root trans quad) (-> (the-as vector (-> block param 0)) quad))
+       (set! (-> self base quad) (-> self root trans quad))
+       (update-transforms! (-> self root))
        )
       (('stop-cloning 'notify)
-       (set! (-> self root-override trans quad) (-> self draw origin quad))
-       (set! (-> self base quad) (-> self root-override trans quad))
+       (set! (-> self root trans quad) (-> self draw origin quad))
+       (set! (-> self base quad) (-> self root trans quad))
        (ja-channel-set! 1)
        (ja :group! fuel-cell-idle-ja)
        (logclear! (-> self draw status) (draw-status hidden))
@@ -2035,7 +1981,7 @@
     (deactivate self)
     )
   :post (behavior ()
-    (update-transforms! (-> self root-override))
+    (update-transforms! (-> self root))
     (animate self)
     )
   )
@@ -2059,26 +2005,18 @@
               )
 
 (deftype buzzer (eco-collectable)
-  ((victory-anim spool-anim  :offset-assert 404)
+  ((victory-anim  spool-anim)
    )
-  :heap-base #x130
-  :method-count-assert 31
-  :size-assert         #x198
-  :flag-assert         #x1f01300198
   )
 
 
-(defmethod animate buzzer ((this buzzer))
-  (quaternion-rotate-y!
-    (-> this root-override quat)
-    (-> this root-override quat)
-    (* 40049.777 (seconds-per-frame))
-    )
+(defmethod animate ((this buzzer))
+  (quaternion-rotate-y! (-> this root quat) (-> this root quat) (* 40049.777 (seconds-per-frame)))
   (let ((a0-2 (-> this skel root-channel 0)))
     (set! (-> a0-2 param 0) 1.0)
     (joint-control-channel-group-eval! a0-2 (the-as art-joint-anim #f) num-func-loop!)
     )
-  (let ((f0-3 (y-angle (-> this root-override))))
+  (let ((f0-3 (y-angle (-> this root))))
     (set! (-> *part-id-table* 239 init-specs 4 initial-valuef) (+ 16384.0 f0-3))
     (set! (-> *part-id-table* 240 init-specs 4 initial-valuef) (+ 16384.0 f0-3))
     )
@@ -2086,7 +2024,7 @@
   (if (nonzero? (-> this sound))
       (update! (-> this sound))
       )
-  (if (and *target* (>= (-> *target* fact-info-target buzzer) 6.0))
+  (if (and *target* (>= (-> *target* fact buzzer) 6.0))
       (spool-push *art-control* (-> this victory-anim name) 0 this (the-as float -99.0))
       )
   0
@@ -2150,12 +2088,12 @@
         )
       )
     (ja-channel-set! 0)
-    (clear-collide-with-as (-> self root-override))
+    (clear-collide-with-as (-> self root))
     (if (nonzero? (-> self sound))
         (stop! (-> self sound))
         )
     (when (not arg0)
-      (let ((v1-18 (manipy-spawn (-> self root-override trans) #f *buzzer-sg* #f :to *entity-pool*)))
+      (let ((v1-18 (manipy-spawn (-> self root trans) #f *buzzer-sg* #f :to *entity-pool*)))
         (send-event (ppointer->process v1-18) 'become-hud-object (ppointer->process (-> *hud-parts* buzzers)))
         )
       )
@@ -2174,21 +2112,20 @@
                  )
             (logior! (-> self fact options) (fact-options instant-collect skip-jump-anim))
             )
-        (let ((v1-47
-                (birth-pickup-at-point
-                  (vector+! (new 'stack-no-clear 'vector) (-> self root-override trans) (new 'static 'vector :y 4096.0 :w 1.0))
-                  (pickup-type fuel-cell)
-                  (the float s5-2)
-                  #f
-                  self
-                  (-> self fact)
-                  )
-                )
+        (let ((v1-47 (birth-pickup-at-point
+                       (vector+! (new 'stack-no-clear 'vector) (-> self root trans) (new 'static 'vector :y 4096.0 :w 1.0))
+                       (pickup-type fuel-cell)
+                       (the float s5-2)
+                       #f
+                       self
+                       (-> self fact)
+                       )
+                     )
               )
           (when v1-47
             (send-event (ppointer->process v1-47) 'movie-pos (-> self movie-pos-index))
             (ja-channel-set! 0)
-            (clear-collide-with-as (-> self root-override))
+            (clear-collide-with-as (-> self root))
             (ja-post)
             (while (-> self child)
               (suspend)
@@ -2218,7 +2155,7 @@
     )
   )
 
-(defmethod initialize buzzer ((this buzzer))
+(defmethod initialize ((this buzzer))
   (let ((s5-0 (new 'process 'collide-shape-moving this (collide-list-enum hit-by-player))))
     (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s5-0 reaction) default-collision-reaction)
@@ -2233,7 +2170,7 @@
       )
     (set! (-> s5-0 nav-radius) (* 0.75 (-> s5-0 root-prim local-sphere w)))
     (backup-collide-with-as s5-0)
-    (set! (-> this root-override) s5-0)
+    (set! (-> this root) s5-0)
     )
   (logior! (-> this mask) (process-mask actor-pause))
   (set! (-> this actor-pause) #t)
@@ -2242,19 +2179,19 @@
   (initialize-skeleton this *buzzer-sg* '())
   (set! (-> this part) (create-launch-control (-> *part-group-id-table* 65) this))
   (set! (-> this sound)
-        (new 'process 'ambient-sound (static-sound-spec "buzzer" :fo-max 40) (-> this root-override trans))
+        (new 'process 'ambient-sound (static-sound-spec "buzzer" :fo-max 40) (-> this root trans))
         )
   (set! (-> this victory-anim) (fuel-cell-pick-anim this))
   this
   )
 
-(defmethod init-from-entity! buzzer ((this buzzer) (arg0 entity-actor))
+(defmethod init-from-entity! ((this buzzer) (arg0 entity-actor))
   (initialize this)
   (process-drawable-from-entity! this (-> this entity))
   (initialize-params this 0 (the-as float 1024.0))
   (set! (-> this collect-timeout) (seconds 2))
-  (update-transforms! (-> this root-override))
-  (update-trans! (-> this sound) (-> this root-override trans))
+  (update-transforms! (-> this root))
+  (update-trans! (-> this sound) (-> this root trans))
   (if (and (-> this entity) (logtest? (-> this entity extra perm status) (entity-perm-status complete)))
       (go (method-of-object this wait))
       (go (method-of-object this pickup) #t (the-as handle #f))
@@ -2275,19 +2212,19 @@
     )
   (set! (-> self fact options) (-> arg2 options))
   (set! (-> self notify-parent) #t)
-  (set! (-> self root-override trans quad) (-> arg0 quad))
-  (quaternion-identity! (-> self root-override quat))
-  (vector-identity! (-> self root-override scale))
-  (set! (-> self root-override transv quad) (-> arg1 quad))
+  (set! (-> self root trans quad) (-> arg0 quad))
+  (quaternion-identity! (-> self root quat))
+  (vector-identity! (-> self root scale))
+  (set! (-> self root transv quad) (-> arg1 quad))
   (initialize-params self 0 (the-as float 1024.0))
-  (update-transforms! (-> self root-override))
-  (update-trans! (-> self sound) (-> self root-override trans))
+  (update-transforms! (-> self root))
+  (update-trans! (-> self sound) (-> self root trans))
   (set! (-> self event-hook) (-> (method-of-object self wait) event))
   (go-virtual wait)
   (none)
   )
 
-(defmethod init-from-entity! eco ((this eco) (arg0 entity-actor))
+(defmethod init-from-entity! ((this eco) (arg0 entity-actor))
   (let ((v1-2 (res-lump-value (-> this entity) 'eco-info pickup-type :time (the-as float -1000000000.0))))
     (set! (-> this type) (cond
                            ((= v1-2 (pickup-type eco-blue))
@@ -2523,7 +2460,7 @@
   sv-192
   )
 
-(defmethod drop-pickup fact-info ((this fact-info) (arg0 symbol) (arg1 process-tree) (arg2 fact-info) (arg3 int))
+(defmethod drop-pickup ((this fact-info) (arg0 symbol) (arg1 process-tree) (arg2 fact-info) (arg3 int))
   (let ((s3-0 (-> this pickup-type))
         (f30-0 (-> this pickup-amount))
         )
@@ -2533,17 +2470,11 @@
         (set! s3-0 (pickup-type eco-pill))
         (set! f30-0
               (cond
-                ((and (= s1-0 1)
-                      *target*
-                      (and (>= 1.0 (-> *target* fact-info-target health)) (rand-vu-percent? (the-as float 0.1)))
-                      )
+                ((and (= s1-0 1) *target* (and (>= 1.0 (-> *target* fact health)) (rand-vu-percent? (the-as float 0.1))))
                  (set! s3-0 (pickup-type eco-green))
                  1.0
                  )
-                ((and (< 1 s1-0)
-                      *target*
-                      (and (>= 2.0 (-> *target* fact-info-target health)) (rand-vu-percent? (the-as float 0.05)))
-                      )
+                ((and (< 1 s1-0) *target* (and (>= 2.0 (-> *target* fact health)) (rand-vu-percent? (the-as float 0.05))))
                  (set! s3-0 (pickup-type eco-green))
                  1.0
                  )
@@ -2592,15 +2523,11 @@
   )
 
 (deftype ecovalve (process-drawable)
-  ((root-override collide-shape-moving           :offset        112)
-   (offset        vector                 :inline :offset-assert 176)
-   (offset-target vector                 :inline :offset-assert 192)
-   (block-func    (function vent symbol)         :offset-assert 208)
+  ((root           collide-shape-moving :override)
+   (offset         vector                :inline)
+   (offset-target  vector                :inline)
+   (block-func     (function vent symbol))
    )
-  :heap-base #x70
-  :method-count-assert 20
-  :size-assert         #xd4
-  :flag-assert         #x14007000d4
   (:states
     ecovalve-idle
     )
@@ -2624,11 +2551,11 @@
           )
       (when (!= (-> self offset-target y) (-> self offset y))
         (vector-seek! (-> self offset) (-> self offset-target) (* 4096.0 (seconds-per-frame)))
-        (move-to-point! (-> self root-override) (vector+!
-                                                  (new 'stack-no-clear 'vector)
-                                                  (-> (the-as process-drawable (-> self parent 0)) root trans)
-                                                  (-> self offset)
-                                                  )
+        (move-to-point! (-> self root) (vector+!
+                                         (new 'stack-no-clear 'vector)
+                                         (-> (the-as process-drawable (-> self parent 0)) root trans)
+                                         (-> self offset)
+                                         )
                         )
         (transform-post)
         )
@@ -2656,45 +2583,41 @@
       )
     (set! (-> s5-0 nav-radius) (* 0.75 (-> s5-0 root-prim local-sphere w)))
     (backup-collide-with-as s5-0)
-    (set! (-> self root-override) s5-0)
+    (set! (-> self root) s5-0)
     )
   (if (and *target* (logtest? (-> *target* control root-prim prim-core action) (collide-action racer)))
-      (clear-collide-with-as (-> self root-override))
+      (clear-collide-with-as (-> self root))
       )
   (set! (-> self block-func) arg0)
-  (set! (-> self root-override trans quad) (-> (the-as process-drawable (-> self parent 0)) root trans quad))
+  (set! (-> self root trans quad) (-> (the-as process-drawable (-> self parent 0)) root trans quad))
   (set-vector! (-> self offset-target) 0.0 -2252.8 0.0 1.0)
   (if (not ((-> self block-func) (the-as vent (ppointer->process (-> self parent)))))
       (set-vector! (-> self offset-target) 0.0 0.0 0.0 1.0)
       )
   (set! (-> self offset quad) (-> self offset-target quad))
   (initialize-skeleton self *ecovalve-sg* '())
-  (move-to-point! (-> self root-override) (vector+!
-                                            (new 'stack-no-clear 'vector)
-                                            (-> (the-as process-drawable (-> self parent 0)) root trans)
-                                            (-> self offset)
-                                            )
+  (move-to-point! (-> self root) (vector+!
+                                   (new 'stack-no-clear 'vector)
+                                   (-> (the-as process-drawable (-> self parent 0)) root trans)
+                                   (-> self offset)
+                                   )
                   )
   (go ecovalve-idle)
   (none)
   )
 
 (deftype vent (process-drawable)
-  ((root-override       collide-shape           :offset        112)
-   (show-particles      symbol                  :offset-assert 176)
-   (collect-effect      sparticle-launch-group  :offset-assert 180)
-   (collect-effect2     sparticle-launch-group  :offset-assert 184)
-   (collect-effect-time time-frame              :offset-assert 192)
-   (blocker             entity-actor            :offset-assert 200)
-   (block-func          (function vent symbol)  :offset-assert 204)
-   (pickup-handle       handle                  :offset-assert 208)
+  ((root                 collide-shape :override)
+   (show-particles       symbol)
+   (collect-effect       sparticle-launch-group)
+   (collect-effect2      sparticle-launch-group)
+   (collect-effect-time  time-frame)
+   (blocker              entity-actor)
+   (block-func           (function vent symbol))
+   (pickup-handle        handle)
    )
-  :heap-base #x70
-  :method-count-assert 21
-  :size-assert         #xd8
-  :flag-assert         #x15007000d8
   (:methods
-    (initialize (_type_ entity-actor pickup-type) none 20)
+    (initialize (_type_ entity-actor pickup-type) none)
     )
   (:states
     vent-blocked
@@ -2704,7 +2627,7 @@
   )
 
 
-(defmethod initialize vent ((this vent) (arg0 entity-actor) (arg1 pickup-type))
+(defmethod initialize ((this vent) (arg0 entity-actor) (arg1 pickup-type))
   (stack-size-set! (-> this main-thread) 128)
   (logior! (-> this mask) (process-mask actor-pause))
   (let ((s3-0 (new 'process 'collide-shape this (collide-list-enum hit-by-player))))
@@ -2716,11 +2639,11 @@
       )
     (set! (-> s3-0 nav-radius) (* 0.75 (-> s3-0 root-prim local-sphere w)))
     (backup-collide-with-as s3-0)
-    (set! (-> this root-override) s3-0)
+    (set! (-> this root) s3-0)
     )
-  (set! (-> this root-override trans quad) (-> arg0 extra trans quad))
-  (update-transforms! (-> this root-override))
-  (set! (-> this root-override pause-adjust-distance) 409600.0)
+  (set! (-> this root trans quad) (-> arg0 extra trans quad))
+  (update-transforms! (-> this root))
+  (set! (-> this root pause-adjust-distance) 409600.0)
   (set! (-> this fact) (new 'process 'fact-info this arg1 (-> *FACT-bank* eco-full-inc)))
   (set! (-> this block-func) (the-as (function vent symbol) true-func))
   (case (-> this fact pickup-type)
@@ -2728,25 +2651,25 @@
      (set! (-> this part) (create-launch-control (-> *part-group-id-table* 44) this))
      (set! (-> this collect-effect) (-> *part-group-id-table* 67))
      (set! (-> this collect-effect2) (-> *part-group-id-table* 43))
-     (set! (-> this sound) (new 'process 'ambient-sound 'eco-bg-blue (-> this root-override trans)))
+     (set! (-> this sound) (new 'process 'ambient-sound 'eco-bg-blue (-> this root trans)))
      )
     (((pickup-type eco-red))
      (set! (-> this part) (create-launch-control (-> *part-group-id-table* 50) this))
      (set! (-> this collect-effect) (-> *part-group-id-table* 69))
      (set! (-> this collect-effect2) (-> *part-group-id-table* 49))
-     (set! (-> this sound) (new 'process 'ambient-sound 'eco-bg-red (-> this root-override trans)))
+     (set! (-> this sound) (new 'process 'ambient-sound 'eco-bg-red (-> this root trans)))
      )
     (((pickup-type eco-green))
      (set! (-> this part) (create-launch-control (-> *part-group-id-table* 62) this))
      (set! (-> this collect-effect) (-> *part-group-id-table* 66))
      (set! (-> this collect-effect2) (-> *part-group-id-table* 61))
-     (set! (-> this sound) (new 'process 'ambient-sound 'eco-bg-green (-> this root-override trans)))
+     (set! (-> this sound) (new 'process 'ambient-sound 'eco-bg-green (-> this root trans)))
      )
     (((pickup-type eco-yellow))
      (set! (-> this part) (create-launch-control (-> *part-group-id-table* 52) this))
      (set! (-> this collect-effect) (-> *part-group-id-table* 68))
      (set! (-> this collect-effect2) (-> *part-group-id-table* 57))
-     (set! (-> this sound) (new 'process 'ambient-sound 'eco-bg-yellow (-> this root-override trans)))
+     (set! (-> this sound) (new 'process 'ambient-sound 'eco-bg-yellow (-> this root trans)))
      )
     )
   (set! (-> this blocker) (entity-actor-lookup (-> this entity) 'alt-actor 0))
@@ -2822,7 +2745,7 @@
   :code (behavior ()
     (loop
       (let ((a0-0 (-> self part))
-            (a1-0 (-> self root-override trans))
+            (a1-0 (-> self root trans))
             (gp-0 (-> self sound))
             )
         (if (and (nonzero? a0-0) (-> self show-particles))
@@ -2893,7 +2816,7 @@
                   part-tracker-move-to-target
                   #f
                   #f
-                  (-> self root-override root-prim prim-core)
+                  (-> self root root-prim prim-core)
                   :to self
                   )
                 )
@@ -2908,56 +2831,40 @@
 
 (deftype ventyellow (vent)
   ()
-  :heap-base #x70
-  :method-count-assert 21
-  :size-assert         #xd8
-  :flag-assert         #x15007000d8
   )
 
 
-(defmethod init-from-entity! ventyellow ((this ventyellow) (arg0 entity-actor))
+(defmethod init-from-entity! ((this ventyellow) (arg0 entity-actor))
   (initialize this arg0 (pickup-type eco-yellow))
   (none)
   )
 
 (deftype ventred (vent)
   ()
-  :heap-base #x70
-  :method-count-assert 21
-  :size-assert         #xd8
-  :flag-assert         #x15007000d8
   )
 
 
-(defmethod init-from-entity! ventred ((this ventred) (arg0 entity-actor))
+(defmethod init-from-entity! ((this ventred) (arg0 entity-actor))
   (initialize this arg0 (pickup-type eco-red))
   (none)
   )
 
 (deftype ventblue (vent)
   ()
-  :heap-base #x70
-  :method-count-assert 21
-  :size-assert         #xd8
-  :flag-assert         #x15007000d8
   )
 
 
-(defmethod init-from-entity! ventblue ((this ventblue) (arg0 entity-actor))
+(defmethod init-from-entity! ((this ventblue) (arg0 entity-actor))
   (initialize this arg0 (pickup-type eco-blue))
   (none)
   )
 
 (deftype ecovent (vent)
   ()
-  :heap-base #x70
-  :method-count-assert 21
-  :size-assert         #xd8
-  :flag-assert         #x15007000d8
   )
 
 
-(defmethod init-from-entity! ecovent ((this ecovent) (arg0 entity-actor))
+(defmethod init-from-entity! ((this ecovent) (arg0 entity-actor))
   (initialize this arg0 (pickup-type eco-blue))
   (none)
   )

@@ -46,18 +46,15 @@
 
 ;; definition of type bank-info
 (deftype bank-info (structure)
-  ((circle      sphere :inline :offset-assert   0)
-   (tangent-pos vector :inline :offset-assert  16)
-   (final-pos   vector :inline :offset-assert  32)
-   (final-dir   vector :inline :offset-assert  48)
+  ((circle       sphere  :inline)
+   (tangent-pos  vector  :inline)
+   (final-pos    vector  :inline)
+   (final-dir    vector  :inline)
    )
-  :method-count-assert 9
-  :size-assert         #x40
-  :flag-assert         #x900000040
   )
 
 ;; definition for method 3 of type bank-info
-(defmethod inspect bank-info ((this bank-info))
+(defmethod inspect ((this bank-info))
   (when (not this)
     (set! this this)
     (goto cfg-4)
@@ -73,32 +70,30 @@
 
 ;; definition of type grenadier
 (deftype grenadier (nav-enemy)
-  ((shot-trajectory           trajectory            :inline :offset-assert 608)
-   (hostile-path              path-control                  :offset-assert 648)
-   (bank                      bank-info             :inline :offset-assert 656)
-   (joint                     joint-mod-blend-world         :offset-assert 720)
-   (heading                   symbol                        :offset-assert 724)
-   (move-pos                  vector                :inline :offset-assert 736)
-   (move-angle                float                         :offset-assert 752)
-   (status-flags              grenadier-flags               :offset-assert 760)
-   (suppress-knockaside-timer time-frame                    :offset-assert 768)
+  ((shot-trajectory            trajectory  :inline)
+   (hostile-path               path-control)
+   (bank                       bank-info   :inline)
+   (joint                      joint-mod-blend-world)
+   (heading                    symbol)
+   (move-pos                   vector      :inline)
+   (move-angle                 float)
+   (status-flags               grenadier-flags)
+   (suppress-knockaside-timer  time-frame)
    )
-  :heap-base #x290
-  :method-count-assert 184
-  :size-assert         #x308
-  :flag-assert         #xb802900308
+  (:state-methods
+    attack
+    backup
+    spin-kick
+    )
   (:methods
-    (attack () _type_ :state 178)
-    (backup () _type_ :state 179)
-    (spin-kick () _type_ :state 180)
-    (grenadier-method-181 (_type_) none 181)
-    (grenadier-method-182 (_type_ vector) none 182)
-    (grenadier-method-183 (_type_) none 183)
+    (grenadier-method-181 (_type_) none)
+    (grenadier-method-182 (_type_ vector) none)
+    (grenadier-method-183 (_type_) none)
     )
   )
 
 ;; definition for method 3 of type grenadier
-(defmethod inspect grenadier ((this grenadier))
+(defmethod inspect ((this grenadier))
   (when (not this)
     (set! this this)
     (goto cfg-4)
@@ -317,7 +312,7 @@
 (set! (-> *grenadier-nav-enemy-info* fact-defaults) *fact-info-enemy-defaults*)
 
 ;; definition for method 74 of type grenadier
-(defmethod general-event-handler grenadier ((this grenadier) (arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+(defmethod general-event-handler ((this grenadier) (arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
   "Handles various events for the enemy
 @TODO - unsure if there is a pattern for the events and this should have a more specific name"
   (case arg2
@@ -374,7 +369,7 @@
 ;; definition for method 182 of type grenadier
 ;; INFO: Used lq/sq
 ;; WARN: Return type mismatch vector vs none.
-(defmethod grenadier-method-182 grenadier ((this grenadier) (arg0 vector))
+(defmethod grenadier-method-182 ((this grenadier) (arg0 vector))
   (cloest-point-on-mesh (-> this nav) arg0 arg0 (the-as nav-poly #f))
   (set! (-> this bank final-pos quad) (-> arg0 quad))
   (set! (-> this bank tangent-pos quad) (-> arg0 quad))
@@ -384,7 +379,7 @@
 
 ;; definition for method 181 of type grenadier
 ;; WARN: Return type mismatch int vs none.
-(defmethod grenadier-method-181 grenadier ((this grenadier))
+(defmethod grenadier-method-181 ((this grenadier))
   (let ((s5-0 (handle->process (-> this focus handle))))
     (when s5-0
       (cond
@@ -443,11 +438,11 @@
   :virtual #t
   :code (behavior ()
     (ja-channel-push! 1 (seconds 0.2))
-    (let* ((f30-0 (get-rand-float-range self 0.9 1.1))
+    (let* ((f30-0 (rnd-float-range self 0.9 1.1))
            (a0-2 '((grenadier-patrol-ja) (grenadier-patrol1-ja)))
            (gp-0 ((method-of-type (rtype-of a0-2) length) a0-2))
            (s5-0 (new 'static 'array int64 2 9 10))
-           (s4-0 (-> (the-as (pointer int32) (+ (* (get-rand-int self gp-0) 8) (the-as int s5-0)))))
+           (s4-0 (-> (the-as (pointer int32) (+ (* (rnd-int-count self gp-0) 8) (the-as int s5-0)))))
            )
       (until #f
         (ja-no-eval :group! (-> self draw art-group data s4-0) :num! (seek! max f30-0) :frame-num 0.0)
@@ -455,7 +450,7 @@
           (suspend)
           (ja :num! (seek! max f30-0))
           )
-        (when (enemy-method-123 self 0.2)
+        (when (rnd-go-idle? self 0.2)
           (ja-no-eval :num! (loop!))
           (ja-channel-push! 1 (seconds 0.6))
           (let ((v1-38 self))
@@ -472,7 +467,7 @@
             (suspend)
             (ja :num! (seek! max f30-0))
             )
-          (until (not (enemy-method-123 self 0.2))
+          (until (not (rnd-go-idle? self 0.2))
             (ja-no-eval :group! (-> self draw art-group data (-> self enemy-info idle-anim))
                         :num! (seek! max f30-0)
                         :frame-num 0.0
@@ -491,7 +486,7 @@
             )
           0
           (ja-no-eval :num! (loop!))
-          (set! s4-0 (-> (the-as (pointer int32) (+ (* (get-rand-int self gp-0) 8) (the-as int s5-0)))))
+          (set! s4-0 (-> (the-as (pointer int32) (+ (* (rnd-int-count self gp-0) 8) (the-as int s5-0)))))
           (ja-channel-push! 1 (seconds 0.6))
           (ja-no-eval :group! (-> self draw art-group data s4-0) :num! (seek! max f30-0) :frame-num 0.0)
           (until (ja-done? 0)
@@ -529,7 +524,7 @@
           )
       )
     (grenadier-method-181 self)
-    (look-at-target! self (enemy-flag death-start))
+    (look-at-target! self (enemy-flag look-at-move-dest))
     (logclear! (-> self status-flags) (grenadier-flags grflags-0))
     )
   :trans (behavior ()
@@ -597,10 +592,10 @@
                      draw
                      art-group
                      data
-                     (-> (the-as (pointer int32) (+ (* (get-rand-int self a1-3) 8) (the-as int gp-0))))
+                     (-> (the-as (pointer int32) (+ (* (rnd-int-count self a1-3) 8) (the-as int gp-0))))
                      )
                  )
-           (f30-0 (get-rand-float-range self 0.9 1.1))
+           (f30-0 (rnd-float-range self 0.9 1.1))
            )
       (until #f
         (ja-no-eval :group! gp-1 :num! (seek! max f30-0) :frame-num 0.0)
@@ -707,7 +702,7 @@
       (set! (-> v1-3 prim-core action) (collide-action))
       (set! (-> v1-3 local-sphere w) 4096.0)
       )
-    (if (logtest? (-> self enemy-flags) (enemy-flag check-water))
+    (if (logtest? (-> self enemy-flags) (enemy-flag dangerous-backup))
         (logior! (-> self focus-status) (focus-status dangerous))
         (logclear! (-> self focus-status) (focus-status dangerous))
         )
@@ -744,7 +739,7 @@
 ;; ERROR: function was not converted to expressions. Cannot decompile.
 
 ;; definition for method 78 of type grenadier
-(defmethod enemy-method-78 grenadier ((this grenadier) (arg0 (pointer float)))
+(defmethod enemy-method-78 ((this grenadier) (arg0 enemy-knocked-info))
   (cond
     ((= (-> this incoming knocked-type) (knocked-type knocked-type-6))
      (when (>= (-> this incoming blue-juggle-count) (the-as uint 2))
@@ -753,7 +748,7 @@
          (let ((a0-3 (-> this skel root-channel 0)))
            (set! (-> a0-3 frame-group) (the-as art-joint-anim s4-0))
            (set! (-> a0-3 param 0) (the float (+ (-> (the-as art-joint-anim s4-0) frames num-frames) -1)))
-           (set! (-> a0-3 param 1) (-> arg0 0))
+           (set! (-> a0-3 param 1) (-> arg0 anim-speed))
            (set! (-> a0-3 frame-num) 0.0)
            (joint-control-channel-group! a0-3 (the-as art-joint-anim s4-0) num-func-seek!)
            )
@@ -771,7 +766,7 @@
            )
        (set! (-> a0-9 frame-group) (the-as art-joint-anim a1-4))
        (set! (-> a0-9 param 0) (the float (+ (-> (the-as art-joint-anim a1-4) frames num-frames) -1)))
-       (set! (-> a0-9 param 1) (-> arg0 0))
+       (set! (-> a0-9 param 1) (-> arg0 anim-speed))
        (set! (-> a0-9 frame-num) 0.0)
        (joint-control-channel-group! a0-9 (the-as art-joint-anim a1-4) num-func-seek!)
        )
@@ -784,7 +779,7 @@
         (set! (-> a0-11 param 0)
               (the float (+ (-> (the-as art-joint-anim (-> this draw art-group data 33)) frames num-frames) -1))
               )
-        (set! (-> a0-11 param 1) (-> arg0 0))
+        (set! (-> a0-11 param 1) (-> arg0 anim-speed))
         (set! (-> a0-11 frame-num) 0.0)
         (joint-control-channel-group! a0-11 (the-as art-joint-anim (-> this draw art-group data 33)) num-func-seek!)
         )
@@ -801,7 +796,7 @@
       (('event-attack)
        (let ((s4-0 (handle->process (-> self focus handle))))
          (when s4-0
-           (let ((gp-0 (vector<-cspace! (new 'stack-no-clear 'vector) (joint-node-index grenadier-lod0-jg bomb))))
+           (let ((gp-0 (vector<-cspace! (new 'stack-no-clear 'vector) (joint-node grenadier-lod0-jg bomb))))
              (let ((s5-1 (vector-! (new 'stack-no-clear 'vector) (get-trans (the-as process-focusable s4-0) 0) gp-0)))
                (let ((s4-1 (new 'stack-no-clear 'vector)))
                  (let ((f0-0 (vector-length s5-1)))
@@ -874,7 +869,7 @@
       (set! (-> v1-11 attack-id) a0-19)
       (set! (-> self attack-id) a0-19)
       )
-    (look-at-target! self (enemy-flag lock-focus))
+    (look-at-target! self (enemy-flag look-at-focus))
     )
   :exit (behavior ()
     (if (logtest? (enemy-flag enemy-flag43) (-> self enemy-flags))
@@ -882,13 +877,13 @@
         (logclear! (-> self nav flags) (nav-control-flag update-heading-from-facing))
         )
     (logclear! (-> self status-flags) (grenadier-flags grflags-1))
-    (if (logtest? (-> self enemy-flags) (enemy-flag check-water))
+    (if (logtest? (-> self enemy-flags) (enemy-flag dangerous-backup))
         (logior! (-> self focus-status) (focus-status dangerous))
         (logclear! (-> self focus-status) (focus-status dangerous))
         )
     )
   :code (behavior ()
-    (let ((f30-0 (get-rand-float-range self 0.9 1.1)))
+    (let ((f30-0 (rnd-float-range self 0.9 1.1)))
       (let ((f28-0 (vector-length (-> self root transv))))
         (ja-channel-push! 1 (seconds 0.2))
         (when (< 4096.0 f28-0)
@@ -1051,29 +1046,29 @@
       (suspend)
       (ja :num! (seek!))
       )
-    (if (logtest? (-> self enemy-flags) (enemy-flag check-water))
+    (if (logtest? (-> self enemy-flags) (enemy-flag dangerous-backup))
         (logior! (-> self focus-status) (focus-status dangerous))
         (logclear! (-> self focus-status) (focus-status dangerous))
         )
     (let ((v1-43 (-> self enemy-flags)))
-      (if (logtest? v1-43 (enemy-flag checking-water))
-          (set! v1-44 (logior v1-43 (enemy-flag enable-on-active)))
-          (set! v1-44 (logclear v1-43 (enemy-flag enable-on-active)))
+      (if (logtest? v1-43 (enemy-flag vulnerable-backup))
+          (set! v1-44 (logior v1-43 (enemy-flag vulnerable)))
+          (set! v1-44 (logclear v1-43 (enemy-flag vulnerable)))
           )
       )
     (set! (-> self enemy-flags) v1-44)
-    (if (logtest? (-> self enemy-flags) (enemy-flag look-at-move-dest))
+    (if (logtest? (-> self enemy-flags) (enemy-flag attackable-backup))
         (logior! (-> self mask) (process-mask collectable))
         (logclear! (-> self mask) (process-mask collectable))
         )
     (let ((v1-51 (-> self enemy-flags)))
-      (if (logtest? (enemy-flag no-initial-move-to-ground) v1-51)
-          (set! v1-52 (logior (enemy-flag check-water-backup) v1-51))
-          (set! v1-52 (logclear v1-51 (enemy-flag check-water-backup)))
+      (if (logtest? (enemy-flag trackable-backup) v1-51)
+          (set! v1-52 (logior (enemy-flag trackable) v1-51))
+          (set! v1-52 (logclear v1-51 (enemy-flag trackable)))
           )
       )
     (set! (-> self enemy-flags) v1-52)
-    (logclear! (-> self enemy-flags) (enemy-flag actor-pause-backup))
+    (logclear! (-> self enemy-flags) (enemy-flag lock-focus))
     (logclear! (-> self focus-status) (focus-status hit))
     (cond
       ((= (-> self focus aware) (enemy-aware enemy-aware-3))
@@ -1095,7 +1090,7 @@
   )
 
 ;; definition for method 70 of type grenadier
-(defmethod go-hostile grenadier ((this grenadier))
+(defmethod go-hostile ((this grenadier))
   (if (and (and (-> this next-state) (= (-> this next-state name) 'knocked))
            (and (logtest? (-> this status-flags) (grenadier-flags grflags-0))
                 (handle->process (-> this focus handle))
@@ -1115,7 +1110,7 @@
   :virtual #t
   :code (behavior ()
     (ja-channel-push! 1 (seconds 0.1))
-    (let ((f30-0 (get-rand-float-range self 0.8 1.2)))
+    (let ((f30-0 (rnd-float-range self 0.8 1.2)))
       (cond
         ((zero? (rand-vu-int-range 0 1))
          (ja-no-eval :group! grenadier-victory-ja :num! (seek! max f30-0) :frame-num 0.0)
@@ -1140,7 +1135,7 @@
 ;; definition for method 142 of type grenadier
 ;; INFO: Used lq/sq
 ;; WARN: Return type mismatch int vs none.
-(defmethod nav-enemy-method-142 grenadier ((this grenadier) (arg0 nav-control))
+(defmethod nav-enemy-method-142 ((this grenadier) (arg0 nav-control))
   (local-vars (a0-4 int) (a0-6 int))
   (b! (logtest? (-> this status-flags) (grenadier-flags grflags-1)) cfg-6 :delay (empty-form))
   (let ((v1-3 (new 'stack-no-clear 'vector))
@@ -1189,12 +1184,12 @@
   )
 
 ;; definition for method 55 of type grenadier
-(defmethod track-target! grenadier ((this grenadier))
+(defmethod common-post ((this grenadier))
   "Does a lot of various things relating to interacting with the target
 - tracks when the enemy was last drawn
 - looks at the target and handles attacking
 @TODO Not extremely well understood yet"
-  (let ((t9-0 (method-of-type nav-enemy track-target!)))
+  (let ((t9-0 (method-of-type nav-enemy common-post)))
     (t9-0 this)
     )
   (let ((a1-1 (vector<-cspace! (new 'stack-no-clear 'vector) (-> this node-list data 34))))
@@ -1205,7 +1200,7 @@
 
 ;; definition for method 114 of type grenadier
 ;; WARN: Return type mismatch int vs none.
-(defmethod init-enemy-collision! grenadier ((this grenadier))
+(defmethod init-enemy-collision! ((this grenadier))
   "Initializes the [[collide-shape-moving]] and any ancillary tasks to make the enemy collide properly"
   (let ((s5-0 (new 'process 'collide-shape-moving this (collide-list-enum usually-hit-by-player))))
     (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
@@ -1293,7 +1288,7 @@
   )
 
 ;; definition for method 7 of type grenadier
-(defmethod relocate grenadier ((this grenadier) (arg0 int))
+(defmethod relocate ((this grenadier) (arg0 int))
   (if (nonzero? (-> this joint))
       (&+! (-> this joint) arg0)
       )
@@ -1307,7 +1302,7 @@
 
 ;; definition for method 115 of type grenadier
 ;; WARN: Return type mismatch int vs none.
-(defmethod init-enemy! grenadier ((this grenadier))
+(defmethod init-enemy! ((this grenadier))
   "Common method called to initialize the enemy, typically sets up default field values and calls ancillary helper methods"
   (initialize-skeleton
     this

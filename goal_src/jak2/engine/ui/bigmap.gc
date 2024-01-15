@@ -19,7 +19,7 @@
 
 ;; The bit-mask data can be compressed, for including it in saves.
 
-(defmethod set-pos! bigmap ((this bigmap) (arg0 vector))
+(defmethod set-pos! ((this bigmap) (arg0 vector))
   "Set (-> this pos) to the integer cell index for the given floating-point position."
   (rlet ((vf0 :class vf)
          (vf1 :class vf)
@@ -41,7 +41,7 @@
     )
   )
 
-(defmethod decompress-current-masks! bigmap ((this bigmap))
+(defmethod decompress-current-masks! ((this bigmap))
   "Decompress the layer set by (-> this mask-index).
    The decompressed result will be stored in (-> this bit-mask data).
    If it was never compressed, the data will be set to 0."
@@ -99,7 +99,7 @@
   0
   )
 
-(defmethod compress-current-masks! bigmap ((this bigmap))
+(defmethod compress-current-masks! ((this bigmap))
   "Take the current (-> this bit-mask data), and store it in the compressed layer buffer."
   ;; store at the end of the buffer
   (let* ((compressed-data-dest (+ (-> this compressed-next-index) 0 (-> this compressed-data)))
@@ -183,7 +183,7 @@
                                    )
         )
 
-(defmethod set-enable-from-position! bigmap ((this bigmap))
+(defmethod set-enable-from-position! ((this bigmap))
   "Read the value of the layer-mask at the current position.
    Future calls to maybe-fill-for-position will only succeed
    if they correspond to a cell with the same layer-mask value
@@ -199,7 +199,7 @@
   0
   )
 
-(defmethod maybe-fill-for-position bigmap ((this bigmap) (arg0 int) (arg1 int))
+(defmethod maybe-fill-for-position ((this bigmap) (arg0 int) (arg1 int))
   "Check the layer-mask for this position. If it matches the value read from
    set-enable-from-position, then set the bit in the bit-mask."
   (local-vars (v1-3 uint))
@@ -242,7 +242,7 @@
                              )
         )
 
-(defmethod mask-image-from-bit-mask bigmap ((this bigmap))
+(defmethod mask-image-from-bit-mask ((this bigmap))
   "Modify the image-data in place to mask out parts of the map that have not been seen."
   (let* ((v1-0 (the-as object (-> this bit-mask)))
          (a1-0 *image-mask-table*)
@@ -304,7 +304,7 @@
   (pc-texture-anim-flag finish-anim-array dma-buf)
   )
 
-(defmethod texture-upload-dma bigmap ((this bigmap) (arg0 dma-buffer) (arg1 (pointer uint32)) (arg2 int) (arg3 int) (arg4 int) (arg5 gs-psm))
+(defmethod texture-upload-dma ((this bigmap) (arg0 dma-buffer) (arg1 (pointer uint32)) (arg2 int) (arg3 int) (arg4 int) (arg5 gs-psm))
   "Add a texture upload to the DMA buffer."
   (local-vars (sv-16 int))
   (set! sv-16 arg2)
@@ -319,7 +319,7 @@
   (none)
   )
 
-(defmethod sprite-dma bigmap ((this bigmap) (arg0 dma-buffer) (arg1 int) (arg2 int) (arg3 int) (arg4 int))
+(defmethod sprite-dma ((this bigmap) (arg0 dma-buffer) (arg1 int) (arg2 int) (arg3 int) (arg4 int))
   "Generate DMA for drawing a single sprite."
   (let ((v1-0 (-> arg0 base)))
     (set! (-> (the-as (pointer uint128) v1-0) 0) (-> this sprite-tmpl dma-vif quad))
@@ -334,7 +334,7 @@
   (none)
   )
 
-(defmethod draw-non-city-map bigmap ((this bigmap) (arg0 dma-buffer))
+(defmethod draw-non-city-map ((this bigmap) (arg0 dma-buffer))
   "Generate DMA to draw a non-city map using the loaded bigmap image.
    This appears to have 3 layers."
 
@@ -388,7 +388,7 @@
   (none)
   )
 
-(defmethod draw-city-map bigmap ((this bigmap) (arg0 dma-buffer))
+(defmethod draw-city-map ((this bigmap) (arg0 dma-buffer))
   "Generate DMA to draw the city map. This has only 2 layers, but has scrolling."
 
   (let ((s4-0 (the-as (pointer uint32) (-> this bigmap-image art-group))))
@@ -434,7 +434,7 @@
   (none)
   )
 
-(defmethod draw-from-minimap bigmap ((this bigmap) (arg0 dma-buffer) (arg1 connection-minimap))
+(defmethod draw-from-minimap ((this bigmap) (arg0 dma-buffer) (arg1 connection-minimap))
   "Read data from a minimap connection and draw it on the bigmap."
   (rlet ((vf0 :class vf)
          (vf1 :class vf)
@@ -549,7 +549,7 @@
     )
   )
 
-(defmethod initialize bigmap ((this bigmap))
+(defmethod initialize ((this bigmap))
   (set! (-> this bigmap-index) (the-as uint 20))
   (set-pending-file (-> this bigmap-image) (the-as string #f) 0 (process->handle *dproc*) 0.0)
   (set! (-> this compressed-next-index) (the-as uint 0))
@@ -564,7 +564,7 @@
   (none)
   )
 
-(defmethod update bigmap ((this bigmap))
+(defmethod update ((this bigmap))
   (let ((v1-1 (level-get-target-inside *level*)))
     (if v1-1
         (set! (-> this bigmap-index) (the-as uint (-> v1-1 info bigmap-id)))
@@ -683,7 +683,7 @@
   (none)
   )
 
-(defmethod draw bigmap ((this bigmap) (arg0 int) (arg1 int) (arg2 int) (arg3 int))
+(defmethod draw ((this bigmap) (arg0 int) (arg1 int) (arg2 int) (arg3 int))
   (local-vars (sv-96 pointer) (sv-100 texture) (sv-104 matrix) (sv-112 int))
   (when (and (= (file-status (-> this bigmap-image) "world-map" (the-as int (-> this load-index))) 'active)
              (not (-> this loading-flag))
@@ -843,7 +843,7 @@
   0
   )
 
-(defmethod handle-cpad-inputs bigmap ((this bigmap))
+(defmethod handle-cpad-inputs ((this bigmap))
   (cond
     ((= (-> this bigmap-index) 20)
      (let* ((v1-2 (-> *cpad-list* cpads 0))
@@ -860,7 +860,7 @@
   0
   )
 
-(defmethod compress-all bigmap ((this bigmap))
+(defmethod compress-all ((this bigmap))
   (when (!= (-> this mask-index) 20)
     (compress-current-masks! this)
     (set! (-> this mask-index) (the-as uint 20))
@@ -868,7 +868,7 @@
   0
   )
 
-(defmethod enable-drawing bigmap ((this bigmap))
+(defmethod enable-drawing ((this bigmap))
   (set! (-> this bigmap-index) (the-as uint (-> (level-get-target-inside *level*) info bigmap-id)))
   (cond
     ((= (-> this bigmap-index) 20)
@@ -909,7 +909,7 @@
   (none)
   )
 
-(defmethod disable-drawing bigmap ((this bigmap))
+(defmethod disable-drawing ((this bigmap))
   (set-pending-file
     (-> this bigmap-image)
     (the-as string #f)
@@ -937,7 +937,7 @@
 
 (define *map-save-ptr* (the-as (pointer uint64) #f))
 
-(defmethod dump-to-file bigmap ((this bigmap))
+(defmethod dump-to-file ((this bigmap))
   (if (not *map-save-ptr*)
       (set! *map-save-ptr* (the-as (pointer uint64) (malloc 'debug #xd0000)))
       )

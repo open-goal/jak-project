@@ -33,10 +33,6 @@
 
 (deftype villagec-lava (water-anim)
   ()
-  :heap-base #x70
-  :method-count-assert 30
-  :size-assert         #xdc
-  :flag-assert         #x1e007000dc
   )
 
 
@@ -52,7 +48,7 @@
                                    )
         )
 
-(defmethod water-vol-method-22 villagec-lava ((this villagec-lava))
+(defmethod water-vol-method-22 ((this villagec-lava))
   (let ((t9-0 (method-of-type water-anim water-vol-method-22)))
     (t9-0 this)
     )
@@ -68,18 +64,14 @@
   )
 
 (deftype gondola (process-drawable)
-  ((root-override  collide-shape-moving         :offset        112)
-   (anim           spool-anim                   :offset-assert 176)
-   (old-target-pos transformq           :inline :offset-assert 192)
+  ((root            collide-shape-moving :override)
+   (anim            spool-anim)
+   (old-target-pos  transformq            :inline)
    )
-  :heap-base #x80
-  :method-count-assert 23
-  :size-assert         #xf0
-  :flag-assert         #x17008000f0
-  (:methods
-    (idle (symbol) _type_ :state 20)
-    (ride-up () _type_ :state 21)
-    (ride-down () _type_ :state 22)
+  (:state-methods
+    (idle symbol)
+    ride-up
+    ride-down
     )
   )
 
@@ -137,7 +129,7 @@
     (loop
       (when (and *target*
                  (and (< (vector-vector-distance
-                           (vector<-cspace! (new 'stack-no-clear 'vector) (joint-node-index gondola-lod0-jg main))
+                           (vector<-cspace! (new 'stack-no-clear 'vector) (joint-node gondola-lod0-jg main))
                            (target-pos 0)
                            )
                          81920.0
@@ -158,7 +150,7 @@
                  )
         (let ((s3-0 (get-reminder (get-task-control (game-task village3-button)) 2))
               (s4-1 (and *cheat-mode* (cpad-hold? 0 l3)))
-              (s5-1 (vector<-cspace! (new 'stack-no-clear 'vector) (joint-node-index gondola-lod0-jg main)))
+              (s5-1 (vector<-cspace! (new 'stack-no-clear 'vector) (joint-node gondola-lod0-jg main)))
               )
           (cond
             ((not (or s4-1 (task-closed? (game-task village3-button) (task-status need-hint))))
@@ -266,7 +258,7 @@
         (vector<-cspace! (the-as vector (-> self old-target-pos)) (-> *target* node-list data 3))
         (send-event *target* 'trans 'restore (-> self old-target-pos))
         (send-event *target* 'end-mode)
-        (update-transforms! (-> self root-override))
+        (update-transforms! (-> self root))
         (move-to-ground (-> *target* control) 4096.0 40960.0 #t (-> *target* control root-prim collide-with))
         (logior! (-> *target* control status) (cshape-moving-flags onsurf onground tsurf))
         (suspend)
@@ -307,7 +299,7 @@
         (vector<-cspace! (the-as vector (-> self old-target-pos)) (-> *target* node-list data 3))
         (send-event *target* 'trans 'restore (-> self old-target-pos))
         (send-event *target* 'end-mode)
-        (update-transforms! (-> self root-override))
+        (update-transforms! (-> self root))
         (move-to-ground (-> *target* control) 4096.0 40960.0 #t (-> *target* control root-prim collide-with))
         (logior! (-> *target* control status) (cshape-moving-flags onsurf onground tsurf))
         (suspend)
@@ -322,7 +314,7 @@
   :post (-> (method-of-type gondola ride-up) post)
   )
 
-(defmethod init-from-entity! gondola ((this gondola) (arg0 entity-actor))
+(defmethod init-from-entity! ((this gondola) (arg0 entity-actor))
   (stack-size-set! (-> this main-thread) 512)
   (let ((s4-0 (new 'process 'collide-shape-moving this (collide-list-enum hit-by-player))))
     (set! (-> s4-0 dynam) (copy *standard-dynamics* 'process))
@@ -342,10 +334,10 @@
       )
     (set! (-> s4-0 nav-radius) (* 0.75 (-> s4-0 root-prim local-sphere w)))
     (backup-collide-with-as s4-0)
-    (set! (-> this root-override) s4-0)
+    (set! (-> this root) s4-0)
     )
   (process-drawable-from-entity! this arg0)
-  (quaternion-identity! (-> this root-override quat))
+  (quaternion-identity! (-> this root quat))
   (initialize-skeleton this *gondola-sg* '())
   (set! (-> this draw origin-joint-index) (the-as uint 3))
   (logclear! (-> this mask) (process-mask actor-pause))
@@ -365,7 +357,7 @@
       )
     )
   (cond
-    ((< (-> (target-pos 0) y) (+ 204800.0 (-> this root-override trans y)))
+    ((< (-> (target-pos 0) y) (+ 204800.0 (-> this root trans y)))
      (go (method-of-object this idle) #f)
      )
     (else
@@ -378,13 +370,9 @@
 
 (deftype pistons (process-drawable)
   ()
-  :heap-base #x40
-  :method-count-assert 22
-  :size-assert         #xb0
-  :flag-assert         #x16004000b0
-  (:methods
-    (idle () _type_ :state 20)
-    (active (handle symbol) _type_ :state 21)
+  (:state-methods
+    idle
+    (active handle symbol)
     )
   )
 
@@ -437,7 +425,7 @@
     )
   )
 
-(defmethod init-from-entity! pistons ((this pistons) (arg0 entity-actor))
+(defmethod init-from-entity! ((this pistons) (arg0 entity-actor))
   (set! (-> this root) (new 'process 'trsqv))
   (process-drawable-from-entity! this arg0)
   (initialize-skeleton this *pistons-sg* '())
@@ -453,12 +441,8 @@
 
 (deftype gondolacables (process-drawable)
   ()
-  :heap-base #x40
-  :method-count-assert 21
-  :size-assert         #xb0
-  :flag-assert         #x15004000b0
-  (:methods
-    (idle () _type_ :state 20)
+  (:state-methods
+    idle
     )
   )
 
@@ -493,7 +477,7 @@
   :post ja-post
   )
 
-(defmethod init-from-entity! gondolacables ((this gondolacables) (arg0 entity-actor))
+(defmethod init-from-entity! ((this gondolacables) (arg0 entity-actor))
   (set! (-> this root) (new 'process 'trsqv))
   (process-drawable-from-entity! this arg0)
   (initialize-skeleton this *gondolacables-sg* '())

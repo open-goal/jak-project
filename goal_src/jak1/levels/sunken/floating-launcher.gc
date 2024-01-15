@@ -8,13 +8,9 @@
 ;; DECOMP BEGINS
 
 (deftype floating-launcher (baseplat)
-  ((trigger-height float               :offset-assert 228)
-   (launcher       (pointer launcher)  :offset-assert 232)
+  ((trigger-height  float)
+   (launcher        (pointer launcher))
    )
-  :heap-base #x80
-  :method-count-assert 27
-  :size-assert         #xec
-  :flag-assert         #x1b008000ec
   (:states
     floating-launcher-idle
     floating-launcher-lowering
@@ -32,9 +28,7 @@
   :event plat-event
   :trans (behavior ()
     (plat-trans)
-    (when (< (vector-xz-length (vector-! (new 'stack-no-clear 'vector) (target-pos 0) (-> self root-override trans)))
-             81920.0
-             )
+    (when (< (vector-xz-length (vector-! (new 'stack-no-clear 'vector) (target-pos 0) (-> self root trans))) 81920.0)
       (if (and (>= (-> (target-pos 0) y) (-> self trigger-height))
                (logtest? (-> *target* control status) (cshape-moving-flags onground))
                )
@@ -67,14 +61,14 @@
       (while (!= f30-0 0.0)
         (set! f30-0 (seek f30-0 0.0 (seconds-per-frame)))
         (eval-path-curve-div! (-> self path) (-> self basetrans) f30-0 'interp)
-        (set! (-> self launcher 0 root-override trans quad) (-> self basetrans quad))
-        (update-transforms! (-> self launcher 0 root-override))
+        (set! (-> self launcher 0 root trans quad) (-> self basetrans quad))
+        (update-transforms! (-> self launcher 0 root))
         (suspend)
         )
       )
     (eval-path-curve-div! (-> self path) (-> self basetrans) 0.0 'interp)
-    (set! (-> self launcher 0 root-override trans quad) (-> self basetrans quad))
-    (update-transforms! (-> self launcher 0 root-override))
+    (set! (-> self launcher 0 root trans quad) (-> self basetrans quad))
+    (update-transforms! (-> self launcher 0 root))
     (go floating-launcher-ready)
     )
   :post plat-post
@@ -87,7 +81,7 @@
   :post plat-post
   )
 
-(defmethod init-from-entity! floating-launcher ((this floating-launcher) (arg0 entity-actor))
+(defmethod init-from-entity! ((this floating-launcher) (arg0 entity-actor))
   (logior! (-> this mask) (process-mask platform))
   (let ((s4-0 (new 'process 'collide-shape-moving this (collide-list-enum hit-by-player))))
     (set! (-> s4-0 dynam) (copy *standard-dynamics* 'process))
@@ -107,18 +101,18 @@
       )
     (set! (-> s4-0 nav-radius) (* 0.75 (-> s4-0 root-prim local-sphere w)))
     (backup-collide-with-as s4-0)
-    (set! (-> this root-override) s4-0)
+    (set! (-> this root) s4-0)
     )
   (process-drawable-from-entity! this arg0)
   (set! (-> this path) (new 'process 'path-control this 'path 0.0))
   (logior! (-> this path flags) (path-control-flag display draw-line draw-point draw-text))
-  (eval-path-curve-div! (-> this path) (-> this root-override trans) 1.0 'interp)
+  (eval-path-curve-div! (-> this path) (-> this root trans) 1.0 'interp)
   (let ((f30-0 (res-lump-float arg0 'spring-height :default 163840.0)))
-    (set! (-> this launcher) (process-spawn launcher (-> this root-override trans) f30-0 0 81920.0 :to this))
+    (set! (-> this launcher) (process-spawn launcher (-> this root trans) f30-0 0 81920.0 :to this))
     )
   (initialize-skeleton this *floating-launcher-sg* '())
   (logior! (-> this skel status) (janim-status inited))
-  (update-transforms! (-> this root-override))
+  (update-transforms! (-> this root))
   (baseplat-method-21 this)
   (set! (-> this trigger-height) (res-lump-float arg0 'trigger-height))
   (go floating-launcher-idle)

@@ -18,16 +18,14 @@
 ;; DECOMP BEGINS
 
 (deftype under-warp (process-drawable)
-  ((interp float  :offset-assert 200)
+  ((interp  float)
    )
-  :heap-base #x50
-  :method-count-assert 23
-  :size-assert         #xcc
-  :flag-assert         #x17005000cc
+  (:state-methods
+    idle
+    die-fast
+    )
   (:methods
-    (idle () _type_ :state 20)
-    (die-fast () _type_ :state 21)
-    (under-warp-method-22 (_type_) none 22)
+    (under-warp-method-22 (_type_) none)
     )
   )
 
@@ -76,7 +74,7 @@
   :code nothing
   )
 
-(defmethod under-warp-method-22 under-warp ((this under-warp))
+(defmethod under-warp-method-22 ((this under-warp))
   (rlet ((acc :class vf)
          (vf0 :class vf)
          (vf4 :class vf)
@@ -142,41 +140,39 @@
   )
 
 (deftype underb-master (process)
-  ((warp-handle           handle      :offset-assert 128)
-   (tank-handle           handle      :offset-assert 136)
-   (underwater-time       time-frame  :offset-assert 144)
-   (last-air-beep-time    time-frame  :offset-assert 152)
-   (ambient-sound-id      sound-id    :offset-assert 160)
-   (air-supply            float       :offset-assert 164)
-   (air-charge-up?        symbol      :offset-assert 168)
-   (under-water-pitch-mod float       :offset-assert 172)
-   (big-room-entered      symbol      :offset-assert 176)
-   (big-room-timer        time-frame  :offset-assert 184)
-   (under-plat-player-on  symbol      :offset-assert 192)
-   (under-plat-is-up      symbol      :offset-assert 196)
+  ((warp-handle            handle)
+   (tank-handle            handle)
+   (underwater-time        time-frame)
+   (last-air-beep-time     time-frame)
+   (ambient-sound-id       sound-id)
+   (air-supply             float)
+   (air-charge-up?         symbol)
+   (under-water-pitch-mod  float)
+   (big-room-entered       symbol)
+   (big-room-timer         time-frame)
+   (under-plat-player-on   symbol)
+   (under-plat-is-up       symbol)
    )
-  :heap-base #x50
-  :method-count-assert 24
-  :size-assert         #xc8
-  :flag-assert         #x18005000c8
+  (:state-methods
+    idle
+    big-room-player-under
+    big-room-player-plat
+    underb-master-state-17
+    big-room-player-above
+    big-room-player-falling
+    big-room-player-exiting
+    big-room-player-done
+    )
   (:methods
-    (idle () _type_ :state 14)
-    (big-room-player-under () _type_ :state 15)
-    (big-room-player-plat () _type_ :state 16)
-    (underb-master-method-17 () none 17)
-    (big-room-player-above () _type_ :state 18)
-    (big-room-player-falling () _type_ :state 19)
-    (big-room-player-exiting () _type_ :state 20)
-    (big-room-player-done () _type_ :state 21)
-    (under-warp-check (_type_) symbol 22)
-    (spawn-air-tank-hud (_type_ symbol) none 23)
+    (under-warp-check (_type_) symbol)
+    (spawn-air-tank-hud (_type_ symbol) none)
     )
   )
 
 
 (define *underb-master* (the-as (pointer underb-master) #f))
 
-(defmethod deactivate underb-master ((this underb-master))
+(defmethod deactivate ((this underb-master))
   (sound-stop (-> this ambient-sound-id))
   (send-event (handle->process (-> this warp-handle)) 'die-fast)
   (set! *underb-master* (the-as (pointer underb-master) #f))
@@ -323,7 +319,7 @@
     )
   )
 
-(defmethod under-warp-check underb-master ((this underb-master))
+(defmethod under-warp-check ((this underb-master))
   "Used to check whether the underwater warp effect should be drawn."
   (let ((target-pos (target-pos 0))
         (tpos-offset (new 'stack-no-clear 'vector))
@@ -341,7 +337,7 @@
     )
   )
 
-(defmethod spawn-air-tank-hud underb-master ((this underb-master) (arg0 symbol))
+(defmethod spawn-air-tank-hud ((this underb-master) (arg0 symbol))
   "Spawns or hides the air tank HUD bar."
   (cond
     (arg0
@@ -603,39 +599,35 @@
   )
 
 (deftype under-locking (process-drawable)
-  ((id                  int8                      :offset-assert 200)
-   (up-y                float                     :offset-assert 204)
-   (down-y              float                     :offset-assert 208)
-   (mode                under-locking-mode        :offset-assert 216)
-   (which-reminder?     symbol                    :offset-assert 224)
-   (spooled-sound-id    sound-id                  :offset-assert 228)
-   (draining-part       sparticle-launch-control  :offset-assert 232)
-   (actor-group         (pointer actor-group)     :offset-assert 236)
-   (spooled-sound-delay int32                     :offset-assert 240)
-   (last-reminder-time  time-frame                :offset        256)
+  ((id                   int8)
+   (up-y                 float)
+   (down-y               float)
+   (mode                 under-locking-mode)
+   (which-reminder?      symbol)
+   (spooled-sound-id     sound-id)
+   (draining-part        sparticle-launch-control)
+   (actor-group          (pointer actor-group))
+   (spooled-sound-delay  int32)
+   (last-reminder-time   time-frame  :offset 256)
    )
-  :heap-base #x90
-  :method-count-assert 24
-  :size-assert         #x108
-  :flag-assert         #x1800900108
-  (:methods
-    (startup () _type_ :state 20)
-    (active () _type_ :state 21)
-    (filling () _type_ :state 22)
-    (draining () _type_ :state 23)
+  (:state-methods
+    startup
+    active
+    filling
+    draining
     )
   )
 
 
 ;; WARN: Return type mismatch process-drawable vs under-locking.
-(defmethod relocate under-locking ((this under-locking) (arg0 int))
+(defmethod relocate ((this under-locking) (arg0 int))
   (if (nonzero? (-> this draining-part))
       (&+! (-> this draining-part) arg0)
       )
   (the-as under-locking ((method-of-type process-drawable relocate) this arg0))
   )
 
-(defmethod deactivate under-locking ((this under-locking))
+(defmethod deactivate ((this under-locking))
   (if (nonzero? (-> this draining-part))
       (kill-and-free-particles (-> this draining-part))
       )
@@ -1045,7 +1037,7 @@
   )
 
 ;; WARN: Return type mismatch object vs none.
-(defmethod init-from-entity! under-locking ((this under-locking) (arg0 entity-actor))
+(defmethod init-from-entity! ((this under-locking) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
 - stack size
@@ -1082,10 +1074,6 @@ This commonly includes things such as:
 
 (deftype water-anim-under (water-anim)
   ()
-  :heap-base #x80
-  :method-count-assert 29
-  :size-assert         #x100
-  :flag-assert         #x1d00800100
   )
 
 
@@ -1102,7 +1090,7 @@ This commonly includes things such as:
                                       )
         )
 
-(defmethod init-water! water-anim-under ((this water-anim-under))
+(defmethod init-water! ((this water-anim-under))
   "Initialize a [[water-anim]]'s default settings, this may include applying a [[riple-control]]"
   (let ((t9-0 (method-of-type water-anim init-water!)))
     (t9-0 this)

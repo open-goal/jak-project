@@ -55,21 +55,17 @@
   )
 
 (deftype plat (baseplat)
-  ((path-pos float                   :offset-assert 228)
-   (sync     sync-info-eased :inline :offset-assert 232)
-   (sound-id sound-id                :offset-assert 260)
+  ((path-pos  float)
+   (sync      sync-info-eased  :inline)
+   (sound-id  sound-id)
    )
-  :heap-base #xa0
-  :method-count-assert 33
-  :size-assert         #x108
-  :flag-assert         #x2100a00108
   (:methods
-    (get-lit-skel (_type_) skeleton-group 27)
-    (plat-method-28 () none 28)
-    (wad () _type_ :state 29)
-    (plat-startup (plat) _type_ :state 30)
-    (plat-idle () _type_ :state 31)
-    (plat-path-active (plat) _type_ :state 32)
+    (get-lit-skel (_type_) skeleton-group)
+    (plat-method-28 () none)
+    (wad () _type_ :state)
+    (plat-startup (plat) _type_ :state)
+    (plat-idle () _type_ :state)
+    (plat-path-active (plat) _type_ :state)
     )
   )
 
@@ -89,7 +85,7 @@
               :bounds (static-spherem 0 -0.5 0 3.2)
               )
 
-(defmethod get-unlit-skel plat ((this plat))
+(defmethod get-unlit-skel ((this plat))
   (cond
     ((= (-> (if (-> this entity)
                 (-> this entity extra level)
@@ -126,7 +122,7 @@
     )
   )
 
-(defmethod baseplat-method-24 plat ((this plat))
+(defmethod baseplat-method-24 ((this plat))
   (let ((s5-0 (new 'process 'collide-shape-moving this (collide-list-enum hit-by-player))))
     (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s5-0 reaction) default-collision-reaction)
@@ -145,18 +141,18 @@
       )
     (set! (-> s5-0 nav-radius) (* 0.75 (-> s5-0 root-prim local-sphere w)))
     (backup-collide-with-as s5-0)
-    (set! (-> this root-override) s5-0)
+    (set! (-> this root) s5-0)
     )
   0
   (none)
   )
 
-(defmethod baseplat-method-26 plat ((this plat))
+(defmethod baseplat-method-26 ((this plat))
   0
   (none)
   )
 
-(defmethod baseplat-method-25 plat ((this plat))
+(defmethod baseplat-method-25 ((this plat))
   (the-as sparticle-launch-group (when (!= (-> (if (-> this entity)
                                                    (-> this entity extra level)
                                                    (-> *level* level-default)
@@ -230,8 +226,8 @@
                                  )
           )
     (eval-path-curve! (-> self path) (-> self basetrans) (-> self path-pos) 'interp)
-    (if (< (vector-vector-distance (-> self root-override trans) (ear-trans)) 81920.0)
-        (sound-play "eco-plat-hover" :id (-> self sound-id) :position (the-as symbol (-> self root-override trans)))
+    (if (< (vector-vector-distance (-> self root trans) (ear-trans)) 81920.0)
+        (sound-play "eco-plat-hover" :id (-> self sound-id) :position (the-as symbol (-> self root trans)))
         )
     (plat-trans)
     )
@@ -239,13 +235,13 @@
   :post plat-post
   )
 
-(defmethod init-from-entity! plat ((this plat) (arg0 entity-actor))
+(defmethod init-from-entity! ((this plat) (arg0 entity-actor))
   (logior! (-> this mask) (process-mask platform))
   (baseplat-method-24 this)
   (process-drawable-from-entity! this arg0)
   (initialize-skeleton this (get-unlit-skel this) '())
   (logior! (-> this skel status) (janim-status inited))
-  (update-transforms! (-> this root-override))
+  (update-transforms! (-> this root))
   (baseplat-method-21 this)
   (baseplat-method-25 this)
   (load-params! (-> this sync) this (the-as uint 0) 0.0 0.15 0.15)
@@ -269,7 +265,7 @@
                                   (get-current-phase-with-mirror (-> this sync))
                                   )
            )
-     (eval-path-curve! (-> this path) (-> this root-override trans) (-> this path-pos) 'interp)
+     (eval-path-curve! (-> this path) (-> this root trans) (-> this path-pos) 'interp)
      (let ((a0-18 this))
        (baseplat-method-26 a0-18)
        (go (method-of-object this plat-startup) a0-18)
@@ -277,7 +273,7 @@
      )
     (else
       (set! (-> this path-pos) 0.0)
-      (eval-path-curve! (-> this path) (-> this root-override trans) (-> this path-pos) 'interp)
+      (eval-path-curve! (-> this path) (-> this root trans) (-> this path-pos) 'interp)
       (let ((a0-20 this))
         (baseplat-method-26 a0-20)
         (go (method-of-object this plat-startup) a0-20)

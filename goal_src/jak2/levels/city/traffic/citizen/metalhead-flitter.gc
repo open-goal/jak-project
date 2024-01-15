@@ -8,29 +8,27 @@
 ;; DECOMP BEGINS
 
 (deftype metalhead-flitter (citizen-enemy)
-  ((move-angle       float              :offset-assert 980)
-   (heading          symbol             :offset-assert 984)
-   (change-dir-time  time-frame         :offset-assert 992)
-   (last-change-dir  uint64             :offset-assert 1000)
-   (off-screen-timer uint64             :offset-assert 1008)
-   (amb-sound-timer  uint64             :offset-assert 1016)
-   (attack-time      time-frame         :offset-assert 1024)
-   (target-pos       vector     :inline :offset-assert 1040)
-   (attack-pos       vector     :inline :offset-assert 1056)
-   (base-height      float              :offset-assert 1072)
+  ((move-angle        float)
+   (heading           symbol)
+   (change-dir-time   time-frame)
+   (last-change-dir   uint64)
+   (off-screen-timer  uint64)
+   (amb-sound-timer   uint64)
+   (attack-time       time-frame)
+   (target-pos        vector  :inline)
+   (attack-pos        vector  :inline)
+   (base-height       float)
    )
-  :heap-base #x3c0
-  :method-count-assert 210
-  :size-assert         #x434
-  :flag-assert         #xd203c00434
+  (:state-methods
+    attack
+    ambush-jumping
+    )
   (:methods
-    (attack () _type_ :state 203)
-    (ambush-jumping () _type_ :state 204)
-    (metalhead-flitter-method-205 (_type_) none 205)
-    (metalhead-flitter-method-206 (_type_) none 206)
-    (metalhead-flitter-method-207 (_type_ process-focusable) symbol 207)
-    (metalhead-flitter-method-208 (_type_ symbol) none 208)
-    (metalhead-flitter-method-209 (_type_) float 209)
+    (metalhead-flitter-method-205 (_type_) none)
+    (metalhead-flitter-method-206 (_type_) none)
+    (metalhead-flitter-method-207 (_type_ process-focusable) symbol)
+    (metalhead-flitter-method-208 (_type_ symbol) none)
+    (metalhead-flitter-method-209 (_type_) float)
     )
   )
 
@@ -189,7 +187,7 @@
 
 (set! (-> *metalhead-flitter-nav-enemy-info* fact-defaults) *fact-info-enemy-defaults*)
 
-(defmethod metalhead-flitter-method-207 metalhead-flitter ((this metalhead-flitter) (arg0 process-focusable))
+(defmethod metalhead-flitter-method-207 ((this metalhead-flitter) (arg0 process-focusable))
   (and (logtest? (-> this draw status) (draw-control-status on-screen))
        (let ((s4-0 (camera-matrix)))
          (camera-pos)
@@ -203,7 +201,7 @@
        )
   )
 
-(defmethod enemy-method-77 metalhead-flitter ((this metalhead-flitter) (arg0 (pointer float)))
+(defmethod enemy-method-77 ((this metalhead-flitter) (arg0 enemy-knocked-info))
   (case (-> this incoming knocked-type)
     (((knocked-type knocked-type-4))
      (let ((a0-2 (-> this skel root-channel 0)))
@@ -211,7 +209,7 @@
        (set! (-> a0-2 param 0)
              (the float (+ (-> (the-as art-joint-anim (-> this draw art-group data 20)) frames num-frames) -1))
              )
-       (set! (-> a0-2 param 1) (-> arg0 0))
+       (set! (-> a0-2 param 1) (-> arg0 anim-speed))
        (set! (-> a0-2 frame-num) 0.0)
        (joint-control-channel-group! a0-2 (the-as art-joint-anim (-> this draw art-group data 20)) num-func-seek!)
        )
@@ -245,7 +243,7 @@
     )
   )
 
-(defmethod enemy-method-78 metalhead-flitter ((this metalhead-flitter) (arg0 (pointer float)))
+(defmethod enemy-method-78 ((this metalhead-flitter) (arg0 enemy-knocked-info))
   (case (-> this incoming knocked-type)
     (((knocked-type knocked-type-6))
      (when (>= (-> this incoming blue-juggle-count) (the-as uint 2))
@@ -267,7 +265,7 @@
     )
   )
 
-(defmethod go-stare2 metalhead-flitter ((this metalhead-flitter))
+(defmethod go-stare2 ((this metalhead-flitter))
   (if (and (= (-> this focus aware) (enemy-aware enemy-aware-2)) (not (nav-enemy-method-163 this)))
       (go (method-of-object this pacing))
       (go (method-of-object this stare))
@@ -277,11 +275,11 @@
 (defstate ambush (metalhead-flitter)
   :virtual #t
   :enter (behavior ()
-    (when (logtest? (-> self enemy-flags) (enemy-flag auto-reset-penetrate))
-      (logclear! (-> self enemy-flags) (enemy-flag auto-reset-penetrate))
+    (when (logtest? (-> self enemy-flags) (enemy-flag enable-on-notice))
+      (logclear! (-> self enemy-flags) (enemy-flag enable-on-notice))
       (let ((gp-0 (-> self on-notice)))
         (if gp-0
-            (script-eval (the-as pair gp-0) :vector (-> self root trans))
+            (script-eval gp-0 :vector (-> self root trans))
             )
         )
       )
@@ -392,7 +390,7 @@
     (+! (-> self root trans y) -8192.0)
     (logior! (-> self draw status) (draw-control-status no-draw))
     (let ((gp-3 (current-time)))
-      (until (time-elapsed? gp-3 (the int (* 300.0 (get-rand-float-range self 0.0 0.6))))
+      (until (time-elapsed? gp-3 (the int (* 300.0 (rnd-float-range self 0.0 0.6))))
         (suspend)
         )
       )
@@ -417,11 +415,11 @@
       (set! (-> v1-3 enemy-flags) (the-as enemy-flag (logior (enemy-flag enemy-flag37) (-> v1-3 enemy-flags))))
       )
     0
-    (look-at-target! self (enemy-flag lock-focus))
+    (look-at-target! self (enemy-flag look-at-focus))
     (set-time! (-> self state-time))
     (let ((gp-0 (-> self root)))
       (vector-reset! (-> gp-0 transv))
-      (set! (-> gp-0 transv y) (* 4096.0 (get-rand-float-range self 34.0 38.0)))
+      (set! (-> gp-0 transv y) (* 4096.0 (rnd-float-range self 34.0 38.0)))
       )
     )
   :code (behavior ()
@@ -515,11 +513,11 @@
   :post nav-enemy-falling-post
   )
 
-(defmethod enemy-method-99 metalhead-flitter ((this metalhead-flitter) (arg0 process-focusable))
+(defmethod enemy-method-99 ((this metalhead-flitter) (arg0 process-focusable))
   (focus-test? arg0 mech)
   )
 
-(defmethod metalhead-flitter-method-205 metalhead-flitter ((this metalhead-flitter))
+(defmethod metalhead-flitter-method-205 ((this metalhead-flitter))
   (let* ((s5-0 (handle->process (-> this focus handle)))
          (s3-0 (if (type? s5-0 process-focusable)
                    s5-0
@@ -589,7 +587,7 @@
   )
 
 ;; WARN: Return type mismatch time-frame vs none.
-(defmethod metalhead-flitter-method-206 metalhead-flitter ((this metalhead-flitter))
+(defmethod metalhead-flitter-method-206 ((this metalhead-flitter))
   (when (time-elapsed? (the-as int (-> this amb-sound-timer)) (the int (* 300.0 (rand-vu-float-range 1.5 3.0))))
     (sound-play "flitter-amb" :position (-> this root trans))
     (set! (-> this amb-sound-timer) (the-as uint (current-time)))
@@ -644,7 +642,7 @@
   :virtual #t
   :code (behavior ()
     (ja-channel-push! 1 (seconds 0.1))
-    (let ((f30-0 (get-rand-float-range self 0.8 1.2)))
+    (let ((f30-0 (rnd-float-range self 0.8 1.2)))
       (until #f
         (when (not (enemy-method-96 self 2730.6667 #t))
           (let ((v1-5 self))
@@ -749,7 +747,7 @@
     )
   )
 
-(defmethod metalhead-flitter-method-209 metalhead-flitter ((this metalhead-flitter))
+(defmethod metalhead-flitter-method-209 ((this metalhead-flitter))
   (lerp-scale 0.0 1.0 (- (-> this attack-pos y) (-> this root trans y)) 13926.4 25600.0)
   )
 
@@ -778,7 +776,7 @@
     )
   :exit (behavior ()
     (metalhead-flitter-method-208 self #f)
-    (if (logtest? (-> self enemy-flags) (enemy-flag check-water))
+    (if (logtest? (-> self enemy-flags) (enemy-flag dangerous-backup))
         (logior! (-> self focus-status) (focus-status dangerous))
         (logclear! (-> self focus-status) (focus-status dangerous))
         )
@@ -848,11 +846,11 @@
     0
     (ja-channel-push! 1 (seconds 0.1))
     (metalhead-flitter-method-208 self #f)
-    (if (logtest? (-> self enemy-flags) (enemy-flag check-water))
+    (if (logtest? (-> self enemy-flags) (enemy-flag dangerous-backup))
         (logior! (-> self focus-status) (focus-status dangerous))
         (logclear! (-> self focus-status) (focus-status dangerous))
         )
-    (dotimes (gp-1 (get-rand-int self 3))
+    (dotimes (gp-1 (rnd-int-count self 3))
       (ja-no-eval :group! flitter-idle-ja :num! (seek!) :frame-num 0.0)
       (until (ja-done? 0)
         (suspend)
@@ -876,7 +874,7 @@
   :virtual #t
   :code (behavior ()
     (ja-channel-push! 1 (seconds 0.1))
-    (let ((f30-0 (get-rand-float-range self 0.8 1.2)))
+    (let ((f30-0 (rnd-float-range self 0.8 1.2)))
       (until #f
         (when (not (enemy-method-96 self 2730.6667 #t))
           (let ((v1-5 self))
@@ -986,19 +984,19 @@
     (ja-channel-push! 1 (seconds 0.2))
     (until #f
       (ja-no-eval :group! (-> self draw art-group data (-> self enemy-info run-anim))
-                  :num! (seek! max (get-rand-float-range self 0.9 1.1))
+                  :num! (seek! max (rnd-float-range self 0.9 1.1))
                   :frame-num 0.0
                   )
       (until (ja-done? 0)
         (suspend)
-        (ja :num! (seek! max (get-rand-float-range self 0.9 1.1)))
+        (ja :num! (seek! max (rnd-float-range self 0.9 1.1)))
         )
       )
     #f
     )
   )
 
-(defmethod metalhead-flitter-method-208 metalhead-flitter ((this metalhead-flitter) (arg0 symbol))
+(defmethod metalhead-flitter-method-208 ((this metalhead-flitter) (arg0 symbol))
   (let ((v1-1 (-> this root root-prim)))
     (dotimes (a0-1 (the-as int (-> v1-1 specific 0)))
       (let ((a2-1 (-> (the-as collide-shape-prim-group v1-1) child a0-1)))
@@ -1013,7 +1011,7 @@
   (none)
   )
 
-(defmethod init-enemy-collision! metalhead-flitter ((this metalhead-flitter))
+(defmethod init-enemy-collision! ((this metalhead-flitter))
   "Initializes the [[collide-shape-moving]] and any ancillary tasks to make the enemy collide properly"
   (let ((s5-0 (new 'process 'collide-shape-moving this (collide-list-enum usually-hit-by-player))))
     (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
@@ -1067,7 +1065,7 @@
   )
 
 ;; WARN: Return type mismatch symbol vs none.
-(defmethod init-enemy! metalhead-flitter ((this metalhead-flitter))
+(defmethod init-enemy! ((this metalhead-flitter))
   "Common method called to initialize the enemy, typically sets up default field values and calls ancillary helper methods"
   (initialize-skeleton
     this
@@ -1105,7 +1103,7 @@
   (none)
   )
 
-(defmethod citizen-init! metalhead-flitter ((this metalhead-flitter))
+(defmethod citizen-init! ((this metalhead-flitter))
   "Initialize [[citizen]] defaults."
   (let ((t9-0 (method-of-type citizen-enemy citizen-init!)))
     (t9-0 this)

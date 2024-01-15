@@ -34,6 +34,18 @@ normally.
 (defconstant PI_OVER_2 (the-as float #x3fc90fda))
 (defconstant TWO_PI (the-as float #x40c90fda))
 
+(defmacro unwrap-angle (angle)
+  `(the float (sar (shl (the int ,angle) 48) 48))
+  )
+
+(defmacro unwrap-angle-small-angle-fix (angle)
+  "Same as unwrap angle, but small angles are not rounded to zero."
+  `(if (< (fabs ,angle) 1.1)
+      ,angle
+      (the float (sar (shl (the int ,angle) 48) 48))
+      )
+  )
+
 ;; DECOMP BEGINS
 
 (defun radmod ((arg0 float))
@@ -189,7 +201,7 @@ normally.
 
 (defun sin ((arg0 float))
   "Compute the sine of an angle in rotation units. Unwraps it."
-  (let ((f2-0 (* 0.000095873795 (the float (sar (shl (the int arg0) 48) 48)))))
+  (let ((f2-0 (* 0.000095873795 (unwrap-angle arg0))))
     f2-0
     (let* ((f1-4 (* 0.999998 f2-0))
            (f0-3 (* f2-0 f2-0))
@@ -566,7 +578,7 @@ normally.
   "Compute the sine and cosine of x, store it in the output array.
    The input is in rotation units, and is unwrapped properly.
    Also has the cosine bug"
-  (sincos-rad-asm out (* ROT_TO_RAD (the float (sar (shl (the int x) 48) 48))))
+  (sincos-rad-asm out (* ROT_TO_RAD (unwrap-angle x)))
   )
 
 (defun vector-rad<-vector-deg! ((out vector) (in vector))

@@ -117,7 +117,7 @@ struct SoundRpcSetMirrror {
 extern s32 gMusicTweak;
 extern MusicTweaks gMusicTweakInfo;
 extern int32_t gSoundEnable;
-extern s32 gMusic;
+extern snd::BankHandle gMusic;
 extern s32 gMusicPause;
 extern s32 gSoundInUse;
 extern u8 gFPS;

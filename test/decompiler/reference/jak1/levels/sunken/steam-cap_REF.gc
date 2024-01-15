@@ -3,16 +3,13 @@
 
 ;; definition of type steam-cap-control-pt
 (deftype steam-cap-control-pt (structure)
-  ((trans  vector :inline :offset-assert   0)
-   (transv vector :inline :offset-assert  16)
+  ((trans   vector  :inline)
+   (transv  vector  :inline)
    )
-  :method-count-assert 9
-  :size-assert         #x20
-  :flag-assert         #x900000020
   )
 
 ;; definition for method 3 of type steam-cap-control-pt
-(defmethod inspect steam-cap-control-pt ((this steam-cap-control-pt))
+(defmethod inspect ((this steam-cap-control-pt))
   (format #t "[~8x] ~A~%" this 'steam-cap-control-pt)
   (format #t "~Ttrans: #<vector @ #x~X>~%" (-> this trans))
   (format #t "~Ttransv: #<vector @ #x~X>~%" (-> this transv))
@@ -21,26 +18,22 @@
 
 ;; definition of type steam-cap
 (deftype steam-cap (process-drawable)
-  ((root-override     collide-shape-moving               :offset        112)
-   (do-burst?         symbol                             :offset-assert 176)
-   (do-falling-sound? symbol                             :offset-assert 180)
-   (do-landing-sound? symbol                             :offset-assert 184)
-   (begin-travel-up   float                              :offset-assert 188)
-   (begin-travel-down float                              :offset-assert 192)
-   (sync              sync-info                :inline   :offset-assert 196)
-   (part2             sparticle-launch-control           :offset-assert 204)
-   (part3             sparticle-launch-control           :offset-assert 208)
-   (down              vector                   :inline   :offset-assert 224)
-   (up                vector                   :inline   :offset-assert 240)
-   (control-pt        steam-cap-control-pt     3 :inline :offset-assert 256)
+  ((root               collide-shape-moving :override)
+   (do-burst?          symbol)
+   (do-falling-sound?  symbol)
+   (do-landing-sound?  symbol)
+   (begin-travel-up    float)
+   (begin-travel-down  float)
+   (sync               sync-info             :inline)
+   (part2              sparticle-launch-control)
+   (part3              sparticle-launch-control)
+   (down               vector                :inline)
+   (up                 vector                :inline)
+   (control-pt         steam-cap-control-pt  3 :inline)
    )
-  :heap-base #xf0
-  :method-count-assert 22
-  :size-assert         #x160
-  :flag-assert         #x1600f00160
   (:methods
-    (steam-cap-method-20 (_type_) none 20)
-    (steam-cap-method-21 (_type_) quaternion 21)
+    (steam-cap-method-20 (_type_) none)
+    (steam-cap-method-21 (_type_) quaternion)
     )
   (:states
     steam-cap-idle
@@ -48,7 +41,7 @@
   )
 
 ;; definition for method 3 of type steam-cap
-(defmethod inspect steam-cap ((this steam-cap))
+(defmethod inspect ((this steam-cap))
   (let ((t9-0 (method-of-type process-drawable inspect)))
     (t9-0 this)
     )
@@ -453,23 +446,23 @@
 
 ;; definition for method 20 of type steam-cap
 ;; INFO: Return type mismatch object vs none.
-(defmethod steam-cap-method-20 steam-cap ((this steam-cap))
+(defmethod steam-cap-method-20 ((this steam-cap))
   (when *target*
     (let* ((a1-0 (target-pos 0))
            (f0-0 (-> a1-0 y))
            )
       (when (and (>= f0-0 (+ -8192.0 (-> this down y)))
-                 (and (>= (+ -4096.0 (-> this root-override trans y)) f0-0) (zero? (-> this root-override riders num-riders)))
+                 (and (>= (+ -4096.0 (-> this root trans y)) f0-0) (zero? (-> this root riders num-riders)))
                  )
         (let ((f0-1 (vector-vector-xz-distance-squared (-> this down) a1-0)))
           (when (>= 104857600.0 f0-1)
             (let ((s5-0 (>= 37748736.0 f0-1)))
               (when (not s5-0)
-                (when (>= (- (-> this root-override trans y) (-> this down y)) 3072.0)
+                (when (>= (- (-> this root trans y) (-> this down y)) 3072.0)
                   (let ((a1-1 (new 'stack-no-clear 'vector)))
                     (set! (-> a1-1 x) (the-as float 1))
                     (set! (-> a1-1 y) (the-as float #f))
-                    (if (find-overlapping-shapes (-> this root-override) (the-as overlaps-others-params a1-1))
+                    (if (find-overlapping-shapes (-> this root) (the-as overlaps-others-params a1-1))
                         (set! s5-0 #t)
                         )
                     )
@@ -489,7 +482,7 @@
 
 ;; definition for method 21 of type steam-cap
 ;; INFO: Used lq/sq
-(defmethod steam-cap-method-21 steam-cap ((this steam-cap))
+(defmethod steam-cap-method-21 ((this steam-cap))
   (local-vars (at-0 int) (at-1 int) (s5-0 symbol))
   (rlet ((vf0 :class vf)
          (vf1 :class vf)
@@ -536,7 +529,7 @@
            (when (< f30-1 0.94)
              (spawn (-> this part2) (-> this down))
              (let ((a1-8 (new 'stack-no-clear 'vector)))
-               (set! (-> a1-8 quad) (-> this root-override trans quad))
+               (set! (-> a1-8 quad) (-> this root trans quad))
                (+! (-> a1-8 y) -3072.0)
                (spawn (-> this part3) a1-8)
                )
@@ -654,9 +647,9 @@
       (let ((f0-32 (* 0.33333334 f0-31))
             (a1-16 (new 'stack-no-clear 'vector))
             )
-        (set! (-> a1-16 quad) (-> this root-override trans quad))
+        (set! (-> a1-16 quad) (-> this root trans quad))
         (set! (-> a1-16 y) f0-32)
-        (move-to-point! (-> this root-override) a1-16)
+        (move-to-point! (-> this root) a1-16)
         )
       )
     (let ((v1-77 (new 'stack-no-clear 'vector))
@@ -668,8 +661,8 @@
       (vector-cross! s5-1 v1-77 a0-35)
       (vector-normalize! s5-1 1.0)
       (forward-up-nopitch->quaternion
-        (-> this root-override quat)
-        (vector-z-quaternion! (new-stack-vector0) (-> this root-override quat))
+        (-> this root quat)
+        (vector-z-quaternion! (new-stack-vector0) (-> this root quat))
         s5-1
         )
       )
@@ -690,7 +683,7 @@
   )
 
 ;; definition for method 7 of type steam-cap
-(defmethod relocate steam-cap ((this steam-cap) (arg0 int))
+(defmethod relocate ((this steam-cap) (arg0 int))
   (if (nonzero? (-> this part2))
       (&+! (-> this part2) arg0)
       )
@@ -701,7 +694,7 @@
   )
 
 ;; definition for method 10 of type steam-cap
-(defmethod deactivate steam-cap ((this steam-cap))
+(defmethod deactivate ((this steam-cap))
   (if (nonzero? (-> this part2))
       (kill-and-free-particles (-> this part2))
       )
@@ -715,7 +708,7 @@
 ;; definition for method 11 of type steam-cap
 ;; INFO: Used lq/sq
 ;; INFO: Return type mismatch object vs none.
-(defmethod init-from-entity! steam-cap ((this steam-cap) (arg0 entity-actor))
+(defmethod init-from-entity! ((this steam-cap) (arg0 entity-actor))
   (local-vars (sv-16 res-tag))
   (logior! (-> this mask) (process-mask platform))
   (let ((s4-0 (new 'process 'collide-shape-moving this (collide-list-enum hit-by-player))))
@@ -736,7 +729,7 @@
       )
     (set! (-> s4-0 nav-radius) (* 0.75 (-> s4-0 root-prim local-sphere w)))
     (backup-collide-with-as s4-0)
-    (set! (-> this root-override) s4-0)
+    (set! (-> this root) s4-0)
     )
   (set! (-> this do-burst?) #f)
   (set! (-> this do-falling-sound?) #f)
@@ -753,7 +746,7 @@
       )
     (set! (-> s4-1 frame-num) 0.0)
     )
-  (update-transforms! (-> this root-override))
+  (update-transforms! (-> this root))
   (load-params! (-> this sync) this (the-as uint 1800) 0.0 0.15 0.15)
   (let ((f30-0 0.4)
         (f28-0 0.9)
@@ -781,13 +774,13 @@
     (set! (-> this begin-travel-up) f30-0)
     (set! (-> this begin-travel-down) f28-0)
     )
-  (set! (-> this down quad) (-> this root-override trans quad))
-  (set! (-> this up quad) (-> this root-override trans quad))
+  (set! (-> this down quad) (-> this root trans quad))
+  (set! (-> this up quad) (-> this root trans quad))
   (+! (-> this up y) 40960.0)
   (set! (-> this part) (create-launch-control (-> *part-group-id-table* 441) this))
   (set! (-> this part2) (create-launch-control (-> *part-group-id-table* 442) this))
   (set! (-> this part3) (create-launch-control (-> *part-group-id-table* 443) this))
-  (vector-reset! (-> this root-override transv))
+  (vector-reset! (-> this root transv))
   (let ((s5-1 (new 'stack-no-clear 'vector))
         (f30-1 0.0)
         )
@@ -796,7 +789,7 @@
         (set-vector! s5-1 0.0 0.0 10240.0 1.0)
         (vector-rotate-around-y! s5-1 s5-1 f30-1)
         (set! f30-1 (+ 21845.334 f30-1))
-        (vector+! (-> s3-1 trans) s5-1 (-> this root-override trans))
+        (vector+! (-> s3-1 trans) s5-1 (-> this root trans))
         (vector-reset! (-> s3-1 transv))
         )
       )

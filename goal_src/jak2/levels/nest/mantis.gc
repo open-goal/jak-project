@@ -230,52 +230,47 @@
   )
 
 (deftype mantis-jump-info (structure)
-  ((distance    float          :offset-assert   0)
-   (search-step uint32         :offset-assert   4)
-   (destination vector :inline :offset-assert  16)
-   (direction   uint16         :offset-assert  32)
-   (start-anim  uint32         :offset-assert  36)
-   (air-anim    uint32         :offset-assert  40)
-   (land-anim   uint32         :offset-assert  44)
+  ((distance     float)
+   (search-step  uint32)
+   (destination  vector  :inline)
+   (direction    uint16)
+   (start-anim   uint32)
+   (air-anim     uint32)
+   (land-anim    uint32)
    )
-  :method-count-assert 9
-  :size-assert         #x30
-  :flag-assert         #x900000030
   )
 
 
 (deftype mantis (nav-enemy)
-  ((base-height  float                    :offset-assert 604)
-   (flags        mantis-flag              :offset-assert 608)
-   (attack-timer time-frame               :offset-assert 616)
-   (track-timer  time-frame               :offset-assert 624)
-   (gspot-timer  time-frame               :offset-assert 632)
-   (gspot-normal vector           :inline :offset-assert 640)
-   (my-up-vector vector           :inline :offset-assert 656)
-   (jump         mantis-jump-info :inline :offset-assert 672)
+  ((base-height   float)
+   (flags         mantis-flag)
+   (attack-timer  time-frame)
+   (track-timer   time-frame)
+   (gspot-timer   time-frame)
+   (gspot-normal  vector            :inline)
+   (my-up-vector  vector            :inline)
+   (jump          mantis-jump-info  :inline)
    )
-  :heap-base #x250
-  :method-count-assert 195
-  :size-assert         #x2d0
-  :flag-assert         #xc3025002d0
+  (:state-methods
+    crawl
+    attack0
+    attack1
+    ambush-crawling
+    ambush-jumping
+    mantis-state-183
+    roll-right
+    roll-left
+    hop-away
+    )
   (:methods
-    (crawl () _type_ :state 178)
-    (attack0 () _type_ :state 179)
-    (attack1 () _type_ :state 180)
-    (ambush-crawling () _type_ :state 181)
-    (ambush-jumping () _type_ :state 182)
-    (mantis-method-183 () none 183)
-    (roll-right () _type_ :state 184)
-    (roll-left () _type_ :state 185)
-    (hop-away () _type_ :state 186)
-    (mantis-method-187 (_type_) none 187)
-    (mantis-method-188 (_type_) none 188)
-    (mantis-method-189 (_type_ vector vector) symbol 189)
-    (mantis-method-190 (_type_ vector vector) none 190)
-    (mantis-method-191 (_type_ vector vector) int 191)
-    (mantis-method-192 (_type_ vector vector) none 192)
-    (mantis-method-193 (_type_ vector) none 193)
-    (mantis-method-194 (_type_) symbol 194)
+    (mantis-method-187 (_type_) none)
+    (mantis-method-188 (_type_) none)
+    (mantis-method-189 (_type_ vector vector) symbol)
+    (mantis-method-190 (_type_ vector vector) none)
+    (mantis-method-191 (_type_ vector vector) int)
+    (mantis-method-192 (_type_ vector vector) none)
+    (mantis-method-193 (_type_ vector) none)
+    (mantis-method-194 (_type_) symbol)
     )
   )
 
@@ -416,7 +411,7 @@
   :code (behavior ()
     (ja-channel-push! 1 (seconds 0.2))
     (until #f
-      (let ((gp-0 (get-rand-int-range self 3 5)))
+      (let ((gp-0 (rnd-int-range self 3 5)))
         (dotimes (s5-0 gp-0)
           (ja-no-eval :group! mantis-idle0-ja :num! (seek!) :frame-num 0.0)
           (until (ja-done? 0)
@@ -430,7 +425,7 @@
         (suspend)
         (ja :num! (seek!))
         )
-      (let ((gp-1 (get-rand-int self 3)))
+      (let ((gp-1 (rnd-int-count self 3)))
         (dotimes (s5-1 gp-1)
           (ja-no-eval :group! mantis-idle1-ja :num! (seek!) :frame-num 0.0)
           (until (ja-done? 0)
@@ -453,11 +448,11 @@
 (defstate ambush (mantis)
   :virtual #t
   :enter (behavior ()
-    (when (logtest? (-> self enemy-flags) (enemy-flag auto-reset-penetrate))
-      (logclear! (-> self enemy-flags) (enemy-flag auto-reset-penetrate))
+    (when (logtest? (-> self enemy-flags) (enemy-flag enable-on-notice))
+      (logclear! (-> self enemy-flags) (enemy-flag enable-on-notice))
       (let ((gp-0 (-> self on-notice)))
         (if gp-0
-            (script-eval (the-as pair gp-0) :vector (-> self root trans))
+            (script-eval gp-0 :vector (-> self root trans))
             )
         )
       )
@@ -535,12 +530,12 @@
       )
     (logior! (-> self draw status) (draw-control-status no-draw))
     (let ((gp-2 (current-time)))
-      (until (time-elapsed? gp-2 (the int (* 300.0 (get-rand-float-range self 0.0 0.6))))
+      (until (time-elapsed? gp-2 (the int (* 300.0 (rnd-float-range self 0.0 0.6))))
         (suspend)
         )
       )
     (logclear! (-> self draw status) (draw-control-status no-draw))
-    (if (rng-hit? self 0.5)
+    (if (rnd-percent? self 0.5)
         (go-virtual ambush-jumping)
         (go-virtual ambush-crawling)
         )
@@ -551,7 +546,7 @@
   :virtual #t
   :event enemy-event-handler
   :code (behavior ()
-    (look-at-target! self (enemy-flag lock-focus))
+    (look-at-target! self (enemy-flag look-at-focus))
     (set! (-> self root trans y) (-> self base-height))
     (ja-channel-push! 1 0)
     (ja-no-eval :group! mantis-ground-crawl-out-ja :num! (seek!) :frame-num 0.0)
@@ -584,7 +579,7 @@
       (set! (-> v1-3 enemy-flags) (the-as enemy-flag (logior (enemy-flag enemy-flag37) (-> v1-3 enemy-flags))))
       )
     0
-    (look-at-target! self (enemy-flag lock-focus))
+    (look-at-target! self (enemy-flag look-at-focus))
     (set-time! (-> self state-time))
     (set! (-> self root trans y) (+ -18841.6 (-> self base-height)))
     (let ((gp-0 (-> self root)))
@@ -593,7 +588,7 @@
         (set! (-> v1-11 y) 0.0)
         )
       (vector-reset! (-> gp-0 transv))
-      (set! (-> gp-0 transv y) (* 4096.0 (get-rand-float-range self 28.0 32.0)))
+      (set! (-> gp-0 transv y) (* 4096.0 (rnd-float-range self 28.0 32.0)))
       )
     )
   :code (behavior ()
@@ -753,9 +748,11 @@
     )
   :exit (behavior ()
     (change-to (nav-mesh-from-res-tag (-> self entity) 'nav-mesh-actor 0) self)
-    (let ((v1-2 (-> self nav)))
-      (set! (-> v1-2 max-rotation-rate) (-> self enemy-info maximum-rotation-rate))
-      )
+    ;; og:preserve-this fix potential use-after-free bug
+    (if (-> self nav)
+      (let ((v1-2 (-> self nav)))
+        (set! (-> v1-2 max-rotation-rate) (-> self enemy-info maximum-rotation-rate))
+        ))
     0
     )
   :trans (behavior ()
@@ -772,7 +769,7 @@
         (set! (-> v1-0 nav callback-info) *nav-enemy-null-callback-info*)
         )
       0
-      (dotimes (gp-0 (get-rand-int-range self 1 2))
+      (dotimes (gp-0 (rnd-int-range self 1 2))
         (ja-no-eval :group! mantis-idle0-ja :num! (seek!) :frame-num 0.0)
         (until (ja-done? 0)
           (suspend)
@@ -791,7 +788,7 @@
                    (s2-0 (new 'stack-no-clear 'vector))
                    (s3-0 (new 'stack-no-clear 'vector))
                    )
-              (let ((f30-1 (* 4096.0 (get-rand-float-range self 8.0 12.0)))
+              (let ((f30-1 (* 4096.0 (rnd-float-range self 8.0 12.0)))
                     (s1-0 (cloest-point-on-mesh (-> self nav) s5-0 s5-0 (the-as nav-poly #f)))
                     )
                 (vector-normalize-copy! s2-0 s4-1 1.0)
@@ -848,7 +845,7 @@
         (set! (-> v1-73 nav callback-info) (-> v1-73 enemy-info callback-info))
         )
       0
-      (dotimes (gp-2 (get-rand-int-range self 3 5))
+      (dotimes (gp-2 (rnd-int-range self 3 5))
         (ja-no-eval :group! mantis-run0-ja :num! (seek!) :frame-num 0.0)
         (until (ja-done? 0)
           (suspend)
@@ -884,7 +881,7 @@
     (set-time! (-> self attack-timer))
     )
   :exit (behavior ()
-    (if (logtest? (-> self enemy-flags) (enemy-flag check-water))
+    (if (logtest? (-> self enemy-flags) (enemy-flag dangerous-backup))
         (logior! (-> self focus-status) (focus-status dangerous))
         (logclear! (-> self focus-status) (focus-status dangerous))
         )
@@ -900,7 +897,7 @@
       (suspend)
       (ja :num! (seek!))
       )
-    (if (logtest? (-> self enemy-flags) (enemy-flag check-water))
+    (if (logtest? (-> self enemy-flags) (enemy-flag dangerous-backup))
         (logior! (-> self focus-status) (focus-status dangerous))
         (logclear! (-> self focus-status) (focus-status dangerous))
         )
@@ -936,7 +933,7 @@
     (set-time! (-> self attack-timer))
     )
   :exit (behavior ()
-    (if (logtest? (-> self enemy-flags) (enemy-flag check-water))
+    (if (logtest? (-> self enemy-flags) (enemy-flag dangerous-backup))
         (logior! (-> self focus-status) (focus-status dangerous))
         (logclear! (-> self focus-status) (focus-status dangerous))
         )
@@ -980,7 +977,7 @@
       (suspend)
       (ja :num! (seek!))
       )
-    (if (logtest? (-> self enemy-flags) (enemy-flag check-water))
+    (if (logtest? (-> self enemy-flags) (enemy-flag dangerous-backup))
         (logior! (-> self focus-status) (focus-status dangerous))
         (logclear! (-> self focus-status) (focus-status dangerous))
         )
@@ -1108,8 +1105,8 @@
   :event enemy-event-handler
   :enter (behavior ()
     (set-time! (-> self state-time))
-    (look-at-target! self (enemy-flag lock-focus))
-    (logior! (-> self enemy-flags) (enemy-flag use-notice-distance))
+    (look-at-target! self (enemy-flag look-at-focus))
+    (logior! (-> self enemy-flags) (enemy-flag cam-attack-mode))
     (let ((v1-6 self))
       (if (not (logtest? (enemy-flag enemy-flag36) (-> v1-6 enemy-flags)))
           (set! (-> v1-6 enemy-flags) (the-as enemy-flag (logior (enemy-flag enemy-flag38) (-> v1-6 enemy-flags))))
@@ -1175,7 +1172,7 @@
                 )
             )
           )
-        (dotimes (gp-1 (get-rand-int-range self 2 4))
+        (dotimes (gp-1 (rnd-int-range self 2 4))
           (ja-no-eval :group! mantis-idle0-ja :num! (seek!) :frame-num 0.0)
           (until (ja-done? 0)
             (suspend)
@@ -1189,7 +1186,7 @@
   :post nav-enemy-face-focus-post
   )
 
-(defmethod general-event-handler mantis ((this mantis) (arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+(defmethod general-event-handler ((this mantis) (arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
   "Handles various events for the enemy
 @TODO - unsure if there is a pattern for the events and this should have a more specific name"
   (case arg2
@@ -1209,15 +1206,15 @@
     (('hit 'hit-knocked)
      (logclear! (-> this mask) (process-mask actor-pause))
      (logclear! (-> this focus-status) (focus-status dangerous))
-     (logclear! (-> this enemy-flags) (enemy-flag enable-on-notice))
-     (logior! (-> this enemy-flags) (enemy-flag chase-startup))
+     (logclear! (-> this enemy-flags) (enemy-flag use-notice-distance))
+     (logior! (-> this enemy-flags) (enemy-flag alert))
      (logior! (-> this focus-status) (focus-status hit))
      (if (zero? (-> this hit-points))
          (logior! (-> this focus-status) (focus-status dead))
          )
-     (logclear! (-> this enemy-flags) (enemy-flag actor-pause-backup))
+     (logclear! (-> this enemy-flags) (enemy-flag lock-focus))
      (enemy-method-62 this)
-     (logior! (-> this enemy-flags) (enemy-flag actor-pause-backup))
+     (logior! (-> this enemy-flags) (enemy-flag lock-focus))
      (process-contact-action arg0)
      (send-event arg0 'get-attack-count 1)
      (cond
@@ -1230,7 +1227,7 @@
                                                    )
                             )
                        )
-                  (zero? (get-rand-int this 3))
+                  (zero? (rnd-int-count this 3))
                   (let ((f0-0 (vector-vector-distance-squared (-> this root trans) (target-pos 0)))
                         (f1-0 32768.0)
                         )
@@ -1261,7 +1258,7 @@
     )
   )
 
-(defmethod enemy-method-77 mantis ((this mantis) (arg0 (pointer float)))
+(defmethod enemy-method-77 ((this mantis) (arg0 enemy-knocked-info))
   (case (-> this incoming knocked-type)
     (((knocked-type knocked-type-6))
      (ja-channel-push! 1 (seconds 0.02))
@@ -1270,7 +1267,7 @@
        (set! (-> a0-3 param 0)
              (the float (+ (-> (the-as art-joint-anim (-> this draw art-group data 27)) frames num-frames) -1))
              )
-       (set! (-> a0-3 param 1) (-> arg0 0))
+       (set! (-> a0-3 param 1) (-> arg0 anim-speed))
        (set! (-> a0-3 frame-num) 0.0)
        (joint-control-channel-group! a0-3 (the-as art-joint-anim (-> this draw art-group data 27)) num-func-seek!)
        )
@@ -1283,7 +1280,7 @@
         (set! (-> a0-5 param 0)
               (the float (+ (-> (the-as art-joint-anim (-> this draw art-group data 10)) frames num-frames) -1))
               )
-        (set! (-> a0-5 param 1) (-> arg0 0))
+        (set! (-> a0-5 param 1) (-> arg0 anim-speed))
         (set! (-> a0-5 frame-num) 0.0)
         (joint-control-channel-group! a0-5 (the-as art-joint-anim (-> this draw art-group data 10)) num-func-seek!)
         )
@@ -1292,7 +1289,7 @@
     )
   )
 
-(defmethod enemy-method-78 mantis ((this mantis) (arg0 (pointer float)))
+(defmethod enemy-method-78 ((this mantis) (arg0 enemy-knocked-info))
   (cond
     ((zero? (-> this hit-points))
      (ja-channel-push! 1 (seconds 0.1))
@@ -1301,7 +1298,7 @@
        (set! (-> a0-2 param 0)
              (the float (+ (-> (the-as art-joint-anim (-> this draw art-group data 26)) frames num-frames) -1))
              )
-       (set! (-> a0-2 param 1) (-> arg0 0))
+       (set! (-> a0-2 param 1) (-> arg0 anim-speed))
        (set! (-> a0-2 frame-num) 0.0)
        (joint-control-channel-group! a0-2 (the-as art-joint-anim (-> this draw art-group data 26)) num-func-seek!)
        )
@@ -1315,7 +1312,7 @@
        (set! (-> a0-4 param 0)
              (the float (+ (-> (the-as art-joint-anim (-> this draw art-group data 28)) frames num-frames) -1))
              )
-       (set! (-> a0-4 param 1) (-> arg0 0))
+       (set! (-> a0-4 param 1) (-> arg0 anim-speed))
        (set! (-> a0-4 frame-num) 0.0)
        (joint-control-channel-group! a0-4 (the-as art-joint-anim (-> this draw art-group data 28)) num-func-seek!)
        )
@@ -1328,7 +1325,7 @@
         (set! (-> a0-6 param 0)
               (the float (+ (-> (the-as art-joint-anim (-> this draw art-group data 11)) frames num-frames) -1))
               )
-        (set! (-> a0-6 param 1) (-> arg0 0))
+        (set! (-> a0-6 param 1) (-> arg0 anim-speed))
         (set! (-> a0-6 frame-num) 0.0)
         (joint-control-channel-group! a0-6 (the-as art-joint-anim (-> this draw art-group data 11)) num-func-seek!)
         )
@@ -1338,7 +1335,7 @@
   )
 
 ;; WARN: Return type mismatch symbol vs pat-surface.
-(defmethod enemy-method-125 mantis ((this mantis) (arg0 collide-query) (arg1 collide-spec) (arg2 float) (arg3 float) (arg4 float))
+(defmethod ground-pat-set! ((this mantis) (arg0 collide-query) (arg1 collide-spec) (arg2 float) (arg3 float) (arg4 float))
   (the-as
     pat-surface
     (when (find-ground (-> this root) arg0 arg1 arg2 arg3 arg4)
@@ -1384,7 +1381,7 @@
   )
 
 ;; WARN: Return type mismatch object vs symbol.
-(defmethod mantis-method-194 mantis ((this mantis))
+(defmethod mantis-method-194 ((this mantis))
   (let ((a0-2 (nav-mesh-from-res-tag (-> this entity) 'nav-mesh-actor 1))
         (gp-0 (new 'stack-no-clear 'vector))
         )
@@ -1396,7 +1393,7 @@
     )
   )
 
-(defmethod mantis-method-193 mantis ((this mantis) (arg0 vector))
+(defmethod mantis-method-193 ((this mantis) (arg0 vector))
   (cond
     ((= (-> this root gspot-pos y) -40959590.0)
      (set! (-> arg0 y) 0.0)
@@ -1425,7 +1422,7 @@
   (none)
   )
 
-(defmethod nav-enemy-method-142 mantis ((this mantis) (arg0 nav-control))
+(defmethod nav-enemy-method-142 ((this mantis) (arg0 nav-control))
   (let ((t9-0 (method-of-object this mantis-method-193))
         (a2-0 (-> arg0 state))
         (a1-1 (new 'stack-no-clear 'vector))
@@ -1438,13 +1435,13 @@
   )
 
 ;; WARN: Return type mismatch vector vs none.
-(defmethod track-target! mantis ((this mantis))
+(defmethod common-post ((this mantis))
   "Does a lot of various things relating to interacting with the target
 - tracks when the enemy was last drawn
 - looks at the target and handles attacking
 @TODO Not extremely well understood yet"
   (local-vars (s5-0 vector))
-  (let ((t9-0 (method-of-type nav-enemy track-target!)))
+  (let ((t9-0 (method-of-type nav-enemy common-post)))
     (t9-0 this)
     )
   (logclear! (-> this flags) (mantis-flag tracked))
@@ -1460,7 +1457,7 @@
   )
 
 ;; WARN: Return type mismatch object vs none.
-(defmethod mantis-method-187 mantis ((this mantis))
+(defmethod mantis-method-187 ((this mantis))
   (let ((s3-0 (vector-x-quaternion! (new 'stack-no-clear 'vector) (-> this root quat)))
         (s4-0 (-> this root))
         (s5-0 (lambda ((arg0 mantis) (arg1 collide-shape-moving) (arg2 vector))
@@ -1523,7 +1520,7 @@
   (none)
   )
 
-(defmethod mantis-method-188 mantis ((this mantis))
+(defmethod mantis-method-188 ((this mantis))
   (rlet ((acc :class vf)
          (vf0 :class vf)
          (vf4 :class vf)
@@ -1560,7 +1557,7 @@
     )
   )
 
-(defmethod go-stare mantis ((this mantis))
+(defmethod go-stare ((this mantis))
   (let ((a0-2 (handle->process (-> this focus handle))))
     (if (and a0-2
              (and (< 81920.0 (vector-vector-xz-distance (-> this root trans) (get-trans (the-as process-focusable a0-2) 0)))
@@ -1573,7 +1570,7 @@
   (go (method-of-object this hop-away))
   )
 
-(defmethod mantis-method-190 mantis ((this mantis) (arg0 vector) (arg1 vector))
+(defmethod mantis-method-190 ((this mantis) (arg0 vector) (arg1 vector))
   (let ((s5-0 (-> this jump)))
     (let* ((f0-0 (vector-length arg1))
            (f0-1 (if (< 102400.0 f0-0)
@@ -1589,7 +1586,9 @@
       (set! (-> s5-0 start-anim) (the-as uint 12))
       (set! (-> s5-0 air-anim) (the-as uint 13))
       (set! (-> s5-0 land-anim) (the-as uint 0))
-      (set! (-> this enemy-flags) (the-as enemy-flag (logclear (-> this enemy-flags) (enemy-flag vulnerable))))
+      (set! (-> this enemy-flags)
+            (the-as enemy-flag (logclear (-> this enemy-flags) (enemy-flag jump-check-blocked)))
+            )
       (send-event this 'jump 0 (-> s5-0 destination))
       )
     )
@@ -1597,21 +1596,21 @@
   (none)
   )
 
-(defmethod mantis-method-191 mantis ((this mantis) (arg0 vector) (arg1 vector))
+(defmethod mantis-method-191 ((this mantis) (arg0 vector) (arg1 vector))
   (let ((s5-0 (-> this jump)))
     (vector-length arg1)
     (vector-normalize! arg1 1.0)
-    (vector-rotate-y! arg1 arg1 (* 182.04445 (get-rand-float-range this -45.0 45.0)))
-    (let ((a2-5
-            (vector-normalize-copy! (new 'stack-no-clear 'vector) arg1 (* 4096.0 (get-rand-float-range this -4.0 -6.0)))
-            )
+    (vector-rotate-y! arg1 arg1 (* 182.04445 (rnd-float-range this -45.0 45.0)))
+    (let ((a2-5 (vector-normalize-copy! (new 'stack-no-clear 'vector) arg1 (* 4096.0 (rnd-float-range this -4.0 -6.0))))
           )
       (when (mantis-method-189 this (-> s5-0 destination) a2-5)
         (set! (-> s5-0 direction) (the-as uint 1))
         (set! (-> s5-0 start-anim) (the-as uint 14))
         (set! (-> s5-0 air-anim) (the-as uint 15))
         (set! (-> s5-0 land-anim) (the-as uint 16))
-        (set! (-> this enemy-flags) (the-as enemy-flag (logclear (-> this enemy-flags) (enemy-flag vulnerable))))
+        (set! (-> this enemy-flags)
+              (the-as enemy-flag (logclear (-> this enemy-flags) (enemy-flag jump-check-blocked)))
+              )
         (send-event this 'jump 0 (-> s5-0 destination))
         )
       )
@@ -1619,13 +1618,13 @@
   0
   )
 
-(defmethod mantis-method-192 mantis ((this mantis) (arg0 vector) (arg1 vector))
+(defmethod mantis-method-192 ((this mantis) (arg0 vector) (arg1 vector))
   (let ((s5-0 (-> this jump)))
     (vector-length arg1)
     (vector-normalize! arg1 1.0)
-    (vector-rotate-y! arg1 arg1 (* 182.04445 (get-rand-float-range this -45.0 45.0)))
+    (vector-rotate-y! arg1 arg1 (* 182.04445 (rnd-float-range this -45.0 45.0)))
     (let ((a2-5
-            (vector-normalize-copy! (new 'stack-no-clear 'vector) arg1 (* 4096.0 (get-rand-float-range this -15.0 -22.0)))
+            (vector-normalize-copy! (new 'stack-no-clear 'vector) arg1 (* 4096.0 (rnd-float-range this -15.0 -22.0)))
             )
           )
       (when (mantis-method-189 this (-> s5-0 destination) a2-5)
@@ -1633,7 +1632,9 @@
         (set! (-> s5-0 start-anim) (the-as uint 20))
         (set! (-> s5-0 air-anim) (the-as uint 21))
         (set! (-> s5-0 land-anim) (the-as uint 22))
-        (set! (-> this enemy-flags) (the-as enemy-flag (logclear (-> this enemy-flags) (enemy-flag vulnerable))))
+        (set! (-> this enemy-flags)
+              (the-as enemy-flag (logclear (-> this enemy-flags) (enemy-flag jump-check-blocked)))
+              )
         (send-event this 'jump 0 (-> s5-0 destination))
         )
       )
@@ -1642,7 +1643,7 @@
   (none)
   )
 
-(defmethod mantis-method-189 mantis ((this mantis) (arg0 vector) (arg1 vector))
+(defmethod mantis-method-189 ((this mantis) (arg0 vector) (arg1 vector))
   (let* ((s4-0 (vector-normalize-copy! (new 'stack-no-clear 'vector) arg1 1.0))
          (f30-0 (vector-length arg1))
          (f28-0 3640.889)
@@ -1711,7 +1712,7 @@
     )
   )
 
-(defmethod enemy-method-89 mantis ((this mantis) (arg0 enemy-jump-info))
+(defmethod enemy-method-89 ((this mantis) (arg0 enemy-jump-info))
   (ja-channel-push! 1 (seconds 0.1))
   (let ((a1-2 (-> this draw art-group data (-> this jump start-anim)))
         (a0-4 (-> this skel root-channel 0))
@@ -1725,7 +1726,7 @@
   #t
   )
 
-(defmethod enemy-method-87 mantis ((this mantis) (arg0 enemy-jump-info))
+(defmethod enemy-method-87 ((this mantis) (arg0 enemy-jump-info))
   (ja-channel-push! 1 (seconds 0.1))
   (let ((a1-2 (-> this draw art-group data (-> this jump air-anim)))
         (a0-4 (-> this skel root-channel 0))
@@ -1740,14 +1741,13 @@
   )
 
 ;; WARN: Return type mismatch quaternion vs none.
-(defmethod enemy-method-92 mantis ((this mantis) (arg0 int) (arg1 nav-poly))
-  "TODO - nav-poly is a guess
-@abstract"
+(defmethod enemy-method-92 ((this mantis) (arg0 int) (arg1 enemy-jump-info))
+  "@abstract"
   (let ((v1-0 arg0))
     (when (or (zero? v1-0) (= v1-0 1) (= v1-0 2) (= v1-0 3))
       (let ((a0-4 this))
         (when (logtest? (enemy-flag enemy-flag37) (-> a0-4 enemy-flags))
-          (let ((s5-1 (vector-! (new 'stack-no-clear 'vector) (-> arg1 vertex2) (-> this root trans))))
+          (let ((s5-1 (vector-! (new 'stack-no-clear 'vector) (-> arg1 dest-pos) (-> this root trans))))
             (vector-normalize! s5-1 1.0)
             (let ((v1-5 (-> this jump direction)))
               (cond
@@ -1773,7 +1773,7 @@
   (none)
   )
 
-(defmethod enemy-method-88 mantis ((this mantis) (arg0 enemy-jump-info))
+(defmethod enemy-method-88 ((this mantis) (arg0 enemy-jump-info))
   (cond
     ((zero? (-> this jump land-anim))
      #f
@@ -1794,13 +1794,13 @@
     )
   )
 
-(defmethod coin-flip? mantis ((this mantis))
+(defmethod coin-flip? ((this mantis))
   "@returns The result of a 50/50 RNG roll"
   #f
   )
 
 ;; WARN: Return type mismatch collide-shape-moving vs none.
-(defmethod init-enemy-collision! mantis ((this mantis))
+(defmethod init-enemy-collision! ((this mantis))
   "Initializes the [[collide-shape-moving]] and any ancillary tasks to make the enemy collide properly"
   (let ((s5-0 (new 'process 'collide-shape-moving this (collide-list-enum usually-hit-by-player))))
     (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
@@ -1903,7 +1903,7 @@
   (none)
   )
 
-(defmethod init-enemy! mantis ((this mantis))
+(defmethod init-enemy! ((this mantis))
   "Common method called to initialize the enemy, typically sets up default field values and calls ancillary helper methods"
   (initialize-skeleton
     this

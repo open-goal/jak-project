@@ -37,14 +37,10 @@
 ;; definition of type citizen-chick
 (deftype citizen-chick (civilian)
   ()
-  :heap-base #x3b0
-  :method-count-assert 218
-  :size-assert         #x424
-  :flag-assert         #xda03b00424
   )
 
 ;; definition for method 3 of type citizen-chick
-(defmethod inspect citizen-chick ((this citizen-chick))
+(defmethod inspect ((this citizen-chick))
   (when (not this)
     (set! this this)
     (goto cfg-4)
@@ -231,13 +227,13 @@
 (set! (-> *citizen-chick-nav-enemy-info* fact-defaults) *fact-info-enemy-defaults*)
 
 ;; definition for method 26 of type citizen-chick
-(defmethod get-inv-mass citizen-chick ((this citizen-chick))
+(defmethod get-inv-mass ((this citizen-chick))
   0.5
   )
 
 ;; definition for method 51 of type citizen-chick
 ;; INFO: Used lq/sq
-(defmethod enemy-method-51 citizen-chick ((this citizen-chick))
+(defmethod enemy-method-51 ((this citizen-chick))
   (let ((f30-0 (quaternion-y-angle (-> this root quat))))
     (case (-> this incoming knocked-type)
       (((knocked-type knocked-type-4) (knocked-type knocked-type-6))
@@ -298,7 +294,7 @@
   )
 
 ;; definition for method 79 of type citizen-chick
-(defmethod enemy-method-79 citizen-chick ((this citizen-chick) (arg0 int) (arg1 enemy-knocked-info))
+(defmethod enemy-method-79 ((this citizen-chick) (arg0 int) (arg1 enemy-knocked-info))
   (case arg0
     ((1)
      (case (-> this incoming knocked-type)
@@ -349,12 +345,12 @@
   )
 
 ;; definition for method 77 of type citizen-chick
-(defmethod enemy-method-77 citizen-chick ((this citizen-chick) (arg0 (pointer float)))
+(defmethod enemy-method-77 ((this citizen-chick) (arg0 enemy-knocked-info))
   (case (-> this incoming knocked-type)
     (((knocked-type knocked-type-4))
      (ja-channel-push! 1 (seconds 0.01))
      (let* ((a2-0 (ash 1 (-> this info prev-yellow-hit)))
-            (v1-3 (enemy-method-120 this 1 a2-0))
+            (v1-3 (rnd-bit this 1 a2-0))
             (a1-7
               (-> this
                   draw
@@ -372,7 +368,7 @@
        (let ((a0-15 (-> this skel root-channel 0)))
          (set! (-> a0-15 frame-group) (the-as art-joint-anim a1-7))
          (set! (-> a0-15 param 0) (the float (+ (-> (the-as art-joint-anim a1-7) frames num-frames) -1)))
-         (set! (-> a0-15 param 1) (-> arg0 0))
+         (set! (-> a0-15 param 1) (-> arg0 anim-speed))
          (set! (-> a0-15 frame-num) 0.0)
          (joint-control-channel-group! a0-15 (the-as art-joint-anim a1-7) num-func-seek!)
          )
@@ -381,7 +377,7 @@
     (((knocked-type knocked-type-6))
      (ja-channel-push! 1 (seconds 0.01))
      (let* ((a2-2 (ash 1 (-> this info prev-blue-hit)))
-            (v1-12 (enemy-method-120 this 3 a2-2))
+            (v1-12 (rnd-bit this 3 a2-2))
             (a1-14
               (-> this
                   draw
@@ -416,7 +412,7 @@
         (let ((a0-39 (-> this skel root-channel 0)))
           (set! (-> a0-39 frame-group) (the-as art-joint-anim s4-0))
           (set! (-> a0-39 param 0) (the float (+ (-> (the-as art-joint-anim s4-0) frames num-frames) -1)))
-          (set! (-> a0-39 param 1) (-> arg0 0))
+          (set! (-> a0-39 param 1) (-> arg0 anim-speed))
           (set! (-> a0-39 frame-num) 0.0)
           (joint-control-channel-group! a0-39 (the-as art-joint-anim s4-0) num-func-seek!)
           )
@@ -427,7 +423,7 @@
   )
 
 ;; definition for method 78 of type citizen-chick
-(defmethod enemy-method-78 citizen-chick ((this citizen-chick) (arg0 (pointer float)))
+(defmethod enemy-method-78 ((this citizen-chick) (arg0 enemy-knocked-info))
   (ja-channel-push! 1 (seconds 0.1))
   (let ((a0-2 (-> this skel root-channel 0)))
     (set! (-> a0-2 frame-group)
@@ -443,7 +439,7 @@
                   )
                )
           )
-    (set! (-> a0-2 param 1) (-> arg0 0))
+    (set! (-> a0-2 param 1) (-> arg0 anim-speed))
     (set! (-> a0-2 frame-num) 0.0)
     (joint-control-channel-group!
       a0-2
@@ -533,7 +529,7 @@
 
 ;; definition for method 114 of type citizen-chick
 ;; WARN: Return type mismatch int vs none.
-(defmethod init-enemy-collision! citizen-chick ((this citizen-chick))
+(defmethod init-enemy-collision! ((this citizen-chick))
   "Initializes the [[collide-shape-moving]] and any ancillary tasks to make the enemy collide properly"
   (let ((s5-0 (new 'process 'collide-shape-moving this (collide-list-enum usually-hit-by-player))))
     (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
@@ -593,7 +589,7 @@
 
 ;; definition for method 115 of type citizen-chick
 ;; WARN: Return type mismatch int vs none.
-(defmethod init-enemy! citizen-chick ((this citizen-chick))
+(defmethod init-enemy! ((this citizen-chick))
   "Common method called to initialize the enemy, typically sets up default field values and calls ancillary helper methods"
   (initialize-skeleton
     this
@@ -611,7 +607,7 @@
   (try-update-focus (-> this focus) *target* this)
   (set-vector! (-> this neck twist-max) 10922.667 18204.445 0.0 1.0)
   (set! (-> this anim-shuffle) 26)
-  (let ((v1-18 (get-rand-int this 3)))
+  (let ((v1-18 (rnd-int-count this 3)))
     (cond
       ((zero? v1-18)
        (set! (-> this anim-walk) 4)
@@ -630,7 +626,7 @@
        )
       )
     )
-  (let ((v1-33 (get-rand-int this 3)))
+  (let ((v1-33 (rnd-int-count this 3)))
     (cond
       ((zero? v1-33)
        (set! (-> this anim-panic-run) 11)
@@ -643,7 +639,7 @@
        )
       )
     )
-  (let ((v1-39 (get-rand-int this 3)))
+  (let ((v1-39 (rnd-int-count this 3)))
     (cond
       ((zero? v1-39)
        (set! (-> this dist-run-anim) 26214.4)
@@ -664,12 +660,12 @@
   (set! (-> this anim-dive) 17)
   (set! (-> this anim-get-up-back) 25)
   (set! (-> this anim-get-up-front) 24)
-  (let ((f30-0 (get-rand-float-range this 1.0 1.25))
-        (f0-17 (get-rand-float-range this 1.0 1.25))
+  (let ((f30-0 (rnd-float-range this 1.0 1.25))
+        (f0-17 (rnd-float-range this 1.0 1.25))
         )
     (set-vector! (-> this root scale) f0-17 f30-0 f0-17 1.0)
     )
-  (let ((f0-19 (get-rand-float-range this 0.9 1.0)))
+  (let ((f0-19 (rnd-float-range this 0.9 1.0)))
     (set-vector! (-> this draw color-mult) f0-19 f0-19 f0-19 1.0)
     )
   (set! (-> this water-anim) 12)
@@ -680,7 +676,7 @@
 
 ;; definition for method 181 of type citizen-chick
 ;; WARN: Return type mismatch int vs none.
-(defmethod citizen-init! citizen-chick ((this citizen-chick))
+(defmethod citizen-init! ((this citizen-chick))
   "Initialize [[citizen]] defaults."
   (let ((t9-0 (method-of-type civilian citizen-init!)))
     (t9-0 this)
@@ -690,7 +686,7 @@
   (setup-masks (-> this draw) 0 -1)
   (setup-masks (-> this draw) 16 0)
   (setup-masks (-> this draw) 8 0)
-  (let ((v1-11 (get-rand-int this 3)))
+  (let ((v1-11 (rnd-int-count this 3)))
     (cond
       ((zero? v1-11)
        (setup-masks (-> this draw) 32 0)
@@ -703,7 +699,7 @@
        )
       )
     )
-  (let ((v1-20 (get-rand-int this 3)))
+  (let ((v1-20 (rnd-int-count this 3)))
     (cond
       ((zero? v1-20)
        (setup-masks (-> this draw) 64 0)
@@ -716,7 +712,7 @@
        )
       )
     )
-  (let ((v1-29 (get-rand-int this 3)))
+  (let ((v1-29 (rnd-int-count this 3)))
     (cond
       ((zero? v1-29)
        (setup-masks (-> this draw) 4 0)
@@ -729,11 +725,11 @@
        )
       )
     )
-  (let ((v1-38 (get-rand-int this 3)))
+  (let ((v1-38 (rnd-int-count this 3)))
     (cond
       ((zero? v1-38)
        (setup-masks (-> this draw) 2 0)
-       (let ((v1-42 (get-rand-int this 2)))
+       (let ((v1-42 (rnd-int-count this 2)))
          (cond
            ((zero? v1-42)
             (setup-masks (-> this draw) 128 0)
@@ -749,7 +745,7 @@
        )
       ((= v1-38 2)
        (setup-masks (-> this draw) 2048 0)
-       (let ((v1-54 (get-rand-int this 2)))
+       (let ((v1-54 (rnd-int-count this 2)))
          (cond
            ((zero? v1-54)
             (setup-masks (-> this draw) 128 0)

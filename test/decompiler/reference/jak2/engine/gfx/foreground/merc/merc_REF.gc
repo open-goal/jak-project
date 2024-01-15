@@ -3,19 +3,16 @@
 
 ;; definition of type texture-login-data
 (deftype texture-login-data (structure)
-  ((default-texture-index int32                :offset-assert   0)
-   (current-texture-index int32                :offset-assert   4)
-   (texture-usage-group   texture-usage-group  :offset-assert   8)
-   (merc-ctrl-header      merc-ctrl-header     :offset-assert  12)
-   (name                  basic                :offset-assert  16)
+  ((default-texture-index  int32)
+   (current-texture-index  int32)
+   (texture-usage-group    texture-usage-group)
+   (merc-ctrl-header       merc-ctrl-header)
+   (name                   basic)
    )
-  :method-count-assert 9
-  :size-assert         #x14
-  :flag-assert         #x900000014
   )
 
 ;; definition for method 3 of type texture-login-data
-(defmethod inspect texture-login-data ((this texture-login-data))
+(defmethod inspect ((this texture-login-data))
   (when (not this)
     (set! this this)
     (goto cfg-4)
@@ -34,7 +31,7 @@
 (define *texture-login-data* (new 'global 'texture-login-data))
 
 ;; definition for method 9 of type art-joint-geo
-(defmethod login art-joint-geo ((this art-joint-geo))
+(defmethod login ((this art-joint-geo))
   (let ((s5-0 *texture-login-data*))
     (set! (-> s5-0 default-texture-index)
           (res-lump-value (-> this extra) 'texture-bucket int :default (the-as uint128 1) :time -1000000000.0)
@@ -99,12 +96,12 @@
 
 ;; definition for method 5 of type merc-fragment
 ;; WARN: Return type mismatch uint vs int.
-(defmethod asize-of merc-fragment ((this merc-fragment))
+(defmethod asize-of ((this merc-fragment))
   (the-as int (* (-> this header mm-quadword-size) 16))
   )
 
 ;; definition for method 9 of type merc-fragment
-(defmethod login-adgifs merc-fragment ((this merc-fragment))
+(defmethod login-adgifs ((this merc-fragment))
   (let* ((s5-0 (merc-fragment-fp-data this))
          (v1-1 (-> *texture-login-data* merc-ctrl-header))
          (s4-0 (if (nonzero? (-> v1-1 eye-ctrl))
@@ -208,12 +205,12 @@
 
 ;; definition for method 5 of type merc-fragment-control
 ;; WARN: Return type mismatch uint vs int.
-(defmethod asize-of merc-fragment-control ((this merc-fragment-control))
+(defmethod asize-of ((this merc-fragment-control))
   (the-as int (+ (* (-> this mat-xfer-count) 2) 4))
   )
 
 ;; definition for method 3 of type merc-fragment-control
-(defmethod inspect merc-fragment-control ((this merc-fragment-control))
+(defmethod inspect ((this merc-fragment-control))
   (format #t "[~8x] ~A~%" this 'merc-fragment-control)
   (format #t "~Tunsigned-four-count: ~D~%" (-> this unsigned-four-count))
   (format #t "~Tlump-four-count: ~D~%" (-> this lump-four-count))
@@ -229,7 +226,7 @@
 
 ;; definition for method 9 of type merc-effect
 ;; WARN: Return type mismatch merc-effect vs none.
-(defmethod login-adgifs merc-effect ((this merc-effect))
+(defmethod login-adgifs ((this merc-effect))
   (let* ((data *texture-login-data*)
          (a0-1 (-> data default-texture-index))
          )
@@ -269,7 +266,7 @@
   )
 
 ;; definition for method 3 of type merc-ctrl
-(defmethod inspect merc-ctrl ((this merc-ctrl))
+(defmethod inspect ((this merc-ctrl))
   (format #t "[~8x] ~A~%" this (-> this type))
   (format #t "~Tname: ~A~%" (-> this name))
   (format #t "~Tlength: ~D~%" (-> this length))
@@ -284,7 +281,7 @@
   )
 
 ;; definition for method 8 of type merc-ctrl
-(defmethod mem-usage merc-ctrl ((this merc-ctrl) (arg0 memory-usage-block) (arg1 int))
+(defmethod mem-usage ((this merc-ctrl) (arg0 memory-usage-block) (arg1 int))
   (if (-> this extra)
       (mem-usage (-> this extra) arg0 arg1)
       )
@@ -352,7 +349,7 @@
   )
 
 ;; definition for method 9 of type merc-ctrl
-(defmethod login merc-ctrl ((this merc-ctrl))
+(defmethod login ((this merc-ctrl))
   (set! (-> *kernel-context* login-object) this)
   (texture-usage-init this)
   (dotimes (s5-0 (the-as int (-> this header effect-count)))

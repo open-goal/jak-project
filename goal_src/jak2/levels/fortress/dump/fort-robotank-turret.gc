@@ -31,85 +31,77 @@
 ;; DECOMP BEGINS
 
 (deftype fort-robotank-turret (process-focusable)
-  ((los                 los-control           :inline   :offset-assert 208)
-   (reticle             handle                          :offset-assert 360)
-   (screen              handle                          :offset-assert 368)
-   (tank-quat           quaternion            :inline   :offset-assert 384)
-   (tank-quat-vibe-only quaternion            :inline   :offset-assert 400)
-   (rotate-quat         quaternion            :inline   :offset-assert 416)
-   (rotate-rate         float                           :offset-assert 432)
-   (rotate-mult         float                           :offset-assert 436)
-   (shot-range          float                           :offset-assert 440)
-   (fov-mult            float                           :offset-assert 444)
-   (offset              vector                :inline   :offset-assert 448)
-   (sight-pos           vector                :inline   :offset-assert 464)
-   (firing-sight-pos    vector                :inline   :offset-assert 480)
-   (aim-pos             vector                3 :inline :offset-assert 496)
-   (aim-pos-2           vector                :inline   :offset        512)
-   (aim-pos-1           vector                :inline   :offset        528)
-   (gun-timer           time-frame                      :offset-assert 544)
-   (gun-elev-jmod       joint-mod-set-local             :offset-assert 552)
-   (gun-elev            float                           :offset-assert 556)
-   (gun-elev-cam        float                           :offset-assert 560)
-   (gun-joint-l         int32                 2         :offset-assert 564)
-   (gun-joint-r         int32                 2         :offset-assert 572)
-   (gun-spread          float                           :offset-assert 580)
-   (gun-index           int32                           :offset-assert 584)
-   (flags               robotank-turret-flags           :offset-assert 588)
-   (turn-sound-id       sound-id                        :offset-assert 592)
+  ((los                  los-control  :inline)
+   (reticle              handle)
+   (screen               handle)
+   (tank-quat            quaternion   :inline)
+   (tank-quat-vibe-only  quaternion   :inline)
+   (rotate-quat          quaternion   :inline)
+   (rotate-rate          float)
+   (rotate-mult          float)
+   (shot-range           float)
+   (fov-mult             float)
+   (offset               vector       :inline)
+   (sight-pos            vector       :inline)
+   (firing-sight-pos     vector       :inline)
+   (aim-pos              vector       3 :inline)
+   (aim-pos-2            vector       :inline :overlay-at (-> aim-pos 1))
+   (aim-pos-1            vector       :inline :overlay-at (-> aim-pos 2))
+   (gun-timer            time-frame)
+   (gun-elev-jmod        joint-mod-set-local)
+   (gun-elev             float)
+   (gun-elev-cam         float)
+   (gun-joint-l          int32        2)
+   (gun-joint-r          int32        2)
+   (gun-spread           float)
+   (gun-index            int32)
+   (flags                robotank-turret-flags)
+   (turn-sound-id        sound-id)
    )
-  :heap-base #x1e0
-  :method-count-assert 35
-  :size-assert         #x254
-  :flag-assert         #x2301e00254
+  (:state-methods
+    idle
+    ready
+    fire
+    die
+    )
   (:methods
-    (idle () _type_ :state 27)
-    (ready () _type_ :state 28)
-    (fire () _type_ :state 29)
-    (die () _type_ :state 30)
-    (fort-robotank-turret-method-31 (_type_ vector vector) none 31)
-    (fort-robotank-turret-method-32 (_type_ (inline-array vector)) (pointer process) 32)
-    (fort-robotank-turret-method-33 (_type_) none 33)
-    (fort-robotank-turret-method-34 (_type_ vector float) symbol 34)
+    (fort-robotank-turret-method-31 (_type_ vector vector) none)
+    (fort-robotank-turret-method-32 (_type_ (inline-array vector)) (pointer process))
+    (fort-robotank-turret-method-33 (_type_) none)
+    (fort-robotank-turret-method-34 (_type_ vector float) symbol)
     )
   )
 
 
 (deftype fort-robotank-reticle (process-drawable)
-  ((shadow-jmod  joint-mod          :offset-assert 200)
-   (sight-jmod   joint-mod          :offset-assert 204)
-   (ring-jmod    joint-mod  3       :offset-assert 208)
-   (ring-timer   time-frame         :offset-assert 224)
-   (sight-scale  vector     :inline :offset-assert 240)
-   (collide-dist float              :offset-assert 256)
+  ((shadow-jmod   joint-mod)
+   (sight-jmod    joint-mod)
+   (ring-jmod     joint-mod  3)
+   (ring-timer    time-frame)
+   (sight-scale   vector     :inline)
+   (collide-dist  float)
    )
-  :heap-base #x90
-  :method-count-assert 22
-  :size-assert         #x104
-  :flag-assert         #x1600900104
-  (:methods
-    (idle () _type_ :state 20)
-    (lock () _type_ :state 21)
+  (:state-methods
+    idle
+    lock
     )
   )
 
 
 (deftype fort-roboscreen (process-drawable)
-  ((anim-frame float     :offset-assert 200)
-   (transition float     :offset-assert 204)
-   (gui-id-1   sound-id  :offset-assert 208)
-   (gui-id-2   sound-id  :offset-assert 212)
+  ((anim-frame  float)
+   (transition  float)
+   (gui-id-1    sound-id)
+   (gui-id-2    sound-id)
    )
-  :heap-base #x60
-  :method-count-assert 25
-  :size-assert         #xd8
-  :flag-assert         #x19006000d8
+  (:state-methods
+    idle
+    active
+    deactive
+    die
+    )
   (:methods
-    (idle () _type_ :state 20)
-    (active () _type_ :state 21)
-    (deactive () _type_ :state 22)
-    (die () _type_ :state 23)
-    (fort-roboscreen-method-24 (_type_) none 24)
+    (fort-roboscreen-method-24 (_type_) none)
     )
   )
 
@@ -258,7 +250,7 @@
     )
   )
 
-(defmethod fort-roboscreen-method-24 fort-roboscreen ((this fort-roboscreen))
+(defmethod fort-roboscreen-method-24 ((this fort-roboscreen))
   (rlet ((acc :class vf)
          (vf0 :class vf)
          (vf4 :class vf)
@@ -323,7 +315,7 @@
   (none)
   )
 
-(defmethod deactivate fort-roboscreen ((this fort-roboscreen))
+(defmethod deactivate ((this fort-roboscreen))
   (disable *screen-filter*)
   (set-roboscreen-alpha! 0.0)
   (call-parent-method this)
@@ -545,7 +537,7 @@
   )
 
 ;; WARN: Return type mismatch process-drawable vs fort-robotank-reticle.
-(defmethod relocate fort-robotank-reticle ((this fort-robotank-reticle) (arg0 int))
+(defmethod relocate ((this fort-robotank-reticle) (arg0 int))
   (if (nonzero? (-> this shadow-jmod))
       (&+! (-> this shadow-jmod) arg0)
       )
@@ -605,14 +597,10 @@
 
 (deftype fort-robotank-shot (guard-shot)
   ()
-  :heap-base #x170
-  :method-count-assert 40
-  :size-assert         #x1f0
-  :flag-assert         #x28017001f0
   )
 
 
-(defmethod play-impact-sound fort-robotank-shot ((this fort-robotank-shot) (arg0 projectile-options))
+(defmethod play-impact-sound ((this fort-robotank-shot) (arg0 projectile-options))
   (let ((v1-0 arg0))
     (cond
       ((zero? v1-0)
@@ -627,7 +615,7 @@
   (none)
   )
 
-(defmethod init-proj-collision! fort-robotank-shot ((this fort-robotank-shot))
+(defmethod init-proj-collision! ((this fort-robotank-shot))
   "Init the [[projectile]]'s [[collide-shape]]"
   (let ((s5-0 (new 'process 'collide-shape-moving this (collide-list-enum hit-by-player))))
     (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
@@ -678,7 +666,7 @@
   (none)
   )
 
-(defmethod init-proj-settings! fort-robotank-shot ((this fort-robotank-shot))
+(defmethod init-proj-settings! ((this fort-robotank-shot))
   "Init relevant settings for the [[projectile]] such as gravity, speed, timeout, etc"
   (set! (-> this tail-pos quad) (-> this root trans quad))
   (set! (-> this attack-mode) 'fort-robotank-shot)
@@ -721,7 +709,7 @@
 ;; WARN: Return type mismatch pointer vs symbol.
 ;; ERROR: Failed load: (set! t0-6 (l.d (+ a0-28 8))) at op 170
 
-(defmethod fort-robotank-turret-method-32 fort-robotank-turret ((this fort-robotank-turret) (arg0 (inline-array vector)))
+(defmethod fort-robotank-turret-method-32 ((this fort-robotank-turret) (arg0 (inline-array vector)))
   (let ((gp-0 (new 'stack-no-clear 'projectile-init-by-other-params)))
     (let ((v1-0 (-> arg0 0))
           (a0-1 (-> arg0 1))
@@ -748,7 +736,7 @@
   )
 
 ;; WARN: Return type mismatch (pointer process) vs none.
-(defmethod fort-robotank-turret-method-33 fort-robotank-turret ((this fort-robotank-turret))
+(defmethod fort-robotank-turret-method-33 ((this fort-robotank-turret))
   (local-vars (sv-144 vector) (sv-160 vector))
   (let ((s3-0 (new 'stack-no-clear 'inline-array 'vector 2))
         (s5-0 (new 'stack-no-clear 'inline-array 'vector 4))
@@ -792,7 +780,7 @@
   )
 
 ;; WARN: Return type mismatch object vs none.
-(defmethod fort-robotank-turret-method-31 fort-robotank-turret ((this fort-robotank-turret) (arg0 vector) (arg1 vector))
+(defmethod fort-robotank-turret-method-31 ((this fort-robotank-turret) (arg0 vector) (arg1 vector))
   (let ((s3-0 (new 'stack-no-clear 'collide-query))
         (f30-0 307200.0)
         )
@@ -850,7 +838,7 @@
   )
 
 ;; WARN: Return type mismatch collide-prim-core vs vector.
-(defmethod get-trans fort-robotank-turret ((this fort-robotank-turret) (arg0 int))
+(defmethod get-trans ((this fort-robotank-turret) (arg0 int))
   "@returns the `trans` [[vector]] from the process's `root` (typically either a [[trsqv]] or a [[collide-shape]])"
   (the-as vector (-> this root root-prim prim-core))
   )
@@ -1099,7 +1087,7 @@
     )
   )
 
-(defmethod fort-robotank-turret-method-34 fort-robotank-turret ((this fort-robotank-turret) (arg0 vector) (arg1 float))
+(defmethod fort-robotank-turret-method-34 ((this fort-robotank-turret) (arg0 vector) (arg1 float))
   (let ((s4-1 (vector-! (new 'stack-no-clear 'vector) arg0 (-> this root trans)))
         (s3-0 (vector-z-quaternion! (new 'stack-no-clear 'vector) (-> this root quat)))
         (s5-0 (new 'stack-no-clear 'vector))
@@ -1278,7 +1266,7 @@
     )
   )
 
-(defmethod deactivate fort-robotank-turret ((this fort-robotank-turret))
+(defmethod deactivate ((this fort-robotank-turret))
   (logclear! (-> this flags) (robotank-turret-flags rotflags-6))
   (sound-stop (-> this turn-sound-id))
   (let ((a0-4 (handle->process (-> this screen))))
@@ -1291,7 +1279,7 @@
   )
 
 ;; WARN: Return type mismatch process-focusable vs fort-robotank-turret.
-(defmethod relocate fort-robotank-turret ((this fort-robotank-turret) (arg0 int))
+(defmethod relocate ((this fort-robotank-turret) (arg0 int))
   (if (nonzero? (-> this gun-elev-jmod))
       (&+! (-> this gun-elev-jmod) arg0)
       )

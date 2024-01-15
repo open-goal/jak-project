@@ -8,31 +8,27 @@
 
 ;; definition of type racer
 (deftype racer (process-drawable)
-  ((parent-override (pointer target)             :offset         12)
-   (root-override   collide-shape-moving         :offset        112)
-   (extra-trans     vector               :inline :offset-assert 176)
-   (condition       int32                        :offset-assert 192)
-   (cell            handle                       :offset-assert 200)
-   (path-data       path-control         2       :offset-assert 208)
-   (path-target     curve-control                :offset        208)
-   (path-racer      path-control                 :offset        212)
-   (auto-get-off    symbol                       :offset-assert 216)
-   (shadow-backup   shadow-geo                   :offset-assert 220)
+  ((root             collide-shape-moving :override)
+   (parent-override  (pointer target)      :overlay-at parent)
+   (extra-trans      vector                :inline)
+   (condition        int32)
+   (cell             handle)
+   (path-data        path-control          2)
+   (path-target      curve-control         :overlay-at (-> path-data 0))
+   (path-racer       path-control          :overlay-at (-> path-data 1))
+   (auto-get-off     symbol)
+   (shadow-backup    shadow-geo)
    )
-  :heap-base #x70
-  :method-count-assert 24
-  :size-assert         #xe0
-  :flag-assert         #x18007000e0
-  (:methods
-    (wait-for-start () _type_ :state 20)
-    (idle () _type_ :state 21)
-    (pickup ((state collectable)) _type_ :state 22)
-    (wait-for-return () _type_ :state 23)
+  (:state-methods
+    wait-for-start
+    idle
+    (pickup (state collectable))
+    wait-for-return
     )
   )
 
 ;; definition for method 3 of type racer
-(defmethod inspect racer ((this racer))
+(defmethod inspect ((this racer))
   (let ((t9-0 (method-of-type process-drawable inspect)))
     (t9-0 this)
     )
@@ -49,7 +45,7 @@
 
 ;; definition for method 7 of type racer
 ;; INFO: Return type mismatch process-drawable vs racer.
-(defmethod relocate racer ((this racer) (arg0 int))
+(defmethod relocate ((this racer) (arg0 int))
   (countdown (v1-0 2)
     (if (-> this path-data v1-0)
         (&+! (-> this path-data v1-0) arg0)
@@ -87,7 +83,7 @@
 ;; INFO: Return type mismatch int vs none.
 (defbehavior racer-effect racer ()
   (when (!= (-> self condition) 4)
-    (spawn (-> self part) (-> self root-override trans))
+    (spawn (-> self part) (-> self root trans))
     (update! (-> self sound))
     )
   0
@@ -101,7 +97,7 @@
     (local-vars (v0-1 structure))
     (case message
       (('trans)
-       (vector+! (the-as vector (-> block param 0)) (-> self root-override trans) (-> self extra-trans))
+       (vector+! (the-as vector (-> block param 0)) (-> self root trans) (-> self extra-trans))
        )
       (('notify)
        (set! v0-1 #t)
@@ -124,8 +120,8 @@
       )
     )
   :exit (behavior ()
-    (set! (-> self root-override root-prim prim-core action) (collide-action))
-    (set! (-> self root-override root-prim prim-core offense) (collide-offense no-offense))
+    (set! (-> self root root-prim prim-core action) (collide-action))
+    (set! (-> self root root-prim prim-core offense) (collide-offense no-offense))
     0
     )
   :code (behavior ()
@@ -141,8 +137,8 @@
            (((task-status need-reward-speech))
             (ja-channel-set! 1)
             (ja :group! racer-racer-idle-ja)
-            (set! (-> self root-override root-prim prim-core action) (collide-action solid attackable-unused))
-            (set! (-> self root-override root-prim prim-core offense) (collide-offense indestructible))
+            (set! (-> self root root-prim prim-core action) (collide-action solid attackable-unused))
+            (set! (-> self root root-prim prim-core offense) (collide-offense indestructible))
             (ja-post)
             )
            (((task-status invalid))
@@ -183,7 +179,7 @@
           (set! (-> self cell)
                 (ppointer->handle
                   (birth-pickup-at-point
-                    (vector+! (new 'stack-no-clear 'vector) (-> self root-override trans) (new 'static 'vector :y 8192.0 :w 1.0))
+                    (vector+! (new 'stack-no-clear 'vector) (-> self root trans) (new 'static 'vector :y 8192.0 :w 1.0))
                     (pickup-type fuel-cell)
                     (the float (-> self entity extra perm task))
                     #f
@@ -227,8 +223,8 @@
   :code (behavior ()
     (ja-channel-set! 1)
     (ja :group! racer-racer-idle-ja)
-    (set! (-> self root-override root-prim prim-core action) (collide-action solid attackable-unused))
-    (set! (-> self root-override root-prim prim-core offense) (collide-offense indestructible))
+    (set! (-> self root root-prim prim-core action) (collide-action solid attackable-unused))
+    (set! (-> self root root-prim prim-core offense) (collide-offense indestructible))
     0.0
     (let ((f30-0 (if (= (-> self condition) 4)
                      61440.0
@@ -240,7 +236,7 @@
         (if (and *target* (logtest? (-> *target* control root-prim prim-core action) (collide-action racer)))
             (go-virtual wait-for-return)
             )
-        (when (and (and *target* (>= f30-0 (vector-vector-distance (-> self root-override trans) (-> *target* control trans))))
+        (when (and (and *target* (>= f30-0 (vector-vector-distance (-> self root trans) (-> *target* control trans))))
                    (and (not (movie?)) (not (level-hint-displayed?)))
                    )
           (hide-hud)
@@ -281,12 +277,12 @@
       (('draw)
        (ja-channel-set! 1)
        (ja :group! racer-racer-idle-ja)
-       (set! (-> self root-override root-prim prim-core action) (collide-action solid attackable-unused))
-       (set! (-> self root-override root-prim prim-core offense) (collide-offense indestructible))
+       (set! (-> self root root-prim prim-core action) (collide-action solid attackable-unused))
+       (set! (-> self root root-prim prim-core offense) (collide-offense indestructible))
        (transform-post)
        )
       (('trans)
-       (vector+! (the-as vector (-> block param 0)) (-> self root-override trans) (-> self extra-trans))
+       (vector+! (the-as vector (-> block param 0)) (-> self root trans) (-> self extra-trans))
        )
       (('touch 'attack)
        #f
@@ -314,9 +310,7 @@
     (ja-channel-set! 0)
     (ja-post)
     (while (zero? (ja-group-size))
-      (when (or (not *target*)
-                (< 24576.0 (vector-vector-distance (-> self root-override trans) (-> *target* control trans)))
-                )
+      (when (or (not *target*) (< 24576.0 (vector-vector-distance (-> self root trans) (-> *target* control trans))))
         (when (and *target* (logtest? (-> *target* control root-prim prim-core action) (collide-action racer)))
           (case (-> (level-get-target-inside *level*) name)
             (('misty)
@@ -355,7 +349,7 @@
         )
     (cond
       ((= message 'trans)
-       (vector+! (the-as vector (-> block param 0)) (-> self root-override trans) (-> self extra-trans))
+       (vector+! (the-as vector (-> block param 0)) (-> self root trans) (-> self extra-trans))
        )
       ((= message 'shadow)
        (cond
@@ -392,7 +386,7 @@
 
 ;; definition for method 11 of type racer
 ;; INFO: Return type mismatch object vs none.
-(defmethod init-from-entity! racer ((this racer) (arg0 entity-actor))
+(defmethod init-from-entity! ((this racer) (arg0 entity-actor))
   (let ((s4-0 (new 'process 'collide-shape-moving this (collide-list-enum hit-by-player))))
     (set! (-> s4-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s4-0 reaction) default-collision-reaction)
@@ -407,16 +401,16 @@
       )
     (set! (-> s4-0 nav-radius) (* 0.75 (-> s4-0 root-prim local-sphere w)))
     (backup-collide-with-as s4-0)
-    (set! (-> this root-override) s4-0)
+    (set! (-> this root) s4-0)
     )
   (process-drawable-from-entity! this arg0)
-  (set-yaw-angle-clear-roll-pitch! (-> this root-override) (res-lump-float arg0 'rotoffset))
+  (set-yaw-angle-clear-roll-pitch! (-> this root) (res-lump-float arg0 'rotoffset))
   (initialize-skeleton this *racer-sg* '())
   (set! (-> this shadow-backup) (-> this draw shadow))
   (set! (-> this draw shadow-ctrl) *racer-shadow-control*)
   (let ((v1-23 (-> this node-list data)))
     (set! (-> v1-23 0 param0) cspace<-transformq+trans!)
-    (set! (-> v1-23 0 param1) (the-as basic (-> this root-override trans)))
+    (set! (-> v1-23 0 param1) (the-as basic (-> this root trans)))
     (set! (-> v1-23 0 param2) (the-as basic (-> this extra-trans)))
     )
   (set! (-> this condition) (res-lump-value arg0 'index int))
@@ -435,7 +429,7 @@
   (set! (-> this path) (-> this path-target))
   (set-vector! (-> this extra-trans) 0.0 6144.0 0.0 1.0)
   (set! (-> this auto-get-off) #f)
-  (move-to-ground (-> this root-override) 40960.0 40960.0 #t (collide-kind background))
+  (move-to-ground (-> this root) 40960.0 40960.0 #t (collide-kind background))
   (set! (-> this cell) (the-as handle #f))
   (blocking-plane-spawn
     (the-as
@@ -449,7 +443,7 @@
       )
     )
   (set! (-> this sound)
-        (new 'process 'ambient-sound (static-sound-spec "zoom-teleport" :fo-max 30) (-> this root-override trans))
+        (new 'process 'ambient-sound (static-sound-spec "zoom-teleport" :fo-max 30) (-> this root trans))
         )
   (go (method-of-object this wait-for-start))
   (none)

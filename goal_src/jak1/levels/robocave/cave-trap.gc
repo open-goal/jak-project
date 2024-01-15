@@ -10,19 +10,15 @@
 ;; DECOMP BEGINS
 
 (deftype cave-trap (process-drawable)
-  ((root-override   collide-shape                :offset        112)
-   (spider-count    int32                        :offset-assert 176)
-   (alt-actors      (array entity-actor)         :offset-assert 180)
-   (spawn-delay     time-frame                   :offset-assert 184)
-   (last-spawn-time time-frame                   :offset-assert 192)
-   (debug-targ-pos  vector               :inline :offset-assert 208)
+  ((root             collide-shape :override)
+   (spider-count     int32)
+   (alt-actors       (array entity-actor))
+   (spawn-delay      time-frame)
+   (last-spawn-time  time-frame)
+   (debug-targ-pos   vector         :inline)
    )
-  :heap-base #x70
-  :method-count-assert 21
-  :size-assert         #xe0
-  :flag-assert         #x15007000e0
   (:methods
-    (cave-trap-method-20 (_type_) symbol 20)
+    (cave-trap-method-20 (_type_) symbol)
     )
   (:states
     cave-trap-active
@@ -33,12 +29,8 @@
 
 
 (deftype spider-vent (process-drawable)
-  ((last-spawn-time time-frame  :offset-assert 176)
+  ((last-spawn-time  time-frame)
    )
-  :heap-base #x50
-  :method-count-assert 20
-  :size-assert         #xb8
-  :flag-assert         #x14005000b8
   (:states
     spider-vent-idle
     )
@@ -67,7 +59,7 @@
     )
   )
 
-(defmethod init-from-entity! spider-vent ((this spider-vent) (arg0 entity-actor))
+(defmethod init-from-entity! ((this spider-vent) (arg0 entity-actor))
   (set! (-> this last-spawn-time) 0)
   (set! (-> this root) (new 'process 'trsqv))
   (process-drawable-from-entity! this arg0)
@@ -94,25 +86,19 @@
   )
 
 (deftype spawn-baby-spider-best (structure)
-  ((index int32  :offset-assert   0)
-   (dist  float  :offset-assert   4)
+  ((index  int32)
+   (dist   float)
    )
-  :method-count-assert 9
-  :size-assert         #x8
-  :flag-assert         #x900000008
   )
 
 
 (deftype spawn-baby-spider-work (structure)
-  ((best spawn-baby-spider-best 4 :inline :offset-assert   0)
+  ((best  spawn-baby-spider-best  4 :inline)
    )
-  :method-count-assert 9
-  :size-assert         #x40
-  :flag-assert         #x900000040
   )
 
 
-(defmethod cave-trap-method-20 cave-trap ((this cave-trap))
+(defmethod cave-trap-method-20 ((this cave-trap))
   (set-time! (-> this last-spawn-time))
   (set! (-> this spawn-delay) (rand-vu-int-range (seconds 0.1) (seconds 0.5)))
   (let ((s5-0 (new 'stack-no-clear 'spawn-baby-spider-work)))
@@ -218,8 +204,8 @@
   :trans (behavior ()
     (when *target*
       (let* ((gp-0 (target-pos 0))
-             (f0-0 (vector-vector-xz-distance (-> self root-override trans) (target-pos 0)))
-             (f1-1 (- (-> gp-0 y) (-> self root-override trans y)))
+             (f0-0 (vector-vector-xz-distance (-> self root trans) (target-pos 0)))
+             (f1-1 (- (-> gp-0 y) (-> self root trans y)))
              )
         (when (and (>= 61440.0 f1-1) (>= f1-1 -16384.0))
           (when (>= 274432.0 f0-0)
@@ -249,8 +235,8 @@
     (cond
       (*target*
         (let* ((gp-0 (target-pos 0))
-               (f0-0 (vector-vector-xz-distance (-> self root-override trans) (target-pos 0)))
-               (f1-1 (- (-> gp-0 y) (-> self root-override trans y)))
+               (f0-0 (vector-vector-xz-distance (-> self root trans) (target-pos 0)))
+               (f1-1 (- (-> gp-0 y) (-> self root trans y)))
                )
           (if (or (< 73728.0 f1-1) (< f1-1 -24576.0) (< 368640.0 f0-0))
               (go cave-trap-give-up)
@@ -281,14 +267,14 @@
     )
   )
 
-(defmethod relocate cave-trap ((this cave-trap) (arg0 int))
+(defmethod relocate ((this cave-trap) (arg0 int))
   (if (nonzero? (-> this alt-actors))
       (&+! (-> this alt-actors) arg0)
       )
   (call-parent-method this arg0)
   )
 
-(defmethod init-from-entity! cave-trap ((this cave-trap) (arg0 entity-actor))
+(defmethod init-from-entity! ((this cave-trap) (arg0 entity-actor))
   (set! (-> this spider-count) 0)
   (set! (-> this spawn-delay) 0)
   (set! (-> this last-spawn-time) 0)
@@ -300,13 +286,13 @@
       )
     (set! (-> s4-0 nav-radius) (* 0.75 (-> s4-0 root-prim local-sphere w)))
     (backup-collide-with-as s4-0)
-    (set! (-> this root-override) s4-0)
+    (set! (-> this root) s4-0)
     )
   (process-drawable-from-entity! this arg0)
-  (set! (-> this nav) (new 'process 'nav-control (-> this root-override) 16 40960.0))
+  (set! (-> this nav) (new 'process 'nav-control (-> this root) 16 40960.0))
   (logior! (-> this nav flags) (nav-control-flags display-marks navcf3 navcf5 navcf6 navcf7))
   (set! (-> this nav nearest-y-threshold) 409600.0)
-  (logclear! (-> this root-override nav-flags) (nav-flags navf0))
+  (logclear! (-> this root nav-flags) (nav-flags navf0))
   (set! (-> this path) (new 'process 'path-control this 'path 0.0))
   (logior! (-> this path flags) (path-control-flag display draw-line draw-point draw-text))
   (let ((s4-1 (entity-actor-count arg0 'alt-actor)))

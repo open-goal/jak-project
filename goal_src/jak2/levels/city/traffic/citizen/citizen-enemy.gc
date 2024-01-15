@@ -8,21 +8,17 @@
 ;; DECOMP BEGINS
 
 (deftype citizen-enemy (citizen)
-  ((next-update-target time-frame          :offset-assert 968)
-   (minimap            connection-minimap  :offset-assert 976)
+  ((next-update-target  time-frame)
+   (minimap             connection-minimap)
    )
-  :heap-base #x360
-  :method-count-assert 203
-  :size-assert         #x3d4
-  :flag-assert         #xcb036003d4
   (:methods
-    (traffic-danger-init! (_type_) none 201)
-    (citizen-enemy-method-202 (_type_) none 202)
+    (traffic-danger-init! (_type_) none)
+    (citizen-enemy-method-202 (_type_) none)
     )
   )
 
 
-(defmethod track-target! citizen-enemy ((this citizen-enemy))
+(defmethod common-post ((this citizen-enemy))
   "Does a lot of various things relating to interacting with the target
 - tracks when the enemy was last drawn
 - looks at the target and handles attacking
@@ -35,7 +31,7 @@
     )
   (when (and (not (focus-test? this disable dead ignore inactive))
              (< (-> this next-update-target) (current-time))
-             (not (logtest? (enemy-flag actor-pause-backup) (-> this enemy-flags)))
+             (not (logtest? (enemy-flag lock-focus) (-> this enemy-flags)))
              (-> this next-state)
              (= (-> this next-state name) 'active)
              )
@@ -43,12 +39,12 @@
     (set! (-> this next-update-target) (+ (current-time) (seconds 0.2)))
     (traffic-danger-init! this)
     )
-  ((method-of-type citizen track-target!) this)
+  ((method-of-type citizen common-post) this)
   (none)
   )
 
 ;; WARN: Return type mismatch object vs symbol.
-(defmethod enemy-method-76 citizen-enemy ((this citizen-enemy) (arg0 process) (arg1 event-message-block))
+(defmethod enemy-method-76 ((this citizen-enemy) (arg0 process) (arg1 event-message-block))
   (the-as
     symbol
     (cond
@@ -105,7 +101,7 @@
     )
   )
 
-(defmethod general-event-handler citizen-enemy ((this citizen-enemy) (arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+(defmethod general-event-handler ((this citizen-enemy) (arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
   "Handles various events for the enemy
 @TODO - unsure if there is a pattern for the events and this should have a more specific name"
   (case arg2
@@ -146,7 +142,7 @@
     )
   )
 
-(defmethod traffic-danger-init! citizen-enemy ((this citizen-enemy))
+(defmethod traffic-danger-init! ((this citizen-enemy))
   (let ((a1-0 (new 'stack-no-clear 'traffic-danger-info)))
     (set! (-> a1-0 sphere quad) (-> this root trans quad))
     (set! (-> a1-0 sphere r) 40960.0)
@@ -163,7 +159,7 @@
   (none)
   )
 
-(defmethod citizen-enemy-method-202 citizen-enemy ((this citizen-enemy))
+(defmethod citizen-enemy-method-202 ((this citizen-enemy))
   (let ((s5-0 (new 'stack-no-clear 'vector)))
     (set! (-> s5-0 quad) (-> this root trans quad))
     (set! (-> s5-0 w) 122880.0)
@@ -224,7 +220,7 @@
   :virtual #t
   :code (behavior ()
     (ja-channel-push! 1 (seconds 0.075))
-    (let ((f30-0 (get-rand-float-range self 0.8 1.2)))
+    (let ((f30-0 (rnd-float-range self 0.8 1.2)))
       (until #f
         (ja-no-eval :group! (-> self draw art-group data (-> self enemy-info walk-anim))
                     :num! (seek! max f30-0)
@@ -255,7 +251,7 @@
     )
   )
 
-(defmethod citizen-init! citizen-enemy ((this citizen-enemy))
+(defmethod citizen-init! ((this citizen-enemy))
   "Initialize [[citizen]] defaults."
   (let ((t9-0 (method-of-type citizen citizen-init!)))
     (t9-0 this)
@@ -277,13 +273,13 @@
   (set! (-> this dist-run-anim) (-> this enemy-info run-travel-speed))
   (set! (-> this speed-run) (-> this enemy-info walk-travel-speed))
   (set! (-> this fated-time) 0)
-  (logior! (-> this enemy-flags) (enemy-flag enable-on-active checking-water))
+  (logior! (-> this enemy-flags) (enemy-flag vulnerable vulnerable-backup))
   (logior! (-> this focus-status) (focus-status dangerous))
-  (logior! (-> this enemy-flags) (enemy-flag check-water))
-  (logior! (-> this enemy-flags) (enemy-flag check-water-backup no-initial-move-to-ground))
+  (logior! (-> this enemy-flags) (enemy-flag dangerous-backup))
+  (logior! (-> this enemy-flags) (enemy-flag trackable trackable-backup))
   (logclear! (-> this focus-status) (focus-status dead))
   (logior! (-> this mask) (process-mask collectable))
-  (logior! (-> this enemy-flags) (enemy-flag look-at-move-dest))
+  (logior! (-> this enemy-flags) (enemy-flag attackable-backup))
   (if (not (-> this minimap))
       (set! (-> this minimap) (add-icon! *minimap* this (the-as uint 70) (the-as int #f) (the-as vector #t) 0))
       )
@@ -292,17 +288,17 @@
   (none)
   )
 
-(defmethod kill-prefer-falling citizen-enemy ((this citizen-enemy))
+(defmethod kill-prefer-falling ((this citizen-enemy))
   "If available in `enemy-info`, [[go]] to the [[die-falling]] state, if not, [[die]]"
   ((method-of-type nav-enemy kill-prefer-falling) this)
   )
 
-(defmethod go-hostile citizen-enemy ((this citizen-enemy))
+(defmethod go-hostile ((this citizen-enemy))
   (if (not (and (-> this next-state) (= (-> this next-state name) 'hostile)))
       (go (method-of-object this hostile))
       )
   )
 
-(defmethod go-stare citizen-enemy ((this citizen-enemy))
+(defmethod go-stare ((this citizen-enemy))
   (go (method-of-object this active))
   )

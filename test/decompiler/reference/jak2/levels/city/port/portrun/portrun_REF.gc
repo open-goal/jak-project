@@ -191,7 +191,7 @@
 
 ;; definition for method 15 of type hud-cargo
 ;; WARN: Return type mismatch int vs none.
-(defmethod draw hud-cargo ((this hud-cargo))
+(defmethod draw ((this hud-cargo))
   (set-hud-piece-position!
     (the-as hud-sprite (-> this sprites))
     (the int (+ 457.0 (* 130.0 (-> this offset))))
@@ -206,7 +206,7 @@
 
 ;; definition for method 16 of type hud-cargo
 ;; WARN: Return type mismatch int vs none.
-(defmethod update-values hud-cargo ((this hud-cargo))
+(defmethod update-values ((this hud-cargo))
   (set! (-> this values 0 target) (the int (-> *game-info* counter)))
   ((method-of-type hud update-values) this)
   0
@@ -215,7 +215,7 @@
 
 ;; definition for method 17 of type hud-cargo
 ;; WARN: Return type mismatch int vs none.
-(defmethod init-callback hud-cargo ((this hud-cargo))
+(defmethod init-callback ((this hud-cargo))
   (set! (-> this level) (level-get *level* 'ctywide))
   (set! (-> this gui-id)
         (add-process *gui-control* this (gui-channel hud-middle-right) (gui-action hidden) (-> this name) 81920.0 0)
@@ -258,28 +258,25 @@
 
 ;; definition of type city-port-run-mine-info
 (deftype city-port-run-mine-info (structure)
-  ((handle   handle  :offset-assert   0)
-   (pos1-x   float   :offset-assert   8)
-   (pos1-y   float   :offset-assert  12)
-   (pos1-z   float   :offset-assert  16)
-   (type     uint32  :offset-assert  20)
-   (pos2-x   float   :offset-assert  24)
-   (pos2-y   float   :offset-assert  28)
-   (pos2-z   float   :offset-assert  32)
-   (speed    float   :offset-assert  36)
-   (offset   float   :offset-assert  40)
-   (center-x float   :offset          8)
-   (center-y float   :offset         12)
-   (center-z float   :offset         16)
-   (radius   float   :offset         24)
+  ((handle    handle)
+   (pos1-x    float)
+   (pos1-y    float)
+   (pos1-z    float)
+   (type      uint32)
+   (pos2-x    float)
+   (pos2-y    float)
+   (pos2-z    float)
+   (speed     float)
+   (offset    float)
+   (center-x  float  :overlay-at pos1-x)
+   (center-y  float  :overlay-at pos1-y)
+   (center-z  float  :overlay-at pos1-z)
+   (radius    float  :overlay-at pos2-x)
    )
-  :method-count-assert 9
-  :size-assert         #x2c
-  :flag-assert         #x90000002c
   )
 
 ;; definition for method 3 of type city-port-run-mine-info
-(defmethod inspect city-port-run-mine-info ((this city-port-run-mine-info))
+(defmethod inspect ((this city-port-run-mine-info))
   (when (not this)
     (set! this this)
     (goto cfg-4)
@@ -877,33 +874,31 @@
 
 ;; definition of type ctyport-mine
 (deftype ctyport-mine (process-drawable)
-  ((root        collide-shape-moving            :override)
-   (info        city-port-run-mine-info         :offset-assert 200)
-   (base-height float                           :offset-assert 204)
-   (center      vector                  :inline :offset-assert 208)
-   (time-skew   uint64                          :offset-assert 224)
-   (period      float                           :offset-assert 232)
-   (trans-y     float                           :offset-assert 236)
-   (speed-y     float                           :offset-assert 240)
-   (acc-y       float                           :offset-assert 244)
-   (beep        basic                           :offset-assert 248)
-   (beep-time   time-frame                      :offset-assert 256)
-   (beep-color  vector                  :inline :offset-assert 272)
+  ((root         collide-shape-moving :override)
+   (info         city-port-run-mine-info)
+   (base-height  float)
+   (center       vector                :inline)
+   (time-skew    uint64)
+   (period       float)
+   (trans-y      float)
+   (speed-y      float)
+   (acc-y        float)
+   (beep         basic)
+   (beep-time    time-frame)
+   (beep-color   vector                :inline)
    )
-  :heap-base #xa0
-  :method-count-assert 24
-  :size-assert         #x120
-  :flag-assert         #x1800a00120
+  (:state-methods
+    idle
+    die
+    fall
+    )
   (:methods
-    (idle () _type_ :state 20)
-    (die () _type_ :state 21)
-    (fall () _type_ :state 22)
-    (ctyport-mine-method-23 (_type_) none 23)
+    (ctyport-mine-method-23 (_type_) none)
     )
   )
 
 ;; definition for method 3 of type ctyport-mine
-(defmethod inspect ctyport-mine ((this ctyport-mine))
+(defmethod inspect ((this ctyport-mine))
   (when (not this)
     (set! this this)
     (goto cfg-4)
@@ -928,7 +923,7 @@
 
 ;; definition for method 23 of type ctyport-mine
 ;; WARN: Return type mismatch float vs none.
-(defmethod ctyport-mine-method-23 ctyport-mine ((this ctyport-mine))
+(defmethod ctyport-mine-method-23 ((this ctyport-mine))
   (rlet ((acc :class vf)
          (vf0 :class vf)
          (vf4 :class vf)
@@ -1245,19 +1240,15 @@
 
 ;; definition of type ctyport-spy
 (deftype ctyport-spy (process-drawable)
-  ((trans-y float  :offset-assert 200)
+  ((trans-y  float)
    )
-  :heap-base #x50
-  :method-count-assert 21
-  :size-assert         #xcc
-  :flag-assert         #x15005000cc
-  (:methods
-    (idle () _type_ :state 20)
+  (:state-methods
+    idle
     )
   )
 
 ;; definition for method 3 of type ctyport-spy
-(defmethod inspect ctyport-spy ((this ctyport-spy))
+(defmethod inspect ((this ctyport-spy))
   (when (not this)
     (set! this this)
     (goto cfg-4)
@@ -1358,24 +1349,22 @@
 
 ;; definition of type ctyport-cargo
 (deftype ctyport-cargo (process-focusable)
-  ((minimap connection-minimap  :offset-assert 204)
-   (trans-y float               :offset-assert 208)
-   (speed-y float               :offset-assert 212)
+  ((minimap  connection-minimap)
+   (trans-y  float)
+   (speed-y  float)
    )
-  :heap-base #x60
-  :method-count-assert 31
-  :size-assert         #xd8
-  :flag-assert         #x1f006000d8
+  (:state-methods
+    idle
+    focus-camera
+    die
+    )
   (:methods
-    (idle () _type_ :state 27)
-    (focus-camera () _type_ :state 28)
-    (die () _type_ :state 29)
-    (ctyport-cargo-method-30 (_type_) none 30)
+    (ctyport-cargo-method-30 (_type_) none)
     )
   )
 
 ;; definition for method 3 of type ctyport-cargo
-(defmethod inspect ctyport-cargo ((this ctyport-cargo))
+(defmethod inspect ((this ctyport-cargo))
   (when (not this)
     (set! this this)
     (goto cfg-4)
@@ -1548,7 +1537,7 @@
 
 ;; definition for method 30 of type ctyport-cargo
 ;; WARN: Return type mismatch int vs none.
-(defmethod ctyport-cargo-method-30 ctyport-cargo ((this ctyport-cargo))
+(defmethod ctyport-cargo-method-30 ((this ctyport-cargo))
   (send-event *camera* 'change-target this)
   (let ((gp-0 (new 'stack 'transformq)))
     (vector+! (-> gp-0 trans) (-> this root trans) (new 'static 'vector :y 16384.0 :z 28672.0 :w 1.0))
@@ -1685,15 +1674,12 @@
 
 ;; definition of type city-port-run-cargo-info
 (deftype city-port-run-cargo-info (structure)
-  ((pos vector :inline :offset-assert   0)
+  ((pos  vector  :inline)
    )
-  :method-count-assert 9
-  :size-assert         #x10
-  :flag-assert         #x900000010
   )
 
 ;; definition for method 3 of type city-port-run-cargo-info
-(defmethod inspect city-port-run-cargo-info ((this city-port-run-cargo-info))
+(defmethod inspect ((this city-port-run-cargo-info))
   (when (not this)
     (set! this this)
     (goto cfg-4)

@@ -8,28 +8,26 @@
 ;; DECOMP BEGINS
 
 (deftype security-wall (process-drawable)
-  ((root               collide-shape         :override)
-   (pass               int32                 :offset-assert 200)
-   (incoming-attack-id uint32                :offset-assert 204)
-   (next-message-time  int64                 :offset-assert 208)
-   (message            int32                 :offset-assert 216)
-   (plane              plane         :inline :offset-assert 224)
-   (color              vector        :inline :offset-assert 240)
-   (target-pos         vector        :inline :offset-assert 256)
-   (flash              float                 :offset-assert 272)
-   (touch-count        int32                 :offset-assert 276)
-   (breach             symbol                :offset-assert 280)
+  ((root                collide-shape :override)
+   (pass                int32)
+   (incoming-attack-id  uint32)
+   (next-message-time   int64)
+   (message             int32)
+   (plane               plane          :inline)
+   (color               vector         :inline)
+   (target-pos          vector         :inline)
+   (flash               float)
+   (touch-count         int32)
+   (breach              symbol)
    )
-  :heap-base #xa0
-  :method-count-assert 25
-  :size-assert         #x11c
-  :flag-assert         #x1900a0011c
+  (:state-methods
+    idle-open
+    idle-close
+    )
   (:methods
-    (idle-open () _type_ :state 20)
-    (idle-close () _type_ :state 21)
-    (security-wall-method-22 (_type_ path-control float) vector 22)
-    (security-wall-method-23 (_type_) none 23)
-    (security-wall-method-24 (_type_) none 24)
+    (security-wall-method-22 (_type_ path-control float) vector)
+    (security-wall-method-23 (_type_) none)
+    (security-wall-method-24 (_type_) none)
     )
   )
 
@@ -39,7 +37,7 @@
               :bounds (static-spherem 0 0 0 100.1)
               )
 
-(defmethod security-wall-method-23 security-wall ((this security-wall))
+(defmethod security-wall-method-23 ((this security-wall))
   (when (< (-> this next-message-time) (current-time))
     (set! (-> this next-message-time)
           (the-as int (+ (current-time) (the int (* 300.0 (rand-vu-float-range 2.0 5.0)))))
@@ -189,7 +187,7 @@
   (none)
   )
 
-(defmethod security-wall-method-24 security-wall ((this security-wall))
+(defmethod security-wall-method-24 ((this security-wall))
   (let ((s4-0 *target*))
     (when s4-0
       (let* ((f0-0 (vector-vector-distance-squared (-> this root trans) (-> s4-0 control trans)))
@@ -471,7 +469,7 @@
     )
   )
 
-(defmethod security-wall-method-22 security-wall ((this security-wall) (arg0 path-control) (arg1 float))
+(defmethod security-wall-method-22 ((this security-wall) (arg0 path-control) (arg1 float))
   (let ((s4-0 (new 'static 'vector))
         (s3-0 (new 'static 'vector))
         )
@@ -530,7 +528,7 @@
   )
 
 ;; WARN: Return type mismatch object vs none.
-(defmethod init-from-entity! security-wall ((this security-wall) (arg0 entity-actor))
+(defmethod init-from-entity! ((this security-wall) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
 - stack size
@@ -587,22 +585,20 @@ This commonly includes things such as:
   )
 
 (deftype fruit-stand (process-focusable)
-  ((incoming-attack-id uint32           :offset-assert 204)
-   (hack-counter       uint32           :offset-assert 208)
-   (count-sparts       uint32           :offset-assert 212)
-   (first-sparts       uint32           :offset-assert 216)
-   (num-sparts         uint32           :offset-assert 220)
-   (sparts-index       uint32 4         :offset-assert 224)
-   (sparts-pos         vector 4 :inline :offset-assert 240)
+  ((incoming-attack-id  uint32)
+   (hack-counter        uint32)
+   (count-sparts        uint32)
+   (first-sparts        uint32)
+   (num-sparts          uint32)
+   (sparts-index        uint32  4)
+   (sparts-pos          vector  4 :inline)
    )
-  :heap-base #xb0
-  :method-count-assert 30
-  :size-assert         #x130
-  :flag-assert         #x1e00b00130
+  (:state-methods
+    idle
+    )
   (:methods
-    (idle () _type_ :state 27)
-    (fruit-stand-method-28 (_type_) none 28)
-    (fruit-stand-method-29 (_type_) none 29)
+    (fruit-stand-method-28 (_type_) none)
+    (fruit-stand-method-29 (_type_) none)
     )
   )
 
@@ -952,7 +948,7 @@ This commonly includes things such as:
     )
   )
 
-(defmethod fruit-stand-method-28 fruit-stand ((this fruit-stand))
+(defmethod fruit-stand-method-28 ((this fruit-stand))
   (let ((s5-0 (new 'process 'collide-shape-moving this (collide-list-enum usually-hit-by-player))))
     (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s5-0 reaction) cshape-reaction-default)
@@ -979,7 +975,7 @@ This commonly includes things such as:
   (none)
   )
 
-(defmethod fruit-stand-method-29 fruit-stand ((this fruit-stand))
+(defmethod fruit-stand-method-29 ((this fruit-stand))
   (logior! (-> this mask) (process-mask crate))
   (set! (-> this part) (create-launch-control (-> *part-group-id-table* 185) this))
   0
@@ -987,7 +983,7 @@ This commonly includes things such as:
   )
 
 ;; WARN: Return type mismatch object vs none.
-(defmethod init-from-entity! fruit-stand ((this fruit-stand) (arg0 entity-actor))
+(defmethod init-from-entity! ((this fruit-stand) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
 - stack size
@@ -1008,10 +1004,6 @@ This commonly includes things such as:
 
 (deftype cty-fruit-stand (fruit-stand)
   ()
-  :heap-base #xb0
-  :method-count-assert 30
-  :size-assert         #x130
-  :flag-assert         #x1e00b00130
   )
 
 
@@ -1263,35 +1255,33 @@ This commonly includes things such as:
   )
 
 (deftype cty-guard-turret (process-focusable)
-  ((incoming-attack-id uint32             :offset-assert 204)
-   (jm-turret          joint-mod          :offset-assert 208)
-   (jm-gunsL           joint-mod          :offset-assert 212)
-   (jm-gunsR           joint-mod          :offset-assert 216)
-   (angle-turret       degrees            :offset-assert 220)
-   (angle-guns         degrees            :offset-assert 224)
-   (last-no-zero       int64              :offset-assert 232)
-   (next-time-shot     time-frame         :offset-assert 240)
-   (num-shots          uint32             :offset-assert 248)
-   (focus              focus      :inline :offset-assert 256)
-   (id                 int32              :offset-assert 268)
-   (destroyed          symbol             :offset-assert 272)
-   (button-down?       symbol             :offset-assert 276)
-   (hit-points         int32              :offset-assert 280)
+  ((incoming-attack-id  uint32)
+   (jm-turret           joint-mod)
+   (jm-gunsL            joint-mod)
+   (jm-gunsR            joint-mod)
+   (angle-turret        degrees)
+   (angle-guns          degrees)
+   (last-no-zero        int64)
+   (next-time-shot      time-frame)
+   (num-shots           uint32)
+   (focus               focus  :inline)
+   (id                  int32)
+   (destroyed           symbol)
+   (button-down?        symbol)
+   (hit-points          int32)
    )
-  :heap-base #xa0
-  :method-count-assert 36
-  :size-assert         #x11c
-  :flag-assert         #x2400a0011c
+  (:state-methods
+    idle
+    hostile
+    explode
+    wait-for-pushing
+    pushed
+    )
   (:methods
-    (idle () _type_ :state 27)
-    (hostile () _type_ :state 28)
-    (explode () _type_ :state 29)
-    (wait-for-pushing () _type_ :state 30)
-    (pushed () _type_ :state 31)
-    (cty-guard-turret-method-32 (_type_) none 32)
-    (cty-guard-turret-method-33 (_type_) none 33)
-    (cty-guard-turret-method-34 (_type_) none 34)
-    (cty-guard-turret-method-35 (_type_) quaternion 35)
+    (cty-guard-turret-method-32 (_type_) none)
+    (cty-guard-turret-method-33 (_type_) none)
+    (cty-guard-turret-method-34 (_type_) none)
+    (cty-guard-turret-method-35 (_type_) quaternion)
     )
   )
 
@@ -1374,7 +1364,7 @@ This commonly includes things such as:
     )
   )
 
-(defmethod get-trans cty-guard-turret ((this cty-guard-turret) (arg0 int))
+(defmethod get-trans ((this cty-guard-turret) (arg0 int))
   "@returns the `trans` [[vector]] from the process's `root` (typically either a [[trsqv]] or a [[collide-shape]])"
   (let ((v1-0 (-> this root)))
     (cond
@@ -1391,7 +1381,7 @@ This commonly includes things such as:
     )
   )
 
-(defmethod get-inv-mass cty-guard-turret ((this cty-guard-turret))
+(defmethod get-inv-mass ((this cty-guard-turret))
   0.01
   )
 
@@ -1740,7 +1730,7 @@ This commonly includes things such as:
   )
 
 ;; WARN: Return type mismatch (pointer process) vs none.
-(defmethod cty-guard-turret-method-34 cty-guard-turret ((this cty-guard-turret))
+(defmethod cty-guard-turret-method-34 ((this cty-guard-turret))
   (rlet ((acc :class vf)
          (vf0 :class vf)
          (vf4 :class vf)
@@ -1815,7 +1805,7 @@ This commonly includes things such as:
     )
   )
 
-(defmethod cty-guard-turret-method-35 cty-guard-turret ((this cty-guard-turret))
+(defmethod cty-guard-turret-method-35 ((this cty-guard-turret))
   (local-vars (sv-192 vector))
   (rlet ((acc :class vf)
          (vf0 :class vf)
@@ -2019,7 +2009,7 @@ This commonly includes things such as:
     )
   )
 
-(defmethod relocate cty-guard-turret ((this cty-guard-turret) (arg0 int))
+(defmethod relocate ((this cty-guard-turret) (arg0 int))
   (if (nonzero? (-> this jm-turret))
       (&+! (-> this jm-turret) arg0)
       )
@@ -2032,7 +2022,7 @@ This commonly includes things such as:
   (call-parent-method this arg0)
   )
 
-(defmethod cty-guard-turret-method-32 cty-guard-turret ((this cty-guard-turret))
+(defmethod cty-guard-turret-method-32 ((this cty-guard-turret))
   (let ((s5-0 (new 'process 'collide-shape-moving this (collide-list-enum usually-hit-by-player))))
     (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s5-0 reaction) cshape-reaction-default)
@@ -2104,14 +2094,14 @@ This commonly includes things such as:
   (none)
   )
 
-(defmethod cty-guard-turret-method-33 cty-guard-turret ((this cty-guard-turret))
+(defmethod cty-guard-turret-method-33 ((this cty-guard-turret))
   (logior! (-> this mask) (process-mask enemy))
   0
   (none)
   )
 
 ;; WARN: Return type mismatch object vs none.
-(defmethod init-from-entity! cty-guard-turret ((this cty-guard-turret) (arg0 entity-actor))
+(defmethod init-from-entity! ((this cty-guard-turret) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
 - stack size
@@ -2200,26 +2190,24 @@ This commonly includes things such as:
   )
 
 (deftype parking-spot (process-drawable)
-  ((vehicle     handle                     :offset-assert 200)
-   (spawned     symbol                     :offset-assert 208)
-   (minimap     connection-minimap         :offset-assert 212)
-   (test-sphere sphere             :inline :offset-assert 224)
+  ((vehicle      handle)
+   (spawned      symbol)
+   (minimap      connection-minimap)
+   (test-sphere  sphere  :inline)
    )
-  :heap-base #x70
-  :method-count-assert 25
-  :size-assert         #xf0
-  :flag-assert         #x19007000f0
+  (:state-methods
+    idle
+    )
   (:methods
-    (idle () _type_ :state 20)
-    (parking-spot-method-21 (_type_) none 21)
-    (parking-spot-method-22 (_type_) none 22)
-    (parking-spot-method-23 (_type_ uint) none 23)
-    (parking-spot-method-24 (_type_) none 24)
+    (parking-spot-method-21 (_type_) none)
+    (parking-spot-method-22 (_type_) none)
+    (parking-spot-method-23 (_type_ uint) none)
+    (parking-spot-method-24 (_type_) none)
     )
   )
 
 
-(defmethod parking-spot-method-24 parking-spot ((this parking-spot))
+(defmethod parking-spot-method-24 ((this parking-spot))
   (let ((gp-0 (new 'stack-no-clear 'collide-query-with-2vec)))
     (set! (-> gp-0 vec quad) (-> this root trans quad))
     (set! (-> gp-0 cquery start-pos quad) (-> gp-0 vec quad))
@@ -2252,7 +2240,7 @@ This commonly includes things such as:
   (none)
   )
 
-(defmethod parking-spot-method-21 parking-spot ((this parking-spot))
+(defmethod parking-spot-method-21 ((this parking-spot))
   (let ((s5-0 (handle->process (-> this vehicle))))
     (cond
       (s5-0
@@ -2285,7 +2273,7 @@ This commonly includes things such as:
   (none)
   )
 
-(defmethod parking-spot-method-23 parking-spot ((this parking-spot) (arg0 uint))
+(defmethod parking-spot-method-23 ((this parking-spot) (arg0 uint))
   (let ((v1-0 (new 'stack-no-clear 'inline-array 'collide-query 1)))
     (let* ((a0-1 (new 'stack-no-clear 'inline-array 'vector 1))
            (a1-1 #x813f9)
@@ -2325,7 +2313,7 @@ This commonly includes things such as:
   )
 
 ;; WARN: Return type mismatch object vs none.
-(defmethod init-from-entity! parking-spot ((this parking-spot) (arg0 entity-actor))
+(defmethod init-from-entity! ((this parking-spot) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
 - stack size
@@ -2390,23 +2378,21 @@ This commonly includes things such as:
   )
 
 (deftype propa (process-focusable)
-  ((sound-id           sound-id  :offset-assert 204)
-   (sound-index        uint32    :offset-assert 208)
-   (handle             handle    :offset-assert 216)
-   (y-rot              float     :offset-assert 224)
-   (hit-points         int32     :offset-assert 228)
-   (incoming-attack-id uint32    :offset-assert 232)
+  ((sound-id            sound-id)
+   (sound-index         uint32)
+   (handle              handle)
+   (y-rot               float)
+   (hit-points          int32)
+   (incoming-attack-id  uint32)
    )
-  :heap-base #x70
-  :method-count-assert 32
-  :size-assert         #xec
-  :flag-assert         #x20007000ec
+  (:state-methods
+    idle
+    broken
+    )
   (:methods
-    (idle () _type_ :state 27)
-    (broken () _type_ :state 28)
-    (propa-method-29 (_type_) none 29)
-    (propa-method-30 (_type_) none 30)
-    (propa-method-31 (_type_ vector) none 31)
+    (propa-method-29 (_type_) none)
+    (propa-method-30 (_type_) none)
+    (propa-method-31 (_type_ vector) none)
     )
   )
 
@@ -2748,7 +2734,7 @@ This commonly includes things such as:
     )
   )
 
-(defmethod propa-method-31 propa ((this propa) (arg0 vector))
+(defmethod propa-method-31 ((this propa) (arg0 vector))
   (let ((s5-0 (the-as process-focusable #f)))
     (let ((f30-0 (the-as float #x7f800000))
           (s3-0 (new 'stack-no-clear 'array 'collide-shape 64))
@@ -2800,7 +2786,7 @@ This commonly includes things such as:
   (none)
   )
 
-(defmethod propa-method-29 propa ((this propa))
+(defmethod propa-method-29 ((this propa))
   (let ((s5-0 (new 'process 'collide-shape-moving this (collide-list-enum usually-hit-by-player))))
     (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s5-0 reaction) cshape-reaction-default)
@@ -2838,7 +2824,7 @@ This commonly includes things such as:
   (none)
   )
 
-(defmethod propa-method-30 propa ((this propa))
+(defmethod propa-method-30 ((this propa))
   (logior! (-> this mask) (process-mask crate))
   (set! (-> this part) (create-launch-control (-> *part-group-id-table* 170) this))
   0
@@ -2846,7 +2832,7 @@ This commonly includes things such as:
   )
 
 ;; WARN: Return type mismatch object vs none.
-(defmethod init-from-entity! propa ((this propa) (arg0 entity-actor))
+(defmethod init-from-entity! ((this propa) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
 - stack size
@@ -2873,12 +2859,8 @@ This commonly includes things such as:
 
 (deftype baron-statue (process-drawable)
   ()
-  :heap-base #x50
-  :method-count-assert 21
-  :size-assert         #xc8
-  :flag-assert         #x15005000c8
-  (:methods
-    (idle () _type_ :state 20)
+  (:state-methods
+    idle
     )
   )
 
@@ -2888,7 +2870,7 @@ This commonly includes things such as:
               :bounds (static-spherem 0 75 0 83)
               )
 
-(defmethod run-logic? baron-statue ((this baron-statue))
+(defmethod run-logic? ((this baron-statue))
   #t
   )
 
@@ -2898,7 +2880,7 @@ This commonly includes things such as:
   )
 
 ;; WARN: Return type mismatch object vs none.
-(defmethod init-from-entity! baron-statue ((this baron-statue) (arg0 entity-actor))
+(defmethod init-from-entity! ((this baron-statue) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
 - stack size
@@ -2922,23 +2904,21 @@ This commonly includes things such as:
   )
 
 (deftype burning-bush (process-focusable)
-  ((task       game-task-control         :offset-assert 204)
-   (part-off   sparticle-launch-control  :offset-assert 208)
-   (part-alert sparticle-launch-control  :offset-assert 212)
-   (angle      degrees                   :offset-assert 216)
-   (time       float                     :offset-assert 220)
+  ((task        game-task-control)
+   (part-off    sparticle-launch-control)
+   (part-alert  sparticle-launch-control)
+   (angle       degrees)
+   (time        float)
    )
-  :heap-base #x60
-  :method-count-assert 33
-  :size-assert         #xe0
-  :flag-assert         #x21006000e0
+  (:state-methods
+    idle
+    talking
+    menu
+    )
   (:methods
-    (idle () _type_ :state 27)
-    (talking () _type_ :state 28)
-    (menu () _type_ :state 29)
-    (burning-bush-method-30 (_type_) none 30)
-    (burning-bush-method-31 (_type_) none 31)
-    (burning-bush-method-32 (_type_) object 32)
+    (burning-bush-method-30 (_type_) none)
+    (burning-bush-method-31 (_type_) none)
+    (burning-bush-method-32 (_type_) object)
     )
   )
 
@@ -3740,7 +3720,7 @@ This commonly includes things such as:
     )
   )
 
-(defmethod burning-bush-method-32 burning-bush ((this burning-bush))
+(defmethod burning-bush-method-32 ((this burning-bush))
   (let* ((gp-1 (vector-! (new 'stack-no-clear 'vector) (target-pos 0) (-> this root trans)))
          (f30-0 (vector-dot (vector-x-quaternion! (new 'stack-no-clear 'vector) (-> this root quat)) gp-1))
          (f0-2 (vector-dot (vector-z-quaternion! (new 'stack-no-clear 'vector) (-> this root quat)) gp-1))
@@ -3754,7 +3734,7 @@ This commonly includes things such as:
     )
   )
 
-(defmethod burning-bush-method-30 burning-bush ((this burning-bush))
+(defmethod burning-bush-method-30 ((this burning-bush))
   (let ((s5-0 (new 'process 'collide-shape-moving this (collide-list-enum usually-hit-by-player))))
     (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s5-0 reaction) cshape-reaction-default)
@@ -3781,7 +3761,7 @@ This commonly includes things such as:
   (none)
   )
 
-(defmethod burning-bush-method-31 burning-bush ((this burning-bush))
+(defmethod burning-bush-method-31 ((this burning-bush))
   (set! (-> this part) (create-launch-control (-> *part-group-id-table* 173) this))
   (set! (-> this part-off) (create-launch-control (-> *part-group-id-table* 171) this))
   (set! (-> this part-alert) (create-launch-control (-> *part-group-id-table* 172) this))
@@ -3790,7 +3770,7 @@ This commonly includes things such as:
   )
 
 ;; WARN: Return type mismatch process-focusable vs burning-bush.
-(defmethod relocate burning-bush ((this burning-bush) (arg0 int))
+(defmethod relocate ((this burning-bush) (arg0 int))
   (if (nonzero? (-> this task))
       (&+! (-> this task) arg0)
       )
@@ -3803,7 +3783,7 @@ This commonly includes things such as:
   (the-as burning-bush ((method-of-type process-focusable relocate) this arg0))
   )
 
-(defmethod run-logic? burning-bush ((this burning-bush))
+(defmethod run-logic? ((this burning-bush))
   (or (not (logtest? (-> this mask) (process-mask actor-pause)))
       (or (and (nonzero? (-> this draw))
                (logtest? (-> this draw status) (draw-control-status on-screen))
@@ -3818,7 +3798,7 @@ This commonly includes things such as:
   )
 
 ;; WARN: Return type mismatch object vs none.
-(defmethod init-from-entity! burning-bush ((this burning-bush) (arg0 entity-actor))
+(defmethod init-from-entity! ((this burning-bush) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
 - stack size
@@ -3855,23 +3835,19 @@ This commonly includes things such as:
               )
 
 (deftype barons-ship-lores (process-drawable)
-  ((paths            path-control 3       :offset-assert 200)
-   (sync             sync-eased   :inline :offset-assert 216)
-   (current-path     int32                :offset-assert 260)
-   (forward-backward symbol               :offset-assert 264)
+  ((paths             path-control  3)
+   (sync              sync-eased    :inline)
+   (current-path      int32)
+   (forward-backward  symbol)
    )
-  :heap-base #x90
-  :method-count-assert 21
-  :size-assert         #x10c
-  :flag-assert         #x150090010c
-  (:methods
-    (idle () _type_ :state 20)
+  (:state-methods
+    idle
     )
   )
 
 
 ;; WARN: Return type mismatch object vs none.
-(defmethod init-from-entity! barons-ship-lores ((this barons-ship-lores) (arg0 entity-actor))
+(defmethod init-from-entity! ((this barons-ship-lores) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
 - stack size
@@ -3920,7 +3896,7 @@ This commonly includes things such as:
   (none)
   )
 
-(defmethod relocate barons-ship-lores ((this barons-ship-lores) (arg0 int))
+(defmethod relocate ((this barons-ship-lores) (arg0 int))
   (if (nonzero? (-> this paths 0))
       (&+! (-> this paths 0) arg0)
       )
@@ -3998,7 +3974,7 @@ This commonly includes things such as:
   :post ja-post
   )
 
-(defmethod city-race-ring-info-method-9 city-race-ring-info ((this city-race-ring-info) (arg0 symbol))
+(defmethod city-race-ring-info-method-9 ((this city-race-ring-info) (arg0 symbol))
   (format arg0 "(static-race-ring-info~%")
   (format arg0 "     :pos (~4,,2M ~4,,2M ~4,,2M)~%" (-> this pos x) (-> this pos y) (-> this pos z))
   (let ((f0-3 (-> this pos w)))
@@ -4013,7 +3989,7 @@ This commonly includes things such as:
   (none)
   )
 
-(defmethod city-ambush-info-method-9 city-ambush-info ((this city-ambush-info) (arg0 traffic-object-spawn-params))
+(defmethod city-ambush-info-method-9 ((this city-ambush-info) (arg0 traffic-object-spawn-params))
   (set! (-> arg0 position quad) (-> this array 0 pos quad))
   (set! (-> arg0 nav-mesh) (find-nearest-nav-mesh (-> arg0 position) (the-as float #x7f800000)))
   (vector-reset! (-> arg0 velocity))
@@ -4035,18 +4011,16 @@ This commonly includes things such as:
               )
 
 (deftype lurker-pipe-lid (process-focusable)
-  ((angle degrees  :offset-assert 204)
-   (rot   float    :offset-assert 208)
+  ((angle  degrees)
+   (rot    float)
    )
-  :heap-base #x60
-  :method-count-assert 31
-  :size-assert         #xd4
-  :flag-assert         #x1f006000d4
+  (:state-methods
+    idle
+    )
   (:methods
-    (idle () _type_ :state 27)
-    (lurker-pipe-lid-method-28 (_type_) none 28)
-    (lurker-pipe-lid-method-29 (_type_) none 29)
-    (lurker-pipe-lid-method-30 (_type_) none 30)
+    (lurker-pipe-lid-method-28 (_type_) none)
+    (lurker-pipe-lid-method-29 (_type_) none)
+    (lurker-pipe-lid-method-30 (_type_) none)
     )
   )
 
@@ -4083,7 +4057,7 @@ This commonly includes things such as:
     )
   )
 
-(defmethod lurker-pipe-lid-method-28 lurker-pipe-lid ((this lurker-pipe-lid))
+(defmethod lurker-pipe-lid-method-28 ((this lurker-pipe-lid))
   (let ((s5-0 (new 'process 'collide-shape-moving this (collide-list-enum usually-hit-by-player))))
     (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s5-0 reaction) cshape-reaction-default)
@@ -4110,14 +4084,14 @@ This commonly includes things such as:
   (none)
   )
 
-(defmethod lurker-pipe-lid-method-29 lurker-pipe-lid ((this lurker-pipe-lid))
+(defmethod lurker-pipe-lid-method-29 ((this lurker-pipe-lid))
   (logior! (-> this mask) (process-mask crate))
   0
   (none)
   )
 
 ;; WARN: Return type mismatch object vs none.
-(defmethod init-from-entity! lurker-pipe-lid ((this lurker-pipe-lid) (arg0 entity-actor))
+(defmethod init-from-entity! ((this lurker-pipe-lid) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
 - stack size
@@ -4141,15 +4115,13 @@ This commonly includes things such as:
 
 (deftype ctyn-lamp (process-focusable)
   ()
-  :heap-base #x50
-  :method-count-assert 31
-  :size-assert         #xcc
-  :flag-assert         #x1f005000cc
+  (:state-methods
+    idle
+    die
+    )
   (:methods
-    (idle () _type_ :state 27)
-    (die () _type_ :state 28)
-    (ctyn-lamp-method-29 (_type_) none 29)
-    (ctyn-lamp-method-30 (_type_) none 30)
+    (ctyn-lamp-method-29 (_type_) none)
+    (ctyn-lamp-method-30 (_type_) none)
     )
   )
 
@@ -4225,7 +4197,7 @@ This commonly includes things such as:
   :post #f
   )
 
-(defmethod ctyn-lamp-method-29 ctyn-lamp ((this ctyn-lamp))
+(defmethod ctyn-lamp-method-29 ((this ctyn-lamp))
   (let ((s5-0 (new 'process 'collide-shape-moving this (collide-list-enum usually-hit-by-player))))
     (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s5-0 reaction) cshape-reaction-default)
@@ -4270,14 +4242,14 @@ This commonly includes things such as:
   (none)
   )
 
-(defmethod ctyn-lamp-method-30 ctyn-lamp ((this ctyn-lamp))
+(defmethod ctyn-lamp-method-30 ((this ctyn-lamp))
   (logior! (-> this mask) (process-mask crate))
   0
   (none)
   )
 
 ;; WARN: Return type mismatch object vs none.
-(defmethod init-from-entity! ctyn-lamp ((this ctyn-lamp) (arg0 entity-actor))
+(defmethod init-from-entity! ((this ctyn-lamp) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
 - stack size

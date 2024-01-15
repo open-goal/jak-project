@@ -371,13 +371,9 @@
 
 ;; definition of type energydoor
 (deftype energydoor (process-drawable)
-  ((root-override collide-shape-moving  :offset        112)
-   (alt-actor     entity-actor          :offset-assert 176)
+  ((root       collide-shape-moving :override)
+   (alt-actor  entity-actor)
    )
-  :heap-base #x50
-  :method-count-assert 20
-  :size-assert         #xb4
-  :flag-assert         #x14005000b4
   (:states
     energydoor-closed-till-near
     energydoor-closed-till-task
@@ -388,7 +384,7 @@
   )
 
 ;; definition for method 3 of type energydoor
-(defmethod inspect energydoor ((this energydoor))
+(defmethod inspect ((this energydoor))
   (let ((t9-0 (method-of-type process-drawable inspect)))
     (t9-0 this)
     )
@@ -407,8 +403,8 @@
   (let ((gp-0 (new 'stack-no-clear 'vector))
         (s5-0 (new 'stack-no-clear 'matrix))
         )
-    (vector-! gp-0 (target-pos 0) (-> self root-override trans))
-    (quaternion->matrix s5-0 (-> self root-override quat))
+    (vector-! gp-0 (target-pos 0) (-> self root trans))
+    (quaternion->matrix s5-0 (-> self root quat))
     (vector-dot gp-0 (the-as vector (-> s5-0 vector)))
     )
   )
@@ -565,7 +561,7 @@
 
 ;; definition for method 11 of type energydoor
 ;; INFO: Return type mismatch object vs none.
-(defmethod init-from-entity! energydoor ((this energydoor) (arg0 entity-actor))
+(defmethod init-from-entity! ((this energydoor) (arg0 entity-actor))
   (with-pp
     (let ((s4-0 (new 'process 'collide-shape-moving this (collide-list-enum hit-by-player))))
       (set! (-> s4-0 dynam) (copy *standard-dynamics* 'process))
@@ -584,11 +580,11 @@
         )
       (set! (-> s4-0 nav-radius) (* 0.75 (-> s4-0 root-prim local-sphere w)))
       (backup-collide-with-as s4-0)
-      (set! (-> this root-override) s4-0)
+      (set! (-> this root) s4-0)
       )
     (process-drawable-from-entity! this arg0)
     (initialize-skeleton this *energydoor-sg* '())
-    (set! (-> this root-override pause-adjust-distance) 245760.0)
+    (set! (-> this root pause-adjust-distance) 245760.0)
     (set! (-> this alt-actor) (entity-actor-lookup arg0 'alt-actor 0))
     (cond
       ((< (energydoor-player-dist) -409600.0)
@@ -632,10 +628,6 @@
 ;; definition of type energybase
 (deftype energybase (process-drawable)
   ()
-  :heap-base #x40
-  :method-count-assert 20
-  :size-assert         #xb0
-  :flag-assert         #x14004000b0
   (:states
     energybase-idle
     energybase-stopped
@@ -644,7 +636,7 @@
   )
 
 ;; definition for method 3 of type energybase
-(defmethod inspect energybase ((this energybase))
+(defmethod inspect ((this energybase))
   (let ((t9-0 (method-of-type process-drawable inspect)))
     (t9-0 this)
     )
@@ -713,7 +705,7 @@
 
 ;; definition for method 11 of type energybase
 ;; INFO: Return type mismatch object vs none.
-(defmethod init-from-entity! energybase ((this energybase) (arg0 entity-actor))
+(defmethod init-from-entity! ((this energybase) (arg0 entity-actor))
   (set! (-> this root) (new 'process 'trsqv))
   (process-drawable-from-entity! this arg0)
   (initialize-skeleton this *energybase-sg* '())
@@ -726,21 +718,17 @@
 
 ;; definition of type energyhub
 (deftype energyhub (process-drawable)
-  ((self-override         energyhub                  :offset         28)
-   (alts                  entity-actor       3       :offset-assert 176)
-   (arm                   handle             5       :offset-assert 192)
-   (rot-mat               matrix             :inline :offset-assert 240)
-   (rot-mat-init          matrix             :inline :offset-assert 304)
-   (rotation-speed        oscillating-float  :inline :offset-assert 368)
-   (rotation-speed-offset delayed-rand-float :inline :offset-assert 392)
-   (y-rotation            float                      :offset-assert 420)
-   (x-rotation            float                      :offset-assert 424)
-   (palette-val           float                      :offset-assert 428)
+  ((self-override          energyhub           :overlay-at self)
+   (alts                   entity-actor        3)
+   (arm                    handle              5)
+   (rot-mat                matrix              :inline)
+   (rot-mat-init           matrix              :inline)
+   (rotation-speed         oscillating-float   :inline)
+   (rotation-speed-offset  delayed-rand-float  :inline)
+   (y-rotation             float)
+   (x-rotation             float)
+   (palette-val            float)
    )
-  :heap-base #x140
-  :method-count-assert 20
-  :size-assert         #x1b0
-  :flag-assert         #x14014001b0
   (:states
     energyhub-idle
     energyhub-stop
@@ -749,7 +737,7 @@
   )
 
 ;; definition for method 3 of type energyhub
-(defmethod inspect energyhub ((this energyhub))
+(defmethod inspect ((this energyhub))
   (let ((t9-0 (method-of-type process-drawable inspect)))
     (t9-0 this)
     )
@@ -767,23 +755,19 @@
 
 ;; definition of type energyarm
 (deftype energyarm (process-drawable)
-  ((parent-overide     (pointer energyhub)          :offset         12)
-   (self-override      energyarm                    :offset         28)
-   (root-override      collide-shape-moving         :offset        112)
-   (offset             vector               :inline :offset-assert 176)
-   (y-rotation         float                        :offset-assert 192)
-   (y-chatter-rotation bouncing-float       :inline :offset-assert 196)
-   (y-chatter-min      delayed-rand-float   :inline :offset-assert 240)
-   (x-rotation         bouncing-float       :inline :offset-assert 268)
-   (x-fall-rotation    bouncing-float       :inline :offset-assert 308)
-   (rot-mat            matrix               :inline :offset-assert 352)
-   (ball               handle                       :offset-assert 416)
-   (x-correction       float                        :offset-assert 424)
+  ((root                collide-shape-moving :override)
+   (parent-overide      (pointer energyhub)   :overlay-at parent)
+   (self-override       energyarm             :overlay-at self)
+   (offset              vector                :inline)
+   (y-rotation          float)
+   (y-chatter-rotation  bouncing-float        :inline)
+   (y-chatter-min       delayed-rand-float    :inline)
+   (x-rotation          bouncing-float        :inline)
+   (x-fall-rotation     bouncing-float        :inline)
+   (rot-mat             matrix                :inline)
+   (ball                handle)
+   (x-correction        float)
    )
-  :heap-base #x140
-  :method-count-assert 20
-  :size-assert         #x1ac
-  :flag-assert         #x14014001ac
   (:states
     energyarm-fall
     energyarm-idle
@@ -793,7 +777,7 @@
   )
 
 ;; definition for method 3 of type energyarm
-(defmethod inspect energyarm ((this energyarm))
+(defmethod inspect ((this energyarm))
   (let ((t9-0 (method-of-type process-drawable inspect)))
     (t9-0 this)
     )
@@ -811,20 +795,16 @@
 
 ;; definition of type energyball
 (deftype energyball (process-drawable)
-  ((parent-overide (pointer energyarm)   :offset  12)
-   (root-override  collide-shape-moving  :offset 112)
+  ((root            collide-shape-moving :override)
+   (parent-overide  (pointer energyarm)   :overlay-at parent)
    )
-  :heap-base #x40
-  :method-count-assert 20
-  :size-assert         #xb0
-  :flag-assert         #x14004000b0
   (:states
     energyball-idle
     )
   )
 
 ;; definition for method 3 of type energyball
-(defmethod inspect energyball ((this energyball))
+(defmethod inspect ((this energyball))
   (let ((t9-0 (method-of-type process-drawable inspect)))
     (t9-0 this)
     )
@@ -853,7 +833,7 @@
            #f
            #f
            #f
-           (-> self root-override trans)
+           (-> self root trans)
            :to *entity-pool*
            )
          (cleanup-for-death self)
@@ -864,7 +844,7 @@
     )
   :trans (behavior ()
     (rider-trans)
-    (spawn (-> self part) (-> self root-override trans))
+    (spawn (-> self part) (-> self root trans))
     (let* ((v1-3 (-> self parent-overide))
            (s5-0 (if v1-3
                      (-> v1-3 0 self-override)
@@ -882,10 +862,10 @@
       (when gp-0
         (set-vector! s4-0 0.0 -61440.0 -106496.0 1.0)
         (vector-matrix*! s4-0 s4-0 (-> gp-0 rot-mat))
-        (vector+! (-> self root-override trans) s4-0 (-> gp-0 root-override trans))
+        (vector+! (-> self root trans) s4-0 (-> gp-0 root trans))
         (matrix-rotate-y! s5-1 (* -436.90668 f30-0))
         (matrix*! s5-1 s5-1 (-> gp-0 rot-mat))
-        (matrix->quaternion (-> self root-override quat) s5-1)
+        (matrix->quaternion (-> self root quat) s5-1)
         )
       )
     )
@@ -920,7 +900,7 @@
       )
     (set! (-> s5-0 nav-radius) (* 0.75 (-> s5-0 root-prim local-sphere w)))
     (backup-collide-with-as s5-0)
-    (set! (-> arg0 root-override) s5-0)
+    (set! (-> arg0 root) s5-0)
     s5-0
     )
   )
@@ -930,7 +910,7 @@
 ;; INFO: Return type mismatch object vs none.
 (defbehavior energyball-init-by-other energyball ((arg0 vector))
   (energyball-init self)
-  (set! (-> self root-override trans quad) (-> arg0 quad))
+  (set! (-> self root trans quad) (-> arg0 quad))
   (initialize-skeleton self *energyball-sg* '())
   (set! (-> self part) (create-launch-control (-> *part-group-id-table* 545) self))
   (go energyball-idle)
@@ -975,9 +955,9 @@
       (set-vector! gp-1 0.0 0.0 -81920.0 1.0)
       (vector-matrix*! (-> self draw bounds) gp-1 (-> self rot-mat))
       (set! (-> self draw bounds w) 69632.0)
-      (matrix->quaternion (-> self root-override quat) (-> self rot-mat))
+      (matrix->quaternion (-> self root quat) (-> self rot-mat))
       (vector-matrix*! gp-1 (-> self offset) (-> s5-0 rot-mat))
-      (vector+! (-> self root-override trans) (-> s5-0 root trans) gp-1)
+      (vector+! (-> self root trans) (-> s5-0 root trans) gp-1)
       )
     )
   )
@@ -1104,18 +1084,9 @@
     (energyarm-trans)
     (cond
       ((handle->process (-> self ball))
-       (spawn
-         (-> self part)
-         (vector<-cspace! (new 'stack-no-clear 'vector) (joint-node-index energyarm-lod0-jg zapa))
-         )
-       (spawn
-         (-> self part)
-         (vector<-cspace! (new 'stack-no-clear 'vector) (joint-node-index energyarm-lod0-jg zapb))
-         )
-       (spawn
-         (-> self part)
-         (vector<-cspace! (new 'stack-no-clear 'vector) (joint-node-index energyarm-lod0-jg zapc))
-         )
+       (spawn (-> self part) (vector<-cspace! (new 'stack-no-clear 'vector) (joint-node energyarm-lod0-jg zapa)))
+       (spawn (-> self part) (vector<-cspace! (new 'stack-no-clear 'vector) (joint-node energyarm-lod0-jg zapb)))
+       (spawn (-> self part) (vector<-cspace! (new 'stack-no-clear 'vector) (joint-node energyarm-lod0-jg zapc)))
        )
       ((!= (-> self ball) #f)
        (set! (-> self ball) (the-as handle #f))
@@ -1176,7 +1147,7 @@
       )
     (set! (-> s5-0 nav-radius) (* 0.75 (-> s5-0 root-prim local-sphere w)))
     (backup-collide-with-as s5-0)
-    (set! (-> arg0 root-override) s5-0)
+    (set! (-> arg0 root) s5-0)
     )
   (let ((v0-5 (create-launch-control (-> *part-group-id-table* 544) arg0)))
     (set! (-> arg0 part) v0-5)
@@ -1200,7 +1171,7 @@
                )
          )
     (if a0-3
-        (set! (-> self root-override trans quad) (-> a0-3 root trans quad))
+        (set! (-> self root trans quad) (-> a0-3 root trans quad))
         )
     )
   (initialize-skeleton self *energyarm-sg* '())
@@ -1218,7 +1189,7 @@
      (go energyarm-stop)
      )
     (else
-      (set! (-> self ball) (ppointer->handle (process-spawn energyball (-> self root-override trans) :to self)))
+      (set! (-> self ball) (ppointer->handle (process-spawn energyball (-> self root trans) :to self)))
       (go energyarm-idle)
       )
     )
@@ -1470,7 +1441,7 @@
 
 ;; definition for method 11 of type energyhub
 ;; INFO: Return type mismatch object vs none.
-(defmethod init-from-entity! energyhub ((this energyhub) (arg0 entity-actor))
+(defmethod init-from-entity! ((this energyhub) (arg0 entity-actor))
   (set! (-> this root) (new 'process 'trsqv))
   (process-drawable-from-entity! this arg0)
   (initialize-skeleton this *energyhub-sg* '())
@@ -1514,19 +1485,14 @@
 
 ;; definition of type energylava
 (deftype energylava (process-drawable)
-  ((root-override basic  :offset 112)
-   )
-  :heap-base #x40
-  :method-count-assert 20
-  :size-assert         #xb0
-  :flag-assert         #x14004000b0
+  ()
   (:states
     energylava-idle
     )
   )
 
 ;; definition for method 3 of type energylava
-(defmethod inspect energylava ((this energylava))
+(defmethod inspect ((this energylava))
   (let ((t9-0 (method-of-type process-drawable inspect)))
     (t9-0 this)
     )
@@ -1552,7 +1518,7 @@
 
 ;; definition for method 11 of type energylava
 ;; INFO: Return type mismatch object vs none.
-(defmethod init-from-entity! energylava ((this energylava) (arg0 entity-actor))
+(defmethod init-from-entity! ((this energylava) (arg0 entity-actor))
   (set! (-> this root) (new 'process 'trsqv))
   (process-drawable-from-entity! this arg0)
   (initialize-skeleton this *energylava-sg* '())

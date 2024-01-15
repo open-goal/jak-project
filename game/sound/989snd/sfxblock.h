@@ -4,64 +4,61 @@
 #include "sfxgrain.h"
 #include "soundbank.h"
 
-#include "sfxblock2.h"
+#include "third-party/span.hpp"
 
 namespace snd {
 
-struct SFXBlockData : BankTag {
-  /*  10 */ s8 BlockNum;
-  /*  11 */ s8 pad1;
-  /*  12 */ s16 pad2;
-  /*  14 */ s16 pad3;
-  /*  16 */ s16 NumSounds;
-  /*  18 */ s16 NumGrains;
-  /*  1a */ s16 NumVAGs;
-  /*  1c */ u32 FirstSound;
-  /*  20 */ u32 FirstGrain;
-  /*  24 */ u32 VagsInSR;
-  /*  28 */ u32 VagDataSize;
-  /*  2c */ u32 SRAMAllocSize;
-  /*  30 */ u32 NextBlock;
-
-  /* these last ones are probably not in jak1?  */
-  /*  34 */ u32 BlockNames;
-  /*  38 */ u32 SFXUD;
-};
-
-static_assert(sizeof(SFXBlockData) == 0x38 + 4);
-
-struct SFXData {
-  /*   0 */ s8 Vol;
-  /*   1 */ s8 VolGroup;
-  /*   2 */ s16 Pan;
-  /*   4 */ s8 NumGrains;
-  /*   5 */ s8 InstanceLimit;
-  /*   6 */ u16 Flags;
-  /*   8 */ u32 FirstGrain;
-};
-
-enum SFXFlags {
-  Looper = 1,
-  SoloSound = 2,  // Stop previous instances
-};
-
-struct SFX {
-  SFXData d;
-  std::vector<std::unique_ptr<Grain>> grains;
+struct SFXUserData {  // 0x10
+  /* 0x0 */ u32 data[4];
 };
 
 class SFXBlock : public SoundBank {
  public:
-  SFXBlock(locator& loc, u32 handle, BankTag* tag);
-  std::optional<std::unique_ptr<sound_handler>> make_handler(voice_manager& vm,
-                                                             u32 sound_id,
-                                                             s32 vol,
-                                                             s32 pan,
-                                                             SndPlayParams& params) override;
+  struct SFXFlags {
+    u16 flags;
 
- private:
-  [[maybe_unused]] locator& m_locator;
-  std::vector<SFX2> m_sounds;
+    static constexpr u32 SFX_LOOP = 1;
+    static constexpr u32 SFX_SOLO = 2;
+    static constexpr u32 SFX_INSTLIMIT = 8;
+    static constexpr u32 SFX_INSTLIMIT_VOL = 0x10;
+    static constexpr u32 SFX_INSTLIMIT_TICK = 0x20;
+
+    bool has_loop() { return flags & SFX_LOOP; }
+    bool solo() { return flags & SFX_SOLO; }
+    bool has_instlimit() { return flags & SFX_INSTLIMIT; }
+    bool instlimit_vol() { return flags & SFX_INSTLIMIT_VOL; }
+    bool instlimit_tick() { return flags & SFX_INSTLIMIT_TICK; }
+  };
+
+  struct SFX {
+    s8 Vol;
+    s8 VolGroup;
+    s16 Pan;
+    s8 InstanceLimit;
+    SFXFlags Flags;
+
+    std::vector<Grain> Grains;
+    SFXUserData UserData;
+  };
+
+  std::vector<SFX> Sounds;
+  std::string Name;
+  std::map<std::string, u32> Names;
+  std::unique_ptr<u8[]> SampleData;
+
+  static SFXBlock* ReadBlock(nonstd::span<u8> bank_data, nonstd::span<u8> samples);
+
+  std::optional<std::unique_ptr<SoundHandler>> MakeHandler(VoiceManager& vm,
+                                                           u32 sound_id,
+                                                           s32 vol,
+                                                           s32 pan,
+                                                           SndPlayParams& params) override;
+
+  std::optional<std::string_view> GetName() override { return Name; };
+  std::optional<u32> GetSoundByName(const char* name) override;
+  std::optional<const SFXUserData*> GetSoundUserData(u32 sound_id) override {
+    return &Sounds.at(sound_id).UserData;
+  };
 };
 
 }  // namespace snd

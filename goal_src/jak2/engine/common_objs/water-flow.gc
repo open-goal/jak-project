@@ -18,50 +18,41 @@
   )
 
 (deftype flow-section (structure)
-  ((start      vector :inline :offset-assert   0)
-   (trailing   plane  :inline :offset-assert  16)
-   (pull-dir   vector :inline :offset-assert  32)
-   (radial-dir vector :inline :offset-assert  48)
+  ((start       vector  :inline)
+   (trailing    plane   :inline)
+   (pull-dir    vector  :inline)
+   (radial-dir  vector  :inline)
    )
-  :method-count-assert 9
-  :size-assert         #x40
-  :flag-assert         #x900000040
   )
 
 
 (deftype flow-section-array (inline-array-class)
-  ((data flow-section :inline :dynamic :offset-assert  16)
+  ((data  flow-section  :inline :dynamic)
    )
-  :method-count-assert 9
-  :size-assert         #x10
-  :flag-assert         #x900000010
   )
 
 
 (set! (-> flow-section-array heap-base) (the-as uint 64))
 
 (deftype flow-control (basic)
-  ((path           path-control               :offset-assert   4)
-   (speed          float                      :offset-assert   8)
-   (belt-radius    float                      :offset-assert  12)
-   (sections       flow-section-array         :offset-assert  16)
-   (leading        plane              :inline :offset-assert  32)
-   (collide-bounds sphere             :inline :offset-assert  48)
+  ((path            path-control)
+   (speed           float)
+   (belt-radius     float)
+   (sections        flow-section-array)
+   (leading         plane   :inline)
+   (collide-bounds  sphere  :inline)
    )
-  :method-count-assert 13
-  :size-assert         #x40
-  :flag-assert         #xd00000040
   (:methods
-    (new (symbol type process-drawable res-lump) _type_ 0)
-    (draw-path (_type_) none 9)
-    (setup (_type_) none 10)
-    (push-process (_type_ process-focusable) none 11)
-    (find-and-push-things (_type_) none 12)
+    (new (symbol type process-drawable res-lump) _type_)
+    (draw-path (_type_) none)
+    (setup (_type_) none)
+    (push-process (_type_ process-focusable) none)
+    (find-and-push-things (_type_) none)
     )
   )
 
 
-(defmethod relocate flow-control ((this flow-control) (arg0 int))
+(defmethod relocate ((this flow-control) (arg0 int))
   (if (nonzero? (-> this sections))
       (&+! (-> this sections) arg0)
       )
@@ -71,7 +62,7 @@
   (call-parent-method this arg0)
   )
 
-(defmethod draw-path flow-control ((this flow-control))
+(defmethod draw-path ((this flow-control))
   (let ((a0-1 (-> this path)))
     (if (nonzero? a0-1)
         (debug-draw a0-1)
@@ -82,7 +73,7 @@
   )
 
 ;; WARN: Function (method 11 flow-control) has a return type of none, but the expression builder found a return statement.
-(defmethod push-process flow-control ((this flow-control) (arg0 process-focusable))
+(defmethod push-process ((this flow-control) (arg0 process-focusable))
   (rlet ((acc :class vf)
          (vf0 :class vf)
          (vf4 :class vf)
@@ -171,7 +162,7 @@
     )
   )
 
-(defmethod find-and-push-things flow-control ((this flow-control))
+(defmethod find-and-push-things ((this flow-control))
   (local-vars (a0-10 float) (a2-5 float) (a2-12 float))
   (rlet ((acc :class vf)
          (vf0 :class vf)
@@ -317,7 +308,7 @@
     )
   )
 
-(defmethod setup flow-control ((this flow-control))
+(defmethod setup ((this flow-control))
   (local-vars (sv-32 flow-section) (sv-48 flow-section))
   (let* ((s5-0 (-> this path))
          (s4-0 (-> s5-0 curve num-cverts))

@@ -3141,11 +3141,11 @@ goos::Object DefskelgroupElement::to_form_internal(const Env& env) const {
     }
     if (m_static_info.shadow_joint_index != 0) {
       forms.push_back(pretty_print::to_symbol(
-          fmt::format(":shadow-joint-index {}", m_static_info.origin_joint_index)));
+          fmt::format(":shadow-joint-index {}", m_static_info.shadow_joint_index)));
     }
     if (m_static_info.light_index != 0) {
-      forms.push_back(pretty_print::to_symbol(
-          fmt::format(":light-index {}", m_static_info.origin_joint_index)));
+      forms.push_back(
+          pretty_print::to_symbol(fmt::format(":light-index {}", m_static_info.light_index)));
     }
   }
 

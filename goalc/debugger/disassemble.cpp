@@ -16,17 +16,15 @@ std::string disassemble_x86(u8* data, int len, u64 base_addr) {
   ZydisFormatter formatter;
   ZydisFormatterInit(&formatter, ZYDIS_FORMATTER_STYLE_INTEL);
   ZydisDecodedInstruction instr;
-  ZydisDecodedOperand op[ZYDIS_MAX_OPERAND_COUNT_VISIBLE];
+  ZydisDecodedOperand op[ZYDIS_MAX_OPERAND_COUNT];
 
   constexpr int print_buff_size = 512;
   char print_buff[print_buff_size];
   int offset = 0;
-  while (ZYAN_SUCCESS(ZydisDecoderDecodeFull(&decoder, data + offset, len - offset, &instr, op,
-                                             ZYDIS_MAX_OPERAND_COUNT_VISIBLE,
-                                             ZYDIS_DFLAG_VISIBLE_OPERANDS_ONLY))) {
+  while (ZYAN_SUCCESS(ZydisDecoderDecodeFull(&decoder, data + offset, len - offset, &instr, op))) {
     result += fmt::format("[0x{:x}] ", base_addr);
     ZydisFormatterFormatInstruction(&formatter, &instr, op, instr.operand_count_visible, print_buff,
-                                    print_buff_size, base_addr);
+                                    print_buff_size, base_addr, ZYAN_NULL);
     result += print_buff;
     result += "\n";
 
@@ -44,7 +42,7 @@ std::string disassemble_x86(u8* data, int len, u64 base_addr, u64 highlight_addr
   ZydisFormatter formatter;
   ZydisFormatterInit(&formatter, ZYDIS_FORMATTER_STYLE_INTEL);
   ZydisDecodedInstruction instr;
-  ZydisDecodedOperand op[ZYDIS_MAX_OPERAND_COUNT_VISIBLE];
+  ZydisDecodedOperand op[ZYDIS_MAX_OPERAND_COUNT];
 
   constexpr int print_buff_size = 512;
   char print_buff[print_buff_size];
@@ -54,12 +52,10 @@ std::string disassemble_x86(u8* data, int len, u64 base_addr, u64 highlight_addr
   int mark_offset = int(highlight_addr - base_addr);
   while (offset < len) {
     char prefix = (offset == mark_offset) ? '-' : ' ';
-    if (ZYAN_SUCCESS(ZydisDecoderDecodeFull(&decoder, data + offset, len - offset, &instr, op,
-                                            ZYDIS_MAX_OPERAND_COUNT_VISIBLE,
-                                            ZYDIS_DFLAG_VISIBLE_OPERANDS_ONLY))) {
+    if (ZYAN_SUCCESS(ZydisDecoderDecodeFull(&decoder, data + offset, len - offset, &instr, op))) {
       result += fmt::format("{:c} [0x{:x}] ", prefix, base_addr);
       ZydisFormatterFormatInstruction(&formatter, &instr, op, instr.operand_count_visible,
-                                      print_buff, print_buff_size, base_addr);
+                                      print_buff, print_buff_size, base_addr, ZYAN_NULL);
       result += print_buff;
       result += "\n";
       offset += instr.length;
@@ -76,6 +72,8 @@ std::string disassemble_x86(u8* data, int len, u64 base_addr, u64 highlight_addr
 // how many "forms" to look at ahead of / behind rip when stopping
 static constexpr int FORM_DUMP_SIZE_REV = 4;
 static constexpr int FORM_DUMP_SIZE_FWD = 4;
+// how long the bytecode part of the disassembly is, IR comes after this
+static constexpr int DISASM_LINE_LEN = 60;
 
 std::string disassemble_x86_function(
     u8* data,
@@ -87,14 +85,15 @@ std::string disassemble_x86_function(
     const std::vector<std::shared_ptr<goos::HeapObject>>& code_sources,
     const std::vector<std::string>& ir_strings,
     bool* had_failure,
-    bool print_whole_function) {
+    bool print_whole_function,
+    bool omit_ir) {
   std::string result;
   ZydisDecoder decoder;
   ZydisDecoderInit(&decoder, ZYDIS_MACHINE_MODE_LONG_64, ZYDIS_STACK_WIDTH_64);
   ZydisFormatter formatter;
   ZydisFormatterInit(&formatter, ZYDIS_FORMATTER_STYLE_INTEL);
   ZydisDecodedInstruction instr;
-  ZydisDecodedOperand op[ZYDIS_MAX_OPERAND_COUNT_VISIBLE];
+  ZydisDecodedOperand op[ZYDIS_MAX_OPERAND_COUNT];
 
   constexpr int print_buff_size = 512;
   char print_buff[print_buff_size];
@@ -115,9 +114,7 @@ std::string disassemble_x86_function(
   int mark_offset = int(highlight_addr - base_addr);
   while (offset < len) {
     char prefix = (offset == mark_offset) ? '-' : ' ';
-    if (ZYAN_SUCCESS(ZydisDecoderDecodeFull(&decoder, data + offset, len - offset, &instr, op,
-                                            ZYDIS_MAX_OPERAND_COUNT_VISIBLE,
-                                            ZYDIS_DFLAG_VISIBLE_OPERANDS_ONLY))) {
+    if (ZYAN_SUCCESS(ZydisDecoderDecodeFull(&decoder, data + offset, len - offset, &instr, op))) {
       bool warn_messed_up = false;
       bool print_ir = false;
       // we should have a next instruction.
@@ -145,7 +142,8 @@ std::string disassemble_x86_function(
         }
       }
 
-      if (current_instruction_idx >= 0 && current_instruction_idx < int(x86_instructions.size())) {
+      if (!omit_ir && current_instruction_idx >= 0 &&
+          current_instruction_idx < int(x86_instructions.size())) {
         const auto& debug_instr = x86_instructions.at(current_instruction_idx);
         if (debug_instr.kind == InstructionInfo::Kind::IR && debug_instr.ir_idx != current_ir_idx) {
           current_ir_idx = debug_instr.ir_idx;
@@ -154,8 +152,9 @@ std::string disassemble_x86_function(
       }
 
       std::string line;
+      size_t line_size_offset = 0;
 
-      if (current_ir_idx >= 0 && current_ir_idx < int(ir_strings.size())) {
+      if (!omit_ir && current_ir_idx >= 0 && current_ir_idx < int(ir_strings.size())) {
         auto source = reader->db.try_get_short_info(code_sources.at(current_ir_idx));
         if (source) {
           if (source->filename != current_filename ||
@@ -171,6 +170,7 @@ std::string disassemble_x86_function(
             std::string pointer(current_offset_in_line + 3, ' ');
             pointer += "^\n";
             line += fmt::format(fmt::emphasis::bold | fg(fmt::color::lime_green), "{}", pointer);
+            line_size_offset = line.size();
           }
         }
       }
@@ -184,12 +184,12 @@ std::string disassemble_x86_function(
       }
 
       ZydisFormatterFormatInstruction(&formatter, &instr, op, instr.operand_count_visible,
-                                      print_buff, print_buff_size, base_addr);
+                                      print_buff, print_buff_size, base_addr, ZYAN_NULL);
       line += print_buff;
 
       if (print_ir && current_ir_idx >= 0 && current_ir_idx < int(ir_strings.size())) {
-        if (line.size() < 50) {
-          line.append(50 - line.size(), ' ');
+        if (line.size() - line_size_offset < DISASM_LINE_LEN) {
+          line.append(DISASM_LINE_LEN - (line.size() - line_size_offset), ' ');
         }
         line += " ";
         line += ir_strings.at(current_ir_idx);

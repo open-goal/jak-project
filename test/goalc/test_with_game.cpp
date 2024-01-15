@@ -292,7 +292,8 @@ TEST_F(WithGameTests, DebuggerMemoryMap) {
 TEST_F(WithGameTests, DebuggerDisassemble) {
   auto di = shared_compiler->compiler.get_debugger().get_debug_info_for_object("gcommon");
   bool fail = false;
-  auto result = di.disassemble_all_functions(&fail, &shared_compiler->compiler.get_goos().reader);
+  auto result =
+      di.disassemble_all_functions(&fail, &shared_compiler->compiler.get_goos().reader, false);
   // printf("Got\n%s\n", result.c_str());
   EXPECT_FALSE(fail);
 }
@@ -782,7 +783,7 @@ TEST_F(WithGameTests, StaticTypeArray) {
                                           {"matched!\n0\n"});
 }
 
-TEST_F(WithGameTests, StaticArraySubtypeDraft) {
+TEST_F(WithGameTests, StaticArraySubtype) {
   shared_compiler->runner.run_static_test(testCategory, "test-static-array-subtype.gc",
                                           {"length - 2\ntest\n1\n0\n"});
 }

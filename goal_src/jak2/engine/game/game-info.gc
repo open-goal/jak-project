@@ -15,7 +15,7 @@
 
 ;; DECOMP BEGINS
 
-(defmethod debug-draw border-plane ((this border-plane))
+(defmethod debug-draw ((this border-plane))
   (let* ((v1-0 (-> this action))
          (plane-color (if (= v1-0 'load)
                           (the-as uint #x8000ff00)
@@ -43,15 +43,15 @@
   0
   )
 
-(defmethod point-past-plane? border-plane ((this border-plane) (arg0 vector))
+(defmethod point-past-plane? ((this border-plane) (arg0 vector))
   (>= (vector-dot (vector-! (new 'stack-no-clear 'vector) arg0 (-> this trans)) (-> this normal)) 0.0)
   )
 
-(defmethod task-complete? game-info ((this game-info) (arg0 game-task))
+(defmethod task-complete? ((this game-info) (arg0 game-task))
   (logtest? (-> this task-perm-list data arg0 status) (entity-perm-status complete))
   )
 
-(defmethod subtask-index-by-name game-info ((this game-info) (arg0 string))
+(defmethod subtask-index-by-name ((this game-info) (arg0 string))
   (let ((subtasks (-> *game-info* sub-task-list)))
     (dotimes (i (-> subtasks length))
       (when (nonzero? i)
@@ -66,7 +66,7 @@
   0
   )
 
-(defmethod set-subtask-hook! game-info ((this game-info) (arg0 game-task-node) (arg1 int) (arg2 function))
+(defmethod set-subtask-hook! ((this game-info) (arg0 game-task-node) (arg1 int) (arg2 function))
   (let ((subtask (-> this sub-task-list arg0)))
     (if (and subtask (-> subtask info))
         (set! (-> subtask info hooks arg1) arg2)
@@ -97,7 +97,7 @@
     )
   )
 
-(defmethod continue-point-method-10 continue-point ((this continue-point) (arg0 load-state))
+(defmethod continue-point-method-10 ((this continue-point) (arg0 load-state))
   (let ((v1-0 (lookup-level-info (-> this vis-nick))))
     (set! (-> this vis-nick) (if v1-0
                                 (-> v1-0 name)
@@ -130,7 +130,7 @@
   this
   )
 
-(defmethod move-camera! continue-point ((this continue-point))
+(defmethod move-camera! ((this continue-point))
   (set! (-> *camera-combiner* trans quad) (-> this camera-trans quad))
   (let ((gp-0 (-> *camera-combiner* inv-camera-rot))
         (s5-0 (-> this camera-rot))
@@ -152,7 +152,7 @@
   (none)
   )
 
-(defmethod get-current-continue-forced game-info ((this game-info))
+(defmethod get-current-continue-forced ((this game-info))
   (cond
     ((and (= (-> this mode) 'play) (-> this current-continue))
      (-> this current-continue)
@@ -168,7 +168,7 @@
     )
   )
 
-(defmethod get-continue-by-name game-info ((this game-info) (arg0 string))
+(defmethod get-continue-by-name ((this game-info) (arg0 string))
   (if (not arg0)
       (return (the-as continue-point #f))
       )
@@ -191,7 +191,7 @@
   )
 
 ;; WARN: Using new Jak 2 rtype-of
-(defmethod set-continue! game-info ((this game-info) (arg0 basic) (arg1 symbol))
+(defmethod set-continue! ((this game-info) (arg0 basic) (arg1 symbol))
   (let ((s5-0 (-> this current-continue)))
     (if (null? arg0)
         (set! arg0 (the-as basic #f))
@@ -240,11 +240,11 @@
   (-> this current-continue)
   )
 
-(defmethod task-perm-by-index game-info ((this game-info) (arg0 int))
+(defmethod task-perm-by-index ((this game-info) (arg0 int))
   (-> this task-perm-list data arg0)
   )
 
-(defmethod calculate-percentage game-info ((this game-info))
+(defmethod calculate-percentage ((this game-info))
   (let ((story-total 0)
         (story-complete 0)
         )
@@ -293,7 +293,7 @@
     )
   )
 
-(defmethod initialize! game-info ((this game-info) (arg0 symbol) (arg1 game-save) (arg2 string))
+(defmethod initialize! ((this game-info) (arg0 symbol) (arg1 game-save) (arg2 string))
   (local-vars (v0-3 int) (sv-96 game-task-node-info) (sv-112 symbol))
   (case arg0
     (('dead 'life)
@@ -570,7 +570,7 @@
   this
   )
 
-(defmethod give game-info ((this game-info) (arg0 symbol) (arg1 float) (arg2 handle))
+(defmethod give ((this game-info) (arg0 symbol) (arg1 float) (arg2 handle))
   (local-vars (ammo-max float))
   (with-pp
     (case arg0
@@ -745,12 +745,12 @@
     )
   )
 
-(defmethod game-info-method-22 game-info ((this game-info))
+(defmethod game-info-method-22 ((this game-info))
   0
   )
 
 ;; WARN: Return type mismatch float vs none.
-(defmethod reset! fact-info-target ((this fact-info-target) (arg0 symbol))
+(defmethod reset! ((this fact-info-target) (arg0 symbol))
   (when (or (not arg0) (= arg0 'eco))
     (set! (-> this eco-timeout) 0)
     (set! (-> this eco-level) 0.0)
@@ -781,7 +781,7 @@
   (none)
   )
 
-(defmethod pickup-collectable! fact-info-target ((this fact-info-target) (arg0 pickup-type) (arg1 float) (arg2 handle))
+(defmethod pickup-collectable! ((this fact-info-target) (arg0 pickup-type) (arg1 float) (arg2 handle))
   (case arg0
     (((pickup-type health) (pickup-type eco-green))
      (cond
@@ -1122,7 +1122,7 @@
     )
   )
 
-(defmethod actor-perm game-info ((this game-info) (arg0 actor-id))
+(defmethod actor-perm ((this game-info) (arg0 actor-id))
   (let ((game-perms (-> this perm-list)))
     (countdown (i (-> game-perms length))
       (if (= arg0 (-> game-perms data i aid))
@@ -1133,7 +1133,7 @@
   (the-as entity-perm #f)
   )
 
-(defmethod copy-perms-from-level! game-info ((this game-info) (arg0 level))
+(defmethod copy-perms-from-level! ((this game-info) (arg0 level))
   (let ((game-perms (-> this perm-list))
         (level-entities (-> arg0 bsp level entity))
         )
@@ -1158,7 +1158,7 @@
   0
   )
 
-(defmethod copy-perms-to-level! game-info ((this game-info) (arg0 level))
+(defmethod copy-perms-to-level! ((this game-info) (arg0 level))
   (let ((level-entities (-> arg0 bsp level entity)))
     (dotimes (i (-> level-entities length))
       (let* ((entity-perm (-> level-entities data i entity extra perm))
@@ -1174,12 +1174,12 @@
   0
   )
 
-(defmethod print continue-point ((this continue-point))
+(defmethod print ((this continue-point))
   (format #t "#<~A ~S @ #x~X>" (-> this type) (-> this name) this)
   this
   )
 
-(defmethod debug-draw continue-point ((this continue-point))
+(defmethod debug-draw ((this continue-point))
   (add-debug-x #t (bucket-id debug-no-zbuf1) (-> this trans) (new 'static 'rgba :r #xff :a #x80))
   (add-debug-text-3d
     #t
@@ -1387,12 +1387,12 @@
   0
   )
 
-(defmethod print game-task-info ((this game-task-info))
+(defmethod print ((this game-task-info))
   (format #t "#<game-task-info ~S @ #x~X>" (-> this name) this)
   this
   )
 
-(defmethod debug-inspect game-info ((this game-info) (arg0 symbol))
+(defmethod debug-inspect ((this game-info) (arg0 symbol))
   (local-vars
     (sv-16 int)
     (sv-24 int)
@@ -1604,7 +1604,7 @@
   this
   )
 
-(defmethod you-suck-stage game-info ((this game-info) (arg0 symbol))
+(defmethod you-suck-stage ((this game-info) (arg0 symbol))
   (cond
     ((logtest? (-> *game-info* secrets) (game-secrets hero-mode))
      0
@@ -1638,11 +1638,11 @@
     )
   )
 
-(defmethod you-suck-scale game-info ((this game-info) (arg0 object))
+(defmethod you-suck-scale ((this game-info) (arg0 object))
   (* 0.25 (the float (you-suck-stage this #f)))
   )
 
-(defmethod adjust-to-screen-flip cpad-info ((this cpad-info))
+(defmethod adjust-to-screen-flip ((this cpad-info))
   (when (logtest? (-> *game-info* secrets) (game-secrets hflip-screen))
     (set! (-> this leftx) (- 255 (the-as int (-> this leftx))))
     (set! (-> this rightx) (- 255 (the-as int (-> this rightx))))
@@ -1650,7 +1650,7 @@
   0
   )
 
-(defmethod game-info-method-28 game-info ((this game-info) (arg0 game-score) (arg1 float))
+(defmethod game-info-method-28 ((this game-info) (arg0 game-score) (arg1 float))
   (when (!= arg1 0.0)
     (let ((v1-3 (&+ (-> this game-score data) (* (* arg0 8) 4))))
       (case arg0
@@ -1699,12 +1699,11 @@
   -1
   )
 
-(defmethod get-game-score-ref game-info ((this game-info) (arg0 int))
+(defmethod get-game-score-ref ((this game-info) (arg0 int))
   (&+ (-> this game-score data) (* (* arg0 8) 4))
   )
 
-;; TODO - make an enum for the highscore-place
-(defmethod get-rank highscore-info ((this highscore-info) (score float))
+(defmethod get-rank ((this highscore-info) (score float))
   (let ((place 0))
     (cond
       ((logtest? (-> this flags) (highscore-flags time))

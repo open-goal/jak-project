@@ -8,112 +8,90 @@
 ;; DECOMP BEGINS
 
 (deftype joint-exploder-tuning (structure)
-  ((explosion                   uint64             :offset-assert   0)
-   (duration                    time-frame         :offset-assert   8)
-   (gravity                     float              :offset-assert  16)
-   (rot-speed                   float              :offset-assert  20)
-   (fountain-rand-transv-lo     vector     :inline :offset-assert  32)
-   (fountain-rand-transv-hi     vector     :inline :offset-assert  48)
-   (away-from-focal-pt          vector     :inline :offset         32)
-   (away-from-rand-transv-xz-lo float              :offset         48)
-   (away-from-rand-transv-xz-hi float              :offset         52)
-   (away-from-rand-transv-y-lo  float              :offset         56)
-   (away-from-rand-transv-y-hi  float              :offset         60)
+  ((explosion                    uint64)
+   (duration                     time-frame)
+   (gravity                      float)
+   (rot-speed                    float)
+   (fountain-rand-transv-lo      vector  :inline)
+   (fountain-rand-transv-hi      vector  :inline)
+   (away-from-focal-pt           vector  :inline :overlay-at fountain-rand-transv-lo)
+   (away-from-rand-transv-xz-lo  float           :overlay-at (-> fountain-rand-transv-hi x))
+   (away-from-rand-transv-xz-hi  float           :overlay-at (-> fountain-rand-transv-hi y))
+   (away-from-rand-transv-y-lo   float           :overlay-at (-> fountain-rand-transv-hi z))
+   (away-from-rand-transv-y-hi   float           :overlay-at (-> fountain-rand-transv-hi w))
    )
-  :method-count-assert 9
-  :size-assert         #x40
-  :flag-assert         #x900000040
   (:methods
-    (new (symbol type int) _type_ 0)
+    (new (symbol type int) _type_)
     )
   )
 
 
 (deftype joint-exploder-static-joint-params (structure)
-  ((joint-index        int16  :offset-assert   0)
-   (parent-joint-index int16  :offset-assert   2)
+  ((joint-index         int16)
+   (parent-joint-index  int16)
    )
-  :method-count-assert 9
-  :size-assert         #x4
-  :flag-assert         #x900000004
   )
 
 
 (deftype joint-exploder-static-params (basic)
-  ((joints (array joint-exploder-static-joint-params)  :offset-assert   4)
+  ((joints  (array joint-exploder-static-joint-params))
    )
-  :method-count-assert 9
-  :size-assert         #x8
-  :flag-assert         #x900000008
   )
 
 
 (deftype joint-exploder-joint (structure)
-  ((next        int16          :offset-assert   0)
-   (prev        int16          :offset-assert   2)
-   (joint-index int16          :offset-assert   4)
-   (rspeed      float          :offset-assert   8)
-   (mat         matrix :inline :offset-assert  16)
-   (rmat        matrix :inline :offset-assert  80)
-   (transv      vector :inline :offset-assert 144)
-   (prev-pos    vector :inline :offset-assert 160)
+  ((next         int16)
+   (prev         int16)
+   (joint-index  int16)
+   (rspeed       float)
+   (mat          matrix  :inline)
+   (rmat         matrix  :inline)
+   (transv       vector  :inline)
+   (prev-pos     vector  :inline)
    )
-  :method-count-assert 9
-  :size-assert         #xb0
-  :flag-assert         #x9000000b0
   )
 
 
 (deftype joint-exploder-joints (basic)
-  ((num-joints int32                                 :offset-assert   4)
-   (joint      joint-exploder-joint :inline :dynamic :offset         16)
+  ((num-joints  int32)
+   (joint       joint-exploder-joint  :inline :dynamic :offset  16)
    )
-  :method-count-assert 9
-  :size-assert         #x10
-  :flag-assert         #x900000010
   (:methods
-    (new (symbol type joint-exploder-static-params) _type_ 0)
+    (new (symbol type joint-exploder-static-params) _type_)
     )
   )
 
 
 (deftype joint-exploder-list (structure)
-  ((head        int32                :offset-assert   0)
-   (pre-moved?  symbol               :offset-assert   4)
-   (bbox-valid? symbol               :offset-assert   8)
-   (bbox        bounding-box :inline :offset-assert  16)
+  ((head         int32)
+   (pre-moved?   symbol)
+   (bbox-valid?  symbol)
+   (bbox         bounding-box  :inline)
    )
-  :method-count-assert 9
-  :size-assert         #x30
-  :flag-assert         #x900000030
   )
 
 
 (deftype joint-exploder (process-drawable)
-  ((parent-override            (pointer process-drawable)             :offset         12)
-   (die-if-below-y             float                                  :offset-assert 176)
-   (die-if-beyond-xz-dist-sqrd float                                  :offset-assert 180)
-   (joints                     joint-exploder-joints                  :offset-assert 184)
-   (static-params              joint-exploder-static-params           :offset-assert 188)
-   (anim                       art-joint-anim                         :offset-assert 192)
-   (scale-vector               vector                       :inline   :offset-assert 208)
-   (tuning                     joint-exploder-tuning        :inline   :offset-assert 224)
-   (lists                      joint-exploder-list          5 :inline :offset-assert 288)
+  ((parent-override             (pointer process-drawable)  :overlay-at parent)
+   (die-if-below-y              float)
+   (die-if-beyond-xz-dist-sqrd  float)
+   (joints                      joint-exploder-joints)
+   (static-params               joint-exploder-static-params)
+   (anim                        art-joint-anim)
+   (scale-vector                vector                      :inline)
+   (tuning                      joint-exploder-tuning       :inline)
+   (lists                       joint-exploder-list         5 :inline)
    )
-  :heap-base #x1a0
-  :method-count-assert 29
-  :size-assert         #x210
-  :flag-assert         #x1d01a00210
   (:methods
-    (joint-exploder-method-20 (_type_ joint-exploder-list int) int 20)
-    (joint-exploder-method-21 (_type_ joint-exploder-list joint-exploder-joint) none 21)
-    (joint-exploder-method-22 (_type_ joint-exploder-list) symbol 22)
-    (joint-exploder-method-23 (_type_) symbol 23)
-    (joint-exploder-method-24 (_type_ joint-exploder-list int) int 24)
-    (joint-exploder-method-25 (_type_ joint-exploder-list) symbol 25)
-    (joint-exploder-method-26 (_type_ joint-exploder-list int) int 26)
-    (joint-exploder-method-27 (_type_ joint-exploder-list int) joint-exploder-list 27)
-    (joint-exploder-method-28 (_type_ joint-exploder-list) none 28)
+    (joint-exploder-method-20 (_type_ joint-exploder-list int) int)
+    (joint-exploder-method-21 (_type_ joint-exploder-list joint-exploder-joint) none)
+    (joint-exploder-method-22 (_type_ joint-exploder-list) symbol)
+    (joint-exploder-method-23 (_type_) symbol)
+    (joint-exploder-method-24 (_type_ joint-exploder-list int) int)
+    (joint-exploder-method-25 (_type_ joint-exploder-list) symbol)
+    (joint-exploder-method-26 (_type_ joint-exploder-list int) int)
+    (joint-exploder-method-27 (_type_ joint-exploder-list int) joint-exploder-list)
+    (joint-exploder-method-28 (_type_ joint-exploder-list) none)
     )
   (:states
     joint-exploder-shatter
@@ -121,7 +99,7 @@
   )
 
 
-(defmethod asize-of joint-exploder-joints ((this joint-exploder-joints))
+(defmethod asize-of ((this joint-exploder-joints))
   (the-as int (+ (-> this type size) (* 176 (-> this num-joints))))
   )
 
@@ -157,7 +135,7 @@
   (none)
   )
 
-(defmethod joint-exploder-method-24 joint-exploder ((this joint-exploder) (arg0 joint-exploder-list) (arg1 int))
+(defmethod joint-exploder-method-24 ((this joint-exploder) (arg0 joint-exploder-list) (arg1 int))
   (let ((v0-0 (joint-exploder-method-26 this arg0 arg1)))
     (let* ((v1-1 (-> this joints))
            (v1-2 (-> v1-1 joint arg1))
@@ -171,7 +149,7 @@
     )
   )
 
-(defmethod joint-exploder-method-26 joint-exploder ((this joint-exploder) (arg0 joint-exploder-list) (arg1 int))
+(defmethod joint-exploder-method-26 ((this joint-exploder) (arg0 joint-exploder-list) (arg1 int))
   (let* ((v1-0 (-> this joints))
          (a2-1 (-> v1-0 joint arg1))
          (a0-4 (-> a2-1 prev))
@@ -202,7 +180,7 @@
     )
   )
 
-(defmethod joint-exploder-method-20 joint-exploder ((this joint-exploder) (arg0 joint-exploder-list) (arg1 int))
+(defmethod joint-exploder-method-20 ((this joint-exploder) (arg0 joint-exploder-list) (arg1 int))
   (let* ((v1-0 (-> this joints))
          (a3-0 (-> v1-0 joint arg1))
          (a0-4 (-> arg0 head))
@@ -217,7 +195,7 @@
     )
   )
 
-(defmethod joint-exploder-method-21 joint-exploder ((this joint-exploder) (arg0 joint-exploder-list) (arg1 joint-exploder-joint))
+(defmethod joint-exploder-method-21 ((this joint-exploder) (arg0 joint-exploder-list) (arg1 joint-exploder-joint))
   (let ((a1-1 (-> arg1 mat vector 3)))
     (cond
       ((-> arg0 bbox-valid?)
@@ -234,7 +212,7 @@
   (none)
   )
 
-(defmethod joint-exploder-method-27 joint-exploder ((this joint-exploder) (arg0 joint-exploder-list) (arg1 int))
+(defmethod joint-exploder-method-27 ((this joint-exploder) (arg0 joint-exploder-list) (arg1 int))
   (local-vars (sv-16 int) (sv-32 int) (sv-48 int))
   (let ((s4-0 (the-as joint-exploder-list #f)))
     (let ((v1-0 1))
@@ -331,7 +309,7 @@
     )
   )
 
-(defmethod joint-exploder-method-28 joint-exploder ((this joint-exploder) (arg0 joint-exploder-list))
+(defmethod joint-exploder-method-28 ((this joint-exploder) (arg0 joint-exploder-list))
   (when (and (-> arg0 bbox-valid?) (>= (-> arg0 head) 0))
     (cond
       ((< 20480.0 (- (-> arg0 bbox max x) (-> arg0 bbox min x)))
@@ -363,7 +341,7 @@
   (none)
   )
 
-(defmethod joint-exploder-method-25 joint-exploder ((this joint-exploder) (arg0 joint-exploder-list))
+(defmethod joint-exploder-method-25 ((this joint-exploder) (arg0 joint-exploder-list))
   (set! (-> arg0 bbox-valid?) #f)
   (set! (-> arg0 pre-moved?) #t)
   (let ((s4-0 (-> this joints))
@@ -406,7 +384,7 @@
   #f
   )
 
-(defmethod joint-exploder-method-22 joint-exploder ((this joint-exploder) (arg0 joint-exploder-list))
+(defmethod joint-exploder-method-22 ((this joint-exploder) (arg0 joint-exploder-list))
   (fill-using-bounding-box
     *collide-cache*
     (-> arg0 bbox)
@@ -526,7 +504,7 @@
   :post ja-post
   )
 
-(defmethod joint-exploder-method-23 joint-exploder ((this joint-exploder))
+(defmethod joint-exploder-method-23 ((this joint-exploder))
   (let ((gp-0 (-> this joints)))
     (dotimes (s4-0 (-> gp-0 num-joints))
       (let ((v1-2 (-> this static-params joints s4-0))
@@ -622,7 +600,7 @@
     )
   )
 
-(defmethod relocate joint-exploder ((this joint-exploder) (arg0 int))
+(defmethod relocate ((this joint-exploder) (arg0 int))
   (if (nonzero? (-> this joints))
       (&+! (-> this joints) arg0)
       )

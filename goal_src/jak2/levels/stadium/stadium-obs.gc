@@ -11,10 +11,6 @@
 
 (deftype water-anim-stadium (water-anim)
   ()
-  :heap-base #x80
-  :method-count-assert 29
-  :size-assert         #x100
-  :flag-assert         #x1d00800100
   )
 
 
@@ -32,7 +28,7 @@
         )
 
 ;; WARN: Return type mismatch ripple-wave-set vs none.
-(defmethod init-water! water-anim-stadium ((this water-anim-stadium))
+(defmethod init-water! ((this water-anim-stadium))
   "Initialize a [[water-anim]]'s default settings, this may include applying a [[riple-control]]"
   (let ((t9-0 (method-of-type water-anim init-water!)))
     (t9-0 this)
@@ -50,12 +46,8 @@
 
 (deftype dummy-vehicle (process-drawable)
   ()
-  :heap-base #x50
-  :method-count-assert 21
-  :size-assert         #xc8
-  :flag-assert         #x15005000c8
-  (:methods
-    (idle () _type_ :state 20)
+  (:state-methods
+    idle
     )
   )
 
@@ -72,7 +64,7 @@
   )
 
 ;; WARN: Return type mismatch object vs none.
-(defmethod init-from-entity! dummy-vehicle ((this dummy-vehicle) (arg0 entity-actor))
+(defmethod init-from-entity! ((this dummy-vehicle) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
 - stack size
@@ -158,12 +150,8 @@ This commonly includes things such as:
 
 (deftype gar-curtain (process-drawable)
   ()
-  :heap-base #x50
-  :method-count-assert 21
-  :size-assert         #xc8
-  :flag-assert         #x15005000c8
-  (:methods
-    (idle () _type_ :state 20)
+  (:state-methods
+    idle
     )
   )
 
@@ -184,7 +172,7 @@ This commonly includes things such as:
   )
 
 ;; WARN: Return type mismatch object vs none.
-(defmethod init-from-entity! gar-curtain ((this gar-curtain) (arg0 entity-actor))
+(defmethod init-from-entity! ((this gar-curtain) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
 - stack size
@@ -252,29 +240,25 @@ This commonly includes things such as:
   )
 
 (deftype rift-rider (rigid-body-object)
-  ((escort-actor            entity-actor 2         :offset-assert 272)
-   (escort-force            vector       2 :inline :offset-assert 288)
-   (brutter-balloon-actor   entity-actor           :offset-assert 320)
-   (path-pos                float                  :offset-assert 324)
-   (dest-pos                vector       :inline   :offset-assert 336)
-   (speed                   float                  :offset-assert 352)
-   (height                  float                  :offset-assert 356)
-   (init-height             float                  :offset-assert 360)
-   (battle-entity-triggered int32                  :offset-assert 364)
-   (battle-info-index       int32                  :offset-assert 368)
-   (sound-id                sound-id               :offset-assert 372)
-   (hover-volume            float                  :offset-assert 376)
+  ((escort-actor             entity-actor  2)
+   (escort-force             vector        2 :inline)
+   (brutter-balloon-actor    entity-actor)
+   (path-pos                 float)
+   (dest-pos                 vector        :inline)
+   (speed                    float)
+   (height                   float)
+   (init-height              float)
+   (battle-entity-triggered  int32)
+   (battle-info-index        int32)
+   (sound-id                 sound-id)
+   (hover-volume             float)
    )
-  :heap-base #x100
-  :method-count-assert 58
-  :size-assert         #x17c
-  :flag-assert         #x3a0100017c
-  (:methods
-    (defend-stadium-move () _type_ :state 53)
-    (defend-stadium-die () _type_ :state 54)
-    (defend-stadium-explode () _type_ :state 55)
-    (defend-stadium-land () _type_ :state 56)
-    (defend-stadium-complete () _type_ :state 57)
+  (:state-methods
+    defend-stadium-move
+    defend-stadium-die
+    defend-stadium-explode
+    defend-stadium-land
+    defend-stadium-complete
     )
   (:states
     defend-stadium-wait
@@ -321,12 +305,9 @@ This commonly includes things such as:
         )
 
 (deftype rift-rider-battle-info (structure)
-  ((path-pos     float  :offset-assert   0)
-   (entity-index int32  :offset-assert   4)
+  ((path-pos      float)
+   (entity-index  int32)
    )
-  :method-count-assert 9
-  :size-assert         #x8
-  :flag-assert         #x900000008
   )
 
 
@@ -568,7 +549,7 @@ This commonly includes things such as:
   (-> arg0 status)
   )
 
-(defmethod rigid-body-object-method-29 rift-rider ((this rift-rider) (arg0 float))
+(defmethod rigid-body-object-method-29 ((this rift-rider) (arg0 float))
   (let ((s5-0 (new 'stack-no-clear 'vector))
         (gp-0 (new 'stack-no-clear 'vector))
         )
@@ -941,7 +922,7 @@ This commonly includes things such as:
     )
   )
 
-(defmethod rigid-body-object-method-45 rift-rider ((this rift-rider) (arg0 rigid-body-impact))
+(defmethod rigid-body-object-method-45 ((this rift-rider) (arg0 rigid-body-impact))
   (if (< 40960.0 (-> arg0 impulse))
       (sound-play "rift-fall")
       )
@@ -950,7 +931,7 @@ This commonly includes things such as:
   )
 
 ;; WARN: Return type mismatch object vs none.
-(defmethod rigid-body-object-method-34 rift-rider ((this rift-rider))
+(defmethod rigid-body-object-method-34 ((this rift-rider))
   (cond
     ((nonzero? (-> this path))
      (set! (-> this part) (create-launch-control (-> *part-group-id-table* 902) this))
@@ -964,7 +945,7 @@ This commonly includes things such as:
   (none)
   )
 
-(defmethod allocate-and-init-cshape rift-rider ((this rift-rider))
+(defmethod allocate-and-init-cshape ((this rift-rider))
   (let ((s5-0 (new 'process 'collide-shape-moving this (collide-list-enum hit-by-player))))
     (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s5-0 reaction) cshape-reaction-default)
@@ -1010,13 +991,13 @@ This commonly includes things such as:
   (none)
   )
 
-(defmethod deactivate rift-rider ((this rift-rider))
+(defmethod deactivate ((this rift-rider))
   (sound-stop (-> this sound-id))
   (call-parent-method this)
   (none)
   )
 
-(defmethod init-skel-and-rigid-body rift-rider ((this rift-rider))
+(defmethod init-skel-and-rigid-body ((this rift-rider))
   (initialize-skeleton
     this
     (the-as skeleton-group (art-group-get-by-name *level* "skel-rift-rider-no-lift" (the-as (pointer uint32) #f)))
@@ -1056,12 +1037,8 @@ This commonly includes things such as:
 
 (deftype spotlight (process-drawable)
   ()
-  :heap-base #x50
-  :method-count-assert 21
-  :size-assert         #xc8
-  :flag-assert         #x15005000c8
-  (:methods
-    (idle () _type_ :state 20)
+  (:state-methods
+    idle
     )
   )
 
@@ -1082,7 +1059,7 @@ This commonly includes things such as:
   )
 
 ;; WARN: Return type mismatch object vs none.
-(defmethod init-from-entity! spotlight ((this spotlight) (arg0 entity-actor))
+(defmethod init-from-entity! ((this spotlight) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
 - stack size
@@ -1108,15 +1085,11 @@ This commonly includes things such as:
 
 (deftype gar-door (com-airlock)
   ()
-  :heap-base #x100
-  :method-count-assert 28
-  :size-assert         #x174
-  :flag-assert         #x1c01000174
   )
 
 
 ;; WARN: Return type mismatch object vs none.
-(defmethod init-from-entity! gar-door ((this gar-door) (arg0 entity-actor))
+(defmethod init-from-entity! ((this gar-door) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
 - stack size
@@ -1286,50 +1259,48 @@ This commonly includes things such as:
 (define *stad-samos-lightning-joint-tbl* (new 'static 'boxed-array :type int32 14 15 16 18 19 20 22 23))
 
 (deftype stad-samos (process-focusable)
-  ((root                      collide-shape-moving         :override)
-   (rift-rider-actor          entity-actor                 :offset-assert 204)
-   (lightning                 handle               4       :offset-assert 208)
-   (speed                     float                        :offset-assert 240)
-   (observed-speed            float                        :offset-assert 244)
-   (cquery-timer              time-frame                   :offset-assert 248)
-   (hit-dir                   vector               :inline :offset-assert 256)
-   (hit-points                float                        :offset-assert 272)
-   (max-hit-points            float                        :offset-assert 276)
-   (incoming-attack-id        uint32                       :offset-assert 280)
-   (falling?                  symbol                       :offset-assert 284)
-   (lightning-on?             symbol                       :offset-assert 288)
-   (enable-move?              symbol                       :offset-assert 292)
-   (focus-disable-timer       time-frame                   :offset-assert 296)
-   (stand-anim                int32                        :offset-assert 304)
-   (walk-anim                 int32                        :offset-assert 308)
-   (raise-ship-anim           int32                        :offset-assert 312)
-   (knocked-back-anim         int32                        :offset-assert 316)
-   (knocked-back-land-anim    int32                        :offset-assert 320)
-   (knocked-forward-anim      int32                        :offset-assert 324)
-   (knocked-forward-land-anim int32                        :offset-assert 328)
-   (death-anim                int32                        :offset-assert 332)
-   (death-end-anim            int32                        :offset-assert 336)
-   (knocked-anim              int32                        :offset-assert 340)
-   (knocked-land-anim         int32                        :offset-assert 344)
-   (hud                       handle                       :offset-assert 352)
-   (hud-bot-index             int32                        :offset-assert 360)
-   (rift-rider-joint-offset   int32                        :offset-assert 364)
-   (hand-joint                int32                        :offset-assert 368)
+  ((root                       collide-shape-moving :override)
+   (rift-rider-actor           entity-actor)
+   (lightning                  handle                4)
+   (speed                      float)
+   (observed-speed             float)
+   (cquery-timer               time-frame)
+   (hit-dir                    vector                :inline)
+   (hit-points                 float)
+   (max-hit-points             float)
+   (incoming-attack-id         uint32)
+   (falling?                   symbol)
+   (lightning-on?              symbol)
+   (enable-move?               symbol)
+   (focus-disable-timer        time-frame)
+   (stand-anim                 int32)
+   (walk-anim                  int32)
+   (raise-ship-anim            int32)
+   (knocked-back-anim          int32)
+   (knocked-back-land-anim     int32)
+   (knocked-forward-anim       int32)
+   (knocked-forward-land-anim  int32)
+   (death-anim                 int32)
+   (death-end-anim             int32)
+   (knocked-anim               int32)
+   (knocked-land-anim          int32)
+   (hud                        handle)
+   (hud-bot-index              int32)
+   (rift-rider-joint-offset    int32)
+   (hand-joint                 int32)
    )
-  :heap-base #x100
-  :method-count-assert 36
-  :size-assert         #x174
-  :flag-assert         #x2401000174
+  (:state-methods
+    idle
+    raise-rift-rider
+    move-rift-rider
+    hit
+    die
+    )
   (:methods
-    (idle () _type_ :state 27)
-    (raise-rift-rider () _type_ :state 28)
-    (move-rift-rider () _type_ :state 29)
-    (hit () _type_ :state 30)
-    (die () _type_ :state 31)
-    (init! (_type_) none 32)
-    (get-position (_type_) symbol 33)
-    (spawn-lightning (_type_) none 34)
-    (kill-lightning (_type_) none 35)
+    (init! (_type_) none)
+    (get-position (_type_) symbol)
+    (spawn-lightning (_type_) none)
+    (kill-lightning (_type_) none)
     )
   )
 
@@ -1917,12 +1888,12 @@ This commonly includes things such as:
   :post stad-samos-post
   )
 
-(defmethod get-position stad-samos ((this stad-samos))
+(defmethod get-position ((this stad-samos))
   'right
   )
 
 ;; WARN: Return type mismatch symbol vs none.
-(defmethod spawn-lightning stad-samos ((this stad-samos))
+(defmethod spawn-lightning ((this stad-samos))
   (let* ((v1-0 (-> this rift-rider-actor))
          (s5-0 (if v1-0
                    (-> v1-0 extra process)
@@ -1955,7 +1926,7 @@ This commonly includes things such as:
   )
 
 ;; WARN: Return type mismatch symbol vs none.
-(defmethod kill-lightning stad-samos ((this stad-samos))
+(defmethod kill-lightning ((this stad-samos))
   (dotimes (s5-0 4)
     (send-event (handle->process (-> this lightning s5-0)) 'die)
     )
@@ -1963,7 +1934,7 @@ This commonly includes things such as:
   (none)
   )
 
-(defmethod deactivate stad-samos ((this stad-samos))
+(defmethod deactivate ((this stad-samos))
   (if (valid? (-> this hud) (the-as type #f) "" #t 0)
       (send-event (handle->process (-> this hud)) 'hide-and-die)
       )
@@ -1973,7 +1944,7 @@ This commonly includes things such as:
   )
 
 ;; WARN: Return type mismatch object vs none.
-(defmethod init-from-entity! stad-samos ((this stad-samos) (arg0 entity-actor))
+(defmethod init-from-entity! ((this stad-samos) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
 - stack size
@@ -2067,7 +2038,7 @@ This commonly includes things such as:
               :shadow samos-shadow-mg
               )
 
-(defmethod init! stad-samos ((this stad-samos))
+(defmethod init! ((this stad-samos))
   (initialize-skeleton
     this
     (the-as skeleton-group (art-group-get-by-name *level* "skel-stad-samos" (the-as (pointer uint32) #f)))
@@ -2092,10 +2063,6 @@ This commonly includes things such as:
 
 (deftype stad-youngsamos (stad-samos)
   ()
-  :heap-base #x100
-  :method-count-assert 36
-  :size-assert         #x174
-  :flag-assert         #x2401000174
   )
 
 
@@ -2168,7 +2135,7 @@ This commonly includes things such as:
     )
   )
 
-(defmethod init! stad-youngsamos ((this stad-youngsamos))
+(defmethod init! ((this stad-youngsamos))
   (initialize-skeleton
     this
     (the-as skeleton-group (art-group-get-by-name *level* "skel-stad-youngsamos" (the-as (pointer uint32) #f)))
@@ -2190,7 +2157,7 @@ This commonly includes things such as:
   (none)
   )
 
-(defmethod get-position stad-youngsamos ((this stad-youngsamos))
+(defmethod get-position ((this stad-youngsamos))
   'left
   )
 
@@ -2200,31 +2167,29 @@ This commonly includes things such as:
               )
 
 (deftype stadium-barrier (process-drawable)
-  ((color  vector :inline :offset-assert 208)
-   (flash  vector :inline :offset-assert 224)
-   (flashf float          :offset-assert 240)
-   (colorf float          :offset-assert 244)
+  ((color   vector  :inline)
+   (flash   vector  :inline)
+   (flashf  float)
+   (colorf  float)
    )
-  :heap-base #x80
-  :method-count-assert 24
-  :size-assert         #xf8
-  :flag-assert         #x18008000f8
+  (:state-methods
+    idle
+    die
+    )
   (:methods
-    (idle () _type_ :state 20)
-    (die () _type_ :state 21)
-    (stadium-barrier-method-22 (_type_) none 22)
-    (stadium-barrier-method-23 (_type_) none 23)
+    (stadium-barrier-method-22 (_type_) none)
+    (stadium-barrier-method-23 (_type_) none)
     )
   )
 
 
-(defmethod stadium-barrier-method-22 stadium-barrier ((this stadium-barrier))
+(defmethod stadium-barrier-method-22 ((this stadium-barrier))
   (set! (-> this root) (new 'process 'trsqv))
   0
   (none)
   )
 
-(defmethod stadium-barrier-method-23 stadium-barrier ((this stadium-barrier))
+(defmethod stadium-barrier-method-23 ((this stadium-barrier))
   (initialize-skeleton
     this
     (the-as skeleton-group (art-group-get-by-name *level* "skel-stadium-barrier" (the-as (pointer uint32) #f)))
@@ -2268,7 +2233,7 @@ This commonly includes things such as:
   )
 
 ;; WARN: Return type mismatch entity-perm-status vs none.
-(defmethod init-from-entity! stadium-barrier ((this stadium-barrier) (arg0 entity-actor))
+(defmethod init-from-entity! ((this stadium-barrier) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
 - stack size
@@ -2313,25 +2278,23 @@ This commonly includes things such as:
               )
 
 (deftype stad-force-field (process-focusable)
-  ((incoming-attack-id uint32             :offset-assert 204)
-   (plane              plane      :inline :offset-assert 208)
-   (field              handle             :offset-assert 224)
-   (ripple             handle             :offset-assert 232)
-   (next-message-time  time-frame         :offset-assert 240)
+  ((incoming-attack-id  uint32)
+   (plane               plane  :inline)
+   (field               handle)
+   (ripple              handle)
+   (next-message-time   time-frame)
    )
-  :heap-base #x80
-  :method-count-assert 30
-  :size-assert         #xf8
-  :flag-assert         #x1e008000f8
+  (:state-methods
+    idle
+    )
   (:methods
-    (idle () _type_ :state 27)
-    (stad-force-field-method-28 (_type_) none 28)
-    (stad-force-field-method-29 (_type_ touching-shapes-entry) int 29)
+    (stad-force-field-method-28 (_type_) none)
+    (stad-force-field-method-29 (_type_ touching-shapes-entry) int)
     )
   )
 
 
-(defmethod stad-force-field-method-29 stad-force-field ((this stad-force-field) (arg0 touching-shapes-entry))
+(defmethod stad-force-field-method-29 ((this stad-force-field) (arg0 touching-shapes-entry))
   (local-vars
     (sv-256 entity-actor)
     (sv-272 collide-tri-result)
@@ -2558,11 +2521,11 @@ This commonly includes things such as:
   :code sleep-code
   )
 
-(defmethod run-logic? stad-force-field ((this stad-force-field))
+(defmethod run-logic? ((this stad-force-field))
   #t
   )
 
-(defmethod stad-force-field-method-28 stad-force-field ((this stad-force-field))
+(defmethod stad-force-field-method-28 ((this stad-force-field))
   (let ((s5-0 (new 'process 'collide-shape-moving this (collide-list-enum usually-hit-by-player))))
     (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s5-0 reaction) cshape-reaction-default)
@@ -2605,7 +2568,7 @@ This commonly includes things such as:
   )
 
 ;; WARN: Return type mismatch object vs none.
-(defmethod init-from-entity! stad-force-field ((this stad-force-field) (arg0 entity-actor))
+(defmethod init-from-entity! ((this stad-force-field) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
 - stack size
@@ -2634,15 +2597,11 @@ This commonly includes things such as:
 
 (deftype stad-c-force-field (stad-force-field)
   ()
-  :heap-base #x80
-  :method-count-assert 30
-  :size-assert         #xf8
-  :flag-assert         #x1e008000f8
   )
 
 
 ;; WARN: Return type mismatch object vs none.
-(defmethod init-from-entity! stad-c-force-field ((this stad-c-force-field) (arg0 entity-actor))
+(defmethod init-from-entity! ((this stad-c-force-field) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
 - stack size
@@ -2671,15 +2630,11 @@ This commonly includes things such as:
 
 (deftype stad-d-force-field (stad-force-field)
   ()
-  :heap-base #x80
-  :method-count-assert 30
-  :size-assert         #xf8
-  :flag-assert         #x1e008000f8
   )
 
 
 ;; WARN: Return type mismatch object vs none.
-(defmethod init-from-entity! stad-d-force-field ((this stad-d-force-field) (arg0 entity-actor))
+(defmethod init-from-entity! ((this stad-d-force-field) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
 - stack size
@@ -2703,12 +2658,8 @@ This commonly includes things such as:
 
 (deftype stad-keira (process-drawable)
   ()
-  :heap-base #x50
-  :method-count-assert 21
-  :size-assert         #xc8
-  :flag-assert         #x15005000c8
-  (:methods
-    (idle () _type_ :state 20)
+  (:state-methods
+    idle
     )
   )
 
@@ -2799,12 +2750,8 @@ This commonly includes things such as:
 
 (deftype stad-brutter (process-drawable)
   ()
-  :heap-base #x50
-  :method-count-assert 21
-  :size-assert         #xc8
-  :flag-assert         #x15005000c8
-  (:methods
-    (idle () _type_ :state 20)
+  (:state-methods
+    idle
     )
   )
 
@@ -2893,12 +2840,8 @@ This commonly includes things such as:
 
 (deftype brutter-balloon (process-drawable)
   ()
-  :heap-base #x50
-  :method-count-assert 21
-  :size-assert         #xc8
-  :flag-assert         #x15005000c8
-  (:methods
-    (idle () _type_ :state 20)
+  (:state-methods
+    idle
     )
   )
 
@@ -2915,7 +2858,7 @@ This commonly includes things such as:
   )
 
 ;; WARN: Return type mismatch object vs none.
-(defmethod init-from-entity! brutter-balloon ((this brutter-balloon) (arg0 entity-actor))
+(defmethod init-from-entity! ((this brutter-balloon) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
 - stack size
@@ -3138,7 +3081,7 @@ This commonly includes things such as:
     )
   )
 
-(defmethod draw hud-samos-old ((this hud-samos-old))
+(defmethod draw ((this hud-samos-old))
   (set-hud-piece-position!
     (-> this sprites 2)
     (the int (+ 30.0 (* -130.0 (-> this offset))))
@@ -3153,14 +3096,14 @@ This commonly includes things such as:
   (none)
   )
 
-(defmethod update-values hud-samos-old ((this hud-samos-old))
+(defmethod update-values ((this hud-samos-old))
   (set! (-> this values 0 target) (the int (* 100.0 (-> *game-info* bot-health 1))))
   ((method-of-type hud update-values) this)
   0
   (none)
   )
 
-(defmethod init-callback hud-samos-old ((this hud-samos-old))
+(defmethod init-callback ((this hud-samos-old))
   (set! (-> this gui-id)
         (add-process *gui-control* this (gui-channel hud-center-left) (gui-action hidden) (-> this name) 81920.0 0)
         )

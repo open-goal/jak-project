@@ -3,18 +3,15 @@
 
 ;; definition of type collide-tri-result
 (deftype collide-tri-result (structure)
-  ((vertex    vector      3 :inline :offset-assert   0)
-   (intersect vector      :inline   :offset-assert  48)
-   (normal    vector      :inline   :offset-assert  64)
-   (pat       pat-surface           :offset-assert  80)
+  ((vertex     vector  3 :inline)
+   (intersect  vector  :inline)
+   (normal     vector  :inline)
+   (pat        pat-surface)
    )
-  :method-count-assert 9
-  :size-assert         #x54
-  :flag-assert         #x900000054
   )
 
 ;; definition for method 3 of type collide-tri-result
-(defmethod inspect collide-tri-result ((this collide-tri-result))
+(defmethod inspect ((this collide-tri-result))
   (format #t "[~8x] ~A~%" this 'collide-tri-result)
   (format #t "~Tvertex[3] @ #x~X~%" (-> this vertex))
   (format #t "~Tintersect: ~`vector`P~%" (-> this intersect))
@@ -25,18 +22,15 @@
 
 ;; definition of type collide-mesh-tri
 (deftype collide-mesh-tri (structure)
-  ((vertex-index uint8       3 :offset-assert   0)
-   (unused       uint8         :offset-assert   3)
-   (pat          pat-surface   :offset-assert   4)
+  ((vertex-index  uint8  3)
+   (unused        uint8)
+   (pat           pat-surface)
    )
   :pack-me
-  :method-count-assert 9
-  :size-assert         #x8
-  :flag-assert         #x900000008
   )
 
 ;; definition for method 3 of type collide-mesh-tri
-(defmethod inspect collide-mesh-tri ((this collide-mesh-tri))
+(defmethod inspect ((this collide-mesh-tri))
   (format #t "[~8x] ~A~%" this 'collide-mesh-tri)
   (format #t "~Tvertex-index[3] @ #x~X~%" (-> this vertex-index))
   (format #t "~Tunused: ~D~%" (-> this unused))
@@ -46,28 +40,25 @@
 
 ;; definition of type collide-mesh
 (deftype collide-mesh (basic)
-  ((joint-id    int32                           :offset-assert   4)
-   (num-tris    uint32                          :offset-assert   8)
-   (num-verts   uint32                          :offset-assert  12)
-   (vertex-data (inline-array vector)           :offset-assert  16)
-   (tris        collide-mesh-tri      1 :inline :offset         32)
+  ((joint-id     int32)
+   (num-tris     uint32)
+   (num-verts    uint32)
+   (vertex-data  (inline-array vector))
+   (tris         collide-mesh-tri  1 :inline :offset  32)
    )
-  :method-count-assert 16
-  :size-assert         #x28
-  :flag-assert         #x1000000028
   (:methods
-    (debug-draw-tris (_type_ process-drawable int) none 9)
-    (overlap-test (_type_ collide-mesh-cache-tri vector) symbol 10)
-    (should-push-away-test (_type_ collide-mesh-cache-tri collide-tri-result vector float) float 11)
-    (sphere-on-platform-test (_type_ collide-mesh-cache-tri collide-tri-result vector float) float 12)
-    (populate-cache! (_type_ collide-mesh-cache-tri matrix) none 13)
-    (collide-mesh-math-1 (_type_ object object) none 14)
-    (collide-mesh-math-2 (_type_ object object object) none 15)
+    (debug-draw-tris (_type_ process-drawable int) none)
+    (overlap-test (_type_ collide-mesh-cache-tri vector) symbol)
+    (should-push-away-test (_type_ collide-mesh-cache-tri collide-tri-result vector float) float)
+    (sphere-on-platform-test (_type_ collide-mesh-cache-tri collide-tri-result vector float) float)
+    (populate-cache! (_type_ collide-mesh-cache-tri matrix) none)
+    (collide-mesh-math-1 (_type_ object object) none)
+    (collide-mesh-math-2 (_type_ object object object) none)
     )
   )
 
 ;; definition for method 3 of type collide-mesh
-(defmethod inspect collide-mesh ((this collide-mesh))
+(defmethod inspect ((this collide-mesh))
   (format #t "[~8x] ~A~%" this (-> this type))
   (format #t "~Tjoint-id: ~D~%" (-> this joint-id))
   (format #t "~Tnum-tris: ~D~%" (-> this num-tris))
@@ -79,23 +70,20 @@
 
 ;; definition of type collide-mesh-cache
 (deftype collide-mesh-cache (basic)
-  ((used-size uint32       :offset-assert   4)
-   (max-size  uint32       :offset-assert   8)
-   (id        uint64       :offset-assert  16)
-   (data      uint8  40960 :offset         32)
+  ((used-size  uint32)
+   (max-size   uint32)
+   (id         uint64)
+   (data       uint8  40960 :offset  32)
    )
-  :method-count-assert 12
-  :size-assert         #xa020
-  :flag-assert         #xc0000a020
   (:methods
-    (allocate! (_type_ int) int 9)
-    (is-id? (_type_ int) symbol 10)
-    (next-id! (_type_) uint 11)
+    (allocate! (_type_ int) int)
+    (is-id? (_type_ int) symbol)
+    (next-id! (_type_) uint)
     )
   )
 
 ;; definition for method 3 of type collide-mesh-cache
-(defmethod inspect collide-mesh-cache ((this collide-mesh-cache))
+(defmethod inspect ((this collide-mesh-cache))
   (format #t "[~8x] ~A~%" this (-> this type))
   (format #t "~Tused-size: ~D~%" (-> this used-size))
   (format #t "~Tmax-size: ~D~%" (-> this max-size))
@@ -108,24 +96,21 @@
 ;; ERROR: function was not converted to expressions. Cannot decompile.
 
 ;; definition for method 10 of type collide-mesh-cache
-(defmethod is-id? collide-mesh-cache ((this collide-mesh-cache) (arg0 int))
+(defmethod is-id? ((this collide-mesh-cache) (arg0 int))
   (= (-> this id) arg0)
   )
 
 ;; definition of type collide-mesh-cache-tri
 (deftype collide-mesh-cache-tri (structure)
-  ((vertex vector         3 :inline :offset-assert   0)
-   (normal vector         :inline   :offset-assert  48)
-   (bbox4w bounding-box4w :inline   :offset-assert  64)
-   (pat    pat-surface              :offset         60)
+  ((vertex  vector          3 :inline)
+   (normal  vector          :inline)
+   (bbox4w  bounding-box4w  :inline)
+   (pat     pat-surface     :overlay-at (-> normal w))
    )
-  :method-count-assert 9
-  :size-assert         #x60
-  :flag-assert         #x900000060
   )
 
 ;; definition for method 3 of type collide-mesh-cache-tri
-(defmethod inspect collide-mesh-cache-tri ((this collide-mesh-cache-tri))
+(defmethod inspect ((this collide-mesh-cache-tri))
   (format #t "[~8x] ~A~%" this 'collide-mesh-cache-tri)
   (format #t "~Tvertex[3] @ #x~X~%" (-> this vertex))
   (format #t "~Tnormal: ~`vector`P~%" (-> this normal))

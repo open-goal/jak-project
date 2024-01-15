@@ -3,17 +3,14 @@
 
 ;; definition of type twist-joint
 (deftype twist-joint (structure)
-  ((ry      float  :offset-assert   0)
-   (max-dry float  :offset-assert   4)
+  ((ry       float)
+   (max-dry  float)
    )
   :allow-misaligned
-  :method-count-assert 9
-  :size-assert         #x8
-  :flag-assert         #x900000008
   )
 
 ;; definition for method 3 of type twist-joint
-(defmethod inspect twist-joint ((this twist-joint))
+(defmethod inspect ((this twist-joint))
   (format #t "[~8x] ~A~%" this 'twist-joint)
   (format #t "~Try: ~f~%" (-> this ry))
   (format #t "~Tmax-dry: ~f~%" (-> this max-dry))
@@ -22,32 +19,29 @@
 
 ;; definition of type twister
 (deftype twister (basic)
-  ((num-joints   int32                        :offset-assert   4)
-   (first-joint  int32                        :offset-assert   8)
-   (last-joint   int32                        :offset-assert  12)
-   (something    uint16                       :offset         12)
-   (max-speed    float                        :offset-assert  16)
-   (smoothing    float                        :offset-assert  20)
-   (min-dist     float                        :offset-assert  24)
-   (target       float                        :offset-assert  28)
-   (ry           float                        :offset-assert  32)
-   (max-speed-ry float                        :offset-assert  36)
-   (data         twist-joint :inline :dynamic :offset-assert  40)
+  ((num-joints    int32)
+   (first-joint   int32)
+   (last-joint    int32)
+   (something     uint16       :overlay-at last-joint)
+   (max-speed     float)
+   (smoothing     float)
+   (min-dist      float)
+   (target        float)
+   (ry            float)
+   (max-speed-ry  float)
+   (data          twist-joint  :inline :dynamic)
    )
-  :method-count-assert 13
-  :size-assert         #x28
-  :flag-assert         #xd00000028
   (:methods
-    (new (symbol type int int float float float float) _type_ 0)
-    (twister-method-9 (_type_ int int float) none 9)
-    (set-target! (_type_ float) none 10)
-    (twister-method-11 (_type_) none 11)
-    (twister-method-12 (_type_ process-drawable) none 12)
+    (new (symbol type int int float float float float) _type_)
+    (twister-method-9 (_type_ int int float) none)
+    (set-target! (_type_ float) none)
+    (twister-method-11 (_type_) none)
+    (twister-method-12 (_type_ process-drawable) none)
     )
   )
 
 ;; definition for method 3 of type twister
-(defmethod inspect twister ((this twister))
+(defmethod inspect ((this twister))
   (format #t "[~8x] ~A~%" this (-> this type))
   (format #t "~Tnum-joints: ~D~%" (-> this num-joints))
   (format #t "~Tfirst-joint: ~D~%" (-> this first-joint))
@@ -93,13 +87,13 @@
   )
 
 ;; definition for method 5 of type twister
-(defmethod asize-of twister ((this twister))
+(defmethod asize-of ((this twister))
   (+ (* (-> this num-joints) 16) 40)
   )
 
 ;; definition for method 9 of type twister
 ;; INFO: Return type mismatch int vs none.
-(defmethod twister-method-9 twister ((this twister) (arg0 int) (arg1 int) (arg2 float))
+(defmethod twister-method-9 ((this twister) (arg0 int) (arg1 int) (arg2 float))
   (let ((v1-1 (- arg0 (-> this first-joint)))
         (a1-2 (- arg1 (-> this first-joint)))
         )
@@ -114,7 +108,7 @@
 
 ;; definition for method 10 of type twister
 ;; INFO: Return type mismatch int vs none.
-(defmethod set-target! twister ((this twister) (arg0 float))
+(defmethod set-target! ((this twister) (arg0 float))
   (set! (-> this target) arg0)
   0
   (none)
@@ -122,7 +116,7 @@
 
 ;; definition for method 11 of type twister
 ;; INFO: Return type mismatch int vs none.
-(defmethod twister-method-11 twister ((this twister))
+(defmethod twister-method-11 ((this twister))
   (let* ((s5-0 (+ (-> this num-joints) -1))
          (s4-0 (-> this data s5-0))
          )
@@ -164,7 +158,7 @@
 
 ;; definition for method 12 of type twister
 ;; INFO: Return type mismatch int vs none.
-(defmethod twister-method-12 twister ((this twister) (arg0 process-drawable))
+(defmethod twister-method-12 ((this twister) (arg0 process-drawable))
   (let ((s4-0 (new 'stack-no-clear 'matrix)))
     (dotimes (s3-0 (-> this num-joints))
       (let ((s2-0 (-> arg0 node-list data (+ (-> this first-joint) s3-0) bone transform)))

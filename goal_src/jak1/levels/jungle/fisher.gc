@@ -10,14 +10,11 @@
 ;; DECOMP BEGINS
 
 (deftype fisher-bank (basic)
-  ((width      meters  :offset-assert   4)
-   (net-radius meters  :offset-assert   8)
-   (max-caught int32   :offset-assert  12)
-   (max-missed int32   :offset-assert  16)
+  ((width       meters)
+   (net-radius  meters)
+   (max-caught  int32)
+   (max-missed  int32)
    )
-  :method-count-assert 9
-  :size-assert         #x14
-  :flag-assert         #x900000014
   )
 
 
@@ -154,20 +151,17 @@
   )
 
 (deftype fisher-params (structure)
-  ((timeout         time-frame  :offset-assert   0)
-   (vel             float       :offset-assert   8)
-   (swing-min       time-frame  :offset-assert  16)
-   (swing-max       time-frame  :offset-assert  24)
-   (period          time-frame  :offset-assert  32)
-   (fish-vel        float       :offset-assert  40)
-   (bad-percent     float       :offset-assert  44)
-   (deadly-percent  float       :offset-assert  48)
-   (powerup-percent float       :offset-assert  52)
+  ((timeout          time-frame)
+   (vel              float)
+   (swing-min        time-frame)
+   (swing-max        time-frame)
+   (period           time-frame)
+   (fish-vel         float)
+   (bad-percent      float)
+   (deadly-percent   float)
+   (powerup-percent  float)
    )
   :allow-misaligned
-  :method-count-assert 9
-  :size-assert         #x38
-  :flag-assert         #x900000038
   )
 
 
@@ -715,34 +709,30 @@
         )
 
 (deftype fisher (process-taskable)
-  ((paddle-end      vector        2 :inline :offset-assert 384)
-   (paddle-pos      vector        :inline   :offset-assert 416)
-   (paddle          float                   :offset-assert 432)
-   (paddle-vel      float                   :offset-assert 436)
-   (spawner         float                   :offset-assert 440)
-   (spawner-last    float                   :offset-assert 444)
-   (spawn-time      time-frame              :offset-assert 448)
-   (turn-time       time-frame              :offset-assert 456)
-   (swing-time      time-frame              :offset-assert 464)
-   (block-time      time-frame              :offset-assert 472)
-   (block           int32                   :offset-assert 480)
-   (caught          int32                   :offset-assert 484)
-   (missed          int32                   :offset-assert 488)
-   (difficulty      int32                   :offset-assert 492)
-   (start-time      time-frame              :offset-assert 496)
-   (ambient-big-one time-frame              :offset-assert 504)
-   (ambient-steady  time-frame              :offset-assert 512)
-   (ambient-sagging time-frame              :offset-assert 520)
-   (ambient-almost  time-frame              :offset-assert 528)
-   (cheat-temp      int32                   :offset-assert 536)
-   (hard            symbol                  :offset-assert 540)
-   (training        symbol                  :offset-assert 544)
-   (params          fisher-params :inline   :offset-assert 552)
+  ((paddle-end       vector         2 :inline)
+   (paddle-pos       vector         :inline)
+   (paddle           float)
+   (paddle-vel       float)
+   (spawner          float)
+   (spawner-last     float)
+   (spawn-time       time-frame)
+   (turn-time        time-frame)
+   (swing-time       time-frame)
+   (block-time       time-frame)
+   (block            int32)
+   (caught           int32)
+   (missed           int32)
+   (difficulty       int32)
+   (start-time       time-frame)
+   (ambient-big-one  time-frame)
+   (ambient-steady   time-frame)
+   (ambient-sagging  time-frame)
+   (ambient-almost   time-frame)
+   (cheat-temp       int32)
+   (hard             symbol)
+   (training         symbol)
+   (params           fisher-params  :inline)
    )
-  :heap-base #x1f0
-  :method-count-assert 53
-  :size-assert         #x260
-  :flag-assert         #x3501f00260
   (:states
     fisher-done
     fisher-playing
@@ -751,17 +741,13 @@
 
 
 (deftype fisher-fish (process-drawable)
-  ((dir    vector :inline :offset-assert 176)
-   (offset float          :offset-assert 192)
-   (pos    float          :offset-assert 196)
-   (vel    float          :offset-assert 200)
-   (mode   basic          :offset-assert 204)
-   (size   meters         :offset-assert 208)
+  ((dir     vector  :inline)
+   (offset  float)
+   (pos     float)
+   (vel     float)
+   (mode    basic)
+   (size    meters)
    )
-  :heap-base #x70
-  :method-count-assert 20
-  :size-assert         #xd4
-  :flag-assert         #x14007000d4
   (:states
     fisher-fish-caught
     fisher-fish-die
@@ -796,10 +782,10 @@
               :shadow fisher-shadow-mg
               )
 
-(defmethod process-taskable-method-52 fisher ((this fisher))
+(defmethod process-taskable-method-52 ((this fisher))
   (let ((v1-1 (-> this draw shadow-ctrl)))
     (when v1-1
-      (let ((f0-0 (-> this root-override trans y)))
+      (let ((f0-0 (-> this root trans y)))
         (let ((a0-2 v1-1))
           (set! (-> a0-2 settings bot-plane w) (- (+ -1024.0 f0-0)))
           )
@@ -815,7 +801,7 @@
   (none)
   )
 
-(defmethod draw-npc-shadow fisher ((this fisher))
+(defmethod draw-npc-shadow ((this fisher))
   (-> this draw shadow-ctrl)
   (cond
     ((and (-> this draw shadow)
@@ -1082,7 +1068,7 @@
   (none)
   )
 
-(defmethod play-anim! fisher ((this fisher) (arg0 symbol))
+(defmethod play-anim! ((this fisher) (arg0 symbol))
   (if arg0
       (set! (-> this training) #f)
       )
@@ -1159,14 +1145,14 @@
     )
   )
 
-(defmethod get-art-elem fisher ((this fisher))
+(defmethod get-art-elem ((this fisher))
   (if (closed? (-> this tasks) (game-task jungle-fishgame) (task-status need-reminder))
       (-> this draw art-group data 7)
       (-> this draw art-group data 6)
       )
   )
 
-(defmethod process-taskable-method-38 fisher ((this fisher))
+(defmethod process-taskable-method-38 ((this fisher))
   (case (current-status (-> this tasks))
     (((task-status need-reminder-a) (task-status need-reminder))
      (go (method-of-object this query))
@@ -1181,7 +1167,7 @@
   (none)
   )
 
-(defmethod get-accept-anim fisher ((this fisher) (arg0 symbol))
+(defmethod get-accept-anim ((this fisher) (arg0 symbol))
   (when arg0
     (close-current! (-> this tasks))
     (aybabtu 2)
@@ -1194,7 +1180,7 @@
     )
   )
 
-(defmethod get-reject-anim fisher ((this fisher) (arg0 symbol))
+(defmethod get-reject-anim ((this fisher) (arg0 symbol))
   (new 'static 'spool-anim :name "fisher-reject" :index 11 :parts 2 :command-list '())
   )
 
@@ -1378,7 +1364,7 @@
     (cond
       ((and (< 0.3 f0-2) (< (+ (-> *FISHER-bank* max-caught) -30) (-> self caught)))
        (if (and (time-elapsed? (-> self ambient-almost) (seconds 10))
-                (play-ambient (-> self ambient) "FIS-TA11" #t (-> self root-override trans))
+                (play-ambient (-> self ambient) "FIS-TA11" #t (-> self root trans))
                 )
            (set-time! (-> self ambient-almost))
            )
@@ -1387,14 +1373,14 @@
        )
       ((< 0.1 f0-2)
        (if (and (time-elapsed? (-> self ambient-steady) (seconds 10))
-                (play-ambient (-> self ambient) "FIS-TA06" #t (-> self root-override trans))
+                (play-ambient (-> self ambient) "FIS-TA06" #t (-> self root trans))
                 )
            (set-time! (-> self ambient-steady))
            )
        )
       ((< (+ (-> *FISHER-bank* max-missed) -6) (-> self missed))
        (if (and (time-elapsed? (-> self ambient-sagging) (seconds 10))
-                (play-ambient (-> self ambient) "FIS-TA07" #t (-> self root-override trans))
+                (play-ambient (-> self ambient) "FIS-TA07" #t (-> self root trans))
                 )
            (set-time! (-> self ambient-sagging))
            )
@@ -1440,7 +1426,7 @@
             (cond
               ((rand-vu-percent? (-> self params powerup-percent))
                (if (and (time-elapsed? (-> self ambient-big-one) (seconds 30))
-                        (play-ambient (-> self ambient) "FIS-TA03" #t (-> self root-override trans))
+                        (play-ambient (-> self ambient) "FIS-TA03" #t (-> self root trans))
                         )
                    (set-time! (-> self ambient-big-one))
                    )
@@ -1515,7 +1501,7 @@
     (set-setting! 'ambient-volume 'rel 50.0 0)
     (send-event *target* 'reset-pickup 'eco)
     (ja-channel-set! 0)
-    (clear-collide-with-as (-> self root-override))
+    (clear-collide-with-as (-> self root))
     (process-spawn-function
       process
       (lambda :behavior fisher-fish
@@ -1548,8 +1534,8 @@
       )
     (set! (-> *camera-other-fov* data) (-> *camera-combiner* fov))
     (set! (-> *camera-other-trans* quad) (-> *camera-combiner* trans quad))
-    (set! (-> *camera-other-root* quad) (-> self root-override trans quad))
-    (restore-collide-with-as (-> self root-override))
+    (set! (-> *camera-other-root* quad) (-> self root trans quad))
+    (restore-collide-with-as (-> self root))
     (send-event *camera* 'blend-from-as-fixed)
     (send-event *camera* 'change-state *camera-base-mode* 0)
     (send-event *camera* 'clear-entity)
@@ -1666,14 +1652,14 @@
     ((-> (method-of-type process-taskable play-anim) exit)))
   )
 
-(defmethod process-taskable-method-43 fisher ((this fisher))
+(defmethod process-taskable-method-43 ((this fisher))
   (cond
     ((closed? (-> this tasks) (game-task jungle-fishgame) (task-status need-reminder))
      (when (ambient-control-method-10 (-> this ambient) (new 'stack-no-clear 'vector) (seconds 1) 122880.0 this)
        (let ((f0-2 (rand-float-gen)))
          (if (< 0.5 f0-2)
-             (play-ambient (-> this ambient) "FIS-LO03" #f (-> this root-override trans))
-             (play-ambient (-> this ambient) "FIS-LO05" #f (-> this root-override trans))
+             (play-ambient (-> this ambient) "FIS-LO03" #f (-> this root trans))
+             (play-ambient (-> this ambient) "FIS-LO05" #f (-> this root trans))
              )
          )
        )
@@ -1683,28 +1669,28 @@
         (let ((f0-5 (rand-float-gen)))
           (cond
             ((< 0.875 f0-5)
-             (play-ambient (-> this ambient) "FIS-LO01" #f (-> this root-override trans))
+             (play-ambient (-> this ambient) "FIS-LO01" #f (-> this root trans))
              )
             ((< 0.75 f0-5)
-             (play-ambient (-> this ambient) "FIS-LO04" #f (-> this root-override trans))
+             (play-ambient (-> this ambient) "FIS-LO04" #f (-> this root trans))
              )
             ((< 0.625 f0-5)
-             (play-ambient (-> this ambient) "FIS-AM01" #f (-> this root-override trans))
+             (play-ambient (-> this ambient) "FIS-AM01" #f (-> this root trans))
              )
             ((< 0.5 f0-5)
-             (play-ambient (-> this ambient) "FIS-AM02" #f (-> this root-override trans))
+             (play-ambient (-> this ambient) "FIS-AM02" #f (-> this root trans))
              )
             ((< 0.375 f0-5)
-             (play-ambient (-> this ambient) "FIS-AM03" #f (-> this root-override trans))
+             (play-ambient (-> this ambient) "FIS-AM03" #f (-> this root trans))
              )
             ((< 0.25 f0-5)
-             (play-ambient (-> this ambient) "FIS-AM04" #f (-> this root-override trans))
+             (play-ambient (-> this ambient) "FIS-AM04" #f (-> this root trans))
              )
             ((< 0.125 f0-5)
-             (play-ambient (-> this ambient) "FIS-AM05" #f (-> this root-override trans))
+             (play-ambient (-> this ambient) "FIS-AM05" #f (-> this root trans))
              )
             (else
-              (play-ambient (-> this ambient) "FIS-AM06" #f (-> this root-override trans))
+              (play-ambient (-> this ambient) "FIS-AM06" #f (-> this root trans))
               )
             )
           )
@@ -1741,13 +1727,13 @@
   :trans (behavior ()
     (when (-> self training)
       (let ((gp-0 (new-stack-vector0)))
-        (vector<-cspace! gp-0 (joint-node-index fisher-lod0-jg mainA))
+        (vector<-cspace! gp-0 (joint-node fisher-lod0-jg mainA))
         (launch-particles (-> *part-id-table* 2001) gp-0)
         (fisher-fish-water gp-0 (+ 32768.0 (vector-y-angle (-> self node-list data 75 bone transform vector 1))))
-        (vector<-cspace! gp-0 (joint-node-index fisher-lod0-jg mainB))
+        (vector<-cspace! gp-0 (joint-node fisher-lod0-jg mainB))
         (launch-particles (-> *part-id-table* 2001) gp-0)
         (fisher-fish-water gp-0 (+ 32768.0 (vector-y-angle (-> self node-list data 78 bone transform vector 1))))
-        (vector<-cspace! gp-0 (joint-node-index fisher-lod0-jg top))
+        (vector<-cspace! gp-0 (joint-node fisher-lod0-jg top))
         (launch-particles (-> *part-id-table* 828) gp-0)
         (launch-particles (-> *part-id-table* 2013) gp-0)
         (fisher-fish-water gp-0 (+ 32768.0 (vector-y-angle (-> self node-list data 80 bone transform vector 1))))
@@ -1913,7 +1899,7 @@
     )
   )
 
-(defmethod initialize-collision fisher ((this fisher) (arg0 int) (arg1 vector))
+(defmethod initialize-collision ((this fisher) (arg0 int) (arg1 vector))
   (let ((s5-0 (new 'process 'collide-shape this (collide-list-enum hit-by-player))))
     (let ((s4-0 (new 'process 'collide-shape-prim-group s5-0 (the-as uint 2) 0)))
       (set! (-> s4-0 prim-core collide-as) (collide-kind enemy))
@@ -1943,17 +1929,17 @@
       )
     (set! (-> s5-0 nav-radius) (* 0.75 (-> s5-0 root-prim local-sphere w)))
     (backup-collide-with-as s5-0)
-    (set! (-> this root-override) s5-0)
+    (set! (-> this root) s5-0)
     )
   0
   (none)
   )
 
-(defmethod target-above-threshold? fisher ((this fisher))
+(defmethod target-above-threshold? ((this fisher))
   (or (= (current-task (-> this tasks)) (game-task jungle-fishgame)) (-> this hard))
   )
 
-(defmethod init-from-entity! fisher ((this fisher) (arg0 entity-actor))
+(defmethod init-from-entity! ((this fisher) (arg0 entity-actor))
   (process-taskable-method-40 this arg0 *fisher-sg* 3 49 (new 'static 'vector :w 4096.0) 33)
   (set! (-> this tasks) (get-task-control (game-task jungle-fishgame)))
   (set! (-> this path) (new 'process 'curve-control this 'path -1000000000.0))
@@ -2059,7 +2045,7 @@
         )
       (let ((v1-35 (-> self manipy 0 node-list data)))
         (set! (-> v1-35 0 param0) cspace<-cspace+quaternion!)
-        (set! (-> v1-35 0 param1) (the-as basic (joint-node-index eichar-lod0-jg sk_rhand)))
+        (set! (-> v1-35 0 param1) (the-as basic (joint-node eichar-lod0-jg sk_rhand)))
         (set! (-> v1-35 0 param2) (the-as basic (-> self control quat)))
         )
       )

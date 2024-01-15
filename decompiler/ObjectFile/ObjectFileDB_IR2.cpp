@@ -10,6 +10,7 @@
 #include "common/log/log.h"
 #include "common/util/FileUtil.h"
 #include "common/util/Timer.h"
+#include "common/util/string_util.h"
 
 #include "decompiler/IR2/Form.h"
 #include "decompiler/analysis/analyze_inspect_method.h"
@@ -319,7 +320,7 @@ void ObjectFileDB::ir2_top_level_pass(const Config& config) {
 void ObjectFileDB::ir2_analyze_all_types(const fs::path& output_file,
                                          const std::optional<std::string>& previous_game_types,
                                          const std::unordered_set<std::string>& bad_types) {
-  std::vector<PerObjectAllTypeInfo> per_object;
+  std::unordered_map<std::string, PerObjectAllTypeInfo> per_object;
 
   DecompilerTypeSystem previous_game_ts(GameVersion::Jak2);  // version here doesn't matter.
   if (previous_game_types) {
@@ -328,16 +329,66 @@ void ObjectFileDB::ir2_analyze_all_types(const fs::path& output_file,
 
   TypeInspectorCache ti_cache;
 
+  // Do a first pass to initialize all types and symbols
   for_each_obj([&](ObjectFileData& data) {
     if (data.obj_version == 3 || (data.obj_version == 5 && data.linked_data.has_any_functions())) {
-      auto& object_result = per_object.emplace_back();
-      object_result.object_name = data.to_unique_name();
-
+      per_object[data.to_unique_name()] = PerObjectAllTypeInfo();
       // Go through the top-level segment first to identify the type names associated with each
       // symbol def
       for_each_function_in_seg_in_obj(TOP_LEVEL_SEGMENT, data, [&](Function& f) {
-        inspect_top_level_for_metadata(f, data.linked_data, dts, previous_game_ts, object_result);
+        inspect_top_level_for_metadata(f, data.linked_data, dts, previous_game_ts,
+                                       per_object.at(data.to_unique_name()));
       });
+    }
+  });
+
+  // Guess at non-virtual state type's:
+  //
+  // Collect all type names, since the DTS doesn't know the actual type tree (all-types is empty!)
+  // we can't filter by what is actually a process type (with existing code).
+  std::unordered_map<std::string, std::vector<std::string>> all_type_names;
+  for (auto& [obj_name, obj_info] : per_object) {
+    for (const auto& type_name : obj_info.type_names_in_order) {
+      if (all_type_names.find(obj_name) == all_type_names.end()) {
+        all_type_names[obj_name] = {};
+      }
+      all_type_names[obj_name].push_back(type_name);
+    }
+  }
+
+  std::unordered_map<std::string, std::string> state_to_type_map;
+  for (auto& [obj_name, obj_info] : per_object) {
+    for (const auto& [sym_name, sym_type] : obj_info.symbol_types) {
+      if (sym_type == "state") {
+        int longest_match_length = 0;
+        std::string longest_match = "";
+        std::string longest_match_object_name = "";
+        // Make a best effort guess by finding the longest prefix match
+        for (const auto& [obj_name, type_names] : all_type_names) {
+          for (const auto& type_name : type_names) {
+            if (str_util::starts_with(sym_name, type_name) &&
+                type_name.length() > longest_match_length) {
+              longest_match_length = type_name.length();
+              longest_match = type_name;
+              longest_match_object_name = obj_name;
+            }
+          }
+        }
+        if (longest_match != "") {
+          if (per_object.find(longest_match_object_name) != per_object.end()) {
+            per_object.at(longest_match_object_name).non_virtual_state_guesses[sym_name] =
+                longest_match;
+            obj_info.already_seen_symbols.insert(sym_name);
+          }
+        }
+      }
+    }
+  }
+
+  // Then another to actually setup the definitions
+  for_each_obj([&](ObjectFileData& data) {
+    if (data.obj_version == 3 || (data.obj_version == 5 && data.linked_data.has_any_functions())) {
+      auto& object_result = per_object.at(data.to_unique_name());
 
       // Handle the top level last, which is fine as all symbol_defs are always written after
       // typedefs
@@ -368,12 +419,14 @@ void ObjectFileDB::ir2_analyze_all_types(const fs::path& output_file,
     }
   });
 
+  // Output result
+
   std::string result;
   result += ";; All Types\n\n";
 
-  for (auto& obj : per_object) {
+  for (auto& [obj_name, obj] : per_object) {
     result += fmt::format(";;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;\n");
-    result += fmt::format(";; {:30s} ;;\n", obj.object_name);
+    result += fmt::format(";; {:30s} ;;\n", obj_name);
     result += fmt::format(";;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;\n\n");
     for (const auto& type_name : obj.type_names_in_order) {
       auto& info = obj.type_info.at(type_name);
@@ -510,6 +563,20 @@ Value try_lookup(const std::unordered_map<Key, Value>& map, const Key& key) {
   }
 }
 
+const std::string* find_file_override_for_art_group(const Config& config,
+                                                    const std::string& obj_name,
+                                                    const std::string& type_name) {
+  // find file override for this type
+  auto it_file = config.art_group_file_override.find(obj_name);
+  if (it_file != config.art_group_file_override.end()) {
+    auto it_type = it_file->second.find(type_name);
+    if (it_type != it_file->second.end()) {
+      return &it_type->second;
+    }
+  }
+  return nullptr;
+}
+
 /*!
  * Analyze registers and determine the type in each register at each instruction.
  * - Figure out the type of each function, from configs.
@@ -550,7 +617,11 @@ void ObjectFileDB::ir2_type_analysis_pass(int seg, const Config& config, ObjectF
         if (func.guessed_name.kind == FunctionName::FunctionKind::V_STATE) {
           if (config.art_group_type_remap.find(func.guessed_name.type_name) !=
               config.art_group_type_remap.end()) {
-            func.ir2.env.set_art_group(config.art_group_type_remap.at(func.guessed_name.type_name));
+            auto ag_override =
+                find_file_override_for_art_group(config, obj_name, func.guessed_name.type_name);
+            func.ir2.env.set_art_group(
+                ag_override ? *ag_override
+                            : config.art_group_type_remap.at(func.guessed_name.type_name));
           } else {
             func.ir2.env.set_art_group(func.guessed_name.type_name + "-ag");
           }
@@ -558,7 +629,9 @@ void ObjectFileDB::ir2_type_analysis_pass(int seg, const Config& config, ObjectF
                    func.type.try_get_tag("behavior").has_value()) {
           std::string type = func.type.get_tag("behavior");
           if (config.art_group_type_remap.find(type) != config.art_group_type_remap.end()) {
-            func.ir2.env.set_art_group(config.art_group_type_remap.at(type));
+            auto ag_override = find_file_override_for_art_group(config, obj_name, type);
+            func.ir2.env.set_art_group(ag_override ? *ag_override
+                                                   : config.art_group_type_remap.at(type));
           } else {
             func.ir2.env.set_art_group(type + "-ag");
           }
@@ -729,7 +802,7 @@ void ObjectFileDB::ir2_insert_lets(int seg, ObjectFileData& data) {
             "Error while inserting lets: {}. Make sure that the return type is not "
             "none if something is actually returned.",
             e.what());
-        lg::warn(err);
+        lg::warn("{}", err);
         func.warnings.error(err);
       }
     }

@@ -99,7 +99,7 @@
 ;; You can check for this by looking at the texture-pool ids.
 ;; Or, use the upload-vram-pages function which will add uploads to a DMA chain only if needed.
 
-(defmethod print texture-page ((this texture-page))
+(defmethod print ((this texture-page))
   "Print a short description of a texture page."
   (format #t "#<texture-page ~S :length ~D :dest #x~X :size ~DK @ #x~X>"
           (-> this name)
@@ -111,17 +111,17 @@
   this
   )
 
-(defmethod length texture-page ((this texture-page))
+(defmethod length ((this texture-page))
   "Get the number of textures in a texture page"
   (-> this length)
   )
 
-(defmethod asize-of texture-page ((this texture-page))
+(defmethod asize-of ((this texture-page))
   "Get the size in memory of a texture page object, not including the actual texture objects or texture data"
   (the-as int (+ (-> this type size) (the-as uint (shl (-> this length) 2))))
   )
 
-(defmethod mem-usage texture-page ((this texture-page) (arg0 memory-usage-block) (arg1 int))
+(defmethod mem-usage ((this texture-page) (arg0 memory-usage-block) (arg1 int))
   "Update the mem-usage for a texture."
 
   ;; some setup for texture memory usage.
@@ -235,7 +235,7 @@
 ;; after load, these point to location of the texture in VRAM _if the texture were uploaded to address 0_.
 ;; these records will be updated to point to the correct spot in VRAM by the texture allocators.
 
-(defmethod print texture ((this texture))
+(defmethod print ((this texture))
   "Print out texture object, describing the texture format."
   (format #t "#<texture ~20S psm: ~6S  ~4D x ~4D  num-mips: ~D :size ~4DK "
           (-> this name)
@@ -465,7 +465,7 @@
    )
   )
 
-(defmethod allocate-vram-words! texture-pool ((this texture-pool) (word-count int))
+(defmethod allocate-vram-words! ((this texture-pool) (word-count int))
   "Allocate words in vram. Returns the index of the first word."
   (let ((v0-0 (-> this cur)))
     (set! (-> this cur) (+ (-> this cur) word-count))
@@ -476,7 +476,7 @@
 ;; boot common textures are "common" textures that are loaded at boot, but will live in RAM
 ;; and be uploaded to VRAM as needed.
 
-(defmethod lookup-boot-common-id texture-pool ((this texture-pool) (arg0 int))
+(defmethod lookup-boot-common-id ((this texture-pool) (arg0 int))
   "Map these special textures to a number betwen 0 and 19. For other textures, return -1.
    NOTE: hud means start menu + zoomer, not the usual health HUD."
   (case arg0
@@ -546,7 +546,7 @@
    )
   )
 
-(defmethod initialize! texture-pool ((this texture-pool))
+(defmethod initialize! ((this texture-pool))
   "Initialize (or maybe reinitialize) a texture pool."
   ;; reset allocator
   (set! (-> this cur) 0)
@@ -573,7 +573,7 @@
   this
   )
 
-(defmethod get-leftover-block-count texture-page ((this texture-page) (segment-count int) (additional-size int))
+(defmethod get-leftover-block-count ((this texture-page) (segment-count int) (additional-size int))
   "This returns how many blocks are used in the last pool page.
    It uses pool-pages, which are 64 blocks or 16 kB."
   (let ((v1-0 additional-size))
@@ -584,7 +584,7 @@
    )
   )
 
-(defmethod print-usage texture-pool ((this texture-pool))
+(defmethod print-usage ((this texture-pool))
   "Print out VRAM usage."
   (format #t "--------------------~%")
   (format #t "texture pool ~DK - ~DK (~DK used, ~DK free)~%"
@@ -597,7 +597,7 @@
   this
   )
 
-(defmethod allocate-segment! texture-pool ((this texture-pool) (segment texture-pool-segment) (size int))
+(defmethod allocate-segment! ((this texture-pool) (segment texture-pool-segment) (size int))
   "Allocate a segment of the given size. The segment is an output here, containing size/dest."
   (set! (-> segment size) (the-as uint size))
   (set! (-> segment dest) (the-as uint (allocate-vram-words! this size)))
@@ -611,7 +611,7 @@
 
 (defconstant SPECIAL_VRAM_WORDS #x7000) ;; for sky, eyes, ocean, and depth-cue effect rendering.
 
-(defmethod allocate-defaults! texture-pool ((this texture-pool))
+(defmethod allocate-defaults! ((this texture-pool))
   "Allocate default segments"
   ;; allocate the common and near segments
   (allocate-segment! this (-> this segment-common) COMMON_SEGMENT_WORDS) ;; ~0.5 MB
@@ -639,7 +639,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 
-(defmethod remove-from-heap texture-page ((this texture-page) (seg kheap))
+(defmethod remove-from-heap ((this texture-page) (seg kheap))
   "Remove the texture data from the heap. This can only safely be called immediately after
    the texture-page is loaded. This is used for textures that always live in VRAM."
 
@@ -1363,7 +1363,7 @@
 ;; It will also link the textures.
 ;; You _must_ login textures.
 
-(defmethod login-level-textures texture-pool ((this texture-pool) (level level) (max-page-kind int) (id-array (pointer texture-id)))
+(defmethod login-level-textures ((this texture-pool) (level level) (max-page-kind int) (id-array (pointer texture-id)))
   "Login textures in a level. Only does up to max-page-kind. Set this to water (4) to do all of them.
    Also checks sizes.
    This is called from level.gc as part of level loading."
@@ -1441,7 +1441,7 @@
 ;; for movie hack.
 (defun-extern movie? symbol)
 
-(defmethod add-tex-to-dma! texture-pool ((this texture-pool) (level level) (tex-page-kind int))
+(defmethod add-tex-to-dma! ((this texture-pool) (level level) (tex-page-kind int))
   "For the given tpage-kind, upload as needed for the level"
   (when (= tex-page-kind (tpage-kind tfrag)) ;; TFRAG (0)
     ;; get the texture page, bucket to add to, and an effective distance from the closest thing.
@@ -1591,7 +1591,7 @@
   (none)
   )
 
-(defmethod upload-one-common! texture-pool ((this texture-pool) (lev level))
+(defmethod upload-one-common! ((this texture-pool) (lev level))
   "Upload the first common texture page that's in in the common-page-mask."
   (dotimes (v1-0 32)
     (let ((a2-0 (-> this common-page v1-0)))
@@ -1607,7 +1607,7 @@
   #f
   )
 
-(defmethod add-irq-to-tex-buckets! level ((this level))
+(defmethod add-irq-to-tex-buckets! ((this level))
   "Adds a packet that will cause a VIF interrupt to the end of all texture
    buckets for a given level.  This will trigger a VU1 profiler bar"
   (cond
@@ -1692,7 +1692,7 @@
 ;; the actual texture data doesn't go in the buffer, just tags to set up the transfer
 (define *txt-dma-list* (new 'global 'dma-buffer 4096))
 
-(defmethod upload-now! texture-page ((this texture-page) (arg0 int))
+(defmethod upload-now! ((this texture-page) (arg0 int))
   "Immediately upload the texture-page to the given buffer, using arg0 mode."
 
   (#when PC_PORT
@@ -1731,7 +1731,7 @@
   (none)
   )
 
-(defmethod add-to-dma-buffer texture-page ((this texture-page) (dma-buff dma-buffer) (mode int))
+(defmethod add-to-dma-buffer ((this texture-page) (dma-buff dma-buffer) (mode int))
   "Helper for upload-now! to upload texture-page to VRAM"
   (local-vars (total-size int))
   (let ((v1-0 mode))
@@ -1883,7 +1883,7 @@
 ;; The font texture is a special case.
 (define-perm *font-texture* texture #f)
 
-(defmethod setup-font-texture! texture-pool ((this texture-pool))
+(defmethod setup-font-texture! ((this texture-pool))
   "Move the font textures to the upper 8-bits of the depth buffer."
   (local-vars (heap-before-font-tex int) (clut-dest-addr int))
   ;; we reserved some space for the CLUT earlier. I guess it didn't fit in the depth buffer too
@@ -2008,17 +2008,17 @@
 ;; The texture page directory is a list of all texture pages.
 ;; It is actually stored in the dir-tpages.o object file, which is pre-populated with lengths.
 
-(defmethod asize-of texture-page-dir ((this texture-page-dir))
+(defmethod asize-of ((this texture-page-dir))
   "Get the size in memory of a texture-page-dir"
   (the-as int (+ (-> texture-page-dir size) (the-as uint (* 12 (+ (-> this length) -1)))))
   )
 
-(defmethod length texture-page-dir ((this texture-page-dir))
+(defmethod length ((this texture-page-dir))
   "Get the number of tpages in the texture-page-dir"
   (-> this length)
   )
 
-(defmethod relocate texture-page-dir ((this texture-page-dir) (arg0 kheap) (arg1 (pointer uint8)))
+(defmethod relocate ((this texture-page-dir) (arg0 kheap) (arg1 (pointer uint8)))
   "Load a texture-page-dir"
   ;; just set the global.
   (tex-dbg "Loaded texture-page-dir ~A with ~D entries~%" this (-> this length))
@@ -2026,7 +2026,7 @@
   (none)
   )
 
-(defmethod relocate-dests! texture-page ((this texture-page) (new-dest int) (seg-id int))
+(defmethod relocate-dests! ((this texture-page) (new-dest int) (seg-id int))
   "Update a texture-page so all the textures point to a new location"
   (let ((v1-0 (shr new-dest 6))
         (dst-block (shr (-> this segment seg-id dest) 6))
@@ -2070,7 +2070,7 @@
   (none)
   )
 
-(defmethod relocate texture-page ((this texture-page) (arg0 kheap) (arg1 (pointer uint8)))
+(defmethod relocate ((this texture-page) (arg0 kheap) (arg1 (pointer uint8)))
   "Add to VRAM and allocate links.
    This method is called by the GOAL linker when it loads a texture page."
   (tex-dbg "loaded tpage ~A~%" this
@@ -2203,7 +2203,7 @@
    )
   )
 
-(defmethod unload! texture-pool ((this texture-pool) (arg0 texture-page))
+(defmethod unload! ((this texture-pool) (arg0 texture-page))
   "Unload the texture from the directory"
   (local-vars (a0-2 int))
   (let ((v1-0 *texture-page-dir*))
@@ -2258,7 +2258,7 @@
     )
   )
 
-(defmethod unlink-textures-in-heap! texture-page-dir ((this texture-page-dir) (heap kheap))
+(defmethod unlink-textures-in-heap! ((this texture-page-dir) (heap kheap))
   "Remove adgif shaders that are in the given heap"
   (local-vars (dist-past-end uint))
   (let ((mem-start (-> heap base))
@@ -2627,7 +2627,7 @@
   (none)
   )
 
-(defmethod inspect texture-page-dir ((this texture-page-dir))
+(defmethod inspect ((this texture-page-dir))
   (texture-page-dir-inspect this #f)
   this
   )

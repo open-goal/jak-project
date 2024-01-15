@@ -18,122 +18,122 @@ static constexpr std::array<std::array<s16, 2>, 5> adpcm_coefs = {{
     {122, -60},
 }};
 
-void voice::DecodeSamples() {
+void Voice::DecodeSamples() {
   // This doesn't exactly match the real behaviour,
   // it seems to initially decode a bigger chunk
   // and then decode more data after a bit has drained
-  if (m_DecodeBuf.Size() >= 16) {
+  if (mDecodeBuf.Size() >= 16) {
     // sufficient data buffered
     return;
   }
 
   // Skip decoding for stopped voices.
-  if (m_ADSR.GetPhase() == ADSR::Phase::Stopped) {
+  if (mADSR.GetPhase() == ADSR::Phase::Stopped) {
     for (int i = 0; i < 4; i++)
-      m_DecodeBuf.Push(0);
+      mDecodeBuf.Push(0);
   } else {
-    u32 data = m_sample[m_NAX];
+    u32 data = mSample[mNAX];
     for (int i = 0; i < 4; i++) {
       s32 sample = (s16)((data & 0xF) << 12);
-      sample >>= m_CurHeader.Shift.get();
+      sample >>= mCurHeader.Shift.get();
 
       // TODO do the right thing for invalid shift/filter values
-      sample += (adpcm_coefs[m_CurHeader.Filter.get()][0] * m_DecodeHist1) >> 6;
-      sample += (adpcm_coefs[m_CurHeader.Filter.get()][1] * m_DecodeHist2) >> 6;
+      sample += (adpcm_coefs[mCurHeader.Filter.get()][0] * mDecodeHist1) >> 6;
+      sample += (adpcm_coefs[mCurHeader.Filter.get()][1] * mDecodeHist2) >> 6;
 
       // We do get overflow here otherwise, should we?
       sample = std::clamp<s32>(sample, INT16_MIN, INT16_MAX);
 
-      m_DecodeHist2 = m_DecodeHist1;
-      m_DecodeHist1 = static_cast<s16>(sample);
+      mDecodeHist2 = mDecodeHist1;
+      mDecodeHist1 = static_cast<s16>(sample);
 
-      m_DecodeBuf.Push(static_cast<s16>(sample));
+      mDecodeBuf.Push(static_cast<s16>(sample));
       data >>= 4;
     }
   }
 
-  m_NAX++;
+  mNAX++;
 
-  if ((m_NAX & 0x7) == 0) {
-    if (m_CurHeader.LoopEnd.get()) {
-      m_NAX = m_LSA;
-      m_ENDX = true;
+  if ((mNAX & 0x7) == 0) {
+    if (mCurHeader.LoopEnd.get()) {
+      mNAX = mLSA;
+      mENDX = true;
 
-      if (!m_CurHeader.LoopRepeat.get()) {
+      if (!mCurHeader.LoopRepeat.get()) {
         // Need to inhibit stopping here in noise is on
         // seems to result in the right thing but would like to verify
-        if (!m_Noise)
-          m_ADSR.Stop();
+        if (!mNoise)
+          mADSR.Stop();
       }
     }
 
     UpdateBlockHeader();
 
-    m_NAX++;
+    mNAX++;
   }
 }
 
-void voice::UpdateBlockHeader() {
-  m_CurHeader.bits = m_sample[m_NAX & ~0x7];
-  if (m_CurHeader.LoopStart.get() && !m_CustomLoop)
-    m_LSA = m_NAX & ~0x7;
+void Voice::UpdateBlockHeader() {
+  mCurHeader.bits = mSample[mNAX & ~0x7];
+  if (mCurHeader.LoopStart.get() && !mCustomLoop)
+    mLSA = mNAX & ~0x7;
 }
 
 static s16 ApplyVolume(s16 sample, s32 volume) {
   return (sample * volume) >> 15;
 }
 
-void voice::key_on() {
-  m_NAX = m_SSA;
-  m_NAX++;
+void Voice::KeyOn() {
+  mNAX = mSSA;
+  mNAX++;
 
   UpdateBlockHeader();
 
-  m_ENDX = false;
-  m_ADSR.Attack();
-  m_Counter = 0;
-  m_DecodeHist1 = 0;
-  m_DecodeHist2 = 0;
-  m_DecodeBuf.Reset();
-  m_CustomLoop = false;
+  mENDX = false;
+  mADSR.Attack();
+  mCounter = 0;
+  mDecodeHist1 = 0;
+  mDecodeHist2 = 0;
+  mDecodeBuf.Reset();
+  mCustomLoop = false;
   // Console.WriteLn("SPU[%d]:VOICE[%d] Key On, SSA %08x", m_SPU.m_Id, m_Id, m_SSA);
 }
 
-void voice::key_off() {
-  m_ADSR.Release();
+void Voice::KeyOff() {
+  mADSR.Release();
   // fmt::print("Key Off\n");
 }
 
-s16_output voice::run() {
+s16Output Voice::Run() {
   DecodeSamples();
 
-  u32 index = (m_Counter & 0x0FF0) >> 4;
+  u32 index = (mCounter & 0x0FF0) >> 4;
 
   s16 sample = 0;
-  sample = static_cast<s16>(sample + ((m_DecodeBuf.Peek(0) * interp_table[index][0]) >> 15));
-  sample = static_cast<s16>(sample + ((m_DecodeBuf.Peek(1) * interp_table[index][1]) >> 15));
-  sample = static_cast<s16>(sample + ((m_DecodeBuf.Peek(2) * interp_table[index][2]) >> 15));
-  sample = static_cast<s16>(sample + ((m_DecodeBuf.Peek(3) * interp_table[index][3]) >> 15));
+  sample = static_cast<s16>(sample + ((mDecodeBuf.Peek(0) * interp_table[index][0]) >> 15));
+  sample = static_cast<s16>(sample + ((mDecodeBuf.Peek(1) * interp_table[index][1]) >> 15));
+  sample = static_cast<s16>(sample + ((mDecodeBuf.Peek(2) * interp_table[index][2]) >> 15));
+  sample = static_cast<s16>(sample + ((mDecodeBuf.Peek(3) * interp_table[index][3]) >> 15));
 
-  s32 step = m_Pitch;
+  s32 step = mPitch;
   step = std::min(step, 0x3FFF);
-  m_Counter += step;
+  mCounter += step;
 
-  auto steps = m_Counter >> 12;
-  m_Counter &= 0xFFF;
+  auto steps = mCounter >> 12;
+  mCounter &= 0xFFF;
 
   while (steps > 0) {
     steps--;
-    m_DecodeBuf.Pop();
+    mDecodeBuf.Pop();
   }
 
-  sample = ApplyVolume(sample, m_ADSR.Level());
-  s16 left = ApplyVolume(sample, m_Volume.left.GetCurrent());
-  s16 right = ApplyVolume(sample, m_Volume.right.GetCurrent());
+  sample = ApplyVolume(sample, mADSR.Level());
+  s16 left = ApplyVolume(sample, mVolume.left.GetCurrent());
+  s16 right = ApplyVolume(sample, mVolume.right.GetCurrent());
 
-  m_ADSR.Run();
-  m_Volume.Run();
+  mADSR.Run();
+  mVolume.Run();
 
-  return s16_output{left, right};
+  return s16Output{left, right};
 }
 }  // namespace snd

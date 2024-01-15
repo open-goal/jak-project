@@ -3,23 +3,20 @@
 
 ;; definition of type load-dgo-msg
 (deftype load-dgo-msg (structure)
-  ((rsvd       uint16             :offset-assert   0)
-   (result     load-msg-result    :offset-assert   2)
-   (b1         pointer            :offset-assert   4)
-   (b2         pointer            :offset-assert   8)
-   (bt         pointer            :offset-assert  12)
-   (name       uint128            :offset-assert  16)
-   (name-chars uint8           16 :offset         16)
-   (address    uint32             :offset          4)
+  ((rsvd        uint16)
+   (result      load-msg-result)
+   (b1          pointer)
+   (b2          pointer)
+   (bt          pointer)
+   (name        uint128)
+   (name-chars  uint8   16 :overlay-at name)
+   (address     uint32     :overlay-at b1)
    )
-  :method-count-assert 9
-  :size-assert         #x20
-  :flag-assert         #x900000020
   )
 
 ;; definition for method 3 of type load-dgo-msg
 ;; INFO: Used lq/sq
-(defmethod inspect load-dgo-msg ((this load-dgo-msg))
+(defmethod inspect ((this load-dgo-msg))
   (format #t "[~8x] ~A~%" this 'load-dgo-msg)
   (format #t "~Trsvd: ~D~%" (-> this rsvd))
   (format #t "~Tresult: ~D~%" (-> this result))
@@ -33,21 +30,18 @@
 
 ;; definition of type load-chunk-msg
 (deftype load-chunk-msg (structure)
-  ((rsvd     uint16             :offset-assert   0)
-   (result   load-msg-result    :offset-assert   2)
-   (address  pointer            :offset-assert   4)
-   (section  uint32             :offset-assert   8)
-   (maxlen   uint32             :offset-assert  12)
-   (id       uint32             :offset          4)
-   (basename uint8           48 :offset-assert  16)
+  ((rsvd      uint16)
+   (result    load-msg-result)
+   (address   pointer)
+   (section   uint32)
+   (maxlen    uint32)
+   (id        uint32  :overlay-at address)
+   (basename  uint8   48)
    )
-  :method-count-assert 9
-  :size-assert         #x40
-  :flag-assert         #x900000040
   )
 
 ;; definition for method 3 of type load-chunk-msg
-(defmethod inspect load-chunk-msg ((this load-chunk-msg))
+(defmethod inspect ((this load-chunk-msg))
   (format #t "[~8x] ~A~%" this 'load-chunk-msg)
   (format #t "~Trsvd: ~D~%" (-> this rsvd))
   (format #t "~Tresult: ~D~%" (-> this result))
@@ -61,17 +55,14 @@
 
 ;; definition of type dgo-header
 (deftype dgo-header (structure)
-  ((length   uint32          :offset-assert   0)
-   (rootname uint8  60       :offset-assert   4)
-   (data     uint8  :dynamic :offset-assert  64)
+  ((length    uint32)
+   (rootname  uint8  60)
+   (data      uint8  :dynamic)
    )
-  :method-count-assert 9
-  :size-assert         #x40
-  :flag-assert         #x900000040
   )
 
 ;; definition for method 3 of type dgo-header
-(defmethod inspect dgo-header ((this dgo-header))
+(defmethod inspect ((this dgo-header))
   (format #t "[~8x] ~A~%" this 'dgo-header)
   (format #t "~Tlength: ~D~%" (-> this length))
   (format #t "~Trootname[60] @ #x~X~%" (-> this rootname))

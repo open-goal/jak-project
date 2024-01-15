@@ -297,14 +297,10 @@
 
 (deftype wasp-shot (metalhead-shot)
   ()
-  :heap-base #x170
-  :method-count-assert 40
-  :size-assert         #x1f0
-  :flag-assert         #x28017001f0
   )
 
 
-(defmethod play-impact-sound wasp-shot ((this wasp-shot) (arg0 projectile-options))
+(defmethod play-impact-sound ((this wasp-shot) (arg0 projectile-options))
   (let ((v1-0 arg0))
     (cond
       ((zero? v1-0)
@@ -319,7 +315,7 @@
   (none)
   )
 
-(defmethod init-proj-settings! wasp-shot ((this wasp-shot))
+(defmethod init-proj-settings! ((this wasp-shot))
   "Init relevant settings for the [[projectile]] such as gravity, speed, timeout, etc"
   (set! (-> this tail-pos quad) (-> this root trans quad))
   (set! (-> this attack-mode) 'wasp-shot)
@@ -440,22 +436,22 @@
 
 (set! (-> *wasp-enemy-info* fact-defaults) *fact-info-enemy-defaults*)
 
-(defmethod general-event-handler wasp ((this wasp) (arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+(defmethod general-event-handler ((this wasp) (arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
   "Handles various events for the enemy
 @TODO - unsure if there is a pattern for the events and this should have a more specific name"
   (case arg2
     (('hit 'hit-knocked)
      (logclear! (-> this mask) (process-mask actor-pause))
      (logclear! (-> this focus-status) (focus-status dangerous))
-     (logclear! (-> this enemy-flags) (enemy-flag enable-on-notice))
-     (logior! (-> this enemy-flags) (enemy-flag chase-startup))
+     (logclear! (-> this enemy-flags) (enemy-flag use-notice-distance))
+     (logior! (-> this enemy-flags) (enemy-flag alert))
      (logior! (-> this focus-status) (focus-status hit))
      (if (zero? (-> this hit-points))
          (logior! (-> this focus-status) (focus-status dead))
          )
-     (logclear! (-> this enemy-flags) (enemy-flag actor-pause-backup))
+     (logclear! (-> this enemy-flags) (enemy-flag lock-focus))
      (enemy-method-62 this)
-     (logior! (-> this enemy-flags) (enemy-flag actor-pause-backup))
+     (logior! (-> this enemy-flags) (enemy-flag lock-focus))
      (process-contact-action arg0)
      (send-event arg0 'get-attack-count 1)
      (if (zero? (-> this hit-points))
@@ -470,7 +466,7 @@
   )
 
 ;; WARN: Return type mismatch object vs none.
-(defmethod enemy-method-52 wasp ((this wasp) (arg0 vector))
+(defmethod enemy-method-52 ((this wasp) (arg0 vector))
   (let ((s4-0 (-> this root)))
     (case (-> this incoming knocked-type)
       (((knocked-type knocked-type-2))
@@ -491,7 +487,7 @@
                 )
              (vector-negate! gp-1 gp-1)
              )
-         (let ((f30-1 (get-rand-float-range this 0.0 1.0))
+         (let ((f30-1 (rnd-float-range this 0.0 1.0))
                (s5-1 (-> this enemy-info))
                )
            (vector-float*! gp-1 gp-1 (lerp (-> s5-1 knocked-hard-vxz-lo) (-> s5-1 knocked-hard-vxz-hi) f30-1))
@@ -508,7 +504,7 @@
   )
 
 ;; WARN: Return type mismatch object vs none.
-(defmethod go-idle wasp ((this wasp))
+(defmethod go-idle ((this wasp))
   (cond
     ((logtest? (-> this fact enemy-options) (enemy-option user0))
      (go (method-of-object this shoot-bridge-wait))
@@ -523,17 +519,17 @@
   (none)
   )
 
-(defmethod go-hostile wasp ((this wasp))
+(defmethod go-hostile ((this wasp))
   (go (method-of-object this hostile))
   )
 
-(defmethod react-to-focus wasp ((this wasp))
+(defmethod react-to-focus ((this wasp))
   "@TODO - flesh out docs"
   (go-hostile this)
   )
 
 ;; WARN: Return type mismatch object vs none.
-(defmethod enemy-method-129 wasp ((this wasp))
+(defmethod enemy-method-129 ((this wasp))
   (if (logtest? (-> this fact enemy-options) (enemy-option user0))
       (set! (-> this focus-pos quad) (-> this plat-pos quad))
       ((method-of-type hover-enemy enemy-method-129) this)
@@ -541,13 +537,13 @@
   (none)
   )
 
-(defmethod track-target! wasp ((this wasp))
+(defmethod common-post ((this wasp))
   "Does a lot of various things relating to interacting with the target
 - tracks when the enemy was last drawn
 - looks at the target and handles attacking
 @TODO Not extremely well understood yet"
   (seek! (-> this gun-x-angle) (-> this gun-x-angle-final) (* 21845.334 (seconds-per-frame)))
-  ((method-of-type hover-enemy track-target!) this)
+  ((method-of-type hover-enemy common-post) this)
   (none)
   )
 
@@ -601,7 +597,7 @@
       )
     )
   :enter (behavior ()
-    (logior! (-> self enemy-flags) (enemy-flag use-notice-distance))
+    (logior! (-> self enemy-flags) (enemy-flag cam-attack-mode))
     (hover-enemy-method-140 self #f)
     (if (logtest? (-> self path flags) (path-control-flag not-found))
         (go process-drawable-art-error "no path")
@@ -620,9 +616,9 @@
     (hover-nav-control-method-18 (-> self hover) (-> self path) -1 6)
     (set-time! (-> self last-fire-time))
     (set! (-> self bridge-index) 0)
-    (logclear! (-> self enemy-flags) (enemy-flag enable-on-active checking-water))
+    (logclear! (-> self enemy-flags) (enemy-flag vulnerable vulnerable-backup))
     (logclear! (-> self mask) (process-mask collectable))
-    (logclear! (-> self enemy-flags) (enemy-flag look-at-move-dest))
+    (logclear! (-> self enemy-flags) (enemy-flag attackable-backup))
     )
   :exit (behavior ()
     (let ((gp-0 (get-point-in-path! (-> self path) (new 'stack-no-clear 'vector) 0.0 'interp))
@@ -955,29 +951,29 @@
       (ja :num! (seek!))
       )
     (set! (-> self restart-fly-anims) #t)
-    (if (logtest? (-> self enemy-flags) (enemy-flag check-water))
+    (if (logtest? (-> self enemy-flags) (enemy-flag dangerous-backup))
         (logior! (-> self focus-status) (focus-status dangerous))
         (logclear! (-> self focus-status) (focus-status dangerous))
         )
     (let ((v1-34 (-> self enemy-flags)))
-      (if (logtest? v1-34 (enemy-flag checking-water))
-          (set! v1-35 (logior v1-34 (enemy-flag enable-on-active)))
-          (set! v1-35 (logclear v1-34 (enemy-flag enable-on-active)))
+      (if (logtest? v1-34 (enemy-flag vulnerable-backup))
+          (set! v1-35 (logior v1-34 (enemy-flag vulnerable)))
+          (set! v1-35 (logclear v1-34 (enemy-flag vulnerable)))
           )
       )
     (set! (-> self enemy-flags) v1-35)
-    (if (logtest? (-> self enemy-flags) (enemy-flag look-at-move-dest))
+    (if (logtest? (-> self enemy-flags) (enemy-flag attackable-backup))
         (logior! (-> self mask) (process-mask collectable))
         (logclear! (-> self mask) (process-mask collectable))
         )
     (let ((v1-42 (-> self enemy-flags)))
-      (if (logtest? (enemy-flag no-initial-move-to-ground) v1-42)
-          (set! v1-43 (logior (enemy-flag check-water-backup) v1-42))
-          (set! v1-43 (logclear v1-42 (enemy-flag check-water-backup)))
+      (if (logtest? (enemy-flag trackable-backup) v1-42)
+          (set! v1-43 (logior (enemy-flag trackable) v1-42))
+          (set! v1-43 (logclear v1-42 (enemy-flag trackable)))
           )
       )
     (set! (-> self enemy-flags) v1-43)
-    (logclear! (-> self enemy-flags) (enemy-flag actor-pause-backup))
+    (logclear! (-> self enemy-flags) (enemy-flag lock-focus))
     (logclear! (-> self focus-status) (focus-status hit))
     (hover-nav-control-method-21 (-> self hover))
     (go-hostile self)
@@ -988,7 +984,7 @@
   :virtual #t
   :event enemy-event-handler
   :code (behavior ()
-    (dispose! self)
+    (dying self)
     (set! (-> self hit-points) 0)
     (let ((v1-3 (-> self root root-prim)))
       (set! (-> v1-3 prim-core collide-as) (collide-spec))
@@ -1049,7 +1045,7 @@
   :virtual #t
   :event enemy-event-handler
   :code (behavior ()
-    (dispose! self)
+    (dying self)
     (let ((v1-3 (-> self root root-prim)))
       (set! (-> v1-3 prim-core collide-as) (collide-spec))
       (set! (-> v1-3 prim-core collide-with) (collide-spec))
@@ -1069,7 +1065,7 @@
   )
 
 ;; WARN: Return type mismatch process vs process-focusable.
-(defmethod get-enemy-target wasp ((this wasp))
+(defmethod get-enemy-target ((this wasp))
   "@returns the [[process-focusable]] that the enemy is currently focusing on, or [[#f]] otherwise"
   (let ((s5-0 (handle->process (-> this focus handle))))
     (the-as
@@ -1096,9 +1092,9 @@
     )
   )
 
-(defmethod enemy-method-77 wasp ((this wasp) (arg0 (pointer float)))
+(defmethod enemy-method-77 ((this wasp) (arg0 enemy-knocked-info))
   (cond
-    ((rng-hit? this 0.5)
+    ((rnd-percent? this 0.5)
      (set! (-> this knocked-anim) 10)
      (set! (-> this knocked-recover-anim) 11)
      )
@@ -1113,36 +1109,36 @@
         )
     (set! (-> a0-5 frame-group) (the-as art-joint-anim a1-3))
     (set! (-> a0-5 param 0) (the float (+ (-> (the-as art-joint-anim a1-3) frames num-frames) -1)))
-    (set! (-> a0-5 param 1) (-> arg0 0))
+    (set! (-> a0-5 param 1) (-> arg0 anim-speed))
     (set! (-> a0-5 frame-num) 0.0)
     (joint-control-channel-group! a0-5 (the-as art-joint-anim a1-3) num-func-seek!)
     )
   #t
   )
 
-(defmethod enemy-method-78 wasp ((this wasp) (arg0 (pointer float)))
+(defmethod enemy-method-78 ((this wasp) (arg0 enemy-knocked-info))
   (let ((v1-4 (-> this draw art-group data (-> this enemy-info knocked-land-anim)))
         (a0-3 (-> this skel root-channel 0))
         )
     (set! (-> a0-3 frame-group) (the-as art-joint-anim v1-4))
     (set! (-> a0-3 param 0) (the float (+ (-> (the-as art-joint-anim v1-4) frames num-frames) -1)))
-    (set! (-> a0-3 param 1) (-> arg0 0))
+    (set! (-> a0-3 param 1) (-> arg0 anim-speed))
     (set! (-> a0-3 frame-num) 0.0)
     (joint-control-channel-group! a0-3 (the-as art-joint-anim v1-4) num-func-seek!)
     )
   #t
   )
 
-(defmethod enemy-method-80 wasp ((this wasp) (arg0 enemy-knocked-info))
+(defmethod enemy-method-80 ((this wasp) (arg0 enemy-knocked-info))
   (-> this root)
   (>= (-> arg0 on-surface-count) 1)
   )
 
-(defmethod enemy-method-81 wasp ((this wasp))
+(defmethod enemy-method-81 ((this wasp))
   #f
   )
 
-(defmethod kill-prefer-falling wasp ((this wasp))
+(defmethod kill-prefer-falling ((this wasp))
   "If available in `enemy-info`, [[go]] to the [[die-falling]] state, if not, [[die]]"
   (cond
     ((and (-> this next-state) (= (-> this next-state name) 'knocked))
@@ -1157,7 +1153,7 @@
     )
   )
 
-(defmethod spawn-wasp-shot wasp ((this wasp) (arg0 projectile-init-by-other-params) (arg1 int) (arg2 float) (arg3 float))
+(defmethod spawn-wasp-shot ((this wasp) (arg0 projectile-init-by-other-params) (arg1 int) (arg2 float) (arg3 float))
   (vector<-cspace! (-> arg0 pos) (-> this node-list data arg1))
   (let ((s3-1 (quaternion-vector-angle!
                 (new 'stack-no-clear 'quaternion)
@@ -1184,7 +1180,7 @@
   (none)
   )
 
-(defmethod hover-enemy-method-142 wasp ((this wasp))
+(defmethod hover-enemy-method-142 ((this wasp))
   (let ((s5-0 (-> this main-joint-acc))
         (s4-0 (-> this main-joint-vel))
         (gp-0
@@ -1294,7 +1290,7 @@
   (none)
   )
 
-(defmethod init-enemy-collision! wasp ((this wasp))
+(defmethod init-enemy-collision! ((this wasp))
   "Initializes the [[collide-shape-moving]] and any ancillary tasks to make the enemy collide properly"
   (let ((s5-0 (new 'process 'collide-shape-moving this (collide-list-enum usually-hit-by-player))))
     (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
@@ -1404,7 +1400,7 @@
   (none)
   )
 
-(defmethod deactivate wasp ((this wasp))
+(defmethod deactivate ((this wasp))
   (if (nonzero? (-> this smoke-part))
       (kill-and-free-particles (-> this smoke-part))
       )
@@ -1417,7 +1413,7 @@
   )
 
 ;; WARN: Return type mismatch hover-enemy vs wasp.
-(defmethod relocate wasp ((this wasp) (arg0 int))
+(defmethod relocate ((this wasp) (arg0 int))
   (if (nonzero? (-> this gun-jmod))
       (&+! (-> this gun-jmod) arg0)
       )
@@ -1430,7 +1426,7 @@
   (the-as wasp ((method-of-type hover-enemy relocate) this arg0))
   )
 
-(defmethod hover-enemy-method-149 wasp ((this wasp))
+(defmethod hover-enemy-method-149 ((this wasp))
   (initialize-skeleton
     this
     (the-as skeleton-group (art-group-get-by-name *level* "skel-wasp" (the-as (pointer uint32) #f)))
@@ -1440,11 +1436,11 @@
   (none)
   )
 
-(defmethod hover-enemy-method-150 wasp ((this wasp))
+(defmethod hover-enemy-method-150 ((this wasp))
   *wasp-enemy-info*
   )
 
-(defmethod hover-enemy-method-151 wasp ((this wasp))
+(defmethod hover-enemy-method-151 ((this wasp))
   (new 'static 'hover-enemy-info
     :fly-forward-anim 7
     :fly-backward-anim 8
@@ -1460,11 +1456,11 @@
     )
   )
 
-(defmethod hover-enemy-method-152 wasp ((this wasp))
+(defmethod hover-enemy-method-152 ((this wasp))
   (new 'static 'hover-nav-params :max-speed 73728.0 :max-acceleration 122880.0 :friction 0.05)
   )
 
-(defmethod init-enemy! wasp ((this wasp))
+(defmethod init-enemy! ((this wasp))
   "Common method called to initialize the enemy, typically sets up default field values and calls ancillary helper methods"
   (local-vars (sv-16 res-tag) (sv-32 res-tag) (sv-48 res-tag) (sv-64 res-tag))
   (hover-enemy-method-149 this)
@@ -1473,7 +1469,7 @@
   (set! (-> this neck up) (the-as uint 1))
   (set! (-> this neck nose) (the-as uint 2))
   (set! (-> this neck ear) (the-as uint 0))
-  (set! (-> this scale) (get-rand-float-range this 0.9 1.3))
+  (set! (-> this scale) (rnd-float-range this 0.9 1.3))
   (set! (-> this sound-id) (new-sound-id))
   (set! (-> this root dynam gravity y) 327680.0)
   (set! (-> this root dynam gravity-length) 327680.0)
@@ -1484,7 +1480,7 @@
   (set! (-> this gun-x-angle) 0.0)
   (set! (-> this gun-x-angle-final) 0.0)
   (logclear! (-> this mask) (process-mask actor-pause))
-  (logclear! (-> this enemy-flags) (enemy-flag notice))
+  (logclear! (-> this enemy-flags) (enemy-flag actor-pause-backup))
   (set! sv-16 (new 'static 'res-tag))
   (let ((v1-28 (res-lump-data (-> this entity) 'actor-groups (pointer actor-group) :tag-ptr (& sv-16))))
     (if (and v1-28 (= (-> sv-16 elt-count) 1))

@@ -224,7 +224,7 @@ InstructionPointerInfo Debugger::get_rip_info(u64 rip) {
 
 void print_and_append_to_string(std::string& str, const std::string& log) {
   str += log;
-  lg::print(log);
+  lg::print("{}", log);
 }
 
 std::vector<BacktraceFrame> Debugger::get_backtrace(u64 rip,
@@ -428,7 +428,7 @@ Disassembly Debugger::disassemble_at_rip(const InstructionPointerInfo& info) {
           function_mem.data(), function_mem.size(), m_reader,
           m_debug_context.base + info.map_entry->start_addr + func_info->offset_in_seg,
           rip + rip_offset, func_info->instructions, func_info->code_sources, func_info->ir_strings,
-          &result.failed, false);
+          &result.failed, false, false);
     }
   } else {
     result.failed = true;

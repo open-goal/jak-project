@@ -20,7 +20,7 @@
 ;; entity basic methods
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defmethod mem-usage drawable-actor ((this drawable-actor) (arg0 memory-usage-block) (arg1 int))
+(defmethod mem-usage ((this drawable-actor) (arg0 memory-usage-block) (arg1 int))
   "Update memory use for a drawable-actor"
   (set! (-> arg0 length) (max 44 (-> arg0 length)))
   (set! (-> arg0 data 43 name) "entity")
@@ -35,7 +35,7 @@
   (the-as drawable-actor 0)
   )
 
-(defmethod mem-usage drawable-inline-array-actor ((this drawable-inline-array-actor) (arg0 memory-usage-block) (arg1 int))
+(defmethod mem-usage ((this drawable-inline-array-actor) (arg0 memory-usage-block) (arg1 int))
   "update memory use for a group of drawable actors."
   (set! (-> arg0 length) (max 1 (-> arg0 length)))
   (set! (-> arg0 data 0 name) (symbol->string 'drawable-group))
@@ -50,12 +50,12 @@
   (the-as drawable-inline-array-actor 0)
   )
 
-(defmethod print entity-links ((this entity-links))
+(defmethod print ((this entity-links))
   (format #t "#<entity-links :process ~A @ #x~X>" (-> this process) this)
   this
   )
 
-(defmethod print entity-perm ((this entity-perm))
+(defmethod print ((this entity-perm))
   (format #t "#<entity-perm :aid ~D :task ~D :status #x~X :data #x~X @ #x~X>"
           (-> this aid)
           (-> this task)
@@ -66,19 +66,19 @@
   this
   )
 
-(defmethod birth! entity ((this entity))
+(defmethod birth! ((this entity))
   "children of entity should override this."
   (format #t "birth ~A~%" this)
   this
   )
 
-(defmethod kill! entity ((this entity))
+(defmethod kill! ((this entity))
   "children of entity should override this."
   (format #t "kill ~A~%" this)
   this
   )
 
-(defmethod print entity ((this entity))
+(defmethod print ((this entity))
   "print an entity, with its name from the res."
   (format #t "#<~A :name ~S @ #x~X>" (-> this type) (res-lump-struct this 'name structure) this)
   this
@@ -89,7 +89,7 @@
 ;; entity finding
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defmethod get-level entity ((this entity))
+(defmethod get-level ((this entity))
   "Get the level that the entity belongs to."
   
   ;; loop over levels
@@ -388,7 +388,7 @@
   (none)
   )
 
-(defmethod print process ((this process))
+(defmethod print ((this process))
   "Fancier print for process that can also print status of process drawables."
   (format #t "#<~A ~S ~A :state ~S :flags " (-> this type) (-> this name) (-> this status) (if (-> this state)
                                                                                             (-> this state name)
@@ -407,7 +407,7 @@
 
 
 
-(defmethod debug-print entity-actor ((this entity-actor) (mode symbol) (expected-type type))
+(defmethod debug-print ((this entity-actor) (mode symbol) (expected-type type))
   "Debug print info about an entity-actor.  This is designed to generate rows for the table
    printed by method debug-print-entities of level-group."
   (let ((s4-0 (-> this etype)))
@@ -476,7 +476,7 @@
   (none)
   )
 
-(defmethod debug-print-entities level-group ((this level-group) (mode symbol) (expected-type type))
+(defmethod debug-print-entities ((this level-group) (mode symbol) (expected-type type))
   "Print a table of entities. If expected-type is #f, print all. Otherwise, print only entities of the given type.
   Modes:
   'art-group: print art groups instead.
@@ -516,7 +516,7 @@
 ;; entity setup
 ;;;;;;;;;;;;;;;;;;
 
-(defmethod add-to-level! entity ((this entity) (lev-group level-group) (lev level) (aid actor-id))
+(defmethod add-to-level! ((this entity) (lev-group level-group) (lev level) (aid actor-id))
   "Add us to a level."
   
   ;; grab the first free link
@@ -569,7 +569,7 @@
   (none)
   )
 
-(defmethod remove-from-level! entity ((this entity) (arg0 level-group))
+(defmethod remove-from-level! ((this entity) (arg0 level-group))
   "Remove us from the level."
   (let ((v1-0 (-> this extra)))
     (cond
@@ -616,7 +616,7 @@
   (none)
   )
 
-(defmethod update-vis-volumes level-group ((this level-group))
+(defmethod update-vis-volumes ((this level-group))
   (local-vars
     (v1-10 symbol)
     (sv-16 process)
@@ -680,7 +680,7 @@
   (none)
   )
 
-(defmethod update-vis-volumes-from-nav-mesh level-group ((this level-group))
+(defmethod update-vis-volumes-from-nav-mesh ((this level-group))
   "Update the visvol to fit the entire nav-mesh. Does this for all actors in bsps.
   Probably only used for debugging."
   (local-vars (sv-16 entity) (sv-32 entity))
@@ -749,7 +749,7 @@
 
 
 
-(defmethod print-volume-sizes level-group ((this level-group))
+(defmethod print-volume-sizes ((this level-group))
   "Loop through all entities and print their visibility.
    Excludes crate, fuel-cell and springbox."
   (local-vars (sv-16 type) (sv-32 (function _varargs_ object)) (sv-48 symbol) (sv-64 string) (sv-80 entity))
@@ -824,7 +824,7 @@
 ;; The Debug Draw Method
 ;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defmethod debug-draw-actors level-group ((this level-group) (arg0 symbol))
+(defmethod debug-draw-actors ((this level-group) (arg0 symbol))
   (local-vars
     (sv-48 (function symbol bucket-id string vector font-color vector2h symbol))
     (sv-64 symbol)
@@ -1191,12 +1191,12 @@
 ;; Camera Birthing
 ;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defmethod birth! entity-camera ((this entity-camera))
+(defmethod birth! ((this entity-camera))
   (add-connection *camera-engine* *camera* nothing this #f #f)
   this
   )
 
-(defmethod kill! entity-camera ((this entity-camera))
+(defmethod kill! ((this entity-camera))
   (remove-by-param1 *camera-engine* this)
   this
   )
@@ -1241,7 +1241,7 @@
   `(or ,@(apply (lambda (x) `(begin (define-extern ,x type) (type-type? (-> this etype) ,x))) types))
   )
 
-(defmethod birth! entity-actor ((this entity-actor))
+(defmethod birth! ((this entity-actor))
   "Create a process for this entity and start it."
   
   ;; temp
@@ -1301,7 +1301,7 @@
   (none)
   )
 
-(defmethod kill! entity-actor ((this entity-actor))
+(defmethod kill! ((this entity-actor))
   "Kill an actor."
   (let ((a0-1 (-> this extra process)))
     (if a0-1
@@ -1312,7 +1312,7 @@
   this
   )
 
-(defmethod birth bsp-header ((this bsp-header))
+(defmethod birth ((this bsp-header))
   "Birth everything in the level."
   ;; (local-vars (v1-71 int) (s5-0 int))
   ;; (.mfc0 s5-0 Count)
@@ -1408,7 +1408,7 @@
   )
 
 
-(defmethod deactivate-entities bsp-header ((this bsp-header))
+(defmethod deactivate-entities ((this bsp-header))
   (let ((s5-0 (-> this actors)))
     (when (nonzero? s5-0)
       (dotimes (s4-0 (-> s5-0 length))
@@ -1502,7 +1502,7 @@
   (none)
   )
 
-(defmethod update-perm! entity-perm ((this entity-perm) (arg0 symbol) (arg1 entity-perm-status))
+(defmethod update-perm! ((this entity-perm) (arg0 symbol) (arg1 entity-perm-status))
   (cond
     ((= arg0 'game)
      (logclear! (-> this status) arg1)
@@ -1610,7 +1610,7 @@
   (none)
   )
 
-(defmethod run-logic? process-drawable ((this process-drawable))
+(defmethod run-logic? ((this process-drawable))
   (or (not (logtest? (-> this mask) (process-mask actor-pause)))
       (or (>= (+ (-> *ACTOR-bank* pause-dist) (-> this root pause-adjust-distance))
               (vector-vector-distance (-> this root trans) (math-camera-pos))
@@ -1621,13 +1621,13 @@
       )
   )
 
-(defmethod birth? entity-links ((this entity-links) (arg0 vector))
+(defmethod birth? ((this entity-links) (arg0 vector))
   (and (not (logtest? (-> this perm status) (entity-perm-status bit-0 dead)))
        (< (vector-vector-distance (-> this trans) arg0) (-> *ACTOR-bank* birth-dist))
        )
   )
 
-(defmethod actors-update level-group ((this level-group))
+(defmethod actors-update ((this level-group))
   (local-vars (sv-16 vector) (sv-24 int) (sv-32 entity-links) (sv-48 int) (sv-64 string) (sv-80 int))
   (when *compact-actors*
     (if (and (= *compact-actors* 'debug) (= (-> *nk-dead-pool* alive-list prev) (-> *nk-dead-pool* first-gap)))
@@ -1852,7 +1852,7 @@
   (none)
   )
 
-(defmethod set-or-clear-status! entity-actor ((this entity-actor) (arg0 entity-perm-status) (arg1 symbol))
+(defmethod set-or-clear-status! ((this entity-actor) (arg0 entity-perm-status) (arg1 symbol))
   (let ((v1-0 (-> this extra)))
     (if arg1
         (logior! (-> v1-0 perm status) arg0)

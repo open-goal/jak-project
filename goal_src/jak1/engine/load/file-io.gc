@@ -22,17 +22,14 @@
 ;; DECOMP BEGINS
 
 (deftype file-stream (basic)
-  ((flags uint32  :offset-assert 4)
-   (mode  symbol  :offset-assert 8)
-   (name  string  :offset-assert 12)
-   (file  uint32  :offset-assert 16)
+  ((flags  uint32)
+   (mode   symbol)
+   (name   string)
+   (file   uint32)
    )
   (:methods
-   (new (symbol type string symbol) _type_)
-   )
-  :method-count-assert 9
-  :size-assert         #x14
-  :flag-assert         #x900000014
+    (new (symbol type string symbol) _type_)
+    )
   )
 
 (defconstant SCE_SEEK_SET 0)
@@ -49,9 +46,8 @@
 
 (defmethod new file-stream ((allocation symbol) (type-to-make type) (name string) (mode symbol))
   "Allocate a file-stream and open it."
-  (let ((stream (object-new allocation type-to-make)))
-    (file-stream-open stream name mode)
-    stream
+  (let ((a0-1 (object-new allocation type-to-make (the-as int (-> type-to-make size)))))
+    (file-stream-open a0-1 name mode)
     )
   )
 
@@ -72,17 +68,14 @@
 
 ;; A common file header found in GOAL files.
 (deftype file-info (basic)
-  ((file-type      symbol   :offset-assert 4)
-   (file-name      basic   :offset-assert 8)
-   (major-version  uint32  :offset-assert 12)
-   (minor-version  uint32  :offset-assert 16)
-   (maya-file-name basic   :offset-assert 20)
-   (tool-debug     basic   :offset-assert 24)
-   (mdb-file-name  basic   :offset-assert 28)
+  ((file-type       symbol)
+   (file-name       basic)
+   (major-version   uint32)
+   (minor-version   uint32)
+   (maya-file-name  basic)
+   (tool-debug      basic)
+   (mdb-file-name   basic)
    )
-  :method-count-assert 9
-  :size-assert         #x20
-  :flag-assert         #x900000020
   )
 
 (defmethod print file-info ((this file-info))

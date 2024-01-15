@@ -135,20 +135,16 @@
 
 ;; definition of type first-person-hud
 (deftype first-person-hud (process)
-  ((max-nb-of-particles int32          :offset-assert 112)
-   (nb-of-particles     int32          :offset-assert 116)
-   (particles           hud-particle 3 :offset-assert 120)
-   (in-out-position     int32          :offset-assert 132)
-   (sides-x-scale       float          :offset-assert 136)
-   (sides-y-scale       float          :offset-assert 140)
-   (x-offset            int32          :offset-assert 144)
+  ((max-nb-of-particles  int32)
+   (nb-of-particles      int32)
+   (particles            hud-particle  3)
+   (in-out-position      int32)
+   (sides-x-scale        float)
+   (sides-y-scale        float)
+   (x-offset             int32)
    )
-  :heap-base #x30
-  :method-count-assert 15
-  :size-assert         #x94
-  :flag-assert         #xf00300094
   (:methods
-    (dumb-15 (_type_) none 14)
+    (dumb-15 (_type_) none)
     )
   (:states
     hud-coming-in
@@ -159,7 +155,7 @@
   )
 
 ;; definition for method 3 of type first-person-hud
-(defmethod inspect first-person-hud ((this first-person-hud))
+(defmethod inspect ((this first-person-hud))
   (let ((t9-0 (method-of-type process inspect)))
     (t9-0 this)
     )
@@ -177,7 +173,7 @@
 (define *fp-hud-stack* (malloc 'global #x3800))
 
 ;; definition for method 10 of type first-person-hud
-(defmethod deactivate first-person-hud ((this first-person-hud))
+(defmethod deactivate ((this first-person-hud))
   (dotimes (s5-0 (-> this nb-of-particles))
     (kill-and-free-particles (-> this particles s5-0 part))
     (set! (-> this particles s5-0 part matrix) -1)
@@ -248,7 +244,7 @@
 
 ;; definition for method 7 of type first-person-hud
 ;; INFO: Return type mismatch process vs first-person-hud.
-(defmethod relocate first-person-hud ((this first-person-hud) (arg0 int))
+(defmethod relocate ((this first-person-hud) (arg0 int))
   (dotimes (v1-0 (-> this nb-of-particles))
     (when (-> this particles v1-0 part)
       (if (nonzero? (-> this particles v1-0 part))
@@ -261,7 +257,7 @@
 
 ;; definition for method 14 of type first-person-hud
 ;; INFO: Return type mismatch int vs none.
-(defmethod dumb-15 first-person-hud ((this first-person-hud))
+(defmethod dumb-15 ((this first-person-hud))
   (dotimes (s5-0 (-> this nb-of-particles))
     (set! (-> this particles s5-0 pos x) (+ -256.0 (-> this particles s5-0 init-pos x)))
     (set! (-> this particles s5-0 pos y)
@@ -530,9 +526,7 @@
                                    )
                            (pad-buttons r2 circle square)
                            )
-                 (and (= (-> self fact-info-target eco-type) (pickup-type eco-yellow))
-                      (>= (-> self fact-info-target eco-level) 1.0)
-                      )
+                 (and (= (-> self fact eco-type) (pickup-type eco-yellow)) (>= (-> self fact eco-level) 1.0))
                  (time-elapsed? (-> self control unknown-dword82) (seconds 0.5))
                  (not *pause-lock*)
                  )
@@ -563,7 +557,7 @@
                 (.lvf vf5 (&-> s5-1 quad))
                 (.add.vf vf6 vf4 vf5 :mask #b111)
                 (.svf (&-> sv-48 quad) vf6)
-                (let ((t1-0 (if (>= (-> self fact-info-target eco-level) (-> *FACT-bank* eco-level-max))
+                (let ((t1-0 (if (>= (-> self fact eco-level) (-> *FACT-bank* eco-level-max))
                                 56
                                 40
                                 )
@@ -684,9 +678,7 @@
                            (pad-buttons r2 circle square)
                            )
                  (time-elapsed? (-> self control unknown-dword82) (seconds 0.45))
-                 (and (= (-> self fact-info-target eco-type) (pickup-type eco-yellow))
-                      (>= (-> self fact-info-target eco-level) 1.0)
-                      )
+                 (and (= (-> self fact eco-type) (pickup-type eco-yellow)) (>= (-> self fact eco-level) 1.0))
                  (not *pause-lock*)
                  )
         (let ((gp-1 (vector-float*!
@@ -716,7 +708,7 @@
                 (.lvf vf5 (&-> s5-1 quad))
                 (.add.vf vf6 vf4 vf5 :mask #b111)
                 (.svf (&-> sv-48 quad) vf6)
-                (let ((t1-0 (if (>= (-> self fact-info-target eco-level) (-> *FACT-bank* eco-level-max))
+                (let ((t1-0 (if (>= (-> self fact eco-level) (-> *FACT-bank* eco-level-max))
                                 120
                                 104
                                 )
@@ -1391,9 +1383,7 @@
       (let ((s5-2 (vector-z-quaternion! (new 'stack-no-clear 'vector) (-> self control quat))))
         (set! (-> s5-2 y) 0.0)
         (vector-normalize! s5-2 (-> *TARGET-bank* yellow-projectile-speed))
-        (when (and (= (-> self fact-info-target eco-type) (pickup-type eco-yellow))
-                   (>= (-> self fact-info-target eco-level) 1.0)
-                   )
+        (when (and (= (-> self fact eco-type) (pickup-type eco-yellow)) (>= (-> self fact eco-level) 1.0))
           (let ((gp-1 (get-process *default-dead-pool* projectile-yellow #x4000)))
             (set! gp-0 (ppointer->handle
                          (when gp-1
@@ -1404,9 +1394,9 @@
                              gp-1
                              projectile-init-by-other
                              (-> self entity)
-                             (vector<-cspace! (new 'stack-no-clear 'vector) (joint-node-index eichar-lod0-jg sk_rhand))
+                             (vector<-cspace! (new 'stack-no-clear 'vector) (joint-node eichar-lod0-jg sk_rhand))
                              s5-2
-                             (if (>= (-> self fact-info-target eco-level) (-> *FACT-bank* eco-level-max))
+                             (if (>= (-> self fact eco-level) (-> *FACT-bank* eco-level-max))
                                  25
                                  9
                                  )
@@ -1529,7 +1519,7 @@
         (vector-z-quaternion! (new 'stack-no-clear 'vector) (-> self control quat))
         (the-as float (-> *TARGET-bank* yellow-projectile-speed))
         )
-      (if (>= (-> self fact-info-target eco-level) (-> *FACT-bank* eco-level-max))
+      (if (>= (-> self fact eco-level) (-> *FACT-bank* eco-level-max))
           16
           0
           )
@@ -1603,9 +1593,7 @@
           (go target-attack-air #f)
           )
       (when (can-hands? #f)
-        (if (and (= (-> self fact-info-target eco-type) (pickup-type eco-yellow))
-                 (>= (-> self fact-info-target eco-level) 1.0)
-                 )
+        (if (and (= (-> self fact eco-type) (pickup-type eco-yellow)) (>= (-> self fact eco-level) 1.0))
             (go target-yellow-jump-blast)
             (go target-running-attack)
             )
@@ -1884,7 +1872,7 @@
              (create-splash
                (-> self water)
                (the-as float 0.2)
-               (vector<-cspace! (new 'stack-no-clear 'vector) (joint-node-index eichar-lod0-jg Rtoes))
+               (vector<-cspace! (new 'stack-no-clear 'vector) (joint-node eichar-lod0-jg Rtoes))
                0
                (vector-float*! (new 'stack-no-clear 'vector) (-> self control transv) 2.5)
                )
@@ -1894,7 +1882,7 @@
              (create-splash
                (-> self water)
                (the-as float 0.2)
-               (vector<-cspace! (new 'stack-no-clear 'vector) (joint-node-index eichar-lod0-jg Ltoes))
+               (vector<-cspace! (new 'stack-no-clear 'vector) (joint-node eichar-lod0-jg Ltoes))
                0
                (vector-float*! (new 'stack-no-clear 'vector) (-> self control transv) 2.5)
                )
@@ -2179,7 +2167,7 @@
        (let ((v1-2 (the-as attack-info (-> block param 1))))
          (when (or (not (logtest? (-> v1-2 mask) (attack-mask mode))) (= (-> v1-2 mode) 'generic) (= (-> v1-2 mode) 'drown))
            (set! (-> v1-2 mode) 'damage)
-           (if (and (= (-> self game mode) 'play) (>= 1.0 (-> self fact-info-target health)))
+           (if (and (= (-> self game mode) 'play) (>= 1.0 (-> self fact health)))
                (set! (-> v1-2 mode) 'drown-death)
                )
            (logior! (-> v1-2 mask) (attack-mask mode))
@@ -2516,7 +2504,7 @@
       (let ((f0-5 (the float (the int (+ 1.0 (/ (- arg0 (-> *TARGET-bank* fall-far)) (-> *TARGET-bank* fall-far-inc))))))
             )
         (pickup-collectable!
-          (-> self fact-info-target)
+          (-> self fact)
           (pickup-type eco-green)
           (* (-> *FACT-bank* health-single-inc) (- (fmax 0.0 f0-5)))
           (the-as handle #f)
@@ -2527,7 +2515,7 @@
           )
       )
     (cond
-      ((and (= (-> self game mode) 'play) (>= 0.0 (-> self fact-info-target health)))
+      ((and (= (-> self game mode) 'play) (>= 0.0 (-> self fact health)))
        (set! (-> self attack-info attacker) (the-as handle #f))
        (go target-death 'target-hit-ground-hard)
        )
@@ -2768,7 +2756,7 @@
   :exit (behavior ()
     (send-event (ppointer->process (-> self sidekick)) 'matrix 'normal)
     (send-event (ppointer->process (-> self sidekick)) 'shadow #t)
-    (let ((gp-0 (joint-node-index eichar-lod0-jg main))
+    (let ((gp-0 (joint-node eichar-lod0-jg main))
           (a1-2 (&-> (-> self control) unknown-qword00))
           )
       (cond

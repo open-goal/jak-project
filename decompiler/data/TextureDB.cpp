@@ -133,20 +133,23 @@ void TextureDB::replace_textures(const fs::path& path) {
   fs::path base_path(path);
   for (auto& tex : textures) {
     fs::path full_path = base_path / tpage_names.at(tex.second.page) / (tex.second.name + ".png");
-    if (fs::exists(full_path)) {
-      lg::info("Replacing {}", full_path.string().c_str());
-      int w, h;
-      auto data = stbi_load(full_path.string().c_str(), &w, &h, 0, 4);  // rgba channels
-      if (!data) {
-        lg::warn("failed to load PNG file: {}", full_path.string().c_str());
+    if (!fs::exists(full_path)) {
+      full_path = base_path / "_all" / (tex.second.name + ".png");
+      if (!fs::exists(full_path))
         continue;
-      }
-      tex.second.rgba_bytes.resize(w * h);
-      memcpy(tex.second.rgba_bytes.data(), data, w * h * 4);
-      tex.second.w = w;
-      tex.second.h = h;
-      stbi_image_free(data);
     }
+    lg::info("Replacing {}", tpage_names.at(tex.second.page) + "/" + (tex.second.name));
+    int w, h;
+    auto data = stbi_load(full_path.string().c_str(), &w, &h, 0, 4);  // rgba channels
+    if (!data) {
+      lg::warn("failed to load PNG file: {}", full_path.string().c_str());
+      continue;
+    }
+    tex.second.rgba_bytes.resize(w * h);
+    memcpy(tex.second.rgba_bytes.data(), data, w * h * 4);
+    tex.second.w = w;
+    tex.second.h = h;
+    stbi_image_free(data);
   }
 }
 

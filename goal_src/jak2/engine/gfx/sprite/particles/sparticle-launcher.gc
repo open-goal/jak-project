@@ -191,23 +191,17 @@
   )
 
 (deftype sp-queued-launch-particles (structure)
-  ((sp-system   sparticle-system           :offset-assert   0)
-   (sp-launcher sparticle-launcher         :offset-assert   4)
-   (pos         vector             :inline :offset-assert  16)
+  ((sp-system    sparticle-system)
+   (sp-launcher  sparticle-launcher)
+   (pos          vector  :inline)
    )
-  :method-count-assert 9
-  :size-assert         #x20
-  :flag-assert         #x900000020
   )
 
 
 (deftype sp-launch-queue (basic)
-  ((in-use int32                                  :offset-assert   4)
-   (queue  sp-queued-launch-particles 256 :inline :offset-assert  16)
+  ((in-use  int32)
+   (queue   sp-queued-launch-particles  256 :inline)
    )
-  :method-count-assert 9
-  :size-assert         #x2010
-  :flag-assert         #x900002010
   )
 
 
@@ -248,15 +242,12 @@
   )
 
 (deftype particle-adgif-cache (basic)
-  ((used    int32                   :offset-assert   4)
-   (last    uint16                  :offset-assert   8)
-   (lastgif adgif-shader            :offset-assert  12)
-   (tidhash uint16       80         :offset-assert  16)
-   (spadgif adgif-shader 80 :inline :offset-assert 176)
+  ((used     int32)
+   (last     uint16)
+   (lastgif  adgif-shader)
+   (tidhash  uint16        80)
+   (spadgif  adgif-shader  80 :inline)
    )
-  :method-count-assert 9
-  :size-assert         #x19b0
-  :flag-assert         #x9000019b0
   )
 
 
@@ -470,26 +461,23 @@
   )
 
 (deftype sp-launch-stack (structure)
-  ((ra         basic                       :offset-assert   0)
-   (dummy0     basic                       :offset-assert   4)
-   (dummy1     basic                       :offset-assert   8)
-   (b-spfic    basic                       :offset-assert  12)
-   (r16        uint128                     :offset-assert  16)
-   (r17        uint128                     :offset-assert  32)
-   (r18        uint128                     :offset-assert  48)
-   (pos        uint128                     :offset-assert  64)
-   (matrix     matrix              :inline :offset-assert  80)
-   (l-spfic    basic                       :offset-assert 144)
-   (birth-info sparticle-birthinfo :inline :offset-assert 160)
-   (sprite     sprite-vec-data-2d  :inline :offset-assert 192)
-   (r19        uint128                     :offset-assert 240)
-   (r20        uint128                     :offset-assert 256)
-   (r21        uint128                     :offset-assert 272)
-   (r22        uint128                     :offset-assert 288)
+  ((ra          basic)
+   (dummy0      basic)
+   (dummy1      basic)
+   (b-spfic     basic)
+   (r16         uint128)
+   (r17         uint128)
+   (r18         uint128)
+   (pos         uint128)
+   (matrix      matrix               :inline)
+   (l-spfic     basic)
+   (birth-info  sparticle-birthinfo  :inline)
+   (sprite      sprite-vec-data-2d   :inline)
+   (r19         uint128)
+   (r20         uint128)
+   (r21         uint128)
+   (r22         uint128)
    )
-  :method-count-assert 9
-  :size-assert         #x130
-  :flag-assert         #x900000130
   )
 
 
@@ -784,7 +772,7 @@
     )
   )
 
-(defmethod initialize sparticle-launch-control ((this sparticle-launch-control) (arg0 sparticle-launch-group) (arg1 process))
+(defmethod initialize ((this sparticle-launch-control) (arg0 sparticle-launch-group) (arg1 process))
   (let ((s5-0 0))
     (set! (-> this group) arg0)
     (set! (-> this proc) (the-as process-drawable arg1))
@@ -867,7 +855,7 @@
   )
 
 ;; WARN: Return type mismatch object vs sparticle-launch-control.
-(defmethod create-launch-control sparticle-launch-group ((this sparticle-launch-group) (arg0 process))
+(defmethod create-launch-control ((this sparticle-launch-group) (arg0 process))
   (let ((gp-0 (the-as object (new 'process 'sparticle-launch-control (-> this length)))))
     (when (zero? (the-as sparticle-launch-control gp-0))
       (go process-drawable-art-error "memory")
@@ -880,7 +868,7 @@
     )
   )
 
-(defmethod kill-and-free-particles sparticle-launch-control ((this sparticle-launch-control))
+(defmethod kill-and-free-particles ((this sparticle-launch-control))
   (countdown (v1-0 (-> this length))
     (let ((a0-4 (-> this data v1-0)))
       (logclear! (-> a0-4 flags) (sp-launch-state-flags particles-active))
@@ -896,13 +884,13 @@
   (none)
   )
 
-(defmethod kill-particles sparticle-launch-control ((this sparticle-launch-control))
+(defmethod kill-particles ((this sparticle-launch-control))
   (kill-all-particles-with-key this)
   0
   (none)
   )
 
-(defmethod is-visible? sparticle-launch-control ((this sparticle-launch-control) (arg0 vector))
+(defmethod is-visible? ((this sparticle-launch-control) (arg0 vector))
   (let* ((v1-0 (-> this group))
          (f0-0 (-> v1-0 bounds r))
          )
@@ -916,7 +904,10 @@
       (else
         (let ((s5-1 (vector+! (new 'stack-no-clear 'vector) arg0 (the-as vector (-> v1-0 bounds)))))
           (set! (-> s5-1 w) f0-0)
-          (when (or *display-sprite-marks* *display-sprite-spheres* (and *display-actor-vis* (= (-> this proc) *debug-actor*)))
+          (when (or *display-sprite-marks*
+                    *display-sprite-spheres*
+                    (and *display-actor-vis* (= (-> this proc) *debug-actor*))
+                    )
             (add-debug-sphere
               *display-sprite-spheres*
               (bucket-id debug2)
@@ -942,7 +933,7 @@
     )
   )
 
-(defmethod spawn-with-matrix sparticle-launch-control ((this sparticle-launch-control) (arg0 matrix))
+(defmethod spawn-with-matrix ((this sparticle-launch-control) (arg0 matrix))
   (let* ((a2-0 (-> this origin))
          (a3-0 arg0)
          (v1-0 (-> a3-0 quad 0))
@@ -988,7 +979,7 @@
   (none)
   )
 
-(defmethod spawn-with-cspace sparticle-launch-control ((this sparticle-launch-control) (arg0 cspace))
+(defmethod spawn-with-cspace ((this sparticle-launch-control) (arg0 cspace))
   (let* ((v1-0 (-> this origin))
          (a3-0 (-> arg0 bone transform))
          (a0-2 (-> a3-0 quad 0))
@@ -1035,7 +1026,7 @@
   )
 
 ;; WARN: Function (method 11 sparticle-launch-control) has a return type of none, but the expression builder found a return statement.
-(defmethod spawn sparticle-launch-control ((this sparticle-launch-control) (arg0 vector))
+(defmethod spawn ((this sparticle-launch-control) (arg0 vector))
   (with-pp
     (set! (-> this origin trans quad) (-> arg0 quad))
     (if (not (or (is-visible? this arg0) (logtest? (-> this group flags) (sp-group-flag always-draw screen-space))))
@@ -1979,7 +1970,7 @@
   )
 
 ;; WARN: new jak 2 until loop case, check carefully
-(defmethod get-field-spec-by-id sparticle-launcher ((this sparticle-launcher) (arg0 sp-field-id))
+(defmethod get-field-spec-by-id ((this sparticle-launcher) (arg0 sp-field-id))
   "Returns the [[sp-field-init-spec]] that has the matching [[sp-field-id]]"
   (let ((v1-0 0))
     (until #f
@@ -2001,7 +1992,7 @@
   (the-as sp-field-init-spec #f)
   )
 
-(defmethod setup-user-array sparticle-launcher ((this sparticle-launcher) (arg0 string))
+(defmethod setup-user-array ((this sparticle-launcher) (arg0 string))
   (let ((s5-0 (get-field-spec-by-id this (sp-field-id spt-texture)))
         (v1-1 (lookup-texture-id-by-name arg0 (the-as string #f)))
         )

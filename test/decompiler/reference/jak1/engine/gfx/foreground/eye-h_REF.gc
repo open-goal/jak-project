@@ -3,21 +3,18 @@
 
 ;; definition of type eye
 (deftype eye (structure)
-  ((data        vector 2 :inline :offset-assert   0)
-   (x           float            :offset          0)
-   (y           float            :offset          4)
-   (lid         float            :offset          8)
-   (iris-scale  float            :offset         16)
-   (pupil-scale float            :offset         20)
-   (lid-scale   float            :offset         24)
+  ((data         vector  2 :inline)
+   (x            float   :overlay-at (-> data 0 x))
+   (y            float   :overlay-at (-> data 0 y))
+   (lid          float   :overlay-at (-> data 0 z))
+   (iris-scale   float   :offset  16)
+   (pupil-scale  float   :offset  20)
+   (lid-scale    float   :offset  24)
    )
-  :method-count-assert 9
-  :size-assert         #x20
-  :flag-assert         #x900000020
   )
 
 ;; definition for method 3 of type eye
-(defmethod inspect eye ((this eye))
+(defmethod inspect ((this eye))
   (format #t "[~8x] ~A~%" this 'eye)
   (format #t "~Tdata[2] @ #x~X~%" (-> this data))
   (format #t "~Tx: ~f~%" (-> this data 0 x))
@@ -31,21 +28,18 @@
 
 ;; definition of type eye-control
 (deftype eye-control (structure)
-  ((process     handle                              :offset-assert   0)
-   (random-time uint16                              :offset-assert   8)
-   (level       uint16                              :offset-assert  10)
-   (blink       float                               :offset-assert  12)
-   (shaders     (inline-array adgif-shader)         :offset-assert  16)
-   (left        eye                         :inline :offset-assert  32)
-   (right       eye                         :inline :offset-assert  64)
+  ((process      handle)
+   (random-time  uint16)
+   (level        uint16)
+   (blink        float)
+   (shaders      (inline-array adgif-shader))
+   (left         eye  :inline)
+   (right        eye  :inline)
    )
-  :method-count-assert 9
-  :size-assert         #x60
-  :flag-assert         #x900000060
   )
 
 ;; definition for method 3 of type eye-control
-(defmethod inspect eye-control ((this eye-control))
+(defmethod inspect ((this eye-control))
   (format #t "[~8x] ~A~%" this 'eye-control)
   (format #t "~Tprocess: ~D~%" (-> this process))
   (format #t "~Trandom-time: ~D~%" (-> this random-time))
@@ -59,15 +53,12 @@
 
 ;; definition of type eye-control-array
 (deftype eye-control-array (basic)
-  ((data eye-control 11 :inline :offset-assert  16)
+  ((data  eye-control  11 :inline)
    )
-  :method-count-assert 9
-  :size-assert         #x430
-  :flag-assert         #x900000430
   )
 
 ;; definition for method 3 of type eye-control-array
-(defmethod inspect eye-control-array ((this eye-control-array))
+(defmethod inspect ((this eye-control-array))
   (format #t "[~8x] ~A~%" this (-> this type))
   (format #t "~Tdata[11] @ #x~X~%" (-> this data))
   this
@@ -75,18 +66,15 @@
 
 ;; definition of type eye-work
 (deftype eye-work (structure)
-  ((sprite-tmpl  dma-gif-packet :inline :offset-assert   0)
-   (sprite-tmpl2 dma-gif-packet :inline :offset-assert  32)
-   (adgif-tmpl   dma-gif-packet :inline :offset-assert  64)
-   (blink-table  float          10      :offset-assert  96)
+  ((sprite-tmpl   dma-gif-packet  :inline)
+   (sprite-tmpl2  dma-gif-packet  :inline)
+   (adgif-tmpl    dma-gif-packet  :inline)
+   (blink-table   float           10)
    )
-  :method-count-assert 9
-  :size-assert         #x88
-  :flag-assert         #x900000088
   )
 
 ;; definition for method 3 of type eye-work
-(defmethod inspect eye-work ((this eye-work))
+(defmethod inspect ((this eye-work))
   (format #t "[~8x] ~A~%" this 'eye-work)
   (format #t "~Tsprite-tmpl: #<dma-gif-packet @ #x~X>~%" (-> this sprite-tmpl))
   (format #t "~Tsprite-tmpl2: #<dma-gif-packet @ #x~X>~%" (-> this sprite-tmpl2))

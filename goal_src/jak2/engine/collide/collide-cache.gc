@@ -7,7 +7,7 @@
 
 ;; DECOMP BEGINS
 
-(defmethod reset collide-cache ((this collide-cache))
+(defmethod reset ((this collide-cache))
   (set! (-> this num-tris) 0)
   (set! (-> this num-prims) 0)
   (set! (-> this ignore-processes 0) #f)
@@ -17,11 +17,11 @@
   (none)
   )
 
-(defmethod fill-from-bg collide-cache ((this collide-cache)
-                                     (arg0 (function collide-hash int collide-list collide-query int))
-                                     (arg1 (function collide-cache collide-list collide-query none))
-                                     (arg2 collide-query)
-                                     )
+(defmethod fill-from-bg ((this collide-cache)
+                        (arg0 (function collide-hash int collide-list collide-query int))
+                        (arg1 (function collide-cache collide-list collide-query none))
+                        (arg2 collide-query)
+                        )
   (set! *already-printed-exeeded-max-cache-tris* #f)
   (set! (-> *collide-list* num-items) 0)
   (if *collide-list-boxes*
@@ -63,7 +63,7 @@
   )
 
 ;; WARN: Function (method 21 collide-cache) has a return type of none, but the expression builder found a return statement.
-(defmethod fill-from-water collide-cache ((this collide-cache) (arg0 water-control))
+(defmethod fill-from-water ((this collide-cache) (arg0 water-control))
   (rlet ((vf0 :class vf)
          (vf1 :class vf)
          (vf2 :class vf)
@@ -139,7 +139,7 @@
     )
   )
 
-(defmethod fill-using-bounding-box collide-cache ((this collide-cache) (arg0 collide-query))
+(defmethod fill-using-bounding-box ((this collide-cache) (arg0 collide-query))
   (rlet ((vf0 :class vf)
          (vf1 :class vf)
          (vf2 :class vf)
@@ -219,7 +219,7 @@
     )
   )
 
-(defmethod fill-using-line-sphere collide-cache ((this collide-cache) (arg0 collide-query))
+(defmethod fill-using-line-sphere ((this collide-cache) (arg0 collide-query))
   ;; og:preserve-this float -> uint
   (local-vars (v1-11 uint) (v1-20 float))
   (rlet ((acc :class vf)
@@ -486,7 +486,7 @@
     )
   )
 
-(defmethod fill-from-fg-boxes collide-cache ((this collide-cache))
+(defmethod fill-from-fg-boxes ((this collide-cache))
   (let ((s5-0 (-> this collide-with)))
     (set! *actor-list-length* 0)
     (if (logtest? s5-0 (collide-spec hit-by-others-list))
@@ -573,7 +573,7 @@
   )
 
 ;; WARN: Return type mismatch object vs none.
-(defmethod add-fg-prim-using-box collide-shape-prim ((this collide-shape-prim) (arg0 collide-cache))
+(defmethod add-fg-prim-using-box ((this collide-shape-prim) (arg0 collide-cache))
   (format 0 "ERROR: Illegal collide-shape-prim type passed to collide-shape-prim::add-fg-prim-using-box!~%")
   (none)
   )
@@ -584,7 +584,7 @@
 
 (defmethod-mips2c "(method 10 collide-shape-prim-group)" 10 collide-shape-prim-group)
 
-(defmethod fill-from-fg-line-sphere collide-cache ((this collide-cache) (arg0 collide-query))
+(defmethod fill-from-fg-line-sphere ((this collide-cache) (arg0 collide-query))
   (local-vars (v1-9 float))
   (rlet ((acc :class vf)
          (vf0 :class vf)
@@ -712,7 +712,7 @@
   )
 
 ;; WARN: Return type mismatch object vs none.
-(defmethod add-fg-prim-using-line-sphere collide-shape-prim ((this collide-shape-prim) (arg0 collide-cache) (arg1 object))
+(defmethod add-fg-prim-using-line-sphere ((this collide-shape-prim) (arg0 collide-cache) (arg1 object))
   (format
     0
     "ERROR: Illegal collide-shape-prim type passed to collide-shape-prim::add-fg-prim-using-line-sphere!~%"
@@ -726,23 +726,20 @@
 
 (defmethod-mips2c "(method 11 collide-shape-prim-group)" 11 collide-shape-prim-group)
 
-(defmethod fill-and-probe-using-line-sphere collide-cache ((this collide-cache) (arg0 collide-query))
+(defmethod fill-and-probe-using-line-sphere ((this collide-cache) (arg0 collide-query))
   (fill-using-line-sphere this arg0)
   (probe-using-line-sphere this arg0)
   )
 
 (deftype collide-puls-work (structure)
-  ((ignore-pat pat-surface         :offset-assert   0)
-   (bsphere    sphere      :inline :offset-assert  16)
-   (move-dist  vector      :inline :offset-assert  32)
+  ((ignore-pat  pat-surface)
+   (bsphere     sphere  :inline)
+   (move-dist   vector  :inline)
    )
-  :method-count-assert 9
-  :size-assert         #x30
-  :flag-assert         #x900000030
   )
 
 
-(defmethod probe-using-line-sphere collide-cache ((this collide-cache) (arg0 collide-query))
+(defmethod probe-using-line-sphere ((this collide-cache) (arg0 collide-query))
   (rlet ((vf0 :class vf)
          (vf2 :class vf)
          (vf3 :class vf)
@@ -813,14 +810,11 @@
   )
 
 (deftype lsmi-work (structure)
-  ((best-u      float                 :offset-assert   0)
-   (orig-best-u float                 :offset-assert   4)
-   (action      uint32                :offset-assert   8)
-   (cquery      collide-query :inline :offset-assert  16)
+  ((best-u       float)
+   (orig-best-u  float)
+   (action       uint32)
+   (cquery       collide-query  :inline)
    )
-  :method-count-assert 9
-  :size-assert         #x22c
-  :flag-assert         #x90000022c
   )
 
 
@@ -828,12 +822,12 @@
 
 (defmethod-mips2c "(method 10 collide-cache-prim)" 10 collide-cache-prim)
 
-(defmethod fill-and-probe-using-spheres collide-cache ((this collide-cache) (arg0 collide-query))
+(defmethod fill-and-probe-using-spheres ((this collide-cache) (arg0 collide-query))
   (fill-using-spheres this arg0)
   (probe-using-spheres this arg0)
   )
 
-(defmethod fill-using-spheres collide-cache ((this collide-cache) (arg0 collide-query))
+(defmethod fill-using-spheres ((this collide-cache) (arg0 collide-query))
   (new 'stack-no-clear 'bounding-box)
   (set-from-spheres!
     (-> arg0 bbox)

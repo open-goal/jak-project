@@ -1,4 +1,4 @@
-﻿/***************************************************************************************************
+/***************************************************************************************************
 
   Zyan Disassembler Library (Zydis)
 
@@ -120,8 +120,7 @@ int ZydisFuzzTarget(ZydisStreamRead read_fn, void* stream_ctx)
     ZydisDecodedOperand operands[ZYDIS_MAX_OPERAND_COUNT];
 
     // Fuzz decoder.
-    ZyanStatus status = ZydisDecoderDecodeFull(&decoder, buffer, input_len, &instruction, 
-        operands, ZYDIS_MAX_OPERAND_COUNT, 0);
+    ZyanStatus status = ZydisDecoderDecodeFull(&decoder, buffer, input_len, &instruction, operands);
     if (!ZYAN_SUCCESS(status))
     {
         return EXIT_FAILURE;
@@ -134,12 +133,13 @@ int ZydisFuzzTarget(ZydisStreamRead read_fn, void* stream_ctx)
     // Allow the control block to artificially restrict the buffer size.
     ZyanUSize output_len = ZYAN_MIN(sizeof(format_buffer), control_block.formatter_max_len);
     ZydisFormatterFormatInstruction(&formatter, &instruction, operands,
-        instruction.operand_count_visible, format_buffer, output_len, control_block.u64);
+        instruction.operand_count_visible, format_buffer, output_len, control_block.u64, ZYAN_NULL);
 
     // Fuzz tokenizer.
     const ZydisFormatterToken* token;
     status = ZydisFormatterTokenizeInstruction(&formatter, &instruction, operands,
-        instruction.operand_count_visible, format_buffer, output_len, control_block.u64, &token);
+        instruction.operand_count_visible, format_buffer, output_len, control_block.u64, &token,
+        ZYAN_NULL);
 
     // Walk tokens.
     while (ZYAN_SUCCESS(status))
@@ -163,11 +163,11 @@ int ZydisFuzzTarget(ZydisStreamRead read_fn, void* stream_ctx)
         const ZydisDecodedOperand* op = &operands[op_idx];
 
         ZydisFormatterFormatOperand(&formatter, &instruction, op, format_buffer, output_len,
-            control_block.u64);
+            control_block.u64, ZYAN_NULL);
 
         // Fuzz single operand tokenization.
         ZydisFormatterTokenizeOperand(&formatter, &instruction, op, format_buffer, output_len,
-            control_block.u64, &token);
+            control_block.u64, &token, ZYAN_NULL);
 
         // Address translation helper.
         ZyanU64 abs_addr;
@@ -179,8 +179,10 @@ int ZydisFuzzTarget(ZydisStreamRead read_fn, void* stream_ctx)
     ZydisMnemonicGetStringWrapped((ZydisMnemonic)control_block.u64);
 
     // Instruction segment helper.
+#   ifndef ZYDIS_DISABLE_SEGMENT
     ZydisInstructionSegments segments;
     ZydisGetInstructionSegments(&instruction, &segments);
+#   endif
 
     // Feature enable check helper.
     ZydisIsFeatureEnabled((ZydisFeature)control_block.u64);

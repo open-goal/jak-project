@@ -13,19 +13,15 @@
 ;; DECOMP BEGINS
 
 (deftype darkvine (process-drawable)
-  ((root-override    collide-shape  :offset        112)
-   (speed            float          :offset-assert 176)
-   (tip-index        int8           :offset-assert 180)
-   (dangerous        symbol         :offset-assert 184)
-   (vulnerable       symbol         :offset-assert 188)
-   (hit-player       symbol         :offset-assert 192)
-   (touch-time       time-frame     :offset-assert 200)
-   (player-attack-id int32          :offset-assert 208)
+  ((root              collide-shape :override)
+   (speed             float)
+   (tip-index         int8)
+   (dangerous         symbol)
+   (vulnerable        symbol)
+   (hit-player        symbol)
+   (touch-time        time-frame)
+   (player-attack-id  int32)
    )
-  :heap-base #x70
-  :method-count-assert 20
-  :size-assert         #xd4
-  :flag-assert         #x14007000d4
   (:states
     (darkvine-die symbol)
     darkvine-idle
@@ -34,12 +30,12 @@
   )
 
 
-(defmethod run-logic? darkvine ((this darkvine))
+(defmethod run-logic? ((this darkvine))
   (or (not (logtest? (-> this mask) (process-mask actor-pause)))
       (or (and (nonzero? (-> this draw))
                (logtest? (-> this draw status) (draw-status was-drawn))
-               (>= (+ (-> *ACTOR-bank* pause-dist) (-> this root-override pause-adjust-distance))
-                   (vector-vector-distance (-> this root-override trans) (math-camera-pos))
+               (>= (+ (-> *ACTOR-bank* pause-dist) (-> this root pause-adjust-distance))
+                   (vector-vector-distance (-> this root trans) (math-camera-pos))
                    )
                )
           (and (nonzero? (-> this skel)) (!= (-> this skel root-channel 0) (-> this skel channel)))
@@ -128,10 +124,10 @@
 (defbehavior darkvine-event-handler darkvine ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
   (case arg2
     (('touch)
-     (do-push-aways! (-> self root-override))
+     (do-push-aways! (-> self root))
      (when (-> self dangerous)
        (if (send-event arg0 'attack (-> arg3 param 0) (new 'static 'attack-info))
-           (set-collide-offense (-> self root-override) 2 (collide-offense no-offense))
+           (set-collide-offense (-> self root) 2 (collide-offense no-offense))
            )
        )
      )
@@ -141,7 +137,7 @@
          ((!= v1-10 (-> self player-attack-id))
           (set! (-> self player-attack-id) (the-as int v1-10))
           (when (-> self vulnerable)
-            (do-push-aways! (-> self root-override))
+            (do-push-aways! (-> self root))
             (go darkvine-retreat)
             )
           )
@@ -167,7 +163,7 @@
         (ja-no-eval :group! darkvine-idle-ja :num! (seek! max (-> self speed)) :frame-num 0.0)
         (until (ja-done? 0)
           (if (and (>= (ja-aframe-num 0) 120.0) (>= 180.0 (ja-aframe-num 0)))
-              (seek-toward-yaw-angle! (-> self root-override) f30-0 32768.0 (seconds 0.5))
+              (seek-toward-yaw-angle! (-> self root) f30-0 32768.0 (seconds 0.5))
               )
           (suspend)
           (ja :num! (seek! max (-> self speed)))
@@ -182,7 +178,7 @@
     )
   :post (behavior ()
     (when (and (-> self hit-player) (or (not *target*) (time-elapsed? (-> self touch-time) (seconds 0.05))))
-      (set-collide-offense (-> self root-override) 2 (collide-offense indestructible))
+      (set-collide-offense (-> self root) 2 (collide-offense indestructible))
       (set! (-> self hit-player) #f)
       )
     (transform-post)
@@ -207,7 +203,7 @@
     (ja-channel-push! 1 (seconds 0.15))
     (ja-no-eval :group! darkvine-retreat-ja :num! (seek!) :frame-num 0.0)
     (until (ja-done? 0)
-      (launch-particles (-> *part-id-table* 800) (-> self root-override trans))
+      (launch-particles (-> *part-id-table* 800) (-> self root trans))
       (suspend)
       (ja :num! (seek!))
       )
@@ -225,7 +221,7 @@
       #f
       #f
       #f
-      (-> self root-override trans)
+      (-> self root trans)
       :to *entity-pool*
       )
     (let ((gp-2 (current-time)))
@@ -253,7 +249,7 @@
         (ja-channel-set! 1)
         (ja-channel-push! 1 (seconds 0.5))
         )
-    (clear-collide-with-as (-> self root-override))
+    (clear-collide-with-as (-> self root))
     (ja :group! darkvine-dead-ja :num! min)
     (while (!= (-> self skel root-channel 0) (-> self skel channel))
       (suspend)
@@ -264,7 +260,7 @@
   :post (-> darkvine-idle post)
   )
 
-(defmethod init-from-entity! darkvine ((this darkvine) (arg0 entity-actor))
+(defmethod init-from-entity! ((this darkvine) (arg0 entity-actor))
   (logior! (-> this mask) (process-mask enemy))
   (let ((s4-0 (new 'process 'collide-shape this (collide-list-enum hit-by-player))))
     (let ((s3-0 (new 'process 'collide-shape-prim-group s4-0 (the-as uint 4) 0)))
@@ -312,12 +308,12 @@
       )
     (set! (-> s4-0 nav-radius) 2048.0)
     (backup-collide-with-as s4-0)
-    (set! (-> this root-override) s4-0)
+    (set! (-> this root) s4-0)
     )
   (set! (-> this tip-index) 8)
   (process-drawable-from-entity! this arg0)
   (initialize-skeleton this *darkvine-sg* '())
-  (nav-mesh-connect this (-> this root-override) (the-as nav-control #f))
+  (nav-mesh-connect this (-> this root) (the-as nav-control #f))
   (set! (-> this hit-player) #f)
   (set! (-> this speed) (rand-vu-float-range 0.95 1.05))
   (if (logtest? (get-reminder (get-task-control (game-task jungle-plant)) 0) 1)

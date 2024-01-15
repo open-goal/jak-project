@@ -42,4 +42,5 @@ std::string disassemble_x86_function(
     const std::vector<std::shared_ptr<goos::HeapObject>>& code_sources,
     const std::vector<std::string>& ir_strings,
     bool* had_failure,
-    bool print_whole_function);
+    bool print_whole_function,
+    bool omit_ir);

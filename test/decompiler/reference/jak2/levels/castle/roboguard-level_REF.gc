@@ -3,37 +3,35 @@
 
 ;; definition of type roboguard-level
 (deftype roboguard-level (nav-enemy)
-  ((unknown-n12kjh3n123 int32      5       :offset-assert 604)
-   (flags               uint16             :offset-assert 624)
-   (roll-timer          time-frame         :offset-assert 632)
-   (roll-dir            vector     :inline :offset-assert 640)
-   (incoming-attack-id  uint32             :offset-assert 656)
-   (turning-acc         float              :offset-assert 660)
-   (speed               float              :offset-assert 664)
-   (roll-attack-count   uint32             :offset-assert 668)
-   (roll-sound          sound-id           :offset-assert 672)
+  ((unknown-n12kjh3n123  int32   5)
+   (flags                uint16)
+   (roll-timer           time-frame)
+   (roll-dir             vector  :inline)
+   (incoming-attack-id   uint32)
+   (turning-acc          float)
+   (speed                float)
+   (roll-attack-count    uint32)
+   (roll-sound           sound-id)
    )
-  :heap-base #x230
-  :method-count-assert 189
-  :size-assert         #x2a4
-  :flag-assert         #xbd023002a4
+  (:state-methods
+    roboguard-level-state-178
+    roboguard-level-state-179
+    roll-enter
+    roll-hostile
+    roll-to-walk
+    idle-dizzy
+    explode
+    )
   (:methods
-    (roboguard-level-method-178 (_type_) none 178)
-    (roboguard-level-method-179 (_type_) none 179)
-    (roll-enter () _type_ :state 180)
-    (roll-hostile () _type_ :state 181)
-    (roll-to-walk () _type_ :state 182)
-    (idle-dizzy () _type_ :state 183)
-    (explode () _type_ :state 184)
-    (roboguard-level-method-185 (_type_ symbol) none 185)
-    (roboguard-level-method-186 (_type_) none 186)
-    (roboguard-level-method-187 (_type_) none 187)
-    (roboguard-level-method-188 (_type_) none 188)
+    (roboguard-level-method-185 (_type_ symbol) none)
+    (roboguard-level-method-186 (_type_) none)
+    (roboguard-level-method-187 (_type_) none)
+    (roboguard-level-method-188 (_type_) none)
     )
   )
 
 ;; definition for method 3 of type roboguard-level
-(defmethod inspect roboguard-level ((this roboguard-level))
+(defmethod inspect ((this roboguard-level))
   (when (not this)
     (set! this this)
     (goto cfg-4)
@@ -371,7 +369,7 @@
     (logior! (-> self flags) 4)
     (logior! (-> self nav flags) (nav-control-flag output-sphere-hash))
     (let ((a1-1 (new 'stack-no-clear 'collide-query)))
-      (enemy-method-125 self a1-1 (collide-spec backgnd) 8192.0 81920.0 1024.0)
+      (ground-pat-set! self a1-1 (collide-spec backgnd) 8192.0 81920.0 1024.0)
       )
     (let* ((v1-11 (-> self nav))
            (a1-2 (-> self root gspot-pos))
@@ -511,7 +509,7 @@
     )
   :code (behavior ()
     (ja-channel-push! 1 (seconds 0.2))
-    (let ((f30-0 (get-rand-float-range self 0.9 1.1)))
+    (let ((f30-0 (rnd-float-range self 0.9 1.1)))
       (until #f
         (ja-no-eval :group! roboguard-idle0-ja :num! (seek! 10.0 (* 0.1 f30-0)) :frame-num 9.0)
         (until (ja-done? 0)
@@ -557,15 +555,15 @@
   :virtual #t
   :event enemy-event-handler
   :enter (behavior ()
-    (logior! (-> self enemy-flags) (enemy-flag use-notice-distance))
+    (logior! (-> self enemy-flags) (enemy-flag cam-attack-mode))
     (logior! (-> self flags) 4)
-    (logclear! (-> self enemy-flags) (enemy-flag dangerous-backup))
+    (logclear! (-> self enemy-flags) (enemy-flag chase-startup))
     (logclear! (-> self mask) (process-mask actor-pause))
-    (when (logtest? (-> self enemy-flags) (enemy-flag drawn-mirrored))
-      (logclear! (-> self enemy-flags) (enemy-flag drawn-mirrored))
+    (when (logtest? (-> self enemy-flags) (enemy-flag enable-on-hostile))
+      (logclear! (-> self enemy-flags) (enemy-flag enable-on-hostile))
       (let ((gp-0 (-> self on-hostile)))
         (if gp-0
-            (script-eval (the-as pair gp-0) :vector (-> self root trans))
+            (script-eval gp-0 :vector (-> self root trans))
             )
         )
       )
@@ -597,7 +595,7 @@
     )
   :exit (behavior ()
     (sound-stop (-> self roll-sound))
-    (if (logtest? (-> self enemy-flags) (enemy-flag check-water))
+    (if (logtest? (-> self enemy-flags) (enemy-flag dangerous-backup))
         (logior! (-> self focus-status) (focus-status dangerous))
         (logclear! (-> self focus-status) (focus-status dangerous))
         )
@@ -630,7 +628,7 @@
     0
     (nav-enemy-method-160 self)
     (when (< (-> self roll-timer) (current-time))
-      (set! (-> self roll-timer) (+ (current-time) (the int (* 300.0 (get-rand-float-range self 3.0 5.0)))))
+      (set! (-> self roll-timer) (+ (current-time) (the int (* 300.0 (rnd-float-range self 3.0 5.0)))))
       (let ((gp-2 (handle->process (-> self focus handle))))
         (when (and gp-2
                    (and gp-2
@@ -763,7 +761,7 @@
   )
 
 ;; definition for method 70 of type roboguard-level
-(defmethod go-hostile roboguard-level ((this roboguard-level))
+(defmethod go-hostile ((this roboguard-level))
   (go (method-of-object this roll-enter))
   )
 
@@ -845,7 +843,7 @@
 
 ;; definition for method 185 of type roboguard-level
 ;; WARN: Return type mismatch int vs none.
-(defmethod roboguard-level-method-185 roboguard-level ((this roboguard-level) (arg0 symbol))
+(defmethod roboguard-level-method-185 ((this roboguard-level) (arg0 symbol))
   (let ((v1-1 (-> this root root-prim))
         (a0-1 arg0)
         )
@@ -912,7 +910,7 @@
   )
 
 ;; definition for method 77 of type roboguard-level
-(defmethod enemy-method-77 roboguard-level ((this roboguard-level) (arg0 (pointer float)))
+(defmethod enemy-method-77 ((this roboguard-level) (arg0 enemy-knocked-info))
   (ja-channel-push! 1 0)
   (case (-> this incoming knocked-type)
     (((knocked-type knocked-type-0)
@@ -925,7 +923,7 @@
        (set! (-> a0-5 param 0)
              (the float (+ (-> (the-as art-joint-anim (-> this draw art-group data 21)) frames num-frames) -1))
              )
-       (set! (-> a0-5 param 1) (-> arg0 0))
+       (set! (-> a0-5 param 1) (-> arg0 anim-speed))
        (set! (-> a0-5 frame-num) 0.0)
        (joint-control-channel-group! a0-5 (the-as art-joint-anim (-> this draw art-group data 21)) num-func-seek!)
        )
@@ -936,7 +934,7 @@
         (set! (-> a0-6 param 0)
               (the float (+ (-> (the-as art-joint-anim (-> this draw art-group data 23)) frames num-frames) -1))
               )
-        (set! (-> a0-6 param 1) (-> arg0 0))
+        (set! (-> a0-6 param 1) (-> arg0 anim-speed))
         (set! (-> a0-6 frame-num) 0.0)
         (joint-control-channel-group! a0-6 (the-as art-joint-anim (-> this draw art-group data 23)) num-func-seek!)
         )
@@ -946,7 +944,7 @@
   )
 
 ;; definition for method 78 of type roboguard-level
-(defmethod enemy-method-78 roboguard-level ((this roboguard-level) (arg0 (pointer float)))
+(defmethod enemy-method-78 ((this roboguard-level) (arg0 enemy-knocked-info))
   (case (-> this incoming knocked-type)
     (((knocked-type knocked-type-0)
       (knocked-type knocked-type-1)
@@ -958,7 +956,7 @@
        (set! (-> v1-4 param 0)
              (the float (+ (-> (the-as art-joint-anim (-> this draw art-group data 22)) frames num-frames) -1))
              )
-       (set! (-> v1-4 param 1) (-> arg0 0))
+       (set! (-> v1-4 param 1) (-> arg0 anim-speed))
        (set! (-> v1-4 frame-num) 0.0)
        (joint-control-channel-group! v1-4 (the-as art-joint-anim (-> this draw art-group data 22)) num-func-seek!)
        )
@@ -969,7 +967,7 @@
         (set! (-> v1-8 param 0)
               (the float (+ (-> (the-as art-joint-anim (-> this draw art-group data 24)) frames num-frames) -1))
               )
-        (set! (-> v1-8 param 1) (-> arg0 0))
+        (set! (-> v1-8 param 1) (-> arg0 anim-speed))
         (set! (-> v1-8 frame-num) 0.0)
         (joint-control-channel-group! v1-8 (the-as art-joint-anim (-> this draw art-group data 24)) num-func-seek!)
         )
@@ -980,7 +978,7 @@
 
 ;; definition for method 74 of type roboguard-level
 ;; INFO: Used lq/sq
-(defmethod general-event-handler roboguard-level ((this roboguard-level) (arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+(defmethod general-event-handler ((this roboguard-level) (arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
   "Handles various events for the enemy
 @TODO - unsure if there is a pattern for the events and this should have a more specific name"
   (case arg2
@@ -1051,7 +1049,7 @@
            :to this
            )
          )
-       (dispose! this)
+       (dying this)
        (go (method-of-object this explode))
        )
      )
@@ -1064,7 +1062,7 @@
 ;; definition for method 76 of type roboguard-level
 ;; INFO: Used lq/sq
 ;; WARN: Return type mismatch object vs symbol.
-(defmethod enemy-method-76 roboguard-level ((this roboguard-level) (arg0 process) (arg1 event-message-block))
+(defmethod enemy-method-76 ((this roboguard-level) (arg0 process) (arg1 event-message-block))
   (rlet ((acc :class vf)
          (vf0 :class vf)
          (vf4 :class vf)
@@ -1133,7 +1131,7 @@
                       (set! (-> v1-30 target-speed) (-> this speed))
                       )
                     0
-                    (set! (-> this roll-timer) (+ (current-time) (the int (* 300.0 (get-rand-float-range this 3.0 5.0)))))
+                    (set! (-> this roll-timer) (+ (current-time) (the int (* 300.0 (rnd-float-range this 3.0 5.0)))))
                     (set! (-> this roll-dir quad) (-> s3-1 quad))
                     )
                   )
@@ -1159,7 +1157,7 @@
 ;; definition for method 142 of type roboguard-level
 ;; INFO: Used lq/sq
 ;; WARN: Return type mismatch int vs none.
-(defmethod nav-enemy-method-142 roboguard-level ((this roboguard-level) (arg0 nav-control))
+(defmethod nav-enemy-method-142 ((this roboguard-level) (arg0 nav-control))
   (let ((s3-0 (new 'stack-no-clear 'vector)))
     (let ((a1-1 (-> arg0 state)))
       (set! (-> s3-0 quad) (-> a1-1 heading quad))
@@ -1186,7 +1184,7 @@
 ;; definition for method 176 of type roboguard-level
 ;; INFO: Used lq/sq
 ;; WARN: Return type mismatch int vs none.
-(defmethod nav-enemy-method-176 roboguard-level ((this roboguard-level))
+(defmethod nav-enemy-method-176 ((this roboguard-level))
   (nav-enemy-method-177 this)
   (let ((a0-2 this))
     (when (logtest? (enemy-flag enemy-flag36) (-> a0-2 enemy-flags))
@@ -1202,37 +1200,37 @@
         )
       )
     )
-  (track-target! this)
+  (common-post this)
   (update-transforms (-> this root))
   0
   (none)
   )
 
 ;; definition for method 132 of type roboguard-level
-(defmethod dispose! roboguard-level ((this roboguard-level))
+(defmethod dying ((this roboguard-level))
   "Cleans-up the enemy and any associated resources. Potentially spawns skull gems"
-  (when (not (logtest? (enemy-flag recover-applied-velocity) (-> this enemy-flags)))
+  (when (not (logtest? (enemy-flag called-dying) (-> this enemy-flags)))
     (send-event (ppointer->process (-> this parent)) 'roboguard-die)
-    ((method-of-type nav-enemy dispose!) this)
+    ((method-of-type nav-enemy dying) this)
     )
   (none)
   )
 
 ;; definition for method 10 of type roboguard-level
-(defmethod deactivate roboguard-level ((this roboguard-level))
+(defmethod deactivate ((this roboguard-level))
   (sound-stop (-> this roll-sound))
   (call-parent-method this)
   (none)
   )
 
 ;; definition for method 7 of type roboguard-level
-(defmethod relocate roboguard-level ((this roboguard-level) (arg0 int))
+(defmethod relocate ((this roboguard-level) (arg0 int))
   (call-parent-method this arg0)
   )
 
 ;; definition for method 114 of type roboguard-level
 ;; WARN: Return type mismatch int vs none.
-(defmethod init-enemy-collision! roboguard-level ((this roboguard-level))
+(defmethod init-enemy-collision! ((this roboguard-level))
   "Initializes the [[collide-shape-moving]] and any ancillary tasks to make the enemy collide properly"
   (let ((s5-0 (new 'process 'collide-shape-moving this (collide-list-enum usually-hit-by-player))))
     (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
@@ -1292,14 +1290,16 @@
 
 ;; definition for method 115 of type roboguard-level
 ;; WARN: Return type mismatch int vs none.
-(defmethod init-enemy! roboguard-level ((this roboguard-level))
+(defmethod init-enemy! ((this roboguard-level))
   "Common method called to initialize the enemy, typically sets up default field values and calls ancillary helper methods"
   (initialize-skeleton
     this
     (the-as skeleton-group (art-group-get-by-name *level* "skel-roboguard-level" (the-as (pointer uint32) #f)))
     (the-as pair 0)
     )
-  (set! (-> this enemy-flags) (the-as enemy-flag (logior (enemy-flag vulnerable-backup) (-> this enemy-flags))))
+  (set! (-> this enemy-flags)
+        (the-as enemy-flag (logior (enemy-flag no-initial-move-to-ground) (-> this enemy-flags)))
+        )
   (init-enemy-behaviour-and-stats! this *roboguard-level-nav-enemy-info*)
   (let ((v1-8 (-> this nav)))
     (set! (-> v1-8 nav-cull-radius) 81920.0)

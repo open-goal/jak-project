@@ -228,27 +228,23 @@
   )
 
 (deftype beach-rock (process-drawable)
-  ((root-override collide-shape-moving      :offset        112)
-   (trigger       basic                     :offset-assert 176)
-   (movie-start   time-frame                :offset-assert 184)
-   (part-falling  sparticle-launch-control  :offset-assert 192)
-   (part-landing  sparticle-launch-control  :offset-assert 196)
-   (prev-frame    float                     :offset-assert 200)
+  ((root          collide-shape-moving :override)
+   (trigger       basic)
+   (movie-start   time-frame)
+   (part-falling  sparticle-launch-control)
+   (part-landing  sparticle-launch-control)
+   (prev-frame    float)
    )
-  :heap-base #x60
-  :method-count-assert 24
-  :size-assert         #xcc
-  :flag-assert         #x18006000cc
-  (:methods
-    (idle () _type_ :state 20)
-    (loading () _type_ :state 21)
-    (falling () _type_ :state 22)
-    (fallen () _type_ :state 23)
+  (:state-methods
+    idle
+    loading
+    falling
+    fallen
     )
   )
 
 
-(defmethod relocate beach-rock ((this beach-rock) (arg0 int))
+(defmethod relocate ((this beach-rock) (arg0 int))
   (if (nonzero? (-> this part-falling))
       (set! (-> this part-falling) (the-as sparticle-launch-control (+ (the-as int (-> this part-falling)) arg0)))
       )
@@ -258,7 +254,7 @@
   (call-parent-method this arg0)
   )
 
-(defmethod deactivate beach-rock ((this beach-rock))
+(defmethod deactivate ((this beach-rock))
   (if (nonzero? (-> this part-falling))
       (kill-and-free-particles (-> this part-falling))
       )
@@ -313,7 +309,7 @@
     (let ((f30-0 (ja-aframe-num 0)))
       (when (and (< -50.0 f30-0) (< f30-0 158.0))
         (let ((gp-0 (new 'stack-no-clear 'vector)))
-          (set! (-> gp-0 quad) (-> self root-override trans quad))
+          (set! (-> gp-0 quad) (-> self root trans quad))
           (spawn (-> self part) gp-0)
           (+! (-> gp-0 x) 122880.0)
           (+! (-> gp-0 z) 102400.0)
@@ -323,31 +319,31 @@
       (if (and (< 200.0 f30-0) (< f30-0 275.0))
           (spawn
             (-> self part-falling)
-            (vector<-cspace! (new 'stack-no-clear 'vector) (joint-node-index lrocklrg-lod0-jg Lrocklrg))
+            (vector<-cspace! (new 'stack-no-clear 'vector) (joint-node lrocklrg-lod0-jg Lrocklrg))
             )
           )
       (if (and (< 270.0 f30-0) (< f30-0 333.0))
           (spawn
             (-> self part-falling)
-            (vector<-cspace! (new 'stack-no-clear 'vector) (joint-node-index lrocklrg-lod0-jg platformrock))
+            (vector<-cspace! (new 'stack-no-clear 'vector) (joint-node lrocklrg-lod0-jg platformrock))
             )
           )
       (if (and (< (-> self prev-frame) 333.0) (>= f30-0 333.0))
           (spawn
             (-> self part-landing)
-            (vector<-cspace! (new 'stack-no-clear 'vector) (joint-node-index lrocklrg-lod0-jg platformrock))
+            (vector<-cspace! (new 'stack-no-clear 'vector) (joint-node lrocklrg-lod0-jg platformrock))
             )
           )
       (if (and (< 169.0 f30-0) (< f30-0 202.0))
           (spawn
             (-> self part-falling)
-            (vector<-cspace! (new 'stack-no-clear 'vector) (joint-node-index lrocklrg-lod0-jg Rrocklrg))
+            (vector<-cspace! (new 'stack-no-clear 'vector) (joint-node lrocklrg-lod0-jg Rrocklrg))
             )
           )
       (if (and (< 240.0 f30-0) (< f30-0 270.0))
           (spawn
             (-> self part-falling)
-            (vector<-cspace! (new 'stack-no-clear 'vector) (joint-node-index lrocklrg-lod0-jg smlrock))
+            (vector<-cspace! (new 'stack-no-clear 'vector) (joint-node lrocklrg-lod0-jg smlrock))
             )
           )
       (set! (-> self prev-frame) f30-0)
@@ -425,11 +421,11 @@
     (ja :group! lrocklrg-fallen-ja)
     (compute-alignment! (-> self align))
     (let ((v1-6 (first-transform (-> self align))))
-      (set! (-> self root-override trans quad) (-> self entity extra trans quad))
-      (+! (-> self root-override trans y) (-> v1-6 trans y))
+      (set! (-> self root trans quad) (-> self entity extra trans quad))
+      (+! (-> self root trans y) (-> v1-6 trans y))
       )
     (suspend)
-    (update-transforms! (-> self root-override))
+    (update-transforms! (-> self root))
     (logior! (-> self mask) (process-mask sleep))
     (suspend)
     0
@@ -437,7 +433,7 @@
   :post ja-post
   )
 
-(defmethod init-from-entity! beach-rock ((this beach-rock) (arg0 entity-actor))
+(defmethod init-from-entity! ((this beach-rock) (arg0 entity-actor))
   (set! (-> this link) (new 'process 'actor-link-info this))
   (set! (-> this align) (new 'process 'align-control this))
   (set! (-> this trigger) #f)
@@ -475,14 +471,10 @@
 
 (deftype lrocklrg (beach-rock)
   ()
-  :heap-base #x60
-  :method-count-assert 24
-  :size-assert         #xcc
-  :flag-assert         #x18006000cc
   )
 
 
-(defmethod init-from-entity! lrocklrg ((this lrocklrg) (arg0 entity-actor))
+(defmethod init-from-entity! ((this lrocklrg) (arg0 entity-actor))
   (stack-size-set! (-> this main-thread) 512)
   (let ((s4-0 (new 'process 'collide-shape-moving this (collide-list-enum hit-by-player))))
     (set! (-> s4-0 dynam) (copy *standard-dynamics* 'process))
@@ -501,7 +493,7 @@
       )
     (set! (-> s4-0 nav-radius) (* 0.75 (-> s4-0 root-prim local-sphere w)))
     (backup-collide-with-as s4-0)
-    (set! (-> this root-override) s4-0)
+    (set! (-> this root) s4-0)
     )
   (process-drawable-from-entity! this arg0)
   (initialize-skeleton this *lrocklrg-sg* '())

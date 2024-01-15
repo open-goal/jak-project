@@ -312,7 +312,7 @@ void* RPC_Player(unsigned int /*fno*/, void* data, int size) {
           local_178.header.thread_id = 0;
           local_178.vag_dir_entry = nullptr;
           local_178.name[0] = '\0';
-          local_178.unk_136 = 0;
+          local_178.sound_handler = 0;
           local_178.id = 0;
           local_178.priority = 0;
           StopVagStream(&local_178, 1);
@@ -383,7 +383,7 @@ void* RPC_Loader(unsigned int /*fno*/, void* data, int size) {
           break;
         }
 
-        strncpy(bank->name, cmd->load_bank.bank_name, 16);
+        strncpy(bank->name.data(), cmd->load_bank.bank_name, 16);
         bank->in_use = true;
         bank->unk4 = 0;
         LoadSoundBank(cmd->load_bank.bank_name, bank);

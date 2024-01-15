@@ -1581,21 +1581,17 @@
               )
 
 (deftype atoll-tank (process-focusable)
-  ((is-master?     symbol                    :offset-assert 204)
-   (aftermath-part sparticle-launch-control  :offset-assert 208)
+  ((is-master?      symbol)
+   (aftermath-part  sparticle-launch-control)
    )
-  :heap-base #x60
-  :method-count-assert 29
-  :size-assert         #xd4
-  :flag-assert         #x1d006000d4
-  (:methods
-    (dormant () _type_ :state 27)
-    (idle () _type_ :state 28)
+  (:state-methods
+    dormant
+    idle
     )
   )
 
 
-(defmethod deactivate atoll-tank ((this atoll-tank))
+(defmethod deactivate ((this atoll-tank))
   (if (nonzero? (-> this aftermath-part))
       (kill-and-free-particles (-> this aftermath-part))
       )
@@ -1604,18 +1600,18 @@
   )
 
 ;; WARN: Return type mismatch process-focusable vs atoll-tank.
-(defmethod relocate atoll-tank ((this atoll-tank) (arg0 int))
+(defmethod relocate ((this atoll-tank) (arg0 int))
   (if (nonzero? (-> this aftermath-part))
       (&+! (-> this aftermath-part) arg0)
       )
   (the-as atoll-tank ((method-of-type process-focusable relocate) this arg0))
   )
 
-(defmethod run-logic? atoll-tank ((this atoll-tank))
+(defmethod run-logic? ((this atoll-tank))
   #t
   )
 
-(defmethod get-trans atoll-tank ((this atoll-tank) (arg0 int))
+(defmethod get-trans ((this atoll-tank) (arg0 int))
   "@returns the `trans` [[vector]] from the process's `root` (typically either a [[trsqv]] or a [[collide-shape]])"
   (let ((v1-0 (-> this root)))
     (case arg0
@@ -1698,7 +1694,7 @@
   )
 
 ;; WARN: Return type mismatch object vs none.
-(defmethod init-from-entity! atoll-tank ((this atoll-tank) (arg0 entity-actor))
+(defmethod init-from-entity! ((this atoll-tank) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
 - stack size

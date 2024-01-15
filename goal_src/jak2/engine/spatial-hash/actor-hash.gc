@@ -14,30 +14,24 @@
 (kmemclose)
 
 (deftype actor-cshape-ptr (structure)
-  ((cshape collide-shape  :offset-assert   0)
+  ((cshape  collide-shape)
    )
-  :method-count-assert 9
-  :size-assert         #x4
-  :flag-assert         #x900000004
   )
 
 
 (deftype actor-hash-bucket (structure)
-  ((length     int16                            :offset-assert   0)
-   (max-length int16                            :offset-assert   2)
-   (data       (inline-array actor-cshape-ptr)  :offset-assert   4)
+  ((length      int16)
+   (max-length  int16)
+   (data        (inline-array actor-cshape-ptr))
    )
   :allow-misaligned
-  :method-count-assert 10
-  :size-assert         #x8
-  :flag-assert         #xa00000008
   (:methods
-    (add-actor-cshape (_type_ collide-shape) none 9)
+    (add-actor-cshape (_type_ collide-shape) none)
     )
   )
 
 
-(defmethod add-actor-cshape actor-hash-bucket ((this actor-hash-bucket) (arg0 collide-shape))
+(defmethod add-actor-cshape ((this actor-hash-bucket) (arg0 collide-shape))
   (let ((v1-0 (-> this length)))
     (when (< v1-0 (-> this max-length))
       (set! (-> this data v1-0 cshape) arg0)
@@ -49,21 +43,18 @@
   )
 
 (deftype actor-hash-buckets (structure)
-  ((hash spatial-hash                :offset-assert   0)
-   (list engine                      :offset-assert   4)
-   (data actor-hash-bucket 4 :inline :offset-assert   8)
-   (tpos vector            :inline   :offset-assert  80)
+  ((hash  spatial-hash)
+   (list  engine)
+   (data  actor-hash-bucket  4 :inline)
+   (tpos  vector             :inline)
    )
-  :method-count-assert 10
-  :size-assert         #x60
-  :flag-assert         #xa00000060
   (:methods
-    (hash-actors (_type_) none 9)
+    (hash-actors (_type_) none)
     )
   )
 
 
-(defmethod hash-actors actor-hash-buckets ((this actor-hash-buckets))
+(defmethod hash-actors ((this actor-hash-buckets))
   (local-vars (sv-16 hash-object-info) (sv-32 collide-prim-core) (sv-48 collide-shape) (sv-64 hash-object-info))
   (set! (-> this hash) *actor-hash*)
   (set! (-> this list) *collide-hit-by-others-list*)

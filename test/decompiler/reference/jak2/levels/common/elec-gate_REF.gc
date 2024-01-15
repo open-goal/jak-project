@@ -3,19 +3,16 @@
 
 ;; definition of type elec-gate-params
 (deftype elec-gate-params (structure)
-  ((bolt-spec       lightning-spec  :offset-assert   0)
-   (ring-spec       lightning-spec  :offset-assert   4)
-   (ring-radius-min float           :offset-assert   8)
-   (ring-radius-max float           :offset-assert  12)
-   (speed-mult      float           :offset-assert  16)
+  ((bolt-spec        lightning-spec)
+   (ring-spec        lightning-spec)
+   (ring-radius-min  float)
+   (ring-radius-max  float)
+   (speed-mult       float)
    )
-  :method-count-assert 9
-  :size-assert         #x14
-  :flag-assert         #x900000014
   )
 
 ;; definition for method 3 of type elec-gate-params
-(defmethod inspect elec-gate-params ((this elec-gate-params))
+(defmethod inspect ((this elec-gate-params))
   (when (not this)
     (set! this this)
     (goto cfg-4)
@@ -32,18 +29,15 @@
 
 ;; definition of type elec-gate-bolt
 (deftype elec-gate-bolt (structure)
-  ((ring        lightning-control 2 :offset-assert   0)
-   (bolt        lightning-control   :offset-assert   8)
-   (ring-radius float               :offset-assert  12)
-   (pos         float               :offset-assert  16)
+  ((ring         lightning-control  2)
+   (bolt         lightning-control)
+   (ring-radius  float)
+   (pos          float)
    )
-  :method-count-assert 9
-  :size-assert         #x14
-  :flag-assert         #x900000014
   )
 
 ;; definition for method 3 of type elec-gate-bolt
-(defmethod inspect elec-gate-bolt ((this elec-gate-bolt))
+(defmethod inspect ((this elec-gate-bolt))
   (when (not this)
     (set! this this)
     (goto cfg-4)
@@ -59,16 +53,13 @@
 
 ;; definition of type elec-wall
 (deftype elec-wall (structure)
-  ((pos vector :inline :offset-assert   0)
-   (dir vector :inline :offset-assert  16)
+  ((pos  vector  :inline)
+   (dir  vector  :inline)
    )
-  :method-count-assert 9
-  :size-assert         #x20
-  :flag-assert         #x900000020
   )
 
 ;; definition for method 3 of type elec-wall
-(defmethod inspect elec-wall ((this elec-wall))
+(defmethod inspect ((this elec-wall))
   (when (not this)
     (set! this this)
     (goto cfg-4)
@@ -82,43 +73,41 @@
 
 ;; definition of type elec-gate
 (deftype elec-gate (process-drawable)
-  ((params             elec-gate-params                   :offset-assert 200)
-   (path-l             path-control                       :offset        152)
-   (path-r             path-control                       :offset-assert 204)
-   (l-bolt             elec-gate-bolt           5 :inline :offset-assert 208)
-   (part-on            sparticle-launch-control           :offset        168)
-   (part-off           sparticle-launch-control           :offset-assert 368)
-   (part-spawner-left  part-spawner                       :offset-assert 372)
-   (part-spawner-right part-spawner                       :offset-assert 376)
-   (on-start           pair                               :offset-assert 380)
-   (on-stop            pair                               :offset-assert 384)
-   (dividing-wall      elec-wall                :inline   :offset-assert 400)
-   (plane              elec-wall                2 :inline :offset-assert 432)
-   (wall-y             float                              :offset-assert 496)
-   (wall-xz            float                              :offset-assert 500)
-   (lightning-quality  float                              :offset-assert 504)
-   (quality-enabled?   symbol                             :offset-assert 508)
+  ((params              elec-gate-params)
+   (path-l              path-control              :overlay-at path)
+   (path-r              path-control)
+   (l-bolt              elec-gate-bolt            5 :inline)
+   (part-on             sparticle-launch-control  :overlay-at part)
+   (part-off            sparticle-launch-control)
+   (part-spawner-left   part-spawner)
+   (part-spawner-right  part-spawner)
+   (on-start            pair)
+   (on-stop             pair)
+   (dividing-wall       elec-wall                 :inline)
+   (plane               elec-wall                 2 :inline)
+   (wall-y              float)
+   (wall-xz             float)
+   (lightning-quality   float)
+   (quality-enabled?    symbol)
    )
-  :heap-base #x180
-  :method-count-assert 30
-  :size-assert         #x200
-  :flag-assert         #x1e01800200
+  (:state-methods
+    idle
+    active
+    shutdown
+    )
   (:methods
-    (idle () _type_ :state 20)
-    (active () _type_ :state 21)
-    (shutdown () _type_ :state 22)
-    (get-params (_type_) elec-gate-params 23)
-    (elec-gate-method-24 (_type_) none 24)
-    (set-palette! (_type_) none 25)
-    (set-state! (_type_) none 26)
-    (spawn-particles (_type_ sparticle-launch-control) none 27)
-    (set-elec-scale-if-close! (_type_ float) none 28)
-    (set-elec-scale! (_type_ float) none 29)
+    (get-params (_type_) elec-gate-params)
+    (elec-gate-method-24 (_type_) none)
+    (set-palette! (_type_) none)
+    (set-state! (_type_) none)
+    (spawn-particles (_type_ sparticle-launch-control) none)
+    (set-elec-scale-if-close! (_type_ float) none)
+    (set-elec-scale! (_type_ float) none)
     )
   )
 
 ;; definition for method 3 of type elec-gate
-(defmethod inspect elec-gate ((this elec-gate))
+(defmethod inspect ((this elec-gate))
   (when (not this)
     (set! this this)
     (goto cfg-4)
@@ -782,7 +771,7 @@
 
 ;; definition for method 28 of type elec-gate
 ;; WARN: Return type mismatch int vs none.
-(defmethod set-elec-scale-if-close! elec-gate ((this elec-gate) (arg0 float))
+(defmethod set-elec-scale-if-close! ((this elec-gate) (arg0 float))
   "If [[target]]'s position is within `80` [[meters]], set the scale to the value provided
 @see [[elec-gate::29]]"
   (if (< (vector-vector-distance (-> this root trans) (target-pos 0)) 327680.0)
@@ -794,7 +783,7 @@
 
 ;; definition for method 27 of type elec-gate
 ;; WARN: Return type mismatch int vs none.
-(defmethod spawn-particles elec-gate ((this elec-gate) (sparticle-lc sparticle-launch-control))
+(defmethod spawn-particles ((this elec-gate) (sparticle-lc sparticle-launch-control))
   "TODO - Calls [[sparticle-launch-control::11]] on `part-spawner-left` and `part-spawner-right` if they are defined"
   (if (-> this part-spawner-left)
       (spawn sparticle-lc (the-as vector (&-> (-> this part-spawner-left child) 8)))
@@ -808,7 +797,7 @@
 
 ;; definition for method 7 of type elec-gate
 ;; WARN: Return type mismatch process-drawable vs elec-gate.
-(defmethod relocate elec-gate ((this elec-gate) (new-addr int))
+(defmethod relocate ((this elec-gate) (new-addr int))
   (dotimes (bolt-idx 5)
     (let ((left-bolt (-> this l-bolt bolt-idx)))
       (if (nonzero? (-> left-bolt bolt))
@@ -834,28 +823,28 @@
   )
 
 ;; definition for method 10 of type elec-gate
-(defmethod deactivate elec-gate ((this elec-gate))
+(defmethod deactivate ((this elec-gate))
   (set-elec-scale-if-close! this 0.0)
   (call-parent-method this)
   (none)
   )
 
 ;; definition for method 23 of type elec-gate
-(defmethod get-params elec-gate ((this elec-gate))
+(defmethod get-params ((this elec-gate))
   "@returns [[*default-elec-gate-params*]] by default"
   *default-elec-gate-params*
   )
 
 ;; definition for method 24 of type elec-gate
 ;; WARN: Return type mismatch int vs none.
-(defmethod elec-gate-method-24 elec-gate ((this elec-gate))
+(defmethod elec-gate-method-24 ((this elec-gate))
   0
   (none)
   )
 
 ;; definition for method 25 of type elec-gate
 ;; WARN: Return type mismatch int vs none.
-(defmethod set-palette! elec-gate ((this elec-gate))
+(defmethod set-palette! ((this elec-gate))
   "Sets the [[elec-gate]]'s `palette-id` appropriately"
   0
   (none)
@@ -863,7 +852,7 @@
 
 ;; definition for method 26 of type elec-gate
 ;; WARN: Return type mismatch int vs none.
-(defmethod set-state! elec-gate ((this elec-gate))
+(defmethod set-state! ((this elec-gate))
   "If either [[actor-option::17]] is set on the [[elec-gate]] or the related subtask is completed
 make the gate `idle`.
 
@@ -880,7 +869,7 @@ Otherwise, the gate will be `active`."
 
 ;; definition for method 11 of type elec-gate
 ;; INFO: Used lq/sq
-(defmethod init-from-entity! elec-gate ((this elec-gate) (arg0 entity-actor))
+(defmethod init-from-entity! ((this elec-gate) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
 - stack size
@@ -962,16 +951,12 @@ This commonly includes things such as:
 
 ;; definition of type fort-elec-gate
 (deftype fort-elec-gate (elec-gate)
-  ((palette-id int32  :offset-assert 512)
+  ((palette-id  int32)
    )
-  :heap-base #x190
-  :method-count-assert 30
-  :size-assert         #x204
-  :flag-assert         #x1e01900204
   )
 
 ;; definition for method 3 of type fort-elec-gate
-(defmethod inspect fort-elec-gate ((this fort-elec-gate))
+(defmethod inspect ((this fort-elec-gate))
   (when (not this)
     (set! this this)
     (goto cfg-4)
@@ -986,7 +971,7 @@ This commonly includes things such as:
 
 ;; definition for method 29 of type fort-elec-gate
 ;; WARN: Return type mismatch int vs none.
-(defmethod set-elec-scale! fort-elec-gate ((this fort-elec-gate) (scale float))
+(defmethod set-elec-scale! ((this fort-elec-gate) (scale float))
   "Calls associated mood functions to set the scale with the value provided
 @see mood-funcs
 @see mood-funcs2"
@@ -999,7 +984,7 @@ This commonly includes things such as:
 
 ;; definition for method 25 of type fort-elec-gate
 ;; WARN: Return type mismatch int vs none.
-(defmethod set-palette! fort-elec-gate ((this fort-elec-gate))
+(defmethod set-palette! ((this fort-elec-gate))
   "Sets the [[elec-gate]]'s `palette-id` appropriately"
   (set! (-> this palette-id) (res-lump-value (-> this entity) 'extra-id int :time -1000000000.0))
   0
@@ -1008,16 +993,12 @@ This commonly includes things such as:
 
 ;; definition of type drill-elec-gate
 (deftype drill-elec-gate (elec-gate)
-  ((palette-id int32  :offset-assert 512)
+  ((palette-id  int32)
    )
-  :heap-base #x190
-  :method-count-assert 30
-  :size-assert         #x204
-  :flag-assert         #x1e01900204
   )
 
 ;; definition for method 3 of type drill-elec-gate
-(defmethod inspect drill-elec-gate ((this drill-elec-gate))
+(defmethod inspect ((this drill-elec-gate))
   (when (not this)
     (set! this this)
     (goto cfg-4)
@@ -1032,7 +1013,7 @@ This commonly includes things such as:
 
 ;; definition for method 29 of type drill-elec-gate
 ;; WARN: Return type mismatch int vs none.
-(defmethod set-elec-scale! drill-elec-gate ((this drill-elec-gate) (arg0 float))
+(defmethod set-elec-scale! ((this drill-elec-gate) (arg0 float))
   "Calls associated mood functions to set the scale with the value provided
 @see mood-funcs
 @see mood-funcs2"
@@ -1043,7 +1024,7 @@ This commonly includes things such as:
 
 ;; definition for method 25 of type drill-elec-gate
 ;; WARN: Return type mismatch int vs none.
-(defmethod set-palette! drill-elec-gate ((this drill-elec-gate))
+(defmethod set-palette! ((this drill-elec-gate))
   "Sets the [[elec-gate]]'s `palette-id` appropriately"
   (set! (-> this palette-id) (res-lump-value (-> this entity) 'extra-id int :time -1000000000.0))
   0
@@ -1053,14 +1034,10 @@ This commonly includes things such as:
 ;; definition of type caspad-elec-gate
 (deftype caspad-elec-gate (elec-gate)
   ()
-  :heap-base #x180
-  :method-count-assert 30
-  :size-assert         #x200
-  :flag-assert         #x1e01800200
   )
 
 ;; definition for method 3 of type caspad-elec-gate
-(defmethod inspect caspad-elec-gate ((this caspad-elec-gate))
+(defmethod inspect ((this caspad-elec-gate))
   (when (not this)
     (set! this this)
     (goto cfg-4)
@@ -1075,14 +1052,10 @@ This commonly includes things such as:
 ;; definition of type castle-elec-gate
 (deftype castle-elec-gate (elec-gate)
   ()
-  :heap-base #x180
-  :method-count-assert 30
-  :size-assert         #x200
-  :flag-assert         #x1e01800200
   )
 
 ;; definition for method 3 of type castle-elec-gate
-(defmethod inspect castle-elec-gate ((this castle-elec-gate))
+(defmethod inspect ((this castle-elec-gate))
   (when (not this)
     (set! this this)
     (goto cfg-4)
@@ -1096,7 +1069,7 @@ This commonly includes things such as:
 
 ;; definition for method 29 of type castle-elec-gate
 ;; WARN: Return type mismatch int vs none.
-(defmethod set-elec-scale! castle-elec-gate ((this castle-elec-gate) (arg0 float))
+(defmethod set-elec-scale! ((this castle-elec-gate) (arg0 float))
   "Calls associated mood functions to set the scale with the value provided
 @see mood-funcs
 @see mood-funcs2"
@@ -1151,23 +1124,19 @@ This commonly includes things such as:
         )
 
 ;; definition for method 23 of type caspad-elec-gate
-(defmethod get-params caspad-elec-gate ((this caspad-elec-gate))
+(defmethod get-params ((this caspad-elec-gate))
   "@returns [[*default-elec-gate-params*]] by default"
   *caspad-elec-gate-params*
   )
 
 ;; definition of type palroof-elec-gate
 (deftype palroof-elec-gate (elec-gate)
-  ((palette-id int32  :offset-assert 512)
+  ((palette-id  int32)
    )
-  :heap-base #x190
-  :method-count-assert 30
-  :size-assert         #x204
-  :flag-assert         #x1e01900204
   )
 
 ;; definition for method 3 of type palroof-elec-gate
-(defmethod inspect palroof-elec-gate ((this palroof-elec-gate))
+(defmethod inspect ((this palroof-elec-gate))
   (when (not this)
     (set! this this)
     (goto cfg-4)
@@ -1182,7 +1151,7 @@ This commonly includes things such as:
 
 ;; definition for method 29 of type palroof-elec-gate
 ;; WARN: Return type mismatch int vs none.
-(defmethod set-elec-scale! palroof-elec-gate ((this palroof-elec-gate) (arg0 float))
+(defmethod set-elec-scale! ((this palroof-elec-gate) (arg0 float))
   "Calls associated mood functions to set the scale with the value provided
 @see mood-funcs
 @see mood-funcs2"
@@ -1193,7 +1162,7 @@ This commonly includes things such as:
 
 ;; definition for method 25 of type palroof-elec-gate
 ;; WARN: Return type mismatch int vs none.
-(defmethod set-palette! palroof-elec-gate ((this palroof-elec-gate))
+(defmethod set-palette! ((this palroof-elec-gate))
   "Sets the [[elec-gate]]'s `palette-id` appropriately"
   (set! (-> this palette-id) (res-lump-value (-> this entity) 'extra-id int :time -1000000000.0))
   0

@@ -10,7 +10,8 @@
    ;; generic function to potentially run some setup code when the entry is loaded
    (on-load (function none))
    ;; so we can restore back to the same menu position
-   (hover-index int32)
+   (hover-index   int32)
+   (scroll-index  int32)
    ;; symbol used normally for progress stuff
    (progress-id symbol))
   (:methods
@@ -20,6 +21,7 @@
   "Isolated type for keeping track of some global state, as re-using the normal [[*progress*]] object
    can lead to unexpected behaviour -- they change some values all over the place"
   ((current-menu-hover-index int32)
+   (current-menu-scroll-index float)
    (clear-screen? symbol)
    (keybind-select-time time-frame)
    (history-stack generic-progress-state-entry 10 :inline)
@@ -43,6 +45,13 @@
   (:methods
     (on-mount! "Called when the menu item is first drawn as a means to initialize defaults, etc" (_type_) none)
     (should-disable? (_type_) symbol)))
+
+(deftype menu-generic-button-option (menu-generic-option)
+  "A button option that run its action when selected"
+  (;; props
+   (on-confirm (function progress none)))
+  (:methods
+    (call-on-confirm (_type_ progress) none)))
 
 (deftype menu-generic-scrolling-page (menu-generic-option)
   "A menu option that holds menu options"
@@ -87,12 +96,12 @@
    (item-index int32)
    ;; lambdas
    (get-item-index-fn (function int))
-   (on-confirm (function int none)))
+   (on-confirm (function int progress none)))
   (:methods
     (num-items (_type_) int)
     (get-item-label (_type_ int) string)
     (call-get-item-index-fn (_type_) int)
-    (call-on-confirm (_type_ int) none)))
+    (call-on-confirm (_type_ int progress) none)))
 
 (deftype menu-generic-confirm-option (menu-generic-option)
   "A button option that confirms before triggering it's action"
@@ -124,6 +133,10 @@
 
 (deftype menu-generic-details-entry (menu-generic-option)
   "A generic details list entry"
+  ())
+
+(deftype menu-generic-to-resolutions-option (menu-generic-button-option)
+  "Specialization of a generic button option"
   ())
 
 (defenum controller-keybind
@@ -201,6 +214,14 @@
     :should-disable? ,should-disable?
     :target ,target))
 
+(defmacro progress-new-generic-link-to-page (title &key (should-disable? #f) &rest options)
+  `(new 'static 'menu-generic-link-option
+    :name ,title
+    :should-disable? ,should-disable?
+    :target (new 'static 'menu-option-list
+      :options (new 'static 'boxed-array :type menu-option
+        ,@options))))
+
 (defmacro progress-new-generic-link-to-scrolling-page (title &key (should-disable? #f) &rest options)
   `(new 'static 'menu-generic-link-option
     :name ,title
@@ -212,7 +233,7 @@
        :menu-options (new 'static 'boxed-array :type menu-option
        ,@options))))))
 
-(defmacro progress-new-generic-link-to-details-page (title &key (should-disable? #f) &rest entries)
+(defmacro progress-new-generic-link-to-keybind-details-page (title &key (should-disable? #f) &key device-type &key entries &key confirm)
   `(new 'static 'menu-generic-link-option
     :name ,title
     :should-disable? ,should-disable?
@@ -221,4 +242,38 @@
       (new 'static 'menu-generic-details-page
        :name ,title
        :entries (new 'static 'boxed-array :type menu-generic-details-entry
-       ,@entries))))))
+       ,@(apply (lambda (x) `(new 'static 'menu-generic-details-keybind-entry :keybind (controller-keybind ,x) :device-type (input-device-type ,device-type))) entries)
+       (new 'static 'menu-generic-details-confirm-entry :name ,(first confirm) :on-confirm ,(second confirm))))))))
+
+(defmacro static-progress-generic-pc-settings-lod-default-high-boolean (name field)
+  `(new 'static 'menu-generic-boolean-option
+        :name ,name
+        :truthy-text (text-id progress-lod-default)
+        :falsey-text (text-id progress-lod-high)
+        :get-value-fn (lambda () ,field)
+        :on-confirm (lambda ((val symbol))
+          (set! ,field val)
+          (pc-settings-save))))
+
+(defmacro static-progress-generic-pc-settings-on-off-boolean (name field)
+  `(new 'static 'menu-generic-boolean-option
+        :name ,name
+        :truthy-text (text-id progress-on)
+        :falsey-text (text-id progress-off)
+        :get-value-fn (lambda () ,field)
+        :on-confirm (lambda ((val symbol))
+          (set! ,field val)
+          (pc-settings-save))))
+
+(defmacro static-progress-generic-pc-settings-shadows-normal-extended-boolean (name field)
+  `(new 'static 'menu-generic-boolean-option
+        :name ,name
+        :truthy-text (text-id progress-shadows-normal)
+        :falsey-text (text-id progress-shadows-extended)
+        :get-value-fn (lambda () ,field)
+        :on-confirm (lambda ((val symbol))
+          (set! ,field val)
+          (pc-settings-save))))
+
+(define *progress-generic-temp-string* (new 'global 'string 512 (the string #f)))
+

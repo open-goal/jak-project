@@ -3,26 +3,22 @@
 
 ;; definition of type billy
 (deftype billy (process-taskable)
-  ((child-override    (pointer billy-snack)   :offset         20)
-   (farthy            handle                  :offset-assert 384)
-   (path-data         path-control          3 :offset-assert 392)
-   (path-snacks       path-control            :offset        392)
-   (path-starts       path-control            :offset        396)
-   (path-waypts       path-control            :offset        400)
-   (passed-last-stage symbol                  :offset-assert 404)
-   (spawn-rats        symbol                  :offset-assert 408)
-   (current-wave      int32                   :offset-assert 412)
-   (wave-start-time   time-frame              :offset-assert 416)
-   (num-snacks        int32                   :offset-assert 424)
-   (num-rats          int32                   :offset-assert 428)
-   (max-rats          int32                   :offset-assert 432)
-   (rat-speed         float                   :offset-assert 436)
-   (offending-rat     handle                  :offset-assert 440)
+  ((child-override     (pointer billy-snack)  :overlay-at child)
+   (farthy             handle)
+   (path-data          path-control           3)
+   (path-snacks        path-control           :overlay-at (-> path-data 0))
+   (path-starts        path-control           :overlay-at (-> path-data 1))
+   (path-waypts        path-control           :overlay-at (-> path-data 2))
+   (passed-last-stage  symbol)
+   (spawn-rats         symbol)
+   (current-wave       int32)
+   (wave-start-time    time-frame)
+   (num-snacks         int32)
+   (num-rats           int32)
+   (max-rats           int32)
+   (rat-speed          float)
+   (offending-rat      handle)
    )
-  :heap-base #x150
-  :method-count-assert 53
-  :size-assert         #x1c0
-  :flag-assert         #x35015001c0
   (:states
     billy-done
     billy-playing
@@ -30,7 +26,7 @@
   )
 
 ;; definition for method 3 of type billy
-(defmethod inspect billy ((this billy))
+(defmethod inspect ((this billy))
   (let ((t9-0 (method-of-type process-taskable inspect)))
     (t9-0 this)
     )
@@ -52,7 +48,7 @@
   )
 
 ;; definition for method 7 of type billy
-(defmethod relocate billy ((this billy) (arg0 int))
+(defmethod relocate ((this billy) (arg0 int))
   (countdown (v1-0 3)
     (if (nonzero? (-> this path-data v1-0))
         (&+! (-> this path-data v1-0) arg0)
@@ -63,12 +59,8 @@
 
 ;; definition of type billy-snack
 (deftype billy-snack (process-drawable)
-  ((num-rats int32  :offset-assert 176)
+  ((num-rats  int32)
    )
-  :heap-base #x50
-  :method-count-assert 20
-  :size-assert         #xb4
-  :flag-assert         #x14005000b4
   (:states
     billy-snack-eat
     billy-snack-idle
@@ -76,7 +68,7 @@
   )
 
 ;; definition for method 3 of type billy-snack
-(defmethod inspect billy-snack ((this billy-snack))
+(defmethod inspect ((this billy-snack))
   (let ((t9-0 (method-of-type process-drawable inspect)))
     (t9-0 this)
     )
@@ -142,15 +134,11 @@
 
 ;; definition of type billy-rat
 (deftype billy-rat (swamp-rat)
-  ((dest-type   uint64                  :offset-assert 496)
-   (snack       handle                  :offset-assert 504)
-   (destination vector          :inline :offset-assert 512)
-   (billy       (pointer billy)         :offset-assert 528)
+  ((dest-type    uint64)
+   (snack        handle)
+   (destination  vector  :inline)
+   (billy        (pointer billy))
    )
-  :heap-base #x1b0
-  :method-count-assert 76
-  :size-assert         #x214
-  :flag-assert         #x4c01b00214
   (:states
     billy-rat-eat
     billy-rat-salivate
@@ -158,7 +146,7 @@
   )
 
 ;; definition for method 3 of type billy-rat
-(defmethod inspect billy-rat ((this billy-rat))
+(defmethod inspect ((this billy-rat))
   (let ((t9-0 (method-of-type swamp-rat inspect)))
     (t9-0 this)
     )
@@ -339,7 +327,7 @@
   )
 
 ;; definition for method 32 of type billy
-(defmethod play-anim! billy ((this billy) (arg0 symbol))
+(defmethod play-anim! ((this billy) (arg0 symbol))
   (case (current-status (-> this tasks))
     (((task-status need-hint) (task-status need-introduction))
      (when arg0
@@ -473,7 +461,7 @@
   )
 
 ;; definition for method 31 of type billy
-(defmethod get-art-elem billy ((this billy))
+(defmethod get-art-elem ((this billy))
   (case (current-status (-> this tasks))
     (((task-status invalid) (task-status need-resolution))
      (-> this draw art-group data 10)
@@ -486,7 +474,7 @@
 
 ;; definition for method 38 of type billy
 ;; INFO: Return type mismatch object vs none.
-(defmethod process-taskable-method-38 billy ((this billy))
+(defmethod process-taskable-method-38 ((this billy))
   (case (current-status (-> this tasks))
     (((task-status need-reminder-a) (task-status need-reminder))
      (go (method-of-object this query))
@@ -502,7 +490,7 @@
   )
 
 ;; definition for method 34 of type billy
-(defmethod get-accept-anim billy ((this billy) (arg0 symbol))
+(defmethod get-accept-anim ((this billy) (arg0 symbol))
   (if arg0
       (close-current! (-> this tasks))
       )
@@ -510,7 +498,7 @@
   )
 
 ;; definition for method 36 of type billy
-(defmethod get-reject-anim billy ((this billy) (arg0 symbol))
+(defmethod get-reject-anim ((this billy) (arg0 symbol))
   (new 'static 'spool-anim :name "billy-reject" :index 7 :parts 3 :command-list '())
   )
 
@@ -925,7 +913,7 @@
   :enter (behavior ()
     (add-setting! 'music 'danger 0.0 0)
     (ja-channel-set! 0)
-    (clear-collide-with-as (-> self root-override))
+    (clear-collide-with-as (-> self root))
     (init! (-> self query) (the-as string #f) 40 150 25 #t (lookup-text! *common-text* (text-id quit) #f))
     (set-time! (-> self wave-start-time))
     (set! (-> self num-snacks) 0)
@@ -975,7 +963,7 @@
       )
     )
   :exit (behavior ()
-    (restore-collide-with-as (-> self root-override))
+    (restore-collide-with-as (-> self root))
     (restore-load-state-and-cleanup *load-state*)
     (set! (-> *ACTOR-bank* birth-max) 1000)
     (remove-setting! 'music)
@@ -1022,63 +1010,63 @@
   )
 
 ;; definition for method 43 of type billy
-(defmethod process-taskable-method-43 billy ((this billy))
+(defmethod process-taskable-method-43 ((this billy))
   (when (ambient-control-method-10 (-> this ambient) (new 'stack-no-clear 'vector) (seconds 30) 122880.0 this)
     (let ((f30-0 (rand-float-gen)))
       (cond
         ((< 0.9411765 f30-0)
-         (play-ambient (-> this ambient) "BIL-AM01" #f (-> this root-override trans))
+         (play-ambient (-> this ambient) "BIL-AM01" #f (-> this root trans))
          )
         ((< 0.88235295 f30-0)
-         (play-ambient (-> this ambient) "BIL-AM02" #f (-> this root-override trans))
+         (play-ambient (-> this ambient) "BIL-AM02" #f (-> this root trans))
          )
         ((< 0.8235294 f30-0)
-         (play-ambient (-> this ambient) "BIL-AM03" #f (-> this root-override trans))
+         (play-ambient (-> this ambient) "BIL-AM03" #f (-> this root trans))
          )
         ((< 0.7647059 f30-0)
-         (play-ambient (-> this ambient) "BIL-AM04" #f (-> this root-override trans))
+         (play-ambient (-> this ambient) "BIL-AM04" #f (-> this root trans))
          )
         ((< 0.7058824 f30-0)
-         (play-ambient (-> this ambient) "BIL-AM05" #f (-> this root-override trans))
+         (play-ambient (-> this ambient) "BIL-AM05" #f (-> this root trans))
          )
         ((< 0.64705884 f30-0)
-         (play-ambient (-> this ambient) "BIL-AM06" #f (-> this root-override trans))
+         (play-ambient (-> this ambient) "BIL-AM06" #f (-> this root trans))
          )
         ((< 0.5882353 f30-0)
-         (play-ambient (-> this ambient) "BIL-AM07" #f (-> this root-override trans))
+         (play-ambient (-> this ambient) "BIL-AM07" #f (-> this root trans))
          )
         ((< 0.5294118 f30-0)
-         (play-ambient (-> this ambient) "BIL-AM08" #f (-> this root-override trans))
+         (play-ambient (-> this ambient) "BIL-AM08" #f (-> this root trans))
          )
         ((< 0.47058824 f30-0)
-         (play-ambient (-> this ambient) "BIL-AM1A" #f (-> this root-override trans))
+         (play-ambient (-> this ambient) "BIL-AM1A" #f (-> this root trans))
          )
         ((< 0.4117647 f30-0)
-         (play-ambient (-> this ambient) "BIL-AM2A" #f (-> this root-override trans))
+         (play-ambient (-> this ambient) "BIL-AM2A" #f (-> this root trans))
          )
         ((< 0.3529412 f30-0)
-         (play-ambient (-> this ambient) "BIL-AM2B" #f (-> this root-override trans))
+         (play-ambient (-> this ambient) "BIL-AM2B" #f (-> this root trans))
          )
         ((= (current-status (-> this tasks)) (task-status invalid))
          #f
          )
         ((< 0.29411766 f30-0)
-         (play-ambient (-> this ambient) "BIL-LO01" #f (-> this root-override trans))
+         (play-ambient (-> this ambient) "BIL-LO01" #f (-> this root trans))
          )
         ((< 0.23529412 f30-0)
-         (play-ambient (-> this ambient) "BIL-LO02" #f (-> this root-override trans))
+         (play-ambient (-> this ambient) "BIL-LO02" #f (-> this root trans))
          )
         ((< 0.1764706 f30-0)
-         (play-ambient (-> this ambient) "BIL-LO03" #f (-> this root-override trans))
+         (play-ambient (-> this ambient) "BIL-LO03" #f (-> this root trans))
          )
         ((< 0.11764706 f30-0)
-         (play-ambient (-> this ambient) "BIL-LO1A" #f (-> this root-override trans))
+         (play-ambient (-> this ambient) "BIL-LO1A" #f (-> this root trans))
          )
         ((< 0.05882353 f30-0)
-         (play-ambient (-> this ambient) "BIL-LO2A" #f (-> this root-override trans))
+         (play-ambient (-> this ambient) "BIL-LO2A" #f (-> this root trans))
          )
         (else
-          (play-ambient (-> this ambient) "BIL-LO2B" #f (-> this root-override trans))
+          (play-ambient (-> this ambient) "BIL-LO2B" #f (-> this root trans))
           )
         )
       )
@@ -1129,7 +1117,7 @@
 
 ;; definition for method 47 of type billy
 ;; INFO: Return type mismatch basic vs symbol.
-(defmethod target-above-threshold? billy ((this billy))
+(defmethod target-above-threshold? ((this billy))
   (the-as
     symbol
     (and *target* (not (logtest? (-> *target* control root-prim prim-core action) (collide-action flut))))
@@ -1137,7 +1125,7 @@
   )
 
 ;; definition for method 11 of type billy
-(defmethod init-from-entity! billy ((this billy) (arg0 entity-actor))
+(defmethod init-from-entity! ((this billy) (arg0 entity-actor))
   (process-taskable-method-40 this arg0 *billy-sg* 3 40 (new 'static 'vector :w 4096.0) 5)
   (set! (-> this tasks) (get-task-control (game-task swamp-billy)))
   (dotimes (s5-0 3)
@@ -1148,9 +1136,7 @@
     )
   (set! (-> this path) (-> this path-snacks))
   (set! (-> this farthy)
-        (ppointer->handle
-          (manipy-spawn (-> this root-override trans) (-> this entity) *billy-sidekick-sg* #f :to this)
-          )
+        (ppointer->handle (manipy-spawn (-> this root trans) (-> this entity) *billy-sidekick-sg* #f :to this))
         )
   (send-event (handle->process (-> this farthy)) 'center-joint 3)
   (send-event (handle->process (-> this farthy)) 'anim-mode 'clone-anim)
