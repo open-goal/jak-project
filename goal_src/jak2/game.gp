@@ -296,7 +296,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ;; Set up the build system to build the level geometry
-;; this path is relative to the custom_levels/jak2 folder
+;; this path is relative to the custom_assets/jak2/levels folder
 ;; it should point to the .jsonc file that specifies the level.
 (build-custom-level "test-zone")
 ;; the DGO file
