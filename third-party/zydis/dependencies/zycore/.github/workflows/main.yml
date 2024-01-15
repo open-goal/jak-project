@@ -1,0 +1,86 @@
+name: GitHub Actions CI
+
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+jobs:
+  build-linux:
+    name: Build ${{ matrix.platform.name }} ${{ matrix.compiler.name }} ${{ matrix.flavor }} (${{ matrix.mode.name }})
+    runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: false
+      matrix:
+        platform: 
+          - { name: x86, flags: "-m32" }
+          - { name: x64, flags: "-m64" }
+        compiler:
+          - { name: GNU,  CC: gcc   }
+          - { name: LLVM, CC: clang }
+        flavor: 
+          - Debug
+          - Release
+        mode: 
+          - { name: default, args: ""                }
+          - { name: NO_LIBC, args: -DZYAN_NO_LIBC=ON }
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3.1.0
+
+      - if: matrix.platform.name == 'x86'
+        name: Bootstrap
+        run: |
+          sudo dpkg --add-architecture i386
+          sudo rm /etc/apt/sources.list.d/* && sudo apt-get update
+          sudo apt-get install -y g++-multilib g++
+
+      - name: Configure
+        env:
+          CC: ${{ matrix.compiler.CC }}
+          CXX: ${{ matrix.compiler.CXX }}
+        run: |
+          mkdir build
+          cd build
+          cmake -DCMAKE_C_FLAGS=${{ matrix.platform.flags }} -DCMAKE_CXX_FLAGS=${{ matrix.platform.flags }} -DZYAN_DEV_MODE=ON ${{ matrix.mode.args }} ..
+          
+      - name: Build
+        run: |
+          cmake --build build --config ${{ matrix.flavor }}
+
+  build-windows:
+    name: Build ${{ matrix.platform.name }} ${{ matrix.compiler.name }} ${{ matrix.flavor }} (${{ matrix.mode.name }})
+    runs-on: windows-latest
+
+    strategy:
+      fail-fast: false
+      matrix:
+        platform: 
+          - { name: x86, flags: "Win32" }
+          - { name: x64, flags: "x64"   }
+        compiler:
+          - { name: MSVC }
+        flavor: 
+          - Debug
+          - Release
+        mode: 
+          - { name: default, args: ""                }
+          - { name: NO_LIBC, args: -DZYAN_NO_LIBC=ON }
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3.1.0
+
+      - name: Configure
+        run: |
+          mkdir build
+          cd build
+          cmake -DCMAKE_GENERATOR_PLATFORM=${{ matrix.platform.flags }} -DZYAN_DEV_MODE=ON ${{ matrix.mode.args }} ..
+          
+      - name: Build
+        run: |
+          cmake --build build --config ${{ matrix.flavor }}

@@ -55,7 +55,7 @@ static const ZydisFormatter* const FORMATTER_PRESETS[ZYDIS_FORMATTER_STYLE_MAX_V
 /* Helper functions                                                                               */
 /* ---------------------------------------------------------------------------------------------- */
 
-void ZydisFormatterBufferInit(ZydisFormatterBuffer* buffer, char* user_buffer,
+static void ZydisFormatterBufferInit(ZydisFormatterBuffer* buffer, char* user_buffer,
     ZyanUSize length)
 {
     ZYAN_ASSERT(buffer);
@@ -77,7 +77,7 @@ void ZydisFormatterBufferInit(ZydisFormatterBuffer* buffer, char* user_buffer,
     *user_buffer = '\0';
 }
 
-void ZydisFormatterBufferInitTokenized(ZydisFormatterBuffer* buffer,
+static void ZydisFormatterBufferInitTokenized(ZydisFormatterBuffer* buffer,
     ZydisFormatterToken** first_token, void* user_buffer, ZyanUSize length)
 {
     ZYAN_ASSERT(buffer);
@@ -331,6 +331,11 @@ ZyanStatus ZydisFormatterSetProperty(ZydisFormatter* formatter, ZydisFormatterPr
         formatter->hex_uppercase = (value) ? ZYAN_TRUE : ZYAN_FALSE;
         break;
     }
+    case ZYDIS_FORMATTER_PROP_HEX_FORCE_LEADING_NUMBER:
+    {
+        formatter->hex_force_leading_number = (value) ? ZYAN_TRUE : ZYAN_FALSE;
+        break;
+    }
     case ZYDIS_FORMATTER_PROP_HEX_PREFIX:
     {
         base  = ZYDIS_NUMERIC_BASE_HEX;
@@ -449,19 +454,11 @@ ZyanStatus ZydisFormatterSetHook(ZydisFormatter* formatter, ZydisFormatterFuncti
 
 ZyanStatus ZydisFormatterFormatInstruction(const ZydisFormatter* formatter,
     const ZydisDecodedInstruction* instruction, const ZydisDecodedOperand* operands,
-    ZyanU8 operand_count, char* buffer, ZyanUSize length, ZyanU64 runtime_address)
-{
-     return ZydisFormatterFormatInstructionEx(formatter, instruction, operands, operand_count,
-         buffer, length, runtime_address, ZYAN_NULL);
-}
-
-ZyanStatus ZydisFormatterFormatInstructionEx(const ZydisFormatter* formatter,
-    const ZydisDecodedInstruction* instruction, const ZydisDecodedOperand* operands,
     ZyanU8 operand_count, char* buffer, ZyanUSize length, ZyanU64 runtime_address, void* user_data)
 {
     if (!formatter || !instruction || (operand_count && !operands) ||
         (operand_count > ZYDIS_MAX_OPERAND_COUNT) ||
-        (operand_count != instruction->operand_count_visible) || !buffer || (length == 0))
+        (operand_count < instruction->operand_count_visible) || !buffer || (length == 0))
     {
         return ZYAN_STATUS_INVALID_ARGUMENT;
     }
@@ -492,14 +489,6 @@ ZyanStatus ZydisFormatterFormatInstructionEx(const ZydisFormatter* formatter,
 }
 
 ZyanStatus ZydisFormatterFormatOperand(const ZydisFormatter* formatter,
-    const ZydisDecodedInstruction* instruction, const ZydisDecodedOperand* operand,
-    char* buffer, ZyanUSize length, ZyanU64 runtime_address)
-{
-    return ZydisFormatterFormatOperandEx(formatter, instruction, operand, buffer, length,
-        runtime_address, ZYAN_NULL);
-}
-
-ZyanStatus ZydisFormatterFormatOperandEx(const ZydisFormatter* formatter,
     const ZydisDecodedInstruction* instruction, const ZydisDecodedOperand* operand,
     char* buffer, ZyanUSize length, ZyanU64 runtime_address, void* user_data)
 {
@@ -559,20 +548,11 @@ ZyanStatus ZydisFormatterFormatOperandEx(const ZydisFormatter* formatter,
 ZyanStatus ZydisFormatterTokenizeInstruction(const ZydisFormatter* formatter,
     const ZydisDecodedInstruction* instruction, const ZydisDecodedOperand* operands,
     ZyanU8 operand_count, void* buffer, ZyanUSize length, ZyanU64 runtime_address,
-    ZydisFormatterTokenConst** token)
-{
-    return ZydisFormatterTokenizeInstructionEx(formatter, instruction, operands, operand_count,
-        buffer, length, runtime_address, token, ZYAN_NULL);
-}
-
-ZyanStatus ZydisFormatterTokenizeInstructionEx(const ZydisFormatter* formatter,
-    const ZydisDecodedInstruction* instruction, const ZydisDecodedOperand* operands,
-    ZyanU8 operand_count, void* buffer, ZyanUSize length, ZyanU64 runtime_address,
     ZydisFormatterTokenConst** token, void* user_data)
 {
     if (!formatter || !instruction || (operand_count && !operands) ||
         (operand_count > ZYDIS_MAX_OPERAND_COUNT) || 
-        (operand_count != instruction->operand_count_visible) || !buffer ||
+        (operand_count < instruction->operand_count_visible) || !buffer ||
         (length <= sizeof(ZydisFormatterToken)) || !token)
     {
         return ZYAN_STATUS_INVALID_ARGUMENT;
@@ -613,14 +593,6 @@ ZyanStatus ZydisFormatterTokenizeInstructionEx(const ZydisFormatter* formatter,
 }
 
 ZyanStatus ZydisFormatterTokenizeOperand(const ZydisFormatter* formatter,
-    const ZydisDecodedInstruction* instruction, const ZydisDecodedOperand* operand,
-    void* buffer, ZyanUSize length, ZyanU64 runtime_address, ZydisFormatterTokenConst** token)
-{
-    return ZydisFormatterTokenizeOperandEx(formatter, instruction, operand, buffer, length,
-        runtime_address, token, ZYAN_NULL);
-}
-
-ZyanStatus ZydisFormatterTokenizeOperandEx(const ZydisFormatter* formatter,
     const ZydisDecodedInstruction* instruction, const ZydisDecodedOperand* operand,
     void* buffer, ZyanUSize length, ZyanU64 runtime_address, ZydisFormatterTokenConst** token,
     void* user_data)
