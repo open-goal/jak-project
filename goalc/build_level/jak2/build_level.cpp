@@ -43,8 +43,10 @@ bool run_build_level(const std::string& input_file,
   file.nickname = level_json.at("nickname").get<std::string>();
   // vis infos
   // actors
+  auto dts = decompiler::DecompilerTypeSystem(GameVersion::Jak2);
+  dts.parse_enum_defs({"decompiler", "config", "jak2", "all-types.gc"});
   std::vector<EntityActor> actors;
-  add_actors_from_json(level_json.at("actors"), actors, level_json.value("base_id", 1234));
+  add_actors_from_json(level_json.at("actors"), actors, level_json.value("base_id", 1234), dts);
   file.actors = std::move(actors);
   // cameras
   // nodes
