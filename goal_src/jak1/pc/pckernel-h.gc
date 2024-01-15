@@ -344,7 +344,19 @@
   (set! (-> obj letterbox?) #t)
 
   ;; get screen size and set to borderless at screen res (if retail)
-  (pc-get-active-display-size (&-> obj width) (&-> obj height))
+  (cond
+    ((> (pc-get-num-resolutions) 0)
+     ;; pick first available resolution by default
+     (pc-get-resolution 0 (&-> obj width) (&-> obj height))
+     )
+    (else
+     ;; somehow didn't get a single resolution. this is pretty bad.
+     (pc-get-active-display-size (&-> obj width) (&-> obj height))
+     (max! (-> obj width) PC_MIN_WIDTH)
+     (max! (-> obj height) PC_MIN_HEIGHT)
+     (format 0 "failed to get any screen resolutions!! fullscreen res has been set to ~D x ~D~%" (-> obj width) (-> obj height))
+     )
+    )
   (if (not *debug-segment*)
       (set-display-mode! obj 'borderless call-handlers)
       (set-display-mode! obj 'windowed call-handlers))
