@@ -27,7 +27,7 @@ void FileAttributes::Read(BinaryReader& data) {
   num_chunks = data.read<u32>();
 
   where.resize(num_chunks);
-  for (int i = 0; i < num_chunks; i++) {
+  for (size_t i = 0; i < num_chunks; i++) {
     where[i].offset = data.read<u32>();
     where[i].size = data.read<u32>();
   }
@@ -215,16 +215,16 @@ SFXBlock* SFXBlock::ReadBlock(nonstd::span<u8> bank_data, nonstd::span<u8> sampl
 
   s16 NumSounds = data.read<s16>();
   block->Sounds.resize(NumSounds);
-  s16 NumGrains = data.read<s16>();
-  s16 NumVAGs = data.read<s16>();
+  [[maybe_unused]] s16 NumGrains = data.read<s16>();
+  [[maybe_unused]] s16 NumVAGs = data.read<s16>();
 
   u32 FirstSound = data.read<u32>();
   u32 FirstGrain = data.read<u32>();
 
-  u32 VagsInSR = data.read<u32>();
-  u32 VagDataSize = data.read<u32>();
-  u32 SRAMAllocSize = data.read<u32>();
-  u32 NextBlock = data.read<u32>();
+  [[maybe_unused]] u32 VagsInSR = data.read<u32>();
+  [[maybe_unused]] u32 VagDataSize = data.read<u32>();
+  [[maybe_unused]] u32 SRAMAllocSize = data.read<u32>();
+  [[maybe_unused]] u32 NextBlock = data.read<u32>();
   u32 GrainData = 0;
   if (block->Version >= 2) {
     GrainData = data.read<u32>();
@@ -344,12 +344,12 @@ MusicBank* MusicBank::ReadBank(nonstd::span<u8> bank_data,
   bank->Sounds.resize(NumSounds);
   s16 NumProgs = data.read<s16>();
   bank->Progs.resize(NumProgs);
-  s16 NumTones = data.read<s16>();
-  s16 NumVAGs = data.read<s16>();
+  [[maybe_unused]] s16 NumTones = data.read<s16>();
+  [[maybe_unused]] s16 NumVAGs = data.read<s16>();
 
   u32 FirstSound = data.read<u32>();
   u32 FirstProg = data.read<u32>();
-  u32 FirstTone = data.read<u32>();
+  [[maybe_unused]] u32 FirstTone = data.read<u32>();
 
   // vagsinsr
   data.read<u32>();

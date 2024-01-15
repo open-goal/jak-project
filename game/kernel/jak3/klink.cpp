@@ -616,7 +616,7 @@ u32 link_busy() {
 void link_reset() {
   saved_link_control.m_busy = 0;
 }
-uint64_t link_begin(u64* args) {
+uint64_t link_begin(u64* /*args*/) {
   ASSERT_NOT_REACHED();
 }
 uint64_t link_resume() {

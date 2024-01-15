@@ -1,5 +1,7 @@
 #include "kscheme.h"
 
+#include <unordered_map>
+
 #include "common/common_types.h"
 #include "common/goal_constants.h"
 #include "common/log/log.h"

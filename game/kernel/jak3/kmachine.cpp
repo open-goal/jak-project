@@ -302,11 +302,11 @@ int ShutdownMachine() {
   return 0;
 }
 
-u32 KeybdGetData(u32 _mouse) {
+u32 KeybdGetData(u32 /*_mouse*/) {
   ASSERT_NOT_REACHED();
 }
 
-u32 MouseGetData(u32 _mouse) {
+u32 MouseGetData(u32 /*_mouse*/) {
   ASSERT_NOT_REACHED();
 }
 

@@ -111,7 +111,7 @@ void ProcessListenerMessage(Ptr<char> msg) {
   SendAck();
 }
 
-int sql_query_sync(Ptr<String> string_in) {
+int sql_query_sync(Ptr<String> /*string_in*/) {
   ASSERT_NOT_REACHED();
 }
 
