@@ -13,7 +13,7 @@ TEST(Zydis, Basic) {
   ZydisFormatterInit(&formatter, ZYDIS_FORMATTER_STYLE_INTEL);
 
   ZydisDecodedInstruction instr;
-  ZydisDecodedOperand op[ZYDIS_MAX_OPERAND_COUNT_VISIBLE];
+  ZydisDecodedOperand op[ZYDIS_MAX_OPERAND_COUNT];
 
   // should get first instruction
   EXPECT_TRUE(ZYAN_SUCCESS(ZydisDecoderDecodeFull(&decoder, code, 2, &instr, op)));
