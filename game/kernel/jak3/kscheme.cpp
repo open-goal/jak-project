@@ -1054,7 +1054,8 @@ u64 new_type(u32 symbol, u32 parent, u64 flags) {
       new_type_obj->memusage_method.offset = original_type_list_value;
     }
   }
-  auto ret = set_type_values(new_type_obj, Ptr<Type>(parent), flags).offset;;
+  auto ret = set_type_values(new_type_obj, Ptr<Type>(parent), flags).offset;
+  ;
   return ret;
 }
 /*!
