@@ -662,7 +662,7 @@ TP_Type SimpleExpression::get_type_int2(const TypeState& input,
     }
   }
 
-  if (env.version >= GameVersion::Jak2 && tc(dts, TypeSpec("symbol"), arg1_type) &&
+  if (env.version == GameVersion::Jak2 && tc(dts, TypeSpec("symbol"), arg1_type) &&
       !m_args[0].is_int() && is_int_or_uint(dts, arg0_type)) {
     if (arg0_type.is_integer_constant(jak2::SYM_TO_STRING_OFFSET)) {
       // symbol -> GOAL String
