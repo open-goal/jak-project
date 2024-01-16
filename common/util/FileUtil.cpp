@@ -636,6 +636,9 @@ std::vector<fs::path> find_files_in_dir(const fs::path& dir, const std::regex& p
 
 std::vector<fs::path> find_files_recursively(const fs::path& base_dir, const std::regex& pattern) {
   std::vector<fs::path> files = {};
+  if (!fs::exists(base_dir)) {
+    return files;
+  }
   for (auto& p : fs::recursive_directory_iterator(base_dir)) {
     if (p.is_regular_file()) {
       if (std::regex_match(p.path().filename().string(), pattern)) {
