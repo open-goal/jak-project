@@ -1854,7 +1854,8 @@ void inspect_top_level_for_metadata(Function& top_level,
         if (temp_as_str.find("call!") != std::string::npos) {
           break;
         }
-        auto temp_label_match = get_regex_match(temp_as_str, std::regex("\\(set!\\s[^\\s]*\\s(L.*)\\)"));
+        auto temp_label_match =
+            get_regex_match(temp_as_str, std::regex("\\(set!\\s[^\\s]*\\s(L.*)\\)"));
         if (!temp_label_match.empty()) {
           was_another_label = true;
           break;
