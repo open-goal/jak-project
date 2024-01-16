@@ -497,6 +497,10 @@ void ObjectGenerator::emit_link_type_pointer(int seg, const TypeSystem* ts) {
         // the linker/intern_type functions do the +3.
         out.push_back(ts->get_type_method_count(rec.first) / 4);
         break;
+      case GameVersion::Jak3:
+        // the linker/intern_type functions do the +3.
+        out.push_back(ts->get_type_method_count(rec.first) / 4);
+        break;
       default:
         ASSERT(false);
     }

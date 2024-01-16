@@ -19,7 +19,7 @@ GameVersion game_name_to_version(const std::string& name) {
 }
 
 bool valid_game_version(const std::string& name) {
-  return name == "jak1" || name == "jak2";
+  return name == "jak1" || name == "jak2" || name == "jak3";
 }
 
 std::string version_to_game_name(GameVersion v) {
@@ -49,7 +49,8 @@ std::string version_to_game_name_external(GameVersion v) {
 }
 
 std::vector<std::string> valid_game_version_names() {
-  return {game_version_names[GameVersion::Jak1], game_version_names[GameVersion::Jak2]};
+  return {game_version_names[GameVersion::Jak1], game_version_names[GameVersion::Jak2],
+          game_version_names[GameVersion::Jak3]};
 }
 
 std::string build_revision() {
