@@ -196,12 +196,15 @@ std::vector<std::string> apply_formatting(const FormatterTreeNode& curr_node,
   using namespace formatter_rules;
   if (!curr_node.token && curr_node.refs.empty()) {
     // special case to handle an empty list
+    if (curr_node.node_prefix) {
+      return {fmt::format("{}()", curr_node.node_prefix.value())};
+    }
     return {"()"};
   }
 
   // If its a token, just print the token and move on
   if (curr_node.token) {
-    return {curr_node.token.value()};
+    return {curr_node.token_str()};
   }
 
   bool inline_form = can_node_be_inlined(curr_node, cursor_pos);
@@ -220,11 +223,11 @@ std::vector<std::string> apply_formatting(const FormatterTreeNode& curr_node,
     // Add new line entry
     if (ref.token) {
       // Cleanup block-comments
-      std::string val = ref.token.value();
+      std::string val = ref.token_str();
       if (ref.metadata.node_type == "block_comment") {
         // TODO - change this sanitization to return a list of lines instead of a single new-lined
         // line
-        val = comments::format_block_comment(ref.token.value());
+        val = comments::format_block_comment(ref.token_str());
       }
       form_lines.push_back(val);
       if (!curr_node.metadata.is_top_level && i == curr_node.refs.size() - 1 &&
@@ -301,6 +304,9 @@ std::vector<std::string> apply_formatting(const FormatterTreeNode& curr_node,
   // Apply necessary indentation to each line and add parens
   if (!curr_node.metadata.is_top_level) {
     std::string form_surround_start = "(";
+    if (curr_node.node_prefix) {
+      form_surround_start = fmt::format("{}(", curr_node.node_prefix.value());
+    }
     std::string form_surround_end = ")";
     form_lines[0] = fmt::format("{}{}", form_surround_start, form_lines[0]);
     form_lines[form_lines.size() - 1] =
