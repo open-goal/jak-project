@@ -17,7 +17,7 @@ void add_jak2_expected_type_mismatches(Compiler& c) {
   c.add_ignored_type_definition("editable-plane");
 }
 
-void add_jak3_expected_type_mismatches(Compiler& c) {}
+void add_jak3_expected_type_mismatches(Compiler& /*c*/) {}
 
 TEST(Jak1TypeConsistency, MANUAL_TEST_TypeConsistencyWithBuildFirst) {
   Compiler compiler(GameVersion::Jak1);

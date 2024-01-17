@@ -377,8 +377,8 @@ InputBindingInfo::InputBindingInfo(const InputBinding bind,
                                    const bool _analog_button)
     : sdl_idx(sdl_code),
       pad_idx(bind.pad_data_index),
-      modifiers(bind.modifiers),
-      analog_button(_analog_button) {
+      analog_button(_analog_button),
+      modifiers(bind.modifiers) {
   switch (device_type) {
     case CONTROLLER:
       if (analog_button) {

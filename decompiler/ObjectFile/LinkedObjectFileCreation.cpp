@@ -472,7 +472,7 @@ static void link_v5(LinkedObjectFile& f,
   for (int i = 0; i < n_segs; i++) {
     segment_data_offsets[i] = header->length_to_get_to_code + seg_info_array[i].data;
     segment_link_offsets[i] = header->length_to_get_to_link + seg_info_array[i].relocs;
-    ASSERT(seg_info_array[i].magic == 1);
+    ASSERT(seg_info_array[i].magic == 1);  // if set, always use symlink2.
   }
 
   // check that the data region is filled

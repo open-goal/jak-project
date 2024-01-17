@@ -54,6 +54,7 @@ struct Ptr {
   s32 operator-(Ptr<T> x) { return offset - x.offset; }
   Ptr operator-(s32 diff) { return Ptr(offset - diff); }
   bool operator==(const Ptr<T>& x) { return offset == x.offset; }
+  bool operator!=(const Ptr<T>& x) { return offset != x.offset; }
 
   /*!
    * Convert to a C pointer.

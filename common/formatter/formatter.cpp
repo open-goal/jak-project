@@ -191,7 +191,7 @@ bool can_node_be_inlined(const FormatterTreeNode& curr_node, int cursor_pos) {
 }
 
 std::vector<std::string> apply_formatting(const FormatterTreeNode& curr_node,
-                                          std::vector<std::string> output = {},
+                                          std::vector<std::string> /*output*/ = {},
                                           int cursor_pos = 0) {
   using namespace formatter_rules;
   if (!curr_node.token && curr_node.refs.empty()) {

@@ -367,7 +367,7 @@ void ObjectFileDB::ir2_analyze_all_types(const fs::path& output_file,
         for (const auto& [obj_name, type_names] : all_type_names) {
           for (const auto& type_name : type_names) {
             if (str_util::starts_with(sym_name, type_name) &&
-                type_name.length() > longest_match_length) {
+                (int)type_name.length() > longest_match_length) {
               longest_match_length = type_name.length();
               longest_match = type_name;
               longest_match_object_name = obj_name;

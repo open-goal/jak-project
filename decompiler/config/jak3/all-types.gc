@@ -1132,38 +1132,40 @@
 (defenum process-mask
   :type uint32
   :bitfield #t
-  (execute 0)
+  (execute 0)       ;; 1
   (freeze 1)
   (pause 2)
   (menu 3)
   (progress 4)
-  (actor-pause 5)
-  (sleep 6)
-  (sleep-code 7)
-  (process-tree 8)
-  (heap-shrunk 9)
-  (going 10)
-  (kernel-run 11)
-  (no-kill 12)
-  (movie 13)
-  (dark-effect 14)
-  (target 15)
-  (sidekick 16)
-  (crate 17)
-  (bit18 18) ;; unused?
-  (enemy 19)
-  (camera 20)
-  (platform 21)
-  (ambient 22)
-  (entity 23)
-  (projectile 24)
-  (bot 25)
-  (collectable 26)
-  (death 27)
-  (no-track 28)
-  (guard 29)
-  (vehicle 30)
-  (civilian 31))
+  (actor-pause 5)  ;; 32
+  (sleep 6)      ;; 64
+  (sleep-code 7)   ;; 128
+  (process-tree 8) ;; 256
+  (heap-shrunk 9)  ;; 512
+  (going 10)       ;; 1024
+  (kernel-run 11) ;; 2048
+  (no-kill 12)    ;; 4096
+  (movie 13)      ;; 8192
+  (dark-effect 14)   ;; 0x4000
+  (target 15)        ;; 0x8000
+
+  (sidekick 16)      ;;    0x1'0000
+  (crate 17)         ;;    0x2'0000
+  (collectable 18)   ;;    0x4'0000
+  (enemy 19)         ;;    0x8'0000
+  (camera 20)        ;;   0x10'0000
+  (platform 21)      ;;   0x20'0000
+  (ambient 22)       ;;   0x40'0000
+  (entity 23)        ;;   0x80'0000
+  (projectile 24)    ;;  0x100'0000
+  (bot 25)           ;;  0x200'0000
+  (death 26)         ;;  0x400'0000
+  (guard 27)         ;;  0x800'0000
+  (vehicle 28)       ;; 0x1000'0000
+  (civilian 29)      ;; 0x2000'0000
+  (kg-robot 30)      ;; 0x4000'0000
+  (metalhead 31)     ;; 0x8000'0000
+  )
 
 (deftype process-tree (basic)
   ((name    string                  :offset-assert 4)
@@ -1180,11 +1182,11 @@
   :flag-assert         #xe00000024
   :no-runtime-type
   (:methods
-     ;; (new (symbol type string) _type_ 0)
-    (process-tree-method-9 () none) ;; 9 ;; (activate (_type_ process-tree basic pointer) process-tree 9)
-    (process-tree-method-10 () none) ;; 10 ;; (deactivate (_type_) none 10)
-    (process-tree-method-11 () none) ;; 11 ;; (init-from-entity! (_type_ entity-actor) none 11)
-    (process-tree-method-12 () none) ;; 12 ;; (run-logic? (_type_) symbol 12)
+    (new (symbol type string) _type_)
+    (activate (_type_ process-tree basic pointer) process-tree)
+    (deactivate (_type_) none)
+    (init-from-entity! (_type_ entity-actor) none)
+    (run-logic? (_type_) symbol)
     (process-tree-method-13 () none) ;; 13 ;; (process-tree-method-13 () none 13)
     )
   )
@@ -1210,7 +1212,7 @@
   :method-count-assert 9
   :size-assert         #x40
   :flag-assert         #x900000040
-  ;; field relocating-level uses ~A with a signed load. 
+  ;; field relocating-level uses ~A with a signed load.
   )
 |#
 
@@ -1239,22 +1241,22 @@
   :size-assert         #x5c
   :flag-assert         #x180000005c
   (:methods
-     ;; (new (symbol type int) _type_ 0)
-    (clock-method-9 () none) ;; 9 ;; (update-rates! (_type_ float) float 9)
+    (new (symbol type int) _type_)
+    (update-rates! (_type_ float) float)
     (clock-method-10 () none) ;; 10 ;; (advance-by! (_type_ float) clock 10)
     (clock-method-11 () none) ;; 11 ;; (tick! (_type_) clock 11)
     (clock-method-12 () none) ;; 12 ;; (save! (_type_ (pointer uint64)) int 12)
     (clock-method-13 () none) ;; 13 ;; (load! (_type_ (pointer uint64)) int 13)
     (clock-method-14 () none) ;; 14 ;; (reset! (_type_) none 14)
     (clock-method-15 () none) ;; 15
-    (clock-method-16 () none) ;; 16
-    (clock-method-17 () none) ;; 17
-    (clock-method-18 () none) ;; 18
-    (clock-method-19 () none) ;; 19
-    (clock-method-20 () none) ;; 20
-    (clock-method-21 () none) ;; 21
-    (clock-method-22 () none) ;; 22
-    (clock-method-23 () none) ;; 23
+    (frame-mask-2 (_type_ int) symbol)
+    (frame-mask-4 (_type_ int) symbol)
+    (frame-mask-8 (_type_ int) symbol)
+    (frame-mask-16 (_type_ int) symbol)
+    (frame-mask-32 (_type_ int) symbol)
+    (frame-mask-64 (_type_ int) symbol)
+    (frame-mask-128 (_type_ int) symbol)
+    (frame-mask-256 (_type_ int) symbol)
     )
   )
 
@@ -4067,7 +4069,7 @@
   :method-count-assert 209
   :size-assert         #x4e0
   :flag-assert         #xd1046004e0
-  ;; field gekko-flag is likely a value type. 
+  ;; field gekko-flag is likely a value type.
   (:methods
     (gekko-method-202 () none) ;; 202
     (gekko-method-203 () none) ;; 203
@@ -4793,7 +4795,7 @@
   :method-count-assert 13
   :size-assert         #x30
   :flag-assert         #xd00000030
-  ;; field on-enter uses ~A with a signed load. field on-inside uses ~A with a signed load. field on-exit uses ~A with a signed load. 
+  ;; field on-enter uses ~A with a signed load. field on-inside uses ~A with a signed load. field on-exit uses ~A with a signed load.
   (:methods
      ;; (new (symbol type) _type_ 0)
     (editable-region-method-9 () none) ;; 9 ;; (editable-region-method-9 (_type_ editable-array int int) symbol 9)
@@ -5256,7 +5258,7 @@
   :method-count-assert 9
   :size-assert         #x28
   :flag-assert         #x900000028
-  ;; field textures uses ~A with a signed load. 
+  ;; field textures uses ~A with a signed load.
   )
 |#
 
@@ -6665,7 +6667,7 @@
   :method-count-assert 9
   :size-assert         #x20
   :flag-assert         #x900000020
-  ;; field speech-type-flag is likely a value type. 
+  ;; field speech-type-flag is likely a value type.
   )
 |#
 
@@ -6699,7 +6701,7 @@
   :method-count-assert 15
   :size-assert         #x64
   :flag-assert         #xf00000064
-  ;; field speech-channel-flag is likely a value type. 
+  ;; field speech-channel-flag is likely a value type.
   (:methods
     (speech-channel-method-9 () none) ;; 9 ;; (speech-channel-method-9 (_type_ process-drawable speech-type) none 9)
     (speech-channel-method-10 () none) ;; 10 ;; (speech-channel-method-10 (_type_ handle) none 10)
@@ -6905,7 +6907,7 @@
   :method-count-assert 216
   :size-assert         #x404
   :flag-assert         #xd803900404
-  ;; field citizen-flag is likely a value type. 
+  ;; field citizen-flag is likely a value type.
   (:methods
     (citizen-method-190 () none) ;; 190 ;; (citizen-method-190 (_type_ vector) none 190)
     (citizen-method-191 () none) ;; 191 ;; (gen-clear-path (_type_) nav-segment 191)
@@ -7322,7 +7324,7 @@
   :method-count-assert 155
   :size-assert         #x228
   :flag-assert         #x9b01b00228
-  ;; field enemy-flag is likely a value type. field on-notice uses ~A with a signed load. field on-active uses ~A with a signed load. field on-hostile uses ~A with a signed load. field on-death uses ~A with a signed load. 
+  ;; field enemy-flag is likely a value type. field on-notice uses ~A with a signed load. field on-active uses ~A with a signed load. field on-hostile uses ~A with a signed load. field on-death uses ~A with a signed load.
   (:methods
     (enemy-method-28 () none) ;; 28 ;; (dormant-aware () _type_ :state 28)
     (enemy-method-29 () none) ;; 29 ;; (hit () _type_ :state 29)
@@ -8202,7 +8204,7 @@
   :method-count-assert 12
   :size-assert         #x28
   :flag-assert         #xc00000028
-  ;; field out uses ~A with a signed load. 
+  ;; field out uses ~A with a signed load.
   (:methods
      ;; (new (symbol type uint) _type_ 0)
     (history-iterator-method-9 () none) ;; 9 ;; (frame-counter-delta (_type_ history-elt) time-frame 9)
@@ -10303,7 +10305,7 @@
   :method-count-assert 12
   :size-assert         #xa8
   :flag-assert         #xc000000a8
-  ;; field handle is likely a value type. 
+  ;; field handle is likely a value type.
   (:methods
     (attack-info-method-9 () none) ;; 9 ;; (attack-info-method-9 (_type_ attack-info process-drawable process-drawable) none 9)
     (attack-info-method-10 () none) ;; 10 ;; (compute-intersect-info (_type_ object process-drawable process touching-shapes-entry) attack-info 10)
@@ -10647,7 +10649,7 @@
   :method-count-assert 9
   :size-assert         #x20
   :flag-assert         #x900000020
-  ;; field check-too-far uses ~A with a signed load. 
+  ;; field check-too-far uses ~A with a signed load.
   )
 |#
 
@@ -10670,7 +10672,7 @@
   :method-count-assert 9
   :size-assert         #x30
   :flag-assert         #x900000030
-  ;; field default-check-too-far uses ~A with a signed load. 
+  ;; field default-check-too-far uses ~A with a signed load.
   )
 |#
 
@@ -11359,7 +11361,7 @@
   :method-count-assert 11
   :size-assert         #xa0
   :flag-assert         #xb000000a0
-  ;; field extra-sound-bank uses ~A with a signed load. 
+  ;; field extra-sound-bank uses ~A with a signed load.
   (:methods
     (level-load-info-method-9 () none) ;; 9
     (level-load-info-method-10 () none) ;; 10
@@ -12400,7 +12402,7 @@
   :method-count-assert 14
   :size-assert         #x20
   :flag-assert         #xe00000020
-  ;; field param1 uses ~A with a signed load. field param2 uses ~A with a signed load. field param3 uses ~A with a signed load. 
+  ;; field param1 uses ~A with a signed load. field param2 uses ~A with a signed load. field param3 uses ~A with a signed load.
   (:methods
     (connection-method-9 () none) ;; 9 ;; (get-engine (connection) engine 9)
     (connection-method-10 () none) ;; 10 ;; (get-process (connection) process 10)
@@ -12468,7 +12470,7 @@
   :method-count-assert 9
   :size-assert         #x20
   :flag-assert         #x900000020
-  ;; field key uses ~A with a signed load. 
+  ;; field key uses ~A with a signed load.
   )
 |#
 
@@ -12823,7 +12825,7 @@
   :method-count-assert 9
   :size-assert         #x50
   :flag-assert         #x900000050
-  ;; field key uses ~A with a signed load. 
+  ;; field key uses ~A with a signed load.
   )
 |#
 
@@ -13152,7 +13154,7 @@
   :method-count-assert 50
   :size-assert         #x70
   :flag-assert         #x3200000070
-  ;; field nav-mesh-flag is likely a value type. 
+  ;; field nav-mesh-flag is likely a value type.
   (:methods
     (nav-mesh-method-9 () none) ;; 9 ;; (debug-draw (_type_) none 9)
     (nav-mesh-method-10 () none) ;; 10 ;; (nav-mesh-method-10 (_type_ vector vector nav-poly) nav-poly 10)
@@ -13488,7 +13490,7 @@
   :method-count-assert 11
   :size-assert         #x30c
   :flag-assert         #xb0000030c
-  ;; field cam-slave-options is likely a value type. field cam-master-options is likely a value type. 
+  ;; field cam-slave-options is likely a value type. field cam-master-options is likely a value type.
   (:methods
     (cam-setting-data-method-9 () none) ;; 9 ;; (cam-setting-data-method-9 (_type_ engine engine-pers engine) _type_ 9)
     (cam-setting-data-method-10 () none) ;; 10 ;; (cam-setting-data-method-10 (_type_ object (pointer process) float int) _type_ 10)
@@ -13643,7 +13645,7 @@
   :method-count-assert 30
   :size-assert         #xa00
   :flag-assert         #x1e09800a00
-  ;; field mode-param2 uses ~A with a 64-bit load. field mode-param3 uses ~A with a 64-bit load. 
+  ;; field mode-param2 uses ~A with a 64-bit load. field mode-param3 uses ~A with a 64-bit load.
   (:methods
     (target-method-28 () none) ;; 28 ;; (init-target (_type_ continue-point symbol) none 28)
     (target-method-29 () none) ;; 29
@@ -15664,7 +15666,7 @@
   :method-count-assert 10
   :size-assert         #x20
   :flag-assert         #xa00000020
-  ;; field param1 uses ~A with a signed load. field param2 uses ~A with a signed load. 
+  ;; field param1 uses ~A with a signed load. field param2 uses ~A with a signed load.
   (:methods
      ;; (new (symbol type drawable) _type_ 0)
     (cspace-method-9 () none) ;; 9 ;; (reset-and-assign-geo! (_type_ drawable) _type_ 9)
@@ -15907,7 +15909,7 @@
   :method-count-assert 17
   :size-assert         #x20
   :flag-assert         #x1100000020
-  ;; field distance is a float printed as hex? 
+  ;; field distance is a float printed as hex?
   )
 |#
 
@@ -16071,7 +16073,7 @@
   :method-count-assert 52
   :size-assert         #x1a0
   :flag-assert         #x34012001a0
-  ;; field on-activate uses ~A with a signed load. field on-deactivate uses ~A with a signed load. field on-up uses ~A with a signed load. field on-down uses ~A with a signed load. field on-running uses ~A with a signed load. field on-notice uses ~A with a signed load. field on-wait uses ~A with a signed load. field activate-test uses ~A with a signed load. 
+  ;; field on-activate uses ~A with a signed load. field on-deactivate uses ~A with a signed load. field on-up uses ~A with a signed load. field on-down uses ~A with a signed load. field on-running uses ~A with a signed load. field on-notice uses ~A with a signed load. field on-wait uses ~A with a signed load. field activate-test uses ~A with a signed load.
   (:methods
     (elevator-method-39 () none) ;; 39 ;; (calc-dist-between-points! (_type_ int int) none 39)
     (elevator-method-41 () none) ;; 41 ;; (init-defaults! (_type_) none 41)
@@ -16232,7 +16234,7 @@
   :method-count-assert 10
   :size-assert         #x10
   :flag-assert         #xa00000010
-  ;; field on-enter uses ~A with a signed load. field on-inside uses ~A with a signed load. field on-exit uses ~A with a signed load. 
+  ;; field on-enter uses ~A with a signed load. field on-inside uses ~A with a signed load. field on-exit uses ~A with a signed load.
   (:methods
     (region-method-9 () none) ;; 9 ;; (region-method-9 (_type_ vector) symbol 9)
     )
@@ -17081,7 +17083,7 @@
   :method-count-assert 9
   :size-assert         #x10
   :flag-assert         #x900000010
-  ;; field execute uses ~A with a signed load. 
+  ;; field execute uses ~A with a signed load.
   )
 |#
 
@@ -17098,7 +17100,7 @@
   :method-count-assert 9
   :size-assert         #x30
   :flag-assert         #x900000030
-  ;; field resetter-flag is likely a value type. 
+  ;; field resetter-flag is likely a value type.
   )
 |#
 
@@ -17125,7 +17127,7 @@
   :method-count-assert 9
   :size-assert         #x3c
   :flag-assert         #x90000003c
-  ;; field handle is likely a value type. field resolution-scene uses ~A with a signed load. field on-complete uses ~A with a signed load. field on-fail uses ~A with a signed load. 
+  ;; field handle is likely a value type. field resolution-scene uses ~A with a signed load. field on-complete uses ~A with a signed load. field on-fail uses ~A with a signed load.
   )
 |#
 
@@ -17170,7 +17172,7 @@
   :method-count-assert 14
   :size-assert         #x50
   :flag-assert         #xe00000050
-  ;; field on-open uses ~A with a signed load. field on-close uses ~A with a signed load. 
+  ;; field on-open uses ~A with a signed load. field on-close uses ~A with a signed load.
   (:methods
     (game-task-node-info-method-9 () none) ;; 9 ;; (close! (_type_ symbol) int 9)
     (game-task-node-info-method-10 () none) ;; 10 ;; (open! (_type_ symbol) int 10)
@@ -17195,7 +17197,7 @@
   :method-count-assert 10
   :size-assert         #x20
   :flag-assert         #xa00000020
-  ;; field kiosk-play-continue uses ~A with a signed load. 
+  ;; field kiosk-play-continue uses ~A with a signed load.
   (:methods
     (game-task-info-method-9 () none) ;; 9
     )
@@ -18025,7 +18027,7 @@
   :method-count-assert 14
   :size-assert         #x3c
   :flag-assert         #xe0000003c
-  ;; field blend-shape-anim uses ~A with a signed load. 
+  ;; field blend-shape-anim uses ~A with a signed load.
   )
 |#
 
@@ -18201,7 +18203,7 @@
   :method-count-assert 16
   :size-assert         #xdc
   :flag-assert         #x10000000dc
-  ;; field draw-control-status is likely a value type. field draw-control-global-effect is likely a value type. 
+  ;; field draw-control-status is likely a value type. field draw-control-global-effect is likely a value type.
   (:methods
      ;; (new (symbol type process symbol) _type_ 0)
     (draw-control-method-9 () none) ;; 9 ;; (get-skeleton-origin (_type_) vector 9)
@@ -18255,7 +18257,7 @@
   :method-count-assert 9
   :size-assert         #x1c
   :flag-assert         #x90000001c
-  ;; field parm0 uses ~A with a signed load. field parm1 uses ~A with a signed load. 
+  ;; field parm0 uses ~A with a signed load. field parm1 uses ~A with a signed load.
   )
 |#
 
@@ -18283,7 +18285,7 @@
   :method-count-assert 9
   :size-assert         #x1c
   :flag-assert         #x90000001c
-  ;; field track-val uses ~A with a signed load. field val-parm0 uses ~A with a signed load. field val-parm1 uses ~A with a signed load. 
+  ;; field track-val uses ~A with a signed load. field val-parm0 uses ~A with a signed load. field val-parm1 uses ~A with a signed load.
   )
 |#
 
@@ -18788,7 +18790,7 @@
   :method-count-assert 9
   :size-assert         #x80
   :flag-assert         #x900000080
-  ;; field xyz-scale is a float printed as hex? 
+  ;; field xyz-scale is a float printed as hex?
   )
 |#
 
@@ -19826,7 +19828,7 @@
   :method-count-assert 12
   :size-assert         #x68
   :flag-assert         #xc00000068
-  ;; field on-goto uses ~A with a signed load. 
+  ;; field on-goto uses ~A with a signed load.
   (:methods
     (continue-point-method-9 () none) ;; 9 ;; (debug-draw (_type_) int 9)
     (continue-point-method-10 () none) ;; 10 ;; (continue-point-method-10 (_type_ load-state) continue-point 10)
@@ -20181,7 +20183,7 @@
   :method-count-assert 14
   :size-assert         #x30
   :flag-assert         #xe00000030
-  ;; field param1 uses ~A with a signed load. field param2 uses ~A with a signed load. field param3 uses ~A with a signed load. 
+  ;; field param1 uses ~A with a signed load. field param2 uses ~A with a signed load. field param3 uses ~A with a signed load.
   )
 |#
 
@@ -20470,7 +20472,7 @@
   :method-count-assert 14
   :size-assert         #x20
   :flag-assert         #xe00000020
-  ;; field on-close uses ~A with a signed load. 
+  ;; field on-close uses ~A with a signed load.
   (:methods
     (talker-speech-class-method-9 () none) ;; 9 ;; (talker-speech-class-method-9 (_type_) symbol 9)
     (talker-speech-class-method-10 () none) ;; 10 ;; (play-communicator-speech! (_type_) none 10)
@@ -21138,7 +21140,7 @@
   :method-count-assert 13
   :size-assert         #x40
   :flag-assert         #xd00000040
-  ;; field joint-control-status is likely a value type. 
+  ;; field joint-control-status is likely a value type.
   (:methods
      ;; (new (symbol type int) _type_ 0)
     (joint-control-method-9 () none) ;; 9 ;; (current-cycle-distance (_type_) float 9)
@@ -21498,7 +21500,7 @@
   :method-count-assert 14
   :size-assert         #xb0
   :flag-assert         #xe000000b0
-  ;; field param1 uses ~A with a signed load. field param2 uses ~A with a signed load. field param3 uses ~A with a signed load. 
+  ;; field param1 uses ~A with a signed load. field param2 uses ~A with a signed load. field param3 uses ~A with a signed load.
   )
 |#
 
@@ -21568,7 +21570,7 @@
   :method-count-assert 22
   :size-assert         #x20
   :flag-assert         #x1600000020
-  ;; field extra uses ~A with a signed load. 
+  ;; field extra uses ~A with a signed load.
   (:methods
      ;; (new (symbol type int int) _type_ 0)
     (res-lump-method-9 () none) ;; 9 ;; (get-property-data (_type_ symbol symbol float pointer (pointer res-tag) pointer) pointer 9)
@@ -21680,7 +21682,7 @@
   :method-count-assert 45
   :size-assert         #x15c
   :flag-assert         #x2d00e0015c
-  ;; field on-activate uses ~A with a signed load. 
+  ;; field on-activate uses ~A with a signed load.
   (:methods
     (wstd-arena-plat-method-43 () none) ;; 43
     (wstd-arena-plat-method-44 () none) ;; 44
@@ -22226,7 +22228,7 @@
   :method-count-assert 12
   :size-assert         #x28
   :flag-assert         #xc00000028
-  ;; field actor-option is likely a value type. 
+  ;; field actor-option is likely a value type.
   (:methods
      ;; (new (symbol type process pickup-type float) _type_ 0)
     (fact-info-method-9 () none) ;; 9 ;; (drop-pickup (_type_ symbol process-tree fact-info int) (pointer process) 9)
@@ -22287,7 +22289,7 @@
   :method-count-assert 13
   :size-assert         #x138
   :flag-assert         #xd00000138
-  ;; field actor-option is likely a value type. 
+  ;; field actor-option is likely a value type.
   (:methods
      ;; (new (symbol type process-drawable pickup-type float) _type_ 0)
     (fact-info-target-method-12 () none) ;; 12 ;; (get-gun-ammo (_type_) float 12)
@@ -22318,7 +22320,7 @@
   :method-count-assert 13
   :size-assert         #x53
   :flag-assert         #xd00000053
-  ;; field actor-option is likely a value type. 
+  ;; field actor-option is likely a value type.
   (:methods
      ;; (new (symbol type process (pointer float) pickup-type float) _type_ 0)
     (fact-info-enemy-method-12 () none) ;; 12 ;; (clear-mask-bits (_type_ int) none 12)
@@ -22338,7 +22340,7 @@
   :method-count-assert 12
   :size-assert         #x2c
   :flag-assert         #xc0000002c
-  ;; field actor-option is likely a value type. 
+  ;; field actor-option is likely a value type.
   (:methods
      ;; (new (symbol type process pickup-type float) _type_ 0)
     )
@@ -22443,7 +22445,7 @@
   :method-count-assert 12
   :size-assert         #xa0
   :flag-assert         #xc000000a0
-  ;; field key uses ~A with a signed load. field expr uses ~A with a signed load. 
+  ;; field key uses ~A with a signed load. field expr uses ~A with a signed load.
   (:methods
      ;; (new (symbol type object process vector) _type_ 0)
     (script-context-method-9 () none) ;; 9 ;; (eval! (_type_ pair) object 9)
@@ -22486,7 +22488,7 @@
   :method-count-assert 9
   :size-assert         #x14
   :flag-assert         #x900000014
-  ;; field info uses ~A with a signed load. 
+  ;; field info uses ~A with a signed load.
   )
 |#
 
@@ -22735,7 +22737,7 @@
   :method-count-assert 18
   :size-assert         #x84
   :flag-assert         #x1200000084
-  ;; field on-running uses ~A with a signed load. field on-complete uses ~A with a signed load. 
+  ;; field on-running uses ~A with a signed load. field on-complete uses ~A with a signed load.
   (:methods
     (scene-method-16 () none) ;; 16 ;; (scene-method-16 (_type_) _type_ 16)
     (scene-method-17 () none) ;; 17
@@ -22778,7 +22780,7 @@
   :method-count-assert 26
   :size-assert         #x198
   :flag-assert         #x1a01200198
-  ;; field user-data uses ~A with a 64-bit load. 
+  ;; field user-data uses ~A with a 64-bit load.
   (:methods
     (scene-player-method-20 () none) ;; 20 ;; (wait (symbol) _type_ :state 20)
     (scene-player-method-21 () none) ;; 21 ;; (release () _type_ :state 21)
@@ -23545,7 +23547,7 @@
   :method-count-assert 23
   :size-assert         #xe0
   :flag-assert         #x17006000e0
-  ;; field open-test uses ~A with a signed load. 
+  ;; field open-test uses ~A with a signed load.
   (:methods
     (precur-door-a-method-22 () none) ;; 22
     )
@@ -24069,7 +24071,7 @@
   :method-count-assert 16
   :size-assert         #xac
   :flag-assert         #x10000000ac
-  ;; field track-mode is likely a value type. 
+  ;; field track-mode is likely a value type.
   (:methods
      ;; (new (symbol type joint-mod-mode process-drawable int) _type_ 0)
     (joint-mod-method-9 () none) ;; 9 ;; (mode-set! (_type_ joint-mod-mode) none 9)
@@ -24875,7 +24877,7 @@
   :method-count-assert 55
   :size-assert         #xc8
   :flag-assert         #x37000000c8
-  ;; field penetrate is likely a value type. field penetrate is likely a value type. 
+  ;; field penetrate is likely a value type. field penetrate is likely a value type.
   (:methods
      ;; (new (symbol type process-drawable collide-list-enum) _type_ 0)
     (collide-shape-method-28 () none) ;; 28 ;; (move-by-vector! (_type_ vector) none 28)
@@ -24938,7 +24940,7 @@
   :method-count-assert 68
   :size-assert         #x1dc
   :flag-assert         #x44000001dc
-  ;; field penetrate is likely a value type. field penetrate is likely a value type. 
+  ;; field penetrate is likely a value type. field penetrate is likely a value type.
   (:methods
      ;; (new (symbol type process-drawable collide-list-enum) _type_ 0)
     (collide-shape-moving-method-55 () none) ;; 55 ;; (find-ground (_type_ collide-query collide-spec float float float) symbol 55)
@@ -25026,7 +25028,7 @@
   :method-count-assert 18
   :size-assert         #x15c
   :flag-assert         #x1200e0015c
-  ;; field userdata uses ~A with a 64-bit load. 
+  ;; field userdata uses ~A with a 64-bit load.
   (:methods
     (part-tracker-method-14 () none) ;; 14 ;; (active () _type_ :state 14)
     (part-tracker-method-15 () none) ;; 15 ;; (notify-parent-of-death (_type_) none 15)
@@ -25048,7 +25050,7 @@
   :method-count-assert 9
   :size-assert         #x20
   :flag-assert         #x900000020
-  ;; field userdata uses ~A with a 64-bit load. field mat-joint uses ~A with a signed load. 
+  ;; field userdata uses ~A with a 64-bit load. field mat-joint uses ~A with a signed load.
   )
 |#
 
@@ -25065,7 +25067,7 @@
   :method-count-assert 9
   :size-assert         #x24
   :flag-assert         #x900000024
-  ;; field userdata uses ~A with a 64-bit load. field mat-joint uses ~A with a signed load. 
+  ;; field userdata uses ~A with a 64-bit load. field mat-joint uses ~A with a signed load.
   )
 |#
 
@@ -25101,7 +25103,7 @@
   :method-count-assert 17
   :size-assert         #x130
   :flag-assert         #x1100b00130
-  ;; field userdata uses ~A with a 64-bit load. 
+  ;; field userdata uses ~A with a 64-bit load.
   (:methods
     (lightning-tracker-method-14 () none) ;; 14 ;; (active () _type_ :state 14)
     (lightning-tracker-method-15 () none) ;; 15 ;; (notify-parent-of-death (_type_) none 15)
@@ -29521,7 +29523,7 @@
   :method-count-assert 9
   :size-assert         #x10
   :flag-assert         #x900000010
-  ;; field object uses ~A with a signed load. 
+  ;; field object uses ~A with a signed load.
   )
 |#
 
@@ -29934,7 +29936,7 @@
   :method-count-assert 9
   :size-assert         #x8c
   :flag-assert         #x90000008c
-  ;; field user-object uses ~A with a signed load. field key uses ~A with a signed load. 
+  ;; field user-object uses ~A with a signed load. field key uses ~A with a signed load.
   )
 |#
 
@@ -32403,7 +32405,7 @@
   :method-count-assert 56
   :size-assert         #x120
   :flag-assert         #x3800a00120
-  ;; field rigid-body-object-flag is likely a value type. 
+  ;; field rigid-body-object-flag is likely a value type.
   (:methods
     (rigid-body-object-method-28 () none) ;; 28 ;; (active () _type_ :state 28)
     (rigid-body-object-method-29 () none) ;; 29 ;; (rigid-body-object-method-29 (_type_ float) none 29)
@@ -32815,7 +32817,7 @@
   :method-count-assert 30
   :size-assert         #x1b4
   :flag-assert         #x1e014001b4
-  ;; field open-test uses ~A with a signed load. 
+  ;; field open-test uses ~A with a signed load.
   (:state-methods
     open ;; 20
     )
@@ -34707,7 +34709,7 @@
   :method-count-assert 9
   :size-assert         #x14
   :flag-assert         #x900000014
-  ;; field param2 uses ~A with a signed load. 
+  ;; field param2 uses ~A with a signed load.
   )
 |#
 
@@ -35025,7 +35027,7 @@
   :method-count-assert 207
   :size-assert         #x2e0
   :flag-assert         #xcf026002e0
-  ;; field mantis-flag is likely a value type. 
+  ;; field mantis-flag is likely a value type.
   (:methods
     (mantis-method-195 () none) ;; 195
     (mantis-method-199 () none) ;; 199
@@ -36189,7 +36191,7 @@
   :method-count-assert 9
   :size-assert         #x130
   :flag-assert         #x900000130
-  ;; field ra uses ~A with a signed load. field dummy0 uses ~A with a signed load. field dummy1 uses ~A with a signed load. field b-spfic uses ~A with a signed load. field l-spfic uses ~A with a signed load. 
+  ;; field ra uses ~A with a signed load. field dummy0 uses ~A with a signed load. field dummy1 uses ~A with a signed load. field b-spfic uses ~A with a signed load. field l-spfic uses ~A with a signed load.
   )
 |#
 
@@ -37780,7 +37782,7 @@
   :method-count-assert 9
   :size-assert         #x44
   :flag-assert         #x900000044
-  ;; field squad-target-flag is likely a value type. 
+  ;; field squad-target-flag is likely a value type.
   )
 |#
 
@@ -37803,7 +37805,7 @@
   :method-count-assert 10
   :size-assert         #x120
   :flag-assert         #xa00000120
-  ;; field squad-alert-flag is likely a value type. 
+  ;; field squad-alert-flag is likely a value type.
   (:methods
     (squad-alert-state-method-9 () none) ;; 9
     )
@@ -39263,7 +39265,7 @@
   :method-count-assert 38
   :size-assert         #xac
   :flag-assert         #x26000000ac
-  ;; field cloth-flag is likely a value type. 
+  ;; field cloth-flag is likely a value type.
   (:methods
     (cloth-system-method-16 () none) ;; 16
     (cloth-system-method-17 () none) ;; 17
@@ -39301,7 +39303,7 @@
   :method-count-assert 38
   :size-assert         #x110
   :flag-assert         #x2600000110
-  ;; field cloth-flag is likely a value type. 
+  ;; field cloth-flag is likely a value type.
   )
 |#
 
@@ -40731,7 +40733,7 @@
   :method-count-assert 17
   :size-assert         #xb0
   :flag-assert         #x11000000b0
-  ;; field carry-mode is likely a value type. 
+  ;; field carry-mode is likely a value type.
   (:methods
      ;; (new (symbol type process-drawable int vector vector float) _type_ 0)
     (carry-info-method-9 () none) ;; 9 ;; (carry-info-method-9 (_type_) none 9)
@@ -41211,7 +41213,7 @@
   :method-count-assert 23
   :size-assert         #xe4
   :flag-assert         #x17007000e4
-  ;; field open-test uses ~A with a signed load. 
+  ;; field open-test uses ~A with a signed load.
   (:methods
     (precura-door-a-method-22 () none) ;; 22
     )
@@ -43432,7 +43434,7 @@
   :method-count-assert 26
   :size-assert         #x100
   :flag-assert         #x1a00800100
-  ;; field on-notice uses ~A with a signed load. field on-activate uses ~A with a signed load. field on-close uses ~A with a signed load. 
+  ;; field on-notice uses ~A with a signed load. field on-activate uses ~A with a signed load. field on-close uses ~A with a signed load.
   (:methods
     (warp-gate-method-23 () none) ;; 23 ;; (init-skel-and-collide (_type_) none 23)
     (warp-gate-method-24 () none) ;; 24 ;; (setup-fields (_type_) none 24)
@@ -44792,7 +44794,7 @@
   :method-count-assert 15
   :size-assert         #xa0
   :flag-assert         #xf002000a0
-  ;; field activate-script uses ~A with a signed load. field enter-script uses ~A with a signed load. field exit-script uses ~A with a signed load. 
+  ;; field activate-script uses ~A with a signed load. field enter-script uses ~A with a signed load. field exit-script uses ~A with a signed load.
   (:state-methods
     active ;; 14
     )
@@ -45605,7 +45607,7 @@
   :method-count-assert 30
   :size-assert         #x1b0
   :flag-assert         #x1e013001b0
-  ;; field level-name uses ~A with a signed load. field open-test uses ~A with a signed load. field on-running uses ~A with a signed load. 
+  ;; field level-name uses ~A with a signed load. field open-test uses ~A with a signed load. field on-running uses ~A with a signed load.
   (:methods
     (com-airlock-method-22 () none) ;; 22 ;; (init-airlock! (_type_) _type_ 22)
     (com-airlock-method-23 () none) ;; 23 ;; (want-cross-airlock? (_type_) symbol 23)
@@ -46875,7 +46877,7 @@
   :method-count-assert 53
   :size-assert         #x110
   :flag-assert         #x3500900110
-  ;; field on-notice uses ~A with a signed load. field on-hostile uses ~A with a signed load. field on-beaten uses ~A with a signed load. 
+  ;; field on-notice uses ~A with a signed load. field on-hostile uses ~A with a signed load. field on-beaten uses ~A with a signed load.
   (:methods
     (battle-method-21 () none) ;; 21 ;; (battle-state-21 () _type_ :state 21)
     (battle-method-25 () none) ;; 25 ;; (spawner-blocked? (_type_ battle-spawner) symbol 25)
@@ -47086,7 +47088,7 @@
   :method-count-assert 9
   :size-assert         #x1c
   :flag-assert         #x90000001c
-  ;; field net-path-node-status is likely a value type. 
+  ;; field net-path-node-status is likely a value type.
   )
 |#
 
@@ -49010,7 +49012,7 @@
   :method-count-assert 59
   :size-assert         #x224
   :flag-assert         #x3b01b00224
-  ;; field pause-proc uses ~A with a signed load. 
+  ;; field pause-proc uses ~A with a signed load.
   (:methods
     (target-turret-method-34 () none) ;; 34
     (target-turret-method-35 () none) ;; 35
@@ -49372,7 +49374,7 @@
   :method-count-assert 22
   :size-assert         #x20
   :flag-assert         #x1600000020
-  ;; field nav-node-flag is likely a value type. 
+  ;; field nav-node-flag is likely a value type.
   (:methods
     (nav-node-method-9 () none) ;; 9 ;; (debug-draw (_type_) none 9)
     (nav-node-method-10 () none) ;; 10 ;; (debug-print (_type_ symbol string) none 10)
@@ -49942,7 +49944,7 @@
   :method-count-assert 11
   :size-assert         #x20
   :flag-assert         #xb00000020
-  ;; field vis-cell-flag is likely a value type. field vis-cell-flag is likely a value type. 
+  ;; field vis-cell-flag is likely a value type. field vis-cell-flag is likely a value type.
   (:methods
     (vis-cell-method-9 () none) ;; 9 ;; (reset-segment-counts (_type_) none 9)
     (vis-cell-method-10 () none) ;; 10 ;; (debug-draw (_type_) none 10)
@@ -51284,7 +51286,7 @@
   :method-count-assert 18
   :size-assert         #x60
   :flag-assert         #x1200000060
-  ;; field turret-flag is likely a value type. 
+  ;; field turret-flag is likely a value type.
   (:methods
     (turret-control-method-9 () none) ;; 9 ;; (turret-control-method-9 (_type_ vehicle vector vector) none 9)
     (turret-control-method-10 () none) ;; 10 ;; (turret-control-method-10 (_type_ vehicle) none 10)
@@ -51369,7 +51371,7 @@
   :method-count-assert 68
   :size-assert         #x1dc
   :flag-assert         #x44000001dc
-  ;; field penetrate is likely a value type. field penetrate is likely a value type. 
+  ;; field penetrate is likely a value type. field penetrate is likely a value type.
   )
 |#
 
@@ -55094,7 +55096,7 @@
   :method-count-assert 152
   :size-assert         #x2b8
   :flag-assert         #x98024002b8
-  ;; field vehicle-flag is likely a value type. 
+  ;; field vehicle-flag is likely a value type.
   (:methods
     (vehicle-method-56 () none) ;; 56 ;; (vehicle-state-56 () _type_ :state 56)
     (vehicle-method-57 () none) ;; 57 ;; (player-control () _type_ :state 57)
@@ -55855,7 +55857,7 @@
   :method-count-assert 31
   :size-assert         #x200
   :flag-assert         #x1f01800200
-  ;; field on-start uses ~A with a signed load. field on-stop uses ~A with a signed load. field on-shutdown uses ~A with a signed load. field on-trigger uses ~A with a signed load. 
+  ;; field on-start uses ~A with a signed load. field on-stop uses ~A with a signed load. field on-shutdown uses ~A with a signed load. field on-trigger uses ~A with a signed load.
   (:methods
     (elec-gate-method-24 () none) ;; 24 ;; (elec-gate-method-24 (_type_) none 24)
     (elec-gate-method-25 () none) ;; 25 ;; (set-palette! (_type_) none 25)
@@ -57117,7 +57119,7 @@
   :method-count-assert 10
   :size-assert         #xaa
   :flag-assert         #xa000000aa
-  ;; field borrow uses ~A with a signed load. 
+  ;; field borrow uses ~A with a signed load.
   (:methods
     (race-info-method-9 () none) ;; 9 ;; (initialize-mesh (_type_) none 9)
     )
@@ -58462,7 +58464,7 @@
   :method-count-assert 9
   :size-assert         #x2c
   :flag-assert         #x90000002c
-  ;; field vehicle-wheel-surface-flag is likely a value type. 
+  ;; field vehicle-wheel-surface-flag is likely a value type.
   )
 |#
 
@@ -59361,7 +59363,7 @@
   :method-count-assert 9
   :size-assert         #x38
   :flag-assert         #x900000038
-  ;; field default-check-too-far uses ~A with a signed load. 
+  ;; field default-check-too-far uses ~A with a signed load.
   )
 |#
 
@@ -66180,7 +66182,7 @@
   :method-count-assert 9
   :size-assert         #x18
   :flag-assert         #x900000018
-  ;; field param uses ~A with a signed load. 
+  ;; field param uses ~A with a signed load.
   )
 |#
 

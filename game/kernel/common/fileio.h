@@ -53,6 +53,7 @@ enum GoalFileType {
   VAG_FILE_TYPE = 0x3e,
   MISC_FILE_TYPE = 0x3f,  // jak2 only
   MAP_FILE_TYPE = 0x40,   // jak2 only
+  CL_FILE_TYPE = 0x41,    // jak 3 cloth animation
   REFPLANT_FILE_TYPE = 0x301,
   // added this, allows access directly to out/iso from fileio.
   ISO_FILE_TYPE = 0x302
