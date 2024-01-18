@@ -47,6 +47,12 @@ bool run_build_level(const std::string& input_file,
   dts.parse_enum_defs({"decompiler", "config", "jak2", "all-types.gc"});
   std::vector<EntityActor> actors;
   add_actors_from_json(level_json.at("actors"), actors, level_json.value("base_id", 1234), dts);
+  std::sort(actors.begin(), actors.end(), [](auto& a, auto& b) { return a.aid < b.aid; });
+  auto duplicates = std::adjacent_find(actors.begin(), actors.end(),
+                                       [](auto& a, auto& b) { return a.aid == b.aid; });
+  ASSERT_MSG(duplicates == actors.end(),
+             fmt::format("Actor IDs must be unique. Found at least two actors with ID {}",
+                         duplicates->aid));
   file.actors = std::move(actors);
   // cameras
   // nodes
