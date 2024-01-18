@@ -1450,7 +1450,7 @@ std::string old_method_string(const MethodInfo& info, const bool omit_comment = 
       if (info.type.base_type() == "state") {
         result += " :state";
       }
-      result += fmt::format(" {})", info.id);
+      result += ")";
       return result;
     }
   }
@@ -1663,7 +1663,7 @@ std::string TypeInspectorResult::print_as_deftype(
   if (type_method_count > 9) {
     MethodInfo old_new_method;
     if (old_game_type && old_game_type->get_my_new_method(&old_new_method)) {
-      methods_list.append("    ");
+      methods_list.append("    (new (symbol type) _type_) ;; 0");
       methods_list.append(old_method_string(old_new_method));
       methods_list.push_back('\n');
     }
