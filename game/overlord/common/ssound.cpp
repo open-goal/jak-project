@@ -172,7 +172,7 @@ s32 CalculateFalloffVolume(Vec3w* pos, s32 volume, s32 fo_curve, s32 fo_min, s32
   } else {
     if (fo_curve == 1) {
       return volume;
-    } else if (fo_curve == 9) {
+    } else if (fo_curve == 9 || fo_curve == 11) {
       xdiff = gEarTrans[1].x - pos->x;
       ydiff = gEarTrans[1].y - pos->y;
       zdiff = gEarTrans[1].z - pos->z;
@@ -180,10 +180,6 @@ s32 CalculateFalloffVolume(Vec3w* pos, s32 volume, s32 fo_curve, s32 fo_min, s32
       xdiff = 0;
       ydiff = gEarTrans[0].y - pos->y;
       zdiff = 0;
-    } else if (fo_curve == 11) {
-      xdiff = gEarTrans[1].x - pos->x;
-      ydiff = gEarTrans[1].y - pos->y;
-      zdiff = gEarTrans[1].z - pos->z;
     } else {
       xdiff = gEarTrans[0].x - pos->x;
       ydiff = gEarTrans[0].y - pos->y;
@@ -213,37 +209,35 @@ s32 CalculateFalloffVolume(Vec3w* pos, s32 volume, s32 fo_curve, s32 fo_min, s32
       ydiff >>= 1;
       zdiff >>= 1;
     }
-    s32 dist_squared = xdiff * xdiff + ydiff * ydiff + zdiff * zdiff;
+    u32 dist_squared = xdiff * xdiff + ydiff * ydiff + zdiff * zdiff;
     s32 dist_steps = 0;
     if (dist_squared != 0) {
       while ((dist_squared & 0xc0000000) == 0) {
-        dist_steps = dist_steps + 1;
+        ++dist_steps;
         dist_squared <<= 2;
       }
       dist_steps = sqrt_table[dist_squared >> 24] >> (dist_steps & 0x1f);
     }
     new_vol = volume;
     if (min < dist_steps) {
-      s32 voldiff = dist_steps - min;
+      u32 voldiff = dist_steps - min;
       if (dist_steps < max) {
         dist_steps = max - min;
-        while (0xffff < voldiff) {
+        while (voldiff > 0xffff) {
           dist_steps >>= 1;
           voldiff >>= 1;
         }
         voldiff = (voldiff << 0x10) / dist_steps;
         if (voldiff != 0x10000) {
-          new_vol = voldiff * voldiff >> 0x10;
-          new_vol = gCurves[fo_curve].unk4 * 0x10000 + gCurves[fo_curve].unk3 * voldiff +
-                        gCurves[fo_curve].unk2 * new_vol +
-                        gCurves[fo_curve].unk1 * ((new_vol * voldiff) >> 0x10) >>
+          new_vol = (voldiff * voldiff) >> 0x10;
+          new_vol = (gCurves[fo_curve].unk4 * 0x10000 + gCurves[fo_curve].unk3 * voldiff +
+                     gCurves[fo_curve].unk2 * new_vol +
+                     gCurves[fo_curve].unk1 * ((new_vol * voldiff) >> 0x10)) >>
                     0xc;
           if (new_vol < 0) {
             new_vol = 0;
-          } else {
-            if (0x10000 < new_vol) {
-              new_vol = 0x10000;
-            }
+          } else if (0x10000 < new_vol) {
+            new_vol = 0x10000;
           }
           new_vol = (new_vol * volume) >> 0x10;
         }
