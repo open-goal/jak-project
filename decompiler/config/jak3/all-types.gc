@@ -132,18 +132,15 @@
 ;; gcommon                        ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype vec4s (uint128)
-  ((UNKNOWN UNKNOWN  :offset-assert -1) ;; field could not be read.
-   (UNKNOWN UNKNOWN  :offset-assert -1) ;; field could not be read.
-   (UNKNOWN UNKNOWN  :offset-assert -1) ;; field could not be read.
-   (UNKNOWN UNKNOWN  :offset-assert -1) ;; field could not be read.
-   )
+  ((x float :offset 0)
+   (y float :offset 32)
+   (z float :offset 64)
+   (w float :offset 96))
   :method-count-assert 9
   :size-assert         #x10
   :flag-assert         #x900000010
   )
-|#
 
 (deftype vector (structure)
   ((data float   4 :score -1 :offset-assert 0) ;; guessed by decompiler
@@ -158,25 +155,26 @@
   :flag-assert         #x900000010
   )
 
-#|
 (deftype bfloat (basic)
-  ()
+  ((data float  :offset-assert 4)
+   )
   :method-count-assert 9
   :size-assert         #x8
   :flag-assert         #x900000008
-  ;; Failed to read fields.
   )
-|#
 
-#|
 (deftype inline-array-class (basic)
-  ()
+  ((length           int32  :offset-assert 4)
+   (allocated-length int32  :offset-assert 8)
+   ;; this is 16-byte aligned.
+   ;; children of inline-array-class should define their own data which overlays this one.
+   (_data            uint8  :score -50 :dynamic :offset 16)
+   )
   :method-count-assert 14
   :size-assert         #x10
   :flag-assert         #xe00000010
-  ;; Failed to read fields.
   (:methods
-     ;; (new (symbol type int) _type_ 0)
+    (new (symbol type int) _type_) ;; 0
     (inline-array-class-method-9 () none) ;; 9
     (inline-array-class-method-10 () none) ;; 10
     (inline-array-class-method-11 () none) ;; 11
@@ -184,7 +182,6 @@
     (inline-array-class-method-13 () none) ;; 13
     )
   )
-|#
 
 #|
 (deftype inline-array-class-uint64 (inline-array-class)
@@ -398,10 +395,9 @@
   )
 |#
 
-;; (deftype time-frame (int64)
-;;   ()
-;;   :flag-assert #x900000008
-;;   )
+(deftype time-frame (int64)
+  ()
+  )
 
 (deftype clock (basic)
   ((index                      int16                :offset-assert 4) ;; int32
@@ -982,7 +978,7 @@
 ;; (define-extern print-exp function) ;; (function float none)
 ;; (define-extern print-time function) ;; (function object time-frame none)
 ;; (define-extern log2 function) ;; (function int int)
-;; (define-extern seek function) ;; (function float float float float)
+(define-extern seek (function float float float float))
 ;; (define-extern seek-ease function) ;; (function float float float float float float)
 ;; (define-extern seek-ease-in-out function) ;; (function float float float float float float float float)
 ;; (define-extern lerp function) ;; (function float float float float)
@@ -1012,455 +1008,397 @@
 ;; vector-h                       ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype bit-array (basic)
   ((length           int32  :offset-assert 4)
    (allocated-length int32  :offset-assert 8)
+   (_pad             uint8  :offset-assert 12)
+   (bytes            uint8  :dynamic :offset 12)
    )
   :method-count-assert 13
   :size-assert         #xd
   :flag-assert         #xd0000000d
   (:methods
-    (new (symbol type) _type_) ;; 0 ;; (new (symbol type int) _type_)
-    (bit-array-method-9 () none) ;; 9 ;; (get-bit (_type_ int) symbol)
-    (bit-array-method-10 () none) ;; 10 ;; (clear-bit (_type_ int) int)
-    (bit-array-method-11 () none) ;; 11 ;; (set-bit (_type_ int) int)
-    (bit-array-method-12 () none) ;; 12 ;; (clear-all! (_type_) _type_)
+    (new (symbol type int) _type_) ;; 0
+    (get-bit (_type_ int) symbol) ;; 9
+    (clear-bit (_type_ int) int) ;; 10
+    (set-bit (_type_ int) int) ;; 11
+    (clear-all! (_type_) _type_) ;; 12
     )
   )
-|#
 
-#|
+
 (deftype vector16ub (structure)
-  ((data uint8   16 :offset-assert 0) ;; guessed by decompiler
-   (quad uint128    :offset-assert 0)
+  ((data uint8 16   :offset-assert 0)
+   (quad uint128    :offset 0)
    )
   :method-count-assert 9
   :size-assert         #x10
   :flag-assert         #x900000010
   )
-|#
 
-#|
 (deftype vector4ub (structure)
-  ((data uint8  4 :offset-assert 0) ;; guessed by decompiler
-   (x    uint8    :offset-assert 0)
-   (y    uint8    :offset-assert 1)
-   (z    uint8    :offset-assert 2)
-   (w    uint8    :offset-assert 3)
-   (clr  uint32   :offset-assert 0)
+  ((data uint8  4 :offset-assert 0)
+   (x    uint8    :offset        0)
+   (y    uint8    :offset        1)
+   (z    uint8    :offset        2)
+   (w    uint8    :offset        3)
+   (clr  uint32   :offset        0)
    )
+  :pack-me
   :method-count-assert 9
   :size-assert         #x4
   :flag-assert         #x900000004
   )
-|#
 
-#|
 (deftype vector4b (structure)
-  ((data int8  4 :offset-assert 0) ;; guessed by decompiler
-   (x    int8    :offset-assert 0)
-   (y    int8    :offset-assert 1)
-   (z    int8    :offset-assert 2)
-   (w    int8    :offset-assert 3)
-   (clr  int32   :offset-assert 0)
+  ((data int8  4 :offset-assert 0)
+   (x    int8    :offset        0)
+   (y    int8    :offset        1)
+   (z    int8    :offset        2)
+   (w    int8    :offset        3)
+   (clr  int32   :offset        0)
    )
+  :pack-me
   :method-count-assert 9
   :size-assert         #x4
   :flag-assert         #x900000004
   )
-|#
 
-#|
 (deftype vector2ub (structure)
-  ((data uint8  2 :offset-assert 0) ;; guessed by decompiler
-   (x    uint8    :offset-assert 0)
-   (y    uint8    :offset-assert 1)
-   (clr  uint16   :offset-assert 0)
+  ((data uint8 2 :offset-assert 0)
+   (x    uint8   :offset        0)
+   (y    uint8   :offset        1)
+   (clr  uint16  :offset        0)
    )
+  :pack-me
   :method-count-assert 9
   :size-assert         #x2
   :flag-assert         #x900000002
   )
-|#
 
-#|
 (deftype vector2b (structure)
-  ((data int8  2 :offset-assert 0) ;; guessed by decompiler
-   (x    int8    :offset-assert 0)
-   (y    int8    :offset-assert 1)
-   (clr  int16   :offset-assert 0)
+  ((data int8 2 :offset-assert 0)
+   (x    int8   :offset        0)
+   (y    int8   :offset        1)
+   (clr  int16  :offset        0)
    )
   :method-count-assert 9
   :size-assert         #x2
   :flag-assert         #x900000002
   )
-|#
 
-#|
 (deftype vector2h (structure)
-  ((data int16 2 :offset-assert 0) ;; guessed by decompiler
-   (x    int16   :offset-assert 0)
-   (y    int16   :offset-assert 2)
+  ((data int16 2 :offset-assert 0)
+   (x    int16   :offset        0)
+   (y    int16   :offset        2)
    )
+  :pack-me
   :method-count-assert 9
   :size-assert         #x4
   :flag-assert         #x900000004
   )
-|#
 
-#|
 (deftype vector2uh (structure)
-  ((data uint16 2 :offset-assert 0) ;; guessed by decompiler
-   (x    uint16   :offset-assert 0)
-   (y    uint16   :offset-assert 2)
-   (val  uint32   :offset-assert 0)
+  ((data uint16 2 :offset-assert 0)
+   (x    uint16   :offset        0)
+   (y    uint16   :offset        2)
+   (val  uint32   :offset        0)
    )
+  :pack-me
   :method-count-assert 9
   :size-assert         #x4
   :flag-assert         #x900000004
   )
-|#
 
-#|
 (deftype vector3h (structure)
-  ((data int16 3 :offset-assert 0) ;; guessed by decompiler
-   (x    int16   :offset-assert 0)
-   (y    int16   :offset-assert 2)
-   (z    int16   :offset-assert 4)
+  ((data int16 3 :offset-assert 0)
+   (x    int16   :offset        0)
+   (y    int16   :offset        2)
+   (z    int16   :offset        4)
    )
   :method-count-assert 9
   :size-assert         #x6
   :flag-assert         #x900000006
   )
-|#
 
-#|
 (deftype vector3uh (structure)
-  ((data uint16 3 :offset-assert 0) ;; guessed by decompiler
-   (x    uint16   :offset-assert 0)
-   (y    uint16   :offset-assert 2)
-   (z    uint16   :offset-assert 4)
+  ((data uint16 3 :offset-assert 0)
+   (x    uint16   :offset        0)
+   (y    uint16   :offset        2)
+   (z    uint16   :offset        4)
    )
   :method-count-assert 9
   :size-assert         #x6
   :flag-assert         #x900000006
   )
-|#
 
-#|
 (deftype vector2w (structure)
-  ((data int32 2 :offset-assert 0) ;; guessed by decompiler
-   (x    int32   :offset-assert 0)
-   (y    int32   :offset-assert 4)
+  ((data int32 2 :offset-assert 0)
+   (x    int32   :offset        0)
+   (y    int32   :offset        4)
    )
   :method-count-assert 9
   :size-assert         #x8
   :flag-assert         #x900000008
   )
-|#
 
-#|
 (deftype vector3w (structure)
-  ((data int32 3 :offset-assert 0) ;; guessed by decompiler
-   (x    int32   :offset-assert 0)
-   (y    int32   :offset-assert 4)
-   (z    int32   :offset-assert 8)
+  ((data int32 3 :offset-assert 0)
+   (x    int32   :offset        0)
+   (y    int32   :offset        4)
+   (z    int32   :offset        8)
    )
   :method-count-assert 9
   :size-assert         #xc
   :flag-assert         #x90000000c
   )
-|#
 
-#|
 (deftype vector4w (structure)
-  ((data  int32   4 :offset-assert 0) ;; guessed by decompiler
-   (x     int32     :offset-assert 0)
-   (y     int32     :offset-assert 4)
-   (z     int32     :offset-assert 8)
-   (w     int32     :offset-assert 12)
-   (dword uint64  2 :offset-assert 0) ;; guessed by decompiler
-   (quad  uint128   :offset-assert 0)
+  ((data  int32  4 :offset-assert 0 :score -1)
+   (x     int32     :offset        0)
+   (y     int32     :offset        4)
+   (z     int32     :offset        8)
+   (w     int32     :offset        12)
+   (dword uint64  2 :offset        0)
+   (quad  uint128   :offset        0)
    )
   :method-count-assert 9
   :size-assert         #x10
   :flag-assert         #x900000010
   )
-|#
 
-#|
 (deftype vector2 (structure)
-  ((data float 2 :offset-assert 0) ;; guessed by decompiler
-   (x    float   :offset-assert 0)
-   (y    float   :offset-assert 4)
+  ((data float 2 :offset-assert 0)
+   (x    float   :offset 0)
+   (y    float   :offset 4)
    )
+  :allow-misaligned
   :method-count-assert 9
   :size-assert         #x8
   :flag-assert         #x900000008
   )
-|#
 
-#|
 (deftype vector3 (structure)
-  ((data float 3 :offset-assert 0) ;; guessed by decompiler
-   (x    float   :offset-assert 0)
-   (y    float   :offset-assert 4)
-   (z    float   :offset-assert 8)
+  ((data float 3 :offset-assert 0)
+   (x    float   :offset        0)
+   (y    float   :offset        4)
+   (z    float   :offset        8)
    )
   :method-count-assert 9
   :size-assert         #xc
   :flag-assert         #x90000000c
   )
-|#
 
-#|
 (deftype vector4 (structure)
-  ((data  float   4 :offset-assert 0) ;; guessed by decompiler
-   (x     float     :offset-assert 0)
-   (y     float     :offset-assert 4)
-   (z     float     :offset-assert 8)
-   (w     float     :offset-assert 12)
-   (dword uint64  2 :offset-assert 0) ;; guessed by decompiler
-   (quad  uint128   :offset-assert 0)
+  ((data  float 4  :offset-assert 0 :score -1)
+   (x     float    :offset        0)
+   (y     float    :offset        4)
+   (z     float    :offset        8)
+   (w     float    :offset        12)
+   (dword uint64 2 :offset        0)
+   (quad  uint128  :offset        0)
    )
   :method-count-assert 9
   :size-assert         #x10
   :flag-assert         #x900000010
   )
-|#
 
-#|
 (deftype vector4w-2 (structure)
-  ((data   int32    8 :offset-assert 0) ;; guessed by decompiler
-   (quad   uint128  2 :offset-assert 0) ;; guessed by decompiler
-   (vector vector4w 2 :offset-assert 0) ;; guessed by decompiler
+  ((data   int32    8 :offset-assert  0 :score -2)
+   (quad   uint128  2 :offset         0 :score -1)
+   (vector vector4w 2 :inline :offset 0)
    )
   :method-count-assert 9
   :size-assert         #x20
   :flag-assert         #x900000020
   )
-|#
 
-#|
 (deftype vector4w-3 (structure)
-  ((data   int32    12 :offset-assert 0) ;; guessed by decompiler
-   (quad   uint128  3  :offset-assert 0) ;; guessed by decompiler
-   (vector vector4w 3  :offset-assert 0) ;; guessed by decompiler
+  ((data   int32    12 :offset-assert  0 :score -2)
+   (quad   uint128  3  :offset         0 :score -1)
+   (vector vector4w 3  :inline :offset 0)
    )
   :method-count-assert 9
   :size-assert         #x30
   :flag-assert         #x900000030
   )
-|#
 
-#|
 (deftype vector4w-4 (structure)
-  ((data   int32    16 :offset-assert 0) ;; guessed by decompiler
-   (quad   uint128  4  :offset-assert 0) ;; guessed by decompiler
-   (vector vector4w 4  :offset-assert 0) ;; guessed by decompiler
+  ((data   int32    16 :offset-assert  0)
+   (quad   uint128  4  :offset         0)
+   (vector vector4w 4  :inline :offset 0 :score 999)
    )
   :method-count-assert 9
   :size-assert         #x40
   :flag-assert         #x900000040
   )
-|#
 
-#|
 (deftype vector4h (structure)
-  ((data int16  4 :offset-assert 0) ;; guessed by decompiler
-   (x    int16    :offset-assert 0)
-   (y    int16    :offset-assert 2)
-   (z    int16    :offset-assert 4)
-   (w    int16    :offset-assert 6)
-   (long uint64   :offset-assert 0)
+  ((data int16  4 :offset-assert 0)
+   (x    int16    :offset        0)
+   (y    int16    :offset        2)
+   (z    int16    :offset        4)
+   (w    int16    :offset        6)
+   (long uint64   :offset        0)
    )
+  :pack-me
   :method-count-assert 9
   :size-assert         #x8
   :flag-assert         #x900000008
   )
-|#
 
-#|
 (deftype vector8h (structure)
-  ((data int16   8 :offset-assert 0) ;; guessed by decompiler
-   (quad uint128   :offset-assert 0)
+  ((data int16   8 :offset-assert 0)
+   (quad uint128   :offset        0)
    )
   :method-count-assert 9
   :size-assert         #x10
   :flag-assert         #x900000010
   )
-|#
 
-#|
 (deftype vector16b (structure)
-  ((data int8    16 :offset-assert 0) ;; guessed by decompiler
-   (quad uint128    :offset-assert 0)
+  ((data int8    16 :offset-assert 0)
+   (quad uint128    :offset        0)
    )
   :method-count-assert 9
   :size-assert         #x10
   :flag-assert         #x900000010
   )
-|#
 
-#|
 (deftype vector4s-3 (structure)
-  ((data   float   12 :offset-assert 0) ;; guessed by decompiler
-   (quad   uint128 3  :offset-assert 0) ;; guessed by decompiler
-   (vector vector  3  :offset-assert 0) ;; guessed by decompiler
+  ((data   float   12 :offset-assert  0)
+   (quad   uint128 3  :offset         0)
+   (vector vector  3  :inline :offset 0)
    )
   :method-count-assert 9
   :size-assert         #x30
   :flag-assert         #x900000030
   )
-|#
 
-#|
 (deftype vector-array (inline-array-class)
-  ((data vector :dynamic :offset-assert 16) ;; guessed by decompiler
+  ((data vector :inline :dynamic :offset-assert 16 :score 10)
    )
   :method-count-assert 14
   :size-assert         #x10
   :flag-assert         #xe00000010
   )
-|#
 
-#|
 (deftype rgbaf (vector)
-  ((r float  :offset-assert 0)
-   (g float  :offset-assert 4)
-   (b float  :offset-assert 8)
-   (a float  :offset-assert 12)
+  ((r    float     :offset 0)
+   (g    float     :offset 4)
+   (b    float     :offset 8)
+   (a    float     :offset 12)
    )
   :method-count-assert 9
   :size-assert         #x10
   :flag-assert         #x900000010
   )
-|#
 
-#|
 (deftype plane (vector)
-  ((a float  :offset-assert 0)
-   (b float  :offset-assert 4)
-   (c float  :offset-assert 8)
-   (d float  :offset-assert 12)
+  ((a    float     :offset 0)
+   (b    float     :offset 4)
+   (c    float     :offset 8)
+   (d    float     :offset 12)
    )
   :method-count-assert 9
   :size-assert         #x10
   :flag-assert         #x900000010
   )
-|#
 
-#|
 (deftype sphere (vector)
-  ((r float  :offset-assert 12)
+  ((r    float     :offset 12 :score 1)
    )
   :method-count-assert 9
   :size-assert         #x10
   :flag-assert         #x900000010
   )
-|#
 
-;; (deftype isphere (vec4s)
-;;   ()
-;;   :flag-assert #x900000010
-;;   )
+(deftype isphere (vec4s)
+  ()
+  )
 
-#|
 (deftype box8s (structure)
-  ((data   float   8       :offset-assert 0) ;; guessed by decompiler
-   (quad   uint128 2       :offset-assert 0) ;; guessed by decompiler
-   (vector vector  2       :offset-assert 0) ;; guessed by decompiler
-   (min    vector  :inline :offset-assert 0)
-   (max    vector  :inline :offset-assert 16)
+  ((data   float   8       :offset-assert 0)
+   (quad   uint128 2       :offset        0)
+   (vector vector  2       :offset        0)
+   (min    vector  :inline :offset        0)
+   (max    vector  :inline :offset        16)
    )
   :method-count-assert 9
   :size-assert         #x20
   :flag-assert         #x900000020
   )
-|#
 
-#|
 (deftype box8s-array (inline-array-class)
-  ((data box8s :dynamic :offset-assert 16) ;; guessed by decompiler
+  ((data box8s :inline :dynamic :offset-assert 16)
    )
   :method-count-assert 14
   :size-assert         #x10
   :flag-assert         #xe00000010
   )
-|#
 
-#|
 (deftype vertical-planes (structure)
-  ((data uint128 4 :offset-assert 0) ;; guessed by decompiler
+  ((data uint128 4 :offset-assert 0)
    )
   :method-count-assert 9
   :size-assert         #x40
   :flag-assert         #x900000040
   )
-|#
 
-#|
 (deftype vertical-planes-array (basic)
-  ((length uint32                   :offset-assert 4)
-   (data   vertical-planes :dynamic :offset-assert 16) ;; guessed by decompiler
+  ((length uint32                           :offset-assert 4)
+   (data   vertical-planes :inline :dynamic :offset-assert 16)
    )
   :method-count-assert 9
   :size-assert         #x10
   :flag-assert         #x900000010
   )
-|#
 
-#|
 (deftype qword (structure)
-  ((data     uint32   4       :offset-assert 0) ;; guessed by decompiler
-   (byte     uint8    16      :offset-assert 0) ;; guessed by decompiler
-   (hword    uint16   8       :offset-assert 0) ;; guessed by decompiler
-   (word     uint32   4       :offset-assert 0) ;; guessed by decompiler
-   (dword    uint64   2       :offset-assert 0) ;; guessed by decompiler
-   (quad     uint128          :offset-assert 0)
-   (vector   vector   :inline :offset-assert 0)
-   (vector4w vector4w :inline :offset-assert 0)
+  ((data     uint32   4       :offset-assert 0)
+   (byte     uint8    16      :offset        0)
+   (hword    uint16   8       :offset        0)
+   (word     uint32   4       :offset        0)
+   (dword    uint64   2       :offset        0)
+   (quad     uint128          :offset        0)
+   (vector   vector   :inline :offset        0 :score -100)
+   (vector4w vector4w :inline :offset        0)
    )
   :method-count-assert 9
   :size-assert         #x10
   :flag-assert         #x900000010
   )
-|#
 
-#|
 (deftype vector3s (structure)
-  ((data float 3 :offset-assert 0) ;; guessed by decompiler
-   (x    float   :offset-assert 0)
-   (y    float   :offset-assert 4)
-   (z    float   :offset-assert 8)
+  ((data float 3 :offset-assert 0)
+   (x    float   :offset        0)
+   (y    float   :offset        4)
+   (z    float   :offset        8)
    )
+  :pack-me
   :method-count-assert 9
   :size-assert         #xc
   :flag-assert         #x90000000c
   )
-|#
 
-;; vector is already defined!
-
-;; (define-extern *null-vector* object) ;; vector
-;; (define-extern *identity-vector* object) ;; vector
-;; (define-extern *x-vector* object) ;; vector
-;; (define-extern *y-vector* object) ;; vector
-;; (define-extern *z-vector* object) ;; vector
-;; (define-extern *up-vector* object) ;; vector
-;; (define-extern vector-dot function) ;; (function vector vector float)
-;; (define-extern vector-dot-vu function) ;; (function vector vector float)
-;; (define-extern vector4-dot function) ;; (function vector vector float)
-;; (define-extern vector4-dot-vu function) ;; (function vector vector float)
-;; (define-extern vector+! function) ;; (function vector vector vector vector)
-;; (define-extern vector-! function) ;; (function vector vector vector vector)
-;; (define-extern vector-zero! function) ;; (function vector vector)
-;; (define-extern vector-reset! function) ;; (function vector vector)
-;; (define-extern vector-copy! function) ;; (function vector vector vector)
-;; (define-extern vector-length< function) ;; (function vector float symbol)
-;; (define-extern vector-length> function) ;; (function vector float symbol)
-;; (define-extern *zero-vector* object) ;; vector
+(define-extern *null-vector* vector)
+(define-extern *identity-vector* vector)
+(define-extern *x-vector* vector)
+(define-extern *y-vector* vector)
+(define-extern *z-vector* vector)
+(define-extern *up-vector* vector)
+(define-extern vector-dot (function vector vector float))
+(define-extern vector-dot-vu (function vector vector float))
+(define-extern vector4-dot (function vector vector float))
+(define-extern vector4-dot-vu (function vector vector float))
+(define-extern vector+! (function vector vector vector vector))
+(define-extern vector-! (function vector vector vector vector))
+(define-extern vector-zero! (function vector vector))
+(define-extern vector-reset! (function vector vector))
+(define-extern vector-copy! (function vector vector vector))
+(define-extern vector-length< (function vector float symbol))
+(define-extern vector-length> (function vector float symbol))
+(define-extern *zero-vector* vector)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; gravity-h                      ;;
@@ -1471,7 +1409,6 @@
 ;; bounding-box-h                 ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype bounding-box (structure)
   ((min vector :inline :offset-assert 0)
    (max vector :inline :offset-assert 16)
@@ -1480,23 +1417,21 @@
   :size-assert         #x20
   :flag-assert         #x1500000020
   (:methods
-    (bounding-box-method-9 () none) ;; 9 ;; (add-spheres! (_type_ (inline-array sphere) int) int)
-    (bounding-box-method-10 () none) ;; 10 ;; (add-box! (_type_ bounding-box) int)
-    (bounding-box-method-11 () none) ;; 11 ;; (add-point! (_type_ vector) none)
-    (bounding-box-method-12 () none) ;; 12 ;; (intersects-line-segment? (_type_ vector vector) symbol)
-    (bounding-box-method-13 () none) ;; 13 ;; (set-from-point-offset! (_type_ vector vector) none)
-    (bounding-box-method-14 () none) ;; 14 ;; (set-from-point-offset-pad! (_type_ vector vector float) int)
-    (bounding-box-method-15 () none) ;; 15 ;; (set-to-point! (_type_ vector) none)
-    (bounding-box-method-16 () none) ;; 16 ;; (set-from-sphere! (_type_ sphere) none)
-    (bounding-box-method-17 () none) ;; 17 ;; (set-from-spheres! (_type_ (inline-array sphere) int) int)
-    (bounding-box-method-18 () none) ;; 18 ;; (get-bounding-sphere (_type_ vector) vector)
-    (bounding-box-method-19 () none) ;; 19 ;; (inside-xyz? (bounding-box vector) symbol)
-    (bounding-box-method-20 () none) ;; 20 ;; (inside-xz? (bounding-box vector) symbol)
+    (add-spheres! (_type_ (inline-array sphere) int) int) ;; 9
+    (add-box! (_type_ bounding-box) int) ;; 10
+    (add-point! (_type_ vector) none) ;; 11
+    (intersects-line-segment? (_type_ vector vector) symbol) ;; 12
+    (set-from-point-offset! (_type_ vector vector) none) ;; 13
+    (set-from-point-offset-pad! (_type_ vector vector float) int) ;; 14
+    (set-to-point! (_type_ vector) none) ;; 15
+    (set-from-sphere! (_type_ sphere) none) ;; 16
+    (set-from-spheres! (_type_ (inline-array sphere) int) int) ;; 17
+    (get-bounding-sphere (_type_ vector) vector) ;; 18
+    (inside-xyz? (bounding-box vector) symbol) ;; 19
+    (inside-xz? (bounding-box vector) symbol) ;; 20
     )
   )
-|#
 
-#|
 (deftype bounding-box2 (structure)
   ((min vector2 :inline :offset-assert 0)
    (max vector2 :inline :offset-assert 8)
@@ -1505,9 +1440,7 @@
   :size-assert         #x10
   :flag-assert         #x900000010
   )
-|#
 
-#|
 (deftype bounding-box4w (structure)
   ((min vector4w :inline :offset-assert 0)
    (max vector4w :inline :offset-assert 16)
@@ -1516,9 +1449,7 @@
   :size-assert         #x20
   :flag-assert         #x900000020
   )
-|#
 
-#|
 (deftype bounding-box-both (structure)
   ((box   bounding-box   :inline :offset-assert 0)
    (box4w bounding-box4w :inline :offset-assert 32)
@@ -1527,9 +1458,7 @@
   :size-assert         #x40
   :flag-assert         #x900000040
   )
-|#
 
-#|
 (deftype bounding-box-array (inline-array-class)
   ((data bounding-box :dynamic :offset-assert 16) ;; guessed by decompiler
    )
@@ -1537,104 +1466,91 @@
   :size-assert         #x10
   :flag-assert         #xe00000010
   )
-|#
-
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; matrix-h                       ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype matrix (structure)
-  ((data   float   16      :offset-assert 0) ;; guessed by decompiler
-   (vector vector  4       :offset-assert 0) ;; guessed by decompiler
-   (quad   uint128 4       :offset-assert 0) ;; guessed by decompiler
-   (rvec   vector  :inline :offset-assert 0)
-   (uvec   vector  :inline :offset-assert 16)
-   (fvec   vector  :inline :offset-assert 32)
-   (trans  vector  :inline :offset-assert 48)
+  ((data   float   16      :offset-assert 0 :score -100) ;; guessed by decompiler
+   (vector vector  4       :offset 0) ;; guessed by decompiler
+   (quad   uint128 4       :offset 0) ;; guessed by decompiler
+   (rvec   vector  :inline :offset 0 :score 1)
+   (uvec   vector  :inline :offset 16)
+   (fvec   vector  :inline :offset 32)
+   (trans  vector  :inline :offset 48)
    )
   :method-count-assert 10
   :size-assert         #x40
   :flag-assert         #xa00000040
   (:methods
-    (matrix-method-9 () none) ;; 9 ;; (transform-vectors! (_type_ (inline-array vector) (inline-array vector) int) none)
+    (transform-vectors! (_type_ (inline-array vector) (inline-array vector) int) none) ;; 9
     )
   )
-|#
 
-#|
 (deftype matrix3 (structure)
-  ((data   float   12 :offset-assert 0) ;; guessed by decompiler
-   (vector vector  3  :offset-assert 0) ;; guessed by decompiler
-   (quad   uint128 3  :offset-assert 0) ;; guessed by decompiler
+  ((data   float   12 :offset-assert 0 :score -1) ;; guessed by decompiler
+   (vector vector  3  :offset 0) ;; guessed by decompiler
+   (quad   uint128 3  :offset 0) ;; guessed by decompiler
    )
   :method-count-assert 9
   :size-assert         #x30
   :flag-assert         #x900000030
   )
-|#
 
-#|
 (deftype matrix4h (structure)
-  ((data     int16    16 :offset-assert 0) ;; guessed by decompiler
-   (vector4h vector4h 4  :offset-assert 0) ;; guessed by decompiler
-   (long     int64    4  :offset-assert 0) ;; guessed by decompiler
+  ((data     int16    16 :offset-assert 0 :score -1) ;; guessed by decompiler
+   (vector4h vector4h 4  :offset 0) ;; guessed by decompiler
+   (long     int64    4  :offset 0) ;; guessed by decompiler
    )
   :method-count-assert 9
   :size-assert         #x20
   :flag-assert         #x900000020
   )
-|#
 
-;; (define-extern matrix-copy! function) ;; (function matrix matrix matrix)
-;; (define-extern matrix<-vector-yz-exact! function)
-;; (define-extern matrix<-vector-yz! function)
-;; (define-extern matrix<-vector-z! function)
+(define-extern matrix-copy! (function matrix matrix matrix))
+(define-extern matrix<-vector-yz-exact! (function matrix vector vector matrix))
+(define-extern matrix<-vector-yz! (function matrix vector vector matrix))
+(define-extern matrix<-vector-z! (function matrix vector matrix))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; quaternion-h                   ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype quaternion (structure)
-  ((data float   4       :offset-assert 0) ;; guessed by decompiler
-   (x    float           :offset-assert 0)
-   (y    float           :offset-assert 4)
-   (z    float           :offset-assert 8)
-   (w    float           :offset-assert 12)
-   (vec  vector  :inline :offset-assert 0)
-   (quad uint128         :offset-assert 0)
+  ((data float   4       :offset-assert 0 :score -1) ;; guessed by decompiler
+   (x    float           :offset        0)
+   (y    float           :offset        4)
+   (z    float           :offset        8)
+   (w    float           :offset        12)
+   (vec  vector  :inline :offset        0)
+   (quad uint128         :offset        0)
    )
   :method-count-assert 9
   :size-assert         #x10
   :flag-assert         #x900000010
   )
-|#
 
-;; (define-extern *unity-quaternion* object) ;; quaternion
+(define-extern *unity-quaternion* quaternion)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; euler-h                        ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype euler-angles (vector)
   ()
   :method-count-assert 9
   :size-assert         #x10
   :flag-assert         #x900000010
   )
-|#
 
-;; (define-extern EulSafe array) ;; (array int32)
-;; (define-extern EulNext array) ;; (array int32)
+(define-extern EulSafe (array int32))
+(define-extern EulNext (array int32))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; transform-h                    ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype transform (structure)
   ((trans vector :inline :offset-assert 0)
    (rot   vector :inline :offset-assert 16)
@@ -1644,9 +1560,7 @@
   :size-assert         #x30
   :flag-assert         #x900000030
   )
-|#
 
-#|
 (deftype trs (basic)
   ((trans vector :inline :offset-assert 16)
    (rot   vector :inline :offset-assert 32)
@@ -1656,14 +1570,11 @@
   :size-assert         #x40
   :flag-assert         #x900000040
   )
-|#
-
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; geometry-h                     ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype curve (structure)
   ((cverts     (inline-array vector)  :offset-assert 0) ;; guessed by decompiler
    (num-cverts int32                  :offset-assert 4)
@@ -1675,9 +1586,7 @@
   :size-assert         #x14
   :flag-assert         #x900000014
   )
-|#
 
-#|
 (deftype line-intersection-val (structure)
   ((tt0 float  :offset-assert 0)
    (tt1 float  :offset-assert 4)
@@ -1686,9 +1595,7 @@
   :size-assert         #x8
   :flag-assert         #x900000008
   )
-|#
 
-#|
 (deftype border-plane (basic)
   ((name   symbol         :offset-assert 4) ;; guessed by decompiler
    (action basic          :offset-assert 8)
@@ -1700,13 +1607,11 @@
   :size-assert         #x30
   :flag-assert         #xb00000030
   (:methods
-    (border-plane-method-9 () none) ;; 9 ;; (debug-draw (_type_) int)
-    (border-plane-method-10 () none) ;; 10 ;; (point-past-plane? (_type_ vector) symbol)
+    (debug-draw (_type_) int) ;; 9
+    (point-past-plane? (_type_ vector) symbol) ;; 10
     )
   )
-|#
 
-#|
 (deftype lissajous (structure)
   ((x-mag        float  :offset-assert 0)
    (y-mag        float  :offset-assert 4)
@@ -1716,16 +1621,15 @@
    (period-shift float  :offset-assert 20)
    (theta-rate   float  :offset-assert 24)
    )
+  :pack-me
   :method-count-assert 10
   :size-assert         #x1c
   :flag-assert         #xa0000001c
   (:methods
-    (lissajous-method-9 () none) ;; 9
+    (lissajous-method-9 (_type_ vector) vector) ;; 9
     )
   )
-|#
 
-#|
 (deftype lissajous-interp (structure)
   ((current lissajous :inline :offset-assert 0)
    (dest    lissajous :inline :offset-assert 28)
@@ -1735,12 +1639,10 @@
   :size-assert         #x54
   :flag-assert         #xb00000054
   (:methods
-    (lissajous-interp-method-9 () none) ;; 9
-    (lissajous-interp-method-10 () none) ;; 10
+    (lissajous-interp-method-9 (_type_ vector) vector) ;; 9
+    (lissajous-interp-method-10 (_type_) float) ;; 10
     )
   )
-|#
-
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; trigonometry-h                 ;;
@@ -1751,63 +1653,57 @@
 ;; transformq-h                   ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype transformq (transform)
-  ((quat quaternion :inline :offset-assert 16)
+  ((quat quaternion :inline :offset 16)
    )
   :method-count-assert 9
   :size-assert         #x30
   :flag-assert         #x900000030
   )
-|#
 
-#|
 (deftype trsq (trs)
-  ((quat quaternion :inline :offset-assert 32)
+  ((quat quaternion :inline :offset 32)
    )
   :method-count-assert 9
   :size-assert         #x40
   :flag-assert         #x900000040
   )
-|#
 
-#|
 (deftype trsqv (trsq)
-  ((pause-adjust-distance meters             :offset-assert 4)
-   (nav-radius            meters             :offset-assert 8)
+  ((pause-adjust-distance meters             :offset 4)
+   (nav-radius            meters             :offset 8)
    (transv                vector     :inline :offset-assert 64)
    (rotv                  vector     :inline :offset-assert 80)
    (scalev                vector     :inline :offset-assert 96)
    (dir-targ              quaternion :inline :offset-assert 112)
-   (angle-change-time     uint64             :offset-assert 128) ;; time-frame
+   (angle-change-time     time-frame         :offset-assert 128)
    (old-y-angle-diff      float              :offset-assert 136)
    )
   :method-count-assert 28
   :size-assert         #x8c
   :flag-assert         #x1c0000008c
   (:methods
-    (trsqv-method-9 () none) ;; 9 ;; (seek-toward-heading-vec! (_type_ vector float time-frame) quaternion)
-    (trsqv-method-10 () none) ;; 10 ;; (set-heading-vec! (_type_ vector) quaternion)
-    (trsqv-method-11 () none) ;; 11 ;; (seek-to-point-toward-point! (_type_ vector float time-frame) quaternion)
-    (trsqv-method-12 () none) ;; 12 ;; (point-toward-point! (_type_ vector) quaternion)
-    (trsqv-method-13 () none) ;; 13 ;; (seek-toward-yaw-angle! (_type_ float float time-frame) quaternion)
-    (trsqv-method-14 () none) ;; 14 ;; (set-yaw-angle-clear-roll-pitch! (_type_ float) quaternion)
-    (trsqv-method-15 () none) ;; 15 ;; (set-roll-to-grav! (_type_ float) quaternion)
-    (trsqv-method-16 () none) ;; 16 ;; (set-roll-to-grav-2! (_type_ float) quaternion)
-    (trsqv-method-17 () none) ;; 17 ;; (rotate-toward-orientation! (_type_ quaternion float float int int float) quaternion)
-    (trsqv-method-18 () none) ;; 18 ;; (set-quaternion! (_type_ quaternion) quaternion)
-    (trsqv-method-19 () none) ;; 19 ;; (set-heading-vec-clear-roll-pitch! (_type_ vector) quaternion)
-    (trsqv-method-20 () none) ;; 20 ;; (point-toward-point-clear-roll-pitch! (_type_ vector) quaternion)
-    (trsqv-method-21 () none) ;; 21 ;; (rot->dir-targ! (_type_) quaternion)
-    (trsqv-method-22 () none) ;; 22 ;; (y-angle (_type_) float)
-    (trsqv-method-23 () none) ;; 23 ;; (global-y-angle-to-point (_type_ vector) float)
-    (trsqv-method-24 () none) ;; 24 ;; (relative-y-angle-to-point (_type_ vector) float)
-    (trsqv-method-25 () none) ;; 25 ;; (roll-relative-to-gravity (_type_) float)
-    (trsqv-method-26 () none) ;; 26 ;; (set-and-limit-velocity (_type_ int vector float) trsqv)
-    (trsqv-method-27 () none) ;; 27 ;; (get-quaternion (_type_) quaternion)
+    (seek-toward-heading-vec! (_type_ vector float time-frame) quaternion) ;; 9
+    (set-heading-vec! (_type_ vector) quaternion) ;; 10
+    (seek-to-point-toward-point! (_type_ vector float time-frame) quaternion) ;; 11
+    (point-toward-point! (_type_ vector) quaternion) ;; 12
+    (seek-toward-yaw-angle! (_type_ float float time-frame) quaternion) ;; 13
+    (set-yaw-angle-clear-roll-pitch! (_type_ float) quaternion) ;; 14
+    (set-roll-to-grav! (_type_ float) quaternion) ;; 15
+    (set-roll-to-grav-2! (_type_ float) quaternion) ;; 16
+    (rotate-toward-orientation! (_type_ quaternion float float int int float) quaternion) ;; 17
+    (set-quaternion! (_type_ quaternion) quaternion) ;; 18
+    (set-heading-vec-clear-roll-pitch! (_type_ vector) quaternion) ;; 19
+    (point-toward-point-clear-roll-pitch! (_type_ vector) quaternion) ;; 20
+    (rot->dir-targ! (_type_) quaternion) ;; 21
+    (y-angle (_type_) float) ;; 22
+    (global-y-angle-to-point (_type_ vector) float) ;; 23
+    (relative-y-angle-to-point (_type_ vector) float) ;; 24
+    (roll-relative-to-gravity (_type_) float) ;; 25
+    (set-and-limit-velocity (_type_ int vector float) trsqv) ;; 26
+    (get-quaternion (_type_) quaternion) ;; 27
     )
   )
-|#
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -1895,19 +1791,19 @@
 ;; matrix-compose                 ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (define-extern matrix-fur-compose function)
-;; (define-extern matrix-fu-compose function)
-;; (define-extern matrix-fr-compose function)
-;; (define-extern matrix-ur-compose function)
-;; (define-extern matrix-f-u-compose function)
-;; (define-extern matrix-f-r-compose function)
-;; (define-extern matrix-u-f-compose function)
-;; (define-extern matrix-u-r-compose function)
-;; (define-extern matrix-r-f-compose function)
-;; (define-extern matrix-r-u-compose function)
-;; (define-extern matrix-f-compose function)
-;; (define-extern matrix-u-compose function)
-;; (define-extern matrix-r-compose function)
+(define-extern matrix-fur-compose (function matrix vector vector vector matrix))
+(define-extern matrix-fu-compose (function matrix vector vector vector matrix))
+(define-extern matrix-fr-compose (function matrix vector vector vector matrix))
+(define-extern matrix-ur-compose (function matrix vector vector vector matrix))
+(define-extern matrix-f-u-compose (function matrix vector vector vector matrix))
+(define-extern matrix-f-r-compose (function matrix vector vector vector matrix))
+(define-extern matrix-u-f-compose (function matrix vector vector vector matrix))
+(define-extern matrix-u-r-compose (function matrix vector vector vector matrix))
+(define-extern matrix-r-f-compose (function matrix vector vector vector matrix))
+(define-extern matrix-r-u-compose (function matrix vector vector vector matrix))
+(define-extern matrix-f-compose (function matrix vector vector vector matrix))
+(define-extern matrix-u-compose (function matrix vector vector vector matrix))
+(define-extern matrix-r-compose (function matrix vector vector vector matrix))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; transform                      ;;
@@ -1979,7 +1875,7 @@
 ;; (define-extern vector-rotate-x! function) ;; (function vector vector float vector)
 ;; (define-extern vector-rotate-y! function) ;; (function vector vector float vector)
 ;; (define-extern vector-rotate-z! function) ;; (function vector vector float vector)
-;; (define-extern vector-y-angle function) ;; (function vector float)
+(define-extern vector-y-angle (function vector float))
 ;; (define-extern vector-x-angle function) ;; (function vector float)
 ;; (define-extern quaternion<-rotate-y-vector function) ;; (function quaternion vector quaternion)
 ;; (define-extern quaternion-validate function) ;; (function quaternion none)
@@ -1999,49 +1895,49 @@
 ;; trigonometry                   ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (define-extern radmod function) ;; (function float float)
-;; (define-extern deg- function) ;; (function float float float)
-;; (define-extern deg-diff function) ;; (function float float float)
-;; (define-extern deg-seek function) ;; (function float float float float)
-;; (define-extern deg-seek-smooth function) ;; (function float float float float float)
-;; (define-extern deg-lerp-clamp function) ;; (function float float float float)
-;; (define-extern binary-table array) ;; (array float)
-;; (define-extern sincos-table array) ;; (array float)
-;; (define-extern sin function) ;; (function float float)
-;; (define-extern sin-rad function) ;; (function float float)
-;; (define-extern *sin-poly-vec* object) ;; vector
-;; (define-extern *sin-poly-vec2* object) ;; vector
-;; (define-extern vector-sin-rad! function) ;; (function vector vector vector)
-;; (define-extern cos-rad function) ;; (function float float)
-;; (define-extern *cos-poly-vec* object) ;; vector
-;; (define-extern vector-cos-rad! function) ;; (function vector vector vector)
-;; (define-extern vector-sincos-rad! function) ;; (function vector vector vector int)
-;; (define-extern sincos-rad! function) ;; (function vector float int)
-;; (define-extern sincos! function) ;; (function vector float int)
-;; (define-extern vector-rad<-vector-deg! function) ;; (function vector vector none)
-;; (define-extern vector-rad<-vector-deg/2! function) ;; (function vector vector int)
-;; (define-extern vector-sincos! function) ;; (function vector vector vector int)
-;; (define-extern tan-rad function) ;; (function float float)
-;; (define-extern cos function) ;; (function float float)
-;; (define-extern tan function) ;; (function float float)
-;; (define-extern atan0 function) ;; (function float float float)
-;; (define-extern atan-series-rad function) ;; (function float float)
-;; (define-extern atan-rad function) ;; (function float float)
-;; (define-extern sign-bit function) ;; (function int int)
-;; (define-extern sign-float function) ;; (function float float)
-;; (define-extern sign function) ;; (function float float)
-;; (define-extern atan2-rad function) ;; (function float float float)
-;; (define-extern atan function) ;; (function float float float)
-;; (define-extern asin function) ;; (function float float)
-;; (define-extern acos function) ;; (function float float)
-;; (define-extern acos-rad function) ;; (function float float)
-;; (define-extern sinerp function) ;; (function float float float float)
-;; (define-extern sinerp-clamp function) ;; (function float float float float)
-;; (define-extern coserp function) ;; (function float float float float)
-;; (define-extern coserp-clamp function) ;; (function float float float float)
-;; (define-extern coserp180 function) ;; (function float float float float)
-;; (define-extern coserp180-clamp function) ;; (function float float float float)
-;; (define-extern ease-in-out function) ;; (function int int float)
+(define-extern radmod (function float float))
+(define-extern deg- (function float float float))
+(define-extern deg-diff (function float float float))
+(define-extern deg-seek (function float float float float))
+(define-extern deg-seek-smooth (function float float float float float))
+(define-extern deg-lerp-clamp (function float float float float))
+(define-extern binary-table (array float))
+(define-extern sincos-table (array float))
+(define-extern sin (function float float))
+(define-extern sin-rad (function float float))
+(define-extern *sin-poly-vec* vector)
+(define-extern *sin-poly-vec2* vector)
+(define-extern vector-sin-rad! (function vector vector vector))
+(define-extern cos-rad (function float float))
+(define-extern *cos-poly-vec* vector)
+(define-extern vector-cos-rad! (function vector vector vector))
+(define-extern vector-sincos-rad! (function vector vector vector int))
+(define-extern sincos-rad! (function vector float int))
+(define-extern sincos! (function vector float int))
+(define-extern vector-rad<-vector-deg! (function vector vector none))
+(define-extern vector-rad<-vector-deg/2! (function vector vector int))
+(define-extern vector-sincos! (function vector vector vector int))
+(define-extern tan-rad (function float float))
+(define-extern cos (function float float))
+(define-extern tan (function float float))
+(define-extern atan0 (function float float float))
+(define-extern atan-series-rad (function float float))
+(define-extern atan-rad (function float float))
+(define-extern sign-bit (function int int))
+(define-extern sign-float (function float float))
+(define-extern sign (function float float))
+(define-extern atan2-rad (function float float float))
+(define-extern atan (function float float float))
+(define-extern asin (function float float))
+(define-extern acos (function float float))
+(define-extern acos-rad (function float float))
+(define-extern sinerp (function float float float float))
+(define-extern sinerp-clamp (function float float float float))
+(define-extern coserp (function float float float float))
+(define-extern coserp-clamp (function float float float float))
+(define-extern coserp180 (function float float float float))
+(define-extern coserp180-clamp (function float float float float))
+(define-extern ease-in-out (function int int float))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; gsound-h                       ;;
@@ -3840,104 +3736,104 @@
 ;; vector                         ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (define-extern vector-cross! function) ;; (function vector vector vector vector)
-;; (define-extern vector-xz-cross! function) ;; (function vector vector vector vector)
-;; (define-extern vector+float! function) ;; (function vector vector float vector)
-;; (define-extern vector*! function) ;; (function vector vector vector vector)
-;; (define-extern vector+*! function) ;; (function vector vector vector float vector)
-;; (define-extern vector-*! function) ;; (function vector vector vector float vector)
-;; (define-extern vector/! function) ;; (function vector vector vector vector)
-;; (define-extern vector-float*! function) ;; (function vector vector float vector)
-;; (define-extern vector-average! function) ;; (function vector vector vector vector)
-;; (define-extern vector+float*! function) ;; (function vector vector vector float vector)
-;; (define-extern vector--float*! function) ;; (function vector vector vector float vector)
-;; (define-extern vector-min! function)
-;; (define-extern vector-max! function)
-;; (define-extern vector-float/! function) ;; (function vector vector float vector)
-;; (define-extern vector-negate! function) ;; (function vector vector vector)
-;; (define-extern vector-negate-in-place! function) ;; (function vector vector)
-;; (define-extern vector= function) ;; (function vector vector symbol)
-;; (define-extern vector-delta function) ;; (function vector vector float)
-;; (define-extern vector-seek! function) ;; (function vector vector float vector)
-;; (define-extern vector-smooth-seek! function) ;; (function vector vector float vector)
-;; (define-extern vector-seek-2d-xz-smooth! function) ;; (function vector vector float float vector)
-;; (define-extern vector-seek-2d-yz-smooth! function) ;; (function vector vector float float vector)
-;; (define-extern vector-seek-3d-smooth! function) ;; (function vector vector float float vector)
-;; (define-extern seek-with-smooth function) ;; (function float float float float float float)
-;; (define-extern vector-identity! function) ;; (function vector vector)
-;; (define-extern vector-seconds function) ;; (function vector vector vector)
-;; (define-extern vector-seconds! function) ;; (function vector vector)
-;; (define-extern vector-v! function) ;; (function vector vector)
-;; (define-extern vector-v+! function) ;; (function vector vector vector vector)
-;; (define-extern vector-v*float+! function) ;; (function vector vector vector float vector)
-;; (define-extern vector-v++! function) ;; (function vector vector vector)
-;; (define-extern vector-v*float! function) ;; (function vector vector float vector)
-;; (define-extern vector-v*float++! function) ;; (function vector vector float vector)
-;; (define-extern vector-to-ups! function) ;; (function vector vector vector)
-;; (define-extern vector-from-ups! function) ;; (function vector vector vector)
-;; (define-extern vector-length function) ;; (function vector float)
-;; (define-extern vector-length-squared function) ;; (function vector float)
-;; (define-extern vector-xz-length-squared function) ;; (function vector float)
-;; (define-extern vector-xz-length function) ;; (function vector float)
-;; (define-extern vector-vector-distance function) ;; (function vector vector float)
-;; (define-extern vector-vector-distance-squared function) ;; (function vector vector float)
-;; (define-extern vector-vector-xz-distance function) ;; (function vector vector float)
-;; (define-extern vector-vector-xy-distance function) ;; (function vector vector float)
-;; (define-extern vector-vector-xz-distance-squared function) ;; (function vector vector float)
-;; (define-extern vector-vector-planar-distance function)
-;; (define-extern vector-normalize! function) ;; (function vector float vector)
-;; (define-extern vector-normalize-ret-len! function) ;; (function vector float float)
-;; (define-extern vector-normalize-copy! function) ;; (function vector vector float vector)
-;; (define-extern vector-xz-normalize! function) ;; (function vector float vector)
-;; (define-extern vector-xz-normalize-copy! function) ;; (function vector vector float vector)
-;; (define-extern vector-length-max! function) ;; (function vector float vector)
-;; (define-extern vector-xz-length-max! function) ;; (function vector float vector)
-;; (define-extern vector-rotate-around-x! function) ;; (function vector vector float vector)
-;; (define-extern vector-rotate-around-y! function) ;; (function vector vector float vector)
-;; (define-extern vector-rotate90-around-y! function) ;; (function vector vector vector)
-;; (define-extern vector-rotate-around-z! function) ;; (function vector vector float vector)
-;; (define-extern rotate-y<-vector+vector function) ;; (function vector vector float)
-;; (define-extern rotate-x<-vector+vector function) ;; (function vector vector float)
-;; (define-extern rotate-z<-vector+vector function) ;; (function vector vector float)
-;; (define-extern rotate-vector-to-vector function)
-;; (define-extern vector-cvt.w.s! function) ;; (function vector vector vector)
-;; (define-extern vector-cvt.s.w! function) ;; (function vector vector vector)
-;; (define-extern rot-zxy-from-vector! function) ;; (function vector vector vector)
-;; (define-extern rot-zyx-from-vector! function) ;; (function vector vector vector)
-;; (define-extern vector-lerp! function) ;; (function vector vector vector float vector)
-;; (define-extern vector-lerp-clamp! function) ;; (function vector vector vector float vector)
-;; (define-extern vector4-lerp! function) ;; (function vector vector vector float vector)
-;; (define-extern vector4-lerp-clamp! function) ;; (function vector vector vector float vector)
-;; (define-extern vector-degi function) ;; (function vector vector vector)
-;; (define-extern vector-degf function) ;; (function vector vector vector)
-;; (define-extern vector-degmod function) ;; (function vector vector vector)
-;; (define-extern vector-deg-diff function) ;; (function vector vector vector none)
-;; (define-extern vector-deg-lerp-clamp! function) ;; (function vector vector vector float vector)
-;; (define-extern vector3s-copy! function) ;; (function vector vector vector)
-;; (define-extern vector3s+! function) ;; (function vector vector vector vector)
-;; (define-extern vector3s*float! function) ;; (function vector vector float vector)
-;; (define-extern vector3s-! function) ;; (function vector vector vector vector)
-;; (define-extern vector4-add! function) ;; (function vector4 vector4 vector4 none)
-;; (define-extern vector4-sub! function) ;; (function vector4 vector4 vector4 none)
-;; (define-extern vector4-mul! function) ;; (function vector4 vector4 vector4 none)
-;; (define-extern vector4-scale! function) ;; (function vector4 vector4 float none)
-;; (define-extern vector4-madd! function) ;; (function vector4 vector4 vector4 float none)
-;; (define-extern vector4-msub! function) ;; (function vector4 vector4 vector4 float none)
-;; (define-extern vector4-array-add! function) ;; (function (inline-array vector4) (inline-array vector4) (inline-array vector4) int none)
-;; (define-extern vector4-array-sub! function) ;; (function (inline-array vector4) (inline-array vector4) (inline-array vector4) int none)
-;; (define-extern vector4-array-mul! function) ;; (function (inline-array vector4) (inline-array vector4) (inline-array vector4) int none)
-;; (define-extern vector4-array-scale! function) ;; (function (inline-array vector4) (inline-array vector4) float int none)
-;; (define-extern vector4-array-madd! function) ;; (function (inline-array vector4) (inline-array vector4) (inline-array vector4) float int none)
-;; (define-extern vector4-array-msub! function) ;; (function (inline-array vector4) (inline-array vector4) (inline-array vector4) float int none)
-;; (define-extern vector4-array-lerp! function) ;; (function (inline-array vector4) (inline-array vector4) (inline-array vector4) float int symbol)
-;; (define-extern spheres-overlap? function) ;; (function sphere sphere symbol)
-;; (define-extern sphere<-vector! function) ;; (function sphere vector sphere)
-;; (define-extern sphere<-vector+r! function) ;; (function sphere vector float sphere)
-;; (define-extern rand-vu-sphere-point! function) ;; (function vector float vector)
-;; (define-extern rand-vu-sphere-point-uniform! function)
-;; (define-extern vector-vector-angle-safe function) ;; (function vector vector float)
-;; (define-extern vector-get-unique! function)
-;; (define-extern vector-get-closest-perpendicular! function)
+(define-extern vector-cross! (function vector vector vector vector))
+(define-extern vector-xz-cross! (function vector vector vector vector))
+(define-extern vector+float! (function vector vector float vector))
+(define-extern vector*! (function vector vector vector vector))
+(define-extern vector+*! (function vector vector vector float vector))
+(define-extern vector-*! (function vector vector vector float vector))
+(define-extern vector/! (function vector vector vector vector))
+(define-extern vector-float*! (function vector vector float vector))
+(define-extern vector-average! (function vector vector vector vector))
+(define-extern vector+float*! (function vector vector vector float vector))
+(define-extern vector--float*! (function vector vector vector float vector))
+(define-extern vector-min! function)
+(define-extern vector-max! function)
+(define-extern vector-float/! (function vector vector float vector))
+(define-extern vector-negate! (function vector vector vector))
+(define-extern vector-negate-in-place! (function vector vector))
+(define-extern vector= (function vector vector symbol))
+(define-extern vector-delta (function vector vector float))
+(define-extern vector-seek! (function vector vector float vector))
+(define-extern vector-smooth-seek! (function vector vector float vector))
+(define-extern vector-seek-2d-xz-smooth! (function vector vector float float vector))
+(define-extern vector-seek-2d-yz-smooth! (function vector vector float float vector))
+(define-extern vector-seek-3d-smooth! (function vector vector float float vector))
+(define-extern seek-with-smooth (function float float float float float float))
+(define-extern vector-identity! (function vector vector))
+(define-extern vector-seconds (function vector vector vector))
+(define-extern vector-seconds! (function vector vector))
+(define-extern vector-v! (function vector vector))
+(define-extern vector-v+! (function vector vector vector vector))
+(define-extern vector-v*float+! (function vector vector vector float vector))
+(define-extern vector-v++! (function vector vector vector))
+(define-extern vector-v*float! (function vector vector float vector))
+(define-extern vector-v*float++! (function vector vector float vector))
+(define-extern vector-to-ups! (function vector vector vector))
+(define-extern vector-from-ups! (function vector vector vector))
+(define-extern vector-length (function vector float))
+(define-extern vector-length-squared (function vector float))
+(define-extern vector-xz-length-squared (function vector float))
+(define-extern vector-xz-length (function vector float))
+(define-extern vector-vector-distance (function vector vector float))
+(define-extern vector-vector-distance-squared (function vector vector float))
+(define-extern vector-vector-xz-distance (function vector vector float))
+(define-extern vector-vector-xy-distance (function vector vector float))
+(define-extern vector-vector-xz-distance-squared (function vector vector float))
+(define-extern vector-vector-planar-distance function)
+(define-extern vector-normalize! (function vector float vector))
+(define-extern vector-normalize-ret-len! (function vector float float))
+(define-extern vector-normalize-copy! (function vector vector float vector))
+(define-extern vector-xz-normalize! (function vector float vector))
+(define-extern vector-xz-normalize-copy! (function vector vector float vector))
+(define-extern vector-length-max! (function vector float vector))
+(define-extern vector-xz-length-max! (function vector float vector))
+(define-extern vector-rotate-around-x! (function vector vector float vector))
+(define-extern vector-rotate-around-y! (function vector vector float vector))
+(define-extern vector-rotate90-around-y! (function vector vector vector))
+(define-extern vector-rotate-around-z! (function vector vector float vector))
+(define-extern rotate-y<-vector+vector (function vector vector float))
+(define-extern rotate-x<-vector+vector (function vector vector float))
+(define-extern rotate-z<-vector+vector (function vector vector float))
+(define-extern rotate-vector-to-vector function)
+(define-extern vector-cvt.w.s! (function vector vector vector))
+(define-extern vector-cvt.s.w! (function vector vector vector))
+(define-extern rot-zxy-from-vector! (function vector vector vector))
+(define-extern rot-zyx-from-vector! (function vector vector vector))
+(define-extern vector-lerp! (function vector vector vector float vector))
+(define-extern vector-lerp-clamp! (function vector vector vector float vector))
+(define-extern vector4-lerp! (function vector vector vector float vector))
+(define-extern vector4-lerp-clamp! (function vector vector vector float vector))
+(define-extern vector-degi (function vector vector vector))
+(define-extern vector-degf (function vector vector vector))
+(define-extern vector-degmod (function vector vector vector))
+(define-extern vector-deg-diff (function vector vector vector none))
+(define-extern vector-deg-lerp-clamp! (function vector vector vector float vector))
+(define-extern vector3s-copy! (function vector vector vector))
+(define-extern vector3s+! (function vector vector vector vector))
+(define-extern vector3s*float! (function vector vector float vector))
+(define-extern vector3s-! (function vector vector vector vector))
+(define-extern vector4-add! (function vector4 vector4 vector4 none))
+(define-extern vector4-sub! (function vector4 vector4 vector4 none))
+(define-extern vector4-mul! (function vector4 vector4 vector4 none))
+(define-extern vector4-scale! (function vector4 vector4 float none))
+(define-extern vector4-madd! (function vector4 vector4 vector4 float none))
+(define-extern vector4-msub! (function vector4 vector4 vector4 float none))
+(define-extern vector4-array-add! (function (inline-array vector4) (inline-array vector4) (inline-array vector4) int none))
+(define-extern vector4-array-sub! (function (inline-array vector4) (inline-array vector4) (inline-array vector4) int none))
+(define-extern vector4-array-mul! (function (inline-array vector4) (inline-array vector4) (inline-array vector4) int none))
+(define-extern vector4-array-scale! (function (inline-array vector4) (inline-array vector4) float int none))
+(define-extern vector4-array-madd! (function (inline-array vector4) (inline-array vector4) (inline-array vector4) float int none))
+(define-extern vector4-array-msub! (function (inline-array vector4) (inline-array vector4) (inline-array vector4) float int none))
+(define-extern vector4-array-lerp! (function (inline-array vector4) (inline-array vector4) (inline-array vector4) float int symbol))
+(define-extern spheres-overlap? (function sphere sphere symbol))
+(define-extern sphere<-vector! (function sphere vector sphere))
+(define-extern sphere<-vector+r! (function sphere vector float sphere))
+(define-extern rand-vu-sphere-point! (function vector float vector))
+(define-extern rand-vu-sphere-point-uniform! function)
+(define-extern vector-vector-angle-safe (function vector vector float))
+(define-extern vector-get-unique! (function vector vector vector))
+(define-extern vector-get-closest-perpendicular! (function vector vector vector vector))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; file-io                        ;;
