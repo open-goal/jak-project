@@ -295,7 +295,8 @@ void Workspace::stop_tracking_file(const LSPSpec::DocumentUri& file_uri) {
 
 WorkspaceOGFile::WorkspaceOGFile(const std::string& content, const GameVersion& game_version)
     : m_content(content), m_game_version(game_version) {
-  m_lines = str_util::split(content);
+  const auto line_ending = file_util::get_majority_file_line_endings(content);
+  m_lines = str_util::split_string(content, line_ending);
   lg::info("Added new OG file. {} lines with {} symbols and {} diagnostics", m_lines.size(),
            m_symbols.size(), m_diagnostics.size());
 }
@@ -322,24 +323,17 @@ std::optional<std::string> WorkspaceOGFile::get_symbol_at_position(
 }
 
 WorkspaceIRFile::WorkspaceIRFile(const std::string& content) {
-  // Get all lines of file
-  std::string::size_type pos = 0;
-  std::string::size_type prev = 0;
+  const auto line_ending = file_util::get_majority_file_line_endings(content);
+  m_lines = str_util::split_string(content, line_ending);
 
-  // TODO - i hate this assignment inside a conditional, get rid of it
-  while ((pos = content.find("\r\n", prev)) != std::string::npos) {
-    std::string line = content.substr(prev, pos - prev);
-    m_lines.push_back(line);
-    // Run any checks on that line
-    find_all_types_path(line);
-    find_function_symbol(m_lines.size() - 1, line);
-    identify_diagnostics(m_lines.size() - 1, line);
-    prev = pos + 1;
+  for (int i = 0; i < m_lines.size(); i++) {
+    const auto& line = m_lines.at(i);
+    if (m_all_types_uri == "") {
+      find_all_types_path(line);
+    }
+    find_function_symbol(i, line);
+    identify_diagnostics(i, line);
   }
-  std::string line = content.substr(prev);
-  m_lines.push_back(line);
-  find_function_symbol(m_lines.size() - 1, line);
-  identify_diagnostics(m_lines.size() - 1, line);
 
   lg::info("Added new IR file. {} lines with {} symbols and {} diagnostics", m_lines.size(),
            m_symbols.size(), m_diagnostics.size());
