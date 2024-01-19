@@ -68,6 +68,9 @@ void init_output() {
     case GameVersion::Jak2:
       use_debug = MasterDebug && DebugSegment;
       break;
+    case GameVersion::Jak3:
+      use_debug = MasterDebug || DebugSegment;
+      break;
     default:
       ASSERT(false);
   }

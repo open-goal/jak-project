@@ -7,3 +7,615 @@
 
 ;; DECOMP BEGINS
 
+(defconstant *kernel-major-version* 2)
+(defconstant *kernel-minor-version* 0)
+
+(defconstant DPROCESS_STACK_SIZE (#if PC_PORT #x8000 #x3800))
+(defconstant PROCESS_STACK_SIZE (#if PC_PORT #x4000 #x1c00))
+
+;; the size of the shared heap used by dynamically sized processes
+(#if PC_BIG_MEMORY
+  (defconstant PROCESS_HEAP_MULT 4) ;; 4x actors
+  (defconstant PROCESS_HEAP_MULT 1)
+  )
+(defconstant PROCESS_HEAP_SIZE (* PROCESS_HEAP_MULT 1540 1024))
+(defconstant PROCESS_HEAP_MAX (* PROCESS_HEAP_MULT 768))
+
+(defconstant *tab-size* (the binteger 8))
+(defconstant *gtype-basic-offset* 4)
+
+;; if set, will attempt to detect memory corruption and stack overflow bugs
+;; to some extent.
+(defglobalconstant KERNEL_DEBUG #t)
+
+(defconstant *scratch-memory-top* (the pointer #x70004000))
+
+(defenum process-mask
+  :type uint32
+  :bitfield #t
+  (execute 0)       ;; 1
+  (freeze 1)
+  (pause 2)
+  (menu 3)
+  (progress 4)
+  (actor-pause 5)  ;; 32
+  (sleep 6)      ;; 64
+  (sleep-code 7)   ;; 128
+  (process-tree 8) ;; 256
+  (heap-shrunk 9)  ;; 512
+  (going 10)       ;; 1024
+  (kernel-run 11) ;; 2048
+  (no-kill 12)    ;; 4096
+  (movie 13)      ;; 8192
+  (dark-effect 14)   ;; 0x4000
+  (target 15)        ;; 0x8000
+
+  (sidekick 16)      ;;    0x1'0000
+  (crate 17)         ;;    0x2'0000
+  (collectable 18)   ;;    0x4'0000
+  (enemy 19)         ;;    0x8'0000
+  (camera 20)        ;;   0x10'0000
+  (platform 21)      ;;   0x20'0000
+  (ambient 22)       ;;   0x40'0000
+  (entity 23)        ;;   0x80'0000
+  (projectile 24)    ;;  0x100'0000
+  (bot 25)           ;;  0x200'0000
+  (death 26)         ;;  0x400'0000
+  (guard 27)         ;;  0x800'0000
+  (vehicle 28)       ;; 0x1000'0000
+  (civilian 29)      ;; 0x2000'0000
+  (kg-robot 30)      ;; 0x4000'0000
+  (metalhead 31)     ;; 0x8000'0000
+  )
+
+;; forward declarations
+(declare-type process-tree basic)
+(declare-type process process-tree)
+(declare-type res-lump basic)
+(declare-type entity res-lump)
+(declare-type entity-actor entity)
+(declare-type dead-pool basic)
+(declare-type level basic)
+(declare-type state basic)
+(declare-type event-message-block structure)
+(declare-type stack-frame basic)
+(declare-type thread basic)
+(declare-type cpu-thread thread)
+
+(deftype kernel-context (basic)
+  ((prevent-from-run    process-mask)
+   (require-for-run     process-mask)
+   (allow-to-run        process-mask)
+   (next-pid            int32)
+   (fast-stack-top      pointer)
+   (current-process     process)
+   (relocating-process  basic)
+   (relocating-min      int32)
+   (relocating-max      int32)
+   (relocating-offset   int32)
+   (relocating-level    level)
+   (low-memory-message  symbol)
+   (login-object        basic)
+   (login-art-group     basic)
+   (login-level-index   int32)
+   )
+  )
+
+(deftype time-frame (int64)
+  ()
+  )
+
+;; times are stored in 300ths of a second.
+;; this divides evenly into frames at both 50 and 60 fps.
+;; typically these are stored as integers as more precision is not useful.
+;; an unsigned 32-bit integer can store about 150 days
+(defglobalconstant TICKS_PER_SECOND 300) ;; 5 t/frame @ 60fps, 6 t/frame @ 50fps
+
+;; this was usec in GOAL
+(defmacro seconds (x)
+  "Convert number to seconds unit.
+   Returns uint."
+  (cond
+    ((integer? x)
+     (* TICKS_PER_SECOND x)
+     )
+    ((float? x)
+     (* 1 (* 1.0 x TICKS_PER_SECOND))
+     )
+    (#t
+     `(the uint (* TICKS_PER_SECOND ,x))
+     )
+    )
+  )
+
+
+(deftype clock (basic)
+  ((index                       int16)
+   (ref-count                   uint16)
+   (mask                        process-mask)
+   (clock-ratio                 float)
+   (accum                       float)
+   (integral-accum              float)
+   (frame-counter               uint64)
+   (old-frame-counter           uint64)
+   (integral-frame-counter      uint64)
+   (old-integral-frame-counter  uint64)
+   (sparticle-data              vector  :inline)
+   (seconds-per-frame           float)
+   (frames-per-second           float)
+   (time-adjust-ratio           float)
+   )
+  (:methods
+    (new (symbol type int) _type_)
+    (update-rates! (_type_ float) float)
+    (clock-method-10 () none)
+    (clock-method-11 () none)
+    (clock-method-12 () none)
+    (clock-method-13 () none)
+    (clock-method-14 () none)
+    (clock-method-15 () none)
+    (frame-mask-2 (_type_ int) symbol)
+    (frame-mask-4 (_type_ int) symbol)
+    (frame-mask-8 (_type_ int) symbol)
+    (frame-mask-16 (_type_ int) symbol)
+    (frame-mask-32 (_type_ int) symbol)
+    (frame-mask-64 (_type_ int) symbol)
+    (frame-mask-128 (_type_ int) symbol)
+    (frame-mask-256 (_type_ int) symbol)
+    )
+  )
+
+(defmethod frame-mask-2 ((this clock) (arg0 int))
+  (not (logtest? (logxor arg0 (the-as int (-> this integral-frame-counter))) 1))
+  )
+
+(defmethod frame-mask-4 ((this clock) (arg0 int))
+  (not (logtest? (logxor arg0 (the-as int (-> this integral-frame-counter))) 3))
+  )
+
+(defmethod frame-mask-8 ((this clock) (arg0 int))
+  (not (logtest? (logxor arg0 (the-as int (-> this integral-frame-counter))) 7))
+  )
+
+(defmethod frame-mask-16 ((this clock) (arg0 int))
+  (not (logtest? (logxor arg0 (the-as int (-> this integral-frame-counter))) 15))
+  )
+
+(defmethod frame-mask-32 ((this clock) (arg0 int))
+  (not (logtest? (logxor arg0 (the-as int (-> this integral-frame-counter))) 31))
+  )
+
+(defmethod frame-mask-64 ((this clock) (arg0 int))
+  (not (logtest? (logxor arg0 (the-as int (-> this integral-frame-counter))) 63))
+  )
+
+(defmethod frame-mask-128 ((this clock) (arg0 int))
+  (not (logtest? (logxor arg0 (the-as int (-> this integral-frame-counter))) 127))
+  )
+
+(defmethod frame-mask-256 ((this clock) (arg0 int))
+  (not (logtest? (logxor arg0 (the-as int (-> this integral-frame-counter))) 255))
+  )
+
+(defmethod new clock ((allocation symbol) (type-to-make type) (arg0 int))
+  (let ((gp-0 (object-new allocation type-to-make (the-as int (-> type-to-make size)))))
+    (set! (-> gp-0 index) arg0)
+    (set! (-> gp-0 frame-counter) (the-as uint #x493e0))
+    (set! (-> gp-0 integral-frame-counter) (the-as uint #x493e0))
+    (set! (-> gp-0 old-frame-counter) (+ (-> gp-0 frame-counter) -1))
+    (set! (-> gp-0 old-integral-frame-counter) (+ (-> gp-0 integral-frame-counter) -1))
+    (update-rates! gp-0 1.0)
+    gp-0
+    )
+  )
+
+(deftype process-tree (basic)
+  ((name     string)
+   (mask     process-mask)
+   (clock    clock)
+   (parent   (pointer process-tree))
+   (brother  (pointer process-tree))
+   (child    (pointer process-tree))
+   (ppointer (pointer process))
+   (self     process-tree)
+   )
+  (:methods
+    (new (symbol type string) _type_)
+    (activate (_type_ process-tree basic pointer) process-tree)
+    (deactivate  (_type_) none)
+    (init-from-entity! (_type_ entity-actor) none) ;; todo check
+    (run-logic? (_type_) symbol)
+    (process-tree-method-13 () none)
+    )
+  :no-runtime-type
+  )
+
+(deftype thread (basic)
+  ((name          symbol)
+   (process       process)
+   (previous      thread)
+   (suspend-hook  (function cpu-thread none))
+   (resume-hook   (function cpu-thread none))
+   (pc            pointer)
+   (sp            pointer)
+   (stack-top     pointer)
+   (stack-size    int32)
+   )
+  (:methods
+    (thread-method-9 () none)
+    (thread-method-10 () none)
+    (thread-method-11 () none)
+    )
+  )
+
+(deftype cpu-thread (thread)
+  ((rreg   uint64  7)
+   (freg   float   8)
+   (stack  uint8   :dynamic)
+   )
+  (:methods
+    (new (symbol type process symbol int pointer) _type_)
+    )
+  )
+
+(deftype dead-pool (process-tree)
+  ()
+  (:methods
+    (dead-pool-method-14 () none)
+    (dead-pool-method-15 () none)
+    )
+  )
+
+(deftype dead-pool-heap-rec (structure)
+  ((process  process)
+   (prev     dead-pool-heap-rec)
+   (next     dead-pool-heap-rec)
+   )
+  :pack-me
+  )
+
+(deftype dead-pool-heap (dead-pool)
+  ((allocated-length    int32)
+   (compact-time        uint32)
+   (compact-count-targ  uint32)
+   (compact-count       uint32)
+   (fill-percent        float)
+   (first-gap           dead-pool-heap-rec)
+   (first-shrink        dead-pool-heap-rec)
+   (heap                kheap               :inline)
+   (alive-list          dead-pool-heap-rec  :inline)
+   (last                dead-pool-heap-rec  :overlay-at (-> alive-list prev))
+   (dead-list           dead-pool-heap-rec  :inline)
+   (process-list        dead-pool-heap-rec  :dynamic)
+   )
+  (:methods
+    (dead-pool-heap-method-16 () none)
+    (dead-pool-heap-method-17 () none)
+    (dead-pool-heap-method-18 () none)
+    (dead-pool-heap-method-19 () none)
+    (dead-pool-heap-method-20 () none)
+    (dead-pool-heap-method-21 () none)
+    (dead-pool-heap-method-22 () none)
+    (dead-pool-heap-method-23 () none)
+    (dead-pool-heap-method-24 () none)
+    (dead-pool-heap-method-25 () none)
+    (dead-pool-heap-method-26 () none)
+    (dead-pool-heap-method-27 () none)
+    )
+  )
+
+(deftype stack-frame (basic)
+  ((name symbol)
+   (next stack-frame)
+   )
+  )
+
+(deftype catch-frame (stack-frame)
+  ((sp    int32)
+   (ra    int32)
+   (freg  float    10)
+   (rreg  uint128  7)
+   )
+  (:methods
+    (new (symbol type symbol function (pointer uint64)) object)
+    )
+  )
+
+(deftype protect-frame (stack-frame)
+  ((exit  (function object))
+   )
+  )
+
+(deftype handle (uint64)
+  ((process (pointer process) :offset   0 :size  32)
+   (pid     int32             :offset  32 :size  32)
+   (u64     uint64            :offset   0 :size  64)
+   )
+  )
+
+(defmacro handle->process (handle)
+  "Convert a handle to a process. If the process no longer exists, returns #f."
+  `(let ((the-handle (the-as handle ,handle)))
+     (if (-> the-handle process) ;; if we don't point to a process, kernel sets this to #f
+         (let ((proc (-> (-> the-handle process))))
+           (if (= (-> the-handle pid) (-> proc pid)) ;; make sure it's the same process
+               proc
+               )
+           )
+         )
+     )
+  )
+
+(defmethod inspect handle ((this handle))
+  (when (not this)
+    (return this)
+    )
+  (format #t "[~8x] ~A~%" this 'handle)
+  (format #t "~1Tprocess: #x~X~%" (-> this process))
+  (format #t "~1Tpid: ~D~%" (-> this pid))
+  this
+  )
+
+; (defmethod print ((this handle))
+;   (if (nonzero? this)
+;       (format #t "#<handle :process ~A :pid ~D>" (handle->process this) (-> this pid))
+;       (format #t "#<handle :process 0 :pid 0>")
+;       )
+;   this
+;   )
+
+(defmacro ppointer->process (ppointer)
+  "convert a (pointer process) to a process."
+  ;; this uses the self field, which seems to always just get set to the object.
+  ;; confirmed in Jak 1 that using self here is useless, not sure...
+  `(let ((the-pp ,ppointer))
+     (if the-pp (-> the-pp 0 self))
+     )
+  )
+
+(defmacro process->ppointer (proc)
+  "safely get a (pointer process) from a process, returning #f if invalid."
+  `(let ((the-proc ,proc))
+     (if the-proc (-> the-proc ppointer))
+     )
+  )
+
+(defmacro ppointer->handle (pproc)
+  "convert a ppointer to a handle. assumes the ppointer is valid."
+  `(let ((the-process (the-as (pointer process) ,pproc)))
+      (new 'static 'handle :process the-process :pid (if the-process (-> the-process 0 pid)))
+      )
+  )
+
+(defmacro process->handle (proc)
+  "convert a process to a handle. if proc is #f, returns a #f handle."
+  `(ppointer->handle (process->ppointer (the-as process ,proc)))
+  )
+
+
+(deftype state (protect-frame)
+  ((parent  basic)
+   (code    function)
+   (trans   (function object))
+   (post    function)
+   (enter   function)
+   (event   (function process int symbol event-message-block object))
+   )
+  )
+
+(deftype event-message-block (structure)
+  ((to-handle    uint64)
+   (to           (pointer process)  :overlay-at to-handle)
+   (from-handle  uint64)
+   (from         (pointer process)  :overlay-at from-handle)
+   (param        uint64             6)
+   (message      symbol)
+   (num-params   int32)
+   )
+  )
+
+(deftype event-message-block-array (inline-array-class)
+  ((data  event-message-block  :dynamic)
+   )
+  (:methods
+    (event-message-block-array-method-14 () none)
+    )
+  )
+
+(set! (-> event-message-block-array heap-base) (the-as uint 80))
+
+(deftype sql-result (array)
+  ((result-data  object  :dynamic :offset  16)
+   )
+  )
+
+; (defmethod new sql-result ((allocation symbol) (type-to-make type) (arg0 type) (arg1 int))
+;   (let ((v0-0 (object-new allocation type-to-make (the-as int (+ (-> type-to-make size) (* arg0 4))))))
+;     (set! (-> v0-0 allocated-length) (the-as int arg0))
+;     (set! (-> v0-0 content-type) (the-as type 'error))
+;     v0-0
+;     )
+;   )
+
+(defmethod print ((this sql-result))
+  (format #t "#(~A" (-> this content-type))
+  (dotimes (s5-0 (-> this length))
+    (format #t " ~A" (-> this result-data s5-0))
+    )
+  (format #t ")")
+  this
+  )
+
+(define *sql-result* (the-as sql-result #f))
+
+;; failed to figure out what this is:
+0
+
+
+
+(defmacro defbehavior (name process-type bindings &rest body)
+  "define a new behavior. This is simply a function where self is bound to the process register,
+   which is assumed to have type process-type."
+  (if (and
+       (> (length body) 1)     ;; more than one thing in function
+       (string? (first body))  ;; first thing is a string
+       )
+      ;; then it's a docstring and we ignore it.
+      `(define ,name (lambda :name ,name :behavior ,process-type ,bindings ,@(cdr body)))
+      ;; otherwise don't ignore it.
+      `(define ,name (lambda :name ,name :behavior ,process-type ,bindings ,@body))
+      )
+  )
+
+(defmacro process-stack-used (proc)
+  "get how much stack the top thread of a process has used."
+  `(- (the int (-> ,proc top-thread stack-top))
+      (the int (-> ,proc top-thread sp))
+      )
+  )
+
+(defmacro process-stack-size (proc)
+  "get how much stack the top thread of a process has"
+  `(-> ,proc top-thread stack-size)
+  )
+
+(defmacro process-heap-used (proc)
+  "get how much heap a process has used."
+  `(- (-> ,proc allocated-length)
+      (- (the int (-> ,proc heap-top))
+         (the int (-> ,proc heap-cur))
+         )
+      )
+  )
+
+(defmacro process-heap-size (proc)
+  "get how much heap a process has"
+  `(the int (-> ,proc allocated-length))
+  )
+
+(defmacro break ()
+  "crash the game by dividing by 0."
+  `(/ 0 0)
+  )
+
+(defmacro with-pp (&rest body)
+  "execute the body with pp bound to the current process register."
+  `(rlet ((pp :reg r13 :reset-here #t :type process))
+         ,@body)
+  )
+
+(defconstant PP (with-pp pp))
+
+(defmacro process-mask? (mask enum-value)
+  "Are any of the given bits set in the process mask?"
+  `(!= 0 (logand ,mask (process-mask ,enum-value)))
+  )
+
+(defmacro process-mask-set! (mask &rest enum-value)
+  "Set the given bits in the process mask"
+  `(logior! ,mask (process-mask ,@enum-value))
+  )
+
+(defmacro process-mask-clear! (mask &rest enum-value)
+  "Clear the given bits in the process mask."
+  `(logclear! ,mask (process-mask ,@enum-value))
+  )
+
+(defmacro suspend ()
+  "suspend the current process, to be resumed on the next frame."
+  `(rlet ((pp :reg r13 :reset-here #t))
+         ;; debug check for stack overflow here, where we can easily print the process name.
+         (#when (or KERNEL_DEBUG)
+           (rlet ((sp :reg rsp :reset-here #t :type int)
+                  (off :reg r15 :type uint))
+                 (let* ((sp-goal (- sp off))
+                        (stack-top-goal (-> (the process pp) top-thread stack-top))
+                        (stack-used (&- stack-top-goal sp-goal))
+                        (stack-size (-> (the process pp) top-thread stack-size))
+                        )
+                   (when (> stack-used stack-size)
+                     (format 0 "ERROR: suspend called without enough stack in proc:~%~A~%Stack: ~D/~D~%" pp stack-used stack-size)
+                     )
+                   )
+                 )
+           )
+         ;; set to the current thread
+         (set! pp (-> (the process pp) top-thread))
+         ;; call the suspend hook (put nothing as the argument)
+         ((-> (the cpu-thread pp) suspend-hook) (the cpu-thread 0))
+         ;; the kernel will set pp (possibly to a new value, if we've been relocated) on resume.
+         )
+  )
+
+(defmacro process-deactivate ()
+  "deactivate (kill) the current process"
+  `(rlet ((pp :reg r13 :reset-here #t :type process))
+         (deactivate pp)
+         )
+  )
+
+;; Some assembly functions in GOAL are ported to C++, then accessed from GOAL using these mips2c macros.
+(defmacro def-mips2c (name type)
+  "Define a mips2c object (typically a function)."
+  `(begin
+     (define-extern ,name ,type)
+     (set! ,name (the-as ,type (__pc-get-mips2c ,(symbol->string name))))
+     )
+  )
+
+(defmacro defmethod-mips2c (name method-id method-type)
+  "Define a mips2c method."
+  `(method-set! ,method-type ,method-id (__pc-get-mips2c ,name))
+  )
+
+(defmacro kheap-alloc (heap size)
+  "allocate space for a kheap"
+  `(let ((heap ,heap) (size ,size))
+    (set! (-> heap base) (malloc 'global size))
+    (set! (-> heap current) (-> heap base))
+    (set! (-> heap top-base) (&+ (-> heap base) size))
+    (set! (-> heap top) (-> heap top-base))
+    )
+  )
+
+(defmacro kheap-reset (heap)
+  "reset the kheap, so you can use its memory again"
+  `(let ((heap ,heap))
+    (set! (-> heap current) (-> heap base))
+    )
+  )
+
+(defmacro scratchpad-object (type &key (offset 0))
+  "Access an object on the scratchpad."
+  `(the-as ,type (&+ *fake-scratchpad-data* ,offset))
+  )
+
+(defmacro scratchpad-ptr (type &key (offset 0))
+  "Create a pointer to an object on the scratchpad."
+  `(the-as (pointer ,type) (&+ *fake-scratchpad-data* ,offset))
+  )
+
+(defmacro current-time ()
+  `(-> PP clock frame-counter)
+  )
+
+(defmacro seconds-per-frame ()
+  `(-> PP clock seconds-per-frame)
+  )
+
+(defmacro seconds-per-frame-high-fps ()
+  "Macro for assuming a 16.6 ms frame time at higher frame rates."
+  `(if (= (get-video-mode) 'custom)
+     0.016666668
+     (-> PP clock seconds-per-frame)
+     )
+  )
+
+(defmacro set-time! (time)
+  `(set! ,time (current-time))
+  )
+
+(defmacro time-elapsed? (time duration)
+  `(>= (- (current-time) ,time) ,duration)
+  )
+

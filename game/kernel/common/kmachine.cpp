@@ -22,7 +22,6 @@
 #include "game/sce/libpad.h"
 #include "game/sce/libscf.h"
 #include "game/sce/sif_ee.h"
-#include "game/system/vm/vm.h"
 
 /*!
  * Where does OVERLORD load its data from?
@@ -512,13 +511,13 @@ void pc_get_active_display_size(u32 w_ptr, u32 h_ptr) {
     return;
   }
   if (w_ptr) {
-    auto w_out = Ptr<u32>(w_ptr).c();
+    auto w_out = Ptr<s64>(w_ptr).c();
     if (w_out) {
       *w_out = Display::GetMainDisplay()->get_display_manager()->get_screen_width();
     }
   }
   if (h_ptr) {
-    auto h_out = Ptr<u32>(h_ptr).c();
+    auto h_out = Ptr<s64>(h_ptr).c();
     if (h_out) {
       *h_out = Display::GetMainDisplay()->get_display_manager()->get_screen_height();
     }
@@ -537,13 +536,13 @@ void pc_get_window_size(u32 w_ptr, u32 h_ptr) {
     return;
   }
   if (w_ptr) {
-    auto w = Ptr<u32>(w_ptr).c();
+    auto w = Ptr<s64>(w_ptr).c();
     if (w) {
       *w = Display::GetMainDisplay()->get_display_manager()->get_window_width();
     }
   }
   if (h_ptr) {
-    auto h = Ptr<u32>(h_ptr).c();
+    auto h = Ptr<s64>(h_ptr).c();
     if (h) {
       *h = Display::GetMainDisplay()->get_display_manager()->get_window_height();
     }
@@ -590,11 +589,11 @@ s64 pc_get_num_resolutions() {
 void pc_get_resolution(u32 id, u32 w_ptr, u32 h_ptr) {
   if (Display::GetMainDisplay()) {
     auto res = Display::GetMainDisplay()->get_display_manager()->get_resolution(id);
-    auto w = Ptr<u32>(w_ptr).c();
+    auto w = Ptr<s64>(w_ptr).c();
     if (w) {
       *w = res.width;
     }
-    auto h = Ptr<u32>(h_ptr).c();
+    auto h = Ptr<s64>(h_ptr).c();
     if (h) {
       *h = res.height;
     }
@@ -973,10 +972,4 @@ void init_common_pc_port_functions(
 
   // debugging tools
   make_func_symbol_func("pc-filter-debug-string?", (void*)pc_filter_debug_string);
-
-  // init ps2 VM
-  if (VM::use) {
-    make_func_symbol_func("vm-ptr", (void*)VM::get_vm_ptr);
-    VM::vm_init();
-  }
 }

@@ -43,7 +43,6 @@
 #include "game/sce/libgraph.h"
 #include "game/sce/sif_ee.h"
 #include "game/sce/stubs.h"
-#include "game/system/vm/vm.h"
 
 using namespace ee;
 
@@ -377,11 +376,6 @@ int ShutdownMachine() {
   CloseListener();
   ShutdownSound();
   ShutdownGoalProto();
-
-  // OpenGOAL only - kill ps2 VM
-  if (VM::use) {
-    VM::vm_kill();
-  }
 
   Msg(6, "kernel: machine shutdown\n");
   return 0;

@@ -106,7 +106,7 @@ void log_print(const char* message) {
     }
 
     if (gLogger.stdout_log_level < lg::level::off_unless_die) {
-      fmt::print(message);
+      fmt::print("{}", message);
       fflush(stdout);
       fflush(stderr);
     }

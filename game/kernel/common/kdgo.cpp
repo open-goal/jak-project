@@ -18,15 +18,11 @@ ee::sceSifClientData cd[6];  //! client data for each IOP Remove Procedure Call.
 u32 sShowStallMsg;           //! setting to show a "stalled on iop" message
 u16 x[8];                    //! stupid temporary for storing a message
 u32 sMsgNum;                 //! Toggle for double buffered message sending.
-RPC_Dgo_Cmd* sLastMsg;       //! Last DGO command sent to IOP
-RPC_Dgo_Cmd sMsg[2];         //! DGO message buffers
 
 void kdgo_init_globals() {
   memset(x, 0, sizeof(x));
   memset(cd, 0, sizeof(cd));
   sShowStallMsg = 1;
-  sLastMsg = nullptr;
-  memset(sMsg, 0, sizeof(sMsg));
 }
 
 /*!
@@ -160,79 +156,6 @@ void StopIOP() {
 }
 
 /*!
- * Send message to IOP to start loading a new DGO file
- * Uses a double-buffered message buffer
- * @param name: the name of the DGO file
- * @param buffer1 : one of the two file loading buffers
- * @param buffer2 : the other of the two file loading buffers
- * @param currentHeap : the current heap (for loading directly into the heap).
- *
- * DONE,
- * MODIFIED : Added print statement to indicate when DGO load starts.
- */
-void BeginLoadingDGO(const char* name, Ptr<u8> buffer1, Ptr<u8> buffer2, Ptr<u8> currentHeap) {
-  u8 msgID = sMsgNum;
-  RPC_Dgo_Cmd* mess = sMsg + sMsgNum;
-  sMsgNum = sMsgNum ^ 1;     // toggle message buffer.
-  RpcSync(DGO_RPC_CHANNEL);  // make sure old RPC is finished
-
-  // put a dummy value here just to make sure the IOP overwrites it.
-  sMsg[msgID].result = DGO_RPC_RESULT_INIT;  // !! this is 666
-
-  // inform IOP of buffers
-  sMsg[msgID].buffer1 = buffer1.offset;
-  sMsg[msgID].buffer2 = buffer2.offset;
-
-  // also give a heap pointer so it can load the last object file directly into the heap to save the
-  // precious time.
-  sMsg[msgID].buffer_heap_top = currentHeap.offset;
-
-  // file name
-  strcpy(sMsg[msgID].name, name);
-  lg::debug("[Begin Loading DGO RPC] {}, 0x{:x}, 0x{:x}, 0x{:x}", name, buffer1.offset,
-            buffer2.offset, currentHeap.offset);
-  // this RPC will return once we have loaded the first object file.
-  // but we call async, so we don't block here.
-  RpcCall(DGO_RPC_CHANNEL, DGO_RPC_LOAD_FNO, true, mess, sizeof(RPC_Dgo_Cmd), mess,
-          sizeof(RPC_Dgo_Cmd));
-  sLastMsg = mess;
-}
-
-/*!
- * Get the next object in the DGO.  Will block until something is loaded.
- * @param lastObjectFlag: will get set to 1 if this is the last object.
- *
- * DONE,
- * MODIFIED : added exception if the sLastMessage isn't set (game just returns null as buffer)
- */
-Ptr<u8> GetNextDGO(u32* lastObjectFlag) {
-  *lastObjectFlag = 1;
-  // Wait for RPC function to respond. This will happen once the first object file is loaded.
-  RpcSync(DGO_RPC_CHANNEL);
-  Ptr<u8> buffer(0);
-  if (sLastMsg) {
-    // if we got a good result, get pointer to object
-    if ((sLastMsg->result == DGO_RPC_RESULT_MORE) || (sLastMsg->result == DGO_RPC_RESULT_DONE)) {
-      buffer.offset =
-          sLastMsg->buffer1;  // buffer 1 always contains location of most recently loaded object.
-    }
-
-    // not the last one, so don't set the flag.
-    if (sLastMsg->result == DGO_RPC_RESULT_MORE) {
-      *lastObjectFlag = 0;
-    }
-
-    // no pending message.
-    sLastMsg = nullptr;
-  } else {
-    // I don't see how this case can happen unless there's a bug. The game does check for this and
-    // nothing in this case. (maybe from GOAL this can happen?)
-    printf("last message not set!\n");
-  }
-  return buffer;
-}
-
-/*!
  * Load the TEST.DGO file.
  * Presumably used for debugging DGO loads.
  * We don't have the TEST.DGO file, so this isn't very useful.
@@ -242,6 +165,8 @@ Ptr<u8> GetNextDGO(u32* lastObjectFlag) {
  * UNUSED
  */
 void LoadDGOTest() {
+  ASSERT_NOT_REACHED();  // no longer supported.
+  /*
   u32 lastObject = 0;
 
   // backup show stall message and set it to false
@@ -273,4 +198,5 @@ void LoadDGOTest() {
   }
 
   sShowStallMsg = lastShowStall;
+   */
 }

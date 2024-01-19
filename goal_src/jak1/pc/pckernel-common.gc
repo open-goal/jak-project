@@ -812,13 +812,19 @@
 (defmethod load-settings pc-settings ((obj pc-settings))
   "load"
   (format (clear *pc-temp-string-1*) "~S/pc-settings.gc" *pc-settings-folder*)
-  (if (pc-filepath-exists? *pc-temp-string-1*)
-    (begin
+  (cond
+    ((pc-filepath-exists? *pc-temp-string-1*)
       (format 0 "[PC] PC Settings found at '~S'...loading!~%" *pc-temp-string-1*)
       (unless (read-from-file obj *pc-temp-string-1*)
         (format 0 "[PC] PC Settings found at '~S' but could not be loaded, using defaults!~%" *pc-temp-string-1*)
-        (reset obj #t)))
-    (format 0 "[PC] PC Settings not found at '~S'...initializing with defaults!~%" *pc-temp-string-1*))
+        (reset obj #t)
+        )
+      )
+    (else
+      (format 0 "[PC] PC Settings not found at '~S'...initializing with defaults!~%" *pc-temp-string-1*)
+      (reset obj #t)
+      )
+    )
   0)
 
 (defmethod initialize pc-settings ((obj pc-settings))

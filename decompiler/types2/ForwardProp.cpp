@@ -1368,7 +1368,7 @@ void types2_for_add(types2::Type& type_out,
     }
   }
 
-  if (env.version == GameVersion::Jak2 && tc(dts, TypeSpec("symbol"), arg1_type) &&
+  if (env.version >= GameVersion::Jak2 && tc(dts, TypeSpec("symbol"), arg1_type) &&
       is_int_or_uint(dts, arg0_type)) {
     if (arg0_type.is_integer_constant(jak2::SYM_TO_STRING_OFFSET)) {
       // symbol -> GOAL String

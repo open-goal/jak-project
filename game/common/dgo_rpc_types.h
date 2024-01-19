@@ -8,8 +8,7 @@
 #include "common/common_types.h"
 #include "common/versions/versions.h"
 
-// TODO: jak 3 stub
-constexpr PerGameVersion<int> DGO_RPC_ID(0xdeb4, 0xfab3, 0x0);
+constexpr PerGameVersion<int> DGO_RPC_ID(0xdeb4, 0xfab3, 0xfab3);
 constexpr int DGO_RPC_CHANNEL = 3;
 constexpr int DGO_RPC_LOAD_FNO = 0;
 constexpr int DGO_RPC_LOAD_NEXT_FNO = 1;
@@ -28,3 +27,17 @@ struct RPC_Dgo_Cmd {
   uint32_t buffer_heap_top;
   char name[16];
 };
+
+namespace jak3 {
+struct RPC_Dgo_Cmd {
+  uint16_t rsvd;
+  uint16_t result;
+  uint32_t buffer1;
+  uint32_t buffer2;
+  uint32_t buffer_heap_top;
+  char name[16];
+  uint16_t cgo_id;
+  uint8_t pad[30];
+};
+static_assert(sizeof(RPC_Dgo_Cmd) == 0x40);
+}  // namespace jak3

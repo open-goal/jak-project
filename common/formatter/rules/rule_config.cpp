@@ -16,7 +16,7 @@ FormFormattingConfig new_permissive_flow_rule() {
 FormFormattingConfig new_flow_rule(int start_index) {
   FormFormattingConfig cfg;
   cfg.hang_forms = false;
-  cfg.inline_until_index = [start_index](const std::vector<std::string>& curr_lines) {
+  cfg.inline_until_index = [start_index](const std::vector<std::string>& /*curr_lines*/) {
     return start_index;
   };
   return cfg;

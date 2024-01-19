@@ -1,0 +1,10 @@
+("CITYCAST.DGO"
+ ("tpage-2094.o"
+  "tpage-2095.go"
+  "daxter-highres-ag.go"
+  "jakc-highres-ag.go"
+  "torn-highres-ag.go"
+  "palmpilot-b-ag.go"
+  "particleman-ag.go"
+  "citycast.o"
+ ))

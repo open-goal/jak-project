@@ -6,4 +6,25 @@
 ;; dgos: KERNEL
 
 ;; DECOMP BEGINS
+(define *use-old-listener-print* #f)
+(define *kernel-version* (the binteger (logior (ash *kernel-major-version* 16) *kernel-minor-version*)))
 
+(defun kernel-dispatcher ()
+  "Temporary kernel dispatcher for now."
+
+  ;; execute the listener function, if we got one.
+  (when *listener-function*
+    (+! *enable-method-set* 1) ;; allow out-of-order method definitions (slower)
+    ;; (let ((result (reset-and-call (-> *listener-process* main-thread) *listener-function*))) ;; run function!
+    (let ((result (*listener-function*)))
+      ;; print result.
+      (if *use-old-listener-print*
+          (format #t "~D~%" result result result)
+          (format #t "~D        #x~X        ~F        ~A~%" result result result result)
+          )
+      )
+    ;; clear pending function
+    (set! *listener-function* #f)
+    (+! *enable-method-set* -1)
+    )
+  )
