@@ -104,6 +104,8 @@ void apply_formatting_config(
   }
   // If we are hanging, lets determine the indentation width since it is based on the form itself
   if (curr_node.formatting_config.hang_forms) {
+    // TODO - this isn't being calculated for a pre-defined config
+    // TODO - another idea is to do this during consolidation
     curr_node.formatting_config.indentation_width = hang_indentation_width(curr_node);
   }
   // iterate through the refs
@@ -123,6 +125,7 @@ void apply_formatting_config(
   }
 }
 
+// TODO - this doesn't account for paren's width contribution!
 int get_total_form_inlined_width(const FormatterTreeNode& curr_node) {
   if (curr_node.token) {
     return curr_node.token->length();

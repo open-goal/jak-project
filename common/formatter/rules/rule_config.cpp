@@ -9,6 +9,7 @@ namespace config {
 FormFormattingConfig new_permissive_flow_rule() {
   FormFormattingConfig cfg;
   cfg.hang_forms = false;
+  cfg.combine_first_two_lines = true;
   return cfg;
 }
 
@@ -86,7 +87,10 @@ const std::unordered_map<std::string, FormFormattingConfig> opengoal_form_config
     {"defmethod", new_flow_rule(3)},
     {"deftype", new_flow_rule_prevent_inlining_indexes(3, {3, 4, 5})},
     {"defun", new_flow_rule(3)},
+    {"defbehavior", new_flow_rule(4)},
     {"if", new_permissive_flow_rule()},
+    {"define", new_permissive_flow_rule()},
+    {"define-extern", new_permissive_flow_rule()},
     {"defmacro", new_flow_rule(3)},
     {"dotimes", new_flow_rule(2)},
     {"let", new_binding_rule()},
