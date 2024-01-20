@@ -69,4 +69,5 @@ std::vector<fs::path> sort_filepaths(const std::vector<fs::path>& paths, const b
 /// Will overwrite the destination if it exists
 void copy_file(const fs::path& src, const fs::path& dst);
 std::string make_screenshot_filepath(const GameVersion game_version, const std::string& name = "");
+std::string get_majority_file_line_endings(const std::string& file_contents);
 }  // namespace file_util

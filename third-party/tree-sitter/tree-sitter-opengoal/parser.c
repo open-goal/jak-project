@@ -849,14 +849,14 @@ static bool ts_lex(TSLexer *lexer, TSStateId state) {
       if (lookahead == ';') ADVANCE(59);
       if (lookahead == '?') ADVANCE(61);
       if (lookahead == '@') ADVANCE(38);
-      if (lookahead == 'N') ADVANCE(7);
+      if (lookahead == 'N') ADVANCE(8);
       if (lookahead == 'V') ADVANCE(34);
       if (lookahead == '^') ADVANCE(47);
       if (lookahead == '_') ADVANCE(54);
       if (lookahead == 'v') ADVANCE(33);
       if (lookahead == '|') ADVANCE(45);
       if (lookahead == '~') ADVANCE(42);
-      if (('+' <= lookahead && lookahead <= '-')) ADVANCE(4);
+      if (('+' <= lookahead && lookahead <= '-')) ADVANCE(5);
       if (lookahead == '<' ||
           lookahead == '>') ADVANCE(58);
       if (lookahead == 'A' ||
@@ -879,51 +879,52 @@ static bool ts_lex(TSLexer *lexer, TSStateId state) {
       END_STATE();
     case 2:
       if (lookahead == '"') ADVANCE(64);
-      if (lookahead == '\\') ADVANCE(19);
+      if (lookahead == '\\') ADVANCE(18);
       if (lookahead == '~') ADVANCE(42);
       if (lookahead != 0) ADVANCE(65);
       END_STATE();
     case 3:
-      if (lookahead == '#') ADVANCE(25);
+      if (lookahead == '#') ADVANCE(20);
+      if (lookahead == '|') ADVANCE(4);
+      if (lookahead != 0) ADVANCE(3);
       END_STATE();
     case 4:
-      if (lookahead == '#') ADVANCE(6);
-      if (('0' <= lookahead && lookahead <= '9')) ADVANCE(26);
+      if (lookahead == '#') ADVANCE(25);
+      if (lookahead != 0) ADVANCE(3);
       END_STATE();
     case 5:
-      if (lookahead == '\\') ADVANCE(20);
+      if (lookahead == '#') ADVANCE(7);
+      if (('0' <= lookahead && lookahead <= '9')) ADVANCE(26);
+      END_STATE();
+    case 6:
+      if (lookahead == '\\') ADVANCE(19);
       if (lookahead == 'b') ADVANCE(14);
       if (lookahead == 'f' ||
           lookahead == 't') ADVANCE(70);
       if (lookahead == 'x') ADVANCE(15);
-      if (lookahead == '|') ADVANCE(17);
+      if (lookahead == '|') ADVANCE(3);
       END_STATE();
-    case 6:
+    case 7:
       if (lookahead == 'b') ADVANCE(14);
       if (lookahead == 'x') ADVANCE(15);
       END_STATE();
-    case 7:
-      if (lookahead == 'e') ADVANCE(12);
-      END_STATE();
     case 8:
-      if (lookahead == 'e') ADVANCE(62);
+      if (lookahead == 'e') ADVANCE(13);
       END_STATE();
     case 9:
-      if (lookahead == 'i') ADVANCE(11);
+      if (lookahead == 'e') ADVANCE(62);
       END_STATE();
     case 10:
-      if (lookahead == 'l') ADVANCE(9);
+      if (lookahead == 'i') ADVANCE(12);
       END_STATE();
     case 11:
-      if (lookahead == 'n') ADVANCE(8);
+      if (lookahead == 'l') ADVANCE(10);
       END_STATE();
     case 12:
-      if (lookahead == 'w') ADVANCE(10);
+      if (lookahead == 'n') ADVANCE(9);
       END_STATE();
     case 13:
-      if (lookahead == '|') ADVANCE(3);
-      if (lookahead != 0 &&
-          lookahead != '#') ADVANCE(13);
+      if (lookahead == 'w') ADVANCE(11);
       END_STATE();
     case 14:
       if (lookahead == '0' ||
@@ -939,26 +940,25 @@ static bool ts_lex(TSLexer *lexer, TSStateId state) {
       END_STATE();
     case 17:
       if (lookahead != 0 &&
-          lookahead != '#' &&
-          lookahead != '|') ADVANCE(13);
+          lookahead != '\n') ADVANCE(32);
       END_STATE();
     case 18:
       if (lookahead != 0 &&
-          lookahead != '\n') ADVANCE(32);
-      END_STATE();
-    case 19:
-      if (lookahead != 0 &&
           lookahead != '\n') ADVANCE(66);
       END_STATE();
-    case 20:
+    case 19:
       if (lookahead != 0 &&
           lookahead != '\\') ADVANCE(67);
       if (lookahead == '\\') ADVANCE(68);
       END_STATE();
+    case 20:
+      if (lookahead != 0 &&
+          lookahead != '|') ADVANCE(3);
+      END_STATE();
     case 21:
       if (eof) ADVANCE(22);
       if (lookahead == '"') ADVANCE(64);
-      if (lookahead == '#') ADVANCE(5);
+      if (lookahead == '#') ADVANCE(6);
       if (lookahead == '\'') ADVANCE(31);
       if (lookahead == '(') ADVANCE(80);
       if (lookahead == ')') ADVANCE(81);
@@ -1289,7 +1289,7 @@ static const TSLexMode ts_lex_modes[STATE_COUNT] = {
   [55] = {.lex_state = 2},
   [56] = {.lex_state = 2},
   [57] = {.lex_state = 2},
-  [58] = {.lex_state = 18},
+  [58] = {.lex_state = 17},
   [59] = {.lex_state = 0},
 };
 
