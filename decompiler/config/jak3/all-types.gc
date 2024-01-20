@@ -765,13 +765,20 @@
   )
 
 (deftype state (protect-frame)
-  ((parent basic                                                     :offset-assert 16)
+  ((parent state                                                     :offset-assert 16)
    (code   function                                                  :offset-assert 20) ;; guessed by decompiler
    (trans  (function object)                                         :offset-assert 24) ;; guessed by decompiler
    (post   function                                                  :offset-assert 28) ;; guessed by decompiler
    (enter  function                                                  :offset-assert 32) ;; guessed by decompiler
    (event  (function process int symbol event-message-block object)  :offset-assert 36) ;; guessed by decompiler
    )
+  (:methods
+    (new (symbol type symbol function
+          (function object)
+          function
+          (function object)
+          (function process int symbol event-message-block object)) _type_) ;; 0
+    )
   :method-count-assert 9
   :size-assert         #x28
   :flag-assert         #x900000028
@@ -1083,7 +1090,6 @@
 ;; dgo-h                          ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype dgo-header (structure)
   ((length   uint32    :offset-assert 0)
    (rootname uint8  60 :offset-assert 4) ;; guessed by decompiler
@@ -1092,9 +1098,7 @@
   :size-assert         #x40
   :flag-assert         #x900000040
   )
-|#
 
-#|
 (deftype dgo-entry (structure)
   ((offset uint32  :offset-assert 0)
    (length uint32  :offset-assert 4)
@@ -1103,9 +1107,7 @@
   :size-assert         #x8
   :flag-assert         #x900000008
   )
-|#
 
-#|
 (deftype dgo-file (basic)
   ((num-go-files uint32          :offset-assert 4)
    (total-length uint32          :offset-assert 8)
@@ -1116,19 +1118,18 @@
   :size-assert         #x10
   :flag-assert         #x900000010
   )
-|#
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; gstate                         ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (define-extern inherit-state function) ;; (function state state state)
-;; (define-extern state-type? function)
-;; (define-extern enter-state function) ;; (function object object object object object object object)
-;; (define-extern *event-queue* object) ;; event-message-block-array
-;; (define-extern send-event-function function) ;; (function process-tree event-message-block object)
-;; (define-extern looping-code function) ;; (function symbol)
+(define-extern inherit-state (function state state state))
+(define-extern state-type? (function state symbol symbol))
+(define-extern enter-state (function object object object object object object object))
+(define-extern *event-queue* event-message-block-array)
+(define-extern send-event-function (function process-tree event-message-block object))
+(define-extern looping-code (function symbol))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; types-h                        ;;
