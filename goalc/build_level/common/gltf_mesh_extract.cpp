@@ -197,9 +197,6 @@ ExtractedVertices gltf_vertices(const tinygltf::Model& model,
         default:
           lg::die("Unknown component type for COLOR_0: {}", attrib_accessor.componentType);
       }
-      ASSERT_MSG(
-          attrib_accessor.componentType == TINYGLTF_COMPONENT_TYPE_FLOAT,
-          fmt::format("COLOR_0 wasn't float, got {} instead", attrib_accessor.componentType));
       vtx_colors.insert(vtx_colors.end(), colors.begin(), colors.end());
     }
   }
