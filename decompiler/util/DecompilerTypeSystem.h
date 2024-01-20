@@ -95,7 +95,10 @@ class DecompilerTypeSystem {
     void reset() { current_method_type.clear(); }
   } type_prop_settings;
 
+  GameVersion version() const { return m_version; }
+
  private:
+  GameVersion m_version;
   mutable goos::Reader m_reader;
 };
 }  // namespace decompiler

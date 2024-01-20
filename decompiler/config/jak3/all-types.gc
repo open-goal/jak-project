@@ -132,18 +132,16 @@
 ;; gcommon                        ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype vec4s (uint128)
-  ((UNKNOWN UNKNOWN  :offset-assert -1) ;; field could not be read.
-   (UNKNOWN UNKNOWN  :offset-assert -1) ;; field could not be read.
-   (UNKNOWN UNKNOWN  :offset-assert -1) ;; field could not be read.
-   (UNKNOWN UNKNOWN  :offset-assert -1) ;; field could not be read.
+  ((x float :offset 0)
+   (y float :offset 32)
+   (z float :offset 64)
+   (w float :offset 96)
    )
   :method-count-assert 9
   :size-assert         #x10
   :flag-assert         #x900000010
   )
-|#
 
 (deftype vector (structure)
   ((data float   4 :score -1 :offset-assert 0) ;; guessed by decompiler
@@ -158,15 +156,12 @@
   :flag-assert         #x900000010
   )
 
-#|
 (deftype bfloat (basic)
-  ()
+  ((data float))
   :method-count-assert 9
   :size-assert         #x8
   :flag-assert         #x900000008
-  ;; Failed to read fields.
   )
-|#
 
 #|
 (deftype inline-array-class (basic)
@@ -233,54 +228,216 @@
   )
 |#
 
-;; (define-extern identity function) ;; (function object object)
-;; (define-extern 1/ function) ;; (function float float)
-;; (define-extern + function) ;; (function int int int)
-;; (define-extern - function) ;; (function int int int)
-;; (define-extern * function) ;; (function int int int)
-;; (define-extern / function) ;; (function int int int)
-;; (define-extern ash function) ;; (function int int int)
-;; (define-extern mod function) ;; (function int int int)
-;; (define-extern rem function) ;; (function int int int)
-;; (define-extern abs function) ;; (function int int)
-;; (define-extern min function) ;; (function int int int)
-;; (define-extern max function) ;; (function int int int)
-;; (define-extern logior function) ;; (function int int int)
-;; (define-extern logand function) ;; (function int int int)
-;; (define-extern lognor function) ;; (function int int int)
-;; (define-extern logxor function) ;; (function int int int)
-;; (define-extern lognot function) ;; (function int int)
-;; (define-extern false-func function) ;; (function symbol)
-;; (define-extern true-func function) ;; (function symbol)
+(define-extern identity
+               "The identity function."
+               (function object object))
+
+(define-extern 1/
+               "Floating point reciprocal."
+               (function float float))
+
+(define-extern +
+               "64-bit integer addition."
+               (function int int int))
+
+(define-extern -
+               "64-bit integer subraction."
+               (function int int int))
+
+(define-extern *
+               "32-bit signed integer multiplication."
+               (function int int int))
+
+(define-extern /
+               "32-bit signed integer division."
+               (function int int int))
+
+(define-extern ash
+               "64-bit arithmetic shift. (sign-extends)"
+               (function int int int))
+
+(define-extern mod
+               "32-bit mod."
+               (function int int int))
+
+(define-extern rem
+               "32-bit mod (same as mod)."
+               (function int int int))
+
+(define-extern abs
+               "64-bit integer absolute value."
+               (function int int))
+
+(define-extern min
+               "64-bit integer minimum."
+               (function int int int))
+
+(define-extern max
+               "64-bit integer maximum."
+               (function int int int))
+
+(define-extern logior
+               "64-bit bitwise or."
+               (function int int int))
+
+(define-extern logand
+               "64-bit bitwise and."
+               (function int int int))
+
+(define-extern lognor
+               "64-bit bitwise not-or."
+               (function int int int))
+
+(define-extern logxor
+               "64-bit bitwise exclusive or."
+               (function int int int))
+
+(define-extern lognot
+               "64-bit bitwise not."
+               (function int int))
+
+(define-extern false-func
+               "Returns false."
+               (function symbol))
+
+(define-extern true-func
+               "Returns true."
+               (function symbol))
+
 (define-extern format (function _varargs_ object))
-;; (define-extern basic-type? function) ;; (function basic type symbol)
-;; (define-extern type-type? function) ;; (function type type symbol)
-;; (define-extern type? function) ;; (function object type symbol)
-;; (define-extern find-parent-method function) ;; (function type int function)
-;; (define-extern ref& function)
-;; (define-extern ref function) ;; (function object int object)
-;; (define-extern last function) ;; (function object object)
-;; (define-extern member function) ;; (function object object object)
-;; (define-extern nmember function) ;; (function basic object object)
-;; (define-extern assoc function) ;; (function object object object)
-;; (define-extern assoce function) ;; (function object object object)
-;; (define-extern nassoc function) ;; (function string object object)
-;; (define-extern nassoce function) ;; (function string object object)
-;; (define-extern append! function) ;; (function object object object)
-;; (define-extern delete! function) ;; (function object object pair)
-;; (define-extern delete-car! function) ;; (function object object object)
-;; (define-extern insert-cons! function) ;; (function object object pair)
-;; (define-extern sort function) ;; (function pair (function object object object) pair)
-;; (define-extern string->symbol-debug function)
-;; (define-extern symbol->string-debug function)
-;; (define-extern symbol->hash function)
-;; (define-extern mem-copy! function) ;; (function pointer pointer int pointer)
-;; (define-extern qmem-copy<-! function) ;; (function pointer pointer int pointer)
-;; (define-extern qmem-copy->! function) ;; (function pointer pointer int pointer)
-;; (define-extern qmem-clear! function)
-;; (define-extern mem-set32! function) ;; (function pointer int int pointer)
-;; (define-extern mem-or! function) ;; (function pointer pointer int pointer)
-;; (define-extern quad-copy! function) ;; (function pointer pointer int none)
+
+(define-extern basic-type?
+               "Return if the given basic is a given type. A child of the given type is also acceptable."
+               (function basic type symbol))
+
+(define-extern type-type?
+               "Return if the first type is the second type, or a child of it."
+               (function type type symbol))
+
+(define-extern type?
+               "Return if the given object is an instance of the given type.
+                Works on basics, bintegers, or symbols."
+               (function object type symbol))
+
+(define-extern find-parent-method
+               "Find the closest parent type that has a different implementation of the given method and return that method.
+                If it does not exist, return `nothing` function.
+                This is used to implement call-parent-method."
+               (function type int function))
+
+(define-extern ref&
+               "Return the n-th pair in a linked list of pairs. No bounds checking.
+                If it is the null pair, return #f."
+               (function object int object))
+
+(define-extern ref
+               "Return the n-th item in a proper list. No bounds checking."
+               (function object int object))
+
+(define-extern last
+               "Return the last object in a proper list."
+               (function object object))
+
+(define-extern member
+               "See if the first argument is in the proper list of the second argument.
+                Checked with simple equality.
+                If so, return the list starting at the at point (a truthy value).
+                Otherwise, return #f.
+                (member 'b '(a b c)) -> (b c d).
+                (member 'w '(a b c)) -> #f"
+               (function object object object))
+
+(define-extern nmember
+               "Like member, but membership is checked with the name= function to handle symbols or strings."
+               (function basic object object))
+
+(define-extern assoc
+               "Search an association list for given object. Return #f if not found, otherwise the element with matching car.
+                (assoc 'a '((a . 1) (b . 2) (c . 3))) -> (a . 1)
+                (assoc 'x '((a . 1) (b . 2) (c . 3))) -> #f"
+               (function object object object))
+
+(define-extern assoce
+               "Like assoc, but supports a special `else` key which is always considered a match."
+               (function object object object))
+
+(define-extern nassoc
+               "Like assoc, but uses name= instead of = to check equality."
+               (function string object object))
+
+(define-extern nassoce
+               "Like assoce, but uses name= instead of = to check equality."
+               (function string object object))
+
+(define-extern append!
+               "Append the second argument to the end of the list (or empty pair) in the first argument."
+               (function object object object))
+
+(define-extern delete!
+               "Remove an element from the given list, return the list."
+               (function object object pair))
+
+(define-extern delete-car!
+               "Remove an element from the given list with a matching car. Return the list."
+               (function object object object))
+
+(define-extern insert-cons!
+               "Update an association list to have the given (key . value) pair.
+                If a previous value exists, it is deleted first.
+                This function always allocates a pair through `cons` on the global heap, which can never be freed,
+                so it should almost never be used at runtime."
+               (function object object pair))
+
+(define-extern sort
+               "Sort a list using the given comparision function.
+                The function can return a #t/#f value, or a positive/negative value.
+                For example, you could use either `-` or `<` as functions to sort integers."
+               (function pair (function object object object) pair))
+
+(define-extern string->symbol-debug
+               "Convert a string to a symbol. The symbol must be known, and this cannot
+                create a new symbol. (in the PC port, it will still work.)
+                This is inteded to be used in debug only, and will not trigger a warning.
+                In debug, this will work for all symbols."
+               (function string symbol))
+
+(define-extern symbol->string-debug
+               "Get the name of a symbol. This is intended to be used in debug only.
+                In debug, this will work for all symbols. (In PC port, this works always)"
+               (function symbol string))
+
+(define-extern symbol->hash
+               "Convert a symbol to a unique integer value, which is just the symbol's address."
+               (function symbol int))
+
+(define-extern mem-copy!
+               "Basic memory copy. This is not an optimized implementation."
+               (function pointer pointer int pointer))
+
+(define-extern qmem-copy<-!
+               "Copy memory by quadword (16-bytes). Must by 16-byte aligned, size in 16-byte units. Increasing address copy. Not an optimized version."
+               (function pointer pointer int pointer))
+
+(define-extern qmem-copy->!
+               "Copy memory by quadword (16-bytes). Must by 16-byte aligned, size in 16-byte units. Decreasing address copy. Not an optimized version."
+               (function pointer pointer int pointer))
+
+(define-extern qmem-clear!
+               "Clear memory by quadword (16-bytes). Must by 16-byte aligned, size in 16-byte units. Not an optimized version."
+               (function pointer int pointer))
+
+(define-extern mem-set32!
+               "Set memory to the given 32-bit value, repeated n times. (like C memset, but setting int32_t instead of char).
+                Not an optimized implementation. Must be 4-byte aligned."
+               (function pointer int int pointer))
+
+(define-extern mem-or!
+               "Set the destiation to `dest = dest | src`. Size in bytes. Not an optimized version."
+               (function pointer pointer int pointer))
+
+(define-extern quad-copy!
+               "Optimized memory copy. Must be 16-byte aligned. Size in 16-byte units."
+              (function pointer pointer int none))
 ;; (define-extern fact function) ;; (function int int)
 ;; (define-extern *print-column* object) ;; binteger
 ;; (define-extern print function) ;; (function object object)
@@ -791,7 +948,7 @@
 ;; (define-extern string-suffix= function) ;; (function string string symbol)
 ;; (define-extern string-position function) ;; (function string string int)
 ;; (define-extern string-charp= function) ;; (function string (pointer uint8) symbol)
-;; (define-extern name= function) ;; (function object object symbol)
+(define-extern name= (function object object symbol))
 ;; (define-extern copyn-string<-charp function) ;; (function string (pointer uint8) int string)
 ;; (define-extern string<-charp function) ;; (function string (pointer uint8) string)
 ;; (define-extern charp<-string function) ;; (function (pointer uint8) string int)
@@ -5168,7 +5325,7 @@
   :method-count-assert 11
   :size-assert         #xa0
   :flag-assert         #xb000000a0
-  ;; field extra-sound-bank uses ~A with a signed load. 
+  ;; field extra-sound-bank uses ~A with a signed load.
   (:methods
     (level-load-info-method-9 () none) ;; 9
     (level-load-info-method-10 () none) ;; 10
@@ -5904,7 +6061,7 @@
   :method-count-assert 14
   :size-assert         #x20
   :flag-assert         #xe00000020
-  ;; field param1 uses ~A with a signed load. field param2 uses ~A with a signed load. field param3 uses ~A with a signed load. 
+  ;; field param1 uses ~A with a signed load. field param2 uses ~A with a signed load. field param3 uses ~A with a signed load.
   (:methods
     (connection-method-9 () none) ;; 9 ;; (get-engine (connection) engine)
     (connection-method-10 () none) ;; 10 ;; (get-process (connection) process)
@@ -5972,7 +6129,7 @@
   :method-count-assert 9
   :size-assert         #x20
   :flag-assert         #x900000020
-  ;; field key uses ~A with a signed load. 
+  ;; field key uses ~A with a signed load.
   )
 |#
 
@@ -6349,7 +6506,7 @@
   :method-count-assert 9
   :size-assert         #x50
   :flag-assert         #x900000050
-  ;; field key uses ~A with a signed load. 
+  ;; field key uses ~A with a signed load.
   )
 |#
 
@@ -6746,7 +6903,7 @@
   :method-count-assert 11
   :size-assert         #x30c
   :flag-assert         #xb0000030c
-  ;; field cam-slave-options is likely a value type. field cam-master-options is likely a value type. 
+  ;; field cam-slave-options is likely a value type. field cam-master-options is likely a value type.
   (:methods
     (cam-setting-data-method-9 () none) ;; 9 ;; (cam-setting-data-method-9 (_type_ engine engine-pers engine) _type_)
     (cam-setting-data-method-10 () none) ;; 10 ;; (cam-setting-data-method-10 (_type_ object (pointer process) float int) _type_)
@@ -8117,7 +8274,7 @@
   :method-count-assert 10
   :size-assert         #x20
   :flag-assert         #xa00000020
-  ;; field param1 uses ~A with a signed load. field param2 uses ~A with a signed load. 
+  ;; field param1 uses ~A with a signed load. field param2 uses ~A with a signed load.
   (:methods
     (new (symbol type) _type_) ;; 0 ;; (new (symbol type drawable) _type_)
     (cspace-method-9 () none) ;; 9 ;; (reset-and-assign-geo! (_type_ drawable) _type_)
@@ -8223,7 +8380,7 @@
   :method-count-assert 17
   :size-assert         #x20
   :flag-assert         #x1100000020
-  ;; field distance is a float printed as hex? 
+  ;; field distance is a float printed as hex?
   )
 |#
 
@@ -8298,7 +8455,7 @@
   :method-count-assert 10
   :size-assert         #x10
   :flag-assert         #xa00000010
-  ;; field on-enter uses ~A with a signed load. field on-inside uses ~A with a signed load. field on-exit uses ~A with a signed load. 
+  ;; field on-enter uses ~A with a signed load. field on-inside uses ~A with a signed load. field on-exit uses ~A with a signed load.
   (:methods
     (region-method-9 () none) ;; 9 ;; (region-method-9 (_type_ vector) symbol)
     )
@@ -8525,7 +8682,7 @@
   :method-count-assert 9
   :size-assert         #x10
   :flag-assert         #x900000010
-  ;; field execute uses ~A with a signed load. 
+  ;; field execute uses ~A with a signed load.
   )
 |#
 
@@ -8542,7 +8699,7 @@
   :method-count-assert 9
   :size-assert         #x30
   :flag-assert         #x900000030
-  ;; field resetter-flag is likely a value type. 
+  ;; field resetter-flag is likely a value type.
   )
 |#
 
@@ -8569,7 +8726,7 @@
   :method-count-assert 9
   :size-assert         #x3c
   :flag-assert         #x90000003c
-  ;; field handle is likely a value type. field resolution-scene uses ~A with a signed load. field on-complete uses ~A with a signed load. field on-fail uses ~A with a signed load. 
+  ;; field handle is likely a value type. field resolution-scene uses ~A with a signed load. field on-complete uses ~A with a signed load. field on-fail uses ~A with a signed load.
   )
 |#
 
@@ -8614,7 +8771,7 @@
   :method-count-assert 14
   :size-assert         #x50
   :flag-assert         #xe00000050
-  ;; field on-open uses ~A with a signed load. field on-close uses ~A with a signed load. 
+  ;; field on-open uses ~A with a signed load. field on-close uses ~A with a signed load.
   (:methods
     (game-task-node-info-method-9 () none) ;; 9 ;; (close! (_type_ symbol) int)
     (game-task-node-info-method-10 () none) ;; 10 ;; (open! (_type_ symbol) int)
@@ -8639,7 +8796,7 @@
   :method-count-assert 10
   :size-assert         #x20
   :flag-assert         #xa00000020
-  ;; field kiosk-play-continue uses ~A with a signed load. 
+  ;; field kiosk-play-continue uses ~A with a signed load.
   (:methods
     (game-task-info-method-9 () none) ;; 9
     )
@@ -9327,7 +9484,7 @@
   :method-count-assert 14
   :size-assert         #x3c
   :flag-assert         #xe0000003c
-  ;; field blend-shape-anim uses ~A with a signed load. 
+  ;; field blend-shape-anim uses ~A with a signed load.
   )
 |#
 
@@ -9503,7 +9660,7 @@
   :method-count-assert 16
   :size-assert         #xdc
   :flag-assert         #x10000000dc
-  ;; field draw-control-status is likely a value type. field draw-control-global-effect is likely a value type. 
+  ;; field draw-control-status is likely a value type. field draw-control-global-effect is likely a value type.
   (:methods
     (new (symbol type) _type_) ;; 0 ;; (new (symbol type process symbol) _type_)
     (draw-control-method-9 () none) ;; 9 ;; (get-skeleton-origin (_type_) vector)
@@ -9938,7 +10095,7 @@
   :method-count-assert 9
   :size-assert         #x80
   :flag-assert         #x900000080
-  ;; field xyz-scale is a float printed as hex? 
+  ;; field xyz-scale is a float printed as hex?
   )
 |#
 
@@ -11073,7 +11230,7 @@
   :method-count-assert 12
   :size-assert         #x68
   :flag-assert         #xc00000068
-  ;; field on-goto uses ~A with a signed load. 
+  ;; field on-goto uses ~A with a signed load.
   (:methods
     (continue-point-method-9 () none) ;; 9 ;; (debug-draw (_type_) int)
     (continue-point-method-10 () none) ;; 10 ;; (continue-point-method-10 (_type_ load-state) continue-point)
@@ -11264,7 +11421,7 @@
   :method-count-assert 14
   :size-assert         #x30
   :flag-assert         #xe00000030
-  ;; field param1 uses ~A with a signed load. field param2 uses ~A with a signed load. field param3 uses ~A with a signed load. 
+  ;; field param1 uses ~A with a signed load. field param2 uses ~A with a signed load. field param3 uses ~A with a signed load.
   )
 |#
 
@@ -11295,7 +11452,7 @@
   :method-count-assert 14
   :size-assert         #x20
   :flag-assert         #xe00000020
-  ;; field on-close uses ~A with a signed load. 
+  ;; field on-close uses ~A with a signed load.
   (:methods
     (talker-speech-class-method-9 () none) ;; 9 ;; (talker-speech-class-method-9 (_type_) symbol)
     (talker-speech-class-method-10 () none) ;; 10 ;; (play-communicator-speech! (_type_) none)
@@ -11357,7 +11514,7 @@
   :method-count-assert 9
   :size-assert         #x20
   :flag-assert         #x900000020
-  ;; field speech-type-flag is likely a value type. 
+  ;; field speech-type-flag is likely a value type.
   )
 |#
 
@@ -11391,7 +11548,7 @@
   :method-count-assert 15
   :size-assert         #x64
   :flag-assert         #xf00000064
-  ;; field speech-channel-flag is likely a value type. 
+  ;; field speech-channel-flag is likely a value type.
   (:methods
     (speech-channel-method-9 () none) ;; 9 ;; (speech-channel-method-9 (_type_ process-drawable speech-type) none)
     (speech-channel-method-10 () none) ;; 10 ;; (speech-channel-method-10 (_type_ handle) none)
@@ -11769,7 +11926,7 @@
   :method-count-assert 13
   :size-assert         #x40
   :flag-assert         #xd00000040
-  ;; field joint-control-status is likely a value type. 
+  ;; field joint-control-status is likely a value type.
   (:methods
     (new (symbol type) _type_) ;; 0 ;; (new (symbol type int) _type_)
     (joint-control-method-9 () none) ;; 9 ;; (current-cycle-distance (_type_) float)
@@ -12129,7 +12286,7 @@
   :method-count-assert 14
   :size-assert         #xb0
   :flag-assert         #xe000000b0
-  ;; field param1 uses ~A with a signed load. field param2 uses ~A with a signed load. field param3 uses ~A with a signed load. 
+  ;; field param1 uses ~A with a signed load. field param2 uses ~A with a signed load. field param3 uses ~A with a signed load.
   )
 |#
 
@@ -12262,7 +12419,7 @@
   :method-count-assert 22
   :size-assert         #x20
   :flag-assert         #x1600000020
-  ;; field extra uses ~A with a signed load. 
+  ;; field extra uses ~A with a signed load.
   (:methods
     (new (symbol type) _type_) ;; 0 ;; (new (symbol type int int) _type_)
     (res-lump-method-9 () none) ;; 9 ;; (get-property-data (_type_ symbol symbol float pointer (pointer res-tag) pointer) pointer)
@@ -12569,7 +12726,7 @@
   :method-count-assert 12
   :size-assert         #x28
   :flag-assert         #xc00000028
-  ;; field actor-option is likely a value type. 
+  ;; field actor-option is likely a value type.
   (:methods
     (new (symbol type) _type_) ;; 0 ;; (new (symbol type process pickup-type float) _type_)
     (fact-info-method-9 () none) ;; 9 ;; (drop-pickup (_type_ symbol process-tree fact-info int) (pointer process))
@@ -12630,7 +12787,7 @@
   :method-count-assert 13
   :size-assert         #x138
   :flag-assert         #xd00000138
-  ;; field actor-option is likely a value type. 
+  ;; field actor-option is likely a value type.
   (:methods
     (new (symbol type) _type_) ;; 0 ;; (new (symbol type process-drawable pickup-type float) _type_)
     (fact-info-target-method-12 () none) ;; 12 ;; (get-gun-ammo (_type_) float)
@@ -12661,7 +12818,7 @@
   :method-count-assert 13
   :size-assert         #x53
   :flag-assert         #xd00000053
-  ;; field actor-option is likely a value type. 
+  ;; field actor-option is likely a value type.
   (:methods
     (new (symbol type) _type_) ;; 0 ;; (new (symbol type process (pointer float) pickup-type float) _type_)
     (fact-info-enemy-method-12 () none) ;; 12 ;; (clear-mask-bits (_type_ int) none)
@@ -12681,7 +12838,7 @@
   :method-count-assert 12
   :size-assert         #x2c
   :flag-assert         #xc0000002c
-  ;; field actor-option is likely a value type. 
+  ;; field actor-option is likely a value type.
   (:methods
     (new (symbol type) _type_) ;; 0 ;; (new (symbol type process pickup-type float) _type_)
     )
@@ -13040,7 +13197,7 @@
   :method-count-assert 12
   :size-assert         #xa8
   :flag-assert         #xc000000a8
-  ;; field handle is likely a value type. 
+  ;; field handle is likely a value type.
   (:methods
     (attack-info-method-9 () none) ;; 9 ;; (attack-info-method-9 (_type_ attack-info process-drawable process-drawable) none)
     (attack-info-method-10 () none) ;; 10 ;; (compute-intersect-info (_type_ object process-drawable process touching-shapes-entry) attack-info)
@@ -13099,7 +13256,7 @@
   :method-count-assert 12
   :size-assert         #xa0
   :flag-assert         #xc000000a0
-  ;; field key uses ~A with a signed load. field expr uses ~A with a signed load. 
+  ;; field key uses ~A with a signed load. field expr uses ~A with a signed load.
   (:methods
     (new (symbol type) _type_) ;; 0 ;; (new (symbol type object process vector) _type_)
     (script-context-method-9 () none) ;; 9 ;; (eval! (_type_ pair) object)
@@ -13180,7 +13337,7 @@
   :method-count-assert 18
   :size-assert         #x84
   :flag-assert         #x1200000084
-  ;; field on-running uses ~A with a signed load. field on-complete uses ~A with a signed load. 
+  ;; field on-running uses ~A with a signed load. field on-complete uses ~A with a signed load.
   (:methods
     (scene-method-16 () none) ;; 16 ;; (scene-method-16 (_type_) _type_)
     (scene-method-17 () none) ;; 17
@@ -13223,7 +13380,7 @@
   :method-count-assert 26
   :size-assert         #x198
   :flag-assert         #x1a01200198
-  ;; field user-data uses ~A with a 64-bit load. 
+  ;; field user-data uses ~A with a 64-bit load.
   (:methods
     (scene-player-method-20 () none) ;; 20 ;; (wait (symbol) _type_ :state)
     (scene-player-method-21 () none) ;; 21 ;; (release () _type_ :state)
@@ -13589,7 +13746,7 @@
   :method-count-assert 16
   :size-assert         #xac
   :flag-assert         #x10000000ac
-  ;; field track-mode is likely a value type. 
+  ;; field track-mode is likely a value type.
   (:methods
     (new (symbol type) _type_) ;; 0 ;; (new (symbol type joint-mod-mode process-drawable int) _type_)
     (joint-mod-method-9 () none) ;; 9 ;; (mode-set! (_type_ joint-mod-mode) none)
@@ -14173,7 +14330,7 @@
   :method-count-assert 55
   :size-assert         #xc8
   :flag-assert         #x37000000c8
-  ;; field penetrate is likely a value type. field penetrate is likely a value type. 
+  ;; field penetrate is likely a value type. field penetrate is likely a value type.
   (:methods
     (new (symbol type) _type_) ;; 0 ;; (new (symbol type process-drawable collide-list-enum) _type_)
     (collide-shape-method-28 () none) ;; 28 ;; (move-by-vector! (_type_ vector) none)
@@ -14236,7 +14393,7 @@
   :method-count-assert 68
   :size-assert         #x1dc
   :flag-assert         #x44000001dc
-  ;; field penetrate is likely a value type. field penetrate is likely a value type. 
+  ;; field penetrate is likely a value type. field penetrate is likely a value type.
   (:methods
     (new (symbol type) _type_) ;; 0 ;; (new (symbol type process-drawable collide-list-enum) _type_)
     (collide-shape-moving-method-55 () none) ;; 55 ;; (find-ground (_type_ collide-query collide-spec float float float) symbol)
@@ -14318,7 +14475,7 @@
   :method-count-assert 18
   :size-assert         #x15c
   :flag-assert         #x1200e0015c
-  ;; field userdata uses ~A with a 64-bit load. 
+  ;; field userdata uses ~A with a 64-bit load.
   (:methods
     (part-tracker-method-14 () none) ;; 14 ;; (active () _type_ :state)
     (part-tracker-method-15 () none) ;; 15 ;; (notify-parent-of-death (_type_) none)
@@ -14340,7 +14497,7 @@
   :method-count-assert 9
   :size-assert         #x20
   :flag-assert         #x900000020
-  ;; field userdata uses ~A with a 64-bit load. field mat-joint uses ~A with a signed load. 
+  ;; field userdata uses ~A with a 64-bit load. field mat-joint uses ~A with a signed load.
   )
 |#
 
@@ -14357,7 +14514,7 @@
   :method-count-assert 9
   :size-assert         #x24
   :flag-assert         #x900000024
-  ;; field userdata uses ~A with a 64-bit load. field mat-joint uses ~A with a signed load. 
+  ;; field userdata uses ~A with a 64-bit load. field mat-joint uses ~A with a signed load.
   )
 |#
 
@@ -14393,7 +14550,7 @@
   :method-count-assert 17
   :size-assert         #x130
   :flag-assert         #x1100b00130
-  ;; field userdata uses ~A with a 64-bit load. 
+  ;; field userdata uses ~A with a 64-bit load.
   (:methods
     (lightning-tracker-method-14 () none) ;; 14 ;; (active () _type_ :state)
     (lightning-tracker-method-15 () none) ;; 15 ;; (notify-parent-of-death (_type_) none)
@@ -15867,7 +16024,7 @@
   :method-count-assert 30
   :size-assert         #xa00
   :flag-assert         #x1e09800a00
-  ;; field mode-param2 uses ~A with a 64-bit load. field mode-param3 uses ~A with a 64-bit load. 
+  ;; field mode-param2 uses ~A with a 64-bit load. field mode-param3 uses ~A with a 64-bit load.
   (:methods
     (target-method-28 () none) ;; 28 ;; (init-target (_type_ continue-point symbol) none)
     (target-method-29 () none) ;; 29
@@ -18637,7 +18794,7 @@
   :method-count-assert 9
   :size-assert         #x10
   :flag-assert         #x900000010
-  ;; field object uses ~A with a signed load. 
+  ;; field object uses ~A with a signed load.
   )
 |#
 
@@ -18821,7 +18978,7 @@
   :method-count-assert 9
   :size-assert         #x8c
   :flag-assert         #x90000008c
-  ;; field user-object uses ~A with a signed load. field key uses ~A with a signed load. 
+  ;; field user-object uses ~A with a signed load. field key uses ~A with a signed load.
   )
 |#
 
@@ -20728,7 +20885,7 @@
   :method-count-assert 50
   :size-assert         #x70
   :flag-assert         #x3200000070
-  ;; field nav-mesh-flag is likely a value type. 
+  ;; field nav-mesh-flag is likely a value type.
   (:methods
     (nav-mesh-method-9 () none) ;; 9 ;; (debug-draw (_type_) none)
     (nav-mesh-method-10 () none) ;; 10 ;; (nav-mesh-method-10 (_type_ vector vector nav-poly) nav-poly)
@@ -21291,7 +21448,7 @@
   :method-count-assert 56
   :size-assert         #x120
   :flag-assert         #x3800a00120
-  ;; field rigid-body-object-flag is likely a value type. 
+  ;; field rigid-body-object-flag is likely a value type.
   (:methods
     (rigid-body-object-method-28 () none) ;; 28 ;; (active () _type_ :state)
     (rigid-body-object-method-29 () none) ;; 29 ;; (rigid-body-object-method-29 (_type_ float) none)
@@ -22199,7 +22356,7 @@
   :method-count-assert 12
   :size-assert         #x28
   :flag-assert         #xc00000028
-  ;; field out uses ~A with a signed load. 
+  ;; field out uses ~A with a signed load.
   (:methods
     (new (symbol type) _type_) ;; 0 ;; (new (symbol type uint) _type_)
     (history-iterator-method-9 () none) ;; 9 ;; (frame-counter-delta (_type_ history-elt) time-frame)
@@ -23335,7 +23492,7 @@
   :method-count-assert 9
   :size-assert         #x130
   :flag-assert         #x900000130
-  ;; field ra uses ~A with a signed load. field dummy0 uses ~A with a signed load. field dummy1 uses ~A with a signed load. field b-spfic uses ~A with a signed load. field l-spfic uses ~A with a signed load. 
+  ;; field ra uses ~A with a signed load. field dummy0 uses ~A with a signed load. field dummy1 uses ~A with a signed load. field b-spfic uses ~A with a signed load. field l-spfic uses ~A with a signed load.
   )
 |#
 
@@ -25254,7 +25411,7 @@
   :method-count-assert 9
   :size-assert         #x1c
   :flag-assert         #x90000001c
-  ;; field parm0 uses ~A with a signed load. field parm1 uses ~A with a signed load. 
+  ;; field parm0 uses ~A with a signed load. field parm1 uses ~A with a signed load.
   )
 |#
 
@@ -25282,7 +25439,7 @@
   :method-count-assert 9
   :size-assert         #x1c
   :flag-assert         #x90000001c
-  ;; field track-val uses ~A with a signed load. field val-parm0 uses ~A with a signed load. field val-parm1 uses ~A with a signed load. 
+  ;; field track-val uses ~A with a signed load. field val-parm0 uses ~A with a signed load. field val-parm1 uses ~A with a signed load.
   )
 |#
 
@@ -25803,7 +25960,7 @@
   :method-count-assert 38
   :size-assert         #xac
   :flag-assert         #x26000000ac
-  ;; field cloth-flag is likely a value type. 
+  ;; field cloth-flag is likely a value type.
   (:methods
     (cloth-system-method-16 () none) ;; 16
     (cloth-system-method-17 () none) ;; 17
@@ -25841,7 +25998,7 @@
   :method-count-assert 38
   :size-assert         #x110
   :flag-assert         #x2600000110
-  ;; field cloth-flag is likely a value type. 
+  ;; field cloth-flag is likely a value type.
   )
 |#
 
@@ -26937,7 +27094,7 @@
   :method-count-assert 17
   :size-assert         #xb0
   :flag-assert         #x11000000b0
-  ;; field carry-mode is likely a value type. 
+  ;; field carry-mode is likely a value type.
   (:methods
     (new (symbol type) _type_) ;; 0 ;; (new (symbol type process-drawable int vector vector float) _type_)
     (carry-info-method-9 () none) ;; 9 ;; (carry-info-method-9 (_type_) none)
@@ -30858,7 +31015,7 @@
   :method-count-assert 9
   :size-assert         #x14
   :flag-assert         #x900000014
-  ;; field info uses ~A with a signed load. 
+  ;; field info uses ~A with a signed load.
   )
 |#
 
@@ -31429,7 +31586,7 @@
   :method-count-assert 13
   :size-assert         #x30
   :flag-assert         #xd00000030
-  ;; field on-enter uses ~A with a signed load. field on-inside uses ~A with a signed load. field on-exit uses ~A with a signed load. 
+  ;; field on-enter uses ~A with a signed load. field on-inside uses ~A with a signed load. field on-exit uses ~A with a signed load.
   (:methods
     (new (symbol type) _type_) ;; 0 ;; (new (symbol type) _type_)
     (editable-region-method-9 () none) ;; 9 ;; (editable-region-method-9 (_type_ editable-array int int) symbol)
@@ -32692,7 +32849,7 @@
   :method-count-assert 30
   :size-assert         #x1b0
   :flag-assert         #x1e013001b0
-  ;; field level-name uses ~A with a signed load. field open-test uses ~A with a signed load. field on-running uses ~A with a signed load. 
+  ;; field level-name uses ~A with a signed load. field open-test uses ~A with a signed load. field on-running uses ~A with a signed load.
   (:methods
     (com-airlock-method-22 () none) ;; 22 ;; (init-airlock! (_type_) _type_)
     (com-airlock-method-23 () none) ;; 23 ;; (want-cross-airlock? (_type_) symbol)
@@ -32860,7 +33017,7 @@
   :method-count-assert 9
   :size-assert         #x14
   :flag-assert         #x900000014
-  ;; field param2 uses ~A with a signed load. 
+  ;; field param2 uses ~A with a signed load.
   )
 |#
 
@@ -33164,7 +33321,7 @@
   :method-count-assert 155
   :size-assert         #x228
   :flag-assert         #x9b01b00228
-  ;; field enemy-flag is likely a value type. field on-notice uses ~A with a signed load. field on-active uses ~A with a signed load. field on-hostile uses ~A with a signed load. field on-death uses ~A with a signed load. 
+  ;; field enemy-flag is likely a value type. field on-notice uses ~A with a signed load. field on-active uses ~A with a signed load. field on-hostile uses ~A with a signed load. field on-death uses ~A with a signed load.
   (:methods
     (enemy-method-28 () none) ;; 28 ;; (dormant-aware () _type_ :state)
     (enemy-method-29 () none) ;; 29 ;; (hit () _type_ :state)
@@ -33661,7 +33818,7 @@
   :method-count-assert 52
   :size-assert         #x1a0
   :flag-assert         #x34012001a0
-  ;; field on-activate uses ~A with a signed load. field on-deactivate uses ~A with a signed load. field on-up uses ~A with a signed load. field on-down uses ~A with a signed load. field on-running uses ~A with a signed load. field on-notice uses ~A with a signed load. field on-wait uses ~A with a signed load. field activate-test uses ~A with a signed load. 
+  ;; field on-activate uses ~A with a signed load. field on-deactivate uses ~A with a signed load. field on-up uses ~A with a signed load. field on-down uses ~A with a signed load. field on-running uses ~A with a signed load. field on-notice uses ~A with a signed load. field on-wait uses ~A with a signed load. field activate-test uses ~A with a signed load.
   (:methods
     (elevator-method-39 () none) ;; 39 ;; (calc-dist-between-points! (_type_ int int) none)
     (elevator-method-41 () none) ;; 41 ;; (init-defaults! (_type_) none)
@@ -34099,7 +34256,7 @@
   :method-count-assert 26
   :size-assert         #x100
   :flag-assert         #x1a00800100
-  ;; field on-notice uses ~A with a signed load. field on-activate uses ~A with a signed load. field on-close uses ~A with a signed load. 
+  ;; field on-notice uses ~A with a signed load. field on-activate uses ~A with a signed load. field on-close uses ~A with a signed load.
   (:methods
     (warp-gate-method-23 () none) ;; 23 ;; (init-skel-and-collide (_type_) none)
     (warp-gate-method-24 () none) ;; 24 ;; (setup-fields (_type_) none)
@@ -34960,7 +35117,7 @@
   :method-count-assert 53
   :size-assert         #x110
   :flag-assert         #x3500900110
-  ;; field on-notice uses ~A with a signed load. field on-hostile uses ~A with a signed load. field on-beaten uses ~A with a signed load. 
+  ;; field on-notice uses ~A with a signed load. field on-hostile uses ~A with a signed load. field on-beaten uses ~A with a signed load.
   (:methods
     (battle-method-21 () none) ;; 21 ;; (battle-state-21 () _type_ :state)
     (battle-method-25 () none) ;; 25 ;; (spawner-blocked? (_type_ battle-spawner) symbol)
@@ -35139,7 +35296,7 @@
   :method-count-assert 9
   :size-assert         #x1c
   :flag-assert         #x90000001c
-  ;; field net-path-node-status is likely a value type. 
+  ;; field net-path-node-status is likely a value type.
   )
 |#
 
@@ -37123,7 +37280,7 @@
   :method-count-assert 15
   :size-assert         #xa0
   :flag-assert         #xf002000a0
-  ;; field activate-script uses ~A with a signed load. field enter-script uses ~A with a signed load. field exit-script uses ~A with a signed load. 
+  ;; field activate-script uses ~A with a signed load. field enter-script uses ~A with a signed load. field exit-script uses ~A with a signed load.
   (:state-methods
     active ;; 14
     )
@@ -39285,7 +39442,7 @@
   :method-count-assert 59
   :size-assert         #x224
   :flag-assert         #x3b01b00224
-  ;; field pause-proc uses ~A with a signed load. 
+  ;; field pause-proc uses ~A with a signed load.
   (:methods
     (target-turret-method-34 () none) ;; 34
     (target-turret-method-35 () none) ;; 35
@@ -40046,7 +40203,7 @@
   :method-count-assert 22
   :size-assert         #x20
   :flag-assert         #x1600000020
-  ;; field nav-node-flag is likely a value type. 
+  ;; field nav-node-flag is likely a value type.
   (:methods
     (nav-node-method-9 () none) ;; 9 ;; (debug-draw (_type_) none)
     (nav-node-method-10 () none) ;; 10 ;; (debug-print (_type_ symbol string) none)
@@ -40350,7 +40507,7 @@
   :method-count-assert 11
   :size-assert         #x20
   :flag-assert         #xb00000020
-  ;; field vis-cell-flag is likely a value type. field vis-cell-flag is likely a value type. 
+  ;; field vis-cell-flag is likely a value type. field vis-cell-flag is likely a value type.
   (:methods
     (vis-cell-method-9 () none) ;; 9 ;; (reset-segment-counts (_type_) none)
     (vis-cell-method-10 () none) ;; 10 ;; (debug-draw (_type_) none)
@@ -40902,7 +41059,7 @@
   :method-count-assert 216
   :size-assert         #x404
   :flag-assert         #xd803900404
-  ;; field citizen-flag is likely a value type. 
+  ;; field citizen-flag is likely a value type.
   (:methods
     (citizen-method-190 () none) ;; 190 ;; (citizen-method-190 (_type_ vector) none)
     (citizen-method-191 () none) ;; 191 ;; (gen-clear-path (_type_) nav-segment)
@@ -41629,7 +41786,7 @@
   :method-count-assert 68
   :size-assert         #x1dc
   :flag-assert         #x44000001dc
-  ;; field penetrate is likely a value type. field penetrate is likely a value type. 
+  ;; field penetrate is likely a value type. field penetrate is likely a value type.
   )
 |#
 
@@ -44885,7 +45042,7 @@
   :method-count-assert 9
   :size-assert         #x44
   :flag-assert         #x900000044
-  ;; field squad-target-flag is likely a value type. 
+  ;; field squad-target-flag is likely a value type.
   )
 |#
 
@@ -44908,7 +45065,7 @@
   :method-count-assert 10
   :size-assert         #x120
   :flag-assert         #xa00000120
-  ;; field squad-alert-flag is likely a value type. 
+  ;; field squad-alert-flag is likely a value type.
   (:methods
     (squad-alert-state-method-9 () none) ;; 9
     )
@@ -45515,7 +45672,7 @@
   :method-count-assert 152
   :size-assert         #x2b8
   :flag-assert         #x98024002b8
-  ;; field vehicle-flag is likely a value type. 
+  ;; field vehicle-flag is likely a value type.
   (:methods
     (vehicle-method-56 () none) ;; 56 ;; (vehicle-state-56 () _type_ :state)
     (vehicle-method-57 () none) ;; 57 ;; (player-control () _type_ :state)
@@ -45919,7 +46076,7 @@
   :method-count-assert 18
   :size-assert         #x60
   :flag-assert         #x1200000060
-  ;; field turret-flag is likely a value type. 
+  ;; field turret-flag is likely a value type.
   (:methods
     (turret-control-method-9 () none) ;; 9 ;; (turret-control-method-9 (_type_ vehicle vector vector) none)
     (turret-control-method-10 () none) ;; 10 ;; (turret-control-method-10 (_type_ vehicle) none)
@@ -46481,7 +46638,7 @@
   :method-count-assert 31
   :size-assert         #x200
   :flag-assert         #x1f01800200
-  ;; field on-start uses ~A with a signed load. field on-stop uses ~A with a signed load. field on-shutdown uses ~A with a signed load. field on-trigger uses ~A with a signed load. 
+  ;; field on-start uses ~A with a signed load. field on-stop uses ~A with a signed load. field on-shutdown uses ~A with a signed load. field on-trigger uses ~A with a signed load.
   (:methods
     (elec-gate-method-24 () none) ;; 24 ;; (elec-gate-method-24 (_type_) none)
     (elec-gate-method-25 () none) ;; 25 ;; (set-palette! (_type_) none)
@@ -48067,7 +48224,7 @@
   :method-count-assert 10
   :size-assert         #xaa
   :flag-assert         #xa000000aa
-  ;; field borrow uses ~A with a signed load. 
+  ;; field borrow uses ~A with a signed load.
   (:methods
     (race-info-method-9 () none) ;; 9 ;; (initialize-mesh (_type_) none)
     )
@@ -49553,7 +49710,7 @@
   :method-count-assert 9
   :size-assert         #x2c
   :flag-assert         #x90000002c
-  ;; field vehicle-wheel-surface-flag is likely a value type. 
+  ;; field vehicle-wheel-surface-flag is likely a value type.
   )
 |#
 
@@ -50713,7 +50870,7 @@
   :method-count-assert 9
   :size-assert         #x20
   :flag-assert         #x900000020
-  ;; field check-too-far uses ~A with a signed load. 
+  ;; field check-too-far uses ~A with a signed load.
   )
 |#
 
@@ -50736,7 +50893,7 @@
   :method-count-assert 9
   :size-assert         #x30
   :flag-assert         #x900000030
-  ;; field default-check-too-far uses ~A with a signed load. 
+  ;; field default-check-too-far uses ~A with a signed load.
   )
 |#
 
@@ -50916,7 +51073,7 @@
   :method-count-assert 9
   :size-assert         #x38
   :flag-assert         #x900000038
-  ;; field default-check-too-far uses ~A with a signed load. 
+  ;; field default-check-too-far uses ~A with a signed load.
   )
 |#
 
@@ -52046,7 +52203,7 @@
   :method-count-assert 209
   :size-assert         #x4e0
   :flag-assert         #xd1046004e0
-  ;; field gekko-flag is likely a value type. 
+  ;; field gekko-flag is likely a value type.
   (:methods
     (gekko-method-202 () none) ;; 202
     (gekko-method-203 () none) ;; 203
@@ -54191,7 +54348,7 @@
   :method-count-assert 23
   :size-assert         #xe4
   :flag-assert         #x17007000e4
-  ;; field open-test uses ~A with a signed load. 
+  ;; field open-test uses ~A with a signed load.
   (:methods
     (precura-door-a-method-22 () none) ;; 22
     )
@@ -54406,7 +54563,7 @@
   :method-count-assert 30
   :size-assert         #x1b4
   :flag-assert         #x1e014001b4
-  ;; field open-test uses ~A with a signed load. 
+  ;; field open-test uses ~A with a signed load.
   (:state-methods
     open ;; 20
     )
@@ -55451,7 +55608,7 @@
   :method-count-assert 45
   :size-assert         #x15c
   :flag-assert         #x2d00e0015c
-  ;; field on-activate uses ~A with a signed load. 
+  ;; field on-activate uses ~A with a signed load.
   (:methods
     (wstd-arena-plat-method-43 () none) ;; 43
     (wstd-arena-plat-method-44 () none) ;; 44
@@ -55555,7 +55712,7 @@
   :method-count-assert 9
   :size-assert         #x28
   :flag-assert         #x900000028
-  ;; field textures uses ~A with a signed load. 
+  ;; field textures uses ~A with a signed load.
   )
 |#
 
@@ -56316,7 +56473,7 @@
   :method-count-assert 207
   :size-assert         #x2e0
   :flag-assert         #xcf026002e0
-  ;; field mantis-flag is likely a value type. 
+  ;; field mantis-flag is likely a value type.
   (:methods
     (mantis-method-195 () none) ;; 195
     (mantis-method-199 () none) ;; 199
@@ -60784,7 +60941,7 @@
   :method-count-assert 23
   :size-assert         #xe0
   :flag-assert         #x17006000e0
-  ;; field open-test uses ~A with a signed load. 
+  ;; field open-test uses ~A with a signed load.
   (:methods
     (precur-door-a-method-22 () none) ;; 22
     )
@@ -64748,7 +64905,7 @@
   :method-count-assert 9
   :size-assert         #x18
   :flag-assert         #x900000018
-  ;; field param uses ~A with a signed load. 
+  ;; field param uses ~A with a signed load.
   )
 |#
 

@@ -11,7 +11,7 @@
 #include "decompiler/Disasm/Register.h"
 
 namespace decompiler {
-DecompilerTypeSystem::DecompilerTypeSystem(GameVersion version) {
+DecompilerTypeSystem::DecompilerTypeSystem(GameVersion version) : m_version(version) {
   ts.add_builtin_types(version);
 }
 
