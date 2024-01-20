@@ -236,17 +236,17 @@
 ;; (define-extern - function) ;; (function int int int)
 ;; (define-extern * function) ;; (function int int int)
 ;; (define-extern / function) ;; (function int int int)
-;; (define-extern ash function) ;; (function int int int)
-;; (define-extern mod function) ;; (function int int int)
-;; (define-extern rem function) ;; (function int int int)
-;; (define-extern abs function) ;; (function int int)
-;; (define-extern min function) ;; (function int int int)
-;; (define-extern max function) ;; (function int int int)
-;; (define-extern logior function) ;; (function int int int)
-;; (define-extern logand function) ;; (function int int int)
-;; (define-extern lognor function) ;; (function int int int)
-;; (define-extern logxor function) ;; (function int int int)
-;; (define-extern lognot function) ;; (function int int)
+(define-extern ash (function int int int))
+(define-extern mod (function int int int))
+(define-extern rem (function int int int))
+(define-extern abs (function int int))
+(define-extern min (function int int int))
+(define-extern max (function int int int))
+(define-extern logior (function int int int))
+(define-extern logand (function int int int))
+(define-extern lognor (function int int int))
+(define-extern logxor (function int int int))
+(define-extern lognot (function int int))
 ;; (define-extern false-func function) ;; (function symbol)
 ;; (define-extern true-func function) ;; (function symbol)
 (define-extern format (function _varargs_ object))
@@ -928,27 +928,22 @@
 ;; math                           ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (deftype float-type (uint32)
-;;   ()
-;;   :flag-assert #x900000004
-;;   )
+(deftype float-type (uint32)
+  ()
+  )
 
-;; (deftype rgba (uint32)
-;;   ()
-;;   :flag-assert #x900000004
-;;   )
+(deftype rgba (uint32)
+  ()
+  )
 
-;; (deftype xyzw (uint128)
-;;   ()
-;;   :flag-assert #x900000010
-;;   )
+(deftype xyzw (uint128)
+  ()
+  )
 
-;; (deftype xyzwh (uint128)
-;;   ()
-;;   :flag-assert #x900000010
-;;   )
+(deftype xyzwh (uint128)
+  ()
+  )
 
-#|
 (deftype random-generator (basic)
   ((seed uint32  :offset-assert 4)
    )
@@ -956,53 +951,102 @@
   :size-assert         #x8
   :flag-assert         #x900000008
   )
-|#
 
-;; (define-extern truncate function) ;; (function float float)
-;; (define-extern round function)
-;; (define-extern floor function) ;; (function float float)
-;; (define-extern ceil function) ;; (function float float)
-;; (define-extern integral? function) ;; (function float symbol)
-;; (define-extern fractional-part function) ;; (function float float)
-;; (define-extern odd? function) ;; (function int symbol)
-;; (define-extern even? function) ;; (function int symbol)
-;; (define-extern sawtooth-wave function) ;; (function float float)
-;; (define-extern triangle-wave function) ;; (function float float)
-;; (define-extern log-x-plus-1-order9 function) ;; (function float float)
-;; (define-extern logf function) ;; (function float float)
-;; (define-extern log2f function) ;; (function float float)
-;; (define-extern exp-slead object) ;; (pointer float)
-;; (define-extern exp-strail object) ;; (pointer float)
-;; (define-extern exp function) ;; (function float float)
-;; (define-extern pow function) ;; (function float float float)
-;; (define-extern print-exp function) ;; (function float none)
-;; (define-extern print-time function) ;; (function object time-frame none)
-;; (define-extern log2 function) ;; (function int int)
-(define-extern seek (function float float float float))
-;; (define-extern seek-ease function) ;; (function float float float float float float)
-;; (define-extern seek-ease-in-out function) ;; (function float float float float float float float float)
-(define-extern lerp (function float float float float))
-;; (define-extern lerp-scale-old function) ;; (function float float float float float float)
-;; (define-extern lerp-scale function) ;; (function float float float float float float)
-;; (define-extern lerp-scale-clamp function)
-;; (define-extern lerp-clamp function) ;; (function float float float float)
-;; (define-extern rgba-lerp function) ;; (function rgba rgba rgba rgba)
-;; (define-extern seekl function) ;; (function int int int int)
-;; (define-extern rand-vu-init function) ;; (function float float)
-;; (define-extern rand-vu function) ;; (function float)
-;; (define-extern rand-vu-nostep function) ;; (function float)
-;; (define-extern rand-vu-float-range function) ;; (function float float float)
-;; (define-extern rand-vu-percent? function) ;; (function float symbol)
-;; (define-extern rand-vu-int-range function) ;; (function int int int)
-;; (define-extern rand-vu-int-count function) ;; (function int int)
-;; (define-extern rand-vu-int-count-excluding function) ;; (function int int int)
-;; (define-extern rand-vu-int-range-exclude function) ;; (function int int int int)
-;; (define-extern *random-generator* object) ;; random-generator
-;; (define-extern rand-uint31-gen function) ;; (function random-generator uint)
-;; (define-extern cube-root function) ;; (function float float)
-;; (define-extern int-noise function) ;; (function int float)
-;; (define-extern smooth-step function) ;; (function float float)
-;; (define-extern smooth-interp function) ;; (function float float float float float float)
+(define-extern truncate
+  "Round (toward zero) to an integer.
+   @param arg0 float to truncate"
+   (function float float))
+(define-extern round "Round to the nearest integer" (function float float))
+(define-extern floor "Round (down) to an integer" (function float float))
+(define-extern ceil "Round (up) to an integer" (function float float))
+(define-extern integral? "Is this number an integer?" (function float symbol))
+(define-extern fractional-part "Get the fractional part of a float." (function float float))
+(define-extern odd? "Is the number odd?" (function int symbol))
+(define-extern even? "Is the number even?" (function int symbol))
+(define-extern sawtooth-wave "Sample a sawtooth with period 1. In range (0, 1)" (function float float))
+(define-extern triangle-wave
+  "Sample a triangle wave. Period is 4, in range (-1, 1) (so slope is 1 or -1)."
+  (function float float))
+(define-extern log-x-plus-1-order9
+  "Fast approximation of ln(x + 1). Probably only accurate for x in [0, 1]."
+  (function float float))
+(define-extern logf "Natural log." (function float float))
+(define-extern log2f "Log base 2." (function float float))
+(define-extern exp-slead (pointer float))
+(define-extern exp-strail (pointer float))
+(define-extern exp "Compute e^x." (function float float))
+(define-extern pow "Compute arg0^arg1" (function float float float))
+(define-extern print-exp "Print in the format AeB where A is in the range (1, 10)" (function float none))
+(define-extern print-time "Print a [[time-frame]] as h:mm:ss." (function object time-frame none))
+(define-extern log2 "Log base 2." (function int int))
+(define-extern seek "Move arg0 toward arg1 by at most arg2." (function float float float float))
+(define-extern seek-ease
+  "Move arg0 toward arg1, and slow down before reaching the end.
+   When farther than arg3 away, move by at most arg2.
+   When closer than arg3, linearly ramp down the movement amount from arg2 to 0 but no lower than arg4."
+  (function float float float float float float))
+(define-extern seek-ease-in-out
+  "Move arg0 toward arg2, and slow down at the start and end.
+   When within arg4 of arg1 (at the beginning of movement), ramp up speed, with a minimum speed of arg6
+   When within arg5 of arg2 (at the end of movement), ramp down speed, with a minimum speed of arg5
+   Normally, move at most arg3"
+  (function float float float float float float float float))
+(define-extern lerp "Linearly interpolate between arg0 and arg1." (function float float float float))
+(define-extern lerp-scale-old
+  "Linearly remap arg2 in [arg3, arg4] to [arg0, arg1].
+   This is the jak 1 implementation, which I claimed was a bad implementation..."
+  (function float float float float float float))
+(define-extern lerp-scale
+  "Linearly remap arg2 in [arg3, arg4] to [arg0, arg1].
+   More efficient than the -old version."
+  (function float float float float float float))
+(define-extern lerp-scale-clamp
+  "Clamp the input, then linearly remap arg2 in [arg3, arg4] to [arg0, arg1]."
+  (function float float float float float float))
+(define-extern lerp-clamp
+  "Linearly interpolate between arg0 and arg1. arg2 is clamped to [0, 1]"
+  (function float float float float))
+(define-extern rgba-lerp (function rgba rgba rgba rgba))
+(define-extern seekl "Move arg0 toward arg1, by at most arg2." (function int int int int))
+(define-extern rand-vu-init "Initialize the VU0 random generator." (function float float))
+(define-extern rand-vu "Get a random number in [0, 1) and advance the random generator." (function float))
+(define-extern rand-vu-nostep
+  "Get the number currently in the random generator.
+   This will be equal to the last call of (rand-vu).
+   This will not update the random generator."
+  (function float))
+(define-extern rand-vu-float-range "Get a random float in between arg0 and arg1." (function float float float))
+(define-extern rand-vu-percent? "Get a boolean that's true with the given probability (in 0, 1)." (function float symbol))
+(define-extern rand-vu-int-range "Get an integer in the given range (inclusive)." (function int int int))
+(define-extern rand-vu-int-count "Get an integer in the range [0, max)." (function int int))
+(define-extern rand-vu-int-count-excluding
+  "Get an integer in the range [0, arg0).
+   If bit n is set in arg1, exclude this value from being returned."
+  (function int int int))
+(define-extern rand-vu-int-range-exclude
+  "Get an integer in the range [0, arg0), excluding arg2.
+   Note that this doesn't use bits like rand-vu-int-count-excluding."
+  (function int int int int))
+(define-extern *random-generator* random-generator)
+(define-extern rand-uint31-gen
+  "Generate a supposedly random integer.
+   Note, this might not quite be right.
+   But the highest bit is always zero, like it says
+  and it looks kinda random to me."
+  (function random-generator uint))
+(define-extern cube-root "Cube root with cool trick that I don't understand." (function float float))
+(define-extern int-noise "Generate random-ish floats in range -1, 1." (function int float))
+(define-extern smooth-step
+  "Interpolate between 0, 1 with a cubic polynomial.
+   These are picked so f(0) = 0, f(1) = 1, f'(0) = f'(1) = 0."
+  (function float float))
+(define-extern smooth-interp
+  "Remap arg2 from (arg3, arg4) to (arg0, arg1), using cubic interpolation.
+   Satisfies:
+    - f(arg3) = arg0
+    - f(arg4) = arg1
+    - f'(arg3) = f'(arg4) = 0"
+  (function float float float float float float))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; vector-h                       ;;
@@ -1018,11 +1062,11 @@
   :size-assert         #xd
   :flag-assert         #xd0000000d
   (:methods
-    (new (symbol type int) _type_) ;; 0
-    (get-bit (_type_ int) symbol) ;; 9
-    (clear-bit (_type_ int) int) ;; 10
-    (set-bit (_type_ int) int) ;; 11
-    (clear-all! (_type_) _type_) ;; 12
+    (new "Allocate a new bit-array with room arg0 bits." (symbol type int) _type_) ;; 0
+    (get-bit "Get the nth bit as a boolean." (_type_ int) symbol) ;; 9
+    (clear-bit "Set the nth bit to 0." (_type_ int) int) ;; 10
+    (set-bit "Set the nth bit to 1." (_type_ int) int) ;; 11
+    (clear-all! "Set all bits to 0." (_type_) _type_) ;; 12
     )
   )
 
@@ -1387,15 +1431,22 @@
 (define-extern *y-vector* vector)
 (define-extern *z-vector* vector)
 (define-extern *up-vector* vector)
-(define-extern vector-dot (function vector vector float))
-(define-extern vector-dot-vu (function vector vector float))
-(define-extern vector4-dot (function vector vector float))
-(define-extern vector4-dot-vu (function vector vector float))
-(define-extern vector+! (function vector vector vector vector))
-(define-extern vector-! (function vector vector vector vector))
-(define-extern vector-zero! (function vector vector))
-(define-extern vector-reset! (function vector vector))
-(define-extern vector-copy! (function vector vector vector))
+(define-extern vector-dot
+  "Take the dot product of two vectors.
+   Only does the x, y, z compoments.
+   Originally handwritten assembly to space out loads and use FPU accumulator"
+  (function vector vector float))
+(define-extern vector-dot-vu "Take the dot product (xyz only). Using VU0." (function vector vector float))
+(define-extern vector4-dot
+  "Take the dot product of two vectors.
+   Does the x, y, z, and w compoments"
+  (function vector vector float))
+(define-extern vector4-dot-vu "Take the dot product (xyzw). Using VU0." (function vector vector float))
+(define-extern vector+! "Set dst = a + b. The w component of dst is set to 0." (function vector vector vector vector))
+(define-extern vector-! "Set dst = a - b. The w componenent of dst is set to 0." (function vector vector vector vector))
+(define-extern vector-zero! "Set xyzw to 0." (function vector vector))
+(define-extern vector-reset! "Set vector to <0,0,0,1>." (function vector vector))
+(define-extern vector-copy! "Copy arg1 to arg0." (function vector vector vector))
 (define-extern vector-length< (function vector float symbol))
 (define-extern vector-length> (function vector float symbol))
 (define-extern *zero-vector* vector)
@@ -1417,18 +1468,24 @@
   :size-assert         #x20
   :flag-assert         #x1500000020
   (:methods
-    (add-spheres! (_type_ (inline-array sphere) int) int) ;; 9
-    (add-box! (_type_ bounding-box) int) ;; 10
-    (add-point! (_type_ vector) none) ;; 11
-    (intersects-line-segment? (_type_ vector vector) symbol) ;; 12
-    (set-from-point-offset! (_type_ vector vector) none) ;; 13
-    (set-from-point-offset-pad! (_type_ vector vector float) int) ;; 14
-    (set-to-point! (_type_ vector) none) ;; 15
-    (set-from-sphere! (_type_ sphere) none) ;; 16
-    (set-from-spheres! (_type_ (inline-array sphere) int) int) ;; 17
-    (get-bounding-sphere (_type_ vector) vector) ;; 18
-    (inside-xyz? (bounding-box vector) symbol) ;; 19
-    (inside-xz? (bounding-box vector) symbol) ;; 20
+    (add-spheres! "Add count spheres." (_type_ (inline-array sphere) int) int) ;; 9
+    (add-box! "Expand the box as needed to contain the given box." (_type_ bounding-box) int) ;; 10
+    (add-point! "Expand the box as needed to contain the given point." (_type_ vector) none) ;; 11
+    (intersects-line-segment?
+      "Check intersection in xz plane, using liang-barsky. Not sure if this actually
+       a useful check or not..."
+      (_type_ vector vector) symbol) ;; 12
+    (set-from-point-offset! "Set to the smallest box containing arg0, (arg0 + arg1)" (_type_ vector vector) none) ;; 13
+    (set-from-point-offset-pad! "Set the box to contain arg0, arg0 + offset, with some padding." (_type_ vector vector float) int) ;; 14
+    (set-to-point! "Set the box to be a single point." (_type_ vector) none) ;; 15
+    (set-from-sphere! "Set the box to contain a single sphere." (_type_ sphere) none) ;; 16
+    (set-from-spheres!
+      "Reset box to hold the given spheres.
+       Note: this implementation could be optimized."
+      (_type_ (inline-array sphere) int) int) ;; 17
+    (get-bounding-sphere "Get a bounding sphere for a bounding box." (_type_ vector) vector) ;; 18
+    (inside-xyz? "Is the point in the box?" (bounding-box vector) symbol) ;; 19
+    (inside-xz? "Is the point in the box? Check xz only." (bounding-box vector) symbol) ;; 20
     )
   )
 
@@ -1472,6 +1529,9 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (deftype matrix (structure)
+  "A 4x4 matrix, stored in row-major order.
+   some, but not all, functions assume that a matrix is an affine transform.
+   others assume that the rotation has no scale or shear (and that its inverse is its transpose)."
   ((data   float   16      :offset-assert 0 :score -2) ;; guessed by decompiler
    (vector vector  4       :offset 0 :score -1) ;; guessed by decompiler
    (quad   uint128 4       :offset 0) ;; guessed by decompiler
@@ -1484,11 +1544,17 @@
   :size-assert         #x40
   :flag-assert         #xa00000040
   (:methods
-    (transform-vectors! (_type_ (inline-array vector) (inline-array vector) int) none) ;; 9
+    (transform-vectors!
+      "Transform many vectors. This acts like w = 1, even if it isn't. The value of w is copied."
+      (_type_ (inline-array vector) (inline-array vector) int) none) ;; 9
     )
   )
 
 (deftype matrix3 (structure)
+  "A 3x3 matrix, stored in row-major order.
+   NOTE: the rows each have an extra 4-bytes of padding,
+   so this is really a 3x4 matrix.
+   This type is rarely used."
   ((data   float   12 :offset-assert 0 :score -1) ;; guessed by decompiler
    (vector vector  3  :inline :offset 0) ;; guessed by decompiler
    (quad   uint128 3  :offset 0) ;; guessed by decompiler
@@ -1499,6 +1565,11 @@
   )
 
 (deftype matrix4h (structure)
+  "A matrix stored using 16-bit integers.
+   Note that these usually have different scaling for the 4th row which
+   contains the translation in an affine transform.
+   So you generally should not unpack these to floats without knowing where they came from
+   and how they were originally packed (for example, in tie/shrub)."
   ((data     int16    16 :offset-assert 0 :score -1) ;; guessed by decompiler
    (vector4h vector4h 4  :offset 0) ;; guessed by decompiler
    (long     int64    4  :offset 0) ;; guessed by decompiler
@@ -1508,7 +1579,7 @@
   :flag-assert         #x900000020
   )
 
-(define-extern matrix-copy! (function matrix matrix matrix))
+(define-extern matrix-copy! "Copy arg1 to arg0" (function matrix matrix matrix))
 (define-extern matrix<-vector-yz-exact! (function matrix vector vector matrix))
 (define-extern matrix<-vector-yz! (function matrix vector vector matrix))
 (define-extern matrix<-vector-z! (function matrix vector matrix))
@@ -1518,6 +1589,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (deftype quaternion (structure)
+  "Quaternion. Stored in xyzw order."
   ((data float   4       :offset-assert 0 :score -1) ;; guessed by decompiler
    (x    float           :offset        0)
    (y    float           :offset        4)
@@ -1538,13 +1610,20 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (deftype euler-angles (vector)
+  "Just uses the same xyzw and data array as vector.
+   The `w` stores an integer that seems to have
+   bitfields for... something? Like maybe the order?
+   Euler angles are mostly unused, and the code is a bit of disaster."
   ()
   :method-count-assert 9
   :size-assert         #x10
   :flag-assert         #x900000010
   )
 
-(define-extern EulSafe (array int32))
+(define-extern EulSafe
+  "Maybe euler angle storage orders?
+   What is this naming convention?"
+  (array int32))
 (define-extern EulNext (array int32))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -1552,6 +1631,10 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (deftype transform (structure)
+  "Transformation. w components of vectors should be 1.0
+   This can represent any rotation, translation, and scaling.
+   Note that the scaling is applied before rotation
+   (meaning it scales along the axes of the pre-transformed frame)."
   ((trans vector :inline :offset-assert 0)
    (rot   vector :inline :offset-assert 16)
    (scale vector :inline :offset-assert 32)
@@ -1562,6 +1645,9 @@
   )
 
 (deftype trs (basic)
+  "Like transform, but it's a basic.
+   Note that the trsq child type overrides this rotation with a quaternion.
+   usage of the plain trs is very limited, at least in Jak 1."
   ((trans vector :inline :offset-assert 16)
    (rot   vector :inline :offset-assert 32)
    (scale vector :inline :offset-assert 48)
@@ -1670,6 +1756,15 @@
   )
 
 (deftype trsqv (trsq)
+  "A transform with:
+  - type information (child of [[basic]])
+  - rotation stored as quaternion
+  - velocity information.
+  This is a very commonly used type to represent the position of an in-game object.
+  The `root` of a process-drawable (the parent 'in-game object' type) is a [[trsqv]].
+  Additionally, the collision system uses [[trsqv]] as the parent type for foreground
+  collision objects ([[collide-shape]], [[collide-shape-moving]]).
+  As a result, this type has a lot of weird methods and extra stuff hidden in it."
   ((pause-adjust-distance meters             :offset 4)
    (nav-radius            meters             :offset 8)
    (transv                vector     :inline :offset-assert 64)
@@ -1697,8 +1792,14 @@
     (point-toward-point-clear-roll-pitch! (_type_ vector) quaternion) ;; 20
     (rot->dir-targ! (_type_) quaternion) ;; 21
     (y-angle (_type_) float) ;; 22
-    (global-y-angle-to-point (_type_ vector) float) ;; 23
-    (relative-y-angle-to-point (_type_ vector) float) ;; 24
+    (global-y-angle-to-point
+      "Get the angle in the xz plane from the position of this trsqv to the point arg0
+       (ignores our current yaw)."
+      (_type_ vector) float) ;; 23
+    (relative-y-angle-to-point
+      "Get the y angle between the current orientation and arg0
+       (how much we'd have to yaw to point at arg0)."
+      (_type_ vector) float) ;; 24
     (roll-relative-to-gravity (_type_) float) ;; 25
     (set-and-limit-velocity (_type_ int vector float) trsqv) ;; 26
     (get-quaternion (_type_) quaternion) ;; 27
@@ -1719,67 +1820,147 @@
   :flag-assert         #x900000008
   )
 
-(define-extern box-vector-enside? (function bounding-box vector symbol))
-(define-extern box-vector-inside? (function bounding-box vector symbol))
-(define-extern liang-barsky-line-clipt (function liang-barsky-line-clip-params float float symbol))
+(define-extern box-vector-enside? "Is the point in the box? On the edge doesn't count." (function bounding-box vector symbol))
+(define-extern box-vector-inside? "Is the point in the box? On the edge counts." (function bounding-box vector symbol))
+(define-extern liang-barsky-line-clipt "Clip test in 1 dimension. Is arg1 in arg2?" (function liang-barsky-line-clip-params float float symbol))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; matrix                         ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(define-extern matrix-identity! (function matrix matrix))
+(define-extern matrix-identity! "Set dst to the identity matrix." (function matrix matrix))
 (define-extern *identity-matrix* matrix)
 (define-extern *hermite-matrix* matrix)
-(define-extern matrix+! (function matrix matrix matrix matrix))
-(define-extern matrix-! (function matrix matrix matrix matrix))
-(define-extern matrix*! (function matrix matrix matrix matrix))
-(define-extern matrixp*! (function matrix matrix matrix matrix))
-(define-extern vector-matrix*! (function vector vector matrix vector))
+(define-extern matrix+!
+  "Set dst = src1 + src2. It is okay for any arguments to be the same data.
+   This is not an efficient implementation."
+  (function matrix matrix matrix matrix))
+(define-extern matrix-!
+  "Set dst = src1 - src1. It is okay for any arugments to be the same data.
+   This is not an efficient implementation."
+  (function matrix matrix matrix matrix))
+(define-extern matrix*!
+  "Set dst = src1 * src2. It is okay for any arguments to be the same data.
+   This is a moderately efficient implementation."
+  (function matrix matrix matrix matrix))
+(define-extern matrixp*!
+  "Set dst = src1 * src2. NOTE: this function is a wrapper around matrix*!
+   that adds no additional functionality. It seems to be a leftover from
+   a time when matrix*! wasn't safe to use in place. This is unused."
+  (function matrix matrix matrix matrix))
+(define-extern vector-matrix*! "Set dst = vec * mat. dst may be equal to src." (function vector vector matrix vector))
 (define-extern vector-norm-matrix*! (function vector vector matrix vector))
-(define-extern vector-rotate*! (function vector vector matrix vector))
-(define-extern vector3s-matrix*! (function vector3s vector3s matrix vector3s))
-(define-extern vector3s-rotate*! (function vector3s vector3s matrix vector3s))
-(define-extern matrix-transpose! (function matrix matrix matrix))
-(define-extern matrix-inverse-of-rot-trans! (function matrix matrix matrix))
-(define-extern matrix-4x4-inverse! (function matrix matrix matrix))
-(define-extern matrix-translate! (function matrix vector matrix))
-(define-extern matrix-translate+! (function matrix matrix vector matrix))
-(define-extern matrix-scale! (function matrix vector matrix))
-(define-extern scale-matrix! (function matrix vector matrix matrix))
-(define-extern matrix-inv-scale! (function matrix vector matrix))
-(define-extern column-scale-matrix! (function matrix vector matrix matrix))
-(define-extern matrix-rotate-x! (function matrix float matrix))
-(define-extern matrix-rotate-y! (function matrix float matrix))
-(define-extern matrix-rotate-z! (function matrix float matrix))
-(define-extern matrix-rotate-zyx! (function matrix vector matrix))
-(define-extern matrix-rotate-xyz-2! (function matrix vector matrix))
-(define-extern matrix-rotate-xyz! (function matrix vector matrix))
-(define-extern matrix-rotate-zxy! (function matrix vector matrix))
-(define-extern matrix-rotate-yxz! (function matrix vector matrix))
-(define-extern matrix-rotate-yzx! (function matrix vector matrix))
-(define-extern matrix-rotate-yxy! (function matrix vector matrix))
-(define-extern matrix-rotate-yx! (function matrix float float matrix))
-(define-extern matrix-axis-sin-cos-vu! (function matrix vector float float none))
-(define-extern matrix-axis-sin-cos! (function matrix vector float float matrix))
-(define-extern matrix-axis-angle! (function matrix vector float matrix))
-(define-extern matrix-lerp! (function matrix matrix matrix float matrix))
-(define-extern matrix-3x3-determinant (function matrix float))
-(define-extern matrix3-determinant (function matrix float))
-(define-extern matrix-3x3-inverse! (function matrix matrix matrix))
-(define-extern matrix-3x3-inverse-transpose! (function matrix matrix matrix))
-(define-extern matrix3-inverse-transpose! (function matrix matrix matrix))
-(define-extern matrix-3x3-normalize! (function matrix matrix matrix))
-(define-extern matrix-4x4-determinant (function matrix float))
-(define-extern matrix-4x4-inverse-transpose! (function matrix matrix matrix))
-(define-extern matrix-y-angle (function matrix float))
-(define-extern matrix->trans (function matrix vector vector))
-(define-extern matrix<-trans (function matrix vector matrix))
-(define-extern matrix->scale (function matrix vector vector))
-(define-extern matrix<-scale (function matrix vector matrix))
-(define-extern matrix->quat (function matrix quaternion quaternion))
-(define-extern matrix<-quat (function matrix quaternion matrix))
-(define-extern matrix->transformq (function transformq matrix transformq))
-(define-extern matrix-mirror! (function matrix vector vector matrix))
+(define-extern vector-rotate*!
+  "Set dst to be the input vector rotated by the rotation part of mat.
+   The input matrix should be a homogeneous transform with a rotation matrix as its upper-left 3x3.
+   dst may be equal to src."
+  (function vector vector matrix vector))
+(define-extern vector3s-matrix*!
+  "Set dst to be ([src 1.0] * mat).xyz.  Doesn't touch the w of dst.
+   dst and vec can be the same memory"
+  (function vector3s vector3s matrix vector3s))
+(define-extern vector3s-rotate*!
+  "Set dst to vec rotated by the rotation in the homogeneous transform mat.
+   mat should not have a scale/shear (the upper 3x3 should be a pure rotation)."
+  (function vector3s vector3s matrix vector3s))
+(define-extern matrix-transpose! "Set dst = src^T. src and dst can be the same." (function matrix matrix matrix))
+(define-extern matrix-inverse-of-rot-trans!
+  "Set dst = src^-1, assuming src is a homogeneous tranform with only rotation/translation.
+   NOTE: THIS FUNCTION REQUIRES dst != src"
+  (function matrix matrix matrix))
+(define-extern matrix-4x4-inverse!
+  "Invert a 4x4 matrix. This assumes that the input is a homogeneous transform.
+   Src and dst can be the same."
+  (function matrix matrix matrix))
+(define-extern matrix-translate! "Set dst to a homogeneous transform with only a translation of trans." (function matrix vector matrix))
+(define-extern matrix-translate+!
+  "Add the given translation to the translation of homogenous transform mat src
+   and store in dst.  It is okay for dst = src."
+  (function matrix matrix vector matrix))
+(define-extern matrix-scale!
+  "Set dst to a homogenous transform with only a scale. The x,y,z components
+   of scale become the x,y,z scaling factors"
+  (function matrix vector matrix))
+(define-extern scale-matrix!
+  "Scale an existing matrix. Okay for dst = src. The scaling is applied per row.
+   This means the x component of scale is used to scale the first row of src.
+   The w component of scale is used."
+  (function matrix vector matrix matrix))
+(define-extern matrix-inv-scale!
+  "Set dst to a homogeneous transform with only a scale.
+   The x,y,z components of scale are inverted and used as the x,y,z scaling factors"
+  (function matrix vector matrix))
+(define-extern column-scale-matrix!
+  "Scale an existing matrix. Okay for dst = src. The scaling is applied column-wise.
+   Meaning the x component of scale will scale the first column of src."
+  (function matrix vector matrix matrix))
+(define-extern matrix-rotate-x!
+  "Set dst to a homogeneous transform matrix for a rotation around the x-axis (degrees)."
+  (function matrix float matrix))
+(define-extern matrix-rotate-y!
+  "Set dst to a homoegeneous transform matrix for a rotation around the y axis (degrees)."
+  (function matrix float matrix))
+(define-extern matrix-rotate-z!
+  "Set dst to a homogeneous transform matrix for a rotation around the z-axis (degrees)."
+  (function matrix float matrix))
+(define-extern matrix-rotate-zyx! "Rotate in z,y,x order." (function matrix vector matrix))
+(define-extern matrix-rotate-xyz-2!
+  "Jak 1 version of matrix-rotate-xyz. Slower than the one below."
+  (function matrix vector matrix))
+(define-extern matrix-rotate-xyz! "Rotate in x,y,z order." (function matrix vector matrix))
+(define-extern matrix-rotate-zxy! "Rotate in z,x,y order." (function matrix vector matrix))
+(define-extern matrix-rotate-yxz! "Rotate in y,x,z order." (function matrix vector matrix))
+(define-extern matrix-rotate-yzx! "Rotate in y,z,x order." (function matrix vector matrix))
+(define-extern matrix-rotate-yxy!
+  "Rotate. I believe in yxy order? Compared to the other rotations, this one
+   is quite a bit more optimized and avoid repeated trig operations."
+  (function matrix vector matrix))
+(define-extern matrix-rotate-yx! "Rotate by y then x." (function matrix float float matrix))
+(define-extern matrix-axis-sin-cos-vu!
+  "Create an axis-angle rotation matrix. But given the sin/cos of the angle. Uses the VU."
+  (function matrix vector float float none))
+(define-extern matrix-axis-sin-cos!
+  "Create an axis-angle rotation matrix. But given the sin/cos of the angle."
+  (function matrix vector float float matrix))
+(define-extern matrix-axis-angle! "Create an axis-angle rotation matrix." (function matrix vector float matrix))
+(define-extern matrix-lerp! "Lerp an entire matrix, coefficient-wise." (function matrix matrix matrix float matrix))
+(define-extern matrix-3x3-determinant "Compute the determinant of a 3x3 matrix." (function matrix float))
+(define-extern matrix3-determinant "Unused. Not sure if this has limitations compared to the above version." (function matrix float))
+(define-extern matrix-3x3-inverse!
+  "Compute the inverse of a 3x3 matrix. Not very efficient.
+   Requires src != dst."
+  (function matrix matrix matrix))
+(define-extern matrix-3x3-inverse-transpose!
+  "Invert and transpose.
+   Requires dst != src."
+  (function matrix matrix matrix))
+(define-extern matrix3-inverse-transpose!
+  "Unused. Not sure if this has limitations compared to other version."
+  (function matrix matrix matrix))
+(define-extern matrix-3x3-normalize! "Unused." (function matrix matrix matrix))
+(define-extern matrix-4x4-determinant
+  "Take the determinant of a 4x4 matrix, but this is wrong."
+  (function matrix float))
+(define-extern matrix-4x4-inverse-transpose!
+  "Invert and transpose an entire 4x4. I think has no restrictions, other than dst != src. Unused.
+   The answer is wrong. The determinant function is wrong."
+  (function matrix matrix matrix))
+(define-extern matrix-y-angle
+  "If mat has its upper 3x3 as a rotation, gets the y axis rotation."
+  (function matrix float))
+(define-extern matrix->trans "Multiply xyz by 1/w."(function matrix vector vector))
+(define-extern matrix<-trans "Set the translation." (function matrix vector matrix))
+(define-extern matrix->scale "Get the scale of a matrix." (function matrix vector vector))
+(define-extern matrix<-scale "Set the scale of a matrix by rescaling." (function matrix vector matrix))
+(define-extern matrix->quat
+  "Convert matrix to quaternion, works for matrix with scale.
+   unlike matrix->quaternion."
+  (function matrix quaternion quaternion))
+(define-extern matrix<-quat "Modify the rotation part of a transform." (function matrix quaternion matrix))
+(define-extern matrix->transformq
+  "Create a transformq from a matrix. Allowing scale, etc."
+  (function transformq matrix transformq))
+(define-extern matrix-mirror! "Make a matrix that mirrors. Arguments are unclear." (function matrix vector vector matrix))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; matrix-compose                 ;;
@@ -1803,9 +1984,13 @@
 ;; transform                      ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(define-extern transform-matrix-calc! (function transform matrix matrix))
-(define-extern transform-matrix-parent-calc! (function transform matrix vector matrix))
-(define-extern trs-matrix-calc! (function trs matrix matrix))
+(define-extern transform-matrix-calc!
+  "Convert a transform to matrix. Not efficient, and the output is the second arg."
+  (function transform matrix matrix))
+(define-extern transform-matrix-parent-calc!
+  "Convert a transform to a matrix, applying an inverse scaling."
+  (function transform matrix vector matrix))
+(define-extern trs-matrix-calc! "Convert a trs to a matrix." (function trs matrix matrix))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; quaternion                     ;;
@@ -1813,125 +1998,265 @@
 
 ;; quaternion is already defined!
 
-(define-extern quaternion-axis-angle! (function quaternion float float float float quaternion))
-(define-extern quaternion-vector-angle! (function quaternion vector float quaternion))
-(define-extern vector-angle<-quaternion! (function vector quaternion vector))
-(define-extern quaternion-look-at! (function quaternion vector vector quaternion))
-(define-extern quaternion-zero! (function quaternion quaternion))
-(define-extern quaternion-identity! (function quaternion quaternion))
-(define-extern quaternion-i! (function quaternion quaternion))
-(define-extern quaternion-j! (function quaternion quaternion))
-(define-extern quaternion-k! (function quaternion quaternion))
-(define-extern quaternion-copy! (function quaternion quaternion quaternion))
-(define-extern quaternion-set! (function quaternion float float float float quaternion))
-(define-extern quaternion+! (function quaternion quaternion quaternion quaternion))
-(define-extern quaternion-! (function quaternion quaternion quaternion quaternion))
-(define-extern quaternion-negate! (function quaternion quaternion quaternion))
-(define-extern quaternion-conjugate! (function quaternion quaternion quaternion))
-(define-extern quaternion-float*! (function quaternion quaternion float quaternion))
-(define-extern quaternion-float/! (function quaternion quaternion float quaternion))
-(define-extern quaternion-norm2 (function quaternion float))
-(define-extern quaternion-norm (function quaternion float))
-(define-extern quaternion-normalize! (function quaternion quaternion))
-(define-extern quaternion-inverse! (function quaternion quaternion quaternion))
-(define-extern quaternion-dot (function quaternion quaternion float))
-(define-extern quaternion*! (function quaternion quaternion quaternion quaternion))
-(define-extern quaternion-right-mult-matrix! (function matrix quaternion matrix))
-(define-extern quaternion-left-mult-matrix! (function matrix quaternion matrix))
-(define-extern quaternion->matrix (function matrix quaternion matrix))
-(define-extern quaternion->matrix-2 (function matrix quaternion matrix))
-(define-extern matrix->quaternion (function quaternion matrix quaternion))
-(define-extern matrix-with-scale->quaternion (function quaternion matrix quaternion))
-(define-extern quaternion-vector-len (function quaternion float))
-(define-extern quaternion-log! (function quaternion quaternion quaternion))
-(define-extern quaternion-exp! (function quaternion quaternion quaternion))
-(define-extern quaternion-slerp! (function quaternion quaternion quaternion float quaternion))
-(define-extern quaternion-pseudo-slerp! (function quaternion quaternion quaternion float quaternion))
-(define-extern quaternion-pseudo-seek (function quaternion quaternion quaternion float quaternion))
-(define-extern quaternion-smooth-seek! (function quaternion quaternion quaternion float quaternion))
-(define-extern quaternion-zxy! (function quaternion vector quaternion))
-(define-extern vector-x-quaternion! (function vector quaternion vector))
-(define-extern vector-y-quaternion! (function vector quaternion vector))
-(define-extern vector-z-quaternion! (function vector quaternion vector))
-(define-extern quaternion-x-angle (function quaternion float))
-(define-extern quaternion-y-angle (function quaternion float))
-(define-extern quaternion-z-angle (function quaternion float))
-(define-extern quaternion-vector-y-angle (function quaternion vector float))
-(define-extern quaternion-rotate-local-x! (function quaternion quaternion float quaternion))
-(define-extern quaternion-rotate-local-y! (function quaternion quaternion float quaternion))
-(define-extern quaternion-rotate-local-z! (function quaternion quaternion float quaternion))
-(define-extern quaternion-rotate-y! (function quaternion quaternion float quaternion))
-(define-extern quaternion-rotate-x! (function quaternion quaternion float quaternion))
-(define-extern quaternion-rotate-z! (function quaternion quaternion float quaternion))
-(define-extern quaternion-delta-y (function quaternion quaternion float))
+(define-extern quaternion-axis-angle!
+  "Construct a quaternion from an axis and angle. The axis should be normalized."
+  (function quaternion float float float float quaternion))
+(define-extern quaternion-vector-angle!
+  "Construct a quaternion from an axis and angle. The axis should be normalized."
+  (function quaternion vector float quaternion))
+(define-extern vector-angle<-quaternion!
+  "Convert the quaternion arg1 to axis-angle form and store in arg0 (angle goes in w)"
+  (function vector quaternion vector))
+(define-extern quaternion-look-at! "Look along arg1, with arg2 as up." (function quaternion vector vector quaternion))
+(define-extern quaternion-zero! "Set quaternion to all 0's." (function quaternion quaternion))
+(define-extern quaternion-identity! "Set quaternion to 0,0,0,1 (identity)." (function quaternion quaternion))
+(define-extern quaternion-i! "Create unit i quaternion." (function quaternion quaternion))
+(define-extern quaternion-j! "Create unit j quaternion." (function quaternion quaternion))
+(define-extern quaternion-k! "Create unit k quaternion." (function quaternion quaternion))
+(define-extern quaternion-copy! "Set arg0 = arg1." (function quaternion quaternion quaternion))
+(define-extern quaternion-set! "Set arg0 = [arg1, arg2, arg3, arg4]." (function quaternion float float float float quaternion))
+(define-extern quaternion+! "Add quaternions as vectors." (function quaternion quaternion quaternion quaternion))
+(define-extern quaternion-! "Subtract quaternions as vectors." (function quaternion quaternion quaternion quaternion))
+(define-extern quaternion-negate! "Set arg0 = -arg1." (function quaternion quaternion quaternion))
+(define-extern quaternion-conjugate!
+  "Set arg0 to the conjugate of arg1 (negate only ijk).
+   If arg1 is normalized, this is equivalent to the inverse
+   NOTE: this gives you the inverse rotation."
+  (function quaternion quaternion quaternion))
+(define-extern quaternion-float*! "Multiply each element." (function quaternion quaternion float quaternion))
+(define-extern quaternion-float/! "Divide each element." (function quaternion quaternion float quaternion))
+(define-extern quaternion-norm2 "Get the squared norm of a quaternion." (function quaternion float))
+(define-extern quaternion-norm "Get the norm of a quaternion." (function quaternion float))
+(define-extern quaternion-normalize! "Normalize a quaternion." (function quaternion quaternion))
+(define-extern quaternion-inverse!
+  "Invert a quaternion. The inverse will satisfy q * q^-1 = identity, even if q is not normalized.
+   If your quaternion is normalized, it is faster/more accurate to do quaternion-conjugate!"
+  (function quaternion quaternion quaternion))
+(define-extern quaternion-dot
+  "Treat quaternions as vectors and take the dot product."
+  (function quaternion quaternion float))
+(define-extern quaternion*! "Real quaternion multiplication." (function quaternion quaternion quaternion quaternion))
+(define-extern quaternion-right-mult-matrix!
+  "Place quaternion coefficients into a matrix.
+   You can convert a quaternion to a matrix by taking the product of this
+   right-mult and left-mult matrix, but this method is not used.
+   Instead, quaternion->matrix is a more efficient implementation."
+  (function matrix quaternion matrix))
+(define-extern quaternion-left-mult-matrix!
+  "Place quaternion coefficients into a matrix. Unused."
+  (function matrix quaternion matrix))
+(define-extern quaternion->matrix "Convert quaternion to matrix." (function matrix quaternion matrix))
+(define-extern quaternion->matrix-2 "Unused alternate quaternion->matrix function." (function matrix quaternion matrix))
+(define-extern matrix->quaternion "Convert a rotation matrix to a quaternion." (function quaternion matrix quaternion))
+(define-extern matrix-with-scale->quaternion
+  "Convert a matrix with a rotation and scale into a quaternion (just the rotation)."
+  (function quaternion matrix quaternion))
+(define-extern quaternion-vector-len
+  "Assuming quaternion is normalized, get the length of the xyz part."
+  (function quaternion float))
+(define-extern quaternion-log! "Take the log of a quaternion. Unused." (function quaternion quaternion quaternion))
+(define-extern quaternion-exp! "Quaternion exponentiation. Unused." (function quaternion quaternion quaternion))
+(define-extern quaternion-slerp!
+  "Real quaternion slerp. Spherical-linear interpolation is a nice way to interpolate
+   between quaternions."
+  (function quaternion quaternion quaternion float quaternion))
+(define-extern quaternion-pseudo-slerp!
+  "This is a bad interpolation between quaternions. It lerps then normalizes.
+   It will behave extremely poorly for 180 rotations.
+   It is unused."
+  (function quaternion quaternion quaternion float quaternion))
+(define-extern quaternion-pseudo-seek
+  "Seek one quaternion toward another. Not using real slerp, so this is only good if the quaternions
+   are pretty similar."
+  (function quaternion quaternion quaternion float quaternion))
+(define-extern quaternion-smooth-seek! "Another hacky rotation interpolation." (function quaternion quaternion quaternion float quaternion))
+(define-extern quaternion-zxy!
+  "Make a quaternion from a sequence of z, x, y axis rotations."
+  (function quaternion vector quaternion))
+(define-extern vector-x-quaternion!
+  "Get the first row of the rotation matrix for this quaternion."
+  (function vector quaternion vector))
+(define-extern vector-y-quaternion!
+  "Get the second row of the rotation matrix for this quaternion."
+  (function vector quaternion vector))
+(define-extern vector-z-quaternion!
+  "Get the third row of the rotation matrix for this quaternion."
+  (function vector quaternion vector))
+(define-extern quaternion-x-angle
+  "Get the x rotation angle. Not very efficient."
+  (function quaternion float))
+(define-extern quaternion-y-angle
+  "Get the y rotation angle. Not very efficient."
+  (function quaternion float))
+(define-extern quaternion-z-angle
+  "Get the z rotation angle. Not very efficient."
+  (function quaternion float))
+(define-extern quaternion-vector-y-angle
+  "Not sure. Angle between quaternion and axis, projected in xz plane?"
+  (function quaternion vector float))
+(define-extern quaternion-rotate-local-x!
+  "Rotate existing quaternion along x axis."
+  (function quaternion quaternion float quaternion))
+(define-extern quaternion-rotate-local-y!
+  "Rotate existing quaternion along y axis."
+  (function quaternion quaternion float quaternion))
+(define-extern quaternion-rotate-local-z!
+  "Rotate existing quaternion along z axis."
+  (function quaternion quaternion float quaternion))
+(define-extern quaternion-rotate-y!
+  "Rotate existing quaternion along y axis (right multiply)."
+  (function quaternion quaternion float quaternion))
+(define-extern quaternion-rotate-x!
+  "Rotate existing quaternion along x axis (right multiply)."
+  (function quaternion quaternion float quaternion))
+(define-extern quaternion-rotate-z!
+  "Rotate existing quaternion along z axis (right multiply)."
+  (function quaternion quaternion float quaternion))
+(define-extern quaternion-delta-y "Difference in yaw between two quaternions." (function quaternion quaternion float))
 (define-extern quaternion-rotate-y-to-vector! (function quaternion quaternion quaternion float quaternion))
-(define-extern vector-rotate-around-axis! (function vector quaternion float vector vector))
-(define-extern vector-rotate-x! (function vector vector float vector))
-(define-extern vector-rotate-y! (function vector vector float vector))
-(define-extern vector-rotate-z! (function vector vector float vector))
-(define-extern vector-y-angle (function vector float))
-(define-extern vector-x-angle (function vector float))
-(define-extern quaternion<-rotate-y-vector (function quaternion vector quaternion))
-(define-extern quaternion-validate (function quaternion none))
-(define-extern quaternion-xz-angle (function quaternion float))
+(define-extern vector-rotate-around-axis!
+  "Rotate along y so z-axis points to match another. Use arg3 as the max rotation amount."
+  (function vector quaternion float vector vector))
+(define-extern vector-rotate-x! "Rotate vector along x axis." (function vector vector float vector))
+(define-extern vector-rotate-y! "Rotate vector along y axis." (function vector vector float vector))
+(define-extern vector-rotate-z! "Rotate vector along z axis." (function vector vector float vector))
+(define-extern vector-y-angle "Get the yaw angle of a vector." (function vector float))
+(define-extern vector-x-angle "Get the pitch angle of a vector." (function vector float))
+(define-extern quaternion<-rotate-y-vector "Create a quaternion representing only the yaw of the given vector." (function quaternion vector quaternion))
+(define-extern quaternion-validate
+  "Verify that a quaternion is valid, print an error if the length is off by more than 1%.."
+  (function quaternion none))
+(define-extern quaternion-xz-angle
+  "Yet another function to compute the yaw of a quaternion. This is a particularly inefficient version."
+  (function quaternion float))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; euler                          ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(define-extern set-eul! (function euler-angles float float float int euler-angles))
-(define-extern eul->matrix (function matrix euler-angles matrix))
-(define-extern matrix->eul (function euler-angles matrix int euler-angles))
-(define-extern eul->quat (function quaternion euler-angles quaternion))
-(define-extern quat->eul (function euler-angles quaternion int euler-angles))
+(define-extern set-eul! "Set euler angles and the flag bits." (function euler-angles float float float int euler-angles))
+(define-extern eul->matrix "Convert from euler angles to 4x4 matrix." (function matrix euler-angles matrix))
+(define-extern matrix->eul
+  "Convert matrix to euler angles with given order flag.
+   Not clear how this works if the matrix has more than just a rotation."
+  (function euler-angles matrix int euler-angles))
+(define-extern eul->quat
+  "Convert euler angles to quaternion, not very efficient."
+  (function quaternion euler-angles quaternion))
+(define-extern quat->eul
+  "Convert quaternion to euler angles with given order, not very efficient."
+  (function euler-angles quaternion int euler-angles))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; trigonometry                   ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(define-extern radmod (function float float))
-(define-extern deg- (function float float float))
-(define-extern deg-diff (function float float float))
-(define-extern deg-seek (function float float float float))
-(define-extern deg-seek-smooth (function float float float float float))
-(define-extern deg-lerp-clamp (function float float float float))
+(define-extern radmod "Wrap arg0 to be within (-pi, pi)." (function float float))
+(define-extern deg-
+  "Compute arg0-arg1, unwrapped, using rotation units.
+   Result should be in the range (-180, 180)"
+  (function float float float))
+(define-extern deg-diff
+  "Very similar to the function above, but computes arg1 - arg0 instead."
+  (function float float float))
+(define-extern deg-seek
+  "Move in toward target by at most max-diff, using rotation units"
+  (function float float float float))
+(define-extern deg-seek-smooth
+  "Step amount of the way from in to target, by at most max-diff, using rotation units"
+  (function float float float float float))
+(define-extern deg-lerp-clamp
+  "Map [0, 1] to min-val, max-val, handling wrapping and saturating, using rotation units."
+  (function float float float float))
 (define-extern binary-table (array float))
 (define-extern sincos-table (array float))
-(define-extern sin (function float float))
-(define-extern sin-rad (function float float))
+(define-extern sin
+  "Compute the sine of an angle in rotation units. Unwraps it."
+  (function float float))
+(define-extern sin-rad
+  "Compute the sine of an angle in radians.
+   No unwrap is done, should be in -pi, pi"
+  (function float float))
 (define-extern *sin-poly-vec* vector)
 (define-extern *sin-poly-vec2* vector)
-(define-extern vector-sin-rad! (function vector vector vector))
-(define-extern cos-rad (function float float))
+(define-extern vector-sin-rad!
+  "Taylor series approximation of sine on all 4 elements in a vector.
+   Inputs should be in radians, in -pi to pi.
+   Somehow their coefficients are a little bit off.
+   Like the first coefficient, which should obviously be 1, is not quite 1."
+  (function vector vector vector))
+(define-extern cos-rad
+  "Cosine with taylor series. Input is in radians, in -pi, pi.
+   - TODO constants"
+  (function float float))
 (define-extern *cos-poly-vec* vector)
-(define-extern vector-cos-rad! (function vector vector vector))
-(define-extern vector-sincos-rad! (function vector vector vector int))
-(define-extern sincos-rad! (function vector float int))
-(define-extern sincos! (function vector float int))
-(define-extern vector-rad<-vector-deg! (function vector vector none))
-(define-extern vector-rad<-vector-deg/2! (function vector vector int))
-(define-extern vector-sincos! (function vector vector vector int))
-(define-extern tan-rad (function float float))
-(define-extern cos (function float float))
-(define-extern tan (function float float))
-(define-extern atan0 (function float float float))
-(define-extern atan-series-rad (function float float))
-(define-extern atan-rad (function float float))
-(define-extern sign-bit (function int int))
-(define-extern sign-float (function float float))
-(define-extern sign (function float float))
-(define-extern atan2-rad (function float float float))
-(define-extern atan (function float float float))
-(define-extern asin (function float float))
-(define-extern acos (function float float))
-(define-extern acos-rad (function float float))
-(define-extern sinerp (function float float float float))
-(define-extern sinerp-clamp (function float float float float))
-(define-extern coserp (function float float float float))
-(define-extern coserp-clamp (function float float float float))
-(define-extern coserp180 (function float float float float))
-(define-extern coserp180-clamp (function float float float float))
-(define-extern ease-in-out (function int int float))
+(define-extern vector-cos-rad!
+  "Compute the cosine of all 4 vector elements.
+   Radians, with no wrapping. Uses taylor series with 4 coefficients."
+  (function vector vector vector))
+(define-extern vector-sincos-rad!
+  "Compute the sine and cosine of each element of src, storing it in dst-sin and dst-cos.
+   This is more efficient than separate calls to sin and cos.
+   Inputs should be radians in -pi to pi."
+  (function vector vector vector int))
+(define-extern sincos-rad!
+  "Compute the sine and cosine of x, store it in the output array.
+   Has the cosine bug."
+  (function vector float int))
+(define-extern sincos!
+  "Compute the sine and cosine of x, store it in the output array.
+   The input is in rotation units, and is unwrapped properly.
+   Also has the cosine bug"
+  (function vector float int))
+(define-extern vector-rad<-vector-deg!
+  "Convert a vector in rotation units to radians, and unwrap.
+   Input can be anything, output will be -2pi to pi."
+  (function vector vector none))
+(define-extern vector-rad<-vector-deg/2!
+  "Divide the input by two, and then convert from rotation units to radians, unwrapping.
+   Not sure why this really needs to be separate the from previous function..."
+  (function vector vector int))
+(define-extern vector-sincos!
+  "Compute sine and cosine of each element in a vector, in rotation units"
+  (function vector vector vector int))
+(define-extern tan-rad
+  "This function appears to be named wrong and actually operates on rotation units."
+  (function float float))
+(define-extern cos "Cosine of rotation units." (function float float))
+(define-extern tan "Correctly named tangent of rotation units." (function float float))
+(define-extern atan0
+  "Inverse tangent, to rotation units. y,x order. Does not handle signs correctly.
+   Do not use this function directly, instead use atan2."
+  (function float float float))
+(define-extern atan-series-rad "A helper function for atan." (function float float))
+(define-extern atan-rad "Inverse tangent in radians." (function float float))
+(define-extern sign-bit "Return 1 if bit 31 is set, otherwise 0." (function int int))
+(define-extern sign-float
+  "Return 1 if arg0 is positive or zero, -1 otherwise.
+   Fast (no branching)."
+  (function float float))
+(define-extern sign
+  "Similar to above, but returns 0 if input is 0.
+   But is more complicated."
+  (function float float))
+(define-extern atan2-rad "Atan for radians." (function float float float))
+(define-extern atan "Atan for rotation units. Signs behave like atan.." (function float float float))
+(define-extern asin "Inverse sine, rotation units." (function float float))
+(define-extern acos "Inverse cosine. Returns rotation units." (function float float))
+(define-extern acos-rad "Inverse cosine, radians." (function float float))
+(define-extern sinerp
+  "Map amount to min,max using sine. Kinda weird, usually people use cosine."
+  (function float float float float))
+(define-extern sinerp-clamp "Like sinerp, but clamp to min,max." (function float float float float))
+(define-extern coserp "Weird lerp with cosine (over 90 degrees?)." (function float float float float))
+(define-extern coserp-clamp
+  "Weird 90 degree lerp with cosine, clamped to min,max."
+  (function float float float float))
+(define-extern coserp180 "Classic lerp with cosine." (function float float float float))
+(define-extern coserp180-clamp "Classic coserp with saturation." (function float float float float))
+(define-extern ease-in-out
+  "Weird coserp like mapping from 0 to 1 as progress goes from 0 to total."
+  (function int int float))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; gsound-h                       ;;
