@@ -1,142 +1,124 @@
 ;;-*-Lisp-*-
 (in-package goal)
 
-;; name: gcommon.gc
-;; name in dgo: gcommon
-;; dgos: KERNEL
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; Game constants
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-;; disable PS2 only code and enable PC-specific code
-(defglobalconstant PC_PORT #t)
-
-;; whether we're allowed to use more memory than the original game or not
-(defglobalconstant BIG_MEMORY #t)
-(defglobalconstant PC_BIG_MEMORY (and PC_PORT BIG_MEMORY))
-
-;; enables the with-profiler statements, which send profiling data from
-;; GOAL code to the frame profiler in C++.
-(defglobalconstant PC_PROFILER_ENABLE #t)
-
-;; pointers larger than this are invalid by valid?
-(defconstant END_OF_MEMORY #x8000000)
-
-(define-extern valid? (function object type string symbol object symbol))
-
-;; DECOMP BEGINS
-
+;; definition for function identity
 (defun identity ((obj object))
   "The identity function."
   obj
   )
 
+;; definition for function 1/
 (defun 1/ ((x float))
   "Floating point reciprocal."
-  (declare (inline)) ;; og:preserve-this
   (/ 1.0 x)
   )
 
+;; definition for function +
 (defun + ((a int) (b int))
   "64-bit integer addition."
   (+ a b)
   )
 
+;; definition for function -
 (defun - ((a int) (b int))
   "64-bit integer subraction."
   (- a b)
   )
 
+;; definition for function *
 (defun * ((a int) (b int))
   "32-bit signed integer multiplication."
   (* a b)
   )
 
+;; definition for function /
 (defun / ((a int) (b int))
   "32-bit signed integer division."
   (/ a b)
   )
 
+;; definition for function ash
 (defun ash ((x int) (shift-amount int))
   "64-bit arithmetic shift. (sign-extends)"
-  ;; og:preserve-this
-  (declare (inline))
-  (if (> shift-amount 0)
-      (shl x shift-amount)
-      (sar x (- shift-amount))
-      )
+  (ash x shift-amount)
   )
 
+;; definition for function mod
 (defun mod ((a int) (b int))
   "32-bit mod."
   (mod a b)
   )
 
+;; definition for function rem
 (defun rem ((a int) (b int))
   "32-bit mod (same as mod)."
   (mod a b)
   )
 
+;; definition for function abs
 (defun abs ((x int))
   "64-bit integer absolute value."
-  ;; OpenGOAL doesn't support abs, so we implement it here.
-  ;; og:preserve-this
-  (if (> x 0)
-      x
-      (- x)
-      )
+  (abs x)
   )
 
+;; definition for function min
 (defun min ((a int) (b int))
   "64-bit integer minimum."
-  (if (> a b) b a) ;; og:preserve-this
+  (min a b)
   )
 
+;; definition for function max
 (defun max ((a int) (b int))
   "64-bit integer maximum."
-  (if (> a b) a b) ;; og:preserve-this
+  (max a b)
   )
 
+;; definition for function logior
 (defun logior ((a int) (b int))
   "64-bit bitwise or."
   (logior a b)
   )
 
+;; definition for function logand
 (defun logand ((a int) (b int))
   "64-bit bitwise and."
   (logand a b)
   )
 
+;; definition for function lognor
 (defun lognor ((a int) (b int))
   "64-bit bitwise not-or."
-  ;; og:preserve-this
-  (declare (inline))
-  (lognot (logior a b))
+  (lognor a b)
   )
 
+;; definition for function logxor
 (defun logxor ((a int) (b int))
   "64-bit bitwise exclusive or."
   (logxor a b)
   )
 
+;; definition for function lognot
 (defun lognot ((x int))
   "64-bit bitwise not."
   (lognot x)
   )
 
+;; definition for function false-func
 (defun false-func ()
   "Returns false."
   #f
   )
 
+;; definition for function true-func
 (defun true-func ()
   "Returns true."
   #t
   )
 
+;; definition for symbol format, type (function _varargs_ object)
 (define format _format)
 
+;; definition of type vec4s
 (deftype vec4s (uint128)
   "Vector of four floats, packed into a 128-bit integer as bitfields.
 This behaves like a value type.
@@ -148,32 +130,28 @@ This is not the main vector type."
    )
   )
 
-;; og:preserve-this
-(defmacro print128 (value &key (stream #t))
-  "Print a 128-bit value"
-  `(let ((temp (new 'stack-no-clear 'array 'uint64 2)))
-     (set! (-> (the (pointer uint128) temp)) ,value)
-     (format ,stream "#x~16X~16X" (-> temp 1) (-> temp 0))
-     )
+;; definition for method 3 of type vec4s
+(defmethod inspect ((this vec4s))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this 'vec4s)
+  (format #t "~1Tx: ~f~%" (-> this x))
+  (format #t "~1Ty: ~f~%" (-> this y))
+  (format #t "~1Tz: ~f~%" (-> this z))
+  (format #t "~1Tw: ~f~%" (-> this w))
+  (label cfg-4)
+  this
   )
 
-(defmacro make-u128 (upper lower)
-  "Make a i128 from two 64-bit values."
-  `(rlet ((result :class i128)
-          (upper-xmm :class i128)
-          (lower-xmm :class i128))
-     (.mov upper-xmm ,upper)
-     (.mov lower-xmm ,lower)
-     (.pcpyld result upper-xmm lower-xmm)
-     (the-as uint result)
-     )
-  )
-
+;; definition for method 2 of type vec4s
 (defmethod print ((this vec4s))
   (format #t "#<vector ~F ~F ~F ~F @ #x~X>" (-> this x) (-> this y) (-> this z) (-> this w) this)
   this
   )
 
+;; definition of type vector
 (deftype vector (structure)
   "Vector of four floats, stored in a structure.
 This behaves like a reference type.
@@ -187,24 +165,56 @@ This is the main vector type."
    )
   )
 
+;; definition for method 3 of type vector
+;; INFO: Used lq/sq
+(defmethod inspect ((this vector))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this 'vector)
+  (format #t "~1Tdata[4] @ #x~X~%" (&-> this x))
+  (format #t "~1Tx: ~f~%" (-> this x))
+  (format #t "~1Ty: ~f~%" (-> this y))
+  (format #t "~1Tz: ~f~%" (-> this z))
+  (format #t "~1Tw: ~f~%" (-> this w))
+  (format #t "~1Tquad: ~D~%" (-> this quad))
+  (label cfg-4)
+  this
+  )
 
+;; definition of type bfloat
 (deftype bfloat (basic)
   "Boxed (or basic?) float. Just a basic that wraps a single float."
   ((data  float)
    )
   )
 
+;; definition for method 3 of type bfloat
+(defmethod inspect ((this bfloat))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this (-> this type))
+  (format #t "~1Tdata: ~f~%" (-> this data))
+  (label cfg-4)
+  this
+  )
 
+;; definition for method 2 of type bfloat
 (defmethod print ((this bfloat))
   (format #t "~f" (-> this data))
   this
   )
 
+;; definition for method 5 of type type
 ;; WARN: Return type mismatch uint vs int.
 (defmethod asize-of ((this type))
   (the-as int (logand (the-as uint #xfffffff0) (+ (* (-> this allocated-length) 4) 43)))
   )
 
+;; definition for function basic-type?
 (defun basic-type? ((obj basic) (typ type))
   "Return if the given basic is a given type. A child of the given type is also acceptable."
   (let ((v1-0 (-> obj type))
@@ -220,6 +230,7 @@ This is the main vector type."
   #f
   )
 
+;; definition for function type-type?
 (defun type-type? ((check-type type) (parent-type type))
   "Return if the first type is the second type, or a child of it."
   (let ((v1-0 object))
@@ -236,6 +247,7 @@ This is the main vector type."
   #f
   )
 
+;; definition for function type?
 ;; WARN: Using new Jak 2 rtype-of
 (defun type? ((obj object) (desired-type type))
   "Return if the given object is an instance of the given type.
@@ -256,6 +268,7 @@ This is the main vector type."
   #f
   )
 
+;; definition for function find-parent-method
 (defun find-parent-method ((typ type) (method-id int))
   "Find the closest parent type that has a different implementation of the given method and return that method.
    If it does not exist, return `nothing` function.
@@ -276,13 +289,7 @@ This is the main vector type."
   v0-0
   )
 
-;; og:preserve-this
-(defmacro call-parent-method (&rest args)
-  "Find the first different implementation of the current method in a parent type and call it with these arguments."
-  `((the (current-method-function-type) (find-parent-method (current-method-type) (current-method-id)))
-    ,@args)
-  )
-
+;; definition for function ref&
 (defun ref& ((list object) (idx int))
   "Return the n-th pair in a linked list of pairs. No bounds checking.
    If it is the null pair, return #f."
@@ -297,6 +304,7 @@ This is the main vector type."
       )
   )
 
+;; definition for function ref
 (defun ref ((list object) (idx int))
   "Return the n-th item in a proper list. No bounds checking."
   (dotimes (v1-0 idx)
@@ -307,6 +315,7 @@ This is the main vector type."
   (car list)
   )
 
+;; definition for method 4 of type pair
 (defmethod length ((this pair))
   (local-vars (v0-0 int))
   (cond
@@ -326,11 +335,13 @@ This is the main vector type."
   v0-0
   )
 
+;; definition for method 5 of type pair
 ;; WARN: Return type mismatch uint vs int.
 (defmethod asize-of ((this pair))
   (the-as int (-> pair size))
   )
 
+;; definition for function last
 (defun last ((list object))
   "Return the last object in a proper list."
   (let ((v0-0 list))
@@ -343,6 +354,7 @@ This is the main vector type."
     )
   )
 
+;; definition for function member
 (defun member ((obj-to-find object) (list object))
   "See if the first argument is in the proper list of the second argument.
    Checked with simple equality.
@@ -360,10 +372,7 @@ This is the main vector type."
     )
   )
 
-;; need to forward declare this, we haven't loaded the string library yet.
-;; og:preserve-this
-(define-extern name= (function object object symbol))
-
+;; definition for function nmember
 (defun nmember ((obj-to-find basic) (list object))
   "Like member, but membership is checked with the name= function to handle symbols or strings."
   (while (not (or (null? list) (name= (car list) obj-to-find)))
@@ -374,6 +383,7 @@ This is the main vector type."
       )
   )
 
+;; definition for function assoc
 (defun assoc ((key object) (assoc-list object))
   "Search an association list for given object. Return #f if not found, otherwise the element with matching car.
    (assoc 'a '((a . 1) (b . 2) (c . 3))) -> (a . 1)
@@ -388,6 +398,7 @@ This is the main vector type."
     )
   )
 
+;; definition for function assoce
 (defun assoce ((key object) (assoc-list object))
   "Like assoc, but supports a special `else` key which is always considered a match."
   (let ((v1-0 assoc-list))
@@ -400,6 +411,7 @@ This is the main vector type."
     )
   )
 
+;; definition for function nassoc
 (defun nassoc ((key string) (assoc-list object))
   "Like assoc, but uses name= instead of = to check equality."
   (while (not (or (null? assoc-list) (let ((a1-1 (car (car assoc-list))))
@@ -417,6 +429,7 @@ This is the main vector type."
       )
   )
 
+;; definition for function nassoce
 (defun nassoce ((key string) (assoc-list object))
   "Like assoce, but uses name= instead of = to check equality."
   (while (not (or (null? assoc-list) (let ((s4-0 (car (car assoc-list))))
@@ -434,6 +447,7 @@ This is the main vector type."
       )
   )
 
+;; definition for function append!
 (defun append! ((list object) (new-obj object))
   "Append the second argument to the end of the list (or empty pair) in the first argument."
   (cond
@@ -456,6 +470,7 @@ This is the main vector type."
     )
   )
 
+;; definition for function delete!
 ;; WARN: Return type mismatch object vs pair.
 (defun delete! ((obj object) (list object))
   "Remove an element from the given list, return the list."
@@ -481,6 +496,7 @@ This is the main vector type."
           )
   )
 
+;; definition for function delete-car!
 (defun delete-car! ((car-to-match object) (list object))
   "Remove an element from the given list with a matching car. Return the list."
   (cond
@@ -504,6 +520,7 @@ This is the main vector type."
     )
   )
 
+;; definition for function insert-cons!
 (defun insert-cons! ((new-obj object) (list object))
   "Update an association list to have the given (key . value) pair.
    If a previous value exists, it is deleted first.
@@ -514,6 +531,7 @@ This is the main vector type."
     )
   )
 
+;; definition for function sort
 (defun sort ((list pair) (compare-func (function object object object)))
   "Sort a list using the given comparision function.
    The function can return a #t/#f value, or a positive/negative value.
@@ -541,6 +559,7 @@ This is the main vector type."
   list
   )
 
+;; definition for function string->symbol-debug
 (defun string->symbol-debug ((str string))
   "Convert a string to a symbol. The symbol must be known, and this cannot
    create a new symbol. (in the PC port, it will still work.)
@@ -555,6 +574,7 @@ This is the main vector type."
     )
   )
 
+;; definition for function symbol->string-debug
 (defun symbol->string-debug ((sym symbol))
   "Get the name of a symbol. This is intended to be used in debug only.
    In debug, this will work for all symbols. (In PC port, this works always)"
@@ -567,12 +587,14 @@ This is the main vector type."
     )
   )
 
+;; definition for function symbol->hash
 ;; WARN: Return type mismatch symbol vs int.
 (defun symbol->hash ((sym symbol))
   "Convert a symbol to a unique integer value, which is just the symbol's address."
   (the-as int sym)
   )
 
+;; definition for method 0 of type array
 (defmethod new array ((allocation symbol) (type-to-make type) (arg0 type) (arg1 int))
   (let ((v0-1 (object-new
                 allocation
@@ -594,6 +616,8 @@ This is the main vector type."
     )
   )
 
+;; definition for method 2 of type array
+;; INFO: Used lq/sq
 (defmethod print ((this array))
   (format #t "#(")
   (cond
@@ -742,7 +766,8 @@ This is the main vector type."
   this
   )
 
-;; og:preserve-this
+;; definition for method 3 of type array
+;; INFO: Used lq/sq
 (defmethod inspect ((this array))
   (format #t "[~8x] ~A~%" this (-> this type))
   (format #t "~Tallocated-length: ~D~%" (-> this allocated-length))
@@ -818,10 +843,12 @@ This is the main vector type."
   this
   )
 
+;; definition for method 4 of type array
 (defmethod length ((this array))
   (-> this length)
   )
 
+;; definition for method 5 of type array
 ;; WARN: Return type mismatch uint vs int.
 (defmethod asize-of ((this array))
   (the-as
@@ -835,6 +862,7 @@ This is the main vector type."
     )
   )
 
+;; definition for function mem-copy!
 (defun mem-copy! ((dst pointer) (src pointer) (bytes int))
   "Basic memory copy. This is not an optimized implementation."
   (let ((v0-0 dst))
@@ -847,6 +875,8 @@ This is the main vector type."
     )
   )
 
+;; definition for function qmem-copy<-!
+;; INFO: Used lq/sq
 (defun qmem-copy<-! ((dst pointer) (src pointer) (qwc int))
   "Copy memory by quadword (16-bytes). Must by 16-byte aligned, size in 16-byte units. Increasing address copy. Not an optimized version."
   (let ((v0-0 dst))
@@ -859,6 +889,8 @@ This is the main vector type."
     )
   )
 
+;; definition for function qmem-copy->!
+;; INFO: Used lq/sq
 (defun qmem-copy->! ((dst pointer) (src pointer) (qwc int))
   "Copy memory by quadword (16-bytes). Must by 16-byte aligned, size in 16-byte units. Decreasing address copy. Not an optimized version."
   (let ((v0-0 dst))
@@ -877,17 +909,20 @@ This is the main vector type."
     )
   )
 
+;; definition for function qmem-clear!
+;; INFO: Used lq/sq
 (defun qmem-clear! ((dst pointer) (qwc int))
   "Clear memory by quadword (16-bytes). Must by 16-byte aligned, size in 16-byte units. Not an optimized version."
   (let ((v0-0 dst))
     (dotimes (v1-0 qwc)
-      (set! (-> (the-as (pointer int128) dst)) (the int128 0))
+      (set! (-> (the-as (pointer int128) dst)) 0)
       (&+! dst 16)
       )
     v0-0
     )
   )
 
+;; definition for function mem-set32!
 (defun mem-set32! ((dst pointer) (word-count int) (value int))
   "Set memory to the given 32-bit value, repeated n times. (like C memset, but setting int32_t instead of char).
    Not an optimized implementation. Must be 4-byte aligned."
@@ -901,6 +936,7 @@ This is the main vector type."
     )
   )
 
+;; definition for function mem-or!
 (defun mem-or! ((dst pointer) (src pointer) (bytes int))
   "Set the destiation to `dest = dest | src`. Size in bytes. Not an optimized version."
   (let ((v0-0 dst))
@@ -913,13 +949,10 @@ This is the main vector type."
     )
   )
 
-;; og:preserve-this
-(defun quad-copy! ((dst pointer) (src pointer) (qwc int))
-  "Optimized memory copy. The original is pretty clever, but this isn't."
-  (qmem-copy<-! dst src (* qwc 16))
-  (none)
-  )
+;; definition for function quad-copy!
+;; ERROR: function was not converted to expressions. Cannot decompile.
 
+;; definition of type inline-array-class
 (deftype inline-array-class (basic)
   "Base class for basic inline arrays.
 The stride is stored in the heap-base of the inline-array-class child class."
@@ -937,7 +970,20 @@ The stride is stored in the heap-base of the inline-array-class child class."
     )
   )
 
+;; definition for method 3 of type inline-array-class
+(defmethod inspect ((idx-to-remove inline-array-class))
+  (when (not idx-to-remove)
+    (set! idx-to-remove idx-to-remove)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" idx-to-remove (-> idx-to-remove type))
+  (format #t "~1Tlength: ~D~%" (-> idx-to-remove length))
+  (format #t "~1Tallocated-length: ~D~%" (-> idx-to-remove allocated-length))
+  (label cfg-4)
+  idx-to-remove
+  )
 
+;; definition of type inline-array-class-uint64
 (deftype inline-array-class-uint64 (inline-array-class)
   "Specialization of inline-array-class for uint64. It's unclear why
 this would be preferred over a normal (array uint64), since both store data the same way."
@@ -945,7 +991,20 @@ this would be preferred over a normal (array uint64), since both store data the 
    )
   )
 
+;; definition for method 3 of type inline-array-class-uint64
+(defmethod inspect ((this inline-array-class-uint64))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this (-> this type))
+  (format #t "~1Tlength: ~D~%" (-> this length))
+  (format #t "~1Tallocated-length: ~D~%" (-> this allocated-length))
+  (label cfg-4)
+  this
+  )
 
+;; definition of type inline-array-class-uint32
 (deftype inline-array-class-uint32 (inline-array-class)
   "Specialization of inline-array-class for uint32. It's unclear why this would be preferred
 over a normal (array uint32), since both store data the same way."
@@ -953,7 +1012,20 @@ over a normal (array uint32), since both store data the same way."
    )
   )
 
+;; definition for method 3 of type inline-array-class-uint32
+(defmethod inspect ((this inline-array-class-uint32))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this (-> this type))
+  (format #t "~1Tlength: ~D~%" (-> this length))
+  (format #t "~1Tallocated-length: ~D~%" (-> this allocated-length))
+  (label cfg-4)
+  this
+  )
 
+;; definition for method 0 of type inline-array-class
 (defmethod new inline-array-class ((allocation symbol) (type-to-make type) (count int))
   (let ((v0-0 (object-new
                 allocation
@@ -970,15 +1042,18 @@ over a normal (array uint32), since both store data the same way."
     )
   )
 
+;; definition for method 4 of type inline-array-class
 (defmethod length ((this inline-array-class))
   (-> this length)
   )
 
+;; definition for method 5 of type inline-array-class
 ;; WARN: Return type mismatch uint vs int.
 (defmethod asize-of ((this inline-array-class))
   (the-as int (+ (-> this type size) (* (-> this allocated-length) (the-as int (-> this type heap-base)))))
   )
 
+;; definition for method 9 of type inline-array-class
 (defmethod push-back ((object-to-insert inline-array-class) (arg0 object))
   "Copy object to the end, then increment length. No bounds check."
   (let ((s5-0 (-> object-to-insert length)))
@@ -999,6 +1074,7 @@ over a normal (array uint32), since both store data the same way."
     )
   )
 
+;; definition for method 9 of type inline-array-class-uint32
 (defmethod push-back ((this inline-array-class-uint32) (arg0 object))
   "Copy object to the end, then increment length. No bounds check."
   (let ((v0-0 (-> this length)))
@@ -1008,13 +1084,14 @@ over a normal (array uint32), since both store data the same way."
                 (+ (+ (* v0-0 (the-as int (-> this type heap-base))) -4 (-> this type size)) (the-as int this))
                 )
               )
-          (the-as int32 arg0)
+          arg0
           )
     (+! (-> this length) 1)
     v0-0
     )
   )
 
+;; definition for method 9 of type inline-array-class-uint64
 (defmethod push-back ((this inline-array-class-uint64) (arg0 object))
   "Copy object to the end, then increment length. No bounds check."
   (let ((v0-0 (-> this length)))
@@ -1024,13 +1101,14 @@ over a normal (array uint32), since both store data the same way."
                 (+ (+ (* v0-0 (the-as int (-> this type heap-base))) -4 (-> this type size)) (the-as int this))
                 )
               )
-          (the-as int64 arg0)
+          arg0
           )
     (+! (-> this length) 1)
     v0-0
     )
   )
 
+;; definition for method 13 of type inline-array-class
 (defmethod pop-front ((this inline-array-class) (arg0 int))
   "Remove first object by copying last object to the front, then decrement length."
   (+! (-> this length) -1)
@@ -1048,6 +1126,7 @@ over a normal (array uint32), since both store data the same way."
     )
   )
 
+;; definition for method 13 of type inline-array-class-uint64
 ;; WARN: Return type mismatch uint vs pointer.
 (defmethod pop-front ((this inline-array-class-uint64) (arg0 int))
   "Remove first object by copying last object to the front, then decrement length."
@@ -1073,6 +1152,7 @@ over a normal (array uint32), since both store data the same way."
     )
   )
 
+;; definition for method 13 of type inline-array-class-uint32
 ;; WARN: Return type mismatch uint vs pointer.
 (defmethod pop-front ((this inline-array-class-uint32) (arg0 int))
   "Remove first object by copying last object to the front, then decrement length."
@@ -1098,6 +1178,8 @@ over a normal (array uint32), since both store data the same way."
     )
   )
 
+;; definition for method 12 of type inline-array-class
+;; WARN: Return type mismatch int vs none.
 (defmethod clear-2 ((this inline-array-class))
   "Set length to 0"
   (set! (-> this length) 0)
@@ -1105,27 +1187,33 @@ over a normal (array uint32), since both store data the same way."
   (none)
   )
 
+;; definition for method 11 of type inline-array-class
 (defmethod clear-1 ((this inline-array-class))
   "Set length to 0, return #t."
   (set! (-> this length) 0)
   #t
   )
 
-;; og:preserve-this
-(defun-recursive fact int ((x int))
+;; definition for function fact
+(defun fact ((x int))
+  "Factorial."
   (if (= x 1)
       1
-      (* x (fact (+ x -1))))
+      (* x (fact (+ x -1)))
+      )
   )
 
+;; definition for symbol *print-column*, type binteger
 (define *print-column* (the-as binteger 0))
 
+;; definition for function print
 ;; WARN: Using new Jak 2 rtype-of
 (defun print ((obj object))
   "Print any boxed object (symbol, pair, basic, binteger) to #t (the REPL). No newline."
   ((method-of-type (rtype-of obj) print) obj)
   )
 
+;; definition for function printl
 ;; WARN: Using new Jak 2 rtype-of
 (defun printl ((obj object))
   "Print any boxed object (symbol, pair, basic, binteger) to #t (the REPL), followed by a newline."
@@ -1136,12 +1224,14 @@ over a normal (array uint32), since both store data the same way."
   obj
   )
 
+;; definition for function inspect
 ;; WARN: Using new Jak 2 rtype-of
 (defun inspect ((obj object))
   "Inspect any boxed object (symbol, pair, basic, binteger) to #t (the REPL)."
   ((method-of-type (rtype-of obj) inspect) obj)
   )
 
+;; definition (debug) for function mem-print
 (defun-debug mem-print ((ptr (pointer uint32)) (word-count int))
   "Print out data in memory in hex."
   (dotimes (s4-0 (/ word-count 4))
@@ -1158,8 +1248,10 @@ over a normal (array uint32), since both store data the same way."
   #f
   )
 
+;; definition for symbol *trace-list*, type pair
 (define *trace-list* '())
 
+;; definition for function print-tree-bitmask
 (defun print-tree-bitmask ((mask int) (count int))
   "Print out ASCII-art tree structure, from a bitmask of nesting levels."
   (dotimes (s4-0 count)
@@ -1172,41 +1264,31 @@ over a normal (array uint32), since both store data the same way."
   #f
   )
 
+;; definition for function breakpoint-range-set!
 ;; ERROR: Unsupported inline assembly instruction kind - [mtdab a1]
 ;; ERROR: Unsupported inline assembly instruction kind - [mtdabm a2]
 (defun breakpoint-range-set! ((arg0 uint) (arg1 uint) (arg2 uint))
   "Unsupported function to set a CPU breakpoint."
-  (break!) ;; og:preserve-this
-  ; (.mtc0 Debug arg0)
-  ; (.mtdab arg1)
-  ; (.mtdabm arg2)
+  (.mtc0 Debug arg0)
+  (.mtdab arg1)
+  (.mtdabm arg2)
   0
   )
 
-(defmacro start-of-symbol-table ()
-  "Get the address for the start of the symbol table."
-  `(rlet ((st :reg r14 :reset-here #t :type uint))
-         (the uint (- st 32768))
-         )
-  )
-
-(defmacro end-of-symbol-table ()
-  "Get the address of the end of the symbol table."
-  `(rlet ((st :reg r14 :reset-here #t :type uint))
-         (the uint (+ st 32768))
-         )
-  )
-
+;; definition for function valid?
+;; WARN: Using new Jak 2 rtype-of
+;; WARN: Using new Jak 2 rtype-of
+;; WARN: Using new Jak 2 rtype-of
+;; WARN: Using new Jak 2 rtype-of
+;; WARN: Using new Jak 2 rtype-of
 ;; ERROR: Unsupported inline assembly instruction kind - [daddu v1, v1, s7]
 ;; ERROR: Unsupported inline assembly instruction kind - [daddu v1, v1, s7]
 ;; ERROR: Unsupported inline assembly instruction kind - [daddu v1, v1, s7]
 ;; ERROR: Unsupported inline assembly instruction kind - [daddu v1, v1, s7]
 (defun valid? ((obj object) (expected-type type) (err-msg-str string) (allow-false symbol) (err-msg-dest object))
-  ;; og:preserve-this
-  ;; cleaned up significantly.
-  ;; (local-vars (v1-11 int) (v1-26 int) (v1-56 int) (v1-60 int) (s7-0 none))
+  (local-vars (v1-11 int) (v1-26 int) (v1-56 int) (v1-60 int) (s7-0 none))
   (let ((v1-1
-          (and (>= (the-as uint obj) (start-of-symbol-table)) (< (the-as uint obj) END_OF_MEMORY))
+          (and (>= (the-as uint obj) (the-as uint __START-OF-TABLE__)) (< (the-as uint obj) (the-as uint #x8000000)))
           )
         )
     (cond
@@ -1246,7 +1328,13 @@ over a normal (array uint32), since both store data the same way."
               )
           #f
           )
-         ((or (not v1-1) (< (the-as uint obj) (end-of-symbol-table)))
+         ((or (not v1-1) (begin
+                           (let ((v1-10 #x8000))
+                             (.daddu v1-11 v1-10 s7-0)
+                             )
+                           (< (the-as uint obj) (the-as uint v1-11))
+                           )
+              )
           (if err-msg-str
               (format
                 err-msg-dest
@@ -1327,7 +1415,13 @@ over a normal (array uint32), since both store data the same way."
               )
           #f
           )
-         ((or (not v1-1) (< (the-as int obj) (start-of-symbol-table)) (>= (the-as int obj) (end-of-symbol-table)))
+         ((or (not v1-1) (< (the-as int obj) (the-as int __START-OF-TABLE__)) (begin
+                                                                                (let ((v1-25 #x8000))
+                                                                                  (.daddu v1-26 v1-25 s7-0)
+                                                                                  )
+                                                                                (>= (the-as int obj) v1-26)
+                                                                                )
+              )
           (if err-msg-str
               (format
                 err-msg-dest
@@ -1408,8 +1502,11 @@ over a normal (array uint32), since both store data the same way."
        #f
        )
       ((= expected-type symbol)
+       (let ((v1-55 #x8000))
+         (.daddu v1-56 v1-55 s7-0)
+         )
        (cond
-         ((>= (the-as uint obj) (end-of-symbol-table))
+         ((>= (the-as uint obj) (the-as uint v1-56))
           (if err-msg-str
               (format
                 err-msg-dest
@@ -1426,7 +1523,12 @@ over a normal (array uint32), since both store data the same way."
            )
          )
        )
-      ((< (the-as uint obj) (end-of-symbol-table))
+      ((begin
+         (let ((v1-59 #x8000))
+           (.daddu v1-60 v1-59 s7-0)
+           )
+         (< (the-as uint obj) (the-as uint v1-60))
+         )
        (if err-msg-str
            (format
              err-msg-dest
@@ -1444,3 +1546,6 @@ over a normal (array uint32), since both store data the same way."
       )
     )
   )
+
+;; failed to figure out what this is:
+0
