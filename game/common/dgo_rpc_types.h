@@ -26,6 +26,10 @@ struct RPC_Dgo_Cmd {
   uint32_t buffer2;
   uint32_t buffer_heap_top;
   char name[16];
+
+  // note: padding this a bit so the jak 3 commands can get sent to overlord without overflowing
+  // a buffer.
+  uint8_t pad[32];
 };
 
 namespace jak3 {
@@ -41,3 +45,5 @@ struct RPC_Dgo_Cmd {
 };
 static_assert(sizeof(RPC_Dgo_Cmd) == 0x40);
 }  // namespace jak3
+
+static_assert(sizeof(RPC_Dgo_Cmd) == sizeof(jak3::RPC_Dgo_Cmd));

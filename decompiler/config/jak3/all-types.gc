@@ -952,7 +952,6 @@
 ;; pskernel                       ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype lowmemmap (structure)
   ((irq-info-stack  uint32   :offset-assert 0)
    (irq2-info-stack uint32   :offset-assert 4)
@@ -973,74 +972,112 @@
   :size-assert         #x44
   :flag-assert         #x900000044
   )
-|#
 
-;; (define-extern kernel-copy-function function) ;; (function object (pointer int32) int32 int32 none)
-;; (define-extern kernel-copy-to-kernel-ram function) ;; (function none)
-;; (define-extern kernel-write-function function) ;; (function object object object none)
-;; (define-extern kernel-write function) ;; (function none)
-;; (define-extern kernel-read-function function) ;; (function object (pointer int32) none)
-;; (define-extern kernel-read function) ;; (function none)
-;; (define-extern kernel-check-hardwired-addresses function) ;; (function none)
-;; (define-extern install-default-debug-handler function) ;; (function object none)
-;; (define-extern return-from-exception function) ;; (function object none)
-;; (define-extern kernel-set-exception-vector function) ;; (function object none)
-;; (define-extern kernel-set-interrupt-vector function) ;; (function none)
-;; (define-extern kernel-set-level2-vector function) ;; (function object object none)
-;; (define-extern deinstall-debug-handler function) ;; (function none)
-;; (define-extern deinstall-debug-handlers function) ;; (function none)
-;; (define-extern resend-exception function) ;; (function object object object object none)
+(define-extern kernel-copy-function (function object (pointer int32) int32 int32 none))
+(define-extern kernel-copy-to-kernel-ram (function none))
+(define-extern kernel-write-function (function object object object none))
+(define-extern kernel-write (function none))
+(define-extern kernel-read-function (function object (pointer int32) none))
+(define-extern kernel-read (function none))
+(define-extern kernel-check-hardwired-addresses (function none))
+(define-extern install-default-debug-handler (function object none))
+(define-extern return-from-exception (function object none))
+(define-extern kernel-set-exception-vector (function object none))
+(define-extern kernel-set-interrupt-vector (function none))
+(define-extern kernel-set-level2-vector (function object object none))
+(define-extern deinstall-debug-handler (function none))
+(define-extern deinstall-debug-handlers (function none))
+(define-extern resend-exception (function object object object object none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; gstring                        ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (define-extern copy-string<-string function) ;; (function string string string)
-(define-extern string= (function string string symbol))
-;; (define-extern string-prefix= function) ;; (function string string symbol)
-;; (define-extern charp-prefix= function) ;; (function (pointer uint8) (pointer uint8) symbol)
-;; (define-extern string-suffix= function) ;; (function string string symbol)
-;; (define-extern string-position function) ;; (function string string int)
-;; (define-extern string-charp= function) ;; (function string (pointer uint8) symbol)
-(define-extern name= (function object object symbol))
-;; (define-extern copyn-string<-charp function) ;; (function string (pointer uint8) int string)
-;; (define-extern string<-charp function) ;; (function string (pointer uint8) string)
-;; (define-extern charp<-string function) ;; (function (pointer uint8) string int)
-;; (define-extern copyn-charp<-string function) ;; (function (pointer uint8) string int none)
-;; (define-extern copy-charp<-charp function) ;; (function (pointer uint8) (pointer uint8) (pointer uint8))
-;; (define-extern cat-string<-string function) ;; (function string string string)
-;; (define-extern catn-string<-charp function) ;; (function string (pointer uint8) int string)
-;; (define-extern cat-string<-string_to_charp function) ;; (function string string (pointer uint8) (pointer uint8))
-;; (define-extern append-character-to-string function) ;; (function string uint8 int)
-;; (define-extern charp-basename function) ;; (function (pointer uint8) (pointer uint8))
-;; (define-extern clear function) ;; (function string string)
-;; (define-extern string<? function) ;; (function string string symbol)
-;; (define-extern string>? function) ;; (function string string symbol)
-;; (define-extern string<=? function) ;; (function string string symbol)
-;; (define-extern string>=? function) ;; (function string string symbol)
-;; (define-extern *string-tmp-str* object) ;; string
-;; (define-extern string-skip-to-char function) ;; (function (pointer uint8) uint (pointer uint8))
-;; (define-extern string-cat-to-last-char function) ;; (function string string uint (pointer uint8))
-;; (define-extern string-skip-whitespace function) ;; (function (pointer uint8) (pointer uint8))
-;; (define-extern string-suck-up! function) ;; (function string (pointer uint8) symbol)
-;; (define-extern string-strip-leading-whitespace! function) ;; (function string symbol)
-;; (define-extern string-strip-trailing-whitespace! function) ;; (function string symbol)
-;; (define-extern string-strip-whitespace! function) ;; (function string symbol)
-;; (define-extern string-upcase function) ;; (function string string none)
-;; (define-extern string-get-arg!! function) ;; (function string string symbol)
-;; (define-extern string->int function) ;; (function string int)
-;; (define-extern string->float function) ;; (function string float)
-;; (define-extern string-get-int32!! function) ;; (function (pointer int32) string symbol)
-;; (define-extern string-get-float!! function) ;; (function (pointer float) string symbol)
-;; (define-extern string-get-flag!! function) ;; (function (pointer symbol) string string string symbol)
-;; (define-extern string-word-wrap function) ;; (function string int none)
+(define-extern copy-string<-string
+               "Copy a string. No bounds check. Writes null terminator." (function string string string))
+(define-extern string=
+               "Check for string equality."
+               (function string string symbol))
+(define-extern string-prefix=
+               "Check if a string starts with a given string."
+               (function string string symbol))
+(define-extern charp-prefix=
+               "Check if a c-string starts with a given c-string."
+               (function (pointer uint8) (pointer uint8) symbol))
+(define-extern string-suffix=
+               "Check if a string ends with a given string."
+               (function string string symbol))
+(define-extern string-position
+               "Find the point where a string occurs in another. If it doesn't, return -1."
+               (function string string int))
+(define-extern string-charp=
+               "Check if a string is equal to a c-string." (function string (pointer uint8) symbol))
+(define-extern name=
+               "Check if a string/symbol stores the same name as another string/symbol."
+               (function object object symbol))
+(define-extern copyn-string<-charp
+               "Copy part of a c-string to a string. Writes null terminator after num-chars." (function string (pointer uint8) int string))
+(define-extern string<-charp
+               "Copy a c-string to a string. Writes the null terminator."
+               (function string (pointer uint8) string))
+(define-extern charp<-string
+               "Copy a string to a c-string. Writes the null terminator."
+               (function (pointer uint8) string int))
+(define-extern copyn-charp<-string
+               "Copy part of a string to a c-string. Writes null terminator, repeatedly, to reach the given length.
+                If the source is longer than the length, the null terminator is still included."
+               (function (pointer uint8) string int none))
+(define-extern copy-charp<-charp
+               "C-string copy, writes null terminator."
+               (function (pointer uint8) (pointer uint8) (pointer uint8)))
+(define-extern cat-string<-string
+               "Append a string to another."
+               (function string string string))
+(define-extern catn-string<-charp
+               "Append part of a string to another. Writes null terminator."
+               (function string (pointer uint8) int string))
+(define-extern cat-string<-string_to_charp "Append part of a string to another, up to the given pointer."
+               (function string string (pointer uint8) (pointer uint8)))
+(define-extern append-character-to-string
+               "Append a single character to a string. Writes null terminator after."
+               (function string uint8 int))
+(define-extern charp-basename
+               "Strip the directory and suffix from a c-string."
+               (function (pointer uint8) (pointer uint8)))
+(define-extern clear "Set string to the empty string."
+               (function string string))
+(define-extern string<?
+               "Slightly incorrect ordering of strings."
+               (function string string symbol))
+(define-extern string>? "Slightly incorrect ordering of strings." (function string string symbol))
+(define-extern string<=? "Slightly incorrect ordering of strings." (function string string symbol))
+(define-extern string>=? "Slightly incorrect ordering of strings." (function string string symbol))
+(define-extern *string-tmp-str* string)
+(define-extern string-skip-to-char "Advance to the given character."
+               (function (pointer uint8) uint (pointer uint8)))
+(define-extern string-cat-to-last-char "Append append-str to end of base-str, up to the last occurance of char" (function string string uint (pointer uint8)))
+(define-extern string-skip-whitespace "Jump over whitespace chars."
+               (function (pointer uint8) (pointer uint8)))
+(define-extern string-suck-up! "Move the string forward so the pointer is now at the beginning."
+               (function string (pointer uint8) symbol))
+(define-extern string-strip-leading-whitespace! "Strip leading whitespace." (function string symbol))
+(define-extern string-strip-trailing-whitespace! "String trailing whitespace." (function string symbol))
+(define-extern string-strip-whitespace! "Strip whitespace from the beginning and end of a string" (function string symbol))
+(define-extern string-upcase "Uppercase characters. If convert-dash is set, - will be uppercased to _" (function string string symbol none))
+(define-extern string-get-arg!! (function string string symbol))
+(define-extern string->int "Convert string to int." (function string int))
+(define-extern string->float "Convert string to float. Finally implemented!" (function string float))
+(define-extern string-get-int32!! (function (pointer int32) string symbol))
+(define-extern string-get-float!! (function (pointer float) string symbol))
+(define-extern string-get-flag!! (function (pointer symbol) string string string symbol))
+(define-extern string-word-wrap "Wrap lines to specified width." (function string int none))
 (define-extern *debug-draw-pauseable* symbol)
 (define-extern *stdcon0* string)
 (define-extern *stdcon1* string)
-;; (define-extern *null* object)
+(define-extern *null* string)
 (define-extern *stdcon* string)
-;; (define-extern *stdebug* object)
-;; (define-extern *temp-string* object) ;; string
+(define-extern *stdebug* string)
+(define-extern *temp-string* string)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; dgo-h                          ;;

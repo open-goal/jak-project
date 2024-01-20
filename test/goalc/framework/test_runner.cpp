@@ -140,6 +140,15 @@ void runtime_with_kernel_jak2() {
   exec_runtime(game_options, argc, argv);
 }
 
+void runtime_with_kernel_jak3() {
+  constexpr int argc = 4;
+  const char* argv[argc] = {"", "-fakeiso", "-debug", "-nosound"};
+  GameLaunchOptions game_options;
+  game_options.disable_display = true;
+  game_options.game_version = GameVersion::Jak3;
+  exec_runtime(game_options, argc, argv);
+}
+
 void runtime_with_kernel_no_debug_segment() {
   constexpr int argc = 4;
   const char* argv[argc] = {"", "-fakeiso", "-debug-mem", "-nosound"};
