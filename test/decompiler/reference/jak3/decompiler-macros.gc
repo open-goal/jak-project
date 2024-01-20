@@ -55,3 +55,25 @@
      (the uint result)
      )
   )
+
+(defmacro handle->process (handle)
+  "Convert a handle to a process. If the process no longer exists, returns #f."
+  `(let ((the-handle (the-as handle ,handle)))
+     (if (-> the-handle process) ;; if we don't point to a process, kernel sets this to #f
+         (let ((proc (-> (-> the-handle process))))
+           (if (= (-> the-handle pid) (-> proc pid)) ;; make sure it's the same process
+               proc
+               )
+           )
+         )
+     )
+  )
+
+(defmacro ppointer->process (ppointer)
+  "convert a (pointer process) to a process."
+  ;; this uses the self field, which seems to always just get set to the object.
+  ;; confirmed in Jak 1 that using self here is useless, not sure...
+  `(let ((the-pp ,ppointer))
+     (if the-pp (-> the-pp 0 self))
+     )
+  )
