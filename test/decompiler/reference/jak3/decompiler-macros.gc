@@ -1,1 +1,57 @@
 ;; This file should contain an implementation for all macros that the decompiler uses in its output.
+
+(defmacro init-vf0-vector ()
+  "Initializes the VF0 vector which is a constant vector in the VU set to <0,0,0,1>"
+  `(.lvf vf0 (new 'static 'vector :x 0.0 :y 0.0 :z 0.0 :w 1.0))
+  )
+
+(defmacro new-stack-vector0 ()
+  "Get a stack vector that's set to 0.
+   This is more efficient than (new 'stack 'vector) because
+   this doesn't call the constructor."
+  `(let ((vec (new 'stack-no-clear 'vector)))
+     (set! (-> vec quad) (the-as uint128 0))
+     vec
+     )
+  )
+
+(defmacro set-vector! (v xv yv zv wv)
+  "Set all fields in a vector"
+  (with-gensyms (vec)
+     `(let ((,vec ,v))
+       (set! (-> ,vec x) ,xv)
+       (set! (-> ,vec y) ,yv)
+       (set! (-> ,vec z) ,zv)
+       (set! (-> ,vec w) ,wv)
+       ,vec
+       ))
+     )
+
+(defmacro new-stack-quaternion0 ()
+  "Get a stack quaternion that's set to 0.
+   This is more efficient than (new 'stack 'quaternion) because
+   this doesn't call the constructor."
+  `(let ((q (new 'stack-no-clear 'quaternion)))
+     (set! (-> q quad) (the-as uint128 0))
+     q
+     )
+  )
+
+(defmacro with-pp (&rest body)
+  "execute the body with pp bound to the current process register."
+  `(rlet ((pp :reg r13 :reset-here #t :type process))
+         ,@body)
+  )
+
+(defconstant PP (with-pp pp))
+
+(defmacro make-u128 (upper lower)
+  `(rlet ((result :class i128)
+          (upper-xmm :class i128)
+          (lower-xmm :class i128))
+     (.mov upper-xmm ,upper)
+     (.mov lower-xmm ,lower)
+     (.pcpyld result upper-xmm lower-xmm)
+     (the uint result)
+     )
+  )

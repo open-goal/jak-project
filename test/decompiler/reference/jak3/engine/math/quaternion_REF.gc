@@ -1,13 +1,22 @@
 ;;-*-Lisp-*-
 (in-package goal)
 
-;; name: quaternion.gc
-;; name in dgo: quaternion
-;; dgos: GAME
+;; definition for method 3 of type quaternion
+(defmethod inspect ((this quaternion))
+  (format #t "[~8x] quaternion~%" this)
+  (format #t "~T[~F] [~F] [~F] [~F]~%" (-> this x) (-> this y) (-> this z) (-> this w))
+  (let ((f0-5 (/ 1.0 (sqrtf (+ (* (-> this x) (-> this x)) (* (-> this y) (-> this y)) (* (-> this z) (-> this z))))))
+        )
+    (format #t "~Taxis: ~F ~F ~F" (* f0-5 (-> this x)) (* f0-5 (-> this y)) (* f0-5 (-> this z)))
+    )
+  (let ((f0-9 (* 2.0 (acos (-> this w)))))
+    (format #t "~T~Tangle: (deg ~R)~%" f0-9)
+    )
+  (format #t "~T(static-quaternion ~f ~f ~f ~f)~%" (-> this x) (-> this y) (-> this z) (-> this w))
+  this
+  )
 
-;; DECOMP BEGINS
-
-
+;; definition for function quaternion-axis-angle!
 (defun quaternion-axis-angle! ((arg0 quaternion) (arg1 float) (arg2 float) (arg3 float) (arg4 float))
   "Construct a quaternion from an axis and angle. The axis should be normalized."
   (let ((s5-0 (new 'stack-no-clear 'vector)))
@@ -22,6 +31,7 @@
   arg0
   )
 
+;; definition for function quaternion-vector-angle!
 (defun quaternion-vector-angle! ((arg0 quaternion) (arg1 vector) (arg2 float))
   "Construct a quaternion from an axis and angle. The axis should be normalized."
   (let ((s5-0 (new 'stack-no-clear 'vector)))
@@ -36,6 +46,7 @@
   arg0
   )
 
+;; definition for function vector-angle<-quaternion!
 (defun vector-angle<-quaternion! ((arg0 vector) (arg1 quaternion))
   "Convert the quaternion arg1 to axis-angle form and store in arg0 (angle goes in w)"
   (let* ((f0-0 1.0)
@@ -52,6 +63,8 @@
   arg0
   )
 
+;; definition for function quaternion-look-at!
+;; INFO: Used lq/sq
 (defun quaternion-look-at! ((arg0 quaternion) (arg1 vector) (arg2 vector))
   "Look along arg1, with arg2 as up."
   (let ((s5-0 (new 'stack-no-clear 'matrix)))
@@ -62,12 +75,16 @@
     )
   )
 
+;; definition for function quaternion-zero!
+;; INFO: Used lq/sq
 (defun quaternion-zero! ((arg0 quaternion))
   "Set quaternion to all 0's."
   (set! (-> arg0 quad) (the-as uint128 0))
   arg0
   )
 
+;; definition for function quaternion-identity!
+;; INFO: Used lq/sq
 (defun quaternion-identity! ((arg0 quaternion))
   "Set quaternion to 0,0,0,1 (identity)."
   (set! (-> arg0 quad) (the-as uint128 0))
@@ -75,6 +92,8 @@
   arg0
   )
 
+;; definition for function quaternion-i!
+;; INFO: Used lq/sq
 (defun quaternion-i! ((arg0 quaternion))
   "Create unit i quaternion."
   (set! (-> arg0 quad) (the-as uint128 0))
@@ -82,6 +101,8 @@
   arg0
   )
 
+;; definition for function quaternion-j!
+;; INFO: Used lq/sq
 (defun quaternion-j! ((arg0 quaternion))
   "Create unit j quaternion."
   (set! (-> arg0 quad) (the-as uint128 0))
@@ -89,6 +110,8 @@
   arg0
   )
 
+;; definition for function quaternion-k!
+;; INFO: Used lq/sq
 (defun quaternion-k! ((arg0 quaternion))
   "Create unit k quaternion."
   (set! (-> arg0 quad) (the-as uint128 0))
@@ -96,12 +119,15 @@
   arg0
   )
 
+;; definition for function quaternion-copy!
+;; INFO: Used lq/sq
 (defun quaternion-copy! ((arg0 quaternion) (arg1 quaternion))
   "Set arg0 = arg1."
   (set! (-> arg0 quad) (-> arg1 quad))
   arg0
   )
 
+;; definition for function quaternion-set!
 (defun quaternion-set! ((arg0 quaternion) (arg1 float) (arg2 float) (arg3 float) (arg4 float))
   "Set arg0 = [arg1, arg2, arg3, arg4]."
   (set! (-> arg0 x) arg1)
@@ -111,6 +137,7 @@
   arg0
   )
 
+;; definition for function quaternion+!
 (defun quaternion+! ((arg0 quaternion) (arg1 quaternion) (arg2 quaternion))
   "Add quaternions as vectors."
   (rlet ((vf1 :class vf)
@@ -124,6 +151,7 @@
     )
   )
 
+;; definition for function quaternion-!
 (defun quaternion-! ((arg0 quaternion) (arg1 quaternion) (arg2 quaternion))
   "Subtract quaternions as vectors."
   (rlet ((vf1 :class vf)
@@ -137,6 +165,7 @@
     )
   )
 
+;; definition for function quaternion-negate!
 ;; ERROR: Bad vector register dependency: vf2
 (defun quaternion-negate! ((arg0 quaternion) (arg1 quaternion))
   "Set arg0 = -arg1."
@@ -144,15 +173,14 @@
          (vf2 :class vf)
          )
     (.lvf vf1 (&-> arg1 quad))
-    ;; og:preserve-this
-    ;; (.sub.vf vf2 vf2 vf2)
-    (.xor.vf vf2 vf2 vf2)
+    (.sub.vf vf2 vf2 vf2)
     (.sub.vf vf1 vf2 vf1)
     (.svf (&-> arg0 quad) vf1)
     arg0
     )
   )
 
+;; definition for function quaternion-conjugate!
 ;; ERROR: Bad vector register dependency: vf2
 (defun quaternion-conjugate! ((arg0 quaternion) (arg1 quaternion))
   "Set arg0 to the conjugate of arg1 (negate only ijk).
@@ -162,9 +190,7 @@ NOTE: this gives you the inverse rotation."
          (vf2 :class vf)
          )
     (.lvf vf1 (&-> arg1 quad))
-    ;; og:preserve-this
-    ;; (.sub.vf vf2 vf2 vf2)
-    (.xor.vf vf2 vf2 vf2)
+    (.sub.vf vf2 vf2 vf2)
     (.sub.vf vf2 vf2 vf1 :mask #b111)
     (.add.vf vf2 vf2 vf1 :mask #b1000)
     (.svf (&-> arg0 quad) vf2)
@@ -172,6 +198,7 @@ NOTE: this gives you the inverse rotation."
     )
   )
 
+;; definition for function quaternion-float*!
 (defun quaternion-float*! ((arg0 quaternion) (arg1 quaternion) (arg2 float))
   "Multiply each element."
   (rlet ((vf1 :class vf)
@@ -185,6 +212,7 @@ NOTE: this gives you the inverse rotation."
     )
   )
 
+;; definition for function quaternion-float/!
 (defun quaternion-float/! ((arg0 quaternion) (arg1 quaternion) (arg2 float))
   "Divide each element."
   (let ((f0-1 (/ 1.0 arg2)))
@@ -193,6 +221,7 @@ NOTE: this gives you the inverse rotation."
   arg0
   )
 
+;; definition for function quaternion-norm2
 (defun quaternion-norm2 ((arg0 quaternion))
   "Get the squared norm of a quaternion."
   (local-vars (v0-0 float))
@@ -212,6 +241,7 @@ NOTE: this gives you the inverse rotation."
     )
   )
 
+;; definition for function quaternion-norm
 (defun quaternion-norm ((arg0 quaternion))
   "Get the norm of a quaternion."
   (local-vars (v1-1 float))
@@ -231,6 +261,7 @@ NOTE: this gives you the inverse rotation."
     )
   )
 
+;; definition for function quaternion-normalize!
 (defun quaternion-normalize! ((arg0 quaternion))
   "Normalize a quaternion."
   (rlet ((acc :class vf)
@@ -246,16 +277,16 @@ NOTE: this gives you the inverse rotation."
     (.add.mul.y.vf acc vf0 vf2 acc :mask #b1000)
     (.add.mul.x.vf vf2 vf0 vf2 acc :mask #b1000)
     (.isqrt.vf Q vf0 vf2 :fsf #b11 :ftf #b11)
-    ;; og:preserve-this
-    ;; (.wait.vf)
+    (.wait.vf)
     (.mul.vf vf2 vf1 Q)
-    ;; (.nop.vf)
-    ;; (.nop.vf)
+    (.nop.vf)
+    (.nop.vf)
     (.svf (&-> arg0 quad) vf2)
     arg0
     )
   )
 
+;; definition for function quaternion-inverse!
 ;; ERROR: Bad vector register dependency: vf3
 (defun quaternion-inverse! ((arg0 quaternion) (arg1 quaternion))
   "Invert a quaternion. The inverse will satisfy q * q^-1 = identity, even if q is not normalized.
@@ -270,9 +301,7 @@ If your quaternion is normalized, it is faster/more accurate to do quaternion-co
     (init-vf0-vector)
     (.lvf vf1 (&-> arg1 quad))
     (.mul.vf vf2 vf1 vf1)
-    ;; og:preserve-this
-    ;; (.sub.vf vf3 vf3 vf3)
-    (.xor.vf vf3 vf3 vf3)
+    (.sub.vf vf3 vf3 vf3)
     (.add.z.vf acc vf2 vf2 :mask #b1000)
     (.add.mul.y.vf acc vf0 vf2 acc :mask #b1000)
     (.add.mul.x.vf vf2 vf0 vf2 acc :mask #b1000)
@@ -288,6 +317,7 @@ If your quaternion is normalized, it is faster/more accurate to do quaternion-co
     )
   )
 
+;; definition for function quaternion-dot
 (defun quaternion-dot ((arg0 quaternion) (arg1 quaternion))
   "Treat quaternions as vectors and take the dot product."
   (local-vars (v0-0 float))
@@ -309,6 +339,7 @@ If your quaternion is normalized, it is faster/more accurate to do quaternion-co
     )
   )
 
+;; definition for function quaternion*!
 (defun quaternion*! ((arg0 quaternion) (arg1 quaternion) (arg2 quaternion))
   "Real quaternion multiplication."
   (rlet ((acc :class vf)
@@ -337,6 +368,7 @@ If your quaternion is normalized, it is faster/more accurate to do quaternion-co
     )
   )
 
+;; definition for function quaternion-right-mult-matrix!
 (defun quaternion-right-mult-matrix! ((arg0 matrix) (arg1 quaternion))
   "Place quaternion coefficients into a matrix.
 You can convert a quaternion to a matrix by taking the product of this
@@ -367,6 +399,7 @@ Instead, quaternion->matrix is a more efficient implementation."
   arg0
   )
 
+;; definition for function quaternion-left-mult-matrix!
 (defun quaternion-left-mult-matrix! ((arg0 matrix) (arg1 quaternion))
   "Place quaternion coefficients into a matrix. Unused."
   (let ((f2-0 (-> arg1 x))
@@ -395,6 +428,7 @@ Instead, quaternion->matrix is a more efficient implementation."
   arg0
   )
 
+;; definition for function quaternion->matrix
 (defun quaternion->matrix ((arg0 matrix) (arg1 quaternion))
   "Convert quaternion to matrix."
   (rlet ((acc :class vf)
@@ -437,61 +471,10 @@ Instead, quaternion->matrix is a more efficient implementation."
     )
   )
 
-(defun quaternion->matrix-2 ((arg0 matrix) (arg1 quaternion))
-  "Unused alternate quaternion->matrix function."
-  (/ 0 0)
-  arg0
-  ; (local-vars (v1-1 uint128) (a1-1 uint128) (a1-2 uint128) (a2-0 uint128) (a3-0 uint128))
-  ; (rlet ((acc :class vf)
-  ;        (vf0 :class vf)
-  ;        (vf1 :class vf)
-  ;        (vf2 :class vf)
-  ;        (vf3 :class vf)
-  ;        (vf4 :class vf)
-  ;        (vf5 :class vf)
-  ;        (vf6 :class vf)
-  ;        (vf7 :class vf)
-  ;        (vf8 :class vf)
-  ;        )
-  ;   (init-vf0-vector)
-  ;   (let ((v1-0 (-> arg1 vec quad)))
-  ;     (.pexew a1-1 v1-0)
-  ;     (.mov vf1 v1-0)
-  ;     (.prot3w a2-0 a1-1)
-  ;     (.pcpyud a1-2 v1-0 a1-1)
-  ;     (.mov vf4 a2-0)
-  ;     (let ((a2-1 #x3f800000))
-  ;       (.add.vf vf5 vf1 vf1)
-  ;       (.sub.y.vf vf4 vf0 vf4 :mask #b10)
-  ;       (.pextlw a3-0 v1-0 a1-2)
-  ;       (.mov vf3 a1-2)
-  ;       (.pextuw v1-1 v1-0 a3-0)
-  ;       (.mov vf2 v1-1)
-  ;       (set! (-> arg0 trans quad) (the-as uint128 0))
-  ;       (.sub.x.vf vf3 vf0 vf3 :mask #b1)
-  ;       (set! (-> arg0 trans w) (the-as float a2-1))
-  ;       (.sub.z.vf vf2 vf0 vf2 :mask #b100)
-  ;       (.outer.product.a.vf acc vf5 vf4)
-  ;       (.outer.product.b.vf vf8 vf4 vf5 acc)
-  ;       (.outer.product.a.vf acc vf5 vf3)
-  ;       (.outer.product.b.vf vf7 vf3 vf5 acc)
-  ;       (.outer.product.a.vf acc vf5 vf2)
-  ;       (.outer.product.b.vf vf6 vf2 vf5 acc)
-  ;       (.add.w.vf vf8 vf8 vf0 :mask #b100)
-  ;       (.add.w.vf vf7 vf7 vf0 :mask #b10)
-  ;       (.add.w.vf vf6 vf6 vf0 :mask #b1)
-  ;       (.svf (&-> arg0 quad 2) vf8)
-  ;       (set! (-> arg0 data 11) (the-as float a2-1))
-  ;       (.svf (&-> arg0 quad 1) vf7)
-  ;       (set! (-> arg0 data 7) (the-as float a2-1))
-  ;       (.svf (&-> arg0 quad 0) vf6)
-  ;       (set! (-> arg0 data 3) (the-as float a2-1))
-  ;       )
-  ;     )
-  ;   arg0
-  ;   )
-  )
+;; definition for function quaternion->matrix-2
+;; ERROR: function was not converted to expressions. Cannot decompile.
 
+;; definition for function matrix->quaternion
 (defun matrix->quaternion ((arg0 quaternion) (arg1 matrix))
   "Convert a rotation matrix to a quaternion."
   (let ((f0-2 (+ (-> arg1 rvec x) (-> arg1 uvec y) (-> arg1 fvec z))))
@@ -566,6 +549,8 @@ Instead, quaternion->matrix is a more efficient implementation."
   arg0
   )
 
+;; definition for function matrix-with-scale->quaternion
+;; INFO: Used lq/sq
 (defun matrix-with-scale->quaternion ((arg0 quaternion) (arg1 matrix))
   "Convert a matrix with a rotation and scale into a quaternion (just the rotation)."
   (local-vars (a1-4 float))
@@ -616,6 +601,7 @@ Instead, quaternion->matrix is a more efficient implementation."
     )
   )
 
+;; definition for function quaternion-vector-len
 (defun quaternion-vector-len ((arg0 quaternion))
   "Assuming quaternion is normalized, get the length of the xyz part."
   (let ((f0-0 1.0)
@@ -625,6 +611,7 @@ Instead, quaternion->matrix is a more efficient implementation."
     )
   )
 
+;; definition for function quaternion-log!
 (defun quaternion-log! ((arg0 quaternion) (arg1 quaternion))
   "Take the log of a quaternion. Unused."
   (cond
@@ -646,6 +633,7 @@ Instead, quaternion->matrix is a more efficient implementation."
   arg0
   )
 
+;; definition for function quaternion-exp!
 (defun quaternion-exp! ((arg0 quaternion) (arg1 quaternion))
   "Quaternion exponentiation. Unused."
   (let ((f30-0 (vector-length (the-as vector arg1))))
@@ -672,6 +660,7 @@ Instead, quaternion->matrix is a more efficient implementation."
   arg0
   )
 
+;; definition for function quaternion-slerp!
 (defun quaternion-slerp! ((arg0 quaternion) (arg1 quaternion) (arg2 quaternion) (arg3 float))
   "Real quaternion slerp. Spherical-linear interpolation is a nice way to interpolate
 between quaternions."
@@ -737,6 +726,7 @@ between quaternions."
     )
   )
 
+;; definition for function quaternion-pseudo-slerp!
 (defun quaternion-pseudo-slerp! ((arg0 quaternion) (arg1 quaternion) (arg2 quaternion) (arg3 float))
   "This is a bad interpolation between quaternions. It lerps then normalizes.
 It will behave extremely poorly for 180 rotations.
@@ -771,6 +761,7 @@ It is unused."
     )
   )
 
+;; definition for function quaternion-pseudo-seek
 (defun quaternion-pseudo-seek ((arg0 quaternion) (arg1 quaternion) (arg2 quaternion) (arg3 float))
   "Seek one quaternion toward another. Not using real slerp, so this is only good if the quaternions
 are pretty similar."
@@ -795,6 +786,7 @@ are pretty similar."
     )
   )
 
+;; definition for function quaternion-smooth-seek!
 (defun quaternion-smooth-seek! ((arg0 quaternion) (arg1 quaternion) (arg2 quaternion) (arg3 float))
   "Another hacky rotation interpolation."
   (let ((gp-0 (new 'stack-no-clear 'quaternion)))
@@ -810,6 +802,7 @@ are pretty similar."
     )
   )
 
+;; definition for function quaternion-zxy!
 (defun quaternion-zxy! ((arg0 quaternion) (arg1 vector))
   "Make a quaternion from a sequence of z, x, y axis rotations."
   (rlet ((acc :class vf)
@@ -850,6 +843,8 @@ are pretty similar."
     )
   )
 
+;; definition for function vector-x-quaternion!
+;; INFO: Used lq/sq
 (defun vector-x-quaternion! ((arg0 vector) (arg1 quaternion))
   "Get the first row of the rotation matrix for this quaternion."
   (let ((s5-0 (new 'stack-no-clear 'matrix)))
@@ -863,6 +858,8 @@ are pretty similar."
   arg0
   )
 
+;; definition for function vector-y-quaternion!
+;; INFO: Used lq/sq
 (defun vector-y-quaternion! ((arg0 vector) (arg1 quaternion))
   "Get the second row of the rotation matrix for this quaternion."
   (let ((s5-0 (new 'stack-no-clear 'matrix)))
@@ -876,6 +873,8 @@ are pretty similar."
   arg0
   )
 
+;; definition for function vector-z-quaternion!
+;; INFO: Used lq/sq
 (defun vector-z-quaternion! ((arg0 vector) (arg1 quaternion))
   "Get the third row of the rotation matrix for this quaternion."
   (let ((s5-0 (new 'stack-no-clear 'matrix)))
@@ -889,6 +888,7 @@ are pretty similar."
   arg0
   )
 
+;; definition for function quaternion-x-angle
 (defun quaternion-x-angle ((arg0 quaternion))
   "Get the x rotation angle. Not very efficient."
   (let ((v1-1 (vector-y-quaternion! (new 'stack-no-clear 'vector) arg0)))
@@ -896,6 +896,7 @@ are pretty similar."
     )
   )
 
+;; definition for function quaternion-y-angle
 (defun quaternion-y-angle ((arg0 quaternion))
   "Get the y rotation angle. Not very efficient."
   (let ((v1-1 (vector-z-quaternion! (new 'stack-no-clear 'vector) arg0)))
@@ -903,6 +904,7 @@ are pretty similar."
     )
   )
 
+;; definition for function quaternion-z-angle
 (defun quaternion-z-angle ((arg0 quaternion))
   "Get the z rotation angle. Not very efficient."
   (let ((v1-1 (vector-y-quaternion! (new 'stack-no-clear 'vector) arg0)))
@@ -910,6 +912,7 @@ are pretty similar."
     )
   )
 
+;; definition for function quaternion-vector-y-angle
 (defun quaternion-vector-y-angle ((arg0 quaternion) (arg1 vector))
   "Not sure. Angle between quaternion and axis, projected in xz plane?"
   (let ((f30-0 (quaternion-y-angle arg0))
@@ -919,6 +922,8 @@ are pretty similar."
     )
   )
 
+;; definition for function quaternion-rotate-local-x!
+;; INFO: Used lq/sq
 (defun quaternion-rotate-local-x! ((arg0 quaternion) (arg1 quaternion) (arg2 float))
   "Rotate existing quaternion along x axis."
   (let ((a2-1 (quaternion-vector-angle! (new-stack-quaternion0) (new 'static 'vector :x 1.0 :w 1.0) arg2)))
@@ -926,6 +931,8 @@ are pretty similar."
     )
   )
 
+;; definition for function quaternion-rotate-local-y!
+;; INFO: Used lq/sq
 (defun quaternion-rotate-local-y! ((arg0 quaternion) (arg1 quaternion) (arg2 float))
   "Rotate existing quaternion along y axis."
   (let ((a2-1 (quaternion-vector-angle! (new-stack-quaternion0) (new 'static 'vector :y 1.0 :w 1.0) arg2)))
@@ -933,6 +940,8 @@ are pretty similar."
     )
   )
 
+;; definition for function quaternion-rotate-local-z!
+;; INFO: Used lq/sq
 (defun quaternion-rotate-local-z! ((arg0 quaternion) (arg1 quaternion) (arg2 float))
   "Rotate existing quaternion along z axis."
   (let ((a2-1 (quaternion-vector-angle! (new-stack-quaternion0) (new 'static 'vector :z 1.0 :w 1.0) arg2)))
@@ -940,6 +949,8 @@ are pretty similar."
     )
   )
 
+;; definition for function quaternion-rotate-y!
+;; INFO: Used lq/sq
 (defun quaternion-rotate-y! ((arg0 quaternion) (arg1 quaternion) (arg2 float))
   "Rotate existing quaternion along y axis (right multiply)."
   (let ((a1-2 (quaternion-vector-angle! (new-stack-quaternion0) (new 'static 'vector :y 1.0 :w 1.0) arg2)))
@@ -947,6 +958,8 @@ are pretty similar."
     )
   )
 
+;; definition for function quaternion-rotate-x!
+;; INFO: Used lq/sq
 (defun quaternion-rotate-x! ((arg0 quaternion) (arg1 quaternion) (arg2 float))
   "Rotate existing quaternion along x axis (right multiply)."
   (let ((a1-3 (quaternion-vector-angle! (new-stack-quaternion0) (vector-x-quaternion! (new-stack-vector0) arg1) arg2))
@@ -955,6 +968,8 @@ are pretty similar."
     )
   )
 
+;; definition for function quaternion-rotate-z!
+;; INFO: Used lq/sq
 (defun quaternion-rotate-z! ((arg0 quaternion) (arg1 quaternion) (arg2 float))
   "Rotate existing quaternion along z axis (right multiply)."
   (let ((a1-3 (quaternion-vector-angle! (new-stack-quaternion0) (vector-z-quaternion! (new-stack-vector0) arg1) arg2))
@@ -963,6 +978,7 @@ are pretty similar."
     )
   )
 
+;; definition for function quaternion-delta-y
 (defun quaternion-delta-y ((arg0 quaternion) (arg1 quaternion))
   "Difference in yaw between two quaternions."
   (acos (vector-dot
@@ -972,6 +988,7 @@ are pretty similar."
         )
   )
 
+;; definition for function quaternion-rotate-y-to-vector!
 (defun quaternion-rotate-y-to-vector! ((arg0 quaternion) (arg1 quaternion) (arg2 quaternion) (arg3 float))
   (let ((s5-0 (new 'stack-no-clear 'quaternion)))
     (let ((t9-0 vector-xz-normalize!)
@@ -994,6 +1011,7 @@ are pretty similar."
     )
   )
 
+;; definition for function vector-rotate-around-axis!
 (defun vector-rotate-around-axis! ((arg0 vector) (arg1 quaternion) (arg2 float) (arg3 vector))
   "Rotate along y so z-axis points to match another. Use arg3 as the max rotation amount."
   (let ((a2-1 (quaternion-vector-angle! (new 'stack-no-clear 'quaternion) arg3 arg2)))
@@ -1001,36 +1019,44 @@ are pretty similar."
     )
   )
 
+;; definition for function vector-rotate-x!
 (defun vector-rotate-x! ((arg0 vector) (arg1 vector) (arg2 float))
   "Rotate vector along x axis."
   (vector-rotate-around-axis! arg0 (the-as quaternion arg1) arg2 *x-vector*)
   )
 
+;; definition for function vector-rotate-y!
 (defun vector-rotate-y! ((arg0 vector) (arg1 vector) (arg2 float))
   "Rotate vector along y axis."
   (vector-rotate-around-axis! arg0 (the-as quaternion arg1) arg2 *y-vector*)
   )
 
+;; definition for function vector-rotate-z!
 (defun vector-rotate-z! ((arg0 vector) (arg1 vector) (arg2 float))
   "Rotate vector along z axis."
   (vector-rotate-around-axis! arg0 (the-as quaternion arg1) arg2 *z-vector*)
   )
 
+;; definition for function vector-y-angle
 (defun vector-y-angle ((arg0 vector))
   "Get the yaw angle of a vector."
   (atan (-> arg0 x) (-> arg0 z))
   )
 
+;; definition for function vector-x-angle
 (defun vector-x-angle ((arg0 vector))
   "Get the pitch angle of a vector."
   (atan (-> arg0 y) (vector-xz-length arg0))
   )
 
+;; definition for function quaternion<-rotate-y-vector
 (defun quaternion<-rotate-y-vector ((arg0 quaternion) (arg1 vector))
   "Create a quaternion representing only the yaw of the given vector."
   (quaternion-vector-angle! arg0 (new 'static 'vector :y 1.0 :w 1.0) (vector-y-angle arg1))
   )
 
+;; definition (debug) for function quaternion-validate
+;; WARN: Return type mismatch int vs none.
 (defun-debug quaternion-validate ((arg0 quaternion))
   "Verify that a quaternion is valid, print an error if the length is off by more than 1%.."
   (with-pp
@@ -1048,6 +1074,7 @@ are pretty similar."
     )
   )
 
+;; definition for function quaternion-xz-angle
 (defun quaternion-xz-angle ((arg0 quaternion))
   "Yet another function to compute the yaw of a quaternion. This is a particularly inefficient version."
   (let ((gp-0 (new 'stack-no-clear 'matrix))
@@ -1059,3 +1086,7 @@ are pretty similar."
     (vector-y-angle s5-0)
     )
   )
+
+
+
+

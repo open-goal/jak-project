@@ -1,23 +1,7 @@
 ;;-*-Lisp-*-
 (in-package goal)
 
-;; name: matrix-h.gc
-;; name in dgo: matrix-h
-;; dgos: GAME
-
-(defmacro new-stack-matrix0 ()
-  "Get a new matrix on the stack that's set to zero."
-  `(let ((mat (new 'stack-no-clear 'matrix)))
-     (set! (-> mat quad 0) (the-as uint128 0))
-     (set! (-> mat quad 1) (the-as uint128 0))
-     (set! (-> mat quad 2) (the-as uint128 0))
-     (set! (-> mat quad 3) (the-as uint128 0))
-     mat
-     )
-  )
-
-;; DECOMP BEGINS
-
+;; definition of type matrix
 (deftype matrix (structure)
   "A 4x4 matrix, stored in row-major order.
 some, but not all, functions assume that a matrix is an affine transform.
@@ -35,7 +19,25 @@ others assume that the rotation has no scale or shear (and that its inverse is i
     )
   )
 
+;; definition for method 3 of type matrix
+(defmethod inspect ((this matrix))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this 'matrix)
+  (format #t "~1Tdata[16] @ #x~X~%" (-> this rvec))
+  (format #t "~1Tvector[4] @ #x~X~%" (-> this rvec))
+  (format #t "~1Tquad[4] @ #x~X~%" (-> this rvec))
+  (format #t "~1Trvec: #<vector @ #x~X>~%" (-> this rvec))
+  (format #t "~1Tuvec: #<vector @ #x~X>~%" (-> this uvec))
+  (format #t "~1Tfvec: #<vector @ #x~X>~%" (-> this fvec))
+  (format #t "~1Ttrans: #<vector @ #x~X>~%" (-> this trans))
+  (label cfg-4)
+  this
+  )
 
+;; definition of type matrix3
 (deftype matrix3 (structure)
   "A 3x3 matrix, stored in row-major order.
 NOTE: the rows each have an extra 4-bytes of padding,
@@ -47,7 +49,21 @@ This type is rarely used."
    )
   )
 
+;; definition for method 3 of type matrix3
+(defmethod inspect ((this matrix3))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this 'matrix3)
+  (format #t "~1Tdata[12] @ #x~X~%" (-> this vector))
+  (format #t "~1Tvector[3] @ #x~X~%" (-> this vector))
+  (format #t "~1Tquad[3] @ #x~X~%" (-> this vector))
+  (label cfg-4)
+  this
+  )
 
+;; definition of type matrix4h
 (deftype matrix4h (structure)
   "A matrix stored using 16-bit integers.
 Note that these usually have different scaling for the 4th row which
@@ -60,7 +76,22 @@ and how they were originally packed (for example, in tie/shrub)."
    )
   )
 
+;; definition for method 3 of type matrix4h
+(defmethod inspect ((this matrix4h))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this 'matrix4h)
+  (format #t "~1Tdata[16] @ #x~X~%" (-> this vector4h))
+  (format #t "~1Tvector4h[4] @ #x~X~%" (-> this vector4h))
+  (format #t "~1Tlong[4] @ #x~X~%" (-> this vector4h))
+  (label cfg-4)
+  this
+  )
 
+;; definition for function matrix-copy!
+;; INFO: Used lq/sq
 (defun matrix-copy! ((arg0 matrix) (arg1 matrix))
   "Copy arg1 to arg0"
   (let ((v1-0 (-> arg1 rvec quad))
@@ -76,6 +107,8 @@ and how they were originally packed (for example, in tie/shrub)."
   arg0
   )
 
+;; definition for function matrix<-vector-yz-exact!
+;; INFO: Used lq/sq
 (defun matrix<-vector-yz-exact! ((arg0 matrix) (arg1 vector) (arg2 vector))
   (set! (-> arg0 fvec quad) (-> arg1 quad))
   (set! (-> arg0 uvec quad) (-> arg2 quad))
@@ -83,6 +116,8 @@ and how they were originally packed (for example, in tie/shrub)."
   arg0
   )
 
+;; definition for function matrix<-vector-yz!
+;; INFO: Used lq/sq
 (defun matrix<-vector-yz! ((arg0 matrix) (arg1 vector) (arg2 vector))
   (set! (-> arg0 fvec quad) (-> arg1 quad))
   (vector-cross! (-> arg0 rvec) arg2 arg1)
@@ -94,6 +129,8 @@ and how they were originally packed (for example, in tie/shrub)."
   arg0
   )
 
+;; definition for function matrix<-vector-z!
+;; INFO: Used lq/sq
 (defun matrix<-vector-z! ((arg0 matrix) (arg1 vector))
   (let* ((s3-0 (new 'stack-no-clear 'vector))
          (v1-0 (vector-get-closest-perpendicular! s3-0 arg1 (vector-get-unique! (new 'stack-no-clear 'vector) arg1)))
@@ -105,3 +142,10 @@ and how they were originally packed (for example, in tie/shrub)."
     )
   arg0
   )
+
+;; failed to figure out what this is:
+0
+
+
+
+
