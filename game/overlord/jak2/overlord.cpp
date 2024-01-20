@@ -65,8 +65,8 @@ int start_overlord(int, const char* const*) {
   }
 
   param.entry = Thread_Loader;
-  param.attr = 0x73;
-  param.initPriority = TH_C;
+  param.attr = TH_C;
+  param.initPriority = 0x73;
   param.stackSize = 0x1000;
   param.option = 0;
   SndPlayThread = thread_player;
