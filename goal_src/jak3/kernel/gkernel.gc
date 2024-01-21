@@ -1512,7 +1512,11 @@
   (when *listener-function*
     (set! *enable-method-set* (+ *enable-method-set* 1))
     (let ((t1-0 (reset-and-call (-> *listener-process* main-thread) *listener-function*)))
-      (format #t "~D        #x~X        ~F        ~A~%" t1-0 t1-0 t1-0 t1-0)
+      ;; changed here.
+      (if *use-old-listener-print*
+          (format #t "~D~%" t1-0 t1-0 t1-0)
+          (format #t "~D        #x~X        ~F        ~A~%" t1-0 t1-0 t1-0 t1-0)
+          )
       )
     (set! *listener-function* #f)
     (set! *enable-method-set* (+ *enable-method-set* -1))
@@ -2182,30 +2186,28 @@
   )
 
 ;; definition for function set-to-run
-(defun set-to-run ((arg0 cpu-thread)
-          (arg1 function)
-          (arg2 object)
-          (arg3 object)
-          (arg4 object)
-          (arg5 object)
-          (arg6 object)
-          (arg7 object)
-          )
-  "Set up a process to run a given function, with the given arguments when it executes next."
-  (let ((v1-0 (-> arg0 process)))
-    (set! (-> v1-0 status) 'waiting-to-run)
-    )
-  (set! (-> arg0 rreg 0) (the-as uint arg2))
-  (set! (-> arg0 rreg 1) (the-as uint arg3))
-  (set! (-> arg0 rreg 2) (the-as uint arg4))
-  (set! (-> arg0 rreg 3) (the-as uint arg5))
-  (set! (-> arg0 rreg 4) (the-as uint arg6))
-  (set! (-> arg0 rreg 5) (the-as uint arg7))
-  (set! (-> arg0 rreg 6) (the-as uint arg1))
-  (set! (-> arg0 pc) (the-as pointer set-to-run-bootstrap))
-  (let ((v0-0 (-> arg0 stack-top)))
-    (set! (-> arg0 sp) v0-0)
-    v0-0
+(defun set-to-run ((thread cpu-thread) (func function) a0 a1 a2 a3 a4 a5)
+  "Set the given thread to call the given function with the given arguments next time it resumes.
+  Only for main threads.
+  Once the function returns, the process deactivates."
+  (let ((proc (-> thread process)))
+    (set! (-> proc status) 'waiting-to-run)
+
+    ;; we store arguments and the function to call in saved registers
+    (set! (-> thread rreg 0) (the uint func))
+    (set! (-> thread rreg 1) (the uint a0))
+    (set! (-> thread rreg 2) (the uint a1))
+    (set! (-> thread rreg 3) (the uint a2))
+    (set! (-> thread rreg 4) (the uint a3))
+    (set! (-> thread rreg 5) (the uint a4))
+    (set! (-> thread rreg 6) (the uint a5))
+
+    ;; and have the thread first call set-to-run-bootstrap, which will properly call
+    ;; the function with the arguments and install a return trampoline for
+    ;; deactivating and returning to the kernel on return.
+    (set! (-> thread pc) (the pointer set-to-run-bootstrap))
+    ;; reset sp.
+    (set! (-> thread sp) (-> thread stack-top))
     )
   )
 
@@ -2254,7 +2256,9 @@
           )
         (set! pp s5-0)
         )
-      (process-disconnect this)
+      (if (nonzero? process-disconnect) ;; added zero check.
+          (process-disconnect this)
+          )
       (let ((v1-12 (-> this child)))
         (while v1-12
           (let ((s5-1 (-> v1-12 0 brother)))
