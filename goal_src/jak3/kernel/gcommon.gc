@@ -1444,3 +1444,130 @@ over a normal (array uint32), since both store data the same way."
       )
     )
   )
+
+
+
+;;;;;;;;;;;;;;;;;;;;
+;; Profiler Macros
+;;;;;;;;;;;;;;;;;;;;
+
+
+(defmacro profiler-instant-event (name)
+  "Record an 'instant' event in the profile.
+   This can be used however you'd like, but there should be a
+   'ROOT' event logged every now and then (like once per frame)
+   when no timed events are in progress, to allow the profiler
+   to correctly recover the event stack."
+  `(#when PC_PROFILER_ENABLE
+     (pc-prof ,name (pc-prof-event instant))
+     )
+  )
+
+(defmacro profiler-start-event (name)
+  "Start a timed event with the given name."
+  `(#when PC_PROFILER_ENABLE
+     (pc-prof ,name (pc-prof-event begin))
+     )
+  )
+
+(defmacro profiler-end-event ()
+  "End the most recently started event that hasn't been stopped yet.
+   It is up to you to correctly balance the starts/ends, otherwise
+   the profiling data will be corrupted."
+  `(#when PC_PROFILER_ENABLE
+     (pc-prof "" (pc-prof-event end))
+     )
+  )
+
+(defmacro with-pc-profiler (name &rest body)
+  "Execute the body in a named profiler block.
+   Do not `return` or `go` from inside this block,
+   otherwise the end will be skipped."
+  `(#if PC_PROFILER_ENABLE
+        (begin
+          (pc-prof ,name (pc-prof-event begin))
+          ,@body
+          (pc-prof ,name (pc-prof-event end))
+          )
+        (begin
+          ,@body
+          )
+        )
+  )
+
+;;;;;;;;;;;;;;;;;;;;;;;;
+;; Decompiler Macros
+;;;;;;;;;;;;;;;;;;;;;;;;
+
+;; inserted by the decompiler for assembly branches.
+(defmacro b! (pred destination &key (delay '()) &key (likely-delay '()))
+  "Branch!"
+  ;; evaluate the predicate
+  `(let ((should-branch ,pred))
+     ;; normal delay slot:
+     ,delay
+     (when should-branch
+       ,likely-delay
+       (goto ,destination)
+       )
+     )
+  )
+
+;; the decompiler may fail to recognize setting fields of a 128-bit bitfield
+;; and will rely on this macro:
+(defmacro copy-and-set-field (original field-name field-value)
+  `(let ((temp-copy ,original))
+     (set! (-> temp-copy ,field-name) ,field-value)
+     temp-copy
+     )
+  )
+
+;; inserted by the decompiler if a c->goal bool conversion can't be compacted into a single
+;; expression.
+(defmacro cmove-#f-zero (dest condition src)
+  `(if (zero? ,condition)
+       (set! ,dest #f)
+       (set! ,dest ,src)
+       )
+   )
+
+(defmacro cmove-#f-nonzero (dest condition src)
+  `(if (zero? ,condition)
+       (set! ,dest ,src)
+       (set! ,dest #f)
+       )
+   )
+
+(defmacro empty-form ()
+  `(none)
+  )
+
+(defmacro sext32 (in)
+  `(sar (shl ,in 32) 32)
+  )
+
+(defmacro .sra (result in sa)
+  `(set! ,result (sext32 (sar (logand #xffffffff (the-as int ,in)) ,sa)))
+  )
+
+(defmacro l32-false-check (in)
+  `(- (logand #xffffffff (the-as uint ,in)) (the-as uint #f))
+  )
+
+;;;;;;;;;;;;;;;;;;;;;;;
+;; PC Port asm macros
+;;;;;;;;;;;;;;;;;;;;;;;
+(#when PC_PORT
+  ;; SYNC is an EE instruction that waits for various memory access and DMA to be completed
+  ;; DMA will be instant in the PC port, so these are no longer necessary
+  (fake-asm .sync.l)
+  (fake-asm .sync.p)
+  ;; Copies the contents of a cop0 (system control) register to a gpr
+  (fake-asm .mfc0 dest src)
+  ;; Copies the contents of a gpr to a cop0 (system control) register
+  (fake-asm .mtc0 dest src)
+  ;; Move to perf counter register
+  (fake-asm .mtpc src dest)
+  ;; Move from perf counter register
+  (fake-asm .mfpc dest src)
+  )

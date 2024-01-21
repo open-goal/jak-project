@@ -546,16 +546,15 @@
   :flag-assert         #xe00000024
   :no-runtime-type
   (:methods
-    (new (symbol type string) _type_)
-    (activate (_type_ process-tree basic pointer) process-tree)
-    (deactivate (_type_) none)
-    (init-from-entity! (_type_ entity-actor) none)
-    (run-logic? (_type_) symbol)
-    (process-tree-method-13 () none) ;; 13 ;; (process-tree-method-13 () none 13)
+    (new "Allocate a process-tree with the kernel clock." (symbol type string) _type_) ;; 0
+    (activate "Move a process from dead to active, moving it to the given tree." (_type_ process-tree string pointer) process-tree) ;; 9
+    (deactivate "Make a process dead, clean it up, remove it from the active pool, and return to dead pool." (_type_) none) ;; 10
+    (init-from-entity! (_type_ entity-actor) none) ;; 11
+    (run-logic? "Should this process be run? Checked by execute-process-tree." (_type_) symbol) ;; 12
+    (process-tree-method-13 () none) ;; 13
     )
   )
 
-#|
 (deftype kernel-context (basic)
   ((prevent-from-run   process-mask  :offset-assert 4) ;; guessed by decompiler
    (require-for-run    process-mask  :offset-assert 8) ;; guessed by decompiler
@@ -578,7 +577,6 @@
   :flag-assert         #x900000040
   ;; field relocating-level uses ~A with a signed load.
   )
-|#
 
 (deftype time-frame (int64)
   ()
@@ -604,52 +602,61 @@
   :size-assert         #x5c
   :flag-assert         #x180000005c
   (:methods
-    (new (symbol type int) _type_)
-    (update-rates! (_type_ float) float)
+    (new (symbol type int) _type_) ;; 0
+    (update-rates! (_type_ float) float) ;; 9
     (clock-method-10 () none) ;; 10 ;; (advance-by! (_type_ float) clock 10)
     (clock-method-11 () none) ;; 11 ;; (tick! (_type_) clock 11)
     (clock-method-12 () none) ;; 12 ;; (save! (_type_ (pointer uint64)) int 12)
     (clock-method-13 () none) ;; 13 ;; (load! (_type_ (pointer uint64)) int 13)
     (clock-method-14 () none) ;; 14 ;; (reset! (_type_) none 14)
     (clock-method-15 () none) ;; 15
-    (frame-mask-2 (_type_ int) symbol)
-    (frame-mask-4 (_type_ int) symbol)
-    (frame-mask-8 (_type_ int) symbol)
-    (frame-mask-16 (_type_ int) symbol)
-    (frame-mask-32 (_type_ int) symbol)
-    (frame-mask-64 (_type_ int) symbol)
-    (frame-mask-128 (_type_ int) symbol)
-    (frame-mask-256 (_type_ int) symbol)
+    (frame-mask-2 "Check if the frame count, xored with `xor-val` has its lowest bit set" (_type_ int) symbol) ;; 16
+    (frame-mask-4 "Check if the frame count, xored with `xor-val` has any of its lowest 2 bits set" (_type_ int) symbol) ;; 17
+    (frame-mask-8 "Check if the frame count, xored with `xor-val` has any of its lowest 3 bits set" (_type_ int) symbol) ;; 18
+    (frame-mask-16 "Check if the frame count, xored with `xor-val` has any of its lowest 4 bits set" (_type_ int) symbol) ;; 19
+    (frame-mask-32 "Check if the frame count, xored with `xor-val` has any of its lowest 5 bits set" (_type_ int) symbol) ;; 20
+    (frame-mask-64 "Check if the frame count, xored with `xor-val` has any of its lowest 6 bits set" (_type_ int) symbol) ;; 21
+    (frame-mask-128 "Check if the frame count, xored with `xor-val` has any of its lowest 7 bits set" (_type_ int) symbol) ;; 22
+    (frame-mask-256 "Check if the frame count, xored with `xor-val` has any of its lowest 8 bits set" (_type_ int) symbol) ;; 23
     )
   )
 
-#|
 (deftype thread (basic)
-  ()
+  ((name symbol :offset-assert 4)
+   (process process :offset-assert 8)
+   (previous thread :offset-assert 12)
+   (suspend-hook (function cpu-thread none) :offset-assert 16)
+   (resume-hook (function cpu-thread none) :offset-assert 20)
+   (pc pointer :offset-assert 24)
+   (sp pointer :offset-assert 28)
+   (stack-top pointer :offset-assert 32)
+   (stack-size int32 :offset-assert 36)
+   )
   :method-count-assert 12
   :size-assert         #x28
   :flag-assert         #xc00000028
   ;; Failed to read fields.
   (:methods
-    (thread-method-9 () none) ;; 9 ;; (stack-size-set! (_type_ int) none 9)
-    (thread-method-10 () none) ;; 10 ;; (thread-suspend (_type_) none 10)
-    (thread-method-11 () none) ;; 11 ;; (thread-resume (_type_) none 11)
+    (stack-size-set! "Adjust the size of the stack that can be stored during a suspend. Must be called before any process allocations." (_type_ int) none) ;; 9
+    (thread-suspend "Suspend this thread and jump to the kernel (for use by the kernel only)" (_type_) none) ;; 10
+    (thread-resume "Jump from the kernel to the restored thread. (for use by the kernel only)" (_type_) none) ;; 11
     )
   )
-|#
 
-#|
 (deftype cpu-thread (thread)
-  ()
+  ;; registers modified for PC port.
+  ((rreg   uint64  7)
+   (freg   float   8)
+   (stack  uint8   :dynamic)
+   )
   :method-count-assert 12
   :size-assert         #x80
   :flag-assert         #xc00000080
   ;; Failed to read fields.
   (:methods
-     ;; (new (symbol type process symbol int pointer) _type_ 0)
+     (new "Allocate a thread. If there is already a top-thread for this process, assume this is a temporary thread, and allocate on the bottom of the stack." (symbol type process symbol int pointer) _type_) ;; 0
     )
   )
-|#
 
 (deftype dead-pool (process-tree)
   ()
@@ -657,59 +664,56 @@
   :size-assert         #x24
   :flag-assert         #x1000000024
   (:methods
-     ;; (new (symbol type int int string) _type_ 0)
-    (dead-pool-method-14 () none) ;; 14 ;; (get-process (_type_ type int) process 14)
-    (dead-pool-method-15 () none) ;; 15 ;; (return-process (_type_ process) none 15)
+    (new "Allocate a dead pool and set up dead processes" (symbol type int int string) _type_) ;; 0
+    (get-process "Allocate a process from the pool, or #f if it fails." (_type_ type int object) process) ;; 14
+    (return-process "Return a process to the pool." (_type_ process) none) ;; 15
     )
   )
 
-#|
 (deftype dead-pool-heap-rec (structure)
   ((process process             :offset-assert 0) ;; guessed by decompiler
    (prev    dead-pool-heap-rec  :offset-assert 4)
    (next    dead-pool-heap-rec  :offset-assert 8)
    )
+  :pack-me
   :method-count-assert 9
   :size-assert         #xc
   :flag-assert         #x90000000c
   )
-|#
 
-#|
 (deftype dead-pool-heap (dead-pool)
-  ((allocated-length   int32                       :offset-assert 32)
-   (compact-time       uint32                      :offset-assert 36)
-   (compact-count-targ uint32                      :offset-assert 40)
-   (compact-count      uint32                      :offset-assert 44)
-   (fill-percent       float                       :offset-assert 48)
-   (first-gap          dead-pool-heap-rec          :offset-assert 52)
-   (first-shrink       dead-pool-heap-rec          :offset-assert 56)
-   (heap               kheap              :inline  :offset-assert 60)
-   (alive-list         dead-pool-heap-rec :inline  :offset-assert 76)
-   (last               dead-pool-heap-rec          :offset-assert 80)
-   (dead-list          dead-pool-heap-rec :inline  :offset-assert 88)
-   (process-list       dead-pool-heap-rec :dynamic :offset-assert 100) ;; guessed by decompiler
+  ((allocated-length   int32                       :offset-assert 36)
+   (compact-time       uint32                      :offset-assert 40)
+   (compact-count-targ uint32                      :offset-assert 44)
+   (compact-count      uint32                      :offset-assert 48)
+   (fill-percent       float                       :offset-assert 52)
+   (first-gap          dead-pool-heap-rec          :offset-assert 56)
+   (first-shrink       dead-pool-heap-rec          :offset-assert 60)
+   (heap               kheap              :inline  :offset-assert 64)
+   (alive-list         dead-pool-heap-rec :inline  :offset-assert 80)
+   (last               dead-pool-heap-rec          :offset-assert 84 :overlay-at (-> alive-list prev))
+   (dead-list          dead-pool-heap-rec :inline  :offset-assert 92)
+   (process-list       dead-pool-heap-rec :dynamic :inline :offset-assert 104) ;; guessed by decompiler
    )
   :method-count-assert 28
   :size-assert         #x68
   :flag-assert         #x1c00000068
   (:methods
-     ;; (new (symbol type string int int) _type_ 0)
-    (dead-pool-heap-method-16 () none) ;; 16 ;; (init (_type_ symbol int) none 16)
-    (dead-pool-heap-method-17 () none) ;; 17 ;; (compact (dead-pool-heap int) none 17)
-    (dead-pool-heap-method-18 () none) ;; 18 ;; (shrink-heap (dead-pool-heap process) dead-pool-heap 18)
-    (dead-pool-heap-method-19 () none) ;; 19 ;; (churn (dead-pool-heap int) none 19)
-    (dead-pool-heap-method-20 () none) ;; 20 ;; (memory-used (_type_) int 20)
-    (dead-pool-heap-method-21 () none) ;; 21 ;; (memory-total (_type_) int 21)
-    (dead-pool-heap-method-22 () none) ;; 22 ;; (memory-free (dead-pool-heap) int 22)
-    (dead-pool-heap-method-23 () none) ;; 23 ;; (compact-time (dead-pool-heap) uint 23)
-    (dead-pool-heap-method-24 () none) ;; 24 ;; (gap-size (dead-pool-heap dead-pool-heap-rec) int 24)
-    (dead-pool-heap-method-25 () none) ;; 25 ;; (gap-location (dead-pool-heap dead-pool-heap-rec) pointer 25)
-    (dead-pool-heap-method-26 () none) ;; 26 ;; (find-gap (dead-pool-heap dead-pool-heap-rec) dead-pool-heap-rec 26)
-    (dead-pool-heap-method-27 () none) ;; 27 ;; (find-gap-by-size (dead-pool-heap int) dead-pool-heap-rec 27)
+    (new "Allocate and initialize a dead-pool-heap." (symbol type string int int) _type_) ;; 0
+    (init "Allocate memory for processes and init records." (_type_ symbol int) none) ;; 16
+    (compact "Relocate process in memory to remove gaps, increasing free memory for this dead-pool-heap." (dead-pool-heap int) none) ;; 17
+    (shrink-heap "Shrink the heap of a process, allowing the dead pool heap to later reclaim the memory during a compact." (dead-pool-heap process) dead-pool-heap) ;; 18
+    (churn "Relocate process in memory, to trigger memory bugs related to process relocation." (dead-pool-heap int) none) ;; 19
+    (memory-used "Get the total memory used. Memory in between processes that is not used by a process is considered used." (_type_) int) ;; 20
+    (memory-total "Get the total size of the heap for processes." (_type_) int) ;; 21
+    (memory-free "Get the size of the unused part of the heap." (dead-pool-heap) int) ;; 22
+    (compact-time "Get the compaction time (never set)." (dead-pool-heap) uint) ;; 23
+    (gap-size "Get the size of the gap (possibly zero) after the given process. Use #f for the gap at the start of the pool memory." (dead-pool-heap dead-pool-heap-rec) int) ;; 24
+    (gap-location "Get pointer to gap (possibly zero size) after the given process" (dead-pool-heap dead-pool-heap-rec) pointer) ;; 25
+    (find-gap "Find the first process with a nonzero gap after it, after the given process." (dead-pool-heap dead-pool-heap-rec) dead-pool-heap-rec) ;; 26
+    (find-gap-by-size "Find the first gap with a size at least this big" (dead-pool-heap int) dead-pool-heap-rec) ;; 27
     )
   )
-|#
 
 (deftype stack-frame (basic)
   ((name symbol :offset 4)
@@ -720,61 +724,71 @@
   :flag-assert #x90000000c
   )
 
-#|
 (deftype catch-frame (stack-frame)
-  ()
+  ((sp    int32)
+   (ra    int32)
+   ; (freg float   6)
+   ; (rreg uint128 8)
+   ;; In OpenGOAL, we swap a rreg for 4 more fregs.
+   (freg float   10) ;; only use 8
+   (rreg uint128  7) ;; only use 5
+   )
   :method-count-assert 9
   :size-assert         #xb0
   :flag-assert         #x9000000b0
-  ;; Failed to read fields.
+  (:methods
+    (new (symbol type symbol function (pointer uint64)) object) ;; 0
+    )
   )
-|#
 
-#|
+
 (deftype protect-frame (stack-frame)
-  ()
+  ((exit  (function object))
+   )
   :method-count-assert 9
   :size-assert         #x10
   :flag-assert         #x900000010
-  ;; Failed to read fields.
+  (:methods
+    (new "Allocate and set up a protect-frame. This _must_ be used on the stack." (symbol type (function object)) protect-frame) ;; 0
+    )
   )
-|#
 
-#|
+
 (deftype handle (uint64)
-  ((UNKNOWN UNKNOWN  :offset-assert -1) ;; field could not be read.
-   (UNKNOWN UNKNOWN  :offset-assert -1) ;; field could not be read.
+  ((process (pointer process) :offset   0 :size  32) ;; additional level of indirection to support moving processes
+   (pid     int32             :offset  32 :size  32) ;; unique pid to check if it's the same process or not.
+   (u64     uint64            :offset   0 :size  64)
    )
   :method-count-assert 9
   :size-assert         #x8
   :flag-assert         #x900000008
   )
-|#
 
-#|
 (deftype state (protect-frame)
-  ((name   symbol                                                    :offset-assert 4) ;; guessed by decompiler
-   (next   stack-frame                                               :offset-assert 8) ;; guessed by decompiler
-   (exit   (function object)                                         :offset-assert 12) ;; guessed by decompiler
-   (parent basic                                                     :offset-assert 16)
+  ((parent state                                                     :offset-assert 16)
    (code   function                                                  :offset-assert 20) ;; guessed by decompiler
    (trans  (function object)                                         :offset-assert 24) ;; guessed by decompiler
    (post   function                                                  :offset-assert 28) ;; guessed by decompiler
    (enter  function                                                  :offset-assert 32) ;; guessed by decompiler
    (event  (function process int symbol event-message-block object)  :offset-assert 36) ;; guessed by decompiler
    )
+  (:methods
+    (new (symbol type symbol function
+          (function object)
+          function
+          (function object)
+          (function process int symbol event-message-block object)) _type_) ;; 0
+    )
   :method-count-assert 9
   :size-assert         #x28
   :flag-assert         #x900000028
   )
-|#
 
-#|
 (deftype event-message-block (structure)
-  ((to-handle   uint64              :offset-assert 0) ;; handle
-   (to          (pointer process)   :offset-assert 0) ;; guessed by decompiler
-   (from-handle uint64              :offset-assert 8)
-   (from        (pointer process)   :offset-assert 8) ;; guessed by decompiler
+  ((to-handle   handle              :offset-assert 0)
+   (to          (pointer process)   :offset-assert 0 :overlay-at to-handle) ;; guessed by decompiler
+   (from-handle handle              :offset-assert 8)
+   (from        (pointer process)   :offset-assert 8 :overlay-at from-handle)
    (param       uint64            6 :offset-assert 16) ;; guessed by decompiler
    (message     symbol              :offset-assert 64) ;; guessed by decompiler
    (num-params  int32               :offset-assert 68)
@@ -783,20 +797,20 @@
   :size-assert         #x48
   :flag-assert         #x900000048
   )
-|#
 
-#|
+
 (deftype event-message-block-array (inline-array-class)
-  ()
+  ((data  event-message-block  :inline :dynamic)
+   )
   :method-count-assert 15
   :size-assert         #x10
   :flag-assert         #xf00000010
   ;; Failed to read fields.
   (:methods
-    (event-message-block-array-method-14 () none) ;; 14
+    (send-all! (_type_) none) ;; 14
     )
   )
-|#
+
 
 (deftype process (process-tree)
   ((pool dead-pool)
@@ -825,104 +839,126 @@
   :size-assert         #x80
   :flag-assert         #xe00000080
   (:methods
-     ;; (new (symbol type string int) _type_ 0)
+     (new "Allocate a process, set up process heap, self/ppointer, clock." (symbol type string int) _type_) ;; 0
     )
   (:states
     dead-state ;; 10
     )
   )
 
-;; (deftype sql-result (array)
-;;   ()
-;;   :flag-assert #x900000010
-;;   )
+(deftype sql-result (array)
+  ((sql-data object :dynamic :offset 16))
+  (:methods
+    (new (symbol type int) _type_) ;; 0
+    )
+  :flag-assert #x900000010
+  )
 
-;; (define-extern *sql-result* object) ;; sql-result
+(define-extern *sql-result* sql-result)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; gkernel                        ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (define-extern *kernel-version* object) ;; binteger
-;; (define-extern *irx-version* object) ;; binteger
-;; (define-extern *kernel-boot-mode* object) ;; symbol
-;; (define-extern *kernel-boot-level* object) ;; symbol
-;; (define-extern *deci-count* object) ;; int
-;; (define-extern *last-loado-length* object) ;; int
-;; (define-extern *last-loado-global-usage* object) ;; int
-;; (define-extern *last-loado-debug-usage* object) ;; int
-;; (define-extern *kernel-packages* object) ;; pair
-;; (define-extern load-package function) ;; (function string kheap pair)
-;; (define-extern unload-package function) ;; (function string pair)
-;; (define-extern *kernel-context* kernel-context) ;; kernel-context
-;; (define-extern *dram-stack* object) ;; (pointer uint8)
-;; (define-extern *null-kernel-context* kernel-context) ;; kernel-context
-;; (define-extern remove-exit function) ;; (function none :behavior process)
-;; (define-extern stream<-process-mask function) ;; (function object process-mask process-mask)
-;; (define-extern *master-mode* object) ;; symbol
-;; (define-extern *pause-lock* object) ;; symbol
-;; (define-extern inspect-process-heap function) ;; (function process symbol)
-;; (define-extern return-from-thread function) ;; (function none)
-;; (define-extern return-from-thread-dead function) ;; (function none)
-;; (define-extern reset-and-call function) ;; (function thread function object)
-;; (define-extern method-state function) ;; (function type basic state)
-;; (define-extern *global-search-name* object) ;; basic
-;; (define-extern *global-search-count* object) ;; int
-;; (define-extern process-by-name function) ;; (function string process-tree process)
-;; (define-extern process-not-name function) ;; (function string process-tree process)
-;; (define-extern process-count function) ;; (function process-tree int)
-;; (define-extern kill-by-name function) ;; (function string process-tree symbol)
-;; (define-extern kill-by-type function) ;; (function type process-tree symbol)
-;; (define-extern kill-not-name function) ;; (function string process-tree symbol)
-;; (define-extern kill-not-type function) ;; (function type process-tree symbol)
-;; (define-extern kill-by-type-inherited function)
-;; (define-extern iterate-process-tree function) ;; (function process-tree (function object object) kernel-context object)
-;; (define-extern execute-process-tree function) ;; (function process-tree (function object object) kernel-context object)
-;; (define-extern search-process-tree function) ;; (function process-tree (function process-tree object) process)
-;; (define-extern kernel-dispatcher function) ;; (function object)
-;; (define-extern sync-dispatcher function) ;; (function object)
-;; (define-extern inspect-process-tree function) ;; (function process-tree int int symbol process-tree)
-;; (define-extern throw-dispatch function) ;; (function catch-frame object none)
-;; (define-extern throw function) ;; (function symbol object int)
-;; (define-extern previous-brother function) ;; (function process-tree object)
-;; (define-extern change-parent function) ;; (function process-tree process-tree process-tree)
-;; (define-extern change-brother function) ;; (function process-tree process-tree object)
-;; (define-extern change-to-last-brother function) ;; (function process-tree process-tree)
-;; (define-extern run-function-in-process function) ;; (function process function object object object object object object object)
-;; (define-extern set-to-run-bootstrap function) ;; (function none)
-;; (define-extern set-to-run function) ;; (function cpu-thread function object object object object object object pointer)
-;; (define-extern dead-state state) ;; (state process)
-;; (define-extern entity-deactivate-handler object) ;; (function process entity-actor none)
-;; (define-extern *kernel-clock* clock) ;; clock
-;; (define-extern *vis-boot* object) ;; symbol
-;; (define-extern *null-process* object) ;; process
-;; (define-extern *listener-process* object) ;; process
-;; (define-extern *16k-dead-pool* object) ;; dead-pool
-;; (define-extern *8k-dead-pool* object) ;; dead-pool
-;; (define-extern *4k-dead-pool* object) ;; dead-pool
-;; (define-extern *target-dead-pool* object) ;; dead-pool
-;; (define-extern *camera-dead-pool* object) ;; dead-pool
-;; (define-extern *camera-master-dead-pool* object) ;; dead-pool
-;; (define-extern *debug-dead-pool* object) ;; dead-pool-heap
-;; (define-extern *nk-dead-pool* object) ;; dead-pool-heap
-;; (define-extern *default-dead-pool* object) ;; dead-pool
-;; (define-extern *pickup-dead-pool* object) ;; dead-pool
-;; (define-extern *dead-pool-list* object) ;; pair
-;; (define-extern *active-pool* object) ;; process-tree
-;; (define-extern *display-pool* object) ;; process-tree
-;; (define-extern *camera-pool* object) ;; process-tree
-;; (define-extern *target-pool* object) ;; process-tree
-;; (define-extern *entity-pool* object) ;; process-tree
-;; (define-extern *mid-pool* object) ;; process-tree
-;; (define-extern *pusher-pool* object) ;; process-tree
-;; (define-extern *bg-pool* object) ;; process-tree
-;; (define-extern *default-pool* object) ;; process-tree
+(define-extern *kernel-version* binteger)
+(define-extern *irx-version* binteger)
+(define-extern *kernel-boot-mode* symbol)
+(define-extern *kernel-boot-level* symbol)
+(define-extern *deci-count* int)
+(define-extern *last-loado-length* int)
+(define-extern *last-loado-global-usage* int)
+(define-extern *last-loado-debug-usage* int)
+(define-extern *kernel-packages* pair)
+(define-extern load-package
+               "If not already loaded, do a blocking dgo-load to load the given CGO."
+               (function string kheap pair))
+(define-extern unload-package
+               "Mark a package as unloaded. Does not actually unload."
+               (function string pair))
+
+(define-extern *kernel-context* kernel-context)
+(define-extern *dram-stack* (pointer uint8))
+(define-extern *null-kernel-context* kernel-context)
+(define-extern remove-exit
+               "Remove the top stack frame. If you have no other stack frames, you can use this before a `go`
+                to skip the `exit` of the state you are currently in."
+               (function none :behavior process))
+(define-extern stream<-process-mask
+               "Print out the process-mask as a human readable string."
+               (function object process-mask process-mask))
+(define-extern *master-mode* symbol)
+(define-extern *pause-lock* symbol)
+(define-extern inspect-process-heap
+               "Call the inspect method on every object in the process heap."
+               (function process symbol))
+(define-extern return-from-thread (function none))
+(define-extern return-from-thread-dead (function none))
+(define-extern reset-and-call (function thread function object))
+(define-extern method-state
+               "Get a virtual state from this type by name."
+               (function type symbol state))
+(define-extern *global-search-name* basic)
+(define-extern *global-search-count* int)
+(define-extern process-by-name
+               "Find the first process with the given name in the process-tree."
+               (function string process-tree process))
+(define-extern process-not-name
+               "Find the first process without the given name in the process-tree."
+               (function string process-tree process))
+(define-extern process-count
+               "Count the number of processes in the given process-tree."
+               (function process-tree int))
+(define-extern kill-by-name "Kill all processes with the given name." (function string process-tree symbol))
+(define-extern kill-by-type "Kill all processes with the given type." (function type process-tree symbol))
+(define-extern kill-not-name "Kill all processes, except ones with the given name." (function string process-tree symbol))
+(define-extern kill-not-type "Kill all processes, except ones with the exact type." (function type process-tree symbol))
+(define-extern kill-by-type-inherited "Kill all processes, except ones that inherit from the given type." (function type process-tree symbol))
+(define-extern iterate-process-tree "Call a function on each not-dead process in the tree." (function process-tree (function object object) kernel-context object))
+(define-extern execute-process-tree  "Iterate over all process, calling the run callback on each, if they should run." (function process-tree (function object object) kernel-context object))
+(define-extern search-process-tree "Return the first function in the process-tree which the callback returns #t on." (function process-tree (function process-tree object) process))
+(define-extern kernel-dispatcher "Run the GOAL kernel! Runs the function from the listener (if there is one), then all processes" (function object))
+(define-extern sync-dispatcher "Run the REPL function." (function object))
+(define-extern inspect-process-tree "Display a tree-view of a process-tree." (function process-tree int int symbol process-tree))
+(define-extern throw-dispatch (function catch-frame object none))
+(define-extern throw (function symbol object int))
+(define-extern previous-brother "Get the process before this one, at this level." (function process-tree object))
+(define-extern change-parent "Reparent a process." (function process-tree process-tree process-tree))
+(define-extern change-brother "Unused, and wrong." (function process-tree process-tree object))
+(define-extern change-to-last-brother "Move this process to the end of its brother list." (function process-tree process-tree))
+(define-extern run-function-in-process (function process function object object object object object object object))
+(define-extern set-to-run-bootstrap (function none))
+(define-extern set-to-run "Set up a process to run a given function, with the given arguments when it executes next." (function cpu-thread function object object object object object object pointer))
+(define-extern dead-state (state process))
+(define-extern entity-deactivate-handler (function process entity-actor none))
+(define-extern *kernel-clock* clock)
+(define-extern *vis-boot* symbol)
+(define-extern *null-process* process)
+(define-extern *listener-process* process)
+(define-extern *16k-dead-pool* dead-pool)
+(define-extern *8k-dead-pool* dead-pool)
+(define-extern *4k-dead-pool* dead-pool)
+(define-extern *target-dead-pool* dead-pool)
+(define-extern *camera-dead-pool* dead-pool)
+(define-extern *camera-master-dead-pool* dead-pool)
+(define-extern *debug-dead-pool* dead-pool-heap)
+(define-extern *nk-dead-pool* dead-pool-heap)
+(define-extern *default-dead-pool* dead-pool)
+(define-extern *pickup-dead-pool* dead-pool)
+(define-extern *dead-pool-list* pair)
+(define-extern *active-pool* process-tree)
+(define-extern *display-pool* process-tree)
+(define-extern *camera-pool* process-tree)
+(define-extern *target-pool* process-tree)
+(define-extern *entity-pool* process-tree)
+(define-extern *mid-pool* process-tree)
+(define-extern *pusher-pool* process-tree)
+(define-extern *bg-pool* process-tree)
+(define-extern *default-pool* process-tree)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; pskernel                       ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype lowmemmap (structure)
   ((irq-info-stack  uint32   :offset-assert 0)
    (irq2-info-stack uint32   :offset-assert 4)
@@ -943,80 +979,117 @@
   :size-assert         #x44
   :flag-assert         #x900000044
   )
-|#
 
-;; (define-extern kernel-copy-function function) ;; (function object (pointer int32) int32 int32 none)
-;; (define-extern kernel-copy-to-kernel-ram function) ;; (function none)
-;; (define-extern kernel-write-function function) ;; (function object object object none)
-;; (define-extern kernel-write function) ;; (function none)
-;; (define-extern kernel-read-function function) ;; (function object (pointer int32) none)
-;; (define-extern kernel-read function) ;; (function none)
-;; (define-extern kernel-check-hardwired-addresses function) ;; (function none)
-;; (define-extern install-default-debug-handler function) ;; (function object none)
-;; (define-extern return-from-exception function) ;; (function object none)
-;; (define-extern kernel-set-exception-vector function) ;; (function object none)
-;; (define-extern kernel-set-interrupt-vector function) ;; (function none)
-;; (define-extern kernel-set-level2-vector function) ;; (function object object none)
-;; (define-extern deinstall-debug-handler function) ;; (function none)
-;; (define-extern deinstall-debug-handlers function) ;; (function none)
-;; (define-extern resend-exception function) ;; (function object object object object none)
+(define-extern kernel-copy-function (function object (pointer int32) int32 int32 none))
+(define-extern kernel-copy-to-kernel-ram (function none))
+(define-extern kernel-write-function (function object object object none))
+(define-extern kernel-write (function none))
+(define-extern kernel-read-function (function object (pointer int32) none))
+(define-extern kernel-read (function none))
+(define-extern kernel-check-hardwired-addresses (function none))
+(define-extern install-default-debug-handler (function object none))
+(define-extern return-from-exception (function object none))
+(define-extern kernel-set-exception-vector (function object none))
+(define-extern kernel-set-interrupt-vector (function none))
+(define-extern kernel-set-level2-vector (function object object none))
+(define-extern deinstall-debug-handler (function none))
+(define-extern deinstall-debug-handlers (function none))
+(define-extern resend-exception (function object object object object none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; gstring                        ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (define-extern copy-string<-string function) ;; (function string string string)
-;; (define-extern string= function) ;; (function string string symbol)
-;; (define-extern string-prefix= function) ;; (function string string symbol)
-;; (define-extern charp-prefix= function) ;; (function (pointer uint8) (pointer uint8) symbol)
-;; (define-extern string-suffix= function) ;; (function string string symbol)
-;; (define-extern string-position function) ;; (function string string int)
-;; (define-extern string-charp= function) ;; (function string (pointer uint8) symbol)
-(define-extern name= (function object object symbol))
-;; (define-extern copyn-string<-charp function) ;; (function string (pointer uint8) int string)
-;; (define-extern string<-charp function) ;; (function string (pointer uint8) string)
-;; (define-extern charp<-string function) ;; (function (pointer uint8) string int)
-;; (define-extern copyn-charp<-string function) ;; (function (pointer uint8) string int none)
-;; (define-extern copy-charp<-charp function) ;; (function (pointer uint8) (pointer uint8) (pointer uint8))
-;; (define-extern cat-string<-string function) ;; (function string string string)
-;; (define-extern catn-string<-charp function) ;; (function string (pointer uint8) int string)
-;; (define-extern cat-string<-string_to_charp function) ;; (function string string (pointer uint8) (pointer uint8))
-;; (define-extern append-character-to-string function) ;; (function string uint8 int)
-;; (define-extern charp-basename function) ;; (function (pointer uint8) (pointer uint8))
-;; (define-extern clear function) ;; (function string string)
-;; (define-extern string<? function) ;; (function string string symbol)
-;; (define-extern string>? function) ;; (function string string symbol)
-;; (define-extern string<=? function) ;; (function string string symbol)
-;; (define-extern string>=? function) ;; (function string string symbol)
-;; (define-extern *string-tmp-str* object) ;; string
-;; (define-extern string-skip-to-char function) ;; (function (pointer uint8) uint (pointer uint8))
-;; (define-extern string-cat-to-last-char function) ;; (function string string uint (pointer uint8))
-;; (define-extern string-skip-whitespace function) ;; (function (pointer uint8) (pointer uint8))
-;; (define-extern string-suck-up! function) ;; (function string (pointer uint8) symbol)
-;; (define-extern string-strip-leading-whitespace! function) ;; (function string symbol)
-;; (define-extern string-strip-trailing-whitespace! function) ;; (function string symbol)
-;; (define-extern string-strip-whitespace! function) ;; (function string symbol)
-;; (define-extern string-upcase function) ;; (function string string none)
-;; (define-extern string-get-arg!! function) ;; (function string string symbol)
-;; (define-extern string->int function) ;; (function string int)
-;; (define-extern string->float function) ;; (function string float)
-;; (define-extern string-get-int32!! function) ;; (function (pointer int32) string symbol)
-;; (define-extern string-get-float!! function) ;; (function (pointer float) string symbol)
-;; (define-extern string-get-flag!! function) ;; (function (pointer symbol) string string string symbol)
-;; (define-extern string-word-wrap function) ;; (function string int none)
-;; (define-extern *debug-draw-pauseable* object) ;; symbol
-;; (define-extern *stdcon0* object) ;; string
-;; (define-extern *stdcon1* object) ;; string
-;; (define-extern *null* object)
-;; (define-extern *stdcon* object) ;; string
-;; (define-extern *stdebug* object)
-;; (define-extern *temp-string* object) ;; string
+(define-extern copy-string<-string
+               "Copy a string. No bounds check. Writes null terminator." (function string string string))
+(define-extern string=
+               "Check for string equality."
+               (function string string symbol))
+(define-extern string-prefix=
+               "Check if a string starts with a given string."
+               (function string string symbol))
+(define-extern charp-prefix=
+               "Check if a c-string starts with a given c-string."
+               (function (pointer uint8) (pointer uint8) symbol))
+(define-extern string-suffix=
+               "Check if a string ends with a given string."
+               (function string string symbol))
+(define-extern string-position
+               "Find the point where a string occurs in another. If it doesn't, return -1."
+               (function string string int))
+(define-extern string-charp=
+               "Check if a string is equal to a c-string." (function string (pointer uint8) symbol))
+(define-extern name=
+               "Check if a string/symbol stores the same name as another string/symbol."
+               (function object object symbol))
+(define-extern copyn-string<-charp
+               "Copy part of a c-string to a string. Writes null terminator after num-chars." (function string (pointer uint8) int string))
+(define-extern string<-charp
+               "Copy a c-string to a string. Writes the null terminator."
+               (function string (pointer uint8) string))
+(define-extern charp<-string
+               "Copy a string to a c-string. Writes the null terminator."
+               (function (pointer uint8) string int))
+(define-extern copyn-charp<-string
+               "Copy part of a string to a c-string. Writes null terminator, repeatedly, to reach the given length.
+                If the source is longer than the length, the null terminator is still included."
+               (function (pointer uint8) string int none))
+(define-extern copy-charp<-charp
+               "C-string copy, writes null terminator."
+               (function (pointer uint8) (pointer uint8) (pointer uint8)))
+(define-extern cat-string<-string
+               "Append a string to another."
+               (function string string string))
+(define-extern catn-string<-charp
+               "Append part of a string to another. Writes null terminator."
+               (function string (pointer uint8) int string))
+(define-extern cat-string<-string_to_charp "Append part of a string to another, up to the given pointer."
+               (function string string (pointer uint8) (pointer uint8)))
+(define-extern append-character-to-string
+               "Append a single character to a string. Writes null terminator after."
+               (function string uint8 int))
+(define-extern charp-basename
+               "Strip the directory and suffix from a c-string."
+               (function (pointer uint8) (pointer uint8)))
+(define-extern clear "Set string to the empty string."
+               (function string string))
+(define-extern string<?
+               "Slightly incorrect ordering of strings."
+               (function string string symbol))
+(define-extern string>? "Slightly incorrect ordering of strings." (function string string symbol))
+(define-extern string<=? "Slightly incorrect ordering of strings." (function string string symbol))
+(define-extern string>=? "Slightly incorrect ordering of strings." (function string string symbol))
+(define-extern *string-tmp-str* string)
+(define-extern string-skip-to-char "Advance to the given character."
+               (function (pointer uint8) uint (pointer uint8)))
+(define-extern string-cat-to-last-char "Append append-str to end of base-str, up to the last occurance of char" (function string string uint (pointer uint8)))
+(define-extern string-skip-whitespace "Jump over whitespace chars."
+               (function (pointer uint8) (pointer uint8)))
+(define-extern string-suck-up! "Move the string forward so the pointer is now at the beginning."
+               (function string (pointer uint8) symbol))
+(define-extern string-strip-leading-whitespace! "Strip leading whitespace." (function string symbol))
+(define-extern string-strip-trailing-whitespace! "String trailing whitespace." (function string symbol))
+(define-extern string-strip-whitespace! "Strip whitespace from the beginning and end of a string" (function string symbol))
+(define-extern string-upcase "Uppercase characters. If convert-dash is set, - will be uppercased to _" (function string string symbol none))
+(define-extern string-get-arg!! (function string string symbol))
+(define-extern string->int "Convert string to int." (function string int))
+(define-extern string->float "Convert string to float. Finally implemented!" (function string float))
+(define-extern string-get-int32!! (function (pointer int32) string symbol))
+(define-extern string-get-float!! (function (pointer float) string symbol))
+(define-extern string-get-flag!! (function (pointer symbol) string string string symbol))
+(define-extern string-word-wrap "Wrap lines to specified width." (function string int none))
+(define-extern *debug-draw-pauseable* symbol)
+(define-extern *stdcon0* string)
+(define-extern *stdcon1* string)
+(define-extern *null* string)
+(define-extern *stdcon* string)
+(define-extern *stdebug* string)
+(define-extern *temp-string* string)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; dgo-h                          ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype dgo-header (structure)
   ((length   uint32    :offset-assert 0)
    (rootname uint8  60 :offset-assert 4) ;; guessed by decompiler
@@ -1025,9 +1098,7 @@
   :size-assert         #x40
   :flag-assert         #x900000040
   )
-|#
 
-#|
 (deftype dgo-entry (structure)
   ((offset uint32  :offset-assert 0)
    (length uint32  :offset-assert 4)
@@ -1036,9 +1107,7 @@
   :size-assert         #x8
   :flag-assert         #x900000008
   )
-|#
 
-#|
 (deftype dgo-file (basic)
   ((num-go-files uint32          :offset-assert 4)
    (total-length uint32          :offset-assert 8)
@@ -1049,19 +1118,18 @@
   :size-assert         #x10
   :flag-assert         #x900000010
   )
-|#
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; gstate                         ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (define-extern inherit-state function) ;; (function state state state)
-;; (define-extern state-type? function)
-;; (define-extern enter-state function) ;; (function object object object object object object object)
-;; (define-extern *event-queue* object) ;; event-message-block-array
-;; (define-extern send-event-function function) ;; (function process-tree event-message-block object)
-;; (define-extern looping-code function) ;; (function symbol)
+(define-extern inherit-state (function state state state))
+(define-extern state-type? (function state symbol symbol))
+(define-extern enter-state (function object object object object object object object))
+(define-extern *event-queue* event-message-block-array)
+(define-extern send-event-function (function process-tree event-message-block object))
+(define-extern looping-code (function symbol))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; types-h                        ;;
@@ -5527,6 +5595,7 @@
   )
 |#
 
+(declare-type level-load-info basic)
 #|
 (deftype level-load-info (basic)
   ((name-list         symbol           6       :offset-assert 4) ;; guessed by decompiler
@@ -5592,6 +5661,7 @@
   )
 |#
 
+(declare-type level basic)
 #|
 (deftype level (basic)
   ((name                      symbol                                         :offset-assert 4) ;; guessed by decompiler
@@ -6406,7 +6476,7 @@
 |#
 
 ;; (define-extern connection-process-apply function) ;; (function process (function object none) symbol)
-;; (define-extern process-disconnect function) ;; (function process int)
+(define-extern process-disconnect (function process int))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; text-h                         ;;
@@ -24577,7 +24647,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ;; (define-extern *task-level* array) ;; (array symbol)
-;; (define-extern default-level level-load-info) ;; level-load-info
+(define-extern default-level level-load-info)
 ;; (define-extern intro level-load-info) ;; level-load-info
 ;; (define-extern title level-load-info) ;; level-load-info
 ;; (define-extern vinroom level-load-info) ;; level-load-info
@@ -24893,7 +24963,7 @@
 ;; (define-extern sound-bank-name->mode function)
 ;; (define-extern update-sound-banks function) ;; (function int)
 ;; (define-extern show-level function) ;; (function symbol int)
-;; (define-extern *default-level* object) ;; level
+(define-extern *default-level* level)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; text                           ;;

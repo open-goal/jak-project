@@ -55,3 +55,227 @@
      (the uint result)
      )
   )
+
+(defmacro handle->process (handle)
+  "Convert a handle to a process. If the process no longer exists, returns #f."
+  `(let ((the-handle (the-as handle ,handle)))
+     (if (-> the-handle process) ;; if we don't point to a process, kernel sets this to #f
+         (let ((proc (-> (-> the-handle process))))
+           (if (= (-> the-handle pid) (-> proc pid)) ;; make sure it's the same process
+               proc
+               )
+           )
+         )
+     )
+  )
+
+(defmacro ppointer->process (ppointer)
+  "convert a (pointer process) to a process."
+  ;; this uses the self field, which seems to always just get set to the object.
+  ;; confirmed in Jak 1 that using self here is useless, not sure...
+  `(let ((the-pp ,ppointer))
+     (if the-pp (-> the-pp 0 self))
+     )
+  )
+
+(defmacro defbehavior (name process-type bindings &rest body)
+  "define a new behavior. This is simply a function where self is bound to the process register,
+   which is assumed to have type process-type."
+  (if (and
+       (> (length body) 1)     ;; more than one thing in function
+       (string? (first body))  ;; first thing is a string
+       )
+      ;; then it's a docstring and we ignore it.
+      `(define ,name (lambda :name ,name :behavior ,process-type ,bindings ,@(cdr body)))
+      ;; otherwise don't ignore it.
+      `(define ,name (lambda :name ,name :behavior ,process-type ,bindings ,@body))
+      )
+  )
+
+(defmacro process->ppointer (proc)
+  "safely get a (pointer process) from a process, returning #f if invalid."
+  `(let ((the-proc ,proc))
+     (if the-proc (-> the-proc ppointer))
+     )
+  )
+
+
+;; use a compile-time list to keep track of the type of an anonymous behavior.
+(seval (define *defstate-type-stack* '()))
+(desfun def-state-check-behavior (beh-form beh-type)
+  "check if code block is an anonymous behavior. needed for anonymous behaviors on defstate."
+
+  (when (and (pair? beh-form) (eq? (first beh-form) 'behavior))
+    (push! *defstate-type-stack* beh-type)
+    )
+  )
+(defmacro clear-def-state-stack ()
+  (set! *defstate-type-stack* '())
+  `(none)
+  )
+
+;; set when inside a defstate.
+(seval (define *defstate-current-type* #f))
+(seval (define *defstate-current-state-name* #f))
+
+;; *no-state* is just used for the compiler to know whether a handler was actually set or not
+(defmacro defstate (state-name parents
+                               &key (virtual #f)
+                               &key (event *no-state*)
+                               &key (enter *no-state*)
+                               &key (trans *no-state*)
+                               &key (exit *no-state*)
+                               &key (code *no-state*)
+                               &key (post *no-state*)
+                               )
+  "Define a new state!"
+
+  (with-gensyms (new-state)
+    (let ((defstate-type (first parents)))
+      (when (not (null? *defstate-type-stack*))
+        (fmt #t "*defstate-type-stack* leaked! An error probably happened in a previous defstate. stack is: {}"
+                 *defstate-type-stack*)
+        )
+      (set! *defstate-type-stack* '())
+      (when virtual
+        (set! *defstate-current-type* defstate-type)
+        (set! *defstate-current-state-name* state-name)
+        )
+      ;; check for default handlers
+      (let ((default-handlers (assoc defstate-type *default-state-handlers*)))
+          (when default-handlers
+              ;;(fmt #t "found default-handlers for {}: {}\n" defstate-type default-handlers)
+              ;; event
+              (set! default-handlers (cadr default-handlers))
+              (when (and (eq? event '*no-state*) (car default-handlers))
+                  (set! event (car default-handlers)))
+              ;; enter
+              (set! default-handlers (cdr default-handlers))
+              (when (and (eq? enter '*no-state*) (car default-handlers))
+                  (set! enter (car default-handlers)))
+              ;; trans
+              (set! default-handlers (cdr default-handlers))
+              (when (and (eq? trans '*no-state*) (car default-handlers))
+                  (set! trans (car default-handlers)))
+              ;; exit
+              (set! default-handlers (cdr default-handlers))
+              (when (and (eq? exit '*no-state*) (car default-handlers))
+                  (set! exit (car default-handlers)))
+              ;; code
+              (set! default-handlers (cdr default-handlers))
+              (when (and (eq? code '*no-state*) (car default-handlers))
+                  (set! code (car default-handlers)))
+              ;; post
+              (set! default-handlers (cdr default-handlers))
+              (when (and (eq? post '*no-state*) (car default-handlers))
+                  (set! post (car default-handlers)))
+
+              (set! default-handlers (cdr default-handlers))
+              )
+          )
+      (def-state-check-behavior event defstate-type)
+      (def-state-check-behavior enter defstate-type)
+      (def-state-check-behavior trans defstate-type)
+      (def-state-check-behavior exit defstate-type)
+      (def-state-check-behavior code defstate-type)
+      (def-state-check-behavior post defstate-type)
+      `(let ((,new-state (new 'static 'state
+                              :name (quote ,state-name)
+                              :next #f
+                              :exit #f
+                              :code #f
+                              :trans #f
+                              :post #f
+                              :enter #f
+                              :event #f
+                              )
+                         ))
+         ;; the compiler will set the fields of the given state and define the symbol.
+         ;; This way it can check the individual function types, make sure they make sense, and create
+         ;; a state with the appropriate type.
+         ,(if virtual
+              `(define-virtual-state-hook ,state-name ,defstate-type ,new-state ,(eq? virtual 'override) :event ,event :enter ,enter :trans ,trans :exit ,exit :code ,code :post ,post)
+              `(define-state-hook ,state-name ,defstate-type ,new-state :event ,event :enter ,enter :trans ,trans :exit ,exit :code ,code :post ,post)
+              )
+
+         )
+      )
+    )
+  )
+
+
+(defmacro find-parent-state ()
+  "Find the first different implementation of the current virtual state above this one."
+  (when (or (not *defstate-current-type*)
+            (not *defstate-current-state-name*))
+    (error "use of find-parent-state outside of a defstate.")
+    )
+  `(cast-to-method-type
+     ,*defstate-current-type*
+     ,*defstate-current-state-name*
+     (find-parent-method ,*defstate-current-type* (method-id-of-type ,*defstate-current-type* ,*defstate-current-state-name*))
+    )
+  )
+
+(defmacro call-parent-method (&rest args)
+  "Find the first different implementation of the current method in a parent type and call it with these arguments."
+  `((the (current-method-function-type) (find-parent-method (current-method-type) (current-method-id)))
+    ,@args)
+  )
+
+
+(defmacro behavior (bindings &rest body)
+  "Define an anonymous behavior for a process state. This may only be used inside a defstate!"
+
+  (let ((behavior-type (first *defstate-type-stack*)))
+    (pop! *defstate-type-stack*)
+    `(lambda :behavior ,behavior-type ,bindings ,@body)
+    )
+  )
+
+;; set the default handler functions for a process's state handlers
+(seval (define *default-state-handlers* '()))
+(defmacro defstatehandler (proc
+                           &key (event #f)
+                           &key (enter #f)
+                           &key (trans #f)
+                           &key (exit #f)
+                           &key (code #f)
+                           &key (post #f))
+  (let ((old (assoc proc *default-state-handlers*))
+        (new (list proc (list event enter trans exit code post))))
+      (if (not old)
+          (append!! *default-state-handlers* new) ;; add new set of default handlers
+          (dolist (hnd *default-state-handlers*)  ;; replace old handlers with new ones
+            (when (eq? (car hnd) old)
+              (set-car! hnd new)
+              )
+            )
+          )
+      )
+  `(none)
+  )
+
+(defmacro b! (pred destination &key (delay '()) &key (likely-delay '()))
+  "Branch!"
+  ;; evaluate the predicate
+  `(let ((should-branch ,pred))
+     ;; normal delay slot:
+     ,delay
+     (when should-branch
+       ,likely-delay
+       (goto ,destination)
+       )
+     )
+  )
+
+(defmacro suspend ()
+  '(none)
+  )
+
+(defmacro empty-form ()
+  '(none)
+  )
+
+(defmacro .sync.l ()
+  `(none))
