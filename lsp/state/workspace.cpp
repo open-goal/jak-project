@@ -326,13 +326,19 @@ WorkspaceIRFile::WorkspaceIRFile(const std::string& content) {
   const auto line_ending = file_util::get_majority_file_line_endings(content);
   m_lines = str_util::split_string(content, line_ending);
 
+  bool in_opengoal_block = false;
   for (int i = 0; i < m_lines.size(); i++) {
     const auto& line = m_lines.at(i);
     if (m_all_types_uri == "") {
       find_all_types_path(line);
     }
+    if (str_util::contains(line, ";;-*-OpenGOAL-Start-*-")) {
+      in_opengoal_block = true;
+    } else if (str_util::contains(line, ";;-*-OpenGOAL-End-*-")) {
+      in_opengoal_block = false;
+    }
     find_function_symbol(i, line);
-    identify_diagnostics(i, line);
+    identify_diagnostics(i, line, in_opengoal_block);
   }
 
   lg::info("Added new IR file. {} lines with {} symbols and {} diagnostics", m_lines.size(),
@@ -400,13 +406,34 @@ void WorkspaceIRFile::find_function_symbol(const uint32_t line_num_zero_based,
 }
 
 void WorkspaceIRFile::identify_diagnostics(const uint32_t line_num_zero_based,
-                                           const std::string& line) {
+                                           const std::string& line,
+                                           const bool in_opengoal_block) {
+  std::regex unnamed_variables_regex(
+      "(?:(?:arg\\d+)|(?:f\\d+|at|v[0-1]|a[0-3]|t[0-9]|s[0-7]|k[0-1]|gp|sp|sv|fp|ra)\\-\\d+)");
   std::regex info_regex(";; INFO: (.*)");
   std::regex warn_regex(";; WARN: (.*)");
   std::regex error_regex(";; ERROR: (.*)");
   std::smatch info_matches;
   std::smatch warn_matches;
   std::smatch error_matches;
+
+  if (in_opengoal_block) {
+    for (auto regex_iterator =
+             std::sregex_iterator(line.begin(), line.end(), unnamed_variables_regex);
+         regex_iterator != std::sregex_iterator(); ++regex_iterator) {
+      std::smatch match = *regex_iterator;
+      LSPSpec::Diagnostic new_diag;
+      new_diag.m_severity = LSPSpec::DiagnosticSeverity::Warning;
+      new_diag.m_message = fmt::format("{} - Unnamed variable", match.str());
+      LSPSpec::Range diag_range;
+      diag_range.m_start = {line_num_zero_based, (u32)match.position(0)};
+      diag_range.m_end = {line_num_zero_based,
+                          diag_range.m_start.m_character + (u32)match.length()};
+      new_diag.m_range = diag_range;
+      new_diag.m_source = "OpenGOAL LSP";
+      m_diagnostics.push_back(new_diag);
+    }
+  }
 
   LSPSpec::Range diag_range;
   diag_range.m_start = {line_num_zero_based, 0};
@@ -440,6 +467,7 @@ void WorkspaceIRFile::identify_diagnostics(const uint32_t line_num_zero_based,
       return;
     }
   }
+
   // Check for a error level warnings
   if (std::regex_search(line, error_matches, error_regex)) {
     // NOTE - assumes we can only find 1 function per line
