@@ -84,6 +84,14 @@ u64 get_enum_val(const std::string& val, decompiler::DecompilerTypeSystem& dts) 
   return parse_enum(enum_def, rest);
 }
 
+u64 get_enum_or_int(const nlohmann::json& value, decompiler::DecompilerTypeSystem& dts) {
+  if (value.is_string()) {
+    return get_enum_val(value.get<std::string>(), dts);
+  } else {
+    ASSERT(value.is_number());
+    return value.get<int>();
+  }
+}
 template <typename T>
 std::vector<T> enum_from_json(const nlohmann::json& json, decompiler::DecompilerTypeSystem& dts) {
   std::vector<T> result;
@@ -98,6 +106,7 @@ static std::unordered_map<std::string,
                                                              const nlohmann::json&,
                                                              decompiler::DecompilerTypeSystem&)>>
     lump_map = {
+        // integers
         {"int32",
          [](const std::string& name,
             const nlohmann::json& json,
@@ -140,6 +149,7 @@ static std::unordered_map<std::string,
            }
            return std::make_unique<ResUint32>(name, data, -1000000000.0000);
          }},
+        // special lumps
         {"eco-info",
          [](const std::string& name,
             const nlohmann::json& json,
@@ -148,7 +158,29 @@ static std::unordered_map<std::string,
            // pickup-type
            data.push_back(static_cast<s32>(get_enum_val(json[1].get<std::string>(), dts)));
            // amount
-           data.push_back(json[2].get<int>());
+           data.push_back(static_cast<s32>(get_enum_or_int(json[2], dts)));
+           return std::make_unique<ResInt32>(name, data, -1000000000.0000);
+         }},
+        {"cell-info",
+         [](const std::string& name,
+            const nlohmann::json& json,
+            decompiler::DecompilerTypeSystem& dts) {
+           std::vector<s32> data;
+           // (pickup-type fuel-cell)
+           data.push_back(6);
+           data.push_back(static_cast<s32>(get_enum_or_int(json[1], dts)));
+           return std::make_unique<ResInt32>(name, data, -1000000000.0000);
+         }},
+        {"buzzer-info",
+         [](const std::string& name,
+            const nlohmann::json& json,
+            decompiler::DecompilerTypeSystem& dts) {
+           std::vector<s32> data;
+           // (pickup-type buzzer)
+           data.push_back(8);
+           auto task = static_cast<s32>(get_enum_val(json[1].get<std::string>(), dts));
+           auto buzzer = json[2].get<int>();
+           data.push_back(task + (buzzer * (1 << 16)));
            return std::make_unique<ResInt32>(name, data, -1000000000.0000);
          }},
         {"water-height",
@@ -170,6 +202,7 @@ static std::unordered_map<std::string,
            }
            return std::make_unique<ResFloat>(name, data, -1000000000.0000);
          }},
+        // vectors
         {"vector",
          [](const std::string& name,
             const nlohmann::json& json,
@@ -225,6 +258,7 @@ static std::unordered_map<std::string,
            }
            return std::make_unique<ResVector>(name, data, -1000000000.0000);
          }},
+        // floats
         {"float",
          [](const std::string& name,
             const nlohmann::json& json,
