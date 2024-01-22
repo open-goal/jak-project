@@ -1186,7 +1186,13 @@
   )
 
 (deftype rgba (uint32)
-  ()
+  ((r uint8 :offset 0)
+   (g uint8 :offset 8)
+   (b uint8 :offset 16)
+   (a uint8 :offset 24)
+   )
+  :flag-assert #x900000004
+  :no-runtime-type
   )
 
 (deftype xyzw (uint128)
@@ -2972,47 +2978,74 @@
 ;; timer-h                        ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (deftype timer-mode (uint32)
-;;   ()
-;;   :flag-assert #x900000004
-;;   )
+(defenum timer-clock-selection
+  :type uint8
+  (busclk 0)
+  (busclk/16 1)
+  (busclk/256 2)
+  (hblank 3)
+  )
 
-#|
+(deftype timer-mode (uint32)
+  "This matches the Tn_MODE register structure of the ps2 EE timers.
+   Only the lower 32 bits of these registers are usable, and the upper 16 hardwired to zero."
+  ((clks  timer-clock-selection :offset 0 :size 2)
+   (gate  uint8 :offset 2 :size 1) ;; gate function enable
+   (gats  uint8 :offset 3 :size 1) ;; gate selection: 0 = hblank, 1 = vblank
+   ;; gate mode:
+   ;;  0: count while gate signal is low
+   ;;  1: start when gate signal rises
+   ;;  2: start when gate signal falls
+   ;;  3: start when gate signal rises/falls
+   (gatm  uint8 :offset 4 :size 2)
+   (zret  uint8 :offset 6 :size 1) ;; zero return: clear counter when equal to reference value
+   (cue   uint8 :offset 7 :size 1) ;; count-up enable
+   (cmpe  uint8 :offset 8 :size 1) ;; compare-interrupt enable
+   (ovfe  uint8 :offset 9 :size 1) ;; overflow-interrupt enable
+   (equf  uint8 :offset 10 :size 1) ;; equal-flag
+   (ovff  uint8 :offset 11 :size 1) ;; overflow-flag
+   )
+  )
+
 (deftype timer-bank (structure)
+  "This matches an EE timer (without a HOLD register, timers 2 and 3).
+   Each register is 128-bits wide, but only the lower 32-bits are usable, and the upper
+   16-bits of that are hardwired to zero."
   ((count uint32      :offset-assert 0)
-   (mode  timer-mode  :offset-assert 16) ;; guessed by decompiler
-   (comp  uint32      :offset-assert 32)
+   (mode  timer-mode  :offset 16)
+   (comp  uint32      :offset 32)
    )
   :method-count-assert 9
   :size-assert         #x24
   :flag-assert         #x900000024
   )
-|#
 
-#|
 (deftype timer-hold-bank (timer-bank)
-  ((hold uint32  :offset-assert 48)
+  "This matches an EE timer (with a HOLD register, timers 0 and 1)."
+  ((hold uint32  :offset 48)
    )
   :method-count-assert 9
   :size-assert         #x34
   :flag-assert         #x900000034
   )
-|#
 
-#|
 (deftype stopwatch (basic)
-  ((prev-time-elapsed uint64  :offset-assert 8) ;; time-frame
-   (start-time        uint64  :offset-assert 16) ;; time-frame
-   (begin-level       int32   :offset-assert 24)
+  "Stopwatches are used to measure CPU clock cycles.
+   They don't use the timer above, but instead the Count COP0 register,
+   which counts CPU clock cycles directly."
+  ((prev-time-elapsed time-frame  :offset-assert 8)
+   (start-time        time-frame  :offset-assert 16)
+   (begin-level       int32       :offset-assert 24)
    )
   :method-count-assert 9
   :size-assert         #x1c
   :flag-assert         #x90000001c
   )
-|#
 
-;; (define-extern *ticks-per-frame* object) ;; int
-;; (define-extern timer-init function) ;; (function timer-bank timer-mode int)
+(define-extern *ticks-per-frame* int)
+(define-extern timer-init
+  "Initiate a timer, start counting at a rate of 1 every 256 bus clocks (BUSCLK: ~147.456MHz)."
+  (function timer-bank timer-mode int))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; vif-h                          ;;
@@ -4416,17 +4449,17 @@
 ;; timer                          ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (define-extern timer-count function) ;; (function timer-bank uint)
-;; (define-extern disable-irq function) ;; (function none)
-;; (define-extern enable-irq function) ;; (function none)
-;; (define-extern stopwatch-init function) ;; (function stopwatch int)
-;; (define-extern stopwatch-reset function) ;; (function stopwatch int)
-;; (define-extern stopwatch-start function) ;; (function stopwatch int)
-;; (define-extern stopwatch-stop function) ;; (function stopwatch none)
-;; (define-extern stopwatch-begin function) ;; (function stopwatch int)
-;; (define-extern stopwatch-end function) ;; (function stopwatch none)
-;; (define-extern stopwatch-elapsed-ticks function) ;; (function stopwatch time-frame)
-;; (define-extern stopwatch-elapsed-seconds function) ;; (function stopwatch float)
+(define-extern timer-count (function timer-bank uint))
+(define-extern disable-irq (function none))
+(define-extern enable-irq (function none))
+(define-extern stopwatch-init (function stopwatch int))
+(define-extern stopwatch-reset (function stopwatch int))
+(define-extern stopwatch-start (function stopwatch int))
+(define-extern stopwatch-stop (function stopwatch none))
+(define-extern stopwatch-begin (function stopwatch int))
+(define-extern stopwatch-end (function stopwatch none))
+(define-extern stopwatch-elapsed-ticks (function stopwatch time-frame))
+(define-extern stopwatch-elapsed-seconds (function stopwatch float))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; vector                         ;;
@@ -7924,7 +7957,6 @@
 ;; ocean-h                        ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype ocean-corner (structure)
   ((bsphere      sphere :inline :offset-assert 0)
    (start-corner vector :inline :offset-assert 16)
@@ -7936,9 +7968,7 @@
   :size-assert         #x50
   :flag-assert         #x900000050
   )
-|#
 
-#|
 (deftype ocean-wave-info (structure)
   ((frequency  float  :offset-assert 0)
    (amplitude  float  :offset-assert 4)
@@ -7953,9 +7983,7 @@
   :size-assert         #x20
   :flag-assert         #x900000020
   )
-|#
 
-#|
 (deftype ocean-vertex (structure)
   ((pos vector :inline :offset-assert 0)
    (stq vector :inline :offset-assert 16)
@@ -7965,19 +7993,15 @@
   :size-assert         #x30
   :flag-assert         #x900000030
   )
-|#
 
-#|
 (deftype ocean-spheres (structure)
-  ((spheres sphere 36 :offset-assert 0) ;; guessed by decompiler
+  ((spheres sphere 36 :inline :offset-assert 0) ;; guessed by decompiler
    )
   :method-count-assert 9
   :size-assert         #x240
   :flag-assert         #x900000240
   )
-|#
 
-#|
 (deftype ocean-colors (structure)
   ((colors rgba 2548 :offset-assert 0) ;; guessed by decompiler
    )
@@ -7985,30 +8009,25 @@
   :size-assert         #x27d0
   :flag-assert         #x9000027d0
   )
-|#
 
-#|
 (deftype ocean-colors-float (structure)
-  ((colors vector 2548 :offset-assert 0) ;; guessed by decompiler
+  ((colors vector 2548 :inline :offset-assert 0) ;; guessed by decompiler
    )
   :method-count-assert 9
   :size-assert         #x9f40
   :flag-assert         #x900009f40
   )
-|#
 
-#|
 (deftype ocean-mid-mask (structure)
   ((mask  uint8  8 :offset-assert 0) ;; guessed by decompiler
-   (dword uint64   :offset-assert 0)
+   (dword uint64   :offset 0)
    )
+  :pack-me
   :method-count-assert 9
   :size-assert         #x8
   :flag-assert         #x900000008
   )
-|#
 
-#|
 (deftype ocean-mid-indices (basic)
   ((data uint16 36 :offset-assert 4) ;; guessed by decompiler
    )
@@ -8016,9 +8035,7 @@
   :size-assert         #x4c
   :flag-assert         #x90000004c
   )
-|#
 
-#|
 (deftype ocean-mid-masks (basic)
   ((data (inline-array ocean-mid-mask)  :offset-assert 4) ;; guessed by decompiler
    )
@@ -8026,41 +8043,35 @@
   :size-assert         #x8
   :flag-assert         #x900000008
   )
-|#
 
-#|
 (deftype ocean-trans-mask (structure)
   ((mask uint8 4 :offset-assert 0) ;; guessed by decompiler
-   (word int32   :offset-assert 0)
+   (word int32   :offset 0)
    )
+  :pack-me
   :method-count-assert 9
   :size-assert         #x4
   :flag-assert         #x900000004
   )
-|#
 
-#|
 (deftype ocean-trans-index (structure)
   ((parent int16  :offset-assert 0)
    (child  int16  :offset-assert 2)
    )
+  :pack-me
   :method-count-assert 9
   :size-assert         #x4
   :flag-assert         #x900000004
   )
-|#
 
-#|
 (deftype ocean-trans-indices (basic)
-  ((data ocean-trans-index 2304 :offset-assert 4) ;; guessed by decompiler
+  ((data ocean-trans-index 2304 :inline :offset-assert 4)
    )
   :method-count-assert 9
   :size-assert         #x2404
   :flag-assert         #x900002404
   )
-|#
 
-#|
 (deftype ocean-near-index (structure)
   ((data uint16 16 :offset-assert 0) ;; guessed by decompiler
    )
@@ -8068,9 +8079,7 @@
   :size-assert         #x20
   :flag-assert         #x900000020
   )
-|#
 
-#|
 (deftype ocean-near-indices (basic)
   ((data (inline-array ocean-near-index)  :offset-assert 4) ;; guessed by decompiler
    )
@@ -8078,9 +8087,7 @@
   :size-assert         #x8
   :flag-assert         #x900000008
   )
-|#
 
-#|
 (deftype ocean-near-colors (structure)
   ((color0 vector :inline :offset-assert 0)
    (color1 vector :inline :offset-assert 16)
@@ -8091,9 +8098,7 @@
   :size-assert         #x40
   :flag-assert         #x900000040
   )
-|#
 
-#|
 (deftype ocean-trans-strip (structure)
   ((verts uint128 10 :offset-assert 0) ;; guessed by decompiler
    )
@@ -8101,19 +8106,15 @@
   :size-assert         #xa0
   :flag-assert         #x9000000a0
   )
-|#
 
-#|
 (deftype ocean-trans-strip-array (structure)
-  ((data ocean-trans-strip 4 :offset-assert 0) ;; guessed by decompiler
+  ((data ocean-trans-strip 4 :inline :offset-assert 0) ;; guessed by decompiler
    )
   :method-count-assert 9
   :size-assert         #x280
   :flag-assert         #x900000280
   )
-|#
 
-#|
 (deftype ocean-wave-data (structure)
   ((data uint8 1024 :offset-assert 0) ;; guessed by decompiler
    )
@@ -8121,18 +8122,15 @@
   :size-assert         #x400
   :flag-assert         #x900000400
   )
-|#
 
-#|
 (deftype ocean-wave-frames (structure)
-  ((frame ocean-wave-data 64 :offset-assert 0) ;; guessed by decompiler
+  ((frame ocean-wave-data 64 :inline :offset-assert 0) ;; guessed by decompiler
    )
+  ;; overflow 16-bit int size bug
   :method-count-assert 9
-  :size-assert         #x0
-  :heap-base           #x1
-  :flag-assert         #x900010000
+  :size-assert         #x10000
+  ;:flag-assert         #x900010000
   )
-|#
 
 #|
 (deftype ocean-texture-constants (structure)
@@ -8150,7 +8148,6 @@
   )
 |#
 
-#|
 (deftype ocean-mid-vertex (structure)
   ((stq vector :inline :offset-assert 0)
    (col vector :inline :offset-assert 16)
@@ -8160,7 +8157,6 @@
   :size-assert         #x30
   :flag-assert         #x900000030
   )
-|#
 
 #|
 (deftype ocean-mid-constants (structure)
@@ -8192,7 +8188,6 @@
   )
 |#
 
-#|
 (deftype ocean-mid-upload (structure)
   ((rot    matrix  :inline :offset-assert 0)
    (matrix matrix  :inline :offset-assert 64)
@@ -8203,9 +8198,7 @@
   :size-assert         #x760
   :flag-assert         #x900000760
   )
-|#
 
-#|
 (deftype ocean-mid-upload2 (structure)
   ((rot    matrix   :inline :offset-assert 0)
    (matrix matrix   :inline :offset-assert 64)
@@ -8224,7 +8217,6 @@
   :size-assert         #x230
   :flag-assert         #x900000230
   )
-|#
 
 #|
 (deftype ocean-mid-work (structure)
@@ -8292,7 +8284,6 @@
   )
 |#
 
-#|
 (deftype ocean-near-vertex (structure)
   ((stq vector :inline :offset-assert 0)
    (clr vector :inline :offset-assert 16)
@@ -8302,9 +8293,7 @@
   :size-assert         #x30
   :flag-assert         #x900000030
   )
-|#
 
-#|
 (deftype ocean-near-work (structure)
   ((verts-ptr vector  :inline :offset-assert 0)
    (indices   uint128 16      :offset-assert 16) ;; guessed by decompiler
@@ -8313,9 +8302,7 @@
   :size-assert         #x110
   :flag-assert         #x900000110
   )
-|#
 
-#|
 (deftype ocean-height-array (structure)
   ((data float 1024 :offset-assert 0) ;; guessed by decompiler
    )
@@ -8323,19 +8310,15 @@
   :size-assert         #x1000
   :flag-assert         #x900001000
   )
-|#
 
-#|
 (deftype ocean-vert-array (structure)
-  ((data vector 2048 :offset-assert 0) ;; guessed by decompiler
+  ((data vector 2048 :inline :offset-assert 0) ;; guessed by decompiler
    )
   :method-count-assert 9
   :size-assert         #x8000
   :flag-assert         #x900008000
   )
-|#
 
-#|
 (deftype ocean-map (structure)
   ((start-corner        vector              :inline :offset-assert 0)
    (far-color           vector              :inline :offset-assert 16)
@@ -8349,11 +8332,10 @@
   :size-assert         #x34
   :flag-assert         #xb00000034
   (:methods
-    (ocean-map-method-9 () none) ;; 9 ;; (set-height! (_type_ float) none)
-    (ocean-map-method-10 () none) ;; 10 ;; (get-base-height (_type_) float)
+    (set-height! (_type_ float) none) ;; 9
+    (get-base-height (_type_) float) ;; 10
     )
   )
-|#
 
 #|
 (deftype ocean (ocean-map)
@@ -9732,42 +9714,42 @@
 ;; ocean-trans-tables             ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (define-extern *ocean-left-table* object) ;; (pointer float)
-;; (define-extern *ocean-right-table* object) ;; (pointer float)
-;; (define-extern *ocean-up-table* object) ;; (pointer float)
-;; (define-extern *ocean-down-table* object) ;; (pointer float)
-;; (define-extern *ocean-down-left-table* object) ;; (pointer float)
-;; (define-extern *ocean-down-right-table* object) ;; (pointer float)
-;; (define-extern *ocean-up-right-table* object) ;; (pointer float)
-;; (define-extern *ocean-up-left-table* object) ;; (pointer float)
-;; (define-extern *ocean-trans-left-table* object) ;; (pointer float)
-;; (define-extern *ocean-trans-right-table* object) ;; (pointer float)
-;; (define-extern *ocean-trans-up-table* object) ;; (pointer float)
-;; (define-extern *ocean-trans-down-table* object) ;; (pointer float)
-;; (define-extern *ocean-trans-down-left-table* object) ;; (pointer float)
-;; (define-extern *ocean-trans-down-right-table* object) ;; (pointer float)
-;; (define-extern *ocean-trans-up-right-table* object) ;; (pointer float)
-;; (define-extern *ocean-trans-up-left-table* object) ;; (pointer float)
-;; (define-extern *ocean-trans-corner-table* object) ;; (inline-array vector4w-2)
-;; (define-extern *ocean-trans-strip-array* object) ;; (pointer float)
-;; (define-extern *ocean-trans-st-table* object) ;; (inline-array vector)
+(define-extern *ocean-left-table* (pointer float))
+(define-extern *ocean-right-table* (pointer float))
+(define-extern *ocean-up-table* (pointer float))
+(define-extern *ocean-down-table* (pointer float))
+(define-extern *ocean-down-left-table* (pointer float))
+(define-extern *ocean-down-right-table* (pointer float))
+(define-extern *ocean-up-right-table* (pointer float))
+(define-extern *ocean-up-left-table* (pointer float))
+(define-extern *ocean-trans-left-table* (pointer float))
+(define-extern *ocean-trans-right-table* (pointer float))
+(define-extern *ocean-trans-up-table* (pointer float))
+(define-extern *ocean-trans-down-table* (pointer float))
+(define-extern *ocean-trans-down-left-table* (pointer float))
+(define-extern *ocean-trans-down-right-table* (pointer float))
+(define-extern *ocean-trans-up-right-table* (pointer float))
+(define-extern *ocean-trans-up-left-table* (pointer float))
+(define-extern *ocean-trans-corner-table* (inline-array vector4w-2))
+(define-extern *ocean-trans-strip-array* (pointer float))
+(define-extern *ocean-trans-st-table* (inline-array vector))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; ocean-tables                   ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (define-extern *ocean-colors-city* object) ;; ocean-colors
-;; (define-extern *ocean-near-indices-city* ocean-near-indices) ;; ocean-near-indices
-;; (define-extern *ocean-trans-indices-city* ocean-trans-indices) ;; ocean-trans-indices
-;; (define-extern *ocean-mid-indices-city* ocean-mid-indices) ;; ocean-mid-indices
-;; (define-extern *ocean-mid-masks-city* ocean-mid-masks) ;; ocean-mid-masks
-;; (define-extern *ocean-map-city* object) ;; ocean-map
+(define-extern *ocean-colors-city* ocean-colors)
+(define-extern *ocean-near-indices-city* ocean-near-indices)
+(define-extern *ocean-trans-indices-city* ocean-trans-indices)
+(define-extern *ocean-mid-indices-city* ocean-mid-indices)
+(define-extern *ocean-mid-masks-city* ocean-mid-masks)
+(define-extern *ocean-map-city* ocean-map)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; ocean-frames                   ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (define-extern *ocean-wave-frames* object) ;; (pointer uint32)
+(define-extern *ocean-wave-frames* (pointer uint32))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; cloth-art-h                    ;;
