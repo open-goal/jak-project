@@ -217,9 +217,9 @@ AudioFileInfo process_audio_file(const fs::path& output_folder,
   BinaryReader reader(data);
 
   auto header = reader.read<VagFileHeader>();
-  if (header.magic == 0x70474156 /* pGAV */) {
+  if (header.magic == 0x70474156 /* big endian (VAGp)*/) {
     header = header.swap_endian();
-  } else if (header.magic != 0x56414770 /* VAGp */) {
+  } else if (header.magic != 0x56414770 /* little endian (pGAV) */) {
     ASSERT(false);
   }
   header.debug_print();
