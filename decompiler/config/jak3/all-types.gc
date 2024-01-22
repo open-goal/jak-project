@@ -4231,65 +4231,186 @@
 ;; geometry                       ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (define-extern vector-flatten! function) ;; (function vector vector vector vector)
-;; (define-extern vector-reflect! function) ;; (function vector vector vector vector)
-;; (define-extern vector-reflect-flat! function) ;; (function vector vector vector vector)
-;; (define-extern vector-reflect-flat-above! function) ;; (function vector vector vector vector)
-;; (define-extern vector-reflect-flat-gravity! function) ;; (function vector vector vector vector vector)
-;; (define-extern vector-segment-distance-point! function) ;; (function vector vector vector vector float)
-;; (define-extern vector-segment-xz-distance-point! function)
-;; (define-extern vector-line-distance function) ;; (function vector vector vector float)
-;; (define-extern vector-line-distance-point! function) ;; (function vector vector vector vector float)
-;; (define-extern vector-line-xz-distance-point! function)
-;; (define-extern vector-segment-overlap function) ;; (function vector vector vector float)
-;; (define-extern line-sphere-intersection? function) ;; (function vector vector vector symbol)
-;; (define-extern nearest-dist2-between-moving-points function) ;; (function vector vector vector vector float float)
-(define-extern vector-orient-by-quat! (function vector vector quaternion vector))
-;; (define-extern vector-inv-orient-by-quat! function) ;; (function vector vector quaternion vector)
-;; (define-extern forward-down->inv-matrix function) ;; (function matrix vector vector matrix)
-;; (define-extern forward-down-nopitch->inv-matrix function) ;; (function matrix vector vector matrix)
-;; (define-extern forward-up->inv-matrix function) ;; (function matrix vector vector matrix)
-;; (define-extern forward-up-nopitch->inv-matrix function) ;; (function matrix vector vector matrix)
-;; (define-extern forward-up-nopitch->quaternion function) ;; (function quaternion vector vector quaternion)
-;; (define-extern forward-up->quaternion function) ;; (function quaternion vector vector quaternion)
-;; (define-extern quaternion-from-two-vectors! function) ;; (function quaternion vector vector quaternion)
-;; (define-extern quaternion-from-two-vectors-partial! function) ;; (function quaternion vector vector float quaternion)
-(define-extern quaternion-from-two-vectors-max-angle! (function quaternion vector vector float quaternion))
-;; (define-extern quaternion-from-two-vectors-max-angle-partial! function) ;; (function quaternion vector vector float float quaternion)
-;; (define-extern matrix-from-two-vectors! function) ;; (function matrix vector vector matrix)
-;; (define-extern matrix-from-two-vectors-max-angle! function) ;; (function matrix vector vector float matrix)
-;; (define-extern matrix-from-two-vectors-smooth! function) ;; (function matrix vector vector float int matrix)
-;; (define-extern matrix-from-two-vectors-the-long-way-smooth! function) ;; (function matrix vector vector float int matrix)
-;; (define-extern quaternion-from-two-vectors-smooth! function) ;; (function quaternion vector vector float int quaternion)
-;; (define-extern matrix-from-two-vectors-max-angle-partial! function) ;; (function matrix vector vector float float matrix)
-;; (define-extern matrix-from-two-vectors-partial-linear! function) ;; (function matrix vector vector float matrix)
-;; (define-extern matrix-remove-z-rot function) ;; (function matrix vector matrix)
-;; (define-extern matrix-rot-diff! function) ;; (function vector matrix matrix float)
-;; (define-extern quaternion-seek function) ;; (function quaternion quaternion quaternion float float quaternion)
-;; (define-extern vector-deg-seek function) ;; (function vector vector vector float vector)
-;; (define-extern vector-deg-slerp function) ;; (function vector vector vector float vector)
-;; (define-extern vector-vector-deg-slerp! function) ;; (function vector vector vector float vector vector)
-;; (define-extern normal-of-plane function) ;; (function vector vector vector vector vector)
-;; (define-extern vector-3pt-cross! function) ;; (function vector vector vector vector vector)
-;; (define-extern closest-pt-in-triangle function) ;; (function vector vector matrix vector none)
-;; (define-extern point-in-triangle-cross function) ;; (function vector vector vector vector vector symbol)
-;; (define-extern point-in-plane-<-point+normal! function) ;; (function vector vector vector vector)
-;; (define-extern circle-circle-xz-intersect function) ;; (function sphere sphere vector vector int)
-;; (define-extern circle-test function) ;; (function none)
-;; (define-extern vector-circle-tangent-new function) ;; (function vector vector vector vector none)
-;; (define-extern vector-circle-tangent function) ;; (function vector vector vector vector none)
-;; (define-extern find-knot-span function) ;; (function int int float (inline-array vector) int)
-;; (define-extern calculate-basis-functions-vector! function) ;; (function vector int float (pointer float) vector)
-;; (define-extern curve-evaluate! function) ;; (function vector float (inline-array vector) int (pointer float) int vector)
-;; (define-extern curve-get-pos! function) ;; (function vector float curve vector)
-;; (define-extern curve-length function) ;; (function curve float)
-;; (define-extern curve-copy! function) ;; (function curve curve curve)
-;; (define-extern curve-closest-point function) ;; (function curve vector float float int float float)
-;; (define-extern vector-plane-distance function) ;; (function vector plane vector float)
-;; (define-extern intersect-ray-plane function) ;; (function vector vector vector vector float)
-;; (define-extern line-line-find-intersection-xz function)
-;; (define-extern segment-segment-find-intersection-xz function)
-;; (define-extern generate-rand-vector-on-sphere function)
+(define-extern vector-flatten!
+  "Get the projection of src onto a plane with the given normal
+   The normal should have magnitude 1.0."
+  (function vector vector vector vector))
+(define-extern vector-reflect! "Reflect a vector off of a plane." (function vector vector vector vector))
+(define-extern vector-reflect-flat!
+  "This is a weird one. It doesn't care about the value of src dot normal
+   and it effectively replaces the component of src normal to the plane with
+   the plane's normal.  I think this requires src/normal to both be unit vectors
+   in order to make sense.
+   NOTE: src should point from positive halfspace to negative otherwise it
+   doesn't work."
+  (function vector vector vector vector))
+(define-extern vector-reflect-flat-above!
+  "Not really a reflect. Same as flatten."
+  (function vector vector vector vector))
+(define-extern vector-reflect-flat-gravity! (function vector vector vector vector vector))
+(define-extern vector-segment-distance-point!
+   "Compute the distance from a point to the closest point on the line segment.
+    arg0 is the point. arg1/arg2 are the endpoints of the line segment.
+    arg3 is an optional output closest point."
+  (function vector vector vector vector float))
+(define-extern vector-segment-xz-distance-point! (function vector vector vector vector float))
+(define-extern vector-line-distance
+  "Weird function: given a point arg1, and an infinite line connecting arg2 and arg1, compute the distance
+   from arg0 to that line."
+  (function vector vector vector float))
+(define-extern vector-line-distance-point!
+  "Same as above function, but returns the point on arg2/arg1 in arg3 (ignored if #f)"
+  (function vector vector vector vector float))
+(define-extern vector-line-xz-distance-point! (function vector vector vector vector float))
+(define-extern vector-segment-overlap
+  "Seems to compute (v1 - v0).dot(v2 - v1), but in a weird way."
+  (function vector vector vector float))
+(define-extern line-sphere-intersection?
+  "Does [arg1, arg2] intersect sphere arg0?"
+  (function vector vector vector symbol))
+(define-extern nearest-dist2-between-moving-points (function vector vector vector vector float float))
+(define-extern vector-orient-by-quat!
+  "Rotate a vector by a quaternion."
+  (function vector vector quaternion vector))
+(define-extern vector-inv-orient-by-quat!
+  "Rotate a vector by the inverse rotation."
+  (function vector vector quaternion vector))
+(define-extern forward-down->inv-matrix
+  "Create a matrix representing an inverse transform where arg1 is forward (+z)
+   and arg2 is down (-y). Will have the pitch of forward."
+  (function matrix vector vector matrix))
+(define-extern forward-down-nopitch->inv-matrix
+  "Create a matrix representing an inverse transform where arg1 is forward (+z) 
+   and arg2 is down (-y). Will not use the pitch of forward."
+  (function matrix vector vector matrix))
+(define-extern forward-up->inv-matrix
+  "Create a matrix representing an inverse transform where arg1 is forward (+z)
+   and arg2 is up (+y). Will use the pitch of forward."
+  (function matrix vector vector matrix))
+(define-extern forward-up-nopitch->inv-matrix
+  "Create a matrix representing an inverse transform where arg1 is forward (+z)
+   and arg2 is up (+y). Will not use the pitch of forward."
+  (function matrix vector vector matrix))
+(define-extern forward-up-nopitch->quaternion
+  "Create a quaternion representing a transform where arg1 is forward (+z)
+   and arg2 is up (+y). Will not use the pitch of forward."
+  (function quaternion vector vector quaternion))
+(define-extern forward-up->quaternion
+  "Create a quaternion representing a transform where arg1 is forward (+z)
+   and arg2 is up (+y). Will use the pitch of forward."
+  (function quaternion vector vector quaternion))
+(define-extern quaternion-from-two-vectors!
+  "Create a quaternion representing the rotation between two vectors."
+  (function quaternion vector vector quaternion))
+(define-extern quaternion-from-two-vectors-partial!
+  "Create a quaternion representing the rotation between two vectors,
+   doing arg3 fraction of the total rotation."
+  (function quaternion vector vector float quaternion))
+(define-extern quaternion-from-two-vectors-max-angle!
+  "Create a quaternion representing the rotation between two vectors,
+   allowing at most a rotation of arg3 degrees."
+  (function quaternion vector vector float quaternion))
+(define-extern quaternion-from-two-vectors-max-angle-partial!
+  "Create a quaternion representing the arg4 fraction of the rotation between two vectors,
+   allowing at most a rotation of arg3 degrees."
+  (function quaternion vector vector float float quaternion))
+(define-extern matrix-from-two-vectors!
+  "Create a rotation matrix representing the rotation between two vectors."
+  (function matrix vector vector matrix))
+(define-extern matrix-from-two-vectors-max-angle!
+  "Create a rotation matrix representing the rotation between two vectors,
+   allowing at most a rotation of arg3 degrees."
+  (function matrix vector vector float matrix))
+(define-extern matrix-from-two-vectors-smooth!
+  "This function can help smoothly rotate from a current heading vector to a target one.
+   It returns a rotation to move arg1 closer to arg2, subject to two different speed limits.
+   arg3 is a rotations-per-frame rate. This limit takes frame rate into account (when lagging, the rotation is larger)
+   arg4 is a 'slow down when getting close to the end' limit.
+   This is used in rotate-toward-orientation, which is much improved from jak 1."
+  (function matrix vector vector float int matrix))
+(define-extern matrix-from-two-vectors-the-long-way-smooth!
+  "Same as above, but rotates you away from the target.
+   Note that the 'near the end' smoothing will apply when you're near the target."
+  (function matrix vector vector float int matrix))
+(define-extern quaternion-from-two-vectors-smooth!
+  "Same as above, but returns a quaternion."
+  (function quaternion vector vector float int quaternion))
+(define-extern matrix-from-two-vectors-max-angle-partial!
+  "Create a rotation matrix representing the given fraction of the rotation between two heading vectors,
+   rotating by at most the given angle."
+  (function matrix vector vector float float matrix))
+(define-extern matrix-from-two-vectors-partial-linear!
+  "Create a rotation matrix representing doing arg3 fraction of the rotation between two vectors."
+  (function matrix vector vector float matrix))
+(define-extern matrix-remove-z-rot "Remove the z rotation component of a rotation." (function matrix vector matrix))
+(define-extern matrix-rot-diff!
+  "Get the difference of rotation between two matrices, expressed as a quaternion."
+  (function vector matrix matrix float))
+(define-extern quaternion-seek
+  "Strange quaternion rotate toward function. arg3 is ignored. arg4 is the max seek amount."
+  (function quaternion quaternion quaternion float float quaternion))
+(define-extern vector-deg-seek
+  "Make one vector closer to another, doing at most a rotation by arg3 degrees."
+  (function vector vector vector float vector))
+(define-extern vector-deg-slerp
+  "Slerp for vectors. (imagine that they are the z axis of two frames)"
+  (function vector vector vector float vector))
+(define-extern vector-vector-deg-slerp! "Unused. No clue what this does." (function vector vector vector float vector vector))
+(define-extern normal-of-plane
+  "Given three points on a plane, compute the plane's normal."
+  (function vector vector vector vector vector))
+(define-extern vector-3pt-cross!
+  "Cross product of 2 - 1 and 3 - 1. (will give a normal to the plane, but not of magnitude 1)"
+  (function vector vector vector vector vector))
+(define-extern closest-pt-in-triangle
+  "arg2 is the vertices of the triangle, arg3 is the normal, arg1 is the input point, arg0 is the output."
+  (function vector vector matrix vector none))
+(define-extern point-in-triangle-cross
+  "Check if point is in the triangle using cross product check (so you have to get the order of points right)."
+  (function vector vector vector vector vector symbol))
+(define-extern point-in-plane-<-point+normal!
+  "Very strange function. Takes a plane, in point-normal form, then returns some other point on that plane.
+   It will move 1m in two of {x, y, z} directions. The direction not moved in is the one which is closest to point-in-triangle-cross
+   in the same direction of the normal (this prevent moving huge distances for nearly vertical planes for example)."
+  (function vector vector vector vector))
+(define-extern circle-circle-xz-intersect
+  "This function is unused and really complicated, so not implementing it for now."
+  (function sphere sphere vector vector int))
+(define-extern circle-test "Test the circle-circle-xz-intersect function." (function none))
+(define-extern vector-circle-tangent-new "Unused." (function vector vector vector vector none))
+(define-extern vector-circle-tangent "Also unused." (function vector vector vector vector none))
+(define-extern find-knot-span
+  "Binary serach over knots to find which contains the value float in (arg0 arg1). Unused."
+  (function int int float (inline-array vector) int))
+(define-extern calculate-basis-functions-vector!
+  "Calculate polynomial basis for a given control point."
+  (function vector int float (pointer float) vector))
+(define-extern curve-evaluate!
+  "Evaluate a curve.
+   arg0 is the output
+   arg1 is the input.
+   arg2 is control vertices.
+   arg3 is the number of control vertices.
+   arg4 is the knot points.
+   arg5 is the number of knots."
+  (function vector float (inline-array vector) int (pointer float) int vector))
+(define-extern curve-get-pos!
+  "Get the position on the curve at the given input."
+  (function vector float curve vector))
+(define-extern curve-length
+  "Compute the approximate curve length as the sum of distances between knots."
+  (function curve float))
+(define-extern curve-copy! "Shallow copy a curve." (function curve curve curve))
+(define-extern curve-closest-point
+  "Get the input value for the point on the curve. Approximate! And is O(n_knots)."
+  (function curve vector float float int float float))
+(define-extern vector-plane-distance "Unused." (function vector plane vector float))
+(define-extern intersect-ray-plane
+  "arg1 is ray direction, arg3 is plane normal, others don't really make sense to me."
+  (function vector vector vector vector float))
+(define-extern line-line-find-intersection-xz (function vector vector vector vector vector float))
+(define-extern segment-segment-find-intersection-xz (function vector vector vector vector float))
+(define-extern generate-rand-vector-on-sphere (function vector vector))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; timer                          ;;
@@ -4311,102 +4432,251 @@
 ;; vector                         ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(define-extern vector-cross! (function vector vector vector vector))
-(define-extern vector-xz-cross! (function vector vector vector vector))
-(define-extern vector+float! (function vector vector float vector))
-(define-extern vector*! (function vector vector vector vector))
-(define-extern vector+*! (function vector vector vector float vector))
-(define-extern vector-*! (function vector vector vector float vector))
-(define-extern vector/! (function vector vector vector vector))
-(define-extern vector-float*! (function vector vector float vector))
-(define-extern vector-average! (function vector vector vector vector))
-(define-extern vector+float*! (function vector vector vector float vector))
-(define-extern vector--float*! (function vector vector vector float vector))
-(define-extern vector-min! function)
-(define-extern vector-max! function)
-(define-extern vector-float/! (function vector vector float vector))
-(define-extern vector-negate! (function vector vector vector))
-(define-extern vector-negate-in-place! (function vector vector))
-(define-extern vector= (function vector vector symbol))
-(define-extern vector-delta (function vector vector float))
-(define-extern vector-seek! (function vector vector float vector))
-(define-extern vector-smooth-seek! (function vector vector float vector))
-(define-extern vector-seek-2d-xz-smooth! (function vector vector float float vector))
-(define-extern vector-seek-2d-yz-smooth! (function vector vector float float vector))
-(define-extern vector-seek-3d-smooth! (function vector vector float float vector))
-(define-extern seek-with-smooth (function float float float float float float))
-(define-extern vector-identity! (function vector vector))
-(define-extern vector-seconds (function vector vector vector))
-(define-extern vector-seconds! (function vector vector))
-(define-extern vector-v! (function vector vector))
-(define-extern vector-v+! (function vector vector vector vector))
-(define-extern vector-v*float+! (function vector vector vector float vector))
-(define-extern vector-v++! (function vector vector vector))
-(define-extern vector-v*float! (function vector vector float vector))
-(define-extern vector-v*float++! (function vector vector float vector))
-(define-extern vector-to-ups! (function vector vector vector))
-(define-extern vector-from-ups! (function vector vector vector))
-(define-extern vector-length (function vector float))
-(define-extern vector-length-squared (function vector float))
-(define-extern vector-xz-length-squared (function vector float))
-(define-extern vector-xz-length (function vector float))
-(define-extern vector-vector-distance (function vector vector float))
-(define-extern vector-vector-distance-squared (function vector vector float))
-(define-extern vector-vector-xz-distance (function vector vector float))
-(define-extern vector-vector-xy-distance (function vector vector float))
-(define-extern vector-vector-xz-distance-squared (function vector vector float))
-(define-extern vector-vector-planar-distance function)
-(define-extern vector-normalize! (function vector float vector))
-(define-extern vector-normalize-ret-len! (function vector float float))
-(define-extern vector-normalize-copy! (function vector vector float vector))
-(define-extern vector-xz-normalize! (function vector float vector))
-(define-extern vector-xz-normalize-copy! (function vector vector float vector))
-(define-extern vector-length-max! (function vector float vector))
-(define-extern vector-xz-length-max! (function vector float vector))
-(define-extern vector-rotate-around-x! (function vector vector float vector))
-(define-extern vector-rotate-around-y! (function vector vector float vector))
-(define-extern vector-rotate90-around-y! (function vector vector vector))
-(define-extern vector-rotate-around-z! (function vector vector float vector))
-(define-extern rotate-y<-vector+vector (function vector vector float))
-(define-extern rotate-x<-vector+vector (function vector vector float))
-(define-extern rotate-z<-vector+vector (function vector vector float))
-(define-extern rotate-vector-to-vector function)
-(define-extern vector-cvt.w.s! (function vector vector vector))
-(define-extern vector-cvt.s.w! (function vector vector vector))
-(define-extern rot-zxy-from-vector! (function vector vector vector))
-(define-extern rot-zyx-from-vector! (function vector vector vector))
-(define-extern vector-lerp! (function vector vector vector float vector))
-(define-extern vector-lerp-clamp! (function vector vector vector float vector))
-(define-extern vector4-lerp! (function vector vector vector float vector))
-(define-extern vector4-lerp-clamp! (function vector vector vector float vector))
-(define-extern vector-degi (function vector vector vector))
-(define-extern vector-degf (function vector vector vector))
-(define-extern vector-degmod (function vector vector vector))
-(define-extern vector-deg-diff (function vector vector vector none))
-(define-extern vector-deg-lerp-clamp! (function vector vector vector float vector))
+(define-extern vector-cross!
+  "Compute the cross product. The w component is set to junk."
+  (function vector vector vector vector))
+(define-extern vector-xz-cross!
+  "Compute the cross product of the xz components of inputs."
+  (function vector vector vector vector))
+(define-extern vector+float!
+  "Add float to each component of vector. The w component is set to 1"
+  (function vector vector float vector))
+(define-extern vector*! "Elementwise product. Set w = 1." (function vector vector vector vector))
+(define-extern vector+*!
+  "set arg0 = arg1 + (arg3 * arg2). The w component will be set to 1."
+  (function vector vector vector float vector))
+(define-extern vector-*!
+  "Set arg0 = arg1 - (arg3 * arg2). The w component will be set to 1."
+  (function vector vector vector float vector))
+(define-extern vector/!
+  "Set arg0 = arg1 / arg2. The w component will be set to 1.
+   The implementation is kind of crazy."
+  (function vector vector vector vector))
+(define-extern vector-float*!
+  "Multiply all values in a vector by arg2. Set w to 1."
+  (function vector vector float vector))
+(define-extern vector-average!
+  "Set arg0 to the average of arg1 and arg2. Set w to 1."
+  (function vector vector vector vector))
+(define-extern vector+float*! "arg0 = arg1 + arg2 * arg3." (function vector vector vector float vector))
+(define-extern vector--float*!
+  "Set arg0 = arg1 - (arg2 * arg3). The w component will be set to 1.
+   Is this different from vector-*!"
+  (function vector vector vector float vector))
+(define-extern vector-min! (function vector vector vector vector))
+(define-extern vector-max! (function vector vector vector vector))
+(define-extern vector-float/!
+  "Divide all components by arg2. The w component will be set to 1."
+  (function vector vector float vector))
+(define-extern vector-negate! "Negate xyz, set w to 1." (function vector vector vector))
+(define-extern vector-negate-in-place! "Negate xyz. Doesn't touch w." (function vector vector))
+(define-extern vector=
+  "Are the two vectors equal? Does not compare the w component.
+   The implementation is cool."
+  (function vector vector symbol))
+(define-extern vector-delta
+  "Sum of the elementwise absolute value of differences."
+  (function vector vector float))
+(define-extern vector-seek!
+  "Seek arg0 toward arg1. The arg0 is both read and written.
+   arg2 is saturated to (0, 1)"
+  (function vector vector float vector))
+(define-extern vector-smooth-seek!
+  "Smoothly seek vec toward target.
+   The step always points toward the target and has length (dist * alpha).
+   If the step is longer than max-step, the step is projected onto a _square_ with side length arg2.
+   Note that this doesn't project to a circle like the function below..."
+  (function vector vector float vector))
+(define-extern vector-seek-2d-xz-smooth!
+  "Smoothly seek vec's x and z components toward target.
+   The step always points toward the target and has length (dist * alpha).
+   If the step is longer than max-step, the step is projected onto a circle of radius max-step.
+   Doesn't touch y or w."
+  (function vector vector float float vector))
+(define-extern vector-seek-2d-yz-smooth!
+  "Smoothly seek vec's y and z components toward target.
+   The step always points toward the target and has length (dist * alpha).
+   If the step is longer than max-step, the step is projected onto a circle of radius max-step.
+   Doesn't touch x or w."
+  (function vector vector float float vector))
+(define-extern vector-seek-3d-smooth!
+  "Smoothly seek vec's x, y, and z components toward target.
+   The step always points toward the target and has length (dist * alpha).
+   If the step is longer than max-step, the step is projected onto a circle of radius max-step.
+   Doesn't touch w."
+  (function vector vector float float vector))
+(define-extern seek-with-smooth
+  "Move value closer to target.
+   If we are within deadband, just go straight to target.
+   If not, try to go alpha*err. If that is a larger step than max-step, limit to max-step"
+  (function float float float float float float))
+(define-extern vector-identity! "Set arg0 to 1, 1, 1, 1." (function vector vector))
+(define-extern vector-seconds
+  "Convert from actual seconds to the seconds unit."
+  (function vector vector vector))
+(define-extern vector-seconds!
+  "Convert from actual seconds to seconds, in place."
+  (function vector vector))
+(define-extern vector-v!
+  "Convert a velocity to a displacement per frame. The velocity should be in X/actual_second.
+   Uses the current process clock."
+  (function vector vector))
+(define-extern vector-v+!
+  "Euler forward step, using the current display time settings."
+  (function vector vector vector vector))
+(define-extern vector-v*float+!
+  "Euler forward step, scaling velocity by velocity-scale."
+  (function vector vector vector float vector))
+(define-extern vector-v++!
+  "Update position in place, using display's current timing."
+  (function vector vector vector))
+(define-extern vector-v*float!
+  "Go from velocity to delta-p per frame, scaling by scale."
+  (function vector vector float vector))
+(define-extern vector-v*float++!
+  "Update position with given velocity, scaled by scale."
+  (function vector vector float vector))
+(define-extern vector-to-ups!
+  "Go from units per frame to units per second?"
+  (function vector vector vector))
+(define-extern vector-from-ups!
+  "Go from units per second to units per frame?"
+  (function vector vector vector))
+(define-extern vector-length
+  "Get the length of the xyz part."
+  (function vector float))
+(define-extern vector-length-squared
+  "Get the squared length of the xyz part."
+  (function vector float))
+(define-extern vector-xz-length-squared
+  "Get the length of the xz part, squared."
+  (function vector float))
+(define-extern vector-xz-length "Get the length of the xz part." (function vector float))
+(define-extern vector-vector-distance
+  "Subtract the xyz parts and get the norm."
+  (function vector vector float))
+(define-extern vector-vector-distance-squared
+  "Squared norm of the difference of the xyz parts."
+  (function vector vector float))
+(define-extern vector-vector-xz-distance "Distance on the xz plane." (function vector vector float))
+(define-extern vector-vector-xy-distance "distance on the xy plane." (function vector vector float))
+(define-extern vector-vector-xz-distance-squared "Distance on the xz plane squared." (function vector vector float))
+(define-extern vector-vector-planar-distance (function vector vector vector float))
+(define-extern vector-normalize!
+  "Modify arg0 in place to have length arg1 for its xyz components. The w part is not changed."
+  (function vector float vector))
+(define-extern vector-normalize-ret-len!
+  "Modify arg0 in place to have length arg1 for its xyz components.
+   The w part isn't changed and the _original_ length is returned."
+  (function vector float float))
+(define-extern vector-normalize-copy!
+  "Normalize, but not in place.
+   This implementation is very good compared to the vector-normalize! one.
+   The w component is set to 1."
+  (function vector vector float vector))
+(define-extern vector-xz-normalize! "Normalize, xz components only." (function vector float vector))
+(define-extern vector-xz-normalize-copy! "Normalize, xz components only." (function vector vector float vector))
+(define-extern vector-length-max!
+  "Make vector at most arg1 length (xyz only).
+   If it is larger, project onto sphere.
+   Doesn't touch w"
+  (function vector float vector))
+(define-extern vector-xz-length-max!
+  "Make vector at most arg1 length (xz only).
+   It it is larger, project onto circle.
+   Doesn't touch w or y."
+  (function vector float vector))
+(define-extern vector-rotate-around-x! "Rotate a vector around the x axis." (function vector vector float vector))
+(define-extern vector-rotate-around-y! "Rotate a vector around the y axis." (function vector vector float vector))
+(define-extern vector-rotate90-around-y! "Rotate a vector 90 degrees around y." (function vector vector vector))
+(define-extern vector-rotate-around-z! "Rotate a vector around the z axis." (function vector vector float vector))
+(define-extern rotate-y<-vector+vector
+  "Get the y rotation between vectors. These should have the same length."
+  (function vector vector float))
+(define-extern rotate-x<-vector+vector
+  "Get the x rotation between vectors. These should have the same length."
+  (function vector vector float))
+(define-extern rotate-z<-vector+vector
+  "Get the z rotation between vectors. These should have the same length."
+  (function vector vector float))
+(define-extern rotate-vector-to-vector (function vector vector vector vector))
+(define-extern vector-cvt.w.s! "Convert float to int32. Truncate." (function vector vector vector))
+(define-extern vector-cvt.s.w! "Convert float to int32." (function vector vector vector))
+(define-extern rot-zxy-from-vector!
+  "I think this gives you a vector of euler angles to rotate some unit vector
+   to arg1."
+  (function vector vector vector))
+(define-extern rot-zyx-from-vector!
+  "I think this gives you a vector of euler angles to rotate some unit vector
+   to arg1."
+  (function vector vector vector))
+(define-extern vector-lerp!
+  "Linearly interpolate between two vectors. Alpha isn't clamped.
+   w will be set to 1."
+  (function vector vector vector float vector))
+(define-extern vector-lerp-clamp!
+  "Linearly interpolate between two vectors, clamping alpha to 0, 1.
+   w will be set to 1."
+  (function vector vector vector float vector))
+(define-extern vector4-lerp!
+  "Interpolate all 4 elements of a vector. Alpha is not clamped."
+  (function vector vector vector float vector))
+(define-extern vector4-lerp-clamp!
+  "Interpolate all 4 elements of a vector. Alpha is clamped to [0, 1]."
+  (function vector vector vector float vector))
+(define-extern vector-degi
+  "Convert a vector (in _rotations_) to degrees units, stored in an int.
+   Truncates to the nearest _rotation_.
+   Neither the input or output is a commonly used form.
+   Unsurprisingly, this strange function is never used."
+  (function vector vector vector))
+(define-extern vector-degf
+  "Convert a vector (in integer degree units) to floating point rotations.
+   Truncates to the nearest _rotation_.
+   Like the previous function, this is stupid and unused."
+  (function vector vector vector))
+(define-extern vector-degmod
+  "This one is actually right. Wraps degrees units (in floats, like they should be)
+   to +/- half a rotation."
+  (function vector vector vector))
+(define-extern vector-deg-diff
+  "Wrapped difference, degrees units. Will have the usual 16-bit accuracy issue."
+  (function vector vector vector none))
+(define-extern vector-deg-lerp-clamp!
+  "Apply deg-lerp-clamp to the xyz components of a vector. Sets w = 1."
+  (function vector vector vector float vector))
 (define-extern vector3s-copy! (function vector vector vector))
 (define-extern vector3s+! (function vector vector vector vector))
 (define-extern vector3s*float! (function vector vector float vector))
 (define-extern vector3s-! (function vector vector vector vector))
-(define-extern vector4-add! (function vector4 vector4 vector4 none))
-(define-extern vector4-sub! (function vector4 vector4 vector4 none))
-(define-extern vector4-mul! (function vector4 vector4 vector4 none))
-(define-extern vector4-scale! (function vector4 vector4 float none))
-(define-extern vector4-madd! (function vector4 vector4 vector4 float none))
-(define-extern vector4-msub! (function vector4 vector4 vector4 float none))
-(define-extern vector4-array-add! (function (inline-array vector4) (inline-array vector4) (inline-array vector4) int none))
-(define-extern vector4-array-sub! (function (inline-array vector4) (inline-array vector4) (inline-array vector4) int none))
-(define-extern vector4-array-mul! (function (inline-array vector4) (inline-array vector4) (inline-array vector4) int none))
-(define-extern vector4-array-scale! (function (inline-array vector4) (inline-array vector4) float int none))
-(define-extern vector4-array-madd! (function (inline-array vector4) (inline-array vector4) (inline-array vector4) float int none))
-(define-extern vector4-array-msub! (function (inline-array vector4) (inline-array vector4) (inline-array vector4) float int none))
-(define-extern vector4-array-lerp! (function (inline-array vector4) (inline-array vector4) (inline-array vector4) float int symbol))
-(define-extern spheres-overlap? (function sphere sphere symbol))
-(define-extern sphere<-vector! (function sphere vector sphere))
-(define-extern sphere<-vector+r! (function sphere vector float sphere))
-(define-extern rand-vu-sphere-point! (function vector float vector))
-(define-extern rand-vu-sphere-point-uniform! function)
-(define-extern vector-vector-angle-safe (function vector vector float))
+(define-extern vector4-add! "Add 2 vector4s." (function vector4 vector4 vector4 none))
+(define-extern vector4-sub! "Subtract 2 vector4s." (function vector4 vector4 vector4 none))
+(define-extern vector4-mul! "Multiple 2 vector4s." (function vector4 vector4 vector4 none))
+(define-extern vector4-scale! "arg0 = arg1 * arg2." (function vector4 vector4 float none))
+(define-extern vector4-madd! "arg0 = arg1 + arg2 * arg3." (function vector4 vector4 vector4 float none))
+(define-extern vector4-msub! "arg0 = arg1 - arg2 * arg3." (function vector4 vector4 vector4 float none))
+(define-extern vector4-array-add! "Apply vector4-add! to all arrays." (function (inline-array vector4) (inline-array vector4) (inline-array vector4) int none))
+(define-extern vector4-array-sub! "Apply vector4-sub! to all arrays." (function (inline-array vector4) (inline-array vector4) (inline-array vector4) int none))
+(define-extern vector4-array-mul! "Apply vector4-mul! to all arrays." (function (inline-array vector4) (inline-array vector4) (inline-array vector4) int none))
+(define-extern vector4-array-scale! "Apply vector4-scale! to all arrays." (function (inline-array vector4) (inline-array vector4) float int none))
+(define-extern vector4-array-madd! "Apply vector4-madd! to all arrays." (function (inline-array vector4) (inline-array vector4) (inline-array vector4) float int none))
+(define-extern vector4-array-msub! "Apply vector4-msub! to all arrays." (function (inline-array vector4) (inline-array vector4) (inline-array vector4) float int none))
+(define-extern vector4-array-lerp! "Apply vector4-lerp! to all arrays." (function (inline-array vector4) (inline-array vector4) (inline-array vector4) float int symbol))
+(define-extern spheres-overlap? "Do the spheres overlap?" (function sphere sphere symbol))
+(define-extern sphere<-vector!
+  "Set the position of the sphere to arg1. Does not change the radius."
+  (function sphere vector sphere))
+(define-extern sphere<-vector+r!
+  "Set the position of the sphere from arg1 and the radius from arg2."
+  (function sphere vector float sphere))
+(define-extern rand-vu-sphere-point!
+  "Get a random point on the sphere at the origin with radius arg1.
+   The point is on the surface of the sphere."
+  (function vector float vector))
+(define-extern rand-vu-sphere-point-uniform! (function vector float vector))
+(define-extern vector-vector-angle-safe
+  "Get the angle between two vectors, with some 'safety' applied..."
+  (function vector vector float))
 (define-extern vector-get-unique! (function vector vector vector))
 (define-extern vector-get-closest-perpendicular! (function vector vector vector vector))
 
