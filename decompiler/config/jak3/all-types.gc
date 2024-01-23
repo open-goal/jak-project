@@ -11106,10 +11106,10 @@
   )
 
 (deftype resetter-spec (structure)
-  ((continue   basic   :offset-assert 0)
-   (node       uint16  :offset-assert 4)
-   (reset-mode basic   :offset-assert 8)
-   (execute    basic   :offset-assert 12)
+  ((continue   basic          :offset-assert 0)
+   (node       game-task-node :offset-assert 4)
+   (reset-mode basic          :offset-assert 8)
+   (execute    basic          :offset-assert 12)
    )
   :pack-me
   :method-count-assert 9
@@ -11149,7 +11149,7 @@
    (fail         resetter-spec :inline :offset-assert 4)
    (retry        resetter-spec :inline :offset-assert 20)
    (reset-delay  uint32                :offset-assert 36)
-   (task         uint8                 :offset-assert 40)
+   (task         game-task             :offset-assert 40)
    (text-message text-id               :offset-assert 44)
    )
   :method-count-assert 9
@@ -11177,7 +11177,7 @@
    (intro-scene               string             :offset-assert 24) ;; guessed by decompiler
    (resolution-scene          string             :offset-assert 28) ;; guessed by decompiler
    (resolution-scene-continue string             :offset-assert 32) ;; guessed by decompiler
-   (final-node                uint16             :offset-assert 36) ;; game-task-node
+   (final-node                game-task-node     :offset-assert 36) ;; game-task-node
    (vehicle-type              uint8              :offset-assert 38)
    (sphere-count              int8               :offset-assert 39)
    (index                     int8               :offset-assert 40)
@@ -11204,6 +11204,7 @@
   :flag-assert         #x900000010
   )
 
+;; +++task-control-h:task-mask
 (defenum task-mask
   :type uint32
   :bitfield #t
@@ -11227,6 +11228,7 @@
   (movie1 17)
   (movie2 18)
   )
+;; ---task-control-h:task-mask
 
 (deftype game-task-node-info (basic)
   ((level            symbol                                  :offset-assert 4) ;; guessed by decompiler
@@ -11296,49 +11298,48 @@
     )
   )
 
-;; TODO needs entity-actor fully defined
-;; (deftype task-manager (process)
-;;   ((node-info      game-task-node-info   :offset-assert 128) ;; guessed by decompiler
-;;    (info           task-manager-info     :offset-assert 132)
-;;    (lev-name       symbol                :offset-assert 136) ;; guessed by decompiler
-;;    (fail-on-death? symbol                :offset-assert 140) ;; guessed by decompiler
-;;    (fail-now       symbol                :offset-assert 144) ;; guessed by decompiler
-;;    (restart-now    symbol                :offset-assert 148)
-;;    (allow-fail     symbol                :offset-assert 152) ;; guessed by decompiler
-;;    (state-time     time-frame            :offset-assert 160) ;; time-frame
-;;    (start-time     time-frame            :offset-assert 168) ;; time-frame
-;;    (time-limit     time-frame            :offset-assert 176) ;; time-frame
-;;    (arrow          handle                :offset-assert 184) ;; handle
-;;    (player-vehicle handle                :offset-assert 192)
-;;    (hud            handle              4 :offset-assert 200) ;; guessed by decompiler
-;;    (hud-timer      handle                :offset 200) ;; handle
-;;    (hud-counter    handle                :offset 208) ;; handle
-;;    (intro-time     time-frame            :offset-assert 232) ;; time-frame
-;;    )
-;;   :method-count-assert 32
-;;   :size-assert         #xf0
-;;   :flag-assert         #x20007000f0
-;;   (:methods
-;;     (task-manager-method-14 () none) ;; 14 ;; (wait () _type_ :state)
-;;     (task-manager-method-15 () none) ;; 15 ;; (active () _type_ :state)
-;;     (task-manager-method-16 () none) ;; 16 ;; (complete () _type_ :state)
-;;     (task-manager-method-17 () none) ;; 17 ;; (fail () _type_ :state)
-;;     (task-manager-method-18 () none) ;; 18 ;; (retry () _type_ :state)
-;;     (task-manager-method-19 () none) ;; 19 ;; (initialize! (_type_) int)
-;;     (task-manager-method-20 () none) ;; 20 ;; (kill-all-children (_type_) int)
-;;     (task-manager-method-21 () none) ;; 21 ;; (check-time (_type_) int)
-;;     (task-manager-method-22 () none) ;; 22 ;; (task-manager-method-22 (_type_) symbol)
-;;     (task-manager-method-23 () none) ;; 23
-;;     (task-manager-method-24 () none) ;; 24
-;;     (task-manager-method-25 () none) ;; 25
-;;     (task-manager-method-26 () none) ;; 26
-;;     (task-manager-method-27 () none) ;; 27
-;;     (task-manager-method-28 () none) ;; 28
-;;     (task-manager-method-29 () none) ;; 29
-;;     (task-manager-method-30 () none) ;; 30
-;;     (task-manager-method-31 () none) ;; 31
-;;     )
-;;   )
+(deftype task-manager (process)
+  ((node-info      game-task-node-info   :offset-assert 128) ;; guessed by decompiler
+   (info           task-manager-info     :offset-assert 132)
+   (lev-name       symbol                :offset-assert 136) ;; guessed by decompiler
+   (fail-on-death? symbol                :offset-assert 140) ;; guessed by decompiler
+   (fail-now       symbol                :offset-assert 144) ;; guessed by decompiler
+   (restart-now    symbol                :offset-assert 148)
+   (allow-fail     symbol                :offset-assert 152) ;; guessed by decompiler
+   (state-time     time-frame            :offset-assert 160) ;; time-frame
+   (start-time     time-frame            :offset-assert 168) ;; time-frame
+   (time-limit     time-frame            :offset-assert 176) ;; time-frame
+   (arrow          handle                :offset-assert 184) ;; handle
+   (player-vehicle handle                :offset-assert 192)
+   (hud            handle              4 :offset-assert 200) ;; guessed by decompiler
+   (hud-timer      handle                :offset 200) ;; handle
+   (hud-counter    handle                :offset 208) ;; handle
+   (intro-time     time-frame            :offset-assert 232) ;; time-frame
+   )
+  :method-count-assert 32
+  :size-assert         #xf0
+  :flag-assert         #x20007000f0
+  (:methods
+    (task-manager-method-14 () none) ;; 14 ;; (wait () _type_ :state)
+    (task-manager-method-15 () none) ;; 15 ;; (active () _type_ :state)
+    (task-manager-method-16 () none) ;; 16 ;; (complete () _type_ :state)
+    (task-manager-method-17 () none) ;; 17 ;; (fail () _type_ :state)
+    (task-manager-method-18 () none) ;; 18 ;; (retry () _type_ :state)
+    (task-manager-method-19 () none) ;; 19 ;; (initialize! (_type_) int)
+    (task-manager-method-20 () none) ;; 20 ;; (kill-all-children (_type_) int)
+    (task-manager-method-21 () none) ;; 21 ;; (check-time (_type_) int)
+    (task-manager-method-22 () none) ;; 22 ;; (task-manager-method-22 (_type_) symbol)
+    (task-manager-method-23 () none) ;; 23
+    (task-manager-method-24 () none) ;; 24
+    (task-manager-method-25 () none) ;; 25
+    (task-manager-method-26 () none) ;; 26
+    (task-manager-method-27 () none) ;; 27
+    (task-manager-method-28 () none) ;; 28
+    (task-manager-method-29 () none) ;; 29
+    (task-manager-method-30 () none) ;; 30
+    (task-manager-method-31 () none) ;; 31
+    )
+  )
 
 (deftype ambient-control (structure)
   ((last-ambient-time time-frame :offset-assert 0) ;; time-frame

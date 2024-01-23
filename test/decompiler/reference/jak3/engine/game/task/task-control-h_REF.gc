@@ -1,78 +1,7 @@
 ;;-*-Lisp-*-
 (in-package goal)
 
-;; name: task-control-h.gc
-;; name in dgo: task-control-h
-;; dgos: GAME
-
-;; +++resetter-message
-(defenum resetter-message
-  :type uint8
-  (mission-fail 0)
-  (mission-retry 1)
-  (mission-fail-or-retry 2)
-  )
-;; ---resetter-message
-
-
-;; +++resetter-flag
-(defenum resetter-flag
-  :type uint16
-  :bitfield #t
-  (auto-reset 0)
-  (text-message 1)
-  (no-audio 2)
-  (no-slow-down 3)
-  (no-message 4)
-  (no-grab 5)
-  (no-draw-target 6)
-  (stop-sfx 7)
-  (no-audio-first 8)
-  )
-;; ---resetter-flag
-
-
-;; +++task-manager-mask
-(defenum task-manager-mask
-  :type uint32
-  :bitfield #t
-  (intro-scene)
-  (resolution-scene)
-  (time-limit)
-  (auto-complete)
-  )
-;; ---task-manager-mask
-
-
-;; +++task-mask
-(defenum task-mask
-  :type uint32
-  :bitfield #t
-  (task0 0)
-  (task1 1)
-  (task2 2)
-  (task3 3)
-  (task4 4)
-  (task5 5)
-  (task6 6)
-  (task7 7)
-  (done 8)
-  (dummy0 9)
-  (dummy1 10)
-  (vehicle 11)
-  (special 12)
-  (primary0 13)
-  (ctywide 14)
-  (never 15)
-  (movie0 16)
-  (movie1 17)
-  (movie2 18)
-  )
-;; ---task-mask
-
-
-;; DECOMP BEGINS
-
+;; definition (debug) for function game-task->string
 (defun-debug game-task->string ((task game-task))
   (case task
     (((game-task sewer-hum-kg))
@@ -498,11 +427,13 @@
     )
   )
 
+;; definition for function c-string->game-task
 ;; WARN: Return type mismatch int vs game-task.
 (defun c-string->game-task ((arg0 string))
   (the-as game-task -1)
   )
 
+;; definition (debug) for function game-task-actor->string
 (defun-debug game-task-actor->string ((arg0 game-task-actor))
   (case arg0
     (((game-task-actor wascity-turret))
@@ -1018,6 +949,7 @@
     )
   )
 
+;; definition (debug) for function game-task-action->string
 (defun-debug game-task-action->string ((arg0 game-task-action))
   (case arg0
     (((game-task-action idle))
@@ -1050,6 +982,7 @@
     )
   )
 
+;; definition of type game-task-event
 (deftype game-task-event (basic)
   ((actor     game-task-actor)
    (action    game-task-action)
@@ -1061,7 +994,25 @@
    )
   )
 
+;; definition for method 3 of type game-task-event
+(defmethod inspect ((this game-task-event))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this (-> this type))
+  (format #t "~1Tactor: #x~X : ~S~%" (-> this actor) (game-task-actor->string (-> this actor)))
+  (format #t "~1Taction: #x~X : ~S~%" (-> this action) (game-task-action->string (-> this action)))
+  (format #t "~1Tflags: ~D~%" (-> this flags))
+  (format #t "~1Ticon: ~D~%" (-> this icon))
+  (format #t "~1Tskull-cost: ~D~%" (-> this tex))
+  (format #t "~1Tscene: ~A~%" (-> this scene))
+  (format #t "~1Tdistance: (meters ~m)~%" (-> this distance))
+  (label cfg-4)
+  this
+  )
 
+;; definition of type resetter-spec
 (deftype resetter-spec (structure)
   ((continue    basic)
    (node        game-task-node)
@@ -1071,7 +1022,22 @@
   :pack-me
   )
 
+;; definition for method 3 of type resetter-spec
+(defmethod inspect ((this resetter-spec))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this 'resetter-spec)
+  (format #t "~1Tcontinue: ~A~%" (-> this continue))
+  (format #t "~1Tnode: ~D~%" (-> this node))
+  (format #t "~1Treset-mode: ~A~%" (-> this reset-mode))
+  (format #t "~1Texecute: ~A~%" (-> this execute))
+  (label cfg-4)
+  this
+  )
 
+;; definition of type resetter-params
 (deftype resetter-params (structure)
   ((message       resetter-message)
    (flags         resetter-flag)
@@ -1083,7 +1049,76 @@
    )
   )
 
+;; definition for method 3 of type resetter-params
+(defmethod inspect ((this resetter-params))
+  (when (not this)
+    (set! this this)
+    (goto cfg-29)
+    )
+  (format #t "[~8x] ~A~%" this 'resetter-params)
+  (let ((t9-1 format)
+        (a0-2 #t)
+        (a1-1 "~1Tmessage: #x~X : ~S~%")
+        (a2-1 (-> this message))
+        (v1-2 (-> this message))
+        )
+    (t9-1 a0-2 a1-1 a2-1 (cond
+                           ((= v1-2 (resetter-message mission-fail-or-retry))
+                            "mission-fail-or-retry"
+                            )
+                           ((= v1-2 (resetter-message mission-fail))
+                            "mission-fail"
+                            )
+                           ((= v1-2 (resetter-message mission-retry))
+                            "mission-retry"
+                            )
+                           (else
+                             "*unknown*"
+                             )
+                           )
+          )
+    )
+  (format #t "~1Tflags: #x~X : (resetter-flag " (-> this flags))
+  (let ((s5-0 (-> this flags)))
+    (if (= (logand s5-0 (resetter-flag text-message)) (resetter-flag text-message))
+        (format #t "text-message ")
+        )
+    (if (= (logand s5-0 (resetter-flag stop-sfx)) (resetter-flag stop-sfx))
+        (format #t "stop-sfx ")
+        )
+    (if (= (logand s5-0 (resetter-flag no-draw-target)) (resetter-flag no-draw-target))
+        (format #t "no-draw-target ")
+        )
+    (if (= (logand s5-0 (resetter-flag no-message)) (resetter-flag no-message))
+        (format #t "no-message ")
+        )
+    (if (= (logand s5-0 (resetter-flag no-grab)) (resetter-flag no-grab))
+        (format #t "no-grab ")
+        )
+    (if (= (logand s5-0 (resetter-flag no-slow-down)) (resetter-flag no-slow-down))
+        (format #t "no-slow-down ")
+        )
+    (if (= (logand s5-0 (resetter-flag auto-reset)) (resetter-flag auto-reset))
+        (format #t "auto-reset ")
+        )
+    (if (= (logand s5-0 (resetter-flag no-audio-first)) (resetter-flag no-audio-first))
+        (format #t "no-audio-first ")
+        )
+    (if (= (logand s5-0 (resetter-flag no-audio)) (resetter-flag no-audio))
+        (format #t "no-audio ")
+        )
+    )
+  (format #t ")~%")
+  (format #t "~1Tfail: ~`resetter-spec`P~%" (-> this fail))
+  (format #t "~1Tretry: ~`resetter-spec`P~%" (-> this retry))
+  (format #t "~1Treset-delay: ~D~%" (-> this reset-delay))
+  (format #t "~1Ttask: ~D~%" (-> this task))
+  (format #t "~1Ttext-message: ~D~%" (-> this text-message))
+  (label cfg-29)
+  this
+  )
 
+;; definition of type task-manager-info
 (deftype task-manager-info (structure)
   ((mask                       task-manager-mask)
    (level                      symbol)
@@ -1105,7 +1140,50 @@
    )
   )
 
+;; definition for method 3 of type task-manager-info
+(defmethod inspect ((this task-manager-info))
+  (when (not this)
+    (set! this this)
+    (goto cfg-12)
+    )
+  (format #t "[~8x] ~A~%" this 'task-manager-info)
+  (format #t "~1Tmask: #x~X : (task-manager-mask " (-> this mask))
+  (let ((s5-0 (-> this mask)))
+    (if (= (logand s5-0 (task-manager-mask intro-scene)) (task-manager-mask intro-scene))
+        (format #t "intro-scene ")
+        )
+    (if (= (logand s5-0 (task-manager-mask resolution-scene)) (task-manager-mask resolution-scene))
+        (format #t "resolution-scene ")
+        )
+    (if (= (logand s5-0 (task-manager-mask time-limit)) (task-manager-mask time-limit))
+        (format #t "time-limit ")
+        )
+    (if (= (logand s5-0 (task-manager-mask auto-complete)) (task-manager-mask auto-complete))
+        (format #t "auto-complete ")
+        )
+    )
+  (format #t ")~%")
+  (format #t "~1Tlevel: ~A~%" (-> this level))
+  (format #t "~1Ttype-to-spawn: ~A~%" (-> this type-to-spawn))
+  (format #t "~1Ttime-limit: ~D~%" (-> this time-limit))
+  (format #t "~1Tmanager: ~`handle`P~%" (-> this manager))
+  (format #t "~1Tintro-scene: ~A~%" (-> this intro-scene))
+  (format #t "~1Tresolution-scene: ~A~%" (-> this resolution-scene))
+  (format #t "~1Tresolution-scene-continue: ~A~%" (-> this resolution-scene-continue))
+  (format #t "~1Tfinal-node: ~D~%" (-> this final-node))
+  (format #t "~1Tvehicle-type: ~D~%" (-> this vehicle-type))
+  (format #t "~1Tsphere-count: ~D~%" (-> this sphere-count))
+  (format #t "~1Tindex: ~D~%" (-> this index))
+  (format #t "~1Tintro-delay: ~D~%" (-> this intro-delay))
+  (format #t "~1Tsphere-array: #x~X~%" (-> this sphere-array))
+  (format #t "~1Ton-complete: ~A~%" (-> this on-complete))
+  (format #t "~1Ton-fail: ~A~%" (-> this on-fail))
+  (format #t "~1Tuser-count: ~D~%" (-> this user-count))
+  (label cfg-12)
+  this
+  )
 
+;; definition of type task-reset-info
 (deftype task-reset-info (structure)
   ((restart-info  resetter-params)
    (quit-info     resetter-params)
@@ -1114,7 +1192,22 @@
    )
   )
 
+;; definition for method 3 of type task-reset-info
+(defmethod inspect ((this task-reset-info))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this 'task-reset-info)
+  (format #t "~1Trestart-info: #<resetter-params @ #x~X>~%" (-> this restart-info))
+  (format #t "~1Tquit-info: #<resetter-params @ #x~X>~%" (-> this quit-info))
+  (format #t "~1Tfail-info: #<resetter-params @ #x~X>~%" (-> this fail-info))
+  (format #t "~1Tdeath-info: #<resetter-params @ #x~X>~%" (-> this death-info))
+  (label cfg-4)
+  this
+  )
 
+;; definition (debug) for function game-task-node-flag->string
 (defun-debug game-task-node-flag->string ((arg0 game-task-node-flag))
   (if (= (logand arg0 (game-task-node-flag clear-task-mask)) (game-task-node-flag clear-task-mask))
       (format #t "clear-task-mask ")
@@ -1187,6 +1280,7 @@
       )
   )
 
+;; definition (debug) for function game-task-node-command->string
 (defun-debug game-task-node-command->string ((arg0 game-task-node-command))
   (case arg0
     (((game-task-node-command sub-board-trail))
@@ -1414,6 +1508,7 @@
     )
   )
 
+;; definition of type game-task-node-info
 (deftype game-task-node-info (basic)
   ((level             symbol)
    (task              game-task)
@@ -1447,7 +1542,105 @@
     )
   )
 
+;; definition for method 3 of type game-task-node-info
+(defmethod inspect ((this game-task-node-info))
+  (when (not this)
+    (set! this this)
+    (goto cfg-45)
+    )
+  (format #t "[~8x] ~A~%" this (-> this type))
+  (format #t "~1Tlevel: ~A~%" (-> this level))
+  (format #t "~1Ttask: #x~X : ~S~%" (-> this task) (game-task->string (-> this task)))
+  (format #t "~1Tname: ~A~%" (-> this name))
+  (format #t "~1Twhen-open: ~A~%" (-> this when-open))
+  (format #t "~1Tflags: #x~X : (game-task-node-flag " (-> this flags))
+  (game-task-node-flag->string (-> this flags))
+  (format #t ")~%")
+  (format #t "~1Tparent-node[4] @ #x~X~%" (-> this parent-node))
+  (dotimes (s5-1 4)
+    (format #t "~T  [~D]~1Tparent-node: ~D~%" s5-1 (-> this parent-node s5-1))
+    )
+  (format #t "~1Ttask-mask: #x~X : (task-mask " (-> this task-mask))
+  (let ((s5-2 (-> this task-mask)))
+    (if (= (logand s5-2 (task-mask task0)) (task-mask task0))
+        (format #t "task0 ")
+        )
+    (if (= (logand s5-2 (task-mask task2)) (task-mask task2))
+        (format #t "task2 ")
+        )
+    (if (= (logand s5-2 (task-mask task4)) (task-mask task4))
+        (format #t "task4 ")
+        )
+    (if (= (logand s5-2 (task-mask task6)) (task-mask task6))
+        (format #t "task6 ")
+        )
+    (if (= (logand s5-2 (task-mask ctywide)) (task-mask ctywide))
+        (format #t "ctywide ")
+        )
+    (if (= (logand s5-2 (task-mask never)) (task-mask never))
+        (format #t "never ")
+        )
+    (if (= (logand (task-mask movie1) s5-2) (task-mask movie1))
+        (format #t "movie1 ")
+        )
+    (if (= (logand s5-2 (task-mask vehicle)) (task-mask vehicle))
+        (format #t "vehicle ")
+        )
+    (if (= (logand s5-2 (task-mask dummy1)) (task-mask dummy1))
+        (format #t "dummy1 ")
+        )
+    (if (= (logand s5-2 (task-mask primary0)) (task-mask primary0))
+        (format #t "primary0 ")
+        )
+    (if (= (logand s5-2 (task-mask task1)) (task-mask task1))
+        (format #t "task1 ")
+        )
+    (if (= (logand s5-2 (task-mask task3)) (task-mask task3))
+        (format #t "task3 ")
+        )
+    (if (= (logand s5-2 (task-mask task5)) (task-mask task5))
+        (format #t "task5 ")
+        )
+    (if (= (logand s5-2 (task-mask task7)) (task-mask task7))
+        (format #t "task7 ")
+        )
+    (if (= (logand (task-mask movie2) s5-2) (task-mask movie2))
+        (format #t "movie2 ")
+        )
+    (if (= (logand s5-2 (task-mask done)) (task-mask done))
+        (format #t "done ")
+        )
+    (if (= (logand s5-2 (task-mask special)) (task-mask special))
+        (format #t "special ")
+        )
+    (if (= (logand (task-mask movie0) s5-2) (task-mask movie0))
+        (format #t "movie0 ")
+        )
+    (if (= (logand s5-2 (task-mask dummy0)) (task-mask dummy0))
+        (format #t "dummy0 ")
+        )
+    )
+  (format #t ")~%")
+  (format #t "~1Ton-open: ~A~%" (-> this on-open))
+  (format #t "~1Tmanager: #<task-manager-info @ #x~X>~%" (-> this manager))
+  (format #t "~1Tborrow: ~A~%" (-> this borrow))
+  (format #t "~1Topen?: ~A~%" (-> this open?))
+  (format #t "~1Ton-close: ~A~%" (-> this on-close))
+  (format #t "~1Tclose-time: ~D~%" (-> this close-time))
+  (format #t "~1Treset: #<task-reset-info @ #x~X>~%" (-> this reset))
+  (format #t "~1Tgem-count: ~D~%" (-> this gem-count))
+  (format #t "~1Tskill-count: ~D~%" (-> this skill-count))
+  (format #t "~1Tdeath-count: ~D~%" (-> this death-count))
+  (format #t "~1Tsuck-death-count: ~D~%" (-> this suck-death-count))
+  (format #t "~1Tcommand-index: ~D~%" (-> this command-index))
+  (format #t "~1Tcommand-count: ~D~%" (-> this command-count))
+  (format #t "~1Tdescription: ~D~%" (-> this description))
+  (format #t "~1Tfaction-commands: ~A~%" (-> this faction-commands))
+  (label cfg-45)
+  this
+  )
 
+;; definition of type game-task-info
 (deftype game-task-info (basic)
   ((name                 string)
    (text-name            text-id)
@@ -1463,7 +1656,26 @@
     )
   )
 
+;; definition for method 3 of type game-task-info
+(defmethod inspect ((this game-task-info))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this (-> this type))
+  (format #t "~1Tname: ~A~%" (-> this name))
+  (format #t "~1Ttext-name: ~D~%" (-> this text-name))
+  (format #t "~1Tpre-play-node: ~D~%" (-> this pre-play-node))
+  (format #t "~1Tkiosk-play-node: ~D~%" (-> this kiosk-play-node))
+  (format #t "~1Tpre-play-continue: ~A~%" (-> this pre-play-continue))
+  (format #t "~1Tplay-node: ~D~%" (-> this play-node))
+  (format #t "~1Tplay-continue: ~A~%" (-> this play-continue))
+  (format #t "~1Tkiosk-play-continue: ~A~%" (-> this kiosk-play-continue))
+  (label cfg-4)
+  this
+  )
 
+;; definition of type game-task-control
 (deftype game-task-control (basic)
   ((counter        uint32)
    (actor          game-task-actor)
@@ -1476,7 +1688,22 @@
     )
   )
 
+;; definition for method 3 of type game-task-control
+(defmethod inspect ((this game-task-control))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this (-> this type))
+  (format #t "~1Tcounter: ~D~%" (-> this counter))
+  (format #t "~1Tactor: #x~X : ~S~%" (-> this actor) (game-task-actor->string (-> this actor)))
+  (format #t "~1Tcurrent-node: ~D~%" (-> this current-node))
+  (format #t "~1Tcurrent-event: ~A~%" (-> this current-event))
+  (label cfg-4)
+  this
+  )
 
+;; definition of type task-manager
 (deftype task-manager (process)
   ((node-info       game-task-node-info)
    (info            task-manager-info)
@@ -1517,7 +1744,36 @@
     )
   )
 
+;; definition for method 3 of type task-manager
+(defmethod inspect ((this task-manager))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type process inspect)))
+    (t9-0 this)
+    )
+  (format #t "~2Tnode-info: ~A~%" (-> this node-info))
+  (format #t "~2Tinfo: #<task-manager-info @ #x~X>~%" (-> this info))
+  (format #t "~2Tlev-name: ~A~%" (-> this lev-name))
+  (format #t "~2Tfail-on-death?: ~A~%" (-> this fail-on-death?))
+  (format #t "~2Tfail-now: ~A~%" (-> this fail-now))
+  (format #t "~2Trestart-now: ~A~%" (-> this restart-now))
+  (format #t "~2Tallow-fail: ~A~%" (-> this allow-fail))
+  (format #t "~2Tstate-time: ~D~%" (-> this state-time))
+  (format #t "~2Tstart-time: ~D~%" (-> this start-time))
+  (format #t "~2Ttime-limit: ~D~%" (-> this time-limit))
+  (format #t "~2Tarrow: ~D~%" (-> this arrow))
+  (format #t "~2Tplayer-vehicle: ~D~%" (-> this player-vehicle))
+  (format #t "~2Thud[4] @ #x~X~%" (-> this hud))
+  (format #t "~2Thud-timer: ~D~%" (-> this hud-timer))
+  (format #t "~2Thud-counter: ~D~%" (-> this hud-counter))
+  (format #t "~2Tintro-time: ~D~%" (-> this intro-time))
+  (label cfg-4)
+  this
+  )
 
+;; definition of type ambient-control
 (deftype ambient-control (structure)
   ((last-ambient-time  time-frame)
    (last-ambient       string)
@@ -1530,5 +1786,26 @@
     )
   )
 
+;; definition for method 3 of type ambient-control
+(defmethod inspect ((this ambient-control))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this 'ambient-control)
+  (format #t "~1Tlast-ambient-time: ~D~%" (-> this last-ambient-time))
+  (format #t "~1Tlast-ambient: ~A~%" (-> this last-ambient))
+  (format #t "~1Tlast-ambient-id: ~D~%" (-> this last-ambient-id))
+  (label cfg-4)
+  this
+  )
 
+;; definition for symbol *traffic-engine*, type symbol
 (define *traffic-engine* #f)
+
+;; failed to figure out what this is:
+0
+
+
+
+
