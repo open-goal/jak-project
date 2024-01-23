@@ -2113,7 +2113,7 @@ std::optional<std::string> find_best_field_in_structure(const TypeSystem& ts,
   }
   for (size_t i = start_field; i < (size_t)end_field; ++i) {
     const auto& field = st->fields().at(i);
-    auto type = ts.lookup_type(field.type());
+    auto type = ts.lookup_type_allow_partial_def(field.type());
     if (field.is_dynamic() || field.offset() > offset || field.user_placed() != want_fixed) {
       continue;
     }
