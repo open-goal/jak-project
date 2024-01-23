@@ -54,14 +54,16 @@
 
 (defenum language-enum
   :type int64
-  (english)
-  (french)
-  (german)
-  (spanish)
-  (italian)
-  (japanese)
-  (korean)
-  (uk-english)
+  (english 0)
+  (french 1)
+  (german 2)
+  (spanish 3)
+  (italian 4)
+  (japanese 6)
+  (korean 7)
+  (russian 8)
+  (portuguese 9)
+  (uk-english 11)
   )
 
 (define-extern *debug-segment* symbol)
@@ -589,10 +591,10 @@
    (clock-ratio                float                :offset-assert 12)
    (accum                      float                :offset-assert 16)
    (integral-accum             float                :offset-assert 20)
-   (frame-counter              uint64               :offset-assert 24) ;; time-frame
-   (old-frame-counter          uint64               :offset-assert 32) ;; time-frame
-   (integral-frame-counter     uint64               :offset-assert 40)
-   (old-integral-frame-counter uint64               :offset-assert 48)
+   (frame-counter              time-frame           :offset-assert 24) ;; time-frame
+   (old-frame-counter          time-frame           :offset-assert 32) ;; time-frame
+   (integral-frame-counter     time-frame           :offset-assert 40)
+   (old-integral-frame-counter time-frame           :offset-assert 48)
    (sparticle-data             vector       :inline :offset-assert 64)
    (seconds-per-frame          float                :offset-assert 80)
    (frames-per-second          float                :offset-assert 84)
@@ -603,13 +605,16 @@
   :flag-assert         #x180000005c
   (:methods
     (new (symbol type int) _type_) ;; 0
-    (update-rates! (_type_ float) float) ;; 9
-    (clock-method-10 () none) ;; 10 ;; (advance-by! (_type_ float) clock 10)
-    (clock-method-11 () none) ;; 11 ;; (tick! (_type_) clock 11)
-    (clock-method-12 () none) ;; 12 ;; (save! (_type_ (pointer uint64)) int 12)
-    (clock-method-13 () none) ;; 13 ;; (load! (_type_ (pointer uint64)) int 13)
-    (clock-method-14 () none) ;; 14 ;; (reset! (_type_) none 14)
-    (clock-method-15 () none) ;; 15
+    (update-rates! "Recompute all clock values for the given clock ratio (arg0)." (_type_ float) float) ;; 9
+    (advance-by!
+      "Advance the clock by arg0 timeframes (as a float).
+       Both counters keep a separate fractional and integer counter."
+      (_type_ float) clock) ;; 10
+    (tick! "Per-game-frame clock tick forward." (_type_) clock) ;; 11
+    (save! "Save a clock's state to a buffer, return bytes used." (_type_ (pointer uint64)) int) ;; 12
+    (load! "Load a clock's state from a buffer, return bytes used." (_type_ (pointer uint64)) int) ;; 13
+    (copy! "Copy the frame counters and ratio from arg0." (_type_ clock) clock) ;; 14
+    (reset! "Reset a clock to 1000s, rate of 1." (_type_) none) ;; 15
     (frame-mask-2 "Check if the frame count, xored with `xor-val` has its lowest bit set" (_type_ int) symbol) ;; 16
     (frame-mask-4 "Check if the frame count, xored with `xor-val` has any of its lowest 2 bits set" (_type_ int) symbol) ;; 17
     (frame-mask-8 "Check if the frame count, xored with `xor-val` has any of its lowest 3 bits set" (_type_ int) symbol) ;; 18
@@ -3365,13 +3370,64 @@
 ;; vu1-user-h                     ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+;; +++vu1-user-h:tpage-category
 (defenum tpage-category
   :type int8
   )
+;; ---vu1-user-h:tpage-category
 
+;; +++vu1-user-h:bucket-id
 (defenum bucket-id
   :type int32
+  (debug-no-zbuf2 584)
   )
+;; ---vu1-user-h:bucket-id
+
+;; +++vu1-user-h:vu1-renderer-mask
+;; TODO stolen from Jak 2
+(defenum vu1-renderer-mask
+  :type uint64
+  :bitfield #t
+  (rn0)
+  (rn1)
+  (rn2)
+  (sky)
+  (ocean)
+  (ocean-wave)
+  (tfrag)
+  (tie)
+  (tie-envmap)
+  (tie-scissor)
+  (tie-envmap-scissor)
+  (tie-vanish)
+  (generic)
+  (merc)
+  (emerc)
+  (shrubbery)
+  (shrub-near)
+  (billboard)
+  (shrubbery-vanish)
+  (tfrag-trans)
+  (tie-scissor-trans)
+  (tie-trans)
+  (tie-envmap-trans)
+  (tie-envmap-scissor-trans)
+  (tfrag-water)
+  (tie-scissor-water)
+  (tie-water)
+  (tie-envmap-water)
+  (tie-envmap-scissor-water)
+  (sprite)
+  (shadow)
+  (rn31)
+  (rn32)
+  (rn33)
+  (depth-cue)
+  (rn35)
+  (rn36)
+  (rn37)
+  )
+;; ---vu1-user-h:vu1-renderer-mask
 
 (deftype dma-foreground-sink (basic)
   "A specification for where a foreground renderer should output its DMA data."
@@ -3591,19 +3647,17 @@
   )
 |#
 
-#|
 (deftype dma-buffer (basic)
   ((allocated-length int32     :offset-assert 4)
    (base             pointer   :offset-assert 8) ;; guessed by decompiler
    (end              pointer   :offset-assert 12) ;; guessed by decompiler
    (real-buffer-end  int32     :offset-assert 16)
-   (data             uint64  1 :offset-assert 32) ;; guessed by decompiler
+   (data             uint64  1 :offset 32) ;; guessed by decompiler
    )
   :method-count-assert 9
   :size-assert         #x28
   :flag-assert         #x900000028
   )
-|#
 
 ;; (define-extern dma-buffer-inplace-new function) ;; (function dma-buffer int dma-buffer)
 ;; (define-extern dma-buffer-length function) ;; (function dma-buffer int)
@@ -3650,7 +3704,49 @@
 ;; pad                            ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
+;; +++pad:pad-buttons
+(defenum pad-buttons
+  :bitfield #t
+  :type uint32
+  (select   0)
+  (l3       1)
+  (r3       2)
+  (start    3)
+  (up       4)
+  (right    5)
+  (down     6)
+  (left     7)
+  (l2       8)
+  (r2       9)
+  (l1       10)
+  (r1       11)
+  (triangle 12)
+  (circle   13)
+  (x        14)
+  (square   15)
+  ;; only 16 buttons are mapped to hardware, the rest are 'actions' or something else
+  (l-analog-up 16)
+  (l-analog-right 17)
+  (l-analog-down 18)
+  (l-analog-left 19)
+  (r-analog-up 20)
+  (r-analog-right 21)
+  (r-analog-down 22)
+  (r-analog-left 23)
+  (confirm 24)
+  )
+;; ---pad:pad-buttons
+
+;; +++pad:mouse-buttons
+(defenum mouse-buttons
+  :bitfield #t
+  :type uint32
+  (left)
+  (right)
+  (middle)
+  )
+;; ---pad:mouse-buttons
+
 (deftype scf-time (structure)
   ((stat   uint8  :offset-assert 0)
    (second uint8  :offset-assert 1)
@@ -3665,10 +3761,12 @@
   :size-assert         #x8
   :flag-assert         #x900000008
   )
-|#
 
-#|
+(define-extern scf-get-time (function scf-time none))
+
 (deftype hw-cpad (basic)
+  "Data that comes directly from hardware.
+   It's 32 bytes + type tag (ignored by C kernel)."
   ((valid   uint8     :offset-assert 4)
    (status  uint8     :offset-assert 5)
    (button0 uint16    :offset-assert 6)
@@ -3683,10 +3781,9 @@
   :size-assert         #x24
   :flag-assert         #x900000024
   )
-|#
 
-#|
 (deftype cpad-info (hw-cpad)
+  "Data from hardware + additional info calculated here."
   ((number             int32         :offset-assert 36)
    (cpad-file          int32         :offset-assert 40)
    (button0-abs        pad-buttons 3 :offset-assert 44) ;; guessed by decompiler
@@ -3715,78 +3812,99 @@
   :size-assert         #x98
   :flag-assert         #xa00000098
   (:methods
-    (new (symbol type) _type_) ;; 0 ;; (new (symbol type int) _type_)
-    (cpad-info-method-9 () none) ;; 9 ;; (adjust-to-screen-flip (_type_) int)
+    (new
+      "Allocate a new cpad-info and open the pad itself through the kernel."
+      (symbol type int) _type_) ;; 0
+    (adjust-to-screen-flip (_type_) int) ;; 9
     )
   )
-|#
 
-#|
+(define-extern cpad-open (function cpad-info int cpad-info))
+(define-extern cpad-get-data (function cpad-info cpad-info))
+
 (deftype cpad-list (basic)
+  "List of controllers. It always has two controllers."
   ((num-cpads int32       :offset-assert 4)
    (cpads     cpad-info 2 :offset-assert 8) ;; guessed by decompiler
    )
   :method-count-assert 9
   :size-assert         #x10
   :flag-assert         #x900000010
+  (:methods
+    (new 
+      "Create a cpad-list for 2 controllers. It's fine to do this even if one or both controllers
+       aren't connected yet."
+      (symbol type) _type_) ;; 0
+    )
   )
-|#
 
-#|
 (deftype mouse-info (basic)
-  ((active             symbol          :offset-assert 4) ;; guessed by decompiler
-   (cursor             basic           :offset-assert 8)
-   (valid              symbol          :offset-assert 12) ;; guessed by decompiler
-   (id                 uint8           :offset-assert 16)
-   (status             uint16          :offset-assert 18)
-   (button0            uint16          :offset-assert 20)
-   (deltax             int8            :offset-assert 22)
-   (deltay             int8            :offset-assert 23)
-   (wheel              uint8           :offset-assert 24)
-   (change-time        uint64          :offset-assert 32) ;; time-frame
-   (button0-abs        mouse-buttons 3 :offset-assert 40) ;; guessed by decompiler
-   (button0-shadow-abs mouse-buttons 1 :offset-assert 52) ;; guessed by decompiler
-   (button0-rel        mouse-buttons 3 :offset-assert 56) ;; guessed by decompiler
-   (pos                vector        2 :offset-assert 80) ;; guessed by decompiler
-   (UNKNOWN            UNKNOWN         :offset-assert -1) ;; field could not be read.
-   (posx               float           :offset-assert 80)
-   (posy               float           :offset-assert 84)
-   (oldposx            float           :offset-assert 96)
-   (oldposy            float           :offset-assert 100)
-   (speedx             float           :offset-assert 92)
-   (speedy             float           :offset-assert 108)
+  ((active             symbol                  :offset-assert 4) ;; guessed by decompiler
+   (cursor             symbol                  :offset-assert 8)
+   (valid              symbol                  :offset-assert 12) ;; guessed by decompiler
+   (id                 uint8                   :offset-assert 16)
+   (status             uint16                  :offset-assert 18)
+   (button0            uint16                  :offset-assert 20)
+   (deltax             int8                    :offset-assert 22)
+   (deltay             int8                    :offset-assert 23)
+   (wheel              uint8                   :offset-assert 24)
+   (change-time        time-frame              :offset-assert 32)
+   (button0-abs        mouse-buttons 3         :offset-assert 40) ;; guessed by decompiler
+   (button0-shadow-abs mouse-buttons 1         :offset-assert 52) ;; guessed by decompiler
+   (button0-rel        mouse-buttons 3         :offset-assert 56) ;; guessed by decompiler
+   (pos                vector        2 :inline :offset-assert 80) ;; guessed by decompiler
+   (posx               float           :offset 80)
+   (posy               float           :offset 84)
+   (oldposx            float           :offset 96 :do-not-decompile)
+   (oldposy            float           :offset 100)
+   (speedx             float           :offset 92)
+   (speedy             float           :offset 108)
    )
   :method-count-assert 9
   :size-assert         #x70
   :flag-assert         #x900000070
+  (:methods
+    (new (symbol type) _type_) ;; 0
+    )
   )
-|#
 
-#|
+(define-extern mouse-get-data (function mouse-info none))
+
 (deftype keybd-info (basic)
-  ((active basic       :offset-assert 4)
-   (valid  basic       :offset-assert 8)
-   (kdata  UNKNOWN 16  :offset-assert 12)
-   (keys   UNKNOWN 256 :offset-assert 28)
+  ((active symbol    :offset-assert 4)
+   (valid  symbol    :offset-assert 8)
+   (kdata  uint8 16  :offset-assert 12)
+   (keys   uint8 256 :offset-assert 28)
    )
   :method-count-assert 9
   :size-assert         #x11c
   :flag-assert         #x90000011c
+  (:methods
+    (new (symbol type) _type_) ;; 0
+    )
   )
-|#
 
-;; (define-extern *cheat-mode* object) ;; symbol
-;; (define-extern cpad-invalid! function) ;; (function cpad-info cpad-info)
-;; (define-extern analog-input function) ;; (function int float float float float float)
-;; (define-extern cpad-set-buzz! function) ;; (function cpad-info int int time-frame none)
-;; (define-extern *cpad-list* object) ;; cpad-list
-;; (define-extern *cpad-debug* object) ;; symbol
-;; (define-extern service-cpads function) ;; (function cpad-list)
-;; (define-extern buzz-stop! function) ;; (function int none)
-;; (define-extern *mouse* object) ;; mouse-info
-;; (define-extern service-mouse function) ;; (function none)
-;; (define-extern *keybd* object)
-;; (define-extern service-keybd function)
+(define-extern keybd-get-data (function keybd-info none))
+
+(define-extern *cheat-mode* symbol)
+(define-extern cpad-invalid! "Reset all data in a [[cpad-info]]." (function cpad-info cpad-info))
+(define-extern analog-input
+  "Convert integer input from pad into a float between -out-range and +out-range.
+   The offset is applied directly to the input.
+   The center val is the expected value for 0, after applying offset.
+   The max val is the expected value with the stick pushed all the way."
+  (function int float float float float float))
+(define-extern cpad-set-buzz!
+  "Turn on vibration motor `buzz-idx` for duration, at magnitude `buzz-amount`."
+  (function cpad-info int int time-frame none))
+(define-extern *cpad-list* cpad-list)
+(define-extern *cpad-debug* symbol)
+(define-extern service-cpads "Read from cpads and update vibration." (function cpad-list))
+(define-extern buzz-stop! "Set the buzz to 0 on both vibration motors of the given cpad." (function int none))
+(define-extern *mouse* mouse-info)
+(define-extern service-mouse "Update the mouse, and draw the cursor." (function none))
+(define-extern *keybd* keybd-info)
+(define-extern service-keybd (function none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; gs                             ;;
@@ -4239,25 +4357,25 @@
 ;; display-h                      ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype display-frame (basic)
-  ((buffer        dma-buffer    11      :offset-assert 4) ;; guessed by decompiler
-   (calc-buf      dma-buffer            :offset-assert 8) ;; guessed by decompiler
-   (vu1-buf       dma-buffer            :offset-assert 8) ;; guessed by decompiler
-   (debug-buf     dma-buffer            :offset-assert 36) ;; guessed by decompiler
-   (global-buf    dma-buffer            :offset-assert 40) ;; guessed by decompiler
-   (bucket-group  dma-bucket            :offset-assert 44) ;; (inline-array dma-bucket)
-   (profile-array profile-array :inline :offset-assert 48)
-   (start-time    uint64                :offset-assert 56) ;; int64
-   (run-time      uint64                :offset-assert 64) ;; int64
+  ((buffer        dma-buffer        11      :offset-assert 4) ;; guessed by decompiler
+   (calc-buf      dma-buffer                :offset 8) ;; guessed by decompiler
+   (vu1-buf       dma-buffer                :offset 8) ;; guessed by decompiler
+   (debug-buf     dma-buffer                :offset 36) ;; guessed by decompiler
+   (global-buf    dma-buffer                :offset 40) ;; guessed by decompiler
+   (bucket-group  (inline-array dma-bucket) :offset 44) ;; (inline-array dma-bucket)
+   (profile-array profile-array     :inline :offset 48)
+   (start-time    uint64                    :offset 56) ;; int64
+   (run-time      uint64                    :offset 64) ;; int64
    )
   :method-count-assert 9
   :size-assert         #x48
   :flag-assert         #x900000048
+  (:methods
+    (new (symbol type) _type_) ;; 0
+    )
   )
-|#
 
-#|
 (deftype display (basic)
   ((on-screen            int32            :offset-assert 4)
    (last-screen          int32            :offset-assert 8)
@@ -4265,35 +4383,35 @@
    (bgcolor              uint64           :offset-assert 24) ;; gs-bgcolor
    (pmode                uint64           :offset-assert 32) ;; gs-pmode
    (clock                clock         22 :offset-assert 40) ;; guessed by decompiler
-   (session-clock        clock            :offset-assert 40) ;; guessed by decompiler
-   (game-clock           clock            :offset-assert 44) ;; guessed by decompiler
-   (base-clock           clock            :offset-assert 48) ;; guessed by decompiler
-   (real-clock           clock            :offset-assert 52) ;; guessed by decompiler
-   (frame-clock          clock            :offset-assert 56) ;; guessed by decompiler
-   (real-frame-clock     clock            :offset-assert 60) ;; guessed by decompiler
-   (target-clock         clock            :offset-assert 64) ;; guessed by decompiler
-   (entity-clock         clock            :offset-assert 68) ;; guessed by decompiler
-   (part-clock           clock            :offset-assert 72) ;; guessed by decompiler
-   (bg-clock             clock            :offset-assert 76) ;; guessed by decompiler
-   (camera-clock         clock            :offset-assert 80) ;; guessed by decompiler
-   (total-game-clock     clock            :offset-assert 84) ;; guessed by decompiler
-   (user0-clock          clock            :offset-assert 88) ;; guessed by decompiler
-   (user1-clock          basic            :offset-assert 92)
-   (user2-clock          basic            :offset-assert 96)
-   (user3-clock          basic            :offset-assert 100)
-   (user4-clock          basic            :offset-assert 104)
-   (user5-clock          basic            :offset-assert 108)
-   (user6-clock          basic            :offset-assert 112)
-   (user7-clock          basic            :offset-assert 116)
-   (user8-clock          basic            :offset-assert 120)
-   (user9-clock          basic            :offset-assert 124)
+   (session-clock        clock            :offset 40) ;; guessed by decompiler
+   (game-clock           clock            :offset 44) ;; guessed by decompiler
+   (base-clock           clock            :offset 48) ;; guessed by decompiler
+   (real-clock           clock            :offset 52) ;; guessed by decompiler
+   (frame-clock          clock            :offset 56) ;; guessed by decompiler
+   (real-frame-clock     clock            :offset 60) ;; guessed by decompiler
+   (target-clock         clock            :offset 64) ;; guessed by decompiler
+   (entity-clock         clock            :offset 68) ;; guessed by decompiler
+   (part-clock           clock            :offset 72) ;; guessed by decompiler
+   (bg-clock             clock            :offset 76) ;; guessed by decompiler
+   (camera-clock         clock            :offset 80) ;; guessed by decompiler
+   (total-game-clock     clock            :offset 84) ;; guessed by decompiler
+   (user0-clock          clock            :offset 88) ;; guessed by decompiler
+   (user1-clock          clock            :offset 92)
+   (user2-clock          clock            :offset 96)
+   (user3-clock          clock            :offset 100)
+   (user4-clock          clock            :offset 104)
+   (user5-clock          clock            :offset 108)
+   (user6-clock          clock            :offset 112)
+   (user7-clock          clock            :offset 116)
+   (user8-clock          clock            :offset 120)
+   (user9-clock          clock            :offset 124)
    (time-factor          float            :offset-assert 128)
    (dog-ratio            float            :offset-assert 132)
    (vblank-start-time    int64         2  :offset-assert 136) ;; guessed by decompiler
    (total-run-time       uint64           :offset-assert 152) ;; int64
-   (run-half-speed       basic            :offset-assert 160)
-   (vu1-enable-user      uint64           :offset-assert 168) ;; vu1-renderer-mask
-   (vu1-enable-user-menu uint64           :offset-assert 176) ;; vu1-renderer-mask
+   (run-half-speed       symbol           :offset-assert 160)
+   (vu1-enable-user      vu1-renderer-mask :offset-assert 168) ;; vu1-renderer-mask
+   (vu1-enable-user-menu vu1-renderer-mask :offset-assert 176) ;; vu1-renderer-mask
    (force-sync           uint32           :offset-assert 184)
    (mem-reserve-size     uint32           :offset-assert 188)
    (dma-buffer-overflow  basic            :offset-assert 192)
@@ -4302,14 +4420,13 @@
   :size-assert         #xc4
   :flag-assert         #xa000000c4
   (:methods
-    (new (symbol type) _type_) ;; 0 ;; (new (symbol type int int int int int) _type_)
-    (display-method-9 () none) ;; 9 ;; (set-time-ratios (_type_ float) float)
+    (new (symbol type int int int int int) _type_) ;; 0
+    (set-time-ratios (_type_ float) float) ;; 9
     )
   )
-|#
 
-;; (define-extern *pre-draw-hook* object) ;; (function object none)
-;; (define-extern *post-draw-hook* object) ;; (function dma-buffer none)
+(define-extern *pre-draw-hook* (function object none))
+(define-extern *post-draw-hook* (function dma-buffer none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; geometry                       ;;
@@ -4500,17 +4617,25 @@
 ;; timer                          ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(define-extern timer-count (function timer-bank uint))
-(define-extern disable-irq (function none))
-(define-extern enable-irq (function none))
-(define-extern stopwatch-init (function stopwatch int))
-(define-extern stopwatch-reset (function stopwatch int))
-(define-extern stopwatch-start (function stopwatch int))
-(define-extern stopwatch-stop (function stopwatch none))
-(define-extern stopwatch-begin (function stopwatch int))
-(define-extern stopwatch-end (function stopwatch none))
-(define-extern stopwatch-elapsed-ticks (function stopwatch time-frame))
-(define-extern stopwatch-elapsed-seconds (function stopwatch float))
+(define-extern timer-count "Return a timer's counter value." (function timer-bank uint))
+(define-extern disable-irq "Disable all interrupts. Has no effect on PC Port." (function none))
+(define-extern enable-irq "Enable all interrupts. Has no effect on PC Port." (function none))
+(define-extern stopwatch-init "Init a stopwatch." (function stopwatch int))
+(define-extern stopwatch-reset "Restart a stopwatch's times." (function stopwatch int))
+(define-extern stopwatch-start "Start a stopwatch from scratch." (function stopwatch int))
+(define-extern stopwatch-stop "Fully stop a stopwatch and save its elapsed time." (function stopwatch none))
+(define-extern stopwatch-begin "Begin a stopwatch level, and starts it if it hasn't yet." (function stopwatch int))
+(define-extern stopwatch-end
+  "End a stopwatch level. Stops the stopwatch if it's back to level zero.
+   There is no guard against ending a stopwatch too many times, and a negative level
+   will cause errors!"
+  (function stopwatch none))
+(define-extern stopwatch-elapsed-ticks
+  "Returns the elapsed time so far (in clock cycles) of a stopwatch."
+  (function stopwatch time-frame))
+(define-extern stopwatch-elapsed-seconds
+  "Returns the elapsed time so far (in seconds) of a stopwatch."
+  (function stopwatch float))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; vector                         ;;
@@ -4768,37 +4893,71 @@
 ;; file-io                        ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
+;; +++file-io:file-kind
+(defenum file-kind
+  :bitfield #f
+  (level-bt 0) ;; aka bsp-header.
+  (art-group 1)
+  (tpage 2)
+  (dir-tpage 3)
+  (level-vs 4)
+  (tx 5)
+  (vis 6)
+  (map 7)
+  )
+;; ---file-io:file-kind
+
 (deftype file-stream (basic)
-  ()
+  ((flags uint32  :offset-assert 4)
+   (mode  symbol  :offset-assert 8)
+   (name  string  :offset-assert 12)
+   (file  uint32  :offset-assert 16)
+   )
+  (:methods
+    (new (symbol type string symbol) _type_)
+    )
   :method-count-assert 9
   :size-assert         #x14
   :flag-assert         #x900000014
-  ;; Failed to read fields.
   )
-|#
 
-#|
 (deftype file-info (basic)
-  ((file-type      (pointer string)  :offset-assert 4) ;; guessed by decompiler
-   (file-name      basic             :offset-assert 8)
-   (major-version  uint32            :offset-assert 12)
-   (minor-version  uint32            :offset-assert 16)
-   (maya-file-name basic             :offset-assert 20)
-   (tool-debug     basic             :offset-assert 24)
-   (mdb-file-name  basic             :offset-assert 28)
+  ((file-type      (pointer string) :offset-assert 4) ;; guessed by decompiler
+   (file-name      string           :offset-assert 8)
+   (major-version  uint32           :offset-assert 12)
+   (minor-version  uint32           :offset-assert 16)
+   (maya-file-name string           :offset-assert 20)
+   (tool-debug     string           :offset-assert 24)
+   (mdb-file-name  string           :offset-assert 28)
    )
   :method-count-assert 9
   :size-assert         #x20
   :flag-assert         #x900000020
   )
-|#
 
-;; (define-extern file-stream-read-string function) ;; (function file-stream string string)
-;; (define-extern *file-temp-string* object) ;; string
-;; (define-extern make-file-name function) ;; (function file-kind string int symbol string)
-;; (define-extern make-vfile-name function) ;; (function file-kind string string)
-;; (define-extern file-info-correct-version? function) ;; (function file-info file-kind int symbol)
+(define-extern file-stream-read-string
+  "Fill a string with data from a file stream.
+   Note: this function does not work."
+  (function file-stream string string))
+(define-extern *file-temp-string* string)
+(define-extern make-file-name
+  "Get a file name to open a file with the given kind and name.
+   The art-group-version argument can be used to override the version
+   of the art-group. Set it to 0 or less to use the default version.
+   Similar to MakeFileName in C.
+   Note: file type enum is different between C and GOAL.
+   File versions should match those in versions.h.
+   Uses a single *file-temp-string* buffer, shared with make-vfile-name.
+   arg3 is unused."
+  (function file-kind string int symbol string))
+(define-extern make-vfile-name
+  "Make virtual? file name. This makes a name that the kernel knows how to
+   handle in a specific way. This function is not used."
+  (function file-kind string string))
+(define-extern file-info-correct-version?
+  "Check if the version and kind in the info is valid. The `version-override` can specify a
+   non-default version, or set to 0 for the default version."
+  (function file-info file-kind int symbol))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; loader-h                       ;;
@@ -6511,8 +6670,9 @@
 ;; decomp-h                       ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype decomp-work (structure)
+  "Temporary storage for visibility data decompression.
+   This is stored on the scratchpad."
   ((buffer0      uint8  2048 :offset-assert 0) ;; guessed by decompiler
    (buffer1      uint8  2048 :offset-assert 2048) ;; guessed by decompiler
    (indices      uint16 2048 :offset-assert 4096) ;; guessed by decompiler
@@ -6522,8 +6682,6 @@
   :size-assert         #x3000
   :flag-assert         #x900003000
   )
-|#
-
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; time-of-day-h                  ;;
@@ -6684,10 +6842,10 @@
 ;; display                        ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (define-extern get-current-time function) ;; (function time-frame)
-;; (define-extern get-integral-current-time function) ;; (function uint)
-;; (define-extern get-real-current-time function)
-;; (define-extern set-display function) ;; (function display display)
+(define-extern get-current-time (function time-frame))
+(define-extern get-integral-current-time (function time-frame))
+(define-extern get-real-current-time (function time-frame))
+(define-extern set-display (function display display))
 ;; (define-extern allocate-dma-buffers function) ;; (function display display)
 ;; (define-extern *font-context* object) ;; font-context
 ;; (define-extern draw-sprite2d-xy function) ;; (function dma-buffer int int int int rgba none)
@@ -6701,7 +6859,7 @@
 ;; (define-extern set-display-gs-state-offset function) ;; (function dma-buffer int int int int int int int dma-buffer)
 ;; (define-extern reset-display-gs-state function) ;; (function display dma-buffer display)
 ;; (define-extern *vu0-dma-list* object) ;; dma-buffer
-;; (define-extern *display* object) ;; display
+(define-extern *display* display)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; connect                        ;;
@@ -24838,7 +24996,7 @@
 ;; (define-extern history-draw-and-update function) ;; (function pos-history symbol vector symbol)
 ;; (define-extern dma-timeout-cam function) ;; (function vector)
 ;; (define-extern display-file-info function) ;; (function int)
-;; (define-extern add-debug-cursor function) ;; (function symbol bucket-id int int mouse-buttons int)
+(define-extern add-debug-cursor (function symbol bucket-id int int mouse-buttons int))
 ;; (define-extern *boundary-polygon* object) ;; (inline-array sky-vertex)
 ;; (define-extern init-boundary-regs function) ;; (function none)
 ;; (define-extern add-boundary-shader function) ;; (function texture-id dma-buffer none)
@@ -26349,7 +26507,7 @@
 ;; settings                       ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (define-extern get-current-language function) ;; (function language-enum)
+(define-extern get-current-language (function language-enum))
 ;; (define-extern *setting-control* object) ;; setting-control
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
