@@ -5,5 +5,333 @@
 ;; name in dgo: gsound-h
 ;; dgos: GAME
 
+(defenum sound-command
+  :type uint16
+  )
+
+(defenum sound-group
+  :bitfield #t
+  :type uint8
+  )
+
+(defenum sound-mask
+  :bitfield #t
+  :type uint16
+  )
+
+(defenum stream-status
+  :type uint32
+  :bitfield #t
+  )
+
 ;; DECOMP BEGINS
 
+(deftype sound-stream-name (structure)
+  ((name  uint8  48)
+   )
+  )
+
+
+(deftype sound-id (uint32)
+  ()
+  (:methods
+    (unknown () none)
+    )
+  )
+
+(deftype sound-bank-id (uint32)
+  ()
+  )
+
+(deftype sound-name (uint128)
+  ()
+  )
+
+(deftype sound-rpc-cmd (structure)
+  ((rsvd1    uint16)
+   (command  uint16)
+   )
+  )
+
+
+(deftype sound-play-params (structure)
+  ((mask       uint16)
+   (pitch-mod  int16)
+   (bend       int16)
+   (fo-min     int16)
+   (fo-max     int16)
+   (fo-curve   int8)
+   (priority   int8)
+   (volume     int32)
+   (trans      int32  3)
+   (group      uint8)
+   (reg        uint8  3)
+   )
+  :pack-me
+  )
+
+
+(deftype sound-rpc-bank-cmd (sound-rpc-cmd)
+  ((bank-name  sound-name)
+   )
+  )
+
+
+(deftype sound-rpc-test-cmd (sound-rpc-cmd)
+  ((ee-addr  pointer)
+   (param0   uint16)
+   )
+  )
+
+
+(deftype sound-rpc-sound-cmd (sound-rpc-cmd)
+  ((id  sound-id)
+   )
+  )
+
+
+(deftype sound-rpc-group-cmd (sound-rpc-cmd)
+  ((group  uint32)
+   )
+  )
+
+
+(deftype sound-rpc-load-bank (sound-rpc-bank-cmd)
+  ((ee-addr   pointer)
+   (mode      uint32)
+   (priority  uint32)
+   )
+  )
+
+
+(deftype sound-rpc-load-music (sound-rpc-bank-cmd)
+  ()
+  )
+
+
+(deftype sound-rpc-unload-bank (sound-rpc-bank-cmd)
+  ()
+  )
+
+
+(deftype sound-rpc-play (sound-rpc-sound-cmd)
+  ((name    sound-name)
+   (params  sound-play-params  :inline)
+   )
+  )
+
+
+(deftype sound-rpc-pause-sound (sound-rpc-sound-cmd)
+  ()
+  )
+
+
+(deftype sound-rpc-stop-sound (sound-rpc-sound-cmd)
+  ()
+  )
+
+
+(deftype sound-rpc-continue-sound (sound-rpc-sound-cmd)
+  ()
+  )
+
+
+(deftype sound-rpc-set-param (sound-rpc-sound-cmd)
+  ((params     sound-play-params  :inline)
+   (auto-time  int32)
+   (auto-from  int32)
+   )
+  )
+
+
+(deftype sound-rpc-set-master-volume (sound-rpc-group-cmd)
+  ((volume  int32)
+   )
+  )
+
+
+(deftype sound-rpc-pause-group (sound-rpc-group-cmd)
+  ()
+  )
+
+
+(deftype sound-rpc-stop-group (sound-rpc-group-cmd)
+  ()
+  )
+
+
+(deftype sound-rpc-continue-group (sound-rpc-group-cmd)
+  ()
+  )
+
+
+(deftype sound-rpc-cancel-dgo (sound-rpc-group-cmd)
+  ((id  uint32)
+   )
+  )
+
+
+(deftype sound-rpc-get-irx-version (sound-rpc-cmd)
+  ((major    uint32)
+   (minor    uint32)
+   (ee-addr  pointer)
+   )
+  )
+
+
+(deftype sound-rpc-set-language (sound-rpc-cmd)
+  ((lang  uint32)
+   )
+  )
+
+
+(deftype sound-rpc-set-stereo-mode (sound-rpc-cmd)
+  ((mode  int32)
+   )
+  )
+
+
+(deftype sound-rpc-set-reverb (sound-rpc-cmd)
+  ((core    uint8)
+   (reverb  int32)
+   (left    uint32)
+   (right   uint32)
+   )
+  )
+
+
+(deftype sound-rpc-set-ear-trans (sound-rpc-cmd)
+  ((ear-trans1    int32  3)
+   (ear-trans0    int32  3)
+   (cam-trans     int32  3)
+   (cam-forward   int32  3)
+   (cam-left      int32  3)
+   (cam-scale     int32)
+   (cam-inverted  int32)
+   )
+  )
+
+
+(deftype sound-rpc-set-flava (sound-rpc-cmd)
+  ((flava       uint8)
+   (excitement  uint8)
+   )
+  )
+
+
+(deftype sound-rpc-set-midi-reg (sound-rpc-cmd)
+  ((reg    int32)
+   (value  int16)
+   )
+  )
+
+
+(deftype sound-rpc-shutdown (sound-rpc-cmd)
+  ()
+  )
+
+
+(deftype sound-rpc-set-fps (sound-rpc-cmd)
+  ((fps  uint8)
+   )
+  )
+
+
+(deftype sound-rpc-list-sounds (sound-rpc-cmd)
+  ()
+  )
+
+
+(deftype sound-rpc-unload-music (sound-rpc-cmd)
+  ()
+  )
+
+
+(deftype sound-rpc-union (structure)
+  ((data               uint32                       20)
+   (load-bank          sound-rpc-load-bank          :overlay-at (-> data 0))
+   (unload-bank        sound-rpc-unload-bank        :overlay-at (-> data 0))
+   (play               sound-rpc-play               :overlay-at (-> data 0))
+   (pause-sound        sound-rpc-pause-sound        :overlay-at (-> data 0))
+   (stop-sound         sound-rpc-stop-sound         :overlay-at (-> data 0))
+   (continue-sound     sound-rpc-continue-sound     :overlay-at (-> data 0))
+   (set-param          sound-rpc-set-param          :overlay-at (-> data 0))
+   (set-master-volume  sound-rpc-set-master-volume  :overlay-at (-> data 0))
+   (pause-group        sound-rpc-pause-group        :overlay-at (-> data 0))
+   (stop-group         sound-rpc-stop-group         :overlay-at (-> data 0))
+   (continue-group     sound-rpc-continue-group     :overlay-at (-> data 0))
+   (get-irx-version    sound-rpc-get-irx-version    :overlay-at (-> data 0))
+   (set-language       sound-rpc-set-language       :overlay-at (-> data 0))
+   (set-reverb         sound-rpc-set-reverb         :overlay-at (-> data 0))
+   (set-ear-trans      sound-rpc-set-ear-trans      :overlay-at (-> data 0))
+   (set-flava          sound-rpc-set-flava          :overlay-at (-> data 0))
+   (set-midi-reg       sound-rpc-set-midi-reg       :overlay-at (-> data 0))
+   (set-fps            sound-rpc-set-fps            :overlay-at (-> data 0))
+   (shutdown           sound-rpc-shutdown           :overlay-at (-> data 0))
+   (list-sounds        sound-rpc-list-sounds        :overlay-at (-> data 0))
+   (unload-music       sound-rpc-unload-music       :overlay-at (-> data 0))
+   )
+  )
+
+
+(deftype sound-spec (basic)
+  ((mask             sound-mask)
+   (num              float)
+   (group            sound-group)
+   (reg              uint8       3)
+   (sound-name-char  uint8       16)
+   (sound-name       sound-name  :overlay-at (-> sound-name-char 0))
+   (trans            int32       4)
+   (volume           int32)
+   (pitch-mod        int32)
+   (bend             int32)
+   (fo-min           int16)
+   (fo-max           int16)
+   (fo-curve         int8)
+   (priority         int8)
+   (auto-time        int32)
+   (auto-from        int32)
+   )
+  )
+
+
+(deftype sound-bank-state (structure)
+  ((name  basic)
+   (mode  uint32)
+   )
+  )
+
+
+(define *current-sound-id* (the-as sound-id #x10000))
+
+(deftype ambient-sound (basic)
+  ((spec          sound-spec)
+   (playing-id    sound-id)
+   (trans         vector  :inline)
+   (name          uint128)
+   (play-time     uint64)
+   (time-base     uint64)
+   (time-random   uint64)
+   (volume        int32)
+   (pitch         int32)
+   (falloff-near  int32)
+   (falloff-far   int32)
+   (falloff-mode  int32)
+   (params        (pointer float))
+   (param-count   int32)
+   (entity        entity)
+   (sound-count   int32)
+   (sound-state   int32)
+   )
+  (:methods
+    (new (symbol type) _type_)
+    (ambient-sound-method-9 () none)
+    (ambient-sound-method-10 () none)
+    (ambient-sound-method-11 () none)
+    (ambient-sound-method-12 () none)
+    (ambient-sound-method-13 () none)
+    (ambient-sound-method-14 () none)
+    (ambient-sound-method-15 () none)
+    (ambient-sound-method-16 () none)
+    )
+  )

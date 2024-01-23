@@ -5,5 +5,40 @@
 ;; name in dgo: vu1-user-h
 ;; dgos: GAME
 
+(defenum tpage-category
+  :type int8
+  )
+
+(defenum bucket-id
+  :type int32
+  )
+
 ;; DECOMP BEGINS
 
+(deftype dma-foreground-sink (basic)
+  "A specification for where a foreground renderer should output its DMA data."
+  ((bucket                    bucket-id)
+   (foreground-texture-page   tpage-category)
+   (foreground-texture-level  int8)
+   (foreground-output-bucket  int8)
+   )
+  )
+
+
+(deftype generic-bucket-state (structure)
+  "The state of buffers for the generic renderer.
+When generating generic DMA data, you must know the previous state
+of the VU's memory to properly double-buffer the input and output data."
+  ((gifbuf-adr  uint32)
+   (inbuf-adr   uint32)
+   )
+  :pack-me
+  )
+
+
+(deftype generic-dma-foreground-sink (dma-foreground-sink)
+  "A specification for where a foreground generic renderer should output DMA data,
+and the state of the VU memory buffers at the end of the bucket."
+  ((state  generic-bucket-state  :inline)
+   )
+  )

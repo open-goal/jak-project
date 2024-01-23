@@ -1,0 +1,360 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; definition of type dma-chcr
+(deftype dma-chcr (uint32)
+  "Memory mapped DMA channel control register. Typically used to start and check on DMA transfer."
+  ((dir uint8  :offset   0 :size   1)
+   (mod uint8  :offset   2 :size   2)
+   (asp uint8  :offset   4 :size   2)
+   (tte uint8  :offset   6 :size   1)
+   (tie uint8  :offset   7 :size   1)
+   (str uint8  :offset   8 :size   1)
+   (tag uint16 :offset  16 :size  16)
+   )
+  )
+
+;; definition for method 3 of type dma-chcr
+(defmethod inspect ((this dma-chcr))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this 'dma-chcr)
+  (format #t "~1Tdir: ~D~%" (-> this dir))
+  (format #t "~1Tmod: ~D~%" (-> this mod))
+  (format #t "~1Tasp: ~D~%" (-> this asp))
+  (format #t "~1Ttte: ~D~%" (-> this tte))
+  (format #t "~1Ttie: ~D~%" (-> this tie))
+  (format #t "~1Tstr: ~D~%" (-> this str))
+  (format #t "~1Ttag: #x~X~%" (-> this tag))
+  (label cfg-4)
+  this
+  )
+
+;; definition of type dma-bank
+(deftype dma-bank (structure)
+  "Bank of memory mapped DMA registers for a single channel. Used to control DMA."
+  ((chcr  dma-chcr  :offset   0)
+   (madr  uint32    :offset  16)
+   (qwc   uint32    :offset  32)
+   )
+  )
+
+;; definition for method 3 of type dma-bank
+(defmethod inspect ((this dma-bank))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this 'dma-bank)
+  (format #t "~1Tchcr: #x~X~%" (-> this chcr))
+  (format #t "~1Tmadr: #x~X~%" (-> this madr))
+  (format #t "~1Tqwc: #x~X~%" (-> this qwc))
+  (label cfg-4)
+  this
+  )
+
+;; definition of type dma-bank-source
+(deftype dma-bank-source (dma-bank)
+  "DMA channel registers for a DMA channel supporting source-chain."
+  ((tadr  uint32  :offset  48)
+   )
+  )
+
+;; definition for method 3 of type dma-bank-source
+(defmethod inspect ((this dma-bank-source))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this 'dma-bank-source)
+  (format #t "~1Tchcr: #x~X~%" (-> this chcr))
+  (format #t "~1Tmadr: #x~X~%" (-> this madr))
+  (format #t "~1Tqwc: #x~X~%" (-> this qwc))
+  (format #t "~1Ttadr: #x~X~%" (-> this tadr))
+  (label cfg-4)
+  this
+  )
+
+;; definition of type dma-bank-vif
+(deftype dma-bank-vif (dma-bank-source)
+  "DMA channel registers for a DMA channel with call/ret stack."
+  ((as0  uint32  :offset  64)
+   (as1  uint32  :offset  80)
+   )
+  )
+
+;; definition for method 3 of type dma-bank-vif
+(defmethod inspect ((this dma-bank-vif))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this 'dma-bank-vif)
+  (format #t "~1Tchcr: #x~X~%" (-> this chcr))
+  (format #t "~1Tmadr: #x~X~%" (-> this madr))
+  (format #t "~1Tqwc: #x~X~%" (-> this qwc))
+  (format #t "~1Ttadr: #x~X~%" (-> this tadr))
+  (format #t "~1Tas0: #x~X~%" (-> this as0))
+  (format #t "~1Tas1: #x~X~%" (-> this as1))
+  (label cfg-4)
+  this
+  )
+
+;; definition of type dma-bank-spr
+(deftype dma-bank-spr (dma-bank-source)
+  "DMA channel registers for a DMA channel supporting scratchpad transfer."
+  ((sadr  uint32  :offset 128)
+   )
+  )
+
+;; definition for method 3 of type dma-bank-spr
+(defmethod inspect ((this dma-bank-spr))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this 'dma-bank-spr)
+  (format #t "~1Tchcr: #x~X~%" (-> this chcr))
+  (format #t "~1Tmadr: #x~X~%" (-> this madr))
+  (format #t "~1Tqwc: #x~X~%" (-> this qwc))
+  (format #t "~1Ttadr: #x~X~%" (-> this tadr))
+  (format #t "~1Tsadr: #x~X~%" (-> this sadr))
+  (label cfg-4)
+  this
+  )
+
+;; definition of type dma-ctrl
+(deftype dma-ctrl (uint32)
+  "Main DMA control register, shared for all channels."
+  ((dmae uint8 :offset   0 :size   1)
+   (rele uint8 :offset   1 :size   1)
+   (mfd  uint8 :offset   2 :size   2)
+   (sts  uint8 :offset   4 :size   2)
+   (std  uint8 :offset   6 :size   2)
+   (rcyc uint8 :offset   8 :size   3)
+   )
+  )
+
+;; definition of type dma-enable
+(deftype dma-enable (uint32)
+  ((cpnd uint8 :offset  16 :size   1)
+   )
+  )
+
+;; definition of type dma-sqwc
+(deftype dma-sqwc (uint32)
+  ((sqwc uint8 :offset   0 :size   8)
+   (tqwc uint8 :offset  16 :size   8)
+   )
+  )
+
+;; definition of type dma-bank-control
+(deftype dma-bank-control (structure)
+  "Memory mapping for shared DMA registers."
+  ((ctrl     dma-ctrl  :offset   0)
+   (stat     uint32    :offset  16)
+   (pcr      uint32    :offset  32)
+   (sqwc     dma-sqwc  :offset  48)
+   (rbsr     uint32    :offset  64)
+   (rbor     uint32    :offset  80)
+   (stadr    uint32    :offset  96)
+   (enabler  uint32    :offset 5408)
+   (enablew  uint32    :offset 5520)
+   )
+  )
+
+;; definition for method 3 of type dma-bank-control
+(defmethod inspect ((this dma-bank-control))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this 'dma-bank-control)
+  (format #t "~1Tctrl: #x~X~%" (-> this ctrl))
+  (format #t "~1Tstat: #x~X~%" (-> this stat))
+  (format #t "~1Tpcr: #x~X~%" (-> this pcr))
+  (format #t "~1Tsqwc: #x~X~%" (-> this sqwc))
+  (format #t "~1Trbsr: #x~X~%" (-> this rbsr))
+  (format #t "~1Trbor: #x~X~%" (-> this rbor))
+  (format #t "~1Tstadr: #x~X~%" (-> this stadr))
+  (format #t "~1Tenabler: ~D~%" (-> this enabler))
+  (format #t "~1Tenablew: ~D~%" (-> this enablew))
+  (label cfg-4)
+  this
+  )
+
+;; definition of type vu-code-block
+(deftype vu-code-block (basic)
+  "Unused type for some VU code. vu-function is used instead."
+  ((name          basic)
+   (code          uint32)
+   (size          int32)
+   (dest-address  uint32)
+   )
+  )
+
+;; definition for method 3 of type vu-code-block
+(defmethod inspect ((this vu-code-block))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this (-> this type))
+  (format #t "~1Tname: ~A~%" (-> this name))
+  (format #t "~1Tcode: #x~X~%" (-> this code))
+  (format #t "~1Tsize: ~D~%" (-> this size))
+  (format #t "~1Tdest-address: ~D~%" (-> this dest-address))
+  (label cfg-4)
+  this
+  )
+
+;; definition of type vu-stat
+(deftype vu-stat (uint64)
+  ()
+  )
+
+;; definition of type dma-tag
+(deftype dma-tag (uint64)
+  "The 64-bit tag used by the DMA system."
+  ((qwc  uint16     :offset   0 :size  16)
+   (pce  uint8      :offset  26 :size   2)
+   (id   dma-tag-id :offset  28 :size   3)
+   (irq  uint8      :offset  31 :size   1)
+   (addr uint32     :offset  32 :size  31)
+   (spr  uint8      :offset  63 :size   1)
+   )
+  )
+
+;; definition for method 3 of type dma-tag
+(defmethod inspect ((this dma-tag))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this 'dma-tag)
+  (format #t "~1Tqwc: ~D~%" (-> this qwc))
+  (format #t "~1Tpce: ~D~%" (-> this pce))
+  (format #t "~1Tid: ~D~%" (-> this id))
+  (format #t "~1Tirq: ~D~%" (-> this irq))
+  (format #t "~1Taddr: #x~X~%" (-> this addr))
+  (format #t "~1Tspr: ~D~%" (-> this spr))
+  (label cfg-4)
+  this
+  )
+
+;; definition of type dma-bucket
+(deftype dma-bucket (structure)
+  "A linked list of DMA data, typically all in the same category. Used to organize the full DMA chain."
+  ((tag    dma-tag)
+   (last   (pointer dma-tag))
+   (dummy  uint32)
+   (next   uint32  :offset   4)
+   (clear  uint64  :overlay-at last)
+   (vif0   uint32  :overlay-at last)
+   (vif1   uint32  :overlay-at dummy)
+   )
+  )
+
+;; definition for method 3 of type dma-bucket
+(defmethod inspect ((this dma-bucket))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this 'dma-bucket)
+  (format #t "~1Ttag: ~D~%" (-> this tag))
+  (format #t "~1Tlast: #x~X~%" (-> this last))
+  (format #t "~1Tdummy: ~D~%" (-> this dummy))
+  (format #t "~1Tnext: #x~X~%" (-> this next))
+  (format #t "~1Tclear: ~D~%" (-> this clear))
+  (format #t "~1Tvif0: ~D~%" (-> this last))
+  (format #t "~1Tvif1: ~D~%" (-> this dummy))
+  (label cfg-4)
+  this
+  )
+
+;; definition of type vif-mask
+(deftype vif-mask (uint32)
+  ((m0  uint8 :offset   0 :size   2)
+   (m1  uint8 :offset   2 :size   2)
+   (m2  uint8 :offset   4 :size   2)
+   (m3  uint8 :offset   6 :size   2)
+   (m4  uint8 :offset   8 :size   2)
+   (m5  uint8 :offset  10 :size   2)
+   (m6  uint8 :offset  12 :size   2)
+   (m7  uint8 :offset  14 :size   2)
+   (m8  uint8 :offset  16 :size   2)
+   (m9  uint8 :offset  18 :size   2)
+   (m10 uint8 :offset  20 :size   2)
+   (m11 uint8 :offset  22 :size   2)
+   (m12 uint8 :offset  24 :size   2)
+   (m13 uint8 :offset  26 :size   2)
+   (m14 uint8 :offset  28 :size   2)
+   (m15 uint8 :offset  30 :size   2)
+   )
+  )
+
+;; definition of type vif-stcycl-imm
+(deftype vif-stcycl-imm (uint16)
+  "The imm field of a VIF code using STCYCL, which adjusts the pattern for storing data."
+  ((cl uint8 :offset   0 :size   8)
+   (wl uint8 :offset   8 :size   8)
+   )
+  )
+
+;; definition of type vif-unpack-imm
+(deftype vif-unpack-imm (uint16)
+  "The imm field of a VIF code using UNPACK, which transfers data to VU memory."
+  ((addr uint16 :offset   0 :size  10)
+   (usn  uint8  :offset  14 :size   1)
+   (flg  uint8  :offset  15 :size   1)
+   )
+  )
+
+;; definition of type vif-tag
+(deftype vif-tag (uint32)
+  "A tag consumed by the VIF, which accepts DMA data."
+  ((imm uint16  :offset   0 :size  16)
+   (num uint8   :offset  16 :size   8)
+   (cmd vif-cmd :offset  24 :size   7)
+   (irq uint8   :offset  31 :size   1)
+   (msk uint8   :offset  28 :size   1)
+   )
+  )
+
+;; definition for method 3 of type vif-tag
+(defmethod inspect ((this vif-tag))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this 'vif-tag)
+  (format #t "~1Timm: #x~X~%" (-> this imm))
+  (format #t "~1Tnum: ~D~%" (-> this num))
+  (format #t "~1Tcmd: #x~X~%" (-> this cmd))
+  (format #t "~1Tmsk: ~D~%" (-> this msk))
+  (format #t "~1Tirq: ~D~%" (-> this irq))
+  (label cfg-4)
+  this
+  )
+
+;; definition for function dma-sync-fast
+;; ERROR: function was not converted to expressions. Cannot decompile.
+
+;; definition for function dma-send-no-scratch
+;; ERROR: function was not converted to expressions. Cannot decompile.
+
+;; definition for function dma-sync-with-count
+;; ERROR: function was not converted to expressions. Cannot decompile.
+
+;; definition for function dma-count-until-done
+;; ERROR: function was not converted to expressions. Cannot decompile.
+
+;; failed to figure out what this is:
+0
+
+
+
+
