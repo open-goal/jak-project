@@ -1186,7 +1186,13 @@
   )
 
 (deftype rgba (uint32)
-  ()
+  ((r uint8 :offset 0)
+   (g uint8 :offset 8)
+   (b uint8 :offset 16)
+   (a uint8 :offset 24)
+   )
+  :flag-assert #x900000004
+  :no-runtime-type
   )
 
 (deftype xyzw (uint128)
@@ -2528,10 +2534,9 @@
   )
 |#
 
-;; (deftype sound-id (uint32)
-;;   ()
-;;   :flag-assert #xa00000004
-;;   )
+(deftype sound-id (uint32)
+  ()
+  )
 
 ;; (deftype sound-bank-id (uint32)
 ;;   ()
@@ -2972,113 +2977,146 @@
 ;; timer-h                        ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (deftype timer-mode (uint32)
-;;   ()
-;;   :flag-assert #x900000004
-;;   )
+(defenum timer-clock-selection
+  :type uint8
+  (busclk 0)
+  (busclk/16 1)
+  (busclk/256 2)
+  (hblank 3)
+  )
 
-#|
+(deftype timer-mode (uint32)
+  "This matches the Tn_MODE register structure of the ps2 EE timers.
+   Only the lower 32 bits of these registers are usable, and the upper 16 hardwired to zero."
+  ((clks  timer-clock-selection :offset 0 :size 2)
+   (gate  uint8 :offset 2 :size 1) ;; gate function enable
+   (gats  uint8 :offset 3 :size 1) ;; gate selection: 0 = hblank, 1 = vblank
+   ;; gate mode:
+   ;;  0: count while gate signal is low
+   ;;  1: start when gate signal rises
+   ;;  2: start when gate signal falls
+   ;;  3: start when gate signal rises/falls
+   (gatm  uint8 :offset 4 :size 2)
+   (zret  uint8 :offset 6 :size 1) ;; zero return: clear counter when equal to reference value
+   (cue   uint8 :offset 7 :size 1) ;; count-up enable
+   (cmpe  uint8 :offset 8 :size 1) ;; compare-interrupt enable
+   (ovfe  uint8 :offset 9 :size 1) ;; overflow-interrupt enable
+   (equf  uint8 :offset 10 :size 1) ;; equal-flag
+   (ovff  uint8 :offset 11 :size 1) ;; overflow-flag
+   )
+  )
+
 (deftype timer-bank (structure)
+  "This matches an EE timer (without a HOLD register, timers 2 and 3).
+   Each register is 128-bits wide, but only the lower 32-bits are usable, and the upper
+   16-bits of that are hardwired to zero."
   ((count uint32      :offset-assert 0)
-   (mode  timer-mode  :offset-assert 16) ;; guessed by decompiler
-   (comp  uint32      :offset-assert 32)
+   (mode  timer-mode  :offset 16)
+   (comp  uint32      :offset 32)
    )
   :method-count-assert 9
   :size-assert         #x24
   :flag-assert         #x900000024
   )
-|#
 
-#|
 (deftype timer-hold-bank (timer-bank)
-  ((hold uint32  :offset-assert 48)
+  "This matches an EE timer (with a HOLD register, timers 0 and 1)."
+  ((hold uint32  :offset 48)
    )
   :method-count-assert 9
   :size-assert         #x34
   :flag-assert         #x900000034
   )
-|#
 
-#|
 (deftype stopwatch (basic)
-  ((prev-time-elapsed uint64  :offset-assert 8) ;; time-frame
-   (start-time        uint64  :offset-assert 16) ;; time-frame
-   (begin-level       int32   :offset-assert 24)
+  "Stopwatches are used to measure CPU clock cycles.
+   They don't use the timer above, but instead the Count COP0 register,
+   which counts CPU clock cycles directly."
+  ((prev-time-elapsed time-frame  :offset-assert 8)
+   (start-time        time-frame  :offset-assert 16)
+   (begin-level       int32       :offset-assert 24)
    )
   :method-count-assert 9
   :size-assert         #x1c
   :flag-assert         #x90000001c
   )
-|#
 
-;; (define-extern *ticks-per-frame* object) ;; int
-;; (define-extern timer-init function) ;; (function timer-bank timer-mode int)
+(define-extern *ticks-per-frame* int)
+(define-extern timer-init
+  "Initiate a timer, start counting at a rate of 1 every 256 bus clocks (BUSCLK: ~147.456MHz)."
+  (function timer-bank timer-mode int))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; vif-h                          ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype vif-stat (uint32)
-  ((UNKNOWN UNKNOWN  :offset-assert -1) ;; field could not be read.
-   (UNKNOWN UNKNOWN  :offset-assert -1) ;; field could not be read.
-   (UNKNOWN UNKNOWN  :offset-assert -1) ;; field could not be read.
-   (UNKNOWN UNKNOWN  :offset-assert -1) ;; field could not be read.
-   (UNKNOWN UNKNOWN  :offset-assert -1) ;; field could not be read.
-   (UNKNOWN UNKNOWN  :offset-assert -1) ;; field could not be read.
-   (UNKNOWN UNKNOWN  :offset-assert -1) ;; field could not be read.
-   (UNKNOWN UNKNOWN  :offset-assert -1) ;; field could not be read.
-   (UNKNOWN UNKNOWN  :offset-assert -1) ;; field could not be read.
-   (UNKNOWN UNKNOWN  :offset-assert -1) ;; field could not be read.
+  ((vps uint8 :offset 0 :size 2)
+   (vew uint8 :offset 2 :size 1)
+   (mrk uint8 :offset 6 :size 1)
+   (vss uint8 :offset 8 :size 1)
+   (vfs uint8 :offset 9 :size 1)
+   (vis uint8 :offset 10 :size 1)
+   (int uint8 :offset 11 :size 1)
+   (er0 uint8 :offset 12 :size 1)
+   (er1 uint8 :offset 13 :size 1)
+   (fqc uint8 :offset 24 :size 4)
    )
   :method-count-assert 9
   :size-assert         #x4
   :flag-assert         #x900000004
   )
-|#
 
-;; (deftype vif-fbrst (uint32)
-;;   ()
-;;   :flag-assert #x900000004
-;;   )
+(deftype vif-fbrst (uint32)
+  ((rst uint8 :offset 0 :size 1)
+   (fbk uint8 :offset 1 :size 1)
+   (stp uint8 :offset 2 :size 1)
+   (stc uint8 :offset 3 :size 1)
+   )
+  :method-count-assert 9
+  :size-assert         #x4
+  :flag-assert         #x900000004
+  )
 
-;; (deftype vif-err (uint32)
-;;   ()
-;;   :flag-assert #x900000004
-;;   )
+(deftype vif-err (uint32)
+  ((mii uint8 :offset 0 :size 1)
+   (me0 uint8 :offset 1 :size 1) ;; PS2 hardware bug, must set this to 1 for correct operation.
+   (me1 uint8 :offset 2 :size 1)
+   )
+  :method-count-assert 9
+  :size-assert         #x4
+  :flag-assert         #x900000004
+  )
 
-#|
 (deftype vif-bank (structure)
-  ((stat   uint32   :offset-assert 0)
-   (fbrst  uint32   :offset-assert 16)
-   (err    vif-err  :offset-assert 32) ;; guessed by decompiler
-   (mark   uint32   :offset-assert 48)
-   (cycle  uint32   :offset-assert 64)
-   (mode   uint32   :offset-assert 80)
-   (num    uint32   :offset-assert 96)
-   (mask   uint32   :offset-assert 112)
-   (code   uint32   :offset-assert 128)
-   (itops  uint32   :offset-assert 144)
-   (base   uint32   :offset-assert 160)
-   (offset uint32   :offset-assert 176)
-   (tops   uint32   :offset-assert 192)
-   (itop   uint32   :offset-assert 208)
-   (top    uint32   :offset-assert 224)
-   (r0     uint32   :offset-assert 256)
-   (r1     uint32   :offset-assert 272)
-   (r2     uint32   :offset-assert 288)
-   (r3     uint32   :offset-assert 304)
-   (c0     uint32   :offset-assert 320)
-   (c1     uint32   :offset-assert 336)
-   (c2     uint32   :offset-assert 352)
-   (c3     uint32   :offset-assert 368)
+  ((stat   uint32  :offset-assert 0)
+   (fbrst  uint32  :offset 16)
+   (err    vif-err :offset 32)
+   (mark   uint32  :offset 48)
+   (cycle  uint32  :offset 64)
+   (mode   uint32  :offset 80)
+   (num    uint32  :offset 96)
+   (mask   uint32  :offset 112)
+   (code   uint32  :offset 128)
+   (itops  uint32  :offset 144)
+   (base   uint32  :offset 160)
+   (offset uint32  :offset 176)
+   (tops   uint32  :offset 192)
+   (itop   uint32  :offset 208)
+   (top    uint32  :offset 224)
+   (r0     uint32  :offset 256)
+   (r1     uint32  :offset 272)
+   (r2     uint32  :offset 288)
+   (r3     uint32  :offset 304)
+   (c0     uint32  :offset 320)
+   (c1     uint32  :offset 336)
+   (c2     uint32  :offset 352)
+   (c3     uint32  :offset 368)
    )
   :method-count-assert 9
   :size-assert         #x174
   :flag-assert         #x900000174
   )
-|#
-
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; dma-h                          ;;
@@ -4231,182 +4269,452 @@
 ;; geometry                       ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (define-extern vector-flatten! function) ;; (function vector vector vector vector)
-;; (define-extern vector-reflect! function) ;; (function vector vector vector vector)
-;; (define-extern vector-reflect-flat! function) ;; (function vector vector vector vector)
-;; (define-extern vector-reflect-flat-above! function) ;; (function vector vector vector vector)
-;; (define-extern vector-reflect-flat-gravity! function) ;; (function vector vector vector vector vector)
-;; (define-extern vector-segment-distance-point! function) ;; (function vector vector vector vector float)
-;; (define-extern vector-segment-xz-distance-point! function)
-;; (define-extern vector-line-distance function) ;; (function vector vector vector float)
-;; (define-extern vector-line-distance-point! function) ;; (function vector vector vector vector float)
-;; (define-extern vector-line-xz-distance-point! function)
-;; (define-extern vector-segment-overlap function) ;; (function vector vector vector float)
-;; (define-extern line-sphere-intersection? function) ;; (function vector vector vector symbol)
-;; (define-extern nearest-dist2-between-moving-points function) ;; (function vector vector vector vector float float)
-(define-extern vector-orient-by-quat! (function vector vector quaternion vector))
-;; (define-extern vector-inv-orient-by-quat! function) ;; (function vector vector quaternion vector)
-;; (define-extern forward-down->inv-matrix function) ;; (function matrix vector vector matrix)
-;; (define-extern forward-down-nopitch->inv-matrix function) ;; (function matrix vector vector matrix)
-;; (define-extern forward-up->inv-matrix function) ;; (function matrix vector vector matrix)
-;; (define-extern forward-up-nopitch->inv-matrix function) ;; (function matrix vector vector matrix)
-;; (define-extern forward-up-nopitch->quaternion function) ;; (function quaternion vector vector quaternion)
-;; (define-extern forward-up->quaternion function) ;; (function quaternion vector vector quaternion)
-;; (define-extern quaternion-from-two-vectors! function) ;; (function quaternion vector vector quaternion)
-;; (define-extern quaternion-from-two-vectors-partial! function) ;; (function quaternion vector vector float quaternion)
-(define-extern quaternion-from-two-vectors-max-angle! (function quaternion vector vector float quaternion))
-;; (define-extern quaternion-from-two-vectors-max-angle-partial! function) ;; (function quaternion vector vector float float quaternion)
-;; (define-extern matrix-from-two-vectors! function) ;; (function matrix vector vector matrix)
-;; (define-extern matrix-from-two-vectors-max-angle! function) ;; (function matrix vector vector float matrix)
-;; (define-extern matrix-from-two-vectors-smooth! function) ;; (function matrix vector vector float int matrix)
-;; (define-extern matrix-from-two-vectors-the-long-way-smooth! function) ;; (function matrix vector vector float int matrix)
-;; (define-extern quaternion-from-two-vectors-smooth! function) ;; (function quaternion vector vector float int quaternion)
-;; (define-extern matrix-from-two-vectors-max-angle-partial! function) ;; (function matrix vector vector float float matrix)
-;; (define-extern matrix-from-two-vectors-partial-linear! function) ;; (function matrix vector vector float matrix)
-;; (define-extern matrix-remove-z-rot function) ;; (function matrix vector matrix)
-;; (define-extern matrix-rot-diff! function) ;; (function vector matrix matrix float)
-;; (define-extern quaternion-seek function) ;; (function quaternion quaternion quaternion float float quaternion)
-;; (define-extern vector-deg-seek function) ;; (function vector vector vector float vector)
-;; (define-extern vector-deg-slerp function) ;; (function vector vector vector float vector)
-;; (define-extern vector-vector-deg-slerp! function) ;; (function vector vector vector float vector vector)
-;; (define-extern normal-of-plane function) ;; (function vector vector vector vector vector)
-;; (define-extern vector-3pt-cross! function) ;; (function vector vector vector vector vector)
-;; (define-extern closest-pt-in-triangle function) ;; (function vector vector matrix vector none)
-;; (define-extern point-in-triangle-cross function) ;; (function vector vector vector vector vector symbol)
-;; (define-extern point-in-plane-<-point+normal! function) ;; (function vector vector vector vector)
-;; (define-extern circle-circle-xz-intersect function) ;; (function sphere sphere vector vector int)
-;; (define-extern circle-test function) ;; (function none)
-;; (define-extern vector-circle-tangent-new function) ;; (function vector vector vector vector none)
-;; (define-extern vector-circle-tangent function) ;; (function vector vector vector vector none)
-;; (define-extern find-knot-span function) ;; (function int int float (inline-array vector) int)
-;; (define-extern calculate-basis-functions-vector! function) ;; (function vector int float (pointer float) vector)
-;; (define-extern curve-evaluate! function) ;; (function vector float (inline-array vector) int (pointer float) int vector)
-;; (define-extern curve-get-pos! function) ;; (function vector float curve vector)
-;; (define-extern curve-length function) ;; (function curve float)
-;; (define-extern curve-copy! function) ;; (function curve curve curve)
-;; (define-extern curve-closest-point function) ;; (function curve vector float float int float float)
-;; (define-extern vector-plane-distance function) ;; (function vector plane vector float)
-;; (define-extern intersect-ray-plane function) ;; (function vector vector vector vector float)
-;; (define-extern line-line-find-intersection-xz function)
-;; (define-extern segment-segment-find-intersection-xz function)
-;; (define-extern generate-rand-vector-on-sphere function)
+(define-extern vector-flatten!
+  "Get the projection of src onto a plane with the given normal
+   The normal should have magnitude 1.0."
+  (function vector vector vector vector))
+(define-extern vector-reflect! "Reflect a vector off of a plane." (function vector vector vector vector))
+(define-extern vector-reflect-flat!
+  "This is a weird one. It doesn't care about the value of src dot normal
+   and it effectively replaces the component of src normal to the plane with
+   the plane's normal.  I think this requires src/normal to both be unit vectors
+   in order to make sense.
+   NOTE: src should point from positive halfspace to negative otherwise it
+   doesn't work."
+  (function vector vector vector vector))
+(define-extern vector-reflect-flat-above!
+  "Not really a reflect. Same as flatten."
+  (function vector vector vector vector))
+(define-extern vector-reflect-flat-gravity! (function vector vector vector vector vector))
+(define-extern vector-segment-distance-point!
+   "Compute the distance from a point to the closest point on the line segment.
+    arg0 is the point. arg1/arg2 are the endpoints of the line segment.
+    arg3 is an optional output closest point."
+  (function vector vector vector vector float))
+(define-extern vector-segment-xz-distance-point! (function vector vector vector vector float))
+(define-extern vector-line-distance
+  "Weird function: given a point arg1, and an infinite line connecting arg2 and arg1, compute the distance
+   from arg0 to that line."
+  (function vector vector vector float))
+(define-extern vector-line-distance-point!
+  "Same as above function, but returns the point on arg2/arg1 in arg3 (ignored if #f)"
+  (function vector vector vector vector float))
+(define-extern vector-line-xz-distance-point! (function vector vector vector vector float))
+(define-extern vector-segment-overlap
+  "Seems to compute (v1 - v0).dot(v2 - v1), but in a weird way."
+  (function vector vector vector float))
+(define-extern line-sphere-intersection?
+  "Does [arg1, arg2] intersect sphere arg0?"
+  (function vector vector vector symbol))
+(define-extern nearest-dist2-between-moving-points (function vector vector vector vector float float))
+(define-extern vector-orient-by-quat!
+  "Rotate a vector by a quaternion."
+  (function vector vector quaternion vector))
+(define-extern vector-inv-orient-by-quat!
+  "Rotate a vector by the inverse rotation."
+  (function vector vector quaternion vector))
+(define-extern forward-down->inv-matrix
+  "Create a matrix representing an inverse transform where arg1 is forward (+z)
+   and arg2 is down (-y). Will have the pitch of forward."
+  (function matrix vector vector matrix))
+(define-extern forward-down-nopitch->inv-matrix
+  "Create a matrix representing an inverse transform where arg1 is forward (+z) 
+   and arg2 is down (-y). Will not use the pitch of forward."
+  (function matrix vector vector matrix))
+(define-extern forward-up->inv-matrix
+  "Create a matrix representing an inverse transform where arg1 is forward (+z)
+   and arg2 is up (+y). Will use the pitch of forward."
+  (function matrix vector vector matrix))
+(define-extern forward-up-nopitch->inv-matrix
+  "Create a matrix representing an inverse transform where arg1 is forward (+z)
+   and arg2 is up (+y). Will not use the pitch of forward."
+  (function matrix vector vector matrix))
+(define-extern forward-up-nopitch->quaternion
+  "Create a quaternion representing a transform where arg1 is forward (+z)
+   and arg2 is up (+y). Will not use the pitch of forward."
+  (function quaternion vector vector quaternion))
+(define-extern forward-up->quaternion
+  "Create a quaternion representing a transform where arg1 is forward (+z)
+   and arg2 is up (+y). Will use the pitch of forward."
+  (function quaternion vector vector quaternion))
+(define-extern quaternion-from-two-vectors!
+  "Create a quaternion representing the rotation between two vectors."
+  (function quaternion vector vector quaternion))
+(define-extern quaternion-from-two-vectors-partial!
+  "Create a quaternion representing the rotation between two vectors,
+   doing arg3 fraction of the total rotation."
+  (function quaternion vector vector float quaternion))
+(define-extern quaternion-from-two-vectors-max-angle!
+  "Create a quaternion representing the rotation between two vectors,
+   allowing at most a rotation of arg3 degrees."
+  (function quaternion vector vector float quaternion))
+(define-extern quaternion-from-two-vectors-max-angle-partial!
+  "Create a quaternion representing the arg4 fraction of the rotation between two vectors,
+   allowing at most a rotation of arg3 degrees."
+  (function quaternion vector vector float float quaternion))
+(define-extern matrix-from-two-vectors!
+  "Create a rotation matrix representing the rotation between two vectors."
+  (function matrix vector vector matrix))
+(define-extern matrix-from-two-vectors-max-angle!
+  "Create a rotation matrix representing the rotation between two vectors,
+   allowing at most a rotation of arg3 degrees."
+  (function matrix vector vector float matrix))
+(define-extern matrix-from-two-vectors-smooth!
+  "This function can help smoothly rotate from a current heading vector to a target one.
+   It returns a rotation to move arg1 closer to arg2, subject to two different speed limits.
+   arg3 is a rotations-per-frame rate. This limit takes frame rate into account (when lagging, the rotation is larger)
+   arg4 is a 'slow down when getting close to the end' limit.
+   This is used in rotate-toward-orientation, which is much improved from jak 1."
+  (function matrix vector vector float int matrix))
+(define-extern matrix-from-two-vectors-the-long-way-smooth!
+  "Same as above, but rotates you away from the target.
+   Note that the 'near the end' smoothing will apply when you're near the target."
+  (function matrix vector vector float int matrix))
+(define-extern quaternion-from-two-vectors-smooth!
+  "Same as above, but returns a quaternion."
+  (function quaternion vector vector float int quaternion))
+(define-extern matrix-from-two-vectors-max-angle-partial!
+  "Create a rotation matrix representing the given fraction of the rotation between two heading vectors,
+   rotating by at most the given angle."
+  (function matrix vector vector float float matrix))
+(define-extern matrix-from-two-vectors-partial-linear!
+  "Create a rotation matrix representing doing arg3 fraction of the rotation between two vectors."
+  (function matrix vector vector float matrix))
+(define-extern matrix-remove-z-rot "Remove the z rotation component of a rotation." (function matrix vector matrix))
+(define-extern matrix-rot-diff!
+  "Get the difference of rotation between two matrices, expressed as a quaternion."
+  (function vector matrix matrix float))
+(define-extern quaternion-seek
+  "Strange quaternion rotate toward function. arg3 is ignored. arg4 is the max seek amount."
+  (function quaternion quaternion quaternion float float quaternion))
+(define-extern vector-deg-seek
+  "Make one vector closer to another, doing at most a rotation by arg3 degrees."
+  (function vector vector vector float vector))
+(define-extern vector-deg-slerp
+  "Slerp for vectors. (imagine that they are the z axis of two frames)"
+  (function vector vector vector float vector))
+(define-extern vector-vector-deg-slerp! "Unused. No clue what this does." (function vector vector vector float vector vector))
+(define-extern normal-of-plane
+  "Given three points on a plane, compute the plane's normal."
+  (function vector vector vector vector vector))
+(define-extern vector-3pt-cross!
+  "Cross product of 2 - 1 and 3 - 1. (will give a normal to the plane, but not of magnitude 1)"
+  (function vector vector vector vector vector))
+(define-extern closest-pt-in-triangle
+  "arg2 is the vertices of the triangle, arg3 is the normal, arg1 is the input point, arg0 is the output."
+  (function vector vector matrix vector none))
+(define-extern point-in-triangle-cross
+  "Check if point is in the triangle using cross product check (so you have to get the order of points right)."
+  (function vector vector vector vector vector symbol))
+(define-extern point-in-plane-<-point+normal!
+  "Very strange function. Takes a plane, in point-normal form, then returns some other point on that plane.
+   It will move 1m in two of {x, y, z} directions. The direction not moved in is the one which is closest to point-in-triangle-cross
+   in the same direction of the normal (this prevent moving huge distances for nearly vertical planes for example)."
+  (function vector vector vector vector))
+(define-extern circle-circle-xz-intersect
+  "This function is unused and really complicated, so not implementing it for now."
+  (function sphere sphere vector vector int))
+(define-extern circle-test "Test the circle-circle-xz-intersect function." (function none))
+(define-extern vector-circle-tangent-new "Unused." (function vector vector vector vector none))
+(define-extern vector-circle-tangent "Also unused." (function vector vector vector vector none))
+(define-extern find-knot-span
+  "Binary serach over knots to find which contains the value float in (arg0 arg1). Unused."
+  (function int int float (inline-array vector) int))
+(define-extern calculate-basis-functions-vector!
+  "Calculate polynomial basis for a given control point."
+  (function vector int float (pointer float) vector))
+(define-extern curve-evaluate!
+  "Evaluate a curve.
+   arg0 is the output
+   arg1 is the input.
+   arg2 is control vertices.
+   arg3 is the number of control vertices.
+   arg4 is the knot points.
+   arg5 is the number of knots."
+  (function vector float (inline-array vector) int (pointer float) int vector))
+(define-extern curve-get-pos!
+  "Get the position on the curve at the given input."
+  (function vector float curve vector))
+(define-extern curve-length
+  "Compute the approximate curve length as the sum of distances between knots."
+  (function curve float))
+(define-extern curve-copy! "Shallow copy a curve." (function curve curve curve))
+(define-extern curve-closest-point
+  "Get the input value for the point on the curve. Approximate! And is O(n_knots)."
+  (function curve vector float float int float float))
+(define-extern vector-plane-distance "Unused." (function vector plane vector float))
+(define-extern intersect-ray-plane
+  "arg1 is ray direction, arg3 is plane normal, others don't really make sense to me."
+  (function vector vector vector vector float))
+(define-extern line-line-find-intersection-xz (function vector vector vector vector vector float))
+(define-extern segment-segment-find-intersection-xz (function vector vector vector vector float))
+(define-extern generate-rand-vector-on-sphere (function vector vector))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; timer                          ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (define-extern timer-count function) ;; (function timer-bank uint)
-;; (define-extern disable-irq function) ;; (function none)
-;; (define-extern enable-irq function) ;; (function none)
-;; (define-extern stopwatch-init function) ;; (function stopwatch int)
-;; (define-extern stopwatch-reset function) ;; (function stopwatch int)
-;; (define-extern stopwatch-start function) ;; (function stopwatch int)
-;; (define-extern stopwatch-stop function) ;; (function stopwatch none)
-;; (define-extern stopwatch-begin function) ;; (function stopwatch int)
-;; (define-extern stopwatch-end function) ;; (function stopwatch none)
-;; (define-extern stopwatch-elapsed-ticks function) ;; (function stopwatch time-frame)
-;; (define-extern stopwatch-elapsed-seconds function) ;; (function stopwatch float)
+(define-extern timer-count (function timer-bank uint))
+(define-extern disable-irq (function none))
+(define-extern enable-irq (function none))
+(define-extern stopwatch-init (function stopwatch int))
+(define-extern stopwatch-reset (function stopwatch int))
+(define-extern stopwatch-start (function stopwatch int))
+(define-extern stopwatch-stop (function stopwatch none))
+(define-extern stopwatch-begin (function stopwatch int))
+(define-extern stopwatch-end (function stopwatch none))
+(define-extern stopwatch-elapsed-ticks (function stopwatch time-frame))
+(define-extern stopwatch-elapsed-seconds (function stopwatch float))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; vector                         ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(define-extern vector-cross! (function vector vector vector vector))
-(define-extern vector-xz-cross! (function vector vector vector vector))
-(define-extern vector+float! (function vector vector float vector))
-(define-extern vector*! (function vector vector vector vector))
-(define-extern vector+*! (function vector vector vector float vector))
-(define-extern vector-*! (function vector vector vector float vector))
-(define-extern vector/! (function vector vector vector vector))
-(define-extern vector-float*! (function vector vector float vector))
-(define-extern vector-average! (function vector vector vector vector))
-(define-extern vector+float*! (function vector vector vector float vector))
-(define-extern vector--float*! (function vector vector vector float vector))
-(define-extern vector-min! function)
-(define-extern vector-max! function)
-(define-extern vector-float/! (function vector vector float vector))
-(define-extern vector-negate! (function vector vector vector))
-(define-extern vector-negate-in-place! (function vector vector))
-(define-extern vector= (function vector vector symbol))
-(define-extern vector-delta (function vector vector float))
-(define-extern vector-seek! (function vector vector float vector))
-(define-extern vector-smooth-seek! (function vector vector float vector))
-(define-extern vector-seek-2d-xz-smooth! (function vector vector float float vector))
-(define-extern vector-seek-2d-yz-smooth! (function vector vector float float vector))
-(define-extern vector-seek-3d-smooth! (function vector vector float float vector))
-(define-extern seek-with-smooth (function float float float float float float))
-(define-extern vector-identity! (function vector vector))
-(define-extern vector-seconds (function vector vector vector))
-(define-extern vector-seconds! (function vector vector))
-(define-extern vector-v! (function vector vector))
-(define-extern vector-v+! (function vector vector vector vector))
-(define-extern vector-v*float+! (function vector vector vector float vector))
-(define-extern vector-v++! (function vector vector vector))
-(define-extern vector-v*float! (function vector vector float vector))
-(define-extern vector-v*float++! (function vector vector float vector))
-(define-extern vector-to-ups! (function vector vector vector))
-(define-extern vector-from-ups! (function vector vector vector))
-(define-extern vector-length (function vector float))
-(define-extern vector-length-squared (function vector float))
-(define-extern vector-xz-length-squared (function vector float))
-(define-extern vector-xz-length (function vector float))
-(define-extern vector-vector-distance (function vector vector float))
-(define-extern vector-vector-distance-squared (function vector vector float))
-(define-extern vector-vector-xz-distance (function vector vector float))
-(define-extern vector-vector-xy-distance (function vector vector float))
-(define-extern vector-vector-xz-distance-squared (function vector vector float))
-(define-extern vector-vector-planar-distance function)
-(define-extern vector-normalize! (function vector float vector))
-(define-extern vector-normalize-ret-len! (function vector float float))
-(define-extern vector-normalize-copy! (function vector vector float vector))
-(define-extern vector-xz-normalize! (function vector float vector))
-(define-extern vector-xz-normalize-copy! (function vector vector float vector))
-(define-extern vector-length-max! (function vector float vector))
-(define-extern vector-xz-length-max! (function vector float vector))
-(define-extern vector-rotate-around-x! (function vector vector float vector))
-(define-extern vector-rotate-around-y! (function vector vector float vector))
-(define-extern vector-rotate90-around-y! (function vector vector vector))
-(define-extern vector-rotate-around-z! (function vector vector float vector))
-(define-extern rotate-y<-vector+vector (function vector vector float))
-(define-extern rotate-x<-vector+vector (function vector vector float))
-(define-extern rotate-z<-vector+vector (function vector vector float))
-(define-extern rotate-vector-to-vector function)
-(define-extern vector-cvt.w.s! (function vector vector vector))
-(define-extern vector-cvt.s.w! (function vector vector vector))
-(define-extern rot-zxy-from-vector! (function vector vector vector))
-(define-extern rot-zyx-from-vector! (function vector vector vector))
-(define-extern vector-lerp! (function vector vector vector float vector))
-(define-extern vector-lerp-clamp! (function vector vector vector float vector))
-(define-extern vector4-lerp! (function vector vector vector float vector))
-(define-extern vector4-lerp-clamp! (function vector vector vector float vector))
-(define-extern vector-degi (function vector vector vector))
-(define-extern vector-degf (function vector vector vector))
-(define-extern vector-degmod (function vector vector vector))
-(define-extern vector-deg-diff (function vector vector vector none))
-(define-extern vector-deg-lerp-clamp! (function vector vector vector float vector))
+(define-extern vector-cross!
+  "Compute the cross product. The w component is set to junk."
+  (function vector vector vector vector))
+(define-extern vector-xz-cross!
+  "Compute the cross product of the xz components of inputs."
+  (function vector vector vector vector))
+(define-extern vector+float!
+  "Add float to each component of vector. The w component is set to 1"
+  (function vector vector float vector))
+(define-extern vector*! "Elementwise product. Set w = 1." (function vector vector vector vector))
+(define-extern vector+*!
+  "set arg0 = arg1 + (arg3 * arg2). The w component will be set to 1."
+  (function vector vector vector float vector))
+(define-extern vector-*!
+  "Set arg0 = arg1 - (arg3 * arg2). The w component will be set to 1."
+  (function vector vector vector float vector))
+(define-extern vector/!
+  "Set arg0 = arg1 / arg2. The w component will be set to 1.
+   The implementation is kind of crazy."
+  (function vector vector vector vector))
+(define-extern vector-float*!
+  "Multiply all values in a vector by arg2. Set w to 1."
+  (function vector vector float vector))
+(define-extern vector-average!
+  "Set arg0 to the average of arg1 and arg2. Set w to 1."
+  (function vector vector vector vector))
+(define-extern vector+float*! "arg0 = arg1 + arg2 * arg3." (function vector vector vector float vector))
+(define-extern vector--float*!
+  "Set arg0 = arg1 - (arg2 * arg3). The w component will be set to 1.
+   Is this different from vector-*!"
+  (function vector vector vector float vector))
+(define-extern vector-min! (function vector vector vector vector))
+(define-extern vector-max! (function vector vector vector vector))
+(define-extern vector-float/!
+  "Divide all components by arg2. The w component will be set to 1."
+  (function vector vector float vector))
+(define-extern vector-negate! "Negate xyz, set w to 1." (function vector vector vector))
+(define-extern vector-negate-in-place! "Negate xyz. Doesn't touch w." (function vector vector))
+(define-extern vector=
+  "Are the two vectors equal? Does not compare the w component.
+   The implementation is cool."
+  (function vector vector symbol))
+(define-extern vector-delta
+  "Sum of the elementwise absolute value of differences."
+  (function vector vector float))
+(define-extern vector-seek!
+  "Seek arg0 toward arg1. The arg0 is both read and written.
+   arg2 is saturated to (0, 1)"
+  (function vector vector float vector))
+(define-extern vector-smooth-seek!
+  "Smoothly seek vec toward target.
+   The step always points toward the target and has length (dist * alpha).
+   If the step is longer than max-step, the step is projected onto a _square_ with side length arg2.
+   Note that this doesn't project to a circle like the function below..."
+  (function vector vector float vector))
+(define-extern vector-seek-2d-xz-smooth!
+  "Smoothly seek vec's x and z components toward target.
+   The step always points toward the target and has length (dist * alpha).
+   If the step is longer than max-step, the step is projected onto a circle of radius max-step.
+   Doesn't touch y or w."
+  (function vector vector float float vector))
+(define-extern vector-seek-2d-yz-smooth!
+  "Smoothly seek vec's y and z components toward target.
+   The step always points toward the target and has length (dist * alpha).
+   If the step is longer than max-step, the step is projected onto a circle of radius max-step.
+   Doesn't touch x or w."
+  (function vector vector float float vector))
+(define-extern vector-seek-3d-smooth!
+  "Smoothly seek vec's x, y, and z components toward target.
+   The step always points toward the target and has length (dist * alpha).
+   If the step is longer than max-step, the step is projected onto a circle of radius max-step.
+   Doesn't touch w."
+  (function vector vector float float vector))
+(define-extern seek-with-smooth
+  "Move value closer to target.
+   If we are within deadband, just go straight to target.
+   If not, try to go alpha*err. If that is a larger step than max-step, limit to max-step"
+  (function float float float float float float))
+(define-extern vector-identity! "Set arg0 to 1, 1, 1, 1." (function vector vector))
+(define-extern vector-seconds
+  "Convert from actual seconds to the seconds unit."
+  (function vector vector vector))
+(define-extern vector-seconds!
+  "Convert from actual seconds to seconds, in place."
+  (function vector vector))
+(define-extern vector-v!
+  "Convert a velocity to a displacement per frame. The velocity should be in X/actual_second.
+   Uses the current process clock."
+  (function vector vector))
+(define-extern vector-v+!
+  "Euler forward step, using the current display time settings."
+  (function vector vector vector vector))
+(define-extern vector-v*float+!
+  "Euler forward step, scaling velocity by velocity-scale."
+  (function vector vector vector float vector))
+(define-extern vector-v++!
+  "Update position in place, using display's current timing."
+  (function vector vector vector))
+(define-extern vector-v*float!
+  "Go from velocity to delta-p per frame, scaling by scale."
+  (function vector vector float vector))
+(define-extern vector-v*float++!
+  "Update position with given velocity, scaled by scale."
+  (function vector vector float vector))
+(define-extern vector-to-ups!
+  "Go from units per frame to units per second?"
+  (function vector vector vector))
+(define-extern vector-from-ups!
+  "Go from units per second to units per frame?"
+  (function vector vector vector))
+(define-extern vector-length
+  "Get the length of the xyz part."
+  (function vector float))
+(define-extern vector-length-squared
+  "Get the squared length of the xyz part."
+  (function vector float))
+(define-extern vector-xz-length-squared
+  "Get the length of the xz part, squared."
+  (function vector float))
+(define-extern vector-xz-length "Get the length of the xz part." (function vector float))
+(define-extern vector-vector-distance
+  "Subtract the xyz parts and get the norm."
+  (function vector vector float))
+(define-extern vector-vector-distance-squared
+  "Squared norm of the difference of the xyz parts."
+  (function vector vector float))
+(define-extern vector-vector-xz-distance "Distance on the xz plane." (function vector vector float))
+(define-extern vector-vector-xy-distance "distance on the xy plane." (function vector vector float))
+(define-extern vector-vector-xz-distance-squared "Distance on the xz plane squared." (function vector vector float))
+(define-extern vector-vector-planar-distance (function vector vector vector float))
+(define-extern vector-normalize!
+  "Modify arg0 in place to have length arg1 for its xyz components. The w part is not changed."
+  (function vector float vector))
+(define-extern vector-normalize-ret-len!
+  "Modify arg0 in place to have length arg1 for its xyz components.
+   The w part isn't changed and the _original_ length is returned."
+  (function vector float float))
+(define-extern vector-normalize-copy!
+  "Normalize, but not in place.
+   This implementation is very good compared to the vector-normalize! one.
+   The w component is set to 1."
+  (function vector vector float vector))
+(define-extern vector-xz-normalize! "Normalize, xz components only." (function vector float vector))
+(define-extern vector-xz-normalize-copy! "Normalize, xz components only." (function vector vector float vector))
+(define-extern vector-length-max!
+  "Make vector at most arg1 length (xyz only).
+   If it is larger, project onto sphere.
+   Doesn't touch w"
+  (function vector float vector))
+(define-extern vector-xz-length-max!
+  "Make vector at most arg1 length (xz only).
+   It it is larger, project onto circle.
+   Doesn't touch w or y."
+  (function vector float vector))
+(define-extern vector-rotate-around-x! "Rotate a vector around the x axis." (function vector vector float vector))
+(define-extern vector-rotate-around-y! "Rotate a vector around the y axis." (function vector vector float vector))
+(define-extern vector-rotate90-around-y! "Rotate a vector 90 degrees around y." (function vector vector vector))
+(define-extern vector-rotate-around-z! "Rotate a vector around the z axis." (function vector vector float vector))
+(define-extern rotate-y<-vector+vector
+  "Get the y rotation between vectors. These should have the same length."
+  (function vector vector float))
+(define-extern rotate-x<-vector+vector
+  "Get the x rotation between vectors. These should have the same length."
+  (function vector vector float))
+(define-extern rotate-z<-vector+vector
+  "Get the z rotation between vectors. These should have the same length."
+  (function vector vector float))
+(define-extern rotate-vector-to-vector (function vector vector vector vector))
+(define-extern vector-cvt.w.s! "Convert float to int32. Truncate." (function vector vector vector))
+(define-extern vector-cvt.s.w! "Convert float to int32." (function vector vector vector))
+(define-extern rot-zxy-from-vector!
+  "I think this gives you a vector of euler angles to rotate some unit vector
+   to arg1."
+  (function vector vector vector))
+(define-extern rot-zyx-from-vector!
+  "I think this gives you a vector of euler angles to rotate some unit vector
+   to arg1."
+  (function vector vector vector))
+(define-extern vector-lerp!
+  "Linearly interpolate between two vectors. Alpha isn't clamped.
+   w will be set to 1."
+  (function vector vector vector float vector))
+(define-extern vector-lerp-clamp!
+  "Linearly interpolate between two vectors, clamping alpha to 0, 1.
+   w will be set to 1."
+  (function vector vector vector float vector))
+(define-extern vector4-lerp!
+  "Interpolate all 4 elements of a vector. Alpha is not clamped."
+  (function vector vector vector float vector))
+(define-extern vector4-lerp-clamp!
+  "Interpolate all 4 elements of a vector. Alpha is clamped to [0, 1]."
+  (function vector vector vector float vector))
+(define-extern vector-degi
+  "Convert a vector (in _rotations_) to degrees units, stored in an int.
+   Truncates to the nearest _rotation_.
+   Neither the input or output is a commonly used form.
+   Unsurprisingly, this strange function is never used."
+  (function vector vector vector))
+(define-extern vector-degf
+  "Convert a vector (in integer degree units) to floating point rotations.
+   Truncates to the nearest _rotation_.
+   Like the previous function, this is stupid and unused."
+  (function vector vector vector))
+(define-extern vector-degmod
+  "This one is actually right. Wraps degrees units (in floats, like they should be)
+   to +/- half a rotation."
+  (function vector vector vector))
+(define-extern vector-deg-diff
+  "Wrapped difference, degrees units. Will have the usual 16-bit accuracy issue."
+  (function vector vector vector none))
+(define-extern vector-deg-lerp-clamp!
+  "Apply deg-lerp-clamp to the xyz components of a vector. Sets w = 1."
+  (function vector vector vector float vector))
 (define-extern vector3s-copy! (function vector vector vector))
 (define-extern vector3s+! (function vector vector vector vector))
 (define-extern vector3s*float! (function vector vector float vector))
 (define-extern vector3s-! (function vector vector vector vector))
-(define-extern vector4-add! (function vector4 vector4 vector4 none))
-(define-extern vector4-sub! (function vector4 vector4 vector4 none))
-(define-extern vector4-mul! (function vector4 vector4 vector4 none))
-(define-extern vector4-scale! (function vector4 vector4 float none))
-(define-extern vector4-madd! (function vector4 vector4 vector4 float none))
-(define-extern vector4-msub! (function vector4 vector4 vector4 float none))
-(define-extern vector4-array-add! (function (inline-array vector4) (inline-array vector4) (inline-array vector4) int none))
-(define-extern vector4-array-sub! (function (inline-array vector4) (inline-array vector4) (inline-array vector4) int none))
-(define-extern vector4-array-mul! (function (inline-array vector4) (inline-array vector4) (inline-array vector4) int none))
-(define-extern vector4-array-scale! (function (inline-array vector4) (inline-array vector4) float int none))
-(define-extern vector4-array-madd! (function (inline-array vector4) (inline-array vector4) (inline-array vector4) float int none))
-(define-extern vector4-array-msub! (function (inline-array vector4) (inline-array vector4) (inline-array vector4) float int none))
-(define-extern vector4-array-lerp! (function (inline-array vector4) (inline-array vector4) (inline-array vector4) float int symbol))
-(define-extern spheres-overlap? (function sphere sphere symbol))
-(define-extern sphere<-vector! (function sphere vector sphere))
-(define-extern sphere<-vector+r! (function sphere vector float sphere))
-(define-extern rand-vu-sphere-point! (function vector float vector))
-(define-extern rand-vu-sphere-point-uniform! function)
-(define-extern vector-vector-angle-safe (function vector vector float))
+(define-extern vector4-add! "Add 2 vector4s." (function vector4 vector4 vector4 none))
+(define-extern vector4-sub! "Subtract 2 vector4s." (function vector4 vector4 vector4 none))
+(define-extern vector4-mul! "Multiple 2 vector4s." (function vector4 vector4 vector4 none))
+(define-extern vector4-scale! "arg0 = arg1 * arg2." (function vector4 vector4 float none))
+(define-extern vector4-madd! "arg0 = arg1 + arg2 * arg3." (function vector4 vector4 vector4 float none))
+(define-extern vector4-msub! "arg0 = arg1 - arg2 * arg3." (function vector4 vector4 vector4 float none))
+(define-extern vector4-array-add! "Apply vector4-add! to all arrays." (function (inline-array vector4) (inline-array vector4) (inline-array vector4) int none))
+(define-extern vector4-array-sub! "Apply vector4-sub! to all arrays." (function (inline-array vector4) (inline-array vector4) (inline-array vector4) int none))
+(define-extern vector4-array-mul! "Apply vector4-mul! to all arrays." (function (inline-array vector4) (inline-array vector4) (inline-array vector4) int none))
+(define-extern vector4-array-scale! "Apply vector4-scale! to all arrays." (function (inline-array vector4) (inline-array vector4) float int none))
+(define-extern vector4-array-madd! "Apply vector4-madd! to all arrays." (function (inline-array vector4) (inline-array vector4) (inline-array vector4) float int none))
+(define-extern vector4-array-msub! "Apply vector4-msub! to all arrays." (function (inline-array vector4) (inline-array vector4) (inline-array vector4) float int none))
+(define-extern vector4-array-lerp! "Apply vector4-lerp! to all arrays." (function (inline-array vector4) (inline-array vector4) (inline-array vector4) float int symbol))
+(define-extern spheres-overlap? "Do the spheres overlap?" (function sphere sphere symbol))
+(define-extern sphere<-vector!
+  "Set the position of the sphere to arg1. Does not change the radius."
+  (function sphere vector sphere))
+(define-extern sphere<-vector+r!
+  "Set the position of the sphere from arg1 and the radius from arg2."
+  (function sphere vector float sphere))
+(define-extern rand-vu-sphere-point!
+  "Get a random point on the sphere at the origin with radius arg1.
+   The point is on the surface of the sphere."
+  (function vector float vector))
+(define-extern rand-vu-sphere-point-uniform! (function vector float vector))
+(define-extern vector-vector-angle-safe
+  "Get the angle between two vectors, with some 'safety' applied..."
+  (function vector vector float))
 (define-extern vector-get-unique! (function vector vector vector))
 (define-extern vector-get-closest-perpendicular! (function vector vector vector vector))
 
@@ -6482,6 +6790,915 @@
 ;; text-h                         ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+;; +++text-h:text-id
+(defenum text-id
+  :type uint32
+  (null #x0)
+  (text-0001 #x0001)
+  (text-0002 #x0002)
+  (text-0003 #x0003)
+  (text-0004 #x0004)
+  (text-0005 #x0005)
+  (text-0006 #x0006)
+  (text-0007 #x0007)
+  (text-0008 #x0008)
+  (text-0009 #x0009)
+  (text-000a #x000a)
+  (text-000b #x000b)
+  (text-000c #x000c)
+  (text-000d #x000d)
+  (text-000e #x000e)
+  (text-000f #x000f)
+  (text-0010 #x0010)
+  (text-0011 #x0011)
+  (text-0012 #x0012)
+  (text-0013 #x0013)
+  (text-0014 #x0014)
+  (text-0015 #x0015)
+  (text-0016 #x0016)
+  (text-0017 #x0017)
+  (text-0018 #x0018)
+  (text-0019 #x0019)
+  (text-001a #x001a)
+  (text-001b #x001b)
+  (text-001c #x001c)
+  (text-001d #x001d)
+  (text-001e #x001e)
+  (text-001f #x001f)
+  (text-0020 #x0020)
+  (text-0021 #x0021)
+  (text-0022 #x0022)
+  (text-0023 #x0023)
+  (text-0024 #x0024)
+  (text-0025 #x0025)
+  (text-0026 #x0026)
+  (text-0027 #x0027)
+  (text-0028 #x0028)
+  (text-0029 #x0029)
+  (text-002a #x002a)
+  (text-002b #x002b)
+  (text-002c #x002c)
+  (text-002d #x002d)
+  (text-002e #x002e)
+  (text-002f #x002f)
+  (text-0030 #x0030)
+  (text-0031 #x0031)
+  (text-0032 #x0032)
+  (text-0033 #x0033)
+  (text-0034 #x0034)
+  (text-0035 #x0035)
+  (text-0036 #x0036)
+  (text-0037 #x0037)
+  (text-0038 #x0038)
+  (text-0039 #x0039)
+  (text-003a #x003a)
+  (text-003b #x003b)
+  (text-003c #x003c)
+  (text-003d #x003d)
+  (text-003e #x003e)
+  (text-003f #x003f)
+  (text-0040 #x0040)
+  (text-0041 #x0041)
+  (text-0042 #x0042)
+  (text-0043 #x0043)
+  (text-0044 #x0044)
+  (text-0049 #x0049)
+  (text-004a #x004a)
+  (text-004b #x004b)
+  (text-004c #x004c)
+  (text-004d #x004d)
+  (text-0052 #x0052)
+  (text-0053 #x0053)
+  (text-0054 #x0054)
+  (text-0055 #x0055)
+  (text-0056 #x0056)
+  (text-0057 #x0057)
+  (text-0058 #x0058)
+  (text-0059 #x0059)
+  (text-005a #x005a)
+  (text-005b #x005b)
+  (text-005c #x005c)
+  (text-005d #x005d)
+  (text-005e #x005e)
+  (text-005f #x005f)
+  (text-0060 #x0060)
+  (text-0061 #x0061)
+  (text-0062 #x0062)
+  (text-0063 #x0063)
+  (text-0065 #x0065)
+  (text-0066 #x0066)
+  (text-0067 #x0067)
+  (text-0068 #x0068)
+  (text-0069 #x0069)
+  (text-006a #x006a)
+  (text-006b #x006b)
+  (text-006c #x006c)
+  (text-006d #x006d)
+  (text-006e #x006e)
+  (text-006f #x006f)
+  (text-0072 #x0072)
+  (text-0073 #x0073)
+  (text-0074 #x0074)
+  (text-0075 #x0075)
+  (text-0076 #x0076)
+  (text-0077 #x0077)
+  (text-0078 #x0078)
+  (text-0079 #x0079)
+  (text-007a #x007a)
+  (text-007b #x007b)
+  (text-007c #x007c)
+  (text-007d #x007d)
+  (text-007e #x007e)
+  (text-007f #x007f)
+  (text-0080 #x0080)
+  (text-0081 #x0081)
+  (text-0082 #x0082)
+  (text-0083 #x0083)
+  (text-0084 #x0084)
+  (text-0085 #x0085)
+  (text-0086 #x0086)
+  (text-0087 #x0087)
+  (text-0088 #x0088)
+  (text-0089 #x0089)
+  (text-008a #x008a)
+  (text-008b #x008b)
+  (text-008c #x008c)
+  (text-008d #x008d)
+  (text-008e #x008e)
+  (text-008f #x008f)
+  (text-0090 #x0090)
+  (text-0091 #x0091)
+  (text-0092 #x0092)
+  (text-0093 #x0093)
+  (text-0094 #x0094)
+  (text-0095 #x0095)
+  (text-0096 #x0096)
+  (text-0097 #x0097)
+  (text-0098 #x0098)
+  (text-0099 #x0099)
+  (text-009a #x009a)
+  (text-009b #x009b)
+  (text-009c #x009c)
+  (text-009d #x009d)
+  (text-009e #x009e)
+  (text-009f #x009f)
+  (text-00a0 #x00a0)
+  (text-00a1 #x00a1)
+  (text-00a2 #x00a2)
+  (text-00a3 #x00a3)
+  (text-00a4 #x00a4)
+  (text-00a5 #x00a5)
+  (text-00a6 #x00a6)
+  (text-00a7 #x00a7)
+  (text-00a8 #x00a8)
+  (text-00a9 #x00a9)
+  (text-00aa #x00aa)
+  (text-00ab #x00ab)
+  (text-00ac #x00ac)
+  (text-00ad #x00ad)
+  (text-00ae #x00ae)
+  (text-00af #x00af)
+  (text-00b0 #x00b0)
+  (text-00b1 #x00b1)
+  (text-00b2 #x00b2)
+  (text-00b3 #x00b3)
+  (text-00b4 #x00b4)
+  (text-00b5 #x00b5)
+  (text-00b6 #x00b6)
+  (text-012c #x012c)
+  (text-012d #x012d)
+  (text-012e #x012e)
+  (text-012f #x012f)
+  (text-0130 #x0130)
+  (text-0131 #x0131)
+  (text-0132 #x0132)
+  (text-0134 #x0134)
+  (text-0135 #x0135)
+  (text-0136 #x0136)
+  (text-0137 #x0137)
+  (text-0138 #x0138)
+  (text-0139 #x0139)
+  (text-013a #x013a)
+  (text-013b #x013b)
+  (text-013c #x013c)
+  (text-013d #x013d)
+  (text-013e #x013e)
+  (text-013f #x013f)
+  (text-0140 #x0140)
+  (text-0141 #x0141)
+  (text-0142 #x0142)
+  (text-0143 #x0143)
+  (text-0144 #x0144)
+  (text-0145 #x0145)
+  (text-0147 #x0147)
+  (text-0155 #x0155)
+  (text-0156 #x0156)
+  (text-0157 #x0157)
+  (text-0158 #x0158)
+  (text-01b8 #x01b8)
+  (text-0207 #x0207)
+  (text-0208 #x0208)
+  (text-0209 #x0209)
+  (text-020a #x020a)
+  (text-020b #x020b)
+  (text-020c #x020c)
+  (text-020d #x020d)
+  (text-020e #x020e)
+  (text-03bf #x03bf)
+  (text-03c0 #x03c0)
+  (text-03c1 #x03c1)
+  (text-03c2 #x03c2)
+  (text-03c3 #x03c3)
+  (text-03c4 #x03c4)
+  (text-03c5 #x03c5)
+  (text-03c6 #x03c6)
+  (text-03c7 #x03c7)
+  (text-03c8 #x03c8)
+  (text-03c9 #x03c9)
+  (text-03d1 #x03d1)
+  (text-0408 #x0408)
+  (text-0409 #x0409)
+  (text-040a #x040a)
+  (text-040b #x040b)
+  (text-040c #x040c)
+  (text-040d #x040d)
+  (text-040e #x040e)
+  (text-0443 #x0443)
+  (text-0444 #x0444)
+  (text-0445 #x0445)
+  (text-0446 #x0446)
+  (text-0447 #x0447)
+  (text-0448 #x0448)
+  (text-0449 #x0449)
+  (text-044b #x044b)
+  (text-044c #x044c)
+  (text-044d #x044d)
+  (text-044e #x044e)
+  (text-044f #x044f)
+  (text-0450 #x0450)
+  (text-0451 #x0451)
+  (text-0452 #x0452)
+  (text-0453 #x0453)
+  (text-0454 #x0454)
+  (text-0456 #x0456)
+  (text-0457 #x0457)
+  (text-0458 #x0458)
+  (text-0459 #x0459)
+  (text-045a #x045a)
+  (text-045b #x045b)
+  (text-045c #x045c)
+  (text-045d #x045d)
+  (text-045e #x045e)
+  (text-045f #x045f)
+  (text-0460 #x0460)
+  (text-0461 #x0461)
+  (text-0462 #x0462)
+  (text-0463 #x0463)
+  (text-0464 #x0464)
+  (text-0465 #x0465)
+  (text-0466 #x0466)
+  (text-0467 #x0467)
+  (text-0468 #x0468)
+  (text-0469 #x0469)
+  (text-046a #x046a)
+  (text-046b #x046b)
+  (text-053d #x053d)
+  (text-053e #x053e)
+  (text-0546 #x0546)
+  (text-0547 #x0547)
+  (text-0548 #x0548)
+  (text-0549 #x0549)
+  (text-054a #x054a)
+  (text-054b #x054b)
+  (text-054c #x054c)
+  (text-054d #x054d)
+  (text-054e #x054e)
+  (text-054f #x054f)
+  (text-0550 #x0550)
+  (text-0551 #x0551)
+  (text-0552 #x0552)
+  (text-0553 #x0553)
+  (text-0554 #x0554)
+  (text-0555 #x0555)
+  (text-0556 #x0556)
+  (text-0557 #x0557)
+  (text-0558 #x0558)
+  (text-0559 #x0559)
+  (text-055a #x055a)
+  (text-055b #x055b)
+  (text-055c #x055c)
+  (text-055d #x055d)
+  (text-055e #x055e)
+  (text-055f #x055f)
+  (text-0562 #x0562)
+  (text-0563 #x0563)
+  (text-0564 #x0564)
+  (text-0565 #x0565)
+  (text-0566 #x0566)
+  (text-0567 #x0567)
+  (text-0568 #x0568)
+  (text-0569 #x0569)
+  (text-056a #x056a)
+  (text-056b #x056b)
+  (text-056c #x056c)
+  (text-056d #x056d)
+  (text-056e #x056e)
+  (text-056f #x056f)
+  (text-0570 #x0570)
+  (text-0571 #x0571)
+  (text-0572 #x0572)
+  (text-0573 #x0573)
+  (text-0574 #x0574)
+  (text-0575 #x0575)
+  (text-0576 #x0576)
+  (text-0577 #x0577)
+  (text-0578 #x0578)
+  (text-0579 #x0579)
+  (text-057a #x057a)
+  (text-057b #x057b)
+  (text-057c #x057c)
+  (text-057d #x057d)
+  (text-057e #x057e)
+  (text-057f #x057f)
+  (text-0580 #x0580)
+  (text-0581 #x0581)
+  (text-0582 #x0582)
+  (text-0583 #x0583)
+  (text-0584 #x0584)
+  (text-0585 #x0585)
+  (text-0586 #x0586)
+  (text-0587 #x0587)
+  (text-0588 #x0588)
+  (text-0589 #x0589)
+  (text-058a #x058a)
+  (text-058b #x058b)
+  (text-058c #x058c)
+  (text-058d #x058d)
+  (text-058e #x058e)
+  (text-058f #x058f)
+  (text-0590 #x0590)
+  (text-0591 #x0591)
+  (text-0592 #x0592)
+  (text-0593 #x0593)
+  (text-0594 #x0594)
+  (text-0595 #x0595)
+  (text-0596 #x0596)
+  (text-0597 #x0597)
+  (text-0598 #x0598)
+  (text-0599 #x0599)
+  (text-059a #x059a)
+  (text-059b #x059b)
+  (text-059c #x059c)
+  (text-059d #x059d)
+  (text-059e #x059e)
+  (text-059f #x059f)
+  (text-05a0 #x05a0)
+  (text-05a1 #x05a1)
+  (text-05a3 #x05a3)
+  (text-05a4 #x05a4)
+  (text-05a6 #x05a6)
+  (text-05a7 #x05a7)
+  (text-05a8 #x05a8)
+  (text-05a9 #x05a9)
+  (text-05aa #x05aa)
+  (text-05ab #x05ab)
+  (text-05ac #x05ac)
+  (text-05ad #x05ad)
+  (text-05ae #x05ae)
+  (text-05af #x05af)
+  (text-05b0 #x05b0)
+  (text-05b1 #x05b1)
+  (text-05b2 #x05b2)
+  (text-05b3 #x05b3)
+  (text-05b4 #x05b4)
+  (text-05b5 #x05b5)
+  (text-05b6 #x05b6)
+  (text-05b7 #x05b7)
+  (text-05b8 #x05b8)
+  (text-05b9 #x05b9)
+  (text-05ba #x05ba)
+  (text-05bb #x05bb)
+  (text-05bc #x05bc)
+  (text-05bd #x05bd)
+  (text-05be #x05be)
+  (text-05bf #x05bf)
+  (text-05c0 #x05c0)
+  (text-05c1 #x05c1)
+  (text-05c2 #x05c2)
+  (text-05c3 #x05c3)
+  (text-05c4 #x05c4)
+  (text-05c5 #x05c5)
+  (text-05c6 #x05c6)
+  (text-05c7 #x05c7)
+  (text-05c8 #x05c8)
+  (text-05c9 #x05c9)
+  (text-05ca #x05ca)
+  (text-05cb #x05cb)
+  (text-05cc #x05cc)
+  (text-05cd #x05cd)
+  (text-05ce #x05ce)
+  (text-05cf #x05cf)
+  (text-05d0 #x05d0)
+  (text-05d1 #x05d1)
+  (text-05d2 #x05d2)
+  (text-05d3 #x05d3)
+  (text-05d4 #x05d4)
+  (text-05d5 #x05d5)
+  (text-05d6 #x05d6)
+  (text-05d7 #x05d7)
+  (text-05d8 #x05d8)
+  (text-05d9 #x05d9)
+  (text-05da #x05da)
+  (text-05db #x05db)
+  (text-05dc #x05dc)
+  (text-05dd #x05dd)
+  (text-05de #x05de)
+  (text-05df #x05df)
+  (text-05e0 #x05e0)
+  (text-05e1 #x05e1)
+  (text-05e2 #x05e2)
+  (text-05e3 #x05e3)
+  (text-05e4 #x05e4)
+  (text-05e5 #x05e5)
+  (text-05e6 #x05e6)
+  (text-05e7 #x05e7)
+  (text-05e8 #x05e8)
+  (text-05e9 #x05e9)
+  (text-05ea #x05ea)
+  (text-05eb #x05eb)
+  (text-05ec #x05ec)
+  (text-05ed #x05ed)
+  (text-05ee #x05ee)
+  (text-05f0 #x05f0)
+  (text-05f1 #x05f1)
+  (text-05f2 #x05f2)
+  (text-05f3 #x05f3)
+  (text-05f5 #x05f5)
+  (text-05f6 #x05f6)
+  (text-05f7 #x05f7)
+  (text-05f8 #x05f8)
+  (text-05f9 #x05f9)
+  (text-05fa #x05fa)
+  (text-05fb #x05fb)
+  (text-05fc #x05fc)
+  (text-05fd #x05fd)
+  (text-05fe #x05fe)
+  (text-05ff #x05ff)
+  (text-0600 #x0600)
+  (text-0601 #x0601)
+  (text-0602 #x0602)
+  (text-0603 #x0603)
+  (text-0604 #x0604)
+  (text-0605 #x0605)
+  (text-0606 #x0606)
+  (text-0607 #x0607)
+  (text-0608 #x0608)
+  (text-0609 #x0609)
+  (text-060a #x060a)
+  (text-060b #x060b)
+  (text-060c #x060c)
+  (text-060d #x060d)
+  (text-060e #x060e)
+  (text-060f #x060f)
+  (text-0610 #x0610)
+  (text-0611 #x0611)
+  (text-0612 #x0612)
+  (text-0613 #x0613)
+  (text-0614 #x0614)
+  (text-0615 #x0615)
+  (text-0616 #x0616)
+  (text-0617 #x0617)
+  (text-0618 #x0618)
+  (text-0619 #x0619)
+  (text-061a #x061a)
+  (text-061b #x061b)
+  (text-061c #x061c)
+  (text-061d #x061d)
+  (text-061e #x061e)
+  (text-061f #x061f)
+  (text-0620 #x0620)
+  (text-0621 #x0621)
+  (text-0622 #x0622)
+  (text-0623 #x0623)
+  (text-0624 #x0624)
+  (text-0625 #x0625)
+  (text-0626 #x0626)
+  (text-0627 #x0627)
+  (text-0628 #x0628)
+  (text-0629 #x0629)
+  (text-062a #x062a)
+  (text-062b #x062b)
+  (text-062c #x062c)
+  (text-062d #x062d)
+  (text-062e #x062e)
+  (text-0630 #x0630)
+  (text-0631 #x0631)
+  (text-0632 #x0632)
+  (text-0633 #x0633)
+  (text-0634 #x0634)
+  (text-0635 #x0635)
+  (text-0636 #x0636)
+  (text-0637 #x0637)
+  (text-0638 #x0638)
+  (text-0639 #x0639)
+  (text-063a #x063a)
+  (text-063b #x063b)
+  (text-063d #x063d)
+  (text-063e #x063e)
+  (text-063f #x063f)
+  (text-0640 #x0640)
+  (text-0641 #x0641)
+  (text-0642 #x0642)
+  (text-0643 #x0643)
+  (text-0644 #x0644)
+  (text-0645 #x0645)
+  (text-0646 #x0646)
+  (text-0647 #x0647)
+  (text-0648 #x0648)
+  (text-0649 #x0649)
+  (text-064a #x064a)
+  (text-064b #x064b)
+  (text-064c #x064c)
+  (text-064d #x064d)
+  (text-064e #x064e)
+  (text-064f #x064f)
+  (text-0650 #x0650)
+  (text-0651 #x0651)
+  (text-0652 #x0652)
+  (text-0653 #x0653)
+  (text-0654 #x0654)
+  (text-0655 #x0655)
+  (text-0656 #x0656)
+  (text-0657 #x0657)
+  (text-0658 #x0658)
+  (text-0659 #x0659)
+  (text-065a #x065a)
+  (text-065b #x065b)
+  (text-065c #x065c)
+  (text-065d #x065d)
+  (text-065e #x065e)
+  (text-065f #x065f)
+  (text-0660 #x0660)
+  (text-0661 #x0661)
+  (text-0662 #x0662)
+  (text-0663 #x0663)
+  (text-0664 #x0664)
+  (text-0665 #x0665)
+  (text-0666 #x0666)
+  (text-0667 #x0667)
+  (text-0668 #x0668)
+  (text-0669 #x0669)
+  (text-066a #x066a)
+  (text-066b #x066b)
+  (text-066c #x066c)
+  (text-066d #x066d)
+  (text-066e #x066e)
+  (text-066f #x066f)
+  (text-0670 #x0670)
+  (text-0671 #x0671)
+  (text-0672 #x0672)
+  (text-0673 #x0673)
+  (text-0674 #x0674)
+  (text-0675 #x0675)
+  (text-0676 #x0676)
+  (text-0677 #x0677)
+  (text-0678 #x0678)
+  (text-0679 #x0679)
+  (text-067a #x067a)
+  (text-067b #x067b)
+  (text-067c #x067c)
+  (text-067d #x067d)
+  (text-067e #x067e)
+  (text-067f #x067f)
+  (text-0680 #x0680)
+  (text-0681 #x0681)
+  (text-0682 #x0682)
+  (text-0683 #x0683)
+  (text-0684 #x0684)
+  (text-0685 #x0685)
+  (text-0686 #x0686)
+  (text-0687 #x0687)
+  (text-0688 #x0688)
+  (text-0689 #x0689)
+  (text-068a #x068a)
+  (text-068b #x068b)
+  (text-068c #x068c)
+  (text-068d #x068d)
+  (text-068e #x068e)
+  (text-068f #x068f)
+  (text-0690 #x0690)
+  (text-0691 #x0691)
+  (text-0692 #x0692)
+  (text-0693 #x0693)
+  (text-0694 #x0694)
+  (text-0695 #x0695)
+  (text-0696 #x0696)
+  (text-0697 #x0697)
+  (text-0698 #x0698)
+  (text-0699 #x0699)
+  (text-069a #x069a)
+  (text-069b #x069b)
+  (text-069c #x069c)
+  (text-069d #x069d)
+  (text-069e #x069e)
+  (text-069f #x069f)
+  (text-06a0 #x06a0)
+  (text-06a1 #x06a1)
+  (text-06a2 #x06a2)
+  (text-06a3 #x06a3)
+  (text-06a4 #x06a4)
+  (text-06a5 #x06a5)
+  (text-06a6 #x06a6)
+  (text-06a7 #x06a7)
+  (text-06a8 #x06a8)
+  (text-06a9 #x06a9)
+  (text-06aa #x06aa)
+  (text-06ab #x06ab)
+  (text-06ac #x06ac)
+  (text-06ad #x06ad)
+  (text-06ae #x06ae)
+  (text-06af #x06af)
+  (text-06b0 #x06b0)
+  (text-06b1 #x06b1)
+  (text-06b2 #x06b2)
+  (text-06b3 #x06b3)
+  (text-06b4 #x06b4)
+  (text-06b5 #x06b5)
+  (text-06b6 #x06b6)
+  (text-06b7 #x06b7)
+  (text-06b8 #x06b8)
+  (text-06b9 #x06b9)
+  (text-06ba #x06ba)
+  (text-06bb #x06bb)
+  (text-06bc #x06bc)
+  (text-06bd #x06bd)
+  (text-06be #x06be)
+  (text-06bf #x06bf)
+  (text-06c0 #x06c0)
+  (text-06c1 #x06c1)
+  (text-06c2 #x06c2)
+  (text-06c3 #x06c3)
+  (text-06c4 #x06c4)
+  (text-06c5 #x06c5)
+  (text-06c6 #x06c6)
+  (text-06c7 #x06c7)
+  (text-06c8 #x06c8)
+  (text-06c9 #x06c9)
+  (text-06ca #x06ca)
+  (text-06de #x06de)
+  (text-06df #x06df)
+  (text-06e0 #x06e0)
+  (text-06e1 #x06e1)
+  (text-06e2 #x06e2)
+  (text-06e3 #x06e3)
+  (text-06e4 #x06e4)
+  (text-06e5 #x06e5)
+  (text-06e6 #x06e6)
+  (text-06e7 #x06e7)
+  (text-06e8 #x06e8)
+  (text-06e9 #x06e9)
+  (text-06ea #x06ea)
+  (text-06eb #x06eb)
+  (text-06ec #x06ec)
+  (text-06ed #x06ed)
+  (text-06ee #x06ee)
+  (text-06ef #x06ef)
+  (text-06f0 #x06f0)
+  (text-06f1 #x06f1)
+  (text-06f2 #x06f2)
+  (text-06f3 #x06f3)
+  (text-06f4 #x06f4)
+  (text-06f5 #x06f5)
+  (text-06f6 #x06f6)
+  (text-06f7 #x06f7)
+  (text-06f8 #x06f8)
+  (text-06f9 #x06f9)
+  (text-06fa #x06fa)
+  (text-06fb #x06fb)
+  (text-06fc #x06fc)
+  (text-06fd #x06fd)
+  (text-06fe #x06fe)
+  (text-06ff #x06ff)
+  (text-0700 #x0700)
+  (text-0701 #x0701)
+  (text-0702 #x0702)
+  (text-0703 #x0703)
+  (text-0704 #x0704)
+  (text-0705 #x0705)
+  (text-0706 #x0706)
+  (text-0707 #x0707)
+  (text-0708 #x0708)
+  (text-0709 #x0709)
+  (text-070a #x070a)
+  (text-070b #x070b)
+  (text-070c #x070c)
+  (text-070d #x070d)
+  (text-070e #x070e)
+  (text-070f #x070f)
+  (text-0775 #x0775)
+  (text-0776 #x0776)
+  (text-0778 #x0778)
+  (text-0779 #x0779)
+  (text-077a #x077a)
+  (text-077b #x077b)
+  (text-077c #x077c)
+  (text-078d #x078d)
+  (text-07b3 #x07b3)
+  (text-07b4 #x07b4)
+  (text-07b5 #x07b5)
+  (text-07b8 #x07b8)
+  (text-07b9 #x07b9)
+  (text-07ba #x07ba)
+  (text-07bb #x07bb)
+  (text-07bc #x07bc)
+  (text-07bd #x07bd)
+  (text-07be #x07be)
+  (text-07bf #x07bf)
+  (text-07c0 #x07c0)
+  (text-07c1 #x07c1)
+  (text-07c2 #x07c2)
+  (text-07c3 #x07c3)
+  (text-07c4 #x07c4)
+  (text-07c7 #x07c7)
+  (text-07c8 #x07c8)
+  (text-07cb #x07cb)
+  (text-07cc #x07cc)
+  (text-07cd #x07cd)
+  (text-07ce #x07ce)
+  (text-07cf #x07cf)
+  (text-07d0 #x07d0)
+  (text-07d1 #x07d1)
+  (text-07d2 #x07d2)
+  (text-07d3 #x07d3)
+  (text-07d4 #x07d4)
+  (text-07d5 #x07d5)
+  (text-07d6 #x07d6)
+  (text-07d7 #x07d7)
+  (text-07d8 #x07d8)
+  (text-07d9 #x07d9)
+  (text-07da #x07da)
+  (text-07db #x07db)
+  (text-07dc #x07dc)
+  (text-07dd #x07dd)
+  (text-07de #x07de)
+  (text-07df #x07df)
+  (text-07e0 #x07e0)
+  (text-07e1 #x07e1)
+  (text-07e2 #x07e2)
+  (text-07e3 #x07e3)
+  (text-07e4 #x07e4)
+  (text-07e5 #x07e5)
+  (text-07e6 #x07e6)
+  (text-07e7 #x07e7)
+  (text-07e8 #x07e8)
+  (text-07e9 #x07e9)
+  (text-07ea #x07ea)
+  (text-07f6 #x07f6)
+  (text-07f7 #x07f7)
+  (text-07f8 #x07f8)
+  (text-07f9 #x07f9)
+  (text-07fa #x07fa)
+  (text-07fb #x07fb)
+  (text-07fc #x07fc)
+  (text-07fd #x07fd)
+  (text-07fe #x07fe)
+  (text-07ff #x07ff)
+  (text-0800 #x0800)
+  (text-0801 #x0801)
+  (text-0802 #x0802)
+  (text-0803 #x0803)
+  (text-0804 #x0804)
+  (text-0805 #x0805)
+  (text-0806 #x0806)
+  (text-0807 #x0807)
+  (text-0808 #x0808)
+  (text-0809 #x0809)
+  (text-080a #x080a)
+  (text-080b #x080b)
+  (text-080c #x080c)
+  (text-080d #x080d)
+  (text-0816 #x0816)
+  (text-0817 #x0817)
+  (text-0818 #x0818)
+  (text-0819 #x0819)
+  (text-081a #x081a)
+  (text-081b #x081b)
+  (text-081c #x081c)
+  (text-081d #x081d)
+  (text-081e #x081e)
+  (text-081f #x081f)
+  (text-0820 #x0820)
+  (text-0821 #x0821)
+  (text-0822 #x0822)
+  (text-0823 #x0823)
+  (text-0824 #x0824)
+  (text-0825 #x0825)
+  (text-0826 #x0826)
+  (text-0827 #x0827)
+  (text-0828 #x0828)
+  (text-0829 #x0829)
+  (text-082a #x082a)
+  (text-082b #x082b)
+  (text-082c #x082c)
+  (text-082d #x082d)
+  (text-082e #x082e)
+  (text-082f #x082f)
+  (text-0830 #x0830)
+  (text-0831 #x0831)
+  (text-0832 #x0832)
+  (text-0833 #x0833)
+  (text-0834 #x0834)
+  (text-0835 #x0835)
+  (text-0836 #x0836)
+  (text-0837 #x0837)
+  (text-0838 #x0838)
+  (text-0839 #x0839)
+  (text-083a #x083a)
+  (text-083b #x083b)
+  (text-083c #x083c)
+  (text-083d #x083d)
+  (text-083e #x083e)
+  (text-083f #x083f)
+  (text-0840 #x0840)
+  (text-0841 #x0841)
+  (text-0842 #x0842)
+  (text-0843 #x0843)
+  (text-0844 #x0844)
+  (text-0845 #x0845)
+  (text-0846 #x0846)
+  (text-0847 #x0847)
+  (text-0848 #x0848)
+  (text-0849 #x0849)
+  (text-084a #x084a)
+  (text-084b #x084b)
+  (text-084c #x084c)
+  (text-084d #x084d)
+  (text-084e #x084e)
+  (text-084f #x084f)
+  (text-0850 #x0850)
+  (text-0851 #x0851)
+  (text-0852 #x0852)
+  (text-0853 #x0853)
+  (text-0856 #x0856)
+  (text-0857 #x0857)
+  (text-0858 #x0858)
+  (text-085a #x085a)
+  (text-085f #x085f)
+  (text-0860 #x0860)
+  (text-0861 #x0861)
+  (text-0862 #x0862)
+  (text-0863 #x0863)
+  (text-0864 #x0864)
+  (text-0866 #x0866)
+  (text-0867 #x0867)
+  (text-0868 #x0868)
+  (text-0869 #x0869)
+  (text-086a #x086a)
+  (text-086c #x086c)
+  (text-086d #x086d)
+  (text-086e #x086e)
+  (text-086f #x086f)
+  (text-0870 #x0870)
+  (text-0871 #x0871)
+  (text-0872 #x0872)
+  (text-0873 #x0873)
+  (text-0874 #x0874)
+  (text-0875 #x0875)
+  (text-0876 #x0876)
+  (text-0877 #x0877)
+  (text-0878 #x0878)
+  (text-0879 #x0879)
+  (text-087a #x087a)
+  (text-087b #x087b)
+  (text-087c #x087c)
+  (text-087d #x087d)
+  (text-087e #x087e)
+  (text-087f #x087f)
+  (text-0880 #x0880)
+  (text-0883 #x0883)
+  (text-0884 #x0884)
+  (text-0885 #x0885)
+  (text-0886 #x0886)
+  (text-0887 #x0887)
+  (text-0888 #x0888)
+  (text-088a #x088a)
+  (text-088b #x088b)
+  (text-088c #x088c)
+  (text-088d #x088d)
+  (text-088e #x088e)
+  (text-088f #x088f)
+  (text-0891 #x0891)
+  (text-0892 #x0892)
+  (text-0893 #x0893)
+  (text-0894 #x0894)
+  (text-0895 #x0895)
+  (text-0896 #x0896)
+  (text-0897 #x0897)
+  (text-0898 #x0898)
+  (text-0899 #x0899)
+  )
+;; ---text-h:text-id
+
 #|
 (deftype game-text (structure)
   ((id   text-id  :offset-assert 0) ;; guessed by decompiler
@@ -7654,7 +8871,6 @@
 ;; ocean-h                        ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype ocean-corner (structure)
   ((bsphere      sphere :inline :offset-assert 0)
    (start-corner vector :inline :offset-assert 16)
@@ -7666,9 +8882,7 @@
   :size-assert         #x50
   :flag-assert         #x900000050
   )
-|#
 
-#|
 (deftype ocean-wave-info (structure)
   ((frequency  float  :offset-assert 0)
    (amplitude  float  :offset-assert 4)
@@ -7683,9 +8897,7 @@
   :size-assert         #x20
   :flag-assert         #x900000020
   )
-|#
 
-#|
 (deftype ocean-vertex (structure)
   ((pos vector :inline :offset-assert 0)
    (stq vector :inline :offset-assert 16)
@@ -7695,19 +8907,15 @@
   :size-assert         #x30
   :flag-assert         #x900000030
   )
-|#
 
-#|
 (deftype ocean-spheres (structure)
-  ((spheres sphere 36 :offset-assert 0) ;; guessed by decompiler
+  ((spheres sphere 36 :inline :offset-assert 0) ;; guessed by decompiler
    )
   :method-count-assert 9
   :size-assert         #x240
   :flag-assert         #x900000240
   )
-|#
 
-#|
 (deftype ocean-colors (structure)
   ((colors rgba 2548 :offset-assert 0) ;; guessed by decompiler
    )
@@ -7715,30 +8923,25 @@
   :size-assert         #x27d0
   :flag-assert         #x9000027d0
   )
-|#
 
-#|
 (deftype ocean-colors-float (structure)
-  ((colors vector 2548 :offset-assert 0) ;; guessed by decompiler
+  ((colors vector 2548 :inline :offset-assert 0) ;; guessed by decompiler
    )
   :method-count-assert 9
   :size-assert         #x9f40
   :flag-assert         #x900009f40
   )
-|#
 
-#|
 (deftype ocean-mid-mask (structure)
   ((mask  uint8  8 :offset-assert 0) ;; guessed by decompiler
-   (dword uint64   :offset-assert 0)
+   (dword uint64   :offset 0)
    )
+  :pack-me
   :method-count-assert 9
   :size-assert         #x8
   :flag-assert         #x900000008
   )
-|#
 
-#|
 (deftype ocean-mid-indices (basic)
   ((data uint16 36 :offset-assert 4) ;; guessed by decompiler
    )
@@ -7746,9 +8949,7 @@
   :size-assert         #x4c
   :flag-assert         #x90000004c
   )
-|#
 
-#|
 (deftype ocean-mid-masks (basic)
   ((data (inline-array ocean-mid-mask)  :offset-assert 4) ;; guessed by decompiler
    )
@@ -7756,41 +8957,35 @@
   :size-assert         #x8
   :flag-assert         #x900000008
   )
-|#
 
-#|
 (deftype ocean-trans-mask (structure)
   ((mask uint8 4 :offset-assert 0) ;; guessed by decompiler
-   (word int32   :offset-assert 0)
+   (word int32   :offset 0)
    )
+  :pack-me
   :method-count-assert 9
   :size-assert         #x4
   :flag-assert         #x900000004
   )
-|#
 
-#|
 (deftype ocean-trans-index (structure)
   ((parent int16  :offset-assert 0)
    (child  int16  :offset-assert 2)
    )
+  :pack-me
   :method-count-assert 9
   :size-assert         #x4
   :flag-assert         #x900000004
   )
-|#
 
-#|
 (deftype ocean-trans-indices (basic)
-  ((data ocean-trans-index 2304 :offset-assert 4) ;; guessed by decompiler
+  ((data ocean-trans-index 2304 :inline :offset-assert 4)
    )
   :method-count-assert 9
   :size-assert         #x2404
   :flag-assert         #x900002404
   )
-|#
 
-#|
 (deftype ocean-near-index (structure)
   ((data uint16 16 :offset-assert 0) ;; guessed by decompiler
    )
@@ -7798,9 +8993,7 @@
   :size-assert         #x20
   :flag-assert         #x900000020
   )
-|#
 
-#|
 (deftype ocean-near-indices (basic)
   ((data (inline-array ocean-near-index)  :offset-assert 4) ;; guessed by decompiler
    )
@@ -7808,9 +9001,7 @@
   :size-assert         #x8
   :flag-assert         #x900000008
   )
-|#
 
-#|
 (deftype ocean-near-colors (structure)
   ((color0 vector :inline :offset-assert 0)
    (color1 vector :inline :offset-assert 16)
@@ -7821,9 +9012,7 @@
   :size-assert         #x40
   :flag-assert         #x900000040
   )
-|#
 
-#|
 (deftype ocean-trans-strip (structure)
   ((verts uint128 10 :offset-assert 0) ;; guessed by decompiler
    )
@@ -7831,19 +9020,15 @@
   :size-assert         #xa0
   :flag-assert         #x9000000a0
   )
-|#
 
-#|
 (deftype ocean-trans-strip-array (structure)
-  ((data ocean-trans-strip 4 :offset-assert 0) ;; guessed by decompiler
+  ((data ocean-trans-strip 4 :inline :offset-assert 0) ;; guessed by decompiler
    )
   :method-count-assert 9
   :size-assert         #x280
   :flag-assert         #x900000280
   )
-|#
 
-#|
 (deftype ocean-wave-data (structure)
   ((data uint8 1024 :offset-assert 0) ;; guessed by decompiler
    )
@@ -7851,18 +9036,15 @@
   :size-assert         #x400
   :flag-assert         #x900000400
   )
-|#
 
-#|
 (deftype ocean-wave-frames (structure)
-  ((frame ocean-wave-data 64 :offset-assert 0) ;; guessed by decompiler
+  ((frame ocean-wave-data 64 :inline :offset-assert 0) ;; guessed by decompiler
    )
+  ;; overflow 16-bit int size bug
   :method-count-assert 9
-  :size-assert         #x0
-  :heap-base           #x1
-  :flag-assert         #x900010000
+  :size-assert         #x10000
+  ;:flag-assert         #x900010000
   )
-|#
 
 #|
 (deftype ocean-texture-constants (structure)
@@ -7880,7 +9062,6 @@
   )
 |#
 
-#|
 (deftype ocean-mid-vertex (structure)
   ((stq vector :inline :offset-assert 0)
    (col vector :inline :offset-assert 16)
@@ -7890,7 +9071,6 @@
   :size-assert         #x30
   :flag-assert         #x900000030
   )
-|#
 
 #|
 (deftype ocean-mid-constants (structure)
@@ -7922,7 +9102,6 @@
   )
 |#
 
-#|
 (deftype ocean-mid-upload (structure)
   ((rot    matrix  :inline :offset-assert 0)
    (matrix matrix  :inline :offset-assert 64)
@@ -7933,9 +9112,7 @@
   :size-assert         #x760
   :flag-assert         #x900000760
   )
-|#
 
-#|
 (deftype ocean-mid-upload2 (structure)
   ((rot    matrix   :inline :offset-assert 0)
    (matrix matrix   :inline :offset-assert 64)
@@ -7954,7 +9131,6 @@
   :size-assert         #x230
   :flag-assert         #x900000230
   )
-|#
 
 #|
 (deftype ocean-mid-work (structure)
@@ -8022,7 +9198,6 @@
   )
 |#
 
-#|
 (deftype ocean-near-vertex (structure)
   ((stq vector :inline :offset-assert 0)
    (clr vector :inline :offset-assert 16)
@@ -8032,9 +9207,7 @@
   :size-assert         #x30
   :flag-assert         #x900000030
   )
-|#
 
-#|
 (deftype ocean-near-work (structure)
   ((verts-ptr vector  :inline :offset-assert 0)
    (indices   uint128 16      :offset-assert 16) ;; guessed by decompiler
@@ -8043,9 +9216,7 @@
   :size-assert         #x110
   :flag-assert         #x900000110
   )
-|#
 
-#|
 (deftype ocean-height-array (structure)
   ((data float 1024 :offset-assert 0) ;; guessed by decompiler
    )
@@ -8053,19 +9224,15 @@
   :size-assert         #x1000
   :flag-assert         #x900001000
   )
-|#
 
-#|
 (deftype ocean-vert-array (structure)
-  ((data vector 2048 :offset-assert 0) ;; guessed by decompiler
+  ((data vector 2048 :inline :offset-assert 0) ;; guessed by decompiler
    )
   :method-count-assert 9
   :size-assert         #x8000
   :flag-assert         #x900008000
   )
-|#
 
-#|
 (deftype ocean-map (structure)
   ((start-corner        vector              :inline :offset-assert 0)
    (far-color           vector              :inline :offset-assert 16)
@@ -8079,11 +9246,10 @@
   :size-assert         #x34
   :flag-assert         #xb00000034
   (:methods
-    (ocean-map-method-9 () none) ;; 9 ;; (set-height! (_type_ float) none)
-    (ocean-map-method-10 () none) ;; 10 ;; (get-base-height (_type_) float)
+    (set-height! (_type_ float) none) ;; 9
+    (get-base-height (_type_) float) ;; 10
     )
   )
-|#
 
 #|
 (deftype ocean (ocean-map)
@@ -8895,11 +10061,10 @@
 ;; traffic-h                      ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype traffic-danger-info (structure)
   ((sphere        sphere :inline :offset-assert 0)
    (velocity      vector :inline :offset-assert 16)
-   (handle        uint64         :offset-assert 32) ;; handle
+   (handle        handle         :offset-assert 32)
    (notify-radius float          :offset-assert 40)
    (danger-level  float          :offset-assert 44)
    (decay-rate    float          :offset-assert 48)
@@ -8910,25 +10075,22 @@
   :size-assert         #x36
   :flag-assert         #x900000036
   )
-|#
 
-#|
 (deftype traffic-suppression-params (structure)
   ((bbox     bounding-box :inline :offset-assert 0)
-   (duration uint64               :offset-assert 32) ;; time-frame
+   (duration time-frame           :offset-assert 32)
    (id       int8                 :offset-assert 40)
    )
   :method-count-assert 13
   :size-assert         #x29
   :flag-assert         #xd00000029
   (:methods
-    (traffic-suppression-params-method-9 () none) ;; 9 ;; (try-creating-new-suppression-box (_type_) symbol)
-    (traffic-suppression-params-method-10 () none) ;; 10 ;; (create-or-update-suppression-box (_type_) symbol)
-    (traffic-suppression-params-method-11 () none) ;; 11 ;; (has-valid-id? (_type_) none)
-    (traffic-suppression-params-method-12 () none) ;; 12 ;; (kill-suppression-box (_type_) none)
+    (try-creating-new-suppression-box (_type_) symbol) ;; 9
+    (create-or-update-suppression-box (_type_) symbol) ;; 10
+    (has-valid-id? (_type_) none) ;; 11
+    (kill-suppression-box (_type_) none) ;; 12
     )
   )
-|#
 
 #|
 (deftype traffic-object-spawn-params (structure)
@@ -8970,56 +10132,1042 @@
   )
 |#
 
-;; (define-extern *traffic-manager* object) ;; traffic-manager
-;; (define-extern *vehicle-manager* object)
+(declare-type traffic-manager process)
+(declare-type vehicle-manager process)
+(define-extern *traffic-manager* traffic-manager)
+(define-extern *vehicle-manager* vehicle-manager)
 ;; (define-extern *traffic-info* object)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; game-task-h                    ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+;; +++game-task-h:game-task
+(defenum game-task
+  :type uint8
+  :bitfield #f
+  (unknown -1)
+  (none 0)
+  (complete 1)
+  (dummy0 2)
+  (eco-blue-button 3)
+  (eco-yellow-button 4)
+  (eco-red-button 5)
+  (city-start 6)
+  (desert-interceptors 7)
+  (desert-vehicle-training-1 8)
+  (desert-vehicle-training-2 9)
+  (arena-training-1 10)
+  (arena-fight-1 11)
+  (wascity-chase 12)
+  (wascity-pre-game 13)
+  (desert-turtle-training 14)
+  (desert-course-race 15)
+  (desert-artifact-race-1 16)
+  (wascity-leaper-race 17)
+  (desert-hover 18)
+  (arena-fight-2 19)
+  (desert-catch-lizards 20)
+  (desert-rescue 21)
+  (wascity-gungame 22)
+  (arena-fight-3 23)
+  (nest-eggs 24)
+  (temple-climb 25)
+  (desert-glide 26)
+  (volcano-darkeco 27)
+  (temple-oracle 28)
+  (desert-oasis-defense 29)
+  (temple-tests 30)
+  (comb-travel 31)
+  (mine-explore 32)
+  (mine-blow 33)
+  (mine-boss 34)
+  (sewer-met-hum 35)
+  (city-vehicle-training 36)
+  (city-port-fight 37)
+  (city-port-attack 38)
+  (city-gun-course-1 39)
+  (city-sniper-fight 40)
+  (sewer-kg-met 41)
+  (city-destroy-darkeco 42)
+  (forest-kill-plants 43)
+  (city-destroy-grid 44)
+  (city-hijack-vehicle 45)
+  (city-port-assault 46)
+  (city-gun-course-2 47)
+  (city-blow-barricade 48)
+  (city-protect-hq 49)
+  (sewer-hum-kg 50)
+  (city-power-game 51)
+  (desert-artifact-race-2 52)
+  (nest-hunt 53)
+  (desert-beast-battle 54)
+  (desert-jump-mission 55)
+  (desert-chase-marauders 56)
+  (forest-ring-chase 57)
+  (factory-sky-battle 58)
+  (factory-assault 59)
+  (factory-boss 60)
+  (temple-defend 61)
+  (wascity-defend 62)
+  (forest-turn-on-machine 63)
+  (precursor-tour 64)
+  (city-blow-tower 65)
+  (tower-destroy 66)
+  (palace-ruins-patrol 67)
+  (palace-ruins-attack 68)
+  (comb-wild-ride 69)
+  (precursor-destroy-ship 70)
+  (desert-final-boss 71)
+  (city-win 72)
+  (desert-bbush-get-to-1 73)
+  (desert-bbush-get-to-2 74)
+  (desert-bbush-get-to-3 75)
+  (desert-bbush-get-to-4 76)
+  (desert-bbush-get-to-5 77)
+  (desert-bbush-get-to-6 78)
+  (desert-bbush-get-to-7 79)
+  (desert-bbush-get-to-8 80)
+  (desert-bbush-get-to-9 81)
+  (desert-bbush-get-to-11 82)
+  (desert-bbush-get-to-12 83)
+  (desert-bbush-get-to-14 84)
+  (desert-bbush-get-to-16 85)
+  (desert-bbush-get-to-17 86)
+  (wascity-bbush-get-to-18 87)
+  (desert-bbush-get-to-19 88)
+  (wascity-bbush-get-to-20 89)
+  (wascity-bbush-get-to-21 90)
+  (wascity-bbush-get-to-22 91)
+  (wascity-bbush-get-to-23 92)
+  (wascity-bbush-get-to-24 93)
+  (wascity-bbush-get-to-25 94)
+  (city-bbush-get-to-26 95)
+  (city-bbush-get-to-27 96)
+  (city-bbush-get-to-28 97)
+  (city-bbush-get-to-29 98)
+  (city-bbush-get-to-30 99)
+  (city-bbush-get-to-31 100)
+  (city-bbush-get-to-32 101)
+  (city-bbush-get-to-33 102)
+  (city-bbush-get-to-34 103)
+  (city-bbush-get-to-35 104)
+  (city-bbush-get-to-36 105)
+  (city-bbush-get-to-37 106)
+  (city-bbush-get-to-38 107)
+  (city-bbush-get-to-39 108)
+  (city-bbush-get-to-40 109)
+  (city-bbush-get-to-41 110)
+  (city-bbush-get-to-42 111)
+  (city-bbush-get-to-43 112)
+  (city-bbush-get-to-44 113)
+  (desert-bbush-ring-1 114)
+  (desert-bbush-ring-2 115)
+  (wascity-bbush-ring-3 116)
+  (wascity-bbush-ring-4 117)
+  (city-bbush-ring-5 118)
+  (city-bbush-ring-6 119)
+  (desert-bbush-egg-spider-1 120)
+  (desert-bbush-spirit-chase-1 121)
+  (wascity-bbush-spirit-chase-2 122)
+  (city-bbush-spirit-chase-3 123)
+  (desert-bbush-timer-chase-1 124)
+  (wascity-bbush-timer-chase-2 125)
+  (desert-bbush-air-time 126)
+  (desert-bbush-total-air-time 127)
+  (desert-bbush-jump-distance 128)
+  (desert-bbush-total-jump-distance 129)
+  (desert-bbush-roll-count 130)
+  (desert-bbush-time-trial-1 131)
+  (desert-bbush-rally 132)
+  (city-bbush-port-attack 133)
+  (desert-rescue-bbush 134)
+  (city-gun-course-play-for-fun 135)
+  (city-jetboard-bbush 136)
+  (desert-bbush-destroy-interceptors 137)
+  (max 138)
+  )
+;; ---game-task-h:game-task
+
+;; +++game-task-h:game-task-node
+(defenum game-task-node
+  :type uint16
+  (none)
+  (city-start-start)
+  (city-start-introduction)
+  (city-start-resolution)
+  (desert-interceptors-attack)
+  (desert-vehicle-training-1-introduction)
+  (desert-vehicle-training-2-introduction)
+  (arena-training-1-introduction)
+  (arena-training-1-collect)
+  (arena-training-1-resolution)
+  (arena-fight-1-introduction)
+  (arena-fight-1-fight)
+  (arena-fight-1-throne)
+  (arena-fight-1-resolution)
+  (wascity-chase-introduction)
+  (wascity-chase-resolution)
+  (wascity-pre-game-introduction)
+  (wascity-pre-game-wait)
+  (wascity-pre-game-resolution)
+  (wascity-pre-game-post-game)
+  (wascity-pre-game-bronze)
+  (wascity-pre-game-silver)
+  (wascity-pre-game-gold)
+  (desert-turtle-training-introduction)
+  (desert-turtle-training-restrict-to-turtle)
+  (desert-turtle-training-in-desert)
+  (desert-turtle-training-resolution)
+  (desert-course-race-introduction)
+  (desert-course-race-restrict-to-turtle)
+  (desert-course-race-post-intro)
+  (desert-course-race-race)
+  (desert-course-race-win)
+  (desert-course-race-resolution)
+  (desert-artifact-race-1-introduction)
+  (desert-artifact-race-1-post-intro)
+  (desert-artifact-race-1-race)
+  (desert-artifact-race-1-resolution)
+  (wascity-leaper-race-introduction)
+  (wascity-leaper-race-resolution)
+  (desert-hover-introduction)
+  (desert-hover-resolution)
+  (arena-fight-2-introduction)
+  (arena-fight-2-gun-training)
+  (arena-fight-2-fight)
+  (arena-fight-2-resolution)
+  (desert-catch-lizards-introduction)
+  (desert-catch-lizards-restrict-to-snake)
+  (desert-catch-lizards-get-to-corral)
+  (desert-catch-lizards-resolution)
+  (desert-rescue-introduction)
+  (desert-rescue-get-vehicle)
+  (desert-rescue-post-intro)
+  (desert-rescue-rescue)
+  (desert-rescue-dead-wlander-movie)
+  (desert-rescue-satellite-fight)
+  (desert-rescue-resolution)
+  (desert-rescue-hold-doors)
+  (wascity-gungame-introduction)
+  (wascity-gungame-resolution)
+  (wascity-gungame-play-for-fun)
+  (wascity-gungame-bronze)
+  (wascity-gungame-silver)
+  (wascity-gungame-gold)
+  (arena-fight-3-introduction)
+  (arena-fight-3-training)
+  (arena-fight-3-fight)
+  (arena-fight-3-resolution)
+  (nest-eggs-introduction)
+  (nest-eggs-get-to-scorpion)
+  (nest-eggs-wall)
+  (nest-eggs-tunnel)
+  (nest-eggs-resolution)
+  (nest-eggs-gas)
+  (temple-climb-introduction)
+  (temple-climb-resolution)
+  (desert-glide-introduction)
+  (desert-glide-templetop)
+  (desert-glide-resolution)
+  (volcano-darkeco-introduction)
+  (volcano-darkeco-catch-flut)
+  (volcano-darkeco-indax-1-introduction)
+  (volcano-darkeco-indax-1)
+  (volcano-darkeco-indax-2-introduction)
+  (volcano-darkeco-indax-2)
+  (volcano-darkeco-resolution)
+  (temple-oracle-introduction)
+  (temple-oracle-stairs)
+  (temple-oracle-watchers-complete)
+  (temple-oracle-pre-pole-room)
+  (temple-oracle-pole-room)
+  (temple-oracle-pole-half)
+  (temple-oracle-door-1)
+  (temple-oracle-meeting)
+  (temple-oracle-powerup)
+  (temple-oracle-resolution)
+  (desert-oasis-defense-introduction)
+  (desert-oasis-defense-meeting)
+  (desert-oasis-defense-battle)
+  (desert-oasis-defense-resolution)
+  (temple-tests-introduction)
+  (temple-tests-hover-training)
+  (temple-tests-oracle-door-crossed)
+  (temple-tests-oracle)
+  (temple-tests-training)
+  (temple-tests-door-1)
+  (temple-tests-door-2)
+  (temple-tests-door-3)
+  (temple-tests-resolution)
+  (comb-travel-introduction)
+  (comb-travel-resolution)
+  (comb-travel-training)
+  (mine-explore-introduction)
+  (mine-explore-elevator)
+  (mine-explore-armor)
+  (mine-explore-resolution)
+  (mine-blow-introduction)
+  (mine-blow-elevator)
+  (mine-blow-resolution)
+  (mine-boss-introduction)
+  (mine-boss-resolution)
+  (sewer-met-hum-introduction)
+  (sewer-met-hum-resolution)
+  (city-vehicle-training-hover-zone-1)
+  (city-vehicle-training-hover-zone-2)
+  (city-port-fight-introduction)
+  (city-port-fight-resolution)
+  (city-port-attack-introduction)
+  (city-port-attack-get-on)
+  (city-port-attack-mission)
+  (city-port-attack-resolution)
+  (city-gun-course-1-introduction)
+  (city-gun-course-1-post-intro)
+  (city-gun-course-1-resolution)
+  (city-gun-course-1-tess)
+  (city-gun-course-1-bronze)
+  (city-gun-course-1-silver)
+  (city-gun-course-1-gold)
+  (city-sniper-fight-introduction)
+  (city-sniper-fight-resolution)
+  (sewer-kg-met-introduction)
+  (sewer-kg-met-button0-pressed)
+  (sewer-kg-met-button1-pressed)
+  (sewer-kg-met-resolution)
+  (city-destroy-darkeco-introduction)
+  (city-destroy-darkeco-orbs)
+  (city-destroy-darkeco-dark-punch)
+  (city-destroy-darkeco-resolution)
+  (forest-kill-plants-introduction)
+  (forest-kill-plants-pillars)
+  (forest-kill-plants-armor)
+  (forest-kill-plants-resolution)
+  (city-destroy-grid-introduction)
+  (city-destroy-grid-resolution)
+  (city-hijack-vehicle-introduction)
+  (city-hijack-vehicle-infiltrate)
+  (city-hijack-vehicle-escape)
+  (city-hijack-vehicle-resolution)
+  (city-port-assault-introduction)
+  (city-port-assault-force-load-borrows)
+  (city-port-assault-resolution)
+  (city-gun-course-2-introduction)
+  (city-gun-course-2-post-intro)
+  (city-gun-course-2-resolution)
+  (city-gun-course-2-bronze)
+  (city-gun-course-2-silver)
+  (city-gun-course-2-gold)
+  (city-blow-barricade-introduction)
+  (city-blow-barricade-resolution)
+  (city-protect-hq-introduction)
+  (city-protect-hq-resolution)
+  (sewer-hum-kg-introduction)
+  (sewer-hum-kg-switch-off)
+  (sewer-hum-kg-resolution)
+  (city-power-game-introduction)
+  (city-power-game-wait)
+  (city-power-game-resolution)
+  (city-power-game-post-game)
+  (city-power-game-bronze)
+  (city-power-game-silver)
+  (city-power-game-gold)
+  (desert-artifact-race-2-introduction)
+  (desert-artifact-race-2-post-intro)
+  (desert-artifact-race-2-race)
+  (desert-artifact-race-2-resolution)
+  (nest-hunt-introduction)
+  (nest-hunt-sig)
+  (nest-hunt-fight)
+  (nest-hunt-get-crystal)
+  (nest-hunt-resolution)
+  (desert-beast-battle-introduction)
+  (desert-beast-battle-kill-last-beast)
+  (desert-beast-battle-resolution)
+  (desert-jump-mission-introduction)
+  (desert-jump-mission-post-intro)
+  (desert-jump-mission-protect-doors)
+  (desert-jump-mission-resolution)
+  (desert-chase-marauders-introduction)
+  (desert-chase-marauders-get-to-stronghold)
+  (desert-chase-marauders-ambush)
+  (desert-chase-marauders-chase)
+  (desert-chase-marauders-resolution)
+  (forest-ring-chase-introduction)
+  (forest-ring-chase-statues)
+  (forest-ring-chase-statue-1)
+  (forest-ring-chase-statue-2)
+  (forest-ring-chase-statue-3)
+  (forest-ring-chase-statue-4)
+  (forest-ring-chase-statue-5)
+  (forest-ring-chase-resolution)
+  (factory-sky-battle-introduction)
+  (factory-sky-battle-hanger)
+  (factory-sky-battle-wave1)
+  (factory-sky-battle-wave2)
+  (factory-sky-battle-tower1)
+  (factory-sky-battle-tower2)
+  (factory-sky-battle-tower3)
+  (factory-sky-battle-tower4)
+  (factory-sky-battle-resolution)
+  (factory-assault-introduction)
+  (factory-assault-indax-1-introduction)
+  (factory-assault-indax-1)
+  (factory-assault-indax-2-introduction)
+  (factory-assault-indax-2)
+  (factory-assault-indax-3-introduction)
+  (factory-assault-indax-3)
+  (factory-assault-indax-4-introduction)
+  (factory-assault-indax-4)
+  (factory-assault-get-vehicle)
+  (factory-assault-broke-ultimate-fence)
+  (factory-assault-resolution)
+  (factory-boss-introduction)
+  (factory-boss-resolution)
+  (temple-defend-introduction)
+  (temple-defend-talk-box)
+  (temple-defend-door-1)
+  (temple-defend-door-2)
+  (temple-defend-door-3)
+  (temple-defend-door-4)
+  (temple-defend-oracle)
+  (temple-defend-training)
+  (temple-defend-resolution)
+  (wascity-defend-introduction)
+  (wascity-defend-get-to)
+  (wascity-defend-resolution)
+  (forest-turn-on-machine-introduction)
+  (forest-turn-on-machine-spawners)
+  (forest-turn-on-machine-resolution)
+  (precursor-tour-introduction)
+  (precursor-tour-generator-trigger)
+  (precursor-tour-resolution)
+  (city-blow-tower-introduction)
+  (city-blow-tower-phase-1)
+  (city-blow-tower-resolution)
+  (tower-destroy-introduction)
+  (tower-destroy-climb)
+  (tower-destroy-resolution)
+  (palace-ruins-patrol-introduction)
+  (palace-ruins-patrol-stadium)
+  (palace-ruins-patrol-resolution)
+  (palace-ruins-attack-introduction)
+  (palace-ruins-attack-resolution)
+  (comb-wild-ride-introduction)
+  (comb-wild-ride-resolution)
+  (precursor-destroy-ship-introduction)
+  (precursor-destroy-ship-escape)
+  (precursor-destroy-ship-escape-continue)
+  (precursor-destroy-ship-resolution)
+  (desert-final-boss-introduction)
+  (desert-final-boss-walker)
+  (desert-final-boss-climb)
+  (desert-final-boss-resolution)
+  (city-win-introduction)
+  (city-win-resolution)
+  (desert-bbush-get-to-1-introduction)
+  (desert-bbush-get-to-1-resolution)
+  (desert-bbush-get-to-2-introduction)
+  (desert-bbush-get-to-2-resolution)
+  (desert-bbush-get-to-3-introduction)
+  (desert-bbush-get-to-3-resolution)
+  (desert-bbush-get-to-4-introduction)
+  (desert-bbush-get-to-4-resolution)
+  (desert-bbush-get-to-5-introduction)
+  (desert-bbush-get-to-5-resolution)
+  (desert-bbush-get-to-6-introduction)
+  (desert-bbush-get-to-6-resolution)
+  (desert-bbush-get-to-7-introduction)
+  (desert-bbush-get-to-7-resolution)
+  (desert-bbush-get-to-8-introduction)
+  (desert-bbush-get-to-8-resolution)
+  (desert-bbush-get-to-9-introduction)
+  (desert-bbush-get-to-9-resolution)
+  (desert-bbush-get-to-11-introduction)
+  (desert-bbush-get-to-11-resolution)
+  (desert-bbush-get-to-12-introduction)
+  (desert-bbush-get-to-12-resolution)
+  (desert-bbush-get-to-14-introduction)
+  (desert-bbush-get-to-14-resolution)
+  (desert-bbush-get-to-16-introduction)
+  (desert-bbush-get-to-16-resolution)
+  (desert-bbush-get-to-17-introduction)
+  (desert-bbush-get-to-17-resolution)
+  (wascity-bbush-get-to-18-introduction)
+  (wascity-bbush-get-to-18-resolution)
+  (wascity-bbush-get-to-19-introduction)
+  (wascity-bbush-get-to-19-resolution)
+  (wascity-bbush-get-to-20-introduction)
+  (wascity-bbush-get-to-20-resolution)
+  (wascity-bbush-get-to-21-introduction)
+  (wascity-bbush-get-to-21-resolution)
+  (wascity-bbush-get-to-22-introduction)
+  (wascity-bbush-get-to-22-resolution)
+  (wascity-bbush-get-to-23-introduction)
+  (wascity-bbush-get-to-23-resolution)
+  (wascity-bbush-get-to-24-introduction)
+  (wascity-bbush-get-to-24-resolution)
+  (wascity-bbush-get-to-25-introduction)
+  (wascity-bbush-get-to-25-resolution)
+  (city-bbush-get-to-26-introduction)
+  (city-bbush-get-to-26-resolution)
+  (city-bbush-get-to-27-introduction)
+  (city-bbush-get-to-27-resolution)
+  (city-bbush-get-to-28-introduction)
+  (city-bbush-get-to-28-resolution)
+  (city-bbush-get-to-29-introduction)
+  (city-bbush-get-to-29-resolution)
+  (city-bbush-get-to-30-introduction)
+  (city-bbush-get-to-30-resolution)
+  (city-bbush-get-to-31-introduction)
+  (city-bbush-get-to-31-resolution)
+  (city-bbush-get-to-32-introduction)
+  (city-bbush-get-to-32-resolution)
+  (city-bbush-get-to-33-introduction)
+  (city-bbush-get-to-33-resolution)
+  (city-bbush-get-to-34-introduction)
+  (city-bbush-get-to-34-resolution)
+  (city-bbush-get-to-35-introduction)
+  (city-bbush-get-to-35-resolution)
+  (city-bbush-get-to-36-introduction)
+  (city-bbush-get-to-36-resolution)
+  (city-bbush-get-to-37-introduction)
+  (city-bbush-get-to-37-resolution)
+  (city-bbush-get-to-38-introduction)
+  (city-bbush-get-to-38-resolution)
+  (city-bbush-get-to-39-introduction)
+  (city-bbush-get-to-39-resolution)
+  (city-bbush-get-to-40-introduction)
+  (city-bbush-get-to-40-resolution)
+  (city-bbush-get-to-41-introduction)
+  (city-bbush-get-to-41-resolution)
+  (city-bbush-get-to-42-introduction)
+  (city-bbush-get-to-42-resolution)
+  (city-bbush-get-to-43-introduction)
+  (city-bbush-get-to-43-resolution)
+  (city-bbush-get-to-44-introduction)
+  (city-bbush-get-to-44-resolution)
+  (desert-bbush-ring-1-introduction)
+  (desert-bbush-ring-1-resolution)
+  (desert-bbush-ring-2-introduction)
+  (desert-bbush-ring-2-resolution)
+  (wascity-bbush-ring-3-introduction)
+  (wascity-bbush-ring-3-resolution)
+  (wascity-bbush-ring-4-introduction)
+  (wascity-bbush-ring-4-resolution)
+  (city-bbush-ring-5-introduction)
+  (city-bbush-ring-5-resolution)
+  (city-bbush-ring-6-introduction)
+  (city-bbush-ring-6-resolution)
+  (desert-bbush-egg-spider-1-introduction)
+  (desert-bbush-egg-spider-1-resolution)
+  (desert-bbush-spirit-chase-1-introduction)
+  (desert-bbush-spirit-chase-1-resolution)
+  (wascity-bbush-spirit-chase-2-introduction)
+  (wascity-bbush-spirit-chase-2-resolution)
+  (city-bbush-spirit-chase-3-introduction)
+  (city-bbush-spirit-chase-3-resolution)
+  (desert-bbush-timer-chase-1-introduction)
+  (desert-bbush-timer-chase-1-resolution)
+  (wascity-bbush-timer-chase-2-introduction)
+  (wascity-bbush-timer-chase-2-resolution)
+  (desert-bbush-air-time-introduction)
+  (desert-bbush-air-time-resolution)
+  (desert-bbush-total-air-time-introduction)
+  (desert-bbush-total-air-time-resolution)
+  (desert-bbush-jump-distance-introduction)
+  (desert-bbush-jump-distance-resolution)
+  (desert-bbush-total-jump-distance-introduction)
+  (desert-bbush-total-jump-distance-resolution)
+  (desert-bbush-roll-count-introduction)
+  (desert-bbush-roll-count-resolution)
+  (desert-bbush-time-trial-1-introduction)
+  (desert-bbush-time-trial-1-resolution)
+  (desert-bbush-rally-introduction)
+  (desert-bbush-rally-resolution)
+  (city-bbush-port-attack-introduction)
+  (city-bbush-port-attack-port-attack-load)
+  (city-bbush-port-attack-resolution)
+  (desert-rescue-bbush-introduction)
+  (desert-rescue-bbush-resolution)
+  (city-gun-course-play-for-fun-introduction)
+  (city-gun-course-play-for-fun-resolution)
+  (city-gun-course-play-for-fun-bronze-rnc-1)
+  (city-gun-course-play-for-fun-silver-rnc-1)
+  (city-gun-course-play-for-fun-gold-rnc-1)
+  (city-gun-course-play-for-fun-bronze-rnc-2)
+  (city-gun-course-play-for-fun-silver-rnc-2)
+  (city-gun-course-play-for-fun-gold-rnc-2)
+  (city-jetboard-bbush-introduction)
+  (city-jetboard-bbush-resolution)
+  (desert-bbush-destroy-interceptors-introduction)
+  (desert-bbush-destroy-interceptors-resolution)
+  )
+;; ---game-task-h:game-task-node
+
+;; +++game-task-h:game-task-action
+(defenum game-task-action
+  :bitfield #f
+  :type uint8
+  (hide 0)
+  (idle 1)
+  (say  2)
+  (talk 3)
+  (show 4)
+  (trade 5)
+  (play 6)
+  (menu 7)
+  )
+;; ---game-task-h:game-task-action
+
+;; +++game-task-h:game-task-actor
+(defenum game-task-actor
+  :type uint8
+  (none 0)
+  (minimap 1)
+  (oracle-oracle 2)
+  (daxter 3)
+  (damus-arena 4)
+  (damus-waspal 5)
+  (damus-desert 6)
+  (damus-wasdoors 7)
+  (damus-wascity 8)
+  (damus-ruins 9)
+  (kleever-arena 10)
+  (kleever-wasdoors 11)
+  (kleever-pen 12)
+  (seem-wascity 13)
+  (seem-temple 14)
+  (ashelin-oasis 15)
+  (ashelin-talkbox 16)
+  (ashelin-freehq 17)
+  (veger-cave 18)
+  (veger-ruins 19)
+  (torn-hiphog 20)
+  (torn-hiptable 21)
+  (torn-hipbar 22)
+  (torn-hipbooth 23)
+  (torn-freehq 24)
+  (tess-gungame 25)
+  (samos-talkbox 26)
+  (sig-talkbox 27)
+  (sig-wasdoors 28)
+  (sig-nest 29)
+  (pecker-onintent 30)
+  (onin-onintent 31)
+  (onin-talkbox 32)
+  (keira-garage 33)
+  (was-pre-game-wascityb 34)
+  (kleever-wascityb 35)
+  (seem-wascitya 36)
+  (gun-gungame 37)
+  (vin-vinroom 38)
+  (power-game-vinroom 39)
+  (jinx-hiphog 40)
+  (samos-genb 41)
+  (wascity-turret 42)
+  (seem-leaper 44)
+  (monk-wascity 43)
+  (wascity-leaper 45)
+  (was-pre-game-deserte 46)
+  (onin-freehq 48)
+  (samos-freehq 47)
+  (keira-freehq 49)
+  (keira-genb 50)
+  (monk-mummy 51)
+  (pecker 52)
+  (samos-onintent 53)
+  (unused-slot-8 54)
+  (unused-slot-9 55)
+  (unused-slot-10 56)
+  (unused-slot-11 57)
+  (unused-slot-12 58)
+  (unused-slot-13 59)
+  (unused-slot-14 60)
+  (unused-slot-15 61)
+  (unused-slot-16 62)
+  (unused-slot-17 63)
+  (unused-slot-18 64)
+  (unused-slot-19 65)
+  (unused-slot-20 66)
+  (unused-slot-21 67)
+  (unused-slot-22 68)
+  (unused-slot-23 69)
+  (unused-slot-24 70)
+  (unused-slot-25 71)
+  (unused-slot-26 72)
+  (unused-slot-27 73)
+  (unused-slot-28 74)
+  (unused-slot-29 75)
+  (unused-slot-30 76)
+  (unused-slot-31 77)
+  (burning-bush-slumb 78)
+  (burning-bush-gena 79)
+  (burning-bush-genc 80)
+  (burning-bush-marka 81)
+  (burning-bush-sluma 82)
+  (burning-bush-slumb-2 83)
+  (burning-bush-slumc 84)
+  (burning-bush-farma 85)
+  (burning-bush-farmb 86)
+  (burning-bush-markb 87)
+  (burning-bush-markb-2 88)
+  (burning-bush-gena-2 89)
+  (burning-bush-genb 90)
+  (burning-bush-genc-2 91)
+  (burning-bush-inda 92)
+  (burning-bush-indb 93)
+  (burning-bush-port 94)
+  (burning-bush-port-2 95)
+  (burning-bush-port-3 96)
+  (burning-bush-pal 97)
+  (burning-bush-stadium 98)
+  (burning-bush-pal-2 99)
+  (burning-bush-genb-2 100)
+  (burning-bush-arena 101)
+  (burning-bush-desd 102)
+  (burning-bush-desc 103)
+  (burning-bush-desa 104)
+  (burning-bush-desg 105)
+  (burning-bush-desh 106)
+  (burning-bush-desc-2 107)
+  (burning-bush-dese 108)
+  (burning-bush-desb 109)
+  (burning-bush-desa-2 110)
+  (burning-bush-desc-3 111)
+  (burning-bush-desg-2 112)
+  (burning-bush-desd-2 113)
+  (burning-bush-desg-3 114)
+  (burning-bush-dese-2 115)
+  (burning-bush-dese-3 116)
+  (burning-bush-desd-3 117)
+  (burning-bush-desb-2 118)
+  (burning-bush-wasa-1 119)
+  (burning-bush-wasa-2 120)
+  (burning-bush-wasa-3 121)
+  (burning-bush-wasa-4 122)
+  (burning-bush-wasb-1 123)
+  (burning-bush-wasb-2 124)
+  (burning-bush-wasb-3 125)
+  (burning-bush-wasb-4 126)
+  (burning-bush-desg-4 127)
+  (burning-bush-wasb-5 128)
+  (burning-bush-wasb-6 129)
+  (burning-bush-desa-3 130)
+  (burning-bush-sluma-1 131)
+  (burning-bush-genb-1 132)
+  (burning-bush-slumb-1 133)
+  (burning-bush-wasa-5 134)
+  (burning-bush-desd-4 135)
+  (burning-bush-slumb-3 136)
+  (burning-bush-desc-4 137)
+  (burning-bush-inda-1 138)
+  (burning-bush-dese-4 139)
+  (burning-bush-desc-5 140)
+  (burning-bush-desb-3 141)
+  (burning-bush-wasa-6 142)
+  (burning-bush-wasb-7 143)
+  (burning-bush-indb-1 144)
+  (burning-bush-desf 145)
+  (burning-bush-port-1 146)
+  (burning-bush-genb-3 147)
+  (burning-bush-genb-4 148)
+  (burning-bush-genb-5 149)
+  (burning-bush-slumb-4 150)
+  (burning-bush-slumc-1 151)
+  (burning-bush-dese-5 152)
+  (burning-bush-port-4 153)
+  (burning-bush-slumc-2 154)
+  (burning-bush-sluma-2 155)
+  (burning-bush-sluma-3 156)
+  (burning-bush-indb-2 157)
+  (burning-bush-indb-3 158)
+  (burning-bush-inda-2 159)
+  (burning-bush-inda-3 160)
+  (burning-bush-inda-4 161)
+  (burning-bush-port-5 162)
+  (burning-bush-port-6 163)
+  (burning-bush-port-7 164)
+  (burning-bush-port-8 165)
+  (burning-bush-desd-5 166)
+  (burning-bush-inda-5 167)
+  (burning-bush-desb-4 168)
+  )
+;; ---game-task-h:game-task-actor
+
+;; +++game-task-h:game-task-node-command
+(defenum game-task-node-command
+  :type uint8
+  (none 0)
+  (add-sidekick 1)
+  (sub-sidekick 2)
+  (add-board 3)
+  (sub-board 4)
+  (add-gun-red-1 5)
+  (add-gun-red-2 6)
+  (add-gun-red-3 7)
+  (add-gun-red-ammo-1 8)
+  (add-gun-red-ammo-2 9)
+  (add-gun-yellow-1 10)
+  (add-gun-yellow-2 11)
+  (add-gun-yellow-3 12)
+  (add-gun-yellow-ammo-1 13)
+  (add-gun-yellow-ammo-2 14)
+  (add-gun-blue-1 15)
+  (add-gun-blue-2 16)
+  (add-gun-blue-3 17)
+  (add-gun-blue-ammo-1 18)
+  (add-gun-blue-ammo-2 19)
+  (add-gun-dark-1 20)
+  (add-gun-dark-2 21)
+  (add-gun-dark-3 22)
+  (add-gun-dark-ammo-1 23)
+  (add-gun-dark-ammo-2 24)
+  (add-pass-front-gate 25)
+  (add-pass-port-mh 26)
+  (add-pass-port-inda 27)
+  (add-pass-inda-indb 28)
+  (add-pass-indb-sluma 29)
+  (add-pass-slumb-genb 30)
+  (add-darkeco 31)
+  (add-darkjak 32)
+  (add-darkjak-smack 33)
+  (add-darkjak-bomb0 34)
+  (add-darkjak-bomb1 35)
+  (add-darkjak-tracking 36)
+  (add-darkjak-invinc 37)
+  (add-lighteco 38)
+  (add-lightjak 39)
+  (add-lightjak-regen 40)
+  (add-lightjak-freeze 41)
+  (add-lightjak-shield 42)
+  (add-lightjak-swoop 43)
+  (add-board-training 44)
+  (add-board-launch 45)
+  (add-board-trail 46)
+  (add-board-zap 47)
+  (sub-board-trail 48)
+  (add-artifact-invis 49)
+  (add-armor-0 50)
+  (add-armor-1 51)
+  (add-armor-2 52)
+  (add-armor-3 53)
+  (add-amulet-1 54)
+  (add-amulet-2 55)
+  (add-amulet-3 56)
+  (add-light-eco-crystal 57)
+  (add-dark-eco-crystal 58)
+  (add-seal 59)
+  (add-cypher-gliph 60)
+  (add-star-map 61)
+  (add-vehicle-toad 62)
+  (add-vehicle-snake 63)
+  (add-vehicle-scorpion 64)
+  (add-vehicle-turtle 65)
+  (add-vehicle-rhino 66)
+  (add-av-cube 67)
+  (add-av-reflector 68)
+  (add-av-prism 69)
+  (add-av-generator 70)
+  (add-av-map 71)
+  (add-jakc 72)
+  )
+;; ---game-task-h:game-task-node-command
+
+;; +++game-task-h:game-task-node-flag
+(defenum game-task-node-flag
+  :type uint32 ;; guess
+  :bitfield #t
+  (closed 0)
+  (data 1)
+  (auto-close 2)
+  (disk-close 3)
+  (kiosk-close 4)
+  (close-task 5)
+  (utility-node 6)
+  (abs-task-mask 7)
+  (set-task-mask 8)
+  (clear-task-mask 9)
+  (save-on-life 10)
+  (save-on-try 11)
+  (reset-on-try 12)
+  (no-restart 13)
+  (exclusive 14)
+  (intro-wait 15)
+  (city-wait 16)
+  (no-hud-wait 17)
+  (no-percent 18)
+  (act1 19)
+  (act2 20)
+  (act3 21)
+  (bbush 22)
+  )
+;; ---game-task-h:game-task-node-flag
+
+;; +++game-task-h:game-task-flags
+(defenum game-task-flags
+  :bitfield #t
+  :type uint8
+  (gatflag-00)
+  (gatflag-01)
+  (gatflag-02)
+  )
+;; ---game-task-h:game-task-flags
+
+;; +++game-task-h:game-task-icon
+(defenum game-task-icon
+  :type uint8
+  (gaticon-00)
+  (gaticon-01)
+  (gaticon-02)
+  (gaticon-03)
+  (gaticon-04)
+  (gaticon-05)
+  (gaticon-06)
+  (gaticon-07)
+  (gaticon-08)
+  (gaticon-09)
+  (gaticon-10)
+  (gaticon-11)
+  (gaticon-12)
+  (gaticon-13)
+  (gaticon-14)
+  (gaticon-15)
+  (gaticon-16)
+  (gaticon-17)
+  (gaticon-18)
+  (gaticon-19)
+  (gaticon-20)
+  (gaticon-21)
+  (gaticon-22)
+  (gaticon-23)
+  (gaticon-24)
+  (gaticon-25)
+  (gaticon-26)
+  (gaticon-27)
+  (gaticon-28)
+  (gaticon-29)
+  (gaticon-30)
+  (gaticon-31)
+  (gaticon-32)
+  (gaticon-33)
+  (gaticon-34)
+  (gaticon-35)
+  (gaticon-36)
+  (gaticon-37)
+  (gaticon-38)
+  (gaticon-39)
+  (gaticon-40)
+  (gaticon-41)
+  (gaticon-42)
+  (gaticon-43)
+  (gaticon-44)
+  (gaticon-45)
+  (gaticon-46)
+  (gaticon-47)
+  (gaticon-48)
+  (gaticon-49)
+  (gaticon-50)
+  (gaticon-51)
+  (gaticon-52)
+  (gaticon-53)
+  (gaticon-54)
+  (gaticon-55)
+  (gaticon-56)
+  (gaticon-57)
+  (gaticon-58)
+  (gaticon-59)
+  (gaticon-60)
+  (gaticon-61)
+  (gaticon-62)
+  (gaticon-63)
+  (gaticon-64)
+  (gaticon-65)
+  (gaticon-66)
+  (gaticon-67)
+  (gaticon-68)
+  (gaticon-69)
+  )
+;; ---game-task-h:game-task-icon
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; task-control-h                 ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (deftype game-task-event (basic)
-;;   ()
-;;   :flag-assert #x900000010
-;;   )
-
-#|
-(deftype resetter-spec (structure)
-  ((continue   basic   :offset-assert 0)
-   (node       uint16  :offset-assert 4)
-   (reset-mode basic   :offset-assert 8)
-   (execute    basic   :offset-assert 12)
+(deftype game-task-event (basic)
+  ((actor game-task-actor :offset-assert 4)
+   (action game-task-action :offset-assert 5)
+   (tex game-task-icon :offset-assert 6) ;; added
+   (icon uint16 :offset 6 :score -100)
+   (flags game-task-flags :offset 7)
+   (scene basic :offset 8)
+   (distance meters :offset-assert 12)
    )
+  )
+
+(deftype resetter-spec (structure)
+  ((continue   basic          :offset-assert 0)
+   (node       game-task-node :offset-assert 4)
+   (reset-mode basic          :offset-assert 8)
+   (execute    basic          :offset-assert 12)
+   )
+  :pack-me
   :method-count-assert 9
   :size-assert         #x10
   :flag-assert         #x900000010
   ;; field execute uses ~A with a signed load.
   )
-|#
 
-#|
+;; +++task-control-h:resetter-message
+(defenum resetter-message
+  :type uint8
+  (mission-fail 0)
+  (mission-retry 1)
+  (mission-fail-or-retry 2)
+  )
+;; ---task-control-h:resetter-message
+
+;; +++task-control-h:resetter-flag
+(defenum resetter-flag
+  :type uint16
+  :bitfield #t
+  (auto-reset 0)
+  (text-message 1)
+  (no-audio 2)
+  (no-slow-down 3)
+  (no-message 4)
+  (no-grab 5)
+  (no-draw-target 6)
+  (stop-sfx 7)
+  (no-audio-first 8)
+  )
+;; ---task-control-h:resetter-flag
+
 (deftype resetter-params (structure)
-  ((message      uint8                 :offset-assert 0)
+  ((message      resetter-message      :offset-assert 0)
    (flags        resetter-flag         :offset-assert 2)
    (fail         resetter-spec :inline :offset-assert 4)
    (retry        resetter-spec :inline :offset-assert 20)
    (reset-delay  uint32                :offset-assert 36)
-   (task         uint8                 :offset-assert 40)
-   (text-message uint32                :offset-assert 44)
+   (task         game-task             :offset-assert 40)
+   (text-message text-id               :offset-assert 44)
    )
   :method-count-assert 9
   :size-assert         #x30
   :flag-assert         #x900000030
-  ;; field resetter-flag is likely a value type.
   )
-|#
 
-#|
+;; +++task-control-h:task-manager-mask
+(defenum task-manager-mask
+  :type uint32
+  :bitfield #t
+  (intro-scene)
+  (resolution-scene)
+  (time-limit)
+  (auto-complete)
+  )
+;; ---task-control-h:task-manager-mask
+
 (deftype task-manager-info (structure)
   ((mask                      task-manager-mask  :offset-assert 0)
    (level                     symbol             :offset-assert 4) ;; guessed by decompiler
@@ -9029,7 +11177,7 @@
    (intro-scene               string             :offset-assert 24) ;; guessed by decompiler
    (resolution-scene          string             :offset-assert 28) ;; guessed by decompiler
    (resolution-scene-continue string             :offset-assert 32) ;; guessed by decompiler
-   (final-node                uint16             :offset-assert 36) ;; game-task-node
+   (final-node                game-task-node     :offset-assert 36) ;; game-task-node
    (vehicle-type              uint8              :offset-assert 38)
    (sphere-count              int8               :offset-assert 39)
    (index                     int8               :offset-assert 40)
@@ -9044,9 +11192,7 @@
   :flag-assert         #x90000003c
   ;; field handle is likely a value type. field resolution-scene uses ~A with a signed load. field on-complete uses ~A with a signed load. field on-fail uses ~A with a signed load.
   )
-|#
 
-#|
 (deftype task-reset-info (structure)
   ((restart-info resetter-params  :offset-assert 0)
    (quit-info    resetter-params  :offset-assert 4)
@@ -9057,23 +11203,47 @@
   :size-assert         #x10
   :flag-assert         #x900000010
   )
-|#
 
-#|
+;; +++task-control-h:task-mask
+(defenum task-mask
+  :type uint32
+  :bitfield #t
+  (task0 0)
+  (task1 1)
+  (task2 2)
+  (task3 3)
+  (task4 4)
+  (task5 5)
+  (task6 6)
+  (task7 7)
+  (done 8)
+  (dummy0 9)
+  (dummy1 10)
+  (vehicle 11)
+  (special 12)
+  (primary0 13)
+  (ctywide 14)
+  (never 15)
+  (movie0 16)
+  (movie1 17)
+  (movie2 18)
+  )
+;; ---task-control-h:task-mask
+
 (deftype game-task-node-info (basic)
   ((level            symbol                                  :offset-assert 4) ;; guessed by decompiler
+   (task             game-task                               :offset-assert 8)
    (name             string                                  :offset-assert 12) ;; guessed by decompiler
    (when-open        (array game-task-event)                 :offset-assert 16) ;; guessed by decompiler
    (flags            game-task-node-flag                     :offset-assert 20)
    (parent-node      game-task-node                        4 :offset-assert 24) ;; guessed by decompiler
-   (UNKNOWN          UNKNOWN                                 :offset-assert -1) ;; field could not be read.
    (task-mask        task-mask                               :offset-assert 32)
    (on-open          pair                                    :offset-assert 36) ;; guessed by decompiler
    (manager          task-manager-info                       :offset-assert 40)
    (borrow           pair                                    :offset-assert 44) ;; guessed by decompiler
    (open?            (function game-task-node-info symbol)   :offset-assert 48) ;; guessed by decompiler
    (on-close         pair                                    :offset-assert 52) ;; guessed by decompiler
-   (close-time       time-frame                              :offset-assert 56) ;; guessed by decompiler
+   (close-time       uint32                                  :offset-assert 56) ;; guessed by decompiler
    (reset            task-reset-info                         :offset-assert 60)
    (gem-count        uint16                                  :offset-assert 64)
    (skill-count      uint16                                  :offset-assert 66)
@@ -9096,52 +11266,55 @@
     (game-task-node-info-method-13 () none) ;; 13 ;; (eval-add (_type_) int)
     )
   )
-|#
 
-#|
 (deftype game-task-info (basic)
-  ((name                string   :offset-assert 4) ;; guessed by decompiler
-   (text-name           text-id  :offset-assert 8) ;; guessed by decompiler
-   (pre-play-node       uint16   :offset-assert 12) ;; game-task-node
-   (kiosk-play-node     uint16   :offset-assert 14) ;; game-task-node
-   (pre-play-continue   string   :offset-assert 16) ;; guessed by decompiler
-   (play-node           uint16   :offset-assert 20) ;; game-task-node
-   (play-continue       string   :offset-assert 24) ;; guessed by decompiler
-   (kiosk-play-continue string   :offset-assert 28) ;; guessed by decompiler
+  ((name                string         :offset-assert 4) ;; guessed by decompiler
+   (text-name           text-id        :offset-assert 8) ;; guessed by decompiler
+   (pre-play-node       game-task-node :offset-assert 12) ;; game-task-node
+   (kiosk-play-node     game-task-node :offset-assert 14) ;; game-task-node
+   (pre-play-continue   string         :offset-assert 16) ;; guessed by decompiler
+   (play-node           game-task-node :offset-assert 20) ;; game-task-node
+   (play-continue       string         :offset-assert 24) ;; guessed by decompiler
+   (kiosk-play-continue string         :offset-assert 28) ;; guessed by decompiler
    )
   :method-count-assert 10
   :size-assert         #x20
   :flag-assert         #xa00000020
   ;; field kiosk-play-continue uses ~A with a signed load.
   (:methods
-    (game-task-info-method-9 () none) ;; 9
+    (game-task-info-method-9 (_type_) none) ;; 9
     )
   )
-|#
 
-;; (deftype game-task-control (basic)
-;;   ()
-;;   :flag-assert #xa00000010
-;;   )
+(deftype game-task-control (basic)
+  ((counter       uint32          :offset-assert 4)
+   (actor         game-task-actor :offset-assert 8)
+   (current-node  uint16          :offset-assert 10)
+   (current-event game-task-event :offset-assert 12)
+   )
+  (:methods
+    (new (symbol type game-task-actor) _type_) ;; 0
+    (get-current-task-event (_type_) game-task-event) ;; 9
+    )
+  )
 
-#|
 (deftype task-manager (process)
   ((node-info      game-task-node-info   :offset-assert 128) ;; guessed by decompiler
    (info           task-manager-info     :offset-assert 132)
    (lev-name       symbol                :offset-assert 136) ;; guessed by decompiler
    (fail-on-death? symbol                :offset-assert 140) ;; guessed by decompiler
    (fail-now       symbol                :offset-assert 144) ;; guessed by decompiler
-   (restart-now    basic                 :offset-assert 148)
+   (restart-now    symbol                :offset-assert 148)
    (allow-fail     symbol                :offset-assert 152) ;; guessed by decompiler
-   (state-time     uint64                :offset-assert 160) ;; time-frame
-   (start-time     uint64                :offset-assert 168) ;; time-frame
-   (time-limit     uint64                :offset-assert 176) ;; time-frame
-   (arrow          uint64                :offset-assert 184) ;; handle
-   (player-vehicle uint64                :offset-assert 192)
+   (state-time     time-frame            :offset-assert 160) ;; time-frame
+   (start-time     time-frame            :offset-assert 168) ;; time-frame
+   (time-limit     time-frame            :offset-assert 176) ;; time-frame
+   (arrow          handle                :offset-assert 184) ;; handle
+   (player-vehicle handle                :offset-assert 192)
    (hud            handle              4 :offset-assert 200) ;; guessed by decompiler
-   (hud-timer      uint64                :offset-assert 200) ;; handle
-   (hud-counter    uint64                :offset-assert 208) ;; handle
-   (intro-time     uint64                :offset-assert 232) ;; time-frame
+   (hud-timer      handle                :offset 200) ;; handle
+   (hud-counter    handle                :offset 208) ;; handle
+   (intro-time     time-frame            :offset-assert 232) ;; time-frame
    )
   :method-count-assert 32
   :size-assert         #xf0
@@ -9167,13 +11340,11 @@
     (task-manager-method-31 () none) ;; 31
     )
   )
-|#
 
-#|
 (deftype ambient-control (structure)
-  ((last-ambient-time uint64    :offset-assert 0) ;; time-frame
-   (last-ambient      string    :offset-assert 8) ;; guessed by decompiler
-   (last-ambient-id   sound-id  :offset-assert 12) ;; guessed by decompiler
+  ((last-ambient-time time-frame :offset-assert 0) ;; time-frame
+   (last-ambient      string     :offset-assert 8) ;; guessed by decompiler
+   (last-ambient-id   sound-id   :offset-assert 12) ;; guessed by decompiler
    )
   :method-count-assert 12
   :size-assert         #x10
@@ -9184,15 +11355,16 @@
     (ambient-control-method-11 () none) ;; 11 ;; (dummy-11 () none)
     )
   )
-|#
 
-;; (define-extern game-task->string function) ;; (function game-task string)
-;; (define-extern c-string->game-task function) ;; (function string game-task)
-;; (define-extern game-task-actor->string function) ;; (function game-task-actor string)
-;; (define-extern game-task-action->string function) ;; (function game-task-action string)
-;; (define-extern game-task-node-flag->string function) ;; (function game-task-node-flag object)
-;; (define-extern game-task-node-command->string function) ;; (function game-task-node-command string)
-;; (define-extern *traffic-engine* object) ;; traffic-engine
+(define-extern game-task->string (function game-task string))
+(define-extern c-string->game-task (function string game-task))
+(define-extern game-task-actor->string (function game-task-actor string))
+(define-extern game-task-action->string (function game-task-action string))
+(define-extern game-task-node-flag->string (function game-task-node-flag object))
+(define-extern game-task-node-command->string (function game-task-node-command string))
+
+;; TODO temporarily set as symbol, change type later
+(define-extern *traffic-engine* symbol)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; generic-h                      ;;
@@ -9462,42 +11634,42 @@
 ;; ocean-trans-tables             ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (define-extern *ocean-left-table* object) ;; (pointer float)
-;; (define-extern *ocean-right-table* object) ;; (pointer float)
-;; (define-extern *ocean-up-table* object) ;; (pointer float)
-;; (define-extern *ocean-down-table* object) ;; (pointer float)
-;; (define-extern *ocean-down-left-table* object) ;; (pointer float)
-;; (define-extern *ocean-down-right-table* object) ;; (pointer float)
-;; (define-extern *ocean-up-right-table* object) ;; (pointer float)
-;; (define-extern *ocean-up-left-table* object) ;; (pointer float)
-;; (define-extern *ocean-trans-left-table* object) ;; (pointer float)
-;; (define-extern *ocean-trans-right-table* object) ;; (pointer float)
-;; (define-extern *ocean-trans-up-table* object) ;; (pointer float)
-;; (define-extern *ocean-trans-down-table* object) ;; (pointer float)
-;; (define-extern *ocean-trans-down-left-table* object) ;; (pointer float)
-;; (define-extern *ocean-trans-down-right-table* object) ;; (pointer float)
-;; (define-extern *ocean-trans-up-right-table* object) ;; (pointer float)
-;; (define-extern *ocean-trans-up-left-table* object) ;; (pointer float)
-;; (define-extern *ocean-trans-corner-table* object) ;; (inline-array vector4w-2)
-;; (define-extern *ocean-trans-strip-array* object) ;; (pointer float)
-;; (define-extern *ocean-trans-st-table* object) ;; (inline-array vector)
+(define-extern *ocean-left-table* (pointer float))
+(define-extern *ocean-right-table* (pointer float))
+(define-extern *ocean-up-table* (pointer float))
+(define-extern *ocean-down-table* (pointer float))
+(define-extern *ocean-down-left-table* (pointer float))
+(define-extern *ocean-down-right-table* (pointer float))
+(define-extern *ocean-up-right-table* (pointer float))
+(define-extern *ocean-up-left-table* (pointer float))
+(define-extern *ocean-trans-left-table* (pointer float))
+(define-extern *ocean-trans-right-table* (pointer float))
+(define-extern *ocean-trans-up-table* (pointer float))
+(define-extern *ocean-trans-down-table* (pointer float))
+(define-extern *ocean-trans-down-left-table* (pointer float))
+(define-extern *ocean-trans-down-right-table* (pointer float))
+(define-extern *ocean-trans-up-right-table* (pointer float))
+(define-extern *ocean-trans-up-left-table* (pointer float))
+(define-extern *ocean-trans-corner-table* (inline-array vector4w-2))
+(define-extern *ocean-trans-strip-array* (pointer float))
+(define-extern *ocean-trans-st-table* (inline-array vector))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; ocean-tables                   ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (define-extern *ocean-colors-city* object) ;; ocean-colors
-;; (define-extern *ocean-near-indices-city* ocean-near-indices) ;; ocean-near-indices
-;; (define-extern *ocean-trans-indices-city* ocean-trans-indices) ;; ocean-trans-indices
-;; (define-extern *ocean-mid-indices-city* ocean-mid-indices) ;; ocean-mid-indices
-;; (define-extern *ocean-mid-masks-city* ocean-mid-masks) ;; ocean-mid-masks
-;; (define-extern *ocean-map-city* object) ;; ocean-map
+(define-extern *ocean-colors-city* ocean-colors)
+(define-extern *ocean-near-indices-city* ocean-near-indices)
+(define-extern *ocean-trans-indices-city* ocean-trans-indices)
+(define-extern *ocean-mid-indices-city* ocean-mid-indices)
+(define-extern *ocean-mid-masks-city* ocean-mid-masks)
+(define-extern *ocean-map-city* ocean-map)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; ocean-frames                   ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (define-extern *ocean-wave-frames* object) ;; (pointer uint32)
+(define-extern *ocean-wave-frames* (pointer uint32))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; cloth-art-h                    ;;
@@ -31086,7 +33258,7 @@
 |#
 
 ;; (define-extern *resetter-control* resetter-control)
-;; (define-extern game-task-node->string function) ;; (function game-task-node string)
+(define-extern game-task-node->string (function game-task-node string))
 ;; (define-extern reset-city-squad-control function)
 ;; (define-extern city-task-faction-commands function)
 ;; (define-extern evaluate-faction-commands function)

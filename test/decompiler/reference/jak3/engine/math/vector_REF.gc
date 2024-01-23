@@ -1,28 +1,13 @@
 ;;-*-Lisp-*-
 (in-package goal)
 
-;; name: vector.gc
-;; name in dgo: vector
-;; dgos: GAME
-
-;; DECOMP BEGINS
-
+;; definition for function vector-cross!
 (defun vector-cross! ((arg0 vector) (arg1 vector) (arg2 vector))
   "Compute the cross product. The w component is set to junk."
-  (rlet ((acc :class vf)
-         (vf1 :class vf)
-         (vf2 :class vf)
-         (vf3 :class vf)
-         )
-    (.lvf vf1 (&-> arg1 quad))
-    (.lvf vf2 (&-> arg2 quad))
-    (.outer.product.a.vf acc vf1 vf2)
-    (.outer.product.b.vf vf3 vf2 vf1 acc)
-    (.svf (&-> arg0 quad) vf3)
-    arg0
-    )
+  (vector-cross! arg0 arg1 arg2)
   )
 
+;; definition for function vector-xz-cross!
 (defun vector-xz-cross! ((arg0 vector) (arg1 vector) (arg2 vector))
   "Compute the cross product of the xz components of inputs."
   (rlet ((acc :class vf)
@@ -43,6 +28,7 @@
     )
   )
 
+;; definition for function vector+float!
 (defun vector+float! ((arg0 vector) (arg1 vector) (arg2 float))
   "Add float to each component of vector. The w component is set to 1"
   (rlet ((vf0 :class vf)
@@ -60,6 +46,7 @@
     )
   )
 
+;; definition for function vector*!
 (defun vector*! ((arg0 vector) (arg1 vector) (arg2 vector))
   "Elementwise product. Set w = 1."
   (rlet ((vf0 :class vf)
@@ -77,6 +64,7 @@
     )
   )
 
+;; definition for function vector+*!
 (defun vector+*! ((arg0 vector) (arg1 vector) (arg2 vector) (arg3 float))
   "set arg0 = arg1 + (arg3 * arg2). The w component will be set to 1."
   (rlet ((acc :class vf)
@@ -98,6 +86,7 @@
     )
   )
 
+;; definition for function vector-*!
 (defun vector-*! ((arg0 vector) (arg1 vector) (arg2 vector) (arg3 float))
   "Set arg0 = arg1 - (arg3 * arg2). The w component will be set to 1."
   (rlet ((acc :class vf)
@@ -119,6 +108,7 @@
     )
   )
 
+;; definition for function vector/!
 (defun vector/! ((arg0 vector) (arg1 vector) (arg2 vector))
   "Set arg0 = arg1 / arg2. The w component will be set to 1.
    The implementation is kind of crazy."
@@ -152,9 +142,9 @@
     )
   )
 
+;; definition for function vector-float*!
 (defun vector-float*! ((arg0 vector) (arg1 vector) (arg2 float))
   "Multiply all values in a vector by arg2. Set w to 1."
-  (declare (inline))
   (rlet ((vf0 :class vf)
          (vf1 :class vf)
          (vf2 :class vf)
@@ -169,6 +159,7 @@
     )
   )
 
+;; definition for function vector-average!
 (defun vector-average! ((arg0 vector) (arg1 vector) (arg2 vector))
   "Set arg0 to the average of arg1 and arg2. Set w to 1."
   (rlet ((acc :class vf)
@@ -192,6 +183,7 @@
     )
   )
 
+;; definition for function vector+float*!
 (defun vector+float*! ((arg0 vector) (arg1 vector) (arg2 vector) (arg3 float))
   "arg0 = arg1 + arg2 * arg3."
   (rlet ((acc :class vf)
@@ -213,6 +205,7 @@
     )
   )
 
+;; definition for function vector--float*!
 (defun vector--float*! ((arg0 vector) (arg1 vector) (arg2 vector) (arg3 float))
   "Set arg0 = arg1 - (arg2 * arg3). The w component will be set to 1.
    Is this different from vector-*!"
@@ -235,6 +228,7 @@
     )
   )
 
+;; definition for function vector-min!
 (defun vector-min! ((arg0 vector) (arg1 vector) (arg2 vector))
   (set! (-> arg0 x) (fmin (-> arg1 x) (-> arg2 x)))
   (set! (-> arg0 y) (fmin (-> arg1 y) (-> arg2 y)))
@@ -243,6 +237,7 @@
   arg0
   )
 
+;; definition for function vector-max!
 (defun vector-max! ((arg0 vector) (arg1 vector) (arg2 vector))
   (set! (-> arg0 x) (fmax (-> arg1 x) (-> arg2 x)))
   (set! (-> arg0 y) (fmax (-> arg1 y) (-> arg2 y)))
@@ -251,6 +246,7 @@
   arg0
   )
 
+;; definition for function vector-float/!
 (defun vector-float/! ((arg0 vector) (arg1 vector) (arg2 float))
   "Divide all components by arg2. The w component will be set to 1."
   (rlet ((Q :class vf)
@@ -273,6 +269,7 @@
     )
   )
 
+;; definition for function vector-negate!
 (defun vector-negate! ((arg0 vector) (arg1 vector))
   "Negate xyz, set w to 1."
   (rlet ((vf0 :class vf)
@@ -288,6 +285,7 @@
     )
   )
 
+;; definition for function vector-negate-in-place!
 (defun vector-negate-in-place! ((arg0 vector))
   "Negate xyz. Doesn't touch w."
   (rlet ((vf0 :class vf)
@@ -301,39 +299,10 @@
     )
   )
 
-(defun vector= ((arg0 vector) (arg1 vector))
-  "Are the two vectors equal? Does not compare the w component.
-   The implementation is cool."
-  ;; (label L91)
-  ;;   (set! v0-0 #t)
-  ;;   (set! v1-0 #xffff)
-  (let* ((v1-0 #xffff)
-         ;;   (set! a0-1 (l.q a0-0))
-         (a0-1 (-> arg0 quad))
-         ;;   (set! v1-1 (sll v1-0 48))
-         (v1-1 (shl v1-0 48))
-         ;;   (set! a1-1 (l.q a1-0))
-         (a1-1 (-> arg1 quad))
-         (a0-2 (the uint128 0))
-         (r0 (the uint128 0))
-         )
-    ;;   (.pceqw a0-2 a0-1 a1-1)
-    (.pceqw a0-2 a0-1 a1-1)
-    ;;   (.ppach a0-3 r0-0 a0-2)
-    (.ppach a0-2 r0 a0-2)
-    ;;   (set! v1-2 (logior a0-3 v1-1))
-    (set! v1-1 (logior (the int a0-2) v1-1))
-    ;;   (set! v1-3 (+ v1-2 1))
-    ;; will overflow the 64-bit integer if xyz is equal.
-    (set! v1-1 (+ v1-1 1))
-    (zero? v1-1)
-    )
-  ;;   (b! (zero? v1-3) L92 (nop!))
-  ;;   (set! v0-0 #f)
-  ;; (label L92)
-  ;;   (ret-value v0-0)
-  )
+;; definition for function vector=
+;; ERROR: function was not converted to expressions. Cannot decompile.
 
+;; definition for function vector-delta
 (defun vector-delta ((arg0 vector) (arg1 vector))
   "Sum of the elementwise absolute value of differences."
   (local-vars (v0-0 float))
@@ -357,6 +326,7 @@
     )
   )
 
+;; definition for function vector-seek!
 (defun vector-seek! ((arg0 vector) (arg1 vector) (arg2 float))
   "Seek arg0 toward arg1. The arg0 is both read and written.
    arg2 is saturated to (0, 1)"
@@ -382,6 +352,7 @@
     )
   )
 
+;; definition for function vector-smooth-seek!
 (defun vector-smooth-seek! ((arg0 vector) (arg1 vector) (arg2 float))
   "Smoothly seek vec toward target.
    The step always points toward the target and has length (dist * alpha).
@@ -413,6 +384,7 @@
     )
   )
 
+;; definition for function vector-seek-2d-xz-smooth!
 (defun vector-seek-2d-xz-smooth! ((arg0 vector) (arg1 vector) (arg2 float) (arg3 float))
   "Smoothly seek vec's x and z components toward target.
    The step always points toward the target and has length (dist * alpha).
@@ -444,6 +416,7 @@
   arg0
   )
 
+;; definition for function vector-seek-2d-yz-smooth!
 (defun vector-seek-2d-yz-smooth! ((arg0 vector) (arg1 vector) (arg2 float) (arg3 float))
   "Smoothly seek vec's y and z components toward target.
    The step always points toward the target and has length (dist * alpha).
@@ -475,6 +448,7 @@
   arg0
   )
 
+;; definition for function vector-seek-3d-smooth!
 (defun vector-seek-3d-smooth! ((arg0 vector) (arg1 vector) (arg2 float) (arg3 float))
   "Smoothly seek vec's x, y, and z components toward target.
    The step always points toward the target and has length (dist * alpha).
@@ -510,6 +484,7 @@
   arg0
   )
 
+;; definition for function seek-with-smooth
 (defun seek-with-smooth ((arg0 float) (arg1 float) (arg2 float) (arg3 float) (arg4 float))
   "Move value closer to target.
    If we are within deadband, just go straight to target.
@@ -538,6 +513,7 @@
     )
   )
 
+;; definition for function vector-identity!
 (defun vector-identity! ((arg0 vector))
   "Set arg0 to 1, 1, 1, 1."
   (set! (-> arg0 x) 1.0)
@@ -547,6 +523,7 @@
   arg0
   )
 
+;; definition for function vector-seconds
 (defun vector-seconds ((arg0 vector) (arg1 vector))
   "Convert from actual seconds to the seconds unit."
   (set! (-> arg0 x) (* 300.0 (-> arg1 x)))
@@ -555,6 +532,7 @@
   arg0
   )
 
+;; definition for function vector-seconds!
 (defun vector-seconds! ((arg0 vector))
   "Convert from actual seconds to seconds, in place."
   (set! (-> arg0 x) (* 300.0 (-> arg0 x)))
@@ -563,6 +541,7 @@
   arg0
   )
 
+;; definition for function vector-v!
 (defun vector-v! ((arg0 vector))
   "Convert a velocity to a displacement per frame. The velocity should be in X/actual_second.
    Uses the current process clock."
@@ -570,35 +549,41 @@
   arg0
   )
 
+;; definition for function vector-v+!
 (defun vector-v+! ((arg0 vector) (arg1 vector) (arg2 vector))
   "Euler forward step, using the current display time settings."
   (vector+float*! arg0 arg1 arg2 (seconds-per-frame))
   arg0
   )
 
+;; definition for function vector-v*float+!
 (defun vector-v*float+! ((arg0 vector) (arg1 vector) (arg2 vector) (arg3 float))
   "Euler forward step, scaling velocity by velocity-scale."
   (vector+float*! arg0 arg1 arg2 (* arg3 (seconds-per-frame)))
   arg0
   )
 
+;; definition for function vector-v++!
 (defun vector-v++! ((arg0 vector) (arg1 vector))
   "Update position in place, using display's current timing."
   (vector+float*! arg0 arg0 arg1 (seconds-per-frame))
   arg0
   )
 
+;; definition for function vector-v*float!
 (defun vector-v*float! ((arg0 vector) (arg1 vector) (arg2 float))
   "Go from velocity to delta-p per frame, scaling by scale."
   (vector-float*! arg0 arg1 (* arg2 (seconds-per-frame)))
   )
 
+;; definition for function vector-v*float++!
 (defun vector-v*float++! ((arg0 vector) (arg1 vector) (arg2 float))
   "Update position with given velocity, scaled by scale."
   (vector+float*! arg0 arg0 arg1 (* arg2 (seconds-per-frame)))
   arg0
   )
 
+;; definition for function vector-to-ups!
 (defun vector-to-ups! ((arg0 vector) (arg1 vector))
   "Go from units per frame to units per second?"
   (local-vars (at-0 int))
@@ -621,6 +606,7 @@
     )
   )
 
+;; definition for function vector-from-ups!
 (defun vector-from-ups! ((arg0 vector) (arg1 vector))
   "Go from units per second to units per frame?"
   (local-vars (at-0 int))
@@ -641,31 +627,13 @@
     )
   )
 
+;; definition for function vector-length
 (defun vector-length ((arg0 vector))
   "Get the length of the xyz part."
-  (local-vars (v0-0 float))
-  (rlet ((acc :class vf)
-         (Q :class vf)
-         (vf0 :class vf)
-         (vf1 :class vf)
-         )
-    (init-vf0-vector)
-    (.lvf vf1 (&-> arg0 quad))
-    (.mul.vf vf1 vf1 vf1)
-    (.mul.x.vf acc vf0 vf1 :mask #b1000)
-    (.add.mul.y.vf acc vf0 vf1 acc :mask #b1000)
-    (.add.mul.z.vf vf1 vf0 vf1 acc :mask #b1000)
-    (.sqrt.vf Q vf1 :ftf #b11)
-    (.add.w.vf vf1 vf0 vf0 :mask #b1)
-    (.wait.vf)
-    (.mul.vf vf1 vf1 Q :mask #b1)
-    (.nop.vf)
-    (.nop.vf)
-    (.mov v0-0 vf1)
-    v0-0
-    )
+  (vector-length arg0)
   )
 
+;; definition for function vector-length-squared
 (defun vector-length-squared ((arg0 vector))
   "Get the squared length of the xyz part."
   (local-vars (v0-0 float))
@@ -686,16 +654,19 @@
     )
   )
 
+;; definition for function vector-xz-length-squared
 (defun vector-xz-length-squared ((arg0 vector))
   "Get the length of the xz part, squared."
   (+ (* (-> arg0 x) (-> arg0 x)) (* (-> arg0 z) (-> arg0 z)))
   )
 
+;; definition for function vector-xz-length
 (defun vector-xz-length ((arg0 vector))
   "Get the length of the xz part."
   (sqrtf (+ (* (-> arg0 x) (-> arg0 x)) (* (-> arg0 z) (-> arg0 z))))
   )
 
+;; definition for function vector-vector-distance
 (defun vector-vector-distance ((arg0 vector) (arg1 vector))
   "Subtract the xyz parts and get the norm."
   (local-vars (v0-0 float))
@@ -725,6 +696,7 @@
     )
   )
 
+;; definition for function vector-vector-distance-squared
 (defun vector-vector-distance-squared ((arg0 vector) (arg1 vector))
   "Squared norm of the difference of the xyz parts."
   (local-vars (v0-0 float))
@@ -743,6 +715,7 @@
     )
   )
 
+;; definition for function vector-vector-xz-distance
 (defun vector-vector-xz-distance ((arg0 vector) (arg1 vector))
   "Distance on the xz plane."
   (local-vars (v0-0 float))
@@ -771,6 +744,7 @@
     )
   )
 
+;; definition for function vector-vector-xy-distance
 (defun vector-vector-xy-distance ((arg0 vector) (arg1 vector))
   "distance on the xy plane."
   (local-vars (v0-0 float))
@@ -799,6 +773,7 @@
     )
   )
 
+;; definition for function vector-vector-xz-distance-squared
 (defun vector-vector-xz-distance-squared ((arg0 vector) (arg1 vector))
   "Distance on the xz plane squared."
   (local-vars (v0-0 float))
@@ -816,6 +791,7 @@
     )
   )
 
+;; definition for function vector-vector-planar-distance
 (defun vector-vector-planar-distance ((arg0 vector) (arg1 vector) (arg2 vector))
   (vector-vector-distance
     (vector-flatten! (new 'stack-no-clear 'vector) arg0 arg2)
@@ -823,88 +799,74 @@
     )
   )
 
+;; definition for function vector-normalize!
 (defun vector-normalize! ((arg0 vector) (arg1 float))
   "Modify arg0 in place to have length arg1 for its xyz components. The w part is not changed."
-  (let ((f0-0 (vector-length arg0)))
-    (let ((v1-1 (/ arg1 f0-0)))
-      (set! (-> arg0 data 0) (* (-> arg0 data 0) v1-1))
-      (set! (-> arg0 data 1) (* (-> arg0 data 1) v1-1))
-      (set! (-> arg0 data 2) (* (-> arg0 data 2) v1-1))
+  (rlet ((acc :class vf)
+         (Q :class vf)
+         (vf0 :class vf)
+         (vf1 :class vf)
+         (vf2 :class vf)
+         (vf3 :class vf)
+         )
+    (init-vf0-vector)
+    (.lvf vf1 (&-> arg0 quad))
+    (.mul.vf vf2 vf1 vf1 :mask #b111)
+    (let ((v1-0 arg1))
+      (.mov vf3 v1-0)
       )
+    (.mul.x.vf acc vf0 vf2 :mask #b1000)
+    (.add.mul.y.vf acc vf0 vf2 acc :mask #b1000)
+    (.add.mul.z.vf vf2 vf0 vf2 acc :mask #b1000)
+    (.isqrt.vf Q vf3 vf2 :fsf #b0 :ftf #b11)
+    (.wait.vf)
+    (.mul.vf vf1 vf1 Q :mask #b111)
+    (.nop.vf)
+    (.nop.vf)
+    (.nop.vf)
+    (.svf (&-> arg0 quad) vf1)
+    arg0
     )
-  arg0
-  ;; og:preserve-this
-  ; (rlet ((acc :class vf)
-  ;        (Q :class vf)
-  ;        (vf0 :class vf)
-  ;        (vf1 :class vf)
-  ;        (vf2 :class vf)
-  ;        (vf3 :class vf)
-  ;        )
-  ;  (init-vf0-vector)
-  ;  (.lvf vf1 (&-> arg0 quad))
-  ;  (.mul.vf vf2 vf1 vf1 :mask #b111)
-  ;  (let ((v1-0 arg1))
-  ;   (.mov vf3 v1-0)
-  ;   )
-  ;  (.mul.x.vf acc vf0 vf2 :mask #b1000)
-  ;  (.add.mul.y.vf acc vf0 vf2 acc :mask #b1000)
-  ;  (.add.mul.z.vf vf2 vf0 vf2 acc :mask #b1000)
-  ;  (.isqrt.vf Q vf3 vf2 :fsf #b0 :ftf #b11)
-  ;  (.wait.vf)
-  ;  (.mul.vf vf1 vf1 Q :mask #b111)
-  ;  (.nop.vf)
-  ;  (.nop.vf)
-  ;  (.nop.vf)
-  ;  (.svf (&-> arg0 quad) vf1)
-  ;  arg0
-  ;  )
   )
 
+;; definition for function vector-normalize-ret-len!
 (defun vector-normalize-ret-len! ((arg0 vector) (arg1 float))
   "Modify arg0 in place to have length arg1 for its xyz components.
    The w part isn't changed and the _original_ length is returned."
-  (let ((f0-0 (vector-length arg0)))
-    (let ((v1-1 (/ arg1 f0-0)))
-      (set! (-> arg0 data 0) (* (-> arg0 data 0) v1-1))
-      (set! (-> arg0 data 1) (* (-> arg0 data 1) v1-1))
-      (set! (-> arg0 data 2) (* (-> arg0 data 2) v1-1))
+  (local-vars (v1-1 float))
+  (rlet ((acc :class vf)
+         (Q :class vf)
+         (vf0 :class vf)
+         (vf1 :class vf)
+         (vf2 :class vf)
+         (vf3 :class vf)
+         )
+    (init-vf0-vector)
+    (.lvf vf1 (&-> arg0 quad))
+    (.mul.vf vf2 vf1 vf1 :mask #b111)
+    (let ((v1-0 arg1))
+      (.mov vf3 v1-0)
       )
-    f0-0
+    (.mul.x.vf acc vf0 vf2 :mask #b1000)
+    (.add.mul.y.vf acc vf0 vf2 acc :mask #b1000)
+    (.add.mul.z.vf vf2 vf0 vf2 acc :mask #b1000)
+    (.isqrt.vf Q vf3 vf2 :fsf #b0 :ftf #b11)
+    (.add.w.vf vf2 vf0 vf2 :mask #b1)
+    (.mov v1-1 vf2)
+    (let ((v0-0 (sqrtf v1-1)))
+      (.wait.vf)
+      (.mul.vf vf1 vf1 Q :mask #b111)
+      (.nop.vf)
+      (.nop.vf)
+      (.nop.vf)
+      (.svf (&-> arg0 quad) vf1)
+      v0-0
+      )
     )
-  ;; og:preserve-this
-  ; (local-vars (v1-1 float))
-  ; (rlet ((acc :class vf)
-  ;        (Q :class vf)
-  ;        (vf0 :class vf)
-  ;        (vf1 :class vf)
-  ;        (vf2 :class vf)
-  ;        (vf3 :class vf)
-  ;        )
-  ;  (init-vf0-vector)
-  ;  (.lvf vf1 (&-> arg0 quad))
-  ;  (.mul.vf vf2 vf1 vf1 :mask #b111)
-  ;  (let ((v1-0 arg1))
-  ;   (.mov vf3 v1-0)
-  ;   )
-  ;  (.mul.x.vf acc vf0 vf2 :mask #b1000)
-  ;  (.add.mul.y.vf acc vf0 vf2 acc :mask #b1000)
-  ;  (.add.mul.z.vf vf2 vf0 vf2 acc :mask #b1000)
-  ;  (.isqrt.vf Q vf3 vf2 :fsf #b0 :ftf #b11)
-  ;  (.add.w.vf vf2 vf0 vf2 :mask #b1)
-  ;  (.mov v1-1 vf2)
-  ;  (let ((v0-0 (sqrtf v1-1)))
-  ;   (.wait.vf)
-  ;   (.mul.vf vf1 vf1 Q :mask #b111)
-  ;   (.nop.vf)
-  ;   (.nop.vf)
-  ;   (.nop.vf)
-  ;   (.svf (&-> arg0 quad) vf1)
-  ;   v0-0
-  ;   )
-  ;  )
   )
 
+;; definition for function vector-normalize-copy!
+;; INFO: Used lq/sq
 (defun vector-normalize-copy! ((arg0 vector) (arg1 vector) (arg2 float))
   "Normalize, but not in place.
    This implementation is very good compared to the vector-normalize! one.
@@ -927,6 +889,7 @@
   arg0
   )
 
+;; definition for function vector-xz-normalize!
 (defun vector-xz-normalize! ((arg0 vector) (arg1 float))
   "Normalize, xz components only."
   (let* ((v1-0 arg0)
@@ -942,6 +905,8 @@
   arg0
   )
 
+;; definition for function vector-xz-normalize-copy!
+;; INFO: Used lq/sq
 (defun vector-xz-normalize-copy! ((arg0 vector) (arg1 vector) (arg2 float))
   "Normalize, xz components only."
   (let* ((v1-0 arg1)
@@ -964,6 +929,7 @@
   arg0
   )
 
+;; definition for function vector-length-max!
 (defun vector-length-max! ((arg0 vector) (arg1 float))
   "Make vector at most arg1 length (xyz only).
    If it is larger, project onto sphere.
@@ -980,6 +946,7 @@
   arg0
   )
 
+;; definition for function vector-xz-length-max!
 (defun vector-xz-length-max! ((arg0 vector) (arg1 float))
   "Make vector at most arg1 length (xz only).
    It it is larger, project onto circle.
@@ -997,6 +964,8 @@
   arg0
   )
 
+;; definition for function vector-rotate-around-x!
+;; INFO: Used lq/sq
 (defun vector-rotate-around-x! ((arg0 vector) (arg1 vector) (arg2 float))
   "Rotate a vector around the x axis."
   (let* ((f28-0 (- arg2))
@@ -1012,6 +981,8 @@
   arg0
   )
 
+;; definition for function vector-rotate-around-y!
+;; INFO: Used lq/sq
 (defun vector-rotate-around-y! ((arg0 vector) (arg1 vector) (arg2 float))
   "Rotate a vector around the y axis."
   (let ((f26-0 (-> arg1 z))
@@ -1026,6 +997,8 @@
   arg0
   )
 
+;; definition for function vector-rotate90-around-y!
+;; INFO: Used lq/sq
 (defun vector-rotate90-around-y! ((arg0 vector) (arg1 vector))
   "Rotate a vector 90 degrees around y."
   (set! (-> arg0 quad) (-> arg1 quad))
@@ -1036,6 +1009,8 @@
   arg0
   )
 
+;; definition for function vector-rotate-around-z!
+;; INFO: Used lq/sq
 (defun vector-rotate-around-z! ((arg0 vector) (arg1 vector) (arg2 float))
   "Rotate a vector around the z axis."
   (let ((f26-0 (-> arg1 x))
@@ -1050,21 +1025,25 @@
   arg0
   )
 
+;; definition for function rotate-y<-vector+vector
 (defun rotate-y<-vector+vector ((arg0 vector) (arg1 vector))
   "Get the y rotation between vectors. These should have the same length."
   (atan (- (-> arg1 x) (-> arg0 x)) (- (-> arg1 z) (-> arg0 z)))
   )
 
+;; definition for function rotate-x<-vector+vector
 (defun rotate-x<-vector+vector ((arg0 vector) (arg1 vector))
   "Get the x rotation between vectors. These should have the same length."
   (atan (- (-> arg1 y) (-> arg0 y)) (- (-> arg1 z) (-> arg0 z)))
   )
 
+;; definition for function rotate-z<-vector+vector
 (defun rotate-z<-vector+vector ((arg0 vector) (arg1 vector))
   "Get the z rotation between vectors. These should have the same length."
   (atan (- (-> arg1 x) (-> arg0 x)) (- (-> arg1 y) (-> arg0 y)))
   )
 
+;; definition for function rotate-vector-to-vector
 (defun rotate-vector-to-vector ((arg0 vector) (arg1 vector) (arg2 vector))
   (let ((gp-0 (new 'stack-no-clear 'quaternion)))
     (quaternion-from-two-vectors-max-angle! (the-as quaternion (&-> gp-0 x)) arg0 arg1 (the-as float arg2))
@@ -1073,6 +1052,7 @@
   (vector-normalize! arg0 1.0)
   )
 
+;; definition for function vector-cvt.w.s!
 (defun vector-cvt.w.s! ((arg0 vector) (arg1 vector))
   "Convert float to int32. Truncate."
   (rlet ((vf1 :class vf))
@@ -1083,6 +1063,7 @@
     )
   )
 
+;; definition for function vector-cvt.s.w!
 (defun vector-cvt.s.w! ((arg0 vector) (arg1 vector))
   "Convert float to int32."
   (rlet ((vf1 :class vf))
@@ -1093,6 +1074,7 @@
     )
   )
 
+;; definition for function rot-zxy-from-vector!
 (defun rot-zxy-from-vector! ((arg0 vector) (arg1 vector))
   "I think this gives you a vector of euler angles to rotate some unit vector
    to arg1."
@@ -1111,6 +1093,7 @@
   arg0
   )
 
+;; definition for function rot-zyx-from-vector!
 (defun rot-zyx-from-vector! ((arg0 vector) (arg1 vector))
   "I think this gives you a vector of euler angles to rotate some unit vector
    to arg1."
@@ -1129,6 +1112,7 @@
   arg0
   )
 
+;; definition for function vector-lerp!
 (defun vector-lerp! ((arg0 vector) (arg1 vector) (arg2 vector) (arg3 float))
   "Linearly interpolate between two vectors. Alpha isn't clamped.
    w will be set to 1."
@@ -1151,6 +1135,8 @@
     )
   )
 
+;; definition for function vector-lerp-clamp!
+;; INFO: Used lq/sq
 (defun vector-lerp-clamp! ((arg0 vector) (arg1 vector) (arg2 vector) (arg3 float))
   "Linearly interpolate between two vectors, clamping alpha to 0, 1.
    w will be set to 1."
@@ -1189,6 +1175,7 @@
     )
   )
 
+;; definition for function vector4-lerp!
 (defun vector4-lerp! ((arg0 vector) (arg1 vector) (arg2 vector) (arg3 float))
   "Interpolate all 4 elements of a vector. Alpha is not clamped."
   (rlet ((vf1 :class vf)
@@ -1207,6 +1194,8 @@
     )
   )
 
+;; definition for function vector4-lerp-clamp!
+;; INFO: Used lq/sq
 (defun vector4-lerp-clamp! ((arg0 vector) (arg1 vector) (arg2 vector) (arg3 float))
   "Interpolate all 4 elements of a vector. Alpha is clamped to [0, 1]."
   (rlet ((vf1 :class vf)
@@ -1241,6 +1230,8 @@
     )
   )
 
+;; definition for function vector-degi
+;; INFO: Used lq/sq
 (defun vector-degi ((arg0 vector) (arg1 vector))
   "Convert a vector (in _rotations_) to degrees units, stored in an int.
    Truncates to the nearest _rotation_.
@@ -1257,6 +1248,8 @@
     )
   )
 
+;; definition for function vector-degf
+;; INFO: Used lq/sq
 (defun vector-degf ((arg0 vector) (arg1 vector))
   "Convert a vector (in integer degree units) to floating point rotations.
    Truncates to the nearest _rotation_.
@@ -1273,6 +1266,7 @@
     )
   )
 
+;; definition for function vector-degmod
 (defun vector-degmod ((arg0 vector) (arg1 vector))
   "This one is actually right. Wraps degrees units (in floats, like they should be)
    to +/- half a rotation."
@@ -1290,6 +1284,7 @@
     )
   )
 
+;; definition for function vector-deg-diff
 ;; WARN: Return type mismatch float vs none.
 (defun vector-deg-diff ((arg0 vector) (arg1 vector) (arg2 vector))
   "Wrapped difference, degrees units. Will have the usual 16-bit accuracy issue."
@@ -1323,6 +1318,8 @@
     )
   )
 
+;; definition for function vector-deg-lerp-clamp!
+;; INFO: Used lq/sq
 (defun vector-deg-lerp-clamp! ((arg0 vector) (arg1 vector) (arg2 vector) (arg3 float))
   "Apply deg-lerp-clamp to the xyz components of a vector. Sets w = 1."
   (cond
@@ -1342,6 +1339,7 @@
   arg0
   )
 
+;; definition for function vector3s-copy!
 (defun vector3s-copy! ((arg0 vector) (arg1 vector))
   "Copy a vector3s"
   (set! (-> arg0 x) (-> arg1 x))
@@ -1350,6 +1348,7 @@
   arg0
   )
 
+;; definition for function vector3s+!
 (defun vector3s+! ((arg0 vector) (arg1 vector) (arg2 vector))
   "Add 2 vectors3."
   (set! (-> arg0 x) (+ (-> arg1 x) (-> arg2 x)))
@@ -1358,6 +1357,7 @@
   arg0
   )
 
+;; definition for function vector3s*float!
 (defun vector3s*float! ((arg0 vector) (arg1 vector) (arg2 float))
   "mult vectors3 by float"
   (set! (-> arg0 x) (* (-> arg1 x) arg2))
@@ -1366,6 +1366,7 @@
   arg0
   )
 
+;; definition for function vector3s-!
 (defun vector3s-! ((arg0 vector) (arg1 vector) (arg2 vector))
   "Subtract 2 vectors3: c = (a - b)."
   (set! (-> arg0 x) (- (-> arg1 x) (-> arg2 x)))
@@ -1374,6 +1375,7 @@
   arg0
   )
 
+;; definition for function vector4-add!
 ;; WARN: Return type mismatch float vs none.
 (defun vector4-add! ((arg0 vector4) (arg1 vector4) (arg2 vector4))
   "Add 2 vector4s."
@@ -1391,6 +1393,7 @@
     )
   )
 
+;; definition for function vector4-sub!
 ;; WARN: Return type mismatch float vs none.
 (defun vector4-sub! ((arg0 vector4) (arg1 vector4) (arg2 vector4))
   "Subtract 2 vector4s."
@@ -1408,6 +1411,7 @@
     )
   )
 
+;; definition for function vector4-mul!
 ;; WARN: Return type mismatch float vs none.
 (defun vector4-mul! ((arg0 vector4) (arg1 vector4) (arg2 vector4))
   "Multiple 2 vector4s."
@@ -1425,6 +1429,7 @@
     )
   )
 
+;; definition for function vector4-scale!
 ;; WARN: Return type mismatch float vs none.
 (defun vector4-scale! ((arg0 vector4) (arg1 vector4) (arg2 float))
   "arg0 = arg1 * arg2."
@@ -1442,6 +1447,7 @@
     )
   )
 
+;; definition for function vector4-madd!
 ;; WARN: Return type mismatch float vs none.
 (defun vector4-madd! ((arg0 vector4) (arg1 vector4) (arg2 vector4) (arg3 float))
   "arg0 = arg1 + arg2 * arg3."
@@ -1465,6 +1471,7 @@
     )
   )
 
+;; definition for function vector4-msub!
 ;; WARN: Return type mismatch float vs none.
 (defun vector4-msub! ((arg0 vector4) (arg1 vector4) (arg2 vector4) (arg3 float))
   "arg0 = arg1 - arg2 * arg3."
@@ -1488,6 +1495,7 @@
     )
   )
 
+;; definition for function vector4-array-add!
 ;; WARN: Return type mismatch symbol vs none.
 (defun vector4-array-add! ((arg0 (inline-array vector4)) (arg1 (inline-array vector4)) (arg2 (inline-array vector4)) (arg3 int))
   "Apply vector4-add! to all arrays."
@@ -1500,6 +1508,7 @@
   (none)
   )
 
+;; definition for function vector4-array-sub!
 ;; WARN: Return type mismatch symbol vs none.
 (defun vector4-array-sub! ((arg0 (inline-array vector4)) (arg1 (inline-array vector4)) (arg2 (inline-array vector4)) (arg3 int))
   "Apply vector4-sub! to all arrays."
@@ -1512,6 +1521,7 @@
   (none)
   )
 
+;; definition for function vector4-array-mul!
 ;; WARN: Return type mismatch symbol vs none.
 (defun vector4-array-mul! ((arg0 (inline-array vector4)) (arg1 (inline-array vector4)) (arg2 (inline-array vector4)) (arg3 int))
   "Apply vector4-mul! to all arrays."
@@ -1524,6 +1534,7 @@
   (none)
   )
 
+;; definition for function vector4-array-scale!
 ;; WARN: Return type mismatch symbol vs none.
 (defun vector4-array-scale! ((arg0 (inline-array vector4)) (arg1 (inline-array vector4)) (arg2 float) (arg3 int))
   "Apply vector4-scale! to all arrays."
@@ -1535,6 +1546,7 @@
   (none)
   )
 
+;; definition for function vector4-array-madd!
 ;; WARN: Return type mismatch symbol vs none.
 (defun vector4-array-madd! ((arg0 (inline-array vector4))
                    (arg1 (inline-array vector4))
@@ -1552,6 +1564,7 @@
   (none)
   )
 
+;; definition for function vector4-array-msub!
 ;; WARN: Return type mismatch symbol vs none.
 (defun vector4-array-msub! ((arg0 (inline-array vector4))
                    (arg1 (inline-array vector4))
@@ -1569,6 +1582,7 @@
   (none)
   )
 
+;; definition for function vector4-array-lerp!
 (defun vector4-array-lerp! ((arg0 (inline-array vector4))
                    (arg1 (inline-array vector4))
                    (arg2 (inline-array vector4))
@@ -1585,6 +1599,7 @@
   #f
   )
 
+;; definition for function spheres-overlap?
 (defun spheres-overlap? ((arg0 sphere) (arg1 sphere))
   "Do the spheres overlap?"
   (local-vars (v1-0 float) (a0-1 float))
@@ -1610,6 +1625,8 @@
     )
   )
 
+;; definition for function sphere<-vector!
+;; INFO: Used lq/sq
 (defun sphere<-vector! ((arg0 sphere) (arg1 vector))
   "Set the position of the sphere to arg1. Does not change the radius."
   (let ((f0-0 (-> arg0 r)))
@@ -1619,6 +1636,8 @@
   arg0
   )
 
+;; definition for function sphere<-vector+r!
+;; INFO: Used lq/sq
 (defun sphere<-vector+r! ((arg0 sphere) (arg1 vector) (arg2 float))
   "Set the position of the sphere from arg1 and the radius from arg2."
   (set! (-> arg0 quad) (-> arg1 quad))
@@ -1626,6 +1645,7 @@
   arg0
   )
 
+;; definition for function rand-vu-sphere-point!
 (defun rand-vu-sphere-point! ((arg0 vector) (arg1 float))
   "Get a random point on the sphere at the origin with radius arg1.
    The point is on the surface of the sphere."
@@ -1639,6 +1659,7 @@
   (vector-normalize! arg0 (rand-vu-float-range 0.0 arg1))
   )
 
+;; definition for function rand-vu-sphere-point-uniform!
 (defun rand-vu-sphere-point-uniform! ((arg0 vector) (arg1 float))
   (local-vars (v1-3 float) (f0-5 float))
   (rlet ((acc :class vf)
@@ -1669,11 +1690,13 @@
     )
   )
 
+;; definition for method 2 of type vector2
 (defmethod print ((this vector2))
   (format #t "#<vector ~F ~F @ #x~X>" (-> this x) (-> this y) this)
   this
   )
 
+;; definition for function vector-vector-angle-safe
 (defun vector-vector-angle-safe ((arg0 vector) (arg1 vector))
   "Get the angle between two vectors, with some 'safety' applied..."
   (let ((f0-1 (vector-dot
@@ -1687,7 +1710,6 @@
        0.0
        )
       ((>= -1.0 f0-1)
-       ;; og:preserve-this what is this value?? this should be 180 degrees.
        0.017257283
        )
       (else
@@ -1697,6 +1719,8 @@
     )
   )
 
+;; definition for function vector-get-unique!
+;; INFO: Used lq/sq
 (defun vector-get-unique! ((arg0 vector) (arg1 vector))
   (let ((v1-0 0))
     (let ((f0-0 (-> arg1 x)))
@@ -1715,6 +1739,8 @@
   arg0
   )
 
+;; definition for function vector-get-closest-perpendicular!
+;; INFO: Used lq/sq
 (defun vector-get-closest-perpendicular! ((arg0 vector) (arg1 vector) (arg2 vector))
   (let ((s5-0 (new 'stack-no-clear 'vector)))
     0.0
@@ -1727,3 +1753,7 @@
     )
   arg0
   )
+
+
+
+
