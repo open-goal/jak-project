@@ -1135,7 +1135,6 @@
 ;; types-h                        ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype basic-reserved (basic)
   ()
   :method-count-assert 29
@@ -1164,12 +1163,11 @@
     (basic-reserved-method-28 () none) ;; 28
     )
   )
-|#
 
-;; (deftype part-id (uint32)
-;;   ()
-;;   :flag-assert #x900000004
-;;   )
+(deftype part-id (uint32)
+  ()
+  :flag-assert #x900000004
+  )
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -2524,7 +2522,25 @@
 ;; gsound-h                       ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
+(defenum sound-command
+  :type uint16
+  )
+
+(defenum sound-group
+  :bitfield #t
+  :type uint8
+  )
+
+(defenum sound-mask
+  :bitfield #t
+  :type uint16
+  )
+
+(defenum stream-status
+  :type uint32
+  :bitfield #t
+  )
+
 (deftype sound-stream-name (structure)
   ((name uint8 48 :offset-assert 0) ;; guessed by decompiler
    )
@@ -2532,23 +2548,25 @@
   :size-assert         #x30
   :flag-assert         #x900000030
   )
-|#
 
 (deftype sound-id (uint32)
   ()
+  :flag-assert #xa00000004
+  (:methods
+    (unknown () none)
+    )
   )
 
-;; (deftype sound-bank-id (uint32)
-;;   ()
-;;   :flag-assert #x900000004
-;;   )
+(deftype sound-bank-id (uint32)
+  ()
+  :flag-assert #x900000004
+  )
 
-;; (deftype sound-name (uint128)
-;;   ()
-;;   :flag-assert #x900000010
-;;   )
+(deftype sound-name (uint128)
+  ()
+  :flag-assert #x900000010
+  )
 
-#|
 (deftype sound-rpc-cmd (structure)
   ((rsvd1   uint16  :offset-assert 0)
    (command uint16  :offset-assert 2) ;; sound-command
@@ -2557,9 +2575,7 @@
   :size-assert         #x4
   :flag-assert         #x900000004
   )
-|#
 
-#|
 (deftype sound-play-params (structure)
   ((mask      uint16   :offset-assert 0)
    (pitch-mod int16    :offset-assert 2)
@@ -2573,23 +2589,20 @@
    (group     uint8    :offset-assert 28)
    (reg       uint8  3 :offset-assert 29) ;; guessed by decompiler
    )
+  :pack-me
   :method-count-assert 9
   :size-assert         #x20
   :flag-assert         #x900000020
   )
-|#
 
-#|
 (deftype sound-rpc-bank-cmd (sound-rpc-cmd)
-  ((bank-name uint128  :offset-assert 16) ;; sound-name
+  ((bank-name sound-name  :offset-assert 16)
    )
   :method-count-assert 9
   :size-assert         #x20
   :flag-assert         #x900000020
   )
-|#
 
-#|
 (deftype sound-rpc-test-cmd (sound-rpc-cmd)
   ((ee-addr pointer  :offset-assert 4) ;; guessed by decompiler
    (param0  uint16   :offset-assert 8)
@@ -2598,9 +2611,7 @@
   :size-assert         #xa
   :flag-assert         #x90000000a
   )
-|#
 
-#|
 (deftype sound-rpc-sound-cmd (sound-rpc-cmd)
   ((id sound-id  :offset-assert 4) ;; guessed by decompiler
    )
@@ -2608,19 +2619,15 @@
   :size-assert         #x8
   :flag-assert         #x900000008
   )
-|#
 
-#|
 (deftype sound-rpc-group-cmd (sound-rpc-cmd)
-  ((group sound-group  :offset-assert 4) ;; guessed by decompiler
+  ((group uint32  :offset-assert 4) ;; guessed by decompiler
    )
   :method-count-assert 9
   :size-assert         #x8
   :flag-assert         #x900000008
   )
-|#
 
-#|
 (deftype sound-rpc-load-bank (sound-rpc-bank-cmd)
   ((ee-addr  pointer  :offset-assert 32) ;; guessed by decompiler
    (mode     uint32   :offset-assert 36)
@@ -2630,65 +2637,51 @@
   :size-assert         #x2c
   :flag-assert         #x90000002c
   )
-|#
 
-#|
 (deftype sound-rpc-load-music (sound-rpc-bank-cmd)
   ()
   :method-count-assert 9
   :size-assert         #x20
   :flag-assert         #x900000020
   )
-|#
 
-#|
 (deftype sound-rpc-unload-bank (sound-rpc-bank-cmd)
   ()
   :method-count-assert 9
   :size-assert         #x20
   :flag-assert         #x900000020
   )
-|#
 
-#|
 (deftype sound-rpc-play (sound-rpc-sound-cmd)
-  ((name   uint128                   :offset-assert 16) ;; sound-name
+  ((name   sound-name                :offset-assert 16)
    (params sound-play-params :inline :offset-assert 32)
    )
   :method-count-assert 9
   :size-assert         #x40
   :flag-assert         #x900000040
   )
-|#
 
-#|
 (deftype sound-rpc-pause-sound (sound-rpc-sound-cmd)
   ()
   :method-count-assert 9
   :size-assert         #x8
   :flag-assert         #x900000008
   )
-|#
 
-#|
 (deftype sound-rpc-stop-sound (sound-rpc-sound-cmd)
   ()
   :method-count-assert 9
   :size-assert         #x8
   :flag-assert         #x900000008
   )
-|#
 
-#|
 (deftype sound-rpc-continue-sound (sound-rpc-sound-cmd)
   ()
   :method-count-assert 9
   :size-assert         #x8
   :flag-assert         #x900000008
   )
-|#
 
-#|
 (deftype sound-rpc-set-param (sound-rpc-sound-cmd)
   ((params    sound-play-params :inline :offset-assert 8)
    (auto-time int32                     :offset-assert 40)
@@ -2698,9 +2691,7 @@
   :size-assert         #x30
   :flag-assert         #x900000030
   )
-|#
 
-#|
 (deftype sound-rpc-set-master-volume (sound-rpc-group-cmd)
   ((volume int32  :offset-assert 8)
    )
@@ -2708,36 +2699,28 @@
   :size-assert         #xc
   :flag-assert         #x90000000c
   )
-|#
 
-#|
 (deftype sound-rpc-pause-group (sound-rpc-group-cmd)
   ()
   :method-count-assert 9
   :size-assert         #x8
   :flag-assert         #x900000008
   )
-|#
 
-#|
 (deftype sound-rpc-stop-group (sound-rpc-group-cmd)
   ()
   :method-count-assert 9
   :size-assert         #x8
   :flag-assert         #x900000008
   )
-|#
 
-#|
 (deftype sound-rpc-continue-group (sound-rpc-group-cmd)
   ()
   :method-count-assert 9
   :size-assert         #x8
   :flag-assert         #x900000008
   )
-|#
 
-#|
 (deftype sound-rpc-cancel-dgo (sound-rpc-group-cmd)
   ((id uint32  :offset-assert 8)
    )
@@ -2745,9 +2728,7 @@
   :size-assert         #xc
   :flag-assert         #x90000000c
   )
-|#
 
-#|
 (deftype sound-rpc-get-irx-version (sound-rpc-cmd)
   ((major   uint32   :offset-assert 4)
    (minor   uint32   :offset-assert 8)
@@ -2757,9 +2738,7 @@
   :size-assert         #x10
   :flag-assert         #x900000010
   )
-|#
 
-#|
 (deftype sound-rpc-set-language (sound-rpc-cmd)
   ((lang uint32  :offset-assert 4)
    )
@@ -2767,9 +2746,7 @@
   :size-assert         #x8
   :flag-assert         #x900000008
   )
-|#
 
-#|
 (deftype sound-rpc-set-stereo-mode (sound-rpc-cmd)
   ((mode int32  :offset-assert 4)
    )
@@ -2777,9 +2754,7 @@
   :size-assert         #x8
   :flag-assert         #x900000008
   )
-|#
 
-#|
 (deftype sound-rpc-set-reverb (sound-rpc-cmd)
   ((core   uint8   :offset-assert 4)
    (reverb int32   :offset-assert 8)
@@ -2790,15 +2765,13 @@
   :size-assert         #x14
   :flag-assert         #x900000014
   )
-|#
 
-#|
 (deftype sound-rpc-set-ear-trans (sound-rpc-cmd)
   ((ear-trans1   int32   3 :offset-assert 4) ;; guessed by decompiler
    (ear-trans0   int32   3 :offset-assert 16) ;; guessed by decompiler
    (cam-trans    int32   3 :offset-assert 28) ;; guessed by decompiler
-   (cam-forward  UNKNOWN 3 :offset-assert 40)
-   (cam-left     UNKNOWN 3 :offset-assert 52)
+   (cam-forward  int32 3   :offset-assert 40)
+   (cam-left     int32 3   :offset-assert 52)
    (cam-scale    int32     :offset-assert 64)
    (cam-inverted int32     :offset-assert 68)
    )
@@ -2806,9 +2779,7 @@
   :size-assert         #x48
   :flag-assert         #x900000048
   )
-|#
 
-#|
 (deftype sound-rpc-set-flava (sound-rpc-cmd)
   ((flava      uint8  :offset-assert 4)
    (excitement uint8  :offset-assert 5)
@@ -2817,9 +2788,7 @@
   :size-assert         #x6
   :flag-assert         #x900000006
   )
-|#
 
-#|
 (deftype sound-rpc-set-midi-reg (sound-rpc-cmd)
   ((reg   int32  :offset-assert 4)
    (value int16  :offset-assert 8)
@@ -2828,18 +2797,14 @@
   :size-assert         #xa
   :flag-assert         #x90000000a
   )
-|#
 
-#|
 (deftype sound-rpc-shutdown (sound-rpc-cmd)
   ()
   :method-count-assert 9
   :size-assert         #x4
   :flag-assert         #x900000004
   )
-|#
 
-#|
 (deftype sound-rpc-set-fps (sound-rpc-cmd)
   ((fps uint8  :offset-assert 4)
    )
@@ -2847,65 +2812,58 @@
   :size-assert         #x5
   :flag-assert         #x900000005
   )
-|#
 
-#|
 (deftype sound-rpc-list-sounds (sound-rpc-cmd)
   ()
   :method-count-assert 9
   :size-assert         #x4
   :flag-assert         #x900000004
   )
-|#
 
-#|
 (deftype sound-rpc-unload-music (sound-rpc-cmd)
   ()
   :method-count-assert 9
   :size-assert         #x4
   :flag-assert         #x900000004
   )
-|#
 
-#|
 (deftype sound-rpc-union (structure)
   ((data              uint32                      20 :offset-assert 0) ;; guessed by decompiler
-   (load-bank         sound-rpc-load-bank            :offset-assert 0)
-   (unload-bank       sound-rpc-unload-bank          :offset-assert 0)
-   (play              sound-rpc-play                 :offset-assert 0)
-   (pause-sound       sound-rpc-pause-sound          :offset-assert 0)
-   (stop-sound        sound-rpc-stop-sound           :offset-assert 0)
-   (continue-sound    sound-rpc-continue-sound       :offset-assert 0)
-   (set-param         sound-rpc-set-param            :offset-assert 0)
-   (set-master-volume sound-rpc-set-master-volume    :offset-assert 0)
-   (pause-group       sound-rpc-pause-group          :offset-assert 0)
-   (stop-group        sound-rpc-stop-group           :offset-assert 0)
-   (continue-group    sound-rpc-continue-group       :offset-assert 0)
-   (get-irx-version   sound-rpc-get-irx-version      :offset-assert 0)
-   (set-language      sound-rpc-set-language         :offset-assert 0)
-   (set-reverb        sound-rpc-set-reverb           :offset-assert 0)
-   (set-ear-trans     sound-rpc-set-ear-trans        :offset-assert 0)
-   (set-flava         sound-rpc-set-flava            :offset-assert 0)
-   (set-midi-reg      sound-rpc-set-midi-reg         :offset-assert 0)
-   (set-fps           sound-rpc-set-fps              :offset-assert 0)
-   (shutdown          sound-rpc-shutdown             :offset-assert 0)
-   (list-sounds       sound-rpc-list-sounds          :offset-assert 0)
-   (unload-music      sound-rpc-unload-music         :offset-assert 0)
+   (load-bank         sound-rpc-load-bank            :offset-assert 0 :overlay-at data)
+   (unload-bank       sound-rpc-unload-bank          :offset-assert 0 :overlay-at data)
+   (play              sound-rpc-play                 :offset-assert 0 :overlay-at data)
+   (pause-sound       sound-rpc-pause-sound          :offset-assert 0 :overlay-at data)
+   (stop-sound        sound-rpc-stop-sound           :offset-assert 0 :overlay-at data)
+   (continue-sound    sound-rpc-continue-sound       :offset-assert 0 :overlay-at data)
+   (set-param         sound-rpc-set-param            :offset-assert 0 :overlay-at data)
+   (set-master-volume sound-rpc-set-master-volume    :offset-assert 0 :overlay-at data)
+   (pause-group       sound-rpc-pause-group          :offset-assert 0 :overlay-at data)
+   (stop-group        sound-rpc-stop-group           :offset-assert 0 :overlay-at data)
+   (continue-group    sound-rpc-continue-group       :offset-assert 0 :overlay-at data)
+   (get-irx-version   sound-rpc-get-irx-version      :offset-assert 0 :overlay-at data)
+   (set-language      sound-rpc-set-language         :offset-assert 0 :overlay-at data)
+   (set-reverb        sound-rpc-set-reverb           :offset-assert 0 :overlay-at data)
+   (set-ear-trans     sound-rpc-set-ear-trans        :offset-assert 0 :overlay-at data)
+   (set-flava         sound-rpc-set-flava            :offset-assert 0 :overlay-at data)
+   (set-midi-reg      sound-rpc-set-midi-reg         :offset-assert 0 :overlay-at data)
+   (set-fps           sound-rpc-set-fps              :offset-assert 0 :overlay-at data)
+   (shutdown          sound-rpc-shutdown             :offset-assert 0 :overlay-at data)
+   (list-sounds       sound-rpc-list-sounds          :offset-assert 0 :overlay-at data)
+   (unload-music      sound-rpc-unload-music         :offset-assert 0 :overlay-at data)
    )
   :method-count-assert 9
   :size-assert         #x50
   :flag-assert         #x900000050
   )
-|#
 
-#|
 (deftype sound-spec (basic)
-  ((mask       uint16    :offset-assert 4) ;; sound-mask
+  ((mask       sound-mask    :offset-assert 4) ;; sound-mask
    (num        float     :offset-assert 8)
-   (group      uint8     :offset-assert 12) ;; sound-group
+   (group      sound-group     :offset-assert 12) ;;
    (reg        uint8   3 :offset-assert 13) ;; guessed by decompiler
-   (UNKNOWN    UNKNOWN   :offset-assert -1) ;; field could not be read.
-   (sound-name uint128   :offset-assert 16) ;; sound-name
+   ;; (UNKNOWN    UNKNOWN   :offset-assert -1) ;; field could not be read.
+   (sound-name-char  uint8       16 :offset-assert 16)
+   (sound-name sound-name   :offset-assert 16 :overlay-at sound-name-char) ;;
    (trans      int32   4 :offset-assert 32) ;; guessed by decompiler
    (volume     int32     :offset-assert 48)
    (pitch-mod  int32     :offset-assert 52)
@@ -2921,9 +2879,7 @@
   :size-assert         #x4c
   :flag-assert         #x90000004c
   )
-|#
 
-#|
 (deftype sound-bank-state (structure)
   ((name basic   :offset-assert 0)
    (mode uint32  :offset-assert 4)
@@ -2932,9 +2888,7 @@
   :size-assert         #x8
   :flag-assert         #x900000008
   )
-|#
 
-#|
 (deftype ambient-sound (basic)
   ((spec         sound-spec              :offset-assert 4) ;; guessed by decompiler
    (playing-id   sound-id                :offset-assert 8) ;; guessed by decompiler
@@ -2969,9 +2923,8 @@
     (ambient-sound-method-16 () none) ;; 16
     )
   )
-|#
 
-;; (define-extern *current-sound-id* object) ;; sound-id
+(define-extern *current-sound-id* sound-id)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; timer-h                        ;;
@@ -3122,100 +3075,104 @@
 ;; dma-h                          ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype dma-chcr (uint32)
-  ((UNKNOWN UNKNOWN  :offset-assert -1) ;; field could not be read.
-   (UNKNOWN UNKNOWN  :offset-assert -1) ;; field could not be read.
-   (UNKNOWN UNKNOWN  :offset-assert -1) ;; field could not be read.
-   (UNKNOWN UNKNOWN  :offset-assert -1) ;; field could not be read.
-   (UNKNOWN UNKNOWN  :offset-assert -1) ;; field could not be read.
-   (UNKNOWN UNKNOWN  :offset-assert -1) ;; field could not be read.
-   (UNKNOWN UNKNOWN  :offset-assert -1) ;; field could not be read.
+  "Memory mapped DMA channel control register. Typically used to start and check on DMA transfer."
+  ((dir uint8 :offset 0 :size 1)
+   (mod uint8 :offset 2 :size 2)
+   (asp uint8 :offset 4 :size 2)
+   (tte uint8 :offset 6 :size 1)
+   (tie uint8 :offset 7 :size 1)
+   (str uint8 :offset 8 :size 1)
+   (tag uint16 :offset 16 :size 16)
    )
   :method-count-assert 9
   :size-assert         #x4
   :flag-assert         #x900000004
   )
-|#
 
-#|
 (deftype dma-bank (structure)
-  ((chcr dma-chcr  :offset-assert 0) ;; guessed by decompiler
-   (madr uint32    :offset-assert 16)
-   (qwc  uint32    :offset-assert 32)
+  "Bank of memory mapped DMA registers for a single channel. Used to control DMA."
+  ((chcr dma-chcr  :offset 0) ;; guessed by decompiler
+   (madr uint32    :offset 16)
+   (qwc  uint32    :offset 32)
    )
   :method-count-assert 9
   :size-assert         #x24
   :flag-assert         #x900000024
   )
-|#
 
-#|
 (deftype dma-bank-source (dma-bank)
-  ((tadr uint32  :offset-assert 48)
+  "DMA channel registers for a DMA channel supporting source-chain."
+  ((tadr uint32  :offset 48)
    )
   :method-count-assert 9
   :size-assert         #x34
   :flag-assert         #x900000034
   )
-|#
 
-#|
 (deftype dma-bank-vif (dma-bank-source)
-  ((as0 uint32  :offset-assert 64)
-   (as1 uint32  :offset-assert 80)
+  "DMA channel registers for a DMA channel with call/ret stack."
+  ((as0 uint32  :offset 64)
+   (as1 uint32  :offset 80)
    )
   :method-count-assert 9
   :size-assert         #x54
   :flag-assert         #x900000054
   )
-|#
 
-#|
 (deftype dma-bank-spr (dma-bank-source)
-  ((sadr uint32  :offset-assert 128)
+  "DMA channel registers for a DMA channel supporting scratchpad transfer."
+  ((sadr uint32  :offset 128)
    )
   :method-count-assert 9
   :size-assert         #x84
   :flag-assert         #x900000084
   )
-|#
 
-;; (deftype dma-ctrl (uint32)
-;;   ()
-;;   :flag-assert #x900000004
-;;   )
+(deftype dma-ctrl (uint32)
+  "Main DMA control register, shared for all channels."
+  ((dmae uint8 :offset   0 :size   1)
+   (rele uint8 :offset   1 :size   1)
+   (mfd  uint8 :offset   2 :size   2)
+   (sts  uint8 :offset   4 :size   2)
+   (std  uint8 :offset   6 :size   2)
+   (rcyc uint8 :offset   8 :size   3)
+   )
+  :flag-assert #x900000004
+  )
 
-;; (deftype dma-enable (uint32)
-;;   ()
-;;   :flag-assert #x900000004
-;;   )
+(deftype dma-enable (uint32)
+  ((cpnd uint8 :offset  16 :size   1)
+   )
+  :flag-assert #x900000004
+  )
 
-;; (deftype dma-sqwc (uint32)
-;;   ()
-;;   :flag-assert #x900000004
-;;   )
+(deftype dma-sqwc (uint32)
+  ((sqwc uint8 :offset   0 :size   8)
+   (tqwc uint8 :offset  16 :size   8)
+   )
+  :flag-assert #x900000004
+  )
 
-#|
 (deftype dma-bank-control (structure)
-  ((ctrl    dma-ctrl  :offset-assert 0) ;; guessed by decompiler
-   (stat    uint32    :offset-assert 16)
-   (pcr     uint32    :offset-assert 32)
-   (sqwc    dma-sqwc  :offset-assert 48) ;; guessed by decompiler
-   (rbsr    uint32    :offset-assert 64)
-   (rbor    uint32    :offset-assert 80)
-   (stadr   uint32    :offset-assert 96)
-   (enabler uint32    :offset-assert 5408)
-   (enablew uint32    :offset-assert 5520)
+  "Memory mapping for shared DMA registers."
+  ((ctrl    dma-ctrl  :offset 0) ;; guessed by decompiler
+   (stat    uint32    :offset 16)
+   (pcr     uint32    :offset 32)
+   (sqwc    dma-sqwc  :offset 48) ;; guessed by decompiler
+   (rbsr    uint32    :offset 64)
+   (rbor    uint32    :offset 80)
+   (stadr   uint32    :offset 96)
+   (enabler uint32    :offset 5408)
+   (enablew uint32    :offset 5520)
    )
   :method-count-assert 9
   :size-assert         #x1594
   :flag-assert         #x900001594
   )
-|#
 
-#|
 (deftype vu-code-block (basic)
+  "Unused type for some VU code. vu-function is used instead."
   ((name         basic   :offset-assert 4)
    (code         uint32  :offset-assert 8)
    (size         int32   :offset-assert 12)
@@ -3225,88 +3182,171 @@
   :size-assert         #x14
   :flag-assert         #x900000014
   )
-|#
 
-;; (deftype vu-stat (uint64)
-;;   ()
-;;   :flag-assert #x900000008
-;;   )
+(deftype vu-stat (uint64)
+  ()
+  :flag-assert #x900000008
+  )
 
-#|
+(defenum dma-tag-id
+    :bitfield #f
+    :type uint8
+    (refe 0) ;; addr=ADDR, ends after this transfer
+    (cnt 1)  ;; addr=after tag, next-tag=after data
+    (next 2) ;; addr=after tag, next-tag=ADDR
+    (ref 3)  ;; addr=ADDR, next-tag=after tag
+    (refs 4) ;; ref, but stall controled
+    (call 5) ;;
+    (ret 6)  ;;
+    (end 7)  ;; next, but ends.
+    )
+
 (deftype dma-tag (uint64)
-  ((UNKNOWN UNKNOWN  :offset-assert -1) ;; field could not be read.
-   (UNKNOWN UNKNOWN  :offset-assert -1) ;; field could not be read.
-   (UNKNOWN UNKNOWN  :offset-assert -1) ;; field could not be read.
-   (UNKNOWN UNKNOWN  :offset-assert -1) ;; field could not be read.
-   (UNKNOWN UNKNOWN  :offset-assert -1) ;; field could not be read.
-   (UNKNOWN UNKNOWN  :offset-assert -1) ;; field could not be read.
+  "The 64-bit tag used by the DMA system."
+  ((qwc  uint16     :offset   0 :size  16)
+   (pce  uint8      :offset  26 :size   2)
+   (id   dma-tag-id :offset  28 :size   3)
+   (irq  uint8      :offset  31 :size   1)
+   (addr uint32     :offset  32 :size  31)
+   (spr  uint8      :offset  63 :size   1)
    )
   :method-count-assert 9
   :size-assert         #x8
   :flag-assert         #x900000008
   )
-|#
 
-#|
 (deftype dma-bucket (structure)
-  ((tag   uint64             :offset-assert 0) ;; dma-tag
+  "A linked list of DMA data, typically all in the same category. Used to organize the full DMA chain."
+  ((tag   dma-tag            :offset-assert 0)
    (last  (pointer dma-tag)  :offset-assert 8) ;; guessed by decompiler
    (dummy uint32             :offset-assert 12)
-   (next  uint32             :offset-assert 4)
-   (clear uint64             :offset-assert 8)
-   (vif0  uint32             :offset-assert 8)
-   (vif1  uint32             :offset-assert 12)
+   (next  uint32             :offset 4)
+   (clear uint64             :offset-assert 8 :overlay-at last)
+   (vif0  uint32             :offset-assert 8  :overlay-at last)
+   (vif1  uint32             :offset-assert 12 :overlay-at dummy)
    )
   :method-count-assert 9
   :size-assert         #x10
   :flag-assert         #x900000010
   )
-|#
 
-;; (deftype vif-mask (uint32)
-;;   ()
-;;   :flag-assert #x900000004
-;;   )
+(deftype vif-mask (uint32)
+  ((m0  uint8 :offset   0 :size   2)
+   (m1  uint8 :offset   2 :size   2)
+   (m2  uint8 :offset   4 :size   2)
+   (m3  uint8 :offset   6 :size   2)
+   (m4  uint8 :offset   8 :size   2)
+   (m5  uint8 :offset  10 :size   2)
+   (m6  uint8 :offset  12 :size   2)
+   (m7  uint8 :offset  14 :size   2)
+   (m8  uint8 :offset  16 :size   2)
+   (m9  uint8 :offset  18 :size   2)
+   (m10 uint8 :offset  20 :size   2)
+   (m11 uint8 :offset  22 :size   2)
+   (m12 uint8 :offset  24 :size   2)
+   (m13 uint8 :offset  26 :size   2)
+   (m14 uint8 :offset  28 :size   2)
+   (m15 uint8 :offset  30 :size   2)
+   )
+  :flag-assert #x900000004
+  )
 
-;; (deftype vif-stcycl-imm (uint16)
-;;   ()
-;;   :flag-assert #x900000002
-;;   )
+(deftype vif-stcycl-imm (uint16)
+  "The imm field of a VIF code using STCYCL, which adjusts the pattern for storing data."
+  ((cl uint8 :offset   0 :size   8)
+   (wl uint8 :offset   8 :size   8)
+   )
+  :flag-assert #x900000002
+  )
 
-;; (deftype vif-unpack-imm (uint16)
-;;   ()
-;;   :flag-assert #x900000002
-;;   )
+(deftype vif-unpack-imm (uint16)
+  "The imm field of a VIF code using UNPACK, which transfers data to VU memory."
+  ((addr uint16 :offset   0 :size  10)
+   (usn  uint8  :offset  14 :size   1)
+   (flg  uint8  :offset  15 :size   1)
+   )
+  :flag-assert #x900000002
+  )
 
-#|
+;; all these have mask (only applies to unpacks) and interrupt not set.
+(defenum vif-cmd
+    :bitfield #f
+    :type uint8
+    (nop          0)  ;; no-op, can still have irq set.
+    (stcycl       1)  ;; set write recycle register
+    (offset       2)  ;; set offset register
+    (base         3)  ;; set base register
+    (itop         4)  ;; set data pointer register (itops)
+    (stmod        5)  ;; set mode register
+    (mskpath3     6)  ;; set path 3 mask
+    (mark         7)  ;; set mark register
+    (pc-port      8)  ;; special tag for PC Port data.
+    (flushe       16) ;; wait for end of microprogram
+    (flush        17) ;; wait for end of microprogram and transfer (path1/path2)
+    (flusha       19) ;; wait for end of microprogram and transfer (path1/path2/path3)
+    (mscal        20) ;; activate microprogram (call)
+    (mscalf       21) ;; flushe and activate (call)
+    (mscnt        23) ;; activate microprogram (continue)
+    (stmask       32) ;; set MASK register.
+    (strow        48) ;; set filling data
+    (stcol        49) ;; set filling data
+    (mpg          74) ;; transfer microprogram
+    (direct       80) ;; straight to GIF.
+    (directhl     81)
+    (unpack-s-32  96)
+    (unpack-s-16  97)
+    (unpack-s-8   98)
+    ;; 99 is invllid
+    (unpack-v2-32 100)
+    (unpack-v2-16 101)
+    (unpack-v2-8  102)
+    ;; 103 is invalid
+    (unpack-v3-32 104)
+    (unpack-v3-16 105)
+    (unpack-v3-8  106)
+    ;; 107 is invalid
+    (unpack-v4-32 108)
+    (unpack-v4-16 109)
+    (unpack-v4-8  110)
+    (unpack-v4-5  111)
+    (cmd-mask     239) ;; not sure what this is.
+    )
+
+;; this makes a copy of the above type, but uses a uint32.
+(defenum vif-cmd-32
+    :bitfield #f
+    :type uint32
+    :copy-entries vif-cmd
+    )
+
 (deftype vif-tag (uint32)
-  ((UNKNOWN UNKNOWN  :offset-assert -1) ;; field could not be read.
-   (UNKNOWN UNKNOWN  :offset-assert -1) ;; field could not be read.
-   (UNKNOWN UNKNOWN  :offset-assert -1) ;; field could not be read.
-   (UNKNOWN UNKNOWN  :offset-assert -1) ;; field could not be read.
-   (UNKNOWN UNKNOWN  :offset-assert -1) ;; field could not be read.
+  "A tag consumed by the VIF, which accepts DMA data."
+  ((imm uint16  :offset   0 :size  16)
+   (num uint8   :offset  16 :size   8)
+   (cmd vif-cmd :offset  24 :size   7)
+   (irq uint8   :offset  31 :size   1)
+   (msk uint8   :offset  28 :size   1)
    )
   :method-count-assert 9
   :size-assert         #x4
   :flag-assert         #x900000004
   )
-|#
 
-;; (define-extern dma-sync-fast function) ;; (function dma-bank none)
-;; (define-extern dma-send-no-scratch function) ;; (function dma-bank uint32 uint32 none)
-;; (define-extern dma-sync-with-count function) ;; (function dma-bank (pointer int32) int)
-;; (define-extern dma-count-until-done function) ;; (function dma-bank (pointer int32) int)
+(define-extern dma-sync-fast (function dma-bank none))
+(define-extern dma-send-no-scratch (function dma-bank uint32 uint32 none))
+(define-extern dma-sync-with-count (function dma-bank (pointer int32) int))
+(define-extern dma-count-until-done (function dma-bank (pointer int32) int))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; video-h                        ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype video-params (structure)
+  "Parameters for the framebuffer."
   ((set-video-mode              symbol  :offset-assert 0) ;; guessed by decompiler
    (reset-video-mode            symbol  :offset-assert 4) ;; guessed by decompiler
    (display-fbp                 int32   :offset-assert 8)
-   (relative-x-scale            float   :offset-assert 16)
+   (relative-x-scale            float   :offset 16)
    (display-dx                  int32   :offset-assert 20)
    (display-dy                  int32   :offset-assert 24)
    (display-sy                  int32   :offset-assert 28)
@@ -3318,18 +3358,25 @@
   :size-assert         #x30
   :flag-assert         #x900000030
   )
-|#
 
-;; (define-extern *video-params* object) ;; video-params
+(define-extern *video-params* video-params) ;;
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; vu1-user-h                     ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
+(defenum tpage-category
+  :type int8
+  )
+
+(defenum bucket-id
+  :type int32
+  )
+
 (deftype dma-foreground-sink (basic)
-  ((bucket                   int32  :offset-assert 4) ;; bucket-id
-   (foreground-texture-page  int8   :offset-assert 8) ;; tpage-category
+  "A specification for where a foreground renderer should output its DMA data."
+  ((bucket                   bucket-id  :offset-assert 4)
+   (foreground-texture-page  tpage-category   :offset-assert 8)
    (foreground-texture-level int8   :offset-assert 9)
    (foreground-output-bucket int8   :offset-assert 10)
    )
@@ -3337,36 +3384,39 @@
   :size-assert         #xb
   :flag-assert         #x90000000b
   )
-|#
 
-#|
 (deftype generic-bucket-state (structure)
+  "The state of buffers for the generic renderer.
+   When generating generic DMA data, you must know the previous state
+   of the VU's memory to properly double-buffer the input and output data."
   ((gifbuf-adr uint32  :offset-assert 0)
    (inbuf-adr  uint32  :offset-assert 4)
    )
+  :pack-me
   :method-count-assert 9
   :size-assert         #x8
   :flag-assert         #x900000008
   )
-|#
 
-#|
 (deftype generic-dma-foreground-sink (dma-foreground-sink)
+  "A specification for where a foreground generic renderer should output DMA data,
+   and the state of the VU memory buffers at the end of the bucket."
   ((state generic-bucket-state :inline :offset-assert 12)
    )
   :method-count-assert 9
   :size-assert         #x14
   :flag-assert         #x900000014
   )
-|#
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; profile-h                      ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
+(declare-type dma-buffer structure)
+
 (deftype profile-segment (structure)
+  "Confusingly, this has two uses. Either a single event, or a summary of all events within a category."
   ((name       symbol  :offset-assert 0) ;; guessed by decompiler
    (start-time int16   :offset-assert 4)
    (end-time   int16   :offset-assert 6)
@@ -3374,102 +3424,98 @@
    (vu-count   uint8   :offset-assert 9)
    (depth      uint16  :offset-assert 10)
    (color      rgba    :offset-assert 12) ;; guessed by decompiler
-   (code-time  uint16  :offset-assert 4)
-   (vu-time    uint16  :offset-assert 6)
+   (code-time  uint16  :offset-assert 4 :overlay-at start-time)
+   (vu-time    uint16  :offset-assert 6 :overlay-at end-time)
    )
+  :allow-misaligned
   :method-count-assert 9
   :size-assert         #x10
   :flag-assert         #x900000010
   )
-|#
 
-#|
 (deftype profile-collapse (structure)
+  "An array of 'summaries'. Each entry in data is a summary of all events within a category."
   ((count int32              :offset-assert 0)
-   (data  profile-segment 48 :offset-assert 4) ;; guessed by decompiler
+   (data  profile-segment 48 :inline :offset-assert 4) ;; guessed by decompiler
    )
   :method-count-assert 9
   :size-assert         #x304
   :flag-assert         #x900000304
   )
-|#
 
-#|
 (deftype profile-segment-array (basic)
+  "All profiling data for a frame, stored as a tree of events. There is one for the VU, and one for the EE."
   ((count     int16                :offset-assert 4)
    (depth     int8                 :offset-assert 6)
    (max-depth int8                 :offset-assert 7)
    (base-time int16                :offset-assert 8)
    (segment   profile-segment 9    :offset-assert 12) ;; guessed by decompiler
-   (data      profile-segment 1024 :offset-assert 48) ;; guessed by decompiler
+   (data      profile-segment 1024 :inline :offset-assert 48) ;; guessed by decompiler
    )
   :method-count-assert 13
   :size-assert         #x4030
   :flag-assert         #xd00004030
   (:methods
-    (profile-segment-array-method-9 () none) ;; 9 ;; (get-total-time (_type_) int)
-    (profile-segment-array-method-10 () none) ;; 10 ;; (start-frame! (_type_) none)
-    (profile-segment-array-method-11 () none) ;; 11 ;; (start-segment! (_type_ symbol rgba) none)
-    (profile-segment-array-method-12 () none) ;; 12 ;; (end-segment! (_type_) none)
+    (get-total-time "Get the duration of the top-level event (typically, the whole frame)" (_type_) int) ;; 9
+    (start-frame! "Restart the profiler for the start of a frame." (_type_) none) ;; 10
+    (start-segment! "Start an event." (_type_ symbol rgba) none) ;; 11
+    (end-segment! "Stop the most recently started event." (_type_) none) ;; 12
     )
   )
-|#
 
-#|
 (deftype profile-array (structure)
+  "The EE and VU profilers, and the drawing code."
   ((data profile-segment-array 2 :offset-assert 0) ;; guessed by decompiler
    )
   :method-count-assert 12
   :size-assert         #x8
   :flag-assert         #xc00000008
   (:methods
-    (profile-array-method-9 () none) ;; 9 ;; (setup-categories! (_type_) none)
-    (profile-array-method-10 () none) ;; 10 ;; (draw-bars! (_type_ dma-buffer int) none)
-    (profile-array-method-11 () none) ;; 11 ;; (draw-text! (_type_) none)
+    (postprocess-data! "Create the collapsed summary of the collected data." (_type_) none) ;; 9
+    (draw-bars! "Generate DMA data for drawing the profile bars." (_type_ dma-buffer int) none) ;; 10
+    (draw-text! "Generate DMA data for drawing the profile information screen." (_type_) none) ;; 11
     )
   )
-|#
 
-#|
 (deftype profile-spec (structure)
+  "Specification for a profile category."
   ((name  basic   :offset-assert 0)
-   (color uint32  :offset-assert 4)
+   (color rgba    :offset-assert 4)
    )
   :method-count-assert 9
   :size-assert         #x8
   :flag-assert         #x900000008
   )
-|#
 
-;; (define-extern *profile-gap-color* object) ;; rgba
-;; (define-extern *profile-all-color* object) ;; rgba
-;; (define-extern *profile-blit-color* object) ;; rgba
-;; (define-extern *profile-sky-color* object) ;; rgba
-;; (define-extern *profile-ocean-color* object) ;; rgba
-;; (define-extern *profile-hfrag-color* object)
-;; (define-extern *profile-tfrag-color* object) ;; rgba
-;; (define-extern *profile-texture-color* object) ;; rgba
-;; (define-extern *profile-tie-color* object)
-;; (define-extern *profile-generic-color* object)
-;; (define-extern *profile-merc-color* object) ;; rgba
-;; (define-extern *profile-shrubbery-color* object)
-;; (define-extern *profile-particle-color* object)
-;; (define-extern *profile-debug-color* object) ;; rgba
-;; (define-extern *profile-other-color* object)
-;; (define-extern *profile-joints-color* object) ;; rgba
-;; (define-extern *profile-draw-hook-color* object) ;; rgba
-;; (define-extern *profile-background-color* object) ;; rgba
-;; (define-extern *profile-foreground-color* object) ;; rgba
-;; (define-extern *profile-bones-color* object) ;; rgba
-;; (define-extern *profile-actors-color* object) ;; rgba
-;; (define-extern *profile-collide-color* object) ;; rgba
-;; (define-extern *profile-nav-color* object) ;; rgba
-;; (define-extern *profile-camera-color* object) ;; rgba
-;; (define-extern *profile-gs-sync-color* object)
-;; (define-extern *profile-array* object) ;; profile-array
-;; (define-extern *profile-collapse* object) ;; profile-collapse
-;; (define-extern *profile-interrupt-segment* object) ;; profile-segment-array
-;; (define-extern *profile-interrupt-start* object) ;; symbol
+(define-extern *profile-gap-color* rgba) ;;
+(define-extern *profile-all-color* rgba) ;; rgba
+(define-extern *profile-blit-color* rgba) ;; rgba
+(define-extern *profile-sky-color* rgba) ;; rgba
+(define-extern *profile-ocean-color* rgba) ;; rgba
+(define-extern *profile-hfrag-color* rgba)
+(define-extern *profile-tfrag-color* rgba) ;; rgba
+(define-extern *profile-texture-color* rgba) ;; rgba
+(define-extern *profile-tie-color* rgba)
+(define-extern *profile-generic-color* rgba)
+(define-extern *profile-merc-color* rgba) ;; rgba
+(define-extern *profile-shrubbery-color* rgba)
+(define-extern *profile-particle-color* rgba)
+(define-extern *profile-debug-color* rgba) ;; rgba
+(define-extern *profile-other-color* rgba)
+(define-extern *profile-joints-color* rgba) ;; rgba
+(define-extern *profile-draw-hook-color* rgba) ;; rgba
+(define-extern *profile-background-color* rgba) ;; rgba
+(define-extern *profile-foreground-color* rgba) ;; rgba
+(define-extern *profile-bones-color* rgba) ;; rgba
+(define-extern *profile-actors-color* rgba) ;; rgba
+(define-extern *profile-collide-color* rgba) ;; rgba
+(define-extern *profile-nav-color* rgba) ;; rgba
+(define-extern *profile-camera-color* rgba) ;; rgba
+(define-extern *profile-gs-sync-color* rgba)
+(define-extern *profile-array* profile-array) ;; profile-array
+(define-extern *profile-collapse* profile-collapse) ;; profile-collapse
+(define-extern *profile-interrupt-segment* profile-segment-array) ;; profile-segment-array
+(define-extern *profile-interrupt-start* symbol) ;; symbol
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; dma                            ;;

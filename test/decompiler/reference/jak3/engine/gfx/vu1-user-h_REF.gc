@@ -1,0 +1,82 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; definition of type dma-foreground-sink
+(deftype dma-foreground-sink (basic)
+  "A specification for where a foreground renderer should output its DMA data."
+  ((bucket                    bucket-id)
+   (foreground-texture-page   tpage-category)
+   (foreground-texture-level  int8)
+   (foreground-output-bucket  int8)
+   )
+  )
+
+;; definition for method 3 of type dma-foreground-sink
+(defmethod inspect ((this dma-foreground-sink))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this (-> this type))
+  (format #t "~1Tbucket: ~D~%" (-> this bucket))
+  (format #t "~1Tforeground-texture-page: ~D~%" (-> this foreground-texture-page))
+  (format #t "~1Tforeground-texture-level: ~D~%" (-> this foreground-texture-level))
+  (format #t "~1Tforeground-output-bucket: ~D~%" (-> this foreground-output-bucket))
+  (label cfg-4)
+  this
+  )
+
+;; definition of type generic-bucket-state
+(deftype generic-bucket-state (structure)
+  "The state of buffers for the generic renderer.
+When generating generic DMA data, you must know the previous state
+of the VU's memory to properly double-buffer the input and output data."
+  ((gifbuf-adr  uint32)
+   (inbuf-adr   uint32)
+   )
+  :pack-me
+  )
+
+;; definition for method 3 of type generic-bucket-state
+(defmethod inspect ((this generic-bucket-state))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this 'generic-bucket-state)
+  (format #t "~1Tgifbuf-adr: ~D~%" (-> this gifbuf-adr))
+  (format #t "~1Tinbuf-adr: ~D~%" (-> this inbuf-adr))
+  (label cfg-4)
+  this
+  )
+
+;; definition of type generic-dma-foreground-sink
+(deftype generic-dma-foreground-sink (dma-foreground-sink)
+  "A specification for where a foreground generic renderer should output DMA data,
+and the state of the VU memory buffers at the end of the bucket."
+  ((state  generic-bucket-state  :inline)
+   )
+  )
+
+;; definition for method 3 of type generic-dma-foreground-sink
+(defmethod inspect ((this generic-dma-foreground-sink))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this (-> this type))
+  (format #t "~1Tbucket: ~D~%" (-> this bucket))
+  (format #t "~1Tforeground-texture-page: ~D~%" (-> this foreground-texture-page))
+  (format #t "~1Tforeground-texture-level: ~D~%" (-> this foreground-texture-level))
+  (format #t "~1Tforeground-output-bucket: ~D~%" (-> this foreground-output-bucket))
+  (format #t "~1Tstate: #<generic-bucket-state @ #x~X>~%" (-> this state))
+  (label cfg-4)
+  this
+  )
+
+;; failed to figure out what this is:
+0
+
+
+
+
