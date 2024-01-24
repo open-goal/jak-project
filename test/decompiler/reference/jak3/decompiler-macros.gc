@@ -277,6 +277,97 @@
      )
   )
 
+;; meters are stored as (usually) a float, scaled by 4096.
+;; this gives you reasonable accuracy as an integer.
+(defglobalconstant METER_LENGTH 4096.0)
+
+(defmacro meters (x)
+  "Convert number to meters.
+   If the input is a constant float or integer, the result will be a
+   compile time constant float. Otherwise, it will not be constant.
+   Returns float."
+
+  ;; we don't have enough constant propagation for the compiler to figure this out.
+  (cond
+    ((float? x)
+     (* METER_LENGTH x)
+     )
+    ((integer? x)
+     (* METER_LENGTH x)
+     )
+    (#t
+     `(* METER_LENGTH ,x)
+     )
+    )
+  )
+
+;; rotations are stored in 65,536ths of a full rotation.
+;; like with meters, you get a reasonable accuracy as an integer.
+;; additionally, it is a power-of-two, so wrapping rotations can be done
+;; quickly by converting to an int, masking, and back to float
+(defglobalconstant DEGREES_PER_ROT 65536.0)
+
+;; this was deg in GOAL
+(defmacro degrees (x)
+  "Convert number to degrees unit.
+   Will keep a constant float/int constant."
+  (cond
+    ((or (float? x) (integer? x))
+     (* DEGREES_PER_ROT (/ (+ 0.0 x) 360.0))
+     )
+    (#t
+     `(* (/ (the float ,x) 360.0)
+         DEGREES_PER_ROT
+         )
+     )
+    )
+  )
+
+;; times are stored in 300ths of a second.
+;; this divides evenly into frames at both 50 and 60 fps.
+;; typically these are stored as integers as more precision is not useful.
+;; an unsigned 32-bit integer can store about 150 days
+(defglobalconstant TICKS_PER_SECOND 300) ;; 5 t/frame @ 60fps, 6 t/frame @ 50fps
+
+;; this was usec in GOAL
+(defmacro seconds (x)
+  "Convert number to seconds unit.
+   Returns uint."
+  (cond
+    ((integer? x)
+     (* TICKS_PER_SECOND x)
+     )
+    ((float? x)
+     (* 1 (* 1.0 x TICKS_PER_SECOND))
+     )
+    (#t
+     `(the uint (* TICKS_PER_SECOND ,x))
+     )
+    )
+  )
+
+(defmacro fsec (x)
+  "Convert number to seconds unit.
+   Returns float."
+  (cond
+    ((or (integer? x) (float? x))
+     (* 1.0 TICKS_PER_SECOND x)
+     )
+    (#t
+     `(* 1.0 TICKS_PER_SECOND ,x)
+     )
+    )
+  )
+
+(fake-asm .sync.l)
+(fake-asm .sync.p)
+(fake-asm .mfc0 dest src)
+(fake-asm .mtc0 dest src)
+(fake-asm .mtpc dest src)
+(fake-asm .mfpc dest src)
+(fake-asm .mtdab src)
+(fake-asm .mtdabm src)
+
 (defmacro suspend ()
   '(none)
   )
@@ -296,4 +387,37 @@
 (defmacro seekl! (place target rate)
   "Macro to use seekl in-place. place is the base, and where the result is stored."
   `(set! ,place (seekl ,place ,target ,rate))
+  )
+
+;; pad
+(defmacro cpad-pressed (pad-idx)
+  `(-> *cpad-list* cpads ,pad-idx button0-rel 0)
+  )
+
+(defmacro cpad-hold (pad-idx)
+  `(-> *cpad-list* cpads ,pad-idx button0-abs 0)
+  )
+
+(defmacro cpad-pressed? (pad-idx &rest buttons)
+  `(logtest? (cpad-pressed ,pad-idx) (pad-buttons ,@buttons))
+  )
+
+(defmacro cpad-hold? (pad-idx &rest buttons)
+  `(logtest? (cpad-hold ,pad-idx) (pad-buttons ,@buttons))
+  )
+
+(defmacro mouse-pressed ()
+  `(-> *mouse* button0-rel 0)
+  )
+
+(defmacro mouse-hold ()
+  `(-> *mouse* button0-abs 0)
+  )
+
+(defmacro mouse-pressed? (&rest buttons)
+  `(logtest? (mouse-pressed) (mouse-buttons ,@buttons))
+  )
+
+(defmacro mouse-hold? (&rest buttons)
+  `(logtest? (mouse-hold) (mouse-buttons ,@buttons))
   )
