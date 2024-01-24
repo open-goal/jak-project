@@ -53,16 +53,18 @@
     )
 
 (defenum language-enum
-  :type int64
+  :type uint8
   (english 0)
   (french 1)
   (german 2)
   (spanish 3)
   (italian 4)
+  (commentary 5)
   (japanese 6)
   (korean 7)
   (russian 8)
   (portuguese 9)
+  (dutch 10)
   (uk-english 11)
   )
 
@@ -4963,18 +4965,39 @@
 ;; loader-h                       ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (deftype load-dir (basic)
-;;   ()
-;;   :flag-assert #xb00000010
-;;   )
+(declare-type art basic)
+(declare-type art-group art)
+(define-extern art-group type)
 
-;; (deftype load-dir-art-group (load-dir)
-;;   ()
-;;   :flag-assert #xb00000010
-;;   )
+(deftype load-dir (basic)
+  "`load-dir` is an array of references to loaded things.
+   It's used to handle art groups that are loaded as part of a level load."
+  ((lev level :offset-assert 4)
+   (string-array (array string) :offset-assert 8) ;; these are the names
+   (data-array (array basic) :score -50 :offset-assert 12) ;; this is the file data.
+   )
+  :method-count-assert 11
+  :size-assert         #x10
+  :flag-assert         #xb00000010
+  (:methods
+    (new (symbol type int level) _type_) ;; 0
+    (load-to-heap-by-name (_type_ string symbol kheap int) art-group) ;; 9
+    (set-loaded-art (_type_ art-group) art-group) ;; 10
+    )
+  )
 
-#|
+(deftype load-dir-art-group (load-dir)
+  "Specialization of load-dir for `art-group`s."
+  ((art-group-array (array art-group) :offset 12)
+   )
+  :flag-assert #xb00000010
+  (:methods
+    (new (symbol type int level) _type_) ;; 0
+    )
+  )
+
 (deftype external-art-buffer (basic)
+  "An `external-art-buffer` is a buffer that streamed files use."
   ((index                      int32                                         :offset-assert 4)
    (other                      external-art-buffer                           :offset-assert 8) ;; guessed by decompiler
    (status                     symbol                                        :offset-assert 12) ;; guessed by decompiler
@@ -4985,54 +5008,54 @@
    (heap                       kheap                                 :inline :offset-assert 32)
    (pending-load-file          string                                        :offset-assert 48) ;; guessed by decompiler
    (pending-load-file-part     int32                                         :offset-assert 52)
-   (pending-load-file-owner    uint64                                        :offset-assert 56) ;; handle
+   (pending-load-file-owner    handle                                        :offset-assert 56) ;; handle
    (pending-load-file-priority float                                         :offset-assert 64)
    (load-file                  string                                        :offset-assert 68) ;; guessed by decompiler
    (load-file-part             int32                                         :offset-assert 72)
-   (load-file-owner            uint64                                        :offset-assert 80) ;; handle
+   (load-file-owner            handle                                        :offset-assert 80) ;; handle
    (load-file-priority         float                                         :offset-assert 88)
    (buf                        pointer                                       :offset-assert 92) ;; guessed by decompiler
    (len                        int32                                         :offset-assert 96)
    (art-group                  art-group                                     :offset-assert 100) ;; guessed by decompiler
-   (art-data                   uint32                                        :offset-assert 100)
+   (art-data                   uint32                                        :offset 100)
    )
   :method-count-assert 16
   :size-assert         #x68
   :flag-assert         #x1000000068
   (:methods
-    (new (symbol type) _type_) ;; 0 ;; (new (symbol type int function symbol) _type_)
-    (external-art-buffer-method-9 () none) ;; 9 ;; (set-pending-file (_type_ string int handle float) int)
-    (external-art-buffer-method-10 () none) ;; 10 ;; (update (_type_) int)
-    (external-art-buffer-method-11 () none) ;; 11 ;; (inactive? (_type_) symbol)
-    (external-art-buffer-method-12 () none) ;; 12 ;; (file-status (_type_ string int) symbol)
-    (external-art-buffer-method-13 () none) ;; 13 ;; (link-file (_type_ art-group) art-group)
-    (external-art-buffer-method-14 () none) ;; 14 ;; (unlink-file (_type_ art-group) int)
-    (external-art-buffer-method-15 () none) ;; 15 ;; (unlock! (_type_) int)
+    (new (symbol type int function symbol) _type_) ;; 0
+    (set-pending-file (_type_ string int handle float) int) ;; 9
+    (update (_type_) int) ;; 10
+    (inactive? (_type_) symbol) ;; 11
+    (file-status (_type_ string int) symbol) ;; 12
+    (link-file (_type_ art-group) art-group) ;; 13
+    (unlink-file (_type_ art-group) int) ;; 14
+    (unlock! (_type_) int) ;; 15
     )
   )
-|#
 
-#|
 (deftype spool-anim (basic)
-  ((name         string  :offset-assert 16) ;; guessed by decompiler
-   (anim-name    basic   :offset-assert 20)
+  "A `spool-anim` is metadata for an animation that will be loaded in chunks
+   to a pair of external-art-buffers."
+  ((name         string  :offset 16) ;; guessed by decompiler
+   (anim-name    string  :offset-assert 20)
+   (buffer       external-art-buffer :offset 20 :score -1) ;; added
    (parts        int32   :offset-assert 24)
-   (hint-id      int32   :offset-assert 24)
+   (hint-id      int32   :offset 24)
    (priority     float   :offset-assert 28)
-   (owner        uint64  :offset-assert 32) ;; handle
+   (owner        handle  :offset-assert 32) ;; handle
    (command-list pair    :offset-assert 40) ;; guessed by decompiler
    )
   :method-count-assert 9
   :size-assert         #x2c
   :flag-assert         #x90000002c
   )
-|#
 
-#|
 (deftype external-art-control (basic)
+  "The `external-art-control` manages loading chunks from `spool-anim`s to `external-art-buffer`."
   ((buffer                   external-art-buffer 2       :offset-assert 4) ;; guessed by decompiler
-   (rec                      spool-anim          3       :offset-assert 20) ;; guessed by decompiler
-   (spool-lock               uint64                      :offset-assert 160) ;; handle
+   (rec                      spool-anim          3 :inline :offset-assert 16) ;; guessed by decompiler
+   (spool-lock               handle                      :offset-assert 160) ;; handle
    (reserve-buffer           external-art-buffer         :offset-assert 168) ;; guessed by decompiler
    (reserve-buffer-count     int16                       :offset-assert 172)
    (dma-reserve-buffer-count int16                       :offset-assert 174)
@@ -5045,43 +5068,37 @@
   :size-assert         #xd0
   :flag-assert         #x10000000d0
   (:methods
-    (new (symbol type) _type_) ;; 0 ;; (new (symbol type) _type_)
-    (external-art-control-method-9 () none) ;; 9 ;; (update (_type_ symbol) int)
-    (external-art-control-method-10 () none) ;; 10 ;; (clear-rec (_type_) int)
-    (external-art-control-method-11 () none) ;; 11 ;; (spool-push (_type_ string int process float) int)
-    (external-art-control-method-12 () none) ;; 12 ;; (file-status (_type_ string int) symbol)
-    (external-art-control-method-13 () none) ;; 13 ;; (reserve-alloc (_type_) kheap)
-    (external-art-control-method-14 () none) ;; 14 ;; (reserve-free (_type_ kheap) int)
-    (external-art-control-method-15 () none) ;; 15 ;; (none-reserved? (_type_) symbol)
+    (new (symbol type) _type_) ;; 0
+    (update (_type_ symbol) int) ;; 9
+    (clear-rec (_type_) int) ;; 10
+    (spool-push (_type_ string int process float) int) ;; 11
+    (file-status (_type_ string int) symbol) ;; 12
+    (reserve-alloc (_type_) kheap) ;; 13
+    (reserve-free (_type_ kheap) int) ;; 14
+    (none-reserved? (_type_) symbol) ;; 15
     )
   )
-|#
 
-#|
 (deftype subtitle-range (basic)
   ((start-frame float      :offset-assert 4)
    (end-frame   float      :offset-assert 8)
    (message     basic   12 :offset-assert 12) ;; guessed by decompiler
-   (UNKNOWN     UNKNOWN    :offset-assert -1) ;; field could not be read.
    )
   :method-count-assert 9
   :size-assert         #x3c
   :flag-assert         #x90000003c
   )
-|#
 
-#|
 (deftype subtitle-image (basic)
   ((width   uint16          :offset-assert 4)
    (height  uint16          :offset-assert 6)
-   (palette rgba   16       :offset-assert 16) ;; guessed by decompiler
+   (palette rgba   16       :offset 16) ;; guessed by decompiler
    (data    uint8  :dynamic :offset-assert 80) ;; guessed by decompiler
    )
   :method-count-assert 9
   :size-assert         #x50
   :flag-assert         #x900000050
   )
-|#
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -5824,20 +5841,18 @@
   )
 |#
 
-#|
 (deftype mood-range (structure)
   ((data      float   4 :offset-assert 0) ;; guessed by decompiler
-   (min-cloud float     :offset-assert 0)
-   (max-cloud float     :offset-assert 4)
-   (min-fog   float     :offset-assert 8)
-   (max-fog   float     :offset-assert 12)
-   (quad      uint128   :offset-assert 0)
+   (min-cloud float     :offset 0)
+   (max-cloud float     :offset 4)
+   (min-fog   float     :offset 8)
+   (max-fog   float     :offset 12)
+   (quad      uint128   :offset 0)
    )
   :method-count-assert 9
   :size-assert         #x10
   :flag-assert         #x900000010
   )
-|#
 
 #|
 (deftype mood-filters-table (structure)
@@ -6072,7 +6087,47 @@
 ;; level-h                        ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
+(declare-type bsp-header basic)
+
+;; +++level-h:vis-info-flag
+(defenum vis-info-flag
+  :type uint32
+  :bitfield #t
+  (dummy0  0)
+  (dummy1  1)
+  (dummy2  2)
+  (dummy3  3)
+  (dummy4  4)
+  (dummy5  5)
+  (dummy6  6)
+  (dummy7  7)
+  (dummy8  8)
+  (dummy9  9)
+  (dummy10 10)
+  (dummy11 11)
+  (dummy12 12)
+  (dummy13 13)
+  (dummy14 14)
+  (dummy15 15)
+  (dummy16 16)
+  (dummy17 17)
+  (dummy18 18)
+  (dummy19 19)
+  (dummy20 20)
+  (dummy21 21)
+  (dummy22 22)
+  (dummy23 23)
+  (dummy24 24)
+  (dummy25 25)
+  (dummy26 26)
+  (dummy27 27)
+  (dummy28 28)
+  (in-iop  29)
+  (loading 30)
+  (vis-valid 31)
+  )
+;; ---level-h:vis-info-flag
+
 (deftype level-vis-info (basic)
   ((level              level                  :offset-assert 4) ;; guessed by decompiler
    (from-level         symbol                 :offset-assert 8) ;; guessed by decompiler
@@ -6092,31 +6147,89 @@
   :size-assert         #x34
   :flag-assert         #x900000034
   )
-|#
 
-#|
 (deftype level-borrow-info (basic)
   ((alias       basic     :offset-assert 4)
-   (borrow-size UNKNOWN 5 :offset-assert 8)
-   (UNKNOWN     UNKNOWN   :offset-assert -1) ;; field could not be read.
-   (borrow-info UNKNOWN 5 :offset-assert 20)
-   (UNKNOWN     UNKNOWN   :offset-assert -1) ;; field could not be read.
+   (borrow-size uint16 5 :offset-assert 8)
+   (borrow-info object 5 :offset-assert 20)
    )
   :method-count-assert 9
   :size-assert         #x28
   :flag-assert         #x900000028
   )
-|#
 
-(declare-type level-load-info basic)
-#|
+;; +++level-h:load-buffer-mode
+(defenum load-buffer-mode
+  :type uint32
+  (small-edge 0)
+  (small-center 1)
+  (medium 2)
+  (large 3)
+  (borrow 4)
+  (ten 10)
+  )
+;; ---level-h:load-buffer-mode
+
+;; +++level-h:task-mask
+(defenum task-mask
+  :type uint32
+  :bitfield #t
+  (task0 0)
+  (task1 1)
+  (task2 2)
+  (task3 3)
+  (task4 4)
+  (task5 5)
+  (task6 6)
+  (task7 7)
+  (done 8)
+  (dummy0 9)
+  (dummy1 10)
+  (vehicle 11)
+  (special 12)
+  (primary0 13)
+  (ctywide 14)
+  (never 15)
+  (movie0 16)
+  (movie1 17)
+  (movie2 18)
+  )
+;; ---level-h:task-mask
+
+;; +++level-h:bigmap-id
+(defenum bigmap-id
+  :type uint32
+  (bigmap-id-0 0)
+  (bigmap-id-1 1)
+  (bigmap-id-2 2)
+  (bigmap-id-3 3)
+  (bigmap-id-4 4)
+  (bigmap-id-5 5)
+  (bigmap-id-6 6)
+  (bigmap-id-7 7)
+  (bigmap-id-8 8)
+  (bigmap-id-9 9)
+  (bigmap-id-10 10)
+  (bigmap-id-11 11)
+  (bigmap-id-12 12)
+  (bigmap-id-13 13)
+  (bigmap-id-14 14)
+  (bigmap-id-15 15)
+  (bigmap-id-16 16)
+  (bigmap-id-17 17)
+  (bigmap-id-18 18)
+  (bigmap-id-19 19)
+  (bigmap-id-20 20)
+  )
+;; ---level-h:bigmap-id
+
 (deftype level-load-info (basic)
   ((name-list         symbol           6       :offset-assert 4) ;; guessed by decompiler
-   (name              symbol                   :offset-assert 4) ;; guessed by decompiler
-   (visname           symbol                   :offset-assert 8) ;; guessed by decompiler
-   (nickname          symbol                   :offset-assert 12) ;; guessed by decompiler
-   (dbname            symbol                   :offset-assert 16) ;; guessed by decompiler
-   (taskname          symbol                   :offset-assert 20) ;; guessed by decompiler
+   (name              symbol                   :offset 4) ;; guessed by decompiler
+   (visname           symbol                   :offset 8) ;; guessed by decompiler
+   (nickname          symbol                   :offset 12) ;; guessed by decompiler
+   (dbname            symbol                   :offset 16) ;; guessed by decompiler
+   (taskname          symbol                   :offset 20) ;; guessed by decompiler
    (index             int16                    :offset-assert 28)
    (task-level        uint8                    :offset-assert 30)
    (part-engine-max   uint8                    :offset-assert 31) ;; int32
@@ -6155,13 +6268,12 @@
   :flag-assert         #xb000000a0
   ;; field extra-sound-bank uses ~A with a signed load.
   (:methods
-    (level-load-info-method-9 () none) ;; 9
-    (level-load-info-method-10 () none) ;; 10
+    (level-load-info-method-9 (_type_) none) ;; 9
+    (level-load-info-method-10 (_type_) none) ;; 10
     )
   )
-|#
 
-#|
+(declare-type drawable basic)
 (deftype login-state (basic)
   ((state int32       :offset-assert 4)
    (pos   uint32      :offset-assert 8)
@@ -6172,7 +6284,6 @@
   :size-assert         #x50
   :flag-assert         #x900000050
   )
-|#
 
 (declare-type level basic)
 #|
@@ -6362,7 +6473,6 @@
 ;; capture-h                      ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype gs-store-image-packet (structure)
   ((vifcode        vif-tag 4 :offset-assert 0) ;; guessed by decompiler
    (giftag         uint128   :offset-assert 16) ;; gif-tag
@@ -6381,9 +6491,7 @@
   :size-assert         #x70
   :flag-assert         #x900000070
   )
-|#
 
-#|
 (deftype screen-shot-work (structure)
   ((count          int16   :offset-assert 0)
    (size           int16   :offset-assert 2)
@@ -6395,17 +6503,16 @@
   :size-assert         #x10
   :flag-assert         #x900000010
   )
-|#
 
-;; (define-extern *screen-shot-work* object) ;; screen-shot-work
-;; (define-extern *image-name* object) ;; string
+(define-extern *screen-shot-work* screen-shot-work)
+(define-extern *image-name* string)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; math-camera-h                  ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype vis-gif-tag (structure)
+  "Unused."
   ((fog0  uint32  :offset-assert 0)
    (strip uint32  :offset-assert 4)
    (regs  uint32  :offset-assert 8)
@@ -6415,10 +6522,9 @@
   :size-assert         #x10
   :flag-assert         #x900000010
   )
-|#
 
-#|
 (deftype cull-info (structure)
+  "Also seems unused."
   ((x-fact      float  :offset-assert 0)
    (y-fact      float  :offset-assert 4)
    (z-fact      float  :offset-assert 8)
@@ -6436,17 +6542,16 @@
    (yz-dir-bz   float  :offset-assert 56)
    (yz-cross-ab float  :offset-assert 60)
    )
+  :allow-misaligned
   :method-count-assert 9
   :size-assert         #x40
   :flag-assert         #x900000040
   )
-|#
 
-#|
 (deftype math-camera (basic)
   ((d                          meters              :offset-assert 4)
    (f                          meters              :offset-assert 8)
-   (fov                        deg                 :offset-assert 12) ;; degrees
+   (fov                        degrees             :offset-assert 12) ;; degrees
    (x-ratio                    float               :offset-assert 16)
    (y-ratio                    float               :offset-assert 20)
    (x-pix                      float               :offset-assert 24)
@@ -6482,15 +6587,15 @@
    (hvdf-off                   vector      :inline :offset-assert 816)
    (guard                      vector      :inline :offset-assert 832)
    (vis-gifs                   vis-gif-tag 4       :offset-assert 848) ;; guessed by decompiler
-   (giftex                     uint128             :offset-assert 848)
-   (gifgr                      uint128             :offset-assert 864)
-   (giftex-trans               uint128             :offset-assert 880)
-   (gifgr-trans                uint128             :offset-assert 896)
+   (giftex                     uint128             :offset 848)
+   (gifgr                      uint128             :offset 864)
+   (giftex-trans               uint128             :offset 880)
+   (gifgr-trans                uint128             :offset 896)
    (pfog0                      float               :offset-assert 912)
    (pfog1                      float               :offset-assert 916)
    (trans                      vector      :inline :offset-assert 928)
-   (plane                      plane       4       :offset-assert 944) ;; guessed by decompiler
-   (guard-plane                plane       4       :offset-assert 1008) ;; guessed by decompiler
+   (plane                      plane     4 :inline :offset-assert 944) ;; guessed by decompiler
+   (guard-plane                plane     4 :inline :offset-assert 1008) ;; guessed by decompiler
    (shrub-mat                  matrix      :inline :offset-assert 1072)
    (quat-other                 quaternion  :inline :offset-assert 1136)
    (trans-other                vector      :inline :offset-assert 1152)
@@ -6500,8 +6605,8 @@
    (camera-rot-other-sky       matrix      :inline :offset-assert 1360)
    (camera-rot-other-sprite    matrix      :inline :offset-assert 1424)
    (inv-camera-rot-other       matrix      :inline :offset-assert 1488)
-   (plane-other                plane       4       :offset-assert 1552) ;; guessed by decompiler
-   (guard-plane-other          plane       4       :offset-assert 1616) ;; guessed by decompiler
+   (plane-other                plane     4 :inline :offset-assert 1552) ;; guessed by decompiler
+   (guard-plane-other          plane     4 :inline :offset-assert 1616) ;; guessed by decompiler
    (mirror-trans               vector      :inline :offset-assert 1680)
    (mirror-normal              vector      :inline :offset-assert 1696)
    (fov-correction-factor      float               :offset-assert 1712)
@@ -6509,16 +6614,25 @@
   :method-count-assert 9
   :size-assert         #x6b4
   :flag-assert         #x9000006b4
+  (:methods
+    (new (symbol type) _type_) ;; 0
+    )
   )
-|#
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; math-camera                    ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype fog-corrector (structure)
+  "The math-camera matrices are used to compute fogging values, which are a per-vertex uint8 that
+   tells the GS how 'foggy' the color should be. This should be proportional to how far away the vertex
+   is. There is a scaling factor applied so the fog intensity isn't affected by the field of view angle.
+   
+   The fog-corrector stores a fog-end fog-start value that is corrected for the field of view.
+   The actual correction factor is computed in cam-update.gc.
+   Without this corrector, the fogginess of the world would change as the FOV changes
+   (for example, when Jak gets on the zoomer, the FOV changes slightly)."
   ((fog-end   float  :offset-assert 0)
    (fog-start float  :offset-assert 4)
    )
@@ -6526,19 +6640,40 @@
   :size-assert         #x8
   :flag-assert         #x900000008
   )
-|#
 
-;; (define-extern fog-corrector-setup function) ;; (function fog-corrector math-camera none)
-;; (define-extern *math-camera-fog-correction* object) ;; fog-corrector
-;; (define-extern update-math-camera function) ;; (function math-camera symbol symbol float math-camera)
-;; (define-extern *math-camera* object) ;; math-camera
-;; (define-extern math-cam-start-smoothing function) ;; (function float float quaternion)
-;; (define-extern move-target-from-pad function) ;; (function transform int transform)
-;; (define-extern transform-point-vector! function) ;; (function vector vector symbol)
-;; (define-extern transform-point-qword! function) ;; (function vector4w vector symbol)
-;; (define-extern transform-point-vector-scale! function) ;; (function vector vector float)
-;; (define-extern reverse-transform-point! function) ;; (function vector vector vector vector none)
-;; (define-extern init-for-transform function) ;; (function matrix none)
+(define-extern fog-corrector-setup "Set the fog corrector based on the supplied math-camera." (function fog-corrector math-camera none))
+(define-extern *math-camera-fog-correction* fog-corrector)
+(define-extern update-math-camera
+  "Compute some one-time camera constants.
+   These should only change when changing aspect ratio."
+  (function math-camera symbol symbol float math-camera))
+(define-extern *math-camera* math-camera)
+(define-extern math-cam-start-smoothing "Unused camera smoothing." (function float float quaternion))
+(define-extern move-target-from-pad
+  "Unused function to adjust trans based on inputs from the pad.
+   This function must be extremely old because it takes a non-quaternion transform,
+   and all [[target]] stuff uses quaternions."
+  (function transform int transform))
+(define-extern transform-point-vector!
+  "Apply camera transformation to a point. Return true if it is visible or not.
+   This returns the point in GS coords, but as float instead of int, so it's
+   not really useful. See [[transform-point-qword!]] for more details."
+  (function vector vector symbol))
+(define-extern transform-point-qword!
+  "Apply camera transformation to point, returning fixed point 28.4 position
+   that can be given to the GS directly."
+  (function vector4w vector symbol))
+(define-extern transform-point-vector-scale!
+  "Similar to transform-point-qword! but returns the scale factor instead."
+  (function vector vector float))
+(define-extern reverse-transform-point!
+  "Likely transform arg3 from screen space to world coords, using arg1/arg2 for... something."
+  (function vector vector vector vector none))
+(define-extern init-for-transform
+  "Sets up VU0 registers with camera info.
+   This is probably a very old function and it's only used by camera debug.
+   It stashes some data in vector float registers that must be there before calling transform-float-point."
+  (function matrix none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; font-h                         ;;
@@ -6865,8 +7000,19 @@
 ;; connect                        ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype connectable (structure)
+  "A connectable is the linked-list node part of a connection.
+   The connections themselves are owned by the engine.
+    
+   The `next0`/`prev0` references are used for how this belongs in the connectable list
+   belonging to the [[engine]]. These terminate on special nodes stored in the engine:
+   `alive-list`/`alive-list-end` for the active connections, and `dead-list`/`dead-list-end`
+   for the inactive.
+
+   The `next1`/`prev1` references are used to build a linked list _per process_.
+   The head of this list is the inline connectable in process and it ends with `#f`.
+   This is a bit confusing at first, but these belong to two linked lists...
+   These terminate on both ends with `#f`."
   ((next0 connectable  :offset-assert 0)
    (prev0 connectable  :offset-assert 4)
    (next1 connectable  :offset-assert 8)
@@ -6876,119 +7022,158 @@
   :size-assert         #x10
   :flag-assert         #x900000010
   )
-|#
 
-#|
+(declare-type engine basic)
+
 (deftype connection (connectable)
+  "This is the actual data for the connection.
+   It may be used in multiple ways, but the most common is to use `param0` as a function.
+   It receives `param1`, `param2`, `param3`, and the engine as the arguments.
+   In some cases, the return value is checked for `'dead`."
   ((param0 basic     :offset-assert 16)
    (param1 basic     :offset-assert 20)
    (param2 int32     :offset-assert 24) ;; guessed by decompiler
    (param3 int32     :offset-assert 28) ;; guessed by decompiler
-   (quad   uint128 2 :offset-assert 0) ;; guessed by decompiler
+   (quad   uint128 2 :offset 0) ;; guessed by decompiler
    )
   :method-count-assert 14
   :size-assert         #x20
   :flag-assert         #xe00000020
   ;; field param1 uses ~A with a signed load. field param2 uses ~A with a signed load. field param3 uses ~A with a signed load.
   (:methods
-    (connection-method-9 () none) ;; 9 ;; (get-engine (connection) engine)
-    (connection-method-10 () none) ;; 10 ;; (get-process (connection) process)
-    (connection-method-11 () none) ;; 11 ;; (belongs-to-engine? (connection engine) symbol)
-    (connection-method-12 () none) ;; 12 ;; (belongs-to-process? (connection process) symbol)
-    (connection-method-13 () none) ;; 13 ;; (move-to-dead (connection) connection)
+    (get-engine
+      "Get the engine for this connection. This must be used on a live connection."
+      (connection) engine) ;; 9
+    (get-process "Get the process for this connection." (connection) process) ;; 10
+    (belongs-to-engine?
+        "Check to see if this connection is located in the data section of the engine.
+         This works on dead or alive connections."
+        (connection engine) symbol) ;; 11
+    (belongs-to-process? "Does this connection belong to the given process?" (connection process) symbol) ;; 12
+    (move-to-dead "Move this connection from the alive list to the dead list." (connection) connection) ;; 13
     )
   )
-|#
 
-#|
 (deftype engine (basic)
+  "An engine is a collection of connections.
+   You can iterate over the connections, or run them.
+   The engine is dynamically sized based on how many connections it can store.
+
+   New for Jak 2: You can use a child class of [[connection]]."
   ((name             symbol              :offset-assert 4) ;; guessed by decompiler
-   (engine-time      uint64              :offset-assert 16) ;; time-frame
-   (allocated-length int16               :offset-assert 10)
-   (length           int16               :offset-assert 8)
-   (element-type     type                :offset-assert 12) ;; guessed by decompiler
-   (UNKNOWN          UNKNOWN             :offset-assert -1) ;; field could not be read.
-   (UNKNOWN          UNKNOWN             :offset-assert -1) ;; field could not be read.
-   (UNKNOWN          UNKNOWN             :offset-assert -1) ;; field could not be read.
-   (UNKNOWN          UNKNOWN             :offset-assert -1) ;; field could not be read.
-   (data             connection :dynamic :offset-assert 96) ;; guessed by decompiler
+   (engine-time      time-frame          :offset 16) ;; time-frame
+   (allocated-length int16               :offset 10)
+   (length           int16               :offset 8)
+   (element-type     type                :offset 12) ;; guessed by decompiler
+   (alive-list       connectable :inline :offset-assert 32)
+   (alive-list-end   connectable :inline :offset-assert 48)
+   (dead-list        connectable :inline :offset-assert 64)
+   (dead-list-end    connectable :inline :offset-assert 80)
+   (data             connection  :inline :dynamic :offset-assert 96) ;; guessed by decompiler
    )
   :method-count-assert 26
   :size-assert         #x60
   :flag-assert         #x1a00000060
   (:methods
-    (new (symbol type) _type_) ;; 0 ;; (new (symbol type symbol int type) _type_)
-    (engine-method-9 () none) ;; 9 ;; (inspect-all-connections (engine) engine)
-    (engine-method-10 () none) ;; 10 ;; (apply-to-connections (engine (function connectable none)) int)
-    (engine-method-11 () none) ;; 11 ;; (apply-to-connections-reverse (engine (function connectable none)) int)
-    (engine-method-12 () none) ;; 12 ;; (execute-connections (engine object) int)
-    (engine-method-13 () none) ;; 13 ;; (execute-connections-and-move-to-dead (engine object) int)
-    (engine-method-14 () none) ;; 14 ;; (execute-connections-if-needed (engine object) int)
-    (engine-method-15 () none) ;; 15 ;; (add-connection (engine process object object object object) connection)
-    (engine-method-16 () none) ;; 16 ;; (remove-from-process (engine process) int)
-    (engine-method-17 () none) ;; 17 ;; (remove-matching (engine (function connection engine symbol)) int)
-    (engine-method-18 () none) ;; 18 ;; (remove-all (engine) int)
-    (engine-method-19 () none) ;; 19 ;; (remove-by-param0 (engine object) int)
-    (engine-method-20 () none) ;; 20 ;; (remove-by-param1 (engine int) int)
-    (engine-method-21 () none) ;; 21 ;; (remove-by-param2 (engine int) int)
-    (engine-method-22 () none) ;; 22 ;; (get-first-connectable (engine) connectable)
-    (engine-method-23 () none) ;; 23 ;; (get-last-connectable (engine) connectable)
-    (engine-method-24 () none) ;; 24 ;; (get-next-connectable (_type_ connectable) connectable)
-    (engine-method-25 () none) ;; 25 ;; (get-prev-connectable (_type_ connectable) connectable)
+    (new (symbol type symbol int type) _type_) ;; 0
+    (inspect-all-connections "inspect all of the connections." (engine) engine) ;; 9
+    (apply-to-connections
+      "Apply arg0 to all connections for the engine.
+       It's okay to have arg0 remove the connection."
+      (engine (function connectable none)) int) ;; 10
+    (apply-to-connections-reverse
+      "Apply arg0 to all connections, reverse order.
+       Do not use arg0 to remove yourself from the list."
+      (engine (function connectable none)) int) ;; 11
+    (execute-connections "Run the engine!" (engine object) int) ;; 12
+    (execute-connections-and-move-to-dead
+      "Run the engine! If any objects return `'dead`, remove them."
+      (engine object) int) ;; 13
+    (execute-connections-if-needed
+      "Execute connections, but only if it hasn't been done on this frame."
+      (engine object) int) ;; 14
+    (add-connection
+      "Add a connection between this engine and a given process."
+      (engine process object object object object) connection) ;; 15
+    (remove-from-process "Remove all connections from process for this engine." (engine process) int) ;; 16
+    (remove-matching 
+      "Call the given function on each connection and the engine.
+       If it returns truthy, `move-to-dead` that connection."
+      (engine (function connection engine symbol)) int) ;; 17
+    (remove-all "Remove all connections from an engine." (engine) int) ;; 18
+    (remove-by-param0 "Remove all connections with param0 matching arg0." (engine object) int) ;; 19
+    (remove-by-param1 "Remove all connections with param1 matching arg0." (engine int) int) ;; 20
+    (remove-by-param2 "Remove all connections with param2 matching arg0." (engine int) int) ;; 21
+    (get-first-connectable (engine) connectable) ;; 22
+    (get-last-connectable (engine) connectable) ;; 23
+    (get-next-connectable (_type_ connectable) connectable) ;; 24
+    (get-prev-connectable (_type_ connectable) connectable) ;; 25
     )
   )
-|#
 
-#|
 (deftype connection-pers (structure)
+  "This is another engine system, very similar to the first, but not specific to a process.
+   Each connection has a `key`, which is like the process, but unlike normal engine,
+   the key's don't track which engine-pers they belong to.
+
+   Unlike [[engine]], users can use [[engine-pers]] as a parent class."
   ((next        connection-pers   :offset-assert 0)
-   (key         object            :offset-assert 4) ;; guessed by decompiler
-   (update-time uint64            :offset-assert 8) ;; time-frame
-   (param       object          4 :offset-assert 16) ;; guessed by decompiler
-   (UNKNOWN     UNKNOWN           :offset-assert -1) ;; field could not be read.
-   (param-int32 int32           4 :offset-assert 16) ;; guessed by decompiler
-   (UNKNOWN     UNKNOWN           :offset-assert -1) ;; field could not be read.
-   (param-int64 int64           2 :offset-assert 16) ;; guessed by decompiler
-   (UNKNOWN     UNKNOWN           :offset-assert -1) ;; field could not be read.
-   (param-float float           4 :offset-assert 16) ;; guessed by decompiler
-   (UNKNOWN     UNKNOWN           :offset-assert -1) ;; field could not be read.
-   (param-quat  uint128           :offset-assert 16)
+   (key         object            :offset-assert 4)
+   (update-time time-frame        :offset-assert 8)
+   (param       object          4 :offset-assert 16)
+   (param-int32 int32           4 :offset 16)
+   (param-int64 int64           2 :offset 16)
+   (param-float float           4 :offset 16)
+   (param-quat  uint128           :offset 16)
    )
   :method-count-assert 9
   :size-assert         #x20
   :flag-assert         #x900000020
   ;; field key uses ~A with a signed load.
   )
-|#
 
-#|
 (deftype engine-pers (basic)
-  ((name             symbol                   :offset-assert 4) ;; guessed by decompiler
-   (length           int16                    :offset-assert 8)
-   (allocated-length int16                    :offset-assert 10)
-   (element-type     type                     :offset-assert 12) ;; guessed by decompiler
-   (execute-time     uint64                   :offset-assert 16) ;; time-frame
-   (alive-list       connection-pers          :offset-assert 24)
-   (dead-list        connection-pers          :offset-assert 28)
-   (data             connection-pers :dynamic :offset-assert 32) ;; guessed by decompiler
+  ((name             symbol                           :offset-assert 4) ;; guessed by decompiler
+   (length           int16                            :offset-assert 8)
+   (allocated-length int16                            :offset-assert 10)
+   (element-type     type                             :offset-assert 12) ;; guessed by decompiler
+   (execute-time     time-frame                       :offset-assert 16) ;; time-frame
+   (alive-list       connection-pers                  :offset-assert 24)
+   (dead-list        connection-pers                  :offset-assert 28)
+   (data             connection-pers :inline :dynamic :offset-assert 32) ;; guessed by decompiler
    )
   :method-count-assert 15
   :size-assert         #x20
   :flag-assert         #xf00000020
   (:methods
-    (new (symbol type) _type_) ;; 0 ;; (new (symbol type symbol int type) _type_)
-    (engine-pers-method-9 () none) ;; 9 ;; (schedule-callback (_type_ object time-frame) connection-pers)
-    (engine-pers-method-10 () none) ;; 10 ;; (kill-callback (_type_ connection-pers) none)
-    (engine-pers-method-11 () none) ;; 11 ;; (kill-by-key (_type_ object) none)
-    (engine-pers-method-12 () none) ;; 12 ;; (kill-matching (_type_ (function engine-pers connection-pers object object symbol) object object) none)
-    (engine-pers-method-13 () none) ;; 13 ;; (update-callback (_type_) none)
-    (engine-pers-method-14 () none) ;; 14 ;; (run-pending-updates! (_type_ time-frame) none)
+    (new (symbol type symbol int type) _type_) ;; 0
+    (schedule-callback
+      "Get a connection for this key.
+       If no connection exists, add it.
+       Schedule an update to happen in arg1 seconds."
+      (_type_ object time-frame) connection-pers) ;; 9
+    (kill-callback "Called when a connection is removed." (_type_ connection-pers) none) ;; 10
+    (kill-by-key "Remove connections with this key, calling `kill-callback`." (_type_ object) none) ;; 11
+    (kill-matching
+      "Call the given function on each connection. If it returns truthy, kill that connection."
+      (_type_ (function engine-pers connection-pers object object symbol) object object) none) ;; 12
+    (update-callback
+      "Called when a connection is run.
+       Users can override this as needed."
+      (_type_) none) ;; 13
+    (run-pending-updates!
+      "Run updates if they scheduled. If something is found that has no pending update, kill it.
+       Note that we won't kill things on this call if they fail to update their `update-time`.
+       They will survive until the next call to `run-pending-updates`!
+       (or you can modify their `update-time` before that to prevent them from being killed.)"
+      (_type_ time-frame) none) ;; 14
     )
   )
-|#
 
-;; (define-extern connection-process-apply function) ;; (function process (function object none) symbol)
-(define-extern process-disconnect (function process int))
+(define-extern connection-process-apply
+  "Apply a function to all connectables of a process."
+  (function process (function object none) symbol))
+(define-extern process-disconnect "Disconnect all connections for the given process." (function process int))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; text-h                         ;;
@@ -8454,19 +8639,29 @@
 ;; settings-h                     ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
+(defenum game-feature
+  :type uint64
+  :bitfield #t
+  )
+
+(defenum game-secrets
+  :type uint64
+  :bitfield #t
+  )
+
 (deftype user-setting-data (structure)
   ((border-mode            symbol              :offset-assert 0) ;; guessed by decompiler
    (process-mask           process-mask        :offset-assert 4) ;; guessed by decompiler
-   (language               uint8               :offset-assert 12) ;; language-enum
-   (movie                  (pointer process)   :offset-assert 32) ;; guessed by decompiler
+   (unknown-int32          int32               :offset-assert 8)
+   (language               language-enum       :offset-assert 12) ;; language-enum
+   (movie                  (pointer process)   :offset 32) ;; guessed by decompiler
    (talking                (pointer process)   :offset-assert 36) ;; guessed by decompiler
    (spooling               (pointer process)   :offset-assert 40) ;; guessed by decompiler
    (hint                   (pointer process)   :offset-assert 44) ;; guessed by decompiler
    (ambient                (pointer process)   :offset-assert 48) ;; guessed by decompiler
    (video-mode             symbol              :offset-assert 52) ;; guessed by decompiler
    (aspect-ratio           symbol              :offset-assert 56) ;; guessed by decompiler
-   (auto-save              symbol              :offset-assert 64) ;; guessed by decompiler
+   (auto-save              symbol              :offset 64) ;; guessed by decompiler
    (bg-r                   float               :offset-assert 68)
    (bg-g                   float               :offset-assert 72)
    (bg-b                   float               :offset-assert 76)
@@ -8477,10 +8672,10 @@
    (blur-a-speed           float               :offset-assert 96)
    (allow-progress         symbol              :offset-assert 100) ;; guessed by decompiler
    (allow-pause            symbol              :offset-assert 104) ;; guessed by decompiler
-   (movie-name             symbol              :offset-assert 120) ;; guessed by decompiler
+   (movie-name             symbol              :offset 120) ;; guessed by decompiler
    (weather                symbol              :offset-assert 124) ;; guessed by decompiler
-   (task-mask              task-mask           :offset-assert 140)
-   (duck                   symbol              :offset-assert 148) ;; guessed by decompiler
+   (task-mask              task-mask           :offset 140)
+   (duck                   symbol              :offset 148) ;; guessed by decompiler
    (attack                 symbol              :offset-assert 152) ;; guessed by decompiler
    (gun                    symbol              :offset-assert 156) ;; guessed by decompiler
    (board                  symbol              :offset-assert 160) ;; guessed by decompiler
@@ -8511,10 +8706,10 @@
    (task-manager           (pointer process)   :offset-assert 272) ;; guessed by decompiler
    (task                   symbol              :offset-assert 276) ;; guessed by decompiler
    (airlock                symbol              :offset-assert 280) ;; guessed by decompiler
-   (minimap                uint16              :offset-assert 284) ;; guessed by decompiler
+   (minimap                uint32              :offset-assert 284) ;; guessed by decompiler
    (sound-tune             uint32              :offset-assert 288)
    (allow-continue         symbol              :offset-assert 292) ;; guessed by decompiler
-   (subtitle               symbol              :offset-assert 304) ;; guessed by decompiler
+   (subtitle               symbol              :offset 304) ;; guessed by decompiler
    (doorway                symbol              :offset-assert 308) ;; guessed by decompiler
    (gem                    symbol              :offset-assert 312) ;; guessed by decompiler
    (half-speed             symbol              :offset-assert 316) ;; guessed by decompiler
@@ -8544,7 +8739,7 @@
    (allow-error            symbol              :offset-assert 412) ;; guessed by decompiler
    (under-water-pitch-mod  float               :offset-assert 416)
    (slow-time              float               :offset-assert 420)
-   (restart-info           basic               :offset-assert 428)
+   (restart-info           basic               :offset 428)
    (fail-info              basic               :offset-assert 432)
    (death-info             basic               :offset-assert 436)
    (quit-info              basic               :offset-assert 440)
@@ -8558,22 +8753,22 @@
    (scarf                  float               :offset-assert 496)
    (goggles                float               :offset-assert 500)
    (board-trail            basic               :offset-assert 504)
-   (letterbox              float               :offset-assert 572)
+   (letterbox              float               :offset 572)
    (letterbox-speed        float               :offset-assert 576)
-   (borrow-city-count      uint32              :offset-assert 620)
-   (borrow-city            UNKNOWN           3 :offset-assert 624)
-   (audio-language         uint8               :offset-assert 748)
-   (special-volume         float               :offset-assert 796)
+   (borrow-city-count      uint32              :offset 620)
+   (borrow-city            pair              3 :offset-assert 624)
+   (audio-language         language-enum       :offset 748)
+   (special-volume         float               :offset 796)
+   (pad uint8 108 :offset 800) ;; added
    )
   :method-count-assert 11
   :size-assert         #x38c
   :flag-assert         #xb0000038c
   (:methods
-    (user-setting-data-method-9 () none) ;; 9 ;; (user-setting-data-method-9 (_type_ engine engine-pers engine) user-setting-data)
-    (user-setting-data-method-10 () none) ;; 10 ;; (user-setting-data-method-10 (_type_ object symbol float uint) user-setting-data)
+    (user-setting-data-method-9 (_type_ engine engine-pers engine) user-setting-data) ;; 9
+    (user-setting-data-method-10 (_type_ object symbol float uint) user-setting-data) ;; 10
     )
   )
-|#
 
 #|
 (deftype cam-setting-data (structure)
@@ -11407,32 +11602,6 @@
   :size-assert         #x10
   :flag-assert         #x900000010
   )
-
-;; +++task-control-h:task-mask
-(defenum task-mask
-  :type uint32
-  :bitfield #t
-  (task0 0)
-  (task1 1)
-  (task2 2)
-  (task3 3)
-  (task4 4)
-  (task5 5)
-  (task6 6)
-  (task7 7)
-  (done 8)
-  (dummy0 9)
-  (dummy1 10)
-  (vehicle 11)
-  (special 12)
-  (primary0 13)
-  (ctywide 14)
-  (never 15)
-  (movie0 16)
-  (movie1 17)
-  (movie2 18)
-  )
-;; ---task-control-h:task-mask
 
 (deftype game-task-node-info (basic)
   ((level            symbol                                  :offset-assert 4) ;; guessed by decompiler
@@ -24752,7 +24921,7 @@
 |#
 
 ;; (define-extern *sprite-distorter-sine-tables* object) ;; sprite-distorter-sine-tables
-;; (define-extern sprite-distorter-generate-tables function) ;; (function none)
+(define-extern sprite-distorter-generate-tables (function none))
 ;; (define-extern sprite-distort-vu1-block object) ;; vu-function
 ;; (define-extern sprite-init-distorter function) ;; (function dma-buffer none)
 ;; (define-extern sprite-draw-distorters function) ;; (function dma-buffer none)
@@ -26392,7 +26561,7 @@
 ;; (define-extern drawable-load function) ;; (function drawable kheap drawable)
 ;; (define-extern art-load function) ;; (function string kheap art)
 ;; (define-extern art-group-load-check function) ;; (function string kheap int art-group)
-;; (define-extern external-art-buffer-init function) ;; (function external-art-buffer int)
+(define-extern external-art-buffer-init (function external-art-buffer int))
 ;; (define-extern *preload-spool-anims* object) ;; symbol
 ;; (define-extern ja-play-spooled-anim function) ;; (function spool-anim art-joint-anim art-joint-anim (function process-drawable symbol) int :behavior process-drawable)
 ;; (define-extern ja-abort-spooled-anim function) ;; (function spool-anim art-joint-anim int int :behavior process-drawable)
