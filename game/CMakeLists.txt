@@ -251,6 +251,11 @@ set(RUNTIME_SOURCE
         overlord/jak2/streamlfo.cpp
         overlord/jak2/streamlist.cpp
         overlord/jak2/vag.cpp
+        overlord/jak3/start.cpp
+        overlord/jak3/overlord.cpp
+        overlord/jak3/sbank.cpp
+        overlord/jak3/ssound.cpp
+        overlord/jak3/vblank_handler.cpp
         runtime.cpp
         sce/deci2.cpp
         sce/iop.cpp
