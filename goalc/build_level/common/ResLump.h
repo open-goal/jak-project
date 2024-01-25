@@ -125,6 +125,19 @@ class ResSymbol : public Res {
   std::vector<std::string> m_str;
 };
 
+class ResType : public Res {
+ public:
+  ResType(const std::string& name, const std::vector<std::string>& str, float key_frame);
+  ResType(const std::string& name, const std::string& str, float key_frame);
+
+  TagInfo get_tag_info() const override;
+  void write_data(DataObjectGenerator& gen) const override;
+  int get_alignment() const override;
+
+ private:
+  std::vector<std::string> m_str;
+};
+
 /*
 (deftype res-lump (basic)
   ((length           int32              :offset-assert 4)
