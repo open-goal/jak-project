@@ -1,33 +1,7 @@
 ;;-*-Lisp-*-
 (in-package goal)
 
-;; name: math-camera.gc
-;; name in dgo: math-camera
-;; dgos: GAME
-
-#|@file
-;;;;;;;;;;;;;;;;;;;;
-math camera basics
-;;;;;;;;;;;;;;;;;;;;
-
-the math camera computes the perspective matrix, hvdf offset, and hmge scale.
-
-multiplying a point by the perspective matrix, doing the persepctive divide, then adding hvdf offset gives you:
-H : horizontal position (in GS coordinates)
-V : vertical position (in GS coordinates)
-D : depth (as a 24-bit integer for the z buffer)
-F : fog
-
-Multiplying by hmge then checking the clipping flags can be used to see if a point is outside the view frustum.
-
-The "camera-temp" matrix is the perspective matrix multplied by the camera tranformation and is used
-renderers that want a single matrix.
-|#
-
-(define-extern sprite-distorter-generate-tables (function none))
-
-;; DECOMP BEGINS
-
+;; definition of type fog-corrector
 (deftype fog-corrector (structure)
   "The math-camera matrices are used to compute fogging values, which are a per-vertex uint8 that
 tells the GS how 'foggy' the color should be. This should be proportional to how far away the vertex
@@ -42,7 +16,20 @@ Without this corrector, the fogginess of the world would change as the FOV chang
    )
   )
 
+;; definition for method 3 of type fog-corrector
+(defmethod inspect ((this fog-corrector))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this 'fog-corrector)
+  (format #t "~1Tfog-end: ~f~%" (-> this fog-end))
+  (format #t "~1Tfog-start: ~f~%" (-> this fog-start))
+  (label cfg-4)
+  this
+  )
 
+;; definition for function fog-corrector-setup
 ;; WARN: Return type mismatch float vs none.
 (defun fog-corrector-setup ((arg0 fog-corrector) (arg1 math-camera))
   "Set the fog corrector based on the supplied math-camera."
@@ -51,8 +38,15 @@ Without this corrector, the fogginess of the world would change as the FOV chang
   (none)
   )
 
+;; definition for symbol *math-camera-fog-correction*, type fog-corrector
 (define *math-camera-fog-correction* (new 'global 'fog-corrector))
 
+;; definition for function update-math-camera
+;; INFO: Used lq/sq
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
 ;; ERROR: Failed store: (s.w! a0-43 v1-54) at op 457
 ;; ERROR: Failed store: (s.w! (+ a0-43 4) a1-9) at op 461
 ;; ERROR: Failed store: (s.w! (+ a0-43 8) a1-10) at op 463
@@ -66,33 +60,6 @@ Without this corrector, the fogginess of the world would change as the FOV chang
       (set! (-> arg0 y-ratio) (* 0.75 (-> arg0 x-ratio)))
       (set! (-> arg0 y-ratio) (* 0.5625 (-> arg0 x-ratio)))
       )
-  ;; TODO pckernel
-  ;; og:preserve-this
-  ;; (with-pc
-  ;;   (cond
-  ;;     ((-> *pc-settings* use-vis?)
-  ;;      ;; using game vis, cannot allow seeing more of the view
-  ;;      ;; crops excess aspect ratio at the top and bottom
-  ;;      ;(set! (-> arg0 y-ratio) (* (1/ (-> *pc-settings* aspect-ratio)) (-> arg0 x-ratio)))
-  ;;      )
-  ;;     ((real-movie?)
-  ;;      ;; this mess is just so that we can force the original 16x9 cropping during cutscenes.
-  ;;      (if (<= (-> *pc-settings* aspect-ratio) ASPECT_16X9)
-  ;;          (set! (-> arg0 y-ratio) (* (1/ (-> *pc-settings* aspect-ratio)) (-> arg0 x-ratio)))
-  ;;          (begin
-  ;;             (set! (-> arg0 y-ratio) (* (1/ ASPECT_16X9) (-> arg0 x-ratio)))
-  ;;             (*! (-> arg0 x-ratio) (/ (-> *pc-settings* aspect-ratio) ASPECT_16X9))
-  ;;             )
-  ;;          )
-  ;;      )
-  ;;     (else
-  ;;      ;; not using game vis, allow *extended* aspect ratios
-  ;;      ;; there is no vertical cropping, and you can see more of the sides
-  ;;      (set! (-> arg0 y-ratio) (* (1/ ASPECT_4X3) (-> arg0 x-ratio))) ;; same cropping as 4x3
-  ;;      (*! (-> arg0 x-ratio) (/ (-> *pc-settings* aspect-ratio) ASPECT_4X3)) ;; extend fov! shows more on the sides.
-  ;;      )
-  ;;     )
-  ;;   )
   (let ((f1-3 (-> arg0 x-ratio))
         (f0-7 (-> arg0 y-ratio))
         (v1-6 (-> arg0 cull-info))
@@ -205,14 +172,6 @@ Without this corrector, the fogginess of the world would change as the FOV chang
           (set! (-> arg0 guard z) 1.0)
           (set! (-> arg0 guard w) 1.0)
           (set! (-> arg0 isometric trans z) (- 16777215.0 f22-0))
-          ;; og:preserve-this PC HACK!
-          ;; for whatever reason, the font render ends up computing a depth #x1000000 instead of
-          ;; #xffffffff, which overflows the 24-bit z buffer.
-          ;; cheating this by 1 bit seems to fix it.
-          (#when PC_PORT
-                 ;; #x4b002032 -> #x4b002031
-                 (set! (-> arg0 isometric vector 3 z) (the-as float (- (the-as int (-> arg0 isometric vector 3 z)) 1)))
-                 )
           )
         (set! (-> arg0 isometric trans w) f30-0)
         (let ((f1-28 (-> arg0 perspective rvec x))
@@ -239,7 +198,6 @@ Without this corrector, the fogginess of the world would change as the FOV chang
       )
     )
   0
-  ;; garbage giftags
   (make-u128 0 (shl #x301ec000 32))
   (make-u128 0 (shl #x303ec000 32))
   (let ((v1-54 (-> arg0 pfog0)))
@@ -249,8 +207,6 @@ Without this corrector, the fogginess of the world would change as the FOV chang
       (set! (-> a0-42 2) (the-as vis-gif-tag 1042))
       (set! (-> a0-42 3) (the-as vis-gif-tag #x301ec000))
       )
-    ;; og:preserve-this
-    #|
     (let ((a0-43 (&-> arg0 gifgr)))
       (s.w! a0-43 v1-54)
       (let ((a1-9 (make-u128 0 (shl #x20164000 32))))
@@ -263,7 +219,6 @@ Without this corrector, the fogginess of the world would change as the FOV chang
         (s.w! (+ a0-43 12) a1-11)
         )
       )
-    |#
     (let ((a0-44 (-> arg0 vis-gifs)))
       (set! (-> a0-44 0) (the-as vis-gif-tag v1-54))
       (set! (-> a0-44 1) (the-as vis-gif-tag #x303e4000))
@@ -283,6 +238,7 @@ Without this corrector, the fogginess of the world would change as the FOV chang
   arg0
   )
 
+;; definition for method 0 of type math-camera
 (defmethod new math-camera ((allocation symbol) (type-to-make type))
   (let ((gp-0 (object-new allocation type-to-make (the-as int (-> type-to-make size)))))
     (set! (-> gp-0 d) 1024.0)
@@ -314,8 +270,10 @@ Without this corrector, the fogginess of the world would change as the FOV chang
     )
   )
 
+;; definition for symbol *math-camera*, type math-camera
 (define *math-camera* (new 'global 'math-camera))
 
+;; definition for function math-cam-start-smoothing
 (defun math-cam-start-smoothing ((arg0 float) (arg1 float))
   "Unused camera smoothing."
   (set! (-> *math-camera* smooth-step) (/ 1.0 arg0))
@@ -323,6 +281,8 @@ Without this corrector, the fogginess of the world would change as the FOV chang
   (matrix->quaternion (-> *math-camera* inv-camera-rot-smooth-from) (-> *math-camera* inv-camera-rot-smooth))
   )
 
+;; definition for function move-target-from-pad
+;; INFO: Used lq/sq
 (defun move-target-from-pad ((arg0 transform) (arg1 int))
   "Unused function to adjust trans based on inputs from the pad.
    This function must be extremely old because it takes a non-quaternion transform,
@@ -389,6 +349,7 @@ Without this corrector, the fogginess of the world would change as the FOV chang
   arg0
   )
 
+;; definition for function transform-point-vector!
 ;; ERROR: Inline assembly instruction marked with TODO - [TODO.VCLIP]
 ;; ERROR: Unsupported inline assembly instruction kind - [cfc2.i v1, Clipping]
 (defun transform-point-vector! ((arg0 vector) (arg1 vector))
@@ -426,22 +387,20 @@ Without this corrector, the fogginess of the world would change as the FOV chang
     (.add.mul.w.vf vf28 vf27 vf0 acc)
     (.add.w.vf vf23 vf0 vf0)
     (.mul.vf vf31 vf28 vf29)
-    ;; og:preserve-this
-    ;;(TODO.VCLIP vf31 vf31)
-    (let ((clip (vu-clip vf31 0)))
-      (.div.vf Q vf0 vf31 :fsf #b11 :ftf #b11)
-      (.wait.vf)
-      ;;(.cfc2.i v1-7 Clipping)
-      (.mul.vf vf28 vf28 Q :mask #b111)
-      (.mul.vf vf23 vf23 Q)
-      (.add.vf vf28 vf28 vf30)
-      (.max.x.vf vf28 vf28 vf0 :mask #b1000)
-      (.svf (&-> arg0 quad) vf28)
-      (not (logtest? clip 63))
-      )
+    (TODO.VCLIP vf31 vf31)
+    (.div.vf Q vf0 vf31 :fsf #b11 :ftf #b11)
+    (.wait.vf)
+    (.cfc2.i v1-2 Clipping)
+    (.mul.vf vf28 vf28 Q :mask #b111)
+    (.mul.vf vf23 vf23 Q)
+    (.add.vf vf28 vf28 vf30)
+    (.max.x.vf vf28 vf28 vf0 :mask #b1000)
+    (.svf (&-> arg0 quad) vf28)
+    (not (logtest? v1-2 63))
     )
   )
 
+;; definition for function transform-point-qword!
 ;; ERROR: Inline assembly instruction marked with TODO - [TODO.VCLIP]
 ;; ERROR: Unsupported inline assembly instruction kind - [cfc2.i v1, Clipping]
 (defun transform-point-qword! ((arg0 vector4w) (arg1 vector))
@@ -478,23 +437,21 @@ Without this corrector, the fogginess of the world would change as the FOV chang
     (.add.mul.w.vf vf28 vf27 vf0 acc)
     (.add.w.vf vf23 vf0 vf0)
     (.mul.vf vf31 vf28 vf29)
-    ;; og:preserve-this
-    ;; (TODO.VCLIP vf31 vf31)
-    (let ((clip (vu-clip vf31 0)))
-      (.div.vf Q vf0 vf31 :fsf #b11 :ftf #b11)
-      (.wait.vf)
-      ;; (.cfc2.i v1-2 Clipping)
-      (.mul.vf vf28 vf28 Q :mask #b111)
-      (.mul.vf vf23 vf23 Q)
-      (.add.vf vf28 vf28 vf30)
-      (.max.x.vf vf28 vf28 vf0 :mask #b1000)
-      (vftoi4.xyzw vf28 vf28)
-      (.svf (&-> arg0 quad) vf28)
-      (not (logtest? clip 63))
-      )
+    (TODO.VCLIP vf31 vf31)
+    (.div.vf Q vf0 vf31 :fsf #b11 :ftf #b11)
+    (.wait.vf)
+    (.cfc2.i v1-2 Clipping)
+    (.mul.vf vf28 vf28 Q :mask #b111)
+    (.mul.vf vf23 vf23 Q)
+    (.add.vf vf28 vf28 vf30)
+    (.max.x.vf vf28 vf28 vf0 :mask #b1000)
+    (vftoi4.xyzw vf28 vf28)
+    (.svf (&-> arg0 quad) vf28)
+    (not (logtest? v1-2 63))
     )
   )
 
+;; definition for function transform-point-vector-scale!
 ;; ERROR: Inline assembly instruction marked with TODO - [TODO.VCLIP]
 ;; ERROR: Unsupported inline assembly instruction kind - [cfc2.i v1, Clipping]
 (defun transform-point-vector-scale! ((arg0 vector) (arg1 vector))
@@ -530,22 +487,22 @@ Without this corrector, the fogginess of the world would change as the FOV chang
     (.add.mul.w.vf vf28 vf27 vf0 acc)
     (.add.w.vf vf23 vf0 vf0)
     (.mul.vf vf31 vf28 vf29)
-    ;; og:preserve-this
-    ;; (TODO.VCLIP vf31 vf31)
+    (TODO.VCLIP vf31 vf31)
     (.div.vf Q vf0 vf31 :fsf #b11 :ftf #b11)
     (.wait.vf)
-    ;; (.cfc2.i v1-2 Clipping)
+    (.cfc2.i v1-2 Clipping)
     (.mul.vf vf28 vf28 Q :mask #b111)
     (.mul.vf vf23 vf23 Q)
     (.add.vf vf28 vf28 vf30)
     (.max.x.vf vf28 vf28 vf0 :mask #b1000)
     (.svf (&-> arg0 quad) vf28)
-    ;; (not (logtest? v1-2 63))
+    (not (logtest? v1-2 63))
     (.mov v0-0 vf23)
     v0-0
     )
   )
 
+;; definition for function reverse-transform-point!
 ;; WARN: Return type mismatch vector vs none.
 (defun reverse-transform-point! ((arg0 vector) (arg1 vector) (arg2 vector) (arg3 vector))
   "Likely transform arg3 from screen space to world coords, using arg1/arg2 for... something."
@@ -574,6 +531,9 @@ Without this corrector, the fogginess of the world would change as the FOV chang
   (none)
   )
 
+;; definition for function init-for-transform
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch symbol vs none.
 (defun init-for-transform ((arg0 matrix))
   "Sets up VU0 registers with camera info.
    This is probably a very old function and it's only used by camera debug.
@@ -598,94 +558,89 @@ Without this corrector, the fogginess of the world would change as the FOV chang
          (vf8 :class vf)
          (vf9 :class vf)
          )
-    (let ((gp-0 (new-stack-matrix0))
-          (s5-0 (new-stack-matrix0))
-          (s4-0 (new 'stack 'vector4s-3))
-          (s3-0 (new-stack-vector0))
-          (s2-0 (new 'stack 'vector4s-3))
+    (let ((gp-0 (new 'stack-no-clear 'matrix)))
+      (set! (-> gp-0 rvec quad) (the-as uint128 0))
+      (set! (-> gp-0 uvec quad) (the-as uint128 0))
+      (set! (-> gp-0 fvec quad) (the-as uint128 0))
+      (set! (-> gp-0 trans quad) (the-as uint128 0))
+      (let ((s5-0 (new 'stack-no-clear 'matrix)))
+        (set! (-> s5-0 rvec quad) (the-as uint128 0))
+        (set! (-> s5-0 uvec quad) (the-as uint128 0))
+        (set! (-> s5-0 fvec quad) (the-as uint128 0))
+        (set! (-> s5-0 trans quad) (the-as uint128 0))
+        (let ((s4-0 (new 'stack 'vector4s-3))
+              (s3-0 (new-stack-vector0))
+              )
+          (let ((s2-0 (new 'stack 'vector4s-3)))
+            (matrix*! s5-0 arg0 (-> *math-camera* camera-temp))
+            (matrix-3x3-inverse-transpose! gp-0 arg0)
+            (set-vector! s3-0 0.4 0.4 0.4 1.0)
+            (let ((v1-4 (-> s4-0 data)))
+              (set! (-> v1-4 0) 1.0)
+              (set! (-> v1-4 1) 1.0)
+              (set! (-> v1-4 2) 1.0)
+              (set! (-> v1-4 3) 1.0)
+              )
+            (let ((v1-5 (&-> s4-0 data 4)))
+              (set! (-> v1-5 0) 0.0)
+              (set! (-> v1-5 1) 0.0)
+              (set! (-> v1-5 2) 0.0)
+              (set! (-> v1-5 3) 1.0)
+              )
+            (let ((v1-6 (&-> s4-0 data 8)))
+              (set! (-> v1-6 0) 0.0)
+              (set! (-> v1-6 1) 0.0)
+              (set! (-> v1-6 2) 0.0)
+              (set! (-> v1-6 3) 1.0)
+              )
+            (let ((v1-7 (-> s2-0 data)))
+              (set! (-> v1-7 0) 1.0)
+              (set! (-> v1-7 1) 0.0)
+              (set! (-> v1-7 2) 0.0)
+              (set! (-> v1-7 3) 1.0)
+              )
+            (let ((v1-8 (&-> s2-0 data 4)))
+              (set! (-> v1-8 0) 0.0)
+              (set! (-> v1-8 1) 1.0)
+              (set! (-> v1-8 2) 0.0)
+              (set! (-> v1-8 3) 1.0)
+              )
+            (let ((v1-9 (&-> s2-0 data 8)))
+              (set! (-> v1-9 0) 0.0)
+              (set! (-> v1-9 1) 0.0)
+              (set! (-> v1-9 2) 1.0)
+              (set! (-> v1-9 3) 1.0)
+              )
+            (.lvf vf7 (&-> *math-camera* hmge-scale quad))
+            (.lvf vf8 (&-> *math-camera* hvdf-off quad))
+            (.lvf vf9 (&-> *math-camera* giftex))
+            (let ((v1-13 255))
+              (.mov vf6 v1-13)
+              )
+            (.mov v1-14 vf6)
+            (.itof.vf vf6 vf6)
+            (.lvf vf1 (&-> s5-0 rvec quad))
+            (.lvf vf2 (&-> s5-0 uvec quad))
+            (.lvf vf3 (&-> s5-0 fvec quad))
+            (.lvf vf4 (&-> s5-0 trans quad))
+            (.lvf vf17 (&-> gp-0 rvec quad))
+            (.lvf vf18 (&-> gp-0 uvec quad))
+            (.lvf vf19 (&-> gp-0 fvec quad))
+            (.lvf vf23 (&-> s2-0 quad 0))
+            (.lvf vf24 (&-> s2-0 quad 1))
+            (.lvf vf25 (&-> s2-0 quad 2))
+            )
+          (.lvf vf27 (&-> s4-0 quad 0))
+          (.lvf vf28 (&-> s4-0 quad 1))
+          (.lvf vf29 (&-> s4-0 quad 2))
+          (.lvf vf26 (&-> s3-0 quad))
           )
-      (matrix*! s5-0 arg0 (-> *math-camera* camera-temp))
-      (matrix-3x3-inverse-transpose! gp-0 arg0)
-      (set-vector! s3-0 0.4 0.4 0.4 1.0)
-      (let ((v1-4 (-> s4-0 data)))
-        (set! (-> v1-4 0) 1.0)
-        (set! (-> v1-4 1) 1.0)
-        (set! (-> v1-4 2) 1.0)
-        (set! (-> v1-4 3) 1.0)
         )
-      (let ((v1-5 (&-> s4-0 data 4)))
-        (set! (-> v1-5 0) 0.0)
-        (set! (-> v1-5 1) 0.0)
-        (set! (-> v1-5 2) 0.0)
-        (set! (-> v1-5 3) 1.0)
-        )
-      (let ((v1-6 (&-> s4-0 data 8)))
-        (set! (-> v1-6 0) 0.0)
-        (set! (-> v1-6 1) 0.0)
-        (set! (-> v1-6 2) 0.0)
-        (set! (-> v1-6 3) 1.0)
-        )
-      (let ((v1-7 (-> s2-0 data)))
-        (set! (-> v1-7 0) 1.0)
-        (set! (-> v1-7 1) 0.0)
-        (set! (-> v1-7 2) 0.0)
-        (set! (-> v1-7 3) 1.0)
-        )
-      (let ((v1-8 (&-> s2-0 data 4)))
-        (set! (-> v1-8 0) 0.0)
-        (set! (-> v1-8 1) 1.0)
-        (set! (-> v1-8 2) 0.0)
-        (set! (-> v1-8 3) 1.0)
-        )
-      (let ((v1-9 (&-> s2-0 data 8)))
-        (set! (-> v1-9 0) 0.0)
-        (set! (-> v1-9 1) 0.0)
-        (set! (-> v1-9 2) 1.0)
-        (set! (-> v1-9 3) 1.0)
-        )
-      (.lvf vf7 (&-> *math-camera* hmge-scale quad))
-      (.lvf vf8 (&-> *math-camera* hvdf-off quad))
-      (.lvf vf9 (&-> *math-camera* giftex))
-      (let ((v1-13 255))
-        (.mov vf6 v1-13)
-        )
-      ;; og:preserve-this
-      ;; (.mov v1-14 vf6)
-      (.itof.vf vf6 vf6)
-      (.svf (&-> *transform-regs* vf7) vf7)
-      (.svf (&-> *transform-regs* vf8) vf8)
-      (.svf (&-> *transform-regs* vf9) vf9)
-      (.svf (&-> *transform-regs* vf6) vf6)
-      (set! (-> *transform-regs* vf1) (-> s5-0 rvec quad))
-      (set! (-> *transform-regs* vf2) (-> s5-0 uvec quad))
-      (set! (-> *transform-regs* vf3) (-> s5-0 fvec quad))
-      (set! (-> *transform-regs* vf4) (-> s5-0 trans quad))
-      (set! (-> *transform-regs* vf17) (-> gp-0 rvec quad))
-      (set! (-> *transform-regs* vf18) (-> gp-0 uvec quad))
-      (set! (-> *transform-regs* vf19) (-> gp-0 fvec quad))
-      (set! (-> *transform-regs* vf23) (-> s2-0 quad 0))
-      (set! (-> *transform-regs* vf24) (-> s2-0 quad 1))
-      (set! (-> *transform-regs* vf25) (-> s2-0 quad 2))
-
-      (set! (-> *transform-regs* vf27) (-> s4-0 quad 0))
-      (set! (-> *transform-regs* vf28) (-> s4-0 quad 1))
-      (set! (-> *transform-regs* vf29) (-> s4-0 quad 2))
-      (set! (-> *transform-regs* vf26) (-> s3-0 quad))
-      ;; (.lvf vf1 (&-> s5-0 rvec quad))
-      ;; (.lvf vf2 (&-> s5-0 uvec quad))
-      ;; (.lvf vf3 (&-> s5-0 fvec quad))
-      ;; (.lvf vf4 (&-> s5-0 trans quad))
-      ;; (.lvf vf17 (&-> gp-0 rvec quad))
-      ;; (.lvf vf18 (&-> gp-0 uvec quad))
-      ;; (.lvf vf19 (&-> gp-0 fvec quad))
-      ;; (.lvf vf23 (&-> s2-0 quad 0))
-      ;; (.lvf vf24 (&-> s2-0 quad 1))
-      ;; (.lvf vf25 (&-> s2-0 quad 2))
-      ;; (.lvf vf27 (&-> s4-0 quad 0))
-      ;; (.lvf vf28 (&-> s4-0 quad 1))
-      ;; (.lvf vf29 (&-> s4-0 quad 2))
-      ;; (.lvf vf26 (&-> s3-0 quad))
       )
     (none)
     )
   )
+
+
+
+
