@@ -1,5 +1,4 @@
-#ifndef SBANK_H_
-#define SBANK_H_
+#pragma once
 
 #include "common/common_types.h"
 
@@ -18,5 +17,3 @@ struct SoundBankInfo {
 };
 void InitBanks();
 }  // namespace jak3
-
-#endif  // SBANK_H_

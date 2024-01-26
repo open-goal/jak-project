@@ -134,6 +134,7 @@ int sceCdDiskReady(int mode);
 u32 sceSifSetDma(sceSifDmaData* sdd, int len);
 
 s32 SendMbx(int mbxid, void* sendmsg);
+s32 ReceiveMbx(MsgPacket** recvmsg, int mbxid);
 s32 PollMbx(MsgPacket** recvmsg, int mbxid);
 s32 PeekMbx(s32 mbx);
 s32 CreateMbx(MbxParam* param);
