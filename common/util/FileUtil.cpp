@@ -88,6 +88,11 @@ fs::path get_user_memcard_dir(GameVersion game_version) {
   return get_user_config_dir() / game_version_name / "saves";
 }
 
+fs::path get_user_screenshots_dir(GameVersion game_version) {
+  auto game_version_name = game_version_names[game_version];
+  return get_user_config_dir() / game_version_name / "screenshots";
+}
+
 fs::path get_user_misc_dir(GameVersion game_version) {
   auto game_version_name = game_version_names[game_version];
   return get_user_config_dir() / game_version_name / "misc";
@@ -695,15 +700,13 @@ void copy_file(const fs::path& src, const fs::path& dst) {
 std::string make_screenshot_filepath(const GameVersion game_version, const std::string& name) {
   std::string file_name;
   if (name.empty()) {
-    file_name = fmt::format("{}_{}.png", version_to_game_name(game_version),
-                            str_util::current_local_timestamp_no_colons());
+    file_name = fmt::format("{}.png", str_util::current_local_timestamp_no_colons());
   } else {
-    file_name = fmt::format("{}_{}_{}.png", version_to_game_name(game_version), name,
-                            str_util::current_local_timestamp_no_colons());
+    file_name = fmt::format("{}.png", name);
   }
-  const auto file_path = file_util::get_file_path({"screenshots", file_name});
+  const auto file_path = get_user_screenshots_dir(game_version) / file_name;
   file_util::create_dir_if_needed_for_file(file_path);
-  return file_path;
+  return file_path.string();
 }
 
 std::string get_majority_file_line_endings(const std::string& file_contents) {

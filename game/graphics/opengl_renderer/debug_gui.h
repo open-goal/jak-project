@@ -84,6 +84,6 @@ class OpenGlDebugGui {
   bool m_subtitle_editor = false;
   bool m_filters_menu = false;
   bool m_want_screenshot = false;
-  char m_screenshot_save_name[256] = "screenshot.png";
+  char m_screenshot_save_name[256] = "screenshot";
   float target_fps_input = 60.f;
 };
