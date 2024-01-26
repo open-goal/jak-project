@@ -88,6 +88,11 @@ fs::path get_user_memcard_dir(GameVersion game_version) {
   return get_user_config_dir() / game_version_name / "saves";
 }
 
+fs::path get_user_screenshots_dir(GameVersion game_version) {
+  auto game_version_name = game_version_names[game_version];
+  return get_user_config_dir() / game_version_name / "screenshots";
+}
+
 fs::path get_user_misc_dir(GameVersion game_version) {
   auto game_version_name = game_version_names[game_version];
   return get_user_config_dir() / game_version_name / "misc";
@@ -699,10 +704,9 @@ std::string make_screenshot_filepath(const GameVersion game_version, const std::
   } else {
     file_name = fmt::format("{}.png", name);
   }
-  const auto file_path =
-      file_util::get_file_path({"screenshots", version_to_game_name(game_version), file_name});
+  const auto file_path = get_user_screenshots_dir(game_version) / file_name;
   file_util::create_dir_if_needed_for_file(file_path);
-  return file_path;
+  return file_path.string();
 }
 
 std::string get_majority_file_line_endings(const std::string& file_contents) {
