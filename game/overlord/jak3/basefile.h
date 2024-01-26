@@ -1,5 +1,4 @@
-#ifndef BASEFILE_H_
-#define BASEFILE_H_
+#pragma once
 
 #include "game/overlord/jak3/iso_structs.h"
 #include "game/overlord/jak3/overlord.h"
@@ -18,4 +17,3 @@ class CBaseFile {
 };
 }  // namespace jak3
 
-#endif  // BASEFILE_H_

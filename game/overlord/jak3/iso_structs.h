@@ -1,5 +1,4 @@
-#ifndef ISO_STRUCTS_H_
-#define ISO_STRUCTS_H_
+#pragma once
 
 #include "common/common_types.h"
 
@@ -29,9 +28,5 @@ struct VagDirJak3 {
 
 struct VagDirEntry {};
 
-struct ISOBuffer {};
-
 struct ISOFileDef {};
 }  // namespace jak3
-
-#endif  // ISO_STRUCTS_H_

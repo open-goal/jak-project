@@ -1,5 +1,4 @@
-#ifndef PAGEMANAGER_H_
-#define PAGEMANAGER_H_
+#pragma once
 
 #include "common/common_types.h"
 
@@ -40,5 +39,3 @@ class CPageManager {
 };
 
 }  // namespace jak3
-
-#endif  // PAGEMANAGER_H_

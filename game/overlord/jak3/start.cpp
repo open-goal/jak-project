@@ -2,12 +2,18 @@
 #include <cstring>
 
 #include "overlord.h"
+#include "ramdisk.h"
 #include "sbank.h"
 
+#include "game/overlord/jak3/srpc.h"
 #include "game/sce/iop.h"
 
 namespace jak3 {
 using namespace iop;
+
+int g_nServerThreadID;
+int g_nPlayerThreadID;
+int g_nLoaderThreadID;
 
 int start_overlord(int argc, const char* const* argp) {
   ThreadParam thp;
@@ -30,6 +36,52 @@ int start_overlord(int argc, const char* const* argp) {
   InitBanks();
   InitSound();
   VBlank_Initialize();
+
+  thp.attr = TH_C;
+  thp.option = 0;
+  thp.entry = Thread_Server;
+  thp.stackSize = 0x800;
+  thp.initPriority = 59;
+  g_nServerThreadID = CreateThread(&thp);
+  if (g_nServerThreadID < 0) {
+    Panic();
+    return 1;
+  }
+
+  thp.attr = TH_C;
+  thp.option = 0;
+  thp.entry = Thread_Player;
+  thp.stackSize = 0xb00;
+  thp.initPriority = 54;
+  g_nPlayerThreadID = CreateThread(&thp);
+  if (g_nPlayerThreadID < 0) {
+    Panic();
+    return 1;
+  }
+
+  thp.attr = TH_C;
+  thp.option = 0;
+  thp.entry = Thread_Loader;
+  thp.stackSize = 0x900;
+  thp.initPriority = 58;
+  g_nLoaderThreadID = CreateThread(&thp);
+  if (g_nPlayerThreadID < 0) {
+    Panic();
+    return 1;
+  }
+
+  //CDvdDriver::Initialize(&g_DvdDriver);
+  InitISOFS(argp[1], argp[2]);
+
+  StartThread(g_nServerThreadID, 0);
+  StartThread(g_nPlayerThreadID, 0);
+  StartThread(g_nLoaderThreadID, 0);
+
+  printf("======== overlrd2.irx post-startup ========\n");
+  // printf("      mem size: %lu\n", QueryMemSize());
+  // printf("total mem free: %lu\n", QueryTotalFreeMemSize());
+  // printf("  max mem free: %lu\n", QueryMaxFreeMemSize());
+  // printf("          used: %lu\n", QueryMemSize() - QueryTotalFreeMemSize());
 
   return 0;
 }
