@@ -883,8 +883,8 @@ void OpenGLRenderer::setup_frame(const RenderOptions& settings) {
     m_fbo_state.render_fbo = &m_fbo_state.resources.render_buffer;
 
     if (settings.msaa_samples != 1) {
-      lg::info("FBO Setup: using second temporary buffer: res: {}x{} {}x{}", window_fb.width,
-               window_fb.height, settings.game_res_w, settings.game_res_h);
+      lg::info("FBO Setup: using second temporary buffer: res: {}x{}", settings.game_res_w,
+               settings.game_res_h);
 
       // we'll need a temporary fbo to do the msaa resolve step
       // non-multisampled, and doesn't need z/stencil
