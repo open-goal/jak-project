@@ -56,31 +56,31 @@ std::string get_expected(const std::string& name) {
 //   }
 // }
 
-TEST(VuDisasm, DumpResults_Jak2) {
-  struct VuData {
-    std::string name;
-    std::vector<u32> data;
-    VuDisassembler::VuKind kind;
-    std::string disasm;
-
-    VuData(const std::string& name, VuDisassembler::VuKind kind)
-        : name(name), data(get_test_data("jak2/" + name)), kind(kind) {
-      VuDisassembler vu_disasm(kind);
-      disasm = vu_disasm.to_string(vu_disasm.disassemble(data.data(), data.size() * 4, false));
-    }
-  };
-  auto path = file_util::get_file_path({"test/decompiler/vu_reference/jak2"});
-  for (const auto& entry : fs::directory_iterator(path)) {
-    if (entry.is_regular_file() &&
-        entry.path().filename().string().find("result") == std::string::npos) {
-      auto name = entry.path().filename().stem().string();
-      auto kind = name.find("vu0") != std::string::npos ? VuDisassembler::VuKind::VU0
-                                                        : VuDisassembler::VuKind::VU1;
-      VuData prog(name, kind);
-      file_util::write_text_file(path + "/" + prog.name + "-result.txt", prog.disasm);
-    }
-  }
-}
+// TEST(VuDisasm, DumpResults_Jak2) {
+//   struct VuData {
+//     std::string name;
+//     std::vector<u32> data;
+//     VuDisassembler::VuKind kind;
+//     std::string disasm;
+//
+//     VuData(const std::string& name, VuDisassembler::VuKind kind)
+//         : name(name), data(get_test_data("jak2/" + name)), kind(kind) {
+//       VuDisassembler vu_disasm(kind);
+//       disasm = vu_disasm.to_string(vu_disasm.disassemble(data.data(), data.size() * 4, false));
+//     }
+//   };
+//   auto path = file_util::get_file_path({"test/decompiler/vu_reference/jak2"});
+//   for (const auto& entry : fs::directory_iterator(path)) {
+//     if (entry.is_regular_file() &&
+//         entry.path().filename().string().find("result") == std::string::npos) {
+//       auto name = entry.path().filename().stem().string();
+//       auto kind = name.find("vu0") != std::string::npos ? VuDisassembler::VuKind::VU0
+//                                                         : VuDisassembler::VuKind::VU1;
+//       VuData prog(name, kind);
+//       file_util::write_text_file(path + "/" + prog.name + "-result.txt", prog.disasm);
+//     }
+//   }
+// }
 
 TEST(VuDisasm, ShadowVu0_Jak3) {
   auto data = get_test_data("jak3/shadow-vu0");
