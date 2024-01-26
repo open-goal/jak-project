@@ -78,17 +78,17 @@ TEST(VuDisasm, OceanTexture_Jak3) {
 }
 
 TEST(VuDisasm, OceanMid_Jak3) {
-  auto data = get_test_data("jak3/ocean-mid");
+  auto data = get_test_data("jak3/ocean-mid-vu1");
   VuDisassembler disasm(VuDisassembler::VuKind::VU1);
   auto prog = disasm.disassemble(data.data(), data.size() * 4, false);
-  EXPECT_EQ(disasm.to_string(prog), get_expected("jak3/ocean-mid"));
+  EXPECT_EQ(disasm.to_string(prog), get_expected("jak3/ocean-mid-vu1"));
 }
 
 TEST(VuDisasm, OceanNear_Jak3) {
-  auto data = get_test_data("jak3/ocean-near");
+  auto data = get_test_data("jak3/ocean-near-vu1");
   VuDisassembler disasm(VuDisassembler::VuKind::VU1);
   auto prog = disasm.disassemble(data.data(), data.size() * 4, false);
-  EXPECT_EQ(disasm.to_string(prog), get_expected("jak3/ocean-near"));
+  EXPECT_EQ(disasm.to_string(prog), get_expected("jak3/ocean-near-vu1"));
 }
 
 TEST(VuDisasm, OceanVu0_Jak3) {
@@ -144,14 +144,14 @@ TEST(VuDisasm, Sprite_Jak3) {
   auto data = get_test_data("jak3/sprite-vu1");
   VuDisassembler disasm(VuDisassembler::VuKind::VU1);
   auto prog = disasm.disassemble(data.data(), data.size() * 4, false);
-  EXPECT_EQ(disasm.to_string(prog), get_expected("jak3/sprite"));
+  EXPECT_EQ(disasm.to_string(prog), get_expected("jak3/sprite-vu1"));
 }
 
 TEST(VuDisasm, SpriteDistort_Jak3) {
   auto data = get_test_data("jak3/sprite-distort-vu1");
   VuDisassembler disasm(VuDisassembler::VuKind::VU1);
   auto prog = disasm.disassemble(data.data(), data.size() * 4, false);
-  EXPECT_EQ(disasm.to_string(prog), get_expected("jak3/sprite-distort"));
+  EXPECT_EQ(disasm.to_string(prog), get_expected("jak3/sprite-distort-vu1"));
 }
 
 TEST(VuDisasm, SpriteGlow_Jak3) {
