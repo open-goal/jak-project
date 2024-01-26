@@ -93,7 +93,7 @@ VuDisassembler::VuDisassembler(VuKind kind) : m_kind(kind) {
   //  m_upper_op6_table[0b100011].set(VuInstrK::MADDi);   // 35
   //  m_upper_op6_table[0b100100].set(VuInstrK::SUBq);    // 36
   //  m_upper_op6_table[0b100101].set(VuInstrK::MSUBq);   // 37
-  //  m_upper_op6_table[0b100110].set(VuInstrK::SUBi);    // 38
+  m_upper_op6_table[0b100110].set(VuInstrK::SUBi);  // 38
   //  m_upper_op6_table[0b100111].set(VuInstrK::MSUBi);   // 39
   m_upper_op6_table[0b101000].set(VuInstrK::ADD);   // 40
   m_upper_op6_table[0b101001].set(VuInstrK::MADD);  // 41
@@ -148,6 +148,7 @@ VuDisassembler::VuDisassembler(VuKind kind) : m_kind(kind) {
   add_op(VuInstrK::MULi, "muli").iemdt().dst_mask().vft_zero().dst_vfd().src_vfs().src_i();
   add_op(VuInstrK::ADDi, "addi").iemdt().dst_mask().vft_zero().dst_vfd().src_vfs().src_i();
   add_op(VuInstrK::MULAq, "mula").iemdt().dst_mask().dst_acc().vft_zero().src_vfs().src_q();
+  add_op(VuInstrK::SUBi, "subi").iemdt().dst_mask().vft_zero().dst_vfd().src_vfs().src_i();
 
   m_lower_op6_table[0b000000].set(VuInstrK::LQ);
   m_lower_op6_table[0b000001].set(VuInstrK::SQ);
