@@ -56,6 +56,32 @@ std::string get_expected(const std::string& name) {
 //   }
 // }
 
+TEST(VuDisasm, DumpResults_Jak2) {
+  struct VuData {
+    std::string name;
+    std::vector<u32> data;
+    VuDisassembler::VuKind kind;
+    std::string disasm;
+
+    VuData(const std::string& name, VuDisassembler::VuKind kind)
+        : name(name), data(get_test_data("jak2/" + name)), kind(kind) {
+      VuDisassembler vu_disasm(kind);
+      disasm = vu_disasm.to_string(vu_disasm.disassemble(data.data(), data.size() * 4, false));
+    }
+  };
+  auto path = file_util::get_file_path({"test/decompiler/vu_reference/jak2"});
+  for (const auto& entry : fs::directory_iterator(path)) {
+    if (entry.is_regular_file() &&
+        entry.path().filename().string().find("result") == std::string::npos) {
+      auto name = entry.path().filename().stem().string();
+      auto kind = name.find("vu0") != std::string::npos ? VuDisassembler::VuKind::VU0
+                                                        : VuDisassembler::VuKind::VU1;
+      VuData prog(name, kind);
+      file_util::write_text_file(path + "/" + prog.name + "-result.txt", prog.disasm);
+    }
+  }
+}
+
 TEST(VuDisasm, ShadowVu0_Jak3) {
   auto data = get_test_data("jak3/shadow-vu0");
   VuDisassembler disasm(VuDisassembler::VuKind::VU0);
@@ -253,24 +279,24 @@ TEST(VuDisasm, ShadowVu1_Jak2) {
 }
 
 TEST(VuDisasm, OceanTexture_Jak2) {
-  auto data = get_test_data("jak2/ocean-texture");
+  auto data = get_test_data("jak2/ocean-texture-vu1");
   VuDisassembler disasm(VuDisassembler::VuKind::VU1);
   auto prog = disasm.disassemble(data.data(), data.size() * 4, false);
-  EXPECT_EQ(disasm.to_string(prog), get_expected("jak2/ocean-texture"));
+  EXPECT_EQ(disasm.to_string(prog), get_expected("jak2/ocean-texture-vu1"));
 }
 
 TEST(VuDisasm, OceanMid_Jak2) {
-  auto data = get_test_data("jak2/ocean-mid");
+  auto data = get_test_data("jak2/ocean-mid-vu1");
   VuDisassembler disasm(VuDisassembler::VuKind::VU1);
   auto prog = disasm.disassemble(data.data(), data.size() * 4, false);
-  EXPECT_EQ(disasm.to_string(prog), get_expected("jak2/ocean-mid"));
+  EXPECT_EQ(disasm.to_string(prog), get_expected("jak2/ocean-mid-vu1"));
 }
 
 TEST(VuDisasm, OceanNear_Jak2) {
-  auto data = get_test_data("jak2/ocean-near");
+  auto data = get_test_data("jak2/ocean-near-vu1");
   VuDisassembler disasm(VuDisassembler::VuKind::VU1);
   auto prog = disasm.disassemble(data.data(), data.size() * 4, false);
-  EXPECT_EQ(disasm.to_string(prog), get_expected("jak2/ocean-near"));
+  EXPECT_EQ(disasm.to_string(prog), get_expected("jak2/ocean-near-vu1"));
 }
 
 TEST(VuDisasm, OceanVu0_Jak2) {
@@ -295,38 +321,38 @@ TEST(VuDisasm, Emerc) {
 }
 
 TEST(VuDisasm, Shrub_Jak2) {
-  auto data = get_test_data("jak2/shrub");
+  auto data = get_test_data("jak2/shrub-vu1");
   VuDisassembler disasm(VuDisassembler::VuKind::VU1);
   auto prog = disasm.disassemble(data.data(), data.size() * 4, false);
-  EXPECT_EQ(disasm.to_string(prog), get_expected("jak2/shrub"));
+  EXPECT_EQ(disasm.to_string(prog), get_expected("jak2/shrub-vu1"));
 }
 
 TEST(VuDisasm, Sprite_Jak2) {
-  auto data = get_test_data("jak2/sprite");
+  auto data = get_test_data("jak2/sprite-vu1");
   VuDisassembler disasm(VuDisassembler::VuKind::VU1);
   auto prog = disasm.disassemble(data.data(), data.size() * 4, false);
-  EXPECT_EQ(disasm.to_string(prog), get_expected("jak2/sprite"));
+  EXPECT_EQ(disasm.to_string(prog), get_expected("jak2/sprite-vu1"));
 }
 
 TEST(VuDisasm, SpriteDistort_Jak2) {
-  auto data = get_test_data("jak2/sprite-distort");
+  auto data = get_test_data("jak2/sprite-distort-vu1");
   VuDisassembler disasm(VuDisassembler::VuKind::VU1);
   auto prog = disasm.disassemble(data.data(), data.size() * 4, false);
-  EXPECT_EQ(disasm.to_string(prog), get_expected("jak2/sprite-distort"));
+  EXPECT_EQ(disasm.to_string(prog), get_expected("jak2/sprite-distort-vu1"));
 }
 
 TEST(VuDisasm, SpriteGlow_Jak2) {
-  auto data = get_test_data("jak2/sprite-glow");
+  auto data = get_test_data("jak2/sprite-glow-vu1");
   VuDisassembler disasm(VuDisassembler::VuKind::VU1);
   auto prog = disasm.disassemble(data.data(), data.size() * 4, false);
-  EXPECT_EQ(disasm.to_string(prog), get_expected("jak2/sprite-glow"));
+  EXPECT_EQ(disasm.to_string(prog), get_expected("jak2/sprite-glow-vu1"));
 }
 
 TEST(VuDisasm, Tie_Jak2) {
-  auto data = get_test_data("jak2/tie");
+  auto data = get_test_data("jak2/tie-vu1");
   VuDisassembler disasm(VuDisassembler::VuKind::VU1);
   auto prog = disasm.disassemble(data.data(), data.size() * 4, false);
-  EXPECT_EQ(disasm.to_string(prog), get_expected("jak2/tie"));
+  EXPECT_EQ(disasm.to_string(prog), get_expected("jak2/tie-vu1"));
 }
 
 TEST(VuDisasm, etie_Jak2) {
