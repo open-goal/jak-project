@@ -121,6 +121,7 @@ struct Config {
   bool extract_collision = false;
   bool find_functions = false;
   bool read_spools = false;
+  bool ignore_var_name_casts = false;
 
   bool write_hex_near_instructions = false;
   bool hexdump_code = false;
