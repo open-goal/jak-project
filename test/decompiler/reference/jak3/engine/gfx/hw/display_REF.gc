@@ -1,33 +1,24 @@
 ;;-*-Lisp-*-
 (in-package goal)
 
-;; name: display.gc
-;; name in dgo: display
-;; dgos: GAME
-
-(defconstant DMA_BUFFER_GLOBAL_SIZE (* 1280 1024)) ;; 1280K
-;; (defconstant DMA_BUFFER_GLOBAL_SIZE (* 1280 1024 PROCESS_HEAP_MULT)) ;; expand based on actor heap expansion
-(defconstant DMA_BUFFER_DEBUG_SIZE (* 8 1024 1024)) ;; 8M
-;; (defconstant DMA_BUFFER_DEBUG_SIZE (* 12 1024 1024)) ;; expand to 12M because we can
-
-(defconstant DISPLAY_FPS_RATIO (/ (-> *display* time-factor) 5.0))
-
-;; DECOMP BEGINS
-
+;; definition for function get-current-time
 (defun get-current-time ()
   "Get the base-clock time."
   (-> *display* base-clock frame-counter)
   )
 
+;; definition for function get-integral-current-time
 (defun get-integral-current-time ()
   "Get the number of frames that have happened."
   (-> *display* base-clock integral-frame-counter)
   )
 
+;; definition for function get-real-current-time
 (defun get-real-current-time ()
   (-> *display* real-clock frame-counter)
   )
 
+;; definition for method 9 of type display
 (defmethod set-time-ratios ((this display) (arg0 float))
   (set! (-> this dog-ratio) (fmin 4.0 arg0))
   (case (get-video-mode)
@@ -41,6 +32,7 @@
   (-> this dog-ratio)
   )
 
+;; definition for function set-display
 (defun set-display ((arg0 display))
   "Allocate and initialize clocks for the display."
   (dotimes (s5-0 22)
@@ -85,16 +77,17 @@
   arg0
   )
 
+;; definition for function allocate-dma-buffers
 (defun allocate-dma-buffers ((arg0 display))
   "Allocate the main, debug, and calc dma buffers."
   (when (zero? (-> arg0 frames 0 calc-buf))
     (set! (-> arg0 frames 0 calc-buf) (new 'global 'dma-buffer 10000))
     (set! (-> arg0 frames 1 calc-buf) (new 'global 'dma-buffer 10000))
-    (set! (-> arg0 frames 0 global-buf) (new 'global 'dma-buffer DMA_BUFFER_GLOBAL_SIZE))
-    (set! (-> arg0 frames 1 global-buf) (new 'global 'dma-buffer DMA_BUFFER_GLOBAL_SIZE))
+    (set! (-> arg0 frames 0 global-buf) (new 'global 'dma-buffer #x140000))
+    (set! (-> arg0 frames 1 global-buf) (new 'global 'dma-buffer #x140000))
     (when *debug-segment*
-      (set! (-> arg0 frames 0 debug-buf) (new 'debug 'dma-buffer DMA_BUFFER_DEBUG_SIZE))
-      (set! (-> arg0 frames 1 debug-buf) (new 'debug 'dma-buffer DMA_BUFFER_DEBUG_SIZE))
+      (set! (-> arg0 frames 0 debug-buf) (new 'debug 'dma-buffer #x800000))
+      (set! (-> arg0 frames 1 debug-buf) (new 'debug 'dma-buffer #x800000))
       )
     (set! (-> arg0 dma-buffer-overflow) #f)
     (set! (-> arg0 mem-reserve-size) (the-as uint 0))
@@ -103,10 +96,12 @@
   arg0
   )
 
+;; definition for symbol *font-context*, type font-context
 (define *font-context*
   (new 'global 'font-context *font-default-matrix* 0 0 0.0 (font-color default) (font-flags shadow kerning))
   )
 
+;; definition for function draw-sprite2d-xy
 ;; WARN: Return type mismatch pointer vs none.
 (defun draw-sprite2d-xy ((arg0 dma-buffer) (arg1 int) (arg2 int) (arg3 int) (arg4 int) (arg5 rgba) (arg6 int))
   "Draw a sprite primitive with the given color and dimensions."
@@ -165,6 +160,7 @@
   (none)
   )
 
+;; definition for function draw-sprite2d-xy-absolute
 ;; WARN: Return type mismatch pointer vs none.
 (defun draw-sprite2d-xy-absolute ((arg0 dma-buffer) (arg1 int) (arg2 int) (arg3 int) (arg4 int) (arg5 rgba) (arg6 int))
   "Draw a sprite primitive, setting the gs-xzyf register to exactly the values specified (no offset/clamp)."
@@ -219,6 +215,7 @@
   (none)
   )
 
+;; definition for function draw-quad2d
 ;; WARN: Return type mismatch pointer vs none.
 (defun draw-quad2d ((arg0 dma-buffer) (arg1 draw-context))
   "Draw a quad that fills the entire context."
@@ -297,6 +294,7 @@
   (none)
   )
 
+;; definition for function screen-gradient
 (defun screen-gradient ((arg0 dma-buffer) (arg1 rgba) (arg2 rgba) (arg3 rgba) (arg4 rgba))
   "Fill the screen with a sprite with the given colors."
   (let ((a1-2 (new 'stack 'draw-context 0 0 512 416 (new 'static 'rgba))))
@@ -309,239 +307,23 @@
   (none)
   )
 
-(defun vif1-handler-debug ((mark-in int))
-  "Handle the VIF1 interrupt.
-  The mark register of VIF will be set to the bucket that is now starting."
+;; definition for function vif1-handler-debug
+;; ERROR: function was not converted to expressions. Cannot decompile.
 
-  ; B0:
-  ; L42:
-  ;     daddiu sp, sp, -32
-  ;     sd ra, 0(sp)
-  ;     sd s7, 16(sp)
-  ;     bgezal r0, L43
-  ;     sll r0, r0, 0
+;; definition for function vif1-handler
+;; ERROR: function was not converted to expressions. Cannot decompile.
 
-  ; B1:
-  ; L43:
-  ;     daddiu fp, ra, -20
-  ;     lw s7, L41(fp)
-  ;     lw s7, 0(s7)
-  ;     daddiu s7, s7, -8
-  ;     lw v1, *profile-interrupt-segment*(s7)
-  (let* ((prof *profile-interrupt-segment*) ;; v1
-         ;     lui a0, 4096
-         ;     ori a0, a0, 15360
-         ;     lwu a0, 48(a0)
-         (mark mark-in) ;; (-> VIF1_BANK mark) (TODO actually set mark somehow)
-         ;     lw a1, *profile-work*(s7)
-         ;     lw a2, 64(a1)
-         (last-index (-> *profile-work* last-index))
-
-         ;     lh a3, 4(v1)
-         (base-time (-> prof base-time))
-         ;     lui a1, 4096
-         ;     ori a1, a1, 2048
-         ;     lwu a1, 0(a1)
-         ;     sync.l
-         (current-time (timer-count TIMER1_BANK))
-         (delta-time (the uint 0))
-         )
-
-
-    (cond
-      ;     sltu t0, a0, a2  t0 = (mark < last-index)
-      ;     beq t0, r0, L46
-      ;     sll r0, r0, 0
-      ((< mark last-index)
-       ;; the mark jumped backward, we must be starting a new frame
-       ;; clear all profile info.
-
-
-       ; B2:
-       ;     addiu a2, r0, 0
-       ;     beq r0, r0, L45
-       ;     sll r0, r0, 0
-       (dotimes (i (enum-length bucket-id))
-         ; B3:
-         ; L44:
-         ;     dsll a3, a2, 4
-         ;     daddu a3, v1, a3
-         ;     sh r0, 48(a3)
-         (set! (-> prof data i start-time) 0)
-         ;     dsll a3, a2, 4
-         ;     daddu a3, v1, a3
-         ;     sh r0, 50(a3)
-         (set! (-> prof data i end-time) 0)
-         ;     dsll a3, a2, 4
-         ;     daddu a3, v1, a3
-         ;     sb r0, 53(a3)
-         (set! (-> prof data i count) 0)
-         ;     daddiu a2, a2, 1
-         ; B4:
-         ; L45:
-         ;     slti a3, a2, 327
-         ;     bne a3, r0, L44
-         ;     sll r0, r0, 0
-         )
-
-       ; B5:
-       ;     or a2, s7, r0
-       ;     or a2, s7, r0
-       ;     sh a1, 4(v1)
-       (set! (-> prof base-time) (the int current-time))
-       ;     addiu a1, r0, 0
-       ;     sh r0, 48(v1)
-       (set! (-> prof data 0 start-time) 0) ;; why do it again...
-       ;     addiu a2, r0, 327
-       ;     sh a2, 0(v1)
-       (set! (-> prof count) (enum-length bucket-id))
-       ;     beq r0, r0, L47
-       ;     sll r0, r0, 0
-       ) ;; end (>= mark last-index)
-      (else
-
-        ; B6:
-        ; L46:
-        ;     dsubu a1, a1, a3
-        ;(let ((delta-time (- current-time base-time)))
-          (set! delta-time (- current-time base-time))
-
-          ;     dsll a2, a2, 4
-          ;     daddu a2, v1, a2
-          ;     sh a1, 50(a2)
-          (set! (-> prof data last-index end-time) (the int delta-time))
-          ; (format 0 "mark: ~D last ~D elapsed ~D~%" mark last-index
-          ;         (- (-> prof data last-index end-time)
-          ;            (-> prof data last-index start-time)))
-
-          ;     sh a1, 50(v1)
-          (set! (-> prof data 0 end-time) (the int delta-time))
-          ;     or a2, a1, r0
-          ;)
-        ) ;; end else
-      ) ;; end cond
-    ; B7:
-    ; L47:
-    ;     dsll a2, a0, 4
-    ;     daddu a2, v1, a2
-    ;     sb a0, 53(a2)
-    (set! (-> prof data mark count) mark)
-    ;     dsll a2, a0, 4
-    ;     daddu v1, v1, a2
-    ;     sh a1, 48(v1)
-    (set! (-> prof data mark start-time) (the int delta-time))
-    ;     lw v1, *profile-work*(s7)
-    ;     sw a0, 64(v1)
-    (set! (-> *profile-work* last-index) mark)
-    ;     lui v1, 4096
-    ;     ori v1, v1, 15360
-    ;     sw r0, 48(v1)
-    ;;   CLEAR mark
-    ;     addiu v1, r0, 8
-    ;     lui a0, 4096
-    ;     ori a0, a0, 15360
-    ;     sw v1, 16(a0)
-    ;; write STC to VIF FBRST (reset various things)
-    ;     addiu v0, r0, 0
-    ;     ld ra, 0(sp)
-    ;     ld s7, 16(sp)
-    ;     sync.l
-    ;     ei
-    ;     jr ra
-    ;     daddiu sp, sp, 32
-    )
-
-  (none)
-  ;; .endfunction
-  )
-
-(defun vif1-handler ()
-  ;   B0:
-  ; L8:
-  ;     daddiu sp, sp, -32
-  ;     sd ra, 0(sp)
-  ;     sd s7, 16(sp)
-  ;     bgezal r0, L9
-  ;     sll r0, r0, 0
-
-  ; B1:
-  ; L9:
-  ;     daddiu fp, ra, -20
-  ;     lw s7, L7(fp)
-  ;     lw s7, 0(s7)
-  ;     daddiu s7, s7, -8
-
-  ;     lui v1, 4096
-  ;     ori v1, v1, 15360
-  ;     sw r0, 48(v1)
-  ;; clear mark
-
-  ;     addiu v1, r0, 8
-  ;     lui a0, 4096
-  ;     ori a0, a0, 15360
-  ;     sw v1, 16(a0)
-  ;; write STC to VIF FBRST (reset various things)
-
-  ;     addiu v0, r0, 0
-  ;     ld ra, 0(sp)
-  ;     ld s7, 16(sp)
-  ;     sync.l
-  ;     ei
-  ;     jr ra
-  ;     daddiu sp, sp, 32
-
-  ;     sll r0, r0, 0
-  ;     sll r0, r0, 0
-  )
-
+;; failed to figure out what this is:
 (install-handler 5 (if *debug-segment*
                        vif1-handler-debug
                        vif1-handler
                        )
                  )
 
-(defun vblank-handler ()
-  "Record the time of the last two vblanks."
-  ;   L5:
-  ;     daddiu sp, sp, -32
-  ;     sd ra, 0(sp)
-  ;     sd s7, 16(sp)
-  ;     bgezal r0, L6
-  ;     sll r0, r0, 0
+;; definition for function vblank-handler
+;; ERROR: function was not converted to expressions. Cannot decompile.
 
-  ; B1:
-  ; L6:
-  ;     daddiu fp, ra, -20
-  ;     lw s7, L4(fp)
-  ;     lw s7, 0(s7)
-  ;     daddiu s7, s7, -8
-  ;     lw v1, *display*(s7)
-  ;     ld v1, 108(v1)
-  ;     lw a0, *display*(s7)
-  ;     sd v1, 100(a0)
-  (set! (-> *display* vblank-start-time 0) (-> *display* vblank-start-time 1))
-  ;     lw t9, timer-count(s7)
-  ;     lui v1, 4096
-  ;     ori a0, v1, 2048
-  ;     jalr ra, t9
-  ;     sll v0, ra, 0
-
-  ;     lw v1, *display*(s7)
-  ;     sd v0, 108(v1)
-  (set! (-> *display* vblank-start-time 1) (the-as int (timer-count TIMER1_BANK))) ;; not really a time-frame.
-  ;     addiu v0, r0, 0
-  0
-  ;     ld ra, 0(sp)
-  ;     ld s7, 16(sp)
-  ;     sync.l
-  ;     ei
-  ;     jr ra
-  ;     daddiu sp, sp, 32
-
-  ;     sll r0, r0, 0
-  ;     sll r0, r0, 0
-  )
-
+;; definition for function set-display-gs-state
 (defun set-display-gs-state ((arg0 dma-buffer) (arg1 int) (arg2 int) (arg3 int) (arg4 int) (arg5 int))
   (let ((v1-1 (/ (+ arg2 63) 64))
         (t2-0 *display*)
@@ -570,6 +352,7 @@
   arg0
   )
 
+;; definition for function set-display-gs-state-offset
 (defun set-display-gs-state-offset ((arg0 dma-buffer) (arg1 int) (arg2 int) (arg3 int) (arg4 int) (arg5 int) (arg6 int) (arg7 int))
   (let ((v1-1 (/ (+ arg2 63) 64))
         (t4-0 *display*)
@@ -598,6 +381,7 @@
   arg0
   )
 
+;; definition for function reset-display-gs-state
 (defun reset-display-gs-state ((arg0 display) (arg1 dma-buffer))
   (let ((v1-0 *display*)
         (a2-0 144)
@@ -625,12 +409,21 @@
   arg0
   )
 
+;; failed to figure out what this is:
 (kmemopen global "dma-buffers")
 
+;; definition for symbol *vu0-dma-list*, type dma-buffer
 (define *vu0-dma-list* (new 'global 'dma-buffer 4096))
 
+;; definition for symbol *display*, type display
 (define *display* (new 'global 'display 0 512 416 2 49))
 
+;; failed to figure out what this is:
 (allocate-dma-buffers *display*)
 
+;; failed to figure out what this is:
 (kmemclose)
+
+
+
+

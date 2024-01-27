@@ -1,14 +1,7 @@
 ;;-*-Lisp-*-
 (in-package goal)
 
-;; name: profile.gc
-;; name in dgo: profile
-;; dgos: GAME
-
-(define-extern *dproc* process)
-
-;; DECOMP BEGINS
-
+;; definition for symbol *profile-spec-array*, type (inline-array profile-spec)
 (define *profile-spec-array*
   (new 'static 'inline-array profile-spec 14
     (new 'static 'profile-spec :name 'dummy :color (new 'static 'rgba :r #x20 :g #x20 :b #x20 :a #x80))
@@ -28,6 +21,7 @@
     )
   )
 
+;; definition for symbol *profile-translate-array*, type (pointer uint64)
 (define *profile-translate-array* (new 'static 'array uint64 584
                                     #x0
                                     #x0
@@ -616,6 +610,7 @@
                                     )
         )
 
+;; definition of type profile-work
 (deftype profile-work (structure)
   "DMA templates for profile drawing."
   ((sprite-tmpl  dma-gif-packet  :inline)
@@ -624,7 +619,21 @@
    )
   )
 
+;; definition for method 3 of type profile-work
+(defmethod inspect ((this profile-work))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this 'profile-work)
+  (format #t "~1Tsprite-tmpl: #<dma-gif-packet @ #x~X>~%" (-> this sprite-tmpl))
+  (format #t "~1Tline-tmpl: #<dma-gif-packet @ #x~X>~%" (-> this line-tmpl))
+  (format #t "~1Tlast-index: ~D~%" (-> this last-index))
+  (label cfg-4)
+  this
+  )
 
+;; definition for symbol *profile-work*, type profile-work
 (define *profile-work* (new 'static 'profile-work
                          :sprite-tmpl (new 'static 'dma-gif-packet
                            :dma-vif (new 'static 'dma-packet
@@ -643,16 +652,23 @@
                          )
         )
 
+;; definition for symbol *profile-x*, type int
 (define *profile-x* 1808)
 
+;; definition for symbol *profile-y*, type int
 (define *profile-y* 1848)
 
+;; definition for symbol *profile-w*, type int
 (define *profile-w* 416)
 
+;; definition for symbol *profile-h*, type int
 (define *profile-h* 8)
 
+;; definition for symbol *profile-ticks*, type symbol
 (define *profile-ticks* #f)
 
+;; definition for method 10 of type profile-segment-array
+;; WARN: Return type mismatch int vs none.
 (defmethod start-frame! ((this profile-segment-array))
   "Restart the profiler for the start of a frame."
   (set! (-> this count) 0)
@@ -664,6 +680,8 @@
   (none)
   )
 
+;; definition for method 11 of type profile-segment-array
+;; WARN: Return type mismatch int vs none.
 (defmethod start-segment! ((this profile-segment-array) (arg0 symbol) (arg1 rgba))
   "Start an event."
   (when (and *dproc* *debug-segment*)
@@ -684,6 +702,8 @@
   (none)
   )
 
+;; definition for method 12 of type profile-segment-array
+;; WARN: Return type mismatch int vs none.
 (defmethod end-segment! ((this profile-segment-array))
   "Stop the most recently started event."
   (when (and *dproc* *debug-segment*)
@@ -701,6 +721,8 @@
   (none)
   )
 
+;; definition for method 9 of type profile-array
+;; WARN: Return type mismatch int vs none.
 (defmethod postprocess-data! ((this profile-array))
   "Create the collapsed summary of the collected data."
   (dotimes (s5-0 2)
@@ -788,6 +810,9 @@
   (none)
   )
 
+;; definition for method 10 of type profile-array
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch int vs none.
 (defmethod draw-bars! ((this profile-array) (arg0 dma-buffer) (arg1 int))
   "Generate DMA data for drawing the profile bars."
   (local-vars (sv-16 (function _varargs_ object)) (sv-32 (function _varargs_ object)))
@@ -965,6 +990,8 @@
   (none)
   )
 
+;; definition for method 11 of type profile-array
+;; WARN: Return type mismatch int vs none.
 (defmethod draw-text! ((this profile-array))
   "Generate DMA data for drawing the profile information screen."
   (let ((gp-0 *profile-collapse*))
@@ -999,3 +1026,7 @@
   0
   (none)
   )
+
+
+
+

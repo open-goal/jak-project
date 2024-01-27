@@ -3984,6 +3984,8 @@
   (bucket582 582)
   (bucket583 583)
   (debug-no-zbuf2 584)
+  (bucket585 585)
+  (bucket586 586)
   )
 ;; ---vu1-user-h:bucket-id
 
@@ -4171,7 +4173,7 @@
 
 (deftype profile-spec (structure)
   "Specification for a profile category."
-  ((name  basic   :offset-assert 0)
+  ((name  symbol  :offset-assert 0)
    (color rgba    :offset-assert 4)
    )
   :method-count-assert 9
@@ -4285,6 +4287,9 @@
   :method-count-assert 9
   :size-assert         #x28
   :flag-assert         #x900000028
+  (:methods
+    (new (symbol type int) _type_) ;; 0
+    )
   )
 
 ;; (define-extern dma-buffer-inplace-new function) ;; (function dma-buffer int dma-buffer)
@@ -5447,7 +5452,7 @@
    (vu1-enable-user-menu vu1-renderer-mask :offset-assert 176) ;; vu1-renderer-mask
    (force-sync           uint32           :offset-assert 184)
    (mem-reserve-size     uint32           :offset-assert 188)
-   (dma-buffer-overflow  basic            :offset-assert 192)
+   (dma-buffer-overflow  symbol           :offset-assert 192)
    )
   :method-count-assert 10
   :size-assert         #xc4
@@ -7758,19 +7763,81 @@
 ;; font-h                         ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
+;; +++font-h:font-flags
+(defenum font-flags
+  :type uint32
+  :bitfield #t
+  (shadow 0)
+  (kerning 1)
+  (middle 2)
+  (middle-vert 3)
+  (right 4)
+  (large 5)
+  (pc-hack 6)
+  )
+;; ---font-h:font-flags
+
+;; +++font-h:font-color
+(defenum font-color
+  :type uint32
+  (default 0)
+  (white 1)
+  (transparent 2)
+  (red 3)
+  (orange 4)
+  (yellow 5)
+  (green 6)
+  (blue 7)
+  (cyan 8)
+  (pink 9)
+  (menu-selected 10)
+  (menu-selected-parent 11)
+  (menu 12)
+  (menu-parent 13)
+  (menu-func-bad 14)
+  (menu-flag-on 15)
+  (menu-flag-on-parent 16)
+  (menu-flag-off 17)
+  (menu-flag-off-parent 18)
+  (menu-invalid 19)
+  (flat-yellow 20)
+  (font-color-21 21)
+  (pad-back 22)
+  (pad-shine 23)
+  (pad-square 24)
+  (pad-circle 25)
+  (pad-triangle 26)
+  (pad-x 27)
+  (progress-old-blue 28)
+  (progress-old-yellow 29)
+  (progress-old-selected 30)
+  (progress-old-percent 31)
+  (font-color-32 32)
+  (font-color-33 33)
+  (font-color-34 34)
+  (font-color-35 35)
+  (font-color-36 36)
+  (font-color-37 37)
+  (font-color-38 38)
+  (font-color-39 39)
+  (font-color-40 40)
+  (font-color-41 41)
+  (font-color-42 42)
+  (font-color-43 43)
+  (font-color-44 44)
+  )
+;; ---font-h:font-color
+
 (deftype char-verts (structure)
-  ((pos    vector 4 :offset-assert 0) ;; guessed by decompiler
-   (color  vector 4 :offset-assert 64) ;; guessed by decompiler
-   (tex-st vector 4 :offset-assert 128) ;; guessed by decompiler
+  ((pos    vector 4 :inline :offset-assert 0) ;; guessed by decompiler
+   (color  vector 4 :inline :offset-assert 64) ;; guessed by decompiler
+   (tex-st vector 4 :inline :offset-assert 128) ;; guessed by decompiler
    )
   :method-count-assert 9
   :size-assert         #xc0
   :flag-assert         #x9000000c0
   )
-|#
 
-#|
 (deftype char-color (structure)
   ((color rgba 4 :offset-assert 0) ;; guessed by decompiler
    )
@@ -7778,9 +7845,7 @@
   :size-assert         #x10
   :flag-assert         #x900000010
   )
-|#
 
-#|
 (deftype font-context (basic)
   ((origin     vector     :inline :offset-assert 16)
    (strip-gif  vector     :inline :offset-assert 32)
@@ -7799,24 +7864,22 @@
   :size-assert         #x58
   :flag-assert         #x1500000058
   (:methods
-    (new (symbol type) _type_) ;; 0 ;; (new (symbol type matrix int int float font-color font-flags) _type_)
-    (font-context-method-9 () none) ;; 9 ;; (set-mat! (font-context matrix) font-context)
-    (font-context-method-10 () none) ;; 10 ;; (set-origin! (font-context int int) font-context)
-    (font-context-method-11 () none) ;; 11 ;; (set-depth! (font-context int) font-context)
-    (font-context-method-12 () none) ;; 12 ;; (set-w! (font-context float) font-context)
-    (font-context-method-13 () none) ;; 13 ;; (set-width! (font-context int) font-context)
-    (font-context-method-14 () none) ;; 14 ;; (set-height! (font-context int) font-context)
-    (font-context-method-15 () none) ;; 15 ;; (set-projection! (font-context float) font-context)
-    (font-context-method-16 () none) ;; 16 ;; (set-color! (font-context font-color) font-context)
-    (font-context-method-17 () none) ;; 17 ;; (set-flags! (font-context font-flags) font-context)
-    (font-context-method-18 () none) ;; 18 ;; (set-start-line! (font-context uint) font-context)
-    (font-context-method-19 () none) ;; 19 ;; (set-scale! (font-context float) font-context)
-    (font-context-method-20 () none) ;; 20 ;; (set-alpha! (font-context float) font-context)
+    (new (symbol type matrix int int float font-color font-flags) _type_) ;; 0
+    (set-mat! (font-context matrix) font-context) ;; 9
+    (set-origin! (font-context int int) font-context) ;; 10
+    (set-depth! (font-context int) font-context) ;; 11
+    (set-w! (font-context float) font-context) ;; 12
+    (set-width! (font-context int) font-context) ;; 13
+    (set-height! (font-context int) font-context) ;; 14
+    (set-projection! (font-context float) font-context) ;; 15
+    (set-color! (font-context font-color) font-context) ;; 16
+    (set-flags! (font-context font-flags) font-context) ;; 17
+    (set-start-line! (font-context uint) font-context) ;; 18
+    (set-scale! (font-context float) font-context) ;; 19
+    (set-alpha! (font-context float) font-context) ;; 20
     )
   )
-|#
 
-#|
 (deftype font-work (structure)
   ((font-tmpl                 dma-gif-packet :inline :offset-assert 0)
    (char-tmpl                 dma-gif-packet :inline :offset-assert 32)
@@ -7846,14 +7909,14 @@
    (size-st2                  vector         :inline :offset-assert 432)
    (size-st3                  vector         :inline :offset-assert 448)
    (save                      vector         :inline :offset-assert 464)
-   (save-color                vector         4       :offset-assert 480) ;; guessed by decompiler
-   (character-save-color      UNKNOWN        4       :offset-assert 544)
+   (save-color                vector       4 :inline :offset-assert 480) ;; guessed by decompiler
+   (character-save-color      vector       4 :inline :offset-assert 544)
    (current-verts             char-verts     :inline :offset-assert 608)
    (src-verts                 char-verts     :inline :offset-assert 800)
    (dest-verts                char-verts     :inline :offset-assert 992)
-   (justify                   vector         64      :offset-assert 1184) ;; guessed by decompiler
+   (justify                   vector      64 :inline :offset-assert 1184) ;; guessed by decompiler
    (color-shadow              vector4w       :inline :offset-assert 2208)
-   (color-table               char-color     45      :offset-assert 2224) ;; guessed by decompiler
+   (color-table               char-color  45 :inline :offset-assert 2224) ;; guessed by decompiler
    (current-font-0-tmpl       uint64         2       :offset-assert 2944) ;; guessed by decompiler
    (current-font-1-tmpl       uint64         2       :offset-assert 2960) ;; guessed by decompiler
    (current-font-2-tmpl       uint64         2       :offset-assert 2976) ;; guessed by decompiler
@@ -7873,12 +7936,11 @@
     (font-work-method-9 () none) ;; 9
     )
   )
-|#
 
-;; (define-extern *font-default-matrix* object) ;; matrix
-;; (define-extern *font-work* object) ;; font-work
-;; (define-extern font-set-tex0 function) ;; (function (pointer gs-tex0) texture int int int none)
-;; (define-extern set-font-color function) ;; (function font-color int rgba rgba rgba int)
+(define-extern *font-default-matrix* matrix)
+(define-extern *font-work* font-work)
+(define-extern font-set-tex0 (function (pointer gs-tex0) texture int int int none))
+(define-extern set-font-color (function font-color int rgba rgba rgba int))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; decomp-h                       ;;
@@ -8031,8 +8093,8 @@
 ;; profile                        ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype profile-work (structure)
+  "DMA templates for profile drawing."
   ((sprite-tmpl dma-gif-packet :inline :offset-assert 0)
    (line-tmpl   dma-gif-packet :inline :offset-assert 32)
    (last-index  int32                  :offset-assert 64)
@@ -8041,39 +8103,46 @@
   :size-assert         #x44
   :flag-assert         #x900000044
   )
-|#
 
-;; (define-extern *profile-spec-array* object)
-;; (define-extern *profile-translate-array* object)
-;; (define-extern *profile-work* object) ;; profile-work
-;; (define-extern *profile-x* object) ;; int
-;; (define-extern *profile-y* object) ;; int
-;; (define-extern *profile-w* object) ;; int
-;; (define-extern *profile-h* object) ;; int
-;; (define-extern *profile-ticks* object) ;; symbol
+(define-extern *profile-spec-array* (inline-array profile-spec))
+(define-extern *profile-translate-array* (pointer uint64))
+(define-extern *profile-work* profile-work)
+(define-extern *profile-x* int)
+(define-extern *profile-y* int)
+(define-extern *profile-w* int)
+(define-extern *profile-h* int)
+(define-extern *profile-ticks* symbol)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; display                        ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(define-extern get-current-time (function time-frame))
-(define-extern get-integral-current-time (function time-frame))
+(define-extern get-current-time "Get the base-clock time." (function time-frame))
+(define-extern get-integral-current-time "Get the number of frames that have happened." (function time-frame))
 (define-extern get-real-current-time (function time-frame))
-(define-extern set-display (function display display))
-;; (define-extern allocate-dma-buffers function) ;; (function display display)
-;; (define-extern *font-context* object) ;; font-context
-;; (define-extern draw-sprite2d-xy function) ;; (function dma-buffer int int int int rgba none)
-;; (define-extern draw-sprite2d-xy-absolute function) ;; (function dma-buffer int int int int rgba none)
-;; (define-extern draw-quad2d function) ;; (function dma-buffer draw-context none)
-;; (define-extern screen-gradient function) ;; (function dma-buffer rgba rgba rgba rgba none)
-;; (define-extern vif1-handler-debug function) ;; (function int none)
-;; (define-extern vif1-handler function) ;; (function none)
-;; (define-extern vblank-handler function) ;; (function int)
-;; (define-extern set-display-gs-state function) ;; (function dma-buffer int int int int int dma-buffer)
-;; (define-extern set-display-gs-state-offset function) ;; (function dma-buffer int int int int int int int dma-buffer)
-;; (define-extern reset-display-gs-state function) ;; (function display dma-buffer display)
-;; (define-extern *vu0-dma-list* object) ;; dma-buffer
+(define-extern set-display "Allocate and initialize clocks for the display." (function display display))
+(define-extern allocate-dma-buffers "Allocate the main, debug, and calc dma buffers." (function display display))
+(define-extern *font-context* font-context)
+(define-extern draw-sprite2d-xy "Draw a sprite primitive with the given color and dimensions." (function dma-buffer int int int int rgba int none))
+(define-extern draw-sprite2d-xy-absolute
+  "Draw a sprite primitive, setting the gs-xzyf register to exactly the values specified (no offset/clamp)."
+  (function dma-buffer int int int int rgba int none))
+(define-extern draw-quad2d "Draw a quad that fills the entire context." (function dma-buffer draw-context none))
+(define-extern screen-gradient "Fill the screen with a sprite with the given colors." (function dma-buffer rgba rgba rgba rgba none))
+(define-extern vif1-handler-debug
+  "Handle the VIF1 interrupt.
+   The mark register of VIF will be set to the bucket that is now starting."
+  (function int none))
+(define-extern vif1-handler (function none))
+(define-extern vblank-handler "Record the time of the last two vblanks." (function int))
+(define-extern set-display-gs-state (function dma-buffer int int int int int dma-buffer))
+(define-extern set-display-gs-state-offset (function dma-buffer int int int int int int int dma-buffer))
+(define-extern reset-display-gs-state (function display dma-buffer display))
+(define-extern *vu0-dma-list* dma-buffer)
 (define-extern *display* display)
+
+;; from kernel
+(define-extern install-handler (function int function int))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; connect                        ;;
@@ -9167,7 +9236,6 @@
   )
 ;; ---text-h:text-id
 
-#|
 (deftype game-text (structure)
   ((id   text-id  :offset-assert 0) ;; guessed by decompiler
    (text string   :offset-assert 4) ;; guessed by decompiler
@@ -9176,9 +9244,7 @@
   :size-assert         #x8
   :flag-assert         #x900000008
   )
-|#
 
-#|
 (deftype game-text-info (basic)
   ((length      int32              :offset-assert 4)
    (language-id int32              :offset-assert 8)
@@ -9189,39 +9255,35 @@
   :size-assert         #x10
   :flag-assert         #xa00000010
   (:methods
-    (game-text-info-method-9 () none) ;; 9 ;; (lookup-text! (_type_ text-id symbol) string)
+    (lookup-text! (_type_ text-id symbol) string) ;; 9
     )
   )
-|#
 
-;; (define-extern *text-group-names* array) ;; (array string)
-;; (define-extern *common-text-heap* object) ;; kheap
-;; (define-extern *common-text* object) ;; game-text-info
+(define-extern *text-group-names* (array string))
+(define-extern *common-text-heap* kheap)
+(define-extern *common-text* game-text-info)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; camera-defs-h                  ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype camera-bank (basic)
   ((collide-move-rad        float   :offset-assert 4)
    (joypad                  uint32  :offset-assert 8)
    (min-detectable-velocity float   :offset-assert 12)
-   (attack-timeout          uint64  :offset-assert 16) ;; time-frame
+   (attack-timeout          time-frame :offset-assert 16) ;; time-frame
    (default-string-max-y    meters  :offset-assert 24)
    (default-string-min-y    meters  :offset-assert 28)
    (default-string-max-z    meters  :offset-assert 32)
    (default-string-min-z    meters  :offset-assert 36)
    (default-string-push-z   meters  :offset-assert 40)
-   (default-tilt-adjust     deg     :offset-assert 44) ;; degrees
+   (default-tilt-adjust     degrees :offset-assert 44) ;; degrees
    )
   :method-count-assert 9
   :size-assert         #x30
   :flag-assert         #x900000030
   )
-|#
 
-#|
 (deftype camera-master-bank (basic)
   ((onscreen-head-height            meters  :offset-assert 4)
    (onscreen-foot-height            meters  :offset-assert 8)
@@ -9236,10 +9298,9 @@
   :size-assert         #x24
   :flag-assert         #x900000024
   )
-|#
 
-;; (define-extern *CAMERA-bank* camera-bank) ;; camera-bank
-;; (define-extern *CAMERA_MASTER-bank* camera-master-bank) ;; camera-master-bank
+(define-extern *CAMERA-bank* camera-bank)
+(define-extern *CAMERA_MASTER-bank* camera-master-bank)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; trail-h                        ;;
@@ -9718,15 +9779,19 @@
 ;; settings-h                     ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+;; +++settings-h:game-feature
 (defenum game-feature
   :type uint64
   :bitfield #t
   )
+;; ---settings-h:game-feature
 
+;; +++settings-h:game-secrets
 (defenum game-secrets
   :type uint64
   :bitfield #t
   )
+;; ---settings-h:game-secrets
 
 (deftype user-setting-data (structure)
   ((border-mode            symbol              :offset-assert 0) ;; guessed by decompiler
@@ -9849,13 +9914,62 @@
     )
   )
 
-#|
+;; +++settings-h:cam-slave-options
+(defenum cam-slave-options
+  :type uint64
+  :bitfield #t
+  (BUTT_CAM)
+  (SAME_SIDE)
+  (MOVE_SPHERICAL)
+  (ALLOW_Z_ROT)
+  (JUMP_PITCHES)
+  (COLLIDE)
+  (FIND_HIDDEN_TARGET)
+  (DRAG)
+  (PLAYER_MOVING_CAMERA)
+  (LINE_OF_SIGHT)
+  (MOVEMENT_BLOCKED)
+  (SHRINK_MAX_ANGLE)
+  (GOTO_GOOD_POINT)
+  (BIKE_MODE)
+  (NO_ROTATE)
+  (STICKY_ANGLE)
+  (BLOCK_RIGHT_STICK)
+  (ALLOW_SHIFT_BUTTONS)
+  (GUN_CAM)
+  (WIDE_FOV)
+  (RAPID_TRACKING)
+  (EASE_SPLINE_IDX)
+  (VERTICAL_FOLLOW_MATCHES_CAMERA)
+  (HAVE_BUTT_HANDLE)
+  (BOMBBOT)
+  (JUMP_LAG)
+  )
+;; ---settings-h:cam-slave-options
+
+;; +++settings-h:cam-master-options
+(defenum cam-master-options
+  :type uint64
+  :bitfield #t
+  (HAVE_TARGET) ;; 1
+  (SET_COMBINER_AXIS) ;; 2
+  (FLIP_COMBINER) ;; 4
+  (HAVE_EASE_TO_POS) ;; 8
+  (IN_BASE_REGION) ;; 10
+  (IGNORE_ANALOG) ;; 20
+  (BLOCK_RIGHT_STICK) ;; 40
+  (USE_L1_R1) ;; 80
+  (READ_BUTTONS)
+  (IMMEDIATE_STRING_MIN_MAX)
+  )
+;; ---settings-h:cam-master-options
+
 (deftype cam-setting-data (structure)
-  ((fov                           deg                        :offset-assert 0) ;; degrees
-   (pov-handle                    uint64                     :offset-assert 16) ;; handle
+  ((fov                           degrees                    :offset-assert 0) ;; degrees
+   (pov-handle                    handle                     :offset 16) ;; handle
    (pov-bone                      int32                      :offset-assert 24)
    (pov-offset                    vector             :inline :offset-assert 32)
-   (string-default                boolean                    :offset-assert 48) ;; symbol
+   (string-default                symbol                     :offset-assert 48) ;; symbol
    (string-max-length             meters                     :offset-assert 52)
    (string-min-length             meters                     :offset-assert 56)
    (string-max-height             meters                     :offset-assert 60)
@@ -9867,23 +9981,23 @@
    (gun-min-height                meters                     :offset-assert 84)
    (string-local-down             vector             :inline :offset-assert 96)
    (slave-options                 cam-slave-options          :offset-assert 112)
-   (matrix-blend-max-angle        deg                        :offset-assert 120) ;; degrees
+   (matrix-blend-max-angle        degrees                    :offset-assert 120) ;; degrees
    (matrix-blend-max-partial      float                      :offset-assert 124)
    (string-spline-max-move        meters                     :offset-assert 128)
    (string-spline-accel           meters                     :offset-assert 132)
    (string-spline-max-move-player meters                     :offset-assert 136)
    (string-spline-accel-player    meters                     :offset-assert 140)
    (string-startup-vector         vector             :inline :offset-assert 144)
-   (use-string-startup-vector     basic                      :offset-assert 160)
+   (use-string-startup-vector     symbol                     :offset-assert 160)
    (look-at-point                 vector             :inline :offset-assert 176)
    (use-look-at-point             symbol                     :offset-assert 192) ;; guessed by decompiler
    (target-height                 meters                     :offset-assert 196)
    (foot-offset                   meters                     :offset-assert 200)
    (head-offset                   meters                     :offset-assert 204)
-   (teleport-on-entity-change     boolean                    :offset-assert 208) ;; symbol
+   (teleport-on-entity-change     symbol                     :offset-assert 208) ;; symbol
    (entity-name                   string                     :offset-assert 212)
    (cam-slope                     string                     :offset-assert 216)
-   (entity-or-mode-changed        boolean                    :offset-assert 220) ;; symbol
+   (entity-or-mode-changed        symbol                     :offset-assert 220) ;; symbol
    (master-options                cam-master-options         :offset-assert 224)
    (entity-mask                   uint32                     :offset-assert 232)
    (mode-name                     symbol                     :offset-assert 236) ;; guessed by decompiler
@@ -9893,12 +10007,12 @@
    (no-intro                      symbol                     :offset-assert 252) ;; guessed by decompiler
    (use-point-of-interest         symbol                     :offset-assert 256) ;; guessed by decompiler
    (point-of-interest             vector             :inline :offset-assert 272)
-   (handle-of-interest            uint64                     :offset-assert 288) ;; handle
+   (handle-of-interest            handle                     :offset-assert 288) ;; handle
    (mouse-tumble-point            vector             :inline :offset-assert 304)
    (use-mouse-tumble-point        symbol                     :offset-assert 320) ;; guessed by decompiler
    (mouse-input                   symbol                     :offset-assert 324) ;; guessed by decompiler
    (cpad1-skip-buttons            symbol                     :offset-assert 328) ;; guessed by decompiler
-   (butt-handle                   uint64                     :offset-assert 336) ;; handle
+   (butt-handle                   handle                     :offset-assert 336) ;; handle
    (butt-angle                    float                      :offset-assert 344)
    (extra-follow-height           float                      :offset-assert 348)
    (interp-time-priority          uint32                     :offset-assert 352)
@@ -9906,9 +10020,9 @@
    (string-min-length-default     symbol                     :offset-assert 360) ;; guessed by decompiler
    (string-max-height-default     symbol                     :offset-assert 364) ;; guessed by decompiler
    (string-min-height-default     symbol                     :offset-assert 368) ;; guessed by decompiler
-   (flip-vertical                 basic                      :offset-assert 372)
-   (flip-horizontal               basic                      :offset-assert 376)
-   (fov-priority                  float                      :offset-assert 384)
+   (flip-vertical                 symbol                     :offset-assert 372)
+   (flip-horizontal               symbol                     :offset-assert 376)
+   (fov-priority                  float                      :offset 384)
    (dummy                         object             98      :offset-assert 388) ;; guessed by decompiler
    )
   :method-count-assert 11
@@ -9916,13 +10030,11 @@
   :flag-assert         #xb0000030c
   ;; field cam-slave-options is likely a value type. field cam-master-options is likely a value type.
   (:methods
-    (cam-setting-data-method-9 () none) ;; 9 ;; (cam-setting-data-method-9 (_type_ engine engine-pers engine) _type_)
-    (cam-setting-data-method-10 () none) ;; 10 ;; (cam-setting-data-method-10 (_type_ object (pointer process) float int) _type_)
+    (cam-setting-data-method-9 (_type_ engine engine-pers engine) _type_) ;; 9
+    (cam-setting-data-method-10 (_type_ object (pointer process) float int) _type_) ;; 10
     )
   )
-|#
 
-#|
 (deftype setting-control (basic)
   ((user-current                 user-setting-data :inline :offset-assert 16)
    (user-target                  user-setting-data :inline :offset-assert 928)
@@ -9933,9 +10045,9 @@
    (engine                       engine                    :offset-assert 5100) ;; guessed by decompiler
    (engine-pers                  engine-pers               :offset-assert 5104) ;; guessed by decompiler
    (engine-hi                    engine                    :offset-assert 5108) ;; guessed by decompiler
-   (sound-stinger-time           uint64                    :offset-assert 5112) ;; time-frame
+   (sound-stinger-time           time-frame                :offset-assert 5112) ;; time-frame
    (sound-stinger-change-time    time-frame        4       :offset-assert 5120) ;; guessed by decompiler
-   (sound-excitement-change-time uint64                    :offset-assert 5152) ;; time-frame
+   (sound-excitement-change-time time-frame                :offset-assert 5152) ;; time-frame
    (sound-excitement-targ        float                     :offset-assert 5160)
    (sound-excitement-level       uint32                    :offset-assert 5164)
    )
@@ -9943,21 +10055,20 @@
   :size-assert         #x1430
   :flag-assert         #x1400001430
   (:methods
-    (new (symbol type) _type_) ;; 0 ;; (new (symbol type int) _type_)
-    (setting-control-method-9 () none) ;; 9 ;; (add-setting (_type_ process symbol object object object) none)
-    (setting-control-method-10 () none) ;; 10 ;; (persist-with-delay (_type_ symbol time-frame symbol symbol float int) none)
-    (setting-control-method-11 () none) ;; 11 ;; (set-setting (_type_ process symbol object object object) none)
-    (setting-control-method-12 () none) ;; 12 ;; (remove-setting (_type_ process symbol) none)
-    (setting-control-method-13 () none) ;; 13 ;; (kill-persister (_type_ engine-pers object) none)
-    (setting-control-method-14 () none) ;; 14 ;; (setting-control-method-14 (_type_ object) connectable)
-    (setting-control-method-15 () none) ;; 15 ;; (remove-setting-by-arg0 (_type_ object) none)
-    (setting-control-method-16 () none) ;; 16 ;; (set-setting-by-param (_type_ symbol object object object) connection)
+    (new (symbol type int) _type_) ;; 0
+    (add-setting (_type_ process symbol object object object) none) ;; 9
+    (persist-with-delay (_type_ symbol time-frame symbol symbol float int) none) ;; 10
+    (set-setting (_type_ process symbol object object object) none) ;; 11
+    (remove-setting (_type_ process symbol) none) ;; 12
+    (kill-persister (_type_ engine-pers object) none) ;; 13
+    (setting-control-method-14 (_type_ object) connectable) ;; 14
+    (remove-setting-by-arg0 (_type_ object) none) ;; 15
+    (set-setting-by-param (_type_ symbol object object object) connection) ;; 16
     (setting-control-method-17 () none) ;; 17 ;; (apply-settings (_type_) user-setting-data)
     (setting-control-method-18 () none) ;; 18 ;; (update (_type_) user-setting-data)
     (setting-control-method-19 () none) ;; 19
     )
   )
-|#
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -11155,7 +11266,7 @@
 ;; (define-extern *subdivide-foreground-draw-mode* object) ;; subdivide-setting
 ;; (define-extern *subdivide-ocean-draw-mode* object) ;; subdivide-setting
 ;; (define-extern *ocean-height-hack* object) ;; ocean-height-hack
-;; (define-extern *dproc* object) ;; process
+(define-extern *dproc* process)
 ;; (define-extern *run* object) ;; symbol
 ;; (define-extern *teleport* object) ;; symbol
 ;; (define-extern *teleport-count* object) ;; int
@@ -26871,10 +26982,15 @@
 ;; font                           ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+(deftype draw-string-result (uint64)
+  ((length float :offset 0)
+   (b float :offset 32))
+  )
+
 ;; (define-extern draw-string-asm function) ;; (function string dma-buffer font-context draw-string-result)
 ;; (define-extern draw-string function) ;; (function string dma-buffer font-context draw-string-result)
 ;; (define-extern get-string-length function) ;; (function string font-context draw-string-result)
-;; (define-extern draw-string-xy function) ;; (function string dma-buffer int int font-color font-flags draw-string-result)
+(define-extern draw-string-xy (function string dma-buffer int int font-color font-flags draw-string-result))
 ;; (define-extern draw-string-adv function) ;; (function string dma-buffer font-context none)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -33802,7 +33918,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ;; (define-extern set-video-mode function) ;; (function symbol none)
-;; (define-extern get-video-mode function) ;; (function symbol)
+(define-extern get-video-mode (function symbol))
 ;; (define-extern set-aspect-ratio function) ;; (function symbol none)
 ;; (define-extern get-aspect-ratio function) ;; (function symbol)
 ;; (define-extern set-progressive-scan function) ;; (function symbol none)
@@ -33818,8 +33934,8 @@
 ;; (define-extern set-blackout-frames function) ;; (function time-frame none)
 ;; (define-extern blackout function) ;; (function none)
 ;; (define-extern add-blackout function)
-;; (define-extern paused? function) ;; (function symbol)
-;; (define-extern movie? function) ;; (function symbol)
+(define-extern paused? (function symbol))
+(define-extern movie? (function symbol))
 ;; (define-extern scene-select? function)
 ;; (define-extern demo? function) ;; (function symbol)
 ;; (define-extern kiosk? function)
