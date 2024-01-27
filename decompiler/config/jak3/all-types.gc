@@ -2556,15 +2556,12 @@
   :flag-assert         #x900000030
   )
 
-  ()
-    )
-  :flag-assert #xa00000004
 (deftype sound-id (uint32)
   ()
-  :flag-assert #xa00000004
   (:methods
     (unknown () none)
     )
+  :flag-assert #xa00000004
   )
 
 (deftype sound-bank-id (uint32)
@@ -4462,7 +4459,7 @@
   :size-assert         #x10
   :flag-assert         #x900000010
   (:methods
-    (new 
+    (new
       "Create a cpad-list for 2 controllers. It's fine to do this even if one or both controllers
        aren't connected yet."
       (symbol type) _type_) ;; 0
@@ -5517,7 +5514,7 @@
    and arg2 is down (-y). Will have the pitch of forward."
   (function matrix vector vector matrix))
 (define-extern forward-down-nopitch->inv-matrix
-  "Create a matrix representing an inverse transform where arg1 is forward (+z) 
+  "Create a matrix representing an inverse transform where arg1 is forward (+z)
    and arg2 is down (-y). Will not use the pitch of forward."
   (function matrix vector vector matrix))
 (define-extern forward-up->inv-matrix
@@ -6697,6 +6694,7 @@
   )
 
 (deftype light (structure)
+  "extra: {?, shadow, ?, ?}"
   ((direction     vector :inline :offset-assert 0)
    (color         rgbaf  :inline :offset-assert 16)
    (extra         vector :inline :offset-assert 32)
@@ -6712,10 +6710,10 @@
   :flag-assert         #x900000030
   )
 
-;; (deftype light-shadow-mask (uint32)
-;;   ()
-;;   :flag-assert #x900000004
-;;   )
+(deftype light-shadow-mask (uint32)
+  ()
+  :flag-assert #x900000004
+  )
 
 (deftype light-sphere (structure)
   ((name                string         :offset-assert 0) ;; guessed by decompiler
@@ -6774,13 +6772,14 @@
    (dir1 light :inline :offset-assert 48)
    (dir2 light :inline :offset-assert 96)
    (ambi light :inline :offset-assert 144)
+   (lights light 4 :inline :offset 0) ;; added
    )
   :method-count-assert 9
   :size-assert         #xc0
   :flag-assert         #x9000000c0
   )
 
-(define-extern *light-hash* light-hash) ;; 
+(define-extern *light-hash* light-hash)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; mood-h                         ;;
@@ -7088,8 +7087,17 @@
     (mood-control-method-10 () none) ;; 10 ;; (update-mood-weather! (_type_ float float float float) none)
     (mood-control-method-11 () none) ;; 11 ;; (update-mood-range! (_type_ float float float float) none)
     (mood-control-method-12 () none) ;; 12 ;; (set-time-for-random-weather! (_type_ float float) none)
-    (mood-control-method-13 (_type_ float float float) none) ;; 13 ;; (apply-mood-clouds-and-fog (_type_ mood-control-work) none)
-    (mood-control-method-14 (_type_) symbol) ;; 14 ;; (apply-mood-color (_type_ mood-control-work) none)
+    (set-special-interps!
+      "Sets the `*-special-interp` values with the given values
+       @param! this The [[mood-control]]
+       @param target-interp Clamped between 0.0 and 1.0
+       @param rate-interp Value to set [[this::rate-special-interp]]
+       @param set-current-interp? Uses `target-interp` to set [[this::current-special-interp]
+       @returns [[none]]"
+      (_type_ float float symbol) none) ;; 13 ;; (apply-mood-clouds-and-fog (_type_ mood-control-work) none)
+    (weather-event-concluded? ;; TODO - guess at name
+      "@returns [[#t]] if [[this::override-weather-flag]] is set, we aren't in a cutscene and [[this::current-special-interp]] is equal to `0.0`"
+      (_type_) symbol) ;; 14 ;; (apply-mood-color (_type_ mood-control-work) none)
     (mood-control-method-15 () none) ;; 15 ;; (apply-mood-channels (_type_ mood-control-work) none)
     (mood-control-method-16 () none) ;; 16 ;; (adjust-num-clouds! (_type_ mood-control-work) none)
     (mood-control-method-17 () none) ;; 17 ;; (gen-lightning-and-thunder! (_type_) number)
@@ -7649,7 +7657,7 @@
   "The math-camera matrices are used to compute fogging values, which are a per-vertex uint8 that
    tells the GS how 'foggy' the color should be. This should be proportional to how far away the vertex
    is. There is a scaling factor applied so the fog intensity isn't affected by the field of view angle.
-   
+
    The fog-corrector stores a fog-end fog-start value that is corrected for the field of view.
    The actual correction factor is computed in cam-update.gc.
    Without this corrector, the fogginess of the world would change as the FOV changes
@@ -8041,7 +8049,7 @@
 (deftype connectable (structure)
   "A connectable is the linked-list node part of a connection.
    The connections themselves are owned by the engine.
-    
+
    The `next0`/`prev0` references are used for how this belongs in the connectable list
    belonging to the [[engine]]. These terminate on special nodes stored in the engine:
    `alive-list`/`alive-list-end` for the active connections, and `dead-list`/`dead-list-end`
@@ -8134,7 +8142,7 @@
       "Add a connection between this engine and a given process."
       (engine process object object object object) connection) ;; 15
     (remove-from-process "Remove all connections from process for this engine." (engine process) int) ;; 16
-    (remove-matching 
+    (remove-matching
       "Call the given function on each connection and the engine.
        If it returns truthy, `move-to-dead` that connection."
       (engine (function connection engine symbol)) int) ;; 17
@@ -16348,25 +16356,96 @@
 ;; lights                         ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(define-extern *light-hash-work* light-hash-work) ;; 
-(define-extern light-slerp (function light light light float light)) ;; 
-(define-extern light-group-slerp (function light-group light-group light-group float light-group)) ;; 
-(define-extern light-group-process! (function vu-lights light-group vector vector none)) ;; 
-(define-extern *default-lights* vu-lights) ;; 
-(define-extern vu-lights-default! (function vu-lights vu-lights)) ;; 
-(define-extern init-light-hash (function none)) ;; 
-(define-extern light-hash-count-items (function light-hash light-sphere none)) ;; 
-(define-extern light-hash-add-items (function light-hash light-sphere integer object)) ;; 
-(define-extern reset-light-hash (function light-hash none)) ;; 
-(define-extern update-light-hash (function light-hash none)) ;; 
-(define-extern lookup-light-sphere-by-name (function string light-hash light-sphere)) ;; 
-(define-extern light-hash-get-bucket-index (function light-hash vector int)) ;; 
-(define-extern add-light-sphere-to-light-group (function object object object object object)) ;; 
-(define-extern light-merge! (function light-group light-group none))
-(define-extern light-group-scale! (function light-group (pointer light-group) float none))
-(define-extern light-group-madd! (function light-group none))
-;; (define-extern light-group-lerp! function)
-(define-extern shadow-info-copy! (function none))
+(define-extern *light-hash-work* light-hash-work) ;;
+(define-extern light-slerp
+  "Linearly interpolate between two [[light]]s
+   @param! light-out The resultant
+   @param light-a One of the two lights
+   @param light-b One of the two lights
+   @param alpha Clamped to between `0.0` and `1.0`
+   @returns The interpolated [[light]]"
+  (function light light light float light))
+(define-extern light-group-slerp
+  "Linearly interpolate between two [[light-groups]]s by calling [[light-slerp]] on each respective collection of lights
+   @param light-group-out The resultant
+   @param light-group-a One of the two [[light-group]]s
+   @param light-group-b One of the two [[light-group]]s
+   @param alpha
+   @returns The linearly interpolated [[light-group]]"
+  (function light-group light-group light-group float light-group))
+(define-extern light-group-process!
+  "Unused, needlessly calls [[rotate-y<-vector+vector]] on the two [[vector]]s and calls [[vu-lights<-light-group!]]
+   @param vu-lights
+   @param light-group
+   @param vec1
+   @param vec2
+   @returns [[none]]"
+  (function vu-lights light-group vector vector none))
+(define-extern *default-lights* vu-lights) ;;
+(define-extern vu-lights-default!
+  "Setups up a default [[vu-lights]] instance
+   @param! lights
+   @returns [[vu-lights]]"
+  (function vu-lights vu-lights)) ;;
+(define-extern init-light-hash
+  "Initializes the global [[*light-hash*]].
+   - Bucket array allocates `4096` bytes. (enough for 16,384 entries)
+   - Index array allocates `65536` bytes.
+   - Light sphere array allocates `16384` bytes. (enough for 256 light spheres)
+   @returns [[light-hash]]"
+  (function none)) ;;
+(define-extern light-hash-count-items (function light-hash light-sphere none)) ;;
+(define-extern light-hash-add-items (function light-hash light-sphere integer object)) ;;
+(define-extern reset-light-hash
+  "Resets the global [[*light-hash*]] back to having `0` lights, indicies, and buckets.
+   @returns [[none]]"
+  (function none)) ;;
+(define-extern update-light-hash (function light-hash none)) ;;
+(define-extern lookup-light-sphere-by-name
+  "Search through a given [[light-hash]]'s lights to find the one that matches the given name
+   @param name The name to look for
+   @param hash The hash to search through
+   @returns Either the [[light]] or [[#f]]"
+  (function string light-hash light-sphere)) ;;
+(define-extern light-hash-get-bucket-index (function light-hash vector int)) ;;
+(define-extern add-light-sphere-to-light-group (function object object object object object)) ;;
+(define-extern light-merge!
+  "Given two [[light-group]]'s merge their values and store the results in the first art-group.
+   Tons of `(nop!)` in the original implementation, PS2 optimization nonsense.
+   @param! out One of the groups and where the merged result is stored
+   @param other The other group to merge with
+   @returns [[none]]"
+  (function light-group light-group none))
+(define-extern light-group-scale!
+  "Given a [[light-group]], a `pointer` to a [[light-group]] to back it up, and a scale value,
+   Scale the light's `extra.x` value
+   @param! group The [[light]]s to scale
+   @param pointer A location to backup the original [[light]]s
+   @param scale The value to scale by
+   @returns [[none]]"
+  (function light-group (pointer light-group) float none))
+(define-extern light-group-madd!
+  "Scales the ambient and direction info of one [[light-group]]'s [[light]]s using a scalar value and another [[light-group]]
+   @param! group Resultant
+   @param backup-ptr where the original `group` is backed up to
+   @param other The other [[light-group]] used as part of the operation
+   @param scalar An arbitrary scalar value multipled against each field
+   @returns [[none]]"
+  (function light-group (pointer light-group) light-group float none))
+(define-extern light-group-lerp!
+  "Linearly interpolates between two [[light-group]]'s.
+   @param! group Resultant
+   @param backup-ptr where the original `group` is backed up to
+   @param other The other [[light-group]] used as part of the operation
+   @param scalar An arbitrary scalar value multipled against each field
+   @returns [[none]]"
+  (function light-group (pointer light-group) light-group float none))
+(define-extern shadow-info-copy!
+  "Copies `extra.y` from `src` into `dest` for each [[light]]
+   @param! dest
+   @param src
+   @returns [[none]]"
+  (function light-group light-group none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; dynamics-h                     ;;
@@ -26478,7 +26557,7 @@
 ;; (define-extern foreground-init function) ;; (function none)
 ;; (define-extern texscroll-make-request function) ;; (function merc-effect none)
 ;; (define-extern texscroll-execute function) ;; (function none)
-(define-extern vu-lights<-light-group! (function vu-lights light-group none)) ;; 
+(define-extern vu-lights<-light-group! (function vu-lights light-group none)) ;;
 ;; (define-extern foreground-add-mtx-calc function) ;; (function bone-calculation (inline-array pris-mtx) bone-calc-flags bone-calculation)
 ;; (define-extern foreground-wrapup function) ;; (function none)
 ;; (define-extern *default-shadow-settings* object) ;; shadow-settings
@@ -27780,7 +27859,7 @@
   )
 
 (define-extern palette-select-special (function mood-context-core3 symbol))
-(define-extern clear-mood-times (function mood-context symbol)) ;; 
+(define-extern clear-mood-times (function mood-context symbol)) ;;
 ;; (define-extern update-mood-itimes function) ;; (function mood-context none)
 ;; (define-extern update-mood-direction function) ;; (function mood-context-core3 mood-table float float)
 ;; (define-extern update-mood-exterior function) ;; (function mood-context-core3 mood-table float int object)
