@@ -86,7 +86,6 @@ elseif(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
         -Wdisabled-optimization \
         -Wformat \
         -Wextra \
-        -Wmissing-include-dirs \
         -Woverloaded-virtual \
         -Wredundant-decls \
         -Wshadow \
@@ -113,7 +112,6 @@ elseif(CMAKE_CXX_COMPILER_ID STREQUAL "AppleClang")
         -Wdisabled-optimization \
         -Wformat \
         -Wextra \
-        -Wmissing-include-dirs \
         -Woverloaded-virtual \
         -Wredundant-decls \
         -Wshadow \
