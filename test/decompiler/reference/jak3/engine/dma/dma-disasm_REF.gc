@@ -1,15 +1,10 @@
 ;;-*-Lisp-*-
 (in-package goal)
 
-;; name: dma-disasm.gc
-;; name in dgo: dma-disasm
-;; dgos: GAME
-
-;; DECOMP BEGINS
-
 ;; this file is debug only
 (declare-file (debug))
 
+;; definition of type vif-disasm-element
 (deftype vif-disasm-element (structure)
   ((mask     uint32)
    (tag      vif-cmd-32)
@@ -20,7 +15,24 @@
    )
   )
 
+;; definition for method 3 of type vif-disasm-element
+(defmethod inspect ((this vif-disasm-element))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this 'vif-disasm-element)
+  (format #t "~1Tmask: ~D~%" (-> this mask))
+  (format #t "~1Ttag: ~D~%" (-> this tag))
+  (format #t "~1Tval: ~D~%" (-> this val))
+  (format #t "~1Tprint: ~D~%" (-> this print))
+  (format #t "~1Tstring1: ~A~%" (-> this string1))
+  (format #t "~1Tstring2: ~A~%" (-> this string2))
+  (label cfg-4)
+  this
+  )
 
+;; definition for symbol *vif-disasm-table*, type (array vif-disasm-element)
 (define *vif-disasm-table*
   (new 'static 'boxed-array :type vif-disasm-element
     (new 'static 'vif-disasm-element :mask #x7f :string1 "nop")
@@ -186,6 +198,7 @@
     )
   )
 
+;; definition for function disasm-vif-details
 (defun disasm-vif-details ((fmt-dest symbol) (vif-data (pointer uint8)) (unpack-cmd vif-cmd) (unpack-count int))
   "Disassemble the data stored in a vif unpack."
   (let ((s4-0 unpack-count))
@@ -298,6 +311,8 @@
   #f
   )
 
+;; definition for function disasm-vif-tag
+;; INFO: Used lq/sq
 (defun disasm-vif-tag ((tag (pointer vif-tag)) (count int) (format-dest symbol) (details? symbol))
   "Disassemble vif tag, and possibly the associated data."
   (local-vars (sv-16 vif-cmd) (sv-32 (pointer vif-tag)) (sv-48 int) (sv-64 uint))
@@ -441,6 +456,7 @@
     )
   )
 
+;; definition for function disasm-dma-tag
 ;; WARN: Return type mismatch object vs none.
 (defun disasm-dma-tag ((tag dma-tag) (format-dest symbol))
   "Disassemble just the 64-byte dma tag"
@@ -500,9 +516,12 @@
   (none)
   )
 
+;; definition for symbol *dma-disasm*, type symbol
 (define *dma-disasm* #t)
 
+;; definition for function disasm-dma-list
 ;; WARN: Check prologue - tricky store of a0
+;; INFO: Used lq/sq
 (defun disasm-dma-list ((data dma-packet) (mode symbol) (verbose symbol) (stream symbol) (expected-size int))
   "Print out an entire DMA list.
    If mode is #t, print vif tags too. If mode is 'details, also print data unpacked by vif-tags.
@@ -723,3 +742,7 @@
       )
     )
   )
+
+
+
+
