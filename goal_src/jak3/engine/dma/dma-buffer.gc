@@ -205,6 +205,79 @@
     )
   )
 
+(defmacro with-cnt-vif-block (bindings &rest body)
+  "Start a cnt w/ vif direct to gif dma packet setup for the dma-buffer in bindings.
+   With this, you can transfer data through PATH2 without having to setup the tag yourself.
+   The qwc of the transfer is determined at runtime at the end of this block."
+
+  (let ((buf (first bindings)))
+
+  (with-gensyms (buf-start buf-qwc)
+    `(let ((,buf-start (-> ,buf base)))
+
+        ;; setup the dmatag for PATH2 transfer, qwc is 0 (patched later)
+        (dma-buffer-add-cnt-vif2 ,buf 0
+                        (new 'static 'vif-tag :cmd (vif-cmd nop))
+                        (new 'static 'vif-tag :cmd (vif-cmd direct))
+                        )
+
+        ;; things with this buffer!
+        ,@body
+
+        ;; patch qwc! just do the difference between the current ptr and the old one and turn it into qwords.
+        ;; we take one qword out because it's the initial dmatag which isnt part of the count.
+        ;; this rounds *down*, so make sure to fill the buffer in 128-bit boundaries.
+        (let ((,buf-qwc (/ (+ (&- -16 ,buf-start) (the int (-> ,buf base))) 16)))
+          (cond
+            ((nonzero? ,buf-qwc) ;; stuff was added to the buffer
+             ;; patch the DMA tag
+             (logior! (-> (the-as (pointer dma-tag) ,buf-start) 0) (the-as uint (new 'static 'dma-tag :qwc ,buf-qwc)))
+             ;; patch the 2nd vifcode's imm field (qwc)
+             (logior! (-> (the-as (pointer dma-tag) ,buf-start) 1) (the-as uint (shl (shr (shl ,buf-qwc 48) 48) 32)))
+             )
+            (else ;; nothing was added to the buffer. delete the dmatag, you cannot transfer 0 qwords.
+             (set! (-> ,buf base) ,buf-start)
+             )
+            )
+          )
+        )
+
+    ))
+  )
+
+(defmacro with-cnt-vif-block-qwc (bindings &rest body)
+  "Start a cnt w/ vif direct to gif dma packet setup for the dma-buffer in bindings.
+   With this, you can transfer data through PATH2 without having to setup the tag yourself.
+   The qwc of the transfer is determined at runtime at the end of this block.
+   WARNING: You MUST guarantee that the resulting qwc is NOT zero!"
+
+  (let ((buf (first bindings)))
+
+  (with-gensyms (buf-start buf-qwc)
+    `(let ((,buf-start (the-as dma-packet (-> ,buf base))))
+        ;; dmatag will be added at the end so we reserve
+        (&+! (-> ,buf base) 16)
+
+        ;; setup the dmatag for PATH2 transfer, qwc is 0 (patched later)
+        (dma-buffer-add-cnt-vif2 ,buf 0
+                        (new 'static 'vif-tag :cmd (vif-cmd nop))
+                        (new 'static 'vif-tag :cmd (vif-cmd direct))
+                        )
+
+        ;; things with this buffer!
+        ,@body
+
+        ;; we make the dmatag now! its at the start.
+        (let ((,buf-qwc (/ (+ (- -16 (the-as int ,buf-start)) (the-as int (-> ,buf base))) 16)))
+          (set! (-> ,buf-start dma) (new 'static 'dma-tag :id (dma-tag-id cnt) :qwc ,buf-qwc))
+          (set! (-> ,buf-start vif0) (new 'static 'vif-tag))
+          (set! (-> ,buf-start vif1) (new 'static 'vif-tag :cmd (vif-cmd direct) :msk #x1 :imm ,buf-qwc))
+          )
+        )
+
+    ))
+  )
+
 (defmacro with-dma-bucket (bindings &rest body)
   "Start a new dma-bucket in body that will be finished at the end.
    The bindings are the dma-buffer, dma-bucket and bucket-id respectively."
@@ -257,6 +330,7 @@
 ;; DECOMP BEGINS
 
 (deftype dma-packet (structure)
+  "The header for a DMA transfer, containing an DMA tag, and VIF tags."
   ((dma   dma-tag)
    (vif0  vif-tag)
    (vif1  vif-tag)
@@ -266,6 +340,7 @@
 
 
 (deftype dma-packet-array (inline-array-class)
+  "Unused dma array. Unclear how it should be used."
   ((data  dma-packet  :dynamic)
    )
   )
@@ -274,6 +349,7 @@
 (set! (-> dma-packet-array heap-base) (the-as uint 16))
 
 (deftype dma-gif (structure)
+  "Believed unused GIF header type."
   ((gif   uint64   2)
    (quad  uint128  :overlay-at (-> gif 0))
    )
@@ -281,6 +357,7 @@
 
 
 (deftype dma-gif-packet (structure)
+  "The header for a DMA transfer that goes directly to GIF, containing DMA, VIF, GIF tags."
   ((dma-vif  dma-packet  :inline)
    (gif      uint64      2)
    (quad     uint128     2 :overlay-at (-> dma-vif dma))
@@ -289,6 +366,7 @@
 
 
 (deftype dma-buffer (basic)
+  "A buffer for DMA data."
   ((allocated-length  int32)
    (base              pointer)
    (end               pointer)
@@ -300,3 +378,92 @@
     )
   )
 
+
+(defmethod new dma-buffer ((allocation symbol) (type-to-make type) (size-bytes int))
+  "Allocate a DMA buffer to hold the given size"
+  (let ((v0-0 (object-new allocation type-to-make (+ size-bytes -4 (-> type-to-make size)))))
+    (set! (-> v0-0 base) (-> v0-0 data))
+    (set! (-> v0-0 allocated-length) size-bytes)
+    (set! (-> v0-0 real-buffer-end) (the-as int (&+ (-> v0-0 data) size-bytes)))
+    v0-0
+    )
+  )
+
+(defun dma-buffer-inplace-new ((dma-buff dma-buffer) (size-bytes int))
+  "Create a dma-buffer in-place. Does not set the type of the dma-buffer object."
+  (set! (-> dma-buff base) (-> dma-buff data))
+  (set! (-> dma-buff allocated-length) size-bytes)
+  dma-buff
+  )
+
+(defmethod length ((this dma-buffer))
+  (-> this allocated-length)
+  )
+
+(defmethod asize-of ((this dma-buffer))
+  (+ (-> this allocated-length) -4 (-> dma-buffer size))
+  )
+
+(defun dma-buffer-length ((dma-buf dma-buffer))
+  "Get length used in quadwords, rounded up."
+  (shr (+ (&- (-> dma-buf base) (the-as uint (-> dma-buf data))) 15) 4)
+  )
+
+(defun dma-buffer-free ((dma-buf dma-buffer))
+  "Get the number of free quadwords between base and end pointers."
+  (shr (+ (&- (-> dma-buf end) (the-as uint (-> dma-buf base))) 15) 4)
+  )
+
+;; ERROR: Failed store: (s.w! (+ t2-0 8) t3-5) at op 23
+;; ERROR: Failed store: (s.w! (+ t2-0 12) t3-8) at op 32
+(defun dma-buffer-add-vu-function ((dma-buf dma-buffer) (vu-func vu-function) (flush-path-3 int))
+  "Add DMA tags to load the given VU function. The destination in vu instruction memory
+   is specific inside the vu-function. This does NOT copy the vu-function into the buffer,
+   but creates a reference to the existing VU function."
+
+  ;; The first 4 bytes of a vu-function object's data are discarded because they aren't aligned.
+  (let ((func-ptr (the-as pointer (&-> vu-func data 4)))
+        (qlen (-> vu-func qlength)) ;; number of quadwords
+        (origin (-> vu-func origin)) ;; destination address in VU instruction memory.
+        )
+    ;; loop until whole program is transferred.
+    (while (> qlen 0)
+      ;; transfer up to 127 quadwords at a single time.
+      (let ((qwc-now (min 127 qlen)))
+        ;; Set up DMA to transfer the data from the vu-function
+        ;; ref id = reference to data outside of the buffer.
+        (dma-buffer-add-ref-vif2 dma-buf qwc-now func-ptr
+                    ;; Set up first vifcode as a flush.
+                    (new 'static 'vif-tag :cmd (if (zero? flush-path-3) (vif-cmd flushe) (vif-cmd flusha)))
+                    ;; next vifcode, transfer microprogram. This is in 64-bit units (VU instructions)
+                    (new 'static 'vif-tag :cmd (vif-cmd mpg) :num (shl qwc-now 1) :imm origin)
+                    )
+        ;; increment by qwc-now quadwords.
+        (&+! func-ptr (shl qwc-now 4))
+        (set! qlen (- qlen qwc-now))
+        (+! origin (shl qwc-now 1))
+        )
+      )
+    )
+  #f
+  )
+
+(defun dma-buffer-send ((chan dma-bank) (buf dma-buffer))
+  "Send the DMA buffer! DOES NOT TRANSFER TAG, you probably want dma-buffer-send-chain instead."
+  (when (< (-> buf allocated-length) (&- (-> buf base) (the-as uint (-> buf data))))
+    (crash!)
+    0
+    )
+  (dma-send chan (the-as uint (-> buf data)) (the-as uint (dma-buffer-length buf)))
+  (none)
+  )
+
+(defun dma-buffer-send-chain ((chan dma-bank-source) (buf dma-buffer))
+  "Send the DMA buffer! Sends the tags, so this is suitable for the main graphics chain."
+  (when (< (-> buf allocated-length) (&- (-> buf base) (the-as uint (-> buf data))))
+    (crash!)
+    0
+    )
+  (dma-send-chain chan (the-as uint (-> buf data)))
+  (none)
+  )
