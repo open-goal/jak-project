@@ -202,6 +202,39 @@ static std::unordered_map<std::string,
            }
            return std::make_unique<ResFloat>(name, data, -1000000000.0000);
          }},
+        {"symbol",
+         [](const std::string& name,
+            const nlohmann::json& json,
+            decompiler::DecompilerTypeSystem& dts) {
+           (void)dts;
+           std::vector<std::string> data;
+           for (size_t i = 1; i < json.size(); i++) {
+             data.push_back(json[i].get<std::string>());
+           }
+           return std::make_unique<ResSymbol>(name, data, -1000000000.0000);
+         }},
+        {"type",
+         [](const std::string& name,
+            const nlohmann::json& json,
+            decompiler::DecompilerTypeSystem& dts) {
+           (void)dts;
+           std::vector<std::string> data;
+           for (size_t i = 1; i < json.size(); i++) {
+             data.push_back(json[i].get<std::string>());
+           }
+           return std::make_unique<ResType>(name, data, -1000000000.0000);
+         }},
+        {"string",
+         [](const std::string& name,
+            const nlohmann::json& json,
+            decompiler::DecompilerTypeSystem& dts) {
+           (void)dts;
+           std::vector<std::string> data;
+           for (size_t i = 1; i < json.size(); i++) {
+             data.push_back(json[i].get<std::string>());
+           }
+           return std::make_unique<ResString>(name, data, -1000000000.0000);
+         }},
         // vectors
         {"vector",
          [](const std::string& name,

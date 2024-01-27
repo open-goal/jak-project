@@ -60,10 +60,10 @@
    (clock-ratio                 float)
    (accum                       float)
    (integral-accum              float)
-   (frame-counter               uint64)
-   (old-frame-counter           uint64)
-   (integral-frame-counter      uint64)
-   (old-integral-frame-counter  uint64)
+   (frame-counter               time-frame)
+   (old-frame-counter           time-frame)
+   (integral-frame-counter      time-frame)
+   (old-integral-frame-counter  time-frame)
    (sparticle-data              vector  :inline)
    (seconds-per-frame           float)
    (frames-per-second           float)
@@ -72,12 +72,12 @@
   (:methods
     (new (symbol type int) _type_)
     (update-rates! (_type_ float) float)
-    (clock-method-10 () none)
-    (clock-method-11 () none)
-    (clock-method-12 () none)
-    (clock-method-13 () none)
-    (clock-method-14 () none)
-    (clock-method-15 () none)
+    (advance-by! (_type_ float) clock)
+    (tick! (_type_) clock)
+    (save! (_type_ (pointer uint64)) int)
+    (load! (_type_ (pointer uint64)) int)
+    (copy! (_type_ clock) clock)
+    (reset! (_type_) none)
     (frame-mask-2 (_type_ int) symbol)
     (frame-mask-4 (_type_ int) symbol)
     (frame-mask-8 (_type_ int) symbol)
@@ -117,57 +117,57 @@
 ;; definition for method 16 of type clock
 (defmethod frame-mask-2 ((this clock) (xor-val int))
   "Check if the frame count, xored with `xor-val` has its lowest bit set"
-  (not (logtest? (logxor xor-val (the-as int (-> this integral-frame-counter))) 1))
+  (not (logtest? (logxor xor-val (-> this integral-frame-counter)) 1))
   )
 
 ;; definition for method 17 of type clock
 (defmethod frame-mask-4 ((this clock) (xor-val int))
   "Check if the frame count, xored with `xor-val` has any of its lowest 2 bits set"
-  (not (logtest? (logxor xor-val (the-as int (-> this integral-frame-counter))) 3))
+  (not (logtest? (logxor xor-val (-> this integral-frame-counter)) 3))
   )
 
 ;; definition for method 18 of type clock
 (defmethod frame-mask-8 ((this clock) (xor-val int))
   "Check if the frame count, xored with `xor-val` has any of its lowest 3 bits set"
-  (not (logtest? (logxor xor-val (the-as int (-> this integral-frame-counter))) 7))
+  (not (logtest? (logxor xor-val (-> this integral-frame-counter)) 7))
   )
 
 ;; definition for method 19 of type clock
 (defmethod frame-mask-16 ((this clock) (xor-val int))
   "Check if the frame count, xored with `xor-val` has any of its lowest 4 bits set"
-  (not (logtest? (logxor xor-val (the-as int (-> this integral-frame-counter))) 15))
+  (not (logtest? (logxor xor-val (-> this integral-frame-counter)) 15))
   )
 
 ;; definition for method 20 of type clock
 (defmethod frame-mask-32 ((this clock) (xor-val int))
   "Check if the frame count, xored with `xor-val` has any of its lowest 5 bits set"
-  (not (logtest? (logxor xor-val (the-as int (-> this integral-frame-counter))) 31))
+  (not (logtest? (logxor xor-val (-> this integral-frame-counter)) 31))
   )
 
 ;; definition for method 21 of type clock
 (defmethod frame-mask-64 ((this clock) (xor-val int))
   "Check if the frame count, xored with `xor-val` has any of its lowest 6 bits set"
-  (not (logtest? (logxor xor-val (the-as int (-> this integral-frame-counter))) 63))
+  (not (logtest? (logxor xor-val (-> this integral-frame-counter)) 63))
   )
 
 ;; definition for method 22 of type clock
 (defmethod frame-mask-128 ((this clock) (xor-val int))
   "Check if the frame count, xored with `xor-val` has any of its lowest 7 bits set"
-  (not (logtest? (logxor xor-val (the-as int (-> this integral-frame-counter))) 127))
+  (not (logtest? (logxor xor-val (-> this integral-frame-counter)) 127))
   )
 
 ;; definition for method 23 of type clock
 (defmethod frame-mask-256 ((this clock) (xor-val int))
   "Check if the frame count, xored with `xor-val` has any of its lowest 8 bits set"
-  (not (logtest? (logxor xor-val (the-as int (-> this integral-frame-counter))) 255))
+  (not (logtest? (logxor xor-val (-> this integral-frame-counter)) 255))
   )
 
 ;; definition for method 0 of type clock
 (defmethod new clock ((allocation symbol) (type-to-make type) (index int))
   (let ((gp-0 (object-new allocation type-to-make (the-as int (-> type-to-make size)))))
     (set! (-> gp-0 index) index)
-    (set! (-> gp-0 frame-counter) (the-as uint #x493e0))
-    (set! (-> gp-0 integral-frame-counter) (the-as uint #x493e0))
+    (set! (-> gp-0 frame-counter) (seconds 1000))
+    (set! (-> gp-0 integral-frame-counter) (seconds 1000))
     (set! (-> gp-0 old-frame-counter) (+ (-> gp-0 frame-counter) -1))
     (set! (-> gp-0 old-integral-frame-counter) (+ (-> gp-0 integral-frame-counter) -1))
     (update-rates! gp-0 1.0)
@@ -766,3 +766,7 @@
 
 ;; failed to figure out what this is:
 0
+
+
+
+
