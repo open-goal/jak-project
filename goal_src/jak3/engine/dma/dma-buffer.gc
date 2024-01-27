@@ -5,6 +5,40 @@
 ;; name in dgo: dma-buffer
 ;; dgos: GAME
 
+(defmacro gs-reg-list (&rest reg-ids)
+  "Generate a giftag register descriptor list from reg-ids."
+
+  (let ((reg-count (length reg-ids)))
+    (when (> (length reg-ids) 16)
+      (ferror "too many regs passed to gs-reg-list")
+      )
+    (let ((list-to-splice '())
+          (cur-lst reg-ids)
+          (i -1))
+
+        ;; this is questionable.
+        (while (and (not (null? cur-lst)) (< i 15))
+          (push! list-to-splice (cons 'gif-reg-id (cons (car cur-lst) '())))
+          (push! list-to-splice (string->symbol-format ":regs{}" (inc! i)))
+          (pop! cur-lst)
+          )
+
+        `(new 'static 'gif-tag-regs
+            ,@list-to-splice
+            )
+        )
+  #| ;; the opengoal compiler does not have enough constant propagation for this for now
+    (let ((i -1))
+
+      `(the-as gif-tag-regs (logior ,@(apply (lambda (x)
+          `(shl (the-as uint (gif-reg-id ,x)) ,(* 4 (inc! i)))
+                ) reg-ids)
+              ))
+
+      )|#
+    )
+  )
+
 (defmacro dma-buffer-add-base-type (buf pkt dma-type &rest body)
   "Base macro for adding stuff to a dma-buffer. Don't use this directly!"
 
