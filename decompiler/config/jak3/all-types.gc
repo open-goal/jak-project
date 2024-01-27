@@ -6684,17 +6684,15 @@
 ;; lights-h                       ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype vu-lights (structure)
-  ((direction vector 3       :offset-assert 0) ;; guessed by decompiler
-   (color     vector 3       :offset-assert 48) ;; guessed by decompiler
+  ((direction vector 3 :inline      :offset-assert 0) ;; guessed by decompiler
+   (color     vector 3 :inline      :offset-assert 48) ;; guessed by decompiler
    (ambient   vector :inline :offset-assert 96)
    )
   :method-count-assert 9
   :size-assert         #x70
   :flag-assert         #x900000070
   )
-|#
 
 (deftype light (structure)
   ((direction     vector :inline :offset-assert 0)
@@ -7545,17 +7543,17 @@
 
 (deftype gs-store-image-packet (structure)
   ((vifcode        vif-tag 4 :offset-assert 0) ;; guessed by decompiler
-   (giftag         uint128   :offset-assert 16) ;; gif-tag
-   (bitbltbuf      uint64    :offset-assert 32) ;; gs-bitbltbuf
-   (bitbltbuf-addr uint64    :offset-assert 40) ;; gs-reg64
-   (trxpos         uint64    :offset-assert 48) ;; gs-trxpos
-   (trxpos-addr    uint64    :offset-assert 56) ;; gs-reg64
-   (trxreg         uint64    :offset-assert 64) ;; gs-trxreg
-   (trxreg-addr    uint64    :offset-assert 72) ;; gs-reg64
+   (giftag         gif-tag   :offset-assert 16) ;; gif-tag
+   (bitbltbuf      gs-bitbltbuf    :offset-assert 32) ;; gs-bitbltbuf
+   (bitbltbuf-addr gs-reg64    :offset-assert 40) ;; gs-reg64
+   (trxpos         gs-trxpos    :offset-assert 48) ;; gs-trxpos
+   (trxpos-addr    gs-reg64    :offset-assert 56) ;; gs-reg64
+   (trxreg         gs-trxreg    :offset-assert 64) ;; gs-trxreg
+   (trxreg-addr    gs-reg64    :offset-assert 72) ;; gs-reg64
    (finish         uint64    :offset-assert 80) ;; int64
-   (finish-addr    uint64    :offset-assert 88) ;; gs-reg64
-   (trxdir         uint64    :offset-assert 96) ;; gs-trxdir
-   (trxdir-addr    uint64    :offset-assert 104) ;; gs-reg64
+   (finish-addr    gs-reg64    :offset-assert 88) ;; gs-reg64
+   (trxdir         gs-trxdir    :offset-assert 96) ;; gs-trxdir
+   (trxdir-addr    gs-reg64    :offset-assert 104) ;; gs-reg64
    )
   :method-count-assert 9
   :size-assert         #x70
@@ -9297,7 +9295,22 @@
 ;; trail-h                        ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
+(defenum trail-node-flag
+  :type uint8
+  :bitfield #t
+  (tnf0 0) ;; unused??
+  (tnf1 1)
+  )
+
+(defenum conn-flag
+  :type uint8
+  :bitfield #t
+  (cf0 0)
+  (cf1 1)
+  (cf2 2)
+  (cf3 3)
+  )
+
 (deftype trail-node (structure)
   ((next-id         int16   :offset-assert 0)
    (prev-id         int16   :offset-assert 2)
@@ -9308,7 +9321,7 @@
    (first-conn      uint16  :offset-assert 12)
    (cost-from-start uint16  :offset-assert 14)
    (cost-to-goal    uint16  :offset-assert 16)
-   (flags           uint8   :offset-assert 18) ;; trail-node-flag
+   (flags           trail-node-flag   :offset-assert 18)
    (conn-count      uint8   :offset-assert 19)
    )
   :method-count-assert 12
@@ -9320,9 +9333,7 @@
     (trail-node-method-11 () none) ;; 11 ;; (get-position (_type_ vector) vector)
     )
   )
-|#
 
-#|
 (deftype trail-visgroup (structure)
   ((first-node uint16  :offset-assert 0)
    (node-count uint8   :offset-assert 2)
@@ -9332,25 +9343,21 @@
   :size-assert         #x4
   :flag-assert         #x900000004
   )
-|#
 
-#|
 (deftype trail-blocker (structure)
   ((plane          plane  :inline :offset-assert 0)
    (center         vector :inline :offset-assert 16)
-   (radius-squared float          :offset-assert 28)
+   (radius-squared float          :offset-assert 28 :overlay-at (-> center w))
    )
   :method-count-assert 9
   :size-assert         #x20
   :flag-assert         #x900000020
   )
-|#
 
-#|
 (deftype trail-conn (structure)
   ((head-id     uint16  :offset-assert 0)
    (tail-id     uint16  :offset-assert 2)
-   (flags       uint8   :offset-assert 4) ;; conn-flag
+   (flags       conn-flag   :offset-assert 4)
    (visgroup-id uint8   :offset-assert 5)
    (cost        uint16  :offset-assert 6)
    )
@@ -9361,9 +9368,7 @@
     (trail-conn-method-9 () none) ;; 9 ;; (debug-draw (_type_ trail-graph int) none)
     )
   )
-|#
 
-#|
 (deftype trail-conn-hash-cell (structure)
   ((first-conn uint16  :offset-assert 0)
    (conn-count uint8   :offset-assert 2)
@@ -9374,9 +9379,7 @@
   :size-assert         #x6
   :flag-assert         #x900000006
   )
-|#
 
-#|
 (deftype trail-conn-search (structure)
   ((best-conn-id         int32                  :offset-assert 0)
    (best-dist            float                  :offset-assert 4)
@@ -9385,18 +9388,16 @@
    (debug-cells-searched int32                  :offset-assert 16)
    (debug-conns-searched int32                  :offset-assert 20)
    (bounds               bounding-box4w :inline :offset-assert 32)
-   (cell-quads           qword          2       :offset-assert 64) ;; guessed by decompiler
-   (conn-quads           qword          7       :offset-assert 96) ;; guessed by decompiler
-   (cell-bits            vector16ub     2       :offset-assert 64) ;; guessed by decompiler
-   (conn-bits            UNKNOWN        2       :offset-assert 96)
+   (cell-quads           qword          2 :inline       :offset-assert 64) ;; guessed by decompiler
+   (conn-quads           qword          7 :inline      :offset-assert 96) ;; guessed by decompiler
+   (cell-bits            vector16ub     2 :inline      :offset-assert 64 :overlay-at cell-quads) ;; guessed by decompiler
+   (conn-bits            vector16ub     2 :inline      :offset-assert 96 :overlay-at conn-quads)
    )
   :method-count-assert 9
   :size-assert         #xd0
   :flag-assert         #x9000000d0
   )
-|#
 
-#|
 (deftype trail-conn-hash (basic)
   ((cell-width meters                                      :offset-assert 4)
    (origin     vector                              :inline :offset-assert 16)
@@ -9407,9 +9408,7 @@
   :size-assert         #x28
   :flag-assert         #x900000028
   )
-|#
 
-#|
 (deftype trail-cached-search-info (structure)
   ((goal-conn-id  int16          :offset-assert 0)
    (orig-goal-pos vector :inline :offset-assert 16)
@@ -9419,9 +9418,7 @@
   :size-assert         #x30
   :flag-assert         #x900000030
   )
-|#
 
-#|
 (deftype trail-cached-start-pov (structure)
   ((last-updated      uint64         :offset-assert 0)
    (pov-can-see-start uint64         :offset-assert 8)
@@ -9432,9 +9429,7 @@
   :size-assert         #x30
   :flag-assert         #x900000030
   )
-|#
 
-#|
 (deftype trail-graph (basic)
   ((mode                      uint8                                       :offset-assert 4)
    (search-id                 uint32                                      :offset-assert 8)
@@ -9463,10 +9458,10 @@
    (orig-goal-pos             vector                              :inline :offset-assert 160)
    (conn-start-pos            vector                              :inline :offset-assert 176)
    (conn-goal-pos             vector                              :inline :offset-assert 192)
-   (open-quads                qword                               6       :offset-assert 208) ;; guessed by decompiler
-   (closed-quads              qword                               6       :offset-assert 304) ;; guessed by decompiler
-   (open-bits                 UNKNOWN                             2       :offset-assert 208)
-   (closed-bits               UNKNOWN                             2       :offset-assert 304)
+   (open-quads                qword                               6 :inline       :offset-assert 208) ;; guessed by decompiler
+   (closed-quads              qword                               6 :inline      :offset-assert 304) ;; guessed by decompiler
+   (open-bits                 vector16ub                             2 :inline       :offset-assert 208 :overlay-at open-quads)
+   (closed-bits               vector16ub                             2 :inline      :offset-assert 304 :overlay-at closed-quads)
    )
   :method-count-assert 34
   :size-assert         #x190
@@ -9499,15 +9494,221 @@
     (trail-graph-method-33 () none) ;; 33
     )
   )
-|#
 
-;; (define-extern *trail-graph* object) ;; trail-graph
+(define-extern *trail-graph* trail-graph)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; minimap-h                      ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
+(defenum minimap-flag
+  :type uint32
+  :bitfield #t
+  (active 0)
+  (fade-in 1)
+  (fade-out 2)
+  (clamp 3)
+  (trail 4)
+  (task-graph 5)
+  (flash 6)
+  (minimap 7)
+  (background 8)
+  (task 9)
+  (enemy 10)
+  (frustum 11)
+  (racer 12)
+  (bigmap 13)
+  (bigmap-only 14)
+  (goal 15)
+  (local-only 16)
+  (transport 17)
+  (ctywide 18)
+  (wasall 19)
+  (waswide 20)
+  (desert 21)
+  )
+
+(defenum minimap-class
+  :type uint16
+  (none 0)
+  (onintent 1)
+  (vinroom 2)
+  (sewer-kg 3)
+  (sewer-genb 4)
+  (sewer-slumb 5)
+  (hiphog 6)
+  (gungame 7)
+  (gun-yellow 8)
+  (desert-nest-entrance 9)
+  (guard 10)
+  (parking-spot 11)
+  (goal 12)
+  (goal-no-trail 13)
+  (goal-no-trail-bigmap 14)
+  (cty-sniper-vicinity 15)
+  (forest 16)
+  (wascity-gungame 17)
+  (city-transport 18)
+  (wascity-leaper-race 19)
+  (wascity-pre-game 20)
+  (desert-transport 21)
+  (waspal 22)
+  (stadium 23)
+  (wasteland-arena 24)
+  (guard-frustum 25)
+  (wasdoors 26)
+  (gun-dark 27)
+  (spargus-city 28)
+  (racer 29)
+  (racer-target 30)
+  (racer-errol 31)
+  (monk-temple 32)
+  (bbush-desd 33)
+  (bbush-desc 34)
+  (bbush-desa 35)
+  (bbush-desg 36)
+  (bbush-desh 37)
+  (bbush-desc-2 38)
+  (bbush-dese 39)
+  (bbush-desb 40)
+  (bbush-desa-2 41)
+  (bbush-desc-3 42)
+  (bbush-desg-2 43)
+  (bbush-desd-2 44)
+  (bbush-desg-3 45)
+  (bbush-dese-2 46)
+  (bbush-dese-3 47)
+  (bbush-desd-3 48)
+  (bbush-desb-2 49)
+  (bbush-wasa-1 50)
+  (bbush-wasa-2 51)
+  (bbush-wasa-3 52)
+  (bbush-wasa-4 53)
+  (bbush-wasb-2 54)
+  (bbush-wasb-1 55)
+  (bbush-wasb-4 56)
+  (bbush-wasb-3 57)
+  (bbush-desg-4 58)
+  (bbush-wasb-5 59)
+  (bbush-wasb-6 60)
+  (bbush-desa-3 61)
+  (bbush-wasa-5 62)
+  (bbush-desd-4 63)
+  (bbush-desd-5 64)
+  (bbush-sluma-1 65)
+  (bbush-genb-1 66)
+  (bbush-slumb-1 67)
+  (bbush-slumb-3 68)
+  (bbush-desc-4 69)
+  (bbush-inda-1 70)
+  (bbush-dese-4 71)
+  (bbush-desc-5 72)
+  (bbush-desb-3 73)
+  (bbush-wasa-6 74)
+  (bbush-wasb-7 75)
+  (bbush-indb-1 76)
+  (bbush-desf 77)
+  (bbush-port-1 78)
+  (bbush-genb-2 79)
+  (bbush-genb-3 80)
+  (bbush-genb-4 81)
+  (bbush-slumb-4 82)
+  (bbush-slumc-1 83)
+  (bbush-dese-5 84)
+  (bbush-post-game 85)
+  (bbush-slumc-2 86)
+  (bbush-sluma-2 87)
+  (bbush-sluma-3 88)
+  (bbush-indb-2 89)
+  (bbush-indb-3 90)
+  (bbush-inda-2 91)
+  (bbush-inda-3 92)
+  (bbush-inda-4 93)
+  (bbush-inda-5 94)
+  (bbush-port-4 95)
+  (bbush-port-5 96)
+  (bbush-port-6 97)
+  (bbush-port-7 98)
+  (bbush-port-8 99)
+  (bbush-desb-4 100)
+  (atoll-valve 101)
+  (atoll-ashelin 102)
+  (mountain-lens 103)
+  (mountain-shard 104)
+  (mountain-gear 105)
+  (ruins-hut 106)
+  (forest-samos 107)
+  (metalhead 108)
+  (kleever-arena 109)
+  (seem-wascitya 110)
+  (seem-wascityb 111)
+  (kleever-wasdoors 112)
+  (damus-wasdoors 113)
+  (damus-waspal 114)
+  (damus-arena 115)
+  (kleever-wascityb 116)
+  (red-clamped-dot 117)
+  (tiny-red-dot 118)
+  (desert-temple 119)
+  (desert-oasis 120)
+  (desert-corral 121)
+  (sig-wasdoors 122)
+  (freehq 123)
+  (green-clamped-dot 124)
+  (nest-cocoon 125)
+  (nest-bridge 126)
+  (factory 127)
+  (big-orange-flashing-clamped-dot 128)
+  (big-red-flashing-clamped-dot 129)
+  (big-green-flashing-clamped-dot 130)
+  (big-purple-flashing-clamped-dot 131)
+  (medium-purple-dot 132)
+  (parked-vehicle 133)
+  (samos-genb 134)
+  (projectile 135)
+  (desertb-race 136)
+  (big-red-flashing-trail-dot 137)
+  (big-green-flashing-trail-dot 138)
+  (robot-frustum 139)
+  (desert-marauder-village 140)
+  (gray-clamped-dot 141)
+  (volcano-monk 142)
+  (volcano-collapsing-rock 143)
+  (volcano-stone-lid 144)
+  (volcano-dark-maker-idol 145)
+  (medium-green-dot 146)
+  (big-red-flashing-dot 147)
+  (factory-clamped-target 148)
+  (factory-clamped-tower 149)
+  (desglide-ring-dot 150)
+  (desglide-thermal-dot 151)
+  (mine-elevator 152)
+  (mine-armor 153)
+  (mine-sign-up 154)
+  (mine-sign-down 155)
+  (mine-door 156)
+  (ruins-elec-gate 157)
+  (ruins-goal 158)
+  (dp-bipedal 159)
+  (neo-wasp 160)
+  (dark-maker 161)
+  (templea-door 162)
+  (templeb-watchers 163)
+  (templeb-regen 164)
+  (templeb-warpgate 165)
+  (templex-darkmaker 166)
+  (temple-tests-door 167)
+  (templeb-freeze 168)
+  (temple-elev 169)
+  (factoryc-vehicle 170)
+  (templeb-defend 171)
+  (templeb-seem 172)
+  (temple-defend-door-1 173)
+  (temple-defend-door-2 174)
+  (temple-defend-door-3 175)
+  (palace-ruins 176)
+  )
+
 (deftype minimap-table-entry (structure)
   ((corner           vector :inline :offset-assert 0)
    (level-name       basic          :offset-assert 16)
@@ -9522,15 +9723,13 @@
   :size-assert         #x2c
   :flag-assert         #x90000002c
   )
-|#
 
-#|
 (deftype minimap-class-node (structure)
   ((default-position vector       :inline :offset-assert 0)
    (flags            minimap-flag         :offset-assert 16)
    (name             basic                :offset-assert 20)
    (icon-xy          vector2ub    :inline :offset-assert 24)
-   (class            uint16               :offset-assert 26) ;; minimap-class
+   (class            minimap-class        :offset-assert 26) ;; minimap-class
    (scale            float                :offset-assert 28)
    (color            rgba                 :offset-assert 32) ;; guessed by decompiler
    )
@@ -9541,16 +9740,14 @@
     (minimap-class-node-method-9 () none) ;; 9
     )
   )
-|#
 
-#|
 (deftype connection-minimap (connection-pers)
-  ((next              connection-minimap         :offset-assert 0) ;; connection-pers
-   (handle            uint64                     :offset-assert 8) ;; handle
-   (position          vector                     :offset-assert 16) ;; object
-   (alpha             float                      :offset-assert 20)
-   (flags             minimap-flag               :offset-assert 24)
-   (class             minimap-class-node         :offset-assert 28)
+  ((next              connection-minimap         :offset-assert 0 :override) ;; connection-pers
+   (handle            handle                     :offset-assert 8 :overlay-at update-time) ;;
+   (position          vector                     :offset-assert 16 :overlay-at (-> param 0)) ;; object
+   (alpha             float                      :offset-assert 20 :overlay-at (-> param 1))
+   (flags             minimap-flag               :offset-assert 24 :overlay-at (-> param 2))
+   (class             minimap-class-node         :offset-assert 28 :overlay-at (-> param 3))
    (node              uint16                     :offset-assert 32)
    (edge-ry           int16                      :offset-assert 34) ;; float
    (last-world-pos    vector             :inline :offset-assert 48)
@@ -9561,20 +9758,16 @@
   :flag-assert         #x900000050
   ;; field key uses ~A with a signed load.
   )
-|#
 
-#|
 (deftype engine-minimap (engine-pers)
-  ((alive-list connection-minimap  :offset-assert 24)
-   (dead-list  connection-minimap  :offset-assert 28)
+  ((alive-list connection-minimap  :offset-assert 24 :override)
+   (dead-list  connection-minimap  :offset-assert 28 :override)
    )
   :method-count-assert 15
   :size-assert         #x20
   :flag-assert         #xf00000020
   )
-|#
 
-#|
 (deftype minimap-trail (structure)
   ((used-by        connection-minimap               :offset-assert 0)
    (search-id      uint32                           :offset-assert 4)
@@ -9593,24 +9786,20 @@
     (minimap-trail-method-10 () none) ;; 10 ;; (reset (_type_) none)
     )
   )
-|#
 
-#|
 (deftype minimap-draw-work (structure)
   ((buf           dma-buffer         :offset-assert 0) ;; guessed by decompiler
    (justify-right symbol             :offset-assert 4) ;; guessed by decompiler
    (global-flags  uint32             :offset-assert 8)
    (draw-pos      vector4w   :inline :offset-assert 16)
    (mat           matrix     :inline :offset-assert 32)
-   (corner        vector     4       :offset-assert 96) ;; guessed by decompiler
+   (corner        vector     4 :inline      :offset-assert 96) ;; guessed by decompiler
    )
   :method-count-assert 9
   :size-assert         #xa0
   :flag-assert         #x9000000a0
   )
-|#
 
-#|
 (deftype minimap (structure)
   ((draw-tmpl        dma-gif-packet :inline :offset-assert 0)
    (draw2-tmpl       dma-gif-packet :inline :offset-assert 32)
@@ -9631,13 +9820,13 @@
    (pos-scale        float                  :offset-assert 276)
    (min-inv-scale    float                  :offset-assert 280)
    (max-inv-scale    float                  :offset-assert 284)
-   (inv-scale        float                  :offset-assert 212)
+   (inv-scale        float                  :offset-assert 212 :overlay-at (-> offset y))
    (map-inv-scale    float                  :offset-assert 288)
    (icon-inv-scale   float                  :offset-assert 292)
-   (fade             float                  :offset-assert 220)
+   (fade             float                  :offset-assert 220 :overlay-at (-> offset w))
    (engine           engine-minimap         :offset-assert 296) ;; guessed by decompiler
    (engine-key       uint32                 :offset-assert 300)
-   (trail            minimap-trail  6       :offset-assert 304) ;; guessed by decompiler
+   (trail            minimap-trail  6 :inline :offset-assert 304) ;; guessed by decompiler
    (race-tex         texture                :offset-assert 1552) ;; guessed by decompiler
    (race-scale       float                  :offset-assert 1556)
    (race-level       level                  :offset-assert 1560) ;; guessed by decompiler
@@ -9671,14 +9860,12 @@
     (minimap-method-27 () none) ;; 27 ;; (set-race-corner (_type_ float float) none)
     )
   )
-|#
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; bigmap-h                       ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype bigmap-image (structure)
   ((clut-offset  uint32   :offset-assert 0)
    (image-offset uint32   :offset-assert 4)
@@ -9690,30 +9877,24 @@
   :size-assert         #x11
   :flag-assert         #x900000011
   )
-|#
 
-#|
 (deftype bigmap-info (vector)
-  ((scale     float  :offset-assert 8)
-   (inv-scale float  :offset-assert 12)
+  ((scale     float  :offset-assert 8 :overlay-at z)
+   (inv-scale float  :offset-assert 12 :overlay-at w)
    )
   :method-count-assert 9
   :size-assert         #x10
   :flag-assert         #x900000010
   )
-|#
 
-#|
 (deftype bigmap-info-array (structure)
-  ((data bigmap-info 24 :offset-assert 0) ;; guessed by decompiler
+  ((data bigmap-info 24 :inline :offset-assert 0) ;; guessed by decompiler
    )
   :method-count-assert 9
   :size-assert         #x180
   :flag-assert         #x900000180
   )
-|#
 
-#|
 (deftype bigmap (basic)
   ((drawing-flag        symbol                      :offset-assert 4) ;; guessed by decompiler
    (loading-flag        symbol                      :offset-assert 8) ;; guessed by decompiler
@@ -9733,12 +9914,12 @@
    (draw-tmpl           dma-gif-packet      :inline :offset-assert 96)
    (adgif-tmpl          dma-gif-packet      :inline :offset-assert 128)
    (offset              vector              :inline :offset-assert 160)
-   (size                float                       :offset-assert 168)
-   (scale               float                       :offset-assert 172)
+   (size                float                       :offset-assert 168 :overlay-at (-> offset z))
+   (scale               float                       :offset-assert 172 :overlay-at (-> offset w))
    (scroll              vector              :inline :offset-assert 176)
    (pos                 vector4w            :inline :offset-assert 192)
    (color               vector4w            :inline :offset-assert 208)
-   (corner              vector              4       :offset-assert 224) ;; guessed by decompiler
+   (corner              vector              4 :inline       :offset-assert 224) ;; guessed by decompiler
    (auto-save-icon-flag symbol                      :offset-assert 288) ;; guessed by decompiler
    (global-flags        uint32                      :offset-assert 292)
    )
@@ -9763,7 +9944,6 @@
     (bigmap-method-22 () none) ;; 22 ;; (texture-upload-dma (_type_ dma-buffer (pointer uint32) int int int gs-psm) none)
     )
   )
-|#
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -10066,14 +10246,13 @@
 ;; capture                        ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (define-extern gs-set-default-store-image function) ;; (function gs-store-image-packet int int gs-psm int int int int int)
-;; (define-extern store-image function) ;; (function screen-shot-work int)
+(define-extern gs-set-default-store-image "Set up a gs-store-image-packet for copying VRAM data to RAM." (function gs-store-image-packet int int gs-psm int int int int int))
+(define-extern store-image "Take a screenshot!" (function screen-shot-work none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; memory-usage-h                 ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype memory-usage-info (structure)
   ((name  string  :offset-assert 0) ;; guessed by decompiler
    (count int32   :offset-assert 4)
@@ -10084,34 +10263,30 @@
   :size-assert         #x10
   :flag-assert         #x900000010
   )
-|#
 
-#|
 (deftype memory-usage-block (basic)
   ((work-bsp basic                 :offset-assert 4)
    (length   int32                 :offset-assert 8)
-   (data     memory-usage-info 113 :offset-assert 16) ;; guessed by decompiler
+   (data     memory-usage-info 113 :inline :offset-assert 16) ;; guessed by decompiler
    )
   :method-count-assert 12
   :size-assert         #x720
   :flag-assert         #xc00000720
   (:methods
-    (memory-usage-block-method-9 () none) ;; 9 ;; (reset! (_type_) _type_)
-    (memory-usage-block-method-10 () none) ;; 10 ;; (calculate-total (_type_) int)
-    (memory-usage-block-method-11 () none) ;; 11 ;; (print-mem-usage (_type_ level object) _type_)
+    (reset! (_type_) _type_) ;; 9
+    (calculate-total (_type_) int) ;; 10
+    (print-mem-usage (_type_ level object) _type_) ;; 11
     )
   )
-|#
 
-;; (define-extern *mem-usage* object) ;; memory-usage-block
-;; (define-extern *dma-mem-usage* object) ;; memory-usage-block
-;; (define-extern *temp-mem-usage* object) ;; memory-usage-block
+(define-extern *mem-usage* memory-usage-block)
+(define-extern *dma-mem-usage* memory-usage-block)
+(define-extern *temp-mem-usage* memory-usage-block)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; blit-displays-h                ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype blit-displays-work (structure)
   ((adgif-tmpl               dma-gif-packet :inline :offset-assert 0)
    (sprite-tmpl              dma-gif-packet :inline :offset-assert 32)
@@ -10122,7 +10297,7 @@
    (scan-tmpl                dma-gif-packet :inline :offset-assert 192)
    (color                    vector4w       :inline :offset-assert 224)
    (line-color               uint64                 :offset-assert 240)
-   (scan-colors              vector4w       15      :offset-assert 256) ;; guessed by decompiler
+   (scan-colors              vector4w       15 :inline      :offset-assert 256) ;; guessed by decompiler
    (zoom-blur-pos            vector         :inline :offset-assert 496)
    (zoom-blur-count          int32                  :offset-assert 512)
    (zoom-blur-texels         int32                  :offset-assert 516)
@@ -10131,7 +10306,7 @@
    (zoom-blur-2d             basic                  :offset-assert 528)
    (menu-mode                symbol                 :offset-assert 532) ;; guessed by decompiler
    (screen-copied            symbol                 :offset-assert 536) ;; guessed by decompiler
-   (vu1-enable-user-menu     uint64                 :offset-assert 544) ;; vu1-renderer-mask
+   (vu1-enable-user-menu     vu1-renderer-mask      :offset-assert 544)
    (texture-enable-user-menu uint32                 :offset-assert 552)
    (count-down               uint32                 :offset-assert 556)
    (horizontal-flip-flag     symbol                 :offset-assert 560) ;; guessed by decompiler
@@ -10158,22 +10333,20 @@
     (blit-displays-work-method-18 () none) ;; 18
     (blit-displays-work-method-19 () none) ;; 19
     (blit-displays-work-method-20 () none) ;; 20
-    (blit-displays-work-method-21 () none) ;; 21
-    (blit-displays-work-method-22 () none) ;; 22
-    (blit-displays-work-method-23 () none) ;; 23
-    (blit-displays-work-method-24 () none) ;; 24
-    (blit-displays-work-method-25 () none) ;; 25
-    (blit-displays-work-method-26 () none) ;; 26
+    (get-menu-mode (_type_) symbol) ;; 21
+    (get-screen-copied (_type_) symbol) ;; 22
+    (get-horizontal-flip-flag (_type_) symbol) ;; 23
+    (set-menu-mode (_type_ symbol) symbol) ;; 24
+    (set-screen-copied (_type_ symbol) symbol) ;; 25
+    (set-horizontal-flip-flag (_type_ symbol) symbol) ;; 26
     )
   )
-|#
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; sky-h                          ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype sky-color-hour (structure)
   ((snapshot1   int32  :offset-assert 0)
    (snapshot2   int32  :offset-assert 4)
@@ -10184,51 +10357,43 @@
   :size-assert         #x10
   :flag-assert         #x900000010
   )
-|#
 
-#|
 (deftype sky-color-day (structure)
-  ((hour sky-color-hour 24 :offset-assert 0) ;; guessed by decompiler
+  ((hour sky-color-hour 24 :inline :offset-assert 0) ;; guessed by decompiler
    )
   :method-count-assert 9
   :size-assert         #x180
   :flag-assert         #x900000180
   )
-|#
 
-#|
 (deftype sky-sun-data (structure)
   ((data           uint128 4       :offset-assert 0) ;; guessed by decompiler
-   (pos            vector  :inline :offset-assert 0)
-   (r-sun          float           :offset-assert 16)
-   (r-halo         float           :offset-assert 20)
-   (r-aurora       float           :offset-assert 24)
-   (c-sun-start    rgba            :offset-assert 32) ;; guessed by decompiler
-   (c-sun-end      rgba            :offset-assert 48) ;; guessed by decompiler
-   (c-halo-start   rgba            :offset-assert 36) ;; guessed by decompiler
-   (c-halo-end     rgba            :offset-assert 52) ;; guessed by decompiler
-   (c-aurora-start rgba            :offset-assert 40) ;; guessed by decompiler
-   (c-aurora-end   rgba            :offset-assert 56) ;; guessed by decompiler
+   (pos            vector  :inline :offset-assert 0 :overlay-at data)
+   (r-sun          float           :offset-assert 16 :overlay-at (-> pos 1 x))
+   (r-halo         float           :offset-assert 20 :overlay-at (-> pos 1 y))
+   (r-aurora       float           :offset-assert 24  :overlay-at (-> pos 1 z))
+   (c-sun-start    rgba            :offset-assert 32  :overlay-at (-> pos 2 x)) ;; guessed by decompiler
+   (c-sun-end      rgba            :offset-assert 48  :overlay-at (-> pos 3 x)) ;; guessed by decompiler
+   (c-halo-start   rgba            :offset-assert 36 :overlay-at (-> pos 2 y)) ;; guessed by decompiler
+   (c-halo-end     rgba            :offset-assert 52 :overlay-at (-> pos 3 y)) ;; guessed by decompiler
+   (c-aurora-start rgba            :offset-assert 40 :overlay-at (-> pos 2 z)) ;; guessed by decompiler
+   (c-aurora-end   rgba            :offset-assert 56 :overlay-at (-> pos 3 z)) ;; guessed by decompiler
    )
   :method-count-assert 9
   :size-assert         #x40
   :flag-assert         #x900000040
   )
-|#
 
-#|
 (deftype sky-moon-data (structure)
   ((data  uint128 2       :offset-assert 0) ;; guessed by decompiler
-   (pos   vector  :inline :offset-assert 0)
-   (scale vector  :inline :offset-assert 16)
+   (pos   vector  :inline :offset-assert 0 :overlay-at (-> data 0))
+   (scale vector  :inline :offset-assert 16 :overlay-at (-> data 1))
    )
   :method-count-assert 9
   :size-assert         #x20
   :flag-assert         #x900000020
   )
-|#
 
-#|
 (deftype sky-orbit (structure)
   ((high-noon float  :offset-assert 0)
    (tilt      float  :offset-assert 4)
@@ -10237,38 +10402,33 @@
    (min-halo  float  :offset-assert 16)
    (max-halo  float  :offset-assert 20)
    )
+  :allow-misaligned
   :method-count-assert 9
   :size-assert         #x18
   :flag-assert         #x900000018
   )
-|#
 
-#|
 (deftype sky-upload-data (structure)
   ((data     uint128       16      :offset-assert 0) ;; guessed by decompiler
-   (sun      sky-sun-data  2       :offset-assert 0) ;; guessed by decompiler
-   (moon     sky-moon-data :inline :offset-assert 128)
-   (day-star sky-moon-data :inline :offset-assert 192)
+   (sun      sky-sun-data  2 :inline      :offset-assert 0 :overlay-at data) ;; guessed by decompiler
+   (moon     sky-moon-data :inline :offset-assert 128 :overlay-at (-> data 8))
+   (day-star sky-moon-data :inline :offset-assert 192 :overlay-at (-> data 12))
    )
   :method-count-assert 9
   :size-assert         #x100
   :flag-assert         #x900000100
   )
-|#
 
-#|
 (deftype sky-vertex (structure)
-  ((UNKNOWN UNKNOWN  :offset-assert -1) ;; field could not be read.
-   (UNKNOWN UNKNOWN  :offset-assert -1) ;; field could not be read.
-   (UNKNOWN UNKNOWN  :offset-assert -1) ;; field could not be read.
+  ((pos vector :inline :offset-assert 0)
+   (stq vector :inline :offset-assert 16)
+   (col vector :inline :offset-assert 32)
    )
   :method-count-assert 9
   :size-assert         #x30
   :flag-assert         #x900000030
   )
-|#
 
-#|
 (deftype cloud-vertex (structure)
   ((pos  vector :inline :offset-assert 0)
    (stq  vector :inline :offset-assert 16)
@@ -10282,19 +10442,15 @@
   :size-assert         #x70
   :flag-assert         #x900000070
   )
-|#
 
-#|
 (deftype cloud-vert-array (structure)
-  ((data cloud-vertex 100 :offset-assert 0) ;; guessed by decompiler
+  ((data cloud-vertex 100 :inline :offset-assert 0) ;; guessed by decompiler
    )
   :method-count-assert 9
   :size-assert         #x2bc0
   :flag-assert         #x900002bc0
   )
-|#
 
-#|
 (deftype haze-vertex (structure)
   ((pos vector :inline :offset-assert 0)
    (nrm vector :inline :offset-assert 16)
@@ -10304,19 +10460,15 @@
   :size-assert         #x30
   :flag-assert         #x900000030
   )
-|#
 
-#|
 (deftype haze-vert-array (structure)
-  ((data haze-vertex 36 :offset-assert 0) ;; guessed by decompiler
+  ((data haze-vertex 36 :inline :offset-assert 0) ;; guessed by decompiler
    )
   :method-count-assert 9
   :size-assert         #x6c0
   :flag-assert         #x9000006c0
   )
-|#
 
-#|
 (deftype cloud-lights (structure)
   ((sun0-normal      vector :inline :offset-assert 0)
    (sun1-normal      vector :inline :offset-assert 16)
@@ -10335,9 +10487,7 @@
   :size-assert         #x9c
   :flag-assert         #x90000009c
   )
-|#
 
-#|
 (deftype haze-lights (structure)
   ((sun0-normal vector :inline :offset-assert 0)
    (sun1-normal vector :inline :offset-assert 16)
@@ -10354,9 +10504,7 @@
   :size-assert         #x7c
   :flag-assert         #x90000007c
   )
-|#
 
-#|
 (deftype sky-work (structure)
   ((adgif-tmpl       dma-gif-packet  :inline :offset-assert 0)
    (draw-tmpl        dma-gif-packet  :inline :offset-assert 32)
@@ -10365,20 +10513,20 @@
    (blend-tmpl       dma-gif-packet  :inline :offset-assert 128)
    (sprite-tmpl      dma-gif-packet  :inline :offset-assert 160)
    (sprite-tmpl2     dma-gif-packet  :inline :offset-assert 192)
-   (sun-coords       vector          2       :offset-assert 224) ;; guessed by decompiler
-   (green-coords     vector          2       :offset-assert 256) ;; guessed by decompiler
-   (moon0-coords     vector          2       :offset-assert 288) ;; guessed by decompiler
-   (moon1-coords     vector          2       :offset-assert 320) ;; guessed by decompiler
-   (moon2-coords     vector          2       :offset-assert 352) ;; guessed by decompiler
-   (day-star-coords  UNKNOWN         2       :offset-assert 384)
-   (star-coords      vector          2       :offset-assert 416) ;; guessed by decompiler
-   (sun-colors       vector4w        2       :offset-assert 448) ;; guessed by decompiler
-   (green-colors     vector4w        2       :offset-assert 480) ;; guessed by decompiler
-   (moon-colors      vector4w        3       :offset-assert 512) ;; guessed by decompiler
-   (day-star-colors  UNKNOWN         3       :offset-assert 560)
-   (star-colors      vector4w        16      :offset-assert 608) ;; guessed by decompiler
-   (st-coords        vector          2       :offset-assert 864) ;; guessed by decompiler
-   (random           vector4w        8       :offset-assert 896) ;; guessed by decompiler
+   (sun-coords       vector          2  :inline      :offset-assert 224) ;; guessed by decompiler
+   (green-coords     vector          2  :inline      :offset-assert 256) ;; guessed by decompiler
+   (moon0-coords     vector          2  :inline     :offset-assert 288) ;; guessed by decompiler
+   (moon1-coords     vector          2  :inline     :offset-assert 320) ;; guessed by decompiler
+   (moon2-coords     vector          2  :inline      :offset-assert 352) ;; guessed by decompiler
+   (day-star-coords  vector         2  :inline      :offset-assert 384)
+   (star-coords      vector          2  :inline      :offset-assert 416) ;; guessed by decompiler
+   (sun-colors       vector4w        2  :inline      :offset-assert 448) ;; guessed by decompiler
+   (green-colors     vector4w        2  :inline      :offset-assert 480) ;; guessed by decompiler
+   (moon-colors      vector4w        3  :inline      :offset-assert 512) ;; guessed by decompiler
+   (day-star-colors  vector4w         3   :inline    :offset-assert 560)
+   (star-colors      vector4w        16 :inline     :offset-assert 608) ;; guessed by decompiler
+   (st-coords        vector          2  :inline     :offset-assert 864) ;; guessed by decompiler
+   (random           vector4w        8  :inline     :offset-assert 896) ;; guessed by decompiler
    (giftag-base      dma-gif         :inline :offset-assert 1024)
    (giftag-haze      dma-gif         :inline :offset-assert 1040)
    (giftag-roof      dma-gif         :inline :offset-assert 1056)
@@ -10388,7 +10536,7 @@
    (time             float                   :offset-assert 1136)
    (off-s            uint16                  :offset-assert 1140)
    (off-t            uint16                  :offset-assert 1142)
-   (orbit            sky-orbit       3       :offset-assert 1144) ;; guessed by decompiler
+   (orbit            sky-orbit       3 :inline      :offset-assert 1144) ;; guessed by decompiler
    (upload-data      sky-upload-data :inline :offset-assert 1248)
    (ambi-color       vector          :inline :offset-assert 1504) ;; vector4w :inline
    (ambi-color-lower vector          :inline :offset-assert 1520) ;; vector4w :inline
@@ -10405,7 +10553,7 @@
    (buf              dma-buffer              :offset-assert 2044) ;; guessed by decompiler
    (draw-vortex      basic                   :offset-assert 2048)
    (day-star-scale   float                   :offset-assert 2052)
-   (stars            vector          512     :offset-assert 2064) ;; guessed by decompiler
+   (stars            vector          512 :inline    :offset-assert 2064) ;; guessed by decompiler
    (disable-day-star basic                   :offset-assert 10256)
    )
   :method-count-assert 39
@@ -10444,7 +10592,6 @@
     (sky-work-method-38 () none) ;; 38
     )
   )
-|#
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -10626,9 +10773,8 @@
   ;:flag-assert         #x900010000
   )
 
-#|
 (deftype ocean-texture-constants (structure)
-  ((giftag    qword    :inline :offset-assert 0) ;; gs-gif-tag :inline
+  ((giftag    gs-gif-tag    :inline :offset-assert 0) ;;  :inline
    (buffers   vector4w :inline :offset-assert 16)
    (dests     vector4w :inline :offset-assert 32)
    (start     vector   :inline :offset-assert 48)
@@ -10640,7 +10786,6 @@
   :size-assert         #x70
   :flag-assert         #x900000070
   )
-|#
 
 (deftype ocean-mid-vertex (structure)
   ((stq vector :inline :offset-assert 0)
@@ -10652,7 +10797,6 @@
   :flag-assert         #x900000030
   )
 
-#|
 (deftype ocean-mid-constants (structure)
   ((hmge-scale     vector       :inline :offset-assert 0)
    (inv-hmge-scale vector       :inline :offset-assert 16)
@@ -10660,17 +10804,17 @@
    (fog            vector       :inline :offset-assert 48)
    (constants      vector       :inline :offset-assert 64)
    (constants2     vector       :inline :offset-assert 80)
-   (drw-fan        qword        :inline :offset-assert 96) ;; gs-gif-tag :inline
-   (env-fan        qword        :inline :offset-assert 112) ;; gs-gif-tag :inline
-   (drw-adgif      qword        :inline :offset-assert 128) ;; gs-gif-tag :inline
+   (drw-fan        gs-gif-tag        :inline :offset-assert 96) ;; gs-gif-tag :inline
+   (env-fan        gs-gif-tag        :inline :offset-assert 112) ;; gs-gif-tag :inline
+   (drw-adgif      gs-gif-tag        :inline :offset-assert 128) ;; gs-gif-tag :inline
    (drw-texture    adgif-shader :inline :offset-assert 144)
-   (drw-strip-0    qword        :inline :offset-assert 224) ;; gs-gif-tag :inline
-   (drw-strip-1    qword        :inline :offset-assert 240) ;; gs-gif-tag :inline
-   (env-adgif      qword        :inline :offset-assert 256) ;; gs-gif-tag :inline
+   (drw-strip-0    gs-gif-tag        :inline :offset-assert 224) ;; gs-gif-tag :inline
+   (drw-strip-1    gs-gif-tag        :inline :offset-assert 240) ;; gs-gif-tag :inline
+   (env-adgif      gs-gif-tag        :inline :offset-assert 256) ;; gs-gif-tag :inline
    (env-texture    adgif-shader :inline :offset-assert 272)
-   (env-strip      qword        :inline :offset-assert 352) ;; gs-gif-tag :inline
+   (env-strip      gs-gif-tag        :inline :offset-assert 352) ;; gs-gif-tag :inline
    (env-color      vector       :inline :offset-assert 368)
-   (index-table    vector4w     8       :offset-assert 384) ;; guessed by decompiler
+   (index-table    vector4w     8 :inline       :offset-assert 384) ;; guessed by decompiler
    (pos0           vector       :inline :offset-assert 512)
    (pos1           vector       :inline :offset-assert 528)
    (pos2           vector       :inline :offset-assert 544)
@@ -10680,7 +10824,6 @@
   :size-assert         #x240
   :flag-assert         #x900000240
   )
-|#
 
 (deftype ocean-mid-upload (structure)
   ((rot    matrix  :inline :offset-assert 0)
@@ -10712,7 +10855,6 @@
   :flag-assert         #x900000230
   )
 
-#|
 (deftype ocean-mid-work (structure)
   ((env0    vector  :inline :offset-assert 0)
    (env1    vector  :inline :offset-assert 16)
@@ -10726,9 +10868,7 @@
   :size-assert         #x160
   :flag-assert         #x900000160
   )
-|#
 
-#|
 (deftype ocean-near-constants (structure)
   ((hmge-scale     vector       :inline :offset-assert 0)
    (inv-hmge-scale vector       :inline :offset-assert 16)
@@ -10739,31 +10879,29 @@
    (constants3     vector       :inline :offset-assert 96)
    (constants4     vector       :inline :offset-assert 112)
    (constants5     vector       :inline :offset-assert 128)
-   (drw-fan        qword        :inline :offset-assert 144) ;; gs-gif-tag :inline
-   (drw2-fan       qword        :inline :offset-assert 160) ;; gs-gif-tag :inline
-   (env-fan        qword        :inline :offset-assert 176) ;; gs-gif-tag :inline
-   (drw-adgif      qword        :inline :offset-assert 192) ;; gs-gif-tag :inline
+   (drw-fan        gs-gif-tag        :inline :offset-assert 144) ;; gs-gif-tag :inline
+   (drw2-fan       gs-gif-tag        :inline :offset-assert 160) ;; gs-gif-tag :inline
+   (env-fan        gs-gif-tag        :inline :offset-assert 176) ;; gs-gif-tag :inline
+   (drw-adgif      gs-gif-tag        :inline :offset-assert 192) ;; gs-gif-tag :inline
    (drw-texture    adgif-shader :inline :offset-assert 208)
-   (drw-strip      qword        :inline :offset-assert 288) ;; gs-gif-tag :inline
-   (env-adgif      qword        :inline :offset-assert 304) ;; gs-gif-tag :inline
+   (drw-strip      gs-gif-tag        :inline :offset-assert 288) ;; gs-gif-tag :inline
+   (env-adgif      gs-gif-tag        :inline :offset-assert 304) ;; gs-gif-tag :inline
    (env-texture    adgif-shader :inline :offset-assert 320)
-   (env-strip      qword        :inline :offset-assert 400) ;; gs-gif-tag :inline
+   (env-strip      gs-gif-tag        :inline :offset-assert 400) ;; gs-gif-tag :inline
    (env-color      vector       :inline :offset-assert 416)
-   (drw2-adgif     qword        :inline :offset-assert 432) ;; gs-gif-tag :inline
+   (drw2-adgif     gs-gif-tag        :inline :offset-assert 432) ;; gs-gif-tag :inline
    (drw2-tex0      qword        :inline :offset-assert 448)
    (drw2-frame     qword        :inline :offset-assert 464)
-   (drw2-strip     qword        :inline :offset-assert 480) ;; gs-gif-tag :inline
-   (drw3-adgif     qword        :inline :offset-assert 496) ;; gs-gif-tag :inline
-   (drw3-frame     qword        :inline :offset-assert 512) ;; gs-adcmd :inline
-   (index-table    vector4w     4       :offset-assert 528) ;; guessed by decompiler
+   (drw2-strip     gs-gif-tag        :inline :offset-assert 480) ;; gs-gif-tag :inline
+   (drw3-adgif     gs-gif-tag        :inline :offset-assert 496) ;; gs-gif-tag :inline
+   (drw3-frame     gs-adcmd        :inline :offset-assert 512) ;; gs-adcmd :inline
+   (index-table    vector4w     4 :inline      :offset-assert 528) ;; guessed by decompiler
    )
   :method-count-assert 9
   :size-assert         #x250
   :flag-assert         #x900000250
   )
-|#
 
-#|
 (deftype ocean-near-upload (structure)
   ((rot          matrix            :inline :offset-assert 0)
    (matrix       matrix            :inline :offset-assert 64)
@@ -10776,7 +10914,6 @@
   :size-assert         #x100
   :flag-assert         #x900000100
   )
-|#
 
 (deftype ocean-near-vertex (structure)
   ((stq vector :inline :offset-assert 0)
@@ -10831,7 +10968,6 @@
     )
   )
 
-#|
 (deftype ocean (ocean-map)
   ((off                     symbol                     :offset-assert 52) ;; guessed by decompiler
    (near-off                symbol                     :offset-assert 56) ;; guessed by decompiler
@@ -10847,9 +10983,9 @@
    (map-min                 vector             :inline :offset-assert 112)
    (map-max                 vector             :inline :offset-assert 128)
    (interp                  vector             :inline :offset-assert 144)
-   (corner-array            ocean-corner       25      :offset-assert 160) ;; guessed by decompiler
+   (corner-array            ocean-corner       25 :inline      :offset-assert 160) ;; guessed by decompiler
    (corner-count            int32                      :offset-assert 2160)
-   (temp-vecs               vector             4       :offset-assert 2176) ;; guessed by decompiler
+   (temp-vecs               vector             4  :inline     :offset-assert 2176) ;; guessed by decompiler
    (mid-mask-ptrs           pointer            36      :offset-assert 2240) ;; guessed by decompiler
    (mid-camera-masks        uint64             36      :offset-assert 2384) ;; guessed by decompiler
    (trans-mask-ptrs         pointer            64      :offset-assert 2672) ;; guessed by decompiler
@@ -10869,13 +11005,13 @@
    (haze-lights             haze-lights        :inline :offset-assert 3536)
    (constant                vector             :inline :offset-assert 3664)
    (sky-color               vector             :inline :offset-assert 3680)
-   (haze-verts              vector4w           32      :offset-assert 3696) ;; guessed by decompiler
-   (cloud-verts             vector4w           36      :offset-assert 4208) ;; guessed by decompiler
-   (cloud-nrms              vector             36      :offset-assert 4784) ;; guessed by decompiler
-   (cloud-col0              vector             36      :offset-assert 5360) ;; guessed by decompiler
-   (cloud-col1              vector             36      :offset-assert 5936) ;; guessed by decompiler
-   (cloud-st0               vector             36      :offset-assert 6512) ;; guessed by decompiler
-   (cloud-st1               vector             36      :offset-assert 7088) ;; guessed by decompiler
+   (haze-verts              vector4w           32 :inline     :offset-assert 3696) ;; guessed by decompiler
+   (cloud-verts             vector4w           36 :inline     :offset-assert 4208) ;; guessed by decompiler
+   (cloud-nrms              vector             36 :inline     :offset-assert 4784) ;; guessed by decompiler
+   (cloud-col0              vector             36 :inline     :offset-assert 5360) ;; guessed by decompiler
+   (cloud-col1              vector             36 :inline     :offset-assert 5936) ;; guessed by decompiler
+   (cloud-st0               vector             36 :inline     :offset-assert 6512) ;; guessed by decompiler
+   (cloud-st1               vector             36 :inline     :offset-assert 7088) ;; guessed by decompiler
    (color80808080           vector4w           :inline :offset-assert 7664)
    (color80808040           vector4w           :inline :offset-assert 7680)
    (color80808000           vector4w           :inline :offset-assert 7696)
@@ -10909,8 +11045,8 @@
    (temp-maxx               uint8                      :offset-assert 8045)
    (temp-minz               uint8                      :offset-assert 8046)
    (temp-maxz               uint8                      :offset-assert 8047)
-   (tex1                    uint64                     :offset-assert 8048) ;; gs-tex1
-   (tex1-near               uint64                     :offset-assert 8056) ;; gs-tex1
+   (tex1                    gs-tex1                     :offset-assert 8048) ;; gs-tex1
+   (tex1-near               gs-tex1                     :offset-assert 8056) ;; gs-tex1
    (corner00                float                      :offset-assert 8064)
    (corner01                float                      :offset-assert 8068)
    (corner10                float                      :offset-assert 8072)
@@ -10919,7 +11055,7 @@
    (frame-speed             float                      :offset-assert 8084)
    (frame-num2              float                      :offset-assert 8088)
    (frame-speed2            float                      :offset-assert 8092)
-   (cloud-interp            float                      :offset-assert 3676)
+   (cloud-interp            float                      :offset 3676)
    (scales                  vector             :inline :offset-assert 8096)
    (mask-hi                 vector4w           :inline :offset-assert 8112)
    (mask-lo                 vector4w           :inline :offset-assert 8128)
@@ -11016,10 +11152,9 @@
     (ocean-method-91 () none) ;; 91 ;; (do-tex-scroll! (_type_) none)
     )
   )
-|#
 
-;; (define-extern *ocean-map* object) ;; ocean-map
-;; (define-extern *ocean* object) ;; ocean
+(define-extern *ocean-map* ocean-map)
+(define-extern *ocean* ocean)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; texture                        ;;
