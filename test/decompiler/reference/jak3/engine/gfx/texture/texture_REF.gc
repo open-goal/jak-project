@@ -1,17 +1,7 @@
 ;;-*-Lisp-*-
 (in-package goal)
 
-;; name: texture.gc
-;; name in dgo: texture
-;; dgos: GAME
-
-(define-extern texture-page-default-allocate (function texture-pool texture-page kheap int texture-page))
-(define-extern texture-page-login (function texture-id (function texture-pool texture-page kheap int texture-page) kheap texture-page-dir-entry))
-(define-extern lookup-texture-by-id (function texture-id texture))
-(define-extern adgif-shader<-texture! (function adgif-shader texture adgif-shader))
-
-;; DECOMP BEGINS
-
+;; definition for method 2 of type texture-page
 (defmethod print ((this texture-page))
   (format
     #t
@@ -25,15 +15,18 @@
   this
   )
 
+;; definition for method 4 of type texture-page
 (defmethod length ((this texture-page))
   (-> this length)
   )
 
+;; definition for method 5 of type texture-page
 ;; WARN: Return type mismatch uint vs int.
 (defmethod asize-of ((this texture-page))
   (the-as int (+ (-> this type size) (* (-> this length) 4)))
   )
 
+;; definition for method 8 of type texture-page
 (defmethod mem-usage ((this texture-page) (arg0 memory-usage-block) (arg1 int))
   (set! (-> arg0 length) (max 84 (-> arg0 length)))
   (set! (-> arg0 data 83 name) "texture")
@@ -50,6 +43,7 @@
   this
   )
 
+;; definition for function texture-bpp
 (defun texture-bpp ((tex-format gs-psm))
   "Get the bits-per-pixel in the given texture format"
   (case tex-format
@@ -68,6 +62,7 @@
     )
   )
 
+;; definition for function texture-qwc
 (defun texture-qwc ((w int) (h int) (tex-format gs-psm))
   "Get the number of quadwords needed for a given texture size and format.
    Does not consider weird PS2 memory layout stuff."
@@ -76,12 +71,14 @@
     )
   )
 
+;; definition for function physical-address
 (defun physical-address ((addr pointer))
   "Strip off high 8-bits of a pointer, to bypass the uncached memory mappings.
    This gives an address suitable for DMAing from main memory."
   (logand #xfffffff addr)
   )
 
+;; definition for function dma-buffer-add-ref-texture
 ;; WARN: Return type mismatch symbol vs none.
 (defun dma-buffer-add-ref-texture ((dma-buf dma-buffer) (tex-data-ptr pointer) (w int) (h int) (tex-format gs-psm))
   "Upload a texture, by reference. Doesn't copy the texture into the DMA buffer - just a reference,
@@ -142,6 +139,7 @@
   (none)
   )
 
+;; definition for method 2 of type texture
 (defmethod print ((this texture))
   (format
     #t
@@ -163,6 +161,7 @@
   this
   )
 
+;; definition for function gs-find-block
 (defun gs-find-block ((bx int) (by int) (tex-format gs-psm))
   "Lookup offset of block in PS2's swizzled VRAM, as a block index."
   (cond
@@ -202,6 +201,7 @@
     )
   )
 
+;; definition for function gs-page-width
 (defun gs-page-width ((tex-format gs-psm))
   "Get the width of a page, in pixels, for the given texture format."
   (case tex-format
@@ -218,6 +218,7 @@
     )
   )
 
+;; definition for function gs-page-height
 (defun gs-page-height ((tex-format gs-psm))
   "Get the height of a page, in pixels, for the given texture format."
   (case tex-format
@@ -240,6 +241,7 @@
     )
   )
 
+;; definition for function gs-block-width
 (defun gs-block-width ((tex-format gs-psm))
   "Get the width of a block, in pixels, for the texture format."
   (case tex-format
@@ -259,6 +261,7 @@
     )
   )
 
+;; definition for function gs-block-height
 (defun gs-block-height ((tex-format gs-psm))
   "Get the height of a block, in pixels, for the texture format."
   (case tex-format
@@ -275,6 +278,7 @@
     )
   )
 
+;; definition for function gs-largest-block
 (defun gs-largest-block ((w int) (h int) (tex-format gs-psm))
   "Get the highest block index used by a texture."
   (let* ((s5-0 (gs-block-width tex-format))
@@ -294,6 +298,7 @@
     )
   )
 
+;; definition for function gs-blocks-used
 (defun gs-blocks-used ((w int) (h int) (tex-format gs-psm))
   "Get the number of blocks used by a texture.
    If the texture isn't an even number of pages, the partially completed
@@ -315,11 +320,13 @@
     )
   )
 
+;; definition for method 0 of type texture-pool
 (defmethod new texture-pool ((allocation symbol) (type-to-make type))
   "Allocate and initialize a texture pool."
   (initialize! (object-new allocation type-to-make (the-as int (-> type-to-make size))))
   )
 
+;; definition for method 15 of type texture-pool
 (defmethod allocate-vram-words! ((this texture-pool) (size int))
   "Increment the bump allocator to allocate vram, by words."
   (let ((v0-0 (-> this cur)))
@@ -328,11 +335,13 @@
     )
   )
 
+;; definition for method 18 of type texture-pool
 (defmethod get-common-page-slot-by-id ((this texture-pool) (id int))
   "Unsupported in jak 3, returns -1 always."
   -1
   )
 
+;; definition for method 9 of type texture-pool
 (defmethod initialize! ((this texture-pool))
   "Set up a texture-pool and do the initial division of VRAM."
   (set! (-> this cur) 0)
@@ -356,6 +365,7 @@
   this
   )
 
+;; definition for method 10 of type texture-page
 (defmethod get-leftover-block-count ((this texture-page) (arg0 int) (arg1 int))
   "Unused - statistics for how much unused memory we have"
   (let ((v1-0 arg1))
@@ -366,6 +376,7 @@
     )
   )
 
+;; definition for method 10 of type texture-pool
 (defmethod print-usage ((this texture-pool))
   (format #t "--------------------~%")
   (format
@@ -380,6 +391,7 @@
   this
   )
 
+;; definition for method 16 of type texture-pool
 (defmethod allocate-segment ((this texture-pool) (segment texture-pool-segment) (size int))
   "Allocate VRAM for a texture-pool-segment"
   (set! (-> segment size) (the-as uint size))
@@ -387,6 +399,8 @@
   segment
   )
 
+;; definition for method 12 of type texture-pool
+;; WARN: Return type mismatch int vs none.
 (defmethod allocate-defaults ((this texture-pool))
   "Allocate the common segment and set up dynamic texture addresses"
   (format #t "texture start #x~x~%" (/ (-> this cur) 64))
@@ -415,6 +429,7 @@
   (none)
   )
 
+;; definition for method 9 of type texture-page
 (defmethod remove-data-from-heap ((this texture-page) (heap kheap))
   "Bump the kheap pointer to discard this texture data. All metadata is kept.
    This is only safe to use if the last thing on the kheap is this texture."
@@ -422,6 +437,7 @@
   this
   )
 
+;; definition for function texture-page-default-allocate
 (defun texture-page-default-allocate ((pool texture-pool) (page texture-page) (heap kheap) (page-id int))
   "Texture allocation function for textures that permanently live in VRAM.
    The texture data is immediately uploaded, then discarded from the heap.
@@ -448,6 +464,7 @@
   page
   )
 
+;; definition for function texture-page-common-allocate
 (defun texture-page-common-allocate ((pool texture-pool) (page texture-page) (heap kheap) (page-id int))
   "Texture allocation function for textures that share the common segment.
    The texture remains in RAM, and is uploaded to VRAM as needed as part
@@ -462,6 +479,7 @@
   page
   )
 
+;; definition for function texture-page-font-allocate
 (defun texture-page-font-allocate ((pool texture-pool) (page texture-page) (heap kheap) (page-id int))
   "Texture allocation function for font. This temporarily stores them in the common segment,
    removes them from RAM. This is a bit of hack. Later font setup code expects the font texture
@@ -484,6 +502,8 @@
   page
   )
 
+;; definition for method 22 of type texture-pool
+;; WARN: Return type mismatch int vs none.
 (defmethod lay-out-sprite-tex ((this texture-pool))
   "Lay out VRAM addresses for sprite rendering, which is done in one pass for all levels."
   (let ((s5-0 0))
@@ -522,6 +542,8 @@
   (none)
   )
 
+;; definition for method 23 of type texture-pool
+;; WARN: Return type mismatch int vs none.
 (defmethod lay-out-hud-tex ((this texture-pool))
   "Lay out VRAM addresses for HUD rendering, which is done all at one for all levels."
   (let ((s5-0 0))
@@ -560,6 +582,8 @@
   (none)
   )
 
+;; definition for method 24 of type texture-pool
+;; WARN: Return type mismatch int vs none.
 (defmethod lay-out-warp-tex ((this texture-pool))
   "Lay out VRAM addresses for WARP texture rendering, and update adgifs to point to the new address."
   (let ((s5-0 0))
@@ -613,6 +637,8 @@
   (none)
   )
 
+;; definition for method 25 of type texture-pool
+;; WARN: Return type mismatch int vs none.
 (defmethod clear-ids ((this texture-pool))
   "Reset all cached texture upload IDs. This must be done whenever a texture has its vram address changed."
   (dotimes (v1-0 128)
@@ -622,6 +648,7 @@
   (none)
   )
 
+;; definition for method 20 of type texture-pool
 ;; WARN: Return type mismatch symbol vs none.
 (defmethod update-sprites ((this texture-pool))
   "Redo sprite texture addresses with the current set of loaded levels."
@@ -631,6 +658,7 @@
   (none)
   )
 
+;; definition for method 19 of type texture-pool
 ;; WARN: Return type mismatch symbol vs none.
 (defmethod update-warp-and-hud ((this texture-pool))
   "Redo warp and hud textures with the current set of loaded levels."
@@ -641,6 +669,7 @@
   (none)
   )
 
+;; definition for method 21 of type texture-pool
 ;; WARN: Return type mismatch symbol vs none.
 (defmethod mark-hud-warp-sprite-dirty ((this texture-pool))
   "Set update flags for hud/sprite/warp. Needed after level load or unload."
@@ -649,6 +678,7 @@
   (none)
   )
 
+;; definition for function texture-page-common-boot-allocate
 (defun texture-page-common-boot-allocate ((pool texture-pool) (page texture-page) (heap kheap) (page-id int))
   "Allocator function for texture loaded at startup time.
    For jak 3, this seems to always do default-allocate (permanently in vram?)"
@@ -711,6 +741,7 @@
   page
   )
 
+;; definition for function upload-vram-data
 ;; WARN: Return type mismatch symbol vs none.
 (defun upload-vram-data ((dma-buf dma-buffer) (dest int) (data-ptr pointer) (h int) (w int))
   "Add DMA to later upload a texture, by reference. Sets up the GIF for receiving the texture."
@@ -745,6 +776,7 @@
   (none)
   )
 
+;; definition for function upload-vram-pages
 (defun upload-vram-pages ((pool texture-pool)
                  (pool-segment texture-pool-segment)
                  (page texture-page)
@@ -851,6 +883,7 @@
     )
   )
 
+;; definition for function update-vram-pages
 (defun update-vram-pages ((pool texture-pool) (pool-segment texture-pool-segment) (page texture-page) (mode tex-upload-mode))
   "Likely a debug function for checking the logic of upload-vram-pages. Unused"
   (-> page segment 0 block-data)
@@ -904,6 +937,7 @@
   0
   )
 
+;; definition for function upload-vram-pages-pris
 (defun upload-vram-pages-pris ((pool texture-pool)
                       (pool-segment texture-pool-segment)
                       (page texture-page)
@@ -996,6 +1030,7 @@
     )
   )
 
+;; definition for function texture-page-level-allocate
 (defun texture-page-level-allocate ((pool texture-pool) (page texture-page) (heap kheap) (page-id int))
   "Allocation function for level textures."
   (if (zero? (-> *level* loading-level code-memory-end))
@@ -1015,6 +1050,7 @@
   page
   )
 
+;; definition for function texture-page-size-check
 (defun texture-page-size-check ((pool texture-pool) (lev level) (print? symbol))
   "Check the size of level textures."
   (let ((gp-0 0))
@@ -1162,6 +1198,8 @@
     )
   )
 
+;; definition for method 13 of type texture-pool
+;; WARN: Return type mismatch int vs none.
 (defmethod login-level-textures ((this texture-pool) (lev level) (texture-page-count int) (texture-ids (pointer texture-id)))
   "Login all textures for the given level."
   (dotimes (v1-0 20)
@@ -1195,6 +1233,9 @@
   (none)
   )
 
+;; definition for method 14 of type texture-pool
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch int vs none.
 (defmethod add-level-tpage-dma ((pool texture-pool) (lev level) (category tpage-category) (bucket bucket-id))
   "Set up DMA to upload all textures needed to draw this level on this frame."
   (let ((a2-1 (-> lev texture-page category)))
@@ -1429,6 +1470,8 @@
   (none)
   )
 
+;; definition for function set-skull-gem-masks
+;; INFO: Used lq/sq
 ;; WARN: Return type mismatch uint128 vs none.
 (defun set-skull-gem-masks ()
   "Turn on masks for skull gem textures, so they will be uploaded."
@@ -1451,6 +1494,9 @@
   (none)
   )
 
+;; definition for function upload-textures
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch int vs none.
 (defun upload-textures ((pool texture-pool))
   "Set up DMA for all texture uploads for this frame."
   (cond
@@ -1510,12 +1556,17 @@
   (none)
   )
 
+;; failed to figure out what this is:
 (kmemopen global "texture-dma-buffers")
 
+;; definition for symbol *txt-dma-list*, type dma-buffer
 (define *txt-dma-list* (new 'global 'dma-buffer 4096))
 
+;; failed to figure out what this is:
 (kmemclose)
 
+;; definition for method 13 of type texture-page
+;; WARN: Return type mismatch int vs none.
 (defmethod upload-now! ((this texture-page) (mode tex-upload-mode))
   "Upload a texture to VRAM immediately, wait for DMA to finish."
   (let ((gp-0 *txt-dma-list*))
@@ -1538,6 +1589,7 @@
   (none)
   )
 
+;; definition for method 12 of type texture-page
 (defmethod add-to-dma-buffer ((page texture-page) (buf dma-buffer) (mode tex-upload-mode))
   "Add upload DMA to a DMA buffer. Wrapper for upload-vram-data."
   (local-vars (sv-16 int))
@@ -1568,6 +1620,7 @@
   sv-16
   )
 
+;; definition for function texture-relocate
 (defun texture-relocate ((dma-buf dma-buffer) (tex texture) (dest int) (tex-format gs-psm) (clut-dest int))
   "Move a texture in VRAM."
   (dotimes (v1-0 (the-as int (-> tex num-mips)))
@@ -1633,6 +1686,30 @@
   dma-buf
   )
 
+;; definition for method 11 of type texture-pool
+;; WARN: Stack slot offset 20 signed mismatch
+;; WARN: Stack slot offset 20 signed mismatch
+;; WARN: Stack slot offset 20 signed mismatch
+;; WARN: Stack slot offset 20 signed mismatch
+;; WARN: Stack slot offset 20 signed mismatch
+;; WARN: Stack slot offset 20 signed mismatch
+;; WARN: Stack slot offset 20 signed mismatch
+;; WARN: Stack slot offset 20 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 20 signed mismatch
+;; WARN: Stack slot offset 20 signed mismatch
+;; WARN: Stack slot offset 20 signed mismatch
+;; WARN: Stack slot offset 20 signed mismatch
+;; WARN: Stack slot offset 20 signed mismatch
+;; WARN: Stack slot offset 20 signed mismatch
+;; WARN: Stack slot offset 20 signed mismatch
+;; WARN: Stack slot offset 20 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Return type mismatch int vs none.
 (defmethod setup-font-texture ((this texture-pool))
   "Set up the font texture. In normal use, the font texture is allocated, and currently uploaded to, the common segment.
    This function copies that to the unused upper 8-bits of the depth buffer, and sets up the font
@@ -1724,21 +1801,25 @@
   (none)
   )
 
+;; definition for method 5 of type texture-page-dir
 ;; WARN: Return type mismatch uint vs int.
 (defmethod asize-of ((this texture-page-dir))
   (the-as int (+ (-> texture-page-dir size) (* 12 (+ (-> this length) -1))))
   )
 
+;; definition for method 4 of type texture-page-dir
 (defmethod length ((this texture-page-dir))
   (-> this length)
   )
 
+;; definition for method 7 of type texture-page-dir
 ;; WARN: Return type mismatch texture-page-dir vs none.
 (defmethod relocate ((this texture-page-dir) (arg0 kheap) (arg1 (pointer uint8)))
   (set! *texture-page-dir* this)
   (none)
   )
 
+;; definition for method 11 of type texture-page
 ;; WARN: Return type mismatch texture-page vs none.
 (defmethod relocate-dests! ((this texture-page) (new-dest int) (seg-id int))
   "Update the metadata of this texture so it points to a new vram address."
@@ -1776,6 +1857,7 @@
   (none)
   )
 
+;; definition for method 7 of type texture-page
 (defmethod relocate ((this texture-page) (heap kheap) (filename (pointer uint8)))
   "Handle a texture page that has been loaded by the linker.
    This must run in the linker, since we sometimes kick out textures from the loading heap, which
@@ -1825,6 +1907,7 @@
     )
   )
 
+;; definition for function relocate-later
 (defun relocate-later ()
   "Unused in jak 2 and likely unsed in jak 3. Feature to postpone some texture copying until
    a later frame. This is only used in cases when texture data must be memcpy'd in RAM, to patch up a hole left
@@ -1847,6 +1930,7 @@
   #f
   )
 
+;; definition for function texture-page-login
 (defun texture-page-login ((id texture-id) (alloc-func (function texture-pool texture-page kheap int texture-page)) (heap kheap))
   "'Login' (initialize) a texture page with the pool.
    This has a trick - it doesn't actually require you to pass a texture-page object - instead you pass an ID.
@@ -1872,6 +1956,7 @@
     )
   )
 
+;; definition for function lookup-texture-by-id
 (defun lookup-texture-by-id ((id texture-id))
   "Get a texture by ID, loading it if needed (for debugging only)."
   (let ((a0-2 (texture-page-login id texture-page-default-allocate loading-level))
@@ -1883,6 +1968,7 @@
     )
   )
 
+;; definition for function lookup-texture-by-id-fast
 (defun lookup-texture-by-id-fast ((id texture-id))
   "Get a texture by ID. #f if it does not exist."
   (let ((a1-2 (if (and (nonzero? (-> id page)) (< (-> id page) (the-as uint (-> *texture-page-dir* length))))
@@ -1897,6 +1983,7 @@
     )
   )
 
+;; definition for function lookup-texture-by-name
 (defun lookup-texture-by-name ((tex-name string) (page-name string) (page-out (pointer texture-page)))
   "Get a loaded texture by name. Slow."
   (local-vars (sv-16 texture-page-dir))
@@ -1920,6 +2007,7 @@
   (the-as texture #f)
   )
 
+;; definition for function lookup-texture-id-by-name
 ;; WARN: Return type mismatch int vs texture-id.
 (defun lookup-texture-id-by-name ((tex-name string) (page-name string))
   "Get the ID of a loaded texture by name. Slow."
@@ -1941,6 +2029,7 @@
   (the-as texture-id 0)
   )
 
+;; definition for function lookup-level-texture-by-name
 (defun lookup-level-texture-by-name ((tex-name string) (lev level) (page-out (pointer texture-page)))
   "Get a texture from a given level, by name."
   (dotimes (s3-0 20)
@@ -1962,6 +2051,7 @@
   (lookup-texture-by-name tex-name (the-as string #f) page-out)
   )
 
+;; definition for function lookup-tex-id-from-texture
 ;; WARN: Return type mismatch int vs texture-id.
 (defun lookup-tex-id-from-texture ((tex texture))
   "Get the texture ID of a given texture. Slow."
@@ -1983,6 +2073,7 @@
   (the-as texture-id 0)
   )
 
+;; definition for function lookup-level-texture-id-by-name
 ;; WARN: Return type mismatch int vs texture-id.
 (defun lookup-level-texture-id-by-name ((tex-name string) (lev level) (lev-page-idx int))
   "Get the texture ID of a given texture in a level. Slow."
@@ -2000,6 +2091,8 @@
   (the-as texture-id 0)
   )
 
+;; definition for method 17 of type texture-pool
+;; WARN: Return type mismatch int vs none.
 (defmethod unload-page ((this texture-pool) (page texture-page))
   "Remove a page from the texture pool."
   (local-vars (a0-2 int))
@@ -2021,10 +2114,13 @@
   (none)
   )
 
+;; definition for symbol *shader-list*, type pair
 (define *shader-list* '())
 
+;; definition for symbol *edit-shader*, type texture-id
 (define *edit-shader* (new 'static 'texture-id))
 
+;; definition for function link-texture-by-id
 (defun link-texture-by-id ((id texture-id) (shader adgif-shader))
   "Add this adgif shader to the linked list of shaders associated with the given texture ID.
    Will allocate the link array if it's not already."
@@ -2042,6 +2138,13 @@
     )
   )
 
+;; definition for method 9 of type texture-page-dir
+;; WARN: Stack slot offset 24 signed mismatch
+;; WARN: Stack slot offset 24 signed mismatch
+;; WARN: Stack slot offset 24 signed mismatch
+;; WARN: Stack slot offset 24 signed mismatch
+;; WARN: Stack slot offset 24 signed mismatch
+;; WARN: Stack slot offset 24 signed mismatch
 (defmethod unlink-shaders-in-heap ((this texture-page-dir) (arg0 kheap))
   "Iterate through all adgifs, splicing out ones that are in the given heap."
   (local-vars (t2-2 (pointer shader-ptr)) (sv-16 texture-page) (sv-20 (pointer shader-ptr)) (sv-24 int))
@@ -2064,7 +2167,7 @@
                   (b!
                     (< (the-as int (the-as (pointer shader-ptr) (- (the-as uint t1-3) (the-as uint v1-0)))) 0)
                     cfg-8
-                    :delay (set! t2-2 (the-as (pointer shader-ptr) (- (the-as uint t1-3) (the uint a1-1))))
+                    :delay (set! t2-2 (the-as (pointer shader-ptr) (- (the-as uint t1-3) a1-1)))
                     )
                   (b! (>= (the-as int t2-2) 0) cfg-8 :delay (nop!))
                   (let ((t2-3 (the-as (pointer shader-ptr) (-> (the-as adgif-shader t1-3) next))))
@@ -2086,8 +2189,10 @@
   0
   )
 
+;; definition for function adgif-shader<-texture!
 ;; ERROR: function was not converted to expressions. Cannot decompile.
 
+;; definition for function adgif-shader-update!
 ;; WARN: Return type mismatch gs-tex1 vs none.
 (defun adgif-shader-update! ((shader adgif-shader) (tex texture))
   "Update k based on uv-dist"
@@ -2104,8 +2209,11 @@
   (none)
   )
 
+;; definition for function adgif-shader<-texture-with-update!
+;; INFO: function output is handled by mips2c
 (def-mips2c adgif-shader<-texture-with-update! (function adgif-shader texture adgif-shader))
 
+;; definition for function hack-texture
 (defun hack-texture ((tex texture))
   "adjust some values of a texture, likely for debug."
   (set! (-> tex uv-dist) 1000000.0)
@@ -2113,6 +2221,7 @@
   (set! (-> tex masks data 1 dist) (+ 40960000.0 (-> tex masks data 1 dist)))
   )
 
+;; definition for function adgif-shader-login
 (defun adgif-shader-login ((shader adgif-shader))
   "set up an adgif shader with the texture-pool, so it points to the right vram address.
    Will remap textures through the level remap table.
@@ -2149,6 +2258,7 @@
     )
   )
 
+;; definition for function adgif-shader-login-no-remap
 (defun adgif-shader-login-no-remap ((shader adgif-shader))
   "Set up an adgif shader with the texture-pool, so it points to the right vram adress.
    This does not do level tpage remapping, so the texture should be one that's not loaded in a combine level tpage."
@@ -2178,6 +2288,7 @@
     )
   )
 
+;; definition for function adgif-shader-login-fast
 (defun adgif-shader-login-fast ((shader adgif-shader))
   "Set up an adgif shader with the texture-pool, so it points to the right vram address.
    Will remap through the level table, so can be used to refer to textures inside 'squashed'
@@ -2210,6 +2321,7 @@
     )
   )
 
+;; definition for function adgif-shader-login-no-remap-fast
 (defun adgif-shader-login-no-remap-fast ((shader adgif-shader))
   "Set up an adgif shader with the texture-pool, so it points to the right vram address.
    Will not remap through the level tpage table.
@@ -2240,11 +2352,13 @@
     )
   )
 
+;; failed to figure out what this is:
 (when (not *debug-segment*)
   (set! adgif-shader-login adgif-shader-login-fast)
   (set! adgif-shader-login-no-remap adgif-shader-login-no-remap-fast)
   )
 
+;; definition for function adgif-shader<-texture-simple!
 (defun adgif-shader<-texture-simple! ((shader adgif-shader) (tex texture))
   "Simple adgif-shader to texture, just sets vram address and format stuff.
    Intended for use with fancy texture stuff that will later set the other regs."
@@ -2263,6 +2377,8 @@
   shader
   )
 
+;; definition for function set-dirty-mask!
+;; WARN: Return type mismatch int vs none.
 (defun set-dirty-mask! ((lev level) (mask-idx int) (m0 int) (m1 int))
   (let ((s4-0 (sar (+ m0 #x3fff) 14))
         (s5-0 (sar (+ m1 #x3fff) 14))
@@ -2291,6 +2407,7 @@
   (none)
   )
 
+;; definition (debug) for function texture-page-dir-inspect
 ;; WARN: Return type mismatch texture-page-dir vs none.
 (defun-debug texture-page-dir-inspect ((arg0 texture-page-dir) (arg1 symbol))
   (format #t "[~8x] ~A~%" arg0 (-> arg0 type))
@@ -2388,5 +2505,15 @@
   (none)
   )
 
+;; definition for method 3 of type texture-page-dir
+(defmethod inspect ((this texture-page-dir))
+  (texture-page-dir-inspect this #f)
+  this
+  )
 
+;; definition for symbol *texture-pool*, type texture-pool
 (define *texture-pool* (new 'global 'texture-pool))
+
+
+
+

@@ -110,6 +110,7 @@
 (define-extern kset-language (function language-enum int))
 (define-extern reset-graph (function int int int int none))
 (define-extern symbol->string (function symbol string))
+(define-extern loado (function string kheap object))
 
 (declare-type sql-result basic)
 (define-extern sql-query (function string sql-result))
@@ -3376,17 +3377,17 @@
 ;; +++vu1-user-h:tpage-category
 (defenum tpage-category
   :type int8
-  (tpage-cat0 0)
-  (tpage-cat1 1)
-  (tpage-cat2 2)
-  (tpage-cat3 3)
-  (tpage-cat4 4)
-  (tpage-cat5 5)
-  (tpage-cat6 6)
-  (tpage-cat7 7)
-  (tpage-cat8 8)
-  (sky 9)
-  (tpage-cat10 10)
+  (tc0 0) ;;
+  (tc1 1)
+  (tc2 2)
+  (tc3 3)
+  (tc4 4)
+  (warp 5)
+  (tc6 6)
+  (sprite 7)
+  (hud 8)
+  (tc9 9)
+  (tc10 10)
   )
 ;; ---vu1-user-h:tpage-category
 
@@ -6203,32 +6204,34 @@
    (common-page-mask         int32                                                               :offset-assert 180)
    (update-sprites-flag      symbol                                                              :offset-assert 184) ;; guessed by decompiler
    (update-flag              symbol                                                              :offset-assert 188) ;; guessed by decompiler
-   (texture-enable-user      uint64                                                              :offset-assert 192) ;; texture-enable-mask
-   (texture-enable-user-menu uint64                                                              :offset-assert 200) ;; texture-enable-mask
+   (texture-enable-user      texture-enable-mask                                                 :offset-assert 192) ;; texture-enable-mask
+   (texture-enable-user-menu texture-enable-mask                                                 :offset-assert 200) ;; texture-enable-mask
    (ids                      uint32                                                      128     :offset-assert 208) ;; guessed by decompiler
    )
   :method-count-assert 26
   :size-assert         #x2d0
   :flag-assert         #x1a000002d0
   (:methods
-    (new (symbol type) _type_) ;; 0
-    (initialize! (_type_) _type_) ;; 9
+    (new "Allocate and initialize a texture pool." (symbol type) _type_) ;; 0
+    (initialize! "Set up a texture-pool and do the initial division of VRAM." (_type_) _type_) ;; 9
     (print-usage (_type_) _type_) ;; 10
-    (setup-font-texture (_type_) none) ;; 11
-    (allocate-defaults (_type_) none) ;; 12
-    (login-level-textures (_type_ level int (pointer texture-id)) none) ;; 13
-    (add-level-tpage-dma (_type_ level tpage-category bucket-id) none) ;; 14
-    (allocate-vram-words! (_type_ int) int) ;; 15
-    (allocate-segment (_type_ texture-pool-segment int) texture-pool-segment) ;; 16
-    (unload-page (_type_ texture-page) none) ;; 17
-    (get-common-page-slot-by-id (_type_ int) int) ;; 18
-    (update-warp-and-hud (_type_) none) ;; 19
-    (update-sprites (_type_) none) ;; 20
-    (mark-hud-warp-sprite-dirty (_type_) none) ;; 21
-    (lay-out-sprite-tex (_type_) none) ;; 22
-    (lay-out-hud-tex (_type_) none) ;; 23
-    (lay-out-warp-tex (_type_) none) ;; 24
-    (clear-ids (_type_) none) ;; 25
+    (setup-font-texture "Set up the font texture. In normal use, the font texture is allocated, and currently uploaded to, the common segment.
+                         This function copies that to the unused upper 8-bits of the depth buffer, and sets up the font
+                         renderer to point to that address." (_type_) none) ;; 11
+    (allocate-defaults "Allocate the common segment and set up dynamic texture addresses" (_type_) none) ;; 12
+    (login-level-textures "Login all textures for the given level." (_type_ level int (pointer texture-id)) none) ;; 13
+    (add-level-tpage-dma "Set up DMA to upload all textures needed to draw this level on this frame." (_type_ level tpage-category bucket-id) none) ;; 14
+    (allocate-vram-words! "Increment the bump allocator to allocate vram, by words." (_type_ int) int) ;; 15
+    (allocate-segment "Allocate VRAM for a texture-pool-segment" (_type_ texture-pool-segment int) texture-pool-segment) ;; 16
+    (unload-page "Remove a page from the texture pool." (_type_ texture-page) none) ;; 17
+    (get-common-page-slot-by-id "Unsupported in jak 3, returns -1 always." (_type_ int) int) ;; 18
+    (update-warp-and-hud "Redo warp and hud textures with the current set of loaded levels." (_type_) none) ;; 19
+    (update-sprites "Redo sprite texture addresses with the current set of loaded levels." (_type_) none) ;; 20
+    (mark-hud-warp-sprite-dirty "Set update flags for hud/sprite/warp. Needed after level load or unload." (_type_) none) ;; 21
+    (lay-out-sprite-tex "Lay out VRAM addresses for sprite rendering, which is done in one pass for all levels." (_type_) none) ;; 22
+    (lay-out-hud-tex "Lay out VRAM addresses for HUD rendering, which is done all at one for all levels." (_type_) none) ;; 23
+    (lay-out-warp-tex "Lay out VRAM addresses for WARP texture rendering, and update adgifs to point to the new address." (_type_) none) ;; 24
+    (clear-ids "Reset all cached texture upload IDs. This must be done whenever a texture has its vram address changed." (_type_) none) ;; 25
     )
   )
 
@@ -6334,12 +6337,17 @@
   :size-assert         #x80
   :flag-assert         #xe00000080
   (:methods
-    (relocate (_type_ kheap (pointer uint8)) texture-page :replace) ;; 7
-    (remove-data-from-heap (_type_ kheap) _type_) ;; 9
-    (get-leftover-block-count (_type_ int int) int) ;; 10
-    (relocate-dests! (_type_ int int) none) ;; 11
-    (add-to-dma-buffer (_type_ dma-buffer tex-upload-mode) int) ;; 12
-    (upload-now! (_type_ tex-upload-mode) none) ;; 13
+    (relocate "Handle a texture page that has been loaded by the linker.
+               This must run in the linker, since we sometimes kick out textures from the loading heap, which
+               requires no more allocations made after the texture, and the only time is right after the linker
+               does the allocation for this GOAL object file."
+               (_type_ kheap (pointer uint8)) texture-page :replace) ;; 7
+    (remove-data-from-heap "Bump the kheap pointer to discard this texture data. All metadata is kept.
+                            This is only safe to use if the last thing on the kheap is this texture." (_type_ kheap) _type_) ;; 9
+    (get-leftover-block-count "Unused - statistics for how much unused memory we have" (_type_ int int) int) ;; 10
+    (relocate-dests! "Update the metadata of this texture so it points to a new vram address." (_type_ int int) none) ;; 11
+    (add-to-dma-buffer "Add upload DMA to a DMA buffer. Wrapper for upload-vram-data." (_type_ dma-buffer tex-upload-mode) int) ;; 12
+    (upload-now! "Upload a texture to VRAM immediately, wait for DMA to finish." (_type_ tex-upload-mode) none) ;; 13
     )
   )
 
@@ -6390,7 +6398,7 @@
    )
   (:methods
     (relocate (_type_ kheap (pointer uint8)) none :replace) ;; 7
-    (unlink-shaders-in-heap (_type_ kheap) int) ;; 9
+    (unlink-shaders-in-heap "Iterate through all adgifs, splicing out ones that are in the given heap." (_type_ kheap) int) ;; 9
     )
   :flag-assert #xa00000014
   )
@@ -6432,15 +6440,16 @@
    (reg-2      uint8              :offset 40)
    (reg-3      uint8              :offset 56)
    (reg-4      uint8              :offset 72)
-   (tex0       uint64             :offset 0) ;; gs-tex0
-   (tex1       uint64             :offset 16) ;; gs-tex1
-   (miptbp1    uint64             :offset 32) ;; gs-miptbp
-   (clamp      uint64             :offset 48) ;; gs-clamp
-   (clamp-reg  uint64             :offset 56) ;; gs-reg64
-   (alpha      uint64             :offset 64) ;; gs-alpha
+   (tex0       gs-tex0             :offset 0) ;;
+   (tex1       gs-tex1             :offset 16) ;;
+   (miptbp1    gs-miptbp             :offset 32) ;;
+   (clamp      gs-clamp             :offset 48) ;; gs-clamp
+   (clamp-reg  gs-reg64             :offset 56) ;;
+   (alpha      gs-alpha             :offset 64) ;;
    (link-test  link-test-flags    :offset 8) ;; guessed by decompiler
    (texture-id texture-id         :offset 24) ;; guessed by decompiler
    (next       shader-ptr         :offset 40) ;; guessed by decompiler
+   ;(alpha-as-miptb2 gs-miptbp :offset 64) ;; added!!
    )
   :method-count-assert 9
   :size-assert         #x50
@@ -7368,7 +7377,7 @@
    (loaded-texture-page       texture-page                           16      :offset-assert 236) ;; guessed by decompiler
    (loaded-texture-page-count int32                                          :offset-assert 300)
    (entity                    entity-links-array                             :offset-assert 304) ;; guessed by decompiler
-   (closest-object meters :offset-assert 308)
+   (closest-object meters 10 :offset-assert 308)
    ;; ???
    (upload-size               int32                                  20      :offset 388) ;; guessed by decompiler
    (inside-boxes?             basic                                          :offset-assert 468)
@@ -7464,7 +7473,7 @@
 (deftype level-group (basic)
   ((length            int32                :offset-assert 4)
    (unk-flag1 symbol)
-   (unk-flag2 symbol)
+   (loading-level level)
 
    (entity-link       entity-links         :offset 16)
    (border?           symbol               :offset-assert 20) ;; guessed by decompiler
@@ -10253,6 +10262,12 @@
 ;; memory-usage-h                 ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+(defenum mem-usage-id
+    :bitfield #f
+    :type uint32
+    (texture 83)
+    )
+
 (deftype memory-usage-info (structure)
   ((name  string  :offset-assert 0) ;; guessed by decompiler
    (count int32   :offset-assert 4)
@@ -11160,67 +11175,128 @@
 ;; texture                        ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
-(deftype texture-page-dir (basic)
-  ()
-  :method-count-assert 10
-  :size-assert         #x14
-  :flag-assert         #xa00000014
-  (:methods
-    (texture-page-dir-method-9 () none) ;; 9 ;; (unlink-shaders-in-heap (_type_ kheap) int)
-    )
-  )
-|#
+(define-extern texture-bpp "Get the bits-per-pixel in the given texture format" (function gs-psm int))
+(define-extern texture-qwc "Get the number of quadwords needed for a given texture size and format.
+                           Does not consider weird PS2 memory layout stuff."
+               (function int int gs-psm int))
+(define-extern physical-address "Strip off high 8-bits of a pointer, to bypass the uncached memory mappings.
+                                 This gives an address suitable for DMAing from main memory."
+               (function pointer pointer))
+(define-extern dma-buffer-add-ref-texture "Upload a texture, by reference. Doesn't copy the texture into the DMA buffer - just a reference,
+                                           so it is up to the user to make sure the texture is valid during DMA time.
+                                           Doesn't set up GIF for receiving textures."
+                                           (function dma-buffer pointer int int gs-psm none))
 
-;; (define-extern texture-bpp function) ;; (function gs-psm int)
-;; (define-extern texture-qwc function) ;; (function int int gs-psm int)
-;; (define-extern physical-address function) ;; (function pointer pointer)
-;; (define-extern dma-buffer-add-ref-texture function) ;; (function dma-buffer pointer int int gs-psm none)
-;; (define-extern gs-find-block function) ;; (function int int gs-psm int)
-;; (define-extern gs-page-width function) ;; (function gs-psm int)
-;; (define-extern gs-page-height function) ;; (function gs-psm int)
-;; (define-extern gs-block-width function) ;; (function gs-psm int)
-;; (define-extern gs-block-height function) ;; (function gs-psm int)
-;; (define-extern gs-largest-block function) ;; (function int int gs-psm int)
-;; (define-extern gs-blocks-used function) ;; (function int int gs-psm int)
-;; (define-extern texture-page-default-allocate function) ;; (function texture-pool texture-page kheap int texture-page)
-;; (define-extern texture-page-common-allocate function) ;; (function texture-pool texture-page kheap int texture-page)
-;; (define-extern texture-page-font-allocate function) ;; (function texture-pool texture-page kheap int texture-page)
-;; (define-extern texture-page-common-boot-allocate function) ;; (function texture-pool texture-page kheap int texture-page)
-;; (define-extern upload-vram-data function) ;; (function dma-buffer int pointer int int none)
-;; (define-extern upload-vram-pages function) ;; (function texture-pool texture-pool-segment texture-page tex-upload-mode bucket-id int)
-;; (define-extern update-vram-pages function) ;; (function texture-pool texture-pool-segment texture-page tex-upload-mode int)
-;; (define-extern upload-vram-pages-pris function) ;; (function texture-pool texture-pool-segment texture-page bucket-id (pointer int32) int)
-;; (define-extern texture-page-level-allocate function) ;; (function texture-pool texture-page kheap int texture-page)
-;; (define-extern texture-page-size-check function) ;; (function texture-pool level symbol int)
-;; (define-extern set-skull-gem-masks function) ;; (function none)
-;; (define-extern upload-textures function) ;; (function texture-pool none)
-;; (define-extern *txt-dma-list* object) ;; dma-buffer
-;; (define-extern texture-relocate function) ;; (function dma-buffer texture int gs-psm int dma-buffer)
-;; (define-extern relocate-later function) ;; (function symbol)
-;; (define-extern texture-page-login function) ;; (function texture-id (function texture-pool texture-page kheap int texture-page) kheap texture-page-dir-entry)
-;; (define-extern lookup-texture-by-id function) ;; (function texture-id texture)
-;; (define-extern lookup-texture-by-id-fast function) ;; (function texture-id texture)
-;; (define-extern lookup-texture-by-name function) ;; (function string string (pointer texture-page) texture)
-;; (define-extern lookup-texture-id-by-name function) ;; (function string string texture-id)
-;; (define-extern lookup-level-texture-by-name function) ;; (function string level (pointer texture-page) texture)
-;; (define-extern lookup-tex-id-from-texture function)
-;; (define-extern lookup-level-texture-id-by-name function)
-;; (define-extern *shader-list* object) ;; pair
-;; (define-extern *edit-shader* object) ;; texture-id
-;; (define-extern link-texture-by-id function) ;; (function texture-id adgif-shader texture-page-dir-entry)
-;; (define-extern adgif-shader<-texture! function) ;; (function adgif-shader texture adgif-shader)
-;; (define-extern adgif-shader-update! function) ;; (function adgif-shader texture none)
-;; (define-extern adgif-shader<-texture-with-update! function) ;; (function adgif-shader texture adgif-shader)
-;; (define-extern hack-texture function) ;; (function texture float)
-;; (define-extern adgif-shader-login function) ;; (function adgif-shader texture)
-;; (define-extern adgif-shader-login-no-remap function) ;; (function adgif-shader texture)
-;; (define-extern adgif-shader-login-fast function) ;; (function adgif-shader texture)
-;; (define-extern adgif-shader-login-no-remap-fast function) ;; (function adgif-shader texture)
-;; (define-extern adgif-shader<-texture-simple! function) ;; (function adgif-shader texture adgif-shader)
-;; (define-extern set-dirty-mask! function) ;; (function level int int int none)
-;; (define-extern texture-page-dir-inspect function) ;; (function texture-page-dir symbol none)
-;; (define-extern *texture-pool* object) ;; texture-pool
+(define-extern gs-find-block "Lookup offset of block in PS2's swizzled VRAM, as a block index."
+              (function int int gs-psm int))
+(define-extern gs-page-width "Get the width of a page, in pixels, for the given texture format."
+               (function gs-psm int))
+(define-extern gs-page-height "Get the height of a page, in pixels, for the given texture format."
+               (function gs-psm int))
+(define-extern gs-block-width "Get the width of a block, in pixels, for the texture format."
+               (function gs-psm int))
+(define-extern gs-block-height "Get the height of a block, in pixels, for the texture format." (function gs-psm int))
+(define-extern gs-largest-block "Get the highest block index used by a texture." (function int int gs-psm int))
+(define-extern gs-blocks-used "Get the number of blocks used by a texture.
+                              If the texture isn't an even number of pages, the partially completed
+                              page will be counted as the largest used block.
+                              (gaps in this page are counted as used)"
+               (function int int gs-psm int))
+(define-extern texture-page-default-allocate
+               "Texture allocation function for textures that permanently live in VRAM.
+                The texture data is immediately uploaded, then discarded from the heap.
+                This should only be called during startup."
+               (function texture-pool texture-page kheap int texture-page))
+(define-extern texture-page-common-allocate
+               "Texture allocation function for textures that share the common segment.
+                The texture remains in RAM, and is uploaded to VRAM as needed as part
+                of the main drawing DMA chain."
+               (function texture-pool texture-page kheap int texture-page))
+(define-extern texture-page-font-allocate
+               "Texture allocation function for font. This temporarily stores them in the common segment,
+                removes them from RAM. This is a bit of hack. Later font setup code expects the font texture
+                to be in common, and they will eventually be moved into the upper 8-bits of the depth buffer."
+               (function texture-pool texture-page kheap int texture-page))
+(define-extern texture-page-common-boot-allocate
+               "Allocator function for texture loaded at startup time.
+                For jak 3, this seems to always do default-allocate (permanently in vram?)"
+                (function texture-pool texture-page kheap int texture-page))
+(define-extern upload-vram-data "Add DMA to later upload a texture, by reference. Sets up the GIF for receiving the texture."
+                (function dma-buffer int pointer int int none))
+(define-extern upload-vram-pages "Add DMA to upload a texture page. Will only upload the portion of data that is not already present in VRAM.
+                                  This is the old Jak 1 background texture uploading system, which had this near/far concept
+                                  for different mip levels. By jak 2, the background system switched to masks and uses
+                                  the -pris variant of this function."
+                (function texture-pool texture-pool-segment texture-page tex-upload-mode bucket-id int))
+(define-extern update-vram-pages
+               "Likely a debug function for checking the logic of upload-vram-pages. Unused"
+               (function texture-pool texture-pool-segment texture-page tex-upload-mode int))
+(define-extern upload-vram-pages-pris
+               "Similar to upload-vram-pages, but skips the near/far mode and instead uses masks.
+                The foreground/background renderers will generate masks telling us which textures are used.
+                This lets us skip uploading entire textures, or mip levels that won't need.
+                (side note: this optimization is what causes many of the texturing issues in pcsx2,
+                where the ps2 and pcsx2 disagree on the mip level to use.)"
+                (function texture-pool texture-pool-segment texture-page bucket-id (pointer int32) int))
+(define-extern texture-page-level-allocate
+               "Allocation function for level textures."
+               (function texture-pool texture-page kheap int texture-page))
+(define-extern texture-page-size-check "Check the size of level textures." (function texture-pool level symbol int))
+(define-extern set-skull-gem-masks "Turn on masks for skull gem textures, so they will be uploaded." (function none))
+(define-extern upload-textures "Set up DMA for all texture uploads for this frame." (function texture-pool none))
+(define-extern *txt-dma-list* dma-buffer)
+(define-extern texture-relocate "Move a texture in VRAM." (function dma-buffer texture int gs-psm int dma-buffer))
+(define-extern relocate-later
+               "Unused in jak 2 and likely unsed in jak 3. Feature to postpone some texture copying until
+               a later frame. This is only used in cases when texture data must be memcpy'd in RAM, to patch up a hole left
+               by some data that is now permanently in VRAM, and no longer needed.
+               Note that Jak2/Jak3 don't have this problem since level textures are now never permanent"
+               (function symbol))
+(define-extern texture-page-login
+               "'Login' (initialize) a texture page with the pool.
+                This has a trick - it doesn't actually require you to pass a texture-page object - instead you pass an ID.
+                If the texture was loaded at all, it will already be known to the texture pool, and this function will do nothing.
+                However, if the texture is not present, it will be loaded through a call to `loado`, for use in development."
+                (function texture-id (function texture-pool texture-page kheap int texture-page) kheap texture-page-dir-entry))
+(define-extern lookup-texture-by-id "Get a texture by ID, loading it if needed (for debugging only)." (function texture-id texture))
+(define-extern lookup-texture-by-id-fast "Get a texture by ID. #f if it does not exist." (function texture-id texture))
+(define-extern lookup-texture-by-name "Get a loaded texture by name. Slow." (function string string (pointer texture-page) texture))
+(define-extern lookup-texture-id-by-name "Get the ID of a loaded texture by name. Slow." (function string string texture-id))
+(define-extern lookup-level-texture-by-name "Get a texture from a given level, by name." (function string level (pointer texture-page) texture))
+(define-extern lookup-tex-id-from-texture "Get the texture ID of a given texture. Slow." (function texture texture-id))
+(define-extern lookup-level-texture-id-by-name "Get the texture ID of a given texture in a level. Slow." (function string level int texture-id))
+(define-extern *shader-list* pair) ;;
+(define-extern *edit-shader* texture-id) ;;
+(define-extern link-texture-by-id
+               "Add this adgif shader to the linked list of shaders associated with the given texture ID.
+                Will allocate the link array if it's not already."
+               (function texture-id adgif-shader texture-page-dir-entry))
+ (define-extern adgif-shader<-texture! (function adgif-shader texture adgif-shader))
+(define-extern adgif-shader-update! "Update k based on uv-dist" (function adgif-shader texture none))
+(define-extern adgif-shader<-texture-with-update! (function adgif-shader texture adgif-shader))
+(define-extern hack-texture "adjust some values of a texture, likely for debug." (function texture float))
+(define-extern adgif-shader-login "set up an adgif shader with the texture-pool, so it points to the right vram address.
+                                   Will remap textures through the level remap table.
+                                   If texture is missing, will load it on debug hardware." (function adgif-shader texture))
+ (define-extern adgif-shader-login-no-remap
+                "Set up an adgif shader with the texture-pool, so it points to the right vram adress.
+                 This does not do level tpage remapping, so the texture should be one that's not loaded in a combine level tpage."
+                 (function adgif-shader texture))
+ (define-extern adgif-shader-login-fast
+                "Set up an adgif shader with the texture-pool, so it points to the right vram address.
+                 Will remap through the level table, so can be used to refer to textures inside 'squashed'
+                 level tpages.
+                 Will not load texture if it is missing." (function adgif-shader texture))
+(define-extern adgif-shader-login-no-remap-fast
+                "Set up an adgif shader with the texture-pool, so it points to the right vram address.
+                 Will not remap through the level tpage table.
+                 Will not load texture if it is missing." (function adgif-shader texture))
+(define-extern adgif-shader<-texture-simple! "Simple adgif-shader to texture, just sets vram address and format stuff.
+                                              Intended for use with fancy texture stuff that will later set the other regs."
+                                              (function adgif-shader texture adgif-shader))
+(define-extern set-dirty-mask! (function level int int int none))
+(define-extern texture-page-dir-inspect (function texture-page-dir symbol none))
+(define-extern *texture-pool* texture-pool)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; main-h                         ;;
@@ -26061,7 +26137,7 @@
 ;; (define-extern *test-shrub* object) ;; int
 ;; (define-extern bsp-camera-asm function) ;; (function bsp-header vector none)
 ;; (define-extern print-collide-stats function) ;; (function none)
-;; (define-extern level-remap-texture function) ;; (function texture-id texture-id)
+(define-extern level-remap-texture (function texture-id texture-id))
 ;; (define-extern build-masks function) ;; (function bsp-header none)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -27036,7 +27112,7 @@
 ;; (define-extern texture-anim-draw-mip-shader function)
 ;; (define-extern clear-texture-ids function)
 ;; (define-extern texture-anim-draw-mips function)
-;; (define-extern update-texture-anim function) ;; (function bucket-id texture-anim-array none)
+(define-extern update-texture-anim (function bucket-id texture-anim-array none))
 ;; (define-extern no-alpha-texture-anim-layer-func function) ;; (function dma-buffer uint int int texture-anim-layer float int)
 ;; (define-extern copy-alpha-texture-anim-layer-func function) ;; (function dma-buffer uint int int texture-anim-layer float int)
 ;; (define-extern copy-clut-alpha-texture-anim-layer-func function) ;; (function dma-buffer uint int int texture-anim-layer float int)
@@ -27085,7 +27161,7 @@
 ;; (define-extern set-darkjak-texture-morph! function) ;; (function float none)
 ;; (define-extern *darkjak-highres-texture-anim-array* texture-anim-array)
 ;; (define-extern set-darkjak-highres-texture-morph! function) ;; (function float symbol)
-;; (define-extern *skull-gem-texture-anim-array* texture-anim-array) ;; (texture-anim-array texture-anim)
+(define-extern *skull-gem-texture-anim-array* (texture-anim-array texture-anim))
 ;; (define-extern *default-water-texture-anim-array* texture-anim-array)
 ;; (define-extern *default-warp-texture-anim-array* texture-anim-array)
 
@@ -27093,7 +27169,7 @@
 ;; blit-displays                  ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (define-extern *blit-displays-work* object) ;; blit-displays-work
+(define-extern *blit-displays-work* blit-displays-work)
 ;; (define-extern draw-color-bars function) ;; (function none)
 ;; (define-extern draw-raw-image function) ;; (function bucket-id art-group int int level int none)
 
@@ -35400,7 +35476,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ;; (define-extern *bigmap-info-array* object) ;; bigmap-info-array
-;; (define-extern *bigmap* object) ;; bigmap
+(define-extern *bigmap* bigmap)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; eye                            ;;
