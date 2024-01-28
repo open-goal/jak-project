@@ -1,0 +1,189 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; definition of type pris-mtx
+(deftype pris-mtx (structure)
+  "Matrix for merc rendering. Named after the earlier 'pris' renderer.
+Contains a transformation matrix for vertices, one for normals, and a scale.
+This matrix is likely not used by generic VU1, but is used by the merc -> generic converter."
+  ((data    float    32)
+   (vector  vector   8       :overlay-at (-> data 0))
+   (t-mtx   matrix   :inline :overlay-at (-> data 0))
+   (n-mtx   matrix3  :inline :overlay-at (-> data 16))
+   (scale   vector   :inline :overlay-at (-> data 28))
+   )
+  )
+
+;; definition for method 3 of type pris-mtx
+(defmethod inspect ((this pris-mtx))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this 'pris-mtx)
+  (format #t "~1Tdata[32] @ #x~X~%" (-> this data))
+  (format #t "~1Tvector[8] @ #x~X~%" (-> this data))
+  (format #t "~1Tt-mtx: #<matrix @ #x~X>~%" (-> this data))
+  (format #t "~1Tn-mtx: #<matrix3 @ #x~X>~%" (-> this n-mtx))
+  (format #t "~1Tscale: #<vector @ #x~X>~%" (-> this scale))
+  (label cfg-4)
+  this
+  )
+
+;; definition of type generic-pris-mtx-save
+(deftype generic-pris-mtx-save (structure)
+  ((loc-mtx  pris-mtx  :inline)
+   (par-mtx  pris-mtx  :inline)
+   (dif-mtx  pris-mtx  :inline)
+   )
+  )
+
+;; definition for method 3 of type generic-pris-mtx-save
+(defmethod inspect ((this generic-pris-mtx-save))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this 'generic-pris-mtx-save)
+  (format #t "~1Tloc-mtx: #<pris-mtx @ #x~X>~%" (-> this loc-mtx))
+  (format #t "~1Tpar-mtx: #<pris-mtx @ #x~X>~%" (-> this par-mtx))
+  (format #t "~1Tdif-mtx: #<pris-mtx @ #x~X>~%" (-> this dif-mtx))
+  (label cfg-4)
+  this
+  )
+
+;; definition of type generic-constants
+(deftype generic-constants (structure)
+  "Constant data sent to VU1 for generic rendering."
+  ((fog          vector      :inline)
+   (adgif        gs-gif-tag  :inline)
+   (hvdf-offset  vector      :inline)
+   (hmge-scale   vector      :inline)
+   (invh-scale   vector      :inline)
+   (guard        vector      :inline)
+   (flush        qword       :inline)
+   (stores       qword       :inline)
+   )
+  )
+
+;; definition for method 3 of type generic-constants
+(defmethod inspect ((this generic-constants))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this 'generic-constants)
+  (format #t "~1Tfog: #<vector @ #x~X>~%" (-> this fog))
+  (format #t "~1Tadgif: #<qword @ #x~X>~%" (-> this adgif))
+  (format #t "~1Thvdf-offset: #<vector @ #x~X>~%" (-> this hvdf-offset))
+  (format #t "~1Thmge-scale: #<vector @ #x~X>~%" (-> this hmge-scale))
+  (format #t "~1Tinvh-scale: #<vector @ #x~X>~%" (-> this invh-scale))
+  (format #t "~1Tguard: #<vector @ #x~X>~%" (-> this guard))
+  (format #t "~1Tflush: #<qword @ #x~X>~%" (-> this flush))
+  (format #t "~1Tstores: #<qword @ #x~X>~%" (-> this stores))
+  (label cfg-4)
+  this
+  )
+
+;; definition of type generic-shrub-constants
+(deftype generic-shrub-constants (structure)
+  ((shrub-giftag  generic-gif-tag  :inline)
+   (shrub-adnop   qword            :inline)
+   )
+  )
+
+;; definition for method 3 of type generic-shrub-constants
+(defmethod inspect ((this generic-shrub-constants))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this 'generic-shrub-constants)
+  (format #t "~1Tshrub-giftag: #<generic-gif-tag @ #x~X>~%" (-> this shrub-giftag))
+  (format #t "~1Tshrub-adnop: #<qword @ #x~X>~%" (-> this shrub-adnop))
+  (label cfg-4)
+  this
+  )
+
+;; definition of type gcf-shader
+(deftype gcf-shader (structure)
+  ((adgif   uint128       5)
+   (shader  adgif-shader  :inline :overlay-at (-> adgif 0))
+   (pos     uint32                :offset  12)
+   (num     uint32                :offset  28)
+   )
+  )
+
+;; definition for method 3 of type gcf-shader
+(defmethod inspect ((this gcf-shader))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this 'gcf-shader)
+  (format #t "~1Tadgif[5] @ #x~X~%" (-> this adgif))
+  (format #t "~1Tshader: #<adgif-shader @ #x~X>~%" (-> this adgif))
+  (format #t "~1Tpos: ~D~%" (-> this pos))
+  (format #t "~1Tnum: ~D~%" (-> this num))
+  (label cfg-4)
+  this
+  )
+
+;; definition of type gcf-control
+(deftype gcf-control (structure)
+  ((matrix       matrix           :inline)
+   (giftag       generic-gif-tag  :inline)
+   (adnops       gs-adcmd         2 :inline)
+   (num-strips   uint32           :overlay-at (-> giftag data 3))
+   (num-dps      uint32           :overlay-at (-> adnops 0 word 3))
+   (kick-offset  uint32           :offset 108)
+   (shader       gcf-shader       :dynamic)
+   )
+  )
+
+;; definition for method 3 of type gcf-control
+(defmethod inspect ((this gcf-control))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this 'gcf-control)
+  (format #t "~1Tmatrix: #<matrix @ #x~X>~%" (-> this matrix))
+  (format #t "~1Tgiftag: #<generic-gif-tag @ #x~X>~%" (-> this giftag))
+  (format #t "~1Tadnops[2] @ #x~X~%" (-> this adnops))
+  (format #t "~1Tnum-strips: ~D~%" (-> this giftag num-strips))
+  (format #t "~1Tnum-dps: ~D~%" (-> this num-dps))
+  (format #t "~1Tkick-offset: ~D~%" (-> this kick-offset))
+  (format #t "~1Tshader[0] @ #x~X~%" (-> this shader))
+  (label cfg-4)
+  this
+  )
+
+;; definition of type gcf-vertex
+(deftype gcf-vertex (structure)
+  ((tex  vector4w        :inline)
+   (clr  gs-packed-rgba  :inline)
+   (pos  gs-packed-xyzw  :inline)
+   )
+  )
+
+;; definition for method 3 of type gcf-vertex
+(defmethod inspect ((this gcf-vertex))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this 'gcf-vertex)
+  (format #t "~1Ttex: #<vector4w @ #x~X>~%" (-> this tex))
+  (format #t "~1Tclr: #<gs-packed-rgba @ #x~X>~%" (-> this clr))
+  (format #t "~1Tpos: #<gs-packed-xyzw @ #x~X>~%" (-> this pos))
+  (label cfg-4)
+  this
+  )
+
+;; failed to figure out what this is:
+0
+
+
+
+
