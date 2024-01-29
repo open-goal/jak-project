@@ -314,6 +314,10 @@ Config make_config_via_json(nlohmann::json& json) {
   config.import_deps_by_file =
       import_deps.get<std::unordered_map<std::string, std::vector<std::string>>>();
 
+  if (json.contains("rip_collision")) {
+    config.rip_collision = json.at("rip_collision").get<bool>();
+  }
+
   config.write_patches = json.at("write_patches").get<bool>();
   config.apply_patches = json.at("apply_patches").get<bool>();
   const auto& object_patches = json.at("object_patches");

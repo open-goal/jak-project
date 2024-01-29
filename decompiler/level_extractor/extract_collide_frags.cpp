@@ -233,8 +233,7 @@ void extract_collide_frags(const level_tools::DrawableTreeCollideFragment* tree,
                            const std::vector<const level_tools::DrawableTreeInstanceTie*>& ties,
                            const Config& config,
                            const std::string& debug_name,
-                           tfrag3::Level& out,
-                           bool dump_level) {
+                           tfrag3::Level& out) {
   // in-game, the broad-phase collision builds a list of fragments, then unpacks them with:
   /*
    *(dotimes (i (-> *collide-list* num-items))
@@ -260,7 +259,7 @@ void extract_collide_frags(const level_tools::DrawableTreeCollideFragment* tree,
     total_faces += frag.unpacked.faces.size();
   }
 
-  if (dump_level) {
+  if (config.rip_collision) {
     auto debug_out = debug_dump_to_obj(all_frags);
     auto file_path = file_util::get_file_path(
         {fmt::format("debug_out/{}", config.game_name), fmt::format("collide-{}.obj", debug_name)});
@@ -442,8 +441,7 @@ void extract_collide_frags(const level_tools::CollideHash& chash,
                            const Config& config,
                            const std::string& debug_name,
                            const decompiler::DecompilerTypeSystem& dts,
-                           tfrag3::Level& out,
-                           bool dump_level) {
+                           tfrag3::Level& out) {
   // We need to find all collide-hash-fragments, but we can't just scan through the entire file.
   // for collide-hash-fragments, we need to figure out which TIEs they belong to, to apply the
   // instance transformation matrix.
@@ -507,7 +505,7 @@ void extract_collide_frags(const level_tools::CollideHash& chash,
     }
   }
 
-  if (dump_level) {
+  if (config.rip_collision) {
     // out.collision.vertices every 3 vertices make a face, so it duplicates vertices in many cases
     // for now debug_dump_to_obj isn't smart and doesn't hash these to save space or anything
     auto debug_out = debug_dump_to_obj(out.collision.vertices);

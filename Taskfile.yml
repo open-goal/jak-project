@@ -90,7 +90,6 @@ tasks:
       - cmd: python ./scripts/cpp/format-includes.py
       - cmd: python ./third-party/run-clang-format/run-clang-format.py -r common decompiler game goalc test tools lsp -i
       - task: format-json
-
   # DECOMPILING
   decomp:
     cmds:
@@ -115,6 +114,16 @@ tasks:
       - task: decomp-file
       - python ./scripts/gsrc/update-from-decomp.py --game "{{.GAME}}" --file {{.FILE}}
       - task: lint-gsrc-file
+  # ASSET RIPPING
+  rip-textures:
+    cmds:
+      - "{{.DECOMP_BIN_RELEASE_DIR}}/decompiler \"./decompiler/config/{{.DECOMP_CONFIG}}\" \"./iso_data\" \"./decompiler_out\" --version \"{{.DECOMP_CONFIG_VERSION}}\" --config-override '{\"decompile_code\": false, \"levels_extract\": true, \"save_texture_pngs\": true}'"
+  rip-levels:
+    cmds:
+      - "{{.DECOMP_BIN_RELEASE_DIR}}/decompiler \"./decompiler/config/{{.DECOMP_CONFIG}}\" \"./iso_data\" \"./decompiler_out\" --version \"{{.DECOMP_CONFIG_VERSION}}\" --config-override '{\"decompile_code\": false, \"levels_extract\": true, \"rip_levels\": true}'"
+  rip-collision:
+    cmds:
+      - "{{.DECOMP_BIN_RELEASE_DIR}}/decompiler \"./decompiler/config/{{.DECOMP_CONFIG}}\" \"./iso_data\" \"./decompiler_out\" --version \"{{.DECOMP_CONFIG_VERSION}}\" --config-override '{\"decompile_code\": false, \"levels_extract\": true, \"extract_collision\": true, \"rip_collision\": true}'"
   # TOOLS
   analyze-ee-memory:
     cmds:
