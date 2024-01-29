@@ -5,5 +5,135 @@
 ;; name in dgo: memcard-h
 ;; dgos: GAME
 
+;; +++mc-status-code
+(defenum mc-status-code
+  :type uint32
+  (busy 0)
+  (ok 1)
+  (bad-handle 2)
+  (format-failed 3)
+  (internal-error 4)
+  (write-error 5)
+  (read-error 6)
+  (new-game 7)
+  (no-memory 8)
+  (no-card 9)
+  (no-last 10)
+  (no-format 11)
+  (no-file 12)
+  (no-save 13)
+  (no-space 14)
+  (bad-version 15)
+  (no-process 16)
+  (no-auto-save 17)
+  )
+;; ---mc-status-code
+
+
 ;; DECOMP BEGINS
 
+(deftype mc-handle (int32)
+  ()
+  )
+
+(deftype mc-file-info (structure)
+  "Data stored in a save file."
+  ((present                int32)
+   (blind-data             float   16)
+   (blind-data-int8        int8    64 :overlay-at (-> blind-data 0))
+   (level-index            int32      :overlay-at (-> blind-data 0))
+   (gem-count              float      :overlay-at (-> blind-data 1))
+   (skill-count            float      :overlay-at (-> blind-data 2))
+   (completion-percentage  float      :overlay-at (-> blind-data 3))
+   (minute                 uint8      :overlay-at (-> blind-data 5))
+   (hour                   uint8      :overlay-at (-> blind-data-int8 21))
+   (week                   uint8      :overlay-at (-> blind-data-int8 22))
+   (day                    uint8      :overlay-at (-> blind-data-int8 23))
+   (month                  uint8      :overlay-at (-> blind-data 6))
+   (year                   uint8      :overlay-at (-> blind-data-int8 25))
+   (language               uint8      :overlay-at (-> blind-data-int8 26))
+   (game-time0             uint32     :overlay-at (-> blind-data 8))
+   (game-time1             uint32     :overlay-at (-> blind-data 9))
+   (purchase-secrets       uint32     :overlay-at (-> blind-data 10))
+   (secrets                uint32     :overlay-at (-> blind-data 12))
+   (features               uint32     :overlay-at (-> blind-data 14))
+   )
+  :pack-me
+  )
+
+
+(deftype mc-slot-info (structure)
+  "Data about a memory card slot."
+  ((handle        mc-handle)
+   (known         int32)
+   (formatted     int32)
+   (inited        int32)
+   (last-file     int32)
+   (mem-required  int32)
+   (mem-actual    int32)
+   (file          mc-file-info  4 :inline)
+   )
+  :pack-me
+  )
+
+
+(defun mc-sync ()
+  "Synchronize the memory card state."
+  (let ((v0-0 0))
+    (while (zero? v0-0)
+      (mc-run)
+      (set! v0-0 (the-as int (mc-check-result)))
+      )
+    v0-0
+    )
+  )
+
+(defun show-mc-info ((buf dma-buffer))
+  "Display the memory card debug text."
+  (let ((slot (new 'stack-no-clear 'mc-slot-info)))
+    (dotimes (slot-idx 2)
+      (mc-get-slot-info slot-idx slot)
+      (cond
+        ((zero? (-> slot known))
+         (format (clear *temp-string*) "SLOT ~D: EXAMINING SLOT~%" slot-idx)
+         *temp-string*
+         )
+        ((zero? (-> slot handle))
+         (format (clear *temp-string*) "SLOT ~D: NO CARD~%" slot-idx)
+         *temp-string*
+         )
+        ((zero? (-> slot formatted))
+         (format (clear *temp-string*) "SLOT ~D: CARD [~D] : NOT FORMATTED~%" slot-idx (-> slot handle))
+         *temp-string*
+         )
+        ((zero? (-> slot inited))
+         (format
+           (clear *temp-string*)
+           "SLOT ~D: CARD [~D] : NO FILE [~D/~D]~%"
+           slot-idx
+           (-> slot handle)
+           (-> slot mem-required)
+           (-> slot mem-actual)
+           )
+         *temp-string*
+         )
+        (else
+          (format (clear *temp-string*) "SLOT ~D: CARD [~D] : " slot-idx (-> slot handle))
+          *temp-string*
+          (format
+            *temp-string*
+            "SAVES ~D ~D ~D ~D : LAST ~D~%"
+            (-> slot file 0 present)
+            (-> slot file 1 present)
+            (-> slot file 2 present)
+            (-> slot file 3 present)
+            (-> slot last-file)
+            )
+          )
+        )
+      (draw-string-xy *temp-string* buf 32 (+ (* 12 slot-idx) 8) (font-color red) (font-flags shadow))
+      )
+    )
+  0
+  (none)
+  )
