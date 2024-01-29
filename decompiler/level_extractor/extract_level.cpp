@@ -230,7 +230,8 @@ level_tools::BspHeader extract_bsp_from_level(const ObjectFileDB& db,
       ASSERT(as_shrub_tree);
       extract_shrub(as_shrub_tree, fmt::format("{}-{}-shrub", dgo_name, i++),
                     bsp_header.texture_remap_table, tex_db, {}, level_data, false, db.version());
-    } else if (draw_tree->my_type() == "drawable-tree-collide-fragment" && config.extract_collision) {
+    } else if (draw_tree->my_type() == "drawable-tree-collide-fragment" &&
+               config.extract_collision) {
       auto as_collide_frags =
           dynamic_cast<level_tools::DrawableTreeCollideFragment*>(draw_tree.get());
       ASSERT(as_collide_frags);
@@ -345,8 +346,7 @@ void extract_from_level(const ObjectFileDB& db,
   add_all_textures_from_level(level_data, dgo_name, tex_db);
 
   // the bsp header file data
-  auto bsp_header =
-      extract_bsp_from_level(db, tex_db, dgo_name, config, level_data);
+  auto bsp_header = extract_bsp_from_level(db, tex_db, dgo_name, config, level_data);
   extract_art_groups_from_level(db, tex_db, bsp_header.texture_remap_table, dgo_name, level_data,
                                 art_group_data);
 
@@ -389,8 +389,7 @@ void extract_all_levels(const ObjectFileDB& db,
   SimpleThreadGroup threads;
   threads.run(
       [&](int idx) {
-        extract_from_level(db, tex_db, dgo_names[idx], config,
-                           output_path, entities_dir);
+        extract_from_level(db, tex_db, dgo_names[idx], config, output_path, entities_dir);
       },
       dgo_names.size());
   threads.join();
