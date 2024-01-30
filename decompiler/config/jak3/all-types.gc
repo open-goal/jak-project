@@ -11308,18 +11308,38 @@
 (defenum collide-spec
   :bitfield #t
   :type uint32
-  (cs0 0)
-  (cs1 1)
-  (cs2 2)
-  (cs3 3)
-  (cs4 4)
-  (cs5 5)
-  (cs6 6)
-  (cs7 7)
-  (cs8 8)
-  (cs9 9)
-  (cs10 10)
-  (cs11 11)
+  (backgnd 0)
+  (jak 1)
+  (bot 2)
+  (crate 3)
+  (civilian 4)
+  (enemy 5)
+  (obstacle 6)
+  (vehicle-sphere 7)
+  (hit-by-player-list 8)
+  (hit-by-others-list 9)
+  (player-list 10)
+  (water 11)
+  (collectable 12)
+  (blocking-plane 13)
+  (projectile 14)
+  (jak-vulnerable 15)
+  (camera-blocker 16)
+  (los-blocker 17)
+  (notice-blue-eco-powerup 18)
+  (tobot 19)
+  (pusher 20)
+  (vehicle-mesh 21)
+  (bot-targetable 22)
+  (jak-vehicle 23)
+  (special-obstacle 24)
+  (mech-punch 25)
+  (obstacle-for-jak 26)
+  (vehicle-mesh-probeable 27)
+  (impenetrable-obj 28)
+  (shield 29)
+  (vehicle-mesh-no-block-use 30)
+  (vehicle-sphere-no-probe 31)
   )
 ;; ---main-h:collide-spec
 
@@ -14642,30 +14662,25 @@
 ;; generic-merc-h                 ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype merc-matrix (structure)
   ((quad   uint128 8 :offset-assert 0) ;; guessed by decompiler
-   (vector vector  8 :offset-assert 0) ;; guessed by decompiler
-   (tag    uint64    :offset-assert 0)
+   (vector vector  8 :inline :offset 0 :score 1) ;; guessed by decompiler
+   (tag    uint64    :offset 0)
    )
   :method-count-assert 9
   :size-assert         #x80
   :flag-assert         #x900000080
   )
-|#
 
-#|
 (deftype generic-merc-tag (dma-packet)
-  ((next-ptr uint32  :offset-assert 12)
-   (size     uint32  :offset-assert 8)
+  ((next-ptr uint32  :offset 12)
+   (size     uint32  :offset 8)
    )
   :method-count-assert 9
   :size-assert         #x10
   :flag-assert         #x900000010
   )
-|#
 
-#|
 (deftype generic-merc-ctrl (structure)
   ((tag    generic-merc-tag :inline :offset-assert 0)
    (lights vu-lights        :inline :offset-assert 16)
@@ -14676,9 +14691,7 @@
   :size-assert         #x120
   :flag-assert         #x900000120
   )
-|#
 
-#|
 (deftype generic-merc-ctrl-with-sfx (generic-merc-ctrl)
   ((sfx-data uint128 11 :offset-assert 288) ;; guessed by decompiler
    )
@@ -14686,14 +14699,12 @@
   :size-assert         #x1d0
   :flag-assert         #x9000001d0
   )
-|#
 
-#|
 (deftype generic-merc-input (structure)
   ((geo-tag     generic-merc-tag           :inline :offset-assert 0)
    (geo-block   uint8                      1296    :offset-assert 16) ;; guessed by decompiler
-   (byte-header merc-byte-header           :inline :offset-assert 16)
-   (matrix      merc-matrix                9       :offset-assert 1312) ;; guessed by decompiler
+   (byte-header merc-byte-header           :inline :offset 16)
+   (matrix      merc-matrix                9 :inline :offset-assert 1312) ;; guessed by decompiler
    (control     generic-merc-ctrl-with-sfx :inline :offset-assert 2464)
    (end-tag     generic-merc-tag           :inline :offset-assert 2928)
    (shader      adgif-shader               :inline :offset-assert 2944)
@@ -14702,24 +14713,20 @@
   :size-assert         #xbd0
   :flag-assert         #x900000bd0
   )
-|#
 
-#|
 (deftype generic-merc-output (structure)
   ((info             gsf-info   :inline :offset-assert 0)
    (header           gsf-header :inline :offset-assert 16)
    (index-kick-table uint16     80      :offset-assert 32) ;; guessed by decompiler
-   (index-table      uint8      160     :offset-assert 32) ;; guessed by decompiler
+   (index-table      uint8      160     :offset 32) ;; guessed by decompiler
    (inverse-table    uint8      256     :offset-assert 192) ;; guessed by decompiler
-   (vertex-table     gsf-vertex 72      :offset-assert 448) ;; guessed by decompiler
+   (vertex-table     gsf-vertex 72 :inline :offset-assert 448) ;; guessed by decompiler
    )
   :method-count-assert 9
   :size-assert         #xac0
   :flag-assert         #x900000ac0
   )
-|#
 
-#|
 (deftype generic-merc-dcache (structure)
   ((output-a    generic-merc-output :inline :offset-assert 0)
    (output-b    generic-merc-output :inline :offset-assert 2752)
@@ -14732,9 +14739,7 @@
   :size-assert         #x2000
   :flag-assert         #x900002000
   )
-|#
 
-#|
 (deftype gm-shadow (structure)
   ((perspective                matrix              :inline :offset-assert 0)
    (isometric                  matrix              :inline :offset-assert 64)
@@ -14768,9 +14773,7 @@
   :size-assert         #x190
   :flag-assert         #x900000190
   )
-|#
 
-#|
 (deftype generic-merc-work (structure)
   ((input-a generic-merc-input         :inline :offset-assert 0)
    (input-b generic-merc-input         :inline :offset-assert 3024)
@@ -14782,8 +14785,6 @@
   :size-assert         #x1c00
   :flag-assert         #x900001c00
   )
-|#
-
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; generic-tie-h                  ;;
@@ -15020,19 +15021,16 @@
 ;; generic-work-h                 ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype generic-input-buffer (structure)
   ((data uint128           473     :offset-assert 0) ;; guessed by decompiler
-   (merc generic-merc-work :inline :offset-assert 0)
-   (tie  generic-tie-work  :inline :offset-assert 0)
+   (merc generic-merc-work :inline :offset 0)
+   (tie  generic-tie-work  :inline :offset 0)
    )
   :method-count-assert 9
   :size-assert         #x1d90
   :flag-assert         #x900001d90
   )
-|#
 
-#|
 (deftype generic-debug (structure)
   ((locks      uint32 4  :offset-assert 0) ;; guessed by decompiler
    (timer      uint32 32 :offset-assert 16) ;; guessed by decompiler
@@ -15046,26 +15044,22 @@
   :size-assert         #x19c
   :flag-assert         #x90000019c
   )
-|#
 
-#|
 (deftype generic-vu1-header (structure)
   ((matrix  matrix          :inline :offset-assert 0)
    (strgif  generic-gif-tag :inline :offset-assert 64)
-   (adcmds  gs-adcmd        2       :offset-assert 80) ;; guessed by decompiler
-   (adnop1  gs-adcmd        :inline :offset-assert 80)
-   (adnop2  gs-adcmd        :inline :offset-assert 96)
-   (dps     uint16                  :offset-assert 92)
-   (kickoff uint16                  :offset-assert 108)
-   (strips  uint16                  :offset-assert 76)
+   (adcmds  gs-adcmd        2 :inline :offset-assert 80) ;; guessed by decompiler
+   (adnop1  gs-adcmd        :inline :offset 80)
+   (adnop2  gs-adcmd        :inline :offset 96)
+   (dps     uint16                  :offset 92)
+   (kickoff uint16                  :offset 108)
+   (strips  uint16                  :offset 76)
    )
   :method-count-assert 9
   :size-assert         #x70
   :flag-assert         #x900000070
   )
-|#
 
-#|
 (deftype generic-vu1-texbuf (structure)
   ((header generic-vu1-header :inline  :offset-assert 0)
    (shader uint32             :dynamic :offset-assert 112) ;; guessed by decompiler
@@ -15074,9 +15068,7 @@
   :size-assert         #x70
   :flag-assert         #x900000070
   )
-|#
 
-#|
 (deftype generic-texbuf (structure)
   ((tag    dma-packet         :inline  :offset-assert 0)
    (header generic-vu1-header :inline  :offset-assert 16)
@@ -15086,9 +15078,7 @@
   :size-assert         #x80
   :flag-assert         #x900000080
   )
-|#
 
-#|
 (deftype generic-effect-work (structure)
   ((consts   generic-consts  :inline :offset-assert 0)
    (storage  generic-storage :inline :offset-assert 432)
@@ -15099,9 +15089,7 @@
   :size-assert         #x420
   :flag-assert         #x900000420
   )
-|#
 
-#|
 (deftype generic-effect-buffer (structure)
   ((outbuf-0 uint8               3552    :offset-assert 0) ;; guessed by decompiler
    (work     generic-effect-work :inline :offset-assert 3552)
@@ -15111,9 +15099,7 @@
   :size-assert         #x1fe0
   :flag-assert         #x900001fe0
   )
-|#
 
-#|
 (deftype generic-work (structure)
   ((saves   generic-saves         :inline :offset-assert 0)
    (storage generic-storage       :inline :offset-assert 368)
@@ -15124,9 +15110,8 @@
   :size-assert         #x3fe0
   :flag-assert         #x900003fe0
   )
-|#
 
-;; (define-extern *generic-debug* object) ;; generic-debug
+(define-extern *generic-debug* generic-debug)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; shadow-cpu-h                   ;;
@@ -17646,7 +17631,6 @@
   )
 ;; ---fact-h:actor-option
 
-(declare-type process-drawable process)
 (define-extern process-drawable-art-error (state string process-drawable))
 (deftype fact-info (basic)
   ((process             process       :offset-assert 4) ;; guessed by decompiler
@@ -17840,7 +17824,78 @@
 ;; penetrate-h                    ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (define-extern penetrate->string function)
+;; +++penetrate-h:penetrate
+(defenum penetrate
+  :type uint64
+  :bitfield #t
+  (touch 0)
+  (generic-attack 1)
+  (lunge 2)
+  (flop 3)
+  (punch 4)
+  (spin 5)
+  (roll 6)
+  (uppercut 7)
+  (bonk 8)
+  (tube 9)
+  (vehicle 10)
+  (flut-attack 11)
+  (board 12)
+  (mech 13)
+  (mech-punch 14)
+  (mech-bonk 15)
+  (dark-skin 16)
+  (dark-punch 17)
+  (dark-bomb 18)
+  (dark-smack 19)
+  (flut 20)
+  (shield 21)
+  (explode 22)
+  (jak-yellow-shot 23)
+  (jak-red-shot 24)
+  (jak-blue-shot 25)
+  (jak-dark-shot 26)
+  (enemy-yellow-shot 27)
+  (enemy-dark-shot 28)
+  (eco-yellow 29)
+  (eco-red 30)
+  (eco-blue 31)
+  (eco-green 32)
+  (knocked 33)
+  (jak-red-shockwave 34)
+  (jak-dark-nuke 35)
+  (jak-dark-blackhole 36)
+  (emp-blast 37)
+  (penetrate-38 38)
+  (penetrate-39 39)
+  (penetrate-40 40)
+  (penetrate-41 41)
+  (penetrate-42 42)
+  (penetrate-43 43)
+  (penetrate-44 44)
+  (penetrate-45 45)
+  (penetrate-46 46)
+  (penetrate-47 47)
+  (penetrate-48 48)
+  (penetrate-49 49)
+  (penetrate-50 50)
+  (penetrate-51 51)
+  (penetrate-52 52)
+  (penetrate-53 53)
+  (penetrate-54 54)
+  (penetrate-55 55)
+  (penetrate-56 56)
+  (penetrate-57 57)
+  (penetrate-58 58)
+  (penetrate-59 59)
+  (penetrate-60 60)
+  (penetrate-61 61)
+  (penetrate-62 62)
+  (penetrate-63 63)
+  )
+;; ---penetrate-h:penetrate
+
+(define-extern penetrate->string (function penetrate none))
 ;; (define-extern penetrate-using->damage function) ;; (function penetrate int)
 ;; (define-extern penetrated-by-all&hit-points->penetrated-by function) ;; (function penetrate int penetrate)
 ;; (define-extern pu->knocked-type function) ;; (function penetrate knocked-type)
@@ -18947,9 +19002,9 @@
 ;; collide-mesh-h                 ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype collide-tri-result (structure)
-  ((vertex      vector      3       :offset-assert 0) ;; guessed by decompiler
+  "A triangle result of a collision."
+  ((vertex      vector      3 :inline :offset-assert 0) ;; guessed by decompiler
    (intersect   vector      :inline :offset-assert 48)
    (normal      vector      :inline :offset-assert 64)
    (pat         pat-surface         :offset-assert 80) ;; guessed by decompiler
@@ -18959,27 +19014,27 @@
   :size-assert         #x58
   :flag-assert         #x900000058
   )
-|#
 
-#|
 (deftype collide-mesh-tri (structure)
+  "A triangle for foreground collision meshes."
   ((vertex-index uint8       3 :offset-assert 0) ;; guessed by decompiler
    (unused       uint8         :offset-assert 3)
    (pat          pat-surface   :offset-assert 4) ;; guessed by decompiler
    )
+  :pack-me
   :method-count-assert 9
   :size-assert         #x8
   :flag-assert         #x900000008
   )
-|#
 
-#|
 (deftype collide-mesh (basic)
+  "A collision mesh for foreground objects,
+   bound to the joint specified by `joint-id`."
   ((joint-id    int32                   :offset-assert 4)
    (num-tris    uint32                  :offset-assert 8)
    (num-verts   uint32                  :offset-assert 12)
    (vertex-data (inline-array vector)   :offset-assert 16) ;; guessed by decompiler
-   (tris        collide-mesh-tri      1 :offset-assert 32) ;; guessed by decompiler
+   (tris        collide-mesh-tri      1 :inline :offset 32) ;; guessed by decompiler
    )
   :method-count-assert 16
   :size-assert         #x28
@@ -18994,23 +19049,21 @@
     (collide-mesh-method-15 () none) ;; 15 ;; (collide-mesh-math-2 (_type_ object object object) none)
     )
   )
-|#
 
-#|
 (deftype collide-mesh-cache-tri (structure)
-  ((vertex vector         3       :offset-assert 0) ;; guessed by decompiler
+  "A triangle stored in the foreground mesh collide cache."
+  ((vertex vector         3 :inline :offset-assert 0) ;; guessed by decompiler
    (normal vector         :inline :offset-assert 48)
    (bbox4w bounding-box4w :inline :offset-assert 64)
-   (pat    pat-surface            :offset-assert 60) ;; guessed by decompiler
+   (pat    pat-surface            :offset 60) ;; guessed by decompiler
    )
   :method-count-assert 9
   :size-assert         #x60
   :flag-assert         #x900000060
   )
-|#
 
-#|
 (deftype collide-mesh-cache-entry (structure)
+  "A foreground mesh collide cache entry."
   ((mat  matrix                 :inline  :offset-assert 0)
    (tris collide-mesh-cache-tri :dynamic :offset-assert 64) ;; guessed by decompiler
    )
@@ -19018,10 +19071,9 @@
   :size-assert         #x40
   :flag-assert         #x900000040
   )
-|#
 
-#|
 (deftype collide-mesh-cache (basic)
+  "A collide cache for foreground meshes."
   ((used-size uint32       :offset-assert 4)
    (max-size  uint32       :offset-assert 8)
    (id        uint32       :offset-assert 12)
@@ -19032,22 +19084,26 @@
   :flag-assert         #xd0000bb90
   (:methods
     (collide-mesh-cache-method-9 () none) ;; 9 ;; (populate-for-prim-mesh (_type_ collide-shape-prim-mesh) collide-mesh-cache-entry)
-    (collide-mesh-cache-method-10 () none) ;; 10 ;; (is-id? (_type_ int) symbol)
-    (collide-mesh-cache-method-11 () none) ;; 11 ;; (next-id! (_type_) uint)
+    (is-id? "Does this cache have the given ID?" (_type_ int) symbol) ;; 10
+    (next-id!
+      "Reset all used entries in the cache and increment the ID.
+       If the id is zero, set it to 1."
+      (_type_) uint) ;; 11
     (collide-mesh-cache-method-12 () none) ;; 12 ;; (allocate! (_type_ int) collide-mesh-cache-entry)
     )
   )
-|#
 
-;; (define-extern *collide-mesh-cache* object) ;; collide-mesh-cache
+(define-extern *collide-mesh-cache* collide-mesh-cache)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; collide-shape-h                ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
+(declare-type collide-shape-prim basic)
+
 (deftype collide-rider (structure)
-  ((rider-handle    uint64                     :offset-assert 0) ;; handle
+  "Something that rides a moving object."
+  ((rider-handle    handle                     :offset-assert 0) ;; handle
    (sticky-prim     collide-shape-prim         :offset-assert 8) ;; guessed by decompiler
    (prim-ry         float                      :offset-assert 12)
    (rider-local-pos vector             :inline :offset-assert 16)
@@ -19056,24 +19112,21 @@
   :size-assert         #x20
   :flag-assert         #x900000020
   )
-|#
 
-#|
 (deftype collide-rider-pool (basic)
+  "A pool containing all the riders of an object."
   ((alloc-count int32            :offset-assert 4)
-   (riders      collide-rider 20 :offset-assert 16) ;; guessed by decompiler
+   (riders      collide-rider 20 :inline :offset-assert 16) ;; guessed by decompiler
    )
   :method-count-assert 11
   :size-assert         #x290
   :flag-assert         #xb00000290
   (:methods
     (collide-rider-pool-method-9 () none) ;; 9 ;; (add-rider (_type_ handle) collide-rider)
-    (collide-rider-pool-method-10 () none) ;; 10 ;; (prepare (_type_) none)
+    (prepare (_type_) none) ;; 10
     )
   )
-|#
 
-#|
 (deftype pull-rider-info (structure)
   ((rider          collide-rider                :offset-assert 0)
    (rider-cshape   collide-shape-moving         :offset-assert 4) ;; guessed by decompiler
@@ -19084,9 +19137,45 @@
   :size-assert         #x20
   :flag-assert         #x900000020
   )
-|#
 
-#|
+;; +++collide-shape-h:overlaps-others-options
+(defenum overlaps-others-options
+  :type uint32
+  :bitfield #t
+  (oo0)
+  (oo1)
+  (oo2)
+  (oo3)
+  (oo4)
+  )
+;; ---collide-shape-h:overlaps-others-options
+
+;; +++collide-shape-h:collide-action
+(defenum collide-action
+  :bitfield #t
+  :type uint32
+  (solid                  0) ;; 1
+  (semi-solid             1) ;; 2
+  (rideable               2) ;; 4
+  (can-ride               3) ;; 8
+  (dont-push-away         4) ;; 16
+  (pull-rider-can-collide 5) ;; 32
+  (deadly                 6) ;; 64
+  (persistent-attack      7) ;; 128
+  (no-smack               8) ;; 256
+  (no-standon             9) ;; 512
+  (block-turn-around     10) ;; 1024
+  (check-edge            11) ;; 2048
+  (check-stuck           12) ;; 4096
+  (stuck-wall-escape     13) ;; 8192
+  (no-normal-reset       14) ;; 163884
+  (edge-grabbed          15) ;; 32768
+  (nav-sphere            16) ;; hi 1
+  )
+;; ---collide-shape-h:collide-action
+
+(declare-type touching-list structure)
+
 (deftype overlaps-others-params (structure)
   ((options                     overlaps-others-options  :offset-assert 0) ;; guessed by decompiler
    (collide-with-filter         collide-spec             :offset-assert 4) ;; guessed by decompiler
@@ -19099,9 +19188,7 @@
   :size-assert         #x18
   :flag-assert         #x900000018
   )
-|#
 
-#|
 (deftype move-above-ground-params (structure)
   ((gnd-collide-with       collide-spec                   :offset-assert 0) ;; guessed by decompiler
    (popup                  float                          :offset-assert 4)
@@ -19119,45 +19206,43 @@
   :size-assert         #x6c
   :flag-assert         #x90000006c
   )
-|#
 
-#|
 (deftype collide-prim-core (structure)
+  "Collide primitives use this to store their world sphere and their collision flags."
   ((world-sphere vector         :inline :offset-assert 0)
    (collide-as   collide-spec           :offset-assert 16) ;; guessed by decompiler
    (collide-with collide-spec           :offset-assert 20) ;; guessed by decompiler
    (action       collide-action         :offset-assert 24) ;; guessed by decompiler
    (prim-type    int8                   :offset-assert 28) ;; prim-type
    (unused1      uint8          3       :offset-assert 29) ;; guessed by decompiler
-   (quad         uint128        2       :offset-assert 0) ;; guessed by decompiler
+   (quad         uint128        2       :offset 0) ;; guessed by decompiler
    )
   :method-count-assert 9
   :size-assert         #x20
   :flag-assert         #x900000020
   )
-|#
 
-#|
 (deftype collide-shape-prim (basic)
+  "Base class for collide primitives."
   ((cshape          collide-shape             :offset-assert 4) ;; guessed by decompiler
    (prim-id         uint32                    :offset-assert 8)
    (transform-index int8                      :offset-assert 12)
    (unused2         int8              3       :offset-assert 13) ;; guessed by decompiler
-   (prim-core       collide-prim-core :inline :offset-assert 16)
-   (local-sphere    vector            :inline :offset-assert 48)
-   (specific        uint8             16      :offset-assert 64) ;; guessed by decompiler
-   (world-sphere    vector            :inline :offset-assert 16)
-   (collide-as      collide-spec              :offset-assert 32)
-   (collide-with    collide-spec              :offset-assert 36)
-   (action          collide-action            :offset-assert 40)
-   (prim-type       int8                      :offset-assert 44)
-   (radius          meters                    :offset-assert 60) ;; float
+   (prim-core       collide-prim-core :inline :offset 16)
+   (local-sphere    vector            :inline :offset 48)
+   (specific        uint8             16      :offset 64 :score -1) ;; guessed by decompiler
+   (world-sphere    vector            :inline :offset 16)
+   (collide-as      collide-spec              :offset 32)
+   (collide-with    collide-spec              :offset 36)
+   (action          collide-action            :offset 40)
+   (prim-type       int8                      :offset 44)
+   (radius          meters                    :offset 60) ;; float
    )
   :method-count-assert 20
   :size-assert         #x50
   :flag-assert         #x1400000050
   (:methods
-    (new (symbol type) _type_) ;; 0 ;; (new (symbol type collide-shape uint int) _type_)
+    (new (symbol type collide-shape uint int) _type_) ;; 0
     (collide-shape-prim-method-9 () none) ;; 9 ;; (debug-draw (_type_) none)
     (collide-shape-prim-method-10 () none) ;; 10 ;; (add-fg-prim-using-box (_type_ collide-cache) none)
     (collide-shape-prim-method-11 () none) ;; 11 ;; (add-fg-prim-using-line-sphere (_type_ collide-cache object) none)
@@ -19171,107 +19256,74 @@
     (collide-shape-prim-method-19 () none) ;; 19 ;; (should-push-away-a-group-test (_type_ collide-shape-prim-group collide-query) none)
     )
   )
-|#
 
-#|
 (deftype collide-shape-prim-sphere (collide-shape-prim)
-  ((cshape          collide-shape             :offset-assert 0) ;; guessed by decompiler
-   (prim-id         uint32                    :offset-assert 4)
-   (transform-index int8                      :offset-assert 8)
-   (unused2         int8              3       :offset-assert 9) ;; guessed by decompiler
-   (prim-core       collide-prim-core :inline :offset-assert 12)
-   (local-sphere    vector            :inline :offset-assert 44)
-   (specific        uint8             16      :offset-assert 60) ;; guessed by decompiler
-   (world-sphere    vector            :inline :offset-assert 12)
-   (collide-as      collide-spec              :offset-assert 28)
-   (collide-with    collide-spec              :offset-assert 32)
-   (action          collide-action            :offset-assert 36)
-   (prim-type       int8                      :offset-assert 40)
-   (radius          meters                    :offset-assert 56) ;; float
-   (pat             pat-surface               :offset-assert 60) ;; guessed by decompiler
-   (nav-radius      float                     :offset-assert 64)
+  "A sphere primitive for collide shapes."
+  ((pat             pat-surface :offset 64) ;; guessed by decompiler
+   (nav-radius      float       :offset 68)
    )
   :method-count-assert 20
   :size-assert         #x50
   :flag-assert         #x1400000050
   (:methods
-    (new (symbol type) _type_) ;; 0 ;; (new (symbol type collide-shape uint) _type_)
+    (new (symbol type collide-shape uint) _type_) ;; 0
     )
   )
-|#
 
-#|
 (deftype collide-shape-prim-mesh (collide-shape-prim)
-  ((cshape           collide-shape                    :offset-assert 0) ;; guessed by decompiler
-   (prim-id          uint32                           :offset-assert 4)
-   (transform-index  int8                             :offset-assert 8)
-   (unused2          int8                     3       :offset-assert 9) ;; guessed by decompiler
-   (prim-core        collide-prim-core        :inline :offset-assert 12)
-   (local-sphere     vector                   :inline :offset-assert 44)
-   (specific         uint8                    16      :offset-assert 60) ;; guessed by decompiler
-   (world-sphere     vector                   :inline :offset-assert 12)
-   (collide-as       collide-spec                     :offset-assert 28)
-   (collide-with     collide-spec                     :offset-assert 32)
-   (action           collide-action                   :offset-assert 36)
-   (prim-type        int8                             :offset-assert 40)
-   (radius           meters                           :offset-assert 56) ;; float
-   (mesh             collide-mesh                     :offset-assert 60) ;; guessed by decompiler
-   (mesh-id          int32                            :offset-assert 64)
-   (mesh-cache-id    uint32                           :offset-assert 68)
-   (mesh-cache-entry collide-mesh-cache-entry         :offset-assert 72)
+  "A mesh primitive for collide shapes."
+  ((mesh             collide-mesh             :offset 64) ;; guessed by decompiler
+   (mesh-id          int32                    :offset 68)
+   (mesh-cache-id    uint32                   :offset 72)
+   (mesh-cache-entry collide-mesh-cache-entry :offset 76)
    )
   :method-count-assert 20
   :size-assert         #x50
   :flag-assert         #x1400000050
   (:methods
-    (new (symbol type) _type_) ;; 0 ;; (new (symbol type collide-shape uint uint) _type_)
+    (new (symbol type collide-shape uint uint) _type_) ;; 0
     )
   )
-|#
 
-#|
 (deftype collide-shape-prim-group (collide-shape-prim)
-  ((cshape             collide-shape                             :offset-assert 0) ;; guessed by decompiler
-   (prim-id            uint32                                    :offset-assert 4)
-   (transform-index    int8                                      :offset-assert 8)
-   (unused2            int8                              3       :offset-assert 9) ;; guessed by decompiler
-   (prim-core          collide-prim-core                 :inline :offset-assert 12)
-   (local-sphere       vector                            :inline :offset-assert 44)
-   (specific           uint8                             16      :offset-assert 60) ;; guessed by decompiler
-   (world-sphere       vector                            :inline :offset-assert 12)
-   (collide-as         collide-spec                              :offset-assert 28)
-   (collide-with       collide-spec                              :offset-assert 32)
-   (action             collide-action                            :offset-assert 36)
-   (prim-type          int8                                      :offset-assert 40)
-   (radius             meters                                    :offset-assert 56) ;; float
-   (num-children       uint8                                     :offset-assert 60)
-   (num-alloc-children uint8                                     :offset-assert 61)
-   (child              (inline-array collide-shape-prim)         :offset-assert 64) ;; guessed by decompiler
+  "A group of collide primitives."
+  ((num-children       uint8                             :offset 64)
+   (num-alloc-children uint8                             :offset 65)
+   (child              (inline-array collide-shape-prim) :offset 68) ;; guessed by decompiler
    )
   :method-count-assert 20
   :size-assert         #x50
   :flag-assert         #x1400000050
   (:methods
-    (new (symbol type) _type_) ;; 0 ;; (new (symbol type collide-shape uint int) _type_)
+    (new (symbol type collide-shape uint int) _type_) ;; 0
     )
   )
-|#
 
-#|
+;; +++collide-shape-h:collide-list-enum
+(defenum collide-list-enum
+  (hit-by-player)
+  (usually-hit-by-player)
+  (hit-by-others)
+  (player)
+  )
+;; ---collide-shape-h:collide-list-enum
+
 (deftype collide-shape (trsqv)
-  ((actor-hash-index    int16                         :offset-assert 12)
+  "The parent of all of an object's collide primitives.
+   Most [[process-drawable]]s have a [[collide-shape]] that represents their root transform."
+  ((actor-hash-index    int16                         :offset 12)
    (process             process-drawable              :offset-assert 140) ;; guessed by decompiler
    (max-iteration-count uint8                         :offset-assert 144)
    (nav-flags           uint8                         :offset-assert 145) ;; nav-flags
    (total-prims         uint8                         :offset-assert 146)
    (num-riders          uint8                         :offset-assert 147)
-   (event-self          symbol                        :offset-assert 152) ;; guessed by decompiler
+   (event-self          symbol                        :offset 152) ;; guessed by decompiler
    (event-other         symbol                        :offset-assert 156) ;; guessed by decompiler
    (root-prim           collide-shape-prim            :offset-assert 160) ;; guessed by decompiler
    (riders              (inline-array collide-rider)  :offset-assert 164) ;; guessed by decompiler
    (penetrate-using     penetrate                     :offset-assert 168)
    (penetrated-by       penetrate                     :offset-assert 176)
-   (event-priority      uint8                         :offset-assert 192)
+   (event-priority      uint8                         :offset 192)
    (rider-max-momentum  float                         :offset-assert 196)
    )
   :method-count-assert 55
@@ -19279,7 +19331,7 @@
   :flag-assert         #x37000000c8
   ;; field penetrate is likely a value type. field penetrate is likely a value type.
   (:methods
-    (new (symbol type) _type_) ;; 0 ;; (new (symbol type process-drawable collide-list-enum) _type_)
+    (new (symbol type process-drawable collide-list-enum) _type_) ;; 0
     (collide-shape-method-28 () none) ;; 28 ;; (move-by-vector! (_type_ vector) none)
     (collide-shape-method-29 () none) ;; 29 ;; (move-to-point! (_type_ vector) none)
     (collide-shape-method-30 () none) ;; 30 ;; (debug-draw (_type_) none)
@@ -19309,18 +19361,42 @@
     (collide-shape-method-54 () none) ;; 54 ;; (pusher-init (_type_) none)
     )
   )
-|#
 
-#|
+;; +++collide-shape-h:collide-status
+(defenum collide-status
+  :bitfield #t
+  :type uint64
+  (on-surface 0)
+  (on-ground 1)
+  (touch-surface 2)
+  (touch-wall 3)
+  (touch-ceiling 4)
+  (touch-actor 5)
+  (on-special-surface 6)
+  (touch-edge 7)
+  (no-touch 8)
+  (blocked 9)
+  (on-water 10)
+  (impact-surface 11)
+  (touch-background 12)
+  (stuck 13)
+  (touch-ceiling-sticky 14)
+  (glance 15)
+  (probe-hit 16)
+  )
+;; ---collide-shape-h:collide-status
+
+(declare-type collide-query structure)
 (deftype collide-shape-moving (collide-shape)
-  ((rider-time         uint64                                                                     :offset-assert 200) ;; time-frame
+  "A [[collide-shape]] for moving objects."
+  ((rider-time         time-frame                                                                 :offset-assert 200) ;; time-frame
    (rider-last-move    vector                                                             :inline :offset-assert 208)
    (trans-old          vector                                                             :inline :offset-assert 224)
-   (poly-pat           pat-surface                                                                :offset-assert 272) ;; guessed by decompiler
+   (poly-pat           pat-surface                                                                :offset 272) ;; guessed by decompiler
    (cur-pat            pat-surface                                                                :offset-assert 276) ;; guessed by decompiler
    (ground-pat         pat-surface                                                                :offset-assert 280) ;; guessed by decompiler
-   (status             uint64                                                                     :offset-assert 288) ;; collide-status
-   (reaction           (function control-info collide-query vector vector collide-status)         :offset-assert 316) ;; guessed by decompiler
+   (status             collide-status                                                             :offset-assert 288) ;; collide-status
+   (reaction           (function control-info collide-query vector vector collide-status)         :offset 316) ;; guessed by decompiler
    (no-reaction        (function collide-shape-moving collide-query vector vector object)         :offset-assert 320) ;; guessed by decompiler
    (local-normal       vector                                                             :inline :offset-assert 336)
    (surface-normal     vector                                                             :inline :offset-assert 352)
@@ -19342,7 +19418,7 @@
   :flag-assert         #x44000001dc
   ;; field penetrate is likely a value type. field penetrate is likely a value type.
   (:methods
-    (new (symbol type) _type_) ;; 0 ;; (new (symbol type process-drawable collide-list-enum) _type_)
+    (new (symbol type process-drawable collide-list-enum) _type_) ;; 0
     (collide-shape-moving-method-55 () none) ;; 55 ;; (find-ground (_type_ collide-query collide-spec float float float) symbol)
     (collide-shape-moving-method-56 () none) ;; 56 ;; (react-to-pat! (_type_ pat-surface) cshape-reaction-flags)
     (collide-shape-moving-method-57 () none) ;; 57 ;; (integrate-no-collide! (_type_ vector) none)
@@ -19358,14 +19434,13 @@
     (collide-shape-moving-method-67 () none) ;; 67 ;; (collide-with-all-collide-cache-prims (_type_ matrix collide-query) none)
     )
   )
-|#
 
-;; (define-extern *collide-hit-by-player-list* object) ;; engine
-;; (define-extern *collide-hit-by-others-list* object) ;; engine
-;; (define-extern *collide-player-list* object) ;; engine
-;; (define-extern *collide-shape-prim-backgnd* collide-shape-prim-mesh) ;; collide-shape-prim-mesh
-;; (define-extern *collide-shape-prim-water* collide-shape-prim-mesh) ;; collide-shape-prim-mesh
-;; (define-extern *collide-rider-pool* object) ;; collide-rider-pool
+(define-extern *collide-hit-by-player-list* engine)
+(define-extern *collide-hit-by-others-list* engine)
+(define-extern *collide-player-list* engine)
+(define-extern *collide-shape-prim-backgnd* collide-shape-prim-mesh)
+(define-extern *collide-shape-prim-water* collide-shape-prim-mesh)
+(define-extern *collide-rider-pool* collide-rider-pool)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; generic-obs-h                  ;;
