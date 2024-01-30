@@ -320,6 +320,10 @@ void ObjectFileDB::ir2_top_level_pass(const Config& config) {
 void ObjectFileDB::ir2_analyze_all_types(const fs::path& output_file,
                                          const std::optional<std::string>& previous_game_types,
                                          const std::unordered_set<std::string>& bad_types) {
+  auto is_code_file = [](ObjectFileData& data) {
+    return (data.obj_version == 3 ||
+            (data.obj_version == 5 && data.linked_data.has_any_functions()));
+  };
   std::unordered_map<std::string, PerObjectAllTypeInfo> per_object;
 
   DecompilerTypeSystem previous_game_ts(GameVersion::Jak2);  // version here doesn't matter.
@@ -331,7 +335,7 @@ void ObjectFileDB::ir2_analyze_all_types(const fs::path& output_file,
 
   // Do a first pass to initialize all types and symbols
   for_each_obj([&](ObjectFileData& data) {
-    if (data.obj_version == 3 || (data.obj_version == 5 && data.linked_data.has_any_functions())) {
+    if (is_code_file(data)) {
       per_object[data.to_unique_name()] = PerObjectAllTypeInfo();
       // Go through the top-level segment first to identify the type names associated with each
       // symbol def
@@ -367,7 +371,7 @@ void ObjectFileDB::ir2_analyze_all_types(const fs::path& output_file,
         for (const auto& [obj_name, type_names] : all_type_names) {
           for (const auto& type_name : type_names) {
             if (str_util::starts_with(sym_name, type_name) &&
-                type_name.length() > longest_match_length) {
+                (int)type_name.length() > longest_match_length) {
               longest_match_length = type_name.length();
               longest_match = type_name;
               longest_match_object_name = obj_name;
@@ -387,7 +391,7 @@ void ObjectFileDB::ir2_analyze_all_types(const fs::path& output_file,
 
   // Then another to actually setup the definitions
   for_each_obj([&](ObjectFileData& data) {
-    if (data.obj_version == 3 || (data.obj_version == 5 && data.linked_data.has_any_functions())) {
+    if (is_code_file(data)) {
       auto& object_result = per_object.at(data.to_unique_name());
 
       // Handle the top level last, which is fine as all symbol_defs are always written after
@@ -424,18 +428,22 @@ void ObjectFileDB::ir2_analyze_all_types(const fs::path& output_file,
   std::string result;
   result += ";; All Types\n\n";
 
-  for (auto& [obj_name, obj] : per_object) {
-    result += fmt::format(";;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;\n");
-    result += fmt::format(";; {:30s} ;;\n", obj_name);
-    result += fmt::format(";;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;\n\n");
-    for (const auto& type_name : obj.type_names_in_order) {
-      auto& info = obj.type_info.at(type_name);
-      result += info.type_definition;
+  for_each_obj([&](ObjectFileData& data) {
+    if (is_code_file(data)) {
+      auto& obj = per_object.at(data.to_unique_name());
+
+      result += fmt::format(";;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;\n");
+      result += fmt::format(";; {:30s} ;;\n", data.name_in_dgo);
+      result += fmt::format(";;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;\n\n");
+      for (const auto& type_name : obj.type_names_in_order) {
+        auto& info = obj.type_info.at(type_name);
+        result += info.type_definition;
+        result += "\n";
+      }
+      result += obj.symbol_defs;
       result += "\n";
     }
-    result += obj.symbol_defs;
-    result += "\n";
-  }
+  });
 
   file_util::write_text_file(output_file, result);
 }
@@ -647,8 +655,8 @@ void ObjectFileDB::ir2_type_analysis_pass(int seg, const Config& config, ObjectF
         }
 
         constexpr bool kForceNewTypes = false;
-        if (config.game_version == GameVersion::Jak2 || kForceNewTypes) {
-          // use new types for jak 2 always
+        if (config.game_version != GameVersion::Jak1 || kForceNewTypes) {
+          // use new types for jak 2/3 always
           types2::Input in;
           types2::Output out;
           in.func = &func;
@@ -802,7 +810,7 @@ void ObjectFileDB::ir2_insert_lets(int seg, ObjectFileData& data) {
             "Error while inserting lets: {}. Make sure that the return type is not "
             "none if something is actually returned.",
             e.what());
-        lg::warn(err);
+        lg::warn("{}", err);
         func.warnings.error(err);
       }
     }

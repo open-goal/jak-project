@@ -1450,7 +1450,7 @@ std::string old_method_string(const MethodInfo& info, const bool omit_comment = 
       if (info.type.base_type() == "state") {
         result += " :state";
       }
-      result += fmt::format(" {})", info.id);
+      result += ")";
       return result;
     }
   }
@@ -1663,7 +1663,7 @@ std::string TypeInspectorResult::print_as_deftype(
   if (type_method_count > 9) {
     MethodInfo old_new_method;
     if (old_game_type && old_game_type->get_my_new_method(&old_new_method)) {
-      methods_list.append("    ");
+      methods_list.append("    (new (symbol type) _type_) ;; 0");
       methods_list.append(old_method_string(old_new_method));
       methods_list.push_back('\n');
     }
@@ -1846,7 +1846,24 @@ void inspect_top_level_for_metadata(Function& top_level,
       if (state_name.empty()) {
         continue;
       }
-      objectFile.state_methods[type_match][method_id] = state_name;
+      // Ensure there are no labels between now and when the `method-set!` is actually called
+      bool was_another_label = false;
+      for (int j = i; j < (int)top_level.ir2.atomic_ops->ops.size(); j++) {
+        const auto& temp_aop = top_level.ir2.atomic_ops->ops.at(j);
+        const std::string temp_as_str = temp_aop.get()->to_string(top_level.ir2.env);
+        if (temp_as_str.find("call!") != std::string::npos) {
+          break;
+        }
+        auto temp_label_match =
+            get_regex_match(temp_as_str, std::regex("\\(set!\\s[^\\s]*\\s(L.*)\\)"));
+        if (!temp_label_match.empty()) {
+          was_another_label = true;
+          break;
+        }
+      }
+      if (!was_another_label) {
+        objectFile.state_methods[type_match][method_id] = state_name;
+      }
     }
   }
 

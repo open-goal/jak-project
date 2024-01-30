@@ -780,6 +780,7 @@
   )
 
 ;; definition for method 3 of type ik-setup
+;; INFO: this function exists in multiple non-identical object files
 (defmethod inspect ((this ik-setup))
   (when (not this)
     (set! this this)
@@ -1265,13 +1266,13 @@
 ;; definition for method 55 of type bombbot
 ;; INFO: Used lq/sq
 ;; WARN: Return type mismatch int vs none.
-(defmethod track-target! ((this bombbot))
+(defmethod common-post ((this bombbot))
   "Does a lot of various things relating to interacting with the target
 - tracks when the enemy was last drawn
 - looks at the target and handles attacking
 @TODO Not extremely well understood yet"
   (local-vars (sv-16 sparticle-launcher) (sv-20 sparticle-launcher))
-  (let ((t9-0 (method-of-type nav-enemy track-target!)))
+  (let ((t9-0 (method-of-type nav-enemy common-post)))
     (t9-0 this)
     )
   (cond
@@ -1370,17 +1371,17 @@
 (defmethod damage-amount-from-attack ((this bombbot) (arg0 process) (arg1 event-message-block))
   "@returns the amount of damage taken from an attack.  This can come straight off the [[attack-info]] or via [[penetrate-using->damage]]"
   (-> arg1 param 1)
-  (let ((f0-1 (the float (penetrate-using->damage (the-as penetrate (-> this incoming penetrate-using))))))
+  (let ((f0-1 (the float (penetrate-using->damage (-> this incoming penetrate-using)))))
     (cond
-      ((logtest? #xc0000 (-> this incoming penetrate-using))
-       (if (and (logtest? #x40000 (-> this incoming penetrate-using))
-                (logtest? #x80000 (-> this incoming penetrate-using))
+      ((logtest? (penetrate dark-bomb dark-giant) (-> this incoming penetrate-using))
+       (if (and (logtest? (penetrate dark-bomb) (-> this incoming penetrate-using))
+                (logtest? (penetrate dark-giant) (-> this incoming penetrate-using))
                 )
            #x42c80000
            (the int (* 1.8 f0-1))
            )
        )
-      ((logtest? #x20000 (-> this incoming penetrate-using))
+      ((logtest? (penetrate dark-punch) (-> this incoming penetrate-using))
        (the int (* 2.0 f0-1))
        )
       (else
@@ -1940,7 +1941,7 @@
           (t9-0)
           )
       )
-    (logior! (-> self enemy-flags) (enemy-flag actor-pause-backup))
+    (logior! (-> self enemy-flags) (enemy-flag lock-focus))
     (+! (-> self shield-hit-points) -1.0)
     )
   :exit (behavior ()
@@ -2130,7 +2131,7 @@
              )
            )
          (seek! (-> self root trans y) (-> self city-path node gp-1 position y) (* 16384.0 (seconds-per-frame)))
-         (track-target! self)
+         (common-post self)
          (update-transforms (-> self root))
          )
         (else

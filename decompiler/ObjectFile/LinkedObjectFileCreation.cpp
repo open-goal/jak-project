@@ -263,7 +263,7 @@ static void link_v2_or_v4(LinkedObjectFile& f,
   const uint8_t* code_end =
       &data.at(code_offset + code_size - 1) + 1;  // get the pointer to one past the end.
 
-  if (version == GameVersion::Jak2) {
+  if (version >= GameVersion::Jak2) {
     while (((code_end - code_start) % 4)) {
       code_end++;
     }
@@ -472,7 +472,7 @@ static void link_v5(LinkedObjectFile& f,
   for (int i = 0; i < n_segs; i++) {
     segment_data_offsets[i] = header->length_to_get_to_code + seg_info_array[i].data;
     segment_link_offsets[i] = header->length_to_get_to_link + seg_info_array[i].relocs;
-    ASSERT(seg_info_array[i].magic == 1);
+    ASSERT(seg_info_array[i].magic == 1);  // if set, always use symlink2.
   }
 
   // check that the data region is filled
@@ -689,7 +689,7 @@ static void link_v3(LinkedObjectFile& f,
       segment_size++;
     }
 
-    if (game_version == GameVersion::Jak2) {
+    if (game_version >= GameVersion::Jak2) {
       while (segment_size % 4) {
         segment_size++;
       }

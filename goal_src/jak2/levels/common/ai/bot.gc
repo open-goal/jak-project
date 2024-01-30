@@ -111,7 +111,7 @@
     )
   )
 
-(defmethod enemy-method-108 ((this bot) (arg0 enemy) (arg1 event-message-block))
+(defmethod enemy-method-108 ((this bot) (arg0 process-drawable) (arg1 event-message-block))
   0
   )
 
@@ -135,7 +135,7 @@
   (let ((gp-0 #f))
     (let ((v1-0 (-> this incoming penetrate-using)))
       (cond
-        ((logtest? #x800000 v1-0)
+        ((logtest? (penetrate jak-red-shot) v1-0)
          (when *target*
            (let ((s5-0 (new 'stack-no-clear 'vector))
                  (s3-0 (-> *target* gun fire-dir-out))
@@ -153,7 +153,7 @@
              )
            )
          )
-        ((and (logtest? #x10000 v1-0) (not (logtest? #x20000 v1-0)))
+        ((and (logtest? (penetrate dark-skin) v1-0) (not (logtest? (penetrate dark-punch) v1-0)))
          (set! gp-0 #t)
          )
         )
@@ -295,8 +295,8 @@
     )
   )
 
-(defmethod enemy-method-106 ((this bot) (arg0 process) (arg1 object) (arg2 int) (arg3 attack-info))
-  (let ((t9-0 (method-of-type nav-enemy enemy-method-106)))
+(defmethod set-incoming-attack-info ((this bot) (arg0 process) (arg1 object) (arg2 penetrate) (arg3 attack-info))
+  (let ((t9-0 (method-of-type nav-enemy set-incoming-attack-info)))
     (t9-0 this arg0 arg1 arg2 arg3)
     )
   (logclear! (-> this bot-flags) (bot-flags bf03 bf04))
@@ -438,7 +438,7 @@
   (local-vars (s5-1 process))
   (let ((s5-0 (-> this focus)))
     (cond
-      ((logtest? (enemy-flag actor-pause-backup) (-> this enemy-flags))
+      ((logtest? (enemy-flag lock-focus) (-> this enemy-flags))
        (set! s5-1 (handle->process (-> s5-0 handle)))
        )
       (else
@@ -760,13 +760,13 @@
        (('too-far-fail)
         (when (not (logtest? (-> this bot-flags) (bot-flags too-far-fail bf09)))
           (logior! (-> this bot-flags) (bot-flags bf09))
-          (logclear! (-> this enemy-flags) (enemy-flag enable-on-active checking-water))
+          (logclear! (-> this enemy-flags) (enemy-flag vulnerable vulnerable-backup))
           (logclear! (-> this focus-status) (focus-status dangerous))
-          (logclear! (-> this enemy-flags) (enemy-flag check-water))
+          (logclear! (-> this enemy-flags) (enemy-flag dangerous-backup))
           (logclear! (-> this mask) (process-mask collectable))
-          (logclear! (-> this enemy-flags) (enemy-flag look-at-move-dest))
+          (logclear! (-> this enemy-flags) (enemy-flag attackable-backup))
           (logclear! (-> this mask) (process-mask actor-pause))
-          (logclear! (-> this enemy-flags) (enemy-flag notice))
+          (logclear! (-> this enemy-flags) (enemy-flag actor-pause-backup))
           (go (method-of-object this failed))
           )
         )
@@ -838,7 +838,7 @@
           (when (if (type? s5-2 process-focusable)
                     s5-2
                     )
-            (logior! (-> this enemy-flags) (enemy-flag look-at-focus))
+            (logior! (-> this enemy-flags) (enemy-flag victory))
             (set-time! (-> this hit-focus-time))
             )
           )
@@ -1023,7 +1023,7 @@
   )
 
 (defmethod play-too-far-warn-speech ((this bot))
-  (when (not (channel-active? this (the-as uint 0)))
+  (when (not (channel-active? this (gui-channel none)))
     (let ((idx (bot-speech-list-method-9
                  (-> this course too-far-warn-speeches)
                  this
@@ -1085,7 +1085,7 @@ If the player is too far, play a warning speech."
             (if (and (>= (current-time) (-> this next-too-far-warn-time)) (play-too-far-warn-speech this))
                 (set! (-> this next-too-far-warn-time)
                       (+ (current-time)
-                         (get-rand-int-range this (the-as int (-> this warn-min-delay)) (the-as int (-> this warn-max-delay)))
+                         (rnd-int-range this (the-as int (-> this warn-min-delay)) (the-as int (-> this warn-max-delay)))
                          )
                       )
                 )
@@ -1107,13 +1107,13 @@ If the player is too far, play a warning speech."
   (set! (-> this started-warning-time) 0)
   (set! (-> this next-too-far-warn-time)
         (+ (current-time)
-           (get-rand-int-range this (the-as int (-> this warn-min-delay)) (the-as int (-> this warn-max-delay)))
+           (rnd-int-range this (the-as int (-> this warn-min-delay)) (the-as int (-> this warn-max-delay)))
            )
         )
   (none)
   )
 
-(defmethod track-target! ((this bot))
+(defmethod common-post ((this bot))
   "Does a lot of various things relating to interacting with the target
 - tracks when the enemy was last drawn
 - looks at the target and handles attacking
@@ -1146,7 +1146,7 @@ If the player is too far, play a warning speech."
         )
       )
     )
-  (let ((t9-4 (method-of-type nav-enemy track-target!)))
+  (let ((t9-4 (method-of-type nav-enemy common-post)))
     (t9-4 this)
     )
   (when (not (logtest? (-> this bot-flags) (bot-flags bf09)))
@@ -1216,7 +1216,7 @@ If the player is too far, play a warning speech."
              (add-process
                *gui-control*
                this
-               (the-as gui-channel (-> this channel))
+               (-> this channel)
                (gui-action play)
                (-> speech name)
                -99.0
@@ -1241,15 +1241,7 @@ If the player is too far, play a warning speech."
 ;; WARN: Return type mismatch sound-id vs none.
 (defmethod play-death-sound ((this bot) (sound string))
   "Play one of our death sounds."
-  (add-process
-    *gui-control*
-    this
-    (the-as gui-channel (-> this channel))
-    (gui-action play)
-    sound
-    -99.0
-    (seconds 0.3)
-    )
+  (add-process *gui-control* this (-> this channel) (gui-action play) sound -99.0 (seconds 0.3))
   (none)
   )
 
@@ -1272,21 +1264,21 @@ If the player is too far, play a warning speech."
     )
   )
 
-(defmethod channel-active? ((this bot) (channel uint))
+(defmethod channel-active? ((this bot) (channel gui-channel))
   "Is the given [[gui-channel]] active?"
-  (if (zero? channel)
+  (if (= channel (gui-channel none))
       (set! channel (-> this channel))
       )
   (nonzero? (get-status
               *gui-control*
-              (lookup-gui-connection-id *gui-control* (the-as string #f) (the-as gui-channel channel) (gui-action none))
+              (lookup-gui-connection-id *gui-control* (the-as string #f) channel (gui-action none))
               )
             )
   )
 
 (defmethod stop-speech ((this bot) (channel uint) (arg1 symbol))
   (if (zero? channel)
-      (set! channel (-> this channel))
+      (set! channel (the-as uint (-> this channel)))
       )
   (if arg1
       (set-action!
@@ -1367,7 +1359,6 @@ If the player is too far, play a warning speech."
   (go process-drawable-art-error "bad waypoint id")
   )
 
-;; WARN: Return type mismatch object vs none.
 (defmethod skip-waypoint ((this bot))
   (let ((skip-id (-> this waypoint skip-to)))
     (when (>= skip-id 0)
@@ -1376,7 +1367,6 @@ If the player is too far, play a warning speech."
       (go-to-waypoint! this skip-id #t)
       )
     )
-  (none)
   )
 
 ;; WARN: Return type mismatch nav-enemy vs bot.
@@ -1434,9 +1424,9 @@ If the player is too far, play a warning speech."
   (set! (-> this ai-ctrl) (new 'process 'ai-task-control *bot-task-pool*))
   (logclear! (-> this mask) (process-mask enemy))
   (logior! (-> this mask) (process-mask bot))
-  (logior! (-> this enemy-flags) (enemy-flag use-notice-distance multi-focus))
+  (logior! (-> this enemy-flags) (enemy-flag cam-attack-mode dislike-combo))
   (logclear! (-> this mask) (process-mask collectable))
-  (logclear! (-> this enemy-flags) (enemy-flag look-at-move-dest))
+  (logclear! (-> this enemy-flags) (enemy-flag attackable-backup))
   (logior! (-> this focus-status) (focus-status disable))
   (let ((v1-13 (-> this nav)))
     (set! (-> v1-13 sphere-mask) (the-as uint 78))
@@ -1699,7 +1689,7 @@ If the player is too far, play a warning speech."
   )
 
 (defmethod play-attacked-speech ((this bot))
-  (when (not (channel-active? this (the-as uint 0)))
+  (when (not (channel-active? this (gui-channel none)))
     (let ((idx (bot-speech-list-method-9
                  (-> this course attack-player-speeches)
                  this
@@ -1724,11 +1714,11 @@ If the player is too far, play a warning speech."
 
 ;; WARN: Return type mismatch bot-flags vs none.
 (defmethod fail-mission! ((this bot))
-  (logclear! (-> this enemy-flags) (enemy-flag enable-on-active checking-water))
+  (logclear! (-> this enemy-flags) (enemy-flag vulnerable vulnerable-backup))
   (logclear! (-> this mask) (process-mask collectable))
-  (logclear! (-> this enemy-flags) (enemy-flag look-at-move-dest))
+  (logclear! (-> this enemy-flags) (enemy-flag attackable-backup))
   (logclear! (-> this mask) (process-mask actor-pause))
-  (logclear! (-> this enemy-flags) (enemy-flag notice))
+  (logclear! (-> this enemy-flags) (enemy-flag actor-pause-backup))
   (logior! (-> this bot-flags) (bot-flags bf09))
   (let ((mission-failed? #t))
     (let ((master-handle (handle->process (-> this master-handle))))
@@ -1814,7 +1804,7 @@ If the player is too far, play a warning speech."
 (defmethod bot-method-191 ((this bot))
   (logior! (-> this bot-flags) (bot-flags bf02))
   (set-time! (-> this hit-invuln-starting-time))
-  (logclear! (-> this enemy-flags) (enemy-flag enable-on-active))
+  (logclear! (-> this enemy-flags) (enemy-flag vulnerable))
   (if (nonzero? (-> this hit-invuln-ignore-me-delay))
       (logior! (-> this focus-status) (focus-status ignore))
       )
@@ -1830,13 +1820,13 @@ If the player is too far, play a warning speech."
   (let ((a1-0 (-> this hit-invuln-starting-time))
         (v1-0 #t)
         )
-    (if (not (logtest? (-> this enemy-flags) (enemy-flag enable-on-active)))
+    (if (not (logtest? (-> this enemy-flags) (enemy-flag vulnerable)))
         (set! v1-0 (cond
                      ((time-elapsed? a1-0 (seconds 0.6))
                       (let ((a2-6 (-> this enemy-flags)))
-                        (if (logtest? a2-6 (enemy-flag checking-water))
-                            (set! a2-7 (logior a2-6 (enemy-flag enable-on-active)))
-                            (set! a2-7 (logclear a2-6 (enemy-flag enable-on-active)))
+                        (if (logtest? a2-6 (enemy-flag vulnerable-backup))
+                            (set! a2-7 (logior a2-6 (enemy-flag vulnerable)))
+                            (set! a2-7 (logclear a2-6 (enemy-flag vulnerable)))
                             )
                         )
                       (set! (-> this enemy-flags) a2-7)

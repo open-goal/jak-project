@@ -2113,7 +2113,7 @@ std::optional<std::string> find_best_field_in_structure(const TypeSystem& ts,
   }
   for (size_t i = start_field; i < (size_t)end_field; ++i) {
     const auto& field = st->fields().at(i);
-    auto type = ts.lookup_type(field.type());
+    auto type = ts.lookup_type_allow_partial_def(field.type());
     if (field.is_dynamic() || field.offset() > offset || field.user_placed() != want_fixed) {
       continue;
     }
@@ -2147,6 +2147,12 @@ std::optional<std::string> find_best_field_in_structure(const TypeSystem& ts,
     } else {
       int rel_offset = offset - field.offset();
       // array case (and array encompasses what we want)
+      ASSERT_MSG(
+          type->get_size_in_memory() > 0,
+          fmt::format(
+              "In type {}, type size was 0 for array field {} of type {}, check that the type "
+              "is fully defined.",
+              st->get_name(), field.name(), field.type().print()));
       int array_idx = rel_offset / type->get_size_in_memory();
       if (!field.is_inline() &&
           field.offset() + field.array_size() * type->get_load_size() > offset) {

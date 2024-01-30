@@ -5,5 +5,464 @@
 ;; name in dgo: gstate
 ;; dgos: KERNEL
 
+(defmacro go (next-state &rest args)
+  "Change the state of the current process.
+   This will only return if this is called within the post thread.
+   Otherwise, execution stops here and the kernel will run the next state next time."
+  `(with-pp
+     (go-hook pp ,next-state ,@args)
+     )
+  )
+
+;; disable for now, since the extra arg to get-process is unknown.
+; (defmacro process-spawn-function (proc-type func &key (from *default-dead-pool*) &key (to *default-pool*) &key (name #f) &key (stack-size #x4000) &key (stack *scratch-memory-top*) &rest args)
+;   "Start a new process that runs a function on its main thread.
+;    Returns a pointer to the new process (or #f? on error)."
+
+;   (with-gensyms (new-proc)
+;     `(let ((,new-proc (the-as ,proc-type (get-process ,from ,proc-type ,stack-size))))
+;         (when ,new-proc
+;           ((method-of-type ,proc-type activate) ,new-proc ,to ,(if name name `(symbol->string ',proc-type)) ,stack)
+;           (run-next-time-in-process ,new-proc ,func ,@args)
+;           (the (pointer ,proc-type) (-> ,new-proc ppointer))
+;           )
+;         )
+;     )
+;   )
+
+; (defmacro process-spawn (proc-type &key (init #f) &key (from *default-dead-pool*) &key (to *default-pool*) &key (name #f) &key (stack-size #x4000) &key (stack *scratch-memory-top*) &rest args)
+;   "Start a new process and run an init function on it.
+;    Returns a pointer to the new process, or #f (or is it 0?) if something goes wrong."
+
+;   (with-gensyms (new-proc)
+;     `(let ((,new-proc (the-as ,proc-type (get-process ,from ,proc-type ,stack-size))))
+;         (when ,new-proc
+;           ((method-of-type ,proc-type activate) ,new-proc ,to ,(if name name `(symbol->string ',proc-type)) ,stack)
+;           (run-now-in-process ,new-proc ,(if init init (string->symbol (fmt #f "{}-init-by-other" proc-type))) ,@args)
+;           (the (pointer ,proc-type) (-> ,new-proc ppointer))
+;           )
+;         )
+;     )
+;   )
+
+(defmacro go-virtual (state-name &key (proc self) &rest args)
+  "Same as go, but use a virtual state."
+  `(go (method-of-object ,proc ,state-name) ,@args)
+  )
+
+(defmacro go-process (proc next-state &rest args)
+  "Make another process go."
+  `(with-pp
+     (protect (pp)
+              (set! pp ,proc)
+              (go-hook pp ,next-state ,@args)
+              )
+     )
+  )
+
+;; run the given function in a process right now.
+;; will return to here when:
+;;  - you return
+;;  - you deactivate
+;;  - you go
+;;  - you throw to 'initialize
+(defmacro run-now-in-process (proc func &rest args)
+  "Run a function in another process right now."
+  `((the (function _varargs_ object) run-function-in-process)
+    ,proc ,func ,@args
+    )
+  )
+
+;; sets the main thread of the given process to run the given thing.
+;; this resets the main thread stack back to the top
+(defmacro run-next-time-in-process (proc func &rest args)
+  "Set up a process to run a function the next time it is scheduled."
+  `((the (function _varargs_ object) set-to-run)
+    (-> ,proc main-thread) ,func ,@args
+    )
+  )
+
+
+;; use a compile-time list to keep track of the type of an anonymous behavior.
+(seval (define *defstate-type-stack* '()))
+(desfun def-state-check-behavior (beh-form beh-type)
+  "check if code block is an anonymous behavior. needed for anonymous behaviors on defstate."
+
+  (when (and (pair? beh-form) (eq? (first beh-form) 'behavior))
+    (push! *defstate-type-stack* beh-type)
+    )
+  )
+(defmacro clear-def-state-stack ()
+  (set! *defstate-type-stack* '())
+  `(none)
+  )
+
+;; set when inside a defstate.
+(seval (define *defstate-current-type* #f))
+(seval (define *defstate-current-state-name* #f))
+
+;; *no-state* is just used for the compiler to know whether a handler was actually set or not
+(defmacro defstate (state-name parents
+                               &key (virtual #f)
+                               &key (event *no-state*)
+                               &key (enter *no-state*)
+                               &key (trans *no-state*)
+                               &key (exit *no-state*)
+                               &key (code *no-state*)
+                               &key (post *no-state*)
+                               )
+  "Define a new state!"
+
+  (with-gensyms (new-state)
+    (let ((defstate-type (first parents)))
+      (when (not (null? *defstate-type-stack*))
+        (fmt #t "*defstate-type-stack* leaked! An error probably happened in a previous defstate. stack is: {}"
+                 *defstate-type-stack*)
+        )
+      (set! *defstate-type-stack* '())
+      (when virtual
+        (set! *defstate-current-type* defstate-type)
+        (set! *defstate-current-state-name* state-name)
+        )
+      ;; check for default handlers
+      (let ((default-handlers (assoc defstate-type *default-state-handlers*)))
+          (when default-handlers
+              ;;(fmt #t "found default-handlers for {}: {}\n" defstate-type default-handlers)
+              ;; event
+              (set! default-handlers (cadr default-handlers))
+              (when (and (eq? event '*no-state*) (car default-handlers))
+                  (set! event (car default-handlers)))
+              ;; enter
+              (set! default-handlers (cdr default-handlers))
+              (when (and (eq? enter '*no-state*) (car default-handlers))
+                  (set! enter (car default-handlers)))
+              ;; trans
+              (set! default-handlers (cdr default-handlers))
+              (when (and (eq? trans '*no-state*) (car default-handlers))
+                  (set! trans (car default-handlers)))
+              ;; exit
+              (set! default-handlers (cdr default-handlers))
+              (when (and (eq? exit '*no-state*) (car default-handlers))
+                  (set! exit (car default-handlers)))
+              ;; code
+              (set! default-handlers (cdr default-handlers))
+              (when (and (eq? code '*no-state*) (car default-handlers))
+                  (set! code (car default-handlers)))
+              ;; post
+              (set! default-handlers (cdr default-handlers))
+              (when (and (eq? post '*no-state*) (car default-handlers))
+                  (set! post (car default-handlers)))
+
+              (set! default-handlers (cdr default-handlers))
+              )
+          )
+      (def-state-check-behavior event defstate-type)
+      (def-state-check-behavior enter defstate-type)
+      (def-state-check-behavior trans defstate-type)
+      (def-state-check-behavior exit defstate-type)
+      (def-state-check-behavior code defstate-type)
+      (def-state-check-behavior post defstate-type)
+      `(let ((,new-state (new 'static 'state
+                              :name (quote ,state-name)
+                              :next #f
+                              :exit #f
+                              :code #f
+                              :trans #f
+                              :post #f
+                              :enter #f
+                              :event #f
+                              )
+                         ))
+         ;; the compiler will set the fields of the given state and define the symbol.
+         ;; This way it can check the individual function types, make sure they make sense, and create
+         ;; a state with the appropriate type.
+         ,(if virtual
+              `(define-virtual-state-hook ,state-name ,defstate-type ,new-state ,(eq? virtual 'override) :event ,event :enter ,enter :trans ,trans :exit ,exit :code ,code :post ,post)
+              `(define-state-hook ,state-name ,defstate-type ,new-state :event ,event :enter ,enter :trans ,trans :exit ,exit :code ,code :post ,post)
+              )
+
+         )
+      )
+    )
+  )
+
+(defmacro find-parent-state ()
+  "Find the first different implementation of the current virtual state above this one."
+  (when (or (not *defstate-current-type*)
+            (not *defstate-current-state-name*))
+    (error "use of find-parent-state outside of a defstate.")
+    )
+  `(cast-to-method-type
+     ,*defstate-current-type*
+     ,*defstate-current-state-name*
+     (find-parent-method ,*defstate-current-type* (method-id-of-type ,*defstate-current-type* ,*defstate-current-state-name*))
+    )
+  )
+
+
+(defmacro behavior (bindings &rest body)
+  "Define an anonymous behavior for a process state. This may only be used inside a defstate!"
+
+  (let ((behavior-type (first *defstate-type-stack*)))
+    (pop! *defstate-type-stack*)
+    `(lambda :behavior ,behavior-type ,bindings ,@body)
+    )
+  )
+
+;; set the default handler functions for a process's state handlers
+(seval (define *default-state-handlers* '()))
+(defmacro defstatehandler (proc
+                           &key (event #f)
+                           &key (enter #f)
+                           &key (trans #f)
+                           &key (exit #f)
+                           &key (code #f)
+                           &key (post #f))
+  (let ((old (assoc proc *default-state-handlers*))
+        (new (list proc (list event enter trans exit code post))))
+      (if (not old)
+          (append!! *default-state-handlers* new) ;; add new set of default handlers
+          (dolist (hnd *default-state-handlers*)  ;; replace old handlers with new ones
+            (when (eq? (car hnd) old)
+              (set-car! hnd new)
+              )
+            )
+          )
+      )
+  `(none)
+  )
+
+
 ;; DECOMP BEGINS
+
+(defmethod new state ((allocation symbol)
+                    (type-to-make type)
+                    (arg0 symbol)
+                    (arg1 function)
+                    (arg2 (function object))
+                    (arg3 function)
+                    (arg4 (function object))
+                    (arg5 (function process int symbol event-message-block object))
+                    )
+  (let ((v0-0 (object-new allocation type-to-make (the-as int (-> type-to-make size)))))
+    (set! (-> v0-0 name) arg0)
+    (set! (-> v0-0 next) #f)
+    (set! (-> v0-0 parent) #f)
+    (set! (-> v0-0 exit) arg4)
+    (set! (-> v0-0 code) arg1)
+    (set! (-> v0-0 trans) arg2)
+    (set! (-> v0-0 post) #f)
+    (set! (-> v0-0 enter) arg3)
+    (set! (-> v0-0 event) arg5)
+    v0-0
+    )
+  )
+
+(defun inherit-state ((arg0 state) (arg1 state))
+  (set! (-> arg0 parent) (-> arg1 parent)) ;; huh???
+  (set! (-> arg0 exit) (-> arg1 exit))
+  (set! (-> arg0 code) (-> arg1 code))
+  (set! (-> arg0 trans) (-> arg1 trans))
+  (set! (-> arg0 post) (-> arg1 post))
+  (set! (-> arg0 enter) (-> arg1 enter))
+  (set! (-> arg0 event) (-> arg1 event))
+  arg0
+  )
+
+(defmethod print ((this state))
+  (format #t "#<~A ~A @ #x~X>" (-> this type) (-> this name) this)
+  this
+  )
+
+(defun state-type? ((arg0 state) (arg1 symbol))
+  (let ((v1-0 arg0))
+    (while v1-0
+      (if (= (-> v1-0 name) arg1)
+          (return #t)
+          )
+      (set! v1-0 (-> v1-0 parent))
+      )
+    )
+  #f
+  )
+
+(define-extern enter-state (function object object object object object object object))
+(defun enter-state ((arg0 object) (arg1 object) (arg2 object) (arg3 object) (arg4 object) (arg5 object))
+  (local-vars (s7-0 none) (sp-0 int) (ra-0 int))
+  (with-pp
+    ;; added!!
+    (if (zero? (-> pp next-state))
+        (break!))
+
+    (logclear! (-> pp mask) (process-mask sleep sleep-code))
+    (logior! (-> pp mask) (process-mask going))
+    (cond
+      ((= (-> pp status) 'initialize)
+       (set! (-> pp trans-hook) #f)
+       (set-to-run (-> pp main-thread) enter-state arg0 arg1 arg2 arg3 arg4 arg5)
+       (set! (-> pp status) 'initialize-go)
+       (throw 'initialize #t)
+       #t
+       )
+      ((!= (-> *kernel-context* current-process) pp)
+       (let ((s0-0 (-> pp status)))
+         (set! (-> pp trans-hook) #f)
+         (set-to-run (-> pp main-thread) enter-state arg0 arg1 arg2 arg3 arg4 arg5)
+         (set! (-> pp status) s0-0)
+         )
+       #t
+       )
+      ((= (-> pp main-thread) (-> pp top-thread))
+       (set! (-> pp prev-state) (-> pp state))
+       (set! (-> pp state) (-> pp next-state))
+       (let ((s0-1 (-> pp stack-frame-top)))
+         (while s0-1
+           (case (-> s0-1 type)
+             ((protect-frame state)
+              ((-> (the-as protect-frame s0-1) exit))
+              )
+             )
+           (set! s0-1 (-> s0-1 next))
+           )
+         )
+       (logclear! (-> pp mask) (process-mask going))
+       (let ((s0-2 (-> pp state)))
+         (set! (-> pp event-hook) (-> s0-2 event))
+         (if (-> s0-2 exit)
+             (set! (-> pp stack-frame-top) s0-2)
+             (set! (-> pp stack-frame-top) #f)
+             )
+         (set! (-> pp post-hook) (-> s0-2 post))
+         (set! (-> pp trans-hook) (-> s0-2 trans))
+         (let ((t9-4 (-> s0-2 enter)))
+           (if t9-4
+               ((the-as (function object object object object object object none) t9-4) arg0 arg1 arg2 arg3 arg4 arg5)
+               )
+           )
+         (let ((t9-5 (-> s0-2 trans)))
+           (if t9-5
+               (t9-5)
+               )
+           )
+         (rlet ((temp)
+                (func)
+                (sp :reg rsp :type uint)
+                (off :reg r15 :type uint)
+                (carg0 :reg rdi)
+                (carg1 :reg rsi)
+                (carg2 :reg rdx)
+                (carg3 :reg rcx))
+           ;; prepare args
+           ;; compiler will likely have these on the stack, we need to get them in regs
+           ;; before messing with the stack.
+           (.mov carg0 arg0)
+           (.mov carg1 arg1)
+           (.mov carg2 arg2)
+           (.mov carg3 arg3)
+
+           ;; get the main code as an x86-64 pointer
+           (.mov func (-> s0-2 code))
+           (.add func off)
+           ;; reset the stack (scary)
+           (.mov sp (-> pp main-thread stack-top))
+           (.add sp off)
+           ;; push the return trampoline for when code returns.
+           (.mov temp return-from-thread-dead) ;; will deactivate
+           (.add temp off)
+           (.push temp)
+           ;; and call!
+           (.jr func)
+           ;; stupid hack so the compiler doesn't throw away these registers.
+           (.add carg0 carg1)
+           (.add carg2 carg3)
+           #f ;; can't get here
+           )
+         ; (let ((v1-29 (-> pp main-thread)))
+         ;   (.lwu sp-0 28 v1-29)
+         ;   )
+         ; (let ((t9-6 (-> s0-2 code)))
+         ;   (.lw ra-0 return-from-thread-dead s7-0)
+         ;   (.jr t9-6)
+         ;   )
+         )
+       arg4
+       )
+      (else
+        (set! (-> pp trans-hook) #f)
+        (set-to-run (-> pp main-thread) enter-state arg0 arg1 arg2 arg3 arg4 arg5)
+        (when (!= (-> pp top-thread name) 'post)
+         ;; abandon this one too.
+         ;; NOTE - this is different from GOAL.
+         ;; GOAL installs this as the return address for this function and returns normally.
+         ;; but we don't because I don't have an easy way to find where to stick this.
+         ;; I can't see how this makes a difference, as all non-main threads seem
+         ;; temporary, but if this turns out to be false, we will need to change this.
+         (abandon-thread)
+         #f ;; can't get here
+          ; (let ((v1-32 return-from-thread))
+          ;   (.sw v1-32 0 (the-as none sp-0))
+          ;   )
+          )
+        #t
+        )
+      )
+    )
+  )
+
+(kmemopen global "event-queue")
+
+(let ((v1-4 (new 'global 'event-message-block-array 64)))
+  (set! (-> v1-4 length) 0)
+  (define *event-queue* v1-4) ;; og:preserve-this
+  )
+
+(kmemclose)
+
+(defun send-event-function ((arg0 process-tree) (arg1 event-message-block))
+  (with-pp
+    (when (and arg0 (!= (-> arg0 type) process-tree) (-> (the-as process arg0) event-hook) (-> arg1 from))
+      (let ((gp-0 pp))
+        (set! pp (the-as process arg0))
+        (let ((v0-0 ((-> (the-as process arg0) event-hook) (-> arg1 from 0) (-> arg1 num-params) (-> arg1 message) arg1)))
+          (set! pp gp-0)
+          v0-0
+          )
+        )
+      )
+    )
+  )
+
+(defmethod send-all! ((this event-message-block-array))
+  (dotimes (s5-0 (-> this length))
+    (let* ((a1-0 (-> this data s5-0))
+           (a0-2 (handle->process (-> a1-0 to-handle)))
+           )
+      (if (and a0-2 (handle->process (-> a1-0 from-handle)))
+          (send-event-function a0-2 a1-0)
+          )
+      )
+    )
+  (set! (-> this length) 0)
+  0
+  (none)
+  )
+
+;; WARN: new jak 2 until loop case, check carefully
+(defun looping-code ()
+  (until #f
+    (suspend)
+    )
+  #f
+  )
+
+(defmacro send-event (proc msg &key (from (with-pp pp)) &rest params)
+  "Send an event to a process. This should be used over send-event-function"
+  `(let ((event-data (new 'stack-no-clear 'event-message-block)))
+        (set! (-> event-data from) (process->ppointer ,from))
+        (set! (-> event-data num-params) ,(length params))
+        (set! (-> event-data message) ,msg)
+        ,@(apply-i (lambda (x i) `(set! (-> event-data param ,i) (the-as uint ,x))) params)
+        (send-event-function ,proc event-data)
+        )
+  )
 

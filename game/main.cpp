@@ -95,7 +95,6 @@ int main(int argc, char** argv) {
   bool verbose_logging = false;
   bool disable_avx2 = false;
   bool disable_display = false;
-  bool enable_debug_vm = false;
   bool enable_profiling = false;
   std::string gpu_test = "";
   std::string gpu_test_out_path = "";
@@ -109,9 +108,8 @@ int main(int argc, char** argv) {
   app.add_flag(
       "--port", port_number,
       "Specify port number for listener connection (default is 8112 for Jak 1 and 8113 for Jak 2)");
-  app.add_flag("--no-avx2", verbose_logging, "Disable AVX2 for testing");
+  app.add_flag("--no-avx2", disable_avx2, "Disable AVX2 for testing");
   app.add_flag("--no-display", disable_display, "Disable video display");
-  app.add_flag("--vm", enable_debug_vm, "Enable debug PS2 VM (defaulted to off)");
   app.add_flag("--profile", enable_profiling, "Enables profiling immediately from startup");
   app.add_option("--gpu-test", gpu_test,
                  "Tests for minimum graphics requirements.  Valid Options are: [opengl]");
@@ -127,7 +125,7 @@ int main(int argc, char** argv) {
   CLI11_PARSE(app, argc, argv);
 
   if (show_version) {
-    lg::print(build_revision());
+    lg::print("{}", build_revision());
     return 0;
   }
 
@@ -146,7 +144,6 @@ int main(int argc, char** argv) {
 
   // Create struct with all non-kmachine handled args to pass to the runtime
   GameLaunchOptions game_options;
-  game_options.disable_debug_vm = !enable_debug_vm;
   game_options.disable_display = disable_display;
   game_options.game_version = game_name_to_version(game_name);
   game_options.server_port =

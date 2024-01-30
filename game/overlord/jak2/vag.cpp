@@ -189,7 +189,7 @@ VagCmd* SmartAllocVagCmd(VagCmd* cmd) {
   return selected;
 }
 
-void TerminateVAG(VagCmd* cmd, int param_2) {
+void TerminateVAG(VagCmd* cmd, int /*param_2*/) {
   VagStrListNode vag_node;
   LfoListNode lfo_node;
   // undefined4 auStack32 [2];
@@ -386,7 +386,7 @@ void RestartVag(VagCmd* param_1, int param_2, int /*param_3*/) {
   //}
 }
 
-void SetVAGVol(VagCmd* cmd, int param_2) {
+void SetVAGVol(VagCmd* cmd, int /*param_2*/) {
   VagCmd* stereo_cmd;
   u32 lvol, rvol;
 

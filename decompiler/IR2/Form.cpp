@@ -3255,7 +3255,7 @@ goos::Object DefpartgroupElement::to_form_internal(const Env& env) const {
 
     if (offset) {
       // jak2 has switched this field to a signed 16 bit number
-      if (env.version == GameVersion::Jak2) {
+      if (env.version >= GameVersion::Jak2) {
         result += fmt::format(" :offset {}", (s16)offset);
       } else {
         result += fmt::format(" :offset {}", offset);

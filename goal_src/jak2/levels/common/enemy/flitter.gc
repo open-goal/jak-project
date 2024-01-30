@@ -543,7 +543,7 @@
        )
   )
 
-(defmethod enemy-method-77 ((this flitter) (arg0 (pointer float)))
+(defmethod enemy-method-77 ((this flitter) (arg0 enemy-knocked-info))
   (case (-> this incoming knocked-type)
     (((knocked-type knocked-type-4))
      (let ((a0-2 (-> this skel root-channel 0)))
@@ -551,7 +551,7 @@
        (set! (-> a0-2 param 0)
              (the float (+ (-> (the-as art-joint-anim (-> this draw art-group data 20)) frames num-frames) -1))
              )
-       (set! (-> a0-2 param 1) (-> arg0 0))
+       (set! (-> a0-2 param 1) (-> arg0 anim-speed))
        (set! (-> a0-2 frame-num) 0.0)
        (joint-control-channel-group! a0-2 (the-as art-joint-anim (-> this draw art-group data 20)) num-func-seek!)
        )
@@ -585,7 +585,7 @@
     )
   )
 
-(defmethod enemy-method-78 ((this flitter) (arg0 (pointer float)))
+(defmethod enemy-method-78 ((this flitter) (arg0 enemy-knocked-info))
   (case (-> this incoming knocked-type)
     (((knocked-type knocked-type-6))
      (when (>= (-> this incoming blue-juggle-count) (the-as uint 2))
@@ -620,8 +620,8 @@
 (defstate ambush (flitter)
   :virtual #t
   :enter (behavior ()
-    (when (logtest? (-> self enemy-flags) (enemy-flag auto-reset-penetrate))
-      (logclear! (-> self enemy-flags) (enemy-flag auto-reset-penetrate))
+    (when (logtest? (-> self enemy-flags) (enemy-flag enable-on-notice))
+      (logclear! (-> self enemy-flags) (enemy-flag enable-on-notice))
       (let ((gp-0 (-> self on-notice)))
         (if gp-0
             (script-eval gp-0 :vector (-> self root trans))
@@ -695,7 +695,7 @@
         )
       )
     (let ((gp-3 (current-time)))
-      (until (time-elapsed? gp-3 (the int (* 300.0 (get-rand-float-range self 0.0 0.6))))
+      (until (time-elapsed? gp-3 (the int (* 300.0 (rnd-float-range self 0.0 0.6))))
         (suspend)
         )
       )
@@ -720,11 +720,11 @@
       (set! (-> v1-3 enemy-flags) (the-as enemy-flag (logior (enemy-flag enemy-flag37) (-> v1-3 enemy-flags))))
       )
     0
-    (look-at-target! self (enemy-flag lock-focus))
+    (look-at-target! self (enemy-flag look-at-focus))
     (set-time! (-> self state-time))
     (let ((gp-0 (-> self root)))
       (vector-reset! (-> gp-0 transv))
-      (set! (-> gp-0 transv y) (* 4096.0 (get-rand-float-range self 34.0 38.0)))
+      (set! (-> gp-0 transv y) (* 4096.0 (rnd-float-range self 34.0 38.0)))
       )
     )
   :code (behavior ()
@@ -945,7 +945,7 @@
   :virtual #t
   :code (behavior ()
     (ja-channel-push! 1 (seconds 0.1))
-    (let ((f30-0 (get-rand-float-range self 0.8 1.2)))
+    (let ((f30-0 (rnd-float-range self 0.8 1.2)))
       (until #f
         (when (not (enemy-method-96 self 2730.6667 #t))
           (let ((v1-5 self))
@@ -1053,12 +1053,12 @@
     (ja-channel-push! 1 (seconds 0.2))
     (until #f
       (ja-no-eval :group! (-> self draw art-group data (-> self enemy-info run-anim))
-                  :num! (seek! max (get-rand-float-range self 0.9 1.1))
+                  :num! (seek! max (rnd-float-range self 0.9 1.1))
                   :frame-num 0.0
                   )
       (until (ja-done? 0)
         (suspend)
-        (ja :num! (seek! max (get-rand-float-range self 0.9 1.1)))
+        (ja :num! (seek! max (rnd-float-range self 0.9 1.1)))
         )
       )
     #f
@@ -1148,7 +1148,7 @@
       )
     )
   :exit (behavior ()
-    (if (logtest? (-> self enemy-flags) (enemy-flag check-water))
+    (if (logtest? (-> self enemy-flags) (enemy-flag dangerous-backup))
         (logior! (-> self focus-status) (focus-status dangerous))
         (logclear! (-> self focus-status) (focus-status dangerous))
         )
@@ -1216,11 +1216,11 @@
       )
     0
     (ja-channel-push! 1 (seconds 0.1))
-    (if (logtest? (-> self enemy-flags) (enemy-flag check-water))
+    (if (logtest? (-> self enemy-flags) (enemy-flag dangerous-backup))
         (logior! (-> self focus-status) (focus-status dangerous))
         (logclear! (-> self focus-status) (focus-status dangerous))
         )
-    (dotimes (gp-1 (get-rand-int self 3))
+    (dotimes (gp-1 (rnd-int-count self 3))
       (ja-no-eval :group! flitter-idle-ja :num! (seek!) :frame-num 0.0)
       (until (ja-done? 0)
         (suspend)
@@ -1240,7 +1240,7 @@
     )
   )
 
-(defmethod dispose! ((this flitter))
+(defmethod dying ((this flitter))
   "Cleans-up the enemy and any associated resources. Potentially spawns skull gems"
   (when (-> this minimap)
     (logior! (-> this minimap flags) (minimap-flag fade-out))

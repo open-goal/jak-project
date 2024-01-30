@@ -803,12 +803,12 @@ For example for an elevator pre-compute the distance between the first and last 
 ;; definition for method 55 of type krew-boss-clone
 ;; INFO: Used lq/sq
 ;; WARN: Return type mismatch int vs none.
-(defmethod track-target! ((this krew-boss-clone))
+(defmethod common-post ((this krew-boss-clone))
   "Does a lot of various things relating to interacting with the target
 - tracks when the enemy was last drawn
 - looks at the target and handles attacking
 @TODO Not extremely well understood yet"
-  (let ((t9-0 (method-of-type nav-enemy track-target!)))
+  (let ((t9-0 (method-of-type nav-enemy common-post)))
     (t9-0 this)
     )
   (let ((s5-0 (new 'stack-no-clear 'vector))
@@ -928,13 +928,13 @@ For example for an elevator pre-compute the distance between the first and last 
       (('track)
        (cond
          ((-> arg3 param 0)
-          (if (logtest? (-> this enemy-flags) (enemy-flag enable-on-active))
+          (if (logtest? (-> this enemy-flags) (enemy-flag vulnerable))
               #t
               'abort
               )
           )
          (else
-           (logtest? (-> this enemy-flags) (enemy-flag enable-on-active))
+           (logtest? (-> this enemy-flags) (enemy-flag vulnerable))
            )
          )
        )
@@ -976,7 +976,7 @@ For example for an elevator pre-compute the distance between the first and last 
     (go-virtual hostile)
     )
   :post (behavior ()
-    (logior! (-> self enemy-flags) (enemy-flag directed))
+    (logior! (-> self enemy-flags) (enemy-flag recover-applied-velocity))
     (let ((gp-0 (-> self root)))
       (let ((a1-0 (new-stack-vector0)))
         (vector-v++! (-> gp-0 transv) (compute-acc-due-to-gravity gp-0 a1-0 (-> self enemy-info slip-factor)))
@@ -991,7 +991,7 @@ For example for an elevator pre-compute the distance between the first and last 
         )
       )
     (enemy-method-111 self)
-    (track-target! self)
+    (common-post self)
     )
   )
 
@@ -1009,7 +1009,7 @@ For example for an elevator pre-compute the distance between the first and last 
   )
 
 ;; definition for method 77 of type krew-boss-clone
-(defmethod enemy-method-77 ((this krew-boss-clone) (arg0 (pointer float)))
+(defmethod enemy-method-77 ((this krew-boss-clone) (arg0 enemy-knocked-info))
   (with-pp
     (ja-channel-push! 1 0)
     (cond
@@ -1061,7 +1061,7 @@ For example for an elevator pre-compute the distance between the first and last 
   )
 
 ;; definition for method 78 of type krew-boss-clone
-(defmethod enemy-method-78 ((this krew-boss-clone) (arg0 (pointer float)))
+(defmethod enemy-method-78 ((this krew-boss-clone) (arg0 enemy-knocked-info))
   (when (> (-> this hit-points) 0)
     (ja-channel-push! 1 (seconds 0.1))
     (let ((a0-2 (-> this skel root-channel 0)))
@@ -1078,7 +1078,7 @@ For example for an elevator pre-compute the distance between the first and last 
                     )
                  )
             )
-      (set! (-> a0-2 param 1) (* 5.0 (-> arg0 0)))
+      (set! (-> a0-2 param 1) (* 5.0 (-> arg0 anim-speed)))
       (set! (-> a0-2 frame-num) 0.0)
       (joint-control-channel-group!
         a0-2
@@ -1096,7 +1096,7 @@ For example for an elevator pre-compute the distance between the first and last 
   (let ((v1-0 arg0))
     (cond
       ((zero? v1-0)
-       (enemy-method-77 this (the-as (pointer float) arg1))
+       (enemy-method-77 this arg1)
        #f
        )
       ((= v1-0 1)
@@ -1105,7 +1105,7 @@ For example for an elevator pre-compute the distance between the first and last 
        s5-0
        )
       ((= v1-0 2)
-       (set! s5-0 (not (enemy-method-78 this (the-as (pointer float) arg1))))
+       (set! s5-0 (not (enemy-method-78 this arg1)))
        (set! (-> this incoming blue-juggle-count) (the-as uint 0))
        s5-0
        )
@@ -1207,7 +1207,7 @@ For example for an elevator pre-compute the distance between the first and last 
   :code (behavior ()
     (set! (-> self wiggle-time) (+ (current-time) (seconds -10)))
     (set! (-> self wiggle-angle) 0.0)
-    (let ((f30-0 (get-rand-float-range self 0.9 1.1)))
+    (let ((f30-0 (rnd-float-range self 0.9 1.1)))
       (until #f
         (ja :num! (loop! f30-0))
         (when (time-elapsed? (-> self wiggle-time) (seconds 1))
@@ -1371,7 +1371,9 @@ For example for an elevator pre-compute the distance between the first and last 
     (the-as pair 0)
     )
   (logior! (-> this draw global-effect) (draw-control-global-effect disable-envmap))
-  (set! (-> this enemy-flags) (the-as enemy-flag (logior (enemy-flag vulnerable-backup) (-> this enemy-flags))))
+  (set! (-> this enemy-flags)
+        (the-as enemy-flag (logior (enemy-flag no-initial-move-to-ground) (-> this enemy-flags)))
+        )
   (set! (-> *krew-boss-clone-nav-enemy-info* nav-mesh)
         (nav-mesh-from-res-tag (-> this entity) 'nav-mesh-actor 1)
         )
@@ -2119,13 +2121,13 @@ For example for an elevator pre-compute the distance between the first and last 
     (('track)
      (cond
        ((-> arg3 param 0)
-        (if (logtest? (-> this enemy-flags) (enemy-flag enable-on-active))
+        (if (logtest? (-> this enemy-flags) (enemy-flag vulnerable))
             #t
             'abort
             )
         )
        (else
-         (logtest? (-> this enemy-flags) (enemy-flag enable-on-active))
+         (logtest? (-> this enemy-flags) (enemy-flag vulnerable))
          )
        )
      )
@@ -2154,7 +2156,7 @@ For example for an elevator pre-compute the distance between the first and last 
   )
 
 ;; definition for method 77 of type krew-boss
-(defmethod enemy-method-77 ((this krew-boss) (arg0 (pointer float)))
+(defmethod enemy-method-77 ((this krew-boss) (arg0 enemy-knocked-info))
   (with-pp
     (ja-channel-push! 1 0)
     (cond
@@ -2193,7 +2195,7 @@ For example for an elevator pre-compute the distance between the first and last 
   )
 
 ;; definition for method 78 of type krew-boss
-(defmethod enemy-method-78 ((this krew-boss) (arg0 (pointer float)))
+(defmethod enemy-method-78 ((this krew-boss) (arg0 enemy-knocked-info))
   (cond
     ((<= (-> this hit-points) 0)
      #f
@@ -2214,7 +2216,7 @@ For example for an elevator pre-compute the distance between the first and last 
                       )
                    )
               )
-        (set! (-> a0-2 param 1) (* 2.0 (-> arg0 0)))
+        (set! (-> a0-2 param 1) (* 2.0 (-> arg0 anim-speed)))
         (set! (-> a0-2 frame-num) 0.0)
         (joint-control-channel-group!
           a0-2
@@ -2242,7 +2244,7 @@ For example for an elevator pre-compute the distance between the first and last 
           )
       )
     (krew-hit-speech self)
-    (logclear! (-> self enemy-flags) (enemy-flag enable-on-active))
+    (logclear! (-> self enemy-flags) (enemy-flag vulnerable))
     (logclear! (-> self nav flags) (nav-control-flag update-heading-from-facing))
     )
   :exit (behavior ()
@@ -2254,9 +2256,9 @@ For example for an elevator pre-compute the distance between the first and last 
       )
     (set! (-> self floating) #f)
     (let ((v1-4 (-> self enemy-flags)))
-      (if (logtest? v1-4 (enemy-flag checking-water))
-          (set! v1-5 (logior v1-4 (enemy-flag enable-on-active)))
-          (set! v1-5 (logclear v1-4 (enemy-flag enable-on-active)))
+      (if (logtest? v1-4 (enemy-flag vulnerable-backup))
+          (set! v1-5 (logior v1-4 (enemy-flag vulnerable)))
+          (set! v1-5 (logclear v1-4 (enemy-flag vulnerable)))
           )
       )
     (set! (-> self enemy-flags) v1-5)
@@ -2266,7 +2268,7 @@ For example for an elevator pre-compute the distance between the first and last 
         )
     )
   :post (behavior ()
-    (logior! (-> self enemy-flags) (enemy-flag directed))
+    (logior! (-> self enemy-flags) (enemy-flag recover-applied-velocity))
     (let ((gp-0 (-> self root)))
       (cond
         ((and (>= 1449984.0 (-> gp-0 trans y)) (< (-> gp-0 transv y) 0.0))
@@ -2294,7 +2296,7 @@ For example for an elevator pre-compute the distance between the first and last 
       )
     (enemy-method-111 self)
     (nav-enemy-method-142 self (-> self nav))
-    (track-target! self)
+    (common-post self)
     )
   )
 
@@ -2396,7 +2398,7 @@ For example for an elevator pre-compute the distance between the first and last 
       (set! (-> v1-14 target-post quad) (-> a0-20 quad))
       )
     0
-    (logclear! (-> self enemy-flags) (enemy-flag enable-on-active))
+    (logclear! (-> self enemy-flags) (enemy-flag vulnerable))
     (let ((v1-19 (-> self nav)))
       (set! (-> v1-19 sphere-mask) (the-as uint #x800fa))
       )
@@ -2422,7 +2424,7 @@ For example for an elevator pre-compute the distance between the first and last 
   :code (behavior ()
     (ja-channel-push! 1 (seconds 0.1))
     (ja :group! (-> self draw art-group data (-> self enemy-info idle-anim)) :num! min)
-    (let ((f30-0 (get-rand-float-range self 0.3 0.5)))
+    (let ((f30-0 (rnd-float-range self 0.3 0.5)))
       (until #f
         (suspend)
         (ja :num! (loop! f30-0))
@@ -2572,8 +2574,8 @@ For example for an elevator pre-compute the distance between the first and last 
                                     )
             )
       )
-    (look-at-target! self (enemy-flag lock-focus))
-    (logior! (-> self enemy-flags) (enemy-flag use-notice-distance))
+    (look-at-target! self (enemy-flag look-at-focus))
+    (logior! (-> self enemy-flags) (enemy-flag cam-attack-mode))
     (let ((v1-58 self))
       (if (not (logtest? (enemy-flag enemy-flag36) (-> v1-58 enemy-flags)))
           (set! (-> v1-58 enemy-flags) (the-as enemy-flag (logior (enemy-flag enemy-flag38) (-> v1-58 enemy-flags))))
@@ -2597,8 +2599,8 @@ For example for an elevator pre-compute the distance between the first and last 
     (let ((f30-0 (-> self enemy-info circle-dist-lo))
           (f28-0 (-> self enemy-info circle-dist-hi))
           )
-      (if (zero? (get-rand-int self 4))
-          (set! (-> self desired-angle) (get-rand-float-range self f30-0 f28-0))
+      (if (zero? (rnd-int-count self 4))
+          (set! (-> self desired-angle) (rnd-float-range self f30-0 f28-0))
           (set! (-> self desired-angle)
                 (fmax (fmin (vector-vector-xz-distance (-> self focus-pos) (-> self root trans)) f28-0) f30-0)
                 )
@@ -2637,9 +2639,9 @@ For example for an elevator pre-compute the distance between the first and last 
          (set! (-> self next-shooting-frame) 0)
          (ja :chan 1 :num-func num-func-identity :frame-num 0.0)
          (let ((v1-24 (-> self enemy-flags)))
-           (if (logtest? v1-24 (enemy-flag checking-water))
-               (set! v1-25 (logior v1-24 (enemy-flag enable-on-active)))
-               (set! v1-25 (logclear v1-24 (enemy-flag enable-on-active)))
+           (if (logtest? v1-24 (enemy-flag vulnerable-backup))
+               (set! v1-25 (logior v1-24 (enemy-flag vulnerable)))
+               (set! v1-25 (logclear v1-24 (enemy-flag vulnerable)))
                )
            )
          (set! (-> self enemy-flags) v1-25)
@@ -2677,7 +2679,7 @@ For example for an elevator pre-compute the distance between the first and last 
     (ja-channel-push! 2 (seconds 0.1))
     (ja :group! (-> self draw art-group data (-> self enemy-info idle-anim)) :num! min)
     (ja :chan 1 :group! (-> self draw art-group data (-> self enemy-info hostile-anim)) :num! min)
-    (let ((f30-0 (get-rand-float-range self 0.9 1.1)))
+    (let ((f30-0 (rnd-float-range self 0.9 1.1)))
       (until #f
         (ja :num! (loop! f30-0))
         (when (!= (-> self next-shooting-frame) 100)

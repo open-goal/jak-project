@@ -179,7 +179,7 @@ goos::Object decompile_function_at_label(const DecompilerLabel& label,
     auto other_func = file->try_get_function_at_label(label);
     if (other_func && other_func->ir2.env.has_local_vars() && other_func->ir2.top_form &&
         other_func->ir2.expressions_succeeded) {
-      auto out = final_output_lambda(*other_func);
+      auto out = final_output_lambda(*other_func, file->version);
       if (in_static_pair) {
         return pretty_print::build_list("unquote", out);
       } else {
@@ -967,6 +967,12 @@ const std::unordered_map<
                {"speeches", ArrayFieldDecompMeta(TypeSpec("bot-speech-info"), 16)},
                {"dirs", ArrayFieldDecompMeta(TypeSpec("vector"), 16)},
                {"speech-tunings", ArrayFieldDecompMeta(TypeSpec("bot-speech-tuning"), 16)}}},
+         }},
+        {GameVersion::Jak3,
+         {
+             {"ocean-near-indices",
+              {{"data", ArrayFieldDecompMeta(TypeSpec("ocean-near-index"), 32)}}},
+             {"ocean-mid-masks", {{"data", ArrayFieldDecompMeta(TypeSpec("ocean-mid-mask"), 8)}}},
          }}};
 
 goos::Object decompile_structure(const TypeSpec& type,

@@ -110,17 +110,17 @@
    ;; "generic" graphics settings
    (target-fps int16) ;; the target framerate of the game
    ;; game resolution?
-   (width int32)
-   (height int32)
+   (width int64)
+   (height int64)
    ;; window size. resolution = window size in windowed mode.
-   (window-width int32)
-   (window-height int32)
+   (window-width int64)
+   (window-height int64)
    ;; reported window framebuffer size from OS
-   (framebuffer-width int32)
-   (framebuffer-height int32)
+   (framebuffer-width int64)
+   (framebuffer-height int64)
    ;; the region to draw in that framebuffer. rest is cleared to black.
-   (framebuffer-scissor-width int32)
-   (framebuffer-scissor-height int32)
+   (framebuffer-scissor-width int64)
+   (framebuffer-scissor-height int64)
    (dpi-x float) ;; DPI width scale
    (dpi-y float) ;; DPI height scale
    (aspect-ratio-auto? symbol) ;; if on, aspect ratio is calculated automatically based on game display size.
@@ -344,9 +344,23 @@
   (set! (-> obj letterbox?) #t)
 
   ;; get screen size and set to borderless at screen res (if retail)
-  (pc-get-active-display-size (&-> obj width) (&-> obj height))
+  (cond
+    ((> (pc-get-num-resolutions) 0)
+     ;; pick first available resolution by default
+     (pc-get-resolution 0 (&-> obj width) (&-> obj height))
+     )
+    (else
+     ;; somehow didn't get a single resolution. this is pretty bad.
+     (pc-get-active-display-size (&-> obj width) (&-> obj height))
+     (max! (-> obj width) PC_MIN_WIDTH)
+     (max! (-> obj height) PC_MIN_HEIGHT)
+     (format 0 "!!!! failed to get any screen resolutions !!!!")
+     )
+    )
+  (format 0 "fullscreen resolution defaulted to ~D x ~D~%" (-> obj width) (-> obj height))
   (if (not *debug-segment*)
-      (set-display-mode! obj 'borderless call-handlers))
+      (set-display-mode! obj 'borderless call-handlers)
+      (set-display-mode! obj 'windowed call-handlers))
   (set! (-> obj gfx-msaa) PC_DEFAULT_MSAA) ;; default msaa
   0)
 

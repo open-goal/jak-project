@@ -347,6 +347,7 @@ FormElement* rewrite_as_send_event(LetElement* in,
           Matcher::any_reg(1));
       break;
     case GameVersion::Jak2:
+    case GameVersion::Jak3:
       // in jak 2, the event message block holds a ppointer instead.
       set_from_matcher = Matcher::set(
           Matcher::deref(Matcher::reg(block_var_reg), false, {DerefTokenMatcher::string("from")}),

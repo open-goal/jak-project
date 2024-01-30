@@ -1,0 +1,196 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; definition for method 0 of type state
+(defmethod new state ((allocation symbol)
+                    (type-to-make type)
+                    (arg0 symbol)
+                    (arg1 function)
+                    (arg2 (function object))
+                    (arg3 function)
+                    (arg4 (function object))
+                    (arg5 (function process int symbol event-message-block object))
+                    )
+  (let ((v0-0 (object-new allocation type-to-make (the-as int (-> type-to-make size)))))
+    (set! (-> v0-0 name) arg0)
+    (set! (-> v0-0 next) #f)
+    (set! (-> v0-0 parent) #f)
+    (set! (-> v0-0 exit) arg4)
+    (set! (-> v0-0 code) arg1)
+    (set! (-> v0-0 trans) arg2)
+    (set! (-> v0-0 post) #f)
+    (set! (-> v0-0 enter) arg3)
+    (set! (-> v0-0 event) arg5)
+    v0-0
+    )
+  )
+
+;; definition for function inherit-state
+(defun inherit-state ((arg0 state) (arg1 state))
+  (set! (-> arg0 parent) (-> arg1 parent))
+  (set! (-> arg0 exit) (-> arg1 exit))
+  (set! (-> arg0 code) (-> arg1 code))
+  (set! (-> arg0 trans) (-> arg1 trans))
+  (set! (-> arg0 post) (-> arg1 post))
+  (set! (-> arg0 enter) (-> arg1 enter))
+  (set! (-> arg0 event) (-> arg1 event))
+  arg0
+  )
+
+;; definition for method 2 of type state
+(defmethod print ((this state))
+  (format #t "#<~A ~A @ #x~X>" (-> this type) (-> this name) this)
+  this
+  )
+
+;; definition for function state-type?
+(defun state-type? ((arg0 state) (arg1 symbol))
+  (let ((v1-0 arg0))
+    (while v1-0
+      (if (= (-> v1-0 name) arg1)
+          (return #t)
+          )
+      (set! v1-0 (-> v1-0 parent))
+      )
+    )
+  #f
+  )
+
+;; definition for function enter-state
+;; ERROR: Unsupported inline assembly instruction kind - [lwu sp, 28(v1)]
+;; ERROR: Unsupported inline assembly instruction kind - [lw ra, return-from-thread-dead(s7)]
+;; ERROR: Unsupported inline assembly instruction kind - [jr t9]
+;; ERROR: Unsupported inline assembly instruction kind - [sw v1, 0(sp)]
+(defun enter-state ((arg0 object) (arg1 object) (arg2 object) (arg3 object) (arg4 object) (arg5 object))
+  (local-vars (s7-0 none) (sp-0 int) (ra-0 int))
+  (with-pp
+    (logclear! (-> pp mask) (process-mask sleep sleep-code))
+    (logior! (-> pp mask) (process-mask going))
+    (cond
+      ((= (-> pp status) 'initialize)
+       (set! (-> pp trans-hook) #f)
+       (set-to-run (-> pp main-thread) enter-state arg0 arg1 arg2 arg3 arg4 arg5)
+       (set! (-> pp status) 'initialize-go)
+       (throw 'initialize #t)
+       #t
+       )
+      ((!= (-> *kernel-context* current-process) pp)
+       (let ((s0-0 (-> pp status)))
+         (set! (-> pp trans-hook) #f)
+         (set-to-run (-> pp main-thread) enter-state arg0 arg1 arg2 arg3 arg4 arg5)
+         (set! (-> pp status) s0-0)
+         )
+       #t
+       )
+      ((= (-> pp main-thread) (-> pp top-thread))
+       (set! (-> pp prev-state) (-> pp state))
+       (set! (-> pp state) (-> pp next-state))
+       (let ((s0-1 (-> pp stack-frame-top)))
+         (while s0-1
+           (case (-> s0-1 type)
+             ((protect-frame state)
+              ((-> (the-as protect-frame s0-1) exit))
+              )
+             )
+           (set! s0-1 (-> s0-1 next))
+           )
+         )
+       (logclear! (-> pp mask) (process-mask going))
+       (let ((s0-2 (-> pp state)))
+         (set! (-> pp event-hook) (-> s0-2 event))
+         (if (-> s0-2 exit)
+             (set! (-> pp stack-frame-top) s0-2)
+             (set! (-> pp stack-frame-top) #f)
+             )
+         (set! (-> pp post-hook) (-> s0-2 post))
+         (set! (-> pp trans-hook) (-> s0-2 trans))
+         (let ((t9-4 (-> s0-2 enter)))
+           (if t9-4
+               ((the-as (function object object object object object object none) t9-4) arg0 arg1 arg2 arg3 arg4 arg5)
+               )
+           )
+         (let ((t9-5 (-> s0-2 trans)))
+           (if t9-5
+               (t9-5)
+               )
+           )
+         (let ((v1-29 (-> pp main-thread)))
+           (.lwu sp-0 28 v1-29)
+           )
+         (let ((t9-6 (-> s0-2 code)))
+           (.lw ra-0 return-from-thread-dead s7-0)
+           (.jr t9-6)
+           )
+         )
+       arg4
+       )
+      (else
+        (set! (-> pp trans-hook) #f)
+        (set-to-run (-> pp main-thread) enter-state arg0 arg1 arg2 arg3 arg4 arg5)
+        (when (!= (-> pp top-thread name) 'post)
+          (let ((v1-32 return-from-thread))
+            (.sw v1-32 0 (the-as none sp-0))
+            )
+          )
+        #t
+        )
+      )
+    )
+  )
+
+;; failed to figure out what this is:
+(kmemopen global "event-queue")
+
+;; failed to figure out what this is:
+(let ((v1-4 (new 'global 'event-message-block-array 64)))
+  (set! (-> v1-4 length) 0)
+  (set! *event-queue* v1-4)
+  )
+
+;; failed to figure out what this is:
+(kmemclose)
+
+;; definition for function send-event-function
+(defun send-event-function ((arg0 process-tree) (arg1 event-message-block))
+  (with-pp
+    (when (and arg0 (!= (-> arg0 type) process-tree) (-> (the-as process arg0) event-hook) (-> arg1 from))
+      (let ((gp-0 pp))
+        (set! pp (the-as process arg0))
+        (let ((v0-0 ((-> (the-as process arg0) event-hook) (-> arg1 from 0) (-> arg1 num-params) (-> arg1 message) arg1)))
+          (set! pp gp-0)
+          v0-0
+          )
+        )
+      )
+    )
+  )
+
+;; definition for method 14 of type event-message-block-array
+;; WARN: Return type mismatch int vs none.
+(defmethod send-all! ((this event-message-block-array))
+  (dotimes (s5-0 (-> this length))
+    (let* ((a1-0 (-> this data s5-0))
+           (a0-2 (handle->process (-> a1-0 to-handle)))
+           )
+      (if (and a0-2 (handle->process (-> a1-0 from-handle)))
+          (send-event-function a0-2 a1-0)
+          )
+      )
+    )
+  (set! (-> this length) 0)
+  0
+  (none)
+  )
+
+;; definition for function looping-code
+;; WARN: new jak 2 until loop case, check carefully
+(defun looping-code ()
+  (until #f
+    (suspend)
+    )
+  #f
+  )
+
+
+
+

@@ -587,8 +587,8 @@
             ;; remember to delete this when major changes to the version number are made
             (when (and (= PC_KERNEL_VER_MAJOR 1)
                        (= PC_KERNEL_VER_MINOR 10)
-                       (or (!= PC_KERNEL_VER_BUILD (-> version build))
-                           (!= PC_KERNEL_VER_REVISION (-> version revision))))
+                       (or (> 3 (-> version build))
+                           (and (= 3 (-> version build)) (> 1 (-> version revision)))))
                 ;; 1.10 upgrade: turn envmap on
                 (set! (-> obj force-envmap?) #t)
                 )
@@ -707,7 +707,6 @@
     (("panic")
       (when (file-stream-read-symbol file)
         (reset obj #t)
-        (set-display-mode! obj #f #t)
         (return #f)
         )
       )
@@ -813,13 +812,19 @@
 (defmethod load-settings pc-settings ((obj pc-settings))
   "load"
   (format (clear *pc-temp-string-1*) "~S/pc-settings.gc" *pc-settings-folder*)
-  (if (pc-filepath-exists? *pc-temp-string-1*)
-    (begin
+  (cond
+    ((pc-filepath-exists? *pc-temp-string-1*)
       (format 0 "[PC] PC Settings found at '~S'...loading!~%" *pc-temp-string-1*)
       (unless (read-from-file obj *pc-temp-string-1*)
         (format 0 "[PC] PC Settings found at '~S' but could not be loaded, using defaults!~%" *pc-temp-string-1*)
-        (reset obj #t)))
-    (format 0 "[PC] PC Settings not found at '~S'...initializing with defaults!~%" *pc-temp-string-1*))
+        (reset obj #t)
+        )
+      )
+    (else
+      (format 0 "[PC] PC Settings not found at '~S'...initializing with defaults!~%" *pc-temp-string-1*)
+      (reset obj #t)
+      )
+    )
   0)
 
 (defmethod initialize pc-settings ((obj pc-settings))

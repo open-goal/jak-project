@@ -609,7 +609,7 @@ Ptr<uint8_t> link_and_exec(Ptr<uint8_t> data,
     // probably won't end well...
   }
   link_control lc;
-  lc.begin(data, name, size, heap, flags);
+  lc.jak1_jak2_begin(data, name, size, heap, flags);
   uint32_t done;
   do {
     done = lc.jak2_work();
@@ -635,8 +635,8 @@ u64 link_and_exec_wrapper(u64* args) {
  */
 uint64_t link_begin(u64* args) {
   // object data, name size, heap flags
-  saved_link_control.begin(Ptr<u8>(args[0]), Ptr<char>(args[1]).c(), args[2],
-                           Ptr<kheapinfo>(args[3]), args[4]);
+  saved_link_control.jak1_jak2_begin(Ptr<u8>(args[0]), Ptr<char>(args[1]).c(), args[2],
+                                     Ptr<kheapinfo>(args[3]), args[4]);
   auto work_result = saved_link_control.jak2_work();
   // if we managed to finish in one shot, take care of calling finish
   if (work_result) {

@@ -74,16 +74,6 @@ tasks:
         msg: "Couldn't locate compiler executable in '{{.GOALC_BIN_RELEASE_DIR}}/goalc'"
     cmds:
       - "{{.GOALC_BIN_RELEASE_DIR}}/goalc --user-auto --game {{.GAME}}"
-  format:
-    desc: "Format code"
-    cmds:
-      - cmd: python ./scripts/cpp/format-includes.py
-      - cmd: python ./third-party/run-clang-format/run-clang-format.py -r common decompiler game goalc test tools lsp -i
-      # npm install -g prettier
-      - cmd: npx prettier --write ./decompiler/config/jak1/**/*.jsonc
-        ignore_error: true
-      - cmd: npx prettier --write ./decompiler/config/jak2/**/*.jsonc
-        ignore_error: true
   format-json:
     desc: "Format code"
     cmds:
@@ -92,6 +82,14 @@ tasks:
         ignore_error: true
       - cmd: npx prettier --write ./decompiler/config/jak2/**/*.jsonc
         ignore_error: true
+      - cmd: npx prettier --write ./decompiler/config/jak3/**/*.jsonc
+        ignore_error: true
+  format:
+    desc: "Format code"
+    cmds:
+      - cmd: python ./scripts/cpp/format-includes.py
+      - cmd: python ./third-party/run-clang-format/run-clang-format.py -r common decompiler game goalc test tools lsp -i
+      - task: format-json
   # DECOMPILING
   decomp:
     cmds:
@@ -116,6 +114,16 @@ tasks:
       - task: decomp-file
       - python ./scripts/gsrc/update-from-decomp.py --game "{{.GAME}}" --file {{.FILE}}
       - task: lint-gsrc-file
+  # ASSET RIPPING
+  rip-textures:
+    cmds:
+      - "{{.DECOMP_BIN_RELEASE_DIR}}/decompiler \"./decompiler/config/{{.DECOMP_CONFIG}}\" \"./iso_data\" \"./decompiler_out\" --version \"{{.DECOMP_CONFIG_VERSION}}\" --config-override '{\"decompile_code\": false, \"levels_extract\": true, \"save_texture_pngs\": true}'"
+  rip-levels:
+    cmds:
+      - "{{.DECOMP_BIN_RELEASE_DIR}}/decompiler \"./decompiler/config/{{.DECOMP_CONFIG}}\" \"./iso_data\" \"./decompiler_out\" --version \"{{.DECOMP_CONFIG_VERSION}}\" --config-override '{\"decompile_code\": false, \"levels_extract\": true, \"rip_levels\": true}'"
+  rip-collision:
+    cmds:
+      - "{{.DECOMP_BIN_RELEASE_DIR}}/decompiler \"./decompiler/config/{{.DECOMP_CONFIG}}\" \"./iso_data\" \"./decompiler_out\" --version \"{{.DECOMP_CONFIG_VERSION}}\" --config-override '{\"decompile_code\": false, \"levels_extract\": true, \"extract_collision\": true, \"rip_collision\": true}'"
   # TOOLS
   analyze-ee-memory:
     cmds:
@@ -166,9 +174,6 @@ tasks:
         ignore_error: true
       - python ./scripts/update_decomp_reference.py ./failures ./test/decompiler/reference/ --game {{.GAME}}
       - task: offline-test-file
-  type-test-jak1:
-    cmds:
-      - cmd: '{{.GOALCTEST_BIN_RELEASE_DIR}}/goalc-test --gtest_brief=0 --gtest_filter="*Jak1TypeConsistency*" --gtest_break_on_failure'
   type-test:
     cmds:
-      - cmd: '{{.GOALCTEST_BIN_RELEASE_DIR}}/goalc-test --gtest_brief=0 --gtest_filter="*Jak2TypeConsistency*" --gtest_break_on_failure'
+      - cmd: '{{.GOALCTEST_BIN_RELEASE_DIR}}/goalc-test --gtest_brief=0 --gtest_filter="*{{.TYPE_CONSISTENCY_TEST_FILTER}}*" --gtest_break_on_failure'

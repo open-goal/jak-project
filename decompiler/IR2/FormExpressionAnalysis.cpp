@@ -122,7 +122,7 @@ Form* try_cast_simplify(Form* in,
     return in;
   }
 
-  if (env.version == GameVersion::Jak2) {
+  if (env.version >= GameVersion::Jak2) {
     if (new_type == TypeSpec("float")) {
       auto ic = get_goal_integer_constant(in, env);
       if (ic) {
@@ -138,7 +138,7 @@ Form* try_cast_simplify(Form* in,
   if (new_type == TypeSpec("meters")) {
     auto fc = get_goal_float_constant(in);
 
-    if (!fc && env.version == GameVersion::Jak2) {
+    if (!fc && env.version >= GameVersion::Jak2) {
       auto ic = get_goal_integer_constant(in, env);
       if (ic) {
         ASSERT((s64)*ic == (s64)(s32)*ic);
@@ -2853,7 +2853,7 @@ bool try_to_rewrite_vector_inline_ctor(const Env& env,
       token_matchers = {DerefTokenMatcher::string("quad")};
     }
 
-    if (env.version == GameVersion::Jak2) {
+    if (env.version >= GameVersion::Jak2) {
       token_matchers = {DerefTokenMatcher::string("quad")};
     }
 
@@ -3376,7 +3376,7 @@ void FunctionCallElement::update_from_stack(const Env& env,
                     argset = argset.substr(1);
                     auto argsym = arg_forms.at(1)->to_string(env);
                     // convert the float param
-                    if (env.version == GameVersion::Jak2) {
+                    if (env.version >= GameVersion::Jak2) {
                       static const std::unordered_set<std::string> use_degrees_settings = {
                           "matrix-blend-max-angle",
                           "fov",
@@ -4081,7 +4081,7 @@ void DerefElement::update_from_stack(const Env& env,
   }
 
   auto as_simple_expr = m_base->try_as_element<SimpleExpressionElement>();
-  if (env.version == GameVersion::Jak2 && as_simple_expr && as_simple_expr->expr().is_identity() &&
+  if (env.version >= GameVersion::Jak2 && as_simple_expr && as_simple_expr->expr().is_identity() &&
       as_simple_expr->expr().get_arg(0).is_sym_val() &&
       as_simple_expr->expr().get_arg(0).get_str() == "*game-info*" && m_tokens.size() >= 2 &&
       m_tokens.at(0).is_field_name("sub-task-list") && m_tokens.at(1).is_int()) {

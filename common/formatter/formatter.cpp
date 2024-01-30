@@ -67,8 +67,8 @@ void apply_formatting_config(
   //
   // Otherwise, we always default to a hang.
   //
-  // NOTE - any modifications here to child elements could be superseeded later in the recursion
-  // in order to maintain your sanity, only modify things here that _arent_ touched by default
+  // NOTE - any modifications here to child elements could be superseeded later in the recursion!
+  // In order to maintain your sanity, only modify things here that _arent_ touched by default
   // configurations.  These are explicitly prepended with `parent_mutable_`
   if (!predefined_config) {
     if (curr_node.metadata.is_top_level) {
@@ -104,6 +104,8 @@ void apply_formatting_config(
   }
   // If we are hanging, lets determine the indentation width since it is based on the form itself
   if (curr_node.formatting_config.hang_forms) {
+    // TODO - this isn't being calculated for a pre-defined config
+    // TODO - another idea is to do this during consolidation
     curr_node.formatting_config.indentation_width = hang_indentation_width(curr_node);
   }
   // iterate through the refs
@@ -123,6 +125,7 @@ void apply_formatting_config(
   }
 }
 
+// TODO - this doesn't account for paren's width contribution!
 int get_total_form_inlined_width(const FormatterTreeNode& curr_node) {
   if (curr_node.token) {
     return curr_node.token->length();
@@ -191,17 +194,20 @@ bool can_node_be_inlined(const FormatterTreeNode& curr_node, int cursor_pos) {
 }
 
 std::vector<std::string> apply_formatting(const FormatterTreeNode& curr_node,
-                                          std::vector<std::string> output = {},
+                                          std::vector<std::string> /*output*/ = {},
                                           int cursor_pos = 0) {
   using namespace formatter_rules;
   if (!curr_node.token && curr_node.refs.empty()) {
     // special case to handle an empty list
+    if (curr_node.node_prefix) {
+      return {fmt::format("{}()", curr_node.node_prefix.value())};
+    }
     return {"()"};
   }
 
   // If its a token, just print the token and move on
   if (curr_node.token) {
-    return {curr_node.token.value()};
+    return {curr_node.token_str()};
   }
 
   bool inline_form = can_node_be_inlined(curr_node, cursor_pos);
@@ -220,13 +226,19 @@ std::vector<std::string> apply_formatting(const FormatterTreeNode& curr_node,
     // Add new line entry
     if (ref.token) {
       // Cleanup block-comments
-      std::string val = ref.token.value();
+      std::string val = ref.token_str();
       if (ref.metadata.node_type == "block_comment") {
         // TODO - change this sanitization to return a list of lines instead of a single new-lined
         // line
-        val = comments::format_block_comment(ref.token.value());
+        val = comments::format_block_comment(ref.token_str());
       }
       form_lines.push_back(val);
+      if (!curr_node.metadata.is_top_level && i == curr_node.refs.size() - 1 &&
+          (ref.metadata.is_comment)) {
+        // if there's an inline comment at the end of a form, we have to force the paren to the next
+        // line and do a new-line paren this is ugly, but we have no choice!
+        form_lines.push_back("");
+      }
     } else {
       // If it's not a token, we have to recursively build up the form
       // TODO - add the cursor_pos here
@@ -250,6 +262,9 @@ std::vector<std::string> apply_formatting(const FormatterTreeNode& curr_node,
       if ((next_ref.metadata.node_type == "comment" && next_ref.metadata.is_inline) ||
           (curr_node.formatting_config.has_constant_pairs &&
            constant_pairs::is_element_second_in_constant_pair(curr_node, next_ref, i + 1))) {
+        // TODO
+        // has issues with not consolidating first lines, this should probably just be moved to
+        // outside this loop for simplicity, do it later
         if (next_ref.token) {
           form_lines.at(form_lines.size() - 1) += fmt::format(" {}", next_ref.token.value());
           i++;
@@ -260,6 +275,10 @@ std::vector<std::string> apply_formatting(const FormatterTreeNode& curr_node,
           }
           i++;
         }
+        if (!curr_node.metadata.is_top_level && next_ref.metadata.node_type == "comment" &&
+            (i + 1) == (int)curr_node.refs.size()) {
+          form_lines.push_back("");
+        }
       }
     }
     // If we are at the top level, potential separate with a new line
@@ -269,8 +288,12 @@ std::vector<std::string> apply_formatting(const FormatterTreeNode& curr_node,
   }
 
   // Consolidate any lines if the configuration requires it
+  // TODO there is a hack here so that multi-line forms that are consolidated still line up properly
+  // i have to make consolidate a more first-class feature of the config
   if (curr_node.formatting_config.inline_until_index(form_lines)) {
     std::vector<std::string> new_form_lines = {};
+    const auto original_form_head_width = str_util::split(form_lines.at(0), '\n').at(0).length();
+    bool consolidating_lines = true;
     for (int i = 0; i < (int)form_lines.size(); i++) {
       if (i < curr_node.formatting_config.inline_until_index(form_lines)) {
         if (new_form_lines.empty()) {
@@ -279,7 +302,13 @@ std::vector<std::string> apply_formatting(const FormatterTreeNode& curr_node,
           new_form_lines.at(0) += fmt::format(" {}", form_lines.at(i));
         }
       } else {
-        new_form_lines.push_back(form_lines.at(i));
+        if (str_util::starts_with(form_lines.at(i), " ") && consolidating_lines) {
+          new_form_lines.push_back(fmt::format(
+              "{}{}", str_util::repeat(original_form_head_width, " "), form_lines.at(i)));
+        } else {
+          consolidating_lines = false;
+          new_form_lines.push_back(form_lines.at(i));
+        }
       }
     }
     form_lines = new_form_lines;
@@ -288,6 +317,9 @@ std::vector<std::string> apply_formatting(const FormatterTreeNode& curr_node,
   // Apply necessary indentation to each line and add parens
   if (!curr_node.metadata.is_top_level) {
     std::string form_surround_start = "(";
+    if (curr_node.node_prefix) {
+      form_surround_start = fmt::format("{}(", curr_node.node_prefix.value());
+    }
     std::string form_surround_end = ")";
     form_lines[0] = fmt::format("{}{}", form_surround_start, form_lines[0]);
     form_lines[form_lines.size() - 1] =

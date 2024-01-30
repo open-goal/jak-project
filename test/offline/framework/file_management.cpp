@@ -75,7 +75,7 @@ std::vector<OfflineTestSourceFile> find_source_files(const std::string& game_nam
         msg += fmt::format("\n- '{}'", path);
       }
     }
-    lg::die(msg);
+    lg::die("{}", msg);
   }
 
   return result;
