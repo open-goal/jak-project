@@ -973,6 +973,8 @@ const std::unordered_map<
              {"ocean-near-indices",
               {{"data", ArrayFieldDecompMeta(TypeSpec("ocean-near-index"), 32)}}},
              {"ocean-mid-masks", {{"data", ArrayFieldDecompMeta(TypeSpec("ocean-mid-mask"), 8)}}},
+             {"lightning-probe-vars",
+              {{"probe-dirs", ArrayFieldDecompMeta(TypeSpec("vector"), 16)}}},
          }}};
 
 goos::Object decompile_structure(const TypeSpec& type,

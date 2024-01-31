@@ -3751,7 +3751,7 @@
   (bucket347 347)
   (bucket348 348)
   (bucket349 349)
-  (bucket350 350)
+  (shadow 350)
   (bucket351 351)
   (bucket352 352)
   (bucket353 353)
@@ -3973,8 +3973,8 @@
   (bucket569 569)
   (bucket570 570)
   (bucket571 571)
-  (bucket572 572)
-  (bucket573 573)
+  (shadow2 572)
+  (shadow3 573)
   (bucket574 574)
   (bucket575 575)
   (bucket576 576)
@@ -11308,18 +11308,38 @@
 (defenum collide-spec
   :bitfield #t
   :type uint32
-  (cs0 0)
-  (cs1 1)
-  (cs2 2)
-  (cs3 3)
-  (cs4 4)
-  (cs5 5)
-  (cs6 6)
-  (cs7 7)
-  (cs8 8)
-  (cs9 9)
-  (cs10 10)
-  (cs11 11)
+  (backgnd 0)
+  (jak 1)
+  (bot 2)
+  (crate 3)
+  (civilian 4)
+  (enemy 5)
+  (obstacle 6)
+  (vehicle-sphere 7)
+  (hit-by-player-list 8)
+  (hit-by-others-list 9)
+  (player-list 10)
+  (water 11)
+  (collectable 12)
+  (blocking-plane 13)
+  (projectile 14)
+  (jak-vulnerable 15)
+  (camera-blocker 16)
+  (los-blocker 17)
+  (notice-blue-eco-powerup 18)
+  (tobot 19)
+  (pusher 20)
+  (vehicle-mesh 21)
+  (bot-targetable 22)
+  (jak-vehicle 23)
+  (special-obstacle 24)
+  (mech-punch 25)
+  (obstacle-for-jak 26)
+  (vehicle-mesh-probeable 27)
+  (impenetrable-obj 28)
+  (shield 29)
+  (vehicle-mesh-no-block-use 30)
+  (vehicle-sphere-no-probe 31)
   )
 ;; ---main-h:collide-spec
 
@@ -14199,22 +14219,21 @@
 ;; merc-h                         ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype ripple-merc-query (inline-array-class)
+  "Information about which merc vertices to apply the 'ripple' effect to."
   ((start-vertex int32           :offset-assert 16)
    (vertex-skip  int32           :offset-assert 20)
    (vertex-count int32           :offset-assert 24)
    (current-loc  int32           :offset-assert 28)
-   (data         vector :dynamic :offset-assert 32) ;; guessed by decompiler
+   (data         vector :inline :dynamic :offset-assert 32) ;; guessed by decompiler
    )
   :method-count-assert 14
   :size-assert         #x20
   :flag-assert         #xe00000020
   )
-|#
 
-#|
 (deftype merc-byte-header (structure)
+  "Header for a single [[merc-fragment]] uploaded to the VU."
   ((srcdest-off        uint8    :offset-assert 0)
    (rgba-off           uint8    :offset-assert 1)
    (lump-off           uint8    :offset-assert 2)
@@ -14234,10 +14253,9 @@
   :size-assert         #x17
   :flag-assert         #x900000017
   )
-|#
 
-#|
 (deftype merc-fragment (structure)
+  "A single merc fragment that fits into VU memory."
   ((header merc-byte-header :inline :offset-assert 0)
    (rest   uint8            1       :offset-assert 23) ;; guessed by decompiler
    )
@@ -14245,13 +14263,12 @@
   :size-assert         #x18
   :flag-assert         #xa00000018
   (:methods
-    (merc-fragment-method-9 () none) ;; 9 ;; (login-adgifs (_type_) merc-fragment)
+    (login-adgifs (_type_) merc-fragment) ;; 9
     )
   )
-|#
 
-#|
 (deftype merc-vtx (structure)
+  "A packed merc vertex."
   ((mat-0 uint8  :offset-assert 0)
    (mat-1 uint8  :offset-assert 1)
    (nrm-x uint8  :offset-assert 2)
@@ -14269,10 +14286,9 @@
   :size-assert         #xc
   :flag-assert         #x90000000c
   )
-|#
 
-#|
 (deftype merc-fp-header (structure)
+  "Merc header for a [[merc-fragment]]'s floating point data."
   ((x-add            float  :offset-assert 0)
    (y-add            float  :offset-assert 4)
    (z-add            float  :offset-assert 8)
@@ -14285,21 +14301,20 @@
   :size-assert         #x10
   :flag-assert         #x900000010
   )
-|#
 
-#|
 (deftype merc-mat-dest (structure)
+  "Metadata for a merc matrix upload."
   ((matrix-number uint8  :offset-assert 0)
    (matrix-dest   uint8  :offset-assert 1)
    )
+  :pack-me
   :method-count-assert 9
   :size-assert         #x2
   :flag-assert         #x900000002
   )
-|#
 
-#|
 (deftype merc-fragment-control (structure)
+  "Data about a [[merc-fragment]] needed for merc DMA generation."
   ((unsigned-four-count uint8                  :offset-assert 0)
    (lump-four-count     uint8                  :offset-assert 1)
    (fp-qwc              uint8                  :offset-assert 2)
@@ -14310,10 +14325,9 @@
   :size-assert         #x4
   :flag-assert         #x900000004
   )
-|#
 
-#|
 (deftype merc-blend-ctrl (structure)
+  "Information about the vertices of a model modified by BLERC."
   ((blend-vtx-count     uint8          :offset-assert 0)
    (nonzero-index-count uint8          :offset-assert 1)
    (bt-index            uint8 :dynamic :offset-assert 2) ;; guessed by decompiler
@@ -14322,10 +14336,9 @@
   :size-assert         #x2
   :flag-assert         #x900000002
   )
-|#
 
-#|
 (deftype mei-envmap-tint (structure)
+  "Data for the extra 'envmap tint' effect."
   ((fade0 float  :offset-assert 0)
    (fade1 float  :offset-assert 4)
    (tint  rgba   :offset-assert 8) ;; guessed by decompiler
@@ -14335,10 +14348,9 @@
   :size-assert         #x10
   :flag-assert         #x900000010
   )
-|#
 
-#|
 (deftype mei-texture-scroll (structure)
+  "Data for the extra 'texscroll' effect."
   ((max-dist     float   :offset-assert 0)
    (st-int-scale uint8   :offset-assert 4)
    (time-factor  uint8   :offset-assert 5)
@@ -14351,10 +14363,9 @@
   :size-assert         #x10
   :flag-assert         #x900000010
   )
-|#
 
-#|
 (deftype mei-ripple (structure)
+  "Data for the extra 'ripple' effect."
   ((x-base    float  :offset-assert 0)
    (z-base    float  :offset-assert 4)
    (grid-size float  :offset-assert 8)
@@ -14364,10 +14375,9 @@
   :size-assert         #x10
   :flag-assert         #x900000010
   )
-|#
 
-#|
 (deftype merc-extra-info (structure)
+  "Info for merc extra effects."
   ((envmap-tint-offset    uint8    :offset-assert 0)
    (shader-offset         uint8    :offset-assert 1)
    (texture-scroll-offset uint8    :offset-assert 2)
@@ -14378,10 +14388,31 @@
   :size-assert         #x10
   :flag-assert         #x900000010
   )
-|#
 
-#|
+;; +++merc-h:effect-bits
+(defenum effect-bits
+  :type uint8
+  :bitfield #t
+  (texscroll 0)
+  (no-fade-out 1) ;; translucent.
+  (ripple 2)
+  (emerc 3) ;; envmap??
+  (ignore-tod-for-envmap-tint 4) ;; color thing
+  (force-mercneric 5) ;; some mercneric-only effect
+  (cross-fade 6) ;; WARP?
+  (ignore-alpha 7)
+  )
+;; ---merc-h:effect-bits
+
+;; moved from end of merc-h definitions
+(deftype merc-blend-data (structure) ;; was unknown!
+  "Packed BLERC data."
+  ((int8-data int8 :dynamic :offset-assert 0)
+   )
+  )
+
 (deftype merc-effect (structure)
+  "A collection of [[merc-fragment]]s with data for any extra effects."
   ((frag-geo            merc-fragment          :offset-assert 0)
    (frag-ctrl           merc-fragment-control  :offset-assert 4)
    (blend-data          merc-blend-data        :offset-assert 8)
@@ -14400,70 +14431,66 @@
   :size-assert         #x20
   :flag-assert         #xa00000020
   (:methods
-    (merc-effect-method-9 () none) ;; 9 ;; (login-adgifs (_type_) none)
+    (login-adgifs (_type_) none) ;; 9
     )
   )
-|#
 
-#|
 (deftype merc-eye-ctrl (structure)
-  ((eye-slot           int8                 :offset-assert 0)
-   (shader-offset      int8                 :offset-assert 1)
-   (shader-count       int8                 :offset-assert 2)
-   (eye-ctrl-index     int8                 :offset-assert 3)
-   (shader             adgif-shader 6       :offset-assert 16) ;; guessed by decompiler
-   (left-iris-shader   adgif-shader :inline :offset-assert 16)
-   (left-pupil-shader  adgif-shader :inline :offset-assert 96)
-   (left-lid-shader    adgif-shader :inline :offset-assert 176)
-   (right-iris-shader  adgif-shader :inline :offset-assert 256)
-   (right-pupil-shader adgif-shader :inline :offset-assert 336)
-   (right-lid-shader   adgif-shader :inline :offset-assert 416)
+  "Eye info for both eyes of a merc model."
+  ((eye-slot           int8                   :offset-assert 0)
+   (shader-offset      int8                   :offset-assert 1)
+   (shader-count       int8                   :offset-assert 2)
+   (eye-ctrl-index     int8                   :offset-assert 3)
+   (shader             adgif-shader 6 :inline :offset-assert 16) ;; guessed by decompiler
+   (left-iris-shader   adgif-shader   :inline :offset 16)
+   (left-pupil-shader  adgif-shader   :inline :offset 96)
+   (left-lid-shader    adgif-shader   :inline :offset 176)
+   (right-iris-shader  adgif-shader   :inline :offset 256)
+   (right-pupil-shader adgif-shader   :inline :offset 336)
+   (right-lid-shader   adgif-shader   :inline :offset 416)
    )
   :method-count-assert 9
   :size-assert         #x1f0
   :flag-assert         #x9000001f0
   )
-|#
 
-#|
 (deftype merc-eye-anim-frame (structure)
+  "A single frame of a merc eye animation."
   ((pupil-trans-x int8    :offset-assert 0)
    (pupil-trans-y int8    :offset-assert 1)
    (blink         int8    :offset-assert 2)
-   (iris-scale    int8    :offset-assert 4)
-   (pupil-scale   int8    :offset-assert 5)
-   (lid-scale     int8    :offset-assert 6)
-   (dword         uint64  :offset-assert 0)
+   (iris-scale    int8    :offset 4)
+   (pupil-scale   int8    :offset 5)
+   (lid-scale     int8    :offset 6)
+   (dword         uint64  :offset 0)
    )
+  :pack-me
   :method-count-assert 9
   :size-assert         #x8
   :flag-assert         #x900000008
   )
-|#
 
-#|
 (deftype merc-eye-anim-block (structure)
-  ((max-frame int16                        :offset-assert 0)
-   (data      merc-eye-anim-frame :dynamic :offset-assert 8) ;; guessed by decompiler
+  "A list of eye animation frames."
+  ((max-frame int16                                :offset-assert 0)
+   (data      merc-eye-anim-frame :inline :dynamic :offset-assert 8) ;; guessed by decompiler
    )
   :method-count-assert 9
   :size-assert         #x8
   :flag-assert         #x900000008
   )
-|#
 
-#|
 (deftype texture-usage-group (structure)
-  ((data texture-masks 7 :offset-assert 0) ;; guessed by decompiler
+  ((data texture-masks 7 :inline :offset-assert 0) ;; guessed by decompiler
    )
   :method-count-assert 9
   :size-assert         #x150
   :flag-assert         #x900000150
   )
-|#
 
-#|
 (deftype merc-ctrl-header (structure)
+  "The header for a [[merc-ctrl]],
+   containing metadata about the model used for drawing."
   ((xyz-scale              float                        :offset-assert 0)
    (st-magic               uint32                       :offset-assert 4)
    (st-out-a               uint32                       :offset-assert 8)
@@ -14493,36 +14520,36 @@
    (eye-ctrl               merc-eye-ctrl                :offset-assert 64)
    (pad                    uint32              3        :offset-assert 68) ;; guessed by decompiler
    (masks-padding          texture-masks       :inline  :offset-assert 80)
-   (texture-usage-group    texture-usage-group          :offset-assert 80)
-   (dummy-bytes            uint8               :dynamic :offset-assert 32) ;; guessed by decompiler
-   (envmap-tint            uint32                       :offset-assert 32)
-   (query                  basic                        :offset-assert 36)
-   (needs-clip             uint8                        :offset-assert 40)
-   (use-isometric          uint8                        :offset-assert 41)
-   (use-attached-shader    uint8                        :offset-assert 42)
-   (display-triangles      uint8                        :offset-assert 43)
-   (death-vertex-skip      uint16                       :offset-assert 44)
-   (death-start-vertex     uint16                       :offset-assert 46)
-   (death-effect           uint32                       :offset-assert 48)
-   (use-translucent        uint8                        :offset-assert 52)
-   (display-this-fragment  uint8                        :offset-assert 53)
-   (use-warp               uint8                        :offset-assert 54)
-   (ignore-alpha           uint8                        :offset-assert 55)
-   (force-fade             uint8                        :offset-assert 56)
-   (disable-fog            uint8                        :offset-assert 57)
-   (disable-envmap         uint8                        :offset-assert 58)
+   (texture-usage-group    texture-usage-group          :offset 80)
+   (dummy-bytes            uint8               :dynamic :offset 32) ;; guessed by decompiler
+   (envmap-tint            uint32                       :offset 32)
+   (query                  basic                        :offset 36)
+   (needs-clip             uint8                        :offset 40)
+   (use-isometric          uint8                        :offset 41)
+   (use-attached-shader    uint8                        :offset 42)
+   (display-triangles      uint8                        :offset 43)
+   (death-vertex-skip      uint16                       :offset 44)
+   (death-start-vertex     uint16                       :offset 46)
+   (death-effect           uint32                       :offset 48)
+   (use-translucent        uint8                        :offset 52)
+   (display-this-fragment  uint8                        :offset 53)
+   (use-warp               uint8                        :offset 54)
+   (ignore-alpha           uint8                        :offset 55)
+   (force-fade             uint8                        :offset 56)
+   (disable-fog            uint8                        :offset 57)
+   (disable-envmap         uint8                        :offset 58)
    )
   :method-count-assert 9
   :size-assert         #x80
   :flag-assert         #x900000080
   ;; field xyz-scale is a float printed as hex?
   )
-|#
 
-#|
 (deftype merc-ctrl (art-element)
-  ((num-joints int32                     :offset-assert 12)
-   (seg-table  (array uint64)            :offset-assert 28) ;; guessed by decompiler
+  "The merc data for a single model as it's stored in an art group.
+   Consists of a header and a list of [[merc-effect]]s."
+  ((num-joints int32                     :offset 12)
+   (seg-table  (array uint64)            :offset 28) ;; guessed by decompiler
    (header     merc-ctrl-header :inline  :offset-assert 48)
    (effect     merc-effect      :dynamic :offset-assert 176) ;; guessed by decompiler
    )
@@ -14530,12 +14557,10 @@
   :size-assert         #xb0
   :flag-assert         #xe000000b0
   )
-|#
 
-#|
 (deftype merc-vu1-low-mem (structure)
-  ((tri-strip-gif qword   :inline :offset-assert 0) ;; gs-gif-tag :inline
-   (ad-gif        qword   :inline :offset-assert 16) ;; gs-gif-tag :inline
+  ((tri-strip-gif gs-gif-tag :inline :offset-assert 0) ;; gs-gif-tag :inline
+   (ad-gif        gs-gif-tag :inline :offset-assert 16) ;; gs-gif-tag :inline
    (hvdf-offset   vector  :inline :offset-assert 32)
    (perspective   uint128 4       :offset-assert 48) ;; guessed by decompiler
    (fog           vector  :inline :offset-assert 112)
@@ -14544,24 +14569,20 @@
   :size-assert         #x80
   :flag-assert         #x900000080
   )
-|#
 
-#|
 (deftype emerc-vu1-low-mem (structure)
-  ((tri-strip-gif qword  :inline :offset-assert 0) ;; gs-gif-tag :inline
-   (ad-gif        qword  :inline :offset-assert 16) ;; gs-gif-tag :inline
-   (hvdf-offset   vector :inline :offset-assert 32)
-   (perspective   vector 4       :offset-assert 48) ;; guessed by decompiler
-   (fog           vector :inline :offset-assert 112)
-   (unperspect    vector :inline :offset-assert 128)
+  ((tri-strip-gif gs-gif-tag :inline :offset-assert 0) ;; gs-gif-tag :inline
+   (ad-gif        gs-gif-tag :inline :offset-assert 16) ;; gs-gif-tag :inline
+   (hvdf-offset   vector     :inline :offset-assert 32)
+   (perspective   vector   4 :inline :offset-assert 48) ;; guessed by decompiler
+   (fog           vector     :inline :offset-assert 112)
+   (unperspect    vector     :inline :offset-assert 128)
    )
   :method-count-assert 9
   :size-assert         #x90
   :flag-assert         #x900000090
   )
-|#
 
-#|
 (deftype texture-login-data (structure)
   ((default-texture-index int32                :offset-assert 0)
    (current-texture-index int32                :offset-assert 4)
@@ -14573,9 +14594,7 @@
   :size-assert         #x14
   :flag-assert         #x900000014
   )
-|#
 
-#|
 (deftype ripple-wave (structure)
   ((scale float  :offset-assert 0)
    (offs  float  :offset-assert 4)
@@ -14586,27 +14605,24 @@
    (zmul  float  :offset-assert 20)
    (delta float  :offset-assert 24)
    )
+  :pack-me
   :method-count-assert 9
   :size-assert         #x1c
   :flag-assert         #x90000001c
   )
-|#
 
-#|
 (deftype ripple-wave-set (basic)
   ((count        int32         :offset-assert 4)
    (converted    basic         :offset-assert 8)
    (normal-scale float         :offset-assert 12)
-   (wave         ripple-wave 4 :offset-assert 16) ;; guessed by decompiler
+   (wave         ripple-wave 4 :inline :offset-assert 16) ;; guessed by decompiler
    (frame-save   uint64        :offset-assert 128)
    )
   :method-count-assert 9
   :size-assert         #x88
   :flag-assert         #x900000088
   )
-|#
 
-#|
 (deftype ripple-control (basic)
   ((global-scale            float              :offset-assert 4)
    (last-frame-scale        float              :offset-assert 8)
@@ -14621,10 +14637,11 @@
   :method-count-assert 9
   :size-assert         #x28
   :flag-assert         #x900000028
+  (:methods
+    (new (symbol type) _type_) ;; 0
+    )
   )
-|#
 
-#|
 (deftype death-info (basic)
   ((vertex-skip uint16  :offset-assert 4)
    (timer       uint8   :offset-assert 6)
@@ -14636,48 +14653,34 @@
   :size-assert         #x10
   :flag-assert         #x900000010
   )
-|#
 
-#|
-(deftype merc-blend-data (UNKNOWN)
-  ((int8-data int8 :dynamic :offset-assert 0) ;; guessed by decompiler
-   )
-  :method-count-assert 0
-  :size-assert         #x0
-  :flag-assert         #x0
-  )
-|#
-
-;; (define-extern merc-fragment-fp-data function) ;; (function merc-fragment merc-fp-header)
+(define-extern merc-fragment-fp-data
+  "Get the floating point data of a [[merc-fragment]]."
+  (function merc-fragment merc-fp-header))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; generic-merc-h                 ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype merc-matrix (structure)
   ((quad   uint128 8 :offset-assert 0) ;; guessed by decompiler
-   (vector vector  8 :offset-assert 0) ;; guessed by decompiler
-   (tag    uint64    :offset-assert 0)
+   (vector vector  8 :inline :offset 0 :score 1) ;; guessed by decompiler
+   (tag    uint64    :offset 0)
    )
   :method-count-assert 9
   :size-assert         #x80
   :flag-assert         #x900000080
   )
-|#
 
-#|
 (deftype generic-merc-tag (dma-packet)
-  ((next-ptr uint32  :offset-assert 12)
-   (size     uint32  :offset-assert 8)
+  ((next-ptr uint32  :offset 12)
+   (size     uint32  :offset 8)
    )
   :method-count-assert 9
   :size-assert         #x10
   :flag-assert         #x900000010
   )
-|#
 
-#|
 (deftype generic-merc-ctrl (structure)
   ((tag    generic-merc-tag :inline :offset-assert 0)
    (lights vu-lights        :inline :offset-assert 16)
@@ -14688,9 +14691,7 @@
   :size-assert         #x120
   :flag-assert         #x900000120
   )
-|#
 
-#|
 (deftype generic-merc-ctrl-with-sfx (generic-merc-ctrl)
   ((sfx-data uint128 11 :offset-assert 288) ;; guessed by decompiler
    )
@@ -14698,14 +14699,12 @@
   :size-assert         #x1d0
   :flag-assert         #x9000001d0
   )
-|#
 
-#|
 (deftype generic-merc-input (structure)
   ((geo-tag     generic-merc-tag           :inline :offset-assert 0)
    (geo-block   uint8                      1296    :offset-assert 16) ;; guessed by decompiler
-   (byte-header merc-byte-header           :inline :offset-assert 16)
-   (matrix      merc-matrix                9       :offset-assert 1312) ;; guessed by decompiler
+   (byte-header merc-byte-header           :inline :offset 16)
+   (matrix      merc-matrix                9 :inline :offset-assert 1312) ;; guessed by decompiler
    (control     generic-merc-ctrl-with-sfx :inline :offset-assert 2464)
    (end-tag     generic-merc-tag           :inline :offset-assert 2928)
    (shader      adgif-shader               :inline :offset-assert 2944)
@@ -14714,24 +14713,20 @@
   :size-assert         #xbd0
   :flag-assert         #x900000bd0
   )
-|#
 
-#|
 (deftype generic-merc-output (structure)
   ((info             gsf-info   :inline :offset-assert 0)
    (header           gsf-header :inline :offset-assert 16)
    (index-kick-table uint16     80      :offset-assert 32) ;; guessed by decompiler
-   (index-table      uint8      160     :offset-assert 32) ;; guessed by decompiler
+   (index-table      uint8      160     :offset 32) ;; guessed by decompiler
    (inverse-table    uint8      256     :offset-assert 192) ;; guessed by decompiler
-   (vertex-table     gsf-vertex 72      :offset-assert 448) ;; guessed by decompiler
+   (vertex-table     gsf-vertex 72 :inline :offset-assert 448) ;; guessed by decompiler
    )
   :method-count-assert 9
   :size-assert         #xac0
   :flag-assert         #x900000ac0
   )
-|#
 
-#|
 (deftype generic-merc-dcache (structure)
   ((output-a    generic-merc-output :inline :offset-assert 0)
    (output-b    generic-merc-output :inline :offset-assert 2752)
@@ -14744,9 +14739,7 @@
   :size-assert         #x2000
   :flag-assert         #x900002000
   )
-|#
 
-#|
 (deftype gm-shadow (structure)
   ((perspective                matrix              :inline :offset-assert 0)
    (isometric                  matrix              :inline :offset-assert 64)
@@ -14780,9 +14773,7 @@
   :size-assert         #x190
   :flag-assert         #x900000190
   )
-|#
 
-#|
 (deftype generic-merc-work (structure)
   ((input-a generic-merc-input         :inline :offset-assert 0)
    (input-b generic-merc-input         :inline :offset-assert 3024)
@@ -14794,8 +14785,6 @@
   :size-assert         #x1c00
   :flag-assert         #x900001c00
   )
-|#
-
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; generic-tie-h                  ;;
@@ -15032,19 +15021,16 @@
 ;; generic-work-h                 ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype generic-input-buffer (structure)
   ((data uint128           473     :offset-assert 0) ;; guessed by decompiler
-   (merc generic-merc-work :inline :offset-assert 0)
-   (tie  generic-tie-work  :inline :offset-assert 0)
+   (merc generic-merc-work :inline :offset 0)
+   (tie  generic-tie-work  :inline :offset 0)
    )
   :method-count-assert 9
   :size-assert         #x1d90
   :flag-assert         #x900001d90
   )
-|#
 
-#|
 (deftype generic-debug (structure)
   ((locks      uint32 4  :offset-assert 0) ;; guessed by decompiler
    (timer      uint32 32 :offset-assert 16) ;; guessed by decompiler
@@ -15058,26 +15044,22 @@
   :size-assert         #x19c
   :flag-assert         #x90000019c
   )
-|#
 
-#|
 (deftype generic-vu1-header (structure)
   ((matrix  matrix          :inline :offset-assert 0)
    (strgif  generic-gif-tag :inline :offset-assert 64)
-   (adcmds  gs-adcmd        2       :offset-assert 80) ;; guessed by decompiler
-   (adnop1  gs-adcmd        :inline :offset-assert 80)
-   (adnop2  gs-adcmd        :inline :offset-assert 96)
-   (dps     uint16                  :offset-assert 92)
-   (kickoff uint16                  :offset-assert 108)
-   (strips  uint16                  :offset-assert 76)
+   (adcmds  gs-adcmd        2 :inline :offset-assert 80) ;; guessed by decompiler
+   (adnop1  gs-adcmd        :inline :offset 80)
+   (adnop2  gs-adcmd        :inline :offset 96)
+   (dps     uint16                  :offset 92)
+   (kickoff uint16                  :offset 108)
+   (strips  uint16                  :offset 76)
    )
   :method-count-assert 9
   :size-assert         #x70
   :flag-assert         #x900000070
   )
-|#
 
-#|
 (deftype generic-vu1-texbuf (structure)
   ((header generic-vu1-header :inline  :offset-assert 0)
    (shader uint32             :dynamic :offset-assert 112) ;; guessed by decompiler
@@ -15086,9 +15068,7 @@
   :size-assert         #x70
   :flag-assert         #x900000070
   )
-|#
 
-#|
 (deftype generic-texbuf (structure)
   ((tag    dma-packet         :inline  :offset-assert 0)
    (header generic-vu1-header :inline  :offset-assert 16)
@@ -15098,9 +15078,7 @@
   :size-assert         #x80
   :flag-assert         #x900000080
   )
-|#
 
-#|
 (deftype generic-effect-work (structure)
   ((consts   generic-consts  :inline :offset-assert 0)
    (storage  generic-storage :inline :offset-assert 432)
@@ -15111,9 +15089,7 @@
   :size-assert         #x420
   :flag-assert         #x900000420
   )
-|#
 
-#|
 (deftype generic-effect-buffer (structure)
   ((outbuf-0 uint8               3552    :offset-assert 0) ;; guessed by decompiler
    (work     generic-effect-work :inline :offset-assert 3552)
@@ -15123,9 +15099,7 @@
   :size-assert         #x1fe0
   :flag-assert         #x900001fe0
   )
-|#
 
-#|
 (deftype generic-work (structure)
   ((saves   generic-saves         :inline :offset-assert 0)
    (storage generic-storage       :inline :offset-assert 368)
@@ -15136,23 +15110,37 @@
   :size-assert         #x3fe0
   :flag-assert         #x900003fe0
   )
-|#
 
-;; (define-extern *generic-debug* object) ;; generic-debug
+(define-extern *generic-debug* generic-debug)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; shadow-cpu-h                   ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
+;; +++shadow-cpu-h:shadow-flags
+(defenum shadow-flags
+  :bitfield #t
+  :type int32
+  (shdf00) ;; unused
+  (disable-fade)
+  (shdf02) ;; only set, never used.
+  (shdf03)
+  (shdf04) ;; unused
+  (disable-draw)
+  (shdf06)
+  (shdf07)
+  )
+;; ---shadow-cpu-h:shadow-flags
+
 (deftype shadow-settings (structure)
-  ((center        vector :inline :offset-assert 0)
-   (flags         int32          :offset-assert 12) ;; shadow-flags
+  "Settings used to draw a shadow."
+  ((center        vector :inline :offset-assert 0 :score -1)
+   (flags         shadow-flags   :offset 12)
    (shadow-dir    vector :inline :offset-assert 16)
-   (dist-to-locus float          :offset-assert 28)
+   (dist-to-locus float          :offset 28)
    (bot-plane     plane  :inline :offset-assert 32)
    (top-plane     plane  :inline :offset-assert 48)
-   (fade-dist     float          :offset-assert 64)
+   (fade-dist     float          :offset 64)
    (fade-start    float          :offset-assert 68)
    (dummy-2       int32          :offset-assert 72)
    (shadow-type   int32          :offset-assert 76)
@@ -15161,9 +15149,7 @@
   :size-assert         #x50
   :flag-assert         #x900000050
   )
-|#
 
-#|
 (deftype shadow-control (basic)
   ((settings shadow-settings :inline :offset-assert 16)
    )
@@ -15171,21 +15157,20 @@
   :size-assert         #x60
   :flag-assert         #xf00000060
   (:methods
-    (new (symbol type) _type_) ;; 0 ;; (new (symbol type float float float shadow-flags float) _type_)
-    (shadow-control-method-9 () none) ;; 9 ;; (enable-draw (shadow-control) int)
-    (shadow-control-method-10 () none) ;; 10 ;; (disable-draw (shadow-control) int)
-    (shadow-control-method-11 () none) ;; 11 ;; (set-top-plane-offset (shadow-control float) int)
-    (shadow-control-method-12 () none) ;; 12 ;; (set-bottom-plane-offset (shadow-control float) int)
-    (shadow-control-method-13 () none) ;; 13 ;; (probe-line-for-shadow (_type_ vector float float float) none)
-    (shadow-control-method-14 () none) ;; 14 ;; (shadow-control-method-14 (_type_ vector vector float float float) none)
+    (new (symbol type float float float vector float float) _type_) ;; 0
+    (enable-draw (shadow-control) int) ;; 9
+    (disable-draw (shadow-control) int) ;; 10
+    (set-top-plane-offset (shadow-control float) int) ;; 11
+    (set-bottom-plane-offset (shadow-control float) int) ;; 12
+    (probe-line-for-shadow (_type_ vector float float float) none) ;; 13
+    (shadow-control-method-14 (_type_ vector vector float float float) none) ;; 14
     )
   )
-|#
 
-#|
 (deftype shadow-data (structure)
+  "DMA data for the shadow renderer."
   ((dma-unpack-template dma-packet :inline :offset-assert 0)
-   (dma-cnt             uint64             :offset-assert 16) ;; dma-tag
+   (dma-cnt             dma-tag            :offset-assert 16) ;; dma-tag
    (vif-nop             vif-tag            :offset-assert 24) ;; guessed by decompiler
    (vif-unpack-v4-8     vif-tag            :offset-assert 28) ;; guessed by decompiler
    (pdc                 basic              :offset-assert 32)
@@ -15197,9 +15182,7 @@
   :size-assert         #x30
   :flag-assert         #x900000030
   )
-|#
 
-#|
 (deftype shadow-work (structure)
   ((shadow-data shadow-data :inline :offset-assert 0)
    (inbuf       uint128     600     :offset-assert 48) ;; guessed by decompiler
@@ -15208,35 +15191,32 @@
   :size-assert         #x25b0
   :flag-assert         #x9000025b0
   )
-|#
 
-#|
+(declare-type shadow-vu1-constants structure)
+
 (deftype shadow-bucket (structure)
   ((first        pointer               :offset-assert 0) ;; guessed by decompiler
    (next         pointer               :offset-assert 4) ;; guessed by decompiler
-   (bucket-id    int32                 :offset-assert 8)
+   (bucket-id    bucket-id             :offset-assert 8)
    (shadow-color rgba                  :offset-assert 12) ;; guessed by decompiler
    (constants    shadow-vu1-constants  :offset-assert 16) ;; guessed by decompiler
    )
+  :allow-misaligned
   :method-count-assert 9
   :size-assert         #x14
   :flag-assert         #x900000014
   )
-|#
 
-#|
 (deftype shadow-globals (structure)
-  ((num-buckets uint32          :offset-assert 0)
-   (cur-bucket  uint32          :offset-assert 4)
-   (bucket      shadow-bucket 3 :offset-assert 8) ;; guessed by decompiler
+  ((num-buckets uint32                  :offset-assert 0)
+   (cur-bucket  uint32                  :offset-assert 4)
+   (bucket      shadow-bucket 3 :inline :offset-assert 8) ;; guessed by decompiler
    )
   :method-count-assert 9
   :size-assert         #x68
   :flag-assert         #x900000068
   )
-|#
 
-#|
 (deftype shadow-vertex (structure)
   ((x      float  :offset-assert 0)
    (y      float  :offset-assert 4)
@@ -15247,9 +15227,7 @@
   :size-assert         #x10
   :flag-assert         #x900000010
   )
-|#
 
-#|
 (deftype shadow-matrix-ref (structure)
   ((joint-0 uint8  :offset-assert 0)
    (joint-1 uint8  :offset-assert 1)
@@ -15258,9 +15236,7 @@
   :size-assert         #x2
   :flag-assert         #x900000002
   )
-|#
 
-#|
 (deftype shadow-edge (structure)
   ((ind-0 uint8  :offset-assert 0)
    (ind-1 uint8  :offset-assert 1)
@@ -15271,9 +15247,7 @@
   :size-assert         #x4
   :flag-assert         #x900000004
   )
-|#
 
-#|
 (deftype shadow-tri (structure)
   ((ind-0 uint8  :offset-assert 0)
    (ind-1 uint8  :offset-assert 1)
@@ -15284,9 +15258,7 @@
   :size-assert         #x4
   :flag-assert         #x900000004
   )
-|#
 
-#|
 (deftype shadow-frag-header (structure)
   ((qwc-data         uint32  :offset-assert 0)
    (num-joints       uint32  :offset-assert 4)
@@ -15307,39 +15279,36 @@
   :size-assert         #x2c
   :flag-assert         #x90000002c
   )
-|#
 
-#|
 (deftype shadow-frag-ref (structure)
   ((header shadow-frag-header  :offset-assert 0)
    (qwc    uint32              :offset-assert 4)
    )
+  :pack-me
   :method-count-assert 9
   :size-assert         #x8
   :flag-assert         #x900000008
   )
-|#
 
-#|
 (deftype shadow-geo (art-element)
-  ((version       uint32                   :offset-assert 28)
-   (total-size    uint32                   :offset-assert 32)
+  "The low poly model used for drawing the shadow."
+  ((version       uint32                   :offset 28)
+   (total-size    uint32                   :offset 32)
    (total-qwc     uint32                   :offset-assert 48)
    (num-joints    uint32                   :offset-assert 52)
    (num-fragments uint32                   :offset-assert 56)
-   (frags         shadow-frag-ref :dynamic :offset-assert 60) ;; guessed by decompiler
+   (frags         shadow-frag-ref :inline :dynamic :offset-assert 60) ;; guessed by decompiler
    )
   :method-count-assert 14
   :size-assert         #x3c
   :flag-assert         #xe0000003c
   )
-|#
 
-;; (define-extern *shadow-globals* object) ;; shadow-globals
-;; (define-extern *shadow* object) ;; symbol
-;; (define-extern *shadow-object* object) ;; symbol
-;; (define-extern *shadow-debug* object) ;; symbol
-;; (define-extern *shadow-dma-buf* object) ;; dma-buffer
+(define-extern *shadow-globals* shadow-globals)
+(define-extern *shadow* symbol)
+(define-extern *shadow-object* symbol)
+(define-extern *shadow-debug* symbol)
+(define-extern *shadow-dma-buf* dma-buffer)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; shadow-vu1-h                   ;;
@@ -15443,64 +15412,94 @@
 ;; memcard-h                      ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (deftype mc-handle (int32)
-;;   ()
-;;   :flag-assert #x900000004
-;;   )
+(deftype mc-handle (int32)
+  ()
+  )
 
-#|
 (deftype mc-file-info (structure)
+  "Data stored in a save file."
   ((present               int32      :offset-assert 0)
    (blind-data            float   16 :offset-assert 4) ;; guessed by decompiler
-   (blind-data-int8       int8    64 :offset-assert 4) ;; guessed by decompiler
-   (level-index           int32      :offset-assert 4)
-   (gem-count             float      :offset-assert 8)
-   (skill-count           float      :offset-assert 12)
-   (completion-percentage float      :offset-assert 16)
-   (minute                uint8      :offset-assert 24)
-   (hour                  uint8      :offset-assert 25)
-   (week                  uint8      :offset-assert 26)
-   (day                   uint8      :offset-assert 27)
-   (month                 uint8      :offset-assert 28)
-   (year                  uint8      :offset-assert 29)
-   (language              uint8      :offset-assert 30)
-   (game-time0            uint32     :offset-assert 36)
-   (game-time1            uint32     :offset-assert 40)
-   (UNKNOWN               UNKNOWN    :offset-assert -1) ;; field could not be read.
-   (UNKNOWN               UNKNOWN    :offset-assert -1) ;; field could not be read.
-   (UNKNOWN               UNKNOWN    :offset-assert -1) ;; field could not be read.
+   (blind-data-int8       int8    64 :offset 4) ;; guessed by decompiler
+   (level-index           int32      :offset 4)
+   (gem-count             float      :offset 8)
+   (skill-count           float      :offset 12)
+   (completion-percentage float      :offset 16)
+   (minute                uint8      :offset 24)
+   (hour                  uint8      :offset 25)
+   (week                  uint8      :offset 26)
+   (day                   uint8      :offset 27)
+   (month                 uint8      :offset 28)
+   (year                  uint8      :offset 29)
+   (language              uint8      :offset 30)
+   (game-time0            uint32     :offset 36)
+   (game-time1            uint32     :offset 40)
+   (purchase-secrets      uint32     :offset 44)
+   (secrets               uint32     :offset 52)
+   (features              uint32     :offset 60)
    )
+  :pack-me
   :method-count-assert 9
   :size-assert         #x44
   :flag-assert         #x900000044
   )
-|#
 
-#|
 (deftype mc-slot-info (structure)
-  ((handle       int32          :offset-assert 0)
+  "Data about a memory card slot."
+  ((handle       mc-handle      :offset-assert 0)
    (known        int32          :offset-assert 4)
    (formatted    int32          :offset-assert 8)
    (inited       int32          :offset-assert 12)
    (last-file    int32          :offset-assert 16)
    (mem-required int32          :offset-assert 20)
    (mem-actual   int32          :offset-assert 24)
-   (file         mc-file-info 4 :offset-assert 28) ;; guessed by decompiler
+   (file         mc-file-info 4 :inline :offset-assert 28) ;; guessed by decompiler
    )
+  :pack-me
   :method-count-assert 9
   :size-assert         #x12c
   :flag-assert         #x90000012c
   )
-|#
 
-;; (define-extern mc-sync function) ;; (function int)
-;; (define-extern show-mc-info function) ;; (function dma-buffer none)
+;; +++memcard-h:mc-status-code
+(defenum mc-status-code
+  :type uint32
+  (busy 0)
+  (ok 1)
+  (bad-handle 2)
+  (format-failed 3)
+  (internal-error 4)
+  (write-error 5)
+  (read-error 6)
+  (new-game 7)
+  (no-memory 8)
+  (no-card 9)
+  (no-last 10)
+  (no-format 11)
+  (no-file 12)
+  (no-save 13)
+  (no-space 14)
+  (bad-version 15)
+  (no-process 16)
+  (no-auto-save 17)
+  )
+;; ---memcard-h:mc-status-code
+
+(define-extern mc-run (function none))
+(define-extern mc-format (function int mc-status-code))
+(define-extern mc-unformat (function int mc-status-code))
+(define-extern mc-create-file (function int uint mc-status-code))
+(define-extern mc-save (function int int pointer int mc-status-code))
+(define-extern mc-load (function int int pointer mc-status-code))
+(define-extern mc-sync "Synchronize the memory card state." (function int))
+(define-extern mc-get-slot-info (function int mc-slot-info none))
+(define-extern show-mc-info "Display the memory card debug text." (function dma-buffer none))
+(define-extern mc-check-result (function mc-status-code))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; game-info-h                    ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype game-bank (basic)
   ((life-max-default   float  :offset-assert 4)
    (life-start-default float  :offset-assert 8)
@@ -15512,73 +15511,67 @@
   :size-assert         #x18
   :flag-assert         #x900000018
   )
-|#
 
-;; (deftype actor-id (uint32)
-;;   ()
-;;   :flag-assert #x900000004
-;;   )
+(deftype actor-id (uint32)
+  ()
+  )
 
-#|
+;; +++game-info-h:highscore-flags
+(defenum highscore-flags
+  :bitfield #t
+  :type uint8
+  (time)
+  )
+;; ---game-info-h:highscore-flags
+
 (deftype highscore-info (structure)
-  ((flags        uint8   :offset-assert 0) ;; highscore-flags
-   (award-scores float 3 :offset-assert 4) ;; guessed by decompiler
-   (bronze-score float   :offset-assert 4)
-   (silver-score float   :offset-assert 8)
-   (gold-score   float   :offset-assert 12)
+  ((flags        highscore-flags   :offset-assert 0)
+   (award-scores float 3 :offset-assert 4)
+   (bronze-score float   :offset 4)
+   (silver-score float   :offset 8)
+   (gold-score   float   :offset 12)
    )
   :method-count-assert 10
   :size-assert         #x10
   :flag-assert         #xa00000010
   (:methods
-    (highscore-info-method-9 () none) ;; 9 ;; (get-rank (_type_ float) int)
+    (get-rank (_type_ float) int) ;; 9
     )
   )
-|#
 
-#|
 (deftype level-buffer-state (structure)
   ((name          symbol  :offset-assert 0) ;; guessed by decompiler
    (display?      symbol  :offset-assert 4) ;; guessed by decompiler
    (force-vis?    symbol  :offset-assert 8) ;; guessed by decompiler
    (force-inside? symbol  :offset-assert 12) ;; guessed by decompiler
    )
+  :pack-me
   :method-count-assert 9
   :size-assert         #x10
   :flag-assert         #x900000010
   )
-|#
 
-#|
 (deftype level-buffer-state-small (structure)
   ((name     basic  :offset-assert 0)
-   (display? basic  :offset-assert 4)
+   (display? symbol :offset-assert 4)
    )
   :method-count-assert 9
   :size-assert         #x8
   :flag-assert         #x900000008
   )
-|#
 
-#|
 (deftype load-state (basic)
-  ((want            level-buffer-state 10  :offset-assert 4) ;; guessed by decompiler
-   (UNKNOWN         UNKNOWN                :offset-assert -1) ;; field could not be read.
-   (want-exp        UNKNOWN            10  :offset-assert 164)
-   (UNKNOWN         UNKNOWN                :offset-assert -1) ;; field could not be read.
-   (target          UNKNOWN            10  :offset-assert 324)
-   (UNKNOWN         UNKNOWN                :offset-assert -1) ;; field could not be read.
-   (want-sound      symbol             3   :offset-assert 484) ;; guessed by decompiler
-   (UNKNOWN         UNKNOWN                :offset-assert -1) ;; field could not be read.
-   (want-exp-sound  UNKNOWN            6   :offset-assert 508)
-   (UNKNOWN         UNKNOWN                :offset-assert -1) ;; field could not be read.
-   (target-sound    UNKNOWN            6   :offset-assert 556)
-   (UNKNOWN         UNKNOWN                :offset-assert -1) ;; field could not be read.
-   (vis-nick        symbol                 :offset-assert 604) ;; guessed by decompiler
-   (command-list    pair                   :offset-assert 608) ;; guessed by decompiler
-   (object-name     string             256 :offset-assert 612) ;; guessed by decompiler
-   (object-status   basic              256 :offset-assert 1636) ;; guessed by decompiler
-   (update-callback basic                  :offset-assert 2660)
+  ((want            level-buffer-state 10 :inline :offset-assert 4) ;; guessed by decompiler
+   (want-exp        level-buffer-state 10 :inline :offset-assert 164)
+   (target          level-buffer-state 10 :inline :offset-assert 324)
+   (want-sound      sound-bank-state   3  :inline :offset-assert 484) ;; guessed by decompiler
+   (want-exp-sound  sound-bank-state   6  :inline :offset-assert 508)
+   (target-sound    sound-bank-state   6  :inline :offset-assert 556)
+   (vis-nick        symbol                        :offset-assert 604) ;; guessed by decompiler
+   (command-list    pair                          :offset-assert 608) ;; guessed by decompiler
+   (object-name     string             256        :offset-assert 612) ;; guessed by decompiler
+   (object-status   basic              256        :offset-assert 1636) ;; guessed by decompiler
+   (update-callback basic                         :offset-assert 2660)
    )
   :method-count-assert 22
   :size-assert         #xa68
@@ -15600,9 +15593,38 @@
     (load-state-method-21 () none) ;; 21 ;; (add-borrow-levels (_type_) none)
     )
   )
-|#
 
-#|
+;; +++game-info-h:continue-flags
+;; TODO copied from jak 2
+(defenum continue-flags
+  :type uint32
+  :bitfield #t
+  ;(continue-flag-0 0)
+  (scene-wait 1)
+  (change-continue 2)
+  (no-auto 3)
+  (no-blackout 4)
+  (game-start 5)
+  (demo-end 6)
+  (warp-gate 7)
+  (demo 8)
+  (intro 9)
+  (hero-mode 10)
+  (demo-movie 11)
+  (title 12)
+  (title-movie 13)
+  (continue-flag-14 14)
+  (continue-flag-15 15)
+  (continue-flag-16 16)
+  (test 17)
+  (record-path 18)
+  (pilot 19)
+  (pilot-dax 20)
+  (record-sig 21)
+  (indax 22)
+  )
+;; ---game-info-h:continue-flags
+
 (deftype continue-point (basic)
   ((name         string                     :offset-assert 4) ;; guessed by decompiler
    (level        symbol                     :offset-assert 8) ;; guessed by decompiler
@@ -15610,15 +15632,13 @@
    (trans        vector             :inline :offset-assert 16)
    (camera-trans vector             :inline :offset-assert 32)
    (quat         vector4h           :inline :offset-assert 48) ;; vector :inline
-   (camera-rot   vector3s           9       :offset-assert 56) ;; guessed by decompiler
-   (on-goto      pair                       :offset-assert 76) ;; guessed by decompiler
-   (vis-nick     symbol                     :offset-assert 80) ;; guessed by decompiler
-   (vehicle-type uint8                      :offset-assert 84)
-   (want-count   int8                       :offset-assert 85)
-   (want         level-buffer-state         :offset-assert 88) ;; guessed by decompiler
-   (UNKNOWN      UNKNOWN                    :offset-assert -1) ;; field could not be read.
-   (want-sound   symbol             3       :offset-assert 92) ;; guessed by decompiler
-   (UNKNOWN      UNKNOWN                    :offset-assert -1) ;; field could not be read.
+   (camera-rot   vector3s         3 :inline :offset-assert 56) ;; guessed by decompiler
+   (on-goto      pair                       :offset 76) ;; guessed by decompiler
+   (vis-nick     symbol                     :offset 80) ;; guessed by decompiler
+   (vehicle-type uint8                      :offset 84)
+   (want-count   int8                       :offset 85)
+   (want         level-buffer-state-small   :offset 88) ;; guessed by decompiler
+   (want-sound   symbol           3         :offset 92) ;; guessed by decompiler
    )
   :method-count-assert 12
   :size-assert         #x68
@@ -15630,18 +15650,88 @@
     (continue-point-method-11 () none) ;; 11 ;; (move-camera! (_type_) none)
     )
   )
-|#
 
-#|
+;; +++game-info-h:pickup-type
+(defenum pickup-type
+  :type int32
+  (none 0)
+  (eco-yellow 1)
+  (eco-red 2)
+  (eco-blue 3)
+  (eco-dark 4)
+  (eco-green 5)
+  (eco-pill-green 6)
+  (eco-pill-dark 7)
+  (eco-pill-light 8)
+  (eco-pill-random 9)
+  (money 10)
+  (fuel-cell 11)
+  (buzzer 12)
+  (darkjak 13)
+  (lightjak 14)
+  (ammo-yellow 15)
+  (ammo-red 16)
+  (ammo-blue 17)
+  (ammo-dark 18)
+  (shield 19)
+  (health 20)
+  (trick-point 21)
+  (trick-judge 22)
+  (gem 23)
+  (skill 24)
+  (karma 25)
+  (gun-red-1 26)
+  (gun-red-2 27)
+  (gun-red-3 28)
+  (gun-yellow-1 29)
+  (gun-yellow-2 30)
+  (gun-yellow-3 31)
+  (gun-blue-1 32)
+  (gun-blue-2 33)
+  (gun-blue-3 34)
+  (gun-dark-1 35)
+  (gun-dark-2 36)
+  (gun-dark-3 37)
+  (board 38)
+  (pass-red 39)
+  (pass-green 40)
+  (pass-yellow 41)
+  (pass-blue 42)
+  (ammo-random 43)
+  (health-max 44)
+  (light-eco-crystal 45)
+  (dark-eco-crystal 46)
+  (pass-slumb-genb 47)
+  (ammo-light-random 48)
+  (ammo-dark-light-random 49)
+  (light-random 50)
+  )
+;; ---game-info-h:pickup-type
+
+;; +++game-info-h:game-items
+(defenum game-items
+  :type uint64
+  :bitfield #t
+  )
+;; ---game-info-h:game-items
+
+;; +++game-info-h:game-vehicles
+(defenum game-vehicles
+  :type uint64
+  :bitfield #t
+  )
+;; ---game-info-h:game-vehicles
+
+(declare-type entity-perm-array inline-array-class)
 (deftype game-info (basic)
-  ((mode                   symbol                    :offset-assert 4) ;; guessed by decompiler
-   (save-name              string                    :offset-assert 8) ;; guessed by decompiler
+  ((mode                   symbol                    :offset-assert 4)
+   (save-name              string                    :offset-assert 8)
    (life                   float                     :offset-assert 12)
    (life-max               float                     :offset-assert 16)
    (money                  float                     :offset-assert 20)
    (money-total            float                     :offset-assert 24)
-   (money-per-level        uint8             32      :offset-assert 28) ;; guessed by decompiler
-   (deaths-per-level       uint8             32      :offset-assert 60) ;; guessed by decompiler
+   (money-per-level        uint8             32      :offset-assert 28)
+   (deaths-per-level       uint8             32      :offset-assert 60)
    (buzzer-total           float                     :offset-assert 92)
    (fuel                   float                     :offset-assert 96)
    (gem                    float                     :offset-assert 100)
@@ -15656,25 +15746,25 @@
    (eco-pill-dark-total    float                     :offset-assert 136)
    (eco-pill-light         float                     :offset-assert 140)
    (eco-pill-light-total   float                     :offset-assert 144)
-   (features               uint64                    :offset-assert 152) ;; game-feature
-   (debug-features         uint64                    :offset-assert 160) ;; game-feature
-   (old-features           uint64                    :offset-assert 168)
-   (items                  uint64                    :offset-assert 176)
-   (debug-items            uint64                    :offset-assert 184)
-   (old-items              uint64                    :offset-assert 192)
-   (secrets                uint64                    :offset-assert 200) ;; game-secrets
-   (purchase-secrets       uint64                    :offset-assert 208) ;; game-secrets
-   (gun-type               int32                     :offset-assert 216) ;; pickup-type
-   (gun-ammo               float             4       :offset-assert 220) ;; guessed by decompiler
+   (features               game-feature              :offset-assert 152)
+   (debug-features         game-feature              :offset-assert 160)
+   (old-features           game-feature              :offset-assert 168)
+   (items                  game-items                :offset-assert 176)
+   (debug-items            game-items                :offset-assert 184)
+   (old-items              game-items                :offset-assert 192)
+   (secrets                game-secrets              :offset-assert 200)
+   (purchase-secrets       game-secrets              :offset-assert 208)
+   (gun-type               pickup-type               :offset-assert 216)
+   (gun-ammo               float             4       :offset-assert 220)
    (shield                 float                     :offset-assert 236)
-   (vehicles               uint64                    :offset-assert 240)
-   (debug-vehicles         uint64                    :offset-assert 248)
-   (old-vehicles           uint64                    :offset-assert 256)
+   (vehicles               game-vehicles             :offset-assert 240)
+   (debug-vehicles         game-vehicles             :offset-assert 248)
+   (old-vehicles           game-vehicles             :offset-assert 256)
    (score                  float                     :offset-assert 264)
-   (score-owner            uint64                    :offset-assert 272) ;; handle
-   (timer                  uint64                    :offset-assert 280) ;; time-frame
-   (timer-owner            uint64                    :offset-assert 288) ;; handle
-   (timer-flash            symbol                    :offset-assert 296) ;; guessed by decompiler
+   (score-owner            handle                    :offset-assert 272)
+   (timer                  time-frame                :offset-assert 280)
+   (timer-owner            handle                    :offset-assert 288)
+   (timer-flash            symbol                    :offset-assert 296)
    (counter                float                     :offset-assert 300)
    (counter-flash          basic                     :offset-assert 304)
    (health-bar             float                     :offset-assert 308)
@@ -15682,62 +15772,67 @@
    (enemies-killed         float                     :offset-assert 320)
    (civilians-killed       float                     :offset-assert 324)
    (marauders-killed       float                     :offset-assert 328)
-   (shots-fired            UNKNOWN           4       :offset-assert 332)
-   (shots-hit              UNKNOWN           4       :offset-assert 348)
+   (shots-fired            float             4       :offset-assert 332)
+   (shots-hit              float             4       :offset-assert 348)
    (crates-opened          float                     :offset-assert 364)
    (health-collected       float                     :offset-assert 368)
    (board-time             uint64                    :offset-assert 376)
    (attack-id              uint32                    :offset-assert 384)
-   (perm-list              entity-perm-array         :offset-assert 388) ;; guessed by decompiler
-   (task-perm-list         entity-perm-array         :offset-assert 392) ;; guessed by decompiler
-   (current-continue       continue-point            :offset-assert 396) ;; guessed by decompiler
-   (last-continue          continue-point            :offset-assert 400) ;; guessed by decompiler
-   (task-node-commands     basic                     :offset-assert 416)
-   (task-node-exclusive    basic                     :offset-assert 420)
+   (perm-list              entity-perm-array         :offset-assert 388)
+   (task-perm-list         entity-perm-array         :offset-assert 392)
+   (current-continue       continue-point            :offset-assert 396)
+   (last-continue          continue-point            :offset-assert 400)
+   (task-node-commands     pair                      :offset 416)
+   (task-node-exclusive    pair                      :offset-assert 420)
    (task-counter           uint32                    :offset-assert 424)
-   (level-opened           uint8             32      :offset-assert 432) ;; guessed by decompiler
+   (unknown-arr4           (array uint16))
+   (level-opened           uint8             32      :offset-assert 432)
    (total-deaths           int32                     :offset-assert 464)
    (continue-deaths        int32                     :offset-assert 468)
    (task-deaths            int32                     :offset-assert 472)
    (total-trys             int32                     :offset-assert 476)
-   (game-start-time        uint64                    :offset-assert 480) ;; time-frame
-   (continue-time          uint64                    :offset-assert 488) ;; time-frame
-   (death-time             uint64                    :offset-assert 496) ;; time-frame
-   (hit-time               uint64                    :offset-assert 504) ;; time-frame
-   (task-pickup-time       uint64                    :offset-assert 512) ;; time-frame
-   (death-pos              vector-array              :offset-assert 532) ;; guessed by decompiler
-   (stop-watch-start       uint64                    :offset-assert 536)
-   (stop-watch-stop        uint64                    :offset-assert 544)
-   (blackout-time          uint64                    :offset-assert 552) ;; time-frame
-   (letterbox-time         uint64                    :offset-assert 560) ;; time-frame
-   (hint-play-time         uint64                    :offset-assert 568) ;; time-frame
-   (display-text-time      uint64                    :offset-assert 576) ;; time-frame
-   (display-text-handle    uint64                    :offset-assert 584) ;; handle
+   (game-start-time        uint64                    :offset-assert 480)
+   (continue-time          uint64                    :offset-assert 488)
+   (death-time             uint64                    :offset-assert 496)
+   (hit-time               uint64                    :offset-assert 504)
+   (task-pickup-time       uint64                    :offset-assert 512)
+   (unknown-arr0           (array uint64))
+   (unknown-arr1           (array uint64))
+   (unknown-arr2           (array uint64))
+   (death-pos              vector-array              :offset-assert 532)
+   (stop-watch-start       time-frame                :offset-assert 536)
+   (stop-watch-stop        time-frame                :offset-assert 544)
+   (blackout-time          time-frame                :offset-assert 552)
+   (letterbox-time         time-frame                :offset-assert 560)
+   (hint-play-time         time-frame                :offset-assert 568)
+   (display-text-time      time-frame                :offset-assert 576)
+   (display-text-handle    handle                    :offset-assert 584)
    (death-movie-tick       int32                     :offset-assert 592)
-   (want-auto-save         symbol                    :offset-assert 596) ;; guessed by decompiler
-   (auto-save-proc         uint64                    :offset-assert 600) ;; handle
-   (auto-save-status       mc-status-code            :offset-assert 608) ;; guessed by decompiler
+   (want-auto-save         symbol                    :offset-assert 596)
+   (auto-save-proc         handle                    :offset-assert 600)
+   (auto-save-status       mc-status-code            :offset-assert 608)
    (auto-save-card         int32                     :offset-assert 612)
    (auto-save-which        int32                     :offset-assert 616)
    (auto-save-count        int32                     :offset-assert 620)
-   (pov-camera-handle      uint64                    :offset-assert 624) ;; handle
-   (other-camera-handle    uint64                    :offset-assert 632) ;; handle
-   (controller             handle            2       :offset-assert 640) ;; guessed by decompiler
-   (race-timer             uint64                    :offset-assert 656)
+   (pov-camera-handle      handle                    :offset-assert 624)
+   (other-camera-handle    handle                    :offset-assert 632)
+   (controller             handle            2       :offset-assert 640)
+   (race-timer             time-frame                :offset-assert 656)
    (race-current-lap-count int32                     :offset-assert 664)
    (race-total-lap-count   int32                     :offset-assert 668)
    (race-position          int32                     :offset-assert 672)
    (race-number-turbos     int32                     :offset-assert 676)
-   (bot-health             float             3       :offset-assert 680) ;; guessed by decompiler
+   (bot-health             float             3       :offset-assert 680)
    (demo-state             uint32                    :offset-assert 692)
-   (wanted-flash           symbol                    :offset-assert 696) ;; guessed by decompiler
+   (wanted-flash           symbol                    :offset-assert 696)
    (distance               float                     :offset-assert 700)
-   (kiosk-timeout          uint64                    :offset-assert 704)
-   (pause-start-time       uint64                    :offset-assert 712) ;; time-frame
-   (game-score             (array float)             :offset-assert 720) ;; guessed by decompiler
+   (kiosk-timeout          time-frame                :offset-assert 704)
+   (pause-start-time       time-frame                :offset-assert 712)
+   (game-score             (array float)             :offset-assert 720)
    (goal                   float                     :offset-assert 724)
    (miss                   float                     :offset-assert 728)
    (miss-max               float                     :offset-assert 732)
+   (unknown-arr3           (array uint64))
    (live-eco-pill-count    int32                     :offset-assert 740)
    (live-gem-count         int32                     :offset-assert 744)
    (air-supply             float                     :offset-assert 748)
@@ -15745,7 +15840,7 @@
    (dark-eco-pickup        int32                     :offset-assert 756)
    (green-eco-pickup       int32                     :offset-assert 760)
    (health-bar-vehicle     float                     :offset-assert 764)
-   (dust-storm             uint64                    :offset-assert 768)
+   (dust-storm             handle                    :offset-assert 768)
    (flut-count             int32                     :offset-assert 776)
    (death-resetter         resetter-spec     :inline :offset-assert 780)
    (current-vehicle        uint8                     :offset-assert 796)
@@ -15773,7 +15868,7 @@
     (game-info-method-23 () none) ;; 23 ;; (save-game (_type_ game-save string) game-save)
     (game-info-method-24 () none) ;; 24 ;; (load-game (_type_ game-save) game-save)
     (game-info-method-25 () none) ;; 25 ;; (you-suck-stage (_type_ symbol) int)
-    (game-info-method-26 () none) ;; 26 ;; (you-suck-scale (_type_ object) float)
+    (get-next-attack-id! (_type_) uint) ;; 26 ;; (you-suck-scale (_type_ object) float)
     (game-info-method-27 () none) ;; 27 ;; (get-next-attack-id (_type_) uint)
     (game-info-method-28 () none) ;; 28 ;; (game-info-method-28 (_type_ game-score float) int)
     (game-info-method-29 () none) ;; 29 ;; (get-game-score-ref (_type_ int) (pointer float))
@@ -15784,39 +15879,138 @@
     (game-info-method-34 () none) ;; 34
     )
   )
-|#
 
-;; (define-extern *GAME-bank* game-bank) ;; game-bank
-;; (define-extern *game-info* object) ;; game-info
+(define-extern *GAME-bank* game-bank)
+(define-extern *game-info* game-info)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; gui-h                          ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
+;; +++gui-h:gui-action
+(defenum gui-action
+  :type uint8
+  :bitfield #f
+  (none 0)
+  (queue 1)
+  (play 2)
+  (playing 3)
+  (stop 4)
+  (stopping 5)
+  (abort 6)
+  (hide 7)
+  (hidden 8)
+  (fade 9)
+  )
+;; ---gui-h:gui-action
+
+;; +++gui-h:gui-status
+(defenum gui-status
+  :type uint8 ;; not sure
+  :bitfield #f
+  (unknown 0)
+  (pending 1)
+  (ready 2)
+  (active 3)
+  (hide 4)
+  (stop 5)
+  )
+;; ---gui-h:gui-status
+
+;; +++gui-h:gui-channel
+(defenum gui-channel
+  :type uint8
+  :bitfield #f
+  (none 0)
+  (art-load 16)
+  (art-load-next 17)
+  (background 18)
+  (jak 19)
+  (daxter 20)
+  (sig 21)
+  (ashelin 22)
+  (beast 23)
+  (jak-effect-1 24)
+  (pecker 25)
+  (jak-effect-2 26)
+  (gun 27)
+  (hal 28)
+  (voicebox 29)
+  (guard 30)
+  (jak-mode 31)
+  (alert 32)
+  (citizen 33)
+  (bbush 34)
+  (rider 35)
+  (task 36)
+  (voice 47)
+  (movie 64)
+  (blackout 65)
+  (query 66)
+  (message 67)
+  (notice 68)
+  (subtitle 69)
+  (supertitle 70)
+  (notice-low 71)
+  (resetter 72)
+  (progress 73)
+  (freeze 74)
+  (subtitle-pc 78) ;; custom
+  (screen 79)
+  (hud-upper-right 80)
+  (hud-upper-left 81)
+  (hud-lower-right 82)
+  (hud-lower-left 83)
+  (hud-lower-left-1 84)
+  (hud-lower-left-2 85)
+  (hud-center-right 86)
+  (hud-center-left 87)
+  (hud-middle-right 88)
+  (hud-middle-left 89)
+  (hud-upper-center 90)
+  (hud-upper-center-2 91)
+  (hud-lower-center 92)
+  (hud-auto-save 93)
+  (hud-auto-save-message 94)
+  (hud 95)
+  (max 96)
+  )
+;; ---gui-h:gui-channel
+
+;; +++gui-h:gui-connection-flags
+(defenum gui-connection-flags
+  :type uint8
+  :bitfield #t
+  (gcf0 0)
+  (gcf1 1)
+  (fo-curve 2)
+  (fo-min 3)
+  (fo-max 4)
+  )
+;; ---gui-h:gui-connection-flags
+
 (deftype gui-connection (connection)
-  ((priority   float     :offset-assert 16)
-   (action     uint8     :offset-assert 20) ;; gui-action
-   (channel    uint8     :offset-assert 21) ;; gui-channel
-   (anim-part  uint8     :offset-assert 22)
-   (flags      uint8     :offset-assert 23) ;; gui-connection-flags
-   (name       string    :offset-assert 24) ;; guessed by decompiler
-   (id         sound-id  :offset-assert 28) ;; guessed by decompiler
-   (handle     uint64    :offset-assert 0) ;; handle
-   (time-stamp uint64    :offset-assert 8) ;; time-frame
-   (hold-time  uint64    :offset-assert 32) ;; time-frame
-   (fo-min     int16     :offset-assert 40)
-   (fo-max     int16     :offset-assert 42)
-   (fo-curve   int8      :offset-assert 44)
-   (fade       uint8     :offset-assert 45)
-   (volume     int16     :offset-assert 46)
+  ((priority   float                :offset 16 :score 1)
+   (action     gui-action           :offset 20)
+   (channel    gui-channel          :offset 21)
+   (anim-part  uint8                :offset 22)
+   (flags      gui-connection-flags :offset 23)
+   (name       string               :offset 24)
+   (id         sound-id             :offset 28)
+   (handle     handle               :offset 0)
+   (time-stamp time-frame           :offset 8)
+   (hold-time  time-frame           :offset-assert 32)
+   (fo-min     int16                :offset-assert 40)
+   (fo-max     int16                :offset-assert 42)
+   (fo-curve   int8                 :offset-assert 44)
+   (fade       uint8                :offset-assert 45)
+   (volume     int16                :offset-assert 46)
    )
   :method-count-assert 14
   :size-assert         #x30
   :flag-assert         #xe00000030
   ;; field param1 uses ~A with a signed load. field param2 uses ~A with a signed load. field param3 uses ~A with a signed load.
   )
-|#
 
 ;; (deftype gui-control (basic)
 ;;   ()
@@ -15828,78 +16022,104 @@
 ;; ambient-h                      ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
+;; +++ambient-h:talker-flags
+(defenum talker-flags
+  :type uint16
+  :bitfield #t
+  (tf0 0)
+  (tf1 1)
+  (tf2 2)
+  (tf3 3)
+  (tf4 4)
+  (tf5 5)
+  (tf6 6)
+  (tf7 7)
+  (tf8 8)
+  )
+;; ---ambient-h:talker-flags
+
 (deftype talker-speech-class (structure)
-  ((name          string   :offset-assert 0) ;; guessed by decompiler
-   (channel       uint8    :offset-assert 4) ;; gui-channel
-   (flags         uint16   :offset-assert 6) ;; uint8
-   (speech        uint16   :offset-assert 8)
-   (text-duration uint16   :offset-assert 10)
-   (delay         uint16   :offset-assert 12)
-   (pos           uint16   :offset-assert 14)
-   (neg           uint16   :offset-assert 16)
-   (text-message  text-id  :offset-assert 20) ;; guessed by decompiler
-   (on-close      pair     :offset-assert 24) ;; guessed by decompiler
-   (camera        basic    :offset-assert 28)
+  "Contains metadata about a voice line or hint text being played/displayed."
+  ((name          string       :offset-assert 0)
+   (channel       gui-channel  :offset-assert 4)
+   (flags         talker-flags :offset-assert 6)
+   (speech        uint16       :offset-assert 8)
+   (text-duration uint16       :offset-assert 10 :decomp-as time-frame)
+   (delay         uint16       :offset-assert 12 :decomp-as time-frame)
+   (pos           uint16       :offset-assert 14)
+   (neg           uint16       :offset-assert 16)
+   (text-message  text-id      :offset-assert 20)
+   (on-close      pair         :offset-assert 24)
+   (camera        string       :offset-assert 28)
    )
+  :pack-me
   :method-count-assert 14
   :size-assert         #x20
   :flag-assert         #xe00000020
   ;; field on-close uses ~A with a signed load.
   (:methods
-    (talker-speech-class-method-9 () none) ;; 9 ;; (talker-speech-class-method-9 (_type_) symbol)
-    (talker-speech-class-method-10 () none) ;; 10 ;; (play-communicator-speech! (_type_) none)
-    (talker-speech-class-method-11 () none) ;; 11 ;; (talker-speech-class-method-11 (_type_) none)
-    (talker-speech-class-method-12 () none) ;; 12 ;; (talker-speech-class-method-12 (_type_ int) none)
-    (talker-speech-class-method-13 () none) ;; 13 ;; (talker-speech-class-method-13 (_type_ int) none)
+    (talker-speech-class-method-9 (_type_) symbol) ;; 9
+    (play-communicator-speech! (_type_) none) ;; 10
+    (talker-speech-class-method-11 (_type_) none) ;; 11
+    (talker-speech-class-method-12 (_type_ int) none) ;; 12
+    (talker-speech-class-method-13 (_type_ int) none) ;; 13
     )
   )
-|#
 
-#|
 (deftype talker (process)
   ((trans          vector              :inline :offset-assert 128)
    (message        talker-speech-class         :offset-assert 144)
-   (total-time     uint64                      :offset-assert 152) ;; time-frame
-   (total-off-time uint64                      :offset-assert 160) ;; time-frame
-   (start-time     uint64                      :offset-assert 168) ;; time-frame
-   (state-time     uint64                      :offset-assert 176) ;; time-frame
-   (voicebox       uint64                      :offset-assert 184) ;; handle
+   (total-time     time-frame                  :offset-assert 152) ;; time-frame
+   (total-off-time time-frame                  :offset-assert 160) ;; time-frame
+   (start-time     time-frame                  :offset-assert 168) ;; time-frame
+   (state-time     time-frame                  :offset-assert 176) ;; time-frame
+   (voicebox       handle                      :offset-assert 184) ;; handle
    (voice-id       sound-id                    :offset-assert 192) ;; guessed by decompiler
    (message-id     sound-id                    :offset-assert 196) ;; guessed by decompiler
    (region         region                      :offset-assert 200)
    (interp         float                       :offset-assert 204)
    (save?          symbol                      :offset-assert 208) ;; guessed by decompiler
-   (grab?          basic                       :offset-assert 212)
+   (grab?          symbol                      :offset-assert 212)
    )
   :method-count-assert 18
   :size-assert         #xd8
   :flag-assert         #x12006000d8
+  (:state-methods
+    idle ;; 14
+    active ;; 15
+    exit ;; 16
+    )
   (:methods
-    (talker-method-14 () none) ;; 14 ;; (idle () _type_ :state)
-    (talker-method-15 () none) ;; 15 ;; (active () _type_ :state)
-    (talker-method-16 () none) ;; 16 ;; (exit () _type_ :state)
-    (talker-method-17 () none) ;; 17 ;; (talker-method-17 (_type_) none)
+    (talker-method-17 (_type_) none) ;; 17
     )
   )
-|#
 
-;; (define-extern *talker-speech* object) ;; (inline-array talker-speech-class)
+(define-extern *talker-speech* (inline-array talker-speech-class))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; speech-h                       ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
+;; +++speech-h:speech-type-flag
+(defenum speech-type-flag
+  :type uint8
+  :bitfield #t
+  (random-order 0)
+  (linked-next 1)
+  (skip-first-time 2)
+  (first-time 3)
+  )
+;; ---speech-h:speech-type-flag
+
 (deftype speech-type-info (structure)
   ((channel         uint8             :offset-assert 0)
    (flags           speech-type-flag  :offset-assert 1)
    (priority        int8              :offset-assert 2)
-   (delay-pre-time  uint16            :offset-assert 4)
-   (request-timeout uint16            :offset-assert 6)
-   (min-delay       uint16            :offset-assert 8)
-   (max-delay       uint16            :offset-assert 10)
-   (delay           uint16            :offset-assert 12)
+   (delay-pre-time  uint16            :offset-assert 4 :decomp-as time-frame)
+   (request-timeout uint16            :offset-assert 6 :decomp-as time-frame)
+   (min-delay       uint16            :offset-assert 8 :decomp-as time-frame)
+   (max-delay       uint16            :offset-assert 10 :decomp-as time-frame)
+   (delay           uint16            :offset-assert 12 :decomp-as time-frame)
    (play-index      int16             :offset-assert 14)
    (list            (array string)    :offset-assert 16) ;; guessed by decompiler
    (time            uint64            :offset-assert 24)
@@ -15909,30 +16129,98 @@
   :flag-assert         #x900000020
   ;; field speech-type-flag is likely a value type.
   )
-|#
 
-#|
+;; +++speech-h:speech-type
+(defenum speech-type
+  :type int8
+  (speech-type-0)
+  (speech-type-1)
+  (speech-type-2)
+  (speech-type-3)
+  (speech-type-4)
+  (speech-type-5)
+  (speech-type-6)
+  (speech-type-7)
+  (speech-type-8)
+  (speech-type-9)
+  (speech-type-10)
+  (speech-type-11)
+  (speech-type-12)
+  (speech-type-13)
+  (speech-type-14)
+  (speech-type-15)
+  (speech-type-16)
+  (speech-type-17)
+  (speech-type-18)
+  (speech-type-19)
+  (speech-type-20)
+  (speech-type-21)
+  (speech-type-22)
+  (speech-type-23)
+  (speech-type-24)
+  (speech-type-25)
+  (speech-type-26)
+  (speech-type-27)
+  (speech-type-28)
+  (speech-type-29)
+  (speech-type-30)
+  (speech-type-31)
+  (speech-type-32)
+  (speech-type-33)
+  (speech-type-34)
+  (speech-type-35)
+  (speech-type-36)
+  (speech-type-37)
+  (speech-type-38)
+  (speech-type-39)
+  (speech-type-40)
+  (speech-type-41)
+  (speech-type-42)
+  (speech-type-43)
+  (speech-type-44)
+  (speech-type-45)
+  (speech-type-46)
+  (speech-type-47)
+  (speech-type-48)
+  (speech-type-49)
+  (speech-type-50)
+  (speech-type-51)
+  (speech-type-52)
+  (speech-type-53)
+  (speech-type-54)
+  (speech-type-55)
+  (speech-type-56)
+  )
+;; ---speech-h:speech-type
+
 (deftype speech-request (structure)
-  ((handle      uint64  :offset-assert 0) ;; handle
-   (time        uint64  :offset-assert 8) ;; time-frame
-   (priority    float   :offset-assert 16)
-   (speech-type int8    :offset-assert 20) ;; speech-type
+  ((handle      handle      :offset-assert 0) ;; handle
+   (time        time-frame  :offset-assert 8) ;; time-frame
+   (priority    float       :offset-assert 16)
+   (speech-type speech-type :offset-assert 20) ;; speech-type
    )
+  :pack-me
   :method-count-assert 9
   :size-assert         #x15
   :flag-assert         #x900000015
   )
-|#
 
-#|
+;; +++speech-h:speech-channel-flag
+(defenum speech-channel-flag
+  :type uint8
+  :bitfield #t
+  (disable 0)
+  )
+;; ---speech-h:speech-channel-flag
+
 (deftype speech-channel (structure)
   ((flags        speech-channel-flag                :offset-assert 0)
-   (gui-channel  uint8                              :offset-assert 1) ;; gui-channel
-   (delay        uint16                             :offset-assert 2)
+   (gui-channel  gui-channel                        :offset-assert 1) ;; gui-channel
+   (delay        uint16                             :offset-assert 2 :decomp-as time-frame)
    (id           sound-id                           :offset-assert 4) ;; guessed by decompiler
-   (update-time  uint64                             :offset-assert 8) ;; time-frame
-   (start-time   uint64                             :offset-assert 16) ;; time-frame
-   (end-time     uint64                             :offset-assert 24) ;; time-frame
+   (update-time  time-frame                         :offset-assert 8) ;; time-frame
+   (start-time   time-frame                         :offset-assert 16) ;; time-frame
+   (end-time     time-frame                         :offset-assert 24) ;; time-frame
    (request      speech-request             :inline :offset-assert 32)
    (last-request speech-request             :inline :offset-assert 56)
    (target-pos   vector                     :inline :offset-assert 80)
@@ -15951,11 +16239,9 @@
     (speech-channel-method-14 () none) ;; 14
     )
   )
-|#
 
-#|
 (deftype speech-control (structure)
-  ((channel-array speech-channel   2  :offset-assert 0) ;; guessed by decompiler
+  ((channel-array speech-channel   2 :inline :offset-assert 0) ;; guessed by decompiler
    (speech-table  speech-type-info 61 :offset-assert 224) ;; guessed by decompiler
    )
   :method-count-assert 18
@@ -15973,28 +16259,24 @@
     (speech-control-method-17 () none) ;; 17
     )
   )
-|#
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; wind-h                         ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype wind-vector (structure)
   ((wind-pos  vector4w :inline :offset-assert 0)
    (wind-vel  vector4w :inline :offset-assert 16)
-   (stiffness float            :offset-assert 28)
+   (stiffness float            :offset 28)
    )
   :method-count-assert 9
   :size-assert         #x20
   :flag-assert         #x900000020
   )
-|#
 
-#|
 (deftype wind-work (basic)
-  ((wind-array    vector 64      :offset-assert 16) ;; guessed by decompiler
+  ((wind-array    vector 64 :inline :offset-assert 16) ;; guessed by decompiler
    (wind-normal   vector :inline :offset-assert 1040)
    (wind-temp     vector :inline :offset-assert 1056)
    (wind-force    float  64      :offset-assert 1072) ;; guessed by decompiler
@@ -16019,79 +16301,83 @@
   :size-assert         #x584
   :flag-assert         #x900000584
   )
-|#
 
-#|
 (deftype wind-dma (structure)
-  ((buffer0 wind-vector 128 :offset-assert 0) ;; guessed by decompiler
-   (buffer1 wind-vector 128 :offset-assert 4096) ;; guessed by decompiler
-   (buffer2 wind-vector 128 :offset-assert 8192) ;; guessed by decompiler
+  ((buffer0 wind-vector 128 :inline :offset-assert 0) ;; guessed by decompiler
+   (buffer1 wind-vector 128 :inline :offset-assert 4096) ;; guessed by decompiler
+   (buffer2 wind-vector 128 :inline :offset-assert 8192) ;; guessed by decompiler
    )
   :method-count-assert 9
   :size-assert         #x3000
   :flag-assert         #x900003000
   )
-|#
 
-;; (define-extern *wind-scales* array) ;; (array uint8)
+(define-extern *wind-scales* (array uint8))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; prototype-h                    ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
+;; +++prototype-h:prototype-flags
+(defenum prototype-flags
+  :bitfield #t
+  :type uint16
+  (disable     0) ;; set from debug menu, for debugging
+  (tpage-alpha 2)
+  (vanish      3)
+  (visible     5) ;; set by prototypes-game-visible-set! to hide things on purpose
+  (no-collide  6)
+  (tpage-water 7)
+  )
+;; ---prototype-h:prototype-flags
+
 (deftype prototype-bucket (basic)
   ((name                string           :offset-assert 4) ;; guessed by decompiler
-   (flags               uint16           :offset-assert 8) ;; prototype-flags
+   (flags               prototype-flags  :offset-assert 8) ;; prototype-flags
    (texture-masks-index uint16           :offset-assert 10)
    (in-level            uint16           :offset-assert 12)
    (utextures           uint16           :offset-assert 14)
    (geometry            drawable 4       :offset-assert 16) ;; guessed by decompiler
    (dists               vector   :inline :offset-assert 32)
    (rdists              vector   :inline :offset-assert 48)
-   (near-plane          meters           :offset-assert 32)
-   (near-stiff          meters           :offset-assert 36)
-   (mid-plane           meters           :offset-assert 40)
-   (far-plane           meters           :offset-assert 44)
-   (rlength-near        float            :offset-assert 48)
-   (rlength-stiff       float            :offset-assert 52)
-   (rlength-mid         float            :offset-assert 56)
-   (stiffness           float            :offset-assert 60)
+   (near-plane          meters           :offset 32)
+   (near-stiff          meters           :offset 36)
+   (mid-plane           meters           :offset 40)
+   (far-plane           meters           :offset 44)
+   (rlength-near        float            :offset 48)
+   (rlength-stiff       float            :offset 52)
+   (rlength-mid         float            :offset 56)
+   (stiffness           float            :offset 60)
    )
   :method-count-assert 9
   :size-assert         #x40
   :flag-assert         #x900000040
   )
-|#
 
-#|
 (deftype prototype-bucket-shrub (prototype-bucket)
   ((next        uint32     4 :offset-assert 64) ;; guessed by decompiler
    (count       uint16     4 :offset-assert 80) ;; guessed by decompiler
    (mod-count   uint16     4 :offset-assert 88) ;; guessed by decompiler
    (last        dma-packet 4 :offset-assert 96) ;; guessed by decompiler
-   (next-clear  uint128      :offset-assert 64)
-   (count-clear uint64       :offset-assert 80)
-   (last-clear  uint128      :offset-assert 96)
+   (next-clear  uint128      :offset 64)
+   (count-clear uint64       :offset 80)
+   (last-clear  uint128      :offset 96)
    )
   :method-count-assert 9
   :size-assert         #x70
   :flag-assert         #x900000070
   )
-|#
 
-#|
 (deftype prototype-inline-array-shrub (drawable)
-  ((length int16                    :offset-assert 6)
-   (data   prototype-bucket-shrub 1 :offset-assert 36) ;; guessed by decompiler
+  ((length int16                    :offset 6)
+   (data   prototype-bucket-shrub 1 :inline :offset 32) ;; guessed by decompiler
+   (pad uint32)
    )
   :method-count-assert 17
   :size-assert         #x94
   :flag-assert         #x1100000094
   )
-|#
 
-#|
 (deftype prototype-array-shrub-info (basic)
   ((prototype-inline-array-shrub prototype-inline-array-shrub  :offset-assert 4) ;; guessed by decompiler
    (wind-vectors                 uint32                        :offset-assert 8)
@@ -16101,9 +16387,10 @@
   :size-assert         #x10
   :flag-assert         #x900000010
   )
-|#
 
-#|
+(declare-type prototype-tie drawable)
+(declare-type collide-hash-fragment-array basic)
+
 (deftype prototype-bucket-tie (prototype-bucket)
   ((next                        uint32                      12       :offset-assert 64) ;; guessed by decompiler
    (count                       uint16                      12       :offset-assert 112) ;; guessed by decompiler
@@ -16120,83 +16407,80 @@
    (tie-colors                  time-of-day-palette                  :offset-assert 180) ;; guessed by decompiler
    (data                        uint32                      :dynamic :offset-assert 184) ;; guessed by decompiler
    (color-index-qwc             uint32                      :dynamic :offset-assert 184) ;; guessed by decompiler
-   (scissor-frag-count          uint8                                :offset-assert 136)
-   (near-frag-count             uint8                                :offset-assert 137)
-   (mid-frag-count              uint8                                :offset-assert 138)
-   (far-frag-count              uint8                                :offset-assert 139)
-   (scissor-index-start         uint8                                :offset-assert 140)
-   (near-index-start            uint8                                :offset-assert 141)
-   (mid-index-start             uint8                                :offset-assert 142)
-   (far-index-start             uint8                                :offset-assert 143)
-   (scissor-base-qw             uint16                               :offset-assert 144)
-   (near-base-qw                uint16                               :offset-assert 146)
-   (mid-base-qw                 uint16                               :offset-assert 148)
-   (far-base-qw                 uint16                               :offset-assert 150)
-   (tie-next                    uint32                      4        :offset-assert 64) ;; guessed by decompiler
-   (tie-scissor-next            uint32                               :offset-assert 64)
-   (tie-near-next               uint32                               :offset-assert 68)
-   (tie-mid-next                uint32                               :offset-assert 72)
-   (tie-far-next                uint32                               :offset-assert 76)
-   (trans-next                  uint32                      4        :offset-assert 64) ;; guessed by decompiler
-   (trans-scissor-next          uint32                      4        :offset-assert 64) ;; guessed by decompiler
-   (trans-near-next             uint32                               :offset-assert 68)
-   (trans-mid-next              uint32                               :offset-assert 72)
-   (trans-far-next              uint32                               :offset-assert 76)
-   (water-next                  uint32                      4        :offset-assert 64) ;; guessed by decompiler
-   (water-scissor-next          uint32                      4        :offset-assert 64) ;; guessed by decompiler
-   (water-near-next             uint32                               :offset-assert 68)
-   (water-mid-next              uint32                               :offset-assert 72)
-   (water-far-next              uint32                               :offset-assert 76)
-   (envmap-next                 uint32                      4        :offset-assert 80) ;; guessed by decompiler
-   (envmap-scissor-next         uint32                      4        :offset-assert 80) ;; guessed by decompiler
-   (envmap-near-next            uint32                               :offset-assert 84)
-   (envmap-mid-next             uint32                               :offset-assert 88)
-   (envmap-far-next             uint32                               :offset-assert 92)
-   (generic-next                uint32                      3        :offset-assert 96) ;; guessed by decompiler
-   (generic-near-next           uint32                               :offset-assert 96)
-   (generic-mid-next            uint32                               :offset-assert 100)
-   (generic-far-next            uint32                               :offset-assert 104)
-   (vanish-next                 uint32                               :offset-assert 108)
-   (tie-count                   uint16                      4        :offset-assert 112) ;; guessed by decompiler
-   (tie-scissor-count           uint16                               :offset-assert 112)
-   (tie-near-count              uint16                               :offset-assert 114)
-   (tie-mid-count               uint16                               :offset-assert 116)
-   (tie-far-count               uint16                               :offset-assert 118)
-   (trans-count                 uint16                      4        :offset-assert 112) ;; guessed by decompiler
-   (trans-scissor-count         uint16                               :offset-assert 112)
-   (trans-near-count            uint16                               :offset-assert 114)
-   (trans-mid-count             uint16                               :offset-assert 116)
-   (trans-far-count             uint16                               :offset-assert 118)
-   (water-count                 uint16                      4        :offset-assert 112) ;; guessed by decompiler
-   (water-scissor-count         uint16                               :offset-assert 112)
-   (water-near-count            uint16                               :offset-assert 114)
-   (water-mid-count             uint16                               :offset-assert 116)
-   (water-far-count             uint16                               :offset-assert 118)
-   (envmap-count                uint16                      4        :offset-assert 120) ;; guessed by decompiler
-   (envmap-scissor-count        uint16                               :offset-assert 120)
-   (envmap-near-count           uint16                               :offset-assert 122)
-   (envmap-mid-count            uint16                               :offset-assert 124)
-   (envmap-far-count            uint16                               :offset-assert 126)
-   (generic-count               uint16                      3        :offset-assert 128) ;; guessed by decompiler
-   (generic-near-count          uint16                               :offset-assert 128)
-   (generic-mid-count           uint16                               :offset-assert 130)
-   (generic-far-count           uint16                               :offset-assert 132)
-   (vanish-count                uint16                               :offset-assert 134)
-   (next-clear                  uint128                     3        :offset-assert 64) ;; guessed by decompiler
-   (count-clear                 uint64                      3        :offset-assert 112) ;; guessed by decompiler
+   (scissor-frag-count          uint8                                :offset 136)
+   (near-frag-count             uint8                                :offset 137)
+   (mid-frag-count              uint8                                :offset 138)
+   (far-frag-count              uint8                                :offset 139)
+   (scissor-index-start         uint8                                :offset 140)
+   (near-index-start            uint8                                :offset 141)
+   (mid-index-start             uint8                                :offset 142)
+   (far-index-start             uint8                                :offset 143)
+   (scissor-base-qw             uint16                               :offset 144)
+   (near-base-qw                uint16                               :offset 146)
+   (mid-base-qw                 uint16                               :offset 148)
+   (far-base-qw                 uint16                               :offset 150)
+   (tie-next                    uint32                      4        :offset 64) ;; guessed by decompiler
+   (tie-scissor-next            uint32                               :offset 64)
+   (tie-near-next               uint32                               :offset 68)
+   (tie-mid-next                uint32                               :offset 72)
+   (tie-far-next                uint32                               :offset 76)
+   (trans-next                  uint32                      4        :offset 64) ;; guessed by decompiler
+   (trans-scissor-next          uint32                      4        :offset 64) ;; guessed by decompiler
+   (trans-near-next             uint32                               :offset 68)
+   (trans-mid-next              uint32                               :offset 72)
+   (trans-far-next              uint32                               :offset 76)
+   (water-next                  uint32                      4        :offset 64) ;; guessed by decompiler
+   (water-scissor-next          uint32                      4        :offset 64) ;; guessed by decompiler
+   (water-near-next             uint32                               :offset 68)
+   (water-mid-next              uint32                               :offset 72)
+   (water-far-next              uint32                               :offset 76)
+   (envmap-next                 uint32                      4        :offset 80) ;; guessed by decompiler
+   (envmap-scissor-next         uint32                      4        :offset 80) ;; guessed by decompiler
+   (envmap-near-next            uint32                               :offset 84)
+   (envmap-mid-next             uint32                               :offset 88)
+   (envmap-far-next             uint32                               :offset 92)
+   (generic-next                uint32                      3        :offset 96) ;; guessed by decompiler
+   (generic-near-next           uint32                               :offset 96)
+   (generic-mid-next            uint32                               :offset 100)
+   (generic-far-next            uint32                               :offset 104)
+   (vanish-next                 uint32                               :offset 108)
+   (tie-count                   uint16                      4        :offset 112) ;; guessed by decompiler
+   (tie-scissor-count           uint16                               :offset 112)
+   (tie-near-count              uint16                               :offset 114)
+   (tie-mid-count               uint16                               :offset 116)
+   (tie-far-count               uint16                               :offset 118)
+   (trans-count                 uint16                      4        :offset 112) ;; guessed by decompiler
+   (trans-scissor-count         uint16                               :offset 112)
+   (trans-near-count            uint16                               :offset 114)
+   (trans-mid-count             uint16                               :offset 116)
+   (trans-far-count             uint16                               :offset 118)
+   (water-count                 uint16                      4        :offset 112) ;; guessed by decompiler
+   (water-scissor-count         uint16                               :offset 112)
+   (water-near-count            uint16                               :offset 114)
+   (water-mid-count             uint16                               :offset 116)
+   (water-far-count             uint16                               :offset 118)
+   (envmap-count                uint16                      4        :offset 120) ;; guessed by decompiler
+   (envmap-scissor-count        uint16                               :offset 120)
+   (envmap-near-count           uint16                               :offset 122)
+   (envmap-mid-count            uint16                               :offset 124)
+   (envmap-far-count            uint16                               :offset 126)
+   (generic-count               uint16                      3        :offset 128) ;; guessed by decompiler
+   (generic-near-count          uint16                               :offset 128)
+   (generic-mid-count           uint16                               :offset 130)
+   (generic-far-count           uint16                               :offset 132)
+   (vanish-count                uint16                               :offset 134)
+   (next-clear                  uint128                     3        :offset 64) ;; guessed by decompiler
+   (count-clear                 uint64                      3        :offset 112) ;; guessed by decompiler
+   ;; added
+   (tie-geom                    prototype-tie       4        :offset 16 :score 1)
    )
   :method-count-assert 9
   :size-assert         #xb8
   :flag-assert         #x9000000b8
   )
-|#
 
-#|
 (deftype prototype-array-tie (array)
-  ((type             type   :offset-assert 0) ;; guessed by decompiler
-   (length           int32  :offset-assert 4)
-   (allocated-length int32  :offset-assert 8)
-   (content-type     type   :offset-assert 12) ;; guessed by decompiler
+  ((array-data prototype-bucket-tie :dynamic :offset 16) ;; NOTE - field added, not 100% positive on the type
    )
   :method-count-assert 10
   :size-assert         #x10
@@ -16205,9 +16489,7 @@
     (prototype-array-tie-method-9 () none) ;; 9 ;; (login (_type_) none)
     )
   )
-|#
 
-#|
 (deftype proxy-prototype-array-tie (basic)
   ((prototype-array-tie prototype-array-tie  :offset-assert 4) ;; guessed by decompiler
    (wind-vectors        uint32               :offset-assert 8)
@@ -16218,21 +16500,25 @@
   :size-assert         #x10
   :flag-assert         #x900000010
   )
-|#
 
-#|
+;; +++prototype-h:instance-flags
+(defenum instance-flags
+  :type uint16
+  :bitfield #t
+  (no-collide 0)
+  )
+;; ---prototype-h:instance-flags
+
 (deftype instance (drawable)
-  ((bucket-index uint16           :offset-assert 6)
+  ((bucket-index uint16           :offset 6)
    (origin       matrix4h :inline :offset-assert 32)
-   (flags        uint16           :offset-assert 46) ;; instance-flags
-   (wind-index   uint16           :offset-assert 62)
+   (flags        instance-flags   :offset 46) ;; instance-flags
+   (wind-index   uint16           :offset 62)
    )
   :method-count-assert 17
   :size-assert         #x40
   :flag-assert         #x1100000040
   )
-|#
-
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; joint-h                        ;;
@@ -16667,44 +16953,71 @@
 ;; engines                        ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
+;; +++engines:part-local-space-flags
+(defenum part-local-space-flags
+  :type uint32
+  :bitfield #t
+  )
+;; ---engines:part-local-space-flags
+
 (deftype particle-local-space-info (connection)
-  ((params   UNKNOWN 3       :offset-assert 20)
+  ((params   basic  3        :offset 20 :score 1)
    (mat-prev matrix  :inline :offset-assert 32)
    (mat-new  matrix  :inline :offset-assert 96)
-   (hand     uint64          :offset-assert 160)
-   (flags    uint32          :offset-assert 168)
-   (pad      UNKNOWN 1       :offset-assert 172)
+   (hand     handle          :offset-assert 160)
+   (flags    part-local-space-flags :offset-assert 168)
+   (pad      uint32 1        :offset-assert 172)
    )
   :method-count-assert 14
   :size-assert         #xb0
   :flag-assert         #xe000000b0
   ;; field param1 uses ~A with a signed load. field param2 uses ~A with a signed load. field param3 uses ~A with a signed load.
   )
-|#
 
-;; (define-extern *background-draw-engine* object) ;; engine
-;; (define-extern *matrix-engine* object) ;; (array handle)
-;; (define-extern *cloth-engine* object)
-;; (define-extern *part-engine* object) ;; engine
-;; (define-extern *cam-post-hook-engine* object)
-;; (define-extern *part-local-space-engine* object)
-;; (define-extern *camera-engine* object) ;; engine
-;; (define-extern *debug-engine* object) ;; engine
-;; (define-extern *pad-engine* object) ;; engine
-;; (define-extern *lightning-engine* object) ;; engine
-;; (define-extern *hud-engine* object) ;; engine
-;; (define-extern *prim-engine* object)
-;; (define-extern *task-manager-engine* object) ;; engine
+(define-extern *background-draw-engine* engine)
+(define-extern *matrix-engine* (array handle))
+(define-extern *cloth-engine* (array handle))
+(define-extern *part-engine* engine)
+(define-extern *cam-post-hook-engine* engine)
+(define-extern *part-local-space-engine* engine)
+(define-extern *camera-engine* engine)
+(define-extern *debug-engine* engine)
+(define-extern *pad-engine* engine)
+(define-extern *lightning-engine* engine)
+(define-extern *hud-engine* engine)
+(define-extern *prim-engine* engine)
+(define-extern *task-manager-engine* engine)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; lightning-h                    ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
+;; +++lightning-h:lightning-spec-flags
+(defenum lightning-spec-flags
+  :type uint16
+  :bitfield #t
+  (lsf0 0)
+  (lsf1 1)
+  (lsf2 2)
+  (lsf3 3)
+  (lsf4 4)
+  (lsf5 5)
+  (lsf6 6)
+  (lsf7 7)
+  (lsf8 8)
+  (lsf9 9)
+  (lsf10 10)
+  (lsf11 11)
+  (lsf12 12)
+  (lsf13 13)
+  (lsf14 14)
+  (lsf15 15)
+  )
+;; ---lightning-h:lightning-spec-flags
+
 (deftype lightning-spec (basic)
   ((name              string      :offset-assert 4) ;; guessed by decompiler
-   (flags             uint16      :offset-assert 8) ;; lightning-spec-flags
+   (flags             lightning-spec-flags :offset-assert 8)
    (rand-func         uint8       :offset-assert 10)
    (adjust-distance   uint8       :offset-assert 11)
    (start-color       rgba        :offset-assert 12) ;; guessed by decompiler
@@ -16721,7 +17034,7 @@
    (radius            float       :offset-assert 56)
    (duration          float       :offset-assert 60)
    (duration-rand     float       :offset-assert 64)
-   (sound             basic       :offset-assert 68)
+   (sound             symbol      :offset-assert 68)
    (delay             float       :offset-assert 72)
    (delay-rand        float       :offset-assert 76)
    )
@@ -16729,9 +17042,7 @@
   :size-assert         #x50
   :flag-assert         #x900000050
   )
-|#
 
-#|
 (deftype lightning-state (structure)
   ((mode           uint8                :offset-assert 0) ;; lightning-mode
    (counter        float                :offset-assert 4)
@@ -16748,9 +17059,18 @@
   :size-assert         #x94
   :flag-assert         #x900000094
   )
-|#
 
-#|
+;; +++lightning-h:lightning-mode
+(defenum lightning-mode
+  :type uint8
+  (lm-1 -1)
+  (lm0 0)
+  (lm1 1)
+  (lm2 2)
+  (lm3 3)
+  )
+;; ---lightning-h:lightning-mode
+
 (deftype lightning-control (basic)
   ((spec    lightning-spec            :offset-assert 4) ;; guessed by decompiler
    (process (pointer process)         :offset-assert 8) ;; guessed by decompiler
@@ -16760,49 +17080,78 @@
   :size-assert         #xa4
   :flag-assert         #xe000000a4
   (:methods
-    (new (symbol type) _type_) ;; 0 ;; (new (symbol type lightning-spec process float) _type_)
-    (lightning-control-method-9 () none) ;; 9 ;; (change-mode (_type_ lightning-mode) lightning-mode)
-    (lightning-control-method-10 () none) ;; 10 ;; (get-mode (_type_) lightning-mode)
-    (lightning-control-method-11 () none) ;; 11 ;; (set-point! (_type_ int vector) none)
-    (lightning-control-method-12 () none) ;; 12 ;; (set-first-meet-point (_type_ vector) none)
-    (lightning-control-method-13 () none) ;; 13 ;; (set-last-meet-point (_type_ vector) none)
+    (new (symbol type lightning-spec process float) _type_) ;; 0
+    (change-mode (_type_ lightning-mode) lightning-mode) ;; 9
+    (get-mode (_type_) lightning-mode) ;; 10
+    (set-point! (_type_ int vector) none) ;; 11
+    (set-first-meet-point (_type_ vector) none) ;; 12
+    (set-last-meet-point (_type_ vector) none) ;; 13
     )
   )
-|#
 
-#|
 (deftype lightning-probe-vars (basic)
-  ((src-joint-index uint32                        :offset-assert 4)
-   (next-spawn-time uint64                        :offset-assert 8) ;; time-frame
-   (last-valid-time uint64                        :offset-assert 16) ;; time-frame
-   (point           vector                2       :offset-assert 32) ;; guessed by decompiler
-   (start-pos       vector                :inline :offset-assert 32)
-   (end-pos         vector                :inline :offset-assert 48)
-   (probe-dirs      (inline-array vector)         :offset-assert 64) ;; guessed by decompiler
+  ((src-joint-index uint32                          :offset-assert 4)
+   (next-spawn-time time-frame                      :offset-assert 8) ;; time-frame
+   (last-valid-time time-frame                      :offset-assert 16) ;; time-frame
+   (point           vector                2 :inline :offset-assert 32) ;; guessed by decompiler
+   (start-pos       vector                  :inline :offset 32)
+   (end-pos         vector                  :inline :offset 48)
+   (probe-dirs      (inline-array vector)           :offset-assert 64) ;; guessed by decompiler
    )
   :method-count-assert 9
   :size-assert         #x44
   :flag-assert         #x900000044
   )
-|#
 
-;; (define-extern lookup-lightning-spec-by-name function) ;; (function string lightning-spec)
-;; (define-extern *lightning-probe-vars* lightning-probe-vars) ;; lightning-probe-vars
+(define-extern lookup-lightning-spec-by-name (function string lightning-spec))
+(define-extern *lightning-probe-vars* lightning-probe-vars)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; res-h                          ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (deftype res-tag (uint128)
-;;   ()
-;;   :flag-assert #x900000010
-;;   )
+;; TODO confirm, this is just copied from jak1
+(deftype res-tag (uint128)
+  "Metadata about a property in a [[res-lump]], such as name, element type and element count."
+  ((name        symbol  :offset 0)
+   (key-frame   float   :offset 32)
+   (elt-type    type    :offset 64)
+   (data-offset uint16  :offset 96)
+   (elt-count   uint32  :offset 112 :size 15)
+   (inlined?    uint8   :offset 127 :size 1) ;; guess.
+   )
+  :flag-assert #x900000010
+  )
 
-#|
+;; made-up type
+(deftype res-tag-pair (uint64)
+  "The indices of two [[res-tag]]s. If the specific key-frame time is in between two
+   res-tags, this type is used to return the indices of the first res-tag before and after
+   the specified time."
+  ((lo  int32 :offset 0)
+   (hi  int32 :offset 32)
+   )
+  )
+
+(declare-type nav-mesh basic)
+(define-extern nav-mesh type)
+(declare-type collide-mesh basic)
+(define-extern collide-mesh type)
+
+;; +++res-h:res-lump-flags
+(defenum res-lump-flags
+  :type uint16
+  :bitfield #t
+  (sorted 0)
+  (rlf1 1)
+  )
+;; ---res-h:res-lump-flags
+
 (deftype res-lump (basic)
+  "A collection of [[res-tag]]s and their data."
   ((length           int32              :offset-assert 4)
    (allocated-length int16              :offset-assert 8) ;; int32
-   (flags            uint16             :offset-assert 10)
+   (flags            res-lump-flags     :offset-assert 10)
    (data-base        pointer            :offset-assert 12) ;; guessed by decompiler
    (data-top         pointer            :offset-assert 16) ;; guessed by decompiler
    (data-size        int32              :offset-assert 20)
@@ -16814,33 +17163,80 @@
   :flag-assert         #x1600000020
   ;; field extra uses ~A with a signed load.
   (:methods
-    (new (symbol type) _type_) ;; 0 ;; (new (symbol type int int) _type_)
-    (res-lump-method-9 () none) ;; 9 ;; (get-property-data (_type_ symbol symbol float pointer (pointer res-tag) pointer) pointer)
-    (res-lump-method-10 () none) ;; 10 ;; (get-property-struct (_type_ symbol symbol float structure (pointer res-tag) pointer) structure)
-    (res-lump-method-11 () none) ;; 11 ;; (get-property-value (_type_ symbol symbol float uint128 (pointer res-tag) pointer) uint128)
-    (res-lump-method-12 () none) ;; 12 ;; (get-property-value-float (_type_ symbol symbol float float (pointer res-tag) pointer) float)
-    (res-lump-method-13 () none) ;; 13 ;; (get-tag-index-data (_type_ int) pointer)
-    (res-lump-method-14 () none) ;; 14 ;; (get-tag-data (_type_ res-tag) pointer)
-    (res-lump-method-15 () none) ;; 15 ;; (allocate-data-memory-for-tag! (_type_ res-tag) res-tag)
-    (res-lump-method-16 () none) ;; 16 ;; (sort! (_type_) _type_)
-    (res-lump-method-17 () none) ;; 17 ;; (add-data! (_type_ res-tag pointer) res-lump)
-    (res-lump-method-18 () none) ;; 18 ;; (add-32bit-data! (_type_ res-tag object) res-lump)
-    (res-lump-method-19 () none) ;; 19 ;; (lookup-tag-idx (_type_ symbol symbol float) res-tag-pair)
-    (res-lump-method-20 () none) ;; 20 ;; (make-property-data (_type_ float res-tag-pair pointer) pointer)
-    (res-lump-method-21 () none) ;; 21 ;; (get-curve-data! (_type_ curve symbol symbol float) symbol)
+    (new (symbol type int int) _type_) ;; 0
+    (get-property-data
+      "Returns an address to a given property's data at a specific time stamp, or default on error.
+       @param name is the name of the property you want, mode is its lookup mode ('interp 'base 'exact), time is the timestamp.
+       @param default is the default result returned in the case of an error.
+       @param tag-addr is an address to a res-tag. The current base tag is written to this. Ignored if tag-addr is #f
+       @param buf-addr is an address to the data buffer used to write interpolated data to. It must have enough space! Only necessary for 'interp mode."
+      (_type_ symbol symbol float pointer (pointer res-tag) pointer) pointer) ;; 9
+    (get-property-struct
+      "Returns a given struct property's value at a specific time stamp, or default on error.
+        @param name is the name of the property you want, `mode` is its lookup mode ('interp 'base 'exact), `time` is the timestamp.
+        @param default is the default result returned in the case of an error.
+        @param tag-addr is an address to a [[res-tag]]. The current base tag is written to this. Ignored if tag-addr is #f.
+        @param buf-addr is an address to the data buffer used to write interpolated data to.
+        It must have enough space! Only necessary for 'interp mode."
+      (_type_ symbol symbol float structure (pointer res-tag) pointer) structure) ;; 10
+    (get-property-value
+      "Returns a given value property's value at a specific time stamp, or default on error.
+       @param name is the name of the property you want, `mode` is its lookup mode ('interp 'base 'exact), `time` is the timestamp.
+       @param default is the default result returned in the case of an error.
+       @param tag-addr is an address to a res-tag. The current base tag is written to this. Ignored if `tag-addr` is #f.
+       @param buf-addr is an address to the data buffer used to write interpolated data to.
+       It must have enough space! Only necessary for 'interp mode."
+      (_type_ symbol symbol float uint128 (pointer res-tag) pointer) uint128) ;; 11
+    (get-property-value-float (_type_ symbol symbol float float (pointer res-tag) pointer) float) ;; 12
+    (get-tag-index-data "Get the data address of the n'th tag." (_type_ int) pointer) ;; 13
+    (get-tag-data "Get the data address of the specified tag." (_type_ res-tag) pointer) ;; 14
+    (allocate-data-memory-for-tag!
+      "Find space for the data described by arg0 in this.
+       Returns a tag with data-offset set correctly for this res-lump.
+       If the lump already contains memory for the given tag, and it is big enough,
+       it will be reused. Alignment will be at least 8 bytes.
+       If the input tag has elt-count = 0, it will return a tag for elt-count = 1."
+      (_type_ res-tag) res-tag) ;; 15
+    (sort! "Sort all tags based on name, then key-frame." (_type_) _type_) ;; 16
+    (add-data!
+      "Given a tag and a pointer to its data, copy it to this res-lump.
+       This doesn't seem to do the right thing if the given tag is a non-inline tag
+       with > 1 element."
+      (_type_ res-tag pointer) res-lump) ;; 17
+    (add-32bit-data! "Add a single 32-bit value using [[add-data!]]." (_type_ res-tag object) res-lump) ;; 18
+    (lookup-tag-idx
+      "Look up the index of the tag containing with the given name and timestamp.
+       Correct lookups return a res-tag-pair, which contains one tag index in the lower 32 bits and one in the upper 32 bits.
+       Depending on the mode, they may be the same, or they may be two tags that you should interpolate
+       between, if the exact time was not found.
+
+       @param name-sym should be the name of the thing you want.
+       @param time is for the timestamp you want.
+       If mode = 'base, then both the indices are the same and the timestamp is ignored.
+       If mode = 'interp, then it tries to get closest below/closest above (or both the same, if exact match found).
+       If mode = 'exact, then it requires an exact timestamp match and both indices are the same.
+       If things go wrong, returns a negative number."
+      (_type_ symbol symbol float) res-tag-pair :no-virtual) ;; 19
+    (make-property-data
+       "Returns (a pointer to) the value data of a property with the tag-pair.
+        If tag-pair does not represent an exact point in the timeline, then the data is interpolated based on time
+        with the result written into buf. buf must have enough space to copy all of the data.
+        Otherwise, simply returns an address to the resource binary."
+       (_type_ float res-tag-pair pointer) pointer) ;; 20
+    (get-curve-data!
+      "Read curve data and write it to curve-target. Return #t if both
+       control points and knots data was succesfully read, #f otherwise."
+      (_type_ curve symbol symbol float) symbol) ;; 21
     )
   )
-|#
 
-;; (define-extern *res-key-string* object) ;; string
+(define-extern *res-key-string* string)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; res                            ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; res-lump is already defined!
-
-;; (define-extern *res-static-buf* object) ;; pointer
+(define-extern *res-static-buf* pointer)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; lights                         ;;
@@ -16870,7 +17266,6 @@
 ;; dynamics-h                     ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype dynamics (basic)
   ((name           symbol         :offset-assert 4) ;; guessed by decompiler
    (gravity-max    meters         :offset-assert 8)
@@ -16884,146 +17279,266 @@
   :size-assert         #x38
   :flag-assert         #xa00000038
   (:methods
-    (dynamics-method-9 () none) ;; 9 ;; (set-gravity-length (_type_ float) none)
+    (set-gravity-length (_type_ float) none) ;; 9
     )
   )
-|#
 
-;; (define-extern time-to-apex function) ;; (function float float int)
-;; (define-extern time-to-ground function) ;; (function float float float int)
-;; (define-extern *standard-dynamics* dynamics) ;; dynamics
+(define-extern time-to-apex (function float float int))
+(define-extern time-to-ground (function float float float int))
+(define-extern *standard-dynamics* dynamics)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; surface-h                      ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
+;; +++surface-h:surface-flag
+;; TODO copied from jak 2
+(defenum surface-flag
+  :bitfield #t
+  :type uint32
+
+  (look-around         0) ;; 1
+  (xz-local            1) ;; 2
+  (smooth-collision    2) ;; 4
+  (no-turn-around      3) ;; 8
+  (turn-to-pad         4) ;; 16
+  (turn-to-vel         5) ;; 32
+  (no-jump             6) ;; 64
+  (no-attack           7) ;; 128
+  (no-hands            8) ;; 256
+  (no-feet             9) ;; 512
+  (check-edge         10) ;; 1024
+  (air                11) ;; 2048
+  (attack             12) ;; 4096
+  (duck               13) ;; 8192
+  (momentum           14) ;; 16384
+  (turn-when-centered 15) ;; 32768
+
+  (turn-to-alt        16) ;; hi 1
+  (spin               17) ;; hi 2
+  (super              18) ;; hi 4
+  (gun-inactive       19) ;; hi 8
+  (gun-hide           20) ;; hi 16
+  (gun-off            21) ;; hi 32
+  (gun-fast-exit      22) ;; hi 64
+  (gun-direct         23) ;; hi 128
+  (gun-strafe         24) ;; hi 256
+  (gun-no-twist       25) ;; hi 512
+  (laser-hide         26) ;; hi 1024
+  (no-board           27) ;; hi 2048
+  (gun-turn-fast      28) ;; hi 4096
+  (sf29 29)
+  )
+;; ---surface-h:surface-flag
+
+(declare-type collide-shape trsqv)
+(declare-type collide-shape-moving collide-shape)
+(declare-type control-info collide-shape-moving)
+(declare-type target process-focusable)
 (deftype surface (basic)
+  "Definition of a bunch of parameters for different types of surfaces.
+   Parameters include values such as max speed, friction, callback functions that run
+   on impact, during touch, on exit, etc."
   ((name                  symbol                                                 :offset-assert 4) ;; guessed by decompiler
-   (data                  float                                               30 :offset-assert 8) ;; guessed by decompiler
-   (turnv                 float                                                  :offset-assert 8)
-   (turnvf                float                                                  :offset-assert 100)
-   (turnvv                float                                                  :offset-assert 12)
-   (turnvvf               float                                                  :offset-assert 104)
-   (tiltv                 float                                                  :offset-assert 16)
-   (tiltvf                float                                                  :offset-assert 108)
-   (tiltvv                float                                                  :offset-assert 20)
-   (tiltvvf               float                                                  :offset-assert 112)
-   (vel-turn              float                                                  :offset-assert 116)
-   (transv-max            float                                                  :offset-assert 24)
-   (target-speed          float                                                  :offset-assert 28)
-   (seek0                 float                                                  :offset-assert 32)
-   (seek90                float                                                  :offset-assert 36)
-   (seek180               float                                                  :offset-assert 40)
-   (fric                  float                                                  :offset-assert 44)
-   (nonlin-fric-dist      float                                                  :offset-assert 48)
-   (slip-factor           float                                                  :offset-assert 52)
-   (slide-factor          float                                                  :offset-assert 56)
-   (slope-up-factor       float                                                  :offset-assert 60)
-   (slope-down-factor     float                                                  :offset-assert 64)
-   (slope-slip-angle      float                                                  :offset-assert 68)
-   (impact-fric           float                                                  :offset-assert 72)
-   (bend-factor           float                                                  :offset-assert 76)
-   (bend-speed            float                                                  :offset-assert 80)
-   (alignv                float                                                  :offset-assert 84)
-   (slope-up-traction     float                                                  :offset-assert 88)
-   (align-speed           float                                                  :offset-assert 92)
-   (slope-change-preserve float                                                  :offset-assert 96)
-   (hook                  function                                            5  :offset-assert 128) ;; guessed by decompiler
-   (active-hook           (function none)                                        :offset-assert 128) ;; guessed by decompiler
-   (touch-hook            (function none)                                        :offset-assert 132) ;; guessed by decompiler
-   (impact-hook           (function control-info (pointer float) vector none)    :offset-assert 136) ;; guessed by decompiler
-   (mult-hook             (function surface surface surface int none)            :offset-assert 140) ;; guessed by decompiler
-   (exit-hook             function                                               :offset-assert 144) ;; guessed by decompiler
-   (dataw                 uint32                                              2  :offset-assert 148) ;; guessed by decompiler
-   (mode                  symbol                                                 :offset-assert 148) ;; guessed by decompiler
-   (flags                 surface-flag                                           :offset-assert 152)
+   (data                  float                                               30 :offset-assert 8 :score -1) ;; guessed by decompiler
+   (turnv                 float                                                  :offset 8)
+   (turnvf                float                                                  :offset 100)
+   (turnvv                float                                                  :offset 12)
+   (turnvvf               float                                                  :offset 104)
+   (tiltv                 float                                                  :offset 16)
+   (tiltvf                float                                                  :offset 108)
+   (tiltvv                float                                                  :offset 20)
+   (tiltvvf               float                                                  :offset 112)
+   (vel-turn              float                                                  :offset 116)
+   (transv-max            float                                                  :offset 24)
+   (target-speed          float                                                  :offset 28)
+   (seek0                 float                                                  :offset 32)
+   (seek90                float                                                  :offset 36)
+   (seek180               float                                                  :offset 40)
+   (fric                  float                                                  :offset 44)
+   (nonlin-fric-dist      float                                                  :offset 48)
+   (slip-factor           float                                                  :offset 52)
+   (slide-factor          float                                                  :offset 56)
+   (slope-up-factor       float                                                  :offset 60)
+   (slope-down-factor     float                                                  :offset 64)
+   (slope-slip-angle      float                                                  :offset 68)
+   (impact-fric           float                                                  :offset 72)
+   (bend-factor           float                                                  :offset 76)
+   (bend-speed            float                                                  :offset 80)
+   (alignv                float                                                  :offset 84)
+   (slope-up-traction     float                                                  :offset 88)
+   (align-speed           float                                                  :offset 92)
+   (slope-change-preserve float                                                  :offset 96)
+   (hook                  function                                            5  :offset-assert 128)
+   (active-hook           (function none)                                        :offset 128)
+   (touch-hook            (function none)                                        :offset 132)
+   (impact-hook           (function control-info (pointer float) vector none)    :offset 136)
+   (mult-hook             (function surface surface surface int none)            :offset 140)
+   (exit-hook             function                                               :offset 144)
+   (dataw                 uint32                                              2  :offset-assert 148 :score -1)
+   (mode                  symbol                                                 :offset 148)
+   (flags                 surface-flag                                           :offset 152)
    )
   :method-count-assert 9
   :size-assert         #x9c
   :flag-assert         #x90000009c
   )
-|#
 
-;; (define-extern calc-terminal-vel function) ;; (function float float float float)
-;; (define-extern calc-terminal2-vel function) ;; (function float float float float float)
-;; (define-extern calc-terminal4-vel function) ;; (function float float float float)
-;; (define-extern surface-interp! function) ;; (function surface surface surface float surface)
-;; (define-extern surface-mult! function) ;; (function surface surface surface surface)
-;; (define-extern surface-clamp-speed function) ;; (function surface surface surface int none)
-;; (define-extern *walk-mods* surface) ;; surface
-;; (define-extern *walk-no-turn-mods* surface) ;; surface
-;; (define-extern *turn-around-mods* surface) ;; surface
-;; (define-extern *jump-mods* surface) ;; surface
-;; (define-extern *double-jump-mods* surface) ;; surface
-;; (define-extern *smack-jump-mods* surface) ;; surface
-;; (define-extern *high-jump-mods* surface) ;; surface
-;; (define-extern *launch-jump-mods* surface) ;; surface
-;; (define-extern *forward-high-jump-mods* surface) ;; surface
-;; (define-extern *flip-jump-mods* surface) ;; surface
-;; (define-extern *forward-jump-mods* surface) ;; surface
-;; (define-extern *forward-pole-jump-mods* surface) ;; surface
-;; (define-extern *dark-jump-mods* object) ;; surface
-;; (define-extern *roll-mods* surface) ;; surface
-;; (define-extern *roll-flip-mods* surface) ;; surface
-;; (define-extern *flop-mods* surface) ;; surface
-;; (define-extern *flop-land-mods* object) ;; surface
-;; (define-extern *wade-mods* surface) ;; surface
-;; (define-extern *swim-mods* surface) ;; surface
-;; (define-extern *dive-mods* surface) ;; surface
-;; (define-extern *dive-bottom-mods* surface) ;; surface
-;; (define-extern *pole-mods* object) ;; surface
-;; (define-extern *grab-mods* object) ;; surface
-;; (define-extern *edge-grab-mods* object) ;; surface
-;; (define-extern *empty-mods* surface) ;; surface
-;; (define-extern *empty-mods-allow-gun* surface)
-;; (define-extern *neutral-mods* surface) ;; surface
-;; (define-extern *stone-surface* surface) ;; surface
-;; (define-extern *mushroom-surface* surface)
-;; (define-extern *gravel-surface* surface) ;; surface
-;; (define-extern *edge-surface* surface) ;; surface
-;; (define-extern *wade-surface* surface) ;; surface
-;; (define-extern *quicksand-surface* surface) ;; surface
-;; (define-extern *tar-surface* surface) ;; surface
-;; (define-extern *ice-surface* surface) ;; surface
-;; (define-extern *rail-surface* surface) ;; surface
-;; (define-extern *standard-ground-surface* object) ;; surface
-;; (define-extern *swim-surface* object) ;; surface
+(define-extern calc-terminal-vel (function float float float float))
+(define-extern calc-terminal2-vel (function float float float float float))
+(define-extern calc-terminal4-vel (function float float float float))
+(define-extern surface-interp! (function surface surface surface float surface))
+(define-extern surface-mult! (function surface surface surface surface))
+(define-extern surface-clamp-speed (function surface surface surface int none))
+(define-extern *walk-mods* surface)
+(define-extern *walk-no-turn-mods* surface)
+(define-extern *turn-around-mods* surface)
+(define-extern *jump-mods* surface)
+(define-extern *double-jump-mods* surface)
+(define-extern *smack-jump-mods* surface)
+(define-extern *high-jump-mods* surface)
+(define-extern *launch-jump-mods* surface)
+(define-extern *forward-high-jump-mods* surface)
+(define-extern *flip-jump-mods* surface)
+(define-extern *forward-jump-mods* surface)
+(define-extern *forward-pole-jump-mods* surface)
+(define-extern *dark-jump-mods* surface)
+(define-extern *roll-mods* surface)
+(define-extern *roll-flip-mods* surface)
+(define-extern *flop-mods* surface)
+(define-extern *flop-land-mods* surface)
+(define-extern *wade-mods* surface)
+(define-extern *swim-mods* surface)
+(define-extern *dive-mods* surface)
+(define-extern *dive-bottom-mods* surface)
+(define-extern *pole-mods* surface)
+(define-extern *grab-mods* surface)
+(define-extern *edge-grab-mods* surface)
+(define-extern *empty-mods* surface)
+(define-extern *empty-mods-allow-gun* surface)
+(define-extern *neutral-mods* surface)
+(define-extern *stone-surface* surface)
+(define-extern *mushroom-surface* surface)
+(define-extern *gravel-surface* surface)
+(define-extern *edge-surface* surface)
+(define-extern *wade-surface* surface)
+(define-extern *quicksand-surface* surface)
+(define-extern *tar-surface* surface)
+(define-extern *ice-surface* surface)
+(define-extern *rail-surface* surface)
+(define-extern *standard-ground-surface* surface)
+(define-extern *swim-surface* surface)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; pat-h                          ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
+;; +++pat-h:pat-mode
+(defenum pat-mode
+  :type uint8
+  (ground 0)
+  (wall 1)
+  (obstacle 2)
+  (halfpipe 3)
+  )
+;; ---pat-h:pat-mode
+
+;; +++pat-h:pat-material
+(defenum pat-material
+  :type uint8
+  (unknown     0)
+  (ice         1)
+  (quicksand   2)
+  (waterbottom 3)
+  (tar         4)
+  (sand        5)
+  (wood        6)
+  (grass       7)
+  (pcmetal     8)
+  (snow        9)
+  (deepsnow   10)
+  (hotcoals   11)
+  (lava       12)
+  (crwood     13)
+  (gravel     14)
+  (dirt       15)
+  (metal      16)
+  (straw      17)
+  (tube       18)
+  (swamp      19)
+  (stopproj   20)
+  (rotate     21)
+  (neutral    22)
+  (stone      23)
+  (crmetal    24)
+  (carpet     25)
+  (grmetal    26)
+  (shmetal    27)
+  (hdwood     28)
+  (squish     29)
+  (mhshroom   30)
+  (forest     31)
+  (mhswamp    32)
+  (dmaker     33)
+  )
+;; ---pat-h:pat-material
+
+;; +++pat-h:pat-event
+(defenum pat-event
+  :type uint8
+  (none        0)
+  (deadly      1)
+  (endlessfall 2)
+  (burn        3)
+  (deadlyup    4)
+  (burnup      5)
+  (melt        6)
+  (slide       7)
+  (lip         8)
+  (lipramp     9)
+  (shock      10)
+  (shockup    11)
+  (hide       12)
+  (rail       13)
+  (slippery   14)
+  (drag       15)
+  (waterfloor 16)
+  (hang       17)
+  (fry        18)
+  (slime      19)
+  )
+;; ---pat-h:pat-event
+
 (deftype pat-surface (uint32)
-  ((UNKNOWN UNKNOWN  :offset-assert -1) ;; field could not be read.
-   (UNKNOWN UNKNOWN  :offset-assert -1) ;; field could not be read.
-   (UNKNOWN UNKNOWN  :offset-assert -1) ;; field could not be read.
-   (UNKNOWN UNKNOWN  :offset-assert -1) ;; field could not be read.
-   (UNKNOWN UNKNOWN  :offset-assert -1) ;; field could not be read.
-   (UNKNOWN UNKNOWN  :offset-assert -1) ;; field could not be read.
-   (UNKNOWN UNKNOWN  :offset-assert -1) ;; field could not be read.
-   (UNKNOWN UNKNOWN  :offset-assert -1) ;; field could not be read.
-   (UNKNOWN UNKNOWN  :offset-assert -1) ;; field could not be read.
-   (UNKNOWN UNKNOWN  :offset-assert -1) ;; field could not be read.
-   (UNKNOWN UNKNOWN  :offset-assert -1) ;; field could not be read.
-   (UNKNOWN UNKNOWN  :offset-assert -1) ;; field could not be read.
-   (UNKNOWN UNKNOWN  :offset-assert -1) ;; field could not be read.
-   (UNKNOWN UNKNOWN  :offset-assert -1) ;; field could not be read.
-   (UNKNOWN UNKNOWN  :offset-assert -1) ;; field could not be read.
-   (UNKNOWN UNKNOWN  :offset-assert -1) ;; field could not be read.
-   (UNKNOWN UNKNOWN  :offset-assert -1) ;; field could not be read.
-   (UNKNOWN UNKNOWN  :offset-assert -1) ;; field could not be read.
-   (UNKNOWN UNKNOWN  :offset-assert -1) ;; field could not be read.
-   (UNKNOWN UNKNOWN  :offset-assert -1) ;; field could not be read.
+  ((skip      uint8        :offset  0 :size 7 :do-not-decompile)
+   (mode      pat-mode     :offset  7 :size 3)
+   (material  pat-material :offset 10 :size 6)
+   (camera    uint8        :offset 16 :size 1 :do-not-decompile) ;; sz = 2??
+   (event     pat-event    :offset 18 :size 6)
+   (skip2     uint8        :offset 24 :size 5 :do-not-decompile)
+
+   (noentity  uint8        :offset  0 :size 1)
+   (nocamera  uint8        :offset  1 :size 1)
+   (noedge    uint8        :offset  2 :size 1)
+   (nogrind   uint8        :offset  3 :size 1)
+   (nojak     uint8        :offset  4 :size 1)
+   (noboard   uint8        :offset  5 :size 1)
+   (nopilot   uint8        :offset  6 :size 1)
+
+   (probe     uint8        :offset 24 :size 1)
+   (nomech    uint8        :offset 25 :size 1)
+   (noproj    uint8        :offset 26 :size 1)
+   (noendlessfall uint8    :offset 27 :size 1)
+   (noprobe   uint8        :offset 28 :size 1)
+
+   (nolineofsight uint8    :offset 16 :size 1)
+   (board     uint8        :offset 4 :size 1)
    )
   :method-count-assert 9
   :size-assert         #x4
   :flag-assert         #x900000004
   )
-|#
 
-#|
 (deftype pat-mode-info (structure)
   ((name         string  :offset-assert 0) ;; guessed by decompiler
    (wall-angle   float   :offset-assert 4)
@@ -17034,18 +17549,16 @@
   :size-assert         #x10
   :flag-assert         #x900000010
   )
-|#
 
-;; (define-extern pat-material->string function) ;; (function pat-surface string)
-;; (define-extern pat-mode->string function) ;; (function pat-surface string)
-;; (define-extern pat-event->string function) ;; (function pat-surface string)
-;; (define-extern *pat-mode-info* object) ;; (inline-array pat-mode-info)
+(define-extern pat-material->string (function pat-surface string))
+(define-extern pat-mode->string (function pat-surface string))
+(define-extern pat-event->string (function pat-surface string))
+(define-extern *pat-mode-info* (inline-array pat-mode-info))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; fact-h                         ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype fact-bank (basic)
   ((eco-level-max              float    :offset-assert 4)
    (eco-single-inc             float    :offset-assert 8)
@@ -17106,139 +17619,188 @@
   :size-assert         #xf4
   :flag-assert         #x9000000f4
   )
-|#
 
-#|
+;; +++fact-h:actor-option
+(defenum actor-option
+  :bitfield #t
+  :type uint64
+  (blocked           0) ;; 1
+  (spawns-fuel-cell  1) ;; 2
+  (draw-blocker      2) ;; 4
+  (loop              3) ;; 8
+  (reflect           4) ;; 16
+  (wait-for-cue      5) ;; 32
+  (auto-pickup       6) ;; 64
+  (fuel-cell-no-jump 7) ;; 128
+  (suck-in           8) ;; 256
+  (fade-out          9) ;; 512
+  (big-collision    10) ;; 1024
+  (racer-only       11) ;; 2048
+  (no-reaction      12) ;; 4096
+  (no-shadow        13) ;; 8192
+  (wait-for-task-complete 14) ;; 16384
+  (respawn-delay    15) ;; 32768
+
+  (no-amb-sound     16) ;; hi 1
+  (user17           17) ;; hi 2
+  (user18           18) ;; hi 4
+  (user19           19) ;; hi 8
+  (user20           20) ;; hi 16
+  (cond-hide        21) ;; hi 32
+  (cond-respawn     22) ;; hi 64
+  (fall             23) ;; hi 128
+  (mirror           24) ;; hi 256
+  (cond-low-ammo             25) ;; hi 512
+  (no-distance-check-fadeout 26) ;; 1024
+  (no-track                  27) ;; hi 2048
+  (dont-override-fact        28)
+  )
+;; ---fact-h:actor-option
+
+(define-extern process-drawable-art-error (state string process-drawable))
 (deftype fact-info (basic)
   ((process             process       :offset-assert 4) ;; guessed by decompiler
+   (pickup-type         pickup-type   :offset-assert 8)
    (pickup-amount       float         :offset-assert 12)
    (pickup-spawn-amount float         :offset-assert 16)
    (options             actor-option  :offset-assert 24)
-   (fade-time           uint64        :offset-assert 32) ;; time-frame
+   (fade-time           time-frame    :offset-assert 32) ;; time-frame
    )
   :method-count-assert 12
   :size-assert         #x28
   :flag-assert         #xc00000028
   ;; field actor-option is likely a value type.
   (:methods
-    (new (symbol type) _type_) ;; 0 ;; (new (symbol type process pickup-type float) _type_)
+    (new (symbol type process pickup-type float) _type_) ;; 0
     (fact-info-method-9 () none) ;; 9 ;; (drop-pickup (_type_ symbol process-tree fact-info int) (pointer process))
-    (fact-info-method-10 () none) ;; 10 ;; (reset! (_type_ symbol) none)
-    (fact-info-method-11 () none) ;; 11 ;; (pickup-collectable! (_type_ pickup-type float handle) float)
+    (reset! (_type_ symbol) none) ;; 10
+    (pickup-collectable! (_type_ pickup-type float handle) float) ;; 11
     )
   )
-|#
 
-#|
 (deftype fact-info-target (fact-info)
-  ((process                    process       :offset-assert 0) ;; guessed by decompiler
-   (pickup-amount              float         :offset-assert 8)
-   (pickup-spawn-amount        float         :offset-assert 12)
-   (options                    actor-option  :offset-assert 20)
-   (fade-time                  uint64        :offset-assert 28) ;; time-frame
-   (eco-type                   int32         :offset-assert 36)
-   (eco-level                  float         :offset-assert 40)
-   (eco-pickup-time            uint64        :offset-assert 44) ;; time-frame
-   (eco-timeout                seconds       :offset-assert 52) ;; time-frame
-   (eco-source                 uint64        :offset-assert 60) ;; handle
-   (eco-source-time            uint64        :offset-assert 68) ;; time-frame
-   (health                     float         :offset-assert 76)
-   (health-max                 float         :offset-assert 80)
-   (health-pickup-time         uint64        :offset-assert 84) ;; time-frame
-   (buzzer                     float         :offset-assert 92)
-   (buzzer-max                 float         :offset-assert 96)
-   (eco-pill-green             float         :offset-assert 100)
-   (eco-pill-green-max         float         :offset-assert 104)
-   (eco-pill-green-pickup-time uint64        :offset-assert 108) ;; time-frame
-   (eco-pill-dark-pickup-time  uint64        :offset-assert 116) ;; time-frame
-   (eco-pill-light-pickup-time uint64        :offset-assert 124)
-   (money-pickup-time          uint64        :offset-assert 132) ;; time-frame
-   (buzzer-pickup-time         uint64        :offset-assert 140) ;; time-frame
-   (task-pickup-time           uint64        :offset-assert 148) ;; time-frame
-   (stop-time-timeout          uint64        :offset-assert 156) ;; time-frame
-   (darkjak-start-time         uint64        :offset-assert 164) ;; time-frame
-   (darkjak-effect-time        uint64        :offset-assert 172) ;; time-frame
-   (lightjak-start-time        uint64        :offset-assert 180)
-   (lightjak-effect-time       uint64        :offset-assert 188)
-   (ammo-pickup-time           uint64        :offset-assert 196) ;; time-frame
-   (shield-pickup-time         uint64        :offset-assert 204) ;; time-frame
-   (shield-start-time          uint64        :offset-assert 212) ;; time-frame
-   (shield-use-time            uint64        :offset-assert 220) ;; time-frame
-   (shield-level               float         :offset-assert 228)
-   (shield-attack-id           uint32        :offset-assert 232)
-   (trick-point                float         :offset-assert 236)
-   (trick-point-pickup-time    uint64        :offset-assert 244) ;; time-frame
-   (trick-point-start-time     uint64        :offset-assert 252) ;; time-frame
-   (trick-point-duration       uint64        :offset-assert 260) ;; time-frame
-   (gem-pickup-time            uint64        :offset-assert 268) ;; time-frame
-   (skill-pickup-time          uint64        :offset-assert 276) ;; time-frame
-   (karma-pickup-time          uint64        :offset-assert 284) ;; time-frame
-   (eco-green                  float         :offset-assert 292)
-   (eco-green-max              float         :offset-assert 296)
-   (eco-green-pickup-time      uint64        :offset-assert 300)
+  ((eco-type                   int32      :offset-assert 40)
+   (eco-level                  float      :offset-assert 44)
+   (eco-pickup-time            time-frame :offset-assert 48)
+   (eco-timeout                seconds    :offset-assert 56)
+   (eco-source                 handle     :offset-assert 64)
+   (eco-source-time            time-frame :offset-assert 72)
+   (health                     float      :offset-assert 80)
+   (health-max                 float      :offset-assert 84)
+   (health-pickup-time         time-frame :offset-assert 88)
+   (buzzer                     float      :offset-assert 96)
+   (buzzer-max                 float      :offset-assert 100)
+   (eco-pill-green             float      :offset-assert 104)
+   (eco-pill-green-max         float      :offset-assert 108)
+   (eco-pill-green-pickup-time time-frame :offset-assert 112)
+   (eco-pill-dark-pickup-time  time-frame :offset-assert 120)
+   (eco-pill-light-pickup-time time-frame :offset-assert 128)
+   (money-pickup-time          time-frame :offset-assert 136)
+   (buzzer-pickup-time         time-frame :offset-assert 144)
+   (task-pickup-time           time-frame :offset-assert 152)
+   (stop-time-timeout          time-frame :offset-assert 160)
+   (darkjak-start-time         time-frame :offset-assert 168)
+   (darkjak-effect-time        time-frame :offset-assert 176)
+   (lightjak-start-time        time-frame :offset-assert 184)
+   (lightjak-effect-time       time-frame :offset-assert 192)
+   (ammo-pickup-time           time-frame :offset-assert 200)
+   (shield-pickup-time         time-frame :offset-assert 208)
+   (shield-start-time          time-frame :offset-assert 216)
+   (shield-use-time            time-frame :offset-assert 224)
+   (shield-level               float      :offset-assert 232)
+   (shield-attack-id           uint32     :offset-assert 236)
+   (trick-point                float      :offset-assert 240)
+   (trick-point-pickup-time    time-frame :offset-assert 248)
+   (trick-point-start-time     time-frame :offset-assert 256)
+   (trick-point-duration       time-frame :offset-assert 264)
+   (gem-pickup-time            time-frame :offset-assert 272)
+   (skill-pickup-time          time-frame :offset-assert 280)
+   (karma-pickup-time          time-frame :offset-assert 288)
+   (eco-green                  float      :offset-assert 296)
+   (eco-green-max              float      :offset-assert 300)
+   (eco-green-pickup-time      time-frame :offset-assert 304)
    )
   :method-count-assert 13
   :size-assert         #x138
   :flag-assert         #xd00000138
   ;; field actor-option is likely a value type.
   (:methods
-    (new (symbol type) _type_) ;; 0 ;; (new (symbol type process-drawable pickup-type float) _type_)
-    (fact-info-target-method-12 () none) ;; 12 ;; (get-gun-ammo (_type_) float)
+    (new (symbol type process-drawable pickup-type float) _type_) ;; 0
+    (get-gun-ammo (_type_) float) ;; 12
     )
   )
-|#
 
-#|
+;; +++fact-h:enemy-option
+(defenum enemy-option
+  :bitfield #t
+  :type uint32
+  (user0              0) ;; 1
+  (user1              1) ;; 2
+  (user2              2) ;; 4
+  (user3              3) ;; 8
+  (user4              4) ;; 16
+  (user5              5) ;; 32
+  (user6              6) ;; 64
+  (user7              7) ;; 128
+  (user8              8) ;; 256
+  (user9              9) ;; 512
+  (user10            10) ;; 1024
+  (user11            11) ;; 2048
+  (user12            12) ;; 4096
+  (user13            13) ;; 8192
+  (user14            14) ;; 16k
+  (user15            15)
+
+  (dormant           16) ;; hi 1
+  (dormant-aware     17) ;; hi 2
+  (ambush            18) ;; hi 4
+  (spawner           19) ;; hi 8
+  (prespawned        20) ;; hi 16
+  (multi-focus       21) ;; hi 32
+  (has-trigger       22)
+  (idle-til-trigger  23) ;; hi 128
+  (knocked-into-water 24) ;; hi 256
+  (water             25) ;; hi 512
+  )
+;; ---fact-h:enemy-option
+
+(declare-type actor-group inline-array-class)
 (deftype fact-info-enemy (fact-info)
-  ((process             process                 :offset-assert 0) ;; guessed by decompiler
-   (pickup-amount       float                   :offset-assert 8)
-   (pickup-spawn-amount float                   :offset-assert 12)
-   (options             actor-option            :offset-assert 20)
-   (fade-time           uint64                  :offset-assert 28) ;; time-frame
-   (speed               float                   :offset-assert 36)
-   (idle-distance       meters                  :offset-assert 40)
-   (notice-top          meters                  :offset-assert 44)
-   (notice-bottom       meters                  :offset-assert 48)
-   (cam-horz            meters                  :offset-assert 52)
-   (cam-vert            meters                  :offset-assert 56)
-   (cam-notice-dist     meters                  :offset-assert 60)
-   (enemy-options       enemy-option            :offset-assert 64)
-   (trig-dist           meters                  :offset-assert 68)
-   (trig-actor-group    (pointer actor-group)   :offset-assert 72) ;; guessed by decompiler
-   (trig-mask-count     int8                    :offset-assert 76)
-   (trig-mask           uint8                 2 :offset-assert 77) ;; guessed by decompiler
+  ((speed               float                   :offset-assert 40)
+   (idle-distance       meters                  :offset-assert 44)
+   (notice-top          meters                  :offset-assert 48)
+   (notice-bottom       meters                  :offset-assert 52)
+   (cam-horz            meters                  :offset-assert 56)
+   (cam-vert            meters                  :offset-assert 60)
+   (cam-notice-dist     meters                  :offset-assert 64)
+   (enemy-options       enemy-option            :offset-assert 68)
+   (trig-dist           meters                  :offset-assert 72)
+   (trig-actor-group    (pointer actor-group)   :offset-assert 76) ;; guessed by decompiler
+   (trig-mask-count     int8                    :offset-assert 80)
+   (trig-mask           uint8                 2 :offset-assert 81) ;; guessed by decompiler
    )
   :method-count-assert 13
   :size-assert         #x53
   :flag-assert         #xd00000053
   ;; field actor-option is likely a value type.
   (:methods
-    (new (symbol type) _type_) ;; 0 ;; (new (symbol type process (pointer float) pickup-type float) _type_)
-    (fact-info-enemy-method-12 () none) ;; 12 ;; (clear-mask-bits (_type_ int) none)
+    (new (symbol type process (pointer float) pickup-type float) _type_) ;; 0
+    (clear-mask-bits (_type_ int) none) ;; 12
     )
   )
-|#
 
-#|
 (deftype fact-info-crate (fact-info)
-  ((process             process       :offset-assert 0) ;; guessed by decompiler
-   (pickup-amount       float         :offset-assert 8)
-   (pickup-spawn-amount float         :offset-assert 12)
-   (options             actor-option  :offset-assert 20)
-   (fade-time           uint64        :offset-assert 28) ;; time-frame
-   (suck-count          int32         :offset-assert 36)
+  ((suck-count          int32         :offset-assert 40)
    )
   :method-count-assert 12
   :size-assert         #x2c
   :flag-assert         #xc0000002c
   ;; field actor-option is likely a value type.
   (:methods
-    (new (symbol type) _type_) ;; 0 ;; (new (symbol type process pickup-type float) _type_)
+    (new (symbol type process pickup-type float) _type_) ;; 0
     )
   )
-|#
 
-#|
 (deftype fact-info-enemy-defaults (basic)
   ((idle-distance meters  :offset-assert 4)
    (pickup-type   int32   :offset-assert 8)
@@ -17248,11 +17810,10 @@
   :size-assert         #x10
   :flag-assert         #x900000010
   )
-|#
 
-;; (define-extern *FACT-bank* fact-bank) ;; fact-bank
-;; (define-extern pickup-type->string function) ;; (function pickup-type string)
-;; (define-extern *fact-info-enemy-defaults* fact-info-enemy-defaults) ;; fact-info-enemy-defaults
+(define-extern *FACT-bank* fact-bank)
+(define-extern pickup-type->string (function pickup-type string))
+(define-extern *fact-info-enemy-defaults* fact-info-enemy-defaults)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; aligner-h                      ;;
@@ -17289,7 +17850,78 @@
 ;; penetrate-h                    ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (define-extern penetrate->string function)
+;; +++penetrate-h:penetrate
+(defenum penetrate
+  :type uint64
+  :bitfield #t
+  (touch 0)
+  (generic-attack 1)
+  (lunge 2)
+  (flop 3)
+  (punch 4)
+  (spin 5)
+  (roll 6)
+  (uppercut 7)
+  (bonk 8)
+  (tube 9)
+  (vehicle 10)
+  (flut-attack 11)
+  (board 12)
+  (mech 13)
+  (mech-punch 14)
+  (mech-bonk 15)
+  (dark-skin 16)
+  (dark-punch 17)
+  (dark-bomb 18)
+  (dark-smack 19)
+  (flut 20)
+  (shield 21)
+  (explode 22)
+  (jak-yellow-shot 23)
+  (jak-red-shot 24)
+  (jak-blue-shot 25)
+  (jak-dark-shot 26)
+  (enemy-yellow-shot 27)
+  (enemy-dark-shot 28)
+  (eco-yellow 29)
+  (eco-red 30)
+  (eco-blue 31)
+  (eco-green 32)
+  (knocked 33)
+  (jak-red-shockwave 34)
+  (jak-dark-nuke 35)
+  (jak-dark-blackhole 36)
+  (emp-blast 37)
+  (penetrate-38 38)
+  (penetrate-39 39)
+  (penetrate-40 40)
+  (penetrate-41 41)
+  (penetrate-42 42)
+  (penetrate-43 43)
+  (penetrate-44 44)
+  (penetrate-45 45)
+  (penetrate-46 46)
+  (penetrate-47 47)
+  (penetrate-48 48)
+  (penetrate-49 49)
+  (penetrate-50 50)
+  (penetrate-51 51)
+  (penetrate-52 52)
+  (penetrate-53 53)
+  (penetrate-54 54)
+  (penetrate-55 55)
+  (penetrate-56 56)
+  (penetrate-57 57)
+  (penetrate-58 58)
+  (penetrate-59 59)
+  (penetrate-60 60)
+  (penetrate-61 61)
+  (penetrate-62 62)
+  (penetrate-63 63)
+  )
+;; ---penetrate-h:penetrate
+
+(define-extern penetrate->string (function penetrate none))
 ;; (define-extern penetrate-using->damage function) ;; (function penetrate int)
 ;; (define-extern penetrated-by-all&hit-points->penetrated-by function) ;; (function penetrate int penetrate)
 ;; (define-extern pu->knocked-type function) ;; (function penetrate knocked-type)
@@ -17792,10 +18424,18 @@
 ;; sync-info-h                    ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
+;; +++sync-info-h:sync-flags
+(defenum sync-flags
+  :type uint64
+  :bitfield #t
+  (pong 0)
+  )
+;; ---sync-info-h:sync-flags
+
 (deftype sync-info-params (structure)
+  "Parameters used to set up a [[sync-info]]."
   ((sync-type  symbol  :offset-assert 0) ;; guessed by decompiler
-   (sync-flags uint64  :offset-assert 8) ;; sync-flags
+   (sync-flags sync-flags :offset-assert 8) ;; sync-flags
    (entity     basic   :offset-assert 16)
    (period     uint32  :offset-assert 20)
    (percent    float   :offset-assert 24)
@@ -17808,11 +18448,9 @@
   :size-assert         #x2c
   :flag-assert         #x90000002c
   )
-|#
 
-#|
 (deftype sync-info (structure)
-  ((sync-flags uint64  :offset-assert 0) ;; sync-flags
+  ((sync-flags sync-flags :offset-assert 0)
    (offset     float   :offset-assert 8)
    (period     uint32  :offset-assert 12)
    )
@@ -17829,18 +18467,15 @@
     (sync-info-method-15 () none) ;; 15 ;; (sync-now! (_type_ float) none)
     )
   )
-|#
 
-#|
 (deftype sync-linear (sync-info)
   ()
+  :pack-me
   :method-count-assert 16
   :size-assert         #x10
   :flag-assert         #x1000000010
   )
-|#
 
-#|
 (deftype sync-eased (sync-info)
   ((tlo       float  :offset-assert 16)
    (thi       float  :offset-assert 20)
@@ -17850,13 +18485,12 @@
    (pause-in  float  :offset-assert 36)
    (pause-out float  :offset-assert 40)
    )
+  :pack-me
   :method-count-assert 16
   :size-assert         #x2c
   :flag-assert         #x100000002c
   )
-|#
 
-#|
 (deftype sync-paused (sync-info)
   ((pause-in  float  :offset-assert 16)
    (pause-out float  :offset-assert 20)
@@ -17865,17 +18499,16 @@
   :size-assert         #x18
   :flag-assert         #x1000000018
   )
-|#
 
-#|
 (deftype delayed-rand-float (structure)
   ((min-time   int32   :offset-assert 0)
    (max-time   int32   :offset-assert 4)
    (max-val    float   :offset-assert 8)
    (timer      int32   :offset-assert 12)
-   (start-time uint64  :offset-assert 16) ;; time-frame
+   (start-time time-frame :offset-assert 16) ;; time-frame
    (value      float   :offset-assert 24)
    )
+  :pack-me
   :method-count-assert 13
   :size-assert         #x1c
   :flag-assert         #xd0000001c
@@ -17886,9 +18519,7 @@
     (delayed-rand-float-method-12 () none) ;; 12 ;; (update-and-clear! (_type_) none)
     )
   )
-|#
 
-#|
 (deftype oscillating-float (structure)
   ((value   float  :offset-assert 0)
    (target  float  :offset-assert 4)
@@ -17897,6 +18528,7 @@
    (damping float  :offset-assert 16)
    (accel   float  :offset-assert 20)
    )
+  :allow-misaligned
   :method-count-assert 11
   :size-assert         #x18
   :flag-assert         #xb00000018
@@ -17905,9 +18537,7 @@
     (oscillating-float-method-10 () none) ;; 10 ;; (update! (_type_ float) float)
     )
   )
-|#
 
-#|
 (deftype bouncing-float (structure)
   ((osc        oscillating-float :inline :offset-assert 0)
    (max-value  float                     :offset-assert 24)
@@ -17915,6 +18545,7 @@
    (elasticity float                     :offset-assert 32)
    (state      int32                     :offset-assert 36)
    )
+  :allow-misaligned
   :method-count-assert 13
   :size-assert         #x28
   :flag-assert         #xd00000028
@@ -17925,16 +18556,14 @@
     (bouncing-float-method-12 () none) ;; 12 ;; (at-max? (_type_) symbol)
     )
   )
-|#
 
-#|
 (deftype delayed-rand-vector (structure)
   ((min-time   int32          :offset-assert 0)
    (max-time   int32          :offset-assert 4)
    (xz-max     float          :offset-assert 8)
    (y-max      float          :offset-assert 12)
    (timer      int32          :offset-assert 16)
-   (start-time uint64         :offset-assert 24) ;; time-frame
+   (start-time time-frame     :offset-assert 24) ;; time-frame
    (value      vector :inline :offset-assert 32)
    )
   :method-count-assert 13
@@ -17947,9 +18576,7 @@
     (delayed-rand-vector-method-12 () none) ;; 12 ;; (update-with-delay-or-reset! (_type_) vector)
     )
   )
-|#
 
-#|
 (deftype oscillating-vector (structure)
   ((value   vector :inline :offset-assert 0)
    (target  vector :inline :offset-assert 16)
@@ -17966,18 +18593,26 @@
     (oscillating-vector-method-10 () none) ;; 10 ;; (update! (_type_ vector) vector)
     )
   )
-|#
-
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; pov-camera-h                   ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+;; +++pov-camera-h:pov-camera-flags
+(defenum pov-camera-flags
+  :bitfield #t
+  :type int32
+  (notify-of-abort 0)
+  (allow-abort 1)
+  (inherit-orientation 2)
+  )
+;; ---pov-camera-h:pov-camera-flags
+
 #|
 (deftype pov-camera (process-drawable)
-  ((flags               int32         :offset-assert 200) ;; pov-camera-flag
-   (debounce-start-time uint64        :offset-assert 208) ;; time-frame
-   (notify-handle       uint64        :offset-assert 216) ;; handle
+  ((flags               pov-camera-flags :offset-assert 200) ;; pov-camera-flag
+   (debounce-start-time time-frame    :offset-assert 208) ;; time-frame
+   (notify-handle       handle        :offset-assert 216) ;; handle
    (anim-name           string        :offset-assert 224) ;; guessed by decompiler
    (command-list        pair          :offset-assert 228) ;; guessed by decompiler
    (mask-to-clear       process-mask  :offset-assert 232) ;; guessed by decompiler
@@ -17987,12 +18622,14 @@
   :method-count-assert 30
   :size-assert         #xf4
   :flag-assert         #x1e008000f4
+  (:state-methods
+    pov-camera-abort ;; 20
+    pov-camera-done-playing ;; 21
+    pov-camera-playing ;; 22
+    pov-camera-start-playing ;; 23
+    pov-camera-startup ;; 24
+    )
   (:methods
-    (pov-camera-method-20 () none) ;; 20 ;; (pov-camera-abort () _type_ :state)
-    (pov-camera-method-21 () none) ;; 21 ;; (pov-camera-done-playing () _type_ :state)
-    (pov-camera-method-22 () none) ;; 22 ;; (pov-camera-playing () _type_ :state)
-    (pov-camera-method-23 () none) ;; 23 ;; (pov-camera-start-playing () _type_ :state)
-    (pov-camera-method-24 () none) ;; 24 ;; (pov-camera-startup () _type_ :state)
     (pov-camera-method-25 () none) ;; 25 ;; (abort? (_type_) symbol)
     (pov-camera-method-26 () none) ;; 26 ;; (target-grabbed? (_type_) symbol)
     (pov-camera-method-27 () none) ;; 27 ;; (pov-camera-method-27 () none)
@@ -18002,34 +18639,32 @@
   )
 |#
 
-
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; smush-control-h                ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype smush-control (structure)
-  ((start-time  uint64  :offset-assert 0) ;; time-frame
-   (period      float   :offset-assert 8)
-   (duration    float   :offset-assert 12)
-   (amp         float   :offset-assert 16)
-   (damp-amp    float   :offset-assert 20)
-   (damp-period float   :offset-assert 24)
-   (ticks       float   :offset-assert 28)
+  "This holds information about the current state of an object's smush."
+  ((start-time  time-frame :offset-assert 0)
+   (period      float      :offset-assert 8)
+   (duration    float      :offset-assert 12)
+   (amp         float      :offset-assert 16)
+   (damp-amp    float      :offset-assert 20)
+   (damp-period float      :offset-assert 24)
+   (ticks       float      :offset-assert 28)
    )
   :method-count-assert 15
   :size-assert         #x20
   :flag-assert         #xf00000020
   (:methods
-    (smush-control-method-9 () none) ;; 9 ;; (set-zero! (_type_) _type_)
-    (smush-control-method-10 () none) ;; 10 ;; (update! (_type_) float)
-    (smush-control-method-11 () none) ;; 11 ;; (get-no-update (_type_) float)
-    (smush-control-method-12 () none) ;; 12 ;; (activate! (_type_ float int int float float clock) _type_)
-    (smush-control-method-13 () none) ;; 13 ;; (nonzero-amplitude? (_type_) symbol)
-    (smush-control-method-14 () none) ;; 14 ;; (die-on-next-update! (_type_) _type_)
+    (set-zero! "Reset this [[smush-control]]." (_type_) _type_) ;; 9
+    (update! "Calculate the next smush amplitude and update the smush state." (_type_) float) ;; 10
+    (get-no-update "Get the next amplitude, but do not update the smush state." (_type_) float) ;; 11
+    (activate! "Start the smush with the given parameters." (_type_ float int int float float clock) _type_) ;; 12
+    (nonzero-amplitude? "Is the smush currently active?" (_type_) symbol) ;; 13
+    (die-on-next-update! "Set the dampening period so the smush stops on the next update." (_type_) _type_) ;; 14
     )
   )
-|#
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -18393,9 +19028,9 @@
 ;; collide-mesh-h                 ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype collide-tri-result (structure)
-  ((vertex      vector      3       :offset-assert 0) ;; guessed by decompiler
+  "A triangle result of a collision."
+  ((vertex      vector      3 :inline :offset-assert 0) ;; guessed by decompiler
    (intersect   vector      :inline :offset-assert 48)
    (normal      vector      :inline :offset-assert 64)
    (pat         pat-surface         :offset-assert 80) ;; guessed by decompiler
@@ -18405,27 +19040,27 @@
   :size-assert         #x58
   :flag-assert         #x900000058
   )
-|#
 
-#|
 (deftype collide-mesh-tri (structure)
+  "A triangle for foreground collision meshes."
   ((vertex-index uint8       3 :offset-assert 0) ;; guessed by decompiler
    (unused       uint8         :offset-assert 3)
    (pat          pat-surface   :offset-assert 4) ;; guessed by decompiler
    )
+  :pack-me
   :method-count-assert 9
   :size-assert         #x8
   :flag-assert         #x900000008
   )
-|#
 
-#|
 (deftype collide-mesh (basic)
+  "A collision mesh for foreground objects,
+   bound to the joint specified by `joint-id`."
   ((joint-id    int32                   :offset-assert 4)
    (num-tris    uint32                  :offset-assert 8)
    (num-verts   uint32                  :offset-assert 12)
    (vertex-data (inline-array vector)   :offset-assert 16) ;; guessed by decompiler
-   (tris        collide-mesh-tri      1 :offset-assert 32) ;; guessed by decompiler
+   (tris        collide-mesh-tri      1 :inline :offset 32) ;; guessed by decompiler
    )
   :method-count-assert 16
   :size-assert         #x28
@@ -18440,23 +19075,21 @@
     (collide-mesh-method-15 () none) ;; 15 ;; (collide-mesh-math-2 (_type_ object object object) none)
     )
   )
-|#
 
-#|
 (deftype collide-mesh-cache-tri (structure)
-  ((vertex vector         3       :offset-assert 0) ;; guessed by decompiler
+  "A triangle stored in the foreground mesh collide cache."
+  ((vertex vector         3 :inline :offset-assert 0) ;; guessed by decompiler
    (normal vector         :inline :offset-assert 48)
    (bbox4w bounding-box4w :inline :offset-assert 64)
-   (pat    pat-surface            :offset-assert 60) ;; guessed by decompiler
+   (pat    pat-surface            :offset 60) ;; guessed by decompiler
    )
   :method-count-assert 9
   :size-assert         #x60
   :flag-assert         #x900000060
   )
-|#
 
-#|
 (deftype collide-mesh-cache-entry (structure)
+  "A foreground mesh collide cache entry."
   ((mat  matrix                 :inline  :offset-assert 0)
    (tris collide-mesh-cache-tri :dynamic :offset-assert 64) ;; guessed by decompiler
    )
@@ -18464,10 +19097,9 @@
   :size-assert         #x40
   :flag-assert         #x900000040
   )
-|#
 
-#|
 (deftype collide-mesh-cache (basic)
+  "A collide cache for foreground meshes."
   ((used-size uint32       :offset-assert 4)
    (max-size  uint32       :offset-assert 8)
    (id        uint32       :offset-assert 12)
@@ -18478,22 +19110,26 @@
   :flag-assert         #xd0000bb90
   (:methods
     (collide-mesh-cache-method-9 () none) ;; 9 ;; (populate-for-prim-mesh (_type_ collide-shape-prim-mesh) collide-mesh-cache-entry)
-    (collide-mesh-cache-method-10 () none) ;; 10 ;; (is-id? (_type_ int) symbol)
-    (collide-mesh-cache-method-11 () none) ;; 11 ;; (next-id! (_type_) uint)
+    (is-id? "Does this cache have the given ID?" (_type_ int) symbol) ;; 10
+    (next-id!
+      "Reset all used entries in the cache and increment the ID.
+       If the id is zero, set it to 1."
+      (_type_) uint) ;; 11
     (collide-mesh-cache-method-12 () none) ;; 12 ;; (allocate! (_type_ int) collide-mesh-cache-entry)
     )
   )
-|#
 
-;; (define-extern *collide-mesh-cache* object) ;; collide-mesh-cache
+(define-extern *collide-mesh-cache* collide-mesh-cache)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; collide-shape-h                ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
+(declare-type collide-shape-prim basic)
+
 (deftype collide-rider (structure)
-  ((rider-handle    uint64                     :offset-assert 0) ;; handle
+  "Something that rides a moving object."
+  ((rider-handle    handle                     :offset-assert 0) ;; handle
    (sticky-prim     collide-shape-prim         :offset-assert 8) ;; guessed by decompiler
    (prim-ry         float                      :offset-assert 12)
    (rider-local-pos vector             :inline :offset-assert 16)
@@ -18502,24 +19138,21 @@
   :size-assert         #x20
   :flag-assert         #x900000020
   )
-|#
 
-#|
 (deftype collide-rider-pool (basic)
+  "A pool containing all the riders of an object."
   ((alloc-count int32            :offset-assert 4)
-   (riders      collide-rider 20 :offset-assert 16) ;; guessed by decompiler
+   (riders      collide-rider 20 :inline :offset-assert 16) ;; guessed by decompiler
    )
   :method-count-assert 11
   :size-assert         #x290
   :flag-assert         #xb00000290
   (:methods
     (collide-rider-pool-method-9 () none) ;; 9 ;; (add-rider (_type_ handle) collide-rider)
-    (collide-rider-pool-method-10 () none) ;; 10 ;; (prepare (_type_) none)
+    (prepare (_type_) none) ;; 10
     )
   )
-|#
 
-#|
 (deftype pull-rider-info (structure)
   ((rider          collide-rider                :offset-assert 0)
    (rider-cshape   collide-shape-moving         :offset-assert 4) ;; guessed by decompiler
@@ -18530,9 +19163,45 @@
   :size-assert         #x20
   :flag-assert         #x900000020
   )
-|#
 
-#|
+;; +++collide-shape-h:overlaps-others-options
+(defenum overlaps-others-options
+  :type uint32
+  :bitfield #t
+  (oo0)
+  (oo1)
+  (oo2)
+  (oo3)
+  (oo4)
+  )
+;; ---collide-shape-h:overlaps-others-options
+
+;; +++collide-shape-h:collide-action
+(defenum collide-action
+  :bitfield #t
+  :type uint32
+  (solid                  0) ;; 1
+  (semi-solid             1) ;; 2
+  (rideable               2) ;; 4
+  (can-ride               3) ;; 8
+  (dont-push-away         4) ;; 16
+  (pull-rider-can-collide 5) ;; 32
+  (deadly                 6) ;; 64
+  (persistent-attack      7) ;; 128
+  (no-smack               8) ;; 256
+  (no-standon             9) ;; 512
+  (block-turn-around     10) ;; 1024
+  (check-edge            11) ;; 2048
+  (check-stuck           12) ;; 4096
+  (stuck-wall-escape     13) ;; 8192
+  (no-normal-reset       14) ;; 163884
+  (edge-grabbed          15) ;; 32768
+  (nav-sphere            16) ;; hi 1
+  )
+;; ---collide-shape-h:collide-action
+
+(declare-type touching-list structure)
+
 (deftype overlaps-others-params (structure)
   ((options                     overlaps-others-options  :offset-assert 0) ;; guessed by decompiler
    (collide-with-filter         collide-spec             :offset-assert 4) ;; guessed by decompiler
@@ -18545,9 +19214,7 @@
   :size-assert         #x18
   :flag-assert         #x900000018
   )
-|#
 
-#|
 (deftype move-above-ground-params (structure)
   ((gnd-collide-with       collide-spec                   :offset-assert 0) ;; guessed by decompiler
    (popup                  float                          :offset-assert 4)
@@ -18565,45 +19232,43 @@
   :size-assert         #x6c
   :flag-assert         #x90000006c
   )
-|#
 
-#|
 (deftype collide-prim-core (structure)
+  "Collide primitives use this to store their world sphere and their collision flags."
   ((world-sphere vector         :inline :offset-assert 0)
    (collide-as   collide-spec           :offset-assert 16) ;; guessed by decompiler
    (collide-with collide-spec           :offset-assert 20) ;; guessed by decompiler
    (action       collide-action         :offset-assert 24) ;; guessed by decompiler
    (prim-type    int8                   :offset-assert 28) ;; prim-type
    (unused1      uint8          3       :offset-assert 29) ;; guessed by decompiler
-   (quad         uint128        2       :offset-assert 0) ;; guessed by decompiler
+   (quad         uint128        2       :offset 0) ;; guessed by decompiler
    )
   :method-count-assert 9
   :size-assert         #x20
   :flag-assert         #x900000020
   )
-|#
 
-#|
 (deftype collide-shape-prim (basic)
+  "Base class for collide primitives."
   ((cshape          collide-shape             :offset-assert 4) ;; guessed by decompiler
    (prim-id         uint32                    :offset-assert 8)
    (transform-index int8                      :offset-assert 12)
    (unused2         int8              3       :offset-assert 13) ;; guessed by decompiler
-   (prim-core       collide-prim-core :inline :offset-assert 16)
-   (local-sphere    vector            :inline :offset-assert 48)
-   (specific        uint8             16      :offset-assert 64) ;; guessed by decompiler
-   (world-sphere    vector            :inline :offset-assert 16)
-   (collide-as      collide-spec              :offset-assert 32)
-   (collide-with    collide-spec              :offset-assert 36)
-   (action          collide-action            :offset-assert 40)
-   (prim-type       int8                      :offset-assert 44)
-   (radius          meters                    :offset-assert 60) ;; float
+   (prim-core       collide-prim-core :inline :offset 16)
+   (local-sphere    vector            :inline :offset 48)
+   (specific        uint8             16      :offset 64 :score -1) ;; guessed by decompiler
+   (world-sphere    vector            :inline :offset 16)
+   (collide-as      collide-spec              :offset 32)
+   (collide-with    collide-spec              :offset 36)
+   (action          collide-action            :offset 40)
+   (prim-type       int8                      :offset 44)
+   (radius          meters                    :offset 60) ;; float
    )
   :method-count-assert 20
   :size-assert         #x50
   :flag-assert         #x1400000050
   (:methods
-    (new (symbol type) _type_) ;; 0 ;; (new (symbol type collide-shape uint int) _type_)
+    (new (symbol type collide-shape uint int) _type_) ;; 0
     (collide-shape-prim-method-9 () none) ;; 9 ;; (debug-draw (_type_) none)
     (collide-shape-prim-method-10 () none) ;; 10 ;; (add-fg-prim-using-box (_type_ collide-cache) none)
     (collide-shape-prim-method-11 () none) ;; 11 ;; (add-fg-prim-using-line-sphere (_type_ collide-cache object) none)
@@ -18617,107 +19282,74 @@
     (collide-shape-prim-method-19 () none) ;; 19 ;; (should-push-away-a-group-test (_type_ collide-shape-prim-group collide-query) none)
     )
   )
-|#
 
-#|
 (deftype collide-shape-prim-sphere (collide-shape-prim)
-  ((cshape          collide-shape             :offset-assert 0) ;; guessed by decompiler
-   (prim-id         uint32                    :offset-assert 4)
-   (transform-index int8                      :offset-assert 8)
-   (unused2         int8              3       :offset-assert 9) ;; guessed by decompiler
-   (prim-core       collide-prim-core :inline :offset-assert 12)
-   (local-sphere    vector            :inline :offset-assert 44)
-   (specific        uint8             16      :offset-assert 60) ;; guessed by decompiler
-   (world-sphere    vector            :inline :offset-assert 12)
-   (collide-as      collide-spec              :offset-assert 28)
-   (collide-with    collide-spec              :offset-assert 32)
-   (action          collide-action            :offset-assert 36)
-   (prim-type       int8                      :offset-assert 40)
-   (radius          meters                    :offset-assert 56) ;; float
-   (pat             pat-surface               :offset-assert 60) ;; guessed by decompiler
-   (nav-radius      float                     :offset-assert 64)
+  "A sphere primitive for collide shapes."
+  ((pat             pat-surface :offset 64) ;; guessed by decompiler
+   (nav-radius      float       :offset 68)
    )
   :method-count-assert 20
   :size-assert         #x50
   :flag-assert         #x1400000050
   (:methods
-    (new (symbol type) _type_) ;; 0 ;; (new (symbol type collide-shape uint) _type_)
+    (new (symbol type collide-shape uint) _type_) ;; 0
     )
   )
-|#
 
-#|
 (deftype collide-shape-prim-mesh (collide-shape-prim)
-  ((cshape           collide-shape                    :offset-assert 0) ;; guessed by decompiler
-   (prim-id          uint32                           :offset-assert 4)
-   (transform-index  int8                             :offset-assert 8)
-   (unused2          int8                     3       :offset-assert 9) ;; guessed by decompiler
-   (prim-core        collide-prim-core        :inline :offset-assert 12)
-   (local-sphere     vector                   :inline :offset-assert 44)
-   (specific         uint8                    16      :offset-assert 60) ;; guessed by decompiler
-   (world-sphere     vector                   :inline :offset-assert 12)
-   (collide-as       collide-spec                     :offset-assert 28)
-   (collide-with     collide-spec                     :offset-assert 32)
-   (action           collide-action                   :offset-assert 36)
-   (prim-type        int8                             :offset-assert 40)
-   (radius           meters                           :offset-assert 56) ;; float
-   (mesh             collide-mesh                     :offset-assert 60) ;; guessed by decompiler
-   (mesh-id          int32                            :offset-assert 64)
-   (mesh-cache-id    uint32                           :offset-assert 68)
-   (mesh-cache-entry collide-mesh-cache-entry         :offset-assert 72)
+  "A mesh primitive for collide shapes."
+  ((mesh             collide-mesh             :offset 64) ;; guessed by decompiler
+   (mesh-id          int32                    :offset 68)
+   (mesh-cache-id    uint32                   :offset 72)
+   (mesh-cache-entry collide-mesh-cache-entry :offset 76)
    )
   :method-count-assert 20
   :size-assert         #x50
   :flag-assert         #x1400000050
   (:methods
-    (new (symbol type) _type_) ;; 0 ;; (new (symbol type collide-shape uint uint) _type_)
+    (new (symbol type collide-shape uint uint) _type_) ;; 0
     )
   )
-|#
 
-#|
 (deftype collide-shape-prim-group (collide-shape-prim)
-  ((cshape             collide-shape                             :offset-assert 0) ;; guessed by decompiler
-   (prim-id            uint32                                    :offset-assert 4)
-   (transform-index    int8                                      :offset-assert 8)
-   (unused2            int8                              3       :offset-assert 9) ;; guessed by decompiler
-   (prim-core          collide-prim-core                 :inline :offset-assert 12)
-   (local-sphere       vector                            :inline :offset-assert 44)
-   (specific           uint8                             16      :offset-assert 60) ;; guessed by decompiler
-   (world-sphere       vector                            :inline :offset-assert 12)
-   (collide-as         collide-spec                              :offset-assert 28)
-   (collide-with       collide-spec                              :offset-assert 32)
-   (action             collide-action                            :offset-assert 36)
-   (prim-type          int8                                      :offset-assert 40)
-   (radius             meters                                    :offset-assert 56) ;; float
-   (num-children       uint8                                     :offset-assert 60)
-   (num-alloc-children uint8                                     :offset-assert 61)
-   (child              (inline-array collide-shape-prim)         :offset-assert 64) ;; guessed by decompiler
+  "A group of collide primitives."
+  ((num-children       uint8                             :offset 64)
+   (num-alloc-children uint8                             :offset 65)
+   (child              (inline-array collide-shape-prim) :offset 68) ;; guessed by decompiler
    )
   :method-count-assert 20
   :size-assert         #x50
   :flag-assert         #x1400000050
   (:methods
-    (new (symbol type) _type_) ;; 0 ;; (new (symbol type collide-shape uint int) _type_)
+    (new (symbol type collide-shape uint int) _type_) ;; 0
     )
   )
-|#
 
-#|
+;; +++collide-shape-h:collide-list-enum
+(defenum collide-list-enum
+  (hit-by-player)
+  (usually-hit-by-player)
+  (hit-by-others)
+  (player)
+  )
+;; ---collide-shape-h:collide-list-enum
+
 (deftype collide-shape (trsqv)
-  ((actor-hash-index    int16                         :offset-assert 12)
+  "The parent of all of an object's collide primitives.
+   Most [[process-drawable]]s have a [[collide-shape]] that represents their root transform."
+  ((actor-hash-index    int16                         :offset 12)
    (process             process-drawable              :offset-assert 140) ;; guessed by decompiler
    (max-iteration-count uint8                         :offset-assert 144)
    (nav-flags           uint8                         :offset-assert 145) ;; nav-flags
    (total-prims         uint8                         :offset-assert 146)
    (num-riders          uint8                         :offset-assert 147)
-   (event-self          symbol                        :offset-assert 152) ;; guessed by decompiler
+   (event-self          symbol                        :offset 152) ;; guessed by decompiler
    (event-other         symbol                        :offset-assert 156) ;; guessed by decompiler
    (root-prim           collide-shape-prim            :offset-assert 160) ;; guessed by decompiler
    (riders              (inline-array collide-rider)  :offset-assert 164) ;; guessed by decompiler
    (penetrate-using     penetrate                     :offset-assert 168)
    (penetrated-by       penetrate                     :offset-assert 176)
-   (event-priority      uint8                         :offset-assert 192)
+   (event-priority      uint8                         :offset 192)
    (rider-max-momentum  float                         :offset-assert 196)
    )
   :method-count-assert 55
@@ -18725,7 +19357,7 @@
   :flag-assert         #x37000000c8
   ;; field penetrate is likely a value type. field penetrate is likely a value type.
   (:methods
-    (new (symbol type) _type_) ;; 0 ;; (new (symbol type process-drawable collide-list-enum) _type_)
+    (new (symbol type process-drawable collide-list-enum) _type_) ;; 0
     (collide-shape-method-28 () none) ;; 28 ;; (move-by-vector! (_type_ vector) none)
     (collide-shape-method-29 () none) ;; 29 ;; (move-to-point! (_type_ vector) none)
     (collide-shape-method-30 () none) ;; 30 ;; (debug-draw (_type_) none)
@@ -18755,18 +19387,42 @@
     (collide-shape-method-54 () none) ;; 54 ;; (pusher-init (_type_) none)
     )
   )
-|#
 
-#|
+;; +++collide-shape-h:collide-status
+(defenum collide-status
+  :bitfield #t
+  :type uint64
+  (on-surface 0)
+  (on-ground 1)
+  (touch-surface 2)
+  (touch-wall 3)
+  (touch-ceiling 4)
+  (touch-actor 5)
+  (on-special-surface 6)
+  (touch-edge 7)
+  (no-touch 8)
+  (blocked 9)
+  (on-water 10)
+  (impact-surface 11)
+  (touch-background 12)
+  (stuck 13)
+  (touch-ceiling-sticky 14)
+  (glance 15)
+  (probe-hit 16)
+  )
+;; ---collide-shape-h:collide-status
+
+(declare-type collide-query structure)
 (deftype collide-shape-moving (collide-shape)
-  ((rider-time         uint64                                                                     :offset-assert 200) ;; time-frame
+  "A [[collide-shape]] for moving objects."
+  ((rider-time         time-frame                                                                 :offset-assert 200) ;; time-frame
    (rider-last-move    vector                                                             :inline :offset-assert 208)
    (trans-old          vector                                                             :inline :offset-assert 224)
-   (poly-pat           pat-surface                                                                :offset-assert 272) ;; guessed by decompiler
+   (poly-pat           pat-surface                                                                :offset 272) ;; guessed by decompiler
    (cur-pat            pat-surface                                                                :offset-assert 276) ;; guessed by decompiler
    (ground-pat         pat-surface                                                                :offset-assert 280) ;; guessed by decompiler
-   (status             uint64                                                                     :offset-assert 288) ;; collide-status
-   (reaction           (function control-info collide-query vector vector collide-status)         :offset-assert 316) ;; guessed by decompiler
+   (status             collide-status                                                             :offset-assert 288) ;; collide-status
+   (reaction           (function control-info collide-query vector vector collide-status)         :offset 316) ;; guessed by decompiler
    (no-reaction        (function collide-shape-moving collide-query vector vector object)         :offset-assert 320) ;; guessed by decompiler
    (local-normal       vector                                                             :inline :offset-assert 336)
    (surface-normal     vector                                                             :inline :offset-assert 352)
@@ -18788,7 +19444,7 @@
   :flag-assert         #x44000001dc
   ;; field penetrate is likely a value type. field penetrate is likely a value type.
   (:methods
-    (new (symbol type) _type_) ;; 0 ;; (new (symbol type process-drawable collide-list-enum) _type_)
+    (new (symbol type process-drawable collide-list-enum) _type_) ;; 0
     (collide-shape-moving-method-55 () none) ;; 55 ;; (find-ground (_type_ collide-query collide-spec float float float) symbol)
     (collide-shape-moving-method-56 () none) ;; 56 ;; (react-to-pat! (_type_ pat-surface) cshape-reaction-flags)
     (collide-shape-moving-method-57 () none) ;; 57 ;; (integrate-no-collide! (_type_ vector) none)
@@ -18804,14 +19460,13 @@
     (collide-shape-moving-method-67 () none) ;; 67 ;; (collide-with-all-collide-cache-prims (_type_ matrix collide-query) none)
     )
   )
-|#
 
-;; (define-extern *collide-hit-by-player-list* object) ;; engine
-;; (define-extern *collide-hit-by-others-list* object) ;; engine
-;; (define-extern *collide-player-list* object) ;; engine
-;; (define-extern *collide-shape-prim-backgnd* collide-shape-prim-mesh) ;; collide-shape-prim-mesh
-;; (define-extern *collide-shape-prim-water* collide-shape-prim-mesh) ;; collide-shape-prim-mesh
-;; (define-extern *collide-rider-pool* object) ;; collide-rider-pool
+(define-extern *collide-hit-by-player-list* engine)
+(define-extern *collide-hit-by-others-list* engine)
+(define-extern *collide-player-list* engine)
+(define-extern *collide-shape-prim-backgnd* collide-shape-prim-mesh)
+(define-extern *collide-shape-prim-water* collide-shape-prim-mesh)
+(define-extern *collide-rider-pool* collide-rider-pool)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; generic-obs-h                  ;;
@@ -19314,8 +19969,9 @@
 ;; collide-touch-h                ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype touching-prim (structure)
+  "A collide primitive that's touching another.
+   Potentially also stores the triangle that is involved."
   ((cprim    collide-shape-prim         :offset-assert 0) ;; guessed by decompiler
    (has-tri? symbol                     :offset-assert 4) ;; guessed by decompiler
    (tri      collide-tri-result :inline :offset-assert 16)
@@ -19324,10 +19980,9 @@
   :size-assert         #x68
   :flag-assert         #x900000068
   )
-|#
 
-#|
 (deftype touching-prims-entry (structure)
+  "A record of two primitives touching."
   ((next       touching-prims-entry         :offset-assert 0)
    (prev       touching-prims-entry         :offset-assert 4)
    (allocated? symbol                       :offset-assert 8) ;; guessed by decompiler
@@ -19345,54 +20000,53 @@
     (touching-prims-entry-method-12 () none) ;; 12
     )
   )
-|#
 
-#|
 (deftype touching-prims-entry-pool (structure)
+  "A pool of up to 64 touching prim records."
   ((head  touching-prims-entry    :offset-assert 0)
-   (nodes touching-prims-entry 64 :offset-assert 16) ;; guessed by decompiler
+   (nodes touching-prims-entry 64 :inline :offset-assert 16) ;; guessed by decompiler
    )
   :method-count-assert 13
   :size-assert         #x3c10
   :flag-assert         #xd00003c10
   (:methods
-    (new (symbol type) _type_) ;; 0 ;; (new (symbol type) _type_)
+    (new (symbol type) _type_) ;; 0
     (touching-prims-entry-pool-method-9 () none) ;; 9 ;; (alloc-node (_type_) touching-prims-entry)
     (touching-prims-entry-pool-method-10 () none) ;; 10 ;; (get-free-node-count (_type_) int)
-    (touching-prims-entry-pool-method-11 () none) ;; 11 ;; (init-list! (_type_) none)
+    (init-list! (_type_) none) ;; 11
     (touching-prims-entry-pool-method-12 () none) ;; 12 ;; (free-node (_type_ touching-prims-entry) touching-prims-entry)
     )
   )
-|#
 
-#|
 (deftype touching-shapes-entry (structure)
+  "A record of two collide shapes touching,
+   storing a record of the primitives involved."
   ((cshape1   collide-shape         :offset-assert 0) ;; guessed by decompiler
    (cshape2   collide-shape         :offset-assert 4) ;; guessed by decompiler
    (resolve-u int8                  :offset-assert 8)
    (head      touching-prims-entry  :offset-assert 12)
-   (handle1   uint64                :offset-assert 16) ;; handle
-   (handle2   uint64                :offset-assert 24) ;; handle
+   (handle1   handle                :offset-assert 16) ;; handle
+   (handle2   handle                :offset-assert 24) ;; handle
    )
+  :pack-me
   :method-count-assert 15
   :size-assert         #x20
   :flag-assert         #xf00000020
   (:methods
-    (touching-shapes-entry-method-9 () none) ;; 9 ;; (get-head (_type_) touching-prims-entry)
-    (touching-shapes-entry-method-10 () none) ;; 10 ;; (get-next (_type_ touching-shapes-entry) touching-prims-entry)
+    (get-head (_type_) touching-prims-entry) ;; 9
+    (get-next (_type_ touching-shapes-entry) touching-prims-entry) ;; 10
     (touching-shapes-entry-method-11 () none) ;; 11 ;; (get-touched-shape (_type_ collide-shape) collide-shape)
     (touching-shapes-entry-method-12 () none) ;; 12 ;; (prims-touching? (_type_ collide-shape uint) touching-prims-entry)
     (touching-shapes-entry-method-13 () none) ;; 13 ;; (prims-touching-action? (_type_ collide-shape collide-action collide-action) basic)
     (touching-shapes-entry-method-14 () none) ;; 14 ;; (free-touching-prims-list (_type_) none)
     )
   )
-|#
 
-#|
 (deftype touching-list (structure)
+  "Contains a record of touching collide shape pairs."
   ((num-touching-shapes int32                    :offset-assert 0)
    (resolve-u           int8                     :offset-assert 4)
-   (touching-shapes     touching-shapes-entry 32 :offset-assert 8) ;; guessed by decompiler
+   (touching-shapes     touching-shapes-entry 32 :inline :offset-assert 8) ;; guessed by decompiler
    )
   :method-count-assert 14
   :size-assert         #x408
@@ -19406,44 +20060,41 @@
     (touching-list-method-13 () none) ;; 13 ;; (get-shapes-entry (_type_ collide-shape collide-shape) touching-shapes-entry)
     )
   )
-|#
 
-;; (define-extern *touching-prims-entry-pool* object) ;; touching-prims-entry-pool
-;; (define-extern *touching-list* object) ;; touching-list
+(define-extern *touching-prims-entry-pool* touching-prims-entry-pool)
+(define-extern *touching-list* touching-list)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; collide-edge-grab-h            ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype pilot-edge-grab-info (structure)
+  "Info for edge grabs on zoomers."
   ((local-pos vector :inline :offset-assert 0)
    (local-dir vector :inline :offset-assert 16)
-   (handle    uint64         :offset-assert 32) ;; handle
+   (handle    handle         :offset-assert 32) ;; handle
    )
   :method-count-assert 9
   :size-assert         #x28
   :flag-assert         #x900000028
   )
-|#
 
-#|
 (deftype edge-grab-info (structure)
-  ((world-vertex               vector               8       :offset-assert 0) ;; guessed by decompiler
-   (local-vertex               vector               8       :offset-assert 128) ;; guessed by decompiler
+  ((world-vertex               vector               8 :inline :offset-assert 0) ;; guessed by decompiler
+   (local-vertex               vector               8 :inline :offset-assert 128) ;; guessed by decompiler
    (status                     uint64                       :offset-assert 256)
    (actor-cshape-prim-offset   int32                        :offset-assert 264)
-   (actor-handle               uint64                       :offset-assert 272) ;; handle
+   (actor-handle               handle                       :offset-assert 272) ;; handle
    (hanging-matrix             matrix               :inline :offset-assert 288)
-   (edge-vertex                vector               2       :offset-assert 0) ;; guessed by decompiler
-   (center-hold                vector               :inline :offset-assert 32)
-   (tri-vertex                 vector               3       :offset-assert 48) ;; guessed by decompiler
-   (adjacent-edge-left-vertex  vector               :inline :offset-assert 96)
-   (adjacent-edge-right-vertex vector               :inline :offset-assert 112)
+   (edge-vertex                vector               2 :inline :offset 0) ;; guessed by decompiler
+   (center-hold                vector               :inline :offset 32)
+   (tri-vertex                 vector               3 :inline :offset 48) ;; guessed by decompiler
+   (adjacent-edge-left-vertex  vector               :inline :offset 96)
+   (adjacent-edge-right-vertex vector               :inline :offset 112)
    (left-hand-hold             vector               :inline :offset-assert 352)
    (right-hand-hold            vector               :inline :offset-assert 368)
    (center-hold-old            vector               :inline :offset-assert 384)
-   (edge-tri-pat               uint32                       :offset-assert 400)
+   (edge-tri-pat               pat-surface                  :offset-assert 400)
    (found-edge?                symbol                       :offset-assert 404) ;; guessed by decompiler
    (pilot-edge-grab?           symbol                       :offset-assert 408) ;; guessed by decompiler
    (pilot-edge-grab            pilot-edge-grab-info :inline :offset-assert 416)
@@ -19458,10 +20109,10 @@
     (edge-grab-info-method-10 () none) ;; 10 ;; (debug-draw (_type_) none)
     )
   )
-|#
 
-#|
+(declare-type collide-cache-tri structure)
 (deftype collide-edge-tri (structure)
+  "A triangle involved in edge grab collision."
   ((ctri   collide-cache-tri         :offset-assert 0) ;; guessed by decompiler
    (normal vector            :inline :offset-assert 16)
    )
@@ -19469,11 +20120,9 @@
   :size-assert         #x20
   :flag-assert         #x900000020
   )
-|#
 
-#|
 (deftype collide-edge-edge (structure)
-  ((ignore        basic                         :offset-assert 0)
+  ((ignore        symbol                        :offset-assert 0)
    (etri          collide-edge-tri              :offset-assert 4)
    (vertex-ptr    (inline-array vector) 2       :offset-assert 8) ;; guessed by decompiler
    (outward       vector                :inline :offset-assert 16)
@@ -19486,9 +20135,7 @@
     (collide-edge-edge-method-9 () none) ;; 9 ;; (no-collision-at-edge (_type_ collide-edge-work edge-grab-info) symbol)
     )
   )
-|#
 
-#|
 (deftype collide-edge-hold-item (structure)
   ((next       collide-edge-hold-item         :offset-assert 0)
    (rating     float                          :offset-assert 4)
@@ -19501,15 +20148,13 @@
   :size-assert         #x30
   :flag-assert         #x900000030
   )
-|#
 
-#|
 (deftype collide-edge-hold-list (structure)
   ((num-allocs   uint32                    :offset-assert 0)
    (num-attempts uint32                    :offset-assert 4)
    (head         collide-edge-hold-item    :offset-assert 8)
-   (items        collide-edge-hold-item 32 :offset-assert 16) ;; guessed by decompiler
-   (attempts     qword                  32 :offset-assert 1552) ;; guessed by decompiler
+   (items        collide-edge-hold-item 32 :inline :offset-assert 16) ;; guessed by decompiler
+   (attempts     qword                  32 :inline :offset-assert 1552) ;; guessed by decompiler
    )
   :method-count-assert 11
   :size-assert         #x810
@@ -19519,13 +20164,22 @@
     (collide-edge-hold-list-method-10 () none) ;; 10 ;; (add-to-list! (_type_ collide-edge-hold-item) none)
     )
   )
-|#
 
-#|
+;; +++collide-edge-grab-h:collide-edge-spec-flags
+(defenum collide-edge-spec-flags
+  :bitfield #t
+  :type uint64
+  (find-adjacent-edge 0)
+  (one 1)
+  (two 2)
+  (send-event 3)
+  )
+;; ---collide-edge-grab-h:collide-edge-spec-flags
+
 (deftype collide-edge-spec (structure)
   ((split-dists                  float        2       :offset-assert 0) ;; guessed by decompiler
    (outward-offset               vector       :inline :offset-assert 16)
-   (flags                        uint64               :offset-assert 32) ;; collide-edge-spec-flags
+   (flags                        collide-edge-spec-flags :offset-assert 32) ;; collide-edge-spec-flags
    (ignore-pat                   pat-surface          :offset-assert 40) ;; guessed by decompiler
    (max-dist-sqrd-to-outward-pt  float                :offset-assert 44)
    (max-dir-cosa-delta           float                :offset-assert 48)
@@ -19533,17 +20187,16 @@
    (touching-segment             symbol               :offset-assert 56) ;; guessed by decompiler
    (local-cache-fill-box         bounding-box :inline :offset-assert 64)
    (local-within-reach-box       bounding-box :inline :offset-assert 96)
-   (local-player-spheres         sphere       12      :offset-assert 128) ;; guessed by decompiler
-   (local-player-hanging-spheres sphere       6       :offset-assert 128) ;; guessed by decompiler
-   (local-player-leap-up-spheres sphere       6       :offset-assert 224) ;; guessed by decompiler
+   (local-player-spheres         sphere       12 :inline :offset 128) ;; guessed by decompiler
+   (local-player-hanging-spheres sphere       6  :inline :offset 128) ;; guessed by decompiler
+   (local-player-leap-up-spheres sphere       6  :inline :offset 224) ;; guessed by decompiler
    )
   :method-count-assert 9
   :size-assert         #x140
   :flag-assert         #x900000140
   )
-|#
 
-#|
+(declare-type collide-cache basic)
 (deftype collide-edge-work (structure)
   ((ccache                       collide-cache                      :offset-assert 0) ;; guessed by decompiler
    (cshape                       collide-shape                      :offset-assert 4) ;; guessed by decompiler
@@ -19555,14 +20208,14 @@
    (within-reach-box4w           bounding-box4w             :inline :offset-assert 96)
    (search-pt                    vector                     :inline :offset-assert 128)
    (search-dir-vec               vector                     :inline :offset-assert 144)
-   (world-player-spheres         sphere                     12      :offset-assert 160) ;; guessed by decompiler
-   (world-player-hanging-spheres sphere                     6       :offset-assert 160) ;; guessed by decompiler
-   (world-player-leap-up-spheres sphere                     6       :offset-assert 256) ;; guessed by decompiler
+   (world-player-spheres         sphere                     12 :inline :offset-assert 160) ;; guessed by decompiler
+   (world-player-hanging-spheres sphere                     6 :inline :offset 160) ;; guessed by decompiler
+   (world-player-leap-up-spheres sphere                     6 :inline :offset 256) ;; guessed by decompiler
    (spec                         collide-edge-spec          :inline :offset-assert 352)
    (process                      (pointer process-drawable)         :offset-assert 672) ;; guessed by decompiler
-   (verts                        vector                     64      :offset-assert 688) ;; guessed by decompiler
-   (edges                        collide-edge-edge          96      :offset-assert 1712) ;; guessed by decompiler
-   (tris                         collide-edge-tri           48      :offset-assert 6320) ;; guessed by decompiler
+   (verts                        vector                     64 :inline :offset-assert 688) ;; guessed by decompiler
+   (edges                        collide-edge-edge          96 :inline :offset-assert 1712) ;; guessed by decompiler
+   (tris                         collide-edge-tri           48 :inline :offset-assert 6320) ;; guessed by decompiler
    (hold-list                    collide-edge-hold-list     :inline :offset-assert 7856)
    )
   :method-count-assert 21
@@ -19583,11 +20236,10 @@
     (collide-edge-work-method-20 () none) ;; 20 ;; (check-grab-for-collisions (_type_ collide-edge-hold-item edge-grab-info) symbol)
     )
   )
-|#
 
-;; (define-extern *collide-edge-spec* object) ;; collide-edge-spec
-;; (define-extern *collide-edge-work* object) ;; collide-edge-work
-;; (define-extern *edge-grab-info* object) ;; edge-grab-info
+(define-extern *collide-edge-spec* collide-edge-spec)
+(define-extern *collide-edge-work* collide-edge-work)
+(define-extern *edge-grab-info* edge-grab-info)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; process-drawable-h             ;;
@@ -27901,7 +28553,7 @@
 ;; (define-extern *sp-temp* object) ;; float
 ;; (define-extern lookup-part-group-by-name function) ;; (function string sparticle-launch-group)
 ;; (define-extern lookup-part-group-pointer-by-name function) ;; (function string (pointer object))
-;; (define-extern part-group-pointer? function) ;; (function pointer symbol)
+(define-extern part-group-pointer? (function pointer symbol))
 ;; (define-extern unlink-part-group-by-heap function) ;; (function kheap int)
 ;; (define-extern sp-init-fields! function) ;; (function (pointer float) (inline-array sp-field-init-spec) sp-field-id sp-field-id symbol (inline-array sp-field-init-spec))
 ;; (define-extern *sp-launcher-lock* object) ;; symbol
@@ -30616,13 +31268,13 @@
 ;; ambient                        ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (define-extern can-display-query? function) ;; (function process string float symbol)
-;; (define-extern talker-surpress! function) ;; (function none)
-;; (define-extern talker-displayed? function) ;; (function symbol)
-;; (define-extern kill-current-talker function) ;; (function symbol pair symbol none)
-;; (define-extern string->talker-speech function) ;; (function string talker-speech-class)
-;; (define-extern talker-spawn-func function) ;; (function talker-speech-class process-tree vector region sound-id)
-;; (define-extern talker-init function) ;; (function talker-speech-class vector region none :behavior talker)
+(define-extern can-display-query? (function process string float symbol))
+(define-extern talker-surpress! (function none))
+(define-extern talker-displayed? (function symbol))
+(define-extern kill-current-talker (function symbol pair symbol none))
+(define-extern string->talker-speech (function string talker-speech-class))
+(define-extern talker-spawn-func (function talker-speech-class process-tree vector region sound-id))
+(define-extern talker-init (function talker-speech-class vector region none :behavior talker))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; speech                         ;;
@@ -30969,7 +31621,7 @@
   )
 |#
 
-;; (define-extern *lightning-spec-id-table* object) ;; (array lightning-spec)
+(define-extern *lightning-spec-id-table* (array lightning-spec))
 ;; (define-extern *lightning-gcf* object) ;; gcf-control
 ;; (define-extern lightning-fractal-gen function) ;; (function (inline-array vector) int int float lightning-spec none)
 ;; (define-extern lightning-uniform-gen function) ;; (function (inline-array vector) int int float lightning-spec none)
@@ -32341,9 +32993,9 @@
 ;; (define-extern target-collision-reaction function) ;; (function control-info collide-query vector vector collide-status :behavior target)
 ;; (define-extern target-collision-no-reaction function) ;; (function control-info collide-query vector vector none)
 ;; (define-extern *collide-edge-board-spec* object) ;; collide-edge-spec
-;; (define-extern rail-surface-touch function) ;; (function none :behavior target)
-;; (define-extern gravel-surface-touch function) ;; (function none)
-;; (define-extern mushroom-surface-touch function)
+(define-extern rail-surface-touch (function none :behavior target))
+(define-extern gravel-surface-touch (function none))
+(define-extern mushroom-surface-touch (function none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; logic-target                   ;;
@@ -34450,7 +35102,7 @@
 ;; (define-extern entity-remap-names function) ;; (function pair none)
 ;; (define-extern process-status-bits function) ;; (function process symbol none)
 ;; (define-extern process-entity-set! function) ;; (function process entity entity)
-;; (define-extern process-task-mask function) ;; (function process task-mask)
+(define-extern process-task-mask (function process task-mask))
 ;; (define-extern update-actor-vis-box function) ;; (function process-drawable vector vector none)
 ;; (define-extern expand-bounding-box function) ;; (function vector vector vector vector none)
 ;; (define-extern expand-bounding-box-from-nav-meshes function)
