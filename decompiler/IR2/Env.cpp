@@ -92,7 +92,7 @@ void Env::set_remap_for_memusage_method(const TypeSpec& ts) {
   m_var_remap["a1-0"] = "usage";
   m_var_remap["a2-0"] = "flags";
   for (int i = 3; i < nargs; i++) {
-    m_var_remap[get_reg_name(i)] = ("arg" + std::to_string(i - 2));
+    m_var_remap[get_reg_name(i)] = ("arg" + std::to_string(i - 3));
   }
   if (ts.try_get_tag("behavior")) {
     m_var_remap["s6-0"] = "self";
