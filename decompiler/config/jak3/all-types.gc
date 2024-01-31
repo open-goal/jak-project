@@ -16992,10 +16992,32 @@
 ;; lightning-h                    ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
+;; +++lightning-h:lightning-spec-flags
+(defenum lightning-spec-flags
+  :type uint16
+  :bitfield #t
+  (lsf0 0)
+  (lsf1 1)
+  (lsf2 2)
+  (lsf3 3)
+  (lsf4 4)
+  (lsf5 5)
+  (lsf6 6)
+  (lsf7 7)
+  (lsf8 8)
+  (lsf9 9)
+  (lsf10 10)
+  (lsf11 11)
+  (lsf12 12)
+  (lsf13 13)
+  (lsf14 14)
+  (lsf15 15)
+  )
+;; ---lightning-h:lightning-spec-flags
+
 (deftype lightning-spec (basic)
   ((name              string      :offset-assert 4) ;; guessed by decompiler
-   (flags             uint16      :offset-assert 8) ;; lightning-spec-flags
+   (flags             lightning-spec-flags :offset-assert 8)
    (rand-func         uint8       :offset-assert 10)
    (adjust-distance   uint8       :offset-assert 11)
    (start-color       rgba        :offset-assert 12) ;; guessed by decompiler
@@ -17012,7 +17034,7 @@
    (radius            float       :offset-assert 56)
    (duration          float       :offset-assert 60)
    (duration-rand     float       :offset-assert 64)
-   (sound             basic       :offset-assert 68)
+   (sound             symbol      :offset-assert 68)
    (delay             float       :offset-assert 72)
    (delay-rand        float       :offset-assert 76)
    )
@@ -17020,9 +17042,7 @@
   :size-assert         #x50
   :flag-assert         #x900000050
   )
-|#
 
-#|
 (deftype lightning-state (structure)
   ((mode           uint8                :offset-assert 0) ;; lightning-mode
    (counter        float                :offset-assert 4)
@@ -17039,9 +17059,18 @@
   :size-assert         #x94
   :flag-assert         #x900000094
   )
-|#
 
-#|
+;; +++lightning-h:lightning-mode
+(defenum lightning-mode
+  :type uint8
+  (lm-1 -1)
+  (lm0 0)
+  (lm1 1)
+  (lm2 2)
+  (lm3 3)
+  )
+;; ---lightning-h:lightning-mode
+
 (deftype lightning-control (basic)
   ((spec    lightning-spec            :offset-assert 4) ;; guessed by decompiler
    (process (pointer process)         :offset-assert 8) ;; guessed by decompiler
@@ -17051,34 +17080,31 @@
   :size-assert         #xa4
   :flag-assert         #xe000000a4
   (:methods
-    (new (symbol type) _type_) ;; 0 ;; (new (symbol type lightning-spec process float) _type_)
-    (lightning-control-method-9 () none) ;; 9 ;; (change-mode (_type_ lightning-mode) lightning-mode)
-    (lightning-control-method-10 () none) ;; 10 ;; (get-mode (_type_) lightning-mode)
-    (lightning-control-method-11 () none) ;; 11 ;; (set-point! (_type_ int vector) none)
-    (lightning-control-method-12 () none) ;; 12 ;; (set-first-meet-point (_type_ vector) none)
-    (lightning-control-method-13 () none) ;; 13 ;; (set-last-meet-point (_type_ vector) none)
+    (new (symbol type lightning-spec process float) _type_) ;; 0
+    (change-mode (_type_ lightning-mode) lightning-mode) ;; 9
+    (get-mode (_type_) lightning-mode) ;; 10
+    (set-point! (_type_ int vector) none) ;; 11
+    (set-first-meet-point (_type_ vector) none) ;; 12
+    (set-last-meet-point (_type_ vector) none) ;; 13
     )
   )
-|#
 
-#|
 (deftype lightning-probe-vars (basic)
-  ((src-joint-index uint32                        :offset-assert 4)
-   (next-spawn-time uint64                        :offset-assert 8) ;; time-frame
-   (last-valid-time uint64                        :offset-assert 16) ;; time-frame
-   (point           vector                2       :offset-assert 32) ;; guessed by decompiler
-   (start-pos       vector                :inline :offset-assert 32)
-   (end-pos         vector                :inline :offset-assert 48)
-   (probe-dirs      (inline-array vector)         :offset-assert 64) ;; guessed by decompiler
+  ((src-joint-index uint32                          :offset-assert 4)
+   (next-spawn-time time-frame                      :offset-assert 8) ;; time-frame
+   (last-valid-time time-frame                      :offset-assert 16) ;; time-frame
+   (point           vector                2 :inline :offset-assert 32) ;; guessed by decompiler
+   (start-pos       vector                  :inline :offset 32)
+   (end-pos         vector                  :inline :offset 48)
+   (probe-dirs      (inline-array vector)           :offset-assert 64) ;; guessed by decompiler
    )
   :method-count-assert 9
   :size-assert         #x44
   :flag-assert         #x900000044
   )
-|#
 
-;; (define-extern lookup-lightning-spec-by-name function) ;; (function string lightning-spec)
-;; (define-extern *lightning-probe-vars* lightning-probe-vars) ;; lightning-probe-vars
+(define-extern lookup-lightning-spec-by-name (function string lightning-spec))
+(define-extern *lightning-probe-vars* lightning-probe-vars)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; res-h                          ;;
@@ -19943,8 +19969,9 @@
 ;; collide-touch-h                ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype touching-prim (structure)
+  "A collide primitive that's touching another.
+   Potentially also stores the triangle that is involved."
   ((cprim    collide-shape-prim         :offset-assert 0) ;; guessed by decompiler
    (has-tri? symbol                     :offset-assert 4) ;; guessed by decompiler
    (tri      collide-tri-result :inline :offset-assert 16)
@@ -19953,10 +19980,9 @@
   :size-assert         #x68
   :flag-assert         #x900000068
   )
-|#
 
-#|
 (deftype touching-prims-entry (structure)
+  "A record of two primitives touching."
   ((next       touching-prims-entry         :offset-assert 0)
    (prev       touching-prims-entry         :offset-assert 4)
    (allocated? symbol                       :offset-assert 8) ;; guessed by decompiler
@@ -19974,54 +20000,53 @@
     (touching-prims-entry-method-12 () none) ;; 12
     )
   )
-|#
 
-#|
 (deftype touching-prims-entry-pool (structure)
+  "A pool of up to 64 touching prim records."
   ((head  touching-prims-entry    :offset-assert 0)
-   (nodes touching-prims-entry 64 :offset-assert 16) ;; guessed by decompiler
+   (nodes touching-prims-entry 64 :inline :offset-assert 16) ;; guessed by decompiler
    )
   :method-count-assert 13
   :size-assert         #x3c10
   :flag-assert         #xd00003c10
   (:methods
-    (new (symbol type) _type_) ;; 0 ;; (new (symbol type) _type_)
+    (new (symbol type) _type_) ;; 0
     (touching-prims-entry-pool-method-9 () none) ;; 9 ;; (alloc-node (_type_) touching-prims-entry)
     (touching-prims-entry-pool-method-10 () none) ;; 10 ;; (get-free-node-count (_type_) int)
-    (touching-prims-entry-pool-method-11 () none) ;; 11 ;; (init-list! (_type_) none)
+    (init-list! (_type_) none) ;; 11
     (touching-prims-entry-pool-method-12 () none) ;; 12 ;; (free-node (_type_ touching-prims-entry) touching-prims-entry)
     )
   )
-|#
 
-#|
 (deftype touching-shapes-entry (structure)
+  "A record of two collide shapes touching,
+   storing a record of the primitives involved."
   ((cshape1   collide-shape         :offset-assert 0) ;; guessed by decompiler
    (cshape2   collide-shape         :offset-assert 4) ;; guessed by decompiler
    (resolve-u int8                  :offset-assert 8)
    (head      touching-prims-entry  :offset-assert 12)
-   (handle1   uint64                :offset-assert 16) ;; handle
-   (handle2   uint64                :offset-assert 24) ;; handle
+   (handle1   handle                :offset-assert 16) ;; handle
+   (handle2   handle                :offset-assert 24) ;; handle
    )
+  :pack-me
   :method-count-assert 15
   :size-assert         #x20
   :flag-assert         #xf00000020
   (:methods
-    (touching-shapes-entry-method-9 () none) ;; 9 ;; (get-head (_type_) touching-prims-entry)
-    (touching-shapes-entry-method-10 () none) ;; 10 ;; (get-next (_type_ touching-shapes-entry) touching-prims-entry)
+    (get-head (_type_) touching-prims-entry) ;; 9
+    (get-next (_type_ touching-shapes-entry) touching-prims-entry) ;; 10
     (touching-shapes-entry-method-11 () none) ;; 11 ;; (get-touched-shape (_type_ collide-shape) collide-shape)
     (touching-shapes-entry-method-12 () none) ;; 12 ;; (prims-touching? (_type_ collide-shape uint) touching-prims-entry)
     (touching-shapes-entry-method-13 () none) ;; 13 ;; (prims-touching-action? (_type_ collide-shape collide-action collide-action) basic)
     (touching-shapes-entry-method-14 () none) ;; 14 ;; (free-touching-prims-list (_type_) none)
     )
   )
-|#
 
-#|
 (deftype touching-list (structure)
+  "Contains a record of touching collide shape pairs."
   ((num-touching-shapes int32                    :offset-assert 0)
    (resolve-u           int8                     :offset-assert 4)
-   (touching-shapes     touching-shapes-entry 32 :offset-assert 8) ;; guessed by decompiler
+   (touching-shapes     touching-shapes-entry 32 :inline :offset-assert 8) ;; guessed by decompiler
    )
   :method-count-assert 14
   :size-assert         #x408
@@ -20035,44 +20060,41 @@
     (touching-list-method-13 () none) ;; 13 ;; (get-shapes-entry (_type_ collide-shape collide-shape) touching-shapes-entry)
     )
   )
-|#
 
-;; (define-extern *touching-prims-entry-pool* object) ;; touching-prims-entry-pool
-;; (define-extern *touching-list* object) ;; touching-list
+(define-extern *touching-prims-entry-pool* touching-prims-entry-pool)
+(define-extern *touching-list* touching-list)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; collide-edge-grab-h            ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype pilot-edge-grab-info (structure)
+  "Info for edge grabs on zoomers."
   ((local-pos vector :inline :offset-assert 0)
    (local-dir vector :inline :offset-assert 16)
-   (handle    uint64         :offset-assert 32) ;; handle
+   (handle    handle         :offset-assert 32) ;; handle
    )
   :method-count-assert 9
   :size-assert         #x28
   :flag-assert         #x900000028
   )
-|#
 
-#|
 (deftype edge-grab-info (structure)
-  ((world-vertex               vector               8       :offset-assert 0) ;; guessed by decompiler
-   (local-vertex               vector               8       :offset-assert 128) ;; guessed by decompiler
+  ((world-vertex               vector               8 :inline :offset-assert 0) ;; guessed by decompiler
+   (local-vertex               vector               8 :inline :offset-assert 128) ;; guessed by decompiler
    (status                     uint64                       :offset-assert 256)
    (actor-cshape-prim-offset   int32                        :offset-assert 264)
-   (actor-handle               uint64                       :offset-assert 272) ;; handle
+   (actor-handle               handle                       :offset-assert 272) ;; handle
    (hanging-matrix             matrix               :inline :offset-assert 288)
-   (edge-vertex                vector               2       :offset-assert 0) ;; guessed by decompiler
-   (center-hold                vector               :inline :offset-assert 32)
-   (tri-vertex                 vector               3       :offset-assert 48) ;; guessed by decompiler
-   (adjacent-edge-left-vertex  vector               :inline :offset-assert 96)
-   (adjacent-edge-right-vertex vector               :inline :offset-assert 112)
+   (edge-vertex                vector               2 :inline :offset 0) ;; guessed by decompiler
+   (center-hold                vector               :inline :offset 32)
+   (tri-vertex                 vector               3 :inline :offset 48) ;; guessed by decompiler
+   (adjacent-edge-left-vertex  vector               :inline :offset 96)
+   (adjacent-edge-right-vertex vector               :inline :offset 112)
    (left-hand-hold             vector               :inline :offset-assert 352)
    (right-hand-hold            vector               :inline :offset-assert 368)
    (center-hold-old            vector               :inline :offset-assert 384)
-   (edge-tri-pat               uint32                       :offset-assert 400)
+   (edge-tri-pat               pat-surface                  :offset-assert 400)
    (found-edge?                symbol                       :offset-assert 404) ;; guessed by decompiler
    (pilot-edge-grab?           symbol                       :offset-assert 408) ;; guessed by decompiler
    (pilot-edge-grab            pilot-edge-grab-info :inline :offset-assert 416)
@@ -20087,10 +20109,10 @@
     (edge-grab-info-method-10 () none) ;; 10 ;; (debug-draw (_type_) none)
     )
   )
-|#
 
-#|
+(declare-type collide-cache-tri structure)
 (deftype collide-edge-tri (structure)
+  "A triangle involved in edge grab collision."
   ((ctri   collide-cache-tri         :offset-assert 0) ;; guessed by decompiler
    (normal vector            :inline :offset-assert 16)
    )
@@ -20098,11 +20120,9 @@
   :size-assert         #x20
   :flag-assert         #x900000020
   )
-|#
 
-#|
 (deftype collide-edge-edge (structure)
-  ((ignore        basic                         :offset-assert 0)
+  ((ignore        symbol                        :offset-assert 0)
    (etri          collide-edge-tri              :offset-assert 4)
    (vertex-ptr    (inline-array vector) 2       :offset-assert 8) ;; guessed by decompiler
    (outward       vector                :inline :offset-assert 16)
@@ -20115,9 +20135,7 @@
     (collide-edge-edge-method-9 () none) ;; 9 ;; (no-collision-at-edge (_type_ collide-edge-work edge-grab-info) symbol)
     )
   )
-|#
 
-#|
 (deftype collide-edge-hold-item (structure)
   ((next       collide-edge-hold-item         :offset-assert 0)
    (rating     float                          :offset-assert 4)
@@ -20130,15 +20148,13 @@
   :size-assert         #x30
   :flag-assert         #x900000030
   )
-|#
 
-#|
 (deftype collide-edge-hold-list (structure)
   ((num-allocs   uint32                    :offset-assert 0)
    (num-attempts uint32                    :offset-assert 4)
    (head         collide-edge-hold-item    :offset-assert 8)
-   (items        collide-edge-hold-item 32 :offset-assert 16) ;; guessed by decompiler
-   (attempts     qword                  32 :offset-assert 1552) ;; guessed by decompiler
+   (items        collide-edge-hold-item 32 :inline :offset-assert 16) ;; guessed by decompiler
+   (attempts     qword                  32 :inline :offset-assert 1552) ;; guessed by decompiler
    )
   :method-count-assert 11
   :size-assert         #x810
@@ -20148,13 +20164,22 @@
     (collide-edge-hold-list-method-10 () none) ;; 10 ;; (add-to-list! (_type_ collide-edge-hold-item) none)
     )
   )
-|#
 
-#|
+;; +++collide-edge-grab-h:collide-edge-spec-flags
+(defenum collide-edge-spec-flags
+  :bitfield #t
+  :type uint64
+  (find-adjacent-edge 0)
+  (one 1)
+  (two 2)
+  (send-event 3)
+  )
+;; ---collide-edge-grab-h:collide-edge-spec-flags
+
 (deftype collide-edge-spec (structure)
   ((split-dists                  float        2       :offset-assert 0) ;; guessed by decompiler
    (outward-offset               vector       :inline :offset-assert 16)
-   (flags                        uint64               :offset-assert 32) ;; collide-edge-spec-flags
+   (flags                        collide-edge-spec-flags :offset-assert 32) ;; collide-edge-spec-flags
    (ignore-pat                   pat-surface          :offset-assert 40) ;; guessed by decompiler
    (max-dist-sqrd-to-outward-pt  float                :offset-assert 44)
    (max-dir-cosa-delta           float                :offset-assert 48)
@@ -20162,17 +20187,16 @@
    (touching-segment             symbol               :offset-assert 56) ;; guessed by decompiler
    (local-cache-fill-box         bounding-box :inline :offset-assert 64)
    (local-within-reach-box       bounding-box :inline :offset-assert 96)
-   (local-player-spheres         sphere       12      :offset-assert 128) ;; guessed by decompiler
-   (local-player-hanging-spheres sphere       6       :offset-assert 128) ;; guessed by decompiler
-   (local-player-leap-up-spheres sphere       6       :offset-assert 224) ;; guessed by decompiler
+   (local-player-spheres         sphere       12 :inline :offset 128) ;; guessed by decompiler
+   (local-player-hanging-spheres sphere       6  :inline :offset 128) ;; guessed by decompiler
+   (local-player-leap-up-spheres sphere       6  :inline :offset 224) ;; guessed by decompiler
    )
   :method-count-assert 9
   :size-assert         #x140
   :flag-assert         #x900000140
   )
-|#
 
-#|
+(declare-type collide-cache basic)
 (deftype collide-edge-work (structure)
   ((ccache                       collide-cache                      :offset-assert 0) ;; guessed by decompiler
    (cshape                       collide-shape                      :offset-assert 4) ;; guessed by decompiler
@@ -20184,14 +20208,14 @@
    (within-reach-box4w           bounding-box4w             :inline :offset-assert 96)
    (search-pt                    vector                     :inline :offset-assert 128)
    (search-dir-vec               vector                     :inline :offset-assert 144)
-   (world-player-spheres         sphere                     12      :offset-assert 160) ;; guessed by decompiler
-   (world-player-hanging-spheres sphere                     6       :offset-assert 160) ;; guessed by decompiler
-   (world-player-leap-up-spheres sphere                     6       :offset-assert 256) ;; guessed by decompiler
+   (world-player-spheres         sphere                     12 :inline :offset-assert 160) ;; guessed by decompiler
+   (world-player-hanging-spheres sphere                     6 :inline :offset 160) ;; guessed by decompiler
+   (world-player-leap-up-spheres sphere                     6 :inline :offset 256) ;; guessed by decompiler
    (spec                         collide-edge-spec          :inline :offset-assert 352)
    (process                      (pointer process-drawable)         :offset-assert 672) ;; guessed by decompiler
-   (verts                        vector                     64      :offset-assert 688) ;; guessed by decompiler
-   (edges                        collide-edge-edge          96      :offset-assert 1712) ;; guessed by decompiler
-   (tris                         collide-edge-tri           48      :offset-assert 6320) ;; guessed by decompiler
+   (verts                        vector                     64 :inline :offset-assert 688) ;; guessed by decompiler
+   (edges                        collide-edge-edge          96 :inline :offset-assert 1712) ;; guessed by decompiler
+   (tris                         collide-edge-tri           48 :inline :offset-assert 6320) ;; guessed by decompiler
    (hold-list                    collide-edge-hold-list     :inline :offset-assert 7856)
    )
   :method-count-assert 21
@@ -20212,11 +20236,10 @@
     (collide-edge-work-method-20 () none) ;; 20 ;; (check-grab-for-collisions (_type_ collide-edge-hold-item edge-grab-info) symbol)
     )
   )
-|#
 
-;; (define-extern *collide-edge-spec* object) ;; collide-edge-spec
-;; (define-extern *collide-edge-work* object) ;; collide-edge-work
-;; (define-extern *edge-grab-info* object) ;; edge-grab-info
+(define-extern *collide-edge-spec* collide-edge-spec)
+(define-extern *collide-edge-work* collide-edge-work)
+(define-extern *edge-grab-info* edge-grab-info)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; process-drawable-h             ;;
@@ -31598,7 +31621,7 @@
   )
 |#
 
-;; (define-extern *lightning-spec-id-table* object) ;; (array lightning-spec)
+(define-extern *lightning-spec-id-table* (array lightning-spec))
 ;; (define-extern *lightning-gcf* object) ;; gcf-control
 ;; (define-extern lightning-fractal-gen function) ;; (function (inline-array vector) int int float lightning-spec none)
 ;; (define-extern lightning-uniform-gen function) ;; (function (inline-array vector) int int float lightning-spec none)
