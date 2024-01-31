@@ -170,6 +170,8 @@ class Env {
   void set_remap_for_function(const Function& func);
   void set_remap_for_method(const TypeSpec& ts);
   void set_remap_for_new_method(const TypeSpec& ts);
+  void set_remap_for_relocate_method(const TypeSpec& ts);
+  void set_remap_for_memusage_method(const TypeSpec& ts);
   void map_args_from_config(const std::vector<std::string>& args_names,
                             const std::unordered_map<std::string, std::string>& var_names);
   void map_args_from_config(const std::vector<std::string>& args_names,

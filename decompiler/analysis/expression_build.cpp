@@ -32,6 +32,10 @@ bool convert_to_expressions(
         dts.ts.lookup_method(f.guessed_name.type_name, f.guessed_name.method_id).type;
     if (f.guessed_name.method_id == GOAL_NEW_METHOD) {
       f.ir2.env.set_remap_for_new_method(method_type);
+    } else if (f.guessed_name.method_id == GOAL_RELOC_METHOD) {
+      f.ir2.env.set_remap_for_relocate_method(method_type);
+    } else if (f.guessed_name.method_id == GOAL_MEMUSAGE_METHOD) {
+      f.ir2.env.set_remap_for_memusage_method(method_type);
     } else {
       f.ir2.env.set_remap_for_method(method_type);
     }
