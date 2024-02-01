@@ -605,6 +605,7 @@ void to_json(json& j, const SpeedrunCustomCategoryEntry& obj) {
   json_serialize(name);
   json_serialize(secrets);
   json_serialize(features);
+  json_serialize(forbidden_features);
   json_serialize(cheats);
   json_serialize(continue_point_name);
   json_serialize(completed_task);
@@ -614,6 +615,7 @@ void from_json(const json& j, SpeedrunCustomCategoryEntry& obj) {
   json_deserialize_if_exists(name);
   json_deserialize_if_exists(secrets);
   json_deserialize_if_exists(features);
+  json_deserialize_if_exists(forbidden_features);
   json_deserialize_if_exists(cheats);
   json_deserialize_if_exists(continue_point_name);
   json_deserialize_if_exists(completed_task);
@@ -889,12 +891,13 @@ void pc_sr_mode_init_custom_category_info(s32 entry_index, u32 speedrun_custom_c
     category->index = entry_index;
     category->secrets = json_info.secrets;
     category->features = json_info.features;
+    category->forbidden_features = json_info.forbidden_features;
     category->cheats = json_info.cheats;
     category->completed_task = json_info.completed_task;
   }
 }
 
-void pc_sr_mode_dump_new_custom_category(u32 secrets, u64 features, u64 cheats, u8 completed_task) {
+void pc_sr_mode_dump_new_custom_category(u32 speedrun_custom_category_ptr) {
   const auto file_path =
       file_util::get_user_features_dir(g_game_version) / "speedrun-categories.json";
   if (file_util::file_exists(file_path.string())) {
@@ -905,21 +908,25 @@ void pc_sr_mode_dump_new_custom_category(u32 secrets, u64 features, u64 cheats, 
   }
 
   // persist to file
-  const auto file_path =
-      file_util::get_user_features_dir(g_game_version) / "speedrun-categories.json";
   if (!file_util::file_exists(file_path.string())) {
     lg::info("speedrun-practice.json not found, not persisting!");
   } else {
-    SpeedrunCustomCategoryEntry new_category;
-    new_category.name = fmt::format("custom-category-{}", g_speedrun_custom_categories.size());
-    new_category.secrets = secrets;
-    new_category.features = features;
-    new_category.cheats = cheats;
-    new_category.completed_task = completed_task;
-    new_category.continue_point_name = "";
-    g_speedrun_custom_categories.push_back(new_category);
-    json data = g_speedrun_custom_categories;
-    file_util::write_text_file(file_path, data.dump(2));
+    auto category = speedrun_custom_category_ptr
+                        ? Ptr<SpeedrunCustomCategory>(speedrun_custom_category_ptr).c()
+                        : NULL;
+    if (category) {
+      SpeedrunCustomCategoryEntry new_category;
+      new_category.name = fmt::format("custom-category-{}", g_speedrun_custom_categories.size());
+      new_category.secrets = category->secrets;
+      new_category.features = category->features;
+      new_category.forbidden_features = category->forbidden_features;
+      new_category.cheats = category->cheats;
+      new_category.completed_task = category->completed_task;
+      new_category.continue_point_name = "";
+      g_speedrun_custom_categories.push_back(new_category);
+      json data = g_speedrun_custom_categories;
+      file_util::write_text_file(file_path, data.dump(2));
+    }
   }
   return;
 }

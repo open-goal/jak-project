@@ -1,6 +1,17 @@
 ;;-*-Lisp-*-
 (in-package goal)
 
+;; TODO - category name and more details on bottom left
+;; TODO - a way to define when the verification info is hidden (task close or skill pickup perhaps)
+;; TODO - a way to unselect stuff in tools menu / clear all
+;; TODO - colors for menu text seem to mess up
+;; TODO - can't select first entry in menu menus
+;; TODO - ability to disable popup menu entry option
+
+;; TODO later - customize menu open keybind
+
+(define-extern task-close! (function string symbol))
+
 (define *speedrun-info* (new 'static 'speedrun-info))
 (set! (-> *speedrun-info* active-custom-category) (new 'static 'speedrun-custom-category))
 (set! (-> *speedrun-info* dump-custom-category) (new 'static 'speedrun-custom-category))
@@ -74,8 +85,20 @@
     (((speedrun-category newgame-heromode))
       (initialize! *game-info* 'game (the-as game-save #f) "game-start-hero"))
     (((speedrun-category all-cheats-allowed))
-      (initialize! *game-info* 'game (the-as game-save #f) "game-start")))
-
+      (initialize! *game-info* 'game (the-as game-save #f) "game-start"))
+    (((speedrun-category custom))
+      (set-master-mode 'game)
+      (send-event (ppointer->process (-> *speedrun-manager* 0 popup-menu)) 'close-menu)
+      (process-spawn-function process (lambda :behavior process ()
+        (clear *temp-string*)
+        (pc-sr-mode-get-custom-category-continue-point (-> *speedrun-info* active-custom-category index) *temp-string*)
+        (if (string= *temp-string* "")
+          (initialize! *game-info* 'game (the-as game-save #f) "game-start")
+          (initialize! *game-info* 'game (the-as game-save #f) *temp-string*))
+        (until (and *target* (= (-> *target* next-state name) 'target-stance))
+          (suspend))
+        (when (nonzero? (-> *speedrun-info* active-custom-category completed-task))
+          (task-resolution-close! (-> *speedrun-info* active-custom-category completed-task)))))))
   (if (!= -1 (-> *game-info* auto-save-which))
       (set! (-> *setting-control* user-default auto-save) #t))
 
@@ -89,11 +112,17 @@
   ;;   probably like the game to automatically set the appropriate ones for you
   ;; - If you are playing a category that forbids cheats, you wouldn't want your run invalidated because you forgot
   ;;
-  ;; However, the pc-settings stores a backup of your cheats whenever you manually modify them (NYI - no menus yet)
-  ;; when speedrunner mode is first enabled.  They are restored when speedrunner mode is disabled.
-  (when (!= (-> this category) (speedrun-category all-cheats-allowed))
-    ;; disable any active cheats
-    (set! (-> *pc-settings* cheats) (the-as pc-cheats #x0)))
+  ;; However, the pc-settings stores a backup of your cheats whenever you manually modify them (NYI - TODO)
+  ;; when speedrunner mode is enabled.  They are restored when speedrunner mode is disabled.
+  (case (-> this category)
+    (((speedrun-category newgame-normal) (speedrun-category newgame-heromode))
+      ;; disable any active cheats
+      (set! (-> *pc-settings* cheats) (the-as pc-cheats #x0)))
+    (((speedrun-category custom))
+      (set! (-> *game-info* secrets) (-> *speedrun-info* active-custom-category secrets))
+      (set! (-> *game-info* features) (-> *speedrun-info* active-custom-category features))
+      (logclear! (-> *game-info* features) (-> *speedrun-info* active-custom-category forbidden-features))
+      (set! (-> *pc-settings* cheats) (-> *speedrun-info* active-custom-category pc-cheats))))
   (none))
 
 (defmethod hide-run-info! ((this speedrun-info))
@@ -324,28 +353,30 @@
               (new 'static 'popup-menu-dynamic-submenu :label "Select secrets"
                 :get-length (lambda () 18)
                 :get-entry-label (lambda ((index int) (str-dest string)) (copy-string<-string str-dest (bitfield->string game-secrets index)))
-                :on-entry-confirm (lambda ((index int)) (logior! (-> *speedrun-info* dump-custom-category secrets) (shl 2 index)))
-                :entry-selected? (lambda ((index int)) (logtest? (-> *speedrun-info* dump-custom-category secrets) (shl 2 index))))
+                :on-entry-confirm (lambda ((index int)) (logior! (-> *speedrun-info* dump-custom-category secrets) (shl 2 (dec index))))
+                :entry-selected? (lambda ((index int)) (logtest? (-> *speedrun-info* dump-custom-category secrets) (shl 2 (dec index)))))
               (new 'static 'popup-menu-dynamic-submenu :label "Select features"
                 :get-length (lambda () 27)
                 :get-entry-label (lambda ((index int) (str-dest string)) (copy-string<-string str-dest (bitfield->string game-feature index)))
-                :on-entry-confirm (lambda ((index int)) (logior! (-> *speedrun-info* dump-custom-category features) (shl 2 index)))
-                :entry-selected? (lambda ((index int)) (logtest? (-> *speedrun-info* dump-custom-category features) (shl 2 index))))
+                :on-entry-confirm (lambda ((index int)) (logior! (-> *speedrun-info* dump-custom-category features) (shl 2 (dec index))))
+                :entry-selected? (lambda ((index int)) (logtest? (-> *speedrun-info* dump-custom-category features) (shl 2 (dec index)))))
+              (new 'static 'popup-menu-dynamic-submenu :label "Forbid features"
+                :get-length (lambda () 27)
+                :get-entry-label (lambda ((index int) (str-dest string)) (copy-string<-string str-dest (bitfield->string game-feature index)))
+                :on-entry-confirm (lambda ((index int)) (logior! (-> *speedrun-info* dump-custom-category forbidden-features) (shl 2 (dec index))))
+                :entry-selected? (lambda ((index int)) (logtest? (-> *speedrun-info* dump-custom-category forbidden-features) (shl 2 (dec index)))))
               (new 'static 'popup-menu-dynamic-submenu :label "Select cheats"
                 :get-length (lambda () 20)
                 :get-entry-label (lambda ((index int) (str-dest string)) (copy-string<-string str-dest (bitfield->string pc-cheats index)))
-                :on-entry-confirm (lambda ((index int)) (logior! (-> *speedrun-info* dump-custom-category pc-cheats) (shl 2 index)))
-                :entry-selected? (lambda ((index int)) (logtest? (-> *speedrun-info* dump-custom-category pc-cheats) (shl 2 index))))
+                :on-entry-confirm (lambda ((index int)) (logior! (-> *speedrun-info* dump-custom-category pc-cheats) (shl 2 (dec index))))
+                :entry-selected? (lambda ((index int)) (logtest? (-> *speedrun-info* dump-custom-category pc-cheats) (shl 2 (dec index)))))
               (new 'static 'popup-menu-dynamic-submenu :label "Select completed task"
                 :get-length (lambda () (dec (the int (game-task max))))
                 :get-entry-label (lambda ((index int) (str-dest string)) (copy-string<-string str-dest (enum->string game-task index)))
                 :on-entry-confirm (lambda ((index int)) (set! (-> *speedrun-info* dump-custom-category completed-task) (the game-task index)))
                 :entry-selected? (lambda ((index int)) (= (-> *speedrun-info* dump-custom-category completed-task) (the game-task index))))
               (new 'static 'popup-menu-button :label "Save new category to file"
-                :on-confirm (lambda () (pc-sr-mode-dump-new-custom-category (the uint (-> *speedrun-info* dump-custom-category secrets))
-                                                                            (the uint (-> *speedrun-info* dump-custom-category features))
-                                                                            (the uint (-> *speedrun-info* dump-custom-category pc-cheats))
-                                                                            (the uint (-> *speedrun-info* dump-custom-category completed-task)))))))))
+                :on-confirm (lambda () (pc-sr-mode-dump-new-custom-category (-> *speedrun-info* dump-custom-category))))))))
       (new 'static 'popup-menu-button :label "Exit"
         :on-confirm (lambda () (send-event (ppointer->process *speedrun-manager*) 'invoke (speedrun-menu-command exit))))
   ))
