@@ -133,7 +133,6 @@ void log_vprintf(const char* format, va_list arg_list) {
 }
 }  // namespace internal
 
-
 void printstd(const std::string& format, va_list arg_list) {
   internal::log_vprintf(format.c_str(), arg_list);
 }
