@@ -1,88 +1,7 @@
 ;;-*-Lisp-*-
 (in-package goal)
 
-;; name: game-h.gc
-;; name in dgo: game-h
-;; dgos: GAME
-
-(declare-type nav-control basic)
-(declare-type path-control basic)
-(declare-type vol-control basic)
-(declare-type fact-info basic)
-(declare-type actor-link-info basic)
-(declare-type water-control basic)
-(declare-type carry-info basic)
-(declare-type rigid-body-control basic)
-
-(defenum state-flags
-  :bitfield #t
-  :type uint32
-  (sf0 0)
-  (sf1 1)
-  (sf2 2)
-  (sf3 3)
-  (sf4 4)
-  (sf5 5)
-  (sf6 6)
-  (sf7 7)
-  (sf8 8)
-  (sf9 9)
-  (sf10 10)
-  (sf11 11)
-  (sf12 12)
-  (sf13 13)
-  (sf14 14)
-  (sf15 15)
-  (sf16 16)
-  (sf17 17)
-  (sf18 18)
-  (sf19 19)
-  (sf20 20)
-  (sf21 21)
-  (sf22 22)
-  (sf23 23)
-  (sf24 24)
-  (sf25 25)
-  (sf26 26)
-  (sf27 27)
-  (sf28 28)
-  (sf29 29)
-  (sf30 30)
-  (sf31 31)
-  )
-
-(defenum attack-mask
-  :bitfield #t
-  :type uint32
-  (trans        0) ;; 1
-  (vector       1) ;; 2
-  (intersection 2) ;; 4
-  (attacker     3) ;; 8
-  (attack-time  4) ;; 16
-  (invinc-time  5) ;; 32
-  (mode         6) ;; 64
-  (shove-back   7) ;; 128
-  (shove-up     8) ;; 256
-  (speed        9) ;; 512
-  (dist        10) ;; 1024
-  (control     11) ;; 2048
-  (angle       12) ;; 4096
-  (rotate-to   13) ;; 8192
-  (prev-state  14) ;; 16384
-  (id          15) ;; 32768
-  (count       16) ;; hi 1
-  (penetrate-using 17) ;; hi 2
-  (attacker-velocity 18);; hi 4
-  (damage      19) ;; hi 8
-  (shield-damage 20) ;; hi16
-  (vehicle-damage-factor        21) ;; hi 32
-  (vehicle-impulse-factor         22) ;; hi 64
-  (knock 23)
-  (test 24)
-  )
-
-;; DECOMP BEGINS
-
+;; definition of type process-drawable
 (deftype process-drawable (process)
   "This is the main base class for in-game objects.
 This handles drawing, collision, animation, navigation, particles, sounds, physics, etc.
@@ -120,7 +39,37 @@ container for references to the `-control` objects for this object."
     )
   )
 
+;; definition for method 3 of type process-drawable
+(defmethod inspect ((this process-drawable))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type process inspect)))
+    (t9-0 this)
+    )
+  (format #t "~2Troot: ~A~%" (-> this root))
+  (format #t "~2Tnode-list: ~A~%" (-> this node-list))
+  (format #t "~2Tdraw: ~A~%" (-> this draw))
+  (format #t "~2Tskel: ~A~%" (-> this skel))
+  (format #t "~2Tnav: ~A~%" (-> this nav))
+  (format #t "~2Talign: ~A~%" (-> this align))
+  (format #t "~2Tpath: ~A~%" (-> this path))
+  (format #t "~2Tvol: ~A~%" (-> this vol))
+  (format #t "~2Tfact: ~A~%" (-> this fact))
+  (format #t "~2Tlink: ~A~%" (-> this link))
+  (format #t "~2Tpart: ~A~%" (-> this part))
+  (format #t "~2Twater: ~A~%" (-> this water))
+  (format #t "~2Tsound: ~A~%" (-> this sound))
+  (format #t "~2Tcarry: ~A~%" (-> this carry))
+  (format #t "~2Trbody: ~A~%" (-> this rbody))
+  (format #t "~2Tstate-flags: ~D~%" (-> this state-flags))
+  (format #t "~2Tstate-time: ~D~%" (-> this state-time))
+  (label cfg-4)
+  this
+  )
 
+;; definition of type process-drawable-reserved
 (deftype process-drawable-reserved (process-drawable)
   "A process drawable with a lot of unused method slots.
 GOAL cannot increase the number of methods at runtime, so, for interactive development, it is useful
@@ -328,7 +277,20 @@ to have a type with a large number of slots which can be turned into real method
     )
   )
 
+;; definition for method 3 of type process-drawable-reserved
+(defmethod inspect ((this process-drawable-reserved))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type process-drawable inspect)))
+    (t9-0 this)
+    )
+  (label cfg-4)
+  this
+  )
 
+;; definition of type attack-dir-info
 (deftype attack-dir-info (structure)
   ((dir                vector  :inline)
    (xz-dir             vector  :inline)
@@ -337,7 +299,22 @@ to have a type with a large number of slots which can be turned into real method
    )
   )
 
+;; definition for method 3 of type attack-dir-info
+(defmethod inspect ((this attack-dir-info))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this 'attack-dir-info)
+  (format #t "~1Tdir: #<vector @ #x~X>~%" (-> this dir))
+  (format #t "~1Txz-dir: #<vector @ #x~X>~%" (-> this xz-dir))
+  (format #t "~1Tattacker-velocity: #<vector @ #x~X>~%" (-> this attacker-velocity))
+  (format #t "~1Tpos: #<vector @ #x~X>~%" (-> this pos))
+  (label cfg-4)
+  this
+  )
 
+;; definition of type attack-info
 (deftype attack-info (structure)
   ((trans                   vector  :inline)
    (vector                  vector  :inline)
@@ -373,10 +350,146 @@ to have a type with a large number of slots which can be turned into real method
     )
   )
 
+;; definition for method 3 of type attack-info
+(defmethod inspect ((this attack-info))
+  (when (not this)
+    (set! this this)
+    (goto cfg-54)
+    )
+  (format #t "[~8x] ~A~%" this 'attack-info)
+  (format #t "~1Ttrans: ~`vector`P~%" (-> this trans))
+  (format #t "~1Tvector: ~`vector`P~%" (-> this vector))
+  (format #t "~1Tattacker-velocity: ~`vector`P~%" (-> this attacker-velocity))
+  (format #t "~1Tintersection: ~`vector`P~%" (-> this intersection))
+  (format #t "~1Tattacker: ~`handle`P~%" (-> this attacker))
+  (format #t "~1Tattack-time: ~D~%" (-> this attack-time))
+  (format #t "~1Tinvinc-time: ~D~%" (-> this invinc-time))
+  (format #t "~1Tmask: #x~X : (attack-info-mask " (-> this mask))
+  (let ((s5-0 (-> this mask)))
+    (if (= (logand s5-0 (attack-mask vector)) (attack-mask vector))
+        (format #t "vector ")
+        )
+    (if (= (logand s5-0 (attack-mask angle)) (attack-mask angle))
+        (format #t "angle ")
+        )
+    (if (= (logand (attack-mask test) s5-0) (attack-mask test))
+        (format #t "test ")
+        )
+    (if (= (logand s5-0 (attack-mask invinc-time)) (attack-mask invinc-time))
+        (format #t "invinc-time ")
+        )
+    (if (= (logand s5-0 (attack-mask attacker)) (attack-mask attacker))
+        (format #t "attacker ")
+        )
+    (if (= (logand s5-0 (attack-mask dist)) (attack-mask dist))
+        (format #t "dist ")
+        )
+    (if (= (logand s5-0 (attack-mask intersection)) (attack-mask intersection))
+        (format #t "intersection ")
+        )
+    (if (= (logand s5-0 (attack-mask shove-back)) (attack-mask shove-back))
+        (format #t "shove-back ")
+        )
+    (if (= (logand s5-0 (attack-mask shove-up)) (attack-mask shove-up))
+        (format #t "shove-up ")
+        )
+    (if (= (logand s5-0 (attack-mask mode)) (attack-mask mode))
+        (format #t "mode ")
+        )
+    (if (= (logand (attack-mask count) s5-0) (attack-mask count))
+        (format #t "count ")
+        )
+    (if (= (logand s5-0 (attack-mask rotate-to)) (attack-mask rotate-to))
+        (format #t "rotate-to ")
+        )
+    (if (= (logand s5-0 (attack-mask speed)) (attack-mask speed))
+        (format #t "speed ")
+        )
+    (if (= (logand s5-0 (attack-mask attack-time)) (attack-mask attack-time))
+        (format #t "attack-time ")
+        )
+    (if (= (logand (attack-mask vehicle-damage-factor) s5-0) (attack-mask vehicle-damage-factor))
+        (format #t "vehicle-damage-factor ")
+        )
+    (if (= (logand (attack-mask damage) s5-0) (attack-mask damage))
+        (format #t "damage ")
+        )
+    (if (= (logand s5-0 (attack-mask control)) (attack-mask control))
+        (format #t "control ")
+        )
+    (if (= (logand s5-0 (attack-mask trans)) (attack-mask trans))
+        (format #t "trans ")
+        )
+    (if (= (logand (attack-mask penetrate-using) s5-0) (attack-mask penetrate-using))
+        (format #t "penetrate-using ")
+        )
+    (if (= (logand (attack-mask vehicle-impulse-factor) s5-0) (attack-mask vehicle-impulse-factor))
+        (format #t "vehicle-impulse-factor ")
+        )
+    (if (= (logand (attack-mask attacker-velocity) s5-0) (attack-mask attacker-velocity))
+        (format #t "attacker-velocity ")
+        )
+    (if (= (logand s5-0 (attack-mask id)) (attack-mask id))
+        (format #t "id ")
+        )
+    (if (= (logand s5-0 (attack-mask prev-state)) (attack-mask prev-state))
+        (format #t "prev-state ")
+        )
+    (if (= (logand (attack-mask knock) s5-0) (attack-mask knock))
+        (format #t "knock ")
+        )
+    (if (= (logand (attack-mask shield-damage) s5-0) (attack-mask shield-damage))
+        (format #t "shield-damage ")
+        )
+    )
+  (format #t ")~%")
+  (format #t "~1Tmode: ~A~%" (-> this mode))
+  (format #t "~1Tshove-back: (meters ~m)~%" (-> this shove-back))
+  (format #t "~1Tshove-up: (meters ~m)~%" (-> this shove-up))
+  (format #t "~1Tspeed: (meters ~m)~%" (-> this speed))
+  (format #t "~1Tdist: (meters ~m)~%" (-> this dist))
+  (format #t "~1Tcontrol: ~f~%" (-> this control))
+  (format #t "~1Tangle: ~A~%" (-> this angle))
+  (format #t "~1Trotate-to: (deg ~r)~%" (-> this rotate-to))
+  (format #t "~1Tprev-state: ~A~%" (-> this prev-state))
+  (format #t "~1Tid: ~D~%" (-> this id))
+  (format #t "~1Tcount: ~D~%" (-> this count))
+  (format #t "~1Tpenetrate-using: ~D~%" (-> this penetrate-using))
+  (format #t "~1Tdamage: ~f~%" (-> this damage))
+  (format #t "~1Tshield-damage: ~f~%" (-> this shield-damage))
+  (format #t "~1Tvehicle-damage-factor: ~f~%" (-> this vehicle-damage-factor))
+  (format #t "~1Tvehicle-impulse-factor: ~f~%" (-> this vehicle-impulse-factor))
+  (format #t "~1Tknock: ~D~%" (-> this knock))
+  (format #t "~1Ttest: ~A~%" (-> this test))
+  (label cfg-54)
+  this
+  )
 
+;; definition of type ground-tween-info
 (deftype ground-tween-info (structure)
   ((chan   uint8   3)
    (blend  float   3)
    (group  uint32  5)
    )
   )
+
+;; definition for method 3 of type ground-tween-info
+(defmethod inspect ((this ground-tween-info))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this 'ground-tween-info)
+  (format #t "~1Tchan[3] @ #x~X~%" (-> this chan))
+  (format #t "~1Tblend[3] @ #x~X~%" (-> this blend))
+  (format #t "~1Tgroup[5] @ #x~X~%" (-> this group))
+  (label cfg-4)
+  this
+  )
+
+;; failed to figure out what this is:
+0
+
+
+
+

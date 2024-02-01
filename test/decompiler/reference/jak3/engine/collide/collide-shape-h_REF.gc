@@ -1388,6 +1388,7 @@ Most [[process-drawable]]s have a [[collide-shape]] that represents their root t
    (nav-flags            uint8)
    (total-prims          uint8)
    (num-riders           uint8)
+   (pat-ignore-mask      pat-surface)
    (event-self           symbol  :offset 152)
    (event-other          symbol)
    (root-prim            collide-shape-prim)
@@ -1638,7 +1639,53 @@ Most [[process-drawable]]s have a [[collide-shape]] that represents their root t
   )
 
 ;; definition for method 0 of type collide-shape
-;; ERROR: function was not converted to expressions. Cannot decompile.
+(defmethod new collide-shape ((allocation symbol) (type-to-make type) (arg0 process-drawable) (arg1 collide-list-enum))
+  (let ((s5-0 (object-new allocation type-to-make (the-as int (-> type-to-make size)))))
+    (set! (-> s5-0 actor-hash-index) -1)
+    (set! (-> s5-0 process) arg0)
+    (set! (-> s5-0 max-iteration-count) (the-as uint 1))
+    (set! (-> s5-0 nav-flags) (the-as uint 1))
+    (set! (-> s5-0 event-self) #f)
+    (set! (-> s5-0 event-other) #f)
+    (set! (-> s5-0 riders) (the-as (inline-array collide-rider) #f))
+    (set! (-> s5-0 root-prim) #f)
+    (set! (-> s5-0 penetrate-using) (penetrate))
+    (set! (-> s5-0 penetrated-by) (penetrate))
+    (set! (-> s5-0 event-priority) (the-as uint 0))
+    (set! (-> s5-0 rider-max-momentum) 409600.0)
+    (case (-> arg0 type symbol)
+      (('camera)
+       (set! (-> s5-0 pat-ignore-mask) (new 'static 'pat-surface :nocamera #x1 :probe #x1 :noendlessfall #x1))
+       )
+      (('target)
+       (set! (-> s5-0 pat-ignore-mask) (new 'static 'pat-surface :noentity #x1 :nojak #x1 :probe #x1 :board #x1))
+       )
+      (else
+        (set! (-> s5-0 pat-ignore-mask)
+              (new 'static 'pat-surface :noentity #x1 :nojak #x1 :probe #x1 :noendlessfall #x1 :board #x1)
+              )
+        )
+      )
+    (set! (-> s5-0 trans w) 1.0)
+    (quaternion-identity! (the-as quaternion (-> s5-0 rot)))
+    (vector-identity! (-> s5-0 scale))
+    (cond
+      ((= arg1 (collide-list-enum hit-by-player))
+       (add-connection *collide-hit-by-player-list* arg0 #f s5-0 #f #f)
+       )
+      ((= arg1 (collide-list-enum usually-hit-by-player))
+       (add-connection *collide-hit-by-others-list* arg0 #f s5-0 #f #f)
+       )
+      ((= arg1 (collide-list-enum hit-by-others))
+       (add-connection *collide-player-list* arg0 #f s5-0 #f #f)
+       )
+      (else
+        (format 0 "Unsupported collide-list-enum in collide-shape constructor!~%")
+        )
+      )
+    s5-0
+    )
+  )
 
 ;; definition for method 0 of type collide-shape-moving
 ;; INFO: Used lq/sq
@@ -1685,7 +1732,3 @@ Most [[process-drawable]]s have a [[collide-shape]] that represents their root t
 
 ;; failed to figure out what this is:
 0
-
-
-
-
