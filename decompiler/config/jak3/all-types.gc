@@ -2016,7 +2016,7 @@
   )
 
 (deftype trsq (trs)
-  ((quat quaternion :inline :offset 32)
+  ((quat quaternion :inline :offset 32 :score 1)
    )
   :method-count-assert 9
   :size-assert         #x40
@@ -13295,6 +13295,7 @@
    (last-ambient      string     :offset-assert 8) ;; guessed by decompiler
    (last-ambient-id   sound-id   :offset-assert 12) ;; guessed by decompiler
    )
+  :pack-me
   :method-count-assert 12
   :size-assert         #x10
   :flag-assert         #xc00000010
@@ -16542,6 +16543,7 @@
   :type uint64
   (push 1)
   (blend 2)
+  (eight 8)
   (push1 19)
   (stack 36)
   (float 42)
@@ -16568,6 +16570,8 @@
 (declare-type effect-control basic)
 
 (deftype joint-control-channel (structure)
+  "A single animation channel that controls a number of joints.
+   Multiple channels are used to blend animations together."
   ((parent           joint-control                                              :offset-assert 0) ;; guessed by decompiler
    (frame-group      art-joint-anim                                             :offset-assert 4) ;; guessed by decompiler
    (frame-num        float                                                      :offset-assert 8)
@@ -16620,6 +16624,7 @@
   )
 
 (deftype joint-control (basic)
+  "Every [[process-drawable]] has a [[joint-control]] that handles all the animation channels."
   ((status                  joint-control-status                                             :offset-assert 4)
    (allocated-length        uint8                                                            :offset-assert 6)
    (active-channels         uint8                                                            :offset-assert 7)
@@ -16661,6 +16666,7 @@
   )
 
 (deftype channel-upload-info (structure)
+  "Information about an upload of animation data to a single joint channel."
   ((fixed     joint-anim-compressed-fixed  :offset-assert 0)
    (fixed-qwc int32                        :offset-assert 4)
    (frame     joint-anim-compressed-frame  :offset-assert 8)
@@ -18261,6 +18267,7 @@
   )
 
 (deftype attack-dir-info (structure)
+  "Information about the position/direction of an attack."
   ((dir               vector :inline :offset-assert 0)
    (xz-dir            vector :inline :offset-assert 16)
    (attacker-velocity vector :inline :offset-assert 32)
@@ -18302,6 +18309,7 @@
   )
 
 (deftype attack-info (structure)
+  "Information about an incoming attack."
   ((trans                  vector           :inline :offset-assert 0)
    (vector                 vector           :inline :offset-assert 16)
    (attacker-velocity      vector           :inline :offset-assert 32)
@@ -18711,7 +18719,6 @@
   )
 ;; ---pov-camera-h:pov-camera-flags
 
-#|
 (deftype pov-camera (process-drawable)
   ((flags               pov-camera-flags :offset-assert 200) ;; pov-camera-flag
    (debounce-start-time time-frame    :offset-assert 208) ;; time-frame
@@ -18740,7 +18747,6 @@
     (pov-camera-method-29 () none) ;; 29 ;; (target-released? (_type_) symbol)
     )
   )
-|#
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; smush-control-h                ;;
@@ -19597,13 +19603,47 @@
 ;; generic-obs-h                  ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (deftype manipy (process-drawable)
-;;   ()
-;;   :flag-assert #x1501000174
-;;   )
+;; +++generic-obs-h:manipy-options
+(defenum manipy-options
+  :bitfield #t
+  :type uint32
+  (mo-0 0)
+  )
+;; ---generic-obs-h:manipy-options
 
-#|
+(deftype manipy (process-drawable)
+  ((root                 collide-shape                   :override)
+   (new-trans-hook       (function none)        :offset-assert 200)
+   (cur-trans-hook       (function none)        :offset-assert 204)
+   (cur-event-hook       (function none)        :offset-assert 208)
+   (new-joint-anim       art-joint-anim         :offset-assert 212)
+   (new-joint-anim-blend uint64                 :offset-assert 216)
+   (new-joint-anim-frame float                  :offset-assert 224)
+   (anim-mode            symbol                 :offset-assert 228)
+   (cur-grab-handle      handle                 :offset-assert 232)
+   (cur-target-handle    handle                 :offset-assert 240)
+   (old-grab-pos         vector        :inline  :offset-assert 256)
+   (joint                joint-mod 4            :offset-assert 272)
+   (new-post-hook        (function none)        :offset-assert 288)
+   (cur-post-hook        (function none)        :offset-assert 292)
+   (clone-copy-trans     symbol                 :offset-assert 296)
+   (shadow-backup        basic                  :offset-assert 300)
+   (draw?                symbol                 :offset-assert 304)
+   (userdata             uint64                 :offset-assert 312)
+   (prefix               basic                  :offset-assert 320)
+   (shadow-volume-joint  int32                  :offset-assert 324)
+   (speed                float                  :offset-assert 328)
+   (user-uint64          uint64    4            :offset-assert 336)
+   (options              manipy-options         :offset-assert 368)
+   )
+  :flag-assert #x1501000174
+  (:state-methods
+    idle
+    )
+  )
+
 (deftype part-spawner (process)
+  "A process that spawns a specified particle group."
   ((root          trsqv                                    :offset-assert 128) ;; guessed by decompiler
    (part          sparticle-launch-control                 :offset-assert 132) ;; guessed by decompiler
    (path          basic                                    :offset-assert 136)
@@ -19620,14 +19660,14 @@
   :method-count-assert 16
   :size-assert         #xe0
   :flag-assert         #x10006000e0
+  (:state-methods
+    active
+    )
   (:methods
-    (part-spawner-method-14 () none) ;; 14 ;; (active () _type_ :state)
     (part-spawner-method-15 () none) ;; 15 ;; (is-in-view? (_type_) symbol)
     )
   )
-|#
 
-#|
 (deftype part-tracker (process)
   ((root            trsqv                                  :offset-assert 128) ;; guessed by decompiler
    (mat             matrix                         :inline :offset-assert 144)
@@ -19635,14 +19675,14 @@
    (userdata        uint64                                 :offset-assert 224)
    (user-time       time-frame                     2       :offset-assert 232) ;; guessed by decompiler
    (user-vector     vector                         :inline :offset-assert 256)
-   (user-handle     uint32                         2       :offset-assert 288) ;; guessed by decompiler
+   (user-handle     uint32                         2       :offset 288) ;; guessed by decompiler
    (part            sparticle-launch-control               :offset-assert 296) ;; guessed by decompiler
    (callback        (function part-tracker vector)         :offset-assert 300) ;; guessed by decompiler
    (linger-callback (function part-tracker vector)         :offset-assert 304) ;; guessed by decompiler
-   (duration        uint64                                 :offset-assert 312)
-   (linger-duration uint64                                 :offset-assert 320)
-   (state-time      uint64                                 :offset-assert 328)
-   (target          uint64                                 :offset-assert 336) ;; handle
+   (duration        time-frame                             :offset-assert 312)
+   (linger-duration time-frame                             :offset-assert 320)
+   (state-time      time-frame                             :offset-assert 328)
+   (target          handle                                 :offset-assert 336) ;; handle
    (target-joint    int32                                  :offset-assert 344)
    )
   :method-count-assert 18
@@ -19656,30 +19696,26 @@
     (part-tracker-method-17 () none) ;; 17
     )
   )
-|#
 
-#|
 (deftype part-tracker-init-params (structure)
-  ((userdata  uint64  :offset-assert 0)
-   (duration  uint64  :offset-assert 8)
-   (group     basic   :offset-assert 16)
-   (callback  basic   :offset-assert 20)
-   (target    basic   :offset-assert 24)
-   (mat-joint basic   :offset-assert 28)
+  ((userdata  uint64                         :offset-assert 0)
+   (duration  time-frame                     :offset-assert 8)
+   (group     sparticle-launch-group         :offset-assert 16)
+   (callback  (function part-tracker vector) :offset-assert 20)
+   (target    basic                          :offset-assert 24)
+   (mat-joint basic                          :offset-assert 28)
    )
   :method-count-assert 9
   :size-assert         #x20
   :flag-assert         #x900000020
   ;; field userdata uses ~A with a 64-bit load. field mat-joint uses ~A with a signed load.
   )
-|#
 
-#|
 (deftype part-tracker-subsampler-init-params (structure)
   ((userdata      uint64  :offset-assert 0)
-   (duration      uint64  :offset-assert 8)
-   (group         basic   :offset-assert 16)
-   (callback      basic   :offset-assert 20)
+   (duration      time-frame :offset-assert 8)
+   (group         sparticle-launch-group :offset-assert 16)
+   (callback      (function part-tracker vector) :offset-assert 20)
    (target        basic   :offset-assert 24)
    (mat-joint     basic   :offset-assert 28)
    (subsample-num float   :offset-assert 32)
@@ -19689,9 +19725,7 @@
   :flag-assert         #x900000024
   ;; field userdata uses ~A with a 64-bit load. field mat-joint uses ~A with a signed load.
   )
-|#
 
-#|
 (deftype part-tracker-subsampler (part-tracker)
   ((subsampler basic  :offset-assert 348)
    )
@@ -19699,26 +19733,24 @@
   :size-assert         #x160
   :flag-assert         #x1200e00160
   )
-|#
 
-#|
 (deftype lightning-tracker (process)
   ((root          trsqv                                     :offset-assert 128) ;; guessed by decompiler
    (lightning     lightning-control                         :offset-assert 132) ;; guessed by decompiler
    (callback      (function lightning-tracker none)         :offset-assert 136) ;; guessed by decompiler
-   (duration      uint64                                    :offset-assert 144)
-   (start-time    uint64                                    :offset-assert 152) ;; time-frame
+   (duration      time-frame                                :offset-assert 144)
+   (start-time    time-frame                                :offset-assert 152) ;; time-frame
    (offset0       vector                            :inline :offset-assert 160)
    (offset1       vector                            :inline :offset-assert 176)
-   (target0       uint64                                    :offset-assert 192) ;; handle
-   (target1       uint64                                    :offset-assert 200) ;; handle
+   (target0       handle                                    :offset-assert 192) ;; handle
+   (target1       handle                                    :offset-assert 200) ;; handle
    (target-joint0 int32                                     :offset-assert 208)
    (target-joint1 int32                                     :offset-assert 212)
    (sound         sound-id                                  :offset-assert 216) ;; guessed by decompiler
    (userdata      uint64                                    :offset-assert 224)
    (user-time     time-frame                        2       :offset-assert 232) ;; guessed by decompiler
    (user-vector   vector                            :inline :offset-assert 256)
-   (user-handle   handle                            2       :offset-assert 288) ;; guessed by decompiler
+   (user-handle   handle                            2       :offset 288) ;; guessed by decompiler
    )
   :method-count-assert 17
   :size-assert         #x130
@@ -19730,12 +19762,10 @@
     (lightning-tracker-method-16 () none) ;; 16 ;; (update (_type_) none)
     )
   )
-|#
 
-#|
 (deftype touch-tracker (process-drawable)
-  ((duration     uint64                         :offset-assert 200) ;; time-frame
-   (target       uint64                         :offset-assert 208) ;; handle
+  ((duration     time-frame                     :offset-assert 200) ;; time-frame
+   (target       handle                         :offset-assert 208) ;; handle
    (event        symbol                         :offset-assert 216) ;; guessed by decompiler
    (run-function (function object)              :offset-assert 220) ;; guessed by decompiler
    (callback     (function touch-tracker none)  :offset-assert 224) ;; guessed by decompiler
@@ -19748,9 +19778,7 @@
     (touch-tracker-method-20 () none) ;; 20 ;; (active () _type_ :state)
     )
   )
-|#
 
-#|
 (deftype swingpole (process-drawable)
   ((edge-length meters             :offset-assert 200)
    (path-pos    float              :offset-assert 204)
@@ -19770,9 +19798,7 @@
     (swingpole-method-24 () none) ;; 24
     )
   )
-|#
 
-#|
 (deftype gui-query (structure)
   ((x-position        int32   :offset-assert 0)
    (y-position        int32   :offset-assert 4)
@@ -19790,17 +19816,15 @@
     (gui-query-method-10 () none) ;; 10 ;; (gui-query-method-10 () none)
     )
   )
-|#
 
-#|
 (deftype othercam (process)
-  ((hand              uint64               :offset-assert 128) ;; handle
+  ((hand              handle               :offset-assert 128) ;; handle
    (old-global-mask   process-mask         :offset-assert 136) ;; guessed by decompiler
    (mask-to-clear     process-mask         :offset-assert 140) ;; guessed by decompiler
    (cam-joint-index   int32                :offset-assert 144)
    (old-pos           vector       :inline :offset-assert 160)
    (old-mat-z         vector       :inline :offset-assert 176)
-   (had-valid-frame   basic                :offset-assert 192)
+   (had-valid-frame   symbol               :offset-assert 192)
    (border-value      basic                :offset-assert 196)
    (die?              symbol               :offset-assert 200) ;; guessed by decompiler
    (survive-anim-end? symbol               :offset-assert 204) ;; guessed by decompiler
@@ -19814,9 +19838,7 @@
     othercam-running ;; associated process guessed by decompiler, old: (state othercam)
     )
   )
-|#
 
-#|
 (deftype explosion-init-params (structure)
   ((spawn-point            vector                 :inline :offset-assert 0)
    (spawn-quat             quaternion             :inline :offset-assert 16)
@@ -19834,13 +19856,11 @@
   :size-assert         #x48
   :flag-assert         #x900000048
   )
-|#
 
-#|
 (deftype explosion (process-drawable)
-  ((start-time      uint64                        :offset-assert 200) ;; time-frame
-   (duration        uint32                        :offset-assert 208)
-   (linger-duration uint32                        :offset-assert 212)
+  ((start-time      time-frame                    :offset-assert 200) ;; time-frame
+   (duration        uint32                        :offset-assert 208 :decomp-as time-frame)
+   (linger-duration uint32                        :offset-assert 212 :decomp-as time-frame)
    (attack-id       uint32                        :offset-assert 216)
    (mat             matrix                :inline :offset-assert 224)
    (params          explosion-init-params :inline :offset-assert 288)
@@ -19854,53 +19874,19 @@
     (explosion-method-22 () none) ;; 22 ;; (explosion-method-22 (_type_) none)
     )
   )
-|#
 
-#|
 (deftype process-hidden (process)
-  ((name             string                                                            :offset-assert 0) ;; guessed by decompiler
-   (mask             process-mask                                                      :offset-assert 4)
-   (clock            clock                                                             :offset-assert 8) ;; guessed by decompiler
-   (parent           (pointer process-tree)                                            :offset-assert 12) ;; guessed by decompiler
-   (brother          (pointer process-tree)                                            :offset-assert 16) ;; guessed by decompiler
-   (child            (pointer process-tree)                                            :offset-assert 20) ;; guessed by decompiler
-   (ppointer         (pointer process)                                                 :offset-assert 24) ;; guessed by decompiler
-   (self             process                                                           :offset-assert 28) ;; guessed by decompiler
-   (pool             dead-pool                                                         :offset-assert 32) ;; guessed by decompiler
-   (status           symbol                                                            :offset-assert 36) ;; guessed by decompiler
-   (pid              int32                                                             :offset-assert 40)
-   (main-thread      cpu-thread                                                        :offset-assert 44) ;; guessed by decompiler
-   (top-thread       cpu-thread                                                        :offset-assert 48) ;; guessed by decompiler
-   (entity           entity-actor                                                      :offset-assert 52) ;; guessed by decompiler
-   (level            level                                                             :offset-assert 56) ;; guessed by decompiler
-   (state            state                                                             :offset-assert 60) ;; guessed by decompiler
-   (prev-state       basic                                                             :offset-assert 64)
-   (next-state       state                                                             :offset-assert 68) ;; guessed by decompiler
-   (state-stack      basic                                                             :offset-assert 72)
-   (trans-hook       function                                                          :offset-assert 76) ;; guessed by decompiler
-   (post-hook        function                                                          :offset-assert 80) ;; guessed by decompiler
-   (event-hook       (function process int symbol event-message-block object)          :offset-assert 84) ;; guessed by decompiler
-   (allocated-length int32                                                             :offset-assert 88)
-   (heap-base        pointer                                                           :offset-assert 92) ;; guessed by decompiler
-   (heap-top         pointer                                                           :offset-assert 96) ;; guessed by decompiler
-   (heap-cur         pointer                                                           :offset-assert 100) ;; guessed by decompiler
-   (stack-frame-top  stack-frame                                                       :offset-assert 104) ;; guessed by decompiler
-   (heap             kheap                                                    :inline  :offset-assert 92)
-   (connection-list  connectable                                              :inline  :offset-assert 108)
-   (stack            uint8                                                    :dynamic :offset-assert 124) ;; guessed by decompiler
-   )
+  ()
   :method-count-assert 15
   :size-assert         #x80
   :flag-assert         #xf00000080
-  (:methods
-    (process-hidden-method-14 () none) ;; 14 ;; (die () _type_ :state)
+  (:state-methods
+    die ;; 14
     )
   )
-|#
 
-#|
 (deftype simple-prim (process-drawable)
-  ((strip basic  :offset-assert 200)
+  ((strip prim-strip :offset-assert 200)
    )
   :method-count-assert 26
   :size-assert         #xcc
@@ -19914,9 +19900,18 @@
     (simple-prim-method-25 () none) ;; 25
     )
   )
-|#
 
-#|
+;; +++generic-obs-h:task-arrow-flags
+(defenum task-arrow-flags
+  :type uint32
+  :bitfield #t
+  (task-arrow-flag-00 0)
+  (task-arrow-flag-01 1)
+  (task-arrow-flag-02 2)
+  (task-arrow-flag-03 3)
+  )
+;; ---generic-obs-h:task-arrow-flags
+
 (deftype task-arrow-params (structure)
   ((flags    task-arrow-flags         :offset-assert 0) ;; guessed by decompiler
    (map-icon uint16                   :offset-assert 4)
@@ -19927,12 +19922,10 @@
   :size-assert         #x30
   :flag-assert         #x900000030
   )
-|#
 
-#|
 (deftype external-camera-controller (process)
-  ((pause-time uint64  :offset-assert 128)
-   (blur       basic   :offset-assert 136)
+  ((pause-time time-frame :offset-assert 128)
+   (blur       symbol     :offset-assert 136)
    )
   :method-count-assert 15
   :size-assert         #x8c
@@ -19941,17 +19934,15 @@
     (external-camera-controller-method-14 () none) ;; 14
     )
   )
-|#
 
-;; (define-extern *simple-prim-additive* object)
-;; (define-extern *simple-prim-alpha-blend* object)
-;; (define-extern *simple-prim-subtractive* object)
+(define-extern *simple-prim-additive* int)
+(define-extern *simple-prim-alpha-blend* int)
+(define-extern *simple-prim-subtractive* int)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; trajectory-h                   ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype trajectory (structure)
   ((initial-position vector :inline :offset-assert 0)
    (initial-velocity vector :inline :offset-assert 16)
@@ -19973,52 +19964,44 @@
     (trajectory-method-17 () none) ;; 17 ;; (debug-draw (_type_) none)
     )
   )
-|#
 
-#|
 (deftype impact-control (structure)
   ((process      (pointer process-drawable)         :offset-assert 0) ;; guessed by decompiler
    (radius       meters                             :offset-assert 4) ;; float
    (joint        int32                              :offset-assert 8)
    (collide-with collide-spec                       :offset-assert 12) ;; guessed by decompiler
    (start-time   uint64                             :offset-assert 16) ;; time-frame
-   (trans        vector                     2       :offset-assert 32) ;; guessed by decompiler
-   (UNKNOWN      UNKNOWN                            :offset-assert -1) ;; field could not be read.
+   (trans        vector                     2 :inline :offset-assert 32) ;; guessed by decompiler
    (dir          vector                     :inline :offset-assert 64)
    )
   :method-count-assert 12
   :size-assert         #x50
   :flag-assert         #xc00000050
   (:methods
-    (new (symbol type) _type_) ;; 0 ;; (new (symbol type process-drawable int float collide-spec) _type_)
-    (impact-control-method-9 () none) ;; 9 ;; (initialize (_type_ process-drawable int float collide-spec) impact-control)
+    (new (symbol type process-drawable int float collide-spec) _type_) ;; 0
+    (initialize (_type_ process-drawable int float collide-spec) impact-control) ;; 9
     (impact-control-method-10 () none) ;; 10 ;; (update-from-cspace (_type_) none)
     (impact-control-method-11 () none) ;; 11 ;; (impact-control-method-11 (_type_ collide-query process pat-surface) float)
     )
   )
-|#
 
-#|
 (deftype point-tracker (structure)
-  ((trans   vector  2 :offset-assert 0) ;; guessed by decompiler
-   (UNKNOWN UNKNOWN   :offset-assert -1) ;; field could not be read.
+  ((trans   vector  2 :inline :offset-assert 0) ;; guessed by decompiler
    )
   :method-count-assert 12
   :size-assert         #x20
   :flag-assert         #xc00000020
   (:methods
-    (new (symbol type) _type_) ;; 0 ;; (new (symbol type vector vector) _type_)
-    (point-tracker-method-9 () none) ;; 9 ;; (initialize (_type_ vector vector) point-tracker)
+    (new (symbol type vector vector) _type_) ;; 0
+    (initialize (_type_ vector vector) point-tracker) ;; 9
     (point-tracker-method-10 () none) ;; 10 ;; (point-tracker-method-10 (_type_ vector vector vector float) vector)
     (point-tracker-method-11 () none) ;; 11 ;; (point-tracker-method-11 (_type_ vector vector vector float) vector)
     )
   )
-|#
 
-#|
 (deftype combo-tracker (point-tracker)
-  ((target          uint64  :offset-assert 32) ;; handle
-   (move-start-time uint64  :offset-assert 40) ;; time-frame
+  ((target          handle     :offset-assert 32) ;; handle
+   (move-start-time time-frame :offset-assert 40) ;; time-frame
    )
   :method-count-assert 14
   :size-assert         #x30
@@ -20028,9 +20011,7 @@
     (combo-tracker-method-13 () none) ;; 13 ;; (combo-tracker-method-13 (_type_ handle vector float vector float) basic)
     )
   )
-|#
 
-#|
 (deftype traj2d-params (structure)
   ((x             float  :offset-assert 0)
    (y             float  :offset-assert 4)
@@ -20043,9 +20024,7 @@
   :size-assert         #x18
   :flag-assert         #x900000018
   )
-|#
 
-#|
 (deftype traj3d-params (structure)
   ((gravity          float          :offset-assert 0)
    (initial-tilt     float          :offset-assert 4)
@@ -20060,9 +20039,7 @@
   :size-assert         #x50
   :flag-assert         #x900000050
   )
-|#
 
-#|
 (deftype cubic-curve (structure)
   ((mat matrix :inline :offset-assert 0)
    )
@@ -20077,17 +20054,16 @@
     (cubic-curve-method-13 () none) ;; 13 ;; (debug-draw-curve (_type_) none)
     )
   )
-|#
-
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; collide-target-h               ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (deftype control-info (collide-shape-moving)
-;;   ()
-;;   :flag-assert #x4400001914
-;;   )
+(deftype control-info (collide-shape-moving)
+  ((pad uint8 5944)
+   )
+  :flag-assert #x4400001914
+  )
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -20370,74 +20346,120 @@
 ;; process-drawable-h             ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (define-extern cspace-by-name-no-fail function) ;; (function process-drawable string cspace)
-;; (define-extern cspace-index-by-name-no-fail function) ;; (function process-drawable string int)
-;; (define-extern num-func-none function) ;; (function joint-control-channel float float float float :behavior process)
-;; (define-extern num-func-+! function) ;; (function joint-control-channel float float float float :behavior process)
-;; (define-extern num-func--! function) ;; (function joint-control-channel float float float float :behavior process)
-;; (define-extern num-func-loop! function) ;; (function joint-control-channel float float float float :behavior process)
-;; (define-extern num-func-loop-speedless! function) ;; (function joint-control-channel float float float float :behavior process)
-;; (define-extern num-func-loop-set! function)
-;; (define-extern num-func-seek! function) ;; (function joint-control-channel float float float float :behavior process)
-;; (define-extern num-func-blend-in! function) ;; (function joint-control-channel float float float float :behavior process)
-;; (define-extern joint-channel-float-delete! function) ;; (function joint-control-channel none)
-;; (define-extern num-func-interp-play! function) ;; (function joint-control-channel float float float float :behavior process)
-;; (define-extern num-func-interp1-play! function) ;; (function joint-control-channel float float float float :behavior process)
-;; (define-extern num-func-chan function) ;; (function joint-control-channel float float float float :behavior process)
-;; (define-extern num-func-identity function) ;; (function joint-control-channel float float float float :behavior process)
+(define-extern cspace-by-name-no-fail "Like [[cspace-by-name]], but prints an error if the [[cspace]] was not found and returns the `node-list`." (function process-drawable string cspace))
+(define-extern cspace-index-by-name-no-fail "Like [[cspace-index-by-name]], but prints an error if the [[cspace]] was not found and returns 0." (function process-drawable string int))
+(define-extern num-func-none (function joint-control-channel float float float float :behavior process))
+(define-extern num-func-+! (function joint-control-channel float float float float :behavior process))
+(define-extern num-func--! (function joint-control-channel float float float float :behavior process))
+(define-extern num-func-loop! (function joint-control-channel float float float float :behavior process))
+(define-extern num-func-loop-speedless! (function joint-control-channel float float float float :behavior process))
+(define-extern num-func-loop-set! (function joint-control-channel float float float float :behavior process))
+(define-extern num-func-seek! (function joint-control-channel float float float float :behavior process))
+(define-extern num-func-blend-in! (function joint-control-channel float float float float :behavior process))
+(define-extern joint-channel-float-delete! (function joint-control-channel none))
+(define-extern num-func-interp-play! (function joint-control-channel float float float float :behavior process))
+(define-extern num-func-interp1-play! (function joint-control-channel float float float float :behavior process))
+(define-extern num-func-chan (function joint-control-channel float float float float :behavior process))
+(define-extern num-func-identity (function joint-control-channel float float float float :behavior process))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; process-focusable              ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
+;; +++process-focusable:focus-status
+(defenum focus-status
+  :type uint64
+  :bitfield #t
+  (disable 0) ;; if set, all collide checks fail
+  (dead 1)    ;; if set, all collide checks fail
+  (ignore 2)
+  (inactive 3)
+  (dangerous 4)
+  (in-air 5)
+  (hit 6)
+  (grabbed 7)
+  (in-head 8)
+  (touch-water 9)
+  (on-water 10)
+  (under-water 11)
+  (edge-grab 12)
+  (pole 13)
+  (pilot-riding 14)
+  (flut 15)
+  (tube 16)
+  (ice 17)
+  (board 18)
+  (gun 19)
+  (pilot 20) ;; also racer?
+  (mech 21)
+  (dark 22)
+  (rail 23)
+  (halfpipe 24)
+  (carry 25)
+  (super 26)
+  (shooting 27)
+  (indax 28)
+  (arrestable 29)
+  (teleporting 30)
+  (fs31 31)
+  )
+;; ---process-focusable:focus-status
+
 (deftype process-focusable (process-drawable)
-  ((focus-status uint64  :offset-assert 200) ;; focus-status
+  ((root         collide-shape :override)
+   (focus-status focus-status  :offset-assert 200) ;; focus-status
    )
   :method-count-assert 28
   :size-assert         #xd0
   :flag-assert         #x1c005000d0
   (:methods
-    (process-focusable-method-20 () none) ;; 20 ;; (get-trans (_type_ int) vector)
-    (process-focusable-method-21 () none) ;; 21 ;; (get-quat (_type_ int) quaternion)
-    (process-focusable-method-22 () none) ;; 22 ;; (get-transv (_type_) vector)
-    (process-focusable-method-23 () none) ;; 23 ;; (time-to-apex-or-ground (_type_ int) int)
-    (process-focusable-method-24 () none) ;; 24 ;; (get-water-height (_type_) meters)
-    (process-focusable-method-25 () none) ;; 25 ;; (get-notice-time (_type_) time-frame)
-    (process-focusable-method-26 () none) ;; 26 ;; (get-inv-mass (_type_) float)
-    (process-focusable-method-27 () none) ;; 27
+    (process-focusable-method-20 (_type_) int) ;; 20
+    (get-trans "Get the `trans` for this process." (_type_ int) vector) ;; 21
+    (get-quat "Get the quaternion for this process." (_type_) quaternion) ;; 22
+    (get-transv "Get the `transv` for this process." (_type_) vector) ;; 23
+    (time-to-apex-or-ground (_type_ int) int) ;; 24
+    (get-water-height (_type_) meters) ;; 25
+    (get-notice-time (_type_) time-frame) ;; 26
+    (get-inv-mass (_type_) float) ;; 27
     )
   )
-|#
-
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; process-taskable-h             ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
+;; +++process-taskable-h:process-taskable-flags
+(defenum process-taskable-flags
+  :type uint32
+  :bitfield #t
+  )
+;; ---process-taskable-h:process-taskable-flags
+
 (deftype process-taskable (process-focusable)
-  ((flags            uint32                    :offset-assert 208)
+  "The parent class for NPCs that can be talked to."
+  ((flags            process-taskable-flags    :offset-assert 208)
    (task             game-task-control         :offset-assert 212) ;; guessed by decompiler
-   (ambient          ambient-control   :inline :offset-assert 216)
+   (ambient          ambient-control   :inline :offset 216)
    (neck-joint-index int32                     :offset-assert 232)
    (talk-message     text-id                   :offset-assert 236) ;; guessed by decompiler
    (talk-distance    meters                    :offset-assert 240)
    (talk-height      meters                    :offset-assert 244)
-   (last-talk        uint64                    :offset-assert 248) ;; time-frame
-   (want-to-say      uint64                    :offset-assert 256) ;; time-frame
-   (birth-time       uint64                    :offset-assert 264) ;; time-frame
-   (slave            uint64                    :offset-assert 272) ;; handle
+   (last-talk        time-frame                :offset-assert 248) ;; time-frame
+   (want-to-say      time-frame                :offset-assert 256) ;; time-frame
+   (birth-time       time-frame                :offset-assert 264) ;; time-frame
+   (slave            handle                    :offset-assert 272) ;; handle
    )
   :method-count-assert 40
   :size-assert         #x118
   :flag-assert         #x2800a00118
+  (:state-methods
+    hide
+    idle
+    (active game-task-event)
+    die
+    (play-game game-task-event)
+    )
   (:methods
-    (process-taskable-method-28 () none) ;; 28 ;; (idle () _type_ :state)
-    (process-taskable-method-29 () none) ;; 29 ;; (active (game-task-event) _type_ :state)
-    (process-taskable-method-30 () none) ;; 30 ;; (play-game (game-task-event) _type_ :state)
-    (process-taskable-method-31 () none) ;; 31 ;; (process-taskable-method-31 (_type_) none)
-    (process-taskable-method-32 () none) ;; 32 ;; (process-taskable-method-32 (_type_) none)
     (process-taskable-method-33 () none) ;; 33 ;; (init-art! (_type_) none)
     (process-taskable-method-34 () none) ;; 34 ;; (process-taskable-method-34 (_type_) symbol)
     (process-taskable-method-35 () none) ;; 35 ;; (get-art-elem (_type_) art-element)
@@ -20447,37 +20469,43 @@
     (process-taskable-method-39 () none) ;; 39
     )
   )
-|#
-
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; focus                          ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype focus (structure)
-  ((handle       uint64        :offset-assert 0) ;; handle
+  "A structure that keeps a handle to a [[process-focusable]]."
+  ((handle       handle        :offset-assert 0) ;; handle
    (collide-with collide-spec  :offset-assert 8) ;; guessed by decompiler
    )
   :method-count-assert 13
   :size-assert         #xc
   :flag-assert         #xd0000000c
   (:methods
-    (focus-method-9 () none) ;; 9 ;; (clear-focused (_type_) none)
-    (focus-method-10 () none) ;; 10 ;; (collide-check? (_type_ process-focusable) object)
-    (focus-method-11 () none) ;; 11 ;; (reset-to-collide-spec (_type_ collide-spec) none)
-    (focus-method-12 () none) ;; 12 ;; (try-update-focus (_type_ process-focusable) symbol)
+    (clear-focused "Reset the focus' handle." (_type_) none) ;; 9
+    (collide-check?
+      "If the focused process is not dead,
+       check that the [[collide-spec]] of the focus and the process match."
+      (_type_ process-focusable) object) ;; 10
+    (reset-to-collide-spec "Reset this focus with the given [[collide-spec]]." (_type_ collide-spec) none) ;; 11
+    (try-update-focus "Try to set the `handle` of this focus to the given process." (_type_ process-focusable) symbol) ;; 12
     )
   )
-|#
-
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; effect-control-h               ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
+;; +++effect-control-h:effect-control-flag
+(defenum effect-control-flag
+  :type uint32
+  :bitfield #t
+  )
+;; ---effect-control-h:effect-control-flag
+
 (deftype effect-control (basic)
+  "An effect such as a particle with sound effects that plays during an animation."
   ((process          process-drawable     :offset-assert 4) ;; guessed by decompiler
    (flags            effect-control-flag  :offset-assert 8) ;; guessed by decompiler
    (last-frame-group art-joint-anim       :offset-assert 12) ;; guessed by decompiler
@@ -20491,17 +20519,15 @@
   :size-assert         #x24
   :flag-assert         #xf00000024
   (:methods
-    (new (symbol type) _type_) ;; 0 ;; (new (symbol type process-drawable) _type_)
-    (effect-control-method-9 () none) ;; 9 ;; (update-effects (_type_) none)
+    (new (symbol type process-drawable) _type_) ;; 0
+    (effect-control-method-9 () none) ;; 9
     (effect-control-method-10 () none) ;; 10 ;; (do-effect (_type_ symbol float int) none)
     (effect-control-method-11 () none) ;; 11 ;; (do-effect-for-surface (_type_ symbol float int basic pat-surface) none)
     (effect-control-method-12 () none) ;; 12 ;; (play-effect-sound (_type_ symbol float int basic sound-name) int)
-    (effect-control-method-13 () none) ;; 13 ;; (set-channel-offset! (_type_ int) none)
+    (set-channel-offset! (_type_ int) none) ;; 13
     (effect-control-method-14 () none) ;; 14 ;; (play-effects-from-res-lump (_type_ float float float) none)
     )
   )
-|#
-
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; collide-frag-h                 ;;
@@ -20698,13 +20724,51 @@
 ;; water-info-h                   ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
+;; +++water-info-h:water-flag
+(defenum water-flag
+  :type uint32
+  :bitfield #t
+  (active 0)
+  (can-wade 1)
+  (can-swim 2)
+  (swim-ground 3)
+  (can-ground 4)
+  (use-ocean 5)
+  (tar 6)
+  (mud 7)
+  (deadly 8)
+  (use-water-anim 9)
+  (no-grab-sound 10)
+  (dark-eco 11)
+  (lava 12)
+  (swamp 13)
+  (flow 14)
+  (under-water 15)
+  (head-under-water 16)
+  (bouncing 17)
+  (wading 18)
+  (swimming 19)
+  (touch-water 20)
+  (jump-out 21)
+  (break-surface 22)
+  (spawn-drip 23)
+  (part-splash 24)
+  (part-drip 25)
+  (part-rings 26)
+  (part-water 27)
+  (event 28)
+  (over-water 29)
+  (find-water 30)
+  (touch-water-good 31)
+  )
+;; ---water-info-h:water-flag
+
 (deftype water-info (structure)
   ((trans       vector               :inline :offset-assert 0)
    (normal      vector               :inline :offset-assert 16)
    (base-height meters                       :offset-assert 32)
    (depth       meters                       :offset-assert 36)
-   (handle      uint64                       :offset-assert 40) ;; handle
+   (handle      handle                       :offset-assert 40) ;; handle
    (flags       water-flag                   :offset-assert 48) ;; water-flags
    (prim        drawable-region-prim         :offset-assert 52) ;; guessed by decompiler
    (extra-flags uint32                       :offset-assert 56)
@@ -20713,9 +20777,7 @@
   :size-assert         #x3c
   :flag-assert         #x90000003c
   )
-|#
 
-#|
 (deftype water-sphere (structure)
   ((sphere sphere     :inline :offset-assert 0)
    (flags  water-flag         :offset-assert 16)
@@ -20725,8 +20787,6 @@
   :size-assert         #x18
   :flag-assert         #x900000018
   )
-|#
-
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; chain-physics-h                ;;
@@ -21096,12 +21156,32 @@
 ;; target-h                       ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
+;; +++target-h:target-flags
+(defenum target-flags
+  :type uint32
+  :bitfield #t
+  )
+;; ---target-h:target-flags
+
+(declare-type sidekick process-drawable)
+(declare-type racer-info basic)
+(declare-type tube-info basic)
+(declare-type flut-info basic)
+(declare-type board-info basic)
+(declare-type pilot-info basic)
+(declare-type gun-info basic)
+(declare-type mech-info basic)
+(declare-type turret-info basic)
+(declare-type indax-info basic)
+(declare-type ladder-info basic)
+(declare-type darkjak-info basic)
+(declare-type lightjak-info basic)
+
 (deftype target (process-focusable)
-  ((control                     control-info                             :offset-assert 128) ;; guessed by decompiler
+  ((control                     control-info                             :offset 128 :score 1) ;; guessed by decompiler
    (skel2                       joint-control                            :offset-assert 208) ;; guessed by decompiler
    (shadow-backup               shadow-geo                               :offset-assert 212) ;; guessed by decompiler
-   (target-flags                uint32                                   :offset-assert 188)
+   (target-flags                target-flags                             :offset 188 :score 1)
    (game                        game-info                                :offset-assert 216) ;; guessed by decompiler
    (neck                        joint-mod                                :offset-assert 220) ;; guessed by decompiler
    (head                        joint-mod                                :offset-assert 224) ;; guessed by decompiler
@@ -21112,9 +21192,9 @@
    (leg-ik                      joint-mod-ik                     2       :offset-assert 252) ;; guessed by decompiler
    (foot                        joint-mod                        2       :offset-assert 260) ;; guessed by decompiler
    (cloth                       basic                                    :offset-assert 268)
-   (init-time                   uint64                                   :offset-assert 272) ;; time-frame
-   (teleport-time               uint64                                   :offset-assert 280) ;; time-frame
-   (state-hook-time             uint64                                   :offset-assert 288) ;; time-frame
+   (init-time                   time-frame                               :offset-assert 272) ;; time-frame
+   (teleport-time               time-frame                               :offset-assert 280) ;; time-frame
+   (state-hook-time             time-frame                               :offset-assert 288) ;; time-frame
    (state-hook                  (function none :behavior target)         :offset-assert 296) ;; guessed by decompiler
    (cam-user-mode               symbol                                   :offset-assert 300) ;; guessed by decompiler
    (sidekick                    (pointer sidekick)                       :offset-assert 304) ;; guessed by decompiler
@@ -21122,26 +21202,26 @@
    (mirror                      (pointer process-drawable)               :offset-assert 312) ;; guessed by decompiler
    (attack-info                 attack-info                      :inline :offset-assert 320)
    (attack-info-rec             attack-info                      :inline :offset-assert 496)
-   (attack-info-old             attack-info                      8       :offset-assert 672) ;; guessed by decompiler
+   (attack-info-old             attack-info                      8 :inline :offset-assert 672) ;; guessed by decompiler
    (anim-seed                   uint64                                   :offset-assert 2080)
    (alt-cam-pos                 vector                           :inline :offset-assert 2096)
    (current-level               level                                    :offset-assert 2112) ;; guessed by decompiler
    (saved-pos                   transformq                       :inline :offset-assert 2128)
-   (saved-owner                 uint64                                   :offset-assert 2176)
+   (saved-owner                 handle                                   :offset-assert 2176)
    (alt-neck-pos                vector                           :inline :offset-assert 2192)
    (focus-search                (array collide-shape)                    :offset-assert 2208) ;; guessed by decompiler
-   (handle-search               basic                                    :offset-assert 2212)
+   (handle-search               (array handle)                           :offset-assert 2212)
    (excitement                  float                                    :offset-assert 2216)
-   (shock-effect-time           uint64                                   :offset-assert 2224) ;; time-frame
+   (shock-effect-time           time-frame                               :offset-assert 2224) ;; time-frame
    (beard?                      symbol                                   :offset-assert 2232) ;; guessed by decompiler
    (spool-anim                  spool-anim                               :offset-assert 2236) ;; guessed by decompiler
-   (ambient-time                uint64                                   :offset-assert 2240) ;; time-frame
-   (fp-hud                      uint64                                   :offset-assert 2248) ;; handle
+   (ambient-time                time-frame                               :offset-assert 2240) ;; time-frame
+   (fp-hud                      handle                                   :offset-assert 2248) ;; handle
    (no-load-wait                uint64                                   :offset-assert 2256)
    (no-look-around-wait         uint64                                   :offset-assert 2264)
-   (burn-proc                   uint64                                   :offset-assert 2272) ;; handle
+   (burn-proc                   handle                                   :offset-assert 2272) ;; handle
    (pre-joint-hook              (function none :behavior target)         :offset-assert 2280) ;; guessed by decompiler
-   (notify                      uint64                                   :offset-assert 2288) ;; handle
+   (notify                      handle                                   :offset-assert 2288) ;; handle
    (death-resetter              resetter-spec                    :inline :offset-assert 2296)
    (mode-cache                  basic                                    :offset-assert 2312)
    (mode-param1                 uint64                                   :offset-assert 2320) ;; handle
@@ -21161,8 +21241,8 @@
    (tobot-recorder              basic                                    :offset-assert 2388)
    (target-effect               uint64                                   :offset-assert 2392)
    (color-effect                basic                                    :offset-assert 2400)
-   (color-effect-start-time     uint64                                   :offset-assert 2408) ;; time-frame
-   (color-effect-duration       uint64                                   :offset-assert 2416)
+   (color-effect-start-time     time-frame                               :offset-assert 2408) ;; time-frame
+   (color-effect-duration       time-frame                               :offset-assert 2416)
    (racer                       racer-info                               :offset-assert 2424) ;; guessed by decompiler
    (tube                        tube-info                                :offset-assert 2428) ;; guessed by decompiler
    (flut                        flut-info                                :offset-assert 2432) ;; guessed by decompiler
@@ -21172,14 +21252,14 @@
    (mech                        mech-info                                :offset-assert 2448) ;; guessed by decompiler
    (turret                      turret-info                              :offset-assert 2452) ;; guessed by decompiler
    (indax                       indax-info                               :offset-assert 2456) ;; guessed by decompiler
-   (ladder                      basic                                    :offset-assert 2460)
+   (ladder                      ladder-info                              :offset-assert 2460)
    (darkjak-interp              float                                    :offset-assert 2464)
    (darkjak-interp-old          float                                    :offset-assert 2468)
    (darkjak-giant-interp        float                                    :offset-assert 2472)
    (darkjak                     darkjak-info                             :offset-assert 2476) ;; guessed by decompiler
    (lightjak-interp             float                                    :offset-assert 2480)
    (lightjak-interp-old         float                                    :offset-assert 2484)
-   (lightjak                    basic                                    :offset-assert 2488)
+   (lightjak                    lightjak-info                            :offset-assert 2488)
    (scarf-interp-targ           float                                    :offset-assert 2492)
    (scarf-interp                float                                    :offset-assert 2496)
    (scarf-interp-old            float                                    :offset-assert 2500)
@@ -21187,8 +21267,8 @@
    (goggles-interp              float                                    :offset-assert 2508)
    (goggles-interp-old          float                                    :offset-assert 2512)
    (invisible-interp            float                                    :offset-assert 2516)
-   (invisible-start-time        uint64                                   :offset-assert 2520)
-   (invisible-duration          uint64                                   :offset-assert 2528)
+   (invisible-start-time        time-frame                               :offset-assert 2520)
+   (invisible-duration          time-frame                               :offset-assert 2528)
    (invisible-shadow-dir-backup vector                           :inline :offset-assert 2544)
    )
   :method-count-assert 30
@@ -21373,20 +21453,18 @@
     target-board-turn-to ;; associated process guessed by decompiler, old: (state vector time-frame target)
     )
   )
-|#
 
-#|
 (deftype sidekick (process-drawable)
-  ((control             control-info                       :offset-assert 128) ;; guessed by decompiler
-   (anim-seed           uint64                             :offset-assert 208)
+  ((control             control-info                       :offset 128 :score 1) ;; guessed by decompiler
+   (anim-seed           uint64                             :offset 208)
    (shadow-in-movie?    symbol                             :offset-assert 216) ;; guessed by decompiler
-   (special-anim-time   uint64                             :offset-assert 224) ;; time-frame
+   (special-anim-time   time-frame                         :offset-assert 224) ;; time-frame
    (special-anim-interp float                              :offset-assert 232)
    (special-anim-frame  float                              :offset-assert 236)
    (offset              transformq                 :inline :offset-assert 240)
    (mirror              (pointer process-drawable)         :offset-assert 288) ;; guessed by decompiler
-   (ear                 UNKNOWN                    2       :offset-assert 292)
-   (flap                UNKNOWN                    2       :offset-assert 300)
+   (ear                 joint-mod                  2       :offset-assert 292)
+   (flap                joint-mod                  2       :offset-assert 300)
    )
   :method-count-assert 20
   :size-assert         #x134
@@ -21395,10 +21473,9 @@
     sidekick-clone ;; associated process guessed by decompiler, old: (state sidekick)
     )
   )
-|#
 
-;; (define-extern *target* object) ;; target
-;; (define-extern *sidekick* object) ;; sidekick
+(define-extern *target* target)
+(define-extern *sidekick* sidekick)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; stats-h                        ;;
@@ -31193,8 +31270,8 @@
 ;; process-drawable               ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (define-extern cspace-by-name function) ;; (function process-drawable string cspace)
-;; (define-extern cspace-index-by-name function) ;; (function process-drawable string int)
+(define-extern cspace-by-name "Get a process' [[cspace]] by name." (function process-drawable string cspace))
+(define-extern cspace-index-by-name "Get the index of a process' [[cspace]] by name." (function process-drawable string int))
 ;; (define-extern vector<-cspace! function) ;; (function vector cspace vector)
 ;; (define-extern vector<-matrix! function) ;; (function vector matrix vector)
 ;; (define-extern vector<-cspace+vector! function) ;; (function vector cspace vector vector)
@@ -31222,13 +31299,13 @@
 ;; (define-extern ja-channel-set! function) ;; (function int int :behavior process-drawable)
 ;; (define-extern ja-channel-push! function) ;; (function int time-frame int :behavior process-drawable)
 ;; (define-extern ja-channel-float! function) ;; (function art-joint-anim float float float joint-control-channel :behavior process-drawable)
-;; (define-extern joint-control-reset! function) ;; (function joint-control joint-control-channel none :behavior process-drawable)
+(define-extern joint-control-reset! (function joint-control joint-control-channel none :behavior process-drawable))
 ;; (define-extern ja-group-size function) ;; (function int :behavior process-drawable)
 ;; (define-extern ja-eval function) ;; (function int :behavior process-drawable)
 ;; (define-extern ja-blend-eval function) ;; (function int :behavior process-drawable)
 ;; (define-extern cloth-post function)
 ;; (define-extern ja-post function) ;; (function none :behavior process-drawable)
-;; (define-extern sleep-code function) ;; (function symbol :behavior process)
+(define-extern sleep-code (function symbol :behavior process))
 ;; (define-extern transform-and-sleep function) ;; (function none :behavior process-drawable)
 ;; (define-extern transform-and-sleep-code function) ;; (function none :behavior process-drawable)
 ;; (define-extern transform-post function) ;; (function int :behavior process-drawable)
