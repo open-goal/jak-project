@@ -319,7 +319,7 @@ u64 kopen(u64 fs, u64 name, u64 mode) {
   file_stream->mode = mode;
   file_stream->name = name;
   file_stream->flags = 0;
-  printf("****** CALL TO kopen() ******\n");
+  lg::print("****** CALL TO kopen() ******\n");
   char buffer[128];
   // sprintf(buffer, "host:%s", Ptr<String>(name)->data());
   sprintf(buffer, "%s", Ptr<String>(name)->data());

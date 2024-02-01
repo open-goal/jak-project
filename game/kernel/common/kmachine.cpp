@@ -229,7 +229,7 @@ void InstallHandler(u32 handler_idx, u32 handler_func) {
       vif1_interrupt_handler = handler_func;
       break;
     default:
-      printf("unknown handler: %d\n", handler_idx);
+      lg::error("unknown handler: {}\n", handler_idx);
       ASSERT(false);
   }
 }

@@ -5,6 +5,7 @@
 
 #include "common/goal_constants.h"
 #include "common/listener_common.h"
+#include "common/log/log.h"
 #include "common/symbols.h"
 
 #include "game/kernel/common/fileio.h"
@@ -514,8 +515,9 @@ s32 format_impl_jak3(uint64_t* args) {
     if (DiskBoot) {
       // however, we are going to disable it anyway because it spams the console and is annoying
       if (false) {
-        printf("%s", PrintPendingLocal3);
-        fflush(stdout);
+        lg::print("{}", PrintPendingLocal3);
+        // printf("%s", PrintPendingLocal3);
+        // fflush(stdout);
       }
       PrintPending = make_ptr(PrintPendingLocal2).cast<u8>();
       // if we don't comment this line, our output gets cleared
@@ -530,8 +532,9 @@ s32 format_impl_jak3(uint64_t* args) {
     *PrintPendingLocal3 = 0;
     return string;
   } else if (original_dest == 0) {
-    printf("%s", PrintPendingLocal3);
-    fflush(stdout);
+    lg::print("{}", PrintPendingLocal3);
+    // printf("%s", PrintPendingLocal3);
+    // fflush(stdout);
     PrintPending = make_ptr(PrintPendingLocal2).cast<u8>();
     *PrintPendingLocal3 = 0;
     return 0;
