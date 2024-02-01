@@ -788,3 +788,23 @@
   "Change the current process to the virtual state of the given process."
   `(go (method-of-object ,proc ,state-name) ,@args)
   )
+
+;; run the given function in a process right now.
+;; will return to here when:
+;;  - you return
+;;  - you deactivate
+;;  - you go
+;;  - you throw to 'initialize
+(defmacro run-now-in-process (proc func &rest args)
+  `((the (function _varargs_ object) run-function-in-process)
+    ,proc ,func ,@args
+    )
+  )
+
+;; sets the main thread of the given process to run the given thing.
+;; this resets the main thread stack back to the top
+(defmacro run-next-time-in-process (proc func &rest args)
+  `((the (function _varargs_ object) set-to-run)
+    (-> ,proc main-thread) ,func ,@args
+    )
+  )

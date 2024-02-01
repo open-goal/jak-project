@@ -1515,9 +1515,13 @@ FormElement* rewrite_proc_new(LetElement* in, const Env& env, FormPool& pool) {
 
   // look for setting a var to (get-process *default-dead-pool* logo-slave #x4000)
   auto ra = in->entries().at(0).dest;
-  auto mr_get_proc = match(
-      Matcher::func("get-process", {Matcher::any(0), Matcher::any_symbol(1), Matcher::any(2)}),
-      in->entries().at(0).src);
+  std::vector<Matcher> get_process_args = {Matcher::any(0), Matcher::any_symbol(1),
+                                           Matcher::any(2)};
+  if (env.version >= GameVersion::Jak3) {
+    // this flag appears unused...
+    get_process_args.push_back(Matcher::integer(1));
+  }
+  auto mr_get_proc = match(Matcher::func("get-process", get_process_args), in->entries().at(0).src);
   if (!mr_get_proc.matched) {
     return nullptr;
   }
