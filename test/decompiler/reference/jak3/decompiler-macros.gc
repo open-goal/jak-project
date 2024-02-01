@@ -107,6 +107,16 @@
      )
   )
 
+(defmacro ppointer->handle (pproc)
+  `(let ((the-process (the-as (pointer process) ,pproc)))
+      (new 'static 'handle :process the-process :pid (-> the-process 0 pid))
+      )
+  )
+
+(defmacro process->handle (proc)
+  "convert a process to a handle. if proc is #f, returns a #f handle."
+  `(ppointer->handle (process->ppointer (the-as process ,proc)))
+  )
 
 ;; use a compile-time list to keep track of the type of an anonymous behavior.
 (seval (define *defstate-type-stack* '()))
