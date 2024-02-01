@@ -4,6 +4,7 @@
 #include <cstring>
 
 #include "common/listener_common.h"
+#include "common/log/log.h"
 #include "common/symbols.h"
 
 #include "game/kernel/common/Ptr.h"
@@ -508,8 +509,8 @@ s32 format_impl_jak1(uint64_t* args) {
     *PrintPendingLocal3 = 0;
     return string;
   } else if (original_dest == 0) {
-    printf("%s", PrintPendingLocal3);
-    fflush(stdout);
+    lg::print("%s", PrintPendingLocal3);
+    // fflush(stdout);
     PrintPending = make_ptr(PrintPendingLocal2).cast<u8>();
     *PrintPendingLocal3 = 0;
     return 0;

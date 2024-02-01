@@ -13,6 +13,7 @@
 #include "game/kernel/common/klink.h"
 #include "game/kernel/common/kmalloc.h"
 #include "game/kernel/common/kscheme.h"
+#include "common/log/log.h"
 
 // Pointer set to something in the middle of the output buffer, if there is something in the buffer.
 Ptr<u8> OutputPending;
@@ -186,37 +187,37 @@ void cprintf(const char* format, ...) {
 /*!
  * Print directly to the C stdout
  * The "k" parameter is ignored, so this is just like printf
- * DONE, EXACT
+ * DONE, changed vprintf to lg::print
  */
 void Msg(s32 k, const char* format, ...) {
   (void)k;
   va_list args;
   va_start(args, format);
-  vprintf(format, args);
+  lg::print(format, args);
   va_end(args);
 }
 
 /*!
  * Print directly to the C stdout
  * This is idential to Msg
- * DONE, EXACT
+ * DONE, changed vprintf to lg::warn
  */
 void MsgWarn(const char* format, ...) {
   va_list args;
   va_start(args, format);
-  vprintf(format, args);
+  lg::warn(format, args);
   va_end(args);
 }
 
 /*!
  * Print directly to the C stdout
  * This is idential to Msg
- * DONE, EXACT
+ * DONE, changed vprintf to lg::error
  */
 void MsgErr(const char* format, ...) {
   va_list args;
   va_start(args, format);
-  vprintf(format, args);
+  lg::error(format, args);
   va_end(args);
 }
 

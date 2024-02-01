@@ -8,6 +8,7 @@
 #include "game/kernel/common/kdsnetm.h"
 #include "game/kernel/common/kprint.h"
 #include "game/kernel/common/ksocket.h"
+#include "common/log/log.h"
 
 Ptr<u32> print_column;
 u32 ListenerStatus;
@@ -27,7 +28,7 @@ void ClearPending() {
     if (PrintPending.offset != 0) {
       auto size = strlen(PrintBufArea.cast<char>().c() + sizeof(ListenerMessageHeader));
       if (size > 0) {
-        printf("%s", PrintBufArea.cast<char>().c() + sizeof(ListenerMessageHeader));
+        lg::print("%s", PrintBufArea.cast<char>().c() + sizeof(ListenerMessageHeader));
       }
       clear_print();
     }
