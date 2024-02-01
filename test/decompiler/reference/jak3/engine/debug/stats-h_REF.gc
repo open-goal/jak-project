@@ -1,75 +1,7 @@
 ;;-*-Lisp-*-
 (in-package goal)
 
-;; name: stats-h.gc
-;; name in dgo: stats-h
-;; dgos: GAME
-
-(defenum perf-stat-bucket
-  :type uint32 ;; guess
-  (all-code)
-  (spatial-hash-build)
-  (spatial-hash-search)
-  (collide)
-  (collide-list)
-  (collide-fill)
-  (actor-hash)
-  (nav)
-  (nav-dma-all)
-  (nav-dma-read)
-  (nav-dma-write)
-  (nav-dma-work)
-  (nav-part1)
-  (nav-part2)
-  (nav-part3)
-  (nav-part4)
-  (nav-part5)
-  (nav-part6)
-  (nav-part7)
-  (nav-part8)
-  (nav-part9)
-  (nav-part10)
-  (add-to-translation)
-  (update-current-poly)
-  (clamp-vector-to-mesh)
-  (ray-step)
-  (update-spheres)
-  (travel-around-spheres)
-  (avoid-spheres)
-  (check-vector-collision-with-nav-spheres)
-  (find-nearest-poly)
-  (find-containing-poly)
-  (generate-velocity)
-  (apply-rotation)
-  (apply-velocity)
-  (travel-post)
-  (common-post)
-  (misc)
-  (mercneric)
-  (tie-generic)
-  (background)
-  (drawable)
-  (tfrag)
-  (tfrag-scissor)
-  (inst-shrub)
-  (proto-shrub)
-  (inst-tie)
-  (proto-tie)
-  (bones)
-  (camera)
-  (foreground)
-  (hover-path)
-  (hover-spheres)
-  (hover-update)
-  (hover-move)
-  (hover-find-closest)
-  (update-los)
-)
-
-(define *pc-perf-stat-counter* (the-as uint 0))
-
-;; DECOMP BEGINS
-
+;; definition of type tr-stat
 (deftype tr-stat (structure)
   "triangle stats for a renderer. This can apply to a lot of different renderer types."
   ((groups     uint16)
@@ -81,7 +13,24 @@
    )
   )
 
+;; definition for method 3 of type tr-stat
+(defmethod inspect ((this tr-stat))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this 'tr-stat)
+  (format #t "~1Tgroups: ~D~%" (-> this groups))
+  (format #t "~1Tfragments: ~D~%" (-> this fragments))
+  (format #t "~1Ttris: ~D~%" (-> this tris))
+  (format #t "~1Tdverts: ~D~%" (-> this dverts))
+  (format #t "~1Tinstances: ~D~%" (-> this instances))
+  (format #t "~1Tpad: ~D~%" (-> this pad))
+  (label cfg-4)
+  this
+  )
 
+;; definition of type merc-global-stats
 (deftype merc-global-stats (structure)
   "Triangle stats for all merc renderers."
   ((merc       tr-stat  :inline)
@@ -90,7 +39,21 @@
    )
   )
 
+;; definition for method 3 of type merc-global-stats
+(defmethod inspect ((this merc-global-stats))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this 'merc-global-stats)
+  (format #t "~1Tmerc: #<tr-stat @ #x~X>~%" (-> this merc))
+  (format #t "~1Temerc: #<tr-stat @ #x~X>~%" (-> this emerc))
+  (format #t "~1Tmercneric: #<tr-stat @ #x~X>~%" (-> this mercneric))
+  (label cfg-4)
+  this
+  )
 
+;; definition of type perf-stat
 (deftype perf-stat (structure)
   "Performance statistics for a single 'bucket' or category. Unlike the more general profile-bars,
 this records statistics like cache hits/instruction counts."
@@ -118,7 +81,31 @@ this records statistics like cache hits/instruction counts."
     )
   )
 
+;; definition for method 3 of type perf-stat
+(defmethod inspect ((this perf-stat))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this 'perf-stat)
+  (format #t "~1Tframe-number: ~D~%" (-> this frame-number))
+  (format #t "~1Tcount: ~D~%" (-> this count))
+  (format #t "~1Tcycles: ~D~%" (-> this cycles))
+  (format #t "~1Tinstructions: ~D~%" (-> this instructions))
+  (format #t "~1Ticache: ~D~%" (-> this icache))
+  (format #t "~1Tdcache: ~D~%" (-> this dcache))
+  (format #t "~1Tselect: ~D~%" (-> this select))
+  (format #t "~1Tctrl: ~D~%" (-> this ctrl))
+  (format #t "~1Taccum0: ~D~%" (-> this accum0))
+  (format #t "~1Taccum1: ~D~%" (-> this accum1))
+  (format #t "~1Tto-vu0-waits: ~D~%" (-> this to-vu0-waits))
+  (format #t "~1Tto-spr-waits: ~D~%" (-> this to-spr-waits))
+  (format #t "~1Tfrom-spr-waits: ~D~%" (-> this from-spr-waits))
+  (label cfg-4)
+  this
+  )
 
+;; definition (debug) for function perf-stat-bucket->string
 (defun-debug perf-stat-bucket->string ((arg0 perf-stat-bucket))
   (case arg0
     (((perf-stat-bucket collide-fill))
@@ -298,58 +285,71 @@ this records statistics like cache hits/instruction counts."
     )
   )
 
+;; definition of type perf-stat-array
 (deftype perf-stat-array (inline-array-class)
   "Array of all stats for all buckets."
   ((data  perf-stat  :inline :dynamic)
    )
   )
 
+;; definition for method 3 of type perf-stat-array
+(defmethod inspect ((this perf-stat-array))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this (-> this type))
+  (format #t "~1Tlength: ~D~%" (-> this length))
+  (format #t "~1Tallocated-length: ~D~%" (-> this allocated-length))
+  (format #t "~1Tdata[0] @ #x~X~%" (-> this data))
+  (label cfg-4)
+  this
+  )
 
+;; failed to figure out what this is:
 (set! (-> perf-stat-array heap-base) (the-as uint 52))
 
+;; definition for method 11 of type perf-stat
+;; WARN: Return type mismatch int vs none.
 (defmethod start-profiling! ((this perf-stat))
-  (+! (-> this count) 1)
-  (when (nonzero? (-> this ctrl))
-    (set! *pc-perf-stat-counter* (get-cpu-clock))
+  (let ((v1-0 (-> this ctrl)))
+    (+! (-> this count) 1)
+    (b! (zero? v1-0) cfg-2 :delay (nop!))
+    (.mtc0 Perf 0)
+    (.sync.l)
+    (.sync.p)
+    (.mtpc pcr0 0)
+    (.mtpc pcr1 0)
+    (.sync.l)
+    (.sync.p)
+    (.mtc0 Perf v1-0)
     )
-  ; (let ((v1-0 (-> this ctrl)))
-  ;   (+! (-> this count) 1)
-  ;   (b! (zero? v1-0) cfg-2 :delay (nop!))
-  ;   (.mtc0 Perf 0)
-  ;   (.sync.l)
-  ;   (.sync.p)
-  ;   (.mtpc pcr0 0)
-  ;   (.mtpc pcr1 0)
-  ;   (.sync.l)
-  ;   (.sync.p)
-  ;   (.mtc0 Perf v1-0)
-  ;   )
-  ; (.sync.l)
-  ; (.sync.p)
-  ; (label cfg-2)
-  ; 0
+  (.sync.l)
+  (.sync.p)
+  (label cfg-2)
+  0
   (none)
   )
 
+;; definition for method 12 of type perf-stat
+;; WARN: Return type mismatch int vs none.
 (defmethod stop-profiling! ((this perf-stat))
-  ; (local-vars (v1-1 int) (v1-3 int))
-  ; (b! (zero? (-> this ctrl)) cfg-2 :delay (nop!))
-  ; (.mtc0 Perf 0)
-  ; (.sync.l)
-  ; (.sync.p)
-  ; (.mfpc v1-1 pcr0)
-  ; (+! (-> this accum0) v1-1)
-  ; (.mfpc v1-3 pcr1)
-  ; (+! (-> this accum1) v1-3)
-  ; (label cfg-2)
-  ; 0
-  (when (nonzero? (-> this ctrl))
-    (+! (-> this accum0) (- (get-cpu-clock) *pc-perf-stat-counter*))
-    (set! (-> this accum1) 0)
-    )
+  (local-vars (v1-1 int) (v1-3 int))
+  (b! (zero? (-> this ctrl)) cfg-2 :delay (nop!))
+  (.mtc0 Perf 0)
+  (.sync.l)
+  (.sync.p)
+  (.mfpc v1-1 pcr0)
+  (+! (-> this accum0) v1-1)
+  (.mfpc v1-3 pcr1)
+  (+! (-> this accum1) v1-3)
+  (label cfg-2)
+  0
   (none)
   )
 
+;; definition for method 13 of type perf-stat
+;; WARN: Return type mismatch int vs none.
 (defmethod update-wait-stats ((this perf-stat) (arg0 uint) (arg1 uint) (arg2 uint))
   (when (nonzero? (-> this ctrl))
     (+! (-> this to-vu0-waits) arg0)
@@ -360,8 +360,13 @@ this records statistics like cache hits/instruction counts."
   (none)
   )
 
+;; failed to figure out what this is:
 (when (not *debug-segment*)
   (set! (-> perf-stat method-table 11) nothing)
   (set! (-> perf-stat method-table 12) nothing)
   (set! (-> perf-stat method-table 13) nothing)
   )
+
+
+
+
