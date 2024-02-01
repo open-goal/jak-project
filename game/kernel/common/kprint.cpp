@@ -7,13 +7,13 @@
 
 #include "common/cross_os_debug/xdbg.h"
 #include "common/listener_common.h"
+#include "common/log/log.h"
 
 #include "game/kernel/common/Ptr.h"
 #include "game/kernel/common/fileio.h"
 #include "game/kernel/common/klink.h"
 #include "game/kernel/common/kmalloc.h"
 #include "game/kernel/common/kscheme.h"
-#include "common/log/log.h"
 
 // Pointer set to something in the middle of the output buffer, if there is something in the buffer.
 Ptr<u8> OutputPending;

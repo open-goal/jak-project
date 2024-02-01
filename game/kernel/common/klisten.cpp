@@ -4,11 +4,11 @@
 #include <cstring>
 
 #include "common/listener_common.h"
+#include "common/log/log.h"
 
 #include "game/kernel/common/kdsnetm.h"
 #include "game/kernel/common/kprint.h"
 #include "game/kernel/common/ksocket.h"
-#include "common/log/log.h"
 
 Ptr<u32> print_column;
 u32 ListenerStatus;
