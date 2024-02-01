@@ -38,6 +38,7 @@ namespace internal {
 // log implementation stuff, not to be called by the user
 void log_message(level log_level, LogTime& now, const char* message);
 void log_print(const char* message);
+void log_vprintf(const char* format, va_list arg_list);
 }  // namespace internal
 
 void set_file(const std::string& filename,
@@ -74,6 +75,9 @@ void print(const fmt::text_style& ts, const std::string& format, Args&&... args)
   std::string formatted_message = fmt::format(ts, format, std::forward<Args>(args)...);
   internal::log_print(formatted_message.c_str());
 }
+
+// same as print but uses the C printf instead of fmt
+void printstd(const std::string& format, va_list arg_list);
 
 template <typename... Args>
 void trace(const std::string& format, Args&&... args) {

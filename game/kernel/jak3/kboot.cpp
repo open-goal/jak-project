@@ -2,6 +2,7 @@
 
 #include <cstring>
 
+#include "common/log/log.h"
 #include "common/repl/util.h"
 #include "common/util/Timer.h"
 
@@ -124,7 +125,7 @@ void KernelDispatch(u32 dispatcher_func) {
 
   float time_ms = dispatch_timer.getMs();
   if (time_ms > 50) {
-    printf("Kernel dispatch time: %.3f ms\n", time_ms);
+    lg::print("Kernel dispatch time: {:.3f} ms\n", time_ms);
   }
 
   // flush stdout
