@@ -1503,7 +1503,8 @@ GLuint TextureAnimator::make_or_get_gpu_texture_for_current_shader(TexturePool& 
               //              file_util::write_rgba_png("out.png", rgba_data.data(), 1 <<
               //              m_current_shader.tex0.tw(),
               //                                        1 << m_current_shader.tex0.th());
-              lg::print("Scrambler took the slow path {} x {} took {:.3f} ms\n", w, h, timer.getMs());
+              lg::print("Scrambler took the slow path {} x {} took {:.3f} ms\n", w, h,
+                        timer.getMs());
             }
           }
           auto ret = make_temp_gpu_texture(rgba_data.data(), w, h);
