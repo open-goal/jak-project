@@ -898,7 +898,7 @@ void TextureAnimator::force_to_gpu(int tbp) {
   auto& entry = m_textures.at(tbp);
   switch (entry.kind) {
     default:
-      lg::print("unhandled non-gpu conversion: %d (tbp = %d)\n", (int)entry.kind, tbp);
+      lg::print("unhandled non-gpu conversion: {} (tbp = {})\n", (int)entry.kind, tbp);
       ASSERT_NOT_REACHED();
     case VramEntry::Kind::CLUT16_16_IN_PSM32:
       // HACK: never convert known CLUT textures to GPU.
@@ -1385,7 +1385,7 @@ void TextureAnimator::handle_draw(DmaFollower& dma, TexturePool& texture_pool) {
 void TextureAnimator::load_clut_to_converter() {
   const auto& clut_lookup = m_textures.find(m_current_shader.tex0.cbp());
   if (clut_lookup == m_textures.end()) {
-    lg::print("set shader referenced an unknown clut texture in %d\n", m_current_shader.tex0.cbp());
+    lg::print("set shader referenced an unknown clut texture in {}\n", m_current_shader.tex0.cbp());
     ASSERT_NOT_REACHED();
   }
 
@@ -1395,7 +1395,7 @@ void TextureAnimator::load_clut_to_converter() {
                                16);
       break;
     default:
-      lg::print("unhandled clut source kind: %d\n", (int)clut_lookup->second.kind);
+      lg::print("unhandled clut source kind: {}\n", (int)clut_lookup->second.kind);
       ASSERT_NOT_REACHED();
   }
 }
@@ -1421,7 +1421,7 @@ GLuint TextureAnimator::make_or_get_gpu_texture_for_current_shader(TexturePool& 
     if (tpool.has_value()) {
       return *tpool;
     }
-    // lg::print("referenced an unknown texture in %d\n", tbp);
+    // lg::print("referenced an unknown texture in {}\n", tbp);
     lg::error("unknown texture in {} (0x{:x})", tbp, tbp);
     return texture_pool.get_placeholder_texture();
 
@@ -1451,7 +1451,7 @@ GLuint TextureAnimator::make_or_get_gpu_texture_for_current_shader(TexturePool& 
 
           const auto& clut_lookup = m_textures.find(m_current_shader.tex0.cbp());
           if (clut_lookup == m_textures.end()) {
-            lg::print("set shader referenced an unknown clut texture in %d\n",
+            lg::print("set shader referenced an unknown clut texture in {}\n",
                       m_current_shader.tex0.cbp());
             ASSERT_NOT_REACHED();
           }
@@ -1460,7 +1460,7 @@ GLuint TextureAnimator::make_or_get_gpu_texture_for_current_shader(TexturePool& 
             case VramEntry::Kind::CLUT16_16_IN_PSM32:
               break;
             default:
-              lg::print("unhandled clut source kind: %d\n", (int)clut_lookup->second.kind);
+              lg::print("unhandled clut source kind: {}\n", (int)clut_lookup->second.kind);
               ASSERT_NOT_REACHED();
           }
 
@@ -1503,7 +1503,7 @@ GLuint TextureAnimator::make_or_get_gpu_texture_for_current_shader(TexturePool& 
               //              file_util::write_rgba_png("out.png", rgba_data.data(), 1 <<
               //              m_current_shader.tex0.tw(),
               //                                        1 << m_current_shader.tex0.th());
-              lg::print("Scrambler took the slow path %d x %d took %.3f ms\n", w, h, timer.getMs());
+              lg::print("Scrambler took the slow path {} x {} took {:.3f} ms\n", w, h, timer.getMs());
             }
           }
           auto ret = make_temp_gpu_texture(rgba_data.data(), w, h);
@@ -1723,7 +1723,7 @@ VramEntry* TextureAnimator::setup_vram_entry_for_gpu_texture(int w, int h, int t
 const u32* TextureAnimator::get_clut_16_16_psm32(int cbp) {
   const auto& clut_lookup = m_textures.find(cbp);
   if (clut_lookup == m_textures.end()) {
-    lg::print("get_clut_16_16_psm32 referenced an unknown clut texture in %d\n", cbp);
+    lg::print("get_clut_16_16_psm32 referenced an unknown clut texture in {}\n", cbp);
     ASSERT_NOT_REACHED();
   }
 
