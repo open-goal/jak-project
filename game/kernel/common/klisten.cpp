@@ -28,7 +28,7 @@ void ClearPending() {
     if (PrintPending.offset != 0) {
       auto size = strlen(PrintBufArea.cast<char>().c() + sizeof(ListenerMessageHeader));
       if (size > 0) {
-        lg::print("%s", PrintBufArea.cast<char>().c() + sizeof(ListenerMessageHeader));
+        lg::print("{}", PrintBufArea.cast<char>().c() + sizeof(ListenerMessageHeader));
       }
       clear_print();
     }

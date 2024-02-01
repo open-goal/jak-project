@@ -187,37 +187,37 @@ void cprintf(const char* format, ...) {
 /*!
  * Print directly to the C stdout
  * The "k" parameter is ignored, so this is just like printf
- * DONE, changed vprintf to lg::print
+ * DONE, changed vprintf to lg::printstd
  */
 void Msg(s32 k, const char* format, ...) {
   (void)k;
   va_list args;
   va_start(args, format);
-  lg::print(format, args);
+  lg::printstd(format, args);
   va_end(args);
 }
 
 /*!
  * Print directly to the C stdout
  * This is idential to Msg
- * DONE, changed vprintf to lg::warn
+ * DONE, changed vprintf to lg::printstd
  */
 void MsgWarn(const char* format, ...) {
   va_list args;
   va_start(args, format);
-  lg::warn(format, args);
+  lg::printstd(format, args);
   va_end(args);
 }
 
 /*!
  * Print directly to the C stdout
  * This is idential to Msg
- * DONE, changed vprintf to lg::error
+ * DONE, changed vprintf to lg::printstd
  */
 void MsgErr(const char* format, ...) {
   va_list args;
   va_start(args, format);
-  lg::error(format, args);
+  lg::printstd(format, args);
   va_end(args);
 }
 
