@@ -83,7 +83,8 @@
   (let ((font-ctx (new 'debug 'font-context *font-default-matrix* 0 0 0.0 (font-color default) (font-flags shadow kerning large)))
         (page-title (-> this menu-states (-> this curr-state-index) title))
         (dynamic-menu? (-> this menu-states (-> this curr-state-index) dynamic-menu?))
-        (can-reset? (-> this menu-states (-> this curr-state-index) on-dynamic-menu-reset)))
+        (can-reset? (and (nonzero? (-> this menu-states (-> this curr-state-index) on-dynamic-menu-reset))
+                         (-> this menu-states (-> this curr-state-index) on-dynamic-menu-reset))))
     (set! (-> font-ctx scale) 0.25)
     (set! (-> font-ctx origin x) 15.0)
     (set! (-> font-ctx origin y) 75.0)
@@ -219,7 +220,9 @@
 
 (defmethod reset! ((this popup-menu))
   (let* ((menu-state (-> this menu-states (-> this curr-state-index))))
-    (when (and (-> menu-state dynamic-menu?) (-> menu-state on-dynamic-menu-reset)) ;; dont call if theres no function defined
+    (when (and (-> menu-state dynamic-menu?)
+               (nonzero? (-> menu-state on-dynamic-menu-reset))
+               (-> menu-state on-dynamic-menu-reset)) ;; dont call if theres no function defined
       ((-> menu-state on-dynamic-menu-reset))
       (sound-play "menu-pick")))
   (none))
