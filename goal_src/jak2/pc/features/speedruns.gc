@@ -1,13 +1,6 @@
 ;;-*-Lisp-*-
 (in-package goal)
 
-;; TODO - category name and more details on bottom left
-;; TODO - a way to define when the verification info is hidden (task close or skill pickup perhaps)
-;; TODO - a way to unselect stuff in tools menu / clear all
-;; TODO - colors for menu text seem to mess up
-;; TODO - can't select first entry in menu menus
-;; TODO - ability to disable popup menu entry option
-
 ;; TODO later - customize menu open keybind
 
 (define-extern task-close! (function string symbol))
@@ -336,8 +329,8 @@
           (set-master-mode 'game)
           (send-event (ppointer->process (-> *speedrun-manager* 0 popup-menu)) 'close-menu))
         :entry-selected? (lambda ((index int)) (and (-> *speedrun-info* practicing?) (= index (-> *speedrun-info* active-practice-objective index)))))
-      ;; TODO - is-enabled? lambda
       (new 'static 'popup-menu-button :label "Stop practicing"
+        :entry-disabled? (lambda () (not (-> *speedrun-info* practicing?)))
         :on-confirm (lambda ()
           (when (-> *speedrun-info* practicing?)
             (when (nonzero? (-> *speedrun-info* active-practice-objective start-zone))
