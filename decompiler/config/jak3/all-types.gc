@@ -23465,22 +23465,41 @@
 ;; entity-h                       ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
+;; +++entity-h:entity-perm-status
+(defenum entity-perm-status
+  :bitfield #t
+  :type uint16
+  (bit-0 0) ;; blocks birth
+  (error 1)
+  (dead 2)
+  (no-kill 3)
+  (bit-4 4)
+  (bit-5 5)
+  (subtask-complete 6)
+  (bit-7 7)
+  (complete 8)
+  (bit-9 9)
+  (bit-10 10)
+  (save 11)
+  (bit-12 12)
+  )
+;; ---entity-h:entity-perm-status
+
 (deftype entity-perm (structure)
   ((user-object object   2 :offset-assert 0) ;; guessed by decompiler
-   (user-uint64 uint64     :offset-assert 0)
-   (user-float  float    2 :offset-assert 0) ;; guessed by decompiler
-   (user-int32  int32    2 :offset-assert 0) ;; guessed by decompiler
-   (user-uint32 uint32   2 :offset-assert 0) ;; guessed by decompiler
-   (user-int16  int16    4 :offset-assert 0) ;; guessed by decompiler
-   (user-uint16 uint16   4 :offset-assert 0) ;; guessed by decompiler
-   (user-int8   int8     8 :offset-assert 0) ;; guessed by decompiler
-   (user-uint8  uint8    8 :offset-assert 0) ;; guessed by decompiler
+   (user-uint64 uint64     :offset 0)
+   (user-float  float    2 :offset 0) ;; guessed by decompiler
+   (user-int32  int32    2 :offset 0) ;; guessed by decompiler
+   (user-uint32 uint32   2 :offset 0) ;; guessed by decompiler
+   (user-int16  int16    4 :offset 0) ;; guessed by decompiler
+   (user-uint16 uint16   4 :offset 0) ;; guessed by decompiler
+   (user-int8   int8     8 :offset 0) ;; guessed by decompiler
+   (user-uint8  uint8    8 :offset 0) ;; guessed by decompiler
    (status      uint16     :offset-assert 8) ;; entity-perm-status
    (dummy       uint8    1 :offset-assert 10) ;; guessed by decompiler
    (task        uint8      :offset-assert 11) ;; game-task
    (aid         actor-id   :offset-assert 12) ;; guessed by decompiler
-   (quad        uint128    :offset-assert 0)
+   (quad        uint128    :offset 0)
    )
   :method-count-assert 10
   :size-assert         #x10
@@ -23489,9 +23508,7 @@
     (entity-perm-method-9 () none) ;; 9 ;; (update (_type_ symbol entity-perm-status) _type_)
     )
   )
-|#
 
-#|
 (deftype entity-links (structure)
   ((prev-link entity-links         :offset-assert 0)
    (next-link entity-links         :offset-assert 4)
@@ -23503,9 +23520,9 @@
    (vis-dist  meters               :offset-assert 28)
    (trans     vector       :inline :offset-assert 32)
    (perm      entity-perm  :inline :offset-assert 48)
-   (status    uint16               :offset-assert 56)
-   (aid       uint32               :offset-assert 60)
-   (task      uint8                :offset-assert 59)
+   (status    uint16               :offset 56)
+   (aid       uint32               :offset 60)
+   (task      uint8                :offset 59)
    )
   :method-count-assert 10
   :size-assert         #x40
@@ -23514,9 +23531,7 @@
     (entity-links-method-9 () none) ;; 9 ;; (birth? (_type_ vector) symbol)
     )
   )
-|#
 
-#|
 (deftype entity-perm-array (inline-array-class)
   ((data entity-perm :dynamic :offset-assert 16) ;; guessed by decompiler
    )
@@ -23524,9 +23539,7 @@
   :size-assert         #x10
   :flag-assert         #xe00000010
   )
-|#
 
-#|
 (deftype entity-links-array (inline-array-class)
   ((data entity-links :dynamic :offset-assert 16) ;; guessed by decompiler
    )
@@ -23534,45 +23547,85 @@
   :size-assert         #x10
   :flag-assert         #xe00000010
   )
-|#
 
-;; (deftype entity (res-lump)
-;;   ()
-;;   :flag-assert #x1b00000034
-;;   )
+(deftype entity (res-lump)
+  ((trans vector :inline :offset-assert 32)
+   (aid uint32 :offset-assert 48)
+   )
+  :method-count-assert 27
+  :size-assert         #x34
+  :flag-assert         #x1b00000034
+  (:methods
+    (birth! (_type_) _type_) ;; 22
+    (kill! (_type_) _type_) ;; 23
+    (add-to-level! (_type_ level-group level actor-id) none) ;; 24
+    (remove-from-level! (_type_ level-group) _type_) ;; 25
+    (get-level (_type_) level) ;; 26
+    )
+  )
 
-;; (deftype entity-camera (entity)
-;;   ()
-;;   :flag-assert #x1b00000050
-;;   )
+(deftype entity-camera (entity)
+  ((connect connectable :inline :offset-assert 64)
+   )
+  :flag-assert #x1b00000050
+  )
 
-;; (deftype entity-nav-mesh (entity)
-;;   ()
-;;   :flag-assert #x1d00000038
-;;   )
+(declare-type nav-mesh basic)
+(deftype entity-nav-mesh (entity)
+  ((nav-mesh nav-mesh  :offset-assert  52))
+  :method-count-assert 29
+  :size-assert         #x38
+  :flag-assert         #x1d00000038
+  (:methods
+    (initialize-nav-mesh! "Initialize the nav-mesh in this entity." (_type_) none) ;; 27
+    (debug-draw (_type_) none) ;; 28
+    )
+  )
 
-;; (deftype entity-race-mesh (entity)
-;;   ()
-;;   :flag-assert #x1d00000038
-;;   )
+(declare-type race-mesh basic)
+(deftype entity-race-mesh (entity)
+  ((race-mesh race-mesh)
+   )
+  :flag-assert #x1d00000038
+  (:methods
+    (entity-race-mesh-method-27 () none) ;; 27
+    (entity-race-mesh-method-28 () none) ;; 28
+    )
+  )
 
-;; (deftype entity-actor (entity)
-;;   ()
-;;   :flag-assert #x2100000050
-;;   )
+(define-extern entity-actor type)
+(declare-type nav-poly structure)
+(deftype entity-actor (entity)
+  ((etype type :offset 56)
+   (task  game-task :offset-assert 60)
+   (kill-mask task-mask :offset 52)
+   (vis-id int16 :offset-assert 62)
+   (quat quaternion :inline :offset-assert 64)
+   )
+  :method-count-assert 33
+  :size-assert         #x50
+  :flag-assert         #x2100000050
+  ;; Failed to read fields.
+  (:methods
+    (next-actor (_type_) entity-actor) ;; 27
+    (prev-actor (_type_) entity-actor) ;; 28
+    (debug-print (_type_ symbol type) none) ;; 29
+    (toggle-status (_type_ entity-perm-status symbol) none) ;; 30
+    (get-simple-travel-vector (_type_ vector vector vector object float) nav-mesh) ;; 31
+    (project-point-to-nav-mesh (_type_ vector vector nav-poly float) nav-poly) ;; 32
+    )
+  )
 
-#|
 (deftype actor-reference (structure)
   ((actor entity  :offset-assert 0) ;; guessed by decompiler
    (id    uint32  :offset-assert 4)
    )
+  :pack-me
   :method-count-assert 9
   :size-assert         #x8
   :flag-assert         #x900000008
   )
-|#
 
-#|
 (deftype actor-group (inline-array-class)
   ((data actor-reference :dynamic :offset-assert 16) ;; guessed by decompiler
    )
@@ -23580,9 +23633,7 @@
   :size-assert         #x10
   :flag-assert         #xe00000010
   )
-|#
 
-#|
 (deftype entity-info (basic)
   ((ptype     type    :offset-assert 4) ;; guessed by decompiler
    (pool      symbol  :offset-assert 8) ;; guessed by decompiler
@@ -23592,9 +23643,7 @@
   :size-assert         #x10
   :flag-assert         #x900000010
   )
-|#
 
-#|
 (deftype actor-bank (basic)
   ((pause-dist float  :offset-assert 4) ;; meters
    (birth-dist float  :offset-assert 8) ;; meters
@@ -23604,47 +23653,43 @@
   :size-assert         #x10
   :flag-assert         #x900000010
   )
-|#
 
-;; (define-extern *generate-actor-vis* object) ;; symbol
-;; (define-extern *generate-actor-vis-start* object) ;; symbol
-;; (define-extern *generate-actor-vis-output* object) ;; symbol
-;; (define-extern *ACTOR-bank* actor-bank) ;; actor-bank
+(define-extern *generate-actor-vis* symbol)
+(define-extern *generate-actor-vis-start* symbol)
+(define-extern *generate-actor-vis-output* symbol)
+(define-extern *ACTOR-bank* actor-bank)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; sprite-h                       ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype sprite-vec-data-2d (structure)
   ((x-y-z-sx    vector   :inline :offset-assert 0)
    (flag-rot-sy vector   :inline :offset-assert 16)
    (r-g-b-a     vector   :inline :offset-assert 32)
-   (x           float            :offset-assert 0)
-   (y           float            :offset-assert 4)
-   (z           float            :offset-assert 8)
-   (sx          float            :offset-assert 12)
-   (sy          float            :offset-assert 28)
-   (rot         float            :offset-assert 24)
-   (flag        int32            :offset-assert 16)
-   (matrix      int32            :offset-assert 20)
-   (warp-turns  int32            :offset-assert 16)
-   (r           float            :offset-assert 32)
-   (g           float            :offset-assert 36)
-   (b           float            :offset-assert 40)
-   (a           float            :offset-assert 44)
-   (trans       vector3s :inline :offset-assert 0)
-   (color       rgbaf    :inline :offset-assert 32)
-   (data        uint128  1       :offset-assert 0) ;; guessed by decompiler
-   (data64      uint64   6       :offset-assert 0) ;; guessed by decompiler
+   (x           float            :offset 0)
+   (y           float            :offset 4)
+   (z           float            :offset 8)
+   (sx          float            :offset 12)
+   (sy          float            :offset 28)
+   (rot         float            :offset 24)
+   (flag        int32            :offset 16)
+   (matrix      int32            :offset 20)
+   (warp-turns  int32            :offset 16)
+   (r           float            :offset 32)
+   (g           float            :offset 36)
+   (b           float            :offset 40)
+   (a           float            :offset 44)
+   (trans       vector3s :inline :offset 0)
+   (color       rgbaf    :inline :offset 32)
+   (data        uint128  1       :offset 0) ;; guessed by decompiler
+   (data64      uint64   6       :offset 0) ;; guessed by decompiler
    )
   :method-count-assert 9
   :size-assert         #x30
   :flag-assert         #x900000030
   )
-|#
 
-#|
 (deftype sprite-array-2d (basic)
   ((num-sprites int32                       2 :offset-assert 4) ;; guessed by decompiler
    (num-valid   int32                       2 :offset-assert 12) ;; guessed by decompiler
@@ -23657,37 +23702,33 @@
   :size-assert         #x70
   :flag-assert         #x900000070
   )
-|#
 
-#|
 (deftype sprite-vec-data-3d (structure)
   ((x-y-z-sx    vector   :inline :offset-assert 0)
    (qx-qy-qz-sy vector   :inline :offset-assert 16)
    (r-g-b-a     vector   :inline :offset-assert 32)
-   (x           float            :offset-assert 0)
-   (y           float            :offset-assert 4)
-   (z           float            :offset-assert 8)
-   (sx          float            :offset-assert 12)
-   (sy          float            :offset-assert 28)
-   (qx          float            :offset-assert 16)
-   (qy          float            :offset-assert 20)
-   (qz          float            :offset-assert 24)
-   (r           float            :offset-assert 32)
-   (g           float            :offset-assert 36)
-   (b           float            :offset-assert 40)
-   (a           float            :offset-assert 44)
-   (trans       vector3s :inline :offset-assert 0)
-   (rot         vector3s :inline :offset-assert 16)
-   (color       rgbaf    :inline :offset-assert 32)
-   (data        uint128  1       :offset-assert 0) ;; guessed by decompiler
+   (x           float            :offset 0)
+   (y           float            :offset 4)
+   (z           float            :offset 8)
+   (sx          float            :offset 12)
+   (sy          float            :offset 28)
+   (qx          float            :offset 16)
+   (qy          float            :offset 20)
+   (qz          float            :offset 24)
+   (r           float            :offset 32)
+   (g           float            :offset 36)
+   (b           float            :offset 40)
+   (a           float            :offset 44)
+   (trans       vector3s :inline :offset 0)
+   (rot         vector3s :inline :offset 16)
+   (color       rgbaf    :inline :offset 32)
+   (data        uint128  1       :offset 0) ;; guessed by decompiler
    )
   :method-count-assert 9
   :size-assert         #x30
   :flag-assert         #x900000030
   )
-|#
 
-#|
 (deftype sprite-array-3d (basic)
   ((num-sprites int32                       2 :offset-assert 4) ;; guessed by decompiler
    (num-valid   int32                       2 :offset-assert 12) ;; guessed by decompiler
@@ -23699,18 +23740,15 @@
   :size-assert         #x30
   :flag-assert         #x900000030
   )
-|#
-
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; simple-sprite-h                ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype sprite-glow-data (structure)
   ((position   vector     :inline :offset-assert 0)
-   (size-x     float              :offset-assert 12)
-   (size-probe float              :offset-assert 16)
+   (size-x     float              :offset 12)
+   (size-probe float              :offset 16)
    (z-offset   float              :offset-assert 20)
    (rot-angle  float              :offset-assert 24)
    (size-y     float              :offset-assert 28)
@@ -23724,12 +23762,10 @@
   :size-assert         #x40
   :flag-assert         #xa00000040
   (:methods
-    (sprite-glow-data-method-9 () none) ;; 9 ;; (set-trans (_type_ vector) none)
+    (set-trans (_type_ vector) none) ;; 9
     )
   )
-|#
 
-#|
 (deftype simple-sprite-system (structure)
   ((count     int16                            :offset-assert 0)
    (max-count int16                            :offset-assert 2)
@@ -23744,63 +23780,54 @@
     (simple-sprite-system-method-11 () none) ;; 11 ;; (clear! (_type_) none)
     )
   )
-|#
-
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; eye-h                          ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype eye (structure)
-  ((data         vector  2 :offset-assert 0) ;; guessed by decompiler
-   (x            float     :offset-assert 0)
-   (y            float     :offset-assert 4)
-   (lid          float     :offset-assert 8)
-   (iris-scale   float     :offset-assert 16)
-   (pupil-scale  float     :offset-assert 20)
-   (lid-scale    float     :offset-assert 24)
-   (shader-count uint32    :offset-assert 32)
-   (shader       UNKNOWN 8 :offset-assert 36)
+  ((data         vector  2 :inline :offset-assert 0 :score -1) ;; guessed by decompiler
+   (x            float     :offset 0)
+   (y            float     :offset 4)
+   (lid          float     :offset 8)
+   (iris-scale   float     :offset 16)
+   (pupil-scale  float     :offset 20)
+   (lid-scale    float     :offset 24)
+   (shader-count uint32    :offset 32)
+   (shader       adgif-shader 8 :offset-assert 36)
    )
   :method-count-assert 9
   :size-assert         #x44
   :flag-assert         #x900000044
   )
-|#
 
-#|
 (deftype eye-control (structure)
-  ((process     uint64                              :offset-assert 0) ;; handle
-   (random-time uint16                              :offset-assert 8)
-   (bucket      uint16                              :offset-assert 10)
+  ((process     handle                              :offset-assert 0) ;; handle
+   (random-time uint16                              :offset-assert 8 :decomp-as time-frame)
+   (bucket      uint16                              :offset-assert 10 :decomp-as bucket-id)
    (blink       float                               :offset-assert 12)
    (shaders     (inline-array adgif-shader)         :offset-assert 16) ;; guessed by decompiler
-   (eyes        UNKNOWN                     2       :offset-assert 32)
-   (left        eye                         :inline :offset-assert 32)
-   (right       eye                         :inline :offset-assert 112)
+   (eyes        eye                       2 :inline :offset-assert 32)
+   (left        eye                         :inline :offset 32)
+   (right       eye                         :inline :offset 112)
    (level-index int16                               :offset-assert 192)
-   (high-res?   basic                               :offset-assert 196)
+   (high-res?   symbol                              :offset-assert 196)
    (eye-slot    uint8                               :offset-assert 200)
-   (UNKNOWN     UNKNOWN                             :offset-assert -1) ;; field could not be read.
+   (art-group-name uint8 64                         :offset 201) ;; field could not be read.
    )
   :method-count-assert 9
   :size-assert         #x109
   :flag-assert         #x900000109
   )
-|#
 
-#|
 (deftype eye-control-array (basic)
-  ((data eye-control 32 :offset-assert 16) ;; guessed by decompiler
+  ((data eye-control 32 :inline :offset-assert 16) ;; guessed by decompiler
    )
   :method-count-assert 9
   :size-assert         #x2210
   :flag-assert         #x900002210
   )
-|#
 
-#|
 (deftype eye-work (structure)
   ((sprite-tmpl  dma-gif-packet :inline :offset-assert 0)
    (sprite-tmpl2 dma-gif-packet :inline :offset-assert 32)
@@ -23811,9 +23838,8 @@
   :size-assert         #x88
   :flag-assert         #x900000088
   )
-|#
 
-;; (define-extern *eye-control-array* eye-control-array)
+(define-extern *eye-control-array* eye-control-array)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; camera-h                       ;;
@@ -36588,16 +36614,16 @@
 ;; eye                            ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (define-extern *eye-work* object) ;; eye-work
-;; (define-extern find-free-eye-index function)
-;; (define-extern free-eye-index function)
-;; (define-extern render-eyes-32 function) ;; (function dma-buffer eye-control int pointer)
-;; (define-extern render-eyes-64 function) ;; (function dma-buffer eye-control int pointer)
-;; (define-extern debug-eyes function) ;; (function dma-buffer none)
-;; (define-extern update-eyes function) ;; (function none)
-;; (define-extern get-eye-block function) ;; (function int int int)
-;; (define-extern convert-eye-data function) ;; (function eye uint float)
-;; (define-extern merc-eye-anim function) ;; (function process-drawable none)
+(define-extern *eye-work* eye-work)
+(define-extern find-free-eye-index (function int string int int))
+(define-extern free-eye-index (function int int))
+(define-extern render-eyes-32 (function dma-buffer eye-control int pointer))
+(define-extern render-eyes-64 (function dma-buffer eye-control int pointer))
+(define-extern debug-eyes (function dma-buffer none))
+(define-extern update-eyes (function none))
+(define-extern get-eye-block (function int int int))
+(define-extern convert-eye-data (function eye uint float))
+(define-extern merc-eye-anim (function process-drawable none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; glist-h                        ;;
