@@ -100,7 +100,9 @@ fs::path get_user_misc_dir(GameVersion game_version) {
 
 fs::path get_user_features_dir(GameVersion game_version) {
   auto game_version_name = game_version_names[game_version];
-  return get_user_config_dir() / game_version_name / "features";
+  auto path = get_user_config_dir() / game_version_name / "features";
+  file_util::create_dir_if_needed(path);
+  return path;
 }
 
 struct {

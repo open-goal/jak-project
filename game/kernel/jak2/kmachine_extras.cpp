@@ -901,32 +901,29 @@ void pc_sr_mode_dump_new_custom_category(u32 speedrun_custom_category_ptr) {
   const auto file_path =
       file_util::get_user_features_dir(g_game_version) / "speedrun-categories.json";
   if (file_util::file_exists(file_path.string())) {
+    // read current categories from file
     const auto file_contents = safe_parse_json(file_util::read_text_file(file_path));
     if (file_contents) {
       g_speedrun_custom_categories = *file_contents;
     }
   }
 
-  // persist to file
-  if (!file_util::file_exists(file_path.string())) {
-    lg::info("speedrun-practice.json not found, not persisting!");
-  } else {
-    auto category = speedrun_custom_category_ptr
-                        ? Ptr<SpeedrunCustomCategory>(speedrun_custom_category_ptr).c()
-                        : NULL;
-    if (category) {
-      SpeedrunCustomCategoryEntry new_category;
-      new_category.name = fmt::format("custom-category-{}", g_speedrun_custom_categories.size());
-      new_category.secrets = category->secrets;
-      new_category.features = category->features;
-      new_category.forbidden_features = category->forbidden_features;
-      new_category.cheats = category->cheats;
-      new_category.completed_task = category->completed_task;
-      new_category.continue_point_name = "";
-      g_speedrun_custom_categories.push_back(new_category);
-      json data = g_speedrun_custom_categories;
-      file_util::write_text_file(file_path, data.dump(2));
-    }
+  auto category = speedrun_custom_category_ptr
+                      ? Ptr<SpeedrunCustomCategory>(speedrun_custom_category_ptr).c()
+                      : NULL;
+  if (category) {
+    SpeedrunCustomCategoryEntry new_category;
+    new_category.name = fmt::format("custom-category-{}", g_speedrun_custom_categories.size());
+    new_category.secrets = category->secrets;
+    new_category.features = category->features;
+    new_category.forbidden_features = category->forbidden_features;
+    new_category.cheats = category->cheats;
+    new_category.completed_task = category->completed_task;
+    new_category.continue_point_name = "";
+    g_speedrun_custom_categories.push_back(new_category);
+    // convert to json and write file
+    json data = g_speedrun_custom_categories;
+    file_util::write_text_file(file_path, data.dump(2));
   }
   return;
 }
