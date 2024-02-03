@@ -23486,6 +23486,7 @@
 ;; ---entity-h:entity-perm-status
 
 (deftype entity-perm (structure)
+  "Entity information that gets persisted in the save file."
   ((user-object object   2 :offset-assert 0) ;; guessed by decompiler
    (user-uint64 uint64     :offset 0)
    (user-float  float    2 :offset 0) ;; guessed by decompiler
@@ -23495,9 +23496,9 @@
    (user-uint16 uint16   4 :offset 0) ;; guessed by decompiler
    (user-int8   int8     8 :offset 0) ;; guessed by decompiler
    (user-uint8  uint8    8 :offset 0) ;; guessed by decompiler
-   (status      uint16     :offset-assert 8) ;; entity-perm-status
+   (status      entity-perm-status :offset-assert 8) ;; entity-perm-status
    (dummy       uint8    1 :offset-assert 10) ;; guessed by decompiler
-   (task        uint8      :offset-assert 11) ;; game-task
+   (task        game-task  :offset-assert 11) ;; game-task
    (aid         actor-id   :offset-assert 12) ;; guessed by decompiler
    (quad        uint128    :offset 0)
    )
@@ -23510,6 +23511,7 @@
   )
 
 (deftype entity-links (structure)
+  "A linked list of entities with some extra data about their current status."
   ((prev-link entity-links         :offset-assert 0)
    (next-link entity-links         :offset-assert 4)
    (entity    entity               :offset-assert 8) ;; guessed by decompiler
@@ -23520,9 +23522,9 @@
    (vis-dist  meters               :offset-assert 28)
    (trans     vector       :inline :offset-assert 32)
    (perm      entity-perm  :inline :offset-assert 48)
-   (status    uint16               :offset 56)
+   (status    entity-perm-status   :offset 56)
    (aid       uint32               :offset 60)
-   (task      uint8                :offset 59)
+   (task      game-task            :offset 59)
    )
   :method-count-assert 10
   :size-assert         #x40
@@ -23541,6 +23543,8 @@
   )
 
 (deftype entity-links-array (inline-array-class)
+  "An array of [[entity-links]].
+   Levels store a reference to this which holds all the entities in the level."
   ((data entity-links :dynamic :offset-assert 16) ;; guessed by decompiler
    )
   :method-count-assert 14
@@ -23549,6 +23553,11 @@
   )
 
 (deftype entity (res-lump)
+  "Entities are mainly used to place objects in a level.
+
+   As a child of [[res-lump]], they store various types of metadata
+   in [[res-tag]]s (such as name, curve data, volume data, etc.)
+   that gets accessed by the accompanying process."
   ((trans vector :inline :offset-assert 32)
    (aid uint32 :offset-assert 48)
    )
@@ -23596,6 +23605,7 @@
 (define-extern entity-actor type)
 (declare-type nav-poly structure)
 (deftype entity-actor (entity)
+  "Child class of [[entity]] used to spawn [[process-drawable]] actors."
   ((etype type :offset 56)
    (task  game-task :offset-assert 60)
    (kill-mask task-mask :offset 52)
@@ -23786,6 +23796,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (deftype eye (structure)
+  "Data for a single eye."
   ((data         vector  2 :inline :offset-assert 0 :score -1) ;; guessed by decompiler
    (x            float     :offset 0)
    (y            float     :offset 4)
@@ -23802,6 +23813,7 @@
   )
 
 (deftype eye-control (structure)
+  "Information about the state of both eyes of a [[process-drawable]]."
   ((process     handle                              :offset-assert 0) ;; handle
    (random-time uint16                              :offset-assert 8 :decomp-as time-frame)
    (bucket      uint16                              :offset-assert 10 :decomp-as bucket-id)
@@ -23821,6 +23833,7 @@
   )
 
 (deftype eye-control-array (basic)
+  "An array of [[eye-control]]s."
   ((data eye-control 32 :inline :offset-assert 16) ;; guessed by decompiler
    )
   :method-count-assert 9
@@ -23829,6 +23842,7 @@
   )
 
 (deftype eye-work (structure)
+  "Eye renderer DMA data."
   ((sprite-tmpl  dma-gif-packet :inline :offset-assert 0)
    (sprite-tmpl2 dma-gif-packet :inline :offset-assert 32)
    (adgif-tmpl   dma-gif-packet :inline :offset-assert 64)
@@ -23845,10 +23859,28 @@
 ;; camera-h                       ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
+;; +++camera-h:cam-index-options
+(defenum cam-index-options
+  :type uint32
+  :bitfield #t
+  (RADIAL)
+  (SPHERICAL)
+  )
+;; ---camera-h:cam-index-options
+
+;; +++camera-h:slave-los-state
+(defenum slave-los-state
+  :type uint32
+  (none 0)
+  (cw 1)
+  (ccw 2)
+  (between 3)
+  )
+;; ---camera-h:slave-los-state
+
 (deftype cam-index (structure)
-  ((flags cam-index-options   :offset-assert 0) ;; guessed by decompiler
-   (vec   vector            2 :offset-assert 16) ;; guessed by decompiler
+  ((flags cam-index-options           :offset-assert 0) ;; guessed by decompiler
+   (vec   vector            2 :inline :offset-assert 16) ;; guessed by decompiler
    )
   :method-count-assert 11
   :size-assert         #x30
@@ -23858,9 +23890,7 @@
     (cam-index-method-10 () none) ;; 10 ;; (cam-index-method-10 (_type_ vector) float)
     )
   )
-|#
 
-#|
 (deftype tracking-point (structure)
   ((position    vector :inline :offset-assert 0)
    (direction   vector :inline :offset-assert 16)
@@ -23872,9 +23902,7 @@
   :size-assert         #x2c
   :flag-assert         #x90000002c
   )
-|#
 
-#|
 (deftype tracking-spline-sampler (structure)
   ((cur-pt     int32  :offset-assert 0)
    (partial-pt float  :offset-assert 4)
@@ -23883,11 +23911,9 @@
   :size-assert         #x8
   :flag-assert         #x900000008
   )
-|#
 
-#|
 (deftype tracking-spline (structure)
-  ((point              tracking-point 32      :offset-assert 0) ;; guessed by decompiler
+  ((point              tracking-point 32 :inline :offset-assert 0) ;; guessed by decompiler
    (summed-len         float                  :offset-assert 1536)
    (free-point         int32                  :offset-assert 1540)
    (used-point         int32                  :offset-assert 1544)
@@ -23923,9 +23949,7 @@
     (tracking-spline-method-23 () none) ;; 23 ;; (debug-draw-spline (_type_) none)
     )
   )
-|#
 
-#|
 (deftype cam-float-seeker (structure)
   ((target      float  :offset-assert 0)
    (value       float  :offset-assert 4)
@@ -23934,19 +23958,18 @@
    (max-vel     float  :offset-assert 16)
    (max-partial float  :offset-assert 20)
    )
+  :pack-me
   :method-count-assert 13
   :size-assert         #x18
   :flag-assert         #xd00000018
   (:methods
-    (cam-float-seeker-method-9 () none) ;; 9 ;; (init (_type_ float float float float) none)
-    (cam-float-seeker-method-10 () none) ;; 10 ;; (copy-to (_type_ _type_) none)
-    (cam-float-seeker-method-11 () none) ;; 11 ;; (update! (_type_ float) none)
-    (cam-float-seeker-method-12 () none) ;; 12 ;; (jump-to-target! (_type_ float) float)
+    (init (_type_ float float float float) none) ;; 9
+    (copy-to (_type_ _type_) none) ;; 10
+    (update! (_type_ float) none) ;; 11
+    (jump-to-target! (_type_ float) float) ;; 12
     )
   )
-|#
 
-#|
 (deftype cam-vector-seeker (structure)
   ((target      vector :inline :offset-assert 0)
    (value       vector :inline :offset-assert 16)
@@ -23959,13 +23982,11 @@
   :size-assert         #x3c
   :flag-assert         #xb0000003c
   (:methods
-    (cam-vector-seeker-method-9 () none) ;; 9 ;; (init (_type_ vector float float float) none)
-    (cam-vector-seeker-method-10 () none) ;; 10 ;; (update! (_type_ vector) none)
+    (init (_type_ vector float float float) none) ;; 9
+    (update! (_type_ vector) none) ;; 10
     )
   )
-|#
 
-#|
 (deftype cam-rotation-tracker (structure)
   ((inv-mat                 matrix           :inline :offset-assert 0)
    (no-follow               basic                    :offset-assert 64)
@@ -23984,9 +24005,7 @@
   :size-assert         #x108
   :flag-assert         #x900000108
   )
-|#
 
-#|
 (deftype camera-combiner (process)
   ((trans             vector               :inline :offset-assert 128)
    (inv-camera-rot    matrix               :inline :offset-assert 144)
@@ -24006,9 +24025,41 @@
   :size-assert         #x22c
   :flag-assert         #xe01b0022c
   )
-|#
 
-#|
+;; +++camera-h:camera-blend-to-type
+(defenum camera-blend-to-type
+  :type uint64
+  (unknown-0 0)
+  (unknown-1 1)
+  (unknown-2 2)
+  )
+;; ---camera-h:camera-blend-to-type
+
+;; +++camera-h:camera-blend-from-type
+(defenum camera-blend-from-type
+  :type uint64
+  (unknown-0 0)
+  (unknown-1 1)
+  (unknown-2 2)
+  )
+;; ---camera-h:camera-blend-from-type
+
+;; +++camera-h:cam-slave-options-u32
+(defenum cam-slave-options-u32
+  :type uint32
+  :bitfield #t
+  :copy-entries cam-slave-options
+  )
+;; ---camera-h:cam-slave-options-u32
+
+;; +++camera-h:cam-master-options-u32
+(defenum cam-master-options-u32
+  :type uint32
+  :bitfield #t
+  :copy-entries cam-master-options
+  )
+;; ---camera-h:cam-master-options-u32
+
 (deftype camera-slave (process)
   ((trans                         vector                :inline :offset-assert 128)
    (fov                           float                         :offset-assert 144)
@@ -24031,7 +24082,7 @@
    (max-angle-curr                float                         :offset-assert 2276)
    (options                       cam-slave-options-u32         :offset-assert 2280) ;; guessed by decompiler
    (cam-entity                    entity                        :offset-assert 2284) ;; guessed by decompiler
-   (butt-timer                    uint64                        :offset-assert 2288)
+   (butt-timer                    time-frame                    :offset-assert 2288)
    (butt-seek                     basic                         :offset-assert 2296)
    (butt-vector                   vector                :inline :offset-assert 2304)
    (velocity                      vector                :inline :offset-assert 2320)
@@ -24047,7 +24098,7 @@
    (intro-t                       float                         :offset-assert 2464)
    (intro-t-step                  float                         :offset-assert 2468)
    (outro-exit-value              float                         :offset-assert 2472)
-   (spline-exists                 basic                         :offset-assert 2476)
+   (spline-exists                 symbol                        :offset-assert 2476)
    (spline-curve                  curve                 :inline :offset-assert 2480)
    (spline-offset                 vector                :inline :offset-assert 2512)
    (index                         cam-index             :inline :offset-assert 2528)
@@ -24055,8 +24106,8 @@
    (spline-tt                     float                         :offset-assert 2592)
    (spline-follow-dist            float                         :offset-assert 2596)
    (enter-has-run                 symbol                        :offset-assert 2600) ;; guessed by decompiler
-   (blend-from-type               uint64                        :offset-assert 2608)
-   (blend-to-type                 uint64                        :offset-assert 2616) ;; camera-blend-to-type
+   (blend-from-type               camera-blend-from-type        :offset-assert 2608)
+   (blend-to-type                 camera-blend-to-type          :offset-assert 2616) ;; camera-blend-to-type
    (have-phony-joystick           basic                         :offset-assert 2624)
    (phony-joystick-x              float                         :offset-assert 2628)
    (phony-joystick-y              float                         :offset-assert 2632)
@@ -24072,15 +24123,13 @@
   :size-assert         #xac0
   :flag-assert         #xe0a400ac0
   )
-|#
 
-#|
 (deftype camera-master (process)
   ((master-options      cam-master-options-u32           :offset-assert 128) ;; guessed by decompiler
    (settings            cam-setting-data                 :offset-assert 132)
    (slave               (pointer camera-slave)           :offset-assert 136) ;; guessed by decompiler
    (decel               (pointer camera-slave)           :offset-assert 140) ;; guessed by decompiler
-   (slave-options       uint32                           :offset-assert 144)
+   (slave-options       cam-slave-options-u32            :offset-assert 144)
    (view-off-param-save float                            :offset-assert 148)
    (changer             uint32                           :offset-assert 152)
    (string-min          cam-vector-seeker        :inline :offset-assert 160)
@@ -24089,7 +24138,7 @@
    (local-down          vector                   :inline :offset-assert 288)
    (focus               focus                    :inline :offset-assert 304)
    (being-attacked      symbol                           :offset-assert 316) ;; guessed by decompiler
-   (attack-start        uint64                           :offset-assert 320) ;; time-frame
+   (attack-start        time-frame                       :offset-assert 320) ;; time-frame
    (on-ground           symbol                           :offset-assert 328) ;; guessed by decompiler
    (under-water         int32                            :offset-assert 332)
    (on-pole             symbol                           :offset-assert 336) ;; guessed by decompiler
@@ -24111,7 +24160,7 @@
    (outro-t             float                            :offset-assert 2308)
    (outro-t-step        float                            :offset-assert 2312)
    (outro-exit-value    float                            :offset-assert 2316)
-   (water-drip-time     uint64                           :offset-assert 2320) ;; time-frame
+   (water-drip-time     time-frame                       :offset-assert 2320) ;; time-frame
    (water-drip          sparticle-launch-control         :offset-assert 2328) ;; guessed by decompiler
    (water-drip-mult     float                            :offset-assert 2332)
    (water-drip-speed    float                            :offset-assert 2336)
@@ -24126,16 +24175,14 @@
     (camera-master-method-16 () none) ;; 16 ;; (camera-master-method-16 (_type_ symbol) int)
     )
   )
-|#
-
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; cam-interface-h                ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (define-extern *camera-init-mat* object) ;; matrix
-;; (define-extern *camera* object) ;; camera-master
-;; (define-extern *camera-combiner* object) ;; camera-combiner
+(define-extern *camera-init-mat* matrix)
+(define-extern *camera* camera-master)
+(define-extern *camera-combiner* camera-combiner)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; sparticle-launcher-h           ;;
@@ -24413,8 +24460,12 @@
 ;; actor-link-h                   ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype actor-link-info (basic)
+  "A linked list of actors.
+
+   Actors allocate this on their process heap if they have a
+   `next-actor` or `prev-actor` defined in their lump
+   and use it for entity lookups."
   ((process process       :offset-assert 4) ;; guessed by decompiler
    (next    entity-actor  :offset-assert 8) ;; guessed by decompiler
    (prev    entity-actor  :offset-assert 12) ;; guessed by decompiler
@@ -24423,83 +24474,116 @@
   :size-assert         #x10
   :flag-assert         #x1a00000010
   (:methods
-    (new (symbol type) _type_) ;; 0 ;; (new (symbol type process symbol) _type_)
-    (actor-link-info-method-9 () none) ;; 9 ;; (get-matching-actor-type-mask (_type_ type) int)
-    (actor-link-info-method-10 () none) ;; 10 ;; (actor-count-before (_type_) int)
-    (actor-link-info-method-11 () none) ;; 11 ;; (link-to-next-and-prev-actor (_type_) actor-link-info)
-    (actor-link-info-method-12 () none) ;; 12 ;; (get-next (_type_) entity-actor)
-    (actor-link-info-method-13 () none) ;; 13 ;; (get-prev (_type_) entity-actor)
-    (actor-link-info-method-14 () none) ;; 14 ;; (get-next-process (_type_) process)
-    (actor-link-info-method-15 () none) ;; 15 ;; (get-prev-process (_type_) process)
-    (actor-link-info-method-16 () none) ;; 16 ;; (apply-function-forward (_type_ (function entity-actor object object) object) int)
-    (actor-link-info-method-17 () none) ;; 17 ;; (apply-function-reverse (_type_ (function entity-actor object object) object) int)
-    (actor-link-info-method-18 () none) ;; 18 ;; (apply-all (_type_ (function entity-actor object object) object) int)
-    (actor-link-info-method-19 () none) ;; 19 ;; (send-to-all (_type_ symbol) none)
-    (actor-link-info-method-20 () none) ;; 20 ;; (send-to-all-after (_type_ symbol) object)
-    (actor-link-info-method-21 () none) ;; 21 ;; (send-to-all-before (_type_ symbol) object)
-    (actor-link-info-method-22 () none) ;; 22 ;; (send-to-next-and-prev (_type_ symbol) none)
-    (actor-link-info-method-23 () none) ;; 23 ;; (send-to-next (_type_ symbol) none)
-    (actor-link-info-method-24 () none) ;; 24 ;; (send-to-prev (_type_ symbol) none)
-    (actor-link-info-method-25 () none) ;; 25 ;; (actor-count (_type_) int)
+    (new
+      "Set up an actor-link-info for the given process.
+       The entity of this process should be the entity-actor
+       that will get this actor-link-info."
+      (symbol type process symbol) _type_) ;; 0
+    (get-matching-actor-type-mask
+      "Iterate through _all_ actors that are part of this actor list.
+       If the nth actor is type matching-type, then set the nth bit of the result."
+      (_type_ type) int) ;; 9
+    (actor-count-before "Get the number of actors before this actor in the list." (_type_) int) ;; 10
+    (link-to-next-and-prev-actor
+      "Redo the linking in the constructor by looking up the next/prev actor."
+      (_type_) actor-link-info) ;; 11
+    (get-next (_type_) entity-actor) ;; 12
+    (get-prev (_type_) entity-actor) ;; 13
+    (get-next-process "Get the process for the next, if it exists." (_type_) process) ;; 14
+    (get-prev-process "Get the process for the prev, if it exists." (_type_) process) ;; 15
+    (apply-function-forward
+      "Iterate forward through actors, and apply this function. Starts at (-> this next)
+       If the function returns truthy, stop iterating."
+      (_type_ (function entity-actor object object) object) int) ;; 16
+    (apply-function-reverse
+      "Iterate backward through actors and apply function.
+       If the function returns truth, stop iterating."
+      (_type_ (function entity-actor object object) object) int) ;; 17
+    (apply-all
+      "Apply to all entities.  Starts at the back and hits everyone, including this object."
+      (_type_ (function entity-actor object object) object) int) ;; 18
+    (send-to-all (_type_ symbol) none) ;; 19
+    (send-to-all-after "Send an event to all processes after this link with no parameters." (_type_ symbol) object) ;; 20
+    (send-to-all-before "Send an event to all processes before this link with no parameters." (_type_ symbol) object) ;; 21
+    (send-to-next-and-prev "Send an event to both next and prev with no params." (_type_ symbol) none) ;; 22
+    (send-to-next "Send event arg0 to the next actor's process." (_type_ symbol) none) ;; 23
+    (send-to-prev "Send event arg1 to the next actor's process." (_type_ symbol) none) ;; 24
+    (actor-count "Count the number of actors in the entire list." (_type_) int) ;; 25
     )
   )
-|#
 
-;; (define-extern entity-actor-lookup function) ;; (function res-lump symbol int entity-actor)
-;; (define-extern entity-actor-count function) ;; (function res-lump symbol int)
-;; (define-extern actor-link-subtask-complete-hook function) ;; (function entity-actor (pointer symbol) symbol)
-;; (define-extern actor-link-subtask-incomplete-count-hook function) ;; (function entity-actor (pointer uint64) symbol)
-;; (define-extern actor-link-dead-hook function) ;; (function entity-actor (pointer symbol) symbol)
-;; (define-extern alt-actor-list-subtask-incomplete-count function) ;; (function process-drawable int)
+(define-extern entity-actor-lookup
+  "Given an entity (the res-lump), look up a reference to another entity and return that entity."
+  (function res-lump symbol int entity-actor))
+(define-extern entity-actor-count
+  "Get the number of entities that this res references under the name.
+   This works on more than just next/prev."
+  (function res-lump symbol int))
+(define-extern actor-link-subtask-complete-hook
+  "Sets arg1 if the thing is complete. Does not continue the apply if the complete perm is set."
+  (function entity-actor (pointer symbol) symbol))
+(define-extern actor-link-subtask-incomplete-count-hook (function entity-actor (pointer uint64) symbol))
+(define-extern actor-link-dead-hook
+  "Sets arg1 if the thing is dead. Does not continue the apply if the dead perm is set."
+  (function entity-actor (pointer symbol) symbol))
+(define-extern alt-actor-list-subtask-incomplete-count
+  "Get the number of alt-actors which do not have the complete bit set in their perm."
+  (function process-drawable int))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; cam-debug-h                    ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (define-extern *redline-table* object) ;; (pointer float)
-;; (define-extern *redline-index* object) ;; int
-;; (define-extern float-save-redline function) ;; (function float none)
-;; (define-extern float-lookup-redline function) ;; (function float float)
-;; (define-extern *blueline-table* object) ;; (pointer float)
-;; (define-extern *blueline-index* object) ;; int
-;; (define-extern float-save-blueline function) ;; (function float none)
-;; (define-extern float-lookup-blueline function) ;; (function float float)
-;; (define-extern *greenline-table* object) ;; (pointer float)
-;; (define-extern *greenline-index* object) ;; int
-;; (define-extern float-save-greenline function) ;; (function float none)
-;; (define-extern float-lookup-greenline function) ;; (function float float)
-;; (define-extern *yellowline-table* object) ;; (pointer float)
-;; (define-extern *yellowline-index* object) ;; int
-;; (define-extern float-save-yellowline function) ;; (function float none)
-;; (define-extern float-lookup-yellowline function) ;; (function float float)
-;; (define-extern *timeplot-table* object) ;; (pointer float)
-;; (define-extern *timeplot-index* object) ;; int
-;; (define-extern float-save-timeplot function) ;; (function float none)
-;; (define-extern float-lookup-timeplot function) ;; (function float float)
-;; (define-extern *cam-layout* object) ;; symbol
+(define-extern *redline-table* (pointer float))
+(define-extern *redline-index* int)
+(define-extern float-save-redline (function float none))
+(define-extern float-lookup-redline (function float float))
+(define-extern *blueline-table* (pointer float))
+(define-extern *blueline-index* int)
+(define-extern float-save-blueline (function float none))
+(define-extern float-lookup-blueline (function float float))
+(define-extern *greenline-table* (pointer float))
+(define-extern *greenline-index* int)
+(define-extern float-save-greenline (function float none))
+(define-extern float-lookup-greenline (function float float))
+(define-extern *yellowline-table* (pointer float))
+(define-extern *yellowline-index* int)
+(define-extern float-save-yellowline (function float none))
+(define-extern float-lookup-yellowline (function float float))
+(define-extern *timeplot-table* (pointer float))
+(define-extern *timeplot-index* int)
+(define-extern float-save-timeplot (function float none))
+(define-extern float-lookup-timeplot (function float float))
+(define-extern *cam-layout* symbol)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; cam-update-h                   ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (define-extern *external-cam-options* object) ;; external-cam-option
-;; (define-extern *external-cam-mode* object) ;; symbol
-;; (define-extern *camera-look-through-other* object) ;; int
-;; (define-extern *camera-other-fov* bfloat) ;; bfloat
-;; (define-extern *camera-other-trans* object) ;; vector
-;; (define-extern *camera-other-matrix* object) ;; matrix
-;; (define-extern *camera-smush-control* object) ;; smush-control
-;; (define-extern *camera-smush-control-horizontal* object)
-;; (define-extern *camera-smush-control-into* object)
-;; (define-extern *camera-other-root* object) ;; vector
-;; (define-extern *fix-visible-level-mask* object) ;; int
-;; (define-extern *manual-sample-point* object) ;; symbol
+;; +++cam-update-h:external-cam-option
+(defenum external-cam-option
+  :bitfield #t
+  (allow-z 0)
+  )
+;; ---cam-update-h:external-cam-option
+
+(define-extern *external-cam-options* external-cam-option)
+(define-extern *external-cam-mode* symbol)
+(define-extern *camera-look-through-other* int)
+(define-extern *camera-other-fov* bfloat)
+(define-extern *camera-other-trans* vector)
+(define-extern *camera-other-matrix* matrix)
+(define-extern *camera-smush-control* smush-control)
+(define-extern *camera-smush-control-horizontal* object)
+(define-extern *camera-smush-control-into* object)
+(define-extern *camera-other-root* vector)
+(define-extern *fix-visible-level-mask* int)
+(define-extern *manual-sample-point* symbol)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; hud-h                          ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype hud-string (structure)
   ((text  string             :offset-assert 0) ;; guessed by decompiler
    (scale float              :offset-assert 4)
@@ -24507,24 +24591,23 @@
    (flags font-flags         :offset-assert 12) ;; guessed by decompiler
    (pos   vector4w   :inline :offset-assert 16) ;; int32 4
    )
+  :allow-misaligned
   :method-count-assert 9
   :size-assert         #x20
   :flag-assert         #x900000020
   )
-|#
 
-#|
 (deftype hud-sprite (structure)
   ((pos      vector4w :inline :offset-assert 0)
-   (offset-x float            :offset-assert 0)
-   (offset-y float            :offset-assert 4)
+   (offset-x float            :offset 0)
+   (offset-y float            :offset 4)
    (color    vector4w :inline :offset-assert 16)
    (flags    uint32           :offset-assert 32)
    (scale-x  float            :offset-assert 36)
    (scale-y  float            :offset-assert 40)
    (angle    float            :offset-assert 44)
    (tex      texture          :offset-assert 48) ;; guessed by decompiler
-   (tid      uint32           :offset-assert 48)
+   (tid      uint32           :offset 48)
    )
   :method-count-assert 12
   :size-assert         #x34
@@ -24535,13 +24618,11 @@
     (hud-sprite-method-11 () none) ;; 11
     )
   )
-|#
 
-#|
 (deftype hud-box (structure)
   ((box   bounding-box2 :inline :offset-assert 0)
-   (min   vector2       :inline :offset-assert 0)
-   (max   vector2       :inline :offset-assert 8)
+   (min   vector2       :inline :offset 0)
+   (max   vector2       :inline :offset 8)
    (color vector4w      :inline :offset-assert 16)
    )
   :method-count-assert 14
@@ -24555,22 +24636,19 @@
     (hud-box-method-13 () none) ;; 13 ;; (draw-scan-and-line (_type_ dma-buffer float) int)
     )
   )
-|#
 
-#|
 (deftype hud-icon (structure)
   ((icon    (pointer manipy)         :offset-assert 0) ;; guessed by decompiler
    (pos     vector4w         :inline :offset-assert 16) ;; int32 4
    (scale-x float                    :offset-assert 32)
    (scale-y float                    :offset-assert 36)
    )
+  :allow-misaligned
   :method-count-assert 9
   :size-assert         #x28
   :flag-assert         #x900000028
   )
-|#
 
-#|
 (deftype hud-value (structure)
   ((current  int32   :offset-assert 0)
    (target   int32   :offset-assert 4)
@@ -24579,22 +24657,31 @@
    (inc-time uint16  :offset-assert 12)
    (counter  uint16  :offset-assert 14)
    )
+  :allow-misaligned
   :method-count-assert 9
   :size-assert         #x10
   :flag-assert         #x900000010
   )
-|#
 
-#|
+;; +++hud-h:hud-flags
+(defenum hud-flags
+  :type uint32
+  :bitfield #t
+  (disable 0)
+  (should-die 1)
+  (show 2)
+  )
+;; ---hud-h:hud-flags
+
 (deftype hud (process)
-  ((trigger-time   uint64        :offset-assert 128) ;; time-frame
-   (last-hide-time uint64        :offset-assert 136) ;; time-frame
+  ((trigger-time   time-frame    :offset-assert 128) ;; time-frame
+   (last-hide-time time-frame    :offset-assert 136) ;; time-frame
    (offset         float         :offset-assert 144)
    (flags          hud-flags     :offset-assert 148) ;; guessed by decompiler
-   (values         hud-value  8  :offset-assert 152) ;; guessed by decompiler
-   (strings        hud-string 14 :offset-assert 288) ;; guessed by decompiler
-   (sprites        hud-sprite 30 :offset-assert 736) ;; guessed by decompiler
-   (icons          hud-icon   2  :offset-assert 2656) ;; guessed by decompiler
+   (values         hud-value  8  :inline :offset-assert 152) ;; guessed by decompiler
+   (strings        hud-string 14 :inline :offset-assert 288) ;; guessed by decompiler
+   (sprites        hud-sprite 30 :inline :offset-assert 736) ;; guessed by decompiler
+   (icons          hud-icon   2  :inline :offset-assert 2656) ;; guessed by decompiler
    (gui-id         sound-id      :offset-assert 2752) ;; guessed by decompiler
    )
   :method-count-assert 27
@@ -24622,467 +24709,364 @@
     hud-hidden ;; associated process guessed by decompiler, old: (state hud)
     )
   )
-|#
 
-#|
 (deftype hud-ashelin (hud)
   ()
   :method-count-assert 27
   :size-assert         #xac4
   :flag-assert         #x1b0a500ac4
   )
-|#
 
-#|
 (deftype hud-cargo (hud)
   ()
   :method-count-assert 27
   :size-assert         #xac4
   :flag-assert         #x1b0a500ac4
   )
-|#
 
-#|
 (deftype hud-citizen (hud)
   ()
   :method-count-assert 27
   :size-assert         #xac4
   :flag-assert         #x1b0a500ac4
   )
-|#
 
-#|
 (deftype hud-cpanel (hud)
   ()
   :method-count-assert 27
   :size-assert         #xac4
   :flag-assert         #x1b0a500ac4
   )
-|#
 
-#|
 (deftype hud-dig-clasp (hud)
   ()
   :method-count-assert 27
   :size-assert         #xac4
   :flag-assert         #x1b0a500ac4
   )
-|#
 
-#|
 (deftype hud-gun (hud)
   ()
   :method-count-assert 27
   :size-assert         #xac4
   :flag-assert         #x1b0a500ac4
   )
-|#
 
-#|
 (deftype hud-health (hud)
   ()
   :method-count-assert 27
   :size-assert         #xac4
   :flag-assert         #x1b0a500ac4
   )
-|#
 
-#|
 (deftype hud-helldog (hud)
   ()
   :method-count-assert 27
   :size-assert         #xac4
   :flag-assert         #x1b0a500ac4
   )
-|#
 
-#|
 (deftype hud-lurker (hud)
   ()
   :method-count-assert 27
   :size-assert         #xac4
   :flag-assert         #x1b0a500ac4
   )
-|#
 
-#|
 (deftype hud-map (hud)
   ()
   :method-count-assert 27
   :size-assert         #xac4
   :flag-assert         #x1b0a500ac4
   )
-|#
 
-#|
 (deftype hud-moneybag (hud)
   ()
   :method-count-assert 27
   :size-assert         #xac4
   :flag-assert         #x1b0a500ac4
   )
-|#
 
-#|
 (deftype hud-plasmite (hud)
   ()
   :method-count-assert 27
   :size-assert         #xac4
   :flag-assert         #x1b0a500ac4
   )
-|#
 
-#|
 (deftype hud-dig-button (hud)
   ()
   :method-count-assert 27
   :size-assert         #xac4
   :flag-assert         #x1b0a500ac4
   )
-|#
 
-#|
 (deftype hud-predator (hud)
   ()
   :method-count-assert 27
   :size-assert         #xac4
   :flag-assert         #x1b0a500ac4
   )
-|#
 
-#|
 (deftype hud-heatmeter (hud)
   ()
   :method-count-assert 27
   :size-assert         #xac4
   :flag-assert         #x1b0a500ac4
   )
-|#
 
-#|
 (deftype hud-nest-cocoons (hud)
   ()
   :method-count-assert 27
   :size-assert         #xac4
   :flag-assert         #x1b0a500ac4
   )
-|#
 
-#|
 (deftype hud-neo-spawners (hud)
   ()
   :method-count-assert 27
   :size-assert         #xac4
   :flag-assert         #x1b0a500ac4
   )
-|#
 
-#|
 (deftype hud-desert-lizards (hud)
   ()
   :method-count-assert 27
   :size-assert         #xac4
   :flag-assert         #x1b0a500ac4
   )
-|#
 
-#|
 (deftype hud-fac-manager (hud)
   ()
   :method-count-assert 27
   :size-assert         #xac4
   :flag-assert         #x1b0a500ac4
   )
-|#
 
-#|
 (deftype hud-progress (hud)
   ()
   :method-count-assert 27
   :size-assert         #xac4
   :flag-assert         #x1b0a500ac4
   )
-|#
 
-#|
 (deftype hud-rocketsensor (hud)
   ()
   :method-count-assert 27
   :size-assert         #xac4
   :flag-assert         #x1b0a500ac4
   )
-|#
 
-#|
 (deftype hud-ruffians (hud)
   ()
   :method-count-assert 27
   :size-assert         #xac4
   :flag-assert         #x1b0a500ac4
   )
-|#
 
-#|
 (deftype hud-score (hud)
   ()
   :method-count-assert 27
   :size-assert         #xac4
   :flag-assert         #x1b0a500ac4
   )
-|#
 
-#|
 (deftype hud-sig (hud)
   ()
   :method-count-assert 27
   :size-assert         #xac4
   :flag-assert         #x1b0a500ac4
   )
-|#
 
-#|
 (deftype hud-skill (hud)
   ()
   :method-count-assert 27
   :size-assert         #xac4
   :flag-assert         #x1b0a500ac4
   )
-|#
 
-#|
 (deftype hud-skullgem (hud)
   ()
   :method-count-assert 27
   :size-assert         #xac4
   :flag-assert         #x1b0a500ac4
   )
-|#
 
-#|
 (deftype hud-timer (hud)
   ()
   :method-count-assert 27
   :size-assert         #xac4
   :flag-assert         #x1b0a500ac4
   )
-|#
 
-#|
 (deftype hud-turret (hud)
   ()
   :method-count-assert 27
   :size-assert         #xac4
   :flag-assert         #x1b0a500ac4
   )
-|#
 
-#|
 (deftype hud-for-turret-health (hud)
-  ()
+  ((unknown-float0 float  :offset 2800)
+   )
   :method-count-assert 27
   :size-assert         #xaf4
   :flag-assert         #x1b0a800af4
   )
-|#
 
-#|
 (deftype hud-squid (hud)
   ()
   :method-count-assert 27
   :size-assert         #xac4
   :flag-assert         #x1b0a500ac4
   )
-|#
 
-#|
 (deftype hud-gunturret (hud)
   ()
   :method-count-assert 27
   :size-assert         #xac4
   :flag-assert         #x1b0a500ac4
   )
-|#
 
-#|
 (deftype hud-gruntegg (hud)
   ()
   :method-count-assert 27
   :size-assert         #xac4
   :flag-assert         #x1b0a500ac4
   )
-|#
 
-#|
 (deftype hud-crimsonhover (hud)
   ()
   :method-count-assert 27
   :size-assert         #xac4
   :flag-assert         #x1b0a500ac4
   )
-|#
 
-#|
 (deftype hud-metalkor (hud)
   ()
   :method-count-assert 27
   :size-assert         #xac4
   :flag-assert         #x1b0a500ac4
   )
-|#
 
-#|
 (deftype hud-big-score (hud)
   ()
   :method-count-assert 27
   :size-assert         #xac4
   :flag-assert         #x1b0a500ac4
   )
-|#
 
-#|
 (deftype hud-goal (hud)
   ()
   :method-count-assert 27
   :size-assert         #xac4
   :flag-assert         #x1b0a500ac4
   )
-|#
 
-#|
 (deftype hud-miss (hud)
   ()
   :method-count-assert 27
   :size-assert         #xac4
   :flag-assert         #x1b0a500ac4
   )
-|#
 
-#|
 (deftype hud-samos-old (hud)
   ()
   :method-count-assert 27
   :size-assert         #xac4
   :flag-assert         #x1b0a500ac4
   )
-|#
 
-#|
 (deftype hud-lurker-button (hud)
   ()
   :method-count-assert 27
   :size-assert         #xac4
   :flag-assert         #x1b0a500ac4
   )
-|#
 
-#|
 (deftype hud-widow (hud)
   ()
   :method-count-assert 27
   :size-assert         #xac4
   :flag-assert         #x1b0a500ac4
   )
-|#
 
-#|
 (deftype hud-race-final-stats (hud)
   ()
   :method-count-assert 27
   :size-assert         #xac4
   :flag-assert         #x1b0a500ac4
   )
-|#
 
-#|
 (deftype hud-mech-air-tank (hud)
   ()
   :method-count-assert 27
   :size-assert         #xac4
   :flag-assert         #x1b0a500ac4
   )
-|#
 
-#|
 (deftype hud-homing-beacon (hud)
   ()
   :method-count-assert 27
   :size-assert         #xac4
   :flag-assert         #x1b0a500ac4
   )
-|#
 
-#|
 (deftype hud-dark-eco-pickup (hud)
   ()
   :method-count-assert 27
   :size-assert         #xac4
   :flag-assert         #x1b0a500ac4
   )
-|#
 
-#|
 (deftype hud-green-eco-pickup (hud)
   ()
   :method-count-assert 27
   :size-assert         #xac4
   :flag-assert         #x1b0a500ac4
   )
-|#
 
-#|
 (deftype hud-mh-centipede (hud)
   ()
   :method-count-assert 27
   :size-assert         #xac4
   :flag-assert         #x1b0a500ac4
   )
-|#
 
-#|
 (deftype hud-arena-tokens (hud)
   ()
   :method-count-assert 27
   :size-assert         #xac4
   :flag-assert         #x1b0a500ac4
   )
-|#
 
-#|
 (deftype hud-kanga-lizard (hud)
   ()
   :method-count-assert 27
   :size-assert         #xac4
   :flag-assert         #x1b0a500ac4
   )
-|#
 
-#|
 (deftype hud-marauder (hud)
   ()
   :method-count-assert 27
   :size-assert         #xac4
   :flag-assert         #x1b0a500ac4
   )
-|#
 
-#|
 (deftype hud-prebot (hud)
   ()
   :method-count-assert 27
   :size-assert         #xac4
   :flag-assert         #x1b0a500ac4
   )
-|#
 
-#|
 (deftype hud-glider-altitude (hud)
   ()
   :method-count-assert 27
   :size-assert         #xac4
   :flag-assert         #x1b0a500ac4
   )
-|#
-
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; progress-h                     ;;
@@ -35429,9 +35413,9 @@
 ;; (define-extern *spawn-actors* object) ;; symbol
 ;; (define-extern *compact-actors* object) ;; symbol
 ;; (define-extern *vis-actors* object) ;; symbol
-;; (define-extern entity-by-name function) ;; (function string entity)
+(define-extern entity-by-name (function string entity))
 ;; (define-extern entity-by-type function) ;; (function type entity-actor)
-;; (define-extern entity-by-aid function) ;; (function uint entity)
+(define-extern entity-by-aid (function uint entity))
 ;; (define-extern entity-actor-from-level-name function) ;; (function symbol entity-actor)
 ;; (define-extern entity-nav-mesh-by-aid function) ;; (function actor-id entity-nav-mesh)
 ;; (define-extern nav-mesh-from-res-tag function) ;; (function entity symbol int nav-mesh)
