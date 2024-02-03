@@ -1,25 +1,7 @@
 ;;-*-Lisp-*-
 (in-package goal)
 
-;; name: collide-cache-h.gc
-;; name in dgo: collide-cache-h
-;; dgos: GAME
-
-(defenum prim-type
-  :type int8
-  (prim   -2)
-  (sphere -1)
-  (group  0)
-  (mesh 1)
-  (fake-prim 2)
-  )
-
-(declare-type collide-cache-prim structure)
-(declare-type collide-using-spheres-params structure)
-(declare-type instance-tie structure)
-
-;; DECOMP BEGINS
-
+;; definition of type collide-puss-sphere
 (deftype collide-puss-sphere (structure)
   "A query sphere from the user for the porbe-using-spheres query.
 This is used internally by the collide-cache implementation."
@@ -28,7 +10,20 @@ This is used internally by the collide-cache implementation."
    )
   )
 
+;; definition for method 3 of type collide-puss-sphere
+(defmethod inspect ((this collide-puss-sphere))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this 'collide-puss-sphere)
+  (format #t "~1Tbsphere: #<sphere @ #x~X>~%" (-> this bsphere))
+  (format #t "~1Tbbox4w: #<bounding-box4w @ #x~X>~%" (-> this bbox4w))
+  (label cfg-4)
+  this
+  )
 
+;; definition of type collide-puss-work
 (deftype collide-puss-work (structure)
   "Scratchpad memory map for probe-using-spheres query."
   ((closest-pt      vector               :inline)
@@ -43,7 +38,23 @@ This is used internally by the collide-cache implementation."
     )
   )
 
+;; definition for method 3 of type collide-puss-work
+(defmethod inspect ((this collide-puss-work))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this 'collide-puss-work)
+  (format #t "~1Tclosest-pt: #<vector @ #x~X>~%" (-> this closest-pt))
+  (format #t "~1Ttri-normal: #<vector @ #x~X>~%" (-> this tri-normal))
+  (format #t "~1Ttri-bbox4w: #<bounding-box4w @ #x~X>~%" (-> this tri-bbox4w))
+  (format #t "~1Tspheres-bbox4w: #<bounding-box4w @ #x~X>~%" (-> this spheres-bbox4w))
+  (format #t "~1Tspheres[64] @ #x~X~%" (-> this spheres))
+  (label cfg-4)
+  this
+  )
 
+;; definition of type collide-cache-tri
 (deftype collide-cache-tri (structure)
   "A single triangle inside the collision cache.
 Contains a reference back to the source object (like a collide-shape or water-control), and the prim itself."
@@ -57,7 +68,25 @@ Contains a reference back to the source object (like a collide-shape or water-co
    )
   )
 
+;; definition for method 3 of type collide-cache-tri
+(defmethod inspect ((this collide-cache-tri))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this 'collide-cache-tri)
+  (format #t "~1Tvertex[3] @ #x~X~%" (-> this vertex))
+  (format #t "~1Textra-quad[16] @ #x~X~%" (-> this extra-quad))
+  (format #t "~1Tpat: ~D~%" (-> this pat))
+  (format #t "~1Tcollide-ptr: ~A~%" (-> this collide-ptr))
+  (format #t "~1Tprim-index: ~D~%" (-> this prim-index))
+  (format #t "~1Tuser16: ~D~%" (-> this user16))
+  (format #t "~1Tuser32: ~D~%" (-> this user32))
+  (label cfg-4)
+  this
+  )
 
+;; definition of type collide-cache-prim
 (deftype collide-cache-prim (structure)
   "A primitive inside the collide-cache.
 This can represent a sphere, a triangle mesh, or a group of other primitives within a bounding sphere."
@@ -79,7 +108,29 @@ This can represent a sphere, a triangle mesh, or a group of other primitives wit
     )
   )
 
+;; definition for method 3 of type collide-cache-prim
+(defmethod inspect ((this collide-cache-prim))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this 'collide-cache-prim)
+  (format #t "~1Tprim-core: #<collide-prim-core @ #x~X>~%" (-> this prim-core))
+  (format #t "~1Textra-quad[16] @ #x~X~%" (-> this extra-quad))
+  (format #t "~1Tccache: ~A~%" (-> this ccache))
+  (format #t "~1Tprim: ~A~%" (-> this prim))
+  (format #t "~1Tfirst-tri: ~D~%" (-> this first-tri))
+  (format #t "~1Tnum-tris: ~D~%" (-> this num-tris))
+  (format #t "~1Tunused[4] @ #x~X~%" (-> this unused))
+  (format #t "~1Tworld-sphere: ~`vector`P~%" (-> this prim-core))
+  (format #t "~1Tcollide-as: ~D~%" (-> this prim-core collide-as))
+  (format #t "~1Taction: ~D~%" (-> this prim-core action))
+  (format #t "~1Tprim-type: ~D~%" (-> this prim-core prim-type))
+  (label cfg-4)
+  this
+  )
 
+;; definition of type collide-cache
 (deftype collide-cache (basic)
   "The collide-cache is a structure to accelerate collision queries.
 In particular, it helps with queries where you don't know what you might hit.
@@ -119,7 +170,28 @@ It is not useful for ollision queries against a specific foreground object, like
     )
   )
 
+;; definition for method 3 of type collide-cache
+(defmethod inspect ((this collide-cache))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this (-> this type))
+  (format #t "~1Tnum-tris: ~D~%" (-> this num-tris))
+  (format #t "~1Tnum-prims: ~D~%" (-> this num-prims))
+  (format #t "~1Tignore-mask: ~D~%" (-> this ignore-mask))
+  (format #t "~1Tignore-processes[2] @ #x~X~%" (-> this ignore-processes))
+  (format #t "~1Tcollide-box: #<bounding-box @ #x~X>~%" (-> this collide-box))
+  (format #t "~1Tcollide-box4w: #<bounding-box4w @ #x~X>~%" (-> this collide-box4w))
+  (format #t "~1Tcollide-with: ~D~%" (-> this collide-with))
+  (format #t "~1Tunused: ~D~%" (-> this unused))
+  (format #t "~1Tprims[100] @ #x~X~%" (-> this prims))
+  (format #t "~1Ttris[461] @ #x~X~%" (-> this tris))
+  (label cfg-4)
+  this
+  )
 
+;; definition of type collide-list-item
 (deftype collide-list-item (structure)
   "Entry on the broad-phase collision list.
 Can represent instanced collision, as a TIE instance, or a single non-instanced mesh fragment."
@@ -129,7 +201,20 @@ Can represent instanced collision, as a TIE instance, or a single non-instanced 
   :pack-me
   )
 
+;; definition for method 3 of type collide-list-item
+(defmethod inspect ((this collide-list-item))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this 'collide-list-item)
+  (format #t "~1Tmesh: ~A~%" (-> this mesh))
+  (format #t "~1Tinst: ~A~%" (-> this inst))
+  (label cfg-4)
+  this
+  )
 
+;; definition of type collide-list
 (deftype collide-list (structure)
   "List of items returned by the broad-phase collision query."
   ((num-items  int32)
@@ -137,11 +222,31 @@ Can represent instanced collision, as a TIE instance, or a single non-instanced 
    )
   )
 
+;; definition for method 3 of type collide-list
+(defmethod inspect ((this collide-list))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this 'collide-list)
+  (format #t "~1Tnum-items: ~D~%" (-> this num-items))
+  (format #t "~1Titems[256] @ #x~X~%" (-> this items))
+  (label cfg-4)
+  this
+  )
 
+;; failed to figure out what this is:
 (kmemopen global "collide-cache-buffers")
 
+;; definition (perm) for symbol *collide-cache*, type collide-cache
 (define-perm *collide-cache* collide-cache (new 'global 'collide-cache))
 
+;; definition (perm) for symbol *collide-list*, type collide-list
 (define-perm *collide-list* collide-list (new 'global 'collide-list))
 
+;; failed to figure out what this is:
 (kmemclose)
+
+
+
+
