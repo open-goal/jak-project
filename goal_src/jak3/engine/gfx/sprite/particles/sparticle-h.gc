@@ -5,5 +5,88 @@
 ;; name in dgo: sparticle-h
 ;; dgos: GAME
 
+(declare-type sprite-vec-data-2d structure)
+
+(defenum sp-cpuinfo-flag
+  :bitfield #t
+  :type uint32
+  )
+
 ;; DECOMP BEGINS
 
+(define *sp-60-hz* #t)
+
+(deftype sparticle-cpuinfo (structure)
+  "The per-particle information. This stays on the CPU, and isn't uploaded to the VU."
+  ((sprite         sprite-vec-data-2d)
+   (adgif          adgif-shader)
+   (radius         float)
+   (omega          float)
+   (vel-sxvel      vector              :inline)
+   (rot-syvel      vector              :inline)
+   (fade           rgbaf               :inline)
+   (acc            vector              :inline)
+   (rotvel3d       quaternion          :inline)
+   (vel            vector3s            :inline :overlay-at (-> vel-sxvel data 0))
+   (accel          vector3s            :inline :overlay-at (-> acc data 0))
+   (scalevelx      float                       :overlay-at (-> vel-sxvel data 3))
+   (scalevely      float                       :overlay-at (-> rot-syvel data 3))
+   (friction       float)
+   (timer          int32)
+   (flags          sp-cpuinfo-flag)
+   (user-int32     int32)
+   (user-uint32    uint32                      :overlay-at user-int32)
+   (user-float     float                       :overlay-at user-int32)
+   (user-pntr      uint32                      :overlay-at user-int32)
+   (user-object    basic                       :overlay-at user-int32)
+   (user-sprite    sprite-vec-data-2d          :overlay-at user-int32)
+   (sp-func        (function sparticle-system sparticle-cpuinfo sprite-vec-data-3d uint none))
+   (next-time      uint32)
+   (next-launcher  basic)
+   (cache-alpha    float)
+   (valid          uint8)
+   (clock-index    uint8)
+   (user1-int16    uint16)
+   (key            sparticle-launch-control)
+   (binding        sparticle-launch-state)
+   (data           uint32              1       :overlay-at omega)
+   (datab          int8                4       :overlay-at omega)
+   (dataf          float               1       :overlay-at omega)
+   (datac          uint8               1       :overlay-at omega)
+   )
+  )
+
+
+(deftype sparticle-launchinfo (structure)
+  "Settings for launching a particle. These are a temporary thing consumed by the assembly particle code, and modified by particle callbacks."
+  ((launchrot   vector  :inline)
+   (conerot     vector  :inline)
+   (rotate-x    float)
+   (rotate-y    float)
+   (rotate-z    float)
+   (coneradius  float)
+   (rotate      vector  :inline :overlay-at rotate-x)
+   (scale-x     float)
+   (scale-y     float)
+   (scale-z     float)
+   (dummy       float)
+   (scale       vector  :inline :overlay-at scale-x)
+   (data        uint8   1       :overlay-at (-> launchrot data 0))
+   )
+  )
+
+
+(deftype sparticle-system (basic)
+  "An entire particle 'system', which is a pipeline for spawning, updating, and generating sprite-renderer DMA data.
+There are separate systems for different modes of sprite rendering: 2D/billboard, full 3D, and screen-space (HUD)"
+  ((blocks           int32  2)
+   (length           int32  2)
+   (num-alloc        int32  2)
+   (is-3d            basic)
+   (flags            uint32)
+   (alloc-table      (pointer uint64))
+   (cpuinfo-table    (inline-array sparticle-cpuinfo))
+   (vecdata-table    pointer)
+   (adgifdata-table  (inline-array adgif-shader))
+   )
+  )

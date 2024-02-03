@@ -18138,7 +18138,7 @@
 ;; game-h                         ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(declare-type nav-control basic)
+(declare-type nav-control structure)
 (declare-type path-control basic)
 (declare-type vol-control basic)
 (declare-type fact-info basic)
@@ -24508,8 +24508,15 @@
 ;; sparticle-h                    ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
+(declare-type sprite-vec-data-2d structure)
+
+(defenum sp-cpuinfo-flag
+  :bitfield #t
+  :type uint32
+  )
+
 (deftype sparticle-cpuinfo (structure)
+  "The per-particle information. This stays on the CPU, and isn't uploaded to the VU."
   ((sprite        sprite-vec-data-2d                                                                 :offset-assert 0)
    (adgif         adgif-shader                                                                       :offset-assert 4)
    (radius        float                                                                              :offset-assert 8)
@@ -24519,19 +24526,19 @@
    (fade          rgbaf                                                                      :inline :offset-assert 48)
    (acc           vector                                                                     :inline :offset-assert 64)
    (rotvel3d      quaternion                                                                 :inline :offset-assert 80)
-   (vel           vector3s                                                                   :inline :offset-assert 16) ;; vector :inline
-   (accel         vector3s                                                                   :inline :offset-assert 64) ;; vector :inline
-   (scalevelx     float                                                                              :offset-assert 28)
-   (scalevely     float                                                                              :offset-assert 44)
+   (vel           vector3s                                                                   :inline :offset 16) ;; vector :inline
+   (accel         vector3s                                                                   :inline :offset 64) ;; vector :inline
+   (scalevelx     float                                                                              :offset 28)
+   (scalevely     float                                                                              :offset 44)
    (friction      float                                                                              :offset-assert 96)
    (timer         int32                                                                              :offset-assert 100)
    (flags         sp-cpuinfo-flag                                                                    :offset-assert 104) ;; guessed by decompiler
    (user-int32    int32                                                                              :offset-assert 108)
-   (user-uint32   uint32                                                                             :offset-assert 108)
-   (user-float    float                                                                              :offset-assert 108)
-   (user-pntr     uint32                                                                             :offset-assert 108)
-   (user-object   basic                                                                              :offset-assert 108)
-   (user-sprite   sprite-vec-data-2d                                                                 :offset-assert 108)
+   (user-uint32   uint32                                                                             :offset 108)
+   (user-float    float                                                                              :offset 108)
+   (user-pntr     uint32                                                                             :offset 108)
+   (user-object   basic                                                                              :offset 108)
+   (user-sprite   sprite-vec-data-2d                                                                 :offset 108)
    (sp-func       (function sparticle-system sparticle-cpuinfo sprite-vec-data-3d uint none)         :offset-assert 112) ;; guessed by decompiler
    (next-time     uint32                                                                             :offset-assert 116)
    (next-launcher basic                                                                              :offset-assert 120)
@@ -24541,42 +24548,41 @@
    (user1-int16   uint16                                                                             :offset-assert 130)
    (key           sparticle-launch-control                                                           :offset-assert 132) ;; guessed by decompiler
    (binding       sparticle-launch-state                                                             :offset-assert 136)
-   (data          uint32                                                                     1       :offset-assert 12) ;; guessed by decompiler
-   (datab         int8                                                                       4       :offset-assert 12) ;; guessed by decompiler
-   (dataf         float                                                                      1       :offset-assert 12) ;; guessed by decompiler
-   (datac         uint8                                                                      1       :offset-assert 12) ;; guessed by decompiler
+   (data          uint32                                                                     1       :offset 12) ;; guessed by decompiler
+   (datab         int8                                                                       4       :offset 12) ;; guessed by decompiler
+   (dataf         float                                                                      1       :offset 12) ;; guessed by decompiler
+   (datac         uint8                                                                      1       :offset 12) ;; guessed by decompiler
    )
   :method-count-assert 9
   :size-assert         #x8c
   :flag-assert         #x90000008c
   ;; field user-object uses ~A with a signed load. field key uses ~A with a signed load.
   )
-|#
 
-#|
 (deftype sparticle-launchinfo (structure)
+  "Settings for launching a particle. These are a temporary thing consumed by the assembly particle code, and modified by particle callbacks."
   ((launchrot  vector :inline :offset-assert 0)
    (conerot    vector :inline :offset-assert 16)
    (rotate-x   float          :offset-assert 32)
    (rotate-y   float          :offset-assert 36)
    (rotate-z   float          :offset-assert 40)
    (coneradius float          :offset-assert 44)
-   (rotate     vector :inline :offset-assert 32)
+   (rotate     vector :inline :offset 32)
    (scale-x    float          :offset-assert 48)
    (scale-y    float          :offset-assert 52)
    (scale-z    float          :offset-assert 56)
    (dummy      float          :offset-assert 60)
-   (scale      vector :inline :offset-assert 48)
-   (data       uint8  1       :offset-assert 0) ;; guessed by decompiler
+   (scale      vector :inline :offset 48)
+   (data       uint8  1       :offset 0) ;; guessed by decompiler
    )
   :method-count-assert 9
   :size-assert         #x40
   :flag-assert         #x900000040
   )
-|#
 
-#|
 (deftype sparticle-system (basic)
+  "An entire particle 'system', which is a pipeline for spawning, updating, and generating sprite-renderer DMA data.
+   There are separate systems for different modes of sprite rendering: 2D/billboard, full 3D, and screen-space (HUD)"
   ((blocks          int32                            2 :offset-assert 4) ;; guessed by decompiler
    (length          int32                            2 :offset-assert 12) ;; guessed by decompiler
    (num-alloc       int32                            2 :offset-assert 20) ;; guessed by decompiler
@@ -24591,9 +24597,8 @@
   :size-assert         #x34
   :flag-assert         #x900000034
   )
-|#
 
-;; (define-extern *sp-60-hz* object) ;; symbol
+(define-extern *sp-60-hz* symbol)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; actor-link-h                   ;;
@@ -26058,23 +26063,29 @@
 ;; rpc-h                          ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
+(define-extern rpc-busy? (function int uint))
+(define-extern rpc-call (function int uint uint uint int uint int uint))
+
 (deftype rpc-buffer (basic)
+  "Buffer for storing input/output data for a remote procedure call to the overlord driver on the IOP."
   ((elt-size  uint32           :offset-assert 4)
    (elt-count uint32           :offset-assert 8)
    (elt-used  uint32           :offset-assert 12)
-   (busy      basic            :offset-assert 16)
+   (busy      symbol           :offset-assert 16)
    (base      pointer          :offset-assert 20) ;; guessed by decompiler
-   (data      uint8   :dynamic :offset-assert 32) ;; guessed by decompiler
+   (data      uint8   :dynamic :offset 32) ;; guessed by decompiler
    )
+  (:methods
+    (new (symbol type uint uint) _type_) ;; 0
+    )
   :method-count-assert 9
   :size-assert         #x20
   :flag-assert         #x900000020
   )
-|#
 
-#|
 (deftype rpc-buffer-pair (basic)
+  "A double buffer of RPC buffers. This is used to let the game queue up data in one buffer while
+   the other is being read/written by overlord."
   ((buffer           rpc-buffer 2 :offset-assert 4) ;; guessed by decompiler
    (current          rpc-buffer   :offset-assert 12) ;; guessed by decompiler
    (last-recv-buffer pointer      :offset-assert 16) ;; guessed by decompiler
@@ -26084,36 +26095,50 @@
   :size-assert         #x18
   :flag-assert         #xf00000018
   (:methods
-    (new (symbol type) _type_) ;; 0 ;; (new (symbol type uint uint int) rpc-buffer-pair)
-    (rpc-buffer-pair-method-9 () none) ;; 9 ;; (call (rpc-buffer-pair uint pointer uint) int)
-    (rpc-buffer-pair-method-10 () none) ;; 10 ;; (add-element (rpc-buffer-pair) pointer)
-    (rpc-buffer-pair-method-11 () none) ;; 11 ;; (decrement-elt-used (rpc-buffer-pair) int)
-    (rpc-buffer-pair-method-12 () none) ;; 12 ;; (sync (rpc-buffer-pair symbol) int)
-    (rpc-buffer-pair-method-13 () none) ;; 13 ;; (check-busy (rpc-buffer-pair) symbol)
-    (rpc-buffer-pair-method-14 () none) ;; 14 ;; (pop-last-received (rpc-buffer-pair) pointer)
+    (new (symbol type uint uint int) rpc-buffer-pair) ;; 0
+    (call "Start an async RPC call. If there is already one in progress, stall and wait for it to finish." (rpc-buffer-pair uint pointer uint) int) ;; 9
+    (add-element "Add an element. If the buffer is full, flush it!" (rpc-buffer-pair) pointer) ;; 10
+    (decrement-elt-used "Remove the most recently queued element." (rpc-buffer-pair) int) ;; 11
+    (sync "Wait for an in-progress rpc to finish." (rpc-buffer-pair symbol) int) ;; 12
+    (check-busy "Check to see if an rpc is in progress." (rpc-buffer-pair) symbol) ;; 13
+    (pop-last-received "Pop the response from the most recently completed rpc call." (rpc-buffer-pair) pointer) ;; 14
     )
   )
-|#
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; path-h                         ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
+
+(defenum path-control-flag
+  :bitfield #t
+  :type uint32
+  (display 0)
+  (draw-line 1) ;; TODO - only seen it used to control debug drawing so far
+  (draw-point 2) ;; TODO - only seen it used to control debug drawing so far
+  (draw-text 3) ;; TODO - only seen it used to control debug drawing so far
+  (not-found 4)
+  )
+
 (deftype path-control (basic)
+  "The path-control is a reference a path data, which is just a list of points.
+   Although it contains a `curve`, the knot part is not populated, so it's just treated as
+   a bunch of line segments from the control points.
+   The child class curve-control does fill out the knot data and is a proper b-spline.
+   These path-controls are typically allocated on a process heap."
   ((flags      path-control-flag         :offset-assert 4) ;; guessed by decompiler
    (name       symbol                    :offset-assert 8) ;; guessed by decompiler
    (process    process-drawable          :offset-assert 12) ;; guessed by decompiler
    (curve      curve             :inline :offset-assert 16)
-   (num-cverts int32                     :offset-assert 20)
-   (cverts     uint32                    :offset-assert 16)
+   (num-cverts int32                     :offset 20)
+   (cverts     uint32                    :offset 16)
    )
   :method-count-assert 32
   :size-assert         #x24
   :flag-assert         #x2000000024
   (:methods
-    (new (symbol type) _type_) ;; 0 ;; (new (symbol type process symbol float entity symbol) _type_)
+    (new "Allocate a new path-control, set up the curve to point to the specified lump data." (symbol type process symbol float entity symbol) _type_) ;; 0
     (path-control-method-9 () none) ;; 9 ;; (debug-draw (_type_) none)
     (path-control-method-10 () none) ;; 10 ;; (get-point-in-path! (_type_ vector float symbol) vector)
     (path-control-method-11 () none) ;; 11 ;; (get-random-point (_type_ vector) vector)
@@ -26122,44 +26147,52 @@
     (path-control-method-14 () none) ;; 14 ;; (get-point-at-percent-along-path! (_type_ vector float symbol) vector)
     (path-control-method-15 () none) ;; 15 ;; (displacement-between-points-at-percent-scaled! (_type_ vector float float) vector)
     (path-control-method-16 () none) ;; 16 ;; (displacement-between-points-at-percent-normalized! (_type_ vector float) vector)
-    (path-control-method-17 () none) ;; 17 ;; (get-num-segments (_type_) float)
+    (get-num-segments (_type_) float) ;; 17
     (path-control-method-18 () none) ;; 18 ;; (total-distance (_type_) float)
-    (path-control-method-19 () none) ;; 19 ;; (get-num-verts (_type_) int)
-    (path-control-method-20 () none) ;; 20 ;; (path-distance-equal-spacing (_type_ float) float)
-    (path-control-method-21 () none) ;; 21 ;; (average-segment-length (_type_ float) float)
+    (get-num-verts (_type_) int) ;; 19
+    (segement-duration->path-duration (_type_ float) float) ;; 20
+    (path-duration->segment-duration (_type_ float) float) ;; 21
     (path-control-method-22 () none) ;; 22 ;; (get-furthest-point-on-path (_type_ vector) float)
     (path-control-method-23 () none) ;; 23 ;; (get-path-percentage-at-furthest-point (_type_ vector) float)
     (path-control-method-24 () none) ;; 24 ;; (path-control-method-24 (_type_ vector) vector)
-    (path-control-method-25 () none) ;; 25 ;; (should-display-marks? (_type_) symbol)
+    (path-control-method-25 () none) ;; 25
     (path-control-method-26 () none) ;; 26 ;; (displacement-between-two-points! (_type_ vector float float) vector)
     (path-control-method-27 () none) ;; 27
     (path-control-method-28 () none) ;; 28
     (path-control-method-29 () none) ;; 29
-    (path-control-method-30 () none) ;; 30
+    (should-display-marks? (_type_) symbol) ;; 30
     (path-control-method-31 () none) ;; 31
     )
   )
-|#
 
-#|
 (deftype curve-control (path-control)
+  "A curve-control is like a path control, but it has both control points and knot points."
   ()
   :method-count-assert 32
   :size-assert         #x24
   :flag-assert         #x2000000024
   (:methods
-    (new (symbol type) _type_) ;; 0 ;; (new (symbol type process symbol float) _type_)
+    (new (symbol type process symbol float) _type_) ;; 0
     )
   )
-|#
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; nav-mesh-h                     ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
+(declare-type grid-hash structure)
+(declare-type sphere-hash structure)
+
+(defenum nav-mesh-flag
+  :type uint8
+  :bitfield #t
+  (water 0)
+  (dummy 1)
+  )
+
 (deftype nav-mesh-work-debug (structure)
+  "Debug outputs for the nav-mesh assembly functions"
   ((debug-vec1   vector :inline :offset-assert 0)
    (debug-vec2   vector :inline :offset-assert 16)
    (debug-vec3   vector :inline :offset-assert 32)
@@ -26172,16 +26205,15 @@
    (debug-vec10  vector :inline :offset-assert 144)
    (debug-vec11  vector :inline :offset-assert 160)
    (debug-vec12  vector :inline :offset-assert 176)
-   (sphere-array sphere 16      :offset-assert 192) ;; guessed by decompiler
+   (sphere-array sphere 16 :inline      :offset-assert 192) ;; guessed by decompiler
    )
   :method-count-assert 9
   :size-assert         #x1c0
   :flag-assert         #x9000001c0
   )
-|#
 
-#|
 (deftype nav-mesh-work (structure)
+  "Workspace for nav-mesh processing functions."
   ((vert0-table            int8                4  :offset-assert 0) ;; guessed by decompiler
    (vert1-table            int8                4  :offset-assert 4) ;; guessed by decompiler
    (edge-mask-table        uint8               3  :offset-assert 8) ;; guessed by decompiler
@@ -26190,7 +26222,7 @@
    (rad-to-deg             float                  :offset-assert 20)
    (nav-poly-min-dist      float                  :offset-assert 24)
    (nav-poly-epsilon       float                  :offset-assert 28)
-   (sphere-array           sphere              16 :offset-assert 32) ;; guessed by decompiler
+   (sphere-array           sphere              16 :inline :offset-assert 32) ;; guessed by decompiler
    (debug                  nav-mesh-work-debug    :offset-assert 288)
    (work-struct-in-scratch int8                   :offset-assert 292)
    (mesh-struct-in-scratch int8                   :offset-assert 293)
@@ -26205,10 +26237,9 @@
   :size-assert         #x13c
   :flag-assert         #x90000013c
   )
-|#
 
-#|
 (deftype nav-mesh-link (structure)
+  "Link between two different meshes"
   ((id                  uint32    :offset-assert 0)
    (dest-mesh-id        uint32    :offset-assert 4)
    (src-link-poly-id    uint8     :offset-assert 8)
@@ -26221,44 +26252,40 @@
   :size-assert         #x10
   :flag-assert         #x900000010
   )
-|#
 
-#|
 (deftype nav-poly (structure)
-  ((data         uint8  64      :offset-assert 0) ;; guessed by decompiler
-   (vertex       vector 4       :offset-assert 0) ;; guessed by decompiler
-   (vertex0      vector :inline :offset-assert 0)
-   (vertex1      vector :inline :offset-assert 16)
-   (vertex2      vector :inline :offset-assert 32)
-   (vertex3      vector :inline :offset-assert 48)
-   (id           uint8          :offset-assert 12)
-   (pat          uint8          :offset-assert 13)
-   (vertex-count uint8          :offset-assert 14)
-   (link         uint8          :offset-assert 15)
-   (adj-poly     uint8  4       :offset-assert 28) ;; guessed by decompiler
-   (adj-poly0    uint8          :offset-assert 28)
-   (adj-poly1    uint8          :offset-assert 29)
-   (adj-poly2    uint8          :offset-assert 30)
-   (adj-poly3    uint8          :offset-assert 31)
-   (min-y        float          :offset-assert 44)
-   (max-y        float          :offset-assert 60)
+  "Polygon within a nav-mesh. Can be a tri or quad.
+   Based on the implementation of point-poly-intersection?, these should likely be convex."
+  ((data         uint8  64      :offset 0 :score -1) ;; guessed by decompiler
+   (vertex       vector 4 :inline      :offset 0) ;; guessed by decompiler
+   (vertex0      vector :inline :offset 0)
+   (vertex1      vector :inline :offset 16)
+   (vertex2      vector :inline :offset 32)
+   (vertex3      vector :inline :offset 48)
+   (id           uint8          :offset 12)
+   (pat          uint8          :offset 13)
+   (vertex-count uint8          :offset 14)
+   (link         uint8          :offset 15)
+   (adj-poly     uint8  4       :offset 28) ;; guessed by decompiler
+   (adj-poly0    uint8          :offset 28)
+   (adj-poly1    uint8          :offset 29)
+   (adj-poly2    uint8          :offset 30)
+   (adj-poly3    uint8          :offset 31)
+   (min-y        float          :offset 44)
+   (max-y        float          :offset 60)
    )
   :method-count-assert 9
   :size-assert         #x40
   :flag-assert         #x900000040
   )
-|#
 
-#|
 (deftype nav-vertex (vector)
   ()
   :method-count-assert 9
   :size-assert         #x10
   :flag-assert         #x900000010
   )
-|#
 
-#|
 (deftype nav-sphere (structure)
   ((trans sphere :inline :offset-assert 0)
    )
@@ -26266,9 +26293,7 @@
   :size-assert         #x10
   :flag-assert         #x900000010
   )
-|#
 
-#|
 (deftype nav-ray (structure)
   ((current-pos  vector   :inline :offset-assert 0)
    (dir          vector   :inline :offset-assert 16)
@@ -26287,11 +26312,9 @@
   :size-assert         #x50
   :flag-assert         #x900000050
   )
-|#
 
-#|
 (deftype nav-route-portal (structure)
-  ((vertex     nav-vertex 2 :offset-assert 0) ;; guessed by decompiler
+  ((vertex     nav-vertex 2 :inline :offset-assert 0) ;; guessed by decompiler
    (next-poly  nav-poly     :offset-assert 32)
    (edge-index int8         :offset-assert 36)
    )
@@ -26299,9 +26322,7 @@
   :size-assert         #x25
   :flag-assert         #x900000025
   )
-|#
 
-#|
 (deftype nav-find-poly-parms (structure)
   ((point         vector   :inline :offset-assert 0)
    (y-threshold   float            :offset-assert 16)
@@ -26314,9 +26335,7 @@
   :size-assert         #x24
   :flag-assert         #x900000024
   )
-|#
 
-#|
 (deftype clamp-travel-vector-to-mesh-return-info (structure)
   ((found-boundary  symbol           :offset-assert 0) ;; guessed by decompiler
    (intersection    vector   :inline :offset-assert 16)
@@ -26336,17 +26355,16 @@
   :size-assert         #xa0
   :flag-assert         #x9000000a0
   )
-|#
 
-#|
 (deftype nav-mesh (basic)
+  "Mesh used for creature/enemy navigation."
   ((work                  nav-mesh-work                        :offset-assert 4)
    (poly-array            (inline-array nav-poly)              :offset-assert 8) ;; guessed by decompiler
    (static-sphere-count   uint8                                :offset-assert 12)
    (poly-count            uint8                                :offset-assert 13)
    (nav-control-count     uint8                                :offset-assert 14)
    (max-nav-control-count uint8                                :offset-assert 15)
-   (route                 (pointer nav-poly)                   :offset-assert 16) ;; guessed by decompiler
+   (route                 (pointer uint8)                      :offset-assert 16) ;; guessed by decompiler
    (poly-hash             grid-hash                            :offset-assert 20) ;; guessed by decompiler
    (nav-control-array     (inline-array nav-control)           :offset-assert 24) ;; guessed by decompiler
    (sphere-hash           sphere-hash                          :offset-assert 28) ;; guessed by decompiler
@@ -26355,7 +26373,7 @@
    (next-nav-mesh         surface                              :offset-assert 40) ;; guessed by decompiler
    (prev-nav-mesh         surface                              :offset-assert 44) ;; guessed by decompiler
    (bounds                sphere                       :inline :offset-assert 48) ;; vector :inline
-   (origin                vector                       :inline :offset-assert 48)
+   (origin                vector                       :inline :offset 48)
    (entity                entity                               :offset-assert 64) ;; guessed by decompiler
    (link-array            (inline-array nav-mesh-link)         :offset-assert 68) ;; guessed by decompiler
    (link-count            uint8                                :offset-assert 72)
@@ -26377,9 +26395,9 @@
     (nav-mesh-method-13 () none) ;; 13 ;; (lookup-poly-on-route-to-target (_type_ nav-poly nav-poly) nav-poly)
     (nav-mesh-method-14 () none) ;; 14 ;; (get-route-portal (_type_ nav-poly nav-poly nav-route-portal) (inline-array nav-vertex))
     (nav-mesh-method-15 () none) ;; 15 ;; (initialize-mesh! (_type_) none)
-    (nav-mesh-method-16 () none) ;; 16 ;; (move-along-nav-ray! (_type_ nav-ray) none)
+    (nav-mesh-method-16 () none) ;; 16
     (nav-mesh-method-17 () none) ;; 17 ;; (try-move-along-ray (_type_ nav-poly vector vector float) meters)
-    (nav-mesh-method-18 () none) ;; 18 ;; (clamp-vector-to-mesh-cross-gaps (_type_ vector nav-poly vector float symbol clamp-travel-vector-to-mesh-return-info) none)
+    (advance-ray-to-nearest-poly-edge-or-dest! (_type_ nav-ray) none) ;; 18 ;; (clamp-vector-to-mesh-cross-gaps (_type_ vector nav-poly vector float symbol clamp-travel-vector-to-mesh-return-info) none)
     (nav-mesh-method-19 () none) ;; 19 ;; (clamp-vector-to-mesh-no-gaps (_type_ vector nav-poly vector clamp-travel-vector-to-mesh-return-info) none)
     (nav-mesh-method-20 () none) ;; 20 ;; (set-normals-from-adjacent-bounds (_type_ clamp-travel-vector-to-mesh-return-info) none)
     (nav-mesh-method-21 () none) ;; 21 ;; (find-adjacent-bounds-one (_type_ vector nav-poly int int) none)
@@ -26398,14 +26416,14 @@
     (nav-mesh-method-34 () none) ;; 34 ;; (nav-mesh-method-34 (_type_ vector vector float) float)
     (nav-mesh-method-35 () none) ;; 35 ;; (nav-mesh-method-35 (_type_ vector vector float) float)
     (nav-mesh-method-36 () none) ;; 36 ;; (debug-draw-poly (_type_ nav-poly rgba) none)
-    (nav-mesh-method-37 () none) ;; 37 ;; (point-in-poly? (_type_ nav-poly vector) symbol)
+    (nav-mesh-method-37 () none) ;; 37 ;
     (nav-mesh-method-38 () none) ;; 38 ;; (nav-mesh-method-38 (_type_ nav-poly vector vector vector (pointer nav-poly)) vector)
-    (nav-mesh-method-39 () none) ;; 39 ;; (closest-point-on-boundary (_type_ nav-poly vector vector) none)
-    (nav-mesh-method-40 () none) ;; 40 ;; (project-point-onto-plane-of-poly-local (_type_ nav-poly vector vector vector) none)
-    (nav-mesh-method-41 () none) ;; 41 ;; (project-point-into-poly-2d (_type_ nav-poly vector vector) none)
-    (nav-mesh-method-42 () none) ;; 42 ;; (find-poly-containing-point-local (_type_ nav-find-poly-parms) nav-poly)
+    (nav-mesh-method-39 () none) ;; 39
+    (point-in-poly? "Check if a point is inside a poly of this mesh" (_type_ nav-poly vector) symbol) ;; 40 ;; (project-point-onto-plane-of-poly-local (_type_ nav-poly vector vector vector) none)
+    (nav-mesh-method-41 () none) ;; 41
+    (closest-point-on-boundary "Find the point on the polygon edge that is closest to the query point." (_type_ nav-poly vector vector) vector) ;; 42 ;; (find-poly-containing-point-local (_type_ nav-find-poly-parms) nav-poly)
     (nav-mesh-method-43 () none) ;; 43 ;; (find-nearest-poly-to-point-local (_type_ nav-find-poly-parms) nav-find-poly-parms)
-    (nav-mesh-method-44 () none) ;; 44 ;; (is-in-mesh-local? (_type_ vector float float) symbol)
+    (project-point-into-poly-2d "Find the point in the polygon closest to the query point." (_type_ nav-poly vector vector) vector) ;; 44 ;; (is-in-mesh-local? (_type_ vector float float) symbol)
     (nav-mesh-method-45 () none) ;; 45 ;; (link-to-other-mesh (_type_ nav-mesh-link) symbol)
     (nav-mesh-method-46 () none) ;; 46 ;; (unlink-mesh (_type_ nav-mesh-link) none)
     (nav-mesh-method-47 () none) ;; 47
@@ -26413,20 +26431,53 @@
     (nav-mesh-method-49 () none) ;; 49
     )
   )
-|#
 
-;; (define-extern vector-normalize-unity! function) ;; (function vector vector)
-;; (define-extern vector-normalize-unity-copy! function) ;; (function vector vector vector)
-;; (define-extern debug-validate-current-poly function) ;; (function symbol)
-;; (define-extern init-ray function) ;; (function nav-ray none)
-;; (define-extern point-poly-intersection? function) ;; (function nav-mesh vector int (inline-array vector) symbol)
-;; (define-extern nav-sphere-from-cam function) ;; (function none)
+(define-extern vector-normalize-unity! "Normalize a vector (xyz only) in place." (function vector vector))
+(define-extern vector-normalize-unity-copy! "Normalize a vector (xyz only)" (function vector vector vector))
+(define-extern debug-validate-current-poly "Not implemented." (function symbol))
+(define-extern init-ray "Set up a nav-ray. Assumes that dest-pos and current-pos are set." (function nav-ray none))
+(define-extern point-poly-intersection? "Check if a point is inside a poly." (function nav-mesh vector int (inline-array vector) symbol))
+(define-extern nav-sphere-from-cam "Print out a SPHEREM from the current camera position, possibly used by their level-building tool." (function none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; nav-control-h                  ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
+(defenum nav-state-flag
+  :type uint32
+  :bitfield #t
+  (display-marks      0)
+  (recovery-mode      1)
+  (initialized        2)
+  (debug              3)
+  (directional-mode   4)
+  (trapped-by-sphere  5)
+  (target-poly-dirty  6)
+  (blocked            7)
+  (in-target-poly     8)
+  (at-target          9)
+  (target-inside     10)
+  (in-mesh           11)
+  (avoiding-sphere   12)
+  (touching-sphere   13)
+  (at-gap            14)
+  (use-position 15)
+  )
+
+(defenum nav-control-flag
+  :type uint32
+  :bitfield #t
+  (display-marks        0) ;; 1
+  (debug                1) ;; 2
+  (no-redirect-in-clamp 2) ;; 4
+  (limit-rotation-rate  3) ;; 8
+  (update-heading-from-facing 4) ;; 16
+  (use-momentum        5) ;; 32
+  (momentum-ignore-heading 6) ;; 64
+  (output-sphere-hash  7) ;; 128
+  (kernel-run          8) ;; 256
+  )
+
 (deftype check-vector-collision-with-nav-spheres-info (structure)
   ((u         float          :offset-assert 0)
    (intersect vector :inline :offset-assert 16)
@@ -26436,9 +26487,7 @@
   :size-assert         #x30
   :flag-assert         #x900000030
   )
-|#
 
-#|
 (deftype nav-gap-info (structure)
   ((dest vector   :inline :offset-assert 0)
    (poly nav-poly         :offset-assert 16)
@@ -26447,14 +26496,12 @@
   :size-assert         #x14
   :flag-assert         #x900000014
   )
-|#
 
-#|
 (deftype nav-avoid-spheres-params (structure)
   ((current-pos          vector :inline :offset-assert 0)
    (travel               vector :inline :offset-assert 16)
    (pref-dir             vector :inline :offset-assert 32)
-   (out-travel           vector 2       :offset-assert 48) ;; guessed by decompiler
+   (out-travel           vector 2 :inline      :offset-assert 48) ;; guessed by decompiler
    (closest-sphere-dist2 float          :offset-assert 80)
    (avoiding-sphere?     symbol         :offset-assert 84) ;; guessed by decompiler
    )
@@ -26462,9 +26509,7 @@
   :size-assert         #x58
   :flag-assert         #x900000058
   )
-|#
 
-#|
 (deftype nav-callback-info (structure)
   ((callback-count int32                                 :offset-assert 0)
    (callback-array (function object nav-control none) 10 :offset-assert 4) ;; guessed by decompiler
@@ -26473,9 +26518,7 @@
   :size-assert         #x2c
   :flag-assert         #x90000002c
   )
-|#
 
-#|
 (deftype nav-state (structure)
   ((flags                     nav-state-flag         :offset-assert 0)
    (nav                       nav-control            :offset-assert 4) ;; guessed by decompiler
@@ -26497,8 +26540,8 @@
    (velocity                  vector         :inline :offset-assert 128)
    (heading                   vector         :inline :offset-assert 144)
    (target-dir                vector         :inline :offset-assert 160)
-   (accel                     vector         :inline :offset-assert 160)
-   (user-position             vector         :inline :offset-assert 112)
+   (accel                     vector         :inline :offset 160)
+   (user-position             vector         :inline :offset 112)
    )
   :method-count-assert 56
   :size-assert         #xb0
@@ -26553,9 +26596,7 @@
     (nav-state-method-55 () none) ;; 55
     )
   )
-|#
 
-#|
 (deftype nav-control (structure)
   ((flags                nav-control-flag              :offset-assert 0)
    (callback-info        nav-callback-info             :offset-assert 4)
@@ -26576,11 +26617,11 @@
    (sphere-mask          uint8                         :offset-assert 61)
    (pad1                 uint8                 2       :offset-assert 62) ;; guessed by decompiler
    (sphere-id-array      uint8                 16      :offset-assert 64) ;; guessed by decompiler
-   (UNKNOWN              UNKNOWN                       :offset-assert -1) ;; field could not be read.
+   ;(UNKNOWN              UNKNOWN                       :offset-assert -1) ;; field could not be read.
    (extra-nav-sphere     vector                :inline :offset-assert 80)
    (root-nav-sphere      vector                :inline :offset-assert 96)
    (state                nav-state             :inline :offset-assert 112)
-   (mesh                 basic                         :offset-assert 124)
+   (mesh                 basic                         :offset 124)
    )
   :method-count-assert 47
   :size-assert         #x120
@@ -26626,31 +26667,34 @@
     (nav-control-method-46 () none) ;; 46 ;; (find-sphere-ids-from-sphere-hash (_type_ symbol) none)
     )
   )
-|#
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; spatial-hash-h                 ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (deftype grid-hash-word (uint8)
-;;   ()
-;;   :flag-assert #x900000001
-;;   )
+(declare-type grid-hash-work structure)
 
-#|
+(deftype grid-hash-word (uint8)
+  ()
+  :flag-assert #x900000001
+  )
+
 (deftype grid-hash-box (structure)
+  "Integer coordinate box for the spatial hash grid."
   ((min int8 3 :offset-assert 0) ;; guessed by decompiler
    (max int8 3 :offset-assert 3) ;; guessed by decompiler
    )
+  :pack-me
   :method-count-assert 9
   :size-assert         #x6
   :flag-assert         #x900000006
   )
-|#
 
-#|
 (deftype grid-hash (basic)
+  "The grid-hash is the basic 3D grid used in the spatial-hash, which is used for runtime
+   actor collision dectection by hashing actor spheres into grid cells, and avoiding the typical
+   O(n^2) 'check everybody against everybody' collision loop."
   ((work                grid-hash-work                   :offset-assert 4) ;; guessed by decompiler
    (search-box          grid-hash-box            :inline :offset-assert 8)
    (bucket-size         int16                            :offset-assert 14)
@@ -26673,28 +26717,26 @@
   :size-assert         #x58
   :flag-assert         #x1900000058
   (:methods
-    (new (symbol type) _type_) ;; 0 ;; (new (symbol type int) _type_)
-    (grid-hash-method-9 () none) ;; 9 ;; (update-grid-for-objects-in-box (_type_ int vector vector) none)
-    (grid-hash-method-10 () none) ;; 10 ;; (clear-bucket-array (_type_) none)
-    (grid-hash-method-11 () none) ;; 11 ;; (setup-search-box (_type_ int vector vector vector) none)
-    (grid-hash-method-12 () none) ;; 12 ;; (search-for-point (_type_ vector) (pointer uint8))
-    (grid-hash-method-13 () none) ;; 13 ;; (search-for-sphere (_type_ vector float) (pointer uint8))
-    (grid-hash-method-14 () none) ;; 14 ;; (draw (_type_ rgba) none)
-    (grid-hash-method-15 () none) ;; 15 ;; (dump-grid-info (_type_) none)
-    (grid-hash-method-16 () none) ;; 16 ;; (verify-bits-in-bucket (_type_ grid-hash-box grid-hash-box) none)
-    (grid-hash-method-17 () none) ;; 17 ;; (box-of-everything (_type_ object grid-hash-box) none)
-    (grid-hash-method-18 () none) ;; 18 ;; (grid-hash-method-18 (_type_ grid-hash-box int) none)
-    (grid-hash-method-19 () none) ;; 19 ;; (grid-hash-method-19 (_type_ grid-hash-box int) none)
-    (grid-hash-method-20 () none) ;; 20 ;; (do-search! (_type_ grid-hash-box (pointer uint8)) none)
-    (grid-hash-method-21 () none) ;; 21 ;; (set-up-box (_type_ grid-hash-box vector vector) none)
-    (grid-hash-method-22 () none) ;; 22 ;; (sphere-to-grid-box (_type_ grid-hash-box sphere) none)
-    (grid-hash-method-23 () none) ;; 23 ;; (line-sphere-to-grid-box (_type_ grid-hash-box vector vector float) none)
-    (grid-hash-method-24 () none) ;; 24 ;; (update-grid (_type_) none)
+    (new (symbol type int) _type_) ;; 0
+    (update-grid-for-objects-in-box (_type_ int vector vector) none) ;; 9
+    (clear-bucket-array (_type_) none) ;; 10
+    (setup-search-box (_type_ int vector vector vector) none) ;; 11
+    (search-for-point (_type_ vector) (pointer uint8)) ;; 12
+    (search-for-sphere (_type_ vector float) (pointer uint8)) ;; 13
+    (draw (_type_ rgba) none) ;; 14
+    (dump-grid-info (_type_) none) ;; 15
+    (verify-bits-in-bucket (_type_ grid-hash-box grid-hash-box) none) ;; 16
+    (box-of-everything (_type_ object grid-hash-box) none) ;; 17
+    (grid-hash-method-18 (_type_ grid-hash-box int) none) ;; 18
+    (grid-hash-method-19 (_type_ grid-hash-box int) none) ;; 19
+    (do-search! (_type_ grid-hash-box (pointer uint8)) none) ;; 20
+    (set-up-box (_type_ grid-hash-box vector vector) none) ;; 21
+    (sphere-to-grid-box (_type_ grid-hash-box sphere) none) ;; 22
+    (line-sphere-to-grid-box (_type_ grid-hash-box vector vector float) none) ;; 23
+    (update-grid (_type_) none) ;; 24
     )
   )
-|#
 
-#|
 (deftype find-nav-sphere-ids-params (structure)
   ((bsphere     sphere          :inline :offset-assert 0)
    (y-threshold float                   :offset-assert 16)
@@ -26707,10 +26749,9 @@
   :size-assert         #x20
   :flag-assert         #x900000020
   )
-|#
 
-#|
 (deftype sphere-hash (grid-hash)
+  "An extension of grid hash that holds spheres inside of the grid."
   ((sphere-array     (inline-array sphere)  :offset-assert 88) ;; guessed by decompiler
    (max-object-count int16                  :offset-assert 92)
    (pad              int16                  :offset-assert 94)
@@ -26721,20 +26762,18 @@
   :size-assert         #x68
   :flag-assert         #x2100000068
   (:methods
-    (new (symbol type) _type_) ;; 0 ;; (new (symbol type int int) _type_)
-    (sphere-hash-method-25 () none) ;; 25 ;; (clear-objects! (_type_) none)
-    (sphere-hash-method-26 () none) ;; 26 ;; (add-a-sphere (_type_ vector) int)
-    (sphere-hash-method-27 () none) ;; 27 ;; (add-a-sphere-with-flag (_type_ vector int) int)
-    (sphere-hash-method-28 () none) ;; 28 ;; (update-from-spheres (_type_) none)
-    (sphere-hash-method-29 () none) ;; 29 ;; (sphere-hash-method-29 (_type_ find-nav-sphere-ids-params int int int) none)
-    (sphere-hash-method-30 () none) ;; 30 ;; (find-nav-sphere-ids (_type_ find-nav-sphere-ids-params) none)
-    (sphere-hash-method-31 () none) ;; 31 ;; (add-sphere-with-mask-and-id (_type_ vector int int) symbol)
-    (sphere-hash-method-32 () none) ;; 32 ;; (sphere-hash-method-32 (_type_ vector vector float int) symbol)
+    (new (symbol type int int) _type_) ;; 0
+    (clear-objects! (_type_) none) ;; 25
+    (add-a-sphere (_type_ vector) int) ;; 26
+    (add-a-sphere-with-flag (_type_ vector int) int) ;; 27
+    (update-from-spheres (_type_) none) ;; 28
+    (sphere-hash-method-29 (_type_ find-nav-sphere-ids-params int int int) none) ;; 29
+    (find-nav-sphere-ids (_type_ find-nav-sphere-ids-params) none) ;; 30
+    (add-sphere-with-mask-and-id (_type_ vector int int) symbol) ;; 31
+    (sphere-hash-method-32 (_type_ vector vector float int) symbol) ;; 32
     )
   )
-|#
 
-#|
 (deftype hash-object-info (structure)
   ((object basic  :offset-assert 0)
    )
@@ -26742,10 +26781,9 @@
   :size-assert         #x4
   :flag-assert         #x900000004
   )
-|#
 
-#|
 (deftype spatial-hash (sphere-hash)
+  "An extension of sphere-hash that associates an object with each sphere."
   ((object-array     (inline-array hash-object-info)  :offset-assert 104) ;; guessed by decompiler
    (mem-object-array (inline-array hash-object-info)  :offset-assert 108) ;; guessed by decompiler
    (spr-object-array (inline-array hash-object-info)  :offset-assert 112) ;; guessed by decompiler
@@ -26754,31 +26792,93 @@
   :size-assert         #x74
   :flag-assert         #x2800000074
   (:methods
-    (new (symbol type) _type_) ;; 0 ;; (new (symbol type int int) _type_)
+    (new (symbol type int int) _type_) ;; 0
     (spatial-hash-method-33 () none) ;; 33
-    (spatial-hash-method-34 () none) ;; 34 ;; (add-an-object (_type_ vector hash-object-info) int)
-    (spatial-hash-method-35 () none) ;; 35 ;; (fill-actor-list-for-box (_type_ bounding-box (pointer collide-shape) int) int)
-    (spatial-hash-method-36 () none) ;; 36 ;; (fill-actor-list-for-sphere (_type_ sphere (pointer collide-shape) int) int)
-    (spatial-hash-method-37 () none) ;; 37 ;; (fill-actor-list-for-line-sphere (_type_ vector vector float (pointer collide-shape) int int) int)
-    (spatial-hash-method-38 () none) ;; 38 ;; (fill-actor-list-for-vec+r (_type_ vector (pointer collide-shape) int) int)
-    (spatial-hash-method-39 () none) ;; 39 ;; (spatial-hash-method-39 (_type_ object hash-object-info) int)
+    (add-an-object (_type_ vector hash-object-info) int) ;; 34
+    (fill-actor-list-for-box (_type_ bounding-box (pointer collide-shape) int) int) ;; 35
+    (fill-actor-list-for-sphere (_type_ sphere (pointer collide-shape) int) int) ;; 36
+    (fill-actor-list-for-line-sphere (_type_ vector vector float (pointer collide-shape) int int) int) ;; 37
+    (fill-actor-list-for-vec+r (_type_ vector (pointer collide-shape) int) int) ;; 38
+    (spatial-hash-method-39 (_type_ object hash-object-info) int) ;; 39
     )
   )
-|#
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; actor-hash-h                   ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (define-extern *actor-list* object) ;; (pointer collide-shape)
-;; (define-extern *actor-list-length* object) ;; int
+(define-extern *actor-list* (pointer collide-shape))
+(define-extern *actor-list-length* int)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; rigid-body-h                   ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
+;; +++rigid-body-h:rigid-body-flag
+(defenum rigid-body-flag
+  :bitfield #t
+  :type uint32
+  (display-marks 0)
+  (enable-physics 1)
+  (enable-collision 2)
+  (active 3)
+  (debug 4)
+  (blocker 5)
+  )
+;; ---rigid-body-h:rigid-body-flag
+
+;; +++rigid-body-h:rigid-body-object-flag
+(defenum rigid-body-object-flag
+  :bitfield #t
+  :type uint64
+  (enable-collision 0)
+  (disturbed 1)
+  (damaged 2)
+  (dead 3)
+  (player-touching 4)
+  (player-edge-grabbing 5)
+  (player-standing-on 6)
+  (player-impulse-force 7)
+  (player-contact-force 8)
+  (persistent 9)
+  (in-air 10)
+  (on-ground 11)
+  (on-flight-level 12)
+  (riding 13)
+  (player-driving 14)
+  (waiting-for-player 15)
+  (ignition 16)
+  (turbo-boost 17)
+  (reverse-gear 18)
+  (slide 19)
+  (hard-turn 20)
+  (jump 21)
+  (jump-sound 22)
+  (ai-driving 23)
+  (traffic-managed 24)
+  (flight-level-transition 25)
+  (flight-level-transition-ending 26)
+  (camera-bike-mode 27)
+  (camera-rapid-track-mode 28)
+  (camera 29)
+  (alert 30)
+  (in-pursuit 31)
+  (target-in-sight 32)
+  (rammed-target 33)
+  (draw-marks 34)
+  (hack-edit-graph-mode 35)
+  (measure-control-parameters 36)
+  (lights-on 37)
+  (lights-update 38)
+  (lights-dead 39)
+  (no-hijack 40)
+  (player-grabbed 41)
+  (nav-spheres 42)
+  (idle-sound 43)
+  )
+;; ---rigid-body-h:rigid-body-object-flag
+
 (deftype rigid-body-info (structure)
   ((mass                float          :offset-assert 0)
    (inv-mass            float          :offset-assert 4)
@@ -26799,50 +26899,45 @@
     (rigid-body-info-method-9 () none) ;; 9 ;; (rigid-body-info-method-9 (_type_) none)
     )
   )
-|#
 
-#|
 (deftype rigid-body-object-extra-info (structure)
   ((max-time-step      float   :offset-assert 0)
    (gravity            meters  :offset-assert 4)
    (idle-distance      meters  :offset-assert 8)
    (attack-force-scale float   :offset-assert 12)
    )
+  :pack-me
   :method-count-assert 9
   :size-assert         #x10
   :flag-assert         #x900000010
   )
-|#
 
-#|
 (deftype rigid-body-object-constants (structure)
   ((info               rigid-body-info              :inline :offset-assert 0)
-   (mass               float                                :offset-assert 0)
-   (inv-mass           float                                :offset-assert 4)
-   (cm-joint-x         meters                               :offset-assert 32)
-   (cm-joint-y         meters                               :offset-assert 36)
-   (cm-joint-z         meters                               :offset-assert 40)
-   (linear-damping     float                                :offset-assert 8)
-   (angular-damping    float                                :offset-assert 12)
-   (bounce-factor      float                                :offset-assert 16)
-   (friction-factor    float                                :offset-assert 20)
-   (inertial-tensor-x  meters                               :offset-assert 176)
-   (inertial-tensor-y  meters                               :offset-assert 180)
-   (inertial-tensor-z  meters                               :offset-assert 184)
+   (mass               float                                :offset 0)
+   (inv-mass           float                                :offset 4)
+   (cm-joint-x         meters                               :offset 32)
+   (cm-joint-y         meters                               :offset 36)
+   (cm-joint-z         meters                               :offset 40)
+   (linear-damping     float                                :offset 8)
+   (angular-damping    float                                :offset 12)
+   (bounce-factor      float                                :offset 16)
+   (friction-factor    float                                :offset 20)
+   (inertial-tensor-x  meters                               :offset 176)
+   (inertial-tensor-y  meters                               :offset 180)
+   (inertial-tensor-z  meters                               :offset 184)
    (extra              rigid-body-object-extra-info :inline :offset-assert 188)
-   (max-time-step      float                                :offset-assert 188)
-   (gravity            meters                               :offset-assert 192)
-   (idle-distance      meters                               :offset-assert 196)
-   (attack-force-scale float                                :offset-assert 200)
+   (max-time-step      float                                :offset 188)
+   (gravity            meters                               :offset 192)
+   (idle-distance      meters                               :offset 196)
+   (attack-force-scale float                                :offset 200)
    (name               symbol                               :offset-assert 204) ;; guessed by decompiler
    )
   :method-count-assert 9
   :size-assert         #xd0
   :flag-assert         #x9000000d0
   )
-|#
 
-#|
 (deftype rigid-body-impact (structure)
   ((point    vector      :inline :offset-assert 0)
    (normal   vector      :inline :offset-assert 16)
@@ -26856,9 +26951,7 @@
   :size-assert         #x40
   :flag-assert         #x900000040
   )
-|#
 
-#|
 (deftype rigid-body-control (basic)
   ((flags           rigid-body-flag         :offset-assert 4)
    (info            rigid-body-info         :offset-assert 8)
@@ -26873,7 +26966,7 @@
    (friction-factor float                   :offset-assert 44)
    (position        vector          :inline :offset-assert 48)
    (rot             vector          :inline :offset-assert 64)
-   (rotation        quaternion      :inline :offset-assert 64)
+   (rotation        quaternion      :inline :offset 64)
    (lin-momentum    vector          :inline :offset-assert 80)
    (ang-momentum    vector          :inline :offset-assert 96)
    (force           vector          :inline :offset-assert 112)
@@ -26915,16 +27008,14 @@
     (rigid-body-control-method-33 () none) ;; 33
     )
   )
-|#
 
-#|
 (deftype rigid-body-object (process-focusable)
   ((info                  rigid-body-object-constants         :offset-assert 208)
    (flags                 rigid-body-object-flag              :offset-assert 216)
    (max-time-step         float                               :offset-assert 224)
    (incoming-attack-id    uint32                              :offset-assert 228)
-   (player-touch-time     uint64                              :offset-assert 232) ;; time-frame
-   (disturbed-time        uint64                              :offset-assert 240) ;; time-frame
+   (player-touch-time     time-frame                          :offset-assert 232) ;;
+   (disturbed-time        time-frame                          :offset-assert 240) ;; time-frame
    (player-force-position vector                      :inline :offset-assert 256)
    (player-force          vector                      :inline :offset-assert 272)
    )
@@ -26963,9 +27054,7 @@
     (rigid-body-object-method-55 () none) ;; 55
     )
   )
-|#
 
-#|
 (deftype rigid-body-queue (structure)
   ((count   int8       :offset-assert 0)
    (manager uint64     :offset-assert 8)
@@ -26985,34 +27074,43 @@
     (rigid-body-queue-method-16 () none) ;; 16 ;; (validate (_type_) symbol)
     )
   )
-|#
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; load-dgo                       ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
+(defenum load-msg-result
+  :type uint16
+  :bitfield #f
+  (done 0)
+  (error 1)
+  (more 2)
+  (aborted 3)
+  (invalid 666)
+  )
+
 (deftype load-dgo-msg (structure)
+  "IOP RPC message for loading a dgo."
   ((rsvd    uint16   :offset-assert 0)
-   (result  uint16   :offset-assert 2) ;; load-msg-result
+   (result  load-msg-result   :offset-assert 2) ;;
    (b1      pointer  :offset-assert 4) ;; guessed by decompiler
    (b2      pointer  :offset-assert 8) ;; guessed by decompiler
    (bt      pointer  :offset-assert 12) ;; guessed by decompiler
    (name    uint128  :offset-assert 16)
-   (address uint32   :offset-assert 4)
+   (address uint32   :offset 4)
    (id      uint128  :offset-assert 32)
+   (pad     uint32 7) ;; ??
    )
   :method-count-assert 9
   :size-assert         #x4c
   :flag-assert         #x90000004c
   )
-|#
 
-#|
 (deftype load-chunk-msg (structure)
+  "IOP RPC message for loading a chunk of a chunked animation"
   ((rsvd     uint16                    :offset-assert 0)
-   (result   uint16                    :offset-assert 2) ;; load-msg-result
+   (result   load-msg-result           :offset-assert 2) ;;
    (address  pointer                   :offset-assert 4) ;; guessed by decompiler
    (section  uint32                    :offset-assert 8)
    (maxlen   uint32                    :offset-assert 12)
@@ -27023,49 +27121,51 @@
   :size-assert         #x50
   :flag-assert         #x900000050
   )
-|#
 
-#|
 (deftype play-chunk-msg (structure)
+  "IOP RPC message for playing some streamed audio."
   ((rsvd     uint16              :offset-assert 0)
    (result   uint16              :offset-assert 2)
    (address  pointer             :offset-assert 4) ;; guessed by decompiler
    (section  uint32              :offset-assert 8)
-   (volume   int32               :offset-assert 8)
+   (volume   int32               :offset 8)
    (maxlen   uint32              :offset-assert 12)
-   (group    uint8               :offset-assert 12)
+   (group    uint8               :offset 12)
    (id       uint32            4 :offset-assert 16) ;; guessed by decompiler
-   (basename sound-stream-name 4 :offset-assert 32) ;; guessed by decompiler
+   (basename sound-stream-name 4 :inline :offset-assert 32) ;; guessed by decompiler
    )
   :method-count-assert 9
   :size-assert         #xe0
   :flag-assert         #x9000000e0
   )
-|#
 
-;; (define-extern *load-dgo-rpc* object) ;; rpc-buffer-pair
-;; (define-extern *load-str-rpc* object) ;; rpc-buffer-pair
-;; (define-extern *play-str-rpc* object) ;; rpc-buffer-pair
-;; (define-extern *load-str-lock* object) ;; symbol
-;; (define-extern *que-str-lock* object) ;; symbol
-;; (define-extern *dgo-name* object) ;; string
-;; (define-extern str-load function) ;; (function string int pointer int symbol)
-;; (define-extern str-load-status function) ;; (function (pointer int32) symbol)
-;; (define-extern str-load-cancel function) ;; (function none)
-;; (define-extern str-play-async function) ;; (function string sound-id none)
-;; (define-extern str-play-stop function) ;; (function string sound-id none)
-;; (define-extern str-play-queue function) ;; (function string string string string (pointer uint32) pointer none)
-;; (define-extern str-ambient-play function) ;; (function string none)
-;; (define-extern str-ambient-stop function) ;; (function string none)
-;; (define-extern str-play-kick function) ;; (function none)
-;; (define-extern *dgo-time* object) ;; time-frame
-;; (define-extern dgo-load-begin function) ;; (function string pointer pointer pointer load-dgo-msg)
-;; (define-extern dgo-load-get-next function) ;; (function (pointer symbol) pointer)
-;; (define-extern dgo-load-continue function) ;; (function pointer pointer pointer load-dgo-msg)
-;; (define-extern dgo-load-cancel function) ;; (function none)
-;; (define-extern find-temp-buffer function) ;; (function int pointer)
-;; (define-extern dgo-load-link function) ;; (function dgo-header kheap uint symbol symbol symbol)
-;; (define-extern destroy-mem function) ;; (function (pointer uint32) (pointer uint32) none)
+(define-extern *load-dgo-rpc* rpc-buffer-pair)
+(define-extern *load-str-rpc* rpc-buffer-pair)
+(define-extern *play-str-rpc* rpc-buffer-pair)
+(define-extern *load-str-lock* symbol) ;;
+(define-extern *que-str-lock* symbol) ;
+(define-extern *dgo-name* string)
+(define-extern str-load "Send a message to the IOP to start loading a chunk of a .STR file to the EE." (function string int pointer int symbol))
+(define-extern str-load-status "Get the status of the most recent load.
+                                Return 'busy if in progress, 'error if failed, or 'complete.
+                                If 'complete, returns the maxlen value from the IOP." (function (pointer int32) symbol))
+(define-extern str-load-cancel "Cancel a streaming load. Note that this does not actually stop the transfer, so the IOP may continue writing to the buffer."
+               (function none))
+(define-extern str-play-async  "Start playing a streaming audio." (function string sound-id int int none))
+(define-extern str-play-stop "Stop playing streaming audio." (function string sound-id none))
+(define-extern str-play-queue "Queue up streaming data, allowing it to start playing without delay." (function string string string string (pointer uint32) pointer none))
+(define-extern str-ambient-play "Start playing ambient (unused?)." (function string none))
+(define-extern str-ambient-stop "Stop playing ambient (unused?)." (function string none))
+(define-extern str-play-kick "Do an empty RPC on play so the IOP code runs and can update buffers." (function none))
+(define-extern *dgo-time* time-frame)
+(define-extern dgo-load-begin "Start a DGO load!" (function string uint128 pointer pointer pointer load-dgo-msg))
+(define-extern dgo-load-get-next "Get the address of the most recently loaded object. #f is there is none. Returns if this is the last by arg0." (function (pointer symbol) pointer))
+(define-extern dgo-load-continue "Inform the IOP that it is safe to start loading the next object." (function pointer pointer pointer load-dgo-msg))
+(define-extern dgo-load-cancel "Abort a DGO load." (function int none))
+(define-extern find-temp-buffer "Unused function to find some temporary leftover space in DMA buffer.
+                                 Unused since jak 1, and checks the same buffer twice??" (function int pointer))
+(define-extern dgo-load-link "Start the async linker on a GOAL object file that was just loaded." (function dgo-header kheap uint symbol symbol symbol))
+(define-extern destroy-mem "Overwrite memory with #xffffffff for debugging." (function (pointer uint32) (pointer uint32) none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; ramdisk                        ;;
@@ -27200,13 +27300,13 @@
 ;; (define-extern sound-buffer-dump function) ;; (function int)
 ;; (define-extern *sound-player-enable* object) ;; symbol
 ;; (define-extern swap-sound-buffers function) ;; (function vector vector vector float int)
-;; (define-extern get-sound-buffer-entry function) ;; (function pointer)
+(define-extern get-sound-buffer-entry (function pointer))
 ;; (define-extern free-last-sound-buffer-entry function) ;; (function none)
 ;; (define-extern sound-basic-cb function) ;; (function int (pointer int32) none)
 ;; (define-extern sound-trans-convert function) ;; (function vector3w vector int)
 ;; (define-extern sound-unit-vector-convert function)
 ;; (define-extern sound-angle-convert function) ;; (function float int)
-;; (define-extern string->sound-name function) ;; (function string sound-name)
+(define-extern string->sound-name (function string sound-name))
 ;; (define-extern sound-name->string function)
 ;; (define-extern sound-set-volume function) ;; (function sound-group float int)
 ;; (define-extern sound-set-reverb function) ;; (function int float float uint int)
@@ -30563,7 +30663,7 @@
 ;; (define-extern matrix-local->world function) ;; (function symbol symbol matrix)
 ;; (define-extern matrix-world->local function) ;; (function symbol object matrix)
 ;; (define-extern *camera-dummy-vector* object) ;; vector
-;; (define-extern camera-pos function) ;; (function vector)
+(define-extern camera-pos (function vector))
 ;; (define-extern math-camera-pos function) ;; (function vector)
 ;; (define-extern camera-matrix function) ;; (function matrix)
 (define-extern math-camera-matrix (function matrix))
