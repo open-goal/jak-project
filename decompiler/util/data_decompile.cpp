@@ -1697,7 +1697,8 @@ goos::Object decompile_boxed_array(const TypeSpec& type,
       throw std::runtime_error("Invalid basic in decompile_boxed_array");
     }
     // TODO - ideally this wouldn't be hard-coded
-    if (type_ptr.symbol_name() == "array" || type_ptr.symbol_name() == "texture-anim-array") {
+    if (type_ptr.symbol_name() == "array" || type_ptr.symbol_name() == "texture-anim-array" ||
+        type_ptr.symbol_name() == "progress-icon-array") {
       auto content_type_ptr_word_idx = type_ptr_word_idx + 3;
       auto& content_type_ptr = words.at(label.target_segment).at(content_type_ptr_word_idx);
       if (content_type_ptr.kind() != LinkedWord::TYPE_PTR) {
