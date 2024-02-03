@@ -1,29 +1,7 @@
 ;;-*-Lisp-*-
 (in-package goal)
 
-;; name: load-dgo.gc
-;; name in dgo: load-dgo
-;; dgos: GAME
-
-(defenum load-msg-result
-  :type uint16
-  :bitfield #f
-  (done 0)
-  (error 1)
-  (more 2)
-  (aborted 3)
-  (invalid 666)
-  )
-
-(define-extern *load-dgo-rpc* rpc-buffer-pair)
-(define-extern *load-str-rpc* rpc-buffer-pair)
-(define-extern *play-str-rpc* rpc-buffer-pair)
-(define-extern *load-str-lock* symbol)
-(define-extern *que-str-lock* symbol)
-(define-extern *dgo-name* string)
-
-;; DECOMP BEGINS
-
+;; definition of type load-dgo-msg
 (deftype load-dgo-msg (structure)
   "IOP RPC message for loading a dgo."
   ((rsvd     uint16)
@@ -38,7 +16,27 @@
    )
   )
 
+;; definition for method 3 of type load-dgo-msg
+;; INFO: Used lq/sq
+(defmethod inspect ((this load-dgo-msg))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this 'load-dgo-msg)
+  (format #t "~1Trsvd: ~D~%" (-> this rsvd))
+  (format #t "~1Tresult: ~D~%" (-> this result))
+  (format #t "~1Tb1: #x~X~%" (-> this b1))
+  (format #t "~1Tb2: #x~X~%" (-> this b2))
+  (format #t "~1Tbt: #x~X~%" (-> this bt))
+  (format #t "~1Tname: ~D~%" (-> this name))
+  (format #t "~1Taddress: ~D~%" (-> this b1))
+  (format #t "~1Tid: ~D~%" (-> this id))
+  (label cfg-4)
+  this
+  )
 
+;; definition of type load-chunk-msg
 (deftype load-chunk-msg (structure)
   "IOP RPC message for loading a chunk of a chunked animation"
   ((rsvd      uint16)
@@ -51,7 +49,25 @@
    )
   )
 
+;; definition for method 3 of type load-chunk-msg
+(defmethod inspect ((this load-chunk-msg))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this 'load-chunk-msg)
+  (format #t "~1Trsvd: ~D~%" (-> this rsvd))
+  (format #t "~1Tresult: ~D~%" (-> this result))
+  (format #t "~1Taddress: ~D~%" (-> this address))
+  (format #t "~1Tsection: ~D~%" (-> this section))
+  (format #t "~1Tmaxlen: ~D~%" (-> this maxlen))
+  (format #t "~1Tdummy[4] @ #x~X~%" (-> this dummy))
+  (format #t "~1Tbasename: #<sound-stream-name @ #x~X>~%" (-> this basename))
+  (label cfg-4)
+  this
+  )
 
+;; definition of type play-chunk-msg
 (deftype play-chunk-msg (structure)
   "IOP RPC message for playing some streamed audio."
   ((rsvd      uint16)
@@ -66,7 +82,27 @@
    )
   )
 
+;; definition for method 3 of type play-chunk-msg
+(defmethod inspect ((this play-chunk-msg))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this 'play-chunk-msg)
+  (format #t "~1Trsvd: ~D~%" (-> this rsvd))
+  (format #t "~1Tresult: ~D~%" (-> this result))
+  (format #t "~1Taddress: ~D~%" (-> this address))
+  (format #t "~1Tsection: ~D~%" (-> this section))
+  (format #t "~1Tvolume: ~D~%" (-> this volume))
+  (format #t "~1Tmaxlen: ~D~%" (-> this maxlen))
+  (format #t "~1Tgroup: ~D~%" (-> this group))
+  (format #t "~1Tid[4] @ #x~X~%" (-> this id))
+  (format #t "~1Tbasename[4] @ #x~X~%" (-> this basename))
+  (label cfg-4)
+  this
+  )
 
+;; failed to figure out what this is:
 (when (zero? *load-dgo-rpc*)
   (set! *load-dgo-rpc* (new 'global 'rpc-buffer-pair (the-as uint 64) (the-as uint 1) 3))
   (set! *load-str-rpc* (new 'global 'rpc-buffer-pair (the-as uint 80) (the-as uint 1) 4))
@@ -76,6 +112,7 @@
   (set! *dgo-name* (new 'global 'string 64 (the-as string #f)))
   )
 
+;; definition for function str-load
 (defun str-load ((name string) (chunk-idx int) (dest-addr pointer) (max-len int))
   "Send a message to the IOP to start loading a chunk of a .STR file to the EE."
   (if (or (check-busy *load-str-rpc*) *load-str-lock*)
@@ -94,6 +131,7 @@
   #t
   )
 
+;; definition for function str-load-status
 (defun str-load-status ((maxlen-out (pointer int32)))
   "Get the status of the most recent load.
    Return 'busy if in progress, 'error if failed, or 'complete.
@@ -112,6 +150,8 @@
   'complete
   )
 
+;; definition for function str-load-cancel
+;; WARN: Return type mismatch int vs none.
 (defun str-load-cancel ()
   "Cancel a streaming load. Note that this does not actually stop the transfer, so the IOP may continue writing to the buffer."
   (set! *load-str-lock* #f)
@@ -120,6 +160,8 @@
   (none)
   )
 
+;; definition for function str-play-async
+;; WARN: Return type mismatch int vs none.
 (defun str-play-async ((name string) (id sound-id) (chunk-idx int) (group int))
   "Start playing a streaming audio."
   (set! *que-str-lock* #t)
@@ -142,6 +184,8 @@
   (none)
   )
 
+;; definition for function str-play-stop
+;; WARN: Return type mismatch int vs none.
 (defun str-play-stop ((name string) (id sound-id))
   "Stop playing streaming audio."
   (set! *que-str-lock* #t)
@@ -160,6 +204,8 @@
   (none)
   )
 
+;; definition for function str-play-queue
+;; WARN: Return type mismatch int vs none.
 (defun str-play-queue ((name0 string) (name1 string) (name2 string) (name3 string) (ids (pointer uint32)) (mask pointer))
   "Queue up streaming data, allowing it to start playing without delay."
   (when (and (not (check-busy *play-str-rpc*)) (not *que-str-lock*))
@@ -192,6 +238,8 @@
   (none)
   )
 
+;; definition for function str-ambient-play
+;; WARN: Return type mismatch int vs none.
 (defun str-ambient-play ((name string))
   "Start playing ambient (unused?)."
   (set! *que-str-lock* #t)
@@ -205,6 +253,8 @@
   (none)
   )
 
+;; definition for function str-ambient-stop
+;; WARN: Return type mismatch int vs none.
 (defun str-ambient-stop ((name string))
   "Stop playing ambient (unused?)."
   (set! *que-str-lock* #t)
@@ -217,6 +267,8 @@
   (none)
   )
 
+;; definition for function str-play-kick
+;; WARN: Return type mismatch int vs none.
 (defun str-play-kick ()
   "Do an empty RPC on play so the IOP code runs and can update buffers."
   (cond
@@ -230,8 +282,11 @@
   (none)
   )
 
+;; definition for symbol *dgo-time*, type time-frame
 (define *dgo-time* (the-as time-frame 0))
 
+;; definition for function dgo-load-begin
+;; INFO: Used lq/sq
 (defun dgo-load-begin ((name string) (buffer1 uint128) (buffer2 pointer) (buffer-top pointer) (arg4 pointer))
   "Start a DGO load!"
   (set! *dgo-time* (-> *display* real-clock integral-frame-counter))
@@ -249,6 +304,7 @@
     )
   )
 
+;; definition for function dgo-load-get-next
 (defun dgo-load-get-next ((done-out (pointer symbol)))
   "Get the address of the most recently loaded object. #f is there is none. Returns if this is the last by arg0."
   (set! (-> done-out 0) #f)
@@ -277,6 +333,8 @@
     )
   )
 
+;; definition for function dgo-load-continue
+;; INFO: Used lq/sq
 (defun dgo-load-continue ((buffer1 pointer) (buffer2 pointer) (buffer-top pointer))
   "Inform the IOP that it is safe to start loading the next object."
   (let ((gp-0 (the-as load-dgo-msg (add-element *load-dgo-rpc*))))
@@ -290,6 +348,8 @@
     )
   )
 
+;; definition for function dgo-load-cancel
+;; WARN: Return type mismatch int vs none.
 (defun dgo-load-cancel ((arg0 int))
   "Abort a DGO load."
   (let ((v1-0 (the-as sound-rpc-cancel-dgo (get-sound-buffer-entry))))
@@ -300,6 +360,7 @@
   (none)
   )
 
+;; definition for function find-temp-buffer
 (defun find-temp-buffer ((size int))
   "Unused function to find some temporary leftover space in DMA buffer.
    Unused since jak 1, and checks the same buffer twice??"
@@ -319,6 +380,7 @@
     )
   )
 
+;; definition for function dgo-load-link
 (defun dgo-load-link ((object-file dgo-header) (heap kheap) (end-of-buffer uint) (print-login symbol) (loaded-from-top symbol))
   "Start the async linker on a GOAL object file that was just loaded."
   (let ((s4-0 (the-as object (&+ object-file 64))))
@@ -375,6 +437,8 @@
     )
   )
 
+;; definition for function destroy-mem
+;; WARN: Return type mismatch int vs none.
 (defun destroy-mem ((start (pointer uint32)) (end (pointer uint32)))
   "Overwrite memory with #xffffffff for debugging."
   (while (< (the-as int start) (the-as int end))
@@ -384,3 +448,7 @@
   0
   (none)
   )
+
+
+
+
