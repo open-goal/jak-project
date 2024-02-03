@@ -24056,16 +24056,43 @@
 ;; cam-interface-h                ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (define-extern *camera-init-mat* object) ;; matrix
-;; (define-extern *camera* object) ;; camera-master
-;; (define-extern *camera-combiner* object) ;; camera-combiner
+; (define-extern *camera-init-mat* matrix)
+; (define-extern *camera* camera-master)
+; (define-extern *camera-combiner* camera-combiner)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; sparticle-launcher-h           ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
+(declare-type sprite-vec-data-3d structure)
+(declare-type sparticle-cpuinfo structure)
+(declare-type sparticle-system structure)
+
+(defenum sp-field-id
+  :type uint16
+  )
+
+(defenum sp-flag
+  :type uint16
+  )
+
+(defenum sp-group-item-flag
+  :bitfield #t
+  :type uint16
+  )
+
+(defenum sp-launch-state-flags
+  :bitfield #t
+  :type uint16
+  )
+
+(defenum sp-group-flag
+  :bitfield #t
+  :type uint16
+  )
+
 (deftype sparticle-birthinfo (structure)
+  "Used internally by the sparticle code."
   ((sprite       uint32   :offset-assert 0)
    (anim         int32    :offset-assert 4)
    (anim-speed   float    :offset-assert 8)
@@ -24073,41 +24100,39 @@
    (joint-ppoint int32    :offset-assert 16)
    (num-to-birth float    :offset-assert 20)
    (sound        basic    :offset-assert 24)
-   (dataf        float  1 :offset-assert 0) ;; guessed by decompiler
-   (data         uint32 1 :offset-assert 0) ;; guessed by decompiler
+   (dataf        float  1 :offset 0) ;; guessed by decompiler
+   (data         uint32 1 :offset 0) ;; guessed by decompiler
    )
   :method-count-assert 9
   :size-assert         #x1c
   :flag-assert         #x90000001c
   )
-|#
 
-#|
 (deftype sp-field-init-spec (structure)
-  ((field          uint16      :offset-assert 0) ;; sp-field-id
-   (flags          uint16      :offset-assert 2) ;; sp-flag
+  "Part of a particle definition - how to initialize a field of a particle."
+  ((field          sp-field-id      :offset-assert 0) ;;
+   (flags          sp-flag      :offset-assert 2) ;;
    (initial-valuef float       :offset-assert 4)
    (random-rangef  float       :offset-assert 8)
    (random-multf   float       :offset-assert 12)
-   (initial-value  int32       :offset-assert 4)
-   (random-range   int32       :offset-assert 8)
-   (random-mult    int32       :offset-assert 12)
-   (func           symbol      :offset-assert 4) ;; guessed by decompiler
-   (tex            texture-id  :offset-assert 4) ;; guessed by decompiler
-   (pntr           pointer     :offset-assert 4) ;; guessed by decompiler
-   (object         basic       :offset-assert 4)
-   (sym            symbol      :offset-assert 4) ;; guessed by decompiler
-   (sound          sound-spec  :offset-assert 4) ;; guessed by decompiler
+   (initial-value  int32       :offset 4)
+   (random-range   int32       :offset 8)
+   (random-mult    int32       :offset 12)
+   (func           symbol      :offset 4) ;; guessed by decompiler
+   (tex            texture-id  :offset 4) ;; guessed by decompiler
+   (pntr           pointer     :offset 4) ;; guessed by decompiler
+   (object         basic       :offset 4)
+   (sym            symbol      :offset 4) ;; guessed by decompiler
+   (sound          sound-spec  :offset 4) ;; guessed by decompiler
    )
   :method-count-assert 9
   :size-assert         #x10
   :flag-assert         #x900000010
   ;; field object uses ~A with a signed load.
   )
-|#
 
-#|
 (deftype sparticle-launcher (basic)
+  "A definition of a single particle, as a list of init specs."
   ((birthaccum float                              :offset-assert 4)
    (soundaccum float                              :offset-assert 8)
    (init-specs (inline-array sp-field-init-spec)  :offset-assert 12) ;; guessed by decompiler
@@ -24116,18 +24141,17 @@
   :size-assert         #x10
   :flag-assert         #xb00000010
   (:methods
-    (sparticle-launcher-method-9 () none) ;; 9 ;; (get-field-spec-by-id (_type_ sp-field-id) sp-field-init-spec)
-    (sparticle-launcher-method-10 () none) ;; 10 ;; (setup-user-array (_type_ string) none)
+    (get-field-spec-by-id "Look up a field's init spec by ID number." (_type_ sp-field-id) sp-field-init-spec) ;; 9
+    (setup-special-textures "Set the particle's texture to the texture with the given name, and convert userdata strings to textures." (_type_ string) none) ;; 10
     )
   )
-|#
 
-#|
 (deftype sparticle-group-item (structure)
+  "A reference to a single sparticle-launcher (by ID) and some parameters for using it."
   ((launcher   uint32  :offset-assert 0)
    (fade-after meters  :offset-assert 4)
    (falloff-to meters  :offset-assert 8)
-   (flags      uint16  :offset-assert 12) ;; sp-group-item-flag
+   (flags      sp-group-item-flag  :offset-assert 12) ;; sp-group-item-flag
    (period     uint16  :offset-assert 14)
    (length     uint16  :offset-assert 16)
    (offset     int16   :offset-assert 18)
@@ -24138,12 +24162,11 @@
   :size-assert         #x1c
   :flag-assert         #x90000001c
   )
-|#
 
-#|
 (deftype sparticle-launch-state (structure)
+  "The state associated with a launcher of a given sparticle."
   ((group-item sparticle-group-item      :offset-assert 0)
-   (flags      uint16                    :offset-assert 4) ;; sp-launch-state-flags
+   (flags      sp-launch-state-flags     :offset-assert 4) ;;
    (randomize  uint16                    :offset-assert 6)
    (center     vector                    :offset-assert 8)
    (sprite3d   sprite-vec-data-3d        :offset-assert 12)
@@ -24152,29 +24175,28 @@
    (accum      float                     :offset-assert 24)
    (spawn-time uint32                    :offset-assert 28)
    (control    sparticle-launch-control  :offset-assert 32) ;; guessed by decompiler
-   (swarm      basic                     :offset-assert 20)
-   (seed       uint32                    :offset-assert 24)
-   (time       uint32                    :offset-assert 28)
-   (spec       basic                     :offset-assert 16)
-   (id         uint32                    :offset-assert 12)
+   (swarm      basic                     :offset 20)
+   (seed       uint32                    :offset 24)
+   (time       uint32                    :offset 28)
+   (spec       basic                     :offset 16)
+   (id         uint32                    :offset 12)
    )
   :method-count-assert 9
   :size-assert         #x24
   :flag-assert         #x900000024
   )
-|#
 
-#|
 (deftype sparticle-launch-group (basic)
+  "Definition of multiple a particle-group, which is a collection of particle effects."
   ((length          int16                                       :offset-assert 4)
    (duration        uint16                                      :offset-assert 6)
    (linger-duration uint16                                      :offset-assert 8)
-   (flags           uint16                                      :offset-assert 10) ;; sp-group-flag
+   (flags           sp-group-flag                                      :offset-assert 10) ;;
    (name            string                                      :offset-assert 12) ;; guessed by decompiler
    (launcher        (inline-array sparticle-group-item)         :offset-assert 16) ;; guessed by decompiler
-   (rotate-x        deg                                         :offset-assert 20) ;; degrees
-   (rotate-y        deg                                         :offset-assert 24) ;; degrees
-   (rotate-z        deg                                         :offset-assert 28) ;; degrees
+   (rotate-x        degrees                                         :offset-assert 20) ;; degrees
+   (rotate-y        degrees                                         :offset-assert 24) ;; degrees
+   (rotate-z        degrees                                         :offset-assert 28) ;; degrees
    (scale-x         float                                       :offset-assert 32)
    (scale-y         float                                       :offset-assert 36)
    (scale-z         float                                       :offset-assert 40)
@@ -24184,13 +24206,15 @@
   :size-assert         #x40
   :flag-assert         #xa00000040
   (:methods
-    (sparticle-launch-group-method-9 () none) ;; 9 ;; (create-launch-control (_type_ process) sparticle-launch-control)
+    (create-launch-control (_type_ process) sparticle-launch-control) ;; 9
     )
   )
-|#
 
-#|
 (deftype sparticle-launch-control (inline-array-class)
+  "Top-level type containing all the state needed to launch a particle group.
+   These are typically owned by a process, and allocated on the process heap.
+   These refer to static particle definitions, and then spawn particles that are tracked by the
+   particle system itself. This type just holds the launching-related state."
   ((group               sparticle-launch-group             :offset-assert 16) ;; guessed by decompiler
    (proc                process-drawable                   :offset-assert 20) ;; guessed by decompiler
    (local-clock         int32                              :offset-assert 24)
@@ -24198,12 +24222,12 @@
    (matrix              int8                               :offset-assert 32)
    (state-mode          uint8                     3        :offset-assert 33) ;; guessed by decompiler
    (state-counter       uint32                             :offset-assert 36)
-   (local-space-binding particle-local-space-info          :offset-assert 28)
+   (local-space-binding particle-local-space-info          :offset 28)
    (last-spawn-frame    int32                              :offset-assert 40)
    (last-spawn-time     int32                              :offset-assert 44)
    (origin              matrix                    :inline  :offset-assert 48)
-   (center              vector                    :inline  :offset-assert 96)
-   (data                sparticle-launch-state    :dynamic :offset-assert 112) ;; guessed by decompiler
+   (center              vector                    :inline  :offset 96)
+   (data                sparticle-launch-state    :dynamic :inline :offset-assert 112) ;; guessed by decompiler
    )
   :method-count-assert 21
   :size-assert         #x70
@@ -24218,13 +24242,11 @@
     (sparticle-launch-control-method-20 () none) ;; 20
     )
   )
-|#
 
-#|
 (deftype sparticle-subsampler (basic)
   ((spt-num     float          :offset-assert 4)
-   (sp-system   basic          :offset-assert 8)
-   (sp-launcher basic          :offset-assert 12)
+   (sp-system   sparticle-system          :offset-assert 8)
+   (sp-launcher sparticle-launcher          :offset-assert 12)
    (spawn-mat   matrix :inline :offset-assert 16)
    (inited?     basic          :offset-assert 80)
    )
@@ -24232,14 +24254,14 @@
   :size-assert         #x54
   :flag-assert         #xb00000054
   (:methods
+    (new (symbol type sparticle-system sparticle-launcher float) _type_)
     (sparticle-subsampler-method-9 () none) ;; 9
     (sparticle-subsampler-method-10 () none) ;; 10
     )
   )
-|#
 
-;; (define-extern *launch-matrix* object) ;; matrix
-;; (define-extern compute-rot-in-screenspace function)
+(define-extern *launch-matrix* matrix)
+(define-extern compute-rot-in-screenspace "Unclear what this does, but I'm not actually sure it makes sense. Unused" (function vector float))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; sparticle-h                    ;;
@@ -30391,7 +30413,7 @@
 ;; (define-extern camera-pos function) ;; (function vector)
 ;; (define-extern math-camera-pos function) ;; (function vector)
 ;; (define-extern camera-matrix function) ;; (function matrix)
-;; (define-extern math-camera-matrix function) ;; (function matrix)
+(define-extern math-camera-matrix (function matrix))
 ;; (define-extern camera-angle function) ;; (function float)
 ;; (define-extern camera-teleport-to-entity function) ;; (function entity-actor symbol :behavior process)
 ;; (define-extern camera-teleport-to-entity-named function)
