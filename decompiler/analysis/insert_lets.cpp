@@ -1630,6 +1630,7 @@ FormElement* rewrite_proc_new(LetElement* in, const Env& env, FormPool& pool) {
             expected_name = fmt::format("'{}", proc_type);
             break;
           case GameVersion::Jak2:
+          case GameVersion::Jak3:
             expected_name = fmt::format("(symbol->string (-> {} symbol))", proc_type);
             break;
           default:

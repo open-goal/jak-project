@@ -7,6 +7,57 @@
 
 (defenum sound-command
   :type uint16
+  (iop-store)
+  (iop-free)
+  (load-bank)
+  (load-bank-from-iop)
+  (load-bank-from-ee)
+  (load-music)
+  (unload-bank)
+  (play)
+  (pause-sound)
+  (stop-sound)
+  (continue-sound)
+  (set-param)
+  (set-master-volume)
+  (pause-group)
+  (stop-group)
+  (continue-group)
+  (get-irx-version)
+  (set-falloff-curve)
+  (set-sound-falloff)
+  (reload-info)
+  (set-language)
+  (set-flava)
+  (set-midi-reg)
+  (set-reverb)
+  (set-ear-trans)
+  (shutdown)
+  (list-sounds)
+  (unload-music)
+  (set-fps)
+  (boot-load)
+  (game-load)
+  (num-tests)
+  (num-testruns)
+  (num-sectors)
+  (num-streamsectors)
+  (num-streambanks)
+  (track-pitch)
+  (linvel-nom)
+  (linvel-stm)
+  (seek-nom)
+  (seek-stm)
+  (read-seq-nom)
+  (read-seq-stm)
+  (read-spr-nom)
+  (read-spr-stm)
+  (read-spr-strn-nom)
+  (rand-stm-abort)
+  (rand-nom-abort)
+  (iop-mem)
+  (cancel-dgo)
+  (set-stereo-mode)
   )
 
 (defenum sound-group
@@ -17,20 +68,63 @@
 (defenum sound-mask
   :bitfield #t
   :type uint16
+  (volume)    ;; 1
+  (pitch)     ;; 2
+  (bend)      ;; 4
+  (unused)    ;; 8
+  (time)      ;; 10
+  (trans)     ;; 20
+  (fo-min)    ;; 40
+  (fo-max)    ;; 80
+  (fo-curve)  ;; 100
+  (sm-unk1)
+  (sm-unk2)
+  (reg0)
+  (reg1)
+  (reg2)
+  (unk)
   )
 
 (defenum stream-status
   :type uint32
   :bitfield #t
+  (ss1 1) ;; id-is-playing
+  (ss4 4) ;; is-playing
+  (ss6 6) ;; id-is-playing
   )
 
+(defmacro static-sound-name (str)
+  "Convert a string constant to a static sound-name."
+
+  ;; all this is done at compile-time so we can come up with 2
+  ;; 64-bit constants to use
+  (when (> (string-length str) 16)
+    (error "static-sound-name got a string that is too long")
+    )
+  (let ((lo-val 0)
+        (hi-val 0)
+        )
+    (dotimes (i (string-length str))
+      (if (>= i 8)
+          (+! hi-val (ash (string-ref str i) (* 8 (- i 8))))
+          (+! lo-val (ash (string-ref str i) (* 8 i)))
+          )
+      )
+    `(new 'static 'sound-name :lo ,lo-val :hi ,hi-val)
+    )
+  )
+
+
 (define-extern get-sound-buffer-entry (function pointer))
+(define-extern sound-set-ear-trans (function vector vector vector vector vector float int))
+(define-extern ear-trans (function int vector))
 
 ;; DECOMP BEGINS
 
 (deftype sound-stream-name (structure)
   ((name  uint8  48)
    )
+  :pack-me
   )
 
 
@@ -46,14 +140,16 @@
   )
 
 (deftype sound-name (uint128)
-  ()
+  ((lo  uint64  :offset 0) ;; added to help with cases where they access it by u64.
+   (hi  uint64  :offset 64)
+   )
   )
 
 (define-extern string->sound-name (function string sound-name))
 
 (deftype sound-rpc-cmd (structure)
   ((rsvd1    uint16)
-   (command  uint16)
+   (command  sound-command)
    )
   )
 
@@ -70,6 +166,7 @@
    (trans      int32  3)
    (group      uint8)
    (reg        uint8  3)
+   (group-and-reg  uint32  :overlay-at group)
    )
   :pack-me
   )
@@ -283,6 +380,7 @@
    (num              float)
    (group            sound-group)
    (reg              uint8       3)
+   (group-and-reg    uint32      :overlay-at group)
    (sound-name-char  uint8       16)
    (sound-name       sound-name  :overlay-at (-> sound-name-char 0))
    (trans            int32       4)
@@ -300,7 +398,7 @@
 
 
 (deftype sound-bank-state (structure)
-  ((name  basic)
+  ((name  symbol)
    (mode  uint32)
    )
   :pack-me
@@ -313,10 +411,10 @@
   ((spec          sound-spec)
    (playing-id    sound-id)
    (trans         vector  :inline)
-   (name          uint128)
-   (play-time     uint64)
-   (time-base     uint64)
-   (time-random   uint64)
+   (name          sound-name)
+   (play-time     time-frame)
+   (time-base     time-frame)
+   (time-random   time-frame)
    (volume        int32)
    (pitch         int32)
    (falloff-near  int32)
@@ -329,14 +427,14 @@
    (sound-state   int32)
    )
   (:methods
-    (new (symbol type) _type_)
-    (ambient-sound-method-9 () none)
-    (ambient-sound-method-10 () none)
-    (ambient-sound-method-11 () none)
-    (ambient-sound-method-12 () none)
-    (ambient-sound-method-13 () none)
-    (ambient-sound-method-14 () none)
-    (ambient-sound-method-15 () none)
-    (ambient-sound-method-16 () none)
+    (new (symbol type basic vector float) _type_)
+    (update! (_type_) int)
+    (change-sound! (_type_ sound-name) int)
+    (update-trans! (_type_ vector) int)
+    (update-vol! (_type_ float) int)
+    (update-pitch-mod! (_type_ float) none)
+    (set-falloff-far! (_type_ float) none)
+    (set-falloff-mode! (_type_ int) none)
+    (stop! (_type_) int)
     )
   )

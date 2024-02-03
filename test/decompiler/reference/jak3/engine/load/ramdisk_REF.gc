@@ -1,0 +1,113 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; definition of type ramdisk-rpc-fill
+(deftype ramdisk-rpc-fill (structure)
+  "Unused RAMDISK rpc to load files from DVD to the IOP RAM."
+  ((rsvd1     int32)
+   (ee-id     int32)
+   (rsvd2     int32  2)
+   (filename  uint128)
+   )
+  )
+
+;; definition for method 3 of type ramdisk-rpc-fill
+;; INFO: Used lq/sq
+(defmethod inspect ((this ramdisk-rpc-fill))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this 'ramdisk-rpc-fill)
+  (format #t "~1Trsvd1: ~D~%" (-> this rsvd1))
+  (format #t "~1Tee-id: ~D~%" (-> this ee-id))
+  (format #t "~1Trsvd2[2] @ #x~X~%" (-> this rsvd2))
+  (format #t "~1Tfilename: ~D~%" (-> this filename))
+  (label cfg-4)
+  this
+  )
+
+;; definition of type ramdisk-rpc-load
+(deftype ramdisk-rpc-load (structure)
+  "Unused RAMDISK rpc to load files from DVD to the IOP RAM."
+  ((rsvd    int32)
+   (ee-id   int32)
+   (offset  uint32)
+   (length  uint32)
+   )
+  )
+
+;; definition for method 3 of type ramdisk-rpc-load
+(defmethod inspect ((this ramdisk-rpc-load))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this 'ramdisk-rpc-load)
+  (format #t "~1Trsvd: ~D~%" (-> this rsvd))
+  (format #t "~1Tee-id: ~D~%" (-> this ee-id))
+  (format #t "~1Toffset: ~D~%" (-> this offset))
+  (format #t "~1Tlength: ~D~%" (-> this length))
+  (label cfg-4)
+  this
+  )
+
+;; definition of type ramdisk-rpc-load-to-ee
+(deftype ramdisk-rpc-load-to-ee (structure)
+  "Unused RAMDISK rpc to load files from DVD to the IOP RAM."
+  ((rsvd      int32)
+   (addr      int32)
+   (offset    int32)
+   (length    int32)
+   (filename  uint128)
+   )
+  )
+
+;; definition for method 3 of type ramdisk-rpc-load-to-ee
+;; INFO: Used lq/sq
+(defmethod inspect ((this ramdisk-rpc-load-to-ee))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this 'ramdisk-rpc-load-to-ee)
+  (format #t "~1Trsvd: ~D~%" (-> this rsvd))
+  (format #t "~1Taddr: ~D~%" (-> this addr))
+  (format #t "~1Toffset: ~D~%" (-> this offset))
+  (format #t "~1Tlength: ~D~%" (-> this length))
+  (format #t "~1Tfilename: ~D~%" (-> this filename))
+  (label cfg-4)
+  this
+  )
+
+;; definition for symbol *ramdisk-rpc*, type rpc-buffer-pair
+(define *ramdisk-rpc* (new 'global 'rpc-buffer-pair (the-as uint 32) (the-as uint 1) 2))
+
+;; definition for symbol *current-ramdisk-id*, type int
+(define *current-ramdisk-id* 0)
+
+;; definition for function ramdisk-load
+(defun ramdisk-load ((arg0 int) (arg1 uint) (arg2 uint) (arg3 pointer))
+  (let ((v1-1 (the-as ramdisk-rpc-load (add-element *ramdisk-rpc*))))
+    (set! (-> v1-1 offset) arg1)
+    (set! (-> v1-1 ee-id) arg0)
+    (set! (-> v1-1 length) arg2)
+    )
+  (call *ramdisk-rpc* (the-as uint 0) arg3 arg2)
+  0
+  )
+
+;; definition for function ramdisk-sync
+;; WARN: Return type mismatch int vs none.
+(defun ramdisk-sync ()
+  (sync *ramdisk-rpc* #t)
+  0
+  (none)
+  )
+
+;; failed to figure out what this is:
+0
+
+
+
+

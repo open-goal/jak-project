@@ -820,3 +820,72 @@
         (send-event-function ,proc event-data)
         )
   )
+
+(defmacro setting-control-func! (func s &rest args)
+  (let ((argb #f)
+        (argi 0)
+        (argf 0.0)
+        (setting (cadr s)))
+    (cond
+      (#t
+        (set! argb (car args))
+        (set! argf (cadr args))
+        (set! argi (caddr args))
+        )
+      )
+    `(,func *setting-control* (with-pp pp) ,s ,argb ,argf ,argi)
+    )
+  )
+
+(defmacro add-setting! (s &rest args)
+  `(setting-control-func! add-setting ,s ,@args)
+  )
+(defmacro set-setting! (s &rest args)
+  `(setting-control-func! set-setting ,s ,@args)
+  )
+(defmacro remove-setting! (s)
+  `(remove-setting *setting-control* (with-pp pp) ,s)
+  )
+
+(defmacro static-sound-name (str)
+  "Convert a string constant to a static sound-name."
+
+  ;; all this is done at compile-time so we can come up with 2
+  ;; 64-bit constants to use
+  (when (> (string-length str) 16)
+    (error "static-sound-name got a string that is too long")
+    )
+  (let ((lo-val 0)
+        (hi-val 0)
+        )
+    (dotimes (i (string-length str))
+      (if (>= i 8)
+          (+! hi-val (ash (string-ref str i) (* 8 (- i 8))))
+          (+! lo-val (ash (string-ref str i) (* 8 i)))
+          )
+      )
+    `(new 'static 'sound-name :lo ,lo-val :hi ,hi-val)
+    )
+  )
+
+(defmacro time-elapsed? (time duration)
+  `(>= (- (current-time) ,time) ,duration)
+  )
+
+(defconstant *scratch-memory-top* (the pointer #x70004000))
+(defconstant DPROCESS_STACK_SIZE #x8000)
+
+(defmacro process-spawn-function (proc-type func &key (from *default-dead-pool*) &key (to *default-pool*) &key (name #f) &key (stack-size #x4000) &key (stack *scratch-memory-top*) &rest args)
+  "Start a new process that runs a function on its main thread.
+   Returns a pointer to the new process (or #f? on error)."
+
+  (with-gensyms (new-proc)
+    `(let ((,new-proc (the-as ,proc-type (get-process ,from ,proc-type ,stack-size 1))))
+        (when ,new-proc
+          ((method-of-type ,proc-type activate) ,new-proc ,to ,(if name name `(symbol->string (-> ,proc-type symbol))) ,stack)
+          (run-next-time-in-process ,new-proc ,func ,@args)
+          (the (pointer ,proc-type) (-> ,new-proc ppointer))
+          )
+        )
+    )
+  )

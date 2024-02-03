@@ -5,6 +5,9 @@
 ;; name in dgo: settings-h
 ;; dgos: GAME
 
+(declare-type setting-control structure)
+(define-extern *setting-control* setting-control)
+
 ;; +++cam-master-options
 (defenum cam-master-options
   :type uint64
@@ -148,7 +151,7 @@
   (gs12 12)
   (gs13 13)
   (gs14 14)
-  (gs15 15)
+  (screen-flip 15)
   (gs16 16)
   (gs17 17)
   (gs18 18)
@@ -200,6 +203,31 @@
   )
 ;; ---game-secrets
 
+(defmacro setting-control-func! (func s &rest args)
+  (let ((argb #f)
+        (argi 0)
+        (argf 0.0)
+        (setting (car s)))
+    (cond
+      (#t
+        (set! argb (car args))
+        (set! argf (cadr args))
+        (set! argi (caddr args))
+        )
+      )
+    `(,func *setting-control* (with-pp pp) ,s ,argb ,argf ,argi)
+    )
+  )
+
+(defmacro add-setting! (s &rest args)
+  `(setting-control-func! add-setting ,s ,@args)
+  )
+(defmacro set-setting! (s &rest args)
+  `(setting-control-func! set-setting ,s ,@args)
+  )
+(defmacro remove-setting! (s)
+  `(remove-setting *setting-control* (with-pp pp) ,s)
+  )
 
 ;; DECOMP BEGINS
 
@@ -312,6 +340,7 @@
    (borrow-city-count       uint32                 :offset 620)
    (borrow-city             pair               3)
    (audio-language          language-enum          :offset 748)
+   (ear-handle              handle                 :offset 784)
    (special-volume          float                  :offset 796)
    (pad                     uint8              108 :offset 800)
    )

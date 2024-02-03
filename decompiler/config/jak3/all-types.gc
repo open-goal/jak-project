@@ -2532,6 +2532,57 @@
 
 (defenum sound-command
   :type uint16
+  (iop-store)
+  (iop-free)
+  (load-bank)
+  (load-bank-from-iop)
+  (load-bank-from-ee)
+  (load-music)
+  (unload-bank)
+  (play)
+  (pause-sound)
+  (stop-sound)
+  (continue-sound)
+  (set-param)
+  (set-master-volume)
+  (pause-group)
+  (stop-group)
+  (continue-group)
+  (get-irx-version)
+  (set-falloff-curve)
+  (set-sound-falloff)
+  (reload-info)
+  (set-language)
+  (set-flava)
+  (set-midi-reg)
+  (set-reverb)
+  (set-ear-trans)
+  (shutdown)
+  (list-sounds)
+  (unload-music)
+  (set-fps)
+  (boot-load)
+  (game-load)
+  (num-tests)
+  (num-testruns)
+  (num-sectors)
+  (num-streamsectors)
+  (num-streambanks)
+  (track-pitch)
+  (linvel-nom)
+  (linvel-stm)
+  (seek-nom)
+  (seek-stm)
+  (read-seq-nom)
+  (read-seq-stm)
+  (read-spr-nom)
+  (read-spr-stm)
+  (read-spr-strn-nom)
+  (rand-stm-abort)
+  (rand-nom-abort)
+  (iop-mem)
+  (cancel-dgo)
+  (set-stereo-mode)
   )
 
 (defenum sound-group
@@ -2542,16 +2593,35 @@
 (defenum sound-mask
   :bitfield #t
   :type uint16
+  (volume)    ;; 1
+  (pitch)     ;; 2
+  (bend)      ;; 4
+  (unused)    ;; 8
+  (time)      ;; 10
+  (trans)     ;; 20
+  (fo-min)    ;; 40
+  (fo-max)    ;; 80
+  (fo-curve)  ;; 100
+  (sm-unk1)
+  (sm-unk2)
+  (reg0)
+  (reg1)
+  (reg2)
+  (unk)
   )
 
 (defenum stream-status
   :type uint32
   :bitfield #t
+  (ss1 1) ;; id-is-playing
+  (ss4 4) ;; is-playing
+  (ss6 6) ;; id-is-playing
   )
 
 (deftype sound-stream-name (structure)
   ((name uint8 48 :offset-assert 0) ;; guessed by decompiler
    )
+  :pack-me
   :method-count-assert 9
   :size-assert         #x30
   :flag-assert         #x900000030
@@ -2571,13 +2641,15 @@
   )
 
 (deftype sound-name (uint128)
-  ()
+  ((lo  uint64  :offset 0) ;; added to help with cases where they access it by u64.
+   (hi  uint64  :offset 64)
+   )
   :flag-assert #x900000010
   )
 
 (deftype sound-rpc-cmd (structure)
   ((rsvd1   uint16  :offset-assert 0)
-   (command uint16  :offset-assert 2) ;; sound-command
+   (command sound-command  :offset-assert 2) ;; sound-command
    )
   :method-count-assert 9
   :size-assert         #x4
@@ -2596,6 +2668,7 @@
    (trans     int32  3 :offset-assert 16) ;; guessed by decompiler
    (group     uint8    :offset-assert 28)
    (reg       uint8  3 :offset-assert 29) ;; guessed by decompiler
+   (group-and-reg uint32 :overlay-at group)
    )
   :pack-me
   :method-count-assert 9
@@ -2865,10 +2938,12 @@
   )
 
 (deftype sound-spec (basic)
-  ((mask       sound-mask    :offset-assert 4) ;; sound-mask
+  (
+   (mask       sound-mask    :offset-assert 4) ;; sound-mask
    (num        float     :offset-assert 8)
    (group      sound-group     :offset-assert 12) ;;
    (reg        uint8   3 :offset-assert 13) ;; guessed by decompiler
+   (group-and-reg uint32 :offset 12)
    ;; (UNKNOWN    UNKNOWN   :offset-assert -1) ;; field could not be read.
    (sound-name-char  uint8       16 :offset-assert 16)
    (sound-name sound-name   :offset-assert 16 :overlay-at sound-name-char) ;;
@@ -2889,7 +2964,7 @@
   )
 
 (deftype sound-bank-state (structure)
-  ((name basic   :offset-assert 0)
+  ((name symbol   :offset-assert 0)
    (mode uint32  :offset-assert 4)
    )
   :pack-me
@@ -2902,10 +2977,10 @@
   ((spec         sound-spec              :offset-assert 4) ;; guessed by decompiler
    (playing-id   sound-id                :offset-assert 8) ;; guessed by decompiler
    (trans        vector          :inline :offset-assert 16)
-   (name         uint128                 :offset-assert 32) ;; sound-name
-   (play-time    uint64                  :offset-assert 48) ;; time-frame
-   (time-base    uint64                  :offset-assert 56) ;; time-frame
-   (time-random  uint64                  :offset-assert 64) ;; time-frame
+   (name         sound-name              :offset-assert 32) ;; sound-name
+   (play-time    time-frame              :offset-assert 48) ;; time-frame
+   (time-base    time-frame              :offset-assert 56) ;; time-frame
+   (time-random  time-frame              :offset-assert 64) ;; time-frame
    (volume       int32                   :offset-assert 72)
    (pitch        int32                   :offset-assert 76)
    (falloff-near int32                   :offset-assert 80)
@@ -2921,15 +2996,15 @@
   :size-assert         #x70
   :flag-assert         #x1100000070
   (:methods
-    (new (symbol type) _type_) ;; 0 ;; (new (symbol type basic vector) _type_)
-    (ambient-sound-method-9 () none) ;; 9 ;; (update! (_type_) int)
-    (ambient-sound-method-10 () none) ;; 10 ;; (change-sound! (_type_ sound-name) int)
-    (ambient-sound-method-11 () none) ;; 11 ;; (update-trans! (_type_ vector) int)
-    (ambient-sound-method-12 () none) ;; 12 ;; (update-vol! (_type_ float) int)
-    (ambient-sound-method-13 () none) ;; 13 ;; (update-pitch-mod! (_type_ float) none)
-    (ambient-sound-method-14 () none) ;; 14 ;; (set-falloff-far! (_type_ float) none)
-    (ambient-sound-method-15 () none) ;; 15 ;; (stop! (_type_) int)
-    (ambient-sound-method-16 () none) ;; 16
+    (new "Set up ambient-sound. Can use an entity-actor (grabs from lump), sound-spec, or name as a string." (symbol type basic vector float) _type_) ;; 0
+    (update! "Per-frame update of ambient sound." (_type_) int) ;; 9
+    (change-sound! "Change the sound being played." (_type_ sound-name) int) ;; 10
+    (update-trans! "Change the trans of the sound." (_type_ vector) int) ;; 11
+    (update-vol! "Change the volume of the sound." (_type_ float) int) ;; 12
+    (update-pitch-mod! (_type_ float) none) ;; 13
+    (set-falloff-far! (_type_ float) none) ;; 14
+    (set-falloff-mode! (_type_ int) none) ;; 15
+    (stop! (_type_) int) ;; 16
     )
   )
 
@@ -10049,7 +10124,7 @@
   (gs12 12)
   (gs13 13)
   (gs14 14)
-  (gs15 15)
+  (screen-flip 15)
   (gs16 16)
   (gs17 17)
   (gs18 18)
@@ -10210,6 +10285,7 @@
    (borrow-city-count      uint32              :offset 620)
    (borrow-city            pair              3 :offset-assert 624)
    (audio-language         language-enum       :offset 748)
+   (ear-handle           handle :offset 784) ;; added, used in gsound.
    (special-volume         float               :offset 796)
    (pad uint8 108 :offset 800) ;; added
    )
@@ -15722,7 +15798,7 @@
     (load-state-method-9 () none) ;; 9 ;; (reset! (_type_) _type_)
     (load-state-method-10 () none) ;; 10 ;; (update! (_type_) int)
     (load-state-method-11 () none) ;; 11 ;; (want-levels (_type_ (pointer symbol)) int)
-    (load-state-method-12 () none) ;; 12 ;; (want-sound-banks (_type_ (pointer symbol)) none)
+    (want-sound-banks (_type_ (pointer symbol)) none) ;; 12
     (load-state-method-13 () none) ;; 13 ;; (want-display-level (_type_ symbol symbol) int)
     (load-state-method-14 () none) ;; 14 ;; (want-vis-level (_type_ symbol) none)
     (load-state-method-15 () none) ;; 15 ;; (want-force-vis (_type_ symbol symbol) int)
@@ -27171,8 +27247,8 @@
 ;; ramdisk                        ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype ramdisk-rpc-fill (structure)
+  "Unused RAMDISK rpc to load files from DVD to the IOP RAM."
   ((rsvd1    int32     :offset-assert 0)
    (ee-id    int32     :offset-assert 4)
    (rsvd2    int32   2 :offset-assert 8) ;; guessed by decompiler
@@ -27182,10 +27258,9 @@
   :size-assert         #x20
   :flag-assert         #x900000020
   )
-|#
 
-#|
 (deftype ramdisk-rpc-load (structure)
+  "Unused RAMDISK rpc to load files from DVD to the IOP RAM."
   ((rsvd   int32   :offset-assert 0)
    (ee-id  int32   :offset-assert 4)
    (offset uint32  :offset-assert 8)
@@ -27195,10 +27270,9 @@
   :size-assert         #x10
   :flag-assert         #x900000010
   )
-|#
 
-#|
 (deftype ramdisk-rpc-load-to-ee (structure)
+  "Unused RAMDISK rpc to load files from DVD to the IOP RAM."
   ((rsvd     int32    :offset-assert 0)
    (addr     int32    :offset-assert 4)
    (offset   int32    :offset-assert 8)
@@ -27209,32 +27283,28 @@
   :size-assert         #x20
   :flag-assert         #x900000020
   )
-|#
 
-;; (define-extern *ramdisk-rpc* object) ;; rpc-buffer-pair
-;; (define-extern *current-ramdisk-id* object) ;; int
-;; (define-extern ramdisk-load function) ;; (function int uint uint pointer int)
-;; (define-extern ramdisk-sync function) ;; (function none)
+(define-extern *ramdisk-rpc* rpc-buffer-pair)
+(define-extern *current-ramdisk-id* int)
+(define-extern ramdisk-load (function int uint uint pointer int))
+(define-extern ramdisk-sync (function none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; gsound                         ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype engine-sound-pers (engine-pers)
   ()
   :method-count-assert 15
   :size-assert         #x20
   :flag-assert         #xf00000020
   )
-|#
 
-#|
 (deftype sound-iop-info (structure)
   ((frame           uint32               :offset-assert 0)
    (strpos          int32                :offset-assert 4)
    (str-id          uint32               :offset-assert 8)
-   (str-id-sign     int32                :offset-assert 8)
+   (str-id-sign     int32                :offset 8)
    (freemem         uint32               :offset-assert 12)
    (chinfo          uint8             48 :offset-assert 16) ;; guessed by decompiler
    (freemem2        uint32               :offset-assert 64)
@@ -27246,91 +27316,90 @@
    (times           int32             41 :offset-assert 92) ;; guessed by decompiler
    (times-seq       uint32               :offset-assert 256)
    (iop-ticks       uint32               :offset-assert 260)
-   (stream-position uint32            4  :offset-assert 272) ;; guessed by decompiler
-   (UNKNOWN         UNKNOWN              :offset-assert -1) ;; field could not be read.
+   (stream-position uint32            4  :offset 272) ;; guessed by decompiler
+   ; (UNKNOWN         UNKNOWN              :offset-assert -1) ;; field could not be read.
    (stream-status   stream-status     4  :offset-assert 288) ;; guessed by decompiler
-   (UNKNOWN         UNKNOWN              :offset-assert -1) ;; field could not be read.
-   (stream-name     sound-stream-name 4  :offset-assert 304) ;; guessed by decompiler
-   (UNKNOWN         UNKNOWN              :offset-assert -1) ;; field could not be read.
+   ; (UNKNOWN         UNKNOWN              :offset-assert -1) ;; field could not be read.
+   (stream-name     sound-stream-name 4 :inline  :offset-assert 304) ;; guessed by decompiler
+   ; (UNKNOWN         UNKNOWN              :offset-assert -1) ;; field could not be read.
    (stream-id       sound-id          4  :offset-assert 496) ;; guessed by decompiler
-   (UNKNOWN         UNKNOWN              :offset-assert -1) ;; field could not be read.
-   (music-register  uint8             17 :offset-assert 512) ;; guessed by decompiler
-   (music-excite    int8                 :offset-assert 528)
-   (UNKNOWN         UNKNOWN              :offset-assert -1) ;; field could not be read.
-   (UNKNOWN         UNKNOWN              :offset-assert -1) ;; field could not be read.
-   (UNKNOWN         UNKNOWN              :offset-assert -1) ;; field could not be read.
-   (UNKNOWN         UNKNOWN              :offset-assert -1) ;; field could not be read.
-   (UNKNOWN         UNKNOWN              :offset-assert -1) ;; field could not be read.
-   (UNKNOWN         UNKNOWN              :offset-assert -1) ;; field could not be read.
-   (UNKNOWN         UNKNOWN              :offset-assert -1) ;; field could not be read.
-   (UNKNOWN         UNKNOWN              :offset-assert -1) ;; field could not be read.
-   (UNKNOWN         UNKNOWN              :offset-assert -1) ;; field could not be read.
+   ; (UNKNOWN         UNKNOWN              :offset-assert -1) ;; field could not be read.
+   (music-register  uint8             17 :offset 512) ;; guessed by decompiler
+   (music-excite    int8                 :offset 528)
+   (ramdisk-name uint8 16  :offset-assert 529)
+   (sound-bank0 uint8 16  :offset 592)
+   (sound-bank1 uint8 16)
+   (sound-bank2 uint8 16)
+   (sound-bank3 uint8 16)
+   (sound-bank4 uint8 16)
+   (sound-bank5 uint8 16)
+   (sound-bank6 uint8 16)
+   (sound-bank7 uint8 16)
    )
   :method-count-assert 9
   :size-assert         #x2d0
   :flag-assert         #x9000002d0
   )
-|#
 
-;; (define-extern *sound-loop-engine* object) ;; engine-sound-pers
-;; (define-extern *sound-player-rpc* object) ;; rpc-buffer-pair
-;; (define-extern *sound-loader-rpc* object) ;; rpc-buffer-pair
-;; (define-extern sound-name= function) ;; (function sound-name sound-name symbol)
-;; (define-extern *sound-iop-info* object) ;; sound-iop-info
-;; (define-extern str-is-playing? function) ;; (function symbol)
-;; (define-extern str-id-is-playing? function) ;; (function int symbol)
-;; (define-extern current-str-pos function) ;; (function sound-id int)
-;; (define-extern current-str-status function)
-;; (define-extern is-ramdisk-loaded? function) ;; (function symbol symbol)
-;; (define-extern is-cd-in? function) ;; (function symbol)
-;; (define-extern new-sound-id function) ;; (function sound-id)
-;; (define-extern check-irx-version function) ;; (function int)
-;; (define-extern sound-bank-iop-store function) ;; (function sound-name sound-id)
-;; (define-extern sound-bank-iop-free function) ;; (function sound-name sound-id)
-;; (define-extern sound-bank-load function) ;; (function sound-name sound-id)
-;; (define-extern sound-bank-load-from-iop function) ;; (function sound-name sound-id)
-;; (define-extern sound-bank-load-from-ee function) ;; (function sound-name pointer sound-id)
-;; (define-extern sound-bank-unload function) ;; (function sound-name int)
-;; (define-extern sound-music-load function) ;; (function sound-name int)
-;; (define-extern sound-music-unload function) ;; (function int)
-;; (define-extern set-language function) ;; (function language-enum int)
-;; (define-extern sound-set-stereo-mode function) ;; (function stereo-mode none)
-;; (define-extern list-sounds function) ;; (function none)
-;; (define-extern sound-command->string function) ;; (function sound-command string)
-;; (define-extern sound-buffer-dump function) ;; (function int)
-;; (define-extern *sound-player-enable* object) ;; symbol
-;; (define-extern swap-sound-buffers function) ;; (function vector vector vector float int)
-(define-extern get-sound-buffer-entry (function pointer))
-;; (define-extern free-last-sound-buffer-entry function) ;; (function none)
-;; (define-extern sound-basic-cb function) ;; (function int (pointer int32) none)
-;; (define-extern sound-trans-convert function) ;; (function vector3w vector int)
-;; (define-extern sound-unit-vector-convert function)
-;; (define-extern sound-angle-convert function) ;; (function float int)
-(define-extern string->sound-name (function string sound-name))
-;; (define-extern sound-name->string function)
-;; (define-extern sound-set-volume function) ;; (function sound-group float int)
-;; (define-extern sound-set-reverb function) ;; (function int float float uint int)
-;; (define-extern sound-set-ear-trans function) ;; (function vector vector vector float int)
-;; (define-extern sound-play-by-name function) ;; (function sound-name sound-id int int int sound-group object sound-id :behavior process-drawable)
-;; (define-extern sound-play-by-spec function) ;; (function sound-spec sound-id vector sound-id :behavior process-drawable)
-;; (define-extern sound-pause function) ;; (function sound-id int)
-;; (define-extern sound-stop function) ;; (function sound-id int)
-;; (define-extern sound-continue function) ;; (function sound-id int)
-;; (define-extern sound-group-pause function) ;; (function sound-group int)
-;; (define-extern sound-group-stop function) ;; (function sound-group int)
-;; (define-extern sound-group-continue function) ;; (function sound-group int)
-;; (define-extern sound-set-flava function) ;; (function uint uint int)
-;; (define-extern sound-set-midi-reg function) ;; (function int int int)
-;; (define-extern sound-set-fps function) ;; (function int int)
-;; (define-extern sound-volume-off function) ;; (function int)
-;; (define-extern *ambient-spec* sound-spec) ;; sound-spec
-;; (define-extern show-iop-info function) ;; (function dma-buffer int)
-;; (define-extern show-iop-memory function) ;; (function dma-buffer int)
-;; (define-extern ear-trans function) ;; (function int vector)
-;; (define-extern make-sqrt-table function) ;; (function int)
-;; (define-extern loader-test-command function) ;; (function sound-command uint none)
-;; (define-extern doppler-pitch-shift function) ;; (function vector vector float)
-;; (define-extern sound-bank-reload function) ;; (function none)
+(define-extern *sound-loop-engine* engine-sound-pers)
+(define-extern *sound-player-rpc* rpc-buffer-pair)
+(define-extern *sound-loader-rpc* rpc-buffer-pair)
+(define-extern sound-name= "Are two sound names the same?" (function sound-name sound-name symbol))
+(define-extern *sound-iop-info* sound-iop-info)
+(define-extern str-is-playing? "Is any streaming audio playing?" (function symbol))
+(define-extern str-id-is-playing? "Is any streaming audio with the given ID playing?" (function sound-id symbol))
+(define-extern current-str-pos "Get the current stream position of the given sound ID, or -1 if it is not playing." (function sound-id int))
+(define-extern current-str-status "Get the status of the stream playing the given sound, or 0 if it is not playing." (function sound-id stream-status))
+(define-extern is-ramdisk-loaded? "Check if the ramdisk-name is set to this (unused)." (function symbol symbol))
+(define-extern is-cd-in? "Is the CD/DVD in the ps2?" (function symbol))
+(define-extern new-sound-id "Allocate a new sound ID, used to identify a unique playback of a sound." (function sound-id))
+(define-extern check-irx-version "Confirm OVERLORD version is correct and set up the sound-iop-info address so the OVERLORD can report back to the EE." (function int))
+(define-extern sound-bank-iop-store "Send a iop-store RPC to loader with the given name" (function sound-name sound-id))
+(define-extern sound-bank-iop-free "Send a iop-free RPC to loader with the given name" (function sound-name sound-id))
+(define-extern sound-bank-load "Send RPC to load a sound bank." (function sound-name int int sound-id))
+(define-extern sound-bank-load-from-iop "Send load-bank-from-iop rpc to loader" (function sound-name sound-id))
+(define-extern sound-bank-load-from-ee "Send load-bank-from-ee rpc to loader" (function sound-name pointer sound-id))
+(define-extern sound-bank-unload "Send unload-bank rpc to loader" (function sound-name int))
+(define-extern sound-music-load "Send load-music rpc to loader" (function sound-name int))
+(define-extern sound-music-unload "Send unload-music rpc to loader." (function int))
+(define-extern set-language "Send set-language rpc to loader. Note this is only for sound, no game text is changed." (function language-enum int))
+(define-extern sound-set-stereo-mode "Send set-stereo-mode rpc to loader." (function int none))
+(define-extern list-sounds "Send list-sounds rpc to loader." (function none))
+(define-extern sound-command->string "Convert sound-command enum to string." (function sound-command string))
+(define-extern sound-buffer-dump "Print out all sound-commands in the buffer." (function int))
+(define-extern *sound-player-enable* symbol)
+(define-extern swap-sound-buffers "Per-frame update of sound system - update loop-engine, update ear trans, send player RPC, check for missing/dirty CD." (function vector vector vector vector vector float int))
+(define-extern get-sound-buffer-entry "Allocate a new entry in the player RPC queue, to be flushed on the next frame." (function pointer))
+(define-extern free-last-sound-buffer-entry "Remove the last thing added with get-sound-buffer-entry." (function none))
+(define-extern sound-basic-cb "Unknown and unused callback." (function int (pointer int32) none))
+(define-extern sound-trans-convert "Convert a GOAL translation (meters) to integer format for the IOP" (function (pointer int32) vector int))
+(define-extern sound-unit-vector-convert "Convert a GOAL unit-vector (float) to integer format for the IOP" (function (pointer int32) vector none))
+(define-extern sound-angle-convert "Convert a GOAL angle to integer format for the iop" (function float int))
+(define-extern string->sound-name "Create a sound-name from a string" (function string sound-name))
+(define-extern sound-name->string "Create a string from a sound-name. Returns pointer to a single shared static string." (function sound-name string))
+(define-extern sound-set-volume  "Send set-master-volume rpc." (function sound-group float int))
+(define-extern sound-set-reverb "Send set-reverb rpc" (function int float float uint int))
+(define-extern sound-set-ear-trans "Send set-ear-trans rpc" (function vector vector vector vector vector float int))
+(define-extern sound-play-by-name "Send play rpc to play a sound!" (function sound-name sound-id int int int sound-group object sound-id :behavior process-drawable)) ;
+(define-extern sound-play-by-spec "Send play rpc to play a sound!" (function sound-spec sound-id vector sound-id :behavior process-drawable))
+(define-extern sound-pause "Send pause-sound rpc to pause by id" (function sound-id int))
+(define-extern sound-stop "Send stop-sound rpc to stop by id" (function sound-id int))
+(define-extern sound-continue "Send continue-sound rpc to continue by id" (function sound-id int))
+(define-extern sound-group-pause "Send pause-group rpc" (function sound-group int))
+(define-extern sound-group-stop "Send stop-group rpc" (function sound-group int))
+(define-extern sound-group-continue "Send continue-group rpc" (function sound-group int))
+(define-extern sound-set-flava "Send set-flava rpc" (function uint uint int))
+(define-extern sound-set-midi-reg "Send set-midi-reg rpc" (function int int int))
+(define-extern sound-set-fps "Send set-fps rpc" (function int int))
+(define-extern sound-volume-off "Adjust settings to turn all sound volume off" (function int))
+(define-extern *ambient-spec* sound-spec)
+(define-extern show-iop-info "Display iop info on screen." (function dma-buffer int))
+(define-extern show-iop-memory "Display iop memory stats on screen" (function dma-buffer int))
+(define-extern ear-trans "Get the current location of the ear. Use 1 for the settings ear-handle, or 0 for the camera." (function int vector))
+(define-extern make-sqrt-table "Generate integer square-root table used in the IOP." (function none))
+(define-extern loader-test-command "Send a command to loader by ID." (function sound-command uint none))
+(define-extern doppler-pitch-shift "Compute pitch shift for the doppler effect. This is done assuming the listener is *target* and has *target*'s velocity." (function vector vector float))
+(define-extern sound-bank-reload "Start a background process to unload all sound banks, then load them again." (function none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; transformq                     ;;
@@ -29404,7 +29473,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (define-extern get-current-language (function language-enum))
-;; (define-extern *setting-control* object) ;; setting-control
+(define-extern *setting-control* setting-control)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; mood-tables                    ;;
@@ -30664,7 +30733,7 @@
 ;; (define-extern matrix-world->local function) ;; (function symbol object matrix)
 ;; (define-extern *camera-dummy-vector* object) ;; vector
 (define-extern camera-pos (function vector))
-;; (define-extern math-camera-pos function) ;; (function vector)
+(define-extern math-camera-pos (function vector))
 ;; (define-extern camera-matrix function) ;; (function matrix)
 (define-extern math-camera-matrix (function matrix))
 ;; (define-extern camera-angle function) ;; (function float)
@@ -33439,7 +33508,7 @@
 ;; (define-extern target-log-attack function) ;; (function attack-info symbol symbol :behavior target)
 ;; (define-extern ground-tween-initialize function) ;; (function ground-tween-info uint uint uint uint uint uint float ground-tween-info :behavior target)
 ;; (define-extern ground-tween-update function) ;; (function ground-tween-info float float float none :behavior target)
-;; (define-extern target-pos function) ;; (function int vector)
+(define-extern target-pos (function int vector))
 ;; (define-extern target-cam-pos function) ;; (function vector)
 ;; (define-extern target-rot function) ;; (function quaternion)
 ;; (define-extern external-target-spawn function)
@@ -35849,9 +35918,9 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ;; (define-extern *footstep-surface* object) ;; pat-surface
-;; (define-extern *debug-effect-control* object) ;; symbol
+(define-extern *debug-effect-control* symbol)
 ;; (define-extern sound-name-with-material function) ;; (function string pat-surface string sound-name)
-;; (define-extern effect-param->sound-spec function) ;; (function sound-spec (pointer float) int process-focusable sound-spec)
+(define-extern effect-param->sound-spec (function sound-spec (pointer float) int process-focusable sound-spec))
 ;; (define-extern target-land-effect function) ;; (function none :behavior target)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -36684,7 +36753,7 @@
 |#
 
 ;; (define-extern *progress-stack* object) ;; (pointer uint8)
-;; (define-extern *progress-process* object) ;; (pointer progress)
+(define-extern *progress-process* (pointer progress))
 ;; (define-extern *progress-save-info* object) ;; mc-slot-info
 ;; (define-extern *progress-work* object)
 ;; (define-extern min-max-wrap-around function) ;; (function int int int int)
@@ -36693,7 +36762,7 @@
 ;; (define-extern hud-ring-cell-init-by-other function) ;; (function int float int object :behavior hud-ring-cell)
 ;; (define-extern progress-init-by-other function) ;; (function symbol object :behavior progress)
 ;; (define-extern set-ring-position function) ;; (function progress float)
-;; (define-extern activate-progress function) ;; (function process symbol none)
+(define-extern activate-progress (function process symbol none))
 ;; (define-extern deactivate-progress function) ;; (function none)
 ;; (define-extern hide-progress-screen function) ;; (function none)
 ;; (define-extern progress-allowed? function) ;; (function symbol)
