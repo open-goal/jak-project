@@ -5,5 +5,193 @@
 ;; name in dgo: entity-h
 ;; dgos: GAME
 
+;; +++entity-perm-status
+(defenum entity-perm-status
+  :bitfield #t
+  :type uint16
+  (bit-0 0) ;; blocks birth
+  (error 1)
+  (dead 2)
+  (no-kill 3)
+  (bit-4 4)
+  (bit-5 5)
+  (subtask-complete 6)
+  (bit-7 7)
+  (complete 8)
+  (bit-9 9)
+  (bit-10 10)
+  (save 11)
+  (bit-12 12)
+  )
+;; ---entity-perm-status
+
+
+(declare-type race-mesh basic)
+(declare-type nav-poly structure)
+
+(define-extern entity-by-name (function string entity))
+(define-extern entity-by-aid (function uint entity))
+
 ;; DECOMP BEGINS
 
+(define *generate-actor-vis* #f)
+
+(define *generate-actor-vis-start* #f)
+
+(define *generate-actor-vis-output* #f)
+
+(deftype entity-perm (structure)
+  "Entity information that gets persisted in the save file."
+  ((user-object  object   2)
+   (user-uint64  uint64     :overlay-at (-> user-object 0))
+   (user-float   float    2 :overlay-at (-> user-object 0))
+   (user-int32   int32    2 :overlay-at (-> user-object 0))
+   (user-uint32  uint32   2 :overlay-at (-> user-object 0))
+   (user-int16   int16    4 :overlay-at (-> user-object 0))
+   (user-uint16  uint16   4 :overlay-at (-> user-object 0))
+   (user-int8    int8     8 :overlay-at (-> user-object 0))
+   (user-uint8   uint8    8 :overlay-at (-> user-object 0))
+   (status       entity-perm-status)
+   (dummy        uint8    1)
+   (task         game-task)
+   (aid          actor-id)
+   (quad         uint128    :overlay-at (-> user-object 0))
+   )
+  (:methods
+    (entity-perm-method-9 () none)
+    )
+  )
+
+
+(deftype entity-links (structure)
+  "A linked list of entities with some extra data about their current status."
+  ((prev-link  entity-links)
+   (next-link  entity-links)
+   (entity     entity)
+   (process    process)
+   (level      level)
+   (vis-id     int32)
+   (kill-mask  task-mask)
+   (vis-dist   meters)
+   (trans      vector              :inline)
+   (perm       entity-perm         :inline)
+   (status     entity-perm-status  :overlay-at (-> perm status))
+   (aid        uint32              :overlay-at (-> perm aid))
+   (task       game-task           :overlay-at (-> perm task))
+   )
+  (:methods
+    (entity-links-method-9 () none)
+    )
+  )
+
+
+(deftype entity-perm-array (inline-array-class)
+  ((data  entity-perm  :dynamic)
+   )
+  )
+
+
+(set! (-> entity-perm-array heap-base) (the-as uint 16))
+
+(deftype entity-links-array (inline-array-class)
+  "An array of [[entity-links]].
+Levels store a reference to this which holds all the entities in the level."
+  ((data  entity-links  :dynamic)
+   )
+  )
+
+
+(set! (-> entity-links-array heap-base) (the-as uint 64))
+
+(deftype entity (res-lump)
+  "Entities are mainly used to place objects in a level.
+
+As a child of [[res-lump]], they store various types of metadata
+in [[res-tag]]s (such as name, curve data, volume data, etc.)
+that gets accessed by the accompanying process."
+  ((trans  vector  :inline)
+   (aid    uint32)
+   )
+  (:methods
+    (birth! (_type_) _type_)
+    (kill! (_type_) _type_)
+    (add-to-level! (_type_ level-group level actor-id) none)
+    (remove-from-level! (_type_ level-group) _type_)
+    (get-level (_type_) level)
+    )
+  )
+
+(deftype entity-camera (entity)
+  ((connect  connectable  :inline)
+   )
+  )
+
+(deftype entity-nav-mesh (entity)
+  ((nav-mesh  nav-mesh)
+   )
+  (:methods
+    (initialize-nav-mesh! (_type_) none)
+    (debug-draw (_type_) none)
+    )
+  )
+
+(deftype entity-race-mesh (entity)
+  ((race-mesh  race-mesh)
+   )
+  (:methods
+    (entity-race-mesh-method-27 () none)
+    (entity-race-mesh-method-28 () none)
+    )
+  )
+
+(deftype entity-actor (entity)
+  "Child class of [[entity]] used to spawn [[process-drawable]] actors."
+  ((etype      type        :offset  56)
+   (task       game-task)
+   (kill-mask  task-mask   :offset  52)
+   (vis-id     int16)
+   (quat       quaternion  :inline)
+   )
+  (:methods
+    (next-actor (_type_) entity-actor)
+    (prev-actor (_type_) entity-actor)
+    (debug-print (_type_ symbol type) none)
+    (toggle-status (_type_ entity-perm-status symbol) none)
+    (get-simple-travel-vector (_type_ vector vector vector object float) nav-mesh)
+    (project-point-to-nav-mesh (_type_ vector vector nav-poly float) nav-poly)
+    )
+  )
+
+(deftype actor-reference (structure)
+  ((actor  entity)
+   (id     uint32)
+   )
+  :pack-me
+  )
+
+
+(deftype actor-group (inline-array-class)
+  ((data  actor-reference  :dynamic)
+   )
+  )
+
+
+(set! (-> actor-group heap-base) (the-as uint 8))
+
+(deftype entity-info (basic)
+  ((ptype      type)
+   (pool       symbol)
+   (heap-size  int32)
+   )
+  )
+
+
+(deftype actor-bank (basic)
+  ((pause-dist  float)
+   (birth-dist  float)
+   (birth-max   int32)
+   )
+  )
+
+
+(define *ACTOR-bank* (new 'static 'actor-bank :pause-dist 204800.0 :birth-dist 901120.0 :birth-max 10))
