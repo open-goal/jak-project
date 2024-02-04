@@ -20,6 +20,10 @@ std::vector<OfflineTestSourceFile> find_source_files(const std::string& game_nam
   for (const auto& path : ref_file_paths) {
     auto ref_name = path.filename().replace_extension().string();
     ref_name.erase(ref_name.begin() + ref_name.find("_REF"), ref_name.end());
+    // if the file is already added to the map, freak out, you added a file wrong!
+    if (ref_file_names.find(ref_name) != ref_file_names.end()) {
+      lg::die("{} has been added in the reference test tree more than once, fix it.", ref_name);
+    }
     if (single_file.empty() || ref_name == single_file) {
       ref_file_names[ref_name] = path;
     }

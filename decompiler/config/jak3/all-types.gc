@@ -2629,10 +2629,10 @@
 
 (deftype sound-id (uint32)
   ()
-  :flag-assert #xa00000004
   (:methods
     (unknown () none)
     )
+  :flag-assert #xa00000004
   )
 
 (deftype sound-bank-id (uint32)
@@ -6779,6 +6779,7 @@
   )
 
 (deftype light (structure)
+  "extra: {?, shadow, ?, ?}"
   ((direction     vector :inline :offset-assert 0)
    (color         rgbaf  :inline :offset-assert 16)
    (extra         vector :inline :offset-assert 32)
@@ -6794,32 +6795,29 @@
   :flag-assert         #x900000030
   )
 
-;; (deftype light-shadow-mask (uint32)
-;;   ()
-;;   :flag-assert #x900000004
-;;   )
+(deftype light-shadow-mask (uint32)
+  ()
+  :flag-assert #x900000004
+  )
 
-#|
 (deftype light-sphere (structure)
   ((name                string         :offset-assert 0) ;; guessed by decompiler
    (bsphere             vector :inline :offset-assert 16)
    (direction           vector :inline :offset-assert 32)
    (color               vector :inline :offset-assert 48)
-   (decay-start         float          :offset-assert 4)
-   (ambient-point-ratio float          :offset-assert 8)
-   (brightness          float          :offset-assert 12)
-   (bytes               uint8  4       :offset-assert 60) ;; guessed by decompiler
-   (mask                uint16         :offset-assert 60)
-   (palette-index       int8           :offset-assert 63)
-   (shadow              uint32         :offset-assert 32)
+   (decay-start         float          :offset 4)
+   (ambient-point-ratio float          :offset 8)
+   (brightness          float          :offset 12)
+   (bytes               uint8  4       :offset 60) ;; guessed by decompiler
+   (mask                uint16         :offset 60)
+   (palette-index       int8           :offset 63)
+   (shadow              uint32         :offset 32)
    )
   :method-count-assert 9
   :size-assert         #x40
   :flag-assert         #x900000040
   )
-|#
 
-#|
 (deftype light-hash-bucket (structure)
   ((index uint16  :offset-assert 0)
    (count uint16  :offset-assert 2)
@@ -6828,9 +6826,7 @@
   :size-assert         #x4
   :flag-assert         #x900000004
   )
-|#
 
-#|
 (deftype light-hash (basic)
   ((num-lights         uint16                                   :offset-assert 4)
    (num-indices        uint16                                   :offset-assert 6)
@@ -6847,9 +6843,7 @@
   :size-assert         #x4c
   :flag-assert         #x90000004c
   )
-|#
 
-#|
 (deftype light-hash-work (structure)
   ((ones vector4w :inline :offset-assert 0)
    )
@@ -6857,45 +6851,41 @@
   :size-assert         #x10
   :flag-assert         #x900000010
   )
-|#
 
 (deftype light-group (structure)
   ((dir0 light :inline :offset-assert 0)
    (dir1 light :inline :offset-assert 48)
    (dir2 light :inline :offset-assert 96)
    (ambi light :inline :offset-assert 144)
+   (lights light 4 :inline :offset 0) ;; added
    )
   :method-count-assert 9
   :size-assert         #xc0
   :flag-assert         #x9000000c0
   )
 
-;; (define-extern *light-hash* object) ;; light-hash
+(define-extern *light-hash* light-hash)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; mood-h                         ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype mood-channel (structure)
   ((data float   24 :offset-assert 0) ;; guessed by decompiler
-   (vecs vector4 6  :offset-assert 0) ;; guessed by decompiler
+   (vecs vector4 6  :offset 0) ;; guessed by decompiler
    )
   :method-count-assert 9
   :size-assert         #x60
   :flag-assert         #x900000060
   )
-|#
 
-#|
 (deftype mood-channel-group (structure)
-  ((data mood-channel 4 :offset-assert 0) ;; guessed by decompiler
+  ((data mood-channel 4 :inline :offset-assert 0) ;; guessed by decompiler
    )
   :method-count-assert 9
   :size-assert         #x180
   :flag-assert         #x900000180
   )
-|#
 
 (deftype mood-fog (structure)
   ((fog-color   vector :inline :offset-assert 0)
@@ -6911,17 +6901,14 @@
   :flag-assert         #x900000030
   )
 
-#|
 (deftype mood-fog-table (structure)
-  ((data mood-fog 8 :offset-assert 0) ;; guessed by decompiler
+  ((data mood-fog 8 :inline :offset-assert 0) ;; guessed by decompiler
    )
   :method-count-assert 9
   :size-assert         #x180
   :flag-assert         #x900000180
   )
-|#
 
-#|
 (deftype mood-color (structure)
   ((lgt-color vector :inline :offset-assert 0)
    (amb-color vector :inline :offset-assert 16)
@@ -6930,37 +6917,30 @@
   :size-assert         #x20
   :flag-assert         #x900000020
   )
-|#
 
-#|
 (deftype mood-direction-table (structure)
-  ((data vector 4 :offset-assert 0) ;; guessed by decompiler
+  ((data vector 4 :inline :offset-assert 0) ;; guessed by decompiler
    )
   :method-count-assert 9
   :size-assert         #x40
   :flag-assert         #x900000040
   )
-|#
 
-#|
 (deftype mood-color-table (structure)
-  ((data mood-color 8 :offset-assert 0) ;; guessed by decompiler
+  ((data mood-color 8 :inline :offset-assert 0) ;; guessed by decompiler
    )
   :method-count-assert 9
   :size-assert         #x100
   :flag-assert         #x900000100
   )
-|#
 
-#|
 (deftype mood-sky-table (structure)
-  ((data vector 8 :offset-assert 0) ;; guessed by decompiler
+  ((data vector 8 :inline :offset-assert 0) ;; guessed by decompiler
    )
   :method-count-assert 9
   :size-assert         #x80
   :flag-assert         #x900000080
   )
-|#
 
 (deftype mood-clouds (structure)
   ((cloud-min float  :offset-assert 0)
@@ -6971,29 +6951,28 @@
   :flag-assert         #x900000008
   )
 
-#|
 (deftype mood-weather (structure)
   ((data  float 2 :offset-assert 0) ;; guessed by decompiler
-   (cloud float   :offset-assert 0)
-   (fog   float   :offset-assert 4)
+   (cloud float   :offset 0)
+   (fog   float   :offset 4)
    )
+  :pack-me
+  :allow-misaligned
   :method-count-assert 9
   :size-assert         #x8
   :flag-assert         #x900000008
   )
-|#
 
-#|
 (deftype mood-iweather (structure)
   ((data  int32 2 :offset-assert 0) ;; guessed by decompiler
-   (cloud int32   :offset-assert 0)
-   (fog   int32   :offset-assert 4)
+   (cloud int32   :offset 0)
+   (fog   int32   :offset 4)
    )
+  :allow-misaligned
   :method-count-assert 9
   :size-assert         #x8
   :flag-assert         #x900000008
   )
-|#
 
 (deftype mood-range (structure)
   ((data      float   4 :offset-assert 0) ;; guessed by decompiler
@@ -7008,17 +6987,15 @@
   :flag-assert         #x900000010
   )
 
-#|
 (deftype mood-filters-table (structure)
-  ((data vector 8 :offset-assert 0) ;; guessed by decompiler
+  ((data vector 8 :inline :offset-assert 0) ;; guessed by decompiler
    )
   :method-count-assert 9
   :size-assert         #x80
   :flag-assert         #x900000080
   )
-|#
 
-#|
+(declare-type sky-color-day structure)
 (deftype mood-table (basic)
   ((mood-fog-table       mood-fog-table        :offset-assert 4)
    (mood-color-table     mood-color-table      :offset-assert 8)
@@ -7031,9 +7008,7 @@
   :size-assert         #x1c
   :flag-assert         #x90000001c
   )
-|#
 
-#|
 (deftype light-state (structure)
   ((time float  :offset-assert 0)
    (fade float  :offset-assert 4)
@@ -7042,9 +7017,7 @@
   :size-assert         #x8
   :flag-assert         #x900000008
   )
-|#
 
-#|
 (deftype flicker-state (structure)
   ((flicker-off uint8  :offset-assert 0)
    (flicker-on  uint8  :offset-assert 1)
@@ -7053,9 +7026,7 @@
   :size-assert         #x2
   :flag-assert         #x900000002
   )
-|#
 
-#|
 (deftype florescent-state (structure)
   ((value  float  :offset-assert 0)
    (delay  int8   :offset-assert 4)
@@ -7065,9 +7036,7 @@
   :size-assert         #x6
   :flag-assert         #x900000006
   )
-|#
 
-#|
 (deftype electricity-state (structure)
   ((value float  :offset-assert 0)
    (scale float  :offset-assert 4)
@@ -7076,9 +7045,7 @@
   :size-assert         #x8
   :flag-assert         #x900000008
   )
-|#
 
-#|
 (deftype pulse-state (structure)
   ((pulse             float  :offset-assert 0)
    (brightness        float  :offset-assert 4)
@@ -7089,9 +7056,7 @@
   :size-assert         #x10
   :flag-assert         #x900000010
   )
-|#
 
-#|
 (deftype strobe-state (structure)
   ((time float  :offset-assert 0)
    )
@@ -7099,9 +7064,7 @@
   :size-assert         #x4
   :flag-assert         #x900000004
   )
-|#
 
-#|
 (deftype flames-state (structure)
   ((time   float  :offset-assert 0)
    (index  uint8  :offset-assert 4)
@@ -7112,7 +7075,6 @@
   :size-assert         #x7
   :flag-assert         #x900000007
   )
-|#
 
 (deftype mood-context-core (structure)
   ((current-fog          mood-fog :inline :offset-assert 0)
@@ -7151,7 +7113,6 @@
   :flag-assert         #x9000007b0
   )
 
-#|
 (deftype mood-control-work (structure)
   ((color          vector4w      :inline :offset-assert 0)
    (weather        mood-weather  :inline :offset-assert 16)
@@ -7169,9 +7130,7 @@
   :size-assert         #x5c
   :flag-assert         #x90000005c
   )
-|#
 
-#|
 (deftype mood-control (mood-table)
   ((mood-clouds            mood-clouds                :offset-assert 28)
    (current-interp         mood-weather       :inline :offset-assert 32)
@@ -7186,6 +7145,7 @@
    (rate-special-interp    float                      :offset-assert 112)
    (display-flag           symbol                     :offset-assert 116) ;; guessed by decompiler
    (overide-weather-flag   symbol                     :offset-assert 120) ;; guessed by decompiler
+   (pad                    int32                      :offset-assert 124)
    (overide                mood-weather       :inline :offset-assert 128)
    (lightning-index        int32                      :offset-assert 136)
    (lightning-val          int32                      :offset-assert 140)
@@ -7212,8 +7172,17 @@
     (mood-control-method-10 () none) ;; 10 ;; (update-mood-weather! (_type_ float float float float) none)
     (mood-control-method-11 () none) ;; 11 ;; (update-mood-range! (_type_ float float float float) none)
     (mood-control-method-12 () none) ;; 12 ;; (set-time-for-random-weather! (_type_ float float) none)
-    (mood-control-method-13 () none) ;; 13 ;; (apply-mood-clouds-and-fog (_type_ mood-control-work) none)
-    (mood-control-method-14 () none) ;; 14 ;; (apply-mood-color (_type_ mood-control-work) none)
+    (set-special-interps!
+      "Sets the `*-special-interp` values with the given values
+       @param! this The [[mood-control]]
+       @param target-interp Clamped between 0.0 and 1.0
+       @param rate-interp Value to set [[this::rate-special-interp]]
+       @param set-current-interp? Uses `target-interp` to set [[this::current-special-interp]
+       @returns [[none]]"
+      (_type_ float float symbol) none) ;; 13 ;; (apply-mood-clouds-and-fog (_type_ mood-control-work) none)
+    (weather-event-concluded? ;; TODO - guess at name
+      "@returns [[#t]] if [[this::override-weather-flag]] is set, we aren't in a cutscene and [[this::current-special-interp]] is equal to `0.0`"
+      (_type_) symbol) ;; 14 ;; (apply-mood-color (_type_ mood-control-work) none)
     (mood-control-method-15 () none) ;; 15 ;; (apply-mood-channels (_type_ mood-control-work) none)
     (mood-control-method-16 () none) ;; 16 ;; (adjust-num-clouds! (_type_ mood-control-work) none)
     (mood-control-method-17 () none) ;; 17 ;; (gen-lightning-and-thunder! (_type_) number)
@@ -7226,7 +7195,6 @@
     (mood-control-method-24 () none) ;; 24
     )
   )
-|#
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -8105,10 +8073,24 @@
   :flag-assert         #x900000014
   )
 
+;; +++mood:time-of-day-palette-id
 (defenum time-of-day-palette-id
   :type uint32
   :bitfield #t
+  (unk0 0) ;; 1
+  (unk1         1) ;; 2
+  (unk2    2) ;; 4
+  (unk3       3) ;; 8
+  (palette-0        4) ;; 16
+  (palette-1  5) ;; 32
+  (palette-2 6) ;; 64
+  (palette-3       7) ;; 128
+  (palette-4       8) ;; 256
+  (palette-5 9) ;; 512
+  (palette-6      10) ;; 1024
+  (palette-7 11) ;; 2048
   )
+;; ---mood:time-of-day-palette-id
 
 (deftype time-of-day-context (basic)
   "A mix of inputs/outputs to the time-of-day system."
@@ -17529,25 +17511,96 @@
 ;; lights                         ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (define-extern *light-hash-work* object) ;; light-hash-work
-;; (define-extern light-slerp function) ;; (function light light light float light)
-;; (define-extern light-group-slerp function) ;; (function light-group light-group light-group float light-group)
-;; (define-extern light-group-process! function) ;; (function vu-lights light-group vector vector none)
-;; (define-extern *default-lights* object) ;; vu-lights
-;; (define-extern vu-lights-default! function) ;; (function vu-lights vu-lights)
-;; (define-extern init-light-hash function) ;; (function none)
-;; (define-extern light-hash-count-items function) ;; (function light-hash light-sphere none)
-;; (define-extern light-hash-add-items function) ;; (function light-hash light-sphere integer object)
-;; (define-extern reset-light-hash function) ;; (function light-hash none)
-;; (define-extern update-light-hash function) ;; (function light-hash none)
-;; (define-extern lookup-light-sphere-by-name function) ;; (function string light-hash light-sphere)
-;; (define-extern light-hash-get-bucket-index function) ;; (function light-hash vector int)
-;; (define-extern add-light-sphere-to-light-group function) ;; (function object object object object object)
-;; (define-extern light-merge! function)
-;; (define-extern light-group-scale! function)
-;; (define-extern light-group-madd! function)
-;; (define-extern light-group-lerp! function)
-;; (define-extern shadow-info-copy! function)
+(define-extern *light-hash-work* light-hash-work) ;;
+(define-extern light-slerp
+  "Linearly interpolate between two [[light]]s
+   @param! light-out The resultant
+   @param light-a One of the two lights
+   @param light-b One of the two lights
+   @param alpha Clamped to between `0.0` and `1.0`
+   @returns The interpolated [[light]]"
+  (function light light light float light))
+(define-extern light-group-slerp
+  "Linearly interpolate between two [[light-groups]]s by calling [[light-slerp]] on each respective collection of lights
+   @param light-group-out The resultant
+   @param light-group-a One of the two [[light-group]]s
+   @param light-group-b One of the two [[light-group]]s
+   @param alpha
+   @returns The linearly interpolated [[light-group]]"
+  (function light-group light-group light-group float light-group))
+(define-extern light-group-process!
+  "Unused, needlessly calls [[rotate-y<-vector+vector]] on the two [[vector]]s and calls [[vu-lights<-light-group!]]
+   @param vu-lights
+   @param light-group
+   @param vec1
+   @param vec2
+   @returns [[none]]"
+  (function vu-lights light-group vector vector none))
+(define-extern *default-lights* vu-lights) ;;
+(define-extern vu-lights-default!
+  "Setups up a default [[vu-lights]] instance
+   @param! lights
+   @returns [[vu-lights]]"
+  (function vu-lights vu-lights)) ;;
+(define-extern init-light-hash
+  "Initializes the global [[*light-hash*]].
+   - Bucket array allocates `4096` bytes. (enough for 16,384 entries)
+   - Index array allocates `65536` bytes.
+   - Light sphere array allocates `16384` bytes. (enough for 256 light spheres)
+   @returns [[light-hash]]"
+  (function none)) ;;
+(define-extern light-hash-count-items (function light-hash light-sphere none)) ;;
+(define-extern light-hash-add-items (function light-hash light-sphere integer object)) ;;
+(define-extern reset-light-hash
+  "Resets the global [[*light-hash*]] back to having `0` lights, indicies, and buckets.
+   @returns [[none]]"
+  (function none)) ;;
+(define-extern update-light-hash (function light-hash none)) ;;
+(define-extern lookup-light-sphere-by-name
+  "Search through a given [[light-hash]]'s lights to find the one that matches the given name
+   @param name The name to look for
+   @param hash The hash to search through
+   @returns Either the [[light]] or [[#f]]"
+  (function string light-hash light-sphere)) ;;
+(define-extern light-hash-get-bucket-index (function light-hash vector int)) ;;
+(define-extern add-light-sphere-to-light-group (function object object object object object)) ;;
+(define-extern light-merge!
+  "Given two [[light-group]]'s merge their values and store the results in the first art-group.
+   Tons of `(nop!)` in the original implementation, PS2 optimization nonsense.
+   @param! out One of the groups and where the merged result is stored
+   @param other The other group to merge with
+   @returns [[none]]"
+  (function light-group light-group none))
+(define-extern light-group-scale!
+  "Given a [[light-group]], a `pointer` to a [[light-group]] to back it up, and a scale value,
+   Scale the light's `extra.x` value
+   @param! group The [[light]]s to scale
+   @param pointer A location to backup the original [[light]]s
+   @param scale The value to scale by
+   @returns [[none]]"
+  (function light-group (pointer light-group) float none))
+(define-extern light-group-madd!
+  "Scales the ambient and direction info of one [[light-group]]'s [[light]]s using a scalar value and another [[light-group]]
+   @param! group Resultant
+   @param backup-ptr where the original `group` is backed up to
+   @param other The other [[light-group]] used as part of the operation
+   @param scalar An arbitrary scalar value multipled against each field
+   @returns [[none]]"
+  (function light-group (pointer light-group) light-group float none))
+(define-extern light-group-lerp!
+  "Linearly interpolates between two [[light-group]]'s.
+   @param! group Resultant
+   @param backup-ptr where the original `group` is backed up to
+   @param other The other [[light-group]] used as part of the operation
+   @param scalar An arbitrary scalar value multipled against each field
+   @returns [[none]]"
+  (function light-group (pointer light-group) light-group float none))
+(define-extern shadow-info-copy!
+  "Copies `extra.y` from `src` into `dest` for each [[light]]
+   @param! dest
+   @param src
+   @returns [[none]]"
+  (function light-group light-group none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; dynamics-h                     ;;
@@ -28235,7 +28288,7 @@
 ;; (define-extern foreground-init function) ;; (function none)
 ;; (define-extern texscroll-make-request function) ;; (function merc-effect none)
 ;; (define-extern texscroll-execute function) ;; (function none)
-;; (define-extern vu-lights<-light-group! function) ;; (function vu-lights light-group none)
+(define-extern vu-lights<-light-group! (function vu-lights light-group none)) ;;
 ;; (define-extern foreground-add-mtx-calc function) ;; (function bone-calculation (inline-array pris-mtx) bone-calc-flags bone-calculation)
 ;; (define-extern foreground-wrapup function) ;; (function none)
 ;; (define-extern *default-shadow-settings* object) ;; shadow-settings
@@ -29479,61 +29532,74 @@
 ;; mood-tables                    ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (define-extern *no-cloud-haze-mood-fog-table* object) ;; mood-fog-table
-;; (define-extern *no-cloud-clear-mood-fog-table* object) ;; mood-fog-table
-;; (define-extern *no-cloud-smog-mood-fog-table* object) ;; mood-fog-table
-;; (define-extern *overcast-fog-mood-fog-table* object) ;; mood-fog-table
-;; (define-extern *overcast-clear-mood-fog-table* object) ;; mood-fog-table
-;; (define-extern *overcast-rain-mood-fog-table* object) ;; mood-fog-table
-;; (define-extern *storm-fog-mood-fog-table* object) ;; mood-fog-table
-;; (define-extern *storm-clear-mood-fog-table* object) ;; mood-fog-table
-;; (define-extern *storm-rain-mood-fog-table* object) ;; mood-fog-table
-;; (define-extern *desert-mood-fog-table* object)
-;; (define-extern *sandstorm-start-mood-fog-table* object)
-;; (define-extern *sandstorm-end-mood-fog-table* object)
-;; (define-extern *no-cloud-mood-color-table* object) ;; mood-color-table
-;; (define-extern *overcast-mood-color-table* object) ;; mood-color-table
-;; (define-extern *storm-mood-color-table* object) ;; mood-color-table
-;; (define-extern *desert-mood-color-table* object)
-;; (define-extern *sandstorm-start-mood-color-table* object)
-;; (define-extern *sandstorm-end-mood-color-table* object)
-;; (define-extern *no-cloud-mood-channel-group* object) ;; mood-channel-group
-;; (define-extern *overcast-mood-channel-group* object) ;; mood-channel-group
-;; (define-extern *stormy-mood-channel-group* object) ;; mood-channel-group
-;; (define-extern *clouds-000* object) ;; mood-clouds
-;; (define-extern *clouds-125* object) ;; mood-clouds
-;; (define-extern *clouds-250* object) ;; mood-clouds
-;; (define-extern *clouds-375* object) ;; mood-clouds
-;; (define-extern *clouds-500* object) ;; mood-clouds
-;; (define-extern *clouds-625* object) ;; mood-clouds
-;; (define-extern *clouds-750* object) ;; mood-clouds
-;; (define-extern *clouds-875* object) ;; mood-clouds
-;; (define-extern *clouds-1000* object) ;; mood-clouds
-;; (define-extern *mood-direction-table* object) ;; mood-direction-table
-;; (define-extern *mood-sky-table* object) ;; mood-sky-table
-;; (define-extern *mood-interp-table* object) ;; sky-color-day
-;; (define-extern init-mood-control function) ;; (function mood-control none)
-;; (define-extern *mood-control* mood-control) ;; mood-control
+(define-extern *no-cloud-haze-mood-fog-table* mood-fog-table)
+(define-extern *no-cloud-clear-mood-fog-table* mood-fog-table)
+(define-extern *no-cloud-smog-mood-fog-table* mood-fog-table)
+(define-extern *overcast-fog-mood-fog-table* mood-fog-table)
+(define-extern *overcast-clear-mood-fog-table* mood-fog-table)
+(define-extern *overcast-rain-mood-fog-table* mood-fog-table)
+(define-extern *storm-fog-mood-fog-table* mood-fog-table)
+(define-extern *storm-clear-mood-fog-table* mood-fog-table)
+(define-extern *storm-rain-mood-fog-table* mood-fog-table)
+(define-extern *desert-mood-fog-table* mood-fog-table)
+(define-extern *sandstorm-start-mood-fog-table* mood-fog-table)
+(define-extern *sandstorm-end-mood-fog-table* mood-fog-table)
+(define-extern *no-cloud-mood-color-table* mood-color-table)
+(define-extern *overcast-mood-color-table* mood-color-table)
+(define-extern *storm-mood-color-table* mood-color-table)
+(define-extern *desert-mood-color-table* mood-color-table)
+(define-extern *sandstorm-start-mood-color-table* mood-color-table)
+(define-extern *sandstorm-end-mood-color-table* mood-color-table)
+(define-extern *no-cloud-mood-channel-group* mood-channel-group) ;; mood-channel-group
+(define-extern *overcast-mood-channel-group* mood-channel-group) ;; mood-channel-group
+(define-extern *stormy-mood-channel-group* mood-channel-group) ;; mood-channel-group
+(define-extern *clouds-000* mood-clouds)
+(define-extern *clouds-125* mood-clouds)
+(define-extern *clouds-250* mood-clouds)
+(define-extern *clouds-375* mood-clouds)
+(define-extern *clouds-500* mood-clouds)
+(define-extern *clouds-625* mood-clouds)
+(define-extern *clouds-750* mood-clouds)
+(define-extern *clouds-875* mood-clouds)
+(define-extern *clouds-1000* mood-clouds)
+(define-extern *mood-direction-table* mood-direction-table) ;; mood-direction-table
+(define-extern *mood-sky-table* mood-sky-table) ;; mood-sky-table
+(define-extern *mood-interp-table* sky-color-day) ;; sky-color-day
+(define-extern init-mood-control
+  "Given a [[mood-control]] initialize and set it up with default settings
+   @param! ctrl The [[mood-control]]
+   @returns [[none]]"
+  (function mood-control none))
+(define-extern *mood-control* "The global [[mood-control]] which governs things like clouds, fog and weather (to some degree)" mood-control)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; mood-tables2                   ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (define-extern *overide-mood-color-table* object) ;; mood-color-table
-;; (define-extern *overide-mood-fog-table* object) ;; mood-fog-table
-;; (define-extern init-overide-table function) ;; (function mood-table none)
-;; (define-extern *overide-table* mood-table) ;; mood-table
-;; (define-extern print-mood-tables function) ;; (function none)
-;; (define-extern desaturate-mood-colors function) ;; (function float float float none)
-;; (define-extern desaturate-mood-fog function) ;; (function (pointer mood-fog-table) float float none)
-;; (define-extern *debug-mood-color-table* object)
-;; (define-extern *debug-mood-fog-table* object)
+(define-extern *overide-mood-color-table* mood-color-table) ;; 
+(define-extern *overide-mood-fog-table* mood-fog-table) ;; 
+(define-extern init-overide-table 
+  "Similar to the beginning of [[init-mood-control]], does the bare minimum to setup the given [[mood-table]]
+   @param! table The table to initialize
+   @returns [[none]]"
+  (function mood-table none)) ;; 
+(define-extern *overide-table* mood-table) ;; mood-table
+(define-extern print-mood-tables "Generates the GOAL code for defining the current state of [[*overide-table*]]" (function none)) ;; (
+(define-extern desaturate-mood-colors 
+  "Unused - Generate GOAL code for a new [[*overide-mood-color-table*]] definition that desaturates the color
+   Apply said overrides to the [[*overide-table*]]"
+  (function float float float none))
+(define-extern desaturate-mood-fog 
+  "Unused - Generate GOAL code for a new [[*overide-mood-fog-table*]] definition that desaturates the fog color
+   Apply said overrides to the [[*overide-table*]]"
+  (function (pointer mood-fog-table) float float none))
+(define-extern *debug-mood-color-table* mood-color-table)
+(define-extern *debug-mood-fog-table* mood-fog-table)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; mood                           ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype lava-state (structure)
   ((lava float  :offset-assert 0)
    )
@@ -29541,10 +29607,9 @@
   :size-assert         #x4
   :flag-assert         #x900000004
   )
-|#
 
-;; (define-extern palette-select-special function) ;; (function mood-context-core3 symbol)
-;; (define-extern clear-mood-times function) ;; (function mood-context symbol)
+(define-extern palette-select-special (function mood-context-core3 symbol))
+(define-extern clear-mood-times (function mood-context symbol)) ;;
 ;; (define-extern update-mood-itimes function) ;; (function mood-context none)
 ;; (define-extern update-mood-direction function) ;; (function mood-context-core3 mood-table float float)
 ;; (define-extern update-mood-exterior function) ;; (function mood-context-core3 mood-table float int object)
@@ -29554,14 +29619,14 @@
 ;; (define-extern update-mood-interior function) ;; (function mood-context float)
 ;; (define-extern update-mood-interior-ambient function)
 ;; (define-extern update-mood-flames function) ;; (function mood-context int int int float float float float :behavior time-of-day-proc)
-;; (define-extern *flash0* array) ;; (array float)
-;; (define-extern *flash1* array) ;; (array float)
-;; (define-extern *flash2* array) ;; (array float)
-;; (define-extern *flash3* array) ;; (array float)
-;; (define-extern *flash4* array) ;; (array float)
-;; (define-extern *flash5* array) ;; (array float)
-;; (define-extern *flash6* array) ;; (array float)
-;; (define-extern *flash7* array) ;; (array float)
+(define-extern *flash0* (array float))
+(define-extern *flash1* (array float))
+(define-extern *flash2* (array float))
+(define-extern *flash3* (array float))
+(define-extern *flash4* (array float))
+(define-extern *flash5* (array float))
+(define-extern *flash6* (array float))
+(define-extern *flash7* (array float))
 ;; (define-extern update-mood-light function) ;; (function mood-context int int float float float float float float)
 ;; (define-extern update-mood-lava function) ;; (function mood-context int int float float float float float float)
 ;; (define-extern update-mood-flicker function) ;; (function mood-context int int none)
