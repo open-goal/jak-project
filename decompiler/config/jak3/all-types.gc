@@ -7593,7 +7593,7 @@
   (:methods
     (level-group-method-9 () none) ;; 9 ;; (level-get (_type_ symbol) level)
     (level-group-method-10 () none) ;; 10 ;; (level-get-with-status (_type_ symbol) level)
-    (level-group-method-11 () none) ;; 11 ;; (get-level-by-heap-ptr-and-status (_type_ pointer symbol) level)
+     (get-level-by-heap-ptr-and-status (_type_ pointer symbol) level) ;; 11
     (level-group-method-12 () none) ;; 12 ;; (level-get-for-use (_type_ symbol symbol) level)
     (level-group-method-13 () none) ;; 13 ;; (activate-levels! (_type_) int)
     (level-group-method-14 () none) ;; 14 ;; (debug-print-entities (_type_ symbol type) none)
@@ -10469,6 +10469,11 @@
 (defenum mem-usage-id
     :bitfield #f
     :type uint32
+
+    (joint-anim-compressed-control 70)
+    (joint-anim-fixed 71)
+    (joint-anim-frame 72)
+
     (texture 83)
     )
 
@@ -14053,17 +14058,18 @@
   :size-assert         #x14
   :flag-assert         #xe00000014
   (:methods
-    (art-method-9 () none) ;; 9 ;; (login (_type_) _type_)
-    (art-method-10 () none) ;; 10 ;; (get-art-by-name-method (_type_ string type) basic)
-    (art-method-11 () none) ;; 11 ;; (get-art-idx-by-name-method (_type_ string type) int)
-    (art-method-12 () none) ;; 12 ;; (needs-link? (_type_) symbol)
-    (art-method-13 () none) ;; 13
+    (login (_type_) _type_) ;; 9
+    (art-method-10 (_type_) _type_) ;; 10
+    (get-art-by-name-method "Look inside this art for an art with the given name and type. Return #f if not found" (_type_ string type) basic) ;; 11
+    (get-art-idx-by-name-method "Look inside this art for an art with the given name and type and return the index of the art. Return #f if not found." (_type_ string type) int) ;; 12
+    (contains-art-for-other-group? "Some art groups have placeholder #f's for some art that will be loaded separately as needed.
+                                    Does this art group contain art that needs to be added to another group?" (_type_) symbol) ;; 13
     )
   )
 
 (deftype art-element (art)
   "Base class Art which is not a container of more art."
-  ((master-art-group-name  basic  :offset-assert 20)
+  ((master-art-group-name  string  :offset-assert 20)
    (master-art-group-index int32  :offset-assert 24)
    (pad uint8 20)
    )
@@ -14102,20 +14108,23 @@
    )
   :flag-assert #x1000000020
   (:methods
-    (unknown-0 () none)
+    (relocate (_type_ kheap (pointer uint8)) none :replace) ;; 7
+    (link-art-to-master (_type_) none)
     (unknown-1 () none)
     )
   )
 
 (deftype art-mesh-geo (art-element)
   "Unused art format for a mesh. This might have been for the renderer that came before merc."
-  ()
+  ((data  basic  :dynamic :offset-assert 48)
+   )
   :flag-assert #xe00000030
   )
 
 (deftype art-joint-geo (art-element)
   "Collection of joints for an actor."
-  ()
+  ((data  joint  :dynamic :offset-assert 48)
+   )
   :flag-assert #xe00000030
   )
 
@@ -16884,7 +16893,7 @@
    ;(UNKNOWN                 UNKNOWN                                                          :offset-assert -1) ;; field could not be read.
    (top-anim                top-anim-joint-control                                           :offset-assert 56) ;; guessed by decompiler
    (override                (array float)                                                    :offset-assert 60) ;; guessed by decompiler
-   (channel                 joint-control-channel                                   :dynamic :offset-assert 64) ;; guessed by decompiler
+   (channel                 joint-control-channel                                   :dynamic :inline :offset-assert 64) ;; guessed by decompiler
    ;(UNKNOWN                 UNKNOWN                                                          :offset-assert -1) ;; field could not be read.
    )
   :method-count-assert 13
@@ -16892,10 +16901,10 @@
   :flag-assert         #xd00000040
   ;; field joint-control-status is likely a value type.
   (:methods
-    (new (symbol type) _type_) ;; 0 ;; (new (symbol type int) _type_)
+    (new (symbol type int) _type_) ;; 0
     (joint-control-method-9 () none) ;; 9 ;; (current-cycle-distance (_type_) float)
     (joint-control-method-10 () none) ;; 10 ;; (update-anim-data (_type_) none)
-    (joint-control-method-11 () none) ;; 11 ;; (debug-print-channels (_type_ symbol) int)
+    (debug-print-channels "Print the list of joint animations playing in the flattened blend tree." (_type_ symbol) int) ;; 11
     (joint-control-method-12 () none) ;; 12
     )
   )
@@ -27417,16 +27426,16 @@
 ;; collide-func                   ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (define-extern raw-ray-sphere-intersect function)
-;; (define-extern ray-sphere-intersect function) ;; (function vector vector vector float float)
-;; (define-extern ray-circle-intersect function) ;; (function vector vector vector float float)
-;; (define-extern ray-cylinder-intersect function) ;; (function vector vector vector vector float float vector float)
-;; (define-extern ray-plane-intersect function) ;; (function vector vector vector vector vector vector vector float)
-;; (define-extern ray-triangle-intersect function)
-;; (define-extern collide-do-primitives function)
-;; (define-extern moving-sphere-triangle-intersect function) ;; (function vector vector float collide-cache-tri vector vector float)
-;; (define-extern moving-sphere-sphere-intersect function)
-;; (define-extern moving-sphere-moving-sphere-intersect function)
+(define-extern raw-ray-sphere-intersect function)
+(define-extern ray-sphere-intersect (function vector vector vector float float))
+(define-extern ray-circle-intersect (function vector vector vector float float))
+(define-extern ray-cylinder-intersect (function vector vector vector vector float float vector float))
+(define-extern ray-plane-intersect (function vector vector vector vector vector vector vector float))
+(define-extern ray-triangle-intersect function)
+(define-extern collide-do-primitives function)
+(define-extern moving-sphere-triangle-intersect (function vector vector float collide-cache-tri vector vector float))
+(define-extern moving-sphere-sphere-intersect function)
+(define-extern moving-sphere-moving-sphere-intersect function)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; joint                          ;;
@@ -27451,13 +27460,13 @@
   )
 |#
 
-;; (define-extern joint-anim-login function) ;; (function joint-anim-drawable joint-anim-drawable)
+(define-extern joint-anim-login "Login a joint-anim-drawable by calling login on all drawables" (function joint-anim-drawable joint-anim-drawable))
 ;; (define-extern joint-anim-inspect-elt function) ;; (function joint-anim float joint-anim)
-;; (define-extern jacc-mem-usage function) ;; (function joint-anim-compressed-control memory-usage-block int joint-anim-compressed-control)
-;; (define-extern joint-control-cleanup function)
-;; (define-extern joint-control-channel-eval function) ;; (function joint-control-channel float :behavior process)
-;; (define-extern joint-control-channel-eval! function) ;; (function joint-control-channel (function joint-control-channel float float float float) float :behavior process)
-;; (define-extern joint-control-channel-group-eval! function) ;; (function joint-control-channel art-joint-anim (function joint-control-channel float float float float) int)
+(define-extern jacc-mem-usage "Compute memory usage stats for a compressed joint anim." (function joint-anim-compressed-control memory-usage-block int joint-anim-compressed-control))
+(define-extern joint-control-cleanup "Remove all animations that are stored on the given heap and return those slots to a safe default." (function joint-control kheap art-joint-anim none))
+(define-extern joint-control-channel-eval "Run the num-func to produce the current frame for this channel." (function joint-control-channel float :behavior process))
+(define-extern joint-control-channel-eval! "Update the num-func for this channel and evaluate it." (function joint-control-channel (function joint-control-channel float float float float) float :behavior process))
+(define-extern joint-control-channel-group-eval! (function joint-control-channel art-joint-anim (function joint-control-channel float float float float) int))
 ;; (define-extern joint-control-channel-group! function) ;; (function joint-control-channel art-joint-anim (function joint-control-channel float float float float) int)
 ;; (define-extern joint-control-copy! function) ;; (function joint-control joint-control joint-control)
 ;; (define-extern joint-control-remap! function) ;; (function joint-control art-group art-group pair int string symbol)
@@ -27491,9 +27500,9 @@
 ;; (define-extern decompress-frame-data-pair-to-accumulator function) ;; function
 ;; (define-extern make-joint-jump-tables function) ;; (function int)
 ;; (define-extern calc-animation-from-spr function) ;; (function joint-anim-frame int none)
-;; (define-extern create-interpolated-joint-animation-frame function) ;; (function joint-anim-frame int joint-control int)
+(define-extern create-interpolated-joint-animation-frame (function joint-anim-frame int joint-control int))
 ;; (define-extern create-interpolated2-joint-animation-frame function) ;; (function joint-anim-frame int joint-control int)
-;; (define-extern *anim-manager* object) ;; art-joint-anim-manager
+(define-extern *anim-manager* art-joint-anim-manager)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; joint-mod                      ;;
@@ -30294,7 +30303,7 @@
 ;; (define-extern remap-level-name function) ;; (function level-load-info symbol)
 ;; (define-extern add-bsp-drawable function) ;; (function bsp-header level symbol display-frame none)
 ;; (define-extern *login-state* object) ;; login-state
-;; (define-extern *print-login* object) ;; symbol
+(define-extern *print-login* symbol)
 ;; (define-extern load-buffer-resize function) ;; (function level dgo-header none)
 ;; (define-extern level-find-borrow-slot function)
 ;; (define-extern level-update-after-load function) ;; (function level login-state level)
