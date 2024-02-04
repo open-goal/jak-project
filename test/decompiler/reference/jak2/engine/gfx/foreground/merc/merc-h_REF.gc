@@ -3,6 +3,7 @@
 
 ;; definition of type ripple-merc-query
 (deftype ripple-merc-query (inline-array-class)
+  "Information about which merc vertices to apply the 'ripple' effect to."
   ((start-vertex  int32)
    (vertex-skip   int32)
    (vertex-count  int32)
@@ -34,6 +35,7 @@
 
 ;; definition of type merc-byte-header
 (deftype merc-byte-header (structure)
+  "Header for a single [[merc-fragment]] uploaded to the VU."
   ((srcdest-off         uint8)
    (rgba-off            uint8)
    (lump-off            uint8)
@@ -78,6 +80,7 @@
 
 ;; definition of type merc-fragment
 (deftype merc-fragment (structure)
+  "A single merc fragment that fits into VU memory."
   ((header  merc-byte-header  :inline)
    (rest    uint8             1)
    )
@@ -101,6 +104,7 @@
 
 ;; definition of type merc-vtx
 (deftype merc-vtx (structure)
+  "A packed merc vertex."
   ((mat-0  uint8)
    (mat-1  uint8)
    (nrm-x  uint8)
@@ -141,6 +145,7 @@
 
 ;; definition of type merc-fp-header
 (deftype merc-fp-header (structure)
+  "Merc header for a [[merc-fragment]]'s floating point data."
   ((x-add             float)
    (y-add             float)
    (z-add             float)
@@ -171,12 +176,13 @@
 
 ;; definition for function merc-fragment-fp-data
 ;; WARN: Return type mismatch int vs merc-fp-header.
-(defun merc-fragment-fp-data ((arg0 merc-fragment))
-  (the-as merc-fp-header (+ (the-as uint arg0) (* (-> arg0 header mm-quadword-fp-off) 16)))
+(defun merc-fragment-fp-data ((frag merc-fragment))
+  (the-as merc-fp-header (+ (the-as uint frag) (* (-> frag header mm-quadword-fp-off) 16)))
   )
 
 ;; definition of type merc-mat-dest
 (deftype merc-mat-dest (structure)
+  "Metadata for a merc matrix upload."
   ((matrix-number  uint8)
    (matrix-dest    uint8)
    )
@@ -198,6 +204,7 @@
 
 ;; definition of type merc-fragment-control
 (deftype merc-fragment-control (structure)
+  "Data about a [[merc-fragment]] needed for merc DMA generation."
   ((unsigned-four-count  uint8)
    (lump-four-count      uint8)
    (fp-qwc               uint8)
@@ -224,6 +231,7 @@
 
 ;; definition of type merc-blend-data
 (deftype merc-blend-data (structure)
+  "Packed BLERC data."
   ((int8-data  int8  :dynamic)
    )
   )
@@ -242,6 +250,7 @@
 
 ;; definition of type merc-blend-ctrl
 (deftype merc-blend-ctrl (structure)
+  "Information about the vertices of a model modified by BLERC."
   ((blend-vtx-count      uint8)
    (nonzero-index-count  uint8)
    (bt-index             uint8  :dynamic)
@@ -264,6 +273,7 @@
 
 ;; definition of type mei-envmap-tint
 (deftype mei-envmap-tint (structure)
+  "Data for the extra 'envmap tint' effect."
   ((fade0  float)
    (fade1  float)
    (tint   rgba)
@@ -288,6 +298,7 @@
 
 ;; definition of type mei-texture-scroll
 (deftype mei-texture-scroll (structure)
+  "Data for the extra 'texscroll' effect."
   ((max-dist      float)
    (st-int-scale  uint8)
    (time-factor   uint8)
@@ -318,6 +329,7 @@
 
 ;; definition of type mei-ripple
 (deftype mei-ripple (structure)
+  "Data for the extra 'ripple' effect."
   ((x-base     float)
    (z-base     float)
    (grid-size  float)
@@ -342,6 +354,7 @@
 
 ;; definition of type merc-extra-info
 (deftype merc-extra-info (structure)
+  "Info for merc extra effects."
   ((envmap-tint-offset     uint8)
    (shader-offset          uint8)
    (texture-scroll-offset  uint8)
@@ -368,6 +381,7 @@
 
 ;; definition of type merc-effect
 (deftype merc-effect (structure)
+  "A collection of [[merc-fragment]]s with data for any extra effects."
   ((frag-geo             merc-fragment)
    (frag-ctrl            merc-fragment-control)
    (blend-data           merc-blend-data)
@@ -413,6 +427,7 @@
 
 ;; definition of type merc-eye-ctrl
 (deftype merc-eye-ctrl (structure)
+  "Eye info for both eyes of a merc model."
   ((eye-slot            int8)
    (shader-offset       int8)
    (shader-count        int8)
@@ -449,6 +464,7 @@
 
 ;; definition of type merc-eye-anim-frame
 (deftype merc-eye-anim-frame (structure)
+  "A single frame of a merc eye animation."
   ((pupil-trans-x  int8)
    (pupil-trans-y  int8)
    (blink          int8)
@@ -480,6 +496,7 @@
 
 ;; definition of type merc-eye-anim-block
 (deftype merc-eye-anim-block (structure)
+  "A list of eye animation frames."
   ((max-frame  int16)
    (data       merc-eye-anim-frame  :inline :dynamic)
    )
@@ -518,6 +535,8 @@
 
 ;; definition of type merc-ctrl-header
 (deftype merc-ctrl-header (structure)
+  "The header for a [[merc-ctrl]],
+containing metadata about the model used for drawing."
   ((xyz-scale               float)
    (st-magic                uint32)
    (st-out-a                uint32)
@@ -628,6 +647,8 @@
 
 ;; definition of type merc-ctrl
 (deftype merc-ctrl (art-element)
+  "The merc data for a single model as it's stored in an art group.
+Consists of a header and a list of [[merc-effect]]s."
   ((num-joints  int32             :overlay-at (-> pad 0))
    (seg-table   (array uint64)    :overlay-at (-> pad 4))
    (header      merc-ctrl-header  :inline)

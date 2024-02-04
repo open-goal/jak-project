@@ -78,11 +78,7 @@ tasks:
     desc: "Format code"
     cmds:
       # npm install -g prettier
-      - cmd: npx prettier --write ./decompiler/config/jak1/**/*.jsonc
-        ignore_error: true
-      - cmd: npx prettier --write ./decompiler/config/jak2/**/*.jsonc
-        ignore_error: true
-      - cmd: npx prettier --write ./decompiler/config/jak3/**/*.jsonc
+      - cmd: npx prettier --write ./decompiler/config/jak*/**/*.jsonc
         ignore_error: true
   format:
     desc: "Format code"
@@ -102,7 +98,7 @@ tasks:
       - python ./scripts/tasks/clean-decomp.py --game "{{.GAME}}"
   lint-gsrc-file:
     cmds:
-      - python ./scripts/gsrc/lint-gsrc-file.py --game {{.GAME}} --file {{.FILE}}
+      - python ./scripts/gsrc/lint-gsrc-file.py --game {{.GAME}} --file "{{.FILE}}"
   update-gsrc:
     cmds:
       - python ./scripts/gsrc/update-gsrc-via-refs.py --game "{{.GAME}}" --decompiler "{{.DECOMP_BIN_RELEASE_DIR}}/decompiler" --decompiler_config {{.DECOMP_CONFIG}} --version {{.DECOMP_CONFIG_VERSION}}
@@ -112,8 +108,16 @@ tasks:
   update-gsrc-file:
     cmds:
       - task: decomp-file
-      - python ./scripts/gsrc/update-from-decomp.py --game "{{.GAME}}" --file {{.FILE}}
+      - python ./scripts/gsrc/update-from-decomp.py --game "{{.GAME}}" --file "{{.FILE}}"
       - task: lint-gsrc-file
+  copy-common-naming:
+    cmds:
+      - python ./scripts/gsrc/copy-common-naming.py --file "{{.FILE}}" --decompiler "{{.DECOMP_BIN_RELEASE_DIR}}/decompiler"
+      - task: format-json
+  copy-common-naming-from-refs:
+    cmds:
+      - python ./scripts/gsrc/copy-common-naming.py --update-names-from-refs --decompiler "{{.DECOMP_BIN_RELEASE_DIR}}/decompiler"
+      - task: format-json
   # ASSET RIPPING
   rip-textures:
     cmds:
