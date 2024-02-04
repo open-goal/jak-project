@@ -140,6 +140,9 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (deftype vec4s (uint128)
+  "Vector of four floats, packed into a 128-bit integer as bitfields.
+   This behaves like a value type.
+   This is not the main vector type."
   ((x float :offset 0)
    (y float :offset 32)
    (z float :offset 64)
@@ -150,6 +153,9 @@
   )
 
 (deftype vector (structure)
+  "Vector of four floats, stored in a structure.
+   This behaves like a reference type.
+   This is the main vector type."
   ((data float   4 :score -1 :offset-assert 0)
    (x    float     :offset 0)
    (y    float     :offset 4)
@@ -163,6 +169,7 @@
   )
 
 (deftype bfloat (basic)
+  "Boxed (or basic?) float. Just a basic that wraps a single float."
   ((data float  :offset-assert 4)
    )
   :method-count-assert 9
@@ -171,6 +178,8 @@
   )
 
 (deftype inline-array-class (basic)
+  "Base class for basic inline arrays.
+   The stride is stored in the heap-base of the inline-array-class child class."
   ((length           int32  :offset-assert 4)
    (allocated-length int32  :offset-assert 8)
    ;; this is 16-byte aligned.
@@ -185,58 +194,168 @@
   :flag-assert         #x900000010
   )
 
-(define-extern identity (function object object))
-(define-extern 1/ (function float float))
-(define-extern + (function int int int))
-(define-extern - (function int int int))
+(define-extern identity
+  "The identity function."
+  (function object object))
+(define-extern 1/
+  "Floating point reciprocal."
+  (function float float))
+(define-extern +
+  "64-bit integer addition."
+  (function int int int))
+(define-extern -
+  "64-bit integer subraction."
+  (function int int int))
 (define-extern * (function int int int))
-(define-extern / (function int int int))
-(define-extern ash (function int int int))
-(define-extern mod (function int int int))
-(define-extern rem (function int int int))
-(define-extern abs (function int int))
-(define-extern min (function int int int))
-(define-extern max (function int int int))
-(define-extern logior (function int int int))
-(define-extern logand (function int int int))
-(define-extern lognor (function int int int))
-(define-extern logxor (function int int int))
-(define-extern lognot (function int int))
-(define-extern false-func (function symbol))
-(define-extern true-func (function symbol))
+(define-extern /
+  "32-bit signed integer division."
+  (function int int int))
+(define-extern ash
+  "64-bit arithmetic shift. (sign-extends)"
+  (function int int int))
+(define-extern mod
+  "32-bit mod."
+  (function int int int))
+(define-extern rem
+  "32-bit mod (same as mod)."
+  (function int int int))
+(define-extern abs
+  "64-bit integer absolute value."
+  (function int int))
+(define-extern min
+  "64-bit integer minimum."
+  (function int int int))
+(define-extern max
+  "64-bit integer maximum."
+  (function int int int))
+(define-extern logior
+  "64-bit bitwise or."
+  (function int int int))
+(define-extern logand
+  "64-bit bitwise and."
+  (function int int int))
+(define-extern lognor
+  "64-bit bitwise not-or."
+  (function int int int))
+(define-extern logxor
+  "64-bit bitwise exclusive or."
+  (function int int int))
+(define-extern lognot
+  "64-bit bitwise not."
+  (function int int))
+(define-extern false-func
+  "Returns false."
+  (function symbol))
+(define-extern true-func
+  "Returns true."
+  (function symbol))
 (define-extern format (function _varargs_ object))
-(define-extern basic-type? (function basic type symbol))
-(define-extern type-type? (function type type symbol))
-(define-extern type? (function object type symbol))
-(define-extern find-parent-method (function type int function))
-(define-extern ref (function object int object))
-(define-extern last (function object object))
-(define-extern member (function object object object))
-(define-extern nmember (function basic object object))
-(define-extern assoc (function object object object))
-(define-extern assoce (function object object object))
-(define-extern nassoc (function string object object))
-(define-extern nassoce  (function string object object))
-(define-extern append! (function object object object))
-(define-extern delete! (function object object pair))
-(define-extern delete-car! (function object object object))
-(define-extern insert-cons! (function object object pair))
-(define-extern sort (function pair (function object object object) pair))
-(define-extern mem-copy! (function pointer pointer int pointer))
-(define-extern qmem-copy<-! (function pointer pointer int pointer))
-(define-extern qmem-copy->! (function pointer pointer int pointer))
-(define-extern mem-set32! (function pointer int int pointer))
-(define-extern mem-or! (function pointer pointer int pointer))
+(define-extern basic-type?
+  "Return if the given basic is a given type. A child of the given type is also acceptable."
+  (function basic type symbol))
+(define-extern type-type?
+  "Return if the first type is the second type, or a child of it."
+  (function type type symbol))
+(define-extern type?
+  "Return if the given object is an instance of the given type.
+  Works on basics, bintegers, or symbols."
+  (function object type symbol))
+(define-extern find-parent-method
+  "Find the closest parent type that has a different implementation of the given method and return that method.
+  If it does not exist, return `nothing` function.
+  This is used to implement call-parent-method."
+  (function type int function))
+(define-extern ref
+  "Return the n-th item in a proper list. No bounds checking."
+  (function object int object))
+(define-extern last
+  "Return the last object in a proper list."
+  (function object object))
+(define-extern member
+  "See if the first argument is in the proper list of the second argument.
+  Checked with simple equality.
+  If so, return the list starting at the at point (a truthy value).
+  Otherwise, return #f.
+  (member 'b '(a b c)) -> (b c d).
+  (member 'w '(a b c)) -> #f"
+  (function object object object))
+(define-extern nmember
+  "Like member, but membership is checked with the name= function to handle symbols or strings."
+  (function basic object object))
+(define-extern assoc
+  "Search an association list for given object. Return #f if not found, otherwise the element with matching car.
+  (assoc 'a '((a . 1) (b . 2) (c . 3))) -> (a . 1)
+  (assoc 'x '((a . 1) (b . 2) (c . 3))) -> #f"
+  (function object object object))
+(define-extern assoce
+  "Like assoc, but supports a special `else` key which is always considered a match."
+  (function object object object))
+(define-extern nassoc
+  "Like assoc, but uses name= instead of = to check equality."
+  (function string object object))
+(define-extern nassoce
+  "Like assoce, but uses name= instead of = to check equality."
+   (function string object object))
+(define-extern append!
+  "Append the second argument to the end of the list (or empty pair) in the first argument."
+  (function object object object))
+(define-extern delete!
+  "Remove an element from the given list, return the list."
+  (function object object pair))
+(define-extern delete-car!
+  "Remove an element from the given list with a matching car. Return the list."
+  (function object object object))
+(define-extern insert-cons!
+  "Update an association list to have the given (key . value) pair.
+  If a previous value exists, it is deleted first.
+  This function always allocates a pair through `cons` on the global heap, which can never be freed,
+  so it should almost never be used at runtime."
+  (function object object pair))
+(define-extern sort
+  "Sort a list using the given comparision function.
+  The function can return a #t/#f value, or a positive/negative value.
+  For example, you could use either `-` or `<` as functions to sort integers."
+  (function pair (function object object object) pair))
+(define-extern mem-copy!
+  "Basic memory copy. This is not an optimized implementation."
+  (function pointer pointer int pointer))
+(define-extern qmem-copy<-!
+  "Copy memory by quadword (16-bytes). Must by 16-byte aligned, size in 16-byte units. Increasing address copy. Not an optimized version."
+  (function pointer pointer int pointer))
+(define-extern qmem-copy->!
+  "Copy memory by quadword (16-bytes). Must by 16-byte aligned, size in 16-byte units. Decreasing address copy. Not an optimized version."
+  (function pointer pointer int pointer))
+(define-extern mem-set32!
+  "Set memory to the given 32-bit value, repeated n times. (like C memset, but setting int32_t instead of char).
+  Not an optimized implementation. Must be 4-byte aligned."
+  (function pointer int int pointer))
+(define-extern mem-or!
+  "Set the destiation to `dest = dest | src`. Size in bytes. Not an optimized version."
+  (function pointer pointer int pointer))
 (define-extern quad-copy! (function pointer pointer int none))
-(define-extern fact (function int int))
+(define-extern fact
+  "Factorial."
+  (function int int))
 (define-extern *print-column* binteger)
-(define-extern print (function object object))
-(define-extern printl (function object object))
-(define-extern inspect (function object object))
-(define-extern mem-print (function (pointer uint32) int symbol))
+(define-extern print
+  "Print any boxed object (symbol, pair, basic, binteger) to #t (the REPL). No newline."
+  (function object object))
+(define-extern printl
+  "Print any boxed object (symbol, pair, basic, binteger) to #t (the REPL), followed by a newline."
+  (function object object))
+(define-extern inspect
+  "Inspect any boxed object (symbol, pair, basic, binteger) to #t (the REPL)."
+  (function object object))
+(define-extern mem-print
+  "Print out data in memory in hex."
+  (function (pointer uint32) int symbol))
 (define-extern *trace-list* pair)
-(define-extern print-tree-bitmask (function int int symbol))
-(define-extern breakpoint-range-set! (function uint uint uint int))
+(define-extern print-tree-bitmask
+  "Print out ASCII-art tree structure, from a bitmask of nesting levels."
+  (function int int symbol))
+(define-extern breakpoint-range-set!
+  "Unsupported function to set a CPU breakpoint."
+  (function uint uint uint int))
 (define-extern valid? (function object type string symbol object symbol))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -306,9 +425,9 @@
    (self process-tree :offset-assert 32)
    )
   (:methods
-    (new (symbol type string) _type_) ;; 0
-    (activate (_type_ process-tree basic pointer) process-tree) ;; 9
-    (deactivate  (_type_) none) ;; 10
+    (new "Allocate a process-tree with the kernel clock." (symbol type string) _type_) ;; 0
+    (activate "Move a process from dead to active, moving it to the given tree." (_type_ process-tree basic pointer) process-tree) ;; 9
+    (deactivate "Make a process dead, clean it up, remove it from the active pool, and return to dead pool." (_type_) none) ;; 10
     (init-from-entity!
       "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
        This commonly includes things such as:
@@ -317,7 +436,7 @@
        - loading the skeleton group / bones
        - sounds"
       (_type_ entity-actor) none) ;; 11
-    (run-logic? (_type_) symbol) ;; 12
+    (run-logic? "Should this process be run? Checked by execute-process-tree." (_type_) symbol) ;; 12
     (process-tree-method-13 () none) ;; 13
     )
   :size-assert #x24
@@ -372,12 +491,15 @@
   :flag-assert         #xf0000005c
   (:methods
     (new (symbol type int) _type_) ;; 0
-    (update-rates! (_type_ float) float) ;; 9
-    (advance-by! (_type_ float) clock) ;; 10
-    (tick! (_type_) clock) ;; 11
-    (save! (_type_ (pointer uint64)) int) ;; 12
-    (load! (_type_ (pointer uint64)) int) ;; 13
-    (reset! (_type_) none) ;; 14
+    (update-rates! "Recompute all clock values for the given clock ratio (arg0)." (_type_ float) float) ;; 9
+    (advance-by!
+      "Advance the clock by arg0 timeframes (as a float).
+       Both counters keep a separate fractional and integer counter."
+      (_type_ float) clock) ;; 10
+    (tick! "Per-game-frame clock tick forward." (_type_) clock) ;; 11
+    (save! "Save a clock's state to a buffer, return bytes used." (_type_ (pointer uint64)) int) ;; 12
+    (load! "Load a clock's state from a buffer, return bytes used." (_type_ (pointer uint64)) int) ;; 13
+    (reset! "Reset a clock to 1000s, rate of 1." (_type_) none) ;; 14
     )
   )
 
@@ -397,9 +519,9 @@
   :size-assert         #x28
   :flag-assert         #xc00000028
   (:methods
-    (stack-size-set! (_type_ int) none) ;; 9
-    (thread-suspend (_type_) none) ;; 10
-    (thread-resume (_type_) none) ;; 11
+    (stack-size-set! "Adjust the size of the stack that can be stored during a suspend. Must be called before any process allocations." (_type_ int) none) ;; 9
+    (thread-suspend "Suspend this thread and jump to the kernel (for use by the kernel only)" (_type_) none) ;; 10
+    (thread-resume "Jump from the kernel to the restored thread. (for use by the kernel only)" (_type_) none) ;; 11
     )
   )
 
@@ -418,7 +540,7 @@
   :size-assert         #x80
   :flag-assert         #xc00000080
   (:methods
-     (new (symbol type process symbol int pointer) _type_) ;; 0
+     (new "Allocate a thread. If there is already a top-thread for this process, assume this is a temporary thread, and allocate on the bottom of the stack." (symbol type process symbol int pointer) _type_) ;; 0
     )
   )
 
@@ -431,9 +553,9 @@
   :flag-assert         #x1000000024
   ;; Failed to read fields.
   (:methods
-    (new (symbol type int int string) _type_) ;; 0
-    (get-process (_type_ type int) process) ;; 14
-    (return-process (_type_ process) none) ;; 15
+    (new "Allocate a dead pool and set up dead processes" (symbol type int int string) _type_) ;; 0
+    (get-process "Allocate a process from the pool, or #f if it fails." (_type_ type int) process) ;; 14
+    (return-process "Return a process to the pool." (_type_ process) none) ;; 15
     )
   )
 
@@ -469,19 +591,19 @@
   :flag-assert         #x1c00000068
   ;; Failed to read fields.
   (:methods
-    (new (symbol type string int int) _type_) ;; 0
-    (init (_type_ symbol int) none) ;; 16
-    (compact (dead-pool-heap int) none) ;; 17
-    (shrink-heap (dead-pool-heap process) dead-pool-heap) ;; 18
-    (churn (dead-pool-heap int) none) ;; 19
-    (memory-used (_type_) int) ;; 20
-    (memory-total (_type_) int) ;; 21
-    (memory-free (dead-pool-heap) int) ;; 22
-    (compact-time (dead-pool-heap) uint) ;; 23
-    (gap-size (dead-pool-heap dead-pool-heap-rec) int) ;; 24
-    (gap-location (dead-pool-heap dead-pool-heap-rec) pointer) ;; 25
-    (find-gap (dead-pool-heap dead-pool-heap-rec) dead-pool-heap-rec) ;; 26
-    (find-gap-by-size (dead-pool-heap int) dead-pool-heap-rec) ;; 27
+    (new "Allocate and initialize a dead-pool-heap." (symbol type string int int) _type_) ;; 0
+    (init "Allocate memory for processes and init records." (_type_ symbol int) none) ;; 16
+    (compact "Relocate process in memory to remove gaps, increasing free memory for this dead-pool-heap." (dead-pool-heap int) none) ;; 17
+    (shrink-heap "Shrink the heap of a process, allowing the dead pool heap to later reclaim the memory during a compact." (dead-pool-heap process) dead-pool-heap) ;; 18
+    (churn "Relocate process in memory, to trigger memory bugs related to process relocation." (dead-pool-heap int) none) ;; 19
+    (memory-used "Get the total memory used. Memory in between processes that is not used by a process is considered used." (_type_) int) ;; 20
+    (memory-total "Get the total size of the heap for processes." (_type_) int) ;; 21
+    (memory-free "Get the size of the unused part of the heap." (dead-pool-heap) int) ;; 22
+    (compact-time "Get the compaction time (never set)." (dead-pool-heap) uint) ;; 23
+    (gap-size "Get the size of the gap (possibly zero) after the given process. Use #f for the gap at the start of the pool memory." (dead-pool-heap dead-pool-heap-rec) int) ;; 24
+    (gap-location "Get pointer to gap (possibly zero size) after the given process" (dead-pool-heap dead-pool-heap-rec) pointer) ;; 25
+    (find-gap "Find the first process with a nonzero gap after it, after the given process." (dead-pool-heap dead-pool-heap-rec) dead-pool-heap-rec) ;; 26
+    (find-gap-by-size "Find the first gap with a size at least this big" (dead-pool-heap int) dead-pool-heap-rec) ;; 27
     )
   )
 
@@ -517,7 +639,7 @@
   ((exit (function object)  :offset-assert 12) ;; guessed by decompiler
    )
   (:methods
-    (new (symbol type (function object)) protect-frame)
+    (new "Allocate and set up a protect-frame. This _must_ be used on the stack." (symbol type (function object)) protect-frame)
     )
   :method-count-assert 9
   :size-assert         #x10
@@ -605,7 +727,7 @@
    (stack uint8 :dynamic :offset-assert 128 :score -1)
    )
   (:methods
-    (new (symbol type string int) _type_) ;; 0
+    (new "Allocate a process, set up process heap, self/ppointer, clock." (symbol type string int) _type_) ;; 0
     )
   (:states
     dead-state
@@ -643,41 +765,84 @@
 (define-extern *last-loado-global-usage* int)
 (define-extern *last-loado-debug-usage* int)
 (define-extern *kernel-packages* pair)
-(define-extern load-package (function string kheap pair))
-(define-extern unload-package (function string pair))
+(define-extern load-package
+  "If not already loaded, do a blocking dgo-load to load the given CGO."
+  (function string kheap pair))
+(define-extern unload-package
+  "Mark a package as unloaded. Does not actually unload."
+  (function string pair))
 (define-extern *kernel-context* kernel-context)
 (define-extern *dram-stack* (pointer uint8))
 (define-extern *null-kernel-context* kernel-context)
-(define-extern remove-exit (function none :behavior process))
+(define-extern remove-exit
+  "Remove the top stack frame. If you have no other stack frames, you can use this before a `go`
+  to skip the `exit` of the state you are currently in."
+  (function none :behavior process))
 (define-extern stream<-process-mask (function object process-mask process-mask))
 (define-extern *master-mode* symbol)
 (define-extern *pause-lock* symbol)
-(define-extern inspect-process-heap (function process symbol))
+(define-extern inspect-process-heap
+  "Call the inspect method on every object in the process heap."
+  (function process symbol))
 (define-extern return-from-thread (function none))
 (define-extern return-from-thread-dead (function none))
 (define-extern reset-and-call (function thread function object))
 (define-extern method-state (function type basic state))
 (define-extern *global-search-name* basic)
 (define-extern *global-search-count* int)
-(define-extern process-by-name (function string process-tree process))
-(define-extern process-not-name (function string process-tree process))
-(define-extern process-count (function process-tree int))
-(define-extern kill-by-name (function string process-tree symbol))
-(define-extern kill-by-type (function type process-tree symbol))
-(define-extern kill-not-name (function string process-tree symbol))
-(define-extern kill-not-type (function type process-tree symbol))
-(define-extern iterate-process-tree (function process-tree (function object object) kernel-context object))
-(define-extern execute-process-tree (function process-tree (function object object) kernel-context object))
-(define-extern search-process-tree (function process-tree (function process-tree object) process))
-(define-extern kernel-dispatcher (function object))
-(define-extern sync-dispatcher (function object))
-(define-extern inspect-process-tree (function process-tree int int symbol process-tree))
+(define-extern process-by-name
+  "Find the first process with the given name in the process-tree."
+  (function string process-tree process))
+(define-extern process-not-name
+  "Find the first process without the given name in the process-tree."
+  (function string process-tree process))
+(define-extern process-count
+  "Count the number of processes in the given process-tree."
+  (function process-tree int))
+(define-extern kill-by-name
+  "Kill all processes with the given name."
+  (function string process-tree symbol))
+(define-extern kill-by-type
+  "Kill all processes with the given type."
+  (function type process-tree symbol))
+(define-extern kill-not-name
+  "Kill all processes, except ones with the given name."
+  (function string process-tree symbol))
+(define-extern kill-not-type
+  "Kill all processes, except ones with the exact type."
+  (function type process-tree symbol))
+(define-extern iterate-process-tree
+  "Call a function on each not-dead process in the tree."
+  (function process-tree (function object object) kernel-context object))
+(define-extern execute-process-tree
+  "Iterate over all process, calling the run callback on each, if they should run."
+  (function process-tree (function object object) kernel-context object))
+(define-extern search-process-tree
+  "Return the first function in the process-tree which the callback returns #t on."
+  (function process-tree (function process-tree object) process))
+(define-extern kernel-dispatcher
+  "Run the GOAL kernel! Runs the function from the listener (if there is one), then all processes"
+  (function object))
+(define-extern sync-dispatcher
+  "Run the REPL function."
+  (function object))
+(define-extern inspect-process-tree
+  "Display a tree-view of a process-tree."
+  (function process-tree int int symbol process-tree))
 (define-extern throw-dispatch (function catch-frame object none))
 (define-extern throw (function symbol object int))
-(define-extern previous-brother (function process-tree object))
-(define-extern change-parent (function process-tree process-tree process-tree))
-(define-extern change-brother (function process-tree process-tree object))
-(define-extern change-to-last-brother (function process-tree process-tree))
+(define-extern previous-brother
+  "Get the process before this one, at this level."
+  (function process-tree object))
+(define-extern change-parent
+  "Reparent a process."
+  (function process-tree process-tree process-tree))
+(define-extern change-brother
+  "Unused, and wrong."
+  (function process-tree process-tree object))
+(define-extern change-to-last-brother
+  "Move this process to the end of its brother list."
+  (function process-tree process-tree))
 (define-extern run-function-in-process (function process function object object object object object object object))
 (define-extern set-to-run-bootstrap (function none))
 (define-extern set-to-run (function cpu-thread function object object object object object object pointer))
@@ -753,41 +918,104 @@
 ;; gstring                        ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(define-extern copy-string<-string  (function string string string))
-(define-extern string= (function string string symbol))
-(define-extern string-prefix= (function string string symbol))
-(define-extern charp-prefix= (function (pointer uint8) (pointer uint8) symbol))
-(define-extern string-suffix= (function string string symbol))
-(define-extern string-position (function string string int))
-(define-extern string-charp= (function string (pointer uint8) symbol))
+(define-extern copy-string<-string
+  "Copy a string. No bounds check. Writes null terminator."
+   (function string string string))
+(define-extern string=
+  "Check for string equality."
+  (function string string symbol))
+(define-extern string-prefix=
+  "Check if a string starts with a given string."
+  (function string string symbol))
+(define-extern charp-prefix=
+  "Check if a c-string starts with a given c-string."
+  (function (pointer uint8) (pointer uint8) symbol))
+(define-extern string-suffix=
+  "Check if a string ends with a given string."
+  (function string string symbol))
+(define-extern string-position
+  "Find the point where a string occurs in another. If it doesn't, return -1."
+  (function string string int))
+(define-extern string-charp=
+  "Check if a string is equal to a c-string."
+  (function string (pointer uint8) symbol))
 (define-extern name= (function object object symbol))
-(define-extern copyn-string<-charp (function string (pointer uint8) int string))
-(define-extern string<-charp (function string (pointer uint8) string))
-(define-extern charp<-string (function (pointer uint8) string int))
-(define-extern copyn-charp<-string (function (pointer uint8) string int none))
-(define-extern copy-charp<-charp (function (pointer uint8) (pointer uint8) (pointer uint8)))
-(define-extern cat-string<-string (function string string string))
-(define-extern catn-string<-charp (function string (pointer uint8) int string))
-(define-extern cat-string<-string_to_charp (function string string (pointer uint8) (pointer uint8)))
-(define-extern append-character-to-string (function string uint8 int))
-(define-extern charp-basename (function (pointer uint8) (pointer uint8)))
-(define-extern clear (function string string))
-(define-extern string<? (function string string symbol))
-(define-extern string>? (function string string symbol))
-(define-extern string<=? (function string string symbol))
-(define-extern string>=? (function string string symbol))
+(define-extern copyn-string<-charp
+  "Copy part of a c-string to a string. Writes null terminator after num-chars."
+  (function string (pointer uint8) int string))
+(define-extern string<-charp
+  "Copy a c-string to a string. Writes the null terminator."
+  (function string (pointer uint8) string))
+(define-extern charp<-string
+  "Copy a string to a c-string. Writes the null terminator."
+  (function (pointer uint8) string int))
+(define-extern copyn-charp<-string
+  "Copy part of a string to a c-string. Writes null terminator, repeatedly, to reach the given length.
+  If the source is longer than the length, the null terminator is still included."
+  (function (pointer uint8) string int none))
+(define-extern copy-charp<-charp
+  "C-string copy, writes null terminator."
+  (function (pointer uint8) (pointer uint8) (pointer uint8)))
+(define-extern cat-string<-string
+  "Append a string to another."
+  (function string string string))
+(define-extern catn-string<-charp
+  "Append part of a string to another. Writes null terminator."
+  (function string (pointer uint8) int string))
+(define-extern cat-string<-string_to_charp
+  "Append part of a string to another, up to the given pointer."
+  (function string string (pointer uint8) (pointer uint8)))
+(define-extern append-character-to-string
+  "Append a single character to a string. Writes null terminator after."
+  (function string uint8 int))
+(define-extern charp-basename
+  "Strip the directory and suffix from a c-string."
+  (function (pointer uint8) (pointer uint8)))
+(define-extern clear
+  "Set string to the empty string."
+  (function string string))
+(define-extern string<?
+  "Slightly incorrect ordering of strings."
+  (function string string symbol))
+(define-extern string>?
+  "Slightly incorrect ordering of strings."
+  (function string string symbol))
+(define-extern string<=?
+  "Slightly incorrect ordering of strings."
+  (function string string symbol))
+(define-extern string>=?
+  "Slightly incorrect ordering of strings."
+  (function string string symbol))
 (define-extern *string-tmp-str* string)
-(define-extern string-skip-to-char (function (pointer uint8) uint (pointer uint8)))
-(define-extern string-cat-to-last-char (function string string uint (pointer uint8)))
-(define-extern string-skip-whitespace (function (pointer uint8) (pointer uint8)))
-(define-extern string-suck-up! (function string (pointer uint8) symbol))
-(define-extern string-strip-leading-whitespace! (function string symbol))
-(define-extern string-strip-trailing-whitespace! (function string symbol))
-(define-extern string-strip-whitespace! (function string symbol))
+(define-extern string-skip-to-char
+  "Advance to the given character."
+  (function (pointer uint8) uint (pointer uint8)))
+(define-extern string-cat-to-last-char
+  "Append append-str to end of base-str, up to the last occurance of char"
+  (function string string uint (pointer uint8)))
+(define-extern string-skip-whitespace
+  "Jump over whitespace chars."
+  (function (pointer uint8) (pointer uint8)))
+(define-extern string-suck-up!
+  "Move the string forward so the pointer is now at the beginning."
+  (function string (pointer uint8) symbol))
+(define-extern string-strip-leading-whitespace!
+  "Strip leading whitespace."
+  (function string symbol))
+(define-extern string-strip-trailing-whitespace!
+  "String trailing whitespace."
+  (function string symbol))
+(define-extern string-strip-whitespace!
+  "Strip whitespace from the beginning and end of a string"
+  (function string symbol))
 (define-extern string-upcase (function string string none))
 (define-extern string-get-arg!! (function string string symbol))
-(define-extern string->int (function string int))
-(define-extern string->float (function string float))
+(define-extern string->int
+  "Convert string to int."
+  (function string int))
+(define-extern string->float
+  "Convert string to float. Finally implemented!"
+  (function string float))
 (define-extern string-get-int32!! (function (pointer int32) string symbol))
 (define-extern string-get-float!! (function (pointer float) string symbol))
 (define-extern string-get-flag!! (function (pointer symbol) string string string symbol))
@@ -885,46 +1113,124 @@
   :flag-assert         #x900000008
   )
 
-(define-extern truncate (function float float))
-(define-extern floor (function float float))
-(define-extern ceil (function float float))
-(define-extern integral? (function float symbol))
-(define-extern fractional-part (function float float))
-(define-extern sawtooth-wave (function float float))
-(define-extern triangle-wave (function float float))
-(define-extern log-x-plus-1-order9 (function float float))
-(define-extern logf (function float float))
-(define-extern log2f (function float float))
+(define-extern truncate
+  "Round (toward zero) to an integer.
+  @param arg0 float to truncate"
+  (function float float))
+(define-extern floor
+  "Round (down) to an integer"
+  (function float float))
+(define-extern ceil
+  "Round (up) to an integer"
+  (function float float))
+(define-extern integral?
+  "Is this number an integer?"
+  (function float symbol))
+(define-extern fractional-part
+  "Get the fractional part of a float."
+  (function float float))
+(define-extern sawtooth-wave
+  "Sample a sawtooth with period 1. In range (0, 1)"
+  (function float float))
+(define-extern triangle-wave
+  "Sample a triangle wave. Period is 4, in range (-1, 1) (so slope is 1 or -1)."
+  (function float float))
+(define-extern log-x-plus-1-order9
+  "Fast approximation of ln(x + 1). Probably only accurate for x in [0, 1]."
+  (function float float))
+(define-extern logf
+  "Natural log."
+  (function float float))
+(define-extern log2f
+  "Log base 2."
+  (function float float))
 (define-extern exp-slead (pointer float))
 (define-extern exp-strail (pointer float))
 (define-extern exp (function float float))
-(define-extern pow (function float float float))
-(define-extern print-exp (function float none))
+(define-extern pow
+  "Compute arg0^arg1"
+  (function float float float))
+(define-extern print-exp
+  "Print in the format AeB where A is in the range (1, 10)"
+  (function float none))
 (define-extern print-time (function object time-frame none))
 (define-extern log2 (function int int))
-(define-extern seek (function float float float float))
-(define-extern seek-ease (function float float float float float float))
-(define-extern seek-ease-in-out (function float float float float float float float float))
-(define-extern lerp (function float float float float))
-(define-extern lerp-scale-old (function float float float float float float))
+(define-extern seek
+  "Move arg0 toward arg1 by at most arg2."
+  (function float float float float))
+(define-extern seek-ease
+  "Move arg0 toward arg1, and slow down before reaching the end.
+  When farther than arg3 away, move by at most arg2.
+  When closer than arg3, linearly ramp down the movement amount from arg2 to 0 but no lower than arg4."
+  (function float float float float float float))
+(define-extern seek-ease-in-out
+  "Move arg0 toward arg2, and slow down at the start and end.
+  When within arg4 of arg1 (at the beginning of movement), ramp up speed, with a minimum speed of arg6
+  When within arg5 of arg2 (at the end of movement), ramp down speed, with a minimum speed of arg5
+  Normally, move at most arg3"
+  (function float float float float float float float float))
+(define-extern lerp
+  "Linearly interpolate between arg0 and arg1."
+  (function float float float float))
+(define-extern lerp-scale-old
+  "Linearly remap arg2 in [arg3, arg4] to [arg0, arg1].
+  This is the jak 1 implementation, which I claimed was a bad implementation..."
+  (function float float float float float float))
 (define-extern lerp-scale (function float float float float float float))
-(define-extern lerp-clamp (function float float float float))
-(define-extern seekl (function int int int int))
-(define-extern rand-vu-init (function float float))
+(define-extern lerp-clamp
+  "Linearly interpolate between arg0 and arg1. arg2 is clamped to [0, 1]"
+  (function float float float float))
+(define-extern seekl
+  "Move arg0 toward arg1, by at most arg2."
+  (function int int int int))
+(define-extern rand-vu-init
+  "Initialize the VU0 random generator."
+  (function float float))
 (define-extern rand-vu (function float))
-(define-extern rand-vu-nostep  (function float))
-(define-extern rand-vu-float-range (function float float float))
-(define-extern rand-vu-percent? (function float symbol))
-(define-extern rand-vu-int-range (function int int int))
-(define-extern rand-vu-int-count (function int int))
-(define-extern rand-vu-int-count-excluding (function int int int))
-(define-extern rand-vu-int-range-exclude (function int int int int))
+(define-extern rand-vu-nostep
+  "Get the number currently in the random generator.
+  This will be equal to the last call of (rand-vu).
+  This will not update the random generator."
+   (function float))
+(define-extern rand-vu-float-range
+  "Get a random float in between arg0 and arg1."
+  (function float float float))
+(define-extern rand-vu-percent?
+  "Get a boolean that's true with the given probability (in 0, 1)."
+  (function float symbol))
+(define-extern rand-vu-int-range
+  "Get an integer in the given range (inclusive)."
+  (function int int int))
+(define-extern rand-vu-int-count
+  "Get an integer in the range [0, max)."
+  (function int int))
+(define-extern rand-vu-int-count-excluding
+  "Get an integer in the range [0, arg0).
+  If bit n is set in arg1, exclude this value from being returned."
+  (function int int int))
+(define-extern rand-vu-int-range-exclude
+  "Get an integer in the range [0, arg0), excluding arg2.
+  Note that this doesn't use bits like rand-vu-int-count-excluding."
+  (function int int int int))
 (define-extern *random-generator*  random-generator)
 (define-extern rand-uint31-gen (function random-generator uint))
-(define-extern cube-root (function float float))
-(define-extern int-noise (function int float))
-(define-extern smooth-step (function float float))
-(define-extern smooth-interp (function float float float float float float))
+(define-extern cube-root
+  "Cube root with cool trick that I don't understand."
+  (function float float))
+(define-extern int-noise
+  "Generate random-ish floats in range -1, 1."
+  (function int float))
+(define-extern smooth-step
+  "Interpolate between 0, 1 with a cubic polynomial.
+  These are picked so f(0) = 0, f(1) = 1, f'(0) = f'(1) = 0."
+  (function float float))
+(define-extern smooth-interp
+  "Remap arg2 from (arg3, arg4) to (arg0, arg1), using cubic interpolation.
+  Satisfies:
+  - f(arg3) = arg0
+  - f(arg4) = arg1
+  - f'(arg3) = f'(arg4) = 0"
+  (function float float float float float float))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; vector-h                       ;;
@@ -940,11 +1246,11 @@
   :size-assert         #xd
   :flag-assert         #xd0000000d
   (:methods
-    (new (symbol type int) _type_) ;; 0
-    (get-bit (_type_ int) symbol) ;; 9
-    (clear-bit (_type_ int) int) ;; 10
-    (set-bit (_type_ int) int) ;; 11
-    (clear-all! (_type_) _type_) ;; 12
+    (new "Allocate a new bit-array with room arg0 bits." (symbol type int) _type_) ;; 0
+    (get-bit "Get the nth bit as a boolean." (_type_ int) symbol) ;; 9
+    (clear-bit "Set the nth bit to 0." (_type_ int) int) ;; 10
+    (set-bit "Set the nth bit to 1." (_type_ int) int) ;; 11
+    (clear-all! "Set all bits to 0." (_type_) _type_) ;; 12
     )
   )
 
@@ -1339,15 +1645,36 @@
 (define-extern *y-vector* vector)
 (define-extern *z-vector* vector)
 (define-extern *up-vector* vector)
-(define-extern vector-dot (function vector vector float))
-(define-extern vector-dot-vu (function vector vector float))
-(define-extern vector4-dot (function vector vector float))
-(define-extern vector4-dot-vu (function vector vector float))
-(define-extern vector+! (function vector vector vector vector))
-(define-extern vector-! (function vector vector vector vector))
-(define-extern vector-zero! (function vector vector))
-(define-extern vector-reset! (function vector vector))
-(define-extern vector-copy! (function vector vector vector))
+(define-extern vector-dot
+  "Take the dot product of two vectors.
+  Only does the x, y, z compoments.
+  Originally handwritten assembly to space out loads and use FPU accumulator"
+  (function vector vector float))
+(define-extern vector-dot-vu
+  "Take the dot product (xyz only). Using VU0."
+  (function vector vector float))
+(define-extern vector4-dot
+  "Take the dot product of two vectors.
+  Does the x, y, z, and w compoments"
+  (function vector vector float))
+(define-extern vector4-dot-vu
+  "Take the dot product (xyzw). Using VU0."
+  (function vector vector float))
+(define-extern vector+!
+  "Set dst = a + b. The w component of dst is set to 0."
+  (function vector vector vector vector))
+(define-extern vector-!
+  "Set dst = a - b. The w componenent of dst is set to 0."
+  (function vector vector vector vector))
+(define-extern vector-zero!
+  "Set xyzw to 0."
+  (function vector vector))
+(define-extern vector-reset!
+  "Set vector to <0,0,0,1>."
+  (function vector vector))
+(define-extern vector-copy!
+  "Copy arg1 to arg0."
+  (function vector vector vector))
 (define-extern vector-length< (function vector float symbol))
 (define-extern vector-length> (function vector float symbol))
 (define-extern *zero-vector* vector)
@@ -1369,18 +1696,24 @@
   :size-assert         #x20
   :flag-assert         #x1500000020
   (:methods
-    (add-spheres! (_type_ (inline-array sphere) int) int) ;; 9
-    (add-box! (_type_ bounding-box) int) ;; 10
-    (add-point! (_type_ vector) none) ;; 11
-    (intersects-line-segment? (_type_ vector vector) symbol) ;; 12
-    (set-from-point-offset! (_type_ vector vector) none) ;; 13
-    (set-from-point-offset-pad! (_type_ vector vector float) int) ;; 14
-    (set-to-point! (_type_ vector) none) ;; 15
-    (set-from-sphere! (_type_ sphere) none) ;; 16
-    (set-from-spheres! (_type_ (inline-array sphere) int) int) ;; 17
-    (get-bounding-sphere (_type_ vector) vector) ;; 18
-    (inside-xyz? (bounding-box vector) symbol) ;; 19
-    (inside-xz? (bounding-box vector) symbol) ;; 20
+    (add-spheres! "Add count spheres." (_type_ (inline-array sphere) int) int) ;; 9
+    (add-box! "Expand the box as needed to contain the given box." (_type_ bounding-box) int) ;; 10
+    (add-point! "Expand the box as needed to contain the given point." (_type_ vector) none) ;; 11
+    (intersects-line-segment?
+      "Check intersection in xz plane, using liang-barsky. Not sure if this actually
+       a useful check or not..."
+      (_type_ vector vector) symbol) ;; 12
+    (set-from-point-offset! "Set to the smallest box containing arg0, (arg0 + arg1)" (_type_ vector vector) none) ;; 13
+    (set-from-point-offset-pad! "Set the box to contain arg0, arg0 + offset, with some padding." (_type_ vector vector float) int) ;; 14
+    (set-to-point! "Set the box to be a single point." (_type_ vector) none) ;; 15
+    (set-from-sphere! "Set the box to contain a single sphere." (_type_ sphere) none) ;; 16
+    (set-from-spheres!
+      "Reset box to hold the given spheres.
+       Note: this implementation could be optimized."
+      (_type_ (inline-array sphere) int) int) ;; 17
+    (get-bounding-sphere "Get a bounding sphere for a bounding box." (_type_ vector) vector) ;; 18
+    (inside-xyz? "Is the point in the box?" (bounding-box vector) symbol) ;; 19
+    (inside-xz? "Is the point in the box? Check xz only." (bounding-box vector) symbol) ;; 20
     )
   )
 
@@ -1422,6 +1755,9 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (deftype matrix (structure)
+  "A 4x4 matrix, stored in row-major order.
+   some, but not all, functions assume that a matrix is an affine transform.
+   others assume that the rotation has no scale or shear (and that its inverse is its transpose)."
   ((data   float   16          :offset-assert 0 :score -10)
    (vector vector  4  :inline  :offset        0)
    (quad   uint128 4           :offset        0)
@@ -1431,11 +1767,15 @@
   :size-assert         #x40
   :flag-assert         #xa00000040
   (:methods
-    (transform-vectors! (_type_ (inline-array vector) (inline-array vector) int) none) ;; 9
+    (transform-vectors! "Transform many vectors. This acts like w = 1, even if it isn't. The value of w is copied." (_type_ (inline-array vector) (inline-array vector) int) none) ;; 9
     )
   )
 
 (deftype matrix3 (structure)
+  "A 3x3 matrix, stored in row-major order.
+   NOTE: the rows each have an extra 4-bytes of padding,
+   so this is really a 3x4 matrix.
+   This type is rarely used."
   ((data   float   12 :offset-assert 0 :score -10)
    (vector vector  3 :inline :offset        0)
    (quad   uint128 3  :offset        0)
@@ -1446,6 +1786,11 @@
   )
 
 (deftype matrix4h (structure)
+  "A matrix stored using 16-bit integers.
+   Note that these usually have different scaling for the 4th row which
+   contains the translation in an affine transform.
+   So you generally should not unpack these to floats without knowing where they came from
+   and how they were originally packed (for example, in tie/shrub)."
   ((data     int16    16         :offset-assert 0)
    (vector4h vector4h 4  :inline :offset        0)
    (long     int64    4          :offset        0)
@@ -1455,13 +1800,14 @@
   :flag-assert         #x900000020
   )
 
-(define-extern matrix-copy! (function matrix matrix matrix))
+(define-extern matrix-copy! "Copy arg1 to arg0" (function matrix matrix matrix))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; quaternion-h                   ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (deftype quaternion (structure)
+  "Quaternion. Stored in xyzw order."
   ((data float   4       :offset-assert 0 :score -1)
    (x    float           :offset        0)
    (y    float           :offset        4)
@@ -1482,13 +1828,19 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (deftype euler-angles (vector)
+  "Just uses the same xyzw and data array as vector.
+   The `w` stores an integer that seems to have
+   bitfields for... something? Like maybe the order?
+   Euler angles are mostly unused, and the code is a bit of disaster."
   ()
   :method-count-assert 9
   :size-assert         #x10
   :flag-assert         #x900000010
   )
 
-(define-extern EulSafe (array int32))
+(define-extern EulSafe
+  "Maybe euler angle storage orders?
+   What is this naming convention?" (array int32))
 (define-extern EulNext (array int32))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -1496,6 +1848,10 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (deftype transform (structure)
+  "Transformation. w components of vectors should be 1.0
+   This can represent any rotation, translation, and scaling.
+   Note that the scaling is applied before rotation
+   (meaning it scales along the axes of the pre-transformed frame)."
   ((trans vector :inline :offset-assert 0)
    (rot   vector :inline :offset-assert 16)
    (scale vector :inline :offset-assert 32)
@@ -1506,6 +1862,9 @@
   )
 
 (deftype trs (basic)
+  "Like transform, but it's a basic.
+   Note that the trsq child type overrides this rotation with a quaternion.
+   usage of the plain trs is very limited, at least in Jak 1."
   ((trans vector :inline :offset-assert 16)
    (rot   vector :inline :offset-assert 32)
    (scale vector :inline :offset-assert 48)
@@ -1577,6 +1936,15 @@
   )
 
 (deftype trsqv (trsq)
+  "A transform with:
+  - type information (child of [[basic]])
+  - rotation stored as quaternion
+  - velocity information.
+  This is a very commonly used type to represent the position of an in-game object.
+  The `root` of a process-drawable (the parent 'in-game object' type) is a [[trsqv]].
+  Additionally, the collision system uses [[trsqv]] as the parent type for foreground
+  collision objects ([[collide-shape]], [[collide-shape-moving]]).
+  As a result, this type has a lot of weird methods and extra stuff hidden in it."
   ((pause-adjust-distance meters             :offset 4)
    (nav-radius            meters             :offset 8)
    (transv                vector     :inline :offset-assert 64)
@@ -1604,8 +1972,13 @@
     (point-toward-point-clear-roll-pitch! (_type_ vector) quaternion) ;; 20
     (rot->dir-targ! (_type_) quaternion) ;; 21
     (y-angle (_type_) float) ;; 22
-    (global-y-angle-to-point (_type_ vector) float) ;; 23
-    (relative-y-angle-to-point (_type_ vector) float) ;; 24
+    (global-y-angle-to-point
+      "Get the angle in the xz plane from the position of this trsqv to the point arg0
+       (ignores our current yaw)."(_type_ vector) float) ;; 23
+    (relative-y-angle-to-point
+      "Get the y angle between the current orientation and arg0
+       (how much we'd have to yaw to point at arg0)."
+       (_type_ vector) float) ;; 24
     (roll-relative-to-gravity (_type_) float) ;; 25
     (set-and-limit-velocity
       "TODO - arg1 is an bitfield of some sort"
@@ -1628,197 +2001,461 @@
   :flag-assert         #x900000008
   )
 
-(define-extern box-vector-enside? (function bounding-box vector symbol))
-(define-extern box-vector-inside? (function bounding-box vector symbol))
-(define-extern liang-barsky-line-clipt (function liang-barsky-line-clip-params float float symbol))
+(define-extern box-vector-enside?
+  "Is the point in the box? On the edge doesn't count."
+  (function bounding-box vector symbol))
+(define-extern box-vector-inside?
+  "Is the point in the box? On the edge counts."
+  (function bounding-box vector symbol))
+(define-extern liang-barsky-line-clipt
+  "Clip test in 1 dimension. Is arg1 in arg2?"
+  (function liang-barsky-line-clip-params float float symbol))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; matrix                         ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(define-extern matrix-identity! (function matrix matrix))
+(define-extern matrix-identity! "Set dst to the identity matrix." (function matrix matrix))
 (define-extern *identity-matrix* matrix)
 (define-extern *hermite-matrix* matrix)
-(define-extern matrix+! (function matrix matrix matrix matrix))
-(define-extern matrix-! (function matrix matrix matrix matrix))
-(define-extern matrix*! (function matrix matrix matrix matrix))
-(define-extern matrixp*! (function matrix matrix matrix matrix))
-(define-extern vector-matrix*! (function vector vector matrix vector))
+(define-extern matrix+!
+  "Set dst = src1 + src2. It is okay for any arguments to be the same data.
+   This is not an efficient implementation." (function matrix matrix matrix matrix))
+(define-extern matrix-!
+  "Set dst = src1 - src1. It is okay for any arugments to be the same data.
+   This is not an efficient implementation." (function matrix matrix matrix matrix))
+(define-extern matrix*!
+  "Set dst = src1 * src2. It is okay for any arguments to be the same data.
+   This is a moderately efficient implementation." (function matrix matrix matrix matrix))
+(define-extern matrixp*!
+  "Set dst = src1 * src2. NOTE: this function is a wrapper around matrix*!
+   that adds no additional functionality. It seems to be a leftover from
+   a time when matrix*! wasn't safe to use in place. This is unused." (function matrix matrix matrix matrix))
+(define-extern vector-matrix*! "Set dst = vec * mat. dst may be equal to src." (function vector vector matrix vector))
 (define-extern vector-rotate*! (function vector vector matrix vector))
-(define-extern vector3s-matrix*! (function vector3s vector3s matrix vector3s))
-(define-extern vector3s-rotate*! (function vector3s vector3s matrix vector3s))
-(define-extern matrix-transpose! (function matrix matrix matrix))
-(define-extern matrix-inverse-of-rot-trans! (function matrix matrix matrix))
-(define-extern matrix-4x4-inverse! (function matrix matrix matrix))
-(define-extern matrix-translate! (function matrix vector matrix))
-(define-extern matrix-translate+! (function matrix matrix vector matrix))
-(define-extern matrix-scale! (function matrix vector matrix))
-(define-extern scale-matrix! (function matrix vector matrix matrix))
-(define-extern matrix-inv-scale! (function matrix vector matrix))
-(define-extern column-scale-matrix! (function matrix vector matrix matrix))
-(define-extern matrix-rotate-x! (function matrix float matrix))
-(define-extern matrix-rotate-y! (function matrix float matrix))
-(define-extern matrix-rotate-z! (function matrix float matrix))
-(define-extern matrix-rotate-zyx! (function matrix vector matrix))
-(define-extern matrix-rotate-xyz-2! (function matrix vector matrix))
-(define-extern matrix-rotate-xyz! (function matrix vector matrix))
-(define-extern matrix-rotate-zxy! (function matrix vector matrix))
-(define-extern matrix-rotate-yxz! (function matrix vector matrix))
-(define-extern matrix-rotate-yzx! (function matrix vector matrix))
-(define-extern matrix-rotate-yxy! (function matrix vector matrix))
-(define-extern matrix-rotate-yx! (function matrix float float matrix))
-(define-extern matrix-axis-sin-cos-vu! "@unused" (function matrix vector float float none))
-(define-extern matrix-axis-sin-cos! (function matrix vector float float matrix))
-(define-extern matrix-axis-angle! (function matrix vector float matrix))
-(define-extern matrix-lerp! (function matrix matrix matrix float matrix))
-(define-extern matrix-3x3-determinant (function matrix float))
-(define-extern matrix3-determinant (function matrix float))
-(define-extern matrix-3x3-inverse! (function matrix matrix matrix))
-(define-extern matrix-3x3-inverse-transpose! (function matrix matrix matrix))
-(define-extern matrix3-inverse-transpose! (function matrix matrix matrix))
-(define-extern matrix-3x3-normalize! (function matrix matrix matrix))
-(define-extern matrix-4x4-determinant (function matrix float))
-(define-extern matrix-4x4-inverse-transpose! (function matrix matrix matrix))
-(define-extern matrix-y-angle (function matrix float))
-(define-extern matrix->trans (function matrix vector vector))
-(define-extern matrix<-trans (function matrix vector matrix))
-(define-extern matrix->scale (function matrix vector vector))
-(define-extern matrix<-scale (function matrix vector matrix))
-(define-extern matrix->quat (function matrix quaternion quaternion))
-(define-extern matrix<-quat (function matrix quaternion matrix))
-(define-extern matrix->transformq (function transformq matrix transformq))
-(define-extern matrix-mirror! (function matrix vector vector matrix))
+(define-extern vector3s-matrix*!
+  "Set dst to be ([src 1.0] * mat).xyz.  Doesn't touch the w of dst.
+  dst and vec can be the same memory"
+  (function vector3s vector3s matrix vector3s))
+(define-extern vector3s-rotate*!
+  "Set dst to vec rotated by the rotation in the homogeneous transform mat.
+  mat should not have a scale/shear (the upper 3x3 should be a pure rotation)."
+  (function vector3s vector3s matrix vector3s))
+(define-extern matrix-transpose! "Set dst = src^T. src and dst can be the same." (function matrix matrix matrix))
+(define-extern matrix-inverse-of-rot-trans!
+  "Set dst = src^-1, assuming src is a homogeneous tranform with only rotation/translation.
+   NOTE: THIS FUNCTION REQUIRES dst != src" (function matrix matrix matrix))
+(define-extern matrix-4x4-inverse!
+  "Invert a 4x4 matrix. This assumes that the input is a homogeneous transform.
+   Src and dst can be the same." (function matrix matrix matrix))
+(define-extern matrix-translate!
+  "Set dst to a homogeneous transform with only a translation of trans."
+  (function matrix vector matrix))
+(define-extern matrix-translate+!
+  "Add the given translation to the translation of homogenous transform mat src
+   and store in dst.  It is okay for dst = src." (function matrix matrix vector matrix))
+(define-extern matrix-scale!
+  "Set dst to a homogenous transform with only a scale. The x,y,z components
+   of scale become the x,y,z scaling factors" (function matrix vector matrix))
+(define-extern scale-matrix!
+  "Scale an existing matrix. Okay for dst = src. The scaling is applied per row.
+   This means the x component of scale is used to scale the first row of src.
+   The w component of scale is used." (function matrix vector matrix matrix))
+(define-extern matrix-inv-scale!
+  "Set dst to a homogeneous transform with only a scale.
+   The x,y,z components of scale are inverted and used as the x,y,z scaling factors" (function matrix vector matrix))
+(define-extern column-scale-matrix!
+  "Scale an existing matrix. Okay for dst = src. The scaling is applied column-wise.
+   Meaning the x component of scale will scale the first column of src." (function matrix vector matrix matrix))
+(define-extern matrix-rotate-x!
+  "Set dst to a homogeneous transform matrix for a rotation around the x-axis (degrees)." (function matrix float matrix))
+(define-extern matrix-rotate-y!
+  "Set dst to a homoegeneous transform matrix for a rotation around the y axis (degrees)." (function matrix float matrix))
+(define-extern matrix-rotate-z!
+  "Set dst to a homogeneous transform matrix for a rotation around the z-axis (degrees)." (function matrix float matrix))
+(define-extern matrix-rotate-zyx! "Rotate in z,y,x order." (function matrix vector matrix))
+(define-extern matrix-rotate-xyz-2!
+  "Jak 1 version of matrix-rotate-xyz. Slower than the one below."
+  (function matrix vector matrix))
+(define-extern matrix-rotate-xyz! "Rotate in x,y,z order." (function matrix vector matrix))
+(define-extern matrix-rotate-zxy! "Rotate in z,x,y order." (function matrix vector matrix))
+(define-extern matrix-rotate-yxz! "Rotate in y,x,z order." (function matrix vector matrix))
+(define-extern matrix-rotate-yzx! "Rotate in y,z,x order." (function matrix vector matrix))
+(define-extern matrix-rotate-yxy!
+  "Rotate. I believe in yxy order? Compared to the other rotations, this one
+   is quite a bit more optimized and avoid repeated trig operations."
+  (function matrix vector matrix))
+(define-extern matrix-rotate-yx! "Rotate by y then x." (function matrix float float matrix))
+(define-extern matrix-axis-sin-cos-vu!
+  "Create an axis-angle rotation matrix. But given the sin/cos of the angle. Uses the VU." (function matrix vector float float none))
+(define-extern matrix-axis-sin-cos!
+  "Create an axis-angle rotation matrix. But given the sin/cos of the angle." (function matrix vector float float matrix))
+(define-extern matrix-axis-angle!
+  "Create an axis-angle rotation matrix."
+  (function matrix vector float matrix))
+(define-extern matrix-lerp! "Lerp an entire matrix, coefficient-wise." (function matrix matrix matrix float matrix))
+(define-extern matrix-3x3-determinant "Compute the determinant of a 3x3 matrix." (function matrix float))
+(define-extern matrix3-determinant "Unused. Not sure if this has limitations compared to the above version." (function matrix float))
+(define-extern matrix-3x3-inverse! "Compute the inverse of a 3x3 matrix. Not very efficient.
+   Requires src != dst." (function matrix matrix matrix))
+(define-extern matrix-3x3-inverse-transpose! "Invert and transpose.
+   Requires dst != src." (function matrix matrix matrix))
+(define-extern matrix3-inverse-transpose! "Unused. Not sure if this has limitations compared to other version." (function matrix matrix matrix))
+(define-extern matrix-3x3-normalize! "Unused." (function matrix matrix matrix))
+(define-extern matrix-4x4-determinant
+  "Take the determinant of a 4x4 matrix, but this is wrong." (function matrix float))
+(define-extern matrix-4x4-inverse-transpose!
+  "Invert and transpose an entire 4x4. I think has no restrictions, other than dst != src. Unused.
+   The answer is wrong. The determinant function is wrong." (function matrix matrix matrix))
+(define-extern matrix-y-angle
+  "If mat has its upper 3x3 as a rotation, gets the y axis rotation." (function matrix float))
+(define-extern matrix->trans
+  "Multiply xyz by 1/w."
+  (function matrix vector vector))
+(define-extern matrix<-trans
+  "Set the translation."
+  (function matrix vector matrix))
+(define-extern matrix->scale "Get the scale of a matrix." (function matrix vector vector))
+(define-extern matrix<-scale "Set the scale of a matrix by rescaling." (function matrix vector matrix))
+(define-extern matrix->quat
+  "Convert matrix to quaternion, works for matrix with scale.
+   unlike matrix->quaternion." (function matrix quaternion quaternion))
+(define-extern matrix<-quat "Modify the rotation part of a transform." (function matrix quaternion matrix))
+(define-extern matrix->transformq
+  "Create a transformq from a matrix. Allowing scale, etc." (function transformq matrix transformq))
+(define-extern matrix-mirror! "Make a matrix that mirrors. Arguments are unclear." (function matrix vector vector matrix))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; transform                      ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(define-extern transform-matrix-calc! (function transform matrix matrix))
-(define-extern transform-matrix-parent-calc! (function transform matrix vector matrix))
-(define-extern trs-matrix-calc! (function trs matrix matrix))
+(define-extern transform-matrix-calc!
+  "Convert a transform to matrix. Not efficient, and the output is the second arg."
+  (function transform matrix matrix))
+(define-extern transform-matrix-parent-calc!
+  "Convert a transform to a matrix, applying an inverse scaling."
+  (function transform matrix vector matrix))
+(define-extern trs-matrix-calc!
+  "Convert a trs to a matrix."
+  (function trs matrix matrix))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; quaternion                     ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(define-extern quaternion-axis-angle! (function quaternion float float float float quaternion))
-(define-extern quaternion-vector-angle! (function quaternion vector float quaternion))
-(define-extern vector-angle<-quaternion! (function vector quaternion vector))
-(define-extern quaternion-look-at! (function quaternion vector vector quaternion))
-(define-extern quaternion-zero! (function quaternion quaternion))
-(define-extern quaternion-identity! (function quaternion quaternion))
-(define-extern quaternion-i! (function quaternion quaternion))
-(define-extern quaternion-j! (function quaternion quaternion))
-(define-extern quaternion-k! (function quaternion quaternion))
-(define-extern quaternion-copy! (function quaternion quaternion quaternion))
-(define-extern quaternion-set! (function quaternion float float float float quaternion))
-(define-extern quaternion+! (function quaternion quaternion quaternion quaternion))
-(define-extern quaternion-! (function quaternion quaternion quaternion quaternion))
-(define-extern quaternion-negate! (function quaternion quaternion quaternion))
-(define-extern quaternion-conjugate! (function quaternion quaternion quaternion))
-(define-extern quaternion-float*! (function quaternion quaternion float quaternion))
-(define-extern quaternion-float/! (function quaternion quaternion float quaternion))
-(define-extern quaternion-norm2 (function quaternion float))
-(define-extern quaternion-norm (function quaternion float))
-(define-extern quaternion-normalize! (function quaternion quaternion))
-(define-extern quaternion-inverse! (function quaternion quaternion quaternion))
-(define-extern quaternion-dot (function quaternion quaternion float))
-(define-extern quaternion*! (function quaternion quaternion quaternion quaternion))
-(define-extern quaternion-right-mult-matrix! (function matrix quaternion matrix))
-(define-extern quaternion-left-mult-matrix! (function matrix quaternion matrix))
-(define-extern quaternion->matrix (function matrix quaternion matrix))
-(define-extern quaternion->matrix-2 (function matrix quaternion matrix))
-(define-extern matrix->quaternion (function quaternion matrix quaternion))
-(define-extern matrix-with-scale->quaternion (function quaternion matrix quaternion))
-(define-extern quaternion-vector-len (function quaternion float))
-(define-extern quaternion-log! (function quaternion quaternion quaternion))
-(define-extern quaternion-exp! (function quaternion quaternion quaternion))
-(define-extern quaternion-slerp! (function quaternion quaternion quaternion float quaternion))
-(define-extern quaternion-pseudo-slerp! (function quaternion quaternion quaternion float quaternion))
-(define-extern quaternion-pseudo-seek (function quaternion quaternion quaternion float quaternion))
-(define-extern quaternion-smooth-seek! (function quaternion quaternion quaternion float quaternion))
-(define-extern quaternion-zxy! (function quaternion vector quaternion))
-(define-extern vector-x-quaternion! (function vector quaternion vector))
-(define-extern vector-y-quaternion! (function vector quaternion vector))
-(define-extern vector-z-quaternion! (function vector quaternion vector))
-(define-extern quaternion-x-angle (function quaternion float))
-(define-extern quaternion-y-angle (function quaternion float))
-(define-extern quaternion-z-angle (function quaternion float))
-(define-extern quaternion-vector-y-angle (function quaternion vector float))
-(define-extern quaternion-rotate-local-x! (function quaternion quaternion float quaternion))
-(define-extern quaternion-rotate-local-y! (function quaternion quaternion float quaternion))
-(define-extern quaternion-rotate-local-z! (function quaternion quaternion float quaternion))
-(define-extern quaternion-rotate-y! (function quaternion quaternion float quaternion))
-(define-extern quaternion-rotate-x! (function quaternion quaternion float quaternion))
-(define-extern quaternion-rotate-z! (function quaternion quaternion float quaternion))
-(define-extern quaternion-delta-y (function quaternion quaternion float))
+(define-extern quaternion-axis-angle!
+  "Construct a quaternion from an axis and angle. The axis should be normalized."
+  (function quaternion float float float float quaternion))
+(define-extern quaternion-vector-angle!
+  "Construct a quaternion from an axis and angle. The axis should be normalized."
+  (function quaternion vector float quaternion))
+(define-extern vector-angle<-quaternion!
+  "Convert the quaternion arg1 to axis-angle form and store in arg0 (angle goes in w)"
+  (function vector quaternion vector))
+(define-extern quaternion-look-at! "Look along arg1, with arg2 as up." (function quaternion vector vector quaternion))
+(define-extern quaternion-zero!
+  "Set quaternion to all 0's."
+  (function quaternion quaternion))
+(define-extern quaternion-identity!
+  "Set quaternion to 0,0,0,1 (identity)."
+  (function quaternion quaternion))
+(define-extern quaternion-i!
+  "Create unit i quaternion."
+  (function quaternion quaternion))
+(define-extern quaternion-j!
+  "Create unit j quaternion."
+  (function quaternion quaternion))
+(define-extern quaternion-k!
+  "Create unit k quaternion."
+  (function quaternion quaternion))
+(define-extern quaternion-copy!
+  "Set arg0 = arg1."
+  (function quaternion quaternion quaternion))
+(define-extern quaternion-set!
+  "Set arg0 = [arg1, arg2, arg3, arg4]."
+  (function quaternion float float float float quaternion))
+(define-extern quaternion+!
+  "Add quaternions as vectors."
+  (function quaternion quaternion quaternion quaternion))
+(define-extern quaternion-!
+  "Subtract quaternions as vectors."
+  (function quaternion quaternion quaternion quaternion))
+(define-extern quaternion-negate!
+  "Set arg0 = -arg1."
+  (function quaternion quaternion quaternion))
+(define-extern quaternion-conjugate!
+  "Set arg0 to the conjugate of arg1 (negate only ijk).
+  If arg1 is normalized, this is equivalent to the inverse
+  NOTE: this gives you the inverse rotation."
+  (function quaternion quaternion quaternion))
+(define-extern quaternion-float*!
+  "Multiply each element."
+  (function quaternion quaternion float quaternion))
+(define-extern quaternion-float/!
+  "Divide each element."
+  (function quaternion quaternion float quaternion))
+(define-extern quaternion-norm2
+  "Get the squared norm of a quaternion."
+  (function quaternion float))
+(define-extern quaternion-norm "Get the norm of a quaternion." (function quaternion float))
+(define-extern quaternion-normalize!
+  "Normalize a quaternion."
+  (function quaternion quaternion))
+(define-extern quaternion-inverse!
+  "Invert a quaternion. The inverse will satisfy q * q^-1 = identity, even if q is not normalized.
+  If your quaternion is normalized, it is faster/more accurate to do quaternion-conjugate!"
+  (function quaternion quaternion quaternion))
+(define-extern quaternion-dot
+  "Treat quaternions as vectors and take the dot product."
+  (function quaternion quaternion float))
+(define-extern quaternion*!
+  "Real quaternion multiplication."
+  (function quaternion quaternion quaternion quaternion))
+(define-extern quaternion-right-mult-matrix!
+  "Place quaternion coefficients into a matrix.
+   You can convert a quaternion to a matrix by taking the product of this
+   right-mult and left-mult matrix, but this method is not used.
+   Instead, quaternion->matrix is a more efficient implementation." (function matrix quaternion matrix))
+(define-extern quaternion-left-mult-matrix!
+  "Place quaternion coefficients into a matrix. Unused." (function matrix quaternion matrix))
+(define-extern quaternion->matrix "Convert quaternion to matrix." (function matrix quaternion matrix))
+(define-extern quaternion->matrix-2 "Unused alternate quaternion->matrix function." (function matrix quaternion matrix))
+(define-extern matrix->quaternion "Convert a rotation matrix to a quaternion." (function quaternion matrix quaternion))
+(define-extern matrix-with-scale->quaternion
+  "Convert a matrix with a rotation and scale into a quaternion (just the rotation)." (function quaternion matrix quaternion))
+(define-extern quaternion-vector-len
+  "Assuming quaternion is normalized, get the length of the xyz part."
+  (function quaternion float))
+(define-extern quaternion-log!
+  "Take the log of a quaternion. Unused."
+  (function quaternion quaternion quaternion))
+(define-extern quaternion-exp!
+  "Quaternion exponentiation. Unused."
+  (function quaternion quaternion quaternion))
+(define-extern quaternion-slerp!
+  "Real quaternion slerp. Spherical-linear interpolation is a nice way to interpolate
+  between quaternions."
+  (function quaternion quaternion quaternion float quaternion))
+(define-extern quaternion-pseudo-slerp!
+  "This is a bad interpolation between quaternions. It lerps then normalizes.
+  It will behave extremely poorly for 180 rotations.
+  It is unused."
+  (function quaternion quaternion quaternion float quaternion))
+(define-extern quaternion-pseudo-seek
+  "Seek one quaternion toward another. Not using real slerp, so this is only good if the quaternions
+  are pretty similar."
+  (function quaternion quaternion quaternion float quaternion))
+(define-extern quaternion-smooth-seek! "Another hacky rotation interpolation." (function quaternion quaternion quaternion float quaternion))
+(define-extern quaternion-zxy!
+  "Make a quaternion from a sequence of z, x, y axis rotations."
+  (function quaternion vector quaternion))
+(define-extern vector-x-quaternion!
+  "Get the first row of the rotation matrix for this quaternion."
+  (function vector quaternion vector))
+(define-extern vector-y-quaternion!
+  "Get the second row of the rotation matrix for this quaternion."
+  (function vector quaternion vector))
+(define-extern vector-z-quaternion!
+  "Get the third row of the rotation matrix for this quaternion."
+  (function vector quaternion vector))
+(define-extern quaternion-x-angle
+  "Get the x rotation angle. Not very efficient."
+  (function quaternion float))
+(define-extern quaternion-y-angle
+  "Get the y rotation angle. Not very efficient."
+  (function quaternion float))
+(define-extern quaternion-z-angle
+  "Get the z rotation angle. Not very efficient."
+  (function quaternion float))
+(define-extern quaternion-vector-y-angle
+  "Not sure. Angle between quaternion and axis, projected in xz plane?"
+  (function quaternion vector float))
+(define-extern quaternion-rotate-local-x!
+  "Rotate existing quaternion along x axis."
+  (function quaternion quaternion float quaternion))
+(define-extern quaternion-rotate-local-y!
+  "Rotate existing quaternion along y axis."
+  (function quaternion quaternion float quaternion))
+(define-extern quaternion-rotate-local-z!
+  "Rotate existing quaternion along z axis."
+  (function quaternion quaternion float quaternion))
+(define-extern quaternion-rotate-y!
+  "Rotate existing quaternion along y axis (right multiply)."
+  (function quaternion quaternion float quaternion))
+(define-extern quaternion-rotate-x!
+  "Rotate existing quaternion along x axis (right multiply)."
+  (function quaternion quaternion float quaternion))
+(define-extern quaternion-rotate-z!
+  "Rotate existing quaternion along z axis (right multiply)."
+  (function quaternion quaternion float quaternion))
+(define-extern quaternion-delta-y
+  "Difference in yaw between two quaternions."
+  (function quaternion quaternion float))
 (define-extern quaternion-rotate-y-to-vector! (function quaternion quaternion quaternion float quaternion))
-(define-extern vector-rotate-x! (function vector vector float vector))
-(define-extern vector-rotate-y! (function vector vector float vector))
-(define-extern vector-rotate-z! (function vector vector float vector))
-(define-extern vector-y-angle (function vector float))
-(define-extern vector-x-angle (function vector float))
-(define-extern quaternion<-rotate-y-vector (function quaternion vector quaternion))
-(define-extern quaternion-validate (function quaternion none))
-(define-extern quaternion-xz-angle (function quaternion float))
+(define-extern vector-rotate-x! "Rotate vector along x axis." (function vector vector float vector))
+(define-extern vector-rotate-y! "Rotate vector along y axis." (function vector vector float vector))
+(define-extern vector-rotate-z! "Rotate vector along z axis." (function vector vector float vector))
+(define-extern vector-y-angle
+  "Get the yaw angle of a vector."
+  (function vector float))
+(define-extern vector-x-angle
+  "Get the pitch angle of a vector."
+  (function vector float))
+(define-extern quaternion<-rotate-y-vector
+  "Create a quaternion representing only the yaw of the given vector."
+  (function quaternion vector quaternion))
+(define-extern quaternion-validate
+  "Verify that a quaternion is valid, print an error if the length is off by more than 1%.."
+  (function quaternion none))
+(define-extern quaternion-xz-angle
+  "Yet another function to compute the yaw of a quaternion. This is a particularly inefficient version."
+  (function quaternion float))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; euler                          ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(define-extern set-eul! (function euler-angles float float float int euler-angles))
-(define-extern eul->matrix (function matrix euler-angles matrix))
-(define-extern matrix->eul (function euler-angles matrix int euler-angles))
-(define-extern eul->quat (function quaternion euler-angles quaternion))
-(define-extern quat->eul (function euler-angles quaternion int euler-angles))
+(define-extern set-eul!
+  "Set euler angles and the flag bits."
+  (function euler-angles float float float int euler-angles))
+(define-extern eul->matrix
+  "Convert from euler angles to 4x4 matrix."
+  (function matrix euler-angles matrix))
+(define-extern matrix->eul
+  "Convert matrix to euler angles with given order flag.
+  Not clear how this works if the matrix has more than just a rotation."
+  (function euler-angles matrix int euler-angles))
+(define-extern eul->quat
+  "Convert euler angles to quaternion, not very efficient."
+  (function quaternion euler-angles quaternion))
+(define-extern quat->eul
+  "Convert quaternion to euler angles with given order, not very efficient."
+  (function euler-angles quaternion int euler-angles))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; trigonometry                   ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(define-extern radmod (function float float))
-(define-extern deg- (function float float float))
-(define-extern deg-diff (function float float float))
-(define-extern deg-seek (function float float float float))
-(define-extern deg-seek-smooth (function float float float float float))
-(define-extern deg-lerp-clamp (function float float float float))
+(define-extern radmod
+  "Wrap arg0 to be within (-pi, pi)."
+  (function float float))
+(define-extern deg-
+  "Compute arg0-arg1, unwrapped, using rotation units.
+  Result should be in the range (-180, 180)"
+  (function float float float))
+(define-extern deg-diff
+  "Very similar to the function above, but computes arg1 - arg0 instead."
+  (function float float float))
+(define-extern deg-seek
+  "Move in toward target by at most max-diff, using rotation units"
+  (function float float float float))
+(define-extern deg-seek-smooth
+  "Step amount of the way from in to target, by at most max-diff, using rotation units"
+  (function float float float float float))
+(define-extern deg-lerp-clamp
+  "Map [0, 1] to min-val, max-val, handling wrapping and saturating, using rotation units."
+  (function float float float float))
 (define-extern binary-table (array float))
 (define-extern sincos-table (array float))
-(define-extern sin (function float float))
-(define-extern sin-rad (function float float))
+(define-extern sin
+  "Compute the sine of an angle in rotation units. Unwraps it." (function float float))
+(define-extern sin-rad
+  "Compute the sine of an angle in radians.
+   No unwrap is done, should be in -pi, pi" (function float float))
 (define-extern *sin-poly-vec* vector)
 (define-extern *sin-poly-vec2* vector)
-(define-extern vector-sin-rad! (function vector vector vector))
-(define-extern cos-rad (function float float))
+(define-extern vector-sin-rad!
+  "Taylor series approximation of sine on all 4 elements in a vector.
+  Inputs should be in radians, in -pi to pi.
+  Somehow their coefficients are a little bit off.
+  Like the first coefficient, which should obviously be 1, is not quite 1."
+  (function vector vector vector))
+(define-extern cos-rad
+  "Cosine with taylor series. Input is in radians, in -pi, pi.
+   - TODO constants" (function float float))
 (define-extern *cos-poly-vec* vector)
-(define-extern vector-cos-rad! (function vector vector vector))
-(define-extern vector-sincos-rad! (function vector vector vector int))
-(define-extern sincos-rad! (function vector float int))
-(define-extern sincos! (function vector float int))
-(define-extern vector-rad<-vector-deg! (function vector vector none))
-(define-extern vector-rad<-vector-deg/2! (function vector vector int))
-(define-extern vector-sincos! (function vector vector vector int))
-(define-extern tan-rad (function float float))
-(define-extern cos (function float float))
-(define-extern tan (function float float))
-(define-extern atan0 (function float float float))
-(define-extern atan-series-rad (function float float))
-(define-extern atan-rad (function float float))
-(define-extern sign-bit (function int int))
-(define-extern sign-float (function float float))
-(define-extern sign (function float float))
-(define-extern atan2-rad (function float float float))
-(define-extern atan (function float float float))
-(define-extern asin (function float float))
-(define-extern acos (function float float))
-(define-extern acos-rad (function float float))
-(define-extern sinerp (function float float float float))
-(define-extern sinerp-clamp (function float float float float))
-(define-extern coserp (function float float float float))
-(define-extern coserp-clamp (function float float float float))
-(define-extern coserp180 (function float float float float))
-(define-extern coserp180-clamp (function float float float float))
-(define-extern ease-in-out (function int int float))
+(define-extern vector-cos-rad!
+  "Compute the cosine of all 4 vector elements.
+  Radians, with no wrapping. Uses taylor series with 4 coefficients."
+  (function vector vector vector))
+(define-extern vector-sincos-rad!
+  "Compute the sine and cosine of each element of src, storing it in dst-sin and dst-cos.
+  This is more efficient than separate calls to sin and cos.
+  Inputs should be radians in -pi to pi."
+  (function vector vector vector int))
+(define-extern sincos-rad!
+  "Compute the sine and cosine of x, store it in the output array.
+   Has the cosine bug." (function vector float int))
+(define-extern sincos!
+  "Compute the sine and cosine of x, store it in the output array.
+   The input is in rotation units, and is unwrapped properly.
+   Also has the cosine bug" (function vector float int))
+(define-extern vector-rad<-vector-deg!
+  "Convert a vector in rotation units to radians, and unwrap.
+  Input can be anything, output will be -2pi to pi."
+  (function vector vector none))
+(define-extern vector-rad<-vector-deg/2!
+  "Divide the input by two, and then convert from rotation units to radians, unwrapping.
+  Not sure why this really needs to be separate the from previous function..."
+  (function vector vector int))
+(define-extern vector-sincos!
+  "Compute sine and cosine of each element in a vector, in rotation units"
+  (function vector vector vector int))
+(define-extern tan-rad
+  "This function appears to be named wrong and actually operates on rotation units."
+  (function float float))
+(define-extern cos "Cosine of rotation units." (function float float))
+(define-extern tan "Correctly named tangent of rotation units." (function float float))
+(define-extern atan0
+  "Inverse tangent, to rotation units. y,x order. Does not handle signs correctly.
+   Do not use this function directly, instead use atan2." (function float float float))
+(define-extern atan-series-rad "A helper function for atan." (function float float))
+(define-extern atan-rad
+  "Inverse tangent in radians."
+  (function float float))
+(define-extern sign-bit
+  "Return 1 if bit 31 is set, otherwise 0."
+  (function int int))
+(define-extern sign-float
+  "Return 1 if arg0 is positive or zero, -1 otherwise.
+   Fast (no branching)." (function float float))
+(define-extern sign
+  "Similar to above, but returns 0 if input is 0.
+   But is more complicated." (function float float))
+(define-extern atan2-rad
+  "Atan for radians."
+  (function float float float))
+(define-extern atan "Atan for rotation units. Signs behave like atan.." (function float float float))
+(define-extern asin
+  "Inverse sine, rotation units."
+  (function float float))
+(define-extern acos
+  "Inverse cosine. Returns rotation units."
+  (function float float))
+(define-extern acos-rad
+  "Inverse cosine, radians."
+  (function float float))
+(define-extern sinerp
+  "Map amount to min,max using sine. Kinda weird, usually people use cosine."
+  (function float float float float))
+(define-extern sinerp-clamp
+  "Like sinerp, but clamp to min,max."
+  (function float float float float))
+(define-extern coserp
+  "Weird lerp with cosine (over 90 degrees?)."
+  (function float float float float))
+(define-extern coserp-clamp
+  "Weird 90 degree lerp with cosine, clamped to min,max."
+  (function float float float float))
+(define-extern coserp180
+  "Classic lerp with cosine."
+  (function float float float float))
+(define-extern coserp180-clamp
+  "Classic coserp with saturation."
+  (function float float float float))
+(define-extern ease-in-out
+  "Weird coserp like mapping from 0 to 1 as progress goes from 0 to total."
+  (function int int float))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; gsound-h                       ;;
@@ -2266,11 +2903,11 @@
   :size-assert         #x6c
   :flag-assert         #x100000006c
   (:methods
-    (new (symbol type basic vector) _type_) ;; 0
-    (update! (_type_) int) ;; 9
-    (change-sound! (_type_ sound-name) int) ;; 10
-    (update-trans! (_type_ vector) int) ;; 11
-    (update-vol! (_type_ float) int) ;; 12
+    (new "Set up ambient-sound. Can use an entity-actor (grabs from lump), sound-spec, or name as a string." (symbol type basic vector) _type_) ;; 0
+    (update! "Per-frame update of ambient sound." (_type_) int) ;; 9
+    (change-sound! "Change the sound being played." (_type_ sound-name) int) ;; 10
+    (update-trans! "Change the trans of the sound." (_type_ vector) int) ;; 11
+    (update-vol! "Change the volume of the sound." (_type_ float) int) ;; 12
     (update-pitch-mod! (_type_ float) none) ;; 13
     (set-falloff-far! (_type_ float) none) ;; 14
     (stop! (_type_) int) ;; 15
@@ -2292,6 +2929,8 @@
   )
 
 (deftype timer-mode (uint32)
+  "This matches the Tn_MODE register structure of the ps2 EE timers.
+   Only the lower 32 bits of these registers are usable, and the upper 16 hardwired to zero."
   ((clks  timer-clock-selection :offset 0 :size 2)
    (gate  uint8 :offset 2 :size 1) ;; gate function enable
    (gats  uint8 :offset 3 :size 1) ;; gate selection: 0 = hblank, 1 = vblank
@@ -2314,6 +2953,9 @@
   )
 
 (deftype timer-bank (structure)
+  "This matches an EE timer (without a HOLD register, timers 2 and 3).
+   Each register is 128-bits wide, but only the lower 32-bits are usable, and the upper
+   16-bits of that are hardwired to zero."
   ((count uint32      :offset-assert 0)
    (mode  timer-mode  :offset 16)
    (comp  uint32      :offset 32)
@@ -2324,6 +2966,7 @@
   )
 
 (deftype timer-hold-bank (timer-bank)
+  "This matches an EE timer (with a HOLD register, timers 0 and 1)."
   ((hold uint32  :offset 48)
    )
   :method-count-assert 9
@@ -2332,6 +2975,9 @@
   )
 
 (deftype stopwatch (basic)
+  "Stopwatches are used to measure CPU clock cycles.
+   They don't use the timer above, but instead the Count COP0 register,
+   which counts CPU clock cycles directly."
   ((prev-time-elapsed time-frame :offset-assert 8)
    (start-time        time-frame :offset-assert 16)
    (begin-level       int32      :offset-assert 24)
@@ -2342,7 +2988,9 @@
   )
 
 (define-extern *ticks-per-frame* int)
-(define-extern timer-init (function timer-bank timer-mode int))
+(define-extern timer-init
+  "Initiate a timer, start counting at a rate of 1 every 256 bus clocks (BUSCLK: ~147.456MHz)."
+  (function timer-bank timer-mode int))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; vif-h                          ;;
@@ -2421,6 +3069,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (deftype dma-chcr (uint32)
+  "Memory mapped DMA channel control register. Typically used to start and check on DMA transfer."
   ((dir uint8 :offset 0 :size 1) ;; 1 - from memory
    (mod uint8 :offset 2 :size 2) ;; normal, chain, interleave
    (asp uint8 :offset 4 :size 2) ;; none, 1, 2
@@ -2435,6 +3084,7 @@
   )
 
 (deftype dma-bank (structure)
+  "Bank of memory mapped DMA registers for a single channel. Used to control DMA."
   ((chcr dma-chcr  :offset 0)
    (madr uint32  :offset 16)
    (qwc  uint32  :offset 32)
@@ -2445,6 +3095,7 @@
   )
 
 (deftype dma-bank-source (dma-bank)
+  "DMA channel registers for a DMA channel supporting source-chain."
   ((tadr uint32  :offset 48)
    )
   :method-count-assert 9
@@ -2453,6 +3104,7 @@
   )
 
 (deftype dma-bank-vif (dma-bank-source)
+  "DMA channel registers for a DMA channel with call/ret stack."
   ((as0  uint32  :offset 64)
    (as1  uint32  :offset 80)
    )
@@ -2462,6 +3114,7 @@
   )
 
 (deftype dma-bank-spr (dma-bank-source)
+  "DMA channel registers for a DMA channel supporting scratchpad transfer."
   ((sadr uint32  :offset 128)
    )
   :method-count-assert 9
@@ -2470,6 +3123,7 @@
   )
 
 (deftype dma-ctrl (uint32)
+  "Main DMA control register, shared for all channels."
   ((dmae  uint8 :offset 0 :size 1)
    (rele  uint8 :offset 1 :size 1)
    (mfd   uint8 :offset 2 :size 2)
@@ -2495,6 +3149,7 @@
   )
 
 (deftype dma-bank-control (structure)
+  "Memory mapping for shared DMA registers."
   ((ctrl    dma-ctrl  :offset 0)
    (stat    uint32  :offset 16)
    (pcr     uint32  :offset 32)
@@ -2511,6 +3166,7 @@
   )
 
 (deftype vu-code-block (basic)
+  "Unused type for some VU code. vu-function is used instead."
   ((name         basic   :offset-assert 4)
    (code         uint32  :offset-assert 8)
    (size         int32   :offset-assert 12)
@@ -2541,6 +3197,7 @@
     )
 
 (deftype dma-tag (uint64)
+  "The 64-bit tag used by the DMA system."
   ((qwc uint16    :offset 0)           ;; quadword count
    (pce uint8     :offset 26 :size 2)  ;; priority (source mode)
    (id dma-tag-id :offset 28 :size 3)  ;; ID (what the tag means)
@@ -2554,6 +3211,7 @@
   )
 
 (deftype dma-bucket (structure)
+  "A linked list of DMA data, typically all in the same category. Used to organize the full DMA chain."
   ((tag   dma-tag             :offset-assert 0)
    (last  (pointer dma-tag)  :offset-assert 8)
    (dummy uint32             :offset-assert 12)
@@ -2639,6 +3297,7 @@
   )
 
 (deftype vif-stcycl-imm (uint16)
+  "The imm field of a VIF code using STCYCL, which adjusts the pattern for storing data."
   ((cl  uint8 :offset 0 :size 8)
    (wl  uint8 :offset 8 :size 8)
    )
@@ -2646,6 +3305,7 @@
   )
 
 (deftype vif-unpack-imm (uint16)
+  "The imm field of a VIF code using UNPACK, which transfers data to VU memory."
   ((addr  uint16 :offset 0  :size 10)
    (usn   uint8  :offset 14 :size 1)
    (flg   uint8  :offset 15 :size 1)
@@ -2654,6 +3314,7 @@
   )
 
 (deftype vif-tag (uint32)
+  "A tag consumed by the VIF, which accepts DMA data."
   ((imm uint16  :offset 0 :size 16)
    (num uint8   :offset 16 :size 8)
    (cmd vif-cmd :offset 24 :size 7)
@@ -2675,6 +3336,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (deftype video-params (structure)
+  "Parameters for the framebuffer."
   ((set-video-mode              symbol  :offset-assert 0)
    (reset-video-mode            symbol  :offset-assert 4)
    (display-fbp                 int32  :offset-assert 8)
@@ -3253,10 +3915,10 @@
   :size-assert         #x2030
   :flag-assert         #xd00002030
   (:methods
-    (get-total-time (_type_) int) ;; 9
-    (start-frame! (_type_) none) ;; 10
-    (start-segment! (_type_ symbol rgba) none) ;; 11
-    (end-segment! (_type_) none) ;; 12
+    (get-total-time "Get the duration of the top-level event (typically, the whole frame)" (_type_) int) ;; 9
+    (start-frame! "Restart the profiler for the start of a frame." (_type_) none) ;; 10
+    (start-segment! "Start an event." (_type_ symbol rgba) none) ;; 11
+    (end-segment! "Stop the most recently started event." (_type_) none) ;; 12
     )
   )
 
@@ -3269,9 +3931,9 @@
   :size-assert         #x8
   :flag-assert         #xc00000008
   (:methods
-    (setup-categories! (_type_) none) ;; 9
-    (draw-bars! (_type_ dma-buffer int) none) ;; 10
-    (draw-text! (_type_) none) ;; 11
+    (postprocess-data! "Create the collapsed summary of the collected data." (_type_) none) ;; 9
+    (draw-bars! "Generate DMA data for drawing the profile bars." (_type_ dma-buffer int) none) ;; 10
+    (draw-text! "Generate DMA data for drawing the profile information screen." (_type_) none) ;; 11
     )
   )
 
@@ -3404,20 +4066,34 @@
   )
 
 
-(define-extern dma-buffer-inplace-new (function dma-buffer int dma-buffer))
-(define-extern dma-buffer-length (function dma-buffer int))
-(define-extern dma-buffer-free (function dma-buffer int))
+(define-extern dma-buffer-inplace-new
+  "Create a dma-buffer in-place. Does not set the type of the dma-buffer object."
+  (function dma-buffer int dma-buffer))
+(define-extern dma-buffer-length
+  "Get length used in quadwords, rounded up."
+  (function dma-buffer int))
+(define-extern dma-buffer-free
+  "Get the number of free quadwords between base and end pointers."
+  (function dma-buffer int))
 (define-extern dma-buffer-add-vu-function (function dma-buffer vu-function int symbol))
-(define-extern dma-buffer-send (function dma-bank dma-buffer none))
-(define-extern dma-buffer-send-chain (function dma-bank-source dma-buffer none))
+(define-extern dma-buffer-send
+  "Send the DMA buffer! DOES NOT TRANSFER TAG, you probably want dma-buffer-send-chain instead."
+  (function dma-bank dma-buffer none))
+(define-extern dma-buffer-send-chain
+  "Send the DMA buffer! Sends the tags, so this is suitable for the main graphics chain."
+  (function dma-bank-source dma-buffer none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; dma-bucket                     ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(define-extern dma-buffer-add-buckets (function dma-buffer int (inline-array dma-bucket)))
-(define-extern dma-buffer-patch-buckets (function (inline-array dma-bucket) int (inline-array dma-bucket)))
-(define-extern dma-bucket-insert-tag (function (inline-array dma-bucket) bucket-id pointer (pointer dma-tag) pointer))
+(define-extern dma-buffer-add-buckets
+  "Initialize an array of dma-buckets in a DMA buffer."
+  (function dma-buffer int (inline-array dma-bucket)))
+(define-extern dma-buffer-patch-buckets "Patch together DMA buckets after they have been filled." (function (inline-array dma-bucket) int (inline-array dma-bucket)))
+(define-extern dma-bucket-insert-tag
+  "Add a dma chain to the bucket."
+  (function (inline-array dma-bucket) bucket-id pointer (pointer dma-tag) pointer))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; dma-disasm                     ;;
@@ -3437,11 +4113,16 @@
   )
 
 (define-extern *vif-disasm-table* (array vif-disasm-element))
-(define-extern disasm-vif-details (function symbol (pointer uint8) vif-cmd int symbol))
-(define-extern disasm-vif-tag (function (pointer vif-tag) int symbol symbol int))
-(define-extern disasm-dma-tag (function dma-tag symbol none))
+(define-extern disasm-vif-details "Disassemble the data stored in a vif unpack." (function symbol (pointer uint8) vif-cmd int symbol))
+(define-extern disasm-vif-tag "Disassemble vif tag, and possibly the associated data." (function (pointer vif-tag) int symbol symbol int))
+(define-extern disasm-dma-tag
+  "Disassemble just the 64-byte dma tag"
+  (function dma-tag symbol none))
 (define-extern *dma-disasm* symbol)
-(define-extern disasm-dma-list (function dma-packet symbol symbol symbol int symbol))
+(define-extern disasm-dma-list "Print out an entire DMA list.
+                               If mode is #t, print vif tags too. If mode is 'details, also print data unpacked by vif-tags.
+                               If verbose is #t, print out the addresses of each tag, and total size statistics.
+                               If expected size is negative, it is ignored. Otherwise, only disassemble this much dma data." (function dma-packet symbol symbol symbol int symbol))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; pad                            ;;
@@ -3547,7 +4228,7 @@
   :size-assert         #x90
   :flag-assert         #xa00000090
   (:methods
-    (new (symbol type int) _type_) ;; 0
+    (new "Allocate a new cpad-info and open the pad itself through the kernel." (symbol type int) _type_) ;; 0
     (adjust-to-screen-flip (_type_) int) ;; 9
     )
   )
@@ -3557,7 +4238,8 @@
    (cpads     cpad-info 2 :offset-assert 8)
    )
   (:methods
-   (new (symbol type) _type_) ;; 0
+   (new "Create a cpad-list for 2 controllers. It's fine to do this even if one or both controllers
+       aren't connected yet." (symbol type) _type_) ;; 0
    )
   :method-count-assert 9
   :size-assert         #x10
@@ -3595,15 +4277,28 @@
   )
 
 (define-extern *cheat-mode* symbol)
-(define-extern cpad-invalid! (function cpad-info cpad-info))
-(define-extern analog-input (function int float float float float float))
-(define-extern cpad-set-buzz! (function cpad-info int int time-frame none))
+(define-extern cpad-invalid!
+  "Reset all data in a [[cpad-info]]."
+  (function cpad-info cpad-info))
+(define-extern analog-input
+  "Convert integer input from pad into a float between -out-range and +out-range.
+  The offset is applied directly to the input.
+  The center val is the expected value for 0, after applying offset.
+  The max val is the expected value with the stick pushed all the way."
+  (function int float float float float float))
+(define-extern cpad-set-buzz!
+  "Turn on vibration motor `buzz-idx` for duration, at magnitude `buzz-amount`."
+  (function cpad-info int int time-frame none))
 (define-extern *cpad-list* cpad-list)
 (define-extern *cpad-debug* symbol)
-(define-extern service-cpads (function cpad-list))
-(define-extern buzz-stop! (function int none))
+(define-extern service-cpads "Read from cpads and update vibration." (function cpad-list))
+(define-extern buzz-stop!
+  "Set the buzz to 0 on both vibration motors of the given cpad."
+  (function int none))
 (define-extern *mouse* mouse-info)
-(define-extern service-mouse (function none))
+(define-extern service-mouse
+  "Update the mouse, and draw the cursor."
+  (function none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; gs                             ;;
@@ -4433,14 +5128,28 @@
   :flag-assert         #x9000000c0
   )
 
-(define-extern psm-size (function gs-psm int))
-(define-extern psm-page-height (function gs-psm int))
-(define-extern psm->string (function gs-psm string))
+(define-extern psm-size
+  "Convert texture format to some type of size."
+  (function gs-psm int))
+(define-extern psm-page-height
+  "Convert texture format to some type of page height."
+  (function gs-psm int))
+(define-extern psm->string
+  "Get the name of a texture format."
+  (function gs-psm string))
 (define-extern *fog-color* rgba)
-(define-extern open-gif-packet (function gif-packet gif-packet))
-(define-extern add-reg-gif-packet (function gif-packet int int none))
-(define-extern close-gif-packet (function gif-packet int gif-packet))
-(define-extern draw-context-set-xy (function draw-context int int none))
+(define-extern open-gif-packet
+  "Initialize an existing gif-packet for 0 registers."
+  (function gif-packet gif-packet))
+(define-extern add-reg-gif-packet
+  "Add a register + value to the packet."
+  (function gif-packet int int none))
+(define-extern close-gif-packet
+  "Finish adding registers."
+  (function gif-packet int gif-packet))
+(define-extern draw-context-set-xy
+  "Set the origin of the draw context."
+  (function draw-context int int none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; display-h                      ;;
@@ -4511,75 +5220,208 @@
 ;; geometry                       ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(define-extern vector-flatten! (function vector vector vector vector))
-(define-extern vector-reflect! (function vector vector vector vector))
-(define-extern vector-reflect-flat! (function vector vector vector vector))
-(define-extern vector-reflect-flat-above! (function vector vector vector vector))
+(define-extern vector-flatten!
+  "Get the projection of src onto a plane with the given normal
+  The normal should have magnitude 1.0."
+  (function vector vector vector vector))
+(define-extern vector-reflect!
+  "Reflect a vector off of a plane."
+  (function vector vector vector vector))
+(define-extern vector-reflect-flat!
+  "This is a weird one. It doesn't care about the value of src dot normal
+  and it effectively replaces the component of src normal to the plane with
+  the plane's normal.  I think this requires src/normal to both be unit vectors
+  in order to make sense.
+  NOTE: src should point from positive halfspace to negative otherwise it
+  doesn't work."
+  (function vector vector vector vector))
+(define-extern vector-reflect-flat-above!
+  "Not really a reflect. Same as flatten."
+  (function vector vector vector vector))
 (define-extern vector-reflect-flat-gravity! (function vector vector vector vector vector))
-(define-extern vector-segment-distance-point! (function vector vector vector vector float))
-(define-extern vector-line-distance (function vector vector vector float))
-(define-extern vector-line-distance-point! (function vector vector vector vector float))
-(define-extern vector-segment-overlap (function vector vector vector float))
-(define-extern line-sphere-intersection? (function vector vector vector symbol))
-(define-extern vector-orient-by-quat! (function vector vector quaternion vector))
-(define-extern vector-inv-orient-by-quat! (function vector vector quaternion vector))
+(define-extern vector-segment-distance-point!
+  "Compute the distance from a point to the closest point on the line segment.
+  arg0 is the point. arg1/arg2 are the endpoints of the line segment.
+  arg3 is an optional output closest point."
+  (function vector vector vector vector float))
+(define-extern vector-line-distance
+  "Weird function: given a point arg1, and an infinite line connecting arg2 and arg1, compute the distance
+  from arg0 to that line."
+  (function vector vector vector float))
+(define-extern vector-line-distance-point!
+  "Same as above function, but returns the point on arg2/arg1 in arg3 (ignored if #f)"
+  (function vector vector vector vector float))
+(define-extern vector-segment-overlap
+  "Seems to compute (v1 - v0).dot(v2 - v1), but in a weird way."
+  (function vector vector vector float))
+(define-extern line-sphere-intersection?
+  "Does [arg1, arg2] intersect sphere arg0?"
+  (function vector vector vector symbol))
+(define-extern vector-orient-by-quat!
+  "Rotate a vector by a quaternion."
+  (function vector vector quaternion vector))
+(define-extern vector-inv-orient-by-quat!
+  "Rotate a vector by the inverse rotation."
+  (function vector vector quaternion vector))
 (define-extern forward-down->inv-matrix (function matrix vector vector matrix))
 (define-extern forward-down-nopitch->inv-matrix (function matrix vector vector matrix))
-(define-extern forward-up->inv-matrix (function matrix vector vector matrix))
-(define-extern forward-up-nopitch->inv-matrix (function matrix vector vector matrix))
+(define-extern forward-up->inv-matrix
+  "Create a matrix representing an inverse transform where arg1 is forward (+z)
+  and arg2 is up (+y). Will use the pitch of forward."
+  (function matrix vector vector matrix))
+(define-extern forward-up-nopitch->inv-matrix
+  "Create a matrix representing an inverse transform where arg1 is forward (+z)
+  and arg2 is up (+y). Will not use the pitch of forward."
+  (function matrix vector vector matrix))
 (define-extern forward-up-nopitch->quaternion (function quaternion vector vector quaternion))
 (define-extern forward-up->quaternion (function quaternion vector vector quaternion)) ;; TODO - sometimes the last vector is a matrix?
-(define-extern quaternion-from-two-vectors! (function quaternion vector vector quaternion))
-(define-extern quaternion-from-two-vectors-partial! (function quaternion vector vector float quaternion))
+(define-extern quaternion-from-two-vectors!
+  "Create a quaternion representing the rotation between two vectors."
+  (function quaternion vector vector quaternion))
+(define-extern quaternion-from-two-vectors-partial!
+  "Create a quaternion representing the rotation between two vectors,
+  doing arg3 fraction of the total rotation."
+  (function quaternion vector vector float quaternion))
 (define-extern quaternion-from-two-vectors-max-angle! (function quaternion vector vector float quaternion))
 (define-extern quaternion-from-two-vectors-max-angle-partial! (function quaternion vector vector float float quaternion))
-(define-extern matrix-from-two-vectors! (function matrix vector vector matrix))
-(define-extern matrix-from-two-vectors-max-angle! (function matrix vector vector float matrix))
-(define-extern matrix-from-two-vectors-smooth! (function matrix vector vector float int matrix))
-(define-extern matrix-from-two-vectors-the-long-way-smooth! (function matrix vector vector float int matrix))
-(define-extern quaternion-from-two-vectors-smooth! (function quaternion vector vector float int quaternion))
-(define-extern matrix-from-two-vectors-max-angle-partial! (function matrix vector vector float float matrix))
-(define-extern matrix-from-two-vectors-partial-linear! (function matrix vector vector float matrix))
+(define-extern matrix-from-two-vectors!
+  "Create a rotation matrix representing the rotation between two vectors."
+  (function matrix vector vector matrix))
+(define-extern matrix-from-two-vectors-max-angle!
+  "Create a rotation matrix representing the rotation between two vectors,
+  allowing at most a rotation of arg3 degrees."
+  (function matrix vector vector float matrix))
+(define-extern matrix-from-two-vectors-smooth!
+  "This function can help smoothly rotate from a current heading vector to a target one.
+  It returns a rotation to move arg1 closer to arg2, subject to two different speed limits.
+  arg3 is a rotations-per-frame rate. This limit takes frame rate into account (when lagging, the rotation is larger)
+  arg4 is a 'slow down when getting close to the end' limit.
+  This is used in rotate-toward-orientation, which is much improved from jak 1."
+  (function matrix vector vector float int matrix))
+(define-extern matrix-from-two-vectors-the-long-way-smooth!
+  "Same as above, but rotates you away from the target.
+  Note that the 'near the end' smoothing will apply when you're near the target."
+  (function matrix vector vector float int matrix))
+(define-extern quaternion-from-two-vectors-smooth!
+  "Same as above, but returns a quaternion."
+  (function quaternion vector vector float int quaternion))
+(define-extern matrix-from-two-vectors-max-angle-partial!
+  "Create a rotation matrix representing the given fraction of the rotation between two heading vectors,
+  rotating by at most the given angle."
+  (function matrix vector vector float float matrix))
+(define-extern matrix-from-two-vectors-partial-linear!
+  "Create a rotation matrix representing doing arg3 fraction of the rotation between two vectors."
+  (function matrix vector vector float matrix))
 (define-extern matrix-remove-z-rot (function matrix vector matrix))
-(define-extern matrix-rot-diff! (function vector matrix matrix float))
-(define-extern quaternion-seek (function quaternion quaternion quaternion float float quaternion))
-(define-extern vector-deg-seek (function vector vector vector float vector))
-(define-extern vector-deg-slerp (function vector vector vector float vector))
-(define-extern vector-vector-deg-slerp! (function vector vector vector float vector vector))
-(define-extern normal-of-plane (function vector vector vector vector vector))
-(define-extern vector-3pt-cross! (function vector vector vector vector vector))
-(define-extern closest-pt-in-triangle (function vector vector matrix vector none))
-(define-extern point-in-triangle-cross (function vector vector vector vector vector symbol))
-(define-extern point-in-plane-<-point+normal! (function vector vector vector vector))
-(define-extern circle-circle-xz-intersect (function sphere sphere vector vector int))
-(define-extern circle-test (function none))
-(define-extern vector-circle-tangent-new (function vector vector vector vector none))
-(define-extern vector-circle-tangent (function vector vector vector vector none))
-(define-extern find-knot-span (function int int float (inline-array vector) int))
-(define-extern calculate-basis-functions-vector! (function vector int float (pointer float) vector))
-(define-extern curve-evaluate! (function vector float (inline-array vector) int (pointer float) int vector))
-(define-extern curve-get-pos! (function vector float curve vector))
-(define-extern curve-length (function curve float))
-(define-extern curve-copy! (function curve curve curve))
-(define-extern curve-closest-point (function curve vector float float int float float))
-(define-extern vector-plane-distance (function vector plane vector float))
-(define-extern intersect-ray-plane (function vector vector vector vector float))
+(define-extern matrix-rot-diff!
+  "Get the difference of rotation between two matrices, expressed as a quaternion."
+  (function vector matrix matrix float))
+(define-extern quaternion-seek
+  "Strange quaternion rotate toward function. arg3 is ignored. arg4 is the max seek amount." (function quaternion quaternion quaternion float float quaternion))
+(define-extern vector-deg-seek
+  "Make one vector closer to another, doing at most a rotation by arg3 degrees." (function vector vector vector float vector))
+(define-extern vector-deg-slerp
+  "Slerp for vectors. (imagine that they are the z axis of two frames)" (function vector vector vector float vector))
+(define-extern vector-vector-deg-slerp!
+  "Unused. No clue what this does."
+  (function vector vector vector float vector vector))
+(define-extern normal-of-plane
+  "Given three points on a plane, compute the plane's normal."
+  (function vector vector vector vector vector))
+(define-extern vector-3pt-cross!
+  "Cross product of 2 - 1 and 3 - 1. (will give a normal to the plane, but not of magnitude 1)"
+  (function vector vector vector vector vector))
+(define-extern closest-pt-in-triangle
+  "arg2 is the vertices of the triangle, arg3 is the normal, arg1 is the input point, arg0 is the output." (function vector vector matrix vector none))
+(define-extern point-in-triangle-cross
+  "Check if point is in the triangle using cross product check (so you have to get the order of points right)."
+  (function vector vector vector vector vector symbol))
+(define-extern point-in-plane-<-point+normal!
+  "Very strange function. Takes a plane, in point-normal form, then returns some other point on that plane.
+  It will move 1m in two of {x, y, z} directions. The direction not moved in is the one which is closest to point-in-triangle-cross
+  in the same direction of the normal (this prevent moving huge distances for nearly vertical planes for example)."
+  (function vector vector vector vector))
+(define-extern circle-circle-xz-intersect
+  "This function is unused and really complicated, so not implementing it for now."
+  (function sphere sphere vector vector int))
+(define-extern circle-test
+  "Test the circle-circle-xz-intersect function."
+  (function none))
+(define-extern vector-circle-tangent-new
+  "Unused."
+  (function vector vector vector vector none))
+(define-extern vector-circle-tangent "Also unused." (function vector vector vector vector none))
+(define-extern find-knot-span
+  "Binary serach over knots to find which contains the value float in (arg0 arg1). Unused."
+  (function int int float (inline-array vector) int))
+(define-extern calculate-basis-functions-vector!
+  "Calculate polynomial basis for a given control point." (function vector int float (pointer float) vector))
+(define-extern curve-evaluate!
+  "Evaluate a curve.
+   arg0 is the output
+   arg1 is the input.
+   arg2 is control vertices.
+   arg3 is the number of control vertices.
+   arg4 is the knot points.
+   arg5 is the number of knots." (function vector float (inline-array vector) int (pointer float) int vector))
+(define-extern curve-get-pos!
+  "Get the position on the curve at the given input."
+  (function vector float curve vector))
+(define-extern curve-length
+  "Compute the approximate curve length as the sum of distances between knots."
+  (function curve float))
+(define-extern curve-copy!
+  "Shallow copy a curve."
+  (function curve curve curve))
+(define-extern curve-closest-point
+  "Get the input value for the point on the curve. Approximate! And is O(n_knots)."
+  (function curve vector float float int float float))
+(define-extern vector-plane-distance
+  "Unused."
+  (function vector plane vector float))
+(define-extern intersect-ray-plane
+  "arg1 is ray direction, arg3 is plane normal, others don't really make sense to me."
+  (function vector vector vector vector float))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; timer                          ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(define-extern timer-count (function timer-bank uint))
-(define-extern disable-irq (function none))
-(define-extern enable-irq (function none))
-(define-extern stopwatch-init (function stopwatch int))
-(define-extern stopwatch-reset (function stopwatch int))
-(define-extern stopwatch-start (function stopwatch int))
-(define-extern stopwatch-stop (function stopwatch none))
-(define-extern stopwatch-begin (function stopwatch int))
-(define-extern stopwatch-end (function stopwatch none))
-(define-extern stopwatch-elapsed-ticks (function stopwatch time-frame))
-(define-extern stopwatch-elapsed-seconds (function stopwatch float))
+(define-extern timer-count
+  "Return a timer's counter value."
+  (function timer-bank uint))
+(define-extern disable-irq
+  "Disable all interrupts. Has no effect on PC Port."
+  (function none))
+(define-extern enable-irq
+  "Enable all interrupts. Has no effect on PC Port."
+  (function none))
+(define-extern stopwatch-init
+  "Init a stopwatch."
+  (function stopwatch int))
+(define-extern stopwatch-reset
+  "Restart a stopwatch's times."
+  (function stopwatch int))
+(define-extern stopwatch-start
+  "Start a stopwatch from scratch."
+  (function stopwatch int))
+(define-extern stopwatch-stop
+  "Fully stop a stopwatch and save its elapsed time."
+  (function stopwatch none))
+(define-extern stopwatch-begin
+  "Begin a stopwatch level, and starts it if it hasn't yet."
+  (function stopwatch int))
+(define-extern stopwatch-end
+  "End a stopwatch level. Stops the stopwatch if it's back to level zero.
+  There is no guard against ending a stopwatch too many times, and a negative level
+  will cause errors!"
+  (function stopwatch none))
+(define-extern stopwatch-elapsed-ticks
+  "Returns the elapsed time so far (in clock cycles) of a stopwatch."
+  (function stopwatch time-frame))
+(define-extern stopwatch-elapsed-seconds
+  "Returns the elapsed time so far (in seconds) of a stopwatch."
+  (function stopwatch float))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; vector                         ;;
@@ -4700,14 +5542,15 @@
 (define-extern vector-from-ups!
   "Go from units per second to units per frame?"
   (function vector vector vector))
-(define-extern vector-length (function vector float))
+(define-extern vector-length
+  "Get the length of the xyz part." (function vector float))
 (define-extern vector-length-squared
   "Get the squared length of the xyz part."
   (function vector float))
 (define-extern vector-xz-length-squared
   "Get the length of the xz part, squared."
   (function vector float))
-(define-extern vector-xz-length (function vector float))
+(define-extern vector-xz-length "Get the length of the xz part." (function vector float))
 (define-extern vector-vector-distance
   "Subtract the xyz parts and get the norm."
   (function vector vector float))
@@ -4741,8 +5584,14 @@
 (define-extern vector-xz-normalize-copy!
   "Normalize, xz components only."
   (function vector vector float vector))
-(define-extern vector-length-max! (function vector float vector))
-(define-extern vector-xz-length-max! (function vector float vector))
+(define-extern vector-length-max!
+  "Make vector at most arg1 length (xyz only).
+   If it is larger, project onto sphere.
+   Doesn't touch w" (function vector float vector))
+(define-extern vector-xz-length-max!
+  "Make vector at most arg1 length (xz only).
+   It it is larger, project onto circle.
+   Doesn't touch w or y." (function vector float vector))
 (define-extern vector-rotate-around-x!
   "Rotate a vector around the x axis."
   (function vector vector float vector))
@@ -4847,9 +5696,9 @@
 (define-extern vector4-array-scale!
   "Apply vector4-scale! to all arrays."
   (function (inline-array vector4) (inline-array vector4) float int none))
-(define-extern vector4-array-madd! (function (inline-array vector4) (inline-array vector4) (inline-array vector4) float int none))
-(define-extern vector4-array-msub! (function (inline-array vector4) (inline-array vector4) (inline-array vector4) float int none))
-(define-extern vector4-array-lerp! (function (inline-array vector4) (inline-array vector4) (inline-array vector4) float int symbol))
+(define-extern vector4-array-madd! "Apply vector4-madd! to all arrays." (function (inline-array vector4) (inline-array vector4) (inline-array vector4) float int none))
+(define-extern vector4-array-msub! "Apply vector4-msub! to all arrays."  (function (inline-array vector4) (inline-array vector4) (inline-array vector4) float int none))
+(define-extern vector4-array-lerp! "Apply vector4-lerp! to all arrays." (function (inline-array vector4) (inline-array vector4) (inline-array vector4) float int symbol))
 (define-extern spheres-overlap?
   "Do the spheres overlap?"
   (function sphere sphere symbol))
@@ -4911,11 +5760,27 @@
   :flag-assert         #x900000020
   )
 
-(define-extern file-stream-read-string (function file-stream string string))
+(define-extern file-stream-read-string
+  "Fill a string with data from a file stream.
+  Note: this function does not work."
+  (function file-stream string string))
 (define-extern *file-temp-string* string)
-(define-extern make-file-name (function file-kind string int symbol string))
-(define-extern make-vfile-name (function file-kind string string))
-(define-extern file-info-correct-version? (function file-info file-kind int symbol))
+(define-extern make-file-name
+  "Get a file name to open a file with the given kind and name.
+   The art-group-version argument can be used to override the version
+   of the art-group. Set it to 0 or less to use the default version.
+   Similar to MakeFileName in C.
+   Note: file type enum is different between C and GOAL.
+   File versions should match those in versions.h.
+   Uses a single *file-temp-string* buffer, shared with make-vfile-name.
+   arg3 is unused." (function file-kind string int symbol string))
+(define-extern make-vfile-name
+  "Make virtual? file name. This makes a name that the kernel knows how to
+  handle in a specific way. This function is not used."
+  (function file-kind string string))
+(define-extern file-info-correct-version?
+  "Check if the version and kind in the info is valid. The `version-override` can specify a
+   non-default version, or set to 0 for the default version." (function file-info file-kind int symbol))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; loader-h                       ;;
@@ -5101,24 +5966,26 @@
   :size-assert         #x2d0
   :flag-assert         #x1a000002d0
   (:methods
-    (new (symbol type) _type_) ;; 0
-    (initialize! (_type_) _type_) ;; 9
+    (new "Allocate and initialize a texture pool." (symbol type) _type_) ;; 0
+    (initialize! "Set up a texture-pool and do the initial division of VRAM." (_type_) _type_) ;; 9
     (print-usage (_type_) _type_) ;; 10
-    (setup-font-texture (_type_) none) ;; 11
-    (allocate-defaults (_type_) none) ;; 12
-    (login-level-textures (_type_ level int (pointer texture-id)) none) ;; 13
-    (add-level-tpage-dma (_type_ level tpage-category bucket-id) none) ;; 14
-    (allocate-vram-words! (_type_ int) int) ;; 15
-    (allocate-segment (_type_ texture-pool-segment int) texture-pool-segment) ;; 16
-    (unload-page (_type_ texture-page) none) ;; 17
+    (setup-font-texture "Set up the font texture. In normal use, the font texture is allocated, and currently uploaded to, the common segment.
+                         This function copies that to the unused upper 8-bits of the depth buffer, and sets up the font
+                         renderer to point to that address." (_type_) none) ;; 11
+    (allocate-defaults "Allocate the common segment and set up dynamic texture addresses" (_type_) none) ;; 12
+    (login-level-textures "Login all textures for the given level." (_type_ level int (pointer texture-id)) none) ;; 13
+    (add-level-tpage-dma "Set up DMA to upload all textures needed to draw this level on this frame." (_type_ level tpage-category bucket-id) none) ;; 14
+    (allocate-vram-words! "Increment the bump allocator to allocate vram, by words." (_type_ int) int) ;; 15
+    (allocate-segment "Allocate VRAM for a texture-pool-segment" (_type_ texture-pool-segment int) texture-pool-segment) ;; 16
+    (unload-page "Remove a page from the texture pool." (_type_ texture-page) none) ;; 17
     (get-common-page-slot-by-id (_type_ int) int) ;; 18
-    (update-warp-and-hud (_type_) none) ;; 19
-    (update-sprites (_type_) none) ;; 20
-    (mark-hud-warp-sprite-dirty (_type_) none) ;; 21
-    (lay-out-sprite-tex (_type_) none) ;; 22
-    (lay-out-hud-tex (_type_) none) ;; 23
-    (lay-out-warp-tex (_type_) none) ;; 24
-    (clear-ids (_type_) none) ;; 25
+    (update-warp-and-hud "Redo warp and hud textures with the current set of loaded levels." (_type_) none) ;; 19
+    (update-sprites "Redo sprite texture addresses with the current set of loaded levels." (_type_) none) ;; 20
+    (mark-hud-warp-sprite-dirty "Set update flags for hud/sprite/warp. Needed after level load or unload." (_type_) none) ;; 21
+    (lay-out-sprite-tex "Lay out VRAM addresses for sprite rendering, which is done in one pass for all levels." (_type_) none) ;; 22
+    (lay-out-hud-tex "Lay out VRAM addresses for HUD rendering, which is done all at one for all levels." (_type_) none) ;; 23
+    (lay-out-warp-tex "Lay out VRAM addresses for WARP texture rendering, and update adgifs to point to the new address." (_type_) none) ;; 24
+    (clear-ids "Reset all cached texture upload IDs. This must be done whenever a texture has its vram address changed." (_type_) none) ;; 25
     )
   )
 
@@ -5207,12 +6074,16 @@
   :size-assert         #x80
   :flag-assert         #xe00000080
   (:methods
-    (relocate (_type_ kheap (pointer uint8)) texture-page :replace) ;; 7
-    (remove-data-from-heap (_type_ kheap) _type_) ;; 9
-    (get-leftover-block-count (_type_ int int) int) ;; 10
-    (relocate-dests! (_type_ int int) none) ;; 11
-    (add-to-dma-buffer (_type_ dma-buffer tex-upload-mode) int) ;; 12
-    (upload-now! (_type_ tex-upload-mode) none) ;; 13
+    (relocate "Handle a texture page that has been loaded by the linker.
+               This must run in the linker, since we sometimes kick out textures from the loading heap, which
+               requires no more allocations made after the texture, and the only time is right after the linker
+               does the allocation for this GOAL object file." (_type_ kheap (pointer uint8)) texture-page :replace) ;; 7
+    (remove-data-from-heap "Bump the kheap pointer to discard this texture data. All metadata is kept.
+                            This is only safe to use if the last thing on the kheap is this texture." (_type_ kheap) _type_) ;; 9
+    (get-leftover-block-count "Unused - statistics for how much unused memory we have" (_type_ int int) int) ;; 10
+    (relocate-dests! "Update the metadata of this texture so it points to a new vram address." (_type_ int int) none) ;; 11
+    (add-to-dma-buffer "Add upload DMA to a DMA buffer. Wrapper for upload-vram-data." (_type_ dma-buffer tex-upload-mode) int) ;; 12
+    (upload-now! "Upload a texture to VRAM immediately, wait for DMA to finish." (_type_ tex-upload-mode) none) ;; 13
     )
   )
 
@@ -5329,14 +6200,17 @@
    )
   (:methods
     (relocate (_type_ kheap (pointer uint8)) none :replace) ;; 7
-    (unlink-shaders-in-heap (_type_ kheap) int) ;; 9
+    (unlink-shaders-in-heap "Iterate through all adgifs, splicing out ones that are in the given heap." (_type_ kheap) int) ;; 9
     )
   :flag-assert #xa00000014
   )
 
 (define-extern *texture-masks* texture-masks)
 (define-extern *texture-masks-array* texture-masks-array)
-(define-extern texture-mip->segment (function int int int))
+(define-extern texture-mip->segment
+  "Figure out which segment of a tpage a given mip level of a texture will be in.
+   arg0 is the mip level, arg1 is the total number of mips.
+   Higher mip level is lower detail." (function int int int))
 (define-extern *texture-relocate-later* texture-relocate-later)
 (define-extern *texture-page-dir* texture-page-dir)
 (define-extern ct32-24-block-table (array int32))
@@ -6498,17 +7372,38 @@
   :flag-assert         #x900000008
   )
 
-(define-extern fog-corrector-setup (function fog-corrector math-camera none))
+(define-extern fog-corrector-setup
+  "Set the fog corrector based on the supplied math-camera."
+  (function fog-corrector math-camera none))
 (define-extern *math-camera-fog-correction* fog-corrector)
-(define-extern update-math-camera (function math-camera symbol symbol float math-camera))
+(define-extern update-math-camera
+  "Compute some one-time camera constants.
+   These should only change when changing aspect ratio."
+  (function math-camera symbol symbol float math-camera))
 (define-extern *math-camera* math-camera)
-(define-extern math-cam-start-smoothing (function float float quaternion))
-(define-extern move-target-from-pad (function transform int transform))
-(define-extern transform-point-vector! (function vector vector symbol))
-(define-extern transform-point-qword! (function vector4w vector symbol))
-(define-extern transform-point-vector-scale! (function vector vector float))
-(define-extern reverse-transform-point! (function vector vector vector vector none))
-(define-extern init-for-transform (function matrix none))
+(define-extern math-cam-start-smoothing
+  "Unused camera smoothing."
+  (function float float quaternion))
+(define-extern move-target-from-pad
+  "Unused function to adjust trans based on inputs from the pad.
+   This function must be extremely old because it takes a non-quaternion transform,
+   and all [[target]] stuff uses quaternions." (function transform int transform))
+(define-extern transform-point-vector!
+  "Apply camera transformation to a point. Return true if it is visible or not.
+   This returns the point in GS coords, but as float instead of int, so it's
+   not really useful. See [[transform-point-qword!]] for more details." (function vector vector symbol))
+(define-extern transform-point-qword!
+  "Apply camera transformation to point, returning fixed point 28.4 position
+   that can be given to the GS directly." (function vector4w vector symbol))
+(define-extern transform-point-vector-scale!
+  "Similar to transform-point-qword! but returns the scale factor instead." (function vector vector float))
+(define-extern reverse-transform-point!
+  "Likely transform arg3 from screen space to world coords, using arg1/arg2 for... something." (function vector vector vector vector none))
+(define-extern init-for-transform
+  "Sets up VU0 registers with camera info.
+   This is probably a very old function and it's only used by camera debug.
+   It stashes some data in vector float registers that must be there before calling transform-float-point."
+   (function matrix none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; font-h                         ;;
@@ -6731,18 +7626,28 @@
 ;; display                        ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(define-extern get-current-time (function time-frame))
-(define-extern get-integral-current-time (function uint))
-(define-extern set-display (function display display))
-(define-extern allocate-dma-buffers (function display display))
+(define-extern get-current-time
+  "Get the base-clock time."
+  (function time-frame))
+(define-extern get-integral-current-time
+  "Get the number of frames that have happened."
+  (function uint))
+(define-extern set-display "Allocate and initialize clocks for the display." (function display display))
+(define-extern allocate-dma-buffers "Allocate the main, debug, and calc dma buffers." (function display display))
 (define-extern *font-context* font-context)
-(define-extern draw-sprite2d-xy (function dma-buffer int int int int rgba none))
-(define-extern draw-sprite2d-xy-absolute (function dma-buffer int int int int rgba none))
-(define-extern draw-quad2d (function dma-buffer draw-context none))
-(define-extern screen-gradient (function dma-buffer rgba rgba rgba rgba none))
-(define-extern vif1-handler-debug (function int none))
+(define-extern draw-sprite2d-xy "Draw a sprite primitive with the given color and dimensions." (function dma-buffer int int int int rgba none))
+(define-extern draw-sprite2d-xy-absolute "Draw a sprite primitive, setting the gs-xzyf register to exactly the values specified (no offset/clamp)." (function dma-buffer int int int int rgba none))
+(define-extern draw-quad2d
+  "Draw a quad that fills the entire context."
+  (function dma-buffer draw-context none))
+(define-extern screen-gradient
+  "Fill the screen with a sprite with the given colors."
+  (function dma-buffer rgba rgba rgba rgba none))
+(define-extern vif1-handler-debug
+  "Handle the VIF1 interrupt.
+   The mark register of VIF will be set to the bucket that is now starting." (function int none))
 (define-extern vif1-handler (function none))
-(define-extern vblank-handler (function int))
+(define-extern vblank-handler "Record the time of the last two vblanks." (function int))
 (define-extern set-display-gs-state (function dma-buffer int int int int int dma-buffer))
 (define-extern set-display-gs-state-offset (function dma-buffer int int int int int int int dma-buffer))
 (define-extern reset-display-gs-state (function display dma-buffer display))
@@ -6783,11 +7688,14 @@
   :flag-assert         #xe00000020
   ;; field param1 uses ~A with a signed load field param2 uses ~A with a signed load field param3 uses ~A with a signed load
   (:methods
-    (get-engine (connection) engine) ;; 9
-    (get-process (connection) process) ;; 10
-    (belongs-to-engine? (connection engine) symbol) ;; 11
-    (belongs-to-process? (connection process) symbol) ;; 12
-    (move-to-dead (connection) connection) ;; 13
+    (get-engine 
+      "Get the engine for this connection. This must be used on a live connection." (connection) engine) ;; 9
+    (get-process "Get the process for this connection." (connection) process) ;; 10
+    (belongs-to-engine?
+        "Check to see if this connection is located in the data section of the engine.
+         This works on dead or alive connections." (connection engine) symbol) ;; 11
+    (belongs-to-process? "Does this connection belong to the given process?" (connection process) symbol) ;; 12
+    (move-to-dead "Move this connection from the alive list to the dead list." (connection) connection) ;; 13
     )
   )
 
@@ -6812,19 +7720,28 @@
   ;; Failed to read fields.
   (:methods
     (new (symbol type symbol int type) _type_) ;; 0
-    (inspect-all-connections (engine) engine) ;; 9
-    (apply-to-connections (engine (function connectable none)) int) ;; 10
-    (apply-to-connections-reverse (engine (function connectable none)) int) ;; 11
-    (execute-connections (engine object) int) ;; 12
-    (execute-connections-and-move-to-dead (engine object) int) ;; 13
-    (execute-connections-if-needed (engine object) int) ;; 14
-    (add-connection (engine process object object object object) connection) ;; 15
-    (remove-from-process (engine process) int) ;; 16
-    (remove-matching (engine (function connection engine symbol)) int) ;; 17
-    (remove-all (engine) int) ;; 18
-    (remove-by-param0 (engine object) int) ;; 19
-    (remove-by-param1 (engine int) int) ;; 20
-    (remove-by-param2 (engine int) int) ;; 21
+    (inspect-all-connections "inspect all of the connections." (engine) engine) ;; 9
+    (apply-to-connections
+      "Apply arg0 to all connections for the engine.
+       It's okay to have arg0 remove the connection." (engine (function connectable none)) int) ;; 10
+    (apply-to-connections-reverse
+      "Apply arg0 to all connections, reverse order.
+       Do not use arg0 to remove yourself from the list." (engine (function connectable none)) int) ;; 11
+    (execute-connections "Run the engine!" (engine object) int) ;; 12
+    (execute-connections-and-move-to-dead
+      "Run the engine! If any objects return `'dead`, remove them." (engine object) int) ;; 13
+    (execute-connections-if-needed
+      "Execute connections, but only if it hasn't been done on this frame." (engine object) int) ;; 14
+    (add-connection
+      "Add a connection between this engine and a given process." (engine process object object object object) connection) ;; 15
+    (remove-from-process "Remove all connections from process for this engine." (engine process) int) ;; 16
+    (remove-matching
+      "Call the given function on each connection and the engine.
+       If it returns truthy, `move-to-dead` that connection." (engine (function connection engine symbol)) int) ;; 17
+    (remove-all "Remove all connections from an engine." (engine) int) ;; 18
+    (remove-by-param0 "Remove all connections with param0 matching arg0." (engine object) int) ;; 19
+    (remove-by-param1 "Remove all connections with param1 matching arg0." (engine int) int) ;; 20
+    (remove-by-param2 "Remove all connections with param2 matching arg0." (engine int) int) ;; 21
     (get-first-connectable (engine) connectable) ;; 22
     (get-last-connectable (engine) connectable) ;; 23
     (get-next-connectable (_type_ connectable) connectable) ;; 24
@@ -6864,17 +7781,29 @@
   :flag-assert         #xf00000020
   (:methods
     (new (symbol type symbol int type) _type_) ;; 0
-    (schedule-callback (_type_ object time-frame) connection-pers) ;; 9
-    (kill-callback (_type_ connection-pers) none) ;; 10
-    (kill-by-key (_type_ object) none) ;; 11
-    (kill-matching (_type_ (function engine-pers connection-pers object object symbol) object object) none) ;; 12
-    (update-callback (_type_) none) ;; 13
-    (run-pending-updates! (_type_ time-frame) none) ;; 14
+    (schedule-callback
+      "Get a connection for this key.
+       If no connection exists, add it.
+       Schedule an update to happen in arg1 seconds." (_type_ object time-frame) connection-pers) ;; 9
+    (kill-callback "Called when a connection is removed." (_type_ connection-pers) none) ;; 10
+    (kill-by-key "Remove connections with this key, calling `kill-callback`." (_type_ object) none) ;; 11
+    (kill-matching "Call the given function on each connection. If it returns truthy, kill that connection." (_type_ (function engine-pers connection-pers object object symbol) object object) none) ;; 12
+    (update-callback
+      "Called when a connection is run.
+       Users can override this as needed." (_type_) none) ;; 13
+    (run-pending-updates! "Run updates if they scheduled. If something is found that has no pending update, kill it.
+       Note that we won't kill things on this call if they fail to update their `update-time`.
+       They will survive until the next call to `run-pending-updates`!
+       (or you can modify their `update-time` before that to prevent them from being killed.)" (_type_ time-frame) none) ;; 14
     )
   )
 
-(define-extern connection-process-apply (function process (function object none) symbol))
-(define-extern process-disconnect (function process int))
+(define-extern connection-process-apply
+  "Apply a function to all connectables of a process."
+  (function process (function object none) symbol))
+(define-extern process-disconnect
+  "Disconnect all connections for the given process."
+  (function process int))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; text-id-h                      ;;
@@ -8846,50 +9775,145 @@
   )
 |#
 
-(define-extern texture-bpp (function gs-psm int))
-(define-extern texture-qwc (function int int gs-psm int))
-(define-extern physical-address (function pointer pointer))
-(define-extern dma-buffer-add-ref-texture (function dma-buffer pointer int int gs-psm none))
-(define-extern gs-find-block (function int int gs-psm int))
-(define-extern gs-page-width  (function gs-psm int))
-(define-extern gs-page-height (function gs-psm int))
-(define-extern gs-block-width (function gs-psm int))
-(define-extern gs-block-height (function gs-psm int))
-(define-extern gs-largest-block (function int int gs-psm int))
-(define-extern gs-blocks-used (function int int gs-psm int))
-(define-extern texture-page-default-allocate (function texture-pool texture-page kheap int texture-page))
-(define-extern texture-page-common-allocate (function texture-pool texture-page kheap int texture-page))
-(define-extern texture-page-font-allocate (function texture-pool texture-page kheap int texture-page))
-(define-extern texture-page-common-boot-allocate (function texture-pool texture-page kheap int texture-page))
-(define-extern upload-vram-data (function dma-buffer int pointer int int none))
-(define-extern upload-vram-pages  (function texture-pool texture-pool-segment texture-page tex-upload-mode bucket-id int))
-(define-extern update-vram-pages (function texture-pool texture-pool-segment texture-page tex-upload-mode int))
-(define-extern upload-vram-pages-pris (function texture-pool texture-pool-segment texture-page bucket-id (pointer int32) int))
-(define-extern texture-page-level-allocate (function texture-pool texture-page kheap int texture-page))
-(define-extern texture-page-size-check (function texture-pool level symbol int))
-(define-extern set-skull-gem-masks (function none))
-(define-extern upload-textures (function texture-pool none))
+(define-extern texture-bpp
+  "Get the bits-per-pixel in the given texture format"
+  (function gs-psm int))
+(define-extern texture-qwc
+  "Get the number of quadwords needed for a given texture size and format.
+  Does not consider weird PS2 memory layout stuff."
+  (function int int gs-psm int))
+(define-extern physical-address
+  "Strip off high 8-bits of a pointer, to bypass the uncached memory mappings.
+  This gives an address suitable for DMAing from main memory."
+  (function pointer pointer))
+(define-extern dma-buffer-add-ref-texture "Upload a texture, by reference. Doesn't copy the texture into the DMA buffer - just a reference,
+                                           so it is up to the user to make sure the texture is valid during DMA time.
+                                           Doesn't set up GIF for receiving textures." (function dma-buffer pointer int int gs-psm none))
+(define-extern gs-find-block
+  "Lookup offset of block in PS2's swizzled VRAM, as a block index."
+  (function int int gs-psm int))
+(define-extern gs-page-width
+  "Get the width of a page, in pixels, for the given texture format."
+   (function gs-psm int))
+(define-extern gs-page-height
+  "Get the height of a page, in pixels, for the given texture format."
+  (function gs-psm int))
+(define-extern gs-block-width
+  "Get the width of a block, in pixels, for the texture format."
+  (function gs-psm int))
+(define-extern gs-block-height
+  "Get the height of a block, in pixels, for the texture format."
+  (function gs-psm int))
+(define-extern gs-largest-block
+  "Get the highest block index used by a texture."
+  (function int int gs-psm int))
+(define-extern gs-blocks-used
+  "Get the number of blocks used by a texture.
+  If the texture isn't an even number of pages, the partially completed
+  page will be counted as the largest used block.
+  (gaps in this page are counted as used)"
+  (function int int gs-psm int))
+(define-extern texture-page-default-allocate
+               "Texture allocation function for textures that permanently live in VRAM.
+                The texture data is immediately uploaded, then discarded from the heap.
+                This should only be called during startup." (function texture-pool texture-page kheap int texture-page))
+(define-extern texture-page-common-allocate
+  "Texture allocation function for textures that share the common segment.
+  The texture remains in RAM, and is uploaded to VRAM as needed as part
+  of the main drawing DMA chain."
+  (function texture-pool texture-page kheap int texture-page))
+(define-extern texture-page-font-allocate
+               "Texture allocation function for font. This temporarily stores them in the common segment,
+                removes them from RAM. This is a bit of hack. Later font setup code expects the font texture
+                to be in common, and they will eventually be moved into the upper 8-bits of the depth buffer." (function texture-pool texture-page kheap int texture-page))
+(define-extern texture-page-common-boot-allocate
+               "Allocator function for texture loaded at startup time.
+                For jak 3, this seems to always do default-allocate (permanently in vram?)" (function texture-pool texture-page kheap int texture-page))
+(define-extern upload-vram-data "Add DMA to later upload a texture, by reference. Sets up the GIF for receiving the texture." (function dma-buffer int pointer int int none))
+(define-extern upload-vram-pages "Add DMA to upload a texture page. Will only upload the portion of data that is not already present in VRAM.
+                                  This is the old Jak 1 background texture uploading system, which had this near/far concept
+                                  for different mip levels. By jak 2, the background system switched to masks and uses
+                                  the -pris variant of this function." (function texture-pool texture-pool-segment texture-page tex-upload-mode bucket-id int))
+(define-extern update-vram-pages
+  "Likely a debug function for checking the logic of upload-vram-pages. Unused"
+  (function texture-pool texture-pool-segment texture-page tex-upload-mode int))
+(define-extern upload-vram-pages-pris
+               "Similar to upload-vram-pages, but skips the near/far mode and instead uses masks.
+                The foreground/background renderers will generate masks telling us which textures are used.
+                This lets us skip uploading entire textures, or mip levels that won't need.
+                (side note: this optimization is what causes many of the texturing issues in pcsx2,
+                where the ps2 and pcsx2 disagree on the mip level to use.)" (function texture-pool texture-pool-segment texture-page bucket-id (pointer int32) int))
+(define-extern texture-page-level-allocate
+  "Allocation function for level textures."
+  (function texture-pool texture-page kheap int texture-page))
+(define-extern texture-page-size-check "Check the size of level textures." (function texture-pool level symbol int))
+(define-extern set-skull-gem-masks "Turn on masks for skull gem textures, so they will be uploaded." (function none))
+(define-extern upload-textures "Set up DMA for all texture uploads for this frame." (function texture-pool none))
 (define-extern *txt-dma-list* dma-buffer)
-(define-extern texture-relocate (function dma-buffer texture int gs-psm int dma-buffer))
-(define-extern relocate-later (function symbol))
-(define-extern texture-page-login  (function texture-id (function texture-pool texture-page kheap int texture-page) kheap texture-page-dir-entry))
-(define-extern lookup-texture-by-id (function texture-id texture))
-(define-extern lookup-texture-by-id-fast (function texture-id texture))
-(define-extern lookup-texture-by-name (function string string (pointer texture-page) texture))
-(define-extern lookup-texture-id-by-name (function string string texture-id))
-(define-extern lookup-level-texture-by-name (function string level (pointer texture-page) texture))
+(define-extern texture-relocate "Move a texture in VRAM." (function dma-buffer texture int gs-psm int dma-buffer))
+(define-extern relocate-later
+  "Unused in jak 2 and likely unsed in jak 3. Feature to postpone some texture copying until
+  a later frame. This is only used in cases when texture data must be memcpy'd in RAM, to patch up a hole left
+  by some data that is now permanently in VRAM, and no longer needed.
+  Note that Jak2/Jak3 don't have this problem since level textures are now never permanent"
+  (function symbol))
+(define-extern texture-page-login
+  "'Login' (initialize) a texture page with the pool.
+  This has a trick - it doesn't actually require you to pass a texture-page object - instead you pass an ID.
+  If the texture was loaded at all, it will already be known to the texture pool, and this function will do nothing.
+  However, if the texture is not present, it will be loaded through a call to `loado`, for use in development."
+   (function texture-id (function texture-pool texture-page kheap int texture-page) kheap texture-page-dir-entry))
+(define-extern lookup-texture-by-id
+  "Get a texture by ID, loading it if needed (for debugging only)."
+  (function texture-id texture))
+(define-extern lookup-texture-by-id-fast
+  "Get a texture by ID. #f if it does not exist."
+  (function texture-id texture))
+(define-extern lookup-texture-by-name
+  "Get a loaded texture by name. Slow."
+  (function string string (pointer texture-page) texture))
+(define-extern lookup-texture-id-by-name
+  "Get the ID of a loaded texture by name. Slow."
+  (function string string texture-id))
+(define-extern lookup-level-texture-by-name "Get a texture from a given level, by name." (function string level (pointer texture-page) texture))
 (define-extern *shader-list* pair)
 (define-extern *edit-shader* texture-id)
-(define-extern link-texture-by-id (function texture-id adgif-shader texture-page-dir-entry))
+(define-extern link-texture-by-id
+  "Add this adgif shader to the linked list of shaders associated with the given texture ID.
+  Will allocate the link array if it's not already."
+  (function texture-id adgif-shader texture-page-dir-entry))
 (define-extern adgif-shader<-texture! (function adgif-shader texture adgif-shader))
-(define-extern adgif-shader-update! (function adgif-shader texture none))
+(define-extern adgif-shader-update!
+  "Update k based on uv-dist"
+  (function adgif-shader texture none))
 (define-extern adgif-shader<-texture-with-update! (function adgif-shader texture adgif-shader))
-(define-extern hack-texture (function texture float))
-(define-extern adgif-shader-login (function adgif-shader texture))
-(define-extern adgif-shader-login-no-remap (function adgif-shader texture))
-(define-extern adgif-shader-login-fast (function adgif-shader texture))
-(define-extern adgif-shader-login-no-remap-fast (function adgif-shader texture))
-(define-extern adgif-shader<-texture-simple! (function adgif-shader texture adgif-shader))
+(define-extern hack-texture
+  "adjust some values of a texture, likely for debug."
+  (function texture float))
+(define-extern adgif-shader-login
+  "set up an adgif shader with the texture-pool, so it points to the right vram address.
+  Will remap textures through the level remap table.
+  If texture is missing, will load it on debug hardware."
+  (function adgif-shader texture))
+(define-extern adgif-shader-login-no-remap
+  "Set up an adgif shader with the texture-pool, so it points to the right vram adress.
+  This does not do level tpage remapping, so the texture should be one that's not loaded in a combine level tpage."
+  (function adgif-shader texture))
+(define-extern adgif-shader-login-fast
+  "Set up an adgif shader with the texture-pool, so it points to the right vram address.
+  Will remap through the level table, so can be used to refer to textures inside 'squashed'
+  level tpages.
+  Will not load texture if it is missing."
+  (function adgif-shader texture))
+(define-extern adgif-shader-login-no-remap-fast
+  "Set up an adgif shader with the texture-pool, so it points to the right vram address.
+  Will not remap through the level tpage table.
+  Will not load texture if it is missing."
+  (function adgif-shader texture))
+(define-extern adgif-shader<-texture-simple!
+  "Simple adgif-shader to texture, just sets vram address and format stuff.
+  Intended for use with fancy texture stuff that will later set the other regs."
+  (function adgif-shader texture adgif-shader))
 (define-extern set-dirty-mask! (function level int int int none))
 (define-extern texture-page-dir-inspect (function texture-page-dir symbol none))
 (define-extern *texture-pool* texture-pool)
@@ -9358,7 +10382,7 @@
   :size-assert         #x20
   :flag-assert         #x1100000020
   (:methods
-    (login (_type_) _type_) ;; 9
+    (login "Initialize the object after it is loaded." (_type_) _type_) ;; 9
     (draw (_type_ _type_ display-frame) none) ;; 10
     (fill-collide-list-from-box (_type_ int collide-list collide-query) int) ;; 11
     (fill-collide-list-from-line-sphere (_type_ int collide-list collide-query) int) ;; 12
@@ -9525,7 +10549,7 @@
   :size-assert         #x10
   :flag-assert         #xa00000010
   (:methods
-    (region-method-9 (_type_ vector) symbol) ;; 9
+    (point-in-region-debug! "Debug check to see if point is in region. This is not efficient, since it has to find the parent geometry of this region." (_type_ vector) symbol) ;; 9
     )
   )
 
@@ -13437,9 +14461,13 @@
 (define-extern mc-save (function int int pointer int mc-status-code))
 (define-extern mc-load (function int int pointer mc-status-code))
 (declare-type mc-slot-info structure)
-(define-extern mc-sync (function int))
+(define-extern mc-sync
+  "Synchronize the memory card state."
+  (function int))
 (define-extern mc-get-slot-info (function int mc-slot-info none))
-(define-extern show-mc-info (function dma-buffer none))
+(define-extern show-mc-info
+  "Display the memory card debug text."
+  (function dma-buffer none))
 (define-extern mc-check-result (function mc-status-code))
 ;; mc-makefile
 
@@ -15033,19 +16061,62 @@
   ;; field extra uses ~A with a signed load
   (:methods
     (new (symbol type int int) _type_) ;; 0
-    (get-property-data (_type_ symbol symbol float pointer (pointer res-tag) pointer) pointer :no-virtual) ;; 9
-    (get-property-struct (_type_ symbol symbol float structure (pointer res-tag) pointer) structure :no-virtual) ;; 10
-    (get-property-value (_type_ symbol symbol float uint128 (pointer res-tag) pointer) uint128 :no-virtual) ;; 11
+    (get-property-data
+      "Returns an address to a given property's data at a specific time stamp, or default on error.
+       @param name is the name of the property you want, mode is its lookup mode ('interp 'base 'exact), time is the timestamp.
+       @param default is the default result returned in the case of an error.
+       @param tag-addr is an address to a res-tag. The current base tag is written to this. Ignored if tag-addr is #f
+       @param buf-addr is an address to the data buffer used to write interpolated data to. It must have enough space! Only necessary for 'interp mode."
+      (_type_ symbol symbol float pointer (pointer res-tag) pointer) pointer :no-virtual) ;; 9
+    (get-property-struct
+      "Returns a given struct property's value at a specific time stamp, or default on error.
+        @param name is the name of the property you want, `mode` is its lookup mode ('interp 'base 'exact), `time` is the timestamp.
+        @param default is the default result returned in the case of an error.
+        @param tag-addr is an address to a [[res-tag]]. The current base tag is written to this. Ignored if tag-addr is #f.
+        @param buf-addr is an address to the data buffer used to write interpolated data to.
+        It must have enough space! Only necessary for 'interp mode." (_type_ symbol symbol float structure (pointer res-tag) pointer) structure :no-virtual) ;; 10
+    (get-property-value
+      "Returns a given value property's value at a specific time stamp, or default on error.
+       @param name is the name of the property you want, `mode` is its lookup mode ('interp 'base 'exact), `time` is the timestamp.
+       @param default is the default result returned in the case of an error.
+       @param tag-addr is an address to a res-tag. The current base tag is written to this. Ignored if `tag-addr` is #f.
+       @param buf-addr is an address to the data buffer used to write interpolated data to.
+       It must have enough space! Only necessary for 'interp mode." (_type_ symbol symbol float uint128 (pointer res-tag) pointer) uint128 :no-virtual) ;; 11
     (get-property-value-float (_type_ symbol symbol float float (pointer res-tag) pointer) float :no-virtual) ;; 12
-    (get-tag-index-data (_type_ int) pointer) ;; 13
-    (get-tag-data (_type_ res-tag) pointer) ;; 14
-    (allocate-data-memory-for-tag! (_type_ res-tag) res-tag) ;; 15
-    (sort! (_type_) _type_) ;; 16
-    (add-data! (_type_ res-tag pointer) res-lump) ;; 17
-    (add-32bit-data! (_type_ res-tag object) res-lump) ;; 18
-    (lookup-tag-idx (_type_ symbol symbol float) res-tag-pair :no-virtual) ;; 19
-    (make-property-data (_type_ float res-tag-pair pointer) pointer) ;; 20
-    (get-curve-data! (_type_ curve symbol symbol float) symbol) ;; 21
+    (get-tag-index-data "Get the data address of the n'th tag." (_type_ int) pointer) ;; 13
+    (get-tag-data "Get the data address of the specified tag." (_type_ res-tag) pointer) ;; 14
+    (allocate-data-memory-for-tag!
+      "Find space for the data described by arg0 in this.
+       Returns a tag with data-offset set correctly for this res-lump.
+       If the lump already contains memory for the given tag, and it is big enough,
+       it will be reused. Alignment will be at least 8 bytes.
+       If the input tag has elt-count = 0, it will return a tag for elt-count = 1." (_type_ res-tag) res-tag) ;; 15
+    (sort! "Sort all tags based on name, then key-frame." (_type_) _type_) ;; 16
+    (add-data!
+      "Given a tag and a pointer to its data, copy it to this res-lump.
+       This doesn't seem to do the right thing if the given tag is a non-inline tag
+       with > 1 element." (_type_ res-tag pointer) res-lump) ;; 17
+    (add-32bit-data! "Add a single 32-bit value using [[add-data!]]." (_type_ res-tag object) res-lump) ;; 18
+    (lookup-tag-idx
+      "Look up the index of the tag containing with the given name and timestamp.
+       Correct lookups return a res-tag-pair, which contains one tag index in the lower 32 bits and one in the upper 32 bits.
+       Depending on the mode, they may be the same, or they may be two tags that you should interpolate
+       between, if the exact time was not found.
+
+       @param name-sym should be the name of the thing you want.
+       @param time is for the timestamp you want.
+       If mode = 'base, then both the indices are the same and the timestamp is ignored.
+       If mode = 'interp, then it tries to get closest below/closest above (or both the same, if exact match found).
+       If mode = 'exact, then it requires an exact timestamp match and both indices are the same.
+       If things go wrong, returns a negative number." (_type_ symbol symbol float) res-tag-pair :no-virtual) ;; 19
+    (make-property-data
+       "Returns (a pointer to) the value data of a property with the tag-pair.
+        If tag-pair does not represent an exact point in the timeline, then the data is interpolated based on time
+        with the result written into buf. buf must have enough space to copy all of the data.
+        Otherwise, simply returns an address to the resource binary." (_type_ float res-tag-pair pointer) pointer) ;; 20
+    (get-curve-data!
+      "Read curve data and write it to curve-target. Return #t if both
+       control points and knots data was succesfully read, #f otherwise." (_type_ curve symbol symbol float) symbol) ;; 21
     )
   )
 
@@ -16629,7 +17700,7 @@
     (mode-set! (_type_ joint-mod-mode) none) ;; 9
     (target-set! (_type_ vector) none) ;; 10
     (look-at! (_type_ vector symbol process) none :behavior process) ;; 11
-    (reset-blend! (_type_) _type_) ;; 12
+    (reset-blend! "Set the blend to 0." (_type_) _type_) ;; 12
     (twist-set! (_type_ float float float) vector) ;; 13
     (trs-set! (_type_ vector quaternion vector) none) ;; 14
     (shut-down (_type_) none) ;; 15
@@ -16804,16 +17875,19 @@
     )
   )
 
-(define-extern joint-mod-debug-draw (function joint-mod none))
+(define-extern joint-mod-debug-draw "Debug draw the bone transform for the associated bone of a joint-mod" (function joint-mod none))
 (define-extern *joint-axis-vectors* (inline-array vector))
 (define-extern joint-mod-wheel-callback (function cspace transformq none))
-(define-extern joint-mod-set-local-callback (function cspace transformq none))
-(define-extern joint-mod-add-local-callback (function cspace transformq none))
-(define-extern joint-mod-set-world-callback (function cspace transformq none))
-(define-extern joint-mod-blend-local-callback (function cspace transformq none))
-(define-extern joint-mod-spinner-callback (function cspace transformq none))
-(define-extern joint-mod-blend-world-callback (function cspace transformq none))
-(define-extern joint-mod-rotate-local-callback (function cspace transformq none))
+(define-extern joint-mod-set-local-callback "Callback for joint-mod-rotate-local. See comment on that type." (function cspace transformq none))
+(define-extern joint-mod-add-local-callback "Callback for joint-mod-add-local. See comment on that type." (function cspace transformq none))
+(define-extern joint-mod-set-world-callback "Callback for joint-mod-set-world. See comment on that type." (function cspace transformq none))
+(define-extern joint-mod-blend-local-callback "Callback for joint-mod-blend-local. See comment on that type." (function cspace transformq none))
+(define-extern joint-mod-spinner-callback
+  "cspace callback for joint-mod-spinner. Update the cspace's bone from the parent transformq, plus the rotation from this spinner."
+  (function cspace transformq none))
+(define-extern joint-mod-blend-world-callback "Callback for joint-mod-blend-local. See comment on that type." (function cspace transformq none))
+(define-extern joint-mod-rotate-local-callback
+               "Apply an additional rotation to the transform (left side quaternion multiplication" (function cspace transformq none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; collide-func-h                 ;;
@@ -16902,8 +17976,9 @@
   :flag-assert         #xd0000bb90
   (:methods
     (populate-for-prim-mesh (_type_ collide-shape-prim-mesh) collide-mesh-cache-entry) ;; 9
-    (is-id? (_type_ int) symbol) ;; 10
-    (next-id! (_type_) uint) ;; 11
+    (is-id? "Does this cache have the given ID?" (_type_ int) symbol) ;; 10
+    (next-id! "Reset all used entries in the cache and increment the ID.
+       If the id is zero, set it to 1." (_type_) uint) ;; 11
     (allocate! (_type_ int) collide-mesh-cache-entry) ;; 12
     )
   )
@@ -18377,8 +19452,12 @@
 ;; process-drawable-h             ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(define-extern cspace-by-name-no-fail (function process-drawable string cspace))
-(define-extern cspace-index-by-name-no-fail (function process-drawable string int))
+(define-extern cspace-by-name-no-fail
+  "Like [[cspace-by-name]], but prints an error if the [[cspace]] was not found and returns the `node-list`."
+  (function process-drawable string cspace))
+(define-extern cspace-index-by-name-no-fail
+  "Like [[cspace-index-by-name]], but prints an error if the [[cspace]] was not found and returns 0."
+  (function process-drawable string int))
 (define-extern num-func-none (function joint-control-channel float float float float :behavior process))
 (define-extern num-func-+! (function joint-control-channel float float float float :behavior process))
 (define-extern num-func--! (function joint-control-channel float float float float :behavior process))
@@ -18515,10 +19594,12 @@
   :size-assert         #xc
   :flag-assert         #xd0000000c
   (:methods
-    (clear-focused (_type_) none) ;; 9
-    (collide-check? (_type_ process-focusable) object) ;; 10
-    (reset-to-collide-spec (_type_ collide-spec) none) ;; 11
-    (try-update-focus (_type_ process-focusable) symbol) ;; 12
+    (clear-focused "Reset the focus' handle." (_type_) none) ;; 9
+    (collide-check?
+      "If the focused process is not dead,
+       check that the [[collide-spec]] of the focus and the process match." (_type_ process-focusable) object) ;; 10
+    (reset-to-collide-spec "Reset this focus with the given [[collide-spec]]." (_type_ collide-spec) none) ;; 11
+    (try-update-focus "Try to set the `handle` of this focus to the given process." (_type_ process-focusable) symbol) ;; 12
     )
   )
 
@@ -18957,7 +20038,7 @@
     )
   )
 
-(define-extern spawn-projectile (function type projectile-init-by-other-params process-tree dead-pool (pointer process)))
+(define-extern spawn-projectile "Create a new process for a projectile of the given type." (function type projectile-init-by-other-params process-tree dead-pool (pointer process)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; find-nearest-h                 ;;
@@ -19529,8 +20610,12 @@
   :flag-assert         #x900000078
   )
 
-(define-extern inspect-bsp-tree (function bsp-header bsp-node none))
-(define-extern map-bsp-tree (function (function bsp-node none) bsp-header bsp-node none))
+(define-extern inspect-bsp-tree
+  "Attempt to print a bsp-tree, but it is actually broken since the jak 2 bsp format change"
+  (function bsp-header bsp-node none))
+(define-extern map-bsp-tree
+  "Attempt to call a function on all bsp-tree nodes, but it is actually broken since the jak 2 bsp format"
+  (function (function bsp-node none) bsp-header bsp-node none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; collide-cache-h                ;;
@@ -19978,7 +21063,9 @@
   :flag-assert         #x9000038a0
   )
 
-(define-extern shrubbery-login-post-texture (function shrubbery none))
+(define-extern shrubbery-login-post-texture
+  "Do some weird fix-up to the shrubbery textures. this is likely to present normal-looking adgifs to the texture system, but then we scramble them up for easier consumption by VU1."
+  (function shrubbery none))
 (define-extern *shrub-state* int)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -21583,33 +22670,55 @@
   :size-assert         #x10
   :flag-assert         #x1a00000010
   (:methods
-    (new (symbol type process symbol) _type_) ;; 0
-    (get-matching-actor-type-mask (_type_ type) int) ;; 9
-    (actor-count-before (_type_) int) ;; 10
-    (link-to-next-and-prev-actor (_type_) actor-link-info) ;; 11
+    (new
+      "Set up an actor-link-info for the given process.
+       The entity of this process should be the entity-actor
+       that will get this actor-link-info." (symbol type process symbol) _type_) ;; 0
+    (get-matching-actor-type-mask
+      "Iterate through _all_ actors that are part of this actor list.
+       If the nth actor is type matching-type, then set the nth bit of the result." (_type_ type) int) ;; 9
+    (actor-count-before "Get the number of actors before this actor in the list." (_type_) int) ;; 10
+    (link-to-next-and-prev-actor
+      "Redo the linking in the constructor by looking up the next/prev actor." (_type_) actor-link-info) ;; 11
     (get-next (_type_) entity-actor) ;; 12
     (get-prev (_type_) entity-actor) ;; 13
-    (get-next-process (_type_) process) ;; 14
-    (get-prev-process (_type_) process) ;; 15
-    (apply-function-forward (_type_ (function entity-actor object object) object) int) ;; 16
-    (apply-function-reverse (_type_ (function entity-actor object object) object) int) ;; 17
-    (apply-all (_type_ (function entity-actor object object) object) int) ;; 18
+    (get-next-process "Get the process for the next, if it exists." (_type_) process) ;; 14
+    (get-prev-process "Get the process for the prev, if it exists." (_type_) process) ;; 15
+    (apply-function-forward
+      "Iterate forward through actors, and apply this function. Starts at (-> this next)
+       If the function returns truthy, stop iterating." (_type_ (function entity-actor object object) object) int) ;; 16
+    (apply-function-reverse
+      "Iterate backward through actors and apply function.
+       If the function returns truth, stop iterating." (_type_ (function entity-actor object object) object) int) ;; 17
+    (apply-all
+      "Apply to all entities.  Starts at the back and hits everyone, including this object." (_type_ (function entity-actor object object) object) int) ;; 18
     (send-to-all (_type_ symbol) none) ;; 19
-    (send-to-all-after (_type_ symbol) object) ;; 20
-    (send-to-all-before (_type_ symbol) object) ;; 21
-    (send-to-next-and-prev (_type_ symbol) none) ;; 22
-    (send-to-next (_type_ symbol) none) ;; 23
-    (send-to-prev (_type_ symbol) none) ;; 24
-    (actor-count (_type_) int) ;; 25
+    (send-to-all-after "Send an event to all processes after this link with no parameters."  (_type_ symbol) object) ;; 20
+    (send-to-all-before "Send an event to all processes before this link with no parameters." (_type_ symbol) object) ;; 21
+    (send-to-next-and-prev "Send an event to both next and prev with no params." (_type_ symbol) none) ;; 22
+    (send-to-next "Send event arg0 to the next actor's process." (_type_ symbol) none) ;; 23
+    (send-to-prev "Send event arg1 to the next actor's process." (_type_ symbol) none) ;; 24
+    (actor-count "Count the number of actors in the entire list." (_type_) int) ;; 25
     )
   )
 
-(define-extern entity-actor-lookup (function res-lump symbol int entity-actor))
-(define-extern entity-actor-count (function res-lump symbol int))
-(define-extern actor-link-subtask-complete-hook (function entity-actor (pointer symbol) symbol))
+(define-extern entity-actor-lookup
+  "Given an entity (the res-lump), look up a reference to another entity and return that entity."
+  (function res-lump symbol int entity-actor))
+(define-extern entity-actor-count
+  "Get the number of entities that this res references under the name.
+  This works on more than just next/prev."
+  (function res-lump symbol int))
+(define-extern actor-link-subtask-complete-hook
+  "Sets arg1 if the thing is complete. Does not continue the apply if the complete perm is set."
+  (function entity-actor (pointer symbol) symbol))
 (define-extern actor-link-subtask-incomplete-count-hook (function entity-actor (pointer uint64) symbol))
-(define-extern actor-link-dead-hook (function entity-actor (pointer symbol) symbol))
-(define-extern alt-actor-list-subtask-incomplete-count (function process-drawable int))
+(define-extern actor-link-dead-hook
+  "Sets arg1 if the thing is dead. Does not continue the apply if the dead perm is set."
+  (function entity-actor (pointer symbol) symbol))
+(define-extern alt-actor-list-subtask-incomplete-count
+  "Get the number of alt-actors which do not have the complete bit set in their perm."
+  (function process-drawable int))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; camera-h                       ;;
@@ -23010,12 +24119,12 @@
   :flag-assert         #xf00000018
   (:methods
     (new (symbol type uint uint int) rpc-buffer-pair) ;; 0
-    (call (rpc-buffer-pair uint pointer uint) int) ;; 9
-    (add-element (rpc-buffer-pair) pointer) ;; 10
-    (decrement-elt-used (rpc-buffer-pair) int) ;; 11
-    (sync (rpc-buffer-pair symbol) int) ;; 12
-    (check-busy (rpc-buffer-pair) symbol) ;; 13
-    (pop-last-received (rpc-buffer-pair) pointer) ;; 14
+    (call "Start an async RPC call. If there is already one in progress, stall and wait for it to finish." (rpc-buffer-pair uint pointer uint) int) ;; 9
+    (add-element "Add an element. If the buffer is full, flush it!" (rpc-buffer-pair) pointer) ;; 10
+    (decrement-elt-used "Remove the most recently queued element." (rpc-buffer-pair) int) ;; 11
+    (sync "Wait for an in-progress rpc to finish." (rpc-buffer-pair symbol) int) ;; 12
+    (check-busy "Check to see if an rpc is in progress." (rpc-buffer-pair) symbol) ;; 13
+    (pop-last-received "Pop the response from the most recently completed rpc call." (rpc-buffer-pair) pointer) ;; 14
     )
   )
 
@@ -23035,10 +24144,11 @@
   )
 
 (deftype path-control (basic)
-  "An abstraction around a [[curve]], providing tools such as:
-   - debug drawing
-   - conveniant vertex accessing
-   - vertex finding/searching algorithms"
+  "The path-control is a reference a path data, which is just a list of points.
+   Although it contains a `curve`, the knot part is not populated, so it's just treated as
+   a bunch of line segments from the control points.
+   The child class curve-control does fill out the knot data and is a proper b-spline.
+   These path-controls are typically allocated on a process heap."
   ((flags      path-control-flag             :offset-assert 4)
    (name       symbol                        :offset-assert 8)
    (process    process-drawable              :offset-assert 12)
@@ -23048,7 +24158,7 @@
   :size-assert         #x24
   :flag-assert         #x1b00000024
   (:methods
-    (new (symbol type process symbol float entity symbol) _type_) ;; 0
+    (new "Allocate a new path-control, set up the curve to point to the specified lump data." (symbol type process symbol float entity symbol) _type_) ;; 0
     (debug-draw (_type_) none) ;; 9
     (get-point-in-path!
       "Depending on the value of `idx`, the result can be quite different:
@@ -23134,7 +24244,7 @@
   )
 
 (deftype curve-control (path-control)
-  "Identical in terms of data to a [[path-control]] but has different implementation"
+  "A curve-control is like a path control, but it has both control points and knot points."
   ()
   :method-count-assert 27
   :size-assert         #x24
@@ -23383,11 +24493,11 @@
     (nav-mesh-method-34 (_type_ vector vector float) float) ;; 34
     (nav-mesh-method-35 (_type_ vector vector float) float) ;; 35
     (debug-draw-poly (_type_ nav-poly rgba) none) ;; 36
-    (point-in-poly? (_type_ nav-poly vector) symbol) ;; 37
+    (point-in-poly? "Check if a point is inside a poly of this mesh" (_type_ nav-poly vector) symbol) ;; 37
     (nav-mesh-method-38 (_type_ nav-poly vector vector vector (pointer nav-poly)) vector) ;; 38
-    (closest-point-on-boundary (_type_ nav-poly vector vector) none) ;; 39
+    (closest-point-on-boundary "Find the point on the polygon edge that is closest to the query point." (_type_ nav-poly vector vector) none) ;; 39
     (project-point-onto-plane-of-poly-local (_type_ nav-poly vector vector vector) none) ;; 40
-    (project-point-into-poly-2d (_type_ nav-poly vector vector) none) ;; 41
+    (project-point-into-poly-2d "Find the point in the polygon closest to the query point." (_type_ nav-poly vector vector) none) ;; 41
     (find-poly-containing-point-local (_type_ nav-find-poly-parms) nav-poly) ;; 42
     (find-nearest-poly-to-point-local (_type_ nav-find-poly-parms) nav-find-poly-parms) ;; 43
     (is-in-mesh-local? (_type_ vector float float) symbol) ;; 44
@@ -23397,12 +24507,24 @@
   )
 
 
-(define-extern vector-normalize-unity! (function vector vector))
-(define-extern vector-normalize-unity-copy! (function vector vector vector))
-(define-extern debug-validate-current-poly (function symbol))
-(define-extern init-ray (function nav-ray none))
-(define-extern point-poly-intersection? (function nav-mesh vector int (inline-array vector) symbol))
-(define-extern nav-sphere-from-cam (function none))
+(define-extern vector-normalize-unity!
+  "Normalize a vector (xyz only) in place."
+  (function vector vector))
+(define-extern vector-normalize-unity-copy!
+  "Normalize a vector (xyz only)"
+  (function vector vector vector))
+(define-extern debug-validate-current-poly
+  "Not implemented."
+  (function symbol))
+(define-extern init-ray
+  "Set up a nav-ray. Assumes that dest-pos and current-pos are set."
+  (function nav-ray none))
+(define-extern point-poly-intersection?
+  "Check if a point is inside a poly."
+  (function nav-mesh vector int (inline-array vector) symbol))
+(define-extern nav-sphere-from-cam
+  "Print out a SPHEREM from the current camera position, possibly used by their level-building tool."
+  (function none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; nav-control-h                  ;;
@@ -23851,23 +24973,42 @@
 (define-extern *load-str-lock* symbol)
 (define-extern *que-str-lock* symbol)
 (define-extern *dgo-name* string)
-(define-extern str-load (function string int pointer int symbol))
-(define-extern str-load-status (function (pointer int32) symbol))
-(define-extern str-load-cancel (function none))
-(define-extern str-play-async (function string sound-id none))
-(define-extern str-play-stop (function string sound-id none))
-(define-extern str-play-queue (function string string string string (pointer uint32) pointer none))
-(define-extern str-ambient-play (function string none))
-(define-extern str-ambient-stop (function string none))
-(define-extern str-play-kick (function none)) ;;
+(define-extern str-load
+  "Send a message to the IOP to start loading a chunk of a .STR file to the EE."
+  (function string int pointer int symbol))
+(define-extern str-load-status
+  "Get the status of the most recent load.
+  Return 'busy if in progress, 'error if failed, or 'complete.
+  If 'complete, returns the maxlen value from the IOP."
+  (function (pointer int32) symbol))
+(define-extern str-load-cancel
+  "Cancel a streaming load. Note that this does not actually stop the transfer, so the IOP may continue writing to the buffer."
+  (function none))
+(define-extern str-play-async "Start playing a streaming audio." (function string sound-id none))
+(define-extern str-play-stop
+  "Stop playing streaming audio."
+  (function string sound-id none))
+(define-extern str-play-queue "Queue up streaming data, allowing it to start playing without delay." (function string string string string (pointer uint32) pointer none))
+(define-extern str-ambient-play "Start playing ambient (unused?)." (function string none))
+(define-extern str-ambient-stop "Stop playing ambient (unused?)." (function string none))
+(define-extern str-play-kick
+  "Do an empty RPC on play so the IOP code runs and can update buffers."
+  (function none)) ;;
 (define-extern *dgo-time* time-frame)
-(define-extern dgo-load-begin (function string pointer pointer pointer load-dgo-msg))
-(define-extern dgo-load-get-next (function (pointer symbol) pointer))
-(define-extern dgo-load-continue (function pointer pointer pointer load-dgo-msg))
-(define-extern dgo-load-cancel (function none))
-(define-extern find-temp-buffer (function int pointer))
-(define-extern dgo-load-link (function dgo-header kheap uint symbol symbol symbol))
-(define-extern destroy-mem (function (pointer uint32) (pointer uint32) none))
+(define-extern dgo-load-begin "Start a DGO load!" (function string pointer pointer pointer load-dgo-msg))
+(define-extern dgo-load-get-next "Get the address of the most recently loaded object. #f is there is none. Returns if this is the last by arg0." (function (pointer symbol) pointer))
+(define-extern dgo-load-continue
+  "Inform the IOP that it is safe to start loading the next object."
+  (function pointer pointer pointer load-dgo-msg))
+(define-extern dgo-load-cancel "Abort a DGO load." (function none))
+(define-extern find-temp-buffer
+  "Unused function to find some temporary leftover space in DMA buffer.
+  Unused since jak 1, and checks the same buffer twice??"
+  (function int pointer))
+(define-extern dgo-load-link "Start the async linker on a GOAL object file that was just loaded." (function dgo-header kheap uint symbol symbol symbol))
+(define-extern destroy-mem
+  "Overwrite memory with #xffffffff for debugging."
+  (function (pointer uint32) (pointer uint32) none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; ramdisk                        ;;
@@ -23980,62 +25121,125 @@
 (define-extern *sound-loop-engine* engine-sound-pers)
 (define-extern *sound-player-rpc* rpc-buffer-pair)
 (define-extern *sound-loader-rpc* rpc-buffer-pair)
-(define-extern sound-name= (function sound-name sound-name symbol))
+(define-extern sound-name=
+  "Are two sound names the same?"
+  (function sound-name sound-name symbol))
 (define-extern *sound-iop-info* sound-iop-info)
-(define-extern str-is-playing? (function symbol))
-(define-extern str-id-is-playing? (function int symbol))
-(define-extern current-str-pos (function sound-id int))
-(define-extern is-ramdisk-loaded? (function symbol symbol))
-(define-extern is-cd-in? (function symbol))
-(define-extern new-sound-id (function sound-id))
-(define-extern check-irx-version (function int))
-(define-extern sound-bank-iop-store (function sound-name sound-id))
-(define-extern sound-bank-iop-free (function sound-name sound-id))
-(define-extern sound-bank-load (function sound-name sound-id))
-(define-extern sound-bank-load-from-iop (function sound-name sound-id))
-(define-extern sound-bank-load-from-ee (function sound-name pointer sound-id))
-(define-extern sound-bank-unload (function sound-name int))
-(define-extern sound-music-load (function sound-name int))
-(define-extern sound-music-unload (function int))
-(define-extern set-language (function language-enum int))
-(define-extern sound-set-stereo-mode (function stereo-mode none))
-(define-extern list-sounds (function none))
-(define-extern sound-command->string (function sound-command string))
-(define-extern sound-buffer-dump (function int))
+(define-extern str-is-playing? "Is any streaming audio playing?" (function symbol))
+(define-extern str-id-is-playing? "Is any streaming audio with the given ID playing?" (function int symbol))
+(define-extern current-str-pos
+  "Get the current stream position of the given sound ID, or -1 if it is not playing."
+  (function sound-id int))
+(define-extern is-ramdisk-loaded?
+  "Check if the ramdisk-name is set to this (unused)."
+  (function symbol symbol))
+(define-extern is-cd-in?
+  "Is the CD/DVD in the ps2?"
+  (function symbol))
+(define-extern new-sound-id
+  "Allocate a new sound ID, used to identify a unique playback of a sound."
+  (function sound-id))
+(define-extern check-irx-version
+  "Confirm OVERLORD version is correct and set up the sound-iop-info address so the OVERLORD can report back to the EE."
+  (function int))
+(define-extern sound-bank-iop-store
+  "Send a iop-store RPC to loader with the given name"
+  (function sound-name sound-id))
+(define-extern sound-bank-iop-free
+  "Send a iop-free RPC to loader with the given name"
+  (function sound-name sound-id))
+(define-extern sound-bank-load "Send RPC to load a sound bank." (function sound-name sound-id))
+(define-extern sound-bank-load-from-iop
+  "Send load-bank-from-iop rpc to loader"
+  (function sound-name sound-id))
+(define-extern sound-bank-load-from-ee
+  "Send load-bank-from-ee rpc to loader"
+  (function sound-name pointer sound-id))
+(define-extern sound-bank-unload
+  "Send unload-bank rpc to loader"
+  (function sound-name int))
+(define-extern sound-music-load
+  "Send load-music rpc to loader"
+  (function sound-name int))
+(define-extern sound-music-unload
+  "Send unload-music rpc to loader."
+  (function int))
+(define-extern set-language "Send set-language rpc to loader. Note this is only for sound, no game text is changed." (function language-enum int))
+(define-extern sound-set-stereo-mode "Send set-stereo-mode rpc to loader." (function stereo-mode none))
+(define-extern list-sounds
+  "Send list-sounds rpc to loader."
+  (function none))
+(define-extern sound-command->string
+  "Convert sound-command enum to string."
+  (function sound-command string))
+(define-extern sound-buffer-dump
+  "Print out all sound-commands in the buffer."
+  (function int))
 (define-extern *sound-player-enable* symbol)
-(define-extern swap-sound-buffers  (function vector vector vector float int))
-(define-extern get-sound-buffer-entry (function pointer))
-(define-extern free-last-sound-buffer-entry (function none))
-(define-extern sound-basic-cb (function int (pointer int32) none))
-(define-extern sound-trans-convert (function vector3w vector int))
-(define-extern sound-angle-convert (function float int))
-(define-extern string->sound-name  (function string sound-name))
-(define-extern sound-set-volume (function sound-group float int))
-(define-extern sound-set-reverb (function int float float uint int))
-(define-extern sound-set-ear-trans (function vector vector vector float int))
+(define-extern swap-sound-buffers  "Per-frame update of sound system - update loop-engine, update ear trans, send player RPC, check for missing/dirty CD." (function vector vector vector float int))
+(define-extern get-sound-buffer-entry
+  "Allocate a new entry in the player RPC queue, to be flushed on the next frame."
+  (function pointer))
+(define-extern free-last-sound-buffer-entry
+  "Remove the last thing added with get-sound-buffer-entry."
+  (function none))
+(define-extern sound-basic-cb
+  "Unknown and unused callback."
+  (function int (pointer int32) none))
+(define-extern sound-trans-convert "Convert a GOAL translation (meters) to integer format for the IOP" (function vector3w vector int))
+(define-extern sound-angle-convert
+  "Convert a GOAL angle to integer format for the iop"
+  (function float int))
+(define-extern string->sound-name "Create a sound-name from a string" (function string sound-name))
+(define-extern sound-set-volume "Send set-master-volume rpc." (function sound-group float int))
+(define-extern sound-set-reverb
+  "Send set-reverb rpc"
+  (function int float float uint int))
+(define-extern sound-set-ear-trans "Send set-ear-trans rpc" (function vector vector vector float int))
 (define-extern sound-play-by-name
-  "Last arg can by a symbol with value [[#t]], in which case it will pull `trans` [[vector]] off the current [[process-drawable]]
+  "Send play rpc to play a sound!
+   Last arg can by a symbol with value [[#t]], in which case it will pull `trans` [[vector]] off the current [[process-drawable]]
    otherwise, an explicit [[vector]] can be provided"
   (function sound-name sound-id int int int sound-group object sound-id :behavior process-drawable))
-(define-extern sound-play-by-spec (function sound-spec sound-id vector sound-id :behavior process-drawable)) ;; vector or symbol for final arg?
-(define-extern sound-pause (function sound-id int))
-(define-extern sound-stop (function sound-id int))
-(define-extern sound-continue (function sound-id int))
-(define-extern sound-group-pause (function sound-group int))
-(define-extern sound-group-stop (function sound-group int))
-(define-extern sound-group-continue (function sound-group int))
-(define-extern sound-set-flava (function uint uint int))
-(define-extern sound-set-midi-reg (function int int int))
-(define-extern sound-set-fps (function int int))
-(define-extern sound-volume-off (function int))
+(define-extern sound-play-by-spec "Send play rpc to play a sound!" (function sound-spec sound-id vector sound-id :behavior process-drawable)) ;; vector or symbol for final arg?
+(define-extern sound-pause
+  "Send pause-sound rpc to pause by id"
+  (function sound-id int))
+(define-extern sound-stop
+  "Send stop-sound rpc to stop by id"
+  (function sound-id int))
+(define-extern sound-continue
+  "Send continue-sound rpc to continue by id"
+  (function sound-id int))
+(define-extern sound-group-pause "Send pause-group rpc" (function sound-group int))
+(define-extern sound-group-stop "Send stop-group rpc" (function sound-group int))
+(define-extern sound-group-continue "Send continue-group rpc" (function sound-group int))
+(define-extern sound-set-flava
+  "Send set-flava rpc"
+  (function uint uint int))
+(define-extern sound-set-midi-reg
+  "Send set-midi-reg rpc"
+  (function int int int))
+(define-extern sound-set-fps
+  "Send set-fps rpc"
+  (function int int))
+(define-extern sound-volume-off
+  "Adjust settings to turn all sound volume off"
+  (function int))
 (define-extern *ambient-spec* sound-spec)
-(define-extern show-iop-info (function dma-buffer int))
-(define-extern show-iop-memory (function dma-buffer int))
-(define-extern ear-trans (function int vector))
-(define-extern make-sqrt-table (function int))
-(define-extern loader-test-command (function sound-command uint none))
-(define-extern doppler-pitch-shift (function vector vector float))
-(define-extern sound-bank-reload (function none))
+(define-extern show-iop-info "Display iop info on screen." (function dma-buffer int))
+(define-extern show-iop-memory
+  "Display iop memory stats on screen"
+  (function dma-buffer int))
+(define-extern ear-trans "Get the current location of the ear. Use 1 for the settings ear-handle, or 0 for the camera." (function int vector))
+(define-extern make-sqrt-table "Generate integer square-root table used in the IOP." (function int))
+(define-extern loader-test-command
+  "Send a command to loader by ID."
+  (function sound-command uint none))
+(define-extern doppler-pitch-shift
+  "Compute pitch shift for the doppler effect. This is done assuming the listener is *target* and has *target*'s velocity."
+  (function vector vector float))
+(define-extern sound-bank-reload "Start a background process to unload all sound banks, then load them again." (function none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; transformq                     ;;

@@ -84,6 +84,7 @@ for func_name in jak2_function_defs:
     matching_func_names.append(func_name)
 
 # print(matching_func_names)
+print("Found {} matching functions".format(len(matching_func_names)))
 
 # Go grab the var casts for each game
 def get_var_casts_for_game(game_name):
