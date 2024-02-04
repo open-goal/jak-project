@@ -48,7 +48,7 @@ class InitializeResult {
                                                // think i need, or word boundaries need to change!
                    {"workspaceSymbolProvider", false},
                    {"codeActionProvider", false},
-                   {"codeLensProvider", code_lens_provider},
+                   // {"codeLensProvider", code_lens_provider},
                    {"documentFormattingProvider", true},
                    {"documentRangeFormattingProvider", false},
                    {"documentOnTypeFormattingProvider", document_on_type_formatting_provider},

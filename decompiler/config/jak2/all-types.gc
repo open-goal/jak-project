@@ -4638,7 +4638,7 @@
 (define-extern vector-rotate-around-y! (function vector vector float vector))
 (define-extern vector-rotate90-around-y! (function vector vector vector))
 (define-extern vector-rotate-around-z! (function vector vector float vector))
-(define-extern rotate-y<-vector+vector (function vector vector float))
+(define-extern rotate-y<-vector+vector "Get the y rotation between vectors. These should have the same length." (function vector vector float))
 (define-extern rotate-x<-vector+vector (function vector vector float))
 (define-extern rotate-z<-vector+vector (function vector vector float))
 (define-extern vector-cvt.w.s! (function vector vector vector))
@@ -14869,17 +14869,56 @@
 ;;  some asm stuff, maybe needs mips2c.
 
 (define-extern *light-hash-work* light-hash-work)
-(define-extern light-slerp (function light light light float light))
-(define-extern light-group-slerp (function light-group light-group light-group float light-group))
-(define-extern light-group-process! (function vu-lights light-group vector vector none))
+(define-extern light-slerp
+  "Linearly interpolate between two [[light]]s
+   @param! light-out The resultant
+   @param light-a One of the two lights
+   @param light-b One of the two lights
+   @param alpha Clamped to between `0.0` and `1.0`
+   @returns The interpolated [[light]]"
+  (function light light light float light))
+(define-extern light-group-slerp
+  "Linearly interpolate between two [[light-groups]]s by calling [[light-slerp]] on each respective collection of lights
+   @param light-group-out The resultant
+   @param light-group-a One of the two [[light-group]]s
+   @param light-group-b One of the two [[light-group]]s
+   @param alpha
+   @returns The linearly interpolated [[light-group]]"
+  (function light-group light-group light-group float light-group))
+(define-extern light-group-process!
+  "Unused, needlessly calls [[rotate-y<-vector+vector]] on the two [[vector]]s and calls [[vu-lights<-light-group!]]
+   @param vu-lights
+   @param light-group
+   @param vec1
+   @param vec2
+   @returns [[none]]"
+  (function vu-lights light-group vector vector none))
 (define-extern *default-lights* vu-lights)
-(define-extern vu-lights-default! (function vu-lights vu-lights))
-(define-extern init-light-hash (function none))
+(define-extern vu-lights-default!
+  "Setups up a default [[vu-lights]] instance
+   @param! lights
+   @returns [[vu-lights]]"
+  (function vu-lights vu-lights))
+(define-extern init-light-hash
+  "Initializes the global [[*light-hash*]].
+   - Bucket array allocates `4096` bytes. (enough for 16,384 entries)
+   - Index array allocates `65536` bytes.
+   - Light sphere array allocates `16384` bytes. (enough for 256 light spheres)
+   @returns [[light-hash]]"
+  (function none))
 (define-extern light-hash-count-items (function light-hash light-sphere none))
 (define-extern light-hash-add-items (function light-hash light-sphere integer object))
-(define-extern reset-light-hash (function light-hash none))
+(define-extern reset-light-hash
+  "Resets the global [[*light-hash*]] back to having `0` lights, indicies, and buckets.
+   @returns [[none]]"
+  (function light-hash none))
 (define-extern update-light-hash (function light-hash none))
-(define-extern lookup-light-sphere-by-name (function string light-hash light-sphere))
+(define-extern lookup-light-sphere-by-name
+  "Search through a given [[light-hash]]'s lights to find the one that matches the given name
+   @param name The name to look for
+   @param hash The hash to search through
+   @returns Either the [[light]] or [[#f]]"
+  (function string light-hash light-sphere))
 (define-extern light-hash-get-bucket-index (function light-hash vector int))
 (define-extern add-light-sphere-to-light-group (function object object object object object))
 
@@ -25971,8 +26010,12 @@
 (define-extern *mood-direction-table* mood-direction-table)
 (define-extern *mood-sky-table* mood-sky-table)
 (define-extern *mood-interp-table* sky-color-day)
-(define-extern init-mood-control (function mood-control none))
-(define-extern *mood-control* mood-control)
+(define-extern init-mood-control
+  "Given a [[mood-control]] initialize and set it up with default settings
+   @param! ctrl The [[mood-control]]
+   @returns [[none]]"
+  (function mood-control none))
+(define-extern *mood-control* "The global [[mood-control]] which governs things like clouds, fog and weather (to some degree)" mood-control)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; mood-tables2                   ;;
@@ -25980,10 +26023,14 @@
 
 (define-extern *overide-mood-color-table* mood-color-table)
 (define-extern *overide-mood-fog-table* mood-fog-table)
-(define-extern init-overide-table (function mood-table none))
+(define-extern init-overide-table
+  "Similar to [[init-mood-table]], does the bare minimum to setup the given [[mood-table]]
+   @param! table The table to initialize
+   @returns [[none]]"
+  (function mood-table none))
 (define-extern *overide-table* mood-table)
 (define-extern print-mood-tables
-  "Print out the contents of the [[*overide-table*]]"
+  "Generates the GOAL code for defining the current state of [[*overide-table*]]"
   (function none))
 (define-extern desaturate-mood-colors
   "Unused - Generate GOAL code for a new [[*overide-mood-color-table*]] definition that desaturates the color

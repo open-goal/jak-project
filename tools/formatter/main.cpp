@@ -11,6 +11,7 @@
 #include "common/util/FileUtil.h"
 #include "common/util/json_util.h"
 #include "common/util/string_util.h"
+#include "common/util/term_util.h"
 #include "common/util/unicode_util.h"
 
 #include "decompiler/util/DecompilerTypeSystem.h"
@@ -42,7 +43,12 @@ int main(int argc, char** argv) {
   app.add_option("-f,--file", file_path, "Input file path");
   app.add_option("--config", config_path, "Config file path");
   app.validate_positionals();
+  define_common_cli_arguments(app);
   CLI11_PARSE(app, argc, argv);
+
+  if (_cli_flag_disable_ansi) {
+    lg::disable_ansi_colors();
+  }
 
   // TODO - support recursing directories
   // Read in source code
@@ -58,7 +64,9 @@ int main(int argc, char** argv) {
         file_util::write_text_file(file_path, result.value());
       }
     }
+    return 0;
+  } else {
+    lg::error("Could not format file");
+    return 1;
   }
-
-  return 0;
 }

@@ -365,7 +365,11 @@ std::optional<std::string> formatter::format_code(const std::string& source) {
 
   // Get the root node of the syntax tree.
   TSNode root_node = ts_tree_root_node(tree.get());
-  if (ts_node_is_null(root_node) || ts_node_has_error(root_node)) {
+  if (ts_node_is_null(root_node)) {
+    lg::error("null root node");
+    return std::nullopt;
+  } else if (ts_node_has_error(root_node)) {
+    lg::error("grammar parsing error, go figure it out!");
     return std::nullopt;
   }
 

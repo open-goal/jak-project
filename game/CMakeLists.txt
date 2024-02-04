@@ -186,6 +186,7 @@ set(RUNTIME_SOURCE
         mips2c/jak2_functions/squid.cpp
         mips2c/jak2_functions/texture.cpp
         mips2c/jak2_functions/vortex.cpp
+        mips2c/jak3_functions/lights.cpp
         mips2c/mips2c_table.cpp
         overlord/common/dma.cpp
         overlord/common/fake_iso.cpp
