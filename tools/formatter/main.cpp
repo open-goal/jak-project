@@ -11,8 +11,8 @@
 #include "common/util/FileUtil.h"
 #include "common/util/json_util.h"
 #include "common/util/string_util.h"
+#include "common/util/term_util.h"
 #include "common/util/unicode_util.h"
-#include <common/util/term_util.h>
 
 #include "decompiler/util/DecompilerTypeSystem.h"
 #include "tree_sitter/api.h"

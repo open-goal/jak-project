@@ -432,7 +432,9 @@ PerGameVersion<std::unordered_map<std::string, std::vector<void (*)()>>> gMips2C
        jak2::shadow_scissor_top::link, jak2::shadow_scissor_edges::link,
        jak2::shadow_calc_dual_verts::link, jak2::shadow_xform_verts::link}}},
     /////////// JAK 3
-    {{"lights", {jak3::light_hash_get_bucket_index::link, jak3::add_light_sphere_to_light_group::link, jak3::light_hash_count_items::link, jak3::light_hash_add_items::link}}}};
+    {{"lights",
+      {jak3::light_hash_get_bucket_index::link, jak3::add_light_sphere_to_light_group::link,
+       jak3::light_hash_count_items::link, jak3::light_hash_add_items::link}}}};
 
 void LinkedFunctionTable::reg(const std::string& name, u64 (*exec)(void*), u32 stack_size) {
   const auto& it = m_executes.insert({name, {exec, Ptr<u8>()}});

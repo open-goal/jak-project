@@ -368,8 +368,7 @@ std::optional<std::string> formatter::format_code(const std::string& source) {
   if (ts_node_is_null(root_node)) {
     lg::error("null root node");
     return std::nullopt;
-  }
-  else if (ts_node_has_error(root_node)) {
+  } else if (ts_node_has_error(root_node)) {
     lg::error("grammar parsing error, go figure it out!");
     return std::nullopt;
   }
