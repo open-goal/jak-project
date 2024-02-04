@@ -7,7 +7,9 @@
 # TODO - run without caring about docstrings, just var_names for all files in reference tests folder
 
 import argparse
+import glob
 import json
+import os
 
 from utils import decompile_file, is_file_in_game
 
@@ -15,22 +17,8 @@ from utils import decompile_file, is_file_in_game
 parser = argparse.ArgumentParser("copy-common-naming")
 parser.add_argument("--file", help="The name of the file", type=str)
 parser.add_argument("--decompiler", help="The path to the decompiler", type=str)
-parser.add_argument("--decompiler_config", help="The decomp config", type=str)
-parser.add_argument("--version", help="The decomp config version", type=str)
+parser.add_argument("--update-names-from-refs", help="The decomp config version", type=bool)
 args = parser.parse_args()
-
-# Check if the file exists in both games
-if not is_file_in_game("jak3", args.file) or not is_file_in_game("jak2", args.file):
-  print("File not found in both games")
-  exit(1)
-
-# Decompile the file for both games
-decompile_file(args.decompiler, "jak3/jak3_config.jsonc", "ntsc_v1", "[\"{}\"]".format(args.file), True)
-decompile_file(args.decompiler, "jak2/jak2_config.jsonc", "ntsc_v1", "[\"{}\"]".format(args.file), True)
-
-# Go grab the contents of each file
-jak2_file_contents = open("./decompiler_out/jak2/{}_ir2.asm".format(args.file), "r").readlines()
-jak3_file_contents = open("./decompiler_out/jak3/{}_ir2.asm".format(args.file), "r").readlines()
 
 def find_all_function_defs(lines):
   store = {}
@@ -69,47 +57,12 @@ def find_all_function_defs(lines):
           passed_potential_docstring = True
   return store
 
-
-# Read in the function definitions for each file to find which ones match
-
-jak2_function_defs = find_all_function_defs(jak2_file_contents)
-jak3_function_defs = find_all_function_defs(jak3_file_contents)
-
-# print(jak2_function_defs["vector-xz-cross!"])
-# print()
-# print(jak3_function_defs["vector-xz-cross!"])
-
-# Compare functions to see which ones are eligible
-matching_func_names = []
-for func_name in jak2_function_defs:
-  if func_name in jak3_function_defs and jak2_function_defs[func_name]["definition"] == jak3_function_defs[func_name]["definition"]:
-    matching_func_names.append(func_name)
-
-# print(matching_func_names)
-print("Found {} matching functions".format(len(matching_func_names)))
-
-# Go grab the var casts for each game
 def get_var_casts_for_game(game_name):
   return json.load(open("./decompiler/config/{}/ntsc_v1/var_names.jsonc".format(game_name), "r"))
-
-jak2_var_casts = get_var_casts_for_game("jak2")
-jak3_var_casts = get_var_casts_for_game("jak3")
-
-# For each eligible matching function, copy over the var casts
-# The assumption is if it exists in jak 3 it's better (done more recently) so we use that
-# else, use jak 2's if it exists
-for func_name in matching_func_names:
-  if func_name in jak3_var_casts:
-    jak2_var_casts[func_name] = jak3_var_casts[func_name]
-  elif func_name in jak2_var_casts:
-    jak3_var_casts[func_name] = jak2_var_casts[func_name]
 
 def save_var_casts_for_game(game_name, casts):
   with open("./decompiler/config/{}/ntsc_v1/var_names.jsonc".format(game_name), "w") as f:
     json.dump(casts, f, indent=2)
-
-save_var_casts_for_game("jak2", jak2_var_casts)
-save_var_casts_for_game("jak3", jak3_var_casts)
 
 def get_all_types_for_game(game_name):
   return open("./decompiler/config/{}/all-types.gc".format(game_name), "r").readlines()
@@ -117,26 +70,83 @@ def get_all_types_for_game(game_name):
 jak2_alltypes = get_all_types_for_game("jak2")
 jak3_alltypes = get_all_types_for_game("jak3")
 
-# Automatically copy docstrings for functions (methods are way to annoying to do with hack scripts now)
-for func_name in matching_func_names:
-  if func_name.startswith("("):
-    continue
-  # handle the case where the jak 3 version has a docstring, but jak 2 does not
-  if len(jak3_function_defs[func_name]["docstring"]) != 0 and len(jak2_function_defs[func_name]["docstring"]) == 0:
-    for line_no, line in enumerate(jak2_alltypes):
-      line = jak2_alltypes[line_no]
-      if line.startswith("(define-extern {}".format(func_name)):
-        jak2_alltypes[line_no] = line.replace("(define-extern {} ".format(func_name), "(define-extern {}\n  {}\n  ".format(func_name, "\n  ".join(jak3_function_defs[func_name]["docstring"])))
-        break
-  # handle the case where jak 2 has a docstring but jak 3 does not
-  elif len(jak2_function_defs[func_name]["docstring"]) != 0 and len(jak3_function_defs[func_name]["docstring"]) == 0:
-    for line_no, line in enumerate(jak3_alltypes):
-      line = jak3_alltypes[line_no]
-      if line.startswith("(define-extern {}".format(func_name)):
-        jak3_alltypes[line_no] = line.replace("(define-extern {} ".format(func_name), "(define-extern {}\n  {}\n  ".format(func_name, "\n  ".join(jak2_function_defs[func_name]["docstring"])))
-        break
+def update_file_var_name_casts(file_name, modify_alltypes):
+  # Check if the file exists in both games
+  if not is_file_in_game("jak3", file_name) or not is_file_in_game("jak2", file_name):
+    print("File not found in both games")
+    exit(1)
 
-# Copy over deftype docstrings from jak3 to jak2 if applicable
+  # Decompile the file for both games
+  decompile_file(args.decompiler, "jak3/jak3_config.jsonc", "ntsc_v1", "[\"{}\"]".format(file_name), True)
+  decompile_file(args.decompiler, "jak2/jak2_config.jsonc", "ntsc_v1", "[\"{}\"]".format(file_name), True)
+
+  # Go grab the contents of each file
+  jak2_file_contents = open("./decompiler_out/jak2/{}_ir2.asm".format(file_name), "r").readlines()
+  jak3_file_contents = open("./decompiler_out/jak3/{}_ir2.asm".format(file_name), "r").readlines()
+
+  # Read in the function definitions for each file to find which ones match
+
+  jak2_function_defs = find_all_function_defs(jak2_file_contents)
+  jak3_function_defs = find_all_function_defs(jak3_file_contents)
+
+  # print(jak2_function_defs["vector-xz-cross!"])
+  # print()
+  # print(jak3_function_defs["vector-xz-cross!"])
+
+  # Compare functions to see which ones are eligible
+  matching_func_names = []
+  for func_name in jak2_function_defs:
+    if func_name in jak3_function_defs and jak2_function_defs[func_name]["definition"] == jak3_function_defs[func_name]["definition"]:
+      matching_func_names.append(func_name)
+
+  # print(matching_func_names)
+  print("Found {} matching functions in {}".format(len(matching_func_names, file_name)))
+
+  # Go grab the var casts for each game
+  jak2_var_casts = get_var_casts_for_game("jak2")
+  jak3_var_casts = get_var_casts_for_game("jak3")
+
+  # For each eligible matching function, copy over the var casts
+  # The assumption is if it exists in jak 3 it's better (done more recently) so we use that
+  # else, use jak 2's if it exists
+  for func_name in matching_func_names:
+    if func_name in jak3_var_casts:
+      jak2_var_casts[func_name] = jak3_var_casts[func_name]
+    elif func_name in jak2_var_casts:
+      jak3_var_casts[func_name] = jak2_var_casts[func_name]
+
+  save_var_casts_for_game("jak2", jak2_var_casts)
+  save_var_casts_for_game("jak3", jak3_var_casts)
+
+  # Automatically copy docstrings for functions (methods are way to annoying to do with hack scripts now)
+  if modify_alltypes:
+    for func_name in matching_func_names:
+      if func_name.startswith("("):
+        continue
+      # handle the case where the jak 3 version has a docstring, but jak 2 does not
+      if len(jak3_function_defs[func_name]["docstring"]) != 0 and len(jak2_function_defs[func_name]["docstring"]) == 0:
+        for line_no, line in enumerate(jak2_alltypes):
+          line = jak2_alltypes[line_no]
+          if line.startswith("(define-extern {}".format(func_name)):
+            jak2_alltypes[line_no] = line.replace("(define-extern {} ".format(func_name), "(define-extern {}\n  {}\n  ".format(func_name, "\n  ".join(jak3_function_defs[func_name]["docstring"])))
+            break
+      # handle the case where jak 2 has a docstring but jak 3 does not
+      elif len(jak2_function_defs[func_name]["docstring"]) != 0 and len(jak3_function_defs[func_name]["docstring"]) == 0:
+        for line_no, line in enumerate(jak3_alltypes):
+          line = jak3_alltypes[line_no]
+          if line.startswith("(define-extern {}".format(func_name)):
+            jak3_alltypes[line_no] = line.replace("(define-extern {} ".format(func_name), "(define-extern {}\n  {}\n  ".format(func_name, "\n  ".join(jak2_function_defs[func_name]["docstring"])))
+            break
+
+if args.update_names_from_refs:
+  reference_test_files = glob.glob("./decompiler/reference/jak3/**/*_REF.gc")
+  for reference_test_file in reference_test_files:
+    file_name = os.path.basename(reference_test_file).split("_REF.gc")[0]
+    update_file_var_name_casts(file_name, False)
+else:
+  update_file_var_name_casts(args.file, True)
+
+
 def get_type_docstrings_from_alltypes(lines):
   store = {}
   awaiting_next_docstring = True
