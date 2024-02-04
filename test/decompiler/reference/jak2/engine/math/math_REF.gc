@@ -3,11 +3,14 @@
 
 ;; definition for function truncate
 (defun truncate ((arg0 float))
+  "Round (toward zero) to an integer.
+@param arg0 float to truncate"
   (the float (the int arg0))
   )
 
 ;; definition for function floor
 (defun floor ((arg0 float))
+  "Round (down) to an integer"
   (let ((f0-3 (the float (the int arg0))))
     (if (or (>= arg0 0.0) (= arg0 f0-3))
         f0-3
@@ -18,6 +21,7 @@
 
 ;; definition for function ceil
 (defun ceil ((arg0 float))
+  "Round (up) to an integer"
   (let ((f0-3 (the float (the int arg0))))
     (if (or (>= 0.0 arg0) (= arg0 f0-3))
         f0-3
@@ -28,16 +32,19 @@
 
 ;; definition for function integral?
 (defun integral? ((arg0 float))
+  "Is this number an integer?"
   (= (the float (the int arg0)) arg0)
   )
 
 ;; definition for function fractional-part
 (defun fractional-part ((arg0 float))
+  "Get the fractional part of a float."
   (- arg0 (the float (the int arg0)))
   )
 
 ;; definition for function sawtooth-wave
 (defun sawtooth-wave ((arg0 float))
+  "Sample a sawtooth with period 1. In range (0, 1)"
   (let ((f0-2 (- arg0 (the float (the int arg0)))))
     (if (< f0-2 0.0)
         (set! f0-2 (+ 1.0 f0-2))
@@ -48,6 +55,7 @@
 
 ;; definition for function triangle-wave
 (defun triangle-wave ((arg0 float))
+  "Sample a triangle wave. Period is 4, in range (-1, 1) (so slope is 1 or -1)."
   (let* ((f0-1 (* 0.25 (+ -1.0 arg0)))
          (f0-3 (- f0-1 (the float (the int f0-1))))
          )
@@ -60,6 +68,7 @@
 
 ;; definition for function log-x-plus-1-order9
 (defun log-x-plus-1-order9 ((arg0 float))
+  "Fast approximation of ln(x + 1). Probably only accurate for x in [0, 1]."
   (* arg0
      (+ 1.0
         (* arg0
@@ -81,6 +90,7 @@
 
 ;; definition for function logf
 (defun logf ((arg0 float))
+  "Natural log."
   (let ((v1-1 (the-as int (+ (shr (the-as int arg0) 23) -126)))
         (a0-2 (the-as number (logior #x3f000000 (logand (the-as uint #x807fffff) (the-as uint arg0)))))
         )
@@ -114,6 +124,7 @@
 
 ;; definition for function log2f
 (defun log2f ((arg0 float))
+  "Log base 2."
   (let ((v1-1 (the-as int (+ (shr (the-as int arg0) 23) -126)))
         (a0-2 (the-as number (logior #x3f000000 (logand (the-as uint #x807fffff) (the-as uint arg0)))))
         )
@@ -231,12 +242,14 @@
 
 ;; definition for function pow
 (defun pow ((arg0 float) (arg1 float))
+  "Compute arg0^arg1"
   (exp (* arg1 (logf arg0)))
   )
 
 ;; definition for function print-exp
 ;; WARN: Return type mismatch int vs none.
 (defun print-exp ((arg0 float))
+  "Print in the format AeB where A is in the range (1, 10)"
   (let* ((f30-1 (floor (/ (logf (fabs arg0)) (logf 10.0))))
          (f0-4 (pow 10.0 f30-1))
          )
@@ -292,6 +305,7 @@
 
 ;; definition for function seek
 (defun seek ((arg0 float) (arg1 float) (arg2 float))
+  "Move arg0 toward arg1 by at most arg2."
   (let ((f2-0 (- arg1 arg0)))
     (cond
       ((>= arg2 (fabs f2-0))
@@ -309,6 +323,9 @@
 
 ;; definition for function seek-ease
 (defun seek-ease ((arg0 float) (arg1 float) (arg2 float) (arg3 float) (arg4 float))
+  "Move arg0 toward arg1, and slow down before reaching the end.
+When farther than arg3 away, move by at most arg2.
+When closer than arg3, linearly ramp down the movement amount from arg2 to 0 but no lower than arg4."
   (let ((f2-0 (- arg1 arg0)))
     (when (>= arg3 (fabs f2-0))
       (set! arg2 (* arg2 (- 1.0 (/ (- arg3 (fabs f2-0)) arg3))))
@@ -332,6 +349,10 @@
 
 ;; definition for function seek-ease-in-out
 (defun seek-ease-in-out ((arg0 float) (arg1 float) (arg2 float) (arg3 float) (arg4 float) (arg5 float) (arg6 float))
+  "Move arg0 toward arg2, and slow down at the start and end.
+When within arg4 of arg1 (at the beginning of movement), ramp up speed, with a minimum speed of arg6
+When within arg5 of arg2 (at the end of movement), ramp down speed, with a minimum speed of arg5
+Normally, move at most arg3"
   (let ((f2-0 (- arg2 arg0)))
     (let ((f4-1 (- arg0 arg1)))
       (when (>= arg4 (fabs f4-1))
@@ -363,11 +384,14 @@
 
 ;; definition for function lerp
 (defun lerp ((arg0 float) (arg1 float) (arg2 float))
+  "Linearly interpolate between arg0 and arg1."
   (+ arg0 (* arg2 (- arg1 arg0)))
   )
 
 ;; definition (debug) for function lerp-scale-old
 (defun-debug lerp-scale-old ((arg0 float) (arg1 float) (arg2 float) (arg3 float) (arg4 float))
+  "Linearly remap arg2 in [arg3, arg4] to [arg0, arg1].
+This is the jak 1 implementation, which I claimed was a bad implementation..."
   (let ((f0-1 (fmax 0.0 (fmin 1.0 (/ (- arg2 arg3) (- arg4 arg3))))))
     (+ (* (- 1.0 f0-1) arg0) (* f0-1 arg1))
     )
@@ -397,6 +421,7 @@
 
 ;; definition for function lerp-clamp
 (defun lerp-clamp ((arg0 float) (arg1 float) (arg2 float))
+  "Linearly interpolate between arg0 and arg1. arg2 is clamped to [0, 1]"
   (cond
     ((>= 0.0 arg2)
      arg0
@@ -412,6 +437,7 @@
 
 ;; definition for function seekl
 (defun seekl ((arg0 int) (arg1 int) (arg2 int))
+  "Move arg0 toward arg1, by at most arg2."
   (let* ((v1-0 (- arg1 arg0))
          (a3-0 (abs v1-0))
          )
@@ -434,6 +460,7 @@
 ;; ERROR: Unsupported inline assembly instruction kind - [ctc2.i vi_R, a0]
 ;; ERROR: Unsupported inline assembly instruction kind - [cfc2.i v0, vi_R]
 (defun rand-vu-init ((arg0 float))
+  "Initialize the VU0 random generator."
   (local-vars (v0-0 int))
   (.ctc2.i vi_R arg0)
   (.cfc2.i v0-0 vi_R)
@@ -469,6 +496,9 @@
 ;; definition for function rand-vu-nostep
 ;; ERROR: Inline assembly instruction marked with TODO - [TODO.VRGET]
 (defun rand-vu-nostep ()
+  "Get the number currently in the random generator.
+This will be equal to the last call of (rand-vu).
+This will not update the random generator."
   (local-vars (v0-0 float))
   (rlet ((vf0 :class vf)
          (vf1 :class vf)
@@ -483,16 +513,19 @@
 
 ;; definition for function rand-vu-float-range
 (defun rand-vu-float-range ((arg0 float) (arg1 float))
+  "Get a random float in between arg0 and arg1."
   (+ arg0 (* (rand-vu) (- arg1 arg0)))
   )
 
 ;; definition for function rand-vu-percent?
 (defun rand-vu-percent? ((arg0 float))
+  "Get a boolean that's true with the given probability (in 0, 1)."
   (>= arg0 (rand-vu))
   )
 
 ;; definition for function rand-vu-int-range
 (defun rand-vu-int-range ((arg0 int) (arg1 int))
+  "Get an integer in the given range (inclusive)."
   (if (< arg0 arg1)
       (set! arg1 (+ arg1 1))
       (set! arg0 (+ arg0 1))
@@ -507,12 +540,15 @@
 
 ;; definition for function rand-vu-int-count
 (defun rand-vu-int-count ((arg0 int))
+  "Get an integer in the range [0, max)."
   (the int (* (rand-vu) (the float arg0)))
   )
 
 ;; definition for function rand-vu-int-count-excluding
 ;; WARN: new jak 2 until loop case, check carefully
 (defun rand-vu-int-count-excluding ((arg0 int) (arg1 int))
+  "Get an integer in the range [0, arg0).
+If bit n is set in arg1, exclude this value from being returned."
   (let ((s4-0 0)
         (s5-0 0)
         )
@@ -554,6 +590,8 @@
 ;; definition for function rand-vu-int-range-exclude
 ;; WARN: new jak 2 until loop case, check carefully
 (defun rand-vu-int-range-exclude ((arg0 int) (arg1 int) (arg2 int))
+  "Get an integer in the range [0, arg0), excluding arg2.
+Note that this doesn't use bits like rand-vu-int-count-excluding."
   (until #f
     (let ((v1-0 (rand-vu-int-range arg0 arg1)))
       (if (!= v1-0 arg2)
@@ -593,6 +631,7 @@
 
 ;; definition for function cube-root
 (defun cube-root ((arg0 float))
+  "Cube root with cool trick that I don't understand."
   (cond
     ((!= arg0 0.0)
      (let* ((v1-0 arg0)
@@ -625,6 +664,7 @@
 
 ;; definition for function int-noise
 (defun int-noise ((arg0 int))
+  "Generate random-ish floats in range -1, 1."
   (let ((v1-1 (logxor (shl arg0 13) arg0)))
     (- 1.0 (* 0.0000000009313226
               (the float (logand #x7fffffff (+ #x5208dd0d (* v1-1 (+ #xc0ae5 (* (* #x3d73 v1-1) v1-1))))))
@@ -635,6 +675,8 @@
 
 ;; definition for function smooth-step
 (defun smooth-step ((arg0 float))
+  "Interpolate between 0, 1 with a cubic polynomial.
+These are picked so f(0) = 0, f(1) = 1, f'(0) = f'(1) = 0."
   (cond
     ((>= 0.0 arg0)
      0.0
@@ -650,5 +692,10 @@
 
 ;; definition for function smooth-interp
 (defun smooth-interp ((arg0 float) (arg1 float) (arg2 float) (arg3 float) (arg4 float))
+  "Remap arg2 from (arg3, arg4) to (arg0, arg1), using cubic interpolation.
+Satisfies:
+- f(arg3) = arg0
+- f(arg4) = arg1
+- f'(arg3) = f'(arg4) = 0"
   (+ arg0 (* (- arg1 arg0) (smooth-step (/ (- arg2 arg3) (- arg4 arg3)))))
   )

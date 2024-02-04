@@ -3,10 +3,11 @@
 
 ;; definition of type path-control
 (deftype path-control (basic)
-  "An abstraction around a [[curve]], providing tools such as:
-- debug drawing
-- conveniant vertex accessing
-- vertex finding/searching algorithms"
+  "The path-control is a reference a path data, which is just a list of points.
+Although it contains a `curve`, the knot part is not populated, so it's just treated as
+a bunch of line segments from the control points.
+The child class curve-control does fill out the knot data and is a proper b-spline.
+These path-controls are typically allocated on a process heap."
   ((flags    path-control-flag)
    (name     symbol)
    (process  process-drawable)
@@ -57,7 +58,7 @@
 
 ;; definition of type curve-control
 (deftype curve-control (path-control)
-  "Identical in terms of data to a [[path-control]] but has different implementation"
+  "A curve-control is like a path control, but it has both control points and knot points."
   ()
   (:methods
     (new (symbol type process symbol float) _type_)
@@ -88,21 +89,22 @@
 ;; WARN: Return type mismatch object vs path-control.
 (defmethod new path-control ((allocation symbol)
                            (type-to-make type)
-                           (arg0 process)
-                           (arg1 symbol)
-                           (arg2 float)
-                           (arg3 entity)
-                           (arg4 symbol)
+                           (proc process)
+                           (lump-name symbol)
+                           (lump-time float)
+                           (lump-actor entity)
+                           (must-exist symbol)
                            )
+  "Allocate a new path-control, set up the curve to point to the specified lump data."
   (local-vars (v0-3 object) (sv-16 res-tag) (sv-32 float))
-  (set! sv-32 arg2)
-  (let ((s0-0 arg3)
-        (s1-0 arg4)
+  (set! sv-32 lump-time)
+  (let ((s0-0 lump-actor)
+        (s1-0 must-exist)
         )
     (if (not s0-0)
-        (set! s0-0 (-> arg0 entity))
+        (set! s0-0 (-> proc entity))
         )
-    (when (= arg1 'path)
+    (when (= lump-name 'path)
       (let ((v0-0 (entity-actor-lookup s0-0 'path-actor 0)))
         (if v0-0
             (set! s0-0 v0-0)
@@ -112,7 +114,7 @@
     (let ((s2-0 (the-as object 0)))
       (set! sv-16 (new 'static 'res-tag))
       (let* ((t9-1 (method-of-type res-lump get-property-data))
-             (a1-2 arg1)
+             (a1-2 lump-name)
              (a2-2 'interp)
              (t0-1 #f)
              (t1-1 (the-as (pointer res-tag) (& sv-16)))
@@ -124,8 +126,8 @@
             (set! s2-0 (object-new allocation type-to-make (the-as int (-> type-to-make size))))
             (set! v0-3 (cond
                          ((nonzero? (the-as path-control s2-0))
-                          (set! (-> (the-as path-control s2-0) process) (the-as process-drawable arg0))
-                          (set! (-> (the-as path-control s2-0) name) arg1)
+                          (set! (-> (the-as path-control s2-0) process) (the-as process-drawable proc))
+                          (set! (-> (the-as path-control s2-0) name) lump-name)
                           (set! (-> (the-as path-control s2-0) curve cverts) (the-as (inline-array vector) s0-1))
                           (set! v0-3 (-> sv-16 elt-count))
                           (set! (-> (the-as path-control s2-0) curve num-cverts) (the-as int v0-3))
@@ -143,8 +145,8 @@
               (cond
                 ((nonzero? (the-as path-control s2-0))
                  (logior! (-> (the-as path-control s2-0) flags) (path-control-flag not-found))
-                 (set! (-> (the-as path-control s2-0) process) (the-as process-drawable arg0))
-                 (set! (-> (the-as path-control s2-0) name) arg1)
+                 (set! (-> (the-as path-control s2-0) process) (the-as process-drawable proc))
+                 (set! (-> (the-as path-control s2-0) name) lump-name)
                  (set! (-> (the-as path-control s2-0) curve cverts) (the-as (inline-array vector) #f))
                  (set! (-> (the-as path-control s2-0) curve num-cverts) 0)
                  0

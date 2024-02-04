@@ -271,6 +271,7 @@
 
 ;; definition for method 10 of type talker
 (defmethod deactivate ((this talker))
+  "Make a process dead, clean it up, remove it from the active pool, and return to dead pool."
   (send-event (handle->process (-> this voicebox)) 'die)
   (call-parent-method this)
   (none)
@@ -494,7 +495,10 @@
                  (and (nonzero? (-> self message-id))
                       (= (get-status *gui-control* (-> self message-id)) (gui-status active))
                       (or (not (time-elapsed? (-> self state-time) (the-as time-frame (-> self message text-duration))))
-                          (and (logtest? (-> self message flags) 16) (-> self region) (region-method-9 (-> self region) (target-pos 0)))
+                          (and (logtest? (-> self message flags) 16)
+                               (-> self region)
+                               (point-in-region-debug! (-> self region) (target-pos 0))
+                               )
                           )
                       )
                  (not (time-elapsed? (-> self state-time) (seconds 0.05)))

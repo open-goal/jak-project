@@ -3,6 +3,7 @@
 
 ;; definition of type dma-chcr
 (deftype dma-chcr (uint32)
+  "Memory mapped DMA channel control register. Typically used to start and check on DMA transfer."
   ((dir uint8  :offset   0 :size   1)
    (mod uint8  :offset   2 :size   2)
    (asp uint8  :offset   4 :size   2)
@@ -33,6 +34,7 @@
 
 ;; definition of type dma-bank
 (deftype dma-bank (structure)
+  "Bank of memory mapped DMA registers for a single channel. Used to control DMA."
   ((chcr  dma-chcr  :offset   0)
    (madr  uint32    :offset  16)
    (qwc   uint32    :offset  32)
@@ -55,6 +57,7 @@
 
 ;; definition of type dma-bank-source
 (deftype dma-bank-source (dma-bank)
+  "DMA channel registers for a DMA channel supporting source-chain."
   ((tadr  uint32  :offset  48)
    )
   )
@@ -76,6 +79,7 @@
 
 ;; definition of type dma-bank-vif
 (deftype dma-bank-vif (dma-bank-source)
+  "DMA channel registers for a DMA channel with call/ret stack."
   ((as0  uint32  :offset  64)
    (as1  uint32  :offset  80)
    )
@@ -100,6 +104,7 @@
 
 ;; definition of type dma-bank-spr
 (deftype dma-bank-spr (dma-bank-source)
+  "DMA channel registers for a DMA channel supporting scratchpad transfer."
   ((sadr  uint32  :offset 128)
    )
   )
@@ -122,6 +127,7 @@
 
 ;; definition of type dma-ctrl
 (deftype dma-ctrl (uint32)
+  "Main DMA control register, shared for all channels."
   ((dmae uint8 :offset   0 :size   1)
    (rele uint8 :offset   1 :size   1)
    (mfd  uint8 :offset   2 :size   2)
@@ -146,6 +152,7 @@
 
 ;; definition of type dma-bank-control
 (deftype dma-bank-control (structure)
+  "Memory mapping for shared DMA registers."
   ((ctrl     dma-ctrl  :offset   0)
    (stat     uint32    :offset  16)
    (pcr      uint32    :offset  32)
@@ -180,6 +187,7 @@
 
 ;; definition of type vu-code-block
 (deftype vu-code-block (basic)
+  "Unused type for some VU code. vu-function is used instead."
   ((name          basic)
    (code          uint32)
    (size          int32)
@@ -209,6 +217,7 @@
 
 ;; definition of type dma-tag
 (deftype dma-tag (uint64)
+  "The 64-bit tag used by the DMA system."
   ((qwc  uint16     :offset   0 :size  16)
    (pce  uint8      :offset  26 :size   2)
    (id   dma-tag-id :offset  28 :size   3)
@@ -237,6 +246,7 @@
 
 ;; definition of type dma-bucket
 (deftype dma-bucket (structure)
+  "A linked list of DMA data, typically all in the same category. Used to organize the full DMA chain."
   ((tag    dma-tag)
    (last   (pointer dma-tag))
    (dummy  uint32)
@@ -288,6 +298,7 @@
 
 ;; definition of type vif-stcycl-imm
 (deftype vif-stcycl-imm (uint16)
+  "The imm field of a VIF code using STCYCL, which adjusts the pattern for storing data."
   ((cl uint8 :offset   0 :size   8)
    (wl uint8 :offset   8 :size   8)
    )
@@ -295,6 +306,7 @@
 
 ;; definition of type vif-unpack-imm
 (deftype vif-unpack-imm (uint16)
+  "The imm field of a VIF code using UNPACK, which transfers data to VU memory."
   ((addr uint16 :offset   0 :size  10)
    (usn  uint8  :offset  14 :size   1)
    (flg  uint8  :offset  15 :size   1)
@@ -303,6 +315,7 @@
 
 ;; definition of type vif-tag
 (deftype vif-tag (uint32)
+  "A tag consumed by the VIF, which accepts DMA data."
   ((imm uint16  :offset   0 :size  16)
    (num uint8   :offset  16 :size   8)
    (cmd vif-cmd :offset  24 :size   7)
