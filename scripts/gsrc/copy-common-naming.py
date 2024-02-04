@@ -4,6 +4,8 @@
 # - if the function bodies are the same, copy the variables from whichever game has them defined to the other
 #   - also, if it's a function and a docstring exists on one side but not the other, copy the docstring to the other side's all-types file
 
+# TODO - run without caring about docstrings, just var_names for all files in reference tests folder
+
 import argparse
 import json
 
@@ -133,6 +135,39 @@ for func_name in matching_func_names:
       if line.startswith("(define-extern {}".format(func_name)):
         jak3_alltypes[line_no] = line.replace("(define-extern {} ".format(func_name), "(define-extern {}\n  {}\n  ".format(func_name, "\n  ".join(jak2_function_defs[func_name]["docstring"])))
         break
+
+# Copy over deftype docstrings from jak3 to jak2 if applicable
+def get_type_docstrings_from_alltypes(lines):
+  store = {}
+  awaiting_next_docstring = True
+  current_type_name = None
+  for line in lines:
+    if line.startswith("(deftype"):
+      current_type_name = line.split("deftype ")[1].split("(")[0].strip()
+      awaiting_next_docstring = False
+      store[current_type_name] = []
+      continue
+    if line.strip().startswith("(") and not line.strip().endswith("\""):
+      awaiting_next_docstring = True
+      continue
+    if not awaiting_next_docstring:
+      store[current_type_name].append(line.strip())
+  return store
+
+jak2_type_docs = get_type_docstrings_from_alltypes(jak2_alltypes)
+jak3_type_docs = get_type_docstrings_from_alltypes(jak3_alltypes)
+
+# If a docstring exists in jak3 but not in jak2, copy it back
+new_jak2_alltypes = []
+for line_no, line in enumerate(jak2_alltypes):
+  line = jak2_alltypes[line_no]
+  new_jak2_alltypes.append(line)
+  if line.startswith("(deftype "):
+    current_type_name = line.split("deftype ")[1].split("(")[0].strip()
+    if current_type_name in jak3_type_docs and len(jak2_type_docs[current_type_name]) == 0:
+      for docstring_line in jak3_type_docs[current_type_name]:
+        new_jak2_alltypes.append("  " + docstring_line + "\n")
+jak2_alltypes = new_jak2_alltypes
 
 # Save all-types
 def get_all_types_for_game(game_name, lines):

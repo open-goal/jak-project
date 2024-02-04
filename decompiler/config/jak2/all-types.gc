@@ -528,6 +528,7 @@
 
 ;; modified for x86.
 (deftype cpu-thread (thread)
+;; registers modified for PC port.
   ((rreg  uint64 7       :offset-assert 40)
    (freg float 8)
 
@@ -3843,6 +3844,7 @@
 
 
 (deftype dma-foreground-sink (basic)
+"A specification for where a foreground renderer should output its DMA data."
   ((bucket                   bucket-id      :offset-assert 4)
    (foreground-texture-page  tpage-category :offset-assert 8)
    (foreground-texture-level int8           :offset-assert 9)
@@ -3854,6 +3856,9 @@
   )
 
 (deftype generic-bucket-state (structure)
+"The state of buffers for the generic renderer.
+When generating generic DMA data, you must know the previous state
+of the VU's memory to properly double-buffer the input and output data."
   ((gifbuf-adr uint32  :offset-assert 0)
    (inbuf-adr  uint32  :offset-assert 4)
    )
@@ -3864,6 +3869,8 @@
   )
 
 (deftype generic-dma-foreground-sink (dma-foreground-sink)
+"A specification for where a foreground generic renderer should output DMA data,
+and the state of the VU memory buffers at the end of the bucket."
   ((state generic-bucket-state :inline :offset-assert 12)
    )
   :method-count-assert 9
@@ -3876,6 +3883,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (deftype profile-segment (structure)
+"Confusingly, this has two uses. Either a single event, or a summary of all events within a category."
   ((name       symbol  :offset-assert 0)
    (start-time int16   :offset-assert 4)
    (end-time   int16   :offset-assert 6)
@@ -3894,6 +3902,7 @@
 
 
 (deftype profile-collapse (structure)
+"An array of 'summaries'. Each entry in data is a summary of all events within a category."
   ((count int32      :offset-assert 0)
    (data  profile-segment 48 :inline :offset-assert 4)
    )
@@ -3904,6 +3913,7 @@
 
 
 (deftype profile-segment-array (basic)
+"All profiling data for a frame, stored as a tree of events. There is one for the VU, and one for the EE."
   ((count     int16       :offset-assert 4)
    (depth     int8        :offset-assert 6)
    (max-depth int8        :offset-assert 7)
@@ -3925,6 +3935,7 @@
 (declare-type dma-buffer structure)
 
 (deftype profile-array (structure)
+"The EE and VU profilers, and the drawing code."
   ((data profile-segment-array 2 :offset-assert 0) ;; guess
    )
   :method-count-assert 12
@@ -4006,6 +4017,7 @@
 
 
 (deftype dma-packet (structure)
+"The header for a DMA transfer, containing an DMA tag, and VIF tags."
   ((dma  dma-tag   :offset-assert 0)
    (vif0 vif-tag   :offset-assert 8)
    (vif1 vif-tag   :offset-assert 12)
@@ -4017,6 +4029,7 @@
   )
 
 (deftype dma-packet-array (inline-array-class)
+"Unused dma array. Unclear how it should be used."
   ((data dma-packet :inline :dynamic :offset-assert 16)
    )
   :method-count-assert 9
@@ -4025,6 +4038,7 @@
   )
 
 (deftype dma-gif (structure)
+"Believed unused GIF header type."
   ((gif  uint64 2  :offset-assert 0)
    (quad uint128   :offset        0)
    ;; added these two
@@ -4037,6 +4051,7 @@
   )
 
 (deftype dma-gif-packet (structure)
+"The header for a DMA transfer that goes directly to GIF, containing DMA, VIF, GIF tags."
   ((dma-vif dma-packet :inline :offset-assert 0)
    (gif     uint64     2       :offset-assert 16 :score -1)
    ;; added these two
@@ -4051,6 +4066,7 @@
 
 
 (deftype dma-buffer (basic)
+"A buffer for DMA data."
   ((allocated-length int32     :offset-assert 4)
    (base             pointer   :offset-assert 8)
    (end              pointer   :offset-assert 12)
@@ -4185,6 +4201,8 @@
 (define-extern scf-get-time (function scf-time none))
 
 (deftype hw-cpad (basic)
+"Data that comes directly from hardware.
+It's 32 bytes + type tag (ignored by C kernel)."
   ((valid   uint8     :offset-assert 4)
    (status  uint8     :offset-assert 5)
    (button0 uint16    :offset-assert 6)
@@ -4201,6 +4219,7 @@
   )
 
 (deftype cpad-info (hw-cpad)
+"Data from hardware + additional info calculated here."
   ((number             int32         :offset-assert 36)
    (cpad-file          int32         :offset-assert 40)
    (button0-abs        pad-buttons 3 :offset-assert 44) ;; guessed by decompiler
@@ -4234,6 +4253,7 @@
   )
 
 (deftype cpad-list (basic)
+"List of controllers. It always has two controllers."
   ((num-cpads int32       :offset-assert 4)
    (cpads     cpad-info 2 :offset-assert 8)
    )
@@ -4480,6 +4500,8 @@
   )
 
 (deftype gs-bank (structure)
+"Memory layout of the GS's privileged registers (mapped to EE memory).
+It is missing the SIGLBLID/LABELID register at 4224 (useless anyway?)"
   ((pmode    gs-pmode  :offset-assert 0)
    (smode2   gs-smode2  :offset 32)
    (dspfb1   gs-display-fb  :offset 112)
@@ -4511,6 +4533,7 @@
 
 ;; the GS's ZBUF registers make various settings regarding Z buffer.
 (deftype gs-zbuf (uint64)
+"The GS's ZBUF registers make various settings regarding Z buffer."
   ((zbp   uint16 :offset 0  :size 9)
    (psm   gs-psm :offset 24 :size 4)
    (zmsk  uint8  :offset 32 :size 1)
@@ -4521,6 +4544,8 @@
 ;; the GS's XYOFFSET registers set the offset value for converting from the primitive coordinate
 ;; system to the window coordinate system.
 (deftype gs-xy-offset (uint64)
+"The GS's XYOFFSET registers set the offset value for converting from the primitive coordinate
+system to the window coordinate system."
   ((ofx  uint16 :offset 0  :size 16)
    (ofy  uint16 :offset 32 :size 16)
    )
@@ -4531,6 +4556,9 @@
 ;; the upper-left/lower-right points of the enabled drawing area are specified by the window
 ;; coordinate system.
 (deftype gs-scissor (uint64)
+"The GS's SCISSOR registers specify the scissoring area. The coordinate values for
+the upper-left/lower-right points of the enabled drawing area are specified by the window
+coordinate system."
   ((scax0  uint16 :offset 0  :size 11)
    (scax1  uint16 :offset 16 :size 11)
    (scay0  uint16 :offset 32 :size 11)
@@ -4542,6 +4570,8 @@
 ;; the GS's PRMODECONT register sets whether to use primitive attributes (IIP, TME, FGE, ABE,
 ;; AA1, FST, CTXT, FIX) specified by the PRMODE register or the PRIM register.
 (deftype gs-prmode-cont (uint64)
+"The GS's PRMODECONT register sets whether to use primitive attributes (IIP, TME, FGE, ABE,
+AA1, FST, CTXT, FIX) specified by the PRMODE register or the PRIM register."
   ((ac  uint8 :offset 0 :size 1))
   :flag-assert #x900000008
   )
@@ -4549,12 +4579,15 @@
 ;; the GS's COLCLAMP register stores settings as to whether clamping for the RGB value of the
 ;; pixel is performed.
 (deftype gs-color-clamp (uint64)
+"The GS's COLCLAMP register stores settings as to whether clamping for the RGB value of the
+pixel is performed."
   ((clamp  uint8 :offset 0 :size 1))
   :flag-assert #x900000008
   )
 
 ;; the GS's DTHE register stores settings for dithering (performed/not performed).
 (deftype gs-dthe (uint64)
+"The GS's DTHE register stores settings for dithering (performed/not performed)."
   ((dthe  uint8 :offset 0 :size 1))
   :flag-assert #x900000008
   )
@@ -4579,6 +4612,7 @@
   )
 ;; the GS's TEST register performs settings related to the pixel test.
 (deftype gs-test (uint64)
+"The GS's TEST register performs settings related to the pixel test."
   ((ate    uint8 :offset 0  :size 1) ;; alpha test enable
    (atst   gs-atest :offset 1  :size 3) ;; alpha test method
    (aref   uint8 :offset 4  :size 8) ;; alpha val reference
@@ -4609,6 +4643,8 @@
 ;; the GS's RGBAQ register sets the RGBA value of the vertex and the Q value of the normalized
 ;; texture coordinates.
 (deftype gs-rgbaq (uint64)
+"The GS's RGBAQ register sets the RGBA value of the vertex and the Q value of the normalized
+texture coordinates."
   ((r  uint8 :offset 0  :size 8)
    (g  uint8 :offset 8  :size 8)
    (b  uint8 :offset 16 :size 8)
@@ -4629,6 +4665,7 @@
 
 ;; the GS's UV register specifies the texel coordinate (UV) values of the vertex.
 (deftype gs-uv (uint64)
+"The GS's UV register specifies the texel coordinate (UV) values of the vertex."
   ((u  uint16 :offset 0  :size 16) ;; Q4 fixed point
    (v  uint16 :offset 16 :size 16) ;; Q4 fixed point
    )
@@ -4637,6 +4674,7 @@
 
 ;; hack - added for warp.
 (deftype gs-uv2 (uint64)
+"Hack - added for warp."
   ((u  int16 :offset 0  :size 16) ;; Q4 fixed point
    (v  int16 :offset 16 :size 16) ;; Q4 fixed point
    )
@@ -4646,6 +4684,8 @@
 ;; the GS's ST register sets the S and T values of the vertex texture coordinates.
 ;; The value Q is specified by the RGBAQ register.
 (deftype gs-st (uint64)
+"The GS's ST register sets the S and T values of the vertex texture coordinates.
+The value Q is specified by the RGBAQ register."
   ((s  float :offset 0  :size 32)
    (t  float :offset 32 :size 32)
    )
@@ -4665,6 +4705,9 @@
 ;; the GS's TRXPOS register specifies the position and scanning direction of the rectangular area
 ;; in each buffer where buffer transmission is performed.
 (deftype gs-trxpos (uint64)
+"The GS's TRXPOS register specifies the position and
+scanning direction of the rectangular area
+in each buffer where buffer transmission is performed."
   ((ssax  uint16 :offset 0  :size 11)
    (ssay  uint16 :offset 16 :size 11)
    (dsax  uint16 :offset 32 :size 11)
@@ -4678,6 +4721,9 @@
 ;; between buffers is implemented, in units of pixels.
 ;; The pixel mode must be the one set by the BITBLTBUF register.
 (deftype gs-trxreg (uint64)
+"The GS's TRXREG register specifies the size of the rectangular area, where the transmission
+between buffers is implemented, in units of pixels.
+The pixel mode must be the one set by the BITBLTBUF register."
   ((rrw  uint16 :offset 0  :size 12)
    (rrh  uint16 :offset 32 :size 12)
    )
@@ -4689,6 +4735,10 @@
 ;; Appropriate settings must be made by the BITBLTBUF/TRXPOS/TRXREG before activating
 ;; the transmission.
 (deftype gs-trxdir (uint64)
+"The GS's TRXDIR register specifies the transmission direction in the transmission between
+buffers, and activates transmission.
+Appropriate settings must be made by the BITBLTBUF/TRXPOS/TRXREG before activating
+the transmission."
   ((xdir  uint8 :offset 0 :size 2))
   :flag-assert #x900000008
   )
@@ -4696,6 +4746,8 @@
 ;; the GS's BITBLTBUF register stores buffer-related settings for transmission source and
 ;; destination during transmission between buffers.
 (deftype gs-bitbltbuf (uint64)
+"The GS's BITBLTBUF register stores buffer-related settings for transmission source and
+destination during transmission between buffers."
   ((sbp   uint16 :offset 0  :size 14)
    (sbw   uint8  :offset 16 :size 6)
    (spsm  uint8  :offset 24 :size 6)
@@ -4708,6 +4760,7 @@
 
 ;; the GS's TEX0 registers set various kinds of information regarding the textures to be used.
 (deftype gs-tex0 (uint64)
+"The GS's TEX0 registers set various kinds of information regarding the textures to be used."
   ((tbp0  uint16 :offset 0 :size 14)
    (tbw   uint8  :offset 14 :size 6)
    (psm   uint8  :offset 20 :size 6)
@@ -4726,6 +4779,7 @@
 
 ;; the GS's TEX1 registers set information on the sampling method of the textures.
 (deftype gs-tex1 (uint64)
+"The GS's TEX1 registers set information on the sampling method of the textures."
   ((lcm   uint8 :offset 0  :size 1)
    (mxl   uint8 :offset 2  :size 3)
    (mmag  uint8 :offset 5  :size 1)
@@ -4740,6 +4794,8 @@
 ;; the GS's TEXA register sets the Alpha value to be referred to when the Alpha value of the
 ;; texture is not an 8-bit value.
 (deftype gs-texa (uint64)
+"The GS's TEXA register sets the Alpha value to be referred to when the Alpha value of the
+texture is not an 8-bit value."
   ((ta0  uint8 :offset 0  :size 8)
    (aem  uint8 :offset 15 :size 1)
    (ta1  uint8 :offset 32 :size 8)
@@ -4750,6 +4806,8 @@
 ;; the GS's TEXCLUT register specifies the CLUT position in the buffer when the CLUT storage mode
 ;; is CSM=1 (CSM2 mode).
 (deftype gs-texclut (uint64)
+"The GS's TEXCLUT register specifies the CLUT position in the buffer when the CLUT storage mode
+is CSM=1 (CSM2 mode)."
   ((cbw  uint8  :offset 0  :size 6)
    (cou  uint8  :offset 6  :size 6)
    (cov  uint16 :offset 12 :size 10)
@@ -4761,6 +4819,8 @@
 ;; MIPMAP.
 ;; MIPTBP1 sets levels 1 to 3, MIPTBP2 sets levels 4 to 6.
 (deftype gs-miptbp (uint64)
+"the GS's MIPTBP registers set the buffer pointer and buffer width of textures when performing
+MIPMAP. MIPTBP1 sets levels 1 to 3, MIPTBP2 sets levels 4 to 6."
   ((tbp1  uint16 :offset 0  :size 14)
    (tbw1  uint8  :offset 14 :size 6)
    (tbp2  uint16 :offset 20 :size 14)
@@ -5038,6 +5098,7 @@
 
 
 (deftype gif-packet (basic)
+"Unused type for building a dynamically sized gif packet."
   ((reg-count int32     :offset-assert 4)
 
    (gif-tag   gs-gif-tag :inline :offset-assert 16) ;; note- added
@@ -5807,6 +5868,7 @@
   )
 
 (deftype load-dir-art-group (load-dir)
+"Specialization of load-dir for `art-group`s."
   ((art-group-array (array art-group) :offset 12)
    )
   :flag-assert #xb00000010
@@ -5816,6 +5878,7 @@
   )
 
 (deftype external-art-buffer (basic)
+"An `external-art-buffer` is a buffer that streamed files use."
   ((index                      int32                       :offset-assert 4)
    (other                      external-art-buffer         :offset-assert 8) ;; guessed by decompiler
    (status                     symbol                      :offset-assert 12) ;; guessed by decompiler
@@ -5853,6 +5916,8 @@
   )
 
 (deftype spool-anim (basic)
+"A `spool-anim` is metadata for an animation that will be loaded in chunks
+to a pair of external-art-buffers."
   ((name         string  :offset 16) ;; guessed by decompiler
    (anim-name    basic   :offset-assert 20)
    (buffer       external-art-buffer :offset 20 :score -1) ;; added
@@ -5869,6 +5934,7 @@
 
 (declare-type process-drawable process)
 (deftype external-art-control (basic)
+"The `external-art-control` manages loading chunks from `spool-anim`s to `external-art-buffer`."
   ((buffer                   external-art-buffer 2       :offset-assert 4) ;; guessed by decompiler
    (rec                      spool-anim          3 :inline      :offset-assert 16) ;; guessed by decompiler
    (spool-lock               handle                      :offset-assert 160)
@@ -5927,6 +5993,8 @@
 (declare-type texture-page basic)
 
 (deftype texture-id (uint32)
+"Unique identifier for a texture
+as the tpage number and index of the texture within the tpage."
   ((index  uint16 :offset 8  :size 12)
    (page   uint16 :offset 20 :size 12)
    )
@@ -5936,6 +6004,7 @@
   )
 
 (deftype texture-pool-segment (structure)
+"A chunk of VRAM."
   ((dest uint32  :offset-assert 0)
    (size uint32  :offset-assert 4)
    )
@@ -5947,6 +6016,7 @@
   )
 
 (deftype texture-pool (basic)
+"The manager for the VRAM."
   ((top                      int32                                                        :offset-assert 4)
    (cur                      int32                                                        :offset-assert 8)
    (allocate-func            (function texture-pool texture-page kheap int texture-page)  :offset-assert 12) ;; guessed by decompiler
@@ -5990,6 +6060,9 @@
   )
 
 (deftype texture-mask (structure)
+"Mask where each bit indicates if some part of a tpage is used, by a texture.
+Additionally, the w component holds a minimum distance. The texture is only needed
+if the distance to the object is smaller than this."
   ((mask vector4w :inline :offset-assert 0)
    (dist float            :offset 12 :score 1)
    (long uint64   2       :offset 0)
@@ -6001,6 +6074,8 @@
   )
 
 (deftype texture-masks (structure)
+"Grouping of three masks, corresponding to the 3 segments of the texture.
+So mask 0 is needed if segment 0 of the texture is needed, etc..."
   ((data texture-mask 3 :inline :offset-assert 0)
    )
   :method-count-assert 9
@@ -6009,6 +6084,7 @@
   )
 
 (deftype texture-masks-array (inline-array-class)
+"Group of all texture-masks for a given tpage."
   ((data texture-masks :inline :dynamic :offset-assert 16)
    )
   :method-count-assert 9
@@ -6017,6 +6093,7 @@
   )
 
 (deftype texture (basic)
+"Metadata for a texture."
   ((w            int16                 :offset-assert 4)
    (h            int16                 :offset-assert 6)
    (num-mips     uint8                 :offset-assert 8)
@@ -6039,6 +6116,8 @@
   )
 
 (deftype texture-page-segment (structure)
+"Metadata for a 'segment' of a texture page.
+Each texture page has 3 segments - smaller number segments have higher detail mips."
   ((block-data pointer  :offset-assert 0) ;; guessed by decompiler
    (size       uint32   :offset-assert 4)
    (dest       uint32   :offset-assert 8)
@@ -6059,6 +6138,11 @@
   )
 
 (deftype texture-page (basic)
+"A collection of textures. There is a tpage per category per level.
+These tpages are loaded from the DVD.
+e.g.: prison tfrag is its own tpage.
+The tpage has multiple textures, and 3 segments.
+Lower number segments are larger and have hi-res versions of textures."
   ((info      file-info                      :offset-assert 4)
    (name      string                         :offset-assert 8)
    (id        uint32                         :offset-assert 12)
@@ -6089,6 +6173,8 @@
 
 (declare-type adgif-shader structure)
 (deftype shader-ptr (uint32)
+"A pointer to an adgif-shader, stored in bits 8-32. This allows them to fit into
+an adgif shader easily."
   ((first-8 uint8 :offset 0 :size 8) ;; added
    (shader uint32 :offset 8 :size 24))
   :method-count-assert 9
@@ -6097,6 +6183,8 @@
   )
 
 (deftype texture-link (structure)
+"An overlay structure containing a shader-ptr that points to the next adgif-shader
+in a linked list."
   ((next shader-ptr  1 :offset-assert 0) ;; guessed by decompiler
    )
   :method-count-assert 9
@@ -6105,6 +6193,10 @@
   )
 
 (deftype texture-page-dir-entry (structure)
+"An entry for a texture in the texture-page-dir.
+The texture-page-dir contains an entry for each tpage.
+Each entry contains a reference to the tpage, and a linked list of shaders
+using it."
   ((length int16         :offset-assert 0)
    (status uint16        :offset-assert 2)
    (page   texture-page  :offset-assert 4)
@@ -6118,6 +6210,8 @@
   )
 
 (deftype texture-relocate-later (basic)
+"Unused in Jak 2, but metadata for postponing tpage copies until a second frame,
+to have a smaller impact on frame times when loading."
   ((memcpy symbol                  :offset-assert 4)
    (dest   uint32                  :offset-assert 8)
    (source uint32                  :offset-assert 12)
@@ -6140,6 +6234,10 @@
 
 
 (deftype adgif-shader (structure)
+"GS texturing/blending settings, called adgif-shader.
+These are used by many different renderers and partially managed by the texture system.
+For example, the texture system will automatically update tbp to point to the location
+of the texture."
   ((quad       qword           5 :inline  :offset-assert 0 :score -100)
    (prims      gs-reg64        10 :offset 0 :score -100)
    (reg-0      uint8              :offset 8)
@@ -6174,6 +6272,8 @@
   )
 
 (deftype texture-base (structure)
+"Metadata about an area of VRAM set aside for fancy dynamic texture effects
+(sky, eye, etc)."
   ((vram-page  uint32  :offset-assert 0)
    (vram-block uint32  :offset-assert 4)
    (vram-word  uint32  :offset-assert 8)
@@ -6195,6 +6295,8 @@
   )
 
 (deftype texture-page-dir (basic)
+"The list of all texture pages.
+This is static data loaded from the DVD at boot."
   ((length int32)
    (entries texture-page-dir-entry 1 :inline)
    )
@@ -7255,6 +7357,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (deftype vis-gif-tag (structure)
+"Unused."
   ((fog0  uint32  :offset-assert 0)
    (strip uint32  :offset-assert 4)
    (regs  uint32  :offset-assert 8)
@@ -7266,6 +7369,7 @@
   )
 
 (deftype cull-info (structure)
+"Also seems unused."
   ((x-fact      float  :offset-assert 0)
    (y-fact      float  :offset-assert 4)
    (z-fact      float  :offset-assert 8)
@@ -7364,6 +7468,14 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (deftype fog-corrector (structure)
+"The math-camera matrices are used to compute fogging values, which are a per-vertex uint8 that
+tells the GS how 'foggy' the color should be. This should be proportional to how far away the vertex
+is. There is a scaling factor applied so the fog intensity isn't affected by the field of view angle.
+
+The fog-corrector stores a fog-end fog-start value that is corrected for the field of view.
+The actual correction factor is computed in cam-update.gc.
+Without this corrector, the fogginess of the world would change as the FOV changes
+(for example, when Jak gets on the zoomer, the FOV changes slightly)."
   ((fog-end   float  :offset-assert 0)
    (fog-start float  :offset-assert 4)
    )
@@ -7583,6 +7695,8 @@
 
 
 (deftype decomp-work (structure)
+"Temporary storage for visibility data decompression.
+This is stored on the scratchpad."
   ((buffer0      uint8  2048 :offset-assert 0) ;; guessed by decompiler
    (buffer1      uint8  2048 :offset-assert 2048) ;; guessed by decompiler
    (indices      uint16 2048 :offset-assert 4096) ;; guessed by decompiler
@@ -7600,6 +7714,7 @@
 
 
 (deftype profile-work (structure)
+"DMA templates for profile drawing."
   ((sprite-tmpl dma-gif-packet :inline :offset-assert 0)
    (line-tmpl   dma-gif-packet :inline :offset-assert 32)
    (last-index  int32                  :offset-assert 64)
@@ -7663,6 +7778,18 @@
 
 
 (deftype connectable (structure)
+"A connectable is the linked-list node part of a connection.
+The connections themselves are owned by the engine.
+
+The `next0`/`prev0` references are used for how this belongs in the connectable list
+belonging to the [[engine]]. These terminate on special nodes stored in the engine:
+`alive-list`/`alive-list-end` for the active connections, and `dead-list`/`dead-list-end`
+for the inactive.
+
+The `next1`/`prev1` references are used to build a linked list _per process_.
+The head of this list is the inline connectable in process and it ends with `#f`.
+This is a bit confusing at first, but these belong to two linked lists...
+These terminate on both ends with `#f`."
   ((next0 connectable  :offset-assert 0)
    (prev0 connectable  :offset-assert 4)
    (next1 connectable  :offset-assert 8)
@@ -7677,6 +7804,10 @@
 (declare-type engine basic)
 
 (deftype connection (connectable)
+"This is the actual data for the connection.
+It may be used in multiple ways, but the most common is to use `param0` as a function.
+It receives `param1`, `param2`, `param3`, and the engine as the arguments.
+In some cases, the return value is checked for `'dead`."
   ((param0 basic     :offset-assert 16)
    (param1 basic     :offset-assert 20) ;; guessed by decompiler
    (param2 int32     :offset-assert 24) ;; guessed by decompiler
@@ -7702,6 +7833,11 @@
 
 
 (deftype engine (basic)
+"An engine is a collection of connections.
+You can iterate over the connections, or run them.
+The engine is dynamically sized based on how many connections it can store.
+
+New for Jak 2: You can use a child class of [[connection]]."
   ((name symbol :offset-assert 4)
    (engine-time time-frame :offset 16)
    (allocated-length int16 :offset 10)
@@ -7751,6 +7887,11 @@
 
 
 (deftype connection-pers (structure)
+"This is another engine system, very similar to the first, but not specific to a process.
+Each connection has a `key`, which is like the process, but unlike normal engine,
+the key's don't track which engine-pers they belong to.
+
+Unlike [[engine]], users can use [[engine-pers]] as a parent class."
   ((next connection-pers :offset-assert 0)
    (key object :offset-assert 4)
    (update-time time-frame :offset-assert 8)
@@ -9764,6 +9905,8 @@
 
 #|
 (deftype texture-page-dir (basic)
+"The list of all texture pages.
+This is static data loaded from the DVD at boot."
   ()
   :method-count-assert 10
   :size-assert         #x14
@@ -10299,6 +10442,8 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (deftype joint (basic)
+"A joint from an animated skeleton. This defines the graph of the skeleton, and also the bind pose
+used for the mesh data. The joints are shared between all instances of the same model."
   ((name      basic          :offset-assert 4)
    (number    int32          :offset-assert 8)
    (parent    joint          :offset-assert 12) ;; guessed by decompiler
@@ -10310,6 +10455,7 @@
   )
 
 (deftype bone-cache (structure)
+"Unused type. Existed in Jak 1, but wasn't used there."
   ((bone-matrix   uint32  :offset-assert 0)
    (parent-matrix uint32  :offset-assert 4)
    (dummy         uint32  :offset-assert 8)
@@ -10321,6 +10467,9 @@
   )
 
 (deftype bone (structure)
+"The location and scale of a bone in an animated skeleton. Each instance of a skeleton
+has its own copy of the bones. This data is used for collision checking or other gameplay math,
+but, despite the name, isn't directly used in rendering."
   ((transform matrix :inline :offset-assert 0)
    (position  vector :inline :offset 48)
    (scale     vector :inline :offset-assert 64)
@@ -10331,6 +10480,8 @@
   )
 
 (deftype skeleton (inline-array-class)
+"Skeleton is an array of bones for the entire character. The bones are stored in an inline array so they can be
+easily dma'd to the scratchpad later."
   ((bones bone :inline :dynamic))
   :method-count-assert 9
   :size-assert         #x10
@@ -10338,6 +10489,8 @@
   )
 
 (deftype cspace (structure)
+"A cspace describes how to control a bone. It contains a reference to the joint, bone, and a callback function.
+The callback function is used to take the joint transforms out of the joint animation, then update the bone."
   ((parent    cspace    :offset-assert 0)
    (joint     joint     :offset-assert 4) ;; guessed by decompiler
    (joint-num int16     :offset-assert 8)
@@ -10375,6 +10528,12 @@
 (declare-type collide-query structure)
 
 (deftype drawable (basic)
+"Base class for `drawable` scene graph system.
+This base class is really abused in many ways, and the meaning of the various methods differ depending
+on the exact type. Not even the ID and bsphere here are always populated.
+This is used for very high level organization of different rendering data types, and also very low-level
+culling/rendering optimizations. It supports both array-of-references and inline-array containers with precise
+control over memory layout for use with DMA."
   ((id      int16          :offset-assert 4)
    (bsphere vector :inline :offset-assert 16)
    )
@@ -10402,6 +10561,7 @@
 
 
 (deftype drawable-error (drawable)
+"A drawable which just represents an error. When drawn, it simply displays a sphere with an error message."
   ((name string  :offset-assert 32) ;; guessed by decompiler
    )
   :method-count-assert 17
@@ -10416,6 +10576,8 @@
 
 
 (deftype drawable-group (drawable)
+"Base class for an array of references to other drawables.
+These are typically used for very high-level organization of drawable."
   ((length  int16 :offset 6)
    (data    drawable :dynamic  :offset-assert 32)
    )
@@ -10453,6 +10615,15 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (deftype draw-node (drawable)
+"Node in a bounding volume heirarchy. This is a base class, and there are no children.
+The child is a pointer to the start of inline array of drawables (note: not a drawable-inline-array, literally a bunch of plain drawables)
+The size of this array is child-count. The type is either more draw-nodes, or, some other drawable like tfragment, depending on the flags.
+Different renderers have different restrictions on the tree structure, like max child count, or if all children have the same depth.
+Generally, tfrag/collide use a very rigid equal depth, max 8 children rule, but with shrub, anything goes.
+This is a very awkward data structure to traverse, but it is designed for fast view frustum culling.
+Note that there can be multiple ways to reach drawables in here in some cases - for example you can follow
+this tree, or check one of the depth arrays found in tfrag.
+"
   ((child-count uint8     :offset 6)
    (flags       uint8     :offset 7)
    (child       drawable  :offset 8) ;; guessed by decompiler
@@ -10477,6 +10648,8 @@
 
 
 (deftype draw-node-dma (structure)
+"DMA buffer layout for draw node culling routine, which copies draw-nodes directly to scratchpad in bulk.
+This would not work with the memory layout of shrub."
   ((banka draw-node 32 :inline :offset-assert 0)
    (bankb draw-node 32 :inline :offset-assert 1024)
    )
@@ -10491,11 +10664,16 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (deftype drawable-tree (drawable-group)
+"A drawable tree is a container of drawables of a specific rendering type.
+Instead of having a single large tree of mixed types, there will be a tree of tfrags, a tree of ties, etc.
+The top-level tfrag tree will have a type that's a child of drawable-tree.
+Generally, the object passed to a large renderer is a drawable-tree."
   ()
   :flag-assert #x1100000020
   )
 
 (deftype drawable-tree-array (drawable-group)
+"Collection of drawable trees. This might have a tfrag tree, tie tree, etc."
   ((trees drawable-tree :dynamic :offset 32 :score 100))
   :flag-assert #x1100000020
   (:methods
@@ -10514,6 +10692,9 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (deftype drawable-actor (drawable)
+"Wrapper around an entity-actor to put it in the drawable system.
+Note that this is never used to actually draw actors - it is just used as a list of all entity-actors
+for the entity/birth system."
   ((actor entity-actor  :offset 8) ;; guessed by decompiler
    )
   :method-count-assert 17
@@ -10523,11 +10704,13 @@
 
 
 (deftype drawable-tree-actor (drawable-tree)
+"Adapater for putting the actors in the tree-array."
   ()
   :flag-assert #x1100000020
   )
 
 (deftype drawable-inline-array-actor (drawable-inline-array)
+"Array of drawable-actors."
   ((data drawable-actor 1 :inline)
    (pad uint8 4))
   :flag-assert #x1100000044
@@ -10540,6 +10723,10 @@
 
 
 (deftype region (structure)
+"A region is a closed volume that you can, enter, exit, and be inside.
+This stores a unique, and script functions for a single region.
+These are stored separately from the actual geometry to allow the geometry to be smaller
+and fit in scratchpad/cache better."
   ((id        uint32  :offset-assert 0)
    (on-enter  pair    :offset-assert 4)
    (on-inside pair    :offset-assert 8)
@@ -10555,6 +10742,7 @@
 
 
 (deftype region-array (inline-array-class)
+"Array of region."
   ((data             region :inline :dynamic :offset-assert 16)
    )
   :method-count-assert 9
@@ -10564,6 +10752,8 @@
 
 (declare-type region-prim-area structure)
 (deftype drawable-region-prim (drawable)
+"Base class for a region + geometry.
+Note that all child classes of this must be 32-bytes."
   ((region region  :offset 8)
    )
   :method-count-assert 20
@@ -10579,6 +10769,7 @@
   )
 
 (deftype drawable-tree-region-prim (drawable-tree)
+"Top-level container for all regions of a level."
   ((name basic :offset 8)
    (data2 drawable-inline-array :dynamic :offset 32 :score 1))
   :method-count-assert 19
@@ -10592,6 +10783,8 @@
 
 
 (deftype drawable-inline-array-region-prim (drawable-inline-array)
+"Inline array of drawable-region-prim. This actually stores child classes, but they are
+exactly the same size as the parent, so it's okay."
   ((data drawable-region-prim 1 :inline :offset-assert 32)
    (pad uint8 4))
   :flag-assert #x1100000044
@@ -10599,6 +10792,7 @@
 
 
 (deftype drawable-region-sphere (drawable-region-prim)
+"Region where the bsphere of the drawable is the volume."
   ()
   :method-count-assert 20
   :size-assert         #x20
@@ -10606,6 +10800,7 @@
   )
 
 (deftype region-face-data (structure)
+"Data to store a single planar face, as a normal and list of vertices."
   ((normal        vector  :inline  :offset-assert 0)
    (normal-offset float            :offset 12)
    (num-points    uint32           :offset-assert 16)
@@ -10617,6 +10812,7 @@
   )
 
 (deftype drawable-region-face (drawable-region-prim)
+"A drawable-region which is just a face. Unclear if `on-inside` is used."
   ((data region-face-data  :offset 12)
    )
   :method-count-assert 20
@@ -10625,6 +10821,7 @@
   )
 
 (deftype region-face-array (inline-array-class)
+"An array of faces that hopefully make a closed volume."
   ((data drawable-region-face :inline :dynamic :offset 16)
    (pad0 uint8 4)
    )
@@ -10634,6 +10831,7 @@
   )
 
 (deftype drawable-region-volume (drawable-region-prim)
+"A drawable-region which is a bunch of faces that represent a closed volume."
   ((faces region-face-array  :offset 12)
    )
   :method-count-assert 20
@@ -10642,6 +10840,7 @@
   )
 
 (deftype region-prim-list (structure)
+"A list of drawable-region-prim. This is the return type of queries like `which regions contain this point?`"
   ((num-items int32       :offset-assert 0)
    (items     drawable-region-prim 320 :offset-assert 4)
    )
@@ -11654,6 +11853,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (deftype gsf-vertex (structure)
+"Vertex used by generic. GSF = generic stripped fragment?"
   ((data uint32   8       :offset-assert 0)
    (byte uint8   32      :offset 0)
    (quad uint128   2       :offset 0)
@@ -11673,6 +11873,8 @@
   )
 
 (deftype gsf-fx-vertex (structure)
+"Color/texture data only. Possibly used to share with a gsf-vertex with
+the same position/normal."
   ((clr vector4ub :inline :offset-assert 0)
    (tex vector2uh :inline :offset-assert 4)
    )
@@ -11683,6 +11885,7 @@
 
 
 (deftype gsf-header (structure)
+"Header for generic data."
   ((num-strips   uint8     :offset-assert 0)
    (num-new-vtxs uint8     :offset-assert 1)
    (num-dps      uint16    :offset-assert 2)
@@ -12758,6 +12961,8 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (deftype palette-fade-control (structure)
+"Unused interface to the time-of-day control. Was used in jak 1 as an interface between level code,
+and the code in mood.gc, which set the actual fade values for time-of-day."
   ((trans      vector :inline :offset-assert 0)
    (fade       float          :offset-assert 16)
    (actor-dist float          :offset-assert 20)
@@ -12768,6 +12973,8 @@
   )
 
 (deftype palette-fade-controls (basic)
+"Unused interface to the time-of-day control. Was used in jak 1 as an interface between level code,
+and the code in mood.gc, which set the actual fade values for time-of-day."
   ((control palette-fade-control 8 :inline :offset-assert 16) ;; guessed by decompiler
    )
   :method-count-assert 11
@@ -12781,6 +12988,7 @@
 
 (declare-type sparticle-launch-control inline-array-class)
 (deftype time-of-day-proc (process)
+"Process for running things that change with the time-of-day, like lighting, sun/stars/moon, etc."
   ((hours           int32                     :offset-assert 128)
    (minutes         int32                     :offset-assert 132)
    (seconds         int32                     :offset-assert 136)
@@ -12806,6 +13014,9 @@
   )
 
 (deftype time-of-day-palette (basic)
+"Pre-baked lighting values used by rendering code. The exact meaning of this data can vary,
+but in all cases, the time-of-day system can do linear interpolation of two palettes to
+blend between them."
   ((width  int32   :offset-assert 4)
    (height int32   :offset-assert 8)
    (pad    int32   :offset-assert 12)
@@ -12834,6 +13045,7 @@
   )
 
 (deftype time-of-day-context (basic)
+"A mix of inputs/outputs to the time-of-day system."
   ((interp               float       6       :offset-assert 4) ;; guessed by decompiler
    (current-fog          mood-fog    :inline :offset-assert 32)
    (current-sky-color    vector      :inline :offset-assert 80)
@@ -12867,6 +13079,7 @@
 
 
 (deftype time-of-day-dma (structure)
+"Memory layout for the time-of-day interpolation functions."
   ((outa  uint32 256 :offset-assert 0) ;; guessed by decompiler
    (outb  uint32 256 :offset-assert 1024) ;; guessed by decompiler
    (banka uint32 256 :offset-assert 2048) ;; guessed by decompiler
@@ -12885,6 +13098,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (deftype joint-anim (basic)
+"Base class for all joint animations. These are animations that store joint transforms."
   ((name   string  :offset-assert 4) ;; guessed by decompiler
    (number int16   :offset-assert 8)
    (length int16   :offset-assert 10)
@@ -12895,11 +13109,13 @@
   )
 
 (deftype joint-anim-matrix (joint-anim)
+"Joint animation which stores matrices directly. Not used."
   ((data  matrix :inline :dynamic :offset 16))
   :flag-assert #x900000010
   )
 
 (deftype joint-anim-transformq (joint-anim)
+"Joint animation which stores transformq's directly. Not used."
   ((data  transformq :inline :dynamic :offset 16)
    )
   :method-count-assert 9
@@ -12908,6 +13124,7 @@
   )
 
 (deftype joint-anim-drawable (joint-anim)
+"Mysterious unused joint animation type."
   ((data drawable :dynamic :offset-assert 12) ;; guessed by decompiler
    )
   :method-count-assert 9
@@ -12916,6 +13133,10 @@
   )
 
 (deftype joint-anim-frame (structure)
+"Frame containing all joint transforms. Note that there are two special frames: align and prejoint.
+The 'align' frame is used for the complicated animation alignment system, which allows the animation to move
+a character, among other things. The prejoint is just the root of the skeleton.
+The remaining transformq's are the joint transforms you'd expect."
   ((matrices matrix 2 :inline :offset-assert 0) ;; guessed by decompiler
    (data     transformq :dynamic :inline :offset-assert 128) ;; guessed by decompiler
    )
@@ -12928,6 +13149,7 @@
   )
 
 (deftype joint-anim-compressed-hdr (structure)
+"Header for the compressed joint animation format."
   ((control-bits uint32 14 :offset-assert 0) ;; guessed by decompiler
    (num-joints   uint32    :offset-assert 56)
    (matrix-bits  uint32    :offset-assert 60)
@@ -12976,6 +13198,8 @@
   )
 
 (deftype art (basic)
+"Base class for anything considered `art`. This is typically foreground model data.
+This can be either an art container containing more arts, or an actual art thing (art-element)."
   ((name   string    :offset 8) ;; guessed by decompiler
    (length int32     :offset-assert 12)
    (extra  res-lump  :offset-assert 16) ;; guessed by decompiler
@@ -12993,6 +13217,7 @@
 
 
 (deftype art-element (art)
+"Base class Art which is not a container of more art."
   ((pad uint8 12))
   :method-count-assert 13
   :size-assert         #x20
@@ -13001,12 +13226,14 @@
 
 
 (deftype art-mesh-anim (art-element)
+"An unused mesh animation."
   ((data basic :dynamic))
   :flag-assert #xd00000020
   )
 
 (declare-type merc-eye-anim-block structure)
 (deftype art-joint-anim (art-element)
+"Art for a joint animation. Also contains the eye animation."
   ((speed                  float                          :offset 20)
    (artist-base            float                          :offset 24)
    (artist-step            float                          :offset 28)
@@ -13038,18 +13265,22 @@
   )
 
 (deftype art-mesh-geo (art-element)
+"Unused art format for a mesh. This might have been for the renderer that came before merc."
   ((data  basic  :dynamic :offset-assert 32)
    )
   :flag-assert #xd00000020
   )
 
 (deftype art-joint-geo (art-element)
+"Collection of joints for an actor."
   ((data  joint  :dynamic :offset-assert 32)
    )
   :flag-assert #xd00000020
   )
 
 (deftype art-joint-anim-manager-slot (structure)
+"Record for an animation which is additionally compressed with LZO compression over the entire animation.
+This is used for short, commonly used animations that always remain in RAM."
   ((anim       art-joint-anim :offset-assert 0)
    (comp-data  uint32  :offset-assert 4)
    (time-stamp uint64  :offset-assert 8)
@@ -13061,6 +13292,7 @@
 
 
 (deftype art-joint-anim-manager (basic)
+"Cache for LZO decompression of animations."
   ((kheap kheap :inline)
    (free-index int32)
    (slot art-joint-anim-manager-slot 64 :inline)
@@ -13080,6 +13312,8 @@
   )
 
 (deftype skeleton-group (art-group)
+"Unlike other art types, the skeleton-groups are defined in GOAL code.
+This stores settings like the name of the art-group, shadow/level-of-detail settings, etc."
   ((art-group-name     string           :offset-assert 32) ;; guessed by decompiler
    (jgeo               int32            :offset-assert 36)
    (janim              int32            :offset-assert 40)
@@ -13108,6 +13342,7 @@
 
 (declare-type merc-ctrl art-element)
 (deftype lod-group (structure)
+"A single level of detail mesh."
   ((geo  merc-ctrl  :offset-assert 0) ;; guessed by decompiler
    (dist meters     :offset-assert 4)
    )
@@ -13118,6 +13353,7 @@
   )
 
 (deftype lod-set (structure)
+"All the different level-of-detail meshes for an actor."
   ((lod     lod-group 6 :inline :offset-assert 0) ;; guessed by decompiler
    (max-lod int8        :offset-assert 48)
    )
@@ -13171,6 +13407,8 @@
 (declare-type joint-control basic)
 
 (deftype draw-control (basic)
+"The draw-control is a collection of all the stuff that the foreground rendering system needs to draw something.
+Each process-drawable has a draw-control."
   ((process process-drawable :offset-assert 4)
    (status draw-control-status)
    (data-format draw-control-data-format)
@@ -13233,6 +13471,9 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (deftype pris-mtx (structure)
+"Matrix for merc rendering. Named after the earlier 'pris' renderer.
+Contains a transformation matrix for vertices, one for normals, and a scale.
+This matrix is likely not used by generic VU1, but is used by the merc -> generic converter."
   ((data   float   32      :offset-assert 0) ;; guessed by decompiler
    (vector vector  8       :offset 0) ;; guessed by decompiler
    (t-mtx  matrix  :inline :offset 0)
@@ -13255,6 +13496,7 @@
   )
 
 (deftype generic-constants (structure)
+"Constant data sent to VU1 for generic rendering."
   ((fog         vector :inline :offset-assert 0)
    (adgif       gs-gif-tag  :inline :offset-assert 16) ;; was qword
    (hvdf-offset vector :inline :offset-assert 32)
@@ -13318,6 +13560,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (deftype ripple-merc-query (inline-array-class)
+"Information about which merc vertices to apply the 'ripple' effect to."
   ((start-vertex     int32           :offset-assert 16)
    (vertex-skip      int32           :offset-assert 20)
    (vertex-count     int32           :offset-assert 24)
@@ -13330,6 +13573,7 @@
   )
 
 (deftype merc-byte-header (structure)
+"Header for a single [[merc-fragment]] uploaded to the VU."
   ((srcdest-off        uint8    :offset-assert 0)
    (rgba-off           uint8    :offset-assert 1)
    (lump-off           uint8    :offset-assert 2)
@@ -13351,6 +13595,7 @@
   )
 
 (deftype merc-fragment (structure)
+"A single merc fragment that fits into VU memory."
   ((header merc-byte-header :inline :offset-assert 0)
    (rest   uint8            1       :offset-assert 23) ;; guessed by decompiler
    )
@@ -13363,6 +13608,7 @@
   )
 
 (deftype merc-vtx (structure)
+"A packed merc vertex."
   ((mat-0 uint8  :offset-assert 0)
    (mat-1 uint8  :offset-assert 1)
    (nrm-x uint8  :offset-assert 2)
@@ -13382,6 +13628,7 @@
   )
 
 (deftype merc-fp-header (structure)
+"Merc header for a [[merc-fragment]]'s floating point data."
   ((x-add            float  :offset-assert 0)
    (y-add            float  :offset-assert 4)
    (z-add            float  :offset-assert 8)
@@ -13396,6 +13643,7 @@
   )
 
 (deftype merc-mat-dest (structure)
+"Metadata for a merc matrix upload."
   ((matrix-number uint8  :offset-assert 0)
    (matrix-dest   uint8  :offset-assert 1)
    )
@@ -13406,6 +13654,7 @@
   )
 
 (deftype merc-fragment-control (structure)
+"Data about a [[merc-fragment]] needed for merc DMA generation."
   ((unsigned-four-count uint8                  :offset-assert 0)
    (lump-four-count     uint8                  :offset-assert 1)
    (fp-qwc              uint8                  :offset-assert 2)
@@ -13418,11 +13667,13 @@
   )
 
 (deftype merc-blend-data (structure) ;; was unknown!
+"Packed BLERC data."
   ((int8-data int8 :dynamic :offset-assert 0)
    )
   )
 
 (deftype merc-blend-ctrl (structure)
+"Information about the vertices of a model modified by BLERC."
   ((blend-vtx-count     uint8          :offset-assert 0)
    (nonzero-index-count uint8          :offset-assert 1)
    (bt-index            uint8 :dynamic :offset-assert 2) ;; guessed by decompiler
@@ -13433,6 +13684,7 @@
   )
 
 (deftype mei-envmap-tint (structure)
+"Data for the extra 'envmap tint' effect."
   ((fade0 float   :offset-assert 0)
    (fade1 float   :offset-assert 4)
    (tint  rgba    :offset-assert 8)
@@ -13444,6 +13696,7 @@
   )
 
 (deftype mei-texture-scroll (structure)
+"Data for the extra 'texscroll' effect."
   ((max-dist     float   :offset-assert 0)
    (st-int-scale uint8   :offset-assert 4)
    (time-factor  uint8   :offset-assert 5)
@@ -13458,6 +13711,7 @@
   )
 
 (deftype mei-ripple (structure)
+"Data for the extra 'ripple' effect."
   ((x-base    float  :offset-assert 0)
    (z-base    float  :offset-assert 4)
    (grid-size float  :offset-assert 8)
@@ -13469,6 +13723,7 @@
   )
 
 (deftype merc-extra-info (structure)
+"Info for merc extra effects."
   ((envmap-tint-offset    uint8    :offset-assert 0)
    (shader-offset         uint8    :offset-assert 1)
    (texture-scroll-offset uint8    :offset-assert 2)
@@ -13494,6 +13749,7 @@
   )
 
 (deftype merc-effect (structure)
+"A collection of [[merc-fragment]]s with data for any extra effects."
   ((frag-geo            merc-fragment          :offset-assert 0)
    (frag-ctrl           merc-fragment-control  :offset-assert 4)
    (blend-data          merc-blend-data        :offset-assert 8)
@@ -13517,6 +13773,7 @@
   )
 
 (deftype merc-eye-ctrl (structure)
+"Eye info for both eyes of a merc model."
   ((eye-slot           int8                 :offset-assert 0)
    (shader-offset      int8                 :offset-assert 1)
    (shader-count       int8                 :offset-assert 2)
@@ -13534,6 +13791,7 @@
   )
 
 (deftype merc-eye-anim-frame (structure)
+"A single frame of a merc eye animation."
   ((pupil-trans-x int8    :offset-assert 0)
    (pupil-trans-y int8    :offset-assert 1)
    (blink         int8    :offset-assert 2)
@@ -13549,6 +13807,7 @@
   )
 
 (deftype merc-eye-anim-block (structure)
+"A list of eye animation frames."
   ((max-frame int16                        :offset-assert 0)
    (data      merc-eye-anim-frame :inline :dynamic :offset-assert 8) ;; guessed by decompiler
    )
@@ -13566,6 +13825,8 @@
   )
 
 (deftype merc-ctrl-header (structure)
+"The header for a [[merc-ctrl]],
+containing metadata about the model used for drawing."
   ((xyz-scale              float                        :offset-assert 0)
    (st-magic               uint32                       :offset-assert 4)
    (st-out-a               uint32                       :offset-assert 8)
@@ -13621,6 +13882,8 @@
   )
 
 (deftype merc-ctrl (art-element)
+"The merc data for a single model as it's stored in an art group.
+Consists of a header and a list of [[merc-effect]]s."
   ((num-joints int32                     :offset 20)
    (seg-table  (array uint64)   :offset 24)
    (header     merc-ctrl-header :inline  :offset-assert 32)
@@ -14179,6 +14442,7 @@
   )
 
 (deftype shadow-settings (structure)
+"Settings used to draw a shadow."
   ((flags         shadow-flags   :offset 12) ;; shadow-flags
    (center        vector :inline :offset 0 :score -1)
    (shadow-dir    vector :inline :offset-assert 16)
@@ -14214,6 +14478,7 @@
   )
 
 (deftype shadow-data (structure)
+"DMA data for the shadow renderer."
   ((dma-unpack-template dma-packet :inline :offset-assert 0)
    (dma-cnt             dma-tag            :offset-assert 16) ;; was u64
    (vif-nop             vif-tag            :offset-assert 24) ;; guessed by decompiler
@@ -14358,6 +14623,7 @@
   )
 
 (deftype shadow-geo (art-element)
+"The low poly model used for drawing the shadow."
   ((version       uint32           :offset 20)
    (total-qwc     uint32           :offset-assert 32)
    (num-joints    uint32           :offset-assert 36)
@@ -14390,6 +14656,7 @@
   )
 
 (deftype mc-file-info (structure)
+"Data stored in a save file."
   ((present               int32     :offset-assert 0)
    (blind-data            float  16 :offset 4) ;; guessed by decompiler
    (blind-data-int8       int8   64 :offset 4) ;; guessed by decompiler
@@ -14415,6 +14682,7 @@
   )
 
 (deftype mc-slot-info (structure)
+"Data about a memory card slot."
   ((handle       int32          :offset-assert 0)
    (known        int32          :offset-assert 4)
    (formatted    int32          :offset-assert 8)
@@ -14989,6 +15257,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (deftype talker-speech-class (structure)
+"Contains metadata about a voice line or hint text being played/displayed."
   ((name          string   :offset-assert 0)
    (channel       gui-channel   :offset-assert 4)
    (flags         uint8   :offset-assert 5)
@@ -15481,6 +15750,8 @@
 
 (declare-type joint-control basic)
 (deftype joint-control-channel (structure)
+"A single animation channel that controls a number of joints.
+Multiple channels are used to blend animations together."
   ((parent           joint-control     :offset-assert 0)
    (frame-group      art-joint-anim    :offset-assert 4)
    (frame-num        float             :offset-assert 8)
@@ -15554,6 +15825,7 @@
 (declare-type effect-control basic)
 
 (deftype joint-control (basic)
+"Every [[process-drawable]] has a [[joint-control]] that handles all the animation channels."
   ((status joint-control-status)
    (allocated-length uint8)
    (active-channels uint8)
@@ -15592,6 +15864,7 @@
   )
 
 (deftype channel-upload-info (structure)
+"Information about an upload of animation data to a single joint channel."
   ((fixed     joint-anim-compressed-fixed  :offset-assert 0)
    (fixed-qwc int32                        :offset-assert 4)
    (frame     joint-anim-compressed-frame  :offset-assert 8)
@@ -15746,6 +16019,8 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (deftype mercneric-chain (structure)
+"A DMA chain for drawing with mercneric, and metadata needed to append.
+This chain is assumed to run with a specific tpage from a specific level available."
   ((first      uint32                       :offset-assert 0)
    (next       uint32                       :offset-assert 4)
    (state      generic-bucket-state :inline :offset-assert 8)
@@ -15758,6 +16033,8 @@
   )
 
 (deftype merc-chain (structure)
+"A DMA chain for drawing with merc.
+This chain is assumed to run with a specific tpage from a specific level available."
   ((first      dma-packet  :offset-assert 0)
    (patch      dma-packet  :offset-assert 4)
    (vu1-bucket bucket-id   :offset-assert 8)
@@ -15769,6 +16046,7 @@
   )
 
 (deftype foreground-bucket (structure)
+"A foreground bucket is merc, emerc, and mercneric chain for a given texture mode."
   ((merc      merc-chain      :inline :offset-assert 0)
    (emerc     merc-chain      :inline :offset-assert 12)
    (mercneric mercneric-chain :inline :offset-assert 24)
@@ -15779,6 +16057,9 @@
   )
 
 (deftype foreground-level-buckets (structure)
+"Collection of buckets for a single level.
+Each bucket has a different texture. The order is:
+tfrag, pris, shrub, alpha, water, pris, pris2"
   ((data foreground-bucket 7 :inline :offset-assert 0)
    )
   :method-count-assert 9
@@ -15788,6 +16069,7 @@
 
 
 (deftype foreground-bucket-grid (structure)
+"Array of buckets for each level, plus the single warp chain shared between everybody."
   ((level-buckets foreground-level-buckets 7 :inline  :offset-assert 0)
    (warp-chain    mercneric-chain :inline :offset-assert 2352)
    )
@@ -15797,6 +16079,8 @@
   )
 
 (deftype foreground-regs (structure)
+"Frequently accessed foreground values. These are in scratchpad for fast access
+during foreground processing."
   ((dist                  float                     :offset-assert 0)
    (merc-used             uint32                    :offset-assert 4)
    (emerc-used            uint32                    :offset-assert 8)
@@ -15818,6 +16102,9 @@
   )
 
 (deftype foreground-work (structure)
+"Memory map for scratchpad during foreground processing.
+This is not used by the renderers, bone matrix, or joint code - just the code
+that assigns stuff to buckets and prepares DMA for merc (or requests for generic merc)."
   ((regs           foreground-regs        :inline :offset-assert 0)
    (draw-index-map uint8                7       :offset 64) ;; ????
    (grid           foreground-bucket-grid :inline :offset-assert 80)
@@ -15832,6 +16119,7 @@
   )
 
 (deftype texscroll-globals (structure)
+"List of all merc-effects that need texscroll applied."
   ((requests int32          :offset-assert 0)
    (effects  merc-effect 32 :offset-assert 4) ;; guessed by decompiler
    )
@@ -15841,6 +16129,8 @@
   )
 
 (deftype merc-effect-bucket-info (structure)
+"Scratch info computed per-merc-effect by the foreground code, then later read by merc
+DMA generation. This is only for the currently-processing merc model's effects."
   ((color-fade     rgba   :offset-assert 0) ;; guessed by decompiler
    (alpha uint8 :offset 3)
    (merc-path      uint8  :offset-assert 4)
@@ -15855,6 +16145,7 @@
   )
 
 (deftype merc-bucket-info (structure)
+"Scratch info for the current merc-ctrl. Written by the foreground code, read by merc DMA generation."
   ((light                       vu-lights               :inline :offset-assert 0)
    (needs-clip                  int32                           :offset-assert 112)
    (need-mercprime-if-merc      int32                           :offset-assert 116)
@@ -15867,6 +16158,7 @@
   )
 
 (deftype foreground-globals (structure)
+"The foreground renderer state: all DMA chains, settings for the current merc-ctrl, texscroll list."
   ((foreground-grid  foreground-bucket-grid :inline :offset-assert 0)
    (merc-bucket-info merc-bucket-info       :inline :offset-assert 2384)
    (texscroll        texscroll-globals      :inline :offset-assert 3024)
@@ -15877,6 +16169,7 @@
   )
 
 (deftype shadow-dma-packet (structure)
+"DMA tag for submitting shadow data."
   ((tag      generic-merc-tag :inline :offset-assert 0)
    (settings shadow-settings  :inline :offset-assert 16)
    (geo-ref  dma-packet       :inline :offset-assert 96)
@@ -16018,6 +16311,7 @@
 
 ;; TODO confirm, this is just copied from jak1
 (deftype res-tag (uint128)
+"Metadata about a property in a [[res-lump]], such as name, element type and element count."
   ((name        symbol  :offset 0)
    (key-frame   float   :offset 32)
    (elt-type    type    :offset 64)
@@ -16040,6 +16334,9 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (deftype res-tag-pair (uint64)
+"The indices of two [[res-tag]]s. If the specific key-frame time is in between two
+res-tags, this type is used to return the indices of the first res-tag before and after
+the specified time."
   ((lo  int32 :offset 0)
    (hi  int32 :offset 32)
    )
@@ -16047,6 +16344,7 @@
   )
 
 (deftype res-lump (basic)
+"A collection of [[res-tag]]s and their data."
   ((length           int32              :offset-assert 4)
    (allocated-length int32              :offset-assert 8)
    (data-base        pointer            :offset-assert 12) ;; guessed by decompiler
@@ -16211,6 +16509,9 @@
 
 (declare-type control-info basic)
 (deftype surface (basic)
+"Definition of a bunch of parameters for different types of surfaces.
+Parameters include values such as max speed, friction, callback functions that run
+on impact, during touch, on exit, etc."
   ((name symbol)
    ;(data float 30 :score -1)
    (turnv             float      :offset-assert 8)
@@ -16846,6 +17147,10 @@
 (declare-type carry-info basic)
 (declare-type rigid-body-control basic)
 (deftype process-drawable (process)
+"This is the main base class for in-game objects.
+This handles drawing, collision, animation, navigation, particles, sounds, physics, etc.
+The actual child classes will add most of the functionality, and this just serves as a common
+container for references to the `-control` objects for this object."
   ((root        trsqv                     :offset-assert 128) ;; guessed by decompiler
    (node-list   cspace-array              :offset-assert 132) ;; guessed by decompiler
    (draw        draw-control              :offset-assert 136) ;; guessed by decompiler
@@ -16881,6 +17186,9 @@
   )
 
 (deftype process-drawable-reserved (process-drawable)
+"A process drawable with a lot of unused method slots.
+GOAL cannot increase the number of methods at runtime, so, for interactive development, it is useful
+to have a type with a large number of slots which can be turned into real methods without needed to reboot the PS2."
   ()
   :method-count-assert 178
   :size-assert         #xc8
@@ -17048,6 +17356,7 @@
   )
 
 (deftype attack-dir-info (structure)
+"Information about the position/direction of an attack."
   ((dir               vector :inline :offset-assert 0)
    (xz-dir            vector :inline :offset-assert 16)
    (attacker-velocity vector :inline :offset-assert 32)
@@ -17107,6 +17416,7 @@
 (declare-type touching-shapes-entry structure)
 
 (deftype attack-info (structure)
+"Information about an incoming attack."
   ((trans             vector           :inline :offset-assert   0)
    (vector            vector           :inline :offset-assert  16)
    (attacker-velocity vector           :inline :offset-assert  32)
@@ -17323,6 +17633,7 @@
   )
 
 (deftype sync-info-params (structure)
+"Parameters used to set up a [[sync-info]]."
   ((sync-type  symbol   :offset-assert 0)
    (sync-flags sync-flags  :offset-assert 8)
    (entity     basic   :offset-assert 16)
@@ -17531,6 +17842,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (deftype smush-control (structure)
+"This holds information about the current state of an object's smush."
   ((start-time  time-frame  :offset-assert 0) ;; time-frame
    (period      float   :offset-assert 8)
    (duration    float   :offset-assert 12)
@@ -17652,6 +17964,8 @@
 ;; ---joint-mod-h:track-mode
 
 (deftype joint-mod (basic)
+"Utility to modify a joint transform from code, rather than just getting it from animation.
+This is used to make jak look toward an enemy, for example."
   ((mode joint-mod-mode)
    (process process-drawable)
    (joint cspace)
@@ -17733,6 +18047,7 @@
   )
 
 (deftype joint-mod-set-local (basic)
+"Override the trans, quat, and scale of the joint transform. The component to override is selected by the flag."
   ((transform       transformq :inline :offset-assert 16)
    (set-rotation    symbol             :offset-assert 64)
    (set-scale       symbol             :offset-assert 68)
@@ -17748,6 +18063,8 @@
   )
 
 (deftype joint-mod-add-local (basic)
+"Add to the trans, rotate the quat, and multiply the scale of the joint transform. The components can be selected by the flag.
+Unlike jak 2, this actually multiplies the scale, instead of adding."
   ((transform       transformq :inline :offset-assert 16)
    (add-rotation    symbol              :offset-assert 64)
    (add-scale       symbol              :offset-assert 68)
@@ -17763,6 +18080,8 @@
   )
 
 (deftype joint-mod-set-world (basic)
+"Directly overwrite the _bone_ transform (ignoring the parent entirely).
+This does not pay attention to the flags."
   ((transform  transformq :inline :offset-assert 16)
    (node-index int32              :offset-assert 64)
    (enable     symbol             :offset-assert 68)
@@ -17776,6 +18095,8 @@
   )
 
 (deftype joint-mod-blend-local (basic)
+"Blend the _joint_ transform between this transform and the animated one.
+Then, apply the normal parented transform."
   ((transform       transformq :inline :offset-assert 16)
    (blend-transform transformq :inline :offset-assert 64)
    (node-index      int32              :offset-assert 112)
@@ -17791,6 +18112,7 @@
   )
 
 (deftype joint-mod-spinner (basic)
+"Control a joint by just spinning it around an axis."
   ((spin-axis vector :inline :offset-assert 16)
    (angle     float          :offset-assert 32)
    (spin-rate float          :offset-assert 36)
@@ -17813,6 +18135,7 @@
   )
 
 (deftype joint-mod-blend-world (basic)
+"Blend the _bone_ transform between this one and the animated one."
   ((transform       transformq :inline :offset-assert 16)
    (blend-transform transformq :inline :offset-assert 64)
    (blend-flags     joint-mod-blend-flags  :offset-assert 112)
@@ -17901,6 +18224,7 @@
 (declare-type collide-mesh-cache-tri structure)
 
 (deftype collide-tri-result (structure)
+"A triangle result of a collision."
   ((vertex      vector      3 :inline :offset-assert 0) ;; guessed by decompiler
    (intersect   vector      :inline :offset-assert 48)
    (normal      vector      :inline :offset-assert 64)
@@ -17913,6 +18237,7 @@
   )
 
 (deftype collide-mesh-tri (structure)
+"A triangle for foreground collision meshes."
   ((vertex-index uint8       3 :offset-assert 0) ;; guessed by decompiler
    (unused       uint8         :offset-assert 3)
    (pat          pat-surface   :offset-assert 4) ;; guessed by decompiler
@@ -17924,6 +18249,8 @@
   )
 
 (deftype collide-mesh (basic)
+"A collision mesh for foreground objects,
+bound to the joint specified by `joint-id`."
   ((joint-id    int32                   :offset-assert 4)
    (num-tris    uint32                  :offset-assert 8)
    (num-verts   uint32                  :offset-assert 12)
@@ -17945,6 +18272,7 @@
   )
 
 (deftype collide-mesh-cache-tri (structure)
+"A triangle stored in the foreground mesh collide cache."
   ((vertex vector         3 :inline      :offset-assert 0) ;; guessed by decompiler
    (normal vector         :inline :offset-assert 48)
    (bbox4w bounding-box4w :inline :offset-assert 64)
@@ -17956,6 +18284,7 @@
   )
 
 (deftype collide-mesh-cache-entry (structure)
+"A foreground mesh collide cache entry."
   ((mat  matrix  :inline  :offset-assert 0)
    (tris collide-mesh-cache-tri :dynamic :inline :offset-assert 64)
    )
@@ -17966,6 +18295,7 @@
 
 (declare-type collide-shape-prim-mesh basic)
 (deftype collide-mesh-cache (basic)
+"A collide cache for foreground meshes."
   ((used-size uint32       :offset-assert 4)
    (max-size  uint32       :offset-assert 8)
    (id        uint32       :offset-assert 12) ;; guessed by decompiler
@@ -18019,6 +18349,7 @@
 
 (declare-type collide-shape-prim basic)
 (deftype collide-rider (structure)
+"Something that rides a moving object."
   ((rider-handle    handle         :offset-assert 0)
    (sticky-prim     collide-shape-prim          :offset-assert 8)
    (prim-ry         float          :offset-assert 12)
@@ -18030,6 +18361,7 @@
   )
 
 (deftype collide-rider-pool (basic)
+"A pool containing all the riders of an object."
   ((alloc-count int32      :offset-assert 4)
    (riders      collide-rider 20 :inline :offset-assert 16)
    )
@@ -18104,6 +18436,7 @@
   )
 
 (deftype collide-prim-core (structure)
+"Collide primitives use this to store their world sphere and their collision flags."
   ((world-sphere vector         :inline :offset-assert 0)
    (collide-as   collide-spec           :offset 16) ;; guessed by decompiler
    (collide-with collide-spec           :offset-assert 20)
@@ -18122,6 +18455,7 @@
 (declare-type collide-cache basic)
 
 (deftype collide-shape-prim (basic)
+"Base class for collide primitives."
   ((cshape          collide-shape             :offset-assert 4)
    (prim-id         uint32                    :offset-assert 8)
    (transform-index int8                      :offset-assert 12)
@@ -18159,6 +18493,7 @@
 
 
 (deftype collide-shape-prim-sphere (collide-shape-prim)
+"A sphere primitive for collide shapes."
   ((pat pat-surface :offset 64)
    (nav-radius float :offset 68)
    )
@@ -18173,6 +18508,7 @@
 
 
 (deftype collide-shape-prim-mesh (collide-shape-prim)
+"A mesh primitive for collide shapes."
   ((mesh collide-mesh :offset 64)
    (mesh-id int32 :offset 68)
    (mesh-cache-id uint32 :offset 72)
@@ -18188,6 +18524,7 @@
   )
 
 (deftype collide-shape-prim-group (collide-shape-prim)
+"A group of collide primitives."
   ((num-children uint8 :offset 64)
    (num-alloc-children uint8 :offset 65)
    (child (inline-array collide-shape-prim) :offset 68) ;; total guess..
@@ -18221,6 +18558,8 @@
 (declare-type collide-query structure)
 (declare-type water-info structure)
 (deftype collide-shape (trsqv)
+"The parent of all of an object's collide primitives.
+Most [[process-drawable]]s have a [[collide-shape]] that represents their root transform."
   ((actor-hash-index    int16               :offset         12)
    (process             process-drawable    :offset-assert 140)
    (max-iteration-count uint8               :offset-assert 144)
@@ -18402,6 +18741,7 @@
 (declare-type control-info basic)
 (declare-type rigid-body structure)
 (deftype collide-shape-moving (collide-shape)
+"A [[collide-shape]] for moving objects."
   ((rider-time         time-frame                                                                      :offset-assert 200)
    (rider-last-move    vector                                                                  :inline :offset-assert 208)
    (trans-old          vector                                                                  :inline :offset-assert 224)
@@ -18500,6 +18840,7 @@
   )
 
 (deftype part-spawner (process)
+"A process that spawns a specified particle group."
   ((root         trsqv                                    :offset-assert 128) ;; guessed by decompiler
    (part         sparticle-launch-control                 :offset-assert 132) ;; guessed by decompiler
    (sound        ambient-sound                            :offset-assert 136) ;; guessed by decompiler
@@ -19185,6 +19526,8 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (deftype touching-prim (structure)
+"A collide primitive that's touching another.
+Potentially also stores the triangle that is involved."
   ((cprim    collide-shape-prim         :offset-assert 0) ;; guessed by decompiler
    (has-tri? symbol                     :offset-assert 4) ;; guessed by decompiler
    (tri      collide-tri-result :inline :offset-assert 16)
@@ -19196,6 +19539,7 @@
 
 (declare-type touching-shapes-entry structure)
 (deftype touching-prims-entry (structure)
+"A record of two primitives touching."
   ((next       touching-prims-entry         :offset-assert 0)
    (prev       touching-prims-entry         :offset-assert 4)
    (allocated? symbol                       :offset-assert 8) ;; guessed by decompiler
@@ -19214,6 +19558,7 @@
   )
 
 (deftype touching-prims-entry-pool (structure)
+"A pool of up to 64 touching prim records."
   ((head  touching-prims-entry    :offset-assert 0)
    (nodes touching-prims-entry 64 :inline :offset-assert 16) ;; guessed by decompiler
    )
@@ -19230,6 +19575,8 @@
   )
 
 (deftype touching-shapes-entry (structure)
+"A record of two collide shapes touching,
+storing a record of the primitives involved."
   ((cshape1   collide-shape         :offset-assert 0) ;; guessed by decompiler
    (cshape2   collide-shape         :offset-assert 4) ;; guessed by decompiler
    (resolve-u int8                  :offset-assert 8)
@@ -19252,6 +19599,7 @@
   )
 
 (deftype touching-list (structure)
+"Contains a record of touching collide shape pairs."
   ((num-touching-shapes int32                    :offset-assert 0)
    (resolve-u           int8                     :offset-assert 4)
    (touching-shapes     touching-shapes-entry 32 :inline :offset-assert 8) ;; guessed by decompiler
@@ -19277,6 +19625,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (deftype pilot-edge-grab-info (structure)
+"Info for edge grabs on zoomers."
   ((local-pos vector :inline :offset-assert 0)
    (local-dir vector :inline :offset-assert 16)
    (handle    handle         :offset-assert 32)
@@ -19321,6 +19670,7 @@
 (declare-type collide-edge-work structure)
 
 (deftype collide-edge-tri (structure)
+"A triangle involved in edge grab collision."
   ((ctri   collide-cache-tri         :offset-assert 0) ;; guessed by decompiler
    (normal vector            :inline :offset-assert 16)
    )
@@ -19538,6 +19888,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (deftype process-taskable (process-focusable)
+"The parent class for NPCs that can be talked to."
   ((task              game-task-control       :offset-assert 204)
    (ambient           ambient-control :inline :offset-assert 208)
    (neck-joint-index  int32                   :offset-assert 224)
@@ -19587,6 +19938,7 @@
 ;; otherwise looks good
 
 (deftype focus (structure)
+"A structure that keeps a handle to a [[process-focusable]]."
   ((handle       handle        :offset-assert 0)
    (collide-with collide-spec  :offset-assert 8)
    )
@@ -19653,6 +20005,7 @@
   )
 
 (deftype effect-control (basic)
+"An effect such as a particle with sound effects that plays during an animation."
   ((process          process-drawable    :offset-assert 4) ;; guessed by decompiler
    (flags            effect-control-flag :offset-assert 8)
    (last-frame-group art-joint-anim      :offset-assert 12) ;; guessed by decompiler
@@ -19689,6 +20042,7 @@
   )
 
 (deftype collide-frag-mesh (basic)
+"Unused Jak 1 background collision mesh fragment."
   ((packed-data     uint32           :offset-assert 4)
    (pat-array       uint32           :offset-assert 8)
    (strip-data-len  uint16           :offset-assert 12)
@@ -19705,6 +20059,7 @@
   )
 
 (deftype collide-fragment (drawable)
+"Unused Jak 1 background collision drawable tree node."
   ((mesh        collide-frag-mesh  :offset 8) ;; guessed by decompiler
    (collide-new basic              :offset 12)
    )
@@ -19714,6 +20069,7 @@
   )
 
 (deftype drawable-inline-array-collide-fragment (drawable-inline-array)
+"Unused Jak 1 background collision drawable tree inline-array class."
   ((data collide-fragment 1 :inline :offset-assert 32) ;; guessed by decompiler
    (pad uint32)
    )
@@ -19723,6 +20079,7 @@
   )
 
 (deftype drawable-tree-collide-fragment (drawable-tree)
+"Unused jak 1 background collision data."
   ()
   :flag-assert #x1100000020
   )
@@ -19733,6 +20090,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (deftype collide-hash-scratch (structure)
+"Scratchpad memory layout for collide-hash. Bitmask of things that have already been checked"
   ((collidable-bits uint128 128 :offset-assert 0)
    (poly-bits       uint64 2   :offset 0)
    (id-bits         uint32 512  :offset 0)
@@ -19744,6 +20102,9 @@
   )
 
 (deftype collide-hash-bucket (structure)
+"A bucket is a reference to a list of items that intersect a grid cell.
+For the broadphase, the items are collide-hash-item (wrapper of collide-hash-fragment).
+For the narrowphase, the items are entries in the index list, which contains poly indices."
   ((index int16  :offset-assert 0)
    (count int16  :offset-assert 2)
    )
@@ -19753,6 +20114,8 @@
   )
 
 (deftype collide-hash-item (structure)
+"Items that are 'hashed' in the broadphase. Contains unique ID for checking against already-visited-bitmask
+and a pointer to the actual collide-hash-fragment, or possibly a TIE."
   ((id         uint32  :offset-assert 0)
    (collidable basic   :offset-assert 4)
    )
@@ -19763,6 +20126,7 @@
   )
 
 (deftype collide-hash-poly (structure)
+"A polygon in the narrow-phase data. This is just indices into the vertex and PAT tables."
   ((data        uint8   4 :offset-assert 0 :score -1)
    (vert-index0 uint8     :offset 0)
    (vert-index1 uint8     :offset 1)
@@ -19787,6 +20151,8 @@
   )
 
 (deftype collide-hash-fragment (drawable)
+"A mesh fragment for the Jak2/Jak3 collision system. This is a 'hash' of triangles into a grid
+where the 'hash' function is just identity."
   ((num-buckets     uint16                              :offset 4)
    (num-indices     uint16                              :offset 6)
    (pat-array       uint32                              :offset 8)
@@ -19811,6 +20177,8 @@
   )
 
 (deftype collide-hash-fragment-array (array)
+"A collection of collide-hash-fragments. These are used by the instanced collision if a single instance
+needs more than 1 collide-hash-fragment worth of triangles."
   ((fragments collide-hash-fragment :dynamic :offset 16))
   :method-count-assert 9
   :size-assert         #x10
@@ -20336,6 +20704,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (deftype tr-stat (structure)
+"triangle stats for a renderer. This can apply to a lot of different renderer types."
   ((groups    uint16  :offset-assert 0)
    (fragments uint16  :offset-assert 2)
    (tris      uint32  :offset-assert 4)
@@ -20349,6 +20718,7 @@
   )
 
 (deftype merc-global-stats (structure)
+"Triangle stats for all merc renderers."
   ((merc      tr-stat :inline :offset-assert 0)
    (emerc     tr-stat :inline :offset-assert 16)
    (mercneric tr-stat :inline :offset-assert 32)
@@ -20359,6 +20729,8 @@
   )
 
 (deftype perf-stat (structure)
+"Performance statistics for a single 'bucket' or category. Unlike the more general profile-bars,
+this records statistics like cache hits/instruction counts."
   ((frame-number   uint32  :offset-assert 0)
    (count          uint32  :offset-assert 4)
    (cycles         uint32  :offset-assert 8)
@@ -20387,6 +20759,7 @@
   )
 
 (deftype perf-stat-array (inline-array-class)
+"Array of all stats for all buckets."
   ((data             perf-stat :dynamic :inline :offset-assert 16) ;; guessed by decompiler
    )
   :method-count-assert 9
@@ -20457,6 +20830,8 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (deftype bsp-node (structure)
+"A node in the 'BSP' tree. This is really a bounding volume tree, where each volume is an axis-aligned box, containing 2 child boxes.
+This is used for precomputed visibility, based on the camera position. This is not used for collision."
   ((front         int16            :offset-assert 0) ;; int32
    (back          int16            :offset-assert 2) ;; int32
    (front-box-min vector4b :inline :offset-assert 4)
@@ -20471,6 +20846,7 @@
   )
 
 (deftype game-level (basic)
+"Unused in Jak 1, 2, and 3!"
   ((master-bsp basic  :offset-assert 4)
    )
   :method-count-assert 9
@@ -20479,6 +20855,9 @@
   )
 
 (deftype view-frustum (structure)
+"A view frustum, expressed as corners.
+This representation is not very useful, and is used in only one spot to generate camera planes
+in a very inefficient way."
   ((hither-top-left     vector :inline :offset-assert 0)
    (hither-top-right    vector :inline :offset-assert 16)
    (hither-bottom-left  vector :inline :offset-assert 32)
@@ -20506,6 +20885,8 @@
   )
 
 (deftype bsp-header (drawable)
+"The bsp-header is really an entire level.
+This probably started as a very simple structure, but now it is extremely complicated."
   (
    ;; TYPE                                                          0
    (info file-info                                               :offset 4)
@@ -20593,6 +20974,8 @@
 ;; totally broken
 
 (deftype collide-stats (structure)
+"Very strange collide stats type. It has been somewhat broken in all versions of the game.
+The final stopwatch is cut off. For jak 3, I just fixed it."
   ((calls             uint32            :offset-assert 0)
    (spheres           uint32            :offset-assert 4)
    (nodes             uint32            :offset-assert 8)
@@ -20622,6 +21005,8 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (deftype collide-puss-sphere (structure)
+"A query sphere from the user for the porbe-using-spheres query.
+This is used internally by the collide-cache implementation."
   ((bsphere sphere         :inline :offset-assert 0)
    (bbox4w  bounding-box4w :inline :offset-assert 16)
    )
@@ -20631,6 +21016,7 @@
   )
 
 (deftype collide-puss-work (structure)
+"Scratchpad memory map for probe-using-spheres query."
   ((closest-pt     vector              :inline :offset-assert 0)
    (tri-normal     vector              :inline :offset-assert 16)
    (tri-bbox4w     bounding-box4w      :inline :offset-assert 32)
@@ -20647,6 +21033,8 @@
   )
 
 (deftype collide-cache-tri (structure)
+"A single triangle inside the collision cache.
+Contains a reference back to the source object (like a collide-shape or water-control), and the prim itself."
   ((vertex      vector      3 :inline :offset-assert 0) ;; guessed by decompiler
    (extra-quad  uint8       16 :offset-assert 48) ;; guessed by decompiler
    (pat         pat-surface    :offset 48) ;; guessed by decompiler
@@ -20662,6 +21050,8 @@
   )
 
 (deftype collide-cache-prim (structure)
+"A primitive inside the collide-cache.
+This can represent a sphere, a triangle mesh, or a group of other primitives within a bounding sphere."
   ((prim-core    collide-prim-core  :inline :offset-assert 0)
    (extra-quad   uint8            16      :offset-assert 32) ;; guessed by decompiler
    (ccache       collide-cache              :offset 32) ;; guessed by decompiler
@@ -20688,6 +21078,12 @@
 
 
 (deftype collide-cache (basic)
+"The collide-cache is a structure to accelerate collision queries.
+In particular, it helps with queries where you don't know what you might hit.
+It can detect collision with the background geometry, foreground dynamic collision shapes (spheres and meshes), and water.
+To use it, it must first be 'filled' with geometry. Then you can manually inspect the geometry, or use one of the queries.
+The supported queries are 'line-sphere' (raycast) and 'spheres' (check if intersecting anything).
+It is not useful for ollision queries against a specific foreground object, like 'am I on top of platform X right now?'."
   ((num-tris         int32                      :offset-assert 4)
    (num-tris-u32     uint32                     :offset 4)
    (num-prims        int32                      :offset-assert 8)
@@ -20728,6 +21124,8 @@
 (declare-type instance-tie basic)
 
 (deftype collide-list-item (structure)
+"Entry on the broad-phase collision list.
+Can represent instanced collision, as a TIE instance, or a single non-instanced mesh fragment."
   ((mesh instance-tie  :offset-assert 0) ;; guessed by decompiler
    (inst basic              :offset-assert 4)
    )
@@ -20738,6 +21136,7 @@
   )
 
 (deftype collide-list (structure)
+"List of items returned by the broad-phase collision query."
   ((num-items int32                 :offset-assert 0)
    (items     collide-list-item 256 :inline :offset 16) ;; guessed by decompiler
    )
@@ -20754,6 +21153,8 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (deftype collide-query (structure)
+"Very general collision-query structure. The meaning is different depending on where it used.
+This has both inputs from the user, and collision results."
   ((best-other-tri   collide-tri-result :inline :offset-assert 0)
    (best-my-tri      collide-tri-result :inline :offset 0)
    (ignore-processes process-tree       2       :offset-assert 88)
@@ -20838,6 +21239,8 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (deftype billboard (drawable)
+"A billboard for shrubbery in the distance. This is simple a quad that faces the camera.
+The only data needed is the texture/mode. The location is determined by bsphere."
   ((flat adgif-shader :inline :offset-assert 32)
    )
   :method-count-assert 17
@@ -20846,6 +21249,7 @@
   )
 
 (deftype shrub-view-data (structure)
+"Camera and general settings for shrubbery VU1 program."
   ((data           uint128 3       :offset-assert 0) ;; guessed by decompiler
    (texture-giftag gs-gif-tag   :inline :offset 0) ;; was qword
    (consts         vector  :inline :offset 16 :score -1)
@@ -20865,6 +21269,8 @@
   )
 
 (deftype shrubbery (drawable)
+"Prototype (mesh/geometry) for a shrub. not _really_ a drawable in any way, as it
+overwrites all the normal drawable fields."
   ((textures (inline-array adgif-shader) :offset 4)
    ;; header breakdown:
    ;; [0] - number of textures / 2
@@ -20890,6 +21296,7 @@
   )
 
 (deftype instance-shrubbery (instance)
+"Instance of a shrub."
   ((flat-normal vector :inline :offset-assert 64)
    (flat-hwidth float          :offset 76)
    (color       uint32         :offset 8)
@@ -20900,6 +21307,7 @@
   )
 
 (deftype drawable-inline-array-instance-shrub (drawable-inline-array)
+"Array of shrub instances stored in the level data."
   ((data instance-shrubbery 1 :inline :offset-assert 32)
    (pad uint32)
    )
@@ -20907,6 +21315,7 @@
   )
 
 (deftype drawable-tree-instance-shrub (drawable-tree)
+"Drawable-tree for the shrubs."
   ((info prototype-array-shrub-info :offset 8)
    (colors-added time-of-day-palette :offset 12) ;; added
    )
@@ -20914,6 +21323,9 @@
   )
 
 (deftype generic-shrub-fragment (drawable)
+"Shrub data, converted into the format for generic.
+The shrub renderer doesn't support clipping, so it falls back to generic.
+This requires storing the data for all shrubs prototype twice!"
   ((textures (inline-array adgif-shader)  :offset 4) ;; guessed by decompiler
    (vtx-cnt  uint32                       :offset 8)
    (cnt-qwc  uint8                        :offset 12)
@@ -20942,6 +21354,7 @@
   )
 
 (deftype prototype-trans-shrubbery (prototype-shrubbery)
+"Array of transparent shrub prototypes."
   ()
   :flag-assert #x1100000044
   )
@@ -20952,6 +21365,7 @@
   )
 
 (deftype shrubbery-matrix (structure)
+"Instance matrix for a shrub, contains interpolated color."
   ((mat   matrix :inline :offset-assert 0)
    (color qword  :inline :offset-assert 64)
    )
@@ -20961,6 +21375,7 @@
   )
 
 (deftype shrub-near-packet (structure)
+"DMA templates for generic rendering of shrubs."
   ((matrix-tmpl dma-packet :inline :offset-assert 0)
    (header-tmpl dma-packet :inline :offset-assert 16)
    (stq-tmpl    dma-packet :inline :offset-assert 32)
@@ -20976,6 +21391,7 @@
   )
 
 (deftype instance-shrub-work (structure)
+"Scratchpad layout for generating shrub DMA."
   ((dummy                           qword             3 :inline      :offset-assert 0) ;; guessed by decompiler
    (chaina                          qword             8 :inline       :offset-assert 48) ;; guessed by decompiler
    (chainb                          qword             8 :inline       :offset-assert 176) ;; guessed by decompiler
@@ -21073,6 +21489,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (deftype tie-fragment-debug (structure)
+"Optional debug information about a tie-fragment."
   ((num-tris    uint16  :offset-assert 0)
    (num-dverts  uint16  :offset-assert 2)
    (debug-lines (array vector-array)   :offset-assert 4)
@@ -21083,6 +21500,7 @@
   )
 
 (deftype tie-fragment (drawable)
+"A mesh fragment of a TIE. This is a chunk of mesh that is rendered by VU1, stored as DMA chains."
   ((gif-ref       (inline-array adgif-shader)  :offset 4) ;; guessed by decompiler
    (point-ref     uint32                       :offset 8)
    (color-index   uint16                       :offset 12)
@@ -21105,6 +21523,7 @@
   )
 
 (deftype instance-tie (instance)
+"A TIE model instance."
   ((color-indices uint32                :offset 8)
    (bucket-ptr    prototype-bucket-tie  :offset 12) ;; guessed by decompiler
    (max-scale     uint16                :offset 38)
@@ -21126,6 +21545,7 @@
   )
 
 (deftype drawable-tree-instance-tie (drawable-tree)
+"Top-level drawable-tree for TIEs"
   ((prototypes proxy-prototype-array-tie           :offset 8)
    )
   :method-count-assert 17
@@ -21146,6 +21566,7 @@
 
 
 (deftype tie-matrix (structure)
+"Per-instance matrix for TIE VU1 rendering."
   ((mat          matrix :inline :offset-assert 0)
    (morph        qword  :inline :offset-assert 64)
    (fog          qword  :inline :offset-assert 80)
@@ -21161,6 +21582,7 @@
   )
 
 (deftype instance-tie-work (structure)
+"workspace for TIE instance DMA generation"
   ((wind-const                     vector     :inline :offset-assert 0)
    (hmge-d                         vector     :inline :offset-assert 16)
    (hvdf-offset                    vector     :inline :offset-assert 32)
@@ -21214,6 +21636,7 @@
   )
 
 (deftype instance-tie-dma (structure)
+"Scratchpad memory layout for TIE instance DMA generation."
   ((banka instance-tie 32 :inline :offset-assert 0)
    (bankb instance-tie 32 :inline :offset-assert 2048)
    (outa  uint128           256 :offset-assert 4096)
@@ -21227,6 +21650,7 @@
   )
 
 (deftype prototype-tie-work (structure)
+"workspace for TIE protype DMA generation."
   ((upload-flushe              dma-packet   :inline :offset-assert 0)
    (upload-palette             dma-packet   :inline :offset-assert 16)
    (upload-model-0             dma-packet   :inline :offset-assert 32)
@@ -21402,6 +21826,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (deftype tfragment-stats (structure)
+"Triangle and vertex stats for a single tfragment."
   ((num-tris   uint16 4 :offset-assert 0) ;; guessed by decompiler
    (num-dverts uint16 4 :offset-assert 8) ;; guessed by decompiler
    )
@@ -21411,6 +21836,7 @@
   )
 
 (deftype tfragment-debug-data (structure)
+"Optional debug information (stats, lines) for a tfragment."
   ((stats       tfragment-stats      :inline :offset-assert 0)
    (debug-lines (array vector-array)         :offset-assert 16) ;; guessed by decompiler
    )
@@ -21420,6 +21846,7 @@
   )
 
 (deftype generic-tfragment (structure)
+"Unused. Could have been a way to render tfrag's through generic."
   ((dummy int32  :offset-assert 0)
    )
   :method-count-assert 9
@@ -21428,6 +21855,7 @@
   )
 
 (deftype tfragment (drawable)
+"A tfrag mesh fragment. This is just references to DMA data, plus some metadata."
   ((color-index         uint16                        :offset 6)
    (debug-data          tfragment-debug-data          :offset 8)
    (color-indices       uint32                        :offset 12)
@@ -21479,6 +21907,7 @@
   )
 
 (deftype drawable-tree-tfrag (drawable-tree)
+"top level tfrag tree."
   ((time-of-day-pal time-of-day-palette :offset 12)
    (arrays    drawable-inline-array :dynamic :offset 32 :score 100) ;; either drawable-inline-array-node or drawable-inline-array-tfrag
    )
@@ -21497,6 +21926,7 @@
 
 
 (deftype tfrag-dists (structure)
+"Distances for mesh level-of-detail blending for use on VU1."
   ((data   uint32 16 :offset-assert 0 :score -1)
    (vector vector 4 :inline  :offset 0 :score -1)
    (k0s    vector 2 :inline  :offset 0)
@@ -21509,6 +21939,7 @@
 
 
 (deftype tfrag-data (structure)
+"Constants for VU1 data memory for tfrag rendering."
   ((data        uint32     56       :offset 0 :score -1)
    (vector      vector 14 :inline   :offset 0 :score -1)
    (fog         vector      :inline :offset 0)
@@ -21531,6 +21962,7 @@
   )
 
 (deftype tfrag-control (structure)
+"VU1 'control' data containing address and counters."
   ((num-base-points           uint32  :offset-assert 0)
    (num-shared-base-points    uint32  :offset-assert 4)
    (num-level0-points         uint32  :offset-assert 8)
@@ -21558,6 +21990,7 @@
   )
 
 (deftype tfrag-stats (structure)
+"TFRAG statistics computed on EE."
   ((from         int32  :offset-assert 0)
    (to           int32  :offset-assert 4)
    (cnt          int32  :offset-assert 8)
@@ -21589,6 +22022,7 @@
   )
 
 (deftype tfrag-work (structure)
+"Scratch space for generating TFRAG DMA."
   ((base-tmpl                dma-packet :inline :offset-assert 0)
    (level-0-tmpl             dma-packet :inline :offset-assert 16)
    (common-tmpl              dma-packet :inline :offset-assert 32)
@@ -21621,6 +22055,7 @@
   )
 
 (deftype tfrag-dma (structure)
+"Memory layout for to/from scratchpad for tfrag."
   ((banka  tfragment 16 :inline   :offset-assert 0)
    (bankb  tfragment 16 :inline  :offset-assert 1024)
    (outa   uint128 128  :offset-assert 2048)
@@ -21638,6 +22073,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (deftype background-work (basic)
+"List of all things for the background renderer to draw."
   ((tfrag-tree-count       int32                          :offset-assert 4)
    (tfrag-trees            drawable-tree-tfrag          8 :offset-assert 8) ;; guessed by decompiler
    (tfrag-levels           level                        8 :offset-assert 40) ;; guessed by decompiler
@@ -21667,6 +22103,8 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (deftype subdivide-settings (basic)
+"Input settings for distances for switching mesh level of details.
+These are set by the level code and read by rendering code."
   ((dist   float 5 :offset-assert 4) ;; guessed by decompiler
    (meters float 5 :offset-assert 24) ;; guessed by decompiler
    (close  float 8 :offset-assert 44) ;; guessed by decompiler
@@ -21681,6 +22119,7 @@
   )
 
 (deftype subdivide-dists (structure)
+"Unused subdivide distances. Internally, tfrag/tie figure these out instead."
   ((data   uint32  32 :offset-assert 0) ;; guessed by decompiler
    (vector vector  8 :inline :offset 0) ;; guessed by decompiler
    (k0s    uint128 4  :offset 0) ;; guessed by decompiler
@@ -21692,6 +22131,7 @@
   )
 
 (deftype terrain-stats (structure)
+"Desptie the name `terrain-stats`, these are more general triangle stats for all renderers."
   ((pris                     tr-stat :inline :offset-assert 0)
    (tie-generic              tr-stat :inline :offset-assert 16)
    (tie-vanish               tr-stat :inline :offset-assert 32)
@@ -21745,6 +22185,9 @@
   )
 
 (deftype background-area (structure)
+"Scratchpad memory layout for most background rendering
+This uses the full scratchpad so it should only be used when the stack isn't on the scratchpad (rendering code).
+Interestingly, dma-area went from a union of all the -dma types to a plain array of bytes in jak 3."
   ((dma-area dma-area :inline :offset-assert 0)
    (vis-list uint8    2048    :offset-assert 14496) ;; guessed by decompiler
    )
@@ -21754,6 +22197,7 @@
   )
 
 (deftype foreground-area (structure)
+"Scratchpad memory layout for most foreground rendering."
   ((generic-work    generic-work    :inline :offset-assert 0)
    (foreground-work foreground-work :inline :offset 0)
    (joint-work      joint-work      :inline :offset 0)
@@ -21766,6 +22210,7 @@
   )
 
 (deftype region-prim-area (structure)
+"Scratchpad memory layout for regions."
   ((region-prim-list        region-prim-list    :inline :offset-assert 0)
    (pos                     vector              :inline :offset-assert 1296)
    (unknown-vector-uiyb1    vector              :inline :offset-assert 1312)
@@ -21820,6 +22265,7 @@
   )
 
 (deftype sprite-area (structure)
+"Scratchpad memory layout for sprites."
   ((clock-data vector 13 :inline       :offset-assert 0)
    (buffer     uint8 :dynamic :offset-assert 208)
    )
@@ -21829,6 +22275,7 @@
   )
 
 (deftype work-area (structure)
+"All scratchpad memory layouts."
   ((background  background-area  :inline :offset-assert 0)
    (foreground  foreground-area  :inline :offset 0)
    (region-prim region-prim-area :inline :offset 0)
@@ -21840,6 +22287,7 @@
   )
 
 (deftype terrain-context (structure)
+"Useless wrapper around work-area. (this added some stuff in jak 1)"
   ((work work-area :inline :offset-assert 0)
    )
   :method-count-assert 9
@@ -21873,6 +22321,7 @@
   )
 
 (deftype entity-perm (structure)
+"Entity information that gets persisted in the save file."
   ((user-object object   2 :offset-assert 0) ;; guessed by decompiler
    (user-uint64 uint64     :offset 0)
    (user-float  float    2 :offset 0) ;; guessed by decompiler
@@ -21898,6 +22347,7 @@
 
 
 (deftype entity-links (structure)
+"A linked list of entities with some extra data about their current status."
   ((prev-link entity-links :offset-assert 0)
    (next-link entity-links :offset-assert 4)
    (entity entity :offset-assert 8)
@@ -21931,6 +22381,8 @@
 
 
 (deftype entity-links-array (inline-array-class)
+"An array of [[entity-links]].
+Levels store a reference to this which holds all the entities in the level."
   ((data             entity-links :dynamic :inline :offset-assert 16) ;; guessed by decompiler
    )
   :method-count-assert 9
@@ -22187,6 +22639,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (deftype eye (structure)
+"Data for a single eye."
   ((data        vector 2 :inline :offset-assert 0) ;; guessed by decompiler
    (x           float    :offset 0)
    (y           float    :offset 4)
@@ -22201,6 +22654,7 @@
   )
 
 (deftype eye-control (structure)
+"Information about the state of both eyes of a [[process-drawable]]."
   ((process        handle                              :offset-assert 0)
    (draw-flag      symbol                              :offset-assert 8)
    (different-eyes symbol                              :offset-assert 12)
@@ -22217,6 +22671,7 @@
   )
 
 (deftype eye-control-array (basic)
+"An array of [[eye-control]]s."
   ((data eye-control 16 :inline :offset-assert 16) ;; guessed by decompiler
    )
   :method-count-assert 9
@@ -22234,6 +22689,7 @@
   )
 
 (deftype eye-work (structure)
+"Eye renderer DMA data."
   ((sprite-tmpl  dma-gif-packet :inline :offset-assert 0)
    (sprite-tmpl2 dma-gif-packet :inline :offset-assert 32)
    (adgif-tmpl   dma-gif-packet :inline :offset-assert 64)
@@ -22385,6 +22841,7 @@
 
 
 (deftype sparticle-birthinfo (structure)
+"Used internally by the sparticle code."
   ((sprite       uint32   :offset-assert 0)
    (anim         int32    :offset-assert 4)
    (anim-speed   float    :offset-assert 8)
@@ -22401,6 +22858,7 @@
   )
 
 (deftype sp-field-init-spec (structure)
+"Part of a particle definition - how to initialize a field of a particle."
   ((field          sp-field-id :offset-assert 0)
    (flags          sp-flag     :offset-assert 2)
    (initial-valuef float       :offset-assert 4)
@@ -22423,6 +22881,7 @@
   )
 
 (deftype sparticle-launcher (basic)
+"A definition of a single particle, as a list of init specs."
   ((birthaccum float                              :offset-assert 4)
    (soundaccum float                              :offset-assert 8)
    (init-specs (inline-array sp-field-init-spec)  :offset-assert 12) ;; guessed by decompiler
@@ -22439,6 +22898,7 @@
   )
 
 (deftype sparticle-group-item (structure)
+"A reference to a single sparticle-launcher (by ID) and some parameters for using it."
   ((launcher   uint32  :offset-assert 0)
    (fade-after meters  :offset-assert 4)
    (falloff-to meters  :offset-assert 8)
@@ -22457,6 +22917,7 @@
 (declare-type sparticle-cpuinfo structure)
 
 (deftype sparticle-launch-state (structure)
+"The state associated with a launcher of a given sparticle."
   ((group-item sparticle-group-item  :offset-assert 0)
    (flags      sp-launch-state-flags :offset-assert 4)
    (randomize  uint16                :offset-assert 6)
@@ -22479,6 +22940,7 @@
   )
 
 (deftype sparticle-launch-group (basic)
+"Definition of multiple a particle-group, which is a collection of particle effects."
   ((length          int16                                       :offset-assert 4)
    (duration        uint16                                      :offset-assert 6)
    (linger-duration uint16                                      :offset-assert 8)
@@ -22502,6 +22964,10 @@
   )
 
 (deftype sparticle-launch-control (inline-array-class)
+"Top-level type containing all the state needed to launch a particle group.
+These are typically owned by a process, and allocated on the process heap.
+These refer to static particle definitions, and then spawn particles that are tracked by the
+particle system itself. This type just holds the launching-related state."
   ((group            sparticle-launch-group          :offset-assert 16) ;; guessed by decompiler
    (proc             process-drawable                         :offset-assert 20) ;; guessed by decompiler
    (local-clock      int32                           :offset-assert 24)
@@ -22572,6 +23038,7 @@
 
 (declare-type sparticle-system basic)
 (deftype sparticle-cpuinfo (structure)
+"The per-particle information. This stays on the CPU, and isn't uploaded to the VU."
   ((sprite        sprite-vec-data-2d               :offset-assert 0)
    (adgif         adgif-shader                     :offset-assert 4)
    (radius        float                            :offset-assert 8)
@@ -22617,6 +23084,7 @@
   )
 
 (deftype sparticle-launchinfo (structure)
+"Settings for launching a particle. These are a temporary thing consumed by the assembly particle code, and modified by particle callbacks."
   ((launchrot  vector :inline :offset-assert 0) ; NOTE - both used as a vector3s and a normal vector
    (conerot    vector :inline :offset-assert 16)
    (rotate-x   float          :offset-assert 32)
@@ -22637,6 +23105,8 @@
   )
 
 (deftype sparticle-system (basic)
+"An entire particle 'system', which is a pipeline for spawning, updating, and generating sprite-renderer DMA data.
+There are separate systems for different modes of sprite rendering: 2D/billboard, full 3D, and screen-space (HUD)"
   ((blocks          int32                            2 :offset-assert 4) ;; guessed by decompiler
    (length          int32                            2 :offset-assert 12) ;; guessed by decompiler
    (num-alloc       int32                            2 :offset-assert 20) ;; guessed by decompiler
@@ -22662,6 +23132,11 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (deftype actor-link-info (basic)
+"A linked list of actors.
+
+Actors allocate this on their process heap if they have a
+`next-actor` or `prev-actor` defined in their lump
+and use it for entity lookups."
   ((process process       :offset-assert 4) ;; guessed by decompiler
    (next    entity-actor  :offset-assert 8) ;; guessed by decompiler
    (prev    entity-actor  :offset-assert 12) ;; guessed by decompiler
@@ -24093,6 +24568,7 @@
 (define-extern rpc-call (function int uint uint uint int uint int uint))
 
 (deftype rpc-buffer (basic)
+"Buffer for storing input/output data for a remote procedure call to the overlord driver on the IOP."
   ((elt-size  uint32           :offset-assert 4)
    (elt-count uint32           :offset-assert 8)
    (elt-used  uint32           :offset-assert 12)
@@ -24109,6 +24585,8 @@
   )
 
 (deftype rpc-buffer-pair (basic)
+"A double buffer of RPC buffers. This is used to let the game queue up data in one buffer while
+the other is being read/written by overlord."
   ((buffer           rpc-buffer 2 :offset-assert 4) ;; guessed by decompiler
    (current          rpc-buffer   :offset-assert 12) ;; guessed by decompiler
    (last-recv-buffer pointer      :offset-assert 16) ;; guessed by decompiler
@@ -24266,6 +24744,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (deftype nav-mesh-work-debug (structure)
+"Debug outputs for the nav-mesh assembly functions"
   ((debug-vec1   vector  :inline     :offset-assert 0)
    (debug-vec2   vector  :inline     :offset-assert 16)
    (debug-vec3   vector  :inline     :offset-assert 32)
@@ -24286,6 +24765,7 @@
   )
 
 (deftype nav-mesh-work (structure)
+"Workspace for nav-mesh processing functions."
   ((vert0-table            int8               4  :offset-assert 0)
    (vert1-table            int8               4  :offset-assert 4)
    (edge-mask-table        uint8               3  :offset-assert 8)
@@ -24311,6 +24791,7 @@
   )
 
 (deftype nav-mesh-link (structure)
+"Link between two different meshes"
   ((id                  uint32  :offset-assert 0)
    (dest-mesh-id        uint32  :offset-assert 4)
    (src-link-poly-id    uint8   :offset-assert 8)
@@ -24325,6 +24806,8 @@
   )
 
 (deftype nav-poly (structure)
+"Polygon within a nav-mesh. Can be a tri or quad.
+Based on the implementation of point-poly-intersection?, these should likely be convex."
   ((data         uint8   64       :offset-assert 0 :score -10)
    (vertex       vector 4 :inline :offset 0) ;; changed to vector from uint8 in jak 1
    (vertex0      vector  :inline  :offset 0)
@@ -24436,6 +24919,7 @@
 (declare-type grid-hash basic)
 (declare-type sphere-hash grid-hash)
 (deftype nav-mesh (basic)
+"Mesh used for creature/enemy navigation."
   ((work                  nav-mesh-work         :offset-assert   4)
    (poly-array            (inline-array nav-poly)              :offset-assert   8) ;; is this actually an inline-array?
    (static-sphere-count   uint8                 :offset-assert  12)
@@ -24774,6 +25258,7 @@
   )
 
 (deftype grid-hash-box (structure)
+"Integer coordinate box for the spatial hash grid."
   ((min int8 3 :offset-assert 0)
    (max int8 3 :offset-assert 3)
    )
@@ -24785,6 +25270,9 @@
 
 (declare-type grid-hash-work basic)
 (deftype grid-hash (basic)
+"The grid-hash is the basic 3D grid used in the spatial-hash, which is used for runtime
+actor collision dectection by hashing actor spheres into grid cells, and avoiding the typical
+O(n^2) 'check everybody against everybody' collision loop."
   ((work                grid-hash-work                 :offset-assert 4)
    (search-box          grid-hash-box :inline :offset-assert 8)
    (bucket-size         int16                 :offset-assert 14)
@@ -24843,6 +25331,7 @@
   )
 
 (deftype sphere-hash (grid-hash)
+"An extension of grid hash that holds spheres inside of the grid."
   ((sphere-array     (inline-array sphere)  :offset-assert 88)
    (max-object-count int16   :offset-assert 92)
    (pad              int16   :offset-assert 94)
@@ -24875,6 +25364,7 @@
   )
 
 (deftype spatial-hash (sphere-hash)
+"An extension of sphere-hash that associates an object with each sphere."
   ((object-array     (inline-array hash-object-info)  :offset-assert 104)
    (mem-object-array (inline-array hash-object-info)  :offset-assert 108)
    (spr-object-array (inline-array hash-object-info)  :offset-assert 112)
@@ -24917,6 +25407,7 @@
   )
 
 (deftype load-dgo-msg (structure)
+"IOP RPC message for loading a dgo."
   ((rsvd    uint16   :offset-assert 0)
    (result  load-msg-result   :offset-assert 2)
    (b1      pointer  :offset-assert 4) ;; guessed by decompiler
@@ -24931,6 +25422,7 @@
   )
 
 (deftype load-chunk-msg (structure)
+"IOP RPC message for loading a chunk of a chunked animation"
   ((rsvd     uint16                    :offset-assert 0)
    (result   load-msg-result           :offset-assert 2)
    (address  pointer                   :offset-assert 4) ;; guessed by decompiler
@@ -24945,6 +25437,7 @@
   )
 
 (deftype play-chunk-msg (structure)
+"IOP RPC message for playing some streamed audio."
   ((rsvd     uint16    :offset-assert 0)
    (result   uint16    :offset-assert 2)
    (address  pointer   :offset-assert 4)
@@ -25015,6 +25508,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (deftype ramdisk-rpc-fill (structure)
+"Unused RAMDISK rpc to load files from DVD to the IOP RAM."
   ((rsvd1    int32     :offset-assert 0)
    (ee-id    int32     :offset-assert 4)
    (rsvd2    int32   2 :offset-assert 8) ;; guessed by decompiler
@@ -25026,6 +25520,7 @@
   )
 
 (deftype ramdisk-rpc-load (structure)
+"Unused RAMDISK rpc to load files from DVD to the IOP RAM."
   ((rsvd   int32   :offset-assert 0)
    (ee-id  int32   :offset-assert 4)
    (offset uint32  :offset-assert 8)
@@ -25037,6 +25532,7 @@
   )
 
 (deftype ramdisk-rpc-load-to-ee (structure)
+"Unused RAMDISK rpc to load files from DVD to the IOP RAM."
   ((rsvd     int32    :offset-assert 0)
    (addr     int32    :offset-assert 4)
    (offset   int32    :offset-assert 8)
@@ -26004,6 +26500,7 @@
 
 #|
 (deftype merc-fragment-control (structure)
+"Data about a [[merc-fragment]] needed for merc DMA generation."
   ()
   :method-count-assert 9
   :size-assert         #x4
@@ -26014,6 +26511,8 @@
 
 #|
 (deftype merc-ctrl (art-element)
+"The merc data for a single model as it's stored in an art group.
+Consists of a header and a list of [[merc-effect]]s."
   ()
   :method-count-assert 13
   :size-assert         #xa0
@@ -26253,6 +26752,7 @@
 
 #|
 (deftype gsf-vertex (structure)
+"Vertex used by generic. GSF = generic stripped fragment?"
   ()
   :method-count-assert 9
   :size-assert         #x20
