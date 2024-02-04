@@ -1,0 +1,639 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; definition for symbol *light-hash-work*, type light-hash-work
+(define *light-hash-work* (new 'static 'light-hash-work :ones (new 'static 'vector4w :x 1 :y 1 :z 1)))
+
+;; definition for function light-slerp
+(defun light-slerp ((light-out light) (light-a light) (light-b light) (alpha float))
+  "Linearly interpolate between two [[light]]s
+   @param! light-out The resultant
+   @param light-a One of the two lights
+   @param light-b One of the two lights
+   @param alpha Clamped to between `0.0` and `1.0`
+   @returns The interpolated [[light]]"
+  (let ((clamped-alpha (fmax 0.0 (fmin 1.0 alpha))))
+    (vector-lerp! (-> light-out color) (-> light-a color) (-> light-b color) clamped-alpha)
+    (vector-deg-slerp (-> light-out direction) (-> light-a direction) (-> light-b direction) clamped-alpha)
+    (let ((extra-x-a (-> light-a extra x))
+          (extra-x-b (-> light-b extra x))
+          )
+      (set! (-> light-out extra x) (+ extra-x-a (* clamped-alpha (- extra-x-b extra-x-a))))
+      )
+    )
+  light-out
+  )
+
+;; definition for function light-group-slerp
+(defun light-group-slerp ((light-group-out light-group) (light-group-a light-group) (light-group-b light-group) (alpha float))
+  "Linearly interpolate between two [[light-groups]]s by calling [[light-slerp]] on each respective collection of lights
+   @param light-group-out The resultant
+   @param light-group-a One of the two [[light-group]]s
+   @param light-group-b One of the two [[light-group]]s
+   @param alpha
+   @returns The linearly interpolated [[light-group]]"
+  (dotimes (group-idx 4)
+    (light-slerp
+      (-> light-group-out lights group-idx)
+      (-> light-group-a lights group-idx)
+      (-> light-group-b lights group-idx)
+      alpha
+      )
+    )
+  light-group-out
+  )
+
+;; definition for function light-group-process!
+(defun light-group-process! ((vu-lights vu-lights) (light-group light-group) (vec1 vector) (vec2 vector))
+  "Unused, needlessly calls [[rotate-y<-vector+vector]] on the two [[vector]]s and calls [[vu-lights<-light-group!]]
+   @param vu-lights
+   @param light-group
+   @param vec1
+   @param vec2
+   @returns [[none]]"
+  (rotate-y<-vector+vector vec2 vec1)
+  (vu-lights<-light-group! vu-lights light-group)
+  (none)
+  )
+
+;; definition for symbol *default-lights*, type vu-lights
+(define *default-lights* (new 'global 'vu-lights))
+
+;; definition for function vu-lights-default!
+(defun vu-lights-default! ((lights vu-lights))
+  "Setups up a default [[vu-lights]] instance
+   @param! lights
+   @returns [[vu-lights]]"
+  (set-vector! (-> lights ambient) 0.3 0.3 0.3 1.0)
+  (set-vector! (-> lights color 0) 1.0 1.0 1.0 1.0)
+  (set-vector! (-> lights color 1) 0.2 0.2 0.2 1.0)
+  (set-vector! (-> lights color 2) 0.0 0.0 0.0 1.0)
+  (set-vector! (-> lights direction 0) 1.0 0.0 0.0 1.0)
+  (set-vector! (-> lights direction 1) 0.0 1.0 0.0 1.0)
+  (set-vector! (-> lights direction 2) 0.0 0.0 1.0 1.0)
+  lights
+  )
+
+;; definition (debug) for function init-light-hash
+;; WARN: Return type mismatch pointer vs none.
+(defun-debug init-light-hash ()
+  "Initializes the global [[*light-hash*]].
+   - Bucket array allocates `4096` bytes. (enough for 16,384 entries)
+   - Index array allocates `65536` bytes.
+   - Light sphere array allocates `16384` bytes. (enough for 256 light spheres)
+   @returns [[light-hash]]"
+  (when (not *light-hash*)
+    (set! *light-hash* (new 'loading-level 'light-hash))
+    (set! (-> *light-hash* num-lights) (the-as uint 0))
+    (set! (-> *light-hash* num-indices) (the-as uint 0))
+    (set! (-> *light-hash* num-buckets) (the-as uint 0))
+    (set! (-> *light-hash* bucket-array) (the-as (inline-array light-hash-bucket) (malloc 'loading-level 4096)))
+    (set! (-> *light-hash* index-array) (malloc 'loading-level #x10000))
+    (set! (-> *light-hash* light-sphere-array)
+          (the-as (inline-array light-sphere) (malloc 'loading-level #x4000))
+          )
+    )
+  (none)
+  )
+
+;; failed to figure out what this is:
+(init-light-hash)
+
+;; definition (debug) for function light-hash-count-items
+;; INFO: function output is handled by mips2c
+(def-mips2c light-hash-count-items (function light-hash light-sphere none))
+
+;; definition (debug) for function light-hash-add-items
+;; INFO: function output is handled by mips2c
+(def-mips2c light-hash-add-items (function light-hash light-sphere integer object))
+
+;; definition (debug) for function reset-light-hash
+;; WARN: Return type mismatch int vs none.
+(defun-debug reset-light-hash ()
+  "Resets the global [[*light-hash*]] back to having `0` lights, indicies, and buckets.
+   @returns [[none]]"
+  (set! (-> *light-hash* num-lights) (the-as uint 0))
+  (set! (-> *light-hash* num-indices) (the-as uint 0))
+  (set! (-> *light-hash* num-buckets) (the-as uint 0))
+  0
+  (none)
+  )
+
+;; definition (debug) for function update-light-hash
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch int vs none.
+(defun-debug update-light-hash ((arg0 light-hash))
+  (let ((v1-0 (new 'stack-no-clear 'bounding-box))
+        (s5-0 (new 'stack-no-clear 'vector))
+        )
+    (let ((s4-0 (new 'stack-no-clear 'vector)))
+      (let ((f0-0 0.0))
+        (set-vector! (-> v1-0 min) 4095996000.0 4095996000.0 4095996000.0 1.0)
+        (set-vector! (-> v1-0 max) -4095996000.0 -4095996000.0 -4095996000.0 1.0)
+        (dotimes (a0-3 (the-as int (-> arg0 num-lights)))
+          (let ((a1-9 (-> arg0 light-sphere-array a0-3)))
+            (set! (-> v1-0 min x) (fmin (-> v1-0 min x) (- (-> a1-9 bsphere x) (-> a1-9 bsphere w))))
+            (set! (-> v1-0 min y) (fmin (-> v1-0 min y) (- (-> a1-9 bsphere y) (-> a1-9 bsphere w))))
+            (set! (-> v1-0 min z) (fmin (-> v1-0 min z) (- (-> a1-9 bsphere z) (-> a1-9 bsphere w))))
+            (set! (-> v1-0 max x) (fmax (-> v1-0 max x) (+ (-> a1-9 bsphere x) (-> a1-9 bsphere w))))
+            (set! (-> v1-0 max y) (fmax (-> v1-0 max y) (+ (-> a1-9 bsphere y) (-> a1-9 bsphere w))))
+            (set! (-> v1-0 max z) (fmax (-> v1-0 max z) (+ (-> a1-9 bsphere z) (-> a1-9 bsphere w))))
+            (+! f0-0 (-> a1-9 bsphere w))
+            )
+          )
+        (set! (-> arg0 base-trans quad) (-> v1-0 min quad))
+        (let ((f0-1 (/ f0-0 (the float (-> arg0 num-lights)))))
+          (dotimes (a0-8 3)
+            (set! (-> s5-0 data a0-8) (- (-> v1-0 max data a0-8) (-> v1-0 min data a0-8)))
+            (set! (-> s4-0 data a0-8) (if (= (-> s5-0 data a0-8) 0.0)
+                                          1.0
+                                          (/ (-> s5-0 data a0-8) (/ f0-1 (the float (-> arg0 num-lights))))
+                                          )
+                  )
+            )
+          )
+        )
+      (let ((f0-5 (cube-root (/ (the float (-> arg0 num-lights)) (* (-> s4-0 x) (-> s4-0 y) (-> s4-0 z))))))
+        (set! (-> arg0 dimension-array x) (max 1 (min 16 (the int (+ 0.5 (* f0-5 (-> s4-0 x)))))))
+        (set! (-> arg0 dimension-array y) (max 1 (min 4 (the int (+ 0.5 (* f0-5 (-> s4-0 y)))))))
+        (set! (-> arg0 dimension-array z) (max 1 (min 16 (the int (+ 0.5 (* f0-5 (-> s4-0 z)))))))
+        )
+      )
+    (set! (-> arg0 bucket-step 0) (the-as uint (* (-> arg0 dimension-array z) (-> arg0 dimension-array x))))
+    (set! (-> arg0 bucket-step 1) (the-as uint (-> arg0 dimension-array x)))
+    (dotimes (v1-13 3)
+      (set! (-> arg0 axis-scale data v1-13)
+            (/ (the float (-> arg0 dimension-array data v1-13)) (-> s5-0 data v1-13))
+            )
+      )
+    )
+  (set! (-> arg0 num-buckets)
+        (the-as uint (* (* (-> arg0 dimension-array x) (-> arg0 dimension-array y)) (-> arg0 dimension-array z)))
+        )
+  (dotimes (v1-19 (the-as int (-> arg0 num-buckets)))
+    (let ((a0-27
+            (the-as light-hash-bucket (+ (the-as uint (the-as light-hash-bucket (-> arg0 bucket-array))) (* v1-19 4)))
+            )
+          )
+      (set! (-> a0-27 index) (the-as uint 0))
+      (set! (-> a0-27 count) (the-as uint 0))
+      )
+    0
+    )
+  (dotimes (s5-1 (the-as int (-> arg0 num-lights)))
+    (light-hash-count-items arg0 (-> arg0 light-sphere-array s5-1))
+    )
+  (let ((v1-26 0))
+    (dotimes (a0-31 (the-as int (-> arg0 num-buckets)))
+      (let ((a1-38
+              (the-as light-hash-bucket (+ (the-as uint (the-as light-hash-bucket (-> arg0 bucket-array))) (* a0-31 4)))
+              )
+            )
+        (set! (-> a1-38 index) (the-as uint v1-26))
+        (+! v1-26 (-> a1-38 count))
+        (set! (-> a1-38 count) (the-as uint 0))
+        )
+      0
+      )
+    (set! (-> arg0 num-indices) (the-as uint v1-26))
+    )
+  (dotimes (s5-2 (the-as int (-> arg0 num-lights)))
+    (light-hash-add-items arg0 (-> arg0 light-sphere-array s5-2) s5-2)
+    )
+  0
+  (none)
+  )
+
+;; definition for function lookup-light-sphere-by-name
+(defun lookup-light-sphere-by-name ((name string) (hash light-hash))
+  "Search through a given [[light-hash]]'s lights to find the one that matches the given name
+   @param name The name to look for
+   @param hash The hash to search through
+   @returns Either the [[light]] or [[#f]]"
+  (when (and hash (nonzero? hash))
+    (dotimes (num-lights (the-as int (-> hash num-lights)))
+      (let ((light (-> hash light-sphere-array num-lights)))
+        (if (string= name (-> light name))
+            (return light)
+            )
+        )
+      )
+    )
+  (the-as light-sphere #f)
+  )
+
+;; definition for function light-hash-get-bucket-index
+;; INFO: function output is handled by mips2c
+(def-mips2c light-hash-get-bucket-index (function light-hash vector int))
+
+;; definition for function add-light-sphere-to-light-group
+;; INFO: function output is handled by mips2c
+(def-mips2c add-light-sphere-to-light-group (function object object object object object))
+
+;; definition for function light-merge!
+;; WARN: Return type mismatch int vs none.
+(defun light-merge! ((out light-group) (other light-group))
+  "Given two [[light-group]]'s merge their values and store the results in the first art-group.
+   Tons of `(nop!)` in the original implementation, PS2 optimization nonsense.
+   @param! out One of the groups and where the merged result is stored
+   @param other The other group to merge with
+   @returns [[none]]"
+  (local-vars
+    (v1-0 float)
+    (v1-1 float)
+    (v1-3 float)
+    (v1-5 float)
+    (a1-1 float)
+    (a1-3 float)
+    (a2-0 float)
+    (a2-2 float)
+    (a2-4 float)
+    (a3-0 float)
+    (f6-0 float)
+    )
+  (rlet ((acc :class vf)
+         (Q :class vf)
+         (vf0 :class vf)
+         (vf1 :class vf)
+         (vf12 :class vf)
+         (vf13 :class vf)
+         (vf14 :class vf)
+         (vf15 :class vf)
+         (vf16 :class vf)
+         (vf17 :class vf)
+         (vf2 :class vf)
+         (vf22 :class vf)
+         (vf23 :class vf)
+         (vf24 :class vf)
+         (vf25 :class vf)
+         (vf26 :class vf)
+         (vf27 :class vf)
+         (vf3 :class vf)
+         (vf4 :class vf)
+         (vf5 :class vf)
+         (vf6 :class vf)
+         )
+    (init-vf0-vector)
+    (nop!)
+    (.max.w.vf vf1 vf0 vf0)
+    (.lvf vf3 (&-> out dir0 color quad))
+    (nop!)
+    (.lvf vf4 (&-> out dir1 color quad))
+    (nop!)
+    (.lvf vf5 (&-> out dir2 color quad))
+    (nop!)
+    (.lvf vf15 (&-> out dir0 extra quad))
+    (nop!)
+    (.lvf vf16 (&-> out dir1 extra quad))
+    (nop!)
+    (.lvf vf17 (&-> out dir2 extra quad))
+    (nop!)
+    (.lvf vf25 (&-> out dir0 direction quad))
+    (.mul.x.vf vf3 vf3 vf15)
+    (.lvf vf26 (&-> out dir1 direction quad))
+    (.mul.x.vf vf4 vf4 vf16)
+    (.lvf vf27 (&-> out dir2 direction quad))
+    (.mul.x.vf vf5 vf5 vf17)
+    (.mov v1-0 vf1)
+    (.mul.x.vf vf25 vf25 vf15)
+    (let ((f1-0 v1-0))
+      (.mul.x.vf vf26 vf26 vf16)
+      (.lvf vf6 (&-> other dir0 direction quad))
+      (.mul.x.vf vf27 vf27 vf17)
+      (.lvf vf2 (&-> other dir0 color quad))
+      (nop!)
+      (.lvf vf23 (&-> other dir0 extra quad))
+      (nop!)
+      (.mov a2-0 vf15)
+      (nop!)
+      (.mov a3-0 vf16)
+      (nop!)
+      (.mov v1-1 vf17)
+      (nop!)
+      (let ((a2-1 (shl (the-as int a2-0) 32)))
+        (nop!)
+        (let ((a3-1 (shl (the-as int a3-0) 32)))
+          (nop!)
+          (let ((v1-2 (shl (the-as int v1-1) 32)))
+            (b! (zero? a2-1) cfg-9 :delay (set! f6-0 (-> other dir0 extra x)))
+            (b! (zero? a3-1) cfg-10 :delay (nop!))
+            (b! (zero? v1-2) cfg-11 :delay (nop!))
+            )
+          )
+        )
+      (.mul.x.vf acc vf15 vf15)
+      (nop!)
+      (.add.mul.x.vf acc vf16 vf16 acc)
+      (nop!)
+      (.add.mul.x.vf vf22 vf17 vf17 acc)
+      (nop!)
+      (.mul.x.vf vf2 vf2 vf23)
+      (nop!)
+      (.mul.x.vf vf6 vf6 vf23)
+      (nop!)
+      (nop!)
+      (.isqrt.vf Q vf0 vf22 :fsf #b11 :ftf #b0)
+      (nop!)
+      (.wait.vf)
+      (.mul.vf vf15 vf15 Q)
+      (nop!)
+      (.mul.vf vf16 vf16 Q)
+      (nop!)
+      (.mul.vf vf17 vf17 Q)
+      (nop!)
+      (.sub.x.vf vf15 vf1 vf15)
+      (nop!)
+      (.sub.x.vf vf16 vf1 vf16)
+      (nop!)
+      (.sub.x.vf vf17 vf1 vf17)
+      (nop!)
+      (.mul.x.vf acc vf1 vf15)
+      (nop!)
+      (.add.mul.x.vf acc vf1 vf16 acc)
+      (nop!)
+      (.add.mul.x.vf vf22 vf1 vf17 acc)
+      (nop!)
+      (nop!)
+      (.div.vf Q vf0 vf22 :fsf #b11 :ftf #b0)
+      (nop!)
+      (.lvf vf12 (&-> out dir0 extra quad))
+      (nop!)
+      (.lvf vf13 (&-> out dir1 extra quad))
+      (nop!)
+      (.lvf vf14 (&-> out dir2 extra quad))
+      (nop!)
+      (.wait.vf)
+      (.mul.vf vf15 vf15 Q)
+      (nop!)
+      (.mul.vf vf16 vf16 Q)
+      (nop!)
+      (.mul.vf vf17 vf17 Q)
+      (nop!)
+      (.mul.vf acc vf1 vf25)
+      (.mov a2-2 vf15)
+      (.add.mul.x.vf vf25 vf6 vf15 acc)
+      (.mov a1-1 vf16)
+      (.mul.vf acc vf1 vf26)
+      (.mov v1-3 vf17)
+      (.add.mul.x.vf vf26 vf6 vf16 acc)
+      (let ((a2-3 (shl (the-as int a2-2) 32)))
+        (.mul.vf acc vf1 vf27)
+        (let ((a1-2 (shl (the-as int a1-1) 32)))
+          (.add.mul.x.vf vf27 vf6 vf17 acc)
+          (let ((v1-4 (shl (the-as int v1-3) 32)))
+            (.mul.vf acc vf1 vf3)
+            (nop!)
+            (.add.mul.x.vf vf3 vf2 vf15 acc)
+            (nop!)
+            (.mul.vf acc vf1 vf4)
+            (nop!)
+            (.add.mul.x.vf vf4 vf2 vf16 acc)
+            (nop!)
+            (.mul.vf acc vf1 vf5)
+            (nop!)
+            (.add.mul.x.vf vf5 vf2 vf17 acc)
+            (nop!)
+            (b! (zero? a2-3) cfg-5 :delay (nop!))
+            (.mul.vf vf24 vf25 vf25)
+            (nop!)
+            (.mul.vf vf15 vf15 vf23)
+            (nop!)
+            (.mul.x.vf acc vf1 vf24)
+            (nop!)
+            (.add.mul.y.vf acc vf1 vf24 acc)
+            (nop!)
+            (.add.mul.z.vf vf24 vf1 vf24 acc)
+            (nop!)
+            (.isqrt.vf Q vf0 vf24 :fsf #b11 :ftf #b0)
+            (nop!)
+            (.add.vf vf15 vf15 vf12)
+            (nop!)
+            (nop!)
+            (.mov a2-4 vf15)
+            (nop!)
+            (let ((f10-1 (/ f1-0 a2-4)))
+              (nop!)
+              (nop!)
+              (set! (-> out dir0 extra x) a2-4)
+              (nop!)
+              (nop!)
+              (let ((a2-6 f10-1))
+                (.mov vf15 a2-6)
+                )
+              )
+            (.mul.x.vf vf3 vf3 vf15)
+            (nop!)
+            (nop!)
+            (.wait.vf)
+            (.mul.vf vf25 vf25 Q)
+            (.svf (&-> out dir0 color quad) vf3)
+            (nop!)
+            (.svf (&-> out dir0 direction quad) vf25)
+            (label cfg-5)
+            (b! (zero? a1-2) cfg-7 :delay (nop!))
+            (.mul.vf vf24 vf26 vf26)
+            (nop!)
+            (.mul.vf vf16 vf16 vf23)
+            (nop!)
+            (.mul.x.vf acc vf1 vf24)
+            (nop!)
+            (.add.mul.y.vf acc vf1 vf24 acc)
+            (nop!)
+            (.add.mul.z.vf vf24 vf1 vf24 acc)
+            (nop!)
+            (.isqrt.vf Q vf0 vf24 :fsf #b11 :ftf #b0)
+            (nop!)
+            (.add.vf vf16 vf16 vf13)
+            (nop!)
+            (nop!)
+            (.mov a1-3 vf16)
+            (nop!)
+            (let ((f11-1 (/ f1-0 a1-3)))
+              (nop!)
+              (nop!)
+              (set! (-> out dir1 extra x) a1-3)
+              (nop!)
+              (nop!)
+              (let ((a1-5 f11-1))
+                (.mov vf16 a1-5)
+                )
+              )
+            (.mul.x.vf vf4 vf4 vf16)
+            (nop!)
+            (nop!)
+            (.wait.vf)
+            (.mul.vf vf26 vf26 Q)
+            (.svf (&-> out dir1 color quad) vf4)
+            (nop!)
+            (.svf (&-> out dir1 direction quad) vf26)
+            (label cfg-7)
+            (b! (zero? v1-4) cfg-12 :delay (nop!))
+            )
+          )
+        )
+      (.mul.vf vf24 vf27 vf27)
+      (nop!)
+      (.mul.vf vf17 vf17 vf23)
+      (nop!)
+      (.mul.x.vf acc vf1 vf24)
+      (nop!)
+      (.add.mul.y.vf acc vf1 vf24 acc)
+      (nop!)
+      (.add.mul.z.vf vf24 vf1 vf24 acc)
+      (nop!)
+      (.isqrt.vf Q vf0 vf24 :fsf #b11 :ftf #b0)
+      (nop!)
+      (.add.vf vf17 vf17 vf14)
+      (nop!)
+      (nop!)
+      (.mov v1-5 vf17)
+      (nop!)
+      (let ((f12-1 (/ f1-0 v1-5)))
+        (nop!)
+        (nop!)
+        (set! (-> out dir2 extra x) v1-5)
+        (nop!)
+        (nop!)
+        (let ((v1-7 f12-1))
+          (.mov vf17 v1-7)
+          )
+        )
+      )
+    (.mul.x.vf vf5 vf5 vf17)
+    (nop!)
+    (nop!)
+    (.wait.vf)
+    (.mul.vf vf27 vf27 Q)
+    (.svf (&-> out dir2 color quad) vf5)
+    (b! #t cfg-12 :delay (.svf (&-> out dir2 direction quad) vf27))
+    (label cfg-9)
+    (nop!)
+    (.svf (&-> out dir0 direction quad) vf6)
+    (nop!)
+    (.svf (&-> out dir0 color quad) vf2)
+    (b! #t cfg-12 :delay (set! (-> out dir0 extra x) f6-0))
+    (label cfg-10)
+    (nop!)
+    (.svf (&-> out dir1 direction quad) vf6)
+    (nop!)
+    (.svf (&-> out dir1 color quad) vf2)
+    (b! #t cfg-12 :delay (set! (-> out dir1 extra x) f6-0))
+    (label cfg-11)
+    (nop!)
+    (.svf (&-> out dir2 direction quad) vf6)
+    (nop!)
+    (.svf (&-> out dir2 color quad) vf2)
+    (nop!)
+    (set! (-> out dir2 extra x) f6-0)
+    (label cfg-12)
+    0
+    (none)
+    )
+  )
+
+;; definition for function light-group-scale!
+;; WARN: Return type mismatch int vs none.
+(defun light-group-scale! ((group light-group) (backup-ptr (pointer light-group)) (scale float))
+  "Given a [[light-group]], a `pointer` to a [[light-group]] to back it up, and a scale value,
+   Scale the light's `extra.x` value
+   @param! group The [[light]]s to scale
+   @param pointer A location to backup the original [[light]]s
+   @param scale The value to scale by
+   @returns [[none]]"
+  (if (!= group backup-ptr)
+      (mem-copy! (the-as pointer group) backup-ptr 192)
+      )
+  (when (!= scale 1.0)
+    (dotimes (light-idx 4)
+      (set! (-> group lights light-idx extra x) (* (-> group lights light-idx extra x) scale))
+      )
+    )
+  0
+  (none)
+  )
+
+;; definition for function light-group-madd!
+;; WARN: Return type mismatch int vs none.
+(defun light-group-madd! ((group light-group) (backup-ptr (pointer light-group)) (other light-group) (scalar float))
+  "Scales the ambient and direction info of one [[light-group]]'s [[light]]s using a scalar value and another [[light-group]]
+   @param! group Resultant
+   @param backup-ptr where the original `group` is backed up to
+   @param other The other [[light-group]] used as part of the operation
+   @param scalar An arbitrary scalar value multipled against each field
+   @returns [[none]]"
+  (if (!= group backup-ptr)
+      (mem-copy! (the-as pointer group) backup-ptr 192)
+      )
+  (when (!= scalar 0.0)
+    (let ((new-light (new 'stack 'light))
+          (ambi-scaled (* (-> other ambi extra x) scalar))
+          )
+      (let ((dir0-scaled (* (-> other dir0 extra x) scalar))
+            (dir1-scaled (* (-> other dir1 extra x) scalar))
+            (dir2-scaled (* (-> other dir2 extra x) scalar))
+            )
+        (when (!= dir0-scaled 0.0)
+          (mem-copy! (the-as pointer new-light) (the-as pointer (-> other dir0)) 48)
+          (set! (-> new-light extra x) dir0-scaled)
+          (light-merge! group (the-as light-group new-light))
+          (set! (-> group dir0 extra y) 0.0)
+          )
+        (when (!= dir1-scaled 0.0)
+          (mem-copy! (the-as pointer new-light) (the-as pointer (-> other dir1)) 48)
+          (set! (-> new-light extra x) dir1-scaled)
+          (light-merge! group (the-as light-group new-light))
+          (set! (-> group dir1 extra y) 0.0)
+          )
+        (when (!= dir2-scaled 0.0)
+          (mem-copy! (the-as pointer new-light) (the-as pointer (-> other dir2)) 48)
+          (set! (-> new-light extra x) dir2-scaled)
+          (light-merge! group (the-as light-group new-light))
+          (set! (-> group dir2 extra y) 0.0)
+          )
+        )
+      (vector4-scale!
+        (the-as vector4 (-> group ambi color))
+        (the-as vector4 (-> group ambi color))
+        (-> group ambi extra x)
+        )
+      (vector4-madd!
+        (the-as vector4 (-> group ambi color))
+        (the-as vector4 (-> group ambi color))
+        (the-as vector4 (-> other ambi color))
+        ambi-scaled
+        )
+      )
+    (set! (-> group ambi extra x) 1.0)
+    )
+  0
+  (none)
+  )
+
+;; definition for function light-group-lerp!
+;; WARN: Return type mismatch int vs none.
+(defun light-group-lerp! ((group light-group) (backup-ptr (pointer light-group)) (other light-group) (scalar float))
+  "Linearly interpolates between two [[light-group]]'s.
+   @param! group Resultant
+   @param backup-ptr where the original `group` is backed up to
+   @param other The other [[light-group]] used as part of the operation
+   @param scalar An arbitrary scalar value multipled against each field
+   @returns [[none]]"
+  (light-group-scale! group backup-ptr (- 1.0 scalar))
+  (light-group-madd! group backup-ptr other scalar)
+  0
+  (none)
+  )
+
+;; definition for function shadow-info-copy!
+;; WARN: Return type mismatch int vs none.
+(defun shadow-info-copy! ((dest light-group) (src light-group))
+  "Copies `extra.y` from `src` into `dest` for each [[light]]
+   @param! dest
+   @param src
+   @returns [[none]]"
+  (dotimes (light-idx 4)
+    (set! (-> dest lights light-idx extra y) (-> src lights light-idx extra y))
+    )
+  0
+  (none)
+  )

@@ -628,8 +628,8 @@
     (mood-control-method-10 () none)
     (mood-control-method-11 () none)
     (mood-control-method-12 () none)
-    (mood-control-method-13 (_type_ float float float) none)
-    (mood-control-method-14 (_type_) symbol)
+    (set-special-interps! (_type_ float float symbol) none)
+    (weather-event-concluded? (_type_) symbol)
     (mood-control-method-15 () none)
     (mood-control-method-16 () none)
     (mood-control-method-17 () none)
@@ -692,12 +692,18 @@
 
 ;; definition for method 13 of type mood-control
 ;; WARN: Return type mismatch int vs none.
-(defmethod mood-control-method-13 ((this mood-control) (arg0 float) (arg1 float) (arg2 float))
-  (let ((f0-1 (fmax 0.0 (fmin 1.0 arg0))))
-    (set! (-> this target-special-interp) f0-1)
-    (set! (-> this rate-special-interp) arg1)
-    (if arg2
-        (set! (-> this current-special-interp) f0-1)
+(defmethod set-special-interps! ((this mood-control) (target-interp float) (rate-interp float) (set-current-interp? symbol))
+  "Sets the `*-special-interp` values with the given values
+   @param! this The [[mood-control]]
+   @param target-interp Clamped between 0.0 and 1.0
+   @param rate-interp Value to set [[this::rate-special-interp]]
+   @param set-current-interp? Uses `target-interp` to set [[this::current-special-interp]
+   @returns [[none]]"
+  (let ((clamped-interp (fmax 0.0 (fmin 1.0 target-interp))))
+    (set! (-> this target-special-interp) clamped-interp)
+    (set! (-> this rate-special-interp) rate-interp)
+    (if set-current-interp?
+        (set! (-> this current-special-interp) clamped-interp)
         )
     )
   0
@@ -705,7 +711,8 @@
   )
 
 ;; definition for method 14 of type mood-control
-(defmethod mood-control-method-14 ((this mood-control))
+(defmethod weather-event-concluded? ((this mood-control))
+  "@returns [[#t]] if [[this::override-weather-flag]] is set, we aren't in a cutscene and [[this::current-special-interp]] is equal to `0.0`"
   (and (-> this overide-weather-flag) (not (movie?)) (= (-> this current-special-interp) 0.0))
   )
 
