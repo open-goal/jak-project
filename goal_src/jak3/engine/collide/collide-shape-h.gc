@@ -5,5 +5,482 @@
 ;; name in dgo: collide-shape-h
 ;; dgos: GAME
 
+;; +++collide-action
+(defenum collide-action
+  :bitfield #t
+  :type uint32
+  (solid                  0) ;; 1
+  (semi-solid             1) ;; 2
+  (rideable               2) ;; 4
+  (can-ride               3) ;; 8
+  (dont-push-away         4) ;; 16
+  (pull-rider-can-collide 5) ;; 32
+  (deadly                 6) ;; 64
+  (persistent-attack      7) ;; 128
+  (no-smack               8) ;; 256
+  (no-standon             9) ;; 512
+  (block-turn-around     10) ;; 1024
+  (check-edge            11) ;; 2048
+  (check-stuck           12) ;; 4096
+  (stuck-wall-escape     13) ;; 8192
+  (no-normal-reset       14) ;; 163884
+  (edge-grabbed          15) ;; 32768
+  (nav-sphere            16) ;; hi 1
+  )
+;; ---collide-action
+
+
+;; +++overlaps-others-options
+(defenum overlaps-others-options
+  :type uint32
+  :bitfield #t
+  (oo0)
+  (oo1)
+  (oo2)
+  (oo3)
+  (oo4)
+  )
+;; ---overlaps-others-options
+
+
+;; +++collide-list-enum
+(defenum collide-list-enum
+  (hit-by-player)
+  (usually-hit-by-player)
+  (hit-by-others)
+  (player)
+  )
+;; ---collide-list-enum
+
+
+;; +++collide-status
+(defenum collide-status
+  :bitfield #t
+  :type uint64
+  (on-surface 0)
+  (on-ground 1)
+  (touch-surface 2)
+  (touch-wall 3)
+  (touch-ceiling 4)
+  (touch-actor 5)
+  (on-special-surface 6)
+  (touch-edge 7)
+  (no-touch 8)
+  (blocked 9)
+  (on-water 10)
+  (impact-surface 11)
+  (touch-background 12)
+  (stuck 13)
+  (touch-ceiling-sticky 14)
+  (glance 15)
+  (probe-hit 16)
+  )
+;; ---collide-status
+
+
+(declare-type collide-shape trsqv)
+(declare-type collide-shape-moving collide-shape)
+(declare-type control-info collide-shape-moving)
+(declare-type touching-list structure)
+(declare-type collide-query structure)
+(declare-type water-info structure)
+(declare-type collide-shape-prim-group basic)
+(declare-type collide-cache-prim structure)
+(declare-type collide-shape-prim basic)
+(declare-type collide-cache basic)
+(declare-type rigid-body structure)
+
 ;; DECOMP BEGINS
 
+(deftype collide-rider (structure)
+  "Something that rides a moving object."
+  ((rider-handle     handle)
+   (sticky-prim      collide-shape-prim)
+   (prim-ry          float)
+   (rider-local-pos  vector  :inline)
+   )
+  )
+
+
+(deftype collide-rider-pool (basic)
+  "A pool containing all the riders of an object."
+  ((alloc-count  int32)
+   (riders       collide-rider  20 :inline)
+   )
+  (:methods
+    (collide-rider-pool-method-9 () none)
+    (prepare (_type_) none)
+    )
+  )
+
+
+(defmethod prepare ((this collide-rider-pool))
+  "Gets this pool ready to be used to allow allocations.  This should be called once at the start of every frame."
+  (set! (-> this alloc-count) 0)
+  0
+  (none)
+  )
+
+(deftype pull-rider-info (structure)
+  ((rider           collide-rider)
+   (rider-cshape    collide-shape-moving)
+   (rider-delta-ry  float)
+   (rider-dest      vector  :inline)
+   )
+  )
+
+
+(kmemopen global "collide-lists")
+
+(define *collide-hit-by-player-list* (new 'global 'engine 'collide-hit-by-player-list 640 connection))
+
+(define *collide-hit-by-others-list* (new 'global 'engine 'collide-hit-by-others-list 768 connection))
+
+(define *collide-player-list* (new 'global 'engine 'collide-player-list 32 connection))
+
+(kmemclose)
+
+(deftype overlaps-others-params (structure)
+  ((options                      overlaps-others-options)
+   (collide-with-filter          collide-spec)
+   (tlist                        touching-list)
+   (filtered-root-collide-with   collide-spec)
+   (filtered-child-collide-with  collide-spec)
+   (filtered-other-collide-as    collide-spec)
+   )
+  )
+
+
+(deftype move-above-ground-params (structure)
+  ((gnd-collide-with        collide-spec)
+   (popup                   float)
+   (dont-move-if-overlaps?  symbol)
+   (hover-if-no-ground?     symbol)
+   (overlaps-params         overlaps-others-params  :inline)
+   (new-pos                 vector                  :inline)
+   (old-gspot-pos           vector                  :inline)
+   (old-gspot-normal        vector                  :inline)
+   (pat                     pat-surface)
+   (on-ground?              symbol)
+   (do-move?                symbol)
+   )
+  )
+
+
+(deftype collide-prim-core (structure)
+  "Collide primitives use this to store their world sphere and their collision flags."
+  ((world-sphere  vector   :inline)
+   (collide-as    collide-spec)
+   (collide-with  collide-spec)
+   (action        collide-action)
+   (prim-type     int8)
+   (unused1       uint8    3)
+   (quad          uint128  2 :overlay-at (-> world-sphere data 0))
+   )
+  )
+
+
+(deftype collide-shape-prim (basic)
+  "Base class for collide primitives."
+  ((cshape           collide-shape)
+   (prim-id          uint32)
+   (transform-index  int8)
+   (unused2          int8               3)
+   (prim-core        collide-prim-core  :inline :offset  16)
+   (local-sphere     vector             :inline :offset  48)
+   (specific         uint8              16      :offset  64)
+   (world-sphere     vector             :inline :overlay-at (-> prim-core quad 0))
+   (collide-as       collide-spec               :overlay-at (-> prim-core quad 1))
+   (collide-with     collide-spec               :offset  36)
+   (action           collide-action             :offset  40)
+   (prim-type        int8                       :offset  44)
+   (radius           meters                     :overlay-at (-> local-sphere w))
+   )
+  (:methods
+    (new (symbol type collide-shape uint int) _type_)
+    (collide-shape-prim-method-9 () none)
+    (collide-shape-prim-method-10 () none)
+    (collide-shape-prim-method-11 () none)
+    (collide-shape-prim-method-12 () none)
+    (collide-shape-prim-method-13 () none)
+    (collide-shape-prim-method-14 () none)
+    (collide-shape-prim-method-15 () none)
+    (collide-shape-prim-method-16 () none)
+    (collide-shape-prim-method-17 () none)
+    (collide-shape-prim-method-18 () none)
+    (collide-shape-prim-method-19 () none)
+    )
+  )
+
+
+(deftype collide-shape-prim-sphere (collide-shape-prim)
+  "A sphere primitive for collide shapes."
+  ((pat         pat-surface  :overlay-at (-> specific 0))
+   (nav-radius  float        :overlay-at (-> specific 4))
+   )
+  (:methods
+    (new (symbol type collide-shape uint) _type_)
+    )
+  )
+
+
+(deftype collide-shape-prim-mesh (collide-shape-prim)
+  "A mesh primitive for collide shapes."
+  ((mesh              collide-mesh              :overlay-at (-> specific 0))
+   (mesh-id           int32                     :overlay-at (-> specific 4))
+   (mesh-cache-id     uint32                    :overlay-at (-> specific 8))
+   (mesh-cache-entry  collide-mesh-cache-entry  :overlay-at (-> specific 12))
+   )
+  (:methods
+    (new (symbol type collide-shape uint uint) _type_)
+    )
+  )
+
+
+(deftype collide-shape-prim-group (collide-shape-prim)
+  "A group of collide primitives."
+  ((num-children        uint8                              :overlay-at (-> specific 0))
+   (num-alloc-children  uint8                              :overlay-at (-> specific 1))
+   (child               (inline-array collide-shape-prim)  :overlay-at (-> specific 4))
+   )
+  (:methods
+    (new (symbol type collide-shape uint int) _type_)
+    )
+  )
+
+
+(deftype collide-shape (trsqv)
+  "The parent of all of an object's collide primitives.
+Most [[process-drawable]]s have a [[collide-shape]] that represents their root transform."
+  ((actor-hash-index     int16   :offset  12)
+   (process              process-drawable)
+   (max-iteration-count  uint8)
+   (nav-flags            uint8)
+   (total-prims          uint8)
+   (num-riders           uint8)
+   (pat-ignore-mask      pat-surface)
+   (event-self           symbol  :offset 152)
+   (event-other          symbol)
+   (root-prim            collide-shape-prim)
+   (riders               (inline-array collide-rider))
+   (penetrate-using      penetrate)
+   (penetrated-by        penetrate)
+   (event-priority       uint8   :offset 192)
+   (rider-max-momentum   float)
+   )
+  (:methods
+    (new (symbol type process-drawable collide-list-enum) _type_)
+    (collide-shape-method-28 () none)
+    (collide-shape-method-29 () none)
+    (collide-shape-method-30 () none)
+    (collide-shape-method-31 () none)
+    (collide-shape-method-32 () none)
+    (collide-shape-method-33 () none)
+    (collide-shape-method-34 () none)
+    (collide-shape-method-35 () none)
+    (collide-shape-method-36 () none)
+    (collide-shape-method-37 () none)
+    (collide-shape-method-38 () none)
+    (collide-shape-method-39 () none)
+    (collide-shape-method-40 () none)
+    (collide-shape-method-41 () none)
+    (collide-shape-method-42 () none)
+    (collide-shape-method-43 () none)
+    (collide-shape-method-44 () none)
+    (collide-shape-method-45 () none)
+    (collide-shape-method-46 () none)
+    (collide-shape-method-47 () none)
+    (collide-shape-method-48 () none)
+    (collide-shape-method-49 () none)
+    (collide-shape-method-50 () none)
+    (collide-shape-method-51 () none)
+    (collide-shape-method-52 () none)
+    (collide-shape-method-53 () none)
+    (collide-shape-method-54 () none)
+    )
+  )
+
+
+(deftype collide-shape-moving (collide-shape)
+  "A [[collide-shape]] for moving objects."
+  ((rider-time          time-frame)
+   (rider-last-move     vector                                                              :inline)
+   (trans-old           vector                                                              :inline)
+   (poly-pat            pat-surface                                                         :offset 272)
+   (cur-pat             pat-surface)
+   (ground-pat          pat-surface)
+   (status              collide-status)
+   (reaction            (function control-info collide-query vector vector collide-status)  :offset 316)
+   (no-reaction         (function collide-shape-moving collide-query vector vector object))
+   (local-normal        vector                                                              :inline)
+   (surface-normal      vector                                                              :inline)
+   (poly-normal         vector                                                              :inline)
+   (ground-poly-normal  vector                                                              :inline)
+   (gspot-pos           vector                                                              :inline)
+   (gspot-normal        vector                                                              :inline)
+   (ground-touch-point  vector                                                              :inline)
+   (ground-impact-vel   meters)
+   (surface-angle       float)
+   (poly-angle          float)
+   (touch-angle         float)
+   (coverage            float)
+   (dynam               dynamics)
+   (surf                surface)
+   )
+  (:methods
+    (new (symbol type process-drawable collide-list-enum) _type_)
+    (collide-shape-moving-method-55 () none)
+    (collide-shape-moving-method-56 () none)
+    (collide-shape-moving-method-57 () none)
+    (collide-shape-moving-method-58 () none)
+    (collide-shape-moving-method-59 () none)
+    (collide-shape-moving-method-60 () none)
+    (collide-shape-moving-method-61 () none)
+    (collide-shape-moving-method-62 () none)
+    (collide-shape-moving-method-63 () none)
+    (collide-shape-moving-method-64 () none)
+    (collide-shape-moving-method-65 () none)
+    (collide-shape-moving-method-66 () none)
+    (collide-shape-moving-method-67 () none)
+    )
+  )
+
+
+(defmethod new collide-shape-prim ((allocation symbol) (type-to-make type) (arg0 collide-shape) (arg1 uint) (arg2 int))
+  (let ((v0-0 (object-new allocation type-to-make arg2)))
+    (set! (-> v0-0 cshape) arg0)
+    (set! (-> v0-0 prim-id) arg1)
+    (set! (-> v0-0 prim-core action) (collide-action))
+    (set! (-> v0-0 prim-core collide-as) (collide-spec))
+    (set! (-> v0-0 prim-core collide-with) (collide-spec))
+    (set! (-> v0-0 transform-index) -2)
+    (set! (-> v0-0 prim-core prim-type) -2)
+    v0-0
+    )
+  )
+
+;; WARN: Return type mismatch collide-shape-prim vs collide-shape-prim-sphere.
+(defmethod new collide-shape-prim-sphere ((allocation symbol) (type-to-make type) (arg0 collide-shape) (arg1 uint))
+  (let ((v0-0 ((method-of-type collide-shape-prim new) allocation type-to-make arg0 arg1 80)))
+    (set! (-> (the-as collide-shape-prim-sphere v0-0) pat)
+          (new 'static 'pat-surface :mode (pat-mode obstacle) :material (pat-material stone))
+          )
+    (set! (-> (the-as collide-shape-prim-sphere v0-0) prim-core prim-type) -1)
+    (the-as collide-shape-prim-sphere v0-0)
+    )
+  )
+
+;; WARN: Return type mismatch collide-shape-prim vs collide-shape-prim-mesh.
+(defmethod new collide-shape-prim-mesh ((allocation symbol) (type-to-make type) (arg0 collide-shape) (arg1 uint) (arg2 uint))
+  (let ((v0-0 ((method-of-type collide-shape-prim new) allocation type-to-make arg0 arg2 80)))
+    (set! (-> (the-as collide-shape-prim-mesh v0-0) mesh) #f)
+    (set! (-> (the-as collide-shape-prim-mesh v0-0) mesh-id) (the-as int arg1))
+    (set! (-> (the-as collide-shape-prim-mesh v0-0) mesh-cache-id) (the-as uint 0))
+    (set! (-> (the-as collide-shape-prim-mesh v0-0) prim-core prim-type) 1)
+    (the-as collide-shape-prim-mesh v0-0)
+    )
+  )
+
+;; WARN: Return type mismatch collide-shape-prim vs collide-shape-prim-group.
+(defmethod new collide-shape-prim-group ((allocation symbol) (type-to-make type) (arg0 collide-shape) (arg1 uint) (arg2 int))
+  (let ((v0-0 ((method-of-type collide-shape-prim new) allocation type-to-make arg0 (the-as uint arg2) 80)))
+    (set! (-> (the-as collide-shape-prim-group v0-0) num-children) arg1)
+    (set! (-> (the-as collide-shape-prim-group v0-0) num-alloc-children) arg1)
+    (set! (-> (the-as collide-shape-prim-group v0-0) prim-core prim-type) 0)
+    (set! (-> (the-as collide-shape-prim-group v0-0) child)
+          (the-as (inline-array collide-shape-prim) (&+ (the-as collide-shape-prim-group v0-0) 80))
+          )
+    (the-as collide-shape-prim-group v0-0)
+    )
+  )
+
+;; WARN: Return type mismatch uint vs int.
+(defmethod length ((this collide-shape-prim-group))
+  (the-as int (-> this num-children))
+  )
+
+(defmethod new collide-shape ((allocation symbol) (type-to-make type) (arg0 process-drawable) (arg1 collide-list-enum))
+  (let ((s5-0 (object-new allocation type-to-make (the-as int (-> type-to-make size)))))
+    (set! (-> s5-0 actor-hash-index) -1)
+    (set! (-> s5-0 process) arg0)
+    (set! (-> s5-0 max-iteration-count) (the-as uint 1))
+    (set! (-> s5-0 nav-flags) (the-as uint 1))
+    (set! (-> s5-0 event-self) #f)
+    (set! (-> s5-0 event-other) #f)
+    (set! (-> s5-0 riders) (the-as (inline-array collide-rider) #f))
+    (set! (-> s5-0 root-prim) #f)
+    (set! (-> s5-0 penetrate-using) (penetrate))
+    (set! (-> s5-0 penetrated-by) (penetrate))
+    (set! (-> s5-0 event-priority) (the-as uint 0))
+    (set! (-> s5-0 rider-max-momentum) 409600.0)
+    (case (-> arg0 type symbol)
+      (('camera)
+       (set! (-> s5-0 pat-ignore-mask) (new 'static 'pat-surface :nocamera #x1 :probe #x1 :noendlessfall #x1))
+       )
+      (('target)
+       (set! (-> s5-0 pat-ignore-mask) (new 'static 'pat-surface :noentity #x1 :nojak #x1 :probe #x1 :board #x1))
+       )
+      (else
+        (set! (-> s5-0 pat-ignore-mask)
+              (new 'static 'pat-surface :noentity #x1 :nojak #x1 :probe #x1 :noendlessfall #x1 :board #x1)
+              )
+        )
+      )
+    (set! (-> s5-0 trans w) 1.0)
+    (quaternion-identity! (-> s5-0 quat))
+    (vector-identity! (-> s5-0 scale))
+    (cond
+      ((= arg1 (collide-list-enum hit-by-player))
+       (add-connection *collide-hit-by-player-list* arg0 #f s5-0 #f #f)
+       )
+      ((= arg1 (collide-list-enum usually-hit-by-player))
+       (add-connection *collide-hit-by-others-list* arg0 #f s5-0 #f #f)
+       )
+      ((= arg1 (collide-list-enum hit-by-others))
+       (add-connection *collide-player-list* arg0 #f s5-0 #f #f)
+       )
+      (else
+        (format 0 "Unsupported collide-list-enum in collide-shape constructor!~%")
+        )
+      )
+    s5-0
+    )
+  )
+
+;; WARN: Return type mismatch collide-shape vs collide-shape-moving.
+(defmethod new collide-shape-moving ((allocation symbol) (type-to-make type) (arg0 process-drawable) (arg1 collide-list-enum))
+  (let ((v0-0 ((method-of-type collide-shape new) allocation type-to-make arg0 arg1)))
+    (set! (-> (the-as collide-shape-moving v0-0) gspot-pos y) -40959590.0)
+    (set! (-> (the-as collide-shape-moving v0-0) gspot-normal quad) (-> *y-vector* quad))
+    (set! (-> (the-as collide-shape-moving v0-0) surf) *standard-ground-surface*)
+    (the-as collide-shape-moving v0-0)
+    )
+  )
+
+(define *collide-shape-prim-backgnd* (new 'static 'collide-shape-prim-mesh
+                                       :cshape #f
+                                       :prim-core (new 'static 'collide-prim-core
+                                         :world-sphere (new 'static 'vector :w 204800000.0)
+                                         :collide-as (collide-spec backgnd)
+                                         :action (collide-action solid)
+                                         :prim-type 2
+                                         )
+                                       :local-sphere (new 'static 'vector :w 204800000.0)
+                                       :mesh #f
+                                       )
+        )
+
+(define *collide-shape-prim-water* (new 'static 'collide-shape-prim-mesh
+                                     :cshape #f
+                                     :prim-core (new 'static 'collide-prim-core
+                                       :world-sphere (new 'static 'vector :w 204800000.0)
+                                       :collide-as (collide-spec water)
+                                       :action (collide-action solid)
+                                       :prim-type 2
+                                       )
+                                     :local-sphere (new 'static 'vector :w 204800000.0)
+                                     :mesh #f
+                                     )
+        )
+
+(define-perm *collide-rider-pool* collide-rider-pool (new 'global 'collide-rider-pool))

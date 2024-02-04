@@ -5,5 +5,325 @@
 ;; name in dgo: target-h
 ;; dgos: GAME
 
+;; +++target-flags
+(defenum target-flags
+  :type uint32
+  :bitfield #t
+  )
+;; ---target-flags
+
+
+(declare-type sidekick process-drawable)
+(declare-type racer-info basic)
+(declare-type tube-info basic)
+(declare-type flut-info basic)
+(declare-type board-info basic)
+(declare-type pilot-info basic)
+(declare-type gun-info basic)
+(declare-type mech-info basic)
+(declare-type turret-info basic)
+(declare-type indax-info basic)
+(declare-type ladder-info basic)
+(declare-type darkjak-info basic)
+(declare-type lightjak-info basic)
+
+(define-extern target-pos (function int vector))
+
+
 ;; DECOMP BEGINS
 
+(deftype target (process-focusable)
+  ((control                      control-info   :overlay-at root)
+   (skel2                        joint-control)
+   (shadow-backup                shadow-geo)
+   (target-flags                 target-flags   :overlay-at state-flags)
+   (game                         game-info)
+   (neck                         joint-mod)
+   (head                         joint-mod)
+   (upper-body                   joint-mod)
+   (horns                        joint-mod)
+   (hair                         joint-mod      2)
+   (arm-ik                       joint-mod-ik   2)
+   (leg-ik                       joint-mod-ik   2)
+   (foot                         joint-mod      2)
+   (cloth                        basic)
+   (init-time                    time-frame)
+   (teleport-time                time-frame)
+   (state-hook-time              time-frame)
+   (state-hook                   (function none :behavior target))
+   (cam-user-mode                symbol)
+   (sidekick                     (pointer sidekick))
+   (manipy                       (pointer manipy))
+   (mirror                       (pointer process-drawable))
+   (attack-info                  attack-info    :inline)
+   (attack-info-rec              attack-info    :inline)
+   (attack-info-old              attack-info    8 :inline)
+   (anim-seed                    uint64)
+   (alt-cam-pos                  vector         :inline)
+   (current-level                level)
+   (saved-pos                    transformq     :inline)
+   (saved-owner                  handle)
+   (alt-neck-pos                 vector         :inline)
+   (focus-search                 (array collide-shape))
+   (handle-search                (array handle))
+   (excitement                   float)
+   (shock-effect-time            time-frame)
+   (beard?                       symbol)
+   (spool-anim                   spool-anim)
+   (ambient-time                 time-frame)
+   (fp-hud                       handle)
+   (no-load-wait                 uint64)
+   (no-look-around-wait          uint64)
+   (burn-proc                    handle)
+   (pre-joint-hook               (function none :behavior target))
+   (notify                       handle)
+   (death-resetter               resetter-spec  :inline)
+   (mode-cache                   basic)
+   (mode-param1                  uint64)
+   (mode-param2                  uint64)
+   (mode-param3                  uint64)
+   (major-mode-exit-hook         basic)
+   (major-mode-event-hook        basic)
+   (sub-mode-exit-hook           basic)
+   (ext-geo-control              basic)
+   (pending-ext-geo              int32)
+   (ext-geo                      int32)
+   (ext-anim-control             basic)
+   (pending-ext-anim             int32)
+   (ext-anim                     int32)
+   (tobot-state                  state)
+   (tobot?                       symbol)
+   (tobot-recorder               basic)
+   (target-effect                uint64)
+   (color-effect                 basic)
+   (color-effect-start-time      time-frame)
+   (color-effect-duration        time-frame)
+   (racer                        racer-info)
+   (tube                         tube-info)
+   (flut                         flut-info)
+   (board                        board-info)
+   (pilot                        pilot-info)
+   (gun                          gun-info)
+   (mech                         mech-info)
+   (turret                       turret-info)
+   (indax                        indax-info)
+   (ladder                       ladder-info)
+   (darkjak-interp               float)
+   (darkjak-interp-old           float)
+   (darkjak-giant-interp         float)
+   (darkjak                      darkjak-info)
+   (lightjak-interp              float)
+   (lightjak-interp-old          float)
+   (lightjak                     lightjak-info)
+   (scarf-interp-targ            float)
+   (scarf-interp                 float)
+   (scarf-interp-old             float)
+   (goggles-interp-targ          float)
+   (goggles-interp               float)
+   (goggles-interp-old           float)
+   (invisible-interp             float)
+   (invisible-start-time         time-frame)
+   (invisible-duration           time-frame)
+   (invisible-shadow-dir-backup  vector         :inline)
+   )
+  (:methods
+    (target-method-28 () none)
+    (target-method-29 () none)
+    )
+  (:states
+    target-attack
+    target-attack-air
+    target-attack-uppercut
+    target-attack-uppercut-jump
+    target-blast-recover
+    target-board-clone-anim
+    target-board-duck-stance
+    target-board-falling
+    target-board-flip
+    target-board-get-off
+    target-board-get-on
+    target-board-grab
+    target-board-grenade
+    target-board-halfpipe
+    target-board-hit
+    target-board-hit-ground
+    target-board-hold
+    target-board-jump
+    target-board-jump-kick
+    target-board-ride-edge
+    target-board-stance
+    target-board-start
+    target-board-trickx
+    target-board-tricky
+    target-board-turn-around
+    target-board-turn-to
+    target-board-wall-kick
+    target-clone-anim
+    target-continue
+    target-credits
+    target-darkjak-bomb0
+    target-darkjak-bomb1
+    target-darkjak-get-off
+    target-darkjak-get-on
+    target-darkjak-running-attack
+    target-darkjak-smack
+    target-darkjak-smack-charge
+    target-death
+    target-double-jump
+    target-duck-high-jump
+    target-duck-high-jump-jump
+    target-duck-stance
+    target-duck-walk
+    target-eco-powerup
+    target-edge-grab
+    target-edge-grab-jump
+    target-edge-grab-off
+    target-falling
+    target-float
+    target-flop
+    target-flop-hit-ground
+    target-flut-air-attack
+    target-flut-air-attack-hit-ground
+    target-flut-clone-anim
+    target-flut-death
+    target-flut-double-jump
+    target-flut-eject
+    target-flut-falling
+    target-flut-get-off
+    target-flut-get-off-jump
+    target-flut-get-on
+    target-flut-grab
+    target-flut-hit
+    target-flut-hit-ground
+    target-flut-jump
+    target-flut-kanga-catch
+    target-flut-running-attack
+    target-flut-stance
+    target-flut-start
+    target-flut-walk
+    target-grab
+    target-grab-ride
+    target-gun-stance
+    target-gun-walk
+    target-hide
+    target-high-jump
+    target-hit
+    target-hit-ground
+    target-hit-ground-hard
+    target-indax-attack
+    target-indax-attack-air
+    target-indax-death
+    target-indax-double-jump
+    target-indax-falling
+    target-indax-get-off
+    target-indax-grab
+    target-indax-hang
+    target-indax-hit
+    target-indax-hit-ground
+    target-indax-jump
+    target-indax-running-attack
+    target-indax-stance
+    target-indax-start
+    target-indax-trip
+    target-indax-walk
+    target-invisible-get-on
+    target-jump
+    target-jump-forward
+    target-ladder
+    target-launch
+    target-launch-dir
+    target-lightjak-freeze
+    target-lightjak-get-off
+    target-lightjak-get-on
+    target-lightjak-regen
+    target-lightjak-shield
+    target-lightjak-swoop
+    target-lightjak-swoop-again
+    target-lightjak-swoop-falling
+    target-load-wait
+    target-look-around
+    target-mech-carry-drag
+    target-mech-carry-drop
+    target-mech-carry-falling
+    target-mech-carry-hit-ground
+    target-mech-carry-jump
+    target-mech-carry-pickup
+    target-mech-carry-stance
+    target-mech-carry-throw
+    target-mech-carry-walk
+    target-mech-clone-anim
+    target-mech-death
+    target-mech-falling
+    target-mech-get-off
+    target-mech-get-on
+    target-mech-get-up
+    target-mech-grab
+    target-mech-hit
+    target-mech-hit-ground
+    target-mech-jump
+    target-mech-punch
+    target-mech-shield
+    target-mech-stance
+    target-mech-start
+    target-mech-walk
+    target-pilot-clone-anim
+    target-pilot-daxter-perch
+    target-pilot-death
+    target-pilot-edge-grab
+    target-pilot-get-off
+    target-pilot-get-on
+    target-pilot-grab
+    target-pilot-hit
+    target-pilot-impact
+    target-pilot-stance
+    target-pilot-start
+    target-play-anim
+    target-pole-cycle
+    target-pole-flip-forward
+    target-pole-flip-forward-jump
+    target-pole-flip-up
+    target-pole-flip-up-jump
+    target-powerjak-get-on
+    target-roll
+    target-roll-flip
+    target-running-attack
+    target-slide-down
+    target-slide-down-to-ground
+    target-stance
+    target-stance-ambient
+    target-stance-look-around
+    target-swim
+    target-swim-jump
+    target-title
+    target-tube
+    target-turn-around
+    target-wade-stance
+    target-wade-walk
+    target-walk
+    target-warp-in
+    target-warp-out
+    )
+  )
+
+
+(define-perm *target* target #f)
+
+(deftype sidekick (process-drawable)
+  ((control              control-info  :overlay-at root)
+   (anim-seed            uint64        :offset 208)
+   (shadow-in-movie?     symbol)
+   (special-anim-time    time-frame)
+   (special-anim-interp  float)
+   (special-anim-frame   float)
+   (offset               transformq    :inline)
+   (mirror               (pointer process-drawable))
+   (ear                  joint-mod     2)
+   (flap                 joint-mod     2)
+   )
+  (:states
+    sidekick-clone
+    )
+  )
+
+
+(define-perm *sidekick* sidekick #f)

@@ -5,5 +5,379 @@
 ;; name in dgo: art-h
 ;; dgos: GAME
 
+(defenum draw-control-status
+  :type uint16
+  :bitfield #t
+  (close-to-screen 0)
+  (no-draw 1)
+  (no-draw-temp)
+  (on-screen)
+  (uninited)
+  (no-draw-bounds)
+  (no-closest-distance)
+  (math-skel)
+  (force-vu1)
+  (no-draw-bounds2)
+  (force-fade)
+  (warp-cross-fade)
+  (lod-set)
+  (disable-fog)
+  (hud)
+  (no-bounds-check)
+  )
+
+(defenum draw-control-data-format
+  :type uint8
+  :bitfield #f
+  (pris 0)
+  (merc 1)
+  )
+
+(defenum draw-control-global-effect
+  :type uint8
+  :bitfield #t
+  (bit-0)
+  (bit-1)
+  (title-light)
+  (disable-envmap)
+  (rim-lights)
+  (rim-lights2)
+  (rim-lights3)
+  (no-textures)
+  )
+
+(declare-type merc-eye-anim-block structure)
+(declare-type merc-ctrl structure)
+(declare-type process-drawable process)
+(declare-type ripple-control basic)
+(declare-type shadow-geo structure)
+(declare-type shadow-control structure)
 ;; DECOMP BEGINS
 
+(deftype joint-anim (basic)
+  "Base class for all joint animations. These are animations that store joint transforms."
+  ((name    string)
+   (number  int16)
+   (length  int16)
+   )
+  )
+
+
+(deftype joint-anim-matrix (joint-anim)
+  "Joint animation which stores matrices directly. Not used."
+  ((data  matrix  :inline :dynamic :offset  16)
+   )
+  )
+
+(deftype joint-anim-transformq (joint-anim)
+  "Joint animation which stores transformq's directly. Not used."
+  ((data  transformq  :inline :dynamic)
+   )
+  )
+
+
+(deftype joint-anim-drawable (joint-anim)
+  "Mysterious unused joint animation type."
+  ((data  drawable  :dynamic)
+   )
+  )
+
+
+(deftype joint-anim-frame (structure)
+  "Frame containing all joint transforms. Note that there are two special frames: align and prejoint.
+The 'align' frame is used for the complicated animation alignment system, which allows the animation to move
+a character, among other things. The prejoint is just the root of the skeleton.
+The remaining transformq's are the joint transforms you'd expect."
+  ((matrices  matrix      2 :inline)
+   (data      transformq  :inline :dynamic)
+   )
+  (:methods
+    (new (symbol type int) _type_)
+    )
+  )
+
+
+;; WARN: Return type mismatch structure vs joint-anim-frame.
+(defmethod new joint-anim-frame ((allocation symbol) (type-to-make type) (arg0 int))
+  (let ((v1-1 (max 0 (+ arg0 -2))))
+    (the-as
+      joint-anim-frame
+      (new-dynamic-structure allocation type-to-make (the-as int (+ (-> type-to-make size) (* 48 v1-1))))
+      )
+    )
+  )
+
+(deftype joint-anim-compressed-hdr (structure)
+  "Header for the compressed joint animation format."
+  ((control-bits  uint32  14)
+   (num-joints    uint32)
+   (matrix-bits   uint32)
+   )
+  )
+
+
+(deftype joint-anim-compressed-fixed (structure)
+  ((hdr        joint-anim-compressed-hdr  :inline)
+   (offset-64  uint32)
+   (offset-32  uint32)
+   (offset-16  uint32)
+   (reserved   uint32)
+   (data       vector                     133 :inline)
+   )
+  )
+
+
+(deftype joint-anim-compressed-frame (structure)
+  ((offset-64  uint32)
+   (offset-32  uint32)
+   (offset-16  uint32)
+   (reserved   uint32)
+   (data       vector  133 :inline)
+   )
+  )
+
+
+(deftype joint-anim-compressed-control (structure)
+  ((num-frames  uint16)
+   (flags       uint16)
+   (fixed-qwc   uint32)
+   (frame-qwc   uint32)
+   (fixed       joint-anim-compressed-fixed)
+   (data        joint-anim-compressed-frame  :dynamic)
+   )
+  )
+
+
+(deftype art (basic)
+  "Base class for anything considered `art`. This is typically foreground model data.
+This can be either an art container containing more arts, or an actual art thing (art-element)."
+  ((name    string  :offset   8)
+   (length  int32)
+   (extra   res-lump)
+   )
+  (:methods
+    (art-method-9 () none)
+    (art-method-10 () none)
+    (art-method-11 () none)
+    (art-method-12 () none)
+    (art-method-13 () none)
+    )
+  )
+
+
+(deftype art-element (art)
+  "Base class Art which is not a container of more art."
+  ((master-art-group-name   basic)
+   (master-art-group-index  int32)
+   (pad                     uint8  20)
+   )
+  )
+
+
+(deftype art-mesh-anim (art-element)
+  "An unused mesh animation."
+  ()
+  )
+
+(deftype art-joint-anim (art-element)
+  "Art for a joint animation. Also contains the eye animation."
+  ((eye-anim          merc-eye-anim-block            :overlay-at (-> pad 0))
+   (blend-shape-anim  (pointer int8)                 :overlay-at (-> pad 4))
+   (frames            joint-anim-compressed-control  :overlay-at (-> pad 8))
+   (speed             float                          :offset  48)
+   (artist-base       float)
+   (artist-step       float)
+   )
+  )
+
+
+(deftype art-group (art)
+  "Art which is a list of more art. The -ag files are an art group with all the art needed for a
+actor, like the mesh, animations, shadow mesh, skeleton, etc."
+  ((info  file-info             :offset   4)
+   (data  art-element  :dynamic :offset  32)
+   )
+  (:methods
+    (unknown-0 () none)
+    (unknown-1 () none)
+    )
+  )
+
+(deftype art-mesh-geo (art-element)
+  "Unused art format for a mesh. This might have been for the renderer that came before merc."
+  ()
+  )
+
+(deftype art-joint-geo (art-element)
+  "Collection of joints for an actor."
+  ()
+  )
+
+(deftype art-cloth-geo (art-element)
+  ((anchor-transforms  basic)
+   (sphere-transforms  basic)
+   (disc-transforms    basic)
+   (cloth-thickness    basic)
+   (thickness-scalar   float)
+   (num-points         int32            :overlay-at length)
+   (mesh               object  :dynamic :offset  80)
+   )
+  )
+
+
+(defmethod relocate ((this art-cloth-geo) (offset int))
+  this
+  )
+
+(deftype art-joint-anim-manager-slot (structure)
+  "Record for an animation which is additionally compressed with LZO compression over the entire animation.
+This is used for short, commonly used animations that always remain in RAM."
+  ((anim        art-joint-anim)
+   (comp-data   uint32)
+   (time-stamp  uint64)
+   )
+  )
+
+
+(deftype art-joint-anim-manager (basic)
+  "Cache for LZO decompression of animations."
+  ((heap        kheap                        :inline)
+   (free-index  int32)
+   (slot        art-joint-anim-manager-slot  64 :inline)
+   )
+  (:methods
+    (new (symbol type int) _type_)
+    (art-joint-anim-manager-method-9 () none)
+    (art-joint-anim-manager-method-10 () none)
+    (art-joint-anim-manager-method-11 () none)
+    (art-joint-anim-manager-method-12 () none)
+    (art-joint-anim-manager-method-13 () none)
+    )
+  )
+
+
+(defmethod new art-joint-anim-manager ((allocation symbol) (type-to-make type) (arg0 int))
+  (let ((gp-0 (object-new allocation type-to-make (the-as int (-> type-to-make size)))))
+    (let ((s4-0 (-> gp-0 heap)))
+      (set! (-> s4-0 base) (kmalloc (the-as kheap (-> allocation value)) arg0 (kmalloc-flags) "heap"))
+      (set! (-> s4-0 current) (-> s4-0 base))
+      (set! (-> s4-0 top-base) (&+ (-> s4-0 base) arg0))
+      (set! (-> s4-0 top) (-> s4-0 top-base))
+      )
+    (dotimes (v1-6 64)
+      (set! (-> gp-0 slot v1-6 anim) #f)
+      )
+    (set! (-> gp-0 free-index) 0)
+    gp-0
+    )
+  )
+
+(deftype skeleton-group (art-group)
+  "Unlike other art types, the skeleton-groups are defined in GOAL code.
+This stores settings like the name of the art-group, shadow/level-of-detail settings, etc."
+  ((art-group-name      string)
+   (jgeo                int16)
+   (janim               int16)
+   (bounds              vector  :inline)
+   (radius              meters  :overlay-at (-> bounds data 3))
+   (mgeo                int16   6)
+   (max-lod             int32)
+   (lod-dist            float   6)
+   (longest-edge        meters)
+   (texture-level       int8)
+   (version             int8)
+   (shadow              int16)
+   (shadow-joint-index  int8)
+   (origin-joint-index  int8)
+   (sort                int8)
+   (light-index         uint8)
+   (clothing            (array cloth-params))
+   (global-effects      uint8)
+   )
+  (:methods
+    (skeleton-group-method-16 () none)
+    )
+  )
+
+
+(deftype lod-group (structure)
+  "A single level of detail mesh."
+  ((geo   merc-ctrl)
+   (dist  meters)
+   )
+  :pack-me
+  )
+
+
+(deftype lod-set (structure)
+  "All the different level-of-detail meshes for an actor."
+  ((lod      lod-group  6 :inline)
+   (max-lod  int8)
+   )
+  (:methods
+    (lod-set-method-9 () none)
+    )
+  )
+
+
+(deftype draw-control (basic)
+  "The draw-control is a collection of all the stuff that the foreground rendering system needs to draw something.
+Each process-drawable has a draw-control."
+  ((process               process-drawable)
+   (status                draw-control-status)
+   (data-format           draw-control-data-format)
+   (global-effect         draw-control-global-effect)
+   (art-group             art-group)
+   (jgeo                  art-joint-geo)
+   (mgeo                  merc-ctrl)
+   (dma-add-func          (function process-drawable draw-control symbol object none))
+   (skeleton              skeleton)
+   (lod-set               lod-set  :inline)
+   (max-lod               int8     :overlay-at (-> lod-set max-lod))
+   (force-lod             int8)
+   (cur-lod               int8)
+   (desired-lod           int8)
+   (ripple                ripple-control)
+   (longest-edge          meters)
+   (longest-edge?         uint32   :overlay-at longest-edge)
+   (light-index           uint8)
+   (shadow-mask           uint8)
+   (level-index           uint8)
+   (death-draw-overlap    uint8)
+   (death-timer           uint8)
+   (death-timer-org       uint8)
+   (death-vertex-skip     uint16)
+   (death-effect          uint32)
+   (shadow                shadow-geo)
+   (shadow-ctrl           shadow-control)
+   (distance              meters)
+   (origin                vector   :inline)
+   (bounds                vector   :inline)
+   (radius                meters   :overlay-at (-> bounds data 3))
+   (color-mult            rgbaf    :inline)
+   (color-emissive        rgbaf    :inline)
+   (effect-mask           uint64)
+   (seg-mask              uint64)
+   (origin-joint-index    uint8)
+   (shadow-joint-index    uint8)
+   (force-fade            uint8)
+   (default-texture-page  uint8)
+   (shadow-values         uint32)
+   (cloth-instances       basic)
+   )
+  (:methods
+    (new (symbol type) _type_)
+    (get-skeleton-origin (_type_) vector)
+    (draw-control-method-10 () none)
+    (draw-control-method-11 () none)
+    (draw-control-method-12 () none)
+    (draw-control-method-13 () none)
+    (draw-control-method-14 () none)
+    (draw-control-method-15 () none)
+    )
+  )
+
+
+(defmethod get-skeleton-origin ((this draw-control))
+  (-> this skeleton bones 0 transform trans)
+  )

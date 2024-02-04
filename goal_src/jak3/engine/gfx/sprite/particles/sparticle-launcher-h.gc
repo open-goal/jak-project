@@ -5,5 +5,219 @@
 ;; name in dgo: sparticle-launcher-h
 ;; dgos: GAME
 
+(declare-type sprite-vec-data-3d structure)
+(declare-type sparticle-cpuinfo structure)
+(declare-type sparticle-system structure)
+
+(defenum sp-field-id
+  :type uint16
+  )
+
+(defenum sp-flag
+  :type uint16
+  )
+
+(defenum sp-group-item-flag
+  :bitfield #t
+  :type uint16
+  )
+
+(defenum sp-launch-state-flags
+  :bitfield #t
+  :type uint16
+  )
+
+(defenum sp-group-flag
+  :bitfield #t
+  :type uint16
+  )
+
 ;; DECOMP BEGINS
 
+(deftype sparticle-birthinfo (structure)
+  "Used internally by the sparticle code."
+  ((sprite        uint32)
+   (anim          int32)
+   (anim-speed    float)
+   (birth-func    basic)
+   (joint-ppoint  int32)
+   (num-to-birth  float)
+   (sound         basic)
+   (dataf         float   1 :overlay-at sprite)
+   (data          uint32  1 :overlay-at sprite)
+   )
+  )
+
+
+(deftype sp-field-init-spec (structure)
+  "Part of a particle definition - how to initialize a field of a particle."
+  ((field           sp-field-id)
+   (flags           sp-flag)
+   (initial-valuef  float)
+   (random-rangef   float)
+   (random-multf    float)
+   (initial-value   int32       :overlay-at initial-valuef)
+   (random-range    int32       :overlay-at random-rangef)
+   (random-mult     int32       :overlay-at random-multf)
+   (func            symbol      :overlay-at initial-valuef)
+   (tex             texture-id  :overlay-at initial-valuef)
+   (pntr            pointer     :overlay-at initial-valuef)
+   (object          basic       :overlay-at initial-valuef)
+   (sym             symbol      :overlay-at initial-valuef)
+   (sound           sound-spec  :overlay-at initial-valuef)
+   )
+  )
+
+
+(deftype sparticle-launcher (basic)
+  "A definition of a single particle, as a list of init specs."
+  ((birthaccum  float)
+   (soundaccum  float)
+   (init-specs  (inline-array sp-field-init-spec))
+   )
+  (:methods
+    (get-field-spec-by-id (_type_ sp-field-id) sp-field-init-spec)
+    (setup-special-textures (_type_ string) none)
+    )
+  )
+
+
+(deftype sparticle-group-item (structure)
+  "A reference to a single sparticle-launcher (by ID) and some parameters for using it."
+  ((launcher    uint32)
+   (fade-after  meters)
+   (falloff-to  meters)
+   (flags       sp-group-item-flag)
+   (period      uint16)
+   (length      uint16)
+   (offset      int16)
+   (hour-mask   uint32)
+   (binding     uint32)
+   )
+  )
+
+
+(deftype sparticle-launch-state (structure)
+  "The state associated with a launcher of a given sparticle."
+  ((group-item  sparticle-group-item)
+   (flags       sp-launch-state-flags)
+   (randomize   uint16)
+   (center      vector)
+   (sprite3d    sprite-vec-data-3d)
+   (sprite      sparticle-cpuinfo)
+   (offset      uint32)
+   (accum       float)
+   (spawn-time  uint32)
+   (control     sparticle-launch-control)
+   (swarm       basic   :overlay-at offset)
+   (seed        uint32  :overlay-at accum)
+   (time        uint32  :overlay-at spawn-time)
+   (spec        basic   :overlay-at sprite)
+   (id          uint32  :overlay-at sprite3d)
+   )
+  )
+
+
+(deftype sparticle-launch-group (basic)
+  "Definition of multiple a particle-group, which is a collection of particle effects."
+  ((length           int16)
+   (duration         uint16)
+   (linger-duration  uint16)
+   (flags            sp-group-flag)
+   (name             string)
+   (launcher         (inline-array sparticle-group-item))
+   (rotate-x         degrees)
+   (rotate-y         degrees)
+   (rotate-z         degrees)
+   (scale-x          float)
+   (scale-y          float)
+   (scale-z          float)
+   (bounds           sphere  :inline)
+   )
+  (:methods
+    (create-launch-control (_type_ process) sparticle-launch-control)
+    )
+  )
+
+
+(define *launch-matrix* (matrix-identity! (new 'global 'matrix)))
+
+(deftype sparticle-launch-control (inline-array-class)
+  "Top-level type containing all the state needed to launch a particle group.
+These are typically owned by a process, and allocated on the process heap.
+These refer to static particle definitions, and then spawn particles that are tracked by the
+particle system itself. This type just holds the launching-related state."
+  ((group                sparticle-launch-group)
+   (proc                 process-drawable)
+   (local-clock          int32)
+   (fade                 float)
+   (matrix               int8)
+   (state-mode           uint8                      3)
+   (state-counter        uint32)
+   (local-space-binding  particle-local-space-info          :overlay-at fade)
+   (last-spawn-frame     int32)
+   (last-spawn-time      int32)
+   (origin               matrix                     :inline)
+   (center               vector                     :inline :overlay-at (-> origin data 12))
+   (data                 sparticle-launch-state     :inline :dynamic)
+   )
+  (:methods
+    (sparticle-launch-control-method-14 () none)
+    (sparticle-launch-control-method-15 () none)
+    (sparticle-launch-control-method-16 () none)
+    (sparticle-launch-control-method-17 () none)
+    (sparticle-launch-control-method-18 () none)
+    (sparticle-launch-control-method-19 () none)
+    (sparticle-launch-control-method-20 () none)
+    )
+  )
+
+
+(set! (-> sparticle-launch-control heap-base) (the-as uint 48))
+
+(deftype sparticle-subsampler (basic)
+  ((spt-num      float)
+   (sp-system    sparticle-system)
+   (sp-launcher  sparticle-launcher)
+   (spawn-mat    matrix  :inline)
+   (inited?      basic)
+   )
+  (:methods
+    (new (symbol type sparticle-system sparticle-launcher float) _type_)
+    (sparticle-subsampler-method-9 () none)
+    (sparticle-subsampler-method-10 () none)
+    )
+  )
+
+
+(defmethod new sparticle-subsampler ((allocation symbol) (type-to-make type) (arg0 sparticle-system) (arg1 sparticle-launcher) (arg2 float))
+  (let ((s3-0 (object-new allocation type-to-make (the-as int (-> type-to-make size)))))
+    (if (zero? s3-0)
+        (go process-drawable-art-error "sparticle-subsampler")
+        )
+    (set! (-> s3-0 sp-launcher) arg1)
+    (set! (-> s3-0 inited?) #f)
+    (set! (-> s3-0 sp-system) arg0)
+    (set! (-> s3-0 spt-num) arg2)
+    (matrix-identity! (-> s3-0 spawn-mat))
+    s3-0
+    )
+  )
+
+(defun compute-rot-in-screenspace ((arg0 vector))
+  "Unclear what this does, but I'm not actually sure it makes sense. Unused"
+  0.0
+  (let ((a0-1 (-> (math-camera-matrix) fvec)))
+    0.0
+    (let ((v1-0 (new 'stack-no-clear 'vector)))
+      (let ((f0-3 (vector-dot a0-1 arg0)))
+        (vector-float*! v1-0 a0-1 f0-3)
+        )
+      (vector-! arg0 arg0 v1-0)
+      )
+    )
+  (let ((a2-1 (matrix-transpose! (new 'stack-no-clear 'matrix) (math-camera-matrix))))
+    (vector-matrix*! arg0 arg0 a2-1)
+    )
+  (the float (sar (shl (the int (atan (-> arg0 y) (* -1.0 (-> arg0 x)))) 48) 48))
+  )

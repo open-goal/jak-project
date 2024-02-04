@@ -5,5 +5,49 @@
 ;; name in dgo: aligner-h
 ;; dgos: GAME
 
+(defenum align-flags
+  :bitfield #t
+  :type uint32
+  (disabled) ;; keep object velocity
+  (af01)
+  (af02)
+  (af03)
+  (af04)
+  (af05)
+  )
+
 ;; DECOMP BEGINS
 
+(deftype align-control (basic)
+  ((flags        align-flags)
+   (process      process-drawable)
+   (frame-group  art-joint-anim)
+   (frame-num    float)
+   (matrix       matrix      2 :inline)
+   (transform    transform   2 :inline)
+   (delta        transformq  :inline)
+   (last-speed   meters)
+   (align        transformq  :inline :overlay-at (-> transform 0 trans data 0))
+   )
+  (:methods
+    (new (symbol type process) _type_)
+    (align-control-method-9 () none)
+    (align-control-method-10 () none)
+    (align-control-method-11 () none)
+    (align-control-method-12 () none)
+    (align-control-method-13 () none)
+    )
+  )
+
+
+;; WARN: Return type mismatch object vs align-control.
+(defmethod new align-control ((allocation symbol) (type-to-make type) (arg0 process))
+  (let ((v0-0 (the-as object (object-new allocation type-to-make (the-as int (-> type-to-make size))))))
+    (when (zero? (the-as align-control v0-0))
+      (go process-drawable-art-error "memory")
+      (return (the-as align-control 0))
+      )
+    (set! (-> (the-as align-control v0-0) process) (the-as process-drawable arg0))
+    (the-as align-control v0-0)
+    )
+  )

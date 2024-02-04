@@ -1,0 +1,198 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; definition of type collide-tri-result
+(deftype collide-tri-result (structure)
+  "A triangle result of a collision."
+  ((vertex       vector  3 :inline)
+   (intersect    vector  :inline)
+   (normal       vector  :inline)
+   (pat          pat-surface)
+   (collide-ptr  basic)
+   )
+  )
+
+;; definition for method 3 of type collide-tri-result
+(defmethod inspect ((this collide-tri-result))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this 'collide-tri-result)
+  (format #t "~1Tvertex[3] @ #x~X~%" (-> this vertex))
+  (format #t "~1Tintersect: ~`vector`P~%" (-> this intersect))
+  (format #t "~1Tnormal: ~`vector`P~%" (-> this normal))
+  (format #t "~1Tpat: ~D~%" (-> this pat))
+  (format #t "~1Tcollide-ptr: ~A~%" (-> this collide-ptr))
+  (label cfg-4)
+  this
+  )
+
+;; definition of type collide-mesh-tri
+(deftype collide-mesh-tri (structure)
+  "A triangle for foreground collision meshes."
+  ((vertex-index  uint8  3)
+   (unused        uint8)
+   (pat           pat-surface)
+   )
+  :pack-me
+  )
+
+;; definition for method 3 of type collide-mesh-tri
+(defmethod inspect ((this collide-mesh-tri))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this 'collide-mesh-tri)
+  (format #t "~1Tvertex-index[3] @ #x~X~%" (-> this vertex-index))
+  (format #t "~1Tunused: ~D~%" (-> this unused))
+  (format #t "~1Tpat: ~D~%" (-> this pat))
+  (label cfg-4)
+  this
+  )
+
+;; definition of type collide-mesh
+(deftype collide-mesh (basic)
+  "A collision mesh for foreground objects,
+bound to the joint specified by `joint-id`."
+  ((joint-id     int32)
+   (num-tris     uint32)
+   (num-verts    uint32)
+   (vertex-data  (inline-array vector))
+   (tris         collide-mesh-tri  1 :inline :offset  32)
+   )
+  (:methods
+    (collide-mesh-method-9 () none)
+    (collide-mesh-method-10 () none)
+    (collide-mesh-method-11 () none)
+    (collide-mesh-method-12 () none)
+    (collide-mesh-method-13 () none)
+    (collide-mesh-method-14 () none)
+    (collide-mesh-method-15 () none)
+    )
+  )
+
+;; definition for method 3 of type collide-mesh
+(defmethod inspect ((this collide-mesh))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this (-> this type))
+  (format #t "~1Tjoint-id: ~D~%" (-> this joint-id))
+  (format #t "~1Tnum-tris: ~D~%" (-> this num-tris))
+  (format #t "~1Tnum-verts: ~D~%" (-> this num-verts))
+  (format #t "~1Tvertex-data: #x~X~%" (-> this vertex-data))
+  (format #t "~1Ttris[1] @ #x~X~%" (-> this tris))
+  (label cfg-4)
+  this
+  )
+
+;; definition of type collide-mesh-cache-tri
+(deftype collide-mesh-cache-tri (structure)
+  "A triangle stored in the foreground mesh collide cache."
+  ((vertex  vector          3 :inline)
+   (normal  vector          :inline)
+   (bbox4w  bounding-box4w  :inline)
+   (pat     pat-surface     :overlay-at (-> normal data 3))
+   )
+  )
+
+;; definition for method 3 of type collide-mesh-cache-tri
+(defmethod inspect ((this collide-mesh-cache-tri))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this 'collide-mesh-cache-tri)
+  (format #t "~1Tvertex[3] @ #x~X~%" (-> this vertex))
+  (format #t "~1Tnormal: ~`vector`P~%" (-> this normal))
+  (format #t "~1Tbbox4w: #<bounding-box4w @ #x~X>~%" (-> this bbox4w))
+  (format #t "~1Tpat: ~D~%" (-> this normal w))
+  (label cfg-4)
+  this
+  )
+
+;; definition of type collide-mesh-cache-entry
+(deftype collide-mesh-cache-entry (structure)
+  "A foreground mesh collide cache entry."
+  ((mat   matrix                  :inline)
+   (tris  collide-mesh-cache-tri  :dynamic)
+   )
+  )
+
+;; definition for method 3 of type collide-mesh-cache-entry
+(defmethod inspect ((this collide-mesh-cache-entry))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this 'collide-mesh-cache-entry)
+  (format #t "~1Tmat: #<matrix @ #x~X>~%" (-> this mat))
+  (format #t "~1Ttris[0] @ #x~X~%" (-> this tris))
+  (label cfg-4)
+  this
+  )
+
+;; definition of type collide-mesh-cache
+(deftype collide-mesh-cache (basic)
+  "A collide cache for foreground meshes."
+  ((used-size  uint32)
+   (max-size   uint32)
+   (id         uint32)
+   (data       uint8  48000)
+   )
+  (:methods
+    (collide-mesh-cache-method-9 () none)
+    (is-id? (_type_ int) symbol)
+    (next-id! (_type_) uint)
+    (collide-mesh-cache-method-12 () none)
+    )
+  )
+
+;; definition for method 3 of type collide-mesh-cache
+(defmethod inspect ((this collide-mesh-cache))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this (-> this type))
+  (format #t "~1Tused-size: ~D~%" (-> this used-size))
+  (format #t "~1Tmax-size: ~D~%" (-> this max-size))
+  (format #t "~1Tid: ~D~%" (-> this id))
+  (format #t "~1Tdata[48000] @ #x~X~%" (-> this data))
+  (label cfg-4)
+  this
+  )
+
+;; definition for method 11 of type collide-mesh-cache
+;; ERROR: function was not converted to expressions. Cannot decompile.
+
+;; definition for method 10 of type collide-mesh-cache
+(defmethod is-id? ((this collide-mesh-cache) (id int))
+  "Does this cache have the given ID?"
+  (= (-> this id) id)
+  )
+
+;; failed to figure out what this is:
+(kmemopen global "collide-mesh-cache")
+
+;; definition (perm) for symbol *collide-mesh-cache*, type collide-mesh-cache
+(define-perm *collide-mesh-cache* collide-mesh-cache (new 'global 'collide-mesh-cache))
+
+;; failed to figure out what this is:
+(set! (-> *collide-mesh-cache* id) (the-as uint 1))
+
+;; failed to figure out what this is:
+(set! (-> *collide-mesh-cache* used-size) (the-as uint 0))
+
+;; failed to figure out what this is:
+(set! (-> *collide-mesh-cache* max-size) (the-as uint #xbb80))
+
+;; failed to figure out what this is:
+(kmemclose)
+
+
+
+

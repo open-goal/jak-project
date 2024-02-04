@@ -14,21 +14,21 @@
      )
   )
 
-;; disable for now, since the extra arg to get-process is unknown.
-; (defmacro process-spawn-function (proc-type func &key (from *default-dead-pool*) &key (to *default-pool*) &key (name #f) &key (stack-size #x4000) &key (stack *scratch-memory-top*) &rest args)
-;   "Start a new process that runs a function on its main thread.
-;    Returns a pointer to the new process (or #f? on error)."
+(defmacro process-spawn-function (proc-type func &key (from *default-dead-pool*) &key (to *default-pool*) &key (name #f) &key (stack-size #x4000) &key (stack *scratch-memory-top*) &rest args)
+  "Start a new process that runs a function on its main thread.
+   Returns a pointer to the new process (or #f? on error).
+   Note that the extra jak 3 arg is so far always 1 (checked in decompiler)"
 
-;   (with-gensyms (new-proc)
-;     `(let ((,new-proc (the-as ,proc-type (get-process ,from ,proc-type ,stack-size))))
-;         (when ,new-proc
-;           ((method-of-type ,proc-type activate) ,new-proc ,to ,(if name name `(symbol->string ',proc-type)) ,stack)
-;           (run-next-time-in-process ,new-proc ,func ,@args)
-;           (the (pointer ,proc-type) (-> ,new-proc ppointer))
-;           )
-;         )
-;     )
-;   )
+  (with-gensyms (new-proc)
+    `(let ((,new-proc (the-as ,proc-type (get-process ,from ,proc-type ,stack-size 1))))
+        (when ,new-proc
+          ((method-of-type ,proc-type activate) ,new-proc ,to ,(if name name `(symbol->string ',proc-type)) ,stack)
+          (run-next-time-in-process ,new-proc ,func ,@args)
+          (the (pointer ,proc-type) (-> ,new-proc ppointer))
+          )
+        )
+    )
+  )
 
 ; (defmacro process-spawn (proc-type &key (init #f) &key (from *default-dead-pool*) &key (to *default-pool*) &key (name #f) &key (stack-size #x4000) &key (stack *scratch-memory-top*) &rest args)
 ;   "Start a new process and run an init function on it.

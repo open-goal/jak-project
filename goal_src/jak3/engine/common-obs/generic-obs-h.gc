@@ -5,5 +5,309 @@
 ;; name in dgo: generic-obs-h
 ;; dgos: GAME
 
+;; +++task-arrow-flags
+(defenum task-arrow-flags
+  :type uint32
+  :bitfield #t
+  (task-arrow-flag-00 0)
+  (task-arrow-flag-01 1)
+  (task-arrow-flag-02 2)
+  (task-arrow-flag-03 3)
+  )
+;; ---task-arrow-flags
+
+
+;; +++manipy-options
+(defenum manipy-options
+  :bitfield #t
+  :type uint32
+  (mo-0 0)
+  )
+;; ---manipy-options
+
+
+(declare-type joint-mod basic)
+(declare-type sparticle-launch-group basic)
 ;; DECOMP BEGINS
 
+(deftype manipy (process-drawable)
+  ((root                  collide-shape :override)
+   (new-trans-hook        (function none))
+   (cur-trans-hook        (function none))
+   (cur-event-hook        (function none))
+   (new-joint-anim        art-joint-anim)
+   (new-joint-anim-blend  uint64)
+   (new-joint-anim-frame  float)
+   (anim-mode             symbol)
+   (cur-grab-handle       handle)
+   (cur-target-handle     handle)
+   (old-grab-pos          vector         :inline)
+   (joint                 joint-mod      4)
+   (new-post-hook         (function none))
+   (cur-post-hook         (function none))
+   (clone-copy-trans      symbol)
+   (shadow-backup         basic)
+   (draw?                 symbol)
+   (userdata              uint64)
+   (prefix                basic)
+   (shadow-volume-joint   int32)
+   (speed                 float)
+   (user-uint64           uint64         4)
+   (options               manipy-options)
+   )
+  (:state-methods
+    idle
+    )
+  )
+
+
+(deftype part-spawner (process)
+  "A process that spawns a specified particle group."
+  ((root           trsqv)
+   (part           sparticle-launch-control)
+   (path           basic)
+   (sound          ambient-sound)
+   (sound-extra    basic)
+   (mode           (pointer sparticle-launch-group))
+   (enable         symbol)
+   (path-pos       float)
+   (path-speed     float)
+   (last-velocity  vector  :inline)
+   (radius         meters)
+   (world-sphere   sphere  :inline)
+   )
+  (:state-methods
+    active
+    )
+  (:methods
+    (part-spawner-method-15 () none)
+    )
+  )
+
+
+(deftype part-tracker (process)
+  ((root             trsqv)
+   (mat              matrix      :inline)
+   (offset           vector      :inline)
+   (userdata         uint64)
+   (user-time        time-frame  2)
+   (user-vector      vector      :inline)
+   (user-handle      uint32      2 :offset 288)
+   (part             sparticle-launch-control)
+   (callback         (function part-tracker vector))
+   (linger-callback  (function part-tracker vector))
+   (duration         time-frame)
+   (linger-duration  time-frame)
+   (state-time       time-frame)
+   (target           handle)
+   (target-joint     int32)
+   )
+  (:methods
+    (part-tracker-method-14 () none)
+    (part-tracker-method-15 () none)
+    (part-tracker-method-16 () none)
+    (part-tracker-method-17 () none)
+    )
+  )
+
+
+(deftype part-tracker-init-params (structure)
+  ((userdata   uint64)
+   (duration   time-frame)
+   (group      sparticle-launch-group)
+   (callback   (function part-tracker vector))
+   (target     basic)
+   (mat-joint  basic)
+   )
+  )
+
+
+(deftype part-tracker-subsampler-init-params (structure)
+  ((userdata       uint64)
+   (duration       time-frame)
+   (group          sparticle-launch-group)
+   (callback       (function part-tracker vector))
+   (target         basic)
+   (mat-joint      basic)
+   (subsample-num  float)
+   )
+  )
+
+
+(deftype part-tracker-subsampler (part-tracker)
+  ((subsampler  basic)
+   )
+  )
+
+
+(deftype lightning-tracker (process)
+  ((root           trsqv)
+   (lightning      lightning-control)
+   (callback       (function lightning-tracker none))
+   (duration       time-frame)
+   (start-time     time-frame)
+   (offset0        vector      :inline)
+   (offset1        vector      :inline)
+   (target0        handle)
+   (target1        handle)
+   (target-joint0  int32)
+   (target-joint1  int32)
+   (sound          sound-id)
+   (userdata       uint64)
+   (user-time      time-frame  2)
+   (user-vector    vector      :inline)
+   (user-handle    handle      2 :offset 288)
+   )
+  (:methods
+    (lightning-tracker-method-14 () none)
+    (lightning-tracker-method-15 () none)
+    (lightning-tracker-method-16 () none)
+    )
+  )
+
+
+(deftype touch-tracker (process-drawable)
+  ((duration      time-frame)
+   (target        handle)
+   (event         symbol)
+   (run-function  (function object))
+   (callback      (function touch-tracker none))
+   (event-mode    basic)
+   )
+  (:methods
+    (touch-tracker-method-20 () none)
+    )
+  )
+
+
+(deftype swingpole (process-drawable)
+  ((edge-length  meters)
+   (path-pos     float)
+   (joint-track  int32)
+   (speed        meters)
+   (dir          vector      :inline)
+   (sync         sync-eased  :inline)
+   )
+  (:methods
+    (swingpole-method-20 () none)
+    (swingpole-method-21 () none)
+    (swingpole-method-22 () none)
+    (swingpole-method-23 () none)
+    (swingpole-method-24 () none)
+    )
+  )
+
+
+(deftype gui-query (structure)
+  ((x-position         int32)
+   (y-position         int32)
+   (message            string)
+   (decision           symbol)
+   (only-allow-cancel  symbol)
+   (no-msg             string)
+   (message-space      int32)
+   )
+  (:methods
+    (gui-query-method-9 () none)
+    (gui-query-method-10 () none)
+    )
+  )
+
+
+(deftype othercam (process)
+  ((hand               handle)
+   (old-global-mask    process-mask)
+   (mask-to-clear      process-mask)
+   (cam-joint-index    int32)
+   (old-pos            vector  :inline)
+   (old-mat-z          vector  :inline)
+   (had-valid-frame    symbol)
+   (border-value       basic)
+   (die?               symbol)
+   (survive-anim-end?  symbol)
+   (spooling?          symbol)
+   (fov                float)
+   )
+  (:states
+    othercam-running
+    )
+  )
+
+
+(deftype explosion-init-params (structure)
+  ((spawn-point             vector      :inline)
+   (spawn-quat              quaternion  :inline)
+   (radius                  float)
+   (scale                   float)
+   (group                   sparticle-launch-group)
+   (collide-with            collide-spec)
+   (damage                  float)
+   (damage-scale            float)
+   (vehicle-damage-factor   float)
+   (vehicle-impulse-factor  float)
+   (ignore-proc             uint64)
+   )
+  )
+
+
+(deftype explosion (process-drawable)
+  ((start-time       time-frame)
+   (duration         uint32)
+   (linger-duration  uint32)
+   (attack-id        uint32)
+   (mat              matrix                 :inline)
+   (params           explosion-init-params  :inline)
+   )
+  (:methods
+    (explosion-method-20 () none)
+    (explosion-method-21 () none)
+    (explosion-method-22 () none)
+    )
+  )
+
+
+(deftype process-hidden (process)
+  ()
+  (:state-methods
+    die
+    )
+  )
+
+
+(deftype simple-prim (process-drawable)
+  ((strip  prim-strip)
+   )
+  (:methods
+    (simple-prim-method-20 () none)
+    (simple-prim-method-21 () none)
+    (simple-prim-method-22 () none)
+    (simple-prim-method-23 () none)
+    (simple-prim-method-24 () none)
+    (simple-prim-method-25 () none)
+    )
+  )
+
+
+(define *simple-prim-additive* 72)
+
+(define *simple-prim-alpha-blend* 68)
+
+(define *simple-prim-subtractive* 66)
+
+(deftype task-arrow-params (structure)
+  ((flags     task-arrow-flags)
+   (map-icon  uint16)
+   (pos       vector      :inline)
+   (quat      quaternion  :inline)
+   )
+  )
+
+
+(deftype external-camera-controller (process)
+  ((pause-time  time-frame)
+   (blur        symbol)
+   )
+  (:methods
+    (external-camera-controller-method-14 () none)
+    )
+  )

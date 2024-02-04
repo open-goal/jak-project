@@ -1,0 +1,181 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; definition of type joint
+(deftype joint (basic)
+  "A joint from an animated skeleton. This defines the graph of the skeleton, and also the bind pose
+used for the mesh data. The joints are shared between all instances of the same model."
+  ((name       basic)
+   (number     int32)
+   (parent     joint)
+   (bind-pose  matrix  :inline)
+   )
+  )
+
+;; definition for method 3 of type joint
+(defmethod inspect ((this joint))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this (-> this type))
+  (format #t "~1Tname: ~A~%" (-> this name))
+  (format #t "~1Tnumber: ~D~%" (-> this number))
+  (format #t "~1Tparent: ~A~%" (-> this parent))
+  (format #t "~1Tbind-pose: #<matrix @ #x~X>~%" (-> this bind-pose))
+  (label cfg-4)
+  this
+  )
+
+;; definition of type bone-cache
+(deftype bone-cache (structure)
+  "Unused type. Existed in Jak 1, but wasn't used there."
+  ((bone-matrix    uint32)
+   (parent-matrix  uint32)
+   (dummy          uint32)
+   (frame          uint32)
+   )
+  )
+
+;; definition for method 3 of type bone-cache
+(defmethod inspect ((this bone-cache))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this 'bone-cache)
+  (format #t "~1Tbone-matrix: ~D~%" (-> this bone-matrix))
+  (format #t "~1Tparent-matrix: ~D~%" (-> this parent-matrix))
+  (format #t "~1Tdummy: ~D~%" (-> this dummy))
+  (format #t "~1Tframe: ~D~%" (-> this frame))
+  (label cfg-4)
+  this
+  )
+
+;; definition of type bone
+(deftype bone (structure)
+  "The location and scale of a bone in an animated skeleton. Each instance of a skeleton
+has its own copy of the bones. This data is used for collision checking or other gameplay math,
+but, despite the name, isn't directly used in rendering."
+  ((transform  matrix  :inline)
+   (position   vector  :inline :overlay-at (-> transform data 12))
+   (scale      vector  :inline)
+   )
+  )
+
+;; definition for method 3 of type bone
+(defmethod inspect ((this bone))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this 'bone)
+  (format #t "~1Ttransform: #<matrix @ #x~X>~%" (-> this transform))
+  (format #t "~1Tposition: #<vector @ #x~X>~%" (-> this transform trans))
+  (format #t "~1Tscale: #<vector @ #x~X>~%" (-> this scale))
+  (label cfg-4)
+  this
+  )
+
+;; definition of type skeleton
+(deftype skeleton (inline-array-class)
+  "Skeleton is an array of bones for the entire character. The bones are stored in an inline array so they can be
+easily dma'd to the scratchpad later."
+  ((bones  bone  :inline :dynamic)
+   )
+  )
+
+;; definition for method 3 of type skeleton
+(defmethod inspect ((this skeleton))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this (-> this type))
+  (format #t "~1Tlength: ~D~%" (-> this length))
+  (format #t "~1Tallocated-length: ~D~%" (-> this allocated-length))
+  (format #t "~1Tdata[0] @ #x~X~%" (-> this bones))
+  (label cfg-4)
+  this
+  )
+
+;; failed to figure out what this is:
+(set! (-> skeleton heap-base) (the-as uint 80))
+
+;; definition of type cspace
+(deftype cspace (structure)
+  "A cspace describes how to control a bone. It contains a reference to the joint, bone, and a callback function.
+The callback function is used to take the joint transforms out of the joint animation, then update the bone."
+  ((parent     cspace)
+   (joint      joint)
+   (joint-num  int16)
+   (geo        drawable)
+   (bone       bone)
+   (param0     (function cspace transformq none))
+   (param1     basic)
+   (param2     basic)
+   )
+  (:methods
+    (new (symbol type drawable) _type_)
+    (reset-and-assign-geo! (_type_ drawable) _type_)
+    )
+  )
+
+;; definition for method 3 of type cspace
+(defmethod inspect ((this cspace))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this 'cspace)
+  (format #t "~1Tparent: #<cspace @ #x~X>~%" (-> this parent))
+  (format #t "~1Tjoint: ~A~%" (-> this joint))
+  (format #t "~1Tjoint-num: ~D~%" (-> this joint-num))
+  (format #t "~1Tgeo: ~A~%" (-> this geo))
+  (format #t "~1Tbone: #<bone @ #x~X>~%" (-> this bone))
+  (format #t "~1Tparam0: ~A~%" (-> this param0))
+  (format #t "~1Tparam1: ~A~%" (-> this param1))
+  (format #t "~1Tparam2: ~A~%" (-> this param2))
+  (label cfg-4)
+  this
+  )
+
+;; definition of type cspace-array
+(deftype cspace-array (inline-array-class)
+  ((data  cspace  :inline :dynamic)
+   )
+  )
+
+;; definition for method 3 of type cspace-array
+(defmethod inspect ((this cspace-array))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this (-> this type))
+  (format #t "~1Tlength: ~D~%" (-> this length))
+  (format #t "~1Tallocated-length: ~D~%" (-> this allocated-length))
+  (format #t "~1Tdata[0] @ #x~X~%" (-> this data))
+  (label cfg-4)
+  this
+  )
+
+;; failed to figure out what this is:
+(set! (-> cspace-array heap-base) (the-as uint 32))
+
+;; definition for method 2 of type cspace
+(defmethod print ((this cspace))
+  (format
+    #t
+    "#<cspace ~S @ #x~X>"
+    (if (-> this joint)
+        (-> this joint name)
+        "nojoint"
+        )
+    this
+    )
+  this
+  )
+
+;; failed to figure out what this is:
+0

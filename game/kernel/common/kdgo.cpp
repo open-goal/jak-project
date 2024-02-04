@@ -138,7 +138,7 @@ u32 InitRPC() {
       !RpcBind(PLAY_RPC_CHANNEL, PLAY_RPC_ID[g_game_version])) {
     return 0;
   }
-  printf("Entering endless loop ... please wait\n");
+  lg::print("Entering endless loop ... please wait\n");
   for (;;) {
   }
 }
@@ -150,9 +150,9 @@ void StopIOP() {
   x[2] = 0x14;  // todo - this type and message
   //  RpcSync(PLAYER_RPC_CHANNEL);
   //  RpcCall(PLAYER_RPC_CHANNEL, 0, false, x, 0x50, nullptr, 0);
-  printf("IOP shut down\n");
+  lg::print("IOP shut down\n");
   //  sceDmaSync(0x10009000, 0, 0);
-  printf("DMA shut down\n");
+  lg::print("DMA shut down\n");
 }
 
 /*!
