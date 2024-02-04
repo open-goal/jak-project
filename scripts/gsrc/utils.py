@@ -78,5 +78,6 @@ def decompile_file(decompiler_path, decompiler_config, game_version, file_names,
         game_version,
         "--config-override",
         decompiler_args,
-    ]
+    ],
+    stdout = subprocess.DEVNULL
 )

@@ -4,8 +4,6 @@
 # - if the function bodies are the same, copy the variables from whichever game has them defined to the other
 #   - also, if it's a function and a docstring exists on one side but not the other, copy the docstring to the other side's all-types file
 
-# TODO - run without caring about docstrings, just var_names for all files in reference tests folder
-
 import argparse
 import glob
 import json
@@ -17,7 +15,7 @@ from utils import decompile_file, is_file_in_game
 parser = argparse.ArgumentParser("copy-common-naming")
 parser.add_argument("--file", help="The name of the file", type=str)
 parser.add_argument("--decompiler", help="The path to the decompiler", type=str)
-parser.add_argument("--update-names-from-refs", help="The decomp config version", type=bool)
+parser.add_argument("--update-names-from-refs", help="The decomp config version", action='store_true')
 args = parser.parse_args()
 
 def find_all_function_defs(lines):
@@ -70,11 +68,14 @@ def get_all_types_for_game(game_name):
 jak2_alltypes = get_all_types_for_game("jak2")
 jak3_alltypes = get_all_types_for_game("jak3")
 
+file_stats = ""
+
 def update_file_var_name_casts(file_name, modify_alltypes):
+  global file_stats
   # Check if the file exists in both games
   if not is_file_in_game("jak3", file_name) or not is_file_in_game("jak2", file_name):
     print("File not found in both games")
-    exit(1)
+    return
 
   # Decompile the file for both games
   decompile_file(args.decompiler, "jak3/jak3_config.jsonc", "ntsc_v1", "[\"{}\"]".format(file_name), True)
@@ -100,7 +101,7 @@ def update_file_var_name_casts(file_name, modify_alltypes):
       matching_func_names.append(func_name)
 
   # print(matching_func_names)
-  print("Found {} matching functions in {}".format(len(matching_func_names, file_name)))
+  file_stats = file_stats + "Found {} matching functions in {}\n".format(len(matching_func_names), file_name)
 
   # Go grab the var casts for each game
   jak2_var_casts = get_var_casts_for_game("jak2")
@@ -139,13 +140,15 @@ def update_file_var_name_casts(file_name, modify_alltypes):
             break
 
 if args.update_names_from_refs:
-  reference_test_files = glob.glob("./decompiler/reference/jak3/**/*_REF.gc")
-  for reference_test_file in reference_test_files:
+  reference_test_files = glob.glob("./test/decompiler/reference/jak3/**/*_REF.gc", recursive=True)
+  for file_no, reference_test_file in enumerate(reference_test_files):
     file_name = os.path.basename(reference_test_file).split("_REF.gc")[0]
+    print("({}/{}) Checking Var Name Casts for {}...".format(file_no+1, len(reference_test_files), file_name))
     update_file_var_name_casts(file_name, False)
 else:
   update_file_var_name_casts(args.file, True)
 
+print(file_stats)
 
 def get_type_docstrings_from_alltypes(lines):
   store = {}
