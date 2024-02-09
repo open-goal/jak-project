@@ -2046,20 +2046,48 @@
   :size-assert         #x8c
   :flag-assert         #x1c0000008c
   (:methods
-    (seek-toward-heading-vec! (_type_ vector float time-frame) quaternion) ;; 9
-    (set-heading-vec! (_type_ vector) quaternion) ;; 10
-    (seek-to-point-toward-point! (_type_ vector float time-frame) quaternion) ;; 11
-    (point-toward-point! (_type_ vector) quaternion) ;; 12
-    (seek-toward-yaw-angle! (_type_ float float time-frame) quaternion) ;; 13
-    (set-yaw-angle-clear-roll-pitch! (_type_ float) quaternion) ;; 14
-    (set-roll-to-grav! (_type_ float) quaternion) ;; 15
-    (set-roll-to-grav-2! (_type_ float) quaternion) ;; 16
-    (rotate-toward-orientation! (_type_ quaternion float float int int float) quaternion) ;; 17
-    (set-quaternion! (_type_ quaternion) quaternion) ;; 18
-    (set-heading-vec-clear-roll-pitch! (_type_ vector) quaternion) ;; 19
-    (point-toward-point-clear-roll-pitch! (_type_ vector) quaternion) ;; 20
-    (rot->dir-targ! (_type_) quaternion) ;; 21
-    (y-angle (_type_) float) ;; 22
+    (seek-toward-heading-vec!
+      "Adjust the orientation to point along dir, only changing our yaw.
+       The vel is a maximum velocity limit.
+       The frame count is the time constant (first order).
+       There's some logic to avoid rapidly changing directions"
+      (_type_ vector float time-frame) quaternion) ;; 9
+    (set-heading-vec!
+      "Makes us look in the arg0 direction immediately.  Pitch will be unchanged."
+      (_type_ vector) quaternion) ;; 10
+    (seek-to-point-toward-point!
+      "Seek toward pointing toward arg0 from our current location."
+      (_type_ vector float time-frame) quaternion) ;; 11
+    (point-toward-point! "Immediately point toward arg0." (_type_ vector) quaternion) ;; 12
+    (seek-toward-yaw-angle! "Seek toward the given yaw angle." (_type_ float float time-frame) quaternion) ;; 13
+    (set-yaw-angle-clear-roll-pitch!
+      "Immediately clear our roll and pitch and set yaw to the given angle."
+      (_type_ float) quaternion) ;; 14
+    (set-roll-to-grav!
+      "Set our roll so that our local down aligns with standard gravity."
+      (_type_ float) quaternion) ;; 15
+    (set-roll-to-grav-2!
+      "Set our roll so that our local down aligns with standard gravity."
+      (_type_ float) quaternion) ;; 16
+    (rotate-toward-orientation!
+      "Adjust our orientation toward target, subject to some rate limits.
+       For Jak 1, I said:
+       I don't think this is a very robust function and probably doesn't work right in cases
+       where an axis flips by 180 degrees.
+       But now they use matrix-from-two-vectors-the-long-way-smooth to fix it! Good job.
+       This additionally uses the fancy logic of matrix-from-two-vectors-smooth."
+      (_type_ quaternion float float int int float) quaternion) ;; 17
+    (set-quaternion! "Set this [[trsqv]]'s quaternion." (_type_ quaternion) quaternion) ;; 18
+    (set-heading-vec-clear-roll-pitch!
+      "Set our rotation to point along the given heading, with no roll or pitch."
+      (_type_ vector) quaternion) ;; 19
+    (point-toward-point-clear-roll-pitch!
+      "Set our orientation to point toward arg0, clearing roll and pitch."
+      (_type_ vector) quaternion) ;; 20
+    (rot->dir-targ!
+      "Set the target direction for this [[trsqv]] to its quaternion."
+      (_type_) quaternion) ;; 21
+    (y-angle "Get the y angle for this [[trsqv]]'s quaternion." (_type_) float) ;; 22
     (global-y-angle-to-point
       "Get the angle in the xz plane from the position of this trsqv to the point arg0
        (ignores our current yaw)."
@@ -2068,9 +2096,9 @@
       "Get the y angle between the current orientation and arg0
        (how much we'd have to yaw to point at arg0)."
       (_type_ vector) float) ;; 24
-    (roll-relative-to-gravity (_type_) float) ;; 25
+    (roll-relative-to-gravity "Get our roll, relative to 'down' from gravity." (_type_) float) ;; 25
     (set-and-limit-velocity (_type_ int vector float) trsqv) ;; 26
-    (get-quaternion (_type_) quaternion) ;; 27
+    (get-quaternion "Get the quat for this [[trsqv]]." (_type_) quaternion) ;; 27
     )
   )
 
@@ -4116,10 +4144,10 @@
   (tie-envmap-scissor)
   (tie-vanish)
   (generic)
-  (merc)
-  (emerc)
   (shrubbery)
   (shrub-near)
+  (merc)
+  (emerc)
   (billboard)
   (shrubbery-vanish)
   (tfrag-trans)
@@ -7561,7 +7589,7 @@
   (:methods
     (level-group-method-9 () none) ;; 9 ;; (level-get (_type_ symbol) level)
     (level-group-method-10 () none) ;; 10 ;; (level-get-with-status (_type_ symbol) level)
-    (level-group-method-11 () none) ;; 11 ;; (get-level-by-heap-ptr-and-status (_type_ pointer symbol) level)
+    (get-level-by-heap-ptr-and-status (_type_ pointer symbol) level) ;; 11
     (level-group-method-12 () none) ;; 12 ;; (level-get-for-use (_type_ symbol symbol) level)
     (level-group-method-13 () none) ;; 13 ;; (activate-levels! (_type_) int)
     (level-group-method-14 () none) ;; 14 ;; (debug-print-entities (_type_ symbol type) none)
@@ -14067,17 +14095,17 @@
   :size-assert         #x14
   :flag-assert         #xe00000014
   (:methods
-    (art-method-9 () none) ;; 9 ;; (login (_type_) _type_)
-    (art-method-10 () none) ;; 10 ;; (get-art-by-name-method (_type_ string type) basic)
-    (get-art-by-name (_type_ string type) basic) ;; 11 ;; (get-art-idx-by-name-method (_type_ string type) int)
-    (art-method-12 () none) ;; 12 ;; (needs-link? (_type_) symbol)
-    (art-method-13 () none) ;; 13
+    (login (_type_) _type_) ;; 9
+    (art-method-10 (_type_) _type_) ;; 10
+    (get-art-by-name-method (_type_ string type) basic) ;; 11
+    (get-art-idx-by-name-method (_type_ string type) int) ;; 12
+    (needs-link? (_type_) symbol) ;; 13
     )
   )
 
 (deftype art-element (art)
   "Base class Art which is not a container of more art."
-  ((master-art-group-name  basic  :offset-assert 20)
+  ((master-art-group-name  string :offset-assert 20)
    (master-art-group-index int32  :offset-assert 24)
    (pad uint8 20)
    )
@@ -14116,7 +14144,8 @@
    )
   :flag-assert #x1000000020
   (:methods
-    (unknown-0 () none)
+    (relocate (_type_ kheap (pointer uint8)) _type_ :replace)
+    (link-art! (_type_) art-group)
     (unknown-1 () none)
     )
   )
@@ -14539,7 +14568,7 @@
    (lump-four-count     uint8                  :offset-assert 1)
    (fp-qwc              uint8                  :offset-assert 2)
    (mat-xfer-count      uint8                  :offset-assert 3)
-   (mat-dest-data       merc-mat-dest :dynamic :offset-assert 4) ;; guessed by decompiler
+   (mat-dest-data       merc-mat-dest :dynamic :inline :offset-assert 4) ;; guessed by decompiler
    )
   :method-count-assert 9
   :size-assert         #x4
@@ -14771,7 +14800,7 @@
   ((num-joints int32                     :offset 12)
    (seg-table  (array uint64)            :offset 28) ;; guessed by decompiler
    (header     merc-ctrl-header :inline  :offset-assert 48)
-   (effect     merc-effect      :dynamic :offset-assert 176) ;; guessed by decompiler
+   (effect     merc-effect      :dynamic :inline :offset-assert 176) ;; guessed by decompiler
    )
   :method-count-assert 14
   :size-assert         #xb0
@@ -19046,6 +19075,7 @@
   (notify-of-abort 0)
   (allow-abort 1)
   (inherit-orientation 2)
+  (pcf3 3)
   )
 ;; ---pov-camera-h:pov-camera-flags
 
@@ -27491,13 +27521,22 @@
 ;; transformq                     ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (define-extern transformq-copy! function) ;; (function transformq transformq transformq)
-(define-extern matrix<-transformq! (function matrix transformq matrix))
-;; (define-extern matrix<-no-trans-transformq! function) ;; (function matrix transformq matrix)
-;; (define-extern matrix<-transformq+trans! function) ;; (function matrix transformq vector matrix)
-;; (define-extern matrix<-transformq+world-trans! function) ;; (function matrix transformq vector matrix)
-(define-extern matrix<-parented-transformq! (function matrix transformq vector matrix))
-;; (define-extern matrix<-transformq+rot-offset! function) ;; (function matrix transformq vector matrix)
+(define-extern transformq-copy! "Set arg0 = arg1." (function transformq transformq transformq))
+(define-extern matrix<-transformq! "Convert to 4x4 affine transform." (function matrix transformq matrix))
+(define-extern matrix<-no-trans-transformq! "Create 4x4 affine transform with no translation." (function matrix transformq matrix))
+(define-extern matrix<-transformq+trans!
+  "Convert to affine transform with an additional translation (in the local frame)."
+  (function matrix transformq vector matrix))
+(define-extern matrix<-transformq+world-trans!
+  "Convert to affine transform with an additional translation in the world frame (not rotated)."
+  (function matrix transformq vector matrix))
+(define-extern matrix<-parented-transformq!
+  "Unused. Seems like the parented thing means there's an inverse scale in arg2."
+  (function matrix transformq vector matrix))
+(define-extern matrix<-transformq+rot-offset!
+  "Affine transform for a point offset in the destination frame of the transformq (rather than just
+   adding an offset at the end)."
+  (function matrix transformq vector matrix))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; collide-func                   ;;
@@ -28130,13 +28169,13 @@
 ;; merc-vu1                       ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (define-extern merc-vu1-block object) ;; vu-function
+(define-extern merc-vu1-block vu-function)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; emerc-vu1                      ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (define-extern emerc-vu1-block object) ;; vu-function
+(define-extern emerc-vu1-block vu-function)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; merc-blend-shape               ;;
@@ -28225,24 +28264,24 @@
 
 ;; merc-ctrl is already defined!
 
-;; (define-extern *texture-login-data* object) ;; texture-login-data
-;; (define-extern texture-usage-init function) ;; (function merc-ctrl symbol)
-;; (define-extern texture-usage-update function) ;; (function texture symbol)
-;; (define-extern merc-stats-display function) ;; (function merc-ctrl none)
-;; (define-extern merc-stats function) ;; (function none)
-;; (define-extern merc-edge-stats function) ;; (function none)
-;; (define-extern merc-vu1-add-vu-function function) ;; (function dma-packet vu-function int dma-gif-packet)
-;; (define-extern merc-vu1-initialize-chain function) ;; (function dma-gif-packet int dma-packet)
-;; (define-extern merc-vu1-init-buffer function) ;; (function bucket-id int symbol int)
-;; (define-extern merc-vu1-init-buffers function) ;; (function none)
+(define-extern *texture-login-data* texture-login-data)
+(define-extern texture-usage-init (function merc-ctrl symbol))
+(define-extern texture-usage-update (function texture symbol))
+(define-extern merc-stats-display (function merc-ctrl none))
+(define-extern merc-stats (function none))
+(define-extern merc-edge-stats (function none))
+(define-extern merc-vu1-add-vu-function (function dma-packet vu-function int dma-gif-packet))
+(define-extern merc-vu1-initialize-chain (function dma-gif-packet int dma-packet))
+(define-extern merc-vu1-init-buffer (function bucket-id int symbol int))
+(define-extern merc-vu1-init-buffers (function none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; emerc                          ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (define-extern emerc-vu1-initialize-chain function) ;; (function dma-gif-packet dma-packet)
-;; (define-extern emerc-vu1-init-buffer function) ;; (function bucket-id gs-test int none)
-;; (define-extern emerc-vu1-init-buffers function) ;; (function none)
+(define-extern emerc-vu1-initialize-chain (function dma-gif-packet dma-packet))
+(define-extern emerc-vu1-init-buffer (function bucket-id gs-test int none))
+(define-extern emerc-vu1-init-buffers (function none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; ripple                         ;;
@@ -30404,7 +30443,7 @@
 ;; (define-extern remap-level-name function) ;; (function level-load-info symbol)
 ;; (define-extern add-bsp-drawable function) ;; (function bsp-header level symbol display-frame none)
 ;; (define-extern *login-state* object) ;; login-state
-;; (define-extern *print-login* object) ;; symbol
+(define-extern *print-login* symbol)
 ;; (define-extern load-buffer-resize function) ;; (function level dgo-header none)
 ;; (define-extern level-find-borrow-slot function)
 ;; (define-extern level-update-after-load function) ;; (function level login-state level)
@@ -36567,7 +36606,7 @@
 ;; (define-extern pov-camera-play-and-reposition function) ;; (function art-joint-anim vector float none :behavior pov-camera)
 ;; (define-extern pov-camera-init-by-other function) ;; (function vector skeleton-group string pov-camera-flag process-drawable pair none :behavior pov-camera)
 ;; (define-extern othercam-calc function) ;; (function float float)
-;; (define-extern othercam-init-by-other function) ;; (function pov-camera int symbol symbol none :behavior othercam)
+(define-extern othercam-init-by-other (function pov-camera int symbol symbol none :behavior othercam))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; powerups                       ;;
