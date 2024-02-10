@@ -1,5 +1,6 @@
 #include "log.h"
 
+#include <cstdarg>
 #include <cstdio>
 #include <cstdlib>
 #include <mutex>
