@@ -1710,7 +1710,7 @@ class DefskelgroupElement : public FormElement {
     u8 timestep_freq;
     u64 secret;
 
-    goos::Object to_static_macro(const std::string& ag_name, const Env& env) const;
+    goos::Object to_list(const std::string& ag_name, const Env& env) const;
   };
   struct StaticInfo {
     std::string name;  // jak 2/3

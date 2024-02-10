@@ -3067,8 +3067,8 @@ void DefskelgroupElement::get_modified_regs(RegSet& regs) const {
   m_info.jgeo->get_modified_regs(regs);
 }
 
-goos::Object DefskelgroupElement::ClothParams::to_static_macro(const std::string& ag_name,
-                                                               const Env& env) const {
+goos::Object DefskelgroupElement::ClothParams::to_list(const std::string& ag_name,
+                                                       const Env& env) const {
   std::vector<goos::Object> result;
   if (mesh != 0) {
     // TODO use art element name for mesh
@@ -3178,8 +3178,7 @@ goos::Object DefskelgroupElement::ClothParams::to_static_macro(const std::string
         {pretty_print::to_symbol("secret-disable"),
          pretty_print::to_symbol(fmt::format("(game-secrets {})", fmt::join(bits, " ")))}));
   }
-  auto list = pretty_print::build_list(result);
-  return pretty_print::build_list({pretty_print::to_symbol("static-cloth-params"), list});
+  return pretty_print::build_list(result);
 }
 
 goos::Object DefskelgroupElement::to_form_internal(const Env& env) const {
@@ -3275,14 +3274,13 @@ goos::Object DefskelgroupElement::to_form_internal(const Env& env) const {
           pretty_print::to_symbol(fmt::format(":global-effects {}", m_static_info.global_effects)));
     }
     if (!m_static_info.clothing.empty()) {
-      std::vector<goos::Object> cloth_array;
+      std::vector<goos::Object> cloth_list;
       forms.push_back(pretty_print::to_symbol(":clothing"));
-      cloth_array.push_back(pretty_print::to_symbol("static-cloth-params-array"));
       for (const auto& p : m_static_info.clothing) {
-        auto macro = p.to_static_macro(m_static_info.art_group_name + "-ag", env);
-        cloth_array.push_back(macro);
+        auto macro = p.to_list(m_static_info.art_group_name + "-ag", env);
+        cloth_list.push_back(macro);
       }
-      forms.push_back(pretty_print::build_list(cloth_array));
+      forms.push_back(pretty_print::build_list(cloth_list));
     }
   }
 

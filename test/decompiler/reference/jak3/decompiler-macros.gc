@@ -930,11 +930,10 @@
                         &key (shadow-joint-index 0)
                         &key (light-index 0)
                         &key (global-effects 0)
-                        &key (clothing (the (array cloth-params) #f))
+                        &key (clothing ())
                         )
   "Define a new static skeleton-group."
-  `(let ((cloth ,clothing)
-         (skel (new 'static 'skeleton-group
+  `(let ((skel (new 'static 'skeleton-group
                         :name ,(symbol->string name)
                         :extra #f
                         :info #f
@@ -954,8 +953,10 @@
                         )))
 
         ;; set cloth params array if present
-        (if cloth
-          (set! (-> skel clothing) cloth)
+        (when ,(neq? clothing '())
+          (set! (-> skel clothing) (new 'static 'boxed-array :type cloth-params :length 0 :allocated-length ,(length clothing)))
+          ,@(apply-i (lambda (x i) `(set! (-> skel clothing ,i) (static-cloth-params ,x))) clothing)
+          (set! (-> skel clothing length) ,(length clothing))
           )
 
         ;; set joint geometry and joint bones
