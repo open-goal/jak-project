@@ -1,720 +1,13 @@
 ;;-*-Lisp-*-
 (in-package goal)
 
-;; name: joint.gc
-;; name in dgo: joint
-;; dgos: GAME
-
-;; sorry - this file has a lot of inline modifiations/comments.
-;; it's probably better to update this one manually!
-
-;; The "joint" system is used to play back animations.
-;; At a very high level, the process to animate a character:
-;;  - the gameplay code uses the `ja` macros to set up joint animations.
-;;  - the process-drawable system updates the animation metadata in joint-control. This is responsible for
-;;    producing an array of joint-control-channel. The channels are arranged into a blend tree, and each
-;;    channel has a frame number (possibly in between frames) and interpolation weight for the blend tree.
-;; - This file, joint.gc looks at those animations, frame numbers, blend weights, and tree structure, then
-;;   produces the relative transform between bones, called "joint transforms"
-;; - The process-drawable system uses the joint transforms to compute bone transforms.
-;; - The gameplay code and collision code use the bone transforms to determine world-space positions/rotations.
-;; - The "bones.gc" system builds rendering matrices for the foreground renderer
-;; - The merc, mercneric, and shadow renderers consume these matrices for their skinning calculations.
-
-;; --- Joint, bone, and cspace ---
-
-;; A "bone" is simply the world space transformation of a character's bone.
-;; These "bones" are eventually used to position collision geometry, and compute the skinning matrices for rendering.
-;; Note that bones matrices can include per-axis scaling too, to allow animated characters to appear squashed/stretched.
-
-;; "joint" refers the parent-child relation of bones. Like a real skeleton, moving one bone will cause all the
-;; bones "below" it in the tree to move too.  The "joint transform" refers to the relative transformation between bones.
-;; The actual "joint" type is a node in this tree, and simply stores name/indexing information. (it also stores the mesh bind pose,
-;; but this is _not_ used at all by the joint system - only renderers! the bind-pose is a property of the meshes and how they are exported,
-;; not the actual skeleton/bone locations.
-
-;; "cspace" is a mysterious term. There is a cspace for each bone, and it tells you how to control the bone.
-;; By default, the bone is controlled from the animation, in the normal way. It is possible to override this
-;; by providing your own callback. This might modify the animation (for example, scale something for big-head mode, mirror something)
-;; or completely override it (for example, adjust the transformation to move some disconnected part of a character, spin
-;; the propeller on a zoomer).
-;; The joint-mod system internally sets the cspace to apply modifications to a joint.
-
-;; the cspace stores a reference to the bone, and often times the game will just pass around the cspace in places
-;; where they just want the bone.
-
-;; Note on the cspace bone matrix: when extracting the translation, they use vector<-cspace!, which divides by the w,w component...
-;; I have no idea why this is done. It happens in all 3 games. It seems like this value is almost exactly 1 in all cases.
-
-;; ---- Compression and streaming ----
-;; Animations from cutscenes are streamed in chunks. This chunking happens a level above this file, and this file just
-;; sees short, several second long animations.
-
-;; Animations for jak (walking, jumping, etc) are not streamed since there would be too much latency to wait for the DVD drive.
-;; Some of these animations are wrapped in LZO compression. This requires decompressing the entire animation to access it.
-;; To avoid redoing the LZO compression on every frame, there is a LZO animation decompression cache. Ideally, the animation
-;; is decompressed once on the first frame its used, then remains in the cache while it's in use.
-
-;; Additionally, all animations have their own inner compression format. This format is designed for speed and ease of decompression,
-;; and is designed so you can seek to an arbitrary frame. The decompressor is stateless - if frame n + 1 is decompressed after frame n,
-;; there is no benefit or reused information.
-
-;; ---- Blending animations ----
-;; Multiple animations are played at the same time, using a tree structure. Each animation runs on a separate "channel".
-;; There are a few different ways this is specified in gameplay code. The most common way is simply using `ja-channel-push!` calls.
-
-;; The tree operates as a stack machine, consisting of push, blend, and stack operations.
-;; The "push" operation creates a new entry on the stack, consisting of an animation.
-;; The "blend" operation blends against the last thing on the stack.
-;; The "stack" operation adds together the last two things, with the given weight.
-
-;; This is best observed with an example:
-;; PUSH(A)
-;;   a = 1
-;; BLEND(B, 0.5)
-;;   a = 0.5, b = 0.5
-;; PUSH(C)
-;;   a = 0.5, b = 0.5
-;;   c = 1.0
-;; STACK(0.25)
-;;   a = 0.125, b = 0.125, c = 0.75
-
-;; ---- Stack1 and Push1 ----
-
-;; There are two strange operations: stack1 and push1.
-;; My current understanding is that this is simply an optimization.
-;; Basically, if the last two joint channels are a "push", then "stack", it is effectively blending "everything before these"
-;; with "this last pushed channel".
-
-;; In this case, the engine will set these to push1 and stack1. The "push1" behaves like a blend, and the stack1 is ignored.
-;; This has the same behavior, but two advantages: it is okay to completely ignore the stack1, and it reduces the stack depth by one.
-
-;; with our example
-
-;; PUSH(A)
-;;   a = 1
-;; BLEND(B, 0.5)
-;;   a = 0.5, b = 0.5
-;; PUSH1(C, 0.25) ;; note: this needs the weight!
-;;   a = 0.125, b = 0.125, c = 0.75
-;; STACK1(0.25)   ;; does nothing, can be left out.
-;;   a = 0.125, b = 0.125, c = 0.75
-
-;; You might wonder: why both having push1/stack1? Couldn't the code doing animation just request a `blend`,
-;; and then we wouldn't have to special-case push1/stack1 here?
-;; The reason is probably the no-push feature below
-
-;; ---- no-push -----
-;; if "no-push" mode is active, then the stack machine acts like "pushing" just overwrites the top of the stack, and
-;; stacking does nothing
-
-;; PUSH(A)
-;;   a = 1
-;; BLEND(B, 0.5)
-;;   a = 0.5, b = 0.5
-;; PUSH(C)
-;;   c = 1.0
-;; STACK(0.25)
-;;   c = 1.0
-
-;; however, the actual implementation is that pushes work as normal, and stacking always takes the most recent.
-
-;; PUSH(A)
-;;   a = 1
-;; BLEND(B, 0.5)
-;;   a = 0.5, b = 0.5
-;; PUSH(C)
-;;   a = 0.5, b = 0.5
-;;   c = 1.0
-;; STACK(0.25) ;; the weight is ignored
-;;   c = 1.0
-
-;; and, in no-push mode, the push1/stack1 _don't_ act like a blend! and the implementation is so you can
-;; skip the stack1 entirely.
-
-;; PUSH(A)
-;;   a = 1
-;; BLEND(B, 0.5)
-;;   a = 0.5, b = 0.5
-;; PUSH1(C, 0.25) ;; note: weight is ignored
-;;   c = 1.0
-;; STACK1(0.25)   ;; does nothing, can be left out.
-;;   c = 1.0
-
-;; (note: no-push mode is only supported by the matrix-from-control! function
-;;  which is used to implement cspace<-matrix-no-push-joint!, which grabs a single joint's matrix
-;;  for the aligner - more on this later.)
-
-;; ---- Interp2 mode ----
-;; Jak 2 introduced a new interpolation system, which runs on top of the blending system described above.
-;; They key feature of this new system is that it can mask animations per joint. For example, they apply "gun" animations
-;; only to the upper body of jak, while keeping the lower body animated normally. Some joints in the middle of jak are a blend
-;; of the two.
-;; The important part is that this runs at the joint transform level, not the bone tranform level.
-;; Internally, this works by running the entire animation system twice, then blending the joint transform results.
-
-;; --- The first three cspaces/bones ---
-;; (this is how it gets set up by default. individual actors can always override.)
-
-;; The first cspace is a special one without a joint. It is "root", and is simply a copy of the actors "root" position.
-;; This is what makes all animations relative to the actor's position. There's no joint for this.
-
-;; The second cspace is the "align" cspace. This joint is an animated matrix rather than a transformq.
-;; This is used to move the process drawable root. Why would you want to do that? It means the an animation actually moves
-;; the process, so if the animation is cancelled, the actor stays in the same spot. The aligner also populates the transv
-;; (velocity) based on the speed of the align, so you can use accurate velocities in physics/collision queries.
-
-;; The third cspace is the "prejoint" cspace. This is always the parent of all bones which are associated with meshes.
-;; So you can modify the prejoint to move the entire visible actor (without moving the process root trans).
-;; Like the second cpsace, it is an animated matrix rather than a transformq.
-
-;; All other joints are animated transformqs, but I'm not sure why.
-
-;; ---- Inner decompression format ----
-
-;; The compressed format is relatively simple.
-;; There is a "fixed" data for an entire animation, and "frame data": one for each frame.
-;; Each data has some u64's, u32's, and u16's.
-
-;; For the two matrix joints, there is a bit which indicates if the matrix is varying. If so, the matrix is stored
-;; in the frame data (so there is a different matrix for each frame), and if not, it is stored in the fixed data (one
-;; matrix for the entire animation).
-
-;; For the transformq joints, there are 4-bits of "control" per joint, stored in the control-bits array (packed)
-;; the first bit indicates if the trans is varying, quat is varying, scale is varying, and the format of the trans.
-;; If the data is varying, it can be found in the frame data, otherwise it is in the fixed data.
-
-;; If the trans format bit is not set, the trans is stored as int16's. The x, y are stored in a single u32, and the z
-;; is stored in a single u16. (the reason for this is to avoid unaligned loads and ps2 instruction specific optimization)
-;; The trans should be multiplied by 4 to get meters.
-
-;; If the trans format bit is set, the trans is stored as floats. The x, y are stored in a single u64, and the z is
-;; stored in a single u32. There is no scaling or int/float conversion needed.
-
-;; The quaternion is stored as 4 int16's packed into a single u64. The value should be divided by 32768.
-;; Note that the decompressor handles "flipped" quaternions (all elements multiplied by -1) in interpolation so there should
-;; be no assumptions about the quaternion convention of animations (of both the compressed data, and the output of the decompressor)
-
-;; The scale is stored as 3 int16's. The x, y are stored in a single u32, and the z is stored in a single u16.
-;; The scale should be divided by 4096.
-
-(define-extern create-interpolated-joint-animation-frame (function joint-anim-frame int joint-control int))
-(define-extern *anim-manager* art-joint-anim-manager)
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; new joint decompressor - now in GOAL!
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-;; this was re-written in GOAL. Despite being not well optimized, it ends up being faster
-;; than the original when decompiled with MIPS2C.
-
-;; request to decompress data from an animation
-(deftype joint-decomp-request (structure)
-  ((jacc joint-anim-compressed-control)
-   (frame int)
-   (frame-interp float)
-   (amount float))
-  )
-
-(deftype blend-tree-stack-frame (structure)
-  ((weights float 24)
-   (quads   vector 6 :inline :overlay-at weights))
-  )
-
-(deftype new-joint-decompressor-work (structure)
-  ((requests joint-decomp-request 24 :inline)
-   (num-requests int32)
-   (blend-stack blend-tree-stack-frame 4 :inline)
-   )
-  (:methods
-   (eval-blend-tree! (_type_ joint-control) none)
-   (output-blend-tree! (_type_ joint-control) none)
-   (build-requests! (_type_ joint-control) none)
-   (init-frame! (_type_ joint-anim-frame int) none)
-   (process-request! (_type_ joint-decomp-request joint-anim-frame int) none)
-   (process-requests! (_type_ joint-anim-frame int) none)
-   (finalize-frame! (_type_ joint-anim-frame int) none)
-   )
-  )
-
-(deftype new-joint-decompressor-stats (structure)
-  ((num-calls int32)
-   (num-anims int32)
-   (num-joints int32)
-   (total-time int32)
-   )
-  (:methods
-    (reset! (_type_) none)
-    )
-  )
-
-(defmethod reset! ((this new-joint-decompressor-stats))
-  (set! (-> this num-calls) 0)
-  (set! (-> this num-anims) 0)
-  (set! (-> this num-joints) 0)
-  (set! (-> this total-time) 0)
-  (none)
-  )
-
-(define *new-joint-decompressor-stats* (new 'global 'new-joint-decompressor-stats))
-(define *new-joint-decompressor-work* (new 'global 'new-joint-decompressor-work))
-
-(defun new-joint-decompressor ((dst joint-anim-frame) (num-joints int) (jc joint-control))
-  "Decompress a joint animation!"
-  (+! (-> *new-joint-decompressor-stats* num-calls) 1)
-  ;; determine anim weights, write them out to the joint-control for other stuff to see.
-  (eval-blend-tree! *new-joint-decompressor-work* jc)
-  (output-blend-tree! *new-joint-decompressor-work* jc)
-
-  ;; figure out which animations need decompression
-  (build-requests! *new-joint-decompressor-work* jc)
-
-  ;; run the decompression
-  (init-frame! *new-joint-decompressor-work* dst num-joints)
-  (process-requests! *new-joint-decompressor-work* dst num-joints)
-  (finalize-frame! *new-joint-decompressor-work* dst num-joints)
-
-  (none)
-  )
-
-(defmethod eval-blend-tree! ((this new-joint-decompressor-work) (jc joint-control))
-  "Evaluate weights of all channels, producing the final per-animation weights in the first stack-frame."
-
-  (let ((num-channels (+ (-> jc active-channels) (-> jc float-channels)))
-        (stack-top 0)
-        )
-    (when (> num-channels 24)
-      (break!) ;; insufficient weights per stack frame
-      )
-
-    ;; loop over channels
-    (dotimes (chan-idx num-channels)
-      (let ((chan (-> jc channel chan-idx)))
-        (case (-> chan command)
-
-          (((joint-control-command push)) ;; push new anim to stack frame
-           (when (> stack-top 4)
-             (break!) ;; insufficient stack frames.
-             )
-
-           ;; init all weights to zero:
-           (let ((new-frame (-> this blend-stack stack-top)))
-             (vector-zero! (-> new-frame quads 0))
-             (vector-zero! (-> new-frame quads 1))
-             (vector-zero! (-> new-frame quads 2))
-             (vector-zero! (-> new-frame quads 3))
-             (vector-zero! (-> new-frame quads 4))
-             (vector-zero! (-> new-frame quads 5))
-             ;; except for this channel
-             (set! (-> new-frame weights chan-idx) 1.0)
-             )
-           (+! stack-top 1) ;; bump stack pointer!
-           )
-
-          ;; blend case: note that push1/stack1 always are a pair, so we can treat push1 as blend and ignore
-          ;; the stack1 as an optimization.
-          (((joint-control-command blend) (joint-control-command push1) (joint-control-command float))
-           (let* ((sf (-> this blend-stack (- stack-top 1))) ;; modify most recent stack frame
-                  (new-weight (-> chan frame-interp (-> jc active-frame-interp)))
-                  (old-weight (- 1.0 new-weight)))
-
-             ;; do the multiplies:
-             (rlet ((temp :class vf)
-                    (weight-vec :class vf))
-               (.mov weight-vec old-weight)
-               (dotimes (i 6)
-                 (.lvf temp (&-> sf quads i quad))
-                 (.mul.x.vf temp temp weight-vec)
-                 (.svf (&-> sf quads i quad) temp)
-                 )
-               (+! (-> sf weights chan-idx) new-weight)
-               )
-             )
-           )
-
-          ;; stack case: pop two frames, add together, push result.
-          (((joint-control-command stack))
-           (let* ((sf0 (-> this blend-stack (- stack-top 1)))
-                  (sf1 (-> this blend-stack (- stack-top 2)))
-                  (weight0 (-> chan frame-interp (-> jc active-frame-interp)))
-                  (weight1 (- 1.0 weight0)))
-
-
-             (rlet ((temp0 :class vf)
-                    (temp1 :class vf)
-                    (weight0-vec :class vf)
-                    (weight1-vec :class vf))
-               (.mov weight0-vec weight0)
-               (.mov weight1-vec weight1)
-               (dotimes (i 6)
-                 (.lvf temp0 (&-> sf0 quads i quad))
-                 (.lvf temp1 (&-> sf1 quads i quad))
-                 (.mul.x.vf temp0 temp0 weight0-vec)
-                 (.mul.x.vf temp1 temp1 weight1-vec)
-                 (.add.vf temp0 temp0 temp1)
-                 (.svf (&-> sf1 quads i quad) temp0)
-                 )
-               )
-             (-! stack-top 1) ;; pop stack frame
-             )
-           )
-
-          )
-        )
-      )
-    )
-
-  (none)
-  )
-
-(defmethod output-blend-tree! ((this new-joint-decompressor-work) (jc joint-control))
-  "Copy result of the blend tree evaluation into the joint-control."
-  (let ((num-channels (+ (-> jc active-channels) (-> jc float-channels))))
-    (dotimes (chan-idx num-channels)
-      (set! (-> jc channel chan-idx inspector-amount)
-            (the int (* 255.0 (-> this blend-stack 0 weights chan-idx))))
-      )
-    )
-  (none)
-  )
-
-(defmethod build-requests! ((this new-joint-decompressor-work) (jc joint-control))
-  "Use the anim weights computed by eval-blend-tree! to build decompression requests"
-
-  (set! (-> this num-requests) 0)
-
-  (let ((num-channels (+ (-> jc active-channels) (-> jc float-channels))))
-    (dotimes (chan-idx num-channels)
-      (let ((weight (-> this blend-stack 0 weights chan-idx))
-            (chan (-> jc channel chan-idx)))
-        (when (> weight 0.001) ;; only both if weight is nonzero
-          (let* ((req (-> this requests (-> this num-requests))) ;; request to create
-                 (jacc (-> chan frame-group frames))             ;; compressed animation
-                 (frame-num (-> chan frame-num))                 ;; floating-point frame (eg 1.23)
-                 (base-frame (the int frame-num))                ;; integer round-down frame (eg 1)
-                 (frac-frame (- frame-num (the float base-frame))) ;; interp to next frame (eg 0.23)
-                 (last-frame (the int (- (-> jacc num-frames) 1)))
-                 )
-            (+! (-> this num-requests) 1)
-
-            ;; check our frame group is valid
-            ;; TODO
-
-            ;; make sure we didn't go off the end of the animation:
-            (when (>= base-frame last-frame)
-              (set! frac-frame 0.0)
-              (set! base-frame last-frame)
-              )
-
-            ;; set up request
-            (set! (-> req jacc) jacc)
-            (set! (-> req frame) base-frame)
-            (set! (-> req frame-interp) frac-frame)
-            (set! (-> req amount) weight)
-            )
-          )
-        )
-      )
-    )
-  (none)
-  )
-
-(defmethod init-frame! ((this new-joint-decompressor-work) (output-frame joint-anim-frame) (num-joints int))
-  "Initialize an output frame by zeroing the data."
-  (let ((num-qwc 8) ;; 2x matrix, each 4 qw
-        (data (the (pointer uint128) output-frame)))
-    (when (> num-joints 2) ;; we have transformq's
-      (+! num-qwc (* 3 (- num-joints 2)))
-      )
-
-    (let ((data-end (&+ data (* num-qwc 16))))
-      (rlet ((zero :class vf))
-        (.xor.vf zero zero zero)
-        (while (!= data data-end) ;; this loop is 5 instructions :)
-          (.svf data zero)
-          (&+! data 16)
-          )
-        )
-      )
-
-    )
-  (none)
-  )
-
-(defmethod process-requests! ((this new-joint-decompressor-work) (output-frame joint-anim-frame) (num-joints int))
-  "Decompress all pending animation requests."
-  (dotimes (i (-> this num-requests))
-    (process-request! this (-> this requests i) output-frame num-joints)
-    )
-  (set! (-> this num-requests) 0)
-  (none)
-  )
-
-(defmacro fderef-s16 (ptr)
-  `(the float (-> (the (pointer int16) ,ptr)))
-  )
-
-(defmacro deref-f32 (ptr)
-  `(-> (the (pointer float) ,ptr))
-  )
-
-(defconstant QUAT_SCALE 0.000030517578125)
-(defconstant SCALE_SCALE 0.000244140625)
-
-(defun decomp-fixed ((output-frame joint-anim-frame) (num-joints int) (anim joint-anim-compressed-fixed) (amount float))
-  "Decompress the fixed part."
-
-  (let* ((mbits (-> anim hdr matrix-bits))
-         (data (the pointer (&-> anim data 0 quad)))
-         (data64 (the (pointer uint64) (&+ data (-> anim offset-64))))
-         (data32 (the (pointer uint32) (&+ data (-> anim offset-32))))
-         (data16 (the (pointer uint16) (&+ data (-> anim offset-16))))
-         (ctrl-ptr (-> anim hdr control-bits))
-         )
-    ;; process matrix:
-    (when (zero? (logand mbits 1))
-      ;; matrix comes from fixed data
-      (matrix-copy! (-> output-frame matrices 0) (the matrix data64))
-      (&+! data64 64)
-      )
-
-    (when (zero? (logand mbits 2))
-      ;; matrix comes from fixed data
-      (matrix-copy! (-> output-frame matrices 1) (the matrix data64))
-      (&+! data64 64)
-      )
-
-    ;; process tq's
-    (dotimes (tqi num-joints) ;; TODO - not sure if this is too many??
-      (let* ((ctrl-idx (/ tqi 8))
-             (ctrl-shift (* 4 (mod tqi 8)))
-             (ctrl (logand #b1111 (sar (-> ctrl-ptr ctrl-idx) ctrl-shift)))
-             (tq (-> output-frame data tqi))
-             )
-        ;; TRANS
-        (when (zero? (logand ctrl #b0001))
-          ;; we have trans
-          (cond
-            ((nonzero? (logand ctrl #b1000))
-             ;; big trans
-             (+! (-> tq trans x) (* amount (deref-f32 data64)))
-             (&+! data64 4)
-             (+! (-> tq trans y) (* amount (deref-f32 data64)))
-             (&+! data64 4)
-             (+! (-> tq trans z) (* amount (deref-f32 data32)))
-             (&+! data32 4)
-             )
-            (else
-             ;; little trans
-             (+! (-> tq trans x) (* amount (fderef-s16 data32) 4.))
-             (&+! data32 2)
-             (+! (-> tq trans y) (* amount (fderef-s16 data32) 4.))
-             (&+! data32 2)
-             (+! (-> tq trans z) (* amount (fderef-s16 data16) 4.))
-             (&+! data16 2)
-             )
-            )
-          )
-        ;; QUAT
-        (when (zero? (logand ctrl #b0010))
-          (let ((temp (new 'stack-no-clear 'vector)))
-            (set! (-> temp x) (fderef-s16 data64)) (&+! data64 2)
-            (set! (-> temp y) (fderef-s16 data64)) (&+! data64 2)
-            (set! (-> temp z) (fderef-s16 data64)) (&+! data64 2)
-            (set! (-> temp w) (fderef-s16 data64)) (&+! data64 2)
-
-            (let ((dot (+ (* (-> temp x) (-> tq quat x))
-                          (* (-> temp y) (-> tq quat y))
-                          (* (-> temp z) (-> tq quat z))
-                          (* (-> temp w) (-> tq quat w)))))
-              (when (< dot 0.0)
-                (*! (-> temp x) -1.)
-                (*! (-> temp y) -1.)
-                (*! (-> temp z) -1.)
-                (*! (-> temp w) -1.)
-                )
-              (+! (-> tq quat x) (* amount (-> temp x) QUAT_SCALE))
-              (+! (-> tq quat y) (* amount (-> temp y) QUAT_SCALE))
-              (+! (-> tq quat z) (* amount (-> temp z) QUAT_SCALE))
-              (+! (-> tq quat w) (* amount (-> temp w) QUAT_SCALE))
-              )
-            )
-          )
-        ;; SCALE
-        (when (zero? (logand ctrl #b0100))
-          (+! (-> tq scale x) (* amount (fderef-s16 data32) SCALE_SCALE))
-          (&+! data32 2)
-          (+! (-> tq scale y) (* amount (fderef-s16 data32) SCALE_SCALE))
-          (&+! data32 2)
-          (+! (-> tq scale z) (* amount (fderef-s16 data16) SCALE_SCALE))
-          (&+! data16 2)
-          )
-        )
-      )
-    )
-
-  (none)
-  )
-
-(defun decomp-frame ((output-frame joint-anim-frame) (num-joints int) (anim joint-anim-compressed-frame) (amount float) (hdr joint-anim-compressed-hdr))
-  "Decompress the fixed part."
-
-  (let* ((mbits (-> hdr matrix-bits))
-         (data (the pointer (-> anim data)))
-         (data64 (the (pointer uint64) (&+ data (-> anim offset-64))))
-         (data32 (the (pointer uint32) (&+ data (-> anim offset-32))))
-         (data16 (the (pointer uint16) (&+ data (-> anim offset-16))))
-         (ctrl-ptr (-> hdr control-bits))
-         )
-    ;; process matrix:
-    (when (nonzero? (logand mbits 1))
-      ;; matrix comes from fixed data
-      (matrix-copy! (-> output-frame matrices 0) (the matrix data64))
-      (&+! data64 64)
-      )
-
-    (when (nonzero? (logand mbits 2))
-      ;; matrix comes from fixed data
-      (matrix-copy! (-> output-frame matrices 1) (the matrix data64))
-      (&+! data64 64)
-      )
-
-    ;; process tq's
-    (dotimes (tqi num-joints) ;; TODO - not sure if this is too many??
-      (let* ((ctrl-idx (/ tqi 8))
-             (ctrl-shift (* 4 (mod tqi 8)))
-             (ctrl (logand #b1111 (sar (-> ctrl-ptr ctrl-idx) ctrl-shift)))
-             (tq (-> output-frame data tqi))
-             )
-
-        ;; TRANS
-        (when (nonzero? (logand ctrl #b0001))
-          ;; we have trans
-          (cond
-            ((nonzero? (logand ctrl #b1000))
-             ;; big trans
-             (+! (-> tq trans x) (* amount (deref-f32 data64)))
-             (&+! data64 4)
-             (+! (-> tq trans y) (* amount (deref-f32 data64)))
-             (&+! data64 4)
-             (+! (-> tq trans z) (* amount (deref-f32 data32)))
-             (&+! data32 4)
-             )
-            (else
-             ;; little trans
-             (+! (-> tq trans x) (* amount (fderef-s16 data32) 4.))
-             (&+! data32 2)
-             (+! (-> tq trans y) (* amount (fderef-s16 data32) 4.))
-             (&+! data32 2)
-             (+! (-> tq trans z) (* amount (fderef-s16 data16) 4.))
-             (&+! data16 2)
-             )
-            )
-          )
-        ;; QUAT
-        (when (nonzero? (logand ctrl #b0010))
-          (let ((temp (new 'stack-no-clear 'vector)))
-
-            (set! (-> temp x) (fderef-s16 data64)) (&+! data64 2)
-            (set! (-> temp y) (fderef-s16 data64)) (&+! data64 2)
-            (set! (-> temp z) (fderef-s16 data64)) (&+! data64 2)
-            (set! (-> temp w) (fderef-s16 data64)) (&+! data64 2)
-
-            (let ((dot (+ (* (-> temp x) (-> tq quat x))
-                          (* (-> temp y) (-> tq quat y))
-                          (* (-> temp z) (-> tq quat z))
-                          (* (-> temp w) (-> tq quat w)))))
-              (when (< dot 0.0)
-                (*! (-> temp x) -1.)
-                (*! (-> temp y) -1.)
-                (*! (-> temp z) -1.)
-                (*! (-> temp w) -1.)
-                )
-              (+! (-> tq quat x) (* amount (-> temp x) QUAT_SCALE))
-              (+! (-> tq quat y) (* amount (-> temp y) QUAT_SCALE))
-              (+! (-> tq quat z) (* amount (-> temp z) QUAT_SCALE))
-              (+! (-> tq quat w) (* amount (-> temp w) QUAT_SCALE))
-              )
-            )
-          )
-        ;; SCALE
-        (when (nonzero? (logand ctrl #b0100))
-          (+! (-> tq scale x) (* amount (fderef-s16 data32) SCALE_SCALE))
-          (&+! data32 2)
-          (+! (-> tq scale y) (* amount (fderef-s16 data32) SCALE_SCALE))
-          (&+! data32 2)
-          (+! (-> tq scale z) (* amount (fderef-s16 data16) SCALE_SCALE))
-          (&+! data16 2)
-          )
-        )
-      )
-    )
-
-  (none)
-  )
-
-(defmethod process-request! ((this new-joint-decompressor-work) (request joint-decomp-request) (output-frame joint-anim-frame) (num-joints int))
-  "Decompress a single animation, adding to accumulator"
-
-  (+! (-> *new-joint-decompressor-stats* num-anims) 1)
-  (+! (-> *new-joint-decompressor-stats* num-joints) (+ num-joints 2))
-
-
-  ;; first, the fixed part
-  (decomp-fixed output-frame num-joints (-> request jacc fixed) (-> request amount))
-
-  ;; base frame
-  (decomp-frame
-   output-frame
-   num-joints
-   (-> request jacc data (-> request frame))
-   (* (- 1.0 (-> request frame-interp)) (-> request amount))
-   (-> request jacc fixed hdr)
-   )
-
-  ;; interpolate to next frame
-  (cond
-    ((!= 0.0 (-> request frame-interp))
-     (decomp-frame
-      output-frame
-      num-joints
-      (-> request jacc data (+ 1 (-> request frame)))
-      (* (-> request frame-interp) (-> request amount))
-      (-> request jacc fixed hdr))
-     )
-    (else
-     )
-    )
-
-  (none)
-  )
-
-(defmethod finalize-frame! ((this new-joint-decompressor-work) (output-frame joint-anim-frame) (num-joints int))
-  (when (<= num-joints 2)
-    (return #f)
-    )
-
-  (dotimes (tqi (- num-joints 2))
-    (let ((tq (-> output-frame data tqi)))
-      (set! (-> tq trans w) 1.0)
-      (set! (-> tq scale w) 1.0)
-      (quaternion-normalize! (-> tq quat))
-      )
-    )
-  (none)
-  )
-
-;; DECOMP BEGINS
-
-;;;;;;;;;;;;;;;;;;
-;; basic methods
-;;;;;;;;;;;;;;;;;;
-
+;; definition for method 2 of type joint
 (defmethod print ((this joint))
   (format #t "#<~A ~S ~D @ #x~X>" (-> this type) (-> this name) (-> this number) this)
   this
   )
 
+;; definition for method 8 of type joint
 (defmethod mem-usage ((this joint) (usage memory-usage-block) (flags int))
   (set! (-> usage length) (max 69 (-> usage length)))
   (set! (-> usage data 68 name) "joint")
@@ -726,30 +19,36 @@
   this
   )
 
+;; definition for method 2 of type joint-anim
 (defmethod print ((this joint-anim))
   (format #t "#<~A ~S ~D [~D] @ #x~X>" (-> this type) (-> this name) (-> this number) (-> this length) this)
   this
   )
 
+;; definition for method 4 of type joint-anim
 (defmethod length ((this joint-anim))
   (-> this length)
   )
 
+;; definition for method 5 of type joint-anim-matrix
 ;; WARN: Return type mismatch uint vs int.
 (defmethod asize-of ((this joint-anim-matrix))
   (the-as int (+ (-> joint-anim-matrix size) (* (-> this length) 64)))
   )
 
+;; definition for method 5 of type joint-anim-transformq
 ;; WARN: Return type mismatch uint vs int.
 (defmethod asize-of ((this joint-anim-transformq))
   (the-as int (+ (-> joint-anim-transformq size) (* 48 (-> this length))))
   )
 
+;; definition for method 5 of type joint-anim-drawable
 ;; WARN: Return type mismatch uint vs int.
 (defmethod asize-of ((this joint-anim-drawable))
   (the-as int (+ (-> joint-anim-drawable size) (* (-> this length) 4)))
   )
 
+;; definition for function joint-anim-login
 (defun joint-anim-login ((jad joint-anim-drawable))
   "Login a joint-anim-drawable by calling login on all drawables"
   (dotimes (s5-0 (-> jad length))
@@ -760,6 +59,7 @@
   jad
   )
 
+;; definition for function joint-anim-inspect-elt
 (defun joint-anim-inspect-elt ((ja joint-anim) (frame float))
   "Inspect an uncompressed anim (unused)"
   (case (-> ja type)
@@ -773,6 +73,7 @@
   ja
   )
 
+;; definition for method 8 of type joint-anim-drawable
 (defmethod mem-usage ((this joint-anim-drawable) (usage memory-usage-block) (flags int))
   (set! (-> usage length) (max 81 (-> usage length)))
   (set! (-> usage data 80 name) "joint-anim-drawable")
@@ -787,6 +88,7 @@
   this
   )
 
+;; definition for function jacc-mem-usage
 (defun jacc-mem-usage ((jacc joint-anim-compressed-control) (mem-block memory-usage-block) (flags int))
   "Compute memory usage stats for a compressed joint anim."
   (set! (-> mem-block length) (max 71 (-> mem-block length)))
@@ -815,6 +117,7 @@
   jacc
   )
 
+;; definition for method 2 of type joint-control-channel
 (defmethod print ((this joint-control-channel))
   (let ((t9-0 format)
         (a0-1 #t)
@@ -855,11 +158,13 @@
   this
   )
 
+;; definition for method 5 of type joint-control
 ;; WARN: Return type mismatch uint vs int.
 (defmethod asize-of ((this joint-control))
   (the-as int (+ (-> this type size) (* (-> this allocated-length) 64)))
   )
 
+;; definition for method 0 of type joint-control
 (defmethod new joint-control ((allocation symbol) (type-to-make type) (arg0 int))
   (let ((v0-0 (object-new allocation type-to-make (the-as int (+ (-> type-to-make size) (* arg0 64))))))
     (set! (-> v0-0 allocated-length) (the-as uint arg0))
@@ -880,6 +185,7 @@
     )
   )
 
+;; definition for method 11 of type joint-control
 (defmethod debug-print-channels ((this joint-control) (arg0 symbol))
   "Print the list of joint animations playing in the flattened blend tree."
   (format arg0 "~0K")
@@ -968,39 +274,39 @@
   0
   )
 
+;; definition for method 13 of type art
 (defmethod contains-art-for-other-group? ((this art))
   "Some art groups have placeholder #f's for some art that will be loaded separately as needed.
    Does this art group contain art that needs to be added to another group?"
   #f
   )
 
+;; definition for method 11 of type art
 ;; WARN: Return type mismatch symbol vs basic.
 (defmethod get-art-by-name-method ((this art) (arg0 string) (arg1 type))
   "Look inside this art for an art with the given name and type. Return #f if not found"
   (the-as basic #f)
   )
 
-;; og:preserve-this added macro
-(defmacro get-art-by-name (this name type)
-  "Helper macro for casting the result of get-art-by-name-method. Generated by decompiler."
-  `(the-as ,type (get-art-by-name-method ,this ,name ,type))
-  )
-
+;; definition for method 12 of type art
 ;; WARN: Return type mismatch symbol vs int.
 (defmethod get-art-idx-by-name-method ((this art) (arg0 string) (arg1 type))
   "Look inside this art for an art with the given name and type and return the index of the art. Return #f if not found."
   (the-as int #f)
   )
 
+;; definition for method 2 of type art
 (defmethod print ((this art))
   (format #t "#<~A ~S :length ~D @ #x~X>" (-> this type) (-> this name) (-> this length) this)
   this
   )
 
+;; definition for method 4 of type art
 (defmethod length ((this art))
   (-> this length)
   )
 
+;; definition for method 9 of type art
 (defmethod login ((this art))
   (if (and (-> this extra) (zero? (-> this extra tag)))
       (set! (-> this extra tag) (the-as (pointer res-tag) (&+ (the-as pointer (-> this extra)) 28)))
@@ -1008,10 +314,12 @@
   this
   )
 
+;; definition for method 10 of type art
 (defmethod art-method-10 ((this art))
   this
   )
 
+;; definition for method 8 of type art-mesh-anim
 (defmethod mem-usage ((this art-mesh-anim) (usage memory-usage-block) (flags int))
   (set! (-> usage length) (max 76 (-> usage length)))
   (set! (-> usage data 75 name) "art-mesh-anim")
@@ -1029,6 +337,7 @@
   this
   )
 
+;; definition for method 8 of type art-joint-anim
 (defmethod mem-usage ((this art-joint-anim) (usage memory-usage-block) (flags int))
   (set! (-> usage length) (max 79 (-> usage length)))
   (set! (-> usage data 78 name) "art-joint-anim")
@@ -1053,12 +362,30 @@
   this
   )
 
+;; definition for method 5 of type art-joint-anim
 ;; WARN: Return type mismatch uint vs int.
 (defmethod asize-of ((this art-joint-anim))
   (the-as int (+ (-> art size) (* (-> this length) 4)))
   )
 
+;; definition for method 3 of type art-group
+(defmethod inspect ((this art-group))
+  (format #t "[~8x] ~A~%" this (-> this type))
+  (format #t "~Tinfo: ~A~%" (-> this info))
+  (format #t "~Tlength: ~D~%" (-> this length))
+  (format #t "~Tname: ~A~%" (-> this name))
+  (format #t "~Textra: ~A~%" (-> this extra))
+  (format #t "~Tdata[~D]: @ #x~X~%" (-> this length) (-> this data))
+  (dotimes (s5-0 (-> this length))
+    (if (-> this data s5-0)
+        (format #t "~T  [~D] ~A  (~D bytes)~%" s5-0 (-> this data s5-0) (mem-size (-> this data s5-0) #f 0))
+        (format #t "~T  [~D] ~A  (~D bytes)~%" s5-0 (-> this data s5-0) 0)
+        )
+    )
+  this
+  )
 
+;; definition for method 13 of type art-group
 (defmethod contains-art-for-other-group? ((this art-group))
   "Some art groups have placeholder #f's for some art that will be loaded separately as needed.
    Does this art group contain art that needs to be added to another group?"
@@ -1068,6 +395,7 @@
        )
   )
 
+;; definition for method 11 of type art-group
 ;; WARN: Return type mismatch art-element vs basic.
 (defmethod get-art-by-name-method ((this art-group) (arg0 string) (arg1 type))
   "Look inside this art for an art with the given name and type. Return #f if not found"
@@ -1096,6 +424,7 @@
     )
   )
 
+;; definition for method 12 of type art-group
 (defmethod get-art-idx-by-name-method ((this art-group) (arg0 string) (arg1 type))
   "Look inside this art for an art with the given name and type and return the index of the art. Return #f if not found."
   (cond
@@ -1123,6 +452,7 @@
     )
   )
 
+;; definition for method 9 of type art-group
 (defmethod login ((this art-group))
   (set! (-> *kernel-context* login-art-group) this)
   (dotimes (s5-0 (-> this length))
@@ -1134,6 +464,7 @@
   this
   )
 
+;; definition for method 10 of type art-group
 (defmethod art-method-10 ((this art-group))
   (dotimes (s5-0 (-> this length))
     (if (-> this data s5-0)
@@ -1143,6 +474,7 @@
   this
   )
 
+;; definition for method 8 of type art-group
 (defmethod mem-usage ((this art-group) (usage memory-usage-block) (flags int))
   (set! (-> usage length) (max 75 (-> usage length)))
   (set! (-> usage data 74 name) "art-group")
@@ -1162,6 +494,7 @@
   this
   )
 
+;; definition for method 7 of type art-group
 ;; WARN: Return type mismatch art-group vs none.
 (defmethod relocate ((this art-group) (heap kheap) (name (pointer uint8)))
   (let ((s4-0 (clear *temp-string*)))
@@ -1211,17 +544,11 @@
                    )
                   )
                 (when (or (not s5-1) (= (-> s5-1 name) 'default))
-                  ;; not an art-group for a level, so we log it in here.
-                  ;; levels will log in their art group in their load function.
                   (login this)
-
-                  ;; if needed, give this art to the art-group that needs it.
                   (if (contains-art-for-other-group? this)
                       (link-art-to-master this)
                       )
                   )
-
-                ;; give to level
                 (if s5-1
                     (set-loaded-art (-> s5-1 art-group) this)
                     )
@@ -1234,11 +561,13 @@
   (none)
   )
 
+;; definition for method 5 of type art-mesh-geo
 ;; WARN: Return type mismatch uint vs int.
 (defmethod asize-of ((this art-mesh-geo))
   (the-as int (+ (-> art size) (* (-> this length) 4)))
   )
 
+;; definition for method 8 of type art-mesh-geo
 (defmethod mem-usage ((this art-mesh-geo) (usage memory-usage-block) (flags int))
   (set! (-> usage length) (max 77 (-> usage length)))
   (set! (-> usage data 76 name) "art-mesh-geo")
@@ -1256,6 +585,7 @@
   this
   )
 
+;; definition for method 9 of type art-mesh-geo
 (defmethod login ((this art-mesh-geo))
   (dotimes (s5-0 (-> this length))
     (let ((s4-0 (the-as object (-> this data s5-0))))
@@ -1269,6 +599,7 @@
   this
   )
 
+;; definition for method 9 of type art-joint-anim
 (defmethod login ((this art-joint-anim))
   (if (and (-> this extra) (zero? (-> this extra tag)))
       (set! (-> this extra tag) (the-as (pointer res-tag) (&+ (the-as pointer (-> this extra)) 28)))
@@ -1276,11 +607,13 @@
   this
   )
 
+;; definition for method 5 of type art-joint-geo
 ;; WARN: Return type mismatch uint vs int.
 (defmethod asize-of ((this art-joint-geo))
   (the-as int (+ (-> art size) (* (-> this length) 4)))
   )
 
+;; definition for method 11 of type art-joint-geo
 ;; WARN: Return type mismatch joint vs basic.
 (defmethod get-art-by-name-method ((this art-joint-geo) (arg0 string) (arg1 type))
   "Look inside this art for an art with the given name and type. Return #f if not found"
@@ -1304,6 +637,7 @@
     )
   )
 
+;; definition for method 12 of type art-joint-geo
 (defmethod get-art-idx-by-name-method ((this art-joint-geo) (arg0 string) (arg1 type))
   "Look inside this art for an art with the given name and type and return the index of the art. Return #f if not found."
   (cond
@@ -1326,6 +660,7 @@
     )
   )
 
+;; definition for method 8 of type art-joint-geo
 (defmethod mem-usage ((this art-joint-geo) (usage memory-usage-block) (flags int))
   (set! (-> usage length) (max 78 (-> usage length)))
   (set! (-> usage data 77 name) "art-joint-geo")
@@ -1343,6 +678,7 @@
   this
   )
 
+;; definition for function joint-control-cleanup
 ;; WARN: Return type mismatch symbol vs none.
 (defun joint-control-cleanup ((jc joint-control) (heap kheap) (ja art-joint-anim))
   "Remove all animations that are stored on the given heap and return those slots to a safe default."
@@ -1365,6 +701,7 @@
   (none)
   )
 
+;; definition for function joint-control-channel-eval
 (defbehavior joint-control-channel-eval process ((jcc joint-control-channel))
   "Run the num-func to produce the current frame for this channel."
   (let ((f0-3 ((-> jcc num-func) jcc (-> jcc param 0) (-> jcc param 1) (-> jcc param 2))))
@@ -1373,6 +710,7 @@
     )
   )
 
+;; definition for function joint-control-channel-eval!
 (defbehavior joint-control-channel-eval! process ((jcc joint-control-channel) (num-func (function joint-control-channel float float float float)))
   "Update the num-func for this channel and evaluate it."
   (set! (-> jcc num-func) num-func)
@@ -1382,22 +720,19 @@
     )
   )
 
+;; definition for function joint-control-channel-group-eval!
 (defun joint-control-channel-group-eval! ((jcc joint-control-channel)
                                  (ja art-joint-anim)
                                  (num-func (function joint-control-channel float float float float))
                                  )
-  "Set the num-func and anim for the given channel, then eval it. If ja = #f, don't change it."
   (set! (-> jcc num-func) num-func)
   (cond
     ((= (-> jcc command) (joint-control-command stack))
-     ;; stack commands don't have an animation, they just add together previous ones.
      )
     (else
-      ;; set anim
       (if ja
           (set! (-> jcc frame-group) ja)
           )
-      ;; initialize num-func.
       (num-func jcc (-> jcc param 0) (-> jcc param 1) (-> jcc param 2))
       (set! (-> jcc eval-time) (the-as uint (current-time)))
       )
@@ -1405,16 +740,14 @@
   0
   )
 
+;; definition for function joint-control-channel-group!
 (defun joint-control-channel-group! ((arg0 joint-control-channel)
                             (arg1 art-joint-anim)
                             (arg2 (function joint-control-channel float float float float))
                             )
-  "Set the num-func and anim for the channel. If ja = #f, don't change it."
-  ;; update num-func
   (set! (-> arg0 num-func) arg2)
   (cond
     ((= (-> arg0 command) (joint-control-command stack))
-     ;; stack commands don't have an animation, they just add together previous ones.
      )
     (arg1
       (set! (-> arg0 frame-group) arg1)
@@ -1423,6 +756,7 @@
   0
   )
 
+;; definition for function joint-control-copy!
 (defun joint-control-copy! ((dst joint-control) (src joint-control))
   "Copy all settings and channels from one joint-control to another."
   (set! (-> dst blend-index) (-> src blend-index))
@@ -1446,6 +780,8 @@
   dst
   )
 
+;; definition for function joint-control-remap!
+;; INFO: Used lq/sq
 (defun joint-control-remap! ((jc joint-control)
                     (dst-art-group art-group)
                     (parent-art-group art-group)
@@ -1535,7 +871,8 @@
   sv-24
   )
 
-;; NOTE: this function is not used with the new decompressor, but it's interesting to read.
+;; definition for function flatten-joint-control-to-spr
+;; INFO: Used lq/sq
 (defun flatten-joint-control-to-spr ((jc joint-control))
   "Walk the blend tree and compute interpolation weights, prepare animation upload info."
   (rlet ((vf1 :class vf)
@@ -1553,41 +890,32 @@
          (vf8 :class vf)
          (vf9 :class vf)
          )
-    ;; We assume a maximum of 4 * 6 = 24 channels.
     (let ((chan-count (+ (-> jc active-channels) (-> jc float-channels))))
-      (let ((one 1.0)             ;; constant
-            (chan-float-offset 0) ;; which channel's weight to adjust.
-            (chan-vector-ptr (the-as (inline-array vector) #x70000960)) ;; stack pointer
-            (interp2-selected-idx (-> jc active-frame-interp)) ;; interp2 0 or 1 selector.
+      (let ((one 1.0)
+            (chan-float-offset 0)
+            (chan-vector-ptr (the-as (inline-array vector) #x70000960))
+            (interp2-selected-idx (-> jc active-frame-interp))
             )
-        ;; loop over channels
         (dotimes (chan-idx (the-as int chan-count))
           (let ((chan (-> jc channel chan-idx)))
             (case (-> chan command)
               (((joint-control-command push))
-               ;; push a new stack frame with this anim set to 1.
                (let ((flt1 (the-as (pointer float) (+ (the-as int chan-vector-ptr) chan-float-offset))))
-                 ;; initialize all channels in this frame to 0
                  (set! (-> chan-vector-ptr 0 quad) (the-as uint128 0))
                  (set! (-> chan-vector-ptr 1 quad) (the-as uint128 0))
                  (set! (-> chan-vector-ptr 2 quad) (the-as uint128 0))
                  (set! (-> chan-vector-ptr 3 quad) (the-as uint128 0))
                  (set! (-> chan-vector-ptr 4 quad) (the-as uint128 0))
                  (set! (-> chan-vector-ptr 5 quad) (the-as uint128 0))
-                 ;; then, set the weight of this animation to 1.
                  (set! (-> flt1 0) one)
                  )
-               ;; advance stack pointer.
                (set! chan-vector-ptr (the-as (inline-array vector) (-> chan-vector-ptr 6)))
                )
               (((joint-control-command blend) (joint-control-command push1) (joint-control-command float))
-               ;; determine the blend factor for this animation.
                (let ((interp2-selected-weight1 (-> chan frame-interp interp2-selected-idx)))
-                 ;; one - blend_factor gives us the blend weight for the previous thing in the frame
                  (let ((a3-5 (- one interp2-selected-weight1)))
                    (.mov vf1 a3-5)
                    )
-                 ;; modify the previous thing in the stack to reduce weight:
                  (let ((prev-chan-ptr (the-as (inline-array vector) (-> chan-vector-ptr -6))))
                    (.lvf vf2 (&-> prev-chan-ptr 0 quad))
                    (let ((a3-6 (&+ (the-as pointer prev-chan-ptr) chan-float-offset)))
@@ -1596,7 +924,7 @@
                      (.lvf vf5 (&-> prev-chan-ptr 3 quad))
                      (.lvf vf6 (&-> prev-chan-ptr 4 quad))
                      (.lvf vf7 (&-> prev-chan-ptr 5 quad))
-                     (.mul.x.vf vf2 vf2 vf1) ;; multiply all weights by (1 - push_blend)
+                     (.mul.x.vf vf2 vf2 vf1)
                      (.mul.x.vf vf3 vf3 vf1)
                      (.mul.x.vf vf4 vf4 vf1)
                      (.mul.x.vf vf5 vf5 vf1)
@@ -1608,7 +936,6 @@
                      (.svf (&-> prev-chan-ptr 3 quad) vf5)
                      (.svf (&-> prev-chan-ptr 4 quad) vf6)
                      (.svf (&-> prev-chan-ptr 5 quad) vf7)
-                     ;; but, modify our channel to add in the push_blend
                      (+! (-> (the-as (pointer float) a3-6) 0) interp2-selected-weight1)
                      )
                    (set! chan-vector-ptr (the-as (inline-array vector) (-> prev-chan-ptr 6)))
@@ -1616,10 +943,8 @@
                  )
                )
               (((joint-control-command stack))
-               ;; add together the last two stack frames, using the given weight.
                (let* ((interp2-selected-weight2 (-> chan frame-interp interp2-selected-idx))
                       (one-minus-interp2 (- one interp2-selected-weight2))
-                      ;; back up 2 stack frames, to add them.
                       (chans-to-stack (the-as (inline-array vector) (-> chan-vector-ptr -12)))
                       )
                  (let ((a3-8 interp2-selected-weight2))
@@ -1628,67 +953,53 @@
                  (let ((a3-9 one-minus-interp2))
                    (.mov vf2 a3-9)
                    )
-                 ;; load first stack frame
                  (.lvf vf3 (&-> chans-to-stack 0 quad))
                  (.lvf vf4 (&-> chans-to-stack 1 quad))
                  (.lvf vf5 (&-> chans-to-stack 2 quad))
                  (.lvf vf6 (&-> chans-to-stack 3 quad))
                  (.lvf vf7 (&-> chans-to-stack 4 quad))
                  (.lvf vf8 (&-> chans-to-stack 5 quad))
-                 ;; multiply by blend weight
                  (.mul.x.vf vf3 vf3 vf2)
                  (.mul.x.vf vf4 vf4 vf2)
                  (.mul.x.vf vf5 vf5 vf2)
                  (.mul.x.vf vf6 vf6 vf2)
                  (.mul.x.vf vf7 vf7 vf2)
                  (.mul.x.vf vf8 vf8 vf2)
-                 ;; load second stack frame
                  (.lvf vf9 (&-> chans-to-stack 6 quad))
                  (.lvf vf10 (&-> chans-to-stack 7 quad))
                  (.lvf vf11 (&-> chans-to-stack 8 quad))
                  (.lvf vf12 (&-> chans-to-stack 9 quad))
                  (.lvf vf13 (&-> chans-to-stack 10 quad))
                  (.lvf vf14 (&-> chans-to-stack 11 quad))
-                 ;; multiply by blend weight
                  (.mul.x.vf vf9 vf9 vf1)
                  (.mul.x.vf vf10 vf10 vf1)
                  (.mul.x.vf vf11 vf11 vf1)
                  (.mul.x.vf vf12 vf12 vf1)
                  (.mul.x.vf vf13 vf13 vf1)
                  (.mul.x.vf vf14 vf14 vf1)
-                 ;; the add!
                  (.add.vf vf3 vf3 vf9)
                  (.add.vf vf4 vf4 vf10)
                  (.add.vf vf5 vf5 vf11)
                  (.add.vf vf6 vf6 vf12)
                  (.add.vf vf7 vf7 vf13)
                  (.add.vf vf8 vf8 vf14)
-                 ;; overwrite the first
                  (.svf (&-> chans-to-stack 0 quad) vf3)
                  (.svf (&-> chans-to-stack 1 quad) vf4)
                  (.svf (&-> chans-to-stack 2 quad) vf5)
                  (.svf (&-> chans-to-stack 3 quad) vf6)
                  (.svf (&-> chans-to-stack 4 quad) vf7)
                  (.svf (&-> chans-to-stack 5 quad) vf8)
-                 ;; this ends up moving the stack pointer back 1 stack frame (went back 2, then fwd 1)
                  (set! chan-vector-ptr (the-as (inline-array vector) (&+ (the-as pointer chans-to-stack) 96)))
                  )
                )
               )
             )
-          ;; advance channel
           (+! chan-float-offset 4)
           )
         )
-
-      ;; now we have figured out all the weights for each channel - we need to figure out which animations need decompressing.
-
       (let ((upload-count 0))
         (dotimes (upload-chan-idx (the-as int chan-count))
-          ;; only upload if the weight is nonzero.
           (when (< 0.001 (-> (the-as terrain-context #x70000000) work foreground joint-work flatten-array upload-chan-idx))
-
-            ;; determine integer frame we need
             (let* ((upload-chan (-> jc channel upload-chan-idx))
                    (anim (-> upload-chan frame-group frames))
                    (frame-num (-> upload-chan frame-num))
@@ -1699,18 +1010,15 @@
                 (if (not (-> upload-chan frame-group))
                     (format 0 "Channel ~D skel ~A frame-group is #f!!!~%" upload-chan-idx jc)
                     )
-                ;; if we're past the end, clamp
                 (when (>= int-frame-num (the-as int last-frame))
                   (set! frame-frac 0.0)
                   (set! int-frame-num (the-as int last-frame))
                   )
                 )
-              ;; set up the upload:
               (let ((upload (-> (the-as terrain-context #x70000000) work foreground joint-work uploads upload-count)))
                 (set! (-> upload fixed) (-> anim fixed))
                 (set! (-> upload fixed-qwc) (the-as int (-> anim fixed-qwc)))
                 (set! (-> upload frame) (-> anim data int-frame-num))
-                ;; if we are a fractional frame, upload 2 frames so we can interpolate from the next.
                 (set! (-> upload frame-qwc) (the-as int (if (= frame-frac 0.0)
                                                             (-> anim frame-qwc)
                                                             (* (-> anim frame-qwc) 2)
@@ -1728,7 +1036,6 @@
           )
         (set! (-> (the-as terrain-context #x70000000) work foreground joint-work num-uploads) upload-count)
         )
-      ;; record amounts in the channel so we can print it for debug.
       (dotimes (v1-26 (the-as int chan-count))
         (set! (-> jc channel v1-26 inspector-amount)
               (the-as
@@ -1742,6 +1049,7 @@
     )
   )
 
+;; definition for function matrix-from-joint-anim-frame
 ;; WARN: Return type mismatch object vs matrix.
 (defun matrix-from-joint-anim-frame ((jacc joint-anim-compressed-control) (joint-idx int) (frame-idx int))
   "Get a matrix from a joint-animation at a given (integer) frame.
@@ -1776,6 +1084,8 @@
     )
   )
 
+;; definition for function matrix-from-control-channel!
+;; INFO: Used lq/sq
 (defun matrix-from-control-channel! ((dest-mat matrix) (requested-joint joint) (chan joint-control-channel))
   "Get a matrix for a joint (must be 0 or 1) for the animation specified by the channel.
    Will interpolate if we are in between animation frames.
@@ -1817,6 +1127,7 @@
     )
   )
 
+;; definition for function matrix-from-control-pair!
 (defun matrix-from-control-pair! ((matrix-to-modify matrix) (jcc joint-control-channel) (jnt joint) (active-frame-interp int))
   "Modify the matrix to add in a blended animation for the given channel."
   (let ((f30-0 (-> jcc frame-interp active-frame-interp)))
@@ -1829,7 +1140,7 @@
        (matrix-from-control-channel! matrix-to-modify jnt jcc)
        )
       (else
-        (let ((a2-3 (matrix-from-control-channel! (scratchpad-object matrix) jnt jcc)))
+        (let ((a2-3 (matrix-from-control-channel! (the-as matrix (+ #x70000000 0)) jnt jcc)))
           (matrix-lerp! matrix-to-modify matrix-to-modify a2-3 f30-0)
           )
         )
@@ -1837,6 +1148,8 @@
     )
   )
 
+;; definition for function matrix-from-control!
+;; INFO: Used lq/sq
 ;; WARN: Return type mismatch (inline-array matrix) vs matrix.
 (defun matrix-from-control! ((mat-stack matrix-stack) (jnt joint) (jc joint-control) (mode symbol))
   "Compute a matrix for a given joint (must be 0 or 1) given the entire joint-control.
@@ -1849,11 +1162,11 @@
            )
       (cond
         ((and (= mode 'no-push) (= v1-3 (joint-control-command push1)))
-         (matrix-from-control-channel! (the matrix (&- (-> mat-stack top) (the-as uint s1-0))) jnt a2-1)
+         (matrix-from-control-channel! (- (-> mat-stack top) (the-as uint s1-0)) jnt a2-1)
          )
         ((and (= mode 'no-push) (= v1-3 (joint-control-command stack)))
-         (set! (-> mat-stack top) (the matrix (&- (-> mat-stack top) (the-as uint s1-0))))
-         (let* ((v1-9 (the matrix (&- (-> mat-stack top) (the-as uint s1-0))))
+         (set! (-> mat-stack top) (- (-> mat-stack top) (the-as uint s1-0)))
+         (let* ((v1-9 (- (-> mat-stack top) (the-as uint s1-0)))
                 (a3-1 (-> mat-stack top))
                 (a0-8 (-> a3-1 rvec quad))
                 (a1-6 (-> a3-1 uvec quad))
@@ -1870,19 +1183,19 @@
          )
         ((= v1-3 (joint-control-command push))
          (matrix-from-control-channel! (-> mat-stack top) jnt a2-1)
-         (set! (-> mat-stack top) (the matrix (+ (the-as uint (-> mat-stack top)) s1-0)))
+         (set! (-> mat-stack top) (+ (the-as uint (-> mat-stack top)) s1-0))
          )
         ((logtest? v1-3 (joint-control-command blend))
          (matrix-from-control-pair!
-           (the matrix (&- (-> mat-stack top) (the-as uint s1-0)))
+           (- (-> mat-stack top) (the-as uint s1-0))
            a2-1
            jnt
            (the-as int (-> jc active-frame-interp))
            )
          )
         ((= v1-3 (joint-control-command stack))
-         (set! (-> mat-stack top) (the matrix (&- (-> mat-stack top) (the-as uint s1-0))))
-         (let ((a1-11 (the matrix (&- (-> mat-stack top) (the-as uint s1-0))))
+         (set! (-> mat-stack top) (- (-> mat-stack top) (the-as uint s1-0)))
+         (let ((a1-11 (- (-> mat-stack top) (the-as uint s1-0)))
                (v1-19 (-> mat-stack top))
                (f0-0 (-> a2-1 frame-interp (-> jc active-frame-interp)))
                )
@@ -1895,6 +1208,7 @@
   (the-as matrix (-> mat-stack data))
   )
 
+;; definition for method 9 of type cspace
 (defmethod reset-and-assign-geo! ((this cspace) (arg0 drawable))
   (set! (-> this parent) #f)
   (set! (-> this joint) #f)
@@ -1905,6 +1219,7 @@
   this
   )
 
+;; definition for method 0 of type cspace
 (defmethod new cspace ((allocation symbol) (type-to-make type) (arg0 drawable))
   (let ((t9-0 (method-of-type structure new))
         (v1-1 type-to-make)
@@ -1914,6 +1229,8 @@
     )
   )
 
+;; definition for function cspace<-cspace!
+;; INFO: Used lq/sq
 (defun cspace<-cspace! ((dst cspace) (src cspace))
   "Set one cspace's bone from another"
   (let ((v0-0 (-> dst bone transform)))
@@ -1932,6 +1249,8 @@
     )
   )
 
+;; definition for function cspace<-cspace-normalized!
+;; INFO: Used lq/sq
 (defun cspace<-cspace-normalized! ((dst cspace) (src cspace))
   "Set one cspace's bone from another, and normalize the rows of the matrix."
   (let ((gp-0 (-> dst bone transform)))
@@ -1953,6 +1272,8 @@
     )
   )
 
+;; definition for function cspace<-parent-joint!
+;; INFO: Used lq/sq
 (defun cspace<-parent-joint! ((dst cspace) (proc (pointer process-drawable)) (parent-idx int))
   "Set one cspace's bone to another from the given process-drawable"
   (let ((v0-0 (-> dst bone transform)))
@@ -1971,6 +1292,7 @@
     )
   )
 
+;; definition for function cspace<-rot-yxy!
 (defun cspace<-rot-yxy! ((dst cspace) (src transform))
   "Set one cspace's bone to a yxy rotation and scale."
   (let ((s5-0 (-> dst bone transform)))
@@ -1979,6 +1301,7 @@
     )
   )
 
+;; definition for function cspace<-transform-yxy!
 (defun cspace<-transform-yxy! ((dst cspace) (src transform))
   "Set one cspace's bone to yxy rotation, translation, and scale"
   (let ((s4-0 (-> dst bone transform))
@@ -1993,26 +1316,31 @@
     )
   )
 
+;; definition for function cspace<-transformq!
 (defun cspace<-transformq! ((dst cspace) (src transformq))
   "Set one cspace's from a transformq"
   (matrix<-transformq! (-> dst bone transform) src)
   )
 
+;; definition for function cspace<-transformq+trans!
 (defun cspace<-transformq+trans! ((dst cspace) (src transformq) (extra-trans vector))
   "Set one cspace from a transformq and an additional local translation."
   (matrix<-transformq+trans! (-> dst bone transform) src extra-trans)
   )
 
+;; definition for function cspace<-transformq+world-trans!
 (defun cspace<-transformq+world-trans! ((dst cspace) (src transformq) (extra-trans vector))
   "Set one cspace from a transformq and an additional world translation."
   (matrix<-transformq+world-trans! (-> dst bone transform) src extra-trans)
   )
 
+;; definition for function cspace<-transformq+rot-offset!
 (defun cspace<-transformq+rot-offset! ((dst cspace) (src transformq) (extra-rot vector))
   "Set one cspace from a transformq and an additional rotate."
   (matrix<-transformq+rot-offset! (-> dst bone transform) src extra-rot)
   )
 
+;; definition for function cspace-calc-total-matrix!
 (defun cspace-calc-total-matrix! ((csp cspace) (dst matrix))
   "Combine the bone matrix and camera matrix.
    This is not actually a useful matrix since it does not include the inverse bind pose, but
@@ -2020,9 +1348,11 @@
   (matrix*! dst (-> csp bone transform) (-> *math-camera* camera-temp))
   )
 
+;; definition for function cspace<-matrix-no-push-joint!
+;; INFO: Used lq/sq
 (defun cspace<-matrix-no-push-joint! ((dst cspace) (jc joint-control))
   "Compute animated matrix, using the special 'no-push mode."
-  (let ((v1-2 (matrix-from-control! (scratchpad-object matrix-stack :offset 64) (-> dst joint) jc 'no-push))
+  (let ((v1-2 (matrix-from-control! (the-as matrix-stack (+ 64 #x70000000)) (-> dst joint) jc 'no-push))
         (v0-1 (-> dst bone transform))
         )
     (let ((a0-4 (-> v1-2 rvec quad))
@@ -2039,6 +1369,8 @@
     )
   )
 
+;; definition for function cspace<-matrix-joint!
+;; INFO: Used lq/sq
 (defun cspace<-matrix-joint! ((dst cspace) (src matrix))
   "Set the cspace from a matrix."
   (let ((v0-0 (-> dst bone transform)))
@@ -2057,6 +1389,7 @@
     )
   )
 
+;; definition for function cspace<-parented-matrix-joint!
 (defun cspace<-parented-matrix-joint! ((dst cspace) (joint-mat matrix))
   "Compute the bone matrix of a cspace from combining the transform of the parent bone and the given joint matrix.
    This computes world-space bones from a tree of bones (skeleton)"
@@ -2112,6 +1445,7 @@
     )
   )
 
+;; definition for function cspace<-parented-matrix-mirror!
 (defun cspace<-parented-matrix-mirror! ((dst cspace) (joint-mat matrix))
   "Mirror the provided matrix (using cspace param1,2 as the normal/tangent dirs) as the joint matrix
    This is similar to cspace<-parented-matrix-joint!, but essentially mirrors the joint."
@@ -2124,6 +1458,7 @@
     )
   )
 
+;; definition for function cspace<-parented-matrix-joint-flip-z!
 (defun cspace<-parented-matrix-joint-flip-z! ((dst cspace) (joint-mat matrix))
   "Compute the bone matrix from the parent bone and joint, but flip the z-axis of the joint frame."
   (rlet ((acc :class vf)
@@ -2183,6 +1518,8 @@
     )
   )
 
+;; definition for function cspace<-matrix-joint-flip-z!
+;; WARN: Return type mismatch int vs none.
 (defun cspace<-matrix-joint-flip-z! ((dst cspace) (src matrix))
   "Set the bone matrix directly from the joint matrix, flipping z."
   (local-vars (v1-2 float))
@@ -2203,9 +1540,157 @@
     )
   )
 
-(def-mips2c cspace<-parented-transformq-joint! (function cspace transformq none))
+;; definition for function cspace<-parented-transformq-joint!
+;; ERROR: Function may read a register that is not set: ra
+;; ERROR: Unsupported inline assembly instruction kind - [jr ra]
+;; ERROR: Unsupported inline assembly instruction kind - [jr ra]
+(defun cspace<-parented-transformq-joint! ((dst cspace) (joint-transformq transformq))
+  "Main function for doing skeletal animation from decompressed transformq's.
+   Sets the cspace bone to the parent bone, plus the transformq."
+  (local-vars (t1-1 uint128) (ra-0 none) (f4-2 float))
+  (rlet ((acc :class vf)
+         (vf0 :class vf)
+         (vf1 :class vf)
+         (vf10 :class vf)
+         (vf11 :class vf)
+         (vf12 :class vf)
+         (vf13 :class vf)
+         (vf14 :class vf)
+         (vf15 :class vf)
+         (vf16 :class vf)
+         (vf2 :class vf)
+         (vf3 :class vf)
+         (vf4 :class vf)
+         (vf5 :class vf)
+         (vf6 :class vf)
+         (vf7 :class vf)
+         (vf8 :class vf)
+         (vf9 :class vf)
+         )
+    (init-vf0-vector)
+    (nop!)
+    (let ((a3-0 (-> dst parent))
+          (v1-0 1.0)
+          )
+      (.lvf vf5 (&-> joint-transformq quat quad))
+      (let ((f0-0 v1-0)
+            (t0-0 (-> a3-0 bone))
+            )
+        (nop!)
+        (let ((a2-0 (-> dst bone)))
+          (.add.vf vf6 vf5 vf5)
+          (let ((f1-0 (-> t0-0 scale x)))
+            (.add.w.vf vf2 vf0 vf5 :mask #b1)
+            (.lvf vf15 (&-> joint-transformq trans quad))
+            (.add.z.vf vf2 vf0 vf5 :mask #b10)
+            (.lvf vf1 (&-> joint-transformq scale quad))
+            (let ((f4-0 (/ f0-0 f1-0)))
+              (.lvf vf7 (&-> t0-0 transform rvec quad))
+              (.sub.y.vf vf2 vf0 vf5 :mask #b100)
+              (.lvf vf8 (&-> t0-0 transform uvec quad))
+              (.sub.w.vf vf2 vf0 vf0 :mask #b1000)
+              (.lvf vf9 (&-> t0-0 transform fvec quad))
+              (.sub.z.vf vf3 vf0 vf5 :mask #b1)
+              (.lvf vf10 (&-> t0-0 transform trans quad))
+              (.add.w.vf vf3 vf0 vf5 :mask #b10)
+              (let ((f2-0 (-> t0-0 scale y)))
+                (.add.x.vf vf3 vf0 vf5 :mask #b100)
+                (.svf (&-> a2-0 scale quad) vf1)
+                (.sub.w.vf vf3 vf0 vf0 :mask #b1000)
+                (let ((f3-0 (-> t0-0 scale z)))
+                  (.add.y.vf vf4 vf0 vf5 :mask #b1)
+                  (let ((v1-1 (-> t0-0 scale w)))
+                    (.sub.x.vf vf4 vf0 vf5 :mask #b10)
+                    (let ((t1-0 (the-as uint128 f4-0)))
+                      (.add.w.vf vf4 vf0 vf5 :mask #b100)
+                      (let ((f4-1 (/ f0-0 f2-0)))
+                        (.sub.w.vf vf4 vf0 vf0 :mask #b1000)
+                        (.outer.product.a.vf acc vf6 vf2)
+                        (.outer.product.b.vf vf2 vf2 vf6 acc)
+                        (.outer.product.a.vf acc vf6 vf3)
+                        (.outer.product.b.vf vf3 vf3 vf6 acc)
+                        (.outer.product.a.vf acc vf6 vf4)
+                        (.outer.product.b.vf vf4 vf4 vf6 acc)
+                        (.add.w.vf vf2 vf2 vf0 :mask #b1)
+                        (.add.w.vf vf3 vf3 vf0 :mask #b10)
+                        (.add.w.vf vf4 vf4 vf0 :mask #b100)
+                        (let ((t2-0 (the-as uint128 f4-1)))
+                          (b! (nonzero? v1-1) cfg-2 :delay (set! f4-2 (/.s f0-0 f3-0)))
+                          (.mul.x.vf vf2 vf2 vf1)
+                          (.mul.y.vf vf3 vf3 vf1)
+                          (.mul.z.vf vf4 vf4 vf1)
+                          (.mul.x.vf acc vf7 vf2)
+                          (.add.mul.y.vf acc vf8 vf2 acc)
+                          (.add.mul.z.vf acc vf9 vf2 acc)
+                          (.add.mul.w.vf vf11 vf10 vf2 acc)
+                          (.mul.x.vf acc vf7 vf3)
+                          (.add.mul.y.vf acc vf8 vf3 acc)
+                          (.add.mul.z.vf acc vf9 vf3 acc)
+                          (.add.mul.w.vf vf12 vf10 vf3 acc)
+                          (.mul.x.vf acc vf7 vf4)
+                          (.add.mul.y.vf acc vf8 vf4 acc)
+                          (.add.mul.z.vf acc vf9 vf4 acc)
+                          (.add.mul.w.vf vf13 vf10 vf4 acc)
+                          (.mul.x.vf acc vf7 vf15)
+                          (.add.mul.y.vf acc vf8 vf15 acc)
+                          (.add.mul.z.vf acc vf9 vf15 acc)
+                          (.add.mul.w.vf vf14 vf10 vf0 acc)
+                          (.svf (&-> a2-0 transform rvec quad) vf11)
+                          (.svf (&-> a2-0 transform uvec quad) vf12)
+                          (.svf (&-> a2-0 transform fvec quad) vf13)
+                          (.svf (&-> a2-0 transform trans quad) vf14)
+                          (.jr ra-0)
+                          (nop!)
+                          (label cfg-2)
+                          (.pextlw t1-1 t2-0 t1-0)
+                          )
+                        )
+                      )
+                    )
+                  )
+                )
+              )
+            )
+          (.mul.x.vf vf2 vf2 vf1)
+          (.mul.y.vf vf3 vf3 vf1)
+          (.mul.z.vf vf4 vf4 vf1)
+          (let ((t1-2 (make-u128 f4-2 (the-as int t1-1))))
+            (.mov vf16 t1-2)
+            )
+          (.mul.vf vf2 vf2 vf16)
+          (.mul.vf vf3 vf3 vf16)
+          (.mul.vf vf4 vf4 vf16)
+          (.mul.x.vf acc vf7 vf2)
+          (.add.mul.y.vf acc vf8 vf2 acc)
+          (.add.mul.z.vf acc vf9 vf2 acc)
+          (.add.mul.w.vf vf11 vf10 vf2 acc)
+          (.mul.x.vf acc vf7 vf3)
+          (.add.mul.y.vf acc vf8 vf3 acc)
+          (.add.mul.z.vf acc vf9 vf3 acc)
+          (.add.mul.w.vf vf12 vf10 vf3 acc)
+          (.mul.x.vf acc vf7 vf4)
+          (.add.mul.y.vf acc vf8 vf4 acc)
+          (.add.mul.z.vf acc vf9 vf4 acc)
+          (.add.mul.w.vf vf13 vf10 vf4 acc)
+          (.mul.x.vf acc vf7 vf15)
+          (.add.mul.y.vf acc vf8 vf15 acc)
+          (.add.mul.z.vf acc vf9 vf15 acc)
+          (.add.mul.w.vf vf14 vf10 vf0 acc)
+          (.svf (&-> a2-0 transform rvec quad) vf11)
+          (.svf (&-> a2-0 transform uvec quad) vf12)
+          (.svf (&-> a2-0 transform fvec quad) vf13)
+          (.svf (&-> a2-0 transform trans quad) vf14)
+          )
+        )
+      )
+    (.jr ra-0)
+    (nop!)
+    (none)
+    )
+  )
 
-
+;; definition for function cspace<-parented-transformq-joint-flip-z!
+;; WARN: Return type mismatch int vs none.
 (defun cspace<-parented-transformq-joint-flip-z! ((dst cspace) (joint-transformq transformq))
   "Unused, but would flip the z-axis of the transformq and do a normal parented joint transform."
   (cspace<-parented-transformq-joint! dst joint-transformq)
@@ -2214,56 +1699,347 @@
   (none)
   )
 
-;; make-joint-jump-tables: not needed
-;; calc-animation-from-spr: not needed
+;; definition for function clear-frame-accumulator
+;; ERROR: function has no type analysis. Cannot decompile.
 
-(def-mips2c calc-animation-from-spr (function joint-anim-frame int none))
+;; definition for function normalize-frame-quaternions
+;; ERROR: function has no type analysis. Cannot decompile.
 
-(defun create-interpolated-joint-animation-frame ((dst joint-anim-frame) (num-joints int) (jc joint-control))
-  "Compute the entire joint frame by evaluating the blend tree, decompressing animations, and blending them."
-  (new-joint-decompressor dst num-joints jc)
+;; definition for function decompress-fixed-data-to-accumulator
+;; ERROR: function was not converted to expressions. Cannot decompile.
 
-  ; (flatten-joint-control-to-spr jc)
-  ; (make-joint-jump-tables)
-  ; (calc-animation-from-spr dst num-joints)
+;; definition for function decompress-frame-data-to-accumulator
+;; ERROR: function was not converted to expressions. Cannot decompile.
+
+;; definition for function decompress-frame-data-pair-to-accumulator
+;; ERROR: function was not converted to expressions. Cannot decompile.
+
+;; definition for function make-joint-jump-tables
+;; ERROR: Failed store: (s.w! (+ a0-2 1616) v1-1) at op 5
+;; ERROR: Failed store: (s.w! (+ a0-5 1620) v1-3) at op 11
+;; ERROR: Failed store: (s.w! (+ a0-8 1624) v1-5) at op 17
+;; ERROR: Failed store: (s.w! (+ a0-11 1628) v1-7) at op 23
+;; ERROR: Failed store: (s.w! (+ a0-14 1632) v1-9) at op 29
+;; ERROR: Failed store: (s.w! (+ a0-17 1636) v1-11) at op 35
+;; ERROR: Failed store: (s.w! (+ a0-20 1640) v1-13) at op 41
+;; ERROR: Failed store: (s.w! (+ a0-23 1644) v1-15) at op 47
+;; ERROR: Failed store: (s.w! (+ a0-26 1648) v1-17) at op 53
+;; ERROR: Failed store: (s.w! (+ a0-29 1652) v1-19) at op 59
+;; ERROR: Failed store: (s.w! (+ a0-32 1656) v1-21) at op 65
+;; ERROR: Failed store: (s.w! (+ a0-35 1660) v1-23) at op 71
+;; ERROR: Failed store: (s.w! (+ a0-38 1664) v1-25) at op 77
+;; ERROR: Failed store: (s.w! (+ a0-41 1668) v1-27) at op 83
+;; ERROR: Failed store: (s.w! (+ a0-44 1672) v1-29) at op 89
+;; ERROR: Failed store: (s.w! (+ a0-47 1676) v1-31) at op 95
+;; ERROR: Failed store: (s.w! (+ a0-50 1680) v1-33) at op 101
+;; ERROR: Failed store: (s.w! (+ a0-53 1684) v1-35) at op 107
+;; ERROR: Failed store: (s.w! (+ a0-56 1688) v1-37) at op 113
+;; ERROR: Failed store: (s.w! (+ a0-59 1692) v1-39) at op 119
+;; ERROR: Failed store: (s.w! (+ a0-62 1696) v1-41) at op 125
+;; ERROR: Failed store: (s.w! (+ a0-65 1700) v1-43) at op 131
+;; ERROR: Failed store: (s.w! (+ a0-68 1704) v1-45) at op 137
+;; ERROR: Failed store: (s.w! (+ a0-71 1708) v1-47) at op 143
+;; ERROR: Failed store: (s.w! (+ a0-74 1712) v1-49) at op 149
+;; ERROR: Failed store: (s.w! (+ a0-77 1716) v1-51) at op 155
+;; ERROR: Failed store: (s.w! (+ a0-80 1720) v1-53) at op 161
+;; ERROR: Failed store: (s.w! (+ a0-83 1724) v1-55) at op 167
+;; ERROR: Failed store: (s.w! (+ a0-86 1728) v1-57) at op 173
+;; ERROR: Failed store: (s.w! (+ a0-89 1732) v1-59) at op 179
+;; ERROR: Failed store: (s.w! (+ a0-92 1736) v1-61) at op 185
+;; ERROR: Failed store: (s.w! (+ a0-95 1740) v1-63) at op 191
+;; ERROR: Failed store: (s.w! (+ a0-98 1744) v1-65) at op 197
+;; ERROR: Failed store: (s.w! (+ a0-101 1748) v1-67) at op 203
+;; ERROR: Failed store: (s.w! (+ a0-104 1752) v1-69) at op 209
+;; ERROR: Failed store: (s.w! (+ a0-107 1756) v1-71) at op 215
+;; ERROR: Failed store: (s.w! (+ a0-110 1760) v1-73) at op 221
+;; ERROR: Failed store: (s.w! (+ a0-113 1764) v1-75) at op 227
+;; ERROR: Failed store: (s.w! (+ a0-116 1768) v1-77) at op 233
+;; ERROR: Failed store: (s.w! (+ a0-119 1772) v1-79) at op 239
+;; ERROR: Failed store: (s.w! (+ a0-122 1776) v1-81) at op 245
+;; ERROR: Failed store: (s.w! (+ a0-125 1780) v1-83) at op 251
+;; ERROR: Failed store: (s.w! (+ a0-128 1784) v1-85) at op 257
+;; ERROR: Failed store: (s.w! (+ a0-131 1788) v1-87) at op 263
+;; ERROR: Failed store: (s.w! (+ a0-134 1792) v1-89) at op 269
+;; ERROR: Failed store: (s.w! (+ a0-137 1796) v1-91) at op 275
+;; ERROR: Failed store: (s.w! (+ a0-140 1800) v1-93) at op 281
+;; ERROR: Failed store: (s.w! (+ a0-143 1804) v1-95) at op 287
+(defun make-joint-jump-tables ()
+  (let ((v1-1 (+ (the-as uint decompress-fixed-data-to-accumulator) (* 108 4)))
+        (a0-2 #x70000000)
+        )
+    (s.w! (+ a0-2 1616) v1-1)
+    )
+  (let ((v1-3 (+ (the-as uint decompress-fixed-data-to-accumulator) (* 199 4)))
+        (a0-5 #x70000000)
+        )
+    (s.w! (+ a0-5 1620) v1-3)
+    )
+  (let ((v1-5 (+ (the-as uint decompress-fixed-data-to-accumulator) (* 233 4)))
+        (a0-8 #x70000000)
+        )
+    (s.w! (+ a0-8 1624) v1-5)
+    )
+  (let ((v1-7 (+ (the-as uint decompress-fixed-data-to-accumulator) (* 286 4)))
+        (a0-11 #x70000000)
+        )
+    (s.w! (+ a0-11 1628) v1-7)
+    )
+  (let ((v1-9 (+ (the-as uint decompress-fixed-data-to-accumulator) (* 301 4)))
+        (a0-14 #x70000000)
+        )
+    (s.w! (+ a0-14 1632) v1-9)
+    )
+  (let ((v1-11 (+ (the-as uint decompress-fixed-data-to-accumulator) (* 366 4)))
+        (a0-17 #x70000000)
+        )
+    (s.w! (+ a0-17 1636) v1-11)
+    )
+  (let ((v1-13 (+ (the-as uint decompress-fixed-data-to-accumulator) (* 387 4)))
+        (a0-20 #x70000000)
+        )
+    (s.w! (+ a0-20 1640) v1-13)
+    )
+  (let ((v1-15 (+ (the-as uint decompress-fixed-data-to-accumulator) (* 100 4)))
+        (a0-23 #x70000000)
+        )
+    (s.w! (+ a0-23 1644) v1-15)
+    )
+  (let ((v1-17 (+ (the-as uint decompress-fixed-data-to-accumulator) (* 155 4)))
+        (a0-26 #x70000000)
+        )
+    (s.w! (+ a0-26 1648) v1-17)
+    )
+  (let ((v1-19 (+ (the-as uint decompress-fixed-data-to-accumulator) (* 199 4)))
+        (a0-29 #x70000000)
+        )
+    (s.w! (+ a0-29 1652) v1-19)
+    )
+  (let ((v1-21 (+ (the-as uint decompress-fixed-data-to-accumulator) (* 261 4)))
+        (a0-32 #x70000000)
+        )
+    (s.w! (+ a0-32 1656) v1-21)
+    )
+  (let ((v1-23 (+ (the-as uint decompress-fixed-data-to-accumulator) (* 286 4)))
+        (a0-35 #x70000000)
+        )
+    (s.w! (+ a0-35 1660) v1-23)
+    )
+  (let ((v1-25 (+ (the-as uint decompress-fixed-data-to-accumulator) (* 335 4)))
+        (a0-38 #x70000000)
+        )
+    (s.w! (+ a0-38 1664) v1-25)
+    )
+  (let ((v1-27 (+ (the-as uint decompress-fixed-data-to-accumulator) (* 366 4)))
+        (a0-41 #x70000000)
+        )
+    (s.w! (+ a0-41 1668) v1-27)
+    )
+  (let ((v1-29 (+ (the-as uint decompress-fixed-data-to-accumulator) (* 402 4)))
+        (a0-44 #x70000000)
+        )
+    (s.w! (+ a0-44 1672) v1-29)
+    )
+  (let ((v1-31 (+ (the-as uint decompress-fixed-data-to-accumulator) (* 100 4)))
+        (a0-47 #x70000000)
+        )
+    (s.w! (+ a0-47 1676) v1-31)
+    )
+  (let ((v1-33 (+ (the-as uint decompress-frame-data-to-accumulator) (* 84 4)))
+        (a0-50 #x70000000)
+        )
+    (s.w! (+ a0-50 1680) v1-33)
+    )
+  (let ((v1-35 (+ (the-as uint decompress-frame-data-to-accumulator) (* 92 4)))
+        (a0-53 #x70000000)
+        )
+    (s.w! (+ a0-53 1684) v1-35)
+    )
+  (let ((v1-37 (+ (the-as uint decompress-frame-data-to-accumulator) (* 119 4)))
+        (a0-56 #x70000000)
+        )
+    (s.w! (+ a0-56 1688) v1-37)
+    )
+  (let ((v1-39 (+ (the-as uint decompress-frame-data-to-accumulator) (* 140 4)))
+        (a0-59 #x70000000)
+        )
+    (s.w! (+ a0-59 1692) v1-39)
+    )
+  (let ((v1-41 (+ (the-as uint decompress-frame-data-to-accumulator) (* 205 4)))
+        (a0-62 #x70000000)
+        )
+    (s.w! (+ a0-62 1696) v1-41)
+    )
+  (let ((v1-43 (+ (the-as uint decompress-frame-data-to-accumulator) (* 220 4)))
+        (a0-65 #x70000000)
+        )
+    (s.w! (+ a0-65 1700) v1-43)
+    )
+  (let ((v1-45 (+ (the-as uint decompress-frame-data-to-accumulator) (* 273 4)))
+        (a0-68 #x70000000)
+        )
+    (s.w! (+ a0-68 1704) v1-45)
+    )
+  (let ((v1-47 (+ (the-as uint decompress-frame-data-to-accumulator) (* 307 4)))
+        (a0-71 #x70000000)
+        )
+    (s.w! (+ a0-71 1708) v1-47)
+    )
+  (let ((v1-49 (+ (the-as uint decompress-frame-data-to-accumulator) (* 84 4)))
+        (a0-74 #x70000000)
+        )
+    (s.w! (+ a0-74 1712) v1-49)
+    )
+  (let ((v1-51 (+ (the-as uint decompress-frame-data-to-accumulator) (* 107 4)))
+        (a0-77 #x70000000)
+        )
+    (s.w! (+ a0-77 1716) v1-51)
+    )
+  (let ((v1-53 (+ (the-as uint decompress-frame-data-to-accumulator) (* 119 4)))
+        (a0-80 #x70000000)
+        )
+    (s.w! (+ a0-80 1720) v1-53)
+    )
+  (let ((v1-55 (+ (the-as uint decompress-frame-data-to-accumulator) (* 174 4)))
+        (a0-83 #x70000000)
+        )
+    (s.w! (+ a0-83 1724) v1-55)
+    )
+  (let ((v1-57 (+ (the-as uint decompress-frame-data-to-accumulator) (* 205 4)))
+        (a0-86 #x70000000)
+        )
+    (s.w! (+ a0-86 1728) v1-57)
+    )
+  (let ((v1-59 (+ (the-as uint decompress-frame-data-to-accumulator) (* 248 4)))
+        (a0-89 #x70000000)
+        )
+    (s.w! (+ a0-89 1732) v1-59)
+    )
+  (let ((v1-61 (+ (the-as uint decompress-frame-data-to-accumulator) (* 273 4)))
+        (a0-92 #x70000000)
+        )
+    (s.w! (+ a0-92 1736) v1-61)
+    )
+  (let ((v1-63 (+ (the-as uint decompress-frame-data-to-accumulator) (* 354 4)))
+        (a0-95 #x70000000)
+        )
+    (s.w! (+ a0-95 1740) v1-63)
+    )
+  (let ((v1-65 (+ (the-as uint decompress-frame-data-pair-to-accumulator) (* 117 4)))
+        (a0-98 #x70000000)
+        )
+    (s.w! (+ a0-98 1744) v1-65)
+    )
+  (let ((v1-67 (+ (the-as uint decompress-frame-data-pair-to-accumulator) (* 125 4)))
+        (a0-101 #x70000000)
+        )
+    (s.w! (+ a0-101 1748) v1-67)
+    )
+  (let ((v1-69 (+ (the-as uint decompress-frame-data-pair-to-accumulator) (* 169 4)))
+        (a0-104 #x70000000)
+        )
+    (s.w! (+ a0-104 1752) v1-69)
+    )
+  (let ((v1-71 (+ (the-as uint decompress-frame-data-pair-to-accumulator) (* 197 4)))
+        (a0-107 #x70000000)
+        )
+    (s.w! (+ a0-107 1756) v1-71)
+    )
+  (let ((v1-73 (+ (the-as uint decompress-frame-data-pair-to-accumulator) (* 293 4)))
+        (a0-110 #x70000000)
+        )
+    (s.w! (+ a0-110 1760) v1-73)
+    )
+  (let ((v1-75 (+ (the-as uint decompress-frame-data-pair-to-accumulator) (* 318 4)))
+        (a0-113 #x70000000)
+        )
+    (s.w! (+ a0-113 1764) v1-75)
+    )
+  (let ((v1-77 (+ (the-as uint decompress-frame-data-pair-to-accumulator) (* 408 4)))
+        (a0-116 #x70000000)
+        )
+    (s.w! (+ a0-116 1768) v1-77)
+    )
+  (let ((v1-79 (+ (the-as uint decompress-frame-data-pair-to-accumulator) (* 459 4)))
+        (a0-119 #x70000000)
+        )
+    (s.w! (+ a0-119 1772) v1-79)
+    )
+  (let ((v1-81 (+ (the-as uint decompress-frame-data-pair-to-accumulator) (* 117 4)))
+        (a0-122 #x70000000)
+        )
+    (s.w! (+ a0-122 1776) v1-81)
+    )
+  (let ((v1-83 (+ (the-as uint decompress-frame-data-pair-to-accumulator) (* 150 4)))
+        (a0-125 #x70000000)
+        )
+    (s.w! (+ a0-125 1780) v1-83)
+    )
+  (let ((v1-85 (+ (the-as uint decompress-frame-data-pair-to-accumulator) (* 169 4)))
+        (a0-128 #x70000000)
+        )
+    (s.w! (+ a0-128 1784) v1-85)
+    )
+  (let ((v1-87 (+ (the-as uint decompress-frame-data-pair-to-accumulator) (* 248 4)))
+        (a0-131 #x70000000)
+        )
+    (s.w! (+ a0-131 1788) v1-87)
+    )
+  (let ((v1-89 (+ (the-as uint decompress-frame-data-pair-to-accumulator) (* 293 4)))
+        (a0-134 #x70000000)
+        )
+    (s.w! (+ a0-134 1792) v1-89)
+    )
+  (let ((v1-91 (+ (the-as uint decompress-frame-data-pair-to-accumulator) (* 366 4)))
+        (a0-137 #x70000000)
+        )
+    (s.w! (+ a0-137 1796) v1-91)
+    )
+  (let ((v1-93 (+ (the-as uint decompress-frame-data-pair-to-accumulator) (* 408 4)))
+        (a0-140 #x70000000)
+        )
+    (s.w! (+ a0-140 1800) v1-93)
+    )
+  (let ((v1-95 (+ (the-as uint decompress-frame-data-pair-to-accumulator) (* 533 4)))
+        (a0-143 #x70000000)
+        )
+    (s.w! (+ a0-143 1804) v1-95)
+    )
   0
   )
 
+;; definition for function calc-animation-from-spr
+;; INFO: function output is handled by mips2c
+(def-mips2c calc-animation-from-spr (function joint-anim-frame int none))
+
+;; definition for function create-interpolated-joint-animation-frame
+(defun create-interpolated-joint-animation-frame ((dst joint-anim-frame) (num-joints int) (jc joint-control))
+  (flatten-joint-control-to-spr jc)
+  (make-joint-jump-tables)
+  (calc-animation-from-spr dst num-joints)
+  0
+  )
+
+;; definition for function create-interpolated2-joint-animation-frame
+;; INFO: Used lq/sq
 (defun create-interpolated2-joint-animation-frame ((dst joint-anim-frame) (num-joints int) (jc joint-control))
-  "Compute the entire joint frame twice, then blend those two 'sub frames' together.
-   This uses interp-select bitmask to pick which sub frames are applied to each joint."
-
   (flush-cache 0)
-
-  ;; if the user has not set any bits, fall back to the normal system.
   (if (and (zero? (-> jc interp-select 0)) (zero? (-> jc interp-select 1)))
       (return (create-interpolated-joint-animation-frame dst num-joints jc))
       )
-
-  ;; run the second 'sub frame'
   (set! (-> jc active-frame-interp) (the-as uint 1))
-  ;(flatten-joint-control-to-spr jc)
-  ;(make-joint-jump-tables)
-  ;(calc-animation-from-spr dst num-joints)
-  (create-interpolated-joint-animation-frame dst num-joints jc)
-  ;; copy this sub-frame to temporary buffer
-  ;; changed for PC!
-  (ultimate-memcpy (the-as pointer *gsf-buffer*) (the-as pointer dst) (the-as uint (+ (* 48 num-joints) 128)))
-  ; (dma-send-from-spr-no-flush
-  ;   (the-as uint *gsf-buffer*)
-  ;   (the-as uint dst)
-  ;   (the-as uint (/ (+ (* 48 num-joints) 128) 16))
-  ;   #f
-  ;   )
-
-  ;; run the first sub-frame.
+  (flatten-joint-control-to-spr jc)
+  (make-joint-jump-tables)
+  (calc-animation-from-spr dst num-joints)
+  (dma-send-from-spr-no-flush
+    (the-as uint *gsf-buffer*)
+    (the-as uint dst)
+    (the-as uint (/ (+ (* 48 num-joints) 128) 16))
+    #f
+    )
   (set! (-> jc active-frame-interp) (the-as uint 0))
-  (create-interpolated-joint-animation-frame dst num-joints jc)
-  ; (flatten-joint-control-to-spr jc)
-  ; (make-joint-jump-tables)
-  ; (calc-animation-from-spr dst num-joints)
-
-  ;; interpolate the result.
+  (flatten-joint-control-to-spr jc)
+  (make-joint-jump-tables)
+  (calc-animation-from-spr dst num-joints)
   (let ((v1-9 (the-as joint-anim-frame *gsf-buffer*)))
     (let ((a0-9 (-> jc interp-select 0)))
       (dotimes (a1-5 2)
@@ -2324,6 +2100,7 @@
   0
   )
 
+;; definition for method 2 of type art-joint-anim-manager-slot
 (defmethod print ((this art-joint-anim-manager-slot))
   (let* ((gp-0 format)
          (s5-0 #t)
@@ -2361,6 +2138,7 @@
   this
   )
 
+;; definition for method 12 of type art-joint-anim-manager
 (defmethod used-bytes-for-slot ((this art-joint-anim-manager) (arg0 int))
   "Get how many bytes of our heap are used by the given anim slot."
   (let ((v1-2 (-> this slot arg0)))
@@ -2374,6 +2152,7 @@
     )
   )
 
+;; definition for method 11 of type art-joint-anim-manager
 (defmethod unload-from-slot ((this art-joint-anim-manager) (arg0 int))
   "Remove the given animation from the cache."
   (let* ((s3-0 (-> this slot arg0))
@@ -2419,7 +2198,7 @@
                )
              )
            (set! s3-0 (-> this slot (+ (-> this free-index) -1)))
-           (set! (-> this heap current) (the pointer (&- (-> this heap current) (the-as uint s1-0))))
+           (set! (-> this heap current) (&- (-> this heap current) (the-as uint s1-0)))
            )
          )
         (else
@@ -2435,6 +2214,7 @@
     )
   )
 
+;; definition for method 10 of type art-joint-anim-manager
 (defmethod mark-anim-in-use ((this art-joint-anim-manager) (arg0 art-joint-anim))
   "Inform the cache this animation is in used, so it is not evicted."
   (countdown (v1-0 (-> this free-index))
@@ -2446,6 +2226,7 @@
   arg0
   )
 
+;; definition for method 9 of type art-joint-anim-manager
 (defmethod decompress ((this art-joint-anim-manager) (arg0 art-joint-anim))
   "Decompress the given animation and store the decompressed data in this cache."
   (let* ((s5-0 (-> arg0 frames))
@@ -2492,6 +2273,8 @@
   arg0
   )
 
+;; definition for method 13 of type art-joint-anim-manager
+;; WARN: Return type mismatch int vs none.
 (defmethod unload-from-heap ((this art-joint-anim-manager) (arg0 kheap))
   "Remove all animations which have their original compressed data in the given heap."
   (let ((s5-0 (-> arg0 base))
@@ -2509,8 +2292,15 @@
   (none)
   )
 
+;; failed to figure out what this is:
 (kmemopen global "anim-manager")
 
+;; definition for symbol *anim-manager*, type art-joint-anim-manager
 (define *anim-manager* (new 'global 'art-joint-anim-manager #x30000))
 
+;; failed to figure out what this is:
 (kmemclose)
+
+
+
+
