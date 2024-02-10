@@ -1,5 +1,6 @@
 import json
 import os
+import subprocess
 
 jak1_files = None
 jak2_files = None
@@ -20,6 +21,15 @@ def get_file_list(game_name):
       return jak2_files
     case "jak3":
       return jak3_files
+
+def is_file_in_game(game_name, file_name):
+  file_list = get_file_list(game_name)
+  for f in file_list:
+    if f[2] != 3 and f[2] != 5:
+      continue
+    if f[0] == file_name:
+      return True
+  return False
 
 def get_gsrc_path_from_filename(game_name, file_name):
   file_list = get_file_list(game_name)
@@ -53,3 +63,21 @@ def get_ref_path_from_filename(game_name, file_name, ref_folder):
     exit(1)
   path = os.path.join(ref_folder, game_name, src_path, "{}_REF.gc".format(file_name))
   return path
+
+def decompile_file(decompiler_path, decompiler_config, game_version, file_names, omit_var_casts=False):
+  decompiler_args = '{{"levels_extract": false, "process_art_groups": false, "decompile_code": true, "allowed_objects": {}}}'.format(file_names)
+  if omit_var_casts:
+    decompiler_args = '{{"levels_extract": false, "process_art_groups": false, "decompile_code": true, "ignore_var_name_casts": true, "allowed_objects": {}}}'.format(file_names)
+  subprocess.run(
+    [
+        decompiler_path,
+        "./decompiler/config/{}".format(decompiler_config),
+        "./iso_data",
+        "./decompiler_out",
+        "--version",
+        game_version,
+        "--config-override",
+        decompiler_args,
+    ],
+    stdout = subprocess.DEVNULL
+)

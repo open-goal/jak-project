@@ -3,6 +3,8 @@
 
 ;; definition for function vector-flatten!
 (defun vector-flatten! ((arg0 vector) (arg1 vector) (arg2 vector))
+  "Get the projection of src onto a plane with the given normal
+The normal should have magnitude 1.0."
   (rlet ((acc :class vf)
          (vf0 :class vf)
          (vf1 :class vf)
@@ -24,6 +26,7 @@
 
 ;; definition for function vector-reflect!
 (defun vector-reflect! ((arg0 vector) (arg1 vector) (arg2 vector))
+  "Reflect a vector off of a plane."
   (rlet ((acc :class vf)
          (vf0 :class vf)
          (vf1 :class vf)
@@ -47,6 +50,12 @@
 
 ;; definition for function vector-reflect-flat!
 (defun vector-reflect-flat! ((arg0 vector) (arg1 vector) (arg2 vector))
+  "This is a weird one. It doesn't care about the value of src dot normal
+and it effectively replaces the component of src normal to the plane with
+the plane's normal.  I think this requires src/normal to both be unit vectors
+in order to make sense.
+NOTE: src should point from positive halfspace to negative otherwise it
+doesn't work."
   (rlet ((acc :class vf)
          (vf0 :class vf)
          (vf1 :class vf)
@@ -69,6 +78,7 @@
 
 ;; definition for function vector-reflect-flat-above!
 (defun vector-reflect-flat-above! ((arg0 vector) (arg1 vector) (arg2 vector))
+  "Not really a reflect. Same as flatten."
   (rlet ((acc :class vf)
          (vf0 :class vf)
          (vf1 :class vf)
@@ -119,6 +129,9 @@
 
 ;; definition for function vector-segment-distance-point!
 (defun vector-segment-distance-point! ((arg0 vector) (arg1 vector) (arg2 vector) (arg3 vector))
+  "Compute the distance from a point to the closest point on the line segment.
+arg0 is the point. arg1/arg2 are the endpoints of the line segment.
+arg3 is an optional output closest point."
   (local-vars (v0-0 float) (v1-0 float) (v1-1 float))
   (rlet ((acc :class vf)
          (Q :class vf)
@@ -190,6 +203,8 @@
 ;; definition for function vector-line-distance
 ;; INFO: Used lq/sq
 (defun vector-line-distance ((arg0 vector) (arg1 vector) (arg2 vector))
+  "Weird function: given a point arg1, and an infinite line connecting arg2 and arg1, compute the distance
+from arg0 to that line."
   (let* ((a1-3 (vector-normalize! (vector-! (new-stack-vector0) arg2 arg1) 1.0))
          (gp-1 (vector-! (new-stack-vector0) arg0 arg1))
          (f0-1 (vector-dot a1-3 gp-1))
@@ -202,6 +217,7 @@
 ;; definition for function vector-line-distance-point!
 ;; INFO: Used lq/sq
 (defun vector-line-distance-point! ((arg0 vector) (arg1 vector) (arg2 vector) (arg3 vector))
+  "Same as above function, but returns the point on arg2/arg1 in arg3 (ignored if #f)"
   (let* ((a1-3 (vector-normalize! (vector-! (new-stack-vector0) arg2 arg1) 1.0))
          (s4-1 (vector-! (new-stack-vector0) arg0 arg1))
          (f0-1 (vector-dot a1-3 s4-1))
@@ -216,6 +232,7 @@
 
 ;; definition for function vector-segment-overlap
 (defun vector-segment-overlap ((arg0 vector) (arg1 vector) (arg2 vector))
+  "Seems to compute (v1 - v0).dot(v2 - v1), but in a weird way."
   (let* ((gp-1 (vector-! (new 'stack-no-clear 'vector) arg1 arg2))
          (s5-0 (vector-normalize-copy! (new 'stack-no-clear 'vector) gp-1 1.0))
          )
@@ -228,6 +245,7 @@
 
 ;; definition for function line-sphere-intersection?
 (defun line-sphere-intersection? ((arg0 vector) (arg1 vector) (arg2 vector))
+  "Does [arg1, arg2] intersect sphere arg0?"
   (let ((s5-0 (new 'stack-no-clear 'vector)))
     (let ((s3-0 (new 'stack-no-clear 'vector))
           (f30-0 0.0)
@@ -257,6 +275,7 @@
 
 ;; definition for function vector-orient-by-quat!
 (defun vector-orient-by-quat! ((arg0 vector) (arg1 vector) (arg2 quaternion))
+  "Rotate a vector by a quaternion."
   (rlet ((acc :class vf)
          (vf0 :class vf)
          (vf1 :class vf)
@@ -303,6 +322,7 @@
 ;; definition for function vector-inv-orient-by-quat!
 ;; ERROR: Bad vector register dependency: vf7
 (defun vector-inv-orient-by-quat! ((arg0 vector) (arg1 vector) (arg2 quaternion))
+  "Rotate a vector by the inverse rotation."
   (rlet ((acc :class vf)
          (vf0 :class vf)
          (vf1 :class vf)
@@ -384,12 +404,16 @@
 
 ;; definition for function forward-up->inv-matrix
 (defun forward-up->inv-matrix ((arg0 matrix) (arg1 vector) (arg2 vector))
+  "Create a matrix representing an inverse transform where arg1 is forward (+z)
+and arg2 is up (+y). Will use the pitch of forward."
   (forward-down->inv-matrix arg0 arg1 (vector-negate! (new 'stack-no-clear 'vector) arg2))
   )
 
 ;; definition for function forward-up-nopitch->inv-matrix
 ;; INFO: Used lq/sq
 (defun forward-up-nopitch->inv-matrix ((arg0 matrix) (arg1 vector) (arg2 vector))
+  "Create a matrix representing an inverse transform where arg1 is forward (+z)
+and arg2 is up (+y). Will not use the pitch of forward."
   (forward-down-nopitch->inv-matrix arg0 arg1 (vector-negate! (new-stack-vector0) arg2))
   )
 
@@ -411,6 +435,7 @@
 ;; definition for function quaternion-from-two-vectors!
 ;; INFO: Used lq/sq
 (defun quaternion-from-two-vectors! ((arg0 quaternion) (arg1 vector) (arg2 vector))
+  "Create a quaternion representing the rotation between two vectors."
   (let* ((s5-0 (vector-cross! (new-stack-vector0) arg1 arg2))
          (f1-0 (vector-length s5-0))
          (f0-1 (vector-dot arg1 arg2))
@@ -428,6 +453,8 @@
 ;; definition for function quaternion-from-two-vectors-partial!
 ;; INFO: Used lq/sq
 (defun quaternion-from-two-vectors-partial! ((arg0 quaternion) (arg1 vector) (arg2 vector) (arg3 float))
+  "Create a quaternion representing the rotation between two vectors,
+doing arg3 fraction of the total rotation."
   (let* ((s5-0 (vector-cross! (new-stack-vector0) arg1 arg2))
          (f0-0 (vector-length s5-0))
          (f1-1 (+ 1.0 (* arg3 (+ -1.0 (vector-dot arg1 arg2)))))
@@ -501,6 +528,7 @@
 ;; definition for function matrix-from-two-vectors!
 ;; INFO: Used lq/sq
 (defun matrix-from-two-vectors! ((arg0 matrix) (arg1 vector) (arg2 vector))
+  "Create a rotation matrix representing the rotation between two vectors."
   (let* ((a1-3 (vector-normalize! (vector-cross! (new-stack-vector0) arg2 arg1) 1.0))
          (f0-1 (vector-dot arg1 arg2))
          (f1-0 1.0)
@@ -514,6 +542,8 @@
 ;; definition for function matrix-from-two-vectors-max-angle!
 ;; INFO: Used lq/sq
 (defun matrix-from-two-vectors-max-angle! ((arg0 matrix) (arg1 vector) (arg2 vector) (arg3 float))
+  "Create a rotation matrix representing the rotation between two vectors,
+allowing at most a rotation of arg3 degrees."
   (let ((s4-1 (vector-normalize! (vector-cross! (new-stack-vector0) arg2 arg1) 1.0))
         (f30-0 (vector-dot arg1 arg2))
         (f28-0 (cos arg3))
@@ -538,6 +568,11 @@
 
 ;; definition for function matrix-from-two-vectors-smooth!
 (defun matrix-from-two-vectors-smooth! ((arg0 matrix) (arg1 vector) (arg2 vector) (arg3 float) (arg4 int))
+  "This function can help smoothly rotate from a current heading vector to a target one.
+It returns a rotation to move arg1 closer to arg2, subject to two different speed limits.
+arg3 is a rotations-per-frame rate. This limit takes frame rate into account (when lagging, the rotation is larger)
+arg4 is a 'slow down when getting close to the end' limit.
+This is used in rotate-toward-orientation, which is much improved from jak 1."
   (let* ((s5-1 (vector-normalize! (vector-cross! (new 'stack-no-clear 'vector) arg2 arg1) 1.0))
          (f0-1 (vector-dot arg1 arg2))
          (f0-2 (acos f0-1))
@@ -551,6 +586,8 @@
 
 ;; definition for function matrix-from-two-vectors-the-long-way-smooth!
 (defun matrix-from-two-vectors-the-long-way-smooth! ((arg0 matrix) (arg1 vector) (arg2 vector) (arg3 float) (arg4 int))
+  "Same as above, but rotates you away from the target.
+Note that the 'near the end' smoothing will apply when you're near the target."
   (let* ((s5-1 (vector-normalize! (vector-cross! (new 'stack-no-clear 'vector) arg2 arg1) 1.0))
          (f0-1 (vector-dot arg1 arg2))
          (f0-3 (- (acos f0-1)))
@@ -564,6 +601,7 @@
 
 ;; definition for function quaternion-from-two-vectors-smooth!
 (defun quaternion-from-two-vectors-smooth! ((arg0 quaternion) (arg1 vector) (arg2 vector) (arg3 float) (arg4 int))
+  "Same as above, but returns a quaternion."
   (let ((a1-1 (matrix-from-two-vectors-smooth! (new 'stack-no-clear 'matrix) arg1 arg2 arg3 arg4)))
     (matrix->quaternion arg0 a1-1)
     )
@@ -571,6 +609,8 @@
 
 ;; definition for function matrix-from-two-vectors-max-angle-partial!
 (defun matrix-from-two-vectors-max-angle-partial! ((arg0 matrix) (arg1 vector) (arg2 vector) (arg3 float) (arg4 float))
+  "Create a rotation matrix representing the given fraction of the rotation between two heading vectors,
+rotating by at most the given angle."
   (let* ((s4-1 (vector-normalize! (vector-cross! (new 'stack-no-clear 'vector) arg2 arg1) 1.0))
          (f28-0 (vector-dot arg1 arg2))
          (f30-0 (cos arg3))
@@ -597,6 +637,7 @@
 ;; definition for function matrix-from-two-vectors-partial-linear!
 ;; INFO: Used lq/sq
 (defun matrix-from-two-vectors-partial-linear! ((arg0 matrix) (arg1 vector) (arg2 vector) (arg3 float))
+  "Create a rotation matrix representing doing arg3 fraction of the rotation between two vectors."
   (let ((gp-1 (vector-normalize! (vector-cross! (new-stack-vector0) arg2 arg1) 1.0))
         (f0-1 (vector-dot arg1 arg2))
         )
@@ -648,6 +689,7 @@
 ;; definition for function matrix-rot-diff!
 ;; INFO: Used lq/sq
 (defun matrix-rot-diff! ((arg0 vector) (arg1 matrix) (arg2 matrix))
+  "Get the difference of rotation between two matrices, expressed as a quaternion."
   (let ((s3-0 (new-stack-quaternion0))
         (s2-0 (new-stack-quaternion0))
         (s5-0 (new-stack-quaternion0))
@@ -675,6 +717,7 @@
 ;; definition for function quaternion-seek
 ;; INFO: Used lq/sq
 (defun quaternion-seek ((arg0 quaternion) (arg1 quaternion) (arg2 quaternion) (arg3 float) (arg4 float))
+  "Strange quaternion rotate toward function. arg3 is ignored. arg4 is the max seek amount."
   (let ((s5-0 (new-stack-matrix0))
         (s4-0 (new-stack-matrix0))
         )
@@ -690,6 +733,7 @@
 ;; definition for function vector-deg-seek
 ;; INFO: Used lq/sq
 (defun vector-deg-seek ((arg0 vector) (arg1 vector) (arg2 vector) (arg3 float))
+  "Make one vector closer to another, doing at most a rotation by arg3 degrees."
   (let ((s4-0 (new-stack-matrix0)))
     (matrix-from-two-vectors-max-angle! s4-0 arg1 arg2 arg3)
     (vector-matrix*! arg0 arg1 s4-0)
@@ -699,6 +743,7 @@
 ;; definition for function vector-deg-slerp
 ;; INFO: Used lq/sq
 (defun vector-deg-slerp ((arg0 vector) (arg1 vector) (arg2 vector) (arg3 float))
+  "Slerp for vectors. (imagine that they are the z axis of two frames)"
   (cond
     ((>= 0.0 arg3)
      (set! (-> arg0 quad) (-> arg1 quad))
@@ -724,6 +769,7 @@
 ;; definition for function vector-vector-deg-slerp!
 ;; INFO: Used lq/sq
 (defun vector-vector-deg-slerp! ((arg0 vector) (arg1 vector) (arg2 vector) (arg3 float) (arg4 vector))
+  "Unused. No clue what this does."
   (local-vars (sv-112 (function float float float float)))
   (cond
     ((>= 0.0 arg3)
@@ -756,6 +802,7 @@
 
 ;; definition for function normal-of-plane
 (defun normal-of-plane ((arg0 vector) (arg1 vector) (arg2 vector) (arg3 vector))
+  "Given three points on a plane, compute the plane's normal."
   (rlet ((acc :class vf)
          (Q :class vf)
          (vf0 :class vf)
@@ -789,6 +836,7 @@
 
 ;; definition for function vector-3pt-cross!
 (defun vector-3pt-cross! ((arg0 vector) (arg1 vector) (arg2 vector) (arg3 vector))
+  "Cross product of 2 - 1 and 3 - 1. (will give a normal to the plane, but not of magnitude 1)"
   (rlet ((acc :class vf)
          (vf0 :class vf)
          (vf1 :class vf)
@@ -814,6 +862,7 @@
 ;; INFO: Used lq/sq
 ;; WARN: Return type mismatch int vs none.
 (defun closest-pt-in-triangle ((arg0 vector) (arg1 vector) (arg2 matrix) (arg3 vector))
+  "arg2 is the vertices of the triangle, arg3 is the normal, arg1 is the input point, arg0 is the output."
   (local-vars
     (v1-0 float)
     (v1-4 uint)
@@ -948,6 +997,7 @@
 ;; WARN: Using logior on floats
 ;; WARN: Using logior on floats
 (defun point-in-triangle-cross ((arg0 vector) (arg1 vector) (arg2 vector) (arg3 vector) (arg4 vector))
+  "Check if point is in the triangle using cross product check (so you have to get the order of points right)."
   (local-vars (v1-0 float) (a0-1 float) (a1-1 float))
   (rlet ((acc :class vf)
          (vf1 :class vf)
@@ -998,6 +1048,9 @@
 
 ;; definition for function point-in-plane-<-point+normal!
 (defun point-in-plane-<-point+normal! ((arg0 vector) (arg1 vector) (arg2 vector))
+  "Very strange function. Takes a plane, in point-normal form, then returns some other point on that plane.
+It will move 1m in two of {x, y, z} directions. The direction not moved in is the one which is closest to point-in-triangle-cross
+in the same direction of the normal (this prevent moving huge distances for nearly vertical planes for example)."
   (let ((f0-3 (+ (* (-> arg2 x) (-> arg1 x)) (* (-> arg2 y) (-> arg1 y)) (* (-> arg2 z) (-> arg1 z)))))
     (set! (-> arg0 w) 1.0)
     (let ((f1-7 (fabs (-> arg2 x)))
@@ -1045,6 +1098,7 @@
 ;; ERROR: Unsupported inline assembly instruction kind - [mula.s f3, f3]
 ;; ERROR: Unsupported inline assembly instruction kind - [msub.s f5, f6, f5]
 (defun circle-circle-xz-intersect ((arg0 sphere) (arg1 sphere) (arg2 vector) (arg3 vector))
+  "This function is unused and really complicated, so not implementing it for now."
   (local-vars (v0-0 uint) (f3-1 float) (f4-5 float) (f5-5 float) (f5-15 float) (f6-0 float) (f8-1 float))
   (let ((f3-0 (-> arg0 x))
         (f4-0 (-> arg0 z))
@@ -1239,6 +1293,7 @@
 ;; INFO: Used lq/sq
 ;; WARN: Return type mismatch object vs none.
 (defun circle-test ()
+  "Test the circle-circle-xz-intersect function."
   (let ((s4-0 (new 'stack 'sphere))
         (a1-2 (new 'stack 'sphere))
         (s5-0 (new-stack-vector0))
@@ -1269,6 +1324,7 @@
 ;; INFO: Used lq/sq
 ;; WARN: Return type mismatch int vs none.
 (defun vector-circle-tangent-new ((arg0 vector) (arg1 vector) (arg2 vector) (arg3 vector))
+  "Unused."
   (rlet ((Q :class vf)
          (vf0 :class vf)
          (vf1 :class vf)
@@ -1308,6 +1364,7 @@
 ;; definition for function vector-circle-tangent
 ;; WARN: Return type mismatch int vs none.
 (defun vector-circle-tangent ((arg0 vector) (arg1 vector) (arg2 vector) (arg3 vector))
+  "Also unused."
   (let* ((s3-1 (vector-! (the-as vector (new 'stack-no-clear 'sphere)) arg1 arg0))
          (f0-0 (vector-xz-length s3-1))
          (f28-0 (acos (/ (-> arg1 w) f0-0)))
@@ -1347,6 +1404,7 @@
 
 ;; definition for function find-knot-span
 (defun find-knot-span ((arg0 int) (arg1 int) (arg2 float) (arg3 (inline-array vector)))
+  "Binary serach over knots to find which contains the value float in (arg0 arg1). Unused."
   (local-vars (v0-0 int))
   (b! (= arg2 (-> (&-> arg3 0 data (+ arg0 1)) 0)) cfg-11 :delay (set! v0-0 arg0))
   (let ((v1-3 (the int arg2)))
@@ -1388,6 +1446,7 @@
 ;; ERROR: Unsupported inline assembly instruction kind - [sll v1, a1, 2]
 ;; ERROR: Unsupported inline assembly instruction kind - [addu v1, a3, v1]
 (defun calculate-basis-functions-vector! ((arg0 vector) (arg1 int) (arg2 float) (arg3 (pointer float)))
+  "Calculate polynomial basis for a given control point."
   (local-vars (v1-0 int) (v1-1 object))
   (.sll v1-0 arg1 2)
   (let ((a1-1 1.0)
@@ -1449,6 +1508,13 @@
 ;; ERROR: Unsupported inline assembly instruction kind - [addiu v1, s3, -3]
 ;; ERROR: Unsupported inline assembly instruction kind - [sll v1, v1, 4]
 (defun curve-evaluate! ((arg0 vector) (arg1 float) (arg2 (inline-array vector)) (arg3 int) (arg4 (pointer float)) (arg5 int))
+  "Evaluate a curve.
+arg0 is the output
+arg1 is the input.
+arg2 is control vertices.
+arg3 is the number of control vertices.
+arg4 is the knot points.
+arg5 is the number of knots."
   (local-vars (v1-7 int) (v1-8 int) (v1-10 float) (s3-0 int))
   (rlet ((acc :class vf)
          (vf0 :class vf)
@@ -1550,12 +1616,14 @@
 
 ;; definition for function curve-get-pos!
 (defun curve-get-pos! ((arg0 vector) (arg1 float) (arg2 curve))
+  "Get the position on the curve at the given input."
   (curve-evaluate! arg0 arg1 (-> arg2 cverts) (-> arg2 num-cverts) (-> arg2 knots) (-> arg2 num-knots))
   )
 
 ;; definition for function curve-length
 ;; INFO: Used lq/sq
 (defun curve-length ((arg0 curve))
+  "Compute the approximate curve length as the sum of distances between knots."
   (let ((s5-0 (new 'stack-no-clear 'vector))
         (s4-0 (new 'stack-no-clear 'vector))
         (s3-0 (* 3 (-> arg0 num-cverts)))
@@ -1589,6 +1657,7 @@
 
 ;; definition for function curve-copy!
 (defun curve-copy! ((arg0 curve) (arg1 curve))
+  "Shallow copy a curve."
   (set! (-> arg0 cverts) (-> arg1 cverts))
   (set! (-> arg0 num-cverts) (-> arg1 num-cverts))
   (set! (-> arg0 knots) (-> arg1 knots))
@@ -1606,6 +1675,7 @@
 ;; WARN: Stack slot offset 48 signed mismatch
 ;; WARN: Stack slot offset 48 signed mismatch
 (defun curve-closest-point ((arg0 curve) (arg1 vector) (arg2 float) (arg3 float) (arg4 int) (arg5 float))
+  "Get the input value for the point on the curve. Approximate! And is O(n_knots)."
   (local-vars (sv-48 float))
   (set! sv-48 arg3)
   (let ((s3-0 arg4)
@@ -1668,11 +1738,13 @@
 
 ;; definition for function vector-plane-distance
 (defun vector-plane-distance ((arg0 vector) (arg1 plane) (arg2 vector))
+  "Unused."
   (vector-dot (vector-! (new 'stack-no-clear 'vector) arg0 (the-as vector (&-> arg1 x))) arg2)
   )
 
 ;; definition for function intersect-ray-plane
 (defun intersect-ray-plane ((arg0 vector) (arg1 vector) (arg2 vector) (arg3 vector))
+  "arg1 is ray direction, arg3 is plane normal, others don't really make sense to me."
   (let ((f0-1 (vector-dot arg3 arg1)))
     (if (= f0-1 0.0)
         -1.0

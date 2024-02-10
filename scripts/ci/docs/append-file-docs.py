@@ -42,3 +42,4 @@ def append_file_docs(game_name):
 
 append_file_docs("jak1")
 append_file_docs("jak2")
+append_file_docs("jak3")

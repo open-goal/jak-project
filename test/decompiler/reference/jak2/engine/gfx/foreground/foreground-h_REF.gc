@@ -3,6 +3,8 @@
 
 ;; definition of type mercneric-chain
 (deftype mercneric-chain (structure)
+  "A DMA chain for drawing with mercneric, and metadata needed to append.
+This chain is assumed to run with a specific tpage from a specific level available."
   ((first       uint32)
    (next        uint32)
    (state       generic-bucket-state  :inline)
@@ -28,6 +30,8 @@
 
 ;; definition of type merc-chain
 (deftype merc-chain (structure)
+  "A DMA chain for drawing with merc.
+This chain is assumed to run with a specific tpage from a specific level available."
   ((first       dma-packet)
    (patch       dma-packet)
    (vu1-bucket  bucket-id)
@@ -51,6 +55,7 @@
 
 ;; definition of type foreground-bucket
 (deftype foreground-bucket (structure)
+  "A foreground bucket is merc, emerc, and mercneric chain for a given texture mode."
   ((merc       merc-chain       :inline)
    (emerc      merc-chain       :inline)
    (mercneric  mercneric-chain  :inline)
@@ -73,6 +78,9 @@
 
 ;; definition of type foreground-level-buckets
 (deftype foreground-level-buckets (structure)
+  "Collection of buckets for a single level.
+Each bucket has a different texture. The order is:
+tfrag, pris, shrub, alpha, water, pris, pris2"
   ((data  foreground-bucket  7 :inline)
    )
   )
@@ -91,6 +99,7 @@
 
 ;; definition of type foreground-bucket-grid
 (deftype foreground-bucket-grid (structure)
+  "Array of buckets for each level, plus the single warp chain shared between everybody."
   ((level-buckets  foreground-level-buckets  7 :inline)
    (warp-chain     mercneric-chain           :inline)
    )
@@ -111,6 +120,8 @@
 
 ;; definition of type foreground-regs
 (deftype foreground-regs (structure)
+  "Frequently accessed foreground values. These are in scratchpad for fast access
+during foreground processing."
   ((dist                   float)
    (merc-used              uint32)
    (emerc-used             uint32)
@@ -155,6 +166,9 @@
 
 ;; definition of type foreground-work
 (deftype foreground-work (structure)
+  "Memory map for scratchpad during foreground processing.
+This is not used by the renderers, bone matrix, or joint code - just the code
+that assigns stuff to buckets and prepares DMA for merc (or requests for generic merc)."
   ((regs            foreground-regs         :inline)
    (draw-index-map  uint8                   7 :offset  64)
    (grid            foreground-bucket-grid  :inline)
@@ -197,6 +211,7 @@
 
 ;; definition of type texscroll-globals
 (deftype texscroll-globals (structure)
+  "List of all merc-effects that need texscroll applied."
   ((requests  int32)
    (effects   merc-effect  32)
    )
@@ -217,6 +232,8 @@
 
 ;; definition of type merc-effect-bucket-info
 (deftype merc-effect-bucket-info (structure)
+  "Scratch info computed per-merc-effect by the foreground code, then later read by merc
+DMA generation. This is only for the currently-processing merc model's effects."
   ((color-fade      rgba)
    (alpha           uint8  :offset   3)
    (merc-path       uint8)
@@ -245,6 +262,7 @@
 
 ;; definition of type merc-bucket-info
 (deftype merc-bucket-info (structure)
+  "Scratch info for the current merc-ctrl. Written by the foreground code, read by merc DMA generation."
   ((light                        vu-lights                :inline)
    (needs-clip                   int32)
    (need-mercprime-if-merc       int32)
@@ -271,6 +289,7 @@
 
 ;; definition of type foreground-globals
 (deftype foreground-globals (structure)
+  "The foreground renderer state: all DMA chains, settings for the current merc-ctrl, texscroll list."
   ((foreground-grid   foreground-bucket-grid  :inline)
    (merc-bucket-info  merc-bucket-info        :inline)
    (texscroll         texscroll-globals       :inline)
@@ -296,6 +315,7 @@
 
 ;; definition of type shadow-dma-packet
 (deftype shadow-dma-packet (structure)
+  "DMA tag for submitting shadow data."
   ((tag       generic-merc-tag  :inline)
    (settings  shadow-settings   :inline)
    (geo-ref   dma-packet        :inline)

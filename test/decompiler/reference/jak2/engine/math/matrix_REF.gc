@@ -46,6 +46,7 @@
 ;; definition for function matrix-identity!
 ;; INFO: Used lq/sq
 (defun matrix-identity! ((arg0 matrix))
+  "Set dst to the identity matrix."
   (set! (-> arg0 quad 0) (the-as uint128 0))
   (set! (-> arg0 quad 1) (the-as uint128 0))
   (set! (-> arg0 quad 2) (the-as uint128 0))
@@ -74,6 +75,8 @@
 
 ;; definition for function matrix+!
 (defun matrix+! ((arg0 matrix) (arg1 matrix) (arg2 matrix))
+  "Set dst = src1 + src2. It is okay for any arguments to be the same data.
+This is not an efficient implementation."
   (dotimes (v1-0 16)
     (set! (-> arg0 data v1-0) (+ (-> arg1 data v1-0) (-> arg2 data v1-0)))
     )
@@ -82,6 +85,8 @@
 
 ;; definition for function matrix-!
 (defun matrix-! ((arg0 matrix) (arg1 matrix) (arg2 matrix))
+  "Set dst = src1 - src1. It is okay for any arugments to be the same data.
+This is not an efficient implementation."
   (dotimes (v1-0 16)
     (set! (-> arg0 data v1-0) (- (-> arg1 data v1-0) (-> arg2 data v1-0)))
     )
@@ -90,6 +95,8 @@
 
 ;; definition for function matrix*!
 (defun matrix*! ((arg0 matrix) (arg1 matrix) (arg2 matrix))
+  "Set dst = src1 * src2. It is okay for any arguments to be the same data.
+This is a moderately efficient implementation."
   (rlet ((acc :class vf)
          (vf10 :class vf)
          (vf11 :class vf)
@@ -139,6 +146,9 @@
 ;; definition for function matrixp*!
 ;; INFO: Used lq/sq
 (defun matrixp*! ((arg0 matrix) (arg1 matrix) (arg2 matrix))
+  "Set dst = src1 * src2. NOTE: this function is a wrapper around matrix*!
+that adds no additional functionality. It seems to be a leftover from
+a time when matrix*! wasn't safe to use in place. This is unused."
   (let ((s5-0 (new-stack-matrix0)))
     (matrix*! s5-0 arg1 arg2)
     (set! (-> arg0 quad 0) (-> s5-0 quad 0))
@@ -151,6 +161,7 @@
 
 ;; definition for function vector-matrix*!
 (defun vector-matrix*! ((arg0 vector) (arg1 vector) (arg2 matrix))
+  "Set dst = vec * mat. dst may be equal to src."
   (rlet ((acc :class vf)
          (vf1 :class vf)
          (vf2 :class vf)
@@ -203,6 +214,8 @@
 ;; definition for function vector3s-matrix*!
 ;; INFO: Used lq/sq
 (defun vector3s-matrix*! ((arg0 vector3s) (arg1 vector3s) (arg2 matrix))
+  "Set dst to be ([src 1.0] * mat).xyz.  Doesn't touch the w of dst.
+dst and vec can be the same memory"
   (let ((s5-0 (new-stack-vector0)))
     (set-vector! s5-0 (-> arg1 x) (-> arg1 y) (-> arg1 z) 1.0)
     (vector-matrix*! s5-0 s5-0 arg2)
@@ -216,6 +229,8 @@
 ;; definition for function vector3s-rotate*!
 ;; INFO: Used lq/sq
 (defun vector3s-rotate*! ((arg0 vector3s) (arg1 vector3s) (arg2 matrix))
+  "Set dst to vec rotated by the rotation in the homogeneous transform mat.
+mat should not have a scale/shear (the upper 3x3 should be a pure rotation)."
   (let ((s5-0 (new-stack-vector0)))
     (set-vector! s5-0 (-> arg1 x) (-> arg1 y) (-> arg1 z) 1.0)
     (vector-rotate*! s5-0 s5-0 arg2)
@@ -229,6 +244,7 @@
 ;; definition for function matrix-transpose!
 ;; INFO: Used lq/sq
 (defun matrix-transpose! ((arg0 matrix) (arg1 matrix))
+  "Set dst = src^T. src and dst can be the same."
   (local-vars (v1-0 uint128) (v1-1 uint128) (v1-2 uint128) (a1-1 uint128) (a2-1 uint128) (t0-1 uint128))
   (nop!)
   (nop!)
@@ -266,6 +282,8 @@
 
 ;; definition for function matrix-inverse-of-rot-trans!
 (defun matrix-inverse-of-rot-trans! ((arg0 matrix) (arg1 matrix))
+  "Set dst = src^-1, assuming src is a homogeneous tranform with only rotation/translation.
+NOTE: THIS FUNCTION REQUIRES dst != src"
   (rlet ((acc :class vf)
          (vf0 :class vf)
          (vf1 :class vf)
@@ -301,6 +319,8 @@
 ;; ERROR: Bad vector register dependency: vf4
 ;; ERROR: Bad vector register dependency: vf5
 (defun matrix-4x4-inverse! ((arg0 matrix) (arg1 matrix))
+  "Invert a 4x4 matrix. This assumes that the input is a homogeneous transform.
+Src and dst can be the same."
   (rlet ((acc :class vf)
          (Q :class vf)
          (vf0 :class vf)
@@ -452,6 +472,7 @@
 
 ;; definition for function matrix-translate!
 (defun matrix-translate! ((arg0 matrix) (arg1 vector))
+  "Set dst to a homogeneous transform with only a translation of trans."
   (matrix-identity! arg0)
   (set! (-> arg0 trans x) (-> arg1 x))
   (set! (-> arg0 trans y) (-> arg1 y))
@@ -462,6 +483,8 @@
 ;; definition for function matrix-translate+!
 ;; INFO: Used lq/sq
 (defun matrix-translate+! ((arg0 matrix) (arg1 matrix) (arg2 vector))
+  "Add the given translation to the translation of homogenous transform mat src
+and store in dst.  It is okay for dst = src."
   (set! (-> arg0 trans x) (+ (-> arg1 trans x) (-> arg2 x)))
   (set! (-> arg0 trans y) (+ (-> arg1 trans y) (-> arg2 y)))
   (set! (-> arg0 trans z) (+ (-> arg1 trans z) (-> arg2 z)))
@@ -476,6 +499,8 @@
 ;; definition for function matrix-scale!
 ;; INFO: Used lq/sq
 (defun matrix-scale! ((arg0 matrix) (arg1 vector))
+  "Set dst to a homogenous transform with only a scale. The x,y,z components
+of scale become the x,y,z scaling factors"
   (set! (-> arg0 quad 0) (the-as uint128 0))
   (set! (-> arg0 quad 1) (the-as uint128 0))
   (set! (-> arg0 quad 2) (the-as uint128 0))
@@ -489,6 +514,9 @@
 
 ;; definition for function scale-matrix!
 (defun scale-matrix! ((arg0 matrix) (arg1 vector) (arg2 matrix))
+  "Scale an existing matrix. Okay for dst = src. The scaling is applied per row.
+This means the x component of scale is used to scale the first row of src.
+The w component of scale is used."
   (rlet ((vf4 :class vf)
          (vf5 :class vf)
          (vf6 :class vf)
@@ -515,6 +543,8 @@
 ;; definition for function matrix-inv-scale!
 ;; INFO: Used lq/sq
 (defun matrix-inv-scale! ((arg0 matrix) (arg1 vector))
+  "Set dst to a homogeneous transform with only a scale.
+The x,y,z components of scale are inverted and used as the x,y,z scaling factors"
   (set! (-> arg0 quad 0) (the-as uint128 0))
   (set! (-> arg0 quad 1) (the-as uint128 0))
   (set! (-> arg0 quad 2) (the-as uint128 0))
@@ -528,6 +558,8 @@
 
 ;; definition for function column-scale-matrix!
 (defun column-scale-matrix! ((arg0 matrix) (arg1 vector) (arg2 matrix))
+  "Scale an existing matrix. Okay for dst = src. The scaling is applied column-wise.
+Meaning the x component of scale will scale the first column of src."
   (rlet ((vf4 :class vf)
          (vf5 :class vf)
          (vf6 :class vf)
@@ -554,6 +586,7 @@
 ;; definition for function matrix-rotate-x!
 ;; INFO: Used lq/sq
 (defun matrix-rotate-x! ((arg0 matrix) (arg1 float))
+  "Set dst to a homogeneous transform matrix for a rotation around the x-axis (degrees)."
   (let ((f30-0 (sin arg1))
         (f0-0 (cos arg1))
         )
@@ -574,6 +607,7 @@
 ;; definition for function matrix-rotate-y!
 ;; INFO: Used lq/sq
 (defun matrix-rotate-y! ((arg0 matrix) (arg1 float))
+  "Set dst to a homoegeneous transform matrix for a rotation around the y axis (degrees)."
   (let ((f30-0 (sin arg1))
         (f0-0 (cos arg1))
         )
@@ -594,6 +628,7 @@
 ;; definition for function matrix-rotate-z!
 ;; INFO: Used lq/sq
 (defun matrix-rotate-z! ((arg0 matrix) (arg1 float))
+  "Set dst to a homogeneous transform matrix for a rotation around the z-axis (degrees)."
   (let ((f30-0 (sin arg1))
         (f0-0 (cos arg1))
         )
@@ -614,6 +649,7 @@
 ;; definition for function matrix-rotate-zyx!
 ;; INFO: Used lq/sq
 (defun matrix-rotate-zyx! ((arg0 matrix) (arg1 vector))
+  "Rotate in z,y,x order."
   (let ((gp-0 (new-stack-matrix0))
         (s5-0 (new-stack-matrix0))
         )
@@ -628,6 +664,7 @@
 
 ;; definition (debug) for function matrix-rotate-xyz-2!
 (defun-debug matrix-rotate-xyz-2! ((arg0 matrix) (arg1 vector))
+  "Jak 1 version of matrix-rotate-xyz. Slower than the one below."
   (let ((gp-0 (new 'stack-no-clear 'matrix))
         (s5-0 (new 'stack-no-clear 'matrix))
         )
@@ -642,6 +679,7 @@
 
 ;; definition for function matrix-rotate-xyz!
 (defun matrix-rotate-xyz! ((arg0 matrix) (arg1 vector))
+  "Rotate in x,y,z order."
   (rlet ((vf0 :class vf))
     (init-vf0-vector)
     (let ((s4-0 (new 'stack-no-clear 'vector))
@@ -682,6 +720,7 @@
 ;; definition for function matrix-rotate-zxy!
 ;; INFO: Used lq/sq
 (defun matrix-rotate-zxy! ((arg0 matrix) (arg1 vector))
+  "Rotate in z,x,y order."
   (let ((gp-0 (new-stack-matrix0))
         (s5-0 (new-stack-matrix0))
         )
@@ -697,6 +736,7 @@
 ;; definition for function matrix-rotate-yxz!
 ;; INFO: Used lq/sq
 (defun matrix-rotate-yxz! ((arg0 matrix) (arg1 vector))
+  "Rotate in y,x,z order."
   (let ((gp-0 (new-stack-matrix0))
         (s5-0 (new-stack-matrix0))
         )
@@ -712,6 +752,7 @@
 ;; definition for function matrix-rotate-yzx!
 ;; INFO: Used lq/sq
 (defun matrix-rotate-yzx! ((arg0 matrix) (arg1 vector))
+  "Rotate in y,z,x order."
   (let ((gp-0 (new-stack-matrix0))
         (s5-0 (new-stack-matrix0))
         )
@@ -726,6 +767,8 @@
 
 ;; definition for function matrix-rotate-yxy!
 (defun matrix-rotate-yxy! ((arg0 matrix) (arg1 vector))
+  "Rotate. I believe in yxy order? Compared to the other rotations, this one
+is quite a bit more optimized and avoid repeated trig operations."
   (let ((a2-0 (new 'stack-no-clear 'vector))
         (s5-0 (new 'stack-no-clear 'vector))
         (s4-0 (new 'stack-no-clear 'vector))
@@ -763,6 +806,7 @@
 ;; definition for function matrix-rotate-yx!
 ;; INFO: Used lq/sq
 (defun matrix-rotate-yx! ((arg0 matrix) (arg1 float) (arg2 float))
+  "Rotate by y then x."
   (matrix-rotate-y! arg0 arg1)
   (let ((a1-2 (matrix-rotate-x! (new-stack-matrix0) arg2)))
     (matrix*! arg0 a1-2 arg0)
@@ -776,7 +820,7 @@
 ;; ERROR: Unsupported inline assembly instruction kind - [prot3w a1, v1]
 ;; ERROR: Unsupported inline assembly instruction kind - [prot3w a2, a1]
 (defun matrix-axis-sin-cos-vu! ((arg0 matrix) (arg1 vector) (arg2 float) (arg3 float))
-  "@unused"
+  "Create an axis-angle rotation matrix. But given the sin/cos of the angle. Uses the VU."
   (local-vars (a1-2 uint128) (a2-1 uint128) (a3-1 uint128) (a3-2 uint128))
   (rlet ((vf0 :class vf)
          (vf1 :class vf)
@@ -886,6 +930,7 @@
 ;; ERROR: Unsupported inline assembly instruction kind - [prot3w a0, v1]
 ;; ERROR: Unsupported inline assembly instruction kind - [prot3w a1, a0]
 (defun matrix-axis-sin-cos! ((arg0 matrix) (arg1 vector) (arg2 float) (arg3 float))
+  "Create an axis-angle rotation matrix. But given the sin/cos of the angle."
   (local-vars (a0-4 uint128) (a1-2 uint128) (a1-3 uint128) (a1-4 uint128))
   (rlet ((vf0 :class vf)
          (vf1 :class vf)
@@ -1003,11 +1048,13 @@
 
 ;; definition for function matrix-axis-angle!
 (defun matrix-axis-angle! ((arg0 matrix) (arg1 vector) (arg2 float))
+  "Create an axis-angle rotation matrix."
   (matrix-axis-sin-cos! arg0 arg1 (sin arg2) (cos arg2))
   )
 
 ;; definition for function matrix-lerp!
 (defun matrix-lerp! ((arg0 matrix) (arg1 matrix) (arg2 matrix) (arg3 float))
+  "Lerp an entire matrix, coefficient-wise."
   (rlet ((vf1 :class vf)
          (vf2 :class vf)
          (vf3 :class vf)
@@ -1049,6 +1096,7 @@
 
 ;; definition for function matrix-3x3-determinant
 (defun matrix-3x3-determinant ((arg0 matrix))
+  "Compute the determinant of a 3x3 matrix."
   (let ((f8-0 (-> arg0 vector 0 x))
         (f1-0 (-> arg0 vector 0 y))
         (f4-0 (-> arg0 vector 0 z))
@@ -1067,6 +1115,7 @@
 
 ;; definition for function matrix3-determinant
 (defun matrix3-determinant ((arg0 matrix))
+  "Unused. Not sure if this has limitations compared to the above version."
   (local-vars (v0-0 float))
   (rlet ((acc :class vf)
          (vf10 :class vf)
@@ -1089,6 +1138,8 @@
 
 ;; definition for function matrix-3x3-inverse!
 (defun matrix-3x3-inverse! ((arg0 matrix) (arg1 matrix))
+  "Compute the inverse of a 3x3 matrix. Not very efficient.
+Requires src != dst."
   (let ((f0-0 (matrix-3x3-determinant arg1)))
     (set! (-> arg0 vector 0 x)
           (/ (- (* (-> arg1 vector 1 y) (-> arg1 vector 2 z)) (* (-> arg1 vector 1 z) (-> arg1 vector 2 y))) f0-0)
@@ -1123,6 +1174,8 @@
 
 ;; definition for function matrix-3x3-inverse-transpose!
 (defun matrix-3x3-inverse-transpose! ((arg0 matrix) (arg1 matrix))
+  "Invert and transpose.
+Requires dst != src."
   (let ((f0-0 (matrix-3x3-determinant arg1)))
     (set! (-> arg0 vector 0 x)
           (/ (- (* (-> arg1 vector 1 y) (-> arg1 vector 2 z)) (* (-> arg1 vector 1 z) (-> arg1 vector 2 y))) f0-0)
@@ -1157,6 +1210,7 @@
 
 ;; definition for function matrix3-inverse-transpose!
 (defun matrix3-inverse-transpose! ((arg0 matrix) (arg1 matrix))
+  "Unused. Not sure if this has limitations compared to other version."
   (rlet ((acc :class vf)
          (Q :class vf)
          (vf0 :class vf)
@@ -1208,6 +1262,7 @@
 ;; ERROR: Unsupported inline assembly instruction kind - [madd.s f0, f1, f1]
 ;; ERROR: Unsupported inline assembly instruction kind - [rsqrt.s f0, f2, f0]
 (defun matrix-3x3-normalize! ((arg0 matrix) (arg1 matrix))
+  "Unused."
   (local-vars (f0-1 float) (f0-2 float))
   (rlet ((acc :class vf)
          (Q :class vf)
@@ -1265,6 +1320,7 @@
 
 ;; definition for function matrix-4x4-determinant
 (defun matrix-4x4-determinant ((arg0 matrix))
+  "Take the determinant of a 4x4 matrix, but this is wrong."
   (let ((f15-0 (-> arg0 vector 0 x))
         (f14-0 (-> arg0 vector 0 y))
         (f10-0 (-> arg0 vector 0 z))
@@ -1314,6 +1370,8 @@
 
 ;; definition for function matrix-4x4-inverse-transpose!
 (defun matrix-4x4-inverse-transpose! ((arg0 matrix) (arg1 matrix))
+  "Invert and transpose an entire 4x4. I think has no restrictions, other than dst != src. Unused.
+The answer is wrong. The determinant function is wrong."
   (let ((f0-0 (matrix-4x4-determinant arg1)))
     (let ((f9-0 (-> arg1 vector 1 y))
           (f2-0 (-> arg1 vector 1 z))
@@ -1601,6 +1659,7 @@
 
 ;; definition for function matrix-y-angle
 (defun matrix-y-angle ((arg0 matrix))
+  "If mat has its upper 3x3 as a rotation, gets the y axis rotation."
   (let ((v1-0 (-> arg0 vector 2)))
     (atan (-> v1-0 x) (-> v1-0 z))
     )
@@ -1608,6 +1667,7 @@
 
 ;; definition for function matrix->trans
 (defun matrix->trans ((arg0 matrix) (arg1 vector))
+  "Multiply xyz by 1/w."
   (rlet ((Q :class vf)
          (vf0 :class vf)
          (vf2 :class vf)
@@ -1628,12 +1688,14 @@
 ;; definition for function matrix<-trans
 ;; INFO: Used lq/sq
 (defun matrix<-trans ((arg0 matrix) (arg1 vector))
+  "Set the translation."
   (set! (-> arg0 trans quad) (-> arg1 quad))
   arg0
   )
 
 ;; definition for function matrix->scale
 (defun matrix->scale ((arg0 matrix) (arg1 vector))
+  "Get the scale of a matrix."
   (set! (-> arg1 x) (vector-length (the-as vector (-> arg0 vector))))
   (set! (-> arg1 y) (vector-length (-> arg0 vector 1)))
   (set! (-> arg1 z) (vector-length (-> arg0 vector 2)))
@@ -1643,6 +1705,7 @@
 
 ;; definition for function matrix<-scale
 (defun matrix<-scale ((arg0 matrix) (arg1 vector))
+  "Set the scale of a matrix by rescaling."
   (vector-normalize! (the-as vector (-> arg0 vector)) (-> arg1 x))
   (vector-normalize! (-> arg0 vector 1) (-> arg1 y))
   (vector-normalize! (-> arg0 vector 2) (-> arg1 z))
@@ -1652,6 +1715,8 @@
 ;; definition for function matrix->quat
 ;; INFO: Used lq/sq
 (defun matrix->quat ((arg0 matrix) (arg1 quaternion))
+  "Convert matrix to quaternion, works for matrix with scale.
+unlike matrix->quaternion."
   (let ((s5-0 (new 'stack-no-clear 'matrix)))
     (let* ((a2-0 arg0)
            (v1-0 (-> a2-0 quad 0))
@@ -1674,6 +1739,7 @@
 
 ;; definition for function matrix<-quat
 (defun matrix<-quat ((arg0 matrix) (arg1 quaternion))
+  "Modify the rotation part of a transform."
   (let ((s5-0 (matrix->scale arg0 (new 'stack-no-clear 'vector)))
         (s4-1 (quaternion->matrix (new 'stack-no-clear 'matrix) arg1))
         )
@@ -1690,6 +1756,7 @@
 ;; definition for function matrix->transformq
 ;; INFO: Used lq/sq
 (defun matrix->transformq ((arg0 transformq) (arg1 matrix))
+  "Create a transformq from a matrix. Allowing scale, etc."
   (rlet ((Q :class vf)
          (vf0 :class vf)
          (vf2 :class vf)
@@ -1738,6 +1805,7 @@
 
 ;; definition for function matrix-mirror!
 (defun matrix-mirror! ((arg0 matrix) (arg1 vector) (arg2 vector))
+  "Make a matrix that mirrors. Arguments are unclear."
   (let ((f10-0 -2.0)
         (f0-0 1.0)
         )
