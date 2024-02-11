@@ -1961,7 +1961,19 @@ bool load_var_op_determine_type(types2::Type& type_out,
         // normal virtual method access.
         // first check special cases
         if (type_name == "art" || type_name == "art-group") {
-          if (method_id == 10) {
+          int art_get_by_name_method_id = -1;
+          switch (dts.version()) {
+            case GameVersion::Jak1:
+            case GameVersion::Jak2:
+              art_get_by_name_method_id = 10;
+              break;
+            case GameVersion::Jak3:
+              art_get_by_name_method_id = 11;
+              break;
+            default:
+              ASSERT_NOT_REACHED();
+          }
+          if (method_id == art_get_by_name_method_id) {
             type_out.type =
                 TP_Type::make_get_art_by_name(method_type, TypeSpec(type_name), method_id);
             return true;

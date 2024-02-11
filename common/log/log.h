@@ -77,7 +77,7 @@ void print(const fmt::text_style& ts, const std::string& format, Args&&... args)
 }
 
 // same as print but uses the C printf instead of fmt
-void printstd(const std::string& format, va_list arg_list);
+void printstd(const char* format, va_list arg_list);
 
 template <typename... Args>
 void trace(const std::string& format, Args&&... args) {

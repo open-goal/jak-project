@@ -10481,7 +10481,22 @@
 (defenum mem-usage-id
     :bitfield #f
     :type uint32
+
+    (joint 68)
+
+    (joint-anim-compressed-control 70)
+    (joint-anim-fixed 71)
+    (joint-anim-frame 72)
+
+    (art-group 74)
+    (art-mesh-anim 75)
+    (art-mesh-geo 76)
+    (art-joint-geo 77)
+    (art-joint-anim 78)
+
     (texture 83)
+
+    (eye-anim 112)
     )
 
 (deftype memory-usage-info (structure)
@@ -14097,9 +14112,10 @@
   (:methods
     (login (_type_) _type_) ;; 9
     (art-method-10 (_type_) _type_) ;; 10
-    (get-art-by-name-method (_type_ string type) basic) ;; 11
-    (get-art-idx-by-name-method (_type_ string type) int) ;; 12
-    (needs-link? (_type_) symbol) ;; 13
+    (get-art-by-name-method "Look inside this art for an art with the given name and type. Return #f if not found" (_type_ string type) basic) ;; 11
+    (get-art-idx-by-name-method "Look inside this art for an art with the given name and type and return the index of the art. Return #f if not found." (_type_ string type) int) ;; 12
+    (contains-art-for-other-group? "Some art groups have placeholder #f's for some art that will be loaded separately as needed.
+                                    Does this art group contain art that needs to be added to another group?" (_type_) symbol) ;; 13
     )
   )
 
@@ -14116,7 +14132,7 @@
 
 (deftype art-mesh-anim (art-element)
   "An unused mesh animation."
-  ()
+  ((data basic :dynamic))
   :flag-assert #xe00000030
   )
 
@@ -14144,21 +14160,22 @@
    )
   :flag-assert #x1000000020
   (:methods
-    (relocate (_type_ kheap (pointer uint8)) _type_ :replace)
-    (link-art! (_type_) art-group)
+    (relocate (_type_ kheap (pointer uint8)) none :replace) ;; 7
+    (link-art-to-master (_type_) none)
     (unknown-1 () none)
     )
   )
 
 (deftype art-mesh-geo (art-element)
   "Unused art format for a mesh. This might have been for the renderer that came before merc."
-  ()
+  ((data  basic  :dynamic :offset-assert 48)
+   )
   :flag-assert #xe00000030
   )
 
 (deftype art-joint-geo (art-element)
   "Collection of joints for an actor."
-  ((data  joint  :dynamic :offset 48)
+  ((data  joint  :dynamic :offset-assert 48)
    )
   :flag-assert #xe00000030
   )
@@ -14200,11 +14217,11 @@
   :flag-assert         #xe00000430
   (:methods
     (new (symbol type int) _type_) ;; 0 ;; (new (symbol type int) _type_)
-    (art-joint-anim-manager-method-9 () none) ;; 9 ;; (decompress (_type_ art-joint-anim) art-joint-anim)
-    (art-joint-anim-manager-method-10 () none) ;; 10 ;; (update-time-stamp (_type_ art-joint-anim) art-joint-anim)
-    (art-joint-anim-manager-method-11 () none) ;; 11 ;; (unload-from-slot (_type_ int) art-joint-anim)
-    (art-joint-anim-manager-method-12 () none) ;; 12 ;; (used-bytes-for-slot (_type_ int) int)
-    (art-joint-anim-manager-method-13 () none) ;; 13 ;; (unload-from-level (_type_ level) none)
+    (decompress "Decompress the given animation and store the decompressed data in this cache." (_type_ art-joint-anim) art-joint-anim) ;; 9
+    (mark-anim-in-use "Inform the cache this animation is in used, so it is not evicted." (_type_ art-joint-anim) art-joint-anim) ;; 10
+    (unload-from-slot "Remove the given animation from the cache." (_type_ int) art-joint-anim) ;; 11
+    (used-bytes-for-slot "Get how many bytes of our heap are used by the given anim slot." (_type_ int) int) ;; 12
+    (unload-from-heap "Remove all animations which have their original compressed data in the given heap." (_type_ kheap) none) ;; 13
     )
   )
 
@@ -16928,7 +16945,7 @@
    ;(UNKNOWN                 UNKNOWN                                                          :offset-assert -1) ;; field could not be read.
    (top-anim                top-anim-joint-control                                           :offset-assert 56) ;; guessed by decompiler
    (override                (array float)                                                    :offset-assert 60) ;; guessed by decompiler
-   (channel                 joint-control-channel                                   :dynamic :offset-assert 64) ;; guessed by decompiler
+   (channel                 joint-control-channel                                   :dynamic :inline :offset-assert 64) ;; guessed by decompiler
    ;(UNKNOWN                 UNKNOWN                                                          :offset-assert -1) ;; field could not be read.
    )
   :method-count-assert 13
@@ -16936,10 +16953,10 @@
   :flag-assert         #xd00000040
   ;; field joint-control-status is likely a value type.
   (:methods
-    (new (symbol type) _type_) ;; 0 ;; (new (symbol type int) _type_)
+    (new (symbol type int) _type_) ;; 0
     (joint-control-method-9 () none) ;; 9 ;; (current-cycle-distance (_type_) float)
     (joint-control-method-10 () none) ;; 10 ;; (update-anim-data (_type_) none)
-    (joint-control-method-11 () none) ;; 11 ;; (debug-print-channels (_type_ symbol) int)
+    (debug-print-channels "Print the list of joint animations playing in the flattened blend tree." (_type_ symbol) int) ;; 11
     (joint-control-method-12 () none) ;; 12
     )
   )
@@ -27542,16 +27559,16 @@
 ;; collide-func                   ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (define-extern raw-ray-sphere-intersect function)
-;; (define-extern ray-sphere-intersect function) ;; (function vector vector vector float float)
-;; (define-extern ray-circle-intersect function) ;; (function vector vector vector float float)
-;; (define-extern ray-cylinder-intersect function) ;; (function vector vector vector vector float float vector float)
-;; (define-extern ray-plane-intersect function) ;; (function vector vector vector vector vector vector vector float)
-;; (define-extern ray-triangle-intersect function)
-;; (define-extern collide-do-primitives function)
-;; (define-extern moving-sphere-triangle-intersect function) ;; (function vector vector float collide-cache-tri vector vector float)
-;; (define-extern moving-sphere-sphere-intersect function)
-;; (define-extern moving-sphere-moving-sphere-intersect function)
+(define-extern raw-ray-sphere-intersect function)
+(define-extern ray-sphere-intersect (function vector vector vector float float))
+(define-extern ray-circle-intersect (function vector vector vector float float))
+(define-extern ray-cylinder-intersect (function vector vector vector vector float float vector float))
+(define-extern ray-plane-intersect (function vector vector vector vector vector vector vector float))
+; (define-extern ray-triangle-intersect function)
+; (define-extern collide-do-primitives function)
+(define-extern moving-sphere-triangle-intersect (function vector vector float collide-cache-tri vector vector float))
+; (define-extern moving-sphere-sphere-intersect function)
+; (define-extern moving-sphere-moving-sphere-intersect function)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; joint                          ;;
@@ -27576,49 +27593,75 @@
   )
 |#
 
-;; (define-extern joint-anim-login function) ;; (function joint-anim-drawable joint-anim-drawable)
-;; (define-extern joint-anim-inspect-elt function) ;; (function joint-anim float joint-anim)
-;; (define-extern jacc-mem-usage function) ;; (function joint-anim-compressed-control memory-usage-block int joint-anim-compressed-control)
-;; (define-extern joint-control-cleanup function)
-;; (define-extern joint-control-channel-eval function) ;; (function joint-control-channel float :behavior process)
-;; (define-extern joint-control-channel-eval! function) ;; (function joint-control-channel (function joint-control-channel float float float float) float :behavior process)
-;; (define-extern joint-control-channel-group-eval! function) ;; (function joint-control-channel art-joint-anim (function joint-control-channel float float float float) int)
-;; (define-extern joint-control-channel-group! function) ;; (function joint-control-channel art-joint-anim (function joint-control-channel float float float float) int)
-;; (define-extern joint-control-copy! function) ;; (function joint-control joint-control joint-control)
-;; (define-extern joint-control-remap! function) ;; (function joint-control art-group art-group pair int string symbol)
-;; (define-extern flatten-joint-control-to-spr function) ;; (function joint-control int)
-;; (define-extern matrix-from-joint-anim-frame function) ;; (function joint-anim-compressed-control int int matrix)
-;; (define-extern matrix-from-control-channel! function) ;; (function matrix joint joint-control-channel matrix)
-;; (define-extern matrix-from-control-pair! function) ;; (function matrix matrix joint int matrix)
-;; (define-extern matrix-from-control! function) ;; (function matrix-stack joint joint-control symbol matrix)
-;; (define-extern cspace<-cspace! function) ;; (function cspace cspace matrix)
-;; (define-extern cspace<-cspace-normalized! function) ;; (function cspace cspace matrix)
-;; (define-extern cspace<-parent-joint! function) ;; (function cspace (pointer process-drawable) int matrix)
-;; (define-extern cspace<-rot-yxy! function) ;; (function cspace transform matrix)
-;; (define-extern cspace<-transform-yxy! function) ;; (function cspace transform matrix)
-(define-extern cspace<-transformq! (function cspace transformq matrix))
-;; (define-extern cspace<-transformq+trans! function) ;; (function cspace transformq vector matrix)
-;; (define-extern cspace<-transformq+world-trans! function) ;; (function cspace transformq vector matrix)
-;; (define-extern cspace<-transformq+rot-offset! function) ;; (function cspace transformq vector matrix)
-;; (define-extern cspace-calc-total-matrix! function) ;; (function cspace matrix matrix)
-;; (define-extern cspace<-matrix-no-push-joint! function) ;; (function cspace joint-control matrix)
-;; (define-extern cspace<-matrix-joint! function) ;; (function cspace matrix matrix)
-;; (define-extern cspace<-parented-matrix-joint! function) ;; (function cspace matrix matrix)
-;; (define-extern cspace<-parented-matrix-mirror! function) ;; (function cspace matrix matrix)
-;; (define-extern cspace<-parented-matrix-joint-flip-z! function) ;; (function cspace matrix matrix)
-;; (define-extern cspace<-matrix-joint-flip-z! function) ;; (function cspace matrix none)
-(define-extern cspace<-parented-transformq-joint! (function cspace transformq none))
-;; (define-extern cspace<-parented-transformq-joint-flip-z! function) ;; (function cspace transformq none)
+(define-extern joint-anim-login "Login a joint-anim-drawable by calling login on all drawables" (function joint-anim-drawable joint-anim-drawable))
+(define-extern joint-anim-inspect-elt "Inspect an uncompressed anim (unused)" (function joint-anim float joint-anim))
+(define-extern jacc-mem-usage "Compute memory usage stats for a compressed joint anim." (function joint-anim-compressed-control memory-usage-block int joint-anim-compressed-control))
+(define-extern joint-control-cleanup "Remove all animations that are stored on the given heap and return those slots to a safe default." (function joint-control kheap art-joint-anim none))
+(define-extern joint-control-channel-eval "Run the num-func to produce the current frame for this channel." (function joint-control-channel float :behavior process))
+(define-extern joint-control-channel-eval! "Update the num-func for this channel and evaluate it." (function joint-control-channel (function joint-control-channel float float float float) float :behavior process))
+(define-extern joint-control-channel-group-eval! (function joint-control-channel art-joint-anim (function joint-control-channel float float float float) int))
+(define-extern joint-control-channel-group! (function joint-control-channel art-joint-anim (function joint-control-channel float float float float) int))
+(define-extern joint-control-copy! "Copy all settings and channels from one joint-control to another." (function joint-control joint-control joint-control))
+(define-extern joint-control-remap!
+               "Map animation from parent to child using the given animation mapping.
+                This is used to animate daxter based on the animation of jak."
+               (function joint-control art-group art-group pair int string symbol))
+(define-extern flatten-joint-control-to-spr "Walk the blend tree and compute interpolation weights, prepare animation upload info." (function joint-control int))
+(define-extern matrix-from-joint-anim-frame "Get a matrix from a joint-animation at a given (integer) frame.
+                                             This only works on the first two joints, since those are the only ones that store matrices."(function joint-anim-compressed-control int int matrix))
+(define-extern matrix-from-control-channel! "Get a matrix for a joint (must be 0 or 1) for the animation specified by the channel.
+                                            Will interpolate if we are in between animation frames.
+                                            This does not apply any frame-interp blending." (function matrix joint joint-control-channel matrix))
+(define-extern matrix-from-control-pair! "Modify the matrix to add in a blended animation for the given channel."
+               (function matrix joint-control-channel joint int matrix))
+(define-extern matrix-from-control!
+               "Compute a matrix for a given joint (must be 0 or 1) given the entire joint-control.
+                This walks the blend tree."
+               (function matrix-stack joint joint-control symbol matrix))
+(define-extern cspace<-cspace! "Set one cspace's bone from another" (function cspace cspace matrix))
+(define-extern cspace<-cspace-normalized! "Set one cspace's bone from another, and normalize the rows of the matrix." (function cspace cspace matrix))
+(define-extern cspace<-parent-joint! "Set one cspace's bone to another from the given process-drawable" (function cspace (pointer process-drawable) int matrix))
+(define-extern cspace<-rot-yxy! "Set one cspace's bone to a yxy rotation and scale." (function cspace transform matrix))
+(define-extern cspace<-transform-yxy! "Set one cspace's bone to yxy rotation, translation, and scale" (function cspace transform matrix))
+(define-extern cspace<-transformq! "Set one cspace's from a transformq" (function cspace transformq matrix))
+(define-extern cspace<-transformq+trans! "Set one cspace from a transformq and an additional local translation." (function cspace transformq vector matrix))
+(define-extern cspace<-transformq+world-trans! "Set one cspace from a transformq and an additional world translation." (function cspace transformq vector matrix))
+(define-extern cspace<-transformq+rot-offset! "Set one cspace from a transformq and an additional rotate." (function cspace transformq vector matrix))
+(define-extern cspace-calc-total-matrix! "Combine the bone matrix and camera matrix.
+                                          This is not actually a useful matrix since it does not include the inverse bind pose, but
+                                          is close to the rendering matrices computed by bones.gc"
+                                          (function cspace matrix matrix))
+(define-extern cspace<-matrix-no-push-joint! "Compute animated matrix, using the special 'no-push mode." (function cspace joint-control matrix))
+(define-extern cspace<-matrix-joint! "Set the cspace from a matrix." (function cspace matrix matrix))
+(define-extern cspace<-parented-matrix-joint!
+                "Compute the bone matrix of a cspace from combining the transform of the parent bone and the given joint matrix.
+                 This computes world-space bones from a tree of bones (skeleton)"
+                (function cspace matrix matrix))
+(define-extern cspace<-parented-matrix-mirror!
+               "Mirror the provided matrix (using cspace param1,2 as the normal/tangent dirs) as the joint matrix
+                This is similar to cspace<-parented-matrix-joint!, but essentially mirrors the joint."
+               (function cspace matrix matrix))
+(define-extern cspace<-parented-matrix-joint-flip-z!
+               "Compute the bone matrix from the parent bone and joint, but flip the z-axis of the joint frame."
+               (function cspace matrix matrix))
+(define-extern cspace<-matrix-joint-flip-z!
+               "Set the bone matrix directly from the joint matrix, flipping z."
+               (function cspace matrix none))
+(define-extern cspace<-parented-transformq-joint!
+               "Main function for doing skeletal animation from decompressed transformq's.
+                Sets the cspace bone to the parent bone, plus the transformq."
+               (function cspace transformq none))
+(define-extern cspace<-parented-transformq-joint-flip-z! "Unused, but would flip the z-axis of the transformq and do a normal parented joint transform." (function cspace transformq none))
 ;; (define-extern clear-frame-accumulator function)
 ;; (define-extern normalize-frame-quaternions function)
 ;; (define-extern decompress-fixed-data-to-accumulator function) ;; function
 ;; (define-extern decompress-frame-data-to-accumulator function) ;; function
 ;; (define-extern decompress-frame-data-pair-to-accumulator function) ;; function
-;; (define-extern make-joint-jump-tables function) ;; (function int)
-;; (define-extern calc-animation-from-spr function) ;; (function joint-anim-frame int none)
-;; (define-extern create-interpolated-joint-animation-frame function) ;; (function joint-anim-frame int joint-control int)
-;; (define-extern create-interpolated2-joint-animation-frame function) ;; (function joint-anim-frame int joint-control int)
-;; (define-extern *anim-manager* object) ;; art-joint-anim-manager
+(define-extern make-joint-jump-tables (function int))
+(define-extern calc-animation-from-spr (function joint-anim-frame int none))
+(define-extern create-interpolated-joint-animation-frame (function joint-anim-frame int joint-control int))
+(define-extern create-interpolated2-joint-animation-frame (function joint-anim-frame int joint-control int))
+(define-extern *anim-manager* art-joint-anim-manager)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; joint-mod                      ;;
@@ -28748,7 +28791,7 @@
 
 ;; (define-extern unpack-comp-rle function) ;; (function (pointer int8) (pointer int8) (pointer int8))
 ;; (define-extern unpack-comp-huf function) ;; (function (pointer uint8) (pointer uint8) uint huf-dictionary-node none)
-;; (define-extern unpack-comp-lzo function) ;; (function (pointer uint8) (pointer uint8) none)
+(define-extern unpack-comp-lzo (function (pointer uint8) (pointer uint8) none))
 ;; (define-extern pack-comp-rle function) ;; (function (pointer uint8) (pointer uint8) int int (pointer uint8))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -35730,7 +35773,7 @@
 
 ;; memory-usage-block is already defined!
 
-;; (define-extern mem-size function) ;; (function basic symbol int int)
+(define-extern mem-size (function basic symbol int int))
 ;; (define-extern *max-dma* object) ;; int
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
