@@ -12,6 +12,8 @@
 #include "decompiler/util/data_decompile.h"
 #include "decompiler/util/sparticle_decompile.h"
 
+#include "third-party/fmt/ranges.h"
+
 namespace decompiler {
 
 ///////////////////
@@ -3065,6 +3067,120 @@ void DefskelgroupElement::get_modified_regs(RegSet& regs) const {
   m_info.jgeo->get_modified_regs(regs);
 }
 
+goos::Object DefskelgroupElement::ClothParams::to_list(const std::string& ag_name,
+                                                       const Env& env) const {
+  std::vector<goos::Object> result;
+  if (mesh != 0) {
+    // TODO use art element name for mesh
+    (void)ag_name;
+    // const auto& art = env.dts->art_group_info;
+    // if (art.find(ag_name) != art.end() && art.at(ag_name).find(mesh) != art.at(ag_name).end()) {
+    //   auto name = art.at(ag_name).at(mesh);
+    //   result.push_back(pretty_print::build_list(
+    //       {pretty_print::to_symbol("mesh"), pretty_print::to_symbol(name)}));
+    // } else {
+    //   result.push_back(pretty_print::build_list(
+    //       {pretty_print::to_symbol("mesh"), pretty_print::to_symbol(std::to_string(mesh))}));
+    // }
+    result.push_back(pretty_print::build_list(
+        {pretty_print::to_symbol("mesh"), pretty_print::to_symbol(std::to_string(mesh))}));
+  }
+  if (gravity != 0.0f) {
+    result.push_back(pretty_print::build_list(
+        {pretty_print::to_symbol("gravity-constant"),
+         pretty_print::to_symbol(fmt::format("(meters {})", meters_to_string(gravity)))}));
+  }
+  if (wind != 0.0f) {
+    result.push_back(pretty_print::build_list({pretty_print::to_symbol("wind-constant"),
+                                               pretty_print::to_symbol(float_to_string(wind))}));
+  }
+  if (width != 0) {
+    result.push_back(pretty_print::build_list(
+        {pretty_print::to_symbol("cloth-width"), pretty_print::to_symbol(std::to_string(width))}));
+  }
+  if (sphere_constraints != 0) {
+    result.push_back(
+        pretty_print::build_list({pretty_print::to_symbol("num-sphere-constraints"),
+                                  pretty_print::to_symbol(std::to_string(sphere_constraints))}));
+  }
+  if (disc_constraints != 0) {
+    result.push_back(
+        pretty_print::build_list({pretty_print::to_symbol("num-disc-constraints"),
+                                  pretty_print::to_symbol(std::to_string(disc_constraints))}));
+  }
+  if (anchor_points != 0) {
+    result.push_back(
+        pretty_print::build_list({pretty_print::to_symbol("num-anchor-points"),
+                                  pretty_print::to_symbol(std::to_string(anchor_points))}));
+  }
+  if (flags != 0) {
+    auto bits = decompile_bitfield_enum_from_int(TypeSpec("cloth-flag"), env.dts->ts, flags);
+    result.push_back(pretty_print::build_list(
+        {pretty_print::to_symbol("flags"),
+         pretty_print::to_symbol(fmt::format("(cloth-flag {})", fmt::join(bits, " ")))}));
+  }
+  if (!tex_name.empty()) {
+    result.push_back(pretty_print::build_list(
+        {pretty_print::to_symbol("tex-name"), pretty_print::new_string(tex_name)}));
+  }
+  if (!tex_name2.empty()) {
+    result.push_back(pretty_print::build_list(
+        {pretty_print::to_symbol("tex-name2"), pretty_print::new_string(tex_name2)}));
+  }
+  if (!tex_name3.empty()) {
+    result.push_back(pretty_print::build_list(
+        {pretty_print::to_symbol("tex-name3"), pretty_print::new_string(tex_name3)}));
+  }
+  if (!alt_tex_name.empty()) {
+    result.push_back(pretty_print::build_list(
+        {pretty_print::to_symbol("alt-tex-name"), pretty_print::new_string(alt_tex_name)}));
+  }
+  if (!alt_tex_name2.empty()) {
+    result.push_back(pretty_print::build_list(
+        {pretty_print::to_symbol("alt-tex-name2"), pretty_print::new_string(alt_tex_name2)}));
+  }
+  if (!alt_tex_name3.empty()) {
+    result.push_back(pretty_print::build_list(
+        {pretty_print::to_symbol("alt-tex-name3"), pretty_print::new_string(alt_tex_name3)}));
+  }
+  if (thickness != 0.0f) {
+    result.push_back(
+        pretty_print::build_list({pretty_print::to_symbol("cloth-thickness"),
+                                  pretty_print::to_symbol(float_to_string(thickness))}));
+  }
+  if (xform != 0) {
+    result.push_back(pretty_print::build_list({pretty_print::to_symbol("initial-xform"),
+                                               pretty_print::to_symbol(std::to_string(xform))}));
+  }
+  if (drag != 0.0f) {
+    result.push_back(pretty_print::build_list(
+        {pretty_print::to_symbol("drag"), pretty_print::to_symbol(float_to_string(drag))}));
+  }
+  if (ball_collision_radius != 0.0f) {
+    result.push_back(
+        pretty_print::build_list({pretty_print::to_symbol("ball-collision-radius"),
+                                  pretty_print::to_symbol(fmt::format(
+                                      "(meters {})", meters_to_string(ball_collision_radius)))}));
+  }
+  if (iterations != 0) {
+    result.push_back(
+        pretty_print::build_list({pretty_print::to_symbol("num-iterations"),
+                                  pretty_print::to_symbol(std::to_string(iterations))}));
+  }
+  if (timestep_freq != 0) {
+    result.push_back(
+        pretty_print::build_list({pretty_print::to_symbol("timestep-frequency"),
+                                  pretty_print::to_symbol(std::to_string(timestep_freq))}));
+  }
+  if (secret != 0) {
+    auto bits = decompile_bitfield_enum_from_int(TypeSpec("game-secrets"), env.dts->ts, flags);
+    result.push_back(pretty_print::build_list(
+        {pretty_print::to_symbol("secret-disable"),
+         pretty_print::to_symbol(fmt::format("(game-secrets {})", fmt::join(bits, " ")))}));
+  }
+  return pretty_print::build_list(result);
+}
+
 goos::Object DefskelgroupElement::to_form_internal(const Env& env) const {
   std::vector<goos::Object> forms;
   forms.push_back(pretty_print::to_symbol("defskelgroup"));
@@ -3124,15 +3240,21 @@ goos::Object DefskelgroupElement::to_form_internal(const Env& env) const {
   if (m_static_info.sort != 0) {
     forms.push_back(pretty_print::to_symbol(fmt::format(":sort {}", m_static_info.sort)));
   }
-  // jak 2 skelgroups seem to be using version 7
-  if (env.version != GameVersion::Jak1) {
-    if (m_static_info.version != 7) {
-      forms.push_back(pretty_print::to_symbol(fmt::format(":version {}", m_static_info.version)));
-    }
-  } else {
-    if (m_static_info.version != 6) {
-      forms.push_back(pretty_print::to_symbol(fmt::format(":version {}", m_static_info.version)));
-    }
+  switch (env.version) {
+    case GameVersion::Jak1:
+      if (m_static_info.version != 6) {
+        forms.push_back(pretty_print::to_symbol(fmt::format(":version {}", m_static_info.version)));
+      }
+      break;
+    case GameVersion::Jak2:
+      if (m_static_info.version != 7) {
+        forms.push_back(pretty_print::to_symbol(fmt::format(":version {}", m_static_info.version)));
+      }
+      break;
+    case GameVersion::Jak3:
+      if (m_static_info.version != 8) {
+        forms.push_back(pretty_print::to_symbol(fmt::format(":version {}", m_static_info.version)));
+      }
   }
   if (env.version != GameVersion::Jak1) {
     if (m_static_info.origin_joint_index != 0) {
@@ -3146,6 +3268,19 @@ goos::Object DefskelgroupElement::to_form_internal(const Env& env) const {
     if (m_static_info.light_index != 0) {
       forms.push_back(
           pretty_print::to_symbol(fmt::format(":light-index {}", m_static_info.light_index)));
+    }
+    if (m_static_info.global_effects != 0) {
+      forms.push_back(
+          pretty_print::to_symbol(fmt::format(":global-effects {}", m_static_info.global_effects)));
+    }
+    if (!m_static_info.clothing.empty()) {
+      std::vector<goos::Object> cloth_list;
+      forms.push_back(pretty_print::to_symbol(":clothing"));
+      for (const auto& p : m_static_info.clothing) {
+        auto macro = p.to_list(m_static_info.art_group_name + "-ag", env);
+        cloth_list.push_back(macro);
+      }
+      forms.push_back(pretty_print::build_list(cloth_list));
     }
   }
 
