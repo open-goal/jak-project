@@ -6364,7 +6364,7 @@
 
 (deftype texture-masks-array (inline-array-class)
   "Group of all texture-masks for a given tpage."
-  ((data texture-masks :dynamic :offset-assert 16) ;; guessed by decompiler
+  ((data texture-masks :dynamic :inline :offset-assert 16) ;; guessed by decompiler
    )
   :method-count-assert 14
   :size-assert         #x10
@@ -7543,7 +7543,7 @@
 
 (deftype level-group (basic)
   ((length            int32                :offset-assert 4)
-   (unk-flag1 symbol)
+   (log-in-level-bsp bsp-header)
    (loading-level level)
 
    (entity-link       entity-links         :offset 16)
@@ -10482,6 +10482,17 @@
     :bitfield #f
     :type uint32
 
+    (entity 44)
+    (camera 45)
+
+    (bsp-main 59)
+    (bsp-misc 60)
+    (bsp-node 61)
+    (bsp-leaf-vis-self 62)
+
+    (pat 65)
+
+
     (joint 68)
 
     (joint-anim-compressed-control 70)
@@ -10495,6 +10506,8 @@
     (art-joint-anim 78)
 
     (texture 83)
+
+    (array 85)
 
     (eye-anim 112)
     )
@@ -11950,6 +11963,8 @@
 ;; drawable-h                     ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+(declare-type region-prim-list structure)
+
 (deftype drawable (basic)
   "Base class for `drawable` scene graph system.
    This base class is really abused in many ways, and the meaning of the various methods differ depending
@@ -11965,13 +11980,16 @@
   :flag-assert         #x1100000020
   (:methods
     (login "Initialize the object after it is loaded." (_type_) _type_);; 9
-    (draw (_type_ _type_ display-frame) none) ;; 10
+    (draw "Draw the drawable, and typically its children.
+           This usually means adding stuff to a list to be drawn later, rather than expensive drawing here." (_type_) none) ;; 10
     (drawable-method-11 () none) ;; 11 ;; (fill-collide-list-from-box (_type_ int collide-list collide-query) int)
     (drawable-method-12 () none) ;; 12 ;; (fill-collide-list-from-line-sphere (_type_ int collide-list collide-query) int)
-    (drawable-method-13 () none) ;; 13 ;; (collect-stats (_type_) none)
-    (drawable-method-14 () none) ;; 14 ;; (debug-draw (_type_ drawable display-frame) none)
+    (collect-stats "Collect triangle/perf statistics for rendering.
+                    This is only called when viewing stats.
+                    The vis-bits and culling registers are loaded during this time." (_type_) none) ;; 13
+    (debug-draw "Debug-draw a drawable and its children. Typically uses the debug-draw functions." (_type_) none) ;; 14
     (drawable-method-15 () none) ;; 15 ;; (unpack-vis (_type_ (pointer int8) (pointer int8)) (pointer int8))
-    (drawable-method-16 () none) ;; 16 ;; (collect-regions (_type_ sphere int region-prim-list) none)
+    (collect-regions "Fill the region-prim-list with regions that intersect the sphere." (_type_ sphere int region-prim-list) none) ;; 16
     )
   )
 
@@ -21990,6 +22008,14 @@
 ;; bsp-h                          ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+(defenum texture-page-flag
+  :type uint16
+  :bitfield #t
+  (alpha-enable 0)
+  )
+
+(declare-type entity-camera entity)
+
 (deftype bsp-node (structure)
   "A node in the 'BSP' tree. This is really a bounding volume tree, where each volume is an axis-aligned box, containing 2 child boxes.
    This is used for precomputed visibility, based on the camera position. This is not used for collision."
@@ -22000,6 +22026,7 @@
    (back-box-min  vector4b :inline :offset-assert 12)
    (back-box-max  vector4b :inline :offset-assert 16)
    )
+  :pack-me
   :method-count-assert 9
   :size-assert         #x14
   :flag-assert         #x900000014
@@ -22008,42 +22035,43 @@
 (deftype bsp-header (drawable)
   "The bsp-header is really an entire level.
    This probably started as a very simple structure, but now it is extremely complicated."
-  ((all-visible-list         (pointer uint16)     :offset 32) ;; guessed by decompiler
+  ((info file-info                                               :offset 4)
+   (all-visible-list         (pointer uint16)     :offset 32) ;; guessed by decompiler
    (visible-list-length      int16                :offset 36)
    (drawable-trees           drawable-tree-array  :offset 40) ;; guessed by decompiler
    (pat                      pointer              :offset 44) ;; guessed by decompiler
    (pat-length               int32                :offset 48)
    ;; jak2: unlikely to match jak 3 exactly!!
-   ; (texture-remap-table      (pointer uint64)            :offset-assert 52)
-   ; (texture-remap-table-len  int32                       :offset-assert 56)
-   ; (texture-ids              (pointer texture-id)        :offset-assert 60)
-   ; (texture-page-count       int32                       :offset-assert 64)
-   ; (unknown-basic            basic                       :offset-assert 68) ;; seems to be 0 everywhere.
+   (texture-remap-table      (pointer uint64)            :offset-assert 52)
+   (texture-remap-table-len  int32                       :offset-assert 56)
+   (texture-ids              (pointer texture-id)        :offset-assert 60)
+   (texture-page-count       int32                       :offset-assert 64)
+   (unknown-basic            basic                       :offset-assert 68) ;; seems to be 0 everywhere.
    ; (name                     symbol                      :offset-assert 72)
    ; (nickname                 symbol                      :offset-assert 76)
    ; (vis-info                 level-vis-info 8            :offset-assert 80)
-   ; (actors                   drawable-inline-array-actor :offset-assert 112)
-   ; (cameras                  (array entity-camera)       :offset-assert 116)
+   (actors                   drawable-inline-array-actor :offset 112)
+   (cameras                  (array entity-camera)       :offset-assert 116)
    (nodes           (inline-array bsp-node)             :offset 120)
 
    ;; jak2: unlikely to match jak 3 exactly!!
-   ; (level                    level                       :offset-assert 124)
-   ; (current-leaf-idx         uint16                      :offset-assert 128)
-   ; (texture-flags            texture-page-flag 10        :offset-assert 130)
-   ; (cam-outside-bsp          uint8                       :offset        152)
-   ; (cam-using-back           uint8                       :offset-assert 153)
-   ; (cam-box-idx              uint16                      :offset-assert 154)
+   (level                    level                       :offset-assert 124)
+   (current-leaf-idx         uint16                      :offset-assert 128)
+   (texture-flags            texture-page-flag 10        :offset 130)
+   (cam-outside-bsp          uint8                       :offset        152)
+   (cam-using-back           uint8                       :offset-assert 153)
+   (cam-box-idx              uint16                      :offset-assert 154)
    ; (ambients                 symbol                      :offset-assert 156) ;; now just #t?
    ; (subdivide-close          float                       :offset-assert 160)
    ; (subdivide-far            float                       :offset-assert 164)
    ; (race-meshes              (array entity-race-mesh)    :offset-assert 168)
-   ; (actor-birth-order        (pointer uint32)            :offset-assert 172)
+   (actor-birth-order        (pointer uint32)            :offset 172)
    ; (light-hash               light-hash                  :offset-assert 176)
    ; (nav-meshes               (array entity-nav-mesh)     :offset-assert 180)
    ; (actor-groups             (array actor-group)         :offset-assert 184)
-   ; (region-trees             (array drawable-tree-region-prim) :offset-assert 188)
+   (region-trees             (array drawable-tree-region-prim) :offset 188)
    ; (region-array             region-array                :offset-assert 192)
-   ; (collide-hash             collide-hash                :offset-assert 196)
+   (collide-hash             collide-hash                :offset 196)
    ; ;; 200 is some array
    ; (wind-array uint32 :offset 200)
    ; ;; 204 is maybe that array's length
@@ -22053,24 +22081,26 @@
    ; (vis-spheres-length       uint32                             :offset 248)
    ; (region-tree              drawable-tree-region-prim          :offset 252)
 
-   ; (tfrag-masks              texture-masks-array         :offset-assert 256)
-   ; (tfrag-closest            (pointer float)             :offset-assert 260)
-   ; (tfrag-mask-count         uint32                      :offset        260)
+   (tfrag-masks              texture-masks-array         :offset 256)
+   (tfrag-closest            (pointer float)             :offset-assert 260)
+   (tfrag-mask-count         uint32                      :offset        260)
 
-   ; (shrub-masks              texture-masks-array         :offset-assert 264)
-   ; (shrub-closest            (pointer float)             :offset-assert 268)
-   ; (shrub-mask-count         uint32                      :offset        268)
+   (shrub-masks              texture-masks-array         :offset-assert 264)
+   (shrub-closest            (pointer float)             :offset-assert 268)
+   (shrub-mask-count         uint32                      :offset        268)
 
-   ; (alpha-masks              texture-masks-array         :offset-assert 272)
-   ; (alpha-closest            (pointer float)             :offset-assert 276)
-   ; (alpha-mask-count         uint32                      :offset        276)
+   (alpha-masks              texture-masks-array         :offset-assert 272)
+   (alpha-closest            (pointer float)             :offset-assert 276)
+   (alpha-mask-count         uint32                      :offset        276)
 
-   ; (water-masks              texture-masks-array         :offset-assert 280)
-   ; (water-closest            (pointer float)             :offset-assert 284)
-   ; (water-mask-count         uint32                      :offset        284)
+   (water-masks              texture-masks-array         :offset-assert 280)
+   (water-closest            (pointer float)             :offset-assert 284)
+   (water-mask-count         uint32                      :offset        284)
 
-   ; (bsp-scale                vector :inline              :offset-assert 288)
-   ; (bsp-offset               vector :inline              :offset-assert 304)
+   (bsp-scale                vector :inline              :offset 288)
+   (bsp-offset               vector :inline              :offset-assert 304)
+
+   (unk-drawable drawable :offset 320)
 
 
    (end uint8 :offset #x18f)
@@ -22411,7 +22441,9 @@
 
 (deftype drawable-tree-instance-shrub (drawable-tree)
   "Drawable-tree for the shrubs."
-  ()
+  ((info prototype-array-shrub-info :offset 8)
+   (colors-added time-of-day-palette :offset 12) ;; added
+   )
   :flag-assert #x1100000020
   )
 
@@ -27703,20 +27735,27 @@
 ;; wind                           ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (define-extern update-wind function) ;; (function wind-work (array uint8) none)
-;; (define-extern wind-get-hashed-index function)
+(define-extern update-wind "Update the wind force for this frame.
+                            This value will be used by level-update-wind to update tie/shrub wind values." (function wind-work (array uint8) none))
+(define-extern wind-get-hashed-index "Unused function, likely a leftover from Jak 1's different wind system." (function vector wind-work int))
 ;; (define-extern level-update-wind function) ;; (function wind-work none)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; bsp                            ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (define-extern mem-usage-bsp-tree function) ;; (function bsp-header bsp-node memory-usage-block int none)
-;; (define-extern *test-shrub* object) ;; int
-;; (define-extern bsp-camera-asm function) ;; (function bsp-header vector none)
-;; (define-extern print-collide-stats function) ;; (function none)
-(define-extern level-remap-texture (function texture-id texture-id))
-;; (define-extern build-masks function) ;; (function bsp-header none)
+(define-extern mem-usage-bsp-tree "Recursively compute memory usage of bsp-tree." (function bsp-header bsp-node memory-usage-block int none))
+(define-extern *test-shrub* int)
+(define-extern bsp-camera-asm "Determine which 'bsp' leaf cell the camera is in, for precomputed vis.
+                               The result is stored in the bsp itself." (function bsp-header vector none))
+(define-extern print-collide-stats (function none))
+(define-extern level-remap-texture "Level tpages combine the tpages of many individual actors.
+                                    Given a texture ID for a texture in an individual actor,
+                                    determine the texture ID for this texture in the level's
+                                    combined page." (function texture-id texture-id))
+(define-extern build-masks "Allocate and assign texture masks, and closest object arrays.
+                            These are used at runtime to only upload the texture chunks and
+                            mip levels that are actually needed." (function bsp-header none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; subdivide                      ;;
@@ -27738,7 +27777,7 @@
 ;; (define-extern GSH_WHICH_STAT object) ;; int
 ;; (define-extern GSH_MAX_DISPLAY object) ;; basic
 ;; (define-extern GSH_TIME object) ;; int
-;; (define-extern *perf-stats* object) ;; perf-stat-array
+(define-extern *perf-stats* perf-stat-array)
 ;; (define-extern *gomi-stats-hack* object) ;; (inline-array perf-stat)
 ;; (define-extern start-perf-stat-collection function) ;; (function none)
 ;; (define-extern end-perf-stat-collection function) ;; (function none)
@@ -29199,7 +29238,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ;; (define-extern *instance-tie-work* object) ;; instance-tie-work
-;; (define-extern *prototype-tie-work* object) ;; prototype-tie-work
+(define-extern *prototype-tie-work* prototype-tie-work)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; tie-methods                    ;;

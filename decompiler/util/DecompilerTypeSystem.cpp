@@ -469,7 +469,7 @@ int DecompilerTypeSystem::get_format_arg_count(const std::string& str) const {
 
   static const std::vector<std::string> code_ignore_list = {
       "%",  "T",   "0L", "1L", "3L",   "1k",   "1K",   "2j", "0k",
-      "0K", "30L", "1T", "2T", "100h", "200h", "350h", "t"};
+      "0K", "30L", "1T", "2T", "100h", "200h", "350h", "t",  "256h"};
 
   int arg_count = 0;
   for (size_t i = 0; i < str.length(); i++) {
