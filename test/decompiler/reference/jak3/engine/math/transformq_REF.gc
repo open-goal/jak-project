@@ -1,12 +1,7 @@
 ;;-*-Lisp-*-
 (in-package goal)
 
-;; name: transformq.gc
-;; name in dgo: transformq
-;; dgos: GAME
-
-;; DECOMP BEGINS
-
+;; definition for method 2 of type transformq
 (defmethod print ((this transformq))
   (format #t "#<transformq @ #x~X~%" this)
   (format #t "~T~Ttrans:~F ~F ~F ~F ~%" (-> this trans x) (-> this trans y) (-> this trans z) (-> this trans w))
@@ -15,26 +10,31 @@
   this
   )
 
+;; definition for method 27 of type trsqv
 (defmethod get-quaternion ((this trsqv))
   "Get the quat for this [[trsqv]]."
   (-> this quat)
   )
 
+;; definition for method 18 of type trsqv
 (defmethod set-quaternion! ((this trsqv) (arg0 quaternion))
   "Set this [[trsqv]]'s quaternion."
   (quaternion-copy! (get-quaternion this) arg0)
   )
 
+;; definition for method 21 of type trsqv
 (defmethod rot->dir-targ! ((this trsqv))
   "Set the target direction for this [[trsqv]] to its quaternion."
   (quaternion-copy! (-> this dir-targ) (get-quaternion this))
   )
 
+;; definition for method 22 of type trsqv
 (defmethod y-angle ((this trsqv))
   "Get the y angle for this [[trsqv]]'s quaternion."
   (quaternion-y-angle (get-quaternion this))
   )
 
+;; definition for method 9 of type trsqv
 (defmethod seek-toward-heading-vec! ((this trsqv) (arg0 vector) (arg1 float) (arg2 time-frame))
   "Adjust the orientation to point along dir, only changing our yaw.
    The vel is a maximum velocity limit.
@@ -67,6 +67,7 @@
     )
   )
 
+;; definition for method 10 of type trsqv
 (defmethod set-heading-vec! ((this trsqv) (arg0 vector))
   "Makes us look in the arg0 direction immediately.  Pitch will be unchanged."
   (let ((s3-0 (get-quaternion this)))
@@ -78,11 +79,13 @@
     )
   )
 
+;; definition for method 11 of type trsqv
 (defmethod seek-to-point-toward-point! ((this trsqv) (arg0 vector) (arg1 float) (arg2 time-frame))
   "Seek toward pointing toward arg0 from our current location."
   (seek-toward-heading-vec! this (vector-! (new 'stack-no-clear 'vector) arg0 (-> this trans)) arg1 arg2)
   )
 
+;; definition for method 12 of type trsqv
 (defmethod point-toward-point! ((this trsqv) (arg0 vector))
   "Immediately point toward arg0."
   (let ((s3-0 (get-quaternion this)))
@@ -94,6 +97,7 @@
     )
   )
 
+;; definition for method 13 of type trsqv
 (defmethod seek-toward-yaw-angle! ((this trsqv) (arg0 float) (arg1 float) (arg2 time-frame))
   "Seek toward the given yaw angle."
   (let ((s3-0 (method-of-object this seek-toward-heading-vec!))
@@ -107,6 +111,7 @@
     )
   )
 
+;; definition for method 14 of type trsqv
 (defmethod set-yaw-angle-clear-roll-pitch! ((this trsqv) (arg0 float))
   "Immediately clear our roll and pitch and set yaw to the given angle."
   (let ((s5-0 (method-of-object this set-heading-vec-clear-roll-pitch!))
@@ -120,11 +125,13 @@
     )
   )
 
+;; definition for method 15 of type trsqv
 (defmethod set-roll-to-grav! ((this trsqv) (arg0 float))
   "Set our roll so that our local down aligns with standard gravity."
   (set-roll-to-grav-2! this arg0)
   )
 
+;; definition for method 16 of type trsqv
 (defmethod set-roll-to-grav-2! ((this trsqv) (arg0 float))
   "Set our roll so that our local down aligns with standard gravity."
   (let* ((s5-0 (get-quaternion this))
@@ -142,6 +149,7 @@
     )
   )
 
+;; definition for method 25 of type trsqv
 (defmethod roll-relative-to-gravity ((this trsqv))
   "Get our roll, relative to 'down' from gravity."
   (let* ((s5-0 (get-quaternion this))
@@ -158,6 +166,8 @@
     )
   )
 
+;; definition for method 17 of type trsqv
+;; INFO: Used lq/sq
 ;; ERROR: Unsupported inline assembly instruction kind - [mula.s f0, f3]
 ;; ERROR: Unsupported inline assembly instruction kind - [madda.s f1, f4]
 ;; ERROR: Unsupported inline assembly instruction kind - [madd.s f0, f2, f5]
@@ -203,18 +213,16 @@
             (cond
               ((!= s2-0 0.0)
                (let* ((v1-5 (vector-cross! (new 'stack-no-clear 'vector) s1-2 sv-272))
-                      ;; og:preserve-this inlined vector-dot
-                      ; (f0-3 (-> sv-256 x))
-                      ; (f1-3 (-> sv-256 y))
-                      ; (f2-0 (-> sv-256 z))
-                      ; (f3-0 (-> v1-5 x))
-                      ; (f4-0 (-> v1-5 y))
-                      ; (f5-0 (-> v1-5 z))
+                      (f0-3 (-> sv-256 x))
+                      (f1-3 (-> sv-256 y))
+                      (f2-0 (-> sv-256 z))
+                      (f3-0 (-> v1-5 x))
+                      (f4-0 (-> v1-5 y))
+                      (f5-0 (-> v1-5 z))
                       )
-                 (set! f0-4 (vector-dot sv-256 v1-5))
-                 ; (.mula.s f0-3 f3-0)
-                 ; (.madda.s f1-3 f4-0)
-                 ; (.madd.s f0-4 f2-0 f5-0)
+                 (.mula.s f0-3 f3-0)
+                 (.madda.s f1-3 f4-0)
+                 (.madd.s f0-4 f2-0 f5-0)
                  )
                (if (< (* f0-4 s2-0) 0.0)
                    (matrix-from-two-vectors-the-long-way-smooth! s0-1 s1-2 sv-272 arg1 arg3)
@@ -235,6 +243,7 @@
     )
   )
 
+;; definition for method 19 of type trsqv
 (defmethod set-heading-vec-clear-roll-pitch! ((this trsqv) (arg0 vector))
   "Set our rotation to point along the given heading, with no roll or pitch."
   (forward-up->quaternion
@@ -244,6 +253,7 @@
     )
   )
 
+;; definition for method 20 of type trsqv
 (defmethod point-toward-point-clear-roll-pitch! ((this trsqv) (arg0 vector))
   "Set our orientation to point toward arg0, clearing roll and pitch."
   (forward-up->quaternion
@@ -253,6 +263,8 @@
     )
   )
 
+;; definition for function transformq-copy!
+;; INFO: Used lq/sq
 (defun transformq-copy! ((arg0 transformq) (arg1 transformq))
   "Set arg0 = arg1."
   (let ((v1-0 (-> arg1 trans quad))
@@ -266,6 +278,8 @@
   arg0
   )
 
+;; definition for function matrix<-transformq!
+;; INFO: Used lq/sq
 (defun matrix<-transformq! ((arg0 matrix) (arg1 transformq))
   "Convert to 4x4 affine transform."
   (local-vars (v1-1 float))
@@ -303,6 +317,7 @@
     )
   )
 
+;; definition for function matrix<-no-trans-transformq!
 (defun matrix<-no-trans-transformq! ((arg0 matrix) (arg1 transformq))
   "Create 4x4 affine transform with no translation."
   (rlet ((vf0 :class vf)
@@ -330,6 +345,7 @@
     )
   )
 
+;; definition for function matrix<-transformq+trans!
 (defun matrix<-transformq+trans! ((arg0 matrix) (arg1 transformq) (arg2 vector))
   "Convert to affine transform with an additional translation (in the local frame)."
   (rlet ((acc :class vf)
@@ -365,6 +381,7 @@
     )
   )
 
+;; definition for function matrix<-transformq+world-trans!
 (defun matrix<-transformq+world-trans! ((arg0 matrix) (arg1 transformq) (arg2 vector))
   "Convert to affine transform with an additional translation in the world frame (not rotated)."
   (rlet ((vf0 :class vf)
@@ -396,6 +413,7 @@
     )
   )
 
+;; definition for function matrix<-parented-transformq!
 (defun matrix<-parented-transformq! ((arg0 matrix) (arg1 transformq) (arg2 vector))
   "Unused. Seems like the parented thing means there's an inverse scale in arg2."
   (local-vars (v1-1 float))
@@ -436,6 +454,7 @@
     )
   )
 
+;; definition for function matrix<-transformq+rot-offset!
 (defun matrix<-transformq+rot-offset! ((arg0 matrix) (arg1 transformq) (arg2 vector))
   "Affine transform for a point offset in the destination frame of the transformq (rather than just
    adding an offset at the end)."
@@ -472,3 +491,7 @@
     arg0
     )
   )
+
+
+
+

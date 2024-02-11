@@ -2046,20 +2046,48 @@
   :size-assert         #x8c
   :flag-assert         #x1c0000008c
   (:methods
-    (seek-toward-heading-vec! (_type_ vector float time-frame) quaternion) ;; 9
-    (set-heading-vec! (_type_ vector) quaternion) ;; 10
-    (seek-to-point-toward-point! (_type_ vector float time-frame) quaternion) ;; 11
-    (point-toward-point! (_type_ vector) quaternion) ;; 12
-    (seek-toward-yaw-angle! (_type_ float float time-frame) quaternion) ;; 13
-    (set-yaw-angle-clear-roll-pitch! (_type_ float) quaternion) ;; 14
-    (set-roll-to-grav! (_type_ float) quaternion) ;; 15
-    (set-roll-to-grav-2! (_type_ float) quaternion) ;; 16
-    (rotate-toward-orientation! (_type_ quaternion float float int int float) quaternion) ;; 17
-    (set-quaternion! (_type_ quaternion) quaternion) ;; 18
-    (set-heading-vec-clear-roll-pitch! (_type_ vector) quaternion) ;; 19
-    (point-toward-point-clear-roll-pitch! (_type_ vector) quaternion) ;; 20
-    (rot->dir-targ! (_type_) quaternion) ;; 21
-    (y-angle (_type_) float) ;; 22
+    (seek-toward-heading-vec!
+      "Adjust the orientation to point along dir, only changing our yaw.
+       The vel is a maximum velocity limit.
+       The frame count is the time constant (first order).
+       There's some logic to avoid rapidly changing directions"
+      (_type_ vector float time-frame) quaternion) ;; 9
+    (set-heading-vec!
+      "Makes us look in the arg0 direction immediately.  Pitch will be unchanged."
+      (_type_ vector) quaternion) ;; 10
+    (seek-to-point-toward-point!
+      "Seek toward pointing toward arg0 from our current location."
+      (_type_ vector float time-frame) quaternion) ;; 11
+    (point-toward-point! "Immediately point toward arg0." (_type_ vector) quaternion) ;; 12
+    (seek-toward-yaw-angle! "Seek toward the given yaw angle." (_type_ float float time-frame) quaternion) ;; 13
+    (set-yaw-angle-clear-roll-pitch!
+      "Immediately clear our roll and pitch and set yaw to the given angle."
+      (_type_ float) quaternion) ;; 14
+    (set-roll-to-grav!
+      "Set our roll so that our local down aligns with standard gravity."
+      (_type_ float) quaternion) ;; 15
+    (set-roll-to-grav-2!
+      "Set our roll so that our local down aligns with standard gravity."
+      (_type_ float) quaternion) ;; 16
+    (rotate-toward-orientation!
+      "Adjust our orientation toward target, subject to some rate limits.
+       For Jak 1, I said:
+       I don't think this is a very robust function and probably doesn't work right in cases
+       where an axis flips by 180 degrees.
+       But now they use matrix-from-two-vectors-the-long-way-smooth to fix it! Good job.
+       This additionally uses the fancy logic of matrix-from-two-vectors-smooth."
+      (_type_ quaternion float float int int float) quaternion) ;; 17
+    (set-quaternion! "Set this [[trsqv]]'s quaternion." (_type_ quaternion) quaternion) ;; 18
+    (set-heading-vec-clear-roll-pitch!
+      "Set our rotation to point along the given heading, with no roll or pitch."
+      (_type_ vector) quaternion) ;; 19
+    (point-toward-point-clear-roll-pitch!
+      "Set our orientation to point toward arg0, clearing roll and pitch."
+      (_type_ vector) quaternion) ;; 20
+    (rot->dir-targ!
+      "Set the target direction for this [[trsqv]] to its quaternion."
+      (_type_) quaternion) ;; 21
+    (y-angle "Get the y angle for this [[trsqv]]'s quaternion." (_type_) float) ;; 22
     (global-y-angle-to-point
       "Get the angle in the xz plane from the position of this trsqv to the point arg0
        (ignores our current yaw)."
@@ -2068,9 +2096,9 @@
       "Get the y angle between the current orientation and arg0
        (how much we'd have to yaw to point at arg0)."
       (_type_ vector) float) ;; 24
-    (roll-relative-to-gravity (_type_) float) ;; 25
+    (roll-relative-to-gravity "Get our roll, relative to 'down' from gravity." (_type_) float) ;; 25
     (set-and-limit-velocity (_type_ int vector float) trsqv) ;; 26
-    (get-quaternion (_type_) quaternion) ;; 27
+    (get-quaternion "Get the quat for this [[trsqv]]." (_type_) quaternion) ;; 27
     )
   )
 
@@ -4116,10 +4144,10 @@
   (tie-envmap-scissor)
   (tie-vanish)
   (generic)
-  (merc)
-  (emerc)
   (shrubbery)
   (shrub-near)
+  (merc)
+  (emerc)
   (billboard)
   (shrubbery-vanish)
   (tfrag-trans)
@@ -7561,7 +7589,7 @@
   (:methods
     (level-group-method-9 () none) ;; 9 ;; (level-get (_type_ symbol) level)
     (level-group-method-10 () none) ;; 10 ;; (level-get-with-status (_type_ symbol) level)
-    (level-group-method-11 () none) ;; 11 ;; (get-level-by-heap-ptr-and-status (_type_ pointer symbol) level)
+    (get-level-by-heap-ptr-and-status (_type_ pointer symbol) level) ;; 11
     (level-group-method-12 () none) ;; 12 ;; (level-get-for-use (_type_ symbol symbol) level)
     (level-group-method-13 () none) ;; 13 ;; (activate-levels! (_type_) int)
     (level-group-method-14 () none) ;; 14 ;; (debug-print-entities (_type_ symbol type) none)
@@ -10266,6 +10294,8 @@
    (letterbox-speed        float               :offset-assert 576)
    (borrow-city-count      uint32              :offset 620)
    (borrow-city            pair              3 :offset-assert 624)
+   (wind-vec               vector              :offset 736) ;; added (method 11 cloth-system)
+   (wind                   float               :offset 740) ;; added (method 11 cloth-system)
    (audio-language         language-enum       :offset 748)
    (ear-handle           handle :offset 784) ;; added, used in gsound.
    (special-volume         float               :offset 796)
@@ -13814,7 +13844,7 @@
 
 (deftype anchor-transform (structure)
   ((offset           vector :inline :offset-assert 0)
-   (joint-name       basic          :offset-assert 16)
+   (joint-name       string         :offset-assert 16)
    (joint            int16          :offset-assert 20)
    (constraint-index int16          :offset-assert 22)
    )
@@ -13825,7 +13855,7 @@
 
 (deftype sphere-transform (structure)
   ((offset     vector :inline :offset-assert 0)
-   (joint-name basic          :offset-assert 16)
+   (joint-name string         :offset-assert 16)
    (radius     float          :offset-assert 20)
    (joint      int16          :offset-assert 24)
    )
@@ -13880,28 +13910,58 @@
   :flag-assert         #xe00000010
   )
 
+;; +++cloth-art-h:cloth-flag
+(defenum cloth-flag
+  :type uint64
+  :bitfield #t
+  (no-gravity 0)
+  (use-wind 1)
+  (need-reset 2)
+  (double-sided 3)
+  (suppress-mesh-failure 4)
+  (active 5)
+  (check-ground 6)
+  (flip-normals 7)
+  (wraps 8)
+  (inited 9)
+  (no-draw 10)
+  (need-setup 11)
+  (use-global-wind 12)
+  (autogen-uvs 13)
+  (use-momentum 14)
+  (use-parent-momentum 15)
+  (riding 16)
+  (hidden 17)
+  (local-space 18)
+  (local-space-xyz 19)
+  (local-space-y 20)
+  (use-old-resets 21)
+  (using-alt-tex 22)
+  )
+;; ---cloth-art-h:cloth-flag
+
 (deftype cloth-params (structure)
   ((mesh                   int16   :offset-assert 0)
-   (gravity-constant       float   :offset-assert 4)
+   (gravity-constant       meters   :offset-assert 4)
    (wind-constant          float   :offset-assert 8)
    (cloth-width            uint16  :offset-assert 12)
    (num-sphere-constraints uint16  :offset-assert 14)
    (num-disc-constraints   uint16  :offset-assert 16)
    (num-anchor-points      uint16  :offset-assert 18)
-   (flags                  uint64  :offset-assert 24)
-   (tex-name               basic   :offset-assert 32)
-   (tex-name2              basic   :offset-assert 36)
-   (tex-name3              basic   :offset-assert 40)
-   (alt-tex-name           basic   :offset-assert 44)
-   (alt-tex-name2          basic   :offset-assert 48)
-   (alt-tex-name3          basic   :offset-assert 52)
+   (flags                  cloth-flag  :offset-assert 24)
+   (tex-name               string  :offset-assert 32)
+   (tex-name2              string  :offset-assert 36)
+   (tex-name3              string  :offset-assert 40)
+   (alt-tex-name           string  :offset-assert 44)
+   (alt-tex-name2          string  :offset-assert 48)
+   (alt-tex-name3          string  :offset-assert 52)
    (cloth-thickness        float   :offset-assert 56)
    (initial-xform          int16   :offset-assert 60)
    (drag                   float   :offset-assert 64)
-   (ball-collision-radius  float   :offset-assert 68)
+   (ball-collision-radius  meters  :offset-assert 68)
    (num-iterations         int8    :offset-assert 72)
    (timestep-frequency     int8    :offset-assert 73)
-   (secret-disable         uint64  :offset-assert 80)
+   (secret-disable         game-secrets :offset-assert 80)
    )
   :method-count-assert 9
   :size-assert         #x58
@@ -13914,8 +13974,8 @@
   :size-assert         #x4
   :flag-assert         #xb00000004
   (:methods
-    (cloth-base-method-9 () none) ;; 9
-    (cloth-base-method-10 () none) ;; 10
+    (init! (_type_) int) ;; 9
+    (cloth-base-method-10 (_type_ cloth-params handle) int) ;; 10
     )
   )
 
@@ -14035,17 +14095,17 @@
   :size-assert         #x14
   :flag-assert         #xe00000014
   (:methods
-    (art-method-9 () none) ;; 9 ;; (login (_type_) _type_)
-    (art-method-10 () none) ;; 10 ;; (get-art-by-name-method (_type_ string type) basic)
-    (art-method-11 () none) ;; 11 ;; (get-art-idx-by-name-method (_type_ string type) int)
-    (art-method-12 () none) ;; 12 ;; (needs-link? (_type_) symbol)
-    (art-method-13 () none) ;; 13
+    (login (_type_) _type_) ;; 9
+    (art-method-10 (_type_) _type_) ;; 10
+    (get-art-by-name-method (_type_ string type) basic) ;; 11
+    (get-art-idx-by-name-method (_type_ string type) int) ;; 12
+    (needs-link? (_type_) symbol) ;; 13
     )
   )
 
 (deftype art-element (art)
   "Base class Art which is not a container of more art."
-  ((master-art-group-name  basic  :offset-assert 20)
+  ((master-art-group-name  string :offset-assert 20)
    (master-art-group-index int32  :offset-assert 24)
    (pad uint8 20)
    )
@@ -14084,7 +14144,8 @@
    )
   :flag-assert #x1000000020
   (:methods
-    (unknown-0 () none)
+    (relocate (_type_ kheap (pointer uint8)) _type_ :replace)
+    (link-art! (_type_) art-group)
     (unknown-1 () none)
     )
   )
@@ -14097,18 +14158,19 @@
 
 (deftype art-joint-geo (art-element)
   "Collection of joints for an actor."
-  ()
+  ((data  joint  :dynamic :offset 48)
+   )
   :flag-assert #xe00000030
   )
 
 (deftype art-cloth-geo (art-element)
-  ((anchor-transforms basic            :offset-assert 48)
-   (sphere-transforms basic            :offset-assert 52)
-   (disc-transforms   basic            :offset-assert 56)
-   (cloth-thickness   basic            :offset-assert 60)
+  ((anchor-transforms anchor-transform-array :offset-assert 48)
+   (sphere-transforms sphere-transform-array :offset-assert 52)
+   (disc-transforms   disc-transform-array :offset-assert 56)
+   (cloth-thickness   cloth-thickness-array :offset-assert 60)
    (thickness-scalar  float            :offset-assert 64)
    (num-points        int32            :offset 12)
-   (mesh              object :dynamic :offset 80) ;; todo
+   (mesh              cloth-pt :dynamic :inline :offset 80) ;; todo
    )
   :method-count-assert 14
   :size-assert         #x50
@@ -14172,7 +14234,7 @@
   :size-assert         #x79
   :flag-assert         #x1100000079
   (:methods
-    (skeleton-group-method-16 () none) ;; 16
+    (add-to-loading-level (_type_) skeleton-group) ;; 16
     )
   )
 
@@ -14506,7 +14568,7 @@
    (lump-four-count     uint8                  :offset-assert 1)
    (fp-qwc              uint8                  :offset-assert 2)
    (mat-xfer-count      uint8                  :offset-assert 3)
-   (mat-dest-data       merc-mat-dest :dynamic :offset-assert 4) ;; guessed by decompiler
+   (mat-dest-data       merc-mat-dest :dynamic :inline :offset-assert 4) ;; guessed by decompiler
    )
   :method-count-assert 9
   :size-assert         #x4
@@ -14738,7 +14800,7 @@
   ((num-joints int32                     :offset 12)
    (seg-table  (array uint64)            :offset 28) ;; guessed by decompiler
    (header     merc-ctrl-header :inline  :offset-assert 48)
-   (effect     merc-effect      :dynamic :offset-assert 176) ;; guessed by decompiler
+   (effect     merc-effect      :dynamic :inline :offset-assert 176) ;; guessed by decompiler
    )
   :method-count-assert 14
   :size-assert         #xb0
@@ -15552,10 +15614,10 @@
    (allocated-num-verts uint16           :offset-assert 14)
    (tex-id              texture-id           :offset-assert 16)
    (adnops              gs-adcmd 2 :inline        :offset-assert 32)
-   (data0               uint64           :offset 32)
-   (reg0                uint64           :offset 40)
-   (data1               uint64           :offset 48)
-   (reg1                uint64           :offset 56)
+   (data0               gs-test          :offset 32)
+   (reg0                gs-reg64         :offset 40)
+   (data1               gs-test          :offset 48)
+   (reg1                gs-reg64         :offset 56)
    (clamp               gs-clamp           :offset-assert 64)
    (alpha               gs-alpha           :offset-assert 72)
    (bucket              bucket-id          :offset-assert 80)
@@ -15570,7 +15632,7 @@
   (:methods
     (new "Allocate a new prim-strip and room for vertices. The texture can be specified by name or ID."
          (symbol type int texture-id string) _type_)
-    (prim-strip-method-10 () none) ;; 10
+    (prim-strip-method-10 (_type_ draw-control) none) ;; 10
     )
   )
 
@@ -19013,6 +19075,7 @@
   (notify-of-abort 0)
   (allow-abort 1)
   (inherit-orientation 2)
+  (pcf3 3)
   )
 ;; ---pov-camera-h:pov-camera-flags
 
@@ -27458,13 +27521,22 @@
 ;; transformq                     ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (define-extern transformq-copy! function) ;; (function transformq transformq transformq)
-(define-extern matrix<-transformq! (function matrix transformq matrix))
-;; (define-extern matrix<-no-trans-transformq! function) ;; (function matrix transformq matrix)
-;; (define-extern matrix<-transformq+trans! function) ;; (function matrix transformq vector matrix)
-;; (define-extern matrix<-transformq+world-trans! function) ;; (function matrix transformq vector matrix)
-(define-extern matrix<-parented-transformq! (function matrix transformq vector matrix))
-;; (define-extern matrix<-transformq+rot-offset! function) ;; (function matrix transformq vector matrix)
+(define-extern transformq-copy! "Set arg0 = arg1." (function transformq transformq transformq))
+(define-extern matrix<-transformq! "Convert to 4x4 affine transform." (function matrix transformq matrix))
+(define-extern matrix<-no-trans-transformq! "Create 4x4 affine transform with no translation." (function matrix transformq matrix))
+(define-extern matrix<-transformq+trans!
+  "Convert to affine transform with an additional translation (in the local frame)."
+  (function matrix transformq vector matrix))
+(define-extern matrix<-transformq+world-trans!
+  "Convert to affine transform with an additional translation in the world frame (not rotated)."
+  (function matrix transformq vector matrix))
+(define-extern matrix<-parented-transformq!
+  "Unused. Seems like the parented thing means there's an inverse scale in arg2."
+  (function matrix transformq vector matrix))
+(define-extern matrix<-transformq+rot-offset!
+  "Affine transform for a point offset in the destination frame of the transformq (rather than just
+   adding an offset at the end)."
+  (function matrix transformq vector matrix))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; collide-func                   ;;
@@ -27571,7 +27643,7 @@
 ;; wind-work                      ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (define-extern *wind-work* wind-work) ;; wind-work
+(define-extern *wind-work* wind-work) ;; wind-work
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; wind                           ;;
@@ -27983,9 +28055,9 @@
 ;; (define-extern add-debug-box-with-transform function) ;; (function symbol bucket-id bounding-box matrix rgba symbol)
 ;; (define-extern add-debug-x function) ;; (function symbol bucket-id vector rgba symbol)
 ;; (define-extern add-debug-cross function) ;; (function symbol bucket-id vector float symbol)
-;; (define-extern add-debug-text-3d function) ;; (function symbol bucket-id string vector font-color vector2h symbol)
+(define-extern add-debug-text-3d (function symbol bucket-id string vector font-color vector2h symbol))
 ;; (define-extern add-debug-sphere-with-transform function) ;; (function symbol bucket-id vector meters matrix rgba symbol)
-;; (define-extern add-debug-sphere function) ;; (function symbol bucket-id vector meters rgba symbol)
+(define-extern add-debug-sphere (function symbol bucket-id vector meters rgba symbol))
 ;; (define-extern add-debug-text-sphere function) ;; (function symbol bucket-id vector meters string rgba symbol)
 ;; (define-extern add-debug-spheres function) ;; (function symbol bucket-id (inline-array vector) int rgba symbol)
 ;; (define-extern add-debug-line-sphere function) ;; (function symbol bucket-id vector vector float rgba none)
@@ -28097,13 +28169,13 @@
 ;; merc-vu1                       ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (define-extern merc-vu1-block object) ;; vu-function
+(define-extern merc-vu1-block vu-function)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; emerc-vu1                      ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (define-extern emerc-vu1-block object) ;; vu-function
+(define-extern emerc-vu1-block vu-function)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; merc-blend-shape               ;;
@@ -28192,24 +28264,24 @@
 
 ;; merc-ctrl is already defined!
 
-;; (define-extern *texture-login-data* object) ;; texture-login-data
-;; (define-extern texture-usage-init function) ;; (function merc-ctrl symbol)
-;; (define-extern texture-usage-update function) ;; (function texture symbol)
-;; (define-extern merc-stats-display function) ;; (function merc-ctrl none)
-;; (define-extern merc-stats function) ;; (function none)
-;; (define-extern merc-edge-stats function) ;; (function none)
-;; (define-extern merc-vu1-add-vu-function function) ;; (function dma-packet vu-function int dma-gif-packet)
-;; (define-extern merc-vu1-initialize-chain function) ;; (function dma-gif-packet int dma-packet)
-;; (define-extern merc-vu1-init-buffer function) ;; (function bucket-id int symbol int)
-;; (define-extern merc-vu1-init-buffers function) ;; (function none)
+(define-extern *texture-login-data* texture-login-data)
+(define-extern texture-usage-init (function merc-ctrl symbol))
+(define-extern texture-usage-update (function texture symbol))
+(define-extern merc-stats-display (function merc-ctrl none))
+(define-extern merc-stats (function none))
+(define-extern merc-edge-stats (function none))
+(define-extern merc-vu1-add-vu-function (function dma-packet vu-function int dma-gif-packet))
+(define-extern merc-vu1-initialize-chain (function dma-gif-packet int dma-packet))
+(define-extern merc-vu1-init-buffer (function bucket-id int symbol int))
+(define-extern merc-vu1-init-buffers (function none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; emerc                          ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (define-extern emerc-vu1-initialize-chain function) ;; (function dma-gif-packet dma-packet)
-;; (define-extern emerc-vu1-init-buffer function) ;; (function bucket-id gs-test int none)
-;; (define-extern emerc-vu1-init-buffers function) ;; (function none)
+(define-extern emerc-vu1-initialize-chain (function dma-gif-packet dma-packet))
+(define-extern emerc-vu1-init-buffer (function bucket-id gs-test int none))
+(define-extern emerc-vu1-init-buffers (function none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; ripple                         ;;
@@ -28280,9 +28352,21 @@
 ;; foreground                     ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+;; +++foreground:merc-mode
+(defenum merc-mode
+  :type int32
+  (merc 0)
+  (emerc 1)
+  (mercneric 2)
+  (eye 3)
+  (mm4 4)
+  (mm5 5)
+  )
+;; ---foreground:merc-mode
+
 ;; (define-extern foreground-vu0-block object) ;; vu-function
 ;; (define-extern *bucket-map* object) ;; (pointer bucket-id-16)
-;; (define-extern vu1-bucket-map function) ;; (function int int merc-mode bucket-id)
+(define-extern vu1-bucket-map (function int int merc-mode bucket-id))
 ;; (define-extern generic-bucket-state-init function) ;; (function generic-bucket-state none)
 ;; (define-extern mercneric-chain-init function) ;; (function mercneric-chain bucket-id none)
 ;; (define-extern foreground-init function) ;; (function none)
@@ -30359,7 +30443,7 @@
 ;; (define-extern remap-level-name function) ;; (function level-load-info symbol)
 ;; (define-extern add-bsp-drawable function) ;; (function bsp-header level symbol display-frame none)
 ;; (define-extern *login-state* object) ;; login-state
-;; (define-extern *print-login* object) ;; symbol
+(define-extern *print-login* symbol)
 ;; (define-extern load-buffer-resize function) ;; (function level dgo-header none)
 ;; (define-extern level-find-borrow-slot function)
 ;; (define-extern level-update-after-load function) ;; (function level login-state level)
@@ -31468,7 +31552,6 @@
 ;; cloth-h                        ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype stick-constraint (structure)
   ((constraint-length-half               float   :offset-assert 0)
    (one-over-two-times-constraint-length float   :offset-assert 4)
@@ -31480,9 +31563,7 @@
   :size-assert         #x10
   :flag-assert         #x900000010
   )
-|#
 
-#|
 (deftype verlet-particle (structure)
   ((pos        vector :inline :offset-assert 0)
    (prev-pos   vector :inline :offset-assert 16)
@@ -31492,9 +31573,7 @@
   :size-assert         #x24
   :flag-assert         #x900000024
   )
-|#
 
-#|
 (deftype disc-constraint (structure)
   ((normal               vector :inline :offset-assert 0)
    (origin               vector :inline :offset-assert 16)
@@ -31506,9 +31585,7 @@
   :size-assert         #x28
   :flag-assert         #x900000028
   )
-|#
 
-#|
 (deftype cylinder-constraint (structure)
   ((c0     vector :inline :offset-assert 0)
    (norm   vector :inline :offset-assert 16)
@@ -31519,9 +31596,7 @@
   :size-assert         #x28
   :flag-assert         #x900000028
   )
-|#
 
-#|
 (deftype particle-anchor-point (structure)
   ((anchor-pos     vector :inline :offset-assert 0)
    (particle-index uint16         :offset-assert 16)
@@ -31530,81 +31605,65 @@
   :size-assert         #x12
   :flag-assert         #x900000012
   )
-|#
 
-#|
 (deftype particle-array (inline-array-class)
-  ((data UNKNOWN :dynamic :offset-assert 16)
+  ((data verlet-particle :dynamic :inline :offset-assert 16)
    )
   :method-count-assert 14
   :size-assert         #x10
   :flag-assert         #xe00000010
   )
-|#
 
-#|
 (deftype float-array (inline-array-class)
-  ((data UNKNOWN :dynamic :offset-assert 16)
+  ((data float :dynamic :offset-assert 16)
    )
   :method-count-assert 14
   :size-assert         #x10
   :flag-assert         #xe00000010
   )
-|#
 
-#|
 (deftype stick-constraint-array (inline-array-class)
-  ((data UNKNOWN :dynamic :offset-assert 16)
+  ((data stick-constraint :dynamic :inline :offset-assert 16)
    )
   :method-count-assert 14
   :size-assert         #x10
   :flag-assert         #xe00000010
   )
-|#
 
-#|
 (deftype collision-sphere-array (inline-array-class)
-  ((data UNKNOWN :dynamic :offset-assert 16)
+  ((data sphere :dynamic :inline :offset-assert 16)
    )
   :method-count-assert 14
   :size-assert         #x10
   :flag-assert         #xe00000010
   )
-|#
 
-#|
 (deftype collision-disc-array (inline-array-class)
-  ((data UNKNOWN :dynamic :offset-assert 16)
+  ((data disc-constraint :dynamic :inline :offset-assert 16)
    )
   :method-count-assert 14
   :size-assert         #x10
   :flag-assert         #xe00000010
   )
-|#
 
-#|
 (deftype collision-cylinder-array (inline-array-class)
-  ((data UNKNOWN :dynamic :offset-assert 16)
+  ((data cylinder-constraint :dynamic :inline :offset-assert 16)
    )
   :method-count-assert 14
   :size-assert         #x10
   :flag-assert         #xe00000010
   )
-|#
 
-#|
 (deftype anchor-point-array (inline-array-class)
-  ((data UNKNOWN :dynamic :offset-assert 16)
+  ((data particle-anchor-point :dynamic :inline :offset-assert 16)
    )
   :method-count-assert 14
   :size-assert         #x10
   :flag-assert         #xe00000010
   )
-|#
 
-#|
 (deftype verlet-particle-system (cloth-base)
-  ((particles               basic          :offset-assert 4)
+  ((particles               particle-array :offset-assert 4)
    (drag                    float          :offset-assert 8)
    (accum-force             vector :inline :offset-assert 16)
    (timestep-frequency      int8           :offset-assert 32)
@@ -31615,16 +31674,16 @@
   :size-assert         #x40
   :flag-assert         #x1000000040
   (:methods
-    (verlet-particle-system-method-11 () none) ;; 11
-    (verlet-particle-system-method-12 () none) ;; 12
-    (verlet-particle-system-method-13 () none) ;; 13
-    (verlet-particle-system-method-14 () none) ;; 14
-    (verlet-particle-system-method-15 () none) ;; 15
+    (calculate-wind!
+      "If this cloth system has the wind flag, calculate the wind force."
+      (_type_) none) ;; 11
+    (verlet-particle-system-method-12 (_type_ float) none) ;; 12
+    (verlet-particle-system-method-13 (_type_) none) ;; 13
+    (verlet-particle-system-method-14 (_type_) none) ;; 14
+    (debug-draw (_type_) none) ;; 15
     )
   )
-|#
 
-#|
 (deftype current-position-info (structure)
   ((current-vert-index      uint16            :offset-assert 0)
    (last-2-x-index          uint16            :offset-assert 2)
@@ -31635,7 +31694,7 @@
    (scale                   vector    :inline :offset-assert 128)
    (clamp-col               vector    :inline :offset-assert 144)
    (last-normal             vector    :inline :offset-assert 160)
-   (face-normal-needs-flip? basic             :offset-assert 176)
+   (face-normal-needs-flip? symbol            :offset-assert 176)
    (cross-index0            int8              :offset-assert 180)
    (cross-index1            int8              :offset-assert 181)
    (backside-normal         vector    :inline :offset-assert 192)
@@ -31644,97 +31703,88 @@
   :size-assert         #xd0
   :flag-assert         #x9000000d0
   )
-|#
 
-#|
 (deftype cloth-system (verlet-particle-system)
-  ((particles                  basic                :offset-assert 0)
-   (drag                       float                :offset-assert 4)
-   (accum-force                vector       :inline :offset-assert 12)
-   (timestep-frequency         int8                 :offset-assert 28)
-   (last-simulate-remaining    int8                 :offset-assert 29)
-   (momentum                   vector       :inline :offset-assert 44)
-   (ground-constraint          float                :offset-assert 60)
-   (disc-collision-constraints basic                :offset-assert 64)
-   (collision-constraints      basic                :offset-assert 68)
-   (stick-constraints          basic                :offset-assert 72)
-   (anchor-points              basic                :offset-assert 76)
-   (constraint-strengths       UNKNOWN      3       :offset-assert 80)
-   (num-xy-constraints         int16                :offset-assert 92)
-   (num-diagonal-constraints   int16                :offset-assert 94)
-   (cloth-width                int32                :offset-assert 96)
-   (cloth-height               int32                :offset-assert 100)
-   (strip                      basic                :offset-assert 104)
-   (strip2                     basic                :offset-assert 108)
-   (strip3                     basic                :offset-assert 112)
-   (mesh                       basic                :offset-assert 116)
-   (gravity-constant           float                :offset-assert 120)
-   (wind-constant              float                :offset-assert 124)
-   (flags                      cloth-flag           :offset-assert 132)
-   (thickness-scalar           float                :offset-assert 140)
-   (ball-collision-radius      float                :offset-assert 144)
-   (face-normal-scalar         float                :offset-assert 148)
-   (reset-count                int8                 :offset-assert 152)
-   (num-iterations             int8                 :offset-assert 153)
-   (secret-disable             uint64               :offset-assert 156)
-   (params                     cloth-params         :offset-assert 164)
+  ((ground-constraint          float                :offset-assert 64)
+   (disc-collision-constraints collision-disc-array :offset-assert 68)
+   (collision-constraints      collision-sphere-array :offset-assert 72)
+   (stick-constraints          stick-constraint-array :offset-assert 76)
+   (anchor-points              anchor-point-array   :offset-assert 80)
+   (constraint-strengths       int32        3       :offset-assert 84)
+   (num-xy-constraints         int16                :offset-assert 96)
+   (num-diagonal-constraints   int16                :offset-assert 98)
+   (cloth-width                int32                :offset-assert 100)
+   (cloth-height               int32                :offset-assert 104)
+   (strip                      prim-strip           :offset-assert 108)
+   (strip2                     prim-strip           :offset-assert 112)
+   (strip3                     prim-strip           :offset-assert 116)
+   (mesh                       art-cloth-geo        :offset-assert 120)
+   (gravity-constant           float                :offset-assert 124)
+   (wind-constant              float                :offset-assert 128)
+   (flags                      cloth-flag           :offset-assert 136)
+   (thickness-scalar           float                :offset-assert 144)
+   (ball-collision-radius      float                :offset-assert 148)
+   (face-normal-scalar         float                :offset-assert 152)
+   (reset-count                int8                 :offset-assert 156)
+   (num-iterations             int8                 :offset-assert 157)
+   (secret-disable             game-secrets         :offset-assert 160)
+   (params                     cloth-params         :offset-assert 168)
    )
   :method-count-assert 38
   :size-assert         #xac
   :flag-assert         #x26000000ac
   ;; field cloth-flag is likely a value type.
   (:methods
-    (cloth-system-method-16 () none) ;; 16
-    (cloth-system-method-17 () none) ;; 17
-    (cloth-system-method-18 () none) ;; 18
-    (cloth-system-method-19 () none) ;; 19
-    (cloth-system-method-20 () none) ;; 20
-    (cloth-system-method-21 () none) ;; 21
-    (cloth-system-method-22 () none) ;; 22
-    (cloth-system-method-23 () none) ;; 23
-    (cloth-system-method-24 () none) ;; 24
-    (cloth-system-method-25 () none) ;; 25
-    (cloth-system-method-26 () none) ;; 26
-    (cloth-system-method-27 () none) ;; 27
-    (cloth-system-method-28 () none) ;; 28
-    (cloth-system-method-29 () none) ;; 29
-    (cloth-system-method-30 () none) ;; 30
-    (cloth-system-method-31 () none) ;; 31
-    (cloth-system-method-32 () none) ;; 32
-    (cloth-system-method-33 () none) ;; 33
-    (cloth-system-method-34 () none) ;; 34
-    (cloth-system-method-35 () none) ;; 35
-    (cloth-system-method-36 () none) ;; 36
-    (cloth-system-method-37 () none) ;; 37
+    (initialize-cloth-system!
+      "Set up this cloth system with the given [[cloth-params]]."
+      (_type_ cloth-params) none) ;; 16
+    (debug-draw-spheres (_type_) none) ;; 17
+    (cloth-system-method-18 (_type_) int) ;; 18
+    (cloth-system-method-19 (_type_) none) ;; 19
+    (cloth-system-method-20 (_type_) none) ;; 20
+    (cloth-system-method-21 (_type_) none) ;; 21
+    (cloth-system-method-22 (_type_) none) ;; 22
+    (cloth-system-method-23 (_type_) none) ;; 23
+    (cloth-system-method-24 (_type_) int) ;; 24
+    (cloth-system-method-25 (_type_) int) ;; 25
+    (cloth-system-method-26 (_type_) none) ;; 26
+    (cloth-system-method-27 (_type_ vector int int current-position-info) vector) ;; 27
+    (cloth-system-method-28 (_type_ int int current-position-info) none) ;; 28
+    (cloth-system-method-29 (_type_ int int current-position-info int) uint) ;; 29
+    (cloth-system-method-30 (_type_ int int current-position-info int) none) ;; 30
+    (cloth-system-method-31 (_type_ current-position-info) none) ;; 31
+    (cloth-system-method-32 (_type_ vector int int current-position-info) none) ;; 32
+    (cloth-system-method-33 (_type_ vu-lights) none) ;; 33
+    (cloth-system-method-34 (_type_) none) ;; 34
+    (cloth-system-method-35 (_type_) none) ;; 35
+    (cloth-system-method-36 (_type_) none) ;; 36
+    (cloth-system-cmd-handler (_type_ pair) none) ;; 37
     )
   )
-|#
 
-#|
 (deftype cloth-on-skeleton (cloth-system)
-  ((base-transform-index int16          :offset-assert 168)
-   (owner                uint64         :offset-assert 172)
-   (last-owner-pos       vector :inline :offset-assert 188)
-   (last-owner-mat       matrix :inline :offset-assert 204)
+  ((base-transform-index int16          :offset-assert 172)
+   (owner                handle         :offset-assert 176)
+   (last-owner-pos       vector :inline :offset-assert 192)
+   (last-owner-mat       matrix :inline :offset-assert 208)
    )
   :method-count-assert 38
   :size-assert         #x110
   :flag-assert         #x2600000110
   ;; field cloth-flag is likely a value type.
   )
-|#
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; cloth                          ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (define-extern get-neighboring-faces function)
-;; (define-extern *normal-array* object)
-;; (define-extern light-vertex function)
-;; (define-extern *once* object)
-;; (define-extern *cloth-fade-alpha* object)
-;; (define-extern symbol->cloth-flags function)
+(define-extern get-neighboring-faces (function vector int int int int int))
+(define-extern *normal-array* (pointer vector))
+(define-extern light-vertex (function current-position-info vector rgba))
+(define-extern *once* symbol)
+(define-extern *cloth-fade-alpha* gs-alpha)
+(define-extern symbol->cloth-flags (function symbol cloth-flag))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; process-drawable               ;;
@@ -32057,7 +32107,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ;; (define-extern command-get-int function) ;; (function object int int)
-;; (define-extern command-get-float function) ;; (function object float float)
+(define-extern command-get-float (function object float float))
 ;; (define-extern command-get-time function) ;; (function object int time-frame)
 ;; (define-extern command-get-param function) ;; (function object object object)
 ;; (define-extern command-get-quoted-param function) ;; (function object object object)
@@ -33420,7 +33470,6 @@
 ;; target-util                    ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype target-bank (basic)
   ((jump-collide-offset              meters          :offset-assert 4)
    (jump-height-min                  meters          :offset-assert 8)
@@ -33451,13 +33500,13 @@
    (indax-jump-height-max            meters          :offset-assert 108)
    (indax-double-jump-height-min     meters          :offset-assert 112)
    (indax-double-jump-height-max     meters          :offset-assert 116)
-   (roll-duration                    uint64          :offset-assert 120)
-   (roll-jump-pre-window             uint64          :offset-assert 128)
-   (roll-jump-post-window            uint64          :offset-assert 136)
-   (roll-timeout                     uint64          :offset-assert 144)
+   (roll-duration                    time-frame      :offset-assert 120)
+   (roll-jump-pre-window             time-frame      :offset-assert 128)
+   (roll-jump-post-window            time-frame      :offset-assert 136)
+   (roll-timeout                     time-frame      :offset-assert 144)
    (roll-speed-min                   meters          :offset-assert 152)
    (roll-speed-inc                   meters          :offset-assert 156)
-   (roll-flip-duration               uint64          :offset-assert 160)
+   (roll-flip-duration               time-frame      :offset-assert 160)
    (roll-flip-height                 meters          :offset-assert 168)
    (roll-flip-dist                   meters          :offset-assert 172)
    (roll-flip-art-height             meters          :offset-assert 176)
@@ -33465,14 +33514,14 @@
    (duck-slide-distance              meters          :offset-assert 184)
    (fall-far                         meters          :offset-assert 188)
    (fall-far-inc                     meters          :offset-assert 192)
-   (attack-timeout                   uint64          :offset-assert 200)
-   (ground-timeout                   uint64          :offset-assert 208)
-   (slide-down-timeout               uint64          :offset-assert 216)
-   (fall-timeout                     uint64          :offset-assert 224)
+   (attack-timeout                   time-frame      :offset-assert 200)
+   (ground-timeout                   time-frame      :offset-assert 208)
+   (slide-down-timeout               time-frame      :offset-assert 216)
+   (fall-timeout                     time-frame      :offset-assert 224)
    (fall-stumble-threshold           meters          :offset-assert 232)
    (yellow-projectile-speed          meters          :offset-assert 236)
-   (hit-invulnerable-timeout         uint64          :offset-assert 240)
-   (same-attack-invulnerable-timeout uint64          :offset-assert 248)
+   (hit-invulnerable-timeout         time-frame      :offset-assert 240)
+   (same-attack-invulnerable-timeout time-frame      :offset-assert 248)
    (run-cycle-length                 float           :offset-assert 256)
    (walk-cycle-dist                  meters          :offset-assert 260)
    (walk-up-cycle-dist               meters          :offset-assert 264)
@@ -33517,10 +33566,10 @@
    (stuck-distance                   meters          :offset-assert 624)
    (tongue-pull-speed-min            float           :offset-assert 628)
    (tongue-pull-speed-max            float           :offset-assert 632)
-   (yellow-attack-timeout            uint64          :offset-assert 640)
+   (yellow-attack-timeout            time-frame      :offset-assert 640)
    (fall-height                      meters          :offset-assert 648)
    (mech-jump-thrust-fuel            float           :offset-assert 652)
-   (strafe-jump-pre-window           uint64          :offset-assert 656)
+   (strafe-jump-pre-window           time-frame      :offset-assert 656)
    (strafe-jump                      basic           :offset-assert 664)
    (strafe-duck-jump                 basic           :offset-assert 668)
    (dark-jump-height-min             meters          :offset-assert 672)
@@ -33528,17 +33577,16 @@
    (ladder-walk-up-speed             meters          :offset-assert 680)
    (ladder-walk-down-speed           meters          :offset-assert 684)
    (ladder-slide-speed               meters          :offset-assert 688)
-   (invisible-duration               uint64          :offset-assert 696)
+   (invisible-duration               time-frame      :offset-assert 696)
    (mech-walk-carry-cycle-dist       meters          :offset-assert 704)
    )
   :method-count-assert 9
   :size-assert         #x2c4
   :flag-assert         #x9000002c4
   )
-|#
 
-;; (define-extern *target-shadow-control* shadow-control) ;; shadow-control
-;; (define-extern *TARGET-bank* target-bank) ;; target-bank
+(define-extern *target-shadow-control* shadow-control) ;; shadow-control
+(define-extern *TARGET-bank* target-bank) ;; target-bank
 ;; (define-extern target-start-attack function) ;; (function none :behavior target)
 ;; (define-extern target-danger-set! function) ;; (function symbol symbol none :behavior target)
 ;; (define-extern target-collide-set! function) ;; (function symbol float int :behavior target)
@@ -35526,7 +35574,7 @@
 ;; (define-extern calc-vu1-shadow function)
 ;; (define-extern calc-shadow-masks function)
 ;; (define-extern calc-realtime-lights function)
-;; (define-extern calc-vu1-lights function)
+(define-extern calc-vu1-lights (function vu-lights draw-control uint none))
 ;; (define-extern dma-add-process-drawable function) ;; (function process-drawable draw-control symbol dma-buffer none)
 ;; (define-extern *hud-lights* object) ;; vu-lights
 ;; (define-extern dma-add-process-drawable-hud function) ;; (function process-drawable draw-control float dma-buffer none)
@@ -36558,7 +36606,7 @@
 ;; (define-extern pov-camera-play-and-reposition function) ;; (function art-joint-anim vector float none :behavior pov-camera)
 ;; (define-extern pov-camera-init-by-other function) ;; (function vector skeleton-group string pov-camera-flag process-drawable pair none :behavior pov-camera)
 ;; (define-extern othercam-calc function) ;; (function float float)
-;; (define-extern othercam-init-by-other function) ;; (function pov-camera int symbol symbol none :behavior othercam)
+(define-extern othercam-init-by-other (function pov-camera int symbol symbol none :behavior othercam))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; powerups                       ;;
@@ -39816,70 +39864,55 @@
 ;; scene-actor                    ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype pecker-npc (process-taskable)
   ()
   :method-count-assert 40
   :size-assert         #x118
   :flag-assert         #x2800a00118
   )
-|#
 
-#|
 (deftype veger-npc (process-taskable)
   ()
   :method-count-assert 40
   :size-assert         #x118
   :flag-assert         #x2800a00118
   )
-|#
 
-#|
 (deftype ashelin-npc (process-taskable)
   ()
   :method-count-assert 40
   :size-assert         #x118
   :flag-assert         #x2800a00118
   )
-|#
 
-#|
 (deftype damus-npc (process-taskable)
   ()
   :method-count-assert 40
   :size-assert         #x118
   :flag-assert         #x2800a00118
   )
-|#
 
-#|
 (deftype torn-npc (process-taskable)
   ()
   :method-count-assert 40
   :size-assert         #x118
   :flag-assert         #x2800a00118
   )
-|#
 
-#|
 (deftype samos-npc (process-taskable)
   ()
   :method-count-assert 40
   :size-assert         #x118
   :flag-assert         #x2800a00118
   )
-|#
 
-#|
 (deftype sig-npc (process-taskable)
   ()
   :method-count-assert 40
   :size-assert         #x118
   :flag-assert         #x2800a00118
   )
-|#
 
-#|
 (deftype kleever-npc (process-taskable)
   ((cloth basic  :offset-assert 280)
    )
@@ -39887,74 +39920,59 @@
   :size-assert         #x11c
   :flag-assert         #x2800a0011c
   )
-|#
 
-#|
 (deftype seem-npc (process-taskable)
   ()
   :method-count-assert 40
   :size-assert         #x118
   :flag-assert         #x2800a00118
   )
-|#
 
-#|
 (deftype onin-npc (process-taskable)
   ()
   :method-count-assert 40
   :size-assert         #x118
   :flag-assert         #x2800a00118
   )
-|#
 
-#|
 (deftype jinx-npc (process-taskable)
   ()
   :method-count-assert 40
   :size-assert         #x118
   :flag-assert         #x2800a00118
   )
-|#
 
-#|
 (deftype gun-npc (process-taskable)
   ()
   :method-count-assert 40
   :size-assert         #x118
   :flag-assert         #x2800a00118
   )
-|#
 
-#|
 (deftype tess-npc (process-taskable)
   ()
   :method-count-assert 40
   :size-assert         #x118
   :flag-assert         #x2800a00118
   )
-|#
 
-#|
 (deftype vin-npc (process-taskable)
   ()
   :method-count-assert 40
   :size-assert         #x118
   :flag-assert         #x2800a00118
   )
-|#
 
-#|
 (deftype keira-npc (process-taskable)
   ()
   :method-count-assert 40
   :size-assert         #x118
   :flag-assert         #x2800a00118
   )
-|#
 
-;; (define-extern pre-intro-play function)
-;; (define-extern intro-play function) ;; (function none)
-;; (define-extern outro-play function) ;; (function none)
+(define-extern pre-intro-play (function none))
+(define-extern intro-play (function none))
+(define-extern outro-play (function none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; warp-gate                      ;;
