@@ -1,12 +1,7 @@
 ;;-*-Lisp-*-
 (in-package goal)
 
-;; name: bsp.gc
-;; name in dgo: bsp
-;; dgos: GAME
-
-;; DECOMP BEGINS
-
+;; definition for function mem-usage-bsp-tree
 ;; WARN: Return type mismatch bsp-header vs none.
 (defun mem-usage-bsp-tree ((arg0 bsp-header) (arg1 bsp-node) (arg2 memory-usage-block) (arg3 int))
   "Recursively compute memory usage of bsp-tree."
@@ -32,6 +27,7 @@
   (none)
   )
 
+;; definition for method 8 of type bsp-header
 (defmethod mem-usage ((this bsp-header) (usage memory-usage-block) (flags int))
   (set! (-> usage work-bsp) this)
   (when (nonzero? (-> this info))
@@ -133,6 +129,7 @@
   this
   )
 
+;; definition for method 9 of type bsp-header
 (defmethod login ((this bsp-header))
   "Initialize the object after it is loaded."
   (if (nonzero? (-> this drawable-trees))
@@ -156,196 +153,212 @@
   this
   )
 
+;; definition for symbol *test-shrub*, type int
 (define *test-shrub* 0)
 
+;; definition for method 10 of type bsp-header
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch int vs none.
 (defmethod draw ((this bsp-header))
   "Draw the drawable, and typically its children.
-  This usually means adding stuff to a list to be drawn later, rather than expensive drawing here."
-
-  ;; og:preserve-this
-  ;; a lot re-written here.
+   This usually means adding stuff to a list to be drawn later, rather than expensive drawing here."
   (local-vars (a3-4 uint128) (a3-5 uint128))
-
-  (let ((v1-0 (-> this level)))
-    (when (-> v1-0 render?)
-      (set! *draw-index* (-> v1-0 draw-index))
-      (set! (-> *prototype-tie-work* mood) (-> v1-0 mood-context))
-
-      ;; no more artist subdivide settings??
-
-      (let ((a2-0 (/ (+ (-> this visible-list-length) 15) 16)))
-        ;; upload vis bits, though I think nothing uses this.
-        (__mem-move
-          (-> (scratchpad-object terrain-context) work background vis-list)
-          (-> v1-0 vis-bits)
-          (the uint (* 16 a2-0)))
-        ; (dma-send-to-spr-no-flush
-        ;   (the-as uint (+ #x3800 #x70000000))
-        ;   (the-as uint (-> v1-0 vis-bits))
-        ;   (the-as uint a2-0)
-        ;   #f
-        ;   )
-        )
-
-      ;; debug option to flip visibilty
-      (when *artist-flip-visible*
-        (let ((v1-6 (/ (+ (-> this visible-list-length) 15) 16))
-              (a0-10 (-> (scratchpad-object terrain-context) work background vis-list))
-              (a1-4 (-> this all-visible-list))
-              )
-          (dotimes (a2-1 v1-6)
-            (let ((a3-3 (-> (the-as (pointer uint128) (+ (the-as uint a0-10) (* a2-1 16))))))
-              (.pnor a3-4 a3-3 0)
-              )
-            (let ((t0-2 (-> (the-as (pointer uint128) (&+ a1-4 (* a2-1 16))))))
-              (.pand a3-5 a3-4 t0-2)
-              )
-            (set! (-> (the-as (pointer uint128) (+ (the-as uint a0-10) (* a2-1 16)))) a3-5)
+  (rlet ((vf16 :class vf)
+         (vf17 :class vf)
+         (vf18 :class vf)
+         (vf19 :class vf)
+         (vf20 :class vf)
+         (vf21 :class vf)
+         (vf22 :class vf)
+         (vf23 :class vf)
+         (vf24 :class vf)
+         (vf25 :class vf)
+         (vf26 :class vf)
+         (vf27 :class vf)
+         (vf28 :class vf)
+         (vf29 :class vf)
+         (vf30 :class vf)
+         (vf31 :class vf)
+         )
+    (let ((v1-0 (-> this level)))
+      (when (-> v1-0 render?)
+        (set! *draw-index* (-> v1-0 draw-index))
+        (set! (-> *prototype-tie-work* mood) (-> v1-0 mood-context))
+        (let ((a2-0 (/ (+ (-> this visible-list-length) 15) 16)))
+          (dma-send-to-spr-no-flush
+            (the-as uint (+ #x3800 #x70000000))
+            (the-as uint (-> v1-0 vis-bits))
+            (the-as uint a2-0)
+            #f
             )
           )
-        )
-
-      ;; load registers. I believe that very very old stuff used this in Jak 1's development,
-      ;; but now this is mostly unused. The sphere-cull, guard-band-cull functions rely on these
-      ;; being loaded. The only known use is for culling the drawable-error spheres.
-      (let ((at-0 *math-camera*))
-        (with-vf (vf16 vf17 vf18 vf19 vf20 vf21 vf22 vf23 vf24 vf25 vf26 vf27 vf28 vf29 vf30 vf31)
-                 :rw 'write
-                 (.lvf vf16 (&-> at-0 plane 0 quad))
-                 (.lvf vf17 (&-> at-0 plane 1 quad))
-                 (.lvf vf18 (&-> at-0 plane 2 quad))
-                 (.lvf vf19 (&-> at-0 plane 3 quad))
-                 (.lvf vf20 (&-> at-0 shrub-mat vector 0 quad))
-                 (.lvf vf21 (&-> at-0 shrub-mat vector 1 quad))
-                 (.lvf vf22 (&-> at-0 shrub-mat vector 2 quad))
-                 (.lvf vf23 (&-> at-0 shrub-mat trans quad))
-                 (.lvf vf24 (&-> at-0 camera-rot vector 0 quad))
-                 (.lvf vf25 (&-> at-0 camera-rot vector 1 quad))
-                 (.lvf vf26 (&-> at-0 camera-rot vector 2 quad))
-                 (.lvf vf27 (&-> at-0 camera-rot trans quad))
-                 (.lvf vf28 (&-> at-0 camera-temp vector 0 quad))
-                 (.lvf vf29 (&-> at-0 camera-temp vector 1 quad))
-                 (.lvf vf30 (&-> at-0 camera-temp vector 2 quad))
-                 (.lvf vf31 (&-> at-0 camera-temp trans quad))
-                 )
-        )
-
-      (if (nonzero? (-> this drawable-trees))
-          (draw (-> this drawable-trees))
+        (when *artist-flip-visible*
+          (let ((v1-6 (/ (+ (-> this visible-list-length) 15) 16))
+                (a0-10 (-> (the-as terrain-context #x70000000) work background vis-list))
+                (a1-4 (-> this all-visible-list))
+                )
+            (dotimes (a2-1 v1-6)
+              (let ((a3-3 (-> (the-as (pointer uint128) (+ (the-as uint a0-10) (* a2-1 16))))))
+                (.pnor a3-4 a3-3 0)
+                )
+              (let ((t0-2 (-> (the-as (pointer uint128) (&+ a1-4 (* a2-1 16))))))
+                (.pand a3-5 a3-4 t0-2)
+                )
+              (set! (-> (the-as (pointer uint128) (+ (the-as uint a0-10) (* a2-1 16)))) a3-5)
+              )
+            )
           )
+        (let ((at-0 *math-camera*))
+          (.lvf vf16 (&-> at-0 plane 0 quad))
+          (.lvf vf17 (&-> at-0 plane 1 quad))
+          (.lvf vf18 (&-> at-0 plane 2 quad))
+          (.lvf vf19 (&-> at-0 plane 3 quad))
+          (.lvf vf20 (&-> at-0 shrub-mat rvec quad))
+          (.lvf vf21 (&-> at-0 shrub-mat uvec quad))
+          (.lvf vf22 (&-> at-0 shrub-mat fvec quad))
+          (.lvf vf23 (&-> at-0 shrub-mat trans quad))
+          (.lvf vf24 (&-> at-0 camera-rot rvec quad))
+          (.lvf vf25 (&-> at-0 camera-rot uvec quad))
+          (.lvf vf26 (&-> at-0 camera-rot fvec quad))
+          (.lvf vf27 (&-> at-0 camera-rot trans quad))
+          (.lvf vf28 (&-> at-0 camera-temp rvec quad))
+          (.lvf vf29 (&-> at-0 camera-temp uvec quad))
+          (.lvf vf30 (&-> at-0 camera-temp fvec quad))
+          (.lvf vf31 (&-> at-0 camera-temp trans quad))
+          )
+        (if (nonzero? (-> this drawable-trees))
+            (draw (-> this drawable-trees))
+            )
+        )
       )
+    0
+    (none)
     )
-  0
-  (none)
   )
 
+;; definition for method 14 of type bsp-header
+;; WARN: Return type mismatch int vs none.
 (defmethod debug-draw ((this bsp-header))
   "Debug-draw a drawable and its children. Typically uses the debug-draw functions."
-
-  ;; This is mostly useless, as almost nothing has debug-draw methods that do anything.
-  ;; tfrag/tie might, but they rely on "debug" data in the level that is not present.
-
-  (let ((v1-0 (-> this level)))
-    (set! *draw-index* (-> v1-0 draw-index))
-    (set! (-> *prototype-tie-work* mood) (-> v1-0 mood-context))
-    (let ((a2-0 (/ (+ (-> this visible-list-length) 15) 16)))
-      (__mem-move
-        (-> (scratchpad-object terrain-context) work background vis-list)
-        (-> v1-0 vis-bits)
-        (the uint (* a2-0 16)))
-
-      ; (dma-send-to-spr-no-flush
-      ;   (the-as uint (+ #x3800 #x70000000))
-      ;   (the-as uint (-> v1-0 vis-bits))
-      ;   (the-as uint a2-0)
-      ;   #f
-      ;   )
+  (rlet ((vf16 :class vf)
+         (vf17 :class vf)
+         (vf18 :class vf)
+         (vf19 :class vf)
+         (vf20 :class vf)
+         (vf21 :class vf)
+         (vf22 :class vf)
+         (vf23 :class vf)
+         (vf24 :class vf)
+         (vf25 :class vf)
+         (vf26 :class vf)
+         (vf27 :class vf)
+         (vf28 :class vf)
+         (vf29 :class vf)
+         (vf30 :class vf)
+         (vf31 :class vf)
+         )
+    (let ((v1-0 (-> this level)))
+      (set! *draw-index* (-> v1-0 draw-index))
+      (set! (-> *prototype-tie-work* mood) (-> v1-0 mood-context))
+      (let ((a2-0 (/ (+ (-> this visible-list-length) 15) 16)))
+        (dma-send-to-spr-no-flush
+          (the-as uint (+ #x3800 #x70000000))
+          (the-as uint (-> v1-0 vis-bits))
+          (the-as uint a2-0)
+          #f
+          )
+        )
       )
-    )
-
-  (let ((at-0 *math-camera*))
-    (with-vf (vf16 vf17 vf18 vf19 vf20 vf21 vf22 vf23 vf24 vf25 vf26 vf27 vf28 vf29 vf30 vf31)
-             :rw 'write
-             (.lvf vf16 (&-> at-0 plane 0 quad))
-             (.lvf vf17 (&-> at-0 plane 1 quad))
-             (.lvf vf18 (&-> at-0 plane 2 quad))
-             (.lvf vf19 (&-> at-0 plane 3 quad))
-             (.lvf vf20 (&-> at-0 shrub-mat vector 0 quad))
-             (.lvf vf21 (&-> at-0 shrub-mat vector 1 quad))
-             (.lvf vf22 (&-> at-0 shrub-mat vector 2 quad))
-             (.lvf vf23 (&-> at-0 shrub-mat trans quad))
-             (.lvf vf24 (&-> at-0 camera-rot vector 0 quad))
-             (.lvf vf25 (&-> at-0 camera-rot vector 1 quad))
-             (.lvf vf26 (&-> at-0 camera-rot vector 2 quad))
-             (.lvf vf27 (&-> at-0 camera-rot trans quad))
-             (.lvf vf28 (&-> at-0 camera-temp vector 0 quad))
-             (.lvf vf29 (&-> at-0 camera-temp vector 1 quad))
-             (.lvf vf30 (&-> at-0 camera-temp vector 2 quad))
-             (.lvf vf31 (&-> at-0 camera-temp trans quad))
-             )
-    )
-
-  (if (nonzero? (-> this drawable-trees))
-      (debug-draw (-> this drawable-trees))
+    (let ((at-0 *math-camera*))
+      (.lvf vf16 (&-> at-0 plane 0 quad))
+      (.lvf vf17 (&-> at-0 plane 1 quad))
+      (.lvf vf18 (&-> at-0 plane 2 quad))
+      (.lvf vf19 (&-> at-0 plane 3 quad))
+      (.lvf vf20 (&-> at-0 shrub-mat rvec quad))
+      (.lvf vf21 (&-> at-0 shrub-mat uvec quad))
+      (.lvf vf22 (&-> at-0 shrub-mat fvec quad))
+      (.lvf vf23 (&-> at-0 shrub-mat trans quad))
+      (.lvf vf24 (&-> at-0 camera-rot rvec quad))
+      (.lvf vf25 (&-> at-0 camera-rot uvec quad))
+      (.lvf vf26 (&-> at-0 camera-rot fvec quad))
+      (.lvf vf27 (&-> at-0 camera-rot trans quad))
+      (.lvf vf28 (&-> at-0 camera-temp rvec quad))
+      (.lvf vf29 (&-> at-0 camera-temp uvec quad))
+      (.lvf vf30 (&-> at-0 camera-temp fvec quad))
+      (.lvf vf31 (&-> at-0 camera-temp trans quad))
       )
-  0
-  (none)
-
+    (if (nonzero? (-> this drawable-trees))
+        (debug-draw (-> this drawable-trees))
+        )
+    0
+    (none)
+    )
   )
 
+;; definition for method 13 of type bsp-header
+;; WARN: Return type mismatch int vs none.
 (defmethod collect-stats ((this bsp-header))
   "Collect triangle/perf statistics for rendering.
-  This is only called when viewing stats.
-  The vis-bits and culling registers are loaded during this time."
-  (let ((v1-0 (-> this level))
-        (a2-0 (/ (+ (-> this visible-list-length) 15) 16))
+   This is only called when viewing stats.
+   The vis-bits and culling registers are loaded during this time."
+  (rlet ((vf16 :class vf)
+         (vf17 :class vf)
+         (vf18 :class vf)
+         (vf19 :class vf)
+         (vf20 :class vf)
+         (vf21 :class vf)
+         (vf22 :class vf)
+         (vf23 :class vf)
+         (vf24 :class vf)
+         (vf25 :class vf)
+         (vf26 :class vf)
+         (vf27 :class vf)
+         (vf28 :class vf)
+         (vf29 :class vf)
+         (vf30 :class vf)
+         (vf31 :class vf)
+         )
+    (let ((v1-0 (-> this level))
+          (a2-0 (/ (+ (-> this visible-list-length) 15) 16))
+          )
+      (dma-send-to-spr-no-flush
+        (the-as uint (+ #x3800 #x70000000))
+        (the-as uint (-> v1-0 vis-bits))
+        (the-as uint a2-0)
+        #f
         )
-    (__mem-move
-      (-> (scratchpad-object terrain-context) work background vis-list)
-      (-> v1-0 vis-bits)
-      (the uint (* a2-0 16)))
-    ; (dma-send-to-spr-no-flush
-    ;   (the-as uint (+ #x3800 #x70000000))
-    ;   (the-as uint (-> v1-0 vis-bits))
-    ;   (the-as uint a2-0)
-    ;   #f
-    ;   )
-    )
-
-  ;; these are actually used to cull stuff for computing stats.
-  ;; interestingly, while tfrag/tie/shrub drawing is in the "background" system,
-  ;; their stat collection is still in drawable.
-  (let ((at-0 *math-camera*))
-    (with-vf (vf16 vf17 vf18 vf19 vf20 vf21 vf22 vf23 vf24 vf25 vf26 vf27 vf28 vf29 vf30 vf31)
-             :rw 'write
-             (.lvf vf16 (&-> at-0 plane 0 quad))
-             (.lvf vf17 (&-> at-0 plane 1 quad))
-             (.lvf vf18 (&-> at-0 plane 2 quad))
-             (.lvf vf19 (&-> at-0 plane 3 quad))
-             (.lvf vf20 (&-> at-0 shrub-mat vector 0 quad))
-             (.lvf vf21 (&-> at-0 shrub-mat vector 1 quad))
-             (.lvf vf22 (&-> at-0 shrub-mat vector 2 quad))
-             (.lvf vf23 (&-> at-0 shrub-mat trans quad))
-             (.lvf vf24 (&-> at-0 camera-rot vector 0 quad))
-             (.lvf vf25 (&-> at-0 camera-rot vector 1 quad))
-             (.lvf vf26 (&-> at-0 camera-rot vector 2 quad))
-             (.lvf vf27 (&-> at-0 camera-rot trans quad))
-             (.lvf vf28 (&-> at-0 camera-temp vector 0 quad))
-             (.lvf vf29 (&-> at-0 camera-temp vector 1 quad))
-             (.lvf vf30 (&-> at-0 camera-temp vector 2 quad))
-             (.lvf vf31 (&-> at-0 camera-temp trans quad))
-             )
-    )
-  (if (nonzero? (-> this drawable-trees))
-      (collect-stats (-> this drawable-trees))
       )
-  (if (nonzero? (-> this unk-drawable))
-      (collect-stats (-> this unk-drawable))
+    (let ((at-0 *math-camera*))
+      (.lvf vf16 (&-> at-0 plane 0 quad))
+      (.lvf vf17 (&-> at-0 plane 1 quad))
+      (.lvf vf18 (&-> at-0 plane 2 quad))
+      (.lvf vf19 (&-> at-0 plane 3 quad))
+      (.lvf vf20 (&-> at-0 shrub-mat rvec quad))
+      (.lvf vf21 (&-> at-0 shrub-mat uvec quad))
+      (.lvf vf22 (&-> at-0 shrub-mat fvec quad))
+      (.lvf vf23 (&-> at-0 shrub-mat trans quad))
+      (.lvf vf24 (&-> at-0 camera-rot rvec quad))
+      (.lvf vf25 (&-> at-0 camera-rot uvec quad))
+      (.lvf vf26 (&-> at-0 camera-rot fvec quad))
+      (.lvf vf27 (&-> at-0 camera-rot trans quad))
+      (.lvf vf28 (&-> at-0 camera-temp rvec quad))
+      (.lvf vf29 (&-> at-0 camera-temp uvec quad))
+      (.lvf vf30 (&-> at-0 camera-temp fvec quad))
+      (.lvf vf31 (&-> at-0 camera-temp trans quad))
       )
-  0
-  (none)
+    (if (nonzero? (-> this drawable-trees))
+        (collect-stats (-> this drawable-trees))
+        )
+    (if (nonzero? (-> this unk-drawable))
+        (collect-stats (-> this unk-drawable))
+        )
+    0
+    (none)
+    )
   )
 
+;; definition for function bsp-camera-asm
+;; WARN: Return type mismatch int vs none.
 ;; ERROR: Unsupported inline assembly instruction kind - [srl t3, t3, 24]
 ;; ERROR: Unsupported inline assembly instruction kind - [srl t2, t2, 24]
 (defun bsp-camera-asm ((arg0 bsp-header) (arg1 vector))
@@ -388,7 +401,7 @@
       (.wait.vf)
       (.mul.vf vf1 vf1 Q :mask #b100)
       (let ((a1-1 #xffffff)
-            (a2-0 (the-as uint 0))
+            (a2-0 (the-as object 0))
             )
         (vftoi15.xyzw vf1 vf1)
         (.mov a3-0 vf1)
@@ -417,22 +430,18 @@
                        (t4-2 (logand t4-1 a1-1))
                        (t5-2 (logand t5-1 a1-1))
                        )
-                  ;(.srl t3-1 (the-as uint t3-0) 24)
-                  (set! t3-1 (logand #xffffffff (shr t3-0 24)))
+                  (.srl t3-1 (the-as uint t3-0) 24)
                   (let ((t1-2 (the-as bsp-node (-> t1-1 back))))
-                    (b! (= t4-2 a1-1) cfg-4 :delay
-                        ;(.srl t2-1 (the-as int t2-0) 24)
-                        (set! t2-1 (the uint (logand #xffffffff (shr t2-0 24))))
-                        )
+                    (b! (= t4-2 a1-1) cfg-4 :delay (.srl t2-1 (the-as int t2-0) 24))
                     (b! (= t5-2 a1-1) cfg-7 :delay (set! t0-5 (the-as uint 1)))
                     (b! #t cfg-11 :delay (set! (-> arg0 cam-outside-bsp) t0-5))
                     (label cfg-4)
-                    (b! (zero? t3-1) cfg-1 :likely-delay (set! a2-0 (the uint t0-4)))
+                    (b! (zero? t3-1) cfg-1 :likely-delay (set! a2-0 t0-4))
                     (let ((v1-1 a2-0))
                       (set! (-> arg0 cam-using-back) (the-as uint 0))
                       (b! #t cfg-10 :delay (set! a2-1 t0-4))
                       (label cfg-7)
-                      (b! (zero? t2-1) cfg-1 :likely-delay (set! a2-0 (the-as uint t1-2)))
+                      (b! (zero? t2-1) cfg-1 :likely-delay (set! a2-0 t1-2))
                       (set! v1-1 a2-0)
                       (set! a2-1 t1-2)
                       (set! (-> arg0 cam-using-back) (the-as uint 1))
@@ -455,11 +464,12 @@
     )
   )
 
+;; definition for method 16 of type bsp-header
+;; WARN: Return type mismatch int vs none.
 (defmethod collect-regions ((this bsp-header) (arg0 sphere) (arg1 int) (arg2 region-prim-list))
   "Fill the region-prim-list with regions that intersect the sphere."
   (let ((s3-0 (-> this region-trees)))
     (dotimes (s2-0 (-> s3-0 length))
-      ;; note: the use of arg1 here is a bug. it's ignored, so it doesn't matter
       (collect-regions (-> s3-0 s2-0) arg0 arg1 arg2)
       )
     )
@@ -467,7 +477,11 @@
   (none)
   )
 
+;; definition for function print-collide-stats
+;; WARN: Return type mismatch int vs none.
+;; ERROR: Function may read a register that is not set: t0
 (defun print-collide-stats ()
+  (local-vars (t0-0 none))
   (format *stdcon* "~0k~%count  cycles     instr  icache dcache  vu0/to/from~%")
   (print-to-stream (-> *perf-stats* data 3) "collide" *stdcon*)
   (print-to-stream (-> *perf-stats* data 4) "collide-list" *stdcon*)
@@ -479,30 +493,35 @@
     "~0kspheres  = ~d~256hspheres/call = ~f~%"
     (-> *collide-stats* spheres)
     (/ (the float (-> *collide-stats* spheres)) (the float (-> *collide-stats* calls)))
+    t0-0
     )
   (format
     *stdcon*
     "~0knodes    = ~d~256hnodes/call   = ~f~%"
     (-> *collide-stats* nodes)
     (/ (the float (-> *collide-stats* nodes)) (the float (-> *collide-stats* calls)))
+    t0-0
     )
   (format
     *stdcon*
     "~0kfrags    = ~d~256hfrags/call   = ~f~%"
     (-> *collide-stats* frags)
     (/ (the float (-> *collide-stats* frags)) (the float (-> *collide-stats* calls)))
+    t0-0
     )
   (format
     *stdcon*
     "~0ktris     = ~d~256htris/frag    = ~f~%"
     (-> *collide-stats* tris)
     (/ (the float (-> *collide-stats* tris)) (the float (-> *collide-stats* frags)))
+    t0-0
     )
   (format
     *stdcon*
     "~0koutput   = ~d~256houtput/call  = ~f~%"
     (-> *collide-stats* output)
     (/ (the float (-> *collide-stats* output)) (the float (-> *collide-stats* calls)))
+    t0-0
     )
   (format *stdcon* "~0k---------------------------------------------------------------~%")
   (let ((gp-0 (stopwatch-elapsed-ticks (the-as stopwatch (&-> *collide-stats* junk 1))))
@@ -526,6 +545,7 @@
   (none)
   )
 
+;; definition for function level-remap-texture
 ;; WARN: Return type mismatch uint vs texture-id.
 (defun level-remap-texture ((arg0 texture-id))
   "Level tpages combine the tpages of many individual actors.
@@ -562,17 +582,20 @@
   (the-as texture-id arg0)
   )
 
+;; definition for function build-masks
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch int vs none.
 (defun build-masks ((arg0 bsp-header))
   "Allocate and assign texture masks, and closest object arrays.
    These are used at runtime to only upload the texture chunks and
    mip levels that are actually needed."
   (let ((v1-0 (-> arg0 drawable-trees))
-        (s2-0 (-> arg0 tfrag-mask-count))
-        (s3-0 (-> arg0 shrub-mask-count))
-        (s4-0 (-> arg0 alpha-mask-count))
-        (gp-0 (-> arg0 water-mask-count))
+        (s2-0 (-> arg0 tfrag-closest))
+        (s3-0 (-> arg0 shrub-closest))
+        (s4-0 (-> arg0 alpha-closest))
+        (gp-0 (-> arg0 water-closest))
         )
-    (when (zero? (+ s2-0 s3-0 s4-0 gp-0))
+    (when (zero? (&+ (+ (&+ s2-0 s3-0) (the-as int s4-0)) gp-0))
       (dotimes (a0-5 (-> v1-0 length))
         (let ((a1-2 (-> v1-0 data a0-5)))
           (cond
@@ -583,7 +606,7 @@
                     )
                (dotimes (a3-1 a1-4)
                  (set! (-> a2-6 0 texture-masks-index) (the-as uint s2-0))
-                 (+! s2-0 1)
+                 (&+! s2-0 1)
                  (set! a2-6 (the-as (inline-array tfragment) (-> a2-6 1)))
                  )
                )
@@ -597,7 +620,7 @@
                     )
                (dotimes (a3-3 a1-7)
                  (set! (-> a2-14 0 texture-masks-index) (the-as uint s4-0))
-                 (+! s4-0 1)
+                 (&+! s4-0 1)
                  (set! a2-14 (the-as (inline-array tfragment) (-> a2-14 1)))
                  )
                )
@@ -611,7 +634,7 @@
                     )
                (dotimes (a3-5 a1-10)
                  (set! (-> a2-22 0 texture-masks-index) (the-as uint gp-0))
-                 (+! gp-0 1)
+                 (&+! gp-0 1)
                  (set! a2-22 (the-as (inline-array tfragment) (-> a2-22 1)))
                  )
                )
@@ -624,15 +647,15 @@
                  (cond
                    ((logtest? (-> a1-13 array-data a3-7 flags) (prototype-flags tpage-water))
                     (set! (-> a1-13 array-data a3-7 texture-masks-index) (the-as uint gp-0))
-                    (+! gp-0 1)
+                    (&+! gp-0 1)
                     )
                    ((logtest? (-> a1-13 array-data a3-7 flags) (prototype-flags tpage-alpha))
                     (set! (-> a1-13 array-data a3-7 texture-masks-index) (the-as uint s4-0))
-                    (+! s4-0 1)
+                    (&+! s4-0 1)
                     )
                    (else
                      (set! (-> a1-13 array-data a3-7 texture-masks-index) (the-as uint s2-0))
-                     (+! s2-0 1)
+                     (&+! s2-0 1)
                      )
                    )
                  )
@@ -645,7 +668,7 @@
                     )
                (dotimes (a3-9 a1-16)
                  (set! (-> a2-31 0 texture-masks-index) (the-as uint s3-0))
-                 (+! s3-0 1)
+                 (&+! s3-0 1)
                  (set! a2-31 (the-as (inline-array prototype-bucket-shrub) (-> a2-31 1)))
                  )
                )

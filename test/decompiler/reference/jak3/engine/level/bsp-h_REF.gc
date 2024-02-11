@@ -12,6 +12,7 @@ This is used for precomputed visibility, based on the camera position. This is n
    (back-box-min   vector4b  :inline)
    (back-box-max   vector4b  :inline)
    )
+  :pack-me
   )
 
 ;; definition for method 3 of type bsp-node
@@ -35,13 +36,45 @@ This is used for precomputed visibility, based on the camera position. This is n
 (deftype bsp-header (drawable)
   "The bsp-header is really an entire level.
 This probably started as a very simple structure, but now it is extremely complicated."
-  ((all-visible-list     (pointer uint16)         :offset  32)
-   (visible-list-length  int16                    :offset  36)
-   (drawable-trees       drawable-tree-array      :offset  40)
-   (pat                  pointer                  :offset  44)
-   (pat-length           int32                    :offset  48)
-   (nodes                (inline-array bsp-node)  :offset 120)
-   (end                  uint8                    :offset 399)
+  ((info                     file-info                                  :overlay-at id)
+   (all-visible-list         (pointer uint16)                           :offset  32)
+   (visible-list-length      int16                                      :offset  36)
+   (drawable-trees           drawable-tree-array                        :offset  40)
+   (pat                      pointer                                    :offset  44)
+   (pat-length               int32                                      :offset  48)
+   (texture-remap-table      (pointer uint64))
+   (texture-remap-table-len  int32)
+   (texture-ids              (pointer texture-id))
+   (texture-page-count       int32)
+   (unknown-basic            basic)
+   (actors                   drawable-inline-array-actor                :offset 112)
+   (cameras                  (array entity-camera))
+   (nodes                    (inline-array bsp-node)                    :offset 120)
+   (level                    level)
+   (current-leaf-idx         uint16)
+   (texture-flags            texture-page-flag                  10      :offset 130)
+   (cam-outside-bsp          uint8                                      :offset 152)
+   (cam-using-back           uint8)
+   (cam-box-idx              uint16)
+   (actor-birth-order        (pointer uint32)                           :offset 172)
+   (region-trees             (array drawable-tree-region-prim)          :offset 188)
+   (collide-hash             collide-hash                               :offset 196)
+   (tfrag-masks              texture-masks-array                        :offset 256)
+   (tfrag-closest            (pointer float))
+   (tfrag-mask-count         uint32                                     :overlay-at tfrag-closest)
+   (shrub-masks              texture-masks-array)
+   (shrub-closest            (pointer float))
+   (shrub-mask-count         uint32                                     :overlay-at shrub-closest)
+   (alpha-masks              texture-masks-array)
+   (alpha-closest            (pointer float))
+   (alpha-mask-count         uint32                                     :overlay-at alpha-closest)
+   (water-masks              texture-masks-array)
+   (water-closest            (pointer float))
+   (water-mask-count         uint32                                     :overlay-at water-closest)
+   (bsp-scale                vector                             :inline :offset 288)
+   (bsp-offset               vector                             :inline)
+   (unk-drawable             drawable                                   :offset 320)
+   (end                      uint8                                      :offset 399)
    )
   (:methods
     (birth (_type_) none)
@@ -199,7 +232,3 @@ The final stopwatch is cut off. For jak 3, I just fixed it."
 
 ;; failed to figure out what this is:
 0
-
-
-
-

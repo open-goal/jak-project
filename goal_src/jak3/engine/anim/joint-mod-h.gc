@@ -5,6 +5,20 @@
 ;; name in dgo: joint-mod-h
 ;; dgos: GAME
 
+;; The joint-mod system is used to animate parts of a character from gameplay code.
+;; For example, rotating the neck to make a character look at something.
+
+;; This works by installing callbacks in the cspace of the joints, which are used by process-drawable to compute bones.
+;; The default callbacks just read and apply transforms from the animation.
+
+;; Generally, the use doesn't install the callback themselves, and uses a utility class from this file.
+;; This is a little inconsistent and there's 3 patterns:
+;; - using the `joint-mod` class, which can manage many different types of callbacks (no inheritance)
+;; - using a class based on `joint-mod-base`, which is a new base class for new types of joint callbacks (joint-mod-blend-world)
+;; - using a class that is just a standalone class (joint-mod-polar-look-at, for example)
+
+;; the `joint-mod-base` was added in jak 3.
+
 (defenum joint-mod-mode
   :bitfield #t
   :type uint32
@@ -54,6 +68,16 @@
   (scale 3)
   )
 
+(defenum joint-mod-polar-flags
+  :type uint32
+  :bitfield #t
+  (no-z-rot 0)
+  (blending-to-zero 1)
+  (negate-nose 2)
+  (negate-ear 3)
+  (negate-up 4)
+  )
+
 (deftype joint-mod-blend-world-work (structure)
   ((mat1 matrix :inline)
    (mat2 matrix :inline)
@@ -100,14 +124,14 @@ This is used to make jak look toward an enemy, for example."
    (parented-scale?  symbol)
    )
   (:methods
-    (new (symbol type) _type_)
-    (joint-mod-method-9 () none)
-    (joint-mod-method-10 () none)
-    (joint-mod-method-11 () none)
+    (new (symbol type joint-mod-mode process-drawable int) _type_)
+    (mode-set! (_type_ joint-mod-mode) none)
+    (target-set! (_type_ vector) none)
+    (look-at! (_type_ vector symbol process) none)
     (reset-blend! (_type_) _type_)
-    (joint-mod-method-13 () none)
-    (joint-mod-method-14 () none)
-    (joint-mod-method-15 () none)
+    (twist-set! (_type_ float float float) vector)
+    (trs-set! (_type_ vector quaternion vector) none)
+    (shut-down (_type_) none)
     )
   )
 
@@ -122,7 +146,7 @@ This is used to make jak look toward an enemy, for example."
 
 (defun-debug joint-mod-debug-draw ((jmod joint-mod))
   "Debug draw the bone transform for the associated bone of a joint-mod"
-  (add-debug-matrix #t (bucket-id bucket577) (-> jmod joint bone transform) (meters 2))
+  (add-debug-matrix #t (bucket-id debug-no-zbuf1) (-> jmod joint bone transform) (meters 2))
   0
   (none)
   )
@@ -627,9 +651,9 @@ Then, apply the normal parented transform."
    (blend-interp            float)
    )
   (:methods
-    (new (symbol type) _type_)
-    (joint-mod-ik-method-9 () none)
-    (joint-mod-ik-method-10 () none)
+    (new (symbol type process-drawable int float) _type_)
+    (set-ik-target! (_type_ vector) none)
+    (enable-set! (_type_ symbol) none)
     )
   )
 
@@ -640,7 +664,7 @@ Then, apply the normal parented transform."
   )
 
 (deftype joint-mod-polar-look-at (basic)
-  ((flags                    uint32)
+  ((flags                    joint-mod-polar-flags)
    (ear                      int8)
    (up                       int8)
    (nose                     int8)
@@ -653,17 +677,17 @@ Then, apply the normal parented transform."
    (forward-twist            float)
    (backward-twist           float)
    (target                   vector  :inline)
-   (blend-duration           uint64)
-   (blend-start-time         uint64)
+   (blend-duration           time-frame)
+   (blend-start-time         time-frame)
    (blend-start-value        float)
    (blend-max                float)
    )
   (:methods
-    (joint-mod-polar-look-at-method-9 () none)
-    (joint-mod-polar-look-at-method-10 () none)
-    (joint-mod-polar-look-at-method-11 () none)
-    (joint-mod-polar-look-at-method-12 () none)
-    (joint-mod-polar-look-at-method-13 () none)
-    (joint-mod-polar-look-at-method-14 () none)
+    (initialize (_type_ process-drawable int) none)
+    (set-target! (_type_ vector) none)
+    (set-both-targets! (_type_ joint-mod-polar-look-at vector) none)
+    (blend-on! (_type_ time-frame float symbol) none)
+    (blend-to-off! (_type_ time-frame symbol) none)
+    (get-start-blend! (_type_) float)
     )
   )

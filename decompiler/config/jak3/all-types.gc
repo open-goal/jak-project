@@ -4081,7 +4081,7 @@
   (bucket574 574)
   (bucket575 575)
   (bucket576 576)
-  (bucket577 577) ;; debug?
+  (debug-no-zbuf1 577) ;; debug?
   (bucket578 578)
   (bucket579 579)
   (bucket580 580)
@@ -6364,7 +6364,7 @@
 
 (deftype texture-masks-array (inline-array-class)
   "Group of all texture-masks for a given tpage."
-  ((data texture-masks :dynamic :offset-assert 16) ;; guessed by decompiler
+  ((data texture-masks :dynamic :inline :offset-assert 16) ;; guessed by decompiler
    )
   :method-count-assert 14
   :size-assert         #x10
@@ -7520,7 +7520,7 @@
     (level-method-11 () none) ;; 11 ;; (level-method-11 () none)
     (level-method-12 () none) ;; 12 ;; (unload! (_type_) _type_)
     (level-method-13 () none) ;; 13 ;; (bsp-name (_type_) symbol)
-    (level-method-14 () none) ;; 14 ;; (compute-memory-usage! (_type_ symbol) memory-usage-block)
+    (compute-memory-usage! (_type_ symbol) memory-usage-block) ;; 14
     (level-method-15 () none) ;; 15 ;; (inside-boxes-check (_type_ vector) symbol)
     (level-method-16 () none) ;; 16 ;; (update-vis! (_type_ level-vis-info uint (pointer uint8)) symbol)
     (level-method-17 () none) ;; 17 ;; (load-continue (_type_) _type_)
@@ -7543,7 +7543,7 @@
 
 (deftype level-group (basic)
   ((length            int32                :offset-assert 4)
-   (unk-flag1 symbol)
+   (log-in-level-bsp bsp-header)
    (loading-level level)
 
    (entity-link       entity-links         :offset 16)
@@ -10482,6 +10482,17 @@
     :bitfield #f
     :type uint32
 
+    (entity 44)
+    (camera 45)
+
+    (bsp-main 59)
+    (bsp-misc 60)
+    (bsp-node 61)
+    (bsp-leaf-vis-self 62)
+
+    (pat 65)
+
+
     (joint 68)
 
     (joint-anim-compressed-control 70)
@@ -10495,6 +10506,8 @@
     (art-joint-anim 78)
 
     (texture 83)
+
+    (array 85)
 
     (eye-anim 112)
     )
@@ -11938,7 +11951,7 @@
   )
 
 (deftype cspace-array (inline-array-class)
-  ((data cspace :dynamic :inline :offset-assert 16) ;; guessed by decompiler
+  ((data cspace :dynamic :inline :offset-assert 16 :score 1) ;; guessed by decompiler
    )
   :method-count-assert 14
   :size-assert         #x10
@@ -11949,6 +11962,8 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; drawable-h                     ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(declare-type region-prim-list structure)
 
 (deftype drawable (basic)
   "Base class for `drawable` scene graph system.
@@ -11965,13 +11980,16 @@
   :flag-assert         #x1100000020
   (:methods
     (login "Initialize the object after it is loaded." (_type_) _type_);; 9
-    (draw (_type_ _type_ display-frame) none) ;; 10
+    (draw "Draw the drawable, and typically its children.
+           This usually means adding stuff to a list to be drawn later, rather than expensive drawing here." (_type_) none) ;; 10
     (drawable-method-11 () none) ;; 11 ;; (fill-collide-list-from-box (_type_ int collide-list collide-query) int)
     (drawable-method-12 () none) ;; 12 ;; (fill-collide-list-from-line-sphere (_type_ int collide-list collide-query) int)
-    (drawable-method-13 () none) ;; 13 ;; (collect-stats (_type_) none)
-    (drawable-method-14 () none) ;; 14 ;; (debug-draw (_type_ drawable display-frame) none)
+    (collect-stats "Collect triangle/perf statistics for rendering.
+                    This is only called when viewing stats.
+                    The vis-bits and culling registers are loaded during this time." (_type_) none) ;; 13
+    (debug-draw "Debug-draw a drawable and its children. Typically uses the debug-draw functions." (_type_) none) ;; 14
     (drawable-method-15 () none) ;; 15 ;; (unpack-vis (_type_ (pointer int8) (pointer int8)) (pointer int8))
-    (drawable-method-16 () none) ;; 16 ;; (collect-regions (_type_ sphere int region-prim-list) none)
+    (collect-regions "Fill the region-prim-list with regions that intersect the sphere." (_type_ sphere int region-prim-list) none) ;; 16
     )
   )
 
@@ -19297,14 +19315,14 @@
   :flag-assert         #x10000000ac
   ;; field track-mode is likely a value type.
   (:methods
-    (new (symbol type) _type_) ;; 0 ;; (new (symbol type joint-mod-mode process-drawable int) _type_)
-    (joint-mod-method-9 () none) ;; 9 ;; (mode-set! (_type_ joint-mod-mode) none)
-    (joint-mod-method-10 () none) ;; 10 ;; (target-set! (_type_ vector) none)
-    (joint-mod-method-11 () none) ;; 11 ;; (look-at! (_type_ vector symbol process) none)
+    (new (symbol type joint-mod-mode process-drawable int) _type_) ;; 0
+    (mode-set! "Set the type of joint-mod and install the right callback." (_type_ joint-mod-mode) none) ;; 9
+    (target-set! "Set the target position for look-at mode." (_type_ vector) none) ;; 10
+    (look-at! "Activate joint mod to look at the process." (_type_ vector symbol process) none) ;; 11
     (reset-blend! "Set the blend to 0." (_type_) _type_) ;; 12
-    (joint-mod-method-13 () none) ;; 13 ;; (twist-set! (_type_ float float float) vector)
-    (joint-mod-method-14 () none) ;; 14 ;; (trs-set! (_type_ vector quaternion vector) none)
-    (joint-mod-method-15 () none) ;; 15 ;; (shut-down (_type_) none)
+    (twist-set! "Set twist x,y,z. A value of #f will skip the set." (_type_ float float float) vector) ;; 13
+    (trs-set! "Set translation, quaternion, scale. A value of #f will skip the set." (_type_ vector quaternion vector) none) ;; 14
+    (shut-down "Disable the joint mod, possibly blending out depending on the type" (_type_) none) ;; 15
     )
   )
 
@@ -19486,9 +19504,9 @@
   :size-assert         #xe8
   :flag-assert         #xb000000e8
   (:methods
-    (new (symbol type) _type_) ;; 0 ;; (new (symbol type process-drawable int float) _type_)
-    (joint-mod-ik-method-9 () none) ;; 9 ;; (handle-copy! (_type_ vector) none)
-    (joint-mod-ik-method-10 () none) ;; 10 ;; (enable-set! (_type_ symbol) none)
+    (new (symbol type process-drawable int float) _type_) ;; 0
+    (set-ik-target! (_type_ vector) none) ;; 9
+    (enable-set! (_type_ symbol) none) ;; 10
     )
   )
 
@@ -19501,8 +19519,18 @@
   :flag-assert         #x900000008
   )
 
+(defenum joint-mod-polar-flags
+  :type uint32
+  :bitfield #t
+  (no-z-rot 0)
+  (blending-to-zero 1)
+  (negate-nose 2)
+  (negate-ear 3)
+  (negate-up 4)
+  )
+
 (deftype joint-mod-polar-look-at (basic)
-  ((flags                   uint32         :offset-assert 4)
+  ((flags                   joint-mod-polar-flags         :offset-assert 4)
    (ear                     int8           :offset-assert 8)
    (up                      int8           :offset-assert 9)
    (nose                    int8           :offset-assert 10)
@@ -19515,8 +19543,8 @@
    (forward-twist           float          :offset-assert 36)
    (backward-twist          float          :offset-assert 40)
    (target                  vector :inline :offset-assert 48)
-   (blend-duration          uint64         :offset-assert 64)
-   (blend-start-time        uint64         :offset-assert 72)
+   (blend-duration          time-frame         :offset-assert 64)
+   (blend-start-time        time-frame         :offset-assert 72)
    (blend-start-value       float          :offset-assert 80)
    (blend-max               float          :offset-assert 84)
    )
@@ -19524,12 +19552,12 @@
   :size-assert         #x58
   :flag-assert         #xf00000058
   (:methods
-    (joint-mod-polar-look-at-method-9 () none) ;; 9
-    (joint-mod-polar-look-at-method-10 () none) ;; 10
-    (joint-mod-polar-look-at-method-11 () none) ;; 11
-    (joint-mod-polar-look-at-method-12 () none) ;; 12
-    (joint-mod-polar-look-at-method-13 () none) ;; 13
-    (joint-mod-polar-look-at-method-14 () none) ;; 14
+    (initialize "Attach joint-mod to process and set defaults." (_type_ process-drawable int) none) ;; 9
+    (set-target! "Update the target position." (_type_ vector) none) ;; 10
+    (set-both-targets! "Update the target position of this mod, and a second one." (_type_ joint-mod-polar-look-at vector) none) ;; 11
+    (blend-on! "Start blending this joint mod on." (_type_ time-frame float symbol) none) ;; 12
+    (blend-to-off! "Start blending to disable this joint mod." (_type_ time-frame symbol) none) ;; 13
+    (get-start-blend! "Determine what blend to use when starting a new one." (_type_) float) ;; 14
     )
   )
 
@@ -21980,6 +22008,14 @@
 ;; bsp-h                          ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+(defenum texture-page-flag
+  :type uint16
+  :bitfield #t
+  (alpha-enable 0)
+  )
+
+(declare-type entity-camera entity)
+
 (deftype bsp-node (structure)
   "A node in the 'BSP' tree. This is really a bounding volume tree, where each volume is an axis-aligned box, containing 2 child boxes.
    This is used for precomputed visibility, based on the camera position. This is not used for collision."
@@ -21990,6 +22026,7 @@
    (back-box-min  vector4b :inline :offset-assert 12)
    (back-box-max  vector4b :inline :offset-assert 16)
    )
+  :pack-me
   :method-count-assert 9
   :size-assert         #x14
   :flag-assert         #x900000014
@@ -21998,42 +22035,43 @@
 (deftype bsp-header (drawable)
   "The bsp-header is really an entire level.
    This probably started as a very simple structure, but now it is extremely complicated."
-  ((all-visible-list         (pointer uint16)     :offset 32) ;; guessed by decompiler
+  ((info file-info                                               :offset 4)
+   (all-visible-list         (pointer uint16)     :offset 32) ;; guessed by decompiler
    (visible-list-length      int16                :offset 36)
    (drawable-trees           drawable-tree-array  :offset 40) ;; guessed by decompiler
    (pat                      pointer              :offset 44) ;; guessed by decompiler
    (pat-length               int32                :offset 48)
    ;; jak2: unlikely to match jak 3 exactly!!
-   ; (texture-remap-table      (pointer uint64)            :offset-assert 52)
-   ; (texture-remap-table-len  int32                       :offset-assert 56)
-   ; (texture-ids              (pointer texture-id)        :offset-assert 60)
-   ; (texture-page-count       int32                       :offset-assert 64)
-   ; (unknown-basic            basic                       :offset-assert 68) ;; seems to be 0 everywhere.
+   (texture-remap-table      (pointer uint64)            :offset-assert 52)
+   (texture-remap-table-len  int32                       :offset-assert 56)
+   (texture-ids              (pointer texture-id)        :offset-assert 60)
+   (texture-page-count       int32                       :offset-assert 64)
+   (unknown-basic            basic                       :offset-assert 68) ;; seems to be 0 everywhere.
    ; (name                     symbol                      :offset-assert 72)
    ; (nickname                 symbol                      :offset-assert 76)
    ; (vis-info                 level-vis-info 8            :offset-assert 80)
-   ; (actors                   drawable-inline-array-actor :offset-assert 112)
-   ; (cameras                  (array entity-camera)       :offset-assert 116)
+   (actors                   drawable-inline-array-actor :offset 112)
+   (cameras                  (array entity-camera)       :offset-assert 116)
    (nodes           (inline-array bsp-node)             :offset 120)
 
    ;; jak2: unlikely to match jak 3 exactly!!
-   ; (level                    level                       :offset-assert 124)
-   ; (current-leaf-idx         uint16                      :offset-assert 128)
-   ; (texture-flags            texture-page-flag 10        :offset-assert 130)
-   ; (cam-outside-bsp          uint8                       :offset        152)
-   ; (cam-using-back           uint8                       :offset-assert 153)
-   ; (cam-box-idx              uint16                      :offset-assert 154)
+   (level                    level                       :offset-assert 124)
+   (current-leaf-idx         uint16                      :offset-assert 128)
+   (texture-flags            texture-page-flag 10        :offset 130)
+   (cam-outside-bsp          uint8                       :offset        152)
+   (cam-using-back           uint8                       :offset-assert 153)
+   (cam-box-idx              uint16                      :offset-assert 154)
    ; (ambients                 symbol                      :offset-assert 156) ;; now just #t?
    ; (subdivide-close          float                       :offset-assert 160)
    ; (subdivide-far            float                       :offset-assert 164)
    ; (race-meshes              (array entity-race-mesh)    :offset-assert 168)
-   ; (actor-birth-order        (pointer uint32)            :offset-assert 172)
+   (actor-birth-order        (pointer uint32)            :offset 172)
    ; (light-hash               light-hash                  :offset-assert 176)
    ; (nav-meshes               (array entity-nav-mesh)     :offset-assert 180)
    ; (actor-groups             (array actor-group)         :offset-assert 184)
-   ; (region-trees             (array drawable-tree-region-prim) :offset-assert 188)
+   (region-trees             (array drawable-tree-region-prim) :offset 188)
    ; (region-array             region-array                :offset-assert 192)
-   ; (collide-hash             collide-hash                :offset-assert 196)
+   (collide-hash             collide-hash                :offset 196)
    ; ;; 200 is some array
    ; (wind-array uint32 :offset 200)
    ; ;; 204 is maybe that array's length
@@ -22043,24 +22081,26 @@
    ; (vis-spheres-length       uint32                             :offset 248)
    ; (region-tree              drawable-tree-region-prim          :offset 252)
 
-   ; (tfrag-masks              texture-masks-array         :offset-assert 256)
-   ; (tfrag-closest            (pointer float)             :offset-assert 260)
-   ; (tfrag-mask-count         uint32                      :offset        260)
+   (tfrag-masks              texture-masks-array         :offset 256)
+   (tfrag-closest            (pointer float)             :offset-assert 260)
+   (tfrag-mask-count         uint32                      :offset        260)
 
-   ; (shrub-masks              texture-masks-array         :offset-assert 264)
-   ; (shrub-closest            (pointer float)             :offset-assert 268)
-   ; (shrub-mask-count         uint32                      :offset        268)
+   (shrub-masks              texture-masks-array         :offset-assert 264)
+   (shrub-closest            (pointer float)             :offset-assert 268)
+   (shrub-mask-count         uint32                      :offset        268)
 
-   ; (alpha-masks              texture-masks-array         :offset-assert 272)
-   ; (alpha-closest            (pointer float)             :offset-assert 276)
-   ; (alpha-mask-count         uint32                      :offset        276)
+   (alpha-masks              texture-masks-array         :offset-assert 272)
+   (alpha-closest            (pointer float)             :offset-assert 276)
+   (alpha-mask-count         uint32                      :offset        276)
 
-   ; (water-masks              texture-masks-array         :offset-assert 280)
-   ; (water-closest            (pointer float)             :offset-assert 284)
-   ; (water-mask-count         uint32                      :offset        284)
+   (water-masks              texture-masks-array         :offset-assert 280)
+   (water-closest            (pointer float)             :offset-assert 284)
+   (water-mask-count         uint32                      :offset        284)
 
-   ; (bsp-scale                vector :inline              :offset-assert 288)
-   ; (bsp-offset               vector :inline              :offset-assert 304)
+   (bsp-scale                vector :inline              :offset 288)
+   (bsp-offset               vector :inline              :offset-assert 304)
+
+   (unk-drawable drawable :offset 320)
 
 
    (end uint8 :offset #x18f)
@@ -22401,7 +22441,9 @@
 
 (deftype drawable-tree-instance-shrub (drawable-tree)
   "Drawable-tree for the shrubs."
-  ()
+  ((info prototype-array-shrub-info :offset 8)
+   (colors-added time-of-day-palette :offset 12) ;; added
+   )
   :flag-assert #x1100000020
   )
 
@@ -27667,20 +27709,21 @@
 ;; joint-mod                      ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (define-extern joint-mod-ik-callback function) ;; (function cspace transformq none :behavior process)
-;; (define-extern real-joint-mod-gun-look-at-handler function) ;; (function cspace transformq none :behavior process)
-;; (define-extern joint-mod-gun-look-at-handler function) ;; (function cspace transformq none :behavior process)
-;; (define-extern joint-mod-foot-rot-handler function) ;; (function cspace transformq none :behavior process)
-;; (define-extern last-try-to-look-at-data object) ;; try-to-look-at-info
-;; (define-extern joint-mod-look-at-handler function) ;; (function cspace transformq none :behavior process)
-;; (define-extern joint-mod-world-look-at-handler function) ;; (function cspace transformq none :behavior process)
-;; (define-extern joint-mod-rotate-handler function) ;; (function cspace transformq none :behavior process)
-;; (define-extern joint-mod-scale-handler function) ;; (function cspace transformq none :behavior process)
-;; (define-extern joint-mod-joint-set-handler function) ;; (function cspace transformq none :behavior process)
-;; (define-extern joint-mod-joint-set-world-handler function) ;; (function cspace transformq none :behavior process)
-;; (define-extern joint-mod-joint-set*-handler function) ;; (function cspace transformq none :behavior process)
-;; (define-extern joint-mod-joint-set*-world-handler function) ;; (function cspace transformq none :behavior process)
-;; (define-extern joint-mod-polar-look-at-callback function)
+(define-extern joint-mod-ik-callback "Inverse kinematics joint mod callback.
+                                      Despite the arm-related names, can be used on legs too." (function cspace transformq none :behavior process))
+(define-extern real-joint-mod-gun-look-at-handler "Joint mod callback for pointing the gun (implementation)." (function cspace transformq none :behavior process))
+(define-extern joint-mod-gun-look-at-handler "Joint mod callback for pointing the gun (wrapper)." (function cspace transformq none :behavior process))
+(define-extern joint-mod-foot-rot-handler "Joint mod callback to pitch the foot to match the ground." (function cspace transformq none :behavior process))
+(define-extern last-try-to-look-at-data try-to-look-at-info)
+(define-extern joint-mod-look-at-handler "Callback for look-at joint mod." (function cspace transformq none :behavior process))
+(define-extern joint-mod-world-look-at-handler (function cspace transformq none :behavior process))
+(define-extern joint-mod-rotate-handler "Callback for rotate joint mod." (function cspace transformq none :behavior process))
+(define-extern joint-mod-scale-handler "Callback for scale joint mod." (function cspace transformq none :behavior process))
+(define-extern joint-mod-joint-set-handler "Callback for set joint mod." (function cspace transformq none :behavior process))
+(define-extern joint-mod-joint-set-world-handler (function cspace transformq none :behavior process))
+(define-extern joint-mod-joint-set*-handler (function cspace transformq none :behavior process))
+(define-extern joint-mod-joint-set*-world-handler (function cspace transformq none :behavior process))
+(define-extern joint-mod-polar-look-at-callback (function cspace transformq none :behavior process))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; wind-work                      ;;
@@ -27692,46 +27735,60 @@
 ;; wind                           ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (define-extern update-wind function) ;; (function wind-work (array uint8) none)
-;; (define-extern wind-get-hashed-index function)
+(define-extern update-wind "Update the wind force for this frame.
+                            This value will be used by level-update-wind to update tie/shrub wind values." (function wind-work (array uint8) none))
+(define-extern wind-get-hashed-index "Unused function, likely a leftover from Jak 1's different wind system." (function vector wind-work int))
 ;; (define-extern level-update-wind function) ;; (function wind-work none)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; bsp                            ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (define-extern mem-usage-bsp-tree function) ;; (function bsp-header bsp-node memory-usage-block int none)
-;; (define-extern *test-shrub* object) ;; int
-;; (define-extern bsp-camera-asm function) ;; (function bsp-header vector none)
-;; (define-extern print-collide-stats function) ;; (function none)
-(define-extern level-remap-texture (function texture-id texture-id))
-;; (define-extern build-masks function) ;; (function bsp-header none)
+(define-extern mem-usage-bsp-tree "Recursively compute memory usage of bsp-tree." (function bsp-header bsp-node memory-usage-block int none))
+(define-extern *test-shrub* int)
+(define-extern bsp-camera-asm "Determine which 'bsp' leaf cell the camera is in, for precomputed vis.
+                               The result is stored in the bsp itself." (function bsp-header vector none))
+(define-extern print-collide-stats (function none))
+(define-extern level-remap-texture "Level tpages combine the tpages of many individual actors.
+                                    Given a texture ID for a texture in an individual actor,
+                                    determine the texture ID for this texture in the level's
+                                    combined page." (function texture-id texture-id))
+(define-extern build-masks "Allocate and assign texture masks, and closest object arrays.
+                            These are used at runtime to only upload the texture chunks and
+                            mip levels that are actually needed." (function bsp-header none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; subdivide                      ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (define-extern *merc-global-stats* object) ;; merc-global-stats
-;; (define-extern clear-tr-stat function) ;; (function tr-stat none)
-;; (define-extern *stat-string-tfrag* object) ;; string
-;; (define-extern *stat-string-tfrag-scissor* object) ;; string
-;; (define-extern *stat-string-total* object) ;; string
-;; (define-extern print-tr-stat function) ;; (function tr-stat string string none)
-;; (define-extern print-terrain-stats function) ;; (function none)
-;; (define-extern update-subdivide-settings! function) ;; (function subdivide-settings math-camera int none)
-;; (define-extern *subdivide-settings* object) ;; subdivide-settings
-;; (define-extern set-tfrag-dists! function) ;; (function tfrag-dists none)
-;; (define-extern *terrain-context* object) ;; terrain-context
-;; (define-extern GSH_ENABLE object) ;; symbol
-;; (define-extern GSH_BUCKET object) ;; bucket-id
-;; (define-extern GSH_WHICH_STAT object) ;; int
-;; (define-extern GSH_MAX_DISPLAY object) ;; basic
-;; (define-extern GSH_TIME object) ;; int
-;; (define-extern *perf-stats* object) ;; perf-stat-array
-;; (define-extern *gomi-stats-hack* object) ;; (inline-array perf-stat)
-;; (define-extern start-perf-stat-collection function) ;; (function none)
-;; (define-extern end-perf-stat-collection function) ;; (function none)
-;; (define-extern print-perf-stats function) ;; (function none)
+(define-extern *merc-global-stats* merc-global-stats)
+(define-extern clear-tr-stat "Reset all statistics to 0." (function tr-stat none))
+(define-extern *stat-string-tfrag*  string)
+(define-extern *stat-string-tfrag-scissor*  string)
+(define-extern *stat-string-total*  string)
+(define-extern print-tr-stat "Print a single tr-stat to the screen." (function tr-stat string string none))
+(define-extern print-terrain-stats "Print all tr-stats for renderers to the screen." (function none))
+(define-extern update-subdivide-settings! "Update the subdivide settings from the far/close settings
+                                           This caches the settings in subdivide-settings itself,
+                                           as well as in tfrag-work, used by EE tfrag code." (function subdivide-settings math-camera int none))
+(define-extern *subdivide-settings*  subdivide-settings)
+(define-extern set-tfrag-dists! "Update the subdivide settings used in tfrag VU1 code.
+                                 This must be called after update-subdivide-settings!" (function tfrag-dists none))
+(define-extern *terrain-context*  terrain-context)
+(define-extern GSH_ENABLE symbol)
+(define-extern GSH_BUCKET bucket-id)
+(define-extern GSH_WHICH_STAT int)
+(define-extern GSH_MAX_DISPLAY basic)
+(define-extern GSH_TIME int)
+(define-extern *perf-stats* perf-stat-array)
+(define-extern *gomi-stats-hack* (inline-array perf-stat))
+(define-extern start-perf-stat-collection "Start the per-frame performance stats.
+                                           This automatically cycles through various stats/categories,
+                                           collecting and aggregating the latest data.
+                                           The `gomi-stats-hack` likely refers to how the stat being
+                                           collected" (function none))
+(define-extern end-perf-stat-collection "End the per-frame performance stats" (function none))
+(define-extern print-perf-stats (function none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; sprite                         ;;
@@ -28101,7 +28158,7 @@
 (define-extern add-debug-text-3d (function symbol bucket-id string vector font-color vector2h symbol))
 ;; (define-extern add-debug-sphere-with-transform function) ;; (function symbol bucket-id vector meters matrix rgba symbol)
 (define-extern add-debug-sphere (function symbol bucket-id vector meters rgba symbol))
-;; (define-extern add-debug-text-sphere function) ;; (function symbol bucket-id vector meters string rgba symbol)
+(define-extern add-debug-text-sphere (function symbol bucket-id vector meters string rgba symbol))
 ;; (define-extern add-debug-spheres function) ;; (function symbol bucket-id (inline-array vector) int rgba symbol)
 ;; (define-extern add-debug-line-sphere function) ;; (function symbol bucket-id vector vector float rgba none)
 ;; (define-extern add-debug-circle function) ;; (function symbol bucket-id vector float rgba matrix symbol)
@@ -28962,7 +29019,7 @@
 ;; tfrag-work                     ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (define-extern *tfrag-work* object) ;; tfrag-work
+(define-extern *tfrag-work* tfrag-work)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; tie                            ;;
@@ -29188,7 +29245,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ;; (define-extern *instance-tie-work* object) ;; instance-tie-work
-;; (define-extern *prototype-tie-work* object) ;; prototype-tie-work
+(define-extern *prototype-tie-work* prototype-tie-work)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; tie-methods                    ;;
@@ -29703,20 +29760,20 @@
 ;; mood-tables2                   ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(define-extern *overide-mood-color-table* mood-color-table) ;; 
-(define-extern *overide-mood-fog-table* mood-fog-table) ;; 
-(define-extern init-overide-table 
+(define-extern *overide-mood-color-table* mood-color-table) ;;
+(define-extern *overide-mood-fog-table* mood-fog-table) ;;
+(define-extern init-overide-table
   "Similar to the beginning of [[init-mood-control]], does the bare minimum to setup the given [[mood-table]]
    @param! table The table to initialize
    @returns [[none]]"
-  (function mood-table none)) ;; 
+  (function mood-table none)) ;;
 (define-extern *overide-table* mood-table) ;; mood-table
 (define-extern print-mood-tables "Generates the GOAL code for defining the current state of [[*overide-table*]]" (function none)) ;; (
-(define-extern desaturate-mood-colors 
+(define-extern desaturate-mood-colors
   "Unused - Generate GOAL code for a new [[*overide-mood-color-table*]] definition that desaturates the color
    Apply said overrides to the [[*overide-table*]]"
   (function float float float none))
-(define-extern desaturate-mood-fog 
+(define-extern desaturate-mood-fog
   "Unused - Generate GOAL code for a new [[*overide-mood-fog-table*]] definition that desaturates the fog color
    Apply said overrides to the [[*overide-table*]]"
   (function (pointer mood-fog-table) float float none))
@@ -31836,7 +31893,7 @@
 (define-extern cspace-by-name "Get a process' [[cspace]] by name." (function process-drawable string cspace))
 (define-extern cspace-index-by-name "Get the index of a process' [[cspace]] by name." (function process-drawable string int))
 ;; (define-extern vector<-cspace! function) ;; (function vector cspace vector)
-;; (define-extern vector<-matrix! function) ;; (function vector matrix vector)
+(define-extern vector<-matrix! (function vector matrix vector))
 ;; (define-extern vector<-cspace+vector! function) ;; (function vector cspace vector vector)
 ;; (define-extern cspace-children function) ;; (function process-drawable int pair)
 ;; (define-extern cspace-inspect-tree function) ;; (function process-drawable cspace int int object process-drawable)
