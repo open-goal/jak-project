@@ -2616,6 +2616,14 @@
 (defenum sound-group
   :bitfield #t
   :type uint8
+  (sfx)
+  (music)
+  (dialog) ;; same as jak 1 dialog
+  (sog3)
+  (ambient)
+  (dialog2) ;; more dialog
+  (sog6)
+  (sog7)
   )
 
 (defenum sound-mask
@@ -2644,6 +2652,7 @@
   (ss1 1) ;; id-is-playing
   (ss4 4) ;; is-playing
   (ss6 6) ;; id-is-playing
+  (ss9 9)
   )
 
 (deftype sound-stream-name (structure)
@@ -7527,7 +7536,7 @@
     (level-method-18 () none) ;; 18 ;; (load-begin (_type_) _type_)
     (level-method-19 () none) ;; 19 ;; (login-begin (_type_) _type_)
     (level-method-20 () none) ;; 20 ;; (debug-print-region-splitbox (_type_ vector object) none)
-    (level-method-21 () none) ;; 21 ;; (get-art-group-by-name (_type_ string) art-group)
+    (get-art-group-by-name (_type_ string) art-group) ;; 21
     (level-method-22 () none) ;; 22 ;; (level-method-22 (_type_ symbol) int)
     (level-method-23 () none) ;; 23 ;; (lookup-text (_type_ text-id symbol) string)
     (level-method-24 () none) ;; 24 ;; (level-method-24 () none)
@@ -10460,8 +10469,8 @@
     (setting-control-method-14 (_type_ object) connectable) ;; 14
     (remove-setting-by-arg0 (_type_ object) none) ;; 15
     (set-setting-by-param (_type_ symbol object object object) connection) ;; 16
-    (setting-control-method-17 () none) ;; 17 ;; (apply-settings (_type_) user-setting-data)
-    (setting-control-method-18 () none) ;; 18 ;; (update (_type_) user-setting-data)
+    (apply-settings (_type_) user-setting-data) ;; 17
+    (update (_type_) user-setting-data) ;; 18
     (setting-control-method-19 () none) ;; 19
     )
   )
@@ -14179,8 +14188,8 @@
   :flag-assert #x1000000020
   (:methods
     (relocate (_type_ kheap (pointer uint8)) none :replace) ;; 7
-    (link-art-to-master (_type_) none)
-    (unknown-1 () none)
+    (link-art-to-master (_type_) art-group)
+    (unlink-art-to-master (_type_) int)
     )
   )
 
@@ -15882,10 +15891,10 @@
     (load-state-method-14 () none) ;; 14 ;; (want-vis-level (_type_ symbol) none)
     (load-state-method-15 () none) ;; 15 ;; (want-force-vis (_type_ symbol symbol) int)
     (load-state-method-16 () none) ;; 16 ;; (want-force-inside (_type_ symbol symbol) none)
-    (load-state-method-17 () none) ;; 17 ;; (execute-commands-up-to (_type_ float) none)
-    (load-state-method-18 () none) ;; 18 ;; (backup-load-state-and-set-cmds (_type_ pair) int)
-    (load-state-method-19 () none) ;; 19 ;; (restore-load-state-and-cleanup (_type_) int)
-    (load-state-method-20 () none) ;; 20 ;; (restore-load-state (_type_) int)
+    (execute-commands-up-to (_type_ float) none) ;; 17
+    (backup-load-state-and-set-cmds (_type_ pair) int) ;; 18
+    (restore-load-state-and-cleanup (_type_) int) ;; 19
+    (restore-load-state (_type_) int) ;; 20
     (load-state-method-21 () none) ;; 21 ;; (add-borrow-levels (_type_) none)
     )
   )
@@ -16322,6 +16331,7 @@
   (fo-curve 2)
   (fo-min 3)
   (fo-max 4)
+  (volume 5)
   )
 ;; ---gui-h:gui-connection-flags
 
@@ -16347,11 +16357,6 @@
   :flag-assert         #xe00000030
   ;; field param1 uses ~A with a signed load. field param2 uses ~A with a signed load. field param3 uses ~A with a signed load.
   )
-
-;; (deftype gui-control (basic)
-;;   ()
-;;   :flag-assert #x1a00000d30
-;;   )
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -27498,7 +27503,7 @@
    (stream-name     sound-stream-name 4 :inline  :offset-assert 304) ;; guessed by decompiler
    ; (UNKNOWN         UNKNOWN              :offset-assert -1) ;; field could not be read.
    (stream-id       sound-id          4  :offset-assert 496) ;; guessed by decompiler
-   ; (UNKNOWN         UNKNOWN              :offset-assert -1) ;; field could not be read.
+   (stream-id-signed int32          4  :offset 496) ;; guessed by decompiler
    (music-register  uint8             17 :offset 512) ;; guessed by decompiler
    (music-excite    int8                 :offset 528)
    (ramdisk-name uint8 16  :offset-assert 529)
@@ -29519,87 +29524,101 @@
 ;; loader                         ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
+;; +++loader:spooler-flags
+(defenum spooler-flags
+  :bitfield #t
+  :type uint32
+  (blackout-on-stall)
+  )
+;; ---loader:spooler-flags
+
 (deftype spooler-block (basic)
   ((anim             spool-anim                          :offset-assert 4) ;; guessed by decompiler
    (idle             art-joint-anim                      :offset-assert 8) ;; guessed by decompiler
    (exit             art-joint-anim                      :offset-assert 12) ;; guessed by decompiler
    (break-func       (function process-drawable object)  :offset-assert 16) ;; guessed by decompiler
-   (flags            uint32                              :offset-assert 20)
+   (flags            spooler-flags                       :offset-assert 20)
    (part             int32                               :offset-assert 24)
    (part-audio-start float                               :offset-assert 28)
    (old-status       uint16                              :offset-assert 32)
    (old-pos          int32                               :offset-assert 36)
-   (good-time        uint64                              :offset-assert 40) ;; time-frame
-   (old-time         uint64                              :offset-assert 48) ;; time-frame
+   (good-time        time-frame                          :offset-assert 40) ;; time-frame
+   (old-time         time-frame                          :offset-assert 48) ;; time-frame
    (good-count       int32                               :offset-assert 56)
    (sid              sound-id                            :offset-assert 60) ;; guessed by decompiler
-   (real-start-time  uint64                              :offset-assert 64) ;; time-frame
+   (real-start-time  time-frame                          :offset-assert 64) ;; time-frame
    (paused?          symbol                              :offset-assert 72) ;; guessed by decompiler
    )
   :method-count-assert 9
   :size-assert         #x4c
   :flag-assert         #x90000004c
   )
-|#
 
-#|
 (deftype load-dir (basic)
-  ((level            basic   :offset-assert 4)
-   (allocated-length uint32  :offset-assert 8)
+  ;; copied from jak1.
+  ((lev level :offset-assert 4)
+   (string-array (array string) :offset-assert 8) ;; these are the names
+   (data-array (array basic) :score -50 :offset-assert 12) ;; this is the file data.
    )
   :method-count-assert 11
   :size-assert         #x10
   :flag-assert         #xb00000010
   ;; Failed to read some fields.
   (:methods
-    (new (symbol type) _type_) ;; 0 ;; (new (symbol type int level) _type_)
-    (load-dir-method-9 () none) ;; 9 ;; (load-to-heap-by-name (_type_ string symbol kheap int) art-group)
-    (load-dir-method-10 () none) ;; 10 ;; (set-loaded-art (_type_ art-group) art-group)
+    (new (symbol type int level) _type_) ;; 0
+    (load-to-heap-by-name (_type_ string symbol kheap int) art-group) ;; 9
+    (set-loaded-art (_type_ art-group) art-group) ;; 10
     )
   )
-|#
 
-#|
 (deftype gui-control (basic)
   ((engine  engine   :offset-assert 4) ;; guessed by decompiler
-   (UNKNOWN UNKNOWN  :offset-assert -1) ;; field could not be read.
+   (update-time  time-frame  :offset-assert 8)
+   (connections gui-connection 32 :inline :offset-assert 16)
+   (spool-connections gui-connection 4 :inline :offset-assert 1552)
+   (ids sound-id 96 :offset-assert 1744)
+   (times time-frame 96 :offset-assert 2128)
+   (cmd pair 96 :offset-assert 2896)
+   (group sound-group 96 :offset-assert 3280)
    )
   :method-count-assert 26
   :size-assert         #xd30
   :flag-assert         #x1a00000d30
   (:methods
-    (new (symbol type) _type_) ;; 0 ;; (new (symbol type int) _type_)
-    (gui-control-method-9 () none) ;; 9 ;; (add-process (_type_ process gui-channel gui-action string float time-frame) sound-id)
-    (gui-control-method-10 () none) ;; 10 ;; (remove-process (_type_ process gui-channel) none)
-    (gui-control-method-11 () none) ;; 11 ;; (stop-str (_type_ gui-connection) int)
-    (gui-control-method-12 () none) ;; 12 ;; (gui-control-method-12 (_type_ process gui-channel gui-action string int float sound-id) sound-id)
-    (gui-control-method-13 () none) ;; 13 ;; (update (_type_ symbol) int)
-    (gui-control-method-14 () none) ;; 14 ;; (lookup-gui-connection-id (_type_ string gui-channel gui-action) sound-id)
-    (gui-control-method-15 () none) ;; 15 ;; (lookup-gui-connection (_type_ process gui-channel string sound-id) gui-connection)
-    (gui-control-method-16 () none) ;; 16 ;; (set-action! (_type_ gui-action sound-id gui-channel gui-action string (function gui-connection symbol) process) int)
-    (gui-control-method-17 () none) ;; 17 ;; (get-status (_type_ sound-id) gui-status)
-    (gui-control-method-18 () none) ;; 18 ;; (gui-control-method-18 (_type_ gui-channel) symbol)
-    (gui-control-method-19 () none) ;; 19 ;; (handle-command-list (_type_ gui-channel gui-connection) symbol)
-    (gui-control-method-20 () none) ;; 20 ;; (set-falloff! (_type_ sound-id symbol int int int) gui-connection)
-    (gui-control-method-21 () none) ;; 21 ;; (gui-control-method-21 (_type_ gui-connection vector) int)
-    (gui-control-method-22 () none) ;; 22 ;; (gui-control-method-22 (_type_ gui-connection process symbol) none)
-    (gui-control-method-23 () none) ;; 23 ;; (handle-command (_type_ gui-channel gui-channel symbol gui-connection) symbol)
-    (gui-control-method-24 () none) ;; 24 ;; (channel-id-set! (_type_ gui-connection sound-id) int)
-    (gui-control-method-25 () none) ;; 25
+    (new (symbol type int) _type_) ;; 0
+    (add-process (_type_ process gui-channel gui-action string float time-frame) sound-id) ;; 9
+    (remove-process (_type_ process gui-channel) int) ;; 10
+    (stop-str (_type_ gui-connection) int) ;; 11
+    (gui-control-method-12 (_type_ process gui-channel gui-action string int float sound-id) sound-id) ;; 12
+    (update (_type_ symbol) int) ;; 13
+    (lookup-gui-connection-id (_type_ string gui-channel gui-action) sound-id) ;; 14
+    (lookup-gui-connection (_type_ process gui-channel string sound-id) gui-connection) ;; 15
+    (set-action! (_type_ gui-action sound-id gui-channel gui-action string (function gui-connection symbol) process) int) ;; 16
+    (get-status (_type_ sound-id) gui-status) ;; 17 ;; (get-status (_type_ sound-id) gui-status)
+    (gui-control-method-18 (_type_ gui-channel) symbol) ;; 18
+    (handle-command-list (_type_ gui-channel gui-connection) symbol) ;; 19
+    (sound-params-set! (_type_ sound-id symbol int int int float) gui-connection) ;; 20
+    (gui-control-method-21 (_type_ gui-connection) int) ;; 21
+    (gui-control-method-22 (_type_ gui-connection vector) int) ;; 22
+    (update-connection (_type_ gui-connection process symbol) none) ;; 23
+    (handle-command (_type_ gui-channel gui-channel symbol gui-connection) symbol) ;; 24
+    (channel-id-set! (_type_ gui-connection sound-id) int) ;; 25
     )
   )
-|#
 
-;; (define-extern drawable-load function) ;; (function drawable kheap drawable)
-;; (define-extern art-load function) ;; (function string kheap art)
-;; (define-extern art-group-load-check function) ;; (function string kheap int art-group)
+(define-extern drawable-load (function drawable kheap drawable))
+(define-extern art-load (function string kheap art))
+(define-extern art-group-load-check (function string kheap int art-group))
 (define-extern external-art-buffer-init (function external-art-buffer int))
-;; (define-extern *preload-spool-anims* object) ;; symbol
-;; (define-extern ja-play-spooled-anim function) ;; (function spool-anim art-joint-anim art-joint-anim (function process-drawable symbol) int :behavior process-drawable)
-;; (define-extern ja-abort-spooled-anim function) ;; (function spool-anim art-joint-anim int int :behavior process-drawable)
-;; (define-extern *gui-control* object) ;; gui-control
-;; (define-extern *art-control* object) ;; external-art-control
+(define-extern *preload-spool-anims* symbol)
+(define-extern ja-play-spooled-anim (function spool-anim art-joint-anim art-joint-anim (function process-drawable symbol) spooler-flags int :behavior process-drawable))
+(define-extern ja-abort-spooled-anim (function spool-anim art-joint-anim int int :behavior process-drawable))
+(define-extern *gui-control* gui-control)
+(define-extern *art-control* external-art-control)
+(define-extern *stack-top* pointer)
+(define-extern *kernel-sp* pointer)
+(define-extern loado (function string kheap object))
+(define-extern link (function pointer pointer int kheap int pointer))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; game-info                      ;;
@@ -31905,20 +31924,20 @@
 ;; (define-extern process-drawable-error-print function)
 ;; (define-extern skeleton-group->draw-control function) ;; (function process-drawable skeleton-group (pointer cspace-array) draw-control)
 ;; (define-extern ja-group-in-array? function)
-;; (define-extern ja-done? function) ;; (function int symbol :behavior process-drawable)
-;; (define-extern ja-min? function) ;; (function int symbol :behavior process-drawable)
-;; (define-extern ja-max? function) ;; (function int symbol :behavior process-drawable)
-;; (define-extern ja-num-frames function) ;; (function int int :behavior process-drawable)
-;; (define-extern ja-frame-num function) ;; (function int float :behavior process-drawable)
-;; (define-extern ja-aframe-num function) ;; (function int float :behavior process-drawable)
-;; (define-extern ja-aframe function) ;; (function float int float :behavior process-drawable)
-;; (define-extern ja-speed function) ;; (function int float :behavior process-drawable)
-;; (define-extern ja-step function) ;; (function int float :behavior process-drawable)
+(define-extern ja-done? (function int symbol :behavior process-drawable))
+(define-extern ja-min? (function int symbol :behavior process-drawable))
+(define-extern ja-max? (function int symbol :behavior process-drawable))
+(define-extern ja-num-frames (function int int :behavior process-drawable))
+(define-extern ja-frame-num (function int float :behavior process-drawable))
+(define-extern ja-aframe-num (function int float :behavior process-drawable))
+(define-extern ja-aframe (function float int float :behavior process-drawable))
+(define-extern ja-speed (function int float :behavior process-drawable))
+(define-extern ja-step (function int float :behavior process-drawable))
 ;; (define-extern ja-rate function)
 ;; (define-extern ja-linear-vel function)
-;; (define-extern ja-channel-set! function) ;; (function int int :behavior process-drawable)
-;; (define-extern ja-channel-push! function) ;; (function int time-frame int :behavior process-drawable)
-;; (define-extern ja-channel-float! function) ;; (function art-joint-anim float float float joint-control-channel :behavior process-drawable)
+(define-extern ja-channel-set! (function int int :behavior process-drawable))
+(define-extern ja-channel-push! (function int time-frame int :behavior process-drawable))
+(define-extern ja-channel-float! (function art-joint-anim float float float joint-control-channel :behavior process-drawable))
 (define-extern joint-control-reset! (function joint-control joint-control-channel none :behavior process-drawable))
 ;; (define-extern ja-group-size function) ;; (function int :behavior process-drawable)
 ;; (define-extern ja-eval function) ;; (function int :behavior process-drawable)
@@ -32091,7 +32110,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (define-extern can-display-query? (function process string float symbol))
-(define-extern talker-surpress! (function none))
+(define-extern talker-surpress! (function int))
 (define-extern talker-displayed? (function symbol))
 (define-extern kill-current-talker (function symbol pair symbol none))
 (define-extern string->talker-speech (function string talker-speech-class))
@@ -35743,10 +35762,10 @@
 ;; main                           ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (define-extern set-letterbox-frames function) ;; (function time-frame none)
-;; (define-extern letterbox function) ;; (function none)
-;; (define-extern set-blackout-frames function) ;; (function time-frame none)
-;; (define-extern blackout function) ;; (function none)
+(define-extern set-letterbox-frames (function time-frame none))
+(define-extern letterbox (function none))
+(define-extern set-blackout-frames (function time-frame none))
+(define-extern blackout (function none))
 ;; (define-extern add-blackout function)
 (define-extern paused? (function symbol))
 (define-extern movie? (function symbol))
