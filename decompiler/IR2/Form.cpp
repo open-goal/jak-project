@@ -3269,18 +3269,20 @@ goos::Object DefskelgroupElement::to_form_internal(const Env& env) const {
       forms.push_back(
           pretty_print::to_symbol(fmt::format(":light-index {}", m_static_info.light_index)));
     }
-    if (m_static_info.global_effects != 0) {
-      forms.push_back(
-          pretty_print::to_symbol(fmt::format(":global-effects {}", m_static_info.global_effects)));
-    }
-    if (!m_static_info.clothing.empty()) {
-      std::vector<goos::Object> cloth_list;
-      forms.push_back(pretty_print::to_symbol(":clothing"));
-      for (const auto& p : m_static_info.clothing) {
-        auto macro = p.to_list(m_static_info.art_group_name + "-ag", env);
-        cloth_list.push_back(macro);
+    if (env.version != GameVersion::Jak2) {
+      if (m_static_info.global_effects != 0) {
+        forms.push_back(pretty_print::to_symbol(
+            fmt::format(":global-effects {}", m_static_info.global_effects)));
       }
-      forms.push_back(pretty_print::build_list(cloth_list));
+      if (!m_static_info.clothing.empty()) {
+        std::vector<goos::Object> cloth_list;
+        forms.push_back(pretty_print::to_symbol(":clothing"));
+        for (const auto& p : m_static_info.clothing) {
+          auto macro = p.to_list(m_static_info.art_group_name + "-ag", env);
+          cloth_list.push_back(macro);
+        }
+        forms.push_back(pretty_print::build_list(cloth_list));
+      }
     }
   }
 
