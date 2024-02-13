@@ -841,7 +841,7 @@
    (heap-cur         pointer                                                           :offset-assert 104) ;; guessed by decompiler
    (stack-frame-top  stack-frame                                                       :offset-assert 108) ;; guessed by decompiler
    (connection-list  connectable                                              :inline  :offset-assert 112)
-   (stack            uint8                                                    :dynamic :offset-assert 128) ;; guessed by decompiler
+   (stack            uint8                                                    :dynamic :offset-assert 128 :score -1) ;; guessed by decompiler
    )
   :method-count-assert 14
   :size-assert         #x80
@@ -1397,7 +1397,7 @@
   )
 
 (deftype vector2h (structure)
-  ((data int16 2 :offset-assert 0)
+  ((data int16 2 :offset-assert 0 :score -1)
    (x    int16   :offset        0)
    (y    int16   :offset        2)
    )
@@ -4560,10 +4560,10 @@
    (buzz-pause-val     uint8       1 :offset-assert 102) ;; guessed by decompiler
    (buzz-pause-time    uint8         :offset-assert 103)
    (buzz-time          time-frame  2 :offset-assert 104) ;; guessed by decompiler
-   (buzz               basic         :offset-assert 120)
+   (buzz               symbol        :offset-assert 120)
    (buzz-act           int32         :offset-assert 124)
-   (change-time        uint64        :offset-assert 128) ;; time-frame
-   (real-change-time   uint64        :offset-assert 136)
+   (change-time        time-frame    :offset-assert 128) ;; time-frame
+   (real-change-time   time-frame    :offset-assert 136)
    (old-rightx         uint8       2 :offset-assert 144) ;; guessed by decompiler
    (old-righty         uint8       2 :offset-assert 146) ;; guessed by decompiler
    (old-leftx          uint8       2 :offset-assert 148) ;; guessed by decompiler
@@ -7003,7 +7003,7 @@
   )
 
 (deftype mood-range (structure)
-  ((data      float   4 :offset-assert 0) ;; guessed by decompiler
+  ((data      float   4 :offset-assert 0 :score -1) ;; guessed by decompiler
    (min-cloud float     :offset 0)
    (max-cloud float     :offset 4)
    (min-fog   float     :offset 8)
@@ -7291,26 +7291,40 @@
   )
 
 (deftype level-borrow-info (basic)
-  ((alias       basic     :offset-assert 4)
+  ((alias       symbol   :offset-assert 4)
    (borrow-size uint16 5 :offset-assert 8)
-   (borrow-info object 5 :offset-assert 20)
+   (borrow-info symbol 5 :offset-assert 20)
    )
   :method-count-assert 9
   :size-assert         #x28
   :flag-assert         #x900000028
   )
 
-;; +++level-h:load-buffer-mode
-(defenum load-buffer-mode
+;; +++level-h:level-memory-mode
+(defenum level-memory-mode
   :type uint32
-  (small-edge 0)
-  (small-center 1)
-  (medium 2)
-  (large 3)
-  (borrow 4)
-  (ten 10)
+  (micro 0)
+  (tiny 1)
+  (tiny-edge 2)
+  (tiny-center 3)
+  (small-edge 4)
+  (small-center 5)
+  (city-center 6)
+  (medium 7)
+  (large 8)
+  (alias 9)
+  (borrow 10)
+  (borrow0 11)
+  (borrow1 12)
+  (borrow2 13)
+  (borrow3 14)
+  (borrow4 15)
+  (borrow-city-small 16)
+  (tiny-center-small 17)
+  (tiny-center-micro 18)
+  (city-tiny-edge 19)
   )
-;; ---level-h:load-buffer-mode
+;; ---level-h:level-memory-mode
 
 ;; +++level-h:task-mask
 (defenum task-mask
@@ -7343,27 +7357,110 @@
   :type uint32
   (bigmap-id-0 0)
   (bigmap-id-1 1)
-  (bigmap-id-2 2)
-  (bigmap-id-3 3)
-  (bigmap-id-4 4)
-  (bigmap-id-5 5)
-  (bigmap-id-6 6)
-  (bigmap-id-7 7)
+  (desert 2)
+  (factory 3)
+  (forest 4)
+  (mhcity 5)
+  (mine 6)
+  (nest 7)
   (bigmap-id-8 8)
-  (bigmap-id-9 9)
-  (bigmap-id-10 10)
+  (no-map 9)
+  (precursor 10)
   (bigmap-id-11 11)
-  (bigmap-id-12 12)
-  (bigmap-id-13 13)
-  (bigmap-id-14 14)
-  (bigmap-id-15 15)
-  (bigmap-id-16 16)
-  (bigmap-id-17 17)
+  (rubble 12)
+  (sewer0 13)
+  (sewer1 14)
+  (sewer2 15)
+  (stadium 16)
+  (temple 17)
   (bigmap-id-18 18)
   (bigmap-id-19 19)
   (bigmap-id-20 20)
+  (tower 21)
+  (volcano 22)
+  (wascity 23)
   )
 ;; ---level-h:bigmap-id
+
+;; +++level-h:level-flags
+(defenum level-flags
+  :type uint32
+  :bitfield #t
+  (lf0 0)
+  (lf1 1)
+  (lf2 2)
+  (lf3 3)
+  (lf4 4)
+  (lf5 5)
+  (lf6 6)
+  (lf7 7)
+  (lf8 8)
+  (lf9 9)
+  (lf10 10)
+  (lf11 11)
+  (lf12 12)
+  (lf13 13)
+  (lf14 14)
+  (lf15 15)
+  (lf16 16)
+  (lf17 17)
+  (lf18 18)
+  (lf19 19)
+  (lf20 20)
+  (lf21 21)
+  (lf22 22)
+  (lf23 23)
+  (lf24 24)
+  (lf25 25)
+  (lf26 26)
+  (lf27 27)
+  (lf28 28)
+  (lf29 29)
+  (lf30 30)
+  (lf31 31)
+  )
+;; ---level-h:level-flags
+
+;; +++level-h:city-map-bits
+(defenum city-map-bits
+  :type uint64
+  :bitfield #t
+  (cmb0 0)
+  (cmb1 1)
+  (cmb2 2)
+  (cmb3 3)
+  (cmb4 4)
+  (cmb5 5)
+  (cmb6 6)
+  (cmb7 7)
+  (cmb8 8)
+  (cmb9 9)
+  (cmb10 10)
+  (cmb11 11)
+  (cmb12 12)
+  (cmb13 13)
+  (cmb14 14)
+  (cmb15 15)
+  (cmb16 16)
+  (cmb17 17)
+  (cmb18 18)
+  (cmb19 19)
+  (cmb20 20)
+  (cmb21 21)
+  (cmb22 22)
+  (cmb23 23)
+  (cmb24 24)
+  (cmb25 25)
+  (cmb26 26)
+  (cmb27 27)
+  (cmb28 28)
+  (cmb29 29)
+  (cmb30 30)
+  (cmb31 31)
+  (cmb32 32)
+  (cmb33 33)
+  )
+;; ---level-h:city-map-bits
 
 (deftype level-load-info (basic)
   ((name-list         symbol           6       :offset-assert 4) ;; guessed by decompiler
@@ -7375,16 +7472,16 @@
    (index             int16                    :offset-assert 28)
    (task-level        uint8                    :offset-assert 30)
    (part-engine-max   uint8                    :offset-assert 31) ;; int32
-   (master-level      basic                    :offset-assert 32)
-   (level-flags       uint32                   :offset-assert 36)
+   (master-level      symbol                   :offset-assert 32)
+   (level-flags       level-flags              :offset-assert 36)
    (packages          pair                     :offset-assert 40) ;; guessed by decompiler
    (run-packages      pair                     :offset-assert 44) ;; guessed by decompiler
-   (memory-mode       load-buffer-mode         :offset-assert 48) ;; guessed by decompiler
+   (memory-mode       level-memory-mode        :offset-assert 48) ;; guessed by decompiler
    (music-bank        symbol                   :offset-assert 52) ;; guessed by decompiler
    (sound-reverb      float                    :offset-assert 56)
    (extra-sound-bank  pair                     :offset-assert 60) ;; guessed by decompiler
    (mood-func         symbol                   :offset-assert 64) ;; guessed by decompiler
-   (special-mood      basic                    :offset-assert 68)
+   (special-mood      symbol                   :offset-assert 68)
    (ocean             symbol                   :offset-assert 72) ;; guessed by decompiler
    (ocean-height      float                    :offset-assert 76)
    (ocean-alpha       float                    :offset-assert 80)
@@ -7394,13 +7491,13 @@
    (draw-priority     float                    :offset-assert 92)
    (base-task-mask    task-mask                :offset-assert 96)
    (buffer-size       uint32                   :offset-assert 100)
-   (city-map-bits     uint64                   :offset-assert 104)
+   (city-map-bits     city-map-bits            :offset-assert 104)
    (bigmap-id         bigmap-id                :offset-assert 112) ;; guessed by decompiler
    (continues         pair                     :offset-assert 116) ;; guessed by decompiler
-   (callback-list     basic                    :offset-assert 120)
-   (borrow            basic                    :offset-assert 124)
+   (callback-list     pair                     :offset-assert 120)
+   (borrow            level-borrow-info        :offset-assert 124)
    (bottom-height     meters                   :offset-assert 128)
-   (fog-height        float                    :offset-assert 132)
+   (fog-height        meters                   :offset-assert 132)
    (max-rain          float                    :offset-assert 136)
    (fog-mult          float                    :offset-assert 140)
    (mood-range        mood-range       :inline :offset-assert 144)
@@ -7410,7 +7507,7 @@
   :flag-assert         #xb000000a0
   ;; field extra-sound-bank uses ~A with a signed load.
   (:methods
-    (level-load-info-method-9 (_type_) none) ;; 9
+    (level-load-info-method-9 (_type_ int) object) ;; 9
     (level-load-info-method-10 (_type_) none) ;; 10
     )
   )
@@ -7477,7 +7574,7 @@
    (load-buffer               uint32                                 2       :offset-assert 4608) ;; guessed by decompiler
    (load-buffer-size          uint32                                         :offset-assert 4616)
    (load-buffer-last          dgo-header                                     :offset-assert 4620) ;; uint32
-   (load-buffer-mode          load-buffer-mode                               :offset-assert 4624) ;; guessed by decompiler
+   (load-buffer-mode          level-memory-mode                               :offset-assert 4624) ;; guessed by decompiler
    (display-start-time        uint64                                         :offset-assert 4632) ;; time-frame
    (memory-mask uint32 :offset-assert 4640)
    ; (UNKNOWN                   UNKNOWN                                        :offset-assert -1) ;; field could not be read.
@@ -7587,7 +7684,7 @@
   :flag-assert         #x1f0000ea54
   ;; Failed to read some fields.
   (:methods
-    (level-group-method-9 () none) ;; 9 ;; (level-get (_type_ symbol) level)
+    (level-get (_type_ symbol) level) ;; 9
     (level-group-method-10 () none) ;; 10 ;; (level-get-with-status (_type_ symbol) level)
     (get-level-by-heap-ptr-and-status (_type_ pointer symbol) level) ;; 11
     (level-group-method-12 () none) ;; 12 ;; (level-get-for-use (_type_ symbol symbol) level)
@@ -7598,13 +7695,13 @@
     (level-group-method-17 () none) ;; 17 ;; (actors-update (_type_) none)
     (level-group-method-18 () none) ;; 18 ;; (update-nav-meshes-method (_type_) none)
     (level-group-method-19 () none) ;; 19 ;; (level-update (_type_) none)
-    (level-group-method-20 () none) ;; 20 ;; (level-get-target-inside (_type_) level)
+    (level-get-target-inside (_type_) level) ;; 20
     (level-group-method-21 () none) ;; 21 ;; (alloc-levels-if-needed (_type_ symbol) none)
-    (level-group-method-22 () none) ;; 22 ;; (load-commands-set! (_type_ pair) none)
+    (art-group-get-by-name (_type_ string (pointer uint32)) art-group) ;; 22 ;; (load-commands-set! (_type_ pair) none)
     (level-group-method-23 () none) ;; 23 ;; (art-group-get-by-name (_type_ string (pointer uint32)) art-group)
     (level-group-method-24 () none) ;; 24 ;; (alt-load-command-get-index (_type_ symbol int) pair)
     (level-group-method-25 () none) ;; 25 ;; (update-vis-volumes (_type_) none)
-    (level-group-method-26 () none) ;; 26 ;; (update-vis-volumes-from-nav-mesh (_type_) none)
+    (level-group-method-26 (_type_ symbol) symbol) ;; 26 ;; (update-vis-volumes-from-nav-mesh (_type_) none)
     (level-group-method-27 () none) ;; 27 ;; (print-volume-sizes (_type_) none)
     (level-group-method-28 () none) ;; 28 ;; (level-status (_type_ symbol) symbol)
     (level-group-method-29 () none) ;; 29 ;; (load-in-progress? (_type_) symbol)
@@ -8643,38 +8740,38 @@
   (text-040c #x040c)
   (text-040d #x040d)
   (text-040e #x040e)
-  (text-0443 #x0443)
-  (text-0444 #x0444)
-  (text-0445 #x0445)
-  (text-0446 #x0446)
-  (text-0447 #x0447)
-  (text-0448 #x0448)
-  (text-0449 #x0449)
-  (text-044b #x044b)
-  (text-044c #x044c)
-  (text-044d #x044d)
-  (text-044e #x044e)
+  (progress-missions-mine-explore #x0443)
+  (progress-missions-mine-blow #x0444)
+  (progress-missions-forest-turn-on-machine #x0445)
+  (progress-missions-arena-training-1 #x0446)
+  (progress-missions-arena-fight-1 #x0447)
+  (progress-missions-wascity-chase #x0448)
+  (progress-missions-sewer-hum-kg #x0449)
+  (progress-missions-desert-artiface-race-1 #x044b)
+  (progress-missions-factory-sky-battle #x044c)
+  (progress-missions-nest-eggs #x044d)
+  (progress-missions-city-blow-barricade #x044e)
   (text-044f #x044f)
   (text-0450 #x0450)
   (text-0451 #x0451)
   (text-0452 #x0452)
-  (text-0453 #x0453)
-  (text-0454 #x0454)
-  (text-0456 #x0456)
-  (text-0457 #x0457)
-  (text-0458 #x0458)
-  (text-0459 #x0459)
-  (text-045a #x045a)
-  (text-045b #x045b)
-  (text-045c #x045c)
-  (text-045d #x045d)
-  (text-045e #x045e)
-  (text-045f #x045f)
-  (text-0460 #x0460)
-  (text-0461 #x0461)
-  (text-0462 #x0462)
-  (text-0463 #x0463)
-  (text-0464 #x0464)
+  (progress-missions-wascityb-game #x0453)
+  (progress-missions-desert-course-race #x0454)
+  (progress-missions-desert-hover #x0456)
+  (progress-missions-arena-fight-2 #x0457)
+  (progress-missions-arena-fight-3 #x0458)
+  (progress-missions-desert-catch-lizards #x0459)
+  (progress-missions-desert-rescue #x045a)
+  (progress-missions-wascity-gungame #x045b)
+  (progress-missions-temple-climb #x045c)
+  (progress-missions-temple-oracle #x045d)
+  (progress-missions-temple-tests #x045e)
+  (progress-missions-desert-glide #x045f)
+  (progress-missions-volcano-darkeco #x0460)
+  (progress-missions-desert-oasis-defense #x0461)
+  (progress-missions-mine-boss #x0462)
+  (progress-missions-wascity-leaper-race #x0463)
+  (progress-missions-comb-travel #x0464)
   (text-0465 #x0465)
   (text-0466 #x0466)
   (text-0467 #x0467)
@@ -8686,39 +8783,39 @@
   (text-053e #x053e)
   (text-0546 #x0546)
   (text-0547 #x0547)
-  (text-0548 #x0548)
-  (text-0549 #x0549)
-  (text-054a #x054a)
-  (text-054b #x054b)
-  (text-054c #x054c)
-  (text-054d #x054d)
-  (text-054e #x054e)
-  (text-054f #x054f)
-  (text-0550 #x0550)
-  (text-0551 #x0551)
-  (text-0552 #x0552)
-  (text-0553 #x0553)
-  (text-0554 #x0554)
-  (text-0555 #x0555)
-  (text-0556 #x0556)
-  (text-0557 #x0557)
-  (text-0558 #x0558)
-  (text-0559 #x0559)
-  (text-055a #x055a)
-  (text-055b #x055b)
-  (text-055c #x055c)
+  (progress-missions-watch-intro-movie #x0548)
+  (progress-missions-sewer-met-hum #x0549)
+  (progress-missions-city-port-fight #x054a)
+  (progress-missions-city-port-attack #x054b)
+  (progress-missions-city-gun-course-1 #x054c)
+  (progress-missions-city-sniper-fight #x054d)
+  (progress-missions-sewer-kg-met #x054e)
+  (progress-missions-city-destroy-darkeco #x054f)
+  (progress-missions-forest-kill-plants #x0550)
+  (progress-missions-city-destroy-grid #x0551)
+  (progress-missions-city-hijack-vehicle #x0552)
+  (progress-missions-city-port-assault #x0553)
+  (progress-missions-city-gun-course-2 #x0554)
+  (progress-missions-city-protect-hq #x0555)
+  (progress-missions-city-power-game #x0556)
+  (progress-missions-nest-hunt #x0557)
+  (progress-missions-desert-beast-battle #x0558)
+  (progress-missions-desert-jump-mission #x0559)
+  (progress-missions-desert-chase-marauders #x055a)
+  (progress-missions-desert-artifact-race-2 #x055b)
+  (progress-missions-forest-ring-chase #x055c)
   (text-055d #x055d)
-  (text-055e #x055e)
-  (text-055f #x055f)
-  (text-0562 #x0562)
-  (text-0563 #x0563)
-  (text-0564 #x0564)
-  (text-0565 #x0565)
-  (text-0566 #x0566)
-  (text-0567 #x0567)
-  (text-0568 #x0568)
-  (text-0569 #x0569)
-  (text-056a #x056a)
+  (progress-missions-factory-boss #x055e)
+  (progress-missions-temple-defend #x055f)
+  (progress-missions-wascity-defend #x0562)
+  (progress-missions-precursor-tour #x0563)
+  (progress-missions-city-blow-tower #x0564)
+  (progress-missions-tower-destroy #x0565)
+  (progress-missions-palace-ruins-patrol #x0566)
+  (progress-missions-palace-ruins-attack #x0567)
+  (progress-missions-comb-wild-ride #x0568)
+  (progress-missions-precursor-destroy-ship #x0569)
+  (progress-missions-desert-final-boss #x056a)
   (text-056b #x056b)
   (text-056c #x056c)
   (text-056d #x056d)
@@ -8845,7 +8942,7 @@
   (text-05e8 #x05e8)
   (text-05e9 #x05e9)
   (text-05ea #x05ea)
-  (text-05eb #x05eb)
+  (progress-missions-desert-turtle-training #x05eb)
   (text-05ec #x05ec)
   (progress-picture-contrast #x05ed)
   (progress-picture-brightness #x05ee)
@@ -8911,24 +9008,24 @@
   (text-062c #x062c)
   (progress-controls #x062d)
   (text-062e #x062e)
-  (text-0630 #x0630)
-  (text-0631 #x0631)
-  (text-0632 #x0632)
-  (text-0633 #x0633)
-  (text-0634 #x0634)
-  (text-0635 #x0635)
-  (text-0636 #x0636)
-  (text-0637 #x0637)
-  (text-0638 #x0638)
-  (text-0639 #x0639)
-  (text-063a #x063a)
-  (text-063b #x063b)
-  (text-063d #x063d)
-  (text-063e #x063e)
-  (text-063f #x063f)
-  (text-0640 #x0640)
-  (text-0641 #x0641)
-  (text-0642 #x0642)
+  (talk-to-damas #x0630)
+  (talk-to-seem #x0631)
+  (go-to-arena #x0632)
+  (defeat-dark-satelite #x0633)
+  (race-to-city #x0634)
+  (nest-eggs-return-to-spargus #x0635)
+  (reach-monk-temple #x0636)
+  (oasis-find-ashelin #x0637)
+  (talk-to-torn-naughty-ottsel #x0638)
+  (talk-to-tess #x0639)
+  (bring-vehicle-to-naughty-ottsel #x063a)
+  (reach-freedom-hq #x063b)
+  (find-power-room #x063d)
+  (talk-to-sig #x063e)
+  (check-out-astro-viewer #x063f)
+  (find-hellcat #x0640)
+  (progress-missions-factory-assault #x0641)
+  (talk-to-samos #x0642)
   (text-0643 #x0643)
   (scene-temple-climb-intro #x0644)
   (text-0645 #x0645)
@@ -9052,9 +9149,9 @@
   (empty-string #x06bb)
   (progress-demo-return-to-title #x06bc)
   (text-06bd #x06bd)
-  (text-06be #x06be)
-  (text-06bf #x06bf)
-  (text-06c0 #x06c0)
+  (meet-old-friends #x06be)
+  (talk-to-torn-hq #x06bf)
+  (wascity-defend-return-to-spargus #x06c0)
   (progress-audio-language #x06c1)
   (text-06c2 #x06c2)
   (progress-inventory-v-turtle #x06c3)
@@ -9119,10 +9216,10 @@
   (text-0776 #x0776)
   (scene-catacomb-get-shield #x0778)
   (text-0779 #x0779)
-  (text-077a #x077a)
+  (mission-fail-marauders-escaped #x077a)
   (text-077b #x077b)
   (text-077c #x077c)
-  (text-078d #x078d)
+  (talk-to-kleiver #x078d)
   (text-07b3 #x07b3)
   (text-07b4 #x07b4)
   (text-07b5 #x07b5)
@@ -9314,7 +9411,7 @@
   (text-0895 #x0895)
   (text-0896 #x0896)
   (text-0897 #x0897)
-  (text-0898 #x0898)
+  (talk-to-ashelin #x0898)
   (text-0899 #x0899)
   )
 ;; ---text-h:text-id
@@ -10071,14 +10168,14 @@
   (feature20 20)
   (feature21 21)
   (feature22 22)
-  (feature23 23)
-  (feature24 24)
-  (feature25 25)
-  (feature26 26)
-  (feature27 27)
-  (feature28 28)
-  (feature29 29)
-  (feature30 30)
+  (gun-upgrade-yellow-ammo-1 23)
+  (gun-upgrade-yellow-ammo-2 24)
+  (gun-upgrade-red-ammo-1 25)
+  (gun-upgrade-red-ammo-2 26)
+  (gun-upgrade-blue-ammo-1 27)
+  (gun-upgrade-blue-ammo-2 28)
+  (gun-upgrade-dark-ammo-1 29)
+  (gun-upgrade-dark-ammo-2 30)
   (feature31 31)
   (feature32 32)
   (feature33 33)
@@ -10119,7 +10216,7 @@
 (defenum game-secrets
   :type uint64
   :bitfield #t
-  (gs0 0)
+  (hero-mode 0)
   (gs1 1)
   (gs2 2)
   (gs3 3)
@@ -10173,10 +10270,10 @@
   (gs51 51)
   (gs52 52)
   (gs53 53)
-  (gs54 54)
-  (gs55 55)
-  (gs56 56)
-  (gs57 57)
+  (gun-upgrade-ammo-red 54)
+  (gun-upgrade-ammo-yellow 55)
+  (gun-upgrade-ammo-blue 56)
+  (gun-upgrade-ammo-dark 57)
   (gs58 58)
   (gs59 59)
   (gs60 60)
@@ -10186,19 +10283,62 @@
   )
 ;; ---settings-h:game-secrets
 
+;; +++settings-h:game-score
+(defenum game-score
+  :type uint64
+  (none)
+  (gs0)
+  (gs1)
+  (gs2)
+  (gs3)
+  (gs4)
+  (gs5)
+  (gs6)
+  (gs7)
+  (gs8)
+  (gs9)
+  (gs10)
+  (gs11)
+  (gs12)
+  (gs13)
+  (gs14)
+  (gs15)
+  (gs16)
+  (gs17)
+  (gs18)
+  (gs19)
+  (gs20)
+  )
+;; ---settings-h:game-score
+
+;; +++settings-h:game-vehicles
+(defenum game-vehicles
+  :type uint64
+  :bitfield #t
+  (v-turtle 0)
+  (v-snake 1)
+  (v-scorpion 2)
+  (v-toad 3)
+  (v-fox 4)
+  (v-rhino 5)
+  (v-mirage 6)
+  (v-x-ride 7)
+  )
+;; ---settings-h:game-vehicles
+
 (deftype user-setting-data (structure)
-  ((border-mode            symbol              :offset-assert 0) ;; guessed by decompiler
-   (process-mask           process-mask        :offset-assert 4) ;; guessed by decompiler
+  ((border-mode            symbol              :offset-assert 0)
+   (process-mask           process-mask        :offset-assert 4)
    (unknown-int32          int32               :offset-assert 8)
-   (language               language-enum       :offset-assert 12) ;; language-enum
-   (movie                  (pointer process)   :offset 32) ;; guessed by decompiler
-   (talking                (pointer process)   :offset-assert 36) ;; guessed by decompiler
-   (spooling               (pointer process)   :offset-assert 40) ;; guessed by decompiler
-   (hint                   (pointer process)   :offset-assert 44) ;; guessed by decompiler
-   (ambient                (pointer process)   :offset-assert 48) ;; guessed by decompiler
-   (video-mode             symbol              :offset-assert 52) ;; guessed by decompiler
-   (aspect-ratio           symbol              :offset-assert 56) ;; guessed by decompiler
-   (auto-save              symbol              :offset 64) ;; guessed by decompiler
+   (language               language-enum       :offset-assert 12)
+   (movie                  (pointer process)   :offset 32)
+   (talking                (pointer process)   :offset-assert 36)
+   (spooling               (pointer process)   :offset-assert 40)
+   (hint                   (pointer process)   :offset-assert 44)
+   (ambient                (pointer process)   :offset-assert 48)
+   (video-mode             symbol              :offset-assert 52)
+   (aspect-ratio           symbol              :offset-assert 56)
+   (auto-save              symbol              :offset 64)
    (bg-r                   float               :offset-assert 68)
    (bg-g                   float               :offset-assert 72)
    (bg-b                   float               :offset-assert 76)
@@ -10207,19 +10347,20 @@
    (bg-a-force             float               :offset-assert 88)
    (blur-a                 float               :offset-assert 92)
    (blur-a-speed           float               :offset-assert 96)
-   (allow-progress         symbol              :offset-assert 100) ;; guessed by decompiler
-   (allow-pause            symbol              :offset-assert 104) ;; guessed by decompiler
-   (movie-name             symbol              :offset 120) ;; guessed by decompiler
-   (weather                symbol              :offset-assert 124) ;; guessed by decompiler
+   (allow-progress         symbol              :offset-assert 100)
+   (allow-pause            symbol              :offset-assert 104)
+   (movie-name             symbol              :offset 120)
+   (weather                symbol              :offset-assert 124)
    (task-mask              task-mask           :offset 140)
-   (duck                   symbol              :offset 148) ;; guessed by decompiler
-   (attack                 symbol              :offset-assert 152) ;; guessed by decompiler
-   (gun                    symbol              :offset-assert 156) ;; guessed by decompiler
-   (board                  symbol              :offset-assert 160) ;; guessed by decompiler
-   (jump                   symbol              :offset-assert 164) ;; guessed by decompiler
+   (unknown-symbol         symbol              :offset 144) ;; added (method 9 game-info)
+   (duck                   symbol              :offset 148)
+   (attack                 symbol              :offset-assert 152)
+   (gun                    symbol              :offset-assert 156)
+   (board                  symbol              :offset-assert 160)
+   (jump                   symbol              :offset-assert 164)
    (speed-mult             float               :offset-assert 168)
-   (features               uint64              :offset-assert 176) ;; game-feature
-   (vehicles               uint64              :offset-assert 184)
+   (features               game-feature        :offset-assert 176)
+   (vehicles               game-vehicles        :offset-assert 184)
    (sfx-volume             float               :offset-assert 192)
    (sfx-volume-movie       float               :offset-assert 196)
    (music-volume           float               :offset-assert 200)
@@ -10232,48 +10373,48 @@
    (talker-volume          float               :offset-assert 228)
    (sound-flava            uint8               :offset-assert 232)
    (sound-flava-priority   float               :offset-assert 236)
-   (mode-sound-bank        uint32              :offset-assert 240) ;; guessed by decompiler
+   (mode-sound-bank        uint32              :offset-assert 240)
    (sound-excitement       float               :offset-assert 244)
    (sound-reverb           float               :offset-assert 248)
    (stereo-mode            int32               :offset-assert 252)
-   (music                  symbol              :offset-assert 256) ;; guessed by decompiler
+   (music                  symbol              :offset-assert 256)
    (sound-stinger          int32               :offset-assert 260)
-   (spool-anim             spool-anim          :offset-assert 264) ;; guessed by decompiler
+   (spool-anim             spool-anim          :offset-assert 264)
    (sound-mode             uint32              :offset-assert 268)
-   (task-manager           (pointer process)   :offset-assert 272) ;; guessed by decompiler
-   (task                   symbol              :offset-assert 276) ;; guessed by decompiler
-   (airlock                symbol              :offset-assert 280) ;; guessed by decompiler
-   (minimap                uint32              :offset-assert 284) ;; guessed by decompiler
+   (task-manager           (pointer process)   :offset-assert 272)
+   (task                   symbol              :offset-assert 276)
+   (airlock                symbol              :offset-assert 280)
+   (minimap                uint32              :offset-assert 284)
    (sound-tune             uint32              :offset-assert 288)
-   (allow-continue         symbol              :offset-assert 292) ;; guessed by decompiler
-   (subtitle               symbol              :offset 304) ;; guessed by decompiler
-   (doorway                symbol              :offset-assert 308) ;; guessed by decompiler
-   (gem                    symbol              :offset-assert 312) ;; guessed by decompiler
-   (half-speed             symbol              :offset-assert 316) ;; guessed by decompiler
-   (gun-buoy               symbol              :offset-assert 320) ;; guessed by decompiler
-   (double-jump            symbol              :offset-assert 324) ;; guessed by decompiler
-   (pilot                  symbol              :offset-assert 328) ;; guessed by decompiler
-   (pilot-exit             symbol              :offset-assert 332) ;; guessed by decompiler
-   (pilot-death            basic               :offset-assert 336)
-   (speech-control         symbol              :offset-assert 340) ;; guessed by decompiler
-   (vehicle-hijacking      symbol              :offset-assert 344) ;; guessed by decompiler
-   (darkjak                symbol              :offset-assert 348) ;; guessed by decompiler
-   (lightjak               basic               :offset-assert 352)
-   (endlessfall            symbol              :offset-assert 356) ;; guessed by decompiler
+   (allow-continue         symbol              :offset-assert 292)
+   (subtitle               symbol              :offset 304)
+   (doorway                symbol              :offset-assert 308)
+   (gem                    symbol              :offset-assert 312)
+   (half-speed             symbol              :offset-assert 316)
+   (gun-buoy               symbol              :offset-assert 320)
+   (double-jump            symbol              :offset-assert 324)
+   (pilot                  symbol              :offset-assert 328)
+   (pilot-exit             symbol              :offset-assert 332)
+   (pilot-death            symbol              :offset-assert 336)
+   (speech-control         symbol              :offset-assert 340)
+   (vehicle-hijacking      symbol              :offset-assert 344)
+   (darkjak                symbol              :offset-assert 348)
+   (lightjak               symbol              :offset-assert 352)
+   (endlessfall            symbol              :offset-assert 356)
    (rain                   float               :offset-assert 360)
    (snow                   float               :offset-assert 364)
-   (exclusive-load         symbol              :offset-assert 368) ;; guessed by decompiler
-   (render                 symbol              :offset-assert 372) ;; guessed by decompiler
-   (allow-timeout          symbol              :offset-assert 376) ;; guessed by decompiler
-   (mirror                 symbol              :offset-assert 380) ;; guessed by decompiler
+   (exclusive-load         symbol              :offset-assert 368)
+   (render                 symbol              :offset-assert 372)
+   (allow-timeout          symbol              :offset-assert 376)
+   (mirror                 symbol              :offset-assert 380)
    (movie-skip-frame       float               :offset-assert 384)
-   (allow-blackout         symbol              :offset-assert 388) ;; guessed by decompiler
+   (allow-blackout         symbol              :offset-assert 388)
    (race-minimap           int32               :offset-assert 392)
-   (beard                  symbol              :offset-assert 396) ;; guessed by decompiler
-   (ignore-target          symbol              :offset-assert 400) ;; guessed by decompiler
-   (subtitle-language      uint8               :offset-assert 404) ;; language-enum
-   (sound-bank-load        symbol              :offset-assert 408) ;; guessed by decompiler
-   (allow-error            symbol              :offset-assert 412) ;; guessed by decompiler
+   (beard                  symbol              :offset-assert 396)
+   (ignore-target          symbol              :offset-assert 400)
+   (subtitle-language      language-enum       :offset-assert 404)
+   (sound-bank-load        symbol              :offset-assert 408)
+   (allow-error            symbol              :offset-assert 412)
    (under-water-pitch-mod  float               :offset-assert 416)
    (slow-time              float               :offset-assert 420)
    (restart-info           basic               :offset 428)
@@ -10281,11 +10422,11 @@
    (death-info             basic               :offset-assert 436)
    (quit-info              basic               :offset-assert 440)
    (extra-bank-count       uint32              :offset-assert 444)
-   (extra-bank             pair              3 :offset-assert 448) ;; guessed by decompiler
+   (extra-bank             pair              3 :offset-assert 448)
    (borrow-count           uint32              :offset-assert 460)
-   (borrow                 pair              3 :offset-assert 464) ;; guessed by decompiler
+   (borrow                 pair              3 :offset-assert 464)
    (exclusive-task-count   uint32              :offset-assert 476)
-   (exclusive-task         int32             3 :offset-assert 480) ;; guessed by decompiler
+   (exclusive-task         int32             3 :offset-assert 480)
    (level-trans-time       int32               :offset-assert 492)
    (scarf                  float               :offset-assert 496)
    (goggles                float               :offset-assert 500)
@@ -10294,10 +10435,11 @@
    (letterbox-speed        float               :offset-assert 576)
    (borrow-city-count      uint32              :offset 620)
    (borrow-city            pair              3 :offset-assert 624)
+   (unknown-symbol0        symbol              :offset 716)
    (wind-vec               vector              :offset 736) ;; added (method 11 cloth-system)
    (wind                   float               :offset 740) ;; added (method 11 cloth-system)
    (audio-language         language-enum       :offset 748)
-   (ear-handle           handle :offset 784) ;; added, used in gsound.
+   (ear-handle             handle              :offset 784) ;; added, used in gsound.
    (special-volume         float               :offset 796)
    (pad uint8 108 :offset 800) ;; added
    )
@@ -13311,6 +13453,136 @@
   (gaticon-67)
   (gaticon-68)
   (gaticon-69)
+  (gaticon-70)
+  (gaticon-71)
+  (gaticon-72)
+  (gaticon-73)
+  (gaticon-74)
+  (gaticon-75)
+  (gaticon-76)
+  (gaticon-77)
+  (gaticon-78)
+  (gaticon-79)
+  (gaticon-80)
+  (gaticon-81)
+  (gaticon-82)
+  (gaticon-83)
+  (gaticon-84)
+  (gaticon-85)
+  (gaticon-86)
+  (gaticon-87)
+  (gaticon-88)
+  (gaticon-89)
+  (gaticon-90)
+  (gaticon-91)
+  (gaticon-92)
+  (gaticon-93)
+  (gaticon-94)
+  (gaticon-95)
+  (gaticon-96)
+  (gaticon-97)
+  (gaticon-98)
+  (gaticon-99)
+  (gaticon-100)
+  (gaticon-101)
+  (gaticon-102)
+  (gaticon-103)
+  (gaticon-104)
+  (gaticon-105)
+  (gaticon-106)
+  (gaticon-107)
+  (gaticon-108)
+  (gaticon-109)
+  (gaticon-110)
+  (gaticon-111)
+  (gaticon-112)
+  (gaticon-113)
+  (gaticon-114)
+  (gaticon-115)
+  (gaticon-116)
+  (gaticon-117)
+  (gaticon-118)
+  (gaticon-119)
+  (gaticon-120)
+  (gaticon-121)
+  (gaticon-122)
+  (gaticon-123)
+  (gaticon-124)
+  (gaticon-125)
+  (gaticon-126)
+  (gaticon-127)
+  (gaticon-128)
+  (gaticon-129)
+  (gaticon-130)
+  (gaticon-131)
+  (gaticon-132)
+  (gaticon-133)
+  (gaticon-134)
+  (gaticon-135)
+  (gaticon-136)
+  (gaticon-137)
+  (gaticon-138)
+  (gaticon-139)
+  (gaticon-140)
+  (gaticon-141)
+  (gaticon-142)
+  (gaticon-143)
+  (gaticon-144)
+  (gaticon-145)
+  (gaticon-146)
+  (gaticon-147)
+  (gaticon-148)
+  (gaticon-149)
+  (gaticon-150)
+  (gaticon-151)
+  (gaticon-152)
+  (gaticon-153)
+  (gaticon-154)
+  (gaticon-155)
+  (gaticon-156)
+  (gaticon-157)
+  (gaticon-158)
+  (gaticon-159)
+  (gaticon-160)
+  (gaticon-161)
+  (gaticon-162)
+  (gaticon-163)
+  (gaticon-164)
+  (gaticon-165)
+  (gaticon-166)
+  (gaticon-167)
+  (gaticon-168)
+  (gaticon-169)
+  (gaticon-170)
+  (gaticon-171)
+  (gaticon-172)
+  (gaticon-173)
+  (gaticon-174)
+  (gaticon-175)
+  (gaticon-176)
+  (gaticon-177)
+  (gaticon-178)
+  (gaticon-179)
+  (gaticon-180)
+  (gaticon-181)
+  (gaticon-182)
+  (gaticon-183)
+  (gaticon-184)
+  (gaticon-185)
+  (gaticon-186)
+  (gaticon-187)
+  (gaticon-188)
+  (gaticon-189)
+  (gaticon-190)
+  (gaticon-191)
+  (gaticon-192)
+  (gaticon-193)
+  (gaticon-194)
+  (gaticon-195)
+  (gaticon-196)
+  (gaticon-197)
+  (gaticon-198)
+  (gaticon-199)
   )
 ;; ---game-task-h:game-task-icon
 
@@ -13324,15 +13596,15 @@
    (tex game-task-icon :offset-assert 6) ;; added
    (icon uint16 :offset 6 :score -100)
    (flags game-task-flags :offset 7)
-   (scene basic :offset 8)
+   (scene string :offset 8)
    (distance meters :offset-assert 12)
    )
   )
 
 (deftype resetter-spec (structure)
-  ((continue   basic          :offset-assert 0)
+  ((continue   string         :offset-assert 0)
    (node       game-task-node :offset-assert 4)
-   (reset-mode basic          :offset-assert 8)
+   (reset-mode symbol         :offset-assert 8)
    (execute    basic          :offset-assert 12)
    )
   :pack-me
@@ -13372,7 +13644,7 @@
    (flags        resetter-flag         :offset-assert 2)
    (fail         resetter-spec :inline :offset-assert 4)
    (retry        resetter-spec :inline :offset-assert 20)
-   (reset-delay  uint32                :offset-assert 36)
+   (reset-delay  uint32                :offset-assert 36 :decomp-as time-frame)
    (task         game-task             :offset-assert 40)
    (text-message text-id               :offset-assert 44)
    )
@@ -13395,18 +13667,18 @@
 (deftype task-manager-info (structure)
   ((mask                      task-manager-mask  :offset-assert 0)
    (level                     symbol             :offset-assert 4) ;; guessed by decompiler
-   (type-to-spawn             basic              :offset-assert 8)
+   (type-to-spawn             symbol             :offset-assert 8)
    (time-limit                int32              :offset-assert 12)
    (manager                   handle             :offset-assert 16)
-   (intro-scene               string             :offset-assert 24) ;; guessed by decompiler
-   (resolution-scene          string             :offset-assert 28) ;; guessed by decompiler
-   (resolution-scene-continue string             :offset-assert 32) ;; guessed by decompiler
+   (intro-scene               object             :offset-assert 24) ;; guessed by decompiler
+   (resolution-scene          object             :offset-assert 28) ;; guessed by decompiler
+   (resolution-scene-continue object             :offset-assert 32) ;; guessed by decompiler
    (final-node                game-task-node     :offset-assert 36) ;; game-task-node
    (vehicle-type              uint8              :offset-assert 38)
    (sphere-count              int8               :offset-assert 39)
    (index                     int8               :offset-assert 40)
-   (intro-delay               uint16             :offset-assert 42)
-   (sphere-array              uint32             :offset-assert 44)
+   (intro-delay               uint16             :offset-assert 42 :decomp-as time-frame)
+   (sphere-array              (inline-array sphere) :offset-assert 44)
    (on-complete               pair               :offset-assert 48) ;; guessed by decompiler
    (on-fail                   pair               :offset-assert 52) ;; guessed by decompiler
    (user-count                int32              :offset-assert 56)
@@ -13450,7 +13722,7 @@
    (command-index    uint8                                   :offset-assert 70)
    (command-count    uint8                                   :offset-assert 71)
    (description      text-id                                 :offset-assert 72) ;; guessed by decompiler
-   (faction-commands basic                                   :offset-assert 76)
+   (faction-commands pair                                    :offset-assert 76)
    )
   :method-count-assert 14
   :size-assert         #x50
@@ -13458,9 +13730,9 @@
   ;; field on-open uses ~A with a signed load. field on-close uses ~A with a signed load.
   (:methods
     (game-task-node-info-method-9 () none) ;; 9 ;; (close! (_type_ symbol) int)
-    (game-task-node-info-method-10 () none) ;; 10 ;; (open! (_type_ symbol) int)
+    (open! (_type_ symbol) int) ;; 10 ;; (open! (_type_ symbol) int)
     (game-task-node-info-method-11 () none) ;; 11 ;; (open? (_type_) symbol)
-    (game-task-node-info-method-12 () none) ;; 12 ;; (copy-hooks! (_type_ game-task-node-info) game-task-node-info)
+    (game-task-node-info-method-12 (_type_) symbol) ;; 12 ;; (copy-hooks! (_type_ game-task-node-info) game-task-node-info)
     (game-task-node-info-method-13 () none) ;; 13 ;; (eval-add (_type_) int)
     )
   )
@@ -13473,7 +13745,7 @@
    (pre-play-continue   string         :offset-assert 16) ;; guessed by decompiler
    (play-node           game-task-node :offset-assert 20) ;; game-task-node
    (play-continue       string         :offset-assert 24) ;; guessed by decompiler
-   (kiosk-play-continue string         :offset-assert 28) ;; guessed by decompiler
+   (kiosk-play-continue object         :offset-assert 28) ;; guessed by decompiler
    )
   :method-count-assert 10
   :size-assert         #x20
@@ -13487,7 +13759,7 @@
 (deftype game-task-control (basic)
   ((counter       uint32          :offset-assert 4)
    (actor         game-task-actor :offset-assert 8)
-   (current-node  uint16          :offset-assert 10)
+   (current-node  game-task-node  :offset-assert 10)
    (current-event game-task-event :offset-assert 12)
    )
   (:methods
@@ -14294,7 +14566,7 @@
   :size-assert         #x31
   :flag-assert         #xa00000031
   (:methods
-    (lod-set-method-9 () none) ;; 9 ;; (setup-lods! (_type_ skeleton-group art-group entity) _type_)
+    (setup-lods! (_type_ skeleton-group art-group entity) _type_) ;; 9
     )
   )
 
@@ -14344,7 +14616,10 @@
 (declare-type ripple-control basic)
 (declare-type shadow-geo structure)
 (declare-type shadow-control structure)
-
+(declare-type cloth-base basic)
+(declare-type verlet-particle-system cloth-base)
+(declare-type cloth-system verlet-particle-system)
+(declare-type joint-control basic)
 
 (deftype draw-control (basic)
   "The draw-control is a collection of all the stuff that the foreground rendering system needs to draw something.
@@ -14390,21 +14665,21 @@
    (force-fade           uint8                                                               :offset-assert 210)
    (default-texture-page uint8                                                               :offset-assert 211)
    (shadow-values        uint32                                                              :offset-assert 212)
-   (cloth-instances      basic                                                               :offset-assert 216)
+   (cloth-instances      (array cloth-system)                                                :offset-assert 216)
    )
   :method-count-assert 16
   :size-assert         #xdc
   :flag-assert         #x10000000dc
   ;; field draw-control-status is likely a value type. field draw-control-global-effect is likely a value type.
   (:methods
-    (new (symbol type) _type_) ;; 0 ;; (new (symbol type process symbol) _type_)
+    (new (symbol type process symbol) _type_) ;; 0
     (get-skeleton-origin (_type_) vector) ;; 9
-    (draw-control-method-10 () none) ;; 10 ;; (lod-set! (_type_ int) none)
-    (draw-control-method-11 () none) ;; 11 ;; (lods-assign! (_type_ lod-set) none)
-    (draw-control-method-12 () none) ;; 12 ;; (setup-masks (_type_ int int) none)
-    (draw-control-method-13 () none) ;; 13 ;; (setup-cspace-and-add (_type_ art-joint-geo symbol) cspace-array)
-    (draw-control-method-14 () none) ;; 14 ;; (do-joint-math (_type_ cspace-array joint-control) none)
-    (draw-control-method-15 () none) ;; 15
+    (lod-set! (_type_ int) none) ;; 10
+    (lods-assign! (_type_ lod-set) none) ;; 11
+    (setup-masks (_type_ int int) none) ;; 12
+    (setup-cspace-and-add (_type_ art-joint-geo symbol) cspace-array) ;; 13
+    (draw-control-method-14 (_type_ cspace-array joint-control) none) ;; 14
+    (do-joint-math (_type_ cspace-array joint-control) none) ;; 15
     )
   )
 
@@ -15817,6 +16092,13 @@
   :bitfield #t
   :type uint8
   (time)
+  (hf1 1)
+  (hf2 2)
+  (hf3 3)
+  (hf4 4)
+  (hf5 5)
+  (hf6 6)
+  (hf7 7)
   )
 ;; ---game-info-h:highscore-flags
 
@@ -15848,9 +16130,10 @@
   )
 
 (deftype level-buffer-state-small (structure)
-  ((name     basic  :offset-assert 0)
+  ((name     symbol :offset-assert 0)
    (display? symbol :offset-assert 4)
    )
+  :pack-me
   :method-count-assert 9
   :size-assert         #x8
   :flag-assert         #x900000008
@@ -15886,7 +16169,7 @@
     (load-state-method-18 () none) ;; 18 ;; (backup-load-state-and-set-cmds (_type_ pair) int)
     (load-state-method-19 () none) ;; 19 ;; (restore-load-state-and-cleanup (_type_) int)
     (load-state-method-20 () none) ;; 20 ;; (restore-load-state (_type_) int)
-    (load-state-method-21 () none) ;; 21 ;; (add-borrow-levels (_type_) none)
+    (load-state-method-21 (_type_) none) ;; 21 ;; (add-borrow-levels (_type_) none)
     )
   )
 
@@ -15918,6 +16201,15 @@
   (pilot-dax 20)
   (record-sig 21)
   (indax 22)
+  (cf23 23)
+  (cf24 24)
+  (cf25 25)
+  (cf26 26)
+  (cf27 27)
+  (cf28 28)
+  (cf29 29)
+  (cf30 30)
+  (cf31 31)
   )
 ;; ---game-info-h:continue-flags
 
@@ -15928,22 +16220,22 @@
    (trans        vector             :inline :offset-assert 16)
    (camera-trans vector             :inline :offset-assert 32)
    (quat         vector4h           :inline :offset-assert 48) ;; vector :inline
-   (camera-rot   vector3s         3 :inline :offset-assert 56) ;; guessed by decompiler
-   (on-goto      pair                       :offset 76) ;; guessed by decompiler
-   (vis-nick     symbol                     :offset 80) ;; guessed by decompiler
-   (vehicle-type uint8                      :offset 84)
-   (want-count   int8                       :offset 85)
-   (want         level-buffer-state-small   :offset 88) ;; guessed by decompiler
-   (want-sound   symbol           3         :offset 92) ;; guessed by decompiler
+   (camera-rot   int16            9         :offset-assert 56) ;; guessed by decompiler
+   (on-goto      object                     :offset-assert 76) ;; guessed by decompiler
+   (vis-nick     symbol                     :offset-assert 80) ;; guessed by decompiler
+   (vehicle-type uint8                      :offset-assert 84)
+   (want-count   int8                       :offset-assert 85)
+   (want         (inline-array level-buffer-state-small) :offset-assert 88) ;; guessed by decompiler
+   (want-sound   symbol           3         :offset-assert 92) ;; guessed by decompiler
    )
   :method-count-assert 12
   :size-assert         #x68
   :flag-assert         #xc00000068
   ;; field on-goto uses ~A with a signed load.
   (:methods
-    (continue-point-method-9 () none) ;; 9 ;; (debug-draw (_type_) int)
-    (continue-point-method-10 () none) ;; 10 ;; (continue-point-method-10 (_type_ load-state) continue-point)
-    (continue-point-method-11 () none) ;; 11 ;; (move-camera! (_type_) none)
+    (debug-draw (_type_) int) ;; 9
+    (continue-point-method-10 (_type_ load-state) continue-point) ;; 10
+    (move-camera! (_type_) none) ;; 11
     )
   )
 
@@ -16043,22 +16335,9 @@
   )
 ;; ---game-info-h:game-items
 
-;; +++game-info-h:game-vehicles
-(defenum game-vehicles
-  :type uint64
-  :bitfield #t
-  (v-turtle 0)
-  (v-snake 1)
-  (v-scorpion 2)
-  (v-toad 3)
-  (v-fox 4)
-  (v-rhino 5)
-  (v-mirage 6)
-  (vehicle-x-ride 7)
-  )
-;; ---game-info-h:game-vehicles
-
 (declare-type entity-perm-array inline-array-class)
+(declare-type game-save basic)
+(declare-type entity-perm structure)
 (deftype game-info (basic)
   ((mode                   symbol                    :offset-assert 4)
    (save-name              string                    :offset-assert 8)
@@ -16102,9 +16381,9 @@
    (timer-owner            handle                    :offset-assert 288)
    (timer-flash            symbol                    :offset-assert 296)
    (counter                float                     :offset-assert 300)
-   (counter-flash          basic                     :offset-assert 304)
+   (counter-flash          symbol                    :offset-assert 304)
    (health-bar             float                     :offset-assert 308)
-   (health-bar-owner       uint64                    :offset-assert 312)
+   (health-bar-owner       handle                    :offset-assert 312)
    (enemies-killed         float                     :offset-assert 320)
    (civilians-killed       float                     :offset-assert 324)
    (marauders-killed       float                     :offset-assert 328)
@@ -16112,29 +16391,32 @@
    (shots-hit              float             4       :offset-assert 348)
    (crates-opened          float                     :offset-assert 364)
    (health-collected       float                     :offset-assert 368)
-   (board-time             uint64                    :offset-assert 376)
+   (board-time             time-frame                :offset-assert 376)
    (attack-id              uint32                    :offset-assert 384)
    (perm-list              entity-perm-array         :offset-assert 388)
    (task-perm-list         entity-perm-array         :offset-assert 392)
    (current-continue       continue-point            :offset-assert 396)
    (last-continue          continue-point            :offset-assert 400)
-   (task-node-commands     pair                      :offset 416)
-   (task-node-exclusive    pair                      :offset-assert 420)
+   (play-list              (array game-task-info)    :offset-assert 404)
+   (sub-task-list          (array game-task-node-info) :offset-assert 408)
+   (mission-list           (array game-task-node-info) :offset-assert 412)
+   (task-node-commands     (array uint8)             :offset-assert 416)
+   (task-node-exclusive    (array uint16)            :offset-assert 420)
    (task-counter           uint32                    :offset-assert 424)
-   (unknown-arr4           (array uint16))
+   (unknown-arr4           (array uint16)            :offset-assert 428)
    (level-opened           uint8             32      :offset-assert 432)
    (total-deaths           int32                     :offset-assert 464)
    (continue-deaths        int32                     :offset-assert 468)
    (task-deaths            int32                     :offset-assert 472)
    (total-trys             int32                     :offset-assert 476)
-   (game-start-time        uint64                    :offset-assert 480)
-   (continue-time          uint64                    :offset-assert 488)
-   (death-time             uint64                    :offset-assert 496)
-   (hit-time               uint64                    :offset-assert 504)
-   (task-pickup-time       uint64                    :offset-assert 512)
-   (unknown-arr0           (array uint64))
-   (unknown-arr1           (array uint64))
-   (unknown-arr2           (array uint64))
+   (game-start-time        time-frame                :offset-assert 480)
+   (continue-time          time-frame                :offset-assert 488)
+   (death-time             time-frame                :offset-assert 496)
+   (hit-time               time-frame                :offset-assert 504)
+   (task-pickup-time       time-frame                :offset-assert 512)
+   (unknown-arr0           (array time-frame)        :offset-assert 520)
+   (task-enter-times       (array time-frame)        :offset-assert 524)
+   (task-in-times          (array time-frame)        :offset-assert 528)
    (death-pos              vector-array              :offset-assert 532)
    (stop-watch-start       time-frame                :offset-assert 536)
    (stop-watch-stop        time-frame                :offset-assert 544)
@@ -16168,7 +16450,7 @@
    (goal                   float                     :offset-assert 724)
    (miss                   float                     :offset-assert 728)
    (miss-max               float                     :offset-assert 732)
-   (unknown-arr3           (array uint64))
+   (task-close-times       (array time-frame)        :offset-assert 736)
    (live-eco-pill-count    int32                     :offset-assert 740)
    (live-gem-count         int32                     :offset-assert 744)
    (air-supply             float                     :offset-assert 748)
@@ -16187,32 +16469,32 @@
   :size-assert         #x328
   :flag-assert         #x2300000328
   (:methods
-    (game-info-method-9 () none) ;; 9 ;; (initialize! (_type_ symbol game-save string) _type_)
-    (game-info-method-10 () none) ;; 10 ;; (give (_type_ symbol float handle) float)
-    (game-info-method-11 () none) ;; 11 ;; (task-complete? (_type_ game-task) symbol)
-    (game-info-method-12 () none) ;; 12 ;; (subtask-index-by-name (_type_ string) int)
-    (game-info-method-13 () none) ;; 13 ;; (set-subtask-hook! (_type_ game-task-node int function) function)
-    (game-info-method-14 () none) ;; 14 ;; (actor-perm (_type_ actor-id) entity-perm)
-    (game-info-method-15 () none) ;; 15 ;; (task-perm-by-index (_type_ int) entity-perm)
-    (game-info-method-16 () none) ;; 16 ;; (copy-perms-from-level! (_type_ level) int)
-    (game-info-method-17 () none) ;; 17 ;; (copy-perms-to-level! (_type_ level) int)
-    (game-info-method-18 () none) ;; 18 ;; (debug-inspect (_type_ symbol) _type_)
-    (game-info-method-19 () none) ;; 19 ;; (get-current-continue-forced (_type_) continue-point)
-    (game-info-method-20 () none) ;; 20 ;; (get-continue-by-name (_type_ string) continue-point)
-    (game-info-method-21 () none) ;; 21 ;; (set-continue! (_type_ basic symbol) continue-point)
-    (game-info-method-22 () none) ;; 22 ;; (game-info-method-22 (_type_) int)
-    (game-info-method-23 () none) ;; 23 ;; (save-game (_type_ game-save string) game-save)
-    (game-info-method-24 () none) ;; 24 ;; (load-game (_type_ game-save) game-save)
-    (game-info-method-25 () none) ;; 25 ;; (you-suck-stage (_type_ symbol) int)
-    (get-next-attack-id! (_type_) uint) ;; 26 ;; (you-suck-scale (_type_ object) float)
-    (game-info-method-27 () none) ;; 27 ;; (get-next-attack-id (_type_) uint)
-    (game-info-method-28 () none) ;; 28 ;; (game-info-method-28 (_type_ game-score float) int)
-    (game-info-method-29 () none) ;; 29 ;; (get-game-score-ref (_type_ int) (pointer float))
-    (game-info-method-30 () none) ;; 30 ;; (calculate-percentage (_type_) float)
-    (game-info-method-31 () none) ;; 31
-    (game-info-method-32 () none) ;; 32
-    (game-info-method-33 () none) ;; 33
-    (game-info-method-34 () none) ;; 34
+    (initialize! (_type_ symbol game-save string resetter-spec) _type_) ;; 9 ;; (initialize! (_type_ symbol game-save string) _type_)
+    (give (_type_ symbol float handle) float) ;; 10
+    (task-complete? (_type_ game-task) symbol) ;; 11
+    (subtask-index-by-name (_type_ string) int) ;; 12
+    (actor-perm (_type_ actor-id) entity-perm) ;; 13 ;; (set-subtask-hook! (_type_ game-task-node int function) function)
+    (task-perm-by-index (_type_ int) entity-perm) ;; 14
+    (copy-perms-from-level! (_type_ level) int) ;; 15
+    (copy-perms-to-level! (_type_ level) int) ;; 16
+    (debug-inspect (_type_ symbol) _type_) ;; 17
+    (get-current-continue-forced (_type_) continue-point) ;; 18
+    (get-continue-by-name (_type_ string) continue-point) ;; 19
+    (set-continue! (_type_ basic symbol) continue-point) ;; 20
+    (game-info-method-21 (_type_) none) ;; 21
+    (game-info-method-22 (_type_) none) ;; 22 ;; (game-info-method-22 (_type_) int)
+    (game-info-method-23 (_type_) none) ;; 23 ;; (save-game (_type_ game-save string) game-save)
+    (you-suck-stage (_type_ symbol int) int) ;; 24 ;; (load-game (_type_ game-save) game-save)
+    (you-suck-scale (_type_ symbol int) float) ;; 25
+    (get-next-attack-id! (_type_) uint) ;; 26
+    (game-info-method-27 (_type_ game-score float) int) ;; 27
+    (get-game-score-ref (_type_ int) (pointer float)) ;; 28
+    (game-info-method-29 (_type_ int) int) ;; 29
+    (get-highscore-rank (_type_ int float) int) ;; 30
+    (game-info-method-31 (_type_ int int) float) ;; 31
+    (calculate-percentage (_type_) float) ;; 32
+    (inc-death-count! (_type_) none) ;; 33
+    (get-max-ammo-for-gun (_type_ pickup-type) float) ;; 34
     )
   )
 
@@ -16866,8 +17148,10 @@
   :type uint64
   (push 1)
   (blend 2)
+  (four 4)
   (eight 8)
   (push1 19)
+  (jcc32 32)
   (stack 36)
   (float 42)
   (stack1 52)
@@ -16938,11 +17222,11 @@
   :size-assert         #x68
   :flag-assert         #xd00000068
   (:methods
-    (new (symbol type) _type_) ;; 0 ;; (new (symbol type process-drawable) _type_)
-    (top-anim-joint-control-method-9 () none) ;; 9 ;; (reset (_type_) none)
-    (top-anim-joint-control-method-10 () none) ;; 10 ;; (update (_type_) none)
-    (top-anim-joint-control-method-11 () none) ;; 11 ;; (get-channel (_type_ int) joint-control-channel)
-    (top-anim-joint-control-method-12 () none) ;; 12 ;; (push-anim-to-targ (_type_ art-joint-anim float int int float float symbol) none)
+    (new (symbol type process-drawable) _type_) ;; 0
+    (reset (_type_) none) ;; 9
+    (update (_type_) none) ;; 10
+    (get-channel (_type_ int) joint-control-channel) ;; 11
+    (push-anim-to-targ (_type_ art-joint-anim float int int float float symbol) none) ;; 12
     )
   )
 
@@ -16972,10 +17256,10 @@
   ;; field joint-control-status is likely a value type.
   (:methods
     (new (symbol type int) _type_) ;; 0
-    (joint-control-method-9 () none) ;; 9 ;; (current-cycle-distance (_type_) float)
-    (joint-control-method-10 () none) ;; 10 ;; (update-anim-data (_type_) none)
+    (current-cycle-distance (_type_) float) ;; 9
+    (update-anim-data (_type_) none) ;; 10
     (debug-print-channels "Print the list of joint animations playing in the flattened blend tree." (_type_ symbol) int) ;; 11
-    (joint-control-method-12 () none) ;; 12
+    (joint-control-method-12 (_type_ int) joint-control-channel) ;; 12
     )
   )
 
@@ -17536,7 +17820,7 @@
        @param default is the default result returned in the case of an error.
        @param tag-addr is an address to a res-tag. The current base tag is written to this. Ignored if tag-addr is #f
        @param buf-addr is an address to the data buffer used to write interpolated data to. It must have enough space! Only necessary for 'interp mode."
-      (_type_ symbol symbol float pointer (pointer res-tag) pointer) pointer) ;; 9
+      (_type_ symbol symbol float pointer (pointer res-tag) pointer) pointer :no-virtual) ;; 9
     (get-property-struct
       "Returns a given struct property's value at a specific time stamp, or default on error.
         @param name is the name of the property you want, `mode` is its lookup mode ('interp 'base 'exact), `time` is the timestamp.
@@ -17544,7 +17828,7 @@
         @param tag-addr is an address to a [[res-tag]]. The current base tag is written to this. Ignored if tag-addr is #f.
         @param buf-addr is an address to the data buffer used to write interpolated data to.
         It must have enough space! Only necessary for 'interp mode."
-      (_type_ symbol symbol float structure (pointer res-tag) pointer) structure) ;; 10
+      (_type_ symbol symbol float structure (pointer res-tag) pointer) structure :no-virtual) ;; 10
     (get-property-value
       "Returns a given value property's value at a specific time stamp, or default on error.
        @param name is the name of the property you want, `mode` is its lookup mode ('interp 'base 'exact), `time` is the timestamp.
@@ -17552,7 +17836,7 @@
        @param tag-addr is an address to a res-tag. The current base tag is written to this. Ignored if `tag-addr` is #f.
        @param buf-addr is an address to the data buffer used to write interpolated data to.
        It must have enough space! Only necessary for 'interp mode."
-      (_type_ symbol symbol float uint128 (pointer res-tag) pointer) uint128) ;; 11
+      (_type_ symbol symbol float uint128 (pointer res-tag) pointer) uint128 :no-virtual) ;; 11
     (get-property-value-float (_type_ symbol symbol float float (pointer res-tag) pointer) float) ;; 12
     (get-tag-index-data "Get the data address of the n'th tag." (_type_ int) pointer) ;; 13
     (get-tag-data "Get the data address of the specified tag." (_type_ res-tag) pointer) ;; 14
@@ -18115,8 +18399,10 @@
     )
   )
 
+(declare-type process-focusable process-drawable)
 (deftype fact-info-target (fact-info)
-  ((eco-type                   int32      :offset-assert 40)
+  ((process                    target     :override)
+   (eco-type                   int32      :offset-assert 40)
    (eco-level                  float      :offset-assert 44)
    (eco-pickup-time            time-frame :offset-assert 48)
    (eco-timeout                seconds    :offset-assert 56)
@@ -18256,6 +18542,7 @@
 ;; aligner-h                      ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+;; +++aligner-h:align-flags
 (defenum align-flags
   :bitfield #t
   :type uint32
@@ -18266,6 +18553,27 @@
   (af04)
   (af05)
   )
+;; ---aligner-h:align-flags
+
+;; +++aligner-h:align-opts
+(defenum align-opts
+  :bitfield #t
+  :type uint32
+  (adjust-x-vel)
+  (adjust-y-vel)
+  (adjust-xz-vel)
+  (keep-other-velocities)
+  (adjust-quat) ;; 16
+  (alop0)
+  (alop1)
+  (alop2)
+  (alop3)
+  (alop4)
+  (alop5)
+  (no-gravity)
+  (ignore-y-if-zero)
+  )
+;; ---aligner-h:align-opts
 
 (deftype align-control (basic)
   ((flags       align-flags              :offset-assert 4) ;; guessed by decompiler
@@ -18437,12 +18745,12 @@
   :size-assert         #xc8
   :flag-assert         #x14005000c8
   (:methods
-    (process-drawable-method-14 () none) ;; 14 ;; (initialize-skeleton (_type_ skeleton-group pair) draw-control)
-    (process-drawable-method-15 () none) ;; 15 ;; (initialize-skeleton-by-name (_type_ string) draw-control)
-    (process-drawable-method-16 () none) ;; 16 ;; (apply-alignment (_type_ align-opts transformq vector) trsqv)
-    (process-drawable-method-17 () none) ;; 17 ;; (cleanup-for-death (_type_) none)
-    (process-drawable-method-18 () none) ;; 18 ;; (relocate-nav (_type_ int) none)
-    (process-drawable-method-19 () none) ;; 19 ;; (evaluate-joint-control (_type_) none)
+    (initialize-skeleton (_type_ skeleton-group pair) draw-control) ;; 14
+    (initialize-skeleton-by-name (_type_ string) draw-control) ;; 15
+    (apply-alignment (_type_ align-opts transformq vector) trsqv) ;; 16
+    (cleanup-for-death (_type_) none) ;; 17
+    (relocate-nav (_type_ int) none) ;; 18
+    (evaluate-joint-control (_type_) none) ;; 19
     )
   (:states
     process-drawable-idle ;; associated process guessed by decompiler, old: (state process-drawable)
@@ -19207,6 +19515,8 @@
   :flag-assert         #x900004b10
   )
 
+(define-extern *debug-vertex-stats* debug-vertex-stats)
+
 (define-extern *color-black* rgba)
 (define-extern *color-white* rgba)
 (define-extern *color-gray* rgba)
@@ -19908,6 +20218,8 @@
    (riders              (inline-array collide-rider)  :offset-assert 164) ;; guessed by decompiler
    (penetrate-using     penetrate                     :offset-assert 168)
    (penetrated-by       penetrate                     :offset-assert 176)
+   (unknown-word0       int32                         :offset-assert 184) ;; added (enter process-drawable-art-error)
+   (unknown-word1       int32                         :offset-assert 188) ;; added (enter process-drawable-art-error)
    (event-priority      uint8                         :offset 192)
    (rider-max-momentum  float                         :offset-assert 196)
    )
@@ -19924,18 +20236,18 @@
     (collide-shape-method-32 () none) ;; 32 ;; (fill-cache-integrate-and-collide (_type_ vector collide-query meters) none)
     (collide-shape-method-33 () none) ;; 33 ;; (find-prim-by-id (_type_ uint) collide-shape-prim)
     (collide-shape-method-34 () none) ;; 34 ;; (find-prim-by-id-logtest (_type_ uint) collide-shape-prim)
-    (collide-shape-method-35 () none) ;; 35 ;; (detect-riders! (_type_) symbol)
+    (detect-riders! (_type_) symbol) ;; 35
     (collide-shape-method-36 () none) ;; 36 ;; (build-bounding-box-for-shape (_type_ bounding-box float collide-spec) symbol)
     (collide-shape-method-37 () none) ;; 37 ;; (integrate-and-collide! (_type_ vector) none)
-    (collide-shape-method-38 () none) ;; 38 ;; (find-collision-meshes (_type_) none)
+    (find-collision-meshes (_type_) none) ;; 38
     (collide-shape-method-39 () none) ;; 39 ;; (on-platform (_type_ collide-shape collide-query) symbol)
     (collide-shape-method-40 () none) ;; 40 ;; (find-overlapping-shapes (_type_ overlaps-others-params) symbol)
     (collide-shape-method-41 () none) ;; 41 ;; (shove-to-closest-point-on-path (_type_ attack-info float) vector)
     (collide-shape-method-42 () none) ;; 42 ;; (should-push-away (_type_ collide-shape collide-query) symbol)
     (collide-shape-method-43 () none) ;; 43 ;; (pull-rider! (_type_ pull-rider-info) none)
-    (collide-shape-method-44 () none) ;; 44 ;; (pull-riders! (_type_) symbol)
-    (collide-shape-method-45 () none) ;; 45 ;; (do-push-aways (_type_) collide-spec)
-    (collide-shape-method-46 () none) ;; 46 ;; (update-transforms (_type_) none)
+    (pull-riders! (_type_) symbol) ;; 44
+    (do-push-aways (_type_) collide-spec) ;; 45
+    (update-transforms (_type_) none) ;; 46
     (collide-shape-method-47 () none) ;; 47 ;; (set-collide-with! (_type_ collide-spec) none)
     (collide-shape-method-48 () none) ;; 48 ;; (set-collide-as! (_type_ collide-spec) none)
     (collide-shape-method-49 () none) ;; 49 ;; (modify-collide-as! (_type_ int collide-spec collide-spec) none)
@@ -23850,6 +24162,8 @@
   (bit-10 10)
   (save 11)
   (bit-12 12)
+  (bit-13 13)
+  (bit-14 14)
   )
 ;; ---entity-h:entity-perm-status
 
@@ -23874,7 +24188,7 @@
   :size-assert         #x10
   :flag-assert         #xa00000010
   (:methods
-    (entity-perm-method-9 () none) ;; 9 ;; (update (_type_ symbol entity-perm-status) _type_)
+    (update (_type_ symbol entity-perm-status) _type_) ;; 9
     )
   )
 
@@ -23903,7 +24217,7 @@
   )
 
 (deftype entity-perm-array (inline-array-class)
-  ((data entity-perm :dynamic :offset-assert 16) ;; guessed by decompiler
+  ((data entity-perm :dynamic :inline :offset-assert 16) ;; guessed by decompiler
    )
   :method-count-assert 14
   :size-assert         #x10
@@ -23913,7 +24227,7 @@
 (deftype entity-links-array (inline-array-class)
   "An array of [[entity-links]].
    Levels store a reference to this which holds all the entities in the level."
-  ((data entity-links :dynamic :offset-assert 16) ;; guessed by decompiler
+  ((data entity-links :dynamic :inline :offset-assert 16) ;; guessed by decompiler
    )
   :method-count-assert 14
   :size-assert         #x10
@@ -24571,6 +24885,22 @@
 (defenum sp-group-item-flag
   :bitfield #t
   :type uint16
+  (sp0)
+  (sp1)
+  (sp2)
+  (sp3)
+  (sp4)
+  (sp5)
+  (sp6)
+  (sp7)
+  (sp8)
+  (sp9)
+  (sp10)
+  (sp11)
+  (sp12)
+  (sp13)
+  (sp14)
+  (sp15)
   )
 
 (defenum sp-launch-state-flags
@@ -24581,6 +24911,22 @@
 (defenum sp-group-flag
   :bitfield #t
   :type uint16
+  (sp0)
+  (sp1)
+  (sp2)
+  (sp3)
+  (sp4)
+  (sp5)
+  (sp6)
+  (sp7)
+  (sp8)
+  (sp9)
+  (sp10)
+  (sp11)
+  (sp12)
+  (sp13)
+  (sp14)
+  (sp15)
   )
 
 (deftype sparticle-birthinfo (structure)
@@ -26041,13 +26387,28 @@
     )
   )
 
+;; +++progress-h:secret-item-option-flags
+(defenum secret-item-option-flags
+  :type uint8
+  :bitfield #t
+  (sf0)
+  (sf1)
+  (sf2)
+  (sf3)
+  (sf4)
+  (sf5)
+  (sf6)
+  (sf7)
+  )
+;; ---progress-h:secret-item-option-flags
+
 (deftype secret-item-option (menu-option)
   ((cost             int32   :offset-assert 48)
-   (secret           uint64  :offset-assert 56)
+   (secret           game-secrets  :offset-assert 56)
    (avail-after      game-task-node :offset-assert 64) ;; game-task-node
-   (required-secrets uint64  :offset-assert 72)
-   (mask-secrets     uint64  :offset-assert 80)
-   (flags            uint8   :offset-assert 88)
+   (required-secrets game-secrets  :offset-assert 72)
+   (mask-secrets     game-secrets  :offset-assert 80)
+   (flags            secret-item-option-flags :offset-assert 88)
    )
   :method-count-assert 14
   :size-assert         #x59
@@ -27021,7 +27382,7 @@
     (sphere-hash-method-29 (_type_ find-nav-sphere-ids-params int int int) none) ;; 29
     (find-nav-sphere-ids (_type_ find-nav-sphere-ids-params) none) ;; 30
     (add-sphere-with-mask-and-id (_type_ vector int int) symbol) ;; 31
-    (sphere-hash-method-32 (_type_ vector vector float int) symbol) ;; 32
+    (sphere-hash-method-32 (_type_ sphere int) symbol) ;; 32
     )
   )
 
@@ -28153,7 +28514,7 @@
 ;; (define-extern add-debug-line2d function) ;; (function symbol bucket-id vector4w vector4w vector4w symbol)
 ;; (define-extern add-debug-box function) ;; (function symbol bucket-id vector vector rgba symbol)
 ;; (define-extern add-debug-box-with-transform function) ;; (function symbol bucket-id bounding-box matrix rgba symbol)
-;; (define-extern add-debug-x function) ;; (function symbol bucket-id vector rgba symbol)
+(define-extern add-debug-x (function symbol bucket-id vector rgba symbol))
 ;; (define-extern add-debug-cross function) ;; (function symbol bucket-id vector float symbol)
 (define-extern add-debug-text-3d (function symbol bucket-id string vector font-color vector2h symbol))
 ;; (define-extern add-debug-sphere-with-transform function) ;; (function symbol bucket-id vector meters matrix rgba symbol)
@@ -28162,10 +28523,10 @@
 ;; (define-extern add-debug-spheres function) ;; (function symbol bucket-id (inline-array vector) int rgba symbol)
 ;; (define-extern add-debug-line-sphere function) ;; (function symbol bucket-id vector vector float rgba none)
 ;; (define-extern add-debug-circle function) ;; (function symbol bucket-id vector float rgba matrix symbol)
-;; (define-extern add-debug-vector function) ;; (function symbol bucket-id vector vector meters rgba symbol)
+(define-extern add-debug-vector (function symbol bucket-id vector vector meters rgba symbol))
 (define-extern add-debug-matrix (function symbol bucket-id matrix meters matrix))
 ;; (define-extern add-debug-rot-matrix function) ;; (function symbol bucket-id matrix vector matrix)
-;; (define-extern add-debug-quaternion function) ;; (function symbol bucket-id vector quaternion none)
+(define-extern add-debug-quaternion (function symbol bucket-id vector quaternion none))
 ;; (define-extern add-debug-cspace function) ;; (function symbol bucket-id cspace cspace)
 ;; (define-extern add-debug-yrot-vector function) ;; (function symbol bucket-id vector float float rgba symbol)
 ;; (define-extern add-debug-arc function) ;; (function symbol bucket-id vector float float float rgba matrix symbol)
@@ -28176,7 +28537,11 @@
 ;; (define-extern debug-pad-display function) ;; (function cpad-info symbol)
 ;; (define-extern add-debug-light function) ;; (function symbol bucket-id light vector string symbol)
 ;; (define-extern add-debug-lights function) ;; (function symbol bucket-id (inline-array light) vector symbol)
-;; (define-extern drawable-frag-count function) ;; (function drawable int)
+(define-extern drawable-frag-count (function drawable int))
+
+(define-extern drawable-tri-count (function drawable int)) ;; NOTE - defined in kernel?
+(define-extern drawable-vertex-ratio (function drawable debug-vertex-stats int)) ;; NOTE - defined in kernel?
+
 ;; (define-extern history-init function) ;; (function pos-history int pos-history)
 ;; (define-extern history-draw-and-update function) ;; (function pos-history symbol vector symbol)
 ;; (define-extern dma-timeout-cam function) ;; (function vector)
@@ -28352,7 +28717,7 @@
 ;; (define-extern dma-from-spr function)
 ;; (define-extern merc-dma-chain-to-spr function)
 ;; (define-extern blerc-execute function) ;; (function none)
-;; (define-extern merc-blend-shape function) ;; (function process-drawable object)
+(define-extern merc-blend-shape (function process-drawable object))
 ;; (define-extern setup-blerc-chains-for-one-fragment function) ;; (function object object object object object object object)
 ;; (define-extern setup-blerc-chains function) ;; (function merc-ctrl (pointer int16) dma-buffer none)
 
@@ -28487,7 +28852,7 @@
 ;; (define-extern foreground-draw function) ;; (function draw-control dma-buffer float none)
 ;; (define-extern foreground-draw-hud function) ;; (function draw-control dma-buffer float none)
 ;; (define-extern *foreground* object) ;; foreground-globals
-;; (define-extern *foreground-draw-engine* object) ;; engine
+(define-extern *foreground-draw-engine* engine)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; generic-vu0                    ;;
@@ -29392,8 +29757,8 @@
 
 ;; sparticle-launcher is already defined!
 
-;; (define-extern *part-id-table* object) ;; (array sparticle-launcher)
-;; (define-extern *part-group-id-table* object) ;; (array sparticle-launch-group)
+(define-extern *part-id-table* (array sparticle-launcher))
+(define-extern *part-group-id-table* (array sparticle-launch-group))
 ;; (define-extern *sp-temp* object) ;; float
 ;; (define-extern lookup-part-group-by-name function) ;; (function string sparticle-launch-group)
 ;; (define-extern lookup-part-group-pointer-by-name function) ;; (function string (pointer object))
@@ -29412,7 +29777,7 @@
 ;; (define-extern sp-adjust-launch function) ;; (function sparticle-launchinfo sparticle-cpuinfo (inline-array sp-field-init-spec) matrix symbol none)
 ;; (define-extern sp-euler-convert function) ;; (function sparticle-launchinfo sparticle-cpuinfo none)
 ;; (define-extern sp-rotate-system function) ;; (function sparticle-launchinfo sparticle-cpuinfo transformq none)
-;; (define-extern sp-launch-particles-var function) ;; (function sparticle-system sparticle-launcher matrix sparticle-launch-state sparticle-launch-control float none)
+(define-extern sp-launch-particles-var (function sparticle-system sparticle-launcher matrix sparticle-launch-state sparticle-launch-control float none))
 ;; (define-extern *death-adgif* object) ;; adgif-shader
 ;; (define-extern sp-launch-particles-death function) ;; (function sparticle-system sparticle-launcher vector none)
 ;; (define-extern sp-clear-queue function) ;; (function none)
@@ -29475,8 +29840,8 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ;; (define-extern sp-particle-copy! function) ;; (function sparticle-cpuinfo sparticle-cpuinfo none)
-;; (define-extern *sp-particle-system-2d* object) ;; sparticle-system
-;; (define-extern *sp-particle-system-3d* object) ;; sparticle-system
+(define-extern *sp-particle-system-2d* sparticle-system)
+(define-extern *sp-particle-system-3d* sparticle-system)
 ;; (define-extern sp-get-block-size function) ;; (function sparticle-system int int)
 ;; (define-extern sp-get-approx-alloc-size function) ;; (function sparticle-system int int)
 ;; (define-extern sp-free-particle function) ;; (function sparticle-system int sparticle-cpuinfo sprite-vec-data-2d none)
@@ -29605,14 +29970,15 @@
 ;; game-info                      ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (define-extern *default-continue* continue-point) ;; continue-point
-;; (define-extern task-level->string function) ;; (function int string)
-;; (define-extern level-name->task-level function) ;; (function symbol int)
-;; (define-extern trsq->continue-point function) ;; (function trsq int)
-;; (define-extern position->stream function) ;; (function string symbol symbol none)
-;; (define-extern bug-report-display function) ;; (function symbol int)
-;; (define-extern print-continues function) ;; (function int)
-;; (define-extern *highscore-info-array* array) ;; (array highscore-info)
+(define-extern *default-continue* continue-point)
+(define-extern task-level->string (function int string))
+(define-extern level-name->task-level (function symbol int))
+(define-extern trsq->continue-point (function trsq int))
+(define-extern position->stream (function string symbol symbol none))
+(define-extern bug-report-display (function symbol int))
+(define-extern print-continues (function int))
+(define-extern *highscore-info-array* (array highscore-info))
+(define-extern *user* symbol)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; game-task                      ;;
@@ -29623,20 +29989,19 @@
 ;; game-save                      ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype game-save-tag (structure)
   ((user-object object 2 :offset-assert 0) ;; guessed by decompiler
-   (user-uint64 uint64   :offset-assert 0)
-   (user-float0 float    :offset-assert 0)
-   (user-float  float  2 :offset-assert 0) ;; guessed by decompiler
-   (user-int32  int32  2 :offset-assert 0) ;; guessed by decompiler
-   (user-uint32 uint32 2 :offset-assert 0) ;; guessed by decompiler
-   (user-int16  int16  4 :offset-assert 0) ;; guessed by decompiler
-   (user-uint16 uint16 4 :offset-assert 0) ;; guessed by decompiler
-   (user-int8   int8   8 :offset-assert 0) ;; guessed by decompiler
-   (user-int80  int8     :offset-assert 0)
-   (user-int81  int8     :offset-assert 1)
-   (user-uint8  uint8  8 :offset-assert 0) ;; guessed by decompiler
+   (user-uint64 uint64   :offset 0)
+   (user-float0 float    :offset 0)
+   (user-float  float  2 :offset 0) ;; guessed by decompiler
+   (user-int32  int32  2 :offset 0) ;; guessed by decompiler
+   (user-uint32 uint32 2 :offset 0) ;; guessed by decompiler
+   (user-int16  int16  4 :offset 0) ;; guessed by decompiler
+   (user-uint16 uint16 4 :offset 0) ;; guessed by decompiler
+   (user-int8   int8   8 :offset 0) ;; guessed by decompiler
+   (user-int80  int8     :offset 0)
+   (user-int81  int8     :offset 1)
+   (user-uint8  uint8  8 :offset 0) ;; guessed by decompiler
    (elt-count   int32    :offset-assert 8)
    (elt-size    uint16   :offset-assert 12)
    (elt-type    uint16   :offset-assert 14) ;; game-save-elt
@@ -29645,11 +30010,31 @@
   :size-assert         #x10
   :flag-assert         #x900000010
   )
-|#
 
-#|
 (deftype game-save (basic)
-  ()
+  ((version               int32                  :offset-assert 4)
+   (allocated-length      int32                  :offset-assert 8)
+   (length                int32                  :offset-assert 12)
+   (info-int32            int32         16       :offset-assert 16) ;; guessed by decompiler
+   (info-int8             int8          64       :overlay-at info-int32) ;; guessed by decompiler
+   (level-index           int32                  :offset 16)
+   (gem-count             float                  :offset 20)
+   (skill-count           float                  :offset 24)
+   (completion-percentage float                  :offset 28)
+   (minute                uint8                  :offset 36)
+   (hour                  uint8                  :offset 37)
+   (week                  uint8                  :offset 38)
+   (day                   uint8                  :offset 39)
+   (month                 uint8                  :offset 40)
+   (year                  uint8                  :offset 41)
+   (language              language-enum          :offset 42)
+   (new-game              int32                  :offset 44)
+   (game-time             time-frame             :offset 48)
+   (secrets               uint32        2        :offset 56)
+   (purchase-secrets      uint32        2        :offset 64)
+   (features              uint32        2        :offset 72)
+   (tag                   game-save-tag :inline :dynamic :offset-assert 80) ;; guessed by decompiler
+   )
   :method-count-assert 12
   :size-assert         #x50
   :flag-assert         #xc00000050
@@ -29657,10 +30042,9 @@
     (new (symbol type) _type_) ;; 0 ;; (new (symbol type int) _type_)
     (game-save-method-9 () none) ;; 9 ;; (save-to-file (_type_ string) _type_)
     (game-save-method-10 () none) ;; 10 ;; (load-from-file (_type_ string) _type_)
-    (game-save-method-11 () none) ;; 11 ;; (debug-inspect (_type_ symbol) _type_)
+    (game-save-method-11 (_type_ symbol) _type_) ;; 11 ;; (debug-inspect (_type_ symbol) _type_)
     )
   )
-|#
 
 #|
 (deftype auto-save (process)
@@ -30236,310 +30620,310 @@
 ;; level-info                     ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (define-extern *task-level* array) ;; (array symbol)
+(define-extern *task-level* (array symbol))
 (define-extern default-level level-load-info)
-;; (define-extern intro level-load-info) ;; level-load-info
-;; (define-extern title level-load-info) ;; level-load-info
-;; (define-extern vinroom level-load-info) ;; level-load-info
-;; (define-extern ljkdxvin level-load-info)
-;; (define-extern lvincst level-load-info)
-;; (define-extern powergd level-load-info)
-;; (define-extern ctywide level-load-info) ;; level-load-info
-;; (define-extern ctywide-ff level-load-info)
-;; (define-extern ctywide-ff-kg level-load-info)
-;; (define-extern ctywide-ff-mh level-load-info)
-;; (define-extern ctywide-kg level-load-info)
-;; (define-extern ctywide-mh level-load-info)
-;; (define-extern ctywide-mh-kg level-load-info)
-;; (define-extern citycast level-load-info)
-;; (define-extern gridcst level-load-info)
-;; (define-extern ctycara level-load-info)
-;; (define-extern ctycarkg level-load-info)
-;; (define-extern ctycarb level-load-info)
-;; (define-extern ctycarc level-load-info)
-;; (define-extern ctypepa level-load-info)
-;; (define-extern lpatkcs level-load-info)
-;; (define-extern lblowtmh level-load-info)
-;; (define-extern lblowtkg level-load-info)
-;; (define-extern ctypepb level-load-info)
-;; (define-extern lblowcst level-load-info)
-;; (define-extern ctypepc level-load-info)
-;; (define-extern ctypesa level-load-info)
-;; (define-extern ctypesb level-load-info)
-;; (define-extern ctypesc level-load-info)
-;; (define-extern intpfall level-load-info)
-;; (define-extern ctygenb level-load-info) ;; level-load-info
-;; (define-extern ctysluma level-load-info) ;; level-load-info
-;; (define-extern ctyslumb level-load-info) ;; level-load-info
-;; (define-extern slumbset level-load-info)
-;; (define-extern ctyslumc level-load-info) ;; level-load-info
-;; (define-extern ctyport level-load-info) ;; level-load-info
-;; (define-extern ctyfarma level-load-info) ;; level-load-info
-;; (define-extern ctyfarmb level-load-info) ;; level-load-info
-;; (define-extern ctyinda level-load-info) ;; level-load-info
-;; (define-extern ctyindb level-load-info) ;; level-load-info
-;; (define-extern stadium level-load-info) ;; level-load-info
-;; (define-extern stadiuma level-load-info)
-;; (define-extern lppatrol level-load-info)
-;; (define-extern lpattack level-load-info)
-;; (define-extern stadiumb level-load-info) ;; level-load-info
-;; (define-extern towera level-load-info)
-;; (define-extern towerb level-load-info)
-;; (define-extern towerc level-load-info)
-;; (define-extern towercst level-load-info)
-;; (define-extern ltowera level-load-info)
-;; (define-extern ltowcity level-load-info)
-;; (define-extern ltowerb level-load-info)
-;; (define-extern rubblea level-load-info)
-;; (define-extern rubblea2 level-load-info)
-;; (define-extern rubbleb level-load-info)
-;; (define-extern rubblec level-load-info)
-;; (define-extern rublcst level-load-info)
-;; (define-extern lbombbot level-load-info) ;; level-load-info
-;; (define-extern ljinx level-load-info)
-;; (define-extern lctypatk level-load-info)
-;; (define-extern lctyhijk level-load-info)
-;; (define-extern lctypalt level-load-info)
-;; (define-extern lctyass level-load-info)
-;; (define-extern lctydest level-load-info)
-;; (define-extern lctyprot level-load-info)
-;; (define-extern lctyblow level-load-info)
-;; (define-extern lctysnpr level-load-info)
-;; (define-extern onintent level-load-info) ;; level-load-info
-;; (define-extern lbbush level-load-info) ;; level-load-info
-;; (define-extern hiphog level-load-info) ;; level-load-info
-;; (define-extern ltnjxhip level-load-info)
-;; (define-extern gungame level-load-info) ;; level-load-info
-;; (define-extern gungame1 level-load-info)
-;; (define-extern gungame2 level-load-info)
-;; (define-extern citylow level-load-info)
-;; (define-extern freehq level-load-info)
-;; (define-extern freecast level-load-info)
-;; (define-extern lfreeout level-load-info)
-;; (define-extern mhctycst level-load-info)
-;; (define-extern mhcitya level-load-info)
-;; (define-extern mhcityb level-load-info)
-;; (define-extern lmhcitya level-load-info)
-;; (define-extern lmhcityb level-load-info)
-;; (define-extern comba level-load-info)
-;; (define-extern combb level-load-info)
-;; (define-extern combc level-load-info)
-;; (define-extern combd level-load-info)
-;; (define-extern combe level-load-info)
-;; (define-extern combm level-load-info)
-;; (define-extern combn level-load-info)
-;; (define-extern combx level-load-info)
-;; (define-extern raila level-load-info)
-;; (define-extern railb level-load-info)
-;; (define-extern railb2 level-load-info)
-;; (define-extern railc level-load-info)
-;; (define-extern raild level-load-info)
-;; (define-extern raile level-load-info)
-;; (define-extern railf level-load-info)
-;; (define-extern railx level-load-info)
-;; (define-extern lcitysml level-load-info)
-;; (define-extern railcst level-load-info)
-;; (define-extern minea level-load-info)
-;; (define-extern lpeckfly level-load-info)
-;; (define-extern mineb level-load-info)
-;; (define-extern minec level-load-info)
-;; (define-extern mined level-load-info)
-;; (define-extern minee level-load-info)
-;; (define-extern sewa level-load-info)
-;; (define-extern sewb level-load-info)
-;; (define-extern sewc level-load-info)
-;; (define-extern sewd level-load-info)
-;; (define-extern sewe level-load-info)
-;; (define-extern sewf level-load-info)
-;; (define-extern sewg level-load-info)
-;; (define-extern sewh level-load-info)
-;; (define-extern sewi level-load-info)
-;; (define-extern sewj level-load-info)
-;; (define-extern sewk level-load-info)
-;; (define-extern sewl level-load-info)
-;; (define-extern sewm level-load-info)
-;; (define-extern sewn level-load-info)
-;; (define-extern sewo level-load-info)
-;; (define-extern forestx level-load-info)
-;; (define-extern foresta level-load-info)
-;; (define-extern lforplnt level-load-info)
-;; (define-extern lforring level-load-info)
-;; (define-extern lformach level-load-info)
-;; (define-extern forestb level-load-info) ;; level-load-info
-;; (define-extern wasintro level-load-info)
-;; (define-extern introcst level-load-info) ;; level-load-info
-;; (define-extern intpalrf level-load-info)
-;; (define-extern inttitle level-load-info)
-;; (define-extern wasall level-load-info)
-;; (define-extern waswide level-load-info)
-;; (define-extern wascitya level-load-info)
-;; (define-extern lseemwca level-load-info)
-;; (define-extern wascityb level-load-info)
-;; (define-extern wascast level-load-info)
-;; (define-extern wasseem level-load-info)
-;; (define-extern waspgame level-load-info)
-;; (define-extern wasdefen level-load-info)
-;; (define-extern wcaseem level-load-info)
-;; (define-extern wasleapr level-load-info)
-;; (define-extern wasdoors level-load-info)
-;; (define-extern outrocst level-load-info) ;; level-load-info
-;; (define-extern outcast3 level-load-info)
-;; (define-extern loutro level-load-info)
-;; (define-extern loutro2 level-load-info)
-;; (define-extern loutro3 level-load-info)
-;; (define-extern wasstada level-load-info)
-;; (define-extern wasstadb level-load-info)
-;; (define-extern wasstadc level-load-info)
-;; (define-extern arenacst level-load-info)
-;; (define-extern museum level-load-info)
-;; (define-extern museum2 level-load-info)
-;; (define-extern museum3 level-load-info)
-;; (define-extern museum3b level-load-info)
-;; (define-extern museum4 level-load-info)
-;; (define-extern museum4b level-load-info)
-;; (define-extern temp level-load-info)
-;; (define-extern ldampeck level-load-info)
-;; (define-extern ldmpckgn level-load-info)
-;; (define-extern ldamsig level-load-info)
-;; (define-extern ldampksm level-load-info)
-;; (define-extern lkleever level-load-info)
-;; (define-extern lsig level-load-info)
-;; (define-extern lsigklv level-load-info)
-;; (define-extern lsigjakc level-load-info)
-;; (define-extern loninsim level-load-info)
-;; (define-extern ljakc level-load-info)
-;; (define-extern ljakndax level-load-info)
-;; (define-extern lsamos level-load-info)
-;; (define-extern ljakcklv level-load-info)
-;; (define-extern ljkcdmkl level-load-info)
-;; (define-extern ldamklev level-load-info)
-;; (define-extern lashelin level-load-info)
-;; (define-extern ljak level-load-info)
-;; (define-extern ljakklev level-load-info)
-;; (define-extern ljaksig level-load-info)
-;; (define-extern ljkdmpk level-load-info)
-;; (define-extern ljndklev level-load-info)
-;; (define-extern ltorn level-load-info)
-;; (define-extern lerrol level-load-info) ;; level-load-info
-;; (define-extern ltornsam level-load-info)
-;; (define-extern ltornjnx level-load-info)
-;; (define-extern ltnfxhip level-load-info)
-;; (define-extern lwlandm level-load-info)
-;; (define-extern ltrtwhls level-load-info)
-;; (define-extern lsnkwhls level-load-info)
-;; (define-extern lbiped level-load-info)
-;; (define-extern lmech level-load-info)
-;; (define-extern lprenme level-load-info)
-;; (define-extern lgunnorm level-load-info)
-;; (define-extern lgunrnc level-load-info)
-;; (define-extern waschase level-load-info)
-;; (define-extern waspala level-load-info)
-;; (define-extern lwstdpck level-load-info)
-;; (define-extern ljkfeet level-load-info)
-;; (define-extern desert level-load-info)
-;; (define-extern warpcast level-load-info)
-;; (define-extern deserta level-load-info)
-;; (define-extern desbcst level-load-info)
-;; (define-extern deserrol level-load-info)
-;; (define-extern desertb level-load-info)
-;; (define-extern desertc level-load-info)
-;; (define-extern desertd level-load-info)
-;; (define-extern deserte level-load-info)
-;; (define-extern desertf level-load-info)
-;; (define-extern desertg level-load-info)
-;; (define-extern ldesgcst level-load-info)
-;; (define-extern deserth level-load-info)
-;; (define-extern deswalk level-load-info)
-;; (define-extern desert-game level-load-info)
-;; (define-extern desrace1 level-load-info)
-;; (define-extern desboss1 level-load-info)
-;; (define-extern desboss2 level-load-info)
-;; (define-extern desinter level-load-info)
-;; (define-extern destrack level-load-info)
-;; (define-extern desrally level-load-info)
-;; (define-extern deshover level-load-info)
-;; (define-extern deshunt level-load-info)
-;; (define-extern desliz level-load-info)
-;; (define-extern desresc level-load-info)
-;; (define-extern desrescc level-load-info)
-;; (define-extern desrescg level-load-info)
-;; (define-extern desoasis level-load-info)
-;; (define-extern oasiscst level-load-info)
-;; (define-extern desjump level-load-info)
-;; (define-extern deschase level-load-info)
-;; (define-extern desbattl level-load-info)
-;; (define-extern lwassig level-load-info)
-;; (define-extern lwasbbv level-load-info)
-;; (define-extern lnstcst level-load-info)
-;; (define-extern lbbring1 level-load-info)
-;; (define-extern lbbring2 level-load-info)
-;; (define-extern lbbring3 level-load-info)
-;; (define-extern lbbring4 level-load-info)
-;; (define-extern lbbring5 level-load-info)
-;; (define-extern lbbring6 level-load-info)
-;; (define-extern lbbring7 level-load-info)
-;; (define-extern lbbtcha1 level-load-info)
-;; (define-extern lbbtcha2 level-load-info)
-;; (define-extern lbbtcha3 level-load-info)
-;; (define-extern lbbspid level-load-info)
-;; (define-extern lbbspirt level-load-info)
-;; (define-extern lbbsprt2 level-load-info)
-;; (define-extern lbbsprt3 level-load-info)
-;; (define-extern lbbsdrp1 level-load-info)
-;; (define-extern lbbsdrp2 level-load-info)
-;; (define-extern lbbsdrp3 level-load-info)
-;; (define-extern nsta level-load-info)
-;; (define-extern nstb level-load-info)
-;; (define-extern lnstoba level-load-info)
-;; (define-extern lnstobb level-load-info)
-;; (define-extern lnstobc level-load-info)
-;; (define-extern templex level-load-info)
-;; (define-extern templea level-load-info)
-;; (define-extern templeb level-load-info)
-;; (define-extern templec level-load-info)
-;; (define-extern templed level-load-info)
-;; (define-extern templee level-load-info)
-;; (define-extern hanga level-load-info)
-;; (define-extern hangb level-load-info)
-;; (define-extern volcanox level-load-info)
-;; (define-extern volcanoa level-load-info)
-;; (define-extern factorya level-load-info)
-;; (define-extern lfactory level-load-info)
-;; (define-extern lfaccar level-load-info)
-;; (define-extern lfacrm1 level-load-info)
-;; (define-extern lfacrm2 level-load-info)
-;; (define-extern lfaccity level-load-info)
-;; (define-extern lfacctyb level-load-info)
-;; (define-extern factoryb level-load-info)
-;; (define-extern factoryc level-load-info)
-;; (define-extern factoryd level-load-info)
-;; (define-extern lfacout level-load-info)
-;; (define-extern warinta level-load-info)
-;; (define-extern precura level-load-info)
-;; (define-extern precurb level-load-info)
-;; (define-extern precurc level-load-info)
-;; (define-extern lprecurc level-load-info)
-;; (define-extern precurd level-load-info)
-;; (define-extern bikearena level-load-info)
-;; (define-extern halfpipe level-load-info) ;; level-load-info
-;; (define-extern sndtest level-load-info)
-;; (define-extern vistest level-load-info) ;; level-load-info
-;; (define-extern bsbs level-load-info)
-;; (define-extern tobytest level-load-info) ;; level-load-info
-;; (define-extern hermtest level-load-info)
-;; (define-extern chartest level-load-info) ;; level-load-info
-;; (define-extern ctyfence level-load-info) ;; level-load-info
-;; (define-extern testisle level-load-info)
-;; (define-extern gregtest level-load-info)
-;; (define-extern 4amy level-load-info)
-;; (define-extern *level-load-list* object) ;; pair
+(define-extern intro level-load-info)
+(define-extern title level-load-info)
+(define-extern vinroom level-load-info)
+(define-extern ljkdxvin level-load-info)
+(define-extern lvincst level-load-info)
+(define-extern powergd level-load-info)
+(define-extern ctywide level-load-info)
+(define-extern ctywide-ff level-load-info)
+(define-extern ctywide-ff-kg level-load-info)
+(define-extern ctywide-ff-mh level-load-info)
+(define-extern ctywide-kg level-load-info)
+(define-extern ctywide-mh level-load-info)
+(define-extern ctywide-mh-kg level-load-info)
+(define-extern citycast level-load-info)
+(define-extern gridcst level-load-info)
+(define-extern ctycara level-load-info)
+(define-extern ctycarkg level-load-info)
+(define-extern ctycarb level-load-info)
+(define-extern ctycarc level-load-info)
+(define-extern ctypepa level-load-info)
+(define-extern lpatkcs level-load-info)
+(define-extern lblowtmh level-load-info)
+(define-extern lblowtkg level-load-info)
+(define-extern ctypepb level-load-info)
+(define-extern lblowcst level-load-info)
+(define-extern ctypepc level-load-info)
+(define-extern ctypesa level-load-info)
+(define-extern ctypesb level-load-info)
+(define-extern ctypesc level-load-info)
+(define-extern intpfall level-load-info)
+(define-extern ctygenb level-load-info)
+(define-extern ctysluma level-load-info)
+(define-extern ctyslumb level-load-info)
+(define-extern slumbset level-load-info)
+(define-extern ctyslumc level-load-info)
+(define-extern ctyport level-load-info)
+(define-extern ctyfarma level-load-info)
+(define-extern ctyfarmb level-load-info)
+(define-extern ctyinda level-load-info)
+(define-extern ctyindb level-load-info)
+(define-extern stadium level-load-info)
+(define-extern stadiuma level-load-info)
+(define-extern lppatrol level-load-info)
+(define-extern lpattack level-load-info)
+(define-extern stadiumb level-load-info)
+(define-extern towera level-load-info)
+(define-extern towerb level-load-info)
+(define-extern towerc level-load-info)
+(define-extern towercst level-load-info)
+(define-extern ltowera level-load-info)
+(define-extern ltowcity level-load-info)
+(define-extern ltowerb level-load-info)
+(define-extern rubblea level-load-info)
+(define-extern rubblea2 level-load-info)
+(define-extern rubbleb level-load-info)
+(define-extern rubblec level-load-info)
+(define-extern rublcst level-load-info)
+(define-extern lbombbot level-load-info)
+(define-extern ljinx level-load-info)
+(define-extern lctypatk level-load-info)
+(define-extern lctyhijk level-load-info)
+(define-extern lctypalt level-load-info)
+(define-extern lctyass level-load-info)
+(define-extern lctydest level-load-info)
+(define-extern lctyprot level-load-info)
+(define-extern lctyblow level-load-info)
+(define-extern lctysnpr level-load-info)
+(define-extern onintent level-load-info)
+(define-extern lbbush level-load-info)
+(define-extern hiphog level-load-info)
+(define-extern ltnjxhip level-load-info)
+(define-extern gungame level-load-info)
+(define-extern gungame1 level-load-info)
+(define-extern gungame2 level-load-info)
+(define-extern citylow level-load-info)
+(define-extern freehq level-load-info)
+(define-extern freecast level-load-info)
+(define-extern lfreeout level-load-info)
+(define-extern mhctycst level-load-info)
+(define-extern mhcitya level-load-info)
+(define-extern mhcityb level-load-info)
+(define-extern lmhcitya level-load-info)
+(define-extern lmhcityb level-load-info)
+(define-extern comba level-load-info)
+(define-extern combb level-load-info)
+(define-extern combc level-load-info)
+(define-extern combd level-load-info)
+(define-extern combe level-load-info)
+(define-extern combm level-load-info)
+(define-extern combn level-load-info)
+(define-extern combx level-load-info)
+(define-extern raila level-load-info)
+(define-extern railb level-load-info)
+(define-extern railb2 level-load-info)
+(define-extern railc level-load-info)
+(define-extern raild level-load-info)
+(define-extern raile level-load-info)
+(define-extern railf level-load-info)
+(define-extern railx level-load-info)
+(define-extern lcitysml level-load-info)
+(define-extern railcst level-load-info)
+(define-extern minea level-load-info)
+(define-extern lpeckfly level-load-info)
+(define-extern mineb level-load-info)
+(define-extern minec level-load-info)
+(define-extern mined level-load-info)
+(define-extern minee level-load-info)
+(define-extern sewa level-load-info)
+(define-extern sewb level-load-info)
+(define-extern sewc level-load-info)
+(define-extern sewd level-load-info)
+(define-extern sewe level-load-info)
+(define-extern sewf level-load-info)
+(define-extern sewg level-load-info)
+(define-extern sewh level-load-info)
+(define-extern sewi level-load-info)
+(define-extern sewj level-load-info)
+(define-extern sewk level-load-info)
+(define-extern sewl level-load-info)
+(define-extern sewm level-load-info)
+(define-extern sewn level-load-info)
+(define-extern sewo level-load-info)
+(define-extern forestx level-load-info)
+(define-extern foresta level-load-info)
+(define-extern lforplnt level-load-info)
+(define-extern lforring level-load-info)
+(define-extern lformach level-load-info)
+(define-extern forestb level-load-info)
+(define-extern wasintro level-load-info)
+(define-extern introcst level-load-info)
+(define-extern intpalrf level-load-info)
+(define-extern inttitle level-load-info)
+(define-extern wasall level-load-info)
+(define-extern waswide level-load-info)
+(define-extern wascitya level-load-info)
+(define-extern lseemwca level-load-info)
+(define-extern wascityb level-load-info)
+(define-extern wascast level-load-info)
+(define-extern wasseem level-load-info)
+(define-extern waspgame level-load-info)
+(define-extern wasdefen level-load-info)
+(define-extern wcaseem level-load-info)
+(define-extern wasleapr level-load-info)
+(define-extern wasdoors level-load-info)
+(define-extern outrocst level-load-info)
+(define-extern outcast3 level-load-info)
+(define-extern loutro level-load-info)
+(define-extern loutro2 level-load-info)
+(define-extern loutro3 level-load-info)
+(define-extern wasstada level-load-info)
+(define-extern wasstadb level-load-info)
+(define-extern wasstadc level-load-info)
+(define-extern arenacst level-load-info)
+(define-extern museum level-load-info)
+(define-extern museum2 level-load-info)
+(define-extern museum3 level-load-info)
+(define-extern museum3b level-load-info)
+(define-extern museum4 level-load-info)
+(define-extern museum4b level-load-info)
+(define-extern temp level-load-info)
+(define-extern ldampeck level-load-info)
+(define-extern ldmpckgn level-load-info)
+(define-extern ldamsig level-load-info)
+(define-extern ldampksm level-load-info)
+(define-extern lkleever level-load-info)
+(define-extern lsig level-load-info)
+(define-extern lsigklv level-load-info)
+(define-extern lsigjakc level-load-info)
+(define-extern loninsim level-load-info)
+(define-extern ljakc level-load-info)
+(define-extern ljakndax level-load-info)
+(define-extern lsamos level-load-info)
+(define-extern ljakcklv level-load-info)
+(define-extern ljkcdmkl level-load-info)
+(define-extern ldamklev level-load-info)
+(define-extern lashelin level-load-info)
+(define-extern ljak level-load-info)
+(define-extern ljakklev level-load-info)
+(define-extern ljaksig level-load-info)
+(define-extern ljkdmpk level-load-info)
+(define-extern ljndklev level-load-info)
+(define-extern ltorn level-load-info)
+(define-extern lerrol level-load-info)
+(define-extern ltornsam level-load-info)
+(define-extern ltornjnx level-load-info)
+(define-extern ltnfxhip level-load-info)
+(define-extern lwlandm level-load-info)
+(define-extern ltrtwhls level-load-info)
+(define-extern lsnkwhls level-load-info)
+(define-extern lbiped level-load-info)
+(define-extern lmech level-load-info)
+(define-extern lprenme level-load-info)
+(define-extern lgunnorm level-load-info)
+(define-extern lgunrnc level-load-info)
+(define-extern waschase level-load-info)
+(define-extern waspala level-load-info)
+(define-extern lwstdpck level-load-info)
+(define-extern ljkfeet level-load-info)
+(define-extern desert level-load-info)
+(define-extern warpcast level-load-info)
+(define-extern deserta level-load-info)
+(define-extern desbcst level-load-info)
+(define-extern deserrol level-load-info)
+(define-extern desertb level-load-info)
+(define-extern desertc level-load-info)
+(define-extern desertd level-load-info)
+(define-extern deserte level-load-info)
+(define-extern desertf level-load-info)
+(define-extern desertg level-load-info)
+(define-extern ldesgcst level-load-info)
+(define-extern deserth level-load-info)
+(define-extern deswalk level-load-info)
+(define-extern desert-game level-load-info)
+(define-extern desrace1 level-load-info)
+(define-extern desboss1 level-load-info)
+(define-extern desboss2 level-load-info)
+(define-extern desinter level-load-info)
+(define-extern destrack level-load-info)
+(define-extern desrally level-load-info)
+(define-extern deshover level-load-info)
+(define-extern deshunt level-load-info)
+(define-extern desliz level-load-info)
+(define-extern desresc level-load-info)
+(define-extern desrescc level-load-info)
+(define-extern desrescg level-load-info)
+(define-extern desoasis level-load-info)
+(define-extern oasiscst level-load-info)
+(define-extern desjump level-load-info)
+(define-extern deschase level-load-info)
+(define-extern desbattl level-load-info)
+(define-extern lwassig level-load-info)
+(define-extern lwasbbv level-load-info)
+(define-extern lnstcst level-load-info)
+(define-extern lbbring1 level-load-info)
+(define-extern lbbring2 level-load-info)
+(define-extern lbbring3 level-load-info)
+(define-extern lbbring4 level-load-info)
+(define-extern lbbring5 level-load-info)
+(define-extern lbbring6 level-load-info)
+(define-extern lbbring7 level-load-info)
+(define-extern lbbtcha1 level-load-info)
+(define-extern lbbtcha2 level-load-info)
+(define-extern lbbtcha3 level-load-info)
+(define-extern lbbspid level-load-info)
+(define-extern lbbspirt level-load-info)
+(define-extern lbbsprt2 level-load-info)
+(define-extern lbbsprt3 level-load-info)
+(define-extern lbbsdrp1 level-load-info)
+(define-extern lbbsdrp2 level-load-info)
+(define-extern lbbsdrp3 level-load-info)
+(define-extern nsta level-load-info)
+(define-extern nstb level-load-info)
+(define-extern lnstoba level-load-info)
+(define-extern lnstobb level-load-info)
+(define-extern lnstobc level-load-info)
+(define-extern templex level-load-info)
+(define-extern templea level-load-info)
+(define-extern templeb level-load-info)
+(define-extern templec level-load-info)
+(define-extern templed level-load-info)
+(define-extern templee level-load-info)
+(define-extern hanga level-load-info)
+(define-extern hangb level-load-info)
+(define-extern volcanox level-load-info)
+(define-extern volcanoa level-load-info)
+(define-extern factorya level-load-info)
+(define-extern lfactory level-load-info)
+(define-extern lfaccar level-load-info)
+(define-extern lfacrm1 level-load-info)
+(define-extern lfacrm2 level-load-info)
+(define-extern lfaccity level-load-info)
+(define-extern lfacctyb level-load-info)
+(define-extern factoryb level-load-info)
+(define-extern factoryc level-load-info)
+(define-extern factoryd level-load-info)
+(define-extern lfacout level-load-info)
+(define-extern warinta level-load-info)
+(define-extern precura level-load-info)
+(define-extern precurb level-load-info)
+(define-extern precurc level-load-info)
+(define-extern lprecurc level-load-info)
+(define-extern precurd level-load-info)
+(define-extern bikearena level-load-info)
+(define-extern halfpipe level-load-info)
+(define-extern sndtest level-load-info)
+(define-extern vistest level-load-info)
+(define-extern bsbs level-load-info)
+(define-extern tobytest level-load-info)
+(define-extern hermtest level-load-info)
+(define-extern chartest level-load-info)
+(define-extern ctyfence level-load-info)
+(define-extern testisle level-load-info)
+(define-extern gregtest level-load-info)
+(define-extern 4amy level-load-info)
+(define-extern *level-load-list* pair)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; level                          ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (define-extern level-memory-mode->string function)
-;; (define-extern lookup-level-info function) ;; (function symbol level-load-info)
+(define-extern level-memory-mode->string (function level-memory-mode string))
+(define-extern lookup-level-info (function symbol level-load-info))
 ;; (define-extern remap-level-name function) ;; (function level-load-info symbol)
 ;; (define-extern add-bsp-drawable function) ;; (function bsp-header level symbol display-frame none)
 ;; (define-extern *login-state* object) ;; login-state
@@ -30573,7 +30957,7 @@
 ;; (define-extern load-level-text-files function) ;; (function int none)
 ;; (define-extern draw-debug-text-box function) ;; (function font-context none)
 ;; (define-extern print-game-text-scaled function) ;; (function string float font-context bucket-id none)
-;; (define-extern print-game-text function) ;; (function string font-context symbol int bucket-id float)
+(define-extern print-game-text (function string font-context symbol int bucket-id float))
 ;; (define-extern disable-level-text-file-loading function) ;; (function none)
 ;; (define-extern enable-level-text-file-loading function) ;; (function none)
 
@@ -30842,7 +31226,7 @@
   )
 |#
 
-;; (define-extern *actor-hash* object) ;; spatial-hash
+(define-extern *actor-hash* spatial-hash)
 ;; (define-extern *actor-hash-buckets* object) ;; actor-hash-buckets
 ;; (define-extern update-actor-hash function) ;; (function none)
 
@@ -30976,7 +31360,7 @@
 ;; cam-interface                  ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (define-extern position-in-front-of-camera! function) ;; (function vector float float vector)
+(define-extern position-in-front-of-camera! (function vector float float vector))
 ;; (define-extern position-in-front-of-screen! function) ;; (function vector float vector vector)
 ;; (define-extern matrix-local->world function) ;; (function symbol symbol matrix)
 ;; (define-extern matrix-world->local function) ;; (function symbol object matrix)
@@ -31001,7 +31385,7 @@
 ;; (define-extern master-is-hopeful-better? function) ;; (function camera-slave camera-slave symbol :behavior camera-master)
 ;; (define-extern master-choose-entity function) ;; (function cam-setting-data symbol :behavior camera-master)
 ;; (define-extern cam-master-set-entity function) ;; (function cam-setting-data none)
-;; (define-extern cam-master-activate-slave function) ;; (function symbol none)
+(define-extern cam-master-activate-slave (function symbol none))
 ;; (define-extern cam-master-active state) ;; (state camera-master)
 ;; (define-extern cam-master-init function) ;; (function none :behavior camera-master)
 
@@ -31890,61 +32274,64 @@
 ;; process-drawable               ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+(define-extern fuel-cell type)
+(declare-type fuel-cell basic)
+
 (define-extern cspace-by-name "Get a process' [[cspace]] by name." (function process-drawable string cspace))
 (define-extern cspace-index-by-name "Get the index of a process' [[cspace]] by name." (function process-drawable string int))
-;; (define-extern vector<-cspace! function) ;; (function vector cspace vector)
+(define-extern vector<-cspace! (function vector cspace vector))
 (define-extern vector<-matrix! (function vector matrix vector))
-;; (define-extern vector<-cspace+vector! function) ;; (function vector cspace vector vector)
-;; (define-extern cspace-children function) ;; (function process-drawable int pair)
-;; (define-extern cspace-inspect-tree function) ;; (function process-drawable cspace int int object process-drawable)
-;; (define-extern execute-math-engine function) ;; (function int)
-;; (define-extern execute-cloth-engine function)
-;; (define-extern draw-joint-axes function) ;; (function process-drawable none)
-;; (define-extern draw-root function) ;; (function process-drawable none)
-;; (define-extern empty-state state) ;; (state process)
-;; (define-extern process-drawable-error-print function)
-;; (define-extern skeleton-group->draw-control function) ;; (function process-drawable skeleton-group (pointer cspace-array) draw-control)
-;; (define-extern ja-group-in-array? function)
-;; (define-extern ja-done? function) ;; (function int symbol :behavior process-drawable)
-;; (define-extern ja-min? function) ;; (function int symbol :behavior process-drawable)
-;; (define-extern ja-max? function) ;; (function int symbol :behavior process-drawable)
-;; (define-extern ja-num-frames function) ;; (function int int :behavior process-drawable)
-;; (define-extern ja-frame-num function) ;; (function int float :behavior process-drawable)
-;; (define-extern ja-aframe-num function) ;; (function int float :behavior process-drawable)
-;; (define-extern ja-aframe function) ;; (function float int float :behavior process-drawable)
-;; (define-extern ja-speed function) ;; (function int float :behavior process-drawable)
-;; (define-extern ja-step function) ;; (function int float :behavior process-drawable)
-;; (define-extern ja-rate function)
-;; (define-extern ja-linear-vel function)
-;; (define-extern ja-channel-set! function) ;; (function int int :behavior process-drawable)
-;; (define-extern ja-channel-push! function) ;; (function int time-frame int :behavior process-drawable)
-;; (define-extern ja-channel-float! function) ;; (function art-joint-anim float float float joint-control-channel :behavior process-drawable)
+(define-extern vector<-cspace+vector! (function vector cspace vector vector))
+(define-extern cspace-children (function process-drawable int pair))
+(define-extern cspace-inspect-tree (function process-drawable cspace int int object process-drawable))
+(define-extern execute-math-engine (function int))
+(define-extern execute-cloth-engine (function int))
+(define-extern draw-joint-axes (function process-drawable none))
+(define-extern draw-root (function process-drawable none))
+(define-extern empty-state (state process))
+(define-extern process-drawable-error-print (function process-drawable string none))
+(define-extern skeleton-group->draw-control (function process-drawable skeleton-group (pointer cspace-array) draw-control))
+(define-extern ja-group-in-array? (function (array int32) art-joint-anim :behavior process-drawable))
+(define-extern ja-done? (function int symbol :behavior process-drawable))
+(define-extern ja-min? (function int symbol :behavior process-drawable))
+(define-extern ja-max? (function int symbol :behavior process-drawable))
+(define-extern ja-num-frames (function int int :behavior process-drawable))
+(define-extern ja-frame-num (function int float :behavior process-drawable))
+(define-extern ja-aframe-num (function int float :behavior process-drawable))
+(define-extern ja-aframe (function float int float :behavior process-drawable))
+(define-extern ja-speed (function int float :behavior process-drawable))
+(define-extern ja-step (function int float :behavior process-drawable))
+(define-extern ja-rate (function int float :behavior process-drawable))
+(define-extern ja-linear-vel (function int vector :behavior process-drawable))
+(define-extern ja-channel-set! (function int int :behavior process-drawable))
+(define-extern ja-channel-push! (function int time-frame int :behavior process-drawable))
+(define-extern ja-channel-float! (function art-joint-anim float float float joint-control-channel :behavior process-drawable))
 (define-extern joint-control-reset! (function joint-control joint-control-channel none :behavior process-drawable))
-;; (define-extern ja-group-size function) ;; (function int :behavior process-drawable)
-;; (define-extern ja-eval function) ;; (function int :behavior process-drawable)
-;; (define-extern ja-blend-eval function) ;; (function int :behavior process-drawable)
-;; (define-extern cloth-post function)
-;; (define-extern ja-post function) ;; (function none :behavior process-drawable)
+(define-extern ja-group-size (function int :behavior process-drawable))
+(define-extern ja-eval (function int :behavior process-drawable))
+(define-extern ja-blend-eval (function int :behavior process-drawable))
+(define-extern cloth-post (function none :behavior process-drawable))
+(define-extern ja-post (function none :behavior process-drawable))
 (define-extern sleep-code (function symbol :behavior process))
-;; (define-extern transform-and-sleep function) ;; (function none :behavior process-drawable)
-;; (define-extern transform-and-sleep-code function) ;; (function none :behavior process-drawable)
-;; (define-extern transform-post function) ;; (function int :behavior process-drawable)
-;; (define-extern rider-trans function) ;; (function none :behavior process-drawable)
-;; (define-extern rider-post function) ;; (function none :behavior process-drawable)
-;; (define-extern pusher-post function) ;; (function int :behavior process-drawable)
-;; (define-extern process-drawable-delay-player function) ;; (function time-frame int :behavior process-drawable)
-;; (define-extern process-drawable-fuel-cell-handler function) ;; (function process int symbol event-message-block none :behavior process-drawable)
-;; (define-extern process-drawable-birth-fuel-cell function) ;; (function entity vector symbol none :behavior process-drawable)
-;; (define-extern find-offending-process-focusable function) ;; (function process-tree attack-info process-focusable :behavior process-drawable)
-;; (define-extern *valid-con* object) ;; string
-;; (define-extern process-drawable-valid? function) ;; (function process-drawable symbol)
-;; (define-extern process-drawable-reset-all-cloth function)
-;; (define-extern process-drawable-set-riding function)
-;; (define-extern process-drawable-set-cloth-ground-height function)
-;; (define-extern process-drawable-set-wind-strength function)
-;; (define-extern process-drawable-show-all-cloth function)
-;; (define-extern process-drawable-slow-mo-cloth function)
-;; (define-extern process-drawable-cloth-command function)
+(define-extern transform-and-sleep (function none :behavior process-drawable))
+(define-extern transform-and-sleep-code (function none :behavior process-drawable))
+(define-extern transform-post (function int :behavior process-drawable))
+(define-extern rider-trans (function none :behavior process-drawable))
+(define-extern rider-post (function none :behavior process-drawable))
+(define-extern pusher-post (function int :behavior process-drawable))
+(define-extern process-drawable-delay-player (function time-frame int :behavior process-drawable))
+(define-extern process-drawable-fuel-cell-handler (function process int symbol event-message-block none :behavior process-drawable))
+(define-extern process-drawable-birth-fuel-cell (function entity vector symbol none :behavior process-drawable))
+(define-extern find-offending-process-focusable (function process-tree attack-info process-focusable :behavior process-drawable))
+(define-extern *valid-con* string)
+(define-extern process-drawable-valid? (function process-drawable symbol))
+(define-extern process-drawable-reset-all-cloth (function process-drawable none))
+(define-extern process-drawable-set-riding (function process-drawable symbol none))
+(define-extern process-drawable-set-cloth-ground-height (function process-drawable float none))
+(define-extern process-drawable-set-wind-strength (function process-drawable float none))
+(define-extern process-drawable-show-all-cloth (function process-drawable symbol none))
+(define-extern process-drawable-slow-mo-cloth (function process-drawable symbol none))
+(define-extern process-drawable-cloth-command (function process-drawable pair none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; curves                         ;;
@@ -32093,7 +32480,7 @@
 (define-extern can-display-query? (function process string float symbol))
 (define-extern talker-surpress! (function none))
 (define-extern talker-displayed? (function symbol))
-(define-extern kill-current-talker (function symbol pair symbol none))
+(define-extern kill-current-talker (function pair pair symbol none))
 (define-extern string->talker-speech (function string talker-speech-class))
 (define-extern talker-spawn-func (function talker-speech-class process-tree vector region sound-id))
 (define-extern talker-init (function talker-speech-class vector region none :behavior talker))
@@ -32406,8 +32793,8 @@
 ;; (define-extern part-tracker-move-to-target function) ;; (function part-tracker vector)
 ;; (define-extern part-tracker-track-target function) ;; (function part-tracker vector)
 ;; (define-extern lightning-tracker-init function) ;; (function lightning-spec time-frame symbol process-drawable vector vector none :behavior lightning-tracker)
-;; (define-extern process-grab? function) ;; (function process symbol symbol :behavior process)
-;; (define-extern process-release? function) ;; (function process symbol :behavior process)
+(define-extern process-grab? (function process symbol symbol :behavior process))
+(define-extern process-release? (function process symbol :behavior process))
 ;; (define-extern camera-look-at function) ;; (function pair uint process)
 ;; (define-extern ja-anim-done? function) ;; (function process symbol)
 ;; (define-extern camera-pov-from function) ;; (function pair uint process)
@@ -33743,13 +34130,13 @@
 ;; (define-extern spt-birth-func-part-slide-droppings-for function)
 ;; (define-extern spt-birth-func-part-jump-droppings-for function)
 ;; (define-extern process-drawable-burn-effect function) ;; (function time-frame rgbaf :behavior target)
-;; (define-extern lightning-probe-callback function) ;; (function lightning-tracker none)
+(define-extern lightning-probe-callback (function lightning-tracker none))
 ;; (define-extern process-drawable-shock-effect-replace function)
-;; (define-extern process-drawable-shock-effect function) ;; (function process-drawable lightning-spec (function lightning-tracker none) sparticle-launcher int int float object)
+(define-extern process-drawable-shock-effect (function process-drawable lightning-spec (function lightning-tracker none) sparticle-launcher int int float object))
 ;; (define-extern process-drawable-shock-wall-effect function) ;; (function process-drawable lightning-spec (function lightning-tracker none) sparticle-launcher symbol)
 ;; (define-extern process-drawable2-shock-effect function) ;; (function process-drawable process-drawable lightning-spec (function lightning-tracker none) sparticle-launcher none)
 ;; (define-extern process-drawable-shock-skel-effect function) ;; (function process-drawable lightning-spec (function lightning-tracker none) sparticle-launcher float int int none)
-;; (define-extern *lightning-darkjak-pill* object) ;; lightning-spec
+(define-extern *lightning-darkjak-pill* lightning-spec)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; gun-part                       ;;
@@ -33868,8 +34255,8 @@
 ;; (define-extern reset-target-state function) ;; (function symbol target :behavior target)
 ;; (define-extern target-init function) ;; (function continue-point none :behavior target)
 ;; (define-extern tobot-init function) ;; (function symbol none :behavior target)
-;; (define-extern stop function) ;; (function symbol int)
-;; (define-extern start function) ;; (function symbol continue-point target)
+(define-extern stop (function symbol int))
+(define-extern start (function symbol continue-point target))
 ;; (define-extern tobot-start function) ;; (function symbol target)
 ;; (define-extern tobot-stop function) ;; (function int)
 ;; (define-extern *target-geo-control* object)
@@ -35675,10 +36062,10 @@
 ;; (define-extern calc-shadow-masks function)
 ;; (define-extern calc-realtime-lights function)
 (define-extern calc-vu1-lights (function vu-lights draw-control uint none))
-;; (define-extern dma-add-process-drawable function) ;; (function process-drawable draw-control symbol dma-buffer none)
+(define-extern dma-add-process-drawable (function process-drawable draw-control symbol dma-buffer none))
 ;; (define-extern *hud-lights* object) ;; vu-lights
 ;; (define-extern dma-add-process-drawable-hud function) ;; (function process-drawable draw-control float dma-buffer none)
-;; (define-extern add-process-drawable function) ;; (function process-drawable draw-control symbol dma-buffer none)
+(define-extern add-process-drawable (function process-drawable draw-control symbol dma-buffer none))
 ;; (define-extern foreground-engine-execute function) ;; (function engine display-frame none)
 ;; (define-extern main-debug-hook function) ;; (function none)
 ;; (define-extern *debug-hook* object) ;; pair
@@ -35745,16 +36132,16 @@
 
 ;; (define-extern set-letterbox-frames function) ;; (function time-frame none)
 ;; (define-extern letterbox function) ;; (function none)
-;; (define-extern set-blackout-frames function) ;; (function time-frame none)
+(define-extern set-blackout-frames (function time-frame none))
 ;; (define-extern blackout function) ;; (function none)
 ;; (define-extern add-blackout function)
 (define-extern paused? (function symbol))
 (define-extern movie? (function symbol))
 ;; (define-extern scene-select? function)
-;; (define-extern demo? function) ;; (function symbol)
-;; (define-extern kiosk? function)
+(define-extern demo? (function symbol))
+(define-extern kiosk? (function symbol))
 ;; (define-extern *last-master-mode* object) ;; symbol
-;; (define-extern set-master-mode function) ;; (function symbol none)
+(define-extern set-master-mode (function symbol none))
 ;; (define-extern pause-allowed? function) ;; (function symbol)
 ;; (define-extern toggle-pause function) ;; (function int)
 ;; (define-extern *screen-filter* screen-filter) ;; screen-filter
@@ -35906,7 +36293,7 @@
   )
 |#
 
-;; (define-extern *spawn-actors* object) ;; symbol
+(define-extern *spawn-actors* symbol)
 ;; (define-extern *compact-actors* object) ;; symbol
 ;; (define-extern *vis-actors* object) ;; symbol
 (define-extern entity-by-name (function string entity))
@@ -35937,12 +36324,12 @@
 ;; (define-extern check-for-rougue-process function) ;; (function process int int level none)
 ;; (define-extern process-drawable-scale-from-entity! function) ;; (function process-drawable entity none)
 ;; (define-extern process-drawable-from-entity! function) ;; (function process-drawable entity-actor none)
-;; (define-extern reset-actors function) ;; (function symbol none)
+(define-extern reset-actors (function symbol none))
 ;; (define-extern reset-cameras function) ;; (function none)
 ;; (define-extern entity-birth-no-kill function) ;; (function entity process)
 ;; (define-extern entity-task-complete-on function) ;; (function entity none)
 ;; (define-extern entity-task-complete-off function) ;; (function entity none)
-;; (define-extern process-entity-status! function) ;; (function process entity-perm-status symbol entity-perm-status)
+(define-extern process-entity-status! (function process entity-perm-status symbol entity-perm-status))
 ;; (define-extern find-nearest-entity function) ;; (function vector type entity)
 ;; (define-extern entity-speed-test function) ;; (function string entity)
 ;; (define-extern dump-entity-remap function) ;; (function object object none)
@@ -36503,7 +36890,7 @@
 ;; (define-extern initialize-ammo-by-other function) ;; (function vector vector fact-info none :behavior ammo)
 ;; (define-extern initialize-upgrade-by-other function) ;; (function vector vector fact-info entity-actor none :behavior upgrade-collectable)
 ;; (define-extern verify-pickup-type function)
-;; (define-extern birth-pickup-at-point function) ;; (function vector pickup-type float symbol process-tree fact-info (pointer process) :behavior process)
+(define-extern birth-pickup-at-point (function vector pickup-type float symbol process-tree fact-info (pointer process) :behavior process))
 ;; (define-extern pickup-dark-set! function)
 ;; (define-extern pickup-light-set! function)
 ;; (define-extern pickup-ammo-set! function)
@@ -36644,24 +37031,24 @@
 ;; (define-extern reset-city-squad-control function)
 ;; (define-extern city-task-faction-commands function)
 ;; (define-extern evaluate-faction-commands function)
-;; (define-extern update-task-masks function) ;; (function symbol int)
+(define-extern update-task-masks (function symbol int))
 ;; (define-extern play-clean function) ;; (function symbol int)
 ;; (define-extern play-task function) ;; (function game-task symbol symbol string)
 ;; (define-extern restart-mission function) ;; (function int)
 ;; (define-extern fail-mission function) ;; type
 ;; (define-extern task-node-by-name function) ;; (function string game-task-node-info)
 ;; (define-extern task-node-index-by-name function)
-;; (define-extern task-resolution-close! function) ;; (function game-task symbol)
+(define-extern task-resolution-close! (function game-task symbol))
 ;; (define-extern task-close! function) ;; (function string symbol)
 ;; (define-extern task-closed? function) ;; (function string symbol)
 ;; (define-extern open-task-nodes function) ;; (function (array game-task-node-info) (array game-task-node-info))
-;; (define-extern task-node-closed? function) ;; (function game-task-node symbol)
+(define-extern task-node-closed? (function game-task-node symbol))
 ;; (define-extern task-node-close! function) ;; (function game-task-node int)
 ;; (define-extern task-open? function)
 ;; (define-extern task-node-open? function) ;; (function game-task-node symbol)
-;; (define-extern task-node-open! function) ;; (function game-task-node int)
+(define-extern task-node-open! (function game-task-node symbol int))
 ;; (define-extern task-node-close-upwards function)
-;; (define-extern task-node-reset function) ;; (function symbol int)
+(define-extern task-node-reset (function symbol int))
 ;; (define-extern task-node-dump function) ;; (function symbol symbol)
 ;; (define-extern resetter-init-by-other function)
 ;; (define-extern task-manager-init-by-other function) ;; (function game-task-node-info symbol object :behavior task-manager)
@@ -36852,7 +37239,7 @@
 ;; (define-extern enable-hud function) ;; (function none)
 ;; (define-extern hide-hud-quick function) ;; (function symbol none)
 ;; (define-extern show-hud function) ;; (function object none)
-;; (define-extern ready-hud function)
+(define-extern ready-hud (function symbol int none))
 ;; (define-extern hud-hidden? function) ;; (function symbol)
 ;; (define-extern set-hud-piece-position! function) ;; (function hud-sprite int int none)
 ;; (define-extern set-as-offset-from! function) ;; (function hud-sprite vector4w int int none)
@@ -36869,7 +37256,7 @@
 ;; secrets-menu                   ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (define-extern *menu-secrets-array* array)
+(define-extern *menu-secrets-array* (array secret-item-option))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; progress-static                ;;
@@ -36983,10 +37370,10 @@
 ;; (define-extern begin-scan function) ;; (function hud-box progress int)
 ;; (define-extern end-scan function) ;; (function hud-box float int)
 ;; (define-extern progress-post function) ;; (function none :behavior progress)
-;; (define-extern *last-powerup-collect-amount* object)
-;; (define-extern spawn-secret-notify-message function)
+(define-extern *last-powerup-collect-amount* int)
+(define-extern spawn-secret-notify-message (function int none))
 ;; (define-extern menu-secrets-notify-task-node-close function)
-;; (define-extern menu-secrets-notify-powerup-collect function)
+(define-extern menu-secrets-notify-powerup-collect (function int))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; progress-draw                  ;;
@@ -66821,7 +67208,7 @@
 ;; (define-extern *target-controller-pad* cpad-info)
 ;; (define-extern setup-control-pad function)
 ;; (define-extern set-pad-world-dir function)
-;; (define-extern override-player-controls function)
+(define-extern override-player-controls (function int))
 ;; (define-extern player-controller-init-by-other function)
 ;; (define-extern player-controller-event-handler function)
 
