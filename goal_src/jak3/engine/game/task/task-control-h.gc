@@ -43,6 +43,12 @@
   )
 ;; ---task-manager-mask
 
+(define-extern update-task-masks (function symbol int))
+(define-extern task-resolution-close! (function game-task symbol))
+(define-extern task-node-closed? (function game-task-node symbol))
+(define-extern task-node-open! (function game-task-node symbol int))
+(define-extern task-node-reset (function symbol int))
+
 ;; DECOMP BEGINS
 
 (defun-debug game-task->string ((task game-task))
@@ -470,9 +476,9 @@
     )
   )
 
-;; og:preserve-this this function appears to have been stubbed out in jak 3
+;; WARN: Return type mismatch int vs game-task.
 (defun c-string->game-task ((arg0 string))
-  (game-task unknown)
+  (the-as game-task -1)
   )
 
 (defun-debug game-task-actor->string ((arg0 game-task-actor))
@@ -1028,16 +1034,16 @@
    (tex       game-task-icon)
    (icon      uint16           :overlay-at tex)
    (flags     game-task-flags  :offset   7)
-   (scene     basic            :offset   8)
+   (scene     string           :offset   8)
    (distance  meters)
    )
   )
 
 
 (deftype resetter-spec (structure)
-  ((continue    basic)
+  ((continue    string)
    (node        game-task-node)
-   (reset-mode  basic)
+   (reset-mode  symbol)
    (execute     basic)
    )
   :pack-me
@@ -1059,18 +1065,18 @@
 (deftype task-manager-info (structure)
   ((mask                       task-manager-mask)
    (level                      symbol)
-   (type-to-spawn              basic)
+   (type-to-spawn              symbol)
    (time-limit                 int32)
    (manager                    handle)
-   (intro-scene                string)
-   (resolution-scene           string)
-   (resolution-scene-continue  string)
+   (intro-scene                object)
+   (resolution-scene           object)
+   (resolution-scene-continue  object)
    (final-node                 game-task-node)
    (vehicle-type               uint8)
    (sphere-count               int8)
    (index                      int8)
    (intro-delay                uint16)
-   (sphere-array               uint32)
+   (sphere-array               (inline-array sphere))
    (on-complete                pair)
    (on-fail                    pair)
    (user-count                 int32)
@@ -1408,13 +1414,13 @@
    (command-index     uint8)
    (command-count     uint8)
    (description       text-id)
-   (faction-commands  basic)
+   (faction-commands  pair)
    )
   (:methods
     (game-task-node-info-method-9 () none)
-    (game-task-node-info-method-10 () none)
+    (open! (_type_ symbol) int)
     (game-task-node-info-method-11 () none)
-    (game-task-node-info-method-12 () none)
+    (game-task-node-info-method-12 (_type_) symbol)
     (game-task-node-info-method-13 () none)
     )
   )
@@ -1428,7 +1434,7 @@
    (pre-play-continue    string)
    (play-node            game-task-node)
    (play-continue        string)
-   (kiosk-play-continue  string)
+   (kiosk-play-continue  object)
    )
   (:methods
     (game-task-info-method-9 (_type_) none)
@@ -1439,7 +1445,7 @@
 (deftype game-task-control (basic)
   ((counter        uint32)
    (actor          game-task-actor)
-   (current-node   uint16)
+   (current-node   game-task-node)
    (current-event  game-task-event)
    )
   (:methods
