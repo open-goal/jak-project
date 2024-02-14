@@ -2613,6 +2613,7 @@
   (set-stereo-mode)
   )
 
+;; +++gsound-h:sound-group
 (defenum sound-group
   :bitfield #t
   :type uint8
@@ -2622,9 +2623,10 @@
   (sog3)
   (ambient)
   (dialog2) ;; more dialog
-  (sog6)
+  (special)
   (sog7)
   )
+;; ---gsound-h:sound-group
 
 (defenum sound-mask
   :bitfield #t
@@ -4152,9 +4154,9 @@
   (tie-scissor)
   (tie-envmap-scissor)
   (tie-vanish)
-  (generic)
   (shrubbery)
   (shrub-near)
+  (generic)
   (merc)
   (emerc)
   (billboard)
@@ -7712,7 +7714,7 @@
     (level-group-method-25 () none) ;; 25 ;; (update-vis-volumes (_type_) none)
     (level-group-method-26 (_type_ symbol) symbol) ;; 26 ;; (update-vis-volumes-from-nav-mesh (_type_) none)
     (level-group-method-27 () none) ;; 27 ;; (print-volume-sizes (_type_) none)
-    (level-group-method-28 () none) ;; 28 ;; (level-status (_type_ symbol) symbol)
+    (level-group-method-28 (_type_) symbol) ;; 28 ;; (level-status (_type_ symbol) symbol)
     (level-group-method-29 () none) ;; 29 ;; (load-in-progress? (_type_) symbol)
     (level-group-method-30 () none) ;; 30 ;; (level-get-most-disposable (_type_) level)
     )
@@ -10336,14 +10338,15 @@
 ;; ---settings-h:game-vehicles
 
 (declare-type resetter-spec structure)
+(define-extern crate type)
 (deftype user-setting-data (structure)
   ((border-mode            symbol              :offset-assert 0)
    (process-mask           process-mask        :offset-assert 4)
-   (unknown-int32          int32               :offset-assert 8)
+   (common-page            int32               :offset-assert 8)
    (language               language-enum       :offset-assert 12)
    (screenx                int32               :offset-assert 16)
    (screeny                int32               :offset-assert 20)
-   (vibration              symbol              :offset 24)
+   (vibration              symbol              :offset-assert 24)
    (play-hints             symbol              :offset-assert 28)
    (movie                  (pointer process)   :offset-assert 32)
    (talking                (pointer process)   :offset-assert 36)
@@ -10352,7 +10355,8 @@
    (ambient                (pointer process)   :offset-assert 48)
    (video-mode             symbol              :offset-assert 52)
    (aspect-ratio           symbol              :offset-assert 56)
-   (auto-save              symbol              :offset 64)
+   (set-video-mode         symbol              :offset-assert 60)
+   (auto-save              symbol              :offset-assert 64)
    (bg-r                   float               :offset-assert 68)
    (bg-g                   float               :offset-assert 72)
    (bg-b                   float               :offset-assert 76)
@@ -10363,19 +10367,24 @@
    (blur-a-speed           float               :offset-assert 96)
    (allow-progress         symbol              :offset-assert 100)
    (allow-pause            symbol              :offset-assert 104)
-   (camera-stick-dir       symbol              :offset 116)
+   (ocean-off              symbol              :offset-assert 108)
+   (allow-look-around      symbol              :offset-assert 112)
+   (camera-stick-dir       symbol              :offset-assert 116)
    (movie-name             symbol              :offset-assert 120)
    (weather                symbol              :offset-assert 124)
-   (task-mask              task-mask           :offset 140)
-   (unknown-symbol         symbol              :offset 144) ;; added (method 9 game-info)
-   (duck                   symbol              :offset 148)
+   (mouse                  symbol              :offset-assert 128)
+   (cursor                 symbol              :offset-assert 132)
+   (keybd                  symbol              :offset-assert 136)
+   (task-mask              task-mask           :offset-assert 140)
+   (region-mode            symbol              :offset-assert 144) ;; added (method 9 game-info)
+   (duck                   symbol              :offset-assert 148)
    (attack                 symbol              :offset-assert 152)
    (gun                    symbol              :offset-assert 156)
    (board                  symbol              :offset-assert 160)
    (jump                   symbol              :offset-assert 164)
    (speed-mult             float               :offset-assert 168)
    (features               game-feature        :offset-assert 176)
-   (vehicles               game-vehicles        :offset-assert 184)
+   (vehicles               game-vehicles       :offset-assert 184)
    (sfx-volume             float               :offset-assert 192)
    (sfx-volume-movie       float               :offset-assert 196)
    (music-volume           float               :offset-assert 200)
@@ -10402,7 +10411,9 @@
    (minimap                uint32              :offset-assert 284)
    (sound-tune             uint32              :offset-assert 288)
    (allow-continue         symbol              :offset-assert 292)
-   (subtitle               symbol              :offset 304)
+   (spotlight-color        rgba                :offset-assert 296)
+   (highlight-color        rgba                :offset-assert 300)
+   (subtitle               symbol              :offset-assert 304)
    (doorway                symbol              :offset-assert 308)
    (gem                    symbol              :offset-assert 312)
    (half-speed             symbol              :offset-assert 316)
@@ -10432,7 +10443,8 @@
    (allow-error            symbol              :offset-assert 412)
    (under-water-pitch-mod  float               :offset-assert 416)
    (slow-time              float               :offset-assert 420)
-   (restart-info           resetter-spec       :offset 428)
+   (scanlines              float               :offset-assert 424)
+   (restart-info           resetter-spec       :offset-assert 428)
    (fail-info              resetter-spec       :offset-assert 432)
    (death-info             resetter-spec       :offset-assert 436)
    (quit-info              resetter-spec       :offset-assert 440)
@@ -10445,20 +10457,78 @@
    (level-trans-time       int32               :offset-assert 492)
    (scarf                  float               :offset-assert 496)
    (goggles                float               :offset-assert 500)
-   (board-trail            basic               :offset-assert 504)
-   (letterbox              float               :offset 572)
+   (board-trail            symbol              :offset-assert 504)
+   (kg-primary-target      handle              :offset-assert 512)
+   (ff-primary-target      handle              :offset-assert 520)
+   (mh-primary-target      handle              :offset-assert 528)
+   (kg-target-float        float               :offset-assert 536)
+   (ff-target-float        float               :offset-assert 540)
+   (target-float           float               :offset-assert 544)
+   (kg-difficulty          float               :offset-assert 548)
+   (fog-special-interp-targ float              :offset-assert 552)
+   (fog-special-interp-rate float              :offset-assert 556)
+   (traffic-spawn          symbol              :offset-assert 560)
+   (stop-vehicle?          symbol              :offset-assert 564)
+   (part-bounds-check      symbol              :offset-assert 568)
+   (letterbox              float               :offset-assert 572)
    (letterbox-speed        float               :offset-assert 576)
-   (brightness             float               :offset 608)
+   (minimap-level          symbol              :offset-assert 580)
+   (bigmap-level           symbol              :offset-assert 584)
+   (duststorm-push-player? symbol              :offset-assert 588)
+   (dust-storm-fog-scalar  float               :offset-assert 592)
+   (dust-storm-sound-scalar float              :offset-assert 596)
+   (citizen-fights         symbol              :offset-assert 600)
+   (allow-logo             symbol              :offset-assert 604)
+   (brightness             float               :offset-assert 608)
    (contrast               float               :offset-assert 612)
-   (borrow-city-count      uint32              :offset 620)
+   (stop-boats?            symbol              :offset-assert 616)
+   (borrow-city-count      uint32              :offset-assert 620)
    (borrow-city            pair              3 :offset-assert 624)
-   (unknown-symbol0        symbol              :offset 716)
-   (wind-vec               vector              :offset 736) ;; added (method 11 cloth-system)
-   (wind                   float               :offset 740) ;; added (method 11 cloth-system)
-   (audio-language         language-enum       :offset 748)
-   (ear-handle             handle              :offset 784) ;; added, used in gsound.
-   (special-volume         float               :offset 796)
-   (pad uint8 108 :offset 800) ;; added
+   (faction-command-count  uint32              :offset-assert 636)
+   (faction-command        pair              3 :offset-assert 640)
+   (change-gun             symbol              :offset-assert 652)
+   (kg-enemy-settings      symbol              :offset-assert 656)
+   (ff-enemy-settings      symbol              :offset-assert 660)
+   (mh-enemy-settings      symbol              :offset-assert 664)
+   (city-heap-load         float               :offset-assert 668)
+   (gun-target-guards?     symbol              :offset-assert 672)
+   (freeze-screen          symbol              :offset-assert 676)
+   (borrow-hold-perm-count uint32              :offset-assert 680)
+   (borrow-hold-perm       pair              3 :offset-assert 684)
+   (borrow-hold-count      uint32              :offset-assert 696)
+   (borrow-hold            pair              3 :offset-assert 700)
+   (cloth                  symbol              :offset-assert 712)
+   (player-control-override symbol             :offset-assert 716)
+   (player-control-mask    uint32              :offset-assert 720)
+   (gun-special-mode       symbol              :offset-assert 724)
+   (airlock-command        pair                :offset-assert 728)
+   (sky-type               symbol              :offset-assert 732)
+   (global-wind            symbol              :offset-assert 736) ;; added (method 11 cloth-system)
+   (ambient-wind-scalar    float               :offset-assert 740) ;; added (method 11 cloth-system)
+   (halfpipe-jump-mult     float               :offset-assert 744)
+   (audio-language         language-enum       :offset-assert 748)
+   (armor                  symbol              :offset-assert 752)
+   (city-sound             pair              3 :offset-assert 756)
+   (board-max-speed        float               :offset-assert 768)
+   (lock-sound-camera-to-target symbol         :offset-assert 772)
+   (hide-crates?           symbol              :offset-assert 776)
+   (pickups                symbol              :offset-assert 780)
+   (sound-ear              handle              :offset-assert 784) ;; added, used in gsound.
+   (sound-ear-scale        float               :offset-assert 792)
+   (special-volume         float               :offset-assert 796)
+   (dive                   symbol              :offset-assert 800)
+   (timer-warn-seconds     uint32              :offset-assert 804)
+   (gem-pool-index         int32               :offset-assert 808)
+   (unique-vehicle-mission-critical symbol     :offset-assert 812)
+   (turbo                  symbol              :offset-assert 816)
+   (gun-eject              symbol              :offset-assert 820)
+   (disable-parking-spots? symbol              :offset-assert 824)
+   (gem-seek-target-dir?   symbol              :offset-assert 828)
+   (unk-volume             float               :offset-assert 832)
+   (nuke-active?           symbol              :offset-assert 836)
+   (disable-guard-chatter? symbol              :offset-assert 840)
+   (use-alternate-bouncer? symbol              :offset-assert 844)
+   (pad uint8 60 :offset 848) ;; added
    )
   :method-count-assert 11
   :size-assert         #x38c
@@ -10577,7 +10647,8 @@
    (string-min-height-default     symbol                     :offset-assert 368) ;; guessed by decompiler
    (flip-vertical                 symbol                     :offset-assert 372)
    (flip-horizontal               symbol                     :offset-assert 376)
-   (fov-priority                  float                      :offset 384)
+   (unk-float0                    float                      :offset-assert 380)
+   (fov-priority                  float                      :offset-assert 384)
    (dummy                         object             98      :offset-assert 388) ;; guessed by decompiler
    )
   :method-count-assert 11
@@ -10617,11 +10688,11 @@
     (remove-setting (_type_ process symbol) none) ;; 12
     (kill-persister (_type_ engine-pers object) none) ;; 13
     (setting-control-method-14 (_type_ object) connectable) ;; 14
-    (remove-setting-by-arg0 (_type_ object) none) ;; 15
-    (set-setting-by-param (_type_ symbol object object object) connection) ;; 16
-    (apply-settings (_type_) user-setting-data) ;; 17
-    (update (_type_) user-setting-data) ;; 18
-    (setting-control-method-19 () none) ;; 19
+    (setting-control-method-15 (_type_ object) connectable) ;; 15
+    (remove-setting-by-arg0 (_type_ object) none) ;; 16
+    (set-setting-by-param (_type_ symbol object object object) connection) ;; 17
+    (apply-settings (_type_) user-setting-data) ;; 18
+    (update (_type_) user-setting-data) ;; 19
     )
   )
 
@@ -10747,7 +10818,7 @@
     (blit-displays-work-method-14 () none) ;; 14
     (blit-displays-work-method-15 () none) ;; 15
     (blit-displays-work-method-16 () none) ;; 16
-    (blit-displays-work-method-17 () none) ;; 17
+    (blit-displays-work-method-17 (_type_ vector int float symbol) none) ;; 17
     (blit-displays-work-method-18 () none) ;; 18
     (blit-displays-work-method-19 () none) ;; 19
     (blit-displays-work-method-20 () none) ;; 20
@@ -16881,7 +16952,7 @@
   (:methods
     (speech-control-method-9 () none) ;; 9 ;; (speech-control-method-9 (_type_) none)
     (speech-control-method-10 () none) ;; 10 ;; (speech-table-set! (_type_ speech-type speech-type-info) none)
-    (speech-control-method-11 () none) ;; 11 ;; (speech-control-method-11 (_type_) none)
+    (speech-control-method-11 (_type_) none) ;; 11 ;; (speech-control-method-11 (_type_) none)
     (speech-control-method-12 () none) ;; 12 ;; (speech-control-method-12 (_type_ process-drawable speech-type) none)
     (speech-control-method-13 () none) ;; 13 ;; (speech-control-method-13 (_type_ handle) none)
     (speech-control-method-14 () none) ;; 14 ;; (speech-control-method-14 (_type_) none)
@@ -21881,6 +21952,38 @@
 (defenum target-flags
   :type uint32
   :bitfield #t
+  (tf0 0)
+  (tf1 1)
+  (tf2 2)
+  (tf3 3)
+  (tf4 4)
+  (tf5 5)
+  (tf6 6)
+  (prevent-jump 7)
+  (prevent-attack 8)
+  (prevent-duck 9)
+  (tf10 10)
+  (tf11 11)
+  (tf12 12)
+  (tf13 13)
+  (tf14 14)
+  (tf15 15)
+  (tf16 16)
+  (prevent-board 17)
+  (prevent-gun 18)
+  (tf19 19)
+  (tf20 20)
+  (tf21 21)
+  (tf22 22)
+  (prevent-double-jump 23)
+  (tf24 24)
+  (tf25 25)
+  (tf26 26)
+  (tf27 27)
+  (tf28 28)
+  (tf29 29)
+  (tf30 30)
+  (tf31 31)
   )
 ;; ---target-h:target-flags
 
@@ -28881,21 +28984,21 @@
 ;; generic-vu0                    ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (define-extern generic-vu0-block object) ;; vu-function
+(define-extern generic-vu0-block vu-function)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; generic-vu1                    ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (define-extern generic-vu1-block object) ;; vu-function
-;; (define-extern generic-setup-constants function) ;; (function generic-constants none)
-;; (define-extern generic-add-constants function) ;; (function dma-buffer none)
-;; (define-extern generic-setup-shrub-constants function)
-;; (define-extern generic-add-shrub-constants function) ;; (function dma-buffer int int int none)
-;; (define-extern generic-init-buf function) ;; (function dma-buffer gs-zbuf none)
-;; (define-extern generic-vu1-init-buf function) ;; (function bucket-id gs-zbuf none)
-;; (define-extern generic-vu1-init-buf-special function) ;; (function bucket-id gs-zbuf none)
-;; (define-extern generic-vu1-init-buffers function) ;; (function none)
+(define-extern generic-vu1-block vu-function)
+(define-extern generic-setup-constants (function generic-constants none))
+(define-extern generic-add-constants (function dma-buffer none))
+(define-extern generic-setup-shrub-constants (function generic-shrub-constants int int int none))
+(define-extern generic-add-shrub-constants (function dma-buffer int int int none))
+(define-extern generic-init-buf (function dma-buffer gs-zbuf none))
+(define-extern generic-vu1-init-buf (function bucket-id gs-zbuf none))
+(define-extern generic-vu1-init-buf-special (function bucket-id gs-zbuf none))
+(define-extern generic-vu1-init-buffers (function none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; generic-effect                 ;;
@@ -29112,7 +29215,7 @@
 ;; warp                           ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (define-extern fx-copy-buf function) ;; (function dma-buffer none)
+(define-extern fx-copy-buf (function dma-buffer none))
 ;; (define-extern *warp-shader* object) ;; adgif-shader
 ;; (define-extern create-blanket function) ;; (function symbol)
 ;; (define-extern *warp* object) ;; symbol
@@ -30231,6 +30334,11 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; settings                       ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(define-extern scf-get-volume "Defined in the kernel" (function int))
+(define-extern scf-get-language "Defined in the kernel" (function language-enum))
+(define-extern scf-get-aspect "Defined in the kernel" (function uint))
+(define-extern *boot-video-mode* "Defined in the kernel" int)
 
 (define-extern get-current-language (function language-enum))
 (define-extern *setting-control* setting-control)
@@ -31523,7 +31631,7 @@
 ;; (define-extern setup-slave-for-hopefull function) ;; (function camera-slave none)
 ;; (define-extern master-is-hopeful-better? function) ;; (function camera-slave camera-slave symbol :behavior camera-master)
 ;; (define-extern master-choose-entity function) ;; (function cam-setting-data symbol :behavior camera-master)
-;; (define-extern cam-master-set-entity function) ;; (function cam-setting-data none)
+(define-extern cam-master-set-entity (function cam-setting-data none))
 (define-extern cam-master-activate-slave (function symbol none))
 ;; (define-extern cam-master-active state) ;; (state camera-master)
 ;; (define-extern cam-master-init function) ;; (function none :behavior camera-master)
@@ -31637,12 +31745,12 @@
 ;; (define-extern cam-standoff state) ;; (state camera-slave)
 ;; (define-extern cam-standoff-read-entity state) ;; (state camera-slave)
 ;; (define-extern *CAM_EYE-bank* cam-eye-bank) ;; cam-eye-bank
-;; (define-extern cam-eye state) ;; (state camera-slave)
+(define-extern cam-eye (state camera-slave))
 ;; (define-extern cam-curve-closest-point function)
 ;; (define-extern cam-tube-sled state)
 ;; (define-extern cam-spline state) ;; (state camera-slave)
 ;; (define-extern cam-decel state) ;; (state camera-slave)
-;; (define-extern cam-endlessfall state) ;; (state camera-slave)
+(define-extern cam-endlessfall (state camera-slave))
 ;; (define-extern cam-circular-position-into-max-angle function) ;; (function vector vector float vector :behavior camera-slave)
 ;; (define-extern cam-circular-position function) ;; (function symbol vector :behavior camera-slave)
 ;; (define-extern cam-circular-code function) ;; (function float :behavior camera-slave)
@@ -31723,7 +31831,7 @@
 ;; (define-extern cam-mouse-input function) ;; (function vector vector float)
 ;; (define-extern cam-free-floating-input function) ;; (function vector vector symbol int vector)
 ;; (define-extern cam-free-floating-move function) ;; (function matrix vector vector int vector)
-;; (define-extern cam-free-floating state) ;; (state camera-slave)
+(define-extern cam-free-floating (state camera-slave))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; cam-combiner                   ;;
@@ -32630,7 +32738,7 @@
 
 ;; (define-extern speech-type->string function)
 ;; (define-extern gui-status->string function)
-;; (define-extern *speech-control* object) ;; speech-control
+(define-extern *speech-control* speech-control)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; region                         ;;
@@ -36257,9 +36365,9 @@
 ;; video                          ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (define-extern set-video-mode function) ;; (function symbol none)
+(define-extern set-video-mode (function symbol none))
 (define-extern get-video-mode (function symbol))
-;; (define-extern set-aspect-ratio function) ;; (function symbol none)
+(define-extern set-aspect-ratio (function symbol none))
 ;; (define-extern get-aspect-ratio function) ;; (function symbol)
 ;; (define-extern set-progressive-scan function) ;; (function symbol none)
 ;; (define-extern get-progressive-scan function) ;; (function symbol)
@@ -36273,7 +36381,7 @@
 (define-extern letterbox (function none))
 (define-extern set-blackout-frames (function time-frame none))
 (define-extern blackout (function none))
-;; (define-extern add-blackout function)
+(define-extern add-blackout (function time-frame int int int int int))
 (define-extern paused? (function symbol))
 (define-extern movie? (function symbol))
 ;; (define-extern scene-select? function)
@@ -36285,7 +36393,7 @@
 ;; (define-extern toggle-pause function) ;; (function int)
 ;; (define-extern *screen-filter* screen-filter) ;; screen-filter
 ;; (define-extern *cheat-temp* object) ;; (pointer int32)
-;; (define-extern *master-exit* object) ;; symbol
+(define-extern *master-exit* symbol)
 ;; (define-extern *progress-cheat* object) ;; symbol
 ;; (define-extern *first-boot* object) ;; symbol
 ;; (define-extern main-timeouts function)
@@ -68206,7 +68314,7 @@
 ;; (define-extern *default-kg-squad-member-settings* object)
 ;; (define-extern *alert-kg-squad-member-settings* object)
 ;; (define-extern *war-kg-squad-member-settings* object)
-;; (define-extern set-kg-primary-target function)
+(define-extern set-kg-primary-target (function handle float none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; ff-squad-control               ;;
@@ -68215,7 +68323,7 @@
 ;; (define-extern *alert-level-settings* object) ;; (inline-array traffic-alert-state-settings)
 ;; (define-extern *ff-war-alert-state-settings* object)
 ;; (define-extern *ff-guard-type-mask* object)
-;; (define-extern set-ff-primary-target function)
+(define-extern set-ff-primary-target (function handle float none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; mh-squad-control               ;;
@@ -68223,7 +68331,7 @@
 
 ;; (define-extern *default-mh-squad-member-settings* object)
 ;; (define-extern *war-mh-squad-member-settings* object)
-;; (define-extern set-mh-primary-target function)
+(define-extern set-mh-primary-target (function handle float none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; cty-borrow-manager             ;;
