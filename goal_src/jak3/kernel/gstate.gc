@@ -30,20 +30,27 @@
     )
   )
 
-; (defmacro process-spawn (proc-type &key (init #f) &key (from *default-dead-pool*) &key (to *default-pool*) &key (name #f) &key (stack-size #x4000) &key (stack *scratch-memory-top*) &rest args)
-;   "Start a new process and run an init function on it.
-;    Returns a pointer to the new process, or #f (or is it 0?) if something goes wrong."
+(defmacro process-spawn (proc-type &key (init #f)
+                                   &key (from *default-dead-pool*)
+                                   &key (to *default-pool*)
+                                   &key (name #f)
+                                   &key (stack-size #x4000)
+                                   &key (stack *scratch-memory-top*)
+                                   &key (unk 1)
+                                   &rest args)
+  "Start a new process and run an init function on it.
+   Returns a pointer to the new process, or #f (or is it 0?) if something goes wrong."
 
-;   (with-gensyms (new-proc)
-;     `(let ((,new-proc (the-as ,proc-type (get-process ,from ,proc-type ,stack-size))))
-;         (when ,new-proc
-;           ((method-of-type ,proc-type activate) ,new-proc ,to ,(if name name `(symbol->string ',proc-type)) ,stack)
-;           (run-now-in-process ,new-proc ,(if init init (string->symbol (fmt #f "{}-init-by-other" proc-type))) ,@args)
-;           (the (pointer ,proc-type) (-> ,new-proc ppointer))
-;           )
-;         )
-;     )
-;   )
+  (with-gensyms (new-proc)
+    `(let ((,new-proc (the-as ,proc-type (get-process ,from ,proc-type ,stack-size ,unk))))
+        (when ,new-proc
+          ((method-of-type ,proc-type activate) ,new-proc ,to ,(if name name `(symbol->string ,proc-type)) ,stack)
+          (run-now-in-process ,new-proc ,(if init init (string->symbol (fmt #f "{}-init-by-other" proc-type))) ,@args)
+          (the (pointer ,proc-type) (-> ,new-proc ppointer))
+          )
+        )
+    )
+  )
 
 (defmacro go-virtual (state-name &key (proc self) &rest args)
   "Same as go, but use a virtual state."

@@ -564,8 +564,8 @@
      (set! (-> this death-time) (-> *display* game-clock frame-counter))
      (set! (-> this hit-time) (-> *display* game-clock frame-counter))
      (dotimes (v1-86 138)
-       (set! (-> this unknown-arr0 0) 0)
-       (set! (-> this task-close-times 0) 0)
+       (set! (-> this task-complete-time 0) 0)
+       (set! (-> this task-start-time 0) 0)
        (nop!)
        )
      (dotimes (v1-89 32)
@@ -630,7 +630,7 @@
            (task-node-open! (-> reset-spec node) 'event)
            )
        (if arg2
-           (game-info-method-23 this)
+           (load-game this arg2)
            )
        )
       ((= v1-117 'play)
@@ -673,7 +673,7 @@
                                        )
                                    (set-continue! *game-info* arg2 #t)
                                    (when arg3
-                                     (game-info-method-23 *game-info*)
+                                     (load-game *game-info* arg3)
                                      (set! arg2 (get-current-continue-forced *game-info*))
                                      (reset-actors 'life)
                                      (send-event (handle->process (-> *game-info* auto-save-proc)) 'done)
@@ -793,7 +793,7 @@
          (when (not (or (task-complete? this (the-as game-task s5-1)) (>= (the-as uint 1) (the-as uint s5-1))))
            (set! (-> this task-deaths) 0)
            (set! (-> this task-pickup-time) (-> *display* game-clock frame-counter))
-           (set! (-> this unknown-arr0 s5-1) (-> *display* game-clock frame-counter))
+           (set! (-> this task-complete-time s5-1) (-> *display* game-clock frame-counter))
            (+! (-> this fuel) 1.0)
            (logior! (-> this task-perm-list data s5-1 status) (entity-perm-status complete))
            (task-resolution-close! (the-as game-task s5-1))
@@ -1694,8 +1694,8 @@
               )
             )
           (label cfg-19)
-          (if (nonzero? (-> this task-close-times game-task))
-              (set! sv-24 (max sv-24 (-> this task-close-times game-task)))
+          (if (nonzero? (-> this task-start-time game-task))
+              (set! sv-24 (max sv-24 (-> this task-start-time game-task)))
               )
           (format
             #t
