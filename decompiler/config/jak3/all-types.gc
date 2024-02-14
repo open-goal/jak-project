@@ -10335,12 +10335,17 @@
   )
 ;; ---settings-h:game-vehicles
 
+(declare-type resetter-spec structure)
 (deftype user-setting-data (structure)
   ((border-mode            symbol              :offset-assert 0)
    (process-mask           process-mask        :offset-assert 4)
    (unknown-int32          int32               :offset-assert 8)
    (language               language-enum       :offset-assert 12)
-   (movie                  (pointer process)   :offset 32)
+   (screenx                int32               :offset-assert 16)
+   (screeny                int32               :offset-assert 20)
+   (vibration              symbol              :offset 24)
+   (play-hints             symbol              :offset-assert 28)
+   (movie                  (pointer process)   :offset-assert 32)
    (talking                (pointer process)   :offset-assert 36)
    (spooling               (pointer process)   :offset-assert 40)
    (hint                   (pointer process)   :offset-assert 44)
@@ -10358,7 +10363,8 @@
    (blur-a-speed           float               :offset-assert 96)
    (allow-progress         symbol              :offset-assert 100)
    (allow-pause            symbol              :offset-assert 104)
-   (movie-name             symbol              :offset 120)
+   (camera-stick-dir       symbol              :offset 116)
+   (movie-name             symbol              :offset-assert 120)
    (weather                symbol              :offset-assert 124)
    (task-mask              task-mask           :offset 140)
    (unknown-symbol         symbol              :offset 144) ;; added (method 9 game-info)
@@ -10426,10 +10432,10 @@
    (allow-error            symbol              :offset-assert 412)
    (under-water-pitch-mod  float               :offset-assert 416)
    (slow-time              float               :offset-assert 420)
-   (restart-info           basic               :offset 428)
-   (fail-info              basic               :offset-assert 432)
-   (death-info             basic               :offset-assert 436)
-   (quit-info              basic               :offset-assert 440)
+   (restart-info           resetter-spec       :offset 428)
+   (fail-info              resetter-spec       :offset-assert 432)
+   (death-info             resetter-spec       :offset-assert 436)
+   (quit-info              resetter-spec       :offset-assert 440)
    (extra-bank-count       uint32              :offset-assert 444)
    (extra-bank             pair              3 :offset-assert 448)
    (borrow-count           uint32              :offset-assert 460)
@@ -10442,6 +10448,8 @@
    (board-trail            basic               :offset-assert 504)
    (letterbox              float               :offset 572)
    (letterbox-speed        float               :offset-assert 576)
+   (brightness             float               :offset 608)
+   (contrast               float               :offset-assert 612)
    (borrow-city-count      uint32              :offset 620)
    (borrow-city            pair              3 :offset-assert 624)
    (unknown-symbol0        symbol              :offset 716)
@@ -13699,10 +13707,10 @@
   )
 
 (deftype task-reset-info (structure)
-  ((restart-info resetter-params  :offset-assert 0)
-   (quit-info    resetter-params  :offset-assert 4)
-   (fail-info    resetter-params  :offset-assert 8)
-   (death-info   resetter-params  :offset-assert 12)
+  ((restart-info resetter-params :offset-assert 0)
+   (quit-info    resetter-params :offset-assert 4)
+   (fail-info    resetter-params :offset-assert 8)
+   (death-info   resetter-params :offset-assert 12)
    )
   :method-count-assert 9
   :size-assert         #x10
@@ -13816,7 +13824,7 @@
     (task-manager-method-28 () none) ;; 28
     (task-manager-method-29 () none) ;; 29
     (task-manager-method-30 () none) ;; 30
-    (task-manager-method-31 () none) ;; 31
+    (task-manager-method-31 (_type_ symbol) resetter-spec) ;; 31
     )
   )
 
@@ -16423,7 +16431,7 @@
    (death-time             time-frame                :offset-assert 496)
    (hit-time               time-frame                :offset-assert 504)
    (task-pickup-time       time-frame                :offset-assert 512)
-   (unknown-arr0           (array time-frame)        :offset-assert 520)
+   (task-complete-time     (array time-frame)        :offset-assert 520)
    (task-enter-times       (array time-frame)        :offset-assert 524)
    (task-in-times          (array time-frame)        :offset-assert 528)
    (death-pos              vector-array              :offset-assert 532)
@@ -16459,7 +16467,7 @@
    (goal                   float                     :offset-assert 724)
    (miss                   float                     :offset-assert 728)
    (miss-max               float                     :offset-assert 732)
-   (task-close-times       (array time-frame)        :offset-assert 736)
+   (task-start-time        (array time-frame)        :offset-assert 736)
    (live-eco-pill-count    int32                     :offset-assert 740)
    (live-gem-count         int32                     :offset-assert 744)
    (air-supply             float                     :offset-assert 748)
@@ -16491,9 +16499,9 @@
     (get-continue-by-name (_type_ string) continue-point) ;; 19
     (set-continue! (_type_ basic symbol) continue-point) ;; 20
     (game-info-method-21 (_type_) none) ;; 21
-    (game-info-method-22 (_type_) none) ;; 22 ;; (game-info-method-22 (_type_) int)
-    (game-info-method-23 (_type_) none) ;; 23 ;; (save-game (_type_ game-save string) game-save)
-    (you-suck-stage (_type_ symbol int) int) ;; 24 ;; (load-game (_type_ game-save) game-save)
+    (save-game (_type_ game-save string) game-save) ;; 22 ;; (game-info-method-22 (_type_) int)
+    (load-game (_type_ game-save) game-save) ;; 23
+    (you-suck-stage (_type_ symbol int) int) ;; 24
     (you-suck-scale (_type_ symbol int) float) ;; 25
     (get-next-attack-id! (_type_) uint) ;; 26
     (game-info-method-27 (_type_ game-score float) int) ;; 27
@@ -25369,7 +25377,7 @@
   :size-assert         #x34
   :flag-assert         #xc00000034
   (:methods
-    (hud-sprite-method-9 () none) ;; 9 ;; (draw (_type_ dma-buffer level) none)
+    (draw (_type_ dma-buffer level) none) ;; 9
     (hud-sprite-method-10 () none) ;; 10 ;; (hud-sprite-method-10 (_type_ dma-buffer level int int int int) object)
     (hud-sprite-method-11 () none) ;; 11
     )
@@ -30018,6 +30026,110 @@
 ;; game-save                      ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+;; +++game-save:game-save-elt
+(defenum game-save-elt
+  :type uint16
+  (name 100)
+  (base-time 101)
+  (real-time 102)
+  (game-time 103)
+  (frame-time 104)
+  (real-frame-time 105)
+  (session-time 106)
+  (bg-time 107)
+  (total-game-time 108)
+
+  (continue 200)
+  (life 201)
+  (money 202)
+  (money-total 203)
+  (money-per-level 204)
+  (buzzer-total 205)
+  (fuel-cell 206)
+  (death-movie-tick 207)
+  (skill 208)
+  (skill-total 209)
+  (karma 210)
+  (eco-pill-dark 211)
+  (eco-pill-dark-total 212)
+  (shield 213)
+  (features 214)
+  (gun-type 215)
+  (gun-ammo 216)
+  (gem 218)
+  (gem-total 219)
+  (secrets 220)
+  (scores 221)
+  (purchase-secrets 222)
+  (eco-pill-light 223)
+  (eco-pill-light-total 224)
+  (vehicles 225)
+  (vehicle 226)
+  (resetter-node 227)
+  (items 228)
+  (skill-high-watermark 229)
+
+  (task-list 300)
+  (perm-list 301)
+  (level-open-list 305)
+  (task-node-list 306)
+  (talker-state 307)
+  (bigmap-data 308)
+  (bigmap-offsets 309)
+
+  (total-deaths 400)
+  (continue-deaths 401)
+  (task-deaths 402)
+  (game-start-time 403)
+  (death-time 405)
+  (hit-time 406)
+  (task-pickup-time 407)
+  (continue-time 408)
+  (task-complete-time 409)
+  (enter-level-time 410)
+  (deaths-per-level 411)
+  (death-pos 412)
+  (auto-save-count 413)
+  (in-level-time 414)
+  (task-start-time 415)
+  (node-death-count 416)
+  (node-gem-count 417)
+  (node-skill-count 418)
+  (node-close-time 419)
+  (node-name 420)
+  (total-trys 421)
+  (enemies-killed 422)
+  (civilians-killed 423)
+  (marauders-killed 424)
+  (shot-info 425)
+  (crates-opened 426)
+  (health-collected 427)
+  (board-time 428)
+
+  (sfx-volume 500)
+  (music-volume 501)
+  (dialog-volume 502)
+  (language 503)
+  (screenx 504)
+  (screeny 505)
+  (vibration 506)
+  (play-hints 507)
+  (video-mode 508)
+  (aspect-ratio 509)
+  (camera-stick-dir 510)
+  (subtitle 511)
+  (subtitle-language 512)
+  (stereo-mode 513)
+  (audio-language 516)
+  (brightness 514)
+  (contrast 515)
+  (flip-horizontal 517)
+  (flip-vertical 518)
+
+  (disk-tester 600)
+  )
+;; ---game-save:game-save-elt
+
 (deftype game-save-tag (structure)
   ((user-object object 2 :offset-assert 0) ;; guessed by decompiler
    (user-uint64 uint64   :offset 0)
@@ -30033,7 +30145,7 @@
    (user-uint8  uint8  8 :offset 0) ;; guessed by decompiler
    (elt-count   int32    :offset-assert 8)
    (elt-size    uint16   :offset-assert 12)
-   (elt-type    uint16   :offset-assert 14) ;; game-save-elt
+   (elt-type    game-save-elt :offset-assert 14)
    )
   :method-count-assert 9
   :size-assert         #x10
@@ -30068,14 +30180,13 @@
   :size-assert         #x50
   :flag-assert         #xc00000050
   (:methods
-    (new (symbol type) _type_) ;; 0 ;; (new (symbol type int) _type_)
-    (game-save-method-9 () none) ;; 9 ;; (save-to-file (_type_ string) _type_)
-    (game-save-method-10 () none) ;; 10 ;; (load-from-file (_type_ string) _type_)
-    (game-save-method-11 (_type_ symbol) _type_) ;; 11 ;; (debug-inspect (_type_ symbol) _type_)
+    (new (symbol type int) _type_) ;; 0
+    (save-to-file (_type_ string) _type_) ;; 9
+    (load-from-file (_type_ string) _type_) ;; 10
+    (debug-inspect (_type_ symbol) _type_) ;; 11
     )
   )
 
-#|
 (deftype auto-save (process)
   ((card                      int32                  :offset-assert 128)
    (slot                      int32                  :offset-assert 132)
@@ -30086,9 +30197,9 @@
    (result                    mc-status-code         :offset-assert 152) ;; guessed by decompiler
    (save                      game-save              :offset-assert 156) ;; guessed by decompiler
    (info                      mc-slot-info   :inline :offset-assert 160)
-   (notify                    uint64                 :offset-assert 464) ;; handle
+   (notify                    handle                 :offset-assert 464) ;; handle
    (force                     symbol                 :offset-assert 472) ;; guessed by decompiler
-   (state-time                uint64                 :offset-assert 480) ;; time-frame
+   (state-time                time-frame             :offset-assert 480) ;; time-frame
    (icon                      hud-sprite     :inline :offset-assert 496)
    (icon-gui-id               uint32                 :offset-assert 548)
    (message-gui-id            uint32                 :offset-assert 552)
@@ -30097,26 +30208,25 @@
   :size-assert         #x22c
   :flag-assert         #x1701b0022c
   (:state-methods
-    done ;; 22, old: (done () _type_ :state)
-    error ;; 21, old: (error (mc-status-code) _type_ :state)
-    restore ;; 20, old: (restore () _type_ :state)
-    save ;; 19, old: (save () _type_ :state)
-    create-file ;; 18, old: (create-file () _type_ :state)
-    unformat-card ;; 17, old: (unformat-card () _type_ :state)
-    format-card ;; 16, old: (format-card () _type_ :state)
-    get-card ;; 15, old: (get-card () _type_ :state)
-    get-heap ;; 14, old: (get-heap () _type_ :state)
+    get-heap ;; 14
+    get-card ;; 15
+    format-card ;; 16
+    unformat-card ;; 17
+    create-file ;; 18
+    save ;; 19
+    restore ;; 20
+    (error mc-status-code) ;; 21
+    done ;; 22
     )
   )
-|#
 
-;; (define-extern game-save-elt->string function) ;; (function game-save-elt string)
-;; (define-extern *auto-save-info* object) ;; mc-slot-info
-;; (define-extern auto-save-post function) ;; (function pointer :behavior auto-save)
-;; (define-extern auto-save-init-by-other function) ;; (function symbol process int int symbol object :behavior auto-save)
-;; (define-extern auto-save-command function) ;; (function symbol int int process-tree symbol (pointer auto-save))
-;; (define-extern auto-save-check function) ;; (function int)
-;; (define-extern auto-save-user function) ;; (function (pointer auto-save))
+(define-extern game-save-elt->string (function game-save-elt string))
+(define-extern *auto-save-info* mc-slot-info)
+(define-extern auto-save-post (function pointer :behavior auto-save))
+(define-extern auto-save-init-by-other (function symbol process int int symbol object :behavior auto-save))
+(define-extern auto-save-command (function symbol int int process-tree symbol (pointer auto-save)))
+(define-extern auto-save-check (function int))
+(define-extern auto-save-user (function (pointer auto-save)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; settings                       ;;
@@ -37066,9 +37176,9 @@
 ;; (define-extern restart-mission function) ;; (function int)
 ;; (define-extern fail-mission function) ;; type
 ;; (define-extern task-node-by-name function) ;; (function string game-task-node-info)
-;; (define-extern task-node-index-by-name function)
+(define-extern task-node-index-by-name (function string int))
 (define-extern task-resolution-close! (function game-task symbol))
-;; (define-extern task-close! function) ;; (function string symbol)
+(define-extern task-close! (function string symbol))
 ;; (define-extern task-closed? function) ;; (function string symbol)
 ;; (define-extern open-task-nodes function) ;; (function (array game-task-node-info) (array game-task-node-info))
 (define-extern task-node-closed? (function game-task-node symbol))
@@ -37384,7 +37494,7 @@
 ;; (define-extern *progress-stack* object) ;; (pointer uint8)
 (define-extern *progress-process* (pointer progress))
 ;; (define-extern *progress-save-info* object) ;; mc-slot-info
-;; (define-extern *progress-work* object)
+(define-extern *progress-work* progress-work)
 ;; (define-extern min-max-wrap-around function) ;; (function int int int int)
 ;; (define-extern progress-intro-start function) ;; (function symbol int)
 ;; (define-extern hud-ring-cell-remap function)
@@ -37394,7 +37504,7 @@
 (define-extern activate-progress (function process symbol none))
 ;; (define-extern deactivate-progress function) ;; (function none)
 ;; (define-extern hide-progress-screen function) ;; (function none)
-;; (define-extern progress-allowed? function) ;; (function symbol)
+(define-extern progress-allowed? (function symbol))
 ;; (define-extern progress-trans function) ;; (function none :behavior progress)
 ;; (define-extern begin-scan function) ;; (function hud-box progress int)
 ;; (define-extern end-scan function) ;; (function hud-box float int)
