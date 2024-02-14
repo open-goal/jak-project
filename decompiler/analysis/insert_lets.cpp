@@ -1519,7 +1519,7 @@ FormElement* rewrite_proc_new(LetElement* in, const Env& env, FormPool& pool) {
                                            Matcher::any(2)};
   if (env.version >= GameVersion::Jak3) {
     // this flag appears unused...
-    get_process_args.push_back(Matcher::integer(1));
+    get_process_args.push_back(Matcher::any_integer(3));
   }
   auto mr_get_proc = match(Matcher::func("get-process", get_process_args), in->entries().at(0).src);
   if (!mr_get_proc.matched) {
@@ -1658,6 +1658,14 @@ FormElement* rewrite_proc_new(LetElement* in, const Env& env, FormPool& pool) {
         }
         if (!mr_get_proc.maps.forms.at(2)->to_form(env).is_int(0x4000)) {
           ja_push_form_to_args(pool, args, mr_get_proc.maps.forms.at(2), "stack-size");
+        }
+        if (env.version >= GameVersion::Jak3) {
+          if (mr_get_proc.maps.ints.at(3) != 1) {
+            // TODO better name
+            args.push_back(pool.form<ConstantTokenElement>(":unk"));
+            args.push_back(
+                pool.form<ConstantTokenElement>(fmt::format("{}", mr_get_proc.maps.ints.at(3))));
+          }
         }
 
         return pool.form<GenericElement>(
