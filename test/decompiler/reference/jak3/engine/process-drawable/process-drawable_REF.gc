@@ -1,20 +1,7 @@
 ;;-*-Lisp-*-
 (in-package goal)
 
-;; name: process-drawable.gc
-;; name in dgo: process-drawable
-;; dgos: GAME
-
-(declare-type fuel-cell basic)
-
-(define-extern cspace-inspect-tree (function process-drawable cspace int int object process-drawable))
-(define-extern add-process-drawable (function process-drawable draw-control symbol dma-buffer none))
-(define-extern dma-add-process-drawable (function process-drawable draw-control symbol dma-buffer none))
-
-(define-extern birth-pickup-at-point (function vector pickup-type float symbol process-tree fact-info (pointer process) :behavior process))
-
-;; DECOMP BEGINS
-
+;; definition for method 16 of type skeleton-group
 (defmethod add-to-loading-level ((this skeleton-group))
   (let ((v1-1 (-> *level* loading-level)))
     (if v1-1
@@ -24,6 +11,7 @@
   this
   )
 
+;; definition for function cspace-by-name
 (defun cspace-by-name ((arg0 process-drawable) (arg1 string))
   "Get a process' [[cspace]] by name."
   (let* ((s4-0 (-> arg0 node-list length))
@@ -41,6 +29,7 @@
   (the-as cspace #f)
   )
 
+;; definition for function cspace-index-by-name
 (defun cspace-index-by-name ((arg0 process-drawable) (arg1 string))
   "Get the index of a process' [[cspace]] by name."
   (let* ((s4-0 0)
@@ -60,6 +49,7 @@
   -1
   )
 
+;; definition for function vector<-cspace!
 (defun vector<-cspace! ((arg0 vector) (arg1 cspace))
   (rlet ((Q :class vf)
          (vf0 :class vf)
@@ -78,6 +68,7 @@
     )
   )
 
+;; definition for function vector<-matrix!
 (defun vector<-matrix! ((arg0 vector) (arg1 matrix))
   (rlet ((Q :class vf)
          (vf0 :class vf)
@@ -96,10 +87,12 @@
     )
   )
 
+;; definition for function vector<-cspace+vector!
 (defun vector<-cspace+vector! ((arg0 vector) (arg1 cspace) (arg2 vector))
   (vector-matrix*! arg0 arg2 (-> arg1 bone transform))
   )
 
+;; definition (debug) for function cspace-children
 (defun-debug cspace-children ((arg0 process-drawable) (arg1 int))
   (let ((a3-0 '()))
     (countdown (s4-0 (-> arg0 node-list length))
@@ -111,6 +104,8 @@
     )
   )
 
+;; definition (debug) for function cspace-inspect-tree
+;; INFO: Used lq/sq
 (defun-debug cspace-inspect-tree ((arg0 process-drawable) (arg1 cspace) (arg2 int) (arg3 int) (arg4 object))
   (local-vars (sv-16 string) (sv-32 int) (sv-48 int))
   (if (and (= arg4 'mesh) (zero? *debug-vertex-stats*))
@@ -189,6 +184,7 @@
   arg0
   )
 
+;; definition for method 0 of type draw-control
 (defmethod new draw-control ((allocation symbol) (type-to-make type) (arg0 process) (arg1 symbol))
   (let ((v0-0 (object-new allocation type-to-make (the-as int (-> type-to-make size)))))
     (set! (-> v0-0 jgeo) (the-as art-joint-geo arg1))
@@ -199,6 +195,8 @@
     )
   )
 
+;; definition for method 10 of type draw-control
+;; WARN: Return type mismatch int vs none.
 (defmethod lod-set! ((this draw-control) (lod int))
   (let ((v1-1 (max 0 (min lod (-> this lod-set max-lod)))))
     (set! (-> this desired-lod) v1-1)
@@ -214,6 +212,8 @@
   (none)
   )
 
+;; definition for method 11 of type draw-control
+;; WARN: Return type mismatch int vs none.
 (defmethod lods-assign! ((this draw-control) (lods lod-set))
   (mem-copy! (the-as pointer (-> this lod-set)) (the-as pointer lods) 49)
   (let ((lod (min (-> this cur-lod) (-> this lod-set max-lod))))
@@ -224,6 +224,8 @@
   (none)
   )
 
+;; definition for method 12 of type draw-control
+;; WARN: Return type mismatch int vs none.
 (defmethod setup-masks ((this draw-control) (arg0 int) (arg1 int))
   (local-vars (v1-4 int) (a2-1 (array uint64)))
   (let ((a1-2 (logior (logclear (-> this seg-mask) arg0) arg1)))
@@ -251,6 +253,8 @@
   (none)
   )
 
+;; definition for method 9 of type lod-set
+;; INFO: Used lq/sq
 (defmethod setup-lods! ((this lod-set) (skelgroup skeleton-group) (ag art-group) (entity entity))
   (local-vars (sv-16 res-tag))
   (let ((v1-0 (-> ag length))
@@ -289,6 +293,7 @@
   this
   )
 
+;; definition for method 13 of type draw-control
 (defmethod setup-cspace-and-add ((this draw-control) (jgeo art-joint-geo) (allocation symbol))
   (let ((s5-0 ((method-of-type cspace-array new) allocation cspace-array (+ (-> jgeo length) 1))))
     (let ((v0-1 ((method-of-type skeleton new) allocation skeleton (+ (-> jgeo length) 1))))
@@ -343,6 +348,7 @@
     )
   )
 
+;; definition for function execute-math-engine
 (defun execute-math-engine ()
   (let ((gp-0 *matrix-engine*))
     (let ((s5-0 (-> gp-0 length)))
@@ -364,6 +370,7 @@
   0
   )
 
+;; definition for function execute-cloth-engine
 (defun execute-cloth-engine ()
   (let ((gp-0 *cloth-engine*))
     (let ((s5-0 (-> gp-0 length)))
@@ -383,6 +390,8 @@
   0
   )
 
+;; definition for method 14 of type draw-control
+;; WARN: Return type mismatch int vs none.
 (defmethod draw-control-method-14 ((this draw-control) (arg0 cspace-array) (arg1 joint-control))
   (let ((s5-0 (if (logtest? (-> arg1 status) (joint-control-status force-math))
                   (+ (-> arg0 length) -3)
@@ -449,6 +458,9 @@
   (none)
   )
 
+;; definition for method 15 of type draw-control
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch int vs none.
 (defmethod do-joint-math ((this draw-control) (joints cspace-array) (jcontrol joint-control))
   (with-pp
     (cond
@@ -492,6 +504,8 @@
     )
   )
 
+;; definition for method 17 of type process-drawable
+;; WARN: Return type mismatch int vs none.
 (defmethod cleanup-for-death ((this process-drawable))
   (when (type? (-> this root) collide-shape)
     (let ((v1-2 (-> (the-as collide-shape (-> this root)) root-prim)))
@@ -508,12 +522,16 @@
   (none)
   )
 
+;; definition for method 18 of type process-drawable
+;; WARN: Return type mismatch int vs none.
 (defmethod relocate-nav ((this process-drawable) (arg0 int))
   (set! (-> this nav) (the-as nav-control (&+ (the-as pointer (-> this nav)) arg0)))
   0
   (none)
   )
 
+;; definition for function draw-joint-axes
+;; INFO: Used lq/sq
 ;; WARN: Return type mismatch symbol vs none.
 (defun draw-joint-axes ((arg0 process-drawable))
   (local-vars
@@ -558,11 +576,13 @@
   (none)
   )
 
+;; definition for function draw-root
 (defun draw-root ((proc process-drawable))
   (add-debug-quaternion #t (bucket-id debug-no-zbuf1) (-> proc root trans) (-> proc root quat))
   (none)
   )
 
+;; definition for method 10 of type process-drawable
 (defmethod deactivate ((this process-drawable))
   "Make a process dead, clean it up, remove it from the active pool, and return to dead pool."
   (if (nonzero? (-> this part))
@@ -597,10 +617,13 @@
   (none)
   )
 
+;; failed to figure out what this is:
 (defstate empty-state (process)
   :code nothing
   )
 
+;; definition (debug) for function process-drawable-error-print
+;; WARN: Return type mismatch int vs none.
 (defun-debug process-drawable-error-print ((proc process-drawable) (error string))
   (when (and *display-entity-errors* (not *display-capture-mode*))
     (let ((s4-0 (cond
@@ -631,6 +654,7 @@
   (none)
   )
 
+;; failed to figure out what this is:
 (defstate process-drawable-art-error (process-drawable)
   :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
     (case message
@@ -675,11 +699,18 @@
     )
   )
 
+;; failed to figure out what this is:
 (defstate process-drawable-idle (process-drawable)
   :code sleep-code
   :post ja-post
   )
 
+;; definition for function skeleton-group->draw-control
+;; INFO: Used lq/sq
+;; WARN: Stack slot offset 20 signed mismatch
+;; WARN: Stack slot offset 20 signed mismatch
+;; WARN: Stack slot offset 20 signed mismatch
+;; WARN: Stack slot offset 20 signed mismatch
 (defun skeleton-group->draw-control ((proc process-drawable) (skelgroup skeleton-group) (arg2 (pointer cspace-array)))
   (local-vars (s1-0 art-group) (s2-0 draw-control) (sv-16 art-element) (sv-20 int))
   (let ((s3-0 (if (= (-> skelgroup texture-level) 10)
@@ -797,6 +828,8 @@
   s2-0
   )
 
+;; definition for method 14 of type process-drawable
+;; INFO: Used lq/sq
 (defmethod initialize-skeleton ((this process-drawable) (arg0 skeleton-group) (arg1 pair))
   (local-vars (v1-14 art-element))
   (if (not arg0)
@@ -877,6 +910,7 @@
   (-> this draw)
   )
 
+;; definition for method 15 of type process-drawable
 (defmethod initialize-skeleton-by-name ((this process-drawable) (name string))
   (let* ((s4-0 *level*)
          (s3-0 (method-of-object s4-0 art-group-get-by-name))
@@ -892,6 +926,7 @@
   (-> this draw)
   )
 
+;; definition for method 16 of type process-drawable
 (defmethod apply-alignment ((this process-drawable) (arg0 align-opts) (arg1 transformq) (arg2 vector))
   (with-pp
     (when (logtest? arg0 (align-opts adjust-x-vel adjust-y-vel adjust-xz-vel))
@@ -936,6 +971,7 @@
     )
   )
 
+;; definition for function ja-group-in-array?
 (defbehavior ja-group-in-array? process-drawable ((anim-array (array int32)))
   (let ((v1-2 (ja-group)))
     (when v1-2
@@ -949,6 +985,7 @@
   (the-as art-joint-anim #f)
   )
 
+;; definition for function ja-done?
 (defbehavior ja-done? process-drawable ((arg0 int))
   (let ((v1-2 (-> self skel root-channel arg0)))
     (cond
@@ -968,25 +1005,30 @@
     )
   )
 
+;; definition for function ja-min?
 (defbehavior ja-min? process-drawable ((arg0 int))
   (= (-> self skel root-channel arg0 frame-num) 0.0)
   )
 
+;; definition for function ja-max?
 (defbehavior ja-max? process-drawable ((arg0 int))
   (let ((v1-2 (-> self skel root-channel arg0)))
     (>= (-> v1-2 frame-num) (the float (+ (-> v1-2 frame-group frames num-frames) -1)))
     )
   )
 
+;; definition for function ja-num-frames
 ;; WARN: Return type mismatch uint vs int.
 (defbehavior ja-num-frames process-drawable ((arg0 int))
   (the-as int (+ (-> self skel root-channel arg0 frame-group frames num-frames) -1))
   )
 
+;; definition for function ja-frame-num
 (defbehavior ja-frame-num process-drawable ((arg0 int))
   (-> self skel root-channel arg0 frame-num)
   )
 
+;; definition for function ja-aframe-num
 (defbehavior ja-aframe-num process-drawable ((arg0 int))
   (let* ((a0-2 (-> self skel root-channel arg0))
          (v1-2 (-> a0-2 frame-group))
@@ -998,6 +1040,7 @@
     )
   )
 
+;; definition for function ja-aframe
 (defbehavior ja-aframe process-drawable ((arg0 float) (arg1 int))
   (let ((v1-3 (-> self skel root-channel arg1 frame-group)))
     (if (and v1-3 (nonzero? v1-3))
@@ -1007,14 +1050,17 @@
     )
   )
 
+;; definition for function ja-speed
 (defbehavior ja-speed process-drawable ((arg0 int))
   (-> self skel root-channel arg0 frame-group speed)
   )
 
+;; definition for function ja-step
 (defbehavior ja-step process-drawable ((arg0 int))
   (-> self skel root-channel arg0 frame-group artist-step)
   )
 
+;; definition for function ja-rate
 (defbehavior ja-rate process-drawable ((chan int))
   (let ((v1-2 (-> self skel root-channel chan)))
     (cond
@@ -1037,6 +1083,8 @@
     )
   )
 
+;; definition for function ja-linear-vel
+;; INFO: Used lq/sq
 (defbehavior ja-linear-vel process-drawable ((chan int))
   (local-vars (s4-1 vector) (sv-16 res-tag))
   (rlet ((vf0 :class vf)
@@ -1091,6 +1139,7 @@
     )
   )
 
+;; definition for function ja-channel-set!
 (defbehavior ja-channel-set! process-drawable ((arg0 int))
   (let ((s5-0 (-> self skel)))
     (when (nonzero? (-> s5-0 float-channels))
@@ -1129,6 +1178,7 @@
   arg0
   )
 
+;; definition for function ja-channel-push!
 (defbehavior ja-channel-push! process-drawable ((arg0 int) (arg1 time-frame))
   (let ((s5-0 (-> self skel)))
     (cond
@@ -1217,6 +1267,7 @@
     )
   )
 
+;; definition for function ja-channel-float!
 (defbehavior ja-channel-float! process-drawable ((arg0 art-joint-anim) (arg1 float) (arg2 float) (arg3 float))
   (cond
     ((>= (+ (-> self skel active-channels) (-> self skel float-channels)) (-> self skel allocated-length))
@@ -1249,6 +1300,7 @@
     )
   )
 
+;; definition for function joint-control-reset!
 ;; WARN: Return type mismatch uint vs none.
 (defbehavior joint-control-reset! process-drawable ((arg0 joint-control) (arg1 joint-control-channel))
   (let* ((v1-2 (the-as object (- (the-as int arg1) (the-as uint (* (-> arg1 group-size) 64)))))
@@ -1281,6 +1333,7 @@
   (none)
   )
 
+;; definition for function ja-group-size
 (defbehavior ja-group-size process-drawable ()
   (if (< (the-as int (-> self skel root-channel))
          (the-as int (-> self skel channel (-> self skel active-channels)))
@@ -1290,6 +1343,7 @@
       )
   )
 
+;; definition for function ja-eval
 (defbehavior ja-eval process-drawable ()
   (let ((gp-0 (-> self skel root-channel 0))
         (s5-0 (-> self skel channel (+ (-> self skel active-channels) (-> self skel float-channels))))
@@ -1311,6 +1365,7 @@
   0
   )
 
+;; definition for function ja-blend-eval
 (defbehavior ja-blend-eval process-drawable ()
   (let ((gp-0 (-> self skel root-channel))
         (s5-0 (the-as joint-control-channel (-> self skel channel)))
@@ -1334,6 +1389,8 @@
   0
   )
 
+;; definition for method 10 of type joint-control
+;; WARN: Return type mismatch int vs none.
 ;; ERROR: Unsupported inline assembly instruction kind - [lw ra, return-from-thread(s7)]
 ;; ERROR: Unsupported inline assembly instruction kind - [jr ra]
 (defmethod update-anim-data ((this joint-control))
@@ -1348,10 +1405,8 @@
             (let ((s2-0 (-> s3-0 frame-group)))
               (when (not (and s2-0 (nonzero? s2-0) (= (logand (the-as int s2-0) 7) 4) (= (-> s2-0 type) art-joint-anim)))
                 (go process-drawable-art-error "joint-anim")
-                ;; og:preserve-this
-                ; (.lw ra-0 return-from-thread s7-0)
-                ; (.jr ra-0)
-                (abandon-thread)
+                (.lw ra-0 return-from-thread s7-0)
+                (.jr ra-0)
                 (nop!)
                 0
                 )
@@ -1378,6 +1433,8 @@
   (none)
   )
 
+;; definition for function cloth-post
+;; WARN: Return type mismatch int vs none.
 (defbehavior cloth-post process-drawable ()
   (when (and (nonzero? (-> self draw)) (-> self draw cloth-instances))
     (let ((v1-3 *cloth-engine*))
@@ -1388,6 +1445,8 @@
   (none)
   )
 
+;; definition for method 19 of type process-drawable
+;; WARN: Return type mismatch int vs none.
 ;; ERROR: Unsupported inline assembly instruction kind - [lw ra, return-from-thread(s7)]
 ;; ERROR: Unsupported inline assembly instruction kind - [jr ra]
 (defmethod evaluate-joint-control ((this process-drawable))
@@ -1428,10 +1487,8 @@
           (let ((s0-0 (-> s1-0 frame-group)))
             (when (not (and s0-0 (nonzero? s0-0) (= (logand (the-as int s0-0) 7) 4) (= (-> s0-0 type) art-joint-anim)))
               (go process-drawable-art-error "joint-anim")
-              ;; og:preserve-this
-              ;; (.lw ra-0 return-from-thread s7-0)
-              ;; (.jr ra-0)
-              (abandon-thread)
+              (.lw ra-0 return-from-thread s7-0)
+              (.jr ra-0)
               (nop!)
               0
               )
@@ -1480,6 +1537,8 @@
   (none)
   )
 
+;; definition for function ja-post
+;; WARN: Return type mismatch int vs none.
 ;; WARN: Function ja-post has a return type of none, but the expression builder found a return statement.
 (defbehavior ja-post process-drawable ()
   (when (nonzero? (-> self draw))
@@ -1513,6 +1572,7 @@
   (none)
   )
 
+;; definition for method 9 of type joint-control
 (defmethod current-cycle-distance ((this joint-control))
   (cond
     ((< (the-as int (-> this root-channel)) (the-as int (-> this channel (-> this active-channels))))
@@ -1555,6 +1615,7 @@
     )
   )
 
+;; definition for method 12 of type joint-control
 (defmethod joint-control-method-12 ((this joint-control) (arg0 int))
   (case arg0
     ((1)
@@ -1583,6 +1644,7 @@
     )
   )
 
+;; definition for method 0 of type top-anim-joint-control
 (defmethod new top-anim-joint-control ((allocation symbol) (type-to-make type) (arg0 process-drawable))
   (let ((gp-0 (object-new allocation type-to-make (the-as int (-> type-to-make size)))))
     (set! (-> gp-0 process) (the-as (pointer process-drawable) (process->ppointer arg0)))
@@ -1596,6 +1658,7 @@
     )
   )
 
+;; definition for method 9 of type top-anim-joint-control
 ;; WARN: Return type mismatch top-anim-joint-control vs none.
 (defmethod reset ((this top-anim-joint-control))
   (let ((v0-0 this))
@@ -1615,10 +1678,13 @@
   (none)
   )
 
+;; definition for method 11 of type top-anim-joint-control
 (defmethod get-channel ((this top-anim-joint-control) (arg0 int))
   (joint-control-method-12 (-> this process 0 skel) arg0)
   )
 
+;; definition for method 12 of type top-anim-joint-control
+;; WARN: Return type mismatch int vs none.
 (defmethod push-anim-to-targ ((this top-anim-joint-control)
                              (arg0 art-joint-anim)
                              (arg1 float)
@@ -1655,6 +1721,8 @@
   (none)
   )
 
+;; definition for method 10 of type top-anim-joint-control
+;; WARN: Return type mismatch int vs none.
 (defmethod update ((this top-anim-joint-control))
   (with-pp
     (let* ((v1-0 (-> this process))
@@ -1891,6 +1959,7 @@
     )
   )
 
+;; definition for function sleep-code
 ;; WARN: new jak 2 until loop case, check carefully
 (defbehavior sleep-code process ()
   (until #f
@@ -1900,6 +1969,8 @@
   #f
   )
 
+;; definition for function transform-and-sleep
+;; WARN: Return type mismatch int vs none.
 (defbehavior transform-and-sleep process-drawable ()
   (let ((gp-0 (-> self skel status)))
     (logior! (-> self skel status) (joint-control-status sync-math))
@@ -1913,6 +1984,8 @@
   (none)
   )
 
+;; definition for function transform-and-sleep-code
+;; WARN: Return type mismatch int vs none.
 (defbehavior transform-and-sleep-code process-drawable ()
   (let ((gp-0 (-> self skel status)))
     (logior! (-> self skel status) (joint-control-status sync-math))
@@ -1926,18 +1999,23 @@
   (none)
   )
 
+;; definition for function transform-post
 (defbehavior transform-post process-drawable ()
   (ja-post)
   (update-transforms (the-as collide-shape (-> self root)))
   0
   )
 
+;; definition for function rider-trans
+;; WARN: Return type mismatch int vs none.
 (defbehavior rider-trans process-drawable ()
   (detect-riders! (the-as collide-shape (-> self root)))
   0
   (none)
   )
 
+;; definition for function rider-post
+;; WARN: Return type mismatch int vs none.
 (defbehavior rider-post process-drawable ()
   (ja-post)
   (let ((cshape (the-as collide-shape (-> self root))))
@@ -1949,6 +2027,7 @@
   (none)
   )
 
+;; definition for function pusher-post
 (defbehavior pusher-post process-drawable ()
   (ja-post)
   (let ((cshape (the-as collide-shape (-> self root))))
@@ -1958,6 +2037,7 @@
   0
   )
 
+;; definition for function process-drawable-delay-player
 (defbehavior process-drawable-delay-player process-drawable ((delay time-frame))
   (while (and *target* (focus-test? *target* in-air))
     (suspend)
@@ -1979,6 +2059,7 @@
   0
   )
 
+;; definition for function process-drawable-fuel-cell-handler
 ;; WARN: Return type mismatch entity-perm-status vs none.
 (defbehavior process-drawable-fuel-cell-handler process-drawable ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
   (case arg2
@@ -1995,7 +2076,10 @@
   (none)
   )
 
+;; definition for function process-drawable-birth-fuel-cell
 ;; WARN: Found some very strange gotos. Check result carefully, this is not well tested.
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch int vs none.
 (defbehavior process-drawable-birth-fuel-cell process-drawable ((arg0 entity) (arg1 vector) (arg2 symbol))
   (let ((v1-0 arg0)
         (gp-0 (new 'stack-no-clear 'vector))
@@ -2028,6 +2112,7 @@
   (none)
   )
 
+;; definition for function find-offending-process-focusable
 ;; WARN: Found some very strange gotos. Check result carefully, this is not well tested.
 ;; WARN: Return type mismatch object vs process-focusable.
 (defbehavior find-offending-process-focusable process-drawable ((arg0 process-tree) (arg1 attack-info))
@@ -2073,10 +2158,13 @@
     )
   )
 
+;; this part is debug only
 (when *debug-segment*
+;; definition for symbol *valid-con*, type string
 (define *valid-con* (new 'debug 'string #x4000 (the-as string #f)))
 
 )
+;; definition (debug) for function process-drawable-valid?
 (defun-debug process-drawable-valid? ((arg0 process-drawable))
   (let ((s5-0 #t))
     (clear *valid-con*)
@@ -2150,6 +2238,7 @@
     )
   )
 
+;; definition for function process-drawable-reset-all-cloth
 ;; WARN: Return type mismatch symbol vs none.
 (defun process-drawable-reset-all-cloth ((proc process-drawable))
   (when (and proc
@@ -2165,6 +2254,7 @@
   (none)
   )
 
+;; definition for function process-drawable-set-riding
 ;; WARN: Return type mismatch symbol vs none.
 (defun process-drawable-set-riding ((proc process-drawable) (riding? symbol))
   (when (and proc
@@ -2183,6 +2273,7 @@
   (none)
   )
 
+;; definition for function process-drawable-set-cloth-ground-height
 ;; WARN: Return type mismatch symbol vs none.
 (defun process-drawable-set-cloth-ground-height ((proc process-drawable) (height float))
   (when (and proc
@@ -2199,6 +2290,7 @@
   (none)
   )
 
+;; definition for function process-drawable-set-wind-strength
 ;; WARN: Return type mismatch symbol vs none.
 (defun process-drawable-set-wind-strength ((proc process-drawable) (strength float))
   (when (and proc
@@ -2218,6 +2310,7 @@
   (none)
   )
 
+;; definition for function process-drawable-show-all-cloth
 ;; WARN: Return type mismatch symbol vs none.
 (defun process-drawable-show-all-cloth ((proc process-drawable) (arg1 symbol))
   (when (and proc
@@ -2236,6 +2329,7 @@
   (none)
   )
 
+;; definition for function process-drawable-slow-mo-cloth
 ;; WARN: Return type mismatch symbol vs none.
 (defun process-drawable-slow-mo-cloth ((proc process-drawable) (disable-wind? symbol))
   (when (and proc
@@ -2264,6 +2358,7 @@
   (none)
   )
 
+;; definition for function process-drawable-cloth-command
 ;; WARN: Return type mismatch symbol vs none.
 (defun process-drawable-cloth-command ((proc process-drawable) (cmd pair))
   (when (and proc
@@ -2282,3 +2377,7 @@
     )
   (none)
   )
+
+
+
+

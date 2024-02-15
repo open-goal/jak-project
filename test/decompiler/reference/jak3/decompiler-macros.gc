@@ -879,6 +879,8 @@
 (defconstant *scratch-memory-top* (the pointer #x70004000))
 (defconstant DPROCESS_STACK_SIZE #x8000)
 
+(defconstant *kernel-dram-stack* (&+ *dram-stack* DPROCESS_STACK_SIZE))
+
 (defmacro process-spawn-function (proc-type func &key (from *default-dead-pool*) &key (to *default-pool*) &key (name #f) &key (stack-size #x4000) &key (stack *scratch-memory-top*) &rest args)
   "Start a new process that runs a function on its main thread.
    Returns a pointer to the new process (or #f? on error)."
@@ -888,6 +890,28 @@
         (when ,new-proc
           ((method-of-type ,proc-type activate) ,new-proc ,to ,(if name name `(symbol->string (-> ,proc-type symbol))) ,stack)
           (run-next-time-in-process ,new-proc ,func ,@args)
+          (the (pointer ,proc-type) (-> ,new-proc ppointer))
+          )
+        )
+    )
+  )
+
+(defmacro process-spawn (proc-type &key (init #f)
+                                   &key (from *default-dead-pool*)
+                                   &key (to *default-pool*)
+                                   &key (name #f)
+                                   &key (stack-size #x4000)
+                                   &key (stack *scratch-memory-top*)
+                                   &key (unk 1)
+                                   &rest args)
+  "Start a new process and run an init function on it.
+   Returns a pointer to the new process, or #f (or is it 0?) if something goes wrong."
+
+  (with-gensyms (new-proc)
+    `(let ((,new-proc (the-as ,proc-type (get-process ,from ,proc-type ,stack-size ,unk))))
+        (when ,new-proc
+          ((method-of-type ,proc-type activate) ,new-proc ,to ,(if name name `(symbol->string ,proc-type)) ,stack)
+          (run-now-in-process ,new-proc ,(if init init (string->symbol (fmt #f "{}-init-by-other" proc-type))) ,@args)
           (the (pointer ,proc-type) (-> ,new-proc ppointer))
           )
         )
@@ -1004,6 +1028,9 @@
   `(if (> (-> self skel active-channels) ,chan)
        (-> self skel root-channel ,chan frame-group))
   )
+
+(defmacro focus-test? (pfoc &rest status)
+  `(logtest? (-> (the process-focusable ,pfoc) focus-status) (focus-status ,@status)))
 
 (defmacro ja (&key (chan 0)
               &key (group! #f)

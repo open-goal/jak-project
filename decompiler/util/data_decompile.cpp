@@ -975,6 +975,15 @@ const std::unordered_map<
              {"ocean-mid-masks", {{"data", ArrayFieldDecompMeta(TypeSpec("ocean-mid-mask"), 8)}}},
              {"lightning-probe-vars",
               {{"probe-dirs", ArrayFieldDecompMeta(TypeSpec("vector"), 16)}}},
+             {"continue-point",
+              {{"want", ArrayFieldDecompMeta(TypeSpec("level-buffer-state-small"),
+                                             8,
+                                             ArrayFieldDecompMeta::Kind::REF_TO_INLINE_ARR)}}},
+             {"task-manager-info",
+              {{"sphere-array",
+                ArrayFieldDecompMeta(TypeSpec("sphere"),
+                                     16,
+                                     ArrayFieldDecompMeta::Kind::REF_TO_INLINE_ARR)}}},
          }}};
 
 goos::Object decompile_structure(const TypeSpec& type,

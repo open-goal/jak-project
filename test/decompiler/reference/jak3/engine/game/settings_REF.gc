@@ -1,30 +1,12 @@
 ;;-*-Lisp-*-
 (in-package goal)
 
-;; name: settings.gc
-;; name in dgo: settings
-;; dgos: GAME
-
-(define-extern set-kg-primary-target (function handle float none))
-(define-extern set-mh-primary-target (function handle float none))
-(define-extern set-ff-primary-target (function handle float none))
-(define-extern set-video-mode (function symbol none))
-(define-extern add-blackout (function time-frame int int int int int))
-(define-extern set-aspect-ratio (function symbol none))
-(define-extern cam-master-set-entity (function cam-setting-data none))
-(define-extern cam-eye (state camera-slave))
-(define-extern cam-endlessfall (state camera-slave))
-(define-extern cam-free-floating (state camera-slave))
-(define-extern *speech-control* speech-control)
-(define-extern *master-exit* symbol)
-(declare-type crate process-focusable)
-
-;; DECOMP BEGINS
-
+;; definition for function get-current-language
 (defun get-current-language ()
   (-> *setting-control* user-current language)
   )
 
+;; definition for method 9 of type user-setting-data
 (defmethod user-setting-data-method-9 ((this user-setting-data) (arg0 engine) (arg1 engine-pers) (arg2 engine))
   (let ((s3-0 (-> arg1 alive-list)))
     (while s3-0
@@ -90,6 +72,7 @@
   this
   )
 
+;; definition for method 10 of type user-setting-data
 (defmethod user-setting-data-method-10 ((this user-setting-data) (arg0 object) (arg1 symbol) (arg2 float) (arg3 uint))
   (case arg0
     (('border-mode)
@@ -854,6 +837,7 @@
   this
   )
 
+;; definition for method 9 of type cam-setting-data
 (defmethod cam-setting-data-method-9 ((this cam-setting-data) (arg0 engine) (arg1 engine-pers) (arg2 engine))
   (let ((s3-0 (-> arg1 alive-list)))
     (while s3-0
@@ -919,6 +903,8 @@
   this
   )
 
+;; definition for method 10 of type cam-setting-data
+;; INFO: Used lq/sq
 (defmethod cam-setting-data-method-10 ((this cam-setting-data) (arg0 object) (arg1 (pointer process)) (arg2 float) (arg3 int))
   (case arg0
     (('fov)
@@ -1199,12 +1185,14 @@
   this
   )
 
+;; definition for method 9 of type setting-control
 ;; WARN: Return type mismatch connection vs none.
 (defmethod add-setting ((this setting-control) (arg0 process) (arg1 symbol) (arg2 object) (arg3 object) (arg4 object))
   (add-connection (-> this engine) arg0 arg1 arg2 arg3 arg4)
   (none)
   )
 
+;; definition for method 11 of type setting-control
 ;; WARN: Return type mismatch connection vs none.
 (defmethod set-setting ((this setting-control) (arg0 process) (arg1 symbol) (arg2 object) (arg3 object) (arg4 object))
   (remove-setting this arg0 arg1)
@@ -1212,6 +1200,8 @@
   (none)
   )
 
+;; definition for method 10 of type setting-control
+;; WARN: Return type mismatch int vs none.
 (defmethod persist-with-delay ((this setting-control) (arg0 symbol) (arg1 time-frame) (arg2 symbol) (arg3 symbol) (arg4 float) (arg5 int))
   (let ((v1-1 (schedule-callback (-> this engine-pers) arg0 arg1)))
     (when v1-1
@@ -1225,6 +1215,8 @@
   (none)
   )
 
+;; definition for method 12 of type setting-control
+;; WARN: Return type mismatch int vs none.
 (defmethod remove-setting ((this setting-control) (arg0 process) (arg1 symbol))
   (when arg0
     (let ((s5-0 (-> this engine))
@@ -1244,6 +1236,7 @@
   (none)
   )
 
+;; definition for method 14 of type setting-control
 ;; WARN: Return type mismatch int vs connectable.
 (defmethod setting-control-method-14 ((this setting-control) (arg0 object))
   (if arg0
@@ -1252,6 +1245,8 @@
   (the-as connectable 0)
   )
 
+;; definition for method 13 of type setting-control
+;; WARN: Return type mismatch int vs none.
 (defmethod kill-persister ((this setting-control) (arg0 engine-pers) (arg1 object))
   (kill-matching
     (-> this engine-pers)
@@ -1265,6 +1260,7 @@
   (none)
   )
 
+;; definition for method 15 of type setting-control
 (defmethod setting-control-method-15 ((this setting-control) (arg0 object))
   (let ((v1-1 (-> this engine-hi alive-list next0)))
     (-> this engine-hi)
@@ -1282,17 +1278,21 @@
   (the-as connectable #f)
   )
 
+;; definition for method 16 of type setting-control
+;; WARN: Return type mismatch int vs none.
 (defmethod remove-setting-by-arg0 ((this setting-control) (arg0 object))
   (remove-by-param0 (-> this engine-hi) arg0)
   0
   (none)
   )
 
+;; definition for method 17 of type setting-control
 (defmethod set-setting-by-param ((this setting-control) (arg0 symbol) (arg1 object) (arg2 object) (arg3 object))
   (remove-by-param0 (-> this engine-hi) arg0)
   (add-connection (-> this engine-hi) *dproc* arg0 arg1 arg2 arg3)
   )
 
+;; definition for method 18 of type setting-control
 (defmethod apply-settings ((this setting-control))
   (local-vars (a0-8 symbol) (a0-20 symbol) (a0-29 symbol) (a0-37 symbol))
   (let ((s5-0 (-> this user-current)))
@@ -1592,6 +1592,8 @@
   (-> this user-current)
   )
 
+;; definition for method 19 of type setting-control
+;; INFO: Used lq/sq
 (defmethod update ((this setting-control))
   (run-pending-updates! (-> this engine-pers) (-> *display* base-clock frame-counter))
   (if (not (paused?))
@@ -2005,6 +2007,7 @@
   (-> this user-current)
   )
 
+;; failed to figure out what this is:
 (when (zero? *setting-control*)
   (kmemopen global "settings-struct")
   (set! *setting-control* (new 'global 'setting-control 64))
@@ -2450,3 +2453,7 @@
     (set! (-> v1-228 extra-follow-height) 0.0)
     )
   )
+
+
+
+

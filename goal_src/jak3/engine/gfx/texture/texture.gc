@@ -356,13 +356,13 @@
   this
   )
 
-(defmethod get-leftover-block-count ((this texture-page) (arg0 int) (arg1 int))
+(defmethod get-leftover-block-count ((this texture-page) (num-segments int) (upload-offset int))
   "Unused - statistics for how much unused memory we have"
-  (let ((v1-0 arg1))
-    (dotimes (a2-1 arg0)
-      (+! v1-0 (-> this segment a2-1 size))
+  (let ((offset upload-offset))
+    (dotimes (i num-segments)
+      (+! offset (-> this segment i size))
       )
-    (logand (/ v1-0 64) 63)
+    (logand (/ offset 64) 63)
     )
   )
 
@@ -1734,7 +1734,7 @@
   )
 
 ;; WARN: Return type mismatch texture-page-dir vs none.
-(defmethod relocate ((this texture-page-dir) (arg0 kheap) (arg1 (pointer uint8)))
+(defmethod relocate ((this texture-page-dir) (heap kheap) (name (pointer uint8)))
   (set! *texture-page-dir* this)
   (none)
   )
@@ -1791,7 +1791,7 @@
           (set! (-> v1-2 loaded-texture-page (-> v1-2 loaded-texture-page-count)) this)
           (+! (-> v1-2 loaded-texture-page-count) 1)
           (if (and (>= (-> v1-2 loaded-texture-page-count) 2) (zero? (-> v1-2 load-buffer-mode)))
-              (set! (-> v1-2 load-buffer-mode) (load-buffer-mode small-center))
+              (set! (-> v1-2 load-buffer-mode) (level-memory-mode tiny))
               )
           )
         )

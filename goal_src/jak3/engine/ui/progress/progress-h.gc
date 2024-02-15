@@ -6,8 +6,11 @@
 ;; dgos: GAME
 
 (declare-type progress process)
+(declare-type progress-work structure)
 (define-extern *progress-process* (pointer progress))
 (define-extern activate-progress (function process symbol none))
+(define-extern *progress-work* progress-work)
+(define-extern progress-allowed? (function symbol))
 
 ;; +++progress-icon-flags
 (defenum progress-icon-flags
@@ -121,6 +124,22 @@
 
 
 (declare-type menu-option-list basic)
+
+;; +++secret-item-option-flags
+(defenum secret-item-option-flags
+  :type uint8
+  :bitfield #t
+  (sf0)
+  (sf1)
+  (sf2)
+  (sf3)
+  (sf4)
+  (sf5)
+  (sf6)
+  (sf7)
+  )
+;; ---secret-item-option-flags
+
 
 ;; DECOMP BEGINS
 
@@ -570,11 +589,11 @@
 
 (deftype secret-item-option (menu-option)
   ((cost              int32)
-   (secret            uint64)
+   (secret            game-secrets)
    (avail-after       game-task-node)
-   (required-secrets  uint64)
-   (mask-secrets      uint64)
-   (flags             uint8)
+   (required-secrets  game-secrets)
+   (mask-secrets      game-secrets)
+   (flags             secret-item-option-flags)
    )
   (:methods
     (secret-item-option-method-12 () none)
