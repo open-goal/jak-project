@@ -32,6 +32,7 @@
 
 ;; definition for method 0 of type bit-array
 (defmethod new bit-array ((allocation symbol) (type-to-make type) (arg0 int))
+  "Allocate a new bit-array with room arg0 bits."
   (let ((v0-0 (object-new allocation type-to-make (+ (/ (logand -8 (+ arg0 7)) 8) -1 (-> type-to-make size)))))
     (set! (-> v0-0 length) arg0)
     (set! (-> v0-0 allocated-length) arg0)
@@ -52,6 +53,7 @@
 
 ;; definition for method 9 of type bit-array
 (defmethod get-bit ((this bit-array) (arg0 int))
+  "Get the nth bit as a boolean."
   (let ((v1-2 (-> this bytes (/ arg0 8))))
     (logtest? v1-2 (ash 1 (logand arg0 7)))
     )
@@ -59,18 +61,21 @@
 
 ;; definition for method 10 of type bit-array
 (defmethod clear-bit ((this bit-array) (arg0 int))
+  "Set the nth bit to 0."
   (logclear! (-> this bytes (/ arg0 8)) (ash 1 (logand arg0 7)))
   0
   )
 
 ;; definition for method 11 of type bit-array
 (defmethod set-bit ((this bit-array) (arg0 int))
+  "Set the nth bit to 1."
   (logior! (-> this bytes (/ arg0 8)) (ash 1 (logand arg0 7)))
   0
   )
 
 ;; definition for method 12 of type bit-array
 (defmethod clear-all! ((this bit-array))
+  "Set all bits to 0."
   (countdown (v1-2 (/ (logand -8 (+ (-> this allocated-length) 7)) 8))
     (nop!)
     (nop!)
@@ -972,11 +977,15 @@
 
 ;; definition for function vector-dot
 (defun vector-dot ((arg0 vector) (arg1 vector))
+  "Take the dot product of two vectors.
+Only does the x, y, z compoments.
+Originally handwritten assembly to space out loads and use FPU accumulator"
   (vector-dot arg0 arg1)
   )
 
 ;; definition for function vector-dot-vu
 (defun vector-dot-vu ((arg0 vector) (arg1 vector))
+  "Take the dot product (xyz only). Using VU0."
   (local-vars (v0-0 float))
   (rlet ((vf1 :class vf)
          (vf2 :class vf)
@@ -993,11 +1002,14 @@
 
 ;; definition for function vector4-dot
 (defun vector4-dot ((arg0 vector) (arg1 vector))
+  "Take the dot product of two vectors.
+Does the x, y, z, and w compoments"
   (vector4-dot arg0 arg1)
   )
 
 ;; definition for function vector4-dot-vu
 (defun vector4-dot-vu ((arg0 vector) (arg1 vector))
+  "Take the dot product (xyzw). Using VU0."
   (local-vars (v0-0 float))
   (rlet ((acc :class vf)
          (vf0 :class vf)
@@ -1021,23 +1033,27 @@
 
 ;; definition for function vector+!
 (defun vector+! ((arg0 vector) (arg1 vector) (arg2 vector))
+  "Set dst = a + b. The w component of dst is set to 0."
   (vector+! arg0 arg1 arg2)
   )
 
 ;; definition for function vector-!
 (defun vector-! ((arg0 vector) (arg1 vector) (arg2 vector))
+  "Set dst = a - b. The w componenent of dst is set to 0."
   (vector-! arg0 arg1 arg2)
   )
 
 ;; definition for function vector-zero!
 ;; INFO: Used lq/sq
 (defun vector-zero! ((arg0 vector))
+  "Set xyzw to 0."
   (set! (-> arg0 quad) (the-as uint128 0))
   arg0
   )
 
 ;; definition for function vector-reset!
 (defun vector-reset! ((arg0 vector))
+  "Set vector to <0,0,0,1>."
   (rlet ((vf0 :class vf))
     (init-vf0-vector)
     (.svf (&-> arg0 quad) vf0)
@@ -1048,6 +1064,7 @@
 ;; definition for function vector-copy!
 ;; INFO: Used lq/sq
 (defun vector-copy! ((arg0 vector) (arg1 vector))
+  "Copy arg1 to arg0."
   (set! (-> arg0 quad) (-> arg1 quad))
   arg0
   )

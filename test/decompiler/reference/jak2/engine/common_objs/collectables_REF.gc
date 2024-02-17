@@ -1531,6 +1531,7 @@ This commonly includes things such as:
 
 ;; definition for method 10 of type eco-pill
 (defmethod deactivate ((this eco-pill))
+  "Make a process dead, clean it up, remove it from the active pool, and return to dead pool."
   (+! (-> *game-info* live-eco-pill-count) -1)
   ((method-of-type collectable deactivate) this)
   (none)
@@ -1589,6 +1590,7 @@ This commonly includes things such as:
 
 ;; definition for method 12 of type money
 (defmethod run-logic? ((this money))
+  "Should this process be run? Checked by execute-process-tree."
   (or (not (logtest? (-> this mask) (process-mask actor-pause)))
       (or (and (nonzero? (-> this draw))
                (logtest? (-> this draw status) (draw-control-status on-screen))
@@ -1604,6 +1606,7 @@ This commonly includes things such as:
 
 ;; definition for method 10 of type money
 (defmethod deactivate ((this money))
+  "Make a process dead, clean it up, remove it from the active pool, and return to dead pool."
   (when (and (-> this next-state) (= (-> this next-state name) 'pickup))
     (case (-> this pickup-type)
       (((pickup-type gem))
@@ -1849,6 +1852,7 @@ This commonly includes things such as:
 
 ;; definition for method 10 of type gem
 (defmethod deactivate ((this gem))
+  "Make a process dead, clean it up, remove it from the active pool, and return to dead pool."
   (+! (-> *game-info* live-gem-count) -1)
   (call-parent-method this)
   (none)

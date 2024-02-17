@@ -26,7 +26,7 @@
 (define *last-loado-debug-usage* 0)
 
 ;; definition for method 7 of type object
-(defmethod relocate ((this object) (arg0 int))
+(defmethod relocate ((this object) (offset int))
   this
   )
 
@@ -335,21 +335,21 @@
 
 ;; definition for method 0 of type process
 ;; WARN: Return type mismatch object vs process.
-(defmethod new process ((allocation symbol) (type-to-make type) (name string) (process-heap-size int))
+(defmethod new process ((allocation symbol) (type-to-make type) (arg0 string) (arg1 int))
   "Allocate a process, set up process heap, self/ppointer, clock."
   (let ((v0-0 (if (logtest? (the-as int allocation) 1)
-                  (object-new allocation type-to-make (the-as int (+ (-> process size) process-heap-size)))
+                  (object-new allocation type-to-make (the-as int (+ (-> process size) arg1)))
                   (+ (the-as int allocation) 4)
                   )
               )
         )
-    (set! (-> (the-as process v0-0) name) name)
+    (set! (-> (the-as process v0-0) name) arg0)
     (set! (-> (the-as process v0-0) clock) *kernel-clock*)
     (+! (-> (the-as process v0-0) clock ref-count) 1)
     (set! (-> (the-as process v0-0) status) 'dead)
     (set! (-> (the-as process v0-0) pid) 0)
     (set! (-> (the-as process v0-0) pool) #f)
-    (set! (-> (the-as process v0-0) allocated-length) process-heap-size)
+    (set! (-> (the-as process v0-0) allocated-length) arg1)
     (set! (-> (the-as process v0-0) top-thread) #f)
     (set! (-> (the-as process v0-0) main-thread) #f)
     (let ((v1-9 (-> (the-as process v0-0) stack)))
@@ -656,7 +656,6 @@
   )
 
 ;; definition for method 3 of type dead-pool-heap
-;; INFO: this function exists in multiple non-identical object files
 (defmethod inspect ((this dead-pool-heap))
   (format #t "[~8x] ~A~%" this (-> this type))
   (format #t "~Tname: ~A~%" (-> this name))
@@ -1805,7 +1804,3 @@
 
 ;; failed to figure out what this is:
 (kmemclose)
-
-
-
-

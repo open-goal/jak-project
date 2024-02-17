@@ -1162,21 +1162,22 @@ This commonly includes things such as:
 
 ;; definition for method 7 of type air-train
 ;; WARN: Return type mismatch warp-gate vs air-train.
-(defmethod relocate ((this air-train) (arg0 int))
+(defmethod relocate ((this air-train) (offset int))
   (if (nonzero? (-> this part-exhaust-left))
-      (&+! (-> this part-exhaust-left) arg0)
+      (&+! (-> this part-exhaust-left) offset)
       )
   (if (nonzero? (-> this part-exhaust-right))
-      (&+! (-> this part-exhaust-right) arg0)
+      (&+! (-> this part-exhaust-right) offset)
       )
   (if (nonzero? (-> this part-dust))
-      (&+! (-> this part-dust) arg0)
+      (&+! (-> this part-dust) offset)
       )
-  (the-as air-train ((method-of-type warp-gate relocate) this arg0))
+  (the-as air-train ((method-of-type warp-gate relocate) this offset))
   )
 
 ;; definition for method 10 of type air-train
 (defmethod deactivate ((this air-train))
+  "Make a process dead, clean it up, remove it from the active pool, and return to dead pool."
   (sound-stop (-> this hover-sound))
   (if (nonzero? (-> this part-exhaust-left))
       (kill-and-free-particles (-> this part-exhaust-left))

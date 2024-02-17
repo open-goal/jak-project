@@ -3,6 +3,7 @@
 
 ;; definition of type nav-mesh-work-debug
 (deftype nav-mesh-work-debug (structure)
+  "Debug outputs for the nav-mesh assembly functions"
   ((debug-vec1    vector  :inline)
    (debug-vec2    vector  :inline)
    (debug-vec3    vector  :inline)
@@ -45,6 +46,7 @@
 
 ;; definition of type nav-mesh-work
 (deftype nav-mesh-work (structure)
+  "Workspace for nav-mesh processing functions."
   ((vert0-table             int8    4)
    (vert1-table             int8    4)
    (edge-mask-table         uint8   3)
@@ -97,6 +99,7 @@
 
 ;; definition of type nav-mesh-link
 (deftype nav-mesh-link (structure)
+  "Link between two different meshes"
   ((id                   uint32)
    (dest-mesh-id         uint32)
    (src-link-poly-id     uint8)
@@ -127,6 +130,8 @@
 
 ;; definition of type nav-poly
 (deftype nav-poly (structure)
+  "Polygon within a nav-mesh. Can be a tri or quad.
+Based on the implementation of point-poly-intersection?, these should likely be convex."
   ((data          uint8   64)
    (vertex        vector  4 :inline :overlay-at (-> data 0))
    (vertex0       vector  :inline   :overlay-at (-> data 0))
@@ -352,6 +357,7 @@ and declared out of order (cannot use forward declared structures in inline arra
 
 ;; definition of type nav-mesh
 (deftype nav-mesh (basic)
+  "Mesh used for creature/enemy navigation."
   ((work                   nav-mesh-work)
    (poly-array             (inline-array nav-poly))
    (static-sphere-count    uint8)
@@ -462,6 +468,7 @@ and declared out of order (cannot use forward declared structures in inline arra
 
 ;; definition for function vector-normalize-unity!
 (defun vector-normalize-unity! ((arg0 vector))
+  "Normalize a vector (xyz only) in place."
   (rlet ((acc :class vf)
          (Q :class vf)
          (vf0 :class vf)
@@ -496,6 +503,7 @@ and declared out of order (cannot use forward declared structures in inline arra
 ;; definition for function vector-normalize-unity-copy!
 ;; INFO: Used lq/sq
 (defun vector-normalize-unity-copy! ((arg0 vector) (arg1 vector))
+  "Normalize a vector (xyz only)"
   (rlet ((acc :class vf)
          (Q :class vf)
          (vf0 :class vf)
@@ -530,12 +538,14 @@ and declared out of order (cannot use forward declared structures in inline arra
 
 ;; definition (debug) for function debug-validate-current-poly
 (defun-debug debug-validate-current-poly ()
+  "Not implemented."
   #f
   )
 
 ;; definition for function init-ray
 ;; WARN: Return type mismatch int vs none.
 (defun init-ray ((arg0 nav-ray))
+  "Set up a nav-ray. Assumes that dest-pos and current-pos are set."
   (rlet ((acc :class vf)
          (Q :class vf)
          (vf0 :class vf)
@@ -579,17 +589,18 @@ and declared out of order (cannot use forward declared structures in inline arra
   )
 
 ;; definition for function point-poly-intersection?
-(defun point-poly-intersection? ((arg0 nav-mesh) (arg1 vector) (arg2 int) (arg3 (inline-array vector)))
-  (let ((v1-1 (-> arg0 work vert0-table))
-        (a0-2 (-> arg0 work vert1-table))
+(defun point-poly-intersection? ((mesh nav-mesh) (pt vector) (num-verts int) (verts (inline-array vector)))
+  "Check if a point is inside a poly."
+  (let ((v1-1 (-> mesh work vert0-table))
+        (a0-2 (-> mesh work vert1-table))
         )
-    (dotimes (t0-0 arg2)
-      (let* ((t1-3 (-> arg3 (-> v1-1 t0-0)))
-             (t2-3 (-> arg3 (-> a0-2 t0-0)))
+    (dotimes (t0-0 num-verts)
+      (let* ((t1-3 (-> verts (-> v1-1 t0-0)))
+             (t2-3 (-> verts (-> a0-2 t0-0)))
              (f0-1 (- (-> t1-3 z) (-> t2-3 z)))
              (f1-2 (- (-> t2-3 x) (-> t1-3 x)))
-             (f2-2 (- (-> arg1 x) (-> t1-3 x)))
-             (f3-2 (- (-> arg1 z) (-> t1-3 z)))
+             (f2-2 (- (-> pt x) (-> t1-3 x)))
+             (f3-2 (- (-> pt z) (-> t1-3 z)))
              (f0-3 (+ (* f2-2 f0-1) (* f3-2 f1-2)))
              )
         (if (< 0.0 f0-3)
@@ -603,6 +614,7 @@ and declared out of order (cannot use forward declared structures in inline arra
 
 ;; definition for method 37 of type nav-mesh
 (defmethod point-in-poly? ((this nav-mesh) (arg0 nav-poly) (arg1 vector))
+  "Check if a point is inside a poly of this mesh"
   (let* ((a3-0 this)
          (v1-0 arg1)
          (a0-1 (-> arg0 vertex-count))
@@ -636,6 +648,7 @@ and declared out of order (cannot use forward declared structures in inline arra
 ;; WARN: Stack slot offset 56 signed mismatch
 ;; WARN: Return type mismatch vector vs none.
 (defmethod closest-point-on-boundary ((this nav-mesh) (arg0 nav-poly) (arg1 vector) (arg2 vector))
+  "Find the point on the polygon edge that is closest to the query point."
   (local-vars (sv-48 vector) (sv-52 vector) (sv-56 float))
   (set! sv-48 (new 'stack-no-clear 'vector))
   (set! sv-52 (new 'stack-no-clear 'vector))
@@ -665,6 +678,7 @@ and declared out of order (cannot use forward declared structures in inline arra
 ;; WARN: Stack slot offset 56 signed mismatch
 ;; WARN: Return type mismatch vector vs none.
 (defmethod project-point-into-poly-2d ((this nav-mesh) (arg0 nav-poly) (arg1 vector) (arg2 vector))
+  "Find the point in the polygon closest to the query point."
   (local-vars (sv-48 vector) (sv-52 vector) (sv-56 float))
   (cond
     ((point-in-poly? this arg0 arg2)
@@ -833,6 +847,7 @@ and declared out of order (cannot use forward declared structures in inline arra
 ;; definition (debug) for function nav-sphere-from-cam
 ;; WARN: Return type mismatch int vs none.
 (defun-debug nav-sphere-from-cam ()
+  "Print out a SPHEREM from the current camera position, possibly used by their level-building tool."
   (let ((v1-0 (camera-pos)))
     (format #t "SPHEREM(~4,,1M, ~4,,1M, ~4,,1M, 1.0)~%" (-> v1-0 x) (-> v1-0 y) (-> v1-0 z))
     )

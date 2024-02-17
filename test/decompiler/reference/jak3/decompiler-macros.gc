@@ -107,6 +107,16 @@
      )
   )
 
+(defmacro ppointer->handle (pproc)
+  `(let ((the-process (the-as (pointer process) ,pproc)))
+      (new 'static 'handle :process the-process :pid (-> the-process 0 pid))
+      )
+  )
+
+(defmacro process->handle (proc)
+  "convert a process to a handle. if proc is #f, returns a #f handle."
+  `(ppointer->handle (process->ppointer (the-as process ,proc)))
+  )
 
 ;; use a compile-time list to keep track of the type of an anonymous behavior.
 (seval (define *defstate-type-stack* '()))
@@ -677,4 +687,470 @@
      (define-extern ,name ,type)
      (set! ,name (the-as ,type (__pc-get-mips2c ,(symbol->string name))))
      )
+  )
+
+(defmacro copy-and-set-field (original field-name field-value)
+  `(let ((temp-copy ,original))
+     (set! (-> temp-copy ,field-name) ,field-value)
+     temp-copy
+     )
+  )
+
+(defmacro res-lump-data (lump name type &key (tag-ptr (the-as (pointer res-tag) #f)) &key (time -1000000000.0))
+  "Helper macro to get data from a res-lump without interpolation."
+  `(the-as ,type ((method-of-type res-lump get-property-data)
+                  ,lump
+                  ,name
+                  'interp
+                  ,time
+                  (the-as pointer #f)
+                  ,tag-ptr
+                  *res-static-buf*
+                  )
+           )
+  )
+
+(defmacro res-lump-data-exact (lump name type &key (tag-ptr (the-as (pointer res-tag) #f)) &key (time 0.0))
+  "Helper macro to get start of data from a res-lump."
+  `(the-as ,type ((method-of-type res-lump get-property-data)
+                  ,lump
+                  ,name
+                  'exact
+                  ,time
+                  (the-as pointer #f)
+                  ,tag-ptr
+                  *res-static-buf*
+                  )
+           )
+  )
+
+(defmacro res-lump-struct (lump name type &key (tag-ptr (the-as (pointer res-tag) #f)) &key (time -1000000000.0))
+  `(the-as ,type ((method-of-type res-lump get-property-struct)
+                  ,lump
+                  ,name
+                  'interp
+                  ,time
+                  (the-as structure #f)
+                  ,tag-ptr
+                  *res-static-buf*
+                  )
+           )
+  )
+
+(defmacro res-lump-struct-exact (lump name type &key (tag-ptr (the-as (pointer res-tag) #f)) &key (time 0.0))
+  `(the-as ,type ((method-of-type res-lump get-property-struct)
+                  ,lump
+                  ,name
+                  'exact
+                  ,time
+                  (the-as structure #f)
+                  ,tag-ptr
+                  *res-static-buf*
+                  )
+           )
+  )
+
+(defmacro res-lump-value (lump name type &key (tag-ptr (the-as (pointer res-tag) #f)) &key (default (the-as uint128 0)) &key (time -1000000000.0))
+  "Helper macro to get a value from a res-lump with no interpolation."
+  `(the-as ,type ((method-of-type res-lump get-property-value)
+                  ,lump
+                  ,name
+                  'interp
+                  ,time
+                  ,default
+                  ,tag-ptr
+                  *res-static-buf*
+                  )
+           )
+  )
+
+(defmacro res-lump-float (lump name &key (tag-ptr (the-as (pointer res-tag) #f)) &key (default 0.0) &key (time -1000000000.0))
+  "Helper macro to get a float from a res-lump with no interpolation."
+  `((method-of-type res-lump get-property-value-float)
+                  ,lump
+                  ,name
+                  'interp
+                  ,time
+                  ,default
+                  ,tag-ptr
+                  *res-static-buf*
+                  )
+  )
+
+;; cause the current process to change state
+(defmacro go (next-state &rest args)
+  `(with-pp
+     (go-hook pp ,next-state ,@args)
+     )
+  )
+
+(defmacro go-virtual (state-name &key (proc self) &rest args)
+  "Change the current process to the virtual state of the given process."
+  `(go (method-of-object ,proc ,state-name) ,@args)
+  )
+
+;; run the given function in a process right now.
+;; will return to here when:
+;;  - you return
+;;  - you deactivate
+;;  - you go
+;;  - you throw to 'initialize
+(defmacro run-now-in-process (proc func &rest args)
+  `((the (function _varargs_ object) run-function-in-process)
+    ,proc ,func ,@args
+    )
+  )
+
+;; sets the main thread of the given process to run the given thing.
+;; this resets the main thread stack back to the top
+(defmacro run-next-time-in-process (proc func &rest args)
+  `((the (function _varargs_ object) set-to-run)
+    (-> ,proc main-thread) ,func ,@args
+    )
+  )
+
+(defmacro send-event (proc msg &key (from (with-pp pp)) &rest params)
+  "Send an event to a process. This should be used over send-event-function"
+
+  `(let ((event-data (new 'stack-no-clear 'event-message-block)))
+        (set! (-> event-data from) (process->ppointer ,from))
+        (set! (-> event-data num-params) ,(length params))
+        (set! (-> event-data message) ,msg)
+        ,@(apply-i (lambda (x i) `(set! (-> event-data param ,i) (the-as uint ,x))) params)
+        (send-event-function ,proc event-data)
+        )
+  )
+
+(defmacro setting-control-func! (func s &rest args)
+  (let ((argb #f)
+        (argi 0)
+        (argf 0.0)
+        (setting (cadr s)))
+    (cond
+      (#t
+        (set! argb (car args))
+        (set! argf (cadr args))
+        (set! argi (caddr args))
+        )
+      )
+    `(,func *setting-control* (with-pp pp) ,s ,argb ,argf ,argi)
+    )
+  )
+
+(defmacro add-setting! (s &rest args)
+  `(setting-control-func! add-setting ,s ,@args)
+  )
+(defmacro set-setting! (s &rest args)
+  `(setting-control-func! set-setting ,s ,@args)
+  )
+(defmacro remove-setting! (s)
+  `(remove-setting *setting-control* (with-pp pp) ,s)
+  )
+
+(defmacro static-sound-name (str)
+  "Convert a string constant to a static sound-name."
+
+  ;; all this is done at compile-time so we can come up with 2
+  ;; 64-bit constants to use
+  (when (> (string-length str) 16)
+    (error "static-sound-name got a string that is too long")
+    )
+  (let ((lo-val 0)
+        (hi-val 0)
+        )
+    (dotimes (i (string-length str))
+      (if (>= i 8)
+          (+! hi-val (ash (string-ref str i) (* 8 (- i 8))))
+          (+! lo-val (ash (string-ref str i) (* 8 i)))
+          )
+      )
+    `(new 'static 'sound-name :lo ,lo-val :hi ,hi-val)
+    )
+  )
+
+(defmacro time-elapsed? (time duration)
+  `(>= (- (current-time) ,time) ,duration)
+  )
+
+(defmacro set-time! (time)
+  `(set! ,time (current-time))
+  )
+
+(defconstant *scratch-memory-top* (the pointer #x70004000))
+(defconstant DPROCESS_STACK_SIZE #x8000)
+
+(defconstant *kernel-dram-stack* (&+ *dram-stack* DPROCESS_STACK_SIZE))
+
+(defmacro process-spawn-function (proc-type func &key (from *default-dead-pool*) &key (to *default-pool*) &key (name #f) &key (stack-size #x4000) &key (stack *scratch-memory-top*) &rest args)
+  "Start a new process that runs a function on its main thread.
+   Returns a pointer to the new process (or #f? on error)."
+
+  (with-gensyms (new-proc)
+    `(let ((,new-proc (the-as ,proc-type (get-process ,from ,proc-type ,stack-size 1))))
+        (when ,new-proc
+          ((method-of-type ,proc-type activate) ,new-proc ,to ,(if name name `(symbol->string (-> ,proc-type symbol))) ,stack)
+          (run-next-time-in-process ,new-proc ,func ,@args)
+          (the (pointer ,proc-type) (-> ,new-proc ppointer))
+          )
+        )
+    )
+  )
+
+(defmacro process-spawn (proc-type &key (init #f)
+                                   &key (from *default-dead-pool*)
+                                   &key (to *default-pool*)
+                                   &key (name #f)
+                                   &key (stack-size #x4000)
+                                   &key (stack *scratch-memory-top*)
+                                   &key (unk 1)
+                                   &rest args)
+  "Start a new process and run an init function on it.
+   Returns a pointer to the new process, or #f (or is it 0?) if something goes wrong."
+
+  (with-gensyms (new-proc)
+    `(let ((,new-proc (the-as ,proc-type (get-process ,from ,proc-type ,stack-size ,unk))))
+        (when ,new-proc
+          ((method-of-type ,proc-type activate) ,new-proc ,to ,(if name name `(symbol->string ,proc-type)) ,stack)
+          (run-now-in-process ,new-proc ,(if init init (string->symbol (fmt #f "{}-init-by-other" proc-type))) ,@args)
+          (the (pointer ,proc-type) (-> ,new-proc ppointer))
+          )
+        )
+    )
+  )
+
+;; og:preserve-this
+;; look up the index of an art element in an art group.
+(desfun art-elt-index (ag-name elt-name)
+  (if (number? elt-name)
+      elt-name
+      (let ((ag-info (hash-table-try-ref *art-info* (symbol->string ag-name))))
+        (if (not (car ag-info))
+            (error (symbol->string ag-name))
+            (let ((elt-info (hash-table-try-ref (cdr ag-info) (symbol->string elt-name))))
+              (if (not (car elt-info))
+                  (error (symbol->string ag-name))
+                  (cadr (cdr elt-info)))
+              )
+            )
+        )
+      )
+  )
+
+(defmacro static-spherem (x y z r)
+  "creates a static vector using meters where the w component is used as sphere radius. for a 'real' sphere use static-bspherem."
+  `(new 'static 'vector :x (meters ,x) :y (meters ,y) :z (meters ,z) :w (meters ,r))
+  )
+
+(defglobalconstant ART_GROUP_FILE_VERSION 8)
+
+(defmacro defskelgroup (name ag-name joint-geom joint-anim lods
+                        &key (shadow 0)
+                        &key bounds
+                        &key (longest-edge 0.0)
+                        &key (texture-level 0)
+                        &key (sort 0)
+                        &key (version ART_GROUP_FILE_VERSION) ;; do NOT use this!
+                        &key (origin-joint-index 0)
+                        &key (shadow-joint-index 0)
+                        &key (light-index 0)
+                        &key (global-effects 0)
+                        &key (clothing ())
+                        )
+  "Define a new static skeleton-group."
+  `(let ((skel (new 'static 'skeleton-group
+                        :name ,(symbol->string name)
+                        :extra #f
+                        :info #f
+                        :art-group-name ,(symbol->string ag-name)
+                        :bounds ,bounds
+                        :longest-edge ,longest-edge
+                        :texture-level ,texture-level
+                        :version ,version
+                        :shadow ,(art-elt-index (string->symbol-format "{}-ag" ag-name) shadow)
+                        :shadow-joint-index ,shadow-joint-index
+                        :origin-joint-index ,origin-joint-index
+                        :max-lod ,(- (length lods) 1)
+                        :sort ,sort
+                        :light-index ,light-index
+                        :global-effects ,global-effects
+                        :clothing #f
+                        )))
+
+        ;; set cloth params array if present
+        (when ,(neq? clothing '())
+          (set! (-> skel clothing) (new 'static 'boxed-array :type cloth-params :length 0 :allocated-length ,(length clothing)))
+          ,@(apply-i (lambda (x i) `(set! (-> skel clothing ,i) (static-cloth-params ,x))) clothing)
+          (set! (-> skel clothing length) ,(length clothing))
+          )
+
+        ;; set joint geometry and joint bones
+        (set! (-> skel jgeo) ,(art-elt-index (string->symbol-format "{}-ag" ag-name) joint-geom))
+        (set! (-> skel janim) ,(art-elt-index (string->symbol-format "{}-ag" ag-name) joint-anim))
+
+        ;; set lods
+        ,@(apply-i (lambda (x i)
+                      `(begin
+                          (set! (-> skel mgeo ,i) ,(art-elt-index (string->symbol-format "{}-ag" ag-name) (car x)))
+                          (set! (-> skel lod-dist ,i) ,(cadr x))
+                          )
+                      ) lods)
+
+        ;; define skel group
+        (define ,name skel)
+        ;; add to level
+        (add-to-loading-level ,name)
+        )
+  )
+
+(defmacro get-art-by-name (this name type)
+  "Helper macro for casting the result of get-art-by-name-method. Generated by decompiler."
+  `(the-as ,type (get-art-by-name-method ,this ,name ,type))
+  )
+
+(defmacro vftoi15.xyzw (dst src)
+  "convert to 17.15 integer. This does the multiply while the number is still
+   a float. This will have issues for very large floats, but it seems like this
+   is how PCSX2 does it as well, so maybe it's right?
+   NOTE: this is the only version of the instruction used in Jak 1, so we
+   don't need to worry about masks."
+
+  `(begin
+    (rlet ((temp :class vf))
+      (set! temp 32768.0)
+      (.mul.x.vf temp ,src temp)
+      (.ftoi.vf ,dst temp)
+      )
+    )
+  )
+
+(defmacro ja-group (&key (chan 0))
+  "get the frame group for self. default channel is 0, the base channel. returns #f if no frame group."
+  `(if (> (-> self skel active-channels) ,chan)
+       (-> self skel root-channel ,chan frame-group))
+  )
+
+(defmacro focus-test? (pfoc &rest status)
+  `(logtest? (-> (the process-focusable ,pfoc) focus-status) (focus-status ,@status)))
+
+(defmacro ja (&key (chan 0)
+              &key (group! #f)
+              &key (num! #f)
+              &key (param0 #f)
+              &key (param1 #f)
+              &key (num-func #f)
+              &key (frame-num #f)
+              &key (frame-interp #f)
+              &key (dist #f)
+              &key (eval? #t)
+              )
+  "set various joint anim parameters for self and eval them.
+   you can use this for playing animations!
+   chan         = the channel to modify. defaults to 0 (base channel). this is usually what you want.
+   group!       = when not #f, set this as the new frame-group. defaults to #f
+   num!         = set the frame playback function. this is what determines what frame an animation is at. funcs below.
+                  #f = no func will be set, and there wont be a frame eval.
+   num-func     = sets the num-func field for the channel. this lets you change the function with eval'ing.
+   param0       = 1st parameter for the playback function. ONLY USE THESE WITH num-func !!
+   param1       = 2nd parameter for the playback function. ONLY USE THESE WITH num-func !!
+   frame-num    = set the frame-num field.
+   frame-interp = set the frame-interp field.
+   dist         = set the dist field.
+   available num! functions:
+   - (+!)       = advance anim.
+   - (-!)       = reverse anim.
+   - (identity num) = play 'num' frame.
+   - (seek! target speed) = animate towards frame target at a speed.
+                            speed is optional and defaults to 1.0 when not provided.
+                            target is optional and defaults to the last frame of the animation.
+                            if you want to set the speed, you therefore must also set the target.
+                            target can be max (no quote), which is just the same as the default value.
+   - (loop! speed)  = loop animation at a speed. default speed is 1.0 when not provided.
+   - (chan channel) = copy frame from another channel.
+   - min = the start of the animation.
+   - max = the end of the animation.
+   - zero = frame zero.
+   "
+
+  (let* ((num-args (if (pair? num!) (cdr num!) '()))
+        (num! (if (pair? num!) (car num!) num!))
+        (nf (cond
+              ((or (eq? num! 'identity)
+                   (eq? num! 'min)
+                   (eq? num! 'max)
+                   (eq? num! 'zero))
+                   'num-func-identity)
+              ((eq? num! 'none) 'num-func-none)
+              ((eq? num! '+!) 'num-func-+!)
+              ((eq? num! '-!) 'num-func--!)
+              ((eq? num! 'seek!) 'num-func-seek!)
+              ((eq? num! 'loop!) 'num-func-loop!)
+              ((eq? num! 'blend-in!) 'num-func-blend-in!)
+              ((eq? num! 'chan) 'num-func-chan)
+              ))
+        (p0 (if param0 param0
+                (cond
+                  ((eq? num! 'chan) `(the float ,(car num-args)))
+                  ((eq? num! '+!)    (if (null? num-args) 1.0 (car num-args)))
+                  ((eq? num! '-!)    (if (null? num-args) 1.0 (car num-args)))
+                  ((eq? num! 'loop!) (if (null? num-args) 1.0 (if (eq? 'max (car num-args))
+                                                                  (if group!
+                                                                      `(the float (1- (-> (the art-joint-anim ,group!) frames num-frames)))
+                                                                      `(the float (1- (-> ja-ch frame-group frames num-frames)))
+                                                                      )
+                                                                  (car num-args))))
+                  ((eq? num! 'seek!) (if (or (null? num-args) (eq? (car num-args) 'max))
+                                         (if group!
+                                             `(the float (1- (-> (the art-joint-anim ,group!) frames num-frames)))
+                                             `(the float (1- (-> ja-ch frame-group frames num-frames)))
+                                             )
+                                         (car num-args)))
+                  )))
+        (p1 (if param1 param1
+                (cond
+                  ((eq? num! 'seek!) (if (or (null? num-args) (null? (cdr num-args))) 1.0 (cadr num-args)))
+                  )))
+        (frame-num (cond
+                      ((eq? 'max frame-num) (if group!
+                                                `(the float (1- (-> (the art-joint-anim ,group!) frames num-frames)))
+                                                `(the float (1- (-> ja-ch frame-group frames num-frames)))
+                                                ))
+                      ((eq? 'zero frame-num) 0)
+                      (#t frame-num)))
+        (frame-group (if (or p0 p1 frame-num (not nf)) group! #f))
+      )
+  `(let ((ja-ch (-> self skel root-channel ,chan)))
+      ,(if frame-interp `(set! (-> ja-ch frame-interp) ,frame-interp) `(none))
+      ,(if dist `(set! (-> ja-ch dist) ,dist) `(none))
+      ,(if frame-group `(set! (-> ja-ch frame-group) (the art-joint-anim ,frame-group)) `(none))
+      ,(if p0 `(set! (-> ja-ch param 0) ,p0) `(none))
+      ,(if p1 `(set! (-> ja-ch param 1) ,p1) `(none))
+      ,(if num-func `(set! (-> ja-ch num-func) ,num-func) `(none))
+      ,(if frame-num `(set! (-> ja-ch frame-num) ,frame-num) `(none))
+      ,(if nf
+          `(,(if eval? 'joint-control-channel-group-eval! 'joint-control-channel-group!)
+              ja-ch (the art-joint-anim ,group!) ,nf)
+          `(none))
+      ,(cond
+        ((eq? num! 'min) `(set! (-> ja-ch frame-num) 0.0))
+        ((eq? num! 'max) (if group!
+                             `(set! (-> ja-ch frame-num) (the float (1- (-> (the art-joint-anim ,group!) frames num-frames))))
+                             `(set! (-> ja-ch frame-num) (the float (1- (-> ja-ch frame-group frames num-frames))))
+                             ))
+        ((eq? num! 'identity) `(set! (-> ja-ch frame-num) ,(car num-args)))
+        (#t `(none))
+        )
+      ))
+  )
+
+(defmacro ja-no-eval (&key (chan 0)
+                      &key (group! #f)
+                      &key (num! #f)
+                      &key (param0 #f)
+                      &key (param1 #f)
+                      &key (num-func #f)
+                      &key (frame-num #f)
+                      &key (frame-interp #f)
+                      &key (dist #f)
+                      )
+  `(ja :eval? #f :chan ,chan :group! ,group! :num! ,num! :param0 ,param0 :param1 ,param1 :num-func ,num-func :frame-num ,frame-num :frame-interp ,frame-interp :dist ,dist)
   )

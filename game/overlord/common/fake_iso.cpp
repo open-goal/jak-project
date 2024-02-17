@@ -109,7 +109,7 @@ FileRecord* FS_FindIN(const char* iso_name) {
     }
     count++;
   }
-  printf("[FAKEISO] failed to find %s\n", iso_name);
+  lg::error("[FAKEISO] failed to find {}\n", iso_name);
   return nullptr;
 }
 

@@ -3,6 +3,7 @@
 
 ;; definition for method 19 of type bounding-box
 (defmethod inside-xyz? ((this bounding-box) (arg0 vector))
+  "Is the point in the box?"
   (and (< (-> this min x) (-> arg0 x))
        (< (-> this min y) (-> arg0 y))
        (< (-> this min z) (-> arg0 z))
@@ -14,6 +15,7 @@
 
 ;; definition for method 20 of type bounding-box
 (defmethod inside-xz? ((this bounding-box) (arg0 vector))
+  "Is the point in the box? Check xz only."
   (and (< (-> this min x) (-> arg0 x))
        (< (-> this min z) (-> arg0 z))
        (< (-> arg0 x) (-> this max x))
@@ -23,6 +25,7 @@
 
 ;; definition for function box-vector-enside?
 (defun box-vector-enside? ((arg0 bounding-box) (arg1 vector))
+  "Is the point in the box? On the edge doesn't count."
   (and (< (-> arg0 min x) (-> arg1 x))
        (< (-> arg0 min y) (-> arg1 y))
        (< (-> arg0 min z) (-> arg1 z))
@@ -34,6 +37,7 @@
 
 ;; definition for function box-vector-inside?
 (defun box-vector-inside? ((arg0 bounding-box) (arg1 vector))
+  "Is the point in the box? On the edge counts."
   (and (>= (-> arg1 x) (-> arg0 min x))
        (>= (-> arg1 y) (-> arg0 min y))
        (>= (-> arg1 z) (-> arg0 min z))
@@ -46,6 +50,7 @@
 ;; definition for method 13 of type bounding-box
 ;; WARN: Return type mismatch int vs none.
 (defmethod set-from-point-offset! ((this bounding-box) (arg0 vector) (arg1 vector))
+  "Set to the smallest box containing arg0, (arg0 + arg1)"
   (rlet ((vf0 :class vf)
          (vf1 :class vf)
          (vf2 :class vf)
@@ -71,6 +76,7 @@
 ;; definition for method 11 of type bounding-box
 ;; WARN: Return type mismatch int vs none.
 (defmethod add-point! ((this bounding-box) (arg0 vector))
+  "Expand the box as needed to contain the given point."
   (rlet ((vf1 :class vf)
          (vf2 :class vf)
          (vf3 :class vf)
@@ -89,6 +95,7 @@
 
 ;; definition for method 10 of type bounding-box
 (defmethod add-box! ((this bounding-box) (arg0 bounding-box))
+  "Expand the box as needed to contain the given box."
   (rlet ((vf1 :class vf)
          (vf2 :class vf)
          (vf3 :class vf)
@@ -110,6 +117,7 @@
 ;; INFO: Used lq/sq
 ;; WARN: Return type mismatch int vs none.
 (defmethod set-to-point! ((this bounding-box) (arg0 vector))
+  "Set the box to be a single point."
   (set! (-> this min quad) (-> arg0 quad))
   (set! (-> this max quad) (-> arg0 quad))
   0
@@ -118,6 +126,7 @@
 
 ;; definition for method 14 of type bounding-box
 (defmethod set-from-point-offset-pad! ((this bounding-box) (arg0 vector) (arg1 vector) (arg2 float))
+  "Set the box to contain arg0, arg0 + offset, with some padding."
   (rlet ((vf0 :class vf)
          (vf1 :class vf)
          (vf2 :class vf)
@@ -146,6 +155,7 @@
 ;; definition for method 16 of type bounding-box
 ;; WARN: Return type mismatch int vs none.
 (defmethod set-from-sphere! ((this bounding-box) (arg0 sphere))
+  "Set the box to contain a single sphere."
   (rlet ((vf0 :class vf)
          (vf1 :class vf)
          (vf2 :class vf)
@@ -172,6 +182,7 @@
 
 ;; definition for method 18 of type bounding-box
 (defmethod get-bounding-sphere ((this bounding-box) (arg0 vector))
+  "Get a bounding sphere for a bounding box."
   (let* ((a1-2 (vector-! (new 'stack-no-clear 'vector) (-> this max) (-> this min)))
          (a0-3 (vector-float*! (new 'stack-no-clear 'vector) a1-2 0.5))
          )
@@ -203,6 +214,7 @@
 
 ;; definition for function liang-barsky-line-clipt
 (defun liang-barsky-line-clipt ((arg0 liang-barsky-line-clip-params) (arg1 float) (arg2 float))
+  "Clip test in 1 dimension. Is arg1 in arg2?"
   (cond
     ((< 0.0 arg1)
      (let ((f0-2 (/ arg2 arg1)))
@@ -236,6 +248,8 @@
 ;; definition for method 12 of type bounding-box
 ;; WARN: disable def twice: 23. This may happen when a cond (no else) is nested inside of another conditional, but it should be rare.
 (defmethod intersects-line-segment? ((this bounding-box) (arg0 vector) (arg1 vector))
+  "Check intersection in xz plane, using liang-barsky. Not sure if this actually
+a useful check or not..."
   (let ((f28-0 (- (-> arg1 x) (-> arg0 x)))
         (f30-0 (- (-> arg1 z) (-> arg0 z)))
         )

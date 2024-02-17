@@ -27,18 +27,18 @@
   )
 
 ;; definition for method 8 of type texture-page
-(defmethod mem-usage ((this texture-page) (arg0 memory-usage-block) (arg1 int))
-  (set! (-> arg0 length) (max 84 (-> arg0 length)))
-  (set! (-> arg0 data 83 name) "texture")
-  (+! (-> arg0 data 83 count) (-> this length))
+(defmethod mem-usage ((this texture-page) (usage memory-usage-block) (flags int))
+  (set! (-> usage length) (max 84 (-> usage length)))
+  (set! (-> usage data 83 name) "texture")
+  (+! (-> usage data 83 count) (-> this length))
   (let ((v1-7 (+ (asize-of this) (* (-> this dram-size) 4))))
     (dotimes (a0-6 (-> this length))
       (if (-> this data a0-6)
           (+! v1-7 112)
           )
       )
-    (+! (-> arg0 data 83 used) v1-7)
-    (+! (-> arg0 data 83 total) (logand -16 (+ v1-7 15)))
+    (+! (-> usage data 83 used) v1-7)
+    (+! (-> usage data 83 total) (logand -16 (+ v1-7 15)))
     )
   this
   )
@@ -366,13 +366,13 @@
   )
 
 ;; definition for method 10 of type texture-page
-(defmethod get-leftover-block-count ((this texture-page) (arg0 int) (arg1 int))
+(defmethod get-leftover-block-count ((this texture-page) (num-segments int) (upload-offset int))
   "Unused - statistics for how much unused memory we have"
-  (let ((v1-0 arg1))
-    (dotimes (a2-1 arg0)
-      (+! v1-0 (-> this segment a2-1 size))
+  (let ((offset upload-offset))
+    (dotimes (i num-segments)
+      (+! offset (-> this segment i size))
       )
-    (logand (/ v1-0 64) 63)
+    (logand (/ offset 64) 63)
     )
   )
 
@@ -1814,7 +1814,7 @@
 
 ;; definition for method 7 of type texture-page-dir
 ;; WARN: Return type mismatch texture-page-dir vs none.
-(defmethod relocate ((this texture-page-dir) (arg0 kheap) (arg1 (pointer uint8)))
+(defmethod relocate ((this texture-page-dir) (heap kheap) (name (pointer uint8)))
   (set! *texture-page-dir* this)
   (none)
   )
@@ -1873,7 +1873,7 @@
           (set! (-> v1-2 loaded-texture-page (-> v1-2 loaded-texture-page-count)) this)
           (+! (-> v1-2 loaded-texture-page-count) 1)
           (if (and (>= (-> v1-2 loaded-texture-page-count) 2) (zero? (-> v1-2 load-buffer-mode)))
-              (set! (-> v1-2 load-buffer-mode) (load-buffer-mode small-center))
+              (set! (-> v1-2 load-buffer-mode) (level-memory-mode tiny))
               )
           )
         )
@@ -2139,55 +2139,7 @@
   )
 
 ;; definition for method 9 of type texture-page-dir
-;; WARN: Stack slot offset 24 signed mismatch
-;; WARN: Stack slot offset 24 signed mismatch
-;; WARN: Stack slot offset 24 signed mismatch
-;; WARN: Stack slot offset 24 signed mismatch
-;; WARN: Stack slot offset 24 signed mismatch
-;; WARN: Stack slot offset 24 signed mismatch
-(defmethod unlink-shaders-in-heap ((this texture-page-dir) (arg0 kheap))
-  "Iterate through all adgifs, splicing out ones that are in the given heap."
-  (local-vars (t2-2 (pointer shader-ptr)) (sv-16 texture-page) (sv-20 (pointer shader-ptr)) (sv-24 int))
-  (let ((v1-0 (-> arg0 base))
-        (a1-1 (-> arg0 top-base))
-        )
-    (dotimes (a2-0 (-> this length))
-      (let ((a3-3 (-> this entries a2-0)))
-        (set! sv-16 (-> a3-3 page))
-        (when sv-16
-          (set! sv-20 (-> a3-3 link next))
-          (set! sv-24 (min (-> sv-16 length) (-> a3-3 length)))
-          (when sv-20
-            (dotimes (a3-6 sv-24)
-              (let ((t0-11 (the-as (pointer integer) (&-> sv-20 0)))
-                    (t1-3 (the-as object (* (-> sv-20 0 shader) 16)))
-                    )
-                (the-as (pointer shader-ptr) 0)
-                (while (nonzero? (the-as uint t1-3))
-                  (b!
-                    (< (the-as int (the-as (pointer shader-ptr) (- (the-as uint t1-3) (the-as uint v1-0)))) 0)
-                    cfg-8
-                    :delay (set! t2-2 (the-as (pointer shader-ptr) (- (the-as uint t1-3) a1-1)))
-                    )
-                  (b! (>= (the-as int t2-2) 0) cfg-8 :delay (nop!))
-                  (let ((t2-3 (the-as (pointer shader-ptr) (-> (the-as adgif-shader t1-3) next))))
-                    (b! #t cfg-9 :delay (set! (-> (the-as (pointer int32) t0-11) 0) (the-as int t2-3)))
-                    )
-                  (label cfg-8)
-                  (set! t0-11 (&-> (the-as adgif-shader t1-3) reg-2))
-                  (label cfg-9)
-                  (set! t1-3 (* (-> (the-as adgif-shader t1-3) next shader) 16))
-                  )
-                )
-              (set! sv-20 (&-> sv-20 1))
-              )
-            )
-          )
-        )
-      )
-    )
-  0
-  )
+;; ERROR: function was not converted to expressions. Cannot decompile.
 
 ;; definition for function adgif-shader<-texture!
 ;; ERROR: function was not converted to expressions. Cannot decompile.
@@ -2513,7 +2465,3 @@
 
 ;; definition for symbol *texture-pool*, type texture-pool
 (define *texture-pool* (new 'global 'texture-pool))
-
-
-
-

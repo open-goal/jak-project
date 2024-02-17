@@ -52,6 +52,10 @@
 (declare-type ripple-control basic)
 (declare-type shadow-geo structure)
 (declare-type shadow-control structure)
+(declare-type cloth-base basic)
+(declare-type verlet-particle-system cloth-base)
+(declare-type cloth-system verlet-particle-system)
+(declare-type joint-control basic)
 ;; DECOMP BEGINS
 
 (deftype joint-anim (basic)
@@ -156,18 +160,18 @@ This can be either an art container containing more arts, or an actual art thing
    (extra   res-lump)
    )
   (:methods
-    (art-method-9 () none)
-    (art-method-10 () none)
-    (art-method-11 () none)
-    (art-method-12 () none)
-    (art-method-13 () none)
+    (login (_type_) _type_)
+    (art-method-10 (_type_) _type_)
+    (get-art-by-name-method (_type_ string type) basic)
+    (get-art-idx-by-name-method (_type_ string type) int)
+    (contains-art-for-other-group? (_type_) symbol)
     )
   )
 
 
 (deftype art-element (art)
   "Base class Art which is not a container of more art."
-  ((master-art-group-name   basic)
+  ((master-art-group-name   string)
    (master-art-group-index  int32)
    (pad                     uint8  20)
    )
@@ -176,7 +180,8 @@ This can be either an art container containing more arts, or an actual art thing
 
 (deftype art-mesh-anim (art-element)
   "An unused mesh animation."
-  ()
+  ((data  basic  :dynamic)
+   )
   )
 
 (deftype art-joint-anim (art-element)
@@ -198,34 +203,37 @@ actor, like the mesh, animations, shadow mesh, skeleton, etc."
    (data  art-element  :dynamic :offset  32)
    )
   (:methods
-    (unknown-0 () none)
-    (unknown-1 () none)
+    (relocate (_type_ kheap (pointer uint8)) none :replace)
+    (link-art-to-master (_type_) art-group)
+    (unlink-art-to-master (_type_) int)
     )
   )
 
 (deftype art-mesh-geo (art-element)
   "Unused art format for a mesh. This might have been for the renderer that came before merc."
-  ()
+  ((data  basic  :dynamic)
+   )
   )
 
 (deftype art-joint-geo (art-element)
   "Collection of joints for an actor."
-  ()
+  ((data  joint  :dynamic)
+   )
   )
 
 (deftype art-cloth-geo (art-element)
-  ((anchor-transforms  basic)
-   (sphere-transforms  basic)
-   (disc-transforms    basic)
-   (cloth-thickness    basic)
+  ((anchor-transforms  anchor-transform-array)
+   (sphere-transforms  sphere-transform-array)
+   (disc-transforms    disc-transform-array)
+   (cloth-thickness    cloth-thickness-array)
    (thickness-scalar   float)
-   (num-points         int32            :overlay-at length)
-   (mesh               object  :dynamic :offset  80)
+   (num-points         int32                      :overlay-at length)
+   (mesh               cloth-pt  :inline :dynamic :offset  80)
    )
   )
 
 
-(defmethod relocate ((this art-cloth-geo) (arg0 int))
+(defmethod relocate ((this art-cloth-geo) (offset int))
   this
   )
 
@@ -247,11 +255,11 @@ This is used for short, commonly used animations that always remain in RAM."
    )
   (:methods
     (new (symbol type int) _type_)
-    (art-joint-anim-manager-method-9 () none)
-    (art-joint-anim-manager-method-10 () none)
-    (art-joint-anim-manager-method-11 () none)
-    (art-joint-anim-manager-method-12 () none)
-    (art-joint-anim-manager-method-13 () none)
+    (decompress (_type_ art-joint-anim) art-joint-anim)
+    (mark-anim-in-use (_type_ art-joint-anim) art-joint-anim)
+    (unload-from-slot (_type_ int) art-joint-anim)
+    (used-bytes-for-slot (_type_ int) int)
+    (unload-from-heap (_type_ kheap) none)
     )
   )
 
@@ -291,11 +299,11 @@ This stores settings like the name of the art-group, shadow/level-of-detail sett
    (origin-joint-index  int8)
    (sort                int8)
    (light-index         uint8)
-   (clothing            basic)
+   (clothing            (array cloth-params))
    (global-effects      uint8)
    )
   (:methods
-    (skeleton-group-method-16 () none)
+    (add-to-loading-level (_type_) skeleton-group)
     )
   )
 
@@ -315,7 +323,7 @@ This stores settings like the name of the art-group, shadow/level-of-detail sett
    (max-lod  int8)
    )
   (:methods
-    (lod-set-method-9 () none)
+    (setup-lods! (_type_ skeleton-group art-group entity) _type_)
     )
   )
 
@@ -363,17 +371,17 @@ Each process-drawable has a draw-control."
    (force-fade            uint8)
    (default-texture-page  uint8)
    (shadow-values         uint32)
-   (cloth-instances       basic)
+   (cloth-instances       (array cloth-system))
    )
   (:methods
-    (new (symbol type) _type_)
+    (new (symbol type process symbol) _type_)
     (get-skeleton-origin (_type_) vector)
-    (draw-control-method-10 () none)
-    (draw-control-method-11 () none)
-    (draw-control-method-12 () none)
-    (draw-control-method-13 () none)
-    (draw-control-method-14 () none)
-    (draw-control-method-15 () none)
+    (lod-set! (_type_ int) none)
+    (lods-assign! (_type_ lod-set) none)
+    (setup-masks (_type_ int int) none)
+    (setup-cspace-and-add (_type_ art-joint-geo symbol) cspace-array)
+    (draw-control-method-14 (_type_ cspace-array joint-control) none)
+    (do-joint-math (_type_ cspace-array joint-control) none)
     )
   )
 
@@ -381,3 +389,83 @@ Each process-drawable has a draw-control."
 (defmethod get-skeleton-origin ((this draw-control))
   (-> this skeleton bones 0 transform trans)
   )
+
+;; og:preserve-this
+;; look up the index of an art element in an art group.
+(desfun art-elt-index (ag-name elt-name)
+  (if (number? elt-name)
+      elt-name
+      (let ((ag-info (hash-table-try-ref *art-info* (symbol->string ag-name))))
+        (if (not (car ag-info))
+            (error (symbol->string ag-name))
+            (let ((elt-info (hash-table-try-ref (cdr ag-info) (symbol->string elt-name))))
+              (if (not (car elt-info))
+                  (error (symbol->string ag-name))
+                  (cadr (cdr elt-info)))
+              )
+            )
+        )
+      )
+  )
+
+(defmacro defskelgroup (name ag-name joint-geom joint-anim lods
+                        &key (shadow 0)
+                        &key bounds
+                        &key (longest-edge 0.0)
+                        &key (texture-level 0)
+                        &key (sort 0)
+                        &key (version ART_GROUP_FILE_VERSION) ;; do NOT use this!
+                        &key (origin-joint-index 0)
+                        &key (shadow-joint-index 0)
+                        &key (light-index 0)
+                        &key (global-effects 0)
+                        &key (clothing ())
+                        )
+  "Define a new static skeleton-group."
+  `(let ((skel (new 'static 'skeleton-group
+                        :name ,(symbol->string name)
+                        :extra #f
+                        :info #f
+                        :art-group-name ,(symbol->string ag-name)
+                        :bounds ,bounds
+                        :longest-edge ,longest-edge
+                        :texture-level ,texture-level
+                        :version ,version
+                        :shadow ,(art-elt-index (string->symbol-format "{}-ag" ag-name) shadow)
+                        :shadow-joint-index ,shadow-joint-index
+                        :origin-joint-index ,origin-joint-index
+                        :max-lod ,(- (length lods) 1)
+                        :sort ,sort
+                        :light-index ,light-index
+                        :global-effects ,global-effects
+                        :clothing #f
+                        )))
+
+        ;; set cloth params array if present
+        (when ,(neq? clothing '())
+          (set! (-> skel clothing) (new 'static 'boxed-array :type cloth-params :length 0 :allocated-length ,(length clothing)))
+          ,@(apply-i (lambda (x i) `(set! (-> skel clothing ,i) (static-cloth-params ,x))) clothing)
+          (set! (-> skel clothing length) ,(length clothing))
+          )
+
+        ;; set joint geometry and joint bones
+        (set! (-> skel jgeo) ,(art-elt-index (string->symbol-format "{}-ag" ag-name) joint-geom))
+        (set! (-> skel janim) ,(art-elt-index (string->symbol-format "{}-ag" ag-name) joint-anim))
+
+        ;; set lods
+        ,@(apply-i (lambda (x i)
+                      `(begin
+                          (set! (-> skel mgeo ,i) ,(art-elt-index (string->symbol-format "{}-ag" ag-name) (car x)))
+                          (set! (-> skel lod-dist ,i) ,(cadr x))
+                          )
+                      ) lods)
+
+        ;; define skel group
+        (define ,name skel)
+        ;; add to level
+        (add-to-loading-level ,name)
+        )
+  )
+
+(import "goal_src/jak3/engine/data/art-elts.gc")
+;; (import "goal_src/jak3/engine/data/joint-nodes.gc")
