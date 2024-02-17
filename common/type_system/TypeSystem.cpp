@@ -1482,8 +1482,7 @@ std::vector<std::string> TypeSystem::search_types_by_size(
     }
   } else {
     for (const auto& [type_name, type_info] : m_types) {
-      // Only NullType's have no parent
-      if (!type_info->has_parent()) {
+      if (dynamic_cast<NullType*>(type_info.get())) {
         continue;
       }
       const auto size_of_type = m_types[type_name]->get_size_in_memory();
