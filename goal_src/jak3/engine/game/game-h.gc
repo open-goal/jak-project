@@ -81,6 +81,29 @@
   (test 24)
   )
 
+(defmacro static-attack-info (&key (mask ()) args)
+  (let ((mask-actual mask))
+    (dolist (it args)
+      (when (not (member (caar it) mask-actual))
+        (cons! mask-actual (caar it))
+        )
+      )
+    `(let ((atk (new 'static 'attack-info :mask (attack-mask ,@mask-actual))))
+        ,@(apply (lambda (x) (if (or (eq? (car x) 'vector)
+                                     (eq? (car x) 'intersection)
+                                     (eq? (car x) 'attacker-velocity))
+                                 `(vector-copy! (-> atk ,(car x)) ,(cadr x))
+                                 `(set! (-> atk ,(car x)) ,(cadr x))
+                                )) args)
+        atk)
+    )
+  )
+
+(defmacro new-attack-id ()
+  "generate a new attack-id. TODO remove this, it's meant to be an inlined method"
+  `(1+! (-> *game-info* attack-id))
+  )
+
 ;; DECOMP BEGINS
 
 (deftype process-drawable (process)
