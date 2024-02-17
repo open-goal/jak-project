@@ -188,6 +188,7 @@ include_directories(SYSTEM third-party/inja)
 # Enable SSL Support, most URLs now-a-days use SSL!
 # TODO - probably integrate with ZSTD since we have it already
 set(CURL_USE_LIBSSH2 OFF)
+set(CURL_ZLIB OFF)
 if(WIN32)
     set(CURL_USE_SCHANNEL ON) # native Windows SSL support
 elseif(APPLE)
