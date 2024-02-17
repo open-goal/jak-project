@@ -28,7 +28,7 @@ template <typename... Args>
   }
 
   throw std::runtime_error(
-      fmt::format("Type Error: {}", fmt::format(str, std::forward<Args>(args)...)));
+      fmt::format("Type Error: {}", fmt::format(fmt::runtime(str), std::forward<Args>(args)...)));
 }
 }  // namespace
 

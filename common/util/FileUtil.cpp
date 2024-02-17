@@ -386,7 +386,7 @@ std::string split_path_at(const fs::path& path, const std::vector<std::string>& 
     split_str += folder + "/";
 #endif
   }
-  const auto& path_str = path.u8string();
+  const auto& path_str = path.string();
   return path_str.substr(path_str.find(split_str) + split_str.length());
 }
 
