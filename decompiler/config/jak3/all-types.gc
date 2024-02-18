@@ -10161,7 +10161,7 @@
   (feature2 2)
   (feature3 3)
   (feature4 4)
-  (feature5 5)
+  (gun 5)
   (gun-red-1 6)
   (gun-red-2 7)
   (gun-red-3 8)
@@ -10176,7 +10176,7 @@
   (gun-dark-3 17)
   (board 18)
   (feature19 19)
-  (feature20 20)
+  (sidekick 20)
   (feature21 21)
   (feature22 22)
   (gun-upgrade-yellow-ammo-1 23)
@@ -10196,13 +10196,13 @@
   (feature37 37)
   (feature38 38)
   (feature39 39)
-  (feature40 40)
+  (darkjak 40)
   (darkjak-smack 41)
   (darkjak-bomb0 42)
   (darkjak-bomb1 43)
   (feature44 44)
   (feature45 45)
-  (feature46 46)
+  (lightjak 46)
   (lightjak-regen 47)
   (lightjak-swoop 48)
   (lightjak-freeze 49)
@@ -20295,6 +20295,7 @@
   )
 ;; ---collide-shape-h:collide-list-enum
 
+(declare-type collide-query structure)
 (deftype collide-shape (trsqv)
   "The parent of all of an object's collide primitives.
    Most [[process-drawable]]s have a [[collide-shape]] that represents their root transform."
@@ -20326,7 +20327,7 @@
     (move-to-point! (_type_ vector) none) ;; 29
     (collide-shape-method-30 () none) ;; 30 ;; (debug-draw (_type_) none)
     (collide-shape-method-31 () none) ;; 31 ;; (fill-cache-for-shape (_type_ float collide-query) none)
-    (collide-shape-method-32 () none) ;; 32 ;; (fill-cache-integrate-and-collide (_type_ vector collide-query meters) none)
+    (fill-cache-integrate-and-collide (_type_ vector collide-query meters) none) ;; 32
     (collide-shape-method-33 () none) ;; 33 ;; (find-prim-by-id (_type_ uint) collide-shape-prim)
     (collide-shape-method-34 () none) ;; 34 ;; (find-prim-by-id-logtest (_type_ uint) collide-shape-prim)
     (detect-riders! (_type_) symbol) ;; 35
@@ -20351,6 +20352,45 @@
     (collide-shape-method-54 () none) ;; 54 ;; (pusher-init (_type_) none)
     )
   )
+
+;; +++collide-shape-h:cshape-reaction-flags
+(defenum cshape-reaction-flags
+  :bitfield #t
+  :type uint32
+  (csrf00)
+  (csrf01)
+  (csrf02)
+  (csrf03)
+  (csrf04)
+  (csrf05)
+  (csrf06)
+  (csrf07)
+  (csrf08)
+  (csrf09)
+  (csrf10)
+  (csrf11)
+  (csrf12)
+  (csrf13)
+  (csrf14)
+  (csrf15)
+  (csrf16)
+  (csrf17)
+  (csrf18)
+  (csrf19)
+  (csrf20)
+  (csrf21)
+  (csrf22)
+  (csrf23)
+  (csrf24)
+  (csrf25)
+  (csrf26)
+  (csrf27)
+  (csrf28)
+  (csrf29)
+  (csrf30)
+  (csrf31)
+  )
+;; ---collide-shape-h:cshape-reaction-flags
 
 ;; +++collide-shape-h:collide-status
 (defenum collide-status
@@ -20386,6 +20426,9 @@
    (cur-pat            pat-surface                                                                :offset-assert 276) ;; guessed by decompiler
    (ground-pat         pat-surface                                                                :offset-assert 280) ;; guessed by decompiler
    (status             collide-status                                                             :offset-assert 288) ;; collide-status
+   (old-status         collide-status                                                             :offset-assert 296)
+   (prev-status        collide-status                                                             :offset-assert 304)
+   (reaction-flag      cshape-reaction-flags                                                      :offset-assert 312)
    (reaction           (function control-info collide-query vector vector collide-status)         :offset 316) ;; guessed by decompiler
    (no-reaction        (function collide-shape-moving collide-query vector vector object)         :offset-assert 320) ;; guessed by decompiler
    (local-normal       vector                                                             :inline :offset-assert 336)
@@ -20409,8 +20452,8 @@
   ;; field penetrate is likely a value type. field penetrate is likely a value type.
   (:methods
     (new (symbol type process-drawable collide-list-enum) _type_) ;; 0
-    (collide-shape-moving-method-55 () none) ;; 55 ;; (find-ground (_type_ collide-query collide-spec float float float) symbol)
-    (collide-shape-moving-method-56 () none) ;; 56 ;; (react-to-pat! (_type_ pat-surface) cshape-reaction-flags)
+    (find-ground (_type_ collide-query collide-spec float float float) symbol) ;; 55
+    (react-to-pat! (_type_ pat-surface) cshape-reaction-flags) ;; 56
     (collide-shape-moving-method-57 () none) ;; 57 ;; (integrate-no-collide! (_type_ vector) none)
     (collide-shape-moving-method-58 () none) ;; 58 ;; (integrate-for-enemy-no-mtg (_type_ vector overlaps-others-params) symbol)
     (collide-shape-moving-method-59 () none) ;; 59 ;; (move-above-ground (_type_ vector move-above-ground-params) none)
@@ -20640,7 +20683,7 @@
   (:methods
     (swingpole-method-22 (_type_) none) ;; 22 ;; (move-along-path (_type_) none)
     (init-collision! (_type_) none) ;; 23
-    (swingpole-method-24 (_type_) none) ;; 24
+    (get-trans (_type_) vector) ;; 24
     )
   )
 
@@ -21275,7 +21318,7 @@
   :size-assert         #x1e4
   :flag-assert         #xb000001e4
   (:methods
-    (edge-grab-info-method-9 () none) ;; 9 ;; (edge-grab-info-method-9 (_type_) symbol)
+    (edge-grab-info-method-9 (_type_) symbol) ;; 9
     (edge-grab-info-method-10 () none) ;; 10 ;; (debug-draw (_type_) none)
     )
   )
@@ -21456,7 +21499,7 @@
   (pilot-riding 14)
   (flut 15)
   (tube 16)
-  (ice 17)
+  (light 17)
   (board 18)
   (gun 19)
   (pilot 20) ;; also racer?
@@ -21470,7 +21513,10 @@
   (indax 28)
   (arrestable 29)
   (teleporting 30)
-  (fs31 31)
+  (invulnerable 31)
+  (turret 32)
+  (no-gravity 33)
+  (gun-no-target 34)
   )
 ;; ---process-focusable:focus-status
 
@@ -21570,6 +21616,22 @@
 (defenum effect-control-flag
   :type uint32
   :bitfield #t
+  (ecf0 0)
+  (ecf1 1)
+  (ecf2 2)
+  (ecf3 3)
+  (ecf4 4)
+  (ecf5 5)
+  (ecf6 6)
+  (ecf7 7)
+  (ecf8 8)
+  (ecf9 9)
+  (ecf10 10)
+  (ecf11 11)
+  (ecf12 12)
+  (ecf13 13)
+  (ecf14 14)
+  (ecf15 15)
   )
 ;; ---effect-control-h:effect-control-flag
 
@@ -22200,7 +22262,7 @@
   (tf0 0)
   (tf1 1)
   (tf2 2)
-  (tf3 3)
+  (tinvuln1 3)
   (tf4 4)
   (tf5 5)
   (tf6 6)
@@ -22216,16 +22278,16 @@
   (tf16 16)
   (prevent-board 17)
   (prevent-gun 18)
-  (tf19 19)
-  (tf20 20)
-  (tf21 21)
-  (tf22 22)
+  (lleg-still 19)
+  (rleg-still 20)
+  (lleg-no-ik 21)
+  (rleg-no-ik 22)
   (prevent-double-jump 23)
-  (tf24 24)
-  (tf25 25)
+  (disable-attacks 24)
+  (tinvuln2 25)
   (tf26 26)
   (tf27 27)
-  (tf28 28)
+  (invisible 28)
   (tf29 29)
   (tf30 30)
   (tf31 31)
@@ -22261,7 +22323,7 @@
    (arm-ik                      joint-mod-ik                     2       :offset-assert 244) ;; guessed by decompiler
    (leg-ik                      joint-mod-ik                     2       :offset-assert 252) ;; guessed by decompiler
    (foot                        joint-mod                        2       :offset-assert 260) ;; guessed by decompiler
-   (cloth                       basic                                    :offset-assert 268)
+   (cloth                       symbol                                   :offset-assert 268)
    (init-time                   time-frame                               :offset-assert 272) ;; time-frame
    (teleport-time               time-frame                               :offset-assert 280) ;; time-frame
    (state-hook-time             time-frame                               :offset-assert 288) ;; time-frame
@@ -22300,10 +22362,10 @@
    (major-mode-exit-hook        basic                                    :offset-assert 2344)
    (major-mode-event-hook       basic                                    :offset-assert 2348)
    (sub-mode-exit-hook          basic                                    :offset-assert 2352)
-   (ext-geo-control             basic                                    :offset-assert 2356)
+   (ext-geo-control             external-art-buffer                      :offset-assert 2356)
    (pending-ext-geo             int32                                    :offset-assert 2360)
    (ext-geo                     int32                                    :offset-assert 2364)
-   (ext-anim-control            basic                                    :offset-assert 2368)
+   (ext-anim-control            external-art-buffer                      :offset-assert 2368)
    (pending-ext-anim            int32                                    :offset-assert 2372)
    (ext-anim                    int32                                    :offset-assert 2376)
    (tobot-state                 state                                    :offset-assert 2380) ;; guessed by decompiler
@@ -22346,8 +22408,8 @@
   :flag-assert         #x1e09800a00
   ;; field mode-param2 uses ~A with a 64-bit load. field mode-param3 uses ~A with a 64-bit load.
   (:methods
-    (target-method-28 (_type_) none) ;; 28 ;; (init-target (_type_ continue-point symbol) none)
-    (target-method-29 (_type_) none) ;; 29
+    (target-method-28 (_type_) none) ;; 28
+    (target-init! (_type_ continue-point symbol) none) ;; 29
     )
   (:states
     target-startup
@@ -22522,6 +22584,7 @@
     target-board-falling ;; associated process guessed by decompiler, old: (state target)
     target-flut-air-attack
     target-board-turn-to ;; associated process guessed by decompiler, old: (state vector time-frame target)
+    tobot-stance
     )
   )
 
@@ -22952,7 +23015,7 @@
     (collide-cache-method-13 () none) ;; 13 ;; (fill-using-line-sphere (_type_ collide-query) none)
     (collide-cache-method-14 () none) ;; 14 ;; (fill-using-spheres (_type_ collide-query) none)
     (collide-cache-method-15 () none) ;; 15 ;; (reset (_type_) none)
-    (collide-cache-method-16 () none) ;; 16 ;; (probe-using-line-sphere (_type_ collide-query) float)
+    (probe-using-line-sphere (_type_ collide-query) float) ;; 16
     (collide-cache-method-17 () none) ;; 17 ;; (probe-using-spheres (_type_ collide-query) symbol)
     (collide-cache-method-18 () none) ;; 18 ;; (fill-from-bg (_type_ (function collide-hash int collide-list collide-query int) (function collide-cache collide-list collide-query none) collide-query) none)
     (collide-cache-method-19 () none) ;; 19 ;; (fill-from-fg-boxes (_type_) none)
@@ -23011,17 +23074,17 @@
    (start-pos        vector                :inline :offset-assert 208)
    (move-dist        vector                :inline :offset-assert 224)
    (rlength          vector                :inline :offset-assert 240)
-   (exit-planes      plane                 2       :offset-assert 256) ;; guessed by decompiler
+   (exit-planes      plane                 2 :inline :offset-assert 256) ;; guessed by decompiler
    (radius           float                         :offset 268)
    (inv-mat          matrix                :inline :offset 288)
-   (spheres          (inline-array sphere)         :offset 112) ;; guessed by decompiler
+   (spheres          (inline-array sphere)         :offset 112 :score 1) ;; guessed by decompiler
    (num-spheres      uint32                        :offset 116)
    (solid-only       symbol                        :offset 120) ;; guessed by decompiler
    (best-dist        float                         :offset 112)
-   (best-other-prim  collide-shape-prim            :offset 116) ;; guessed by decompiler
-   (best-my-prim     collide-shape-prim            :offset 120) ;; guessed by decompiler
+   (best-other-prim  collide-shape-prim            :offset 116 :score 1) ;; guessed by decompiler
+   (best-my-prim     collide-shape-prim            :offset 120 :score 1) ;; guessed by decompiler
    (move-vec         vector                :inline :offset 224)
-   (best-u           float                         :offset 112)
+   (best-u           float                         :offset 112 :score -1)
    (action-mask      collide-action                :offset 352) ;; guessed by decompiler
    (local-box4w      bounding-box4w        :inline :offset-assert 368)
    (search-box       bounding-box4w        :inline :offset-assert 400)
@@ -29031,7 +29094,7 @@
 ;; (define-extern get-debug-text-3d function) ;; (function debug-text-3d)
 ;; (define-extern debug-reset-buffers function) ;; (function symbol)
 ;; (define-extern debug-draw-buffers function) ;; (function symbol)
-;; (define-extern add-debug-line function) ;; (function symbol bucket-id vector vector rgba symbol rgba symbol)
+(define-extern add-debug-line (function symbol bucket-id vector vector rgba symbol rgba symbol))
 ;; (define-extern add-debug-line2d function) ;; (function symbol bucket-id vector4w vector4w vector4w symbol)
 ;; (define-extern add-debug-box function) ;; (function symbol bucket-id vector vector rgba symbol)
 ;; (define-extern add-debug-box-with-transform function) ;; (function symbol bucket-id bounding-box matrix rgba symbol)
@@ -29084,29 +29147,43 @@
 ;; history                        ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
+;; +++history:history-channel
+(defenum history-channel
+  :type uint8
+  (trans 0)
+  (transv 1)
+  (transv-in 2)
+  (transv-out 3)
+  (intersect 4)
+  (local-normal 5)
+  (surface-normal 6)
+  (collide-status 7)
+  (pat 8)
+  (time 9)
+  (friction 10)
+  )
+;; ---history:history-channel
+
 (deftype history-elt (structure)
   ((record-tag-bytes      uint8       4       :offset-assert 0) ;; guessed by decompiler
-   (record-tag            uint32              :offset-assert 0)
-   (record-id             uint16              :offset-assert 0)
-   (owner                 uint8               :offset-assert 2)
-   (channel               uint8               :offset-assert 4) ;; history-channel
-   (timestamp             uint64              :offset-assert 8) ;; time-frame
+   (record-tag            uint32              :offset 0)
+   (record-id             uint16              :offset 0)
+   (owner                 uint8               :offset 2)
+   (channel               history-channel     :offset 4) ;; history-channel
+   (timestamp             time-frame          :offset-assert 8) ;; time-frame
    (origin                vector      :inline :offset-assert 16)
    (bytes                 uint8       16      :offset-assert 32) ;; guessed by decompiler
-   (vector                vector      :inline :offset-assert 32)
-   (float                 float               :offset-assert 32)
-   (collide-status        uint64              :offset-assert 32) ;; collide-status
-   (collide-reaction-flag uint32              :offset-assert 40)
-   (pat                   pat-surface         :offset-assert 32) ;; guessed by decompiler
+   (vector                vector      :inline :offset 32 :score 1)
+   (float                 float               :offset 32)
+   (collide-status        collide-status      :offset 32) ;; collide-status
+   (collide-reaction-flag uint32              :offset 40)
+   (pat                   pat-surface         :offset 32) ;; guessed by decompiler
    )
   :method-count-assert 9
   :size-assert         #x30
   :flag-assert         #x900000030
   )
-|#
 
-#|
 (deftype history-iterator (basic)
   ((max-age      uint32   :offset-assert 4)
    (owner        uint8    :offset-assert 8)
@@ -29121,35 +29198,32 @@
   :flag-assert         #xc00000028
   ;; field out uses ~A with a signed load.
   (:methods
-    (new (symbol type) _type_) ;; 0 ;; (new (symbol type uint) _type_)
-    (history-iterator-method-9 () none) ;; 9 ;; (frame-counter-delta (_type_ history-elt) time-frame)
-    (history-iterator-method-10 () none) ;; 10 ;; (update-entries! (_type_) history-elt)
-    (history-iterator-method-11 () none) ;; 11 ;; (get-age (_type_ history-elt) float)
+    (new (symbol type uint) _type_) ;; 0
+    (frame-counter-delta (_type_ history-elt) time-frame) ;; 9
+    (update-entries! (_type_) history-elt) ;; 10
+    (get-age (_type_ history-elt) float) ;; 11
     )
   )
-|#
 
-#|
 (deftype history (basic)
   ((alloc-index      int32                :offset-assert 4)
    (allocated-length int32                :offset-assert 8)
-   (elts             history-elt :dynamic :offset-assert 16) ;; guessed by decompiler
+   (elts             history-elt :dynamic :inline :offset-assert 16) ;; guessed by decompiler
    )
   :method-count-assert 11
   :size-assert         #x10
   :flag-assert         #xb00000010
   (:methods
-    (new (symbol type) _type_) ;; 0 ;; (new (symbol type int) _type_)
-    (history-method-9 () none) ;; 9 ;; (clear-record-tags! (_type_ history-channel uint uint) history-elt)
-    (history-method-10 () none) ;; 10 ;; (clear-history-entries! (_type_) none)
+    (new (symbol type int) _type_) ;; 0
+    (clear-record-tags! (_type_ history-channel uint uint) history-elt) ;; 9
+    (clear-history-entries! (_type_) none) ;; 10
     )
   )
-|#
 
-;; (define-extern history-channel->string function) ;; (function history-channel string)
-;; (define-extern *history* object) ;; history
-;; (define-extern history-print function) ;; (function history-iterator none)
-;; (define-extern history-draw function) ;; (function history-iterator none)
+(define-extern history-channel->string (function history-channel string))
+(define-extern *history* history)
+(define-extern history-print (function history-iterator none))
+(define-extern history-draw (function history-iterator none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; merc-vu1                       ;;
@@ -31763,7 +31837,7 @@
 
 ;; (define-extern find-ground-point function) ;; (function control-info vector float float vector)
 ;; (define-extern target-attack-up function) ;; (function target symbol symbol none)
-;; (define-extern collide-shape-moving-angle-set! function) ;; (function collide-shape-moving vector vector none)
+(define-extern collide-shape-moving-angle-set! (function collide-shape-moving vector vector none))
 ;; (define-extern cshape-reaction-update-state function) ;; (function control-info collide-query vector none)
 (define-extern cshape-reaction-default (function control-info collide-query vector vector collide-status))
 ;; (define-extern cshape-reaction-just-move function) ;; (function control-info collide-query vector collide-status)
@@ -31999,8 +32073,8 @@
 
 (define-extern position-in-front-of-camera! (function vector float float vector))
 ;; (define-extern position-in-front-of-screen! function) ;; (function vector float vector vector)
-;; (define-extern matrix-local->world function) ;; (function symbol symbol matrix)
-;; (define-extern matrix-world->local function) ;; (function symbol object matrix)
+(define-extern matrix-local->world (function symbol symbol matrix))
+(define-extern matrix-world->local (function symbol object matrix))
 ;; (define-extern *camera-dummy-vector* object) ;; vector
 (define-extern camera-pos (function vector))
 (define-extern math-camera-pos (function vector))
@@ -34824,72 +34898,73 @@
 ;; collide-reaction-target        ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (define-extern poly-find-nearest-edge function) ;; (function nav-poly (inline-array vector) vector vector nav-poly)
-;; (define-extern target-collision-low-coverage function) ;; (function control-info collide-query vector (pointer cshape-reaction-flags) (pointer collide-status) (pointer symbol) none)
-;; (define-extern target-collision-reaction function) ;; (function control-info collide-query vector vector collide-status :behavior target)
-;; (define-extern target-collision-no-reaction function) ;; (function control-info collide-query vector vector none)
-;; (define-extern *collide-edge-board-spec* object) ;; collide-edge-spec
+(define-extern poly-find-nearest-edge (function nav-poly (inline-array vector) vector vector nav-poly))
+(define-extern target-collision-low-coverage (function control-info collide-query vector (pointer cshape-reaction-flags) (pointer collide-status) (pointer symbol) none))
+(define-extern target-collision-reaction (function control-info collide-query vector vector collide-status :behavior target))
+(define-extern target-collision-no-reaction (function control-info collide-query vector vector none))
+(define-extern *collide-edge-board-spec* collide-edge-spec)
 (define-extern rail-surface-touch (function none :behavior target))
-(define-extern gravel-surface-touch (function none))
-(define-extern mushroom-surface-touch (function none))
+(define-extern gravel-surface-touch (function none :behavior target))
+(define-extern mushroom-surface-touch (function none :behavior target))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; logic-target                   ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (define-extern build-conversions function) ;; (function vector vector :behavior target)
-;; (define-extern vector-turn-to function) ;; (function vector vector :behavior target)
-;; (define-extern reverse-conversions function) ;; (function vector none :behavior target)
-;; (define-extern draw-history function) ;; (function control-info none)
-;; (define-extern target-history-print function)
-;; (define-extern target-print-stats function) ;; (function target symbol symbol)
-;; (define-extern read-pad function) ;; (function vector vector :behavior target)
-;; (define-extern set-pad function) ;; (function vector vector :behavior target)
-;; (define-extern warp-vector-into-surface! function) ;; (function vector vector vector matrix vector)
-;; (define-extern vector<-pad-in-surface! function) ;; (function vector symbol vector :behavior target)
-;; (define-extern vector<-pad-in-matrix! function) ;; (function vector cpad-info matrix none)
-;; (define-extern local-pad-angle function) ;; (function float :behavior target)
-;; (define-extern turn-around? function) ;; (function symbol :behavior target)
-;; (define-extern wall-hide? function) ;; (function symbol :behavior target)
-;; (define-extern target-log-trans function) ;; (function none :behavior target)
+(define-extern build-conversions (function vector vector :behavior target))
+(define-extern vector-turn-to (function vector vector :behavior target))
+(define-extern reverse-conversions (function vector none :behavior target))
+(define-extern draw-history (function control-info none))
+(define-extern target-history-print function)
+(define-extern target-print-stats (function target symbol symbol))
+(define-extern read-pad (function vector vector :behavior target))
+(define-extern set-pad (function vector vector :behavior target))
+(define-extern warp-vector-into-surface! (function vector vector vector matrix vector))
+(define-extern vector<-pad-in-surface! (function vector symbol vector :behavior target))
+(define-extern vector<-pad-in-matrix! (function vector cpad-info matrix none))
+(define-extern local-pad-angle (function float :behavior target))
+(define-extern turn-around? (function symbol :behavior target))
+(define-extern wall-hide? (function symbol :behavior target))
+(define-extern target-log-trans (function none :behavior target))
 (define-extern target-move-dist (function time-frame float :behavior target))
-;; (define-extern turn-to-vector function) ;; (function vector float symbol :behavior target)
-;; (define-extern target-bend-vel-turn function) ;; (function vector vector :behavior target)
-;; (define-extern target-add-slide-factor function) ;; (function vector vector :behavior target)
-;; (define-extern add-thrust function) ;; (function symbol :behavior target)
-;; (define-extern add-gravity function) ;; (function vector :behavior target)
-;; (define-extern target-compute-slopes function) ;; (function vector int :behavior target)
-;; (define-extern do-rotations1 function) ;; (function quaternion :behavior target)
-;; (define-extern *strafe-mode* object)
-;; (define-extern do-rotations2 function) ;; (function int :behavior target)
-;; (define-extern leg-ik-callback function) ;; (function joint-mod-ik object object vector none)
-;; (define-extern target-update-ik function) ;; (function none :behavior target)
-;; (define-extern pre-collide-setup function) ;; (function none :behavior target)
-;; (define-extern level-setup function) ;; (function none :behavior target)
-;; (define-extern flag-setup function) ;; (function none :behavior target)
-;; (define-extern post-flag-setup function) ;; (function none :behavior target)
-;; (define-extern bend-gravity function) ;; (function symbol :behavior target)
-;; (define-extern target-compute-edge function) ;; (function none :behavior target)
-;; (define-extern target-compute-edge-rider function) ;; (function none :behavior target)
-;; (define-extern target-compute-pole function) ;; (function none :behavior target)
-;; (define-extern target-calc-camera-pos function) ;; (function none :behavior target)
-;; (define-extern joint-points function) ;; (function none :behavior target)
-;; (define-extern do-target-gspot function) ;; (function none :behavior target)
-;; (define-extern target-real-post function) ;; (function none :behavior target)
-;; (define-extern target-post function) ;; (function none :behavior target)
-;; (define-extern target-swim-post function) ;; (function none :behavior target)
-;; (define-extern target-no-stick-post function) ;; (function none :behavior target)
-;; (define-extern target-no-move-post function) ;; (function none :behavior target)
-;; (define-extern target-no-ja-move-post function) ;; (function none :behavior target)
-;; (define-extern reset-target-state function) ;; (function symbol target :behavior target)
-;; (define-extern target-init function) ;; (function continue-point none :behavior target)
-;; (define-extern tobot-init function) ;; (function symbol none :behavior target)
+(define-extern turn-to-vector (function vector float symbol :behavior target))
+(define-extern target-bend-vel-turn (function vector vector :behavior target))
+(define-extern target-add-slide-factor (function vector vector :behavior target))
+(define-extern add-thrust (function symbol :behavior target))
+(define-extern add-gravity (function vector :behavior target))
+(define-extern target-compute-slopes (function vector int :behavior target))
+(define-extern do-rotations1 (function quaternion :behavior target))
+(define-extern *strafe-mode* object)
+(define-extern do-rotations2 (function int :behavior target))
+(define-extern leg-ik-callback (function joint-mod-ik object object vector none))
+(define-extern target-update-ik (function none :behavior target))
+(define-extern pre-collide-setup (function none :behavior target))
+(define-extern level-setup (function none :behavior target))
+(define-extern flag-setup (function none :behavior target))
+(define-extern post-flag-setup (function none :behavior target))
+(define-extern bend-gravity (function symbol :behavior target))
+(define-extern target-compute-edge (function none :behavior target))
+(define-extern target-compute-edge-rider (function none :behavior target))
+(define-extern target-compute-pole (function none :behavior target))
+(define-extern target-calc-camera-pos (function none :behavior target))
+(define-extern joint-points (function none :behavior target))
+(define-extern do-target-gspot (function none :behavior target))
+(define-extern target-real-post (function none :behavior target))
+(define-extern target-post (function none :behavior target))
+(define-extern target-swim-post (function none :behavior target))
+(define-extern target-no-stick-post (function none :behavior target))
+(define-extern target-no-move-post (function none :behavior target))
+(define-extern target-no-ja-move-post (function none :behavior target))
+(define-extern reset-target-state (function symbol target :behavior target))
+(define-extern target-init (function continue-point none :behavior target))
+(define-extern tobot-init (function symbol none :behavior target))
 (define-extern stop (function symbol int))
 (define-extern start (function symbol continue-point target))
-;; (define-extern tobot-start function) ;; (function symbol target)
-;; (define-extern tobot-stop function) ;; (function int)
-;; (define-extern *target-geo-control* object)
-;; (define-extern *target-anim-control* object)
+(define-extern tobot-start (function symbol target))
+(define-extern tobot-stance (state target))
+(define-extern tobot-stop (function int))
+(define-extern *target-geo-control* external-art-buffer)
+(define-extern *target-anim-control* external-art-buffer)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; sidekick                       ;;
@@ -34897,7 +34972,7 @@
 
 ;; (define-extern *sidekick-remap* object) ;; pair
 ;; (define-extern cspace<-cspace+transformq! function) ;; (function cspace cspace transformq matrix)
-;; (define-extern target-sidekick-setup function) ;; (function symbol none :behavior target)
+(define-extern target-sidekick-setup (function symbol none :behavior target))
 ;; (define-extern init-sidekick function) ;; (function none :behavior sidekick)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -35131,13 +35206,13 @@
 ;; (define-extern target-got-impact-impulse function)
 ;; (define-extern target-darkjak-effect-trans function)
 ;; (define-extern target-send-attack function) ;; (function process symbol touching-shapes-entry int int penetrate symbol :behavior target)
-;; (define-extern target-generic-event-handler function) ;; (function process int symbol event-message-block object :behavior target)
+(define-extern target-generic-event-handler (function process int symbol event-message-block object :behavior target))
 ;; (define-extern target-standard-event-handler function) ;; (function process int symbol event-message-block object :behavior target)
 ;; (define-extern target-dangerous-event-handler function) ;; (function process int symbol event-message-block object :behavior target)
 ;; (define-extern target-bonk-event-handler function) ;; (function process int symbol event-message-block object :behavior target)
 ;; (define-extern target-jump-event-handler function) ;; (function process int symbol event-message-block object :behavior target)
 ;; (define-extern target-walk-event-handler function) ;; (function process int symbol event-message-block object :behavior target)
-;; (define-extern target-exit function) ;; (function none :behavior target)
+(define-extern target-exit (function none :behavior target))
 ;; (define-extern target-state-hook-exit function) ;; (function none :behavior target)
 ;; (define-extern target-effect-exit function) ;; (function none :behavior target)
 
@@ -35230,7 +35305,7 @@
 ;; (define-extern *darkjak-ball-lightning* object)
 ;; (define-extern *darkjak-ball-lightning-colors* array)
 ;; (define-extern sparticle-track-hadouken function)
-;; (define-extern target-darkjak-setup function) ;; (function symbol none :behavior target)
+(define-extern target-darkjak-setup (function symbol none :behavior target))
 ;; (define-extern want-to-darkjak? function) ;; (function symbol :behavior target)
 ;; (define-extern *darkjak-trans-mods* object) ;; surface
 ;; (define-extern target-darkjak-end-mode function) ;; (function none :behavior target)
@@ -35298,7 +35373,7 @@
 ;; (define-extern point-off-screen function)
 ;; (define-extern *lightjak-trans-mods* object)
 ;; (define-extern want-to-powerjak? function)
-;; (define-extern target-lightjak-setup function)
+(define-extern target-lightjak-setup (function symbol none :behavior target))
 ;; (define-extern want-to-lightjak? function)
 ;; (define-extern target-lightjak-end-mode function)
 ;; (define-extern target-lightjak-do-effect function)
@@ -35394,30 +35469,30 @@
 ;; target-gun                     ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (define-extern *gun-walk-mods* surface) ;; surface
-;; (define-extern want-to-gun? function) ;; (function target symbol symbol :behavior process)
-;; (define-extern target-gun-event-handler function) ;; (function process int symbol event-message-block object :behavior target)
-;; (define-extern target-gun-setup function) ;; (function symbol none :behavior target)
-;; (define-extern target-gun-init function) ;; (function pickup-type none :behavior target)
-;; (define-extern target-gun-exit function) ;; (function symbol)
-;; (define-extern target-gun-end-mode function) ;; (function symbol symbol :behavior target)
-;; (define-extern quat<-gun! function) ;; (function quaternion quaternion quaternion)
-;; (define-extern target-gun-ammo-out-pick function) ;; (function int :behavior target)
-;; (define-extern target-gun-type-set! function) ;; (function pickup-type none :behavior target)
-;; (define-extern target-gun-marking-menu function) ;; (function target none)
-;; (define-extern target-gun-build-track-list function) ;; (function none :behavior target)
-;; (define-extern target-gun-find-track function) ;; (function none :behavior target)
-;; (define-extern target-top-anim-base-mode function) ;; (function int none :behavior target)
-;; (define-extern target-gun-combo-start function) ;; (function int time-frame none :behavior target)
-;; (define-extern target-gun-joint-pre0 function) ;; (function none :behavior target)
-;; (define-extern target-gun-joint-pre function) ;; (function none :behavior target)
-;; (define-extern target-gun-compute-pos function) ;; (function matrix :behavior target)
-;; (define-extern target-gun-joint-points function) ;; (function none :behavior target)
-;; (define-extern target-gun-fire function) ;; (function pickup-type none :behavior target)
-;; (define-extern target-gun-check function) ;; (function none :behavior target)
-;; (define-extern camera-rotate-to-vector function) ;; (function vector vector none)
-;; (define-extern target-gun-real-post function) ;; (function none :behavior target)
-;; (define-extern target-gun-post function) ;; (function none :behavior target)
+(define-extern *gun-walk-mods* surface)
+(define-extern want-to-gun? (function target symbol symbol :behavior process))
+(define-extern target-gun-event-handler (function process int symbol event-message-block object :behavior target))
+(define-extern target-gun-setup (function symbol none :behavior target))
+(define-extern target-gun-init (function pickup-type none :behavior target))
+(define-extern target-gun-exit (function symbol))
+(define-extern target-gun-end-mode (function symbol symbol :behavior target))
+(define-extern quat<-gun! (function quaternion quaternion quaternion))
+(define-extern target-gun-ammo-out-pick (function int :behavior target))
+(define-extern target-gun-type-set! (function pickup-type none :behavior target))
+(define-extern target-gun-marking-menu (function target none))
+(define-extern target-gun-build-track-list (function none :behavior target))
+(define-extern target-gun-find-track (function none :behavior target))
+(define-extern target-top-anim-base-mode (function int none :behavior target))
+(define-extern target-gun-combo-start (function int time-frame none :behavior target))
+(define-extern target-gun-joint-pre0 (function none :behavior target))
+(define-extern target-gun-joint-pre (function none :behavior target))
+(define-extern target-gun-compute-pos (function matrix :behavior target))
+(define-extern target-gun-joint-points (function none :behavior target))
+(define-extern target-gun-fire (function pickup-type none :behavior target))
+(define-extern target-gun-check (function none :behavior target))
+(define-extern camera-rotate-to-vector (function vector vector none))
+(define-extern target-gun-real-post (function none :behavior target))
+(define-extern target-gun-post (function none :behavior target))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; gun-util                       ;;
@@ -36373,48 +36448,48 @@
 ;; target-board                   ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (define-extern *board-walk-mods* surface) ;; surface
-;; (define-extern *board-duck-mods* surface) ;; surface
-;; (define-extern *board-air-mods* surface) ;; surface
-;; (define-extern *board-jump-mods* surface) ;; surface
-;; (define-extern *board-ride-jump-mods* surface) ;; surface
-;; (define-extern *board-duck-jump-mods* object) ;; surface
-;; (define-extern *board-spin-mods* object) ;; surface
-;; (define-extern *board-spin-post-mods* object) ;; surface
-;; (define-extern *board-flip-mods* object) ;; surface
-;; (define-extern *board-wall-kick-mods* surface) ;; surface
-;; (define-extern *board-halfpipe-mods* surface) ;; surface
-;; (define-extern *board-turn-to-mods* surface) ;; surface
-;; (define-extern *board-ride-mods* surface) ;; surface
-;; (define-extern *collide-edge-board-halfpipe-spec* object) ;; collide-edge-spec
-;; (define-extern target-board-green-eco-attack function)
-;; (define-extern target-board-green-eco-use function)
-;; (define-extern target-board-handler function) ;; (function process int symbol event-message-block object :behavior target)
-;; (define-extern board-turn-around? function)
-;; (define-extern target-board-setup function) ;; (function symbol none :behavior target)
-;; (define-extern target-board-init function) ;; (function none :behavior target)
-;; (define-extern target-board-exit function) ;; (function none :behavior target)
-;; (define-extern target-board-falling-anim-trans function) ;; (function none :behavior target)
-;; (define-extern board-on-ground? function) ;; (function symbol :behavior target)
-;; (define-extern target-board-smack-surface? function) ;; (function symbol :behavior target)
-;; (define-extern board-add-thrust function) ;; (function none :behavior target)
-;; (define-extern segment-array-vector->index function) ;; (function (inline-array vector) int float float float)
-;; (define-extern segment-array-index->vector function) ;; (function (inline-array vector) int float vector int)
-;; (define-extern target-board-exit-check function) ;; (function none :behavior target)
-;; (define-extern target-board-trail function)
-;; (define-extern target-board-effect function) ;; (function none :behavior target)
-;; (define-extern target-board-physics function) ;; (function vector none :behavior target)
-;; (define-extern target-board-collision function) ;; (function none :behavior target)
-;; (define-extern target-board-joint-points function) ;; (function none :behavior target)
-;; (define-extern target-board-pre-move function) ;; (function none :behavior target)
-;; (define-extern target-board-real-post function) ;; (function none :behavior target)
-;; (define-extern probe-test function) ;; (function control-info vector pat-surface symbol)
-;; (define-extern target-board-compute-edge function) ;; (function time-frame :behavior target)
-;; (define-extern board-ride-add-thrust function) ;; (function vector float none :behavior target)
-;; (define-extern target-board-ride-post function) ;; (function none :behavior target)
-;; (define-extern target-board-post function) ;; (function none :behavior target)
-;; (define-extern target-board-center-anim function) ;; (function none :behavior target)
-;; (define-extern target-board-turn-anim function) ;; (function int none :behavior target)
+(define-extern *board-walk-mods* surface)
+(define-extern *board-duck-mods* surface)
+(define-extern *board-air-mods* surface)
+(define-extern *board-jump-mods* surface)
+(define-extern *board-ride-jump-mods* surface)
+(define-extern *board-duck-jump-mods* surface)
+(define-extern *board-spin-mods* surface)
+(define-extern *board-spin-post-mods* surface)
+(define-extern *board-flip-mods* surface)
+(define-extern *board-wall-kick-mods* surface)
+(define-extern *board-halfpipe-mods* surface)
+(define-extern *board-turn-to-mods* surface)
+(define-extern *board-ride-mods* surface)
+(define-extern *collide-edge-board-halfpipe-spec* collide-edge-spec)
+(define-extern target-board-green-eco-attack function)
+(define-extern target-board-green-eco-use function)
+(define-extern target-board-handler (function process int symbol event-message-block object :behavior target))
+(define-extern board-turn-around? function)
+(define-extern target-board-setup (function symbol none :behavior target))
+(define-extern target-board-init (function none :behavior target))
+(define-extern target-board-exit (function none :behavior target))
+(define-extern target-board-falling-anim-trans (function none :behavior target))
+(define-extern board-on-ground? (function symbol :behavior target))
+(define-extern target-board-smack-surface? (function symbol :behavior target))
+(define-extern board-add-thrust (function none :behavior target))
+(define-extern segment-array-vector->index (function (inline-array vector) int float float float))
+(define-extern segment-array-index->vector (function (inline-array vector) int float vector int))
+(define-extern target-board-exit-check (function none :behavior target))
+(define-extern target-board-trail function)
+(define-extern target-board-effect (function none :behavior target))
+(define-extern target-board-physics (function vector none :behavior target))
+(define-extern target-board-collision (function none :behavior target))
+(define-extern target-board-joint-points (function none :behavior target))
+(define-extern target-board-pre-move (function none :behavior target))
+(define-extern target-board-real-post (function none :behavior target))
+(define-extern probe-test (function control-info vector pat-surface symbol))
+(define-extern target-board-compute-edge (function time-frame :behavior target))
+(define-extern board-ride-add-thrust (function vector float none :behavior target))
+(define-extern target-board-ride-post (function none :behavior target))
+(define-extern target-board-post (function none :behavior target))
+(define-extern target-board-center-anim (function none :behavior target))
+(define-extern target-board-turn-anim (function int none :behavior target))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; board-part                     ;;
@@ -37733,7 +37808,7 @@
 ;; (define-extern target-color-effect-process function) ;; (function none :behavior target)
 (define-extern target-update-segs (function process-drawable none))
 ;; (define-extern target-draw-process function)
-;; (define-extern target-powerup-process function) ;; (function none :behavior target)
+(define-extern target-powerup-process (function none :behavior target))
 ;; (define-extern target-powerup-effect function) ;; (function symbol none :behavior target)
 ;; (define-extern process-contact-action function) ;; (function process none :behavior target)
 
@@ -37878,7 +37953,7 @@
 
 ;; (define-extern *hud-skullgem* object) ;; (pointer hud-skullgem)
 ;; (define-extern *gun-arrow-table* object)
-;; (define-extern activate-hud function) ;; (function target none)
+(define-extern activate-hud (function target none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; secrets-menu                   ;;
