@@ -12,7 +12,7 @@
   (tf0 0)
   (tf1 1)
   (tf2 2)
-  (tf3 3)
+  (tinvuln1 3)
   (tf4 4)
   (tf5 5)
   (tf6 6)
@@ -28,16 +28,16 @@
   (tf16 16)
   (prevent-board 17)
   (prevent-gun 18)
-  (tf19 19)
-  (tf20 20)
-  (tf21 21)
-  (tf22 22)
+  (lleg-still 19)
+  (rleg-still 20)
+  (lleg-no-ik 21)
+  (rleg-no-ik 22)
   (prevent-double-jump 23)
-  (tf24 24)
-  (tf25 25)
+  (disable-attacks 24)
+  (tinvuln2 25)
   (tf26 26)
   (tf27 27)
-  (tf28 28)
+  (invisible 28)
   (tf29 29)
   (tf30 30)
   (tf31 31)
@@ -59,12 +59,29 @@
 (declare-type darkjak-info basic)
 (declare-type lightjak-info basic)
 
+;; target-util
 (define-extern target-pos (function int vector))
 (define-extern can-exit-duck? (function target symbol))
 (define-extern target-collide-set! (function symbol float int :behavior target))
 (define-extern target-move-dist (function time-frame float :behavior target))
 (define-extern get-intersect-point (function vector touching-prims-entry collide-shape touching-shapes-entry vector))
 (define-extern target-update-segs (function process-drawable none))
+
+;; logic-target
+(define-extern target-darkjak-setup (function symbol none :behavior target))
+(define-extern target-lightjak-setup (function symbol none :behavior target))
+(define-extern target-sidekick-setup (function symbol none :behavior target))
+(define-extern target-board-setup (function symbol none :behavior target))
+(define-extern target-board-joint-points (function none :behavior target))
+(define-extern target-gun-setup (function symbol none :behavior target))
+(define-extern target-gun-joint-pre (function none :behavior target))
+(define-extern target-gun-joint-points (function none :behavior target))
+(define-extern target-powerup-process (function none :behavior target))
+(define-extern target-generic-event-handler (function process int symbol event-message-block object :behavior target))
+(define-extern target-exit (function none :behavior target))
+(define-extern activate-hud (function target none))
+(define-extern *target-geo-control* external-art-buffer)
+(define-extern *target-anim-control* external-art-buffer)
 
 ;; DECOMP BEGINS
 
@@ -83,7 +100,7 @@
    (arm-ik                       joint-mod-ik      2)
    (leg-ik                       joint-mod-ik      2)
    (foot                         joint-mod         2)
-   (cloth                        basic)
+   (cloth                        symbol)
    (init-time                    time-frame)
    (teleport-time                time-frame)
    (state-hook-time              time-frame)
@@ -122,10 +139,10 @@
    (major-mode-exit-hook         basic)
    (major-mode-event-hook        basic)
    (sub-mode-exit-hook           basic)
-   (ext-geo-control              basic)
+   (ext-geo-control              external-art-buffer)
    (pending-ext-geo              int32)
    (ext-geo                      int32)
-   (ext-anim-control             basic)
+   (ext-anim-control             external-art-buffer)
    (pending-ext-anim             int32)
    (ext-anim                     int32)
    (tobot-state                  state)
@@ -165,7 +182,7 @@
    )
   (:methods
     (target-method-28 (_type_) none)
-    (target-method-29 (_type_) none)
+    (target-init! (_type_ continue-point symbol) none)
     )
   (:states
     target-attack
@@ -340,6 +357,7 @@
     target-walk
     target-warp-in
     target-warp-out
+    tobot-stance
     )
   )
 
