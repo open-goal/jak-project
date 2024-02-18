@@ -69,6 +69,7 @@
   (reset! *autosplit-info-jak2*)
   ;; turn on speedrun verification display
   (set! (-> this display-run-info?) #t)
+  (send-event (ppointer->process *speedrun-manager*) 'start-run)
   ;; ensure any required settings are enabled
   (enforce-settings! this)
   ;; finalize any category specific setup code
@@ -116,10 +117,6 @@
       (set! (-> *game-info* features) (-> *speedrun-info* active-custom-category features))
       (logclear! (-> *game-info* features) (-> *speedrun-info* active-custom-category forbidden-features))
       (set! (-> *pc-settings* cheats) (-> *speedrun-info* active-custom-category pc-cheats))))
-  (none))
-
-(defmethod hide-run-info! ((this speedrun-info))
-  (set! (-> this display-run-info?) #f)
   (none))
 
 (defmethod draw-zone ((this objective-zone))
@@ -408,7 +405,8 @@
     ;; Update auto-splitter struct
     (update! *autosplit-info-jak2*)
     ;; see if we should stop drawing the run info (when you escape the fortress!)
-    (when (task-complete? *game-info* (game-task fortress-escape))
+    (when (and (!= (-> this category) (speedrun-category custom))
+               (task-complete? *game-info* (game-task fortress-escape)))
       (set! (-> this display-run-info?) #f))
     ;; Draw info to the screen
     (when (and (not (-> *speedrun-info* practicing?)) (-> this display-run-info?))
@@ -423,21 +421,35 @@
 (defmethod draw-run-info ((this speedrun-info))
   "Draw speedrun related settings in the bottom left corner"
   (when (and (-> *pc-settings* speedrunner-mode?)
-             #f (-> this display-run-info?))
+             (-> this display-run-info?))
     (clear *temp-string*)
     (clear *pc-encoded-temp-string*)
-    (format *temp-string* "<COLOR_WHITE>Category: <COLOR_GREEN>~S~%<COLOR_WHITE>PC Cheats: <COLOR_GREEN>~D~%<COLOR_WHITE>Frame Rate: <COLOR_GREEN>~D~%<COLOR_WHITE>PS2 Actor Vis?: <COLOR_GREEN>~S~%<COLOR_WHITE>Version: <COLOR_GREEN>~S~%"
-            (enum->string speedrun-category (-> this category))
-            (the-as int (-> *pc-settings* cheats))
-            (-> *pc-settings* target-fps)
-            (if (-> *pc-settings* ps2-actor-vis?) "true" "false")
-            *pc-settings-built-sha*)
+    (clear *pc-cpp-temp-string*)
+    (cond
+      ((= (-> this category) (speedrun-category custom))
+       (pc-sr-mode-get-custom-category-name (-> this active-custom-category index) *pc-cpp-temp-string*)
+       (format *temp-string*
+               "<COLOR_WHITE>Category: <COLOR_GREEN>~S~%<COLOR_WHITE>Secrets: <COLOR_GREEN>~D~%<COLOR_WHITE>Features: <COLOR_GREEN>~D~%<COLOR_WHITE>Forbidden Features: <COLOR_GREEN>~D~%<COLOR_WHITE>Cheats: <COLOR_GREEN>~D~%<COLOR_WHITE>Version: <COLOR_GREEN>~S~%"
+               *pc-cpp-temp-string*
+               (-> this active-custom-category secrets)
+               (-> this active-custom-category features)
+               (-> this active-custom-category forbidden-features)
+               (-> this active-custom-category pc-cheats)
+               *pc-settings-built-sha*))
+      (else
+        (format *temp-string*
+              "<COLOR_WHITE>Category: <COLOR_GREEN>~S~%<COLOR_WHITE>PC Cheats: <COLOR_GREEN>~D~%<COLOR_WHITE>Frame Rate: <COLOR_GREEN>~D~%<COLOR_WHITE>PS2 Actor Vis?: <COLOR_GREEN>~S~%<COLOR_WHITE>Version: <COLOR_GREEN>~S~%"
+              (enum->string speedrun-category (-> this category))
+              (the-as int (-> *pc-settings* cheats))
+              (-> *pc-settings* target-fps)
+              (if (-> *pc-settings* ps2-actor-vis?) "true" "false")
+              *pc-settings-built-sha*)))
     (pc-encode-utf8-string *temp-string* *pc-encoded-temp-string*)
     (with-dma-buffer-add-bucket ((buf (-> (current-frame) global-buf)) (bucket-id debug-no-zbuf1))
       ;; reset bucket settings prior to drawing - font won't do this for us, and
       ;; draw-raw-image can sometimes mess them up. (intro sequence)
       (dma-buffer-add-gs-set-flusha buf (alpha-1 (new 'static 'gs-alpha :b #x1 :d #x1)) (tex1-1 (new 'static 'gs-tex1 :mmag #x1 :mmin #x1)))
-      (let ((font-ctx (new 'stack 'font-context *font-default-matrix* 510 365 0.0 (font-color default) (font-flags right shadow kerning large))))
+      (let ((font-ctx (new 'stack 'font-context *font-default-matrix* 510 (if (= (-> this category) (speedrun-category custom)) 355 365) 0.0 (font-color default) (font-flags right shadow kerning large))))
         (set! (-> font-ctx scale) 0.325)
         (draw-string-adv *pc-encoded-temp-string* buf font-ctx))))
   (none))
@@ -453,6 +465,8 @@
   :virtual #t
   :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
     (case event-type
+      (('start-run)
+       (set-time! (-> *speedrun-info* run-started-at)))
       (('invoke)
        (case (-> event param 0)
         (((speedrun-menu-command reset))
@@ -469,6 +483,10 @@
     (until #f
       (when (and (-> *speedrun-info* practicing?) (cpad-pressed? 0 l3))
         (reset! (-> *speedrun-info* active-practice-objective)))
+      (when (and (-> *speedrun-info* display-run-info?)
+                 (= (-> *speedrun-info* category) (speedrun-category custom))
+                 (time-elapsed? (-> *speedrun-info* run-started-at) (seconds 15)))
+        (set! (-> *speedrun-info* display-run-info?) #f))
       (suspend))
     (none))
   :post (behavior ()
