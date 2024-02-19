@@ -12499,6 +12499,23 @@
 (defenum traffic-spawn-flags
   :type uint32
   :bitfield #t
+  (tsf0 0)
+  (tsf1 1)
+  (tsf2 2)
+  (tsf3 3)
+  (tsf4 4)
+  (tsf5 5)
+  (tsf6 6)
+  (tsf7 7)
+  (tsf8 8)
+  (tsf9 9)
+  (tsf10 10)
+  (tsf11 11)
+  (tsf12 12)
+  (tsf13 13)
+  (tsf14 14)
+  (tsf15 15)
+  (tsf16 16)
   )
 ;; ---traffic-h:traffic-spawn-flags
 
@@ -21659,7 +21676,7 @@
     (effect-control-method-9 (_type_) none) ;; 9
     (do-effect (_type_ symbol float int) none) ;; 10
     (effect-control-method-11 () none) ;; 11 ;; (do-effect-for-surface (_type_ symbol float int basic pat-surface) none)
-    (effect-control-method-12 () none) ;; 12 ;; (play-effect-sound (_type_ symbol float int basic sound-name) int)
+    (play-effect-sound (_type_ symbol float int basic sound-name) int) ;; 12
     (set-channel-offset! (_type_ int) none) ;; 13
     (effect-control-method-14 () none) ;; 14 ;; (play-effects-from-res-lump (_type_ float float float) none)
     )
@@ -22393,6 +22410,44 @@
   )
 ;; ---target-h:target-flags
 
+;; +++target-h:darkjak-stage
+(defenum darkjak-stage
+  :bitfield #t
+  :type uint32
+  (force-on)
+  (active)
+  (bomb0)
+  (bomb1)
+  (invinc)
+  (giant)
+  (no-anim)
+  (disable-force-on)
+  )
+;; ---target-h:darkjak-stage
+
+;; +++target-h:lightjak-stage
+(defenum lightjak-stage
+  :bitfield #t
+  :type uint32
+  (ls0 0)
+  (ls1 1)
+  (ls2 2)
+  (ls3 3)
+  (ls4 4)
+  (ls5 5)
+  (ls6 6)
+  (ls7 7)
+  (ls8 8)
+  (ls9 9)
+  (ls10 10)
+  (ls11 11)
+  (ls12 12)
+  (ls13 13)
+  (ls14 14)
+  (ls15 15)
+  )
+;; ---target-h:lightjak-stage
+
 (declare-type sidekick process-drawable)
 (declare-type racer-info basic)
 (declare-type tube-info basic)
@@ -22406,6 +22461,7 @@
 (declare-type ladder-info basic)
 (declare-type darkjak-info basic)
 (declare-type lightjak-info basic)
+(declare-type rigid-body-impact structure)
 
 (deftype target (process-focusable)
   ((control                     control-info                             :offset 128 :score 1) ;; guessed by decompiler
@@ -22511,178 +22567,208 @@
     (target-init! (_type_ continue-point symbol) none) ;; 29
     )
   (:states
+    ;; special states
     target-startup
-    target-pole-flip-forward ;; associated process guessed by decompiler, old: (state float float float target)
-    target-play-anim ;; associated process guessed by decompiler, old: (state string handle target)
-    target-pole-flip-up-jump ;; associated process guessed by decompiler, old: (state float float target)
+    target-title ;; associated process guessed by decompiler, old: (state symbol target)
+    target-credits
+    target-load-wait
+    target-hide
+    target-float
+    (target-grab symbol)
+    (target-play-anim string handle) ;; associated process guessed by decompiler, old: (state string handle target)
+    (target-clone-anim handle) ;; associated process guessed by decompiler, old: (state handle target)
+    (target-continue continue-point) ;; associated process guessed by decompiler, old: (state continue-point target)
+    (target-blast-recover rigid-body-impact)
+    target-warp-in ;; associated process guessed by decompiler, old: (state vector vector target target)
+    target-warp-out ;; associated process guessed by decompiler, old: (state vector vector target target)
+    target-launch-dir
+    target-death ;; associated process guessed by decompiler, old: (state symbol target)
+    ;; general states
+    target-stance
+    target-stance-ambient
+    target-stance-look-around
+    target-look-around
+    target-walk
+    target-attack
+    target-running-attack
+    target-attack-air ;; associated process guessed by decompiler, old: (state symbol target)
+    target-attack-uppercut ;; associated process guessed by decompiler, old: (state float float target)
+    target-attack-uppercut-jump ;; associated process guessed by decompiler, old: (state float float target)
+    target-roll
+    target-roll-flip ;; associated process guessed by decompiler, old: (state float float target)
+    target-turn-around
+    (target-jump float float surface) ;; associated process guessed by decompiler, old: (state float float surface target)
+    target-high-jump ;; associated process guessed by decompiler, old: (state float float object target)
+    target-double-jump ;; associated process guessed by decompiler, old: (state float float target)
+    (target-falling symbol)
+    target-slide-down
+    target-flop ;; associated process guessed by decompiler, old: (state float float float target)
+    target-hit-ground ;; associated process guessed by decompiler, old: (state symbol target)
     target-hit-ground-hard ;; associated process guessed by decompiler, old: (state float target)
-    target-clone-anim ;; associated process guessed by decompiler, old: (state handle target)
-    target-pole-cycle ;; associated process guessed by decompiler, old: (state handle target)
-    target-hide ;; associated process guessed by decompiler, old: (state target)
-    target-look-around ;; associated process guessed by decompiler, old: (state target)
-    target-stance-look-around ;; associated process guessed by decompiler, old: (state target)
-    target-pole-flip-up ;; associated process guessed by decompiler, old: (state object object float target)
-    target-stance-ambient ;; associated process guessed by decompiler, old: (state target)
-    target-blast-recover
-    target-load-wait ;; associated process guessed by decompiler, old: (state target)
-    target-edge-grab-off ;; associated process guessed by decompiler, old: (state target)
-    target-eco-powerup
-    target-launch ;; associated process guessed by decompiler, old: (state float symbol vector int target)
-    target-float ;; associated process guessed by decompiler, old: (state target)
-    target-gun-stance ;; associated process guessed by decompiler, old: (state target)
-    target-gun-walk ;; associated process guessed by decompiler, old: (state target)
+    target-duck-stance ;; associated process guessed by decompiler, old: (state symbol target)
+    target-duck-walk ;; associated process guessed by decompiler, old: (state symbol target)
+    target-duck-high-jump ;; associated process guessed by decompiler, old: (state float float symbol target)
+    target-duck-high-jump-jump ;; associated process guessed by decompiler, old: (state float float symbol target)
+    target-flop-hit-ground ;; associated process guessed by decompiler, old: (state symbol target)
+    (target-hit symbol attack-info) ;; associated process guessed by decompiler, old: (state symbol attack-info target)
+    target-jump-forward ;; associated process guessed by decompiler, old: (state float float target)
+    target-slide-down-to-ground
+    ;; gun
+    target-gun-stance
+    target-gun-walk
+    ;; darkjak/lightjak
+    target-powerjak-get-on
+    ;; darkjak
+    (target-darkjak-get-on darkjak-stage)
+    target-darkjak-get-off
+    target-darkjak-running-attack
     target-darkjak-smack-charge
-    target-darkjak-get-on ;; associated process guessed by decompiler, old: (state darkjak-stage target)
-    target-darkjak-get-off ;; associated process guessed by decompiler, old: (state target)
+    target-darkjak-smack
     target-darkjak-bomb1 ;; associated process guessed by decompiler, old: (state float float target)
-    target-darkjak-bomb0 ;; associated process guessed by decompiler, old: (state target)
-    target-board-clone-anim ;; associated process guessed by decompiler, old: (state handle target)
-    target-edge-grab-jump ;; associated process guessed by decompiler, old: (state float float target)
+    target-darkjak-bomb0
+    (target-invisible-get-on handle)
+    ;; lightjak
+    (target-eco-powerup object object)
+    (target-lightjak-get-on lightjak-stage)
+    target-lightjak-get-off
+    target-lightjak-regen
+    target-lightjak-freeze
+    target-lightjak-shield
+    target-lightjak-swoop
+    target-lightjak-swoop-again
+    target-lightjak-swoop-falling
+    ;; board
+    (target-board-start handle)
+    target-board-get-on
     target-board-get-off ;; associated process guessed by decompiler, old: (state object symbol target)
+    target-board-stance
+    target-board-turn-to ;; associated process guessed by decompiler, old: (state vector time-frame target)
     target-board-turn-around
+    target-board-jump ;; associated process guessed by decompiler, old: (state meters meters symbol target)
+    target-board-jump-kick
+    target-board-wall-kick ;; associated process guessed by decompiler, old: (state vector float target)
+    target-board-hold ;; associated process guessed by decompiler, old: (state float float symbol target)
+    target-board-ride-edge ;; associated process guessed by decompiler, old: (state symbol target)
+    target-board-flip ;; associated process guessed by decompiler, old: (state float float symbol target)
+    target-board-duck-stance
+    target-board-hit ;; associated process guessed by decompiler, old: (state vector attack-info target)
+    target-board-hit-ground
+    target-board-falling
     target-board-grab ;; associated process guessed by decompiler, old: (state symbol target)
-    target-board-get-on ;; associated process guessed by decompiler, old: (state target)
     target-board-trickx ;; associated process guessed by decompiler, old: (state float float symbol target)
     target-board-tricky
-    target-board-wall-kick ;; associated process guessed by decompiler, old: (state vector float target)
-    target-invisible-get-on
-    target-grab-ride
-    target-mech-grab ;; associated process guessed by decompiler, old: (state target)
-    target-flut-stance
-    target-mech-get-up
-    target-flut-air-attack-hit-ground
-    target-flut-get-off-jump
-    target-darkjak-smack
+    target-board-halfpipe
     target-board-grenade ;; associated process guessed by decompiler, old: (state handle target)
-    target-board-hit-ground ;; associated process guessed by decompiler, old: (state target)
-    target-mech-carry-drop ;; associated process guessed by decompiler, old: (state target)
-    target-mech-punch ;; associated process guessed by decompiler, old: (state target)
-    target-lightjak-shield
-    target-mech-shield
-    target-mech-walk ;; associated process guessed by decompiler, old: (state target)
-    target-mech-get-off ;; associated process guessed by decompiler, old: (state target)
-    target-lightjak-swoop-again
-    target-tube ;; associated process guessed by decompiler, old: (state target)
-    target-flop ;; associated process guessed by decompiler, old: (state float float float target)
-    target-board-hold ;; associated process guessed by decompiler, old: (state float float symbol target)
-    target-mech-start ;; associated process guessed by decompiler, old: (state handle float symbol target)
-    target-flut-death
-    target-duck-high-jump-jump ;; associated process guessed by decompiler, old: (state float float symbol target)
-    target-mech-hit ;; associated process guessed by decompiler, old: (state symbol attack-info target)
-    target-hit-ground ;; associated process guessed by decompiler, old: (state symbol target)
-    target-swim-jump ;; associated process guessed by decompiler, old: (state float float target)
-    target-running-attack ;; associated process guessed by decompiler, old: (state target)
-    target-mech-stance ;; associated process guessed by decompiler, old: (state target)
-    target-slide-down ;; associated process guessed by decompiler, old: (state target)
-    target-mech-get-on ;; associated process guessed by decompiler, old: (state handle target)
-    target-mech-hit-ground ;; associated process guessed by decompiler, old: (state symbol target)
-    target-mech-death ;; associated process guessed by decompiler, old: (state symbol target)
-    target-stance ;; associated process guessed by decompiler, old: (state target)
-    target-mech-carry-pickup ;; associated process guessed by decompiler, old: (state target)
-    target-pilot-impact ;; associated process guessed by decompiler, old: (state target)
-    target-pilot-get-on ;; associated process guessed by decompiler, old: (state target)
-    target-jump ;; associated process guessed by decompiler, old: (state float float surface target)
-    target-flut-kanga-catch
-    target-board-start ;; associated process guessed by decompiler, old: (state object target)
-    target-walk ;; associated process guessed by decompiler, old: (state target)
-    target-indax-attack ;; associated process guessed by decompiler, old: (state target)
-    target-pilot-edge-grab ;; associated process guessed by decompiler, old: (state pilot-edge-grab-info target)
-    target-warp-out ;; associated process guessed by decompiler, old: (state vector vector target target)
-    target-pilot-stance ;; associated process guessed by decompiler, old: (state target)
-    target-pilot-death ;; associated process guessed by decompiler, old: (state symbol target)
-    target-darkjak-running-attack ;; associated process guessed by decompiler, old: (state target)
-    target-indax-walk ;; associated process guessed by decompiler, old: (state target)
-    target-duck-walk ;; associated process guessed by decompiler, old: (state symbol target)
-    target-flop-hit-ground ;; associated process guessed by decompiler, old: (state symbol target)
-    target-attack-air ;; associated process guessed by decompiler, old: (state symbol target)
-    target-credits
-    target-mech-carry-walk ;; associated process guessed by decompiler, old: (state target)
-    target-indax-hang
-    target-title ;; associated process guessed by decompiler, old: (state symbol target)
-    target-grab ;; associated process guessed by decompiler, old: (state symbol target)
-    target-flut-eject
-    target-indax-death ;; associated process guessed by decompiler, old: (state symbol target)
-    target-indax-jump ;; associated process guessed by decompiler, old: (state float float surface target)
-    target-indax-trip ;; associated process guessed by decompiler, old: (state target)
-    target-indax-grab
-    target-duck-high-jump ;; associated process guessed by decompiler, old: (state float float symbol target)
-    target-pilot-start ;; associated process guessed by decompiler, old: (state handle symbol symbol target)
-    target-mech-carry-drag ;; associated process guessed by decompiler, old: (state target)
-    target-indax-get-off
-    target-powerjak-get-on
-    target-mech-carry-jump ;; associated process guessed by decompiler, old: (state float float symbol target)
-    target-indax-attack-air ;; associated process guessed by decompiler, old: (state symbol target)
-    target-duck-stance ;; associated process guessed by decompiler, old: (state symbol target)
-    target-mech-carry-stance ;; associated process guessed by decompiler, old: (state target)
-    target-pilot-grab ;; associated process guessed by decompiler, old: (state target)
-    target-indax-double-jump ;; associated process guessed by decompiler, old: (state float float target)
-    target-hit ;; associated process guessed by decompiler, old: (state symbol attack-info target)
-    target-indax-start ;; associated process guessed by decompiler, old: (state handle target)
-    target-continue ;; associated process guessed by decompiler, old: (state continue-point target)
-    target-mech-falling ;; associated process guessed by decompiler, old: (state symbol target)
-    target-pilot-daxter-perch
-    target-flut-grab
-    target-jump-forward ;; associated process guessed by decompiler, old: (state float float target)
-    target-pilot-hit ;; associated process guessed by decompiler, old: (state symbol attack-info target)
-    target-flut-hit-ground
-    target-death ;; associated process guessed by decompiler, old: (state symbol target)
-    target-flut-running-attack
-    target-indax-falling ;; associated process guessed by decompiler, old: (state symbol target)
-    target-slide-down-to-ground ;; associated process guessed by decompiler, old: (state target)
+    target-board-clone-anim ;; associated process guessed by decompiler, old: (state handle target)
+    ;; flut
+    (target-flut-start handle symbol int)
+    target-flut-get-on
     target-flut-get-off
-    target-flut-falling
-    target-mech-carry-hit-ground ;; associated process guessed by decompiler, old: (state symbol target)
-    target-flut-start ;; associated process guessed by decompiler, old: (state handle target)
-    target-mech-jump ;; associated process guessed by decompiler, old: (state float float surface target)
-    target-flut-hit
+    target-flut-get-off-jump
+    target-flut-eject
+    target-flut-grab
+    target-flut-stance
+    target-flut-walk
     target-flut-jump
+    target-flut-double-jump
+    target-flut-running-attack
+    target-flut-air-attack
+    target-flut-air-attack-hit-ground
+    target-flut-hit
+    target-flut-hit-ground
+    target-flut-falling
+    target-flut-kanga-catch
+    target-flut-death
+    target-flut-clone-anim
+    ;; mech
+    (target-mech-start handle float symbol)
+    target-mech-get-on ;; associated process guessed by decompiler, old: (state handle target)
+    target-mech-get-off
+    target-mech-get-up
+    target-mech-grab
+    target-mech-stance
+    target-mech-walk
+    target-mech-jump ;; associated process guessed by decompiler, old: (state float float surface target)
+    target-mech-punch
+    target-mech-shield
+    target-mech-hit ;; associated process guessed by decompiler, old: (state symbol attack-info target)
+    target-mech-hit-ground ;; associated process guessed by decompiler, old: (state symbol target)
+    target-mech-falling ;; associated process guessed by decompiler, old: (state symbol target)
+    target-mech-carry-pickup
+    target-mech-carry-stance
+    target-mech-carry-walk
+    target-mech-carry-jump ;; associated process guessed by decompiler, old: (state float float symbol target)
+    target-mech-carry-drag
+    target-mech-carry-drop
+    target-mech-carry-throw
+    target-mech-carry-hit-ground ;; associated process guessed by decompiler, old: (state symbol target)
+    target-mech-carry-falling
+    target-mech-death ;; associated process guessed by decompiler, old: (state symbol target)
+    target-mech-clone-anim ;; associated process guessed by decompiler, old: (state handle target)
+    ;; pilot
+    (target-racing-start handle)
+    (target-grab-ride handle)
+    (target-pilot-edge-grab pilot-edge-grab-info) ;; associated process guessed by decompiler, old: (state pilot-edge-grab-info target)
+    (target-pilot-start handle symbol symbol)
+    target-pilot-get-on
+    target-pilot-get-off
+    target-pilot-stance
+    target-pilot-grab
+    target-pilot-impact
+    target-pilot-hit ;; associated process guessed by decompiler, old: (state symbol attack-info target)
+    target-pilot-death ;; associated process guessed by decompiler, old: (state symbol target)
+    target-pilot-clone-anim ;; associated process guessed by decompiler, old: (state handle target)
+    target-pilot-daxter-perch
+    ;; indax
+    (target-indax-start handle object) ;; associated process guessed by decompiler, old: (state handle target)
+    target-indax-get-off
+    target-indax-stance
+    target-indax-walk
+    target-indax-attack
+    target-indax-running-attack
+    target-indax-jump ;; associated process guessed by decompiler, old: (state float float surface target)
+    target-indax-double-jump ;; associated process guessed by decompiler, old: (state float float target)
+    target-indax-attack-air ;; associated process guessed by decompiler, old: (state symbol target)
+    target-indax-hang
+    target-indax-falling ;; associated process guessed by decompiler, old: (state symbol target)
     target-indax-hit ;; associated process guessed by decompiler, old: (state symbol attack-info target)
     target-indax-hit-ground ;; associated process guessed by decompiler, old: (state symbol target)
-    target-flut-double-jump
-    target-launch-dir
-    target-ladder
-    target-board-ride-edge ;; associated process guessed by decompiler, old: (state symbol target)
-    target-lightjak-regen
-    target-pilot-clone-anim ;; associated process guessed by decompiler, old: (state handle target)
-    target-lightjak-freeze
-    target-lightjak-swoop-falling
-    target-lightjak-get-on
-    target-indax-running-attack ;; associated process guessed by decompiler, old: (state target)
-    target-flut-get-on
-    target-lightjak-swoop
+    target-indax-trip
+    target-indax-grab
+    target-indax-death ;; associated process guessed by decompiler, old: (state symbol target)
+    ;; swim
+    target-wade-walk
+    target-wade-stance
+    target-swim-stance
     target-swim
-    target-board-flip ;; associated process guessed by decompiler, old: (state float float symbol target)
-    target-wade-walk ;; associated process guessed by decompiler, old: (state target)
-    target-wade-stance ;; associated process guessed by decompiler, old: (state target)
-    target-pilot-get-off ;; associated process guessed by decompiler, old: (state target)
-    target-indax-stance ;; associated process guessed by decompiler, old: (state target)
-    target-flut-walk
-    target-warp-in ;; associated process guessed by decompiler, old: (state vector vector target target)
-    target-flut-clone-anim
-    target-roll-flip ;; associated process guessed by decompiler, old: (state float float target)
-    target-attack-uppercut-jump ;; associated process guessed by decompiler, old: (state float float target)
-    target-edge-grab ;; associated process guessed by decompiler, old: (state target)
-    target-attack-uppercut ;; associated process guessed by decompiler, old: (state float float target)
-    target-board-stance ;; associated process guessed by decompiler, old: (state target)
-    target-lightjak-get-off
-    target-turn-around ;; associated process guessed by decompiler, old: (state target)
-    target-high-jump ;; associated process guessed by decompiler, old: (state float float object target)
+    target-swim-walk
+    target-swim-down
+    target-swim-up
+    target-swim-jump ;; associated process guessed by decompiler, old: (state float float target)
+    (target-swim-jump-jump float float surface)
+    ;; pole
+    (target-pole-cycle handle) ;; associated process guessed by decompiler, old: (state handle target)
+    target-pole-flip-up ;; associated process guessed by decompiler, old: (state object object float target)
+    target-pole-flip-up-jump ;; associated process guessed by decompiler, old: (state float float target)
+    target-pole-flip-forward ;; associated process guessed by decompiler, old: (state float float float target)
     target-pole-flip-forward-jump ;; associated process guessed by decompiler, old: (state float float target)
-    target-mech-carry-throw ;; associated process guessed by decompiler, old: (state target)
-    target-double-jump ;; associated process guessed by decompiler, old: (state float float target)
-    target-board-jump-kick ;; associated process guessed by decompiler, old: (state target)
-    target-falling ;; associated process guessed by decompiler, old: (state symbol target)
-    target-mech-carry-falling ;; associated process guessed by decompiler, old: (state target)
-    target-roll ;; associated process guessed by decompiler, old: (state target)
-    target-mech-clone-anim ;; associated process guessed by decompiler, old: (state handle target)
-    target-attack ;; associated process guessed by decompiler, old: (state target)
-    target-board-jump ;; associated process guessed by decompiler, old: (state meters meters symbol target)
-    target-board-halfpipe ;; associated process guessed by decompiler, old: (state target)
-    target-board-duck-stance ;; associated process guessed by decompiler, old: (state target)
-    target-board-hit ;; associated process guessed by decompiler, old: (state vector attack-info target)
-    target-board-falling ;; associated process guessed by decompiler, old: (state target)
-    target-flut-air-attack
-    target-board-turn-to ;; associated process guessed by decompiler, old: (state vector time-frame target)
+    target-launch ;; associated process guessed by decompiler, old: (state float symbol vector int target)
+    ;; turret
+    (target-turret-get-on handle)
+    target-turret-get-off
+    (target-turret-stance handle)
+    target-turret-stance-fire
+    ;; edge grab
+    target-edge-grab
+    target-edge-grab-jump ;; associated process guessed by decompiler, old: (state float float target)
+    target-edge-grab-off
+    ;; ladder
+    (target-ladder-start handle)
+    target-ladder
+    ;; tube
+    (target-tube-start handle)
+    target-tube
+    ;; tobot
     tobot-stance
     )
   )
@@ -34281,8 +34367,8 @@
    (lightjak-before-powerjak symbol      :offset-assert 36)
    (attack-time              time-frame  :offset-assert 40)
    (attack-count             time-frame  :offset-assert 48)
-   (stage                    uint32      :offset-assert 56)
-   (want-stage               uint32      :offset-assert 60)
+   (stage                    lightjak-stage :offset-assert 56)
+   (want-stage               lightjak-stage :offset-assert 60)
    (get-on-latch             uint32      :offset-assert 64)
    (tone                     uint32      :offset-assert 68)
    (on-off                   uint32      :offset-assert 72)
@@ -34291,7 +34377,7 @@
    (freeze-control           handle      :offset-assert 88)
    (freeze-screen            handle      :offset-assert 96)
    (freeze-sound             sound-id    :offset-assert 104)
-   (shield                   uint32      :offset-assert 108)
+   (shield                   (pointer lightjak-shield) :offset-assert 108)
    (shield-start-time        time-frame  :offset-assert 112)
    (shield-count-time        time-frame  :offset-assert 120)
    (regen-start-time         time-frame  :offset-assert 128)
@@ -34643,21 +34729,6 @@
 ;; darkjak-h                      ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; +++darkjak-h:darkjak-stage
-(defenum darkjak-stage
-  :bitfield #t
-  :type uint32
-  (force-on)
-  (active)
-  (bomb0)
-  (bomb1)
-  (invinc)
-  (giant)
-  (no-anim)
-  (disable-force-on)
-  )
-;; ---darkjak-h:darkjak-stage
-
 (deftype darkjak-info (basic)
   ((process         (pointer target)   :offset-assert 4) ;; guessed by decompiler
    (latch-out-time  time-frame         :offset-assert 8)
@@ -34944,7 +35015,7 @@
 ;; (define-extern process-drawable-shock-effect-replace function)
 (define-extern process-drawable-shock-effect (function process-drawable lightning-spec (function lightning-tracker none) sparticle-launcher int int float object))
 ;; (define-extern process-drawable-shock-wall-effect function) ;; (function process-drawable lightning-spec (function lightning-tracker none) sparticle-launcher symbol)
-;; (define-extern process-drawable2-shock-effect function) ;; (function process-drawable process-drawable lightning-spec (function lightning-tracker none) sparticle-launcher none)
+(define-extern process-drawable2-shock-effect (function process-drawable process-drawable lightning-spec (function lightning-tracker none) sparticle-launcher none))
 ;; (define-extern process-drawable-shock-skel-effect function) ;; (function process-drawable lightning-spec (function lightning-tracker none) sparticle-launcher float int int none)
 (define-extern *lightning-darkjak-pill* lightning-spec)
 
@@ -35305,21 +35376,21 @@
 ;; target-handler                 ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (define-extern target-shoved function) ;; (function meters meters process (state object object target) object :behavior target)
-;; (define-extern attack-mode-is-invinc function) ;; (function symbol symbol)
-;; (define-extern target-attacked function) ;; (function symbol attack-info process touching-shapes-entry (state symbol attack-info target) object :behavior target)
-;; (define-extern target-got-impact-impulse function)
-;; (define-extern target-darkjak-effect-trans function)
-;; (define-extern target-send-attack function) ;; (function process symbol touching-shapes-entry int int penetrate symbol :behavior target)
+(define-extern target-shoved (function meters meters process (state object object target) object :behavior target))
+(define-extern attack-mode-is-invinc (function symbol symbol symbol))
+(define-extern target-attacked (function symbol attack-info process touching-shapes-entry (state symbol attack-info target) object :behavior target))
+(define-extern target-got-impact-impulse (function rigid-body-impact symbol :behavior target))
+(define-extern target-darkjak-effect-trans (function handle (pointer process-drawable) (pointer time-frame) time-frame none :behavior target))
+(define-extern target-send-attack (function process symbol touching-shapes-entry int int penetrate symbol :behavior target))
 (define-extern target-generic-event-handler (function process int symbol event-message-block object :behavior target))
-;; (define-extern target-standard-event-handler function) ;; (function process int symbol event-message-block object :behavior target)
-;; (define-extern target-dangerous-event-handler function) ;; (function process int symbol event-message-block object :behavior target)
-;; (define-extern target-bonk-event-handler function) ;; (function process int symbol event-message-block object :behavior target)
-;; (define-extern target-jump-event-handler function) ;; (function process int symbol event-message-block object :behavior target)
-;; (define-extern target-walk-event-handler function) ;; (function process int symbol event-message-block object :behavior target)
+(define-extern target-standard-event-handler (function process int symbol event-message-block object :behavior target))
+(define-extern target-dangerous-event-handler (function process int symbol event-message-block object :behavior target))
+(define-extern target-bonk-event-handler (function process int symbol event-message-block object :behavior target))
+(define-extern target-jump-event-handler (function process int symbol event-message-block object :behavior target))
+(define-extern target-walk-event-handler (function process int symbol event-message-block object :behavior target))
 (define-extern target-exit (function none :behavior target))
-;; (define-extern target-state-hook-exit function) ;; (function none :behavior target)
-;; (define-extern target-effect-exit function) ;; (function none :behavior target)
+(define-extern target-state-hook-exit (function none :behavior target))
+(define-extern target-effect-exit (function none :behavior target))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; target-anim                    ;;
@@ -35371,11 +35442,6 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ;; (define-extern target-swim-tilt function) ;; (function float float float float float :behavior target)
-;; (define-extern target-swim-stance object) ;; (state target)
-;; (define-extern target-swim-walk object) ;; (state target)
-;; (define-extern target-swim-down object) ;; (state target)
-;; (define-extern target-swim-up object) ;; (state target)
-;; (define-extern target-swim-jump-jump object) ;; (state float float surface target)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; target-darkjak                 ;;
@@ -35524,7 +35590,7 @@
 |#
 
 ;; (define-extern target-invisible-start function)
-;; (define-extern target-invisible-stop function)
+(define-extern target-invisible-stop (function none :behavior target))
 ;; (define-extern *invis-joint-list* array)
 ;; (define-extern target-invisible-process function)
 
@@ -37914,7 +37980,7 @@
 (define-extern target-update-segs (function process-drawable none))
 ;; (define-extern target-draw-process function)
 (define-extern target-powerup-process (function none :behavior target))
-;; (define-extern target-powerup-effect function) ;; (function symbol none :behavior target)
+(define-extern target-powerup-effect (function symbol none :behavior target))
 ;; (define-extern process-contact-action function) ;; (function process none :behavior target)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -46511,12 +46577,6 @@
     setup ;; 29
     idle ;; 28
     )
-  (:states
-    target-turret-stance-fire
-    target-turret-stance ;; associated process guessed by decompiler, old: (state handle target)
-    target-turret-get-on ;; associated process guessed by decompiler, old: (state handle target)
-    target-turret-get-off ;; associated process guessed by decompiler, old: (state target)
-    )
   )
 |#
 
@@ -52987,7 +53047,7 @@
 ;; (define-extern vehicle-manager-kill function)
 ;; (define-extern vehicle-init-by-other function) ;; (function traffic-object-spawn-params none :behavior vehicle)
 ;; (define-extern vehicle-spawn-hack function)
-;; (define-extern vehicle-spawn function) ;; (function process type traffic-object-spawn-params process-drawable)
+(define-extern vehicle-spawn (function process type traffic-object-spawn-params process-drawable))
 ;; (define-extern type-from-vehicle-type function) ;; (function vehicle-type type)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -63829,7 +63889,6 @@
 |#
 
 ;; (define-extern *ladder-mods* object)
-;; (define-extern target-ladder-start object)
 ;; (define-extern target-ladder-stance object)
 ;; (define-extern target-ladder-walk-up object)
 ;; (define-extern target-ladder-walk-down object)
@@ -67880,7 +67939,6 @@
 ;; (define-extern tube-sounds function) ;; (function sound-id :behavior target)
 ;; (define-extern tube-thrust function) ;; (function float float none :behavior target)
 ;; (define-extern target-tube-post function) ;; (function none :behavior target)
-;; (define-extern target-tube-start object) ;; (state handle target)
 ;; (define-extern target-tube-turn-anim function) ;; (function none :behavior target)
 ;; (define-extern target-tube-walk object)
 ;; (define-extern target-tube-jump object) ;; (state float float target)
