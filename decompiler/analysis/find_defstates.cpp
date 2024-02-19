@@ -389,10 +389,10 @@ FormElement* rewrite_virtual_defstate(
   if (method_info.type.base_type() != "state" ||
       method_info.type.last_arg().base_type() != "_type_") {
     env.func->warnings.error_and_throw(
-        "Virtual defstate is defining a virtual state in method {} of {}, but the type "
+        "Virtual defstate is defining a virtual state \"{}\" in method {} of {}, but the type "
         "of this method is {}, which is not a valid virtual state type (must be "
         "\"(state ... _type_)\")",
-        method_info.name, type_name, method_info.type.print());
+        expected_state_name, method_info.name, type_name, method_info.type.print());
   }
 
   bool state_override = false;
