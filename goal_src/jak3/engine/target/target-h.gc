@@ -109,6 +109,30 @@
 (define-extern target-invisible-stop (function none :behavior target))
 (define-extern target-gun-fire (function pickup-type none :behavior target))
 
+;; target-anim
+(define-extern *attack-end-mods* surface)
+
+;; target
+(define-extern want-to-powerjak? (function symbol :behavior target))
+(define-extern target-invisible-start (function none :behavior target))
+(define-extern target-top-anim-base-mode (function int none :behavior target))
+(define-extern target-land-effect (function none :behavior target))
+(define-extern *attack-find-mods* surface)
+(define-extern *uppercut-mods* surface)
+(define-extern *uppercut-jump-mods* surface)
+
+;; target2
+
+(define-extern *trip-mods* surface)
+(define-extern *look-around-mods* surface)
+(define-extern target-gun-check (function none :behavior target))
+(define-extern target-darkjak-end-mode (function none :behavior target))
+(define-extern target-lightjak-end-mode (function none :behavior target))
+(define-extern want-to-gun? (function target symbol symbol :behavior process))
+(define-extern *hit-ground-hard-mods* surface)
+(define-extern *float-mods* surface)
+(define-extern *blast-recover-mods* surface)
+
 ;; +++lightjak-stage
 (defenum lightjak-stage
   :bitfield #t
@@ -236,9 +260,9 @@
     )
   (:states
     target-attack
-    target-attack-air
-    target-attack-uppercut
-    target-attack-uppercut-jump
+    (target-attack-air symbol)
+    (target-attack-uppercut float float)
+    (target-attack-uppercut-jump float float)
     (target-blast-recover rigid-body-impact)
     target-board-clone-anim
     target-board-duck-stance
@@ -262,6 +286,7 @@
     target-board-turn-around
     target-board-turn-to
     target-board-wall-kick
+    target-carry-pickup
     (target-clone-anim handle)
     (target-continue continue-point)
     target-credits
@@ -273,19 +298,20 @@
     target-darkjak-smack
     target-darkjak-smack-charge
     target-death
-    target-double-jump
-    target-duck-high-jump
-    target-duck-high-jump-jump
-    target-duck-stance
-    target-duck-walk
-    (target-eco-powerup object object)
+    target-demo
+    (target-double-jump float float)
+    (target-duck-high-jump float float symbol)
+    (target-duck-high-jump-jump float float symbol)
+    (target-duck-stance symbol)
+    (target-duck-walk symbol)
+    (target-eco-powerup int float)
     target-edge-grab
-    target-edge-grab-jump
+    (target-edge-grab-jump float float symbol)
     target-edge-grab-off
     (target-falling symbol)
     target-float
-    target-flop
-    target-flop-hit-ground
+    (target-flop float float float object)
+    (target-flop-hit-ground symbol)
     target-flut-air-attack
     target-flut-air-attack-hit-ground
     target-flut-clone-anim
@@ -310,10 +336,12 @@
     target-gun-stance
     target-gun-walk
     target-hide
-    target-high-jump
+    (target-high-jump float float object)
     (target-hit symbol attack-info)
-    target-hit-ground
-    target-hit-ground-hard
+    (target-hit-ground symbol)
+    (target-hit-ground-hard float)
+    target-ice-stance
+    target-ice-walk
     target-indax-attack
     target-indax-attack-air
     target-indax-death
@@ -332,17 +360,17 @@
     target-indax-walk
     (target-invisible-get-on handle)
     (target-jump float float surface)
-    target-jump-forward
+    (target-jump-forward float float)
     target-ladder
     (target-ladder-start handle)
-    target-launch
+    (target-launch float symbol vector int)
     target-launch-dir
     target-lightjak-freeze
     target-lightjak-get-off
     (target-lightjak-get-on lightjak-stage)
-    target-lightjak-regen
+    (target-lightjak-regen int)
     target-lightjak-shield
-    target-lightjak-swoop
+    (target-lightjak-swoop float)
     target-lightjak-swoop-again
     target-lightjak-swoop-falling
     target-load-wait
@@ -384,14 +412,14 @@
     (target-pilot-start handle symbol symbol)
     (target-play-anim string handle)
     (target-pole-cycle handle)
-    target-pole-flip-forward
-    target-pole-flip-forward-jump
-    target-pole-flip-up
-    target-pole-flip-up-jump
+    (target-pole-flip-forward float float float)
+    (target-pole-flip-forward-jump float float)
+    (target-pole-flip-up float float float)
+    (target-pole-flip-up-jump float float)
     target-powerjak-get-on
     (target-racing-start handle)
     target-roll
-    target-roll-flip
+    (target-roll-flip float float)
     target-running-attack
     target-slide-down
     target-slide-down-to-ground
@@ -419,6 +447,7 @@
     target-walk
     target-warp-in
     target-warp-out
+    target-yellow-jump-blast
     tobot-stance
     )
   )
