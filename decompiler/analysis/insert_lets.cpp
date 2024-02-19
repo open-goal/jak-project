@@ -367,6 +367,7 @@ FormElement* rewrite_as_send_event(LetElement* in,
             Matcher::any(1));
         break;
       case GameVersion::Jak2:
+      case GameVersion::Jak3:
         set_from_form_matcher = Matcher::set(
             Matcher::deref(Matcher::any_reg(0), false, {DerefTokenMatcher::string("from")}),
             Matcher::op_fixed(FixedOperatorKind::PROCESS_TO_PPOINTER, {Matcher::any(1)}));
