@@ -210,7 +210,7 @@ struct AudioFileInfo {
 };
 
 AudioFileInfo process_audio_file(const fs::path& output_folder,
-                                 nonstd::span<const uint8_t> data,
+                                 std::span<const uint8_t> data,
                                  const std::string& name,
                                  const std::string& suffix,
                                  bool stereo) {
@@ -276,7 +276,7 @@ void process_streamed_audio(const decompiler::Config& config,
       }
 
       lg::info("File {}, total {:.2f} minutes", entry.name, audio_len / 60.0);
-      auto data = nonstd::span(wad_data).subspan(entry.start_byte);
+      auto data = std::span(wad_data).subspan(entry.start_byte);
       auto info = process_audio_file(output_path, data, entry.name, suffix, entry.stereo);
       audio_len += info.length_seconds;
       filename_data[i][lang_id + 1] = info.filename;
