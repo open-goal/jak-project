@@ -936,6 +936,23 @@
       )
   )
 
+(defmacro joint-node-index (jg-name name)
+  (let ((jg-info (hash-table-try-ref *jg-info* (symbol->string jg-name))))
+      (if (not (car jg-info))
+          -1
+          (let ((joint-node (hash-table-try-ref (cdr jg-info) (if (integer? name) (int->string name) (symbol->string name)))))
+              (if (not (car joint-node))
+                  -1
+                  (cadr (cdr joint-node)))
+              )
+          )
+      )
+  )
+
+(defmacro joint-node (jg name)
+  `(-> self node-list data (joint-node-index ,jg ,name))
+  )
+
 (defmacro static-spherem (x y z r)
   "creates a static vector using meters where the w component is used as sphere radius. for a 'real' sphere use static-bspherem."
   `(new 'static 'vector :x (meters ,x) :y (meters ,y) :z (meters ,z) :w (meters ,r))
@@ -1412,4 +1429,48 @@
 (defmacro new-attack-id ()
   "generate a new attack-id"
   `(1+! (-> *game-info* attack-id))
+  )
+
+;; inserted by the decompiler if a c->goal bool conversion can't be compacted into a single
+;; expression.
+(defmacro cmove-#f-zero (dest condition src)
+  `(if (zero? ,condition)
+       (set! ,dest #f)
+       (set! ,dest ,src)
+       )
+   )
+
+(defmacro cmove-#f-nonzero (dest condition src)
+  `(if (zero? ,condition)
+       (set! ,dest ,src)
+       (set! ,dest #f)
+       )
+   )
+
+(defmacro launch-particles (&key (system *sp-particle-system-2d*)
+                                 particle
+                                 origin
+                                 &key (launch-state (the-as sparticle-launch-state #f))
+                                 &key (launch-control (the-as sparticle-launch-control #f))
+                                 &key (rate 1.0)
+                                 &key (origin-is-matrix #f))
+  (if origin-is-matrix
+      `(sp-launch-particles-var
+         ,system
+         ,particle
+         (the matrix ,origin)
+         ,launch-state
+         ,launch-control
+         ,rate #|(if (= (get-video-mode) 'custom) (/ (-> *display* time-factor) 5.0) ,rate)|#)
+      `(begin
+         (vector-copy! (-> *launch-matrix* trans) (the vector ,origin))
+         (sp-launch-particles-var
+            ,system
+            ,particle
+            *launch-matrix*
+            ,launch-state
+            ,launch-control
+            ,rate #|(if (= (get-video-mode) 'custom) (/ (-> *display* time-factor) 5.0) ,rate)|#)
+         )
+      )
   )
